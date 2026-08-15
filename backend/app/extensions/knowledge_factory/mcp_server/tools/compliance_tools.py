@@ -73,7 +73,6 @@ async def handle_kf_check_compliance(
     unchecked due to a filter typo.
     """
     chapter_content: str = arguments.get("chapter_content", "")
-    chapter_number: int | None = arguments.get("chapter_number")
     rule_ids: list[str] | None = arguments.get("rule_ids")
     report_type: str | None = arguments.get("report_type")
     industry: str | None = arguments.get("industry")

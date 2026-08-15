@@ -48,22 +48,14 @@ class CspCustomer(Base):
     __tablename__ = "csp_customers"
     __table_args__ = (Index("ix_csp_customers_canonical", "canonical_name"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     canonical_name: Mapped[str] = mapped_column(String(200))  # 规范客户名
     aliases: Mapped[list | None] = mapped_column(JSONB)  # ["别名1","别名2",...]
     source: Mapped[str | None] = mapped_column(String(100))  # 来源(master/imported/ocr)
     status: Mapped[str] = mapped_column(String(20), default="active")  # active/pending/merged
-    merged_into: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("csp_customers.id")
-    )  # 合并去向(status=merged 时指向规范客户)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=utc_now
-    )
+    merged_into: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("csp_customers.id"))  # 合并去向(status=merged 时指向规范客户)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=utc_now)
 
 
 class CspDocument(Base):
@@ -71,9 +63,7 @@ class CspDocument(Base):
 
     __tablename__ = "csp_documents"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     storage_uri: Mapped[str] = mapped_column(String(512), unique=True)  # s3://bucket/key
     file_name: Mapped[str] = mapped_column(String(300))
     file_hash: Mapped[str] = mapped_column(String(128), index=True)  # SHA-256 增量去重
@@ -81,9 +71,7 @@ class CspDocument(Base):
     quick_fp: Mapped[str | None] = mapped_column(String(256))  # name|size 快速预过滤
     contract_no: Mapped[str | None] = mapped_column(String(100))
     supplier: Mapped[str | None] = mapped_column(String(200))  # 供方/卖方(文档元数据)
-    customer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("csp_customers.id"), index=True
-    )  # 需方/买方 = 分析维度(D3)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("csp_customers.id"), index=True)  # 需方/买方 = 分析维度(D3)
     customer_name: Mapped[str | None] = mapped_column(String(200))  # 冗余,OCR 原文
     project_name: Mapped[str | None] = mapped_column(String(300))
     project_location: Mapped[str | None] = mapped_column(String(300))
@@ -98,12 +86,8 @@ class CspDocument(Base):
     preview_prefix: Mapped[str | None] = mapped_column(String(512))
     raw_text: Mapped[str | None] = mapped_column(Text)
     parsed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=utc_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=utc_now)
 
 
 class CspItem(Base):
@@ -118,12 +102,8 @@ class CspItem(Base):
         Index("ix_csp_items_validation", "validation_status"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
-    document_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("csp_documents.id"), nullable=False
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("csp_documents.id"), nullable=False)
     part_name: Mapped[str] = mapped_column(String(300))  # 备件名(脏,经聚类归一)
     spec: Mapped[str | None] = mapped_column(String(300))  # 规格/型号
     tech_params: Mapped[dict | None] = mapped_column(JSONB)
@@ -131,13 +111,9 @@ class CspItem(Base):
     unit: Mapped[str | None] = mapped_column(String(50))
     unit_price: Mapped[float | None] = mapped_column(Numeric(18, 2))  # 含税单价(统计用)
     price_untaxed: Mapped[float | None] = mapped_column(Numeric(18, 2))  # 不含税单价(审计)
-    customer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("csp_customers.id")
-    )  # 从文档继承(D3 分析维度)
+    customer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("csp_customers.id"))  # 从文档继承(D3 分析维度)
     customer_name: Mapped[str | None] = mapped_column(String(200))  # 冗余
-    cluster_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("csp_clusters.id")
-    )  # 备件名聚类 → 跨客户比价键
+    cluster_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("csp_clusters.id"))  # 备件名聚类 → 跨客户比价键
     source_contract_no: Mapped[str | None] = mapped_column(String(100))
     is_outlier: Mapped[bool] = mapped_column(Boolean, default=False)
     source_page: Mapped[int | None] = mapped_column(Integer)
@@ -147,12 +123,8 @@ class CspItem(Base):
     confidence: Mapped[float | None] = mapped_column(Numeric(5, 4))
     validation_status: Mapped[str] = mapped_column(String(20), default="ok")
     edit_note: Mapped[str | None] = mapped_column(Text)
-    run_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("csp_run_history.id"), index=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("csp_run_history.id"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class CspCluster(Base):
@@ -160,9 +132,7 @@ class CspCluster(Base):
 
     __tablename__ = "csp_clusters"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     category: Mapped[str] = mapped_column(String(50))
     representative_name: Mapped[str] = mapped_column(String(300))
     status: Mapped[str] = mapped_column(String(20), default="pending")
@@ -170,20 +140,14 @@ class CspCluster(Base):
     item_count: Mapped[int] = mapped_column(Integer, default=0)
     version: Mapped[int] = mapped_column(Integer, default=1)
     confirmed_by: Mapped[str | None] = mapped_column(String(100))
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=utc_now
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=utc_now)
 
 
 class CspRunHistory(Base):
     __tablename__ = "csp_run_history"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     trigger_type: Mapped[str] = mapped_column(String(20))
     label: Mapped[str | None] = mapped_column(String(100))
     scope: Mapped[dict | None] = mapped_column(JSONB)
@@ -195,7 +159,5 @@ class CspRunHistory(Base):
     customers_resolved: Mapped[int] = mapped_column(Integer, default=0)  # 归一命中的客户数
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     error: Mapped[str | None] = mapped_column(Text)
-    started_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

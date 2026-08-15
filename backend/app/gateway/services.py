@@ -581,6 +581,7 @@ async def ensure_checkpoint_history_seeded(
     await event_store.put_batch(events)
     logger.info("Seeded %d checkpoint-history events for thread %s", len(events), thread_id)
 
+
 def resolve_agent_factory(assistant_id: str | None):
     """Resolve the agent factory callable from config.
 

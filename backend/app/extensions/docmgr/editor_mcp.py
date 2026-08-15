@@ -14,7 +14,6 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
-
 # ── helpers ────────────────────────────────────────────────────────────────
 
 
@@ -144,18 +143,18 @@ TOOLS = [
         description=(
             "对文档执行批量编辑操作。operations 是一个 JSON 数组，按顺序执行。\n\n"
             "每个操作对象包含 action 字段和对应参数：\n"
-            "- {\"action\":\"insert\", \"position\": 0, \"text\": \"新增内容\"}\n"
-            "- {\"action\":\"delete\", \"from\": 5, \"to\": 10}\n"
-            "- {\"action\":\"replace\", \"from\": 5, \"to\": 10, \"text\": \"替换后的文字\"}\n"
-            "- {\"action\":\"format\", \"from\": 5, \"to\": 10, \"text\": \"格式化后的文字\"}\n"
-            "- {\"action\":\"review\", \"from\": 5, \"to\": 10, \"comment\": \"审核意见\", \"severity\": \"info\"}\n"
-            "- {\"action\":\"compute\", \"expression\": \"1+1\", \"result\": \"2\"}\n\n"
+            '- {"action":"insert", "position": 0, "text": "新增内容"}\n'
+            '- {"action":"delete", "from": 5, "to": 10}\n'
+            '- {"action":"replace", "from": 5, "to": 10, "text": "替换后的文字"}\n'
+            '- {"action":"format", "from": 5, "to": 10, "text": "格式化后的文字"}\n'
+            '- {"action":"review", "from": 5, "to": 10, "comment": "审核意见", "severity": "info"}\n'
+            '- {"action":"compute", "expression": "1+1", "result": "2"}\n\n'
             "规则:\n"
             "- insert/delete/replace/format 会实际修改文件内容\n"
             "- review/compute 不会修改文件，只产生标注\n"
             "- 所有偏移量 (position/from/to) 基于当前文档内容的字符位置\n"
-            "- severity 可选值: \"info\" | \"warning\" | \"error\"\n"
-            "- clause_ref 为可选的规程条款引用，如 \"煤矿安全规程第135条\""
+            '- severity 可选值: "info" | "warning" | "error"\n'
+            '- clause_ref 为可选的规程条款引用，如 "煤矿安全规程第135条"'
         ),
         inputSchema={
             "type": "object",
@@ -233,14 +232,16 @@ async def handle_read_document(arguments: dict) -> list[TextContent]:
         return _ok({"success": False, "error": "NOT_A_FILE", "detail": str(path)})
 
     content = path.read_text(encoding="utf-8")
-    return _ok({
-        "success": True,
-        "thread_id": thread_id,
-        "rel_path": rel_path,
-        "content": content,
-        "line_count": len(content.split("\n")),
-        "char_count": len(content),
-    })
+    return _ok(
+        {
+            "success": True,
+            "thread_id": thread_id,
+            "rel_path": rel_path,
+            "content": content,
+            "line_count": len(content.split("\n")),
+            "char_count": len(content),
+        }
+    )
 
 
 async def handle_edit_document(arguments: dict) -> list[TextContent]:
@@ -314,13 +315,16 @@ async def handle_review_document(arguments: dict) -> list[TextContent]:
         f, t = c.get("from", 0), c.get("to", 0)
         if f < 0 or t > len(content) or f >= t:
             return _ok({"success": False, "error": "INVALID_OFFSET", "detail": f"Comment {i} range [{f},{t}] invalid"})
-        validated.append({
-            "action": "review",
-            "from": f, "to": t,
-            "comment": c.get("comment", ""),
-            "severity": c.get("severity", "info"),
-            "clause_ref": c.get("clause_ref", ""),
-        })
+        validated.append(
+            {
+                "action": "review",
+                "from": f,
+                "to": t,
+                "comment": c.get("comment", ""),
+                "severity": c.get("severity", "info"),
+                "clause_ref": c.get("clause_ref", ""),
+            }
+        )
 
     return _ok({"success": True, "comments_added": len(validated), "comments": validated, "file_modified": False})
 

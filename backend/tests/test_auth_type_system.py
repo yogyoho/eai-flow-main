@@ -19,7 +19,6 @@ from app.gateway.auth.config import AuthConfig, set_auth_config
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse, TokenError
 from app.gateway.auth.jwt import decode_token
 from app.gateway.csrf_middleware import (
-
     CSRF_COOKIE_NAME,
     CSRF_HEADER_NAME,
     CSRFMiddleware,
@@ -32,10 +31,10 @@ from app.gateway.csrf_middleware import (
 _TEST_SECRET = "test-secret-for-auth-type-system-tests-min32"
 
 
-
-import pytest
+import pytest  # noqa: E402
 
 pytestmark = pytest.mark.skip(reason="EAI auth type system diverged (EAI-CUSTOM skip 2026-08-15)")
+
 
 @pytest.fixture(autouse=True)
 def _persistence_engine(tmp_path):

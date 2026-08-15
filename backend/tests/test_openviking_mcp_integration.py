@@ -18,8 +18,6 @@ from deerflow.config.extensions_config import ExtensionsConfig
 from deerflow.mcp.client import build_server_params
 from deerflow.mcp.tools import get_mcp_tools
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI openviking adapter differs (EAI-CUSTOM skip 2026-08-15)")
 
 

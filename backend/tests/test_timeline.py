@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import date
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -21,7 +21,6 @@ from app.extensions.workflow.timeline.service import (
     upsert_timeline_entry,
 )
 
-
 # ── Pydantic schema tests ──
 
 
@@ -37,7 +36,6 @@ class TestTimelineSchemas:
         assert entry.milestones is None
 
     def test_timeline_entry_create_full(self):
-        pid = uuid.uuid4()
         oid = uuid.uuid4()
         entry = TimelineEntryCreate(
             phase_node="review",
@@ -79,11 +77,7 @@ class TestTimelineSchemas:
     def test_timeline_list_response(self):
         pid = uuid.uuid4()
         prjid = uuid.uuid4()
-        entries = [
-            TimelineEntryOut(
-                id=pid, project_id=prjid, phase_node="draft", progress_pct=0
-            )
-        ]
+        entries = [TimelineEntryOut(id=pid, project_id=prjid, phase_node="draft", progress_pct=0)]
         resp = TimelineListResponse(entries=entries)
         assert len(resp.entries) == 1
 
@@ -135,12 +129,8 @@ class TestTimelineService:
     @pytest.mark.asyncio
     async def test_get_timeline_returns_entries(self, mock_db, sample_project_id):
         """get_timeline returns entries ordered by planned_start."""
-        entry1 = ProjectTimeline(
-            id=uuid.uuid4(), project_id=sample_project_id, phase_node="research"
-        )
-        entry2 = ProjectTimeline(
-            id=uuid.uuid4(), project_id=sample_project_id, phase_node="draft"
-        )
+        entry1 = ProjectTimeline(id=uuid.uuid4(), project_id=sample_project_id, phase_node="research")
+        entry2 = ProjectTimeline(id=uuid.uuid4(), project_id=sample_project_id, phase_node="draft")
         mock_result = MagicMock()
         mock_scalars = MagicMock()
         mock_scalars.all.return_value = [entry1, entry2]
@@ -158,9 +148,7 @@ class TestTimelineService:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         data = {"progress_pct": 30}
-        entry = await upsert_timeline_entry(
-            mock_db, sample_project_id, "draft", data
-        )
+        entry = await upsert_timeline_entry(mock_db, sample_project_id, "draft", data)
 
         mock_db.add.assert_called_once()
         assert isinstance(entry, ProjectTimeline)
@@ -183,9 +171,7 @@ class TestTimelineService:
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         data = {"progress_pct": 50, "actual_start": date(2026, 1, 5)}
-        entry = await upsert_timeline_entry(
-            mock_db, sample_project_id, "draft", data
-        )
+        entry = await upsert_timeline_entry(mock_db, sample_project_id, "draft", data)
 
         mock_db.add.assert_not_called()
         assert entry.progress_pct == 50

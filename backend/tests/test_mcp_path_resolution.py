@@ -1,7 +1,5 @@
 """Tests for MCP server path resolution (container paths -> local paths)."""
 
-import os
-import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -9,8 +7,6 @@ import pytest
 
 from deerflow.config.extensions_config import ExtensionsConfig, McpServerConfig
 from deerflow.mcp.client import build_server_params, build_servers_config
-
-import pytest
 
 pytestmark = pytest.mark.skip(reason="EAI mcp.client lacks upstream resolve_container_path (EAI-CUSTOM skip 2026-08-15)")
 

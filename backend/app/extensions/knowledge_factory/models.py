@@ -157,7 +157,7 @@ class TemplateSection(Base):
 
 
 # Back-populates for existing models
-from app.extensions.models import User
+from app.extensions.models import User  # noqa: E402  (EAI-CUSTOM: back-populate annotations after class definitions)
 
 ExtractionTemplate.versions: Mapped[list["ExtractionTemplateVersion"]]  # noqa: F811
 ExtractionTemplate.sections: Mapped[list["TemplateSection"]]  # noqa: F811

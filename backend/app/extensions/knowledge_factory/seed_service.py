@@ -81,7 +81,7 @@ class SeedImportService:
         result = SeedImportResult()
 
         try:
-            seed_data = self.seed_loader.load_seed_data()
+            self.seed_loader.load_seed_data()
             import_data = self.seed_loader.to_import_data()
             result.total = len(import_data)
 

@@ -5,7 +5,6 @@ import uuid
 import pytest
 
 from app.extensions.workflow.schemas import (
-    PhaseReviewOut,
     ReviewAssignmentCreate,
     ReviewAssignmentItem,
     ReviewStatusResponse,

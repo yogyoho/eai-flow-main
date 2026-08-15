@@ -3,6 +3,7 @@
 跑在 gateway 容器内；registry 读真实 config/permissions.yaml + roles_custom.yaml。
 DB 一律 mock（仓库"无 live-PG 集成测试"惯例），identity 经 monkeypatch get_identity_provider。
 """
+
 from __future__ import annotations
 
 import importlib
@@ -144,6 +145,7 @@ def build_app(router, *, user: CurrentUser | None = None, db=None) -> TestClient
     @app.middleware("http")
     async def _clear_perm_cache(request, call_next):  # noqa: ARG001
         from app.extensions.auth.cache import clear_permission_cache
+
         clear_permission_cache()
         return await call_next(request)
 

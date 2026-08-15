@@ -27,10 +27,7 @@ from deerflow.guardrails.middleware import GuardrailMiddleware
 from deerflow.tools.builtins.tool_search import assemble_deferred_tools
 from deerflow.tools.mcp_metadata import tag_mcp_tool
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI custom RBAC (permissions.yaml) differs from upstream authz (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def _tool(name: str) -> StructuredTool:

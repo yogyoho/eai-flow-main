@@ -1,8 +1,8 @@
 """Built-in system node types: start, end."""
+
 from __future__ import annotations
 
 from app.extensions.workflow.registry import (
-    IWorkflowNodeExecutor,
     NodeResult,
     SignalDef,
     SignalResult,
@@ -49,28 +49,25 @@ class StartNodeExecutor:
         errors: list[str] = []
 
         if conditions.get("template_bound"):
+            import uuid
+
             from app.extensions.database import get_db_context
             from app.extensions.models import ReportProject
-            import uuid
 
             async with get_db_context() as db:
                 project = await db.get(ReportProject, uuid.UUID(ctx.project_id))
                 if project and not project.template_id:
                     errors.append("项目未绑定报告模板")
                 if project and conditions.get("team_size_min"):
-                    from app.extensions.models import ProjectMember
-                    from sqlalchemy import func, select as sa_select
+                    from sqlalchemy import func
+                    from sqlalchemy import select as sa_select
 
-                    count_result = await db.execute(
-                        sa_select(func.count()).where(
-                            ProjectMember.project_id == uuid.UUID(ctx.project_id)
-                        )
-                    )
+                    from app.extensions.models import ProjectMember
+
+                    count_result = await db.execute(sa_select(func.count()).where(ProjectMember.project_id == uuid.UUID(ctx.project_id)))
                     member_count = count_result.scalar()
                     if member_count < conditions["team_size_min"]:
-                        errors.append(
-                            f"团队成员不足（需要 {conditions['team_size_min']} 人，当前 {member_count} 人）"
-                        )
+                        errors.append(f"团队成员不足（需要 {conditions['team_size_min']} 人，当前 {member_count} 人）")
 
         if errors:
             return NodeResult(status="failed", error="; ".join(errors))
@@ -121,9 +118,10 @@ class EndNodeExecutor:
         data = node.get("data") or {}
         actions = data.get("completion_actions", {})
 
+        import uuid
+
         from app.extensions.database import get_db_context
         from app.extensions.models import ReportProject
-        import uuid
 
         # EAI-CUSTOM: canonical project status (ADR 2026-08-02 P5). The value comes
         # from workflow graph config (free-form) — strict-check against the

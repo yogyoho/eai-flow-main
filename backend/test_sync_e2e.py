@@ -3,18 +3,19 @@
 Tests whether Gateway provider is accessible and sync functions work,
 without needing the full server stack.
 """
+
 import asyncio
 import logging
-import sys
 
 logging.basicConfig(level=logging.INFO, format="%(name)s | %(levelname)s | %(message)s")
+
 
 async def main():
     # ── Step 1: Initialize Gateway SQLite engine ──
     print("=" * 60)
     print("Step 1: Initialize Gateway SQLite engine")
     from deerflow.config.database_config import DatabaseConfig
-    from deerflow.persistence.engine import init_engine_from_config, get_session_factory
+    from deerflow.persistence.engine import get_session_factory, init_engine_from_config
 
     config = DatabaseConfig(backend="sqlite", sqlite_dir=".deer-flow/data")
     await init_engine_from_config(config)
@@ -26,6 +27,7 @@ async def main():
     print("Step 2: Test get_local_provider()")
     try:
         from app.gateway.deps import get_local_provider
+
         provider = get_local_provider()
         print(f"  Provider: {provider}")
         print(f"  Provider type: {type(provider).__name__}")
@@ -83,19 +85,21 @@ async def main():
             password="test123456",
             role_id=None,
         )
-        print(f"  sync_user_created called without error")
+        print("  sync_user_created called without error")
         # Verify
         user2 = await provider.get_user_by_email(test_email2)
         if user2:
             print(f"  Verified: user exists in SQLite: {user2.email}")
         else:
-            print(f"  FAILED: user NOT created in SQLite!")
+            print("  FAILED: user NOT created in SQLite!")
     except Exception as e:
         print(f"  FAILED: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
 
     print("=" * 60)
     print("All tests completed.")
+
 
 asyncio.run(main())

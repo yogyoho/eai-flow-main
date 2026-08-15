@@ -1,17 +1,16 @@
 """Pydantic schemas for knowledge factory API."""
 
 from datetime import datetime
-from enum import Enum
-from typing import Any, Optional
+from enum import StrEnum
+from typing import Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-
 # ============== Enums ==============
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -19,20 +18,20 @@ class TaskStatus(str, Enum):
     PAUSED = "paused"
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     WAITING = "waiting"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
 
 
-class TemplateStatus(str, Enum):
+class TemplateStatus(StrEnum):
     DRAFT = "draft"
     PUBLISHED = "published"
     DEPRECATED = "deprecated"
 
 
-class StructureType(str, Enum):
+class StructureType(StrEnum):
     NARRATIVE_TEXT = "narrative_text"
     TABLE = "table"
     FORMULA = "formula"
@@ -50,7 +49,7 @@ class StructureType(str, Enum):
         return None
 
 
-class RetrievalStrategy(str, Enum):
+class RetrievalStrategy(StrEnum):
     SEMANTIC = "semantic"
     KEYWORD = "keyword"
     HYBRID = "hybrid"
@@ -62,21 +61,21 @@ class RetrievalStrategy(str, Enum):
 class DomainCreate(BaseModel):
     id: str = Field(..., min_length=1, max_length=100)
     name: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = None
-    parent_domain: Optional[str] = None
-    standard_chapters: Optional[dict] = None
-    industry: Optional[str] = None
-    report_type: Optional[str] = None
+    description: str | None = None
+    parent_domain: str | None = None
+    standard_chapters: dict | None = None
+    industry: str | None = None
+    report_type: str | None = None
 
 
 class DomainResponse(BaseModel):
     id: str
     name: str
-    description: Optional[str]
-    parent_domain: Optional[str]
-    standard_chapters: Optional[dict]
-    industry: Optional[str]
-    report_type: Optional[str]
+    description: str | None
+    parent_domain: str | None
+    standard_chapters: dict | None
+    industry: str | None
+    report_type: str | None
     created_at: datetime
 
     model_config = {"from_attributes": True}
@@ -88,12 +87,12 @@ class DomainListResponse(BaseModel):
 
 
 class DomainUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = None
-    parent_domain: Optional[str] = None
-    standard_chapters: Optional[dict] = None
-    industry: Optional[str] = None
-    report_type: Optional[str] = None
+    name: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = None
+    parent_domain: str | None = None
+    standard_chapters: dict | None = None
+    industry: str | None = None
+    report_type: str | None = None
 
 
 # ============== Business Dictionaries ==============
@@ -108,9 +107,9 @@ class DictItemCreate(BaseModel):
 
 
 class DictItemUpdate(BaseModel):
-    label: Optional[str] = Field(None, min_length=1, max_length=200)
-    sort_order: Optional[int] = None
-    enabled: Optional[bool] = None
+    label: str | None = Field(None, min_length=1, max_length=200)
+    sort_order: int | None = None
+    enabled: bool | None = None
 
 
 class DictItemResponse(BaseModel):
@@ -154,7 +153,7 @@ class ExtractionConfig(BaseModel):
 class StepStatusSchema(BaseModel):
     name: str
     status: StepStatus
-    duration: Optional[str] = None
+    duration: str | None = None
     detail: str = ""
 
 
@@ -164,8 +163,8 @@ class StepStatusSchema(BaseModel):
 class ContentContract(BaseModel):
     key_elements: list[str] = Field(default_factory=list)
     structure_type: StructureType = StructureType.NARRATIVE_TEXT
-    style_rules: Optional[str] = None
-    min_word_count: Optional[int] = None
+    style_rules: str | None = None
+    min_word_count: int | None = None
     forbidden_phrases: list[str] = Field(default_factory=list)
 
 
@@ -186,9 +185,10 @@ class CrossSectionRule(BaseModel):
 
 class RAGSourceConfig(BaseModel):
     """Structured RAG source reference with retrieval strategy."""
+
     kb_id: str = ""
     kb_name: str = ""
-    ragflow_dataset_id: Optional[str] = None
+    ragflow_dataset_id: str | None = None
     retrieval_strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
     top_k: int = Field(default=5, ge=1, le=50)
     similarity_threshold: float = Field(default=0.2, ge=0.0, le=1.0)
@@ -209,6 +209,7 @@ class _LenientMeta(BaseModel):
     Pydantic 严格验证会导致 500。before validator 根据字段类型
     把 None→默认值（int→0, str→""），把 int→str（width 字段）。
     """
+
     model_config = {"extra": "ignore"}
 
     @model_validator(mode="before")
@@ -239,6 +240,7 @@ class _LenientMeta(BaseModel):
 
 class TableColumn(_LenientMeta):
     """表格列定义"""
+
     header: str = ""
     width: str = ""
     type: str = "string"
@@ -247,6 +249,7 @@ class TableColumn(_LenientMeta):
 
 class TableSchema(_LenientMeta):
     """按章节的表结构定义"""
+
     table_id: str = ""
     caption: str = ""
     columns: list[TableColumn] = Field(default_factory=list)
@@ -256,6 +259,7 @@ class TableSchema(_LenientMeta):
 
 class FigureRequirement(_LenientMeta):
     """按章节的图片/图表需求"""
+
     figure_id: str = ""
     caption: str = ""
     suggested_type: str = "image"
@@ -266,6 +270,7 @@ class FigureRequirement(_LenientMeta):
 
 class FormulaReference(_LenientMeta):
     """按章节的公式引用"""
+
     formula_id: str = ""
     name: str = ""
     applicable_section: str = ""
@@ -275,6 +280,7 @@ class FormulaReference(_LenientMeta):
 
 class CalcScriptParam(_LenientMeta):
     """计算脚本输入参数"""
+
     name: str = ""
     unit: str = ""
     source: str = "user"
@@ -282,6 +288,7 @@ class CalcScriptParam(_LenientMeta):
 
 class CalcScriptBinding(_LenientMeta):
     """计算脚本与章节的绑定"""
+
     script: str = ""
     section: str = ""
     input_params: list[CalcScriptParam] = Field(default_factory=list)
@@ -291,6 +298,7 @@ class CalcScriptBinding(_LenientMeta):
 
 class SubSectionProfile(_LenientMeta):
     """子章节深度指导"""
+
     expected_h2_count: int = 0
     expected_h3_count: int = 0
     volume_estimate: str = "medium"
@@ -305,23 +313,23 @@ class TemplateSection(BaseModel):
     title: str
     level: int = 1
     required: bool = True
-    purpose: Optional[str] = None
-    children: Optional[list["TemplateSection"]] = None
-    content_contract: Optional[ContentContract] = None
-    compliance_rules: Optional[list[str]] = None
-    rag_sources: Optional[list[RAGSourceConfig]] = None
-    generation_hint: Optional[str] = None
-    example_snippet: Optional[str] = None
+    purpose: str | None = None
+    children: list["TemplateSection"] | None = None
+    content_contract: ContentContract | None = None
+    compliance_rules: list[str] | None = None
+    rag_sources: list[RAGSourceConfig] | None = None
+    generation_hint: str | None = None
+    example_snippet: str | None = None
     # ponytail: longer real excerpt of the sample section (≤1500 chars, sliced from source).
     # Gives the agent a fuller reference at generation time; example_snippet stays as the short curated fragment.
-    full_section_example: Optional[str] = None
-    completeness_score: Optional[int] = None
+    full_section_example: str | None = None
+    completeness_score: int | None = None
     # ── Rich metadata (all optional, transparently passed through JSONB) ──
-    table_schemas: Optional[list[TableSchema]] = None
-    figure_requirements: Optional[list[FigureRequirement]] = None
-    formula_references: Optional[list[FormulaReference]] = None
-    calc_script_bindings: Optional[list[CalcScriptBinding]] = None
-    sub_section_profile: Optional[SubSectionProfile] = None
+    table_schemas: list[TableSchema] | None = None
+    figure_requirements: list[FigureRequirement] | None = None
+    formula_references: list[FormulaReference] | None = None
+    calc_script_bindings: list[CalcScriptBinding] | None = None
+    sub_section_profile: SubSectionProfile | None = None
 
     @field_validator("rag_sources", mode="before")
     @classmethod
@@ -378,7 +386,7 @@ class TemplateListItem(BaseModel):
     status: TemplateStatus
     completeness_score: int
     source_report_count: int = 0
-    created_by: Optional[str] = None
+    created_by: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -396,8 +404,8 @@ class TemplateListResponse(BaseModel):
 class TemplateVersionResponse(BaseModel):
     id: UUID
     version: str
-    changelog: Optional[str]
-    published_by: Optional[str] = None
+    changelog: str | None
+    published_by: str | None = None
     published_at: datetime
 
     model_config = {"from_attributes": True}
@@ -405,12 +413,14 @@ class TemplateVersionResponse(BaseModel):
 
 class TemplateRollbackRequest(BaseModel):
     """模板回滚请求"""
+
     version_id: UUID = Field(..., description="要回滚到的版本ID")
-    changelog: Optional[str] = Field(None, description="回滚说明")
+    changelog: str | None = Field(None, description="回滚说明")
 
 
 class TemplateRollbackResponse(BaseModel):
     """模板回滚响应"""
+
     success: bool
     message: str
     template_id: UUID
@@ -423,6 +433,7 @@ class TemplateRollbackResponse(BaseModel):
 
 class QualityAssessmentDimension(BaseModel):
     """质量评估维度"""
+
     score: int = Field(..., ge=0, le=100, description="评分 0-100")
     strengths: list[str] = Field(default_factory=list, description="该维度的亮点和优点")
     issues: list[str] = Field(default_factory=list, description="发现的实际问题和不足")
@@ -430,10 +441,9 @@ class QualityAssessmentDimension(BaseModel):
 
 class QualityAssessmentResult(BaseModel):
     """质量评估结果"""
+
     overall_score: int = Field(..., ge=0, le=100, description="总体评分")
-    dimensions: dict[str, QualityAssessmentDimension] = Field(
-        ..., description="各维度评分"
-    )
+    dimensions: dict[str, QualityAssessmentDimension] = Field(..., description="各维度评分")
     suggestions: list[str] = Field(default_factory=list, description="改进建议")
     quality_grade: str = Field(default="未知", description="质量等级")
 
@@ -443,12 +453,14 @@ class QualityAssessmentResult(BaseModel):
 
 class VersionCompareRequest(BaseModel):
     """版本对比请求"""
+
     version_a_id: UUID = Field(..., description="版本A的ID")
     version_b_id: UUID = Field(..., description="版本B的ID")
 
 
 class VersionDiffSection(BaseModel):
     """章节差异"""
+
     section_id: str
     title: str
     level: int
@@ -457,6 +469,7 @@ class VersionDiffSection(BaseModel):
 
 class VersionDiff(BaseModel):
     """版本差异"""
+
     version_a: str
     version_b: str
     added_count: int
@@ -472,14 +485,14 @@ class VersionDiff(BaseModel):
 class ExtractionTaskCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     domain: str = Field(default="default", max_length=100)
-    industry: Optional[str] = Field(default=None, max_length=100)
-    report_type: Optional[str] = Field(default=None, max_length=100)
+    industry: str | None = Field(default=None, max_length=100)
+    report_type: str | None = Field(default=None, max_length=100)
     source_report_ids: list[UUID] = Field(default_factory=list)
     uploaded_file_ids: list[UUID] = Field(default_factory=list, description="直接上传的 Word/PDF 文件 ID（优先于 source_report_ids 使用 doc_parser 解析）")
     target_template_name: str = Field(..., min_length=1, max_length=200)
-    target_template_id: Optional[UUID] = None
-    merge_mode: Optional[str] = None
-    config: Optional[ExtractionConfig] = None
+    target_template_id: UUID | None = None
+    merge_mode: str | None = None
+    config: ExtractionConfig | None = None
 
     @model_validator(mode="after")
     def at_least_one_source(self):
@@ -500,19 +513,19 @@ class ExtractionTaskCreate(BaseModel):
 
 class ExtractionTaskResponse(BaseModel):
     id: UUID
-    name: Optional[str]
-    domain: Optional[str]
-    industry: Optional[str] = None
-    report_type: Optional[str] = None
+    name: str | None
+    domain: str | None
+    industry: str | None = None
+    report_type: str | None = None
     source_reports: list[str] = Field(default_factory=list)
     status: TaskStatus
     progress: int
     steps: list[StepStatusSchema] = Field(default_factory=list)
-    result: Optional[TemplateResult] = None
-    error: Optional[str] = None
+    result: TemplateResult | None = None
+    error: str | None = None
     created_at: datetime
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -526,10 +539,10 @@ class ExtractionTaskListResponse(BaseModel):
 
 
 class TemplateUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    root_sections_json: Optional[dict] = None
-    cross_section_rules: Optional[list[dict]] = None
-    completeness_score: Optional[int] = Field(None, ge=0, le=100)
+    name: str | None = Field(None, min_length=1, max_length=200)
+    root_sections_json: dict | None = None
+    cross_section_rules: list[dict] | None = None
+    completeness_score: int | None = Field(None, ge=0, le=100)
 
 
 # ============== Compliance Rule ==============
@@ -537,6 +550,7 @@ class TemplateUpdate(BaseModel):
 
 class ComplianceRuleBase(BaseModel):
     """合规规则基础模型"""
+
     rule_id: str = Field(..., min_length=1, max_length=50)
     name: str = Field(..., min_length=1, max_length=200)
     type: str = Field(..., min_length=1, max_length=50)
@@ -544,7 +558,7 @@ class ComplianceRuleBase(BaseModel):
     severity: str = Field(..., min_length=1, max_length=20)
     severity_name: str = Field(default="")
     enabled: bool = True
-    description: Optional[str] = None
+    description: str | None = None
     industry: str = Field(..., min_length=1, max_length=50)
     industry_name: str = Field(default="")
     report_types: list[str] = Field(default_factory=list)
@@ -553,40 +567,43 @@ class ComplianceRuleBase(BaseModel):
     source_sections: list[str] = Field(default_factory=list)
     target_sections: list[str] = Field(default_factory=list)
     validation_config: dict = Field(default_factory=dict)
-    error_message: Optional[str] = None
-    auto_fix_suggestion: Optional[str] = None
+    error_message: str | None = None
+    auto_fix_suggestion: str | None = None
 
 
 class ComplianceRuleCreate(ComplianceRuleBase):
     """创建合规规则"""
+
     pass
 
 
 class ComplianceRuleUpdate(BaseModel):
     """更新合规规则"""
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    type: Optional[str] = Field(None, min_length=1, max_length=50)
-    type_name: Optional[str] = None
-    severity: Optional[str] = Field(None, min_length=1, max_length=20)
-    severity_name: Optional[str] = None
-    enabled: Optional[bool] = None
-    description: Optional[str] = None
-    industry: Optional[str] = Field(None, min_length=1, max_length=50)
-    industry_name: Optional[str] = None
-    report_types: Optional[list[str]] = None
-    applicable_regions: Optional[list[str]] = None
-    national_level: Optional[bool] = None
-    source_sections: Optional[list[str]] = None
-    target_sections: Optional[list[str]] = None
-    validation_config: Optional[dict] = None
-    error_message: Optional[str] = None
-    auto_fix_suggestion: Optional[str] = None
+
+    name: str | None = Field(None, min_length=1, max_length=200)
+    type: str | None = Field(None, min_length=1, max_length=50)
+    type_name: str | None = None
+    severity: str | None = Field(None, min_length=1, max_length=20)
+    severity_name: str | None = None
+    enabled: bool | None = None
+    description: str | None = None
+    industry: str | None = Field(None, min_length=1, max_length=50)
+    industry_name: str | None = None
+    report_types: list[str] | None = None
+    applicable_regions: list[str] | None = None
+    national_level: bool | None = None
+    source_sections: list[str] | None = None
+    target_sections: list[str] | None = None
+    validation_config: dict | None = None
+    error_message: str | None = None
+    auto_fix_suggestion: str | None = None
 
 
 class ComplianceRuleResponse(ComplianceRuleBase):
     """合规规则响应"""
+
     id: UUID
-    seed_version: Optional[str] = None
+    seed_version: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -595,6 +612,7 @@ class ComplianceRuleResponse(ComplianceRuleBase):
 
 class ComplianceRuleListResponse(BaseModel):
     """合规规则列表响应"""
+
     rules: list[ComplianceRuleResponse]
     total: int
     page: int = 1
@@ -603,11 +621,13 @@ class ComplianceRuleListResponse(BaseModel):
 
 class ComplianceRuleBatchCreate(BaseModel):
     """批量创建合规规则"""
+
     rules: list[ComplianceRuleCreate] = Field(..., min_length=1, max_length=100)
 
 
 class ComplianceRuleBatchResponse(BaseModel):
     """批量创建合规规则响应"""
+
     created: int
     skipped: int
     errors: list[str] = Field(default_factory=list)
@@ -616,6 +636,7 @@ class ComplianceRuleBatchResponse(BaseModel):
 
 class ComplianceRuleImportResponse(BaseModel):
     """种子数据导入响应"""
+
     success: bool
     total: int
     created: int
@@ -627,6 +648,7 @@ class ComplianceRuleImportResponse(BaseModel):
 
 class ComplianceRuleStatusResponse(BaseModel):
     """种子数据状态响应"""
+
     seed_version: str
     seed_total: int
     db_total: int
@@ -639,6 +661,7 @@ class ComplianceRuleStatusResponse(BaseModel):
 
 class ComplianceRuleStatisticsResponse(BaseModel):
     """规则统计响应"""
+
     total: int
     enabled: int
     disabled: int
@@ -650,6 +673,7 @@ class ComplianceRuleStatisticsResponse(BaseModel):
 
 class ComplianceRuleOverviewResponse(BaseModel):
     """规则总览响应"""
+
     statistics: ComplianceRuleStatisticsResponse
     seed_status: ComplianceRuleStatusResponse
     trigger_statistics: dict[str, Any] = Field(default_factory=dict)
@@ -673,35 +697,38 @@ class RuleDictionariesResponse(BaseModel):
 
 class ValidationIssueSchema(BaseModel):
     """验证问题"""
+
     rule_id: str
     rule_name: str
     severity: str  # critical, warning, info
     check_result: str  # pass, fail, warning, error, skip
     message: str
-    field_name: Optional[str] = None
-    source_value: Optional[str] = None
-    target_value: Optional[str] = None
-    location: Optional[list[str]] = None
-    suggestion: Optional[str] = None
+    field_name: str | None = None
+    source_value: str | None = None
+    target_value: str | None = None
+    location: list[str] | None = None
+    suggestion: str | None = None
     details: dict = Field(default_factory=dict)
 
 
 class ComplianceCheckRequest(BaseModel):
     """合规性检查请求"""
-    report_data: Optional[dict] = Field(default_factory=dict, description="报告结构化数据")
-    raw_text: Optional[str] = Field(None, description="原始文本内容")
-    extracted_fields: Optional[dict] = Field(default_factory=dict, description="提取的字段值")
-    report_type: Optional[str] = Field(None, description="报告类型")
-    industry: Optional[str] = Field(None, description="行业")
-    region: Optional[str] = Field(None, description="地区")
-    rule_ids: Optional[list[str]] = Field(None, description="指定要检查的规则ID")
+
+    report_data: dict | None = Field(default_factory=dict, description="报告结构化数据")
+    raw_text: str | None = Field(None, description="原始文本内容")
+    extracted_fields: dict | None = Field(default_factory=dict, description="提取的字段值")
+    report_type: str | None = Field(None, description="报告类型")
+    industry: str | None = Field(None, description="行业")
+    region: str | None = Field(None, description="地区")
+    rule_ids: list[str] | None = Field(None, description="指定要检查的规则ID")
     check_all: bool = Field(True, description="是否检查所有匹配的规则")
     stop_on_first_fail: bool = Field(False, description="遇到第一个失败是否停止")
-    thread_id: Optional[UUID] = Field(None, description="会话ID")
+    thread_id: UUID | None = Field(None, description="会话ID")
 
 
 class ComplianceCheckResponse(BaseModel):
     """合规性检查响应"""
+
     success: bool
     total_rules: int
     passed: int

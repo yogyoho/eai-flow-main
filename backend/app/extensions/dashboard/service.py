@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.extensions.models import (
     Notification,
@@ -20,8 +19,8 @@ from app.extensions.models import (
 from app.extensions.workflow.models import PhaseReview
 
 from .schemas import (
+    _DEFAULT_TYPE_SETTINGS,
     CalendarEvent,
-    CreateCalendarEvent,
     MyProjectItem,
     MyProjectsResponse,
     MyStatsResponse,
@@ -30,7 +29,6 @@ from .schemas import (
     NotificationOut,
     NotificationPreferenceUpdate,
     TaskItem,
-    _DEFAULT_TYPE_SETTINGS,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,9 +56,9 @@ _URGENCY_DELTA = {
 def _compute_urgency(due_date: datetime | None) -> str:
     if due_date is None:
         return "none"
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if due_date.tzinfo is None:
-        due_date = due_date.replace(tzinfo=timezone.utc)
+        due_date = due_date.replace(tzinfo=UTC)
     delta = due_date - now
     if delta.total_seconds() < 0:
         return "overdue"
@@ -88,11 +86,7 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
     tasks: list[TaskItem] = []
 
     # 1. Pending reviews assigned to this user
-    review_stmt = (
-        select(PhaseReview, ReportProject.name.label("project_name"))
-        .join(ReportProject, PhaseReview.project_id == ReportProject.id)
-        .where(PhaseReview.reviewer_id == user_id, PhaseReview.status == "pending")
-    )
+    review_stmt = select(PhaseReview, ReportProject.name.label("project_name")).join(ReportProject, PhaseReview.project_id == ReportProject.id).where(PhaseReview.reviewer_id == user_id, PhaseReview.status == "pending")
     review_result = await db.execute(review_stmt)
     review_rows = review_result.all()
     logger.info("my-tasks: user=%s reviews_found=%d", user_id, len(review_rows))
@@ -118,13 +112,14 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
     logger.info("my-tasks: user=%s project_ids=%d", user_id, len(project_ids))
 
     for pid in project_ids:
-        chapter_stmt = (
-            select(ProjectChapter)
-            .where(
-                ProjectChapter.project_id == pid,
-                ProjectChapter.assigned_to == user_id,
-                ProjectChapter.status.in_(["draft",]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
-            )
+        chapter_stmt = select(ProjectChapter).where(
+            ProjectChapter.project_id == pid,
+            ProjectChapter.assigned_to == user_id,
+            ProjectChapter.status.in_(
+                [
+                    "draft",
+                ]
+            ),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         )
         chapter_result = await db.execute(chapter_stmt)
         for ch in chapter_result.scalars().all():
@@ -206,12 +201,7 @@ async def get_my_tasks(db: AsyncSession, user_id: UUID) -> MyTasksResponse:
 
 async def get_my_projects(db: AsyncSession, user_id: UUID) -> MyProjectsResponse:
     """Get user's projects grouped by their primary role in each."""
-    stmt = (
-        select(ProjectMember, ReportProject)
-        .join(ReportProject, ProjectMember.project_id == ReportProject.id)
-        .where(ProjectMember.user_id == user_id)
-        .order_by(ReportProject.updated_at.desc())
-    )
+    stmt = select(ProjectMember, ReportProject).join(ReportProject, ProjectMember.project_id == ReportProject.id).where(ProjectMember.user_id == user_id).order_by(ReportProject.updated_at.desc())
     result = await db.execute(stmt)
     rows = result.all()
 
@@ -279,18 +269,30 @@ def _classify_project_role(member: ProjectMember, project: ReportProject) -> str
 async def _count_pending_tasks(db: AsyncSession, user_id: UUID, project_id: UUID) -> int:
     """Count pending tasks for a user in a specific project."""
     # Pending reviews
-    review_count_stmt = select(func.count()).select_from(PhaseReview).where(
-        PhaseReview.project_id == project_id,
-        PhaseReview.reviewer_id == user_id,
-        PhaseReview.status == "pending",
+    review_count_stmt = (
+        select(func.count())
+        .select_from(PhaseReview)
+        .where(
+            PhaseReview.project_id == project_id,
+            PhaseReview.reviewer_id == user_id,
+            PhaseReview.status == "pending",
+        )
     )
     review_count = (await db.execute(review_count_stmt)).scalar_one()
 
     # Writing chapters
-    chapter_count_stmt = select(func.count()).select_from(ProjectChapter).where(
-        ProjectChapter.project_id == project_id,
-        ProjectChapter.assigned_to == user_id,
-        ProjectChapter.status.in_(["draft",]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+    chapter_count_stmt = (
+        select(func.count())
+        .select_from(ProjectChapter)
+        .where(
+            ProjectChapter.project_id == project_id,
+            ProjectChapter.assigned_to == user_id,
+            ProjectChapter.status.in_(
+                [
+                    "draft",
+                ]
+            ),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+        )
     )
     chapter_count = (await db.execute(chapter_count_stmt)).scalar_one()
 
@@ -314,16 +316,24 @@ async def _get_phase_label(db: AsyncSession, project: ReportProject) -> str | No
 
 async def _compute_project_progress(db: AsyncSession, project_id: UUID) -> int:
     """Compute overall project progress as percentage of completed chapters."""
-    total_stmt = select(func.count()).select_from(ProjectChapter).where(
-        ProjectChapter.project_id == project_id,
+    total_stmt = (
+        select(func.count())
+        .select_from(ProjectChapter)
+        .where(
+            ProjectChapter.project_id == project_id,
+        )
     )
     total = (await db.execute(total_stmt)).scalar_one()
     if total == 0:
         return 0
 
-    done_stmt = select(func.count()).select_from(ProjectChapter).where(
-        ProjectChapter.project_id == project_id,
-        ProjectChapter.status.in_(["reviewing", "approved"]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+    done_stmt = (
+        select(func.count())
+        .select_from(ProjectChapter)
+        .where(
+            ProjectChapter.project_id == project_id,
+            ProjectChapter.status.in_(["reviewing", "approved"]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+        )
     )
     done = (await db.execute(done_stmt)).scalar_one()
 
@@ -336,15 +346,23 @@ async def _compute_project_progress(db: AsyncSession, project_id: UUID) -> int:
 async def get_my_stats(db: AsyncSession, user_id: UUID) -> MyStatsResponse:
     """Get user's personal statistics."""
     # Projects count
-    proj_count_stmt = select(func.count()).select_from(ProjectMember).where(
-        ProjectMember.user_id == user_id,
+    proj_count_stmt = (
+        select(func.count())
+        .select_from(ProjectMember)
+        .where(
+            ProjectMember.user_id == user_id,
+        )
     )
     projects_count = (await db.execute(proj_count_stmt)).scalar_one()
 
     # Pending reviews
-    review_count_stmt = select(func.count()).select_from(PhaseReview).where(
-        PhaseReview.reviewer_id == user_id,
-        PhaseReview.status == "pending",
+    review_count_stmt = (
+        select(func.count())
+        .select_from(PhaseReview)
+        .where(
+            PhaseReview.reviewer_id == user_id,
+            PhaseReview.status == "pending",
+        )
     )
     pending_reviews = (await db.execute(review_count_stmt)).scalar_one()
 
@@ -355,19 +373,31 @@ async def get_my_stats(db: AsyncSession, user_id: UUID) -> MyStatsResponse:
 
     pending_writing = 0
     if project_ids:
-        writing_stmt = select(func.count()).select_from(ProjectChapter).where(
-            ProjectChapter.project_id.in_(project_ids),
-            ProjectChapter.assigned_to == user_id,
-            ProjectChapter.status.in_(["draft",]),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+        writing_stmt = (
+            select(func.count())
+            .select_from(ProjectChapter)
+            .where(
+                ProjectChapter.project_id.in_(project_ids),
+                ProjectChapter.assigned_to == user_id,
+                ProjectChapter.status.in_(
+                    [
+                        "draft",
+                    ]
+                ),  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+            )
         )
         pending_writing = (await db.execute(writing_stmt)).scalar_one()
 
     # Completed this week
     week_ago = datetime.utcnow() - timedelta(days=7)
-    completed_reviews_stmt = select(func.count()).select_from(PhaseReview).where(
-        PhaseReview.reviewer_id == user_id,
-        PhaseReview.status.in_(["approved", "rejected"]),
-        PhaseReview.updated_at >= week_ago,
+    completed_reviews_stmt = (
+        select(func.count())
+        .select_from(PhaseReview)
+        .where(
+            PhaseReview.reviewer_id == user_id,
+            PhaseReview.status.in_(["approved", "rejected"]),
+            PhaseReview.updated_at >= week_ago,
+        )
     )
     completed_this_week = (await db.execute(completed_reviews_stmt)).scalar_one()
 
@@ -396,18 +426,14 @@ async def get_my_calendar(
     events: list[CalendarEvent] = []
 
     # Default: next 30 days
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if start_date is None:
         start_date = now
     if end_date is None:
         end_date = now + timedelta(days=30)
 
     # 1. Pending review assignments as deadline events
-    review_stmt = (
-        select(PhaseReview, ReportProject.name.label("project_name"))
-        .join(ReportProject, PhaseReview.project_id == ReportProject.id)
-        .where(PhaseReview.reviewer_id == user_id, PhaseReview.status == "pending")
-    )
+    review_stmt = select(PhaseReview, ReportProject.name.label("project_name")).join(ReportProject, PhaseReview.project_id == ReportProject.id).where(PhaseReview.reviewer_id == user_id, PhaseReview.status == "pending")
     review_result = await db.execute(review_stmt)
     for review, proj_name in review_result.all():
         events.append(
@@ -440,7 +466,7 @@ async def get_my_calendar(
                 if not target:
                     continue
                 if isinstance(target, str):
-                    target = datetime.fromisoformat(target).replace(tzinfo=timezone.utc)
+                    target = datetime.fromisoformat(target).replace(tzinfo=UTC)
                 if start_date <= target <= end_date:
                     # Get project name
                     proj_stmt = select(ReportProject.name).where(ReportProject.id == tl.project_id)
@@ -473,26 +499,28 @@ async def get_notifications(
 ) -> NotificationListResponse:
     """Get user's notifications, newest first."""
     # Total count
-    count_stmt = select(func.count()).select_from(Notification).where(
-        Notification.user_id == user_id,
+    count_stmt = (
+        select(func.count())
+        .select_from(Notification)
+        .where(
+            Notification.user_id == user_id,
+        )
     )
     total = (await db.execute(count_stmt)).scalar_one()
 
     # Unread count
-    unread_stmt = select(func.count()).select_from(Notification).where(
-        Notification.user_id == user_id,
-        Notification.is_read == False,  # noqa: E712
+    unread_stmt = (
+        select(func.count())
+        .select_from(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.is_read == False,  # noqa: E712
+        )
     )
     unread_count = (await db.execute(unread_stmt)).scalar_one()
 
     # Paginated list
-    stmt = (
-        select(Notification)
-        .where(Notification.user_id == user_id)
-        .order_by(Notification.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-    )
+    stmt = select(Notification).where(Notification.user_id == user_id).order_by(Notification.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     notifications = result.scalars().all()
 

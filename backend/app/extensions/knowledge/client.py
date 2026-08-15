@@ -229,7 +229,7 @@ class RAGFlowClient:
             method="DELETE",
         )
         try:
-            with urllib.request.urlopen(req) as resp:
+            with urllib.request.urlopen(req):
                 logger.info(f"Deleted RAGFlow document: {document_id} from dataset {dataset_id}")
         except urllib.error.HTTPError as e:
             raise httpx.HTTPStatusError(str(e), request=None, response=None) from e

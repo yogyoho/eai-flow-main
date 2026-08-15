@@ -4,6 +4,7 @@ Replaces the dual-system (permissions.py + project_permissions.py) with
 one function that resolves the effective ProjectRole and maps it to
 permissions from the registry (permissions.yaml `project_roles:` section).
 """
+
 from __future__ import annotations
 
 from uuid import UUID
@@ -138,17 +139,22 @@ async def require_project_permission(
 
 def RequireProjectPerm(action: str):
     """Factory: create a FastAPI dependency for a specific project permission."""
+
     async def _dep(
         project_id: UUID,
         user: CurrentUser,
         db: AsyncSession = Depends(get_db),
     ):
         return await require_project_permission(action, project_id, user, db)
+
     return Depends(_dep)
 
 
 async def _resolve_project_role_str(
-    db: AsyncSession, user_id: UUID, project_id: UUID, phase_node: str | None = None,
+    db: AsyncSession,
+    user_id: UUID,
+    project_id: UUID,
+    phase_node: str | None = None,
 ) -> str | None:
     """Resolve the effective project role as a plain string (or None)."""
     role = await resolve_user_project_role(db, user_id, project_id, phase_node)
@@ -163,6 +169,7 @@ def require_project_member():
     (EAI-CUSTOM Task 12: closes IDOR on read endpoints that previously only
     checked ``system:access``). Superadmin bypasses via :func:`is_superadmin`.
     """
+
     async def _check(
         request: Request,
         current_user: CurrentUser = Depends(get_current_user),
@@ -197,6 +204,7 @@ def require_resource_permission(action: str):
 
     Replaces the legacy app.extensions.project.permissions.require_resource_permission.
     """
+
     async def check(
         current_user: CurrentUser = Depends(get_current_user),
         request: Request = ...,
@@ -239,10 +247,7 @@ def require_resource_permission(action: str):
         engine = get_cached_engine()
         if engine is None:
             engine = UnifiedPermissionEngine(
-                role_permissions={
-                    code: registry.resolve_role_permissions(code)
-                    for code in registry.list_role_codes()
-                },
+                role_permissions={code: registry.resolve_role_permissions(code) for code in registry.list_role_codes()},
                 all_permission_ids={p.id for p in registry.list_all_permissions()},
                 policies=await load_active_policies(db),
             )

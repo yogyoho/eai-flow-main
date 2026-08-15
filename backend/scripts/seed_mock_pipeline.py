@@ -45,22 +45,14 @@ SOURCE_CONNECTION_CONFIG = {
 # won=False 的行 contract_no=None;落标报价 = 中标报价 × 上浮(项目间 5%-17%)
 # 金额单位:万元;seed 时 ×10000 存元。
 PROJECTS = [
-    ("TB-2025-001", "华能铜川电厂二期循环水系统", "华能铜川电厂", "2025-03-15", True, 1850.0,
-     "HT-2025-001", "华能铜川电厂循环水系统设备合同", 1800.0, [1800.0]),
-    ("TB-2025-002", "宁夏宝丰甲醇项目净化装置", "宁夏宝丰能源", "2025-04-22", False, 2782.5,
-     None, None, 0, []),
-    ("TB-2025-003", "内蒙古久泰乙二醇装置", "内蒙古久泰集团", "2025-06-10", False, 518.4,
-     None, None, 0, []),
-    ("TB-2025-004", "大唐国际雷州电厂烟气脱硫", "大唐国际雷州电厂", "2025-07-18", False, 3907.2,
-     None, None, 0, []),
-    ("TB-2025-005", "中天合创煤化工水处理", "中天合创能源", "2025-09-05", True, 85.0,
-     "HT-2025-002", "中天合创煤化工水处理设备合同", 82.0, [82.0]),
-    ("TB-2025-006", "万华化学烟台PDH装置", "万华化学集团", "2025-11-12", False, 2730.6,
-     None, None, 0, []),
-    ("TB-2025-007", "陕西榆林煤化工气化装置", "陕西榆林能源", "2025-10-20", True, 4200.0,
-     "HT-2025-003", "陕西榆林煤化工气化装置合同", 4000.0, [2500.0]),  # 部分,待开 1500
-    ("TB-2025-008", "河北唐山钢铁余热锅炉", "河北唐山钢铁", "2025-12-08", True, 1500.0,
-     "HT-2025-004", "河北唐山钢铁余热锅炉合同", 1450.0, [800.0]),  # 部分,待开 650
+    ("TB-2025-001", "华能铜川电厂二期循环水系统", "华能铜川电厂", "2025-03-15", True, 1850.0, "HT-2025-001", "华能铜川电厂循环水系统设备合同", 1800.0, [1800.0]),
+    ("TB-2025-002", "宁夏宝丰甲醇项目净化装置", "宁夏宝丰能源", "2025-04-22", False, 2782.5, None, None, 0, []),
+    ("TB-2025-003", "内蒙古久泰乙二醇装置", "内蒙古久泰集团", "2025-06-10", False, 518.4, None, None, 0, []),
+    ("TB-2025-004", "大唐国际雷州电厂烟气脱硫", "大唐国际雷州电厂", "2025-07-18", False, 3907.2, None, None, 0, []),
+    ("TB-2025-005", "中天合创煤化工水处理", "中天合创能源", "2025-09-05", True, 85.0, "HT-2025-002", "中天合创煤化工水处理设备合同", 82.0, [82.0]),
+    ("TB-2025-006", "万华化学烟台PDH装置", "万华化学集团", "2025-11-12", False, 2730.6, None, None, 0, []),
+    ("TB-2025-007", "陕西榆林煤化工气化装置", "陕西榆林能源", "2025-10-20", True, 4200.0, "HT-2025-003", "陕西榆林煤化工气化装置合同", 4000.0, [2500.0]),  # 部分,待开 1500
+    ("TB-2025-008", "河北唐山钢铁余热锅炉", "河北唐山钢铁", "2025-12-08", True, 1500.0, "HT-2025-004", "河北唐山钢铁余热锅炉合同", 1450.0, [800.0]),  # 部分,待开 650
 ]
 
 # ── 3 个罐装 dataset(只读 SELECT,过 assert_readonly_select 守卫)──
@@ -157,17 +149,13 @@ async def main() -> None:
         """
     )
     # FK:mock_invoice → mock_contract,必须同语句 CASCADE 截断(分语句会被 FK 阻止)
-    await mock.execute(
-        "TRUNCATE mock_invoice, mock_contract, mock_pipeline_bid RESTART IDENTITY CASCADE;"
-    )
+    await mock.execute("TRUNCATE mock_invoice, mock_contract, mock_pipeline_bid RESTART IDENTITY CASCADE;")
 
     bid_rows, contract_rows, invoice_rows = [], [], []
     inv_seq = 0
     for bid_id, proj, cust, bdate, won, bid_amt_w, cno, cname, camt_w, invoices_w in PROJECTS:
         status = "won" if won else "lost"
-        bid_rows.append(
-            (bid_id, proj, cno, cust, date.fromisoformat(bdate), round(bid_amt_w * 10000, 2), status, "东方宏业")
-        )
+        bid_rows.append((bid_id, proj, cno, cust, date.fromisoformat(bdate), round(bid_amt_w * 10000, 2), status, "东方宏业"))
         if won and cno:
             sign_date = date.fromisoformat(bdate)  # mock:签约日同投标日
             contract_rows.append((cno, cname, cust, sign_date, round(camt_w * 10000, 2), "executing"))
@@ -181,18 +169,15 @@ async def main() -> None:
                 invoice_rows.append((inv_id, cno, sign_date, base, tax, total, "issued"))
 
     await mock.executemany(
-        "INSERT INTO mock_pipeline_bid (bid_id,project_name,contract_no,customer,bid_date,our_bid_amount,status,competitor_name) "
-        "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+        "INSERT INTO mock_pipeline_bid (bid_id,project_name,contract_no,customer,bid_date,our_bid_amount,status,competitor_name) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
         bid_rows,
     )
     await mock.executemany(
-        "INSERT INTO mock_contract (contract_no,contract_name,customer,sign_date,amount,status) "
-        "VALUES ($1,$2,$3,$4,$5,$6)",
+        "INSERT INTO mock_contract (contract_no,contract_name,customer,sign_date,amount,status) VALUES ($1,$2,$3,$4,$5,$6)",
         contract_rows,
     )
     await mock.executemany(
-        "INSERT INTO mock_invoice (invoice_id,contract_no,invoice_date,amount,tax_amount,total_amount,status) "
-        "VALUES ($1,$2,$3,$4,$5,$6,$7)",
+        "INSERT INTO mock_invoice (invoice_id,contract_no,invoice_date,amount,tax_amount,total_amount,status) VALUES ($1,$2,$3,$4,$5,$6,$7)",
         invoice_rows,
     )
     print(f"[ok] 已灌 {len(bid_rows)} bid / {len(contract_rows)} contract / {len(invoice_rows)} invoice")
@@ -204,8 +189,7 @@ async def main() -> None:
     src_id = await ext.fetchval("SELECT id FROM data_sources WHERE name=$1", SOURCE_NAME)
     if src_id is None:
         src_id = await ext.fetchval(
-            "INSERT INTO data_sources (id,name,description,type,connection_config,auth_type,sync_mode,status,created_at,updated_at) "
-            "VALUES (gen_random_uuid(),$1,$2,$3,$4::jsonb,$5,$6,$7,now(),now()) RETURNING id",
+            "INSERT INTO data_sources (id,name,description,type,connection_config,auth_type,sync_mode,status,created_at,updated_at) VALUES (gen_random_uuid(),$1,$2,$3,$4::jsonb,$5,$6,$7,now(),now()) RETURNING id",
             SOURCE_NAME,
             "模块③ 管线查询 mock 数据源(CRM 投标/合同/财务开票,统一 contract_no)。",
             "database",
@@ -247,10 +231,7 @@ async def main() -> None:
     c_total = await chk.fetchval("SELECT coalesce(sum(amount),0) FROM mock_contract")
     i_total = await chk.fetchval("SELECT coalesce(sum(total_amount),0) FROM mock_invoice WHERE status='issued'")
     print("\n===== 自检 =====")
-    print(
-        f"bid={n_bid} won={n_won} 合同总额={c_total/10000:.0f}万 已开票={i_total/10000:.0f}万 "
-        f"待开票={(c_total-i_total)/10000:.0f}万"
-    )
+    print(f"bid={n_bid} won={n_won} 合同总额={c_total / 10000:.0f}万 已开票={i_total / 10000:.0f}万 待开票={(c_total - i_total) / 10000:.0f}万")
     await chk.close()
     print("\n[done] seed 完成。重启 gateway 使 data_source MCP 缓存感知新连接。")
 

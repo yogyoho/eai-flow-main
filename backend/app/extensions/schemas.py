@@ -1,7 +1,7 @@
 """Pydantic schemas for extensions module."""
 
 from datetime import date, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Literal
 from uuid import UUID
 
@@ -455,7 +455,7 @@ class KnowledgeBaseListResponse(BaseModel):
 # ============== Document Schemas ==============
 
 
-class DocumentStatus(str, Enum):
+class DocumentStatus(StrEnum):
     """文档状态枚举，与 RAGFlow 解析状态统一映射。"""
 
     PENDING = "pending"

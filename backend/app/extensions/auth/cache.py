@@ -4,6 +4,7 @@ Uses ContextVar so cached values are isolated per request (each async
 request gets its own context) and automatically cleaned up when the
 request ends.
 """
+
 from __future__ import annotations
 
 from contextvars import ContextVar
@@ -11,12 +12,8 @@ from contextvars import ContextVar
 from app.extensions.auth.engine import UnifiedPermissionEngine
 from app.extensions.auth.identity import AttributeSet
 
-_request_engine: ContextVar[UnifiedPermissionEngine | None] = ContextVar(
-    "_perm_engine", default=None
-)
-_request_identity: ContextVar[AttributeSet | None] = ContextVar(
-    "_perm_identity", default=None
-)
+_request_engine: ContextVar[UnifiedPermissionEngine | None] = ContextVar("_perm_engine", default=None)
+_request_identity: ContextVar[AttributeSet | None] = ContextVar("_perm_identity", default=None)
 
 
 def get_cached_engine() -> UnifiedPermissionEngine | None:

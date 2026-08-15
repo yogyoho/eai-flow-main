@@ -5,6 +5,7 @@ Rules:
 2. Sibling (same parent): by sort_order — chapter[N] depends on chapter[N-1]
 3. Sibling (different parent): independent, can be parallel
 """
+
 from __future__ import annotations
 
 
@@ -56,11 +57,7 @@ def topological_order(
 
     remaining = all_titles - completed
     while remaining:
-        batch = [
-            title
-            for title in remaining
-            if deps.get(title, set()).issubset(completed)
-        ]
+        batch = [title for title in remaining if deps.get(title, set()).issubset(completed)]
         if not batch:
             # Cycle or orphan — break to avoid infinite loop
             break

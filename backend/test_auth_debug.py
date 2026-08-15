@@ -1,21 +1,25 @@
 import sys
 
 sys.path.insert(0, r"D:\eai\eai-flow-main\backend")
-from pathlib import Path
+from pathlib import Path  # noqa: E402
 
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(Path(r"D:\eai\eai-flow-main\.env"), override=True)
 
-import asyncio
+import asyncio  # noqa: E402
 
-from sqlalchemy import select
+from sqlalchemy import select  # noqa: E402
 
-from app.extensions.auth.jwt import verify_token
-from app.extensions.database import get_db_context
-from app.extensions.models import Role, User
+from app.extensions.auth.jwt import verify_token  # noqa: E402
+from app.extensions.database import get_db_context  # noqa: E402
+from app.extensions.models import Role, User  # noqa: E402
 
-TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6InN1cGVyX2FkbWluIiwicGVybWlzc2lvbnMiOlsiKiJdLCJleHAiOjE3NzY2NTE2NTYsInR5cGUiOiJhY2Nlc3MifQ.cF4tWbhnpB8ZmAbG0TxsmcGPBGjHsQ4B4_8LVCRvM7g"
+TOKEN = (
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+    "eyJzdWIiOiIxMTExMTExMS0xMTExLTExMTEtMTExMS0xMTExMTExMTExMTEiLCJ1c2VybmFtZSI6ImFkbWluIiwicm9sZSI6InN1cGVyX2FkbWluIiwicGVybWlzc2lvbnMiOlsiKiJdLCJleHAiOjE3NzY2NTE2NTYsInR5cGUiOiJhY2Nlc3MifQ."
+    "cF4tWbhnpB8ZmAbG0TxsmcGPBGjHsQ4B4_8LVCRvM7g"
+)
 
 
 async def test_auth():

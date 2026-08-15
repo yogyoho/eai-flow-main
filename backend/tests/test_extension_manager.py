@@ -29,10 +29,7 @@ from deerflow.extensions.manager import (
 )
 from deerflow.tui.cli import main as deerflow_main
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="upstream extension manager internals diverged in EAI extensions system (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def _write_local_extension(

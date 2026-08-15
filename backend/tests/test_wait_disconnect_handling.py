@@ -22,11 +22,11 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any
 
+import pytest
+
 from deerflow.runtime import ORPHAN_RECOVERY_STOP_REASON, RunManager, RunRecord, RunStatus
 from deerflow.runtime.runs.schemas import DisconnectMode
 from deerflow.runtime.stream_bridge.memory import MemoryStreamBridge
-
-import pytest
 
 pytestmark = pytest.mark.skip(reason="EAI wait_for_run_completion/SSE heartbeat behavior differs (EAI-CUSTOM skip 2026-08-15)")
 

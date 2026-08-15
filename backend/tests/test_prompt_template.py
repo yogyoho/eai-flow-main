@@ -1,11 +1,10 @@
 """Verify the static data-source instruction is present in the rendered system prompt."""
 
-from deerflow.agents.lead_agent.prompt import apply_prompt_template
-
 import pytest
 
-pytestmark = pytest.mark.skip(reason="EAI lead-agent system prompt differs (no upstream data_source tools mention) (EAI-CUSTOM skip 2026-08-15)")
+from deerflow.agents.lead_agent.prompt import apply_prompt_template
 
+pytestmark = pytest.mark.skip(reason="EAI lead-agent system prompt differs (no upstream data_source tools mention) (EAI-CUSTOM skip 2026-08-15)")
 
 
 def test_system_prompt_mentions_data_source_tools():

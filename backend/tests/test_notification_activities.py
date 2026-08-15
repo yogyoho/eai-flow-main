@@ -3,9 +3,7 @@
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
-
 from app.extensions.workflow.temporal.activities import (
-
     notify_phase_start,
     notify_review_pending,
     notify_workflow_complete,
@@ -19,9 +17,10 @@ _DB_CTX_PATCH = "app.extensions.database.get_db_context"
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 
-import pytest
+import pytest  # noqa: E402
 
 pytestmark = pytest.mark.skip(reason="EAI notification extension differs (EAI-CUSTOM skip 2026-08-15)")
+
 
 def _make_db_mock(rows: list[tuple]) -> AsyncMock:
     """Create a mock DB session that returns the given rows from execute()."""
@@ -46,6 +45,7 @@ def _make_db_context(db: AsyncMock) -> AsyncMock:
 
 
 # ── notify_phase_start ────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_notify_phase_start_creates_notifications():
@@ -85,6 +85,7 @@ async def test_notify_phase_start_no_members():
 
 # ── notify_review_pending ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_notify_review_pending_creates_notifications():
     """notify_review_pending should create Notifications for pending reviewers."""
@@ -121,6 +122,7 @@ async def test_notify_review_pending_no_pending_reviewers():
 
 
 # ── notify_workflow_complete ────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_notify_workflow_complete_creates_notifications_and_updates_status():

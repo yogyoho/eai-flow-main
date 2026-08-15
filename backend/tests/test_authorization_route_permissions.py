@@ -20,10 +20,7 @@ from deerflow.authz.provider import AuthzDecision, AuthzReason
 from deerflow.authz.rbac import RbacAuthorizationProvider
 from deerflow.config.authorization_config import AuthorizationConfig, AuthorizationProviderConfig
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI custom RBAC route permissions differ (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 class _RecordingProvider:

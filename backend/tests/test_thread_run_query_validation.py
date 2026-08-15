@@ -9,10 +9,7 @@ from fastapi.testclient import TestClient
 from app.gateway.routers import thread_runs
 from deerflow.runtime.runs.manager import EditReplayVisibility
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI thread read endpoints differ (no non-positive limit validation) (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def _make_app():

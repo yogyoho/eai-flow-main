@@ -22,7 +22,7 @@ async def _run_in_db(func):
     Creates a short-lived engine + session, ensuring engine.dispose() is
     called even if func raises, so connections are never leaked.
     """
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
     db_url = os.environ.get("KF_DATABASE_URL", "")
     if not db_url:
@@ -160,11 +160,7 @@ TOOLS = [
     ),
     Tool(
         name="kf_check_compliance",
-        description=(
-            "对生成的章节内容执行合规性校验。传入章节全文 Markdown，"
-            "自动匹配适用的合规规则（或指定 rule_ids），返回逐条规则的"
-            "通过/不通过/警告结果，不通过项附带修改建议。"
-        ),
+        description=("对生成的章节内容执行合规性校验。传入章节全文 Markdown，自动匹配适用的合规规则（或指定 rule_ids），返回逐条规则的通过/不通过/警告结果，不通过项附带修改建议。"),
         inputSchema={
             "type": "object",
             "properties": {
@@ -203,31 +199,37 @@ TOOLS = [
 
 async def _handle_resolve_template(arguments: dict) -> list[TextContent]:
     from app.extensions.knowledge_factory.mcp_server.tools.template_tools import handle_kf_resolve_template
+
     return await handle_kf_resolve_template(arguments, _run_in_db)
 
 
 async def _handle_get_template(arguments: dict) -> list[TextContent]:
     from app.extensions.knowledge_factory.mcp_server.tools.template_tools import handle_kf_get_template
+
     return await handle_kf_get_template(arguments, _run_in_db)
 
 
 async def _handle_query_templates(arguments: dict) -> list[TextContent]:
     from app.extensions.knowledge_factory.mcp_server.tools.template_tools import handle_kf_query_templates
+
     return await handle_kf_query_templates(arguments, _run_in_db)
 
 
 async def _handle_list_domains(arguments: dict) -> list[TextContent]:
     from app.extensions.knowledge_factory.mcp_server.tools.domain_tools import handle_kf_list_domains
+
     return await handle_kf_list_domains(arguments, _run_in_db)
 
 
 async def _handle_extract_template(arguments: dict) -> list[TextContent]:
     from app.extensions.knowledge_factory.mcp_server.tools.template_tools import handle_kf_extract_template
+
     return await handle_kf_extract_template(arguments, _run_in_db)
 
 
 async def _handle_check_compliance(arguments: dict) -> list[TextContent]:
     from app.extensions.knowledge_factory.mcp_server.tools.compliance_tools import handle_kf_check_compliance
+
     return await handle_kf_check_compliance(arguments, _run_in_db)
 
 

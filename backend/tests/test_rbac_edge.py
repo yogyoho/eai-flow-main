@@ -12,9 +12,7 @@ from app.extensions.models import KnowledgeBase
 def test_inherit_cycle_detected(tmp_path):
     main = tmp_path / "permissions.yaml"
     main.write_text(
-        "version: 3\nmodules: {}\nroles:\n"
-        "  a:\n    display_name: A\n    permissions: ['#inherit:b']\n    nav: []\n    data_scopes: []\n"
-        "  b:\n    display_name: B\n    permissions: ['#inherit:a']\n    nav: []\n    data_scopes: []\n",
+        "version: 3\nmodules: {}\nroles:\n  a:\n    display_name: A\n    permissions: ['#inherit:b']\n    nav: []\n    data_scopes: []\n  b:\n    display_name: B\n    permissions: ['#inherit:a']\n    nav: []\n    data_scopes: []\n",
         encoding="utf-8",
     )
     overlay = tmp_path / "roles_custom.yaml"

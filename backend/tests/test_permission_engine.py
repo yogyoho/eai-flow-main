@@ -1,12 +1,13 @@
-import pytest
-from app.extensions.auth.engine import UnifiedPermissionEngine, FilterRule
+from app.extensions.auth.engine import FilterRule, UnifiedPermissionEngine
 from app.extensions.auth.identity import AttributeSet
 
 
 def identity(**kwargs):
     defaults = {
-        "user_id": "u1", "username": "test",
-        "role_code": "writer", "role_level": 10,
+        "user_id": "u1",
+        "username": "test",
+        "role_code": "writer",
+        "role_level": 10,
     }
     defaults.update(kwargs)
     return AttributeSet(**defaults)
@@ -64,16 +65,13 @@ class TestUnifiedPermissionEngine:
 
     def test_policy_evaluation_or_semantics(self):
         from app.extensions.auth.engine import Policy
+
         idn = identity(role_code="writer")
         engine = UnifiedPermissionEngine(
             role_permissions={"writer": {"kb:read"}},
             policies=[
-                Policy(name="p1", priority=10,
-                       conditions={"attr": "tags", "op": "contains", "value": "editor"},
-                       grants={"permissions": ["kb:create"]}),
-                Policy(name="p2", priority=20,
-                       conditions={"attr": "role_level", "op": "gte", "value": 5},
-                       grants={"permissions": ["kb:delete"]}),
+                Policy(name="p1", priority=10, conditions={"attr": "tags", "op": "contains", "value": "editor"}, grants={"permissions": ["kb:create"]}),
+                Policy(name="p2", priority=20, conditions={"attr": "role_level", "op": "gte", "value": 5}, grants={"permissions": ["kb:delete"]}),
             ],
         )
         # writer has kb:read directly, NOT kb:create (no "editor" tag), but kb:delete via policy
@@ -136,10 +134,13 @@ class TestFilterRule:
     def test_to_sqlalchemy_eq(self):
         from sqlalchemy import Column, String, select
         from sqlalchemy.orm import declarative_base
+
         Base = declarative_base()
+
         class MockModel(Base):
             __tablename__ = "mock_eq"
             owner_id = Column(String, primary_key=True)
+
         rule = FilterRule(operator="eq", field="owner_id", value="user-1")
         column_map = {"owner_id": MockModel.owner_id}
         expr = rule.to_sqlalchemy(MockModel, column_map)
@@ -150,10 +151,13 @@ class TestFilterRule:
     def test_to_sqlalchemy_in(self):
         from sqlalchemy import Column, String
         from sqlalchemy.orm import declarative_base
+
         Base = declarative_base()
+
         class MockModel(Base):
             __tablename__ = "mock_in"
             dept_id = Column(String, primary_key=True)
+
         rule = FilterRule(operator="in", field="dept_id", value=["d1", "d2"])
         column_map = {"dept_id": MockModel.dept_id}
         expr = rule.to_sqlalchemy(MockModel, column_map)
@@ -162,11 +166,14 @@ class TestFilterRule:
     def test_to_sqlalchemy_and_composite(self):
         from sqlalchemy import Column, String
         from sqlalchemy.orm import declarative_base
+
         Base = declarative_base()
+
         class MockModel(Base):
             __tablename__ = "mock_and"
             owner_id = Column(String, primary_key=True)
             dept_id = Column(String)
+
         inner1 = FilterRule(operator="eq", field="owner_id", value="u1")
         inner2 = FilterRule(operator="in", field="dept_id", value=["d1"])
         rule = FilterRule(operator="and", children=[inner1, inner2])
@@ -177,10 +184,13 @@ class TestFilterRule:
     def test_to_sqlalchemy_auto_resolve_column(self):
         from sqlalchemy import Column, String
         from sqlalchemy.orm import declarative_base
+
         Base = declarative_base()
+
         class MockModel(Base):
             __tablename__ = "mock_auto"
             access_type = Column(String, primary_key=True)
+
         rule = FilterRule(operator="eq", field="access_type", value="public")
         expr = rule.to_sqlalchemy(MockModel, column_map=None)
         assert expr is not None
@@ -188,10 +198,13 @@ class TestFilterRule:
     def test_to_sqlalchemy_none_allow_returns_false(self):
         from sqlalchemy import Column, String
         from sqlalchemy.orm import declarative_base
+
         Base = declarative_base()
+
         class MockModel(Base):
             __tablename__ = "mock_none"
             id = Column(String, primary_key=True)
+
         rule = FilterRule(operator="none_allow")
         expr = rule.to_sqlalchemy(MockModel)
         # Should produce a SQLAlchemy false() expression
@@ -205,39 +218,36 @@ class TestFilterRule:
 
     def test_not_contains_returns_false_when_attr_not_container(self):
         from app.extensions.auth.engine import Policy
+
         idn = identity(tags=None)
         engine = UnifiedPermissionEngine(
             role_permissions={"writer": set()},
             policies=[
-                Policy(name="test", priority=10,
-                       conditions={"attr": "tags", "op": "not_contains", "value": "restricted"},
-                       grants={"permissions": ["kb:create"]}),
+                Policy(name="test", priority=10, conditions={"attr": "tags", "op": "not_contains", "value": "restricted"}, grants={"permissions": ["kb:create"]}),
             ],
         )
         assert engine.check(idn, "kb:create") is False
 
     def test_not_in_returns_false_when_value_not_list(self):
         from app.extensions.auth.engine import Policy
+
         idn = identity(dept_id="dept-1")
         engine = UnifiedPermissionEngine(
             role_permissions={"writer": set()},
             policies=[
-                Policy(name="test", priority=10,
-                       conditions={"attr": "dept_id", "op": "not_in", "value": "dept-123"},
-                       grants={"permissions": ["kb:create"]}),
+                Policy(name="test", priority=10, conditions={"attr": "dept_id", "op": "not_in", "value": "dept-123"}, grants={"permissions": ["kb:create"]}),
             ],
         )
         assert engine.check(idn, "kb:create") is False
 
     def test_not_contains_works_with_valid_list(self):
         from app.extensions.auth.engine import Policy
+
         idn = identity(tags=["editor", "viewer"])
         engine = UnifiedPermissionEngine(
             role_permissions={"writer": set()},
             policies=[
-                Policy(name="test", priority=10,
-                       conditions={"attr": "tags", "op": "not_contains", "value": "restricted"},
-                       grants={"permissions": ["kb:create"]}),
+                Policy(name="test", priority=10, conditions={"attr": "tags", "op": "not_contains", "value": "restricted"}, grants={"permissions": ["kb:create"]}),
             ],
         )
         assert engine.check(idn, "kb:create") is True
@@ -255,4 +265,4 @@ def test_engine_uses_resolved_inherited_permissions():
     )
     identity = AttributeSet(user_id="1", username="u", role_code="manager", role_level=20)
     assert engine.check(identity, "project:edit") is True
-    assert engine.check(identity, "doc:read") is True   # 继承来的权限
+    assert engine.check(identity, "doc:read") is True  # 继承来的权限

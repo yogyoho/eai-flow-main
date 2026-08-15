@@ -10,7 +10,6 @@ Uses LLM to evaluate templates across multiple dimensions:
 
 import json
 import logging
-from typing import Any, Optional
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -101,7 +100,7 @@ _QUALITY_ASSESSMENT_USER_PROMPT_TEMPLATE = """## 模板信息
 class QualityAssessmentClient:
     """LLM client for quality assessment."""
 
-    def __init__(self, model_name: Optional[str] = None):
+    def __init__(self, model_name: str | None = None):
         self._model_name = model_name
         self._model = None
 

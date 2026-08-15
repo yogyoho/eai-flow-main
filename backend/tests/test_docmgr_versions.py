@@ -70,8 +70,13 @@ async def test_restore_personal_version_writes_file():
     db = AsyncMock()
     user_id = uuid4()
     version = _FakeVersion(
-        id=uuid4(), user_id=user_id, thread_id="tid-1", rel_path="doc.md",
-        content="# restored", label=None, created_at=None,
+        id=uuid4(),
+        user_id=user_id,
+        thread_id="tid-1",
+        rel_path="doc.md",
+        content="# restored",
+        label=None,
+        created_at=None,
     )
     db.execute = AsyncMock(return_value=_FakeResult([version]))
     with patch.object(AIDocumentService, "write_personal_output", new=AsyncMock()) as mock_write:

@@ -9,12 +9,14 @@ import os
 import platform
 import time
 import uuid as uuid_mod
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from jwt import PyJWTError, decode as jwt_decode, encode as jwt_encode
-from sqlalchemy import func as sql_func, select, update
+from jwt import PyJWTError
+from jwt import decode as jwt_decode
+from sqlalchemy import func as sql_func
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.license.models import License
@@ -104,9 +106,7 @@ class LicenseService:
             return False
         env = os.getenv("DEER_FLOW_ENV", "")
         if env == "production":
-            raise RuntimeError(
-                "DEER_FLOW_DEV_MODE is not allowed in production environment"
-            )
+            raise RuntimeError("DEER_FLOW_DEV_MODE is not allowed in production environment")
         return True
 
     @staticmethod
@@ -214,17 +214,13 @@ class LicenseService:
             claims = jwt_decode(jwt_raw, public_key, algorithms=[ALGORITHM])
         except PyJWTError as e:
             logger.error(f"License JWT verification failed: {e}")
-            raise LicenseError(
-                "LICENSE_INVALID", f"License verification failed: {e}"
-            ) from e
+            raise LicenseError("LICENSE_INVALID", f"License verification failed: {e}") from e
 
         # Check machine_id binding
         current_machine_id = LicenseService._generate_machine_id()
         license_machine_id = claims.get("sub", "")
         if license_machine_id != current_machine_id:
-            logger.warning(
-                f"License machine_id mismatch: license={license_machine_id}, current={current_machine_id}"
-            )
+            logger.warning(f"License machine_id mismatch: license={license_machine_id}, current={current_machine_id}")
             raise LicenseError(
                 "MACHINE_MISMATCH",
                 f"License is bound to machine {license_machine_id}, but current machine is {current_machine_id}",
@@ -234,8 +230,8 @@ class LicenseService:
         expires_at = None
         exp_ts = claims.get("exp")
         if exp_ts:
-            expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc)
-            if expires_at < datetime.now(timezone.utc):
+            expires_at = datetime.fromtimestamp(exp_ts, tz=UTC)
+            if expires_at < datetime.now(UTC):
                 raise LicenseError("LICENSE_EXPIRED", "License has expired")
 
         return LicensePayload(
@@ -266,7 +262,7 @@ class LicenseService:
         try:
             if payload is None:
                 payload = LicenseService.verify()
-        except LicenseError as e:
+        except LicenseError:
             in_grace, remaining = LicenseService._compute_grace_period()
             return {
                 "valid": False,
@@ -310,7 +306,7 @@ class LicenseService:
         # Compute warnings
         warnings = []
         if payload.expires_at:
-            days_left = (payload.expires_at - datetime.now(timezone.utc)).days
+            days_left = (payload.expires_at - datetime.now(UTC)).days
             if payload.type == "trial" and days_left <= 7:
                 warnings.append("trial_ending")
             if days_left <= 30:
@@ -362,20 +358,16 @@ class LicenseService:
         jti = claims.get("jti", "")
         existing = await db.execute(select(License).where(License.jwt_jti == jti))
         if existing.scalar_one_or_none():
-            raise LicenseError(
-                "DUPLICATE_LICENSE", "This license has already been imported"
-            )
+            raise LicenseError("DUPLICATE_LICENSE", "This license has already been imported")
 
         # Deactivate current active license
-        await db.execute(
-            update(License).where(License.is_active == True).values(is_active=False)
-        )
+        await db.execute(update(License).where(License.is_active.is_(True)).values(is_active=False))
 
         # Create new record
         exp_ts = claims.get("exp")
         expires_at = None
         if exp_ts:
-            expires_at = datetime.fromtimestamp(exp_ts, tz=timezone.utc).replace(tzinfo=None)
+            expires_at = datetime.fromtimestamp(exp_ts, tz=UTC).replace(tzinfo=None)
 
         license_record = License(
             jwt_jti=jti,
@@ -385,7 +377,7 @@ class LicenseService:
             max_users=claims.get("max_users"),
             modules=claims.get("modules", {}),
             features=claims.get("features", {}),
-            issued_at=datetime.fromtimestamp(claims.get("iat", 0), tz=timezone.utc).replace(tzinfo=None),
+            issued_at=datetime.fromtimestamp(claims.get("iat", 0), tz=UTC).replace(tzinfo=None),
             expires_at=expires_at,
             meta=claims.get("meta", {}),
             jwt_raw=jwt_raw,
@@ -415,16 +407,9 @@ class LicenseService:
         return license_record
 
     @staticmethod
-    async def get_history(
-        db: AsyncSession, skip: int = 0, limit: int = 20
-    ) -> tuple[list[License], int]:
+    async def get_history(db: AsyncSession, skip: int = 0, limit: int = 20) -> tuple[list[License], int]:
         """Get license import history."""
-        query = (
-            select(License)
-            .order_by(License.imported_at.desc())
-            .offset(skip)
-            .limit(limit)
-        )
+        query = select(License).order_by(License.imported_at.desc()).offset(skip).limit(limit)
         result = await db.execute(query)
         items = result.scalars().all()
 
@@ -437,8 +422,6 @@ class LicenseService:
     @staticmethod
     async def export_license(db: AsyncSession) -> str | None:
         """Get raw JWT of the currently active license."""
-        result = await db.execute(
-            select(License).where(License.is_active == True)
-        )
+        result = await db.execute(select(License).where(License.is_active.is_(True)))
         record = result.scalar_one_or_none()
         return record.jwt_raw if record else None

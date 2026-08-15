@@ -6,7 +6,7 @@ They are re-exported by ``activities.py``.
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 from temporalio import activity
@@ -57,12 +57,12 @@ async def notify_review_pending(node_id: str, project_id: str) -> dict:
     - 72h+: auto-escalate — notify project owner
     """
     from app.extensions.database import get_db_context
-    from app.extensions.models import Notification, ProjectMember, User
+    from app.extensions.models import Notification
     from app.extensions.review.models import ReviewAssignment
 
     count = 0
     escalated = 0
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with get_db_context() as db:
         # Fetch full ReviewAssignment rows (not just reviewer_id) for deadline checks
@@ -92,8 +92,7 @@ async def notify_review_pending(node_id: str, project_id: str) -> dict:
                     user_id=ra.reviewer_id,
                     type="review_pending",
                     title=f"审核待处理 — 阶段 {node_id}",
-                    body=f"阶段 {node_id} 有待审核任务需要您处理。"
-                         + (f" 截止时间: {deadline.strftime('%m-%d %H:%M')} (UTC)" if deadline else ""),
+                    body=f"阶段 {node_id} 有待审核任务需要您处理。" + (f" 截止时间: {deadline.strftime('%m-%d %H:%M')} (UTC)" if deadline else ""),
                     project_id=uuid.UUID(project_id),
                     link=f"/projects/{project_id}?tab=review",
                 )
@@ -136,7 +135,9 @@ async def notify_review_pending(node_id: str, project_id: str) -> dict:
 
     logger.info(
         "activity:notify_review_pending node_id=%s notified=%d escalated=%d",
-        node_id, count, escalated,
+        node_id,
+        count,
+        escalated,
     )
     return {"status": "ok", "node_id": node_id, "notified": count, "escalated": escalated}
 
@@ -180,10 +181,14 @@ async def _resolve_owner_ids(db, project_id: str) -> list[uuid.UUID]:
 
 
 async def _sync_chapters_to_doc_space(
-    db, project_id: str, user_ids: list | None = None, chapter_count: int = 0,
+    db,
+    project_id: str,
+    user_ids: list | None = None,
+    chapter_count: int = 0,
 ) -> str | None:
     """Merge generated chapters into a report doc and sync to document space."""
     from sqlalchemy import func as _func
+
     from app.extensions.models import AIDocument, Folder, ProjectChapter, ReportProject
 
     if not chapter_count:
@@ -192,9 +197,8 @@ async def _sync_chapters_to_doc_space(
     # Resolve owner if caller didn't provide member list (e.g. AI-gen phase)
     if not user_ids:
         from app.extensions.models import ProjectMember as _PM
-        _mr = await db.execute(
-            select(_PM.user_id).where(_PM.project_id == uuid.UUID(project_id))
-        )
+
+        _mr = await db.execute(select(_PM.user_id).where(_PM.project_id == uuid.UUID(project_id)))
         user_ids = [r[0] for r in _mr.all()]
 
     ch_result = await db.execute(
@@ -209,7 +213,7 @@ async def _sync_chapters_to_doc_space(
     if not chapters:
         return None
     proj = await db.get(ReportProject, uuid.UUID(project_id))
-    report_type_label = (getattr(proj, "report_type", None) or "报告")
+    report_type_label = getattr(proj, "report_type", None) or "报告"
     # Map report_type to a human-readable suffix
     _REPORT_TYPE_LABELS: dict[str, str] = {
         "safety_assessment": "安全评价报告",
@@ -226,23 +230,16 @@ async def _sync_chapters_to_doc_space(
     merged = "".join(parts)
     owner_id = user_ids[0] if user_ids else uuid.UUID(int=0)
     proj_folder_id: uuid.UUID | None = None
-    pfx_result = await db.execute(
-        select(Folder.id)
-        .where(Folder.project_id == uuid.UUID(project_id))
-        .where(Folder.parent_id.is_(None))
-        .limit(1)
-    )
+    pfx_result = await db.execute(select(Folder.id).where(Folder.project_id == uuid.UUID(project_id)).where(Folder.parent_id.is_(None)).limit(1))
     pfx_row = pfx_result.first()
     if pfx_row:
         proj_folder_id = pfx_row[0]
     else:
-        pfx = Folder(name=proj.name if proj else "项目报告", owner_id=owner_id,
-                       project_id=uuid.UUID(project_id), parent_id=None)
-        db.add(pfx); await db.flush()
+        pfx = Folder(name=proj.name if proj else "项目报告", owner_id=owner_id, project_id=uuid.UUID(project_id), parent_id=None)
+        db.add(pfx)
+        await db.flush()
         proj_folder_id = pfx.id
-    doc = AIDocument(user_id=owner_id, project_id=uuid.UUID(project_id),
-                     folder_id=proj_folder_id, title=title, content=merged,
-                     folder="项目文件夹", doc_type="report", status="draft")
+    doc = AIDocument(user_id=owner_id, project_id=uuid.UUID(project_id), folder_id=proj_folder_id, title=title, content=merged, folder="项目文件夹", doc_type="report", status="draft")
     db.add(doc)
     logger.info("sync: %d chapters → '%s' (folder_id=%s)", len(chapters), title, str(proj_folder_id))
     return title
@@ -253,9 +250,7 @@ async def notify_workflow_complete(project_id: str) -> dict:
     """Notify project members that the workflow has completed. Updates project status."""
     from app.extensions.database import get_db_context
     from app.extensions.models import (
-        AIDocument,
         Notification,
-        ProjectChapter,
         ProjectMember,
         ReportProject,
     )
@@ -263,9 +258,7 @@ async def notify_workflow_complete(project_id: str) -> dict:
     count = 0
     async with get_db_context() as db:
         await db.execute(
-            update(ReportProject)
-            .where(ReportProject.id == uuid.UUID(project_id))
-            .values(status="approved")  # EAI-CUSTOM: canonical (ADR 2026-08-02)
+            update(ReportProject).where(ReportProject.id == uuid.UUID(project_id)).values(status="approved")  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         )
 
         result = await db.execute(
@@ -289,8 +282,7 @@ async def notify_workflow_complete(project_id: str) -> dict:
 
         # Merge chapters into a doc-space report (also called at AI completion).
         try:
-            await _sync_chapters_to_doc_space(db, project_id, user_ids,
-                                                chapter_count=len(user_ids) * 6)
+            await _sync_chapters_to_doc_space(db, project_id, user_ids, chapter_count=len(user_ids) * 6)
         except Exception:
             logger.exception("notify_workflow_complete: sync failed %s", project_id)
 

@@ -15,6 +15,7 @@ from app.extensions.knowledge_factory.pipeline import _find_best_matching_paragr
 
 # ── _find_best_matching_paragraph: 匹配不到必须返回 "" ──
 
+
 def test_no_keywords_returns_empty():
     """空关键词 → 返回 ""（之前返回 content 开头，诱导 LLM 幻觉）。"""
     content = "设计依据\n\n委托书和设计合同\n\n给排水专业统一规定"
@@ -35,12 +36,7 @@ def test_no_match_returns_empty_not_doc_beginning():
 
 def test_match_returns_best_paragraph():
     """真正匹配到 → 返回包含关键词最多的段落（正常行为不受影响）。"""
-    content = (
-        "设计依据\n\n"
-        "根据《建筑设计防火规范》GB50016-2014 第5章\n\n"
-        "委托书和设计合同\n\n"
-        "根据《石油化工循环水场设计规范》"
-    )
+    content = "设计依据\n\n根据《建筑设计防火规范》GB50016-2014 第5章\n\n委托书和设计合同\n\n根据《石油化工循环水场设计规范》"
     keywords = ["建筑设计防火规范"]
     result = _find_best_matching_paragraph(content, keywords, 4000)
     assert "建筑设计防火规范" in result

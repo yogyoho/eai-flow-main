@@ -10,7 +10,6 @@ EAI-CUSTOM: 桥修复回归测试（设计文档 Success Criteria 5）。
 
 import asyncio
 import inspect
-import os
 
 import pytest
 
@@ -29,6 +28,7 @@ class TestNoDeadRefs:
     def test_service_helpers_exist(self):
         """_get_chapter_or_404 / get_outline_tree 已在 service.py 定义。"""
         from app.extensions.project import service
+
         assert hasattr(service, "_get_chapter_or_404")
         assert hasattr(service, "get_outline_tree")
         assert hasattr(service, "_get_assigned_names")
@@ -41,8 +41,7 @@ class TestNoDeadRefs:
 
     def test_handlers_callable(self):
         """每个 handler 是 async 函数（无 import 期 AttributeError）。"""
-        for h in (mcp._handle_read_chapter, mcp._handle_write_chapter, mcp._handle_list_chapters,
-                  mcp._handle_get_project, mcp._handle_get_chapter_spec):
+        for h in (mcp._handle_read_chapter, mcp._handle_write_chapter, mcp._handle_list_chapters, mcp._handle_get_project, mcp._handle_get_chapter_spec):
             assert inspect.iscoroutinefunction(h), f"{h.__name__} 不是 async"
 
 
@@ -51,18 +50,14 @@ class TestWriteChapterStatusValidation:
 
     def test_invalid_status_rejected(self):
         """非法 status（如 approved/editing）返回错误而非入库。"""
-        result = asyncio.run(mcp._handle_write_chapter(
-            {"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x", "status": "approved"}
-        ))
+        result = asyncio.run(mcp._handle_write_chapter({"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x", "status": "approved"}))
         text = result[0].text
         assert "非法 status" in text
         assert "approved" in text
 
     def test_editing_status_rejected(self):
         """状态机不存在的 editing 被拒（断点 4 核心）。"""
-        result = asyncio.run(mcp._handle_write_chapter(
-            {"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x", "status": "editing"}
-        ))
+        result = asyncio.run(mcp._handle_write_chapter({"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x", "status": "editing"}))
         assert "非法 status" in result[0].text
 
     def test_valid_status_passes_validation(self):
@@ -71,18 +66,14 @@ class TestWriteChapterStatusValidation:
         而非返回"非法 status"——用异常证明校验放行。
         """
         with pytest.raises(Exception):
-            asyncio.run(mcp._handle_write_chapter(
-                {"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x", "status": "draft"}
-            ))
+            asyncio.run(mcp._handle_write_chapter({"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x", "status": "draft"}))
         # 若 status 非法，会在进入 _run_in_db 前直接返回文本，不会抛异常
         assert True  # 到达 DB 连接阶段 = 校验已放行
 
     def test_null_status_ok(self):
         """status 缺省合法（仅 content 写入）。"""
         with pytest.raises(Exception):
-            asyncio.run(mcp._handle_write_chapter(
-                {"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x"}
-            ))
+            asyncio.run(mcp._handle_write_chapter({"chapter_id": "00000000-0000-0000-0000-000000000000", "content": "x"}))
         assert True  # 校验放行，走到 DB 阶段
 
 
@@ -99,17 +90,20 @@ class TestDerivedStage:
 
     def test_project_out_has_derived_stage(self):
         from app.extensions.project.schemas import ProjectOut
+
         assert "derived_stage" in ProjectOut.model_fields
         assert "current_stage" not in ProjectOut.model_fields
 
     def test_get_project_passes_derived_stage(self):
         from app.extensions.project.service import get_project
+
         src = inspect.getsource(get_project)
         assert "derived_stage=" in src, "get_project 未构造 derived_stage"
         assert "current_stage=project.current_stage" not in src, "current_stage 应已删除"
 
     def test_derive_project_stage_mapping(self):
         from app.extensions.project.service import derive_project_stage
+
         # setup (no chapters) -> 1; outline confirmed (all pending) -> 2
         assert derive_project_stage("draft", []) == 1
         assert derive_project_stage("draft", ["pending", "pending"]) == 2
@@ -129,14 +123,13 @@ class TestWriteChapterEnum:
         for tool in mcp.TOOLS:
             if tool.name == "write_chapter":
                 status_schema = tool.inputSchema["properties"]["status"]
-                assert status_schema["enum"] == ["pending", "draft", "reviewing"], \
-                    f"enum 应为 [pending,draft,reviewing]，实际 {status_schema['enum']}"
+                assert status_schema["enum"] == ["pending", "draft", "reviewing"], f"enum 应为 [pending,draft,reviewing]，实际 {status_schema['enum']}"
 
     def test_handler_whitelist(self):
         from app.extensions.project.mcp import _handle_write_chapter
+
         src = inspect.getsource(_handle_write_chapter)
         # EAI-CUSTOM: canonical whitelist (ADR 2026-08-02 P3) — agent can start
         # writing (draft) and submit for review (reviewing); approved stays
         # agent-forbidden to prevent self-approval.
-        assert "_VALID_WRITE_STATUSES = {\"pending\", \"draft\", \"reviewing\"}" in src, \
-            "MCP 写白名单应为 {pending, draft, reviewing}（approved 不得出现）"
+        assert '_VALID_WRITE_STATUSES = {"pending", "draft", "reviewing"}' in src, "MCP 写白名单应为 {pending, draft, reviewing}（approved 不得出现）"

@@ -5,9 +5,8 @@ and separation of concerns.
 """
 
 import uuid
-from datetime import datetime
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import PhaseReview
@@ -22,12 +21,7 @@ async def assign_reviews(
 ) -> list[PhaseReviewOut]:
     """Create review assignments, replacing existing pending ones for the phase node."""
     # Delete existing pending assignments
-    await db.execute(
-        PhaseReview.__table__.delete()
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.phase_node == phase_node)
-        .where(PhaseReview.status == "pending")
-    )
+    await db.execute(PhaseReview.__table__.delete().where(PhaseReview.project_id == project_id).where(PhaseReview.phase_node == phase_node).where(PhaseReview.status == "pending"))
 
     reviews = []
     for item in assignments:
@@ -69,11 +63,7 @@ async def submit_action(
     await db.refresh(review)
 
     # Check if all reviews for this phase node are done
-    result = await db.execute(
-        select(PhaseReview)
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.phase_node == review.phase_node)
-    )
+    result = await db.execute(select(PhaseReview).where(PhaseReview.project_id == project_id).where(PhaseReview.phase_node == review.phase_node))
     all_reviews = result.scalars().all()
     all_done = all(r.status in ("approved", "rejected") for r in all_reviews)
 
@@ -91,6 +81,7 @@ async def apply_rejection_rollback(
     Returns the rollback target node ID, or None if no rollback applied.
     """
     from app.extensions.models import ReportProject
+
     from .models import WorkflowDefinition
 
     project = await db.get(ReportProject, project_id)
@@ -119,12 +110,7 @@ async def get_review_status(
     phase_node: str,
 ) -> ReviewStatusResponse:
     """Get aggregated review status for a phase node."""
-    result = await db.execute(
-        select(PhaseReview)
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.phase_node == phase_node)
-        .order_by(PhaseReview.created_at)
-    )
+    result = await db.execute(select(PhaseReview).where(PhaseReview.project_id == project_id).where(PhaseReview.phase_node == phase_node).order_by(PhaseReview.created_at))
     reviews = result.scalars().all()
 
     approved = sum(1 for r in reviews if r.status == "approved")
@@ -148,11 +134,5 @@ async def get_my_pending_reviews(
     user_id: uuid.UUID,
 ) -> list[PhaseReviewOut]:
     """Get current user's pending reviews for a project."""
-    result = await db.execute(
-        select(PhaseReview)
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.reviewer_id == user_id)
-        .where(PhaseReview.status == "pending")
-        .order_by(PhaseReview.created_at.desc())
-    )
+    result = await db.execute(select(PhaseReview).where(PhaseReview.project_id == project_id).where(PhaseReview.reviewer_id == user_id).where(PhaseReview.status == "pending").order_by(PhaseReview.created_at.desc()))
     return [PhaseReviewOut.model_validate(r) for r in result.scalars().all()]

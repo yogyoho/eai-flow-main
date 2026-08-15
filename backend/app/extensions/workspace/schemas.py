@@ -10,7 +10,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 # ── Project ──
 
 
@@ -81,7 +80,7 @@ class CollabSectionOut(BaseModel):
     revision: int
     word_count_target: int
     word_count_current: int
-    children: list["CollabSectionOut"] = Field(default_factory=list)
+    children: list[CollabSectionOut] = Field(default_factory=list)
 
 
 # ── Member ──
@@ -197,6 +196,7 @@ class CollabGateJudge(BaseModel):
 
 class CollabRunSpawn(BaseModel):
     """spawn agent run for a task. agent_name from task assignee or explicit."""
+
     agent_name: str | None = None
     prompt_override: str | None = None
 

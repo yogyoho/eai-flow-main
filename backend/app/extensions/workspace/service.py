@@ -5,12 +5,11 @@ EAI-CUSTOM: 全新模块，零引用 extensions/project/workflow/approval。
 
 from __future__ import annotations
 
-import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select, update as sa_update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.models import AIDocument
@@ -32,7 +31,7 @@ from .tier import recompute_tier
 def _now() -> datetime:
     # EAI-CUSTOM: DB 列是 TIMESTAMP WITHOUT TIME ZONE，须返回 naive UTC
     # （asyncpg 拒绝 offset-aware/naive 混用，见 bug-710）
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 async def _get_project_or_404(db: AsyncSession, project_id: UUID) -> CollabProject:
@@ -68,14 +67,16 @@ async def log_activity(
     target: str | None = None,
     detail: dict | None = None,
 ) -> None:
-    db.add(CollabActivity(
-        project_id=project_id,
-        actor_type=actor_type,
-        actor_id=actor_id,
-        action=action,
-        target=target,
-        detail=detail,
-    ))
+    db.add(
+        CollabActivity(
+            project_id=project_id,
+            actor_type=actor_type,
+            actor_id=actor_id,
+            action=action,
+            target=target,
+            detail=detail,
+        )
+    )
 
 
 # ── Project CRUD ──
@@ -95,12 +96,14 @@ async def create_project(db: AsyncSession, *, name: str, kind: str, user_id: UUI
     await db.flush()
 
     # owner 自动成为成员（owner 角色）
-    db.add(CollabMember(
-        project_id=project.id,
-        member_type="human",
-        user_id=user_id,
-        role="owner",
-    ))
+    db.add(
+        CollabMember(
+            project_id=project.id,
+            member_type="human",
+            user_id=user_id,
+            role="owner",
+        )
+    )
     await db.flush()
     await db.refresh(project)  # 加载 server defaults（created_at/updated_at）
     await log_activity(db, project.id, "project_created", actor_id=str(user_id))
@@ -108,12 +111,7 @@ async def create_project(db: AsyncSession, *, name: str, kind: str, user_id: UUI
 
 
 async def list_projects(db: AsyncSession, *, user_id: UUID) -> list[CollabProject]:
-    stmt = (
-        select(CollabProject)
-        .join(CollabMember, CollabMember.project_id == CollabProject.id)
-        .where(CollabMember.member_type == "human", CollabMember.user_id == user_id)
-        .order_by(CollabProject.updated_at.desc())
-    )
+    stmt = select(CollabProject).join(CollabMember, CollabMember.project_id == CollabProject.id).where(CollabMember.member_type == "human", CollabMember.user_id == user_id).order_by(CollabProject.updated_at.desc())
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
@@ -160,13 +158,15 @@ async def release_project(db: AsyncSession, project_id: UUID, user_id: UUID) -> 
     participants = [{"type": "human", "user_id": str(project.owner_id), "weight": 1.0}] if project.owner_id else []
     if owner_member and owner_member.user_id:
         participants = [{"type": "human", "user_id": str(owner_member.user_id), "weight": 1.0}]
-    db.add(CollabGate(
-        project_id=project_id,
-        scope="project_release",
-        state="pending",
-        mode="all_must_approve",
-        participants=participants,
-    ))
+    db.add(
+        CollabGate(
+            project_id=project_id,
+            scope="project_release",
+            state="pending",
+            mode="all_must_approve",
+            participants=participants,
+        )
+    )
     await db.flush()
     await db.refresh(project)  # 加载 server defaults，避免 MissingGreenlet
     await log_activity(db, project_id, "project_released", actor_id=str(user_id))
@@ -231,12 +231,7 @@ async def materialize_sections_from_doc(db: AsyncSession, project: CollabProject
 async def create_section(db: AsyncSession, project_id: UUID, *, title: str, parent_id: UUID | None = None, word_count_target: int = 3000, user_id: UUID) -> CollabSection:
     project = await _get_project_or_404(db, project_id)
     level = 2 if parent_id else 1
-    sort_order = await db.scalar(
-        select(CollabSection.sort_order)
-        .where(CollabSection.project_id == project_id, CollabSection.parent_id == parent_id)
-        .order_by(CollabSection.sort_order.desc())
-        .limit(1)
-    ) or 0
+    sort_order = await db.scalar(select(CollabSection.sort_order).where(CollabSection.project_id == project_id, CollabSection.parent_id == parent_id).order_by(CollabSection.sort_order.desc()).limit(1)) or 0
     sec = CollabSection(
         project_id=project_id,
         parent_id=parent_id,
@@ -255,9 +250,7 @@ async def create_section(db: AsyncSession, project_id: UUID, *, title: str, pare
 
 
 async def list_sections(db: AsyncSession, project_id: UUID) -> list[CollabSection]:
-    result = await db.execute(
-        select(CollabSection).where(CollabSection.project_id == project_id).order_by(CollabSection.sort_order)
-    )
+    result = await db.execute(select(CollabSection).where(CollabSection.project_id == project_id).order_by(CollabSection.sort_order))
     return list(result.scalars().all())
 
 
@@ -316,9 +309,7 @@ async def update_member_role(db: AsyncSession, project_id: UUID, member_id: UUID
 
 
 async def list_members(db: AsyncSession, project_id: UUID) -> list[CollabMember]:
-    result = await db.execute(
-        select(CollabMember).where(CollabMember.project_id == project_id).order_by(CollabMember.joined_at)
-    )
+    result = await db.execute(select(CollabMember).where(CollabMember.project_id == project_id).order_by(CollabMember.joined_at))
     return list(result.scalars().all())
 
 
@@ -326,10 +317,16 @@ async def list_members(db: AsyncSession, project_id: UUID) -> list[CollabMember]
 
 
 async def create_task(
-    db: AsyncSession, project_id: UUID, *,
-    title: str, kind: str, user_id: UUID,
-    section_ref: UUID | None = None, doc_id: UUID | None = None,
-    context: dict | None = None, due_at: datetime | None = None,
+    db: AsyncSession,
+    project_id: UUID,
+    *,
+    title: str,
+    kind: str,
+    user_id: UUID,
+    section_ref: UUID | None = None,
+    doc_id: UUID | None = None,
+    context: dict | None = None,
+    due_at: datetime | None = None,
 ) -> CollabTask:
     await _get_project_or_404(db, project_id)
     task = CollabTask(
@@ -352,8 +349,14 @@ async def create_task(
 
 
 async def assign_task(
-    db: AsyncSession, project_id: UUID, task_id: UUID, *,
-    assignee_type: str, user_id: UUID | None = None, agent_name: str | None = None, actor: UUID,
+    db: AsyncSession,
+    project_id: UUID,
+    task_id: UUID,
+    *,
+    assignee_type: str,
+    user_id: UUID | None = None,
+    agent_name: str | None = None,
+    actor: UUID,
 ) -> CollabTask:
     task = await db.get(CollabTask, task_id)
     if not task or task.project_id != project_id:
@@ -374,24 +377,23 @@ async def assign_task(
         participants.append({"type": "agent", "agent_name": agent_name, "weight": 1.0})
     if project.owner_id:
         participants.append({"type": "human", "user_id": str(project.owner_id), "weight": 1.0})
-    db.add(CollabGate(
-        project_id=project_id,
-        task_id=task_id,
-        scope="task",
-        state="pending",
-        mode="all_must_approve",
-        participants=participants,
-    ))
+    db.add(
+        CollabGate(
+            project_id=project_id,
+            task_id=task_id,
+            scope="task",
+            state="pending",
+            mode="all_must_approve",
+            participants=participants,
+        )
+    )
     await db.flush()
-    await log_activity(db, project_id, "task_assigned", actor_id=str(actor), target=str(task.id),
-                       detail={"assignee_type": assignee_type})
+    await log_activity(db, project_id, "task_assigned", actor_id=str(actor), target=str(task.id), detail={"assignee_type": assignee_type})
     return task
 
 
 async def list_tasks(db: AsyncSession, project_id: UUID) -> list[CollabTask]:
-    result = await db.execute(
-        select(CollabTask).where(CollabTask.project_id == project_id).order_by(CollabTask.updated_at.desc())
-    )
+    result = await db.execute(select(CollabTask).where(CollabTask.project_id == project_id).order_by(CollabTask.updated_at.desc()))
     return list(result.scalars().all())
 
 
@@ -424,8 +426,7 @@ async def record_handoff(db: AsyncSession, project_id: UUID, task_id: UUID, *, s
         task.status = "in_progress"
     await db.flush()
     await db.refresh(task)
-    await log_activity(db, project_id, "handoff_received", actor_id=actor or "system",
-                       target=str(task_id), detail={"state": state})
+    await log_activity(db, project_id, "handoff_received", actor_id=actor or "system", target=str(task_id), detail={"state": state})
     return task
 
 
@@ -433,9 +434,7 @@ async def record_handoff(db: AsyncSession, project_id: UUID, task_id: UUID, *, s
 
 
 async def list_gates(db: AsyncSession, project_id: UUID) -> list[CollabGate]:
-    result = await db.execute(
-        select(CollabGate).where(CollabGate.project_id == project_id).order_by(CollabGate.created_at)
-    )
+    result = await db.execute(select(CollabGate).where(CollabGate.project_id == project_id).order_by(CollabGate.created_at))
     gates = list(result.scalars().all())
     # 惰性 deadline 检查
     for g in gates:
@@ -445,12 +444,18 @@ async def list_gates(db: AsyncSession, project_id: UUID) -> list[CollabGate]:
 
 async def apply_deadline_inline(gate: CollabGate) -> None:
     from .gate import apply_deadline
+
     await apply_deadline(gate)
 
 
 async def judge_gate(
-    db: AsyncSession, project_id: UUID, gate_id: UUID, *,
-    action: str, comment: str | None, user_id: UUID,
+    db: AsyncSession,
+    project_id: UUID,
+    gate_id: UUID,
+    *,
+    action: str,
+    comment: str | None,
+    user_id: UUID,
 ) -> CollabGate:
     gate = await db.get(CollabGate, gate_id)
     if not gate or gate.project_id != project_id:
@@ -460,13 +465,13 @@ async def judge_gate(
         raise HTTPException(status_code=400, detail="此闸门已处理")
 
     # 校验判定者是人类参与者
-    from .gate import resolve_judgments
     human_ids = {p.get("user_id") for p in (gate.participants or []) if p.get("type") == "human" and p.get("user_id")}
     if str(user_id) not in human_ids:
         raise HTTPException(status_code=403, detail="您不是此闸门的指定判定人")
 
     human_judgments = [{"reviewer_id": str(user_id), "status": action, "comment": comment}]
     from .gate import evaluate
+
     result = evaluate(gate, human_judgments)
     if action == "reject":
         gate.state = "rejected"
@@ -476,9 +481,15 @@ async def judge_gate(
         gate.state = "approved"
         gate.resolved_by = user_id
         gate.resolved_at = _now()
-    gate.audit = list(gate.audit or []) + [{
-        "at": _now().isoformat(), "by": str(user_id), "action": action, "comment": comment, "gate_result": result.value,
-    }]
+    gate.audit = list(gate.audit or []) + [
+        {
+            "at": _now().isoformat(),
+            "by": str(user_id),
+            "action": action,
+            "comment": comment,
+            "gate_result": result.value,
+        }
+    ]
     await db.flush()
 
     # 结果耦合：PASS → task done；REJECT → task blocked
@@ -490,8 +501,7 @@ async def judge_gate(
             elif gate.state == "rejected":
                 task.status = "blocked"
             await db.flush()
-    await log_activity(db, project_id, "gate_judged", actor_id=str(user_id), target=str(gate_id),
-                       detail={"action": action})
+    await log_activity(db, project_id, "gate_judged", actor_id=str(user_id), target=str(gate_id), detail={"action": action})
     return gate
 
 
@@ -517,8 +527,14 @@ async def reopen_gate(db: AsyncSession, project_id: UUID, gate_id: UUID, *, user
 
 
 async def create_agent_run(
-    db: AsyncSession, project_id: UUID, task_id: UUID, *,
-    agent_name: str, thread_id: str, run_id: str, prompt_snapshot: str,
+    db: AsyncSession,
+    project_id: UUID,
+    task_id: UUID,
+    *,
+    agent_name: str,
+    thread_id: str,
+    run_id: str,
+    prompt_snapshot: str,
 ) -> CollabAgentRun:
     run = CollabAgentRun(
         task_id=task_id,
@@ -585,14 +601,14 @@ async def publish_doc(db: AsyncSession, project_id: UUID, *, user_id: UUID) -> d
                 skipped.append(str(sec.id))
 
     await db.flush()
-    await log_activity(db, project_id, "doc_published", actor_id=str(user_id),
-                       detail={"synced": len(synced), "skipped": len(skipped)})
+    await log_activity(db, project_id, "doc_published", actor_id=str(user_id), detail={"synced": len(synced), "skipped": len(skipped)})
     return {"synced": synced, "skipped": skipped}
 
 
 async def _latest_snapshot_text(db: AsyncSession, doc_id: UUID) -> str | None:
     """取 collab_versions 最新 snapshot_text。"""
     from sqlalchemy import text
+
     row = await db.execute(
         text("SELECT snapshot_text FROM collab_versions WHERE doc_id = :doc_id ORDER BY version DESC LIMIT 1"),
         {"doc_id": str(doc_id)},
@@ -605,7 +621,5 @@ async def _latest_snapshot_text(db: AsyncSession, doc_id: UUID) -> str | None:
 
 
 async def list_activities(db: AsyncSession, project_id: UUID, *, limit: int = 50) -> list[CollabActivity]:
-    result = await db.execute(
-        select(CollabActivity).where(CollabActivity.project_id == project_id).order_by(CollabActivity.created_at.desc()).limit(limit)
-    )
+    result = await db.execute(select(CollabActivity).where(CollabActivity.project_id == project_id).order_by(CollabActivity.created_at.desc()).limit(limit))
     return list(result.scalars().all())

@@ -18,8 +18,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.extensions.settings.service import SystemConfigService
 from app.extensions.database import get_session_factory
+from app.extensions.settings.service import SystemConfigService
 from deerflow.config.app_config import get_app_config
 
 logger = logging.getLogger(__name__)
@@ -91,12 +91,7 @@ def _build_system_prompt(has_tools: bool) -> str:
             "- Do NOT output any explanatory text. Call the tool directly.\n"
             "- Always respond in the same language as the user's input."
         )
-    return (
-        "你是一个嵌入在文档编辑器中的AI写作助手。\n"
-        "当用户要求修改文本时，只输出修改后的文本，不要任何解释或前缀。\n"
-        "当用户要求头脑风暴时，输出清晰的列表。\n"
-        "始终使用与用户输入相同的语言回复。"
-    )
+    return "你是一个嵌入在文档编辑器中的AI写作助手。\n当用户要求修改文本时，只输出修改后的文本，不要任何解释或前缀。\n当用户要求头脑风暴时，输出清晰的列表。\n始终使用与用户输入相同的语言回复。"
 
 
 def _to_chat_messages(raw: list[dict[str, Any]], has_tools: bool) -> list[dict[str, Any]]:
@@ -114,11 +109,7 @@ def _to_chat_messages(raw: list[dict[str, Any]], has_tools: bool) -> list[dict[s
         if isinstance(msg.get("content"), str):
             content = msg["content"]
         elif isinstance(msg.get("parts"), list):
-            content = "\n".join(
-                str(p.get("text", ""))
-                for p in msg["parts"]
-                if isinstance(p, dict) and p.get("type") == "text"
-            )
+            content = "\n".join(str(p.get("text", "")) for p in msg["parts"] if isinstance(p, dict) and p.get("type") == "text")
         elif msg.get("content"):
             content = json.dumps(msg["content"])
 
@@ -157,6 +148,7 @@ def _to_openai_tools(tool_defs: dict[str, Any] | None) -> list[dict[str, Any]] |
 
 
 # ── SSE streaming helpers ──────────────────────────────────────────────────
+
 
 async def _stream_text(upstream: httpx.Response) -> str:
     """Consume the upstream SSE stream and yield AI SDK UI text chunks.

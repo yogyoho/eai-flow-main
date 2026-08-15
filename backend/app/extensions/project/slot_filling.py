@@ -91,19 +91,23 @@ async def check_phase_readiness(
                 assigned_members.append({"user_id": str(member.user_id), "username": username})
 
         filled_count = len(assigned_members)
-        filled_roles.append({
-            "role_key": role_key,
-            "required_count": required_count,
-            "filled_count": filled_count,
-            "members": assigned_members,
-        })
+        filled_roles.append(
+            {
+                "role_key": role_key,
+                "required_count": required_count,
+                "filled_count": filled_count,
+                "members": assigned_members,
+            }
+        )
 
         if filled_count < required_count:
-            missing_roles.append({
-                "role_key": role_key,
-                "count": required_count - filled_count,
-                "label": role_label,
-            })
+            missing_roles.append(
+                {
+                    "role_key": role_key,
+                    "count": required_count - filled_count,
+                    "label": role_label,
+                }
+            )
 
     # 5. Suggest members from the project who don't have duties for this phase yet
     assigned_user_ids = set()

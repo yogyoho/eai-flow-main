@@ -1,11 +1,13 @@
 """测试 PermissionRegistry 的 overlay 加载、project_roles 和双文件热重载功能。"""
+
 from app.extensions.auth.registry import PermissionRegistry
 
 
 def test_overlay_merges_roles(tmp_path):
     """验证 overlay 文件合并角色：覆盖内置角色、添加自定义角色、禁用角色。"""
     main_yaml = tmp_path / "permissions.yaml"
-    main_yaml.write_text("""
+    main_yaml.write_text(
+        """
 version: 3
 modules: {}
 roles:
@@ -19,9 +21,12 @@ roles:
     level: 20
     permissions: ["doc:read"]
     data_scopes: []
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     overlay_yaml = tmp_path / "roles_custom.yaml"
-    overlay_yaml.write_text("""
+    overlay_yaml.write_text(
+        """
 roles:
   builtin:
     permissions: ["kb:read", "kb:create"]
@@ -32,7 +37,9 @@ roles:
     nav: ["nav:knowledge"]
     data_scopes: ["knowledge_dept"]
 disabled_roles: ["shared"]
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg = PermissionRegistry(str(main_yaml), overlay_path=str(overlay_yaml))
 
     # overlay 覆盖内置角色的权限
@@ -49,14 +56,17 @@ disabled_roles: ["shared"]
 def test_project_roles_parsed(tmp_path):
     """验证 permissions.yaml 中的 project_roles 字段被正确解析。"""
     main_yaml = tmp_path / "permissions.yaml"
-    main_yaml.write_text("""
+    main_yaml.write_text(
+        """
 version: 3
 modules: {}
 roles: {}
 project_roles:
   owner: [project:edit, project:delete]
   writer: [chapter:write_own]
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg = PermissionRegistry(str(main_yaml))
     assert reg.get_project_roles()["owner"] == ["project:edit", "project:delete"]
     assert reg.get_project_roles()["writer"] == ["chapter:write_own"]
@@ -69,7 +79,8 @@ def test_is_admin_wildcard_role(tmp_path):
     对齐：resolve_role_permissions 展开 #inherit 后，继承来的通配 \"*\" 同样被覆盖。
     """
     main_yaml = tmp_path / "permissions.yaml"
-    main_yaml.write_text("""
+    main_yaml.write_text(
+        """
 version: 3
 modules: {}
 roles:
@@ -79,7 +90,9 @@ roles:
     permissions: ["*"]
     nav: []
     data_scopes: []
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
     resolved = reg.resolve_role_permissions("power")
     is_admin = bool((reg.get_role_defaults("power") or {}).get("is_system")) or "*" in resolved
@@ -89,7 +102,8 @@ roles:
 def test_is_admin_system_flag_without_wildcard(tmp_path):
     """验证 /me 的 is_admin 判定：is_system=true 但无通配时同样视为 admin。"""
     main_yaml = tmp_path / "permissions.yaml"
-    main_yaml.write_text("""
+    main_yaml.write_text(
+        """
 version: 3
 modules: {}
 roles:
@@ -99,7 +113,9 @@ roles:
     permissions: ["system:access"]
     nav: []
     data_scopes: []
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
     resolved = reg.resolve_role_permissions("super")
     is_admin = bool((reg.get_role_defaults("super") or {}).get("is_system")) or "*" in resolved
@@ -109,7 +125,8 @@ roles:
 def test_is_admin_false_for_regular_role(tmp_path):
     """验证 /me 的 is_admin 判定：普通角色（is_system=false, 无通配）不算 admin。"""
     main_yaml = tmp_path / "permissions.yaml"
-    main_yaml.write_text("""
+    main_yaml.write_text(
+        """
 version: 3
 modules: {}
 roles:
@@ -119,7 +136,9 @@ roles:
     permissions: ["kb:read", "doc:read"]
     nav: []
     data_scopes: []
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
     resolved = reg.resolve_role_permissions("user")
     is_admin = bool((reg.get_role_defaults("user") or {}).get("is_system")) or "*" in resolved
@@ -129,7 +148,8 @@ roles:
 def test_is_admin_inherited_wildcard(tmp_path):
     """验证 /me 的 is_admin 判定：#inherit 继承来的通配 \"*\" 同样视为 admin。"""
     main_yaml = tmp_path / "permissions.yaml"
-    main_yaml.write_text("""
+    main_yaml.write_text(
+        """
 version: 3
 modules: {}
 roles:
@@ -145,7 +165,9 @@ roles:
     permissions: ["#inherit:base_admin", "doc:read"]
     nav: []
     data_scopes: []
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg = PermissionRegistry(str(main_yaml), overlay_path=str(tmp_path / "none.yaml"))
     resolved = reg.resolve_role_permissions("power")
     assert "*" in resolved
@@ -160,7 +182,8 @@ def test_disabled_roles_cleared_on_reload(tmp_path):
     调用 reload() 后，A 不应再处于禁用状态。
     """
     main_yaml = tmp_path / "permissions.yaml"
-    main_yaml.write_text("""
+    main_yaml.write_text(
+        """
 version: 3
 modules: {}
 roles:
@@ -172,11 +195,16 @@ roles:
     display_name: "Beta"
     level: 20
     permissions: ["b:read"]
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     overlay_yaml = tmp_path / "roles_custom.yaml"
-    overlay_yaml.write_text("""
+    overlay_yaml.write_text(
+        """
 disabled_roles: ["alpha", "beta"]
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg = PermissionRegistry(str(main_yaml), overlay_path=str(overlay_yaml))
 
     # 首次加载：两个角色都被禁用
@@ -186,9 +214,12 @@ disabled_roles: ["alpha", "beta"]
     assert "beta" not in reg.list_role_codes()
 
     # 修改 overlay：只禁用 beta，alpha 恢复
-    overlay_yaml.write_text("""
+    overlay_yaml.write_text(
+        """
 disabled_roles: ["beta"]
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     reg.reload()
 
     # alpha 应恢复可见

@@ -1,4 +1,5 @@
 """Permission registry - loads permissions.yaml, serves permission metadata."""
+
 from __future__ import annotations
 
 import logging
@@ -109,7 +110,7 @@ class PermissionRegistry:
         self._parse_project_roles(data.get("project_roles") or {})
 
         # 解析主文件中的 disabled_roles
-        for code in (data.get("disabled_roles") or []):
+        for code in data.get("disabled_roles") or []:
             self._role_defaults.pop(code, None)
             self._disabled_roles.add(code)
 
@@ -138,7 +139,7 @@ class PermissionRegistry:
             pages: list[PageDef] = []
             for p in module_data.get("pages") or []:
                 page_ops: list[PermissionPoint] = []
-                for op in (p.get("operations") or []):
+                for op in p.get("operations") or []:
                     perm = PermissionPoint(
                         id=op["id"],
                         display_name=op.get("display_name", op["id"]),
@@ -152,11 +153,13 @@ class PermissionRegistry:
                     if perm.admin_only:
                         self._admin_only.append(perm)
 
-                pages.append(PageDef(
-                    id=p["id"],
-                    display_name=p.get("display_name", p["id"]),
-                    operations=page_ops,
-                ))
+                pages.append(
+                    PageDef(
+                        id=p["id"],
+                        display_name=p.get("display_name", p["id"]),
+                        operations=page_ops,
+                    )
+                )
 
             # Parse module-level operations (v2) or permissions (v1) — backward compat
             ops_data = module_data.get("operations") or module_data.get("permissions") or []
@@ -176,12 +179,14 @@ class PermissionRegistry:
             # Parse data_scopes (same in v1 and v2)
             data_scopes: list[DataScope] = []
             for ds in module_data.get("data_scopes") or []:
-                data_scopes.append(DataScope(
-                    id=ds["id"],
-                    display_name=ds.get("display_name", ds["id"]),
-                    rule_template=ds.get("rule_template") or {},
-                    module=module_key,
-                ))
+                data_scopes.append(
+                    DataScope(
+                        id=ds["id"],
+                        display_name=ds.get("display_name", ds["id"]),
+                        rule_template=ds.get("rule_template") or {},
+                        module=module_key,
+                    )
+                )
 
             nm = NavModule(
                 key=module_key,
@@ -282,9 +287,7 @@ class PermissionRegistry:
 
     def _parse_project_roles(self, project_roles_data: dict) -> None:
         """解析项目级角色（project_roles）配置。"""
-        self._project_roles = {
-            code: list(perms or []) for code, perms in project_roles_data.items()
-        }
+        self._project_roles = {code: list(perms or []) for code, perms in project_roles_data.items()}
 
     def _apply_overlay(self, overlay_data: dict) -> None:
         """应用角色自定义覆盖：合并/覆盖角色定义，处理禁用角色列表。"""
@@ -300,7 +303,7 @@ class PermissionRegistry:
                 "permissions": list(role_data.get("permissions") or []),
                 "data_scopes": list(role_data.get("data_scopes") or []),
             }
-        for code in (overlay_data.get("disabled_roles") or []):
+        for code in overlay_data.get("disabled_roles") or []:
             self._role_defaults.pop(code, None)
             self._disabled_roles.add(code)
 

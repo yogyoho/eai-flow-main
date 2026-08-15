@@ -142,6 +142,7 @@ def _validate_agent_storage(config: AppConfig) -> None:
             workers,
         )
 
+
 if TYPE_CHECKING:
     from app.gateway.auth.local_provider import LocalAuthProvider
     from app.gateway.auth.repositories.sqlite import SQLiteUserRepository

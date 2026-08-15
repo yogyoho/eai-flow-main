@@ -6,7 +6,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 # ── Enums ──
 
 # Report types are now managed via the business_dictionaries table (category="report_type")
@@ -129,15 +128,13 @@ class MemberWithDuties(BaseModel):
                 raise ValueError(f"phase_duties[{node_id!r}] must be a dict, got {type(duties).__name__}")
             duty = duties.get("duty")
             if duty is not None and duty not in VALID_DUTY_KEYS:
-                raise ValueError(
-                    f"phase_duties[{node_id!r}].duty = {duty!r} is not valid. "
-                    f"Expected one of: {sorted(VALID_DUTY_KEYS)}"
-                )
+                raise ValueError(f"phase_duties[{node_id!r}].duty = {duty!r} is not valid. Expected one of: {sorted(VALID_DUTY_KEYS)}")
         return v
 
 
 class ProjectCopyFrom(BaseModel):
     """Request to create a new project by copying from an existing one."""
+
     name: str = Field(..., min_length=1, max_length=255)
     source_project_id: UUID
     copy_members: bool = True
@@ -278,6 +275,7 @@ class ApprovalStatusOut(BaseModel):
 
 class ProjectPermissionsOut(BaseModel):
     """User's effective permissions within a project."""
+
     role: str | None = None
     permissions: list[str] = Field(default_factory=list)
     phase_duties: dict | None = None

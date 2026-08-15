@@ -22,8 +22,6 @@ from deerflow.community.aio_sandbox.aio_sandbox_provider import SandboxBeingDest
 from deerflow.community.aio_sandbox.ownership import compute_lease_ttl
 from deerflow.community.aio_sandbox.sandbox_info import SandboxInfo
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI docker host.docker.internal env differs from upstream localhost (EAI-CUSTOM skip 2026-08-15)")
 
 

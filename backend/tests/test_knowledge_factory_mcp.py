@@ -55,9 +55,11 @@ def mock_db():
 @pytest.fixture
 def mock_run_in_db():
     """A fake _run_in_db that calls the closure synchronously with a mock db."""
+
     async def _fake(func):
         db = AsyncMock()
         return await func(db)
+
     return _fake
 
 
@@ -85,9 +87,7 @@ class TestListTemplatesNameFilter:
 
         mock_db.execute.side_effect = [mock_count, mock_result]
 
-        templates, total = await TemplateService.list_templates(
-            mock_db, name="消防设计", status="published"
-        )
+        templates, total = await TemplateService.list_templates(mock_db, name="消防设计", status="published")
 
         assert total == 1
         assert len(templates) == 1
@@ -109,9 +109,7 @@ class TestListTemplatesNameFilter:
 
         mock_db.execute.side_effect = [mock_count, mock_result]
 
-        templates, total = await TemplateService.list_templates(
-            mock_db, name="不存在的模板名称xyz"
-        )
+        templates, total = await TemplateService.list_templates(mock_db, name="不存在的模板名称xyz")
 
         assert total == 0
         assert templates == []
@@ -128,9 +126,7 @@ class TestListTemplatesNameFilter:
 
         mock_db.execute.side_effect = [mock_count, mock_result]
 
-        templates, total = await TemplateService.list_templates(
-            mock_db, domain="env", name="消防", status="published,draft", page=2, limit=10
-        )
+        templates, total = await TemplateService.list_templates(mock_db, domain="env", name="消防", status="published,draft", page=2, limit=10)
 
         assert total == 2
         # Verify the SQL contains all filter clauses
@@ -158,9 +154,7 @@ class TestKfResolveTemplate:
         tid = str(uuid4())
 
         # Patch TemplateService where it's actually imported (service.py level)
-        with patch(
-            "app.extensions.knowledge_factory.service.TemplateService"
-        ) as mock_svc:
+        with patch("app.extensions.knowledge_factory.service.TemplateService") as mock_svc:
             # Mock to_template_document return
             mock_doc = MagicMock()
             mock_doc.model_dump.return_value = {
@@ -214,8 +208,7 @@ class TestKfResolveTemplate:
         )
 
         async def _fake_run_in_db(func):
-            return {"found": False, "reason": "no_template_found",
-                    "suggestion": "请先通过知识工厂抽取该领域的报告模板"}
+            return {"found": False, "reason": "no_template_found", "suggestion": "请先通过知识工厂抽取该领域的报告模板"}
 
         result = await handle_kf_resolve_template(
             {"domain_keywords": ["完全不存在的领域xyz"]},
@@ -234,8 +227,7 @@ class TestKfResolveTemplate:
         )
 
         async def _fake_run_in_db(func):
-            return {"found": False, "reason": "low_quality",
-                    "suggestion": "存在模板但完整度评分低于阈值(90)，建议优化模板后再生成"}
+            return {"found": False, "reason": "low_quality", "suggestion": "存在模板但完整度评分低于阈值(90)，建议优化模板后再生成"}
 
         result = await handle_kf_resolve_template(
             {"domain_keywords": ["消防设计专篇"], "min_completeness_score": 90},
@@ -263,8 +255,7 @@ class TestKfResolveTemplate:
         async def _fake_run_in_db(func):
             nonlocal call_count
             call_count += 1
-            return {"found": False, "reason": "no_template_found",
-                    "suggestion": "请先通过知识工厂抽取该领域的报告模板"}
+            return {"found": False, "reason": "no_template_found", "suggestion": "请先通过知识工厂抽取该领域的报告模板"}
 
         result = await handle_kf_resolve_template({"domain_keywords": []}, _fake_run_in_db)
         assert call_count == 0, "空 domain_keywords 不应触发 DB 查询（loose-match 兜底会选错模板）"
@@ -306,9 +297,7 @@ class TestKfGetTemplate:
             handle_kf_get_template,
         )
 
-        result = await handle_kf_get_template(
-            {"template_id": "not-a-valid-uuid"}, mock_run_in_db
-        )
+        result = await handle_kf_get_template({"template_id": "not-a-valid-uuid"}, mock_run_in_db)
 
         data = _parse_json_result(result)
         assert data["found"] is False
@@ -337,8 +326,7 @@ class TestKfGetTemplate:
         tid = str(uuid4())
 
         async def _fake_run_in_db(func):
-            return {"found": False, "reason": "template_not_found",
-                    "detail": f"模板 {tid} 不存在"}
+            return {"found": False, "reason": "template_not_found", "detail": f"模板 {tid} 不存在"}
 
         result = await handle_kf_get_template({"template_id": tid}, _fake_run_in_db)
 
@@ -364,13 +352,7 @@ class TestKfQueryTemplates:
 
         async def _fake_run_in_db(func):
             return {
-                "templates": [
-                    {"id": str(uuid4()), "domain": "env", "name": "消防模板",
-                     "version": "v1.0", "status": "published",
-                     "completeness_score": 80,
-                     "created_at": "2026-01-01T00:00:00",
-                     "updated_at": "2026-06-01T00:00:00"}
-                ],
+                "templates": [{"id": str(uuid4()), "domain": "env", "name": "消防模板", "version": "v1.0", "status": "published", "completeness_score": 80, "created_at": "2026-01-01T00:00:00", "updated_at": "2026-06-01T00:00:00"}],
                 "total": 1,
             }
 
@@ -418,11 +400,7 @@ class TestKfListDomains:
 
         async def _fake_run_in_db(func):
             return {
-                "domains": [
-                    {"id": "env", "name": "环境影响评价", "industry": "化工",
-                     "report_type": "消防设计专篇", "description": "...",
-                     "parent_domain": None}
-                ],
+                "domains": [{"id": "env", "name": "环境影响评价", "industry": "化工", "report_type": "消防设计专篇", "description": "...", "parent_domain": None}],
                 "total": 1,
             }
 
@@ -482,6 +460,7 @@ class TestRunInDb:
                     "sqlalchemy.ext.asyncio.async_sessionmaker",
                     return_value=lambda **kw: mock_session,
                 ):
+
                     async def _query(db):
                         return {"ok": True}
 
@@ -511,6 +490,7 @@ class TestRunInDb:
                     "sqlalchemy.ext.asyncio.async_sessionmaker",
                     return_value=lambda **kw: mock_session,
                 ):
+
                     async def _query_that_fails(db):
                         raise ValueError("database error")
 
@@ -526,6 +506,7 @@ class TestRunInDb:
         from app.extensions.knowledge_factory.mcp_server.server import _run_in_db
 
         with patch.dict("os.environ", {}, clear=True):
+
             async def _query(db):
                 pass
 
@@ -546,11 +527,13 @@ class TestParseSectionFullExample:
     def test_full_section_example_present(self):
         from app.extensions.knowledge_factory.service import _parse_section
 
-        section = _parse_section({
-            "id": "ch5",
-            "title": "消防设施",
-            "full_section_example": "本项目设计室外消火栓水量30L/s……（≤1500字样例原文摘录）",
-        })
+        section = _parse_section(
+            {
+                "id": "ch5",
+                "title": "消防设施",
+                "full_section_example": "本项目设计室外消火栓水量30L/s……（≤1500字样例原文摘录）",
+            }
+        )
         assert section.full_section_example.startswith("本项目设计室外消火栓")
         # Must survive model_dump() — the serialization path kf_resolve_template returns
         dumped = section.model_dump()
@@ -567,9 +550,11 @@ class TestParseSectionFullExample:
         """Legacy camelCase key maps too (parity with exampleSnippet)."""
         from app.extensions.knowledge_factory.service import _parse_section
 
-        section = _parse_section({
-            "id": "ch2",
-            "title": "概述",
-            "fullSectionExample": "camelCase 摘录",
-        })
+        section = _parse_section(
+            {
+                "id": "ch2",
+                "title": "概述",
+                "fullSectionExample": "camelCase 摘录",
+            }
+        )
         assert section.full_section_example == "camelCase 摘录"

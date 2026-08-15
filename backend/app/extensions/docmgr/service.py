@@ -169,11 +169,7 @@ class AIDocumentService:
             "user_id": AIDocument.user_id,
             "project_id": AIDocument.project_id,
         }
-        stmt = (
-            select(AIDocument)
-            .where(AIDocument.id == doc_id)
-            .where(scope.to_sqlalchemy(AIDocument, column_map))
-        )
+        stmt = select(AIDocument).where(AIDocument.id == doc_id).where(scope.to_sqlalchemy(AIDocument, column_map))
         result = await db.execute(stmt)
         return result.scalar_one_or_none()
 
@@ -192,7 +188,10 @@ class AIDocumentService:
         if data.source_thread_id:
             folder_name = await AIDocumentService._get_thread_title(db, data.source_thread_id)
             folder_id, folder_str = await AIDocumentService._ensure_subfolder(
-                db, user_id, folder_name, project_id,
+                db,
+                user_id,
+                folder_name,
+                project_id,
             )
 
         document = AIDocument(
@@ -457,9 +456,7 @@ class AIDocumentService:
             if meta_db.exists():
                 conn = sqlite3.connect(str(meta_db))
                 try:
-                    rows = conn.execute(
-                        "SELECT thread_id, display_name, created_at FROM threads_meta"
-                    ).fetchall()
+                    rows = conn.execute("SELECT thread_id, display_name, created_at FROM threads_meta").fetchall()
                     for tid, dn, ca in rows:
                         if dn:
                             display_names[tid] = dn
@@ -478,12 +475,14 @@ class AIDocumentService:
             if not (thread_dir / "user-data" / "outputs").is_dir():
                 continue
             tid = thread_dir.name
-            all_threads.append({
-                "thread_id": tid,
-                "thread_dir": thread_dir,
-                "_created_at": thread_created.get(tid, ""),
-                "display_name": display_names.get(tid, ""),
-            })
+            all_threads.append(
+                {
+                    "thread_id": tid,
+                    "thread_dir": thread_dir,
+                    "_created_at": thread_created.get(tid, ""),
+                    "display_name": display_names.get(tid, ""),
+                }
+            )
 
         def _sort_key(t: dict) -> float:
             ca = t.get("_created_at")
@@ -505,7 +504,7 @@ class AIDocumentService:
         all_threads.sort(key=lambda t: (_sort_key(t), t["thread_id"]), reverse=True)
 
         total = len(all_threads)
-        page = all_threads[skip:skip + limit]
+        page = all_threads[skip : skip + limit]
         has_more = skip + limit < total
 
         if not page:
@@ -545,15 +544,17 @@ class AIDocumentService:
                 st = fp.stat()
                 mime, _ = mimetypes.guess_type(fp.name)
                 starred, shared = star_share.get((tid, rel), (False, False))
-                files.append({
-                    "name": fp.name,
-                    "rel_path": rel,
-                    "size": st.st_size,
-                    "mime": mime or "application/octet-stream",
-                    "modified_at": datetime.fromtimestamp(st.st_mtime, tz=UTC),
-                    "starred": starred,
-                    "shared": shared,
-                })
+                files.append(
+                    {
+                        "name": fp.name,
+                        "rel_path": rel,
+                        "size": st.st_size,
+                        "mime": mime or "application/octet-stream",
+                        "modified_at": datetime.fromtimestamp(st.st_mtime, tz=UTC),
+                        "starred": starred,
+                        "shared": shared,
+                    }
+                )
 
             if not files:
                 continue  # 空目录不显示
@@ -568,11 +569,13 @@ class AIDocumentService:
             if not display_name:
                 display_name = tid[:8]
 
-            result.append({
-                "thread_id": tid,
-                "display_name": display_name,
-                "files": files,
-            })
+            result.append(
+                {
+                    "thread_id": tid,
+                    "display_name": display_name,
+                    "files": files,
+                }
+            )
 
         return {"threads": result, "total": total, "has_more": has_more}
 
@@ -584,9 +587,7 @@ class AIDocumentService:
         try:
             from app.extensions.models import ProjectMember
 
-            rows = await db.execute(
-                select(ProjectMember).where(ProjectMember.project_id == project_id)
-            )
+            rows = await db.execute(select(ProjectMember).where(ProjectMember.project_id == project_id))
             return list(rows.scalars().all())
         except Exception:
             return []
@@ -608,9 +609,7 @@ class AIDocumentService:
         try:
             from app.extensions.models import ProjectMember
 
-            rows = await db.execute(
-                select(ProjectMember.thread_id).where(ProjectMember.thread_id.isnot(None))
-            )
+            rows = await db.execute(select(ProjectMember.thread_id).where(ProjectMember.thread_id.isnot(None)))
             return {tid for tid in rows.scalars().all() if tid}
         except Exception:
             return set()
@@ -668,15 +667,17 @@ class AIDocumentService:
                     continue
                 st = fp.stat()
                 mime, _ = mimetypes.guess_type(fp.name)
-                files.append({
-                    "name": fp.name,
-                    "rel_path": rel,
-                    "size": st.st_size,
-                    "mime": mime or "application/octet-stream",
-                    "modified_at": datetime.fromtimestamp(st.st_mtime, tz=UTC),
-                    "member": await _username(getattr(m, "user_id", None)),
-                    "thread_id": tid,
-                })
+                files.append(
+                    {
+                        "name": fp.name,
+                        "rel_path": rel,
+                        "size": st.st_size,
+                        "mime": mime or "application/octet-stream",
+                        "modified_at": datetime.fromtimestamp(st.st_mtime, tz=UTC),
+                        "member": await _username(getattr(m, "user_id", None)),
+                        "thread_id": tid,
+                    }
+                )
 
         files.sort(key=lambda f: f["modified_at"], reverse=True)
         return {"files": files, "total": len(files)}
@@ -738,7 +739,12 @@ class AIDocumentService:
         await asyncio.to_thread(lambda: target.write_text(content, encoding="utf-8"))
         # 保存编辑版本快照（跨用户编辑历史）
         await AIDocumentService.create_project_version(
-            db, project_id, thread_id, rel_path, content, editor_user_id,
+            db,
+            project_id,
+            thread_id,
+            rel_path,
+            content,
+            editor_user_id,
         )
         return await asyncio.to_thread(lambda: target.stat().st_mtime)
 
@@ -789,8 +795,12 @@ class AIDocumentService:
         from app.extensions.models import ProjectDocVersion
 
         version = ProjectDocVersion(
-            project_id=project_id, thread_id=thread_id, rel_path=rel_path,
-            content=content, editor_user_id=editor_user_id, label=label,
+            project_id=project_id,
+            thread_id=thread_id,
+            rel_path=rel_path,
+            content=content,
+            editor_user_id=editor_user_id,
+            label=label,
         )
         db.add(version)
         await db.flush()
@@ -821,16 +831,20 @@ class AIDocumentService:
         from app.extensions.models import ProjectDocVersion
 
         rows = (
-            await db.execute(
-                select(ProjectDocVersion)
-                .where(
-                    ProjectDocVersion.project_id == project_id,
-                    ProjectDocVersion.thread_id == thread_id,
-                    ProjectDocVersion.rel_path == rel_path,
+            (
+                await db.execute(
+                    select(ProjectDocVersion)
+                    .where(
+                        ProjectDocVersion.project_id == project_id,
+                        ProjectDocVersion.thread_id == thread_id,
+                        ProjectDocVersion.rel_path == rel_path,
+                    )
+                    .order_by(ProjectDocVersion.created_at.desc())
                 )
-                .order_by(ProjectDocVersion.created_at.desc())
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [
             {
                 "id": v.id,
@@ -893,59 +907,90 @@ class AIDocumentService:
         if v is None:
             return None
         await AIDocumentService.write_project_output(
-            db, v.project_id, v.thread_id, v.rel_path, v.content, editor_user_id,
+            db,
+            v.project_id,
+            v.thread_id,
+            v.rel_path,
+            v.content,
+            editor_user_id,
         )
         return {"content": v.content, "thread_id": v.thread_id, "rel_path": v.rel_path}
 
     @staticmethod
     async def upsert_personal_star(
-        db: AsyncSession, user_id: UUID, thread_id: str, rel_path: str, starred: bool,
+        db: AsyncSession,
+        user_id: UUID,
+        thread_id: str,
+        rel_path: str,
+        starred: bool,
     ) -> None:
         from sqlalchemy.dialects.postgresql import insert
 
         from app.extensions.models import PersonalDocMeta
 
-        stmt = insert(PersonalDocMeta).values(
-            user_id=user_id, thread_id=thread_id, rel_path=rel_path, is_starred=starred,
-        ).on_conflict_do_update(
-            constraint="uq_personal_meta_user_thread_path",
-            set_={"is_starred": starred, "updated_at": func.now()},
+        stmt = (
+            insert(PersonalDocMeta)
+            .values(
+                user_id=user_id,
+                thread_id=thread_id,
+                rel_path=rel_path,
+                is_starred=starred,
+            )
+            .on_conflict_do_update(
+                constraint="uq_personal_meta_user_thread_path",
+                set_={"is_starred": starred, "updated_at": func.now()},
+            )
         )
         await db.execute(stmt)
         if not starred:
-            row = (await db.execute(
-                select(PersonalDocMeta).where(
-                    PersonalDocMeta.user_id == user_id,
-                    PersonalDocMeta.thread_id == thread_id,
-                    PersonalDocMeta.rel_path == rel_path,
+            row = (
+                await db.execute(
+                    select(PersonalDocMeta).where(
+                        PersonalDocMeta.user_id == user_id,
+                        PersonalDocMeta.thread_id == thread_id,
+                        PersonalDocMeta.rel_path == rel_path,
+                    )
                 )
-            )).scalar_one_or_none()
+            ).scalar_one_or_none()
             if row and not row.is_shared:
                 await db.delete(row)
 
     @staticmethod
     async def upsert_personal_share(
-        db: AsyncSession, user_id: UUID, thread_id: str, rel_path: str, shared: bool,
+        db: AsyncSession,
+        user_id: UUID,
+        thread_id: str,
+        rel_path: str,
+        shared: bool,
     ) -> None:
         from sqlalchemy.dialects.postgresql import insert
 
         from app.extensions.models import PersonalDocMeta
 
-        stmt = insert(PersonalDocMeta).values(
-            user_id=user_id, thread_id=thread_id, rel_path=rel_path, is_shared=shared,
-        ).on_conflict_do_update(
-            constraint="uq_personal_meta_user_thread_path",
-            set_={"is_shared": shared, "updated_at": func.now()},
+        stmt = (
+            insert(PersonalDocMeta)
+            .values(
+                user_id=user_id,
+                thread_id=thread_id,
+                rel_path=rel_path,
+                is_shared=shared,
+            )
+            .on_conflict_do_update(
+                constraint="uq_personal_meta_user_thread_path",
+                set_={"is_shared": shared, "updated_at": func.now()},
+            )
         )
         await db.execute(stmt)
         if not shared:
-            row = (await db.execute(
-                select(PersonalDocMeta).where(
-                    PersonalDocMeta.user_id == user_id,
-                    PersonalDocMeta.thread_id == thread_id,
-                    PersonalDocMeta.rel_path == rel_path,
+            row = (
+                await db.execute(
+                    select(PersonalDocMeta).where(
+                        PersonalDocMeta.user_id == user_id,
+                        PersonalDocMeta.thread_id == thread_id,
+                        PersonalDocMeta.rel_path == rel_path,
+                    )
                 )
-            )).scalar_one_or_none()
+            ).scalar_one_or_none()
             if row and not row.is_starred:
                 await db.delete(row)
 
@@ -953,11 +998,18 @@ class AIDocumentService:
     async def list_starred_personal(db: AsyncSession, user_id: UUID) -> list[dict]:
         from app.extensions.models import PersonalDocMeta
 
-        rows = (await db.execute(
-            select(PersonalDocMeta).where(
-                PersonalDocMeta.user_id == user_id, PersonalDocMeta.is_starred.is_(True),
+        rows = (
+            (
+                await db.execute(
+                    select(PersonalDocMeta).where(
+                        PersonalDocMeta.user_id == user_id,
+                        PersonalDocMeta.is_starred.is_(True),
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         return [{"thread_id": r.thread_id, "rel_path": r.rel_path} for r in rows]
 
     @staticmethod
@@ -1010,7 +1062,11 @@ class AIDocumentService:
         from app.extensions.models import PersonalDocVersion
 
         version = PersonalDocVersion(
-            user_id=user_id, thread_id=thread_id, rel_path=rel_path, content=content, label=label,
+            user_id=user_id,
+            thread_id=thread_id,
+            rel_path=rel_path,
+            content=content,
+            label=label,
         )
         db.add(version)
         await db.flush()
@@ -1041,16 +1097,20 @@ class AIDocumentService:
         from app.extensions.models import PersonalDocVersion
 
         rows = (
-            await db.execute(
-                select(PersonalDocVersion)
-                .where(
-                    PersonalDocVersion.user_id == user_id,
-                    PersonalDocVersion.thread_id == thread_id,
-                    PersonalDocVersion.rel_path == rel_path,
+            (
+                await db.execute(
+                    select(PersonalDocVersion)
+                    .where(
+                        PersonalDocVersion.user_id == user_id,
+                        PersonalDocVersion.thread_id == thread_id,
+                        PersonalDocVersion.rel_path == rel_path,
+                    )
+                    .order_by(PersonalDocVersion.created_at.desc())
                 )
-                .order_by(PersonalDocVersion.created_at.desc())
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         return [
             {
                 "id": v.id,
@@ -1144,7 +1204,10 @@ class AIDocumentService:
         # root so docs are filed into the folder tree — not left homeless. Without
         # this, docs get folder_id=NULL and never appear in 文档空间.
         folder_id, folder_name = await AIDocumentService._ensure_subfolder(
-            db, user_id, folder_name, project_id,
+            db,
+            user_id,
+            folder_name,
+            project_id,
         )
 
         for filepath in sandbox_path.rglob("*"):
@@ -1224,16 +1287,24 @@ class AIDocumentService:
 
         # Find root folder (project or personal)
         if project_id:
-            root_stmt = select(Folder).where(
-                Folder.project_id == project_id,
-                Folder.parent_id.is_(None),
-            ).limit(1)
+            root_stmt = (
+                select(Folder)
+                .where(
+                    Folder.project_id == project_id,
+                    Folder.parent_id.is_(None),
+                )
+                .limit(1)
+            )
         else:
-            root_stmt = select(Folder).where(
-                Folder.owner_id == user_id,
-                Folder.project_id.is_(None),
-                Folder.parent_id.is_(None),
-            ).limit(1)
+            root_stmt = (
+                select(Folder)
+                .where(
+                    Folder.owner_id == user_id,
+                    Folder.project_id.is_(None),
+                    Folder.parent_id.is_(None),
+                )
+                .limit(1)
+            )
 
         root_result = await db.execute(root_stmt)
         root_folder = root_result.scalar_one_or_none()
@@ -1259,10 +1330,14 @@ class AIDocumentService:
                 return None, folder_name
 
         # Find or create subfolder under root
-        sub_stmt = select(Folder).where(
-            Folder.parent_id == root_folder.id,
-            Folder.name == folder_name,
-        ).limit(1)
+        sub_stmt = (
+            select(Folder)
+            .where(
+                Folder.parent_id == root_folder.id,
+                Folder.name == folder_name,
+            )
+            .limit(1)
+        )
         sub_result = await db.execute(sub_stmt)
         sub_folder = sub_result.scalar_one_or_none()
 
@@ -1315,19 +1390,16 @@ class AIDocumentService:
             async with get_db_context() as db:
                 try:
                     # 检查 user_id 是否在 extensions users 表
-                    user_check = await db.execute(
-                        select(User).where(User.id == user_uuid)
-                    )
+                    user_check = await db.execute(select(User).where(User.id == user_uuid))
                     if user_check.scalar_one_or_none() is None:
                         # 回退到 admin 用户
-                        admin_result = await db.execute(
-                            select(User).where(User.email == "admin@eai-flow.com")
-                        )
+                        admin_result = await db.execute(select(User).where(User.email == "admin@eai-flow.com"))
                         admin_user = admin_result.scalar_one_or_none()
                         if admin_user:
                             logger.info(
-                                "sync_outputs_to_docmgr: user %s not in extensions DB, "
-                                "falling back to admin %s", user_id, admin_user.id,
+                                "sync_outputs_to_docmgr: user %s not in extensions DB, falling back to admin %s",
+                                user_id,
+                                admin_user.id,
                             )
                             user_uuid = admin_user.id
                         else:
@@ -1337,7 +1409,10 @@ class AIDocumentService:
                     folder_name = await AIDocumentService._get_thread_title(db, thread_id)
                     project_id = await AIDocumentService._detect_project_from_thread(db, thread_id)
                     folder_id, folder_str = await AIDocumentService._ensure_subfolder(
-                        db, user_uuid, folder_name, project_id,
+                        db,
+                        user_uuid,
+                        folder_name,
+                        project_id,
                     )
 
                     for vpath in virtual_paths:
@@ -1396,12 +1471,15 @@ class AIDocumentService:
         except Exception:
             logger.exception(
                 "sync_outputs_to_docmgr failed (thread=%s, user=%s)",
-                thread_id, user_id,
+                thread_id,
+                user_id,
             )
             return None
 
         logger.info(
             "sync_outputs_to_docmgr: thread=%s synced=%d skipped=%d",
-            thread_id, synced, skipped,
+            thread_id,
+            synced,
+            skipped,
         )
         return {"synced": synced, "skipped": skipped}

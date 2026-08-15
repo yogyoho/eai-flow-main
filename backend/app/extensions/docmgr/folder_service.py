@@ -78,30 +78,30 @@ class FolderService:
         """
         my_project_ids = select(ProjectMember.project_id).where(ProjectMember.user_id == user_id)
         existing_ids = set(
-            (await db.execute(
-                select(Folder.project_id).where(
-                    Folder.project_id.in_(my_project_ids),
-                    Folder.parent_id.is_(None),
+            (
+                await db.execute(
+                    select(Folder.project_id).where(
+                        Folder.project_id.in_(my_project_ids),
+                        Folder.parent_id.is_(None),
+                    )
                 )
-            )).scalars().all()
-        )
-        projects = (
-            await db.execute(
-                select(ReportProject.id, ReportProject.name, ReportProject.created_by)
-                .where(ReportProject.id.in_(my_project_ids))
-                .order_by(ReportProject.created_at.desc())
             )
-        ).all()
+            .scalars()
+            .all()
+        )
+        projects = (await db.execute(select(ReportProject.id, ReportProject.name, ReportProject.created_by).where(ReportProject.id.in_(my_project_ids)).order_by(ReportProject.created_at.desc()))).all()
         missing = [p for p in projects if p.id not in existing_ids]
         if not missing:
             return
         for proj in missing:
-            db.add(Folder(
-                name=proj.name,
-                owner_id=proj.created_by or user_id,
-                project_id=proj.id,
-                parent_id=None,
-            ))
+            db.add(
+                Folder(
+                    name=proj.name,
+                    owner_id=proj.created_by or user_id,
+                    project_id=proj.id,
+                    parent_id=None,
+                )
+            )
         try:
             await db.commit()
         except Exception as exc:  # 并发读树同时创建时容忍唯一约束冲突
@@ -174,12 +174,7 @@ class FolderService:
         folder.doc_count = count_result.scalar() or 0
 
         # Load children
-        child_stmt = (
-            select(Folder)
-            .where(Folder.parent_id == folder.id)
-            .order_by(Folder.sort_order, Folder.created_at.desc())
-            .options(selectinload(Folder.children))
-        )
+        child_stmt = select(Folder).where(Folder.parent_id == folder.id).order_by(Folder.sort_order, Folder.created_at.desc()).options(selectinload(Folder.children))
         child_result = await db.execute(child_stmt)
         folder.children = list(child_result.scalars().all())
 
@@ -328,11 +323,7 @@ class FolderService:
                 project.name = new_name
 
         # Dual-write: update all documents' folder string in this folder
-        await db.execute(
-            AIDocument.__table__.update()
-            .where(AIDocument.folder_id == folder_id)
-            .values(folder=new_name)
-        )
+        await db.execute(AIDocument.__table__.update().where(AIDocument.folder_id == folder_id).values(folder=new_name))
 
         await db.commit()
         await db.refresh(folder)
@@ -384,9 +375,7 @@ class FolderService:
         all_ids = await FolderService._collect_subfolder_ids(db, folder_id)
 
         # Delete all documents in these folders
-        await db.execute(
-            delete(AIDocument).where(AIDocument.folder_id.in_(all_ids))
-        )
+        await db.execute(delete(AIDocument).where(AIDocument.folder_id.in_(all_ids)))
 
         # Delete the folder (CASCADE handles sub-folders)
         await db.delete(folder)

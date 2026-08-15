@@ -1,7 +1,7 @@
 """Tests for AttributeSet and IdentityProvider."""
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -113,6 +113,7 @@ class TestIdentityProvider:
             if str(id_val) == "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa":
                 return mock_role
             return None
+
         mock_db.get = AsyncMock(side_effect=mock_db_get)
 
         provider = IdentityProvider()
@@ -188,11 +189,13 @@ class TestIdentityProvider:
         # Create a mock TagResolver
         mock_resolver = MagicMock()
         mock_resolver.name = "test_resolver"
-        mock_resolver.resolve = AsyncMock(return_value={
-            "tags": ["vip", "external"],
-            "labels": {"risk": "low"},
-            "extra": {"notes": "test"},
-        })
+        mock_resolver.resolve = AsyncMock(
+            return_value={
+                "tags": ["vip", "external"],
+                "labels": {"risk": "low"},
+                "extra": {"notes": "test"},
+            }
+        )
 
         provider = IdentityProvider()
         provider.register_tag_resolver(mock_resolver)

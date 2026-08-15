@@ -17,10 +17,7 @@ from deerflow.runtime.events.store.memory import MemoryRunEventStore
 from deerflow.runtime.journal import build_branch_history_seed_events
 from deerflow.runtime.runs.manager import EditReplayVisibility
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI thread messages pagination/visibility differs (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def _make_app(

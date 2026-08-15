@@ -2,8 +2,6 @@
 
 import asyncio
 
-import pytest
-
 from app.extensions.auth.registry import PermissionRegistry
 
 

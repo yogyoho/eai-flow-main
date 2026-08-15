@@ -119,7 +119,7 @@ class ComplianceEngine:
             return self._get_rules_from_seed(rule_ids, context)
 
         # 从数据库查询规则
-        stmt = select(ComplianceRule).where(ComplianceRule.enabled == True)
+        stmt = select(ComplianceRule).where(ComplianceRule.enabled.is_(True))
 
         if rule_ids:
             stmt = stmt.where(ComplianceRule.rule_id.in_(rule_ids))

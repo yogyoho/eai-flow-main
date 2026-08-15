@@ -7,8 +7,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ── AppDomain ──
+
 
 class AppDomainResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -41,6 +41,7 @@ class AppDomainListResponse(BaseModel):
 
 
 # ── AppDefinition ──
+
 
 class AppDefinitionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

@@ -1,12 +1,13 @@
 """Tests for KnowledgeBase retrieval_config serialization & fallback (KB detail-tabs P1)."""
+
 import asyncio
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-from app.extensions.schemas import RETRIEVAL_CONFIG_DEFAULTS, RetrievalConfig
 from app.extensions.knowledge.service import KnowledgeBaseService
+from app.extensions.schemas import RETRIEVAL_CONFIG_DEFAULTS, RetrievalConfig
 
 
 def _kb(**overrides):
@@ -32,7 +33,7 @@ def _kb(**overrides):
         retrieval_config=None,
         language="Chinese",
         status="active",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
     )
     base.update(overrides)
     kb = MagicMock()
@@ -59,17 +60,13 @@ def test_to_response_stored_overrides_defaults():
 
 def test_resolve_chat_params_request_wins_over_kb_config():
     """请求显式传参 → 全部用请求值，KB 配置被忽略。"""
-    params = KnowledgeBaseService.resolve_chat_params(
-        8, 0.5, 0.7, {"top_k": 10, "similarity_threshold": 0.9, "vector_similarity_weight": 0.1}
-    )
+    params = KnowledgeBaseService.resolve_chat_params(8, 0.5, 0.7, {"top_k": 10, "similarity_threshold": 0.9, "vector_similarity_weight": 0.1})
     assert params == {"top_k": 8, "similarity_threshold": 0.5, "vector_similarity_weight": 0.7}
 
 
 def test_resolve_chat_params_partial_request_falls_back_per_field():
     """请求只传 top_k → top_k 用请求值；threshold/weight 逐字段回退到 KB 配置。"""
-    params = KnowledgeBaseService.resolve_chat_params(
-        8, None, None, {"top_k": 10, "similarity_threshold": 0.4, "vector_similarity_weight": 0.6}
-    )
+    params = KnowledgeBaseService.resolve_chat_params(8, None, None, {"top_k": 10, "similarity_threshold": 0.4, "vector_similarity_weight": 0.6})
     assert params == {"top_k": 8, "similarity_threshold": 0.4, "vector_similarity_weight": 0.6}
 
 

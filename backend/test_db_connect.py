@@ -6,7 +6,7 @@ import asyncpg
 async def test(port, db, user, pw):
     try:
         conn = await asyncpg.connect(host="localhost", port=port, user=user, password=pw, database=db, timeout=5)
-        r = await conn.fetchval("SELECT 1")
+        await conn.fetchval("SELECT 1")
         print(f"OK  port={port} db={db} user={user} pw={pw}")
 
         # Check for users table
@@ -38,7 +38,7 @@ async def main():
     # Try without password (trust auth)
     try:
         conn = await asyncpg.connect(host="localhost", port=5434, user="eai_flow", database="agentflow", timeout=5)
-        r = await conn.fetchval("SELECT 1")
+        await conn.fetchval("SELECT 1")
         print("OK  port=5434 db=agentflow user=eai_flow (no password)")
         await conn.close()
     except Exception as e:

@@ -25,9 +25,7 @@ from app.extensions.spare_parts.models import (
 )
 from app.extensions.spare_parts.schemas import ConfigOut
 
-_CONFIG_PATH = os.path.join(
-    os.path.dirname(__file__), "config.json"
-)
+_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 
 # --- Documents (functional area 1) -----------------------------------------
@@ -44,11 +42,7 @@ async def list_documents(
     stmt = select(CspDocument)
     if keyword:
         # EAI-CUSTOM: keyword 也匹配 customer_name(④ 客户维度),便于按客户筛选文档。
-        stmt = stmt.where(
-            (CspDocument.contract_no.ilike(f"%{keyword}%"))
-            | (CspDocument.supplier.ilike(f"%{keyword}%"))
-            | (CspDocument.customer_name.ilike(f"%{keyword}%"))
-        )
+        stmt = stmt.where((CspDocument.contract_no.ilike(f"%{keyword}%")) | (CspDocument.supplier.ilike(f"%{keyword}%")) | (CspDocument.customer_name.ilike(f"%{keyword}%")))
     if parse_status:
         stmt = stmt.where(CspDocument.parse_status == parse_status)
     if customer_id:
@@ -64,44 +58,26 @@ async def delete_document(session: AsyncSession, doc_id: UUID) -> bool:
     # is now stale (it still counts the items we're about to delete) → clear it.
     # Clusters are a full-rebuild snapshot (re-run「开始分组」to regenerate), so
     # wiping avoids 分组审核 showing groups that no longer match the data.
-    in_snapshot = await session.scalar(
-        select(func.count())
-        .select_from(
-            select(CspItem)
-            .where(CspItem.document_id == doc_id, CspItem.cluster_id.is_not(None))
-            .subquery()
-        )
-    )
+    in_snapshot = await session.scalar(select(func.count()).select_from(select(CspItem).where(CspItem.document_id == doc_id, CspItem.cluster_id.is_not(None)).subquery()))
     await session.execute(delete(CspItem).where(CspItem.document_id == doc_id))
     if in_snapshot:
         # null remaining items' cluster_id/is_outlier, drop all clusters, and
         # revert 'clustered' docs to 'confirmed' (their groups are gone).
         await session.execute(update(CspItem).values(cluster_id=None, is_outlier=False))
         await session.execute(delete(CspCluster))
-        await session.execute(
-            update(CspDocument)
-            .where(CspDocument.confirm_status == "clustered")
-            .values(confirm_status="confirmed")
-        )
+        await session.execute(update(CspDocument).where(CspDocument.confirm_status == "clustered").values(confirm_status="confirmed"))
     result = await session.execute(delete(CspDocument).where(CspDocument.id == doc_id))
     await session.commit()
     return (result.rowcount or 0) > 0
 
 
-async def find_duplicate_document(
-    session: AsyncSession, file_hash: str, exclude_uri: str
-) -> CspDocument | None:
+async def find_duplicate_document(session: AsyncSession, file_hash: str, exclude_uri: str) -> CspDocument | None:
     """A document with the SAME content hash under a DIFFERENT storage_uri — i.e.
     the same contract already uploaded under another filename. Used to reject
     cross-filename duplicate uploads (dedup by content, not filename). Returns
     None when the content is new or only exists under ``exclude_uri`` (re-upload
     of the same filename, which is allowed and overwrites in place)."""
-    result = await session.execute(
-        select(CspDocument)
-        .where(CspDocument.file_hash == file_hash)
-        .where(CspDocument.storage_uri != exclude_uri)
-        .limit(1)
-    )
+    result = await session.execute(select(CspDocument).where(CspDocument.file_hash == file_hash).where(CspDocument.storage_uri != exclude_uri).limit(1))
     return result.scalar_one_or_none()
 
 
@@ -119,9 +95,7 @@ async def create_pending_document(
     re-uploading the same filename resets the existing row to pending (re-parse).
     The parse run's _persist_parse later fills parse_status + items by upserting
     on the same storage_uri."""
-    existing = (
-        await session.execute(select(CspDocument).where(CspDocument.storage_uri == storage_uri))
-    ).scalar_one_or_none()
+    existing = (await session.execute(select(CspDocument).where(CspDocument.storage_uri == storage_uri))).scalar_one_or_none()
     if existing is None:
         session.add(
             CspDocument(
@@ -146,9 +120,7 @@ async def create_pending_document(
     await session.commit()
 
 
-async def mark_documents_parsing(
-    session: AsyncSession, *, storage_uri: str | None = None
-) -> int:
+async def mark_documents_parsing(session: AsyncSession, *, storage_uri: str | None = None) -> int:
     """将待解析文档由「已上传」(pending) 置为「解析中」(parsing)。
 
     在点击「开始解析」时立即调用 —— 让前端在按钮点下的瞬间就显示 解析中,
@@ -167,9 +139,7 @@ async def mark_documents_parsing(
     return result.rowcount or 0
 
 
-async def set_document_parse_status(
-    session: AsyncSession, doc_id: UUID, parse_status: str
-) -> CspDocument | None:
+async def set_document_parse_status(session: AsyncSession, doc_id: UUID, parse_status: str) -> CspDocument | None:
     """强制将单个文档置为指定解析状态(忽略当前状态)。
 
     用于「重新解析」:被重解析的文档当前可能是 parsed/needs_review/failed
@@ -191,18 +161,12 @@ async def mark_stale_parsing_failed(session: AsyncSession, error: str) -> int:
     崩溃/非零退出时,从未到达终态的 parsing 文档会永远停在 解析中。这里置为
     failed,避免状态卡死(用户要求:失败就是解析失败)。
     """
-    result = await session.execute(
-        update(CspDocument)
-        .where(CspDocument.parse_status == "parsing")
-        .values(parse_status="failed", error=error)
-    )
+    result = await session.execute(update(CspDocument).where(CspDocument.parse_status == "parsing").values(parse_status="failed", error=error))
     await session.commit()
     return result.rowcount or 0
 
 
-async def update_document(
-    session: AsyncSession, doc_id: UUID, fields: dict[str, Any]
-) -> CspDocument | None:
+async def update_document(session: AsyncSession, doc_id: UUID, fields: dict[str, Any]) -> CspDocument | None:
     """Patch editable document fields (manual补 for project name/location + metadata)."""
     doc = await session.get(CspDocument, doc_id)
     if doc is None:
@@ -223,9 +187,7 @@ async def update_document(
     return doc
 
 
-async def confirm_document(
-    session: AsyncSession, doc_id: UUID, confirm_status: str
-) -> CspDocument | None:
+async def confirm_document(session: AsyncSession, doc_id: UUID, confirm_status: str) -> CspDocument | None:
     """Set a document's confirm_status (confirmed/skipped) — the cluster gate."""
     if confirm_status not in ("confirmed", "skipped"):
         return None
@@ -242,11 +204,7 @@ async def confirm_all_documents(session: AsyncSession, confirm_status: str) -> i
     confirm_status. Returns the number of documents updated."""
     if confirm_status not in ("confirmed", "skipped"):
         return 0
-    result = await session.execute(
-        update(CspDocument)
-        .where(CspDocument.confirm_status == "pending")
-        .values(confirm_status=confirm_status)
-    )
+    result = await session.execute(update(CspDocument).where(CspDocument.confirm_status == "pending").values(confirm_status=confirm_status))
     await session.commit()
     return result.rowcount or 0
 
@@ -276,9 +234,7 @@ async def get_cluster_with_items(session: AsyncSession, cluster_id: UUID) -> Csp
     cluster = await session.get(CspCluster, cluster_id)
     if cluster is None:
         return None
-    items = await session.execute(
-        select(CspItem).where(CspItem.cluster_id == cluster_id).order_by(CspItem.unit_price)
-    )
+    items = await session.execute(select(CspItem).where(CspItem.cluster_id == cluster_id).order_by(CspItem.unit_price))
     cluster.items = list(items.scalars().all())  # type: ignore[attr-defined]
     return cluster
 
@@ -342,21 +298,11 @@ async def merge_clusters(
 ) -> CspCluster | None:
     if len(cluster_ids) < 2:
         raise ValueError("merge requires at least 2 clusters")
-    new_cluster = CspCluster(
-        category=category, representative_name=representative_name, status="pending", item_count=0
-    )
+    new_cluster = CspCluster(category=category, representative_name=representative_name, status="pending", item_count=0)
     session.add(new_cluster)
     await session.flush()
-    await session.execute(
-        update(CspItem)
-        .where(CspItem.cluster_id.in_(cluster_ids))
-        .values(cluster_id=new_cluster.id)
-    )
-    new_cluster.item_count = await session.scalar(
-        select(func.count()).select_from(
-            select(CspItem).where(CspItem.cluster_id == new_cluster.id).subquery()
-        )
-    ) or 0
+    await session.execute(update(CspItem).where(CspItem.cluster_id.in_(cluster_ids)).values(cluster_id=new_cluster.id))
+    new_cluster.item_count = await session.scalar(select(func.count()).select_from(select(CspItem).where(CspItem.cluster_id == new_cluster.id).subquery())) or 0
     await session.execute(delete(CspCluster).where(CspCluster.id.in_(cluster_ids)))
     await session.commit()
     return new_cluster
@@ -408,9 +354,7 @@ async def list_items(
     return list(result.scalars().all()), int(total)
 
 
-async def update_item(
-    session: AsyncSession, item_id: UUID, fields: dict[str, Any]
-) -> CspItem | None:
+async def update_item(session: AsyncSession, item_id: UUID, fields: dict[str, Any]) -> CspItem | None:
     item = await session.get(CspItem, item_id)
     if item is None:
         return None
@@ -437,12 +381,7 @@ async def list_item_contracts(session: AsyncSession) -> list[dict]:
     Only non-null contracts. Ordered by count desc so the most-represented
     contracts appear first in the dropdown.
     """
-    rows = await session.execute(
-        select(CspItem.source_contract_no, func.count())
-        .where(CspItem.source_contract_no.is_not(None))
-        .group_by(CspItem.source_contract_no)
-        .order_by(func.count().desc())
-    )
+    rows = await session.execute(select(CspItem.source_contract_no, func.count()).where(CspItem.source_contract_no.is_not(None)).group_by(CspItem.source_contract_no).order_by(func.count().desc()))
     return [{"source_contract_no": no, "count": int(cnt)} for no, cnt in rows.all()]
 
 
@@ -452,16 +391,8 @@ async def list_item_customers(session: AsyncSession) -> list[dict]:
     Feeds the items-page 客户筛选下拉。Only non-null customers, ordered by count desc
     so the most-represented customers appear first.
     """
-    rows = await session.execute(
-        select(CspItem.customer_id, CspItem.customer_name, func.count())
-        .where(CspItem.customer_id.is_not(None))
-        .group_by(CspItem.customer_id, CspItem.customer_name)
-        .order_by(func.count().desc())
-    )
-    return [
-        {"customer_id": str(cid), "customer_name": name, "count": int(cnt)}
-        for cid, name, cnt in rows.all()
-    ]
+    rows = await session.execute(select(CspItem.customer_id, CspItem.customer_name, func.count()).where(CspItem.customer_id.is_not(None)).group_by(CspItem.customer_id, CspItem.customer_name).order_by(func.count().desc()))
+    return [{"customer_id": str(cid), "customer_name": name, "count": int(cnt)} for cid, name, cnt in rows.all()]
 
 
 async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int:
@@ -470,15 +401,9 @@ async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int
     return result.rowcount or 0
 
 
-async def batch_validate_items(
-    session: AsyncSession, item_ids: list[UUID], validation_status: str = "ok"
-) -> int:
+async def batch_validate_items(session: AsyncSession, item_ids: list[UUID], validation_status: str = "ok") -> int:
     """Batch update validation_status (ok/corrected) for selected items."""
-    result = await session.execute(
-        update(CspItem)
-        .where(CspItem.id.in_(item_ids))
-        .values(validation_status=validation_status)
-    )
+    result = await session.execute(update(CspItem).where(CspItem.id.in_(item_ids)).values(validation_status=validation_status))
     await session.commit()
     return result.rowcount or 0
 
@@ -534,14 +459,7 @@ async def has_running_run(session: AsyncSession, phase: str) -> bool:
     would block re-trigger; clear manually (`UPDATE csp_run_history SET
     status='failed' WHERE status='running'`) if that happens.
     """
-    row = await session.scalar(
-        select(func.count()).select_from(
-            select(CspRunHistory)
-            .where(CspRunHistory.status == "running")
-            .where(CspRunHistory.scope["phase"].astext == phase)
-            .subquery()
-        )
-    )
+    row = await session.scalar(select(func.count()).select_from(select(CspRunHistory).where(CspRunHistory.status == "running").where(CspRunHistory.scope["phase"].astext == phase).subquery()))
     return bool(row)
 
 
@@ -560,12 +478,7 @@ async def cleanup_stale_runs(session: AsyncSession, max_age_seconds: int = 21600
     from datetime import datetime, timedelta
 
     cutoff = datetime.now(UTC) - timedelta(seconds=max_age_seconds)
-    result = await session.execute(
-        update(CspRunHistory)
-        .where(CspRunHistory.status == "running")
-        .where(CspRunHistory.started_at < cutoff)
-        .values(status="failed", error="orphaned by restart (auto-cleaned)", finished_at=func.now())
-    )
+    result = await session.execute(update(CspRunHistory).where(CspRunHistory.status == "running").where(CspRunHistory.started_at < cutoff).values(status="failed", error="orphaned by restart (auto-cleaned)", finished_at=func.now()))
     await session.commit()
     return result.rowcount or 0
 
@@ -578,9 +491,7 @@ async def create_run(session: AsyncSession, **fields) -> CspRunHistory:
     return run
 
 
-async def finish_run(
-    session: AsyncSession, run_id: UUID, **fields
-) -> CspRunHistory | None:
+async def finish_run(session: AsyncSession, run_id: UUID, **fields) -> CspRunHistory | None:
     run = await session.get(CspRunHistory, run_id)
     if run is None:
         return None
@@ -598,25 +509,11 @@ async def dashboard_counts(session: AsyncSession) -> dict:
     contract_count = await session.scalar(select(func.count()).select_from(CspDocument)) or 0
     item_count = await session.scalar(select(func.count()).select_from(CspItem)) or 0
     cluster_count = await session.scalar(select(func.count()).select_from(CspCluster)) or 0
-    pending = await session.scalar(
-        select(func.count()).select_from(
-            select(CspCluster).where(CspCluster.status == "pending").subquery()
-        )
-    ) or 0
-    confirmed = await session.scalar(
-        select(func.count()).select_from(
-            select(CspCluster).where(CspCluster.status == "confirmed").subquery()
-        )
-    ) or 0
-    outlier_count = await session.scalar(
-        select(func.count()).select_from(CspItem).where(CspItem.is_outlier.is_(True))
-    ) or 0
+    pending = await session.scalar(select(func.count()).select_from(select(CspCluster).where(CspCluster.status == "pending").subquery())) or 0
+    confirmed = await session.scalar(select(func.count()).select_from(select(CspCluster).where(CspCluster.status == "confirmed").subquery())) or 0
+    outlier_count = await session.scalar(select(func.count()).select_from(CspItem).where(CspItem.is_outlier.is_(True))) or 0
     # EAI-CUSTOM (D3): distinct 需方客户数(④ 核心维度)。
-    customer_count = await session.scalar(
-        select(func.count(func.distinct(CspDocument.customer_id))).where(
-            CspDocument.customer_id.is_not(None)
-        )
-    ) or 0
+    customer_count = await session.scalar(select(func.count(func.distinct(CspDocument.customer_id))).where(CspDocument.customer_id.is_not(None))) or 0
     return {
         "contract_count": int(contract_count),
         "item_count": int(item_count),
@@ -664,10 +561,7 @@ async def dashboard_charts(session: AsyncSession) -> dict:
         .order_by(func.count(CspItem.id).desc())
         .limit(10)
     )
-    top_goods = [
-        {"name": n, "item_count": int(c), "avg_price": float(a) if a is not None else 0.0}
-        for n, c, a in rows.all()
-    ]
+    top_goods = [{"name": n, "item_count": int(c), "avg_price": float(a) if a is not None else 0.0} for n, c, a in rows.all()]
 
     # 2. unit_price histogram by magnitude bucket
     rows = await session.execute(
@@ -683,21 +577,11 @@ async def dashboard_charts(session: AsyncSession) -> dict:
     price_ranges = [{"range": r, "count": int(c)} for r, c in rows.all()]
 
     # 3. validation-status distribution (ok / needs_review / corrected)
-    rows = await session.execute(
-        select(CspItem.validation_status, func.count()).group_by(CspItem.validation_status)
-    )
+    rows = await session.execute(select(CspItem.validation_status, func.count()).group_by(CspItem.validation_status))
     validation = [{"status": s, "count": int(c)} for s, c in rows.all()]
 
     # 4. cluster-size distribution
-    rows = await session.execute(
-        text(
-            "SELECT CASE WHEN item_count = 1 THEN '1' "
-            "WHEN item_count <= 5 THEN '2-5' "
-            "WHEN item_count <= 10 THEN '6-10' "
-            "ELSE '10+' END AS sz, count(*) AS cnt "
-            "FROM csp_clusters GROUP BY sz"
-        )
-    )
+    rows = await session.execute(text("SELECT CASE WHEN item_count = 1 THEN '1' WHEN item_count <= 5 THEN '2-5' WHEN item_count <= 10 THEN '6-10' ELSE '10+' END AS sz, count(*) AS cnt FROM csp_clusters GROUP BY sz"))
     cluster_sizes = [{"range": r, "count": int(c)} for r, c in rows.all()]
 
     return {
@@ -728,10 +612,7 @@ async def goods_analysis(
     """
     import statistics as _stats
 
-    base = (
-        select(CspItem, CspDocument)
-        .join(CspDocument, CspItem.document_id == CspDocument.id)
-    )
+    base = select(CspItem, CspDocument).join(CspDocument, CspItem.document_id == CspDocument.id)
     if name:
         base = base.where(CspItem.part_name.ilike(f"%{name}%"))
     elif cluster_id:
@@ -749,11 +630,7 @@ async def goods_analysis(
     docs = [r[1] for r in rows]  # CspDocument objects
 
     # price stats: only ok/corrected
-    priced = [
-        float(it.unit_price)
-        for it in items
-        if it.unit_price is not None and it.validation_status in ("ok", "corrected")
-    ]
+    priced = [float(it.unit_price) for it in items if it.unit_price is not None and it.validation_status in ("ok", "corrected")]
     ok_count = sum(1 for it in items if it.validation_status == "ok")
     nr_count = sum(1 for it in items if it.validation_status == "needs_review")
 
@@ -769,9 +646,7 @@ async def goods_analysis(
         outliers = [
             {"contract_no": it.source_contract_no or "—", "unit_price": float(it.unit_price)}
             for it in items
-            if it.unit_price is not None
-            and it.validation_status in ("ok", "corrected")
-            and (float(it.unit_price) < lo_fence or float(it.unit_price) > hi_fence)
+            if it.unit_price is not None and it.validation_status in ("ok", "corrected") and (float(it.unit_price) < lo_fence or float(it.unit_price) > hi_fence)
         ]
         boxplot = {
             "count": n,
@@ -837,10 +712,7 @@ async def goods_analysis(
             month_key = doc.sign_date.strftime("%Y-%m")
             by_date_map.setdefault(month_key, []).append(float(it.unit_price))
     by_date = sorted(
-        [
-            {"month": m, "count": len(vals), "avg_price": round(_stats.mean(vals), 2)}
-            for m, vals in by_date_map.items()
-        ],
+        [{"month": m, "count": len(vals), "avg_price": round(_stats.mean(vals), 2)} for m, vals in by_date_map.items()],
         key=lambda x: x["month"],
     )
 
@@ -912,12 +784,7 @@ async def goods_analysis(
 
 async def _fill_doc_count(session: AsyncSession, customer: CspCustomer) -> CspCustomer:
     """读时聚合 doc_count(关联文档数,非列);写回实例属性供 CustomerOut(from_attributes)序列化。"""
-    customer.doc_count = await session.scalar(
-        select(func.count())
-        .select_from(
-            select(CspDocument).where(CspDocument.customer_id == customer.id).subquery()
-        )
-    ) or 0
+    customer.doc_count = await session.scalar(select(func.count()).select_from(select(CspDocument).where(CspDocument.customer_id == customer.id).subquery())) or 0
     return customer
 
 
@@ -964,9 +831,7 @@ async def create_customer(
     return c
 
 
-async def update_customer(
-    session: AsyncSession, customer_id: UUID, fields: dict[str, Any]
-) -> CspCustomer | None:
+async def update_customer(session: AsyncSession, customer_id: UUID, fields: dict[str, Any]) -> CspCustomer | None:
     """Patch canonical_name / aliases(手工维护客户主数据)。"""
     c = await session.get(CspCustomer, customer_id)
     if c is None:
@@ -978,9 +843,7 @@ async def update_customer(
     return c
 
 
-async def claim_customer(
-    session: AsyncSession, customer_id: UUID, raw_name: str
-) -> CspCustomer | None:
+async def claim_customer(session: AsyncSession, customer_id: UUID, raw_name: str) -> CspCustomer | None:
     """把一个 OCR 脏客户名认领到指定规范客户:并入 aliases(去重,不覆盖 canonical)。"""
     c = await session.get(CspCustomer, customer_id)
     if c is None:
@@ -993,9 +856,7 @@ async def claim_customer(
     return c
 
 
-async def merge_customers(
-    session: AsyncSession, source_ids: list[UUID], target_id: UUID
-) -> CspCustomer | None:
+async def merge_customers(session: AsyncSession, source_ids: list[UUID], target_id: UUID) -> CspCustomer | None:
     """合并 N 个客户到 target:source 的 canonical/aliases 并入 target.aliases,
     所有 csp_documents/csp_items.customer_id 回填到 target,source 置 status=merged。"""
     if not source_ids or target_id in source_ids:
@@ -1003,37 +864,25 @@ async def merge_customers(
     target = await session.get(CspCustomer, target_id)
     if target is None:
         return None
-    sources = (
-        await session.execute(select(CspCustomer).where(CspCustomer.id.in_(source_ids)))
-    ).scalars().all()
+    sources = (await session.execute(select(CspCustomer).where(CspCustomer.id.in_(source_ids)))).scalars().all()
     merged_aliases = list(target.aliases or [])
     for s in sources:
         if s.canonical_name and s.canonical_name not in merged_aliases and s.canonical_name != target.canonical_name:
             merged_aliases.append(s.canonical_name)
-        for a in (s.aliases or []):
+        for a in s.aliases or []:
             if a not in merged_aliases and a != target.canonical_name:
                 merged_aliases.append(a)
     target.aliases = merged_aliases
-    await session.execute(
-        update(CspDocument).where(CspDocument.customer_id.in_(source_ids)).values(customer_id=target_id)
-    )
-    await session.execute(
-        update(CspItem).where(CspItem.customer_id.in_(source_ids)).values(customer_id=target_id)
-    )
-    await session.execute(
-        update(CspCustomer)
-        .where(CspCustomer.id.in_(source_ids))
-        .values(status="merged", merged_into=target_id)
-    )
+    await session.execute(update(CspDocument).where(CspDocument.customer_id.in_(source_ids)).values(customer_id=target_id))
+    await session.execute(update(CspItem).where(CspItem.customer_id.in_(source_ids)).values(customer_id=target_id))
+    await session.execute(update(CspCustomer).where(CspCustomer.id.in_(source_ids)).values(status="merged", merged_into=target_id))
     await session.commit()
     await session.refresh(target)
     await _fill_doc_count(session, target)
     return target
 
 
-async def resolve_customers(
-    session: AsyncSession, raw_names: list[str]
-) -> list[dict]:
+async def resolve_customers(session: AsyncSession, raw_names: list[str]) -> list[dict]:
     """批量预览解析:每个脏客户名 → customer_id(canonical_name 或 aliases 命中,大小写不敏感)。
     未命中 → customer_id=None(调用方据此创建 pending 占位)。只读,不写库。
 
@@ -1041,18 +890,13 @@ async def resolve_customers(
     """
     if not raw_names:
         return []
-    all_customers = (
-        await session.execute(select(CspCustomer).where(CspCustomer.status != "merged"))
-    ).scalars().all()
+    all_customers = (await session.execute(select(CspCustomer).where(CspCustomer.status != "merged"))).scalars().all()
     index: dict[str, UUID] = {}
     for c in all_customers:
         index[(c.canonical_name or "").strip().lower()] = c.id
-        for a in (c.aliases or []):
+        for a in c.aliases or []:
             index[(a or "").strip().lower()] = c.id
-    return [
-        {"raw_name": raw, "customer_id": str(index[(raw or "").strip().lower()]) if (raw or "").strip().lower() in index else None}
-        for raw in raw_names
-    ]
+    return [{"raw_name": raw, "customer_id": str(index[(raw or "").strip().lower()]) if (raw or "").strip().lower() in index else None} for raw in raw_names]
 
 
 # --- Config (functional area 5) --------------------------------------------

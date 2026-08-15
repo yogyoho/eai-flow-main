@@ -12,6 +12,7 @@ Removed legacy states writing/completed/error/rejected/editing:
     submitted for review) / 'approved' (finalized by finalize_document);
   - 'error' and 'rejected' are events/records, not states.
 """
+
 from __future__ import annotations
 
 from enum import StrEnum

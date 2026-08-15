@@ -4,11 +4,12 @@ import uuid
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import JSON, BigInteger, Boolean, Date, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions.database import Base
+
 from .role_permission import DEFAULT_ROLE_PERMISSIONS, ProjectRole, RolePermission  # noqa: F401
 
 
@@ -208,9 +209,7 @@ class KnowledgeBaseGrant(Base):
     __tablename__ = "knowledge_base_grants"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    kb_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    kb_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True)
     grantee_type: Mapped[str] = mapped_column(String(20), nullable=False)  # user | dept | role
     grantee_id: Mapped[str] = mapped_column(String(64), nullable=False)  # user/dept=UUID串; role=角色code
     permission: Mapped[str] = mapped_column(String(20), default="read")  # read | write
@@ -238,7 +237,10 @@ class AIDocument(Base):
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     folder: Mapped[str] = mapped_column(String(255), default="默认文件夹", nullable=False)
     folder_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("folders.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
     )
     is_starred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_shared: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
@@ -264,10 +266,16 @@ class Folder(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("folders.id", ondelete="CASCADE"), nullable=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("folders.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     project_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("report_projects.id", ondelete="CASCADE"), nullable=True, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("report_projects.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
     )
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
@@ -297,9 +305,7 @@ class PersonalDocMeta(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "thread_id", "rel_path", name="uq_personal_meta_user_thread_path"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "thread_id", "rel_path", name="uq_personal_meta_user_thread_path"),)
 
     owner: Mapped["User"] = relationship("User")
 
@@ -317,9 +323,7 @@ class PersonalDocVersion(Base):
     label: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
 
-    __table_args__ = (
-        Index("ix_personal_versions_user_thread_path", "user_id", "thread_id", "rel_path"),
-    )
+    __table_args__ = (Index("ix_personal_versions_user_thread_path", "user_id", "thread_id", "rel_path"),)
 
     owner: Mapped["User"] = relationship("User")
 
@@ -334,7 +338,10 @@ class ProjectDocVersion(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("report_projects.id", ondelete="CASCADE"), nullable=False, index=True,
+        UUID(as_uuid=True),
+        ForeignKey("report_projects.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     thread_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     rel_path: Mapped[str] = mapped_column(String(500), nullable=False)
@@ -343,9 +350,7 @@ class ProjectDocVersion(Base):
     label: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
 
-    __table_args__ = (
-        Index("ix_project_versions_proj_thread_path", "project_id", "thread_id", "rel_path"),
-    )
+    __table_args__ = (Index("ix_project_versions_proj_thread_path", "project_id", "thread_id", "rel_path"),)
 
     project: Mapped["ReportProject"] = relationship("ReportProject")
     editor: Mapped["User"] = relationship("User")
@@ -775,9 +780,7 @@ class ProjectMember(Base):
     )
     role: Mapped[str] = mapped_column(String(50), default="writer")  # EAI-CUSTOM: canonical ProjectRole (ADR 2026-08-02 P5)
     thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    source_org_unit_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True
-    )
+    source_org_unit_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("departments.id"), nullable=True)
     phase_duties: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
@@ -802,9 +805,7 @@ class ApprovalWorkflow(Base):
     step_order: Mapped[int] = mapped_column(Integer, nullable=False)
     step_name: Mapped[str] = mapped_column(String(200), nullable=False)
     role_required: Mapped[str] = mapped_column(String(50), nullable=False)
-    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    reviewer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
@@ -878,9 +879,7 @@ class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False, index=True
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), unique=True, nullable=False, index=True)
     channel_in_app: Mapped[bool] = mapped_column(Boolean, default=True)
     channel_email: Mapped[bool] = mapped_column(Boolean, default=False)
     # Per-type toggles: {"deadline": true, "review_pending": true, "phase_start": true, "mention": true, "assignment": true, "workflow_complete": true}
@@ -920,9 +919,7 @@ class DataSource(Base):
 
     __tablename__ = "data_sources"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     type: Mapped[str] = mapped_column(String(20), nullable=False)  # database|api|file|gis
@@ -930,19 +927,11 @@ class DataSource(Base):
     auth_type: Mapped[str] = mapped_column(String(20), default="none", nullable=False)
     sync_mode: Mapped[str] = mapped_column(String(20), default="manual", nullable=False)
     sync_config: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(20), default="disconnected", nullable=False
-    )  # connected|error|disconnected|testing
+    status: Mapped[str] = mapped_column(String(20), default="disconnected", nullable=False)  # connected|error|disconnected|testing
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
-    )
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     def __init__(self, **kwargs):
         # Apply Python-side defaults at construction so non-persisted instances
@@ -966,9 +955,7 @@ class DataSourceDataset(Base):
     __table_args__ = (UniqueConstraint("source_id", "table_name", name="uq_datasets_source_table"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    source_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("data_sources.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    source_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("data_sources.id", ondelete="CASCADE"), nullable=False, index=True)
     table_name: Mapped[str] = mapped_column(String(200), nullable=False)
     label: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)

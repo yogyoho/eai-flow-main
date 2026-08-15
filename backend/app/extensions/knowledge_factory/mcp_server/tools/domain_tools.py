@@ -22,8 +22,9 @@ async def handle_kf_list_domains(arguments: dict, _run_in_db) -> list[TextConten
     Returns domain id, name, industry, report_type, and description
     so the agent can discover what report types are available.
     """
-    from app.extensions.knowledge_factory.models import ExtractionDomain
     from sqlalchemy import select
+
+    from app.extensions.knowledge_factory.models import ExtractionDomain
 
     industry = arguments.get("industry")
 
@@ -36,14 +37,16 @@ async def handle_kf_list_domains(arguments: dict, _run_in_db) -> list[TextConten
 
         items = []
         for d in domains:
-            items.append({
-                "id": d.id,
-                "name": d.name,
-                "industry": d.industry,
-                "report_type": d.report_type,
-                "description": d.description,
-                "parent_domain": d.parent_domain,
-            })
+            items.append(
+                {
+                    "id": d.id,
+                    "name": d.name,
+                    "industry": d.industry,
+                    "report_type": d.report_type,
+                    "description": d.description,
+                    "parent_domain": d.parent_domain,
+                }
+            )
         return {"domains": items, "total": len(items)}
 
     result = await _run_in_db(_query)

@@ -93,9 +93,7 @@ _CSRF_EXEMPT_PATHS: frozenset[str] = frozenset(
 # Prefix-based CSRF exemption for dynamic paths where exact matching is
 # insufficient. Only exempt sub-trees that are session-authenticated and
 # where FormData uploads cause browser-specific CSRF header issues.
-_CSRF_EXEMPT_PREFIXES: tuple[str, ...] = (
-    "/api/extensions/knowledge-bases/",
-)
+_CSRF_EXEMPT_PREFIXES: tuple[str, ...] = ("/api/extensions/knowledge-bases/",)
 
 
 def is_auth_endpoint(request: Request) -> bool:

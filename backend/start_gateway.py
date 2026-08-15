@@ -1,6 +1,7 @@
 """Start gateway with correct environment variables."""
 
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -14,7 +15,6 @@ print(f"DB_USER: {os.getenv('EXTENSIONS_DB_USER')}")
 print(f"DB_NAME: {os.getenv('EXTENSIONS_DB_NAME')}")
 
 # Now launch uvicorn as subprocess with these env vars
-import subprocess
 
 # Get all env vars to pass
 env = os.environ.copy()

@@ -1,16 +1,15 @@
 import pytest
+
 from app.extensions.auth.registry import PermissionRegistry
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI yaml-driven RBAC differs from upstream (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 class TestPermissionRegistry:
     def test_loads_all_modules_from_yaml(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 1
 modules:
   knowledge:
@@ -26,7 +25,9 @@ modules:
       - { id: "cpa:read", display_name: "查看合同价格" }
     data_scopes: []
 roles: {}
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         assert "knowledge" in registry.modules
         assert registry.modules["knowledge"].display_name == "知识库"
@@ -35,7 +36,8 @@ roles: {}
 
     def test_get_permission_by_id(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 1
 modules:
   knowledge:
@@ -45,7 +47,9 @@ modules:
       - { id: "kb:create", display_name: "创建知识库" }
     data_scopes: []
 roles: {}
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         perm = registry.get_permission("kb:read")
         assert perm is not None
@@ -55,7 +59,8 @@ roles: {}
 
     def test_list_all_permissions(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 1
 modules:
   knowledge:
@@ -69,7 +74,9 @@ modules:
       - { id: "user:read", display_name: "查看用户" }
     data_scopes: []
 roles: {}
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         all_perms = registry.list_all_permissions()
         assert len(all_perms) == 2
@@ -78,7 +85,8 @@ roles: {}
 
     def test_role_defaults_loaded(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 1
 modules: {}
 roles:
@@ -88,7 +96,9 @@ roles:
     level: 50
     permissions: ["kb:read", "system:access"]
     data_scopes: ["knowledge_dept"]
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         role = registry.get_role_defaults("dept_head")
         assert role is not None
@@ -98,7 +108,8 @@ roles:
 
     def test_admin_only_permissions(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 1
 modules:
   license:
@@ -108,7 +119,9 @@ modules:
       - { id: "license:view", display_name: "查看许可证" }
     data_scopes: []
 roles: {}
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         perms = registry.list_admin_only_permissions()
         assert len(perms) == 1
@@ -116,7 +129,8 @@ roles: {}
 
     def test_inherit_resolution(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 1
 modules: {}
 roles:
@@ -132,7 +146,9 @@ roles:
     level: 20
     permissions: ["#inherit:base", "kb:create"]
     data_scopes: ["knowledge_dept"]
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         resolved = registry.resolve_role_permissions("derived")
         assert "kb:read" in resolved
@@ -143,7 +159,8 @@ roles:
 
     def test_parses_v2_nav_module(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 2
 modules:
   knowledge:
@@ -158,7 +175,9 @@ modules:
     data_scopes:
       - { id: "knowledge_owner", display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
 roles: {}
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         assert "knowledge" in registry.modules
         nm = registry.modules["knowledge"]
@@ -174,7 +193,8 @@ roles: {}
 
     def test_v2_modules_have_all_fields(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 2
 modules:
   knowledge:
@@ -195,7 +215,9 @@ modules:
     data_scopes:
       - { id: "cpa_dept", display_name: "本部门", rule_template: { dept_id: "$identity.dept_id" } }
 roles: {}
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
         assert len(registry.modules) == 2
 
@@ -223,7 +245,8 @@ roles: {}
 
     def test_role_nav_defaults(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 2
 modules: {}
 roles:
@@ -243,7 +266,9 @@ roles:
     pages: []
     permissions: ["kb:read"]
     data_scopes: []
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
 
         # get_nav_ids_for_role
@@ -258,7 +283,8 @@ roles:
 
     def test_role_page_defaults(self, tmp_path):
         yaml_file = tmp_path / "permissions.yaml"
-        yaml_file.write_text("""
+        yaml_file.write_text(
+            """
 version: 2
 modules: {}
 roles:
@@ -270,7 +296,9 @@ roles:
     pages: ["knowledge:page:browse", "knowledge:page:detail", "cpa:page:dashboard"]
     permissions: []
     data_scopes: []
-""", encoding="utf-8")
+""",
+            encoding="utf-8",
+        )
         registry = PermissionRegistry(str(yaml_file))
 
         page_ids = registry.get_page_ids_for_role("dept_head")

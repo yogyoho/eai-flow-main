@@ -13,18 +13,19 @@ from app.extensions.schemas import RoleUpdate
 
 def test_read_merge_write_roundtrip(tmp_path):
     overlay = tmp_path / "roles_custom.yaml"
-    overlay.write_text("""
+    overlay.write_text(
+        """
 roles:
   custom: { display_name: "自定义", permissions: ["doc:read"], nav: [], data_scopes: [] }
 disabled_roles: []
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     store = RoleOverlayStore(overlay_path=str(overlay))
     data = store.read()
     assert "custom" in data["roles"]
 
-    data["roles"]["custom2"] = {
-        "display_name": "自定义2", "permissions": ["kb:read"], "nav": [], "data_scopes": []
-    }
+    data["roles"]["custom2"] = {"display_name": "自定义2", "permissions": ["kb:read"], "nav": [], "data_scopes": []}
     store.write(data)
     reloaded = store.read()
     assert "custom2" in reloaded["roles"]
@@ -285,7 +286,8 @@ def test_update_role_preserves_inherit_on_unchanged_permissions(tmp_path, monkey
     (e.g. a name-only edit), the overlay's #inherit markers are preserved —
     the inheritance chain is not flattened."""
     overlay_path = tmp_path / "roles_custom.yaml"
-    overlay_path.write_text("""
+    overlay_path.write_text(
+        """
 roles:
   proj_mgr:
     display_name: "项目经理"
@@ -295,7 +297,9 @@ roles:
     is_system: false
     level: 60
 disabled_roles: []
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
     store = RoleOverlayStore(overlay_path=str(overlay_path))
     monkeypatch.setattr(RoleService, "_store", store)
 
@@ -353,9 +357,7 @@ def test_write_falls_back_to_copy_on_bind_mount(tmp_path, monkeypatch):
 
     monkeypatch.setattr(shutil, "copy2", spy_copy2)
 
-    store.write(
-        {"roles": {"x": {"display_name": "X", "permissions": [], "nav": []}}, "disabled_roles": []}
-    )
+    store.write({"roles": {"x": {"display_name": "X", "permissions": [], "nav": []}}, "disabled_roles": []})
 
     data = store.read()
     assert "x" in data["roles"]  # write landed via copy2 fallback
@@ -375,8 +377,14 @@ def test_update_role_persists_pages(tmp_path, monkeypatch):
     monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: fake_registry)
 
     role = Role(
-        id=uuid_mod.uuid4(), name="部门主管", code="dept_head",
-        permissions=["kb:read"], is_system=False, level=50, description=None, nav=[],
+        id=uuid_mod.uuid4(),
+        name="部门主管",
+        code="dept_head",
+        permissions=["kb:read"],
+        is_system=False,
+        level=50,
+        description=None,
+        nav=[],
     )
     fake_db = _FakeDb()
 
@@ -403,8 +411,14 @@ def test_to_response_merges_pages(tmp_path, monkeypatch):
 
     # 瞬时 Role 的 created_at 默认在 flush 时才填充，此处显式提供避免 RoleResponse 校验失败
     role = Role(
-        id=uuid_mod.uuid4(), name="部门主管", code="dept_head",
-        permissions=["kb:read"], is_system=False, level=50, description=None, nav=[],
+        id=uuid_mod.uuid4(),
+        name="部门主管",
+        code="dept_head",
+        permissions=["kb:read"],
+        is_system=False,
+        level=50,
+        description=None,
+        nav=[],
         created_at=datetime.now(),
     )
     fake_db = _FakeDb()

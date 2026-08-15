@@ -1,14 +1,12 @@
 """Tests for model validation functionality."""
 
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.extensions.settings.routers import router
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="upstream test not adapted to EAI auth (401); EAI model config differs (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def test_validate_models_empty_list():

@@ -22,8 +22,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="upstream docker-compose defaults diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
 
 

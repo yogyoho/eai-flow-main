@@ -8,8 +8,9 @@ Covers:
 - Content with markers replaces old sources
 - Empty string content does not trigger parse
 """
+
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -145,11 +146,7 @@ class TestUpdateChapterAutoParse:
         from app.extensions.project.service import update_chapter
 
         chapter_id = uuid.uuid4()
-        content = (
-            "SO₂ 为 0.045[1]，NO₂ 为 0.03[2]。\n\n"
-            "[1] source:rag_retrieval:知识库「监测」p.23\n"
-            "[2] source:regulation:GB 3095-2012 表2"
-        )
+        content = "SO₂ 为 0.045[1]，NO₂ 为 0.03[2]。\n\n[1] source:rag_retrieval:知识库「监测」p.23\n[2] source:regulation:GB 3095-2012 表2"
 
         mock_chapter = MagicMock()
         mock_chapter.content = None

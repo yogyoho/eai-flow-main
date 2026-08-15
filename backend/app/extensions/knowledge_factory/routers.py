@@ -4,39 +4,42 @@ import asyncio
 import logging
 import tempfile
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import get_current_user_optional, require_permission
 from app.extensions.database import get_db
 from app.extensions.models import Document, KnowledgeBase, User
 from app.extensions.schemas import CurrentUser as CurrentUserSchema
-from sqlalchemy import select
+from app.extensions.settings.service import SystemConfigService
 
+from .dictionary_loader import load_rule_dictionaries
+from .models import (
+    ComplianceRule,
+    ExtractionTemplateVersion,
+)
 from .pipeline import ExtractionPipeline
 from .schemas import (
-    ComplianceRuleResponse,
-    ComplianceRuleListResponse,
-    ComplianceRuleCreate,
-    ComplianceRuleUpdate,
-    ComplianceRuleImportResponse,
     ComplianceRuleBatchCreate,
     ComplianceRuleBatchResponse,
+    ComplianceRuleCreate,
+    ComplianceRuleImportResponse,
+    ComplianceRuleListResponse,
     ComplianceRuleOverviewResponse,
-    RuleDictionariesResponse,
-    ComplianceRuleStatusResponse,
+    ComplianceRuleResponse,
     ComplianceRuleStatisticsResponse,
-    ContentContract,
-    CrossSectionRule,
+    ComplianceRuleStatusResponse,
+    ComplianceRuleUpdate,
     DictCategoryResponse,
     DictItemCreate,
-    DictItemUpdate,
-    DictItemResponse,
     DictItemListResponse,
+    DictItemResponse,
+    DictItemUpdate,
     DomainCreate,
     DomainListResponse,
     DomainResponse,
@@ -46,23 +49,20 @@ from .schemas import (
     ExtractionTaskListResponse,
     ExtractionTaskResponse,
     QualityAssessmentResult,
-    StructureType,
+    RAGSourceSuggestionResponse,
+    RuleDictionariesResponse,
+    StepStatusSchema,
     TemplateDocument,
     TemplateListItem,
     TemplateListResponse,
     TemplateResult,
-    TemplateSection,
-    TemplateUpdate,
-    TemplateVersionResponse,
     TemplateRollbackRequest,
     TemplateRollbackResponse,
-    StepStatusSchema,
+    TemplateUpdate,
+    TemplateVersionResponse,
     VersionCompareRequest,
     VersionDiff,
-    RAGSourceSuggestionResponse,
 )
-from app.extensions.settings.service import SystemConfigService
-from .dictionary_loader import load_rule_dictionaries
 from .seed_service import SeedImportService
 from .service import (
     DictionaryService,
@@ -72,12 +72,7 @@ from .service import (
     TemplateService,
     VersionCompareService,
 )
-from .models import (
-    ComplianceRule,
-    ExtractionTemplate,
-    ExtractionTemplateVersion,
-    ExtractionTask,
-)
+from .storage import export_template_json
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +82,7 @@ router = APIRouter(prefix="/api/kf", tags=["knowledge-factory"])
 _pipeline_tasks: dict[str, asyncio.Task] = {}
 
 CurrentUser = Annotated[CurrentUserSchema, Depends(require_permission("system:access"))]
-OptionalUser = Annotated[Optional[CurrentUserSchema], Depends(get_current_user_optional)]
+OptionalUser = Annotated[CurrentUserSchema | None, Depends(get_current_user_optional)]
 
 
 # ============== Domain APIs ==============
@@ -310,22 +305,18 @@ async def create_task(
         report_names.append(doc.name)
 
     # 创建任务
-    task = await TaskService.create_task(
-        db, data, user_id=current_user.id
-    )
+    task = await TaskService.create_task(db, data, user_id=current_user.id)
 
     # 异步启动流水线（不阻塞 HTTP 请求）
     from app.extensions.database import get_session_factory
+
     bg_task = asyncio.create_task(run_pipeline_background(str(task.id), data, get_session_factory()))
     _pipeline_tasks[str(task.id)] = bg_task
 
     from .schemas import StepStatus as SS
 
     # 构建响应
-    steps = [
-        {"name": name, "status": SS.WAITING.value, "duration": None, "detail": ""}
-        for name in ["文档解析", "章节推断", "元数据抽取", "模板融合", "合规校验"]
-    ]
+    steps = [{"name": name, "status": SS.WAITING.value, "duration": None, "detail": ""} for name in ["文档解析", "章节推断", "元数据抽取", "模板融合", "合规校验"]]
     return ExtractionTaskResponse(
         id=task.id,
         name=task.name,
@@ -369,23 +360,21 @@ async def run_pipeline_background(
                     all_report_ids.append(rid)
             report_docs = []
             for report_id in all_report_ids:
-                result = await db.execute(
-                    select(Document, KnowledgeBase)
-                    .join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
-                    .where(Document.id == report_id)
-                )
+                result = await db.execute(select(Document, KnowledgeBase).join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id).where(Document.id == report_id))
                 row = result.first()
                 if row:
                     doc, kb = row
-                    report_docs.append({
-                        "id": str(doc.id),
-                        "name": doc.name,
-                        "kb_id": str(kb.id),
-                        "ragflow_document_id": doc.ragflow_document_id,
-                        "ragflow_dataset_id": kb.ragflow_dataset_id,
-                        "file_path": doc.file_path,
-                        "file_type": doc.file_type,
-                    })
+                    report_docs.append(
+                        {
+                            "id": str(doc.id),
+                            "name": doc.name,
+                            "kb_id": str(kb.id),
+                            "ragflow_document_id": doc.ragflow_document_id,
+                            "ragflow_dataset_id": kb.ragflow_dataset_id,
+                            "file_path": doc.file_path,
+                            "file_type": doc.file_type,
+                        }
+                    )
 
             # 解析 LLM 模型：优先使用系统基本设置中的默认模型
             system_config = await SystemConfigService.get_all(db)
@@ -416,11 +405,7 @@ async def run_pipeline_background(
                         break
                 if not updated:
                     steps.append(step_schema.model_dump())
-                logger.info(
-                    f"[Task {task_id}] on_step: name={step_schema.name!r}, status={new_status!r}, "
-                    f"duration={step_schema.duration!r}, detail={step_schema.detail!r}, "
-                    f"updated={updated}, total_steps={len(steps)}"
-                )
+                logger.info(f"[Task {task_id}] on_step: name={step_schema.name!r}, status={new_status!r}, duration={step_schema.duration!r}, detail={step_schema.detail!r}, updated={updated}, total_steps={len(steps)}")
                 # 进度 = 5 个流水线阶段中已完成的数量 / 5
                 pipeline_steps = [s for s in steps if s.get("name") in _PIPELINE_STEP_NAMES]
                 completed = sum(1 for s in pipeline_steps if s.get("status") == "completed")
@@ -462,9 +447,11 @@ async def run_pipeline_background(
             _templates = existing.scalars().all()
             # 按 numeric version 取最新（字符串排序对 v1.10 错误：'v1.9' > 'v1.10'）
             import re as _re
+
             def _vkey(t):
                 m = _re.match(r"v?(\d+)\.(\d+)", t.version or "0.0")
                 return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+
             template = max(_templates, key=_vkey) if _templates else None
 
             if template:
@@ -521,7 +508,8 @@ async def run_pipeline_background(
 
             task.target_template_id = template.id
             await TaskService.set_task_completed(
-                db, task,
+                db,
+                task,
                 result_template_json={
                     "template_id": str(template.id),
                     "name": template.name,
@@ -532,11 +520,7 @@ async def run_pipeline_background(
                     "sections": result.total_sections,
                 },
             )
-            logger.info(
-                f"Pipeline completed for task {task_id}, template {template.id}, "
-                f"{result.chapters} chapters, {result.total_sections} sections, "
-                f"score {result.completeness_score}%"
-            )
+            logger.info(f"Pipeline completed for task {task_id}, template {template.id}, {result.chapters} chapters, {result.total_sections} sections, score {result.completeness_score}%")
 
     except asyncio.CancelledError:
         logger.info(f"Pipeline for task {task_id} was cancelled via asyncio")
@@ -568,7 +552,7 @@ async def run_pipeline_background(
 async def list_tasks(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
-    status: Optional[str] = Query(None, description="按状态筛选"),
+    status: str | None = Query(None, description="按状态筛选"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
@@ -579,7 +563,7 @@ async def list_tasks(
     task_responses = []
     for task in tasks:
         report_names = []
-        for rid in (task.source_report_ids or []):
+        for rid in task.source_report_ids or []:
             try:
                 # rid 可能是 UUID 对象或字符串
                 doc_id = UUID(str(rid)) if not isinstance(rid, UUID) else rid
@@ -590,23 +574,22 @@ async def list_tasks(
             except Exception:
                 pass
 
-        task_responses.append(ExtractionTaskResponse(
-            id=task.id,
-            name=task.name,
-            domain=task.domain,
-            source_reports=report_names,
-            status=task.status,
-            progress=task.progress,
-            steps=[_step_to_schema(s) for s in (task.steps or [])],
-            result=(
-                TemplateResult(**task.result_template_json)
-                if task.result_template_json else None
-            ),
-            error=task.error_message,
-            created_at=task.created_at,
-            started_at=task.started_at,
-            completed_at=task.completed_at,
-        ))
+        task_responses.append(
+            ExtractionTaskResponse(
+                id=task.id,
+                name=task.name,
+                domain=task.domain,
+                source_reports=report_names,
+                status=task.status,
+                progress=task.progress,
+                steps=[_step_to_schema(s) for s in (task.steps or [])],
+                result=(TemplateResult(**task.result_template_json) if task.result_template_json else None),
+                error=task.error_message,
+                created_at=task.created_at,
+                started_at=task.started_at,
+                completed_at=task.completed_at,
+            )
+        )
 
     return ExtractionTaskListResponse(tasks=task_responses, total=total)
 
@@ -623,7 +606,7 @@ async def get_task(
         raise HTTPException(status_code=404, detail="任务不存在")
 
     report_names = []
-    for rid in (task.source_report_ids or []):
+    for rid in task.source_report_ids or []:
         try:
             # rid 可能是 UUID 对象或字符串
             doc_id = UUID(str(rid)) if not isinstance(rid, UUID) else rid
@@ -644,10 +627,7 @@ async def get_task(
         status=task.status,
         progress=task.progress,
         steps=[_step_to_schema(s) for s in (task.steps or [])],
-        result=(
-            TemplateResult(**task.result_template_json)
-            if task.result_template_json else None
-        ),
+        result=(TemplateResult(**task.result_template_json) if task.result_template_json else None),
         error=task.error_message,
         created_at=task.created_at,
         started_at=task.started_at,
@@ -699,6 +679,7 @@ async def resume_task(
         config=config,
     )
     from app.extensions.database import get_session_factory
+
     bg_task = asyncio.create_task(run_pipeline_background(str(task.id), new_data, get_session_factory()))
     _pipeline_tasks[str(task.id)] = bg_task
     return {"message": "任务已恢复"}
@@ -739,7 +720,7 @@ async def rerun_task(
     from .schemas import ExtractionTaskCreate as ETC
 
     def to_uuid_str(rid):
-        if hasattr(rid, '__str__'):
+        if hasattr(rid, "__str__"):
             return str(rid)
         return str(rid)
 
@@ -777,7 +758,7 @@ async def delete_task(
 async def clear_tasks(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
-    statuses: Optional[str] = Query(None, description="要清除的状态，逗号分隔，默认 completed,failed"),
+    statuses: str | None = Query(None, description="要清除的状态，逗号分隔，默认 completed,failed"),
 ):
     """批量清除历史任务"""
     status_list = [s.strip() for s in statuses.split(",")] if statuses else ["completed", "failed"]
@@ -795,15 +776,13 @@ async def clear_tasks(
 async def list_templates(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
-    domain: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
+    domain: str | None = Query(None),
+    status: str | None = Query(None),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
     """列出模板（分页）"""
-    templates, total = await TemplateService.list_templates(
-        db, domain=domain, status=status, page=page, limit=limit
-    )
+    templates, total = await TemplateService.list_templates(db, domain=domain, status=status, page=page, limit=limit)
     items = []
     for t in templates:
         src_count = len(t.source_report_ids) if t.source_report_ids else 0
@@ -813,18 +792,20 @@ async def list_templates(
             u = result.scalar_one_or_none()
             if u:
                 created_by_name = u.username
-        items.append(TemplateListItem(
-            id=t.id,
-            domain=t.domain,
-            name=t.name,
-            version=t.version,
-            status=t.status,
-            completeness_score=t.completeness_score or 0,
-            source_report_count=src_count,
-            created_by=created_by_name,
-            created_at=t.created_at,
-            updated_at=t.updated_at,
-        ))
+        items.append(
+            TemplateListItem(
+                id=t.id,
+                domain=t.domain,
+                name=t.name,
+                version=t.version,
+                status=t.status,
+                completeness_score=t.completeness_score or 0,
+                source_report_count=src_count,
+                created_by=created_by_name,
+                created_at=t.created_at,
+                updated_at=t.updated_at,
+            )
+        )
     return TemplateListResponse(templates=items, total=total)
 
 
@@ -932,13 +913,15 @@ async def get_template_versions(
             u = r.scalar_one_or_none()
             if u:
                 published_by_name = u.username
-        result.append(TemplateVersionResponse(
-            id=v.id,
-            version=v.version,
-            changelog=v.changelog,
-            published_by=published_by_name,
-            published_at=v.published_at,
-        ))
+        result.append(
+            TemplateVersionResponse(
+                id=v.id,
+                version=v.version,
+                changelog=v.changelog,
+                published_by=published_by_name,
+                published_at=v.published_at,
+            )
+        )
     return result
 
 
@@ -1082,31 +1065,22 @@ async def suggest_rag_sources(
         raise HTTPException(status_code=404, detail="章节不存在")
 
     # Fetch available knowledge bases
-    result = await db.execute(
-        select(KnowledgeBase.id, KnowledgeBase.name, KnowledgeBase.description, KnowledgeBase.ragflow_dataset_id)
-        .where(KnowledgeBase.status == "active")
-        .limit(200)
-    )
-    available_kbs = [
-        {"kb_id": str(row.id), "kb_name": row.name, "description": row.description, "ragflow_dataset_id": row.ragflow_dataset_id}
-        for row in result.all()
-    ]
+    result = await db.execute(select(KnowledgeBase.id, KnowledgeBase.name, KnowledgeBase.description, KnowledgeBase.ragflow_dataset_id).where(KnowledgeBase.status == "active").limit(200))
+    available_kbs = [{"kb_id": str(row.id), "kb_name": row.name, "description": row.description, "ragflow_dataset_id": row.ragflow_dataset_id} for row in result.all()]
 
     if not available_kbs:
         return RAGSourceSuggestionResponse(suggestions=[])
 
     # Use LLM to suggest relevant KBs
     from .llm import ExtractionLLMClient
+
     llm = ExtractionLLMClient()
 
     section_title = target_section.get("title", "")
     section_purpose = target_section.get("purpose", "")
     key_elements = (target_section.get("content_contract") or {}).get("key_elements", [])
 
-    kb_list_text = "\n".join(
-        f"- {kb['kb_name']}" + (f" ({kb['description']})" if kb.get("description") else "")
-        for kb in available_kbs
-    )
+    kb_list_text = "\n".join(f"- {kb['kb_name']}" + (f" ({kb['description']})" if kb.get("description") else "") for kb in available_kbs)
 
     prompt = (
         f"根据以下章节信息，从可用知识库列表中推荐最适合该章节的知识库作为报告生成时的参考数据源。\n\n"
@@ -1120,6 +1094,7 @@ async def suggest_rag_sources(
 
     try:
         from langchain_core.messages import HumanMessage
+
         raw = llm._invoke([HumanMessage(content=prompt)])
         parsed = llm._extract_json(raw)
         suggestions_raw = parsed.get("suggestions", [])
@@ -1143,15 +1118,17 @@ async def suggest_rag_sources(
                         best_kb = kb
 
             if best_kb and best_score >= 40:
-                matched.append({
-                    "kb_id": best_kb["kb_id"],
-                    "kb_name": best_kb["kb_name"],
-                    "ragflow_dataset_id": best_kb["ragflow_dataset_id"],
-                    "retrieval_strategy": "hybrid",
-                    "top_k": 5,
-                    "similarity_threshold": 0.2,
-                    "vector_similarity_weight": 0.3,
-                })
+                matched.append(
+                    {
+                        "kb_id": best_kb["kb_id"],
+                        "kb_name": best_kb["kb_name"],
+                        "ragflow_dataset_id": best_kb["ragflow_dataset_id"],
+                        "retrieval_strategy": "hybrid",
+                        "top_k": 5,
+                        "similarity_threshold": 0.2,
+                        "vector_similarity_weight": 0.3,
+                    }
+                )
 
         return RAGSourceSuggestionResponse(suggestions=matched)
     except Exception as e:
@@ -1170,18 +1147,14 @@ async def compare_template_versions(
     返回新增、删除、修改的章节列表。
     """
     # 获取版本A
-    stmt_a = select(ExtractionTemplateVersion).where(
-        ExtractionTemplateVersion.id == request.version_a_id
-    )
+    stmt_a = select(ExtractionTemplateVersion).where(ExtractionTemplateVersion.id == request.version_a_id)
     result_a = await db.execute(stmt_a)
     version_a = result_a.scalar_one_or_none()
     if not version_a:
         raise HTTPException(status_code=404, detail="版本A不存在")
 
     # 获取版本B
-    stmt_b = select(ExtractionTemplateVersion).where(
-        ExtractionTemplateVersion.id == request.version_b_id
-    )
+    stmt_b = select(ExtractionTemplateVersion).where(ExtractionTemplateVersion.id == request.version_b_id)
     result_b = await db.execute(stmt_b)
     version_b = result_b.scalar_one_or_none()
     if not version_b:
@@ -1216,14 +1189,14 @@ async def compare_template_versions(
 def _step_to_schema(step_dict: dict) -> dict:
     """将 dict 转为 StepStatusSchema 兼容的 dict"""
     from .schemas import StepStatusSchema
+
     return StepStatusSchema(**step_dict).model_dump()
 
 
 # ============== Compliance Rule APIs ==============
 
 
-from .models import ComplianceRule
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_  # noqa: E402  (EAI-CUSTOM: mid-file import kept to preserve import order)
 
 
 def _build_rule_response(rule: ComplianceRule) -> ComplianceRuleResponse:
@@ -1265,9 +1238,7 @@ async def _get_rule_or_404(db: AsyncSession, rule_key: str) -> ComplianceRule:
     except ValueError:
         pass
 
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.rule_id == rule_key)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.rule_id == rule_key))
     rule = result.scalar_one_or_none()
     if not rule:
         raise HTTPException(status_code=404, detail=f"规则 {rule_key} 不存在")
@@ -1276,10 +1247,11 @@ async def _get_rule_or_404(db: AsyncSession, rule_key: str) -> ComplianceRule:
 
 async def _get_trigger_statistics_payload(
     db: AsyncSession,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> dict:
     from datetime import datetime
+
     from .models import ComplianceRuleLog
 
     start = datetime.fromisoformat(start_date) if start_date else None
@@ -1298,18 +1270,14 @@ async def _get_trigger_statistics_payload(
     total_result = await db.execute(total_stmt)
     total_triggers = total_result.scalar() or 0
 
-    blocked_conditions = conditions + [
-        ComplianceRuleLog.check_result.in_(["fail", "warning"])
-    ]
+    blocked_conditions = conditions + [ComplianceRuleLog.check_result.in_(["fail", "warning"])]
     blocked_stmt = select(func.count()).where(*blocked_conditions)
     blocked_result = await db.execute(blocked_stmt)
     blocked_triggers = blocked_result.scalar() or 0
 
     now = datetime.now()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    month_stmt = select(func.count()).where(
-        ComplianceRuleLog.executed_at >= month_start
-    )
+    month_stmt = select(func.count()).where(ComplianceRuleLog.executed_at >= month_start)
     month_result = await db.execute(month_stmt)
     month_triggers = month_result.scalar() or 0
 
@@ -1325,10 +1293,7 @@ async def _get_trigger_statistics_payload(
         "blocked_triggers": blocked_triggers,
         "month_triggers": month_triggers,
         "month_blocked": month_blocked,
-        "pass_rate": (
-            (total_triggers - blocked_triggers) / total_triggers * 100
-            if total_triggers > 0 else 100
-        ),
+        "pass_rate": ((total_triggers - blocked_triggers) / total_triggers * 100 if total_triggers > 0 else 100),
     }
 
 
@@ -1337,7 +1302,7 @@ async def get_rule_dictionaries(
     current_user: CurrentUser,
 ):
     """Return dictionaries for rule filters and editors (prefers DB)."""
-    from .dictionary_loader import load_rule_dictionaries_from_db, load_rule_dictionaries
+    from .dictionary_loader import load_rule_dictionaries_from_db
 
     db_data = await load_rule_dictionaries_from_db()
     if db_data is not None:
@@ -1349,18 +1314,18 @@ async def get_rule_dictionaries(
 async def list_compliance_rules(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
-    industry: Optional[str] = Query(None, description="按行业筛选"),
-    report_type: Optional[str] = Query(None, description="按报告类型筛选"),
-    region: Optional[str] = Query(None, description="按地区筛选"),
-    rule_type: Optional[str] = Query(None, alias="type", description="按规则类型筛选"),
-    severity: Optional[str] = Query(None, description="按严重级别筛选"),
-    enabled: Optional[bool] = Query(None, description="按启用状态筛选"),
+    industry: str | None = Query(None, description="按行业筛选"),
+    report_type: str | None = Query(None, description="按报告类型筛选"),
+    region: str | None = Query(None, description="按地区筛选"),
+    rule_type: str | None = Query(None, alias="type", description="按规则类型筛选"),
+    severity: str | None = Query(None, description="按严重级别筛选"),
+    enabled: bool | None = Query(None, description="按启用状态筛选"),
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
 ):
     """列出合规规则（支持多维度筛选）"""
     stmt = select(ComplianceRule)
-    
+
     if industry:
         stmt = stmt.where(ComplianceRule.industry == industry)
     if report_type:
@@ -1378,14 +1343,14 @@ async def list_compliance_rules(
         stmt = stmt.where(ComplianceRule.severity == severity)
     if enabled is not None:
         stmt = stmt.where(ComplianceRule.enabled == enabled)
-    
+
     count_stmt = select(func.count()).select_from(stmt.subquery())
     total_result = await db.execute(count_stmt)
     total = total_result.scalar() or 0
-    
+
     stmt = stmt.order_by(ComplianceRule.severity.desc(), ComplianceRule.rule_id)
     stmt = stmt.offset((page - 1) * limit).limit(limit)
-    
+
     result = await db.execute(stmt)
     rules = result.scalars().all()
 
@@ -1425,7 +1390,7 @@ async def create_compliance_rule(
     db.add(rule)
     await db.commit()
     await db.refresh(rule)
-    
+
     return _build_rule_response(rule)
 
 
@@ -1464,9 +1429,7 @@ async def extract_rules_from_document(
         llm = ExtractionLLMClient(model_name=system_default_model, max_content_chars=15000)
         try:
             rt_list = [r.strip() for r in report_types.split(",") if r.strip()] if report_types else None
-            rules = await asyncio.to_thread(
-                llm.extract_compliance_rules, filename, text, industry, rt_list
-            )
+            rules = await asyncio.to_thread(llm.extract_compliance_rules, filename, text, industry, rt_list)
         except RuntimeError as e:
             raise HTTPException(status_code=500, detail=str(e))
 
@@ -1488,9 +1451,7 @@ async def batch_create_rules(
 
     for i, rule_data in enumerate(data.rules):
         try:
-            existing = await db.execute(
-                select(ComplianceRule).where(ComplianceRule.rule_id == rule_data.rule_id)
-            )
+            existing = await db.execute(select(ComplianceRule).where(ComplianceRule.rule_id == rule_data.rule_id))
             if existing.scalar_one_or_none():
                 skipped += 1
                 continue
@@ -1541,15 +1502,15 @@ async def update_compliance_rule(
 ):
     """更新合规规则"""
     rule = await _get_rule_or_404(db, rule_id)
-    
+
     update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         if hasattr(rule, key):
             setattr(rule, key, value)
-    
+
     await db.commit()
     await db.refresh(rule)
-    
+
     return _build_rule_response(rule)
 
 
@@ -1633,12 +1594,12 @@ async def get_compliance_rule_overview(
 # ============== Rule Execution APIs ==============
 
 
-from .schemas import (
+from .engine import CheckContext, get_engine  # noqa: E402  (EAI-CUSTOM: mid-file import kept to preserve import order)
+from .schemas import (  # noqa: E402
     ComplianceCheckRequest,
     ComplianceCheckResponse,
     ValidationIssueSchema,
 )
-from .engine import get_engine, CheckContext
 
 
 @router.post("/rules/check", response_model=ComplianceCheckResponse)
@@ -1673,19 +1634,21 @@ async def check_compliance(
     # 构建响应
     issues = []
     for issue in result.issues:
-        issues.append(ValidationIssueSchema(
-            rule_id=issue.rule_id,
-            rule_name=issue.rule_name,
-            severity=issue.severity.value,
-            check_result=issue.check_result.value,
-            message=issue.message,
-            field_name=issue.field_name,
-            source_value=str(issue.source_value) if issue.source_value is not None else None,
-            target_value=str(issue.target_value) if issue.target_value is not None else None,
-            location=issue.location,
-            suggestion=issue.suggestion,
-            details=issue.details,
-        ))
+        issues.append(
+            ValidationIssueSchema(
+                rule_id=issue.rule_id,
+                rule_name=issue.rule_name,
+                severity=issue.severity.value,
+                check_result=issue.check_result.value,
+                message=issue.message,
+                field_name=issue.field_name,
+                source_value=str(issue.source_value) if issue.source_value is not None else None,
+                target_value=str(issue.target_value) if issue.target_value is not None else None,
+                location=issue.location,
+                suggestion=issue.suggestion,
+                details=issue.details,
+            )
+        )
 
     return ComplianceCheckResponse(
         success=result.success,
@@ -1706,7 +1669,7 @@ async def check_single_rule(
     rule_id: str,
     report_data: dict,
     db: Annotated[AsyncSession, Depends(get_db)],
-    extracted_fields: Optional[dict] = None,
+    extracted_fields: dict | None = None,
     current_user: OptionalUser = None,
 ):
     """
@@ -1747,12 +1710,11 @@ async def validate_rule(
 ):
     """验证规则配置是否正确"""
     from sqlalchemy import select
+
     from .models import ComplianceRule
 
     # 获取规则
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.rule_id == rule_id)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.rule_id == rule_id))
     rule = result.scalar_one_or_none()
 
     if not rule:
@@ -1760,6 +1722,7 @@ async def validate_rule(
 
     # 检查验证器是否存在
     from .engine import ValidatorRegistry
+
     validator_class = ValidatorRegistry.get_validator(rule.type)
 
     return {
@@ -1778,8 +1741,8 @@ async def validate_rule(
 async def get_trigger_statistics(
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
-    start_date: Optional[str] = Query(None, description="统计起始日期 YYYY-MM-DD"),
-    end_date: Optional[str] = Query(None, description="统计结束日期 YYYY-MM-DD"),
+    start_date: str | None = Query(None, description="统计起始日期 YYYY-MM-DD"),
+    end_date: str | None = Query(None, description="统计结束日期 YYYY-MM-DD"),
 ):
     """获取全局触发统计"""
     return await _get_trigger_statistics_payload(db, start_date=start_date, end_date=end_date)
@@ -1809,12 +1772,11 @@ async def get_rule_logs(
 ):
     """获取规则执行日志"""
     from sqlalchemy import select
+
     from .models import ComplianceRule, ComplianceRuleLog
 
     # 获取规则
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.rule_id == rule_id)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.rule_id == rule_id))
     rule = result.scalar_one_or_none()
 
     if not rule:
@@ -1822,18 +1784,14 @@ async def get_rule_logs(
 
     # 获取日志
     from sqlalchemy import desc
-    logs_stmt = (
-        select(ComplianceRuleLog)
-        .where(ComplianceRuleLog.rule_id == rule.id)
-        .order_by(desc(ComplianceRuleLog.executed_at))
-        .offset(offset)
-        .limit(limit)
-    )
+
+    logs_stmt = select(ComplianceRuleLog).where(ComplianceRuleLog.rule_id == rule.id).order_by(desc(ComplianceRuleLog.executed_at)).offset(offset).limit(limit)
     logs_result = await db.execute(logs_stmt)
     logs = logs_result.scalars().all()
 
     # 获取总数
     from sqlalchemy import func
+
     count_stmt = select(func.count()).where(ComplianceRuleLog.rule_id == rule.id)
     count_result = await db.execute(count_stmt)
     total = count_result.scalar() or 0
@@ -1863,14 +1821,12 @@ async def get_rule_execution_statistics(
     current_user: CurrentUser,
 ):
     """获取规则执行统计"""
-    from sqlalchemy import select
+    from sqlalchemy import desc, func, select
+
     from .models import ComplianceRule, ComplianceRuleLog
-    from sqlalchemy import func, desc
 
     # 获取规则
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.rule_id == rule_id)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.rule_id == rule_id))
     rule = result.scalar_one_or_none()
 
     if not rule:
@@ -1903,12 +1859,7 @@ async def get_rule_execution_statistics(
         stats[f"{result_type}_count"] = count
 
     # 获取最近执行时间
-    latest_stmt = (
-        select(ComplianceRuleLog.executed_at)
-        .where(ComplianceRuleLog.rule_id == rule.id)
-        .order_by(desc(ComplianceRuleLog.executed_at))
-        .limit(1)
-    )
+    latest_stmt = select(ComplianceRuleLog.executed_at).where(ComplianceRuleLog.rule_id == rule.id).order_by(desc(ComplianceRuleLog.executed_at)).limit(1)
     latest_result = await db.execute(latest_stmt)
     latest = latest_result.scalar_one_or_none()
     if latest:
@@ -1945,13 +1896,12 @@ async def test_rule(
     使用指定的测试数据执行规则验证。
     """
     from sqlalchemy import select
+
+    from .engine import CheckContext, ValidatorRegistry, get_engine
     from .models import ComplianceRule
-    from .engine import get_engine, CheckContext, ValidatorRegistry
 
     # 获取规则
-    result = await db.execute(
-        select(ComplianceRule).where(ComplianceRule.rule_id == rule_id)
-    )
+    result = await db.execute(select(ComplianceRule).where(ComplianceRule.rule_id == rule_id))
     rule = result.scalar_one_or_none()
 
     if not rule:

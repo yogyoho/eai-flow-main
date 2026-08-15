@@ -30,7 +30,6 @@ async def list_departments(
 ):
     """List all departments in tree format."""
     tree = await DepartmentService.get_department_tree(db)
-    total = len(tree)
 
     # Count all departments
     _, total_count = await DepartmentService.list_departments(db, skip=0, limit=10000)

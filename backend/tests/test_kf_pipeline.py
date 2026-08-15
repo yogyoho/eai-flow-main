@@ -8,6 +8,7 @@ from app.extensions.knowledge_factory.pipeline import _is_noise
 
 # ── _is_noise: 子句标点守卫 (bug-404) ──
 
+
 def test_is_noise_rejects_clause_punctuation_body():
     """3218 掘进规程里被误判为章节的正文段（含子句/句末标点）应被判为噪音，
     不进入 chunk 版 structure_hint 的章节目录。"""

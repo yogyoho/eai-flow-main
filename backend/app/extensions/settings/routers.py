@@ -69,6 +69,7 @@ class ModelChoicesResponse(BaseModel):
 
 router = APIRouter(prefix="/api/extensions", tags=["settings"])
 
+
 def _load_config_from_env() -> SystemConfig:
     """Load configuration from environment variables."""
     return SystemConfig(

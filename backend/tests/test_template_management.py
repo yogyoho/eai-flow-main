@@ -1,7 +1,9 @@
 """Tests for workflow template management."""
-import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 
 @pytest.fixture
@@ -28,7 +30,8 @@ async def test_publish_as_template(mock_db, mock_definition):
     """Publishing a template sets is_template=True."""
     mock_db.get = AsyncMock(return_value=mock_definition)
     from app.extensions.workflow.service import publish_as_template
-    result = await publish_as_template(mock_db, mock_definition.id)
+
+    await publish_as_template(mock_db, mock_definition.id)
     assert mock_definition.is_template is True
     mock_db.commit.assert_called_once()
 
@@ -38,6 +41,7 @@ async def test_publish_as_template_not_found(mock_db):
     """Publishing non-existent definition returns None."""
     mock_db.get = AsyncMock(return_value=None)
     from app.extensions.workflow.service import publish_as_template
+
     result = await publish_as_template(mock_db, uuid4())
     assert result is None
 
@@ -52,9 +56,7 @@ def test_template_has_org_binding():
                 "data": {
                     "label": "调查",
                     "org_unit_id": "dept-uuid-123",
-                    "required_roles": [
-                        {"role_key": "phase_lead", "count": 1, "label": "负责人"}
-                    ],
+                    "required_roles": [{"role_key": "phase_lead", "count": 1, "label": "负责人"}],
                 },
             }
         ],

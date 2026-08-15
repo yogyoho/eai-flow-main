@@ -30,8 +30,7 @@ class TestStateCookie:
         from app.gateway.auth.oidc_state import OIDCStatePayload
 
         resp = Response()
-        sso._set_eai_state_cookie(resp, _make_request(),
-                                  OIDCStatePayload(provider="keycloak", state="abc"))
+        sso._set_eai_state_cookie(resp, _make_request(), OIDCStatePayload(provider="keycloak", state="abc"))
         set_cookie = resp.headers.get("set-cookie", "")
         assert "df_oidc_state_keycloak=" in set_cookie
         assert "Path=/" in set_cookie
@@ -41,16 +40,18 @@ class TestStateCookie:
         from app.gateway.auth.oidc_state import OIDCStatePayload, get_state_cookie
 
         resp = Response()
-        payload = OIDCStatePayload(provider="keycloak", state="s1", nonce="n1",
-                                   code_verifier="v1")
+        payload = OIDCStatePayload(provider="keycloak", state="s1", nonce="n1", code_verifier="v1")
         sso._set_eai_state_cookie(resp, _make_request(), payload)
         from starlette.requests import Request
 
         raw_cookie = resp.headers["set-cookie"].split(";")[0].split("=", 1)[1]
         scope = {
-            "type": "http", "method": "GET", "path": "/api/extensions/auth/oidc/callback/keycloak",
+            "type": "http",
+            "method": "GET",
+            "path": "/api/extensions/auth/oidc/callback/keycloak",
             "headers": [(b"cookie", f"df_oidc_state_keycloak={raw_cookie}".encode())],
-            "scheme": "http", "client": ("127.0.0.1", 1234),
+            "scheme": "http",
+            "client": ("127.0.0.1", 1234),
         }
         req = Request(scope)
         got = get_state_cookie(req, "keycloak")
@@ -141,8 +142,7 @@ class TestCallbackEndpoint:
         monkeypatch.setattr(sso, "_get_oidc_service", lambda: svc)
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash="", status="active")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash="", status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
 
         # _issue_gateway_session 需要 gateway 侧 provider（同 test_login_success_issues_cookie
@@ -166,10 +166,12 @@ class TestCallbackEndpoint:
         from starlette.requests import Request as SRequest
 
         scope = {
-            "type": "http", "method": "GET", "path": "/api/extensions/auth/oidc/callback/keycloak",
-            "headers": [(b"cookie", f"df_oidc_state_keycloak={raw}".encode()),
-                        (b"host", b"localhost:2026")],
-            "scheme": "http", "client": ("127.0.0.1", 1234),
+            "type": "http",
+            "method": "GET",
+            "path": "/api/extensions/auth/oidc/callback/keycloak",
+            "headers": [(b"cookie", f"df_oidc_state_keycloak={raw}".encode()), (b"host", b"localhost:2026")],
+            "scheme": "http",
+            "client": ("127.0.0.1", 1234),
         }
         real_req = SRequest(scope)
 
@@ -217,10 +219,12 @@ class TestCallbackEndpoint:
         from starlette.requests import Request as SRequest
 
         scope = {
-            "type": "http", "method": "GET", "path": "/api/extensions/auth/oidc/callback/keycloak",
-            "headers": [(b"cookie", f"df_oidc_state_keycloak={raw}".encode()),
-                        (b"host", b"localhost:2026")],
-            "scheme": "http", "client": ("127.0.0.1", 1234),
+            "type": "http",
+            "method": "GET",
+            "path": "/api/extensions/auth/oidc/callback/keycloak",
+            "headers": [(b"cookie", f"df_oidc_state_keycloak={raw}".encode()), (b"host", b"localhost:2026")],
+            "scheme": "http",
+            "client": ("127.0.0.1", 1234),
         }
         real_req = SRequest(scope)
 

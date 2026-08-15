@@ -13,10 +13,7 @@ from deerflow.extensions.isolation import IsolatedMiddleware
 from deerflow.extensions.registry import ExtensionRegistry
 from deerflow.extensions.stack import PLACEMENT_ANCHORS
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="upstream extension stack wiring diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def _app_config() -> AppConfig:

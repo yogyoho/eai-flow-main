@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.extensions.database import Base
 
 
-class ProjectRole(str, enum.Enum):
+class ProjectRole(enum.StrEnum):
     """Unified project-level roles — ONE taxonomy for the entire system."""
 
     OWNER = "owner"
@@ -67,14 +67,10 @@ class RolePermission(Base):
 
     __tablename__ = "role_permissions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     role: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     permission: Mapped[str] = mapped_column(String(100), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=func.now(), nullable=False
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=func.now(), nullable=False)
 
     def __repr__(self) -> str:
         return f"<RolePermission(role={self.role}, permission={self.permission})>"

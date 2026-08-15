@@ -299,9 +299,7 @@ class TestSkillLoadingIntegration:
         """Skill should be discoverable by LocalSkillStorage when placed in custom/."""
         skill_dir = tmp_path / "custom" / "geological-report"
         skill_dir.mkdir(parents=True)
-        (skill_dir / "SKILL.md").write_text(
-            SKILL_FILE.read_text(encoding="utf-8"), encoding="utf-8"
-        )
+        (skill_dir / "SKILL.md").write_text(SKILL_FILE.read_text(encoding="utf-8"), encoding="utf-8")
 
         from deerflow.skills.storage import get_or_new_skill_storage
 
@@ -315,9 +313,7 @@ class TestSkillLoadingIntegration:
         """Skill container path must point to the correct custom location."""
         skill_dir = tmp_path / "custom" / "geological-report"
         skill_dir.mkdir(parents=True)
-        (skill_dir / "SKILL.md").write_text(
-            SKILL_FILE.read_text(encoding="utf-8"), encoding="utf-8"
-        )
+        (skill_dir / "SKILL.md").write_text(SKILL_FILE.read_text(encoding="utf-8"), encoding="utf-8")
 
         from deerflow.skills.storage import get_or_new_skill_storage
 

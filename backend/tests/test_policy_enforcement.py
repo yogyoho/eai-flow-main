@@ -78,10 +78,12 @@ async def test_load_active_policies_orders_by_priority_and_engine_respects_deny(
 
     allow_p = _policy("allow_write", priority=10, grants={"permissions": ["kb:write"]})
     deny_p = _policy("deny_write", priority=20, grants={"deny_permissions": ["kb:write"]})
-    db = _mock_db([
-        _row(allow_p.name, allow_p.priority, allow_p.conditions, allow_p.grants),
-        _row(deny_p.name, deny_p.priority, deny_p.conditions, deny_p.grants),
-    ])
+    db = _mock_db(
+        [
+            _row(allow_p.name, allow_p.priority, allow_p.conditions, allow_p.grants),
+            _row(deny_p.name, deny_p.priority, deny_p.conditions, deny_p.grants),
+        ]
+    )
     policies = await policy_loader.load_active_policies(db)
     assert [p.name for p in policies] == ["allow_write", "deny_write"]
 
@@ -104,12 +106,12 @@ def test_data_scope_deny_composes_and_not():
     from app.extensions.auth.datascope import DataScopeEngine
     from app.extensions.auth.registry import DataScope
 
-    scopes = {"knowledge": [
-        DataScope(id="knowledge_owner", display_name="o",
-                  rule_template={"owner_id": "$identity.user_id"}, module="knowledge"),
-        DataScope(id="knowledge_public", display_name="p",
-                  rule_template={"access_type": "public"}, module="knowledge"),
-    ]}
+    scopes = {
+        "knowledge": [
+            DataScope(id="knowledge_owner", display_name="o", rule_template={"owner_id": "$identity.user_id"}, module="knowledge"),
+            DataScope(id="knowledge_public", display_name="p", rule_template={"access_type": "public"}, module="knowledge"),
+        ]
+    }
     idn = AttributeSet(user_id="u1", username="u1", role_code="r")
     eng = DataScopeEngine(scopes, role_data_scopes={"r": ["knowledge_owner", "knowledge_public"]})
 
@@ -129,10 +131,11 @@ def test_data_scope_no_deny_returns_plain_allow_union():
     from app.extensions.auth.datascope import DataScopeEngine
     from app.extensions.auth.registry import DataScope
 
-    scopes = {"knowledge": [
-        DataScope(id="knowledge_owner", display_name="o",
-                  rule_template={"owner_id": "$identity.user_id"}, module="knowledge"),
-    ]}
+    scopes = {
+        "knowledge": [
+            DataScope(id="knowledge_owner", display_name="o", rule_template={"owner_id": "$identity.user_id"}, module="knowledge"),
+        ]
+    }
     idn = AttributeSet(user_id="u1", username="u1", role_code="r")
     eng = DataScopeEngine(scopes, role_data_scopes={"r": ["knowledge_owner"]})
 

@@ -31,7 +31,7 @@ async def get_license_status(
     """Get current license status. No auth required — used by frontend route guards."""
     count_result = await db.execute(
         select(func.count(User.id)).where(
-            User.is_deleted == False,
+            User.is_deleted.is_(False),
             User.status == "active",
         )
     )

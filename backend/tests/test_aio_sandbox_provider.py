@@ -15,8 +15,6 @@ from deerflow.config.paths import Paths, join_host_path
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.runtime.user_context import reset_current_user, set_current_user
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI aio_sandbox differs (docker host env) (EAI-CUSTOM skip 2026-08-15)")
 
 

@@ -1,4 +1,5 @@
 """Writer assignment with workload-aware load balancing."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

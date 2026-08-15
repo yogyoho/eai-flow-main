@@ -9,9 +9,11 @@ from sqlalchemy import and_, func, select
 from app.extensions.database import AsyncSession
 from app.extensions.models import ScrapSource
 from app.extensions.web_scraper.schemas import (
+    ScrapSourceCreate,
     ScrapSourceDetailResponse,
     ScrapSourceListResponse,
     ScrapSourceResponse,
+    ScrapSourceUpdate,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,7 +26,7 @@ class ScrapSourceService:
     async def create_source(
         db: AsyncSession,
         user_id: UUID,
-        data: "ScrapSourceCreate",
+        data: ScrapSourceCreate,
     ) -> ScrapSource:
         """Create a new data source."""
         source = ScrapSource(
@@ -67,13 +69,7 @@ class ScrapSourceService:
         total = count_result.scalar() or 0
 
         offset = (page - 1) * page_size
-        query = (
-            select(ScrapSource)
-            .where(and_(*conditions))
-            .order_by(ScrapSource.updated_at.desc())
-            .offset(offset)
-            .limit(page_size)
-        )
+        query = select(ScrapSource).where(and_(*conditions)).order_by(ScrapSource.updated_at.desc()).offset(offset).limit(page_size)
         result = await db.execute(query)
         sources = result.scalars().all()
         return list(sources), total
@@ -86,7 +82,7 @@ class ScrapSourceService:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def update_source(db: AsyncSession, source: ScrapSource, data: "ScrapSourceUpdate") -> ScrapSource:
+    async def update_source(db: AsyncSession, source: ScrapSource, data: ScrapSourceUpdate) -> ScrapSource:
         """Update source fields."""
         if data.name is not None:
             source.name = data.name

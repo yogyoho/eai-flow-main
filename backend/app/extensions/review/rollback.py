@@ -1,4 +1,5 @@
 """Rejection rollback — resets reviews + chapters + project phase node."""
+
 from __future__ import annotations
 
 import uuid
@@ -34,14 +35,7 @@ async def execute_rollback(db, plan: dict):
 
     # 1. Reset rejected reviews to pending
     if plan.get("reviews_to_reset"):
-        await db.execute(
-            sa_update(ReviewAssignment)
-            .where(ReviewAssignment.project_id == project_id)
-            .where(ReviewAssignment.reviewer_id.in_(
-                uuid.UUID(rid) for rid in plan["reviews_to_reset"]
-            ))
-            .values(status="pending")
-        )
+        await db.execute(sa_update(ReviewAssignment).where(ReviewAssignment.project_id == project_id).where(ReviewAssignment.reviewer_id.in_(uuid.UUID(rid) for rid in plan["reviews_to_reset"])).values(status="pending"))
 
     # 2. Reset chapters in the rollback phase
     # EAI-CUSTOM: canonical statuses (ADR 2026-08-02) — rolled-back chapters
@@ -51,18 +45,12 @@ async def execute_rollback(db, plan: dict):
         await db.execute(
             sa_update(ProjectChapter)
             .where(ProjectChapter.project_id == project_id)
-            .where(ProjectChapter.id.in_(
-                uuid.UUID(cid) for cid in plan["chapters_to_reset"]
-            ))
+            .where(ProjectChapter.id.in_(uuid.UUID(cid) for cid in plan["chapters_to_reset"]))
             .where(ProjectChapter.status.in_(("reviewing", "approved")))
             .values(status="draft")
         )
 
     # 3. Move project to rollback target
-    await db.execute(
-        sa_update(ReportProject)
-        .where(ReportProject.id == project_id)
-        .values(current_phase_node=plan["target_phase"])
-    )
+    await db.execute(sa_update(ReportProject).where(ReportProject.id == project_id).values(current_phase_node=plan["target_phase"]))
 
     await db.commit()

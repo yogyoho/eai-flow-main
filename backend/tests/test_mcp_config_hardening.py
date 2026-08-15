@@ -35,6 +35,7 @@ def _server(command=None, transport="stdio") -> McpServerConfigResponse:
 
 # --- _stdio_command_name -----------------------------------------------------
 
+
 @pytest.mark.parametrize("good", ["npx", "uvx", "python"])
 def test_stdio_command_name_accepts_plain_executable(good):
     assert _stdio_command_name(good, server_name="s") == good
@@ -56,6 +57,7 @@ def test_stdio_command_name_rejects_paths_spaces_metachars(bad):
 
 # --- _allowed_stdio_commands -------------------------------------------------
 
+
 def test_allowed_stdio_commands_default_includes_npx_uvx():
     cmds = _allowed_stdio_commands()
     assert {"npx", "uvx"} <= cmds
@@ -68,6 +70,7 @@ def test_allowed_stdio_commands_extends_via_env(monkeypatch):
 
 
 # --- _validate_mcp_update_request -------------------------------------------
+
 
 def test_validate_allows_allowlisted_command():
     req = McpConfigUpdateRequest(mcp_servers={"gh": _server("npx")})
@@ -91,6 +94,7 @@ def test_validate_skips_non_stdio_transport():
 # EAI-CUSTOM: the actual admin gate is `require_admin_user` from app.gateway.deps
 # (mcp.py calls it on every config-mutating route); the old `_require_admin_user`
 # name never existed. Fixed 2026-08-15 to test the real gate.
+
 
 def _request_with_user(system_role):
     request = MagicMock()

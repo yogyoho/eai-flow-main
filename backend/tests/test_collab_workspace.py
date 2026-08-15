@@ -4,7 +4,6 @@ EAI-CUSTOM: 全新模块。纯单元测试（不依赖 DB），覆盖 tier 派�
 promote-to-report 标题提取、schema 校验。
 """
 
-from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -19,7 +18,6 @@ from app.extensions.workspace.schemas import (
     CollabTaskCreate,
 )
 from app.extensions.workspace.tier import _count_headings
-
 
 # ── Tier: heading counting (S4 quickdoc signal) ──
 
@@ -57,45 +55,60 @@ def _gate(mode: str = "all_must_approve", participants=None) -> CollabGate:
 class TestGateEvaluate:
     def test_agent_auto_approve_human_approves(self):
         """agent 参与者自动批准；人类 approve 即 PASS。"""
-        gate = _gate(participants=[
-            {"type": "agent", "agent_name": "writer-a", "weight": 1.0},
-            {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
-        ])
+        gate = _gate(
+            participants=[
+                {"type": "agent", "agent_name": "writer-a", "weight": 1.0},
+                {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
+            ]
+        )
         human_judgments = [{"reviewer_id": gate.participants[1]["user_id"], "status": "approved"}]
         from app.extensions.review.gate import GateResult
+
         assert evaluate(gate, human_judgments) == GateResult.PASS
 
     def test_zero_human_participants_waits(self):
         """零人类参与者不自动通过（防退化）。"""
-        gate = _gate(participants=[
-            {"type": "agent", "agent_name": "writer-a", "weight": 1.0},
-        ])
+        gate = _gate(
+            participants=[
+                {"type": "agent", "agent_name": "writer-a", "weight": 1.0},
+            ]
+        )
         from app.extensions.review.gate import GateResult
+
         assert evaluate(gate, []) == GateResult.WAITING
 
     def test_human_reject_fails(self):
-        gate = _gate(participants=[
-            {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
-        ])
+        gate = _gate(
+            participants=[
+                {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
+            ]
+        )
         human_judgments = [{"reviewer_id": gate.participants[0]["user_id"], "status": "rejected"}]
         from app.extensions.review.gate import GateResult
+
         assert evaluate(gate, human_judgments) == GateResult.REJECT
 
     def test_any_can_approve(self):
-        gate = _gate(mode="any_can_approve", participants=[
-            {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
-        ])
+        gate = _gate(
+            mode="any_can_approve",
+            participants=[
+                {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
+            ],
+        )
         human_judgments = [{"reviewer_id": gate.participants[0]["user_id"], "status": "approved"}]
         from app.extensions.review.gate import GateResult
+
         assert evaluate(gate, human_judgments) == GateResult.PASS
 
 
 class TestResolveJudgments:
     def test_agent_auto_approved(self):
-        gate = _gate(participants=[
-            {"type": "agent", "agent_name": "w", "weight": 1.0},
-            {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
-        ])
+        gate = _gate(
+            participants=[
+                {"type": "agent", "agent_name": "w", "weight": 1.0},
+                {"type": "human", "user_id": str(uuid4()), "weight": 1.0},
+            ]
+        )
         judgments, humans = resolve_judgments(gate, [])
         assert len(judgments) == 1  # agent 自动批准
         assert judgments[0]["status"] == "approved"

@@ -1,13 +1,13 @@
 """Tests for DataSourceDataset model + service + router + mcp."""
 
+import json
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from pydantic import ValidationError
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
 from httpx import ASGITransport, AsyncClient
-import json
+from pydantic import ValidationError
 
 from app.extensions.data_source import mcp as ds_mcp
 from app.extensions.data_source.routers import router
@@ -15,10 +15,7 @@ from app.extensions.data_source.schemas import DatasetCreate, DatasetResponse
 from app.extensions.data_source.service import DataSourceService
 from app.extensions.models import DataSourceDataset
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI data_source extension differs (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 class TestDatasetModel:
@@ -120,9 +117,7 @@ class TestDatasetService:
 
 
 def _fake_dataset(**ov):
-    base = {"id": str(uuid4()), "source_id": "sid", "table_name": "noise",
-            "label": "厂界噪声", "description": None, "key_columns": None,
-            "default_query": None, "created_at": datetime(2026, 1, 1), "updated_at": datetime(2026, 1, 1)}
+    base = {"id": str(uuid4()), "source_id": "sid", "table_name": "noise", "label": "厂界噪声", "description": None, "key_columns": None, "default_query": None, "created_at": datetime(2026, 1, 1), "updated_at": datetime(2026, 1, 1)}
     base.update(ov)
     m = MagicMock()
     for k, v in base.items():
@@ -132,8 +127,10 @@ def _fake_dataset(**ov):
 
 def _build_app():
     from fastapi import FastAPI
+
     from app.extensions.auth.middleware import get_current_user
     from app.extensions.database import get_db
+
     app = FastAPI()
     app.include_router(router)
 
@@ -148,8 +145,7 @@ def _build_app():
 class TestDatasetRouter:
     @pytest.mark.asyncio
     async def test_list_datasets(self):
-        with patch("app.extensions.data_source.routers.DataSourceService.list_datasets",
-                   AsyncMock(return_value=[_fake_dataset()])):
+        with patch("app.extensions.data_source.routers.DataSourceService.list_datasets", AsyncMock(return_value=[_fake_dataset()])):
             app = _build_app()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
                 r = await c.get("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets")
@@ -158,28 +154,23 @@ class TestDatasetRouter:
 
     @pytest.mark.asyncio
     async def test_create_dataset_201(self):
-        with patch("app.extensions.data_source.routers.DataSourceService.create_dataset",
-                   AsyncMock(return_value=_fake_dataset())):
+        with patch("app.extensions.data_source.routers.DataSourceService.create_dataset", AsyncMock(return_value=_fake_dataset())):
             app = _build_app()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                r = await c.post("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets",
-                                 json={"table_name": "noise", "label": "厂界噪声"})
+                r = await c.post("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets", json={"table_name": "noise", "label": "厂界噪声"})
         assert r.status_code == 201
 
     @pytest.mark.asyncio
     async def test_create_404_when_source_missing(self):
-        with patch("app.extensions.data_source.routers.DataSourceService.create_dataset",
-                   AsyncMock(side_effect=ValueError("no source"))):
+        with patch("app.extensions.data_source.routers.DataSourceService.create_dataset", AsyncMock(side_effect=ValueError("no source"))):
             app = _build_app()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
-                r = await c.post("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets",
-                                 json={"table_name": "noise", "label": "L"})
+                r = await c.post("/api/extensions/data-sources/11111111-1111-1111-1111-111111111111/datasets", json={"table_name": "noise", "label": "L"})
         assert r.status_code == 404
 
     @pytest.mark.asyncio
     async def test_delete_dataset_204(self):
-        with patch("app.extensions.data_source.routers.DataSourceService.delete_dataset",
-                   AsyncMock(return_value=True)):
+        with patch("app.extensions.data_source.routers.DataSourceService.delete_dataset", AsyncMock(return_value=True)):
             app = _build_app()
             async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
                 r = await c.delete("/api/extensions/data-sources/datasets/" + str(uuid4()))
@@ -202,10 +193,10 @@ class TestDatasetMcp:
         async def _run(func):
             return await func(MagicMock())
 
-        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
-        ), patch(
-            "app.extensions.data_source.service.DataSourceService.list_datasets", AsyncMock(return_value=[ds])
+        with (
+            patch("app.extensions.data_source.mcp._run_in_db", _run),
+            patch("app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)),
+            patch("app.extensions.data_source.service.DataSourceService.list_datasets", AsyncMock(return_value=[ds])),
         ):
             out = await ds_mcp._handle_list_datasets({"source_name": "prod"})
         payload = json.loads(out[0].text)
@@ -222,13 +213,14 @@ class TestDatasetMcp:
         async def _run(func):
             return await func(MagicMock())
 
-        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
-        ), patch(
-            "app.extensions.data_source.service.DataSourceService.list_datasets", AsyncMock(return_value=[])
-        ), patch(
-            "app.extensions.data_source.service.DataSourceService.profile_tables",
-            AsyncMock(return_value=[{"name": "t1", "columns": [{"name": "c", "type": "text"}]}, {"name": "t2", "columns": []}]),
+        with (
+            patch("app.extensions.data_source.mcp._run_in_db", _run),
+            patch("app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)),
+            patch("app.extensions.data_source.service.DataSourceService.list_datasets", AsyncMock(return_value=[])),
+            patch(
+                "app.extensions.data_source.service.DataSourceService.profile_tables",
+                AsyncMock(return_value=[{"name": "t1", "columns": [{"name": "c", "type": "text"}]}, {"name": "t2", "columns": []}]),
+            ),
         ):
             out = await ds_mcp._handle_list_datasets({"source_name": "prod"})
         payload = json.loads(out[0].text)
@@ -280,12 +272,11 @@ class TestProfileTables:
         async def _run(func):
             return await func(MagicMock())
 
-        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
-        ), patch(
-            "app.extensions.data_source.service.DataSourceService.resolve_dataset", AsyncMock(return_value=ds)
-        ), patch(
-            "app.extensions.data_source.service.DataSourceService.run_readonly_query", AsyncMock(return_value=[{"x": 1}])
+        with (
+            patch("app.extensions.data_source.mcp._run_in_db", _run),
+            patch("app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)),
+            patch("app.extensions.data_source.service.DataSourceService.resolve_dataset", AsyncMock(return_value=ds)),
+            patch("app.extensions.data_source.service.DataSourceService.run_readonly_query", AsyncMock(return_value=[{"x": 1}])),
         ):
             out = await ds_mcp._handle_query_dataset({"source_name": "prod", "label": "L"})
         payload = json.loads(out[0].text)
@@ -301,10 +292,10 @@ class TestProfileTables:
         async def _run(func):
             return await func(MagicMock())
 
-        with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-            "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)
-        ), patch(
-            "app.extensions.data_source.service.DataSourceService.resolve_dataset", AsyncMock(return_value=None)
+        with (
+            patch("app.extensions.data_source.mcp._run_in_db", _run),
+            patch("app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=src)),
+            patch("app.extensions.data_source.service.DataSourceService.resolve_dataset", AsyncMock(return_value=None)),
         ):
             out = await ds_mcp._handle_query_dataset({"source_name": "prod", "label": "nope"})
         payload = json.loads(out[0].text)

@@ -33,10 +33,7 @@ from deerflow.skills.storage import reset_skill_storage
 from deerflow.skills.storage.user_scoped_skill_storage import UserScopedSkillStorage
 from deerflow.skills.types import SkillCategory
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI lark-cli integration differs (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def _skill_content(name: str) -> str:

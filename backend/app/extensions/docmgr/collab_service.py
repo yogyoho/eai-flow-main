@@ -17,12 +17,7 @@ logger = logging.getLogger(__name__)
 class CommentService:
     @staticmethod
     async def list_comments(db: AsyncSession, doc_id: UUID) -> list[dict]:
-        stmt = (
-            select(CollabComment, User.username, User.full_name)
-            .join(User, CollabComment.user_id == User.id, isouter=True)
-            .where(CollabComment.doc_id == doc_id)
-            .order_by(CollabComment.created_at)
-        )
+        stmt = select(CollabComment, User.username, User.full_name).join(User, CollabComment.user_id == User.id, isouter=True).where(CollabComment.doc_id == doc_id).order_by(CollabComment.created_at)
         result = await db.execute(stmt)
         rows = result.all()
         return [
@@ -43,9 +38,7 @@ class CommentService:
         ]
 
     @staticmethod
-    async def create_comment(
-        db: AsyncSession, user_id: UUID, doc_id: UUID, block_id: str, content: str, parent_id: UUID | None = None
-    ) -> dict:
+    async def create_comment(db: AsyncSession, user_id: UUID, doc_id: UUID, block_id: str, content: str, parent_id: UUID | None = None) -> dict:
         comment = CollabComment(
             doc_id=doc_id,
             block_id=block_id,
@@ -172,11 +165,7 @@ class AIReviewService:
             [
                 {
                     "role": "system",
-                    "content": (
-                        f"{prompt}\n\n"
-                        '请以 JSON 格式返回，格式为: {{"comments": [{{"block_id": null, "comment": "...", '
-                        '"severity": "info|warning|error"}}], "overall_score": 0-100, "summary": "..."}}'
-                    ),
+                    "content": (f'{prompt}\n\n请以 JSON 格式返回，格式为: {{{{"comments": [{{{{"block_id": null, "comment": "...", "severity": "info|warning|error"}}}}], "overall_score": 0-100, "summary": "..."}}}}'),
                 },
                 {"role": "user", "content": content[:8000]},
             ]
@@ -206,12 +195,7 @@ class AIReviewService:
 class VersionService:
     @staticmethod
     async def list_versions(db: AsyncSession, doc_id: UUID) -> list[dict]:
-        stmt = (
-            select(CollabVersion, User.username, User.full_name)
-            .join(User, CollabVersion.created_by == User.id, isouter=True)
-            .where(CollabVersion.doc_id == doc_id)
-            .order_by(CollabVersion.version.desc())
-        )
+        stmt = select(CollabVersion, User.username, User.full_name).join(User, CollabVersion.created_by == User.id, isouter=True).where(CollabVersion.doc_id == doc_id).order_by(CollabVersion.version.desc())
         result = await db.execute(stmt)
         rows = result.all()
         return [
@@ -266,9 +250,7 @@ class VersionService:
 
     @staticmethod
     async def get_version(db: AsyncSession, doc_id: UUID, version: int) -> dict | None:
-        stmt = select(CollabVersion).where(
-            CollabVersion.doc_id == doc_id, CollabVersion.version == version
-        )
+        stmt = select(CollabVersion).where(CollabVersion.doc_id == doc_id, CollabVersion.version == version)
         result = await db.execute(stmt)
         v = result.scalar_one_or_none()
         if not v:
@@ -395,10 +377,7 @@ class VersionService:
                 [
                     {
                         "role": "system",
-                        "content": (
-                            "你是一个文档变更摘要助手。对比文档的两个版本，用1-2句中文总结主要变更内容。"
-                            "只关注实质性内容变化（新增、删除、修改的段落），忽略格式差异。"
-                        ),
+                        "content": ("你是一个文档变更摘要助手。对比文档的两个版本，用1-2句中文总结主要变更内容。只关注实质性内容变化（新增、删除、修改的段落），忽略格式差异。"),
                     },
                     {
                         "role": "user",
@@ -428,10 +407,7 @@ class VersionService:
                 [
                     {
                         "role": "system",
-                        "content": (
-                            "你是一个文档变更摘要助手。对比文档的两个版本，用1-2句中文总结主要变更内容。"
-                            "只关注实质性内容变化（新增、删除、修改的段落），忽略格式差异。"
-                        ),
+                        "content": ("你是一个文档变更摘要助手。对比文档的两个版本，用1-2句中文总结主要变更内容。只关注实质性内容变化（新增、删除、修改的段落），忽略格式差异。"),
                     },
                     {
                         "role": "user",
@@ -447,8 +423,6 @@ class VersionService:
 
     @staticmethod
     async def get_snapshot(db: AsyncSession, doc_id: UUID, version: int) -> bytes | None:
-        stmt = select(CollabVersion.snapshot).where(
-            CollabVersion.doc_id == doc_id, CollabVersion.version == version
-        )
+        stmt = select(CollabVersion.snapshot).where(CollabVersion.doc_id == doc_id, CollabVersion.version == version)
         result = await db.execute(stmt)
         return result.scalar_one_or_none()

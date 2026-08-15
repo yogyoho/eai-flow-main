@@ -135,7 +135,7 @@ class UserDepartmentService:
             return [], 0
 
         user_ids = [ud.user_id for ud in associations]
-        user_stmt = select(User).where(User.id.in_(user_ids), User.is_deleted == False)
+        user_stmt = select(User).where(User.id.in_(user_ids), User.is_deleted.is_(False))
         user_result = await db.execute(user_stmt)
         users = list(user_result.scalars().all())
 
@@ -168,6 +168,6 @@ class UserDepartmentService:
             return []
 
         user_ids = list(set(ud.user_id for ud in associations))
-        user_stmt = select(User).where(User.id.in_(user_ids), User.is_deleted == False)
+        user_stmt = select(User).where(User.id.in_(user_ids), User.is_deleted.is_(False))
         user_result = await db.execute(user_stmt)
         return list(user_result.scalars().all())

@@ -11,6 +11,7 @@ Validates:
 import math
 
 import pytest
+
 from app.extensions.formula_engine import (
     FormulaGraph,
     FormulaNode,
@@ -18,8 +19,8 @@ from app.extensions.formula_engine import (
     ParamSourceType,
 )
 
-
 # ── Fixtures: the real 循环水装置 calculation chain from 给排水计算书.docx ──
+
 
 @pytest.fixture
 def water_system_formulas() -> list[FormulaNode]:
@@ -35,8 +36,7 @@ def water_system_formulas() -> list[FormulaNode]:
             expression="Q * KZF * delta_t",
             inputs={
                 "Q": ParamSource.user(20000, "m3/h"),
-                "KZF": ParamSource.lookup(0.001461, "1/℃",
-                                          description="GB/T 50746 表3.3.3, 内插法"),
+                "KZF": ParamSource.lookup(0.001461, "1/℃", description="GB/T 50746 表3.3.3, 内插法"),
                 "delta_t": ParamSource.user(10, "℃"),
             },
             outputs={"Qe": "m3/h"},
@@ -58,8 +58,7 @@ def water_system_formulas() -> list[FormulaNode]:
             expression="Qe / (N - 1)",
             inputs={
                 "Qe": ParamSource.from_formula("Qe", "Qe"),
-                "N": ParamSource.user(5, "",
-                                      description="浓缩倍数 N=5"),
+                "N": ParamSource.user(5, "", description="浓缩倍数 N=5"),
             },
             outputs={"Qb": "m3/h"},
         ),
@@ -88,6 +87,7 @@ def built_graph(water_system_formulas: list[FormulaNode]) -> FormulaGraph:
 
 # ── Dependency derivation ──
 
+
 class TestDependencyDerivation:
     def test_derives_correct_dependencies(self, built_graph: FormulaGraph):
         deps = built_graph.dependencies
@@ -113,6 +113,7 @@ class TestDependencyDerivation:
 
 
 # ── Topological order ──
+
 
 class TestTopologicalSort:
     def test_parallel_batches(self, built_graph: FormulaGraph):
@@ -140,6 +141,7 @@ class TestTopologicalSort:
 
 
 # ── Execution ──
+
 
 class TestExecution:
     def test_full_execution_matches_document(self, built_graph: FormulaGraph):
@@ -181,6 +183,7 @@ class TestExecution:
 
 
 # ── Parameter change & recalculation ──
+
 
 class TestParamChange:
     def test_update_param_triggers_full_recalc(self, built_graph: FormulaGraph):
@@ -239,12 +242,17 @@ class TestParamChange:
 
 # ── Edge cases ──
 
+
 class TestEdgeCases:
     def test_circular_dependency_detection(self):
         """A → B → A should raise ValueError."""
         a = FormulaNode("A", "formula A", expression="x", inputs={}, outputs={"a": ""})
         b = FormulaNode(
-            "B", "formula B", expression="a", inputs={"a": ParamSource.from_formula("A", "a")}, outputs={"b": ""},
+            "B",
+            "formula B",
+            expression="a",
+            inputs={"a": ParamSource.from_formula("A", "a")},
+            outputs={"b": ""},
         )
         # Overwrite A to depend on B
         a.inputs = {"b": ParamSource.from_formula("B", "b")}
@@ -261,9 +269,7 @@ class TestEdgeCases:
         assert graph.execution_order == []
 
     def test_single_formula(self):
-        node = FormulaNode("x", "lonely", expression="a + b",
-                           inputs={"a": ParamSource.user(1), "b": ParamSource.user(2)},
-                           outputs={"x": ""})
+        node = FormulaNode("x", "lonely", expression="a + b", inputs={"a": ParamSource.user(1), "b": ParamSource.user(2)}, outputs={"x": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -272,9 +278,7 @@ class TestEdgeCases:
         assert graph.execute() == {"x": {"x": 3.0}}
 
     def test_math_functions_in_expression(self):
-        node = FormulaNode("math_test", "math", expression="sqrt(pow(a, 2) + pow(b, 2))",
-                           inputs={"a": ParamSource.user(3), "b": ParamSource.user(4)},
-                           outputs={"c": ""})
+        node = FormulaNode("math_test", "math", expression="sqrt(pow(a, 2) + pow(b, 2))", inputs={"a": ParamSource.user(3), "b": ParamSource.user(4)}, outputs={"c": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -282,9 +286,7 @@ class TestEdgeCases:
 
     def test_lookup_params(self):
         """Verify lookup_table values are treated as user inputs (not recomputed)."""
-        node = FormulaNode("lk", "lookup", expression="KZF * x",
-                           inputs={"KZF": ParamSource.lookup(0.001461), "x": ParamSource.user(10)},
-                           outputs={"y": ""})
+        node = FormulaNode("lk", "lookup", expression="KZF * x", inputs={"KZF": ParamSource.lookup(0.001461), "x": ParamSource.user(10)}, outputs={"y": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -292,9 +294,7 @@ class TestEdgeCases:
 
     def test_namespace_log_exp(self):
         """对数指数函数：log, log10, exp"""
-        node = FormulaNode("test", "test", expression="log(E) + log10(100) + exp(0)",
-                           inputs={"E": ParamSource.user(math.e)},
-                           outputs={"r": ""})
+        node = FormulaNode("test", "test", expression="log(E) + log10(100) + exp(0)", inputs={"E": ParamSource.user(math.e)}, outputs={"r": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -303,8 +303,7 @@ class TestEdgeCases:
 
     def test_namespace_trig(self):
         """三角函数 sin/cos/tan"""
-        node = FormulaNode("test", "test", expression="sin(pi/6) + cos(0)",
-                           outputs={"r": ""})
+        node = FormulaNode("test", "test", expression="sin(pi/6) + cos(0)", outputs={"r": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -313,8 +312,7 @@ class TestEdgeCases:
 
     def test_namespace_degrees_radians(self):
         """角度弧度转换：radians + sin 配合使用"""
-        node = FormulaNode("test", "test", expression="sin(radians(30))",
-                           outputs={"r": ""})
+        node = FormulaNode("test", "test", expression="sin(radians(30))", outputs={"r": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -323,8 +321,7 @@ class TestEdgeCases:
 
     def test_namespace_hyperbolic(self):
         """双曲函数 sinh/cosh"""
-        node = FormulaNode("test", "test", expression="sinh(0) + cosh(0)",
-                           outputs={"r": ""})
+        node = FormulaNode("test", "test", expression="sinh(0) + cosh(0)", outputs={"r": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -333,8 +330,7 @@ class TestEdgeCases:
 
     def test_namespace_atan2(self):
         """atan2 四象限反正切（工程坐标转换常用）"""
-        node = FormulaNode("test", "test", expression="degrees(atan2(1, 1))",
-                           outputs={"r": ""})
+        node = FormulaNode("test", "test", expression="degrees(atan2(1, 1))", outputs={"r": ""})
         graph = FormulaGraph()
         graph.add_formula(node)
         graph.build()
@@ -344,6 +340,7 @@ class TestEdgeCases:
 
 # ── Cross-formula group test (verifies independent groups run in parallel) ──
 
+
 class TestParallelGroups:
     def test_two_independent_chains(self):
         """Chain A: a1→a2. Chain B: b1→b2. No cross-deps.
@@ -351,11 +348,9 @@ class TestParallelGroups:
         Should produce: batch0={a1,b1}, batch1={a2,b2}.
         """
         a1 = FormulaNode("a1", "a1", expression="x", inputs={"x": ParamSource.user(1)}, outputs={"a1": ""})
-        a2 = FormulaNode("a2", "a2", expression="a1 + 1",
-                         inputs={"a1": ParamSource.from_formula("a1", "a1")}, outputs={"a2": ""})
+        a2 = FormulaNode("a2", "a2", expression="a1 + 1", inputs={"a1": ParamSource.from_formula("a1", "a1")}, outputs={"a2": ""})
         b1 = FormulaNode("b1", "b1", expression="y", inputs={"y": ParamSource.user(2)}, outputs={"b1": ""})
-        b2 = FormulaNode("b2", "b2", expression="b1 + 1",
-                         inputs={"b1": ParamSource.from_formula("b1", "b1")}, outputs={"b2": ""})
+        b2 = FormulaNode("b2", "b2", expression="b1 + 1", inputs={"b1": ParamSource.from_formula("b1", "b1")}, outputs={"b2": ""})
 
         graph = FormulaGraph()
         graph.add_formulas([a1, a2, b1, b2])
@@ -369,27 +364,31 @@ class TestParallelGroups:
 
 # ── needs_verification 字段（反馈2 分层放开：经验值标【待核实】）──
 
+
 class TestNeedsVerification:
     def test_default_false(self):
-        from app.extensions.formula_engine import ParamSource, ParamSourceType
+        from app.extensions.formula_engine import ParamSource
+
         ps = ParamSource(type=ParamSourceType.LOOKUP_TABLE, value=0.001461)
         assert ps.needs_verification is False
 
     def test_can_set_true(self):
-        from app.extensions.formula_engine import ParamSource, ParamSourceType
-        ps = ParamSource(type=ParamSourceType.LOOKUP_TABLE, value=0.001461,
-                         needs_verification=True)
+        from app.extensions.formula_engine import ParamSource
+
+        ps = ParamSource(type=ParamSourceType.LOOKUP_TABLE, value=0.001461, needs_verification=True)
         assert ps.needs_verification is True
 
     def test_factory_defaults_false(self):
         """既有工厂方法向后兼容：不传 needs_verification 时默认 False。"""
         from app.extensions.formula_engine import ParamSource
+
         assert ParamSource.lookup(0.001461).needs_verification is False
         assert ParamSource.code(5.0).needs_verification is False
         assert ParamSource.user(20000).needs_verification is False
 
 
 # ── get_step_trace：单公式步骤轨迹（反馈3 折叠展开）──
+
 
 class TestGetStepTrace:
     def test_trace_structure(self, built_graph: FormulaGraph):
@@ -424,10 +423,10 @@ class TestGetStepTrace:
     def test_trace_needs_verification_passthrough(self):
         """ParamSource.needs_verification=True 应透传到轨迹。"""
         node = FormulaNode(
-            "t", "t", expression="KZF * x",
-            inputs={"KZF": ParamSource.lookup(0.001461, description="GB/T 表3.3.3",
-                                              needs_verification=True),
-                    "x": ParamSource.user(10)},
+            "t",
+            "t",
+            expression="KZF * x",
+            inputs={"KZF": ParamSource.lookup(0.001461, description="GB/T 表3.3.3", needs_verification=True), "x": ParamSource.user(10)},
             outputs={"t": ""},
         )
         g = FormulaGraph()
@@ -440,23 +439,29 @@ class TestGetStepTrace:
 
 # ── code_constraint_multi：多规范围框比对（反馈5）──
 
+
 class TestMultiStandardMatrix:
     def _engine_with_multi(self, n_value: float):
         from app.extensions.formula_engine import ConsistencyEngine
+
         eng = ConsistencyEngine()
-        eng.set_param("4", "N", n_value)          # 注册到 _param_table
-        eng._computed["N"] = n_value               # 供 expression eval
-        eng.load_contracts([{
-            "id": "N-multi-test",
-            "type": "code_constraint_multi",
-            "expression": "N",
-            "description": "浓缩倍数多规范比对",
-            "standards": [
-                {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 3.0, "severity": "fail", "note": "不应低于3.0"},
-                {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 5.0, "severity": "warn", "note": "宜≥5.0"},
-                {"code": "GB/T 50050-2017", "clause": "§3.1.x", "min": 3.0, "severity": "fail"},
-            ],
-        }])
+        eng.set_param("4", "N", n_value)  # 注册到 _param_table
+        eng._computed["N"] = n_value  # 供 expression eval
+        eng.load_contracts(
+            [
+                {
+                    "id": "N-multi-test",
+                    "type": "code_constraint_multi",
+                    "expression": "N",
+                    "description": "浓缩倍数多规范比对",
+                    "standards": [
+                        {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 3.0, "severity": "fail", "note": "不应低于3.0"},
+                        {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 5.0, "severity": "warn", "note": "宜≥5.0"},
+                        {"code": "GB/T 50050-2017", "clause": "§3.1.x", "min": 3.0, "severity": "fail"},
+                    ],
+                }
+            ]
+        )
         return eng
 
     def test_matrix_shape(self):
@@ -480,36 +485,49 @@ class TestMultiStandardMatrix:
     def test_multi_not_in_normal_check(self):
         """code_constraint_multi 不走 check() 单违规路径（由 multi_standard_matrix 单独消费）。"""
         eng = self._engine_with_multi(1.0)  # 即便全部不满足
-        assert eng.check() == []           # check() 不产出它的违规
+        assert eng.check() == []  # check() 不产出它的违规
 
     def test_single_code_constraint_unchanged(self):
         """既有 code_constraint（单标准）行为不变，仍驱动 check()。"""
         from app.extensions.formula_engine import ConsistencyEngine
+
         eng = ConsistencyEngine()
         eng._computed["N"] = 2.0
-        eng.load_contracts([{
-            "id": "N-min", "type": "code_constraint",
-            "expression": "N", "expected_min": 3.0, "severity": "fail",
-            "description": "N≥3.0",
-        }])
+        eng.load_contracts(
+            [
+                {
+                    "id": "N-min",
+                    "type": "code_constraint",
+                    "expression": "N",
+                    "expected_min": 3.0,
+                    "severity": "fail",
+                    "description": "N≥3.0",
+                }
+            ]
+        )
         violations = eng.check()
         assert len(violations) == 1 and violations[0].contract_id == "N-min"
 
     def test_matrix_actual_unresrollable_passed_none(self):
         """expression 无法求值时 actual=None，每条 standard 的 passed=None（标【需人工对照规范】）。"""
         from app.extensions.formula_engine import ConsistencyEngine
+
         eng = ConsistencyEngine()
         # 不往 _computed 放 MISSING_VAR → expression 求值失败 → _resolve_actual 返回 None
-        eng.load_contracts([{
-            "id": "missing-var-multi",
-            "type": "code_constraint_multi",
-            "expression": "MISSING_VAR",
-            "description": "无法求值的多规范合约",
-            "standards": [
-                {"code": "GB X", "clause": "§1", "min": 3.0, "severity": "fail"},
-                {"code": "GB Y", "clause": "§2", "max": 8.0, "severity": "warn"},
-            ],
-        }])
+        eng.load_contracts(
+            [
+                {
+                    "id": "missing-var-multi",
+                    "type": "code_constraint_multi",
+                    "expression": "MISSING_VAR",
+                    "description": "无法求值的多规范合约",
+                    "standards": [
+                        {"code": "GB X", "clause": "§1", "min": 3.0, "severity": "fail"},
+                        {"code": "GB Y", "clause": "§2", "max": 8.0, "severity": "warn"},
+                    ],
+                }
+            ]
+        )
         rows = eng.multi_standard_matrix()
         assert len(rows) == 1
         row = rows[0]
@@ -524,15 +542,19 @@ class TestMultiStandardMatrix:
             eng = ConsistencyEngine()
             eng.set_param("4", "N", n)
             eng._computed["N"] = n
-            eng.load_contracts([{
-                "id": "N-max-multi",
-                "type": "code_constraint_multi",
-                "expression": "N",
-                "description": "N 上限多规范",
-                "standards": [
-                    {"code": "GB MAX", "clause": "§1", "max": 4.5, "severity": "warn"},
-                ],
-            }])
+            eng.load_contracts(
+                [
+                    {
+                        "id": "N-max-multi",
+                        "type": "code_constraint_multi",
+                        "expression": "N",
+                        "description": "N 上限多规范",
+                        "standards": [
+                            {"code": "GB MAX", "clause": "§1", "max": 4.5, "severity": "warn"},
+                        ],
+                    }
+                ]
+            )
             return eng
 
         # N=4.0 ≤ max=4.5 → 通过

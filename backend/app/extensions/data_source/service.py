@@ -8,12 +8,12 @@ PROJECT_DB_URL here — that points at a different database (project-db)."""
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
 from sqlalchemy import select, text
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.extensions.data_source.schemas import (
@@ -21,17 +21,13 @@ from app.extensions.data_source.schemas import (
     DataSourceUpdate,
     TestConnectionResult,
 )
-
 from app.extensions.models import DataSource, DataSourceDataset
-
 
 # Write verbs blocked ANYWHERE in the query. Closes the PostgreSQL
 # data-modifying-CTE bypass (WITH d AS (DELETE ...) SELECT ...). Whole-word
 # matching (\b) avoids false positives on identifiers like update_time /
 # deleted_logs (underscore is a word char, so \bUPDATE\b won't match).
-_WRITE_VERBS = re.compile(
-    r"\b(INSERT|UPDATE|DELETE|MERGE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|CALL)\b"
-)
+_WRITE_VERBS = re.compile(r"\b(INSERT|UPDATE|DELETE|MERGE|DROP|CREATE|ALTER|TRUNCATE|GRANT|REVOKE|CALL)\b")
 
 
 def assert_readonly_select(sql: str) -> str:
@@ -104,7 +100,7 @@ class DataSourceService:
             "status": "connected" if result.success else "error",
             # naive UTC — DataSource.last_sync_at is TIMESTAMP WITHOUT TIME ZONE;
             # asyncpg rejects tz-aware datetimes against it (DataError → 500).
-            "last_sync_at": datetime.now(timezone.utc).replace(tzinfo=None),
+            "last_sync_at": datetime.now(UTC).replace(tzinfo=None),
             "metadata": result.metadata or {},
         }
 
@@ -164,11 +160,7 @@ class DataSourceService:
 
     @staticmethod
     async def list_datasets(db: AsyncSession, source_id) -> list[DataSourceDataset]:
-        result = await db.execute(
-            select(DataSourceDataset)
-            .where(DataSourceDataset.source_id == source_id)
-            .order_by(DataSourceDataset.label.asc())
-        )
+        result = await db.execute(select(DataSourceDataset).where(DataSourceDataset.source_id == source_id).order_by(DataSourceDataset.label.asc()))
         return list(result.scalars().all())
 
     @staticmethod
@@ -247,9 +239,7 @@ class DataSourceService:
         engine = create_async_engine(_build_db_url(source.connection_config or {}), poolclass=NullPool)
         try:
             async with engine.connect() as conn:
-                res = await conn.execute(
-                    text("SELECT table_name FROM information_schema.tables WHERE table_schema='public' LIMIT 50")
-                )
+                res = await conn.execute(text("SELECT table_name FROM information_schema.tables WHERE table_schema='public' LIMIT 50"))
                 return [r[0] for r in res.fetchall()]
         finally:
             await engine.dispose()
@@ -264,14 +254,7 @@ class DataSourceService:
         engine = create_async_engine(_build_db_url(source.connection_config or {}), poolclass=NullPool)
         try:
             async with engine.connect() as conn:
-                res = await conn.execute(
-                    text(
-                        "SELECT table_name, column_name, data_type "
-                        "FROM information_schema.columns "
-                        "WHERE table_schema='public' "
-                        "ORDER BY table_name, ordinal_position"
-                    )
-                )
+                res = await conn.execute(text("SELECT table_name, column_name, data_type FROM information_schema.columns WHERE table_schema='public' ORDER BY table_name, ordinal_position"))
                 rows = res.fetchall()
         finally:
             await engine.dispose()
@@ -303,9 +286,7 @@ async def _test_database(cfg: dict) -> TestConnectionResult:
             await conn.execute(text("SELECT 1"))
     finally:
         await engine.dispose()
-    return TestConnectionResult(
-        success=True, message="连接成功", metadata={"engine": cfg.get("driver") or "postgresql+asyncpg"}
-    )
+    return TestConnectionResult(success=True, message="连接成功", metadata={"engine": cfg.get("driver") or "postgresql+asyncpg"})
 
 
 async def _test_api(cfg: dict) -> TestConnectionResult:
@@ -316,12 +297,8 @@ async def _test_api(cfg: dict) -> TestConnectionResult:
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(url, headers=headers)
     if 200 <= resp.status_code < 300:
-        return TestConnectionResult(
-            success=True, message=f"HTTP {resp.status_code}", metadata={"status_code": resp.status_code}
-        )
-    return TestConnectionResult(
-        success=False, message=f"HTTP {resp.status_code}", metadata={"status_code": resp.status_code}
-    )
+        return TestConnectionResult(success=True, message=f"HTTP {resp.status_code}", metadata={"status_code": resp.status_code})
+    return TestConnectionResult(success=False, message=f"HTTP {resp.status_code}", metadata={"status_code": resp.status_code})
 
 
 def _test_file(cfg: dict) -> TestConnectionResult:
@@ -334,7 +311,5 @@ def _test_file(cfg: dict) -> TestConnectionResult:
 def _test_gis(cfg: dict) -> TestConnectionResult:
     name = cfg.get("file_name", "")
     if name:
-        return TestConnectionResult(
-            success=True, message="已配置 GIS 文件", metadata={"file_name": name, "file_size": cfg.get("file_size")}
-        )
+        return TestConnectionResult(success=True, message="已配置 GIS 文件", metadata={"file_name": name, "file_size": cfg.get("file_size")})
     return TestConnectionResult(success=False, message="未上传 GIS 文件")

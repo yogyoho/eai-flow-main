@@ -32,9 +32,10 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
     Within each layer, results are sorted by completeness_score DESC, version DESC.
     Only published templates are considered.
     """
+    from sqlalchemy import select
+
     from app.extensions.knowledge_factory.models import ExtractionDomain, ExtractionTemplate
     from app.extensions.knowledge_factory.service import TemplateService
-    from sqlalchemy import select
 
     domain_keywords = arguments.get("domain_keywords", [])
     industry = arguments.get("industry")
@@ -45,14 +46,14 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
     # Without keywords the loose fallback returns the highest-scored published
     # template in the entire DB (currently a coal EIA report), which is never
     # what the caller wants.
-    if not domain_keywords or (
-        isinstance(domain_keywords, list) and len(domain_keywords) == 0
-    ):
-        return _json_response({
-            "found": False,
-            "reason": "missing_keywords",
-            "suggestion": "请提供 domain_keywords 参数，例如 ['消防设计专篇', '消防']。空关键词会匹配到无关模板。",
-        })
+    if not domain_keywords or (isinstance(domain_keywords, list) and len(domain_keywords) == 0):
+        return _json_response(
+            {
+                "found": False,
+                "reason": "missing_keywords",
+                "suggestion": "请提供 domain_keywords 参数，例如 ['消防设计专篇', '消防']。空关键词会匹配到无关模板。",
+            }
+        )
 
     async def _query(db):
         # Step 1: Find matching domains
@@ -83,9 +84,8 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
         name_conditions = None
         if domain_keywords:
             from sqlalchemy import or_
-            name_conditions = [
-                ExtractionTemplate.name.ilike(f"%{kw}%") for kw in domain_keywords
-            ]
+
+            name_conditions = [ExtractionTemplate.name.ilike(f"%{kw}%") for kw in domain_keywords]
 
         domain_filter = best_domain.id if best_domain else None
 
@@ -96,11 +96,9 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
         templates = []
         for attempt_filters in [
             {"domain": domain_filter, "name": name_conditions},  # strict: domain AND name
-            {"domain": None, "name": name_conditions},            # fallback: name only
+            {"domain": None, "name": name_conditions},  # fallback: name only
         ]:
-            query_base = select(ExtractionTemplate).where(
-                ExtractionTemplate.status == "published"
-            )
+            query_base = select(ExtractionTemplate).where(ExtractionTemplate.status == "published")
             if attempt_filters["domain"]:
                 query_base = query_base.where(ExtractionTemplate.domain == attempt_filters["domain"])
             if attempt_filters["name"]:
@@ -116,8 +114,7 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
                 break  # found results with this filter level, no need to relax further
 
         if not templates:
-            return {"found": False, "reason": "no_template_found",
-                    "suggestion": "请先通过知识工厂抽取该领域的报告模板"}
+            return {"found": False, "reason": "no_template_found", "suggestion": "请先通过知识工厂抽取该领域的报告模板"}
 
         # Step 3: Score and rank candidates
         candidates = []
@@ -136,8 +133,7 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
             candidates.append((match_level, t.completeness_score, t))
 
         if not candidates:
-            return {"found": False, "reason": "low_quality",
-                    "suggestion": f"存在模板但完整度评分低于阈值({min_completeness_score})，建议优化模板后再生成"}
+            return {"found": False, "reason": "low_quality", "suggestion": f"存在模板但完整度评分低于阈值({min_completeness_score})，建议优化模板后再生成"}
 
         candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
         match_level, _, best = candidates[0]
@@ -162,14 +158,12 @@ async def handle_kf_get_template(arguments: dict, _run_in_db) -> list[TextConten
     try:
         tid = UUID(template_id)
     except (ValueError, AttributeError):
-        return _json_response({"found": False, "reason": "invalid_uuid",
-                               "detail": f"Invalid template_id: {template_id}"})
+        return _json_response({"found": False, "reason": "invalid_uuid", "detail": f"Invalid template_id: {template_id}"})
 
     async def _query(db):
         template = await TemplateService.get_template(db, tid)
         if not template:
-            return {"found": False, "reason": "template_not_found",
-                    "detail": f"模板 {template_id} 不存在"}
+            return {"found": False, "reason": "template_not_found", "detail": f"模板 {template_id} 不存在"}
         return TemplateService.to_template_document(template).model_dump() | {"found": True}
 
     result = await _run_in_db(_query)
@@ -226,6 +220,7 @@ async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextCo
         # Resolve effective model from system config if not provided
         if not llm_model:
             from app.extensions.models import SystemConfig as SC
+
             result = await db.execute(sa_select(SC.value).where(SC.key == "default_model"))
             row = result.scalar_one_or_none()
             if row:
@@ -238,40 +233,41 @@ async def handle_kf_extract_template(arguments: dict, _run_in_db) -> list[TextCo
                     uid = uuid.UUID(rid) if isinstance(rid, str) else rid
                 except (ValueError, AttributeError):
                     return _json_response({"success": False, "error": f"无效的 UUID: {rid}"})
-                result = await db.execute(
-                    sa_select(Document, KnowledgeBase)
-                    .join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id)
-                    .where(Document.id == uid)
-                )
+                result = await db.execute(sa_select(Document, KnowledgeBase).join(KnowledgeBase, Document.knowledge_base_id == KnowledgeBase.id).where(Document.id == uid))
                 row = result.first()
                 if not row:
                     return _json_response({"success": False, "error": f"文档 {rid} 不存在——请先在样例管理 tab 上传到知识库"})
                 doc, kb = row
-                report_docs.append({
-                    "id": str(doc.id),
-                    "name": doc.name,
-                    "kb_id": str(kb.id),
-                    "ragflow_document_id": doc.ragflow_document_id,
-                    "ragflow_dataset_id": kb.ragflow_dataset_id,
-                    "file_path": doc.file_path,
-                    "file_type": doc.file_type,
-                })
+                report_docs.append(
+                    {
+                        "id": str(doc.id),
+                        "name": doc.name,
+                        "kb_id": str(kb.id),
+                        "ragflow_document_id": doc.ragflow_document_id,
+                        "ragflow_dataset_id": kb.ragflow_dataset_id,
+                        "file_path": doc.file_path,
+                        "file_type": doc.file_type,
+                    }
+                )
 
         # Mode 2: file_paths — bare files (plain-text fallback today; doc_parser future)
         if file_paths:
             import os as _os
+
             for fp in file_paths:
                 fname = _os.path.basename(fp)
                 ext = _os.path.splitext(fp)[1].lower().lstrip(".")
-                report_docs.append({
-                    "id": str(uuid.uuid4()),
-                    "name": fname,
-                    "kb_id": str(uuid.uuid4()),
-                    "ragflow_document_id": None,
-                    "ragflow_dataset_id": None,
-                    "file_path": fp,
-                    "file_type": ext,
-                })
+                report_docs.append(
+                    {
+                        "id": str(uuid.uuid4()),
+                        "name": fname,
+                        "kb_id": str(uuid.uuid4()),
+                        "ragflow_document_id": None,
+                        "ragflow_dataset_id": None,
+                        "file_path": fp,
+                        "file_type": ext,
+                    }
+                )
 
     pipeline = ExtractionPipeline(llm_model=llm_model)
 
@@ -334,21 +330,21 @@ async def handle_kf_query_templates(arguments: dict, _run_in_db) -> list[TextCon
     limit = arguments.get("limit", 10)
 
     async def _query(db):
-        templates, total = await TemplateService.list_templates(
-            db, domain=domain, name=name, status=status, page=1, limit=limit
-        )
+        templates, total = await TemplateService.list_templates(db, domain=domain, name=name, status=status, page=1, limit=limit)
         items = []
         for t in templates:
-            items.append({
-                "id": str(t.id),
-                "domain": t.domain,
-                "name": t.name,
-                "version": t.version,
-                "status": t.status,
-                "completeness_score": t.completeness_score or 0,
-                "created_at": t.created_at.isoformat() if t.created_at else None,
-                "updated_at": t.updated_at.isoformat() if t.updated_at else None,
-            })
+            items.append(
+                {
+                    "id": str(t.id),
+                    "domain": t.domain,
+                    "name": t.name,
+                    "version": t.version,
+                    "status": t.status,
+                    "completeness_score": t.completeness_score or 0,
+                    "created_at": t.created_at.isoformat() if t.created_at else None,
+                    "updated_at": t.updated_at.isoformat() if t.updated_at else None,
+                }
+            )
         return {"templates": items, "total": total}
 
     result = await _run_in_db(_query)

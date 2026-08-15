@@ -19,9 +19,7 @@ class AppCenterService:
 
     @staticmethod
     async def list_domains(db: AsyncSession) -> list[AppDomain]:
-        result = await db.execute(
-            select(AppDomain).order_by(AppDomain.sort_order.asc())
-        )
+        result = await db.execute(select(AppDomain).order_by(AppDomain.sort_order.asc()))
         return list(result.scalars().all())
 
     @staticmethod
@@ -65,9 +63,7 @@ class AppCenterService:
     @staticmethod
     async def list_all_apps(db: AsyncSession) -> list[AppDefinition]:
         """Admin: returns all apps including disabled ones."""
-        result = await db.execute(
-            select(AppDefinition).order_by(AppDefinition.sort_order.asc())
-        )
+        result = await db.execute(select(AppDefinition).order_by(AppDefinition.sort_order.asc()))
         return list(result.scalars().all())
 
     @staticmethod
@@ -79,9 +75,7 @@ class AppCenterService:
 
     @staticmethod
     async def update_app(db: AsyncSession, app_id: str, req: AppDefinitionUpdate) -> AppDefinition | None:
-        result = await db.execute(
-            select(AppDefinition).where(AppDefinition.app_id == app_id)
-        )
+        result = await db.execute(select(AppDefinition).where(AppDefinition.app_id == app_id))
         app = result.scalars().first()
         if app is None:
             return None
@@ -93,9 +87,7 @@ class AppCenterService:
 
     @staticmethod
     async def delete_app(db: AsyncSession, app_id: str) -> bool:
-        result = await db.execute(
-            select(AppDefinition).where(AppDefinition.app_id == app_id)
-        )
+        result = await db.execute(select(AppDefinition).where(AppDefinition.app_id == app_id))
         app = result.scalars().first()
         if app is None:
             return False

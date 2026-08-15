@@ -10,6 +10,7 @@ import pytest
 class TestProjectDocVersionModel:
     def test_model_tablename_and_key_fields(self):
         from app.extensions.models import ProjectDocVersion
+
         assert ProjectDocVersion.__tablename__ == "project_doc_versions"
         cols = {c.name for c in ProjectDocVersion.__table__.columns}
         # 关键列存在
@@ -30,11 +31,11 @@ class TestListProjectOutputs:
             (out / fname).write_text("# x")
 
         class _M:
-            def __init__(self, uid, tid): self.user_id, self.thread_id = uid, tid
+            def __init__(self, uid, tid):
+                self.user_id, self.thread_id = uid, tid
 
         members = [_M(lisi, "T1"), _M(zhangsan, "T2")]
-        with patch("deerflow.config.paths.Paths") as mp, \
-             patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=members)):
+        with patch("deerflow.config.paths.Paths") as mp, patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=members)):
             mp.return_value.base_dir = tmp_path
             res = await AIDocumentService.list_project_outputs(AsyncMock(), pid, zhangsan)
         names = {f["name"] for f in res["files"]}
@@ -50,10 +51,10 @@ class TestListProjectOutputs:
         pid, member, outsider = uuid4(), uuid4(), uuid4()
 
         class _M:
-            def __init__(self, uid, tid): self.user_id, self.thread_id = uid, tid
+            def __init__(self, uid, tid):
+                self.user_id, self.thread_id = uid, tid
 
-        with patch.object(AIDocumentService, "_project_members",
-                          AsyncMock(return_value=[_M(member, "T1")])):
+        with patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=[_M(member, "T1")])):
             with pytest.raises(PermissionError):
                 await AIDocumentService.list_project_outputs(AsyncMock(), pid, outsider)
 
@@ -64,14 +65,14 @@ class TestListProjectOutputs:
         caller, pid = uuid4(), uuid4()
 
         class _M:
-            def __init__(self, uid, tid): self.user_id, self.thread_id = uid, tid
+            def __init__(self, uid, tid):
+                self.user_id, self.thread_id = uid, tid
 
         out = tmp_path / "users" / str(caller) / "threads" / "Tc" / "user-data" / "outputs"
         out.mkdir(parents=True)
         (out / "a.md").write_text("a")
         members = [_M(caller, "Tc"), _M(uuid4(), None), _M(uuid4(), "Tghost")]
-        with patch("deerflow.config.paths.Paths") as mp, \
-             patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=members)):
+        with patch("deerflow.config.paths.Paths") as mp, patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=members)):
             mp.return_value.base_dir = tmp_path
             res = await AIDocumentService.list_project_outputs(AsyncMock(), pid, caller)
         assert [f["name"] for f in res["files"]] == ["a.md"]
@@ -90,9 +91,7 @@ class TestPersonalOutputsExcludesProjectThreads:
             out.mkdir(parents=True)
             (out / f"{tid}.md").write_text("# x")
 
-        with patch("deerflow.config.paths.Paths") as mp, \
-             patch.object(AIDocumentService, "_personal_project_thread_ids",
-                          AsyncMock(return_value={"t-project"})):
+        with patch("deerflow.config.paths.Paths") as mp, patch.object(AIDocumentService, "_personal_project_thread_ids", AsyncMock(return_value={"t-project"})):
             mp.return_value.base_dir = tmp_path
             res = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id)
         tids = {t["thread_id"] for t in res["threads"]}
@@ -118,8 +117,7 @@ class TestRequireProjectMemberThread:
                 self.user_id, self.thread_id = uid, tid
 
         # member 属本项目（线程 T1），但请求 T_other（不属于本项目任何成员）
-        with patch.object(AIDocumentService, "_project_members",
-                          AsyncMock(return_value=[_M(member, "T1")])):
+        with patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=[_M(member, "T1")])):
             with pytest.raises(HTTPException) as exc:
                 await _require_project_member_thread(AsyncMock(), pid, member, "T_other")
             assert exc.value.status_code == 403
@@ -136,8 +134,7 @@ class TestRequireProjectMemberThread:
             def __init__(self, uid, tid):
                 self.user_id, self.thread_id = uid, tid
 
-        with patch.object(AIDocumentService, "_project_members",
-                          AsyncMock(return_value=[_M(member, "T1")])):
+        with patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=[_M(member, "T1")])):
             await _require_project_member_thread(AsyncMock(), pid, member, "T1")  # 不抛即通过
 
     @pytest.mark.asyncio
@@ -153,8 +150,7 @@ class TestRequireProjectMemberThread:
             def __init__(self, uid, tid):
                 self.user_id, self.thread_id = uid, tid
 
-        with patch.object(AIDocumentService, "_project_members",
-                          AsyncMock(return_value=[_M(member, "T1")])):
+        with patch.object(AIDocumentService, "_project_members", AsyncMock(return_value=[_M(member, "T1")])):
             with pytest.raises(HTTPException) as exc:
                 await _require_project_member_thread(AsyncMock(), pid, outsider, "T1")
             assert exc.value.status_code == 403
@@ -183,12 +179,15 @@ class TestWriteProjectOutput:
         out = tmp_path / "users" / str(lisi) / "threads" / "T1" / "user-data" / "outputs"
         out.mkdir(parents=True)
         (out / "doc.md").write_text("original")
-        with patch("deerflow.config.paths.Paths") as mp, patch.object(
-            AIDocumentService, "create_project_version", new=AsyncMock()
-        ):
+        with patch("deerflow.config.paths.Paths") as mp, patch.object(AIDocumentService, "create_project_version", new=AsyncMock()):
             mp.return_value.base_dir = tmp_path
             await AIDocumentService.write_project_output(
-                AsyncMock(), pid, "T1", "doc.md", "edited by zhangsan", zhangsan,
+                AsyncMock(),
+                pid,
+                "T1",
+                "doc.md",
+                "edited by zhangsan",
+                zhangsan,
             )
         assert (out / "doc.md").read_text() == "edited by zhangsan"
 
@@ -203,7 +202,12 @@ class TestWriteProjectOutput:
             mp.return_value.base_dir = tmp_path
             with pytest.raises(ValueError):
                 await AIDocumentService.write_project_output(
-                    AsyncMock(), pid, "T1", "../../etc/passwd", "x", uid,
+                    AsyncMock(),
+                    pid,
+                    "T1",
+                    "../../etc/passwd",
+                    "x",
+                    uid,
                 )
 
     @pytest.mark.asyncio
@@ -219,7 +223,12 @@ class TestWriteProjectOutput:
             mp.return_value.base_dir = tmp_path
             with pytest.raises(ValueError):
                 await AIDocumentService.write_project_output(
-                    AsyncMock(), pid, "T1", "../outputs_archive/secret.md", "x", uid,
+                    AsyncMock(),
+                    pid,
+                    "T1",
+                    "../outputs_archive/secret.md",
+                    "x",
+                    uid,
                 )
 
     @pytest.mark.asyncio
@@ -237,7 +246,13 @@ class TestWriteProjectOutput:
             with pytest.raises(_StaleWrite):
                 # 客户端拿到的旧 mtime=1.0 与当前文件 mtime 不符
                 await AIDocumentService.write_project_output(
-                    AsyncMock(), pid, "T1", "doc.md", "v2", uid, if_mtime=1.0,
+                    AsyncMock(),
+                    pid,
+                    "T1",
+                    "doc.md",
+                    "v2",
+                    uid,
+                    if_mtime=1.0,
                 )
 
 
@@ -288,7 +303,13 @@ class TestProjectVersionCrud:
         pid, uid = uuid4(), uuid4()
         db = _fake_version_db(old_ids=[uuid4() for _ in range(21)])
         vid = await AIDocumentService.create_project_version(
-            db, pid, "T1", "doc.md", "content", uid, "标签",
+            db,
+            pid,
+            "T1",
+            "doc.md",
+            "content",
+            uid,
+            "标签",
         )
         assert vid is not None
         delete_calls = [c for c in db.execute.await_args_list if isinstance(c.args[0], Delete)]
@@ -313,8 +334,14 @@ class TestProjectVersionCrud:
 
         pid, uid = uuid4(), uuid4()
         version = _FakeVersion(
-            id=uuid4(), project_id=pid, thread_id="T1", rel_path="doc.md",
-            content="# restored", editor_user_id=uid, label=None, created_at=None,
+            id=uuid4(),
+            project_id=pid,
+            thread_id="T1",
+            rel_path="doc.md",
+            content="# restored",
+            editor_user_id=uid,
+            label=None,
+            created_at=None,
         )
         db = AsyncMock()
         db.execute = AsyncMock(return_value=_FakeResult([version]))
@@ -340,12 +367,15 @@ class TestProjectVersionCrud:
         out = tmp_path / "users" / str(uid) / "threads" / "T1" / "user-data" / "outputs"
         out.mkdir(parents=True)
         db = _fake_version_db(old_ids=[])
-        with patch("deerflow.config.paths.Paths") as mp, patch.object(
-            AIDocumentService, "create_project_version", new=AsyncMock(return_value=uuid4())
-        ) as mock_snap:
+        with patch("deerflow.config.paths.Paths") as mp, patch.object(AIDocumentService, "create_project_version", new=AsyncMock(return_value=uuid4())) as mock_snap:
             mp.return_value.base_dir = tmp_path
             await AIDocumentService.write_project_output(
-                db, pid, "T1", "doc.md", "edited", uid,
+                db,
+                pid,
+                "T1",
+                "doc.md",
+                "edited",
+                uid,
             )
         mock_snap.assert_awaited_once_with(db, pid, "T1", "doc.md", "edited", uid)
 
@@ -356,11 +386,7 @@ class TestProjectOutputRoutesRegistered:
         """项目区 5 个路由必须注册，否则前端 404。"""
         from app.extensions.docmgr.routers import router
 
-        routes = {
-            (r.path, m)
-            for r in router.routes
-            for m in (getattr(r, "methods", None) or set())
-        }
+        routes = {(r.path, m) for r in router.routes for m in (getattr(r, "methods", None) or set())}
         for path, method in [
             ("/api/extensions/docmgr/projects/{project_id}/outputs", "GET"),
             ("/api/extensions/docmgr/projects/{project_id}/outputs/content", "GET"),
@@ -410,7 +436,10 @@ class TestReadProjectOutput:
             mp.return_value.base_dir = tmp_path
             with pytest.raises(ValueError):
                 await AIDocumentService.read_project_output(
-                    AsyncMock(), pid, "T1", "../../etc/passwd",
+                    AsyncMock(),
+                    pid,
+                    "T1",
+                    "../../etc/passwd",
                 )
 
     @pytest.mark.asyncio
@@ -426,5 +455,8 @@ class TestReadProjectOutput:
             mp.return_value.base_dir = tmp_path
             with pytest.raises(ValueError):
                 await AIDocumentService.read_project_output(
-                    AsyncMock(), pid, "T1", "../outputs_archive/secret.md",
+                    AsyncMock(),
+                    pid,
+                    "T1",
+                    "../outputs_archive/secret.md",
                 )

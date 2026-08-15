@@ -1,4 +1,5 @@
 """knowledge 可见性接线（HTTP/SQL 层）：dept 角色 scope 含 overlap；by-id 复用 list scope。"""
+
 import uuid
 
 import pytest

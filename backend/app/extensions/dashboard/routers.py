@@ -11,6 +11,7 @@ from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
+from .reminder_service import check_deadline_reminders
 from .schemas import (
     CalendarEvent,
     CreateCalendarEvent,
@@ -34,7 +35,6 @@ from .service import (
     mark_notification_read,
     update_notification_preferences,
 )
-from .reminder_service import check_deadline_reminders
 
 router = APIRouter(prefix="/api/extensions/dashboard", tags=["dashboard"])
 

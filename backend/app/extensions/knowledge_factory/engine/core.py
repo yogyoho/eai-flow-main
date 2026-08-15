@@ -7,14 +7,14 @@
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
 
-class CheckResult(str, Enum):
+class CheckResult(StrEnum):
     """检查结果枚举"""
 
     PASS = "pass"  # 通过
@@ -24,7 +24,7 @@ class CheckResult(str, Enum):
     SKIP = "skip"  # 跳过（条件不满足）
 
 
-class SeverityLevel(str, Enum):
+class SeverityLevel(StrEnum):
     """严重级别"""
 
     CRITICAL = "critical"  # 严重

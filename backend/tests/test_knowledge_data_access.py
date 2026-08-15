@@ -407,6 +407,4 @@ def test_kb_reading_roles_grant_knowledge_public_scope():
     for role_code in ["dept_head", "project_manager", "writer", "reviewer", "user"]:
         defaults = reg.get_role_defaults(role_code)
         assert defaults is not None, f"role {role_code} missing from registry"
-        assert "knowledge_public" in defaults["data_scopes"], (
-            f"role {role_code} lacks knowledge_public — public KBs invisible to non-owners"
-        )
+        assert "knowledge_public" in defaults["data_scopes"], f"role {role_code} lacks knowledge_public — public KBs invisible to non-owners"

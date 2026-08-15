@@ -140,9 +140,7 @@ def _patch_registry_and_provider(monkeypatch, reg, *, role_code="user"):
     """Monkeypatch get_permission_registry + get_identity_provider for the shim."""
     monkeypatch.setattr("app.extensions.auth.registry.get_permission_registry", lambda: reg)
     mock_provider = MagicMock()
-    mock_provider.resolve = AsyncMock(
-        return_value=AttributeSet(user_id="u1", username="u", role_code=role_code)
-    )
+    mock_provider.resolve = AsyncMock(return_value=AttributeSet(user_id="u1", username="u", role_code=role_code))
     monkeypatch.setattr("app.extensions.auth.identity.get_identity_provider", lambda: mock_provider)
 
 
@@ -266,14 +264,17 @@ def test_require_resource_permission_member_without_action_raises_403(tmp_path, 
 
 def test_require_resource_permission_member_without_system_access_raises_403(tmp_path, monkeypatch):
     """A global role lacking system:access is denied even as a project member."""
-    reg = _make_registry(tmp_path, """
+    reg = _make_registry(
+        tmp_path,
+        """
 version: 3
 modules: {}
 roles:
   limited: { display_name: "受限", is_system: false, level: 5, permissions: ["kb:read"], nav: [], data_scopes: [] }
 project_roles:
   writer: [chapter:write_own]
-""")
+""",
+    )
     _patch_registry_and_provider(monkeypatch, reg, role_code="limited")
 
     db = _FakeDb(member=_Member(role="writer"))

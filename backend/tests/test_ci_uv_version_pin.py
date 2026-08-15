@@ -30,8 +30,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="requires /app/.github + docker compose files not mounted in EAI dev container (EAI-CUSTOM skip 2026-08-15)")
 
 

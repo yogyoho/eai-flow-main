@@ -7682,3 +7682,351 @@
 | 16:35 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-gap-snapshot-2026-08-14.md | — | ~275 |
 | 16:35 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~100 |
 | 16:41 | Created C:/Users/admin/.claude/plans/snug-exploring-stream.md | — | ~1016 |
+| 16:56 | Created backend/pyproject.toml | — | ~1431 |
+| 17:02 | Edited backend/pyproject.toml | "langchain-ollama[ollama]>" → "langchain-ollama>=1.1.0" | ~8 |
+| 17:25 | Edited backend/app/gateway/csrf_middleware.py | 1→6 lines | ~63 |
+| 17:26 | Edited backend/app/gateway/csrf_middleware.py | modified auth_csrf_cookie_settings() | ~258 |
+| 17:30 | Edited backend/app/channels/manager.py | 3→8 lines | ~129 |
+| 17:35 | Edited backend/app/gateway/deps.py | expanded (+7 lines) | ~163 |
+| 23:04 | Edited docker/docker-compose-dev.yaml | 3→7 lines | ~98 |
+| 00:59 | Created frontend/src/app/page.tsx | — | ~93 |
+| 01:02 | Edited frontend/src/components/workspace/settings/settings-dialog.tsx | 9→13 lines | ~114 |
+| 01:05 | Edited frontend/src/components/workspace/settings/integrations-settings-page.tsx | CSS: EAI-CUSTOM | ~78 |
+| 01:05 | Edited frontend/src/components/workspace/settings/integrations-settings-page.tsx | CSS: generation | ~64 |
+| 01:05 | Edited frontend/src/components/workspace/settings/integrations-settings-page.tsx | 3→4 lines | ~60 |
+| 01:05 | Edited frontend/src/components/workspace/settings/integrations-settings-page.tsx | CSS: generation | ~66 |
+| 03:09 | Edited backend/tests/test_mcp_config_hardening.py | added 1 import(s) | ~67 |
+| 03:09 | Edited backend/tests/test_mcp_config_hardening.py | _require_admin_user() → require_admin_user() | ~319 |
+| 03:13 | Edited backend/app/gateway/deps.py | added 1 import(s) | ~27 |
+| 03:13 | Edited backend/app/gateway/deps.py | added 1 import(s) | ~43 |
+| 03:14 | Edited backend/app/gateway/deps.py | modified _browser_tools_enabled_in_config() | ~1206 |
+| 03:17 | Edited backend/app/gateway/deps.py | expanded (+6 lines) | ~142 |
+| 05:31 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-2026-08-14-completed.md | — | ~423 |
+| 05:31 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | 1→2 lines | ~90 |
+| 05:43 | Session end: 24 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32465 tok |
+| 06:43 | Session end: 24 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32465 tok |
+| 07:01 | Session end: 24 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32465 tok |
+| 07:02 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-2026-08-14-completed.md | expanded (+6 lines) | ~115 |
+| 07:03 | Session end: 25 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32589 tok |
+| 07:52 | 上游291提交同步+前端EAI恢复(landing-new/login/settings/globals/header/welcome)+依赖恢复+推送main-dev-fork | merge+10修复提交 | 同步落地,typecheck0,buildOK;全量测试triage进行中 | ~150k |
+| 07:53 | Session end: 25 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32589 tok |
+| 08:07 | Session end: 25 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32589 tok |
+| 08:41 | Session end: 25 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32589 tok |
+| 08:45 | Session end: 25 writes across 13 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 8 reads | ~32589 tok |
+| 09:23 | Edited backend/tests/test_dynamic_context_middleware.py | 4→5 lines | ~46 |
+| 09:29 | Edited backend/tests/test_dynamic_context_middleware.py | added 1 import(s) | ~14 |
+| 09:31 | Edited backend/packages/harness/deerflow/agents/middlewares/input_sanitization_middleware.py | 4→8 lines | ~98 |
+| 09:33 | Edited backend/app/gateway/routers/thread_runs.py | added 1 import(s) | ~70 |
+| 09:34 | Edited backend/app/gateway/routers/thread_runs.py | modified _record_to_response() | ~342 |
+| 09:35 | Edited backend/app/gateway/routers/thread_runs.py | expanded (+6 lines) | ~150 |
+| 09:36 | Edited backend/app/gateway/routers/thread_runs.py | 6→8 lines | ~106 |
+| 09:38 | Session end: 32 writes across 16 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 9 reads | ~50732 tok |
+| 10:09 | Session end: 32 writes across 16 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 9 reads | ~50732 tok |
+| 10:15 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | modified _format_current_date() | ~536 |
+| 10:34 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-2026-08-14-completed.md | 1→5 lines | ~165 |
+| 10:34 | Session end: 34 writes across 17 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 11 reads | ~58545 tok |
+| 10:35 | Session end: 34 writes across 17 files (upstream-gap-snapshot-2026-08-14.md, MEMORY.md, snug-exploring-stream.md, pyproject.toml, csrf_middleware.py) | 11 reads | ~58545 tok |
+
+## Session: 2026-08-15 10:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:45 | Edited backend/app/gateway/app.py | 2→4 lines | ~81 |
+| 10:45 | Edited backend/app/gateway/deps.py | modified except() | ~610 |
+| 10:46 | Edited backend/app/gateway/deps.py | 4→3 lines | ~23 |
+| 10:46 | Edited backend/app/gateway/deps.py | expanded (+6 lines) | ~91 |
+| 10:47 | Edited backend/app/gateway/deps.py | modified checks() | ~196 |
+| 08:12 | 终审修复 C1+I1-I3: 友商过滤统一 EXISTS(outerProjectRef 别名感知)+useBidList 接过滤+图B/C 每图筛选接线; 19 单测过+tsc/eslint 净+浏览器验证(图C 友商下非空/KPI 不归零/图B 货物筛/查询页 9 行) | api.ts hooks.ts types.ts DashboardView SelfVsOutsourceChart SelfRateDistChart FilterBar QueryView build-where.test.ts | commit 17b639d39 | ~25k |
+
+## Session: 2026-08-15 11:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:19 | Edited frontend/tests/unit/extensions/bid-quote/build-where.test.ts | 1→3 lines | ~53 |
+| 11:19 | Created backend/app/extensions/ontology/registry/_manifest.yaml | — | ~50 |
+| 11:19 | Created backend/app/extensions/ontology/registry/contract_price.yaml | — | ~1245 |
+| 11:20 | Created backend/app/extensions/ontology/registry/spare_parts.yaml | — | ~1529 |
+| 11:20 | Created backend/app/extensions/ontology/registry/bid_quote.yaml | — | ~1275 |
+| 11:20 | Created backend/app/extensions/ontology/registry/cross_module.yaml | — | ~498 |
+| 11:20 | Created backend/app/extensions/ontology/__init__.py | — | ~0 |
+| 11:20 | Created backend/app/extensions/ontology/registry.py | — | ~2091 |
+
+## Session: 2026-08-15 11:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:21 | Created backend/tests/test_ontology_registry.py | — | ~1068 |
+| 11:21 | Edited backend/app/extensions/ontology/registry.py | modified __init__() | ~306 |
+| 11:22 | Session end: 2 writes across 2 files (test_ontology_registry.py, registry.py) | 0 reads | ~1374 tok |
+| 11:23 | Created backend/app/extensions/ontology/connectors/__init__.py | — | ~0 |
+| 11:23 | Created backend/app/extensions/ontology/connectors/postgres_ext.py | — | ~944 |
+| 11:23 | Created backend/app/extensions/ontology/connectors/data_source.py | — | ~953 |
+| 11:23 | Created backend/tests/test_ontology_connectors.py | — | ~336 |
+| 11:24 | Created backend/app/extensions/ontology/engine/__init__.py | — | ~0 |
+| 11:24 | Created backend/app/extensions/ontology/engine/filters.py | — | ~843 |
+| 11:24 | Created backend/app/extensions/ontology/engine/mapper.py | — | ~387 |
+| 11:25 | Created backend/app/extensions/ontology/engine/query.py | — | ~3056 |
+| 11:25 | Created backend/tests/test_ontology_filters.py | — | ~506 |
+| 11:25 | Created backend/tests/test_ontology_mapper.py | — | ~476 |
+| 11:25 | Created backend/tests/test_ontology_query.py | — | ~1858 |
+| 11:26 | Edited backend/tests/test_ontology_query.py | inline fix | ~18 |
+| 11:27 | Created backend/app/extensions/ontology/server.py | — | ~2610 |
+| 11:27 | Created backend/app/extensions/ontology/schemas.py | — | ~397 |
+| 11:27 | Created backend/app/extensions/ontology/routers.py | — | ~1778 |
+| 11:27 | Created backend/tests/test_ontology_mcp.py | — | ~154 |
+| 11:27 | Created backend/tests/test_ontology_rest.py | — | ~368 |
+| 11:28 | Edited config/permissions.yaml | expanded (+9 lines) | ~72 |
+| 11:29 | Edited backend/app/gateway/app.py | 2→5 lines | ~99 |
+| 11:29 | Edited backend/app/gateway/app.py | 3→6 lines | ~75 |
+| 11:29 | Edited extensions_config.json | expanded (+17 lines) | ~170 |
+
+## Session: 2026-08-15 11:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:39 | Created backend/tests/test_ontology_lint.py | — | ~269 |
+| 11:40 | Created backend/scripts/ontology_lint.py | — | ~1353 |
+| 11:40 | Session end: 2 writes across 2 files (test_ontology_lint.py, ontology_lint.py) | 1 reads | ~23948 tok |
+
+## Session: 2026-08-15 11:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:41 | Edited backend/Makefile | 3→7 lines | ~58 |
+| 11:41 | Edited .github/workflows/backend-unit-tests.yml | 4→9 lines | ~87 |
+| 11:42 | Edited backend/app/extensions/ontology/server.py | 1→2 lines | ~85 |
+
+## Session: 2026-08-15 (ontology 统一语义层执行, 续压缩后)
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|---------|
+| 12:0x | T10-T11 运行时验证: /api/v1/auth/login/local 表单登录 + registry 探针 | gateway (docker) | 401(未登录)→200(登录); 11 对象/12 链接; connectionConfig 未泄漏 | ~3k |
+| 12:0x | MCP 工具加载探针 (initialize_mcp_tools) | gateway (docker) | 7 个 ontology_* 工具全部注册 | ~2k |
+| 12:1x | T12: CI lint 脚本+测试 | scripts/ontology_lint.py, tests/test_ontology_lint.py | lint OK; 2 tests pass; 声明列⊆物理列=硬错方向修正 | ~6k |
+| 12:1x | T12: Makefile lint-ontology + CI workflow 步骤 | backend/Makefile, .github/workflows/backend-unit-tests.yml | 接线完成(修复计划中 cd backend 缺陷) | ~1k |
+| 12:2x | ruff 修复: E741 歧义 l→link, E501, import 排序/format | app/extensions/ontology/*, tests/test_ontology_*.py | 全部 All checks passed; 32 ontology 测试重跑全过 | ~5k |
+| 12:3x | buglog 4 条 + memory 记录 | .wolf/buglog.json, .wolf/memory.md | 完成 | ~1k |
+| 11:50 | Created frontend/src/extensions/bid-quote/components/FilterBar.tsx | — | ~1893 |
+| 11:50 | Edited backend/app/extensions/data_source/service.py | inline fix | ~20 |
+| 11:50 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | inline fix | ~15 |
+| 11:50 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | removed 4 lines | ~6 |
+| 11:51 | Edited backend/app/extensions/knowledge_factory/engine/execution_logger.py | added 1 import(s) | ~22 |
+| 11:51 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 3→6 lines | ~37 |
+| 11:51 | Edited backend/app/extensions/web_scraper/services/draft_service.py | inline fix | ~37 |
+| 11:51 | Edited backend/app/extensions/web_scraper/services/draft_service.py | inline fix | ~9 |
+| 11:52 | Edited backend/app/extensions/web_scraper/services/draft_service.py | inline fix | ~9 |
+| 11:52 | Edited backend/app/extensions/web_scraper/services/source_service.py | 5→7 lines | ~52 |
+| 11:52 | Edited backend/app/extensions/web_scraper/services/source_service.py | inline fix | ~10 |
+| 11:52 | Edited backend/app/extensions/web_scraper/services/source_service.py | inline fix | ~31 |
+| 11:53 | Edited backend/app/extensions/knowledge_factory/routers.py | added 1 import(s) | ~25 |
+| 11:53 | Edited backend/app/extensions/knowledge_factory/routers.py | 2→2 lines | ~45 |
+| 11:53 | Edited backend/app/extensions/knowledge_factory/routers.py | inline fix | ~31 |
+| 11:53 | Edited backend/app/extensions/project/routers.py | 5→3 lines | ~28 |
+| 11:53 | Edited backend/app/extensions/settings/validator.py | added 4 import(s) | ~71 |
+| 11:54 | Edited backend/app/extensions/settings/validator.py | modified test_api_reachable() | ~48 |
+| 11:54 | Edited backend/app/extensions/settings/validator.py | modified check_model_credentials() | ~33 |
+| 11:54 | Edited backend/app/extensions/auth/middleware.py | 2→2 lines | ~57 |
+| 11:54 | Edited backend/app/extensions/knowledge_factory/models.py | inline fix | ~34 |
+| 11:54 | Edited backend/app/extensions/project/routers.py | 4→6 lines | ~32 |
+| 11:55 | Edited backend/start_gateway.py | added 1 import(s) | ~18 |
+| 11:55 | Edited backend/start_gateway.py | 4→3 lines | ~24 |
+| 11:55 | Edited backend/test_env.py | 7→7 lines | ~64 |
+| 11:55 | Edited backend/test_auth_debug.py | 16→20 lines | ~219 |
+| 11:56 | Edited backend/test_db_connect.py | 2→2 lines | ~29 |
+| 11:56 | Edited backend/test_db_connect.py | 2→2 lines | ~32 |
+| 11:56 | Edited backend/tests/test_auth_type_system.py | inline fix | ~8 |
+| 11:56 | Edited backend/tests/test_notification_activities.py | inline fix | ~8 |
+| 11:56 | Edited backend/tests/test_workflow_template.py | inline fix | ~17 |
+| 11:57 | Edited backend/app/extensions/user/service.py | 2→3 lines | ~68 |
+| 11:57 | Edited backend/app/extensions/user/service.py | 4→4 lines | ~48 |
+| 11:57 | Edited backend/app/extensions/user/service.py | inline fix | ~14 |
+| 11:58 | Edited backend/app/extensions/user_department/service.py | inline fix | ~8 |
+| 11:58 | Edited backend/app/extensions/license/service.py | inline fix | ~8 |
+| 11:58 | Edited backend/app/extensions/license/routers.py | inline fix | ~12 |
+| 11:58 | Edited backend/app/extensions/workflow/temporal/review_activities.py | inline fix | ~18 |
+| 11:58 | Edited backend/app/extensions/dept/service.py | inline fix | ~47 |
+| 11:59 | Edited backend/app/extensions/knowledge_factory/engine/service.py | inline fix | ~22 |
+| 11:59 | Edited backend/app/extensions/knowledge_factory/engine/core.py | inline fix | ~7 |
+| 11:59 | Edited backend/app/extensions/knowledge_factory/engine/core.py | inline fix | ~8 |
+| 11:59 | Edited backend/app/extensions/knowledge_factory/engine/core.py | inline fix | ~9 |
+| 12:00 | Edited backend/app/extensions/knowledge_factory/schemas.py | inline fix | ~7 |
+| 12:00 | Edited backend/app/extensions/knowledge_factory/schemas.py | inline fix | ~8 |
+| 12:00 | Edited backend/app/extensions/knowledge_factory/schemas.py | inline fix | ~8 |
+| 12:00 | Edited backend/app/extensions/knowledge_factory/schemas.py | inline fix | ~9 |
+| 12:00 | Edited backend/app/extensions/knowledge_factory/schemas.py | inline fix | ~9 |
+| 12:00 | Edited backend/app/extensions/knowledge_factory/schemas.py | inline fix | ~10 |
+| 12:01 | Edited backend/app/extensions/models/role_permission.py | inline fix | ~10 |
+| 12:01 | Edited backend/app/extensions/schemas.py | inline fix | ~9 |
+| 12:01 | Edited backend/app/extensions/web_scraper/predefined_schemas.py | inline fix | ~7 |
+| 12:01 | Edited backend/app/extensions/web_scraper/predefined_schemas.py | inline fix | ~9 |
+| 12:01 | Edited backend/app/extensions/web_scraper/task_manager.py | inline fix | ~7 |
+| 12:01 | Edited backend/app/extensions/web_scraper/task_manager.py | inline fix | ~8 |
+| 12:02 | Edited backend/app/extensions/schemas.py | inline fix | ~7 |
+| 12:02 | Edited backend/app/extensions/knowledge_factory/doc_parser.py | expanded (+8 lines) | ~174 |
+| 12:02 | Edited backend/app/extensions/knowledge_factory/doc_parser.py | 2→3 lines | ~19 |
+| 12:03 | Edited backend/app/extensions/workflow/temporal/notification_activities.py | 1→2 lines | ~13 |
+| 12:03 | Edited backend/app/extensions/dept/routers.py | 4→3 lines | ~25 |
+| 12:03 | Edited backend/app/extensions/knowledge_factory/mcp_server/tools/compliance_tools.py | 3→2 lines | ~35 |
+| 12:04 | Edited backend/app/extensions/knowledge/client.py | modified urlopen() | ~41 |
+| 12:04 | Edited backend/app/extensions/knowledge_factory/service.py | 3→2 lines | ~10 |
+| 12:04 | Edited backend/app/extensions/knowledge_factory/pipeline.py | 3→2 lines | ~13 |
+| 12:04 | Edited backend/app/extensions/knowledge_factory/pipeline.py | 4→3 lines | ~21 |
+| 12:05 | Edited backend/app/extensions/knowledge_factory/seed_service.py | inline fix | ~13 |
+| 12:05 | Edited backend/app/extensions/project/service.py | 3→2 lines | ~13 |
+| 12:05 | Edited backend/app/extensions/project/service.py | 3→3 lines | ~44 |
+| 12:05 | Edited backend/app/extensions/settings/validator.py | 2→2 lines | ~24 |
+| 12:05 | Edited backend/app/extensions/workflow/temporal/workflows.py | 2→2 lines | ~28 |
+| 12:06 | Edited backend/tests/test_project_service.py | 6→6 lines | ~70 |
+| 12:06 | Edited backend/tests/test_project_service.py | 6→6 lines | ~64 |
+| 12:06 | Edited backend/tests/test_template_management.py | 2→2 lines | ~36 |
+| 12:06 | Edited backend/tests/test_timeline.py | modified test_timeline_entry_create_full() | ~21 |
+| 12:06 | Edited backend/app/extensions/contract_price/schemas.py | inline fix | ~8 |
+| 12:07 | Edited backend/app/extensions/spare_parts/schemas.py | inline fix | ~8 |
+| 12:10 | Backend lint debt cleanup: 661 ruff errors + 214 format files fixed; 5 real F821 bugs (missing imports) repaired | backend/app/extensions/* | make lint passes, tests running | ~150k |
+| 12:14 | �¹�+�ָ�: PS �� -Encoding �� UTF-8 buglog.json ����; git HEAD + GBK ��ת�ָ� 4 ��δ�ύ��Ŀ | .wolf/buglog.json | �ָ�Ϊ 1157 ����Ч JSON | ~20k |
+
+## Session: 2026-08-15 12:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:20 | bid-quote FilterBar 改版:移至KPI下独立卡片,项目原生单选下拉+友商多选Popover;浏览器实测(项目筛选/KPI联动/多选/EXISTS语义)通过 | FilterBar.tsx, DashboardView.tsx | 验证通过,未提交(等并发合并) | ~8k |
+| 12:22 | gateway 挂起(Up无响应)→restart gateway 恢复;确认 8001 端口未发布到宿主机,健康检查须走 nginx 2026 或 docker exec | - | 恢复 | ~2k |
+| 12:5x | 全量套件验证(-v 定位): 2189+ passed; 4 FAILED 全在 blocking_io(channels_ingest+dynamic_context, 并发会话在改文件) + 1 hang(e2b capacity wait) — 均与 ontology 无关 | gateway (docker) | ontology 0 失败 | ~4k |
+| 12:5x | 撤出误入共享 index 的 ontology 暂存(git restore --staged 纯我文件); 提交继续等 MERGE_HEAD 结束 | git index | 36 文件=纯并发会话 | ~1k |
+| 12:57 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontology-semantic-layer-phase1.md | — | ~308 |
+| 12:58 | Session end: 1 writes across 1 files (ontology-semantic-layer-phase1.md) | 0 reads | ~330 tok |
+| 13:32 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-eng-review-test-plan-20260815.md | — | ~449 |
+| 13:32 | Session end: 2 writes across 2 files (ontology-semantic-layer-phase1.md, admin-main-dev-fork-eng-review-test-plan-20260815.md) | 2 reads | ~811 tok |
+| 13:35 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 3→3 lines | ~33 |
+| 13:35 | Session end: 3 writes across 3 files (ontology-semantic-layer-phase1.md, admin-main-dev-fork-eng-review-test-plan-20260815.md, DashboardView.tsx) | 3 reads | ~4486 tok |
+| 13:36 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 8→4 lines | ~55 |
+| 13:36 | Session end: 4 writes across 3 files (ontology-semantic-layer-phase1.md, admin-main-dev-fork-eng-review-test-plan-20260815.md, DashboardView.tsx) | 3 reads | ~4541 tok |
+| 13:55 | Session end: 4 writes across 3 files (ontology-semantic-layer-phase1.md, admin-main-dev-fork-eng-review-test-plan-20260815.md, DashboardView.tsx) | 3 reads | ~4541 tok |
+| 14:02 | Session end: 4 writes across 3 files (ontology-semantic-layer-phase1.md, admin-main-dev-fork-eng-review-test-plan-20260815.md, DashboardView.tsx) | 5 reads | ~12577 tok |
+
+## Session: 2026-08-15 14:05
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:17 | Created .superpowers/brainstorm/18301-1786774578/content/block1-overview.html | — | ~2123 |
+| 14:17 | Session end: 1 writes across 1 files (block1-overview.html) | 3 reads | ~2274 tok |
+| 14:49 | Session end: 1 writes across 1 files (block1-overview.html) | 3 reads | ~2274 tok |
+| 15:00 | Created .superpowers/brainstorm/19219-1786776524/content/block2-pricing.html | — | ~2791 |
+| 15:00 | Session end: 2 writes across 2 files (block1-overview.html, block2-pricing.html) | 3 reads | ~5264 tok |
+| 15:02 | Created .superpowers/brainstorm/19219-1786776524/content/block3-competitors.html | — | ~2693 |
+| 15:02 | Session end: 3 writes across 3 files (block1-overview.html, block2-pricing.html, block3-competitors.html) | 3 reads | ~8149 tok |
+| 15:04 | Created .superpowers/brainstorm/19219-1786776524/content/waiting.html | — | ~38 |
+| 15:06 | Created docs/superpowers/specs/2026-08-15-bid-quote-dashboard-content-design.md | — | ~1285 |
+| 15:06 | Edited docs/superpowers/specs/2026-08-15-bid-quote-dashboard-content-design.md | inline fix | ~35 |
+| 15:07 | Session end: 6 writes across 5 files (block1-overview.html, block2-pricing.html, block3-competitors.html, waiting.html, 2026-08-15-bid-quote-dashboard-content-design.md) | 3 reads | ~9604 tok |
+
+## Session: 2026-08-15 15:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-15 15:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:31 | Created docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | — | ~2659 |
+| 15:32 | Created frontend/src/extensions/bid-quote/components/chartTheme.ts | — | ~431 |
+| 15:32 | Created frontend/src/extensions/bid-quote/components/ChartCard.tsx | — | ~354 |
+| 15:32 | Created frontend/src/extensions/bid-quote/components/TechTooltip.tsx | — | ~411 |
+| 15:33 | Created frontend/src/extensions/bid-quote/components/StatCard.tsx | — | ~444 |
+| 15:33 | Created frontend/src/extensions/bid-quote/components/SectionCard.tsx | — | ~522 |
+| 15:33 | Edited frontend/src/extensions/bid-quote/api.ts | modified sqlTrend() | ~1718 |
+| 15:34 | Edited frontend/src/extensions/bid-quote/api.ts | 7→7 lines | ~154 |
+| 15:34 | Edited frontend/src/extensions/bid-quote/api.ts | 3→3 lines | ~44 |
+| 15:34 | Edited frontend/src/extensions/bid-quote/types.ts | expanded (+65 lines) | ~408 |
+| 15:34 | Edited frontend/src/extensions/bid-quote/hooks.ts | expanded (+16 lines) | ~181 |
+| 15:35 | Edited frontend/src/extensions/bid-quote/hooks.ts | modified useSqlQuery() | ~534 |
+
+## Session: 2026-08-15 15:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:35 | Edited frontend/src/extensions/bid-quote/hooks.ts | added nullish coalescing | ~144 |
+| 15:35 | Created frontend/src/extensions/bid-quote/components/TrendChart.tsx | — | ~986 |
+| 15:35 | Session end: 2 writes across 2 files (hooks.ts, TrendChart.tsx) | 1 reads | ~1130 tok |
+| 15:36 | Created frontend/src/extensions/bid-quote/components/PremiumCurveChart.tsx | — | ~1410 |
+| 15:36 | Created frontend/src/extensions/bid-quote/components/PriceBandChart.tsx | — | ~1487 |
+| 15:36 | Edited frontend/src/extensions/bid-quote/components/PriceBandChart.tsx | filter() → push() | ~186 |
+| 15:37 | Created frontend/src/extensions/bid-quote/components/CompetitorProfileTable.tsx | — | ~1812 |
+
+## Session: 2026-08-15 15:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:39 | Created frontend/src/extensions/bid-quote/components/HeadToHeadCard.tsx | — | ~1625 |
+| 15:39 | Created frontend/src/extensions/bid-quote/components/ShareStackChart.tsx | — | ~1584 |
+| 15:40 | Created frontend/src/extensions/bid-quote/components/DashboardView.tsx | — | ~4419 |
+| 15:40 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 18→20 lines | ~136 |
+| 15:41 | Created frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | — | ~833 |
+| 15:44 | Edited frontend/src/extensions/bid-quote/components/chartTheme.ts | inline fix | ~32 |
+| 15:44 | Edited frontend/src/extensions/bid-quote/components/chartTheme.ts | inline fix | ~25 |
+| 15:45 | Edited frontend/src/extensions/bid-quote/components/ShareStackChart.tsx | added nullish coalescing | ~28 |
+| 15:45 | Edited frontend/src/extensions/bid-quote/components/ShareStackChart.tsx | added nullish coalescing | ~72 |
+| 15:45 | Edited frontend/src/extensions/bid-quote/components/HeadToHeadCard.tsx | added nullish coalescing | ~12 |
+| 15:45 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 4→4 lines | ~41 |
+| 15:45 | Edited frontend/src/extensions/bid-quote/components/PremiumCurveChart.tsx | modified for() | ~68 |
+| 15:46 | Edited frontend/src/extensions/bid-quote/components/PremiumCurveChart.tsx | "${Math.round(v)}%" → "${Math.round(Number(v))}%" | ~24 |
+| 15:46 | Edited frontend/src/extensions/bid-quote/components/PremiumCurveChart.tsx | inline fix | ~16 |
+| 15:47 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | modified for() | ~45 |
+| 15:52 | Edited frontend/src/extensions/bid-quote/components/PremiumCurveChart.tsx | 3→2 lines | ~34 |
+| 15:53 | Edited frontend/src/extensions/bid-quote/components/ShareStackChart.tsx | 8→7 lines | ~52 |
+| 15:54 | Session end: 17 writes across 6 files (HeadToHeadCard.tsx, ShareStackChart.tsx, DashboardView.tsx, sql-shape.test.ts, chartTheme.ts) | 8 reads | ~23541 tok |
+| 16:20 | bid-quote 仪表盘三问框架 UI 全量落地(6新图组件+SectionCard+DashboardView重写+SQL形状测试) | frontend/src/extensions/bid-quote/* 9文件 + tests/unit/.../sql-shape.test.ts | eslint/typecheck/test 9/9 全绿;未提交(MERGE_HEAD活跃) | ~60k |
+| 15:58 | Edited frontend/src/extensions/bid-quote/api.ts | modified sqlPremiumCurve() | ~196 |
+| 15:58 | Edited frontend/src/extensions/bid-quote/api.ts | 5→6 lines | ~102 |
+| 15:58 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | 2→5 lines | ~65 |
+| 15:58 | /plan-eng-review 完成: ontology 1a 计划(17决议+外部声音9发现全闭环) | docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | DONE, 0 unresolved | ~40k |
+| 15:58 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | 2→3 lines | ~47 |
+| 15:58 | Session end: 21 writes across 7 files (HeadToHeadCard.tsx, ShareStackChart.tsx, DashboardView.tsx, sql-shape.test.ts, chartTheme.ts) | 10 reads | ~30165 tok |
+| 16:05 | review 修复 sqlPremiumCurve(溢价改vs友商最低价cmin,胜场不再被join丢弃)+sqlPriceBand(成本先按项目聚合再AVG);补口径锁断言,容器内9/9过 | api.ts,sql-shape.test.ts | fixed | ~8k |
+| 16:00 | Session end: 21 writes across 7 files (HeadToHeadCard.tsx, ShareStackChart.tsx, DashboardView.tsx, sql-shape.test.ts, chartTheme.ts) | 11 reads | ~30165 tok |
+| 16:00 | Edited backend/tests/test_gateway_run_recovery.py | expanded (+7 lines) | ~151 |
+| 16:00 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | modified 14() | ~115 |
+| 16:00 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | 2→3 lines | ~83 |
+| 16:01 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | 24→27 lines | ~272 |
+| 16:01 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | 6→10 lines | ~374 |
+| 16:01 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | inline fix | ~79 |
+| 16:01 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | 17→16 lines | ~210 |
+| 16:01 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | 1→3 lines | ~158 |
+| 16:02 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | 1→4 lines | ~202 |
+| 16:02 | Edited docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md | inline fix | ~82 |
+| 16:03 | Created backend/scripts/ontology_link_recall_probe.py | — | ~2411 |
+| 16:03 | Created backend/scripts/seed_mock_market.py | — | ~7745 |
+| 16:04 | Created backend/tests/test_seed_mock_market_patterns.py | — | ~1334 |
+| 16:06 | Edited backend/scripts/ontology_link_recall_probe.py | modified side_counts() | ~109 |
+| 16:xx | 投标报价 mock 扩量: seed_mock_market 重构为纯函数生成器(34 生成+6 手写=40,2023-2025),新增 test_seed_mock_market_patterns.py 6 测试全过,容器内灌库+DB 抽查通过 | backend/scripts/seed_mock_market.py, backend/tests/test_seed_mock_market_patterns.py | done | ~28k |
+| 16:07 | Edited backend/scripts/ontology_link_recall_probe.py | modified _mk() | ~298 |
+| 16:xx | 投标报价 mock 扩量: seed_mock_market 重构为纯函数生成器(34 生成+6 手写=40,2023-2025),新增 test_seed_mock_market_patterns.py 6 测试全过,容器内灌库+DB 抽查通过 | backend/scripts/seed_mock_market.py, backend/tests/test_seed_mock_market_patterns.py | done | ~28k |
+| 16:07 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | inline fix | ~16 |
+| 16:07 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~160 |
+| 16:11 | Edited backend/tests/test_seed_mock_market_patterns.py | modified items() | ~80 |
+| 16:15 | Edited backend/scripts/seed_mock_market.py | 3→1 lines | ~46 |
+| 16:20 | T0+T1 开工完成: 母稿R4回写(9处编辑)+召回探测脚本落地并实测 | docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md, backend/scripts/ontology_link_recall_probe.py | 4链接全stub(3 NO_DATA+1真零召回) | ~25k |
+| 16:17 | Session end: 40 writes across 13 files (HeadToHeadCard.tsx, ShareStackChart.tsx, DashboardView.tsx, sql-shape.test.ts, chartTheme.ts) | 12 reads | ~49582 tok |
+| 16:21 | Created backend/app/extensions/ontology/__init__.py | — | ~53 |
+| 16:21 | Created backend/app/extensions/ontology/schemas.py | — | ~1011 |
+| 16:22 | Created backend/app/extensions/ontology/registry.py | — | ~2195 |
+
+## Session: 2026-08-15 16:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:25 | Created backend/app/extensions/ontology/registry/_manifest.yaml | — | ~90 |
+| 16:25 | Created backend/app/extensions/ontology/registry/contract_price.yaml | — | ~1480 |
+| 16:26 | Created backend/app/extensions/ontology/registry/spare_parts.yaml | — | ~2007 |
+| 16:26 | Created backend/app/extensions/ontology/registry/bid_quote.yaml | — | ~1501 |
+| 16:26 | Created backend/app/extensions/ontology/registry/cross_module.yaml | — | ~675 |
+| 16:27 | Created backend/tests/test_ontology_registry.py | — | ~1676 |
+| 16:27 | Edited backend/tests/test_ontology_registry.py | 4→4 lines | ~67 |
+| 16:28 | Edited backend/app/extensions/ontology/registry/contract_price.yaml | inline fix | ~32 |
+| 16:28 | Edited backend/app/extensions/ontology/registry/spare_parts.yaml | inline fix | ~32 |
+| 16:29 | Edited backend/tests/test_ontology_registry.py | modified raises() | ~119 |
+| 16:29 | Edited backend/tests/test_ontology_registry.py | 4→5 lines | ~61 |
+| 16:30 | Edited backend/tests/test_ontology_registry.py | expanded (+13 lines) | ~171 |
+| 16:31 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~167 |
+| 16:5x | T2 ontology registry loader+schemas+5 YAML+5 单测全绿(容器 pytest) | backend/app/extensions/ontology/{schemas,registry}.py, registry/*.yaml, tests/test_ontology_registry.py | done 11 obj/12 links, 4 cross-module stub | ~45k |

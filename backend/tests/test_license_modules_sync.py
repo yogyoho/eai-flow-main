@@ -38,21 +38,15 @@ def test_generator_all_modules_is_canonical():
 
 
 def test_module_locked_page_labels_match_canonical():
-    src = (
-        REPO_ROOT / "frontend" / "src" / "extensions" / "license" / "labels.ts"
-    ).read_text(encoding="utf-8")
+    src = (REPO_ROOT / "frontend" / "src" / "extensions" / "license" / "labels.ts").read_text(encoding="utf-8")
     for key in EXPECTED_KEYS:
         assert re.search(rf"\b{key}:\s*\"", src), f"ModuleLockedPage missing label for {key}"
     for removed in REMOVED_KEYS:
-        assert not re.search(rf"\b{removed}:\s*\"", src), (
-            f"ModuleLockedPage still references removed key '{removed}'"
-        )
+        assert not re.search(rf"\b{removed}:\s*\"", src), f"ModuleLockedPage still references removed key '{removed}'"
 
 
 def test_sidebar_nav_licensing_matches_classification():
-    src = (
-        REPO_ROOT / "frontend" / "src" / "extensions" / "shell" / "Sidebar.tsx"
-    ).read_text(encoding="utf-8")
+    src = (REPO_ROOT / "frontend" / "src" / "extensions" / "shell" / "Sidebar.tsx").read_text(encoding="utf-8")
     # 收费项必须带正确 licenseModule
     assert re.search(r'href: "/dashboard"[^}]*licenseModule: "dashboard"', src, re.S)
     assert re.search(r'href: "/projects"[^}]*licenseModule: "project"', src, re.S)
@@ -66,6 +60,4 @@ def test_sidebar_nav_licensing_matches_classification():
 def test_seed_uses_no_removed_license_keys():
     src = (REPO_ROOT / "backend" / "app" / "extensions" / "database.py").read_text(encoding="utf-8")
     for removed in REMOVED_KEYS:
-        assert f'"license": "{removed}"' not in src, (
-            f"database.py seed still uses removed license key '{removed}'"
-        )
+        assert f'"license": "{removed}"' not in src, f"database.py seed still uses removed license key '{removed}'"

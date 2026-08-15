@@ -8,9 +8,7 @@ EAI-CUSTOM: 复用 review/gate.py::evaluate_gate（纯函数）；本模块包�
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.extensions.review.gate import GateMode, GateResult, evaluate_gate
 
@@ -19,7 +17,7 @@ from .models import CollabGate
 
 def _now() -> datetime:
     # EAI-CUSTOM: DB 列是 TIMESTAMP WITHOUT TIME ZONE，须返回 naive UTC
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def resolve_judgments(gate: CollabGate, human_judgments: list[dict]) -> list[dict]:
@@ -30,7 +28,7 @@ def resolve_judgments(gate: CollabGate, human_judgments: list[dict]) -> list[dic
     """
     judgments: list[dict] = []
     humans: list[str] = []
-    for p in (gate.participants or []):
+    for p in gate.participants or []:
         key = str(p.get("user_id") or p.get("agent_name") or "")
         if p.get("type") == "agent":
             # agent 已完成任务 = 自动批准（由桥写入 resolved/audit 标记）

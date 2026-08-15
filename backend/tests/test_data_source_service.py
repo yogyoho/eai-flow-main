@@ -1,10 +1,10 @@
 """Tests for data_source schemas + service logic."""
 
 import tempfile
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from pydantic import ValidationError
-from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.extensions.data_source.schemas import (
     DataSourceCreate,
@@ -168,9 +168,7 @@ class TestTestConnection:
             "app.extensions.data_source.service.create_async_engine",
             return_value=fake_engine,
         ):
-            result = await DataSourceService.test_connection(
-                _src("database", {"host": "h", "port": 5432, "database": "d"})
-            )
+            result = await DataSourceService.test_connection(_src("database", {"host": "h", "port": 5432, "database": "d"}))
         assert result.success is True
         fake_conn.execute.assert_awaited_once()
 
@@ -180,9 +178,7 @@ class TestTestConnection:
             "app.extensions.data_source.service.create_async_engine",
             side_effect=RuntimeError("no host"),
         ):
-            result = await DataSourceService.test_connection(
-                _src("database", {"host": "h"})
-            )
+            result = await DataSourceService.test_connection(_src("database", {"host": "h"}))
         assert result.success is False
         assert "no host" in result.message
 
@@ -206,9 +202,7 @@ class TestTestConnection:
             "app.extensions.data_source.service.httpx.AsyncClient",
             return_value=_ClientCM(),
         ):
-            result = await DataSourceService.test_connection(
-                _src("api", {"url": "https://example.com"})
-            )
+            result = await DataSourceService.test_connection(_src("api", {"url": "https://example.com"}))
         assert result.success is True
         fake_client.get.assert_awaited_once()
 
@@ -231,28 +225,20 @@ class TestTestConnection:
             "app.extensions.data_source.service.httpx.AsyncClient",
             return_value=_ClientCM(),
         ):
-            result = await DataSourceService.test_connection(
-                _src("api", {"url": "https://example.com"})
-            )
+            result = await DataSourceService.test_connection(_src("api", {"url": "https://example.com"}))
         assert result.success is False
 
     def test_file_exists(self):
         with tempfile.NamedTemporaryFile() as tmp:
-            result = DataSourceService.test_connection_sync(
-                _src("file", {"path": tmp.name})
-            )
+            result = DataSourceService.test_connection_sync(_src("file", {"path": tmp.name}))
         assert result.success is True
 
     def test_file_missing(self):
-        result = DataSourceService.test_connection_sync(
-            _src("file", {"path": "/no/such/xyz"})
-        )
+        result = DataSourceService.test_connection_sync(_src("file", {"path": "/no/such/xyz"}))
         assert result.success is False
 
     def test_gis_configured(self):
-        result = DataSourceService.test_connection_sync(
-            _src("gis", {"file_name": "a.shp"})
-        )
+        result = DataSourceService.test_connection_sync(_src("gis", {"file_name": "a.shp"}))
         assert result.success is True
 
     def test_unknown_type_fails_closed(self):
@@ -265,7 +251,8 @@ class TestSync:
     async def test_sync_connected_when_test_ok(self):
         src = _src("api", {"url": "https://x"})
         with patch.object(
-            DataSourceService, "test_connection",
+            DataSourceService,
+            "test_connection",
             AsyncMock(return_value=TestConnectionResult(success=True, message="ok", metadata={"k": 1})),
         ):
             out = await DataSourceService.sync(src)
@@ -280,7 +267,8 @@ class TestSync:
     async def test_sync_error_when_test_fails(self):
         src = _src("api", {"url": "https://x"})
         with patch.object(
-            DataSourceService, "test_connection",
+            DataSourceService,
+            "test_connection",
             AsyncMock(return_value=TestConnectionResult(success=False, message="boom")),
         ):
             out = await DataSourceService.sync(src)
@@ -335,8 +323,11 @@ class TestRunReadonlyQuery:
         # extensions DB. Found by /qa verification — query was hitting agentflow.
         src = MagicMock()
         src.connection_config = {
-            "host": "src-host", "port": 5432, "database": "THE_SOURCE_DB",
-            "username": "u", "password": "p",
+            "host": "src-host",
+            "port": 5432,
+            "database": "THE_SOURCE_DB",
+            "username": "u",
+            "password": "p",
         }
         captured = {}
         fake_res = MagicMock()

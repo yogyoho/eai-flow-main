@@ -63,14 +63,16 @@ def test_or_composite_compiles():
 
 def test_evaluate_policy_conditions_module_function():
     from app.extensions.auth.engine import evaluate_policy_conditions
+
     idn = AttributeSet(user_id="u1", username="u1", role_level=50)
     assert evaluate_policy_conditions({"attr": "role_level", "op": "gte", "value": 40}, idn) is True
     assert evaluate_policy_conditions({"attr": "role_level", "op": "gte", "value": 60}, idn) is False
-    assert evaluate_policy_conditions({}, idn) is True   # empty conditions = match all
+    assert evaluate_policy_conditions({}, idn) is True  # empty conditions = match all
 
 
 def _engine_with(deny=None, allow_role=None, role="r", role_perms=None, all_ids=None):
     from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
+
     return UnifiedPermissionEngine(
         role_permissions={role: role_perms or set()},
         all_permission_ids=all_ids or set(),
@@ -80,13 +82,15 @@ def _engine_with(deny=None, allow_role=None, role="r", role_perms=None, all_ids=
 
 def test_check_deny_overrides_role_grant():
     from app.extensions.auth.identity import AttributeSet
+
     idn = AttributeSet(user_id="u", username="u", role_code="r")
     eng = _engine_with(deny=["kb:delete"], role_perms={"kb:delete"})
-    assert eng.check(idn, "kb:delete") is False   # role grants it, but deny wins
+    assert eng.check(idn, "kb:delete") is False  # role grants it, but deny wins
 
 
 def test_check_deny_module_wildcard():
     from app.extensions.auth.identity import AttributeSet
+
     idn = AttributeSet(user_id="u", username="u", role_code="r")
     eng = _engine_with(deny=["kb:*"], role_perms={"kb:read", "kb:create"})
     assert eng.check(idn, "kb:read") is False and eng.check(idn, "kb:create") is False
@@ -95,14 +99,15 @@ def test_check_deny_module_wildcard():
 def test_check_superadmin_immune_to_deny():
     from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
     from app.extensions.auth.identity import AttributeSet
-    eng = UnifiedPermissionEngine(role_permissions={"super": {"*"}},
-                                  policies=[Policy(name="d", priority=0, conditions={}, grants={"deny_permissions": ["kb:read"]})])
+
+    eng = UnifiedPermissionEngine(role_permissions={"super": {"*"}}, policies=[Policy(name="d", priority=0, conditions={}, grants={"deny_permissions": ["kb:read"]})])
     sup = AttributeSet(user_id="s", username="s", role_code="super")
     assert eng.check(sup, "kb:read") is True
 
 
 def test_check_allow_still_works_no_deny():
     from app.extensions.auth.identity import AttributeSet
+
     idn = AttributeSet(user_id="u", username="u", role_code="r")
     eng = _engine_with(deny=[], role_perms={"kb:read"})
     assert eng.check(idn, "kb:read") is True
@@ -112,6 +117,7 @@ def test_check_allow_still_works_no_deny():
 def test_list_permissions_expands_and_subtracts_deny():
     from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
     from app.extensions.auth.identity import AttributeSet
+
     eng = UnifiedPermissionEngine(
         role_permissions={"r": {"kb:*"}},
         all_permission_ids={"kb:read", "kb:create", "kb:delete"},
@@ -125,6 +131,7 @@ def test_list_permissions_expands_and_subtracts_deny():
 def test_list_permissions_superadmin_returns_all_and_ignores_deny():
     from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
     from app.extensions.auth.identity import AttributeSet
+
     eng = UnifiedPermissionEngine(
         role_permissions={"super": {"*"}},
         all_permission_ids={"kb:read", "kb:create"},
@@ -132,14 +139,14 @@ def test_list_permissions_superadmin_returns_all_and_ignores_deny():
     )
     sup = AttributeSet(user_id="s", username="s", role_code="super")
     perms = eng.list_permissions(sup)
-    assert perms == {"kb:read", "kb:create"}   # superadmin immune
+    assert perms == {"kb:read", "kb:create"}  # superadmin immune
 
 
 def test_find_deny_policy_name():
     from app.extensions.auth.engine import Policy, UnifiedPermissionEngine
     from app.extensions.auth.identity import AttributeSet
-    eng = UnifiedPermissionEngine(role_permissions={"r": {"kb:read"}},
-        policies=[Policy(name="block_delete", priority=0, conditions={}, grants={"deny_permissions": ["kb:delete"]})])
+
+    eng = UnifiedPermissionEngine(role_permissions={"r": {"kb:read"}}, policies=[Policy(name="block_delete", priority=0, conditions={}, grants={"deny_permissions": ["kb:delete"]})])
     idn = AttributeSet(user_id="u", username="u", role_code="r")
     assert eng.find_deny_policy_name(idn, "kb:delete") == "block_delete"
     assert eng.find_deny_policy_name(idn, "kb:read") is None

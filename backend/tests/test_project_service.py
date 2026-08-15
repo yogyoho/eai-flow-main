@@ -3,10 +3,10 @@
 import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
-
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
+
+import pytest
 
 
 @pytest.fixture
@@ -46,8 +46,7 @@ class TestEnterProject:
         mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, \
-             patch("app.extensions.project.service._write_project_context") as mock_write:
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, patch("app.extensions.project.service._write_project_context") as mock_write:
             from app.extensions.project.service import enter_project
 
             result = await enter_project(mock_db, project_id, user_id)
@@ -84,8 +83,7 @@ class TestEnterProject:
         mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock) as mock_create, \
-             patch("app.extensions.project.service._write_project_context"):
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock) as mock_create, patch("app.extensions.project.service._write_project_context"):
             from app.extensions.project.service import enter_project
 
             result = await enter_project(mock_db, project_id, user_id)
@@ -125,8 +123,7 @@ class TestEnterProject:
         mock_template.root_sections_json = {"sections": [{"title": "设计依据"}]}
         mock_db.get = AsyncMock(return_value=mock_template)
 
-        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock) as mock_create, \
-             patch("app.extensions.project.service._write_project_context") as mock_write:
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock) as mock_create, patch("app.extensions.project.service._write_project_context") as mock_write:
             from app.extensions.project.service import enter_project
 
             result = await enter_project(mock_db, project_id, user_id)
@@ -197,11 +194,10 @@ class TestEnterProject:
         mock_template.root_sections_json = {"sections": [{"title": "概述"}]}
         mock_db.get = AsyncMock(return_value=mock_template)
 
-        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, \
-             patch("app.extensions.project.service._write_project_context"):
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, patch("app.extensions.project.service._write_project_context"):
             from app.extensions.project.service import enter_project
 
-            result = await enter_project(mock_db, project_id, user_id)
+            await enter_project(mock_db, project_id, user_id)
 
         metadata = mock_create.call_args[0][0]
         assert metadata["template"]["template_name"] == "环评模板v1"
@@ -230,8 +226,7 @@ class TestEnterProject:
         mock_result.scalars.return_value.first.return_value = mock_member
         mock_db.execute = AsyncMock(return_value=mock_result)
 
-        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, \
-             patch("app.extensions.project.service._write_project_context"):
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, patch("app.extensions.project.service._write_project_context"):
             from app.extensions.project.service import enter_project
 
             await enter_project(mock_db, project_id, user_id, cookies=cookies, csrf_token=csrf_token)
@@ -261,11 +256,10 @@ class TestEnterProject:
         mock_db.execute = AsyncMock(return_value=mock_result)
         mock_db.get = AsyncMock(return_value=None)
 
-        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, \
-             patch("app.extensions.project.service._write_project_context"):
+        with patch("app.extensions.project.service._create_deerflow_thread", new_callable=AsyncMock, return_value=tid) as mock_create, patch("app.extensions.project.service._write_project_context"):
             from app.extensions.project.service import enter_project
 
-            result = await enter_project(mock_db, project_id, user_id)
+            await enter_project(mock_db, project_id, user_id)
 
         metadata = mock_create.call_args[0][0]
         assert metadata["template"] == {}

@@ -171,9 +171,7 @@ async def init_ragflow_knowledge_bases(
 
             # 注册到 knowledge_bases 表
             if dataset_id:
-                registered = await LawService._ensure_kb_registered(
-                    db, current_user.id, kb_name, dataset_id, chunk_method
-                )
+                registered = await LawService._ensure_kb_registered(db, current_user.id, kb_name, dataset_id, chunk_method)
                 if registered:
                     results["registered"].append(kb_name)
         except Exception as e:

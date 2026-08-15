@@ -1,4 +1,5 @@
 """AI generation strategy selector — batch vs per-chapter."""
+
 from __future__ import annotations
 
 from enum import StrEnum

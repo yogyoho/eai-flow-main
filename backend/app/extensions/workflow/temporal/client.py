@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from temporalio.client import Client
 from temporalio.worker import Worker
@@ -32,13 +33,13 @@ async def temporal_lifespan(app: FastAPI):
         client = await Client.connect(TEMPORAL_URL, namespace="default")
 
         # Import here to avoid circular imports
-        from .workflows import DynamicGraphWorkflow
-        from .activities import ALL_ACTIVITIES
-
         # Use unsandboxed runner — the workflow module transitively imports
         # FastAPI (via __init__.py → routers.py) which is incompatible with
         # Temporal's sandbox restrictions (sniffio._ThreadLocal).
         from temporalio.worker import UnsandboxedWorkflowRunner
+
+        from .activities import ALL_ACTIVITIES
+        from .workflows import DynamicGraphWorkflow
 
         worker = Worker(
             client,
@@ -80,13 +81,12 @@ async def send_signal(project_id: str, signal_name: str, args: list) -> None:
         return
 
     from sqlalchemy import select
+
     from app.extensions.database import get_db_context
     from app.extensions.models import ReportProject
 
     async with get_db_context() as db:
-        result = await db.execute(
-            select(ReportProject.temporal_workflow_id).where(ReportProject.id == project_id)
-        )
+        result = await db.execute(select(ReportProject.temporal_workflow_id).where(ReportProject.id == project_id))
         workflow_id = result.scalar_one_or_none()
 
     if not workflow_id:
@@ -106,6 +106,7 @@ async def get_workflow_status(project_id: str) -> dict | None:
         return None
 
     from sqlalchemy import select
+
     from app.extensions.database import get_db_context
     from app.extensions.models import ReportProject
 
@@ -145,13 +146,12 @@ async def cancel_workflow(project_id: str) -> bool:
         return False
 
     from sqlalchemy import select
+
     from app.extensions.database import get_db_context
     from app.extensions.models import ReportProject
 
     async with get_db_context() as db:
-        result = await db.execute(
-            select(ReportProject.temporal_workflow_id).where(ReportProject.id == project_id)
-        )
+        result = await db.execute(select(ReportProject.temporal_workflow_id).where(ReportProject.id == project_id))
         workflow_id = result.scalar_one_or_none()
 
     if not workflow_id:
@@ -173,10 +173,12 @@ async def start_workflow(workflow_name: str, params: dict) -> str | None:
         logger.warning("Temporal unavailable — cannot start workflow")
         return None
 
+    import uuid as _uuid
+
     from temporalio.common import WorkflowIDReusePolicy
+
     from .workflows import DynamicGraphWorkflow
 
-    import uuid as _uuid
     wf_id = f"project-{params.get('project_id', 'unknown')}-{_uuid.uuid4().hex[:8]}"
 
     handle = await client.start_workflow(

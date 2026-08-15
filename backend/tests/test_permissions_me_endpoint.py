@@ -3,6 +3,7 @@
 真实 registry + canned identity + mock policy 行；验证超管全集、策略 grant/deny、
 以及 /me 与 require_permission 的一致性（deny 时端点 403）。
 """
+
 from rbac_helpers import build_app, fake_identity, make_user, patch_identity, policy_row, policy_rows_db
 
 from app.extensions.auth.permission_routers import router
@@ -21,17 +22,19 @@ def test_me_superadmin_full_set_and_is_admin(monkeypatch):
 
 def test_me_policy_grant_appears_and_deny_overrides(monkeypatch):
     patch_identity(monkeypatch, fake_identity(role_code="user"))
-    db = policy_rows_db([
-        policy_row("grant_plus", grants={"permissions": ["kb:create", "kb:update", "kb:delete"]}),
-        policy_row("deny_delete", grants={"deny_permissions": ["kb:delete"]}),
-    ])
+    db = policy_rows_db(
+        [
+            policy_row("grant_plus", grants={"permissions": ["kb:create", "kb:update", "kb:delete"]}),
+            policy_row("deny_delete", grants={"deny_permissions": ["kb:delete"]}),
+        ]
+    )
     tc = build_app(router, user=make_user(role_name="普通用户"), db=db)
     data = tc.get("/api/permissions/me").json()
     perms = set(data["permissions"])
-    assert "kb:read" in perms          # user base
-    assert "kb:create" in perms        # 策略授予
-    assert "kb:update" in perms        # 策略授予、未被 deny
-    assert "kb:delete" not in perms    # deny-overrides 压过策略授予
+    assert "kb:read" in perms  # user base
+    assert "kb:create" in perms  # 策略授予
+    assert "kb:update" in perms  # 策略授予、未被 deny
+    assert "kb:delete" not in perms  # deny-overrides 压过策略授予
 
 
 def test_me_deny_consistent_with_endpoint_403(monkeypatch):

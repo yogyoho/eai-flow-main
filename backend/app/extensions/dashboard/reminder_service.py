@@ -8,10 +8,10 @@ NotificationPreference.type_settings.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from uuid import UUID
 
-from sqlalchemy import and_, func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.models import Notification, NotificationPreference, ProjectMember, ReportProject
@@ -241,13 +241,17 @@ async def _find_existing_reminder(
     dedup_key: str,
 ) -> bool:
     """Check if a reminder with this dedup key already exists (created today)."""
-    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    stmt = select(func.count()).select_from(Notification).where(
-        Notification.user_id == user_id,
-        Notification.project_id == project_id,
-        Notification.type == "deadline",
-        Notification.created_at >= today_start,
-        Notification.body.contains(dedup_key),
+    today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+    stmt = (
+        select(func.count())
+        .select_from(Notification)
+        .where(
+            Notification.user_id == user_id,
+            Notification.project_id == project_id,
+            Notification.type == "deadline",
+            Notification.created_at >= today_start,
+            Notification.body.contains(dedup_key),
+        )
     )
     count = (await db.execute(stmt)).scalar_one()
     return count > 0

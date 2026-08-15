@@ -6,13 +6,13 @@ import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(StrEnum):
     """Task status."""
 
     PENDING = "pending"

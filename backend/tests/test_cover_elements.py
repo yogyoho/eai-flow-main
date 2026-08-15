@@ -135,16 +135,20 @@ def _sample_cover():
         "mode": "elements",
         "sourceFile": "x.docx",
         "pages": [
-            {"elements": [
-                {"id": "e1", "type": "text", "text": "项目名", "fontSize": 22, "bold": True, "alignment": "center", "slotId": "project_name"},
-                {"id": "e2", "type": "text", "text": "项目编号：XX", "fontSize": 14, "alignment": "center", "slotId": "project_number"},
-                {"id": "e3", "type": "text", "text": "环境影响报告书", "fontSize": 22, "alignment": "center"},
-                {"id": "e4", "type": "table", "rows": 2, "cols": 2, "cells": [["专业名称", "编制"], ["总图", ""]], "headerBg": "#D9D9D9"},
-                {"id": "e5", "type": "spacer", "lines": 2},
-            ]},
-            {"elements": [
-                {"id": "e6", "type": "text", "text": "审定、审查人员名单", "fontSize": 16, "alignment": "center"},
-            ]},
+            {
+                "elements": [
+                    {"id": "e1", "type": "text", "text": "项目名", "fontSize": 22, "bold": True, "alignment": "center", "slotId": "project_name"},
+                    {"id": "e2", "type": "text", "text": "项目编号：XX", "fontSize": 14, "alignment": "center", "slotId": "project_number"},
+                    {"id": "e3", "type": "text", "text": "环境影响报告书", "fontSize": 22, "alignment": "center"},
+                    {"id": "e4", "type": "table", "rows": 2, "cols": 2, "cells": [["专业名称", "编制"], ["总图", ""]], "headerBg": "#D9D9D9"},
+                    {"id": "e5", "type": "spacer", "lines": 2},
+                ]
+            },
+            {
+                "elements": [
+                    {"id": "e6", "type": "text", "text": "审定、审查人员名单", "fontSize": 16, "alignment": "center"},
+                ]
+            },
         ],
     }
 
@@ -156,11 +160,15 @@ def test_render_cover_element_divider_is_page_break():
     cover = {
         "mode": "elements",
         "sourceFile": "x.docx",
-        "pages": [{"elements": [
-            {"id": "e1", "type": "text", "text": "封面一", "fontSize": 14, "alignment": "center"},
-            {"id": "e2", "type": "divider"},
-            {"id": "e3", "type": "text", "text": "封面二", "fontSize": 14, "alignment": "center"},
-        ]}],
+        "pages": [
+            {
+                "elements": [
+                    {"id": "e1", "type": "text", "text": "封面一", "fontSize": 14, "alignment": "center"},
+                    {"id": "e2", "type": "divider"},
+                    {"id": "e3", "type": "text", "text": "封面二", "fontSize": 14, "alignment": "center"},
+                ]
+            }
+        ],
     }
     doc = Document()
     _render_cover_elements(doc, cover, {}, {})
@@ -175,11 +183,15 @@ def test_render_cover_element_page_break():
     cover = {
         "mode": "elements",
         "sourceFile": "x.docx",
-        "pages": [{"elements": [
-            {"id": "e1", "type": "text", "text": "封面一", "fontSize": 14, "alignment": "center"},
-            {"id": "e2", "type": "pageBreak"},
-            {"id": "e3", "type": "text", "text": "封面二", "fontSize": 14, "alignment": "center"},
-        ]}],
+        "pages": [
+            {
+                "elements": [
+                    {"id": "e1", "type": "text", "text": "封面一", "fontSize": 14, "alignment": "center"},
+                    {"id": "e2", "type": "pageBreak"},
+                    {"id": "e3", "type": "text", "text": "封面二", "fontSize": 14, "alignment": "center"},
+                ]
+            }
+        ],
     }
     doc = Document()
     _render_cover_elements(doc, cover, {}, {})
@@ -212,8 +224,8 @@ def test_render_cover_elements_slot_replacement_and_pages():
 
 def test_cover_master_to_elements_converts_old_master():
     from app.extensions.output.layout_import import _cover_master_to_elements
-    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-           '<w:r><w:t>项目名</w:t></w:r></w:p>')
+
+    xml = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r><w:t>项目名</w:t></w:r></w:p>'
     master = {"mode": "master", "xml": xml, "images": [], "slots": [], "sourceFile": "old.docx", "boundary": "before_toc"}
     cover = _cover_master_to_elements(master)
     assert cover["mode"] == "elements"
@@ -224,6 +236,7 @@ def test_cover_master_to_elements_converts_old_master():
 
 def test_cover_master_to_elements_handles_bad_xml():
     from app.extensions.output.layout_import import _cover_master_to_elements
+
     master = {"mode": "master", "xml": "<w:p>", "images": [], "slots": [], "sourceFile": "bad.docx", "boundary": "before_toc"}
     assert _cover_master_to_elements(master) is None  # 坏 xml → None, 保留旧母版
 
@@ -250,8 +263,7 @@ def test_cover_master_read_migration_does_not_persist_to_db():
         cover_master = Column(JSON, nullable=True)
         cover_elements = Column(JSON, nullable=True)
 
-    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-           '<w:r><w:t>项目名</w:t></w:r></w:p>')
+    xml = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r><w:t>项目名</w:t></w:r></w:p>'
 
     async def scenario():
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -285,10 +297,12 @@ def test_cover_master_to_elements_restores_logo_from_images():
     """Fix #1: 迁移从 master["images"] (按 origRid) 恢复 logo, 而非降级为 spacer."""
     from app.extensions.output.layout_import import _cover_master_to_elements
 
-    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
-           'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
-           'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
-           '<w:r><w:drawing><a:blip r:embed="rId1"/></w:drawing></w:r></w:p>')
+    xml = (
+        '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" '
+        'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        '<w:r><w:drawing><a:blip r:embed="rId1"/></w:drawing></w:r></w:p>'
+    )
     master = {
         "mode": "master",
         "xml": xml,
@@ -309,11 +323,7 @@ def test_cover_master_to_elements_preserves_multipage():
     from app.extensions.output.layout_import import _cover_master_to_elements
 
     W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    xml = (
-        f'<w:p xmlns:w="{W}"><w:r><w:t>封面</w:t></w:r></w:p>'
-        f'<w:p xmlns:w="{W}"><w:r><w:t>批准页</w:t></w:r><w:r><w:br w:type="page"/></w:r></w:p>'
-        f'<w:p xmlns:w="{W}"><w:r><w:t>名单页</w:t></w:r></w:p>'
-    )
+    xml = f'<w:p xmlns:w="{W}"><w:r><w:t>封面</w:t></w:r></w:p><w:p xmlns:w="{W}"><w:r><w:t>批准页</w:t></w:r><w:r><w:br w:type="page"/></w:r></w:p><w:p xmlns:w="{W}"><w:r><w:t>名单页</w:t></w:r></w:p>'
     master = {"mode": "master", "xml": xml, "images": [], "slots": [], "sourceFile": "old.docx", "boundary": "before_toc"}
     cover = _cover_master_to_elements(master)
     assert len(cover["pages"]) == 2, f"多页母版应切为 2 页, got {len(cover['pages'])}"
@@ -343,8 +353,7 @@ def test_cover_master_migration_update_delete_after_expunge():
         cover_master = Column(JSON, nullable=True)
         cover_elements = Column(JSON, nullable=True)
 
-    xml = ('<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
-           '<w:r><w:t>项目名</w:t></w:r></w:p>')
+    xml = '<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r><w:t>项目名</w:t></w:r></w:p>'
 
     async def scenario():
         engine = create_async_engine("sqlite+aiosqlite:///:memory:")
@@ -409,12 +418,7 @@ def test_para_style_extracts_spacing():
     from docx.oxml import parse_xml
 
     W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    xml = (
-        f'<w:p xmlns:w="{W}">'
-        f'<w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>'
-        f'<w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>测试</w:t></w:r>'
-        f'</w:p>'
-    )
+    xml = f'<w:p xmlns:w="{W}"><w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr><w:r><w:rPr><w:sz w:val="24"/></w:rPr><w:t>测试</w:t></w:r></w:p>'
     style = _para_style(parse_xml(xml))
     assert style["spaceBefore"] == 12, f"240 twips 应为 12pt, got {style['spaceBefore']}"
     assert style["spaceAfter"] == 6, f"120 twips 应为 6pt, got {style['spaceAfter']}"
@@ -425,12 +429,7 @@ def test_para_style_spacing_auto_and_absent_defaults_zero():
     from docx.oxml import parse_xml
 
     W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-    auto = (
-        f'<w:p xmlns:w="{W}">'
-        f'<w:pPr><w:spacing w:before="240" w:beforeAutospacing="1"/></w:pPr>'
-        f'<w:r><w:t>测试</w:t></w:r>'
-        f'</w:p>'
-    )
+    auto = f'<w:p xmlns:w="{W}"><w:pPr><w:spacing w:before="240" w:beforeAutospacing="1"/></w:pPr><w:r><w:t>测试</w:t></w:r></w:p>'
     style = _para_style(parse_xml(auto))
     assert style["spaceBefore"] == 0, "beforeAutospacing=1 应跳过间距"
     assert style["spaceAfter"] == 0

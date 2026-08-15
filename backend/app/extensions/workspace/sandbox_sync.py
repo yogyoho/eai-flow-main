@@ -18,9 +18,8 @@ import httpx
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from deerflow.config.paths import Paths as DeerFlowPaths
-
 from app.extensions.models import AIDocument
+from deerflow.config.paths import Paths as DeerFlowPaths
 
 from .models import CollabProject, CollabSection
 
@@ -50,12 +49,7 @@ async def _resolve_target_doc(db: AsyncSession, project: CollabProject) -> UUID 
     """quickdoc → project.doc_id；report → 首个有 doc_id 的 section。"""
     if project.kind == "quickdoc":
         return project.doc_id
-    sec = await db.scalar(
-        select(CollabSection.doc_id)
-        .where(CollabSection.project_id == project.id, CollabSection.doc_id.isnot(None))
-        .order_by(CollabSection.sort_order)
-        .limit(1)
-    )
+    sec = await db.scalar(select(CollabSection.doc_id).where(CollabSection.project_id == project.id, CollabSection.doc_id.isnot(None)).order_by(CollabSection.sort_order).limit(1))
     return sec
 
 
@@ -115,12 +109,7 @@ async def sync_sandbox_outputs(
 
     # report：同步首 section 的 content 快照
     if project.kind == "report" and synced:
-        sec = await db.scalar(
-            select(CollabSection)
-            .where(CollabSection.project_id == project.id, CollabSection.doc_id == target_doc_id)
-            .order_by(CollabSection.sort_order)
-            .limit(1)
-        )
+        sec = await db.scalar(select(CollabSection).where(CollabSection.project_id == project.id, CollabSection.doc_id == target_doc_id).order_by(CollabSection.sort_order).limit(1))
         if sec:
             sec.content = (await db.get(AIDocument, target_doc_id)).content
             sec.word_count_current = len(sec.content or "")

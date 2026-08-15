@@ -32,6 +32,7 @@ for tool in TOOLS:
         async def handler(arguments: dict):
             result = await call_tool(name, arguments)
             return result
+
         return handler
 
     mcp.add_tool(_make_handler(tool.name), name=tool.name, description=tool.description)

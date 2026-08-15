@@ -26,10 +26,6 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from deerflow.runtime.checkpoint_state import build_state_mutation_graph
 
-import pytest
-
-
-
 pytestmark = [
     pytest.mark.skip(reason="EAI gateway runtime lifecycle differs (EAI-CUSTOM skip 2026-08-15)"),
     pytest.mark.no_auto_user,

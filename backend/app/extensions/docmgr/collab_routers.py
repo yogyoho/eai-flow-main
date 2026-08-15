@@ -55,9 +55,7 @@ async def create_comment(
     doc = await AIDocumentService.get_by_id_scoped(db, doc_id, scope)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
-    return await CommentService.create_comment(
-        db, current_user.id, doc_id, data.block_id, data.content, data.parent_id
-    )
+    return await CommentService.create_comment(db, current_user.id, doc_id, data.block_id, data.content, data.parent_id)
 
 
 @router.put("/comments/{comment_id}", response_model=CommentResponse)
@@ -144,9 +142,7 @@ async def create_version(
     if not snapshot and doc.content:
         snapshot = doc.content.encode("utf-8")
 
-    result = await VersionService.create_version(
-        db, doc_id, current_user.id, snapshot, summary=data.summary, snapshot_text=data.content
-    )
+    result = await VersionService.create_version(db, doc_id, current_user.id, snapshot, summary=data.summary, snapshot_text=data.content)
 
     if data.generate_summary and not data.summary:
         ai_summary = await VersionService.generate_ai_summary(db, doc_id, result["version"])
@@ -224,14 +220,15 @@ async def restore_version(
         collab_doc.last_editor_id = current_user.id
         await db.commit()
     else:
-        collab_doc = CollabDocument(
-            doc_id=doc_id, yjs_doc=snapshot, version=1, last_editor_id=current_user.id
-        )
+        collab_doc = CollabDocument(doc_id=doc_id, yjs_doc=snapshot, version=1, last_editor_id=current_user.id)
         db.add(collab_doc)
         await db.commit()
 
     await VersionService.create_version(
-        db, doc_id, current_user.id, snapshot,
+        db,
+        doc_id,
+        current_user.id,
+        snapshot,
         summary=f"Restored to version {version}",
         snapshot_text=snapshot_text,
     )

@@ -9,15 +9,14 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import Integer, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
-
 from app.extensions.auth.engine import FilterRule
 from app.extensions.auth.middleware import require_permission, with_data_scope
+from app.extensions.auth.unified_permissions import require_project_member, require_resource_permission
 from app.extensions.database import get_db
-from app.extensions.models import ReportProject, Role, User
+from app.extensions.models import ReportProject
 from app.extensions.schemas import CurrentUser
 
-from app.extensions.auth.unified_permissions import require_project_member, require_resource_permission
+from . import service
 from .schemas import (
     ApprovalActionRequest,
     ApprovalStatusOut,
@@ -34,9 +33,10 @@ from .schemas import (
     ProjectPermissionsOut,
     ProjectUpdate,
 )
-from . import service
 
 router = APIRouter(prefix="/api/extensions/project", tags=["project"])
+
+logger = logging.getLogger(__name__)
 
 CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("system:access"))]
 ProjectCreator = Annotated[CurrentUser, Depends(require_permission("project:create"))]
@@ -155,8 +155,8 @@ async def create_project(
     # Auto-start workflow if requested and workflow_id provided
     if body.auto_start_workflow and body.workflow_id and project.id:
         try:
-            from app.extensions.workflow.temporal.client import start_workflow as _start_wf
             from app.extensions.workflow.models import WorkflowDefinition
+            from app.extensions.workflow.temporal.client import start_workflow as _start_wf
 
             definition = await db.get(WorkflowDefinition, body.workflow_id)
             if definition and definition.graph_json:
@@ -355,14 +355,13 @@ async def get_my_permissions(
     2. Project role (owner gets all, member gets filtered)
     3. Phase duties bonus (lead/writer/reviewer get extra permissions)
     """
+    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
+    from app.extensions.auth.admin import is_superadmin
     from app.extensions.auth.registry import get_permission_registry
     from app.extensions.auth.unified_permissions import (
         get_user_permissions,
         resolve_user_project_role,
     )
-
-    # EAI-CUSTOM (I2): admin bypass via registry helper (yaml authority), not DB role row
-    from app.extensions.auth.admin import is_superadmin
 
     is_admin = await is_superadmin(db, user.id)
 
@@ -471,7 +470,7 @@ async def _check_phase_access(
         return  # Owners and phase leads (managers) have full access
 
     # For non-owner/non-phase-lead: check phase scope
-    from app.extensions.models import ReportProject, ProjectChapter
+    from app.extensions.models import ProjectChapter, ReportProject
 
     project = await db.get(ReportProject, project_id)
     if not project or not project.current_phase_node:
@@ -649,7 +648,7 @@ async def get_phase_completion(
 
     Returns a summary that can be used as a gate before advancing the workflow.
     """
-    from app.extensions.models import ReportProject, ProjectChapter
+    from app.extensions.models import ProjectChapter, ReportProject
     from app.extensions.workflow.models import WorkflowDefinition
 
     project = await db.get(ReportProject, project_id)
@@ -762,7 +761,8 @@ async def get_project_activities(
     limit: int = Query(50, ge=1, le=100),
 ):
     """Get activity log for a project — who did what when."""
-    from app.extensions.models import ActivityLog, User as ExtUser
+    from app.extensions.models import ActivityLog
+    from app.extensions.models import User as ExtUser
 
     stmt = select(ActivityLog, ExtUser.username, ExtUser.full_name).outerjoin(ExtUser, ActivityLog.user_id == ExtUser.id).where(ActivityLog.project_id == project_id).order_by(ActivityLog.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
@@ -842,8 +842,8 @@ async def complete_current_phase(
     to close IDOR — previously only ``system:access`` was checked.
     """
     from app.extensions.models import ReportProject
-    from app.extensions.workflow.temporal.client import send_signal as _send_signal
     from app.extensions.workflow.models import WorkflowDefinition
+    from app.extensions.workflow.temporal.client import send_signal as _send_signal
 
     project = await db.get(ReportProject, project_id)
     if not project:
@@ -867,8 +867,9 @@ async def complete_current_phase(
     # Matches the _check_phase_completion guard in the Temporal workflow
     # (_execute_phase / _execute_task) so the caller gets immediate feedback
     # instead of sending a signal that the workflow will reject.
-    from app.extensions.models import ProjectChapter
     from sqlalchemy import func as _sf
+
+    from app.extensions.models import ProjectChapter
 
     ch_stmt = (
         select(
@@ -1068,6 +1069,7 @@ async def merge_project_documents(
 ):
     """Merge multiple intermediate AIDocuments into a single final document."""
     from uuid import uuid4
+
     from app.extensions.models import AIDocument
 
     # Validate all documents exist and belong to this project
@@ -1230,8 +1232,8 @@ async def finalize_document(
     """
     from uuid import UUID as _UUID
 
-    from app.extensions.models import AIDocument, ProjectChapter, ReportProject
     from app.extensions.knowledge_factory.models import ExtractionTemplate
+    from app.extensions.models import AIDocument, ProjectChapter, ReportProject
 
     from .chapter_matching import (
         extract_headings,

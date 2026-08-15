@@ -10,6 +10,7 @@ data.
 
 from __future__ import annotations
 
+import pytest
 from deerflow_extension_api import AgentScope, MiddlewarePlacement, Placement
 from langchain.agents.middleware import AgentMiddleware
 
@@ -24,10 +25,7 @@ from deerflow.extensions.isolation import IsolatedMiddleware
 from deerflow.extensions.registry import ExtensionRegistry
 from deerflow.extensions.stack import middleware_implements
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="upstream extension placement diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 class _Probe(AgentMiddleware):

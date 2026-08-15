@@ -39,6 +39,7 @@ async def load_rule_dictionaries_from_db() -> dict[str, list[dict[str, str]]] | 
     """Try loading dictionaries from database. Returns None if table is empty."""
     try:
         from app.extensions.database import get_db_context
+
         from .service import DictionaryService
 
         async with get_db_context() as db:

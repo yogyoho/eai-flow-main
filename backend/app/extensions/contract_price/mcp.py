@@ -76,11 +76,7 @@ def _stats(prices: list[float]) -> dict[str, Any]:
 TOOLS = [
     Tool(
         name="price_analysis_summary",
-        description=(
-            "合同价格分析数据总览:返回已入库的合同数、分项货物数、聚类组数、待核验数、"
-            "含税单价全量区间与均值。用于回答'一共有多少货物/合同/价格总体情况'类问题。"
-            "只读,不触发任何流水线。"
-        ),
+        description=("合同价格分析数据总览:返回已入库的合同数、分项货物数、聚类组数、待核验数、含税单价全量区间与均值。用于回答'一共有多少货物/合同/价格总体情况'类问题。只读,不触发任何流水线。"),
         inputSchema={"type": "object", "properties": {}},
     ),
     Tool(
@@ -104,10 +100,7 @@ TOOLS = [
     ),
     Tool(
         name="list_needs_review_items",
-        description=(
-            "列出待核验(needs_review)的分项——OCR 数字粘连/量级不确定的价格,未进入统计均值,"
-            "需人工溯源核验。用于回答'哪些价格还不确定/需要复核'。只读。"
-        ),
+        description=("列出待核验(needs_review)的分项——OCR 数字粘连/量级不确定的价格,未进入统计均值,需人工溯源核验。用于回答'哪些价格还不确定/需要复核'。只读。"),
         inputSchema={"type": "object", "properties": {}},
     ),
 ]
@@ -125,24 +118,21 @@ async def _handle_summary(arguments: dict) -> list[TextContent]:
         docs = await session.scalar(select(func.count()).select_from(CpaDocument)) or 0
         items = await session.scalar(select(func.count()).select_from(CpaItem)) or 0
         clusters = await session.scalar(select(func.count()).select_from(CpaCluster)) or 0
-        pending = await session.scalar(
-            select(func.count()).select_from(
-                select(CpaCluster).where(CpaCluster.status == "pending").subquery()
-            )
-        ) or 0
-        nr = await session.scalar(
-            select(func.count()).select_from(
-                select(CpaItem).where(CpaItem.validation_status == "needs_review").subquery()
-            )
-        ) or 0
+        pending = await session.scalar(select(func.count()).select_from(select(CpaCluster).where(CpaCluster.status == "pending").subquery())) or 0
+        nr = await session.scalar(select(func.count()).select_from(select(CpaItem).where(CpaItem.validation_status == "needs_review").subquery())) or 0
         lo = await session.scalar(select(func.min(CpaItem.unit_price)))
         hi = await session.scalar(select(func.max(CpaItem.unit_price)))
         avg = await session.scalar(select(func.avg(CpaItem.unit_price)))
-        return dict(docs=int(docs), items=int(items), clusters=int(clusters),
-                    pending_clusters=int(pending), needs_review=int(nr),
-                    price_min=float(lo) if lo is not None else None,
-                    price_max=float(hi) if hi is not None else None,
-                    price_avg=round(float(avg), 2) if avg is not None else None)
+        return dict(
+            docs=int(docs),
+            items=int(items),
+            clusters=int(clusters),
+            pending_clusters=int(pending),
+            needs_review=int(nr),
+            price_min=float(lo) if lo is not None else None,
+            price_max=float(hi) if hi is not None else None,
+            price_avg=round(float(avg), 2) if avg is not None else None,
+        )
 
     data = await _run_in_db(_q)
     return _ok({"success": True, **data})
@@ -156,17 +146,12 @@ async def _handle_query_goods(arguments: dict) -> list[TextContent]:
     name = arguments["goods_name"]
 
     async def _q(session):
-        rows = (
-            await session.execute(
-                select(CpaItem).where(CpaItem.goods_name.ilike(f"%{name}%")).order_by(CpaItem.created_at)
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(CpaItem).where(CpaItem.goods_name.ilike(f"%{name}%")).order_by(CpaItem.created_at))).scalars().all()
         return rows
 
     rows = await _run_in_db(_q)
     if not rows:
-        return _ok({"success": True, "matched": 0,
-                    "message": f"未找到名称含「{name}」的分项货物。请先在合同价格分析管理页面分析相关合同。"})
+        return _ok({"success": True, "matched": 0, "message": f"未找到名称含「{name}」的分项货物。请先在合同价格分析管理页面分析相关合同。"})
 
     by_name: dict[str, list] = {}
     for it in rows:
@@ -174,15 +159,11 @@ async def _handle_query_goods(arguments: dict) -> list[TextContent]:
 
     groups = []
     for gname, items in by_name.items():
-        priced = [
-            float(i.unit_price) for i in items
-            if i.unit_price is not None and i.validation_status in ("ok", "corrected")
-        ]
+        priced = [float(i.unit_price) for i in items if i.unit_price is not None and i.validation_status in ("ok", "corrected")]
         nr = sum(1 for i in items if i.validation_status == "needs_review")
         ok = sum(1 for i in items if i.validation_status == "ok")
         corr = sum(1 for i in items if i.validation_status == "corrected")
-        outliers = [{"unit_price": float(i.unit_price), "contract": i.source_contract_no}
-                    for i in items if i.is_outlier and i.unit_price is not None]
+        outliers = [{"unit_price": float(i.unit_price), "contract": i.source_contract_no} for i in items if i.is_outlier and i.unit_price is not None]
         contracts = sorted({(i.source_contract_no or "(未关联)") for i in items})
         samples = [
             {
@@ -194,19 +175,20 @@ async def _handle_query_goods(arguments: dict) -> list[TextContent]:
             }
             for i in items[:5]
         ]
-        groups.append({
-            "goods_name": gname,
-            "item_count": len(items),
-            "price_stats": _stats(priced),
-            "validation": {"ok": ok, "needs_review": nr, "corrected": corr},
-            "outliers": outliers,
-            "source_contracts": contracts,
-            "samples": samples,
-            "confidence_note": "价格待人工溯源核验,仅供参考" if nr >= ok + corr else None,
-        })
+        groups.append(
+            {
+                "goods_name": gname,
+                "item_count": len(items),
+                "price_stats": _stats(priced),
+                "validation": {"ok": ok, "needs_review": nr, "corrected": corr},
+                "outliers": outliers,
+                "source_contracts": contracts,
+                "samples": samples,
+                "confidence_note": "价格待人工溯源核验,仅供参考" if nr >= ok + corr else None,
+            }
+        )
 
-    return _ok({"success": True, "keyword": name, "matched_items": len(rows),
-                "matched_names": len(by_name), "groups": groups})
+    return _ok({"success": True, "keyword": name, "matched_items": len(rows), "matched_names": len(by_name), "groups": groups})
 
 
 async def _handle_outliers(arguments: dict) -> list[TextContent]:
@@ -215,18 +197,11 @@ async def _handle_outliers(arguments: dict) -> list[TextContent]:
     from app.extensions.contract_price.models import CpaItem
 
     async def _q(session):
-        rows = (
-            await session.execute(
-                select(CpaItem).where(CpaItem.is_outlier.is_(True)).order_by(CpaItem.unit_price.desc())
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(CpaItem).where(CpaItem.is_outlier.is_(True)).order_by(CpaItem.unit_price.desc()))).scalars().all()
         return rows
 
     rows = await _run_in_db(_q)
-    return _ok({"success": True, "count": len(rows), "outliers": [
-        {"goods_name": r.goods_name, "unit_price": float(r.unit_price) if r.unit_price is not None else None,
-         "source_contract_no": r.source_contract_no} for r in rows[:50]
-    ]})
+    return _ok({"success": True, "count": len(rows), "outliers": [{"goods_name": r.goods_name, "unit_price": float(r.unit_price) if r.unit_price is not None else None, "source_contract_no": r.source_contract_no} for r in rows[:50]]})
 
 
 async def _handle_needs_review(arguments: dict) -> list[TextContent]:
@@ -235,20 +210,17 @@ async def _handle_needs_review(arguments: dict) -> list[TextContent]:
     from app.extensions.contract_price.models import CpaItem
 
     async def _q(session):
-        rows = (
-            await session.execute(
-                select(CpaItem).where(CpaItem.validation_status == "needs_review")
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(CpaItem).where(CpaItem.validation_status == "needs_review"))).scalars().all()
         return rows
 
     rows = await _run_in_db(_q)
-    return _ok({"success": True, "count": len(rows), "needs_review": [
-        {"goods_name": r.goods_name,
-         "unit_price": float(r.unit_price) if r.unit_price is not None else None,
-         "source_contract_no": r.source_contract_no, "source_page": r.source_page}
-        for r in rows[:50]
-    ]})
+    return _ok(
+        {
+            "success": True,
+            "count": len(rows),
+            "needs_review": [{"goods_name": r.goods_name, "unit_price": float(r.unit_price) if r.unit_price is not None else None, "source_contract_no": r.source_contract_no, "source_page": r.source_page} for r in rows[:50]],
+        }
+    )
 
 
 # ── server ──

@@ -19,6 +19,10 @@
 - **Palantir Ontology 概念移植意图（2026-08-14, 用户三轮拍板）:** ①**意图=概念移植**（轻量原生语义层），不采购 Palantir 产品、不建索引/funnel；②一期价值=**统一语义层（平台一致性）**，Action 写路径/函数/对象级 ACL 全延后；③一期覆盖域=**市场/分析数据域**（cpa_/csp_/bid），协作/文档域二期；④消费端=**MCP + 前端语义地图页**；⑤方案=**声明式 YAML 注册表 + 通用引擎**（弃代码驱动/纯文档）；⑥跨模块链接=**聚类代表名匹配**（复用 DBSCAN 归一，不做原始脏名/模糊匹配）；⑦权限=**管理员级门控**（REST 需 system:access，MCP 注册级门控 + hidden:true 列级隐藏，不行级 ACL）；⑧前端=**独立应用中心 app /ontology**。设计文档 `docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md`。
 
 ## Key Learnings
+- **Git Bash 里 docker exec 带容器内绝对路径必须加 `MSYS_NO_PATHCONV=1`（2026-08-15, bug-1185）：** `docker exec c python /app/backend/x.py` 会被 MSYS 转成 `/app/C:/Program Files/Git/app/...` 报 No such file。命令前缀 `MSYS_NO_PATHCONV=1` 即可；容器内跑 backend 脚本一律 `/app/backend/.venv/bin/python`（系统 python 无依赖，见既有教训）。
+- **前端单测官方 runner 是 Rstest，测试文件必须 `import ... from "@rstest/core"`（2026-08-15, build-where.test.ts 修复）：** `pnpm test` → rstest（两 project：node 默认 / `*.dom.test.*` 走 happy-dom，见 frontend/AGENTS.md）。写成 `import from "vitest"` 在 rstest 下解析到真实 @vitest/runner 而未注册环境，**整文件崩溃** `Cannot read properties of undefined (reading 'config')`——不是断言失败是导入期炸。仓库尚有 ~38 个 vitest-importing 测试文件属既有债。新测试文件一律 `@rstest/core`。
+- **gateway 8001 端口未发布到宿主机（2026-08-15, gateway 挂起诊断）：** 容器端口仅 `8001/tcp`（无 host 映射），nginx 走内部 docker 网络转发。宿主机 `curl localhost:8001` 恒 000 属正常，健康检查必须走 nginx `curl localhost:2026/api/...` 或 `docker exec deer-flow-nginx wget http://deer-flow-gateway:8001/...`（401=活着）。gateway "Up 但无响应（所有 API pending）"→ `docker compose -p eai-docker restart gateway` 即恢复。
+- **bid-quote 友商过滤统一 EXISTS 语义 + 别名感知关联列（2026-08-15, 终审 C1 修复 bug-701）：** 友商过滤（competitors）在**所有**罐装 SQL 模板统一用 EXISTS 子查询（"筛'有选中友商参与的项目'"，spec §4.3/§9），**绝不能**用裸 `bidder_name IN`——对"仅我方"查询（segment/selfRate）恒空集，对混合行集查询（summary/composition/showdown/图B）会把我方行/聚合清零。EXISTS 的关联列 `c2.project_name = <outerProjectRef>` 必须由调用方按模板外层表别名传入：未别名 `FROM mock_bid` → `"mock_bid.project_name"`；`JOIN mock_bid b` → `"b.project_name"`——传错列要么 SQL 不可解析要么恒真。`buildWhere(g, outerProjectRef, chart?)` 第三参就是干这个的，新增模板时先确认外层别名再传。
 - **bid-quote 过滤增强的三个"单源"约定（2026-08-14, Task7 质量评审）：** ①SQL 单引号转义只走 `api.ts::esc()`——DashboardView/QueryView 曾各自内联 `.replace(/'/g,"''")`，评审后 DashboardView 已收敛到 esc()（QueryView 的本地副本是既有债，后续可并）；②自产/外购 50 阈值判定只走 `types.ts::matchesSelfAttribute`（下钻 modal 的 rowSelfPct 现算 pct 后也喂给它，勿再内联 `>=50/<50`）；③绿色高亮用 emerald 系（`text-emerald-500/600`）对齐 `chartTheme.GREEN=#10b981`，勿用 green-*。另：`won` 布尔列渲染 true→"✓ 中标"、false→留空（cellText(false) 会渲染裸 "false"）。seed 脚本在 gateway 容器必须用 `/app/backend/.venv/bin/python` 跑（系统 python 无 asyncpg）。
 - **stdio MCP 子进程环境被收窄——靠 EXTENSIONS_DB_HOST 等非白名单 env 解析配置的 server 会静默回退到 localhost（2026-08-10, bug-1162）：** MCP stdio 子进程 env 经两层收窄：① mcp SDK `get_default_environment()` 只继承白名单 `HOME/LOGNAME/PATH/SHELL/TERM/USER`（`mcp/client/stdio/__init__.py` DEFAULT_INHERITED_ENV_VARS；`stdio_client` 的 `env={**get_default_environment(), **server.env}`），② harness `deerflow/mcp/tools.py:512-516` 从 `server.env`(常为 `{}`) 起仅 `setdefault TMPDIR/TMP/TEMP`。结果子进程**没有** `EXTENSIONS_DB_HOST`。`contract_price/mcp.py::_resolve_db_url()` 在 `CPA_QUERY_DB_URL` 未设时回退 `get_extensions_config().database.url`，而 `DatabaseConfig.from_env()` 用 `os.getenv("EXTENSIONS_DB_HOST","localhost")` → 缺失即 `localhost` → `127.0.0.1:5432 connection refused`。**`project` 服务器靠硬编码 `env.PROJECT_DB_URL` 躲过同一陷阱**——这就是它为什么硬编码。**铁律：任何 stdio MCP server 若其内部解析依赖白名单 6 变量之外的 env（DB host、第三方 endpoint、token…），必须把该值显式写进 `extensions_config.json` 的 `server.env`，不能指望继承父进程 env。** 诊断：`docker exec deer-flow-gateway sh -c 'cd /app/backend && PYTHONPATH=. .venv/bin/python - <<EOF ... strip os.environ to allowlist+TMPDIR, then call _resolve_db_url() ... EOF'` 看是否回退 localhost。修复（零代码）：给 server.env 加 override 钩子变量（contract-price 用 `_resolve_db_url` 已留的 `CPA_QUERY_DB_URL=postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow`）。注意：SSE/HTTP server 不经此路径（无子进程 env 问题）。相关：同 server 的工具名 bug-1159、cwd 透传 bug-712。
 - **MCP 工具默认带 server 前缀(tool_name_prefix=true)，技能里写的工具名必须与 agent 实际绑定名一致（2026-08-10, bug-1159）：** `extensions_config.json` 的 MCP server 默认 `tool_name_prefix=true` → 工具绑定成 `server-name_tool-name`（如 `contract-price-analysis_query_goods_price`）。但 `SKILL.md` 教 agent 调不带前缀的 `query_goods_price` → 模型按技能指示调一个不存在的工具名 → 对话页问货物价格无法回答。**诊断关键：别只看技能/server 是否启用、数据是否就绪——要跑 agent 实际的工具加载路径 `initialize_mcp_tools()`（`deerflow.mcp.cache`）看真实绑定名**（这次全链路 6 层都正常，唯独绑定名 vs 技能名对不上）。修复二选一：①该 server 设 `tool_name_prefix:false`（工具名全局唯一时最省事，本次采用）；②技能改用全名 `server_tool`（多 server 命名空间安全但 server 改名即失效）。探针命令：`docker exec deer-flow-gateway sh -c 'cd /app && PYTHONPATH=/app/backend .venv/bin/python -c "...initialize_mcp_tools...print([t.name for t in tools])"'`。相关：stdio MCP 的 cwd 透传见 bug-712（`mcp/client.py` EAI-CUSTOM 段）。
@@ -867,3 +871,25 @@
 ## Key Learnings (2026-08-14 seed 多家友商 Task1)
 - seed_mock_market.py 必须用容器 venv python 运行:`docker exec deer-flow-gateway /app/backend/.venv/bin/python /app/backend/scripts/seed_mock_market.py`(裸 python 无 asyncpg);Git Bash 下还需 MSYS_NO_PATHCONV=1 防 /app 路径改写。
 - gateway 重启后 /api/health 返回 401(fail-closed auth)= 服务已活;启动窗口期 502 属正常。
+
+## Key Learnings (2026-08-15 — ontology 统一语义层落地)
+
+- 登录探针: `POST /api/v1/auth/login/local` 是 OAuth2PasswordRequestForm(表单字段 username/password, 非 JSON email/password), 且在 CSRF 豁免清单内。Cookie 探针用它最省事。
+- 容器内全量 pytest 有 4 个静态检测器测试(test_detect_blocking_io_static / test_detect_thread_boundaries / test_detector_repo_root / test_scan_changed_blocking_io)因容器不挂 .git 无法 resolve repo root 而收集失败——容器内跑要 --ignore 这四个; CI 正常。
+- ruff 规则 E741(歧义变量名 l)在本项目 enforced——link 遍历别用 `for l in`,一律 `for link in`。
+- `from scripts.xxx import` 在 backend/tests 里可用(PYTHONPATH=. 从 backend/ 跑), 有先例 test_memory_markdown_migration_cli.py。
+- 扩展模型显式导入才进 Base.metadata: `app.extensions.models`(data_sources/data_source_datasets) + `app.extensions.contract_price.models` + `app.extensions.spare_parts.models`。离线列 diff lint 必须显式 import。
+- RegistryCache 热重载版本号必须自持计数器(首次取 manifest registry_version, 之后 +1), 不能每次从 manifest 重新推导。
+- 计划文档的代码也会有缺陷(执行时已修 5 处): 执行计划 ≠ 盲抄, 每步先对既有代码验证符号/签名。
+
+## Decision Log (2026-08-15 — ontology)
+
+- Ontology Phase 1 = 概念移植(Palantir Ontology → 声明式 YAML registry + 只读引擎 + MCP 7 工具 + REST 11 端点 admin-gated), 不建自有表, 不做 object index/funnel。前端语义地图页为独立后续计划。
+- 跨模块链接用 normalized_key_match 表达式(LOWER(BTRIM)), 引擎 rewrite_match_expression 把当前侧 table.column 引用替换为绑定参数 → 支持跨库(bid@data_source ↔ contract@postgres_ext)。
+- CI lint 列 diff 方向定为 声明列⊆物理列=硬错(防 YAML 列名笔误→运行时 SQL 炸), 物理列未建模=仅 WARN(未建模=未暴露, 安全)。
+- nav:ontology 暂不授给任何角色(前端 Sidebar 尚未注册该项, 授了也 inert; REST 已由 system:access 门控) → 避免 bug-1087 roles_custom 全量替换风险, 留给前端计划。
+- 提交推迟: 并发会话 MERGE_HEAD 未结束期间禁止 partial commit; 全部 ontology 改动待合并结束后 pathspec-scoped 提交。
+
+### 2026-08-15 �� PowerShell ���� UTF-8 JSON �ļ�������ʽ -Encoding utf8
+- **Do-Not-Repeat:** �� PowerShell 5.1 �� `Get-Content -Raw`(���� -Encoding)�� ANSI/GBK �� UTF-8 �ļ� �� ���ı� mojibake �� ConvertFrom-Json ʧ�� �� ���� `Set-Content` ��������д�أ��ٵ�ԭ�ļ���.wolf/buglog.json �¹ʣ��� git HEAD + GBK��UTF8 ��ת�ָ�����
+- **��ȷ����:** �� JSON һ���� `uv run python`(backend ����) �� Bash + python heredoc��PowerShell ֻ���� Add-Content ׷�Ӵ��ı����ָ����ɣ���������� echo �� mojibake �ı����� `[Text.Encoding]::UTF8.GetString([Text.Encoding]::GetEncoding(936).GetBytes($s))` ��ת��

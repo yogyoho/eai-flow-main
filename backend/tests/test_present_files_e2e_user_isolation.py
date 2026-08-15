@@ -16,8 +16,6 @@ from deerflow.agents.thread_state import ThreadState
 from deerflow.config.paths import Paths
 from deerflow.tools.builtins.present_file_tool import present_file_tool
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI present_files user-isolation differs (EAI-CUSTOM skip 2026-08-15)")
 
 

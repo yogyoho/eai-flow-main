@@ -30,8 +30,6 @@ from pathlib import Path
 import pytest
 from uvicorn.config import resolve_reload_patterns
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI serve.sh (kept ours) lacks upstream reload-exclude entries (EAI-CUSTOM skip 2026-08-15)")
 
 

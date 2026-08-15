@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.extensions.auth.middleware import require_permission
 from app.extensions.schemas import CurrentUser
 
+from . import service
 from .schemas import (
     ApprovalActionRequest,
     ApprovalRecordListResponse,
@@ -14,7 +15,6 @@ from .schemas import (
     ApprovalWorkflowOut,
     SubmitApprovalRequest,
 )
-from . import service
 
 router = APIRouter(prefix="/api/extensions/approval", tags=["approval"])
 

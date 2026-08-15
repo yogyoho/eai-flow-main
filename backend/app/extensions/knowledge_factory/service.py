@@ -1,18 +1,12 @@
 """Business logic for knowledge factory extraction."""
 
-import asyncio
 import logging
-import uuid
 from datetime import datetime
-from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import delete, func, select, update, or_
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import attributes
-
-from app.extensions.database import get_db_context
-from app.extensions.models import Document, KnowledgeBase
 
 from .models import (
     BusinessDictionary,
@@ -20,28 +14,18 @@ from .models import (
     ExtractionTask,
     ExtractionTemplate,
     ExtractionTemplateVersion,
-    TemplateSection,
 )
-from .pipeline import ExtractionPipeline
 from .schemas import (
     ContentContract,
     CrossSectionRule,
     DomainCreate,
-    DomainResponse,
     ExtractionConfig,
     ExtractionTaskCreate,
-    ExtractionTaskListResponse,
-    ExtractionTaskResponse,
-    StepStatusSchema,
     StructureType,
     TemplateDocument,
-    TemplateListItem,
-    TemplateListResponse,
-    TemplateResult,
     TemplateSection,
     TemplateStatus,
     TemplateUpdate,
-    TemplateVersionResponse,
 )
 from .storage import delete_snapshot, save_snapshot
 
@@ -60,7 +44,7 @@ class DomainService:
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_domain(db: AsyncSession, domain_id: str) -> Optional[ExtractionDomain]:
+    async def get_domain(db: AsyncSession, domain_id: str) -> ExtractionDomain | None:
         result = await db.execute(select(ExtractionDomain).where(ExtractionDomain.id == domain_id))
         return result.scalar_one_or_none()
 
@@ -132,7 +116,10 @@ class DictionaryService:
 
     @staticmethod
     async def list_items(
-        db: AsyncSession, category: str, page: int = 1, limit: int = 50,
+        db: AsyncSession,
+        category: str,
+        page: int = 1,
+        limit: int = 50,
     ) -> tuple[list[BusinessDictionary], int]:
         query = select(BusinessDictionary).where(BusinessDictionary.category == category)
         count_result = await db.execute(select(func.count()).select_from(query.subquery()))
@@ -143,7 +130,7 @@ class DictionaryService:
         return list(result.scalars().all()), total
 
     @staticmethod
-    async def get_item(db: AsyncSession, item_id: str) -> Optional[BusinessDictionary]:
+    async def get_item(db: AsyncSession, item_id: str) -> BusinessDictionary | None:
         result = await db.execute(select(BusinessDictionary).where(BusinessDictionary.id == item_id))
         return result.scalar_one_or_none()
 
@@ -178,10 +165,7 @@ class DictionaryService:
     @staticmethod
     async def list_categories(db: AsyncSession) -> list[dict]:
         """列出所有字典分类及其条目数量"""
-        stmt = (
-            select(BusinessDictionary.category, func.count())
-            .group_by(BusinessDictionary.category)
-        )
+        stmt = select(BusinessDictionary.category, func.count()).group_by(BusinessDictionary.category)
         result = await db.execute(stmt)
         counts = dict(result.all())
         categories = []
@@ -193,6 +177,7 @@ class DictionaryService:
     async def init_seed_data(db: AsyncSession) -> None:
         """从 rule_dictionaries.json 导入初始数据"""
         from .dictionary_loader import load_rule_dictionaries_from_file
+
         data = load_rule_dictionaries_from_file()
 
         mapping = {
@@ -212,24 +197,20 @@ class DictionaryService:
     @staticmethod
     async def _ensure_items(db: AsyncSession, category: str, items: list[dict]) -> None:
         """确保指定分类中包含给定条目，缺失则补充"""
-        existing_ids = set(
-            (await db.execute(
-                select(BusinessDictionary.id).where(BusinessDictionary.category == category)
-            )).scalars().all()
-        )
-        max_order = (await db.execute(
-            select(func.coalesce(func.max(BusinessDictionary.sort_order), -1)).where(BusinessDictionary.category == category)
-        )).scalar() or 0
+        existing_ids = set((await db.execute(select(BusinessDictionary.id).where(BusinessDictionary.category == category))).scalars().all())
+        max_order = (await db.execute(select(func.coalesce(func.max(BusinessDictionary.sort_order), -1)).where(BusinessDictionary.category == category))).scalar() or 0
         added = False
         for item in items:
             if item["value"] not in existing_ids:
                 max_order += 1
-                db.add(BusinessDictionary(
-                    id=item["value"],
-                    category=category,
-                    label=item["label"],
-                    sort_order=max_order,
-                ))
+                db.add(
+                    BusinessDictionary(
+                        id=item["value"],
+                        category=category,
+                        label=item["label"],
+                        sort_order=max_order,
+                    )
+                )
                 added = True
         if added:
             await db.commit()
@@ -257,9 +238,9 @@ class TemplateService:
     @staticmethod
     async def list_templates(
         db: AsyncSession,
-        domain: Optional[str] = None,
-        status: Optional[str] = None,
-        name: Optional[str] = None,
+        domain: str | None = None,
+        status: str | None = None,
+        name: str | None = None,
         page: int = 1,
         limit: int = 20,
     ) -> tuple[list[ExtractionTemplate], int]:
@@ -288,25 +269,17 @@ class TemplateService:
         return templates, total
 
     @staticmethod
-    async def get_template(db: AsyncSession, template_id: UUID) -> Optional[ExtractionTemplate]:
+    async def get_template(db: AsyncSession, template_id: UUID) -> ExtractionTemplate | None:
         result = await db.execute(select(ExtractionTemplate).where(ExtractionTemplate.id == template_id))
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_template_versions(
-        db: AsyncSession, template_id: UUID
-    ) -> list[ExtractionTemplateVersion]:
-        result = await db.execute(
-            select(ExtractionTemplateVersion)
-            .where(ExtractionTemplateVersion.template_id == template_id)
-            .order_by(ExtractionTemplateVersion.published_at.desc())
-        )
+    async def get_template_versions(db: AsyncSession, template_id: UUID) -> list[ExtractionTemplateVersion]:
+        result = await db.execute(select(ExtractionTemplateVersion).where(ExtractionTemplateVersion.template_id == template_id).order_by(ExtractionTemplateVersion.published_at.desc()))
         return list(result.scalars().all())
 
     @staticmethod
-    async def update_template(
-        db: AsyncSession, template: ExtractionTemplate, data: TemplateUpdate
-    ) -> ExtractionTemplate:
+    async def update_template(db: AsyncSession, template: ExtractionTemplate, data: TemplateUpdate) -> ExtractionTemplate:
         if data.name is not None:
             template.name = data.name
         if data.root_sections_json is not None:
@@ -320,9 +293,7 @@ class TemplateService:
         return template
 
     @staticmethod
-    async def publish_template(
-        db: AsyncSession, template: ExtractionTemplate, user_id: Optional[UUID] = None
-    ) -> ExtractionTemplate:
+    async def publish_template(db: AsyncSession, template: ExtractionTemplate, user_id: UUID | None = None) -> ExtractionTemplate:
         """发布模板：创建版本快照 + 更新状态"""
         # 创建版本记录
         version = ExtractionTemplateVersion(
@@ -351,8 +322,8 @@ class TemplateService:
         db: AsyncSession,
         template: ExtractionTemplate,
         version_id: UUID,
-        changelog: Optional[str] = None,
-        user_id: Optional[UUID] = None,
+        changelog: str | None = None,
+        user_id: UUID | None = None,
     ) -> ExtractionTemplate:
         """回滚模板到指定版本。
 
@@ -397,10 +368,7 @@ class TemplateService:
 
         # 重新计算完整度评分
         if sections:
-            scored_sections = [
-                s for s in _flatten_sections_list(sections)
-                if s.get("completeness_score")
-            ]
+            scored_sections = [s for s in _flatten_sections_list(sections) if s.get("completeness_score")]
             if scored_sections:
                 avg_score = sum(s.get("completeness_score", 0) for s in scored_sections) // len(scored_sections)
                 template.completeness_score = avg_score
@@ -433,7 +401,7 @@ class TemplateService:
         db: AsyncSession,
         template_id: UUID,
         version_id: UUID,
-    ) -> Optional[ExtractionTemplateVersion]:
+    ) -> ExtractionTemplateVersion | None:
         """根据ID获取特定版本"""
         from sqlalchemy import select
 
@@ -448,13 +416,8 @@ class TemplateService:
     @staticmethod
     async def delete_template(db: AsyncSession, template: ExtractionTemplate) -> None:
         # 清除关联任务的 FK 引用
-        from sqlalchemy import update
 
-        await db.execute(
-            update(ExtractionTask)
-            .where(ExtractionTask.target_template_id == template.id)
-            .values(target_template_id=None)
-        )
+        await db.execute(update(ExtractionTask).where(ExtractionTask.target_template_id == template.id).values(target_template_id=None))
 
         # 删除 JSON 快照
         delete_snapshot(
@@ -495,7 +458,7 @@ class TaskService:
     async def create_task(
         db: AsyncSession,
         data: ExtractionTaskCreate,
-        user_id: Optional[UUID] = None,
+        user_id: UUID | None = None,
     ) -> ExtractionTask:
         config_dict = (data.config or ExtractionConfig()).model_dump()
         task = ExtractionTask(
@@ -522,14 +485,14 @@ class TaskService:
         return task
 
     @staticmethod
-    async def get_task(db: AsyncSession, task_id: UUID) -> Optional[ExtractionTask]:
+    async def get_task(db: AsyncSession, task_id: UUID) -> ExtractionTask | None:
         result = await db.execute(select(ExtractionTask).where(ExtractionTask.id == task_id))
         return result.scalar_one_or_none()
 
     @staticmethod
     async def list_tasks(
         db: AsyncSession,
-        status: Optional[str] = None,
+        status: str | None = None,
         page: int = 1,
         limit: int = 20,
     ) -> tuple[list[ExtractionTask], int]:
@@ -548,9 +511,7 @@ class TaskService:
         return tasks, total
 
     @staticmethod
-    async def update_task_steps(
-        db: AsyncSession, task: ExtractionTask, steps: list[dict]
-    ) -> None:
+    async def update_task_steps(db: AsyncSession, task: ExtractionTask, steps: list[dict]) -> None:
         task.steps = steps
         attributes.flag_modified(task, "steps")
         await db.commit()
@@ -563,9 +524,7 @@ class TaskService:
         await db.commit()
 
     @staticmethod
-    async def set_task_completed(
-        db: AsyncSession, task: ExtractionTask, result_template_json: Optional[dict] = None
-    ) -> None:
+    async def set_task_completed(db: AsyncSession, task: ExtractionTask, result_template_json: dict | None = None) -> None:
         task.status = "completed"
         task.progress = 100
         task.completed_at = datetime.utcnow()
@@ -692,22 +651,26 @@ class VersionCompareService:
         # 新增的章节
         for sec_id in added_ids:
             sec = section_map_b[sec_id]
-            diffs.append({
-                "section_id": sec_id,
-                "title": sec.get("title", ""),
-                "level": sec.get("level", 1),
-                "status": "added",
-            })
+            diffs.append(
+                {
+                    "section_id": sec_id,
+                    "title": sec.get("title", ""),
+                    "level": sec.get("level", 1),
+                    "status": "added",
+                }
+            )
 
         # 删除的章节
         for sec_id in removed_ids:
             sec = section_map_a[sec_id]
-            diffs.append({
-                "section_id": sec_id,
-                "title": sec.get("title", ""),
-                "level": sec.get("level", 1),
-                "status": "removed",
-            })
+            diffs.append(
+                {
+                    "section_id": sec_id,
+                    "title": sec.get("title", ""),
+                    "level": sec.get("level", 1),
+                    "status": "removed",
+                }
+            )
 
         # 修改/不变的章节
         for sec_id in common_ids:
@@ -715,19 +678,16 @@ class VersionCompareService:
             sec_b = section_map_b[sec_id]
 
             # 检查是否有修改
-            is_modified = (
-                sec_a.get("title") != sec_b.get("title") or
-                sec_a.get("required") != sec_b.get("required") or
-                sec_a.get("purpose") != sec_b.get("purpose") or
-                sec_a.get("content_contract") != sec_b.get("content_contract")
-            )
+            is_modified = sec_a.get("title") != sec_b.get("title") or sec_a.get("required") != sec_b.get("required") or sec_a.get("purpose") != sec_b.get("purpose") or sec_a.get("content_contract") != sec_b.get("content_contract")
 
-            diffs.append({
-                "section_id": sec_id,
-                "title": sec_b.get("title", ""),
-                "level": sec_b.get("level", 1),
-                "status": "modified" if is_modified else "unchanged",
-            })
+            diffs.append(
+                {
+                    "section_id": sec_id,
+                    "title": sec_b.get("title", ""),
+                    "level": sec_b.get("level", 1),
+                    "status": "modified" if is_modified else "unchanged",
+                }
+            )
 
         # 按状态和层级排序
         status_order = {"removed": 0, "added": 1, "modified": 2, "unchanged": 3}

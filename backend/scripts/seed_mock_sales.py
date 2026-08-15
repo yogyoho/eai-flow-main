@@ -24,7 +24,8 @@ import asyncio
 import json
 import os
 import random
-from datetime import date, time as dtime, timedelta
+from datetime import date, timedelta
+from datetime import time as dtime
 
 import asyncpg
 
@@ -235,23 +236,14 @@ async def main() -> None:
         """
     )
     # FK:mock_attendance/mock_travel → mock_employee,必须同语句 CASCADE 截断(分语句会被 FK 阻止)
-    await mock.execute(
-        "TRUNCATE mock_travel, mock_attendance, mock_employee RESTART IDENTITY CASCADE;"
-    )
+    await mock.execute("TRUNCATE mock_travel, mock_attendance, mock_employee RESTART IDENTITY CASCADE;")
 
-    emp_rows = [
-        (eid, name, eno, dept, pos, date.fromisoformat(hire), status)
-        for (eid, name, eno, dept, pos, hire, status, _resign) in EMPLOYEES
-    ]
+    emp_rows = [(eid, name, eno, dept, pos, date.fromisoformat(hire), status) for (eid, name, eno, dept, pos, hire, status, _resign) in EMPLOYEES]
     att_rows = gen_attendance()
-    trip_rows = [
-        (tid, eid, dest, date.fromisoformat(s), date.fromisoformat(e), purpose, amount, rstatus)
-        for (tid, eid, dest, s, e, purpose, amount, rstatus) in TRIPS
-    ]
+    trip_rows = [(tid, eid, dest, date.fromisoformat(s), date.fromisoformat(e), purpose, amount, rstatus) for (tid, eid, dest, s, e, purpose, amount, rstatus) in TRIPS]
 
     await mock.executemany(
-        "INSERT INTO mock_employee (employee_id,name,employee_no,department,position,hire_date,status) "
-        "VALUES ($1,$2,$3,$4,$5,$6,$7)",
+        "INSERT INTO mock_employee (employee_id,name,employee_no,department,position,hire_date,status) VALUES ($1,$2,$3,$4,$5,$6,$7)",
         emp_rows,
     )
     await mock.executemany(
@@ -259,8 +251,7 @@ async def main() -> None:
         att_rows,
     )
     await mock.executemany(
-        "INSERT INTO mock_travel (trip_id,employee_id,destination,start_date,end_date,purpose,amount,reimburse_status) "
-        "VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+        "INSERT INTO mock_travel (trip_id,employee_id,destination,start_date,end_date,purpose,amount,reimburse_status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
         trip_rows,
     )
     print(f"[ok] 已灌 {len(emp_rows)} employee / {len(att_rows)} attendance / {len(trip_rows)} travel")
@@ -273,8 +264,7 @@ async def main() -> None:
     desc = "模块② 销售人员查询 mock 数据源(HR 员工/考勤/报销差旅,统一 employee_id)。"
     if src_id is None:
         src_id = await ext.fetchval(
-            "INSERT INTO data_sources (id,name,description,type,connection_config,auth_type,sync_mode,status,created_at,updated_at) "
-            "VALUES (gen_random_uuid(),$1,$2,$3,$4::jsonb,$5,$6,$7,now(),now()) RETURNING id",
+            "INSERT INTO data_sources (id,name,description,type,connection_config,auth_type,sync_mode,status,created_at,updated_at) VALUES (gen_random_uuid(),$1,$2,$3,$4::jsonb,$5,$6,$7,now(),now()) RETURNING id",
             SOURCE_NAME,
             desc,
             "database",
@@ -321,11 +311,7 @@ async def main() -> None:
     amt_pending = await chk.fetchval("SELECT coalesce(sum(amount),0) FROM mock_travel WHERE reimburse_status='pending'")
     rate = round(100.0 * n_present / n_att, 1) if n_att else 0
     print("\n===== 自检 =====")
-    print(
-        f"员工={n_emp} 在岗={n_active} 离职={n_emp - n_active}\n"
-        f"考勤记录={n_att} 覆盖 2025-10~12 全员出勤率={rate}%\n"
-        f"差旅={n_trip} 趟 总额={amt_total:.0f}元 待审批={n_pending}笔/{amt_pending:.0f}元"
-    )
+    print(f"员工={n_emp} 在岗={n_active} 离职={n_emp - n_active}\n考勤记录={n_att} 覆盖 2025-10~12 全员出勤率={rate}%\n差旅={n_trip} 趟 总额={amt_total:.0f}元 待审批={n_pending}笔/{amt_pending:.0f}元")
     await chk.close()
     print("\n[done] seed 完成。重启 gateway 使 data_source MCP 缓存感知新连接。")
 

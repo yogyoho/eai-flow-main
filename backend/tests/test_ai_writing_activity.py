@@ -7,6 +7,7 @@ Covers:
 - Model failure → graceful fallback (no crash)
 - Prompt includes chapter metadata (title, purpose, hint)
 """
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -71,17 +72,18 @@ class TestStartAiWritingSuccess:
         mock_db.get = AsyncMock(return_value=mock_chapter)
         mock_db.commit = AsyncMock()
 
-        with patch("app.extensions.database.get_db_context") as mock_ctx, patch(
-            "app.extensions.workflow.temporal.writing_activities._generate_content",
-            new_callable=AsyncMock,
-            return_value=(generated_content, None),
+        with (
+            patch("app.extensions.database.get_db_context") as mock_ctx,
+            patch(
+                "app.extensions.workflow.temporal.writing_activities._generate_content",
+                new_callable=AsyncMock,
+                return_value=(generated_content, None),
+            ),
         ):
             mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_db)
             mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await start_ai_writing(
-                "node-1", "00000000-0000-0000-0000-000000000001", str(chapter_id)
-            )
+            result = await start_ai_writing("node-1", "00000000-0000-0000-0000-000000000001", str(chapter_id))
 
         assert result["status"] == "ok"
         assert result["chapter_id"] == str(chapter_id)
@@ -110,17 +112,18 @@ class TestStartAiWritingSuccess:
         mock_db.get = AsyncMock(return_value=mock_chapter)
         mock_db.commit = AsyncMock()
 
-        with patch("app.extensions.database.get_db_context") as mock_ctx, patch(
-            "app.extensions.workflow.temporal.writing_activities._generate_content",
-            new_callable=AsyncMock,
-            return_value=(None, "generation_error"),
+        with (
+            patch("app.extensions.database.get_db_context") as mock_ctx,
+            patch(
+                "app.extensions.workflow.temporal.writing_activities._generate_content",
+                new_callable=AsyncMock,
+                return_value=(None, "generation_error"),
+            ),
         ):
             mock_ctx.return_value.__aenter__ = AsyncMock(return_value=mock_db)
             mock_ctx.return_value.__aexit__ = AsyncMock(return_value=False)
 
-            result = await start_ai_writing(
-                "node-1", "00000000-0000-0000-0000-000000000001", str(chapter_id)
-            )
+            result = await start_ai_writing("node-1", "00000000-0000-0000-0000-000000000001", str(chapter_id))
 
         assert result["status"] == "error"
         # Original content should remain unchanged
@@ -215,8 +218,9 @@ class TestGenerateContentFallback:
     @pytest.mark.asyncio
     async def test_returns_error_on_empty_content(self):
         """Empty LLM response should return empty_error, not be stored as content."""
-        from app.extensions.workflow.temporal.activities import _generate_content
         from langchain_core.messages import AIMessage
+
+        from app.extensions.workflow.temporal.activities import _generate_content
 
         mock_model = MagicMock()
         mock_model.ainvoke = AsyncMock(return_value=AIMessage(content=""))
@@ -229,13 +233,12 @@ class TestGenerateContentFallback:
     @pytest.mark.asyncio
     async def test_returns_error_on_refusal(self):
         """LLM refusal should return refusal_error, not be stored as chapter text."""
-        from app.extensions.workflow.temporal.activities import _generate_content
         from langchain_core.messages import AIMessage
 
+        from app.extensions.workflow.temporal.activities import _generate_content
+
         mock_model = MagicMock()
-        mock_model.ainvoke = AsyncMock(return_value=AIMessage(
-            content="I cannot generate this content because it requires specific data."
-        ))
+        mock_model.ainvoke = AsyncMock(return_value=AIMessage(content="I cannot generate this content because it requires specific data."))
 
         with patch("deerflow.models.create_chat_model", return_value=mock_model):
             content, error_code = await _generate_content("test prompt")

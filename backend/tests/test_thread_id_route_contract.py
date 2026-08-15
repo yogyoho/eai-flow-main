@@ -26,8 +26,6 @@ import pytest
 from _router_auth_helpers import make_authed_test_app
 from fastapi.testclient import TestClient
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI thread route contract differs (EAI-CUSTOM skip 2026-08-15)")
 
 

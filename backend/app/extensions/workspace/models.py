@@ -11,12 +11,12 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
     Integer,
-    JSON,
     String,
     Text,
     UniqueConstraint,
@@ -71,9 +71,7 @@ class CollabSection(Base):
     __tablename__ = "collab_sections"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     level: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -97,17 +95,14 @@ class CollabMember(Base):
     __tablename__ = "collab_members"
     __table_args__ = (
         CheckConstraint(
-            "(member_type = 'human' AND user_id IS NOT NULL AND agent_name IS NULL) "
-            "OR (member_type = 'agent' AND agent_name IS NOT NULL AND user_id IS NULL)",
+            "(member_type = 'human' AND user_id IS NOT NULL AND agent_name IS NULL) OR (member_type = 'agent' AND agent_name IS NOT NULL AND user_id IS NULL)",
             name="ck_collab_members_type",
         ),
         UniqueConstraint("project_id", "member_type", "user_id", "agent_name", name="uq_collab_members_proj_type_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     member_type: Mapped[str] = mapped_column(String(10), nullable=False)  # human|agent
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     agent_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -124,17 +119,13 @@ class CollabTask(Base):
     __tablename__ = "collab_tasks"
     __table_args__ = (
         CheckConstraint(
-            "assignee_type IS NULL "
-            "OR (assignee_type = 'human' AND assignee_user_id IS NOT NULL AND assignee_agent_name IS NULL) "
-            "OR (assignee_type = 'agent' AND assignee_agent_name IS NOT NULL AND assignee_user_id IS NULL)",
+            "assignee_type IS NULL OR (assignee_type = 'human' AND assignee_user_id IS NOT NULL AND assignee_agent_name IS NULL) OR (assignee_type = 'agent' AND assignee_agent_name IS NOT NULL AND assignee_user_id IS NULL)",
             name="ck_collab_tasks_assignee",
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     kind: Mapped[str] = mapped_column(String(30), nullable=False, default="section_write")  # section_write|doc_review|research
     assignee_type: Mapped[str | None] = mapped_column(String(10), nullable=True)  # human|agent|NULL(未指派)
@@ -166,9 +157,7 @@ class CollabGate(Base):
     __tablename__ = "collab_gates"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     task_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_tasks.id", ondelete="SET NULL"), nullable=True)
     scope: Mapped[str] = mapped_column(String(30), nullable=False, default="task")  # task|project_release
     state: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")  # pending|approved|rejected
@@ -195,9 +184,7 @@ class CollabAgentRun(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     task_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_tasks.id", ondelete="CASCADE"), nullable=True, index=True)
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     thread_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     run_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     agent_name: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -218,9 +205,7 @@ class CollabActivity(Base):
     __tablename__ = "collab_activity"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
-    project_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True
-    )
+    project_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("collab_projects.id", ondelete="CASCADE"), nullable=False, index=True)
     actor_type: Mapped[str] = mapped_column(String(10), nullable=False, default="human")  # human|agent
     actor_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     action: Mapped[str] = mapped_column(String(40), nullable=False)

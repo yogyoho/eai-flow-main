@@ -1,7 +1,7 @@
 """Document share service."""
 
-import secrets
 import logging
+import secrets
 from uuid import UUID
 
 from sqlalchemy import select
@@ -97,12 +97,7 @@ class ShareService:
     @staticmethod
     async def list_shared_with_me(db: AsyncSession, user_id: UUID) -> list[dict]:
         """List documents shared with the current user (direct user share)."""
-        stmt = (
-            select(DocumentShare, AIDocument)
-            .join(AIDocument, DocumentShare.document_id == AIDocument.id)
-            .where(DocumentShare.share_target_id == str(user_id))
-            .order_by(DocumentShare.created_at.desc())
-        )
+        stmt = select(DocumentShare, AIDocument).join(AIDocument, DocumentShare.document_id == AIDocument.id).where(DocumentShare.share_target_id == str(user_id)).order_by(DocumentShare.created_at.desc())
         result = await db.execute(stmt)
         rows = result.all()
         return [

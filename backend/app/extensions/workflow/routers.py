@@ -4,14 +4,14 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import Integer, func, select, update as sa_update
+from sqlalchemy import Integer, func, select
+from sqlalchemy import update as sa_update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission, require_super_admin
 from app.extensions.database import get_db
-from app.extensions.schemas import CurrentUser
-
 from app.extensions.models import ProjectChapter
+from app.extensions.schemas import CurrentUser
 
 from .models import ContentSource, PhaseReview, WorkflowDefinition
 from .schemas import (
@@ -36,14 +36,32 @@ from .schemas import (
 )
 from .service import (
     create_definition as _create_definition_svc,
+)
+from .service import (
     delete_definition as _delete_definition_svc,
+)
+from .service import (
     get_definition as _get_definition_svc,
+)
+from .service import (
     list_approvals as _list_approvals_svc,
+)
+from .service import (
     list_definitions as _list_definitions_svc,
+)
+from .service import (
     review_approval as _review_approval_svc,
+)
+from .service import (
     submit_for_approval as _submit_approval_svc,
+)
+from .service import (
     update_definition as _update_definition_svc,
+)
+from .service import (
     validate_dag,
+)
+from .service import (
     withdraw_approval as _withdraw_approval_svc,
 )
 from .traceability import find_missing_sources
@@ -225,11 +243,7 @@ async def get_chapter_sources(
     user: WorkflowReader,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(ContentSource)
-        .where(ContentSource.chapter_id == chapter_id)
-        .order_by(ContentSource.block_index)
-    )
+    result = await db.execute(select(ContentSource).where(ContentSource.chapter_id == chapter_id).order_by(ContentSource.block_index))
     sources = result.scalars().all()
     stats: dict[str, int] = {}
     for s in sources:
@@ -261,8 +275,8 @@ async def parse_and_store_chapter_sources(
     db: AsyncSession = Depends(get_db),
 ):
     """Parse source markers from chapter content and persist to content_sources table."""
-    from .traceability import parse_source_markers
     from .models import ContentSource
+    from .traceability import parse_source_markers
 
     chapter = await db.get(ProjectChapter, chapter_id)
     if not chapter or not chapter.content:
@@ -271,9 +285,7 @@ async def parse_and_store_chapter_sources(
     parsed = parse_source_markers(chapter.content)
 
     # Delete existing sources for this chapter
-    await db.execute(
-        ContentSource.__table__.delete().where(ContentSource.chapter_id == chapter_id)
-    )
+    await db.execute(ContentSource.__table__.delete().where(ContentSource.chapter_id == chapter_id))
 
     for s in parsed:
         source = ContentSource(
@@ -303,12 +315,7 @@ async def assign_reviews(
     if body.project_id != project_id:
         raise HTTPException(status_code=400, detail="project_id mismatch")
 
-    await db.execute(
-        PhaseReview.__table__.delete()
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.phase_node == body.phase_node)
-        .where(PhaseReview.status == "pending")
-    )
+    await db.execute(PhaseReview.__table__.delete().where(PhaseReview.project_id == project_id).where(PhaseReview.phase_node == body.phase_node).where(PhaseReview.status == "pending"))
 
     reviews = []
     for item in body.assignments:
@@ -353,28 +360,21 @@ async def submit_review_action(
         raise HTTPException(status_code=403, detail="You are not the assigned reviewer for this review")
 
     # Optimistic lock: conditional UPDATE — only succeeds if status is still "pending"
-    result = await db.execute(
-        sa_update(PhaseReview)
-        .where(PhaseReview.id == review_id, PhaseReview.status == "pending")
-        .values(status=body.action, comment=body.comment, updated_at=func.now())
-    )
+    result = await db.execute(sa_update(PhaseReview).where(PhaseReview.id == review_id, PhaseReview.status == "pending").values(status=body.action, comment=body.comment, updated_at=func.now()))
     if result.rowcount == 0:
         raise HTTPException(status_code=400, detail="Review already acted on")
 
     await db.commit()
     await db.refresh(review)
 
-    stmt = (
-        select(PhaseReview)
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.phase_node == review.phase_node)
-    )
+    stmt = select(PhaseReview).where(PhaseReview.project_id == project_id).where(PhaseReview.phase_node == review.phase_node)
     result = await db.execute(stmt)
     all_reviews = result.scalars().all()
     all_done = all(r.status in ("approved", "rejected") for r in all_reviews)
 
     if all_done:
         from .temporal.client import send_signal
+
         all_approved = all(r.status == "approved" for r in all_reviews)
         try:
             await send_signal(
@@ -388,6 +388,7 @@ async def submit_review_action(
         # Application-side fallback: update project state even without Temporal
         if not all_approved:
             from .review import apply_rejection_rollback
+
             await apply_rejection_rollback(db, project_id, review.phase_node)
 
     return PhaseReviewOut.model_validate(review)
@@ -401,12 +402,7 @@ async def get_review_status(
     db: AsyncSession = Depends(get_db),
 ):
     """Get aggregated review status for a phase node."""
-    stmt = (
-        select(PhaseReview)
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.phase_node == phase_node)
-        .order_by(PhaseReview.created_at)
-    )
+    stmt = select(PhaseReview).where(PhaseReview.project_id == project_id).where(PhaseReview.phase_node == phase_node).order_by(PhaseReview.created_at)
     result = await db.execute(stmt)
     reviews = result.scalars().all()
 
@@ -432,13 +428,7 @@ async def get_my_reviews(
     db: AsyncSession = Depends(get_db),
 ):
     """Get current user's pending reviews for a project."""
-    stmt = (
-        select(PhaseReview)
-        .where(PhaseReview.project_id == project_id)
-        .where(PhaseReview.reviewer_id == user.id)
-        .where(PhaseReview.status == "pending")
-        .order_by(PhaseReview.created_at.desc())
-    )
+    stmt = select(PhaseReview).where(PhaseReview.project_id == project_id).where(PhaseReview.reviewer_id == user.id).where(PhaseReview.status == "pending").order_by(PhaseReview.created_at.desc())
     result = await db.execute(stmt)
     return [PhaseReviewOut.model_validate(r) for r in result.scalars().all()]
 
@@ -464,6 +454,7 @@ async def get_workflow_status_endpoint(
         if project.workflow_id or project.temporal_workflow_id:
             try:
                 from .temporal.client import get_workflow_status as _get_wf_status
+
                 temporal_status = await _get_wf_status(str(project_id))
             except Exception:
                 pass
@@ -555,13 +546,15 @@ async def get_workflow_status_endpoint(
                         kwargs["review_total"] = total
                         kwargs["review_approved"] = approved
 
-                    nodes.append(WorkflowNodeStatus(
-                        node_id=nid,
-                        node_type=node_type,
-                        label=n.get("data", {}).get("label", nid),
-                        status=node_status,
-                        **kwargs,
-                    ))
+                    nodes.append(
+                        WorkflowNodeStatus(
+                            node_id=nid,
+                            node_type=node_type,
+                            label=n.get("data", {}).get("label", nid),
+                            status=node_status,
+                            **kwargs,
+                        )
+                    )
 
         # Fallback: no workflow definition linked, but project has a phase node
         # Build a synthetic node list from current_phase_node so the UI can still
@@ -595,13 +588,15 @@ async def get_workflow_status_endpoint(
                 kwargs["chapter_total"] = total
                 kwargs["chapter_completed"] = done
 
-            nodes.append(WorkflowNodeStatus(
-                node_id=current,
-                node_type="subflow",
-                label=current.replace("-", " ").replace("_", " ").title(),
-                status=node_status,
-                **kwargs,
-            ))
+            nodes.append(
+                WorkflowNodeStatus(
+                    node_id=current,
+                    node_type="subflow",
+                    label=current.replace("-", " ").replace("_", " ").title(),
+                    status=node_status,
+                    **kwargs,
+                )
+            )
 
         # Determine overall workflow status
         wf_status = "idle"
@@ -630,6 +625,7 @@ async def cancel_workflow_endpoint(
 ):
     """Cancel the running workflow for a project."""
     from .temporal.client import cancel_workflow as _cancel_wf
+
     success = await _cancel_wf(str(project_id))
     if not success:
         raise HTTPException(status_code=400, detail="No active workflow to cancel")
@@ -659,6 +655,7 @@ async def start_workflow(
         raise HTTPException(status_code=404, detail="Workflow definition not found")
 
     from .temporal.client import start_workflow as _start_wf
+
     workflow_id = await _start_wf(
         workflow_name="DynamicGraphWorkflow",
         params={

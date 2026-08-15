@@ -18,17 +18,14 @@ import asyncio
 import json
 import logging
 import os
-from pathlib import Path
 from uuid import UUID
 
 import httpx
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from deerflow.config.paths import Paths as DeerFlowPaths
 
 from app.gateway.csrf_middleware import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, generate_csrf_token
 from app.gateway.internal_auth import create_internal_auth_headers
+from deerflow.config.paths import Paths as DeerFlowPaths
 
 from .models import CollabAgentRun, CollabProject, CollabTask
 
@@ -53,6 +50,7 @@ def _internal_headers(owner_user_id: str) -> dict[str, str]:
 async def _create_thread(owner_user_id: str, project_id: UUID) -> str:
     """POST /api/threads（ThreadCreateRequest 只有 thread_id/assistant_id/metadata，无 agent_name）。"""
     import uuid
+
     thread_id = str(uuid.uuid4())
     async with httpx.AsyncClient(base_url=GATEWAY_BASE, headers=_internal_headers(owner_user_id)) as client:
         resp = await client.post(
@@ -148,10 +146,9 @@ async def spawn_run_for_task(
 
     # 校验 agent 对 owner 存在（users/{uid}/agents/{name}）
     from deerflow.persistence.agents import get_agent_store
+
     store = get_agent_store()
-    exists = await asyncio.to_thread(
-        lambda: store.exists(resolved_agent, user_id=str(owner_id))
-    ) if hasattr(store, "exists") else True
+    exists = await asyncio.to_thread(lambda: store.exists(resolved_agent, user_id=str(owner_id))) if hasattr(store, "exists") else True
     if not exists:
         raise ValueError(f"agent '{resolved_agent}' 对 owner 不存在")
 
@@ -182,6 +179,7 @@ async def spawn_run_for_task(
 async def _poll_run_and_finish(bind, run_id: UUID, owner_user_id: str) -> None:
     """后台等 run 终态 → sandbox_sync → 解析 handoff → 更新 task → 触发闸门。"""
     from sqlalchemy.ext.asyncio import async_sessionmaker
+
     from .sandbox_sync import sync_sandbox_outputs
 
     session_factory = async_sessionmaker(bind, expire_on_commit=False)
@@ -203,6 +201,7 @@ async def _poll_run_and_finish(bind, run_id: UUID, owner_user_id: str) -> None:
                 state = handoff.get("state", "done")
                 if task:
                     from .service import record_handoff
+
                     await record_handoff(db, run.project_id, task.id, state=state, payload=handoff, actor=f"agent:{run.agent_name}")
                     await _trigger_gate_for_task(db, run.project_id, task.id, owner_user_id)
             elif result["status"] == "timed_out":
@@ -257,15 +256,18 @@ async def _read_handoff(db: AsyncSession, project_id: UUID, thread_id: str, owne
 async def _trigger_gate_for_task(db: AsyncSession, project_id: UUID, task_id: UUID, owner_user_id: str) -> None:
     """task 完成后触发关联闸门：agent 参与者自动批准，人类 quorum 评估。"""
     from sqlalchemy import select as _select
-    from .models import CollabGate
-    from .gate import evaluate
 
-    gate = await db.scalar(_select(CollabGate).where(
-        CollabGate.project_id == project_id,
-        CollabGate.task_id == task_id,
-        CollabGate.scope == "task",
-        CollabGate.state == "pending",
-    ))
+    from .gate import evaluate
+    from .models import CollabGate
+
+    gate = await db.scalar(
+        _select(CollabGate).where(
+            CollabGate.project_id == project_id,
+            CollabGate.task_id == task_id,
+            CollabGate.scope == "task",
+            CollabGate.state == "pending",
+        )
+    )
     if not gate:
         return
     result = evaluate(gate, [])  # agent 自动批准由 resolve_judgments 处理

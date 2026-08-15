@@ -17,13 +17,13 @@ import re
 import zipfile as _zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
-from xml.parsers.expat import ParserCreate, ExpatError
+from xml.parsers.expat import ExpatError, ParserCreate
 
 logger = logging.getLogger(__name__)
 
 
 # ── Output data classes ──
+
 
 @dataclass
 class Heading:
@@ -101,7 +101,7 @@ class ParsedDocument:
                 if nj.level <= h.level and nj.text_offset >= 0:
                     end = nj.text_offset
                     break
-            text = self.full_text[h.text_offset:end][:max_chars]
+            text = self.full_text[h.text_offset : end][:max_chars]
             if matched:
                 return text
             if not fallback:
@@ -216,8 +216,7 @@ def _scan_headings_regex(text: str) -> list[Heading]:
         elif m := _CN_NUMBERED.match(line):
             matched = Heading(title=line, level=2, line_number=line_no, style_name="cn-numbered")
         elif m := _NUMBERED.match(line):
-            matched = Heading(title=line, level=_heading_level_from_number(m.group(1)),
-                            line_number=line_no, style_name="numbered")
+            matched = Heading(title=line, level=_heading_level_from_number(m.group(1)), line_number=line_no, style_name="numbered")
         if matched:
             headings.append(matched)
         line_no += 1
@@ -228,6 +227,7 @@ def _scan_headings_regex(text: str) -> list[Heading]:
 
 # ── Main dispatch ──
 
+
 def parse_document(file_path: str) -> ParsedDocument:
     path = Path(file_path)
     ext = path.suffix.lower().lstrip(".")
@@ -236,24 +236,31 @@ def parse_document(file_path: str) -> ParsedDocument:
     elif ext == "pdf":
         return parse_pdf(file_path)
     else:
-        return ParsedDocument(file_path=file_path, file_type=ext,
-                            error=f"不支持的文件格式: .{ext}，仅支持 .docx 和 .pdf")
+        return ParsedDocument(file_path=file_path, file_type=ext, error=f"不支持的文件格式: .{ext}，仅支持 .docx 和 .pdf")
 
 
 # ── Word parser (dual-path: expat fast + python-docx fallback) ──
 
 _HEADING_STYLES = {
-    "heading1": 1, "heading 1": 1, "1": 1, "heading11": 1,
-    "heading2": 2, "heading 2": 2, "2": 2, "heading21": 2,
-    "heading3": 3, "heading 3": 3, "3": 3, "heading31": 3,
+    "heading1": 1,
+    "heading 1": 1,
+    "1": 1,
+    "heading11": 1,
+    "heading2": 2,
+    "heading 2": 2,
+    "2": 2,
+    "heading21": 2,
+    "heading3": 3,
+    "heading 3": 3,
+    "3": 3,
+    "heading31": 3,
 }
 
 
 def parse_docx(file_path: str) -> ParsedDocument:
     path = Path(file_path)
     if not path.exists():
-        return ParsedDocument(file_path=file_path, file_type="docx",
-                            error=f"文件不存在: {file_path}")
+        return ParsedDocument(file_path=file_path, file_type="docx", error=f"文件不存在: {file_path}")
 
     # Primary: expat SAX (true streaming, <30s for 50MB)
     try:
@@ -287,6 +294,7 @@ def _parse_style_levels(zf) -> dict[str, int]:
     # raw: {id: [outlineLvl(0=未设), basedOn_id]}
     raw: dict[str, list] = {}
     state = {"id": "", "in_style": False}
+
     def start(name, attrs):
         if name == "w:style":
             state["in_style"] = True
@@ -299,10 +307,12 @@ def _parse_style_levels(zf) -> dict[str, int]:
                 raw.setdefault(state["id"], [0, ""])[0] = int(v) + 1
         elif name == "w:basedOn" and state["in_style"] and state["id"]:
             raw.setdefault(state["id"], [0, ""])[1] = (attrs.get("w:val") or "").lower()
+
     def end(name):
         if name == "w:style":
             state["in_style"] = False
             state["id"] = ""
+
     p = ParserCreate()
     p.StartElementHandler = start
     p.EndElementHandler = end
@@ -365,9 +375,9 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
     in_t = False
     tbl_rows: list[list[str]] = []
     row_cells: list[str] = []
-    cell_buf: list[str] = []   # 当前 tc 内的文本片段（cell 边界）
-    cur_gridspan: int = 1      # 当前 tc 的 gridSpan（水平合并列数）
-    cur_vmerge: str = ""       # 当前 tc 的 vMerge: ""/"restart"/"continue"
+    cell_buf: list[str] = []  # 当前 tc 内的文本片段（cell 边界）
+    cur_gridspan: int = 1  # 当前 tc 的 gridSpan（水平合并列数）
+    cur_vmerge: str = ""  # 当前 tc 的 vMerge: ""/"restart"/"continue"
     last_row_cells: list[str] = []  # 上一行展开后 cells（vMerge continue 取值）
     in_tbl = False
     in_tr = False
@@ -379,17 +389,25 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
         nonlocal cell_buf, cur_gridspan, cur_vmerge
 
         if name == "w:p":
-            in_p = True; cur_text = []; cur_style = ""
+            in_p = True
+            cur_text = []
+            cur_style = ""
         elif name == "w:pStyle" and in_p:
             cur_style = attrs.get("w:val", "").lower()
         elif name == "w:t":
             in_t = True
         elif name == "w:tbl":
-            in_tbl = True; tbl_rows = []; last_row_cells.clear()
+            in_tbl = True
+            tbl_rows = []
+            last_row_cells.clear()
         elif name == "w:tr" and in_tbl:
-            in_tr = True; row_cells = []
+            in_tr = True
+            row_cells = []
         elif name == "w:tc" and in_tr:
-            in_tc = True; cell_buf = []; cur_gridspan = 1; cur_vmerge = ""
+            in_tc = True
+            cell_buf = []
+            cur_gridspan = 1
+            cur_vmerge = ""
         elif name == "w:gridSpan" and in_tc:
             try:
                 cur_gridspan = max(1, int(attrs.get("w:val", "1")))
@@ -414,9 +432,7 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
                 lv = style_levels.get(cur_style) or _HEADING_STYLES.get(cur_style)
                 if lv is not None and not _looks_like_body_text(text):
                     # 守卫：正文段即便被套了标题样式（含子句标点），也不当 heading（bug-404）
-                    headings.append(Heading(title=text, level=lv,
-                                           line_number=line_no, style_name=f"Heading {lv}",
-                                           para_idx=len(paragraphs) - 1))
+                    headings.append(Heading(title=text, level=lv, line_number=line_no, style_name=f"Heading {lv}", para_idx=len(paragraphs) - 1))
             line_no += 1
         elif name == "w:tc":
             # vMerge continue: 继承上一行同列文本（垂直合并）；restart/无合并用 cell_buf
@@ -435,10 +451,12 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
         elif name == "w:tbl":
             in_tbl = False
             if tbl_rows:
-                tables.append(DocTable(
-                    columns=tbl_rows[0] if tbl_rows else [],
-                    rows=tbl_rows[1:] if len(tbl_rows) > 1 else [],
-                ))
+                tables.append(
+                    DocTable(
+                        columns=tbl_rows[0] if tbl_rows else [],
+                        rows=tbl_rows[1:] if len(tbl_rows) > 1 else [],
+                    )
+                )
                 # EAI-CUSTOM (bug-1120): 展平表格行列进 paragraphs → full_text，
                 # 让 Step 2 LLM 能看见真实表结构（否则 table_schemas 全靠猜）。
                 # `|` 前缀行 + `【表格】` 标记保证不被标题 pattern 误判为章节标题
@@ -481,8 +499,7 @@ def _parse_docx_expat(path: Path) -> ParsedDocument | None:
     if not headings and full_text:
         headings = _scan_headings_regex(full_text)
 
-    result = ParsedDocument(file_path=str(path), file_type="docx",
-                        headings=headings, tables=tables, full_text=full_text)
+    result = ParsedDocument(file_path=str(path), file_type="docx", headings=headings, tables=tables, full_text=full_text)
     result.finalize_sections(paragraphs)
     return result
 
@@ -492,15 +509,13 @@ def _parse_docx_python_docx(file_path: str) -> ParsedDocument:
     try:
         import docx
     except ImportError:
-        return ParsedDocument(file_path=file_path, file_type="docx",
-                            error="python-docx 未安装")
+        return ParsedDocument(file_path=file_path, file_type="docx", error="python-docx 未安装")
 
     path = Path(file_path)
     try:
         doc = docx.Document(str(path))
     except Exception as e:
-        return ParsedDocument(file_path=file_path, file_type="docx",
-                            error=f"Word 文件解析失败: {e}")
+        return ParsedDocument(file_path=file_path, file_type="docx", error=f"Word 文件解析失败: {e}")
 
     headings: list[Heading] = []
     tables: list[DocTable] = []
@@ -510,7 +525,8 @@ def _parse_docx_python_docx(file_path: str) -> ParsedDocument:
     for para in doc.paragraphs:
         text = para.text.strip()
         if not text:
-            line_no += 1; continue
+            line_no += 1
+            continue
         paragraphs.append(text)
         s = (para.style.name if para.style else "").lower()
         if _looks_like_body_text(text):
@@ -526,29 +542,28 @@ def _parse_docx_python_docx(file_path: str) -> ParsedDocument:
     for table in doc.tables:
         rows = [[c.text.strip() for c in row.cells] for row in table.rows]
         if rows:
-            tables.append(DocTable(columns=rows[0] if rows else [],
-                                  rows=rows[1:] if len(rows) > 1 else []))
+            tables.append(DocTable(columns=rows[0] if rows else [], rows=rows[1:] if len(rows) > 1 else []))
 
     full_text = "\n\n".join(paragraphs)
     if not headings and full_text:
         headings = _scan_headings_regex(full_text)
 
-    result = ParsedDocument(file_path=file_path, file_type="docx",
-                        headings=headings, tables=tables, full_text=full_text)
+    result = ParsedDocument(file_path=file_path, file_type="docx", headings=headings, tables=tables, full_text=full_text)
     result.finalize_sections(paragraphs)
     return result
 
 
 # ── PDF parser ──
 
+
 def parse_pdf(file_path: str) -> ParsedDocument:
     path = Path(file_path)
     if not path.exists():
-        return ParsedDocument(file_path=file_path, file_type="pdf",
-                            error=f"文件不存在: {file_path}")
+        return ParsedDocument(file_path=file_path, file_type="pdf", error=f"文件不存在: {file_path}")
 
     try:
         import fitz
+
         doc = fitz.open(str(path))
         try:
             parts = [page.get_text() for page in doc if page.get_text().strip()]
@@ -556,27 +571,23 @@ def parse_pdf(file_path: str) -> ParsedDocument:
             doc.close()  # 异常路径也关闭，防文件描述符泄漏
         full_text = "\n\n".join(parts)
         if not full_text.strip():
-            return ParsedDocument(file_path=file_path, file_type="pdf",
-                                error="PDF 无可提取文字（可能是扫描版），请使用 RAGFlow OCR 路径")
+            return ParsedDocument(file_path=file_path, file_type="pdf", error="PDF 无可提取文字（可能是扫描版），请使用 RAGFlow OCR 路径")
         headings = _scan_headings_regex(full_text)
-        return ParsedDocument(file_path=file_path, file_type="pdf",
-                            headings=headings, full_text=full_text)
+        return ParsedDocument(file_path=file_path, file_type="pdf", headings=headings, full_text=full_text)
     except ImportError:
         pass
 
     try:
         text = Path(file_path).read_text(encoding="utf-8", errors="replace")
         if len([c for c in text if c.isprintable() or c in "\n\r\t "]) < len(text) * 0.5:
-            return ParsedDocument(file_path=file_path, file_type="pdf",
-                                error="PDF 为二进制内容（可能是扫描版），请使用 RAGFlow OCR 路径")
-        return ParsedDocument(file_path=file_path, file_type="pdf",
-                            headings=_scan_headings_regex(text), full_text=text)
+            return ParsedDocument(file_path=file_path, file_type="pdf", error="PDF 为二进制内容（可能是扫描版），请使用 RAGFlow OCR 路径")
+        return ParsedDocument(file_path=file_path, file_type="pdf", headings=_scan_headings_regex(text), full_text=text)
     except Exception as e:
-        return ParsedDocument(file_path=file_path, file_type="pdf",
-                            error=f"PDF 解析失败: {e}")
+        return ParsedDocument(file_path=file_path, file_type="pdf", error=f"PDF 解析失败: {e}")
 
 
 # ── Structure hint builder ──
+
 
 def build_structure_hint(parsed: ParsedDocument, max_chars: int = 5000) -> str:
     """构建结构提示：完整章节树 + 每章短摘要。
@@ -617,7 +628,7 @@ def build_structure_hint(parsed: ParsedDocument, max_chars: int = 5000) -> str:
     for start in h1_positions:
         h = headings[start]
         idx = h.text_offset if h.text_offset >= 0 else parsed.full_text.find(h.title)
-        raw = parsed.full_text[idx:idx + 200] if idx >= 0 else "（内容未找到）"
+        raw = parsed.full_text[idx : idx + 200] if idx >= 0 else "（内容未找到）"
         # 摘要内也剔除表 caption 行（表N.M-x），防止 Heading5 噪声泄漏进 hint
         snippet = "\n".join(ln for ln in raw.split("\n") if not _is_table_caption(ln.strip()))
         parts.append(f"### {h.title}\n{snippet}\n")

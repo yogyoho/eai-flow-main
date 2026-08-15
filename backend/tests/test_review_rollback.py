@@ -7,6 +7,7 @@ Covers:
 - No rejected edge → returns None
 - Multiple edges: finds the one with label='rejected'
 """
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 

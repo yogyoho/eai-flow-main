@@ -14,12 +14,11 @@ from __future__ import annotations
 import importlib.util
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 
 # ── 1. 模型注册 ──
 
@@ -87,9 +86,7 @@ async def test_resolve_customer_id_hits_canonical():
     from app.extensions.spare_parts.models import CspCustomer
 
     c = CspCustomer(canonical_name="桂北矿业集团", aliases=["桂北矿业"], status="active")
-    cid, canonical, pending = await mcp._resolve_customer_id(
-        _mock_session_returning_customers([c]), "桂北矿业集团"
-    )
+    cid, canonical, pending = await mcp._resolve_customer_id(_mock_session_returning_customers([c]), "桂北矿业集团")
     assert canonical == "桂北矿业集团"
     assert pending is False
 
@@ -100,9 +97,7 @@ async def test_resolve_customer_id_hits_alias():
     from app.extensions.spare_parts.models import CspCustomer
 
     c = CspCustomer(canonical_name="桂北矿业集团", aliases=["桂北矿业", "GBKY"], status="active")
-    _, canonical, _ = await mcp._resolve_customer_id(
-        _mock_session_returning_customers([c]), "桂北矿业"
-    )
+    _, canonical, _ = await mcp._resolve_customer_id(_mock_session_returning_customers([c]), "桂北矿业")
     assert canonical == "桂北矿业集团"  # 别名命中 → 规范名
 
 
@@ -112,9 +107,7 @@ async def test_resolve_customer_id_miss_returns_none():
     from app.extensions.spare_parts.models import CspCustomer
 
     c = CspCustomer(canonical_name="另一家", aliases=[], status="active")
-    cid, canonical, pending = await mcp._resolve_customer_id(
-        _mock_session_returning_customers([c]), "查无此客户"
-    )
+    cid, canonical, pending = await mcp._resolve_customer_id(_mock_session_returning_customers([c]), "查无此客户")
     assert cid is None and canonical is None  # 只读,未命中不新建(与 normalizer 区别)
 
 
@@ -134,7 +127,7 @@ def _item(part_name, customer_id, customer_name, price, status="ok", outlier=Fal
         source_contract_no=contract,
         spec=None,
     )
-    it.created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    it.created_at = datetime(2026, 1, 1, tzinfo=UTC)
     return it
 
 
@@ -247,9 +240,7 @@ async def test_handle_summary_payload_shape(monkeypatch):
     from app.extensions.spare_parts import mcp
 
     async def fake(qfunc):
-        return {"docs": 3, "items": 10, "clusters": 2, "customers": 2,
-                "pending_clusters": 1, "pending_customers": 0, "needs_review": 1,
-                "price_min": 5.0, "price_max": 500.0, "price_avg": 120.5}
+        return {"docs": 3, "items": 10, "clusters": 2, "customers": 2, "pending_clusters": 1, "pending_customers": 0, "needs_review": 1, "price_min": 5.0, "price_max": 500.0, "price_avg": 120.5}
 
     monkeypatch.setattr(mcp, "_run_in_db", fake)
     out = await mcp._handle_summary({})
@@ -324,7 +315,6 @@ async def test_customer_parts_resolves_then_groups(monkeypatch):
 @pytest.mark.asyncio
 async def test_customer_parts_not_found(monkeypatch):
     from app.extensions.spare_parts import mcp
-    from app.extensions.spare_parts.models import CspCustomer
 
     def session_empty():
         s = MagicMock()
@@ -345,9 +335,7 @@ async def test_customer_parts_not_found(monkeypatch):
 # ── 8. 模型 parity(扩展 canonical ↔ 技能 mirror,同物理表)──
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_SKILL_MODELS = (
-    _REPO_ROOT / "skills" / "public" / "spare-parts-analysis" / "scripts" / "models.py"
-)
+_SKILL_MODELS = _REPO_ROOT / "skills" / "public" / "spare-parts-analysis" / "scripts" / "models.py"
 
 _TABLES: dict[str, str] = {
     "csp_documents": "CspDocument",
@@ -383,8 +371,4 @@ def test_csp_models_in_sync_with_skill_mirror():
             ext_only = sorted(set(ext_cols) - set(skill_cols))
             skill_only = sorted(set(skill_cols) - set(ext_cols))
             drift.append(f"\n  [{table_name}]\n    extension-only: {ext_only}\n    skill-only: {skill_only}")
-    assert not drift, (
-        "csp_ 模型在扩展(backend/app/extensions/spare_parts/models.py)与技能 mirror"
-        "(skills/public/spare-parts-analysis/scripts/models.py)间漂移,二者描述同一组物理表,请对齐:"
-        + "".join(drift)
-    )
+    assert not drift, "csp_ 模型在扩展(backend/app/extensions/spare_parts/models.py)与技能 mirror(skills/public/spare-parts-analysis/scripts/models.py)间漂移,二者描述同一组物理表,请对齐:" + "".join(drift)

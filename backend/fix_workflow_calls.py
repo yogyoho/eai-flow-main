@@ -2,9 +2,8 @@
 The function reference is on the line after execute_activity(, then args follow.
 Skip the first positional argument (the activity function reference).
 """
-import re
 
-with open("app/extensions/workflow/temporal/workflows.py", "r") as f:
+with open("app/extensions/workflow/temporal/workflows.py") as f:
     content = f.read()
 
 lines = content.split("\n")

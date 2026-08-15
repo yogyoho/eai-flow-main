@@ -99,8 +99,7 @@ class TestPasswordLogin:
         from app.extensions.models import User
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash="", status="active")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash="", status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
 
         gw_user = MagicMock()
@@ -130,8 +129,7 @@ class TestPasswordLogin:
         from app.extensions.models import User
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash="", status="active")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash="", status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
 
         async def fake_authenticate(creds):
@@ -156,8 +154,7 @@ class TestPasswordLogin:
         from app.extensions.models import User
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash="", status="disabled")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash="", status="disabled")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
 
         from fastapi import HTTPException, Response
@@ -176,8 +173,7 @@ class TestPasswordLogin:
         from app.extensions.models import User
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash=hash_password("right-password"), status="active")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash=hash_password("right-password"), status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
 
         async def fake_authenticate(creds):
@@ -205,8 +201,7 @@ class TestPasswordLogin:
         from app.extensions.models import User
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash=hash_password("right-password"), status="active")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash=hash_password("right-password"), status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
 
         gw_user = MagicMock()
@@ -233,8 +228,7 @@ class TestOtpEndpoints:
         from app.extensions.models import User
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash="", status="active")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash="", status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
         # otp_send 函数体内是 `from app.extensions.auth.otp import create_otp`（惰性导入），
         # 所以必须 patch app.extensions.auth.otp.create_otp，而不是 routers 模块属性。
@@ -242,6 +236,7 @@ class TestOtpEndpoints:
         monkeypatch.setattr("app.extensions.auth.otp.create_otp", mock_create)
 
         from app.extensions.auth.routers import OtpSendRequest, otp_send
+
         result = await otp_send(_make_request(), OtpSendRequest(email="zhangsan@eai-flow.com"), db)
         assert result.sent is True
         mock_create.assert_awaited_once()
@@ -254,6 +249,7 @@ class TestOtpEndpoints:
         monkeypatch.setattr("app.extensions.auth.otp.create_otp", mock_create)
 
         from app.extensions.auth.routers import OtpSendRequest, otp_send
+
         result = await otp_send(_make_request(), OtpSendRequest(email="nobody@eai-flow.com"), db)
         assert result.sent is True  # anti-enumeration
         mock_create.assert_not_awaited()
@@ -264,17 +260,16 @@ class TestOtpEndpoints:
         from app.extensions.models import User
 
         db = AsyncMock()
-        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com",
-                    password_hash="", status="active")
+        user = User(id=uuid.uuid4(), username="zhangsan", email="zhangsan@eai-flow.com", password_hash="", status="active")
         db.execute.return_value = MagicMock(scalar_one_or_none=lambda: user)
         # login_otp 函数体内是 `from app.extensions.auth.otp import verify_otp`（惰性导入）。
         monkeypatch.setattr("app.extensions.auth.otp.verify_otp", AsyncMock(return_value=True))
-        monkeypatch.setattr("app.extensions.auth.routers._issue_gateway_session", AsyncMock(
-            return_value=routers.FacadeLoginResponse(expires_in=86400)))
+        monkeypatch.setattr("app.extensions.auth.routers._issue_gateway_session", AsyncMock(return_value=routers.FacadeLoginResponse(expires_in=86400)))
 
         from fastapi import Response
 
         from app.extensions.auth.routers import OtpLoginRequest, login_otp
+
         result = await login_otp(_make_request(), Response(), OtpLoginRequest(email="zhangsan@eai-flow.com", code="123456"), db)
         assert result.expires_in == 86400
 
@@ -286,6 +281,7 @@ class TestOtpEndpoints:
         from fastapi import HTTPException, Response
 
         from app.extensions.auth.routers import OtpLoginRequest, login_otp
+
         with pytest.raises(HTTPException) as exc:
             await login_otp(_make_request(), Response(), OtpLoginRequest(email="zhangsan@eai-flow.com", code="000000"), db)
         assert exc.value.status_code == 401

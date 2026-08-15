@@ -15,9 +15,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-import yaml
-
 import pytest
+import yaml
 
 pytestmark = pytest.mark.skip(reason="upstream docker-compose workers diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
 

@@ -9,14 +9,15 @@ Covers:
 - Service layer CRUD with sub_workflow definitions
 - sub_workflow node without graph_json is still valid (graceful skip at runtime)
 """
+
 import uuid
 
 import pytest
 
-from app.extensions.workflow.service import validate_dag, topological_sort
-
+from app.extensions.workflow.service import topological_sort, validate_dag
 
 # ── Helpers ──
+
 
 def _make_sub_workflow_graph(extra_nodes=None, extra_edges=None, sub_graph=None):
     """Build a minimal DAG with a sub_workflow node."""
@@ -28,7 +29,8 @@ def _make_sub_workflow_graph(extra_nodes=None, extra_edges=None, sub_graph=None)
             "type": "sub_workflow",
             "data": {
                 "label": "子流程",
-                "graph_json": sub_graph or {
+                "graph_json": sub_graph
+                or {
                     "nodes": [
                         {"id": "child-phase-1", "type": "phase", "data": {"label": "子阶段1"}},
                         {"id": "child-phase-2", "type": "phase", "data": {"label": "子阶段2"}},
@@ -290,7 +292,7 @@ class TestSubWorkflowServiceCRUD:
     @pytest.mark.asyncio
     async def test_create_definition_with_sub_workflow(self):
         """create_definition persists a definition containing sub_workflow nodes."""
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
 
         from app.extensions.workflow.service import create_definition
 

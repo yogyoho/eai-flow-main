@@ -139,9 +139,7 @@ def test_project_context_injected_via_runtime_user_id():
             mock.patch("deerflow.config.paths.get_paths") as mock_paths,
         ):
             mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
-            mock_paths.return_value = SimpleNamespace(
-                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
-            )
+            mock_paths.return_value = SimpleNamespace(thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id)
             result = mw.before_agent(state, runtime)
 
     assert result is not None
@@ -186,9 +184,7 @@ def test_project_context_thread_id_falls_back_to_configurable():
             mock.patch("langgraph.config.get_config", return_value={"configurable": {"thread_id": tid}}),
         ):
             mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
-            mock_paths.return_value = SimpleNamespace(
-                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
-            )
+            mock_paths.return_value = SimpleNamespace(thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id)
             result = mw.before_agent(state, runtime)
 
     assert result is not None
@@ -212,9 +208,7 @@ def test_project_context_missing_file_no_injection():
             mock.patch("deerflow.config.paths.get_paths") as mock_paths,
         ):
             mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
-            mock_paths.return_value = SimpleNamespace(
-                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
-            )
+            mock_paths.return_value = SimpleNamespace(thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id)
             result = mw.before_agent(state, runtime)
     assert result is not None
     assert "<project_context>" not in result["messages"][0].content
@@ -237,9 +231,7 @@ def test_project_context_malformed_json_graceful():
             mock.patch("deerflow.config.paths.get_paths") as mock_paths,
         ):
             mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
-            mock_paths.return_value = SimpleNamespace(
-                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
-            )
+            mock_paths.return_value = SimpleNamespace(thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id)
             result = mw.before_agent(state, runtime)
     assert result is not None
     assert "<project_context>" not in result["messages"][0].content
@@ -265,9 +257,7 @@ def test_project_context_without_project_name():
             mock.patch("deerflow.config.paths.get_paths") as mock_paths,
         ):
             mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
-            mock_paths.return_value = SimpleNamespace(
-                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
-            )
+            mock_paths.return_value = SimpleNamespace(thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id)
             result = mw.before_agent(state, runtime)
     reminder = result["messages"][0].content
     assert "<project_context>" in reminder
@@ -304,9 +294,7 @@ def test_project_context_template_sections_list():
             mock.patch("deerflow.config.paths.get_paths") as mock_paths,
         ):
             mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
-            mock_paths.return_value = SimpleNamespace(
-                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
-            )
+            mock_paths.return_value = SimpleNamespace(thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id)
             result = mw.before_agent(state, runtime)
     reminder = result["messages"][0].content
     assert "Report structure:" in reminder
@@ -343,9 +331,7 @@ def test_project_context_includes_description():
             mock.patch("deerflow.config.paths.get_paths") as mock_paths,
         ):
             mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
-            mock_paths.return_value = SimpleNamespace(
-                thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id
-            )
+            mock_paths.return_value = SimpleNamespace(thread_dir=lambda thread_id, user_id=None: Path(tmp) / "users" / user_id / "threads" / thread_id)
             result = mw.before_agent(state, runtime)
     reminder = result["messages"][0].content
     assert "<project_context>" in reminder

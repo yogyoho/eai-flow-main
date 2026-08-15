@@ -36,7 +36,9 @@ class TestCallbackRegistry:
         assert len(_present_files_callbacks) == 1
 
         results = await fire_present_files_callbacks(
-            "uid-1", "tid-1", ["/mnt/user-data/outputs/a.md"],
+            "uid-1",
+            "tid-1",
+            ["/mnt/user-data/outputs/a.md"],
         )
         assert len(results) == 1
         assert results[0] == {"synced": 1}

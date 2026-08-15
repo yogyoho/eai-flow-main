@@ -8,6 +8,7 @@ import logging
 from datetime import datetime
 from uuid import UUID
 
+from sqlalchemy import desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .core import CheckResult, ValidationIssue

@@ -114,9 +114,7 @@ def test_list_response_validates_stripped_cover_master():
     from app.extensions.output.schemas import LayoutTemplateListResponse
 
     item = _minimal_template_dict()
-    item["cover_master"] = _strip_cover_master_payload(
-        {"mode": "master", "xml": "<w:p/>", "images": [{"b64": "x"}], "slots": [], "sourceFile": "a.docx", "boundary": "before_toc"}
-    )
+    item["cover_master"] = _strip_cover_master_payload({"mode": "master", "xml": "<w:p/>", "images": [{"b64": "x"}], "slots": [], "sourceFile": "a.docx", "boundary": "before_toc"})
     resp = LayoutTemplateListResponse(items=[item], total=1)
     cm = resp.items[0].cover_master
     assert "xml" not in cm

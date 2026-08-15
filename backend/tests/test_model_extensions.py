@@ -1,6 +1,4 @@
 """Tests for extended Department and ProjectMember models."""
-import pytest
-from unittest.mock import MagicMock
 
 from app.extensions.models import Department, ProjectMember
 

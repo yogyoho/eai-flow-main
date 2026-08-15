@@ -42,9 +42,7 @@ async def test_list_data_sources_handler():
     async def _run(func):
         return await func(MagicMock())
 
-    with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-        "app.extensions.data_source.service.DataSourceService.list", AsyncMock(return_value=[fake])
-    ):
+    with patch("app.extensions.data_source.mcp._run_in_db", _run), patch("app.extensions.data_source.service.DataSourceService.list", AsyncMock(return_value=[fake])):
         out = await ds_mcp._handle_list_data_sources({})
     payload = json.loads(out[0].text)
     assert payload["success"] is True
@@ -57,9 +55,7 @@ async def test_query_rejects_write_sql():
     async def _run(func):
         return await func(MagicMock())
 
-    with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-        "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=_db_src())
-    ):
+    with patch("app.extensions.data_source.mcp._run_in_db", _run), patch("app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=_db_src())):
         out = await ds_mcp._handle_query_data_source({"name": "prod", "params": {"sql": "DELETE FROM users"}})
     payload = json.loads(out[0].text)
     assert payload["success"] is False
@@ -71,12 +67,14 @@ async def test_query_executes_readonly_sql():
     async def _run(func):
         return await func(MagicMock())  # lookup session
 
-    with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-        "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=_db_src())
-    ), patch(
-        # the handler now queries the SOURCE's own DB via this service method
-        "app.extensions.data_source.service.DataSourceService.run_readonly_query",
-        AsyncMock(return_value=[{"id": 1, "name": "x"}]),
+    with (
+        patch("app.extensions.data_source.mcp._run_in_db", _run),
+        patch("app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=_db_src())),
+        patch(
+            # the handler now queries the SOURCE's own DB via this service method
+            "app.extensions.data_source.service.DataSourceService.run_readonly_query",
+            AsyncMock(return_value=[{"id": 1, "name": "x"}]),
+        ),
     ):
         out = await ds_mcp._handle_query_data_source({"name": "prod", "params": {"sql": "SELECT id, name FROM users"}})
     payload = json.loads(out[0].text)
@@ -90,9 +88,7 @@ async def test_query_404_when_source_missing():
     async def _run(func):
         return await func(MagicMock())
 
-    with patch("app.extensions.data_source.mcp._run_in_db", _run), patch(
-        "app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=None)
-    ):
+    with patch("app.extensions.data_source.mcp._run_in_db", _run), patch("app.extensions.data_source.service.DataSourceService.get_by_name", AsyncMock(return_value=None)):
         out = await ds_mcp._handle_query_data_source({"name": "nope", "params": {"sql": "SELECT 1"}})
     payload = json.loads(out[0].text)
     assert payload["success"] is False

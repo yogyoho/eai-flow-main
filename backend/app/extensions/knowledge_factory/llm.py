@@ -300,10 +300,7 @@ class ExtractionLLMClient:
             ref_sections = reference_chapters.get("sections", [])
             if ref_sections:
                 ref_json = json.dumps(ref_sections, ensure_ascii=False, indent=2)
-                user_parts.append(
-                    f"\n## 参考章节结构（来自标准大纲模板）\n"
-                    f"请参考以下标准章节结构来推断文档的章节，尽可能与标准结构对齐：\n\n{ref_json}\n"
-                )
+                user_parts.append(f"\n## 参考章节结构（来自标准大纲模板）\n请参考以下标准章节结构来推断文档的章节，尽可能与标准结构对齐：\n\n{ref_json}\n")
 
         user = HumanMessage(content="\n".join(user_parts))
 
@@ -323,17 +320,11 @@ class ExtractionLLMClient:
             # 正常情况：返回字典
             sections = result.get("sections", [])
             if not sections:
-                logger.warning(
-                    f"[infer_schema] LLM returned empty sections for '{doc_name}'. "
-                    f"Raw response (first 500 chars): {raw[:500]}"
-                )
+                logger.warning(f"[infer_schema] LLM returned empty sections for '{doc_name}'. Raw response (first 500 chars): {raw[:500]}")
             logger.info(f"[infer_schema] Parsed sections count: {len(sections)}")
             return result
         except Exception as e:
-            logger.error(
-                f"[infer_schema] Schema inference failed for '{doc_name}': {e}. "
-                f"Raw response: {raw[:500] if raw else 'LLM invoke failed'}"
-            )
+            logger.error(f"[infer_schema] Schema inference failed for '{doc_name}': {e}. Raw response: {raw[:500] if raw else 'LLM invoke failed'}")
             logger.exception("Full traceback:")
             raise RuntimeError(f"章节结构推断失败: {e}") from e
 
@@ -369,10 +360,7 @@ class ExtractionLLMClient:
             for kb in available_kbs:
                 desc = f" ({kb['description']})" if kb.get("description") else ""
                 kb_lines.append(f"  - {kb['kb_name']}{desc}")
-            available_kbs_section = (
-                "\n## 可用知识库列表\n以下知识库可用于该章节的参考检索，请从中选择相关的：\n"
-                + "\n".join(kb_lines)
-            )
+            available_kbs_section = "\n## 可用知识库列表\n以下知识库可用于该章节的参考检索，请从中选择相关的：\n" + "\n".join(kb_lines)
         else:
             available_kbs_section = ""
 
@@ -484,7 +472,7 @@ class ExtractionLLMClient:
         Returns:
             List of rule dicts matching ComplianceRuleCreate schema.
         """
-        content = doc_content[: 15000]
+        content = doc_content[:15000]
         system = SystemMessage(content=self._RULE_EXTRACTION_SYSTEM_PROMPT)
         user = HumanMessage(
             content=self._RULE_EXTRACTION_USER_PROMPT_TEMPLATE.format(
@@ -550,10 +538,7 @@ class ExtractionLLMClient:
             ref_sections = reference_chapters.get("sections", [])
             if ref_sections:
                 ref_json = json.dumps(ref_sections, ensure_ascii=False, indent=2)
-                user_parts.append(
-                    f"\n## 参考章节结构（来自标准大纲模板）\n"
-                    f"请优先与以下标准章节结构对齐，确保融合结果覆盖标准大纲中的所有章节：\n\n{ref_json}\n"
-                )
+                user_parts.append(f"\n## 参考章节结构（来自标准大纲模板）\n请优先与以下标准章节结构对齐，确保融合结果覆盖标准大纲中的所有章节：\n\n{ref_json}\n")
 
         user = HumanMessage(content="\n".join(user_parts))
 
@@ -663,6 +648,7 @@ class ExtractionLLMClient:
         # Strategy 5: Strip common LLM wrapper patterns (e.g. 思考/回答 tags)
         # Some Chinese reasoning models wrap output in  思考.../思考 or similar tags
         import re as _re
+
         cleaned = _re.sub(r"<[^>]+>", "", raw)
         cleaned = _re.sub(r"【[^】]+】", "", cleaned)
         cleaned = cleaned.strip()
@@ -685,10 +671,7 @@ class ExtractionLLMClient:
                             except (json.JSONDecodeError, ValueError):
                                 break
 
-        raise ValueError(
-            f"Could not extract JSON from LLM response. "
-            f"First 500 chars: {raw[:500]}"
-        )
+        raise ValueError(f"Could not extract JSON from LLM response. First 500 chars: {raw[:500]}")
 
     def close(self):
         """Close the LLM client (no-op for LangChain)."""

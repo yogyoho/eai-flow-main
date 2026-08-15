@@ -6,7 +6,6 @@ import pytest
 
 from app.extensions.workflow.models import PhaseReview
 from app.extensions.workflow.schemas import (
-    PhaseReviewOut,
     ReviewActionRequest,
     ReviewAssignmentCreate,
     ReviewAssignmentItem,

@@ -1,4 +1,5 @@
 """Finalize flow — precondition check → compliance → confirm → lock."""
+
 from __future__ import annotations
 
 import uuid
@@ -72,7 +73,10 @@ async def execute_finalize(
     Returns the merged final document with all chapter content assembled in
     sort_order, not an empty shell.
     """
-    from sqlalchemy import func as _func, select, update as sa_update
+    from sqlalchemy import func as _func
+    from sqlalchemy import select
+    from sqlalchemy import update as sa_update
+
     from app.extensions.models import AIDocument, Folder, ProjectChapter, ReportProject
 
     project = await db.get(ReportProject, project_id)
@@ -90,7 +94,7 @@ async def execute_finalize(
     )
     chapters = ch_result.scalars().all()
 
-    report_type_label = (getattr(project, "report_type", None) or "报告")
+    report_type_label = getattr(project, "report_type", None) or "报告"
     _REPORT_TYPE_LABELS: dict[str, str] = {
         "safety_assessment": "安全评价报告",
         "environmental_impact": "环境影响报告",
@@ -111,23 +115,21 @@ async def execute_finalize(
 
     # ── Resolve or create project folder ──
     proj_folder_id: uuid.UUID | None = None
-    pfx_result = await db.execute(
-        select(Folder.id)
-        .where(Folder.project_id == project_id)
-        .where(Folder.parent_id.is_(None))
-        .limit(1)
-    )
+    pfx_result = await db.execute(select(Folder.id).where(Folder.project_id == project_id).where(Folder.parent_id.is_(None)).limit(1))
     pfx_row = pfx_result.first()
     if pfx_row:
         proj_folder_id = pfx_row[0]
     else:
         # Resolve owner from project members
         from app.extensions.models import ProjectMember
+
         pm_result = await db.execute(
-            select(ProjectMember.user_id).where(
+            select(ProjectMember.user_id)
+            .where(
                 ProjectMember.project_id == project_id,
                 ProjectMember.role == "owner",
-            ).limit(1)
+            )
+            .limit(1)
         )
         owner_row = pm_result.first()
         owner_id = owner_row[0] if owner_row else uuid.UUID(int=0)

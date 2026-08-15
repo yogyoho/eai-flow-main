@@ -313,15 +313,18 @@ async def _calibrate_single_role(db: AsyncSession, registry, code: str) -> None:
     existing = await db.execute(sa_text("SELECT id FROM roles WHERE code = :code LIMIT 1"), {"code": code})
     row = existing.fetchone()
     if row is None:
-        db.add(Role(
-            id=uuid.uuid4(), code=code,
-            name=defaults.get("display_name", code),
-            permissions=resolved,
-            is_system=defaults.get("is_system", False),
-            level=defaults.get("level", 10),
-            nav=defaults.get("nav") or [],
-            description=defaults.get("description"),
-        ))
+        db.add(
+            Role(
+                id=uuid.uuid4(),
+                code=code,
+                name=defaults.get("display_name", code),
+                permissions=resolved,
+                is_system=defaults.get("is_system", False),
+                level=defaults.get("level", 10),
+                nav=defaults.get("nav") or [],
+                description=defaults.get("description"),
+            )
+        )
     else:
         r = await RoleService.get_role_by_code(db, code)
         if r:

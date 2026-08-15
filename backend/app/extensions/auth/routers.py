@@ -32,6 +32,7 @@ from app.extensions.schemas import (
 
 logger = logging.getLogger(__name__)
 
+
 # EAI-CUSTOM: Gateway session issuance + per-IP rate limiting for the auth facade.
 # 复用上游构建块（get_local_provider / create_access_token / get_auth_config /
 # is_secure_request）——不修改任何上游代码。

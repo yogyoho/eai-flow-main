@@ -43,21 +43,25 @@ CurrentUserWithAccess = Annotated[CurrentUser, Depends(require_permission("syste
 
 
 async def _project_out(db: AsyncSession, project) -> CollabProjectOut:
-    section_count = await db.scalar(
-        select(func.count()).select_from(service.CollabSection).where(service.CollabSection.project_id == project.id)
-    ) or 0
-    member_count = await db.scalar(
-        select(func.count()).select_from(service.CollabMember).where(service.CollabMember.project_id == project.id)
-    ) or 0
-    task_count = await db.scalar(
-        select(func.count()).select_from(service.CollabTask).where(service.CollabTask.project_id == project.id)
-    ) or 0
+    section_count = await db.scalar(select(func.count()).select_from(service.CollabSection).where(service.CollabSection.project_id == project.id)) or 0
+    member_count = await db.scalar(select(func.count()).select_from(service.CollabMember).where(service.CollabMember.project_id == project.id)) or 0
+    task_count = await db.scalar(select(func.count()).select_from(service.CollabTask).where(service.CollabTask.project_id == project.id)) or 0
     return CollabProjectOut(
-        id=project.id, name=project.name, kind=project.kind, doc_id=project.doc_id,
-        owner_id=project.owner_id, tier_state=project.tier_state, tier_signals=project.tier_signals,
-        escalated_at=project.escalated_at, status=project.status, compliance_pin=project.compliance_pin,
-        created_at=project.created_at, updated_at=project.updated_at,
-        section_count=section_count, member_count=member_count, task_count=task_count,
+        id=project.id,
+        name=project.name,
+        kind=project.kind,
+        doc_id=project.doc_id,
+        owner_id=project.owner_id,
+        tier_state=project.tier_state,
+        tier_signals=project.tier_signals,
+        escalated_at=project.escalated_at,
+        status=project.status,
+        compliance_pin=project.compliance_pin,
+        created_at=project.created_at,
+        updated_at=project.updated_at,
+        section_count=section_count,
+        member_count=member_count,
+        task_count=task_count,
     )
 
 
@@ -83,8 +87,15 @@ async def create_project(
     doc_id = None
     if body.kind == "quickdoc":
         from uuid import uuid4
+
         doc = service.AIDocument(
-            id=uuid4(), user_id=user.id, title=body.name, content="", folder="workspace", doc_type="document", status="active",
+            id=uuid4(),
+            user_id=user.id,
+            title=body.name,
+            content="",
+            folder="workspace",
+            doc_type="document",
+            status="active",
         )
         db.add(doc)
         await db.flush()
@@ -140,7 +151,10 @@ async def get_tier(
     await service._require_member(db, project_id, user.id)
     project = await service.get_project(db, project_id)
     return CollabProjectTierOut(
-        project_id=project.id, tier_state=project.tier_state, escalated_at=project.escalated_at, signals=project.tier_signals,
+        project_id=project.id,
+        tier_state=project.tier_state,
+        escalated_at=project.escalated_at,
+        signals=project.tier_signals,
     )
 
 
@@ -198,8 +212,13 @@ async def add_member(
     if body.member_type == "human" and not body.user_id:
         raise HTTPException(status_code=422, detail="human 成员必须提供 user_id")
     member = await service.add_member(
-        db, project_id, member_type=body.member_type, user_id=body.user_id,
-        agent_name=body.agent_name, role=body.role, actor=user.id,
+        db,
+        project_id,
+        member_type=body.member_type,
+        user_id=body.user_id,
+        agent_name=body.agent_name,
+        role=body.role,
+        actor=user.id,
     )
     await db.commit()
     return CollabMemberOut.model_validate(member)
@@ -256,8 +275,12 @@ async def create_section(
 ):
     await service._require_member(db, project_id, user.id)
     sec = await service.create_section(
-        db, project_id, title=body.title, parent_id=body.parent_id,
-        word_count_target=body.word_count_target, user_id=user.id,
+        db,
+        project_id,
+        title=body.title,
+        parent_id=body.parent_id,
+        word_count_target=body.word_count_target,
+        user_id=user.id,
     )
     await db.commit()
     return CollabSectionOut.model_validate(sec)
@@ -300,8 +323,15 @@ async def create_task(
 ):
     await service._require_member(db, project_id, user.id)
     task = await service.create_task(
-        db, project_id, title=body.title, kind=body.kind, user_id=user.id,
-        section_ref=body.section_ref, doc_id=body.doc_id, context=body.context, due_at=body.due_at,
+        db,
+        project_id,
+        title=body.title,
+        kind=body.kind,
+        user_id=user.id,
+        section_ref=body.section_ref,
+        doc_id=body.doc_id,
+        context=body.context,
+        due_at=body.due_at,
     )
     await db.commit()
     return CollabTaskOut.model_validate(task)
@@ -317,8 +347,13 @@ async def assign_task(
 ):
     await service._require_member(db, project_id, user.id)
     task = await service.assign_task(
-        db, project_id, task_id, assignee_type=body.assignee_type,
-        user_id=body.user_id, agent_name=body.agent_name, actor=user.id,
+        db,
+        project_id,
+        task_id,
+        assignee_type=body.assignee_type,
+        user_id=body.user_id,
+        agent_name=body.agent_name,
+        actor=user.id,
     )
     await db.commit()
     return CollabTaskOut.model_validate(task)
@@ -336,7 +371,12 @@ async def record_handoff(
     await service._require_member(db, project_id, user.id)
     state = body.status or "done"
     task = await service.record_handoff(
-        db, project_id, task_id, state=state, payload={"notes": "manual", "by": str(user.id)}, actor=str(user.id),
+        db,
+        project_id,
+        task_id,
+        state=state,
+        payload={"notes": "manual", "by": str(user.id)},
+        actor=str(user.id),
     )
     await db.commit()
     return CollabTaskOut.model_validate(task)
@@ -397,6 +437,7 @@ async def spawn_agent_run(
     db: AsyncSession = Depends(get_db),
 ):
     from .agent_bridge import spawn_run_for_task
+
     await service._require_member(db, project_id, user.id)
     try:
         run = await spawn_run_for_task(db, project_id, task_id, owner_id=user.id, agent_name=body.agent_name, prompt_override=body.prompt_override)
@@ -417,8 +458,12 @@ async def list_agent_runs(
     runs = await service.list_agent_runs(db, project_id, task_id=task_id)
     return [
         {
-            "id": str(r.id), "thread_id": r.thread_id, "run_id": r.run_id, "agent_name": r.agent_name,
-            "status": r.status, "started_at": r.started_at.isoformat() if r.started_at else None,
+            "id": str(r.id),
+            "thread_id": r.thread_id,
+            "run_id": r.run_id,
+            "agent_name": r.agent_name,
+            "status": r.status,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
             "finished_at": r.finished_at.isoformat() if r.finished_at else None,
         }
         for r in runs
@@ -438,8 +483,12 @@ async def list_gates(
     gates = await service.list_gates(db, project_id)
     return [
         {
-            "id": str(g.id), "task_id": str(g.task_id) if g.task_id else None, "scope": g.scope,
-            "state": g.state, "mode": g.mode, "participants": g.participants,
+            "id": str(g.id),
+            "task_id": str(g.task_id) if g.task_id else None,
+            "scope": g.scope,
+            "state": g.state,
+            "mode": g.mode,
+            "participants": g.participants,
             "deadline_at": g.deadline_at.isoformat() if g.deadline_at else None,
             "resolved_at": g.resolved_at.isoformat() if g.resolved_at else None,
             "revision": g.revision,
@@ -458,7 +507,12 @@ async def judge_gate(
 ):
     await service._require_member(db, project_id, user.id)
     gate = await service.judge_gate(
-        db, project_id, gate_id, action=body.action, comment=body.comment, user_id=user.id,
+        db,
+        project_id,
+        gate_id,
+        action=body.action,
+        comment=body.comment,
+        user_id=user.id,
     )
     await db.commit()
     return {"id": str(gate.id), "state": gate.state, "revision": gate.revision}
@@ -503,8 +557,12 @@ async def list_activities(
     acts = await service.list_activities(db, project_id, limit=limit)
     return [
         {
-            "id": str(a.id), "actor_type": a.actor_type, "actor_id": a.actor_id,
-            "action": a.action, "target": a.target, "detail": a.detail,
+            "id": str(a.id),
+            "actor_type": a.actor_type,
+            "actor_id": a.actor_id,
+            "action": a.action,
+            "target": a.target,
+            "detail": a.detail,
             "created_at": a.created_at.isoformat() if a.created_at else None,
         }
         for a in acts

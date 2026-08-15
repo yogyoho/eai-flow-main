@@ -26,6 +26,8 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
+from app.extensions.database import get_db
+from app.extensions.schemas import CurrentUser
 from app.extensions.spare_parts import crud, service, storage
 from app.extensions.spare_parts.models import CspDocument
 from app.extensions.spare_parts.schemas import (
@@ -55,8 +57,6 @@ from app.extensions.spare_parts.schemas import (
     PipelineRunResponse,
     RunOut,
 )
-from app.extensions.database import get_db
-from app.extensions.schemas import CurrentUser
 
 logger = logging.getLogger(__name__)
 
@@ -163,18 +163,13 @@ async def upload_document(
     if dup is not None:
         raise HTTPException(
             status_code=409,
-            detail=(
-                f"该合同内容已存在(文件名: {dup.file_name}),已拒绝重复上传。"
-                "如需重跑,请在合同文档页对该合同点「重新解析」。"
-            ),
+            detail=(f"该合同内容已存在(文件名: {dup.file_name}),已拒绝重复上传。如需重跑,请在合同文档页对该合同点「重新解析」。"),
         )
     uri = storage.upload_bytes(key, data)
     # Create a 'pending' doc row immediately so the list shows it (解析中)
     # before the parse run finishes. _persist_parse upserts on storage_uri.
     file_type = os.path.splitext(key)[1].lstrip(".").lower() or "pdf"
-    await crud.create_pending_document(
-        db, storage_uri=uri, file_name=key, file_hash=digest, file_type=file_type, size=len(data)
-    )
+    await crud.create_pending_document(db, storage_uri=uri, file_name=key, file_hash=digest, file_type=file_type, size=len(data))
     return {"storage_uri": uri, "file_name": key, "size": len(data)}
 
 
@@ -227,9 +222,7 @@ async def reparse_document(
         status="running",
         scope={"mode": "table", "phase": "parse", "started_by": current_user.username, "reparse": key},
     )
-    background.add_task(
-        service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key
-    )
+    background.add_task(service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key)
     return PipelineRunResponse(run_id=run.id, status="running", message=f"reparse started: {key}")
 
 
@@ -269,9 +262,7 @@ async def confirm_cluster(
     current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     try:
-        cluster = await crud.confirm_cluster(
-            db, cluster_id, body.confirmed_by or current_user.username, body.expected_version
-        )
+        cluster = await crud.confirm_cluster(db, cluster_id, body.confirmed_by or current_user.username, body.expected_version)
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     if cluster is None:
@@ -317,9 +308,7 @@ async def merge_clusters(
     _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     try:
-        new_cluster = await crud.merge_clusters(
-            db, body.cluster_ids, body.representative_name, body.category
-        )
+        new_cluster = await crud.merge_clusters(db, body.cluster_ids, body.representative_name, body.category)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if new_cluster is None:
@@ -469,9 +458,7 @@ async def create_customer(
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
-    return await crud.create_customer(
-        db, canonical_name=body.canonical_name, aliases=body.aliases
-    )
+    return await crud.create_customer(db, canonical_name=body.canonical_name, aliases=body.aliases)
 
 
 @router.patch("/customers/{customer_id}", response_model=CustomerOut)
@@ -626,12 +613,8 @@ async def trigger_pipeline(
     # 立即把全部「已上传」文档置为「解析中」,前端点下按钮即可见状态切换;
     # 子进程随后覆写为 parsed/failed/needs_review。
     await crud.mark_documents_parsing(db)
-    background.add_task(
-        service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "parse"
-    )
-    return PipelineRunResponse(
-        run_id=run.id, status="running", message="parse started"
-    )
+    background.add_task(service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "parse")
+    return PipelineRunResponse(run_id=run.id, status="running", message="parse started")
 
 
 @router.post("/cluster/run", response_model=PipelineRunResponse)
@@ -651,12 +634,8 @@ async def trigger_cluster(
         status="running",
         scope={"phase": "cluster", "started_by": current_user.username},
     )
-    background.add_task(
-        service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "cluster"
-    )
-    return PipelineRunResponse(
-        run_id=run.id, status="running", message="cluster started"
-    )
+    background.add_task(service.run_pipeline_subprocess, db, run.id, body.mode, body.trigger, "cluster")
+    return PipelineRunResponse(run_id=run.id, status="running", message="cluster started")
 
 
 @router.get("/pipeline/runs/{run_id}/status")

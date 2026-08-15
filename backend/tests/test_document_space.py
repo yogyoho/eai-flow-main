@@ -1,6 +1,6 @@
 import os
 import tempfile
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID
 
 import pytest
@@ -341,7 +341,6 @@ async def test_read_file_content_too_large():
 @pytest.mark.asyncio
 async def test_list_docs_doc_type_filter():
     """list_docs should filter by doc_type when provided."""
-    from unittest.mock import call
 
     from app.extensions.docmgr.service import AIDocumentService
 
@@ -373,8 +372,9 @@ def test_document_share_model_columns():
 
 def test_share_create_request_validation():
     """ShareCreateRequest should validate share_type and permission patterns."""
-    from app.extensions.docmgr.share_schemas import ShareCreateRequest
     from pydantic import ValidationError
+
+    from app.extensions.docmgr.share_schemas import ShareCreateRequest
 
     # Valid user share
     req = ShareCreateRequest(share_type="user", share_target_id="user-uuid-here", permission="read")
@@ -413,8 +413,8 @@ def test_share_response_model():
 @pytest.mark.asyncio
 async def test_create_share_verify_ownership():
     """create_share should raise ValueError when document not found or not owned."""
-    from app.extensions.docmgr.share_service import ShareService
     from app.extensions.docmgr.share_schemas import ShareCreateRequest
+    from app.extensions.docmgr.share_service import ShareService
 
     db = AsyncMock()
     mock_result = MagicMock()
@@ -432,8 +432,8 @@ async def test_create_share_verify_ownership():
 @pytest.mark.asyncio
 async def test_create_share_link_generates_token():
     """create_share for link type should generate a share_token."""
-    from app.extensions.docmgr.share_service import ShareService
     from app.extensions.docmgr.share_schemas import ShareCreateRequest
+    from app.extensions.docmgr.share_service import ShareService
 
     db = AsyncMock()
     db.commit = AsyncMock()

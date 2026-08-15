@@ -11,7 +11,7 @@ from app.extensions.config import get_extensions_config
 from app.extensions.database import AsyncSession
 from app.extensions.knowledge.service import DocumentService, KnowledgeBaseService
 from app.extensions.models import ScrapDraft
-from app.extensions.web_scraper.schemas import ScrapDraftDetailResponse, ScrapDraftResponse
+from app.extensions.web_scraper.schemas import ScrapDraftCreate, ScrapDraftDetailResponse, ScrapDraftResponse, ScrapDraftUpdate
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ class ScrapDraftService:
     async def create_draft(
         db: AsyncSession,
         user_id: UUID,
-        data: "ScrapDraftCreate",
+        data: ScrapDraftCreate,
     ) -> ScrapDraft:
         """Create a new draft."""
 
@@ -86,7 +86,7 @@ class ScrapDraftService:
     async def update_draft(
         db: AsyncSession,
         draft: ScrapDraft,
-        data: "ScrapDraftUpdate",
+        data: ScrapDraftUpdate,
     ) -> ScrapDraft:
         """Update draft."""
 

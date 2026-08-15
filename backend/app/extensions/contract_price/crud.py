@@ -22,9 +22,7 @@ from app.extensions.contract_price.models import (
 )
 from app.extensions.contract_price.schemas import ConfigOut
 
-_CONFIG_PATH = os.path.join(
-    os.path.dirname(__file__), "config.json"
-)
+_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
 
 # --- Documents (functional area 1) -----------------------------------------
@@ -39,10 +37,7 @@ async def list_documents(
 ) -> tuple[list[CpaDocument], int]:
     stmt = select(CpaDocument)
     if keyword:
-        stmt = stmt.where(
-            (CpaDocument.contract_no.ilike(f"%{keyword}%"))
-            | (CpaDocument.supplier.ilike(f"%{keyword}%"))
-        )
+        stmt = stmt.where((CpaDocument.contract_no.ilike(f"%{keyword}%")) | (CpaDocument.supplier.ilike(f"%{keyword}%")))
     if parse_status:
         stmt = stmt.where(CpaDocument.parse_status == parse_status)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
@@ -56,44 +51,26 @@ async def delete_document(session: AsyncSession, doc_id: UUID) -> bool:
     # is now stale (it still counts the items we're about to delete) → clear it.
     # Clusters are a full-rebuild snapshot (re-run「开始分组」to regenerate), so
     # wiping avoids 分组审核 showing groups that no longer match the data.
-    in_snapshot = await session.scalar(
-        select(func.count())
-        .select_from(
-            select(CpaItem)
-            .where(CpaItem.document_id == doc_id, CpaItem.cluster_id.is_not(None))
-            .subquery()
-        )
-    )
+    in_snapshot = await session.scalar(select(func.count()).select_from(select(CpaItem).where(CpaItem.document_id == doc_id, CpaItem.cluster_id.is_not(None)).subquery()))
     await session.execute(delete(CpaItem).where(CpaItem.document_id == doc_id))
     if in_snapshot:
         # null remaining items' cluster_id/is_outlier, drop all clusters, and
         # revert 'clustered' docs to 'confirmed' (their groups are gone).
         await session.execute(update(CpaItem).values(cluster_id=None, is_outlier=False))
         await session.execute(delete(CpaCluster))
-        await session.execute(
-            update(CpaDocument)
-            .where(CpaDocument.confirm_status == "clustered")
-            .values(confirm_status="confirmed")
-        )
+        await session.execute(update(CpaDocument).where(CpaDocument.confirm_status == "clustered").values(confirm_status="confirmed"))
     result = await session.execute(delete(CpaDocument).where(CpaDocument.id == doc_id))
     await session.commit()
     return (result.rowcount or 0) > 0
 
 
-async def find_duplicate_document(
-    session: AsyncSession, file_hash: str, exclude_uri: str
-) -> CpaDocument | None:
+async def find_duplicate_document(session: AsyncSession, file_hash: str, exclude_uri: str) -> CpaDocument | None:
     """A document with the SAME content hash under a DIFFERENT storage_uri — i.e.
     the same contract already uploaded under another filename. Used to reject
     cross-filename duplicate uploads (dedup by content, not filename). Returns
     None when the content is new or only exists under ``exclude_uri`` (re-upload
     of the same filename, which is allowed and overwrites in place)."""
-    result = await session.execute(
-        select(CpaDocument)
-        .where(CpaDocument.file_hash == file_hash)
-        .where(CpaDocument.storage_uri != exclude_uri)
-        .limit(1)
-    )
+    result = await session.execute(select(CpaDocument).where(CpaDocument.file_hash == file_hash).where(CpaDocument.storage_uri != exclude_uri).limit(1))
     return result.scalar_one_or_none()
 
 
@@ -111,9 +88,7 @@ async def create_pending_document(
     re-uploading the same filename resets the existing row to pending (re-parse).
     The parse run's _persist_parse later fills parse_status + items by upserting
     on the same storage_uri."""
-    existing = (
-        await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == storage_uri))
-    ).scalar_one_or_none()
+    existing = (await session.execute(select(CpaDocument).where(CpaDocument.storage_uri == storage_uri))).scalar_one_or_none()
     if existing is None:
         session.add(
             CpaDocument(
@@ -138,9 +113,7 @@ async def create_pending_document(
     await session.commit()
 
 
-async def mark_documents_parsing(
-    session: AsyncSession, *, storage_uri: str | None = None
-) -> int:
+async def mark_documents_parsing(session: AsyncSession, *, storage_uri: str | None = None) -> int:
     """将待解析文档由「已上传」(pending) 置为「解析中」(parsing)。
 
     在点击「开始解析」时立即调用 —— 让前端在按钮点下的瞬间就显示 解析中,
@@ -159,9 +132,7 @@ async def mark_documents_parsing(
     return result.rowcount or 0
 
 
-async def set_document_parse_status(
-    session: AsyncSession, doc_id: UUID, parse_status: str
-) -> CpaDocument | None:
+async def set_document_parse_status(session: AsyncSession, doc_id: UUID, parse_status: str) -> CpaDocument | None:
     """强制将单个文档置为指定解析状态(忽略当前状态)。
 
     用于「重新解析」:被重解析的文档当前可能是 parsed/needs_review/failed
@@ -183,18 +154,12 @@ async def mark_stale_parsing_failed(session: AsyncSession, error: str) -> int:
     崩溃/非零退出时,从未到达终态的 parsing 文档会永远停在 解析中。这里置为
     failed,避免状态卡死(用户要求:失败就是解析失败)。
     """
-    result = await session.execute(
-        update(CpaDocument)
-        .where(CpaDocument.parse_status == "parsing")
-        .values(parse_status="failed", error=error)
-    )
+    result = await session.execute(update(CpaDocument).where(CpaDocument.parse_status == "parsing").values(parse_status="failed", error=error))
     await session.commit()
     return result.rowcount or 0
 
 
-async def update_document(
-    session: AsyncSession, doc_id: UUID, fields: dict[str, Any]
-) -> CpaDocument | None:
+async def update_document(session: AsyncSession, doc_id: UUID, fields: dict[str, Any]) -> CpaDocument | None:
     """Patch editable document fields (manual补 for project name/location + metadata)."""
     doc = await session.get(CpaDocument, doc_id)
     if doc is None:
@@ -206,9 +171,7 @@ async def update_document(
     return doc
 
 
-async def confirm_document(
-    session: AsyncSession, doc_id: UUID, confirm_status: str
-) -> CpaDocument | None:
+async def confirm_document(session: AsyncSession, doc_id: UUID, confirm_status: str) -> CpaDocument | None:
     """Set a document's confirm_status (confirmed/skipped) — the cluster gate."""
     if confirm_status not in ("confirmed", "skipped"):
         return None
@@ -225,11 +188,7 @@ async def confirm_all_documents(session: AsyncSession, confirm_status: str) -> i
     confirm_status. Returns the number of documents updated."""
     if confirm_status not in ("confirmed", "skipped"):
         return 0
-    result = await session.execute(
-        update(CpaDocument)
-        .where(CpaDocument.confirm_status == "pending")
-        .values(confirm_status=confirm_status)
-    )
+    result = await session.execute(update(CpaDocument).where(CpaDocument.confirm_status == "pending").values(confirm_status=confirm_status))
     await session.commit()
     return result.rowcount or 0
 
@@ -259,9 +218,7 @@ async def get_cluster_with_items(session: AsyncSession, cluster_id: UUID) -> Cpa
     cluster = await session.get(CpaCluster, cluster_id)
     if cluster is None:
         return None
-    items = await session.execute(
-        select(CpaItem).where(CpaItem.cluster_id == cluster_id).order_by(CpaItem.unit_price)
-    )
+    items = await session.execute(select(CpaItem).where(CpaItem.cluster_id == cluster_id).order_by(CpaItem.unit_price))
     cluster.items = list(items.scalars().all())  # type: ignore[attr-defined]
     return cluster
 
@@ -325,21 +282,11 @@ async def merge_clusters(
 ) -> CpaCluster | None:
     if len(cluster_ids) < 2:
         raise ValueError("merge requires at least 2 clusters")
-    new_cluster = CpaCluster(
-        category=category, representative_name=representative_name, status="pending", item_count=0
-    )
+    new_cluster = CpaCluster(category=category, representative_name=representative_name, status="pending", item_count=0)
     session.add(new_cluster)
     await session.flush()
-    await session.execute(
-        update(CpaItem)
-        .where(CpaItem.cluster_id.in_(cluster_ids))
-        .values(cluster_id=new_cluster.id)
-    )
-    new_cluster.item_count = await session.scalar(
-        select(func.count()).select_from(
-            select(CpaItem).where(CpaItem.cluster_id == new_cluster.id).subquery()
-        )
-    ) or 0
+    await session.execute(update(CpaItem).where(CpaItem.cluster_id.in_(cluster_ids)).values(cluster_id=new_cluster.id))
+    new_cluster.item_count = await session.scalar(select(func.count()).select_from(select(CpaItem).where(CpaItem.cluster_id == new_cluster.id).subquery())) or 0
     await session.execute(delete(CpaCluster).where(CpaCluster.id.in_(cluster_ids)))
     await session.commit()
     return new_cluster
@@ -387,9 +334,7 @@ async def list_items(
     return list(result.scalars().all()), int(total)
 
 
-async def update_item(
-    session: AsyncSession, item_id: UUID, fields: dict[str, Any]
-) -> CpaItem | None:
+async def update_item(session: AsyncSession, item_id: UUID, fields: dict[str, Any]) -> CpaItem | None:
     item = await session.get(CpaItem, item_id)
     if item is None:
         return None
@@ -416,12 +361,7 @@ async def list_item_contracts(session: AsyncSession) -> list[dict]:
     Only non-null contracts. Ordered by count desc so the most-represented
     contracts appear first in the dropdown.
     """
-    rows = await session.execute(
-        select(CpaItem.source_contract_no, func.count())
-        .where(CpaItem.source_contract_no.is_not(None))
-        .group_by(CpaItem.source_contract_no)
-        .order_by(func.count().desc())
-    )
+    rows = await session.execute(select(CpaItem.source_contract_no, func.count()).where(CpaItem.source_contract_no.is_not(None)).group_by(CpaItem.source_contract_no).order_by(func.count().desc()))
     return [{"source_contract_no": no, "count": int(cnt)} for no, cnt in rows.all()]
 
 
@@ -431,15 +371,9 @@ async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int
     return result.rowcount or 0
 
 
-async def batch_validate_items(
-    session: AsyncSession, item_ids: list[UUID], validation_status: str = "ok"
-) -> int:
+async def batch_validate_items(session: AsyncSession, item_ids: list[UUID], validation_status: str = "ok") -> int:
     """Batch update validation_status (ok/corrected) for selected items."""
-    result = await session.execute(
-        update(CpaItem)
-        .where(CpaItem.id.in_(item_ids))
-        .values(validation_status=validation_status)
-    )
+    result = await session.execute(update(CpaItem).where(CpaItem.id.in_(item_ids)).values(validation_status=validation_status))
     await session.commit()
     return result.rowcount or 0
 
@@ -495,14 +429,7 @@ async def has_running_run(session: AsyncSession, phase: str) -> bool:
     would block re-trigger; clear manually (`UPDATE cpa_run_history SET
     status='failed' WHERE status='running'`) if that happens.
     """
-    row = await session.scalar(
-        select(func.count()).select_from(
-            select(CpaRunHistory)
-            .where(CpaRunHistory.status == "running")
-            .where(CpaRunHistory.scope["phase"].astext == phase)
-            .subquery()
-        )
-    )
+    row = await session.scalar(select(func.count()).select_from(select(CpaRunHistory).where(CpaRunHistory.status == "running").where(CpaRunHistory.scope["phase"].astext == phase).subquery()))
     return bool(row)
 
 
@@ -521,12 +448,7 @@ async def cleanup_stale_runs(session: AsyncSession, max_age_seconds: int = 21600
     from datetime import datetime, timedelta
 
     cutoff = datetime.now(UTC) - timedelta(seconds=max_age_seconds)
-    result = await session.execute(
-        update(CpaRunHistory)
-        .where(CpaRunHistory.status == "running")
-        .where(CpaRunHistory.started_at < cutoff)
-        .values(status="failed", error="orphaned by restart (auto-cleaned)", finished_at=func.now())
-    )
+    result = await session.execute(update(CpaRunHistory).where(CpaRunHistory.status == "running").where(CpaRunHistory.started_at < cutoff).values(status="failed", error="orphaned by restart (auto-cleaned)", finished_at=func.now()))
     await session.commit()
     return result.rowcount or 0
 
@@ -539,9 +461,7 @@ async def create_run(session: AsyncSession, **fields) -> CpaRunHistory:
     return run
 
 
-async def finish_run(
-    session: AsyncSession, run_id: UUID, **fields
-) -> CpaRunHistory | None:
+async def finish_run(session: AsyncSession, run_id: UUID, **fields) -> CpaRunHistory | None:
     run = await session.get(CpaRunHistory, run_id)
     if run is None:
         return None
@@ -559,19 +479,9 @@ async def dashboard_counts(session: AsyncSession) -> dict:
     contract_count = await session.scalar(select(func.count()).select_from(CpaDocument)) or 0
     item_count = await session.scalar(select(func.count()).select_from(CpaItem)) or 0
     cluster_count = await session.scalar(select(func.count()).select_from(CpaCluster)) or 0
-    pending = await session.scalar(
-        select(func.count()).select_from(
-            select(CpaCluster).where(CpaCluster.status == "pending").subquery()
-        )
-    ) or 0
-    confirmed = await session.scalar(
-        select(func.count()).select_from(
-            select(CpaCluster).where(CpaCluster.status == "confirmed").subquery()
-        )
-    ) or 0
-    outlier_count = await session.scalar(
-        select(func.count()).select_from(CpaItem).where(CpaItem.is_outlier.is_(True))
-    ) or 0
+    pending = await session.scalar(select(func.count()).select_from(select(CpaCluster).where(CpaCluster.status == "pending").subquery())) or 0
+    confirmed = await session.scalar(select(func.count()).select_from(select(CpaCluster).where(CpaCluster.status == "confirmed").subquery())) or 0
+    outlier_count = await session.scalar(select(func.count()).select_from(CpaItem).where(CpaItem.is_outlier.is_(True))) or 0
     return {
         "contract_count": int(contract_count),
         "item_count": int(item_count),
@@ -618,10 +528,7 @@ async def dashboard_charts(session: AsyncSession) -> dict:
         .order_by(func.count(CpaItem.id).desc())
         .limit(10)
     )
-    top_goods = [
-        {"name": n, "item_count": int(c), "avg_price": float(a) if a is not None else 0.0}
-        for n, c, a in rows.all()
-    ]
+    top_goods = [{"name": n, "item_count": int(c), "avg_price": float(a) if a is not None else 0.0} for n, c, a in rows.all()]
 
     # 2. unit_price histogram by magnitude bucket
     rows = await session.execute(
@@ -637,21 +544,11 @@ async def dashboard_charts(session: AsyncSession) -> dict:
     price_ranges = [{"range": r, "count": int(c)} for r, c in rows.all()]
 
     # 3. validation-status distribution (ok / needs_review / corrected)
-    rows = await session.execute(
-        select(CpaItem.validation_status, func.count()).group_by(CpaItem.validation_status)
-    )
+    rows = await session.execute(select(CpaItem.validation_status, func.count()).group_by(CpaItem.validation_status))
     validation = [{"status": s, "count": int(c)} for s, c in rows.all()]
 
     # 4. cluster-size distribution
-    rows = await session.execute(
-        text(
-            "SELECT CASE WHEN item_count = 1 THEN '1' "
-            "WHEN item_count <= 5 THEN '2-5' "
-            "WHEN item_count <= 10 THEN '6-10' "
-            "ELSE '10+' END AS sz, count(*) AS cnt "
-            "FROM cpa_clusters GROUP BY sz"
-        )
-    )
+    rows = await session.execute(text("SELECT CASE WHEN item_count = 1 THEN '1' WHEN item_count <= 5 THEN '2-5' WHEN item_count <= 10 THEN '6-10' ELSE '10+' END AS sz, count(*) AS cnt FROM cpa_clusters GROUP BY sz"))
     cluster_sizes = [{"range": r, "count": int(c)} for r, c in rows.all()]
 
     return {
@@ -682,10 +579,7 @@ async def goods_analysis(
     """
     import statistics as _stats
 
-    base = (
-        select(CpaItem, CpaDocument)
-        .join(CpaDocument, CpaItem.document_id == CpaDocument.id)
-    )
+    base = select(CpaItem, CpaDocument).join(CpaDocument, CpaItem.document_id == CpaDocument.id)
     if name:
         base = base.where(CpaItem.goods_name.ilike(f"%{name}%"))
     elif cluster_id:
@@ -703,11 +597,7 @@ async def goods_analysis(
     docs = [r[1] for r in rows]  # CpaDocument objects
 
     # price stats: only ok/corrected
-    priced = [
-        float(it.unit_price)
-        for it in items
-        if it.unit_price is not None and it.validation_status in ("ok", "corrected")
-    ]
+    priced = [float(it.unit_price) for it in items if it.unit_price is not None and it.validation_status in ("ok", "corrected")]
     ok_count = sum(1 for it in items if it.validation_status == "ok")
     nr_count = sum(1 for it in items if it.validation_status == "needs_review")
 
@@ -723,9 +613,7 @@ async def goods_analysis(
         outliers = [
             {"contract_no": it.source_contract_no or "—", "unit_price": float(it.unit_price)}
             for it in items
-            if it.unit_price is not None
-            and it.validation_status in ("ok", "corrected")
-            and (float(it.unit_price) < lo_fence or float(it.unit_price) > hi_fence)
+            if it.unit_price is not None and it.validation_status in ("ok", "corrected") and (float(it.unit_price) < lo_fence or float(it.unit_price) > hi_fence)
         ]
         boxplot = {
             "count": n,
@@ -769,10 +657,7 @@ async def goods_analysis(
             month_key = doc.sign_date.strftime("%Y-%m")
             by_date_map.setdefault(month_key, []).append(float(it.unit_price))
     by_date = sorted(
-        [
-            {"month": m, "count": len(vals), "avg_price": round(_stats.mean(vals), 2)}
-            for m, vals in by_date_map.items()
-        ],
+        [{"month": m, "count": len(vals), "avg_price": round(_stats.mean(vals), 2)} for m, vals in by_date_map.items()],
         key=lambda x: x["month"],
     )
 

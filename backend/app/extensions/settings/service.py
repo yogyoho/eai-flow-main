@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class SystemConfigService:
-
     @staticmethod
     async def get_all(db: AsyncSession) -> dict[str, str]:
         stmt = select(SystemConfigEntry)

@@ -76,12 +76,7 @@ async def create_otp(db: AsyncSession, email: str) -> str | None:
 
 async def verify_otp(db: AsyncSession, email: str, code: str) -> bool:
     """校验 email 最新的一条未用且未过期的验证码；成功则标记已用."""
-    stmt = (
-        select(OtpCode)
-        .where(OtpCode.email == email, OtpCode.used_at.is_(None))
-        .order_by(OtpCode.created_at.desc())
-        .limit(1)
-    )
+    stmt = select(OtpCode).where(OtpCode.email == email, OtpCode.used_at.is_(None)).order_by(OtpCode.created_at.desc()).limit(1)
     result = await db.execute(stmt)
     row = result.scalar_one_or_none()
     if not code_is_valid(row, code, datetime.now(UTC)):

@@ -52,13 +52,12 @@ def test_both_empty_is_rejected():
 
 def test_both_provided_is_accepted():
     """两者都给 → 合法。"""
-    task = ExtractionTaskCreate(
-        **_base(source_report_ids=[_DOC_ID], uploaded_file_ids=[_FILE_ID])
-    )
+    task = ExtractionTaskCreate(**_base(source_report_ids=[_DOC_ID], uploaded_file_ids=[_FILE_ID]))
     assert task.source_report_ids and task.uploaded_file_ids
 
 
 # ── _LenientMeta list-field str coercion (bug-1122) ──
+
 
 def test_formula_input_vars_str_coerced_to_list():
     """LLM 把 FormulaReference.input_vars 输出成单个 str 时，应包成 [str] 而非 500。
@@ -84,7 +83,5 @@ def test_formula_input_vars_list_dict_still_ok():
 
     fr1 = FormulaReference(formula_id="F1", input_vars=["Qe", "Qw"])
     assert fr1.input_vars == ["Qe", "Qw"]
-    fr2 = FormulaReference(
-        formula_id="F2", input_vars=[{"name": "Qe", "unit": "m³/h"}]
-    )
+    fr2 = FormulaReference(formula_id="F2", input_vars=[{"name": "Qe", "unit": "m³/h"}])
     assert fr2.input_vars[0]["name"] == "Qe"

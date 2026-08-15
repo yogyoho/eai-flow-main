@@ -152,15 +152,7 @@ class TestResolveBackend:
         parents[4] 从此处指向 .deer-flow（旧 bug 现场），向上搜索应命中 /app/backend 本身。"""
         app_backend = tmp_path / "app" / "backend"
         (app_backend / "app" / "extensions" / "formula_engine").mkdir(parents=True)
-        start = (
-            app_backend
-            / ".deer-flow"
-            / "skills_view"
-            / "public"
-            / "water-drainage-report"
-            / "scripts"
-            / "formula_runner.py"
-        )
+        start = app_backend / ".deer-flow" / "skills_view" / "public" / "water-drainage-report" / "scripts" / "formula_runner.py"
         start.parent.mkdir(parents=True)
         start.touch()
         assert formula_runner._resolve_backend(start.resolve()) == app_backend.resolve()

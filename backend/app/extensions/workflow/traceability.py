@@ -45,12 +45,14 @@ def parse_source_markers(content: str, block_start_index: int = 0) -> list[Parse
                 start = max(0, match.start() - 30)
                 end = min(len(block), match.end() + 30)
                 snippet = block[start:end].strip()
-                sources.append(ParsedSource(
-                    block_index=block_idx,
-                    source_type=fn["type"],
-                    source_ref=fn["ref"],
-                    snippet=snippet,
-                ))
+                sources.append(
+                    ParsedSource(
+                        block_index=block_idx,
+                        source_type=fn["type"],
+                        source_ref=fn["ref"],
+                        snippet=snippet,
+                    )
+                )
         block_idx += 1
 
     return sources
@@ -69,9 +71,11 @@ def find_missing_sources(content: str) -> list[dict]:
         if not block.strip():
             continue
         if not inline_pattern.search(block):
-            missing.append({
-                "block_index": idx,
-                "preview": block.strip()[:50],
-            })
+            missing.append(
+                {
+                    "block_index": idx,
+                    "preview": block.strip()[:50],
+                }
+            )
 
     return missing

@@ -8,10 +8,7 @@ from pathlib import Path
 
 import pytest
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="benchmark against EAI-diverged checkpointer (CachedHistorySaver) (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def _load_module():

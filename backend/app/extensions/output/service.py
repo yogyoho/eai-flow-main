@@ -79,9 +79,7 @@ class LayoutTemplateService:
         return template
 
     @staticmethod
-    async def update_template(
-        db: AsyncSession, template: LayoutTemplate, data: LayoutTemplateUpdate
-    ) -> LayoutTemplate:
+    async def update_template(db: AsyncSession, template: LayoutTemplate, data: LayoutTemplateUpdate) -> LayoutTemplate:
         update_data = data.model_dump(exclude_unset=True)
         if not update_data:
             return template

@@ -1,8 +1,10 @@
 """Tests for dashboard service and API endpoints."""
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+
+import pytest
 
 from app.extensions.dashboard.schemas import (
     CalendarEvent,
@@ -10,7 +12,6 @@ from app.extensions.dashboard.schemas import (
     MyProjectsResponse,
     MyStatsResponse,
     MyTasksResponse,
-    NotificationListResponse,
     NotificationOut,
     TaskItem,
 )
@@ -22,7 +23,6 @@ from app.extensions.dashboard.service import (
     get_my_tasks,
 )
 
-
 # ── Priority computation tests ──
 
 
@@ -31,12 +31,12 @@ def test_compute_urgency_none():
 
 
 def test_compute_urgency_overdue():
-    past = datetime.now(timezone.utc) - __import__("datetime").timedelta(hours=1)
+    past = datetime.now(UTC) - __import__("datetime").timedelta(hours=1)
     assert _compute_urgency(past) == "overdue"
 
 
 def test_compute_urgency_today():
-    future = datetime.now(timezone.utc) + __import__("datetime").timedelta(minutes=30)
+    future = datetime.now(UTC) + __import__("datetime").timedelta(minutes=30)
     assert _compute_urgency(future) == "today"
 
 
@@ -46,7 +46,7 @@ def test_compute_priority_review():
 
 
 def test_compute_priority_review_overdue():
-    past = datetime.now(timezone.utc) - __import__("datetime").timedelta(hours=1)
+    past = datetime.now(UTC) - __import__("datetime").timedelta(hours=1)
     score = _compute_priority("review", past)
     assert score == 60  # 30 base + 30 overdue
 
@@ -131,7 +131,7 @@ def test_calendar_event_schema():
     event = CalendarEvent(
         id="milestone-1",
         title="数据收集完成",
-        date=datetime.now(timezone.utc),
+        date=datetime.now(UTC),
         type="milestone",
         color="purple",
     )

@@ -12,8 +12,8 @@ import uuid
 from sqlalchemy import select
 from temporalio import activity
 
-from app.extensions.writing.generation_strategy import select_strategy, GenerationStrategy
 from app.extensions.writing.dependency_graph import topological_order
+from app.extensions.writing.generation_strategy import GenerationStrategy, select_strategy
 from app.extensions.writing.state_machine import validate_chapter_transition
 
 logger = logging.getLogger(__name__)
@@ -22,9 +22,19 @@ logger = logging.getLogger(__name__)
 
 # Refusal patterns — when the LLM declines to generate content.
 _REFUSAL_KEYWORDS: list[str] = [
-    "i cannot", "i can't", "i apologize", "i'm unable", "i am unable",
-    "无法", "不能", "抱歉", "对不起", "我无法", "我不能",
-    "as an ai", "as a language model",
+    "i cannot",
+    "i can't",
+    "i apologize",
+    "i'm unable",
+    "i am unable",
+    "无法",
+    "不能",
+    "抱歉",
+    "对不起",
+    "我无法",
+    "我不能",
+    "as an ai",
+    "as a language model",
 ]
 
 
@@ -37,9 +47,7 @@ def _validate_generated_content(content: str | None) -> str | None:
         if content_lower.startswith(kw):
             return "refusal_error"
     # Heuristic: a refusal is often short (< 200 chars) and starts with an apology
-    if len(content_lower) < 200 and any(
-        content_lower.startswith(kw) for kw in _REFUSAL_KEYWORDS
-    ):
+    if len(content_lower) < 200 and any(content_lower.startswith(kw) for kw in _REFUSAL_KEYWORDS):
         return "refusal_error"
     return None
 
@@ -51,6 +59,7 @@ def _sanitize_log_msg(exc: Exception) -> str:
     API keys and tokens do not leak into log output.
     """
     import re
+
     msg = str(exc)
     # Strip common key/token patterns
     for pattern in ("key=", "api_key=", "token=", "secret=", "authorization="):
@@ -72,7 +81,7 @@ def _build_writing_prompt(chapter) -> str:
         "1. 内容专业、准确、逻辑清晰",
         "2. 所有数据引用、法规引用、文献引用必须标注来源",
         "3. 引用格式：正文中使用 [N] 标记，文末附脚注",
-        '4. 脚注格式：[N] source:type:ref（type: rag_retrieval/regulation/knowledge_base/ai/human）',
+        "4. 脚注格式：[N] source:type:ref（type: rag_retrieval/regulation/knowledge_base/ai/human）",
         "5. 如果没有具体来源，使用合理的占位标记",
         "",
         f"章节标题: {chapter.title or '未命名章节'}",
@@ -89,7 +98,7 @@ def _build_writing_prompt(chapter) -> str:
     parts.append("该区域 SO₂ 日均浓度为 0.045mg/m³[1]，低于国家标准限值 0.15mg/m³[2]。")
     parts.append("")
     parts.append("[1] source:rag_retrieval:知识库「监测数据库」→「2024年度监测报告」p.23")
-    parts.append('[2] source:regulation:GB 3095-2012《环境空气质量标准》表2')
+    parts.append("[2] source:regulation:GB 3095-2012《环境空气质量标准》表2")
 
     return "\n".join(parts)
 
@@ -117,14 +126,16 @@ async def _generate_content(prompt: str, *, timeout: float = 60.0, retries: int 
             if validation_error:
                 logger.warning(
                     "AI content validation failed: %s (attempt %d/%d)",
-                    validation_error, attempt + 1, retries + 1,
+                    validation_error,
+                    attempt + 1,
+                    retries + 1,
                 )
                 if attempt == retries:
                     return None, validation_error
                 await asyncio.sleep(3)
                 continue
             return content, None
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.warning("AI content generation timed out (attempt %d/%d, timeout=%.0fs)", attempt + 1, retries + 1, timeout)
             if attempt == retries:
                 return None, "timeout"
@@ -156,9 +167,7 @@ def _get_member_duty(member, node_id: str) -> str | None:
     return entry.get("role") or entry.get("duty")
 
 
-async def _resolve_writer_for_chapter(
-    db, project_id: str, chapter
-) -> uuid.UUID | None:
+async def _resolve_writer_for_chapter(db, project_id: str, chapter) -> uuid.UUID | None:
     """Resolve a writer for a chapter from project members' phase_duties.
 
     Looks for members with ``duty="writer"`` for the chapter's ``phase_node``.
@@ -213,7 +222,7 @@ async def start_ai_writing(node_id: str, project_id: str, chapter_id: str | None
         return {"status": "skipped", "node_id": node_id, "reason": "no chapter_id"}
 
     from app.extensions.database import get_db_context
-    from app.extensions.models import ProjectChapter, ProjectMember
+    from app.extensions.models import ProjectChapter
 
     async with get_db_context() as db:
         chapter = await db.get(ProjectChapter, uuid.UUID(chapter_id))
@@ -224,10 +233,10 @@ async def start_ai_writing(node_id: str, project_id: str, chapter_id: str | None
         if str(chapter.project_id) != project_id:
             logger.warning(
                 "activity:start_ai_writing chapter %s does not belong to project %s",
-                chapter_id, project_id,
+                chapter_id,
+                project_id,
             )
-            return {"status": "error", "node_id": node_id, "chapter_id": chapter_id,
-                    "reason": "chapter does not belong to this project"}
+            return {"status": "error", "node_id": node_id, "chapter_id": chapter_id, "reason": "chapter does not belong to this project"}
 
         # Auto-assign chapter to a writer if not already assigned
         if not chapter.assigned_to:
@@ -250,6 +259,7 @@ async def start_ai_writing(node_id: str, project_id: str, chapter_id: str | None
             chapter.status = "draft"
             await db.commit()
             from app.extensions.workflow.metrics import record_ai_generation_success
+
             record_ai_generation_success(project_id=project_id, chapter_id=chapter_id)
         else:
             # EAI-CUSTOM: 'error' is no longer a chapter status (ADR 2026-08-02).
@@ -258,6 +268,7 @@ async def start_ai_writing(node_id: str, project_id: str, chapter_id: str | None
             chapter.generation_hint = (chapter.generation_hint or "") + f"\n[AI generation failed: {error_code}]"
             await db.commit()
             from app.extensions.workflow.metrics import record_ai_generation_failure
+
             record_ai_generation_failure(project_id=project_id, chapter_id=chapter_id, error_code=error_code or "unknown")
 
         return {
@@ -286,16 +297,12 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
 
         # Fetch template sections for dependency derivation
         from app.extensions.knowledge_factory.models import ExtractionTemplate
+
         tmpl = await db.get(ExtractionTemplate, project.template_id)
         sections = (tmpl.root_sections_json or {}).get("sections", []) if tmpl else []
 
         # Get chapters in this phase, ordered
-        chapters_result = await db.execute(
-            select(ProjectChapter)
-            .where(ProjectChapter.project_id == uuid.UUID(project_id))
-            .where(ProjectChapter.phase_node == phase_id)
-            .order_by(ProjectChapter.sort_order)
-        )
+        chapters_result = await db.execute(select(ProjectChapter).where(ProjectChapter.project_id == uuid.UUID(project_id)).where(ProjectChapter.phase_node == phase_id).order_by(ProjectChapter.sort_order))
         chapters = chapters_result.scalars().all()
 
         if not chapters:
@@ -303,11 +310,7 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
             # phase/subflow nodes leave ProjectChapter.phase_node NULL. Fall back
             # to ALL chapters in the project so a top-level "AI编写初稿" node still
             # generates the initial report content.
-            all_result = await db.execute(
-                select(ProjectChapter)
-                .where(ProjectChapter.project_id == uuid.UUID(project_id))
-                .order_by(ProjectChapter.sort_order)
-            )
+            all_result = await db.execute(select(ProjectChapter).where(ProjectChapter.project_id == uuid.UUID(project_id)).order_by(ProjectChapter.sort_order))
             chapters = all_result.scalars().all()
             if not chapters:
                 return {"status": "ok", "phase_id": phase_id, "results": [], "reason": "no chapters"}
@@ -371,7 +374,9 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
 
         logger.info(
             "activity:start_phase_ai_writing phase_id=%s strategy=%s chapters=%d",
-            phase_id, strategy.value, len(results),
+            phase_id,
+            strategy.value,
+            len(results),
         )
 
         # Sync generated chapters to document space immediately after AI
@@ -380,7 +385,9 @@ async def start_phase_ai_writing(phase_id: str, project_id: str) -> dict:
         from .notification_activities import _sync_chapters_to_doc_space
 
         await _sync_chapters_to_doc_space(
-            db, project_id, user_ids=None,
+            db,
+            project_id,
+            user_ids=None,
             chapter_count=len([r for r in results if r["status"] == "draft"]),
         )
 

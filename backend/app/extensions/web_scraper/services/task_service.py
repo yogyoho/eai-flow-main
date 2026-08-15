@@ -1,7 +1,6 @@
 """Task history persistence service for web scraper."""
 
 import logging
-from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import and_, func, select
@@ -88,13 +87,7 @@ class ScrapTaskService:
         total = count_result.scalar() or 0
 
         offset = (page - 1) * page_size
-        query = (
-            select(ScrapTaskRecord)
-            .where(and_(*conditions))
-            .order_by(ScrapTaskRecord.created_at.desc())
-            .offset(offset)
-            .limit(page_size)
-        )
+        query = select(ScrapTaskRecord).where(and_(*conditions)).order_by(ScrapTaskRecord.created_at.desc()).offset(offset).limit(page_size)
         result = await db.execute(query)
         records = result.scalars().all()
         return list(records), total
@@ -102,9 +95,7 @@ class ScrapTaskService:
     @staticmethod
     async def get_task(db: AsyncSession, task_id: str, user_id: UUID) -> ScrapTaskRecord | None:
         """Get single task by task_id string, scoped to user."""
-        query = select(ScrapTaskRecord).where(
-            and_(ScrapTaskRecord.task_id == task_id, ScrapTaskRecord.user_id == user_id)
-        )
+        query = select(ScrapTaskRecord).where(and_(ScrapTaskRecord.task_id == task_id, ScrapTaskRecord.user_id == user_id))
         result = await db.execute(query)
         return result.scalar_one_or_none()
 

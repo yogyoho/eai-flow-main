@@ -35,8 +35,6 @@ from deerflow.runtime import RunManager
 from deerflow.runtime.checkpoint_mode import checkpoint_metadata_uses_delta, inject_checkpoint_mode
 from deerflow.runtime.runs.store.memory import MemoryRunStore
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI gateway checkpoint delta-mode behavior differs (EAI-CUSTOM skip 2026-08-15)")
 
 

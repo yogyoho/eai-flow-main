@@ -3,7 +3,7 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.jwt import hash_password, verify_password
@@ -55,8 +55,9 @@ class UserService:
         include_deleted: bool = False,
     ) -> tuple[list[User], int]:
         """List users with filters and optional keyword search."""
-        query = select(User).where(User.is_deleted == False if not include_deleted else True)
-        count_query = select(func.count(User.id)).where(User.is_deleted == False if not include_deleted else True)
+        not_deleted = User.is_deleted.is_(False)
+        query = select(User).where(not_deleted if not include_deleted else true())
+        count_query = select(func.count(User.id)).where(not_deleted if not include_deleted else true())
 
         if keyword:
             keyword_filter = or_(
@@ -100,8 +101,8 @@ class UserService:
         status: str | None = None,
     ) -> tuple[list[User], int]:
         """Search users by keyword (username, email, full_name)."""
-        query = select(User).where(User.is_deleted == False)
-        count_query = select(func.count(User.id)).where(User.is_deleted == False)
+        query = select(User).where(User.is_deleted.is_(False))
+        count_query = select(func.count(User.id)).where(User.is_deleted.is_(False))
 
         if keyword:
             keyword_filter = or_(

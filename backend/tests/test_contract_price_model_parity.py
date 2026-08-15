@@ -28,9 +28,7 @@ from app.extensions.contract_price import models as ext_models
 
 # backend/tests/<file> -> repo root (host: repo root; container: /app)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_SKILL_MODELS = (
-    _REPO_ROOT / "skills" / "custom" / "contract-price-analysis" / "scripts" / "models.py"
-)
+_SKILL_MODELS = _REPO_ROOT / "skills" / "custom" / "contract-price-analysis" / "scripts" / "models.py"
 
 # tablename -> class attribute name on BOTH model modules
 _TABLES: dict[str, str] = {
@@ -70,11 +68,7 @@ def test_cpa_models_in_sync_with_skill_mirror() -> None:
         if ext_cols != skill_cols:
             ext_only = sorted(set(ext_cols) - set(skill_cols))
             skill_only = sorted(set(skill_cols) - set(ext_cols))
-            drift.append(
-                f"\n  [{table_name}]\n"
-                f"    extension-only: {ext_only}\n"
-                f"    skill-only:     {skill_only}"
-            )
+            drift.append(f"\n  [{table_name}]\n    extension-only: {ext_only}\n    skill-only:     {skill_only}")
 
     assert not drift, (
         "cpa_ model drift between the Gateway extension "

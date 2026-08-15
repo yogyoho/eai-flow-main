@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from _router_auth_helpers import make_authed_test_app
 from _run_message_pagination_helpers import assert_run_message_page
 from fastapi.testclient import TestClient
@@ -12,8 +13,6 @@ from fastapi.testclient import TestClient
 from app.gateway.routers import thread_runs
 from deerflow.runtime import END_SENTINEL, MemoryStreamBridge, RunManager
 from deerflow.runtime.runs.store.memory import MemoryRunStore
-
-import pytest
 
 pytestmark = pytest.mark.skip(reason="EAI thread run messages pagination differs (EAI-CUSTOM skip 2026-08-15)")
 

@@ -60,10 +60,7 @@ async def _create_engine_with_retry(max_retries: int = 5, delay: float = 1.0):
                 return engine
             except (TimeoutError, Exception) as e:
                 last_error = e
-                logger.warning(
-                    "Database engine created but connection test failed (attempt %d/%d): %s",
-                    attempt + 1, max_retries, e
-                )
+                logger.warning("Database engine created but connection test failed (attempt %d/%d): %s", attempt + 1, max_retries, e)
                 await engine.dispose()
                 if attempt < max_retries - 1:
                     await asyncio.sleep(delay * (attempt + 1))
@@ -71,10 +68,7 @@ async def _create_engine_with_retry(max_retries: int = 5, delay: float = 1.0):
                     raise
         except (ConnectionRefusedError, OSError, asyncpg.exceptions.PostgresConnectionError) as e:
             last_error = e
-            logger.warning(
-                "Failed to create database engine (attempt %d/%d): %s",
-                attempt + 1, max_retries, e
-            )
+            logger.warning("Failed to create database engine (attempt %d/%d): %s", attempt + 1, max_retries, e)
             if attempt < max_retries - 1:
                 await asyncio.sleep(delay * (attempt + 1))
         except Exception as e:
@@ -121,9 +115,7 @@ def get_engine():
     """Get or create the async engine (synchronous)."""
     global _engine
     if _engine is None:
-        raise RuntimeError(
-            "Database engine not initialized. Call init_engine() first."
-        )
+        raise RuntimeError("Database engine not initialized. Call init_engine() first.")
     return _engine
 
 
@@ -131,9 +123,7 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     """Get or create the session factory."""
     global _session_factory
     if _session_factory is None:
-        raise RuntimeError(
-            "Session factory not initialized. Call init_engine() first."
-        )
+        raise RuntimeError("Session factory not initialized. Call init_engine() first.")
     return _session_factory
 
 
@@ -213,67 +203,35 @@ async def migrate_db() -> None:
         await init_engine()
     engine = get_engine()
     async with engine.begin() as conn:
-        await conn.execute(
-            text(
-                "ALTER TABLE departments ADD COLUMN IF NOT EXISTS "
-                "description VARCHAR(1000)"
-            )
-        )
+        await conn.execute(text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS description VARCHAR(1000)"))
 
         # === RBAC Enhancement Migration ===
         # 1. Add columns to roles table
-        await conn.execute(
-            text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 10")
-        )
-        await conn.execute(
-            text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS parent_role_id UUID REFERENCES roles(id)")
-        )
-        await conn.execute(
-            text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()")
-        )
+        await conn.execute(text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS level INTEGER DEFAULT 10"))
+        await conn.execute(text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS parent_role_id UUID REFERENCES roles(id)"))
+        await conn.execute(text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP NOT NULL DEFAULT NOW()"))
         # EAI-CUSTOM (标签池 A): 用户显式标签列
-        await conn.execute(
-            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS tags VARCHAR[]")
-        )
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS tags VARCHAR[]"))
         # 收口早前 TEXT[] 版建的列（幂等:VARCHAR[]→VARCHAR[] 为 no-op）
-        await conn.execute(
-            text("ALTER TABLE users ALTER COLUMN tags TYPE VARCHAR[] USING tags::varchar[]")
-        )
+        await conn.execute(text("ALTER TABLE users ALTER COLUMN tags TYPE VARCHAR[] USING tags::varchar[]"))
         # EAI-CUSTOM: module nav visibility
-        await conn.execute(
-            text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS nav VARCHAR(200)[] DEFAULT '{}'")
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_roles_parent_role_id ON roles(parent_role_id)")
-        )
+        await conn.execute(text("ALTER TABLE roles ADD COLUMN IF NOT EXISTS nav VARCHAR(200)[] DEFAULT '{}'"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_roles_parent_role_id ON roles(parent_role_id)"))
 
         # 2. Add columns to users table
-        await conn.execute(
-            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)")
-        )
-        await conn.execute(
-            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS emp_no VARCHAR(50)")
-        )
-        await conn.execute(
-            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hire_date DATE")
-        )
-        await conn.execute(
-            text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE")
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_users_is_deleted ON users(is_deleted)")
-        )
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(20)"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS emp_no VARCHAR(50)"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS hire_date DATE"))
+        await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_users_is_deleted ON users(is_deleted)"))
 
         # 3. Add columns to departments table
-        await conn.execute(
-            text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS code VARCHAR(50)")
-        )
-        await conn.execute(
-            text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'")
-        )
+        await conn.execute(text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS code VARCHAR(50)"))
+        await conn.execute(text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'active'"))
 
         # 4. Create user_departments association table
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS user_departments (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -282,59 +240,41 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP DEFAULT NOW(),
                 UNIQUE(user_id, dept_id)
             )
-        """))
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_user_departments_user_id ON user_departments(user_id)")
+        """)
         )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_user_departments_dept_id ON user_departments(dept_id)")
-        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_departments_user_id ON user_departments(user_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_departments_dept_id ON user_departments(dept_id)"))
 
         # 5. Migrate existing data: copy dept_id to user_departments as primary
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             INSERT INTO user_departments (id, user_id, dept_id, is_primary, created_at)
             SELECT gen_random_uuid(), id, dept_id, TRUE, NOW()
             FROM users WHERE dept_id IS NOT NULL
             ON CONFLICT (user_id, dept_id) DO NOTHING
-        """))
+        """)
+        )
 
         # 6. Initialize built-in role levels
-        await conn.execute(
-            text("UPDATE roles SET level = 100 WHERE code IN ('superadmin', 'super_admin')")
-        )
-        await conn.execute(
-            text("UPDATE roles SET level = 50 WHERE code IN ('admin', 'administrator')")
-        )
-        await conn.execute(
-            text("UPDATE roles SET level = 30 WHERE code = 'dept_manager'")
-        )
-        await conn.execute(
-            text("UPDATE roles SET level = 20 WHERE code = 'team_leader'")
-        )
-        await conn.execute(
-            text("UPDATE roles SET level = 10 WHERE code IN ('user', 'normal_user')")
-        )
-        await conn.execute(
-            text("UPDATE roles SET level = 1 WHERE code = 'guest'")
-        )
+        await conn.execute(text("UPDATE roles SET level = 100 WHERE code IN ('superadmin', 'super_admin')"))
+        await conn.execute(text("UPDATE roles SET level = 50 WHERE code IN ('admin', 'administrator')"))
+        await conn.execute(text("UPDATE roles SET level = 30 WHERE code = 'dept_manager'"))
+        await conn.execute(text("UPDATE roles SET level = 20 WHERE code = 'team_leader'"))
+        await conn.execute(text("UPDATE roles SET level = 10 WHERE code IN ('user', 'normal_user')"))
+        await conn.execute(text("UPDATE roles SET level = 1 WHERE code = 'guest'"))
         # Default level for any roles not matching above
-        await conn.execute(
-            text("UPDATE roles SET level = 10 WHERE level IS NULL OR level = 0")
-        )
+        await conn.execute(text("UPDATE roles SET level = 10 WHERE level IS NULL OR level = 0"))
         # === End RBAC Enhancement Migration ===
 
         # === Collab Version snapshot_text Migration ===
-        await conn.execute(
-            text("ALTER TABLE collab_versions ADD COLUMN IF NOT EXISTS snapshot_text TEXT")
-        )
+        await conn.execute(text("ALTER TABLE collab_versions ADD COLUMN IF NOT EXISTS snapshot_text TEXT"))
 
         # === Phase-scoped Chapter Access Migration ===
-        await conn.execute(
-            text("ALTER TABLE project_chapters ADD COLUMN IF NOT EXISTS phase_node VARCHAR(100)")
-        )
+        await conn.execute(text("ALTER TABLE project_chapters ADD COLUMN IF NOT EXISTS phase_node VARCHAR(100)"))
 
         # === Activity Log Migration ===
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS activity_logs (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
@@ -345,16 +285,14 @@ async def migrate_db() -> None:
                 detail TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_activity_logs_project ON activity_logs(project_id)")
+        """)
         )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC)")
-        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_activity_logs_project ON activity_logs(project_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_activity_logs_created ON activity_logs(created_at DESC)"))
 
         # Create ai_documents table if not exists (for existing deployments)
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS ai_documents (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id),
@@ -368,16 +306,14 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_ai_documents_user_id ON ai_documents(user_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_ai_documents_source_thread_id ON ai_documents(source_thread_id)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_documents_user_id ON ai_documents(user_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_documents_source_thread_id ON ai_documents(source_thread_id)"))
 
         # Create user_memories table for per-user memory isolation
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS user_memories (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -387,31 +323,16 @@ async def migrate_db() -> None:
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 UNIQUE(user_id)
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_user_memories_user_id ON user_memories(user_id)"
-        ))
-        await conn.execute(
-            text(
-                "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS "
-                "kb_type VARCHAR(50) NOT NULL DEFAULT 'ragflow'"
-            )
+        """)
         )
-        await conn.execute(
-            text(
-                "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS "
-                "parser_config JSON DEFAULT NULL"
-            )
-        )
-        await conn.execute(
-            text(
-                "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS "
-                "language VARCHAR(20) DEFAULT 'Chinese'"
-            )
-        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_user_memories_user_id ON user_memories(user_id)"))
+        await conn.execute(text("ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS kb_type VARCHAR(50) NOT NULL DEFAULT 'ragflow'"))
+        await conn.execute(text("ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS parser_config JSON DEFAULT NULL"))
+        await conn.execute(text("ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS language VARCHAR(20) DEFAULT 'Chinese'"))
 
         # Create scrap_drafts table for web scraper
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS scrap_drafts (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id),
@@ -432,16 +353,14 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_drafts_user_id ON scrap_drafts(user_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_drafts_status ON scrap_drafts(status)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_drafts_user_id ON scrap_drafts(user_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_drafts_status ON scrap_drafts(status)"))
 
         # Create scrap_tasks table for task history persistence
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS scrap_tasks (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id),
@@ -464,22 +383,16 @@ async def migrate_db() -> None:
                 started_at TIMESTAMPTZ,
                 completed_at TIMESTAMPTZ
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_user_id ON scrap_tasks(user_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_task_id ON scrap_tasks(task_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_status ON scrap_tasks(status)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_tasks_created_at ON scrap_tasks(created_at)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_tasks_user_id ON scrap_tasks(user_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_tasks_task_id ON scrap_tasks(task_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_tasks_status ON scrap_tasks(status)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_tasks_created_at ON scrap_tasks(created_at)"))
 
         # Create scrap_sources table for data source management
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS scrap_sources (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id),
@@ -497,16 +410,14 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_sources_user_id ON scrap_sources(user_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_scrap_sources_category ON scrap_sources(category)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_sources_user_id ON scrap_sources(user_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_scrap_sources_category ON scrap_sources(category)"))
 
         # --- Knowledge Factory: business dictionaries ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS business_dictionaries (
                 id VARCHAR(100) PRIMARY KEY,
                 category VARCHAR(50) NOT NULL,
@@ -515,13 +426,13 @@ async def migrate_db() -> None:
                 enabled BOOLEAN NOT NULL DEFAULT TRUE,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_bd_category ON business_dictionaries(category)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_bd_category ON business_dictionaries(category)"))
 
         # --- Knowledge Factory: extraction domains ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS extraction_domains (
                 id VARCHAR(100) PRIMARY KEY,
                 name VARCHAR(200) NOT NULL,
@@ -530,17 +441,15 @@ async def migrate_db() -> None:
                 standard_chapters JSONB,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
 
-        await conn.execute(text(
-            "ALTER TABLE extraction_domains ADD COLUMN IF NOT EXISTS industry VARCHAR(100)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE extraction_domains ADD COLUMN IF NOT EXISTS report_type VARCHAR(100)"
-        ))
+        await conn.execute(text("ALTER TABLE extraction_domains ADD COLUMN IF NOT EXISTS industry VARCHAR(100)"))
+        await conn.execute(text("ALTER TABLE extraction_domains ADD COLUMN IF NOT EXISTS report_type VARCHAR(100)"))
 
         # --- Knowledge Factory: extraction templates ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS extraction_templates (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 domain VARCHAR(100) NOT NULL,
@@ -557,16 +466,14 @@ async def migrate_db() -> None:
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE(domain, name, version)
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_extraction_templates_domain ON extraction_templates(domain)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_extraction_templates_status ON extraction_templates(status)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extraction_templates_domain ON extraction_templates(domain)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extraction_templates_status ON extraction_templates(status)"))
 
         # --- Knowledge Factory: template versions ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS extraction_template_versions (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 template_id UUID REFERENCES extraction_templates(id) ON DELETE CASCADE,
@@ -576,10 +483,12 @@ async def migrate_db() -> None:
                 published_by UUID REFERENCES users(id),
                 published_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
 
         # --- Knowledge Factory: extraction tasks ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS extraction_tasks (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 domain VARCHAR(100),
@@ -597,22 +506,16 @@ async def migrate_db() -> None:
                 started_at TIMESTAMPTZ,
                 completed_at TIMESTAMPTZ
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_extraction_tasks_status ON extraction_tasks(status)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_extraction_tasks_created_by ON extraction_tasks(created_by)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE extraction_tasks ADD COLUMN IF NOT EXISTS industry VARCHAR(100)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE extraction_tasks ADD COLUMN IF NOT EXISTS report_type VARCHAR(100)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extraction_tasks_status ON extraction_tasks(status)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_extraction_tasks_created_by ON extraction_tasks(created_by)"))
+        await conn.execute(text("ALTER TABLE extraction_tasks ADD COLUMN IF NOT EXISTS industry VARCHAR(100)"))
+        await conn.execute(text("ALTER TABLE extraction_tasks ADD COLUMN IF NOT EXISTS report_type VARCHAR(100)"))
 
         # --- Knowledge Factory: template sections ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS template_sections (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 template_id UUID REFERENCES extraction_templates(id) ON DELETE CASCADE,
@@ -630,16 +533,14 @@ async def migrate_db() -> None:
                 completeness_score INT,
                 UNIQUE(template_id, section_id)
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_template_sections_template ON template_sections(template_id)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE template_sections ADD COLUMN IF NOT EXISTS full_section_example TEXT"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_template_sections_template ON template_sections(template_id)"))
+        await conn.execute(text("ALTER TABLE template_sections ADD COLUMN IF NOT EXISTS full_section_example TEXT"))
 
         # --- Laws: regulations and standards ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS laws (
                 id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
                 title VARCHAR(500) NOT NULL,
@@ -661,22 +562,16 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_laws_title ON laws(title)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_laws_law_number ON laws(law_number)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_laws_law_type ON laws(law_type)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_laws_status ON laws(status)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_laws_title ON laws(title)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_laws_law_number ON laws(law_number)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_laws_law_type ON laws(law_type)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_laws_status ON laws(status)"))
 
         # --- Knowledge Factory: compliance rules ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS compliance_rules (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 rule_id VARCHAR(50) NOT NULL UNIQUE,
@@ -702,22 +597,16 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_compliance_rules_rule_id ON compliance_rules(rule_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_compliance_rules_type ON compliance_rules(type)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_compliance_rules_severity ON compliance_rules(severity)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_compliance_rules_industry ON compliance_rules(industry)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_compliance_rules_rule_id ON compliance_rules(rule_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_compliance_rules_type ON compliance_rules(type)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_compliance_rules_severity ON compliance_rules(severity)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_compliance_rules_industry ON compliance_rules(industry)"))
 
         # --- Knowledge Factory: compliance rule logs ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS compliance_rule_logs (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 rule_id UUID NOT NULL REFERENCES compliance_rules(id) ON DELETE CASCADE,
@@ -729,19 +618,15 @@ async def migrate_db() -> None:
                 executed_by UUID REFERENCES users(id),
                 executed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_compliance_rule_logs_rule ON compliance_rule_logs(rule_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_compliance_rule_logs_thread ON compliance_rule_logs(thread_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_compliance_rule_logs_document ON compliance_rule_logs(document_id)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_compliance_rule_logs_rule ON compliance_rule_logs(rule_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_compliance_rule_logs_thread ON compliance_rule_logs(thread_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_compliance_rule_logs_document ON compliance_rule_logs(document_id)"))
 
         # --- Laws: template relations ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS law_template_relations (
                 id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::varchar,
                 law_id VARCHAR(36) NOT NULL REFERENCES laws(id) ON DELETE CASCADE,
@@ -750,13 +635,10 @@ async def migrate_db() -> None:
                 notes TEXT,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_law_template_relations_law ON law_template_relations(law_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_law_template_relations_template ON law_template_relations(template_id)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_law_template_relations_law ON law_template_relations(law_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_law_template_relations_template ON law_template_relations(template_id)"))
 
         # --- AIDocument: doc_type and file reference fields ---
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS doc_type VARCHAR(20) DEFAULT 'document' NOT NULL"))
@@ -769,16 +651,19 @@ async def migrate_db() -> None:
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_documents_project_id ON ai_documents(project_id)"))
 
         # --- System configuration table ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS system_config (
                 key VARCHAR(100) PRIMARY KEY,
                 value TEXT NOT NULL DEFAULT '',
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
 
         # --- Document shares table ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS document_shares (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 document_id UUID NOT NULL REFERENCES ai_documents(id) ON DELETE CASCADE,
@@ -789,19 +674,15 @@ async def migrate_db() -> None:
                 created_by UUID NOT NULL REFERENCES users(id),
                 created_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_document_shares_document_id ON document_shares(document_id)")
+        """)
         )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_document_shares_share_token ON document_shares(share_token)")
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_document_shares_created_by ON document_shares(created_by)")
-        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_document_shares_document_id ON document_shares(document_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_document_shares_share_token ON document_shares(share_token)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_document_shares_created_by ON document_shares(created_by)"))
 
         # --- Report Project Management ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS report_projects (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(255) NOT NULL,
@@ -815,15 +696,13 @@ async def migrate_db() -> None:
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 CONSTRAINT ck_report_projects_status CHECK (status IN ('draft','in_review','approved'))
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_report_projects_status ON report_projects(status)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_report_projects_created_by ON report_projects(created_by)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_report_projects_status ON report_projects(status)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_report_projects_created_by ON report_projects(created_by)"))
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS project_chapters (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
@@ -842,18 +721,14 @@ async def migrate_db() -> None:
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 CONSTRAINT ck_project_chapters_status CHECK (status IN ('pending','draft','reviewing','approved'))
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_project_chapters_project ON project_chapters(project_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_project_chapters_parent ON project_chapters(parent_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_project_chapters_status ON project_chapters(status)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_project_chapters_project ON project_chapters(project_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_project_chapters_parent ON project_chapters(parent_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_project_chapters_status ON project_chapters(status)"))
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS project_members (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
@@ -862,15 +737,13 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 UNIQUE(project_id, user_id)
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_project_members_project ON project_members(project_id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_project_members_user ON project_members(user_id)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_project_members_project ON project_members(project_id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_project_members_user ON project_members(user_id)"))
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS approval_workflows (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
@@ -881,16 +754,14 @@ async def migrate_db() -> None:
                 status VARCHAR(20) NOT NULL DEFAULT 'pending',
                 created_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_approval_workflows_project ON approval_workflows(project_id)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_approval_workflows_project ON approval_workflows(project_id)"))
         # Add reviewer_id column if missing (migration for existing DBs)
-        await conn.execute(text(
-            "ALTER TABLE approval_workflows ADD COLUMN IF NOT EXISTS reviewer_id UUID REFERENCES users(id)"
-        ))
+        await conn.execute(text("ALTER TABLE approval_workflows ADD COLUMN IF NOT EXISTS reviewer_id UUID REFERENCES users(id)"))
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS approval_records (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 workflow_id UUID NOT NULL REFERENCES approval_workflows(id) ON DELETE CASCADE,
@@ -900,13 +771,13 @@ async def migrate_db() -> None:
                 comment TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS idx_approval_records_workflow ON approval_records(workflow_id)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_approval_records_workflow ON approval_records(workflow_id)"))
 
         # --- Folders table for document organization ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS folders (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(255) NOT NULL,
@@ -918,7 +789,8 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_folders_project_id ON folders(project_id)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_folders_parent_id ON folders(parent_id)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_folders_owner_id ON folders(owner_id)"))
@@ -928,18 +800,23 @@ async def migrate_db() -> None:
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_ai_documents_folder_id ON ai_documents(folder_id)"))
 
         # --- AIDocument: chapter_id FK to project_chapters table ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             ALTER TABLE ai_documents
             ADD COLUMN IF NOT EXISTS chapter_id UUID
             REFERENCES project_chapters(id) ON DELETE SET NULL
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             CREATE INDEX IF NOT EXISTS idx_ai_documents_chapter_id
             ON ai_documents(chapter_id)
-        """))
+        """)
+        )
 
         # --- Collaborative editing tables ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_documents (
                 doc_id UUID PRIMARY KEY REFERENCES ai_documents(id) ON DELETE CASCADE,
                 yjs_doc BYTEA NOT NULL,
@@ -947,9 +824,11 @@ async def migrate_db() -> None:
                 last_editor_id UUID REFERENCES users(id),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_updates (
                 id BIGSERIAL PRIMARY KEY,
                 doc_id UUID NOT NULL REFERENCES collab_documents(doc_id) ON DELETE CASCADE,
@@ -958,10 +837,12 @@ async def migrate_db() -> None:
                 version INTEGER NOT NULL,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_updates_doc_version ON collab_updates(doc_id, version)"))
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_versions (
                 id BIGSERIAL PRIMARY KEY,
                 doc_id UUID NOT NULL REFERENCES ai_documents(id) ON DELETE CASCADE,
@@ -972,10 +853,12 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 UNIQUE(doc_id, version)
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_versions_doc ON collab_versions(doc_id, version DESC)"))
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_comments (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 doc_id UUID NOT NULL REFERENCES ai_documents(id) ON DELETE CASCADE,
@@ -987,96 +870,81 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_comments_doc_block ON collab_comments(doc_id, block_id)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_comments_parent ON collab_comments(parent_id)"))
 
         # --- Workflow engine tables ---
-        await conn.execute(text(
-            "CREATE TABLE IF NOT EXISTS workflow_definitions ("
-            "  id UUID PRIMARY KEY,"
-            "  name VARCHAR(200) NOT NULL,"
-            "  report_type VARCHAR(50),"
-            "  graph_json JSONB NOT NULL,"
-            "  is_template BOOLEAN NOT NULL DEFAULT FALSE,"
-            "  created_by UUID REFERENCES users(id),"
-            "  created_at TIMESTAMP NOT NULL DEFAULT NOW(),"
-            "  updated_at TIMESTAMP NOT NULL DEFAULT NOW()"
-            ")"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS workflow_id UUID REFERENCES workflow_definitions(id)"
-        ))
+        await conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS workflow_definitions ("
+                "  id UUID PRIMARY KEY,"
+                "  name VARCHAR(200) NOT NULL,"
+                "  report_type VARCHAR(50),"
+                "  graph_json JSONB NOT NULL,"
+                "  is_template BOOLEAN NOT NULL DEFAULT FALSE,"
+                "  created_by UUID REFERENCES users(id),"
+                "  created_at TIMESTAMP NOT NULL DEFAULT NOW(),"
+                "  updated_at TIMESTAMP NOT NULL DEFAULT NOW()"
+                ")"
+            )
+        )
+        await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS workflow_id UUID REFERENCES workflow_definitions(id)"))
         # Fix FK constraint — change to ON DELETE SET NULL so deleting a workflow
         # definition doesn't fail when projects reference it.
-        await conn.execute(text(
-            "ALTER TABLE report_projects DROP CONSTRAINT IF EXISTS report_projects_workflow_id_fkey"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE report_projects ADD CONSTRAINT report_projects_workflow_id_fkey"
-            " FOREIGN KEY (workflow_id) REFERENCES workflow_definitions(id) ON DELETE SET NULL"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS temporal_workflow_id VARCHAR(100)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS current_phase_node VARCHAR(50)"
-        ))
+        await conn.execute(text("ALTER TABLE report_projects DROP CONSTRAINT IF EXISTS report_projects_workflow_id_fkey"))
+        await conn.execute(text("ALTER TABLE report_projects ADD CONSTRAINT report_projects_workflow_id_fkey FOREIGN KEY (workflow_id) REFERENCES workflow_definitions(id) ON DELETE SET NULL"))
+        await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS temporal_workflow_id VARCHAR(100)"))
+        await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS current_phase_node VARCHAR(50)"))
         # EAI-CUSTOM: 项目自由文本说明/要求字段(create_all 不 ALTER 已有表,须在此幂等加列)
-        await conn.execute(text(
-            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS description TEXT"
-        ))
+        await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS description TEXT"))
         # EAI-CUSTOM: 每-KB 检索配置 (top_k/similarity_threshold/vector_similarity_weight)
         # create_all 不 ALTER 已有表，须在此幂等加列（与 report_projects.description 同机制）
-        await conn.execute(text(
-            "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS retrieval_config JSON"
-        ))
+        await conn.execute(text("ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS retrieval_config JSON"))
         # EAI-CUSTOM: 分工策略(ADR 2026-08-10) — 章节进度区块在「人工修改确认」态按此渲染分工叠加层
-        await conn.execute(text(
-            "ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS assignment_strategy VARCHAR(20) NOT NULL DEFAULT 'by_chapter'"
-        ))
+        await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS assignment_strategy VARCHAR(20) NOT NULL DEFAULT 'by_chapter'"))
 
-        await conn.execute(text(
-            "CREATE TABLE IF NOT EXISTS content_sources ("
-            "  id UUID PRIMARY KEY,"
-            "  chapter_id UUID NOT NULL REFERENCES project_chapters(id),"
-            "  block_index INTEGER NOT NULL,"
-            "  source_type VARCHAR(30) NOT NULL,"
-            "  source_ref VARCHAR(500),"
-            "  snippet TEXT,"
-            "  confidence FLOAT,"
-            "  metadata JSONB,"
-            "  created_at TIMESTAMP NOT NULL DEFAULT NOW()"
-            ")"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_content_sources_chapter "
-            "ON content_sources (chapter_id, block_index)"
-        ))
+        await conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS content_sources ("
+                "  id UUID PRIMARY KEY,"
+                "  chapter_id UUID NOT NULL REFERENCES project_chapters(id),"
+                "  block_index INTEGER NOT NULL,"
+                "  source_type VARCHAR(30) NOT NULL,"
+                "  source_ref VARCHAR(500),"
+                "  snippet TEXT,"
+                "  confidence FLOAT,"
+                "  metadata JSONB,"
+                "  created_at TIMESTAMP NOT NULL DEFAULT NOW()"
+                ")"
+            )
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_content_sources_chapter ON content_sources (chapter_id, block_index)"))
 
         # phase_reviews
-        await conn.execute(text(
-            "CREATE TABLE IF NOT EXISTS phase_reviews ("
-            "  id UUID PRIMARY KEY,"
-            "  project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,"
-            "  phase_node VARCHAR(50) NOT NULL,"
-            "  chapter_id UUID REFERENCES project_chapters(id),"
-            "  reviewer_id UUID NOT NULL REFERENCES users(id),"
-            "  review_type VARCHAR(20) NOT NULL,"
-            "  dimension VARCHAR(50),"
-            "  status VARCHAR(20) NOT NULL DEFAULT 'pending',"
-            "  comment TEXT,"
-            "  created_at TIMESTAMP NOT NULL DEFAULT NOW(),"
-            "  updated_at TIMESTAMP NOT NULL DEFAULT NOW()"
-            ")"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_phase_reviews_project_phase "
-            "ON phase_reviews (project_id, phase_node)"
-        ))
+        await conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS phase_reviews ("
+                "  id UUID PRIMARY KEY,"
+                "  project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,"
+                "  phase_node VARCHAR(50) NOT NULL,"
+                "  chapter_id UUID REFERENCES project_chapters(id),"
+                "  reviewer_id UUID NOT NULL REFERENCES users(id),"
+                "  review_type VARCHAR(20) NOT NULL,"
+                "  dimension VARCHAR(50),"
+                "  status VARCHAR(20) NOT NULL DEFAULT 'pending',"
+                "  comment TEXT,"
+                "  created_at TIMESTAMP NOT NULL DEFAULT NOW(),"
+                "  updated_at TIMESTAMP NOT NULL DEFAULT NOW()"
+                ")"
+            )
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_phase_reviews_project_phase ON phase_reviews (project_id, phase_node)"))
 
         # === Review Context: ReviewAssignment (unified review model) ===
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS review_assignments (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES report_projects(id) ON DELETE CASCADE,
@@ -1091,42 +959,37 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT now(),
                 updated_at TIMESTAMP NOT NULL DEFAULT now()
             )
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             CREATE INDEX IF NOT EXISTS idx_review_assignments_project_phase
             ON review_assignments(project_id, phase_node)
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             CREATE INDEX IF NOT EXISTS idx_review_assignments_reviewer
             ON review_assignments(reviewer_id, status)
-        """))
+        """)
+        )
 
         # --- Extend Department with unit_type and metadata ---
-        await conn.execute(text(
-            "ALTER TABLE departments ADD COLUMN IF NOT EXISTS unit_type VARCHAR(20) NOT NULL DEFAULT 'internal'"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE departments ADD COLUMN IF NOT EXISTS metadata JSONB"
-        ))
+        await conn.execute(text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS unit_type VARCHAR(20) NOT NULL DEFAULT 'internal'"))
+        await conn.execute(text("ALTER TABLE departments ADD COLUMN IF NOT EXISTS metadata JSONB"))
 
         # --- Extend project_members with phase_duties and source_org_unit_id ---
-        await conn.execute(text(
-            "ALTER TABLE project_members ADD COLUMN IF NOT EXISTS source_org_unit_id UUID REFERENCES departments(id)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE project_members ADD COLUMN IF NOT EXISTS phase_duties JSONB"
-        ))
+        await conn.execute(text("ALTER TABLE project_members ADD COLUMN IF NOT EXISTS source_org_unit_id UUID REFERENCES departments(id)"))
+        await conn.execute(text("ALTER TABLE project_members ADD COLUMN IF NOT EXISTS phase_duties JSONB"))
 
         # --- Add composite indexes for existing tables ---
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_content_sources_chapter_block "
-            "ON content_sources (chapter_id, block_index)"
-        ))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_content_sources_chapter_block ON content_sources (chapter_id, block_index)"))
 
         # --- Notifications table ---
 
         # --- Project timeline table ---
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS project_timeline (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES report_projects(id),
@@ -1140,12 +1003,12 @@ async def migrate_db() -> None:
                 progress_pct INTEGER NOT NULL DEFAULT 0,
                 owner_id UUID REFERENCES users(id)
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_project_timeline_project ON project_timeline(project_id, phase_node)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_project_timeline_project ON project_timeline(project_id, phase_node)"))
 
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS notifications (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id),
@@ -1157,13 +1020,13 @@ async def migrate_db() -> None:
                 is_read BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications(user_id, is_read, created_at DESC)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications(user_id, is_read, created_at DESC)"))
 
         # ── Notification Preferences ──
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS notification_preferences (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 user_id UUID NOT NULL REFERENCES users(id) UNIQUE,
@@ -1177,23 +1040,19 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_notification_prefs_user ON notification_preferences(user_id)"
-        ))
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_notification_prefs_user ON notification_preferences(user_id)"))
 
         # ── Index for deadline-based reminder queries ──
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_project_timeline_planned_end ON project_timeline(planned_end)"
-        ))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_project_timeline_planned_end ON project_timeline(planned_end)"))
 
         # ── Org bindings for workflow definitions ──
-        await conn.execute(text(
-            "ALTER TABLE workflow_definitions ADD COLUMN IF NOT EXISTS org_bindings JSONB"
-        ))
+        await conn.execute(text("ALTER TABLE workflow_definitions ADD COLUMN IF NOT EXISTS org_bindings JSONB"))
 
         # ── Layout templates for report output ──
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS layout_templates (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(200) NOT NULL,
@@ -1212,10 +1071,12 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
 
         # ── Role Permissions (unified RBAC) ──
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS role_permissions (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 role VARCHAR(50) NOT NULL,
@@ -1223,24 +1084,25 @@ async def migrate_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT now(),
                 UNIQUE(role, permission)
             )
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             CREATE INDEX IF NOT EXISTS idx_role_permissions_role
             ON role_permissions(role)
-        """))
+        """)
+        )
         # Bring existing (pre-current-schema) tables up to date: CREATE TABLE
         # IF NOT EXISTS won't alter them. Set the id default and ensure the
         # unique (role, permission) index exists.
-        await conn.execute(text(
-            "ALTER TABLE role_permissions ALTER COLUMN id SET DEFAULT gen_random_uuid()"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE role_permissions ALTER COLUMN created_at SET DEFAULT now()"
-        ))
-        await conn.execute(text("""
+        await conn.execute(text("ALTER TABLE role_permissions ALTER COLUMN id SET DEFAULT gen_random_uuid()"))
+        await conn.execute(text("ALTER TABLE role_permissions ALTER COLUMN created_at SET DEFAULT now()"))
+        await conn.execute(
+            text("""
             CREATE UNIQUE INDEX IF NOT EXISTS idx_role_permissions_role_permission
             ON role_permissions(role, permission)
-        """))
+        """)
+        )
 
         # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像
         from app.extensions.auth.registry import get_permission_registry
@@ -1249,57 +1111,34 @@ async def migrate_db() -> None:
 
         # data_sources.description column (Tier 1 agent awareness); idempotent —
         # create_all won't add columns to the pre-existing data_sources table.
-        await conn.execute(text(
-            "ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS description TEXT"
-        ))
+        await conn.execute(text("ALTER TABLE data_sources ADD COLUMN IF NOT EXISTS description TEXT"))
 
         # output: cover_master JSONB — create_all won't add columns to the pre-existing layout_templates table.
-        await conn.execute(text(
-            "ALTER TABLE layout_templates ADD COLUMN IF NOT EXISTS cover_master JSONB"
-        ))
+        await conn.execute(text("ALTER TABLE layout_templates ADD COLUMN IF NOT EXISTS cover_master JSONB"))
         # output: cover_elements JSONB — Task 4 cover-elements persistence (same rationale as cover_master).
-        await conn.execute(text(
-            "ALTER TABLE layout_templates ADD COLUMN IF NOT EXISTS cover_elements JSONB"
-        ))
+        await conn.execute(text("ALTER TABLE layout_templates ADD COLUMN IF NOT EXISTS cover_elements JSONB"))
 
         # contract-price (cpa): project-level fields extracted from front-page
         # OCR text. Idempotent — create_all won't add columns to the pre-existing
         # cpa_documents table (populated by earlier pipeline runs).
-        await conn.execute(text(
-            "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_name VARCHAR(300)"
-        ))
-        await conn.execute(text(
-            "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_location VARCHAR(300)"
-        ))
+        await conn.execute(text("ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_name VARCHAR(300)"))
+        await conn.execute(text("ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_location VARCHAR(300)"))
         # T5 two-phase confirm gate: pending→confirmed|skipped→clustered.
-        await conn.execute(text(
-            "ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS confirm_status VARCHAR(20) DEFAULT 'pending'"
-        ))
+        await conn.execute(text("ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS confirm_status VARCHAR(20) DEFAULT 'pending'"))
         # T8 observable progress: {total,done,failed,phase} updated per-doc by the cli.
-        await conn.execute(text(
-            "ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS progress JSONB"
-        ))
+        await conn.execute(text("ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS progress JSONB"))
         # T10: human-readable task label (auto-derived from trigger_type + phase)
-        await conn.execute(text(
-            "ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS label VARCHAR(100)"
-        ))
+        await conn.execute(text("ALTER TABLE cpa_run_history ADD COLUMN IF NOT EXISTS label VARCHAR(100)"))
         # T9 task grouping: link items to the parse run that created them.
-        await conn.execute(text(
-            "ALTER TABLE cpa_items ADD COLUMN IF NOT EXISTS run_id UUID REFERENCES cpa_run_history(id)"
-        ))
-        await conn.execute(text(
-            "CREATE INDEX IF NOT EXISTS ix_cpa_items_run_id ON cpa_items(run_id)"
-        ))
+        await conn.execute(text("ALTER TABLE cpa_items ADD COLUMN IF NOT EXISTS run_id UUID REFERENCES cpa_run_history(id)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_cpa_items_run_id ON cpa_items(run_id)"))
         # backfill: docs already through the legacy single-phase pipeline
         # (have clustered items) are 'clustered'; others stay 'pending'.
-        await conn.execute(text(
-            "UPDATE cpa_documents SET confirm_status='clustered' "
-            "WHERE confirm_status='pending' AND id IN ("
-            "SELECT DISTINCT document_id FROM cpa_items WHERE cluster_id IS NOT NULL)"
-        ))
+        await conn.execute(text("UPDATE cpa_documents SET confirm_status='clustered' WHERE confirm_status='pending' AND id IN (SELECT DISTINCT document_id FROM cpa_items WHERE cluster_id IS NOT NULL)"))
 
         # === App-Center: domain labels & app definitions ===
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS app_domains (
                 key VARCHAR(50) PRIMARY KEY,
                 label VARCHAR(100) NOT NULL,
@@ -1309,8 +1148,10 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS app_definitions (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 app_id VARCHAR(100) UNIQUE NOT NULL,
@@ -1329,7 +1170,8 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
 
         # App-center: 把历史中文 domain key 统一为英文 key。
         # 外键约束（app_definitions.business_domain → app_domains.key）在 Postgres 默认
@@ -1340,28 +1182,25 @@ async def migrate_db() -> None:
             ("知识管理", "knowledge"),
             ("采购管理", "procurement"),
         ]:
-            await conn.execute(text(
-                "INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal, created_at, updated_at) "
-                "SELECT :new, label, accent_color, sort_order, is_universal, created_at, updated_at "
-                "FROM app_domains WHERE key = :old "
-                "ON CONFLICT (key) DO NOTHING"
-            ), {"new": new_key, "old": old_key})
-            await conn.execute(text(
-                "UPDATE app_definitions SET business_domain = :new WHERE business_domain = :old"
-            ), {"new": new_key, "old": old_key})
-            await conn.execute(text(
-                "DELETE FROM app_domains WHERE key = :old"
-            ), {"old": old_key})
+            await conn.execute(
+                text(
+                    "INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal, created_at, updated_at) "
+                    "SELECT :new, label, accent_color, sort_order, is_universal, created_at, updated_at "
+                    "FROM app_domains WHERE key = :old "
+                    "ON CONFLICT (key) DO NOTHING"
+                ),
+                {"new": new_key, "old": old_key},
+            )
+            await conn.execute(text("UPDATE app_definitions SET business_domain = :new WHERE business_domain = :old"), {"new": new_key, "old": old_key})
+            await conn.execute(text("DELETE FROM app_domains WHERE key = :old"), {"old": old_key})
 
         # 修正内置管理类应用的 admin_only 标记（历史 seed 绑定问题导致全为 false，
         # 且 ON CONFLICT DO NOTHING 不会修正已存在行）。幂等。
-        await conn.execute(text(
-            "UPDATE app_definitions SET admin_only = TRUE "
-            "WHERE app_id IN ('admin', 'workflow-admin')"
-        ))
+        await conn.execute(text("UPDATE app_definitions SET admin_only = TRUE WHERE app_id IN ('admin', 'workflow-admin')"))
 
         # ── ABAC policies table ──
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS policies (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(200) NOT NULL,
@@ -1372,7 +1211,8 @@ async def migrate_db() -> None:
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
 
         # ── EAI-CUSTOM: single-state consolidation (ADR 2026-08-02) ──
         # Backfill legacy statuses to the canonical set, PRESERVING canonical values
@@ -1382,12 +1222,15 @@ async def migrate_db() -> None:
         await conn.execute(text("ALTER TABLE report_projects ADD COLUMN IF NOT EXISTS archived_at TIMESTAMP"))
         # Legacy archived rows: the pre-archive status is unrecoverable ('archived'
         # overwrote it), so assign 'approved' + archived_at from the row timestamp.
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             UPDATE report_projects SET status = 'approved',
                 archived_at = COALESCE(updated_at, created_at)
             WHERE status = 'archived'
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             UPDATE report_projects SET status = CASE status
                 WHEN 'draft'      THEN 'draft'
                 WHEN 'in_review'  THEN 'in_review'
@@ -1396,8 +1239,10 @@ async def migrate_db() -> None:
                 WHEN 'approval'   THEN 'in_review'
                 ELSE 'draft'
             END
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             UPDATE project_chapters SET status = CASE status
                 WHEN 'pending'     THEN 'pending'
                 WHEN 'draft'       THEN 'draft'
@@ -1415,10 +1260,12 @@ async def migrate_db() -> None:
                 WHEN 'signed'      THEN 'approved'
                 ELSE 'draft'
             END
-        """))
+        """)
+        )
         # EAI-CUSTOM: converge ProjectMember.role to the canonical ProjectRole 5-value
         # taxonomy (ADR 2026-08-02 P5): manager/leader→phase_lead, editor/member→writer.
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             UPDATE project_members SET role = CASE role
                 WHEN 'manager' THEN 'phase_lead'
                 WHEN 'leader'  THEN 'phase_lead'
@@ -1426,8 +1273,10 @@ async def migrate_db() -> None:
                 WHEN 'member'  THEN 'writer'
                 ELSE role
             END
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             DO $$
             BEGIN
                 -- Project status spine is now {draft,in_review,approved}; drop the
@@ -1442,7 +1291,8 @@ async def migrate_db() -> None:
                         CHECK (status IN ('pending','draft','reviewing','approved'));
                 END IF;
             END $$;
-        """))
+        """)
+        )
         # EAI-CUSTOM: drop dead current_stage column (ADR 2026-08-02 P2). Stage is
         # derived, never stored; the column was never written by any backend code.
         # Idempotent (IF EXISTS) — no-op on fresh DBs created without the column.
@@ -1460,16 +1310,11 @@ async def _calibrate_roles_from_registry(conn, registry) -> None:
     for code in registry.list_role_codes():
         resolved = sorted(registry.resolve_role_permissions(code))
         defaults = registry.get_role_defaults(code) or {}
-        existing = await conn.execute(
-            text("SELECT id FROM roles WHERE code = :code LIMIT 1"), {"code": code}
-        )
+        existing = await conn.execute(text("SELECT id FROM roles WHERE code = :code LIMIT 1"), {"code": code})
         row = existing.fetchone()
         if row is None:
             await conn.execute(
-                text(
-                    "INSERT INTO roles (id, name, code, permissions, is_system, level, nav, created_at) "
-                    "VALUES (:id, :name, :code, :perms, :is_system, :level, :nav, NOW())"
-                ),
+                text("INSERT INTO roles (id, name, code, permissions, is_system, level, nav, created_at) VALUES (:id, :name, :code, :perms, :is_system, :level, :nav, NOW())"),
                 {
                     "id": str(uuid.uuid4()),
                     "name": defaults.get("display_name", code),
@@ -1482,10 +1327,7 @@ async def _calibrate_roles_from_registry(conn, registry) -> None:
             )
         else:
             await conn.execute(
-                text(
-                    "UPDATE roles SET name = :name, permissions = :perms, "
-                    "is_system = :is_system, level = :level, nav = :nav WHERE code = :code"
-                ),
+                text("UPDATE roles SET name = :name, permissions = :perms, is_system = :is_system, level = :level, nav = :nav WHERE code = :code"),
                 {
                     "name": defaults.get("display_name", code),
                     "code": code,
@@ -1500,11 +1342,7 @@ async def _calibrate_roles_from_registry(conn, registry) -> None:
     rows = (await conn.execute(text("SELECT id, code FROM roles"))).fetchall()
     for r in rows:
         if registry.is_role_disabled(r[1]):
-            cnt = (
-                await conn.execute(
-                    text("SELECT COUNT(*) FROM users WHERE role_id = :id"), {"id": r[0]}
-                )
-            ).scalar()
+            cnt = (await conn.execute(text("SELECT COUNT(*) FROM users WHERE role_id = :id"), {"id": r[0]})).scalar()
             if cnt == 0:
                 await conn.execute(text("DELETE FROM roles WHERE id = :id"), {"id": r[0]})
 
@@ -1551,13 +1389,9 @@ async def seed_db() -> None:
             await _calibrate_roles_from_registry(session, get_permission_registry())
 
             # Ensure admin user exists, bound to the superadmin role
-            admin_row = (await session.execute(
-                text("SELECT id FROM users WHERE username = 'admin' AND is_deleted = false LIMIT 1")
-            )).fetchone()
+            admin_row = (await session.execute(text("SELECT id FROM users WHERE username = 'admin' AND is_deleted = false LIMIT 1"))).fetchone()
             if admin_row is None:
-                super_row = (await session.execute(
-                    text("SELECT id FROM roles WHERE code = 'superadmin' LIMIT 1")
-                )).fetchone()
+                super_row = (await session.execute(text("SELECT id FROM roles WHERE code = 'superadmin' LIMIT 1"))).fetchone()
                 if super_row is None:
                     raise RuntimeError("superadmin role missing after calibration; check permissions.yaml")
                 user_id = str(uuid.uuid4())
@@ -1597,57 +1431,194 @@ async def seed_db() -> None:
                     {"key": "marketing", "label": "市场营销", "accent": "emerald", "sort": 5, "universal": False},
                 ]:
                     await session.execute(
-                        text(
-                            "INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal) "
-                            "VALUES (:key, :label, :accent, :sort, :universal) ON CONFLICT DO NOTHING"
-                        ),
+                        text("INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal) VALUES (:key, :label, :accent, :sort, :universal) ON CONFLICT DO NOTHING"),
                         domain,
                     )
 
                 # Apps (12 built-in)
                 apps = [
-                    {"app_id": "dashboard", "name": "工作台", "desc": "待办聚合与项目进度概览，开启高效的一天",
-                     "icon": "layout-dashboard", "domain": "universal", "stage": "overview",
-                     "path": "/dashboard", "license": "dashboard", "admin": False, "sort": 1, "sort_key": "gongzuotai"},
-                    {"app_id": "smart-writing", "name": "智能写作", "desc": "AI 辅助写作，从提纲到终稿全流程智能生成",
-                     "icon": "bot", "domain": "universal", "stage": "process",
-                     "path": "/writing", "license": "platform", "admin": False, "sort": 2, "sort_key": "zhinengxiezuo"},
-                    {"app_id": "projects", "name": "报告项目", "desc": "管理报告项目全生命周期，章节分配与审批跟踪",
-                     "icon": "clipboard-list", "domain": "report", "stage": "collaborate",
-                     "path": "/projects", "license": "project", "admin": False, "sort": 3, "sort_key": "baogaoxiangmu"},
-                    {"app_id": "docmgr", "name": "文档空间", "desc": "团队文档协作中心，多人实时编辑与版本管理",
-                     "icon": "folder-check", "domain": "universal", "stage": "collaborate",
-                     "path": "/docmgr", "license": "platform", "admin": False, "sort": 4, "sort_key": "wendangkongjian"},
-                    {"app_id": "knowledge-factory", "name": "知识工厂", "desc": "结构化知识生产流水线，从原始资料到可用知识库",
-                     "icon": "factory", "domain": "knowledge", "stage": "process",
-                     "path": "/knowledge-factory", "license": "platform", "admin": False, "sort": 5, "sort_key": "zhishigongchang"},
-                    {"app_id": "knowledge", "name": "知识库", "desc": "检索企业知识资产，RAG 增强问答与智能引用",
-                     "icon": "book-open", "domain": "knowledge", "stage": "retrieve",
-                     "path": "/knowledge", "license": "platform", "admin": False, "sort": 6, "sort_key": "zhishiku"},
-                    {"app_id": "output", "name": "报告输出", "desc": "一键生成多格式报告成果，模板化排版与导出",
-                     "icon": "file-output", "domain": "report", "stage": "output",
-                     "path": "/output", "license": "typography", "admin": False, "sort": 7, "sort_key": "baogaochushu"},
-                    {"app_id": "procurement", "name": "采购管理", "desc": "合同价格分析与采购分项管理，聚类归并与统计",
-                     "icon": "package-search", "domain": "procurement", "stage": "process",
-                     "path": "/contract-price", "license": "contract_price", "admin": False, "sort": 8, "sort_key": "caigouguanli"},
-                    {"app_id": "spare-parts", "name": "备品备件价格分析", "desc": "跨客户备品备件价格聚类与统计，OCR 解析与认领归并",
-                     "icon": "package-search", "domain": "procurement", "stage": "process",
-                     "path": "/spare-parts", "license": "spare_parts", "admin": False, "sort": 11, "sort_key": "beipinbeijian"},
-                    {"app_id": "bid-quote", "name": "投标报价分析", "desc": "投标中标率/报价对比/自产外购构成分析",
-                     "icon": "gavel", "domain": "marketing", "stage": "analysis",
-                     "path": "/bid-quote", "license": "bid_quote", "admin": False, "sort": 12, "sort_key": "toubiaobaojiafenxi"},
-                    {"app_id": "biz-pipeline", "name": "管线查询", "desc": "投标/合同/开票管线漏斗与对账",
-                     "icon": "workflow", "domain": "marketing", "stage": "analysis",
-                     "path": "/biz-pipeline", "license": "biz_pipeline", "admin": False, "sort": 13, "sort_key": "guanxianchaxun"},
-                    {"app_id": "sales-personnel", "name": "销售人员", "desc": "团队人员/考勤/差旅与报销状态分析",
-                     "icon": "users", "domain": "marketing", "stage": "analysis",
-                     "path": "/sales-personnel", "license": "sales_personnel", "admin": False, "sort": 14, "sort_key": "xiaoshourenyuan"},
-                    {"app_id": "admin", "name": "系统管理", "desc": "用户、角色、部门与权限的统一管理后台",
-                     "icon": "settings-2", "domain": "admin", "stage": "manage",
-                     "path": "/admin", "license": "platform", "admin": True, "sort": 9, "sort_key": "xitongguanli"},
-                    {"app_id": "workflow-admin", "name": "流程管理", "desc": "审批流程模板的设计、编辑与版本管理",
-                     "icon": "file-text", "domain": "universal", "stage": "manage",
-                     "path": "/workflow-admin", "license": "project", "admin": True, "sort": 10, "sort_key": "liuchengguanli"},
+                    {
+                        "app_id": "dashboard",
+                        "name": "工作台",
+                        "desc": "待办聚合与项目进度概览，开启高效的一天",
+                        "icon": "layout-dashboard",
+                        "domain": "universal",
+                        "stage": "overview",
+                        "path": "/dashboard",
+                        "license": "dashboard",
+                        "admin": False,
+                        "sort": 1,
+                        "sort_key": "gongzuotai",
+                    },
+                    {
+                        "app_id": "smart-writing",
+                        "name": "智能写作",
+                        "desc": "AI 辅助写作，从提纲到终稿全流程智能生成",
+                        "icon": "bot",
+                        "domain": "universal",
+                        "stage": "process",
+                        "path": "/writing",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 2,
+                        "sort_key": "zhinengxiezuo",
+                    },
+                    {
+                        "app_id": "projects",
+                        "name": "报告项目",
+                        "desc": "管理报告项目全生命周期，章节分配与审批跟踪",
+                        "icon": "clipboard-list",
+                        "domain": "report",
+                        "stage": "collaborate",
+                        "path": "/projects",
+                        "license": "project",
+                        "admin": False,
+                        "sort": 3,
+                        "sort_key": "baogaoxiangmu",
+                    },
+                    {
+                        "app_id": "docmgr",
+                        "name": "文档空间",
+                        "desc": "团队文档协作中心，多人实时编辑与版本管理",
+                        "icon": "folder-check",
+                        "domain": "universal",
+                        "stage": "collaborate",
+                        "path": "/docmgr",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 4,
+                        "sort_key": "wendangkongjian",
+                    },
+                    {
+                        "app_id": "knowledge-factory",
+                        "name": "知识工厂",
+                        "desc": "结构化知识生产流水线，从原始资料到可用知识库",
+                        "icon": "factory",
+                        "domain": "knowledge",
+                        "stage": "process",
+                        "path": "/knowledge-factory",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 5,
+                        "sort_key": "zhishigongchang",
+                    },
+                    {
+                        "app_id": "knowledge",
+                        "name": "知识库",
+                        "desc": "检索企业知识资产，RAG 增强问答与智能引用",
+                        "icon": "book-open",
+                        "domain": "knowledge",
+                        "stage": "retrieve",
+                        "path": "/knowledge",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 6,
+                        "sort_key": "zhishiku",
+                    },
+                    {
+                        "app_id": "output",
+                        "name": "报告输出",
+                        "desc": "一键生成多格式报告成果，模板化排版与导出",
+                        "icon": "file-output",
+                        "domain": "report",
+                        "stage": "output",
+                        "path": "/output",
+                        "license": "typography",
+                        "admin": False,
+                        "sort": 7,
+                        "sort_key": "baogaochushu",
+                    },
+                    {
+                        "app_id": "procurement",
+                        "name": "采购管理",
+                        "desc": "合同价格分析与采购分项管理，聚类归并与统计",
+                        "icon": "package-search",
+                        "domain": "procurement",
+                        "stage": "process",
+                        "path": "/contract-price",
+                        "license": "contract_price",
+                        "admin": False,
+                        "sort": 8,
+                        "sort_key": "caigouguanli",
+                    },
+                    {
+                        "app_id": "spare-parts",
+                        "name": "备品备件价格分析",
+                        "desc": "跨客户备品备件价格聚类与统计，OCR 解析与认领归并",
+                        "icon": "package-search",
+                        "domain": "procurement",
+                        "stage": "process",
+                        "path": "/spare-parts",
+                        "license": "spare_parts",
+                        "admin": False,
+                        "sort": 11,
+                        "sort_key": "beipinbeijian",
+                    },
+                    {
+                        "app_id": "bid-quote",
+                        "name": "投标报价分析",
+                        "desc": "投标中标率/报价对比/自产外购构成分析",
+                        "icon": "gavel",
+                        "domain": "marketing",
+                        "stage": "analysis",
+                        "path": "/bid-quote",
+                        "license": "bid_quote",
+                        "admin": False,
+                        "sort": 12,
+                        "sort_key": "toubiaobaojiafenxi",
+                    },
+                    {
+                        "app_id": "biz-pipeline",
+                        "name": "管线查询",
+                        "desc": "投标/合同/开票管线漏斗与对账",
+                        "icon": "workflow",
+                        "domain": "marketing",
+                        "stage": "analysis",
+                        "path": "/biz-pipeline",
+                        "license": "biz_pipeline",
+                        "admin": False,
+                        "sort": 13,
+                        "sort_key": "guanxianchaxun",
+                    },
+                    {
+                        "app_id": "sales-personnel",
+                        "name": "销售人员",
+                        "desc": "团队人员/考勤/差旅与报销状态分析",
+                        "icon": "users",
+                        "domain": "marketing",
+                        "stage": "analysis",
+                        "path": "/sales-personnel",
+                        "license": "sales_personnel",
+                        "admin": False,
+                        "sort": 14,
+                        "sort_key": "xiaoshourenyuan",
+                    },
+                    {
+                        "app_id": "admin",
+                        "name": "系统管理",
+                        "desc": "用户、角色、部门与权限的统一管理后台",
+                        "icon": "settings-2",
+                        "domain": "admin",
+                        "stage": "manage",
+                        "path": "/admin",
+                        "license": "platform",
+                        "admin": True,
+                        "sort": 9,
+                        "sort_key": "xitongguanli",
+                    },
+                    {
+                        "app_id": "workflow-admin",
+                        "name": "流程管理",
+                        "desc": "审批流程模板的设计、编辑与版本管理",
+                        "icon": "file-text",
+                        "domain": "universal",
+                        "stage": "manage",
+                        "path": "/workflow-admin",
+                        "license": "project",
+                        "admin": True,
+                        "sort": 10,
+                        "sort_key": "liuchengguanli",
+                    },
                 ]
                 for app in apps:
                     await session.execute(
@@ -1673,7 +1644,8 @@ async def seed_db() -> None:
 
     # ── Collab Workspace tables (EAI-CUSTOM: 完全独立模块，7 张 collab_* 表) ──
     async with engine.begin() as conn:
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_projects (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 name VARCHAR(255) NOT NULL,
@@ -1693,9 +1665,11 @@ async def seed_db() -> None:
                     (kind = 'quickdoc' AND doc_id IS NOT NULL) OR (kind = 'report')
                 )
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_projects_owner ON collab_projects(owner_id)"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_sections (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
@@ -1712,9 +1686,11 @@ async def seed_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_sections_project ON collab_sections(project_id)"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_members (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
@@ -1729,9 +1705,11 @@ async def seed_db() -> None:
                 ),
                 CONSTRAINT uq_collab_members_proj_type_id UNIQUE (project_id, member_type, user_id, agent_name)
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_members_project ON collab_members(project_id)"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_tasks (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
@@ -1761,19 +1739,23 @@ async def seed_db() -> None:
                     OR (assignee_type = 'agent' AND assignee_agent_name IS NOT NULL AND assignee_user_id IS NULL)
                 )
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_tasks_project ON collab_tasks(project_id)"))
         # EAI-CUSTOM: 放宽 ck_collab_tasks_assignee —— 允许未指派任务（assignee_type NULL）
         await conn.execute(text("ALTER TABLE collab_tasks ALTER COLUMN assignee_type DROP NOT NULL"))
         await conn.execute(text("ALTER TABLE collab_tasks DROP CONSTRAINT IF EXISTS ck_collab_tasks_assignee"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             ALTER TABLE collab_tasks ADD CONSTRAINT ck_collab_tasks_assignee CHECK (
                 assignee_type IS NULL
                 OR (assignee_type = 'human' AND assignee_user_id IS NOT NULL AND assignee_agent_name IS NULL)
                 OR (assignee_type = 'agent' AND assignee_agent_name IS NOT NULL AND assignee_user_id IS NULL)
             )
-        """))
-        await conn.execute(text("""
+        """)
+        )
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_gates (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
@@ -1792,9 +1774,11 @@ async def seed_db() -> None:
                 created_at TIMESTAMP NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_gates_project ON collab_gates(project_id)"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_agent_runs (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 task_id UUID REFERENCES collab_tasks(id) ON DELETE CASCADE,
@@ -1809,9 +1793,11 @@ async def seed_db() -> None:
                 started_at TIMESTAMP,
                 finished_at TIMESTAMP
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_agent_runs_project ON collab_agent_runs(project_id)"))
-        await conn.execute(text("""
+        await conn.execute(
+            text("""
             CREATE TABLE IF NOT EXISTS collab_activity (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                 project_id UUID NOT NULL REFERENCES collab_projects(id) ON DELETE CASCADE,
@@ -1822,6 +1808,7 @@ async def seed_db() -> None:
                 detail JSONB,
                 created_at TIMESTAMP NOT NULL DEFAULT NOW()
             )
-        """))
+        """)
+        )
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_collab_activity_project ON collab_activity(project_id)"))
         logger.info("Collab workspace tables ensured")

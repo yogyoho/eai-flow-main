@@ -146,6 +146,7 @@ class TemplateApprovalAction(BaseModel):
 
 class ReviewAssignmentCreate(BaseModel):
     """Create review assignments in bulk."""
+
     project_id: UUID
     phase_node: str
     assignments: list["ReviewAssignmentItem"] = Field(..., min_length=1)
@@ -160,6 +161,7 @@ class ReviewAssignmentItem(BaseModel):
 
 class ReviewActionRequest(BaseModel):
     """Submit an approve/reject action for a review."""
+
     action: str = Field(..., pattern=r"^(approved|rejected)$")
     comment: str | None = None
 
@@ -182,6 +184,7 @@ class PhaseReviewOut(BaseModel):
 
 class ReviewStatusResponse(BaseModel):
     """Aggregated review status for a phase node."""
+
     phase_node: str
     total: int = 0
     approved: int = 0
@@ -200,6 +203,7 @@ ReviewAssignmentCreate.model_rebuild()
 
 class WorkflowNodeStatus(BaseModel):
     """Status of a single workflow node."""
+
     node_id: str
     node_type: str
     label: str
@@ -216,6 +220,7 @@ class WorkflowNodeStatus(BaseModel):
 
 class WorkflowStatusResponse(BaseModel):
     """Full workflow execution status for a project."""
+
     project_id: UUID
     workflow_id: UUID | None = None
     temporal_workflow_id: str | None = None
@@ -228,5 +233,6 @@ class WorkflowStatusResponse(BaseModel):
 
 class WorkflowSignalRequest(BaseModel):
     """Send a signal to a running Temporal workflow."""
+
     signal_name: str = Field(..., min_length=1)
     args: dict = Field(default_factory=dict)

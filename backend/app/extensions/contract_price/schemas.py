@@ -1,7 +1,7 @@
 """Pydantic request/response models for the contract-price-analysis API."""
 
 from datetime import date, datetime
-from typing import Generic, TypeVar
+from typing import TypeVar
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -190,7 +190,7 @@ class BatchDeleteRequest(BaseModel):
     item_ids: list[UUID]
 
 
-class Page(BaseModel, Generic[T]):
+class Page[T](BaseModel):
     items: list[T]
     total: int
     skip: int

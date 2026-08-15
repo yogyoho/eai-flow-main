@@ -10,14 +10,14 @@ from app.extensions.docmgr.service import AIDocumentService
 
 
 class TestListPersonalOutputs:
-
     @pytest.mark.asyncio
     async def test_empty_when_no_threads_dir(self, tmp_path: Path):
         user_id = uuid4()
         with patch("deerflow.config.paths.Paths") as mock_paths:
             mock_paths.return_value.base_dir = tmp_path
             result = await AIDocumentService.list_personal_outputs(
-                AsyncMock(), user_id,
+                AsyncMock(),
+                user_id,
             )
         assert result["threads"] == [] and result["total"] == 0
 
@@ -29,7 +29,8 @@ class TestListPersonalOutputs:
         with patch("deerflow.config.paths.Paths") as mock_paths:
             mock_paths.return_value.base_dir = tmp_path
             result = await AIDocumentService.list_personal_outputs(
-                AsyncMock(), user_id,
+                AsyncMock(),
+                user_id,
             )
         assert result["threads"] == [] and result["total"] == 0
 
@@ -45,7 +46,8 @@ class TestListPersonalOutputs:
         with patch("deerflow.config.paths.Paths") as mock_paths:
             mock_paths.return_value.base_dir = tmp_path
             result = await AIDocumentService.list_personal_outputs(
-                AsyncMock(), user_id,
+                AsyncMock(),
+                user_id,
             )
         assert len(result["threads"]) == 1
         assert result["total"] == 1
@@ -66,7 +68,8 @@ class TestListPersonalOutputs:
         with patch("deerflow.config.paths.Paths") as mock_paths:
             mock_paths.return_value.base_dir = tmp_path
             result = await AIDocumentService.list_personal_outputs(
-                AsyncMock(), user_id,
+                AsyncMock(),
+                user_id,
             )
         names = {f["name"] for f in result["threads"][0]["files"]}
         assert "visible.md" in names
@@ -84,7 +87,8 @@ class TestListPersonalOutputs:
         with patch("deerflow.config.paths.Paths") as mock_paths:
             mock_paths.return_value.base_dir = tmp_path
             result = await AIDocumentService.list_personal_outputs(
-                AsyncMock(), user_id,
+                AsyncMock(),
+                user_id,
             )
         assert result["threads"][0]["display_name"] == "基地项目消防设计专篇"
 
@@ -92,4 +96,5 @@ class TestListPersonalOutputs:
 class TestPersonalDocMetaModel:
     def test_model_tablename(self):
         from app.extensions.models import PersonalDocMeta
+
         assert PersonalDocMeta.__tablename__ == "personal_doc_meta"

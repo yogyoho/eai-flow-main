@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
@@ -20,7 +21,7 @@ async def _run_in_db(func):
     Creates a short-lived engine + session, ensuring engine.dispose() is
     called even if func raises, so connections are never leaked.
     """
-    from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
     db_url = os.environ.get("PROJECT_DB_URL", "")
     if not db_url:
@@ -106,7 +107,7 @@ TOOLS = [
 
 
 async def _handle_read_chapter(arguments: dict) -> list[TextContent]:
-    from app.extensions.project.service import _get_chapter_or_404, _get_assigned_names
+    from app.extensions.project.service import _get_assigned_names, _get_chapter_or_404
 
     chapter_id = arguments["chapter_id"]
 
@@ -147,10 +148,15 @@ async def _handle_write_chapter(arguments: dict) -> list[TextContent]:
     # 完整修复（thread→user 解析 + ProjectMember 成员校验）列为独立跟进项，写入桥上线前需项目方接受该风险。
     _VALID_WRITE_STATUSES = {"pending", "draft", "reviewing"}  # EAI-CUSTOM: canonical (ADR 2026-08-02 P3)
     if status is not None and status not in _VALID_WRITE_STATUSES:
-        return [TextContent(type="text", text=json.dumps(
-            {"error": f"非法 status: {status!r}，允许值: {sorted(_VALID_WRITE_STATUSES)}"},
-            ensure_ascii=False,
-        ))]
+        return [
+            TextContent(
+                type="text",
+                text=json.dumps(
+                    {"error": f"非法 status: {status!r}，允许值: {sorted(_VALID_WRITE_STATUSES)}"},
+                    ensure_ascii=False,
+                ),
+            )
+        ]
 
     word_count = len(content) if content else 0
 
@@ -178,15 +184,17 @@ async def _handle_list_chapters(arguments: dict) -> list[TextContent]:
         def _flatten(chapters):
             items = []
             for c in chapters:
-                items.append({
-                    "chapter_id": str(c.id),
-                    "title": c.title,
-                    "level": c.level,
-                    "status": c.status,
-                    "word_count_target": c.word_count_target,
-                    "word_count_current": c.word_count_current,
-                    "assigned_name": c.assigned_name,
-                })
+                items.append(
+                    {
+                        "chapter_id": str(c.id),
+                        "title": c.title,
+                        "level": c.level,
+                        "status": c.status,
+                        "word_count_target": c.word_count_target,
+                        "word_count_current": c.word_count_current,
+                        "assigned_name": c.assigned_name,
+                    }
+                )
                 items.extend(_flatten(c.children))
             return items
 
@@ -220,10 +228,11 @@ async def _handle_get_project(arguments: dict) -> list[TextContent]:
 
 async def _handle_get_chapter_spec(arguments: dict) -> list[TextContent]:
     """Get the full writing spec for a chapter, merging project data with template data."""
-    from app.extensions.project.service import _get_chapter_or_404, _get_project_or_404, _get_assigned_names
     from sqlalchemy import select
-    from app.extensions.models import ProjectChapter
+
     from app.extensions.knowledge_factory.models import ExtractionTemplate
+    from app.extensions.models import ProjectChapter
+    from app.extensions.project.service import _get_assigned_names, _get_chapter_or_404, _get_project_or_404
 
     chapter_id = arguments["chapter_id"]
 
@@ -250,11 +259,7 @@ async def _handle_get_chapter_spec(arguments: dict) -> list[TextContent]:
                 sections = template.root_sections_json.get("sections", [])
                 _match_section_to_spec(spec, sections, chapter.title)
 
-        all_chapters_stmt = (
-            select(ProjectChapter)
-            .where(ProjectChapter.project_id == chapter.project_id, ProjectChapter.parent_id == chapter.parent_id)
-            .order_by(ProjectChapter.sort_order)
-        )
+        all_chapters_stmt = select(ProjectChapter).where(ProjectChapter.project_id == chapter.project_id, ProjectChapter.parent_id == chapter.parent_id).order_by(ProjectChapter.sort_order)
         all_result = await db.execute(all_chapters_stmt)
         siblings = list(all_result.scalars().all())
 

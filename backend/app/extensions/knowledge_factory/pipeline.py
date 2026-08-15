@@ -17,11 +17,12 @@ import asyncio
 import logging
 import re
 import time
-from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
-from .llm import ExtractionLLMClient
 from .doc_parser import CLAUSE_PUNCTUATION
+from .llm import ExtractionLLMClient
 from .schemas import (
     ExtractionConfig,
     StepStatus,
@@ -42,6 +43,7 @@ PIPELINE_STEPS = [
 @dataclass
 class PipelineResult:
     """Pipeline execution result containing everything needed to create a template."""
+
     sections: list[dict]  # Final merged section tree
     cross_section_rules: list[dict]
     completeness_score: int
@@ -93,7 +95,7 @@ def _dedupe_table_schemas(sections: list[dict]) -> int:
 
     P1 设计：只解决数量膨胀，不解决归属错误（后者见 bug-1123）。
     """
-    keep: dict[tuple, dict] = {}   # key → 保留的 table dict（对象引用）
+    keep: dict[tuple, dict] = {}  # key → 保留的 table dict（对象引用）
     best: dict[tuple, tuple] = {}  # key → (is_leaf, depth, -order) 比较元组
     order = [0]
 
@@ -114,10 +116,7 @@ def _dedupe_table_schemas(sections: list[dict]) -> int:
         for sec in nodes:
             tables = sec.get("table_schemas") or []
             if tables:
-                kept = [
-                    t for t in tables
-                    if keep.get(_table_schema_key(t)) is t
-                ]
+                kept = [t for t in tables if keep.get(_table_schema_key(t)) is t]
                 n += len(tables) - len(kept)
                 if len(kept) < len(tables):
                     sec["table_schemas"] = kept
@@ -159,6 +158,7 @@ def _is_noise(title: str) -> bool:
         return True
     return False
 
+
 # Numbered-heading pattern used ONLY inside _scan_chapter_headings.
 # Level is derived from dot count (1->1, 1.1->2, 1.1.1->3), not hard-coded.
 # ponytail: dot included in separator so "1. 总则" matches.
@@ -168,6 +168,7 @@ _NUMBERED_PATTERN = re.compile(r"^(\d+(?:[\.]\d+)*)[、.\s]+(.+)$")
 
 # Lines that look like TOC entries (page number preceded by tab or >=3 spaces).
 _TOC_ENTRY = re.compile(r".*\t\d+$|.* {3,}\d+$")
+
 
 def _heading_level(number_str: str) -> int:
     """Return heading level from the numbered prefix: 1->1, 1.1->2, 1.1.1->3."""
@@ -204,35 +205,41 @@ def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
             for pattern, default_level in _CHAPTER_PATTERNS:
                 m = pattern.match(line)
                 if m:
-                    headings.append({
-                        "title": line,
-                        "line_number": line_no,
-                        "chunk_index": ci,
-                        "level_guess": default_level,
-                    })
+                    headings.append(
+                        {
+                            "title": line,
+                            "line_number": line_no,
+                            "chunk_index": ci,
+                            "level_guess": default_level,
+                        }
+                    )
                     matched = True
                     break
             if not matched:
                 # Try Chinese-numbered items as level 2 (一、/ 二、)
                 m = _CHINESE_NUMBERED.match(line)
                 if m:
-                    headings.append({
-                        "title": line,
-                        "line_number": line_no,
-                        "chunk_index": ci,
-                        "level_guess": 2,
-                    })
+                    headings.append(
+                        {
+                            "title": line,
+                            "line_number": line_no,
+                            "chunk_index": ci,
+                            "level_guess": 2,
+                        }
+                    )
                     matched = True
             if not matched:
                 m = _NUMBERED_PATTERN.match(line)
                 if m:
                     level = _heading_level(m.group(1))
-                    headings.append({
-                        "title": line,
-                        "line_number": line_no,
-                        "chunk_index": ci,
-                        "level_guess": level,
-                    })
+                    headings.append(
+                        {
+                            "title": line,
+                            "line_number": line_no,
+                            "chunk_index": ci,
+                            "level_guess": level,
+                        }
+                    )
             line_no += 1
     # Deduplicate: RAGFlow chunks include page headers which repeat chapter
     # titles on every page. Keep only the first occurrence of each unique title;
@@ -263,6 +270,7 @@ def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
     # Deduplicate: titles appearing 3+ times are TOC entries or cross-references,
     # not unique chapter headings.
     from collections import Counter
+
     title_counts = Counter(h["title"] for h in headings)
     headings = [h for h in headings if title_counts[h["title"]] < 3]
 
@@ -289,7 +297,7 @@ def _build_structure_hint(chunks: list[dict], max_chars: int = 5000) -> str:
         title = h["title"]
         idx = full_content.find(title)
         if idx >= 0:
-            snippet = full_content[idx:idx + 450]
+            snippet = full_content[idx : idx + 450]
             parts.append(f"### {title}\n{snippet}\n")
         else:
             parts.append(f"### {title}\n（内容未找到）\n")
@@ -388,14 +396,14 @@ class ExtractionPipeline:
 
     def __init__(
         self,
-        llm_client: Optional[ExtractionLLMClient] = None,
+        llm_client: ExtractionLLMClient | None = None,
         max_content_chars: int = 30000,
-        llm_model: Optional[str] = None,
+        llm_model: str | None = None,
     ):
         self._llm_client = llm_client
         self._max_content_chars = max_content_chars
         self._llm_model = llm_model
-        self._llm: Optional[ExtractionLLMClient] = None
+        self._llm: ExtractionLLMClient | None = None
 
     @property
     def llm(self) -> ExtractionLLMClient:
@@ -411,9 +419,9 @@ class ExtractionPipeline:
         task_id: str,
         report_documents: list[dict],
         config: ExtractionConfig,
-        domain: Optional[str] = None,
-        reference_chapters: Optional[dict] = None,
-        progress_callback: Optional[StepCallback] = None,
+        domain: str | None = None,
+        reference_chapters: dict | None = None,
+        progress_callback: StepCallback | None = None,
     ) -> PipelineResult:
         """Run the 5-stage pipeline.
 
@@ -456,7 +464,7 @@ class ExtractionPipeline:
             "_reference_chapters": reference_chapters,  # Domain's standard chapters
             "_config": config,  # For _step_parse_direct file size check
         }
-        
+
         logger.info(f"[Task {task_id}] Starting extraction pipeline for {len(report_documents)} documents")
 
         def _fmt(seconds: float) -> str:
@@ -475,10 +483,7 @@ class ExtractionPipeline:
             await _emit("文档解析", StepStatus.FAILED, _fmt(time.time() - t0), f"错误: {e}")
             raise
         n_chunks = sum(d.get("chunk_count", 0) for d in ctx["documents"])
-        await _emit(
-            "文档解析", StepStatus.COMPLETED, _fmt(time.time() - t0),
-            f"解析 {len(ctx['documents'])} 份文档，共 {n_chunks} 个文本块"
-        )
+        await _emit("文档解析", StepStatus.COMPLETED, _fmt(time.time() - t0), f"解析 {len(ctx['documents'])} 份文档，共 {n_chunks} 个文本块")
 
         # ── Step 1: 章节推断（LLM） ───────────────────────────────
         t1 = time.time()
@@ -490,10 +495,7 @@ class ExtractionPipeline:
             raise
         doc_schemas = ctx.get("_doc_schemas", [])
         total_secs = sum(len(ds.get("sections", [])) for ds in doc_schemas)
-        await _emit(
-            "章节推断", StepStatus.COMPLETED, _fmt(time.time() - t1),
-            f"从 {len(doc_schemas)} 份文档推断章节结构，共 {total_secs} 个章节"
-        )
+        await _emit("章节推断", StepStatus.COMPLETED, _fmt(time.time() - t1), f"从 {len(doc_schemas)} 份文档推断章节结构，共 {total_secs} 个章节")
 
         # ── Step 2: 元数据抽取（LLM） ─────────────────────────────
         t2 = time.time()
@@ -518,9 +520,7 @@ class ExtractionPipeline:
         deduped_n = stats.get("deduped", 0)
         if deduped_n:
             detail += f"，去重合并 {deduped_n} 个重复表"
-        await _emit(
-            "元数据抽取", StepStatus.COMPLETED, _fmt(time.time() - t2), detail
-        )
+        await _emit("元数据抽取", StepStatus.COMPLETED, _fmt(time.time() - t2), detail)
 
         # ── Step 3: 模板融合（LLM） ──────────────────────────────
         t3 = time.time()
@@ -530,10 +530,7 @@ class ExtractionPipeline:
         except Exception as e:
             await _emit("模板融合", StepStatus.FAILED, _fmt(time.time() - t3), f"错误: {e}")
             raise
-        await _emit(
-            "模板融合", StepStatus.COMPLETED, _fmt(time.time() - t3),
-            f"融合完成，共 {len(merged.get('sections', []))} 个章节"
-        )
+        await _emit("模板融合", StepStatus.COMPLETED, _fmt(time.time() - t3), f"融合完成，共 {len(merged.get('sections', []))} 个章节")
 
         # ── Step 4: 合规校验 ─────────────────────────────────────
         t4 = time.time()
@@ -544,10 +541,7 @@ class ExtractionPipeline:
             await _emit("合规校验", StepStatus.FAILED, _fmt(time.time() - t4), f"错误: {e}")
             raise
         score = validated.get("completeness_score", 50)
-        await _emit(
-            "合规校验", StepStatus.COMPLETED, _fmt(time.time() - t4),
-            f"合规校验完成，完整度 {score}%"
-        )
+        await _emit("合规校验", StepStatus.COMPLETED, _fmt(time.time() - t4), f"合规校验完成，完整度 {score}%")
 
         # ── 最终结果 ─────────────────────────────────────────────
         sections = validated.get("sections", [])
@@ -572,16 +566,9 @@ class ExtractionPipeline:
 
             detail = "; ".join(doc_diagnostics) if doc_diagnostics else "未知原因"
             await _emit("完成", StepStatus.FAILED, _fmt(time.time() - start_time), f"未能从文档中提取任何章节。诊断: {detail}")
-            raise ValueError(
-                f"Pipeline failed: no sections extracted. "
-                f"Diagnostics: {detail}{schema_diag}. "
-                f"Task ID: {task_id}, docs: {len(report_documents)}"
-            )
+            raise ValueError(f"Pipeline failed: no sections extracted. Diagnostics: {detail}{schema_diag}. Task ID: {task_id}, docs: {len(report_documents)}")
 
-        await _emit(
-            "完成", StepStatus.COMPLETED, _fmt(time.time() - start_time),
-            f"所有阶段完成，共 {chapters} 章 / {total} 节"
-        )
+        await _emit("完成", StepStatus.COMPLETED, _fmt(time.time() - start_time), f"所有阶段完成，共 {chapters} 章 / {total} 节")
 
         return PipelineResult(
             sections=sections,
@@ -602,10 +589,11 @@ class ExtractionPipeline:
         RAGFlow v0.25.3 的 manual chunk_method 仅支持 pdf/docx，
         不支持 .md 文件。
         """
-        from app.extensions.knowledge.client import RAGFlowClient
-        from app.extensions.models import KnowledgeBase, Document
         from sqlalchemy import select
+
         from app.extensions.database import get_db_context
+        from app.extensions.knowledge.client import RAGFlowClient
+        from app.extensions.models import Document, KnowledgeBase
 
         documents = ctx["documents"]
         enriched = []
@@ -618,7 +606,7 @@ class ExtractionPipeline:
             kb_id = doc.get("kb_id")
             doc_name = doc.get("name", "未知文档")
             logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] 处理文档: {doc_name} (id={doc_id}, kb_id={kb_id})")
-            
+
             if not doc_id or not kb_id:
                 logger.warning(f"文档 {doc_name} 缺少 id 或 kb_id，跳过")
                 enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": "缺少 id 或 kb_id"})
@@ -634,18 +622,12 @@ class ExtractionPipeline:
                     kb = None
                     doc_obj = None
                     async with get_db_context() as db:
-                        result = await db.execute(
-                            select(KnowledgeBase, Document)
-                            .join(Document, Document.knowledge_base_id == KnowledgeBase.id)
-                            .where(Document.id == doc_id)
-                        )
+                        result = await db.execute(select(KnowledgeBase, Document).join(Document, Document.knowledge_base_id == KnowledgeBase.id).where(Document.id == doc_id))
                         row = result.first()
                         if row:
                             kb, doc_obj = row
                         else:
-                            result = await db.execute(
-                                select(KnowledgeBase).where(KnowledgeBase.id == kb_id)
-                            )
+                            result = await db.execute(select(KnowledgeBase).where(KnowledgeBase.id == kb_id))
                             kb = result.scalar_one_or_none()
                     if not kb:
                         logger.warning(f"知识库 {kb_id} 不存在，跳过文档 {doc_name}")
@@ -714,7 +696,7 @@ class ExtractionPipeline:
 
         将解析结果存入 doc["_parsed"]，后续步骤可直接使用。
         """
-        from .doc_parser import parse_document, build_structure_hint, ParsedDocument
+        from .doc_parser import build_structure_hint, parse_document
 
         documents = ctx["documents"]
         enriched = []
@@ -738,6 +720,7 @@ class ExtractionPipeline:
                 # 默认 50MB（与 ExtractionConfig.doc_parser_max_mb 默认一致），
                 # 覆盖典型环评报告；超出走 RAGFlow 预解析分片。
                 import os as _os
+
                 cfg = ctx.get("_config")
                 max_size_mb = getattr(cfg, "doc_parser_max_mb", 50) if cfg else 50
                 max_size_bytes = max_size_mb * 1024 * 1024
@@ -746,39 +729,31 @@ class ExtractionPipeline:
                 except OSError:
                     fsize = 0
                 if fsize > max_size_bytes:
-                    logger.info(
-                        f"[Task {task_id}] 文件 '{doc_name}' 过大 "
-                        f"({fsize / 1024 / 1024:.1f}MB > {max_size_bytes / 1024 / 1024:.0f}MB)，"
-                        "跳过 doc_parser，使用 RAGFlow 路径"
-                    )
+                    logger.info(f"[Task {task_id}] 文件 '{doc_name}' 过大 ({fsize / 1024 / 1024:.1f}MB > {max_size_bytes / 1024 / 1024:.0f}MB)，跳过 doc_parser，使用 RAGFlow 路径")
                 else:
                     parsed = await asyncio.to_thread(parse_document, file_path)
 
             if parsed is not None:
                 if parsed.error:
-                    logger.warning(
-                        f"[Task {task_id}] doc_parser 解析 '{doc_name}' 失败: {parsed.error}，回退到 RAGFlow"
-                    )
+                    logger.warning(f"[Task {task_id}] doc_parser 解析 '{doc_name}' 失败: {parsed.error}，回退到 RAGFlow")
                     # Fall through to RAGFlow path below
                 else:
                     # Build synthetic chunks from full_text for downstream compatibility
                     chunks = self._split_text_to_chunks(parsed.full_text, max_chars=2000)
                     structure_hint = build_structure_hint(parsed, self._max_content_chars)
 
-                    enriched.append({
-                        **doc,
-                        "chunks": chunks,
-                        "chunk_count": len(chunks),
-                        "_parsed": parsed,
-                        "_structure_hint": structure_hint,
-                        "_parse_method": "direct",
-                    })
-                    direct_count += 1
-                    logger.info(
-                        f"[Task {task_id}] doc_parser 成功解析 '{doc_name}': "
-                        f"{len(parsed.headings)} headings, {len(parsed.tables)} tables, "
-                        f"{len(parsed.full_text)} chars"
+                    enriched.append(
+                        {
+                            **doc,
+                            "chunks": chunks,
+                            "chunk_count": len(chunks),
+                            "_parsed": parsed,
+                            "_structure_hint": structure_hint,
+                            "_parse_method": "direct",
+                        }
                     )
+                    direct_count += 1
+                    logger.info(f"[Task {task_id}] doc_parser 成功解析 '{doc_name}': {len(parsed.headings)} headings, {len(parsed.tables)} tables, {len(parsed.full_text)} chars")
                     continue
 
             # Not eligible for direct parsing or direct parsing failed — use RAGFlow
@@ -788,27 +763,22 @@ class ExtractionPipeline:
                 enriched.append(enriched_entry)
                 fallback_count += 1
             else:
-                enriched.append({**doc, "chunks": [], "chunk_count": 0,
-                                 "_skip_reason": "RAGFlow 无 chunks 且无法直接解析"})
+                enriched.append({**doc, "chunks": [], "chunk_count": 0, "_skip_reason": "RAGFlow 无 chunks 且无法直接解析"})
 
         ctx["_documents"] = enriched
-        logger.info(
-            f"[Task {task_id}] Step 0 完成: {direct_count} 份直接解析, "
-            f"{fallback_count} 份 RAGFlow, 共 {len(enriched)} 份文档"
-        )
+        logger.info(f"[Task {task_id}] Step 0 完成: {direct_count} 份直接解析, {fallback_count} 份 RAGFlow, 共 {len(enriched)} 份文档")
         return enriched
 
     async def _step_parse_single(self, doc: dict, ctx: dict[str, Any]) -> dict | None:
         """Parse a single document via RAGFlow (used as fallback from direct parsing)."""
-        from app.extensions.knowledge.client import RAGFlowClient
-        from app.extensions.models import KnowledgeBase, Document
         from sqlalchemy import select
+
         from app.extensions.database import get_db_context
+        from app.extensions.knowledge.client import RAGFlowClient
 
         doc_id = doc.get("id")
         kb_id = doc.get("kb_id")
         doc_name = doc.get("name", "未知文档")
-        task_id = ctx.get("_task_id", "unknown")
 
         if not doc_id or not kb_id:
             logger.warning(f"文档 {doc_name} 缺少 id 或 kb_id")
@@ -819,12 +789,10 @@ class ExtractionPipeline:
 
         if not rf_doc_id or not rf_dataset_id:
             async with get_db_context() as db:
-                from app.extensions.models import KnowledgeBase as KB, Document as Doc
-                result = await db.execute(
-                    select(KB, Doc)
-                    .join(Doc, Doc.knowledge_base_id == KB.id)
-                    .where(Doc.id == doc_id)
-                )
+                from app.extensions.models import Document as Doc
+                from app.extensions.models import KnowledgeBase as KB
+
+                result = await db.execute(select(KB, Doc).join(Doc, Doc.knowledge_base_id == KB.id).where(Doc.id == doc_id))
                 row = result.first()
                 if row:
                     kb, doc_obj = row
@@ -835,8 +803,7 @@ class ExtractionPipeline:
             # Try plain-text fallback
             fallback = await self._fallback_read_plain_text(doc, ctx)
             if fallback:
-                return {**doc, "chunks": fallback, "chunk_count": len(fallback),
-                        "ragflow_document_id": rf_doc_id}
+                return {**doc, "chunks": fallback, "chunk_count": len(fallback), "ragflow_document_id": rf_doc_id}
             return None
 
         try:
@@ -851,10 +818,8 @@ class ExtractionPipeline:
             if not chunks:
                 fallback = await self._fallback_read_plain_text(doc, ctx)
                 if fallback:
-                    return {**doc, "chunks": fallback, "chunk_count": len(fallback),
-                            "ragflow_document_id": rf_doc_id}
-            return {**doc, "chunks": chunks, "chunk_count": len(chunks),
-                    "ragflow_document_id": rf_doc_id}
+                    return {**doc, "chunks": fallback, "chunk_count": len(fallback), "ragflow_document_id": rf_doc_id}
+            return {**doc, "chunks": chunks, "chunk_count": len(chunks), "ragflow_document_id": rf_doc_id}
         except Exception as e:
             logger.error(f"RAGFlow 获取 chunks 失败 for {doc_name}: {e}")
             fallback = await self._fallback_read_plain_text(doc, ctx)
@@ -889,9 +854,10 @@ class ExtractionPipeline:
 
         if not file_path:
             # Try to get file_path from DB
-            from app.extensions.models import Document as DocModel
-            from app.extensions.database import get_db_context
             from sqlalchemy import select as sa_select
+
+            from app.extensions.database import get_db_context
+            from app.extensions.models import Document as DocModel
 
             doc_id = doc.get("id")
             if not doc_id:
@@ -948,6 +914,7 @@ class ExtractionPipeline:
             return p.read_text(encoding="utf-8", errors="replace")
 
         from app.extensions.config import get_extensions_config
+
         config = get_extensions_config()
         p2 = Path(config.storage.base_path) / file_path
         if p2.exists():
@@ -980,12 +947,14 @@ class ExtractionPipeline:
             # If adding this paragraph would exceed max_chars and we already have content,
             # flush the current chunk
             if current_content and len(current_content) + len(para) + 2 > max_chars:
-                chunks.append({
-                    "id": f"chunk_{chunk_idx}",
-                    "content": current_content.strip(),
-                    "content_with_weight": current_content.strip(),
-                    "doc_name": "",
-                })
+                chunks.append(
+                    {
+                        "id": f"chunk_{chunk_idx}",
+                        "content": current_content.strip(),
+                        "content_with_weight": current_content.strip(),
+                        "doc_name": "",
+                    }
+                )
                 chunk_idx += 1
                 current_content = para
             else:
@@ -996,20 +965,20 @@ class ExtractionPipeline:
 
         # Flush remaining content
         if current_content.strip():
-            chunks.append({
-                "id": f"chunk_{chunk_idx}",
-                "content": current_content.strip(),
-                "content_with_weight": current_content.strip(),
-                "doc_name": "",
-            })
+            chunks.append(
+                {
+                    "id": f"chunk_{chunk_idx}",
+                    "content": current_content.strip(),
+                    "content_with_weight": current_content.strip(),
+                    "doc_name": "",
+                }
+            )
 
         return chunks
 
     # ── Step 1: 章节推断 ─────────────────────────────────────────
 
-    async def _step_infer_schema(
-        self, ctx: dict[str, Any], config: ExtractionConfig
-    ) -> None:
+    async def _step_infer_schema(self, ctx: dict[str, Any], config: ExtractionConfig) -> None:
         """LLM 从文档内容推断章节树，动态适配不同报告类型。
 
         If the domain has reference_chapters, they are passed to the LLM
@@ -1083,30 +1052,17 @@ class ExtractionPipeline:
                         else:
                             h1s = [h for _, h in all_h1]
                         if h1s:
-                            ref_chapters = {
-                                "sections": [
-                                    {"id": f"sec_{i + 1:02d}", "title": h.title, "level": h.level, "required": True}
-                                    for i, h in enumerate(h1s)
-                                ]
-                            }
+                            ref_chapters = {"sections": [{"id": f"sec_{i + 1:02d}", "title": h.title, "level": h.level, "required": True} for i, h in enumerate(h1s)]}
                             logger.info(f"[Task {task_id}] Step 1: 使用 doc_parser 的 {len(h1s)} 个 H1 章节作为 reference_chapters")
                     else:
                         all_headings = _scan_chapter_headings(chunks)
                         h1s = [h for h in all_headings if h["level_guess"] == 1]
                         if h1s:
-                            ref_chapters = {
-                                "sections": [
-                                    {"id": f"sec_{i + 1:02d}", "title": h["title"], "level": 1, "required": True}
-                                    for i, h in enumerate(h1s)
-                                ]
-                            }
+                            ref_chapters = {"sections": [{"id": f"sec_{i + 1:02d}", "title": h["title"], "level": 1, "required": True} for i, h in enumerate(h1s)]}
                             logger.info(f"[Task {task_id}] Step 1: 构建了 reference_chapters，共有 {len(h1s)} 个 H1 章节")
                             logger.debug(f"[Task {task_id}] Step 1: reference_chapters titles: {[h['title'] for h in h1s]}")
                 max_depth = config.max_depth if config.max_depth else 4
-                schema = await loop.run_in_executor(
-                    None,
-                    lambda d=doc_name, c=content, md=max_depth, r=ref_chapters: self.llm.infer_schema(d, c, max_depth=md, reference_chapters=r)
-                )
+                schema = await loop.run_in_executor(None, lambda d=doc_name, c=content, md=max_depth, r=ref_chapters: self.llm.infer_schema(d, c, max_depth=md, reference_chapters=r))
                 logger.info(f"[Task {task_id}] Step 1: LLM infer_schema 返回")
                 sections = schema.get("sections", [])
                 logger.info(f"[Task {task_id}] Step 1: 从 '{doc_name}' 推断出 {len(sections)} 个章节")
@@ -1128,21 +1084,19 @@ class ExtractionPipeline:
 
                 if h1_count > 0 and len(sections) < h1_count:
                     llm_section_count = len(sections)  # 循环内 sections 被覆盖，先存原始值
-                    logger.warning(
-                        f"[Task {task_id}] Step 1: LLM returned {llm_section_count} sections but "
-                        f"{h1_count} H1 headings were detected — using detected structure as skeleton. "
-                        f"Detected: {h1_titles}"
-                    )
+                    logger.warning(f"[Task {task_id}] Step 1: LLM returned {llm_section_count} sections but {h1_count} H1 headings were detected — using detected structure as skeleton. Detected: {h1_titles}")
                     # Build sections from detected H1 headings
                     sections = []
                     for i, title in enumerate(h1_titles):
-                        sections.append({
-                            "id": f"sec_{i + 1:02d}",
-                            "title": title,
-                            "level": 1,
-                            "required": True,
-                            "purpose": f"从'{doc_name}'自动识别（LLM 推断不足 {llm_section_count}<{h1_count}）",
-                        })
+                        sections.append(
+                            {
+                                "id": f"sec_{i + 1:02d}",
+                                "title": title,
+                                "level": 1,
+                                "required": True,
+                                "purpose": f"从'{doc_name}'自动识别（LLM 推断不足 {llm_section_count}<{h1_count}）",
+                            }
+                        )
                     logger.info(f"[Task {task_id}] Step 1: 使用自动识别的 {len(sections)} 个章节替代 LLM 输出")
 
                 # Fallback: 若 LLM 未能推断出章节，尝试用自动识别的标题构建章节树
@@ -1151,29 +1105,35 @@ class ExtractionPipeline:
                     if h1_headings:
                         sections = []
                         for i, h in enumerate(h1_headings):
-                            sections.append({
-                                "id": f"sec_{i + 1:02d}",
-                                "title": h["title"],
-                                "level": h["level_guess"],
-                                "required": True,
-                                "purpose": f"从{doc_name}自动识别",
-                            })
+                            sections.append(
+                                {
+                                    "id": f"sec_{i + 1:02d}",
+                                    "title": h["title"],
+                                    "level": h["level_guess"],
+                                    "required": True,
+                                    "purpose": f"从{doc_name}自动识别",
+                                }
+                            )
                         logger.info(f"[Task {task_id}] Step 1: 自动识别出 {len(sections)} 个章节")
                     else:
                         logger.warning(f"[Task {task_id}] Step 1: 无自动识别标题，回退为整文档单章节")
-                        sections = [{
-                            "id": "sec_01",
-                            "title": doc_name,
-                            "level": 1,
-                            "required": True,
-                            "purpose": f"从{doc_name}提取的完整内容",
-                        }]
+                        sections = [
+                            {
+                                "id": "sec_01",
+                                "title": doc_name,
+                                "level": 1,
+                                "required": True,
+                                "purpose": f"从{doc_name}提取的完整内容",
+                            }
+                        ]
 
-                all_doc_schemas.append({
-                    "doc_id": doc_id,
-                    "doc_name": doc_name,
-                    "sections": sections,
-                })
+                all_doc_schemas.append(
+                    {
+                        "doc_id": doc_id,
+                        "doc_name": doc_name,
+                        "sections": sections,
+                    }
+                )
             except Exception as e:
                 logger.error(f"[Task {task_id}] Step 1: 文档 '{doc_name}' 章节推断失败: {e}")
                 # 即使 LLM 调用异常，也尝试用自动识别的标题构建章节树
@@ -1182,28 +1142,34 @@ class ExtractionPipeline:
                     if auto_headings:
                         sections = []
                         for i, h in enumerate(auto_headings):
-                            sections.append({
-                                "id": f"sec_{i + 1:02d}",
-                                "title": h["title"],
-                                "level": h["level_guess"],
-                                "required": True,
-                                "purpose": f"从{doc_name}自动识别",
-                            })
+                            sections.append(
+                                {
+                                    "id": f"sec_{i + 1:02d}",
+                                    "title": h["title"],
+                                    "level": h["level_guess"],
+                                    "required": True,
+                                    "purpose": f"从{doc_name}自动识别",
+                                }
+                            )
                         logger.info(f"[Task {task_id}] Step 1: LLM 异常，自动识别出 {len(sections)} 个章节")
                     else:
                         logger.warning(f"[Task {task_id}] Step 1: LLM 异常且无自动识别标题，回退为单章节")
-                        sections = [{
-                            "id": "sec_01",
-                            "title": doc_name,
-                            "level": 1,
-                            "required": True,
-                            "purpose": f"从{doc_name}提取的完整内容",
-                        }]
-                    all_doc_schemas.append({
-                        "doc_id": doc_id,
-                        "doc_name": doc_name,
-                        "sections": sections,
-                    })
+                        sections = [
+                            {
+                                "id": "sec_01",
+                                "title": doc_name,
+                                "level": 1,
+                                "required": True,
+                                "purpose": f"从{doc_name}提取的完整内容",
+                            }
+                        ]
+                    all_doc_schemas.append(
+                        {
+                            "doc_id": doc_id,
+                            "doc_name": doc_name,
+                            "sections": sections,
+                        }
+                    )
                 continue
 
         logger.info(f"[Task {task_id}] Step 1: 完成，共处理 {len(all_doc_schemas)} 份文档")
@@ -1223,6 +1189,7 @@ class ExtractionPipeline:
         if not norm_source or not metadata:
             return metadata, 0
         from .doc_parser import normalize_text
+
         norm = norm_source  # 调用方已预算，不重复 normalize
         dropped = 0
 
@@ -1247,9 +1214,7 @@ class ExtractionPipeline:
 
     # ── Step 2: 元数据抽取 ──────────────────────────────────────
 
-    async def _step_extract_metadata(
-        self, ctx: dict[str, Any], config: ExtractionConfig
-    ) -> list[dict]:
+    async def _step_extract_metadata(self, ctx: dict[str, Any], config: ExtractionConfig) -> list[dict]:
         """LLM 逐节抽取 content_contract 等元数据。
 
         改进：按章节标题匹配文档中的对应内容，而不是简单取第一份文档。
@@ -1275,9 +1240,7 @@ class ExtractionPipeline:
             doc_id = doc.get("id", "")
             chunks = doc.get("chunks", [])
             if chunks:
-                full_content = "\n\n".join(
-                    c.get("content", "") for c in chunks if c.get("content")
-                )
+                full_content = "\n\n".join(c.get("content", "") for c in chunks if c.get("content"))
                 doc_contents[doc_id] = {
                     "name": doc.get("name", ""),
                     "content": full_content,
@@ -1288,30 +1251,27 @@ class ExtractionPipeline:
         # Fetch available knowledge bases for RAG source matching
         available_kbs: list[dict] = []
         try:
-            from app.extensions.models import KnowledgeBase
             from sqlalchemy import select
+
             from app.extensions.database import get_db_context
+            from app.extensions.models import KnowledgeBase
 
             async with get_db_context() as db:
-                result = await db.execute(
-                    select(KnowledgeBase.id, KnowledgeBase.name, KnowledgeBase.description, KnowledgeBase.ragflow_dataset_id)
-                    .where(KnowledgeBase.status == "active")
-                    .limit(200)
-                )
+                result = await db.execute(select(KnowledgeBase.id, KnowledgeBase.name, KnowledgeBase.description, KnowledgeBase.ragflow_dataset_id).where(KnowledgeBase.status == "active").limit(200))
                 for row in result.all():
-                    available_kbs.append({
-                        "kb_id": str(row.id),
-                        "kb_name": row.name,
-                        "description": row.description,
-                        "ragflow_dataset_id": row.ragflow_dataset_id,
-                    })
+                    available_kbs.append(
+                        {
+                            "kb_id": str(row.id),
+                            "kb_name": row.name,
+                            "description": row.description,
+                            "ragflow_dataset_id": row.ragflow_dataset_id,
+                        }
+                    )
             logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] Loaded {len(available_kbs)} knowledge bases for RAG source matching")
         except Exception as e:
             logger.warning(f"[Task {ctx.get('_task_id', 'unknown')}] Failed to load knowledge bases: {e}")
 
-        def _match_rag_sources(
-            llm_sources: list, available_kbs: list[dict]
-        ) -> list[dict]:
+        def _match_rag_sources(llm_sources: list, available_kbs: list[dict]) -> list[dict]:
             """Match LLM-suggested rag_sources against real KB records."""
             if not llm_sources:
                 return []
@@ -1342,25 +1302,29 @@ class ExtractionPipeline:
                             best_kb = kb
 
                 if best_kb and best_score >= 40:
-                    matched.append({
-                        "kb_id": best_kb["kb_id"],
-                        "kb_name": best_kb["kb_name"],
-                        "ragflow_dataset_id": best_kb["ragflow_dataset_id"],
-                        "retrieval_strategy": "hybrid",
-                        "top_k": 5,
-                        "similarity_threshold": 0.2,
-                        "vector_similarity_weight": 0.3,
-                    })
+                    matched.append(
+                        {
+                            "kb_id": best_kb["kb_id"],
+                            "kb_name": best_kb["kb_name"],
+                            "ragflow_dataset_id": best_kb["ragflow_dataset_id"],
+                            "retrieval_strategy": "hybrid",
+                            "top_k": 5,
+                            "similarity_threshold": 0.2,
+                            "vector_similarity_weight": 0.3,
+                        }
+                    )
                 elif kb_name:
                     # Keep as legacy label (no real KB match)
-                    matched.append({
-                        "kb_id": "",
-                        "kb_name": kb_name,
-                        "retrieval_strategy": "hybrid",
-                        "top_k": 5,
-                        "similarity_threshold": 0.2,
-                        "vector_similarity_weight": 0.3,
-                    })
+                    matched.append(
+                        {
+                            "kb_id": "",
+                            "kb_name": kb_name,
+                            "retrieval_strategy": "hybrid",
+                            "top_k": 5,
+                            "similarity_threshold": 0.2,
+                            "vector_similarity_weight": 0.3,
+                        }
+                    )
             return matched
 
         loop = asyncio.get_event_loop()
@@ -1418,6 +1382,7 @@ class ExtractionPipeline:
         all_source_text = "\n\n".join(d["content"] for d in doc_contents.values() if d.get("content"))
         # 预算一次 normalize（避免每节对大文本重复 normalize：50MB×93 节 = 4.6GB 临时串）
         from .doc_parser import normalize_text as _norm
+
         norm_all = _norm(all_source_text) if all_source_text else ""
 
         # 并发抽取：同 semaphore 限制 LLM 并发数（防 DeepSeek 限流），顶层 + 子节 gather
@@ -1425,7 +1390,7 @@ class ExtractionPipeline:
         # 进度计数：total 含嵌套子节，enrich 每完成一节递增并日志
         _, total_sections = _count_sections(sections)
         done = {"n": 0}
-        failed = {"n": 0}      # LLM 异常降级节数（可观测性：不再静默）
+        failed = {"n": 0}  # LLM 异常降级节数（可观测性：不再静默）
         grounded_dropped = {"n": 0}  # grounding 丢弃/标记的幻觉字段总数
         task_id_meta = ctx.get("_task_id", "unknown")
 
@@ -1438,9 +1403,7 @@ class ExtractionPipeline:
                 failed["n"] += 1
                 logger.warning(f"[Task {task_id_meta}] enrich 失败 {sec.get('id', '?')}: {e}，降级")
                 done["n"] += 1
-                return {**sec, "content_contract": {"key_elements": [], "structure_type": "narrative_text",
-                        "style_rules": None, "min_word_count": None, "forbidden_phrases": []},
-                        "completeness_score": 50}
+                return {**sec, "content_contract": {"key_elements": [], "structure_type": "narrative_text", "style_rules": None, "min_word_count": None, "forbidden_phrases": []}, "completeness_score": 50}
 
         async def _enrich(sec: dict) -> dict:
             sec_id = sec.get("id", "")
@@ -1475,17 +1438,11 @@ class ExtractionPipeline:
             if _effective_min > 0 and not _has_children and len(section_content) < _effective_min:
                 done["n"] += 1
                 logger.info(f"[Task {task_id_meta}] {sec_id} 内容过短({len(section_content)}<{_effective_min})，跳过元数据抽取")
-                return {**sec, "_short_content": True, "completeness_score": 0,
-                        "content_contract": {"key_elements": [], "structure_type": "narrative_text",
-                        "style_rules": None, "min_word_count": None, "forbidden_phrases": []}}
+                return {**sec, "_short_content": True, "completeness_score": 0, "content_contract": {"key_elements": [], "structure_type": "narrative_text", "style_rules": None, "min_word_count": None, "forbidden_phrases": []}}
 
             try:
                 async with sem:  # 限并发，防 DeepSeek 限流
-                    metadata = await loop.run_in_executor(
-                        None,
-                        lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content, kbs=available_kbs:
-                            self.llm.extract_metadata(sid, t, lv, p, sc, available_kbs=kbs)
-                    )
+                    metadata = await loop.run_in_executor(None, lambda sid=sec_id, t=title, lv=level, p=purpose, sc=section_content, kbs=available_kbs: self.llm.extract_metadata(sid, t, lv, p, sc, available_kbs=kbs))
             except Exception as e:
                 failed["n"] += 1
                 logger.warning(f"Metadata extraction failed for {sec_id}: {e}")
@@ -1568,11 +1525,7 @@ class ExtractionPipeline:
             "deduped": deduped_count,  # 移除的重复 table_schemas 数（非节数）
         }
         if failed["n"] or grounded_dropped["n"] or deduped_count:
-            logger.warning(
-                f"[Task {task_id_meta}] 元数据抽取汇总: {len(flat)}节, "
-                f"LLM失败降级 {failed['n']}节, grounding丢弃/标记 {grounded_dropped['n']}字段"
-                + (f", 去重合并 {deduped_count}个表" if deduped_count else "")
-            )
+            logger.warning(f"[Task {task_id_meta}] 元数据抽取汇总: {len(flat)}节, LLM失败降级 {failed['n']}节, grounding丢弃/标记 {grounded_dropped['n']}字段" + (f", 去重合并 {deduped_count}个表" if deduped_count else ""))
 
         return enriched
 
@@ -1582,7 +1535,7 @@ class ExtractionPipeline:
         self,
         ctx: dict[str, Any],
         config: ExtractionConfig,
-        domain: Optional[str],
+        domain: str | None,
     ) -> dict:
         """多报告章节去重合并。
 
@@ -1594,38 +1547,30 @@ class ExtractionPipeline:
 
         if len(doc_schemas) <= 1:
             # Single doc: use enriched sections (with metadata), fallback to raw sections
-            sections = enriched_sections if enriched_sections else (
-                doc_schemas[0].get("sections", []) if doc_schemas else []
-            )
-            logger.info(
-                f"Single doc merge: using {'enriched' if enriched_sections else 'raw'} sections, "
-                f"{len(sections)} top-level sections"
-            )
+            sections = enriched_sections if enriched_sections else (doc_schemas[0].get("sections", []) if doc_schemas else [])
+            logger.info(f"Single doc merge: using {'enriched' if enriched_sections else 'raw'} sections, {len(sections)} top-level sections")
             return {"sections": sections, "cross_section_rules": []}
 
         # Multi-doc: use enriched sections for the first doc, raw for others
         sections_list = []
         for i, ds in enumerate(doc_schemas):
             sections = enriched_sections if (i == 0 and enriched_sections) else ds.get("sections", [])
-            sections_list.append({
-                "doc_name": ds.get("doc_name", "未知"),
-                "sections": sections,
-            })
+            sections_list.append(
+                {
+                    "doc_name": ds.get("doc_name", "未知"),
+                    "sections": sections,
+                }
+            )
 
         try:
             loop = asyncio.get_event_loop()
             ref_chapters = ctx.get("_reference_chapters")
-            merged = await loop.run_in_executor(
-                None,
-                lambda: self.llm.merge_sections(domain or "unknown", sections_list, reference_chapters=ref_chapters)
-            )
+            merged = await loop.run_in_executor(None, lambda: self.llm.merge_sections(domain or "unknown", sections_list, reference_chapters=ref_chapters))
             logger.info(f"Merged {len(doc_schemas)} docs into {len(merged.get('sections', []))} sections")
             return merged
         except Exception as e:
             logger.warning(f"Section merge failed: {e}, falling back to first doc")
-            fallback = enriched_sections if enriched_sections else (
-                doc_schemas[0].get("sections", []) if doc_schemas else []
-            )
+            fallback = enriched_sections if enriched_sections else (doc_schemas[0].get("sections", []) if doc_schemas else [])
             return {
                 "sections": fallback,
                 "cross_section_rules": [],
@@ -1633,12 +1578,9 @@ class ExtractionPipeline:
 
     # ── Step 4: 合规校验 ─────────────────────────────────────────
 
-    async def _step_validate(
-        self, ctx: dict[str, Any], merged: dict
-    ) -> dict:
+    async def _step_validate(self, ctx: dict[str, Any], merged: dict) -> dict:
         """检查章节完整性，计算完整度评分。"""
         sections = merged.get("sections", [])
-        cross_rules = merged.get("cross_section_rules", [])
 
         if not sections:
             merged["completeness_score"] = 0

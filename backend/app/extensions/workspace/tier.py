@@ -5,7 +5,7 @@ EAI-CUSTOM: 全新模块。信号自动升高（粘性单向），recompute_tier
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,7 +44,7 @@ async def recompute_tier(db: AsyncSession, project: CollabProject, *, markdown: 
     signals = list(project.tier_signals or [])
     current = project.tier_state or "tier1"
     # EAI-CUSTOM: DB 列 TIMESTAMP WITHOUT TIME ZONE，用 naive UTC
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
 
     async def _escalate(to: str, signal: str) -> None:
         nonlocal current
@@ -55,9 +55,7 @@ async def recompute_tier(db: AsyncSession, project: CollabProject, *, markdown: 
             signals.append({"signal": signal, "at": now.isoformat(), "to": to})
 
     # S1: 第二参与者（成员 ≥2 或任一 agent 成员）→ T2
-    member_count = await db.scalar(
-        select(func.count(CollabMember.id)).where(CollabMember.project_id == project.id)
-    ) or 0
+    member_count = await db.scalar(select(func.count(CollabMember.id)).where(CollabMember.project_id == project.id)) or 0
     if member_count >= 2:
         await _escalate("tier2", S_SECOND_PARTICIPANT)
 
@@ -71,12 +69,15 @@ async def recompute_tier(db: AsyncSession, project: CollabProject, *, markdown: 
             if _count_headings(markdown) >= QUICKDOC_HEADING_THRESHOLD or len(markdown) >= QUICKDOC_CHAR_THRESHOLD:
                 await _escalate("tier2", S_SECTION_COUNT)
     else:
-        section_count = await db.scalar(
-            select(func.count(CollabSection.id)).where(
-                CollabSection.project_id == project.id,
-                CollabSection.status != "deleted",
+        section_count = (
+            await db.scalar(
+                select(func.count(CollabSection.id)).where(
+                    CollabSection.project_id == project.id,
+                    CollabSection.status != "deleted",
+                )
             )
-        ) or 0
+            or 0
+        )
         if section_count >= REPORT_SECTION_THRESHOLD:
             await _escalate("tier2", S_SECTION_COUNT)
 

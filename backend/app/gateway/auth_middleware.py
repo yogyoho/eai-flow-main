@@ -61,9 +61,7 @@ _PUBLIC_EXACT_PATHS: frozenset[str] = frozenset(
 )
 
 # Prefix-based internal API paths — accessible from Docker network without auth.
-_INTERNAL_PATH_PREFIXES: tuple[str, ...] = (
-    "/api/v1/auth/users/",
-)
+_INTERNAL_PATH_PREFIXES: tuple[str, ...] = ("/api/v1/auth/users/",)
 
 
 def _is_public(path: str) -> bool:

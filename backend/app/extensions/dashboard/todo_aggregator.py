@@ -1,4 +1,5 @@
 """Cross-context todo aggregation — no new table, pure query views."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -32,7 +33,7 @@ class TodoSummary:
     overdue: int = 0
 
     @classmethod
-    def from_tasks(cls, tasks: list[TodoTask]) -> "TodoSummary":
+    def from_tasks(cls, tasks: list[TodoTask]) -> TodoSummary:
         return cls(
             total=len(tasks),
             writing=sum(1 for t in tasks if t.task_type == "writing"),

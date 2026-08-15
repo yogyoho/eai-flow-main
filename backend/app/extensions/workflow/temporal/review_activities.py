@@ -7,12 +7,12 @@ via ``evaluate_gate()``.  Re-exported by ``activities.py``.
 
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
 from temporalio import activity
 
-from app.extensions.review.gate import evaluate_gate, GateMode, GateResult
+from app.extensions.review.gate import GateMode, evaluate_gate
 from app.extensions.review.models import ReviewAssignment
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,7 @@ async def create_review_assignments(
             # Priority 2.5: fall back to dept head
             if not resolved:
                 from app.extensions.models import Role, User
+
                 for member in members:
                     if member.role == "owner":
                         owner = await db.get(User, member.user_id)
@@ -91,7 +92,7 @@ async def create_review_assignments(
                                 .where(
                                     User.dept_id == owner.dept_id,
                                     Role.name == "部门负责人",
-                                    User.is_deleted == False,
+                                    User.is_deleted.is_(False),
                                 )
                                 .limit(1)
                             )
@@ -108,7 +109,8 @@ async def create_review_assignments(
 
             logger.info(
                 "activity:create_review_assignments auto-resolved %d reviewers (phase=%s)",
-                len(resolved), node_id,
+                len(resolved),
+                node_id,
             )
 
         # Create ReviewAssignment rows, skipping existing duplicates
@@ -124,25 +126,29 @@ async def create_review_assignments(
                     )
                 )
                 if existing.scalar_one_or_none() is None:
-                    db.add(ReviewAssignment(
-                        project_id=pid,
-                        phase_node=node_id,
-                        reviewer_id=rid,
-                        reviewer_role="reviewer",
-                        status="pending",
-                        # EAI-CUSTOM (bug-1150): column is `DateTime` = TIMESTAMP
-                        # WITHOUT TIME ZONE (naive). Passing an offset-aware
-                        # datetime makes asyncpg's naive-epoch encode subtract
-                        # aware-naive → DataError → activity retries forever.
-                        deadline_at=(datetime.now(timezone.utc).replace(tzinfo=None)) + timedelta(hours=DEFAULT_REVIEW_DEADLINE_HOURS),
-                    ))
+                    db.add(
+                        ReviewAssignment(
+                            project_id=pid,
+                            phase_node=node_id,
+                            reviewer_id=rid,
+                            reviewer_role="reviewer",
+                            status="pending",
+                            # EAI-CUSTOM (bug-1150): column is `DateTime` = TIMESTAMP
+                            # WITHOUT TIME ZONE (naive). Passing an offset-aware
+                            # datetime makes asyncpg's naive-epoch encode subtract
+                            # aware-naive → DataError → activity retries forever.
+                            deadline_at=(datetime.now(UTC).replace(tzinfo=None)) + timedelta(hours=DEFAULT_REVIEW_DEADLINE_HOURS),
+                        )
+                    )
                     count += 1
 
             await db.commit()
 
     logger.info(
         "activity:create_review_assignments node_id=%s project_id=%s count=%d",
-        node_id, project_id, count,
+        node_id,
+        project_id,
+        count,
     )
     return {"status": "ok", "node_id": node_id, "assignment_count": count}
 
@@ -159,12 +165,7 @@ async def check_phase_completion(phase_id: str, project_id: str, chapter_range: 
     from app.extensions.models import ProjectChapter
 
     async with get_db_context() as db:
-        result = await db.execute(
-            select(ProjectChapter)
-            .where(ProjectChapter.project_id == uuid.UUID(project_id))
-            .where(ProjectChapter.level == 1)
-            .order_by(ProjectChapter.sort_order)
-        )
+        result = await db.execute(select(ProjectChapter).where(ProjectChapter.project_id == uuid.UUID(project_id)).where(ProjectChapter.level == 1).order_by(ProjectChapter.sort_order))
         all_level1 = result.scalars().all()
 
         # Filter by chapter_range if provided
@@ -180,11 +181,7 @@ async def check_phase_completion(phase_id: str, project_id: str, chapter_range: 
             scoped_ids.add(ch.id)
         # Also include children of scoped chapters
         if scoped_ids:
-            child_result = await db.execute(
-                select(ProjectChapter.id)
-                .where(ProjectChapter.project_id == uuid.UUID(project_id))
-                .where(ProjectChapter.parent_id.in_(scoped_ids))
-            )
+            child_result = await db.execute(select(ProjectChapter.id).where(ProjectChapter.project_id == uuid.UUID(project_id)).where(ProjectChapter.parent_id.in_(scoped_ids)))
             for row in child_result.all():
                 scoped_ids.add(row[0])
 
@@ -192,10 +189,7 @@ async def check_phase_completion(phase_id: str, project_id: str, chapter_range: 
             return {"status": "ok", "phase_id": phase_id, "ready": True, "total": 0, "completed": 0, "pending": 0}
 
         # Check status of all scoped chapters — single batch query with title
-        status_result = await db.execute(
-            select(ProjectChapter.id, ProjectChapter.status, ProjectChapter.title)
-            .where(ProjectChapter.id.in_(scoped_ids))
-        )
+        status_result = await db.execute(select(ProjectChapter.id, ProjectChapter.status, ProjectChapter.title).where(ProjectChapter.id.in_(scoped_ids)))
         total = 0
         completed = 0
         pending = 0
@@ -212,7 +206,11 @@ async def check_phase_completion(phase_id: str, project_id: str, chapter_range: 
 
     logger.info(
         "activity:check_phase_completion phase_id=%s total=%d completed=%d pending=%d ready=%s",
-        phase_id, total, completed, pending, ready,
+        phase_id,
+        total,
+        completed,
+        pending,
+        ready,
     )
     return {
         "status": "ok",
@@ -236,11 +234,7 @@ async def check_reviews_complete(node_id: str, project_id: str) -> dict:
     from app.extensions.database import get_db_context
 
     async with get_db_context() as db:
-        result = await db.execute(
-            select(ReviewAssignment)
-            .where(ReviewAssignment.project_id == uuid.UUID(project_id))
-            .where(ReviewAssignment.phase_node == node_id)
-        )
+        result = await db.execute(select(ReviewAssignment).where(ReviewAssignment.project_id == uuid.UUID(project_id)).where(ReviewAssignment.phase_node == node_id))
         reviews = result.scalars().all()
 
     # Build judgments list for gate evaluation
@@ -263,13 +257,19 @@ async def check_reviews_complete(node_id: str, project_id: str) -> dict:
     all_approved = total > 0 and approved == total
 
     logger.info(
-        "activity:check_reviews_complete node_id=%s total=%d approved=%d "
-        "rejected=%d pending=%d gate=%s all_done=%s",
-        node_id, total, approved, rejected, pending, gate_result.value, all_done,
+        "activity:check_reviews_complete node_id=%s total=%d approved=%d rejected=%d pending=%d gate=%s all_done=%s",
+        node_id,
+        total,
+        approved,
+        rejected,
+        pending,
+        gate_result.value,
+        all_done,
     )
 
     # Record metrics for each submitted review judgment
     from app.extensions.workflow.metrics import record_review_action
+
     for j in judgments:
         record_review_action(
             project_id=project_id,
@@ -307,22 +307,12 @@ async def handle_rejection(
 
     async with get_db_context() as db:
         # Reset rejected reviews to pending for the review node
-        await db.execute(
-            update(ReviewAssignment)
-            .where(ReviewAssignment.project_id == uuid.UUID(project_id))
-            .where(ReviewAssignment.phase_node == node_id)
-            .where(ReviewAssignment.status == "rejected")
-            .values(status="pending")
-        )
+        await db.execute(update(ReviewAssignment).where(ReviewAssignment.project_id == uuid.UUID(project_id)).where(ReviewAssignment.phase_node == node_id).where(ReviewAssignment.status == "rejected").values(status="pending"))
 
         # Update project current_phase_node to rollback target
         from app.extensions.models import ReportProject
 
-        await db.execute(
-            update(ReportProject)
-            .where(ReportProject.id == uuid.UUID(project_id))
-            .values(current_phase_node=rollback_to)
-        )
+        await db.execute(update(ReportProject).where(ReportProject.id == uuid.UUID(project_id)).values(current_phase_node=rollback_to))
 
         # Reset chapter statuses in the rollback phase back to 'pending'
         from app.extensions.models import ProjectChapter
@@ -339,7 +329,8 @@ async def handle_rejection(
 
     logger.info(
         "activity:handle_rejection node_id=%s rollback_to=%s",
-        node_id, rollback_to,
+        node_id,
+        rollback_to,
     )
     return {"status": "ok", "node_id": node_id, "rollback_to": rollback_to}
 

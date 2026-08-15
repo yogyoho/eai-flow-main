@@ -42,9 +42,7 @@ async def upsert_timeline(
     _user: TimelineEditor,
     db: AsyncSession = Depends(get_db),
 ):
-    entry = await upsert_timeline_entry(
-        db, project_id, body.phase_node, body.model_dump(exclude={"phase_node"}, exclude_unset=True)
-    )
+    entry = await upsert_timeline_entry(db, project_id, body.phase_node, body.model_dump(exclude={"phase_node"}, exclude_unset=True))
     return TimelineEntryOut.model_validate(entry)
 
 

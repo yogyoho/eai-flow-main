@@ -5,8 +5,6 @@ from pathlib import Path, PurePosixPath
 
 import pytest
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="requires /app/scripts/check_agent_guidance.py + AGENTS.md content; env-only (EAI-CUSTOM skip 2026-08-15)")
 
 

@@ -5,6 +5,7 @@ New: {"node_id": {"role": "phase_lead"}}
 
 Run: PYTHONPATH=. python scripts/migrate_phase_duties.py [--dry-run]
 """
+
 import asyncio
 import sys
 
@@ -22,9 +23,10 @@ LEGACY_MAP = {
 
 
 async def migrate(dry_run: bool = True):
+    from sqlalchemy import select
+
     from app.extensions.database import get_db_context
     from app.extensions.models import ProjectMember
-    from sqlalchemy import select
 
     async with get_db_context() as db:
         result = await db.execute(select(ProjectMember))

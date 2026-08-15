@@ -25,10 +25,7 @@ from deerflow.runtime.checkpointer.provider import POSTGRES_INSTALL
 from deerflow.runtime.store import get_store, reset_store
 from deerflow.runtime.store.provider import POSTGRES_STORE_INSTALL
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI checkpointer wraps savers in CachedHistorySaver; upstream tests expect bare mock (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 @pytest.fixture(autouse=True)

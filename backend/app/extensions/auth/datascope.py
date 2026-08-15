@@ -1,4 +1,5 @@
 """Data scope engine - resolves role data_scopes to FilterRules."""
+
 from __future__ import annotations
 
 from app.extensions.auth.engine import FilterRule
@@ -18,12 +19,12 @@ class DataScopeEngine:
         self._role_data_scopes = role_data_scopes or {}
 
     @classmethod
-    def from_registry(cls) -> "DataScopeEngine":
+    def from_registry(cls) -> DataScopeEngine:
         """Build engine from the global PermissionRegistry."""
         return cls.from_registry_with(get_permission_registry())
 
     @classmethod
-    def from_registry_with(cls, registry) -> "DataScopeEngine":
+    def from_registry_with(cls, registry) -> DataScopeEngine:
         """Build engine from a given PermissionRegistry (supports overlay in tests)."""
         scopes_by_resource: dict[str, list[DataScope]] = {}
         for module_key, mp in registry.list_modules():
@@ -93,7 +94,7 @@ class DataScopeEngine:
         )
         deny_rule = self.build_scope_union(identity, resource_type, deny_scope_ids)
         if deny_rule.operator == "none_allow":
-            return allow_rule                       # no applicable deny
+            return allow_rule  # no applicable deny
         if deny_rule.operator == "allow_all":
             return FilterRule(operator="none_allow")  # deny matched empty-template scope = deny all
         return FilterRule(

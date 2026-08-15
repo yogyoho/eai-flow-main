@@ -120,7 +120,9 @@ class LocalWorkflowRunner:
                 if node_type == "condition":
                     _branch = await self._evaluate_condition(pid, project_id, node_data)
                     condition_result = await self._execute_activity(
-                        "evaluate_condition", pid, project_id,
+                        "evaluate_condition",
+                        pid,
+                        project_id,
                         condition_expr=node_data.get("expression"),
                     )
                     results[pid] = condition_result
@@ -129,16 +131,15 @@ class LocalWorkflowRunner:
                     await self._execute_activity("notify_phase_start", pid, project_id)
                     results[pid] = {"status": "awaiting_human_action"}
                 elif node_type == "review":
-                    reviewers = [
-                        b["value"] for b in node_data.get("reviewers", [])
-                        if b.get("type") == "user"
-                    ]
+                    reviewers = [b["value"] for b in node_data.get("reviewers", []) if b.get("type") == "user"]
                     await self._execute_activity("create_review_assignments", pid, project_id, reviewers=reviewers or None)
                     await self._execute_activity("notify_review_pending", pid, project_id)
                     results[pid] = {"status": "awaiting_review"}
                 elif node_type == "ai_generate":
                     await self._execute_activity(
-                        "start_ai_writing", pid, project_id,
+                        "start_ai_writing",
+                        pid,
+                        project_id,
                         chapter_id=node_data.get("chapterId"),
                     )
                     results[pid] = {"status": "ai_completed"}
@@ -151,7 +152,11 @@ class LocalWorkflowRunner:
                     tg = task_graphs.get(pid)
                     if tg:
                         task_result = await self._execute_task_graph(
-                            pid, project_id, tg, results, completed,
+                            pid,
+                            project_id,
+                            tg,
+                            results,
+                            completed,
                         )
                         results[pid] = task_result
 
@@ -180,12 +185,17 @@ class LocalWorkflowRunner:
                     ready.append(down_id)
 
         from .temporal.activities import notify_workflow_complete as _notify_wf_complete
+
         await _notify_wf_complete(project_id)
         return {"status": "completed", "completed": list(completed), "results": results}
 
     async def _execute_task_graph(
-        self, phase_id: str, project_id: str, tg: dict,
-        results: dict, completed: set[str],
+        self,
+        phase_id: str,
+        project_id: str,
+        tg: dict,
+        results: dict,
+        completed: set[str],
     ) -> dict:
         """Execute the task DAG inside a phase."""
         task_nodes = tg.get("nodes", [])
@@ -231,17 +241,19 @@ class LocalWorkflowRunner:
             try:
                 if task_type == "ai_generate":
                     await self._execute_activity(
-                        "start_ai_writing", tid, project_id,
+                        "start_ai_writing",
+                        tid,
+                        project_id,
                         chapter_id=task_data.get("chapterId"),
                     )
                     task_completed.add(tid)
                 elif task_type == "review":
-                    reviewers = [
-                        b["value"] for b in task_data.get("reviewers", [])
-                        if b.get("type") == "user"
-                    ]
+                    reviewers = [b["value"] for b in task_data.get("reviewers", []) if b.get("type") == "user"]
                     await self._execute_activity(
-                        "create_review_assignments", tid, project_id, reviewers=reviewers or None,
+                        "create_review_assignments",
+                        tid,
+                        project_id,
+                        reviewers=reviewers or None,
                     )
                     await self._execute_activity("notify_review_pending", tid, project_id)
                     # Wait for human action — in local mode, this returns after signal
@@ -352,6 +364,7 @@ class LocalWorkflowRunner:
                     ready.append(down_id)
 
         from .temporal.activities import notify_workflow_complete as _notify_wf_complete
+
         await _notify_wf_complete(project_id)
         return {"status": "completed", "completed": list(completed), "results": results}
 
@@ -395,7 +408,8 @@ class LocalWorkflowRunner:
         from .temporal.activities import evaluate_condition
 
         result = await evaluate_condition(
-            node_id, project_id,
+            node_id,
+            project_id,
             condition_expr=node_data.get("expression"),
         )
         return result.get("branch", "true")

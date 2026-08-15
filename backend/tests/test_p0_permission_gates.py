@@ -6,8 +6,6 @@
 import uuid
 
 import pytest
-from fastapi.testclient import TestClient
-
 
 # ── P0-1: project:create removed from default user role ──
 
@@ -22,9 +20,7 @@ class TestProjectCreatePermissionGate:
         defaults = registry.get_role_defaults("user")
         assert defaults is not None, "user role should exist in registry"
         resolved = registry.resolve_role_permissions("user")
-        assert "project:create" not in resolved, (
-            "project:create should NOT be in default user permissions"
-        )
+        assert "project:create" not in resolved, "project:create should NOT be in default user permissions"
 
     def test_superadmin_role_has_wildcard(self):
         from app.extensions.auth.registry import get_permission_registry
@@ -38,7 +34,6 @@ class TestProjectCreatePermissionGate:
 
     def test_require_permission_project_create_allows_admin(self):
         """Super admin (wildcard permission) should pass project:create check."""
-        from app.extensions.auth.middleware import require_permission
 
         # We can't easily test the full FastAPI dependency without a client,
         # but we verify the permission string is checkable
@@ -53,7 +48,9 @@ class TestProjectCreatePermissionGate:
 
         # Simulate a role in DB that has project:create (admin-granted extra)
         extra_perms = [
-            "model:read", "system:access", "project:create",
+            "model:read",
+            "system:access",
+            "project:create",
         ]
         old_role = MagicMock()
         old_role.is_system = False
@@ -105,9 +102,7 @@ class TestProjectCreatePermissionGate:
         assert "doc:read" in created_role.permissions
         assert "model:read" in created_role.permissions
         assert "system:access" in created_role.permissions
-        assert "project:create" not in created_role.permissions, (
-            "project:create should NOT be in registry-resolved default user permissions"
-        )
+        assert "project:create" not in created_role.permissions, "project:create should NOT be in registry-resolved default user permissions"
 
         # The returned role should be the same object
         assert result is created_role
@@ -115,6 +110,7 @@ class TestProjectCreatePermissionGate:
 
 def _get_user_defaults():
     from app.extensions.auth.registry import get_permission_registry
+
     return sorted(get_permission_registry().resolve_role_permissions("user"))
 
 
@@ -249,8 +245,8 @@ class TestWorkflowSuperAdminLock:
 
         from app.extensions.workflow.routers import (
             delete_definition,
-            update_definition,
             publish_template,
+            update_definition,
         )
 
         # Check that the endpoint functions reference WorkflowSuperAdmin

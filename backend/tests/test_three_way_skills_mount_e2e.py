@@ -26,8 +26,6 @@ from deerflow.skills.storage import reset_user_skill_storage
 from deerflow.skills.storage.user_scoped_skill_storage import UserScopedSkillStorage
 from deerflow.skills.types import SKILL_MD_FILE, Skill, SkillCategory
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI skills path layout (backend/.deer-flow prefix) differs from upstream (EAI-CUSTOM skip 2026-08-15)")
 
 

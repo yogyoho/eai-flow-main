@@ -1,6 +1,5 @@
 """Tests for project Pydantic schemas: validation, defaults, serialization."""
 
-from datetime import datetime
 from uuid import uuid4
 
 import pytest
@@ -23,7 +22,6 @@ from app.extensions.project.schemas import (
     ProjectOut,
     ProjectUpdate,
 )
-
 
 # ── Validation Constants ──
 

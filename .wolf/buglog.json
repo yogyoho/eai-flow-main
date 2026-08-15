@@ -6,7 +6,14 @@
     "file": "frontend/src/extensions/bid-quote/components/DrillDownModal.tsx",
     "root_cause": "Task7 实现者未察觉 spec 要求 won→'✓ 中标' 标记;三处单源约定(esc/matchesSelfAttribute/emerald)在并行组件开发中各自内联,评审才暴露",
     "fix": "commit 60e1bd0fd + 6ac399628:won 列 true→'✓ 中标'/false→留空(避免 cellText(false) 裸 false);DashboardView 改用 esc();DrillDownModal 行过滤改喂 matchesSelfAttribute(rowSelfPct(r), attr);green→emerald;页脚筛选时显示 '共 X / Y 条'",
-    "tags": ["bid-quote", "spec-gap", "single-source", "esc", "matchesSelfAttribute", "review-finding"],
+    "tags": [
+      "bid-quote",
+      "spec-gap",
+      "single-source",
+      "esc",
+      "matchesSelfAttribute",
+      "review-finding"
+    ],
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-14T15:30:00"
@@ -19151,5 +19158,244 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-14"
+  },
+  {
+    "id": "bug-1192",
+    "timestamp": "2026-08-15",
+    "error_message": "加载 ontology registry YAML 时 scanner error: 'expected <block end>, but found \",\"' (flow-style mapping)",
+    "file": "backend/app/extensions/ontology/registry/*.yaml",
+    "root_cause": "YAML 描述文本含中文/英文逗号且未加引号，flow mapping 解析歧义",
+    "fix": "所有 description 一律双引号包裹",
+    "tags": [
+      "yaml",
+      "ontology",
+      "registry"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1193",
+    "timestamp": "2026-08-15",
+    "error_message": "test_registry_cache_hot_reload 断言 2 > 2 失败: 热重载版本号不单调",
+    "file": "backend/app/extensions/ontology/registry.py",
+    "root_cause": "每次 reload 时 manifest registry_version 重新推导(+1 于加载时)，热重载后回落",
+    "fix": "RegistryCache 自持 _version 计数:首次=manifest 值，之后每次 reload +1",
+    "tags": [
+      "ontology",
+      "hot-reload",
+      "version"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1194",
+    "timestamp": "2026-08-15",
+    "error_message": "POST /api/auth/login/local 403/422; GET /api/extensions/ontology/registry 401 (探针)",
+    "file": "backend/app/gateway/routers/auth.py",
+    "root_cause": "登录端点实际是 /api/v1/auth/login/local 且为 OAuth2PasswordRequestForm(表单 username/password)，不是 JSON {email,password}",
+    "fix": "curl -d 'username=...&password=...' POST /api/v1/auth/login/local 拿 cookie 后探针返回 200",
+    "tags": [
+      "auth",
+      "csrf",
+      "probe",
+      "login"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1195",
+    "timestamp": "2026-08-15",
+    "error_message": "容器内全量 pytest 收集失败: RuntimeError could not resolve repository root: no '.git' marker found above /app/backend/tests/support/detectors",
+    "file": "backend/tests/support/detectors/blocking_io_static.py",
+    "root_cause": "gateway 容器不挂载 .git；4 个静态检测器测试(test_detect_*/test_scan_changed_blocking_io)要求 git checkout 才能 resolve repo root",
+    "fix": "容器内跑全量需 --ignore 掉 4 个文件；CI(GitHub Actions)带 .git 正常跑",
+    "tags": [
+      "docker",
+      "pytest",
+      "container",
+      "git"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1201",
+    "timestamp": "2026-08-15",
+    "error_message": "F821 Undefined name `desc` in execution_logger.py order_by calls",
+    "file": "backend/app/extensions/knowledge_factory/engine/execution_logger.py",
+    "root_cause": "sqlalchemy.desc never imported — would NameError at runtime on rule-execution logging",
+    "fix": "added `from sqlalchemy import desc`",
+    "tags": [
+      "f821",
+      "import",
+      "knowledge_factory"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1202",
+    "timestamp": "2026-08-15",
+    "error_message": "F821 Undefined name `export_template_json` in knowledge_factory/routers.py:894",
+    "file": "backend/app/extensions/knowledge_factory/routers.py",
+    "root_cause": "storage.export_template_json used but never imported — template export endpoint would 500",
+    "fix": "added `from .storage import export_template_json`",
+    "tags": [
+      "f821",
+      "import",
+      "knowledge_factory"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1203",
+    "timestamp": "2026-08-15",
+    "error_message": "F821 Undefined names ScrapDraftCreate/Update, ScrapSourceCreate/Update in web_scraper services",
+    "file": "backend/app/extensions/web_scraper/services/draft_service.py, source_service.py",
+    "root_cause": "quoted annotations referenced schema classes not imported",
+    "fix": "extended schemas imports, dropped quotes",
+    "tags": [
+      "f821",
+      "web_scraper"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1204",
+    "timestamp": "2026-08-15",
+    "error_message": "F821 Undefined name AsyncSession x6 in data_source/service.py annotations",
+    "file": "backend/app/extensions/data_source/service.py",
+    "root_cause": "AsyncSession used in annotations without import",
+    "fix": "added to existing sqlalchemy.ext.asyncio import",
+    "tags": [
+      "f821",
+      "data_source"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1205",
+    "timestamp": "2026-08-15",
+    "error_message": "661 ruff errors + 214 unformatted files: make lint failed",
+    "file": "backend (mostly app/extensions/*)",
+    "root_cause": "EAI custom extension modules were added over time without running ruff check/format; lint debt accumulated (I001/F401/UP045/E712/E402 etc). buglog.json corruption incident during fix: PS Get-Content without -Encoding utf8 misread file as GBK and a failed ConvertFrom-Json pipeline overwrote it; restored from git HEAD + encoding-reversal recovery of 4 uncommitted entries",
+    "fix": "ruff --fix (567) + manual fixes (E712 .is_(), StrEnum, PEP695 generics, F841 removals, E402 noqa/moves) + ruff format . — make lint passes. buglog restored via git show HEAD + GBK->UTF8 reversal of error-echo copy",
+    "tags": [
+      "lint",
+      "ruff",
+      "tech-debt",
+      "extensions",
+      "powershell-encoding"
+    ],
+    "related_bugs": [
+      "bug-1201",
+      "bug-1202",
+      "bug-1203",
+      "bug-1204"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-2157",
+    "timestamp": "2026-08-15",
+    "error_message": "tsc: chartTheme.ts(3,68) TS1005 ';' expected 等 21 个语法错误(该行是块注释)",
+    "file": "frontend/src/extensions/bid-quote/components/chartTheme.ts",
+    "root_cause": "注释中写了路径 glob '19219-*/content',其中 '*/' 序列提前终止了 /* */ 块注释,余下文本被当代码解析",
+    "fix": "注释中避免任何 '*/' 序列(改写路径描述);教训:块注释里写含通配符的 glob 路径必踩",
+    "tags": [
+      "block-comment",
+      "ts1005",
+      "glob-in-comment",
+      "bid-quote"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1207",
+    "timestamp": "2026-08-15",
+    "error_message": "胜率-溢价曲线所有桶胜率恒 0;报价区间建议成本底线远超 P75 全段误报红",
+    "file": "frontend/src/extensions/bid-quote/api.ts",
+    "root_cause": "sqlPremiumCurve 溢价相对中标价算:我方胜出时唯一 won 行即本行,被 bid_id<> 排除→胜场全被 join 丢弃;sqlPriceBand 成本 CTE 按段 SUM 全部我方项目成本(未先按项目聚合再 AVG)",
+    "fix": "溢价改相对友商最低价 cmin(MIN(winning_price) WHERE bidder_role=competitor);成本改 pc 按项目 SUM→cost 段内 AVG;sql-shape.test.ts 加口径锁断言(MIN(winning_price) AS cmin_price / AVG(pc.cost))",
+    "tags": [
+      "bid-quote",
+      "sql",
+      "premium-curve",
+      "price-band",
+      "口径",
+      "cte"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-2158",
+    "timestamp": "2026-08-15",
+    "error_message": "docker compose exec gateway 执行容器内绝对路径命令报错: sh: 1: C:/Program: not found 以及 can't open file '/app/C:/Program Files/Git/app/...'",
+    "file": "backend/scripts/seed_mock_market.py",
+    "root_cause": "Windows Git Bash(MSYS) 会把 sh -c 字符串里以 / 开头的绝对路径参数改写成 C:/Program Files/Git/... 前缀;且容器内裸 python 不是 backend venv(无 asyncpg)",
+    "fix": "用 sh -c \"cd /app/backend && .venv/bin/python scripts/xxx.py\" (相对路径 + 显式 venv python),避免 MSYS 路径转换",
+    "tags": [
+      "docker",
+      "git-bash",
+      "msys-path-conv",
+      "venv",
+      "gateway"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1186",
+    "timestamp": "2026-08-15",
+    "error_message": "docker exec deer-flow-gateway python /app/... → 'can't open file /app/C:/Program Files/Git/app/...'",
+    "file": "backend/scripts/ontology_link_recall_probe.py",
+    "root_cause": "Git Bash (MSYS) 把容器内绝对路径 /app/... 转换成 Windows 路径",
+    "fix": "命令前加 MSYS_NO_PATHCONV=1",
+    "tags": [
+      "docker",
+      "git-bash",
+      "venv",
+      "container-exec"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1187",
+    "timestamp": "2026-08-15",
+    "error_message": "ModuleNotFoundError: No module named 'asyncpg' (容器 python)",
+    "file": "backend/scripts/ontology_link_recall_probe.py",
+    "root_cause": "容器默认 python 是系统解释器, 不带 backend 依赖",
+    "fix": "用 /app/backend/.venv/bin/python 跑 backend 脚本",
+    "tags": [
+      "docker",
+      "git-bash",
+      "venv",
+      "container-exec"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
   }
 ]

@@ -7,7 +7,6 @@ the fix: docs get a ``folder_id`` and a per-thread subfolder (and a personal
 root "我的文档" is auto-created when missing).
 """
 
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -133,9 +132,7 @@ async def test_sync_files_skips_tool_results_and_hidden_paths(tmp_path):
     sandbox = tmp_path
     (sandbox / "report.md").write_text("# 报告", encoding="utf-8")
     (sandbox / ".tool-results").mkdir()
-    (sandbox / ".tool-results" / "knowledge-factory_kf_resolve_template-abc.txt").write_text(
-        '{"found": true, "sections": []}', encoding="utf-8"
-    )
+    (sandbox / ".tool-results" / "knowledge-factory_kf_resolve_template-abc.txt").write_text('{"found": true, "sections": []}', encoding="utf-8")
     (sandbox / ".cache").mkdir()
     (sandbox / ".cache" / "internal.json").write_text("{}", encoding="utf-8")
 

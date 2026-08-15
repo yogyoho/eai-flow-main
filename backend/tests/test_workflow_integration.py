@@ -8,12 +8,13 @@ Covers the four-module flow end-to-end with mocked DB:
 """
 
 import uuid
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _mock_db(get_return=None, execute_return=None):
     """Build a minimal AsyncMock DB session."""
@@ -74,7 +75,7 @@ class TestReviewGateIntegration:
     """Gate strategies work correctly with realistic judgment data."""
 
     def test_all_must_approve_passes(self):
-        from app.extensions.review.gate import evaluate_gate, GateMode, GateResult
+        from app.extensions.review.gate import GateMode, GateResult, evaluate_gate
 
         judgments = [
             {"reviewer_id": "u1", "status": "approved"},
@@ -84,7 +85,7 @@ class TestReviewGateIntegration:
         assert result == GateResult.PASS
 
     def test_all_must_approve_rejects_on_single_rejection(self):
-        from app.extensions.review.gate import evaluate_gate, GateMode, GateResult
+        from app.extensions.review.gate import GateMode, GateResult, evaluate_gate
 
         judgments = [
             {"reviewer_id": "u1", "status": "approved"},
@@ -94,14 +95,14 @@ class TestReviewGateIntegration:
         assert result == GateResult.REJECT
 
     def test_any_can_approve_passes_first(self):
-        from app.extensions.review.gate import evaluate_gate, GateMode, GateResult
+        from app.extensions.review.gate import GateMode, GateResult, evaluate_gate
 
         judgments = [{"reviewer_id": "u1", "status": "approved"}]
         result = evaluate_gate(GateMode.ANY_CAN_APPROVE, 3, judgments)
         assert result == GateResult.PASS
 
     def test_majority_with_tie_waits(self):
-        from app.extensions.review.gate import evaluate_gate, GateMode, GateResult
+        from app.extensions.review.gate import GateMode, GateResult, evaluate_gate
 
         # 2 submitted, 1 approved, 1 rejected — not yet majority
         judgments = [
@@ -112,7 +113,7 @@ class TestReviewGateIntegration:
         assert result == GateResult.WAITING
 
     def test_weighted_with_custom_weights(self):
-        from app.extensions.review.gate import evaluate_gate, GateMode, GateResult
+        from app.extensions.review.gate import GateMode, GateResult, evaluate_gate
 
         judgments = [
             {"reviewer_id": "u1", "status": "approved"},
@@ -257,14 +258,14 @@ class TestChapterLifecycle:
 
 class TestFinalizeIntegration:
     def test_preconditions_blocked_when_reviews_not_approved(self):
-        from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
+        from app.extensions.docmgr.finalize import FinalizeStatus, check_preconditions
 
         chapters = [{"id": "c1", "title": "Ch1", "status": "reviewing"}]  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         result = check_preconditions(chapters, reviews_approved=False)
         assert result.status == FinalizeStatus.BLOCKED
 
     def test_preconditions_blocked_when_chapters_incomplete(self):
-        from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
+        from app.extensions.docmgr.finalize import FinalizeStatus, check_preconditions
 
         chapters = [
             {"id": "c1", "title": "Ch1", "status": "reviewing"},  # EAI-CUSTOM: canonical (ADR 2026-08-02)
@@ -274,7 +275,7 @@ class TestFinalizeIntegration:
         assert result.status == FinalizeStatus.BLOCKED
 
     def test_preconditions_ready_when_all_ok(self):
-        from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
+        from app.extensions.docmgr.finalize import FinalizeStatus, check_preconditions
 
         chapters = [
             {"id": "c1", "title": "Ch1", "status": "reviewing"},  # EAI-CUSTOM: canonical (ADR 2026-08-02)
@@ -284,7 +285,7 @@ class TestFinalizeIntegration:
         assert result.status == FinalizeStatus.READY
 
     def test_preconditions_warnings_for_unresolved_comments(self):
-        from app.extensions.docmgr.finalize import check_preconditions, FinalizeStatus
+        from app.extensions.docmgr.finalize import FinalizeStatus, check_preconditions
 
         chapters = [{"id": "c1", "title": "Ch1", "status": "reviewing"}]  # EAI-CUSTOM: canonical (ADR 2026-08-02)
         result = check_preconditions(chapters, reviews_approved=True, unresolved_comments=3)
@@ -304,7 +305,9 @@ class TestFinalizeIntegration:
 
         mock_chapter = _chapter_mock(
             "00000000-0000-0000-0000-000000000001",
-            "第一章", "completed", "这是第一章内容",
+            "第一章",
+            "completed",
+            "这是第一章内容",
         )
 
         db = AsyncMock()
@@ -348,8 +351,8 @@ class TestE2EWorkflowChain:
     async def test_full_chain_writing_to_review(self):
         """Chapters move through the writing pipeline and trigger review assignments."""
         from app.extensions.workflow.temporal.review_activities import (
-            create_review_assignments,
             check_reviews_complete,
+            create_review_assignments,
         )
 
         proj_id = str(uuid.uuid4())
@@ -468,10 +471,14 @@ class TestDependencyGraphIntegration:
         from app.extensions.writing.dependency_graph import derive_chapter_dependencies
 
         sections = [
-            {"title": "Ch1", "sort_order": 0, "children": [
-                {"title": "1.1", "sort_order": 0, "children": []},
-                {"title": "1.2", "sort_order": 1, "children": []},
-            ]},
+            {
+                "title": "Ch1",
+                "sort_order": 0,
+                "children": [
+                    {"title": "1.1", "sort_order": 0, "children": []},
+                    {"title": "1.2", "sort_order": 1, "children": []},
+                ],
+            },
         ]
         deps = derive_chapter_dependencies(sections)
         # Children depend on parent
@@ -487,12 +494,20 @@ class TestDependencyGraphIntegration:
         )
 
         sections = [
-            {"title": "Ch1", "sort_order": 0, "children": [
-                {"title": "1.1", "sort_order": 0, "children": []},
-            ]},
-            {"title": "Ch2", "sort_order": 1, "children": [
-                {"title": "2.1", "sort_order": 0, "children": []},
-            ]},
+            {
+                "title": "Ch1",
+                "sort_order": 0,
+                "children": [
+                    {"title": "1.1", "sort_order": 0, "children": []},
+                ],
+            },
+            {
+                "title": "Ch2",
+                "sort_order": 1,
+                "children": [
+                    {"title": "2.1", "sort_order": 0, "children": []},
+                ],
+            },
         ]
         deps = derive_chapter_dependencies(sections)
         # Cross-parent siblings are independent
@@ -534,10 +549,9 @@ class TestReviewDeadlineEscalation:
 
         # We need to run the coroutine
         import asyncio
+
         loop = asyncio.new_event_loop()
-        ids = loop.run_until_complete(
-            _resolve_phase_lead_ids(db, str(uuid.uuid4()), "review-1")
-        )
+        ids = loop.run_until_complete(_resolve_phase_lead_ids(db, str(uuid.uuid4()), "review-1"))
         loop.close()
         assert len(ids) == 1
         assert ids[0] == member.user_id
@@ -559,20 +573,20 @@ class TestReviewDeadlineEscalation:
         db.execute = AsyncMock(return_value=mock_result)
 
         import asyncio
+
         loop = asyncio.new_event_loop()
-        ids = loop.run_until_complete(
-            _resolve_owner_ids(db, str(uuid.uuid4()))
-        )
+        ids = loop.run_until_complete(_resolve_owner_ids(db, str(uuid.uuid4())))
         loop.close()
         assert len(ids) == 1
 
     @pytest.mark.asyncio
     async def test_notify_review_pending_with_deadlines(self):
         """notify_review_pending sends notifications and escalates overdue reviews."""
+        from datetime import datetime, timedelta
+
         from app.extensions.workflow.temporal.notification_activities import (
             notify_review_pending,
         )
-        from datetime import datetime, timedelta, timezone
 
         proj_id = str(uuid.uuid4())
         node_id = "review-1"
@@ -582,7 +596,7 @@ class TestReviewDeadlineEscalation:
         ra.reviewer_id = uuid.uuid4()
         ra.phase_node = node_id
         ra.status = "pending"
-        ra.deadline_at = datetime.now(timezone.utc) - timedelta(hours=50)
+        ra.deadline_at = datetime.now(UTC) - timedelta(hours=50)
 
         ra_scalars = MagicMock()
         ra_scalars.all.return_value = [ra]

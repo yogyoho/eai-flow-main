@@ -11,9 +11,10 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sqlalchemy import select, distinct, update
-from app.extensions.database import init_engine, get_db_context, close_db
-from app.extensions.models import AIDocument, Folder, ReportProject, ProjectMember
+from sqlalchemy import select, update
+
+from app.extensions.database import close_db, get_db_context, init_engine
+from app.extensions.models import AIDocument, Folder, ProjectMember, ReportProject
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -54,10 +55,14 @@ async def migrate():
                 root = existing.scalar_one_or_none()
                 if root is None:
                     # Find an owner for this folder
-                    owner_stmt = select(ProjectMember.user_id).where(
-                        ProjectMember.project_id == project_id,
-                        ProjectMember.role == "owner",
-                    ).limit(1)
+                    owner_stmt = (
+                        select(ProjectMember.user_id)
+                        .where(
+                            ProjectMember.project_id == project_id,
+                            ProjectMember.role == "owner",
+                        )
+                        .limit(1)
+                    )
                     owner_result = await db.execute(owner_stmt)
                     owner_id = owner_result.scalar_one_or_none() or project.created_by
 
@@ -111,11 +116,7 @@ async def migrate():
 
         # 2. Migrate personal folders
         logger.info("=== Migrating personal folders ===")
-        stmt = (
-            select(AIDocument.user_id, AIDocument.folder)
-            .where(AIDocument.project_id.is_(None))
-            .distinct()
-        )
+        stmt = select(AIDocument.user_id, AIDocument.folder).where(AIDocument.project_id.is_(None)).distinct()
         result = await db.execute(stmt)
         personal_pairs = result.all()
 

@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 
 ACCESS_TOKEN_COOKIE = "access_token"
 
+
 async def _ensure_role(db: AsyncSession, code: str) -> Role | None:
     """Look up a role by code, creating it on-the-fly from registry defaults if missing.
 
@@ -138,8 +139,12 @@ async def get_current_user(
     current_user = await _build_current_user(ext_user, db)
     logger.debug(
         "Bridged user: gw_id=%s email=%s system_role=%s → ext_id=%s role_id=%s role_name=%s",
-        gw_user.id, gw_user.email, gw_user.system_role,
-        current_user.id, current_user.role_id, current_user.role_name,
+        gw_user.id,
+        gw_user.email,
+        gw_user.system_role,
+        current_user.id,
+        current_user.role_id,
+        current_user.role_name,
     )
     return current_user
 
@@ -174,7 +179,8 @@ def require_permission(permission: str):
         if current_user.role_id is None:
             logger.warning(
                 "Permission check failed: user=%s (%s) has no role assigned",
-                current_user.id, current_user.username,
+                current_user.id,
+                current_user.username,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -195,10 +201,7 @@ def require_permission(permission: str):
         # EAI-CUSTOM: Roles come from PermissionRegistry (permissions.yaml + roles_custom.yaml overlay),
         # with #inherit expansion — DB roles table is a calibrated mirror, not the source.
         registry = get_permission_registry()
-        role_permissions = {
-            code: registry.resolve_role_permissions(code)
-            for code in registry.list_role_codes()
-        }
+        role_permissions = {code: registry.resolve_role_permissions(code) for code in registry.list_role_codes()}
         all_ids = {p.id for p in registry.list_all_permissions()}
 
         # Engine: cached per request
@@ -232,7 +235,8 @@ def require_permission(permission: str):
         if current_user.role_id is not None and identity.role_code is None:
             logger.warning(
                 "Permission check failed: user=%s role_id=%s not found in DB",
-                current_user.id, current_user.role_id,
+                current_user.id,
+                current_user.role_id,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -244,12 +248,17 @@ def require_permission(permission: str):
             if deny_policy:
                 logger.warning(
                     "Permission denied by policy: user=%s role=%s perm='%s' denied_by='%s'",
-                    current_user.id, identity.role_code, permission, deny_policy,
+                    current_user.id,
+                    identity.role_code,
+                    permission,
+                    deny_policy,
                 )
             else:
                 logger.warning(
                     "Permission check failed: user=%s role=%s lacks '%s'",
-                    current_user.id, identity.role_code, permission,
+                    current_user.id,
+                    identity.role_code,
+                    permission,
                 )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -324,8 +333,8 @@ def require_super_admin():
 
 # ── Data scope dependency ────────────────────────────────────────────
 
-from app.extensions.auth.datascope import DataScopeEngine
-from app.extensions.auth.engine import FilterRule
+from app.extensions.auth.datascope import DataScopeEngine  # noqa: E402  (EAI-CUSTOM: deferred to avoid circular import with datascope)
+from app.extensions.auth.engine import FilterRule  # noqa: E402
 
 
 async def current_identity(
@@ -354,6 +363,7 @@ def with_data_scope(resource_type: str):
             query = select(KnowledgeBase).where(scope.to_sqlalchemy(KnowledgeBase))
             ...
     """
+
     async def _scope(
         current_user: CurrentUser = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),

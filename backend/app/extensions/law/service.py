@@ -158,9 +158,7 @@ class LawService:
         display_desc = law_config.description if law_config and law_config.description else f"法规标准库 - {kb_name}"
 
         try:
-            existing = await db.execute(
-                select(KnowledgeBase).where(KnowledgeBase.name == display_name)
-            )
+            existing = await db.execute(select(KnowledgeBase).where(KnowledgeBase.name == display_name))
             kb_record = existing.scalar_one_or_none()
 
             if kb_record is None:
@@ -608,9 +606,7 @@ class LawService:
                 if existing:
                     dataset_id = existing.get("id")
                     if dataset_id:
-                        ok = await LawService._ensure_kb_registered(
-                            db, owner_id, kb_name, dataset_id, chunk_method
-                        )
+                        ok = await LawService._ensure_kb_registered(db, owner_id, kb_name, dataset_id, chunk_method)
                         if ok:
                             registered.append(kb_name)
             except Exception:
@@ -694,9 +690,7 @@ class LawService:
         # 查询已注册的法规知识库
         registered_kb_names = set()
         try:
-            kb_result = await db.execute(
-                select(KnowledgeBase.name).where(KnowledgeBase.kb_type == "law")
-            )
+            kb_result = await db.execute(select(KnowledgeBase.name).where(KnowledgeBase.kb_type == "law"))
             registered_kb_names = {row[0] for row in kb_result.all()}
         except Exception:
             pass

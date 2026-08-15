@@ -475,11 +475,13 @@ async def get_folder_tree(
 ):
     """Get folder tree for the current user."""
     folders = await FolderService.get_folder_tree(
-        db, current_user.id, project_id=project_id, project_scope=project_scope, doc_type=doc_type,
+        db,
+        current_user.id,
+        project_id=project_id,
+        project_scope=project_scope,
+        doc_type=doc_type,
     )
-    return FolderTreeResponse(
-        folders=[await FolderService.to_response(f) for f in folders]
-    )
+    return FolderTreeResponse(folders=[await FolderService.to_response(f) for f in folders])
 
 
 @router.post("/folders", response_model=FolderResponse, status_code=status.HTTP_201_CREATED)
@@ -491,7 +493,11 @@ async def create_folder(
     """Create a new folder or sub-folder."""
     try:
         folder = await FolderService.create_folder(
-            db, current_user.id, data.name, parent_id=data.parent_id, project_id=data.project_id,
+            db,
+            current_user.id,
+            data.name,
+            parent_id=data.parent_id,
+            project_id=data.project_id,
         )
         return await FolderService.to_response(folder)
     except PermissionError as e:
@@ -836,7 +842,11 @@ async def toggle_personal_star(
 ):
     """Toggle star on a personal doc."""
     await AIDocumentService.upsert_personal_star(
-        db, current_user.id, thread_id, data.rel_path, data.starred,
+        db,
+        current_user.id,
+        thread_id,
+        data.rel_path,
+        data.starred,
     )
     await db.commit()
     return {"ok": True}
@@ -851,7 +861,11 @@ async def toggle_personal_share(
 ):
     """Toggle share on a personal doc."""
     await AIDocumentService.upsert_personal_share(
-        db, current_user.id, thread_id, data.rel_path, data.shared,
+        db,
+        current_user.id,
+        thread_id,
+        data.rel_path,
+        data.shared,
     )
     await db.commit()
     return {"ok": True}
@@ -882,7 +896,11 @@ async def save_personal_content(
     """写回线程 outputs/ 文件（编辑器保存）。"""
     try:
         await AIDocumentService.write_personal_output(
-            db, current_user.id, thread_id, data.rel_path, data.content,
+            db,
+            current_user.id,
+            thread_id,
+            data.rel_path,
+            data.content,
         )
     except FileNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="outputs directory not found")
@@ -903,7 +921,12 @@ async def create_personal_version(
 ):
     """Create a content snapshot for a personal doc (manual save or pre-AI-edit)."""
     vid = await AIDocumentService.create_personal_version(
-        db, current_user.id, thread_id, data.rel_path, data.content, data.label,
+        db,
+        current_user.id,
+        thread_id,
+        data.rel_path,
+        data.content,
+        data.label,
     )
     await db.commit()
     return {"ok": True, "id": str(vid)}

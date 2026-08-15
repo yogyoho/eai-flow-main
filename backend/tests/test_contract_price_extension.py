@@ -52,16 +52,21 @@ def test_schemas_roundtrip():
         ClusterMerge,
         ConfigOut,
         DashboardOut,
-        ItemUpdate,
         PipelineRunRequest,
     )
 
     cfg = ConfigOut()
     assert cfg.cluster_eps == 0.6
-    assert DashboardOut(
-        contract_count=1, item_count=2, cluster_count=1,
-        pending_cluster_count=1, confirmed_cluster_count=0,
-    ).price_range is None
+    assert (
+        DashboardOut(
+            contract_count=1,
+            item_count=2,
+            cluster_count=1,
+            pending_cluster_count=1,
+            confirmed_cluster_count=0,
+        ).price_range
+        is None
+    )
     merge = ClusterMerge(
         cluster_ids=["00000000-0000-0000-0000-000000000000"] * 2,
         representative_name="开关柜",
@@ -107,15 +112,11 @@ async def test_find_duplicate_document_matches_cross_filename():
         return session
 
     # same hash, different filename → duplicate found
-    dup = await crud.find_duplicate_document(
-        session_returning(existing), "h1", exclude_uri="s3://cpa-contracts/renamed.pdf"
-    )
+    dup = await crud.find_duplicate_document(session_returning(existing), "h1", exclude_uri="s3://cpa-contracts/renamed.pdf")
     assert dup is existing
 
     # no prior doc with that hash → None (new content allowed)
-    assert await crud.find_duplicate_document(
-        session_returning(None), "h1", exclude_uri="s3://cpa-contracts/x.pdf"
-    ) is None
+    assert await crud.find_duplicate_document(session_returning(None), "h1", exclude_uri="s3://cpa-contracts/x.pdf") is None
 
 
 @pytest.mark.asyncio
@@ -174,10 +175,7 @@ def test_skill_dir_exists():
     moves again, update service.py:_SKILL_DIR, not this test."""
     from app.extensions.contract_price.service import _SKILL_DIR
 
-    assert _SKILL_DIR.exists(), (
-        f"skill dir missing: {_SKILL_DIR} — the pipeline subprocess trigger is broken "
-        "(upload→auto-parse workflow will fail). Update service.py:_SKILL_DIR."
-    )
+    assert _SKILL_DIR.exists(), f"skill dir missing: {_SKILL_DIR} — the pipeline subprocess trigger is broken (upload→auto-parse workflow will fail). Update service.py:_SKILL_DIR."
     assert (_SKILL_DIR / "scripts" / "cli.py").exists()
 
 
@@ -185,9 +183,7 @@ def _literal(stmt) -> str:
     """Render a SQLAlchemy statement with bound values inlined for assertion."""
     from sqlalchemy.dialects import postgresql
 
-    return str(
-        stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True})
-    )
+    return str(stmt.compile(dialect=postgresql.dialect(), compile_kwargs={"literal_binds": True}))
 
 
 @pytest.mark.asyncio
@@ -257,9 +253,7 @@ async def test_set_document_parse_status_overwrites_regardless_of_current():
     session.get = AsyncMock(return_value=doc)
     session.commit = AsyncMock()
 
-    returned = await crud.set_document_parse_status(
-        session, uuid.UUID("00000000-0000-0000-0000-000000000000"), "parsing"
-    )
+    returned = await crud.set_document_parse_status(session, uuid.UUID("00000000-0000-0000-0000-000000000000"), "parsing")
     assert returned is doc
     assert doc.parse_status == "parsing"
     session.commit.assert_awaited_once()
@@ -271,9 +265,7 @@ async def test_set_document_parse_status_missing_doc_returns_none():
 
     session = MagicMock()
     session.get = AsyncMock(return_value=None)
-    assert await crud.set_document_parse_status(
-        session, uuid.UUID("00000000-0000-0000-0000-000000000000"), "parsing"
-    ) is None
+    assert await crud.set_document_parse_status(session, uuid.UUID("00000000-0000-0000-0000-000000000000"), "parsing") is None
 
 
 @pytest.mark.asyncio

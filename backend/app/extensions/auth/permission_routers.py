@@ -1,4 +1,5 @@
 """Permission API endpoints — registry, current user permissions, role config."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
@@ -22,41 +23,43 @@ async def get_registry(
     registry = get_permission_registry()
     modules = []
     for module_key, mp in registry.list_modules():
-        modules.append({
-            "key": module_key,
-            "display_name": mp.display_name,
-            "pages": [
-                {
-                    "id": page.id,
-                    "display_name": page.display_name,
-                    "operations": [
-                        {
-                            "id": op.id,
-                            "display_name": op.display_name,
-                            "admin_only": op.admin_only,
-                        }
-                        for op in page.operations
-                    ],
-                }
-                for page in mp.pages
-            ],
-            "permissions": [
-                {
-                    "id": p.id,
-                    "display_name": p.display_name,
-                    "description": p.description,
-                    "admin_only": p.admin_only,
-                }
-                for p in mp.permissions
-            ],
-            "data_scopes": [
-                {
-                    "id": ds.id,
-                    "display_name": ds.display_name,
-                }
-                for ds in mp.data_scopes
-            ],
-        })
+        modules.append(
+            {
+                "key": module_key,
+                "display_name": mp.display_name,
+                "pages": [
+                    {
+                        "id": page.id,
+                        "display_name": page.display_name,
+                        "operations": [
+                            {
+                                "id": op.id,
+                                "display_name": op.display_name,
+                                "admin_only": op.admin_only,
+                            }
+                            for op in page.operations
+                        ],
+                    }
+                    for page in mp.pages
+                ],
+                "permissions": [
+                    {
+                        "id": p.id,
+                        "display_name": p.display_name,
+                        "description": p.description,
+                        "admin_only": p.admin_only,
+                    }
+                    for p in mp.permissions
+                ],
+                "data_scopes": [
+                    {
+                        "id": ds.id,
+                        "display_name": ds.display_name,
+                    }
+                    for ds in mp.data_scopes
+                ],
+            }
+        )
     return {"modules": modules}
 
 
@@ -70,10 +73,7 @@ async def get_my_permissions(
     identity = await provider.resolve(current_user.id, db)
 
     registry = get_permission_registry()
-    role_permissions = {
-        code: registry.resolve_role_permissions(code)
-        for code in registry.list_role_codes()
-    }
+    role_permissions = {code: registry.resolve_role_permissions(code) for code in registry.list_role_codes()}
     all_ids = {p.id for p in registry.list_all_permissions()}
 
     # EAI-CUSTOM: Load active ABAC policies via shared loader so /me matches

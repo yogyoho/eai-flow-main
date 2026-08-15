@@ -23,10 +23,7 @@ from app.channels.message_bus import InboundMessage, MessageBus
 from app.channels.service import ChannelService, _channel_has_credentials
 from app.channels.store import ChannelStore
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="upstream channel service runtime internals diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 class FakeChannel(Channel):

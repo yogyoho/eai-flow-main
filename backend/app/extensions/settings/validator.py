@@ -1,11 +1,15 @@
 """Model validation logic."""
 
+import asyncio
+import os
+import time
 from functools import lru_cache
 from typing import Literal
 
 from pydantic import BaseModel
 
 from deerflow.config import get_app_config
+from deerflow.models import create_chat_model
 
 
 class ModelValidationDetails(BaseModel):
@@ -46,12 +50,6 @@ def check_model_exists(model_name: str) -> bool:
     return any(m.name == model_name for m in config.models)
 
 
-import asyncio
-import time
-
-from deerflow.models import create_chat_model
-
-
 async def test_api_reachable(model_name: str) -> tuple[bool, float | None]:
     """Test if model API is reachable with a lightweight request.
 
@@ -62,7 +60,7 @@ async def test_api_reachable(model_name: str) -> tuple[bool, float | None]:
         start = time.time()
         model = create_chat_model(model_name, thinking_enabled=False)
         # Send minimal test message
-        response = await model.ainvoke([("human", "Hi")])
+        await model.ainvoke([("human", "Hi")])
         latency = (time.time() - start) * 1000
         return True, latency
     except Exception:
@@ -79,9 +77,6 @@ def get_model_features(model_name: str) -> tuple[bool, bool]:
     if not model:
         return False, False
     return model.supports_thinking, model.supports_vision
-
-
-import os
 
 
 def check_model_credentials(model_name: str) -> bool:

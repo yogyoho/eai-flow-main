@@ -37,8 +37,8 @@ from app.gateway.run_models import RunCreateRequest
 from app.gateway.services import build_thread_checkpoint_state_accessor, sse_consumer, start_run, wait_for_run_completion
 from app.gateway.utils import sanitize_log_param
 from deerflow.agents.middlewares.dynamic_context_middleware import strip_injected_user_message_id_suffix
-from deerflow.runtime.secret_context import redact_config_secrets, redact_metadata_secrets
 from deerflow.runtime import CancelOutcome, RunRecord, RunStatus, serialize_channel_values_for_api
+from deerflow.runtime.secret_context import redact_config_secrets, redact_metadata_secrets
 from deerflow.utils.messages import ORIGINAL_USER_CONTENT_KEY, get_original_user_content_text, message_to_text
 from deerflow.workspace_changes import get_workspace_changes_response
 
@@ -1102,11 +1102,7 @@ async def list_thread_messages(
     # EAI-CUSTOM: plain feed mirrors /messages/page — filter hidden runs
     # (regenerate superseded / edit-rerun invisible or failed attempts) and
     # middleware control rows so the displayable feed stays consistent.
-    messages = [
-        row
-        for row in await event_store.list_messages(thread_id, limit=limit, before_seq=before_seq, after_seq=after_seq)
-        if not _is_middleware_message_row(row) and row.get("run_id") not in hidden_run_ids
-    ]
+    messages = [row for row in await event_store.list_messages(thread_id, limit=limit, before_seq=before_seq, after_seq=after_seq) if not _is_middleware_message_row(row) and row.get("run_id") not in hidden_run_ids]
 
     # Find the last AI message per run_id. AI messages are persisted by
     # RunJournal with event_type "llm.ai.response" (see runtime/journal.py);

@@ -24,8 +24,6 @@ from deerflow.runtime import ORPHAN_RECOVERY_STOP_REASON, RunManager, RunStatus,
 from deerflow.runtime.runs.manager import CancelOutcome, ConflictError, _generate_worker_id
 from deerflow.runtime.runs.store.memory import MemoryRunStore
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI run ownership differs (single-worker) (EAI-CUSTOM skip 2026-08-15)")
 
 

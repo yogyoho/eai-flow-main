@@ -170,6 +170,7 @@ def eai_edit_docmgr_md(operations: list[dict], thread_id: str, rel_path: str) ->
     Args: operations (list of operation objects), thread_id (thread UUID), rel_path (path within outputs/)
     """
     import logging
+
     logger = logging.getLogger(__name__)
     # EAI-CUSTOM: accept both list and JSON string for operations
     if isinstance(operations, str):

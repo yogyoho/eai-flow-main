@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import threading
-import time
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
@@ -162,12 +161,8 @@ def get_metrics_snapshot() -> dict:
     """Return a snapshot of all current metrics for admin/debug display."""
     return {
         "counters": read_all_counters(),
-        "ai_success_rate": (
-            read_counter("ai_generation_success") / max(read_counter("ai_generation_total"), 1)
-        ),
-        "avg_generation_ms": (
-            read_counter("ai_generation_total_ms") // max(read_counter("ai_generation_total"), 1)
-        ),
+        "ai_success_rate": (read_counter("ai_generation_success") / max(read_counter("ai_generation_total"), 1)),
+        "avg_generation_ms": (read_counter("ai_generation_total_ms") // max(read_counter("ai_generation_total"), 1)),
         "review_actions": read_counter("review_actions_total"),
         "phase_transitions": read_counter("phase_transitions_total"),
     }

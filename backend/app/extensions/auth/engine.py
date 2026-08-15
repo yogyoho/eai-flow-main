@@ -1,12 +1,14 @@
 """Unified ABAC-lite permission engine."""
+
 from __future__ import annotations
 
 import logging
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import false as sqlalchemy_false, true as sqlalchemy_true
+from sqlalchemy import false as sqlalchemy_false
+from sqlalchemy import true as sqlalchemy_true
 
 from app.extensions.auth.identity import AttributeSet
 
@@ -20,10 +22,10 @@ class FilterRule:
     operator: str = "none_allow"
     field: str | None = None
     value: Any = None
-    children: list["FilterRule"] | None = None
+    children: list[FilterRule] | None = None
 
     @classmethod
-    def from_template(cls, template: dict, identity: AttributeSet) -> "FilterRule":
+    def from_template(cls, template: dict, identity: AttributeSet) -> FilterRule:
         if template is None:
             return cls(operator="none_allow")
 
@@ -43,7 +45,7 @@ class FilterRule:
 
         for key, raw_value in template.items():
             if " IN" in key:
-                field = key[:key.rfind(" IN")].strip()
+                field = key[: key.rfind(" IN")].strip()
                 resolved = cls._resolve(raw_value, identity)
                 if resolved is None:
                     return cls(operator="none_allow")
@@ -71,7 +73,7 @@ class FilterRule:
     @staticmethod
     def _resolve(value: Any, identity: AttributeSet) -> Any:
         if isinstance(value, str) and value.startswith("$identity."):
-            path = value[len("$identity."):]
+            path = value[len("$identity.") :]
             return identity.get_attr(path)
         return value
 
@@ -133,6 +135,7 @@ class FilterRule:
 @dataclass
 class Policy:
     """A stored ABAC policy."""
+
     name: str
     priority: int
     conditions: dict

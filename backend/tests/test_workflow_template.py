@@ -1,13 +1,11 @@
 """Tests for workflow template management — approval workflow, visibility, state transitions."""
 
 import uuid
-from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.extensions.workflow.models import TemplateApproval, WorkflowDefinition
-
 
 # ── Task 1: Model field tests ──
 
@@ -62,7 +60,7 @@ class TestWorkflowDefinitionModel:
 
 # ── Task 3: Service layer tests ──
 
-from app.extensions.workflow.service import (
+from app.extensions.workflow.service import (  # noqa: E402
     list_approvals,
     review_approval,
     submit_for_approval,

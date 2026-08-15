@@ -8,6 +8,7 @@ reading it for authorization makes the bypass depend on a stale mirror.
 Use :func:`is_superadmin` instead of `db.get(Role, user.role_id)` +
 `is_system or "*" in permissions` for every admin bypass.
 """
+
 from __future__ import annotations
 
 from uuid import UUID

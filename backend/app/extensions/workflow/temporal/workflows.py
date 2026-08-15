@@ -33,24 +33,52 @@ def _normalise_node_type(raw_type: str) -> str:
     """Return canonical node type, mapping legacy names to their successors."""
     return _LEGACY_TYPE_MAP.get(raw_type, raw_type)
 
+
 with workflow.unsafe.imports_passed_through():
     from .activities import (
         advance_phase as _advance_phase,
-        create_review_assignments as _create_review_assignments,
-        evaluate_condition as _evaluate_condition,
-        init_phase as _init_phase,
-        init_task as _init_task,
-        notify_phase_start as _notify_phase_start,
-        notify_review_pending as _notify_review_pending,
-        notify_workflow_complete as _notify_workflow_complete,
-        parse_sources as _parse_sources,
-        start_ai_writing as _start_ai_writing,
-        start_phase_ai_writing as _start_phase_ai_writing,
-        store_sources as _store_sources,
+    )
+    from .activities import (
         check_phase_completion as _check_phase_completion,
+    )
+    from .activities import (
         check_reviews_complete as _check_reviews_complete,
-        gather_phase_context as _gather_phase_context,
+    )
+    from .activities import (
+        create_review_assignments as _create_review_assignments,
+    )
+    from .activities import (
+        evaluate_condition as _evaluate_condition,
+    )
+    from .activities import (
         handle_rejection as _handle_rejection,
+    )
+    from .activities import (
+        init_phase as _init_phase,
+    )
+    from .activities import (
+        init_task as _init_task,
+    )
+    from .activities import (
+        notify_phase_start as _notify_phase_start,
+    )
+    from .activities import (
+        notify_review_pending as _notify_review_pending,
+    )
+    from .activities import (
+        notify_workflow_complete as _notify_workflow_complete,
+    )
+    from .activities import (
+        parse_sources as _parse_sources,
+    )
+    from .activities import (
+        start_ai_writing as _start_ai_writing,
+    )
+    from .activities import (
+        start_phase_ai_writing as _start_phase_ai_writing,
+    )
+    from .activities import (
+        store_sources as _store_sources,
     )
     from .signals import SIGNAL_AI_COMPLETE, SIGNAL_PHASE_COMPLETE, SIGNAL_REVIEW_ACTION
 
@@ -216,7 +244,7 @@ class DynamicGraphWorkflow:
                         continue
 
                 elif node_type == "condition":
-                    branch = await self._execute_condition(
+                    await self._execute_condition(
                         node_id=node_id,
                         project_id=project_id,
                         node_data=node_data,
@@ -660,7 +688,8 @@ class DynamicGraphWorkflow:
         sub_graph = node_data.get("graph_json") or node_data.get("graphJson")
         if not sub_graph:
             logger.warning(
-                "sub_workflow node %s has no graph_json — skipping", node_id,
+                "sub_workflow node %s has no graph_json — skipping",
+                node_id,
             )
             completed.add(node_id)
             return

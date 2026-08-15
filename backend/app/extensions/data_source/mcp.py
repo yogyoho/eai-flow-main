@@ -217,6 +217,7 @@ async def _handle_test_data_source(arguments: dict) -> list[TextContent]:
 
 # ── server ──
 
+
 async def _handle_list_datasets(arguments: dict) -> list[TextContent]:
     from app.extensions.data_source.service import DataSourceService
 
@@ -234,30 +235,34 @@ async def _handle_list_datasets(arguments: dict) -> list[TextContent]:
         return _ok({"success": False, "message": f"数据源不存在: {source_name}"})
     src, datasets = result
     if datasets:
-        return _ok({
-            "success": True,
-            "source": source_name,
-            "datasets": [
-                {
-                    "label": d.label,
-                    "table_name": d.table_name,
-                    "description": d.description,
-                    "key_columns": d.key_columns,
-                    "has_default_query": bool(d.default_query),
-                }
-                for d in datasets
-            ],
-        })
+        return _ok(
+            {
+                "success": True,
+                "source": source_name,
+                "datasets": [
+                    {
+                        "label": d.label,
+                        "table_name": d.table_name,
+                        "description": d.description,
+                        "key_columns": d.key_columns,
+                        "has_default_query": bool(d.default_query),
+                    }
+                    for d in datasets
+                ],
+            }
+        )
     # D fallback: no curated datasets -> auto-list tables from the source's own DB
     try:
         tables = await DataSourceService.profile_tables(src)
-        return _ok({
-            "success": True,
-            "source": source_name,
-            "auto": True,
-            "note": "未标注数据集,自动列出源库的表与列",
-            "datasets": [{"label": t["name"], "table_name": t["name"], "columns": t["columns"]} for t in tables],
-        })
+        return _ok(
+            {
+                "success": True,
+                "source": source_name,
+                "auto": True,
+                "note": "未标注数据集,自动列出源库的表与列",
+                "datasets": [{"label": t["name"], "table_name": t["name"], "columns": t["columns"]} for t in tables],
+            }
+        )
     except Exception as e:
         return _ok({"success": True, "source": source_name, "auto": True, "datasets": [], "note": f"无标注数据集,且自动列出失败: {e}"})
 

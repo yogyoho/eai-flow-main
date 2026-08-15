@@ -1,4 +1,5 @@
 """Identity provider - resolves a user to an AttributeSet for ABAC evaluation."""
+
 from __future__ import annotations
 
 import logging

@@ -1,21 +1,27 @@
 """Reset admin password in the gateway database."""
+
 import base64
 import hashlib
-import bcrypt
 import sqlite3
+
+import bcrypt
+
 
 def pre_hash_v2(password):
     return base64.b64encode(hashlib.sha256(password.encode("utf-8")).digest())
+
 
 def make_hash(password):
     pre = pre_hash_v2(password)
     raw = bcrypt.hashpw(pre, bcrypt.gensalt()).decode("utf-8")
     return "$dfv2$" + raw
 
+
 def verify(password, stored):
     prefix = "$dfv2$"
-    bcrypt_hash = stored[len(prefix):]
+    bcrypt_hash = stored[len(prefix) :]
     return bcrypt.checkpw(pre_hash_v2(password), bcrypt_hash.encode("utf-8"))
+
 
 new_password = "Admin@2026"
 new_hash = make_hash(new_password)

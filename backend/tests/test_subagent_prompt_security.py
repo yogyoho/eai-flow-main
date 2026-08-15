@@ -1,12 +1,11 @@
 """Tests for subagent availability and prompt exposure under local bash hardening."""
 
+import pytest
+
 from deerflow.agents.lead_agent import prompt as prompt_module
 from deerflow.subagents import registry as registry_module
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI custom subagents (utilities-agent) differ from upstream list (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def test_get_available_subagent_names_hides_bash_when_host_bash_disabled(monkeypatch) -> None:

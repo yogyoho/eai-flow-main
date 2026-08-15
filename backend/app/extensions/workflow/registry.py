@@ -3,11 +3,12 @@
 Modules register node executors via the @register_node decorator.
 Temporal workflows dispatch to executors by node type at runtime.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SignalDef:
     """A signal that a node can receive."""
+
     name: str
     description: str = ""
     payload_schema: dict | None = None
@@ -26,6 +28,7 @@ class SignalDef:
 @dataclass
 class WorkflowContext:
     """Context passed to node executors during execution."""
+
     project_id: str
     workflow_id: str | None = None
     config: dict = field(default_factory=dict)
@@ -34,6 +37,7 @@ class WorkflowContext:
 @dataclass
 class NodeResult:
     """Result returned by a node executor's on_enter."""
+
     status: str  # "completed" | "waiting" | "failed"
     output: dict = field(default_factory=dict)
     error: str | None = None
@@ -42,6 +46,7 @@ class NodeResult:
 @dataclass
 class SignalResult:
     """Result returned by a node executor's on_signal."""
+
     status: str  # "continue" | "rollback" | "retry"
     output: dict = field(default_factory=dict)
 

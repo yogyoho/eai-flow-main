@@ -95,20 +95,13 @@ async def _resolve_customer_id(session, customer_name: str):
 TOOLS = [
     Tool(
         name="spare_part_summary",
-        description=(
-            "备件价格分析数据总览:返回已入库的合同数、备件分项数、聚类组数、客户数、待核验数、"
-            "含税单价全量区间与均值。用于回答'一共有多少备件/合同/客户/价格总体情况'类问题。"
-            "只读,不触发任何流水线。"
-        ),
+        description=("备件价格分析数据总览:返回已入库的合同数、备件分项数、聚类组数、客户数、待核验数、含税单价全量区间与均值。用于回答'一共有多少备件/合同/客户/价格总体情况'类问题。只读,不触发任何流水线。"),
         inputSchema={"type": "object", "properties": {}},
     ),
     Tool(
         name="query_part_price",
         description=(
-            "按备件名称【模糊】查询含税单价统计:返回匹配的备件、每种的"
-            "均价/中位数/价格区间(仅基于已校验数据)、校验状态分布、异常高价、来源合同号、"
-            "样本明细。用于回答'X备件单价是多少/均价/区间'。"
-            "只读;若该备件多为待核验,会标注'仅供参考'。"
+            "按备件名称【模糊】查询含税单价统计:返回匹配的备件、每种的均价/中位数/价格区间(仅基于已校验数据)、校验状态分布、异常高价、来源合同号、样本明细。用于回答'X备件单价是多少/均价/区间'。只读;若该备件多为待核验,会标注'仅供参考'。"
         ),
         inputSchema={
             "type": "object",
@@ -138,9 +131,7 @@ TOOLS = [
     Tool(
         name="customer_parts_contracts",
         description=(
-            "查询某**客户/采购方**的备件采购明细:返回该客户的备件(按名分组 + 均价)和来源合同清单。"
-            "用于回答'X客户买了哪些备件/采购均价/合同有哪些'。只读。客户名经别名表归一;"
-            "若该客户未认领(pending),会标注'客户名尚未归一,可能含重复/别名'。"
+            "查询某**客户/采购方**的备件采购明细:返回该客户的备件(按名分组 + 均价)和来源合同清单。用于回答'X客户买了哪些备件/采购均价/合同有哪些'。只读。客户名经别名表归一;若该客户未认领(pending),会标注'客户名尚未归一,可能含重复/别名'。"
         ),
         inputSchema={
             "type": "object",
@@ -166,33 +157,25 @@ async def _handle_summary(arguments: dict) -> list[TextContent]:
         # ponytail: count distinct non-null customer_id directly — 不用 subquery,
         # 否则 func.count(distinct CspItem.customer_id) 的列引用会把 csp_items 拉进 FROM,
         # 再叠加 .select_from(subquery) 形成笛卡尔积(非空库会返回 count×rows,见 bug-1177)。
-        customers = await session.scalar(
-            select(func.count(func.distinct(CspItem.customer_id))).where(CspItem.customer_id.is_not(None))
-        ) or 0
-        pending = await session.scalar(
-            select(func.count()).select_from(
-                select(CspCluster).where(CspCluster.status == "pending").subquery()
-            )
-        ) or 0
-        pending_customers = await session.scalar(
-            select(func.count()).select_from(
-                select(CspCustomer).where(CspCustomer.status == "pending").subquery()
-            )
-        ) or 0
-        nr = await session.scalar(
-            select(func.count()).select_from(
-                select(CspItem).where(CspItem.validation_status == "needs_review").subquery()
-            )
-        ) or 0
+        customers = await session.scalar(select(func.count(func.distinct(CspItem.customer_id))).where(CspItem.customer_id.is_not(None))) or 0
+        pending = await session.scalar(select(func.count()).select_from(select(CspCluster).where(CspCluster.status == "pending").subquery())) or 0
+        pending_customers = await session.scalar(select(func.count()).select_from(select(CspCustomer).where(CspCustomer.status == "pending").subquery())) or 0
+        nr = await session.scalar(select(func.count()).select_from(select(CspItem).where(CspItem.validation_status == "needs_review").subquery())) or 0
         lo = await session.scalar(select(func.min(CspItem.unit_price)))
         hi = await session.scalar(select(func.max(CspItem.unit_price)))
         avg = await session.scalar(select(func.avg(CspItem.unit_price)))
-        return dict(docs=int(docs), items=int(items), clusters=int(clusters),
-                    customers=int(customers), pending_clusters=int(pending),
-                    pending_customers=int(pending_customers), needs_review=int(nr),
-                    price_min=float(lo) if lo is not None else None,
-                    price_max=float(hi) if hi is not None else None,
-                    price_avg=round(float(avg), 2) if avg is not None else None)
+        return dict(
+            docs=int(docs),
+            items=int(items),
+            clusters=int(clusters),
+            customers=int(customers),
+            pending_clusters=int(pending),
+            pending_customers=int(pending_customers),
+            needs_review=int(nr),
+            price_min=float(lo) if lo is not None else None,
+            price_max=float(hi) if hi is not None else None,
+            price_avg=round(float(avg), 2) if avg is not None else None,
+        )
 
     data = await _run_in_db(_q)
     return _ok({"success": True, **data})
@@ -206,17 +189,12 @@ async def _handle_query_part(arguments: dict) -> list[TextContent]:
     name = arguments["part_name"]
 
     async def _q(session):
-        rows = (
-            await session.execute(
-                select(CspItem).where(CspItem.part_name.ilike(f"%{name}%")).order_by(CspItem.created_at)
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(CspItem).where(CspItem.part_name.ilike(f"%{name}%")).order_by(CspItem.created_at))).scalars().all()
         return rows
 
     rows = await _run_in_db(_q)
     if not rows:
-        return _ok({"success": True, "matched": 0,
-                    "message": f"未找到名称含「{name}」的备件。请先在备件价格分析管理页面分析相关合同。"})
+        return _ok({"success": True, "matched": 0, "message": f"未找到名称含「{name}」的备件。请先在备件价格分析管理页面分析相关合同。"})
 
     by_name: dict[str, list] = {}
     for it in rows:
@@ -224,15 +202,11 @@ async def _handle_query_part(arguments: dict) -> list[TextContent]:
 
     groups = []
     for gname, items in by_name.items():
-        priced = [
-            float(i.unit_price) for i in items
-            if i.unit_price is not None and i.validation_status in ("ok", "corrected")
-        ]
+        priced = [float(i.unit_price) for i in items if i.unit_price is not None and i.validation_status in ("ok", "corrected")]
         nr = sum(1 for i in items if i.validation_status == "needs_review")
         ok = sum(1 for i in items if i.validation_status == "ok")
         corr = sum(1 for i in items if i.validation_status == "corrected")
-        outliers = [{"unit_price": float(i.unit_price), "customer": i.customer_name, "contract": i.source_contract_no}
-                    for i in items if i.is_outlier and i.unit_price is not None]
+        outliers = [{"unit_price": float(i.unit_price), "customer": i.customer_name, "contract": i.source_contract_no} for i in items if i.is_outlier and i.unit_price is not None]
         contracts = sorted({(i.source_contract_no or "(未关联)") for i in items})
         customers = sorted({(i.customer_name or "(未关联)") for i in items})
         samples = [
@@ -246,20 +220,21 @@ async def _handle_query_part(arguments: dict) -> list[TextContent]:
             }
             for i in items[:5]
         ]
-        groups.append({
-            "part_name": gname,
-            "item_count": len(items),
-            "price_stats": _stats(priced),
-            "validation": {"ok": ok, "needs_review": nr, "corrected": corr},
-            "outliers": outliers,
-            "source_contracts": contracts,
-            "customers": customers,
-            "samples": samples,
-            "confidence_note": "价格待人工溯源核验,仅供参考" if nr >= ok + corr else None,
-        })
+        groups.append(
+            {
+                "part_name": gname,
+                "item_count": len(items),
+                "price_stats": _stats(priced),
+                "validation": {"ok": ok, "needs_review": nr, "corrected": corr},
+                "outliers": outliers,
+                "source_contracts": contracts,
+                "customers": customers,
+                "samples": samples,
+                "confidence_note": "价格待人工溯源核验,仅供参考" if nr >= ok + corr else None,
+            }
+        )
 
-    return _ok({"success": True, "keyword": name, "matched_items": len(rows),
-                "matched_names": len(by_name), "groups": groups})
+    return _ok({"success": True, "keyword": name, "matched_items": len(rows), "matched_names": len(by_name), "groups": groups})
 
 
 async def _handle_compare_by_customer(arguments: dict) -> list[TextContent]:
@@ -271,23 +246,15 @@ async def _handle_compare_by_customer(arguments: dict) -> list[TextContent]:
     name = arguments["part_name"]
 
     async def _q(session):
-        rows = (
-            await session.execute(
-                select(CspItem).where(CspItem.part_name.ilike(f"%{name}%")).order_by(CspItem.created_at)
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(CspItem).where(CspItem.part_name.ilike(f"%{name}%")).order_by(CspItem.created_at))).scalars().all()
         return rows
 
     rows = await _run_in_db(_q)
     if not rows:
-        return _ok({"success": True, "matched": 0,
-                    "message": f"未找到名称含「{name}」的备件,无法做跨客户比价。"})
+        return _ok({"success": True, "matched": 0, "message": f"未找到名称含「{name}」的备件,无法做跨客户比价。"})
 
     # 整体基线:所有匹配项里 ok/corrected 的价格中位
-    all_priced = [
-        float(i.unit_price) for i in rows
-        if i.unit_price is not None and i.validation_status in ("ok", "corrected")
-    ]
+    all_priced = [float(i.unit_price) for i in rows if i.unit_price is not None and i.validation_status in ("ok", "corrected")]
     baseline = _stats(all_priced)
     overall_median = baseline.get("median")
 
@@ -299,10 +266,7 @@ async def _handle_compare_by_customer(arguments: dict) -> list[TextContent]:
 
     cust_groups = []
     for (cust_id, cust_name), items in by_cust.items():
-        priced = [
-            float(i.unit_price) for i in items
-            if i.unit_price is not None and i.validation_status in ("ok", "corrected")
-        ]
+        priced = [float(i.unit_price) for i in items if i.unit_price is not None and i.validation_status in ("ok", "corrected")]
         st = _stats(priced)
         deviation = None
         if overall_median and st.get("mean") is not None and overall_median > 0:
@@ -313,24 +277,31 @@ async def _handle_compare_by_customer(arguments: dict) -> list[TextContent]:
                 deviation = "低于均值"
             else:
                 deviation = "持平"
-        cust_groups.append({
-            "customer_id": cust_id,
-            "customer_name": cust_name,
-            "item_count": len(items),
-            "priced_count": st.get("count", 0),
-            "price_stats": st,
-            "deviation_vs_overall": deviation,
-            "contracts": sorted({(i.source_contract_no or "(未关联)") for i in items}),
-        })
+        cust_groups.append(
+            {
+                "customer_id": cust_id,
+                "customer_name": cust_name,
+                "item_count": len(items),
+                "priced_count": st.get("count", 0),
+                "price_stats": st,
+                "deviation_vs_overall": deviation,
+                "contracts": sorted({(i.source_contract_no or "(未关联)") for i in items}),
+            }
+        )
     # 按均价降序(贵→便宜),None 最后
     cust_groups.sort(key=lambda g: (g["price_stats"].get("mean") is None, -(g["price_stats"].get("mean") or 0)))
 
-    return _ok({
-        "success": True, "keyword": name, "matched_items": len(rows),
-        "overall_stats": baseline, "customer_count": len(by_cust),
-        "by_customer": cust_groups,
-        "note": "偏离阈值:客户均价 ≥ 整体中位×1.3=高于均值;≤ ×0.77=低于均值;否则持平。",
-    })
+    return _ok(
+        {
+            "success": True,
+            "keyword": name,
+            "matched_items": len(rows),
+            "overall_stats": baseline,
+            "customer_count": len(by_cust),
+            "by_customer": cust_groups,
+            "note": "偏离阈值:客户均价 ≥ 整体中位×1.3=高于均值;≤ ×0.77=低于均值;否则持平。",
+        }
+    )
 
 
 async def _handle_outliers(arguments: dict) -> list[TextContent]:
@@ -339,18 +310,17 @@ async def _handle_outliers(arguments: dict) -> list[TextContent]:
     from app.extensions.spare_parts.models import CspItem
 
     async def _q(session):
-        rows = (
-            await session.execute(
-                select(CspItem).where(CspItem.is_outlier.is_(True)).order_by(CspItem.unit_price.desc())
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(CspItem).where(CspItem.is_outlier.is_(True)).order_by(CspItem.unit_price.desc()))).scalars().all()
         return rows
 
     rows = await _run_in_db(_q)
-    return _ok({"success": True, "count": len(rows), "outliers": [
-        {"part_name": r.part_name, "unit_price": float(r.unit_price) if r.unit_price is not None else None,
-         "customer": r.customer_name, "source_contract_no": r.source_contract_no} for r in rows[:50]
-    ]})
+    return _ok(
+        {
+            "success": True,
+            "count": len(rows),
+            "outliers": [{"part_name": r.part_name, "unit_price": float(r.unit_price) if r.unit_price is not None else None, "customer": r.customer_name, "source_contract_no": r.source_contract_no} for r in rows[:50]],
+        }
+    )
 
 
 async def _handle_customer_parts(arguments: dict) -> list[TextContent]:
@@ -364,42 +334,43 @@ async def _handle_customer_parts(arguments: dict) -> list[TextContent]:
         cust_id, canonical, pending = await _resolve_customer_id(session, cust_name)
         if cust_id is None:
             return None, None, False, []
-        rows = (
-            await session.execute(
-                select(CspItem).where(CspItem.customer_id == cust_id).order_by(CspItem.created_at)
-            )
-        ).scalars().all()
+        rows = (await session.execute(select(CspItem).where(CspItem.customer_id == cust_id).order_by(CspItem.created_at))).scalars().all()
         return cust_id, canonical, pending, rows
 
     cust_id, canonical, pending, rows = await _run_in_db(_q)
     if cust_id is None:
-        return _ok({"success": True, "matched": 0,
-                    "message": f"未找到客户「{cust_name}」。该客户可能尚未在系统中认领归一,请先在管理页面上传其合同并认领。"})
+        return _ok({"success": True, "matched": 0, "message": f"未找到客户「{cust_name}」。该客户可能尚未在系统中认领归一,请先在管理页面上传其合同并认领。"})
 
     by_part: dict[str, list] = {}
     for it in rows:
         by_part.setdefault(it.part_name, []).append(it)
     parts = []
     for pname, items in by_part.items():
-        priced = [
-            float(i.unit_price) for i in items
-            if i.unit_price is not None and i.validation_status in ("ok", "corrected")
-        ]
-        parts.append({
-            "part_name": pname,
-            "item_count": len(items),
-            "price_stats": _stats(priced),
-            "contracts": sorted({(i.source_contract_no or "(未关联)") for i in items}),
-        })
+        priced = [float(i.unit_price) for i in items if i.unit_price is not None and i.validation_status in ("ok", "corrected")]
+        parts.append(
+            {
+                "part_name": pname,
+                "item_count": len(items),
+                "price_stats": _stats(priced),
+                "contracts": sorted({(i.source_contract_no or "(未关联)") for i in items}),
+            }
+        )
     parts.sort(key=lambda g: -(g["price_stats"].get("mean") or 0))
     contracts = sorted({(i.source_contract_no or "(未关联)") for i in rows})
 
-    return _ok({
-        "success": True, "customer_id": str(cust_id), "customer_name": canonical,
-        "pending": pending, "matched_items": len(rows), "part_count": len(by_part),
-        "parts": parts, "contracts": contracts,
-        "confidence_note": "客户名尚未认领归一,数据可能含重复/别名" if pending else None,
-    })
+    return _ok(
+        {
+            "success": True,
+            "customer_id": str(cust_id),
+            "customer_name": canonical,
+            "pending": pending,
+            "matched_items": len(rows),
+            "part_count": len(by_part),
+            "parts": parts,
+            "contracts": contracts,
+            "confidence_note": "客户名尚未认领归一,数据可能含重复/别名" if pending else None,
+        }
+    )
 
 
 # ── server ──

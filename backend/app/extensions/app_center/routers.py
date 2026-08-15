@@ -16,7 +16,7 @@ from app.extensions.app_center.schemas import (
     AppDomainUpdate,
 )
 from app.extensions.app_center.service import AppCenterService
-from app.extensions.auth.middleware import get_current_user, require_permission, require_super_admin
+from app.extensions.auth.middleware import require_permission, require_super_admin
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
 
@@ -31,14 +31,10 @@ async def list_domains(
     current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: read access for all users
 ):
     items = await AppCenterService.list_domains(db)
-    return AppDomainListResponse(
-        items=[AppDomainResponse.model_validate(i) for i in items]
-    )
+    return AppDomainListResponse(items=[AppDomainResponse.model_validate(i) for i in items])
 
 
-@router.post(
-    "/domains", response_model=AppDomainResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/domains", response_model=AppDomainResponse, status_code=status.HTTP_201_CREATED)
 async def create_domain(
     data: AppDomainCreate,
     db: AsyncSession = Depends(get_db),
@@ -59,9 +55,7 @@ async def update_domain(
 ):
     domain = await AppCenterService.update_domain(db, key, data)
     if domain is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found")
     await db.commit()
     await db.refresh(domain)
     return AppDomainResponse.model_validate(domain)
@@ -75,9 +69,7 @@ async def delete_domain(
 ):
     ok = await AppCenterService.delete_domain(db, key)
     if not ok:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Domain not found")
     await db.commit()
 
 
@@ -90,9 +82,7 @@ async def list_apps(
     current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: read access for all users
 ):
     items = await AppCenterService.list_apps(db)
-    return AppDefinitionListResponse(
-        items=[AppDefinitionResponse.model_validate(i) for i in items]
-    )
+    return AppDefinitionListResponse(items=[AppDefinitionResponse.model_validate(i) for i in items])
 
 
 @router.get("/apps/all", response_model=AppDefinitionListResponse)
@@ -102,14 +92,10 @@ async def list_all_apps(
 ):
     """Admin-only: returns all apps including disabled ones."""
     items = await AppCenterService.list_all_apps(db)
-    return AppDefinitionListResponse(
-        items=[AppDefinitionResponse.model_validate(i) for i in items]
-    )
+    return AppDefinitionListResponse(items=[AppDefinitionResponse.model_validate(i) for i in items])
 
 
-@router.post(
-    "/apps", response_model=AppDefinitionResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/apps", response_model=AppDefinitionResponse, status_code=status.HTTP_201_CREATED)
 async def create_app(
     data: AppDefinitionCreate,
     db: AsyncSession = Depends(get_db),
@@ -130,9 +116,7 @@ async def update_app(
 ):
     app = await AppCenterService.update_app(db, app_id, data)
     if app is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
     await db.commit()
     await db.refresh(app)
     return AppDefinitionResponse.model_validate(app)
@@ -146,7 +130,5 @@ async def delete_app(
 ):
     ok = await AppCenterService.delete_app(db, app_id)
     if not ok:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="App not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="App not found")
     await db.commit()

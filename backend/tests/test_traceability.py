@@ -5,12 +5,7 @@ from app.extensions.workflow.traceability import ParsedSource, find_missing_sour
 
 class TestParseSourceMarkers:
     def test_basic_markers(self):
-        content = (
-            "SO₂市日均浓度为 0.045mg/m³[1]，"
-            "低于标准 0.15mg/m³[2]。\n\n"
-            "[1] source:rag_retrieval:知识库「监测」→「报告」p.23\n"
-            "[2] source:regulation:GB 3095-2012 表2"
-        )
+        content = "SO₂市日均浓度为 0.045mg/m³[1]，低于标准 0.15mg/m³[2]。\n\n[1] source:rag_retrieval:知识库「监测」→「报告」p.23\n[2] source:regulation:GB 3095-2012 表2"
         sources = parse_source_markers(content)
         assert len(sources) == 2
         assert sources[0].source_type == "rag_retrieval"
@@ -106,12 +101,9 @@ class TestFindMissingSources:
 class TestAutoParseSources:
     def test_update_chapter_auto_parse(self):
         """update_chapter should auto-parse source markers when content changes."""
-        from unittest.mock import AsyncMock, MagicMock, patch
+        from unittest.mock import AsyncMock, MagicMock
 
-        content_with_markers = (
-            "SO₂ 浓度为 0.045mg/m³[1]。\n\n"
-            "[1] source:rag_retrieval:知识库「监测」p.23"
-        )
+        content_with_markers = "SO₂ 浓度为 0.045mg/m³[1]。\n\n[1] source:rag_retrieval:知识库「监测」p.23"
 
         mock_chapter = MagicMock()
         mock_chapter.content = None

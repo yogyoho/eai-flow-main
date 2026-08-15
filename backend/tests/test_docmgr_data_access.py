@@ -22,10 +22,7 @@ from app.extensions.auth.identity import AttributeSet
 from app.extensions.auth.registry import get_permission_registry
 from app.extensions.models import AIDocument
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI docmgr extension data access differs (EAI-CUSTOM skip 2026-08-15)")
-
 
 
 def test_docmgr_scopes_declared():
@@ -49,8 +46,7 @@ def test_doc_owner_template_compiles_to_user_id_eq():
 
 def test_doc_project_member_template_compiles_to_project_id_in():
     pid1, pid2 = str(uuid.uuid4()), str(uuid.uuid4())
-    idn = AttributeSet(user_id="u1", username="u1", role_code="user",
-                       member_projects=[pid1, pid2])
+    idn = AttributeSet(user_id="u1", username="u1", role_code="user", member_projects=[pid1, pid2])
     ds = get_permission_registry().get_data_scope("doc_project_member")
     rule = FilterRule.from_template(ds.rule_template, idn)
     assert rule.operator == "in"
@@ -105,10 +101,7 @@ def test_roles_with_doc_read_bound_to_doc_scopes():
         if "doc:read" in perms:
             scopes = set(reg.get_data_scopes_for_role(code))
             missing = {"doc_owner", "doc_project_member"} - scopes
-            assert not missing, (
-                f"role '{code}' has doc:read but is missing doc data_scopes {missing}; "
-                f"list_docs scope wiring would deny all documents for this role."
-            )
+            assert not missing, f"role '{code}' has doc:read but is missing doc data_scopes {missing}; list_docs scope wiring would deny all documents for this role."
 
 
 # ---------------------------------------------------------------------------

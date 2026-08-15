@@ -1,7 +1,7 @@
 """In-memory service for approval workflow management."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # ── In-memory store ──
 
@@ -11,7 +11,7 @@ _submissions: dict[str, dict] = {}
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _init_default_workflows() -> None:
@@ -105,6 +105,4 @@ async def create_action(
 
 
 async def list_records(project_id: str) -> list[dict]:
-    return [
-        r for r in _records.values() if r["project_id"] == project_id
-    ]
+    return [r for r in _records.values() if r["project_id"] == project_id]

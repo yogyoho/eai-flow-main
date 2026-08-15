@@ -821,11 +821,7 @@ class ChannelManager:
         # persisted binding (owner_user_id attached above) may use the bot.
         # Unbound senders get a one-line "link first" prompt instead of an
         # agent run — EXCEPT the /connect command itself, which is how they bind.
-        if (
-            self._require_bound_identity
-            and msg.owner_user_id is None
-            and not msg.text.lstrip().lower().startswith("/connect")
-        ):
+        if self._require_bound_identity and msg.owner_user_id is None and not msg.text.lstrip().lower().startswith("/connect"):
             await self._send_error(
                 msg,
                 "Link your account first: send /connect <code> (get a binding code in Settings → WeChat).",
@@ -917,9 +913,7 @@ class ChannelManager:
             except Exception as exc:
                 resp = getattr(exc, "response", None)
                 if resp is not None and resp.status_code == 404:
-                    logger.warning(
-                        "[Manager] stored thread no longer exists, creating a new one: thread_id=%s", thread_id
-                    )
+                    logger.warning("[Manager] stored thread no longer exists, creating a new one: thread_id=%s", thread_id)
                     thread_id = None
                 else:
                     raise

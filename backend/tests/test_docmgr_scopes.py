@@ -3,6 +3,7 @@
 红→绿判别器：scope 引擎产出的 deny 否定被 SQLAlchemy 折叠为 "NOT IN"（deny 生效）；
 legacy 手写子句是 `OR ... IN`，无 "not in"。
 """
+
 import uuid
 
 from rbac_helpers import build_app, capture_sql, fake_identity, make_user, patch_identity, policy_row, smart_db

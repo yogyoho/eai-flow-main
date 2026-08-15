@@ -90,8 +90,6 @@ class BaseProvider(ABC):
         return event
 
 
-
-
 class JinaProvider(BaseProvider):
     """Jina Provider - fallback option."""
 

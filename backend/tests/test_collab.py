@@ -15,8 +15,6 @@ from app.extensions.database import get_db
 from app.extensions.docmgr.collab_routers import router
 from app.extensions.schemas import CurrentUser
 
-import pytest
-
 pytestmark = pytest.mark.skip(reason="EAI-local collab test 500 against mocked DB (needs EAI review; not a sync regression) (EAI-CUSTOM skip 2026-08-15)")
 
 
@@ -410,9 +408,7 @@ class TestCollabRouters:
             mock_doc_svc.get_by_id = AsyncMock(return_value=MagicMock())
             mock_ver_svc.diff_versions = AsyncMock(return_value=mock_result)
 
-            response = client.get(
-                f"/api/extensions/docmgr/documents/{doc_id}/versions/diff?from=1&to=2"
-            )
+            response = client.get(f"/api/extensions/docmgr/documents/{doc_id}/versions/diff?from=1&to=2")
 
         assert response.status_code == 200
         data = response.json()
@@ -428,9 +424,7 @@ class TestCollabRouters:
         with patch("app.extensions.docmgr.collab_routers.AIDocumentService") as mock_doc_svc:
             mock_doc_svc.get_by_id = AsyncMock(return_value=None)
 
-            response = client.get(
-                f"/api/extensions/docmgr/documents/{doc_id}/versions/diff?from=1&to=2"
-            )
+            response = client.get(f"/api/extensions/docmgr/documents/{doc_id}/versions/diff?from=1&to=2")
 
         assert response.status_code == 404
 
@@ -446,9 +440,7 @@ class TestCollabRouters:
             mock_doc_svc.get_by_id = AsyncMock(return_value=MagicMock())
             mock_ver_svc.diff_versions = AsyncMock(return_value=None)
 
-            response = client.get(
-                f"/api/extensions/docmgr/documents/{doc_id}/versions/diff?from=1&to=2"
-            )
+            response = client.get(f"/api/extensions/docmgr/documents/{doc_id}/versions/diff?from=1&to=2")
 
         assert response.status_code == 404
 

@@ -6,6 +6,7 @@ Covers:
 - Handles missing project gracefully
 - Handles no active workflow
 """
+
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
