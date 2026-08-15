@@ -37,6 +37,7 @@ from app.gateway.run_models import RunCreateRequest
 from app.gateway.services import build_thread_checkpoint_state_accessor, sse_consumer, start_run, wait_for_run_completion
 from app.gateway.utils import sanitize_log_param
 from deerflow.agents.middlewares.dynamic_context_middleware import strip_injected_user_message_id_suffix
+from deerflow.runtime.secret_context import redact_config_secrets, redact_metadata_secrets
 from deerflow.runtime import CancelOutcome, RunRecord, RunStatus, serialize_channel_values_for_api
 from deerflow.utils.messages import ORIGINAL_USER_CONTENT_KEY, get_original_user_content_text, message_to_text
 from deerflow.workspace_changes import get_workspace_changes_response
@@ -256,13 +257,18 @@ async def _raise_lease_valid_elsewhere(
 
 
 def _record_to_response(record: RunRecord) -> RunResponse:
+    # EAI-CUSTOM: redact secrets in metadata/config before returning to clients
+    # (security fix ported from upstream bytedance/main, 2026-08-15 sync).
+    kwargs = record.kwargs
+    if kwargs and isinstance(kwargs.get("config"), dict):
+        kwargs = {**kwargs, "config": redact_config_secrets(kwargs["config"])}
     return RunResponse(
         run_id=record.run_id,
         thread_id=record.thread_id,
         assistant_id=record.assistant_id,
         status=record.status.value,
-        metadata=record.metadata,
-        kwargs=record.kwargs,
+        metadata=redact_metadata_secrets(record.metadata),
+        kwargs=kwargs,
         multitask_strategy=record.multitask_strategy,
         created_at=record.created_at,
         updated_at=record.updated_at,
@@ -1353,7 +1359,15 @@ async def list_run_events(
     """
     event_store = get_run_event_store(request)
     types = event_types.split(",") if event_types else None
-    return await event_store.list_events(thread_id, run_id, event_types=types, task_id=task_id, limit=limit, after_seq=after_seq)
+    events = await event_store.list_events(thread_id, run_id, event_types=types, task_id=task_id, limit=limit, after_seq=after_seq)
+    # EAI-CUSTOM: redact secrets from persisted event metadata (security fix
+    # ported from upstream bytedance/main, 2026-08-15 sync).
+    redacted = []
+    for ev in events:
+        if isinstance(ev, dict) and ev.get("metadata") is not None:
+            ev = {**ev, "metadata": redact_metadata_secrets(ev["metadata"])}
+        redacted.append(ev)
+    return redacted
 
 
 @router.get("/{thread_id}/runs/{run_id}/workspace-changes")
