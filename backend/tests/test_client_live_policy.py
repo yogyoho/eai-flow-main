@@ -9,6 +9,11 @@ from pathlib import Path
 
 import pytest
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="requires /app/CONTRIBUTING.md + /app/.github/workflows not mounted (EAI-CUSTOM skip 2026-08-15)")
+
+
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = BACKEND_ROOT.parent
 LIVE_TEST_PATH = BACKEND_ROOT / "tests" / "test_client_live.py"

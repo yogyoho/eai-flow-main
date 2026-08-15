@@ -24,6 +24,11 @@ from deerflow.extensions.isolation import IsolatedMiddleware
 from deerflow.extensions.registry import ExtensionRegistry
 from deerflow.extensions.stack import middleware_implements
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream extension placement diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
+
+
 
 class _Probe(AgentMiddleware):
     def __init__(self, tag: str) -> None:

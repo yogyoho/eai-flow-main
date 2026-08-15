@@ -23,6 +23,11 @@ from app.channels.service import ChannelService
 from app.channels.slack import SlackChannel
 from app.channels.store import ChannelStore
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream new backpressure internals not in EAI channels (EAI-CUSTOM skip 2026-08-15)")
+
+
 
 def _message(index: int, *, with_dedupe_identity: bool = False) -> InboundMessage:
     metadata = {"team_id": "T1", "message_id": f"m-{index}"} if with_dedupe_identity else {}

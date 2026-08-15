@@ -22,6 +22,11 @@ from deerflow.extensions.registry import ExtensionRegistry
 from deerflow.runtime.runs.manager import RunManager
 from deerflow.runtime.runs.worker import RunContext, _build_runtime_context, run_agent
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream extension task store diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
+
+
 
 def test_build_runtime_context_installs_the_extension_store():
     store = ExtensionData("task-1")

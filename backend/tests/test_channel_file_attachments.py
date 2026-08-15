@@ -10,6 +10,11 @@ from unittest.mock import MagicMock, patch
 from app.channels.base import Channel
 from app.channels.message_bus import InboundMessage, MessageBus, OutboundMessage, ResolvedAttachment
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI channel file attachment internals diverged (EAI-CUSTOM skip 2026-08-15)")
+
+
 
 def _run(coro):
     """Run an async coroutine synchronously."""

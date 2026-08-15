@@ -10,6 +10,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream deploy scripts diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 

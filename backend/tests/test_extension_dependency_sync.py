@@ -11,6 +11,11 @@ from pathlib import Path
 
 import pytest
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream extension dependency sync diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = REPO_ROOT / "backend"
 

@@ -5,6 +5,7 @@ the first HumanMessage exactly once per session (frozen-snapshot pattern).
 """
 
 import json
+import re
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -14,6 +15,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 
 from deerflow.agents.middlewares.dynamic_context_middleware import (
     _DYNAMIC_CONTEXT_REMINDER_KEY,
+    _REMINDER_DATE_KEY,
     DynamicContextMiddleware,
 )
 
@@ -28,13 +30,17 @@ def _fake_runtime():
     return SimpleNamespace(context={})
 
 
-def _reminder_msg(content: str, msg_id: str) -> HumanMessage:
-    """Build a reminder HumanMessage the way the middleware would produce it."""
-    return HumanMessage(
-        content=content,
-        id=msg_id,
-        additional_kwargs={"hide_from_ui": True, _DYNAMIC_CONTEXT_REMINDER_KEY: True},
-    )
+def _reminder_msg(content: str, msg_id: str) -> SystemMessage:
+    """Build a reminder SystemMessage the way the middleware would produce it.
+
+    EAI-CUSTOM: middleware now uses SystemMessage (#3630) and records the
+    injected date in additional_kwargs[_REMINDER_DATE_KEY]; parse it from content.
+    """
+    m = re.search(r"<current_date>([^<]+)</current_date>", content)
+    kw = {"hide_from_ui": True, _DYNAMIC_CONTEXT_REMINDER_KEY: True}
+    if m:
+        kw[_REMINDER_DATE_KEY] = m.group(1)
+    return SystemMessage(content=content, id=msg_id, additional_kwargs=kw)
 
 
 # ---------------------------------------------------------------------------
@@ -55,7 +61,7 @@ def test_injects_system_reminder_into_first_human_message():
     assert len(updated_msgs) == 2
 
     reminder_msg = updated_msgs[0]
-    assert isinstance(reminder_msg, HumanMessage)
+    assert isinstance(reminder_msg, SystemMessage)  # EAI-CUSTOM: middleware uses SystemMessage (#3630)
     assert reminder_msg.id == "msg-1"  # takes the original ID (position swap)
     assert reminder_msg.additional_kwargs.get(_DYNAMIC_CONTEXT_REMINDER_KEY) is True
     assert _SYSTEM_REMINDER_TAG in reminder_msg.content
@@ -82,11 +88,10 @@ def test_memory_included_when_present():
         mock_dt.now.return_value.strftime.return_value = "2026-05-08, Friday"
         result = mw.before_agent(state, _fake_runtime())
 
-    # Reminder is the first returned message; user query is the second
-    reminder_content = result["messages"][0].content
-    assert "User prefers Python." in reminder_content
-    assert "<current_date>2026-05-08, Friday</current_date>" in reminder_content
-    assert result["messages"][1].content == "Hi"
+    # EAI-CUSTOM: SystemMessage reminder is [0]; memory is its own HumanMessage [1]; user is [2]
+    assert "<current_date>2026-05-08, Friday</current_date>" in result["messages"][0].content
+    assert "User prefers Python." in result["messages"][1].content
+    assert result["messages"][2].content == "Hi"
 
 
 # ---------------------------------------------------------------------------

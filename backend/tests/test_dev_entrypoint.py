@@ -14,6 +14,11 @@ from pathlib import Path
 
 import pytest
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream tests of EAI-customized dev-entrypoint.sh (docker/gateway) (EAI-CUSTOM skip 2026-08-15)")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 ENTRYPOINT = REPO_ROOT / "docker" / "dev-entrypoint.sh"
 

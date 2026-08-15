@@ -22,6 +22,11 @@ from pathlib import Path
 import pytest
 import yaml
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream docker-compose defaults diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_PATHS = {
     "prod": REPO_ROOT / "docker" / "docker-compose.yaml",

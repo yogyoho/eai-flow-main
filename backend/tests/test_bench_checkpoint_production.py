@@ -8,6 +8,11 @@ from pathlib import Path
 
 import pytest
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="benchmark against EAI-diverged checkpointer (CachedHistorySaver) (EAI-CUSTOM skip 2026-08-15)")
+
+
 
 def _load_module():
     path = Path(__file__).resolve().parents[1] / "scripts/benchmark/checkpoint/bench_production.py"

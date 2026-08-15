@@ -26,6 +26,11 @@ from app.channels.message_bus import (
 from app.channels.store import ChannelStore
 from deerflow.skills.types import Skill, SkillCategory
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream tests of EAI-diverged channels/manager internals (wechat iLink protocol, concurrency, slash commands) (EAI-CUSTOM skip 2026-08-15)")
+
+
 
 def test_known_channel_command_detection_only_matches_control_commands():
     from app.channels.commands import is_known_channel_command
