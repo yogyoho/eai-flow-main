@@ -7,17 +7,12 @@ cross-discipline fire-water-volume scenario.
 import json
 from pathlib import Path
 
-import pytest
 from app.extensions.formula_engine import (
     FormulaGraph,
     FormulaNode,
     ParamSource,
 )
 from app.extensions.formula_engine.consistency import (
-
-import pytest
-
-pytestmark = pytest.mark.skip(reason="requires EAI skill reference file /app/skills/custom/water-drainage-report (not in dev container) (EAI-CUSTOM skip 2026-08-15)")
 
     ConsistencyEngine,
     Contract,
@@ -28,6 +23,11 @@ pytestmark = pytest.mark.skip(reason="requires EAI skill reference file /app/ski
 
 
 # ── Helpers ──
+
+
+import pytest
+
+pytestmark = pytest.mark.skip(reason="requires EAI skill reference file /app/skills/custom/water-drainage-report (not in dev container) (EAI-CUSTOM skip 2026-08-15)")
 
 def _contracts_path() -> Path:
     return Path(__file__).resolve().parent.parent.parent / "skills" / "custom" / \

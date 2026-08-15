@@ -11,7 +11,6 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import jwt as pyjwt
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
@@ -20,10 +19,6 @@ from app.gateway.auth.config import AuthConfig, set_auth_config
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse, TokenError
 from app.gateway.auth.jwt import decode_token
 from app.gateway.csrf_middleware import (
-
-import pytest
-
-pytestmark = pytest.mark.skip(reason="EAI auth type system diverged (EAI-CUSTOM skip 2026-08-15)")
 
     CSRF_COOKIE_NAME,
     CSRF_HEADER_NAME,
@@ -36,6 +31,11 @@ pytestmark = pytest.mark.skip(reason="EAI auth type system diverged (EAI-CUSTOM 
 
 _TEST_SECRET = "test-secret-for-auth-type-system-tests-min32"
 
+
+
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI auth type system diverged (EAI-CUSTOM skip 2026-08-15)")
 
 @pytest.fixture(autouse=True)
 def _persistence_engine(tmp_path):

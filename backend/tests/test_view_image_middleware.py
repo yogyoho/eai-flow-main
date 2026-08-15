@@ -24,7 +24,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import pytest
 from langchain.agents import create_agent
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
@@ -33,14 +32,15 @@ from langgraph.graph.message import add_messages
 
 from deerflow.agents.middlewares.view_image_middleware import (
 
-import pytest
-
-pytestmark = pytest.mark.skip(reason="EAI view_image middleware keeps deerflow_view_image_context reserved prefix (EAI-CUSTOM skip 2026-08-15)")
-
     _IMAGE_CONTEXT_MESSAGE_MARKER_KEY,
     ViewImageMiddleware,
 )
 
+
+
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI view_image middleware keeps deerflow_view_image_context reserved prefix (EAI-CUSTOM skip 2026-08-15)")
 
 def _view_image_call(call_id: str = "call_1", path: str = "/mnt/user-data/uploads/img.png") -> dict:
     return {"name": "view_image", "id": call_id, "args": {"image_path": path}}

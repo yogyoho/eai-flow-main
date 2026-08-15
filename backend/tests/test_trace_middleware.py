@@ -7,15 +7,16 @@ from starlette.testclient import TestClient
 from app.gateway.trace_middleware import TraceMiddleware, resolve_trace_enabled
 from deerflow.trace_context import (
 
-import pytest
-
-pytestmark = pytest.mark.skip(reason="EAI app.py lacks upstream _resolve_trace_enabled_for_app_construction (EAI-CUSTOM skip 2026-08-15)")
-
     TRACE_ID_HEADER,
     get_current_trace_id,
     is_trace_id_from_request_header,
 )
 
+
+
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI app.py lacks upstream _resolve_trace_enabled_for_app_construction (EAI-CUSTOM skip 2026-08-15)")
 
 def _make_app(*, enabled: bool) -> FastAPI:
     app = FastAPI()

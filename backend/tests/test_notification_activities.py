@@ -3,13 +3,8 @@
 import uuid
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
 
 from app.extensions.workflow.temporal.activities import (
-
-import pytest
-
-pytestmark = pytest.mark.skip(reason="EAI notification extension differs (EAI-CUSTOM skip 2026-08-15)")
 
     notify_phase_start,
     notify_review_pending,
@@ -22,6 +17,11 @@ _DB_CTX_PATCH = "app.extensions.database.get_db_context"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI notification extension differs (EAI-CUSTOM skip 2026-08-15)")
 
 def _make_db_mock(rows: list[tuple]) -> AsyncMock:
     """Create a mock DB session that returns the given rows from execute()."""
