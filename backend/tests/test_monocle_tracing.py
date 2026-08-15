@@ -27,6 +27,11 @@ from deerflow.config import is_monocle_tracing_enabled
 from deerflow.config.tracing_config import get_tracing_config, reset_tracing_config
 from deerflow.tracing.monocle import setup_monocle_tracing_if_enabled
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI app.py lacks upstream setup_monocle_tracing_if_enabled (EAI does not use monocle) (EAI-CUSTOM skip 2026-08-15)")
+
+
 _TRACING_ENV = (
     "MONOCLE_TRACING",
     "MONOCLE_EXPORTERS",

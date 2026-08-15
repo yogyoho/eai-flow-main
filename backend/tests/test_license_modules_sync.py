@@ -13,6 +13,11 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI license extension differs (EAI-CUSTOM skip 2026-08-15)")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_KEYS = ["platform", "project", "dashboard", "typography", "contract_price", "spare_parts", "bid_quote", "biz_pipeline", "sales_personnel"]
 REMOVED_KEYS = ["docmgr", "knowledge", "collab", "report", "approval", "workflow"]

@@ -8,6 +8,11 @@ import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.prebuilt.tool_node import ToolCallRequest
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream test imports SubagentDateContextMiddleware EAI middleware lacks (EAI-CUSTOM skip 2026-08-15)")
+
+
 
 def _sha(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()

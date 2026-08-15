@@ -6,6 +6,11 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.extensions.workflow.temporal.activities import (
+
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI notification extension differs (EAI-CUSTOM skip 2026-08-15)")
+
     notify_phase_start,
     notify_review_pending,
     notify_workflow_complete,

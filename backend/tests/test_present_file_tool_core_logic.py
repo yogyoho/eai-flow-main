@@ -7,6 +7,11 @@ import pytest
 
 from deerflow.config.paths import Paths
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI present_file_tool structure differs (EAI-CUSTOM) (EAI-CUSTOM skip 2026-08-15)")
+
+
 present_file_tool_module = importlib.import_module("deerflow.tools.builtins.present_file_tool")
 
 

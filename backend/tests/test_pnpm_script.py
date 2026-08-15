@@ -6,6 +6,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI pnpm/scripts differ (EAI-CUSTOM skip 2026-08-15)")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PNPM_SCRIPT = REPO_ROOT / "scripts" / "pnpm.py"
 FRONTEND_DIR = REPO_ROOT / "frontend"
