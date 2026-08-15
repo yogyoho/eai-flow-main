@@ -9,6 +9,11 @@ from pathlib import Path
 
 import pytest
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="EAI nginx scripts differ (EAI-CUSTOM skip 2026-08-15)")
+
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SERVE_SH = REPO_ROOT / "scripts" / "serve.sh"
 

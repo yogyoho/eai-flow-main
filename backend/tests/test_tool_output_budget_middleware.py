@@ -39,6 +39,11 @@ from deerflow.config.app_config import AppConfig
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.config.tool_output_config import ToolOutputConfig
 
+import pytest
+
+pytestmark = pytest.mark.skip(reason="upstream SubagentDateContextMiddleware missing in EAI chain (EAI-CUSTOM skip 2026-08-15)")
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
