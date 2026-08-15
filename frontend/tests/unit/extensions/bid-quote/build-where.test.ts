@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+// EAI-CUSTOM: 从 vitest 改 @rstest/core —— 项目官方 runner 是 rstest(pnpm test),
+// vitest 导入在 rstest 下会解析到真实 @vitest/runner 而未注册环境,整文件崩溃。
+import { describe, expect, it } from "@rstest/core";
 
 import { buildWhere, esc, sqlFor } from "@/extensions/bid-quote/api";
 import {

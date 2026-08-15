@@ -130,7 +130,15 @@ class _DelayedCleanupStreamBridge(_FakeStreamBridge):
             raise
 
 
+# EAI-CUSTOM skip 2026-08-15: EAI deps.py dropped the upstream run-recovery
+# machinery (_publish_recovered_run_stream_end / _terminalize_recovered_runs /
+# startup orphan reconciliation). These upstream tests exercise that removed
+# feature and fail or hang against the EAI-diverged deps.py.
+_skip_recovery = pytest.mark.skip(reason="upstream run-recovery feature removed from EAI deps.py (EAI-CUSTOM skip 2026-08-15)")
+
+
 @pytest.mark.anyio
+@_skip_recovery
 async def test_recovered_run_stream_end_skips_expired_stream():
     """Startup recovery should not recreate an already-expired retained stream."""
     stream_bridge = _FakeStreamBridge(existing_streams=set())
@@ -145,6 +153,7 @@ async def test_recovered_run_stream_end_skips_expired_stream():
 
 
 @pytest.mark.anyio
+@_skip_recovery
 async def test_shutdown_flushes_delayed_recovered_stream_cleanup_immediately():
     """Bridge shutdown must not abandon a delayed cleanup until the stream TTL."""
     stream_bridge = _DelayedCleanupStreamBridge()
@@ -166,6 +175,7 @@ async def test_shutdown_flushes_delayed_recovered_stream_cleanup_immediately():
 
 
 @pytest.mark.anyio
+@_skip_recovery
 async def test_periodic_recovery_terminalizes_stream_without_thread_projection():
     """Periodic recovery must close streams without racing thread projection."""
     store = MemoryRunStore()
@@ -217,6 +227,7 @@ async def test_periodic_recovery_terminalizes_stream_without_thread_projection()
 
 
 @pytest.mark.anyio
+@_skip_recovery
 async def test_sqlite_runtime_reconciles_orphaned_runs_on_startup(monkeypatch):
     """SQLite startup should recover stale active runs before serving requests."""
     app = FastAPI()
@@ -262,6 +273,37 @@ async def test_sqlite_runtime_reconciles_orphaned_runs_on_startup(monkeypatch):
 
 
 @pytest.mark.anyio
+async def test_sql_runtime_shares_run_repository_with_scheduler(monkeypatch):
+    app = FastAPI()
+    config = SimpleNamespace(
+        database=SimpleNamespace(backend="sqlite", checkpoint_channel_mode="full", checkpoint_delta=SimpleNamespace(snapshot_frequency=10)),
+        run_events=SimpleNamespace(backend="memory"),
+        stream_bridge=SimpleNamespace(recovered_stream_cleanup_delay_seconds=60.0),
+    )
+    session_factory = object()
+    _FakeRunManager.instances.clear()
+    _FakeRunManager.recovered_runs = []
+
+    async def noop(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(engine_module, "init_engine_from_config", noop)
+    monkeypatch.setattr(engine_module, "get_session_factory", lambda: session_factory)
+    monkeypatch.setattr(engine_module, "close_engine", noop)
+    monkeypatch.setattr(runtime_module, "make_stream_bridge", lambda _config: _fake_context(_FakeStreamBridge()))
+    monkeypatch.setattr(checkpointer_module, "make_checkpointer", lambda _config: _fake_context(object()))
+    monkeypatch.setattr(runtime_module, "make_store", lambda _config: _fake_context(object()))
+    monkeypatch.setattr(thread_meta_module, "make_thread_store", lambda _sf, _store: _FakeThreadStore())
+    monkeypatch.setattr(event_store_module, "make_run_event_store", lambda _config: object())
+    monkeypatch.setattr(gateway_deps, "RunManager", _FakeRunManager)
+
+    async with gateway_deps.langgraph_runtime(app, config):
+        assert app.state.scheduled_task_repo._run_repository is app.state.run_store
+        assert app.state.scheduled_task_run_repo._run_repository is app.state.run_store
+
+
+@pytest.mark.anyio
+@_skip_recovery
 async def test_sqlite_runtime_does_not_mark_thread_error_when_newer_run_is_success(monkeypatch):
     """Startup recovery should not let an old orphaned run overwrite a newer terminal thread state."""
     app = FastAPI()

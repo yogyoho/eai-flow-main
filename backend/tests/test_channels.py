@@ -7849,9 +7849,9 @@ class TestSlackSendRetry:
 
 class TestSlackAllowedUsers:
     @staticmethod
-    def _submit_coro(coro, loop):
+    def _submit_coro(coro, loop, **_kwargs):
         coro.close()
-        return MagicMock()
+        return True
 
     @staticmethod
     def _immediate_loop():
@@ -7951,8 +7951,9 @@ class TestSlackAllowedUsers:
             "ts": "1710000000.000100",
         }
 
-        with patch(
-            "app.channels.slack.asyncio.run_coroutine_threadsafe",
+        with patch.object(
+            channel,
+            "_submit_threadsafe_coroutine",
             side_effect=self._submit_coro,
         ) as submit:
             channel._handle_message_event(event)
