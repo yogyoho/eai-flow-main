@@ -8030,3 +8030,94 @@
 | 16:30 | Edited backend/tests/test_ontology_registry.py | expanded (+13 lines) | ~171 |
 | 16:31 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~167 |
 | 16:5x | T2 ontology registry loader+schemas+5 YAML+5 单测全绿(容器 pytest) | backend/app/extensions/ontology/{schemas,registry}.py, registry/*.yaml, tests/test_ontology_registry.py | done 11 obj/12 links, 4 cross-module stub | ~45k |
+| 16:2x | 提交 backend lint 修复 287 文件 (70596468e), 排除 gateway/app.py(ontology) 与 Makefile(ontology lint) | backend/ .wolf/ | committed | ~2k |
+| 16:33 | Session end: 13 writes across 7 files (_manifest.yaml, contract_price.yaml, spare_parts.yaml, bid_quote.yaml, cross_module.yaml) | 2 reads | ~18324 tok |
+| 16:34 | Created backend/app/extensions/ontology/engine.py | — | ~5596 |
+| 16:35 | Created backend/tests/test_ontology_engine.py | — | ~1997 |
+| 16:25 | 上游同步:merge bytedance/main(7提交,1dd6ba1a)到main-dev-fork=80c40f3b5;gateway app.py/deps.py手工套multi_instance+run_repository;5个run-recovery测试EAI缺功能加skip;已push | backend/app/gateway/*,backend/tests/test_gateway_run_recovery.py | merged+pushed | ~25k |
+| 16:44 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-2026-08-15.md | — | ~312 |
+| 16:45 | Session end: 16 writes across 10 files (_manifest.yaml, contract_price.yaml, spare_parts.yaml, bid_quote.yaml, cross_module.yaml) | 2 reads | ~26251 tok |
+| 16:45 | Edited backend/app/extensions/ontology/engine.py | "{metric.upper}(\" → "{metric.upper()}(" | ~15 |
+| 16:45 | Edited backend/tests/test_ontology_engine.py | modified __init__() | ~161 |
+| 16:45 | Edited backend/tests/test_ontology_engine.py | modified test_filter_values_are_bound_params() | ~337 |
+| 16:46 | Edited backend/tests/test_ontology_engine.py | modified test_cross_connector_chunked_join() | ~344 |
+| 16:46 | Edited backend/tests/test_ontology_engine.py | modified test_search_requires_searchable_and_binds_q() | ~90 |
+| 16:46 | Edited backend/tests/test_ontology_engine.py | 9→10 lines | ~61 |
+| 16:47 | Edited backend/tests/test_ontology_engine.py | modified make_engine() | ~48 |
+| 16:48 | Edited backend/tests/test_ontology_engine.py | inline fix | ~15 |
+| 16:48 | Edited backend/app/extensions/ontology/engine.py | modified norm() | ~106 |
+| 16:49 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~142 |
+| 17:0x | T3 ontology engine.py 落地(11 单测全绿+ruff): 绑定参数/declared-only/keyset pk tie/归一化/跨connector分块join/5跳上限/hidden零透出/stub拒绝 | backend/app/extensions/ontology/engine.py, tests/test_ontology_engine.py | done; 归档早前草案残留 dirs | ~60k |
+| 17:01 | Edited backend/app/extensions/ontology/engine.py | 2→2 lines | ~66 |
+| 17:02 | Edited backend/app/extensions/ontology/engine.py | inline fix | ~48 |
+| 17:02 | Created backend/app/extensions/ontology/connectors.py | — | ~1174 |
+| 17:02 | Created backend/tests/test_ontology_connectors.py | — | ~942 |
+| 17:03 | Created backend/app/extensions/ontology/routers.py | — | ~106 |
+
+## Session: 2026-08-15 17:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:04 | Edited backend/tests/test_ontology_connectors.py | modified raises() | ~140 |
+| 17:05 | Edited backend/tests/test_ontology_connectors.py | 2→2 lines | ~39 |
+| 17:05 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~140 |
+| 17:11 | Edited frontend/src/extensions/bid-quote/api.ts | 8→8 lines | ~115 |
+| 17:11 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | 2→4 lines | ~65 |
+| 17:11 | T4 双connector完成: connectors.py+6单测全绿(守卫单一真源/same/断连显式/LIMIT共存) | backend/app/extensions/ontology/connectors.py, backend/tests/test_ontology_connectors.py | 22/22绿 | ~15k |
+| 17:12 | Edited backend/app/extensions/ontology/connectors.py | added 1 import(s) | ~24 |
+| 17:13 | Edited backend/app/extensions/ontology/connectors.py | get_extensions_config() → _ext_url() | ~144 |
+| 17:13 | Edited backend/app/extensions/ontology/connectors.py | modified _ext_url() | ~69 |
+| 17:13 | Created backend/app/extensions/ontology/mcp.py | — | ~2242 |
+| 17:14 | Edited backend/app/extensions/ontology/mcp.py | modified _describe() | ~122 |
+| 17:15 | Created backend/tests/test_ontology_mcp.py | — | ~667 |
+| 17:15 | Edited backend/app/extensions/ontology/mcp.py | 11→13 lines | ~248 |
+| 17:15 | Edited backend/tests/test_ontology_mcp.py | 2→2 lines | ~39 |
+
+## Session: 2026-08-15 17:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:16 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~194 |
+| 17:16 | T5 MCP server完成: mcp.py(7工具)+stale注册项修正+5单测全绿 | backend/app/extensions/ontology/mcp.py, extensions_config.json | 绿 | ~20k |
+| 17:18 | Created backend/app/extensions/ontology/routers.py | — | ~1360 |
+| 17:18 | Edited backend/app/extensions/ontology/routers.py | modified get_registry_meta() | ~252 |
+| 17:20 | Created backend/tests/test_ontology_rest.py | — | ~1059 |
+| 17:20 | Edited backend/app/extensions/ontology/routers.py | modified list_objects() | ~246 |
+| 17:21 | Edited backend/app/extensions/ontology/routers.py | added 1 import(s) | ~28 |
+| 17:23 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~172 |
+| 17:23 | T6 REST完成: routers.py 6端点(admin门控)+6 HTTP集成测试全绿 | backend/app/extensions/ontology/routers.py, backend/tests/test_ontology_rest.py | 33/33绿 | ~18k |
+
+## Session: 2026-08-15 17:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:25 | Edited backend/scripts/ontology_lint.py | modified check_market_tables_registered() | ~452 |
+| 17:25 | Edited backend/scripts/ontology_lint.py | 1→3 lines | ~37 |
+| 17:26 | Edited backend/scripts/ontology_lint.py | inline fix | ~33 |
+| 17:27 | Edited backend/scripts/ontology_lint.py | modified in() | ~40 |
+| 17:29 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~180 |
+| 17:30 | Created backend/scripts/ontology_eval_navigation.py | — | ~649 |
+| 17:31 | Edited backend/app/extensions/ontology/engine.py | 7→5 lines | ~104 |
+| 17:31 | Edited backend/tests/test_ontology_engine.py | modified test_fk_same_connector_single_sql() | ~255 |
+| 17:32 | Edited frontend/src/extensions/bid-quote/components/PremiumCurveChart.tsx | "我方报价相对该项目中标价的溢价率 · 全部投标" → "我方报价相对该项目友商最低价的溢价率 · 我方全部" | ~12 |
+| 17:33 | Created backend/tests/test_ontology_lint.py | — | ~429 |
+| 17:34 | Edited frontend/src/extensions/bid-quote/components/TrendChart.tsx | CSS: d | ~82 |
+| 17:35 | Edited docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md | 4→5 lines | ~221 |
+| 17:35 | T7 CI lint修复+D14规则 | T8 全套37绿 + eval抓出反向FK join bug-1210修复+回归 | scripts/ontology_lint.py, scripts/ontology_eval_navigation.py, tests/test_ontology_lint.py, engine.py | 绿/eval PASS | ~25k |
+| 17:37 | Session end: 12 writes across 8 files (ontology_lint.py, 2026-08-15-ontology-semantic-layer-1a.md, ontology_eval_navigation.py, engine.py, test_ontology_engine.py) | 3 reads | ~10871 tok |
+| 17:39 | Edited frontend/src/extensions/bid-quote/api.ts | 2→2 lines | ~52 |
+
+## Session: 2026-08-15 17:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:39 | Edited frontend/src/extensions/bid-quote/components/TrendChart.tsx | modified qtrLabel() | ~46 |
+| 17:40 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | 2→4 lines | ~62 |
+| 17:42 | 1a runtime验证: gateway重启后 /health READY; ontology router 401(已挂载非404); MCP entry正确+7 tools可导入; 全量suite重跑(排除3个容器内.git缺失的detector测试) | gateway容器 | PASS | ~4k |
+| 17:45 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | 1210 → 1211 | ~22 |
+| 22:10 | bid-quote 仪表盘验证收尾:both 保留字修复生效(遭遇战 6:8/43%)、趋势图 22Q4 根因=timestamptz UTC 序列化错一季(SQL to_char 出标签修复)、溢价曲线副标题口径改友商最低价 | api.ts/TrendChart/PremiumCurveChart/sql-shape.test | 全绿 9/9 + 浏览器 12 图全验证 | ~15k |
+| 17:47 | Session end: 3 writes across 2 files (TrendChart.tsx, sql-shape.test.ts) | 0 reads | ~130 tok |
+| 18:30 | Session end: 3 writes across 2 files (TrendChart.tsx, sql-shape.test.ts) | 0 reads | ~130 tok |
+| 18:45 | 容器全量suite带--continue-on-collection-errors实际执行45min+后挂在某网络型测试(pid 186零CPU)→终止;容器内全量属CI职责,容器验证以37个ontology测试通过+runtime冒烟为准 | gateway容器 | 终止(非ontology相关) | ~12k |
+| 06:41 | 事故+恢复: PS5.1无-Encoding读buglog.json致解析失败且$null+=new回写清空1166条→git HEAD恢复1162条+本会话bug-1210/1211重写+从并发session transcript逐字恢复bid-quote的bug-1213/1214(原号1211/1212,避让冲突)=1166条对齐;教训:该文件只用host python json处理 | .wolf/buglog.json | 恢复完成 | ~25k |
+| 06:41 | Session end: 3 writes across 2 files (TrendChart.tsx, sql-shape.test.ts) | 0 reads | ~130 tok |

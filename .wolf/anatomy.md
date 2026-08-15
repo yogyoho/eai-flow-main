@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-15T08:31:33.358Z
-> Files: 2122 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-15T09:45:59.577Z
+> Files: 2128 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -538,6 +538,7 @@
 - `upstream-sync-2026-07-29.md` (~1007 tok)
 - `upstream-sync-2026-08-02.md` — Declares attr (~2544 tok)
 - `upstream-sync-2026-08-14-completed.md` (~628 tok)
+- `upstream-sync-2026-08-15.md` (~321 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
 - `water-drainage-report-optimization.md` (~602 tok)
 - `websearch-unreliable-for-gb-compliance.md` (~296 tok)
@@ -1458,8 +1459,11 @@
 ## backend/app/extensions/ontology/
 
 - `__init__.py` — Ontology 统一语义层（市场/分析数据域，只读投影）. (~53 tok)
+- `connectors.py` — Ontology 双 connector（postgres_ext 直连 / data_source 托管连接）. (~1214 tok)
+- `engine.py` — Ontology 查询引擎（declared-only / 绑定参数 / keyset 分页 / 引擎级归一化）. (~5594 tok)
+- `mcp.py` — Ontology 语义层 MCP Server — 7 只读工具，把市场域对象/链接暴露给 agent. (~2267 tok)
 - `registry.py` — Ontology 注册表加载器（YAML → 类型化注册表）. (~2195 tok)
-- `routers.py` — Ontology REST surface — thin passthrough of the engine for the semantic-map frontend. (~1778 tok)
+- `routers.py` — Ontology 语义层 REST 路由 — 6 核心端点（pytest HTTP 集成测试载体）. (~1424 tok)
 - `schemas.py` — Ontology 注册表 pydantic 模型（YAML → 类型化声明）. (~1011 tok)
 - `server.py` — Unified ontology MCP server — read-only semantic query/navigation tools for the agent. (~2626 tok)
 
@@ -1813,8 +1817,9 @@
 - `_diag2_handler.py` — 临时诊断2:走 MCP 真实路径(_resolve_db_url + _handle_query_dataset),定位 agent 连接失败真因。跑完即删。 (~166 tok)
 - `migrate_folders.py` — One-time migration: convert virtual folder strings to Folder entities. (~1917 tok)
 - `migrate_phase_duties.py` — Migrate legacy phase_duties JSONB to unified format. (~694 tok)
+- `ontology_eval_navigation.py` — Ontology 跨模块导航 eval（plan T8: 1 条, 作 1b go/no-go）. (~649 tok)
 - `ontology_link_recall_probe.py` — Ontology 跨模块链接召回预测量（eng-review D12 / plan T1）. (~2460 tok)
-- `ontology_lint.py` — Ontology registry lint — §2.2 acceptance checklist, exit 1 on failure. (~1353 tok)
+- `ontology_lint.py` — Ontology registry lint — §2.2 acceptance checklist, exit 1 on failure. (~1808 tok)
 - `seed_mock_market.py` — 模块① 投标报价分析 — mock 数据 + data_source 元数据 seed(幂等)。 (~7741 tok)
 - `seed_mock_pipeline.py` — 模块③ 投标/合同/开票管线查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~3028 tok)
 - `seed_mock_sales.py` — 模块② 销售人员查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~4296 tok)
@@ -1882,14 +1887,15 @@
 - `test_missing_activities.py` — TDD tests for missing activities from spec §4.4. (~2122 tok)
 - `test_model_extensions.py` — Tests for extended Department and ProjectMember models. (~711 tok)
 - `test_notification_activities.py` — Tests for notification activities. (~1591 tok)
-- `test_ontology_connectors.py` — Tests for ontology connectors. (~336 tok)
+- `test_ontology_connectors.py` — T4 单测：双 connector——只读守卫单一真源 / same() 判定 / 断连显式 / LIMIT 共存. (~943 tok)
+- `test_ontology_engine.py` — T3 单测：引擎安全断言（注入/hidden/declared-only/stub/跳深）+ 分页/遍历/聚合. (~2263 tok)
 - `test_ontology_filters.py` — Tests for ontology filter compiler. (~506 tok)
-- `test_ontology_lint.py` — Tests for ontology registry lint (§2.2 acceptance checklist). (~269 tok)
+- `test_ontology_lint.py` — T7 单测：registry lint 检查器（无 DB，纯模型元数据 + 注册表）. (~429 tok)
 - `test_ontology_mapper.py` — Tests for ontology row mapper. (~476 tok)
-- `test_ontology_mcp.py` — Tests for ontology MCP server. (~154 tok)
+- `test_ontology_mcp.py` — T5 单测：MCP server——7 工具注册 / describe 紧凑预算 / 错误结构化 / 分工话术. (~668 tok)
 - `test_ontology_query.py` — Tests for ontology query engine (pure helpers + fake-connector integration). (~1862 tok)
 - `test_ontology_registry.py` — T2 单测：注册表加载 / 指纹+版本 / 坏 YAML 拒绝（fail-closed）. (~1727 tok)
-- `test_ontology_rest.py` — Tests for ontology REST surface (thin passthrough of the engine). (~368 tok)
+- `test_ontology_rest.py` — T6 集成测试：REST 6 端点（HTTP 级，真扩展库）. (~1059 tok)
 - `test_output_cjk_font.py` — Regression: generate_docx must set w:eastAsia font so Chinese renders correctly. (~380 tok)
 - `test_output_cover.py` — Tests for cover-page rendering + cover field resolution. (~1027 tok)
 - `test_output_frontmatter.py` — Tests for markdown front-matter splitting. (~320 tok)
@@ -2073,7 +2079,7 @@
 - `2026-08-14-biz-pipeline-frontend.md` — 投标/合同/开票管线查询 (biz-pipeline) 前端 Implementation Plan (~14710 tok)
 - `2026-08-14-ontology-semantic-layer.md` — Ontology 市场域统一语义层（后端 + CI lint）实施计划 (~22326 tok)
 - `2026-08-14-sales-personnel-frontend.md` — 销售人员查询 (sales-personnel) 前端 Implementation Plan (~3449 tok)
-- `2026-08-15-ontology-semantic-layer-1a.md` — Ontology 语义层 Phase 1a 实施计划（市场域后端楔子） (~2651 tok)
+- `2026-08-15-ontology-semantic-layer-1a.md` — Ontology 语义层 Phase 1a 实施计划（市场域后端楔子） (~3142 tok)
 
 ## docs/superpowers/reports/
 
@@ -2626,7 +2632,7 @@
 
 ## frontend/src/extensions/bid-quote/
 
-- `api.ts` — bid-quote API client —— Route B 薄前端直调 data_source REST。 (~4680 tok)
+- `api.ts` — bid-quote API client —— Route B 薄前端直调 data_source REST。 (~4708 tok)
 - `hooks.ts` — bid-quote TanStack Query hooks。queryKey 统一 ["bqa", ...] 命名空间。 (~1704 tok)
 - `types.ts` — 投标报价分析(bid-quote)类型 —— 对齐 data_source 罐装 dataset 列。 (~1223 tok)
 
@@ -2643,7 +2649,7 @@
 - `DrillDownModal.tsx` — 已拼好的参数化只读 SQL(白名单维度,值来自行数据)。null 时关闭。 (~1886 tok)
 - `FilterBar.tsx` — MultiDropdown (~1891 tok)
 - `HeadToHeadCard.tsx` — 图11(新增):遭遇战 — 选定友商与我方在共同投标项目上的直接对垒(原型 block3-competitors 图C): (~1627 tok)
-- `PremiumCurveChart.tsx` — 固定 6 桶边界(与 SQL CASE 严格一致)。 (~1393 tok)
+- `PremiumCurveChart.tsx` — 固定 6 桶边界(与 SQL CASE 严格一致)。 (~1394 tok)
 - `PriceBandChart.tsx` — 图8(新增):报价区间建议 — 每金额段一行的区间条图(原型 block2-pricing 图B): (~1500 tok)
 - `QueryView.tsx` — TABS — renders table (~2079 tok)
 - `SectionCard.tsx` — 区块序号徽标(①/②/③,原型 .section-badge)。 (~522 tok)
@@ -2652,7 +2658,7 @@
 - `ShareStackChart.tsx` — 我方(种子数据固定名);泛化失败时退化为普通着色。 (~1598 tok)
 - `StatCard.tsx` — 注脚行(原型 .delta:12px 弱色;delta 主数字靠字重,涨跌用绿/红 b 强调)。 (~444 tok)
 - `TechTooltip.tsx` — TechTooltip (~411 tok)
-- `TrendChart.tsx` — qtr(时间戳 ISO 串)→ "25Q1" 短标签;解析失败原样返回。 (~986 tok)
+- `TrendChart.tsx` — qtr(时间戳 ISO 串)→ "25Q1" 短标签;解析失败原样返回。 (~1000 tok)
 
 ## frontend/src/extensions/bid-quote/components/ui/
 
@@ -3152,7 +3158,7 @@
 ## frontend/tests/unit/extensions/bid-quote/
 
 - `build-where.test.ts` — EAI-CUSTOM: 从 vitest 改 @rstest/core —— 项目官方 runner 是 rstest(pnpm test), (~1619 tok)
-- `sql-shape.test.ts` — Declares FilterState (~915 tok)
+- `sql-shape.test.ts` — Declares FilterState (~988 tok)
 
 ## frontend/tests/unit/extensions/collab/
 
@@ -3477,11 +3483,3 @@
 - `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1329 tok)
 - `license_request.json` (~51 tok)
 - `OPERATIONS_MANUAL.md` — DeerFlow 许可证功能操作手册 (~5191 tok)
-- `backend/app/extensions/ontology/schemas.py` (~125 行) — pydantic 注册表模型: PropertySchema/AccessConfig/PKConfig/ObjectType/JoinConfig/LinkType/Manifest/DomainFile, 全部 extra=forbid
-- `backend/app/extensions/ontology/registry.py` (~190 行) — fail-closed YAML 加载器: SHA-256 指纹热重载/版本递增/交叉引用检查/FK 键列 declared-only; get_registry() 单例入口
-- `backend/app/extensions/ontology/registry/_manifest.yaml` — 清单: 4 域文件, schema_version 1
-- `backend/app/extensions/ontology/registry/contract_price.yaml` — cpa 域: 3 对象(contract_document/contract_item/goods_cluster) + 2 FK 链接
-- `backend/app/extensions/ontology/registry/spare_parts.yaml` — csp 域: 4 对象(customer/spare_part_document/spare_part_item/part_cluster) + 4 FK 链接
-- `backend/app/extensions/ontology/registry/bid_quote.yaml` — 投标域: 4 对象(data_source/dataset/bid/bid_item; bid 经 data_source path) + 2 FK 链接
-- `backend/app/extensions/ontology/registry/cross_module.yaml` — 4 条跨模块 NKM 链接, 全部 enabled:false stub + 召回实测 note
-- `backend/tests/test_ontology_registry.py` (~165 行) — 5 单测: 真实注册表加载/指纹+版本/坏 YAML 4 场景拒绝/热重载失败保旧/visible_properties

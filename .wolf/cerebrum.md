@@ -19,6 +19,7 @@
 - **Palantir Ontology 概念移植意图（2026-08-14, 用户三轮拍板）:** ①**意图=概念移植**（轻量原生语义层），不采购 Palantir 产品、不建索引/funnel；②一期价值=**统一语义层（平台一致性）**，Action 写路径/函数/对象级 ACL 全延后；③一期覆盖域=**市场/分析数据域**（cpa_/csp_/bid），协作/文档域二期；④消费端=**MCP + 前端语义地图页**；⑤方案=**声明式 YAML 注册表 + 通用引擎**（弃代码驱动/纯文档）；⑥跨模块链接=**聚类代表名匹配**（复用 DBSCAN 归一，不做原始脏名/模糊匹配）；⑦权限=**管理员级门控**（REST 需 system:access，MCP 注册级门控 + hidden:true 列级隐藏，不行级 ACL）；⑧前端=**独立应用中心 app /ontology**。设计文档 `docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md`。
 
 ## Key Learnings
+- **引擎/SQL 层单测用 Fake resolver 罐头行时，join 列名正确性测不到——必须留一条连真库的 eval/probe 脚本（2026-08-15, bug-1210）：** ontology engine 反向 FK join 写反（`s.fk = t.pk` 应为 `t.fk = s.pk`），12 条 FakeResolver 单测全绿（只断言 SQL 片段 `JOIN`/`:n0`），`scripts/ontology_eval_navigation.py` 连真库首跑即 asyncpg UndefinedColumnError。**铁律：SQL 生成层的测试矩阵 = 假连接体单测（注入/契约）+ 至少 1 条真库 smoke/eval（列名/类型/方言）**；且负向覆盖要含"反方向遍历"这类别名换边的分支。另：FastAPI 不支持 `list[dict]` 作 query 参数（collection 报 AssertionError）→ filters 传 JSON 字符串后端 json.loads。
 - **Git Bash 里 docker exec 带容器内绝对路径必须加 `MSYS_NO_PATHCONV=1`（2026-08-15, bug-1185）：** `docker exec c python /app/backend/x.py` 会被 MSYS 转成 `/app/C:/Program Files/Git/app/...` 报 No such file。命令前缀 `MSYS_NO_PATHCONV=1` 即可；容器内跑 backend 脚本一律 `/app/backend/.venv/bin/python`（系统 python 无依赖，见既有教训）。
 - **前端单测官方 runner 是 Rstest，测试文件必须 `import ... from "@rstest/core"`（2026-08-15, build-where.test.ts 修复）：** `pnpm test` → rstest（两 project：node 默认 / `*.dom.test.*` 走 happy-dom，见 frontend/AGENTS.md）。写成 `import from "vitest"` 在 rstest 下解析到真实 @vitest/runner 而未注册环境，**整文件崩溃** `Cannot read properties of undefined (reading 'config')`——不是断言失败是导入期炸。仓库尚有 ~38 个 vitest-importing 测试文件属既有债。新测试文件一律 `@rstest/core`。
 - **gateway 8001 端口未发布到宿主机（2026-08-15, gateway 挂起诊断）：** 容器端口仅 `8001/tcp`（无 host 映射），nginx 走内部 docker 网络转发。宿主机 `curl localhost:8001` 恒 000 属正常，健康检查必须走 nginx `curl localhost:2026/api/...` 或 `docker exec deer-flow-nginx wget http://deer-flow-gateway:8001/...`（401=活着）。gateway "Up 但无响应（所有 API pending）"→ `docker compose -p eai-docker restart gateway` 即恢复。
@@ -202,6 +203,8 @@
 - **PostgreSQL `ARRAY(String)` 映射为 `VARCHAR[]`,手写 migration 的 `ADD COLUMN` 类型必须用 `VARCHAR[]` 而非 `TEXT[]`(2026-08-05,标签池):** SQLAlchemy `mapped_column(ARRAY(String))` 生成的 DDL 是 `VARCHAR[]`;migration 若用 `TEXT[]` 建列,模型按 `VARCHAR[]` 读写 → DDL 与模型漂移(Postgres 视为类型不同,读写靠隐式转换兜底但列定义错)。修法:`ALTER TABLE ... ADD COLUMN IF NOT EXISTS tags VARCHAR[]`。判别法:`information_schema.columns.udt_name` 看实际列类型与模型声明是否一致。
 
 - **git commit 前必查并发会话 staged 文件**(`git diff --cached --name-only`):有则用 `git commit -m ... -- <目标文件>` 精确提交;裸 `git add X && git commit` 会吞掉 index 里全部 staged WIP(2026-08-14 实测吞了并发会话 24 个文件,已用 reset --soft + pathspec commit 修复)。注意 pathspec 须在 `-m` 之后、`--` 之后只放路径。
+
+- YAML flow mapping (`{a: 1, b: 2}`) 中标量含 ASCII 逗号必须加引号——逗号是 flow 分隔符, 中文全角逗号（，）不受影响 (bug-1187)
 
 ## Do-Not-Repeat
 

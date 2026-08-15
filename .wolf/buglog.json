@@ -19397,5 +19397,83 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1210",
+    "timestamp": "2026-08-15",
+    "error_message": "ontology engine reverse FK traversal: asyncpg UndefinedColumnError column s.document_id does not exist — JOIN built as FROM cpa_items t JOIN cpa_documents s ON s.document_id = t.id (backwards)",
+    "file": "backend/app/extensions/ontology/engine.py",
+    "root_cause": "_follow_same_connector FK reverse direction swapped join columns: reverse means far=source table, so condition must be t.source_fk = s.target_col (near PK), not s.fk = t.pk. 12 FakeResolver tests passed because the fake accepted any column names",
+    "fix": "cond = f't.\"{s_col}\" = s.\"{t_col}\"' for reverse + regression test test_fk_reverse_direction_join_columns asserting exact SQL. Lesson: FakeResolver cannot catch join column-name errors — real-DB eval script (ontology_eval_navigation.py) is the required check",
+    "tags": [
+      "ontology",
+      "engine",
+      "fk-join",
+      "reverse-traversal",
+      "fake-resolver-blind-spot"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1211",
+    "timestamp": "2026-08-15",
+    "error_message": "container full-suite pytest: 3 collection errors (no .git marker) + with --continue-on-collection-errors hangs 45min+ at ~0 CPU on a network-dependent test",
+    "file": "N/A (environmental)",
+    "root_cause": "gateway container bind-mount has no .git so detector tests refuse repo-root resolution; full suite also contains network-dependent tests that hang in-container",
+    "fix": "run ontology-scoped tests in container; leave full suite to CI (host checkout has .git). Also: NEVER parse .wolf/buglog.json with PS5.1 Get-Content without -Encoding UTF8 — it clobbered the file this session; use host python json module instead",
+    "tags": [
+      "docker",
+      "pytest",
+      "container",
+      "no-.git",
+      "collection-errors",
+      "powersShell-encoding"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1213",
+    "timestamp": "2026-08-15",
+    "error_message": "data-sources /query 500: PostgresSyntaxError —— sqlHead2Head 的 CTE 命名 both",
+    "file": "frontend/src/extensions/bid-quote/api.ts",
+    "root_cause": "both 是 PostgreSQL 保留字(TRIM(BOTH …)),CTE 用它命名直接语法错误,遭遇战图全 0:0",
+    "fix": "CTE 改名 both_in,两处 JOIN 同步;sql-shape.test.ts 加 both_in AS ( 断言锁住",
+    "tags": [
+      "bid-quote",
+      "sql",
+      "postgres",
+      "reserved-word",
+      "head2head",
+      "recovered-from-transcript"
+    ],
+    "related_bugs": [
+      "bug-1207"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-1214",
+    "timestamp": "2026-08-15",
+    "error_message": "趋势图多出 22Q4 桶:数据明明从 2023 开始,x 轴却是 22Q4–25Q3",
+    "file": "frontend/src/extensions/bid-quote/api.ts",
+    "root_cause": "bid_date 是 timestamptz;date_trunc 按会话时区(+08)截断出季度首日零点,驱动序列化为 UTC 串(如 2022-12-31T16:00:00Z),前端 new Date 再取 getUTC* —— 每个季度桶恰好落进上一季度最后一天,12 桶整体左移一季",
+    "fix": "SQL 侧直接 to_char(qtr,'YY\"Q\"Q') 出 '23Q1' 标签,前端不再解析日期;测试加 to_char 断言。教训:时间桶标签一律 SQL 出,别让 JS 再解析 timestamptz 串",
+    "tags": [
+      "bid-quote",
+      "timestamptz",
+      "timezone",
+      "date_trunc",
+      "quarter",
+      "chart-label",
+      "recovered-from-transcript"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-15"
   }
 ]
