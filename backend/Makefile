@@ -32,6 +32,10 @@ lint:
 	uv run ruff check .
 	uv run ruff format --check .
 
+# EAI-CUSTOM: ontology registry lint (§2.2 checklist) — run from backend/, no `cd backend`
+lint-ontology:
+	PYTHONPATH=. uv run python scripts/ontology_lint.py
+
 format:
 	uv run ruff check . --fix && uv run ruff format .
 

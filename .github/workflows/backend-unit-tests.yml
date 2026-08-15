@@ -38,3 +38,8 @@ jobs:
       - name: Run unit tests of backend
         working-directory: backend
         run: make test
+
+      # EAI-CUSTOM: ontology registry lint — PK immutability + hidden sensitive fields + column diff
+      - name: Ontology registry lint
+        working-directory: backend
+        run: make lint-ontology

@@ -119,6 +119,23 @@
       "tool_name_prefix": false,
       "description": "备品备件价格只读查询工具(备件单价统计/跨客户比价/异常/客户明细/总览),供对话 agent 直接调用。不触发流水线。"
     },
+    "ontology": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.ontology.mcp"
+      ],
+      "env": {
+        "ONTOLOGY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Ontology semantic layer: cross-module object/link navigation, search, traverse and aggregate over the market-domain registry (contract_price / spare_parts / bid_quote). Read-only."
+    },
     "knowledge-factory": {
       "enabled": true,
       "type": "http",

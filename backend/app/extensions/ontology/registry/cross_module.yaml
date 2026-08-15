@@ -1,0 +1,64 @@
+# 跨模块链接（normalized_key_match，全部 enabled:false stub 上线）
+# 实测依据: 2026-08-15 召回预测量 backend/scripts/ontology_link_recall_probe.py（D12/T1）
+# 复测命令: docker exec deer-flow-gateway /app/backend/.venv/bin/python /app/backend/scripts/ontology_link_recall_probe.py
+# 归一化标准: LOWER(BTRIM(col)) + 两侧非空守卫 —— 引擎级强制，非 per-link 表达式
+object_types: []
+link_types:
+  - api_name: part_cluster_matches_goods_cluster
+    display_name: 备件聚类↔货物聚类
+    source: part_cluster
+    target: goods_cluster
+    cardinality: N:N
+    reverse: goods_cluster_matches_part_cluster
+    enabled: false
+    cross_module: true
+    note: "recall probe 2026-08-15: NO_DATA (src csp_clusters 0 rows, tgt cpa_clusters 119 rows) — re-probe when spare-parts data lands"
+    join:
+      type: normalized_key_match
+      key_pairs:
+        - [representative_name, representative_name]
+
+  - api_name: contract_document_matches_spare_document
+    display_name: 合同文档↔备件合同（同一份文件）
+    source: spare_part_document
+    target: contract_document
+    cardinality: N:N
+    reverse: contract_document_matches_spare_part_document
+    enabled: false
+    cross_module: true
+    note: "recall probe 2026-08-15: NO_DATA (src csp_documents 0 rows, tgt cpa_documents 2 rows) — re-probe when spare-parts data lands"
+    join:
+      type: normalized_key_match
+      key_pairs:  # any-of: 合同号归一化相等 或 文件哈希相等
+        - [contract_no, contract_no]
+        - [file_hash, file_hash]
+
+  - api_name: won_bid_contracts_project
+    display_name: 中标投标↔合同（同一项目）
+    source: bid
+    target: contract_document
+    cardinality: N:N
+    reverse: contract_document_from_won_bid
+    enabled: false
+    cross_module: true
+    note: "recall probe 2026-08-15: src_match_rate=0.0% (threshold 30%) — 40 mock won-bid names vs 2 real contracts, 0 match. Re-probe with real data"
+    join:
+      type: normalized_key_match
+      key_pairs:
+        - [project_name, project_name]
+      source_filter:  # 仅中标记录参与
+        won: true
+
+  - api_name: document_supplied_by
+    display_name: 合同↔备件合同同供方
+    source: contract_document
+    target: spare_part_document
+    cardinality: N:N
+    reverse: spare_document_supplied_by
+    enabled: false
+    cross_module: true
+    note: "recall probe 2026-08-15: NO_DATA (tgt csp_documents 0 rows) — re-probe when spare-parts data lands"
+    join:
+      type: normalized_key_match
+      key_pairs:
+        - [supplier, supplier]

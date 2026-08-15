@@ -10,6 +10,7 @@
   - 2026-08-14 (R1): 意图确认为**概念移植**（非产品采购/非纯文档）。一期价值 = 统一语义层（平台一致性）。覆盖域 = 市场/分析数据域。消费端 = MCP + 前端语义地图页。
   - 2026-08-14 (R2): 方案定为 **方案 A：声明式 YAML 注册表 + 通用引擎**。
   - 2026-08-14 (R3): 三个开放项拍板——跨模块链接用**聚类代表名匹配**；读路径权限用**管理员级门控**（system:access + hidden:true 列级隐藏）；前端语义地图页用**独立应用中心 app**。
+  - 2026-08-15 (R4): /plan-eng-review 决议回写——链接 schema 补 `enabled` stub 字段（D3）；跨 connector 跳定**分块应用侧 join** 机制（D11）；建引擎前先测 4 条链接召回（D12）；REST 1a 砍至 6 核心端点（D16）；归一化+非空守卫升级为引擎级标准；describe_ontology 紧凑默认；物化链接表与 Postgres 视图记为具名升级路径（D13/D15）。实施计划见 `docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md`。
 
 ---
 
@@ -60,7 +61,8 @@ Ontology 是 Palantir Foundry 的操作性语义层：把表格式数据管线�
 - ✅ 声明式 YAML 注册表：11 个对象类型 + 12 条链接类型（8 模块内 + 4 跨模块），versioned、热重载
 - ✅ 通用查询引擎：`postgres_ext` 直连 + `data_source` 连接（复用只读守卫）
 - ✅ 统一 `ontology` MCP server（7 工具），注册进 `extensions_config.json`
-- ✅ REST surface（~11 端点）供前端语义地图页
+- ✅ REST surface：**1a 建 6 核心端点**（registry/object-types/objects 列表+详情/links/aggregate，作 HTTP 级集成测试载体）；search/traverse/reload 包装端点随 1b 语义地图页同建（R4/D16）
+- ✅ 建引擎前**链接召回预测量**：一次性脚本测 4 条跨模块链接在当前数据的匹配率，低于阈值（建议 30%）的降 `enabled:false` stub + 备注原因（R4/D12）
 - ✅ 前端应用中心 app `/ontology`（语义地图页）+ `shell/Sidebar.tsx` +1 导航行
 - ✅ 权限：`ontology:read` / `ontology:view` 权限点 + `system:access` + `hidden:true` 列级隐藏 + fail-closed 只读
 
@@ -198,6 +200,7 @@ link_types:
     cardinality: N:1
     direction: bidirectional
     reverse: document_has_items
+    enabled: true                   # R4/D3: false = stub——describe_ontology 可见并标注, get_links/traverse 拒绝遍历
     join:
       type: foreign_key             # foreign_key | normalized_key_match
       source_column: document_id
@@ -210,9 +213,11 @@ link_types:
     cardinality: N:N
     direction: bidirectional
     reverse: goods_cluster_matched_by_part_cluster
+    enabled: true                   # 召回预测量(D12)不达 30% 阈值时置 false + note 记录实测匹配率
     join:
       type: normalized_key_match
-      expression: "LOWER(BTRIM(csp_clusters.representative_name)) = LOWER(BTRIM(cpa_clusters.representative_name))"
+      key_columns: [representative_name, representative_name]   # R4: 归一化由引擎统一执行
+      # 引擎级标准: LOWER(BTRIM(col)) 相等 + 两侧 NULL/空串守卫(引擎强制, 非 per-link ad-hoc 表达式)
     cross_module: true
 ```
 
@@ -257,10 +262,14 @@ link_types:
 
 | api_name | source ↔ target | 基数 | join 表达式 | 业务价值 |
 |---|---|---|---|---|
-| `part_cluster_matches_goods_cluster` | part_cluster ↔ goods_cluster | N:N | `LOWER(BTRIM(representative_name))` 相等（**聚类代表名匹配，R3 拍板**） | 备件价 vs 合同价体系比对（④核心价值） |
-| `contract_document_matches_spare_document` | spare_part_document ↔ contract_document | N:N | `contract_no` 相等 **或** `file_hash` 相等 | 同一采购事件跨模块关联 |
-| `won_bid_contracts_project` | bid(won=true) ↔ contract_document | N:N | `LOWER(BTRIM(project_name))` 相等 且 won=true | 投标→合同链路 |
-| `document_supplied_by` | contract_document ↔ spare_part_document | N:N | `LOWER(BTRIM(supplier))` 相等 | 供应商跨模块维度（买方-卖方角色反查） |
+| `part_cluster_matches_goods_cluster` | part_cluster ↔ goods_cluster | N:N | `LOWER(BTRIM(representative_name))` 相等（**聚类代表名匹配，R3 拍板**；引擎强制非空守卫） | 备件价 vs 合同价体系比对（④核心价值） |
+| `contract_document_matches_spare_document` | spare_part_document ↔ contract_document | N:N | 归一化 `contract_no` 相等 **或** `file_hash` 相等（两分支均非空守卫，R4 修正：原稿裸 contract_no 相等会因两侧 OCR 格式差异产生假/漏匹配） | 同一采购事件跨模块关联 |
+| `won_bid_contracts_project` | bid(won=true) ↔ contract_document | N:N | `LOWER(BTRIM(project_name))` 相等 且 won=true；**跨 connector**（bid 在 mock_market 外部库、contract_document 在扩展库）→ 走引擎分块应用侧 join（见下） | 投标→合同链路 |
+| `document_supplied_by` | contract_document ↔ spare_part_document | N:N | `LOWER(BTRIM(supplier))` 相等（引擎强制非空守卫） | 供应商跨模块维度（买方-卖方角色反查） |
+
+> **R4 跨 connector 跳机制（D11）**：4 条跨模块链接中 3 条两侧同库（扩展库，单 SQL join）；唯 `won_bid_contracts_project` 两侧分属 data_source（mock_market）与 postgres_ext（扩展库），单条 SQL 无法表达。引擎标准机制 = **分块应用侧 join**：从 A 侧拉归一化键集（分批 ≤200，与 `assert_readonly_select` 追加的 LIMIT 200 显式共存），对 B 侧发 IN 查询。基数正确性有专门测试断言（截断即报错，不静默丢链接）。此机制是后续 HRIS/ERP 外部库域的通用能力。
+>
+> **R4 召回前置（D12）**：建引擎前用一次性脚本（`backend/scripts/ontology_link_recall_probe.py`）测 4 条链接在当前数据（扩展库 + mock_market）的匹配率；`representative_name` 是人工可变展示字段（patch/merge 会改写），两套聚类独立命名，匹配率未经验证；`won_bid` 一侧为虚构 mock 项目名，对真实合同数据预期零匹配。实测值写入 YAML `note` 字段，低于 30% 阈值的链接置 `enabled:false` stub 上线，不盲发死链接。
 
 > **R3 决策**：跨模块比价链接在**聚类代表名**层匹配，复用模块已做的 DBSCAN 归一（脏 OCR 名经聚类后链接更准），不直接在原始脏名上匹配。item 级导航路径 = `spare_part_item → spare_item_in_cluster → part_cluster → part_cluster_matches_goods_cluster → goods_cluster → item_in_cluster(反向) → contract_item`。
 >
@@ -274,7 +283,7 @@ stdio 注册进 `extensions_config.json`（同 data_source mcp.py 模式），7 
 
 | 工具 | 签名 | 说明 |
 |---|---|---|
-| `describe_ontology` | `(object_type?: str)` | 返回注册表版本 + 对象类型/链接类型 schema（含属性描述与 allowlist；隐藏 hidden:true；每对象类型属性 allowlist 服务端强制——镜像 AIP "selected types + specific properties"） |
+| `describe_ontology` | `(object_type?: str, full?: bool)` | **紧凑默认**（R4）：无 full 参数时返回类型名 + display_name + 一行描述 + 属性名清单（<2k token）；`full:true` 才返回逐属性完整 schema（含描述与 allowlist；隐藏 hidden:true；每对象类型属性 allowlist 服务端强制——镜像 AIP "selected types + specific properties"）。防止 11 对象全量 dump 每次注入 10-15k token |
 | `list_objects` | `(object_type, filter?, order_by?, limit≤200, cursor?, include_properties?)` | typed filter（eq/ne/gt/gte/lt/lte/in/between/and/or/not）；**keyset 分页**（非 offset）；读后写一致 |
 | `get_object` | `(object_type, primary_key, include_properties?)` | 按不可变主键取对象 |
 | `search_objects` | `(object_type, term, limit≤200, include_properties?)` | 对该类型 searchable:true 文本属性 ILIKE（goods_name/part_name/representative_name/project_name/supplier/contract_no/canonical_name） |
@@ -286,23 +295,22 @@ stdio 注册进 `extensions_config.json`（同 data_source mcp.py 模式），7 
 
 ---
 
-## 8. REST surface（前端语义地图页，~11 端点）
+## 8. REST surface（前端语义地图页）
 
-前缀 `/api/extensions/ontology`，扩展 JWT 认证，新权限点：
+前缀 `/api/extensions/ontology`，扩展 JWT 认证，新权限点。**R4/D16 分层**：1a 只建 6 核心端点（同时是 pytest HTTP 级集成测试的载体，非死代码）；其余 5 个纯页面包装端点随 1b 语义地图页同建，避免无消费者无验证的薄包装层。
+
+**1a（6 端点）**：
 
 | Method | Path | 用途 |
 |---|---|---|
 | GET | `/registry` | 注册表版本 + 逐文件 SHA-256 + 对象/链接清单（页头 + 版本徽章） |
-| POST | `/registry/reload` (admin) | 强制重载 YAML（热重载兜底） |
-| GET | `/object-types` | 对象类型导航（节点面板） |
-| GET | `/object-types/{api_name}` | 全 schema + availability（data_source 背书断开时 available:false） |
-| GET | `/link-types` | 链接类型清单（边） |
+| GET | `/object-types` | 对象类型导航（节点面板，含 availability：data_source 背书断开时 available:false） |
 | GET | `/objects/{type}?filter=&order_by=&limit=&cursor=` | 实例列表（keyset 分页） |
 | GET | `/objects/{type}/{pk}` | 对象详情（?expand=links → 链接摘要） |
 | GET | `/objects/{type}/{pk}/links/{link_type}` | 链接展开（点击沿边导航） |
-| POST | `/objects/traverse` | 多跳路径下钻 |
-| GET | `/search?term=&type=&limit=` | 全局语义搜索（跨 searchable 类型） |
-| POST | `/aggregate` | 统计组件（聚类均价/按客户比价/中标率） |
+| POST | `/aggregate` | 统计（聚类均价/按客户比价/中标率） |
+
+**1b（随语义地图页建）**：`GET /object-types/{api_name}` 全 schema、`GET /link-types`、`POST /objects/traverse`、`GET /search` 全局搜索、`POST /registry/reload` (admin)。
 
 ---
 
@@ -390,6 +398,8 @@ stdio 注册进 `extensions_config.json`（同 data_source mcp.py 模式），7 
 - **data_source 边界重叠**：无显式契约会产生两个竞争读面 → §11.2 契约 + 实现期 enforce（ontology 只复用其 SQL 读路径）。
 - **注册表腐化**：描述/链接随模块演进过期 → 语义地图变"ontology theater"反误导 LLM → 实现期加 `describe_ontology` 覆盖度检查（描述/链接覆盖 %）+ 评审关卡。
 - **脏跨模块键**：goods_name/part_name、supplier/customer 不能硬 FK → 聚类代表名 + 弱链接语义；`won_bid_contracts_project` 依赖 project_name 归一，脏名会错失链接（记录为已知局限）。
+- **【R4 具名升级路径①：物化链接表】** 零迁移约束下 `LOWER(BTRIM(...))` 谓词用不上现有 btree 索引，跨模块链接查询 = 两侧顺序扫描；当前单客户语料（千行级）毫秒级可接受。**触发条件**：跨模块链接查询 P95 > 500ms 或任一侧数据量 > 10 万行 → 评估物化链接表（ontology 自有表，registry 版本变更时刷新，顺带固定可变 join 键）。触发前不付物化的写路径/新鲜度运维税。
+- **【R4 具名升级路径②：Postgres 视图】** 9/11 对象同库，若未来某域纯同库且无 hidden/分页契约需求，可在 connector 内部用视图做物理优化——但视图**不能**替代注册表作契约工件（跨不了 connector、背不动 hidden 列管控/键集分页/typed filter 契约、CI lint 检查不了）。eng-review 已评估并否决"视图+薄描述层"作整体替代方案（决策日志 2026-08-15）。
 - **新读面安全**：hidden 与只读守卫必须服务端 fail-closed（同 `assert_readonly_select` 纪律），防 MCP 适配器绕过。
 - **bid 自然键**：一期保留 `BD-2025-001`（文档化风险），二期加 surrogate。
 - **percentiles 可用性**：`aggregate_objects` 的 `percentile_cont` 需在两条访问路径（扩展库 vs data_source 外部库）验证可用。
@@ -415,6 +425,9 @@ stdio 注册进 `extensions_config.json`（同 data_source mcp.py 模式），7 
 - **2026-08-14** 权限 = **管理员级门控**（system:access + hidden 列级隐藏）；不行级 ACL（二期协作域再议）。
 - **2026-08-14** 前端 = **独立应用中心 app /ontology**；Sidebar +1 导航行。
 - **2026-08-14** bid 自然键一期保留（文档化风险），surrogate 二期；run_history 延迟二期；aggregate 实时计算。
+- **2026-08-15** (/plan-eng-review, 17 决议全裁决) — 1a 后端楔子 / 1b 前端拆分；链接 schema 补 `enabled` stub；双进程逐调用 SHA-256 指纹；引擎契约（filter 值绑定参数 + declared-only 列/操作符 + keyset pk tiebreaker + traverse ≤5 跳）；CI lint AST 层（无 DB）+ 范围配置 + 白名单；命名对齐（mcp.py/schemas.py，无 models.py）；复用边界 = import `assert_readonly_select` 单一真源、连接管道 ontology 自建。
+- **2026-08-15** (外部独立声音裁决) — 跨 connector 跳 = 引擎标准能力（分块 ≤200 应用侧 join，D11）；建引擎前先测链接召回（阈值 30%，D12）；维持零拷贝 + 物化/视图具名升级路径（D13/D15，已评估并否决"Postgres 视图+薄描述层"整体替代：视图跨不了 connector、背不动契约）；REST 1a 砍至 6 端点（D16）；describe_ontology 紧凑默认；归一化+非空守卫引擎级强制。
+- **2026-08-15** 决策日志补记（诚实性）：原选型比过 A（YAML+引擎）/B（代码驱动）/C（纯文档），**未评估**选项 D（SQL 视图+薄注册层）；经外部声音提出后补评估并否决（理由见 §14 升级路径②）。
 
 ---
 
@@ -424,7 +437,7 @@ stdio 注册进 `extensions_config.json`（同 data_source mcp.py 模式），7 
 - `backend/app/extensions/contract_price/models.py`（cpa_ 表结构，工作区现状）
 - `backend/app/extensions/spare_parts/models.py`（csp_ 表结构 + csp_customers）
 - `backend/scripts/seed_mock_market.py`（mock_bid/mock_bid_item + 4 datasets）
-- `backend/app/extensions/data_source/{mcp,service,routers}.py`（只读查询 + dataset + 守卫；**ontology 复用其 SQL 读路径，不改**）
+- `backend/app/extensions/data_source/{mcp,service,routers}.py`（只读查询 + dataset + 守卫；R4 边界澄清：ontology **import `assert_readonly_select` 作安全单一真源**——`run_readonly_query` 本身无绑定参数支持（`conn.execute(text(sql))`），故连接管道（URL 构建/NullPool/READ ONLY）由 ontology 自建，typed filter 走绑定参数，不走 `run_readonly_query` 的字符串 SQL 面）
 - `backend/app/extensions/database.py`（共享 Base；ontology 不建业务表，仅元数据可选）
 - `config/permissions.yaml` + `config/roles_custom.yaml`（权限点与角色；ontology 新增 `ontology:read`/`ontology:view`）
 - `extensions_config.json`（注册 `ontology` MCP server + 技能）

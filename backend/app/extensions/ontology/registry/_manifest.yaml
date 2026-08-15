@@ -1,0 +1,10 @@
+# Ontology 注册表清单（市场/分析数据域 Phase 1a）
+# 设计: docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md §4
+schema_version: 1
+registry_version: 1  # 内存单调递增起点，实际版本由加载器按指纹变化维护
+hot_reload: true
+files:
+  - file: contract_price.yaml
+  - file: spare_parts.yaml
+  - file: bid_quote.yaml
+  - file: cross_module.yaml

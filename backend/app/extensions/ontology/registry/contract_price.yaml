@@ -1,0 +1,102 @@
+# 合同价格分析域（cpa_ 表，零迁移直读）
+# 物理列与 app/extensions/contract_price/models.py 逐列核对（T7 lint 校验）
+object_types:
+  - api_name: contract_document
+    display_name: 合同文档
+    description: 采购合同扫描件（OCR 解析后），货物价格分析的文档主档
+    domain: contract_price
+    icon: 📄
+    access:
+      path: postgres_ext
+      table: cpa_documents
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: file_name, api_name: fileName, type: string, description: 原始文件名, searchable: true }
+      - { name: file_hash, api_name: fileHash, type: string, description: SHA-256 内容哈希, indexed: true }
+      - { name: contract_no, api_name: contractNo, type: string, description: 合同编号, filterable: true, searchable: true }
+      - { name: supplier, api_name: supplier, type: string, description: 供方/卖方, filterable: true, searchable: true }
+      - { name: project_name, api_name: projectName, type: string, description: 项目/工程名称, filterable: true, searchable: true }
+      - { name: project_location, api_name: projectLocation, type: string, description: 项目所在地, searchable: true }
+      - { name: sign_date, api_name: signDate, type: date, description: 签订日期, filterable: true, format: date }
+      - { name: parse_status, api_name: parseStatus, type: string, description: 解析状态(pending/parsed/failed/needs_review), filterable: true, enum: [pending, parsed, failed, needs_review] }
+      - { name: confirm_status, api_name: confirmStatus, type: string, description: 确认状态(pending/confirmed/skipped/clustered), filterable: true, enum: [pending, confirmed, skipped, clustered] }
+      - { name: page_count, api_name: pageCount, type: integer, description: 页数 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 入库时间, filterable: true }
+
+  - api_name: contract_item
+    display_name: 合同货物明细
+    description: 合同中的货物行项（名称/规格/数量/单价），比价分析的原子单位
+    domain: contract_price
+    icon: 🧾
+    access:
+      path: postgres_ext
+      table: cpa_items
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: document_id, api_name: documentId, type: uuid, description: 所属合同文档, indexed: true, filterable: true }
+      - { name: goods_name, api_name: goodsName, type: string, description: "货物名称(脏, 经聚类归一)", searchable: true }
+      - { name: spec_model, api_name: specModel, type: string, description: 规格型号, searchable: true }
+      - { name: quantity, api_name: quantity, type: number, description: 数量, filterable: true }
+      - { name: unit, api_name: unit, type: string, description: 单位 }
+      - { name: unit_price, api_name: unitPrice, type: number, description: 含税单价, filterable: true, format: currency }
+      - { name: price_untaxed, api_name: priceUntaxed, type: number, description: 不含税单价, format: currency }
+      - { name: cluster_id, api_name: clusterId, type: uuid, description: 货物聚类, indexed: true, filterable: true }
+      - { name: source_contract_no, api_name: sourceContractNo, type: string, description: 来源合同编号, filterable: true }
+      - { name: is_outlier, api_name: isOutlier, type: boolean, description: 是否离群价, filterable: true }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度 }
+      - { name: validation_status, api_name: validationStatus, type: string, description: 校验状态, filterable: true }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 入库时间, filterable: true }
+
+  - api_name: goods_cluster
+    display_name: 货物聚类
+    description: 同义货物名聚类（同 cluster = 同一货物），跨文档比价键
+    domain: contract_price
+    icon: 🏷️
+    access:
+      path: postgres_ext
+      table: cpa_clusters
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: category, api_name: category, type: string, description: 类目, filterable: true }
+      - { name: representative_name, api_name: representativeName, type: string, description: 聚类代表名, searchable: true }
+      - { name: status, api_name: status, type: string, description: 状态(pending/confirmed), filterable: true }
+      - { name: item_count, api_name: itemCount, type: integer, description: 成员行数, filterable: true }
+      - { name: version, api_name: version, type: integer, description: 聚类版本 }
+      - { name: confirmed_by, api_name: confirmedBy, type: string, description: 确认人 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+      - { name: updated_at, api_name: updatedAt, type: datetime, description: 更新时间 }
+
+link_types:
+  - api_name: contract_item_in_document
+    display_name: 明细所属合同
+    source: contract_item
+    target: contract_document
+    cardinality: N:1
+    reverse: document_has_contract_items
+    join:
+      type: foreign_key
+      source_column: document_id
+      target_column: id
+
+  - api_name: contract_item_in_cluster
+    display_name: 明细所属货物聚类
+    source: contract_item
+    target: goods_cluster
+    cardinality: N:1
+    reverse: cluster_has_contract_items
+    join:
+      type: foreign_key
+      source_column: cluster_id
+      target_column: id
