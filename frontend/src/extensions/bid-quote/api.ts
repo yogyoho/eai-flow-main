@@ -236,6 +236,123 @@ export function sqlSelfVsOutsource(
   return `${TPL.selfVsOutsource(dim)} WHERE ${where} GROUP BY ${grp} ORDER BY ${grp}`;
 }
 
+// ── 2026-08-15 仪表盘三问框架新模板(三区块原型落地)──
+// 统一约定:过滤先压进单表 CTE base(别名内列不带歧义),再在 CTE 之上做 join/聚合,
+// EXISTS 友商过滤的 outerProjectRef 始终是 base 的 FROM 表列(未别名 mock_bid)。
+
+/** 图3 中标率时间趋势:按季度 我方/友商 双列。 */
+export function sqlTrend(g: FilterState): string {
+  return `WITH base AS (SELECT bidder_role, won, bid_date FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")}),
+q AS (SELECT date_trunc('quarter', bid_date) AS qtr, bidder_role, won FROM base)
+SELECT qtr,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE bidder_role='ours' AND won) / NULLIF(COUNT(*) FILTER (WHERE bidder_role='ours'), 0), 1) AS ours_rate,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE bidder_role='competitor' AND won) / NULLIF(COUNT(*) FILTER (WHERE bidder_role='competitor'), 0), 1) AS comp_rate
+FROM q GROUP BY qtr ORDER BY qtr`;
+}
+
+/** 图7 胜率-溢价曲线:我方报价相对同项目【友商最低价】的溢价率固定 6 桶(PG 无数组版 width_bucket,CASE 等价)。
+ *  注意口径:不能相对"中标价"算——我方胜出时我方报价=中标价,溢价恒 0,胜场全塌进 0~+3% 桶,曲线退化。
+ *  相对友商最低价:胜场可分布在负桶(压价幅度不同),正桶也可能胜(靠评分赢),曲线才有形状。 */
+export function sqlPremiumCurve(g: FilterState): string {
+  return `WITH base AS (SELECT bid_id, project_name, bidder_role, won, winning_price FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")}),
+cmin AS (SELECT project_name, MIN(winning_price) AS cmin_price FROM base WHERE bidder_role='competitor' GROUP BY 1),
+ours AS (
+  SELECT b.won, (b.winning_price - c.cmin_price) / c.cmin_price AS prem
+  FROM base b JOIN cmin c ON c.project_name = b.project_name
+  WHERE b.bidder_role='ours'
+),
+t AS (SELECT won, CASE WHEN prem <= -0.05 THEN 0 WHEN prem < 0 THEN 1 WHEN prem < 0.03 THEN 2 WHEN prem < 0.06 THEN 3 WHEN prem < 0.10 THEN 4 ELSE 5 END AS bucket FROM ours)
+SELECT bucket, COUNT(*) AS n,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE won) / NULLIF(COUNT(*), 0), 1) AS win_rate
+FROM t GROUP BY bucket ORDER BY bucket`;
+}
+
+/** 图8 报价区间建议:按金额段 中标价 P25/P50/P75 + 该段我方行 items 成本底线(Σself+Σoutsourced)。 */
+export function sqlPriceBand(g: FilterState): string {
+  return `WITH base AS (SELECT bid_id, project_name, bidder_role, won, winning_price FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")}),
+wp AS (SELECT project_name,
+    MAX(winning_price) FILTER (WHERE won) AS win_price,
+    CASE WHEN MAX(winning_price) FILTER (WHERE won) < 1000000 THEN '1_<100万'
+         WHEN MAX(winning_price) FILTER (WHERE won) < 5000000 THEN '2_100-500万'
+         WHEN MAX(winning_price) FILTER (WHERE won) < 20000000 THEN '3_500-2000万'
+         ELSE '4_≥2000万' END AS seg
+  FROM base GROUP BY project_name HAVING BOOL_OR(won)),
+pc AS (SELECT b.project_name, SUM(i.self_amount + i.outsourced_amount) AS cost
+  FROM base b JOIN mock_bid_item i ON i.bid_id = b.bid_id
+  WHERE b.bidder_role='ours' GROUP BY 1),
+cost AS (SELECT wp.seg, AVG(pc.cost) AS cost_floor
+  FROM wp JOIN pc ON pc.project_name = wp.project_name GROUP BY wp.seg)
+SELECT wp.seg,
+  percentile_cont(0.25) WITHIN GROUP (ORDER BY wp.win_price) AS p25,
+  percentile_cont(0.50) WITHIN GROUP (ORDER BY wp.win_price) AS p50,
+  percentile_cont(0.75) WITHIN GROUP (ORDER BY wp.win_price) AS p75,
+  MAX(c.cost_floor) AS cost_floor
+FROM wp LEFT JOIN cost c ON c.seg = wp.seg
+GROUP BY wp.seg ORDER BY wp.seg`;
+}
+
+/** 图10 友商画像:按 bidder_name 中标率/平均溢价(相对同项目中标价)/同期项目数。 */
+export function sqlCompetitorProfile(g: FilterState): string {
+  return `WITH base AS (SELECT * FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")}),
+w AS (SELECT project_name, winning_price AS win_price FROM base WHERE won)
+SELECT b.bidder_name,
+  COUNT(*) AS bids,
+  COUNT(*) FILTER (WHERE b.won) AS wins,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE b.won) / NULLIF(COUNT(*), 0), 1) AS win_rate,
+  ROUND(100.0 * AVG((b.winning_price - w.win_price) / w.win_price), 1) AS avg_premium_pct,
+  COUNT(DISTINCT b.project_name) AS projects
+FROM base b JOIN w ON w.project_name = b.project_name
+WHERE b.bidder_role='competitor'
+GROUP BY b.bidder_name ORDER BY wins DESC, b.bidder_name`;
+}
+
+/** 图10 优势领域 chips:友商中标行的货物金额(前端按友商取 Top2)。 */
+export function sqlCompetitorGoods(g: FilterState): string {
+  return `SELECT b.bidder_name, i.goods_name, SUM(i.self_amount + i.outsourced_amount) AS amt
+FROM mock_bid b JOIN mock_bid_item i ON i.bid_id = b.bid_id
+WHERE b.bidder_role='competitor' AND b.won AND ${buildWhere(g, "b.project_name")}
+GROUP BY b.bidder_name, i.goods_name`;
+}
+
+/** 图11 遭遇战:选定友商与我方同场(同项目)对局,分年度胜负计数。 */
+export function sqlHead2Head(g: FilterState, competitor: string): string {
+  const c = esc(competitor);
+  return `WITH base AS (SELECT * FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")}),
+both AS (SELECT project_name FROM base
+  WHERE (bidder_role='ours' OR bidder_name='${c}')
+  GROUP BY project_name
+  HAVING BOOL_OR(bidder_role='ours') AND BOOL_OR(bidder_name='${c}')),
+pair AS (SELECT b.project_name,
+    BOOL_OR(b.bidder_role='ours' AND b.won) AS ours_won,
+    BOOL_OR(b.bidder_name='${c}' AND b.won) AS comp_won
+  FROM base b JOIN both ON both.project_name = b.project_name
+  WHERE b.bidder_role='ours' OR b.bidder_name='${c}'
+  GROUP BY b.project_name),
+d AS (SELECT project_name, MIN(bid_date) AS bid_date FROM base GROUP BY project_name)
+SELECT EXTRACT(YEAR FROM d.bid_date)::INT AS yr,
+  COUNT(*) FILTER (WHERE p.ours_won) AS ours_wins,
+  COUNT(*) FILTER (WHERE p.comp_won) AS comp_wins
+FROM pair p JOIN d ON d.project_name = p.project_name
+GROUP BY 1 ORDER BY 1`;
+}
+
+/** 图12 中标份额格局:按年各 bidder 中标金额(前端折叠 前5+其他)。 */
+export function sqlShareStack(g: FilterState): string {
+  return `WITH base AS (SELECT bidder_name, won, winning_price, bid_date FROM mock_bid WHERE won AND ${buildWhere(g, "mock_bid.project_name")})
+SELECT EXTRACT(YEAR FROM bid_date)::INT AS yr, bidder_name, SUM(winning_price) AS amt
+FROM base GROUP BY 1, 2 ORDER BY 1, 3 DESC`;
+}
+
+/** KPI 同比:分年度 我方/友商 投与中(最新年 vs 上一年算 delta 注脚)。 */
+export function sqlKpiByYear(g: FilterState): string {
+  return `SELECT EXTRACT(YEAR FROM bid_date)::INT AS yr,
+  COUNT(*) FILTER (WHERE bidder_role='ours') AS ours_bid,
+  COUNT(*) FILTER (WHERE bidder_role='ours' AND won) AS ours_won,
+  COUNT(*) FILTER (WHERE bidder_role='competitor') AS comp_bid,
+  COUNT(*) FILTER (WHERE bidder_role='competitor' AND won) AS comp_won
+FROM mock_bid WHERE ${buildWhere(g, "mock_bid.project_name")} GROUP BY 1 ORDER BY 1`;
+}
+
 /** 跑过滤后的 SQL → querySql。 */
 export async function queryFiltered(sql: string): Promise<QueryResult> {
   const sid = await resolveSourceId();

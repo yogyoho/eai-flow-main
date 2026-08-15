@@ -12,21 +12,37 @@ import {
   queryFiltered,
   querySql,
   resolveSourceId,
+  sqlCompetitorGoods,
+  sqlCompetitorProfile,
   sqlFor,
+  sqlHead2Head,
+  sqlKpiByYear,
+  sqlPremiumCurve,
+  sqlPriceBand,
   sqlSelfVsOutsource,
+  sqlShareStack,
+  sqlTrend,
 } from "./api";
 import type {
   BidItemRow,
   BidSummaryRow,
   ChartFilter,
+  CompetitorGoodsRow,
+  CompetitorProfileRow,
   CompositionRow,
   FilterOptions,
   FilterState,
+  Head2HeadRow,
+  KpiByYearRow,
+  PremiumCurveRow,
+  PriceBandRow,
   QueryResult,
   SegmentRow,
   SelfRateRow,
   SelfVsOutsourceRow,
+  ShareStackRow,
   ShowdownRow,
+  TrendRow,
 } from "./types";
 
 export const KEYS = {
@@ -84,6 +100,59 @@ export function useSelfVsOutsource(
 }
 
 /** 明细:mock_bid 走全局过滤(与图表联动),下钻来源。SQL 进 queryKey。 */
+// ── 2026-08-15 三问框架新图 hooks(裸 SQL 进 queryKey,与罐装视图同法)──
+
+/** 通用:拼好的 SQL 直接查(SQL 已含全局过滤,进 queryKey 自动重查)。 */
+function useSqlQuery<T>(keyBase: string, sql: string) {
+  return useQuery({
+    queryKey: ["bqa", keyBase, sql] as const,
+    queryFn: async (): Promise<T[]> => {
+      const res = await queryFiltered(sql);
+      // QueryResult.rows 默认 Record<string, unknown>[],闭接口无隐式索引签名,须经 unknown 中转
+      return res.rows as unknown as T[];
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** 图3 中标率时间趋势(我方 vs 友商,按季度)。 */
+export const useTrend = (f: FilterState) =>
+  useSqlQuery<TrendRow>("trend", sqlTrend(f));
+/** 图7 胜率-溢价曲线(固定 6 桶)。 */
+export const usePremiumCurve = (f: FilterState) =>
+  useSqlQuery<PremiumCurveRow>("premiumCurve", sqlPremiumCurve(f));
+/** 图8 报价区间建议(P25–P75 + 成本底线)。 */
+export const usePriceBand = (f: FilterState) =>
+  useSqlQuery<PriceBandRow>("priceBand", sqlPriceBand(f));
+/** 图10 友商画像。 */
+export const useCompetitorProfile = (f: FilterState) =>
+  useSqlQuery<CompetitorProfileRow>(
+    "competitorProfile",
+    sqlCompetitorProfile(f),
+  );
+/** 图10 优势领域聚合(按友商取 Top2 在前端做)。 */
+export const useCompetitorGoods = (f: FilterState) =>
+  useSqlQuery<CompetitorGoodsRow>("competitorGoods", sqlCompetitorGoods(f));
+/** 图11 遭遇战(选定友商;competitor=null 时不发请求)。 */
+export function useHead2Head(f: FilterState, competitor: string | null) {
+  const sql = competitor ? sqlHead2Head(f, competitor) : null;
+  return useQuery({
+    queryKey: ["bqa", "head2head", sql ?? ""] as const,
+    enabled: !!sql,
+    queryFn: async (): Promise<Head2HeadRow[]> => {
+      const res = await queryFiltered(sql!); // enabled: !!sql 保证非空
+      return res.rows as unknown as Head2HeadRow[];
+    },
+    placeholderData: keepPreviousData,
+  });
+}
+/** 图12 中标份额格局(按年,前端折叠前5+其他)。 */
+export const useShareStack = (f: FilterState) =>
+  useSqlQuery<ShareStackRow>("shareStack", sqlShareStack(f));
+/** KPI 同比(分年度)。 */
+export const useKpiByYear = (f: FilterState) =>
+  useSqlQuery<KpiByYearRow>("kpiByYear", sqlKpiByYear(f));
+
 export function useBidList(filters: FilterState, enabled = true) {
   const sql = `SELECT * FROM mock_bid WHERE ${buildWhere(filters, "mock_bid.project_name")} ORDER BY bid_date DESC`;
   return useQuery({

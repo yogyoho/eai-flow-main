@@ -107,3 +107,68 @@ export interface FilterOptions {
   competitors: string[];
   goods: string[];
 }
+
+// ── 2026-08-15 三问框架新图行类型(数值列 Decimal→string,同上) ──
+
+/** 图3 中标率时间趋势(按季度)。 */
+export interface TrendRow {
+  qtr: string; // date_trunc('quarter') 时间戳 ISO 串
+  ours_rate: string | null;
+  comp_rate: string | null;
+}
+
+/** 图7 胜率-溢价曲线(固定 6 桶,0=≤−5% … 5=>+10%)。 */
+export interface PremiumCurveRow {
+  bucket: number;
+  n: number;
+  win_rate: string | null;
+}
+
+/** 图8 报价区间建议(按金额段)。 */
+export interface PriceBandRow {
+  seg: string; // '1_<100万' … '4_≥2000万'
+  p25: string | null;
+  p50: string | null;
+  p75: string | null;
+  cost_floor: string | null;
+}
+
+/** 图10 友商画像行。 */
+export interface CompetitorProfileRow {
+  bidder_name: string;
+  bids: number;
+  wins: number;
+  win_rate: string | null;
+  avg_premium_pct: string | null; // 负 = 惯于低价抢标
+  projects: number;
+}
+
+/** 图10 优势领域聚合行(前端按友商取 Top2)。 */
+export interface CompetitorGoodsRow {
+  bidder_name: string;
+  goods_name: string;
+  amt: string | null;
+}
+
+/** 图11 遭遇战分年度行。 */
+export interface Head2HeadRow {
+  yr: number;
+  ours_wins: number;
+  comp_wins: number;
+}
+
+/** 图12 份额格局行(前端折叠 前5+其他)。 */
+export interface ShareStackRow {
+  yr: number;
+  bidder_name: string;
+  amt: string | null;
+}
+
+/** KPI 同比分年行。 */
+export interface KpiByYearRow {
+  yr: number;
+  ours_bid: number;
+  ours_won: number;
+  comp_bid: number;
+  comp_won: number;
+}
