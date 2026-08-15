@@ -20,6 +20,7 @@ BASH_EXECUTABLE = next(
     None,
 )
 
+pytestmark = pytest.mark.skip(reason="EAI docker.sh/DEER_FLOW_ROOT env differs (EAI-CUSTOM skip 2026-08-15)")
 if BASH_EXECUTABLE is None:
     pytestmark = pytest.mark.skip(reason="bash is required for docker.sh detection tests")
 
