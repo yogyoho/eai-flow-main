@@ -4,7 +4,6 @@ import sys
 from datetime import datetime
 from types import ModuleType, SimpleNamespace
 
-import pytest
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import ToolMessage
 from langgraph.errors import GraphInterrupt
@@ -23,10 +22,8 @@ from deerflow.config.guardrails_config import GuardrailsConfig
 from deerflow.config.model_config import ModelConfig
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.subagents.status_contract import SUBAGENT_ERROR_KEY, SUBAGENT_STATUS_KEY
-
 import pytest
 
-pytestmark = pytest.mark.skip(reason="upstream imports SubagentDateContextMiddleware EAI dynamic_context lacks (potential future port) (EAI-CUSTOM skip 2026-08-15)")
 
 
 

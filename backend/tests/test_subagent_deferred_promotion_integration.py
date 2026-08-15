@@ -32,10 +32,8 @@ from deerflow.agents.middlewares.deferred_tool_filter_middleware import Deferred
 from deerflow.agents.thread_state import ThreadState
 from deerflow.tools.builtins.tool_search import assemble_deferred_tools, get_deferred_tools_prompt_section
 from deerflow.tools.mcp_metadata import tag_mcp_tool
-
 import pytest
 
-pytestmark = pytest.mark.skip(reason="upstream SubagentDateContextMiddleware missing in EAI subagent chain (EAI-CUSTOM skip 2026-08-15)")
 
 
 

@@ -15,7 +15,6 @@ import pathlib
 import tempfile
 from types import SimpleNamespace
 
-import pytest
 from langchain.agents.middleware.types import ModelRequest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.types import Command
@@ -38,10 +37,8 @@ from deerflow.agents.middlewares.tool_output_synopsis import build_tool_output_s
 from deerflow.config.app_config import AppConfig
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.config.tool_output_config import ToolOutputConfig
-
 import pytest
 
-pytestmark = pytest.mark.skip(reason="upstream SubagentDateContextMiddleware missing in EAI chain (EAI-CUSTOM skip 2026-08-15)")
 
 
 # ---------------------------------------------------------------------------
