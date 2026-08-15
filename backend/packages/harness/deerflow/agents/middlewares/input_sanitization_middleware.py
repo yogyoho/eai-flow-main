@@ -69,6 +69,10 @@ _BLOCKED_TAG_NAMES: frozenset[str] = frozenset(
         "system_reminder",
         "memory",
         "current_date",
+        # EAI-CUSTOM: dynamic_context_middleware injects <project_context> as
+        # framework authority metadata (bug-697); forgeable in untrusted input,
+        # so it joins the framework authority-block denylist.
+        "project_context",
         "think",
         "analysis",
         "role",
