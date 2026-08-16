@@ -2205,11 +2205,11 @@ def _copy_prestate(tmp_path, *, merged: bool = True) -> Path:
                 c["superseded_by"] = None
         for n in structure:
             n["linked_clause_ids"] = [cid for cid in n["linked_clause_ids"] if cid != "BY-C-004"]
-    (state / "clauses.json").write_text(json.dumps(clauses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    (state / "structure.json").write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    rubric_text = (FIXTURE_DIR / "rubric.json").read_text(encoding="utf-8")
-    (state / "rubric.json").write_text(rubric_text, encoding="utf-8")
-    (state / "entities_whitelist.json").write_text((FIXTURE_DIR / "entities_whitelist.json").read_text(encoding="utf-8"), encoding="utf-8")
+    # write_bytes: write_text 在 Windows 会把 \n 翻成 \r\n, 与 fixture 字节比对/脚本 LF 原子写不一致
+    (state / "clauses.json").write_bytes((json.dumps(clauses, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    (state / "structure.json").write_bytes((json.dumps(structure, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    (state / "rubric.json").write_bytes((FIXTURE_DIR / "rubric.json").read_bytes())
+    (state / "entities_whitelist.json").write_bytes((FIXTURE_DIR / "entities_whitelist.json").read_bytes())
     return state
 
 
@@ -3374,3 +3374,628 @@ class TestBuildOutputRenderHygiene:
         state = _copy_prestate(tmp_path, merged=True)
         assert build.main(["--state-dir", str(state), "--out", str(tmp_path / "out")]) == 0
         assert len(calls) == 1, "渲染与摘要共用同一份偏离行(曾对同一数据计算两次)"
+
+
+# ===========================================================================
+# T7 score_simulate: 阶段5 模拟评分闭环(重灌契约 D2/D6 + 客观汇总 + 报告 version++)
+# 四子命令: reingest(--source 显式指定 D2) / assemble-evidence / aggregate / report。
+# 重灌锚点契约(D2): 商务卷=structure.json 树路径标题链, 技术卷=条目标题 clause_id;
+# 匹配器硬化(D6): ①多命中→异常区不取首个 ②归一化(去编号/空白/全半角)
+# ③clause_id 重复出现→异常区 ④命中率低于阈值(默认 0.6)→整体降级人核覆盖率清单,
+# 不做部分计分; 匹配失败→needs_human_verify 不计 0 不静默。
+# 纪律: 无 LLM(主观项由 Agent 在上下文评, 脚本只组装证据包/消费评分);
+# 重灌只更新权威态(clauses.json response_status), fill_status 现算不落盘(D7);
+# 全部写盘临时文件+os.replace 原子化(D7); 报告 version++ 留痕不覆盖历史。
+# 退出码: 0=干净完成(--help 亦 0) 1=用法/文件错误/Σ 不一致中止/降级拒绝计分 3=完成但有异常项
+# ===========================================================================
+
+
+def _score_module():
+    """硬导入 score_simulate(T7 已落地; 模块缺失时测试失败而非 skip)。"""
+    import importlib
+
+    return importlib.import_module("score_simulate")
+
+
+def _fixture_source_text() -> str:
+    return (FIXTURE_DIR / "returned_word.md").read_text(encoding="utf-8")
+
+
+def _drop_section(text: str, heading_prefix: str) -> str:
+    """删除以 heading_prefix 开头的标题节(标题+正文, 到下一任意级标题为止)。"""
+    out, skip = [], False
+    for ln in text.splitlines():
+        if ln.startswith("#"):
+            skip = ln.startswith(heading_prefix)
+        if not skip:
+            out.append(ln)
+    return "\n".join(out) + "\n"
+
+
+def _clean_source_text() -> str:
+    """全净源: 去掉重复 clause_id 节(2.3)与镜像外标题(售后服务承诺)——重灌零异常。"""
+    text = _fixture_source_text()
+    text = _drop_section(text, "### 2.3 响应[ZB-C-001]")
+    return _drop_section(text, "## 3 售后服务承诺")
+
+
+def _write_source(tmp_path, text: str, name: str = "returned.md"):
+    path = Path(tmp_path) / name
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def _score_records(score=11, max_score=15, rubric_id="R-002", **over) -> dict:
+    """Agent 主观评分 JSON(scoring_prompt.md 评审输出记录契约)。"""
+    rec = {
+        "rubric_id": rubric_id,
+        "score": score,
+        "max_score": max_score,
+        "rationale": "对照评分办法分档, 架构先进性与工艺契合证据充分, 评良好偏上",
+        "evidence_quote": "围绕总体架构先进性与工艺场景契合度展开",
+        "missing_points": ["缺控制器冗余配置联动说明"],
+        "improvement": "补一节控制器冗余与工艺联动的方案说明",
+    }
+    rec.update(over)
+    return {"records": [rec]}
+
+
+def _write_scores(tmp_path, payload, name: str = "scores.json"):
+    path = Path(tmp_path) / name
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def _run_reingest(state_dir, source, *, threshold=None):
+    argv = ["reingest", "--source", str(source), "--state-dir", str(state_dir)]
+    if threshold is not None:
+        argv += ["--threshold", str(threshold)]
+    return _score_module().main(argv)
+
+
+def _reingest_result(state_dir):
+    return _state_json(state_dir, "reingest_result.json")
+
+
+def _aggregate_items(result):
+    return {i["rubric_id"]: i for i in result["items"]}
+
+
+SCORE_SUBCOMMANDS = ["reingest", "assemble-evidence", "aggregate", "report"]
+
+
+class TestScoreSimulateCliContract:
+    def test_help_each_subcommand_returns_0(self, capsys):
+        mod = _score_module()
+        for sub in SCORE_SUBCOMMANDS + []:
+            assert mod.main([sub, "--help"]) == 0, f"{sub} --help 应返回 0"
+        capsys.readouterr()
+
+    def test_no_subcommand_exit_1(self, capsys):
+        assert _score_module().main([]) == 1, "缺子命令=用法错误, 归退出码 1"
+        capsys.readouterr()
+
+    def test_reingest_source_required_d2(self, tmp_path, capsys):
+        """D2: 重灌输入必须显式指定——防团队多版回传并存时'灌了旧版'状态漂移。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _score_module().main(["reingest", "--state-dir", str(state)]) == 1
+        capsys.readouterr()
+
+    def test_missing_source_file_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _run_reingest(state, tmp_path / "nope.md") == 1
+        capsys.readouterr()
+
+    def test_missing_state_files_exit_1(self, tmp_path, capsys):
+        mod = _score_module()
+        empty = tmp_path / "empty"
+        empty.mkdir()
+        source = _write_source(tmp_path, _fixture_source_text())
+        scores = _write_scores(tmp_path, _score_records())
+        assert mod.main(["reingest", "--source", str(source), "--state-dir", str(empty)]) == 1
+        assert mod.main(["assemble-evidence", "--state-dir", str(empty)]) == 1
+        assert mod.main(["aggregate", "--scores", str(scores), "--state-dir", str(empty)]) == 1
+        assert mod.main(["report", "--state-dir", str(empty)]) == 1
+        capsys.readouterr()
+
+    def test_threshold_bounds_validated(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _fixture_source_text())
+        assert _run_reingest(state, source, threshold=0) == 1
+        assert _run_reingest(state, source, threshold=1.5) == 1
+        capsys.readouterr()
+
+
+class TestReingestHeadingChain:
+    """商务卷锚点=structure.json 树路径标题链(D2); 归一化匹配(D6②);
+    fill 事实记录(group/text/image/table/format_check 分型)。"""
+
+    def _run(self, tmp_path, capsys, text=None):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, text if text is not None else _fixture_source_text())
+        rc = _run_reingest(state, source)
+        return state, rc, _last_summary_json(capsys)
+
+    def test_commercial_nodes_matched_by_chain(self, tmp_path, capsys):
+        state, rc, summary = self._run(tmp_path, capsys)
+        assert rc == 3, "fixture 含重复 clause_id+镜像外标题 → 有异常项归 3"
+        nodes = {n["node_id"]: n for n in _reingest_result(state)["nodes"]}
+        for node_id in ["S-001", "S-002", "S-003", "S-004", "S-005"]:
+            assert nodes[node_id]["match"] == "matched", f"{node_id} 标题链应命中"
+        assert nodes["S-001"]["fill"] == "not_applicable", "group=纯章节容器, 无填写语义"
+        assert nodes["S-002"]["fill"] == "filled", "投标函槽有正文"
+        assert nodes["S-003"]["fill"] == "needs_human_verify", "image 槽=扫描件人核, 不做确定性判定"
+        assert nodes["S-004"]["fill"] == "needs_human_verify", "table 槽=合并单元格/列宽人工复刻核验"
+        assert "表格" in nodes["S-004"]["fill_reason"], "表格槽 reason 应携带检测到的表格事实"
+        assert nodes["S-005"]["fill"] == "needs_human_verify", "format_check 槽=签字/盖章/份数人核"
+
+    def test_hit_rate_and_no_partial_state_leak(self, tmp_path, capsys):
+        """锚点口径: 商务卷 5 槽 + 活技术条款 2 = 7; 命中 5+1(ZB-C-002)=6。"""
+        state, rc, summary = self._run(tmp_path, capsys)
+        assert summary["anchors"] == {"total": 7, "matched": 6, "needs_human_verify": 0, "multi_hit": 0, "duplicate_id": 1}
+        assert abs(summary["hit_rate"] - 6 / 7) < 1e-6
+        assert summary["degraded"] is False
+        assert not any(p.name.startswith(".") for p in state.iterdir()), "无 .tmp 残留(原子写盘)"
+
+    def test_state_authority_only_d7(self, tmp_path, capsys):
+        """重灌只更新权威态: clauses.json 按 fill 事实改 response_status;
+        structure.json/rubric.json 字节级不变(fill_status 现算不落盘, D7)。"""
+        state, rc, summary = self._run(tmp_path, capsys)
+        structure_before = (FIXTURE_DIR / "structure.json").read_bytes()
+        assert (state / "structure.json").read_bytes() == structure_before, "structure.json 不可被重灌改写"
+        assert (state / "rubric.json").read_bytes() == (FIXTURE_DIR / "rubric.json").read_bytes()
+        clauses = _clauses_by_id(state)
+        assert clauses["ZB-C-002"]["response_status"] == "compliant", "2.2 条目有正文 → 已响应"
+        assert clauses["ZB-C-001"]["response_status"] == "compliant", "重复 id 条款不重灌, 权威态保持"
+        assert summary["updated_clauses"] == 1
+
+    def test_unmatched_doc_heading_to_anomaly(self, tmp_path, capsys):
+        """镜像外标题(售后服务承诺)→ 异常区, 不静默(结构=只镜像不自创)。"""
+        state, rc, summary = self._run(tmp_path, capsys)
+        kinds = _anomaly_kinds(summary)
+        assert "unmatched_heading" in kinds
+        unmatched = [a for a in summary["anomalies"] if a["kind"] == "unmatched_heading"]
+        assert any("售后服务承诺" in json.dumps(a, ensure_ascii=False) for a in unmatched)
+
+    def test_node_anchor_missing_needs_human(self, tmp_path, capsys):
+        """结构槽在回传稿缺失 → needs_human_verify(锚点侧失败, 不计 0 不静默)。"""
+        text = _drop_section(_fixture_source_text(), "## 二、法定代表人身份证明")
+        state, rc, summary = self._run(tmp_path, capsys, text)
+        nodes = {n["node_id"]: n for n in _reingest_result(state)["nodes"]}
+        assert nodes["S-003"]["match"] == "needs_human_verify"
+        assert "node_anchor_unmatched" in _anomaly_kinds(summary)
+
+
+class TestReingestClauseId:
+    """技术卷锚点=条目标题内嵌 clause_id(D2; build_output 渲染时埋定)。"""
+
+    def _run(self, tmp_path, capsys, text):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, text)
+        rc = _run_reingest(state, source)
+        return state, rc, _last_summary_json(capsys)
+
+    def test_clause_entry_hit_and_status_update(self, tmp_path, capsys):
+        state, rc, summary = self._run(tmp_path, capsys, _fixture_source_text())
+        clauses = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert clauses["ZB-C-002"]["match"] == "matched"
+        assert clauses["ZB-C-002"]["filled"] is True
+        assert clauses["ZB-C-002"]["response_status_before"] == "draft"
+        assert clauses["ZB-C-002"]["response_status_after"] == "compliant"
+        assert _clauses_by_id(state)["ZB-C-002"]["response_status"] == "compliant"
+
+    def test_empty_entry_reverts_to_unassigned(self, tmp_path, capsys):
+        text = _fixture_source_text().replace('技术方案先进性:详见"1 技术方案"章节的架构说明与工艺契合分析。', "")
+        state, rc, summary = self._run(tmp_path, capsys, text)
+        clauses = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert clauses["ZB-C-002"]["filled"] is False
+        assert clauses["ZB-C-002"]["response_status_after"] == "unassigned", "空条目=未填写"
+        assert _clauses_by_id(state)["ZB-C-002"]["response_status"] == "unassigned"
+
+    def test_match_failure_needs_human_not_zero(self, tmp_path, capsys):
+        """条目缺失 → needs_human_verify: 权威态不动, 不计 0 分不静默(D6)。"""
+        text = _drop_section(_fixture_source_text(), "### 2.2 响应[ZB-C-002]")
+        state, rc, summary = self._run(tmp_path, capsys, text)
+        clauses = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert clauses["ZB-C-002"]["match"] == "needs_human_verify"
+        assert clauses["ZB-C-002"]["updated"] is False
+        assert _clauses_by_id(state)["ZB-C-002"]["response_status"] == "draft", "权威态保持, 绝不静默灌 0"
+        assert "clause_anchor_unmatched" in _anomaly_kinds(summary)
+
+    def test_duplicate_clause_id_to_anomaly(self, tmp_path, capsys):
+        """D6③: clause_id 重复出现(Word 修订模式重复文本)→ 异常区, 不重灌。"""
+        state, rc, summary = self._run(tmp_path, capsys, _fixture_source_text())
+        clauses = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert clauses["ZB-C-001"]["match"] == "duplicate_id"
+        assert clauses["ZB-C-001"]["occurrences"] == 2
+        assert clauses["ZB-C-001"]["updated"] is False
+        dup = [a for a in summary["anomalies"] if a["kind"] == "duplicate_clause_id"]
+        assert dup and dup[0]["clause_id"] == "ZB-C-001"
+
+    def test_registered_deviation_never_silently_erased(self, tmp_path, capsys):
+        """已登记 deviation 的人裁不被确定性重灌静默覆盖——冲突进异常区待人核。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", response_status="deviation")
+        source = _write_source(tmp_path, _clean_source_text())
+        assert _run_reingest(state, source) == 3
+        summary = _last_summary_json(capsys)
+        assert "deviation_conflict" in _anomaly_kinds(summary)
+        assert _clauses_by_id(state)["ZB-C-001"]["response_status"] == "deviation"
+
+
+class TestReingestMatcherHardening:
+    """D6 四类失败全显式: ①多命中 ②归一化 ③重复 id(上组) ④低命中率降级(下组)。"""
+
+    def test_multi_hit_not_first_match(self, tmp_path, capsys):
+        """D6①: 同一标题链多命中(目录与正文同名)→ 不取首个, 整项进异常区。"""
+        text = _fixture_source_text()
+        dup_section = "\n## 一、投标函\n\n(目录外的重复投标函节——多命中用例)\n"
+        text = text.replace("## 二、法定代表人身份证明", dup_section.lstrip("\n") + "\n## 二、法定代表人身份证明")
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, text)
+        assert _run_reingest(state, source) == 3
+        summary = _last_summary_json(capsys)
+        nodes = {n["node_id"]: n for n in _reingest_result(state)["nodes"]}
+        assert nodes["S-002"]["match"] == "multi_hit", "不取首个——比匹配失败更危险的静默灌错必须拦截"
+        assert summary["anchors"]["multi_hit"] == 1
+        assert summary["anchors"]["matched"] == 5, "S-002 不计入命中"
+        hit = [a for a in summary["anomalies"] if a["kind"] == "heading_multi_hit"]
+        assert hit and hit[0]["node_id"] == "S-002"
+
+    def test_normalization_d6_rule2(self):
+        """D6②: 去编号/空白/全半角后等价——防 Word 自动编号/样式差异导致精确匹配雪崩。"""
+        norm = _score_module().normalize_title
+        assert norm("一、投标函") == norm("投标函")
+        assert norm("1 技术方案") == norm("技术方案")
+        assert norm("１技术方案") == norm("1 技术方案"), "全角数字归一"
+        assert norm("２．１响应[ZB-C-001]") == norm("2.1 响应[ZB-C-001]"), "全角点号+空白归一"
+        assert norm("第三章 技术规范") == norm("技术规范"), "章号前缀剥离"
+        assert norm("投标文件格式") != norm("技术部分")
+
+    def test_normalized_chain_match_survives_renumbering(self, tmp_path, capsys):
+        """回传稿编号被 Word 重排(一、→ 1、)仍命中——归一化匹配的意义。"""
+        text = _fixture_source_text().replace("## 一、投标函", "## 1、投标函").replace("## 二、法定代表人身份证明", "## 2、法定代表人身份证明")
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, text)
+        assert _run_reingest(state, source) == 3
+        nodes = {n["node_id"]: n for n in _reingest_result(state)["nodes"]}
+        assert nodes["S-002"]["match"] == "matched"
+        assert nodes["S-003"]["match"] == "matched"
+
+    def test_low_hit_rate_degrades_whole_reingest(self, tmp_path, capsys):
+        """D6④: 命中率低于阈值 → 整体降级人核覆盖率清单, 不灌半套状态。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, "# 投标文件格式\n\n## 一、投标函\n\n仅两锚点命中, 其余全缺失。\n")
+        rc = _run_reingest(state, source)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert summary["degraded"] is True
+        assert summary["anchors"]["matched"] == 2 and summary["anchors"]["total"] == 7
+        assert summary["hit_rate"] < 0.6
+        assert "reingest_degraded" in _anomaly_kinds(summary)
+        assert (state / "clauses.json").read_bytes() == (FIXTURE_DIR / "clauses.json").read_bytes(), "降级=不灌半套状态, clauses.json 原样"
+
+    def test_threshold_flag_configurable(self, tmp_path, capsys):
+        """--threshold 可调: 6/7≈0.857 在默认 0.6 不降级, 提到 0.9 即降级。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _fixture_source_text())
+        assert _run_reingest(state, source, threshold=0.9) == 3
+        assert _last_summary_json(capsys)["degraded"] is True
+
+    def test_fk_validation_d7(self, tmp_path, capsys):
+        """D7 第一防线: 重灌装载三件套时校验 linked_clause_ids 存在且未 superseded。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_structure_node(state, "S-002", linked_clause_ids=["ZB-C-999"])
+        source = _write_source(tmp_path, _clean_source_text())
+        assert _run_reingest(state, source) == 3
+        summary = _last_summary_json(capsys)
+        dangling = [a for a in summary["anomalies"] if a["kind"] == "dangling_fk"]
+        assert dangling and "ZB-C-999" in json.dumps(dangling[0], ensure_ascii=False)
+
+    def test_reingest_idempotent(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _clean_source_text())
+        assert _run_reingest(state, source) == 0, "全净源零异常"
+        snap = {name: (state / name).read_bytes() for name in ("clauses.json", "structure.json", "rubric.json")}
+        assert _run_reingest(state, source) == 0
+        assert {name: (state / name).read_bytes() for name in snap} == snap, "同源重灌权威态幂等(字节级不变; reingest_result.json 记录本趟事实, 不属权威态)"
+
+
+class TestAssembleEvidence:
+    """assemble-evidence: 逐 rubric 项组装确定性证据包(grep 证据行), 供 Agent 主观评审。"""
+
+    def test_pack_shape_and_evidence_lines(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _fixture_source_text())
+        _run_reingest(state, source)
+        capsys.readouterr()
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 0
+        summary = _last_summary_json(capsys)
+        assert summary["written"] == "evidence_pack.json"
+        pack = _state_json(state, "evidence_pack.json")
+        bundles = {b["rubric_id"]: b for b in pack["items"]}
+        assert set(bundles) == {"R-001", "R-002", "R-003"}, "全量 rubric 项, 不缺不漏"
+        r2 = bundles["R-002"]
+        assert r2["score_type"] == "subjective" and r2["scoring_method"].startswith("优=")
+        assert r2["linked_clauses"][0]["clause_id"] == "ZB-C-002"
+        assert any("ZB-C-002" in ln["text"] for ln in r2["evidence_lines"]), "证据行应含 clause_id 检索命中"
+        assert r2["evidence_lines"], "技术方案正文行(总体架构先进性)应被 grep 命中"
+
+    def test_price_item_marked_not_scorable(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _clean_source_text())
+        _run_reingest(state, source)
+        capsys.readouterr()
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 0
+        capsys.readouterr()
+        pack = _state_json(state, "evidence_pack.json")
+        r1 = {b["rubric_id"]: b for b in pack["items"]}["R-001"]
+        assert "无法模拟" in r1["note"]
+
+    def test_session_state_without_reingest(self, tmp_path, capsys):
+        """会话内填写态(未重灌)也能组装: 证据行为空, 如实标注。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 0
+        pack = _state_json(state, "evidence_pack.json")
+        assert all(b["evidence_lines"] == [] for b in pack["items"])
+
+    def test_degraded_refuses(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, "# 投标文件格式\n\n## 一、投标函\n\n仅两锚点。\n")
+        _run_reingest(state, source)
+        capsys.readouterr()
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 1, "降级模式不做评审循环"
+        capsys.readouterr()
+
+
+class TestAggregateSumCheck:
+    """aggregate 第一步: rubric Σmax_score 纵深复检——不一致异常中止(extract 已前置拦截)。"""
+
+    def test_bad_sum_aborts_no_output(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "rubric.json").write_text((FIXTURE_DIR / "rubric_bad_sum.json").read_text(encoding="utf-8"), encoding="utf-8")
+        scores = _write_scores(tmp_path, _score_records())
+        rc = _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)])
+        assert rc == 1, "Σ 不一致=异常中止, 非完成带异常"
+        err = capsys.readouterr().err
+        assert "Σ" in err and "97" in err and "100" in err
+        assert not (state / "aggregate_result.json").exists(), "中止=不落任何汇总产物"
+
+    def test_non_int_max_score_rejected(self, tmp_path, capsys):
+        """max_score 非 int(bool/str)会让 Σ 失真——装载即拒绝(对齐 extract 硬化)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        rubric = _state_json(state, "rubric.json")
+        rubric["items"][1]["max_score"] = True
+        (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+        scores = _write_scores(tmp_path, _score_records())
+        assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 1
+        capsys.readouterr()
+
+
+class TestAggregateObjectiveMath:
+    """objective 项确定性汇总: 按重灌后条款状态, 已响应占比折算(不解析分档算术)。"""
+
+    def _aggregate(self, tmp_path, capsys, *, source_text=None, records=None, rubric_edit=None, clause_edit=None):
+        state = _copy_prestate(tmp_path, merged=True)
+        if rubric_edit:
+            rubric_edit(state)
+        if clause_edit:
+            clause_edit(state)
+        if source_text is not None:
+            source = _write_source(tmp_path, source_text)
+            _run_reingest(state, source)
+            capsys.readouterr()
+        payload = records if records is not None else _score_records()
+        scores = _write_scores(tmp_path, payload)
+        rc = _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)])
+        result = _state_json(state, "aggregate_result.json")
+        return state, rc, result, _last_summary_json(capsys)
+
+    def test_full_satisfaction_after_clean_reingest(self, tmp_path, capsys):
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, source_text=_clean_source_text())
+        assert rc == 0
+        items = _aggregate_items(result)
+        assert items["R-003"]["score"] == 25 and items["R-003"]["status"] == "scored"
+        assert items["R-003"]["clause_states"][0]["clause_id"] == "ZB-C-001"
+        assert result["totals"] == {"full": 100, "simulatable_max": 40, "simulated": 36.0}, "15+25=36, price 60 不入可模拟口径"
+
+    def test_session_state_mode_without_reingest(self, tmp_path, capsys):
+        """会话内填写态: 无重灌产物时直接按 clauses.json 现状汇总。"""
+        state, rc, result, summary = self._aggregate(tmp_path, capsys)
+        assert _aggregate_items(result)["R-003"]["score"] == 25, "ZB-C-001=compliant → 1/1"
+
+    def test_proportional_math_partial(self, tmp_path, capsys):
+        def rubric_edit(state):
+            rubric = _state_json(state, "rubric.json")
+            rubric["items"][2]["linked_clause_ids"] = ["ZB-C-001", "ZB-C-002"]
+            (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, rubric_edit=rubric_edit)
+        item = _aggregate_items(result)["R-003"]
+        assert item["score"] == 12.5, "compliant 1 / total 2 → 25×0.5"
+        assert {c["clause_id"]: c["state"] for c in item["clause_states"]}["ZB-C-002"] == "draft"
+
+    def test_deviation_scores_zero(self, tmp_path, capsys):
+        def clause_edit(state):
+            _set_clause(state, "ZB-C-001", response_status="deviation")
+
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, clause_edit=clause_edit)
+        assert _aggregate_items(result)["R-003"]["score"] == 0.0
+
+    def test_unverified_clause_needs_human_not_zero(self, tmp_path, capsys):
+        """fixture 重灌(ZB-C-001 重复 id)→ R-003 needs_human: score=None 不计 0(D6)。"""
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, source_text=_fixture_source_text())
+        assert rc == 3, "存在未核条款 → 异常项"
+        item = _aggregate_items(result)["R-003"]
+        assert item["score"] is None and item["status"] == "needs_human"
+        kinds = _anomaly_kinds(summary)
+        assert "objective_unverified_clause" in kinds
+        assert result["totals"]["simulated"] == 11.0, "仅 R-002 入账, needs_human 不按 0 计"
+
+    def test_objective_without_linkage_anomaly(self, tmp_path, capsys):
+        def rubric_edit(state):
+            rubric = _state_json(state, "rubric.json")
+            rubric["items"][2]["linked_clause_ids"] = []
+            (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, rubric_edit=rubric_edit)
+        assert rc == 3
+        item = _aggregate_items(result)["R-003"]
+        assert item["score"] is None
+        assert "objective_no_linkage" in _anomaly_kinds(summary)
+
+    def test_degraded_reingest_refuses_aggregation(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, "# 投标文件格式\n\n## 一、投标函\n\n仅两锚点。\n")
+        _run_reingest(state, source)
+        capsys.readouterr()
+        scores = _write_scores(tmp_path, _score_records())
+        rc = _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)])
+        assert rc == 1, "降级模式拒绝计分(不做部分计分, D6④)"
+        assert not (state / "aggregate_result.json").exists()
+        capsys.readouterr()
+
+
+class TestAggregateSubjectiveRecords:
+    """subjective 项消费 Agent 评分 JSON(scoring_prompt.md 契约); 违规记录逐类拦截。"""
+
+    def _aggregate(self, tmp_path, capsys, payload, *, source_text=None):
+        state = _copy_prestate(tmp_path, merged=True)
+        if source_text is not None:
+            _run_reingest(state, _write_source(tmp_path, source_text))
+            capsys.readouterr()
+        scores = _write_scores(tmp_path, payload)
+        rc = _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)])
+        return state, rc, _state_json(state, "aggregate_result.json"), _last_summary_json(capsys)
+
+    def test_happy_subjective_consumed(self, tmp_path, capsys):
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, _score_records(), source_text=_clean_source_text())
+        assert rc == 0
+        item = _aggregate_items(result)["R-002"]
+        assert item["score"] == 11 and item["status"] == "scored"
+        assert item["score_type"] == "subjective" and item["rationale"].startswith("对照评分办法分档")
+        assert item["missing_points"] == ["缺控制器冗余配置联动说明"]
+
+    def test_price_marked_unsimulatable(self, tmp_path, capsys):
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, _score_records())
+        item = _aggregate_items(result)["R-001"]
+        assert item["score"] is None and item["status"] == "price_unsimulatable"
+        assert "无法模拟" in item["rationale"]
+        assert result["totals"]["simulatable_max"] == 40, "price 60 分不入可模拟口径"
+
+    def test_over_max_score_excluded(self, tmp_path, capsys):
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, _score_records(score=20))
+        assert rc == 3
+        item = _aggregate_items(result)["R-002"]
+        assert item["score"] is None and item["status"] == "review_invalid"
+        assert "score_out_of_range" in _anomaly_kinds(summary)
+
+    def test_unknown_rubric_id_flagged(self, tmp_path, capsys):
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, _score_records(rubric_id="R-999"))
+        assert rc == 3
+        assert "unknown_rubric_id" in _anomaly_kinds(summary)
+
+    def test_record_for_non_subjective_rejected(self, tmp_path, capsys):
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, _score_records(rubric_id="R-003", max_score=25, score=10))
+        assert "record_not_subjective" in _anomaly_kinds(summary)
+        assert _aggregate_items(result)["R-003"]["status"] == "scored", "objective 由确定性汇总出分, 不吃 Agent 记录"
+
+    def test_missing_subjective_review_anomaly(self, tmp_path, capsys):
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, {"records": []})
+        assert rc == 3
+        item = _aggregate_items(result)["R-002"]
+        assert item["score"] is None and item["status"] == "missing_review"
+        assert "subjective_missing_review" in _anomaly_kinds(summary)
+
+    def test_duplicate_records_excluded(self, tmp_path, capsys):
+        rec = _score_records()
+        payload = {"records": [rec["records"][0], dict(rec["records"][0])]}
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, payload)
+        assert "duplicate_record" in _anomaly_kinds(summary)
+        assert _aggregate_items(result)["R-002"]["score"] is None, "重复记录不可信, 排除待人核"
+
+    def test_malformed_scores_file_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        scores = tmp_path / "bad.json"
+        scores.write_text("{not json", encoding="utf-8")
+        assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 1
+        capsys.readouterr()
+
+    def test_missing_scores_file_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _score_module().main(["aggregate", "--scores", str(tmp_path / "nope.json"), "--state-dir", str(state)]) == 1
+        capsys.readouterr()
+
+
+class TestReport:
+    """report: 逐项得分/满分/理由/失分原因 + 改进建议(失分值×可改性排序) +
+    主观分标'模拟参考值' + 异常区 + version++ 留痕不覆盖历史。"""
+
+    def _full_flow(self, tmp_path, capsys, *, source_text=None, records=None):
+        state = _copy_prestate(tmp_path, merged=True)
+        if source_text is not None:
+            _run_reingest(state, _write_source(tmp_path, source_text))
+            capsys.readouterr()
+        payload = records if records is not None else _score_records()
+        _score_module().main(["aggregate", "--scores", str(_write_scores(tmp_path, payload)), "--state-dir", str(state)])
+        capsys.readouterr()
+        rc = _score_module().main(["report", "--state-dir", str(state)])
+        return state, rc, _last_summary_json(capsys)
+
+    def test_version_increments_no_overwrite(self, tmp_path, capsys):
+        state, rc, summary = self._full_flow(tmp_path, capsys)
+        report_dir = state / "评分报告"
+        assert summary["version"] == 1
+        assert (report_dir / "version_1.md").is_file()
+        capsys.readouterr()
+        assert _score_module().main(["report", "--state-dir", str(state)]) == 0
+        summary2 = _last_summary_json(capsys)
+        assert summary2["version"] == 2, "version++ 留痕"
+        assert (report_dir / "version_1.md").is_file() and (report_dir / "version_2.md").is_file(), "历史不覆盖(二期校准闭环消费)"
+
+    def test_report_content_sections(self, tmp_path, capsys):
+        """fixture 流(重复 id+镜像外标题): 全要素渲染。"""
+        state, rc, summary = self._full_flow(tmp_path, capsys, source_text=_fixture_source_text())
+        text = (state / "评分报告" / "version_1.md").read_text(encoding="utf-8")
+        assert "模拟参考值" in text, "主观分一律标注"
+        assert "无法模拟" in text, "price 项如实标注"
+        assert "11 / 15" in text and "R-002" in text
+        assert "缺控制器冗余配置联动说明" in text, "失分原因(主观记录 missing_points)"
+        assert "补一节控制器冗余" in text, "改进建议(主观记录 improvement)"
+        assert "异常区" in text
+        assert "ZB-C-001" in text and "2 次" in text, "重复 clause_id 入异常区"
+        assert "售后服务承诺" in text, "镜像外标题入异常区"
+        assert "needs_human" in text or "人核" in text, "R-003 未核条款进异常区"
+
+    def test_improvement_list_sorted_by_loss_times_modifiability(self, tmp_path, capsys):
+        """排序: R-003(失分25×可改性0.5=12.5) 先于 R-002(失分4×1.0=4.0)。"""
+        state, rc, summary = self._full_flow(tmp_path, capsys, source_text=_fixture_source_text())
+        text = (state / "评分报告" / "version_1.md").read_text(encoding="utf-8")
+        section = text.split("改进建议", 1)[1]
+        rows = [ln for ln in section.splitlines() if ln.startswith("|") and "---" not in ln and "rubric_id" not in ln]
+        order = [ln.split("|")[2].strip() for ln in rows]
+        assert order == ["R-003", "R-002"], f"按 失分值×可改性 降序: {order}"
+
+    def test_clean_flow_full_marks_no_improvement(self, tmp_path, capsys):
+        state, rc, summary = self._full_flow(tmp_path, capsys, source_text=_clean_source_text())
+        text = (state / "评分报告" / "version_1.md").read_text(encoding="utf-8")
+        assert "36.0" in text or "36" in text, "可模拟口径 36/40"
+        section = text.split("改进建议", 1)[1].split("异常区", 1)[0] if "改进建议" in text else ""
+        rows = [ln for ln in section.splitlines() if ln.startswith("|") and "---" not in ln and "rubric_id" not in ln]
+        assert len(rows) == 1, "仅 R-002 失 4 分一条建议(R-003 满分, R-001 price 不入建议)"
+
+    def test_degraded_report_is_coverage_checklist(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_reingest(state, _write_source(tmp_path, "# 投标文件格式\n\n## 一、投标函\n\n仅两锚点。\n"))
+        capsys.readouterr()
+        rc = _score_module().main(["report", "--state-dir", str(state)])
+        assert rc == 0, "降级模式 report 产出覆盖率清单(非计分报告)"
+        _last_summary_json(capsys)
+        text = (state / "评分报告" / "version_1.md").read_text(encoding="utf-8")
+        assert "人核覆盖率清单" in text and "降级" in text
+        assert "S-003" in text and "ZB-C-001" in text, "清单逐锚点列出待人核项"
+
+    def test_report_requires_aggregate_unless_degraded(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _score_module().main(["report", "--state-dir", str(state)]) == 1, "未汇总先 report=文件错误"
+        capsys.readouterr()
