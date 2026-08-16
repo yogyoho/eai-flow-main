@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
 import sys
 from pathlib import Path
@@ -55,8 +56,10 @@ RUBRIC_ITEM_FIELDS = {"rubric_id", "item", "max_score", "scoring_method", "score
 CLAUSE_ID_RE = re.compile(r"^[A-Z]{2}-C-\d{3}$")  # 复合 ID: <文件代号>-C-<全局序号>
 NODE_ID_RE = re.compile(r"^S-\d{3}$")
 RUBRIC_ID_RE = re.compile(r"^R-\d{3}$")
-CHUNK_ID_RE = re.compile(r"^CH-\d{3}$")
-TABLE_ID_RE = re.compile(r"^T-\d{3}$")
+# chunk/table id: >=3 位序号(残留审查可选①: id 由 :03d 格式化, 超 999 自然扩位为
+# CH-1000, 不设人为上限; 3 位下界保留 "CH-1"/"CH-12" 不合法的约束)
+CHUNK_ID_RE = re.compile(r"^CH-\d{3,}$")
+TABLE_ID_RE = re.compile(r"^T-\d{3,}$")
 
 SCRIPT_MODULE_NAMES = ["ingest", "extract", "merge_addenda", "build_output", "score_simulate"]
 
@@ -365,7 +368,9 @@ class TestFixtureSections:
             assert set(ch.keys()) == {"chunk_id", "source_file", "anchor", "heading_path", "n_paras"}, f"chunk 字段集不符: {sorted(ch.keys())}"
             assert CHUNK_ID_RE.match(ch["chunk_id"]), f"chunk_id 非法: {ch['chunk_id']}"
             assert isinstance(ch["heading_path"], list) and ch["heading_path"]
-            assert isinstance(ch["n_paras"], int) and ch["n_paras"] >= 1
+            # 残留审查可选②: 格式章节骨架块 n_paras==0(T3 契约: 只出章节树),
+            # 常规块 >=1——下界对齐实际 ingest 行为放宽为 0
+            assert isinstance(ch["n_paras"], int) and ch["n_paras"] >= 0
 
     def test_tables_shape_with_row_counts(self, data):
         """表必须带稳定 table_id 与行数(D5: 表行数由 ingest 端比对, 防吞表静默漏检)。"""
@@ -1464,6 +1469,135 @@ class TestIngestCorruptSectionsJson:
         p.write_text(json.dumps({"chunks": {}, "tables": []}), encoding="utf-8")
         with pytest.raises(ingest.IngestError):
             ingest.load_sections(p)
+
+
+# ===========================================================================
+# T3 残留审查修复: 无空格多级编号锚点坍缩(Critical) / 写盘 I/O 异常退出码契约
+# (Important) / 同批同名文件防覆盖丢数据
+# ===========================================================================
+
+
+class TestIngestSpacelessNumbering:
+    """Critical(残留审查): _ARABIC_PREFIX 前瞻曾允许任意位置的 ASCII 点, 回溯把
+    "1.1项目概况"截成"1"、"3.2.1技术参数要求"截成"3.2"——不同章节坍缩到同一锚点
+    (实测 CH-002/CH-003 同 section 且 rc=0 完全静默)。无空格编号是中文招标文件
+    主流写法, 锚点又是 T4 条款溯源的全部地基。契约: 前瞻里的 ASCII 点必须后跟
+    空白或行尾; 无空格多级编号回落为全文标识(与 docx "一、" 路径同构), 绝不截断。"""
+
+    def test_spaceless_multilevel_falls_back_to_full_text(self):
+        ingest = _ingest_module()
+        for kind in ("docx", "pdf"):
+            assert ingest.section_id_for_heading("1.1项目概况", kind) == "1.1项目概况", f"{kind}: 不得回溯截断为 '1'"
+            assert ingest.section_id_for_heading("3.2.1技术参数要求", kind) == "3.2.1技术参数要求", f"{kind}: 不得截断为 '3.2'"
+
+    def test_spaceless_headings_do_not_collapse(self):
+        """坍缩复现: '1.1项目概况' 与 '1.2招标范围' 曾同坍缩为 '1'——锚点必须互异。"""
+        ingest = _ingest_module()
+        a = ingest.section_id_for_heading("1.1项目概况", "docx")
+        b = ingest.section_id_for_heading("1.2招标范围", "docx")
+        assert a != b, f"不同章节不得坍缩到同一锚点: {a!r} == {b!r}"
+
+    def test_space_separated_numbering_still_extracted(self):
+        """回归: 带空白的编号(含 '2. Title' 点+空格、行尾点号)提取行为不变。"""
+        ingest = _ingest_module()
+        assert ingest.section_id_for_heading("3.2.1 技术参数要求", "docx") == "3.2.1"
+        assert ingest.section_id_for_heading("6.1 评分细则", "docx") == "6.1"
+        assert ingest.section_id_for_heading("2. Technical Specifications", "pdf") == "2"
+        assert ingest.section_id_for_heading("3.2.1. 技术参数要求", "docx") == "3.2.1", "点+空格收尾的多级编号仍取完整编号"
+        assert ingest.section_id_for_heading("2.", "docx") == "2", "行尾点号仍视为编号分隔"
+
+    def test_pdf_numbering_depth_spaceless_is_zero(self):
+        """PDF 标题层级: 无空格编号不再误判深度(曾 '1.1项目概况' 拍平为 1)。"""
+        ingest = _ingest_module()
+        assert ingest._pdf_numbering_depth("2.") == 1
+        assert ingest._pdf_numbering_depth("2.1") == 2
+        assert ingest._pdf_numbering_depth("3.2.1 技术参数要求") == 3
+        assert ingest._pdf_numbering_depth("1.1项目概况") == 0, "无空格编号回落为无编号(调用方回退为 1), 不得截断计数"
+
+    def test_strip_heading_number_spaceless_unchanged(self):
+        """caption 不被啃位: '1.1项目概况' 曾被剥成 '1项目概况'。"""
+        ingest = _ingest_module()
+        assert ingest.strip_heading_number("1.1项目概况") == "1.1项目概况"
+        assert ingest.strip_heading_number("3.2.2 技术参数表") == "技术参数表"
+        assert ingest.strip_heading_number("2. Technical Specifications") == "Technical Specifications"
+
+    def test_spaceless_end_to_end_distinct_sections(self, tmp_path):
+        """端到端(审查复现路径): 无空格编号标题各自成块、锚点互异且 rc=0, 不得静默坍缩。"""
+        docx_path = _make_docx(
+            tmp_path / "spaceless.docx",
+            [
+                ("h", 1, "1 招标公告"),
+                ("p", "项目编号:EAI-T-2026-001。"),
+                ("h", 2, "1.1项目概况"),
+                ("p", "本项目为EAI演示项目。"),
+                ("h", 2, "1.2招标范围"),
+                ("p", "招标范围包括设备供货。"),
+            ],
+        )
+        rc, path = _run_ingest(tmp_path, [docx_path])
+        assert rc == 0
+        data = json.loads(path.read_text(encoding="utf-8"))
+        sections = [c["anchor"]["section"] for c in data["chunks"]]
+        assert sections == ["1", "1.1项目概况", "1.2招标范围"], f"无空格编号必须各自成块且锚点互异: {sections}"
+
+
+class TestIngestWritePathErrors:
+    """Important(残留审查): 写盘路径 I/O 异常曾以裸 traceback 逃出 main()——模块
+    docstring 承诺 '1 = 用法/文件错误' 且 'main 统一转退出码', 解析路径包了但
+    atomic_write_json(含其 mkdir)没包; 编排方应拿到干净的 [ingest] 错误行而非裸栈。"""
+
+    def test_out_points_to_existing_file_exit_1(self, tmp_path, capsys):
+        """--out 指向已存在普通文件 → mkdir FileExistsError 曾裸抛(审查复现 a)。"""
+        ingest = _ingest_module()
+        out_as_file = tmp_path / "out"
+        out_as_file.write_text("我是一个普通文件, 不是目录", encoding="utf-8")
+        argv = ["--input", str(FIXTURE_DIR / "minimal_tender.docx"), "--code", "ZB", "--out", str(out_as_file)]
+        rc = ingest.main(argv)
+        assert rc == 1, "--out 为普通文件时必须干净退出 1(不得 FileExistsError 裸栈)"
+        err = capsys.readouterr().err
+        assert "[ingest] 错误" in err, f"必须给出干净的 [ingest] 错误行: {err!r}"
+
+    def test_sections_json_locked_on_replace_exit_1(self, tmp_path, capsys, monkeypatch):
+        """sections.json 被其他程序占用(Windows 上 os.replace 拒绝访问) → 干净退出 1,
+        原文件完好、无 tmp 残留(审查复现 b; 原子性实测无恙, 缺的只是退出码契约)。"""
+        ingest = _ingest_module()
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        target = out_dir / "sections.json"
+        target.write_text('{"chunks": [], "tables": []}', encoding="utf-8")
+
+        real_replace = os.replace
+
+        def locked_replace(src, dst, *args, **kwargs):
+            if str(dst).endswith("sections.json"):
+                raise PermissionError(13, "拒绝访问(模拟目标文件被其他程序占用)")
+            return real_replace(src, dst, *args, **kwargs)
+
+        monkeypatch.setattr(ingest.os, "replace", locked_replace)
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 1, "目标被占用必须干净退出 1(不得 PermissionError 裸栈)"
+        err = capsys.readouterr().err
+        assert "[ingest] 错误" in err, f"必须给出干净的 [ingest] 错误行: {err!r}"
+        assert path.read_text(encoding="utf-8") == '{"chunks": [], "tables": []}', "失败时目标文件必须完好(原子性)"
+        leftovers = [p.name for p in path.parent.iterdir() if "tmp" in p.name.lower()]
+        assert not leftovers, f"失败路径不得残留临时文件: {leftovers}"
+
+
+class TestIngestSameBasenameInputs:
+    """同批同名不同目录输入曾静默覆盖丢数据(残留审查可选③): sections.json 以
+    basename 为同名替换键, 同名两文件的块混入同一 source_file 身份且重跑互相顶替。"""
+
+    def test_duplicate_basename_exit_1(self, tmp_path, capsys):
+        dir_a, dir_b = tmp_path / "a", tmp_path / "b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+        _make_docx(dir_a / "招标文件.docx", [("h", 1, "第一章 招标公告"), ("p", "甲目录版本正文。")])
+        _make_docx(dir_b / "招标文件.docx", [("h", 1, "第二章 技术规范"), ("p", "乙目录版本正文。")])
+        rc, path = _run_ingest(tmp_path, [dir_a / "招标文件.docx", dir_b / "招标文件.docx"])
+        assert rc == 1, "同批同名文件必须显式拒绝(rc=1), 不得静默混身份"
+        err = capsys.readouterr().err
+        assert "招标文件.docx" in err, f"错误行须点名冲突文件名: {err!r}"
+        assert not path.exists(), "拒绝受理时不得写出 sections.json"
 
 
 # ===========================================================================

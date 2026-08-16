@@ -28,7 +28,7 @@
     0 = 干净完成(--help 等正常终止亦为 0)
     1 = 用法/文件错误(含 argparse 参数用法错误——argparse 默认退出码 2 与
         EXIT_NEED_OCR 撞号, 此处统一改道 1; 输入缺失、类型不支持、代号非法、
-        产物损坏、空文档)
+        产物损坏、空文档、写盘目标不可写/被占用、同批输入文件名重复)
     2 = 存在无文本层输入(扫描件)→ 需先走 eai-flow-ocr 全文 OCR 路径
     3 = 完成但有异常项(表行数不一致等, 摘要 JSON 的 anomalies 列出)
 """
@@ -61,9 +61,16 @@ _HEADING_STYLE_ID = re.compile(r"^(?:heading)?\s*(\d)$", re.IGNORECASE)
 
 # --- 章节标识/格式章节启发式 -----------------------------------------------------
 # 阿拉伯多级编号前缀: "3.2.1 技术参数要求" / "6.1 评分细则" / "2. Technical …"
-_ARABIC_PREFIX = re.compile(r"^(\d+(?:\.\d+)*)(?=[\s\.、．,，:：]|$)")
+# 前瞻契约(残留审查 Critical 修复): 编号后必须跟空白/中文分隔符, 或"点+空白"
+# ("2. Title"), 或点号收尾/行尾("2."、"2.1")。前瞻里的 ASCII 点不得直接后跟任意
+# 字符——否则回溯会把无空格编号截断("1.1项目概况"→"1"、"3.2.1技术参数要求"→"3.2"),
+# 不同章节坍缩到同一锚点且 rc=0 完全静默; 无空格多级编号据此回落为全文标识
+# (与 docx "一、" 路径同构), 锚点是 T4 条款溯源的全部地基, 绝不截断。
+_ARABIC_PREFIX = re.compile(r"^(\d+(?:\.\d+)*)(?=[\s、．,，:：]|\.+\s|\.*$)")
 # 中文序号前缀: "一、项目概况"(仅 PDF 来源按序号取段标识)
 _CN_ORDINAL_PREFIX = re.compile(r"^([一二三四五六七八九十百]+)、")
+# 标题编号后分隔符剥离(任意空白/标点组合, 两端): "2. Title" 类点+空格混合形态
+_SEP_STRIP = re.compile(r"^[\s、.．:：]+|[\s、.．:：]+$")
 
 # 格式章节强/弱启发式: 强=标题含"投标文件格式"; 弱=章级(level==1)标题含"格式"
 # 且不含评分类字样(防"评分办法及格式说明"误判)
@@ -118,11 +125,15 @@ def section_id_for_heading(text: str, source_kind: str) -> str:
 
 
 def strip_heading_number(text: str) -> str:
-    """去掉标题的编号前缀, 留标题正文(表格 caption 用): "3.2.2 技术参数表"→"技术参数表"。"""
+    """去掉标题的编号前缀, 留标题正文(表格 caption 用): "3.2.2 技术参数表"→"技术参数表"。
+
+    编号后的分隔符按任意空白/标点组合两端剥离("2. Title"/"3.2.1. 标题" 的点+空格
+    混合形态)——先空白后标点的两次单向 strip 会留下前导空格。
+    """
     text = text.strip()
     m = _ARABIC_PREFIX.match(text)
     if m:
-        return text[m.end() :].strip().strip("、.．:：") or text
+        return _SEP_STRIP.sub("", text[m.end() :]) or text
     m2 = _CN_ORDINAL_PREFIX.match(text)
     if m2:
         return text[m2.end() :].strip() or text
@@ -622,6 +633,12 @@ def main(argv: list[str] | None = None) -> int:
         for f in files:
             if not f.is_file():
                 raise IngestError(f"输入文件不存在或不是普通文件: {f}")
+        # 同批同名(basename)去重: sections.json 以文件名为同名替换键, 同名不同目录
+        # 的两份输入会混入同一 source_file 身份且重跑时互相顶替——静默丢数据, 显式拒绝
+        names = [f.name for f in files]
+        duplicated = sorted({n for n in names if names.count(n) > 1})
+        if duplicated:
+            raise IngestError(f"同批输入文件名重复: {duplicated}——sections.json 以文件名为替换键, 同名不同目录会互相覆盖丢数据; 请先重命名区分")
 
         # 第一遍: 解析全部输入(任一无文本层 → OCR 分流退出, 整体不落盘)
         parsed: list[dict] = []
@@ -685,6 +702,13 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_NEED_OCR
     except IngestError as exc:
         print(f"[ingest] 错误: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    except OSError as exc:
+        # 写盘/读盘 I/O 失败统一转退出码 1(残留审查 Important 修复): --out 指向普通
+        # 文件 → mkdir FileExistsError; 目标 sections.json 被其他程序占用(Windows) →
+        # os.replace PermissionError。此前以裸 traceback 逃出 main(), 编排方拿到裸栈
+        # 而非干净的 [ingest] 错误行——main 统一转退出码是模块自己的契约。
+        print(f"[ingest] 错误: 文件读写失败({exc.__class__.__name__}): {exc}", file=sys.stderr)
         return EXIT_ERROR
 
 
