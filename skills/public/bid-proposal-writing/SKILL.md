@@ -77,7 +77,7 @@ Agent 做什么:
 
 ## 阶段1 ingest(纯结构化解析)
 
-Agent 调脚本(**每个文件代号一次调用**,共用同一 `--out` 增量合并;同名文件重跑=替换旧块):
+Agent 调脚本(**每个文件代号一次调用**,共用同一 `--out` 增量合并;同名文件重跑按内容指纹分流——未变=保号跳过(摘要 `skipped_unchanged`,sections.json 字节不变),内容有变=替换旧块发新号(摘要 `replaced`+`replaced_files` 旧 id 清单,旧 id 的候选裁决已失效,需重跑阶段2 提取)):
 
 ```bash
 python /mnt/skills/public/bid-proposal-writing/scripts/ingest.py \

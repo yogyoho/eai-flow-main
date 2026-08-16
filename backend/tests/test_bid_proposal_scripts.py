@@ -944,6 +944,14 @@ def _run_ingest(tmp_path, files, code="ZB", addendum=False):
     return rc, out_dir / "sections.json"
 
 
+def _ingest_summary_json(capsys) -> dict:
+    """取 ingest stdout 的单行 JSON 摘要(编排方消费口径, 与既有测试解析方式一致)。"""
+    out = capsys.readouterr().out
+    lines = [ln for ln in out.splitlines() if ln.strip().startswith("{")]
+    assert lines, f"stdout 应含单行 JSON 摘要: {out!r}"
+    return json.loads(lines[-1])
+
+
 def _make_docx(path, blocks):
     """按块序列构造测试 docx: ("h", level, text) / ("p", text) / ("table", [[单元格...], ...])。"""
     docx = pytest.importorskip("docx", reason="backend venv 缺 python-docx")
@@ -1098,6 +1106,110 @@ class TestIngestSummaryOutput:
         assert summary["files"][0]["file"].endswith("minimal_tender.docx")
         assert isinstance(summary["files"][0]["chunks"], int) and summary["files"][0]["chunks"] >= 1
         assert isinstance(summary["files"][0]["tables"], int) and summary["files"][0]["tables"] == 2
+
+
+# ===========================================================================
+# 终审 R2: 同名文件重跑幂等保号——未变=保号跳过(sections.json 字节不变),
+# 有变=替换旧块发新号但摘要必须显式给出 replaced 信号(候选裁决台账不静默孤儿化)
+# ===========================================================================
+
+
+class TestIngestRerunFingerprint:
+    def test_rerun_unchanged_keeps_ids_and_bytes(self, tmp_path, capsys):
+        """未修改文件重跑: chunk/table id 保号 + sections.json 字节不变 + 摘要含 skipped_unchanged。"""
+        rc1, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc1 == 0
+        first_bytes = path.read_bytes()
+        first = json.loads(first_bytes.decode("utf-8"))
+        rc2, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc2 == 0, "未修改文件重跑必须干净退出"
+        assert path.read_bytes() == first_bytes, "未修改文件重跑: sections.json 必须字节不变(idempotent rerun)"
+        second = json.loads(path.read_text(encoding="utf-8"))
+        assert [c["chunk_id"] for c in second["chunks"]] == [c["chunk_id"] for c in first["chunks"]], "chunk_id 必须保号, 不得静默改发新号(候选裁决台账孤儿化)"
+        assert [t["table_id"] for t in second["tables"]] == [t["table_id"] for t in first["tables"]], "table_id 必须保号"
+        summary = _ingest_summary_json(capsys)
+        assert summary["skipped_unchanged"] == 1, f"摘要必须含 skipped_unchanged 计数: {summary}"
+        assert summary["replaced"] == 0
+        assert summary["files"][0]["status"] == "kept", f"files[] 须标 status=kept: {summary['files'][0]}"
+
+    def test_rerun_modified_reissues_ids_with_replaced_signal(self, tmp_path, capsys):
+        """内容确有变化的重跑: 保留删旧发新号行为, 但摘要必须含 replaced 计数与被替换旧 id 清单。"""
+        blocks_v1 = [("h", 1, "第一章 招标公告"), ("p", "项目概况原文。")]
+        blocks_v2 = [("h", 1, "第一章 招标公告"), ("p", "项目概况修订版。"), ("p", "新增交货期要求。")]
+        _make_docx(tmp_path / "tender.docx", blocks_v1)
+        rc1, path = _run_ingest(tmp_path, [tmp_path / "tender.docx"], code="ZB")
+        assert rc1 == 0
+        first = json.loads(path.read_text(encoding="utf-8"))
+        assert first["chunks"], "前置: 首轮应产出至少一个 chunk"
+        old_chunk_ids = [c["chunk_id"] for c in first["chunks"]]
+        # 同名覆盖为内容修订版(n_paras 变化 → 解析产物指纹变化)
+        _make_docx(tmp_path / "tender.docx", blocks_v2)
+        rc2, _ = _run_ingest(tmp_path, [tmp_path / "tender.docx"], code="ZB")
+        assert rc2 == 0
+        second = json.loads(path.read_text(encoding="utf-8"))
+        new_chunk_ids = [c["chunk_id"] for c in second["chunks"]]
+        assert not set(new_chunk_ids) & set(old_chunk_ids), "内容有变: 沿用删旧块发新号语义"
+        summary = _ingest_summary_json(capsys)
+        assert summary["replaced"] == 1, f"摘要必须含 replaced 计数: {summary}"
+        assert summary["skipped_unchanged"] == 0
+        assert summary["files"][0]["status"] == "replaced"
+        replaced_entry = summary["replaced_files"][0]
+        assert replaced_entry["file"] == "tender.docx"
+        assert replaced_entry["old_chunk_ids"] == old_chunk_ids, "被替换旧 id 清单必须显式给出(编排方据此判候选裁决已失效)"
+        assert "失效" in replaced_entry["note"], f"提示须说明候选裁决已失效: {replaced_entry['note']}"
+
+    def test_mixed_rerun_keeps_unchanged_and_replaces_changed(self, tmp_path, capsys):
+        """同批两份文件, 一改一未改: 未改保号, 已改替换; 全局 id 唯一性不破。"""
+        _make_docx(tmp_path / "base.docx", [("h", 1, "第一章 招标公告"), ("p", "基础内容。")])
+        _make_docx(tmp_path / "extra.docx", [("h", 1, "技术规范书"), ("p", "技术内容。")])
+        rc1, path = _run_ingest(tmp_path, [tmp_path / "base.docx", tmp_path / "extra.docx"], code="ZB")
+        assert rc1 == 0
+        first = json.loads(path.read_text(encoding="utf-8"))
+        base_ids = [c["chunk_id"] for c in first["chunks"] if c["source_file"] == "base.docx"]
+        extra_ids = [c["chunk_id"] for c in first["chunks"] if c["source_file"] == "extra.docx"]
+        # 只改 base.docx; extra.docx 未动
+        _make_docx(tmp_path / "base.docx", [("h", 1, "第一章 招标公告"), ("p", "基础内容修订。"), ("p", "新增条款。")])
+        rc2, _ = _run_ingest(tmp_path, [tmp_path / "base.docx", tmp_path / "extra.docx"], code="ZB")
+        assert rc2 == 0
+        second = json.loads(path.read_text(encoding="utf-8"))
+        assert [c["chunk_id"] for c in second["chunks"] if c["source_file"] == "extra.docx"] == extra_ids, "未修改文件必须保号"
+        new_base_ids = [c["chunk_id"] for c in second["chunks"] if c["source_file"] == "base.docx"]
+        assert not set(new_base_ids) & set(base_ids), "已修改文件必须换发新号"
+        all_ids = [c["chunk_id"] for c in second["chunks"]]
+        assert len(all_ids) == len(set(all_ids)), "全局 chunk_id 唯一性不得破坏"
+        summary = _ingest_summary_json(capsys)
+        assert summary["skipped_unchanged"] == 1 and summary["replaced"] == 1
+        statuses = {e["file"]: e["status"] for e in summary["files"]}
+        assert statuses == {"base.docx": "replaced", "extra.docx": "kept"}, f"逐文件 status 分流: {statuses}"
+
+
+class TestIngestLoadSectionsBomTolerance:
+    """终审 M-BOM: load_sections 容忍 UTF-8 BOM(对齐 extract 全部装载器与
+    score_simulate 回传稿读取的既定 BOM 口径; ingest 自产文件无 BOM 不受影响)。"""
+
+    def test_load_sections_reads_bom_file(self, tmp_path):
+        """sections.json 被编辑器加 BOM 后 load_sections 必须可读(与 extract 装载器同口径)。"""
+        ingest = _ingest_module()
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc == 0
+        path.write_bytes(b"\xef\xbb\xbf" + path.read_bytes())
+        data = ingest.load_sections(path)
+        assert data["chunks"], "加 BOM 后 load_sections 必须可读"
+        # 无 BOM 的自产文件不受影响
+        rc2, path2 = _run_ingest(tmp_path / "out2", [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc2 == 0 and ingest.load_sections(path2)["chunks"]
+
+    def test_rerun_after_bom_rewrite_still_idempotent(self, tmp_path, capsys):
+        """端到端: sections.json 加 BOM 后同名未变重跑仍按保号处理, 不因 BOM 误判损坏或有变。"""
+        rc1, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc1 == 0
+        bom_bytes = b"\xef\xbb\xbf" + path.read_bytes()
+        path.write_bytes(bom_bytes)
+        rc2, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc2 == 0, "BOM 文件必须可装载, 不得误报损坏(rc=1)"
+        assert path.read_bytes() == bom_bytes, "未修改重跑保号: BOM 字节原样保留"
+        summary = _ingest_summary_json(capsys)
+        assert summary["skipped_unchanged"] == 1 and summary["replaced"] == 0
 
 
 class TestIngestPdfFixture:

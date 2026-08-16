@@ -17,7 +17,10 @@
     4. 定位"投标文件格式"类章节(标题启发式)→ 该子树只产出章节树骨架
        (每个标题成块、n_paras=0), 槽位语义定型留给阶段2。
     5. 补遗/答疑输入: --addendum 标记, 文件代号前缀按 --code 分配, 增量追加进既有
-       sections.json(chunk_id/table_id 全局续号; 同名文件重跑=替换其旧块)。
+       sections.json(chunk_id/table_id 全局续号)。同名文件重跑按解析产物内容指纹分流:
+       未变=保号 no-op(sections.json 字节不变, 摘要计 skipped_unchanged——候选裁决
+       台账不孤儿化); 有变=替换旧块发新号, 摘要显式给出 replaced 计数与被替换旧
+       id 清单(编排方据此判"候选裁决已失效, 需重跑阶段2 提取")。
     6. docx 无文本层(扫描件)→ 明确提示走 eai-flow-ocr 路径, 退出码 2 区分。
     7. 写盘原子化: 临时文件 + os.replace(D7 状态一致性), 派生字段一律现算不落盘。
 
@@ -36,6 +39,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -531,8 +535,10 @@ def load_sections(path: str | Path) -> dict:
     if not path.is_file():
         return {"chunks": [], "tables": []}
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        # utf-8-sig: 容忍编辑器写入的 UTF-8 BOM(终审 M-BOM 修复, 对齐 extract 全部
+        # 装载器与 score_simulate 回传稿读取的既定 BOM 口径; 自产文件无 BOM 不受影响)
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise IngestError(f"既有 sections.json 不可解析, 拒绝覆盖(先人工核查): {path}: {exc}") from exc
     if not isinstance(data, dict) or "chunks" not in data or "tables" not in data:
         raise IngestError(f"既有 sections.json 结构异常(缺 chunks/tables 键), 拒绝覆盖: {path}")
@@ -574,6 +580,27 @@ def _next_seq(prefix: str, entries: list[dict], key: str) -> int:
     return max_no + 1
 
 
+# 同名重跑比对用契约字段(R2): 指纹只看 T1 锁定的落盘字段, id 是被比对对象本身故排除
+_CHUNK_ENTRY_FIELDS = ("source_file", "anchor", "heading_path", "n_paras")
+_TABLE_ENTRY_FIELDS = ("source_file", "anchor", "n_rows", "n_cols", "caption")
+
+
+def _blocks_fingerprint(chunk_entries: list[dict], table_entries: list[dict]) -> str:
+    """文件级内容指纹(R2): 对该文件解析产物的落盘形态(chunks+tables, 剥离 id)规范化 JSON 取 sha256。
+
+    - sort_keys/紧凑分隔符规范化: 键序与空白无关, 内容等价即同指纹(与 merge_addenda
+      台账 content_hash 同一口径);
+    - 只投影契约字段: 存储条目混入的契约外脏字段不误判为内容有变;
+    - 缺字段按 None 参与(.get): 手工截断的旧条目自然指纹偏离 → 走替换路径重写干净。
+    """
+    payload = {
+        "chunks": [{k: c.get(k) for k in _CHUNK_ENTRY_FIELDS} for c in chunk_entries],
+        "tables": [{k: t.get(k) for k in _TABLE_ENTRY_FIELDS} for t in table_entries],
+    }
+    canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 # =============================================================================
 # CLI 入口
 # =============================================================================
@@ -613,7 +640,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--input", nargs="+", required=True, help="基础招标文件路径(可多份: 招标文件/技术规范书/评分办法分卷; .docx/.pdf)")
     parser.add_argument("--code", required=True, help="文件代号(2-4 位大写字母, 如 ZB/JS/PB; clause_id 复合前缀按此分配)")
-    parser.add_argument("--out", required=True, help="产物目录(写 <out>/sections.json; 既有文件增量合并, 同名文件替换旧块)")
+    parser.add_argument("--out", required=True, help="产物目录(写 <out>/sections.json; 既有文件增量合并; 同名重跑未变=保号跳过, 有变=替换旧块并在摘要给出 replaced 信号)")
     parser.add_argument("--addendum", action="store_true", help="本次输入为补遗/答疑文件(增量输入, 隐藏废标项主藏身处)")
     try:
         args = parser.parse_args(argv)
@@ -666,35 +693,89 @@ def main(argv: list[str] | None = None) -> int:
                 raise IngestError(f"不支持的输入类型 {f.name}(仅 .docx/.pdf; 扫描件请先走 eai-flow-ocr)")
             parsed.append({"file": f, "chunks": chunks, "table_infos": table_infos, "format_paths": format_paths, "anomalies": anomalies})
 
-        # 第二遍: 合并既有 sections.json(同名文件替换旧块), 统一发放 chunk_id/table_id
+        # 第二遍: 合并既有 sections.json, 统一发放 chunk_id/table_id。
+        # R2 修复(同名重跑分流): 此前同名重跑一律删旧块后按当前最大序号重发新号
+        # (CH-001..005 → CH-009..013), 未修改文件重跑也静默孤儿化候选裁决台账且
+        # 摘要零信号(rc=0, anomalies=[]), D5 异常滞后到 extract 层才浮出。现按
+        # "解析产物落盘形态(剥 id)规范化哈希"逐文件分流:
+        #   指纹未变 → 保号 no-op(sections.json 字节不变, 摘要计 skipped_unchanged);
+        #   指纹有变 → 保留删旧块发新号语义, 摘要显式给出 replaced 计数与被替换
+        #   旧 id 清单(编排方据此判"候选裁决已失效, 需重跑阶段2 提取")。
         out_path = Path(args.out) / "sections.json"
         sections = load_sections(out_path)
-        current_names = {f.name for f in files}
-        sections["chunks"] = [c for c in sections["chunks"] if c.get("source_file") not in current_names]
-        sections["tables"] = [t for t in sections["tables"] if t.get("source_file") not in current_names]
+
+        rerun: dict[str, dict] = {}
+        for item in parsed:
+            name = item["file"].name
+            old_chunks = [c for c in sections["chunks"] if c.get("source_file") == name]
+            old_tables = [t for t in sections["tables"] if t.get("source_file") == name]
+            # 本次解析产物的落盘形态(无 id)——tables 的 n_rows 取抽取行数(与正式发放同投影)
+            new_chunks = [{"source_file": name, "anchor": c["anchor"], "heading_path": c["heading_path"], "n_paras": c["n_paras"]} for c in item["chunks"]]
+            new_tables = [{"source_file": name, "anchor": t["anchor"], "n_rows": t["extracted_rows"], "n_cols": t["n_cols"], "caption": t["caption"]} for t in item["table_infos"]]
+            if old_chunks or old_tables:
+                status = "kept" if _blocks_fingerprint(old_chunks, old_tables) == _blocks_fingerprint(new_chunks, new_tables) else "replaced"
+            else:
+                status = "new"
+            rerun[name] = {"status": status, "old_chunks": old_chunks, "old_tables": old_tables, "new_chunks": new_chunks, "new_tables": new_tables}
+
+        # 续号基准取"装载态全体条目"(含将被摘除的旧块), 再摘除非保号文件的旧块:
+        # 被替换文件的旧号不得在同一状态里复用——单文件重跑时摘除后序号回零, 新块会
+        # 顶替旧号(如 CH-001→CH-001), 旧候选裁决静默错挂到新内容上, replaced 信号
+        # 形同虚设; 以装载态最大号续发保证被替换 id 永不复用(kept 文件保号不受影响)。
         next_chunk = _next_seq("CH", sections["chunks"], "chunk_id")
         next_table = _next_seq("T", sections["tables"], "table_id")
+        drop_names = {name for name, r in rerun.items() if r["status"] != "kept"}
+        sections["chunks"] = [c for c in sections["chunks"] if c.get("source_file") not in drop_names]
+        sections["tables"] = [t for t in sections["tables"] if t.get("source_file") not in drop_names]
 
         all_anomalies: list[dict] = []
         file_reports: list[dict] = []
+        replaced_reports: list[dict] = []
         for item in parsed:
             f: Path = item["file"]
-            for chunk in item["chunks"]:
-                sections["chunks"].append({"chunk_id": f"CH-{next_chunk:03d}", "source_file": f.name, "anchor": chunk["anchor"], "heading_path": chunk["heading_path"], "n_paras": chunk["n_paras"]})
+            r = rerun[f.name]
+            if r["status"] == "kept":
+                # 保号 no-op: 沿用旧块不重发号; D5 异常项按仍存续的旧 table_id 现算重放(派生字段不落盘)
+                for old_t, info in zip(r["old_tables"], item["table_infos"]):
+                    all_anomalies.extend(compare_table_rows(old_t["table_id"], info["structural_rows"], info["extracted_rows"]))
+                for anomaly in item["anomalies"]:
+                    anomaly["file"] = f.name
+                    all_anomalies.append(anomaly)
+                file_reports.append({"file": f.name, "path": str(f), "code": args.code, "addendum": args.addendum, "status": "kept", "chunks": len(r["old_chunks"]), "tables": len(r["old_tables"])})
+                continue
+            if r["status"] == "replaced":
+                note = "同名文件内容有变, 旧 id 已被替换——其候选裁决已失效, 需重跑阶段2 提取对新 id 重新裁决"
+                replaced_reports.append({"file": f.name, "old_chunk_ids": [c["chunk_id"] for c in r["old_chunks"]], "old_table_ids": [t["table_id"] for t in r["old_tables"]], "note": note})
+            for entry in r["new_chunks"]:
+                sections["chunks"].append({"chunk_id": f"CH-{next_chunk:03d}", **entry})
                 next_chunk += 1
-            for info in item["table_infos"]:
+            for entry, info in zip(r["new_tables"], item["table_infos"]):
                 table_id = f"T-{next_table:03d}"
-                sections["tables"].append({"table_id": table_id, "source_file": f.name, "anchor": info["anchor"], "n_rows": info["extracted_rows"], "n_cols": info["n_cols"], "caption": info["caption"]})
+                sections["tables"].append({"table_id": table_id, **entry})
                 all_anomalies.extend(compare_table_rows(table_id, info["structural_rows"], info["extracted_rows"]))
                 next_table += 1
             for anomaly in item["anomalies"]:
                 anomaly["file"] = f.name
                 all_anomalies.append(anomaly)
-            file_reports.append({"file": f.name, "path": str(f), "code": args.code, "addendum": args.addendum, "chunks": len(item["chunks"]), "tables": len(item["table_infos"])})
+            file_reports.append({"file": f.name, "path": str(f), "code": args.code, "addendum": args.addendum, "status": r["status"], "chunks": len(item["chunks"]), "tables": len(item["table_infos"])})
 
-        atomic_write_json(out_path, sections)
+        # 块级无变更(全部保号且无实际摘除/追加)→ 不写盘: sections.json 字节不变(idempotent
+        # rerun); 产物文件尚不存在时仍写空骨架, 保持"运行即落盘"的既有行为
+        sections_changed = any((r["old_chunks"] or r["old_tables"]) or (r["new_chunks"] or r["new_tables"]) for r in rerun.values() if r["status"] != "kept")
+        if sections_changed or not out_path.is_file():
+            atomic_write_json(out_path, sections)
 
-        summary = {"written": str(out_path), "code": args.code, "addendum": args.addendum, "files": file_reports, "format_sections": [p for item in parsed for p in item["format_paths"]], "anomalies": all_anomalies}
+        summary = {
+            "written": str(out_path),
+            "code": args.code,
+            "addendum": args.addendum,
+            "skipped_unchanged": sum(1 for r in rerun.values() if r["status"] == "kept"),
+            "replaced": len(replaced_reports),
+            "replaced_files": replaced_reports,
+            "files": file_reports,
+            "format_sections": [p for item in parsed for p in item["format_paths"]],
+            "anomalies": all_anomalies,
+        }
         print(json.dumps(summary, ensure_ascii=False))
         return EXIT_ANOMALY if all_anomalies else EXIT_OK
     except NeedOcrError as exc:
