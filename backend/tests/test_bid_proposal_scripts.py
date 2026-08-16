@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -3467,7 +3468,7 @@ SCORE_SUBCOMMANDS = ["reingest", "assemble-evidence", "aggregate", "report"]
 class TestScoreSimulateCliContract:
     def test_help_each_subcommand_returns_0(self, capsys):
         mod = _score_module()
-        for sub in SCORE_SUBCOMMANDS + []:
+        for sub in SCORE_SUBCOMMANDS:
             assert mod.main([sub, "--help"]) == 0, f"{sub} --help 应返回 0"
         capsys.readouterr()
 
@@ -3612,11 +3613,37 @@ class TestReingestClauseId:
         dup = [a for a in summary["anomalies"] if a["kind"] == "duplicate_clause_id"]
         assert dup and dup[0]["clause_id"] == "ZB-C-001"
 
-    def test_registered_deviation_never_silently_erased(self, tmp_path, capsys):
-        """已登记 deviation 的人裁不被确定性重灌静默覆盖——冲突进异常区待人核。"""
+    def test_body_cross_reference_not_duplicate(self, tmp_path, capsys):
+        """D6③ 计数口径=含 cid 的条目标题数(D2 锚点载体=条目标题内嵌 clause_id):
+        条目正文合法交叉引用自身条款 id(如"满足ZB-C-001要求")不算重复, 不拦命中。"""
+        text = _clean_source_text().replace(
+            '技术方案先进性:详见"1 技术方案"章节的架构说明与工艺契合分析。',
+            '技术方案先进性:详见"1 技术方案"章节的架构说明与工艺契合分析; 设备防护要求满足ZB-C-001条款。',
+        )
+        state, rc, summary = self._run(tmp_path, capsys, text)
+        assert rc == 0, "正文交叉引用不产生异常"
+        assert "duplicate_clause_id" not in _anomaly_kinds(summary)
+        clauses = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert clauses["ZB-C-001"]["match"] == "matched", "标题唯一即命中, 正文出现走自洽路径"
+
+    def test_registered_deviation_filled_entry_self_consistent(self, tmp_path, capsys):
+        """已登记 deviation 且条目带偏离声明正文=自洽: 保留人裁不覆盖, 不制造异常噪音。"""
         state = _copy_prestate(tmp_path, merged=True)
         _set_clause(state, "ZB-C-001", response_status="deviation")
         source = _write_source(tmp_path, _clean_source_text())
+        assert _run_reingest(state, source) == 0, "自洽偏离不应产生异常项"
+        summary = _last_summary_json(capsys)
+        assert "deviation_conflict" not in _anomaly_kinds(summary)
+        assert _clauses_by_id(state)["ZB-C-001"]["response_status"] == "deviation", "人裁不被确定性重灌静默覆盖"
+        records = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert records["ZB-C-001"]["response_status_after"] == "deviation" and records["ZB-C-001"]["updated"] is False
+
+    def test_registered_deviation_empty_entry_conflict(self, tmp_path, capsys):
+        """登记 deviation 但回传条目为空=偏离声明无处对账 → deviation_conflict 待人核。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", response_status="deviation")
+        text = _clean_source_text().replace("设备防护等级 IP65,控制器采用西门子 S7-1500 系列(参数版本 V2.3),完全响应★强制条款。", "")
+        source = _write_source(tmp_path, text)
         assert _run_reingest(state, source) == 3
         summary = _last_summary_json(capsys)
         assert "deviation_conflict" in _anomaly_kinds(summary)
@@ -3692,6 +3719,29 @@ class TestReingestMatcherHardening:
         dangling = [a for a in summary["anomalies"] if a["kind"] == "dangling_fk"]
         assert dangling and "ZB-C-999" in json.dumps(dangling[0], ensure_ascii=False)
 
+    def test_bom_source_first_heading_matches(self, tmp_path, capsys):
+        """回传 md 带 UTF-8 BOM 时首标题仍应匹配(回传稿读取用 utf-8-sig 免疫)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        path = tmp_path / "returned.md"
+        path.write_bytes(b"\xef\xbb\xbf" + _clean_source_text().encode("utf-8"))
+        assert _run_reingest(state, path) == 0, "BOM 不应导致首标题失配"
+        summary = _last_summary_json(capsys)
+        assert "node_anchor_unmatched" not in _anomaly_kinds(summary)
+
+    def test_wide_clause_id_heading_exempt_from_mirror_check(self, tmp_path, capsys):
+        """CLAUSE_ID_RE 与 schema/merge_addenda 对齐(^[A-Z]{2,4}-C-\\d{1,6}$): 3-4 位文件
+        代号/非 3 位序号的合法 id 条目标题归技术卷锚点管辖, 不误报 unmatched_heading。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _add_clause(state, {"clause_id": "ABCD-C-12", "source_file": "技术规范书.docx", "class": "normal", "category": "technical", "requirement": "宽口径 id 用例", "response_status": "draft", "superseded_by": None, "voided": False})
+        text = _clean_source_text() + "\n## 4 响应[ABCD-C-12]\n\n防护与联动要求已逐项响应。\n"
+        source = _write_source(tmp_path, text)
+        assert _run_reingest(state, source) == 0, "宽口径合法 id 不产生镜像外噪音"
+        summary = _last_summary_json(capsys)
+        assert "unmatched_heading" not in _anomaly_kinds(summary)
+        records = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert records["ABCD-C-12"]["match"] == "matched"
+        assert _clauses_by_id(state)["ABCD-C-12"]["response_status"] == "compliant"
+
     def test_reingest_idempotent(self, tmp_path, capsys):
         state = _copy_prestate(tmp_path, merged=True)
         source = _write_source(tmp_path, _clean_source_text())
@@ -3762,13 +3812,26 @@ class TestAggregateSumCheck:
         assert not (state / "aggregate_result.json").exists(), "中止=不落任何汇总产物"
 
     def test_non_int_max_score_rejected(self, tmp_path, capsys):
-        """max_score 非 int(bool/str)会让 Σ 失真——装载即拒绝(对齐 extract 硬化)。"""
+        """max_score 非 number(bool/str)会让 Σ 失真——装载即拒绝(bool 误按 0/1 计)。"""
         state = _copy_prestate(tmp_path, merged=True)
         rubric = _state_json(state, "rubric.json")
         rubric["items"][1]["max_score"] = True
         (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
         scores = _write_scores(tmp_path, _score_records())
         assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 1
+        capsys.readouterr()
+
+    def test_decimal_max_score_accepted(self, tmp_path, capsys):
+        """max_score 契约=rubric.schema.json 的 number: 合法小数满分不应让 aggregate 退出 1。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        rubric = _state_json(state, "rubric.json")
+        rubric["total_score"] = 100.5
+        rubric["items"][1]["max_score"] = 15.5
+        (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+        scores = _write_scores(tmp_path, _score_records(score=11, max_score=15.5))
+        assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 0
+        result = _state_json(state, "aggregate_result.json")
+        assert result["totals"] == {"full": 100.5, "simulatable_max": 40.5, "simulated": 36.0}
         capsys.readouterr()
 
 
@@ -3844,6 +3907,22 @@ class TestAggregateObjectiveMath:
         assert item["score"] is None
         assert "objective_no_linkage" in _anomaly_kinds(summary)
 
+    def test_fk_check_symmetric_without_reingest_d7(self, tmp_path, capsys):
+        """D7 防线对称: 会话内填写态(无 reingest 产物)下 rubric 链接 superseded 条款同样
+        dangling_fk 异常, 不再只以'历史(不计)'披露剔出分母(reingest 路径同款拦截)。"""
+
+        def rubric_edit(state):
+            rubric = _state_json(state, "rubric.json")
+            rubric["items"][2]["linked_clause_ids"] = ["ZB-C-003"]  # ZB-C-003 已被 BY-C-004 supersede
+            (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, rubric_edit=rubric_edit)
+        assert rc == 3
+        dangling = [a for a in summary["anomalies"] if a["kind"] == "dangling_fk"]
+        assert dangling and any("ZB-C-003" in json.dumps(a, ensure_ascii=False) for a in dangling)
+        item = _aggregate_items(result)["R-003"]
+        assert item["score"] is None and item["status"] == "needs_human"
+
     def test_degraded_reingest_refuses_aggregation(self, tmp_path, capsys):
         state = _copy_prestate(tmp_path, merged=True)
         source = _write_source(tmp_path, "# 投标文件格式\n\n## 一、投标函\n\n仅两锚点。\n")
@@ -3889,6 +3968,16 @@ class TestAggregateSubjectiveRecords:
         item = _aggregate_items(result)["R-002"]
         assert item["score"] is None and item["status"] == "review_invalid"
         assert "score_out_of_range" in _anomaly_kinds(summary)
+
+    def test_nan_score_excluded(self, tmp_path, capsys):
+        """NaN 对一切比较为 False 会逃过越界检查, 污染 totals 并落非法 JSON(NaN 非严格
+        JSON 值)——isfinite 拦截: 排除待人核, 不计 0 不带病计入。"""
+        state, rc, result, summary = self._aggregate(tmp_path, capsys, _score_records(score=float("nan")))
+        assert rc == 3
+        assert "score_out_of_range" in _anomaly_kinds(summary)
+        item = _aggregate_items(result)["R-002"]
+        assert item["score"] is None and item["status"] == "review_invalid"
+        assert math.isfinite(result["totals"]["simulated"]), "totals 不得被 NaN 污染"
 
     def test_unknown_rubric_id_flagged(self, tmp_path, capsys):
         state, rc, result, summary = self._aggregate(tmp_path, capsys, _score_records(rubric_id="R-999"))
@@ -3963,7 +4052,7 @@ class TestReport:
         assert "缺控制器冗余配置联动说明" in text, "失分原因(主观记录 missing_points)"
         assert "补一节控制器冗余" in text, "改进建议(主观记录 improvement)"
         assert "异常区" in text
-        assert "ZB-C-001" in text and "2 次" in text, "重复 clause_id 入异常区"
+        assert "ZB-C-001" in text and "2 个条目标题" in text, "重复 clause_id(按含 cid 的条目标题数计, D2 锚点载体)入异常区"
         assert "售后服务承诺" in text, "镜像外标题入异常区"
         assert "needs_human" in text or "人核" in text, "R-003 未核条款进异常区"
 

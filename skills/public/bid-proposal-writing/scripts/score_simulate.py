@@ -22,7 +22,8 @@
       │          同一标题链多命中(目录与正文同名)→ 不取首个, 整项进异常区(D6①)
       │
       ├─ 技术卷: clause_id 匹配 clauses.json(条目标题内嵌, build_output 渲染时埋定)
-      │          clause_id 重复出现(Word 修订模式重复文本)→ 异常区(D6③)
+      │          clause_id 重复出现(按含 cid 的条目标题数判; 正文交叉引用合法,
+      │          Word 修订模式重复标题文本才计)→ 异常区(D6③)
       │
       ├─ 未匹配槽/条款 → needs_human_verify(报告异常区, 不计 0 分不静默)
       │
@@ -39,7 +40,8 @@
 与 build_output 技术卷条目同口径):
     命中+条目有正文 → response_status=compliant(已响应)
     命中+空条目     → response_status=unassigned(未填写)
-    已登记 deviation 的人裁不被静默覆盖 → 保留 + deviation_conflict 异常待人核
+    已登记 deviation 的人裁不被静默覆盖 → 保留; 条目带偏离声明正文=自洽不报,
+    仅偏差与回传事实矛盾(登记 deviation 但条目空)→ deviation_conflict 异常待人核
     未命中/重复 id  → 不动权威态, 仅记 needs_human_verify / duplicate_id
     structure.json 永不被改写: fill_status 等派生字段现算不落盘(D7)
 
@@ -76,6 +78,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -98,8 +101,9 @@ EVIDENCE_TEXT_CAP = 200
 REPORT_DIR_NAME = "评分报告"
 _REPORT_VERSION_RE = re.compile(r"^version_(\d+)\.md$")
 
-# 条款复合 ID(build_output 埋锚同款; 计数用原文精确匹配——ID 由脚本生成, 大小写稳定)
-CLAUSE_ID_RE = re.compile(r"[A-Z]{2}-C-\d{3}")
+# 条款复合 ID(与 references/clauses.schema.json·merge_addenda.CLAUSE_ID_RE 同一 pattern
+# ^[A-Z]{2,4}-C-\d{1,6}$; 此处不加锚做标题内嵌检测——3-4 位文件代号/非 3 位序号同为合法 id)
+CLAUSE_ID_RE = re.compile(r"[A-Z]{2,4}-C-\d{1,6}")
 
 # 评审输出记录契约字段(references/scoring_prompt.md「评审输出记录」)
 RECORD_FIELDS = ("rubric_id", "score", "max_score", "rationale", "evidence_quote", "missing_points", "improvement")
@@ -315,7 +319,8 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
     if not source.is_file():
         raise ScoreSimulateError(f"回传稿不存在: {source}(重灌输入必须显式指定, D2——防多版回传并存时灌了旧版)")
     try:
-        text = source.read_text(encoding="utf-8")
+        # utf-8-sig: 回传 md 带 UTF-8 BOM 时剥掉, 防首标题失配(BOM 对 # 前缀的 ATX 匹配是硬伤)
+        text = source.read_text(encoding="utf-8-sig")
     except (UnicodeDecodeError, OSError) as exc:
         raise ScoreSimulateError(f"回传稿不可读(需 UTF-8 md; docx 先经 uploads 自动转换): {source}: {exc}") from exc
 
@@ -365,12 +370,17 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
     pending_updates: list[tuple[dict, str]] = []
     for clause in tech_clauses:
         cid = clause.get("clause_id")
-        occurrences = text.count(cid)
-        hit_lines = [i for i, ln in enumerate(text_lines, start=1) if cid in ln]
+        # D6③ 计数口径 = 含 cid 的条目标题数(D2 锚点载体=条目标题内嵌 clause_id)——
+        # 条目正文合法交叉引用自身条款 id(如"满足ZB-C-001要求")不算重复, 不拦命中。
+        entry_headings = [h for h in headings if cid in h["title"]]
+        occurrences = len(entry_headings)
+        heading_lines = [h["line"] for h in entry_headings]
+        body_mentions = text.count(cid) - occurrences  # 正文出现次数(仅信息披露, 不参与判重)
         before = clause.get("response_status")
         record = {"clause_id": cid, "occurrences": occurrences, "hit_line": None, "filled": None, "response_status_before": before, "response_status_after": before, "updated": False}
         if occurrences == 0:
-            anomalies.append({"kind": "clause_anchor_unmatched", "clause_id": cid, "message": f"条款 {cid} 条目标题未在回传稿出现——needs_human_verify, 权威态不动, 不计 0 分不静默"})
+            where = "仅出现在正文非标题处(条目标题未嵌 clause_id, D2 契约破坏)" if body_mentions else "条目标题未在回传稿出现"
+            anomalies.append({"kind": "clause_anchor_unmatched", "clause_id": cid, "message": f"条款 {cid} {where}——needs_human_verify, 权威态不动, 不计 0 分不静默"})
             record["match"] = "needs_human_verify"
             clause_records.append(record)
             continue
@@ -380,17 +390,11 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
                     "kind": "duplicate_clause_id",
                     "clause_id": cid,
                     "occurrences": occurrences,
-                    "lines": hit_lines,
-                    "message": f"clause_id {cid} 在回传稿出现 {occurrences} 次(行 {hit_lines})——疑似 Word 修订模式 docx→md 重复文本, 进异常区待人核, 不重灌",
+                    "lines": heading_lines,
+                    "message": f"clause_id {cid} 在回传稿 {occurrences} 个条目标题重复出现(标题行 {heading_lines})——疑似 Word 修订模式 docx→md 重复文本, 进异常区待人核, 不重灌(正文交叉引用不计重复)",
                 }
             )
             record["match"] = "duplicate_id"
-            clause_records.append(record)
-            continue
-        entry_headings = [h for h in headings if cid in h["title"]]
-        if not entry_headings:
-            anomalies.append({"kind": "clause_anchor_unmatched", "clause_id": cid, "message": f"条款 {cid} 仅出现在正文非标题处(条目标题未嵌 clause_id, D2 契约破坏)——needs_human_verify"})
-            record["match"] = "needs_human_verify"
             clause_records.append(record)
             continue
         heading = entry_headings[0]
@@ -398,9 +402,12 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
         filled = any(ln.strip() for ln in body)
         record.update({"match": "matched", "hit_line": heading["line"], "filled": filled})
         if before == "deviation":
-            # 已登记偏离是人工裁决, 确定性重灌不得静默覆盖——冲突进异常区待人核。
-            anomalies.append({"kind": "deviation_conflict", "clause_id": cid, "message": f"条款 {cid} 已登记 deviation, 但回传条目{'有正文' if filled else '为空'}——人工裁决与回传稿冲突, 保留 deviation 待人核"})
+            # 已登记偏离是人工裁决, 确定性重灌不得静默覆盖。条目带偏离声明正文=自洽,
+            # 不制造异常噪音; 仅偏差与回传事实矛盾(登记 deviation 但条目空, 偏离声明
+            # 无处对账)时进异常区待人核。
             record["response_status_after"] = "deviation"
+            if not filled:
+                anomalies.append({"kind": "deviation_conflict", "clause_id": cid, "message": f"条款 {cid} 已登记 deviation, 但回传条目为空——偏离声明未见正文, 与人工裁决矛盾, 保留 deviation 待人核"})
         else:
             after = "compliant" if filled else "unassigned"
             record["response_status_after"] = after
@@ -479,7 +486,8 @@ def run_assemble_evidence(state_dir: Path) -> int:
     source_lines: list[str] = []
     if source_path and Path(source_path).is_file():
         try:
-            source_lines = Path(source_path).read_text(encoding="utf-8").splitlines()
+            # utf-8-sig 同 reingest: BOM 剥除, 证据行号与重灌口径一致
+            source_lines = Path(source_path).read_text(encoding="utf-8-sig").splitlines()
         except (UnicodeDecodeError, OSError) as exc:
             raise ScoreSimulateError(f"回传稿不可读: {source_path}: {exc}") from exc
 
@@ -534,12 +542,14 @@ def _check_rubric_sum(rubric: dict) -> int:
     不一致 → 异常中止(退出码 1), 不落任何汇总产物。"""
     total = rubric.get("total_score")
     items = rubric.get("items") or []
-    if not isinstance(total, int) or isinstance(total, bool):
-        raise ScoreSimulateError(f"rubric.json total_score 应为整数(Σ 校验基准): {total!r}")
+    # 契约对齐 rubric.schema.json: max_score/total_score = number(int|float 非 bool)——
+    # 合法小数满分不得在纵深复检层被拒; bool/str 仍拒(误按 0/1 计会让 Σ 失真)。
+    if not isinstance(total, (int, float)) or isinstance(total, bool):
+        raise ScoreSimulateError(f"rubric.json total_score 应为数值(number; int/float 非 bool, Σ 校验基准): {total!r}")
     for index, item in enumerate(items):
         max_score = item.get("max_score")
-        if not isinstance(max_score, int) or isinstance(max_score, bool):
-            raise ScoreSimulateError(f"rubric.json items[{index}]({item.get('rubric_id')}) max_score 应为整数(Σ 校验基准; bool/缺失误按 0/1 计会让 Σ 失真): {max_score!r}")
+        if not isinstance(max_score, (int, float)) or isinstance(max_score, bool):
+            raise ScoreSimulateError(f"rubric.json items[{index}]({item.get('rubric_id')}) max_score 应为数值(number; int/float 非 bool, 契约=rubric.schema.json; bool/缺失误按 0/1 计会让 Σ 失真): {max_score!r}")
     computed = sum(item["max_score"] for item in items)
     if computed != total:
         raise ScoreSimulateError(f"Σmax_score={computed} 与评分办法声称总分 {total} 不一致——评分报告异常项并中止(评分细则表抽取可能缺行/降级; extract 阶段2 应已前置拦截, 此处纵深复检)")
@@ -581,8 +591,10 @@ def _validate_records(records: list[dict], rubric_by_id: dict) -> tuple[dict, li
             anomalies.append({"kind": "record_not_subjective", "rubric_id": rid, "message": f"{where} rubric_id {rid} 为 {item.get('score_type')} 项——objective 由确定性汇总出分, price 无法模拟, 均不吃 Agent 记录"})
             continue
         score = rec.get("score")
-        if isinstance(score, bool) or not isinstance(score, (int, float)) or score < 0 or score > item["max_score"]:
-            anomalies.append({"kind": "score_out_of_range", "rubric_id": rid, "score": score, "message": f"{where} score={score!r} 越界(应为 0..{item['max_score']} 的数)——排除待人核"})
+        # isfinite: NaN 对一切比较为 False, 会同时逃过 score<0 与 score>max 两道越界检查,
+        # 污染 totals 并把裸 NaN 落进 aggregate_result.json(严格 JSON 的非法值)——必须拦截。
+        if isinstance(score, bool) or not isinstance(score, (int, float)) or not math.isfinite(score) or score < 0 or score > item["max_score"]:
+            anomalies.append({"kind": "score_out_of_range", "rubric_id": rid, "score": score, "message": f"{where} score={score!r} 越界/非有限值(NaN/Infinity 不可计分; 应为 0..{item['max_score']} 的有限数)——排除待人核"})
             continue
         if rec.get("max_score") != item["max_score"]:
             anomalies.append({"kind": "record_max_mismatch", "rubric_id": rid, "message": f"{where} max_score={rec.get('max_score')!r} 与 rubric {item['max_score']} 不一致——评审基准漂移, 排除待人核"})
@@ -665,10 +677,11 @@ def _aggregate_objective(item: dict, clauses_by_id: dict, reingest_clauses: dict
 
 
 def run_aggregate(scores_path: Path, state_dir: Path) -> int:
-    """Σ 复检 → 评审记录校验 → 三类分项汇总 → aggregate_result.json。"""
+    """Σ 复检 → 装载三件套外键复检(D7) → 评审记录校验 → 三类分项汇总 → aggregate_result.json。"""
     rubric = _load_json_file(state_dir / "rubric.json", "rubric.json")
     declared_total = _check_rubric_sum(rubric)
     clauses = _load_json_file(state_dir / "clauses.json", "clauses.json")
+    structure = _load_json_file(state_dir / "structure.json", "structure.json")
     reingest = _load_optional_json(state_dir / "reingest_result.json")
     if reingest and reingest.get("degraded"):
         raise ScoreSimulateError(f"重灌已降级(命中率 {reingest.get('hit_rate')} < 阈值 {reingest.get('threshold')})——整体人核覆盖率清单模式, 不做部分计分(D6④); 先人工核验后重跑 reingest")
@@ -676,8 +689,12 @@ def run_aggregate(scores_path: Path, state_dir: Path) -> int:
 
     rubric_items = rubric.get("items") or []
     rubric_by_id = {item.get("rubric_id"): item for item in rubric_items}
+    # D7 防线对称: 会话内填写态(无 reingest 产物)同样复跑外键校验——rubric/structure 链接
+    # superseded/voided 条款不再是'历史(不计)'式静默剔出分母, 与 reingest 路径同款异常。
+    anomalies = validate_foreign_keys(clauses, structure, rubric_items)
     records = _load_score_records(scores_path)
-    valid, anomalies = _validate_records(records, rubric_by_id)
+    valid, record_anomalies = _validate_records(records, rubric_by_id)
+    anomalies.extend(record_anomalies)
 
     clauses_by_id = {c.get("clause_id"): c for c in clauses}
     items: list[dict] = []
