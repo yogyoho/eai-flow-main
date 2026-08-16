@@ -2292,9 +2292,144 @@ class TestExtractExistingStateHardening:
         extract = _extract_module()
         monkeypatch.setattr(extract.os, "replace", lambda src, dst: (_ for _ in ()).throw(OSError("replace-boom")))
         monkeypatch.setattr("os.unlink", lambda p, *a, **k: (_ for _ in ()).throw(PermissionError("unlink-busy")))
-        with pytest.raises(OSError) as excinfo:
+        with pytest.raises(extract.ExtractError) as excinfo:  # 修复轮2 起 OSError 包成 ExtractError(原始异常挂 __cause__)
             extract.atomic_write_json(tmp_path / "out.json", {"a": 1})
-        assert "replace-boom" in str(excinfo.value), f"必须抛出原始异常而非清理失败的 PermissionError: {excinfo.value}"
+        cause = excinfo.value.__cause__
+        assert cause is not None and "replace-boom" in str(cause), f"必须保留原始 OSError 而非清理失败的 PermissionError: {excinfo.value!r} cause={cause!r}"
+
+
+# ===========================================================================
+# T4 审查修复轮2(残留发现): sections anchor 值类型装载校验(T4-1) / mini 校验器 pattern
+# 尾随换行按 ECMA 拒绝 / atomic_write_json IO 失败归入 ExtractError / utf-8-sig 兼容 BOM /
+# 顶层 JSON 数组候选拒绝分支补用例
+# ===========================================================================
+
+
+class TestExtractSectionsAnchorValidation:
+    """T4-1: sections.json 条目 anchor 为真值非 dict(str/list)时, evaluate 的
+    (e.get("anchor") or {}).get("section") 裸抛 AttributeError 逃出 main()——chunk_id/
+    table_id 有装载防线而 anchor 没有, 违反 load_sections 自身契约(值类型错 → ExtractError)。"""
+
+    def test_chunk_anchor_string_value_exit_1(self, tmp_path):
+        sections = json.loads((FIXTURE_DIR / "sections.json").read_text(encoding="utf-8"))
+        sections["chunks"][0]["anchor"] = "3.2.1"  # 审查实测复现形态: 真值非 dict
+        path = tmp_path / "sections.json"
+        path.write_text(json.dumps(sections, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path), sections=path)
+        assert rc == 1, "anchor 值类型错(str)属文件损坏(退出码 1), 不得在 evaluate 裸抛 AttributeError"
+
+    def test_table_anchor_list_value_exit_1(self, tmp_path):
+        sections = json.loads((FIXTURE_DIR / "sections.json").read_text(encoding="utf-8"))
+        sections["tables"][0]["anchor"] = ["6.1"]
+        path = tmp_path / "sections.json"
+        path.write_text(json.dumps(sections, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path), sections=path)
+        assert rc == 1, "anchor 值类型错(list)同样属装载层损坏"
+
+    def test_anchor_falsy_non_dict_rejected_unit(self, tmp_path):
+        """falsy 非 dict(空串/0/[]/False)虽不裸崩, 但同样产出无意义锚点(section=None)——值类型错一律拒绝。"""
+        extract = _extract_module()
+        for bad in ("", [], 0, False):
+            path = tmp_path / "sections.json"
+            path.write_text(json.dumps({"chunks": [{"chunk_id": "CH-001", "source_file": "a.docx", "anchor": bad}], "tables": []}), encoding="utf-8")
+            with pytest.raises(extract.ExtractError):
+                extract.load_sections(path)
+
+    def test_anchor_missing_or_null_accepted_unit(self, tmp_path):
+        """契约允许形态: anchor 缺失或显式 null 不属于值类型错(evaluate 以 (None or {}) 兜底)。"""
+        extract = _extract_module()
+        path = tmp_path / "sections.json"
+        path.write_text(json.dumps({"chunks": [{"chunk_id": "CH-001", "source_file": "a.docx"}, {"chunk_id": "CH-002", "source_file": "a.docx", "anchor": None}], "tables": []}), encoding="utf-8")
+        data = extract.load_sections(path)
+        assert len(data["chunks"]) == 2
+
+
+class TestExtractPatternTrailingNewline:
+    """mini 校验器: Python `$` 额外匹配"末尾换行之前"(ECMA-262 不允许)——id 类字段的
+    锚定 pattern 不得放行 "ZB-C-001\\n" 这类含尾随换行的值(此前蒙混过关并可入库)。"""
+
+    def test_id_with_trailing_newline_rejected_unit(self):
+        extract = _extract_module()
+        schema = extract.load_schemas()["clauses"]
+        sneaky = dict(load_json("clauses.json")[0], clause_id="ZB-C-001\n")
+        errors = extract.validate_against_schema(schema, sneaky)
+        assert any("clause_id" in e for e in errors), f"尾部换行的 clause_id 必须被 pattern 拒绝: {errors}"
+
+    def test_normal_id_still_passes_unit(self):
+        """收紧不得误伤: 无换行的合法 id 照常通过(既有 fixture 全量绿)。"""
+        extract = _extract_module()
+        schemas = extract.load_schemas()
+        assert extract.validate_against_schema(schemas["clauses"], load_json("clauses.json")[0]) == []
+
+    def test_merge_rejects_trailing_newline_id(self, tmp_path, capsys):
+        """端到端: 此前 "ZB-C-001\\n" 蒙混过 pattern 并入库; 现在裁决块 schema_violation 隔离,
+        S-008/R-003 引用它级联悬挂外键 → Σ 无干净基准 → merge 整体中止(既有无条件中止语义)。"""
+        clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+        sneaky = dict(clauses_by_id["ZB-C-001"], clause_id="ZB-C-001\n")
+        files = _happy_candidate_files(tmp_path)
+        files[0] = _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[sneaky])
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", files, declared_total=100, state_dir=state_dir)
+        assert rc == 3, "含尾随换行的 clause_id 属 schema_violation, 裁决块[待确认]"
+        summary = _last_summary_json(capsys)
+        assert "schema_violation" in _anomaly_kinds(summary)
+        entry = [q for q in summary["quarantined"] if q["file"].endswith("c1.json")]
+        assert entry and "schema_violation" in entry[0]["kinds"]
+        assert not state_dir.exists() or not any(state_dir.iterdir()), "级联隔离后 Σ=0≠100 → 整体中止, 含尾随换行的 id 不可能入库"
+
+
+class TestExtractAtomicWriteIOErrorWrapped:
+    """atomic_write_json 的 IO 失败(OSError)包成 ExtractError——CLI 契约"文件错误→rc=1
+    干净消息", 裸 OSError 逃出 main() 只会留 traceback; 原始异常保留为 __cause__。"""
+
+    def test_write_oserror_wrapped_as_extract_error(self, tmp_path, monkeypatch):
+        extract = _extract_module()
+        monkeypatch.setattr(extract.os, "replace", lambda src, dst: (_ for _ in ()).throw(OSError("replace-boom")))
+        with pytest.raises(extract.ExtractError) as excinfo:
+            extract.atomic_write_json(tmp_path / "out.json", {"a": 1})
+        assert excinfo.value.__cause__ is not None and "replace-boom" in str(excinfo.value.__cause__)
+
+    def test_merge_write_failure_exit_1_not_raw(self, tmp_path, monkeypatch):
+        extract = _extract_module()
+        state_dir = tmp_path / "state"
+        monkeypatch.setattr(extract.os, "replace", lambda src, dst: (_ for _ in ()).throw(OSError("disk-full")))
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 1, "写盘 IO 失败必须归入 ExtractError(rc=1), 不得让裸 OSError 逃出 main()"
+
+
+class TestExtractBomTolerantLoading:
+    """Windows 记事本"带 BOM 的 UTF-8"产物兼容: JSON 装载用 utf-8-sig(无 BOM 行为不变,
+    GBK 等非 UTF-8 编码仍拒绝——见 TestExtractEncodingBoundaries 既有锁定)。"""
+
+    def test_bom_sections_accepted(self, tmp_path):
+        raw = (FIXTURE_DIR / "sections.json").read_text(encoding="utf-8")
+        path = tmp_path / "sections.json"
+        path.write_bytes(b"\xef\xbb\xbf" + raw.encode("utf-8"))
+        assert _run_extract("validate", _happy_candidate_files(tmp_path), sections=path) == 0
+
+    def test_bom_candidate_accepted(self, tmp_path):
+        files = _happy_candidate_files(tmp_path)
+        files[0].write_bytes(b"\xef\xbb\xbf" + files[0].read_bytes())
+        assert _run_extract("validate", files) == 0
+
+    def test_bom_existing_state_accepted(self, tmp_path):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        content = json.dumps({"total_score": 100, "items": []}, ensure_ascii=False)
+        (state_dir / "rubric.json").write_bytes(b"\xef\xbb\xbf" + content.encode("utf-8"))
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), state_dir=state_dir)
+        assert rc == 0, "带 BOM 的既有 rubric.json 是合法 UTF-8, 不得拒绝覆盖路径"
+
+
+class TestExtractTopLevelArrayCandidate:
+    """顶层 JSON 数组候选(非对象)拒绝分支: load_candidate 已有 isinstance(data, dict)
+    检查, 补直接用例锁定该分支(覆盖补口, 非缺陷)。"""
+
+    def test_top_level_array_candidate_exit_1(self, tmp_path):
+        bad = tmp_path / "array.json"
+        bad.write_text('["chunk_id", "CH-001"]', encoding="utf-8")
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path) + [bad])
+        assert rc == 1, "顶层 JSON 数组不是合法候选记录(应为对象), 归入文件错误"
 
 
 # ===========================================================================

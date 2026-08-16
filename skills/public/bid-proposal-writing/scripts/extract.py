@@ -146,8 +146,14 @@ def validate_against_schema(schema: dict, value, path: str = "$") -> list[str]:
             errors.append(f"{path}: 长度 {len(value)} 低于 minLength {schema['minLength']}")
         if "maxLength" in schema and len(value) > schema["maxLength"]:
             errors.append(f"{path}: 长度 {len(value)} 超过 maxLength {schema['maxLength']}")
-        if "pattern" in schema and not re.search(schema["pattern"], value):
-            errors.append(f"{path}: {value!r} 不匹配模式 {schema['pattern']!r}")
+        if "pattern" in schema:
+            pattern = schema["pattern"]
+            # ECMA-262 语义对齐: Python 的 `$` 额外匹配"末尾换行之前"(ECMA 不允许), id 类字段的
+            # 锚定 pattern 会放行 "ZB-C-001\n" 这类含尾随换行的值——尾部追加强断言 \Z 收紧。
+            if pattern.endswith("$"):
+                pattern += r"\Z"
+            if not re.search(pattern, value):
+                errors.append(f"{path}: {value!r} 不匹配模式 {schema['pattern']!r}")
     if isinstance(value, (int, float)) and not isinstance(value, bool):
         if "minimum" in schema and value < schema["minimum"]:
             errors.append(f"{path}: {value} 低于 minimum {schema['minimum']}")
@@ -179,7 +185,7 @@ def load_schemas(references_dir: str | Path | None = None) -> dict[str, dict]:
         if not path.is_file():
             raise ExtractError(f"references 契约缺失: {path}(--references 可指定目录)")
         try:
-            schemas[kind] = json.loads(path.read_text(encoding="utf-8"))
+            schemas[kind] = json.loads(path.read_text(encoding="utf-8-sig"))
         except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
             raise ExtractError(f"references 契约不可读/不可解析(需 UTF-8): {path}: {exc}") from exc
     return schemas
@@ -196,7 +202,7 @@ def load_sections(path: str | Path) -> dict:
     if not path.is_file():
         raise ExtractError(f"sections.json 不存在: {path}(先跑 ingest.py 阶段1)")
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
         raise ExtractError(f"sections.json 不可读/不可解析(需 UTF-8): {path}: {exc}") from exc
     if not isinstance(data, dict) or not isinstance(data.get("chunks"), list) or not isinstance(data.get("tables"), list):
@@ -211,6 +217,15 @@ def load_sections(path: str | Path) -> dict:
             value = entry.get(id_key)
             if not isinstance(value, str) or not value:
                 raise ExtractError(f"sections.json {key} 条目缺非空字符串 {id_key}: {path}(先人工核查)")
+    # anchor 装载校验(与 id 同型防线): evaluate 以 (e.get("anchor") or {}).get("section") 构建
+    # D2 锚点覆盖集, anchor 为真值非 dict(str/list)会在该处裸抛 AttributeError 逃出 main();
+    # falsy 非 dict 虽不裸崩但同样产出无意义锚点(section=None)——值类型错一律在装载层拒绝。
+    # ingest 产物恒为对象 {"section": ..., "para"/"page": ...}; 缺失/显式 null 放行(下游已兜底)。
+    for key in ("chunks", "tables"):
+        for entry in data[key]:
+            anchor = entry.get("anchor")
+            if anchor is not None and not isinstance(anchor, dict):
+                raise ExtractError(f"sections.json {key} 条目 anchor 应为对象或缺省: {path}(先人工核查)")
     return data
 
 
@@ -220,7 +235,7 @@ def load_candidate(path: str | Path) -> dict:
     if not path.is_file():
         raise ExtractError(f"候选文件不存在: {path}")
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
         raise ExtractError(f"候选文件不可读/不可解析(需 UTF-8; 疑似 LLM 输出截断或编码错, 先补跑该 chunk): {path}: {exc}") from exc
     if not isinstance(data, dict):
@@ -247,7 +262,7 @@ def _load_state_list(path: Path) -> list[dict]:
     if not path.is_file():
         return []
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
         raise ExtractError(f"既有 {path.name} 不可读/不可解析(需 UTF-8), 拒绝覆盖(先人工核查): {path}: {exc}") from exc
     if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
@@ -274,7 +289,7 @@ def load_state(state_dir: str | Path) -> dict:
     rubric_existed = rubric_path.is_file()
     if rubric_existed:
         try:
-            data = json.loads(rubric_path.read_text(encoding="utf-8"))
+            data = json.loads(rubric_path.read_text(encoding="utf-8-sig"))
         except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
             raise ExtractError(f"既有 rubric.json 不可读/不可解析(需 UTF-8), 拒绝覆盖(先人工核查): {rubric_path}: {exc}") from exc
         if not isinstance(data, dict) or not isinstance(data.get("items"), list) or not all(isinstance(entry, dict) for entry in data["items"]):
@@ -298,17 +313,24 @@ def load_state(state_dir: str | Path) -> dict:
 
 
 def atomic_write_json(path: str | Path, data) -> None:
-    """原子写盘: 临时文件 + os.replace(D7 三防线之一, 防中断留半截文件)。"""
+    """原子写盘: 临时文件 + os.replace(D7 三防线之一, 防中断留半截文件)。
+
+    IO 失败(OSError)包成 ExtractError——CLI 契约"文件错误→rc=1 干净消息", 不让裸
+    OSError 逃出 main() 留 traceback; 原始异常保留为 __cause__ 供排障。
+    """
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.tmp{os.getpid()}")
     try:
-        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump(data, fh, ensure_ascii=False, indent=2)
-            fh.write("\n")
-            fh.flush()
-            os.fsync(fh.fileno())
-        os.replace(tmp, path)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+                json.dump(data, fh, ensure_ascii=False, indent=2)
+                fh.write("\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+            os.replace(tmp, path)
+        except OSError as exc:
+            raise ExtractError(f"状态文件写入失败(占用/权限/磁盘满): {path}: {exc}") from exc
     finally:
         # 成功路径 os.replace 后 tmp 已不存在; 异常路径清理残留, 不留半截文件。
         # 清理失败(Windows 文件被占用等)只吞掉——不得掩盖触发本 finally 的原始异常。
