@@ -91,7 +91,7 @@ python /mnt/skills/public/bid-proposal-writing/scripts/ingest.py \
 ```bash
 python /mnt/skills/public/bid-proposal-writing/scripts/ingest.py \
   --input /mnt/user-data/uploads/补遗文件-01.docx \
-  --code BY01 \
+  --code BY \
   --addendum \
   --out /mnt/user-data/workspace/bid/state
 ```
@@ -160,9 +160,9 @@ Agent 动作:①从 merge 摘要 JSON 与 clauses.json 统计 N1/N2/N3;②生成
 
 ```bash
 python /mnt/skills/public/bid-proposal-writing/scripts/merge_addenda.py \
-  --addendum-candidates /mnt/user-data/workspace/bid/candidates/BY01_addendum.json \
+  --addendum-candidates /mnt/user-data/workspace/bid/candidates/BY_addendum.json \
   --state-dir /mnt/user-data/workspace/bid/state \
-  --decisions /mnt/user-data/workspace/bid/candidates/BY01_decisions.json
+  --decisions /mnt/user-data/workspace/bid/candidates/BY_decisions.json
 ```
 
 (`--decisions` 形态 `{"decisions": [{"mapping_id", "decision": "apply|reject", "target"?}]}`,首次运行可省,产出 pending 后再补人工裁决重跑。)

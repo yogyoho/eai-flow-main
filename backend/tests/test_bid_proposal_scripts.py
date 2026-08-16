@@ -4211,12 +4211,14 @@ class TestSkillMd:
         for line in re.findall(r"^.*bid-proposal-writing/scripts/[a-z_]+\.py.*$", content, re.MULTILINE):
             assert line.lstrip().startswith("python /mnt/skills/public/bid-proposal-writing/scripts/"), f"脚本调用必须用沙箱绝对路径: {line.strip()}"
 
-    def test_every_documented_command_is_accepted_by_actual_cli(self, monkeypatch):
-        """T8 自检: SKILL.md 里每个脚本调用命令与实际脚本 CLI 参数一致(逐个对照 scripts/)。
+    def _capture_documented_namespaces(self, monkeypatch):
+        """对 SKILL.md 全部脚本命令跑 main(), 完整 argparse 解析后哨兵截停, 返回 [(module_name, argv, namespace)]。
 
-        机制: monkeypatch argparse.ArgumentParser.parse_args——完整校验(含子命令/必填/
-        枚举)在原 parse_args 内完成后抛哨兵异常, 证明 argparse 原样接受文档命令;
-        参数不合法时脚本 main() 捕获 SystemExit 返回 1, 测试失败。
+        机制: monkeypatch argparse.ArgumentParser.parse_args——结构校验(子命令/必填/
+        枚举/type 转换)在原 parse_args 内完成后抛哨兵异常, 证明 argparse 原样接受文档命令;
+        参数不合法时脚本 main() 捕获 SystemExit 返回 1, 下方 pytest.raises 不命中即失败。
+        注意: 值域校验(如 ingest --code 的 _CODE_RE)发生在 parse_args 之后, 不被此机制
+        拦截——由 test_documented_argument_values_pass_script_value_domain_checks 复检。
         """
         import argparse
         import importlib
@@ -4233,9 +4235,41 @@ class TestSkillMd:
             raise _ParseCaptured(ns)
 
         monkeypatch.setattr(argparse.ArgumentParser, "parse_args", capture)
+        captured = []
+        for module_name, argv in _skill_md_script_invocations(_skill_md_text()):
+            mod = importlib.import_module(module_name)
+            with pytest.raises(_ParseCaptured, match="argparse accepted") as excinfo:
+                mod.main(argv)
+            captured.append((module_name, argv, excinfo.value.namespace))
+        return captured
+
+    def test_every_documented_command_is_accepted_by_actual_cli(self, monkeypatch):
+        """T8 自检: SKILL.md 里每个脚本调用命令与实际脚本 CLI 参数一致(逐个对照 scripts/, argparse 结构层)。"""
         invocations = _skill_md_script_invocations(_skill_md_text())
         assert {name for name, _ in invocations} == set(SCRIPT_MODULE_NAMES), f"SKILL.md 应覆盖五脚本调用, 实际: {sorted({n for n, _ in invocations})}"
-        for module_name, argv in invocations:
-            mod = importlib.import_module(module_name)
-            with pytest.raises(_ParseCaptured, match="argparse accepted"):
-                mod.main(argv)
+        assert len(self._capture_documented_namespaces(monkeypatch)) == len(invocations), "每条文档命令都应被实际 CLI 的 argparse 完整接受(子命令/必填/枚举/type 转换)"
+
+    def test_documented_argument_values_pass_script_value_domain_checks(self, monkeypatch):
+        """T8 自检(值域层): 文档命令的参数值必须通过脚本 main() 在 parse_args 之后的值域校验。
+
+        哨兵捕获只证明 argparse 结构接受; 值域校验在 argparse 之后(五脚本中唯一的 CLI
+        值域校验 = ingest.py 的 _CODE_RE: 2-4 位大写字母, 违规实测 main() 退出码 1
+        '--code 非法')——结构合法≠值合法, 曾放行示例 --code BY01(含数字, 与 SKILL.md
+        阶段0 '文件代号=2-4 位大写字母' 定义自相矛盾)。用脚本自身的模块级值域校验器
+        复检文档示例值: 脚本契约变更时测试同步跟进, 不在测试里复刻第二份正则。
+        """
+        import importlib
+
+        # module → (argparse dest, 脚本内模块级值域校验器名); 其余脚本的"非法"校验
+        # 均针对文件内容(状态文件/候选), 不针对 CLI 参数值, 无需在此登记
+        value_domain_validators = {"ingest": ("code", "_CODE_RE")}
+        checked = 0
+        for module_name, argv, ns in self._capture_documented_namespaces(monkeypatch):
+            if module_name not in value_domain_validators:
+                continue
+            dest, validator_name = value_domain_validators[module_name]
+            validator = getattr(importlib.import_module(module_name), validator_name)
+            value = getattr(ns, dest)
+            assert validator.match(value), f"SKILL.md 示例 {module_name} --{dest.replace('_', '-')} {value!r} 不满足脚本值域校验 {validator.pattern}(实测 main() 退出码 1; argv={argv})"
+            checked += 1
+        assert checked > 0, "SKILL.md 应包含 ingest 的 --code 示例(值域校验对象), 实际未捕获到"
