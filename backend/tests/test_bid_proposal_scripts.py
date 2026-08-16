@@ -2885,3 +2885,300 @@ class TestMergeAddendaUnitHelpers:
         assert mod.content_hash({"a": 1, "b": "x"}) == mod.content_hash({"b": "x", "a": 1}), "哈希必须规范化(键序无关)"
         assert mod.content_hash({"a": 1}) != mod.content_hash({"a": 2})
         assert mod.content_hash({"a": 1}).startswith("sha256:")
+
+
+# ===========================================================================
+# T6 build_output: 阶段4 双卷骨架渲染 + D2 clause_id 埋锚 + 偏离表/覆盖率 +
+#    实体 lint + 人核清单(无 LLM; 不做 Word 转换——Agent 另调 markdown-to-docx)
+# CLI: --state-dir <dir> --out <dir> → 六个 md: 商务卷/技术卷/偏离表/覆盖率报表/
+#    人核清单/实体lint报告
+# ① 商务卷=structure.json 镜像(只镜像不自创); ② 技术卷=镜像+逐条款条目,
+#    条目标题嵌 clause_id(D2 锚点载体, 保留不删); ③ 偏离表=仅 mandatory+偏离项;
+# ④ 覆盖率报表=清单总数/已响应/待确认/未分配; ⑤ 实体 lint=白名单 diff 全部
+#    evidence_ref 与引用片段, 白名单外→[待核对](报告标"LLM辅助抽取白名单，非确定性");
+# ⑥ format_check 项与[待人工复刻]表格槽全部进人核清单, 不进确定性判定。
+# 纪律: 状态目录只读(D7 派生字段现算不落盘); 输出原子写盘; 重跑字节级幂等。
+# 退出码: 0=干净完成(--help 亦 0) 1=用法/文件错误 3=完成但有异常项
+# ===========================================================================
+
+
+def _build_module():
+    """硬导入 build_output(T6 已落地; 模块缺失时测试失败而非 skip)。"""
+    import importlib
+
+    return importlib.import_module("build_output")
+
+
+BUILD_OUTPUT_FILES = ["商务卷.md", "技术卷.md", "偏离表.md", "覆盖率报表.md", "人核清单.md", "实体lint报告.md"]
+
+
+def _run_build(state_dir, out_dir):
+    return _build_module().main(["--state-dir", str(state_dir), "--out", str(out_dir)])
+
+
+def _out_text(out_dir, name):
+    return (Path(out_dir) / name).read_text(encoding="utf-8")
+
+
+def _set_clause(state_dir, clause_id, **fields):
+    """就地改写状态目录中某条款(测试构造偏离/未分配/证据引用/引用片段用例)。"""
+    path = Path(state_dir) / "clauses.json"
+    clauses = json.loads(path.read_text(encoding="utf-8"))
+    for c in clauses:
+        if c["clause_id"] == clause_id:
+            for key, value in fields.items():
+                if key == "evidence_ref":
+                    c["response_skeleton"]["evidence_ref"] = value
+                elif key == "quote":
+                    c["source_ref"]["quote"] = value
+                else:
+                    c[key] = value
+    path.write_text(json.dumps(clauses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+class TestBuildOutputCliContract:
+    def test_help_returns_0(self, capsys):
+        assert _build_module().main(["--help"]) == 0
+        capsys.readouterr()
+
+    def test_usage_errors_exit_1(self, capsys):
+        mod = _build_module()
+        for argv in ([], ["--state-dir", "x"], ["--out", "y"], ["--unknown"]):
+            rc = mod.main(argv)
+            assert rc == 1, f"用法错误 {argv!r} 应返回 1(2 保留给 ingest OCR 分流), 实际 {rc}"
+        capsys.readouterr()
+
+    def test_missing_state_files_exit_1(self, tmp_path):
+        state = tmp_path / "empty-state"
+        state.mkdir()
+        assert _run_build(state, tmp_path / "out") == 1, "阶段4 前提: clauses.json/structure.json 必须存在"
+
+    def test_corrupt_state_json_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "clauses.json").write_text("{not json", encoding="utf-8")
+        assert _run_build(state, tmp_path / "out") == 1
+
+    def test_state_dir_readonly_d7(self, tmp_path, capsys):
+        """状态目录只读: build 不回写任何状态文件(fill_status 等派生字段现算不落盘)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        before = _snapshot(state)
+        assert _run_build(state, tmp_path / "out") == 0
+        assert _snapshot(state) == before, "状态目录字节级不变(D7)"
+        summary = _last_summary_json(capsys)
+        assert sorted(summary["written"]) == sorted(BUILD_OUTPUT_FILES)
+
+    def test_six_outputs_no_tmp_residue(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        assert _run_build(state, out) == 0
+        assert sorted(p.name for p in out.iterdir()) == sorted(BUILD_OUTPUT_FILES), "恰好六个输出, 无 .tmp 残留"
+
+    def test_rerun_byte_identical(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        assert _run_build(state, out) == 0
+        first = _snapshot(out)
+        assert _run_build(state, out) == 0
+        assert _snapshot(out) == first, "渲染不含时间戳, 重跑字节级幂等"
+
+    def test_summary_json_shape(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _run_build(state, tmp_path / "out") == 0
+        summary = _last_summary_json(capsys)
+        assert summary["coverage"] == {"total": 3, "responded": 1, "pending": 2, "unassigned": 0, "superseded": 1, "voided": 0}
+        assert summary["lint"]["flagged"] == 0 and summary["anomalies"] == []
+        assert summary["deviation_rows"] == 1, "仅 ZB-C-001(mandatory)入偏离表"
+
+
+class TestBuildOutputMirrorVolumes:
+    """①镜像层级完整/槽位标注 ②条目标题嵌 clause_id(D2)/条目体五字段。"""
+
+    def test_commercial_heading_tree_complete(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "商务卷.md").splitlines()
+        for heading in ("# 投标文件格式", "## 一、投标函", "## 二、法定代表人身份证明", "## 三、开标一览表", "## 四、投标文件签章与份数"):
+            assert heading in lines, f"商务卷镜像章节树缺 {heading!r}(path 标题链→# 层级, 只镜像不自创)"
+
+    def test_technical_heading_tree_complete(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        for heading in ("# 技术部分", "## 1 技术方案", "## 2 技术参数响应表"):
+            assert heading in lines, f"技术卷镜像缺 {heading!r}"
+
+    def test_slot_annotations_present(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "商务卷.md")
+        for label in ("槽位类型", "格式要求", "待填提示", "填写状态"):
+            assert label in text, f"槽位标注缺 {label}"
+        for label in ("文字槽", "表格槽", "图片槽", "格式核验槽"):
+            assert label in text
+        assert "按给定格式填报投标函并加盖投标人公章" in text, "格式要求=required_format.desc 原文"
+
+    def test_technical_entry_titles_embed_clause_id(self, tmp_path):
+        """D2 锚点契约: 条目标题嵌 clause_id(交付物保留不删); superseded 条款不出条目。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        assert "### 2.1 响应[ZB-C-001]" in lines or "### **2.1 响应[ZB-C-001]**" in lines, "条目标题必须形如 'N.M 响应[<clause_id>]'"
+        assert "### 1.1 响应[ZB-C-002]" in lines, "ZB-C-002 挂接 S-007('1 技术方案')→编号 1.1"
+        joined = "\n".join(lines)
+        assert "响应[ZB-C-003]" not in joined, "superseded 条款不产生条目(活条款才逐项响应)"
+
+    def test_mandatory_entry_title_bold(self, tmp_path):
+        """强制条款条目标题**加粗**(convert.py 不支持高亮, 加粗是唯一强调载体)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        assert any(ln.startswith("### **") and "响应[ZB-C-001]" in ln for ln in lines), "mandatory 条款 ZB-C-001 条目标题须加粗"
+        assert "### 1.1 响应[ZB-C-002]" in lines, "非强制条款不加粗"
+
+    def test_entry_body_five_fields(self, tmp_path):
+        """条目体 = 要求原文锚点→响应要点→证据引用→满足状态→suggestion(不缺不漏)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "技术卷.md")
+        for field in ("要求原文锚点", "响应要点", "证据引用", "满足状态", "suggestion"):
+            assert field in text, f"条目体缺字段 {field}"
+        assert "设备防护等级不低于IP65,控制器采用S7-1500系列" in text, "原文锚点=source_ref.quote 原文"
+        assert "3.2.1" in text and "防护等级IP65" in text, "锚点定位(§section)与响应要点(points)入文"
+        assert "compliant" in text, "满足状态用枚举原值(机器可核)"
+
+    def test_image_slot_scan_list(self, tmp_path):
+        """image 槽汇总扫描件清单(图片不经 md 链路插入, 终稿人工替换占位)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "商务卷.md")
+        assert "扫描件清单" in text
+        assert "S-003" in text and "加盖公章的身份证正反面扫描件" in text
+
+    def test_table_slots_marked_replica(self, tmp_path):
+        """管道表格无法表达合并单元格/列宽 → 表格槽标[待人工复刻]; 列头骨架仍渲染。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        commercial = _out_text(tmp_path / "out", "商务卷.md")
+        technical = _out_text(tmp_path / "out", "技术卷.md")
+        assert "[待人工复刻]" in commercial and "[待人工复刻]" in technical
+        assert "| 序号 | 货物名称 | 数量 | 总价(元) |" in commercial, "列头骨架照渲染"
+        assert "| 序号 | 招标要求 | 响应情况 | 满足状态 |" in technical
+
+    def test_dangling_linked_clause_anomaly(self, tmp_path, capsys):
+        """linked_clause_ids 指向缺失条款 → 异常不静默(渲染标注 + 摘要 anomalies)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        structure = _state_json(state, "structure.json")
+        structure[1]["linked_clause_ids"] = ["ZB-C-999"]  # S-002
+        (state / "structure.json").write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        assert _run_build(state, tmp_path / "out") == 3
+        summary = _last_summary_json(capsys)
+        assert "clause_fk_invalid" in _anomaly_kinds(summary)
+        assert "ZB-C-999" in _out_text(tmp_path / "out", "商务卷.md"), "渲染处标注缺失, 不静默"
+
+
+class TestBuildOutputDeviationTable:
+    """③ 偏离表 = 仅 class=mandatory 或 response_status=deviation 的活条款。"""
+
+    def test_baseline_only_mandatory_included(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "偏离表.md")
+        assert "ZB-C-001" in text, "mandatory 条款必须入表(即使 compliant, 须声明零偏离)"
+        assert "ZB-C-002" not in text, "scoring+draft 不入表"
+        assert "BY-C-004" not in text, "normal+pending_confirm 不入表"
+        assert "ZB-C-003" not in text, "superseded 历史条款不入表"
+
+    def test_deviation_status_rows_included(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-002", response_status="deviation")
+        _set_clause(state, "BY-C-004", response_status="deviation")
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "偏离表.md")
+        for cid in ("ZB-C-001", "ZB-C-002", "BY-C-004"):
+            assert cid in text, f"偏离项 {cid} 必须入表"
+
+
+class TestBuildOutputCoverage:
+    """④ 覆盖率报表: 清单总数/已响应/待确认/未分配(superseded/voided 除外)。"""
+
+    def test_coverage_counts_baseline(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "覆盖率报表.md")
+        assert "| 清单总数(活条款) | 3 |" in text, "活条款 3 条(ZB-C-003 superseded 除外)"
+        assert "| 已响应(compliant+deviation) | 1 |" in text
+        assert "| 待确认(draft+pending_confirm) | 2 |" in text
+        assert "| 未分配(unassigned) | 0 |" in text
+
+    def test_unassigned_bucket(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "BY-C-004", response_status="unassigned")
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "覆盖率报表.md")
+        assert "| 未分配(unassigned) | 1 |" in text
+        assert "| 待确认(draft+pending_confirm) | 1 |" in text
+
+
+class TestBuildOutputEntityLint:
+    """⑤ 实体 lint: 白名单 diff 全部 evidence_ref 与引用片段; 白名单外→[待核对]。"""
+
+    def test_baseline_clean_with_disclaimer(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _run_build(state, tmp_path / "out") == 0
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "LLM辅助" in text and "非确定性" in text, "报告必须标注白名单为 LLM 辅助抽取、非确定性"
+        assert "未发现白名单外实体" in text
+
+    def test_whitelisted_entity_passes(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", evidence_ref="东智装备制造有限公司出具的IP65防护检测报告")
+        assert _run_build(state, tmp_path / "out") == 0
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "东智装备制造有限公司" in text, "白名单实体进命中统计"
+        assert "未发现白名单外实体" in text
+
+    def test_unknown_company_in_evidence_flagged(self, tmp_path, capsys):
+        """负例: evidence_ref 引用白名单外公司(上一项目残留)→[待核对]+摘要异常。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", evidence_ref="恒力泵业股份有限公司样册(上项目遗留)")
+        assert _run_build(state, tmp_path / "out") == 3
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "[待核对]" in text and "恒力泵业股份有限公司" in text
+        summary = _last_summary_json(capsys)
+        assert "entity_unverified" in _anomaly_kinds(summary) and summary["lint"]["flagged"] >= 1
+
+    def test_quote_fragment_scanned(self, tmp_path, capsys):
+        """引用片段(source_ref.quote)同样在 lint 范围内。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-002", quote="技术方案先进性,参照华新重工股份有限公司业绩 15 优=12-15")
+        assert _run_build(state, tmp_path / "out") == 3
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "华新重工股份有限公司" in text and "[待核对]" in text
+
+    def test_whitelist_missing_anomaly(self, tmp_path, capsys):
+        """白名单缺失 → 异常不静默, 按空集 diff(沿用 merge_addenda 语义)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "entities_whitelist.json").unlink()
+        assert _run_build(state, tmp_path / "out") == 3
+        summary = _last_summary_json(capsys)
+        assert "whitelist_missing" in _anomaly_kinds(summary)
+        assert "白名单缺失" in _out_text(tmp_path / "out", "实体lint报告.md")
+
+
+class TestBuildOutputHumanChecklist:
+    """⑥ format_check 项与[待人工复刻]表格槽全部进人核清单, 不进确定性判定。"""
+
+    def test_format_check_items_all_listed(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "人核清单.md")
+        assert "S-005" in text and "正本壹份副本肆份" in text, "签字/盖章/份数项必须人人可见"
+        assert "投标文件格式/四、投标文件签章与份数" in text
+
+    def test_replica_tables_listed(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "人核清单.md")
+        assert "[待人工复刻]" in text
+        for node_id in ("S-004", "S-008"):
+            assert node_id in text, f"表格槽 {node_id} 必须入人核清单"
