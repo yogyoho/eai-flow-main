@@ -63,7 +63,7 @@ description: 当用户需要编写投标方案/标书响应文件(分析招标�
 | `state/aggregate_result.json` | 阶段5 aggregate | 三类分项汇总 |
 | `state/评分报告/version_N.md` | 阶段5 report | 评分模拟报告(version++ 不覆盖历史) |
 
-- 退出码(五脚本统一约定):`0`=干净完成;`1`=用法/文件错误;`2`=**仅 ingest**:存在无文本层输入(扫描件)需走 eai-flow-ocr;`3`=完成但有异常项——**退出码 3 不是失败**,必须读脚本 stdout 的单行 JSON 摘要,把 `anomalies` 逐项呈现给用户,绝不静默吞掉。
+- 退出码(五脚本统一约定):`0`=干净完成;`1`=用法/文件错误(**例外**:score_simulate 的 Σ 不一致中止与重灌降级拒绝计分也归 `1`——同条件在 extract 侧是 `3` 完成带异常,编排时勿把该 `1` 当单纯文件错);`2`=**仅 ingest**:存在无文本层输入(扫描件)需走 eai-flow-ocr;`3`=完成但有异常项——**退出码 3 不是失败**,必须读脚本 stdout 的单行 JSON 摘要,把 `anomalies` 逐项呈现给用户,绝不静默吞掉。
 - 派生字段(如 `fill_status`)一律现算不落盘(D7);脚本外的落盘仅限候选 checkpoint 与确认门工件(单次成文,不 append)。
 
 ## 阶段0 输入受理
@@ -222,8 +222,11 @@ Agent 动作:①把 merge_addenda 摘要的 applied/pending/anomalies 整理成 
 ```bash
 python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py reingest \
   --source /mnt/user-data/uploads/投标文件-技术卷-回传.md \
-  --state-dir /mnt/user-data/workspace/bid/state
+  --state-dir /mnt/user-data/workspace/bid/state \
+  --volume technical
 ```
+
+**单卷回传必须显式 `--volume commercial|technical`**——它把命中率分母与锚点遍历限定在该卷(另一卷不计 hit_rate、不产未命中异常、权威态不动;卷内多命中/重复 id/未命中照旧全量异常)。只有两卷拼接成一个文件的回传才用默认 both:分母恒含双卷全部锚点,单卷文件按 both 重灌必被另一卷分母拖进整体降级(技术卷零缺陷也救不回来)。分两次各灌一卷时,每次都要带对应 `--volume`,两次重灌互补更新权威态。
 
 重灌锚点契约(载体在阶段4 渲染时已埋定):商务卷锚点=structure.json 树路径标题链(章节标题=招标文件规定结构,改标题即形式违规→标题天然稳定);技术卷锚点=条目标题内嵌的 clause_id。不重灌会出现"客观项按旧状态计 0 分、主观项按新稿评高分"的自相矛盾。匹配器硬化(D6,四类失败全显式):同一锚点多命中→不取首个,整项进异常区待人核;匹配前文本归一化(去编号/空白/全半角),防样式改动导致精确匹配雪崩;clause_id 在回传稿重复出现(Word 修订模式)→异常区;命中率低于阈值(`--threshold`,默认 0.6)→整体降级为"人核覆盖率清单",不做部分计分。匹配失败项标 `needs_human_verify`——既不计 0 分也不静默通过,汇总进评分报告异常区。
 

@@ -4072,11 +4072,21 @@ def _write_scores(tmp_path, payload, name: str = "scores.json"):
     return path
 
 
-def _run_reingest(state_dir, source, *, threshold=None):
+def _run_reingest(state_dir, source, *, threshold=None, volume=None):
     argv = ["reingest", "--source", str(source), "--state-dir", str(state_dir)]
     if threshold is not None:
         argv += ["--threshold", str(threshold)]
+    if volume is not None:
+        argv += ["--volume", volume]
     return _score_module().main(argv)
+
+
+def _add_structure_node(state_dir, node):
+    """向状态目录追加一个 structure 节点(R4 单卷回传配比/镜像豁免用例构造)。"""
+    path = Path(state_dir) / "structure.json"
+    structure = json.loads(path.read_text(encoding="utf-8"))
+    structure.append(node)
+    path.write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def _reingest_result(state_dir):
@@ -4402,6 +4412,24 @@ class TestReingestMatcherHardening:
         assert records["ABCD-C-12"]["match"] == "matched"
         assert _clauses_by_id(state)["ABCD-C-12"]["response_status"] == "compliant"
 
+    def test_build_output_synthetic_headings_exempt_from_mirror_check(self, tmp_path, capsys):
+        """M2: build_output 两处卷末合成标题("## {N} 未挂接格式槽的技术条款(清单驱动)" 与
+        "## 扫描件清单(图片槽汇总)")不在 structure 镜像里也不嵌 clause_id, 却是阶段4 渲染的
+        法定产物——build→reingest 原样往返不该产 unmatched_heading 噪音(归一化全词等值豁免)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _add_clause(state, _extra_technical_clause("ZB-C-101"))  # 未挂接槽位 → 卷末孤儿节
+        _add_structure_node(state, {"node_id": "S-009", "volume": "technical", "path": "技术部分/3 资质扫描件", "slot_type": "image", "required_format": {"desc": "资质证书扫描件", "table_spec": None}, "linked_clause_ids": []})
+        out = tmp_path / "out"
+        assert _run_build(state, out) == 0
+        tech_md = _out_text(out, "技术卷.md")
+        assert "未挂接格式槽的技术条款" in tech_md and "扫描件清单" in tech_md, "用例前提: 两处合成标题都已渲染"
+        assert _run_reingest(state, out / "技术卷.md", volume="technical") == 0, "阶段4→5 法定往返零 unmatched_heading"
+        summary = _last_summary_json(capsys)
+        assert "unmatched_heading" not in _anomaly_kinds(summary)
+        assert summary["anomalies"] == []
+        records = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert records["ZB-C-101"]["match"] == "matched", "孤儿节内条目照常按 clause_id 锚点重灌"
+
     def test_mirror_exemption_requires_digit_tail_boundary(self, tmp_path, capsys):
         """T7-1 镜像豁免同源问题: CLAUSE_ID_RE 尾部无负向断言时, 7 位数字串(合法域外)
         的前 6 位即命中豁免——孤儿标题被静默放行; 尾部加数字边界断言后不再豁免, 进镜像检查报异常。"""
@@ -4431,6 +4459,95 @@ class TestReingestMatcherHardening:
         snap = {name: (state / name).read_bytes() for name in ("clauses.json", "structure.json", "rubric.json")}
         assert _run_reingest(state, source) == 0
         assert {name: (state / name).read_bytes() for name in snap} == snap, "同源重灌权威态幂等(字节级不变; reingest_result.json 记录本趟事实, 不属权威态)"
+
+
+class TestReingestVolumeSelection:
+    """R4: reingest --volume {commercial,technical,both} 单卷回传主流程活路。
+
+    审查员复现: SKILL.md 示例是单文件"技术卷-回传.md"(只灌技术卷), 而旧分母恒计入
+    双卷全部锚点——10 商务节点+6 技术条款、技术卷完美回传 → hit_rate=6/16=0.375<0.6
+    必降级, 技术卷零缺陷被商务分母拖死; 分两次各灌一卷同样死路。--volume 指定单卷后
+    分母与锚点遍历只含该卷(另一卷不计 hit_rate/不产 unmatched 异常/权威态不动),
+    卷内 D6 语义不变; 默认 both 锁定现行为。"""
+
+    def _split_state(self, tmp_path):
+        """10 商务节点 + 6 活技术条款(审查员复现配比: fixture 5+2 → 追加 5 商务/4 技术)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        for i in range(1, 6):
+            _add_structure_node(state, {"node_id": f"S-10{i}", "volume": "commercial", "path": f"投标文件格式/附录{i} 商务附件", "slot_type": "text", "required_format": {"desc": f"商务附录{i} 材料清单", "table_spec": None}, "linked_clause_ids": []})
+        for i in range(1, 5):
+            _add_clause(state, _extra_technical_clause(f"ZB-C-10{i}"))
+        return state
+
+    @staticmethod
+    def _technical_only_return() -> str:
+        """技术卷完美回传: 技术卷镜像标题 + 6 条款条目全有正文, 无任何商务标题。"""
+        entries = "".join(f"### 2.{i} 响应[{cid}]\n\n已按要求逐项响应, 方案与参数证据齐全。\n\n" for i, cid in enumerate(["ZB-C-001", "ZB-C-002", "ZB-C-101", "ZB-C-102", "ZB-C-103", "ZB-C-104"], start=1))
+        return "# 技术部分\n\n## 1 技术方案\n\n本技术方案围绕总体架构先进性与工艺场景契合度展开。\n\n## 2 技术参数响应表\n\n" + entries
+
+    def test_volume_invalid_choice_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _fixture_source_text())
+        assert _run_reingest(state, source, volume="tech") == 1, "--volume 只接受 commercial/technical/both"
+        capsys.readouterr()
+
+    def test_technical_volume_return_full_hit_no_commercial_anomalies(self, tmp_path, capsys):
+        """--volume technical: 分母=6 技术条款, 完美回传 hit_rate=1.0 rc=0,
+        权威态正常更新且零商务异常(node_anchor_unmatched 等)。"""
+        state = self._split_state(tmp_path)
+        source = _write_source(tmp_path, self._technical_only_return(), name="投标文件-技术卷-回传.md")
+        assert _run_reingest(state, source, volume="technical") == 0
+        summary = _last_summary_json(capsys)
+        assert summary["volume"] == "technical"
+        assert summary["hit_rate"] == 1.0
+        assert summary["degraded"] is False
+        assert summary["anchors"] == {"total": 6, "matched": 6, "needs_human_verify": 0, "multi_hit": 0, "duplicate_id": 0}
+        assert summary["anomalies"] == [], "另一卷锚点不产 node_anchor_unmatched/heading_multi_hit 等异常"
+        assert summary["updated_clauses"] == 5, "ZB-C-002+4 新条款 draft→compliant(权威态正常更新)"
+        result = _reingest_result(state)
+        assert result["nodes"] == [], "商务卷节点不遍历(不产商务锚点记录)"
+        assert len(result["clauses"]) == 6
+        clauses = _clauses_by_id(state)
+        assert clauses["ZB-C-102"]["response_status"] == "compliant", "卷内条款正常灌状态"
+        assert clauses["ZB-C-003"]["response_status"] == "unassigned", "商务条款权威态不动"
+
+    def test_default_both_same_input_still_degrades(self, tmp_path, capsys):
+        """现行为锁定: 同输入默认 both——分母仍含商务卷 10 节点, 6/16=0.375<0.6 整体降级,
+        不灌半套状态(合并卷回传须两卷拼接, 单卷文件必须显式 --volume)。"""
+        state = self._split_state(tmp_path)
+        source = _write_source(tmp_path, self._technical_only_return(), name="投标文件-技术卷-回传.md")
+        before = (state / "clauses.json").read_bytes()
+        assert _run_reingest(state, source) == 3
+        summary = _last_summary_json(capsys)
+        assert summary["degraded"] is True
+        assert summary["anchors"]["total"] == 16 and summary["anchors"]["matched"] == 6
+        assert abs(summary["hit_rate"] - 0.375) < 1e-9
+        assert "reingest_degraded" in _anomaly_kinds(summary)
+        assert (state / "clauses.json").read_bytes() == before, "降级=不灌半套状态"
+
+    def test_commercial_volume_return_skips_technical(self, tmp_path, capsys):
+        """--volume commercial: 分母=10 商务节点全命中, 技术条款不遍历/不更新权威态。"""
+        state = self._split_state(tmp_path)
+        sections = "".join(f"## 附录{i} 商务附件\n\n已按要求提供。\n\n" for i in range(1, 6))
+        text = "# 投标文件格式\n\n## 一、投标函\n\n致:招标人。我方投标总价为人民币玖佰捌拾万元整。\n\n## 二、法定代表人身份证明\n\n(此处已插入加盖公章的身份证扫描件)\n\n## 三、开标一览表\n\n| 序号 | 货物名称 | 数量 | 总价(元) |\n| --- | --- | --- | --- |\n| 1 | 智能控制系统 | 1 套 | 9800000 |\n\n## 四、投标文件签章与份数\n\n正本壹份,副本肆份。\n\n" + sections
+        source = _write_source(tmp_path, text, name="投标文件-商务卷-回传.md")
+        assert _run_reingest(state, source, volume="commercial") == 0
+        summary = _last_summary_json(capsys)
+        assert summary["volume"] == "commercial"
+        assert summary["hit_rate"] == 1.0 and summary["anchors"]["total"] == 10
+        assert summary["updated_clauses"] == 0, "技术条款不遍历——权威态不动"
+        result = _reingest_result(state)
+        assert result["clauses"] == [] and len(result["nodes"]) == 10
+        assert _clauses_by_id(state)["ZB-C-002"]["response_status"] == "draft", "技术条款权威态不动"
+
+    def test_single_volume_zero_anchors_exit_1(self, tmp_path, capsys):
+        """--volume technical 而状态无活技术条款 → 无可重灌锚点, 用法错误归 1。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        clauses = json.loads((state / "clauses.json").read_text(encoding="utf-8"))
+        (state / "clauses.json").write_text(json.dumps([c for c in clauses if c.get("category") != "technical"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        source = _write_source(tmp_path, self._technical_only_return())
+        assert _run_reingest(state, source, volume="technical") == 1
+        assert "无可重灌锚点" in capsys.readouterr().err
 
 
 class TestAssembleEvidence:
@@ -4541,6 +4658,21 @@ class TestAggregateSumCheck:
         assert rc == 1, "Σ 不一致=异常中止, 非完成带异常"
         err = capsys.readouterr().err
         assert "Σ" in err and "97" in err and "100" in err
+        assert not (state / "aggregate_result.json").exists(), "中止=不落任何汇总产物"
+
+    def test_null_total_score_message_split(self, tmp_path, capsys):
+        """M3: extract merge 未带 --declared-total 的过渡态 total_score=null(extract 侧异常
+        rubric_declared_total_missing 为 rc=3 非失败)——aggregate 深复检撞上时不得归因为
+        "应为数值(number)", 须指路 --declared-total 重合并/确认门1 补总分。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        rubric = _state_json(state, "rubric.json")
+        rubric["total_score"] = None
+        (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+        scores = _write_scores(tmp_path, _score_records())
+        assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 1
+        err = capsys.readouterr().err
+        assert "尚未声明" in err and "--declared-total" in err, "指路补声明总分, 不是类型报错"
+        assert "应为数值" not in err, "null 是设计的过渡态而非类型违例——错误归因分立"
         assert not (state / "aggregate_result.json").exists(), "中止=不落任何汇总产物"
 
     def test_non_int_max_score_rejected(self, tmp_path, capsys):
@@ -5037,6 +5169,27 @@ class TestSkillMd:
         invocations = _skill_md_script_invocations(_skill_md_text())
         assert {name for name, _ in invocations} == set(SCRIPT_MODULE_NAMES), f"SKILL.md 应覆盖五脚本调用, 实际: {sorted({n for n, _ in invocations})}"
         assert len(self._capture_documented_namespaces(monkeypatch)) == len(invocations), "每条文档命令都应被实际 CLI 的 argparse 完整接受(子命令/必填/枚举/type 转换)"
+
+    def test_reingest_single_volume_documented(self):
+        """R4: 单卷回传须显式 --volume(另一卷不计分母/不产异常), 两卷拼接文件用默认
+        both——SKILL.md 的 reingest 示例本身是单卷技术卷回传, 必须带 --volume technical,
+        否则照抄示例必进降级死路(分母恒含商务卷)。"""
+        content = _skill_md_text()
+        reingest_args = [argv for name, argv in _skill_md_script_invocations(content) if name == "score_simulate" and argv and argv[0] == "reingest"]
+        assert reingest_args, "SKILL.md 必须包含 reingest 示例命令"
+        assert any("--volume" in argv for argv in reingest_args), "单卷回传示例必须演示 --volume"
+        assert "两卷拼接" in content and "默认 both" in content, "须说明两卷拼接文件用默认 both"
+
+    def test_exit_code_table_documents_score_simulate_exception(self):
+        """M4: 退出码表 `1`=用法/文件错误 须注明 score_simulate 例外——Σ 不一致中止与
+        重灌降级拒绝计分同归 `1`(同条件在 extract 侧是 rc=3 完成带异常), 编排勿误读。"""
+        content = _skill_md_text()
+        exit_lines = [ln for ln in content.splitlines() if ln.lstrip().startswith("- 退出码")]
+        assert exit_lines, "SKILL.md 必须有统一退出码约定行"
+        line = exit_lines[0]
+        assert "score_simulate" in line and "例外" in line, "退出码表须点名 score_simulate 例外"
+        assert "Σ" in line and "降级" in line, "例外须覆盖 Σ 不一致中止与降级拒绝计分两类"
+        assert "`1`" in line and "`3`" in line, "须点明同条件在 extract 侧是 rc=3 的对照"
 
     def test_documented_argument_values_pass_script_value_domain_checks(self, monkeypatch):
         """T8 自检(值域层): 文档命令的参数值必须通过脚本 main() 在 parse_args 之后的值域校验。

@@ -7,7 +7,7 @@
 本脚本只组装证据包(assemble-evidence)并消费其评分结果(aggregate), 绝不调用 LLM。
 
 用法(四个子命令):
-    python score_simulate.py reingest --source <回传.md> --state-dir <dir> [--threshold 0.6]
+    python score_simulate.py reingest --source <回传.md> --state-dir <dir> [--threshold 0.6] [--volume commercial|technical|both]
     python score_simulate.py assemble-evidence --state-dir <dir>
     python score_simulate.py aggregate --scores <主观评分JSON> --state-dir <dir>
     python score_simulate.py report --state-dir <dir>
@@ -30,6 +30,12 @@
       │
       ├─ 命中率 < 阈值(默认 0.6, --threshold)→ 整体降级"人核覆盖率清单",
       │   不做部分计分, 不灌半套状态(D6④)
+      │
+      ├─ --volume commercial|technical = 单卷回传限定: 分母与锚点遍历只含该卷——
+      │   另一卷锚点不计 hit_rate、不产 unmatched/duplicate 异常、权威态不动;
+      │   卷内 D6 语义不变(该卷内多命中/重复id/未命中照旧全量异常)。
+      │   默认 both = 双卷拼接文件按全量锚点(每卷单独回传必须显式 --volume,
+      │   否则另一卷分母必把单卷文件拖进降级死路)
       │
       └─ 重灌后权威态(clauses.json response_status)──> aggregate:
             objective 项 = 确定性状态汇总(是汇总不是验证, 可信度取决于状态维护)
@@ -250,6 +256,14 @@ def normalize_title(text: str) -> str:
     return s.casefold()
 
 
+# build_output 两处卷末合成标题(M2): "## {N} 未挂接格式槽的技术条款(清单驱动)" 与
+# "## 扫描件清单(图片槽汇总)"——不在 structure.json 镜像里也不嵌 clause_id, 却是阶段4
+# 渲染的法定产物, 阶段4→5 原样往返不豁免会每卷必产 unmatched_heading 噪音。豁免口径=
+# 归一化全词等值(编号被 normalize_title 剥离, "## 4 未挂接…"同名豁免); 手改标题不再
+# 全词等值, 仍走镜像检查报异常待人核。
+SYNTHETIC_HEADING_NORMS = frozenset({normalize_title("未挂接格式槽的技术条款(清单驱动)"), normalize_title("扫描件清单(图片槽汇总)")})
+
+
 # =============================================================================
 # 回传 md 解析: ATX 标题树 + 节正文
 # =============================================================================
@@ -339,8 +353,13 @@ def _slot_fill(slot_type: str, has_content: bool, has_table: bool) -> tuple[str,
     return "unfilled", "文字槽无正文"
 
 
-def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
-    """回传稿确定性重灌: 锚点匹配 → 权威态更新(降级则不灌) → reingest_result.json。"""
+def run_reingest(source: Path, state_dir: Path, threshold: float, volume: str = "both") -> int:
+    """回传稿确定性重灌: 锚点匹配 → 权威态更新(降级则不灌) → reingest_result.json。
+
+    volume: both=默认(双卷拼接文件按全量锚点, 现行为); commercial/technical=单卷回传
+    限定——分母与锚点遍历只含该卷, 另一卷不计 hit_rate/不产 unmatched 异常/权威态
+    不动(R4: 每卷单独成文/单独回传是主流程, 若分母恒含另一卷, 单卷完美回传也必被
+    拖进 D6④ 降级死路)。"""
     if not source.is_file():
         raise ScoreSimulateError(f"回传稿不存在: {source}(重灌输入必须显式指定, D2——防多版回传并存时灌了旧版)")
     try:
@@ -358,90 +377,94 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
     headings = parse_md_headings(text)
 
     # --- 商务卷: 标题链匹配 structure.json 树路径(D2; 多命中不取首个 D6①) ----------
+    # --volume 限定单卷时只遍历该卷(R4): 另一卷锚点不计 hit_rate/不产 unmatched
+    # 异常/权威态不动; 卷内 D6 语义(多命中/未命中)不变。
     commercial_nodes = [n for n in structure if n.get("volume") == "commercial"]
     node_records: list[dict] = []
-    for node in commercial_nodes:
-        segments = [normalize_title(seg) for seg in node.get("path", "").split("/")]
-        candidates = [h for h in headings if h["chain"] == segments]
-        base = {"node_id": node.get("node_id"), "volume": "commercial", "path": node.get("path"), "slot_type": node.get("slot_type")}
-        if len(candidates) == 1:
-            heading = candidates[0]
-            body = _section_body(text_lines, headings, heading)
-            has_content = any(ln.strip() for ln in body)
-            has_table = any(ln.lstrip().startswith("|") for ln in body)
-            fill, reason = _slot_fill(node.get("slot_type") or "", has_content, has_table)
-            node_records.append({**base, "match": "matched", "hit_line": heading["line"], "fill": fill, "fill_reason": reason})
-        elif len(candidates) > 1:
-            hit_lines = [h["line"] for h in candidates]
-            anomalies.append(
-                {
-                    "kind": "heading_multi_hit",
-                    "node_id": node.get("node_id"),
-                    "path": node.get("path"),
-                    "hit_lines": hit_lines,
-                    "message": f"标题链「{node.get('path')}」命中 {len(candidates)} 处(行 {hit_lines})——不取首个, 整项进异常区待人核(防静默灌错)",
-                }
-            )
-            node_records.append({**base, "match": "multi_hit", "hit_line": None, "fill": None, "fill_reason": "多命中——人工核验取哪一处"})
-        else:
-            anomalies.append(
-                {"kind": "node_anchor_unmatched", "node_id": node.get("node_id"), "path": node.get("path"), "message": f"structure 节点 {node.get('node_id')} 标题链「{node.get('path')}」在回传稿未命中——needs_human_verify, 不计 0 不静默"}
-            )
-            node_records.append({**base, "match": "needs_human_verify", "hit_line": None, "fill": None, "fill_reason": "标题链未命中——人工核验(改标题本身即形式违规, 疑似漏交该节)"})
+    if volume in ("commercial", "both"):
+        for node in commercial_nodes:
+            segments = [normalize_title(seg) for seg in node.get("path", "").split("/")]
+            candidates = [h for h in headings if h["chain"] == segments]
+            base = {"node_id": node.get("node_id"), "volume": "commercial", "path": node.get("path"), "slot_type": node.get("slot_type")}
+            if len(candidates) == 1:
+                heading = candidates[0]
+                body = _section_body(text_lines, headings, heading)
+                has_content = any(ln.strip() for ln in body)
+                has_table = any(ln.lstrip().startswith("|") for ln in body)
+                fill, reason = _slot_fill(node.get("slot_type") or "", has_content, has_table)
+                node_records.append({**base, "match": "matched", "hit_line": heading["line"], "fill": fill, "fill_reason": reason})
+            elif len(candidates) > 1:
+                hit_lines = [h["line"] for h in candidates]
+                anomalies.append(
+                    {
+                        "kind": "heading_multi_hit",
+                        "node_id": node.get("node_id"),
+                        "path": node.get("path"),
+                        "hit_lines": hit_lines,
+                        "message": f"标题链「{node.get('path')}」命中 {len(candidates)} 处(行 {hit_lines})——不取首个, 整项进异常区待人核(防静默灌错)",
+                    }
+                )
+                node_records.append({**base, "match": "multi_hit", "hit_line": None, "fill": None, "fill_reason": "多命中——人工核验取哪一处"})
+            else:
+                anomalies.append(
+                    {"kind": "node_anchor_unmatched", "node_id": node.get("node_id"), "path": node.get("path"), "message": f"structure 节点 {node.get('node_id')} 标题链「{node.get('path')}」回传稿未命中——needs_human_verify, 不计 0 不静默"}
+                )
+                node_records.append({**base, "match": "needs_human_verify", "hit_line": None, "fill": None, "fill_reason": "标题链未命中——人工核验(改标题本身即形式违规, 疑似漏交该节)"})
 
     # --- 技术卷: clause_id 匹配条目标题(D2; 重复出现进异常区 D6③) ------------------
     tech_clauses = [c for c in clauses if _is_active(c) and c.get("category") == "technical"]
     clause_records: list[dict] = []
     pending_updates: list[tuple[dict, str]] = []
-    for clause in tech_clauses:
-        cid = clause.get("clause_id")
-        # D6③ 计数口径 = 含 cid 的条目标题数(D2 锚点载体=条目标题内嵌 clause_id)——
-        # 条目正文合法交叉引用自身条款 id(如"满足ZB-C-001要求")不算重复, 不拦命中。
-        # 边界感知(_title_embeds_clause): "ZB-C-1" 不是 "ZB-C-12" 标题的出现(T7-1 前缀污染)。
-        entry_headings = [h for h in headings if _title_embeds_clause(cid, h["title"])]
-        occurrences = len(entry_headings)
-        heading_lines = [h["line"] for h in entry_headings]
-        # 正文出现次数(仅信息披露, 不参与判重); 同边界口径统计, 防更长 id 的出现被算作本 id 的正文出现
-        body_mentions = len(re.findall(re.escape(cid) + r"(?!\d)", text)) - occurrences
-        before = clause.get("response_status")
-        record = {"clause_id": cid, "occurrences": occurrences, "hit_line": None, "filled": None, "response_status_before": before, "response_status_after": before, "updated": False}
-        if occurrences == 0:
-            where = "仅出现在正文非标题处(条目标题未嵌 clause_id, D2 契约破坏)" if body_mentions else "条目标题未在回传稿出现"
-            anomalies.append({"kind": "clause_anchor_unmatched", "clause_id": cid, "message": f"条款 {cid} {where}——needs_human_verify, 权威态不动, 不计 0 分不静默"})
-            record["match"] = "needs_human_verify"
+    if volume in ("technical", "both"):
+        for clause in tech_clauses:
+            cid = clause.get("clause_id")
+            # D6③ 计数口径 = 含 cid 的条目标题数(D2 锚点载体=条目标题内嵌 clause_id)——
+            # 条目正文合法交叉引用自身条款 id(如"满足ZB-C-001要求")不算重复, 不拦命中。
+            # 边界感知(_title_embeds_clause): "ZB-C-1" 不是 "ZB-C-12" 标题的出现(T7-1 前缀污染)。
+            entry_headings = [h for h in headings if _title_embeds_clause(cid, h["title"])]
+            occurrences = len(entry_headings)
+            heading_lines = [h["line"] for h in entry_headings]
+            # 正文出现次数(仅信息披露, 不参与判重); 同边界口径统计, 防更长 id 的出现被算作本 id 的正文出现
+            body_mentions = len(re.findall(re.escape(cid) + r"(?!\d)", text)) - occurrences
+            before = clause.get("response_status")
+            record = {"clause_id": cid, "occurrences": occurrences, "hit_line": None, "filled": None, "response_status_before": before, "response_status_after": before, "updated": False}
+            if occurrences == 0:
+                where = "仅出现在正文非标题处(条目标题未嵌 clause_id, D2 契约破坏)" if body_mentions else "条目标题未在回传稿出现"
+                anomalies.append({"kind": "clause_anchor_unmatched", "clause_id": cid, "message": f"条款 {cid} {where}——needs_human_verify, 权威态不动, 不计 0 分不静默"})
+                record["match"] = "needs_human_verify"
+                clause_records.append(record)
+                continue
+            if occurrences >= 2:
+                anomalies.append(
+                    {
+                        "kind": "duplicate_clause_id",
+                        "clause_id": cid,
+                        "occurrences": occurrences,
+                        "lines": heading_lines,
+                        "message": f"clause_id {cid} 在回传稿 {occurrences} 个条目标题重复出现(标题行 {heading_lines})——疑似 Word 修订模式 docx→md 重复文本, 进异常区待人核, 不重灌(正文交叉引用不计重复)",
+                    }
+                )
+                record["match"] = "duplicate_id"
+                clause_records.append(record)
+                continue
+            heading = entry_headings[0]
+            body = _section_body(text_lines, headings, heading)
+            filled = any(ln.strip() for ln in body)
+            record.update({"match": "matched", "hit_line": heading["line"], "filled": filled})
+            if before == "deviation":
+                # 已登记偏离是人工裁决, 确定性重灌不得静默覆盖。条目带偏离声明正文=自洽,
+                # 不制造异常噪音; 仅偏差与回传事实矛盾(登记 deviation 但条目空, 偏离声明
+                # 无处对账)时进异常区待人核。
+                record["response_status_after"] = "deviation"
+                if not filled:
+                    anomalies.append({"kind": "deviation_conflict", "clause_id": cid, "message": f"条款 {cid} 已登记 deviation, 但回传条目为空——偏离声明未见正文, 与人工裁决矛盾, 保留 deviation 待人核"})
+            else:
+                after = "compliant" if filled else "unassigned"
+                record["response_status_after"] = after
+                if after != before:
+                    record["updated"] = True
+                    pending_updates.append((clause, after))
             clause_records.append(record)
-            continue
-        if occurrences >= 2:
-            anomalies.append(
-                {
-                    "kind": "duplicate_clause_id",
-                    "clause_id": cid,
-                    "occurrences": occurrences,
-                    "lines": heading_lines,
-                    "message": f"clause_id {cid} 在回传稿 {occurrences} 个条目标题重复出现(标题行 {heading_lines})——疑似 Word 修订模式 docx→md 重复文本, 进异常区待人核, 不重灌(正文交叉引用不计重复)",
-                }
-            )
-            record["match"] = "duplicate_id"
-            clause_records.append(record)
-            continue
-        heading = entry_headings[0]
-        body = _section_body(text_lines, headings, heading)
-        filled = any(ln.strip() for ln in body)
-        record.update({"match": "matched", "hit_line": heading["line"], "filled": filled})
-        if before == "deviation":
-            # 已登记偏离是人工裁决, 确定性重灌不得静默覆盖。条目带偏离声明正文=自洽,
-            # 不制造异常噪音; 仅偏差与回传事实矛盾(登记 deviation 但条目空, 偏离声明
-            # 无处对账)时进异常区待人核。
-            record["response_status_after"] = "deviation"
-            if not filled:
-                anomalies.append({"kind": "deviation_conflict", "clause_id": cid, "message": f"条款 {cid} 已登记 deviation, 但回传条目为空——偏离声明未见正文, 与人工裁决矛盾, 保留 deviation 待人核"})
-        else:
-            after = "compliant" if filled else "unassigned"
-            record["response_status_after"] = after
-            if after != before:
-                record["updated"] = True
-                pending_updates.append((clause, after))
-        clause_records.append(record)
 
     # --- 镜像外标题(回传稿侧孤儿): 结构只镜像不自创, 不静默 ------------------------
     mirror_titles = {normalize_title(seg) for node in structure for seg in node.get("path", "").split("/")}
@@ -457,13 +480,18 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
                 orphan_message = f"回传稿标题「{heading['title']}」(行 {heading['line']})内嵌未知 clause_id {unknown}——不在 clauses.json(孤儿条目标题, 疑似手改回传稿), 需人工核对"
                 anomalies.append({"kind": "unmatched_heading", "line": heading["line"], "heading": heading["title"], "message": orphan_message})
             continue
+        if heading["norm"] in SYNTHETIC_HEADING_NORMS:
+            # build_output 卷末合成标题(孤儿条款节/扫描件清单, M2)——阶段4→5 法定往返产物,
+            # 与条目标题 clause_id 豁免同层; 手改后的标题不再全词等值, 仍会被镜像检查拦下。
+            continue
         if heading["norm"] not in mirror_titles:
             anomalies.append({"kind": "unmatched_heading", "line": heading["line"], "heading": heading["title"], "message": f"回传稿标题「{heading['title']}」(行 {heading['line']})不在 structure.json 镜像——结构只镜像不自创, 需人工核对"})
 
     # --- 命中率与整体降级(D6④) ---------------------------------------------------
-    total_anchors = len(commercial_nodes) + len(tech_clauses)
+    # 分母按 --volume 圈定(R4): 单卷回传只以该卷锚点为分母, 不被另一卷拖进降级死路。
+    total_anchors = (len(commercial_nodes) if volume in ("commercial", "both") else 0) + (len(tech_clauses) if volume in ("technical", "both") else 0)
     if total_anchors == 0:
-        raise ScoreSimulateError("无可重灌锚点(商务卷无槽位且无活技术条款)——先完成阶段2/4 再评分")
+        raise ScoreSimulateError(f"无可重灌锚点(--volume {volume}: 商务卷 {len(commercial_nodes)} 槽位 + 活技术条款 {len(tech_clauses)})——先完成阶段2/4 再评分")
     matched = sum(1 for r in node_records if r["match"] == "matched") + sum(1 for r in clause_records if r["match"] == "matched")
     hit_rate = matched / total_anchors  # 不四舍五入: 阈值边界比较与摘要精度不受截断影响
     degraded = hit_rate < threshold
@@ -497,10 +525,10 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
         "multi_hit": sum(1 for r in node_records if r["match"] == "multi_hit"),
         "duplicate_id": sum(1 for r in clause_records if r["match"] == "duplicate_id"),
     }
-    result = {"source": str(source), "threshold": threshold, "hit_rate": hit_rate, "degraded": degraded, "anchors": anchors, "nodes": node_records, "clauses": clause_records, "anomalies": anomalies}
+    result = {"source": str(source), "threshold": threshold, "volume": volume, "hit_rate": hit_rate, "degraded": degraded, "anchors": anchors, "nodes": node_records, "clauses": clause_records, "anomalies": anomalies}
     atomic_write_json(state_dir / "reingest_result.json", result)
 
-    summary = {"command": "reingest", "source": str(source), "threshold": threshold, "hit_rate": hit_rate, "anchors": anchors, "updated_clauses": updated_clauses, "degraded": degraded, "anomalies": anomalies}
+    summary = {"command": "reingest", "source": str(source), "threshold": threshold, "volume": volume, "hit_rate": hit_rate, "anchors": anchors, "updated_clauses": updated_clauses, "degraded": degraded, "anomalies": anomalies}
     print(json.dumps(summary, ensure_ascii=False))
     return EXIT_OK if not anomalies else EXIT_ANOMALY
 
@@ -594,6 +622,11 @@ def _check_rubric_sum(rubric: dict) -> int | float:
     items = rubric.get("items") or []
     # 契约对齐 rubric.schema.json: max_score/total_score = number(int|float 非 bool)——
     # 合法小数满分不得在纵深复检层被拒; bool/str 仍拒(误按 0/1 计会让 Σ 失真)。
+    if total is None:
+        # null 是设计的过渡态而非类型违例(M3): extract merge 未带 --declared-total 时如实写
+        # null(extract 侧异常 rubric_declared_total_missing 为 rc=3 非失败)——报错归因分立,
+        # 指路补声明, 不混进下方"应为数值(number)"的类型错误口径。
+        raise ScoreSimulateError("rubric.json total_score 为 null——评分办法总分尚未声明(extract merge 未带 --declared-total 的过渡态): 先跑 extract.py merge --declared-total <N> 重合并(或确认门1 补总分)后再 aggregate")
     if not isinstance(total, (int, float)) or isinstance(total, bool):
         raise ScoreSimulateError(f"rubric.json total_score 应为数值(number; int/float 非 bool, Σ 校验基准): {total!r}")
     for index, item in enumerate(items):
@@ -1050,6 +1083,7 @@ def main(argv: list[str] | None = None) -> int:
     p_reingest.add_argument("--source", required=True, help="回传 .md 路径(必须显式指定, D2——防多版回传并存时灌了旧版; docx 先经 uploads 自动转换)")
     p_reingest.add_argument("--state-dir", required=True, help="状态目录(clauses.json/structure.json/rubric.json; 重灌只更新权威态 clauses.json)")
     p_reingest.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help=f"重灌命中率降级阈值, 默认 {DEFAULT_THRESHOLD}(低于即整体降级人核覆盖率清单)")
+    p_reingest.add_argument("--volume", choices=("commercial", "technical", "both"), default="both", help="单卷回传限定: 只以该卷为锚点分母(另一卷不计 hit_rate/不产 unmatched/权威态不动); both=默认, 双卷拼接文件按全量锚点")
 
     p_evidence = sub.add_parser("assemble-evidence", help="逐 rubric 项组装证据包(grep 回传稿证据行), 供 Agent 主观评审循环")
     p_evidence.add_argument("--state-dir", required=True, help="状态目录(读 rubric/clauses/reingest_result, 写 evidence_pack.json)")
@@ -1075,7 +1109,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "reingest":
             if not (0 < args.threshold <= 1):
                 raise ScoreSimulateError(f"--threshold 须在 (0,1] 区间: {args.threshold}")
-            return run_reingest(Path(args.source), Path(args.state_dir), args.threshold)
+            return run_reingest(Path(args.source), Path(args.state_dir), args.threshold, args.volume)
         if args.command == "assemble-evidence":
             return run_assemble_evidence(Path(args.state_dir))
         if args.command == "aggregate":
