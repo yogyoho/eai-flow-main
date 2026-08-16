@@ -1,0 +1,51 @@
+{
+  "total_score": 100,
+  "items": [
+    {
+      "rubric_id": "R-001",
+      "item": "投标报价",
+      "max_score": 60,
+      "scoring_method": "以有效投标中的最低价为基准价,投标报价等于基准价得满分,每高1%扣0.6分",
+      "score_type": "price",
+      "linked_clause_ids": [],
+      "source_ref": {
+        "page": null,
+        "section": "6.1",
+        "para": 2,
+        "quote": "投标报价 60 以有效投标中的最低价为基准价"
+      }
+    },
+    {
+      "rubric_id": "R-002",
+      "item": "技术方案先进性",
+      "max_score": 15,
+      "scoring_method": "优=12-15 良=8-11 一般=1-7 无=0",
+      "score_type": "subjective",
+      "linked_clause_ids": [
+        "ZB-C-002"
+      ],
+      "source_ref": {
+        "page": null,
+        "section": "6.1",
+        "para": 3,
+        "quote": "技术方案先进性 15 优=12-15 良=8-11 一般=1-7 无=0"
+      }
+    },
+    {
+      "rubric_id": "R-003",
+      "item": "设备性能参数满足度",
+      "max_score": 25,
+      "scoring_method": "完全满足得25分,一般偏离每项扣5分,重大偏离得0分",
+      "score_type": "objective",
+      "linked_clause_ids": [
+        "ZB-C-001"
+      ],
+      "source_ref": {
+        "page": null,
+        "section": "6.1",
+        "para": 4,
+        "quote": "设备性能参数满足度 25 完全满足得25分"
+      }
+    }
+  ]
+}

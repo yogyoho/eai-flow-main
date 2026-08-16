@@ -1,0 +1,92 @@
+{
+  "chunks": [
+    {
+      "chunk_id": "CH-001",
+      "source_file": "minimal_tender.docx",
+      "anchor": {
+        "section": "3.2.1",
+        "para": 1
+      },
+      "heading_path": [
+        "第三章 技术规范",
+        "3.2 设备清单及技术参数",
+        "3.2.1 技术参数要求"
+      ],
+      "n_paras": 1
+    },
+    {
+      "chunk_id": "CH-002",
+      "source_file": "minimal_tender.docx",
+      "anchor": {
+        "section": "6.1",
+        "para": 1
+      },
+      "heading_path": [
+        "第六章 评标办法",
+        "6.1 评分细则"
+      ],
+      "n_paras": 1
+    },
+    {
+      "chunk_id": "CH-003",
+      "source_file": "minimal_tender.pdf",
+      "anchor": {
+        "page": 1,
+        "section": "2"
+      },
+      "heading_path": [
+        "2. Technical Specifications"
+      ],
+      "n_paras": 1
+    },
+    {
+      "chunk_id": "CH-004",
+      "source_file": "补遗文件-01.pdf",
+      "anchor": {
+        "page": 1,
+        "section": "二"
+      },
+      "heading_path": [
+        "二、补遗内容"
+      ],
+      "n_paras": 1
+    },
+    {
+      "chunk_id": "CH-005",
+      "source_file": "minimal_tender.docx",
+      "anchor": {
+        "section": "一、项目概况",
+        "para": 1
+      },
+      "heading_path": [
+        "第一章 投标邀请",
+        "一、项目概况"
+      ],
+      "n_paras": 1
+    }
+  ],
+  "tables": [
+    {
+      "table_id": "T-001",
+      "source_file": "minimal_tender.docx",
+      "anchor": {
+        "section": "3.2.2",
+        "para": 1
+      },
+      "n_rows": 3,
+      "n_cols": 3,
+      "caption": "技术参数表"
+    },
+    {
+      "table_id": "T-002",
+      "source_file": "minimal_tender.docx",
+      "anchor": {
+        "section": "6.1",
+        "para": 2
+      },
+      "n_rows": 4,
+      "n_cols": 4,
+      "caption": "评分细则表"
+    }
+  ]
+}

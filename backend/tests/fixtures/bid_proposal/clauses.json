@@ -1,0 +1,94 @@
+[
+  {
+    "clause_id": "ZB-C-001",
+    "source_file": "minimal_tender.docx",
+    "class": "mandatory",
+    "category": "technical",
+    "source_ref": {
+      "page": null,
+      "section": "3.2.1",
+      "para": 1,
+      "quote": "设备防护等级不低于IP65,控制器采用S7-1500系列"
+    },
+    "requirement": "设备防护等级不低于IP65,控制器采用西门子S7-1500系列(参数版本V2.3)——★强制条款,零偏离",
+    "response_status": "compliant",
+    "response_skeleton": {
+      "points": [
+        "防护等级IP65",
+        "控制器S7-1500 V2.3"
+      ],
+      "evidence_ref": null,
+      "suggestion": null
+    },
+    "from_addendum": false,
+    "superseded_by": null
+  },
+  {
+    "clause_id": "ZB-C-002",
+    "source_file": "minimal_tender.docx",
+    "class": "scoring",
+    "category": "technical",
+    "source_ref": {
+      "page": null,
+      "section": "6.1",
+      "para": 1,
+      "quote": "技术方案先进性 15 优=12-15 良=8-11 一般=1-7 无=0"
+    },
+    "requirement": "评分项:技术方案先进性,满分15分,按优/良/一般/无四档评分",
+    "response_status": "draft",
+    "response_skeleton": {
+      "points": [
+        "总体架构先进性",
+        "与工艺场景契合度"
+      ],
+      "evidence_ref": null,
+      "suggestion": null
+    },
+    "from_addendum": false,
+    "superseded_by": null
+  },
+  {
+    "clause_id": "ZB-C-003",
+    "source_file": "minimal_tender.docx",
+    "class": "normal",
+    "category": "commercial",
+    "source_ref": {
+      "page": null,
+      "section": "一、项目概况",
+      "para": 1,
+      "quote": "交货期为合同签订后90天"
+    },
+    "requirement": "交货期:合同签订后90天内交货(原条款,已被补遗文件-01修订)",
+    "response_status": "unassigned",
+    "response_skeleton": {
+      "points": [],
+      "evidence_ref": null,
+      "suggestion": null
+    },
+    "from_addendum": false,
+    "superseded_by": "BY-C-004"
+  },
+  {
+    "clause_id": "BY-C-004",
+    "source_file": "补遗文件-01.pdf",
+    "class": "normal",
+    "category": "commercial",
+    "source_ref": {
+      "page": 1,
+      "section": "二",
+      "para": 1,
+      "quote": "交货期统一调整为合同签订后60天"
+    },
+    "requirement": "交货期:合同签订后60天内交货(补遗文件-01修订版)",
+    "response_status": "pending_confirm",
+    "response_skeleton": {
+      "points": [
+        "生产排期压缩至60天"
+      ],
+      "evidence_ref": null,
+      "suggestion": null
+    },
+    "from_addendum": true,
+    "superseded_by": null
+  }
+]

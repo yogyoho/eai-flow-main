@@ -1,0 +1,43 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 551 >>
+stream
+BT /F1 16 Tf 72 720 Td (1. Tender Notice) Tj ET
+BT /F1 10 Tf 72 692 Td (This tender notice defines the general requirements for bidders.) Tj ET
+BT /F1 10 Tf 72 664 Td (Bidders shall read all clauses carefully before submitting offers.) Tj ET
+BT /F1 16 Tf 72 636 Td (2. Technical Specifications) Tj ET
+BT /F1 10 Tf 72 608 Td (The equipment shall meet all parameters in the parameter table.) Tj ET
+BT /F1 16 Tf 72 580 Td (3. Evaluation Method) Tj ET
+BT /F1 10 Tf 72 552 Td (The scoring details are listed in the evaluation table of this document.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Title (Minimal Tender Fixture) /Producer (gen_fixtures.py) >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000247 00000 n 
+0000000849 00000 n 
+0000000946 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R /Info 6 0 R >>
+startxref
+1027
+%%EOF

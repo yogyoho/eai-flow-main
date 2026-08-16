@@ -1,0 +1,22 @@
+{
+  "locked_at": "2026-08-16T12:00:00+08:00",
+  "source": "确认门1 锁定(封面/投标人须知抽取+人工增删确认)",
+  "entities": [
+    {
+      "type": "project",
+      "value": "XX水泥厂二期智能控制系统采购项目"
+    },
+    {
+      "type": "company",
+      "value": "东智装备制造有限公司"
+    },
+    {
+      "type": "spec_version",
+      "value": "S7-1500 V2.3"
+    },
+    {
+      "type": "person",
+      "value": "王建国"
+    }
+  ]
+}
