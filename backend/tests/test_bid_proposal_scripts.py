@@ -2936,6 +2936,31 @@ def _set_clause(state_dir, clause_id, **fields):
     path.write_text(json.dumps(clauses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def _add_clause(state_dir, clause):
+    """向状态目录追加一条条款(编号/孤儿节用例构造)。"""
+    path = Path(state_dir) / "clauses.json"
+    clauses = json.loads(path.read_text(encoding="utf-8"))
+    clauses.append(clause)
+    path.write_text(json.dumps(clauses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _set_structure_node(state_dir, node_id, **fields):
+    """就地改写状态目录 structure.json 中某节点(表格形状/编号用例构造)。"""
+    path = Path(state_dir) / "structure.json"
+    structure = json.loads(path.read_text(encoding="utf-8"))
+    for node in structure:
+        if node["node_id"] == node_id:
+            node.update(fields)
+    path.write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _lint_flagged_values(lint_text):
+    """解析实体lint报告[待核对]表的提取值列(第 4 列)——钉住提取值本身。"""
+    section = lint_text.split("## [待核对] 白名单外实体(疑似上一项目残留)", 1)[1]
+    rows = [ln for ln in section.splitlines() if ln.startswith("|") and "---" not in ln and not ln.startswith("| 条款")]
+    return [ln.split("|")[4].strip() for ln in rows]
+
+
 class TestBuildOutputCliContract:
     def test_help_returns_0(self, capsys):
         assert _build_module().main(["--help"]) == 0
@@ -3148,12 +3173,15 @@ class TestBuildOutputEntityLint:
         assert "entity_unverified" in _anomaly_kinds(summary) and summary["lint"]["flagged"] >= 1
 
     def test_quote_fragment_scanned(self, tmp_path, capsys):
-        """引用片段(source_ref.quote)同样在 lint 范围内。"""
+        """引用片段(source_ref.quote)同样在 lint 范围内; 钉住提取值本身(审查修复:
+        原断言只查子串, 候选值被前导散文污染时照样通过, 掩盖提取缺陷)。"""
         state = _copy_prestate(tmp_path, merged=True)
         _set_clause(state, "ZB-C-002", quote="技术方案先进性,参照华新重工股份有限公司业绩 15 优=12-15")
         assert _run_build(state, tmp_path / "out") == 3
         text = _out_text(tmp_path / "out", "实体lint报告.md")
-        assert "华新重工股份有限公司" in text and "[待核对]" in text
+        assert "[待核对]" in text
+        # 白名单外残留嵌在中文散文中: 前导引介词"参照"从候选显示值中修剪
+        assert _lint_flagged_values(text) == ["华新重工股份有限公司"]
 
     def test_whitelist_missing_anomaly(self, tmp_path, capsys):
         """白名单缺失 → 异常不静默, 按空集 diff(沿用 merge_addenda 语义)。"""
@@ -3182,3 +3210,167 @@ class TestBuildOutputHumanChecklist:
         assert "[待人工复刻]" in text
         for node_id in ("S-004", "S-008"):
             assert node_id in text, f"表格槽 {node_id} 必须入人核清单"
+
+
+# ===========================================================================
+# T6 审查修复回归(四项): F1 实体lint候选提取(贪婪前缀污染/相邻合并/归一化缺口)
+#    + F2 table_spec 装载校验 + F3 技术卷条目编号去撞 + F4 口径统一(行数/单次计算/
+#    渲染纯函数化/命中按出现次数)
+# ===========================================================================
+
+
+class TestBuildOutputLintExtraction:
+    """F1(Important): 原 company 正则 r"\\w{2,30}(后缀)" 最左贪婪——中文无空格分隔,
+    白名单公司嵌在连续语句中("见东智装备制造有限公司检测报告")必被吸成污染候选
+    → 白名单内公司误判"疑似上一项目残留"+虚假退出码 3; 相邻两公司合并为单一候选;
+    spec_version 无空格写法("S7-1500V2.3" vs 白名单"S7-1500 V2.3")同族归一化缺口。"""
+
+    def test_whitelisted_company_embedded_in_prose_not_flagged(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", evidence_ref="见东智装备制造有限公司检测报告")
+        assert _run_build(state, tmp_path / "out") == 0, "白名单公司嵌在中文语句中不得误报[待核对](曾因贪婪前缀吸'见'字成污染候选)"
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "未发现白名单外实体" in text
+        assert "东智装备制造有限公司" in text, "白名单公司照常进命中统计"
+        summary = _last_summary_json(capsys)
+        assert summary["lint"]["flagged"] == 0 and summary["anomalies"] == []
+
+    def test_adjacent_companies_flag_residue_value_not_merged(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", evidence_ref="由东智装备制造有限公司与恒力泵业股份有限公司联合出具")
+        assert _run_build(state, tmp_path / "out") == 3
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "[待核对]" in text
+        assert _lint_flagged_values(text) == ["恒力泵业股份有限公司"], "残留公司按自身取值入表(连接字'与'修剪), 不得与相邻白名单公司合并为单一候选"
+        assert "| 东智装备制造有限公司 | company | 1 |" in text, "白名单公司照常进命中统计"
+
+    def test_spec_version_no_space_form_not_flagged(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", evidence_ref="控制器固件S7-1500V2.3出厂检测")
+        assert _run_build(state, tmp_path / "out") == 0, "无空格写法与白名单'S7-1500 V2.3'应归一化同值, 不得误报"
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "未发现白名单外实体" in text
+        assert "| S7-1500 V2.3 | spec_version | 1 |" in text, "归一化命中计入出现次数"
+        summary = _last_summary_json(capsys)
+        assert summary["lint"]["flagged"] == 0
+
+    def test_hit_counts_occurrences_not_fields(self, tmp_path):
+        """F4④: 命中统计按出现次数(同一字段出现两次计 2), 非按含该值的字段数计 1。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", evidence_ref="东智装备制造有限公司与东智装备制造有限公司组成的联合体")
+        assert _run_build(state, tmp_path / "out") == 0
+        text = _out_text(tmp_path / "out", "实体lint报告.md")
+        assert "| 东智装备制造有限公司 | company | 2 |" in text
+
+
+class TestBuildOutputTableSpecValidation:
+    """F2(Minor): table_spec 形状不进装载校验时——rows 为非数字字符串在渲染处以
+    未捕获 ValueError 裸崩(退出码 1 契约失守, 非 BuildOutputError); columns 为字符串
+    时按字符迭代静默渲染逐字列头。装载期校验: columns=非空标量数组, rows=缺省或
+    int>=1(渲染双卷/人核清单统一按缺省 1)。"""
+
+    def _with_s004_spec(self, tmp_path, spec):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_structure_node(state, "S-004", required_format={"desc": "按下列列头复刻开标一览表格式", "table_spec": spec})
+        return state
+
+    def test_rows_string_exit_1(self, tmp_path):
+        state = self._with_s004_spec(tmp_path, {"columns": ["序号", "数量"], "rows": "3"})
+        assert _run_build(state, tmp_path / "out") == 1, "rows 字符串必须以 BuildOutputError 干净退出(曾未捕获 ValueError 裸 traceback)"
+        assert not (tmp_path / "out" / "商务卷.md").exists(), "失败路径不产出文件"
+
+    def test_rows_null_exit_1(self, tmp_path):
+        state = self._with_s004_spec(tmp_path, {"columns": ["序号"], "rows": None})
+        assert _run_build(state, tmp_path / "out") == 1, "rows 显式 null 违反 int>=1 契约(曾渲染字面 None 单元格)"
+
+    def test_columns_string_exit_1(self, tmp_path):
+        state = self._with_s004_spec(tmp_path, {"columns": "序号数量", "rows": 3})
+        assert _run_build(state, tmp_path / "out") == 1, "columns 字符串须拒绝(曾按字符迭代静默渲染逐字列头)"
+
+    def test_columns_empty_exit_1(self, tmp_path):
+        state = self._with_s004_spec(tmp_path, {"columns": [], "rows": 3})
+        assert _run_build(state, tmp_path / "out") == 1
+
+    def test_rows_missing_renders_default_1_consistently(self, tmp_path):
+        """F4①: rows 缺省 → 商务卷骨架 1 行 + 人核清单行数列 1(两处口径一致, 不再渲染空/None)。"""
+        state = self._with_s004_spec(tmp_path, {"columns": ["序号", "数量"]})
+        assert _run_build(state, tmp_path / "out") == 0
+        commercial = _out_text(tmp_path / "out", "商务卷.md")
+        assert commercial.count("| (待填) | (待填) |") == 1, "缺省 rows=1, 骨架恰一行"
+        checklist = _out_text(tmp_path / "out", "人核清单.md")
+        assert "| 序号/数量 | 1 |" in checklist, "人核清单行数列与商务卷口径一致(1)"
+        assert "None" not in checklist
+
+
+class TestBuildOutputEntryNumbering:
+    """F3(Minor): 条目编号 N.M 取槽位标题前导数字——两技术卷槽同前导数字(或均无数字
+    走 node 计数回退)时产出重复"N.1 响应[...]"标题; 卷末孤儿节 max(nums)+1 也可能撞既有
+    编号节。clause_id 锚点(D2)不受编号影响, 纯观感去重。"""
+
+    def test_duplicate_leading_digits_get_disambiguated(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_structure_node(state, "S-007", path="技术部分/2 技术方案")  # 与 S-008 同前导数字 2
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        assert "### 2.1 响应[ZB-C-002]" in lines, "首个认领前导数字 2 的槽保留 2"
+        assert "### **3.1 响应[ZB-C-001]**" in lines, "撞号槽顺延取下一个未占用号 3"
+        nums = [re.match(r"^### (?:\*\*)?(\d+\.\d+)", ln).group(1) for ln in lines if re.match(r"^### (?:\*\*)?\d+\.\d+ 响应\[", ln)]
+        assert len(nums) == len(set(nums)) == 2, f"全卷条目编号不得重复: {nums}"
+
+    def test_orphan_section_number_never_collides(self, tmp_path):
+        """无数字槽走顺延号时, 卷末孤儿节号必须再顺延(旧算法 max(titled)+1 会与顺延号撞号)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_structure_node(state, "S-008", path="技术部分/附表")  # 去前导数字 → 顺延取 2
+        orphan_clause = {
+            "clause_id": "JS-C-001",
+            "source_file": "技术规范书.docx",
+            "class": "normal",
+            "category": "technical",
+            "source_ref": {"page": None, "section": "3.2.2", "para": 1, "quote": "控制器冗余配置"},
+            "requirement": "控制器冗余配置",
+            "response_status": "unassigned",
+            "response_skeleton": {"points": [], "evidence_ref": None, "suggestion": None},
+            "from_addendum": False,
+            "superseded_by": None,
+            "voided": False,
+        }
+        _add_clause(state, orphan_clause)
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        assert "### 1.1 响应[ZB-C-002]" in lines, "带号槽'1 技术方案'保留 1"
+        assert "### **2.1 响应[ZB-C-001]**" in lines, "无数字槽顺延取 2(旧算法回退计数同为 2——孤儿节撞号根源)"
+        assert "## 3 未挂接格式槽的技术条款(清单驱动)" in lines, "孤儿节继续顺延取 3(旧算法 max+1=2 与上面撞号)"
+        assert "### 3.1 响应[JS-C-001]" in lines
+        nums = [re.match(r"^### (?:\*\*)?(\d+\.\d+)", ln).group(1) for ln in lines if re.match(r"^### (?:\*\*)?\d+\.\d+ 响应\[", ln)]
+        assert len(nums) == len(set(nums)) == 3, f"含孤儿节条目在内全卷编号不得重复: {nums}"
+
+
+class TestBuildOutputRenderHygiene:
+    """F4②③: render_volume_md 不再以出参方式变异共享 anomalies 列表(纯函数化);
+    deviation_rows 同一数据只计算一次(渲染+摘要共用)。"""
+
+    def test_render_volume_md_returns_anomalies_no_outparam(self):
+        build = _build_module()
+        import inspect
+
+        params = inspect.signature(build.render_volume_md).parameters
+        assert "anomalies" not in params, "渲染函数不得以出参方式变异共享列表(隐藏副作用)"
+        fixtures = Path(__file__).parent / "fixtures" / "bid_proposal"
+        structure = json.loads((fixtures / "structure.json").read_text(encoding="utf-8"))
+        clauses = json.loads((fixtures / "clauses.json").read_text(encoding="utf-8"))
+        md, anomalies = build.render_volume_md("commercial", structure, clauses)
+        assert md.startswith("# 投标文件格式") and anomalies == [], "返回 (md, 本卷异常) 元组, 由调用方合并"
+
+    def test_deviation_rows_computed_once_per_run(self, tmp_path, monkeypatch):
+        build = _build_module()
+        calls = []
+        real = build.deviation_rows
+
+        def counting(clauses):
+            calls.append(1)
+            return real(clauses)
+
+        monkeypatch.setattr(build, "deviation_rows", counting)
+        state = _copy_prestate(tmp_path, merged=True)
+        assert build.main(["--state-dir", str(state), "--out", str(tmp_path / "out")]) == 0
+        assert len(calls) == 1, "渲染与摘要共用同一份偏离行(曾对同一数据计算两次)"

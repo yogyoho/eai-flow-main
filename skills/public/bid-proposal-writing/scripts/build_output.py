@@ -19,6 +19,8 @@
     ② 技术卷 = 格式章节规定结构部分按镜像渲染 + 逐条款条目: 条目标题嵌 clause_id
        (如 "2.1 响应[ZB-C-001]"——clause_id 入标题是阶段5 重灌唯一可存活的锚点
        载体, 交付物中保留不删, D2); mandatory 条款条目标题整体**加粗**;
+       条目节号优先取槽位标题前导数字, 撞号/无号顺延(全卷 N 唯一, 观感去重——
+       锚点是 clause_id, 编号不承担契约职责);
        条目体 = 要求原文锚点→响应要点→证据引用→满足状态→suggestion;
        活条款(technical 类)无挂接槽时入卷末"未挂接条款"节, 零遗漏。
     ③ 偏离表 = 仅 class=mandatory 或 response_status=deviation 的活条款。
@@ -26,11 +28,14 @@
        待确认=draft+pending_confirm, 未分配=unassigned; superseded/voided 是
        历史条款, 除外列示不计入总数)。
     ⑤ 实体 lint = 白名单 diff 全部 evidence_ref 与引用片段(source_ref.quote):
-       确定性模式提取候选(company 工商后缀 / spec_version 型号+V版本), 白名单外
-       → 报告[待核对] + 摘要异常; person/project 无确定性提取模式, 只做白名单
-       命中统计(出现即核, 无法被动发现)——报告显著标注"LLM辅助抽取白名单，
-       非确定性"(白名单本身由 LLM 抽取+人工确认, lint 是确定性 diff 但覆盖
-       受白名单与模式能力限制)。
+       确定性候选提取——company 先掩蔽白名单值再按全部工商后缀位置扫描(同一
+       结束位置取最长后缀, 前导连接词仅修剪显示值; 防贪婪正则把白名单公司连同
+       前导散文吸成污染候选/相邻两公司合并), spec_version 用型号+V版本正则;
+       候选与白名单比对按归一化(去空白+casefold, "S7-1500V2.3"≡"S7-1500 V2.3");
+       白名单外 → 报告[待核对] + 摘要异常; person/project 无确定性提取模式,
+       只做白名单命中统计(按出现次数计, 无法被动发现)——报告显著标注
+       "LLM辅助抽取白名单，非确定性"(白名单本身由 LLM 抽取+人工确认, lint 是
+       确定性 diff 但覆盖受白名单与模式能力限制)。
     ⑥ 人核清单 = format_check 槽(签字/盖章/份数/页码)全部入清单不进确定性判定
        + [待人工复刻]表格槽(管道表格无法表达合并单元格/列宽——如实声明渲染
        边界, 所有表格槽均标[待人工复刻]并列头骨架照渲染)。
@@ -76,12 +81,19 @@ STATUS_LABELS = {"unassigned": "未分配", "draft": "草稿", "pending_confirm"
 RESPONDED_STATUSES = ("compliant", "deviation")
 PENDING_STATUSES = ("draft", "pending_confirm")
 
-# 实体 lint 可确定性提取的候选模式(白名单外 → [待核对]);
+# 实体 lint 可确定性提取的候选(白名单外 → [待核对]);
 # person/project 无确定性模式, 由白名单命中统计覆盖——报告如实声明此边界。
-LINT_PATTERNS = (
-    ("company", re.compile(r"\w{2,30}(?:股份有限公司|有限责任公司|有限公司|集团公司)")),
-    ("spec_version", re.compile(r"[A-Z][A-Z0-9]*[0-9][A-Z0-9-]*\s*V\d+(?:\.\d+)+")),
-)
+# company 不用单条贪婪正则: \w 在中文(无空格分隔)里会把白名单公司连同前导散文吸成
+# 单一污染候选("见东智装备制造有限公司"), 相邻两公司也合并为一个候选——改为
+# "白名单掩蔽 + 按全部后缀位置扫描"(见 _extract_entity_candidates)。
+COMPANY_SUFFIXES = ("股份有限公司", "有限责任公司", "有限公司", "集团公司")  # 同一结束位置取最长后缀
+COMPANY_MAX_PREFIX = 30  # 字号前缀 \w 上限(对齐原正则 {2,30} 的量级约束)
+# 前导连接/引介词修剪——仅影响候选显示值, 不改变命中方向(白名单值已被掩蔽, 修剪
+# 不可能把残留候选修成白名单命中)。多字词在前, 循环修剪至无可再剪。
+COMPANY_LEADING_TRIM = ("参照", "参考", "以及", "包括", "由", "见", "按", "据", "向", "从", "受", "经", "把", "被", "让", "给", "即", "系", "与", "及", "或")
+SPEC_VERSION_RE = re.compile(r"[A-Z][A-Z0-9]*[0-9][A-Z0-9-]*\s*V\d+(?:\.\d+)+")
+_WORD_CHAR_RE = re.compile(r"\w")
+_MASK_SENTINEL = "\x00"  # 非 \w 字符: 掩蔽白名单值, 阻断贪婪前缀吸收/相邻合并
 
 
 class BuildOutputError(Exception):
@@ -204,6 +216,21 @@ def load_structure(state_dir: Path) -> list[dict]:
             raise BuildOutputError(f"structure.json items[{index}] path 应为非空字符串: {path}")
         if not isinstance(node.get("linked_clause_ids") or [], list):
             raise BuildOutputError(f"structure.json items[{index}] linked_clause_ids 应为数组: {path}")
+        if node["slot_type"] == "table":
+            table_spec = (node.get("required_format") or {}).get("table_spec")
+            if table_spec is not None:
+                # 形状校验(schema 层 table_spec 为自由对象, 消费侧约束在此收口):
+                # rows 字符串曾以未捕获 ValueError 裸崩, columns 字符串曾按字符迭代
+                # 静默渲染逐字列头——装载期拒绝, 走 BuildOutputError 干净退出(退出码 1)。
+                if not isinstance(table_spec, dict):
+                    raise BuildOutputError(f"structure.json items[{index}] {node['node_id']} table_spec 应为对象: {path}")
+                columns = table_spec.get("columns")
+                if not isinstance(columns, list) or not columns or not all(isinstance(c, (str, int, float)) and not isinstance(c, bool) for c in columns):
+                    raise BuildOutputError(f"structure.json items[{index}] {node['node_id']} table_spec.columns 应为非空标量数组(列头骨架渲染前提): {path}")
+                if "rows" in table_spec:  # 缺省容忍(按 1 渲染); 显式 null/非法类型拒绝
+                    rows = table_spec["rows"]
+                    if isinstance(rows, bool) or not isinstance(rows, int) or rows < 1:
+                        raise BuildOutputError(f"structure.json items[{index}] {node['node_id']} table_spec.rows 应为 >=1 的整数(缺省按 1): {path}")
     return data
 
 
@@ -255,11 +282,55 @@ def render_clause_entry(clause: dict, num: str, level: int = 3) -> list[str]:
 # =============================================================================
 
 
-def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], anomalies: list[dict]) -> str:
-    """渲染单卷: 镜像章节树(path 标题链→# 层级) + 槽位标注 + 技术卷条目挂接。"""
+def _table_rows(table_spec: dict) -> int:
+    """表格行数口径(双卷骨架与人核清单共用): 缺省/无效一律 1——装载期已校验 int>=1,
+    此处兜底保证两处渲染口径一致(人核清单曾对缺省 rows 渲染空单元格)。"""
+    rows = table_spec.get("rows")
+    return rows if isinstance(rows, int) and not isinstance(rows, bool) and rows >= 1 else 1
+
+
+def _next_free_number(claimed: set[int]) -> int:
+    """下一个未占用节号(从已占用最大值 +1 起顺延)。"""
+    number = max(claimed) + 1 if claimed else 1
+    while number in claimed:
+        number += 1
+    return number
+
+
+def _allocate_section_numbers(nodes: list[dict]) -> tuple[dict[str, str], set[int]]:
+    """技术卷条目节号分配(观感去撞; clause_id 锚点 D2 不受编号影响)。
+
+    优先认领槽位标题前导数字; 撞号或无数字时顺延取未占用号——原实现两槽同前导
+    数字(或无数字回退计数与带号槽重合)会产出重复"N.1 响应[...]"标题, 卷末孤儿节
+    max(titled)+1 也可能与顺延号撞号。返回 (node_id → 节号, 已占用集合——供孤儿节续号)。
+    """
+    claimed: set[int] = set()
+    numbers: dict[str, str] = {}
+    for node in nodes:
+        if node["slot_type"] == "group":
+            continue
+        matched = re.match(r"\s*(\d+)", node["path"].split("/")[-1])
+        number = int(matched.group(1)) if matched else _next_free_number(claimed)
+        if number in claimed:
+            number = _next_free_number(claimed)
+        claimed.add(number)
+        numbers[node["node_id"]] = str(number)
+    return numbers, claimed
+
+
+def render_volume_md(volume: str, structure: list[dict], clauses: list[dict]) -> tuple[str, list[dict]]:
+    """渲染单卷: 镜像章节树(path 标题链→# 层级) + 槽位标注 + 技术卷条目挂接。
+
+    纯函数: 返回 (markdown, 本卷异常)——悬挂外键等异常由调用方合并, 不以出参方式
+    变异共享列表(隐藏副作用)。
+    """
     clauses_by_id = {c["clause_id"]: c for c in clauses}
     nodes = [n for n in structure if n["volume"] == volume]
     active_tech = [c for c in clauses if _is_active(c) and c.get("category") == "technical"]
+    section_numbers: dict[str, str] = {}
+    claimed: set[int] = set()
+    if volume == "technical":
+        section_numbers, claimed = _allocate_section_numbers(nodes)
 
     # 活技术条款 → 首个挂接它的非 group 技术卷节点(多处挂接以首处为准渲染, 零遗漏优先)
     linked_map: dict[str, str] = {}
@@ -274,8 +345,8 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], an
         if lines and lines[-1] != "":
             lines.append("")
 
+    anomalies: list[dict] = []
     lines: list[str] = []
-    non_group_count = 0
     for node in nodes:
         segments = [s.strip() for s in node["path"].split("/")]
         title = segments[-1]
@@ -288,7 +359,6 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], an
             if desc:
                 lines.extend([f"> {desc}", ""])
             continue
-        non_group_count += 1
         slot_type = node["slot_type"]
         lines.append(f"- **槽位类型**: {SLOT_TYPE_LABELS[slot_type]}")
         if desc:
@@ -324,7 +394,7 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], an
             if isinstance(table_spec, dict) and table_spec.get("columns"):
                 columns = [str(c) for c in table_spec["columns"]]
                 lines.extend(["", "| " + " | ".join(_cell(c) for c in columns) + " |", "| " + " | ".join("---" for _ in columns) + " |"])
-                for _ in range(int(table_spec.get("rows") or 1)):
+                for _ in range(_table_rows(table_spec)):
                     lines.append("| " + " | ".join("(待填)" for _ in columns) + " |")
                 lines.append("")
             lines.append("> [待人工复刻] 合并单元格/列宽等原表格式 markdown 管道无法表达, 须人工按招标文件原样复刻——已入人核清单。")
@@ -333,22 +403,22 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], an
             lines.append("> 人核项(签字/盖章/份数/页码), 不做确定性判定——已入人核清单, 终稿人工核签。")
             lines.append("")
 
-        # 技术卷: 活技术条款挂接本槽位 → 渲染条目(标题 N.M 响应[clause_id], D2)
+        # 技术卷: 活技术条款挂接本槽位 → 渲染条目(标题 N.M 响应[clause_id], D2;
+        # N 取预分配节号——撞号/无号已顺延去重, 全卷唯一)
         if volume == "technical":
             entries = [c for c in active_tech if linked_map.get(c["clause_id"]) == node["node_id"]]
             if entries:
-                matched = re.match(r"\s*(\d+)", title)
-                parent_num = matched.group(1) if matched else str(non_group_count)
+                parent_num = section_numbers[node["node_id"]]
                 for index, clause in enumerate(entries, 1):
                     _ensure_blank()
                     lines.extend(render_clause_entry(clause, f"{parent_num}.{index}"))
 
-    # 技术卷兜底: 未挂接任何槽位的活技术条款 → 卷末专节渲染(逐条款条目零遗漏)
+    # 技术卷兜底: 未挂接任何槽位的活技术条款 → 卷末专节渲染(逐条款条目零遗漏);
+    # 节号在已占用集合之后顺延, 不与既有编号节撞号
     if volume == "technical":
         orphans = [c for c in active_tech if c["clause_id"] not in linked_map]
         if orphans:
-            nums = [int(m.group(1)) for n in nodes if n["slot_type"] != "group" and (m := re.match(r"\s*(\d+)", n["path"].split("/")[-1].strip()))]
-            parent_num = str(max(nums) + 1) if nums else "1"
+            parent_num = str(_next_free_number(claimed))
             _ensure_blank()
             lines.append(f"## {parent_num} 未挂接格式槽的技术条款(清单驱动)")
             lines.append("")
@@ -363,7 +433,7 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], an
         lines.extend(f"| {n['node_id']} | {_cell(n['path'])} | {_cell((n.get('required_format') or {}).get('desc') or '')} |" for n in image_nodes)
         lines.append("")
 
-    return "\n".join(lines).rstrip() + "\n"
+    return "\n".join(lines).rstrip() + "\n", anomalies
 
 
 # =============================================================================
@@ -376,8 +446,8 @@ def deviation_rows(clauses: list[dict]) -> list[dict]:
     return [c for c in clauses if _is_active(c) and (c["class"] == "mandatory" or c["response_status"] == "deviation")]
 
 
-def render_deviation_md(clauses: list[dict]) -> str:
-    rows = deviation_rows(clauses)
+def render_deviation_md(rows: list[dict]) -> str:
+    """渲染偏离表; rows 由调用方经 deviation_rows(clauses) 预计算一次(渲染与摘要共用, 不重算)。"""
     lines = [
         "# 偏离表",
         "",
@@ -477,7 +547,7 @@ def render_checklist_md(structure: list[dict]) -> tuple[str, dict]:
     for node in replica_tables:
         spec = (node.get("required_format") or {}).get("table_spec") or {}
         columns = "/".join(str(c) for c in (spec.get("columns") or []))
-        lines.append(f"| {node['node_id']} | {_cell(node['path'])} | {_cell(columns)} | {spec.get('rows', '')} | {_cell((node.get('required_format') or {}).get('desc') or '')} |")
+        lines.append(f"| {node['node_id']} | {_cell(node['path'])} | {_cell(columns)} | {_table_rows(spec)} | {_cell((node.get('required_format') or {}).get('desc') or '')} |")
     if not replica_tables:
         lines.append("| (无) | | | | |")
     lines.append("")
@@ -489,13 +559,75 @@ def render_checklist_md(structure: list[dict]) -> tuple[str, dict]:
 # =============================================================================
 
 
+def _entity_norm(value: str) -> str:
+    """实体值归一化: 去全部空白 + casefold——"S7-1500V2.3" 与 "S7-1500 V2.3" 同值。"""
+    return re.sub(r"\s+", "", value).casefold()
+
+
+def _mask_whitelist(text: str, values: set[str]) -> str:
+    """白名单值以非字哨兵掩蔽(长值优先)——掩蔽后的文本里白名单公司不再可被候选
+    提取吸收, 贪婪前缀污染("见东智…有限公司")与相邻公司合并由此根除。"""
+    masked = text
+    for value in sorted(values, key=len, reverse=True):
+        masked = masked.replace(value, _MASK_SENTINEL)
+    return masked
+
+
+def _extract_entity_candidates(text: str, values: set[str]) -> list[tuple[str, str]]:
+    r"""确定性候选提取(类型, 候选值); spec_version 用正则, company 用后缀位扫描。
+
+    company 扫描在白名单掩蔽后的文本上进行: ①找全部工商后缀位置(同一结束位置取
+    最长后缀——"股份有限公司"含"有限公司", 只认外层); ②从后缀起点向前走 \w 最多
+    COMPANY_MAX_PREFIX 字(前缀 <2 字跳过); ③前导连接/引介词修剪显示值; ④保序去重。
+    """
+    candidates: list[tuple[str, str]] = [("spec_version", m) for m in SPEC_VERSION_RE.findall(text)]
+    masked = _mask_whitelist(text, values)
+    claimed_ends: set[int] = set()  # 已按最长后缀认领的结束位置, 防内层后缀重复提取
+    for suffix in sorted(COMPANY_SUFFIXES, key=len, reverse=True):
+        start = 0
+        while True:
+            found = masked.find(suffix, start)
+            if found < 0:
+                break
+            end = found + len(suffix)
+            start = end
+            if end in claimed_ends:
+                continue
+            claimed_ends.add(end)
+            index = found
+            while index > 0 and found - index < COMPANY_MAX_PREFIX and _WORD_CHAR_RE.match(masked[index - 1]):
+                index -= 1
+            prefix_start = index
+            if found - prefix_start < 2:
+                continue  # 字号前缀不足 2 字——不足以构成公司名
+            candidate = masked[prefix_start:end]
+            for token in COMPANY_LEADING_TRIM:  # 循环修剪前导连接/引介词(多字词优先)
+                while candidate.startswith(token):
+                    candidate = candidate[len(token) :]
+            candidates.append(("company", candidate))
+    seen: set[str] = set()
+    unique: list[tuple[str, str]] = []
+    for etype, candidate in candidates:
+        if candidate and candidate not in seen:
+            seen.add(candidate)
+            unique.append((etype, candidate))
+    return unique
+
+
+def _candidate_whitelisted(candidate: str, values: set[str]) -> bool:
+    """候选命中白名单判定: 精确相等或归一化相等(无空格写法同值)。"""
+    normalized = _entity_norm(candidate)
+    return any(candidate == v or normalized == _entity_norm(v) for v in values)
+
+
 def run_entity_lint(clauses: list[dict], whitelist: dict | None) -> tuple[list[dict], dict]:
     """白名单 diff 全部 evidence_ref 与引用片段。
 
-    hits = 白名单实体值出现次数(命中统计);
-    flagged = 模式提取候选中不在白名单的(疑似上一项目残留)→[待核对]+异常。
+    hits = 白名单实体值出现次数(按归一化子串计数, 同一字段出现两次计 2);
+    flagged = 确定性候选提取中不在白名单的(疑似上一项目残留)→[待核对]+异常。
     """
     values: set[str] = {e["value"] for e in (whitelist or {}).get("entities", [])}
+    norm_values = {value: _entity_norm(value) for value in values}
     hits: dict[str, int] = {}
     flagged: list[dict] = []
     for clause in clauses:
@@ -504,17 +636,16 @@ def run_entity_lint(clauses: list[dict], whitelist: dict | None) -> tuple[list[d
         for field, text in texts:
             if not isinstance(text, str) or not text.strip():
                 continue
-            for value in values:
-                if value in text:
-                    hits[value] = hits.get(value, 0) + 1
-            seen: set[str] = set()
-            for etype, pattern in LINT_PATTERNS:
-                for candidate in pattern.findall(text):
-                    if candidate in seen or candidate in values:
-                        continue
-                    seen.add(candidate)
-                    message = f"{clause['clause_id']} {field} 含白名单外实体 {candidate!r}({etype})——疑似上一项目残留, [待核对]"
-                    flagged.append({"kind": "entity_unverified", "clause_id": clause["clause_id"], "field": field, "type": etype, "value": candidate, "context": text, "message": message})
+            normalized_text = _entity_norm(text)
+            for value, norm_value in norm_values.items():
+                count = normalized_text.count(norm_value)
+                if count:
+                    hits[value] = hits.get(value, 0) + count
+            for etype, candidate in _extract_entity_candidates(text, values):
+                if _candidate_whitelisted(candidate, values):
+                    continue
+                message = f"{clause['clause_id']} {field} 含白名单外实体 {candidate!r}({etype})——疑似上一项目残留, [待核对]"
+                flagged.append({"kind": "entity_unverified", "clause_id": clause["clause_id"], "field": field, "type": etype, "value": candidate, "context": text, "message": message})
     return flagged, hits
 
 
@@ -571,9 +702,12 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     if whitelist is None:
         anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, lint 按空集 diff(全部候选进[待核对])——确认门1 未锁定白名单或文件被移动"})
 
-    commercial_md = render_volume_md("commercial", structure, clauses, anomalies)
-    technical_md = render_volume_md("technical", structure, clauses, anomalies)
-    deviation_md = render_deviation_md(clauses)
+    commercial_md, commercial_anomalies = render_volume_md("commercial", structure, clauses)
+    technical_md, technical_anomalies = render_volume_md("technical", structure, clauses)
+    anomalies.extend(commercial_anomalies)
+    anomalies.extend(technical_anomalies)
+    dev_rows = deviation_rows(clauses)  # 渲染与摘要共用一份, 不对同一数据计算两次
+    deviation_md = render_deviation_md(dev_rows)
     coverage = compute_coverage(clauses)
     coverage_md = render_coverage_md(clauses, coverage)
     checklist_md, checklist_counts = render_checklist_md(structure)
@@ -595,7 +729,7 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     summary = {
         "written": list(OUTPUT_FILES),
         "coverage": coverage,
-        "deviation_rows": len(deviation_rows(clauses)),
+        "deviation_rows": len(dev_rows),
         "human_checklist": checklist_counts,
         "lint": {"flagged": len(flagged), "entity_hits": len(hits), "whitelist_missing": whitelist is None},
         "anomalies": anomalies,
