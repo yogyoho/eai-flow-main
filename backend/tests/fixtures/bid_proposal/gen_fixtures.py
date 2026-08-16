@@ -170,6 +170,7 @@ CLAUSES = [
         "response_skeleton": {"points": ["防护等级IP65", "控制器S7-1500 V2.3"], "evidence_ref": None, "suggestion": None},
         "from_addendum": False,
         "superseded_by": None,
+        "voided": False,
     },
     {
         "clause_id": "ZB-C-002",
@@ -182,6 +183,7 @@ CLAUSES = [
         "response_skeleton": {"points": ["总体架构先进性", "与工艺场景契合度"], "evidence_ref": None, "suggestion": None},
         "from_addendum": False,
         "superseded_by": None,
+        "voided": False,
     },
     {
         "clause_id": "ZB-C-003",
@@ -194,6 +196,7 @@ CLAUSES = [
         "response_skeleton": {"points": [], "evidence_ref": None, "suggestion": None},
         "from_addendum": False,
         "superseded_by": "BY-C-004",
+        "voided": False,
     },
     {
         "clause_id": "BY-C-004",
@@ -206,6 +209,7 @@ CLAUSES = [
         "response_skeleton": {"points": ["生产排期压缩至60天"], "evidence_ref": None, "suggestion": None},
         "from_addendum": True,
         "superseded_by": None,
+        "voided": False,
     },
 ]
 

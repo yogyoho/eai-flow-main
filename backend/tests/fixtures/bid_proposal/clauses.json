@@ -21,7 +21,8 @@
       "suggestion": null
     },
     "from_addendum": false,
-    "superseded_by": null
+    "superseded_by": null,
+    "voided": false
   },
   {
     "clause_id": "ZB-C-002",
@@ -45,7 +46,8 @@
       "suggestion": null
     },
     "from_addendum": false,
-    "superseded_by": null
+    "superseded_by": null,
+    "voided": false
   },
   {
     "clause_id": "ZB-C-003",
@@ -66,7 +68,8 @@
       "suggestion": null
     },
     "from_addendum": false,
-    "superseded_by": "BY-C-004"
+    "superseded_by": "BY-C-004",
+    "voided": false
   },
   {
     "clause_id": "BY-C-004",
@@ -89,6 +92,7 @@
       "suggestion": null
     },
     "from_addendum": true,
-    "superseded_by": null
+    "superseded_by": null,
+    "voided": false
   }
 ]

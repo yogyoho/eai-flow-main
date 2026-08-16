@@ -43,7 +43,8 @@ SLOT_TYPES = {"text", "table", "image", "format_check", "group"}
 SCORE_TYPES = {"objective", "subjective", "price"}
 
 # 设计文档字段表(不缺不漏不加: 精确集合比较, 多余字段同样报错)
-CLAUSE_FIELDS = {"clause_id", "source_file", "class", "category", "source_ref", "requirement", "response_status", "response_skeleton", "from_addendum", "superseded_by"}
+# voided = 阶段3 落账标记(T5: 作废→标 voided; schema 可选字段, 默认 false)
+CLAUSE_FIELDS = {"clause_id", "source_file", "class", "category", "source_ref", "requirement", "response_status", "response_skeleton", "from_addendum", "superseded_by", "voided"}
 SOURCE_REF_FIELDS = {"page", "section", "para", "quote"}
 RESPONSE_SKELETON_FIELDS = {"points", "evidence_ref", "suggestion"}
 NODE_FIELDS = {"node_id", "volume", "path", "slot_type", "required_format", "linked_clause_ids"}
@@ -179,6 +180,7 @@ class TestFixtureClauses:
             assert c["category"] in CLAUSE_CATEGORIES, f"{c['clause_id']} category 非法: {c['category']}"
             assert c["response_status"] in RESPONSE_STATUSES, f"{c['clause_id']} response_status 非法: {c['response_status']}"
             assert isinstance(c["from_addendum"], bool)
+            assert isinstance(c["voided"], bool), f"{c['clause_id']} voided 应为 bool(T5 落账标记)"
 
     def test_source_ref_shape(self, clauses):
         for c in clauses:
@@ -637,10 +639,12 @@ class TestSchemaFunctionalClauses:
             {"source_file": "招标文件.pdf", "source_ref": {"page": 23, "section": "3.2.1", "para": None, "quote": "原文片段"}},
             # 补遗合并后的状态字段。
             {"from_addendum": True, "superseded_by": "ZB-C-018", "response_status": "deviation"},
+            # 补遗作废落账标记(T5): voided 可选 bool。
+            {"voided": True},
             {"class": "scoring", "category": "commercial", "response_status": "draft"},
             {"source_ref": {"page": None, "section": "3.2.1", "para": 14, "quote": "字" * 50}},
         ],
-        ids=["design-example-docx", "pdf-page-anchor", "addendum-superseded", "scoring-class", "quote-max-50"],
+        ids=["design-example-docx", "pdf-page-anchor", "addendum-superseded", "addendum-voided", "scoring-class", "quote-max-50"],
     )
     def test_valid_samples_pass(self, overrides):
         assert _ref_validator("clauses.schema.json").is_valid(_sample_clause(**overrides))
@@ -657,6 +661,7 @@ class TestSchemaFunctionalClauses:
             ({"category": "legal"}, None),
             ({"response_status": "approved"}, None),
             ({"from_addendum": "yes"}, None),
+            ({"voided": "yes"}, None),
             ({"superseded_by": "017"}, None),
             ({"requirement": ""}, None),
             ({"source_ref": {"page": "23", "section": "3.2.1", "para": 14, "quote": "原文"}}, None),
@@ -672,6 +677,7 @@ class TestSchemaFunctionalClauses:
             "bad-category",
             "bad-response-status",
             "bad-from-addendum-type",
+            "bad-voided-type",
             "bad-superseded-by",
             "empty-requirement",
             "page-as-string",
@@ -2154,3 +2160,584 @@ class TestExtractExistingStateHardening:
         with pytest.raises(OSError) as excinfo:
             extract.atomic_write_json(tmp_path / "out.json", {"a": 1})
         assert "replace-boom" in str(excinfo.value), f"必须抛出原始异常而非清理失败的 PermissionError: {excinfo.value}"
+
+
+# ===========================================================================
+# T5: merge_addenda.py — 阶段3 补遗/答疑确定性落账(幂等台账 + 新实体 D3 + 悬挂外键 D7)
+# ===========================================================================
+# CLI: merge_addenda.py --addendum-candidates <候选JSON> --state-dir <dir> [--decisions <人工裁决JSON>]
+# 候选契约(一份补遗 = 一次调用 = 一个文件):
+#   {"addendum_file": "补遗文件-01.pdf",
+#    "entities": [{"type", "value"}],   # 可选: Agent 从补遗文本观察到的实体(D3 diff 基准)
+#    "items": [{"mapping_id", "action": "new|modify|void",
+#               "anchor": {"section"}|null, "target": <clause_id>|null, "clause": {...}|null}]}
+# 三级合并: ①章节锚点在活条款(未 superseded/未 voided)中唯一命中→自动落账
+#           ②相似度候选(仅 target 无 anchor)→脚本不合并, pending 产出新旧并排 diff
+#           ③平手(锚点多命中)/同目标冲突→必须 --decisions 人工裁决
+# 落账: new/modify 新条款强制 from_addendum=true; modify→旧项标 superseded_by; void→标 voided。
+# 台账 merge_ledger.json 按 sha256(候选内容规范化哈希) 幂等: 同 hash 重跑整体跳过零写入。
+# D7: 落账后扫描 structure/rubric 的 linked_clause_ids, 指向缺失/superseded/voided → 异常不静默。
+# 退出码: 0=干净完成(含台账跳过) 1=用法/文件错误 3=完成但有异常项
+
+
+def _merge_module():
+    """硬导入 merge_addenda(T5 已落地; 模块缺失时测试失败而非 skip——管线脚本必须存在)。"""
+    import importlib
+
+    return importlib.import_module("merge_addenda")
+
+
+def _copy_prestate(tmp_path, *, merged: bool = True) -> Path:
+    """构建状态目录基线: 拷贝 fixture 四件套。
+
+    merged=True  → fixture 原样(补遗已合并形态: ZB-C-003 已被 BY-C-004 supersede, 全外键合法);
+    merged=False → 还原'补遗未合并'形态(移除 BY-C-004 + 清 ZB-C-003.superseded_by +
+                   清 S-002/S-004 对 BY-C-004 的链接), 使干净合并后 FK 扫描全绿。
+    """
+    state = tmp_path / "state"
+    state.mkdir(parents=True)
+    clauses = json.loads((FIXTURE_DIR / "clauses.json").read_text(encoding="utf-8"))
+    structure = json.loads((FIXTURE_DIR / "structure.json").read_text(encoding="utf-8"))
+    if not merged:
+        clauses = [c for c in clauses if c["clause_id"] != "BY-C-004"]
+        for c in clauses:
+            if c["clause_id"] == "ZB-C-003":
+                c["superseded_by"] = None
+        for n in structure:
+            n["linked_clause_ids"] = [cid for cid in n["linked_clause_ids"] if cid != "BY-C-004"]
+    (state / "clauses.json").write_text(json.dumps(clauses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (state / "structure.json").write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    rubric_text = (FIXTURE_DIR / "rubric.json").read_text(encoding="utf-8")
+    (state / "rubric.json").write_text(rubric_text, encoding="utf-8")
+    (state / "entities_whitelist.json").write_text((FIXTURE_DIR / "entities_whitelist.json").read_text(encoding="utf-8"), encoding="utf-8")
+    return state
+
+
+def _addendum_clause(clause_id="BY-C-004", *, section="二", requirement="交货期:合同签订后60天内交货(补遗文件-01修订版)", quote="交货期统一调整为合同签订后60天"):
+    """补遗新条款载荷: from_addendum 故意 False——脚本落账时必须强制置 True。"""
+    return {
+        "clause_id": clause_id,
+        "source_file": "补遗文件-01.pdf",
+        "class": "normal",
+        "category": "commercial",
+        "source_ref": {"page": 1, "section": section, "para": 1, "quote": quote},
+        "requirement": requirement,
+        "response_status": "pending_confirm",
+        "response_skeleton": {"points": [], "evidence_ref": None, "suggestion": None},
+        "from_addendum": False,
+        "superseded_by": None,
+    }
+
+
+def _write_addendum(tmp_path, name="cands.json", *, items=None, entities=None, addendum_file="补遗文件-01.pdf", raw=None):
+    record = raw if raw is not None else {"addendum_file": addendum_file, "items": items}
+    if entities is not None:
+        record["entities"] = entities
+    path = Path(tmp_path) / name
+    path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def _write_decisions(tmp_path, decisions, name="decisions.json"):
+    path = Path(tmp_path) / name
+    path.write_text(json.dumps({"decisions": decisions}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def _run_merge(state_dir, candidates, *, decisions=None):
+    mod = _merge_module()
+    argv = ["--addendum-candidates", str(candidates), "--state-dir", str(state_dir)]
+    if decisions is not None:
+        argv += ["--decisions", str(decisions)]
+    return mod.main(argv)
+
+
+def _state_json(state_dir, name):
+    return json.loads((Path(state_dir) / name).read_text(encoding="utf-8"))
+
+
+def _snapshot(state_dir):
+    return {p.name: p.read_bytes() for p in Path(state_dir).iterdir()}
+
+
+def _clauses_by_id(state_dir):
+    return {c["clause_id"]: c for c in _state_json(state_dir, "clauses.json")}
+
+
+_MODIFY_ANCHOR_ITEMS = [{"mapping_id": "M-001", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("BY-C-004")}]
+
+
+class TestMergeAddendaTier1Auto:
+    """①章节锚点精确匹配 → 自动落账。"""
+
+    def test_exact_anchor_modify_supersedes(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        rc = _run_merge(state, _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS))
+        assert rc == 0, f"锚点唯一命中应自动落账干净退出, 实际 rc={rc}"
+        by_id = _clauses_by_id(state)
+        assert by_id["ZB-C-003"]["superseded_by"] == "BY-C-004", "修改条款: 旧项必须标 superseded_by 指向新 id"
+        assert by_id["BY-C-004"]["from_addendum"] is True, "新条款必须强制 from_addendum=true(载荷为 False 也要覆盖)"
+        assert by_id["BY-C-004"]["voided"] is False, "落账时 voided 缺省补 false"
+        summary = _last_summary_json(capsys)
+        assert summary["applied"]["added"] == ["BY-C-004"]
+        assert summary["applied"]["superseded"] == [{"from": "ZB-C-003", "to": "BY-C-004"}]
+        assert summary["pending"] == [] and summary["anomalies"] == []
+        assert "clauses.json" in summary["written"] and summary["ledger_recorded"] is True
+
+    def test_new_clause_action_enters_with_from_addendum(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-002", "action": "new", "clause": _addendum_clause("BY-C-005", requirement="质保期延长至36个月")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 0
+        by_id = _clauses_by_id(state)
+        assert by_id["BY-C-005"]["from_addendum"] is True
+        summary = _last_summary_json(capsys)
+        assert summary["applied"]["added"] == ["BY-C-005"] and summary["applied"]["superseded"] == []
+
+    def test_void_marks_voided(self, tmp_path, capsys):
+        """作废→标 voided; 引用该条款的 structure/rubric 外键以 voided 理由浮出(D7)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        items = [{"mapping_id": "M-003", "action": "void", "anchor": {"section": "3.2.1"}}]  # → ZB-C-001(S-008/R-003 引用)
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3, "落账后出现悬挂外键 → 完成但有异常(退出码 3)"
+        assert _clauses_by_id(state)["ZB-C-001"]["voided"] is True, "作废落盘不因外键异常回滚"
+        summary = _last_summary_json(capsys)
+        assert summary["applied"]["voided"] == ["ZB-C-001"]
+        fk = [(a["source"], a["item_id"], a["reason"]) for a in summary["anomalies"] if a["kind"] == "clause_fk_invalid"]
+        assert sorted(fk) == [("rubric", "R-003", "voided"), ("structure", "S-008", "voided")]
+        assert "clauses.json" in summary["written"], "外键异常是扫描型发现, 不阻断落账"
+
+    def test_anchor_target_agreement_checked(self, tmp_path, capsys):
+        """锚点命中与显式 target 不一致 → 异常, 不合并(绝不静默取其一)。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-004", "action": "modify", "anchor": {"section": "一、项目概况"}, "target": "ZB-C-001", "clause": _addendum_clause("BY-C-004")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "anchor_target_mismatch" in _anomaly_kinds(summary)
+        assert "clauses.json" not in summary["written"]
+        assert not (state / "merge_ledger.json").exists()
+
+
+class TestMergeAddendaIdempotency:
+    """内容哈希台账: 同补遗重跑直接跳过, 状态字节级不变。"""
+
+    def test_same_candidates_rerun_byte_identical_and_skipped(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands) == 0
+        snapshot = _snapshot(state)
+        assert "merge_ledger.json" in snapshot, "完整落账必须记台账"
+        assert not [n for n in snapshot if "tmp" in n.lower()], "原子写盘不得残留临时文件"
+        rc = _run_merge(state, cands)
+        assert rc == 0, "台账命中跳过属正常完成"
+        summary = _last_summary_json(capsys)
+        assert summary["skipped"] is True and summary["written"] == [], "跳过时零写入"
+        assert _snapshot(state) == snapshot, "同补遗跑两遍, 状态目录必须字节级不变"
+        ledger = _state_json(state, "merge_ledger.json")
+        assert len(ledger) == 1, "同 hash 重跑不得追加台账条目"
+
+    def test_hash_format_independent_of_key_order(self, tmp_path, capsys):
+        """候选 JSON 键序/缩进不同但内容相同 → 同 hash → 跳过(规范化哈希)。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        cands1 = _write_addendum(tmp_path, "a.json", items=_MODIFY_ANCHOR_ITEMS)
+        reordered = {"items": _MODIFY_ANCHOR_ITEMS, "addendum_file": "补遗文件-01.pdf"}
+        cands2 = _write_addendum(tmp_path, "b.json", raw=reordered)
+        assert _run_merge(state, cands1) == 0
+        assert _run_merge(state, cands2) == 0
+        summary = _last_summary_json(capsys)
+        assert summary["skipped"] is True, "内容等价的候选(键序不同)必须命中同一台账 hash"
+        assert len(_state_json(state, "merge_ledger.json")) == 1
+
+    def test_partial_run_rerun_byte_identical(self, tmp_path, capsys):
+        """有 pending(需裁决)时不记台账; 相同候选重跑: 已落账项幂等重放, 状态字节级不变。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [
+            *_MODIFY_ANCHOR_ITEMS,  # 锚点自动落账
+            {"mapping_id": "M-009", "action": "modify", "target": "ZB-C-002", "clause": _addendum_clause("BY-C-006")},  # 相似度候选→pending
+        ]
+        cands = _write_addendum(tmp_path, items=items)
+        assert _run_merge(state, cands) == 3
+        assert not (state / "merge_ledger.json").exists(), "存在 pending 时不得记台账(重跑须能重新浮出)"
+        snapshot = _snapshot(state)
+        assert _run_merge(state, cands) == 3
+        assert _snapshot(state) == snapshot, "部分落账状态重跑: 幂等重放不得产生字节漂移"
+        assert _clauses_by_id(state)["ZB-C-003"]["superseded_by"] == "BY-C-004", "已落账链保留"
+
+
+class TestMergeAddendaLedger:
+    def test_ledger_entry_shape(self, tmp_path):
+        from datetime import datetime
+
+        state = _copy_prestate(tmp_path, merged=False)
+        assert _run_merge(state, _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)) == 0
+        ledger = _state_json(state, "merge_ledger.json")
+        assert isinstance(ledger, list) and len(ledger) == 1
+        entry = ledger[0]
+        assert entry["hash"].startswith("sha256:") and len(entry["hash"]) == len("sha256:") + 64
+        assert entry["addendum_file"] == "补遗文件-01.pdf"
+        datetime.fromisoformat(entry["applied_at"]), "applied_at 必须是可解析的 ISO 时间戳"
+        assert entry["applied"] == {"added": ["BY-C-004"], "superseded": [{"from": "ZB-C-003", "to": "BY-C-004"}], "voided": [], "rejected": []}
+
+    def test_pending_run_does_not_record_ledger(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-002", "action": "modify", "target": "ZB-C-003", "clause": _addendum_clause("BY-C-004")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        assert not (state / "merge_ledger.json").exists()
+        summary = _last_summary_json(capsys)
+        assert summary["ledger_recorded"] is False
+
+
+class TestMergeAddendaSimilar:
+    """②相似度候选: 脚本只产出新旧并排 diff, 不自行合并。"""
+
+    def test_similar_candidate_pending_with_side_by_side_diff(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-002", "action": "modify", "target": "ZB-C-003", "clause": _addendum_clause("BY-C-004")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "pending_decision" in _anomaly_kinds(summary)
+        assert len(summary["pending"]) == 1
+        pending = summary["pending"][0]
+        assert pending["mapping_id"] == "M-002" and pending["tier"] == "similar"
+        assert pending["old"]["clause_id"] == "ZB-C-003" and "90天" in pending["old"]["requirement"], "旧条款并排"
+        assert pending["new"]["clause_id"] == "BY-C-004" and "60天" in pending["new"]["requirement"], "新条款并排"
+        assert "clauses.json" not in summary["written"], "相似度候选绝不自动合并"
+        by_id = _clauses_by_id(state)
+        assert by_id["ZB-C-003"]["superseded_by"] is None and "BY-C-004" not in by_id
+
+    def test_decisions_apply_resolves_similar(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-002", "action": "modify", "target": "ZB-C-003", "clause": _addendum_clause("BY-C-004")}]
+        cands = _write_addendum(tmp_path, items=items)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-002", "decision": "apply"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 0, "人工裁决 apply 后应干净落账(ZB-C-003 无外键引用)"
+        summary = _last_summary_json(capsys)
+        assert summary["pending"] == [] and summary["ledger_recorded"] is True
+        assert _clauses_by_id(state)["ZB-C-003"]["superseded_by"] == "BY-C-004"
+
+    def test_decisions_reject_drops_item(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-002", "action": "modify", "target": "ZB-C-003", "clause": _addendum_clause("BY-C-004")}]
+        cands = _write_addendum(tmp_path, items=items)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-002", "decision": "reject"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 0, "reject 也是 resolved: 全部条目有裁决即干净完成"
+        summary = _last_summary_json(capsys)
+        assert summary["applied"]["rejected"] == ["M-002"] and summary["pending"] == []
+        assert "clauses.json" not in summary["written"], "否决项不产生任何条款变更"
+        assert summary["ledger_recorded"] is True, "全 resolved(含否决)记台账"
+
+
+class TestMergeAddendaTie:
+    """③平手: 锚点多命中 → 必须 decisions 裁决。"""
+
+    def _tie_state(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        clauses = _state_json(state, "clauses.json")
+        clone = json.loads(json.dumps(clauses[0]))  # ZB-C-001(3.2.1) 克隆
+        clone["clause_id"] = "ZB-C-005"
+        clauses.append(clone)
+        (state / "clauses.json").write_text(json.dumps(clauses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return state
+
+    def test_tie_pending_lists_candidates(self, tmp_path, capsys):
+        state = self._tie_state(tmp_path)
+        items = [{"mapping_id": "M-005", "action": "void", "anchor": {"section": "3.2.1"}}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert len(summary["pending"]) == 1
+        pending = summary["pending"][0]
+        assert pending["tier"] == "tie"
+        assert sorted(pending["candidates"]) == ["ZB-C-001", "ZB-C-005"], "平手必须列全候选目标"
+        assert all(not _clauses_by_id(state)[cid]["voided"] for cid in ("ZB-C-001", "ZB-C-005")), "平手绝不自动落账"
+
+    def test_tie_decision_with_target_applies(self, tmp_path, capsys):
+        state = self._tie_state(tmp_path)
+        items = [{"mapping_id": "M-005", "action": "void", "anchor": {"section": "3.2.1"}}]
+        cands = _write_addendum(tmp_path, items=items)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-005", "decision": "apply", "target": "ZB-C-005"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 0, "人工选定目标后落账(ZB-C-005 无外键引用)"
+        by_id = _clauses_by_id(state)
+        assert by_id["ZB-C-005"]["voided"] is True and by_id["ZB-C-001"]["voided"] is False
+        summary = _last_summary_json(capsys)
+        assert summary["applied"]["voided"] == ["ZB-C-005"]
+
+    def test_tie_decision_without_target_anomaly(self, tmp_path, capsys):
+        state = self._tie_state(tmp_path)
+        items = [{"mapping_id": "M-005", "action": "void", "anchor": {"section": "3.2.1"}}]
+        cands = _write_addendum(tmp_path, items=items)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-005", "decision": "apply"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "malformed_decision" in _anomaly_kinds(summary)
+        assert len(summary["pending"]) == 1, "缺 target 的平手裁决不得落账, 条目保持待裁决"
+
+
+class TestMergeAddendaConflicts:
+    def test_two_items_same_target_conflict(self, tmp_path, capsys):
+        """同目标两条修改映射 → 双双 pending + target_conflict, 绝不静默取首个。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [
+            {"mapping_id": "M-001", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("BY-C-004")},
+            {"mapping_id": "M-002", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("BY-C-005", requirement="交货期45天")},
+        ]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "target_conflict" in _anomaly_kinds(summary)
+        assert {p["mapping_id"] for p in summary["pending"]} == {"M-001", "M-002"}
+        assert "clauses.json" not in summary["written"]
+
+    def test_conflict_resolved_by_reject_decision(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [
+            {"mapping_id": "M-001", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("BY-C-004")},
+            {"mapping_id": "M-002", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("BY-C-005", requirement="交货期45天")},
+        ]
+        cands = _write_addendum(tmp_path, items=items)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-002", "decision": "reject"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 0, "裁决否决其一后冲突解除, 另一条自动落账"
+        by_id = _clauses_by_id(state)
+        assert by_id["ZB-C-003"]["superseded_by"] == "BY-C-004" and "BY-C-005" not in by_id
+        summary = _last_summary_json(capsys)
+        assert summary["applied"]["rejected"] == ["M-002"] and summary["pending"] == []
+
+
+class TestMergeAddendaEntities:
+    """D3 新实体提取: 补遗实体 diff 白名单 → 增量清单文件(确认门2 消费)。"""
+
+    def test_new_entities_diff_file_written_whitelist_untouched(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        entities = [
+            {"type": "company", "value": "东智装备制造有限公司"},  # 已在白名单
+            {"type": "spec_version", "value": "S7-1500 V2.4"},  # 新版本号 → 增量
+        ]
+        whitelist_before = (state / "entities_whitelist.json").read_bytes()
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS, entities=entities)
+        rc = _run_merge(state, cands)
+        assert rc == 0
+        pending_file = state / "addendum_entities_pending.json"
+        assert pending_file.is_file(), "有新实体时必须产出增量实体清单文件"
+        assert json.loads(pending_file.read_text(encoding="utf-8")) == {"entities": [{"type": "spec_version", "value": "S7-1500 V2.4"}]}
+        assert (state / "entities_whitelist.json").read_bytes() == whitelist_before, "白名单不经本脚本修改(确认门2 才写入)"
+        summary = _last_summary_json(capsys)
+        assert summary["new_entities"] == [{"type": "spec_version", "value": "S7-1500 V2.4"}]
+
+    def test_no_new_entities_no_file(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        entities = [{"type": "company", "value": "东智装备制造有限公司"}]  # 全部已白
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS, entities=entities)
+        rc = _run_merge(state, cands)
+        assert rc == 0
+        assert not (state / "addendum_entities_pending.json").exists(), "无增量不产出空文件"
+
+    def test_pending_entities_accumulate_and_clear_on_whitelist(self, tmp_path):
+        """增量清单累积式: 既有 pending ∪ 本次新增 − 当前白名单(白名单确认后自动出列)。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        run1 = _write_addendum(tmp_path, "c1.json", items=[], entities=[{"type": "spec_version", "value": "S7-1500 V2.4"}])
+        assert _run_merge(state, run1) == 0
+        pending = json.loads((state / "addendum_entities_pending.json").read_text(encoding="utf-8"))
+        assert pending["entities"] == [{"type": "spec_version", "value": "S7-1500 V2.4"}]
+        # 确认门2 之后: V2.4 勾入白名单; 第二份补遗带来新实体 李四
+        whitelist = json.loads((state / "entities_whitelist.json").read_text(encoding="utf-8"))
+        whitelist["entities"].append({"type": "spec_version", "value": "S7-1500 V2.4"})
+        (state / "entities_whitelist.json").write_text(json.dumps(whitelist, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        run2 = _write_addendum(tmp_path, "c2.json", items=[], addendum_file="补遗文件-02.pdf", entities=[{"type": "person", "value": "李四"}])
+        assert _run_merge(state, run2) == 0
+        pending = json.loads((state / "addendum_entities_pending.json").read_text(encoding="utf-8"))
+        assert pending["entities"] == [{"type": "person", "value": "李四"}], "已确认入白名单的实体自动出列, 新实体保留"
+
+    def test_entities_without_whitelist_anomaly(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        (state / "entities_whitelist.json").unlink()
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS, entities=[{"type": "company", "value": "新公司"}])
+        rc = _run_merge(state, cands)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "whitelist_missing" in _anomaly_kinds(summary), "白名单缺失必须浮出, 不静默"
+        pending = json.loads((state / "addendum_entities_pending.json").read_text(encoding="utf-8"))
+        assert pending["entities"] == [{"type": "company", "value": "新公司"}], "无白名单时按空集 diff, 全部进增量清单"
+        assert not (state / "merge_ledger.json").exists(), "该异常阻断台账(修复白名单后重跑需重新 diff)"
+
+
+class TestMergeAddendaFkScan:
+    """D7 悬挂外键拦截: 落账后扫描 structure/rubric 的 linked_clause_ids。"""
+
+    def test_supersede_dangles_rubric_link(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        items = [{"mapping_id": "M-006", "action": "modify", "anchor": {"section": "6.1"}, "clause": _addendum_clause("BY-C-005", section="三", requirement="技术方案先进性评分调整为20分", quote="技术方案先进性满分调整为20分")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        by_id = _clauses_by_id(state)
+        assert by_id["ZB-C-002"]["superseded_by"] == "BY-C-005", "落账照常"
+        summary = _last_summary_json(capsys)
+        fk = [(a["source"], a["item_id"], a["clause_id"], a["reason"]) for a in summary["anomalies"] if a["kind"] == "clause_fk_invalid"]
+        assert sorted(fk) == [("rubric", "R-002", "ZB-C-002", "superseded"), ("structure", "S-007", "ZB-C-002", "superseded")]
+
+    def test_preexisting_missing_fk_surfaces_on_unrelated_merge(self, tmp_path, capsys):
+        """合并前已存在的悬挂外键同样浮出(扫描以落账后全量状态为口径)。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        structure = _state_json(state, "structure.json")
+        structure[0]["linked_clause_ids"] = ["ZB-C-999"]
+        (state / "structure.json").write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        items = [{"mapping_id": "M-007", "action": "new", "clause": _addendum_clause("BY-C-005", requirement="质保期36个月")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        fk = [a for a in summary["anomalies"] if a["kind"] == "clause_fk_invalid"]
+        assert fk and fk[0]["clause_id"] == "ZB-C-999" and fk[0]["reason"] == "missing"
+        assert summary["applied"]["added"] == ["BY-C-005"], "外键发现不阻断本次落账"
+
+
+class TestMergeAddendaValidation:
+    """候选/裁决形态与落账时校验负例。"""
+
+    def test_schema_invalid_clause_quarantined(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        bad = _addendum_clause("BY-C-004")
+        bad["class"] = "critical"  # 枚举外
+        items = [{"mapping_id": "M-001", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": bad}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "schema_violation" in _anomaly_kinds(summary)
+        assert "clauses.json" not in summary["written"], "载荷不合法不落账"
+
+    def test_unknown_action_anomaly(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-001", "action": "delete", "target": "ZB-C-003"}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        assert "malformed_item" in _anomaly_kinds(_last_summary_json(capsys))
+
+    def test_duplicate_mapping_id_second_skipped(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [
+            {"mapping_id": "M-001", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("BY-C-004")},
+            {"mapping_id": "M-001", "action": "new", "clause": _addendum_clause("BY-C-005", requirement="重复映射的第二个条目")},
+        ]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "duplicate_mapping_id" in _anomaly_kinds(summary)
+        by_id = _clauses_by_id(state)
+        assert by_id["ZB-C-003"]["superseded_by"] == "BY-C-004" and "BY-C-005" not in by_id, "首个映射落账, 重复映射跳过"
+
+    def test_modify_without_anchor_or_target_anomaly(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-001", "action": "modify", "clause": _addendum_clause("BY-C-004")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        assert "malformed_item" in _anomaly_kinds(_last_summary_json(capsys))
+
+    def test_self_supersede_anomaly(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [{"mapping_id": "M-001", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("ZB-C-003")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "self_supersede" in _anomaly_kinds(summary)
+        assert _clauses_by_id(state)["ZB-C-003"]["superseded_by"] is None
+
+    def test_target_already_superseded_anomaly(self, tmp_path, capsys):
+        """raw 状态 ZB-C-003 已被 supersede: 人工裁决 apply 指向死条款 → target_inactive。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        items = [{"mapping_id": "M-002", "action": "modify", "target": "ZB-C-003", "clause": _addendum_clause("BY-C-005", requirement="交货期45天")}]
+        cands = _write_addendum(tmp_path, items=items)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-002", "decision": "apply"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        inactive = [a for a in summary["anomalies"] if a["kind"] == "target_inactive"]
+        assert inactive and inactive[0]["reason"] == "superseded"
+        assert len(summary["pending"]) == 1
+
+    def test_decision_on_auto_item_unnecessary(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-001", "decision": "apply"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 3, "对自动落账项的冗余裁决 → 异常浮出"
+        summary = _last_summary_json(capsys)
+        assert "unnecessary_decision" in _anomaly_kinds(summary)
+        assert _clauses_by_id(state)["ZB-C-003"]["superseded_by"] == "BY-C-004", "自动项照常落账"
+
+    def test_unknown_and_duplicate_decisions(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-999", "decision": "apply"}, {"mapping_id": "M-001", "decision": "reject"}, {"mapping_id": "M-001", "decision": "apply"}])
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 3
+        kinds = _anomaly_kinds(_last_summary_json(capsys))
+        assert {"unknown_decision", "duplicate_decision"} <= kinds
+
+    def test_malformed_record_no_items_key(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        rc = _run_merge(state, _write_addendum(tmp_path, raw={"addendum_file": "补遗文件-01.pdf"}))
+        assert rc == 3
+        assert "malformed_record" in _anomaly_kinds(_last_summary_json(capsys))
+
+
+class TestMergeAddendaFileErrors:
+    def test_missing_candidate_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        assert _run_merge(state, tmp_path / "不存在.json") == 1
+
+    def test_invalid_candidate_json_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        bad = tmp_path / "bad.json"
+        bad.write_text("{not json", encoding="utf-8")
+        assert _run_merge(state, bad) == 1
+
+    def test_missing_state_clauses_exit_1(self, tmp_path):
+        state = tmp_path / "empty-state"
+        state.mkdir()
+        cands = _write_addendum(tmp_path, items=[])
+        assert _run_merge(state, cands) == 1, "阶段3 前提: 阶段2 已产出 clauses.json"
+
+    def test_corrupt_state_refuses_overwrite(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        target = state / "clauses.json"
+        target.write_text('{"truncated": [', encoding="utf-8")
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands) == 1
+        assert target.read_text(encoding="utf-8") == '{"truncated": [', "损坏状态必须拒绝覆盖(先人工核查)"
+
+    def test_missing_decisions_file_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands, decisions=tmp_path / "无.json") == 1
+
+    def test_invalid_decisions_json_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        bad = tmp_path / "decisions.json"
+        bad.write_text("{not json", encoding="utf-8")
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands, decisions=bad) == 1
+
+    def test_argparse_usage_error_exit_1(self, capsys):
+        mod = _merge_module()
+        for argv in ([], ["--state-dir", "x"], ["--addendum-candidates", "c.json"], ["--unknown"]):
+            rc = mod.main(argv)
+            assert rc == 1, f"用法错误 {argv!r} 应返回 1(2 保留给 ingest OCR 分流), 实际 {rc}"
+        capsys.readouterr()
+
+    def test_help_returns_0(self, capsys):
+        assert _merge_module().main(["--help"]) == 0
+        capsys.readouterr()
+
+
+class TestMergeAddendaUnitHelpers:
+    def test_content_hash_canonical(self):
+        mod = _merge_module()
+        assert mod.content_hash({"a": 1, "b": "x"}) == mod.content_hash({"b": "x", "a": 1}), "哈希必须规范化(键序无关)"
+        assert mod.content_hash({"a": 1}) != mod.content_hash({"a": 2})
+        assert mod.content_hash({"a": 1}).startswith("sha256:")

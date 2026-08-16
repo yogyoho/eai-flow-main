@@ -93,6 +93,10 @@
       "type": ["string", "null"],
       "pattern": "^[A-Z]{2,4}-C-\\d{1,6}$",
       "description": "被补遗修改后指向替代条款的 clause_id;未被替代为 null。D7 外键校验消费方不得悬挂引用已 superseded 的条款。"
+    },
+    "voided": {
+      "type": "boolean",
+      "description": "是否已被补遗/答疑作废(阶段3 merge_addenda.py 落账标记);作废条款为死引用,structure/rubric 的 linked_clause_ids 不得继续消费(D7 悬挂外键拦截视同非法)。默认 false。"
     }
   }
 }
