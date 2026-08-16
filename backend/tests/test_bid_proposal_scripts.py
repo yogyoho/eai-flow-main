@@ -1457,3 +1457,426 @@ class TestIngestCorruptSectionsJson:
         p.write_text(json.dumps({"chunks": {}, "tables": []}), encoding="utf-8")
         with pytest.raises(ingest.IngestError):
             ingest.load_sections(p)
+
+
+# ===========================================================================
+# T4: extract.py — 阶段2 候选 JSON 的确定性校验 + 合并(无 LLM)
+# ===========================================================================
+# CLI: extract.py validate --candidates <候选JSON...> --sections sections.json [--declared-total N]
+#      extract.py merge    --candidates <候选JSON...> --sections sections.json --state-dir <dir> [--declared-total N]
+# 候选记录契约(一次裁决 = 一个文件, 对齐 extraction_prompt.md 循环纪律):
+#   {"chunk_id"|"table_id"(二选一), "kind": clauses|structure|rubric, "items": [...], "note": 判空理由(可选)}
+# 校验规则(设计文档阶段2节 + D5/D7):
+#   锚点必须存在于 sections.json / 枚举合法(对 references/*.schema.json, stdlib mini 校验器) /
+#   跨块 clause_id(及 node_id/rubric_id)去重 / rubric Σmax_score=declared-total 不一致→异常并中止 /
+#   chunk_id·table_id 全量有裁决(未裁决→异常清单"待门1显式判空", D5) /
+#   linked_clause_ids 存在于 clauses 且未被 superseded(D7 外键装载校验);
+#   merge: 派生字段(fill_status)不落盘 + 全部状态文件临时文件+os.replace 原子写
+# 退出码: 0=干净 1=用法/文件错误 3=完成但有异常项(Σ 不一致时 merge 整体中止、不落盘)
+
+
+def _extract_module():
+    """硬导入 extract(T4 已落地; 模块缺失时测试失败而非 skip——管线脚本必须存在)。"""
+    import importlib
+
+    return importlib.import_module("extract")
+
+
+def _write_candidate(dir_path, name, *, chunk_id=None, table_id=None, kind="clauses", items=None, **extra):
+    """写一个候选裁决记录文件(一次裁决=一个文件契约)。"""
+    record = {"kind": kind, "items": items if items is not None else []}
+    if chunk_id is not None:
+        record["chunk_id"] = chunk_id
+    if table_id is not None:
+        record["table_id"] = table_id
+    record.update(extra)
+    path = Path(dir_path) / name
+    path.write_text(json.dumps(record, ensure_ascii=False), encoding="utf-8")
+    return path
+
+
+def _happy_candidate_files(tmp_path, *, bad_sum=False):
+    """全量裁决候选集: 5 chunk + 2 table 全覆盖, 条款/结构/评分全部合法。
+
+    fixture sections.json 的 id 分配: CH-001/002/005/004→条款, CH-003→结构(占位,
+    fixture 无格式章节块), T-001→判空, T-002→评分细则(Σ=declared=100)。
+    """
+    clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+    rubric = load_json("rubric_bad_sum.json" if bad_sum else "rubric.json")
+    return [
+        _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[clauses_by_id["ZB-C-001"]]),
+        _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[clauses_by_id["ZB-C-002"]]),
+        _write_candidate(tmp_path, "c3.json", chunk_id="CH-005", kind="clauses", items=[clauses_by_id["ZB-C-003"]]),
+        _write_candidate(tmp_path, "c4.json", chunk_id="CH-004", kind="clauses", items=[clauses_by_id["BY-C-004"]]),
+        _write_candidate(tmp_path, "c5.json", chunk_id="CH-003", kind="structure", items=load_json("structure.json")),
+        _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[], note="参数表无评分行, 显式判空"),
+        _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=rubric["items"]),
+    ]
+
+
+def _run_extract(command, candidates, *, sections=None, declared_total=None, state_dir=None):
+    extract = _extract_module()
+    argv = [command, "--candidates", *[str(c) for c in candidates], "--sections", str(sections if sections is not None else FIXTURE_DIR / "sections.json")]
+    if declared_total is not None:
+        argv += ["--declared-total", str(declared_total)]
+    if state_dir is not None:
+        argv += ["--state-dir", str(state_dir)]
+    return extract.main(argv)
+
+
+def _last_summary_json(capsys):
+    out = capsys.readouterr().out
+    lines = [ln for ln in out.splitlines() if ln.strip().startswith("{")]
+    assert lines, f"stdout 应含单行 JSON 摘要: {out!r}"
+    return json.loads(lines[-1])
+
+
+def _anomaly_kinds(summary):
+    return {a["kind"] for a in summary["anomalies"]}
+
+
+class TestExtractValidateHappyPath:
+    def test_full_adjudication_clean_exit_0(self, tmp_path, capsys):
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path), declared_total=100)
+        assert rc == 0, f"全量裁决+合法候选应干净退出, 实际 rc={rc}"
+        summary = _last_summary_json(capsys)
+        assert summary["anomalies"] == []
+        assert summary["unadjudicated"] == []
+        assert summary["adjudicated"] == {"chunks": 5, "tables": 2}
+        assert summary["counts"] == {"clauses": 4, "structure": 8, "rubric": 3}
+        assert summary["rubric_sum"] == {"computed": 100, "declared": 100}
+
+    def test_no_declared_total_skips_sum_check(self, tmp_path, capsys):
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path))
+        assert rc == 0, "未给 --declared-total 时跳过 Σ 校验(无基准不误报)"
+        summary = _last_summary_json(capsys)
+        assert "rubric_sum" not in summary or summary["rubric_sum"].get("declared") is None
+
+    def test_empty_adjudication_counts_as_coverage(self, tmp_path, capsys):
+        """0 条显式判空(带 note)也是合法裁决——D5 要求的是'有裁决', 不是'有条目'。"""
+        rc = _run_extract("validate", [_happy_candidate_files(tmp_path)[5]], declared_total=None)
+        assert rc == 3  # 其余 id 未裁决 → 异常, 但 T-001 本身不算未裁决
+        summary = _last_summary_json(capsys)
+        assert "T-001" not in summary["unadjudicated"]
+        assert set(summary["unadjudicated"]) == {"CH-001", "CH-002", "CH-003", "CH-004", "CH-005", "T-002"}
+
+
+class TestExtractValidateNegative:
+    """负例五类: Σ 不一致 / 未裁决 / 悬挂外键 / 跨块重复 / 枚举非法(+锚点/未知id/坏记录)。"""
+
+    def test_rubric_sum_mismatch(self, tmp_path, capsys):
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path, bad_sum=True), declared_total=100)
+        assert rc == 3, "Σmax_score(60+12+25=97) != declared-total(100) → 异常"
+        summary = _last_summary_json(capsys)
+        assert "rubric_sum_mismatch" in _anomaly_kinds(summary)
+        assert summary["rubric_sum"]["computed"] == 97
+        assert any("不一致" in a.get("message", "") for a in summary["anomalies"] if a["kind"] == "rubric_sum_mismatch")
+
+    def test_declared_total_without_rubric_items_mismatches(self, tmp_path, capsys):
+        files = [f for f in _happy_candidate_files(tmp_path) if f.name != "t2.json"]
+        rc = _run_extract("validate", files, declared_total=100)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "rubric_sum_mismatch" in _anomaly_kinds(summary), "声称总分 100 而评分项 Σ=0, 同样是 Σ 不一致"
+
+    def test_unadjudicated_ids_pending_gate1(self, tmp_path, capsys):
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path)[:1])  # 只裁决 CH-001
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        unadjudicated = [a for a in summary["anomalies"] if a["kind"] == "unadjudicated_id"]
+        assert {a["id"] for a in unadjudicated} == {"CH-002", "CH-003", "CH-004", "CH-005", "T-001", "T-002"}
+        assert all("判空" in a["message"] for a in unadjudicated), "未裁决 id 一律[待确认]进确认门1 显式判空"
+
+    def test_dangling_fk_missing_clause(self, tmp_path, capsys):
+        clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+        node = dict(load_json("structure.json")[0])
+        node["linked_clause_ids"] = ["ZB-C-999"]
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=list(clauses_by_id.values())),
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-003", kind="structure", items=[node]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        fk = [a for a in summary["anomalies"] if a["kind"] == "clause_fk_invalid"]
+        assert fk and fk[0]["clause_id"] == "ZB-C-999" and fk[0]["reason"] == "missing"
+
+    def test_fk_to_superseded_clause_rejected(self, tmp_path, capsys):
+        """D7: 引用已 supersede 条款(ZB-C-003 被 BY-C-004 替代)同样算外键不合法。"""
+        clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+        node = dict(load_json("structure.json")[0])
+        node["linked_clause_ids"] = ["ZB-C-003"]
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=list(clauses_by_id.values())),
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-003", kind="structure", items=[node]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        fk = [a for a in summary["anomalies"] if a["kind"] == "clause_fk_invalid"]
+        assert fk and fk[0]["clause_id"] == "ZB-C-003" and fk[0]["reason"] == "superseded"
+
+    def test_duplicate_clause_id_across_chunks(self, tmp_path, capsys):
+        clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[clauses_by_id["ZB-C-001"]]),
+            _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[clauses_by_id["ZB-C-001"]]),  # 跨块撞号
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-003", kind="structure", items=[]),
+            _write_candidate(tmp_path, "c6.json", chunk_id="CH-004", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c7.json", chunk_id="CH-005", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3, "跨块 clause_id 重复必须拦截(去重防线)"
+        summary = _last_summary_json(capsys)
+        dup = [a for a in summary["anomalies"] if a["kind"] == "duplicate_id"]
+        assert dup and dup[0]["id"] == "ZB-C-001" and len(dup[0]["files"]) == 2
+
+    def test_duplicate_adjudication_of_same_chunk(self, tmp_path, capsys):
+        """同一 chunk_id 两条裁决记录 = 检查点分叉, 双双隔离不强取首个。"""
+        files = _happy_candidate_files(tmp_path)
+        files.append(_write_candidate(tmp_path, "c1b.json", chunk_id="CH-001", kind="clauses", items=[]))
+        rc = _run_extract("validate", files, declared_total=100)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "duplicate_adjudication" in _anomaly_kinds(summary)
+
+    def test_illegal_enum_schema_violation(self, tmp_path, capsys):
+        clause = dict(load_json("clauses.json")[0])
+        clause["class"] = "critical"  # 枚举外
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[clause]),
+            _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c3.json", chunk_id="CH-003", kind="structure", items=[]),
+            _write_candidate(tmp_path, "c4.json", chunk_id="CH-004", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-005", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        violations = [a for a in summary["anomalies"] if a["kind"] == "schema_violation"]
+        assert violations and violations[0]["item_id"] == "ZB-C-001"
+        assert any("class" in err for a in violations for err in a["errors"])
+
+    def test_anchor_not_in_sections(self, tmp_path, capsys):
+        clause = dict(load_json("clauses.json")[0])
+        clause["source_ref"] = dict(clause["source_ref"], section="9.9")
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[clause]),
+            _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c3.json", chunk_id="CH-003", kind="structure", items=[]),
+            _write_candidate(tmp_path, "c4.json", chunk_id="CH-004", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-005", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        anchor = [a for a in summary["anomalies"] if a["kind"] == "anchor_not_in_sections"]
+        assert anchor and anchor[0]["item_id"] == "ZB-C-001" and anchor[0]["section"] == "9.9"
+
+    def test_unknown_adjudication_id(self, tmp_path, capsys):
+        files = _happy_candidate_files(tmp_path)
+        files.append(_write_candidate(tmp_path, "c9.json", chunk_id="CH-999", kind="clauses", items=[]))
+        rc = _run_extract("validate", files, declared_total=100)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        unknown = [a for a in summary["anomalies"] if a["kind"] == "unknown_adjudication_id"]
+        assert unknown and unknown[0]["id"] == "CH-999"
+
+    def test_malformed_record(self, tmp_path, capsys):
+        files = _happy_candidate_files(tmp_path)
+        files.append(_write_candidate(tmp_path, "cx.json", kind="clauses", items="not-a-list"))  # 无 id + items 非数组
+        rc = _run_extract("validate", files, declared_total=100)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "malformed_record" in _anomaly_kinds(summary)
+
+
+class TestExtractValidateFileErrors:
+    def test_missing_candidate_file_exit_1(self, tmp_path):
+        files = _happy_candidate_files(tmp_path)
+        rc = _run_extract("validate", files + [tmp_path / "不存在.json"])
+        assert rc == 1
+
+    def test_invalid_json_candidate_exit_1(self, tmp_path):
+        bad = tmp_path / "bad.json"
+        bad.write_text("{not json", encoding="utf-8")
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path) + [bad])
+        assert rc == 1
+
+    def test_missing_sections_file_exit_1(self, tmp_path):
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path), sections=tmp_path / "无.sections.json")
+        assert rc == 1
+
+    def test_argparse_usage_error_exit_1(self, capsys):
+        extract = _extract_module()
+        for argv in ([], ["validate"], ["validate", "--sections", "s.json"], ["merge", "--candidates", "c.json", "--sections", "s.json"], ["--unknown"]):
+            rc = extract.main(argv)
+            assert rc == 1, f"用法错误 {argv!r} 应返回 1, 实际 {rc}"
+        capsys.readouterr()
+
+    def test_help_returns_0(self, capsys):
+        extract = _extract_module()
+        assert extract.main(["--help"]) == 0
+        assert extract.main(["validate", "--help"]) == 0
+        capsys.readouterr()
+
+
+class TestExtractMergeHappyPath:
+    def test_merge_writes_three_state_files(self, tmp_path, capsys):
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 0
+        clauses = json.loads((state_dir / "clauses.json").read_text(encoding="utf-8"))
+        structure = json.loads((state_dir / "structure.json").read_text(encoding="utf-8"))
+        rubric = json.loads((state_dir / "rubric.json").read_text(encoding="utf-8"))
+        assert [c["clause_id"] for c in clauses] == ["ZB-C-001", "ZB-C-002", "ZB-C-003", "BY-C-004"]
+        assert [n["node_id"] for n in structure] == [f"S-{i:03d}" for i in range(1, 9)]
+        assert rubric["total_score"] == 100 and [i["rubric_id"] for i in rubric["items"]] == ["R-001", "R-002", "R-003"]
+        summary = _last_summary_json(capsys)
+        assert sorted(summary["written"]) == ["clauses.json", "rubric.json", "structure.json"]
+        assert summary["aborted"] is False
+
+    def test_merge_strips_derived_fill_status(self, tmp_path):
+        """D7: 派生字段 fill_status 候选可带(schema 值域内), 落盘必须剥离——现算不落盘。"""
+        nodes = [dict(n) for n in load_json("structure.json")]
+        for n in nodes:
+            n["fill_status"] = "filled"
+        files = _happy_candidate_files(tmp_path)
+        files[4] = _write_candidate(tmp_path, "c5.json", chunk_id="CH-003", kind="structure", items=nodes)
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", files, declared_total=100, state_dir=state_dir)
+        assert rc == 0
+        structure = json.loads((state_dir / "structure.json").read_text(encoding="utf-8"))
+        assert structure and all("fill_status" not in n for n in structure), "落盘不得含派生字段 fill_status(D7)"
+
+    def test_merge_atomic_no_tmp_leftovers(self, tmp_path):
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 0
+        leftovers = [p.name for p in state_dir.iterdir() if "tmp" in p.name.lower()]
+        assert not leftovers, f"原子写盘不得残留临时文件: {leftovers}"
+
+    def test_merge_rerun_idempotent(self, tmp_path):
+        state_dir = tmp_path / "state"
+        files = _happy_candidate_files(tmp_path)
+        assert _run_extract("merge", files, declared_total=100, state_dir=state_dir) == 0
+        before = {p.name: p.read_text(encoding="utf-8") for p in state_dir.iterdir()}
+        assert _run_extract("merge", files, declared_total=100, state_dir=state_dir) == 0
+        after = {p.name: p.read_text(encoding="utf-8") for p in state_dir.iterdir()}
+        assert before == after, "同一候选集重复合并必须幂等(按 id upsert, 不产生重复条目)"
+
+    def test_merge_upsert_replaces_and_preserves(self, tmp_path):
+        """既有状态: 候选按 id 替换旧条目, 未覆盖条目原样保留。"""
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        old = dict(load_json("clauses.json")[0])
+        old["requirement"] = "旧版要求(将被候选替换)"
+        extra = dict(load_json("clauses.json")[1])
+        extra.update({"clause_id": "JS-C-001", "source_file": "技术规范书.docx"})
+        (state_dir / "clauses.json").write_text(json.dumps([old, extra], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 0
+        clauses = json.loads((state_dir / "clauses.json").read_text(encoding="utf-8"))
+        by_id = {c["clause_id"]: c for c in clauses}
+        assert by_id["ZB-C-001"]["requirement"] == load_json("clauses.json")[0]["requirement"], "同 id 候选应替换旧条目"
+        assert by_id["JS-C-001"]["requirement"] == extra["requirement"], "未被候选覆盖的既有条目必须保留"
+        assert [c["clause_id"] for c in clauses] == ["ZB-C-001", "JS-C-001", "ZB-C-002", "ZB-C-003", "BY-C-004"]
+
+
+class TestExtractMergeAbortsAndQuarantines:
+    def test_sum_mismatch_aborts_merge_nothing_written(self, tmp_path, capsys):
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path, bad_sum=True), declared_total=100, state_dir=state_dir)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert summary["aborted"] is True, "Σ 不一致 → 异常并中止"
+        assert "rubric_sum_mismatch" in _anomaly_kinds(summary)
+        assert not state_dir.exists() or not any(state_dir.iterdir()), "中止时一个状态文件都不得写(防止带病状态入库)"
+
+    def test_bad_item_quarantined_clean_merged_with_fk_cascade(self, tmp_path, capsys):
+        """枚举非法条目所在裁决块整体[待确认]不合并; 引用该条款的结构/评分项级联隔离(D7 外键)。"""
+        files = _happy_candidate_files(tmp_path)
+        bad = dict(load_json("clauses.json")[1])  # ZB-C-002
+        bad["class"] = "critical"
+        files[1] = _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[bad])
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", files, declared_total=100, state_dir=state_dir)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        kinds = _anomaly_kinds(summary)
+        assert "schema_violation" in kinds
+        assert "clause_fk_invalid" in kinds, "S-007/R-002 引用被隔离的 ZB-C-002 → 悬挂外键级联浮出"
+        clauses = json.loads((state_dir / "clauses.json").read_text(encoding="utf-8"))
+        assert [c["clause_id"] for c in clauses] == ["ZB-C-001", "ZB-C-003", "BY-C-004"], "干净裁决块照常合并, 异常块保持[待确认]不落盘"
+        assert not (state_dir / "structure.json").exists(), "结构裁决块因悬挂外键被隔离, 不写 structure.json"
+        assert not (state_dir / "rubric.json").exists(), "评分裁决块因悬挂外键被隔离, 不写 rubric.json"
+
+    def test_merge_without_declared_total_and_state(self, tmp_path, capsys):
+        """首合并未给 --declared-total: rubric 照常合并但 total_score=null + 异常项提示(Σ 无基准未检)。"""
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), state_dir=state_dir)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "rubric_declared_total_missing" in _anomaly_kinds(summary)
+        rubric = json.loads((state_dir / "rubric.json").read_text(encoding="utf-8"))
+        assert rubric["total_score"] is None and len(rubric["items"]) == 3
+
+    def test_merge_preserves_existing_declared_total(self, tmp_path, capsys):
+        """既有 rubric.json 已有 total_score: 未传 --declared-total 时保留, 且不再报缺基准。"""
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        (state_dir / "rubric.json").write_text(json.dumps({"total_score": 100, "items": []}, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), state_dir=state_dir)
+        assert rc == 0
+        rubric = json.loads((state_dir / "rubric.json").read_text(encoding="utf-8"))
+        assert rubric["total_score"] == 100 and len(rubric["items"]) == 3
+
+    def test_corrupt_existing_state_exit_1_refuses_overwrite(self, tmp_path):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        target = state_dir / "clauses.json"
+        target.write_text('{"truncated": [', encoding="utf-8")
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 1
+        assert target.read_text(encoding="utf-8") == '{"truncated": [', "损坏状态文件必须拒绝覆盖(先人工核查)"
+
+
+class TestExtractUnitHelpers:
+    def test_load_schemas_default_references_dir(self):
+        extract = _extract_module()
+        schemas = extract.load_schemas()
+        assert set(schemas) == {"clauses", "structure", "rubric"}
+
+    def test_mini_validator_accepts_fixture_items(self):
+        extract = _extract_module()
+        schemas = extract.load_schemas()
+        for c in load_json("clauses.json"):
+            assert extract.validate_against_schema(schemas["clauses"], c) == [], f"{c['clause_id']} 应通过 schema 校验"
+        for n in load_json("structure.json"):
+            assert extract.validate_against_schema(schemas["structure"], n) == [], f"{n['node_id']} 应通过 schema 校验"
+        for i in load_json("rubric.json")["items"]:
+            assert extract.validate_against_schema(schemas["rubric"], i) == [], f"{i['rubric_id']} 应通过 schema 校验"
+
+    def test_mini_validator_rejects_enum_and_extra_field(self):
+        extract = _extract_module()
+        schema = extract.load_schemas()["clauses"]
+        bad_enum = dict(load_json("clauses.json")[0], **{"class": "critical"})
+        assert extract.validate_against_schema(schema, bad_enum)
+        extra_field = dict(load_json("clauses.json")[0], unknown_extra=True)
+        assert extract.validate_against_schema(schema, extra_field)
+
+    def test_strip_derived_fields(self):
+        extract = _extract_module()
+        node = {"node_id": "S-001", "fill_status": "filled", "path": "x"}
+        assert extract.strip_derived_fields(node) == {"node_id": "S-001", "path": "x"}
+        assert "fill_status" not in node or node["fill_status"]  # 原对象不被原地修改(防御式拷贝)
