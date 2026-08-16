@@ -6,8 +6,8 @@ LLM 提取循环由 Agent 在上下文内执行(提示词=references/extraction_
 本脚本只做循环产物的确定性防线, 不调 LLM。
 
 用法:
-    python extract.py validate --candidates <候选JSON...> --sections sections.json [--declared-total N]
-    python extract.py merge    --candidates <候选JSON...> --sections sections.json --state-dir <dir> [--declared-total N]
+    python extract.py validate --candidates <候选JSON...> --sections sections.json [--declared-total N(可为小数)]
+    python extract.py merge    --candidates <候选JSON...> --sections sections.json --state-dir <dir> [--declared-total N(可为小数)]
 
 候选记录契约(一次裁决 = 一个文件, 对齐 extraction_prompt.md 循环纪律; 0 条也显式判空):
     {"chunk_id"|"table_id": "<id>",        // 二选一, 必须存在于 sections.json
@@ -55,6 +55,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -257,6 +258,21 @@ def strip_derived_fields(item: dict, kind: str | None = None) -> dict:
     return {key: value for key, value in item.items() if key not in derived}
 
 
+# R1(终审 Chunk 1): 管线归一字段缺省——clauses.schema.json 与 extraction_prompt.md 承诺
+# "response_status/response_skeleton/from_addendum/superseded_by 由管线归一, 候选可不填";
+# 落盘状态是持久契约(build_output/score_simulate 对 response_status 做硬枚举校验),
+# 省略路径漏归一会让合法候选在阶段4/5 硬断。缺省口径对齐 merge_addenda.normalize_addendum_clause。
+CLAUSE_PIPELINE_DEFAULTS = {"response_status": "unassigned", "from_addendum": False, "superseded_by": None, "voided": False}
+
+
+def _normalize_clause_defaults(item: dict) -> dict:
+    """补齐候选省略的管线归一字段(setdefault 语义: 绝不覆盖已存在值); 返回浅拷贝不改原对象。"""
+    normalized = dict(item)
+    for key, value in CLAUSE_PIPELINE_DEFAULTS.items():
+        normalized.setdefault(key, value)
+    return normalized
+
+
 def _load_state_list(path: Path) -> list[dict]:
     """装载 list 型状态文件(clauses/structure); 缺失→[]; 损坏/类型错→拒绝覆盖。"""
     if not path.is_file():
@@ -273,8 +289,10 @@ def _load_state_list(path: Path) -> list[dict]:
 def load_state(state_dir: str | Path) -> dict:
     """装载三状态文件; 返回 {clauses, structure, rubric_items, total_score, existed}。
 
-    既有 rubric 项的 max_score 做装载校验(整数且非 bool): 缺失误按 0 计、bool True 误按 1 计
-    会让 Σ 摘要失真或制造假 fatal——手工编辑场景的纵深防线, 损坏即拒绝覆盖。
+    既有 rubric 项的 max_score 做装载校验(number: int|float 非 bool): 缺失误按 0 计、bool True
+    误按 1 计会让 Σ 摘要失真或制造假 fatal——手工编辑场景的纵深防线, 损坏即拒绝覆盖。
+    契约对齐 rubric.schema.json type=number 与 score_simulate._check_rubric_sum: 合法小数
+    满分(如 2.5/0.5)不得被自身落盘产物拒绝——那会让幂等重合并自锁(R3, 终审 Chunk 1)。
     """
     state_dir = Path(state_dir)
     clauses_path = state_dir / STATE_FILES["clauses"]
@@ -295,12 +313,12 @@ def load_state(state_dir: str | Path) -> dict:
         if not isinstance(data, dict) or not isinstance(data.get("items"), list) or not all(isinstance(entry, dict) for entry in data["items"]):
             raise ExtractError(f"既有 rubric.json 结构异常(应为含 items 数组的对象), 拒绝覆盖: {rubric_path}")
         total_score = data.get("total_score")
-        if total_score is not None and not (isinstance(total_score, int) and not isinstance(total_score, bool)):
-            raise ExtractError(f"既有 rubric.json total_score 应为整数或 null: {rubric_path}")
+        if total_score is not None and not (isinstance(total_score, (int, float)) and not isinstance(total_score, bool)):
+            raise ExtractError(f"既有 rubric.json total_score 应为数值(number; int/float 非 bool)或 null: {rubric_path}")
         for index, item in enumerate(data["items"]):
             max_score = item.get("max_score")
-            if not isinstance(max_score, int) or isinstance(max_score, bool):
-                raise ExtractError(f"既有 rubric.json items[{index}]({item.get('rubric_id')}) max_score 应为整数(Σ 校验基准), 拒绝覆盖(先人工核查): {rubric_path}")
+            if not isinstance(max_score, (int, float)) or isinstance(max_score, bool):
+                raise ExtractError(f"既有 rubric.json items[{index}]({item.get('rubric_id')}) max_score 应为数值(number; int/float 非 bool, Σ 校验基准), 拒绝覆盖(先人工核查): {rubric_path}")
         rubric_items = data["items"]
 
     return {
@@ -351,7 +369,7 @@ def _record_id(record: dict) -> tuple[str | None, str | None]:
     return record.get("chunk_id"), record.get("table_id")
 
 
-def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], declared_total: int | None, existing: dict | None = None) -> dict:
+def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], declared_total: int | float | None, existing: dict | None = None) -> dict:
     """确定性校验管线。
 
     入参 records: [(候选文件路径, 候选记录 JSON), ...] 按命令行序;
@@ -468,6 +486,11 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
                 source_file = table_source.get(view["rid"])
                 if (source_file, section) not in covered:
                     problems.append({"kind": "anchor_not_in_sections", "file": path.name, "item_id": item_id, "source_file": source_file, "section": section, "message": f"锚点 ({source_file}, {section}) 不在 sections.json, [待确认]"})
+            if kind == "clauses":
+                # R1(终审): schema/prompt 允许候选省略管线归一字段; 干净条目在进入
+                # clean(合并/落盘口径)前补缺省, 消费方(build_output/score_simulate)的
+                # response_status 硬枚举校验才不会在省略路径上拒载。
+                item = _normalize_clause_defaults(item)
             kept_items.append(item)
         view["items"] = kept_items
         if problems:
@@ -536,6 +559,8 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
     if merged_rubric or effective_declared is not None:
         computed = sum(item.get("max_score", 0) for item in merged_rubric)
         rubric_sum = {"computed": computed, "declared": effective_declared}
+        # Σ 比较按数值相等(int/float 跨型相等, 如 3.0==3), 与 score_simulate._check_rubric_sum
+        # 同款精确比较——前置拦截与纵深复检两层必须同口径, 不得单边引入容差。
         if effective_declared is not None and computed != effective_declared:
             # 无条件异常并中止(任务T4/设计文档阶段2: 不一致→异常并中止, 不设归因例外)——
             # 即使差额恰可归因于被隔离评分块的分值合计, 合并终态 Σ≠声称总分即带病状态,
@@ -650,10 +675,23 @@ def cmd_merge(args) -> int:
     return EXIT_ANOMALY if report["anomalies"] else EXIT_OK
 
 
+def _declared_total_type(text: str) -> int | float:
+    """--declared-total 自定义解析(R3, 终审 Chunk 1): 契约=rubric.schema.json type=number,
+    整数形态保 int、小数形态 float(合法小数总分如 5.5 不得在 argparse 层被 type=int 拒绝);
+    非数值/inf/nan 交 argparse 用法错误(main 统一改道退出码 1, 2 保留给 ingest OCR 分流)。"""
+    try:
+        value = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"应为数值(整数或小数), 实际 {text!r}") from None
+    if not math.isfinite(value):
+        raise argparse.ArgumentTypeError(f"应为有限数值(不接受 inf/nan), 实际 {text!r}")
+    return int(value) if value.is_integer() else value
+
+
 def _add_common_arguments(sub: argparse.ArgumentParser) -> None:
     sub.add_argument("--candidates", nargs="+", required=True, help="候选裁决 JSON 文件(一次裁决=一个文件, 可多个)")
     sub.add_argument("--sections", required=True, help="sections.json 路径(ingest.py 阶段1 产物, 锚点/裁决 id 的基准)")
-    sub.add_argument("--declared-total", type=int, default=None, help="评分办法声称总分(Σmax_score 校验基准; 不一致→异常并中止; merge 缺省时回用既有 rubric.json total_score)")
+    sub.add_argument("--declared-total", type=_declared_total_type, default=None, help="评分办法声称总分(数值, 支持小数如 5.5; Σmax_score 校验基准; 不一致→异常并中止; merge 缺省时回用既有 rubric.json total_score)")
     sub.add_argument("--references", default=None, help="references/ 契约目录(默认: 脚本所在技能的 ../references)")
 
 

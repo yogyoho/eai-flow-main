@@ -2433,6 +2433,145 @@ class TestExtractTopLevelArrayCandidate:
 
 
 # ===========================================================================
+# 终审 Chunk 1: extract.py 两项修复回归
+#   R1(Critical) merge 落盘 clean clauses 前归一管线字段——clauses.schema.json 与
+#     extraction_prompt.md 承诺"response_status/response_skeleton/from_addendum/
+#     superseded_by 由管线归一, 候选可不填", 但 merge 原样透传省略字段, 而
+#     build_output/score_simulate 对 response_status 硬枚举校验 → 合法候选在阶段4/5 硬断。
+#   R3(Important) rubric.schema.json 契约 max_score/total_score=number(小数满分合法),
+#     但 extract 自身 load_state 按 int 拒绝 → 小数落盘后幂等重合并自锁;
+#     --declared-total argparse type=int 无法声明小数总分。
+# ===========================================================================
+
+
+def _omitted_defaults_candidate_files(tmp_path):
+    """全量裁决候选集(同 _happy_candidate_files), 但条款候选省略全部五个管线归一字段
+    (response_status/response_skeleton/from_addendum/superseded_by/voided)——
+    schema 与 extraction_prompt.md 明示"由管线归一, 候选可不填"的合法形态。"""
+    omit = ("response_status", "response_skeleton", "from_addendum", "superseded_by", "voided")
+    clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+    plan = (("CH-001", "c1.json", "ZB-C-001"), ("CH-002", "c2.json", "ZB-C-002"), ("CH-005", "c3.json", "ZB-C-003"), ("CH-004", "c4.json", "BY-C-004"))
+    files = [_write_candidate(tmp_path, name, chunk_id=chunk_id, kind="clauses", items=[{k: v for k, v in clauses_by_id[cid].items() if k not in omit}]) for chunk_id, name, cid in plan]
+    files.append(_write_candidate(tmp_path, "c5.json", chunk_id="CH-003", kind="structure", items=load_json("structure.json")))
+    files.append(_write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[], note="参数表无评分行, 显式判空"))
+    files.append(_write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=load_json("rubric.json")["items"]))
+    return files
+
+
+class TestExtractMergePipelineDefaults:
+    """R1: merge 落盘前归一管线字段缺省(setdefault 语义, 绝不覆盖已提供值)。"""
+
+    def test_merge_normalizes_omitted_defaults_byte_idempotent(self, tmp_path):
+        state_dir = tmp_path / "state"
+        files = _omitted_defaults_candidate_files(tmp_path)
+        assert _run_extract("merge", files, declared_total=100, state_dir=state_dir) == 0
+        clauses = json.loads((state_dir / "clauses.json").read_text(encoding="utf-8"))
+        assert len(clauses) == 4
+        for clause in clauses:
+            assert clause["response_status"] == "unassigned", f"{clause['clause_id']} 省略的 response_status 必须归一为 unassigned"
+            assert clause["from_addendum"] is False
+            assert clause["superseded_by"] is None
+            assert clause["voided"] is False
+        before = (state_dir / "clauses.json").read_text(encoding="utf-8")
+        assert _run_extract("merge", files, declared_total=100, state_dir=state_dir) == 0
+        assert (state_dir / "clauses.json").read_text(encoding="utf-8") == before, "归一缺省后重合并仍字节幂等"
+
+    def test_merge_never_overrides_provided_values(self, tmp_path):
+        """候选显式提供 response_status → setdefault 语义: 只补缺省, 绝不覆盖已存在值。"""
+        files = _omitted_defaults_candidate_files(tmp_path)
+        clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+        explicit = {k: v for k, v in clauses_by_id["ZB-C-001"].items() if k != "response_skeleton"}
+        explicit["response_status"] = "compliant"  # 显式提供, 不得被归一为 unassigned
+        files[0] = _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[explicit])
+        state_dir = tmp_path / "state"
+        assert _run_extract("merge", files, declared_total=100, state_dir=state_dir) == 0
+        by_id = {c["clause_id"]: c for c in json.loads((state_dir / "clauses.json").read_text(encoding="utf-8"))}
+        assert by_id["ZB-C-001"]["response_status"] == "compliant", "已存在值绝不覆盖"
+        assert by_id["ZB-C-002"]["response_status"] == "unassigned", "未提供的仍归一"
+
+    def test_omitted_defaults_full_chain_reaches_build_output(self, tmp_path):
+        """终审端到端链路: 合法省略字段候选 → validate 0 → merge 0 → build_output 0。"""
+        files = _omitted_defaults_candidate_files(tmp_path)
+        assert _run_extract("validate", files, declared_total=100) == 0
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        # build 的实体白名单是可选输入(缺失即 anomaly), 拷入 fixture 防止 whitelist_missing 混入 rc
+        (state_dir / "entities_whitelist.json").write_bytes((FIXTURE_DIR / "entities_whitelist.json").read_bytes())
+        assert _run_extract("merge", files, declared_total=100, state_dir=state_dir) == 0
+        assert _run_build(state_dir, tmp_path / "out") == 0, "阶段4 不得因 response_status 缺省硬断(六阶段链路)"
+
+
+class TestExtractFractionalRubricTotal:
+    """R3: 小数 max_score/total_score 与 int 同权(number 契约)——自身落盘产物必须能被
+    自身 load_state 重装载(幂等重合并), 声称总分 flag 必须能声明小数。"""
+
+    @staticmethod
+    def _fractional_files(tmp_path, scores):
+        """全量候选集, 但评分项 max_score 换成给定小数序列(zip 截齐 fixture 三项)。"""
+        files = _happy_candidate_files(tmp_path)
+        items = []
+        for item, score in zip(load_json("rubric.json")["items"], scores):
+            patched = dict(item)
+            patched["max_score"] = score
+            items.append(patched)
+        files[6] = _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=items)
+        return files
+
+    def test_fractional_max_score_remerge_idempotent(self, tmp_path):
+        """2.5/0.5 形态: merge#1 落盘后 merge#2 同候选必须 rc=0 且字节幂等(自锁修复)。"""
+        files = self._fractional_files(tmp_path, [1.5, 0.5, 1.0])
+        state_dir = tmp_path / "state"
+        assert _run_extract("merge", files, declared_total=3, state_dir=state_dir) == 0
+        rubric = json.loads((state_dir / "rubric.json").read_text(encoding="utf-8"))
+        assert [i["max_score"] for i in rubric["items"]] == [1.5, 0.5, 1.0]
+        assert rubric["total_score"] == 3
+        before = {p.name: p.read_text(encoding="utf-8") for p in state_dir.iterdir()}
+        assert _run_extract("merge", files, declared_total=3, state_dir=state_dir) == 0, "既有小数 max_score 不得被 load_state 拒绝覆盖(幂等重合并自锁)"
+        after = {p.name: p.read_text(encoding="utf-8") for p in state_dir.iterdir()}
+        assert before == after
+
+    def test_declared_total_accepts_fractional_value(self, tmp_path, capsys):
+        files = self._fractional_files(tmp_path, [2.5, 2.0, 1.0])
+        assert _run_extract("validate", files, declared_total=5.5) == 0, "--declared-total 必须接受小数(number 契约)"
+        state_dir = tmp_path / "state"
+        assert _run_extract("merge", files, declared_total=5.5, state_dir=state_dir) == 0
+        rubric = json.loads((state_dir / "rubric.json").read_text(encoding="utf-8"))
+        assert rubric["total_score"] == 5.5
+        summary = _last_summary_json(capsys)
+        assert summary["rubric_sum"] == {"computed": 5.5, "declared": 5.5}
+
+    def test_existing_fractional_total_reused_as_baseline(self, tmp_path, capsys):
+        """既有 rubric.json 带小数 total_score: 不给 flag 重合并回用它做 Σ 基准。"""
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        existing_items = []
+        for item, score in zip(load_json("rubric.json")["items"], [1.5, 0.5, 1.0]):
+            patched = dict(item)
+            patched["max_score"] = score
+            existing_items.append(patched)
+        (state_dir / "rubric.json").write_text(json.dumps({"total_score": 3.0, "items": existing_items}, ensure_ascii=False), encoding="utf-8")
+        files = self._fractional_files(tmp_path, [1.5, 0.5, 1.0])
+        rc = _run_extract("merge", files, state_dir=state_dir)
+        assert rc == 0, "既有 total_score=3.0(number)必须可装载, 回用为 Σ 基准且 3.0==Σ 不误报"
+        summary = _last_summary_json(capsys)
+        assert summary["rubric_sum"] == {"computed": 3.0, "declared": 3.0}
+
+    def test_existing_bool_max_score_still_refused(self, tmp_path):
+        """放宽到 number 不得放过 bool: JSON true 会被 Python 误当 int 1, Σ 失真, 仍拒绝覆盖。"""
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        items = [dict(i) for i in load_json("rubric.json")["items"]]
+        items[0]["max_score"] = True
+        (state_dir / "rubric.json").write_text(json.dumps({"total_score": 100, "items": items}, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 1
+
+    def test_declared_total_non_numeric_usage_error(self, tmp_path):
+        """非数值声称总分仍是 argparse 用法错误(统一改道退出码 1, 2 保留给 ingest OCR)。"""
+        assert _run_extract("validate", _happy_candidate_files(tmp_path), declared_total="abc") == 1
+
+
+# ===========================================================================
 # T5: merge_addenda.py — 阶段3 补遗/答疑确定性落账(幂等台账 + 新实体 D3 + 悬挂外键 D7)
 # ===========================================================================
 # CLI: merge_addenda.py --addendum-candidates <候选JSON> --state-dir <dir> [--decisions <人工裁决JSON>]
