@@ -952,6 +952,44 @@ def _make_docx(path, blocks):
     return path
 
 
+def _make_raw_pdf(path, with_image: bool):
+    """手写最小 PDF 字节(零外部依赖, 供扫描件/空文档负样本):
+
+    with_image=True  → 仅含 1x1 图片 XObject、零文本行(扫描件形态, 触发 OCR 分流);
+    with_image=False → 空内容流(无文本/表格/图片的空文档形态)。
+    """
+    if with_image:
+        content = b"q 100 0 0 100 50 50 cm /Im0 Do Q\n"
+        objects = {
+            1: b"<< /Type /Catalog /Pages 2 0 R >>",
+            2: b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            3: b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>",
+            4: b"<< /Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8 /Length 1 >>\nstream\n\x00\nendstream",
+            5: b"<< /Length " + str(len(content)).encode() + b" >>\nstream\n" + content + b"endstream",
+        }
+    else:
+        objects = {
+            1: b"<< /Type /Catalog /Pages 2 0 R >>",
+            2: b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            3: b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Resources << >> /Contents 4 0 R >>",
+            4: b"<< /Length 0 >>\nstream\nendstream",
+        }
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = {}
+    for num in sorted(objects):
+        offsets[num] = len(out)
+        out += f"{num} 0 obj\n".encode() + objects[num] + b"\nendobj\n"
+    xref_pos = len(out)
+    total = max(objects) + 1
+    out += f"xref\n0 {total}\n".encode() + b"0000000000 65535 f \n"
+    for num in range(1, total):
+        out += f"{offsets[num]:010d} 00000 n \n".encode()
+    out += f"trailer\n<< /Size {total} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF\n".encode()
+    path = Path(path)
+    path.write_bytes(bytes(out))
+    return path
+
+
 class TestIngestDocxFixture:
     """对 fixture minimal_tender.docx 跑真 ingest: 结构/锚点/行数/ID 发放全链路。"""
 
@@ -1227,23 +1265,23 @@ class TestIngestUnitHelpers:
         assert anomalies[0]["structural_rows"] == 5 and anomalies[0]["extracted_rows"] == 3
 
     def test_xml_fallback_matches_primary(self):
-        """python-docx 失效兜底(zipfile+XML 直读)须与主路径产出同构块序列。"""
+        """python-docx 失效兜底(zipfile+XML 直读)须与主路径产出同构块序列(含 xml_rows)。"""
         ingest = _ingest_module()
         path = str(FIXTURE_DIR / "minimal_tender.docx")
         try:
             primary = ingest.parse_docx_blocks(path)
         except Exception:
-            pytest.skip("python-docx 不可用时仅验证兜底路径可独立运行")
-            primary = None
-        fallback = ingest.parse_docx_blocks_xml(path)
-        if primary is None:
-            assert fallback
+            fallback = ingest.parse_docx_blocks_xml(path)
+            assert fallback, "python-docx 不可用时兜底路径必须可独立运行"
             return
+        fallback = ingest.parse_docx_blocks_xml(path)
         key = lambda b: (b["kind"], b.get("level"), b.get("text"))  # noqa: E731
         assert [key(b) for b in primary] == [key(b) for b in fallback], "兜底路径与主路径的标题/正文序列必须一致"
-        primary_tables = [(b["n_rows"], b["n_cols"]) for b in primary if b["kind"] == "table"]
-        fallback_tables = [(b["n_rows"], b["n_cols"]) for b in fallback if b["kind"] == "table"]
-        assert primary_tables == fallback_tables == [(3, 3), (4, 4)]
+        # xml_rows(D5 结构行数基准)必须同口径: 曾经主路径递归数 w:tr、兜底只数直接子级,
+        # 同一文件两路径给出不同行数——此处把 xml_rows 纳入逐块比对防再次分叉。
+        primary_tables = [(b["n_rows"], b["n_cols"], b["xml_rows"]) for b in primary if b["kind"] == "table"]
+        fallback_tables = [(b["n_rows"], b["n_cols"], b["xml_rows"]) for b in fallback if b["kind"] == "table"]
+        assert primary_tables == fallback_tables == [(3, 3, 3), (4, 4, 4)]
 
     def test_atomic_write_json_survives_bad_dir(self, tmp_path):
         ingest = _ingest_module()
@@ -1251,3 +1289,171 @@ class TestIngestUnitHelpers:
         ingest.atomic_write_json(target, {"chunks": [], "tables": []})
         assert json.loads(target.read_text(encoding="utf-8")) == {"chunks": [], "tables": []}
         assert not [p for p in target.parent.iterdir() if "tmp" in p.name.lower()], "原子写盘不得残留临时文件"
+
+
+# ===========================================================================
+# T3 修复回归(审查六项): 退出码税目 / D5 嵌套表假阳性 / sections 装载校验 /
+# 空文档分流 / 文首表锚点契约 / D5·OCR·损坏文件端到端补口
+# ===========================================================================
+
+
+class TestIngestExitCodeTaxonomy:
+    """退出码分类税目: argparse 用法错误必须归 1——argparse 默认退出码 2 与
+    EXIT_NEED_OCR 撞号, 会把 CLI 误用误路由进 OCR 路径(审查修复)。"""
+
+    def test_argparse_usage_error_returns_1_not_2(self, capsys):
+        ingest = _ingest_module()
+        for argv in ([], ["--input", "x.docx"], ["--input", "x.docx", "--code", "ZB"], ["--unknown"]):
+            rc = ingest.main(argv)
+            assert rc == 1, f"用法错误 {argv!r} 应返回 1(2 保留给 OCR 分流), 实际 {rc}"
+        capsys.readouterr()
+
+    def test_help_returns_0(self, capsys):
+        ingest = _ingest_module()
+        assert ingest.main(["--help"]) == 0, "--help 属正常终止, 不得按错误处理"
+        capsys.readouterr()
+
+    def test_row_count_mismatch_end_to_end_rc3(self, tmp_path, capsys, monkeypatch):
+        """D5 行数不一致端到端: rc=3 + 摘要 JSON anomalies 列出 row_count_mismatch + sections.json 照常落盘。"""
+        ingest = _ingest_module()
+        real_parse = ingest.parse_docx_blocks
+
+        def parse_with_row_drift(path):
+            blocks = real_parse(path)
+            for b in blocks:
+                if b["kind"] == "table":
+                    b["xml_rows"] += 1  # 模拟"解析前后行数分叉"(如 pdfplumber 吞表)
+            return blocks
+
+        monkeypatch.setattr(ingest, "parse_docx_blocks", parse_with_row_drift)
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 3, "行数不一致必须以独立退出码 3 浮出, 绝不静默"
+        assert path.is_file(), "D5 异常不阻断落盘(确认门1 需对每个 table_id 显式裁决)"
+        summary = json.loads([ln for ln in capsys.readouterr().out.splitlines() if ln.strip().startswith("{")][-1])
+        assert {a["kind"] for a in summary["anomalies"]} == {"row_count_mismatch"}, summary["anomalies"]
+        assert {a["table_id"] for a in summary["anomalies"]} == {"T-001", "T-002"}, "两张表的不一致逐表成异常项"
+
+
+class TestIngestFrontTable:
+    """首个标题前的表格(封面表格形态): 锚点 section 必须非空(T1 契约),
+    同时以 table_before_any_heading 异常项浮出(审查修复)。"""
+
+    def test_table_before_heading_anchor_nonempty(self, tmp_path, capsys):
+        docx_path = _make_docx(
+            tmp_path / "front_table.docx",
+            [
+                ("table", [["项目名称", "EAI 演示项目"], ["项目编号", "EAI-T-2026-001"]]),
+                ("h", 1, "第一章 招标公告"),
+                ("p", "欢迎符合资格条件的投标人投标。"),
+            ],
+        )
+        rc, path = _run_ingest(tmp_path, [docx_path])
+        assert rc == 3, "文首表格应同时产出 table_before_any_heading 异常项"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        assert len(data["tables"]) == 1
+        anchor = data["tables"][0]["anchor"]
+        assert isinstance(anchor["section"], str) and anchor["section"].strip(), f"文首表格锚点 section 必须非空(T1 契约): {anchor}"
+        assert isinstance(anchor["para"], int) and anchor["para"] >= 1
+        summary = json.loads([ln for ln in capsys.readouterr().out.splitlines() if ln.strip().startswith("{")][-1])
+        assert any(a["kind"] == "table_before_any_heading" for a in summary["anomalies"]), summary["anomalies"]
+
+
+class TestIngestNestedTable:
+    """嵌套表(投标格式模板常见): 结构行数只数直接子级 w:tr——递归口径会把内层行
+    计入外层, 在与 n_rows(只数直接子级)比对时制造 row_count_mismatch 假阳性(审查修复)。"""
+
+    def test_nested_table_no_false_mismatch(self, tmp_path):
+        docx_mod = pytest.importorskip("docx", reason="backend venv 缺 python-docx")
+        doc = docx_mod.Document()
+        doc.add_heading("第一章 招标公告", level=1)  # 标题在前, 排除文首表异常项干扰
+        doc.add_paragraph("正文。")
+        outer = doc.add_table(rows=2, cols=2)
+        outer.style = "Table Grid"
+        for r in range(2):
+            for c in range(2):
+                outer.rows[r].cells[c].text = f"外{r}{c}"
+        inner = outer.rows[1].cells[1].add_table(rows=2, cols=1)  # (1,1) 单元格内嵌 2x1 表
+        for i in range(2):
+            inner.rows[i].cells[0].text = f"内{i}"
+        path = tmp_path / "nested.docx"
+        doc.save(str(path))
+
+        rc, out = _run_ingest(tmp_path, [path])
+        assert rc == 0, "2x2 外层表含嵌套 2x1 表: 递归口径得 xml_rows=4 vs n_rows=2 → 假阳性 rc=3; 直接子级口径两者同为 2"
+        data = json.loads(out.read_text(encoding="utf-8"))
+        assert [(t["n_rows"], t["n_cols"]) for t in data["tables"]] == [(2, 2)], "外层表行数=直接子级 2(嵌套行归嵌套表自身)"
+
+        ingest = _ingest_module()
+        blocks = ingest.parse_docx_blocks(path)
+        blocks_xml = ingest.parse_docx_blocks_xml(path)
+        tables = [(b["n_rows"], b["xml_rows"]) for b in blocks if b["kind"] == "table"]
+        tables_xml = [(b["n_rows"], b["xml_rows"]) for b in blocks_xml if b["kind"] == "table"]
+        assert tables == tables_xml == [(2, 2)], "主路径与兜底路径在嵌套表上必须同口径(直接子级)"
+
+
+class TestIngestEmptyInputs:
+    """空文档不是扫描件: 退出码 1 + 空文档提示——OCR 对空文档无济于事(审查修复)。"""
+
+    def test_empty_docx_exit_1_not_ocr(self, tmp_path, capsys):
+        docx_mod = pytest.importorskip("docx", reason="backend venv 缺 python-docx")
+        empty = tmp_path / "空文档.docx"
+        docx_mod.Document().save(str(empty))
+        rc, path = _run_ingest(tmp_path, [empty])
+        assert rc == 1, "空 docx(无文本/表格/图片)必须归退出码 1, 不得占用 OCR 分流的 2"
+        captured = capsys.readouterr()
+        combined = captured.out + captured.err
+        assert "空" in combined and "OCR" not in combined, f"应报'空文档'而非 OCR 指引: {combined!r}"
+        assert not path.exists()
+
+    def test_image_only_pdf_exit_2_with_ocr_hint(self, tmp_path, capsys):
+        """仅图片无文本层的 PDF(扫描件形态)→ 退出码 2 + 走 OCR 提示(端到端补口)。"""
+        scanned = _make_raw_pdf(tmp_path / "扫描件.pdf", with_image=True)
+        rc, path = _run_ingest(tmp_path, [scanned])
+        assert rc == 2, "扫描 PDF 必须用独立退出码 2"
+        captured = capsys.readouterr()
+        assert "OCR" in captured.out + captured.err, "必须给出走 eai-flow-ocr 路径的明确提示"
+        assert not path.exists(), "OCR 分流场景不得写出 sections.json"
+
+    def test_empty_pdf_exit_1_not_ocr(self, tmp_path, capsys):
+        empty = _make_raw_pdf(tmp_path / "空.pdf", with_image=False)
+        rc, path = _run_ingest(tmp_path, [empty])
+        assert rc == 1, "空 PDF 与空 docx 同理, 不是扫描件"
+        captured = capsys.readouterr()
+        assert "空" in captured.out + captured.err, f"应报'空文档'而非 OCR 指引: {captured.out!r} {captured.err!r}"
+        assert not path.exists()
+
+
+class TestIngestCorruptSectionsJson:
+    """既有 sections.json 损坏: 干净退出 1 + 拒绝覆盖, 不得裸抛 traceback(审查修复:
+    键存在但值类型错曾以未捕获 AttributeError 崩出)。"""
+
+    def _write_existing(self, tmp_path, content: str):
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        target = out_dir / "sections.json"
+        target.write_text(content, encoding="utf-8")
+        return target
+
+    def test_truncated_json_exit_1(self, tmp_path):
+        self._write_existing(tmp_path, '{"chunks": [')
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 1
+        assert path.read_text(encoding="utf-8") == '{"chunks": [', "截断 JSON 必须拒绝覆盖(先人工核查)"
+
+    def test_chunks_not_list_of_dicts_exit_1(self, tmp_path):
+        existing = self._write_existing(tmp_path, json.dumps({"chunks": ["CH-001"], "tables": []}, ensure_ascii=False))
+        rc, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 1, "chunks 为字符串数组时应干净退出 1(曾裸抛 AttributeError)"
+        assert existing.read_text(encoding="utf-8").startswith('{"chunks"'), "类型损坏同样拒绝覆盖"
+
+    def test_tables_not_list_of_dicts_exit_1(self, tmp_path):
+        self._write_existing(tmp_path, json.dumps({"chunks": [], "tables": [{"table_id": "T-001"}, "T-002"]}, ensure_ascii=False))
+        rc, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 1
+
+    def test_load_sections_unit_rejects_bad_types(self, tmp_path):
+        ingest = _ingest_module()
+        p = tmp_path / "sections.json"
+        p.write_text(json.dumps({"chunks": {}, "tables": []}), encoding="utf-8")
+        with pytest.raises(ingest.IngestError):
+            ingest.load_sections(p)

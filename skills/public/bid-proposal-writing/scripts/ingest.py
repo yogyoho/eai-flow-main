@@ -25,8 +25,10 @@
 不调用 LLM; 不 import app.*/deerflow.*。
 
 退出码:
-    0 = 干净完成
-    1 = 用法/文件错误(输入缺失、类型不支持、代号非法、产物损坏)
+    0 = 干净完成(--help 等正常终止亦为 0)
+    1 = 用法/文件错误(含 argparse 参数用法错误——argparse 默认退出码 2 与
+        EXIT_NEED_OCR 撞号, 此处统一改道 1; 输入缺失、类型不支持、代号非法、
+        产物损坏、空文档)
     2 = 存在无文本层输入(扫描件)→ 需先走 eai-flow-ocr 全文 OCR 路径
     3 = 完成但有异常项(表行数不一致等, 摘要 JSON 的 anomalies 列出)
 """
@@ -73,6 +75,10 @@ _CODE_RE = re.compile(r"^[A-Z]{2,4}$")
 
 # chunk/table id: <前缀>-<3 位序号>(与 sections.json 契约一致)
 _ID_RE_CACHE: dict[str, re.Pattern[str]] = {}
+
+# 文首内容(首个标题之前, 如封面表格)的锚点 section: T1 契约要求 section 非空,
+# 括号前缀保证该合成值不与任何真实标题文本混淆
+_PRE_HEADING_SECTION = "(文首)"
 
 
 class IngestBaseError(Exception):
@@ -180,8 +186,13 @@ def _heading_level_from_style_id(style_id: str) -> int:
 
 
 def _count_tr(element) -> int:
-    """统计表格 XML 元素内的 w:tr 行数(结构行数, D5 比对基准)。"""
-    return sum(1 for e in element.iter() if e.tag.endswith("}tr"))
+    """统计表格的直接子级 w:tr 行数(结构行数, D5 比对基准)。
+
+    只数直接子级——与 python-docx len(table.rows) 及兜底路径 findall 严格同口径;
+    嵌套表格(投标格式模板常见)的内层行归嵌套表自身, 若递归计入外层, 会在与
+    n_rows(同样只数直接子级)的 D5 比对中制造 row_count_mismatch 假阳性。
+    """
+    return len(element.findall(f"{_W_NS}tr"))
 
 
 def parse_docx_blocks(path: str | Path) -> list[dict]:
@@ -253,13 +264,19 @@ def parse_docx_blocks_xml(path: str | Path) -> list[dict]:
 
 
 def docx_has_images(path: str | Path) -> bool:
-    """docx 是否含图片/绘图对象(无文本层时用于判定扫描件)。"""
+    """docx 是否含图片/绘图对象(无文本层时用于判定扫描件)。
+
+    按元素标签(w:drawing/w:pict)判定而非原始字节子串——默认模板的根元素
+    命名空间声明本身就含 "drawingml" 字样, 子串匹配会把零图片文档(含空文档、
+    仅表格文档)误判成扫描件错走 OCR 分流。
+    """
     try:
         with zipfile.ZipFile(str(path)) as zf:
             xml_bytes = zf.read("word/document.xml")
-        return b"drawing" in xml_bytes or b"pict" in xml_bytes
-    except (OSError, zipfile.BadZipFile, KeyError):
+        root = ET.fromstring(xml_bytes)
+    except (OSError, zipfile.BadZipFile, KeyError, ET.ParseError):
         return False
+    return any(e.tag.endswith("}drawing") or e.tag.endswith("}pict") for e in root.iter())
 
 
 # =============================================================================
@@ -273,11 +290,12 @@ _HEADING_MAX_LEN = 80
 
 
 def parse_pdf_pages(path: str | Path) -> list[dict]:
-    """pdfplumber 解析 PDF: 每页产出 {page_no, lines, tables}。
+    """pdfplumber 解析 PDF: 每页产出 {page_no, lines, tables, images}。
 
     lines: [{text, size, top}] —— size = 行内最大字符字号(标题判据);
     tables: [{structural_rows, extracted_rows, n_cols, top}] —— find_tables 的几何行数
-    与 extract() 的内容行数并列保留, 供 D5 行数比对。
+    与 extract() 的内容行数并列保留, 供 D5 行数比对;
+    images: 该页是否含图片对象(无文本层时区分"扫描件"与"空文档")。
     """
     try:
         import pdfplumber
@@ -311,7 +329,7 @@ def parse_pdf_pages(path: str | Path) -> list[dict]:
                     }
                 )
             tables.sort(key=lambda x: x["top"])
-            pages.append({"page_no": page_no, "lines": lines, "tables": tables})
+            pages.append({"page_no": page_no, "lines": lines, "tables": tables, "images": bool(page.images)})
     return pages
 
 
@@ -350,7 +368,8 @@ def chunk_docx(blocks: list[dict], source_file: str) -> tuple[list[dict], list[d
     - chunk 按文档序产出: 常规章节仅当直接正文段 ≥1 时成块(n_paras=正文段数);
       格式章节子树内每个标题都成骨架块(n_paras=0, 只出章节树)。
     - heading_path = 当前标题栈全文链(镜像消费)。
-    - 表格锚点 = 所在章节 section + 表格在章节内的块序(段落序)。
+    - 表格锚点 = 所在章节 section + 表格在章节内的块序(段落序); 首个标题前的
+      表格(封面表)锚 section 用合成值 "(文首)" 并记 table_before_any_heading 异常项。
     """
     headings_seq = [(b["level"], b["text"]) for b in blocks if b["kind"] == "heading"]
     in_format = _format_index_set(headings_seq)
@@ -395,9 +414,13 @@ def chunk_docx(blocks: list[dict], source_file: str) -> tuple[list[dict], list[d
                     current["para"] = block_ordinal
         elif kind == "table":
             block_ordinal += 1
-            section = current["section"] if current is not None else ""
             if current is None:
+                # 文首表格(如封面表): 锚 section 用合成值保证 T1 契约(section 非空),
+                # 同时记异常项交确认门1 显式裁决, 绝不静默丢弃
                 anomalies.append({"kind": "table_before_any_heading", "source_file": source_file, "para": block_ordinal})
+                section = _PRE_HEADING_SECTION
+            else:
+                section = current["section"]
             caption = strip_heading_number(stack[-1][1]) if stack else ""
             table_infos.append({"anchor": {"section": section, "para": block_ordinal}, "structural_rows": block["xml_rows"], "extracted_rows": block["n_rows"], "n_cols": block["n_cols"], "caption": caption})
     flush()
@@ -409,7 +432,8 @@ def chunk_pdf_pages(pages: list[dict], source_file: str) -> tuple[list[dict], li
 
     - 行按字号分类: 行主字号 ≥ 正文字号+1.5 且长度 ≤80 → 标题; 层级 = 编号深度(无编号回退 1)。
     - 正文行计入当前章节 chunk 的 n_paras; 首个标题前的游离正文无锚可挂, 丢弃。
-    - 表格按 (页, top) 插入阅读序, 锚点 = 所在章节 section + 页码。
+    - 表格按 (页, top) 插入阅读序, 锚点 = 所在章节 section + 页码; 首个标题前的
+      表格锚 section 用合成值 "(文首)" 并记 table_before_any_heading 异常项(与 docx 路径同构)。
     - 格式章节子树同样只出骨架块(n_paras=0)。
     """
     lines_flat = [(p["page_no"], ln) for p in pages for ln in p["lines"]]
@@ -470,8 +494,9 @@ def chunk_pdf_pages(pages: list[dict], source_file: str) -> tuple[list[dict], li
         else:  # table
             table = payload
             if current is None:
+                # 文首表格与 docx 路径同构: 合成 section 保锚点契约 + 异常项浮出
                 anomalies.append({"kind": "table_before_any_heading", "source_file": source_file, "page": page_no})
-                section = ""
+                section = _PRE_HEADING_SECTION
             else:
                 section = current["section"]
             caption = strip_heading_number(stack[-1][1]) if stack else ""
@@ -486,7 +511,11 @@ def chunk_pdf_pages(pages: list[dict], source_file: str) -> tuple[list[dict], li
 
 
 def load_sections(path: str | Path) -> dict:
-    """装载既有 sections.json; 不存在 → 空骨架; 损坏 → 显式报错(绝不静默覆盖状态)。"""
+    """装载既有 sections.json; 不存在 → 空骨架; 损坏 → 显式报错(绝不静默覆盖状态)。
+
+    校验含值类型: chunks/tables 必须为对象数组——键存在但值类型错(如字符串数组)
+    同样拒绝, 否则下游 t.get(...) 会以未捕获 AttributeError 裸崩。
+    """
     path = Path(path)
     if not path.is_file():
         return {"chunks": [], "tables": []}
@@ -496,6 +525,9 @@ def load_sections(path: str | Path) -> dict:
         raise IngestError(f"既有 sections.json 不可解析, 拒绝覆盖(先人工核查): {path}: {exc}") from exc
     if not isinstance(data, dict) or "chunks" not in data or "tables" not in data:
         raise IngestError(f"既有 sections.json 结构异常(缺 chunks/tables 键), 拒绝覆盖: {path}")
+    for key in ("chunks", "tables"):
+        if not isinstance(data[key], list) or not all(isinstance(entry, dict) for entry in data[key]):
+            raise IngestError(f"既有 sections.json 结构异常({key} 应为对象数组), 拒绝覆盖: {path}")
     return data
 
 
@@ -537,21 +569,29 @@ def _next_seq(prefix: str, entries: list[dict], key: str) -> int:
 
 
 def _check_docx_text_layer(path: Path, blocks: list[dict]) -> None:
-    """docx 文本层检查: 无任何文本且(含图片 或 连表格都没有)→ 判定扫描件走 OCR。"""
+    """docx 文本层检查: 无任何文本时三分流——
+    含图片=扫描件走 OCR(退出码 2); 仅表格=受理(表格是有效结构内容);
+    全空=空文档(一般文件错误, 退出码 1)——空文档不是扫描件, OCR 无济于事。"""
     has_text = any(b["kind"] in ("heading", "para") for b in blocks)
     if has_text:
         return
-    has_tables = any(b["kind"] == "table" and b["n_rows"] >= 1 for b in blocks)
-    has_images = docx_has_images(path)
-    if has_images or not has_tables:
+    if docx_has_images(path):
         raise NeedOcrError(f"{path.name}: docx 无文本层(疑似扫描件)——请先转 PDF 并走 eai-flow-ocr 全文 OCR 路径, 再对 OCR 产物重新 ingest(设计阶段0 分流)")
+    if any(b["kind"] == "table" and b["n_rows"] >= 1 for b in blocks):
+        return
+    raise IngestError(f"{path.name}: 空文档(无文本/表格/图片)——无可解析内容, 请核查输入文件是否正确")
 
 
 def _check_pdf_text_layer(path: Path, pages: list[dict]) -> None:
-    """PDF 文本层检查: 全部页面零文本行 → 判定扫描件走 OCR。"""
+    """PDF 文本层检查: 全部页面零文本行时三分流(与 docx 路径同构)——
+    含图片=扫描件走 OCR(退出码 2); 仅表格=受理; 全空=空文档(退出码 1)。"""
     if any(p["lines"] for p in pages):
         return
-    raise NeedOcrError(f"{path.name}: PDF 无文本层(疑似扫描件)——请走 eai-flow-ocr 全文 OCR 路径, 再对 OCR 产物重新 ingest(设计阶段0 分流)")
+    if any(p.get("images") for p in pages):
+        raise NeedOcrError(f"{path.name}: PDF 无文本层(疑似扫描件)——请走 eai-flow-ocr 全文 OCR 路径, 再对 OCR 产物重新 ingest(设计阶段0 分流)")
+    if any(p.get("tables") for p in pages):
+        return
+    raise IngestError(f"{path.name}: 空文档(PDF 无文本/表格/图片)——无可解析内容, 请核查输入文件是否正确")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -564,7 +604,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--code", required=True, help="文件代号(2-4 位大写字母, 如 ZB/JS/PB; clause_id 复合前缀按此分配)")
     parser.add_argument("--out", required=True, help="产物目录(写 <out>/sections.json; 既有文件增量合并, 同名文件替换旧块)")
     parser.add_argument("--addendum", action="store_true", help="本次输入为补遗/答疑文件(增量输入, 隐藏废标项主藏身处)")
-    args = parser.parse_args(argv)
+    try:
+        args = parser.parse_args(argv)
+    except SystemExit as exc:
+        # argparse 用法错误默认 SystemExit(2), 与 EXIT_NEED_OCR 撞号——编排方按
+        # rc==2 分流会把 CLI 误用误路由进 OCR 路径, 故统一改道 EXIT_ERROR;
+        # --help/--version 的正常退出(code 0)原样放行。
+        if not exc.code:
+            return EXIT_OK
+        print(f"[ingest] 错误: 命令行参数用法错误(argparse 退出码 {exc.code}); 用法错误归退出码 1, 2 已保留给 OCR 分流(用 --help 查看用法)", file=sys.stderr)
+        return EXIT_ERROR
 
     try:
         if not _CODE_RE.match(args.code):
