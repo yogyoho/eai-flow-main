@@ -29,6 +29,9 @@
     source_file/class/category/source_ref/requirement/response_skeleton 撰写字段,
     response_status 等生命周期字段不参与——后续阶段可合法变更); 同候选文件内多条 new
     映射撞号或内容不一致 → duplicate_clause_id 异常, 绝不静默吞第二份载荷。
+    modify 幂等重放(锚点层/相似度层)同口径: 重放链命中的库内新条款必须存在、来自补遗且
+    载荷内容一致; 不一致(如部分落账后操作者编辑载荷重跑)→ replay_content_mismatch
+    异常浮出而非重放, 绝不静默吞掉编辑后的候选(否则陈旧内容永久封存且零信号)。
     幂等台账 merge_ledger.json 按候选内容规范化哈希(sha256, 键序无关): 同 hash 重跑
     整体跳过零写入; 存在 pending/异常时不记台账(重跑须能重新浮出, 已落账项幂等重放
     不产生字节漂移)。
@@ -38,7 +41,8 @@ D3 新实体: 补遗实体 diff entities_whitelist.json → 增量清单 addendu
     白名单缺失 → whitelist_missing 异常, 按空集 diff 全量进增量清单, 不静默;
     白名单确认后增量出清走删除, 摘要 written 以 "del:<文件名>" 反映, 删除可见)。
 D7 悬挂外键: 落账后扫描 structure/rubric 的 linked_clause_ids, 指向缺失/superseded/voided
-    条款 → 异常清单不静默(外键异常是扫描型发现, 不阻断落账)。
+    条款 → 异常清单不静默(外键异常是扫描型发现, 不阻断落账); linked_clause_ids 装载时
+    校验为字符串数组, 畸形拒绝覆盖(先人工核查)退出码 1, 不带病进扫描。
 D7 原子写盘: 所有状态文件临时文件+os.replace, 防中断留半截文件。
 
 脚本纪律: 纯 Python 3.12; stdlib only; 不调用 LLM; 不 import app.*/deerflow.*。
@@ -161,6 +165,21 @@ def load_ledger(state_dir: Path) -> list[dict]:
     return data
 
 
+def _validate_linked_clause_ids(entries: list[dict], source_name: str, path: Path) -> None:
+    """D7 外键扫描前置装载校验: linked_clause_ids 存在时必须为字符串数组。
+
+    畸形值(字符串会按字符迭代产出垃圾 clause_fk_invalid; dict/int 元素或非列表会使
+    scan_foreign_keys 抛未捕获 TypeError 逃出 main() 的 MergeAddendaError 处理)——
+    按状态契约在装载时干净拒绝(退出码 1, 拒绝覆盖先人工核查), 不带病进入落账管线。
+    """
+    for index, entry in enumerate(entries):
+        linked = entry.get("linked_clause_ids")
+        if linked is None:
+            continue
+        if not isinstance(linked, list) or not all(isinstance(item, str) for item in linked):
+            raise MergeAddendaError(f"{source_name} items[{index}] linked_clause_ids 应为字符串数组(实际类型 {type(linked).__name__} 或含非字符串元素), 拒绝覆盖(先人工核查): {path}")
+
+
 def load_state(state_dir: Path) -> dict:
     """装载三状态文件: clauses 必需(阶段2 前提), structure/rubric 可选但损坏即拒绝覆盖。"""
     clauses_path = state_dir / STATE_FILES["clauses"]
@@ -179,6 +198,7 @@ def load_state(state_dir: Path) -> dict:
         data = _load_json_file(structure_path, "structure.json")
         if not isinstance(data, list) or not all(isinstance(node, dict) for node in data):
             raise MergeAddendaError(f"structure.json 结构异常(应为对象数组), 拒绝覆盖(先人工核查): {structure_path}")
+        _validate_linked_clause_ids(data, "structure.json", structure_path)
         structure = data
 
     rubric_items: list[dict] = []
@@ -187,6 +207,7 @@ def load_state(state_dir: Path) -> dict:
         data = _load_json_file(rubric_path, "rubric.json")
         if not isinstance(data, dict) or not isinstance(data.get("items"), list) or not all(isinstance(item, dict) for item in data["items"]):
             raise MergeAddendaError(f"rubric.json 结构异常(应为含 items 数组的对象), 拒绝覆盖(先人工核查): {rubric_path}")
+        _validate_linked_clause_ids(data["items"], "rubric.json", rubric_path)
         rubric_items = data["items"]
 
     return {"clauses": clauses, "structure": structure, "rubric_items": rubric_items}
@@ -648,6 +669,15 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
                 anomalies.append({"kind": "self_supersede", "mapping_id": mapping_id, "clause_id": new_id, "message": f"新条款 {new_id} 与被修改条款同 id(自指 supersede)——异常, 不落账"})
                 continue
             if res["replay"]:
+                # 重放内容一致性(与 new 动作撞号防线同口径 _authored_content): 锚点层/相似度层
+                # 重放在此汇流, 库内新条款必须存在、来自补遗且撰写内容与本次候选一致;
+                # 不一致(部分落账后操作者编辑载荷重跑)→ 异常浮出而非重放, 绝不静默吞掉
+                # 编辑后的候选(否则陈旧内容永久封存且零信号), 待裁决补齐后也不得记台账。
+                stored_new = by_id.get(new_id)
+                if stored_new is None or not stored_new.get("from_addendum") or _authored_content(stored_new) != _authored_content(normalize_addendum_clause(clause)):
+                    detail = "库内不存在(重放链悬挂, 状态疑被人工改动)" if stored_new is None else ("库内条款非补遗来源" if not stored_new.get("from_addendum") else "载荷内容与库内补遗条款不一致(同 id 不同载荷)")
+                    anomalies.append({"kind": "replay_content_mismatch", "mapping_id": mapping_id, "clause_id": new_id, "message": f"modify 重放链指向的新条款 {new_id} {detail}——绝不静默吞编辑后的候选, 异常浮出不重放"})
+                    continue
                 applied["added"].append(new_id)
                 applied["superseded"].append({"from": old.get("clause_id"), "to": new_id})
                 continue

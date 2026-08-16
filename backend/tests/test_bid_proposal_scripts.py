@@ -2863,6 +2863,70 @@ class TestMergeAddendaNewCollision:
         assert _clauses_by_id(state)["ZB-C-001"]["from_addendum"] is False, "既有非补遗条款不得被覆盖"
 
 
+class TestMergeAddendaModifyReplayContent:
+    """T5-1 审查修复: modify 幂等重放(锚点层/相似度层)必须与 new 撞号防线同口径走
+    _authored_content 比较——部分落账后操作者编辑载荷重跑, 同 id 不同内容 → 异常浮出
+    而非重放, 绝不静默吞掉编辑后的候选(否则陈旧内容永久封存且零信号)。"""
+
+    def test_anchor_replay_with_edited_payload_surfaces_anomaly(self, tmp_path, capsys):
+        """锚点层: 运行1落账 BY-C-004(60天)且因 pending 不记台账; 修正为45天后重跑 →
+        重放链命中但载荷内容不一致 → 异常浮出, applied.added 不得照报(原实现零信号)。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        run1_items = [
+            *_MODIFY_ANCHOR_ITEMS,  # 锚点自动落账 BY-C-004(60天)
+            {"mapping_id": "M-009", "action": "modify", "target": "ZB-C-002", "clause": _addendum_clause("BY-C-006")},  # 相似度候选→pending, 台账不记
+        ]
+        assert _run_merge(state, _write_addendum(tmp_path, "run1.json", items=run1_items)) == 3
+        assert _clauses_by_id(state)["BY-C-004"]["requirement"].startswith("交货期:合同签订后60"), "运行1已落账60天版本"
+        before = (state / "clauses.json").read_bytes()
+        # 操作者修正载荷为45天后重跑(同链同 id 不同内容)
+        run2_items = [
+            {"mapping_id": "M-001", "action": "modify", "anchor": {"section": "一、项目概况"}, "clause": _addendum_clause("BY-C-004", requirement="交货期:合同签订后45天内交货(补遗文件-01修订版)")},
+            {"mapping_id": "M-009", "action": "modify", "target": "ZB-C-002", "clause": _addendum_clause("BY-C-006")},
+        ]
+        rc = _run_merge(state, _write_addendum(tmp_path, "run2.json", items=run2_items))
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        mismatch = [a for a in summary["anomalies"] if a["kind"] == "replay_content_mismatch"]
+        assert mismatch and mismatch[0]["mapping_id"] == "M-001" and mismatch[0]["clause_id"] == "BY-C-004", "编辑后的候选被静默按重放吞掉 = 零信号"
+        assert summary["applied"]["added"] == [], "内容分歧时 applied.added 照报 = 落账假象"
+        assert (state / "clauses.json").read_bytes() == before, "库内60天陈旧内容不得被静默改写"
+        assert not (state / "merge_ledger.json").exists(), "有异常不得记台账(陈旧内容不得被台账封存)"
+
+    def test_similar_replay_with_edited_payload_surfaces_anomaly(self, tmp_path, capsys):
+        """相似度层: 目标已被同 id 条款 supersede 且本次候选载荷与库内不一致 → 异常浮出
+        (原实现只查 superseded_by==clause_id 即重放, rc=0 零信号)。"""
+        state = _copy_prestate(tmp_path, merged=True)  # ZB-C-003 已被 BY-C-004(60天) supersede
+        before = (state / "clauses.json").read_bytes()
+        items = [{"mapping_id": "M-002", "action": "modify", "target": "ZB-C-003", "clause": _addendum_clause("BY-C-004", requirement="交货期:合同签订后45天内交货(补遗文件-01修订版)")}]
+        rc = _run_merge(state, _write_addendum(tmp_path, items=items))
+        assert rc == 3, "重放内容分歧必须浮出(原实现 rc=0 干净完成 = 编辑内容永不落盘)"
+        summary = _last_summary_json(capsys)
+        assert "replay_content_mismatch" in _anomaly_kinds(summary)
+        assert summary["applied"]["added"] == [], "内容分歧不得照报 applied"
+        assert (state / "clauses.json").read_bytes() == before, "库内条款不得被静默改写"
+        assert not (state / "merge_ledger.json").exists()
+
+    def test_partial_run_similar_replay_identical_payload_stays_idempotent(self, tmp_path, capsys):
+        """绿路径守卫: 相似度裁决已 apply、另一项 pending(台账不记)后重跑同候选同裁决——
+        载荷内容一致 → 幂等重放照常, 不误报 replay_content_mismatch。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        items = [
+            {"mapping_id": "M-002", "action": "modify", "target": "ZB-C-003", "clause": _addendum_clause("BY-C-004")},
+            {"mapping_id": "M-009", "action": "modify", "target": "ZB-C-002", "clause": _addendum_clause("BY-C-006")},  # 不给裁决→pending, 台账不记
+        ]
+        cands = _write_addendum(tmp_path, items=items)
+        decisions = _write_decisions(tmp_path, [{"mapping_id": "M-002", "decision": "apply"}])
+        assert _run_merge(state, cands, decisions=decisions) == 3
+        snapshot = _snapshot(state)
+        rc = _run_merge(state, cands, decisions=decisions)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "replay_content_mismatch" not in _anomaly_kinds(summary), "内容一致的重放不是异常"
+        assert summary["applied"]["added"] == ["BY-C-004"], "重放照常记 applied, 状态零变更"
+        assert _snapshot(state) == snapshot, "幂等重放不得产生字节漂移"
+
+
 class TestMergeAddendaEntities:
     """D3 新实体提取: 补遗实体 diff 白名单 → 增量清单文件(确认门2 消费)。"""
 
@@ -3147,6 +3211,42 @@ class TestMergeAddendaFileErrors:
     def test_help_returns_0(self, capsys):
         assert _merge_module().main(["--help"]) == 0
         capsys.readouterr()
+
+
+class TestMergeAddendaLinkedIdsShape:
+    """T5-2 审查修复: structure/rubric 的 linked_clause_ids 畸形 → 装载时按状态契约干净拒绝
+    (退出码 1, 拒绝覆盖先人工核查)——原实现字符串按字符迭代产出垃圾 clause_fk_invalid,
+    dict 元素致 by_id.get(unhashable) 裸 TypeError 逃出 main() 的 MergeAddendaError 处理。"""
+
+    def test_structure_linked_ids_string_rejected_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=False)
+        structure = _state_json(state, "structure.json")
+        structure[0]["linked_clause_ids"] = "ZB-C-001"  # 字符串: 原实现按字符迭代产出 8 条假 clause_fk_invalid
+        target = state / "structure.json"
+        target.write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands) == 1, "畸形状态必须装载时干净拒绝(退出码 1), 不是垃圾异常清单"
+        err = capsys.readouterr().err
+        assert "linked_clause_ids" in err and "拒绝覆盖" in err, "错误信息须定位到字段并声明拒绝覆盖"
+        assert '"ZB-C-001"' in target.read_text(encoding="utf-8"), "拒绝覆盖: 原样保留待人工核查"
+
+    def test_structure_linked_ids_dict_element_rejected_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        structure = _state_json(state, "structure.json")
+        structure[0]["linked_clause_ids"] = [{"clause_id": "ZB-C-001"}]  # 元素为 dict: 原实现 by_id.get(unhashable) 裸 TypeError
+        (state / "structure.json").write_text(json.dumps(structure, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands) == 1, "未捕获 TypeError 不得逃出 main() 的 MergeAddendaError 处理(进程退出码不得靠巧合)"
+
+    def test_rubric_linked_ids_non_list_rejected_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=False)
+        rubric = _state_json(state, "rubric.json")
+        rubric["items"][0]["linked_clause_ids"] = 42  # 非列表: 原实现 for 迭代 int 裸 TypeError
+        target = state / "rubric.json"
+        target.write_text(json.dumps(rubric, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands) == 1
+        assert '"linked_clause_ids": 42' in target.read_text(encoding="utf-8"), "拒绝覆盖: 原样保留待人工核查"
 
 
 class TestMergeAddendaUnitHelpers:
