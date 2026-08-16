@@ -3464,6 +3464,62 @@ class TestMergeAddendaFileErrors:
         capsys.readouterr()
 
 
+class TestMergeAddendaWritePathErrors:
+    """Important(终审 R5): 写盘路径 I/O 异常曾以裸 traceback 逃出 main()——main 只捕
+    MergeAddendaError, atomic_write_json 的 open/os.replace/os.fsync 抛出的
+    PermissionError/FileExistsError 等裸栈直达编排方(rc 恰好仍 1 但输出是栈不是错误行)。
+    对齐 ingest 既定契约: main 统一 except OSError → 退出码 1 + 干净单行错误。"""
+
+    def test_clauses_json_locked_on_replace_exit_1(self, tmp_path, capsys, monkeypatch):
+        """clauses.json 被占用/只读(Windows 上 os.replace 拒绝访问) → 干净退出 1,
+        原文件完好、无 tmp 残留(终审复现: clauses.json 置只读 → replace PermissionError)。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        before = (state / "clauses.json").read_bytes()
+
+        real_replace = os.replace
+
+        def locked_replace(src, dst, *args, **kwargs):
+            if str(dst).endswith("clauses.json"):
+                raise PermissionError(13, "拒绝访问(模拟 clauses.json 被其他程序占用/只读)")
+            return real_replace(src, dst, *args, **kwargs)
+
+        monkeypatch.setattr(os, "replace", locked_replace)
+        rc = _run_merge(state, cands)
+        assert rc == 1, "落账写盘被占用必须干净退出 1(不得 PermissionError 裸栈)"
+        err = capsys.readouterr().err
+        assert "[merge_addenda] 错误: 文件读写失败(PermissionError)" in err, f"必须给出干净错误行: {err!r}"
+        assert (state / "clauses.json").read_bytes() == before, "失败时目标文件必须完好(原子性)"
+        leftovers = [p.name for p in state.iterdir() if "tmp" in p.name.lower()]
+        assert not leftovers, f"失败路径不得残留临时文件: {leftovers}"
+
+
+class TestMergeAddendaBomTolerantLoading:
+    """Minor(终审 M-BOM): Windows 记事本"带 BOM 的 UTF-8"产物兼容——_load_json_file 用
+    utf-8-sig(对齐 extract 全部装载器/score_simulate 回传读取既定口径; 无 BOM 行为不变)。"""
+
+    def test_bom_decisions_accepted(self, tmp_path):
+        """带 BOM 的 --decisions 裁决文件必须可读, 不得报"不可读/不可解析"退出 1。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        decisions = _write_decisions(tmp_path, [])
+        decisions.write_bytes(b"\xef\xbb\xbf" + decisions.read_bytes())
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS)
+        assert _run_merge(state, cands, decisions=decisions) == 0, "带 BOM 的裁决文件是合法 UTF-8, 不得拒绝"
+
+    def test_bom_whitelist_entities_diff_still_works(self, tmp_path, capsys):
+        """带 BOM 的 entities_whitelist.json 必须可装载(不得按缺失降级空集 diff, 也不得退出 1)。"""
+        state = _copy_prestate(tmp_path, merged=False)
+        (state / "entities_whitelist.json").write_bytes(b"\xef\xbb\xbf" + (state / "entities_whitelist.json").read_bytes())
+        entities = [
+            {"type": "company", "value": "东智装备制造有限公司"},  # 已在白名单(证明 BOM 后仍命中)
+            {"type": "spec_version", "value": "S7-1500 V2.4"},  # 新版本号 → 增量
+        ]
+        cands = _write_addendum(tmp_path, items=_MODIFY_ANCHOR_ITEMS, entities=entities)
+        assert _run_merge(state, cands) == 0
+        summary = _last_summary_json(capsys)
+        assert summary["new_entities"] == [{"type": "spec_version", "value": "S7-1500 V2.4"}], "BOM 白名单必须真实参与 diff(白名单实体出列, 仅新实体进增量)"
+
+
 class TestMergeAddendaLinkedIdsShape:
     """T5-2 审查修复: structure/rubric 的 linked_clause_ids 畸形 → 装载时按状态契约干净拒绝
     (退出码 1, 拒绝覆盖先人工核查)——原实现字符串按字符迭代产出垃圾 clause_fk_invalid,
@@ -4091,6 +4147,34 @@ def _add_structure_node(state_dir, node):
 
 def _reingest_result(state_dir):
     return _state_json(state_dir, "reingest_result.json")
+
+
+class TestBuildOutputWritePathErrors:
+    """Important(终审 R5): --out 指向已存在普通文件 → atomic_write_text 的 mkdir
+    FileExistsError 曾以裸 traceback 逃出 main()(终审复现)。对齐 ingest 既定契约:
+    main 统一 except OSError → 退出码 1 + 干净单行 [build_output] 错误。"""
+
+    def test_out_points_to_existing_file_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        out_as_file = tmp_path / "out"
+        out_as_file.write_text("我是一个普通文件, 不是目录", encoding="utf-8")
+        rc = _run_build(state, out_as_file)
+        assert rc == 1, "--out 为普通文件时必须干净退出 1(不得 FileExistsError 裸栈)"
+        err = capsys.readouterr().err
+        assert "[build_output] 错误: 文件读写失败(FileExistsError)" in err, f"必须给出干净的 [build_output] 错误行: {err!r}"
+
+
+class TestBuildOutputBomTolerantLoading:
+    """Minor(终审 M-BOM): 带BOM的 UTF-8 状态文件兼容——_load_json_file 用 utf-8-sig
+    (对齐 extract/score_simulate/merge_addenda 既定口径; 无 BOM 行为不变)。"""
+
+    def test_bom_whitelist_accepted(self, tmp_path, capsys):
+        """带 BOM 的 entities_whitelist.json 必须可装载(不得退出 1, 也不得按缺失降级 lint)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "entities_whitelist.json").write_bytes(b"\xef\xbb\xbf" + (state / "entities_whitelist.json").read_bytes())
+        assert _run_build(state, tmp_path / "out") == 0, "带 BOM 的白名单是合法 UTF-8, 不得拒绝"
+        summary = _last_summary_json(capsys)
+        assert summary["lint"]["whitelist_missing"] is False, "BOM 白名单必须真实装载(不得误报缺失按空集 diff)"
 
 
 def _aggregate_items(result):

@@ -46,7 +46,7 @@
 
 退出码:
     0 = 干净完成(--help 亦为 0)
-    1 = 用法/文件错误(状态文件缺失/不可解析/结构损坏; argparse 用法错误统一
+    1 = 用法/文件错误(状态文件缺失/不可解析/结构损坏、输出目录不可写; argparse 用法错误统一
         改道 1——2 留给 ingest 的 OCR 分流语义, 防编排方误路由)
     3 = 完成但有异常项(lint 待核对实体/白名单缺失/悬挂外键, 摘要 anomalies 列出)
 """
@@ -110,7 +110,8 @@ def _load_json_file(path: Path, what: str):
     if not path.is_file():
         raise BuildOutputError(f"{what} 不存在: {path}")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        # utf-8-sig: Windows 记事本"带 BOM 的 UTF-8"产物剥掉 BOM(对齐 extract 装载器口径; 无 BOM 行为不变)
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
         raise BuildOutputError(f"{what} 不可读/不可解析(需 UTF-8; 疑似截断或编码错): {path}: {exc}") from exc
 
@@ -761,6 +762,13 @@ def main(argv: list[str] | None = None) -> int:
         return run_build(Path(args.state_dir), Path(args.out))
     except BuildOutputError as exc:
         print(f"[build_output] 错误: {exc}", file=sys.stderr)
+        return EXIT_ERROR
+    except OSError as exc:
+        # 写盘 I/O 失败统一转退出码 1(终审 R5, 对齐 ingest 既定契约): --out 指向已存在
+        # 普通文件 → atomic_write_text 的 mkdir FileExistsError。此前以裸 traceback 逃出
+        # main(), 编排方拿到裸栈而非干净的 [build_output] 错误行——main 统一转退出码是
+        # 模块自己的契约(原子性由临时文件+finally 清理保证, 不受影响)。
+        print(f"[build_output] 错误: 文件读写失败({exc.__class__.__name__}): {exc}", file=sys.stderr)
         return EXIT_ERROR
 
 
