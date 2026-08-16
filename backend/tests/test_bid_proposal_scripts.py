@@ -1804,13 +1804,17 @@ class TestExtractMergeAbortsAndQuarantines:
         assert not state_dir.exists() or not any(state_dir.iterdir()), "中止时一个状态文件都不得写(防止带病状态入库)"
 
     def test_bad_item_quarantined_clean_merged_with_fk_cascade(self, tmp_path, capsys):
-        """枚举非法条目所在裁决块整体[待确认]不合并; 引用该条款的结构/评分项级联隔离(D7 外键)。"""
+        """枚举非法条目所在裁决块整体[待确认]不合并; 引用该条款的结构/评分项级联隔离(D7 外键)。
+
+        不传 --declared-total: 评分块被级联隔离后 Σ 无干净基准——隔离/级联/干净块合并
+        语义与 Σ 校验正交, 在此单独锁定; Σ 无条件中止语义由下一条测试锁定。
+        """
         files = _happy_candidate_files(tmp_path)
         bad = dict(load_json("clauses.json")[1])  # ZB-C-002
         bad["class"] = "critical"
         files[1] = _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[bad])
         state_dir = tmp_path / "state"
-        rc = _run_extract("merge", files, declared_total=100, state_dir=state_dir)
+        rc = _run_extract("merge", files, state_dir=state_dir)
         assert rc == 3
         summary = _last_summary_json(capsys)
         kinds = _anomaly_kinds(summary)
@@ -1820,6 +1824,28 @@ class TestExtractMergeAbortsAndQuarantines:
         assert [c["clause_id"] for c in clauses] == ["ZB-C-001", "ZB-C-003", "BY-C-004"], "干净裁决块照常合并, 异常块保持[待确认]不落盘"
         assert not (state_dir / "structure.json").exists(), "结构裁决块因悬挂外键被隔离, 不写 structure.json"
         assert not (state_dir / "rubric.json").exists(), "评分裁决块因悬挂外键被隔离, 不写 rubric.json"
+
+    def test_sum_gap_attributable_to_quarantined_block_still_aborts(self, tmp_path, capsys):
+        """Σ 校验无条件(任务T4/设计文档: 不一致→异常并中止, 不设归因例外): 评分块被级联隔离 →
+        合并终态 Σ=0≠100, 即使差额恰等于被隔离块分值合计(0+100=100)也必须异常并整体中止。"""
+        files = _happy_candidate_files(tmp_path)
+        bad = dict(load_json("clauses.json")[1])  # ZB-C-002 非法 → S-007/R-002 级联隔离 c5/t2 两块
+        bad["class"] = "critical"
+        files[1] = _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[bad])
+
+        rc = _run_extract("validate", files, declared_total=100)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert "rubric_sum_mismatch" in _anomaly_kinds(summary), "validate 同样必须报出该 Σ 不一致, 不得静默吞掉"
+        assert summary["rubric_sum"]["computed"] == 0
+
+        state_dir = tmp_path / "state"
+        rc = _run_extract("merge", files, declared_total=100, state_dir=state_dir)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert summary["aborted"] is True, "Σ 不一致必须无条件中止——不得因差额可归因隔离块而放行干净块落盘"
+        assert "rubric_sum_mismatch" in _anomaly_kinds(summary)
+        assert not state_dir.exists() or not any(state_dir.iterdir()), "中止时一个状态文件都不得写(防带病状态入库)"
 
     def test_merge_without_declared_total_and_state(self, tmp_path, capsys):
         """首合并未给 --declared-total: rubric 照常合并但 total_score=null + 异常项提示(Σ 无基准未检)。"""

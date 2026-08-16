@@ -337,20 +337,9 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
 
     anomalies: list[dict] = []
     quarantined: dict[str, set[str]] = {}  # 文件名 → 异常 kind 集合
-    quarantined_rubric_score = 0.0  # 被隔离 rubric 块的分值合计(Σ 差额归因用)
 
-    def quarantine(view: dict, kind: str) -> None:
-        """隔离一个通过形态校验的裁决块, 并累计其 rubric 分值(Σ 归因)。"""
-        nonlocal quarantined_rubric_score
-        quarantined.setdefault(view["path"].name, set()).add(kind)
-        if view["kind"] == "rubric":
-            for item in view["items"]:
-                score = item.get("max_score") if isinstance(item, dict) else None
-                if isinstance(score, (int, float)) and not isinstance(score, bool):
-                    quarantined_rubric_score += score
-
-    def quarantine_name(name: str, kind: str) -> None:
-        """隔离一个未获得视图的记录(形态不符/未知 id)——items 不可信, 不做 Σ 归因。"""
+    def quarantine(name: str, kind: str) -> None:
+        """隔离一个裁决块([待确认]不合并): 按文件名累计其异常 kind 集合。"""
         quarantined.setdefault(name, set()).add(kind)
 
     # --- 第 1 步: 记录形态 + 裁决 id 合法性 ------------------------------------
@@ -369,14 +358,14 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
             problems.append("chunk_id/table_id 必须恰好提供一个")
         if problems:
             anomalies.append({"kind": "malformed_record", "file": path.name, "problems": problems, "message": "候选记录形态不符, [待确认]不合并"})
-            quarantine_name(path.name, "malformed_record")
+            quarantine(path.name, "malformed_record")
             continue
 
         rid = chunk_id if has_chunk else table_id
         known = rid in (chunk_ids if has_chunk else table_ids)
         if not known:
             anomalies.append({"kind": "unknown_adjudication_id", "file": path.name, "id": rid, "message": f"裁决 id {rid} 不在 sections.json, [待确认]不合并"})
-            quarantine_name(path.name, "unknown_adjudication_id")
+            quarantine(path.name, "unknown_adjudication_id")
             continue
 
         view = {"path": path, "rid": rid, "id_type": "chunk" if has_chunk else "table", "kind": record["kind"], "items": record["items"]}
@@ -393,7 +382,7 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
 
     candidates: list[dict] = [v for v in admitted if v not in dup_views]
     for v in dup_views:
-        quarantine(v, "duplicate_adjudication")
+        quarantine(v["path"].name, "duplicate_adjudication")
     # D5 覆盖度: 到达过"已知 id"阶段的记录即算有裁决(条目再差也在异常清单里交门1)
     adjudicated_ids = {v["rid"] for v in admitted}
     adjudicated = {"chunks": sum(1 for rid in adjudicated_ids if rid in chunk_ids), "tables": sum(1 for rid in adjudicated_ids if rid in table_ids)}
@@ -430,7 +419,7 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
                     problems.append({"kind": "anchor_not_in_sections", "file": path.name, "item_id": item_id, "source_file": source_file, "section": section, "message": f"锚点 ({source_file}, {section}) 不在 sections.json, [待确认]"})
         if problems:
             anomalies.extend(problems)
-            quarantine(view, problems[0]["kind"])
+            quarantine(path.name, problems[0]["kind"])
         else:
             survivors.append(view)
 
@@ -447,7 +436,7 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
             dup_survivors.extend(views)
     clean_views = [v for v in survivors if v not in dup_survivors]
     for v in dup_survivors:
-        quarantine(v, "duplicate_id")
+        quarantine(v["path"].name, "duplicate_id")
 
     clean = {kind: [item for v in clean_views if v["kind"] == kind for item in v["items"]] for kind in KINDS}
 
@@ -477,7 +466,7 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
             fk_views.append(view)
     clean_views = [v for v in clean_views if v not in fk_views]
     for v in fk_views:
-        quarantine(v, "clause_fk_invalid")
+        quarantine(v["path"].name, "clause_fk_invalid")
     clean = {kind: [item for v in clean_views if v["kind"] == kind for item in v["items"]] for kind in KINDS}
 
     # --- 第 5 步: rubric Σ 校验(以合并终态为口径) --------------------------------
@@ -488,14 +477,11 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
         computed = sum(item.get("max_score", 0) for item in merged_rubric)
         rubric_sum = {"computed": computed, "declared": declared_total}
         if declared_total is not None and computed != declared_total:
-            if computed + quarantined_rubric_score == declared_total:
-                # Σ 差额恰等于被隔离评分块的分值合计 → 不一致由隔离块归因:
-                # 异常块已在清单[待确认](外键/枚举等), 不整体中止(干净块照常合并),
-                # 隔离块修复重合并时 Σ 自动复检。
-                pass
-            else:
-                anomalies.append({"kind": "rubric_sum_mismatch", "computed": computed, "declared": declared_total, "message": f"Σmax_score={computed} 与评分办法声称总分 {declared_total} 不一致——异常并中止(评分细则表抽取可能缺行/降级)"})
-                fatal = True
+            # 无条件异常并中止(任务T4/设计文档阶段2: 不一致→异常并中止, 不设归因例外)——
+            # 即使差额恰可归因于被隔离评分块的分值合计, 合并终态 Σ≠声称总分即带病状态,
+            # 不得放行干净块落盘; 隔离块修复后重合并时 Σ 在此自动复检。
+            anomalies.append({"kind": "rubric_sum_mismatch", "computed": computed, "declared": declared_total, "message": f"Σmax_score={computed} 与评分办法声称总分 {declared_total} 不一致——异常并中止(评分细则表抽取可能缺行/降级)"})
+            fatal = True
         elif merge_mode and declared_total is None and merged_rubric and existing["total_score"] is None:
             anomalies.append({"kind": "rubric_declared_total_missing", "message": "未提供 --declared-total(且状态无既有总分), Σmax_score 无基准未检——[待确认], 确认门1 请补评分办法声称总分"})
 
