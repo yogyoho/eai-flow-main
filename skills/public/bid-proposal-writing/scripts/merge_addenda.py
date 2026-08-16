@@ -25,13 +25,18 @@
     new/modify 新条款强制 from_addendum=true(载荷为 False 也覆盖)+ voided 补缺省 false;
     modify → 旧项标 superseded_by 指向新 id(自指 → self_supersede 异常);
     void → 旧项标 voided(作废落盘不因后续外键异常回滚)。
+    new 撞号防线: id 已存在时仅当"库内为补遗条款且载荷内容一致"才算幂等重放(内容口径 =
+    source_file/class/category/source_ref/requirement/response_skeleton 撰写字段,
+    response_status 等生命周期字段不参与——后续阶段可合法变更); 同候选文件内多条 new
+    映射撞号或内容不一致 → duplicate_clause_id 异常, 绝不静默吞第二份载荷。
     幂等台账 merge_ledger.json 按候选内容规范化哈希(sha256, 键序无关): 同 hash 重跑
     整体跳过零写入; 存在 pending/异常时不记台账(重跑须能重新浮出, 已落账项幂等重放
     不产生字节漂移)。
 
 D3 新实体: 补遗实体 diff entities_whitelist.json → 增量清单 addendum_entities_pending.json
     (累积式: 既有 pending ∪ 本次新增 − 当前白名单; 白名单不经本脚本修改, 确认门2 才写入;
-    白名单缺失 → whitelist_missing 异常, 按空集 diff 全量进增量清单, 不静默)。
+    白名单缺失 → whitelist_missing 异常, 按空集 diff 全量进增量清单, 不静默;
+    白名单确认后增量出清走删除, 摘要 written 以 "del:<文件名>" 反映, 删除可见)。
 D7 悬挂外键: 落账后扫描 structure/rubric 的 linked_clause_ids, 指向缺失/superseded/voided
     条款 → 异常清单不静默(外键异常是扫描型发现, 不阻断落账)。
 D7 原子写盘: 所有状态文件临时文件+os.replace, 防中断留半截文件。
@@ -165,6 +170,8 @@ def load_state(state_dir: Path) -> dict:
     for index, clause in enumerate(clauses):
         if not isinstance(clause.get("clause_id"), str) or not clause["clause_id"]:
             raise MergeAddendaError(f"clauses.json items[{index}] 缺非空字符串 clause_id, 拒绝覆盖(先人工核查): {clauses_path}")
+        if clause.get("source_ref") is not None and not isinstance(clause.get("source_ref"), dict):
+            raise MergeAddendaError(f"clauses.json items[{index}] source_ref 应为对象或 null(锚点匹配依赖其 section 字段), 拒绝覆盖(先人工核查): {clauses_path}")
 
     structure: list[dict] = []
     structure_path = state_dir / STATE_FILES["structure"]
@@ -303,6 +310,23 @@ def normalize_addendum_clause(payload: dict) -> dict:
     }
 
 
+# new 动作幂等重放的内容一致口径: 只比对补遗"撰写内容"字段——response_status/from_addendum/
+# voided/superseded_by 是生命周期状态, 后续阶段(填写态)或后续补遗(void/supersede)可合法变更,
+# 不参与重放判定; 撰写字段任一不同 = 同 id 不同载荷 = 撞号, 必须浮出异常绝不静默吞载荷。
+REPLAY_CONTENT_FIELDS = ("source_file", "class", "category", "source_ref", "requirement", "response_skeleton")
+
+
+def _authored_content(clause: dict) -> tuple:
+    return tuple(json.dumps(clause.get(field), sort_keys=True, ensure_ascii=False) for field in REPLAY_CONTENT_FIELDS)
+
+
+def resolve_addendum_file(record: dict, record_path: Path) -> str:
+    """addendum_file 解析统一口径: 非空字符串(去首尾空白)生效, 否则回退候选文件名。
+    落账路径与台账跳过路径共用, 防两处判空口径漂移(纯空白串一处回退一处不回退)。"""
+    name = record.get("addendum_file")
+    return name.strip() if isinstance(name, str) and name.strip() else record_path.name
+
+
 def _is_active(clause: dict) -> bool:
     """活条款 = 未 superseded 且未 voided(三级合并锚点只在活条款中解析)。"""
     return clause.get("superseded_by") is None and not clause.get("voided")
@@ -359,17 +383,13 @@ def _dedup_entities(entities: list[dict]) -> list[dict]:
     return kept
 
 
-def process_entities(state_dir: Path, record: dict, anomalies: list[dict]) -> list[dict]:
-    """D3 新实体提取: 补遗实体 diff 白名单 → 本次新增实体列表(增量清单写入由调用方决定)。"""
+def process_entities(record: dict, whitelist: set[tuple[str, str]], anomalies: list[dict]) -> list[dict]:
+    """D3 新实体提取: 补遗实体 diff 白名单 → 本次新增实体列表(增量清单写入由调用方决定)。
+    whitelist 由调用方装载一次并传入(缺失时按空集 diff 并已浮出 whitelist_missing 异常)。"""
     raw = record.get("entities")
     if not isinstance(raw, list):
-        if "entities" in record:
-            anomalies.append({"kind": "malformed_record", "message": f"entities 应为数组, 实际 {type(raw).__name__}, 实体 diff 跳过"})
+        anomalies.append({"kind": "malformed_record", "message": f"entities 应为数组, 实际 {type(raw).__name__}, 实体 diff 跳过"})
         return []
-    whitelist = load_whitelist(state_dir)
-    if whitelist is None:
-        anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, 按空集 diff(全部进增量清单)——确认门1 未锁定白名单或文件被移动, 修复后重跑需重新 diff"})
-        whitelist = set()
     valid: list[dict] = []
     for index, entity in enumerate(raw):
         if isinstance(entity, dict) and isinstance(entity.get("type"), str) and entity["type"].strip() and isinstance(entity.get("value"), str) and entity["value"].strip():
@@ -390,8 +410,9 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
     applied = {"added": [], "superseded": [], "voided": [], "rejected": []}
     written: list[str] = []
     mutated = False
+    new_ids_this_run: set[str] = set()  # 本次运行内已落账/重放的 new 条款 id(同候选撞号检测)
 
-    addendum_file = record.get("addendum_file") if isinstance(record.get("addendum_file"), str) and record["addendum_file"].strip() else record_path.name
+    addendum_file = resolve_addendum_file(record, record_path)
 
     # --- 第 1 步: 记录形态 + 逐条目校验(mapping_id 去重/schema/形态) ---------------
     items = record.get("items")
@@ -422,6 +443,14 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
         target = item.get("target")
         anchor_ok = isinstance(anchor, dict) and isinstance(anchor.get("section"), str) and bool(anchor["section"].strip())
         target_ok = isinstance(target, str) and bool(target.strip())
+        # 存在但形态非法 → 异常跳过, 绝不静默归一为 None(否则畸形锚点会降级为仅 target 驱动的
+        # 相似度候选, 头号安全网"锚点与显式 target 不一致→异常"对该条目完全失效)
+        if anchor is not None and not anchor_ok:
+            anomalies.append({"kind": "malformed_item", "mapping_id": mapping_id, "message": f"anchor 存在但形态非法 {anchor!r}(应为含非空字符串 section 的对象)——异常, 不降级为相似度候选"})
+            continue
+        if target is not None and not target_ok:
+            anomalies.append({"kind": "malformed_item", "mapping_id": mapping_id, "message": f"target 存在但形态非法 {target!r}(应为非空字符串条款 id)——异常, 不静默忽略"})
+            continue
         if action in ("modify", "void") and not (anchor_ok or target_ok):
             anomalies.append({"kind": "malformed_item", "mapping_id": mapping_id, "message": f"{action} 映射必须提供 anchor(章节锚点)或 target(条款 id)之一"})
             continue
@@ -433,7 +462,7 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
             if errors:
                 anomalies.append({"kind": "schema_violation", "mapping_id": mapping_id, "item_id": str(clause.get("clause_id", mapping_id)), "errors": errors, "message": "新条款载荷不符合 clauses 契约, [待确认]不落账"})
                 continue
-        valid_items.append({"item": item, "mapping_id": mapping_id, "action": action, "clause": clause if isinstance(clause, dict) else None, "anchor": anchor if anchor_ok else None, "target": target if target_ok else None})
+        valid_items.append({"item": item, "mapping_id": mapping_id, "action": action, "clause": clause if isinstance(clause, dict) else None, "anchor": anchor, "target": target})
 
     # --- 第 2 步: 裁决文件条目校验(unknown/duplicate; apply+target 语义在第 3 步) ---
     decision_by_id: dict[str, dict] = {}
@@ -538,7 +567,16 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
                 res["status"] = "rejected"
                 applied["rejected"].append(mapping_id)
             else:
-                res["status"] = "apply"
+                # 裁决携带 target 时必须与条目 target 一致(与 tie 层对同字段的校验姿态对齐),
+                # 不一致 → 异常浮出保持待裁决, 绝不无声背离人工指示落账到别处
+                decided_target = decision.get("target")
+                if decided_target is not None and decided_target != res["target_id"]:
+                    msg = f"相似度裁决 target {decided_target!r} 与候选条目 target {res['target_id']!r} 不一致——条目保持待裁决(裁决 target 仅可与条目一致或省略)"
+                    anomalies.append({"kind": "malformed_decision", "mapping_id": mapping_id, "message": msg})
+                    res["status"] = "pending"
+                    pending.append(_pending_entry(entry["item"], "similar", target_clause, clause))
+                else:
+                    res["status"] = "apply"
             continue
         # mode == "tie"
         candidates = res["candidates"] or []
@@ -581,16 +619,23 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
         mapping_id, action, clause = entry["mapping_id"], entry["action"], entry["clause"]
         if action == "new":
             new_id = clause["clause_id"]
+            if new_id in new_ids_this_run:
+                anomalies.append({"kind": "duplicate_clause_id", "mapping_id": mapping_id, "clause_id": new_id, "message": f"同一候选文件内多条 new 映射撞 clause_id {new_id}——候选生成缺陷, 仅首条落账, 绝不静默吞第二份载荷"})
+                continue
             existing = by_id.get(new_id)
             if existing is not None:
-                if existing.get("from_addendum"):
-                    applied["added"].append(new_id)  # 幂等重放: 已入库的补遗条款
+                # 幂等重放判定: 库内须为补遗条款且载荷撰写内容一致(跨补遗同号不同内容 = 撞号)
+                if existing.get("from_addendum") and _authored_content(existing) == _authored_content(normalize_addendum_clause(clause)):
+                    new_ids_this_run.add(new_id)
+                    applied["added"].append(new_id)  # 幂等重放: 已入库的同载荷补遗条款, 零变更
                     continue
-                anomalies.append({"kind": "duplicate_clause_id", "mapping_id": mapping_id, "clause_id": new_id, "message": f"新增条款 id {new_id} 与既有非补遗条款撞号——异常, 不落账"})
+                detail = "且载荷内容与既有补遗条款不一致(同 id 不同载荷, 跨补遗撞号)" if existing.get("from_addendum") else "与既有非补遗条款撞号"
+                anomalies.append({"kind": "duplicate_clause_id", "mapping_id": mapping_id, "clause_id": new_id, "message": f"新增条款 id {new_id} 已存在{detail}——异常, 不落账(如需变更既有条款请走 modify)"})
                 continue
             normalized = normalize_addendum_clause(clause)
             clauses.append(normalized)
             by_id[new_id] = normalized
+            new_ids_this_run.add(new_id)
             applied["added"].append(new_id)
             mutated = True
         elif action == "modify":
@@ -637,27 +682,34 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
     anomalies.extend(scan_foreign_keys(clauses, state["structure"], state["rubric_items"]))
 
     # --- 第 8 步: D3 新实体 diff → 增量清单(累积式; 白名单不经本脚本修改) ----------
-    new_entities = process_entities(state_dir, record, anomalies)
-    if isinstance(record.get("entities"), list):
-        whitelist = load_whitelist(state_dir) or set()
-        existing_pending = load_entities_pending(state_dir) or []
-        merged_pending = []
-        seen: set[tuple[str, str]] = set()
-        for entity in [*existing_pending, *new_entities]:
-            if not (isinstance(entity, dict) and isinstance(entity.get("type"), str) and isinstance(entity.get("value"), str)):
-                continue
-            key = (entity["type"], entity["value"])
-            if key in seen or key in whitelist:
-                continue
-            seen.add(key)
-            merged_pending.append({"type": entity["type"], "value": entity["value"]})
-        pending_path = state_dir / STATE_FILES["entities_pending"]
-        if merged_pending:
-            if load_entities_pending(state_dir) != merged_pending:
-                atomic_write_json(pending_path, {"entities": merged_pending})
-                written.append(STATE_FILES["entities_pending"])
-        elif pending_path.is_file():
-            pending_path.unlink()  # 白名单确认后增量清零: 陈旧清单出清, 不留误导
+    # 白名单/既有增量各装载一次, 供 diff 与合并复用(不再二次读盘)。
+    new_entities: list[dict] = []
+    if "entities" in record:
+        whitelist = load_whitelist(state_dir)
+        if whitelist is None:
+            anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, 按空集 diff(全部进增量清单)——确认门1 未锁定白名单或文件被移动, 修复后重跑需重新 diff"})
+            whitelist = set()
+        new_entities = process_entities(record, whitelist, anomalies)
+        if isinstance(record.get("entities"), list):
+            existing_pending = load_entities_pending(state_dir) or []
+            merged_pending = []
+            seen: set[tuple[str, str]] = set()
+            for entity in [*existing_pending, *new_entities]:
+                if not (isinstance(entity, dict) and isinstance(entity.get("type"), str) and isinstance(entity.get("value"), str)):
+                    continue
+                key = (entity["type"], entity["value"])
+                if key in seen or key in whitelist:
+                    continue
+                seen.add(key)
+                merged_pending.append({"type": entity["type"], "value": entity["value"]})
+            pending_path = state_dir / STATE_FILES["entities_pending"]
+            if merged_pending:
+                if existing_pending != merged_pending:
+                    atomic_write_json(pending_path, {"entities": merged_pending})
+                    written.append(STATE_FILES["entities_pending"])
+            elif pending_path.is_file():
+                pending_path.unlink()  # 白名单确认后增量清零: 陈旧清单出清, 不留误导
+                written.append(f"del:{STATE_FILES['entities_pending']}")  # 删除亦入摘要(前缀区分写入), 不可见即不透明
 
     # --- 第 9 步: 写盘(仅变更文件) + 台账(干净完成才记, 重跑可跳过) ----------------
     if mutated:
@@ -712,7 +764,7 @@ def main(argv: list[str] | None = None) -> int:
         # 幂等台账: 同 hash 重跑直接跳过, 零写入零变更(状态目录字节级不变)。
         known_hashes = {entry["hash"] for entry in ledger}
         if digest in known_hashes:
-            addendum_name = record.get("addendum_file") if isinstance(record.get("addendum_file"), str) and record.get("addendum_file") else record_path.name
+            addendum_name = resolve_addendum_file(record, record_path)
             summary = {
                 "addendum_file": addendum_name,
                 "hash": digest,
