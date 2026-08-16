@@ -25,8 +25,10 @@ LLM 提取循环由 Agent 在上下文内执行(提示词=references/extraction_
        additionalProperties/items)。
     3. 跨块去重: clause_id/node_id/rubric_id 不得跨裁决块重复; 同一 chunk/table 的
        重复裁决记录(检查点分叉)双双隔离, 绝不静默取首个。
-    4. rubric Σmax_score 必须等于 --declared-total(评分办法声称总分); 不一致 → 异常并中止
-       (merge 整体中止、一个状态文件都不写, 防带病状态入库; score_simulate.py 纵深复检)。
+    4. rubric Σmax_score 必须等于评分办法声称总分; 校验基准 = --declared-total, merge 未给该
+       flag 时回用既有 rubric.json total_score——防重合并把"声称总分"与"实际 Σ"在同一状态里
+       无告警分叉; 不一致 → 异常并中止(merge 整体中止、一个状态文件都不写, 防带病状态入库;
+       score_simulate.py 纵深复检)。
     5. D5 覆盖度防线: sections.json 里每个 chunk_id/table_id 在候选裁决集中必须有记录;
        未裁决 id → 异常清单"待门1显式判空", 绝不静默跳过。
     6. D7 外键装载校验: structure/rubric 项的 linked_clause_ids 必须存在于 clauses
@@ -178,8 +180,8 @@ def load_schemas(references_dir: str | Path | None = None) -> dict[str, dict]:
             raise ExtractError(f"references 契约缺失: {path}(--references 可指定目录)")
         try:
             schemas[kind] = json.loads(path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ExtractError(f"references 契约不可解析: {path}: {exc}") from exc
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+            raise ExtractError(f"references 契约不可读/不可解析(需 UTF-8): {path}: {exc}") from exc
     return schemas
 
 
@@ -189,19 +191,26 @@ def load_schemas(references_dir: str | Path | None = None) -> dict[str, dict]:
 
 
 def load_sections(path: str | Path) -> dict:
-    """装载 sections.json(ingest 产物); 不存在/损坏/值类型错 → ExtractError, 绝不静默。"""
+    """装载 sections.json(ingest 产物); 不存在/损坏/值类型错/非 UTF-8 → ExtractError, 绝不静默。"""
     path = Path(path)
     if not path.is_file():
         raise ExtractError(f"sections.json 不存在: {path}(先跑 ingest.py 阶段1)")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ExtractError(f"sections.json 不可解析: {path}: {exc}") from exc
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+        raise ExtractError(f"sections.json 不可读/不可解析(需 UTF-8): {path}: {exc}") from exc
     if not isinstance(data, dict) or not isinstance(data.get("chunks"), list) or not isinstance(data.get("tables"), list):
         raise ExtractError(f"sections.json 结构异常(应为含 chunks/tables 数组的对象): {path}")
     for key in ("chunks", "tables"):
         if not all(isinstance(entry, dict) for entry in data[key]):
             raise ExtractError(f"sections.json 结构异常({key} 应为对象数组): {path}")
+    # 裁决 id 装载校验: 缺 id/类型错的条目会让 evaluate 的 id 集合混入 None/非 str,
+    # 在未裁决排序或锚点比对处裸崩 TypeError——装载层直接拒绝。
+    for key, id_key in (("chunks", "chunk_id"), ("tables", "table_id")):
+        for entry in data[key]:
+            value = entry.get(id_key)
+            if not isinstance(value, str) or not value:
+                raise ExtractError(f"sections.json {key} 条目缺非空字符串 {id_key}: {path}(先人工核查)")
     return data
 
 
@@ -212,8 +221,8 @@ def load_candidate(path: str | Path) -> dict:
         raise ExtractError(f"候选文件不存在: {path}")
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ExtractError(f"候选文件不可解析(疑似 LLM 输出截断, 先补跑该 chunk): {path}: {exc}") from exc
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+        raise ExtractError(f"候选文件不可读/不可解析(需 UTF-8; 疑似 LLM 输出截断或编码错, 先补跑该 chunk): {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise ExtractError(f"候选记录应为 JSON 对象: {path}")
     return data
@@ -239,15 +248,19 @@ def _load_state_list(path: Path) -> list[dict]:
         return []
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ExtractError(f"既有 {path.name} 不可解析, 拒绝覆盖(先人工核查): {path}: {exc}") from exc
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+        raise ExtractError(f"既有 {path.name} 不可读/不可解析(需 UTF-8), 拒绝覆盖(先人工核查): {path}: {exc}") from exc
     if not isinstance(data, list) or not all(isinstance(entry, dict) for entry in data):
         raise ExtractError(f"既有 {path.name} 结构异常(应为对象数组), 拒绝覆盖: {path}")
     return data
 
 
 def load_state(state_dir: str | Path) -> dict:
-    """装载三状态文件; 返回 {clauses, structure, rubric_items, total_score, existed}。"""
+    """装载三状态文件; 返回 {clauses, structure, rubric_items, total_score, existed}。
+
+    既有 rubric 项的 max_score 做装载校验(整数且非 bool): 缺失误按 0 计、bool True 误按 1 计
+    会让 Σ 摘要失真或制造假 fatal——手工编辑场景的纵深防线, 损坏即拒绝覆盖。
+    """
     state_dir = Path(state_dir)
     clauses_path = state_dir / STATE_FILES["clauses"]
     structure_path = state_dir / STATE_FILES["structure"]
@@ -262,13 +275,17 @@ def load_state(state_dir: str | Path) -> dict:
     if rubric_existed:
         try:
             data = json.loads(rubric_path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError as exc:
-            raise ExtractError(f"既有 rubric.json 不可解析, 拒绝覆盖(先人工核查): {rubric_path}: {exc}") from exc
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
+            raise ExtractError(f"既有 rubric.json 不可读/不可解析(需 UTF-8), 拒绝覆盖(先人工核查): {rubric_path}: {exc}") from exc
         if not isinstance(data, dict) or not isinstance(data.get("items"), list) or not all(isinstance(entry, dict) for entry in data["items"]):
             raise ExtractError(f"既有 rubric.json 结构异常(应为含 items 数组的对象), 拒绝覆盖: {rubric_path}")
         total_score = data.get("total_score")
         if total_score is not None and not (isinstance(total_score, int) and not isinstance(total_score, bool)):
             raise ExtractError(f"既有 rubric.json total_score 应为整数或 null: {rubric_path}")
+        for index, item in enumerate(data["items"]):
+            max_score = item.get("max_score")
+            if not isinstance(max_score, int) or isinstance(max_score, bool):
+                raise ExtractError(f"既有 rubric.json items[{index}]({item.get('rubric_id')}) max_score 应为整数(Σ 校验基准), 拒绝覆盖(先人工核查): {rubric_path}")
         rubric_items = data["items"]
 
     return {
@@ -293,9 +310,13 @@ def atomic_write_json(path: str | Path, data) -> None:
             os.fsync(fh.fileno())
         os.replace(tmp, path)
     finally:
-        # 成功路径 os.replace 后 tmp 已不存在; 异常路径清理残留, 不留半截文件
+        # 成功路径 os.replace 后 tmp 已不存在; 异常路径清理残留, 不留半截文件。
+        # 清理失败(Windows 文件被占用等)只吞掉——不得掩盖触发本 finally 的原始异常。
         if tmp.exists():
-            tmp.unlink()
+            try:
+                tmp.unlink()
+            except OSError:
+                pass
 
 
 # =============================================================================
@@ -319,9 +340,11 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
                     问题被隔离的: 该 chunk 确实被裁决过, D5 只要求"有记录")
       unadjudicated sections 中无任何裁决记录的 chunk/table id 列表
       clean         {kind: [干净条目...]}(可安全合并)
-      quarantined   [{"file", "kinds"}] 被隔离的裁决块([待确认], 不合并)
+      quarantined   [{"file"(完整路径), "kinds"}] 被隔离的裁决块([待确认], 不合并; 不同目录
+                    同名候选文件按完整路径各占一条)
       anomalies     [{"kind", "message", ...}] 全部异常项
-      rubric_sum    {"computed", "declared"}(存在评分项时)
+      rubric_sum    {"computed", "declared"}(存在评分项时; declared=校验基准——
+                    --declared-total 优先, merge 缺省回用既有 total_score)
       fatal         Σ 不一致=True(merge 必须整体中止)
     """
     merge_mode = existing is not None
@@ -336,11 +359,11 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
     table_source = {t.get("table_id"): t.get("source_file") for t in table_entries}
 
     anomalies: list[dict] = []
-    quarantined: dict[str, set[str]] = {}  # 文件名 → 异常 kind 集合
+    quarantined: dict[str, set[str]] = {}  # 候选文件完整路径 → 异常 kind 集合
 
-    def quarantine(name: str, kind: str) -> None:
-        """隔离一个裁决块([待确认]不合并): 按文件名累计其异常 kind 集合。"""
-        quarantined.setdefault(name, set()).add(kind)
+    def quarantine(source: str, kind: str) -> None:
+        """隔离一个裁决块([待确认]不合并): 按完整路径累计其异常 kind 集合。"""
+        quarantined.setdefault(source, set()).add(kind)
 
     # --- 第 1 步: 记录形态 + 裁决 id 合法性 ------------------------------------
     admitted: list[dict] = []  # 通过形态与 id 校验的记录视图
@@ -358,14 +381,14 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
             problems.append("chunk_id/table_id 必须恰好提供一个")
         if problems:
             anomalies.append({"kind": "malformed_record", "file": path.name, "problems": problems, "message": "候选记录形态不符, [待确认]不合并"})
-            quarantine(path.name, "malformed_record")
+            quarantine(str(path), "malformed_record")
             continue
 
         rid = chunk_id if has_chunk else table_id
         known = rid in (chunk_ids if has_chunk else table_ids)
         if not known:
             anomalies.append({"kind": "unknown_adjudication_id", "file": path.name, "id": rid, "message": f"裁决 id {rid} 不在 sections.json, [待确认]不合并"})
-            quarantine(path.name, "unknown_adjudication_id")
+            quarantine(str(path), "unknown_adjudication_id")
             continue
 
         view = {"path": path, "rid": rid, "id_type": "chunk" if has_chunk else "table", "kind": record["kind"], "items": record["items"]}
@@ -382,7 +405,7 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
 
     candidates: list[dict] = [v for v in admitted if v not in dup_views]
     for v in dup_views:
-        quarantine(v["path"].name, "duplicate_adjudication")
+        quarantine(str(v["path"]), "duplicate_adjudication")
     # D5 覆盖度: 到达过"已知 id"阶段的记录即算有裁决(条目再差也在异常清单里交门1)
     adjudicated_ids = {v["rid"] for v in admitted}
     adjudicated = {"chunks": sum(1 for rid in adjudicated_ids if rid in chunk_ids), "tables": sum(1 for rid in adjudicated_ids if rid in table_ids)}
@@ -395,12 +418,12 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
     for view in candidates:
         path, kind, items = view["path"], view["kind"], view["items"]
         problems: list[dict] = []
-        for index, item in enumerate(items):
-            if not isinstance(item, dict):
-                problems.append({"kind": "schema_violation", "file": path.name, "item_id": f"items[{index}]", "errors": [f"items[{index}]: 应为对象, 实际 {_json_type_name(item)}"]})
+        kept_items: list[dict] = []  # 派生字段剥离后的干净条目(新列表, 不回写候选原对象——纯函数契约)
+        for index, raw_item in enumerate(items):
+            if not isinstance(raw_item, dict):
+                problems.append({"kind": "schema_violation", "file": path.name, "item_id": f"items[{index}]", "errors": [f"items[{index}]: 应为对象, 实际 {_json_type_name(raw_item)}"]})
                 continue
-            item = strip_derived_fields(item, kind)  # D7: 派生字段先剥离(现算不落盘, 也不参与校验噪声)
-            items[index] = item
+            item = strip_derived_fields(raw_item, kind)  # D7: 派生字段先剥离(现算不落盘, 也不参与校验噪声)
             item_id = str(item.get(KIND_ID_KEY[kind], f"items[{index}]"))
             errors = validate_against_schema(schemas[kind], item, item_id)
             if errors:
@@ -413,13 +436,22 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
                 if (source_file, section) not in covered:
                     problems.append({"kind": "anchor_not_in_sections", "file": path.name, "item_id": item_id, "source_file": source_file, "section": section, "message": f"锚点 ({source_file}, {section}) 不在 sections.json, [待确认]"})
             elif kind == "rubric":
+                if view["id_type"] == "chunk":
+                    # 评分细则从评分办法表格抽取, 锚点按表源文件解析; 挂 chunk 的 rubric 查不到
+                    # 表源(source_file=None)恒报"锚点不在 sections"是误诊——真实原因是应挂表裁决。
+                    message = f"评分细则裁决 {view['rid']} 挂了 chunk_id——评分细则应挂表裁决(table_id), [待确认]不合并"
+                    problems.append({"kind": "rubric_chunk_anchor", "file": path.name, "item_id": item_id, "adjudication_id": view["rid"], "message": message})
+                    continue
                 section = (item.get("source_ref") or {}).get("section")
                 source_file = table_source.get(view["rid"])
                 if (source_file, section) not in covered:
                     problems.append({"kind": "anchor_not_in_sections", "file": path.name, "item_id": item_id, "source_file": source_file, "section": section, "message": f"锚点 ({source_file}, {section}) 不在 sections.json, [待确认]"})
+            kept_items.append(item)
+        view["items"] = kept_items
         if problems:
             anomalies.extend(problems)
-            quarantine(path.name, problems[0]["kind"])
+            for problem in problems:  # 同块多种异常全部入 kinds(汇总不漏报)
+                quarantine(str(path), problem["kind"])
         else:
             survivors.append(view)
 
@@ -432,11 +464,12 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
     for (kind, item_id), views in sorted(id_owners.items()):
         if len(views) > 1:
             files = sorted({v["path"].name for v in views})
-            anomalies.append({"kind": "duplicate_id", "id": item_id, "id_kind": kind, "files": files, "message": f"{KIND_ID_KEY[kind]} {item_id} 跨块重复({', '.join(files)}), 全部[待确认], 请核查是否同一要求被两块各提一次"})
+            scope = "跨块" if len(files) > 1 else "同一裁决块内"  # 同块撞 id 与跨块分叉归因不同
+            anomalies.append({"kind": "duplicate_id", "id": item_id, "id_kind": kind, "files": files, "message": f"{KIND_ID_KEY[kind]} {item_id} {scope}重复({', '.join(files)}), 全部[待确认], 请核查是否同一要求被重复提取"})
             dup_survivors.extend(views)
     clean_views = [v for v in survivors if v not in dup_survivors]
     for v in dup_survivors:
-        quarantine(v["path"].name, "duplicate_id")
+        quarantine(str(v["path"]), "duplicate_id")
 
     clean = {kind: [item for v in clean_views if v["kind"] == kind for item in v["items"]] for kind in KINDS}
 
@@ -466,23 +499,28 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
             fk_views.append(view)
     clean_views = [v for v in clean_views if v not in fk_views]
     for v in fk_views:
-        quarantine(v["path"].name, "clause_fk_invalid")
+        quarantine(str(v["path"]), "clause_fk_invalid")
     clean = {kind: [item for v in clean_views if v["kind"] == kind for item in v["items"]] for kind in KINDS}
 
     # --- 第 5 步: rubric Σ 校验(以合并终态为口径) --------------------------------
+    # 校验基准: --declared-total 优先; merge 未给该 flag 时回用既有 total_score——
+    # 否则重合并可静默落盘"声称总分=100 而 items 实际 Σ=97"的带病 rubric.json。
+    effective_declared = declared_total
+    if merge_mode and effective_declared is None:
+        effective_declared = existing["total_score"]
     merged_rubric = _upsert_by_id(existing["rubric_items"], clean["rubric"], "rubric_id")
     rubric_sum: dict | None = None
     fatal = False
-    if merged_rubric or declared_total is not None:
+    if merged_rubric or effective_declared is not None:
         computed = sum(item.get("max_score", 0) for item in merged_rubric)
-        rubric_sum = {"computed": computed, "declared": declared_total}
-        if declared_total is not None and computed != declared_total:
+        rubric_sum = {"computed": computed, "declared": effective_declared}
+        if effective_declared is not None and computed != effective_declared:
             # 无条件异常并中止(任务T4/设计文档阶段2: 不一致→异常并中止, 不设归因例外)——
             # 即使差额恰可归因于被隔离评分块的分值合计, 合并终态 Σ≠声称总分即带病状态,
             # 不得放行干净块落盘; 隔离块修复后重合并时 Σ 在此自动复检。
-            anomalies.append({"kind": "rubric_sum_mismatch", "computed": computed, "declared": declared_total, "message": f"Σmax_score={computed} 与评分办法声称总分 {declared_total} 不一致——异常并中止(评分细则表抽取可能缺行/降级)"})
+            anomalies.append({"kind": "rubric_sum_mismatch", "computed": computed, "declared": effective_declared, "message": f"Σmax_score={computed} 与评分办法声称总分 {effective_declared} 不一致——异常并中止(评分细则表抽取可能缺行/降级)"})
             fatal = True
-        elif merge_mode and declared_total is None and merged_rubric and existing["total_score"] is None:
+        elif merge_mode and effective_declared is None and merged_rubric:
             anomalies.append({"kind": "rubric_declared_total_missing", "message": "未提供 --declared-total(且状态无既有总分), Σmax_score 无基准未检——[待确认], 确认门1 请补评分办法声称总分"})
 
     return {
@@ -490,7 +528,7 @@ def evaluate(sections: dict, schemas: dict, records: list[tuple[Path, dict]], de
         "unadjudicated": unadjudicated,
         "clean": clean,
         "clean_views": clean_views,
-        "quarantined": [{"file": name, "kinds": sorted(kinds)} for name, kinds in sorted(quarantined.items())],
+        "quarantined": [{"file": source, "kinds": sorted(kinds)} for source, kinds in sorted(quarantined.items())],
         "anomalies": anomalies,
         "rubric_sum": rubric_sum,
         "fatal": fatal,
@@ -552,7 +590,10 @@ def cmd_validate(args) -> int:
 
 
 def cmd_merge(args) -> int:
-    """merge: 校验 + 原子合并进三状态文件; Σ 不一致整体中止(一个文件都不写)。"""
+    """merge: 校验 + 原子合并进三状态文件; Σ 不一致整体中止(一个文件都不写)。
+
+    Σ 校验基准: --declared-total 优先, 缺省回用既有 rubric.json total_score(evaluate 内统一)。
+    """
     sections, schemas, records = _load_inputs(args)
     state = load_state(args.state_dir)
     report = evaluate(sections, schemas, records, args.declared_total, existing=state)
@@ -590,7 +631,7 @@ def cmd_merge(args) -> int:
 def _add_common_arguments(sub: argparse.ArgumentParser) -> None:
     sub.add_argument("--candidates", nargs="+", required=True, help="候选裁决 JSON 文件(一次裁决=一个文件, 可多个)")
     sub.add_argument("--sections", required=True, help="sections.json 路径(ingest.py 阶段1 产物, 锚点/裁决 id 的基准)")
-    sub.add_argument("--declared-total", type=int, default=None, help="评分办法声称总分(Σmax_score 校验基准; 不一致→异常并中止)")
+    sub.add_argument("--declared-total", type=int, default=None, help="评分办法声称总分(Σmax_score 校验基准; 不一致→异常并中止; merge 缺省时回用既有 rubric.json total_score)")
     sub.add_argument("--references", default=None, help="references/ 契约目录(默认: 脚本所在技能的 ../references)")
 
 

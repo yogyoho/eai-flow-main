@@ -1514,13 +1514,15 @@ def _happy_candidate_files(tmp_path, *, bad_sum=False):
     ]
 
 
-def _run_extract(command, candidates, *, sections=None, declared_total=None, state_dir=None):
+def _run_extract(command, candidates, *, sections=None, declared_total=None, state_dir=None, references=None):
     extract = _extract_module()
     argv = [command, "--candidates", *[str(c) for c in candidates], "--sections", str(sections if sections is not None else FIXTURE_DIR / "sections.json")]
     if declared_total is not None:
         argv += ["--declared-total", str(declared_total)]
     if state_dir is not None:
         argv += ["--state-dir", str(state_dir)]
+    if references is not None:
+        argv += ["--references", str(references)]
     return extract.main(argv)
 
 
@@ -1906,3 +1908,249 @@ class TestExtractUnitHelpers:
         node = {"node_id": "S-001", "fill_status": "filled", "path": "x"}
         assert extract.strip_derived_fields(node) == {"node_id": "S-001", "path": "x"}
         assert "fill_status" not in node or node["fill_status"]  # 原对象不被原地修改(防御式拷贝)
+
+
+# ===========================================================================
+# T4 审查修复回归(七项): Σ基准回用既有 total_score / 编码边界 / sections id 装载校验 /
+# rubric 挂 chunk 归因 / 隔离汇总口径 / evaluate 纯函数 / 既有状态 max_score 纵深+原子写清理
+# ===========================================================================
+
+
+class TestExtractMergeBaselineReusesExistingTotal:
+    """Σ 校验基准: merge 未给 --declared-total 时回用既有 rubric.json total_score——
+    防"声称总分"与"实际 Σ"在同一状态里无告警分叉(重合并可静默落盘带病 rubric)。"""
+
+    def test_remerge_without_flag_checks_against_existing_total(self, tmp_path, capsys):
+        state_dir = tmp_path / "state"
+        rc1 = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc1 == 0
+        # 重合并不带 flag, 候选 Σ=97(bad_sum) → 以既有 total_score=100 为基准参与比较与展示
+        rc2 = _run_extract("merge", _happy_candidate_files(tmp_path, bad_sum=True), state_dir=state_dir)
+        assert rc2 == 3, "既有 total_score=100 而 items 实际 Σ=97 → 必须异常并整体中止, 不得静默落盘"
+        summary = _last_summary_json(capsys)
+        assert summary["aborted"] is True
+        mismatch = [a for a in summary["anomalies"] if a["kind"] == "rubric_sum_mismatch"]
+        assert mismatch and mismatch[0]["declared"] == 100 and mismatch[0]["computed"] == 97
+        assert summary["rubric_sum"] == {"computed": 97, "declared": 100}
+        rubric = json.loads((state_dir / "rubric.json").read_text(encoding="utf-8"))
+        assert sum(i["max_score"] for i in rubric["items"]) == 100, "带病 rubric(Σ=97)不得覆盖既有干净状态(中止时不写任何文件)"
+
+    def test_remerge_without_flag_matching_sum_stays_clean(self, tmp_path, capsys):
+        """既有 total 与候选 Σ 一致时, 缺省基准不制造误报。"""
+        state_dir = tmp_path / "state"
+        assert _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir) == 0
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), state_dir=state_dir)
+        assert rc == 0, "回用既有 total_score=100 且 Σ=100 → 无异常"
+        summary = _last_summary_json(capsys)
+        assert summary["rubric_sum"] == {"computed": 100, "declared": 100}
+        assert "rubric_declared_total_missing" not in _anomaly_kinds(summary), "已有基准时不得再报缺基准"
+
+    def test_validate_mode_never_uses_state_baseline(self, tmp_path, capsys):
+        """validate 无状态目录概念: 未给 flag 即无基准, 不做 Σ 比较(既有契约不回归)。"""
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path, bad_sum=True))
+        assert rc == 0
+        summary = _last_summary_json(capsys)
+        assert summary["rubric_sum"]["declared"] is None
+        assert "rubric_sum_mismatch" not in _anomaly_kinds(summary)
+
+
+class TestExtractEncodingBoundaries:
+    """编码边界: 非 UTF-8 字节(GBK 候选/sections/schema/状态文件)必须归入 ExtractError
+    (退出码 1 的文件错误契约), 进程内调用 main() 不得裸抛 UnicodeDecodeError。"""
+
+    def test_gbk_candidate_exit_1(self, tmp_path):
+        files = _happy_candidate_files(tmp_path)
+        bad = tmp_path / "gbk候选.json"
+        bad.write_bytes('{"chunk_id": "CH-001", "kind": "clauses", "items": [], "note": "中文备注"}'.encode("gbk"))
+        assert _run_extract("validate", files + [bad]) == 1
+
+    def test_gbk_sections_exit_1(self, tmp_path):
+        sections = tmp_path / "sections.json"
+        sections.write_bytes('{"chunks": [], "tables": [], "note": "中文"}'.encode("gbk"))
+        assert _run_extract("validate", _happy_candidate_files(tmp_path), sections=sections) == 1
+
+    def test_gbk_references_schema_exit_1(self, tmp_path):
+        refs = tmp_path / "refs"
+        refs.mkdir()
+        for name in ("clauses.schema.json", "structure.schema.json", "rubric.schema.json"):
+            (refs / name).write_text('{"type": "object"}', encoding="utf-8")
+        (refs / "clauses.schema.json").write_bytes('{"$schema": "中文"}'.encode("gbk"))
+        assert _run_extract("validate", _happy_candidate_files(tmp_path), references=refs) == 1
+
+    def test_gbk_existing_state_exit_1(self, tmp_path):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        (state_dir / "clauses.json").write_bytes('{"备注": "中文"}'.encode("gbk"))
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 1
+
+
+class TestExtractSectionsIdValidation:
+    """sections 装载校验补口: chunks/tables 条目的 chunk_id/table_id 必须是非空 str——
+    此前缺 id 的条目会在 evaluate 的 sorted(None+str) 处裸崩 TypeError, 或产出 id:null 的
+    无意义 unadjudicated 异常。"""
+
+    def test_chunk_entry_missing_id_exit_1(self, tmp_path):
+        sections = json.loads((FIXTURE_DIR / "sections.json").read_text(encoding="utf-8"))
+        sections["chunks"][0].pop("chunk_id")  # CH-001
+        path = tmp_path / "sections.json"
+        path.write_text(json.dumps(sections, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path), sections=path)
+        assert rc == 1, "缺 chunk_id 的 sections.json 属文件损坏(退出码 1), 不得进校验管线"
+
+    def test_table_entry_id_wrong_type_exit_1(self, tmp_path):
+        sections = json.loads((FIXTURE_DIR / "sections.json").read_text(encoding="utf-8"))
+        sections["tables"][0]["table_id"] = 123
+        path = tmp_path / "sections.json"
+        path.write_text(json.dumps(sections, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("validate", _happy_candidate_files(tmp_path), sections=path)
+        assert rc == 1, "table_id 类型错(非 str)同样属装载层损坏"
+
+    def test_load_sections_unit_rejects_missing_id(self, tmp_path):
+        extract = _extract_module()
+        path = tmp_path / "sections.json"
+        path.write_text(json.dumps({"chunks": [{"source_file": "x.docx"}], "tables": []}), encoding="utf-8")
+        with pytest.raises(extract.ExtractError):
+            extract.load_sections(path)
+
+
+class TestExtractRubricChunkAnchor:
+    """rubric 裁决挂 chunk_id: 锚点解析按表源走, 挂 chunk 恒 source_file=None →
+    误诊为 anchor_not_in_sections; 必须显式拒绝并给出准确归因(应挂表裁决)。"""
+
+    def test_rubric_on_chunk_id_specific_reason(self, tmp_path, capsys):
+        files = [f for f in _happy_candidate_files(tmp_path) if f.name not in ("c1.json", "t2.json")]
+        files.append(_write_candidate(tmp_path, "t2.json", chunk_id="CH-001", kind="rubric", items=load_json("rubric.json")["items"]))
+        rc = _run_extract("validate", files, declared_total=100)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        kinds = _anomaly_kinds(summary)
+        assert "rubric_chunk_anchor" in kinds, "挂 chunk 的评分细则裁决必须有独立异常 kind"
+        assert "anchor_not_in_sections" not in kinds, "不得误诊为'锚点不在 sections'(真实原因是应挂表裁决)"
+        message = [a for a in summary["anomalies"] if a["kind"] == "rubric_chunk_anchor"][0]["message"]
+        assert "table_id" in message, f"归因必须指向表裁决: {message}"
+        assert any("rubric_chunk_anchor" in q["kinds"] for q in summary["quarantined"]), "该裁决块必须被隔离"
+
+
+class TestExtractQuarantineAttribution:
+    """隔离/重复归因三处口径: (a)同块撞 id 不得报'跨块'文案; (b)同块多种异常 kinds 不得漏报;
+    (c)quarantined 按完整路径为键, 不同目录同名候选不得合并成一条。"""
+
+    def test_intra_block_dup_not_labeled_cross_block(self, tmp_path, capsys):
+        clause = load_json("clauses.json")[0]
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[clause, dict(clause)]),  # 同块撞 clause_id
+            _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c3.json", chunk_id="CH-003", kind="structure", items=[]),
+            _write_candidate(tmp_path, "c4.json", chunk_id="CH-004", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-005", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        dup = [a for a in summary["anomalies"] if a["kind"] == "duplicate_id"]
+        assert dup and dup[0]["id"] == "ZB-C-001"
+        assert "跨块" not in dup[0]["message"], f"同一裁决块内撞 id 不得报'跨块'文案: {dup[0]['message']}"
+        assert "同一裁决块" in dup[0]["message"]
+
+    def test_cross_block_dup_still_labeled_cross_block(self, tmp_path, capsys):
+        """真跨块重复的既有文案语义不回归。"""
+        clauses_by_id = {c["clause_id"]: c for c in load_json("clauses.json")}
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[clauses_by_id["ZB-C-001"]]),
+            _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[clauses_by_id["ZB-C-001"]]),
+            _write_candidate(tmp_path, "c3.json", chunk_id="CH-003", kind="structure", items=[]),
+            _write_candidate(tmp_path, "c4.json", chunk_id="CH-004", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-005", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        dup = [a for a in summary["anomalies"] if a["kind"] == "duplicate_id"]
+        assert dup and "跨块" in dup[0]["message"]
+
+    def test_quarantine_kinds_lists_all_problem_kinds(self, tmp_path, capsys):
+        """同块多种异常: quarantined[].kinds 必须收全(此前只取 problems[0])。"""
+        good, bad_anchor = load_json("clauses.json")[0], load_json("clauses.json")[1]
+        bad_enum = dict(good, **{"class": "critical"})
+        bad_anchor = dict(bad_anchor, source_ref=dict(bad_anchor["source_ref"], section="9.9"))
+        files = [
+            _write_candidate(tmp_path, "c1.json", chunk_id="CH-001", kind="clauses", items=[bad_enum, bad_anchor]),
+            _write_candidate(tmp_path, "c2.json", chunk_id="CH-002", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c3.json", chunk_id="CH-003", kind="structure", items=[]),
+            _write_candidate(tmp_path, "c4.json", chunk_id="CH-004", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "c5.json", chunk_id="CH-005", kind="clauses", items=[]),
+            _write_candidate(tmp_path, "t1.json", table_id="T-001", kind="rubric", items=[]),
+            _write_candidate(tmp_path, "t2.json", table_id="T-002", kind="rubric", items=[]),
+        ]
+        rc = _run_extract("validate", files)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        assert {"schema_violation", "anchor_not_in_sections"} <= _anomaly_kinds(summary)
+        entry = [q for q in summary["quarantined"] if q["file"].endswith("c1.json")]
+        assert entry, summary["quarantined"]
+        assert sorted(entry[0]["kinds"]) == ["anchor_not_in_sections", "schema_violation"], f"同块多种异常必须全部入 kinds: {entry[0]}"
+
+    def test_same_name_candidates_in_different_dirs_not_merged(self, tmp_path, capsys):
+        """不同目录同名候选文件: quarantined 按完整路径为键, 不得合并成一条。"""
+        dir_a, dir_b = tmp_path / "a", tmp_path / "b"
+        dir_a.mkdir()
+        dir_b.mkdir()
+        files = _happy_candidate_files(tmp_path)
+        files.append(_write_candidate(dir_a, "bad.json", kind="clauses", items="not-a-list"))
+        files.append(_write_candidate(dir_b, "bad.json", kind="clauses", items="not-a-list"))
+        rc = _run_extract("validate", files, declared_total=100)
+        assert rc == 3
+        summary = _last_summary_json(capsys)
+        bad_entries = [q for q in summary["quarantined"] if q["file"].endswith("bad.json")]
+        assert len(bad_entries) == 2, f"不同目录同名文件必须各占一条(按完整路径为键): {summary['quarantined']}"
+        assert len({q["file"] for q in bad_entries}) == 2, "两条记录的 file 必须可区分(完整路径)"
+
+
+class TestExtractEvaluatePurity:
+    """evaluate 声称纯函数: 不得原地改写传入的候选记录(派生字段剥离改走新列表)。"""
+
+    def test_evaluate_does_not_mutate_input_records(self, tmp_path):
+        extract = _extract_module()
+        node = dict(load_json("structure.json")[0])
+        node["fill_status"] = "filled"  # D7 派生字段: 校验时剥离, 但不得写回候选原对象
+        record = {"chunk_id": "CH-003", "kind": "structure", "items": [node]}
+        original = json.loads(json.dumps(record, ensure_ascii=False))
+        sections = json.loads((FIXTURE_DIR / "sections.json").read_text(encoding="utf-8"))
+        report = extract.evaluate(sections, extract.load_schemas(), [(tmp_path / "c.json", record)], None)
+        assert record == original, f"evaluate 不得原地改写候选记录(纯函数契约): {record}"
+        assert report["clean"]["structure"] and "fill_status" not in report["clean"]["structure"][0], "剥离结果仍须进入 clean 输出"
+
+
+class TestExtractExistingStateHardening:
+    """既有 rubric 状态装载纵深: items[].max_score 必须为整数(非 bool)——缺失误按 0 计、
+    bool True 误按 1 计会让 Σ 摘要失真或制造假 fatal。"""
+
+    def test_existing_rubric_item_missing_max_score_exit_1(self, tmp_path):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        target = state_dir / "rubric.json"
+        target.write_text(json.dumps({"total_score": 100, "items": [{"rubric_id": "R-001"}]}, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 1, "既有 rubric 项缺 max_score 属状态损坏, 必须拒绝覆盖(先人工核查)"
+        assert json.loads(target.read_text(encoding="utf-8"))["items"] == [{"rubric_id": "R-001"}]
+
+    def test_existing_rubric_item_boolean_max_score_exit_1(self, tmp_path):
+        state_dir = tmp_path / "state"
+        state_dir.mkdir()
+        (state_dir / "rubric.json").write_text(json.dumps({"total_score": 100, "items": [{"rubric_id": "R-001", "max_score": True}]}, ensure_ascii=False), encoding="utf-8")
+        rc = _run_extract("merge", _happy_candidate_files(tmp_path), declared_total=100, state_dir=state_dir)
+        assert rc == 1, "bool 不是合法分值(True 会被 sum 误按 1 计)"
+
+    def test_atomic_write_cleanup_failure_does_not_mask_original(self, tmp_path, monkeypatch):
+        """Windows 文件占用场景: finally 里 tmp.unlink() 失败不得掩盖 os.replace 的原始异常。"""
+        extract = _extract_module()
+        monkeypatch.setattr(extract.os, "replace", lambda src, dst: (_ for _ in ()).throw(OSError("replace-boom")))
+        monkeypatch.setattr("os.unlink", lambda p, *a, **k: (_ for _ in ()).throw(PermissionError("unlink-busy")))
+        with pytest.raises(OSError) as excinfo:
+            extract.atomic_write_json(tmp_path / "out.json", {"a": 1})
+        assert "replace-boom" in str(excinfo.value), f"必须抛出原始异常而非清理失败的 PermissionError: {excinfo.value}"
