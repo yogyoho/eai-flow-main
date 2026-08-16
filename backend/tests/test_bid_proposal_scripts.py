@@ -4088,3 +4088,154 @@ class TestReport:
         state = _copy_prestate(tmp_path, merged=True)
         assert _score_module().main(["report", "--state-dir", str(state)]) == 1, "未汇总先 report=文件错误"
         capsys.readouterr()
+
+
+# ===========================================================================
+# T8: SKILL.md — Agent 编排总纲(frontmatter 对齐先例 + 内容要件 + 命令-CLI 一致性)
+# ===========================================================================
+
+SKILL_MD_PATH = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "SKILL.md"
+
+# SKILL.md 里允许调用的本技能脚本(五管线脚本; markdown-to-docx 的 convert.py 属其他技能不校验)
+_SKILL_SCRIPT_RE = re.compile(r"bid-proposal-writing/scripts/([a-z_]+)\.py")
+
+# 内容要件: 铁律1-7 / 六阶段+两门 / 门1 计数与异常项 / 门2 补遗diff+终稿复核 /
+# 阶段5 双形态+重灌硬化 / 上下文纪律 / 沙箱路径(任务 T8 内容①-⑥逐条落)
+SKILL_MD_REQUIRED_TOKENS = (
+    # ① 铁律 1-7(原文照录, 每条取一个不可省略的标识短语)
+    "唯一来源",  # 铁律1: 条款数据唯一来源=clauses.json
+    "改分类必须改文件",  # 铁律1
+    "先跑通 ingest/extract 才允许谈清单",  # 铁律2
+    "整篇方案生成器",  # 铁律3
+    "只镜像不自创",  # 铁律3
+    "每卷单次成文",  # 铁律4
+    "偏轨停下",  # 铁律5 耗时自检
+    "project_snapshot.json",  # 铁律6 多轮承接锚点
+    "评分纪律",  # 铁律7
+    "不为留印象给分",  # 铁律7
+    # ② 六阶段编排 + 两道确认门
+    "阶段0",
+    "阶段1",
+    "阶段2",
+    "阶段3",
+    "阶段4",
+    "阶段5",
+    "确认门1",
+    "确认门2",
+    # ③ 门1: 计数(N1/N2/N3) + 异常项 + 完整清单落盘 + clause_id 改分类回写 + 实体白名单锁定
+    "N1",
+    "N2",
+    "N3",
+    "判空",  # 未裁决 chunk/table 显式判空
+    "总分不符",  # rubric Σmax_score 与评分办法总分不符
+    "clause_id 改分类",
+    "实体白名单",
+    # ③ 门2: 补遗 diff 表(新增/被替代/作废) + 新实体确认 + 终稿复核清单 + format_check 人工签字
+    "新增/被替代/作废",
+    "新实体确认",
+    "终稿复核",
+    "人工签字",
+    # ④ 阶段5 双形态: 会话内填写态 / 回传 Word 先转换再 reingest --source
+    "会话内填写态",
+    "回传",
+    "--source",
+    "needs_human_verify",
+    "多命中",  # D6 匹配器硬化
+    "归一化",  # D6
+    "version",  # 报告 version++ 留痕
+    # ⑤ 上下文纪律
+    "行区间",
+    "task()",
+    "3 并发",
+    # ⑥ 沙箱路径 + 编排配套(references/转换链路/OCR 受限支持)
+    "/mnt/skills/public/bid-proposal-writing/scripts/",
+    "/mnt/skills/public/bid-proposal-writing/references/",
+    "extraction_prompt.md",
+    "scoring_prompt.md",
+    "classification.md",
+    "markdown-to-docx",  # 阶段4 双卷 Word 走 convert.py 链路
+    "eai-flow-ocr",  # 阶段0 扫描件分流(V1 受限支持)
+)
+
+
+def _skill_md_text() -> str:
+    """读取 SKILL.md; 文件缺失直接失败(T8 交付物必须存在, 不 skip)。"""
+    assert SKILL_MD_PATH.is_file(), f"SKILL.md 缺失: {SKILL_MD_PATH}(任务 T8 交付物)"
+    return SKILL_MD_PATH.read_text(encoding="utf-8")
+
+
+def _skill_md_script_invocations(text: str) -> list[tuple[str, list[str]]]:
+    """提取 ```bash 代码块中五脚本调用 → [(模块名, argv), ...]。
+
+    处理反斜杠续行; 只认 bid-proposal-writing/scripts/<name>.py 形态的调用
+    (grep/read_file 等编排指令、markdown-to-docx 的 convert.py 不在提取范围)。
+    """
+    invocations: list[tuple[str, list[str]]] = []
+    for block in re.findall(r"```[a-zA-Z]*\n(.*?)```", text, flags=re.DOTALL):
+        joined = block.replace("\\\n", " ")  # 反斜杠续行合并为单行(\<LF> → 空格)
+        for line in joined.splitlines():
+            line = line.strip()
+            match = _SKILL_SCRIPT_RE.search(line)
+            if not match or not line.startswith("python"):
+                continue
+            tokens = line.split()
+            script_index = next(i for i, tok in enumerate(tokens) if tok.endswith(f"{match.group(1)}.py"))
+            invocations.append((match.group(1), tokens[script_index + 1 :]))
+    return invocations
+
+
+class TestSkillMd:
+    """T8: SKILL.md 编排总纲——frontmatter/内容要件/命令与实际 CLI 逐个对照。"""
+
+    def test_frontmatter_aligns_with_precedent(self):
+        """frontmatter(name/description)对齐 markdown-to-docx 先例格式。"""
+        text = _skill_md_text()
+        assert text.startswith("---\n"), "SKILL.md 必须以 YAML frontmatter 开头(先例: markdown-to-docx/SKILL.md)"
+        end = text.index("\n---", 3)
+        frontmatter = text[3:end]
+        assert re.search(r"^name:\s*bid-proposal-writing\s*$", frontmatter, re.MULTILINE), "frontmatter 必须声明 name: bid-proposal-writing"
+        description = re.search(r"^description:\s*(\S.*)$", frontmatter, re.MULTILINE)
+        assert description, "frontmatter 必须声明非空 description(触发词说明)"
+        assert len(description.group(1)) >= 30, "description 应为完整触发说明(先例风格), 不是短语"
+
+    def test_required_content_tokens(self):
+        """内容要件逐条在册(任务 T8 ①-⑥ 对应设计文档详细设计节)。"""
+        content = _skill_md_text()
+        missing = [token for token in SKILL_MD_REQUIRED_TOKENS if token not in content]
+        assert not missing, f"SKILL.md 缺少内容要件: {missing}"
+
+    def test_script_invocations_use_sandbox_path(self):
+        """所有五脚本调用必须走沙箱路径 /mnt/skills/public/...(同 markdown-to-docx 先例)。"""
+        content = _skill_md_text()
+        assert _skill_md_script_invocations(content), "SKILL.md 必须包含五脚本的实际调用命令(不能只描述不示例)"
+        for line in re.findall(r"^.*bid-proposal-writing/scripts/[a-z_]+\.py.*$", content, re.MULTILINE):
+            assert line.lstrip().startswith("python /mnt/skills/public/bid-proposal-writing/scripts/"), f"脚本调用必须用沙箱绝对路径: {line.strip()}"
+
+    def test_every_documented_command_is_accepted_by_actual_cli(self, monkeypatch):
+        """T8 自检: SKILL.md 里每个脚本调用命令与实际脚本 CLI 参数一致(逐个对照 scripts/)。
+
+        机制: monkeypatch argparse.ArgumentParser.parse_args——完整校验(含子命令/必填/
+        枚举)在原 parse_args 内完成后抛哨兵异常, 证明 argparse 原样接受文档命令;
+        参数不合法时脚本 main() 捕获 SystemExit 返回 1, 测试失败。
+        """
+        import argparse
+        import importlib
+
+        class _ParseCaptured(Exception):
+            def __init__(self, namespace):
+                super().__init__("argparse accepted")
+                self.namespace = namespace
+
+        original = argparse.ArgumentParser.parse_args
+
+        def capture(self, args=None, namespace=None):
+            ns = original(self, args, namespace)
+            raise _ParseCaptured(ns)
+
+        monkeypatch.setattr(argparse.ArgumentParser, "parse_args", capture)
+        invocations = _skill_md_script_invocations(_skill_md_text())
+        assert {name for name, _ in invocations} == set(SCRIPT_MODULE_NAMES), f"SKILL.md 应覆盖五脚本调用, 实际: {sorted({n for n, _ in invocations})}"
+        for module_name, argv in invocations:
+            mod = importlib.import_module(module_name)
+            with pytest.raises(_ParseCaptured, match="argparse accepted"):
+                mod.main(argv)
