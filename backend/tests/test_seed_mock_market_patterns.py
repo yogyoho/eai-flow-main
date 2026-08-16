@@ -70,17 +70,32 @@ def test_yearly_our_won_amount_share_strictly_increasing():
 
 
 def test_low_baller_dongfang_hongye_avg_premium_negative():
-    """东方宏业: 每个参与项目报价低于其余友商最低价(溢价 = 报价/其余友商最低价 - 1),平均 < 0。"""
+    """东方宏业平均溢价应为负且 ≈ -2%(低价抢标画像)。
+
+    口径对齐仪表盘 sqlCompetitorProfile: (报价-中标价)/中标价,手写+生成全量行;
+    旧口径(仅生成、相对其余友商最低价)测不出手写 3 行上浮的漂移,曾绿着但图表 +2.6%(bug-1217)。
+    """
     prems = []
+    # 手写 6 项目: 按项目聚合取中标价
+    by_proj = {}
+    for p, role, bidder, items, won, price in seed.handwritten_bid_rows():
+        by_proj.setdefault(id(p), []).append((bidder, won, price))
+    for rows in by_proj.values():
+        win = next(pr for _, w, pr in rows if w)
+        prems += [(pr - win) / win for b, _, pr in rows if b == seed.LOW_BALLER]
+    # 生成 34 项目
+    for gp in seed.gen_projects():
+        win = next(r["price"] for r in gp["rows"] if r["won"])
+        prems += [(r["price"] - win) / win for r in gp["rows"] if r["bidder"] == seed.LOW_BALLER]
+    assert prems, "东方宏业应参与至少 1 个项目"
+    avg = sum(prems) / len(prems)
+    assert -0.035 < avg < -0.01, f"东方宏业平均溢价应 ≈ -2%(低价抢标画像),实际 {avg:.4f}"
+    # 保留原性质断言: 生成项目里东方宏业报价恒低于其余友商最低价
     for p in seed.gen_projects():
         mine = [r for r in p["rows"] if r["role"] == "competitor" and r["bidder"] == seed.LOW_BALLER]
         for r in mine:
             others = [r2["price"] for r2 in p["rows"] if r2["role"] == "competitor" and r2["bidder"] != seed.LOW_BALLER]
-            assert others, f"{p['name']} 东方宏业之外应有至少 1 家友商"
-            prems.append(r["price"] / min(others) - 1.0)
-    assert prems, "东方宏业应参与至少 1 个生成项目"
-    avg = sum(prems) / len(prems)
-    assert avg < 0, f"东方宏业平均溢价应 < 0(低价抢标画像),实际 {avg:.4f}"
+            assert others and r["price"] < min(others), f"{p['name']} 东方宏业报价应低于其余友商最低价"
 
 
 def test_34_generated_projects_each_exactly_one_winner():

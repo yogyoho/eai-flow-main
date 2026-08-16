@@ -15,7 +15,7 @@ EAI-CUSTOM: 市场部门模块①。真实投标库接入前的链路演示 mock
   拐点在 +3% 附近(±3% 内五五开,越过 +4.5% 胜率骤降);
 - 大项目短板: ≥2000万 段我方全败(大型核心设备外购 → 成本劣势);
 - 三年趋势: 年度配额 2023(2胜9负)→2024(5胜7负)→2025(8胜3负),我方中标金额份额逐年抬升;
-- 东方宏业画像: 参与即报 0.955×基准价 → 平均溢价为负(低价抢标型友商);
+- 东方宏业画像: 参与即报 0.94×基准价(手写/生成统一) → 相对中标价的平均溢价 ≈ -2%(低价抢标型友商);
 - 我方(东智装备制造)在循环水泵/超滤装置等核心设备可自产 → 中小项目中标;
 - 变换炉/压缩机/脱硫塔/丙烯塔等大型核心设备我方仅能外购 → 大项目成本高、落标;
 - 友商(东方宏业/华能重工/江南重工/航天晨光等,每项目 2-3 家)大型塔器/压缩机可自产 → 大项目低价中标。
@@ -57,7 +57,12 @@ OURS = "东智装备制造"
 # EAI-CUSTOM: 多家友商(原单常量 COMP)。手写项目每项目 1-3 家友商竞争,1 家中标(项目5仅1家);
 # 生成项目每项目 2-3 家友商(确定性索引从池里取)。
 COMPETITORS_POOL = ["东方宏业", "华能重工", "中机国能", "江南重工", "海纳智造", "航天晨光"]
-LOW_BALLER = "东方宏业"  # 低价抢标型友商: 参与即报 0.955×基准价 → 平均溢价为负
+LOW_BALLER = "东方宏业"  # 低价抢标型友商: 参与即报低价系数×基准价 → 平均溢价为负
+# 东方宏业报价系数: 生成侧 0.94(我方胜行报价锚定 cmin,k 不影响溢价;自胜行溢价恒 0,
+# 故生成 12 行均值结构性钉在 +0.55%);手写侧 0.875 是唯一自由杠杆——两者协同使
+# 手写+生成全量平均溢价 ≈ -2.1%,对齐原型画像(pytest 锁定区间,详见 bug-1217)。
+LOW_BALL_K_GEN = 0.94
+LOW_BALL_K_HAND = 0.875
 
 
 def _variant(base, k):
@@ -325,13 +330,39 @@ def _mk_items(seg, cost_wan, self_share):
     return items
 
 
+def handwritten_bid_rows():
+    """手写 6 项目的完整投标行(纯函数,pytest 直接锁定低价抢标规律)。
+
+    每行: (project, role, bidder, items, won, price元)
+    定价: 中标方恰报 base;落标方 base×上浮 5%-17%;
+    东方宏业例外——低价抢标恒 LOW_BALL_K_HAND×base(报价远低于中标方,综合评分落标)。
+    """
+    rows = []
+    for pi, p in enumerate(PROJECTS):
+        markup = 0.05 + (pi % 5) * 0.03
+
+        def _price(bidder, won):
+            # EAI-CUSTOM: 东方宏业低价抢标——无论胜负恒 LOW_BALL_K_HAND×base,不复用落标上浮逻辑。
+            if bidder == LOW_BALLER:
+                return round(p["price"] * LOW_BALL_K_HAND, 2)
+            # EAI-CUSTOM(option A): 中标方按 base 价,落标方按 base × 上浮(落标=报价更高才落标)。
+            return round(p["price"] * (1.0 if won else (1.0 + markup)), 2)
+
+        rows.append((p, "ours", OURS, p["ours"], p["winner"] == "ours", _price(OURS, True)))
+        mc = p["main_competitor"]
+        rows.append((p, "competitor", mc, p["comp"], p["winner"] == mc, _price(mc, p["winner"] == mc)))
+        for cname, k in p.get("extra_competitors", []):
+            rows.append((p, "competitor", cname, _variant(p["comp"], k), p["winner"] == cname, _price(cname, p["winner"] == cname)))
+    return rows
+
+
 def gen_projects():
     """把 gen_bid_plan() 展开成完整项目行(纯函数,零随机)。
 
     每项目: {name, loc, date, year, seg, rows: [{role, bidder, won, price(万元), items}, ...]}
     - 我方 1 行 + 友商 2-3 行;恰好一家 won=True(我方胜则我方,否则指定赢家友商 j=i%n_comp);
     - 友商取池索引 (i*2)%6 为锚,+3/+1 错开保证互不重名(字面公式 (i*2+j*3)%6 在 j=2 时与 j=0 撞名,故微调);
-    - 东方宏业参与即报 0.955×基准价(低价抢标画像 → 平均溢价为负);
+    - 东方宏业参与即报低价系数×基准价(生成 0.94/手写 0.875 → 全量平均溢价 ≈ -2.1%,低价抢标画像);
     - 我方报价 = 该项目实际友商最低价 cmin × (1 + prem + 微扰((i%3)-1)*0.004);
     - 我方成本 = 我方报价 × COST_RATIO[seg];友商成本 = 友商报价 × (COST_RATIO-0.08)(可自产更省)。
     """
@@ -345,12 +376,12 @@ def gen_projects():
         wj = i % n_comp  # 我方输时,赢家友商的下标
         # 基准价(万元)× 差异系数
         b = SEG_BASE[seg] * (1 + (i % 5) * 0.07)
-        # 友商报价: 东方宏业 0.955×b;指定赢家 0.98×b;其余 +3%~+8%(确定性系数)
+        # 友商报价: 东方宏业 LOW_BALL_K_GEN×b;指定赢家 0.98×b;其余 +3%~+8%(确定性系数)
         comp_prices = []
         for j, ci in enumerate(idxs):
             name = COMPETITORS_POOL[ci]
             if name == LOW_BALLER:
-                comp_prices.append(b * 0.955)
+                comp_prices.append(b * LOW_BALL_K_GEN)
             elif (not our_won) and j == wj:
                 comp_prices.append(b * 0.98)
             else:
@@ -547,18 +578,9 @@ async def main() -> None:
                 )
             )
 
-    # 2a. 手写 6 项目(沿用旧 emit 语义: 中标方按 base 价,落标方按 base × 上浮 5%-17%)
-    for pi, p in enumerate(PROJECTS):
-        markup = 0.05 + (pi % 5) * 0.03
-
-        def _legacy_price(won):
-            # EAI-CUSTOM(option A): 中标方按 base 价,落标方按 base × 上浮(落标=报价更高才落标)。
-            return round(p["price"] * (1.0 if won else (1.0 + markup)), 2)
-
-        emit(p["name"], p["loc"], p["date"], "ours", OURS, p["ours"], p["winner"] == "ours", _legacy_price(p["winner"] == "ours"))
-        emit(p["name"], p["loc"], p["date"], "competitor", p["main_competitor"], p["comp"], p["winner"] == p["main_competitor"], _legacy_price(p["winner"] == p["main_competitor"]))
-        for cname, k in p.get("extra_competitors", []):
-            emit(p["name"], p["loc"], p["date"], "competitor", cname, _variant(p["comp"], k), p["winner"] == cname, _legacy_price(p["winner"] == cname))
+    # 2a. 手写 6 项目(定价规律见 handwritten_bid_rows: 东方宏业低价抢标例外)
+    for p, role, bidder, items, won, price in handwritten_bid_rows():
+        emit(p["name"], p["loc"], p["date"], role, bidder, items, won, price)
 
     # 2b. 生成 34 项目(2023-2025 三年,确定性规律,价格/清单由 gen_projects 精确给定)
     for gp in gen_projects():
