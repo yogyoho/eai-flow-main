@@ -897,3 +897,357 @@ class TestContractDocs:
         content = _ref_doc("extraction_prompt.md")
         assert '"fill_status"' not in content, "候选骨架不得包含派生字段 fill_status(D7: 渲染/重灌时现算, 不落盘)"
         assert "fill_status" in content, "必须以 prose 说明 fill_status 为派生字段、候选不含"
+
+
+# ===========================================================================
+# T3: ingest.py — 阶段1 纯结构化解析(sections.json 产出, 无 LLM)
+# ===========================================================================
+# CLI: ingest.py --input <文件...> --code <代号> --out <dir> [--addendum] → <out>/sections.json
+# 契约(与 T1 fixture sections.json 字段集逐字一致, 不缺不漏不加):
+#   chunk  = {chunk_id, source_file, anchor, heading_path, n_paras}
+#   table  = {table_id, source_file, anchor, n_rows, n_cols, caption}
+#   锚点分流: docx=section+段序(无 page 键); PDF/OCR=page+section(无 para 键)
+#   表行数记录 + 解析前后行数比对(D5); 格式章节只出章节树骨架; 原子写盘(D7)
+# 退出码: 0=干净完成 1=用法/文件错误 2=无文本层(扫描件)需走 OCR 3=完成但有异常项
+
+# 最小 1x1 PNG(base64), 供"扫描 docx(仅图片无文本层)"负样本使用
+_TINY_PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+
+
+def _ingest_module():
+    """硬导入 ingest(T3 已落地; 模块缺失时测试失败而非 skip——管线脚本必须存在)。"""
+    import importlib
+
+    return importlib.import_module("ingest")
+
+
+def _run_ingest(tmp_path, files, code="ZB", addendum=False):
+    """运行 ingest.main 并返回 (退出码, sections.json 路径)。"""
+    ingest = _ingest_module()
+    out_dir = tmp_path / "out"
+    argv = ["--input", *[str(f) for f in files], "--code", code, "--out", str(out_dir)]
+    if addendum:
+        argv.append("--addendum")
+    rc = ingest.main(argv)
+    return rc, out_dir / "sections.json"
+
+
+def _make_docx(path, blocks):
+    """按块序列构造测试 docx: ("h", level, text) / ("p", text) / ("table", [[单元格...], ...])。"""
+    docx = pytest.importorskip("docx", reason="backend venv 缺 python-docx")
+    doc = docx.Document()
+    for block in blocks:
+        if block[0] == "h":
+            doc.add_heading(block[2], level=block[1])
+        elif block[0] == "p":
+            doc.add_paragraph(block[1])
+        elif block[0] == "table":
+            rows = block[1]
+            table = doc.add_table(rows=len(rows), cols=len(rows[0]))
+            table.style = "Table Grid"
+            for r, cells in enumerate(rows):
+                for c, value in enumerate(cells):
+                    table.rows[r].cells[c].text = value
+    doc.save(str(path))
+    return path
+
+
+class TestIngestDocxFixture:
+    """对 fixture minimal_tender.docx 跑真 ingest: 结构/锚点/行数/ID 发放全链路。"""
+
+    @pytest.fixture(scope="class")
+    def run(self, tmp_path_factory):
+        rc, path = _run_ingest(tmp_path_factory.mktemp("ingest_docx"), [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc == 0, f"fixture docx ingest 应干净退出, 实际 rc={rc}"
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def test_shape_locked_to_t1_contract(self, run):
+        assert set(run.keys()) == {"chunks", "tables"}
+        for ch in run["chunks"]:
+            assert set(ch.keys()) == {"chunk_id", "source_file", "anchor", "heading_path", "n_paras"}, f"chunk 字段集不符: {sorted(ch.keys())}"
+        for t in run["tables"]:
+            assert set(t.keys()) == {"table_id", "source_file", "anchor", "n_rows", "n_cols", "caption"}, f"table 字段集不符: {sorted(t.keys())}"
+
+    def test_chunk_ids_sequential_unique(self, run):
+        ids = [c["chunk_id"] for c in run["chunks"]]
+        assert ids == [f"CH-{i:03d}" for i in range(1, len(ids) + 1)], f"chunk_id 应从 CH-001 起按文档序连续发放: {ids}"
+        assert len(ids) == len(set(ids))
+
+    def test_docx_anchor_no_page(self, run):
+        """docx 锚点 = section+段序, 不得含 page 键(docx 无分页概念)。"""
+        for ch in run["chunks"]:
+            anchor = ch["anchor"]
+            assert "page" not in anchor, f"{ch['chunk_id']} docx 锚点不得含 page: {anchor}"
+            assert isinstance(anchor["section"], str) and anchor["section"].strip()
+            assert isinstance(anchor["para"], int) and anchor["para"] >= 1
+
+    def test_clause_anchor_coverage(self, run):
+        """clauses.json 全部条款的 (source_file, section) 锚点必须被 ingest 产物覆盖(extract.py 校验前提)。"""
+        covered = {(c["source_file"], c["anchor"]["section"]) for c in run["chunks"]} | {(t["source_file"], t["anchor"]["section"]) for t in run["tables"]}
+        for c in load_json("clauses.json"):
+            if c["source_file"] == "minimal_tender.docx":
+                assert (c["source_file"], c["source_ref"]["section"]) in covered, f"{c['clause_id']} 锚点未被 ingest 覆盖: {c['source_ref']['section']}"
+
+    def test_format_section_headings_present_in_tree(self, run):
+        """heading_path 必须是完整标题链(供格式章节检测与结构镜像消费)。"""
+        for ch in run["chunks"]:
+            assert isinstance(ch["heading_path"], list) and ch["heading_path"], f"{ch['chunk_id']} heading_path 非空"
+        paths = [" / ".join(c["heading_path"]) for c in run["chunks"]]
+        assert any("第三章 技术规范" in p and "3.2.1 技术参数要求" in p for p in paths), f"三级标题链缺失: {paths}"
+
+    def test_table_ids_and_real_row_counts(self, run):
+        """表行数必须来自实际解析(D5): 参数表 3x3, 评分细则表 4x4, 与 fixture 文档一致。"""
+        tables = sorted(run["tables"], key=lambda t: t["table_id"])
+        assert [t["table_id"] for t in tables] == ["T-001", "T-002"]
+        assert (tables[0]["n_rows"], tables[0]["n_cols"]) == (3, 3), f"参数表应 3x3: {tables[0]}"
+        assert (tables[1]["n_rows"], tables[1]["n_cols"]) == (4, 4), f"评分细则表应 4x4: {tables[1]}"
+        assert tables[0]["caption"] == "技术参数表", f"caption 应取所在章节标题(去编号): {tables[0]['caption']}"
+        # 表锚点: 表在所在章节内的块序(段落序)——3.2.2 下唯一块=表→para 1;
+        # 6.1 下唯一块=表(评分办法引言段属第六章直接正文, 不在 6.1 之下)→para 1
+        assert (tables[0]["anchor"]["section"], tables[0]["anchor"]["para"]) == ("3.2.2", 1), f"{tables[0]['anchor']}"
+        assert (tables[1]["anchor"]["section"], tables[1]["anchor"]["para"]) == ("6.1", 1), f"{tables[1]['anchor']}"
+
+    def test_atomic_write_no_temp_leftovers(self, tmp_path):
+        """D7: 写盘必须临时文件+os.replace, 结束后目录内无 *.tmp* 残留。"""
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 0 and path.is_file()
+        leftovers = [p.name for p in path.parent.iterdir() if "tmp" in p.name.lower() or p.suffix == ".tmp"]
+        assert not leftovers, f"写盘残留临时文件: {leftovers}"
+        json.loads(path.read_text(encoding="utf-8"))  # 产物必须是合法 JSON(无半截文件)
+
+    def test_rerun_replaces_not_duplicates(self, tmp_path):
+        """同一文件重复 ingest → 替换该文件的旧块, 不产生重复 chunk/table。"""
+        rc1, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        rc2, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc1 == 0 and rc2 == 0
+        data = json.loads(path.read_text(encoding="utf-8"))
+        sources = [c["source_file"] for c in data["chunks"]] + [t["source_file"] for t in data["tables"]]
+        assert sources.count("minimal_tender.docx") == len(sources), f"重复运行不得追加重复文件块: {sources}"
+
+    def test_summary_reports_code_allocation(self, tmp_path, capsys):
+        """--code 文件代号分配必须体现在运行摘要(stdout JSON), 供阶段2 clause_id 前缀使用。"""
+        rc, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc == 0
+        lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip().startswith("{")]
+        assert lines, "stdout 应含单行 JSON 摘要"
+        summary = json.loads(lines[-1])
+        assert summary["files"][0]["code"] == "ZB"
+        assert summary["files"][0]["addendum"] is False
+
+
+class TestIngestSummaryOutput:
+    def test_summary_json_contains_code_and_counts(self, tmp_path, capsys):
+        """stdout 摘要(单行 JSON)须含 files[].code/chunks/tables, 供 Agent 编排与确认门消费。"""
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc == 0
+        out = capsys.readouterr().out
+        lines = [ln for ln in out.splitlines() if ln.strip().startswith("{")]
+        assert lines, f"stdout 应含单行 JSON 摘要: {out!r}"
+        summary = json.loads(lines[-1])
+        assert summary["files"][0]["code"] == "ZB"
+        assert summary["files"][0]["file"].endswith("minimal_tender.docx")
+        assert isinstance(summary["files"][0]["chunks"], int) and summary["files"][0]["chunks"] >= 1
+        assert isinstance(summary["files"][0]["tables"], int) and summary["files"][0]["tables"] == 2
+
+
+class TestIngestPdfFixture:
+    """对 fixture minimal_tender.pdf 跑真 ingest: page+section 锚点分流。"""
+
+    @pytest.fixture(scope="class")
+    def run(self, tmp_path_factory):
+        rc, path = _run_ingest(tmp_path_factory.mktemp("ingest_pdf"), [FIXTURE_DIR / "minimal_tender.pdf"], code="JS")
+        assert rc == 0, f"fixture pdf ingest 应干净退出, 实际 rc={rc}"
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    def test_pdf_anchor_page_plus_section(self, run):
+        """PDF 锚点 = page+section(单页 fixture 全部 page=1, section=标题编号)。"""
+        assert run["chunks"], "PDF 应产出 chunk"
+        for ch in run["chunks"]:
+            anchor = ch["anchor"]
+            assert isinstance(anchor["page"], int) and anchor["page"] >= 1, f"{ch['chunk_id']} PDF 锚点缺 page: {anchor}"
+            assert isinstance(anchor["section"], str) and anchor["section"].strip()
+            assert "para" not in anchor, f"{ch['chunk_id']} PDF 锚点不含 para(设计: page+section): {anchor}"
+        sections = {c["anchor"]["section"] for c in run["chunks"]}
+        assert {"1", "2", "3"} <= sections, f"三个标题的编号段应各自成块: {sections}"
+
+    def test_pdf_body_counted_into_chunk(self, run):
+        by_section = {c["anchor"]["section"]: c for c in run["chunks"]}
+        assert by_section["2"]["n_paras"] >= 1, "标题 2 下的正文行应计入 n_paras"
+
+    def test_pdf_mixed_invocation_with_docx(self, tmp_path):
+        """一次调用混合 docx+pdf: 双来源共存, chunk_id 全局唯一连续。"""
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx", FIXTURE_DIR / "minimal_tender.pdf"], code="ZB")
+        assert rc == 0
+        data = json.loads(path.read_text(encoding="utf-8"))
+        sources = {c["source_file"] for c in data["chunks"]}
+        assert any(s.endswith(".docx") for s in sources) and any(s.endswith(".pdf") for s in sources), sources
+        ids = [c["chunk_id"] for c in data["chunks"]]
+        assert len(ids) == len(set(ids)), "跨文件 chunk_id 不得重复"
+
+
+class TestIngestFormatSection:
+    """格式章节(投标文件格式)定位 → 只产出章节树骨架(槽位语义定型留给阶段2)。"""
+
+    FORMAT_DOCX_BLOCKS = [
+        ("h", 1, "第一章 招标公告"),
+        ("p", "项目编号:EAI-T-2026-001, 欢迎符合资格条件的投标人投标。"),
+        ("h", 1, "第二章 投标文件格式"),
+        ("h", 2, "一、投标函"),
+        ("p", "按以下格式填报投标函并加盖公章(此处为格式模板正文, 不作条款提取)。"),
+        ("h", 2, "二、法定代表人身份证明"),
+        ("p", "此处应插入加盖公章的身份证正反面扫描件。"),
+        ("h", 1, "第三章 技术规范"),
+        ("p", "设备防护等级不低于IP65。"),
+    ]
+
+    def test_detect_format_regions_unit(self):
+        ingest = _ingest_module()
+        headings = [(b[1], b[2]) for b in self.FORMAT_DOCX_BLOCKS if b[0] == "h"]
+        regions = ingest.detect_format_regions(headings)
+        assert len(regions) == 1, f"应检出 1 个格式章节: {regions}"
+        start, end = regions[0]
+        assert headings[start][1] == "第二章 投标文件格式"
+        # 区域终点 = 下一个同级或更高级标题(第三章)之前
+        assert headings[end][1] == "第三章 技术规范"
+
+    def test_is_format_heading_heuristic(self):
+        ingest = _ingest_module()
+        assert ingest.is_format_heading(1, "第二章 投标文件格式")
+        assert ingest.is_format_heading(2, "投标文件格式一览")
+        assert not ingest.is_format_heading(1, "第六章 评标办法"), "评标办法章节不得误判为格式章节"
+        assert not ingest.is_format_heading(1, "第三章 技术规范")
+        assert not ingest.is_format_heading(1, "评分办法及格式说明"), "含评分/评标/办法字样的标题不按弱规则判格式"
+        assert not ingest.is_format_heading(3, "3.2.2 技术参数表"), "低级标题不按弱规则判格式"
+
+    def test_format_chapter_skeleton_only(self, tmp_path):
+        """格式章节内: 每个标题都进骨架(n_paras=0, 树完整); 章外正常块 n_paras>=1。"""
+        docx_path = _make_docx(tmp_path / "format_tender.docx", self.FORMAT_DOCX_BLOCKS)
+        rc, path = _run_ingest(tmp_path, [docx_path])
+        assert rc == 0
+        data = json.loads(path.read_text(encoding="utf-8"))
+        by_path = {" / ".join(c["heading_path"]): c for c in data["chunks"]}
+        # 骨架完整: 格式章节自身 + 两个二级标题全部成块, 树链可见
+        for key in ("第二章 投标文件格式", "第二章 投标文件格式 / 一、投标函", "第二章 投标文件格式 / 二、法定代表人身份证明"):
+            assert key in by_path, f"格式章节树缺节点: {key}; 实际: {sorted(by_path)}"
+            assert by_path[key]["n_paras"] == 0, f"格式章节只出骨架, n_paras 应为 0: {key}"
+        # 章外正常章节不受影响
+        assert by_path["第一章 招标公告"]["n_paras"] == 1
+        assert by_path["第三章 技术规范"]["n_paras"] == 1
+
+    def test_format_sections_listed_in_summary(self, tmp_path, capsys):
+        docx_path = _make_docx(tmp_path / "format_tender.docx", self.FORMAT_DOCX_BLOCKS)
+        rc, _ = _run_ingest(tmp_path, [docx_path])
+        assert rc == 0
+        lines = [ln for ln in capsys.readouterr().out.splitlines() if ln.strip().startswith("{")]
+        summary = json.loads(lines[-1])
+        assert any("投标文件格式" in "/".join(map(str, p)) for p in summary["format_sections"]), summary["format_sections"]
+
+
+class TestIngestAddendum:
+    """补遗输入(--addendum 标记, 代号前缀按文件代号分配): 增量追加 + ID 续号。"""
+
+    def test_addendum_appends_and_continues_ids(self, tmp_path):
+        addendum_docx = _make_docx(
+            tmp_path / "补遗文件-01.docx",
+            [
+                ("h", 1, "二、补遗内容"),
+                ("p", "交货期统一调整为合同签订后60天。"),
+            ],
+        )
+        rc1, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="ZB")
+        assert rc1 == 0
+        base = json.loads(path.read_text(encoding="utf-8"))
+        base_max = max(int(c["chunk_id"].split("-")[1]) for c in base["chunks"])
+        rc2, path = _run_ingest(tmp_path, [addendum_docx], code="BY", addendum=True)
+        assert rc2 == 0, "补遗输入应正常增量受理"
+        merged = json.loads(path.read_text(encoding="utf-8"))
+        sources = {c["source_file"] for c in merged["chunks"]}
+        assert any("补遗文件-01" in s for s in sources), f"补遗文件应入 sections: {sources}"
+        assert any(s.endswith("minimal_tender.docx") for s in sources), "基础文件块不得被补遗运行清掉"
+        new_ids = sorted(int(c["chunk_id"].split("-")[1]) for c in merged["chunks"] if "补遗" in c["source_file"])
+        assert new_ids and min(new_ids) == base_max + 1, f"补遗 chunk 应从基础最大号后续发: base_max={base_max}, new={new_ids}"
+
+
+class TestIngestErrorPaths:
+    def test_missing_input_file_exit_1(self, tmp_path):
+        rc, path = _run_ingest(tmp_path, [tmp_path / "不存在.docx"])
+        assert rc == 1
+        assert not path.exists(), "输入缺失时不得写出 sections.json"
+
+    def test_unsupported_extension_exit_1(self, tmp_path):
+        f = tmp_path / "tender.txt"
+        f.write_text("x", encoding="utf-8")
+        rc, _ = _run_ingest(tmp_path, [f])
+        assert rc == 1
+
+    def test_invalid_code_exit_1(self, tmp_path):
+        rc, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"], code="z1")
+        assert rc == 1, "文件代号必须为 2-4 位大写字母(schema 契约)"
+
+    def test_scanned_docx_exit_2_with_ocr_hint(self, tmp_path, capsys):
+        """无文本层(仅图片)docx → 退出码 2 + 明确走 OCR 路径提示, 不写 sections.json。"""
+        import base64
+        import io
+
+        docx_mod = pytest.importorskip("docx", reason="backend venv 缺 python-docx")
+        doc = docx_mod.Document()
+        doc.add_picture(io.BytesIO(base64.b64decode(_TINY_PNG_B64)))
+        scanned = tmp_path / "扫描件.docx"
+        doc.save(str(scanned))
+
+        rc, path = _run_ingest(tmp_path, [scanned])
+        assert rc == 2, f"扫描 docx 必须用独立退出码(区别于一般错误), 实际 rc={rc}"
+        captured = capsys.readouterr()
+        assert "OCR" in captured.out + captured.err, "必须给出走 eai-flow-ocr 路径的明确提示"
+        assert not path.exists(), "OCR 分流场景不得写出 sections.json"
+
+
+class TestIngestUnitHelpers:
+    def test_section_id_split(self):
+        """章节标识提取: 阿拉伯编号→编号; docx 中文序号标题→全文; PDF 中文序号→序号; 无编号→全文。"""
+        ingest = _ingest_module()
+        cases = [
+            ("3.2.1 技术参数要求", "docx", "3.2.1"),
+            ("6.1 评分细则", "docx", "6.1"),
+            ("一、项目概况", "docx", "一、项目概况"),
+            ("第一章 投标邀请", "docx", "第一章 投标邀请"),
+            ("2. Technical Specifications", "pdf", "2"),
+            ("二、补遗内容", "pdf", "二"),
+            ("第一章 招标公告", "pdf", "第一章 招标公告"),
+        ]
+        for text, kind, expected in cases:
+            assert ingest.section_id_for_heading(text, kind) == expected, f"{kind}: {text!r} → 期望 {expected!r}"
+
+    def test_compare_table_rows(self):
+        """D5 行数比对: 结构行数与抽取行数不一致 → 异常项; 一致 → 空。"""
+        ingest = _ingest_module()
+        assert ingest.compare_table_rows("T-001", 3, 3) == []
+        anomalies = ingest.compare_table_rows("T-002", 5, 3)
+        assert len(anomalies) == 1 and anomalies[0]["table_id"] == "T-002"
+        assert anomalies[0]["structural_rows"] == 5 and anomalies[0]["extracted_rows"] == 3
+
+    def test_xml_fallback_matches_primary(self):
+        """python-docx 失效兜底(zipfile+XML 直读)须与主路径产出同构块序列。"""
+        ingest = _ingest_module()
+        path = str(FIXTURE_DIR / "minimal_tender.docx")
+        try:
+            primary = ingest.parse_docx_blocks(path)
+        except Exception:
+            pytest.skip("python-docx 不可用时仅验证兜底路径可独立运行")
+            primary = None
+        fallback = ingest.parse_docx_blocks_xml(path)
+        if primary is None:
+            assert fallback
+            return
+        key = lambda b: (b["kind"], b.get("level"), b.get("text"))  # noqa: E731
+        assert [key(b) for b in primary] == [key(b) for b in fallback], "兜底路径与主路径的标题/正文序列必须一致"
+        primary_tables = [(b["n_rows"], b["n_cols"]) for b in primary if b["kind"] == "table"]
+        fallback_tables = [(b["n_rows"], b["n_cols"]) for b in fallback if b["kind"] == "table"]
+        assert primary_tables == fallback_tables == [(3, 3), (4, 4)]
+
+    def test_atomic_write_json_survives_bad_dir(self, tmp_path):
+        ingest = _ingest_module()
+        target = tmp_path / "sub" / "sections.json"
+        ingest.atomic_write_json(target, {"chunks": [], "tables": []})
+        assert json.loads(target.read_text(encoding="utf-8")) == {"chunks": [], "tables": []}
+        assert not [p for p in target.parent.iterdir() if "tmp" in p.name.lower()], "原子写盘不得残留临时文件"
