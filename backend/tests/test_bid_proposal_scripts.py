@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from jsonschema import Draft202012Validator
 
 # --- 路径 -------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -463,3 +464,436 @@ class TestFixtureEntitiesWhitelist:
 class TestGenFixtures:
     def test_generator_exists(self):
         assert (FIXTURE_DIR / "gen_fixtures.py").is_file(), "fixture 生成器应随 fixture 一起入库"
+
+
+# ===========================================================================
+# T2: references/ 契约文件(三 JSON Schema + classification/extraction/scoring 文档)
+# ===========================================================================
+# 字段名/枚举与设计文档「详细设计」字段表逐字对齐, 复用上文 fixture 常量做精确集合比较;
+# structure schema 额外声明派生字段 fill_status(值域供内存态/渲染态校验, 候选/落盘不含, D7)。
+
+REFERENCES_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "references"
+SCHEMA_FILES = ("clauses.schema.json", "structure.schema.json", "rubric.schema.json")
+DOC_FILES = ("classification.md", "extraction_prompt.md", "scoring_prompt.md")
+DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
+STRUCTURE_SCHEMA_FIELDS = NODE_FIELDS | {"fill_status"}
+
+# 复合 clause_id 形态: <文件代号>-C-<全局序号>(ZB=招标文件/JS=技术规范书/PB=评分办法…)。
+# schema 契约比 fixture 正则宽(代号 2-4 字母/序号 1-6 位), 覆盖真实招标文件多卷量级。
+CLAUSE_ID_SCHEMA_VALID = ["ZB-C-017", "JS-C-001", "PB-C-3"]
+CLAUSE_ID_SCHEMA_INVALID = ["C-017", "ZB-017", "ZB-C-abc", "zb-c-017", "ZB-C-017-X"]
+
+
+def _ref_json(name: str) -> dict:
+    path = REFERENCES_DIR / name
+    assert path.is_file(), f"references 契约文件缺失: {path}"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _ref_doc(name: str) -> str:
+    path = REFERENCES_DIR / name
+    assert path.is_file(), f"references 契约文件缺失: {path}"
+    return path.read_text(encoding="utf-8")
+
+
+def _ref_validator(name: str) -> Draft202012Validator:
+    schema = _ref_json(name)
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
+
+
+def _sample_clause(**overrides):
+    clause = {
+        "clause_id": "ZB-C-017",
+        "source_file": "招标文件.docx",
+        "class": "mandatory",
+        "category": "technical",
+        "source_ref": {"page": None, "section": "3.2.1", "para": 14, "quote": "投标人应逐项响应技术参数"},
+        "requirement": "逐项响应招标文件技术参数表",
+        "response_status": "unassigned",
+        "response_skeleton": {"points": [], "evidence_ref": None, "suggestion": None},
+        "from_addendum": False,
+        "superseded_by": None,
+    }
+    clause.update(overrides)
+    return clause
+
+
+def _sample_node(**overrides):
+    node = {
+        "node_id": "S-012",
+        "volume": "commercial",
+        "path": "投标文件格式/三、法定代表人身份证明",
+        "slot_type": "image",
+        "required_format": {"desc": "加盖公章的身份证正反面扫描件", "table_spec": None},
+        "linked_clause_ids": ["ZB-C-034"],
+    }
+    node.update(overrides)
+    return node
+
+
+def _sample_rubric(**overrides):
+    item = {
+        "rubric_id": "R-005",
+        "item": "技术方案先进性",
+        "max_score": 10,
+        "scoring_method": "优=8-10 良=5-7 一般=1-4 无=0",
+        "score_type": "subjective",
+        "linked_clause_ids": ["ZB-C-041"],
+        "source_ref": {"page": 31, "section": "评分办法", "quote": "技术方案先进性优得8-10分"},
+    }
+    item.update(overrides)
+    return item
+
+
+class TestReferencesExist:
+    def test_all_reference_files_exist(self):
+        for name in (*SCHEMA_FILES, *DOC_FILES):
+            assert (REFERENCES_DIR / name).is_file(), f"references 契约文件缺失: {name}"
+
+    @pytest.mark.parametrize("name", SCHEMA_FILES)
+    def test_schemas_declare_draft_2020_12(self, name):
+        assert _ref_json(name)["$schema"] == DRAFT_2020_12
+
+
+class TestClausesSchema:
+    def test_field_set(self):
+        assert set(_ref_json("clauses.schema.json")["properties"]) == CLAUSE_FIELDS
+
+    def test_enums(self):
+        props = _ref_json("clauses.schema.json")["properties"]
+        assert set(props["class"]["enum"]) == CLAUSE_CLASSES
+        assert set(props["category"]["enum"]) == CLAUSE_CATEGORIES
+        assert set(props["response_status"]["enum"]) == RESPONSE_STATUSES
+
+    def test_source_ref_shape(self):
+        source_ref = _ref_json("clauses.schema.json")["properties"]["source_ref"]
+        assert set(source_ref["properties"]) == SOURCE_REF_FIELDS
+        # page 按来源可空: docx 无分页概念→null; PDF/OCR 扫描件才有 page。
+        assert set(source_ref["properties"]["page"]["type"]) == {"integer", "null"}
+        # quote(原文片段 ≤50 字)是 source_ref 内唯一必填键。
+        assert source_ref["required"] == ["quote"]
+        assert source_ref["properties"]["quote"]["maxLength"] == 50
+
+    def test_required_floor(self):
+        schema = _ref_json("clauses.schema.json")
+        # 锚点(source_ref)/clause_id/分类(class+category)必填。
+        assert {"clause_id", "source_ref", "class", "category"} <= set(schema["required"])
+
+    def test_closes_additional_properties(self):
+        schema = _ref_json("clauses.schema.json")
+        assert schema["additionalProperties"] is False
+        assert schema["properties"]["source_ref"]["additionalProperties"] is False
+        assert set(schema["properties"]["response_skeleton"]["properties"]) == RESPONSE_SKELETON_FIELDS
+
+    @pytest.mark.parametrize("value", CLAUSE_ID_SCHEMA_VALID)
+    def test_clause_id_pattern_accepts_composite_ids(self, value):
+        assert _ref_validator("clauses.schema.json").is_valid(_sample_clause(clause_id=value))
+
+    @pytest.mark.parametrize("value", CLAUSE_ID_SCHEMA_INVALID)
+    def test_clause_id_pattern_rejects_malformed_ids(self, value):
+        assert not _ref_validator("clauses.schema.json").is_valid(_sample_clause(clause_id=value))
+
+
+class TestStructureSchema:
+    def test_field_set_and_enums(self):
+        props = _ref_json("structure.schema.json")["properties"]
+        assert set(props) == STRUCTURE_SCHEMA_FIELDS
+        assert set(props["volume"]["enum"]) == VOLUMES
+        assert set(props["slot_type"]["enum"]) == SLOT_TYPES
+        # fill_status 为 D7 派生字段: 值域必须覆盖, 但不落盘(候选/落盘不含)。
+        assert set(props["fill_status"]["enum"]) == {"unfilled", "filled", "needs_human_verify"}
+        assert set(props["required_format"]["properties"]) == REQUIRED_FORMAT_FIELDS
+
+    def test_required_and_strictness(self):
+        schema = _ref_json("structure.schema.json")
+        assert set(schema["required"]) == NODE_FIELDS  # 持久化字段全必填
+        assert "fill_status" not in schema["required"]  # 派生字段不入 required(D7)
+        assert schema["additionalProperties"] is False
+        assert schema["properties"]["required_format"]["additionalProperties"] is False
+
+
+class TestRubricSchema:
+    def test_field_set_and_enums(self):
+        props = _ref_json("rubric.schema.json")["properties"]
+        assert set(props) == RUBRIC_ITEM_FIELDS
+        assert set(props["score_type"]["enum"]) == SCORE_TYPES
+        assert set(props["source_ref"]["properties"]) == SOURCE_REF_FIELDS
+        assert props["source_ref"]["properties"]["quote"]["maxLength"] == 50
+
+    def test_required_floor(self):
+        schema = _ref_json("rubric.schema.json")
+        # rubric 项全部 7 字段必填(评分办法原文为尺→scoring_method 必填; Σ 校验→max_score 必填)。
+        assert set(schema["required"]) == RUBRIC_ITEM_FIELDS
+        assert schema["additionalProperties"] is False
+
+
+class TestSchemaFunctionalClauses:
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {},
+            # PDF 来源: page+section 锚定, para 可为 null。
+            {"source_file": "招标文件.pdf", "source_ref": {"page": 23, "section": "3.2.1", "para": None, "quote": "原文片段"}},
+            # 补遗合并后的状态字段。
+            {"from_addendum": True, "superseded_by": "ZB-C-018", "response_status": "deviation"},
+            {"class": "scoring", "category": "commercial", "response_status": "draft"},
+            {"source_ref": {"page": None, "section": "3.2.1", "para": 14, "quote": "字" * 50}},
+        ],
+        ids=["design-example-docx", "pdf-page-anchor", "addendum-superseded", "scoring-class", "quote-max-50"],
+    )
+    def test_valid_samples_pass(self, overrides):
+        assert _ref_validator("clauses.schema.json").is_valid(_sample_clause(**overrides))
+
+    def test_minimal_required_only_passes(self):
+        full = _sample_clause()
+        minimal = {key: full[key] for key in ("clause_id", "source_file", "class", "category", "source_ref", "requirement")}
+        assert _ref_validator("clauses.schema.json").is_valid(minimal)
+
+    @pytest.mark.parametrize(
+        "overrides,remove",
+        [
+            ({"class": "critical"}, None),
+            ({"category": "legal"}, None),
+            ({"response_status": "approved"}, None),
+            ({"from_addendum": "yes"}, None),
+            ({"superseded_by": "017"}, None),
+            ({"requirement": ""}, None),
+            ({"source_ref": {"page": "23", "section": "3.2.1", "para": 14, "quote": "原文"}}, None),
+            ({"source_ref": {"page": 23, "section": "3.2.1", "para": 14}}, None),
+            ({"source_ref": {"page": None, "section": "3.2.1", "para": 14, "quote": "字" * 51}}, None),
+            ({"unknown_extra_field": True}, None),
+            ({}, "clause_id"),
+            ({}, "source_ref"),
+            ({}, "requirement"),
+        ],
+        ids=[
+            "bad-class",
+            "bad-category",
+            "bad-response-status",
+            "bad-from-addendum-type",
+            "bad-superseded-by",
+            "empty-requirement",
+            "page-as-string",
+            "source-ref-missing-quote",
+            "quote-over-50",
+            "unknown-extra-field",
+            "missing-clause-id",
+            "missing-source-ref",
+            "missing-requirement",
+        ],
+    )
+    def test_invalid_samples_rejected(self, overrides, remove):
+        clause = _sample_clause(**overrides)
+        if remove:
+            clause.pop(remove)
+        assert not _ref_validator("clauses.schema.json").is_valid(clause)
+
+
+class TestSchemaFunctionalStructure:
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {},
+            # fill_status 是声明过的派生字段: 内存态/渲染态合法取值可通过校验。
+            {"fill_status": "unfilled"},
+            {"fill_status": "needs_human_verify"},
+            {"slot_type": "table", "required_format": {"desc": None, "table_spec": {"columns": ["名称", "数量"], "rows": 2}}},
+            {"volume": "technical", "slot_type": "group", "required_format": {"desc": None, "table_spec": None}, "linked_clause_ids": []},
+            {"node_id": "S-0", "slot_type": "format_check", "required_format": {"desc": "每页加盖页码", "table_spec": None}},
+        ],
+        ids=["design-example-image", "fill-unfilled", "fill-needs-human", "table-slot", "technical-group", "format-check"],
+    )
+    def test_valid_samples_pass(self, overrides):
+        assert _ref_validator("structure.schema.json").is_valid(_sample_node(**overrides))
+
+    @pytest.mark.parametrize(
+        "overrides,remove",
+        [
+            ({"slot_type": "checkbox"}, None),
+            ({"volume": "biz"}, None),
+            ({"fill_status": "partial"}, None),
+            ({"node_id": "12"}, None),
+            ({"node_id": "S-abc"}, None),
+            ({"path": ""}, None),
+            ({"linked_clause_ids": ["034"]}, None),
+            ({"required_format": {"desc": "x", "width": 3}}, None),
+            ({"unknown_extra_field": True}, None),
+            ({}, "node_id"),
+            ({}, "volume"),
+            ({}, "path"),
+            ({}, "slot_type"),
+            ({}, "required_format"),
+        ],
+        ids=[
+            "bad-slot-type",
+            "bad-volume",
+            "bad-fill-status",
+            "bad-node-id-no-prefix",
+            "bad-node-id-non-numeric",
+            "empty-path",
+            "bad-linked-clause-id",
+            "required-format-unknown-key",
+            "unknown-extra-field",
+            "missing-node-id",
+            "missing-volume",
+            "missing-path",
+            "missing-slot-type",
+            "missing-required-format",
+        ],
+    )
+    def test_invalid_samples_rejected(self, overrides, remove):
+        node = _sample_node(**overrides)
+        if remove:
+            node.pop(remove)
+        assert not _ref_validator("structure.schema.json").is_valid(node)
+
+
+class TestSchemaFunctionalRubric:
+    @pytest.mark.parametrize(
+        "overrides",
+        [
+            {},
+            {"score_type": "objective"},
+            {"score_type": "price"},
+            {"max_score": 2.5},
+            {"source_ref": {"page": None, "section": "评分办法", "quote": "原文片段"}},
+            {"linked_clause_ids": []},
+        ],
+        ids=["design-example", "objective", "price", "fractional-max-score", "docx-null-page", "empty-links"],
+    )
+    def test_valid_samples_pass(self, overrides):
+        assert _ref_validator("rubric.schema.json").is_valid(_sample_rubric(**overrides))
+
+    @pytest.mark.parametrize(
+        "overrides,remove",
+        [
+            ({"score_type": "weighted"}, None),
+            ({"max_score": "10"}, None),
+            ({"rubric_id": "rubric-5"}, None),
+            ({"scoring_method": ""}, None),
+            ({"item": ""}, None),
+            ({"linked_clause_ids": ["R-005"]}, None),
+            ({"source_ref": {"page": 31, "section": "评分办法"}}, None),
+            ({"unknown_extra_field": True}, None),
+            ({}, "rubric_id"),
+            ({}, "scoring_method"),
+            ({}, "source_ref"),
+        ],
+        ids=[
+            "bad-score-type",
+            "max-score-as-string",
+            "bad-rubric-id",
+            "empty-scoring-method",
+            "empty-item",
+            "bad-linked-clause-id",
+            "source-ref-missing-quote",
+            "unknown-extra-field",
+            "missing-rubric-id",
+            "missing-scoring-method",
+            "missing-source-ref",
+        ],
+    )
+    def test_invalid_samples_rejected(self, overrides, remove):
+        item = _sample_rubric(**overrides)
+        if remove:
+            item.pop(remove)
+        assert not _ref_validator("rubric.schema.json").is_valid(item)
+
+
+# --- 契约文档内容 ------------------------------------------------------------
+
+CLASSIFICATION_REQUIRED_TOKENS = (
+    "★",
+    "实质性响应",
+    "废标",
+    "评分细则表",
+    "mandatory",
+    "scoring",
+    "normal",
+    "mandatory > scoring > normal",
+    "边界案例",
+    "category",
+    "[待确认]",
+)
+
+EXTRACTION_REQUIRED_TOKENS = (
+    "①",
+    "②",
+    "③",
+    "每次只处理一个 chunk",
+    "即刻落盘",
+    "chunk_id",
+    "table_id",
+    "0 条",
+    "判空",
+    "docx=section+段落序",
+    "PDF/OCR=page+section",
+    "绝不编造",
+    "[待确认]",
+    # 交叉一致性: 三个子模板的候选 JSON 骨架必须逐字使用设计文档字段名。
+    '"clause_id"',
+    '"source_file"',
+    '"class"',
+    '"category"',
+    '"source_ref"',
+    '"requirement"',
+    '"response_status"',
+    '"response_skeleton"',
+    '"from_addendum"',
+    '"superseded_by"',
+    '"node_id"',
+    '"volume"',
+    '"path"',
+    '"slot_type"',
+    '"required_format"',
+    '"linked_clause_ids"',
+    '"rubric_id"',
+    '"item"',
+    '"max_score"',
+    '"scoring_method"',
+    '"score_type"',
+)
+
+SCORING_REQUIRED_TOKENS = (
+    "评分办法原文为尺",
+    "grep",
+    "逐项独立评审",
+    "防锚定",
+    "模拟参考值",
+    "无法模拟",
+    "rubric_id",
+    "失分",
+    "改进建议",
+    "objective",
+    "subjective",
+    "price",
+    # 评审输出记录字段(供 score_simulate.py 汇总消费)。
+    '"score"',
+    '"max_score"',
+    '"rationale"',
+    '"evidence_quote"',
+    '"missing_points"',
+    '"improvement"',
+)
+
+
+class TestContractDocs:
+    @pytest.mark.parametrize(
+        "name,tokens",
+        [
+            pytest.param("classification.md", CLASSIFICATION_REQUIRED_TOKENS, id="classification.md"),
+            pytest.param("extraction_prompt.md", EXTRACTION_REQUIRED_TOKENS, id="extraction_prompt.md"),
+            pytest.param("scoring_prompt.md", SCORING_REQUIRED_TOKENS, id="scoring_prompt.md"),
+        ],
+    )
+    def test_doc_contains_required_tokens(self, name, tokens):
+        content = _ref_doc(name)
+        missing = [token for token in tokens if token not in content]
+        assert not missing, f"{name} missing required tokens: {missing}"
+
+    def test_extraction_prompt_fill_status_is_derived_only(self):
+        """D7: fill_status 是派生字段——extraction_prompt.md 只允许 prose 说明, 候选 JSON 骨架不得包含。"""
+        content = _ref_doc("extraction_prompt.md")
+        assert '"fill_status"' not in content, "候选骨架不得包含派生字段 fill_status(D7: 渲染/重灌时现算, 不落盘)"
+        assert "fill_status" in content, "必须以 prose 说明 fill_status 为派生字段、候选不含"

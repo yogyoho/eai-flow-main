@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/clauses.schema.json",
+  "title": "Bid obligation clause (clauses.json item)",
+  "description": "投标义务清单 clauses.json 的单条条款契约(逐字对齐设计文档 2026-08-16『详细设计』字段表)。该 JSON 是持久产物:跨会话续作、二期资产库/生成/评分预测都消费它;Word 只是它的投影视图。消费方:extract.py / merge_addenda.py / build_output.py / score_simulate.py。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["clause_id", "source_file", "class", "category", "source_ref", "requirement"],
+  "properties": {
+    "clause_id": {
+      "type": "string",
+      "pattern": "^[A-Z]{2,4}-C-\\d{1,6}$",
+      "description": "复合 ID:<文件代号>-C-<全局序号>(ZB=招标文件/JS=技术规范书/PB=评分办法…),防跨卷撞号;顺序分配、类别无关——class 可人工改,clause_id 不变。"
+    },
+    "source_file": {
+      "type": "string",
+      "minLength": 1,
+      "description": "来源文件名(如 招标文件.docx)。"
+    },
+    "class": {
+      "type": "string",
+      "enum": ["mandatory", "scoring", "normal"],
+      "description": "条款分类:mandatory=★强制,零偏离(漏响应即废标风险) | scoring=打分项(尽可能不丢分) | normal=普通。判据与冲突优先级见 classification.md。"
+    },
+    "category": {
+      "type": "string",
+      "enum": ["technical", "commercial", "qualification", "format", "service"],
+      "description": "条款领域分类:technical=技术 | commercial=商务 | qualification=资质 | format=格式 | service=服务。与 class 正交。"
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quote"],
+      "description": "原文位置锚点——extract.py 校验锚点必须真实存在于 sections.json;每条提取项必须带锚点供人工核对(废标风险红线)。",
+      "properties": {
+        "page": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "页码;docx 无分页概念→null(用 section+para 段落序锚定),PDF/OCR 扫描件才有 page。"
+        },
+        "section": {
+          "type": ["string", "null"],
+          "description": "章节号/章节标题锚点(如 3.2.1)。"
+        },
+        "para": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "段落在章节内的序号(docx 锚定用);PDF/OCR 来源可为 null。"
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50,
+          "description": "原文片段(≤50字),供人工核对;无出处不得编造,取不到原文时整条候选标 [待确认]。"
+        }
+      }
+    },
+    "requirement": {
+      "type": "string",
+      "minLength": 1,
+      "description": "要求内容(结构化转写,非原文照抄)。"
+    },
+    "response_status": {
+      "type": "string",
+      "enum": ["unassigned", "draft", "pending_confirm", "compliant", "deviation"],
+      "description": "响应状态(条款状态权威;中文仅为显示标签):unassigned=未分配 | draft=草稿 | pending_confirm=待确认 | compliant=应标 | deviation=偏离。候选落盘时由管线归一为 unassigned。"
+    },
+    "response_skeleton": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "响应骨架建议内容(技术部条目:响应要点→证据引用→suggestion)。",
+      "properties": {
+        "points": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "响应要点列表。"
+        },
+        "evidence_ref": {
+          "type": ["string", "null"],
+          "description": "证据引用(手动上传样例方案/知识库检索到的引用片段);无证据为 null。"
+        },
+        "suggestion": {
+          "type": ["string", "null"],
+          "description": "情报注入插座(二期 bid-quote 建议卡;V1 仅接口预留,恒为 null)。"
+        }
+      }
+    },
+    "from_addendum": {
+      "type": "boolean",
+      "description": "是否来自补遗/答疑文件;阶段3 合并新增条款置 true,默认 false。"
+    },
+    "superseded_by": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Z]{2,4}-C-\\d{1,6}$",
+      "description": "被补遗修改后指向替代条款的 clause_id;未被替代为 null。D7 外键校验消费方不得悬挂引用已 superseded 的条款。"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/rubric.schema.json",
+  "title": "Scoring rubric item (rubric.json item)",
+  "description": "评分标尺 rubric.json 单项契约(逐字对齐设计文档 2026-08-16『详细设计』字段表)。由阶段2 子模板③的 LLM 循环从评分细则表抽取;score_simulate.py 校验 Σmax_score 与评分办法声称总分一致,不一致→评分报告异常项并中止(extract.py 已在阶段2 前置拦截,此处为纵深复检)。消费方:extract.py / score_simulate.py。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rubric_id", "item", "max_score", "scoring_method", "score_type", "linked_clause_ids", "source_ref"],
+  "properties": {
+    "rubric_id": {
+      "type": "string",
+      "pattern": "^R-\\d{1,6}$",
+      "description": "评分项稳定 ID(如 R-005)。"
+    },
+    "item": {
+      "type": "string",
+      "minLength": 1,
+      "description": "评分项名称(如:技术方案先进性)。"
+    },
+    "max_score": {
+      "type": "number",
+      "minimum": 0,
+      "description": "该项满分;Σmax_score 必须等于评分办法声称的总分(双检:extract.py 前置拦截 + score_simulate.py 纵深复检)。"
+    },
+    "scoring_method": {
+      "type": "string",
+      "minLength": 1,
+      "description": "评分办法原文锚点(如:优=8-10 良=5-7 一般=1-4 无=0)——照抄原文,阶段5 主观项评审的唯一标尺。"
+    },
+    "score_type": {
+      "type": "string",
+      "enum": ["objective", "subjective", "price"],
+      "description": "评分类型:objective=证书有无/参数满足=状态汇总(确定性,不走 LLM) | subjective=LLM 逐项评审 | price=报价公式分(依赖竞对报价——mock 数据无法模拟,报告标『无法模拟』)。"
+    },
+    "linked_clause_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z]{2,4}-C-\\d{1,6}$"
+      },
+      "description": "关联条款外键(可为空数组);D7 外键校验同 clauses/structure。"
+    },
+    "source_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["quote"],
+      "description": "评分办法原文位置锚点,锚定纪律同 clauses.schema.json 的 source_ref。",
+      "properties": {
+        "page": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "页码;docx 来源为 null,PDF/OCR 来源才有 page。"
+        },
+        "section": {
+          "type": ["string", "null"],
+          "description": "章节锚点(如:评分办法)。"
+        },
+        "para": {
+          "type": ["integer", "null"],
+          "minimum": 0,
+          "description": "段落序;以 table_id 锚定整表抽取时可空。"
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50,
+          "description": "原文片段(≤50字),供人工核对。"
+        }
+      }
+    }
+  }
+}

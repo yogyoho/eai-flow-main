@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/structure.schema.json",
+  "title": "Bid document structure node (structure.json node)",
+  "description": "投标文件结构镜像 structure.json 的节点契约(逐字对齐设计文档 2026-08-16『详细设计』字段表)。『结构即合规』:章节顺序/表格格式/图片位置全部来自招标文件,skill 只镜像+打槽位,不自创任何结构;格式章节若同时规定技术部结构,技术卷同样入镜像(commercial|technical 两卷)。消费方:build_output.py / score_simulate.py(商务卷重灌锚点=标题链 path)。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["node_id", "volume", "path", "slot_type", "required_format", "linked_clause_ids"],
+  "properties": {
+    "node_id": {
+      "type": "string",
+      "pattern": "^S-\\d{1,6}$",
+      "description": "结构节点稳定 ID(如 S-012)。"
+    },
+    "volume": {
+      "type": "string",
+      "enum": ["commercial", "technical"],
+      "description": "所属卷:commercial=商务卷(严格镜像招标文件要求章节结构) | technical=技术卷(格式章节若规定了技术部结构同样优先镜像;未规定处才按技术参数条款逐项组织,清单驱动兜底)。"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "description": "章节标题链(如 投标文件格式/三、法定代表人身份证明)。商务卷阶段5 重灌锚点=该标题链——章节标题=招标文件规定结构,改标题本身即形式违规,标题天然稳定,无需额外标记(D2 锚点契约)。"
+    },
+    "slot_type": {
+      "type": "string",
+      "enum": ["text", "table", "image", "format_check", "group"],
+      "description": "槽位类型:text=文字槽 | table=表格槽(复刻要求的表格格式) | image=图片槽(需插入的证件/图纸扫描件) | format_check=非内容格式义务(签字/盖章/份数/页码/目录——只能人工核验,报告单列『人核项』) | group=纯章节容器。"
+    },
+    "required_format": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "槽位格式要求;group 节点两个字段均可为 null。",
+      "properties": {
+        "desc": {
+          "type": ["string", "null"],
+          "description": "格式要求/待填内容提示(如:加盖公章的身份证正反面扫描件)。"
+        },
+        "table_spec": {
+          "type": ["object", "null"],
+          "description": "table 槽复刻的列头/行列结构(自由对象:columns/rows 等);非 table 槽为 null。合并单元格/列宽等 markdown 管道无法表达的部分由 build_output.py 标 [待人工复刻] 并入人核清单。"
+        }
+      }
+    },
+    "linked_clause_ids": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Z]{2,4}-C-\\d{1,6}$"
+      },
+      "description": "关联条款外键(可为空数组)。D7 外键校验:extract/merge/重灌每次装载三件套时校验存在且未 superseded,悬挂引用→异常项,不静默。"
+    },
+    "fill_status": {
+      "type": "string",
+      "enum": ["unfilled", "filled", "needs_human_verify"],
+      "description": "D7 派生字段:不入库,渲染/重灌时现算——镜像槽不存在『偏离』概念,条款状态权威、槽位状态派生同步。本 schema 仅定义其值域供内存态/渲染态校验;候选 JSON 与落盘文件均不得包含该字段。"
+    }
+  }
+}
