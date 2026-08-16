@@ -21,7 +21,8 @@
       │          匹配前归一化: 全角→半角, 去全部空白, 去前导编号(D6②)
       │          同一标题链多命中(目录与正文同名)→ 不取首个, 整项进异常区(D6①)
       │
-      ├─ 技术卷: clause_id 匹配 clauses.json(条目标题内嵌, build_output 渲染时埋定)
+      ├─ 技术卷: clause_id 匹配 clauses.json(条目标题内嵌, build_output 渲染时埋定;
+      │          边界感知: id 尾不得跟数字, "ZB-C-1"不算"ZB-C-12"的出现)
       │          clause_id 重复出现(按含 cid 的条目标题数判; 正文交叉引用合法,
       │          Word 修订模式重复标题文本才计)→ 异常区(D6③)
       │
@@ -69,9 +70,9 @@ objective 确定性汇总口径(如实声明边界): 不解析评分办法原文
 
 退出码:
     0 = 干净完成(--help 亦为 0)
-    1 = 用法/文件错误(状态文件缺失/不可解析/回传稿缺失/Σ 不一致中止/
-        降级拒绝计分; argparse 用法错误统一改道 1——2 留给 ingest 的 OCR 分流语义)
-    3 = 完成但有异常项(重灌多命中/重复 id/未匹配/降级/评审记录违规/未核条款等)
+    1 = 用法/文件错误(状态文件缺失/不可解析/回传稿缺失/response_status 枚举非法/
+        Σ 不一致中止/降级拒绝计分; argparse 用法错误统一改道 1——2 留给 ingest 的 OCR 分流语义)
+    3 = 完成但有异常项(重灌多命中/重复 id/未匹配/孤儿标题/降级/证据源不可达/评审记录违规/未核条款等)
 """
 
 from __future__ import annotations
@@ -102,8 +103,10 @@ REPORT_DIR_NAME = "评分报告"
 _REPORT_VERSION_RE = re.compile(r"^version_(\d+)\.md$")
 
 # 条款复合 ID(与 references/clauses.schema.json·merge_addenda.CLAUSE_ID_RE 同一 pattern
-# ^[A-Z]{2,4}-C-\d{1,6}$; 此处不加锚做标题内嵌检测——3-4 位文件代号/非 3 位序号同为合法 id)
-CLAUSE_ID_RE = re.compile(r"[A-Z]{2,4}-C-\d{1,6}")
+# ^[A-Z]{2,4}-C-\d{1,6}$; 此处不加 ^$ 锚做标题内嵌检测——3-4 位文件代号/非 3 位序号同为
+# 合法 id)。尾部 (?!\d) = 数字边界: 合法 id 域内 "ZB-C-1" 是 "ZB-C-12" 的前缀, 无边界
+# 匹配会让 7 位超长数字串的前 6 位冒充合法 id 豁免镜像检查(见 _title_embeds_clause)。
+CLAUSE_ID_RE = re.compile(r"[A-Z]{2,4}-C-\d{1,6}(?!\d)")
 
 # 评审输出记录契约字段(references/scoring_prompt.md「评审输出记录」)
 RECORD_FIELDS = ("rubric_id", "score", "max_score", "rationale", "evidence_quote", "missing_points", "improvement")
@@ -142,6 +145,20 @@ def _load_optional_json(path: Path):
     return _load_json_file(path, path.name)
 
 
+def _load_clauses(state_dir: Path) -> list[dict]:
+    """装载 clauses.json + response_status 枚举复检(build_output.load_clauses 同款防线,
+    RESPONSE_STATUSES 落地使用而非死常量)——枚举外值(手改错字)会在 objective 汇总中被
+    静默按'未响应'计, 装载期拒绝(退出码 1)。"""
+    path = state_dir / "clauses.json"
+    clauses = _load_json_file(path, "clauses.json")
+    if not isinstance(clauses, list) or not all(isinstance(c, dict) for c in clauses):
+        raise ScoreSimulateError(f"clauses.json 结构异常(应为对象数组), 拒绝评分: {path}")
+    for index, clause in enumerate(clauses):
+        if clause.get("response_status") not in RESPONSE_STATUSES:
+            raise ScoreSimulateError(f"clauses.json items[{index}]({clause.get('clause_id')}) response_status 枚举非法 {clause.get('response_status')!r}(合法: {list(RESPONSE_STATUSES)}): {path}")
+    return clauses
+
+
 def atomic_write_text(path: str | Path, text: str) -> None:
     """原子写盘: 临时文件 + os.replace(D7, 防中断留半截文件)。"""
     path = Path(path)
@@ -171,6 +188,14 @@ def atomic_write_json(path: str | Path, data) -> None:
 def _is_active(clause: dict) -> bool:
     """活条款 = 未 superseded 且未 voided(与 build_output/merge_addenda 同口径)。"""
     return clause.get("superseded_by") is None and not clause.get("voided")
+
+
+def _title_embeds_clause(cid: str, title: str) -> bool:
+    """D2/D6③ 边界感知的条目标题内嵌检测: cid 后不得紧跟数字——合法 id 域
+    [A-Z]{2,4}-C-\\d{1,6} 内 "ZB-C-1" 是 "ZB-C-12" 的无边界子串, 会把各自唯一出现的
+    条目标题误判成重复(occurrences=2, 连带 权威态拒更/命中率虚降/D6④ 误降级); 反向则
+    会让无条目的短 id 静默认领长 id 条目的正文(灌错)。"""
+    return re.search(re.escape(cid) + r"(?!\d)", title) is not None
 
 
 # =============================================================================
@@ -324,7 +349,7 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
     except (UnicodeDecodeError, OSError) as exc:
         raise ScoreSimulateError(f"回传稿不可读(需 UTF-8 md; docx 先经 uploads 自动转换): {source}: {exc}") from exc
 
-    clauses = _load_json_file(state_dir / "clauses.json", "clauses.json")
+    clauses = _load_clauses(state_dir)
     structure = _load_json_file(state_dir / "structure.json", "structure.json")
     rubric = _load_json_file(state_dir / "rubric.json", "rubric.json")
     anomalies = validate_foreign_keys(clauses, structure, rubric.get("items") or [])
@@ -372,10 +397,12 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
         cid = clause.get("clause_id")
         # D6③ 计数口径 = 含 cid 的条目标题数(D2 锚点载体=条目标题内嵌 clause_id)——
         # 条目正文合法交叉引用自身条款 id(如"满足ZB-C-001要求")不算重复, 不拦命中。
-        entry_headings = [h for h in headings if cid in h["title"]]
+        # 边界感知(_title_embeds_clause): "ZB-C-1" 不是 "ZB-C-12" 标题的出现(T7-1 前缀污染)。
+        entry_headings = [h for h in headings if _title_embeds_clause(cid, h["title"])]
         occurrences = len(entry_headings)
         heading_lines = [h["line"] for h in entry_headings]
-        body_mentions = text.count(cid) - occurrences  # 正文出现次数(仅信息披露, 不参与判重)
+        # 正文出现次数(仅信息披露, 不参与判重); 同边界口径统计, 防更长 id 的出现被算作本 id 的正文出现
+        body_mentions = len(re.findall(re.escape(cid) + r"(?!\d)", text)) - occurrences
         before = clause.get("response_status")
         record = {"clause_id": cid, "occurrences": occurrences, "hit_line": None, "filled": None, "response_status_before": before, "response_status_after": before, "updated": False}
         if occurrences == 0:
@@ -418,9 +445,18 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
 
     # --- 镜像外标题(回传稿侧孤儿): 结构只镜像不自创, 不静默 ------------------------
     mirror_titles = {normalize_title(seg) for node in structure for seg in node.get("path", "").split("/")}
+    known_clause_ids = {c.get("clause_id") for c in clauses}
     for heading in headings:
-        if CLAUSE_ID_RE.search(heading["title"]):
-            continue  # 条目标题(嵌 clause_id)由技术卷锚点管辖
+        embedded_ids = CLAUSE_ID_RE.findall(heading["title"])
+        if embedded_ids:
+            # 条目标题(嵌已知 clause_id)由技术卷锚点管辖, 豁免镜像检查; 但内嵌 id 不在
+            # clauses.json(孤儿条目标题, 疑似手改回传稿)不得静默豁免——保留 unmatched
+            # 异常待人核, 不因豁免而漏报。
+            unknown = sorted({cid for cid in embedded_ids if cid not in known_clause_ids})
+            if unknown:
+                orphan_message = f"回传稿标题「{heading['title']}」(行 {heading['line']})内嵌未知 clause_id {unknown}——不在 clauses.json(孤儿条目标题, 疑似手改回传稿), 需人工核对"
+                anomalies.append({"kind": "unmatched_heading", "line": heading["line"], "heading": heading["title"], "message": orphan_message})
+            continue
         if heading["norm"] not in mirror_titles:
             anomalies.append({"kind": "unmatched_heading", "line": heading["line"], "heading": heading["title"], "message": f"回传稿标题「{heading['title']}」(行 {heading['line']})不在 structure.json 镜像——结构只镜像不自创, 需人工核对"})
 
@@ -477,14 +513,18 @@ def run_reingest(source: Path, state_dir: Path, threshold: float) -> int:
 def run_assemble_evidence(state_dir: Path) -> int:
     """evidence_pack.json: 每项 rubric + 关联条款 + 回传稿 grep 证据行(无 LLM, 纯检索)。"""
     rubric = _load_json_file(state_dir / "rubric.json", "rubric.json")
-    clauses = _load_json_file(state_dir / "clauses.json", "clauses.json")
+    clauses = _load_clauses(state_dir)
     reingest = _load_optional_json(state_dir / "reingest_result.json")
     if reingest and reingest.get("degraded"):
         raise ScoreSimulateError("重灌已降级(命中率低于阈值)——人核覆盖率清单模式不做评审循环(D6④); 先人工核验后重跑 reingest")
 
     source_path = reingest.get("source") if reingest else None
     source_lines: list[str] = []
-    if source_path and Path(source_path).is_file():
+    # T7-2: 重灌发生过(非降级)但 source 不可达(文件被移走/相对路径跨 cwd 调用)≠ 会话内
+    # 填写态——两态混写会让"评审对象=会话内骨架"成为假陈述, 且评分纪律"无证据按空缺
+    # 计分"会把路径失效这一技术原因误当内容空缺压主观分 → 进异常区, note 如实分立。
+    source_unreachable = bool(reingest) and not (source_path and Path(source_path).is_file())
+    if source_path and not source_unreachable:
         try:
             # utf-8-sig 同 reingest: BOM 剥除, 证据行号与重灌口径一致
             source_lines = Path(source_path).read_text(encoding="utf-8-sig").splitlines()
@@ -509,8 +549,10 @@ def run_assemble_evidence(state_dir: Path) -> int:
             note = "objective 项由 aggregate 确定性汇总, 本包证据仅供人工核对条款状态"
         else:
             note = "price 项无法模拟(依赖竞对报价, 现库为 mock), 不参评"
-        if not source_lines:
-            note += "|未重灌(会话内填写态)或回传稿不可达——证据行为空, 评审对象=会话内骨架"
+        if source_unreachable:
+            note += "|已重灌但回传稿不可达(source 路径失效: 文件被移走或相对路径跨 cwd)——证据行无法检索是技术性缺失而非内容空缺; 按此包评审会把路径失效误当空缺压分, 先恢复回传稿(建议绝对路径重跑 reingest)再组装"
+        elif not reingest:
+            note += "|未重灌(会话内填写态)——证据行为空, 评审对象=会话内骨架"
         items.append(
             {
                 "rubric_id": item.get("rubric_id"),
@@ -527,9 +569,16 @@ def run_assemble_evidence(state_dir: Path) -> int:
 
     pack = {"source": source_path, "items": items}
     atomic_write_json(state_dir / "evidence_pack.json", pack)
-    summary = {"command": "assemble-evidence", "written": "evidence_pack.json", "items": len(items), "evidence_lines_total": total_lines, "anomalies": []}
+    anomalies: list[dict] = []
+    if source_unreachable:
+        unreachable_message = (
+            f"重灌记录的回传稿不可达: {source_path}(文件被移走或相对路径跨 cwd 调用)——evidence_lines 全空是技术性不可达, 不是会话内填写态; "
+            "评分纪律'无证据按空缺计分'会把路径失效误当内容空缺压分, 先恢复回传稿路径(建议绝对路径重跑 reingest)再重跑 assemble-evidence"
+        )
+        anomalies.append({"kind": "source_unreachable", "source": source_path, "message": unreachable_message})
+    summary = {"command": "assemble-evidence", "written": "evidence_pack.json", "items": len(items), "evidence_lines_total": total_lines, "anomalies": anomalies}
     print(json.dumps(summary, ensure_ascii=False))
-    return EXIT_OK
+    return EXIT_OK if not anomalies else EXIT_ANOMALY
 
 
 # =============================================================================
@@ -537,9 +586,10 @@ def run_assemble_evidence(state_dir: Path) -> int:
 # =============================================================================
 
 
-def _check_rubric_sum(rubric: dict) -> int:
+def _check_rubric_sum(rubric: dict) -> int | float:
     """Σmax_score 与评分办法声称总分一致性纵深复检(extract 阶段2 前置拦截, 此处双检);
-    不一致 → 异常中止(退出码 1), 不落任何汇总产物。"""
+    不一致 → 异常中止(退出码 1), 不落任何汇总产物。返回真实求和值(sum 结果, 不抄写
+    declared——float 项求和得 100.0 与 declared int 100 数值相等但序列化形态不同)。"""
     total = rubric.get("total_score")
     items = rubric.get("items") or []
     # 契约对齐 rubric.schema.json: max_score/total_score = number(int|float 非 bool)——
@@ -553,7 +603,7 @@ def _check_rubric_sum(rubric: dict) -> int:
     computed = sum(item["max_score"] for item in items)
     if computed != total:
         raise ScoreSimulateError(f"Σmax_score={computed} 与评分办法声称总分 {total} 不一致——评分报告异常项并中止(评分细则表抽取可能缺行/降级; extract 阶段2 应已前置拦截, 此处纵深复检)")
-    return total
+    return computed
 
 
 def _load_score_records(scores_path: Path) -> list[dict]:
@@ -679,8 +729,8 @@ def _aggregate_objective(item: dict, clauses_by_id: dict, reingest_clauses: dict
 def run_aggregate(scores_path: Path, state_dir: Path) -> int:
     """Σ 复检 → 装载三件套外键复检(D7) → 评审记录校验 → 三类分项汇总 → aggregate_result.json。"""
     rubric = _load_json_file(state_dir / "rubric.json", "rubric.json")
-    declared_total = _check_rubric_sum(rubric)
-    clauses = _load_json_file(state_dir / "clauses.json", "clauses.json")
+    computed_total = _check_rubric_sum(rubric)
+    clauses = _load_clauses(state_dir)
     structure = _load_json_file(state_dir / "structure.json", "structure.json")
     reingest = _load_optional_json(state_dir / "reingest_result.json")
     if reingest and reingest.get("degraded"):
@@ -768,7 +818,7 @@ def run_aggregate(scores_path: Path, state_dir: Path) -> int:
     simulatable_max = sum(item["max_score"] for item in rubric_items if item.get("score_type") != "price")
     simulated = round(sum(it["score"] for it in items if isinstance(it.get("score"), (int, float)) and not isinstance(it.get("score"), bool)), 2)
     totals = {"full": rubric.get("total_score"), "simulatable_max": simulatable_max, "simulated": simulated}
-    result = {"rubric_sum": {"computed": declared_total, "declared": rubric.get("total_score")}, "items": items, "totals": totals, "anomalies": anomalies}
+    result = {"rubric_sum": {"computed": computed_total, "declared": rubric.get("total_score")}, "items": items, "totals": totals, "anomalies": anomalies}
     atomic_write_json(state_dir / "aggregate_result.json", result)
     summary = {"command": "aggregate", "written": "aggregate_result.json", "rubric_sum": result["rubric_sum"], "totals": result["totals"], "items": len(items), "anomalies": anomalies}
     print(json.dumps(summary, ensure_ascii=False))
@@ -789,6 +839,12 @@ def _next_report_version(report_dir: Path) -> int:
             if matched:
                 highest = max(highest, int(matched.group(1)))
     return highest + 1
+
+
+def _md_cell(value) -> str:
+    """markdown 表格单元格转义: 文本内 "|" 会割裂表格列, 统一转义为 "\\|"
+    (CommonMark/GFM 行内转义写法); 非表格上下文(小节标题/列表)不经过本函数。"""
+    return str(value).replace("|", "\\|")
 
 
 def improvement_entries(items: list[dict]) -> list[tuple]:
@@ -833,7 +889,23 @@ def improvement_entries(items: list[dict]) -> list[tuple]:
     return entries
 
 
-def render_scoring_report(aggregate: dict, reingest: dict | None, version: int) -> str:
+def _stale_state_files(state_dir: Path) -> list[str]:
+    """report 侧 stale 复检: 权威态/重灌产物 mtime 晚于 aggregate_result.json 的文件名清单。
+
+    混渲染 新重灌事实+旧汇总数字 是状态一致性风险(D7)——mtime 只用于本次渲染的警示
+    判断, 产物本身仍不含时间戳(同输入重跑幂等纪律不变)。stat 失败按无警示处理(不阻断)。
+    """
+    agg = state_dir / "aggregate_result.json"
+    if not agg.is_file():
+        return []
+    try:
+        agg_mtime = agg.stat().st_mtime
+        return sorted(name for name in ("clauses.json", "structure.json", "rubric.json", "reingest_result.json") if (state_dir / name).is_file() and (state_dir / name).stat().st_mtime > agg_mtime)
+    except OSError:
+        return []
+
+
+def render_scoring_report(aggregate: dict, reingest: dict | None, version: int, stale_sources: list[str] | None = None) -> str:
     """评分模拟报告主体: 总览 / 逐项(得分·满分·理由·失分原因) / 改进建议 / 异常区。"""
     totals = aggregate.get("totals") or {}
     lines: list[str] = []
@@ -845,6 +917,8 @@ def render_scoring_report(aggregate: dict, reingest: dict | None, version: int) 
         lines.append(f"> 重灌源: {reingest.get('source')}; 命中率 {anchors.get('matched')}/{anchors.get('total')}={reingest.get('hit_rate')}(阈值 {reingest.get('threshold')})。")
     else:
         lines.append("> 会话内填写态(未重灌)——objective 按当前 clauses.json 状态汇总。")
+    if stale_sources:
+        lines.append(f"> 警示: 以下产物在 aggregate 之后有更新({', '.join(stale_sources)})——上述汇总数字可能过期, 建议重跑 aggregate 再出报告。")
     lines.append("")
 
     lines.append("## 一、总览")
@@ -862,7 +936,7 @@ def render_scoring_report(aggregate: dict, reingest: dict | None, version: int) 
     for it in aggregate.get("items") or []:
         score = it.get("score")
         shown = f"{score} / {it['max_score']}" if isinstance(score, (int, float)) else ("无法模拟" if it.get("score_type") == "price" else "未计分(needs_human)")
-        lines.append(f"| {it.get('rubric_id')} | {it.get('item')} | {it.get('score_type')} | {shown} | {it.get('status')} |")
+        lines.append(f"| {_md_cell(it.get('rubric_id'))} | {_md_cell(it.get('item'))} | {_md_cell(it.get('score_type'))} | {_md_cell(shown)} | {_md_cell(it.get('status'))} |")
     lines.append("")
     for it in aggregate.get("items") or []:
         lines.append(f"### {it.get('rubric_id')} {it.get('item')} —— {SCORE_TYPE_LABELS.get(it.get('score_type'), it.get('score_type'))}")
@@ -888,7 +962,7 @@ def render_scoring_report(aggregate: dict, reingest: dict | None, version: int) 
         lines.append("| 优先序 | rubric_id | 评分项 | 失分值 | 可改性 | 失分值×可改性 | 建议 |")
         lines.append("| --- | --- | --- | --- | --- | --- | --- |")
         for rank, (weight, loss, rid, item_name, modifiable, advice) in enumerate(entries, start=1):
-            lines.append(f"| {rank} | {rid} | {item_name} | {loss} | {modifiable} | {weight} | {advice} |")
+            lines.append(f"| {rank} | {_md_cell(rid)} | {_md_cell(item_name)} | {loss} | {modifiable} | {weight} | {_md_cell(advice)} |")
     else:
         lines.append("(无可改进项——全部满分或仅剩 price 项)")
     lines.append("")
@@ -927,9 +1001,9 @@ def render_degraded_report(reingest: dict, version: int) -> str:
     lines.append("| --- | --- | --- | --- |")
     for node in reingest.get("nodes") or []:
         reason = node.get("fill_reason") or ""
-        lines.append(f"| {node.get('node_id')} {node.get('path')} | 商务卷·{node.get('slot_type')} | {node.get('match')} | {reason} |")
+        lines.append(f"| {_md_cell(node.get('node_id'))} {_md_cell(node.get('path'))} | 商务卷·{_md_cell(node.get('slot_type'))} | {_md_cell(node.get('match'))} | {_md_cell(reason)} |")
     for rec in reingest.get("clauses") or []:
-        lines.append(f"| {rec.get('clause_id')} | 技术卷·条目 | {rec.get('match')} | 出现 {rec.get('occurrences')} 次; 重灌前状态 {rec.get('response_status_before')} |")
+        lines.append(f"| {_md_cell(rec.get('clause_id'))} | 技术卷·条目 | {_md_cell(rec.get('match'))} | 出现 {rec.get('occurrences')} 次; 重灌前状态 {_md_cell(rec.get('response_status_before'))} |")
     lines.append("")
     if reingest.get("anomalies"):
         lines.append("## 异常区")
@@ -947,12 +1021,14 @@ def run_report(state_dir: Path) -> int:
     reingest = _load_optional_json(state_dir / "reingest_result.json")
     if reingest and reingest.get("degraded"):
         md = render_degraded_report(reingest, version)
+        stale_sources: list[str] = []
     else:
         aggregate = _load_json_file(state_dir / "aggregate_result.json", "aggregate_result.json(降级模式外, report 前必须先跑 aggregate)")
-        md = render_scoring_report(aggregate, reingest, version)
+        stale_sources = _stale_state_files(state_dir)
+        md = render_scoring_report(aggregate, reingest, version, stale_sources=stale_sources)
     path = report_dir / f"version_{version}.md"
     atomic_write_text(path, md)
-    summary = {"command": "report", "written": f"{REPORT_DIR_NAME}/version_{version}.md", "version": version}
+    summary = {"command": "report", "written": f"{REPORT_DIR_NAME}/version_{version}.md", "version": version, "stale_aggregate": bool(stale_sources)}
     print(json.dumps(summary, ensure_ascii=False))
     return EXIT_OK
 

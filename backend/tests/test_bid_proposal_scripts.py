@@ -3789,6 +3789,11 @@ def _clean_source_text() -> str:
     return _drop_section(text, "## 3 售后服务承诺")
 
 
+def _extra_technical_clause(clause_id: str) -> dict:
+    """追加用活技术条款(T7-1 前缀污染对: ZB-C-1 / ZB-C-12 等 1-6 位序号合法 id)。"""
+    return {"clause_id": clause_id, "source_file": "技术规范书.docx", "class": "normal", "category": "technical", "requirement": f"{clause_id} 前缀污染用例", "response_status": "draft", "superseded_by": None, "voided": False}
+
+
 def _write_source(tmp_path, text: str, name: str = "returned.md"):
     path = Path(tmp_path) / name
     path.write_text(text, encoding="utf-8")
@@ -3995,6 +4000,41 @@ class TestReingestClauseId:
         clauses = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
         assert clauses["ZB-C-001"]["match"] == "matched", "标题唯一即命中, 正文出现走自洽路径"
 
+    def test_prefix_id_pair_not_duplicate(self, tmp_path, capsys):
+        """T7-1: 合法 id 域 [A-Z]{2,4}-C-\\d{1,6} 内 "ZB-C-1" 是 "ZB-C-12" 的无边界子串——
+        两 id 各自条目标题唯一出现时, 不得把 ZB-C-1 误判 duplicate_id(occurrences=2):
+        后果链=权威态拒更+异常区误报+命中率虚降(可连带 D6④ 整体降级拒计分)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _add_clause(state, _extra_technical_clause("ZB-C-1"))
+        _add_clause(state, _extra_technical_clause("ZB-C-12"))
+        text = _clean_source_text() + "\n## 4 响应[ZB-C-1]\n\n防护与联动要求已逐项响应。\n\n## 5 响应[ZB-C-12]\n\n冗余配置联动说明已补齐。\n"
+        source = _write_source(tmp_path, text)
+        assert _run_reingest(state, source) == 0, "边界感知后两 id 各自唯一出现=零异常"
+        summary = _last_summary_json(capsys)
+        assert "duplicate_clause_id" not in _anomaly_kinds(summary)
+        records = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert records["ZB-C-1"]["occurrences"] == 1 and records["ZB-C-1"]["match"] == "matched"
+        assert records["ZB-C-12"]["occurrences"] == 1 and records["ZB-C-12"]["match"] == "matched"
+        assert summary["anchors"]["matched"] == 9, "5 商务槽 + 4 活技术条款全命中(无前缀污染虚降)"
+
+    def test_shorter_id_not_silently_matched_to_longer_entry(self, tmp_path, capsys):
+        """T7-1 反向: 无条目标题的短 id 条款, 不得经子串匹配静默认领长 id 条目的
+        标题/正文(灌错内容+虚增命中); 应如实 needs_human_verify, 权威态不动。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _add_clause(state, _extra_technical_clause("ZB-C-1"))
+        _add_clause(state, _extra_technical_clause("ZB-C-12"))
+        text = _clean_source_text() + "\n## 4 响应[ZB-C-12]\n\n冗余配置联动说明已补齐。\n"  # ZB-C-1 无条目
+        source = _write_source(tmp_path, text)
+        assert _run_reingest(state, source) == 3
+        summary = _last_summary_json(capsys)
+        records = {c["clause_id"]: c for c in _reingest_result(state)["clauses"]}
+        assert records["ZB-C-1"]["match"] == "needs_human_verify", "短 id 不认领长 id 条目"
+        assert records["ZB-C-1"]["hit_line"] is None
+        assert records["ZB-C-12"]["match"] == "matched"
+        assert _clauses_by_id(state)["ZB-C-1"]["response_status"] == "draft", "权威态不动(不计 0 不静默)"
+        msg = next(a["message"] for a in summary["anomalies"] if a["kind"] == "clause_anchor_unmatched" and a.get("clause_id") == "ZB-C-1")
+        assert "未在回传稿出现" in msg, "正文信息披露同边界口径: ZB-C-12 的标题不算 ZB-C-1 的正文出现"
+
     def test_registered_deviation_filled_entry_self_consistent(self, tmp_path, capsys):
         """已登记 deviation 且条目带偏离声明正文=自洽: 保留人裁不覆盖, 不制造异常噪音。"""
         state = _copy_prestate(tmp_path, merged=True)
@@ -4111,6 +4151,28 @@ class TestReingestMatcherHardening:
         assert records["ABCD-C-12"]["match"] == "matched"
         assert _clauses_by_id(state)["ABCD-C-12"]["response_status"] == "compliant"
 
+    def test_mirror_exemption_requires_digit_tail_boundary(self, tmp_path, capsys):
+        """T7-1 镜像豁免同源问题: CLAUSE_ID_RE 尾部无负向断言时, 7 位数字串(合法域外)
+        的前 6 位即命中豁免——孤儿标题被静默放行; 尾部加数字边界断言后不再豁免, 进镜像检查报异常。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        text = _clean_source_text() + "\n## 4 响应[ZB-C-1234567]\n\n手改出的超长 id 条目标题。\n"
+        source = _write_source(tmp_path, text)
+        assert _run_reingest(state, source) == 3, "超长数字串的前 6 位不得冒充合法 id 豁免镜像检查"
+        summary = _last_summary_json(capsys)
+        unmatched = [a for a in summary["anomalies"] if a["kind"] == "unmatched_heading"]
+        assert unmatched and "ZB-C-1234567" in unmatched[0]["message"]
+
+    def test_orphan_clause_id_heading_unmatched(self, tmp_path, capsys):
+        """残留可选③: 镜像豁免命中但 id 不在 clauses.json(孤儿条目标题, 疑似手改)——
+        不静默豁免, 保留 unmatched 异常待人核(回传稿侧孤儿不因豁免而漏报)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        text = _clean_source_text() + "\n## 4 响应[ZZ-C-77]\n\n不在条款库的 id 条目标题。\n"
+        source = _write_source(tmp_path, text)
+        assert _run_reingest(state, source) == 3, "格式合法但未知 id 的条目标题不静默豁免"
+        summary = _last_summary_json(capsys)
+        orphan = [a for a in summary["anomalies"] if a["kind"] == "unmatched_heading"]
+        assert orphan and "ZZ-C-77" in orphan[0]["message"]
+
     def test_reingest_idempotent(self, tmp_path, capsys):
         state = _copy_prestate(tmp_path, merged=True)
         source = _write_source(tmp_path, _clean_source_text())
@@ -4155,8 +4217,42 @@ class TestAssembleEvidence:
         """会话内填写态(未重灌)也能组装: 证据行为空, 如实标注。"""
         state = _copy_prestate(tmp_path, merged=True)
         assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 0
+        summary = _last_summary_json(capsys)
+        assert summary["anomalies"] == []
         pack = _state_json(state, "evidence_pack.json")
         assert all(b["evidence_lines"] == [] for b in pack["items"])
+        assert all("会话内填写态" in b["note"] for b in pack["items"]), "note 如实标注会话内填写态"
+
+    def test_source_unreachable_after_reingest_is_anomaly(self, tmp_path, capsys):
+        """T7-2: 重灌成功(非降级)后回传稿被移走——不得伪装成'会话内填写态'静默空证据包:
+        评分纪律'无证据按空缺计分'会把路径失效这一技术原因误当内容空缺压主观分;
+        应进异常区(exit 3), note 如实区分两态。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _clean_source_text())
+        _run_reingest(state, source)
+        capsys.readouterr()
+        source.unlink()  # 回传稿被移走
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 3
+        summary = _last_summary_json(capsys)
+        assert [a["kind"] for a in summary["anomalies"]] == ["source_unreachable"]
+        pack = _state_json(state, "evidence_pack.json")
+        notes = " ".join(b["note"] for b in pack["items"])
+        assert "不可达" in notes and "已重灌" in notes, "note 如实说明重灌已发生但源不可达"
+        assert "会话内骨架" not in notes, "重灌发生过——'评审对象=会话内骨架'是假陈述"
+
+    def test_source_relative_path_cross_cwd_unreachable(self, tmp_path, capsys, monkeypatch):
+        """T7-2 相对路径跨 cwd: reingest 记录的相对 source 在另一 cwd 下不可达——同异常区。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        (tmp_path / "returned.md").write_text(_clean_source_text(), encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+        _run_reingest(state, "returned.md")  # reingest_result.json 记录相对路径 "returned.md"
+        capsys.readouterr()
+        other = tmp_path / "elsewhere"
+        other.mkdir()
+        monkeypatch.chdir(other)  # 跨 cwd: Path("returned.md") 不再解析
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 3
+        summary = _last_summary_json(capsys)
+        assert "source_unreachable" in _anomaly_kinds(summary)
 
     def test_degraded_refuses(self, tmp_path, capsys):
         state = _copy_prestate(tmp_path, merged=True)
@@ -4164,6 +4260,22 @@ class TestAssembleEvidence:
         _run_reingest(state, source)
         capsys.readouterr()
         assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 1, "降级模式不做评审循环"
+        capsys.readouterr()
+
+
+class TestScoreLoadValidation:
+    """残留可选⑤: RESPONSE_STATUSES 不再是死常量——装载 clauses.json 复检
+    response_status 枚举(与 build_output/merge_addenda 同款防线); 枚举外值(手改错字)
+    会在 objective 汇总中被静默按'未响应'计, 装载期拒绝(退出码 1)。"""
+
+    def test_invalid_response_status_exit_1_all_subcommands(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-002", response_status="approved")  # 枚举外(疑似手改错字)
+        source = _write_source(tmp_path, _clean_source_text())
+        scores = _write_scores(tmp_path, _score_records())
+        assert _run_reingest(state, source) == 1
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 1
+        assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 1
         capsys.readouterr()
 
 
@@ -4201,6 +4313,21 @@ class TestAggregateSumCheck:
         assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 0
         result = _state_json(state, "aggregate_result.json")
         assert result["totals"] == {"full": 100.5, "simulatable_max": 40.5, "simulated": 36.0}
+        capsys.readouterr()
+
+    def test_rubric_sum_reports_real_computed_value(self, tmp_path, capsys):
+        """残留可选②: rubric_sum.computed=真实求和值(sum), 不抄写 declared——
+        float 项求和得 100.0 而 declared 为 int 100 时, 两者 JSON 序列化形态不同。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        rubric = _state_json(state, "rubric.json")
+        for item in rubric["items"]:
+            item["max_score"] = float(item["max_score"])
+        (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+        scores = _write_scores(tmp_path, _score_records(score=11, max_score=15.0))
+        assert _score_module().main(["aggregate", "--scores", str(scores), "--state-dir", str(state)]) == 0
+        result = _state_json(state, "aggregate_result.json")
+        assert result["rubric_sum"]["computed"] == 100 and isinstance(result["rubric_sum"]["computed"], float), "computed=真实求和(100.0)"
+        assert result["rubric_sum"]["declared"] == 100 and isinstance(result["rubric_sum"]["declared"], int)
         capsys.readouterr()
 
 
@@ -4457,6 +4584,48 @@ class TestReport:
         state = _copy_prestate(tmp_path, merged=True)
         assert _score_module().main(["report", "--state-dir", str(state)]) == 1, "未汇总先 report=文件错误"
         capsys.readouterr()
+
+    def test_pipe_in_table_cells_escaped(self, tmp_path, capsys):
+        """残留可选①: 单元格文本含"|"会割裂 markdown 表格列——渲染层统一转义为 \\|。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        rubric = _state_json(state, "rubric.json")
+        rubric["items"][1]["item"] = "技术方案|参数响应(竖线用例)"
+        (state / "rubric.json").write_text(json.dumps(rubric, ensure_ascii=False), encoding="utf-8")
+        _score_module().main(["aggregate", "--scores", str(_write_scores(tmp_path, _score_records())), "--state-dir", str(state)])
+        capsys.readouterr()
+        assert _score_module().main(["report", "--state-dir", str(state)]) == 0
+        capsys.readouterr()
+        text = (state / "评分报告" / "version_1.md").read_text(encoding="utf-8")
+        assert "技术方案\\|参数响应" in text, "表格单元格内的 | 应转义为 \\|"
+        row = next(ln for ln in text.splitlines() if ln.startswith("| R-002 "))
+        assert len(re.split(r"(?<!\\)\|", row)) == 7, "转义后逐项表仍为 5 列(首尾+列间共 7 段)"
+        assert "### R-002 技术方案|参数响应" in text, "非表格上下文(小节标题)不转义"
+
+    def test_stale_aggregate_warning(self, tmp_path, capsys):
+        """残留可选④: 权威态/重灌产物在 aggregate 之后又更新——report 给 stale 警示,
+        不静默混渲染 新重灌事实+旧汇总数字; aggregate 为最新产物时无警示。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_reingest(state, _write_source(tmp_path, _clean_source_text()))
+        capsys.readouterr()
+        _score_module().main(["aggregate", "--scores", str(_write_scores(tmp_path, _score_records())), "--state-dir", str(state)])
+        capsys.readouterr()
+        assert _score_module().main(["report", "--state-dir", str(state)]) == 0
+        assert _last_summary_json(capsys)["stale_aggregate"] is False
+        v1 = (state / "评分报告" / "version_1.md").read_text(encoding="utf-8")
+        assert "过期" not in v1, "aggregate 是最新产物——无警示"
+        capsys.readouterr()
+        # 回传稿变化后再重灌(reingest 产物/权威态更新), 旧 aggregate 未重跑;
+        # 显式把 aggregate mtime 回拨 1h, 免同刻写入让比较在同粒度时间戳上抖动
+        _run_reingest(state, _write_source(tmp_path, _clean_source_text() + "\n", name="returned_v2.md"))
+        capsys.readouterr()
+        agg = state / "aggregate_result.json"
+        back = agg.stat().st_mtime - 3600
+        os.utime(agg, (back, back))
+        assert _score_module().main(["report", "--state-dir", str(state)]) == 0
+        summary = _last_summary_json(capsys)
+        assert summary["stale_aggregate"] is True
+        v2 = (state / "评分报告" / "version_2.md").read_text(encoding="utf-8")
+        assert "过期" in v2 and "重跑 aggregate" in v2, "报告正文给 stale 警示并指引重跑"
 
 
 # ===========================================================================
