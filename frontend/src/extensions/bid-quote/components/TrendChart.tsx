@@ -67,7 +67,7 @@ export function TrendChart({ filters }: { filters: FilterState }) {
         >
           <defs>
             <linearGradient id="trendFade" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={BLUE} stopOpacity={0.16} />
+              <stop offset="0%" stopColor={BLUE} stopOpacity={0.32} />
               <stop offset="100%" stopColor={BLUE} stopOpacity={0} />
             </linearGradient>
           </defs>
