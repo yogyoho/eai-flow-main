@@ -173,7 +173,8 @@ const TPL = {
     MAX(winning_price) FILTER (WHERE bidder_role='ours') AS our_price,
     MAX(winning_price) FILTER (WHERE bidder_role='competitor' AND won) AS competitor_price,
     BOOL_OR(bidder_role='ours' AND won) AS we_won,
-    MAX(project_location) AS project_location
+    MAX(project_location) AS project_location,
+    MIN(bid_date) AS bid_dt
     FROM mock_bid`,
   selfRate: `SELECT b.project_name,
     ROUND(100.0 * SUM(i.self_amount) / NULLIF(SUM(i.self_amount + i.outsourced_amount), 0), 1) AS self_rate,
@@ -198,7 +199,7 @@ export function sqlFor(
     summary: "",
     composition: " GROUP BY i.goods_name ORDER BY i.goods_name",
     segment: " GROUP BY 1 ORDER BY 1",
-    showdown: " GROUP BY project_name ORDER BY MIN(bid_id)",
+    showdown: " GROUP BY project_name ORDER BY MIN(bid_date)", // 时间轴:项目按首次投标日期排,配 Brush 时间窗
   };
   // EXISTS 外层关联列随模板外层表别名:未别名 mock_bid vs JOIN 别名 b(传错=恒真/不可解析)
   const OUTER_REF = {

@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   Cell,
   Legend,
@@ -346,12 +347,12 @@ export function DashboardView() {
           <PriceBandChart filters={filters} />
         </div>
 
-        {/* 图4:项目报价对比(迁入本节;我方=胜绿/负红半透明,友商弱化灰蓝) */}
+        {/* 图4:项目报价对比(迁入本节;我方=胜绿/负红半透明,友商弱化灰蓝;SQL 已按投标日期排序) */}
         <ChartCard
           title="项目报价对比 · 我方 vs 友商(万)"
-          meta="点击我方柱 → 全部投标明细"
+          meta="拖下方滑块缩时间窗 · 点击我方柱下钻"
         >
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={320}>
             <BarChart
               data={(showdownQ.data ?? []).map((r) => ({
                 project_name: r.project_name,
@@ -367,6 +368,7 @@ export function DashboardView() {
               <XAxis
                 dataKey="project_name"
                 tick={{ ...AXIS, fontSize: 10 }}
+                tickFormatter={(v: string) => (v.length > 8 ? v.slice(0, 8) + "…" : v)}
                 tickLine={false}
                 axisLine={{ stroke: GRID }}
                 interval={0}
@@ -377,6 +379,16 @@ export function DashboardView() {
               <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} />
               <Tooltip content={<TechTooltip />} cursor={CURSOR} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
+              {/* 时间范围滑块:双柄拖动缩窗,窗口内标签自动重排不再重叠;默认聚焦最近 10 个项目 */}
+              <Brush
+                dataKey="我方"
+                height={26}
+                travellerWidth={8}
+                stroke={GRID}
+                fill="rgba(0,0,0,0.03)"
+                startIndex={Math.max(0, (showdownQ.data?.length ?? 0) - 10)}
+                endIndex={Math.max(0, (showdownQ.data?.length ?? 1) - 1)}
+              />
               <Bar
                 dataKey="我方"
                 radius={[3, 3, 0, 0]}
