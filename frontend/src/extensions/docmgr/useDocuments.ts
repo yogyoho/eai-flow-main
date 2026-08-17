@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { SetStateAction } from "react";
 
 import { docmgrApi } from "../api";
-import type { AIDocument, CreateAIDocumentRequest, UpdateAIDocumentRequest } from "../types";
+import type {
+  AIDocument,
+  CreateAIDocumentRequest,
+  UpdateAIDocumentRequest,
+} from "../types";
 
 import { useFolderTree } from "./useFolderTree";
 
@@ -30,7 +34,9 @@ export function useDocuments(initialFilter?: DocumentFilter) {
   const [pageSize] = useState(PAGE_SIZE);
   const [folders, setFolders] = useState<string[]>([]);
   const [projectFolders, setProjectFolders] = useState<string[]>([]);
-  const [filter, setFilter] = useState<DocumentFilter>(initialFilter ?? { folder: "默认文件夹" });
+  const [filter, setFilter] = useState<DocumentFilter>(
+    initialFilter ?? { folder: "默认文件夹" },
+  );
 
   const filterRef = useRef<DocumentFilter>(filter);
   const pageRef = useRef<number>(page);
@@ -61,8 +67,14 @@ export function useDocuments(initialFilter?: DocumentFilter) {
 
   useEffect(() => {
     try {
-      docmgrApi.listFolders().then((r) => setFolders(r.folders));
-      docmgrApi.listFolders({ project_scope: "project" }).then((r) => setProjectFolders(r.folders));
+      docmgrApi
+        .listFolders()
+        .then((r) => setFolders(r.folders))
+        .catch((e) => console.error("Failed to load folders:", e));
+      docmgrApi
+        .listFolders({ project_scope: "project" })
+        .then((r) => setProjectFolders(r.folders))
+        .catch((e) => console.error("Failed to load project folders:", e));
     } catch {
       // keep default
     }
@@ -77,13 +89,18 @@ export function useDocuments(initialFilter?: DocumentFilter) {
   }, [page]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [filter, page, load]);
 
-  const handleSetFilter = useCallback((nextFilter: SetStateAction<DocumentFilter>) => {
-    setFilter((prev) => (typeof nextFilter === "function" ? nextFilter(prev) : nextFilter));
-    setPage(1);
-  }, []);
+  const handleSetFilter = useCallback(
+    (nextFilter: SetStateAction<DocumentFilter>) => {
+      setFilter((prev) =>
+        typeof nextFilter === "function" ? nextFilter(prev) : nextFilter,
+      );
+      setPage(1);
+    },
+    [],
+  );
 
   const createDoc = useCallback(
     async (data: CreateAIDocumentRequest) => {
@@ -91,7 +108,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
       await load();
       return doc;
     },
-    [load]
+    [load],
   );
 
   const updateDoc = useCallback(
@@ -100,7 +117,7 @@ export function useDocuments(initialFilter?: DocumentFilter) {
       setDocs((prev) => prev.map((d) => (d.id === id ? updated : d)));
       return updated;
     },
-    []
+    [],
   );
 
   const deleteDoc = useCallback(async (id: string) => {
@@ -113,14 +130,17 @@ export function useDocuments(initialFilter?: DocumentFilter) {
     async (id: string, current: boolean) => {
       return updateDoc(id, { is_starred: !current });
     },
-    [updateDoc]
+    [updateDoc],
   );
 
-  const syncThreadFiles = useCallback(async (threadId: string) => {
-    const result = await docmgrApi.syncThreadFiles(threadId);
-    await load();
-    return result;
-  }, [load]);
+  const syncThreadFiles = useCallback(
+    async (threadId: string) => {
+      const result = await docmgrApi.syncThreadFiles(threadId);
+      await load();
+      return result;
+    },
+    [load],
+  );
 
   const moveToDocuments = useCallback(async (id: string) => {
     const updated = await docmgrApi.moveDocument(id, { toDocuments: true });

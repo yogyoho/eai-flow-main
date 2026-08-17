@@ -10,7 +10,6 @@ import {
   Loader2,
   Shield,
   Upload,
-  X,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -25,7 +24,11 @@ import type {
   DataSourceType,
   SyncMode,
 } from "../types";
-import { AUTH_TYPE_LABELS, DATA_SOURCE_TYPE_LABELS, SYNC_MODE_LABELS } from "../types";
+import {
+  AUTH_TYPE_LABELS,
+  DATA_SOURCE_TYPE_LABELS,
+  SYNC_MODE_LABELS,
+} from "../types";
 
 // ─── Custom Select ─────────────────────────────────────────────────────────────
 
@@ -50,7 +53,8 @@ function CustomSelect({
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -63,15 +67,31 @@ function CustomSelect({
         onClick={() => setOpen(!open)}
         className={cn(
           "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2.5 text-sm",
-          "border bg-background transition-all duration-150",
-          open ? "border-primary shadow-sm ring-2 ring-ring/50" : "border-input hover:border-input hover:shadow-sm",
+          "bg-background border transition-all duration-150",
+          open
+            ? "border-primary ring-ring/50 shadow-sm ring-2"
+            : "border-input hover:border-input hover:shadow-sm",
         )}
       >
-        <span className={cn("flex min-w-0 items-center gap-2", selected ? "text-foreground" : "text-muted-foreground")}>
-          {selected?.icon && <span className="shrink-0 text-muted-foreground">{selected.icon}</span>}
+        <span
+          className={cn(
+            "flex min-w-0 items-center gap-2",
+            selected ? "text-foreground" : "text-muted-foreground",
+          )}
+        >
+          {selected?.icon && (
+            <span className="text-muted-foreground shrink-0">
+              {selected.icon}
+            </span>
+          )}
           <span className="truncate">{selected?.label ?? "请选择"}</span>
         </span>
-        <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
       </button>
 
       <AnimatePresence>
@@ -81,7 +101,7 @@ function CustomSelect({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-border bg-background shadow-lg shadow-black/5"
+            className="border-border bg-background absolute top-full right-0 left-0 z-50 mt-1.5 overflow-hidden rounded-xl border shadow-lg shadow-black/5"
           >
             {options.map((o) => (
               <button
@@ -93,16 +113,27 @@ function CustomSelect({
                 }}
                 className={cn(
                   "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
-                  o.value === value ? "bg-primary/10 font-medium text-primary" : "text-foreground hover:bg-muted",
+                  o.value === value
+                    ? "bg-primary/10 text-primary font-medium"
+                    : "text-foreground hover:bg-muted",
                 )}
               >
                 {o.icon && (
-                  <span className={cn("shrink-0", o.value === value ? "text-primary" : "text-muted-foreground")}>
+                  <span
+                    className={cn(
+                      "shrink-0",
+                      o.value === value
+                        ? "text-primary"
+                        : "text-muted-foreground",
+                    )}
+                  >
                     {o.icon}
                   </span>
                 )}
                 {o.label}
-                {o.value === value && <CheckCircle2 className="ml-auto h-3.5 w-3.5 shrink-0 text-primary" />}
+                {o.value === value && (
+                  <CheckCircle2 className="text-primary ml-auto h-3.5 w-3.5 shrink-0" />
+                )}
               </button>
             ))}
           </motion.div>
@@ -129,7 +160,9 @@ function DatabaseConfigForm({
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">主机地址</label>
+          <label className="text-foreground mb-1 block text-sm font-medium">
+            主机地址
+          </label>
           <Input
             type="text"
             value={(config.host as string) ?? ""}
@@ -139,7 +172,9 @@ function DatabaseConfigForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">端口</label>
+          <label className="text-foreground mb-1 block text-sm font-medium">
+            端口
+          </label>
           <Input
             type="text"
             value={(config.port as string) ?? ""}
@@ -150,7 +185,9 @@ function DatabaseConfigForm({
         </div>
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">数据库名称</label>
+        <label className="text-foreground mb-1 block text-sm font-medium">
+          数据库名称
+        </label>
         <Input
           type="text"
           value={(config.database as string) ?? ""}
@@ -161,7 +198,9 @@ function DatabaseConfigForm({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">用户名</label>
+          <label className="text-foreground mb-1 block text-sm font-medium">
+            用户名
+          </label>
           <Input
             type="text"
             value={(config.username as string) ?? ""}
@@ -171,7 +210,9 @@ function DatabaseConfigForm({
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">密码</label>
+          <label className="text-foreground mb-1 block text-sm font-medium">
+            密码
+          </label>
           <Input
             type="password"
             value={(config.password as string) ?? ""}
@@ -198,7 +239,9 @@ function ApiConfigForm({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-foreground">API 地址</label>
+      <label className="text-foreground mb-1 block text-sm font-medium">
+        API 地址
+      </label>
       <Input
         type="text"
         value={(config.url as string) ?? ""}
@@ -223,7 +266,9 @@ function FileConfigForm({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-foreground">文件路径</label>
+      <label className="text-foreground mb-1 block text-sm font-medium">
+        文件路径
+      </label>
       <Input
         type="text"
         value={(config.path as string) ?? ""}
@@ -262,7 +307,9 @@ function GisConfigForm({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-foreground">GIS 数据文件</label>
+      <label className="text-foreground mb-1 block text-sm font-medium">
+        GIS 数据文件
+      </label>
       <div
         onDragOver={(e) => {
           e.preventDefault();
@@ -273,14 +320,16 @@ function GisConfigForm({
         onClick={() => inputRef.current?.click()}
         className={cn(
           "cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors",
-          dragOver ? "border-primary bg-primary/10" : "border-input hover:border-primary/50 hover:bg-muted",
+          dragOver
+            ? "border-primary bg-primary/10"
+            : "border-input hover:border-primary/50 hover:bg-muted",
         )}
       >
-        <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-        <p className="text-sm font-medium text-foreground">
+        <Upload className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
+        <p className="text-foreground text-sm font-medium">
           {fileName || "拖拽文件到此处，或点击选择"}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-xs">
           支持 Shapefile、GeoJSON、KML 等格式
         </p>
         <input
@@ -297,7 +346,9 @@ function GisConfigForm({
 
 // ─── DataSourceForm ────────────────────────────────────────────────────────────
 
-const TYPE_OPTIONS: SelectOption[] = Object.entries(DATA_SOURCE_TYPE_LABELS).map(([value, label]) => ({
+const TYPE_OPTIONS: SelectOption[] = Object.entries(
+  DATA_SOURCE_TYPE_LABELS,
+).map(([value, label]) => ({
   value,
   label,
   icon: (() => {
@@ -316,16 +367,20 @@ const TYPE_OPTIONS: SelectOption[] = Object.entries(DATA_SOURCE_TYPE_LABELS).map
   })(),
 }));
 
-const AUTH_TYPE_OPTIONS: SelectOption[] = Object.entries(AUTH_TYPE_LABELS).map(([value, label]) => ({
-  value,
-  label,
-  icon: <Shield className="h-3.5 w-3.5" />,
-}));
+const AUTH_TYPE_OPTIONS: SelectOption[] = Object.entries(AUTH_TYPE_LABELS).map(
+  ([value, label]) => ({
+    value,
+    label,
+    icon: <Shield className="h-3.5 w-3.5" />,
+  }),
+);
 
-const SYNC_MODE_OPTIONS: SelectOption[] = Object.entries(SYNC_MODE_LABELS).map(([value, label]) => ({
-  value,
-  label,
-}));
+const SYNC_MODE_OPTIONS: SelectOption[] = Object.entries(SYNC_MODE_LABELS).map(
+  ([value, label]) => ({
+    value,
+    label,
+  }),
+);
 
 interface DataSourceFormProps {
   open: boolean;
@@ -335,13 +390,21 @@ interface DataSourceFormProps {
   loading?: boolean;
 }
 
-export function DataSourceForm({ open, onClose, onSubmit, initialData, loading = false }: DataSourceFormProps) {
+export function DataSourceForm({
+  open,
+  onClose,
+  onSubmit,
+  initialData,
+  loading = false,
+}: DataSourceFormProps) {
   const isEdit = !!initialData;
 
   const [name, setName] = useState("");
   const [type, setType] = useState<DataSourceType>("database");
   const [authType, setAuthType] = useState<AuthType>("none");
-  const [connectionConfig, setConnectionConfig] = useState<Record<string, unknown>>({});
+  const [connectionConfig, setConnectionConfig] = useState<
+    Record<string, unknown>
+  >({});
   const [syncMode, setSyncMode] = useState<SyncMode>("manual");
   const [description, setDescription] = useState("");
 
@@ -384,13 +447,33 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
   const renderConnectionConfig = () => {
     switch (type) {
       case "database":
-        return <DatabaseConfigForm config={connectionConfig} onChange={setConnectionConfig} />;
+        return (
+          <DatabaseConfigForm
+            config={connectionConfig}
+            onChange={setConnectionConfig}
+          />
+        );
       case "api":
-        return <ApiConfigForm config={connectionConfig} onChange={setConnectionConfig} />;
+        return (
+          <ApiConfigForm
+            config={connectionConfig}
+            onChange={setConnectionConfig}
+          />
+        );
       case "file":
-        return <FileConfigForm config={connectionConfig} onChange={setConnectionConfig} />;
+        return (
+          <FileConfigForm
+            config={connectionConfig}
+            onChange={setConnectionConfig}
+          />
+        );
       case "gis":
-        return <GisConfigForm config={connectionConfig} onChange={setConnectionConfig} />;
+        return (
+          <GisConfigForm
+            config={connectionConfig}
+            onChange={setConnectionConfig}
+          />
+        );
       default:
         return null;
     }
@@ -411,18 +494,18 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-background shadow-xl"
+            className="bg-background relative w-full max-w-lg overflow-hidden rounded-2xl shadow-xl"
           >
             {/* Header */}
-            <div className="flex items-center gap-3 border-b border-border bg-muted/50 px-6 py-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+            <div className="border-border bg-muted/50 flex items-center gap-3 border-b px-6 py-4">
+              <div className="border-primary/20 bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg border">
                 <Database className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg leading-tight font-semibold text-foreground">
+                <h3 className="text-foreground text-lg leading-tight font-semibold">
                   {isEdit ? "编辑数据源" : "添加数据源"}
                 </h3>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-muted-foreground text-xs">
                   {isEdit ? "修改数据源配置信息" : "配置新的数据源连接"}
                 </div>
               </div>
@@ -431,7 +514,7 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
             {/* Body */}
             <div className="max-h-[60vh] space-y-5 overflow-y-auto p-6">
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">
+                <label className="text-foreground mb-1 block text-sm font-medium">
                   名称 <span className="text-destructive">*</span>
                 </label>
                 <Input
@@ -444,20 +527,25 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">
-                  描述 <span className="text-xs font-normal text-muted-foreground">(给 AI:这个数据源里是什么)</span>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  描述{" "}
+                  <span className="text-muted-foreground text-xs font-normal">
+                    (给 AI:这个数据源里是什么)
+                  </span>
                 </label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="例如:厂界噪声 2024 年监测值"
                   rows={2}
-                  className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="border-input bg-background focus-visible:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">数据源类型</label>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  数据源类型
+                </label>
                 <CustomSelect
                   value={type}
                   onChange={(v) => {
@@ -469,7 +557,9 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">认证方式</label>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  认证方式
+                </label>
                 <CustomSelect
                   value={authType}
                   onChange={(v) => setAuthType(v as AuthType)}
@@ -478,12 +568,16 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">连接配置</label>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  连接配置
+                </label>
                 {renderConnectionConfig()}
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">同步模式</label>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  同步模式
+                </label>
                 <CustomSelect
                   value={syncMode}
                   onChange={(v) => setSyncMode(v as SyncMode)}
@@ -493,7 +587,7 @@ export function DataSourceForm({ open, onClose, onSubmit, initialData, loading =
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
+            <div className="border-border bg-muted/50 flex items-center justify-end gap-3 border-t px-6 py-4">
               <Button variant="outline" onClick={onClose}>
                 取消
               </Button>

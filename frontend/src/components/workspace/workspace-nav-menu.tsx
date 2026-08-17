@@ -7,8 +7,8 @@ import {
   LogOut,
   SettingsIcon,
 } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import {
   DropdownMenu,
@@ -24,17 +24,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useI18n } from "@/core/i18n/hooks";
 // EAI-CUSTOM: nav-level permission gating
 import { usePermission } from "@/core/permissions";
 
 import { SettingsDialog } from "./settings";
 
-function NavMenuButtonContent({
-  isSidebarOpen,
-}: {
-  isSidebarOpen: boolean;
-}) {
+function NavMenuButtonContent({ isSidebarOpen }: { isSidebarOpen: boolean }) {
   return isSidebarOpen ? (
     <div className="text-muted-foreground flex w-full items-center gap-2 text-left text-sm">
       <SettingsIcon className="size-4" />
@@ -73,10 +68,7 @@ export function WorkspaceNavMenu() {
 
   return (
     <>
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
+      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <SidebarMenu className="w-full">
         <SidebarMenuItem>
           {mounted ? (
@@ -108,7 +100,9 @@ export function WorkspaceNavMenu() {
                     </DropdownMenuItem>
                   )}
                   {canNav("nav:knowledge-factory") && (
-                    <DropdownMenuItem onClick={() => router.push("/knowledge-factory")}>
+                    <DropdownMenuItem
+                      onClick={() => router.push("/knowledge-factory")}
+                    >
                       <Factory className="size-4" />
                       知识工厂
                     </DropdownMenuItem>

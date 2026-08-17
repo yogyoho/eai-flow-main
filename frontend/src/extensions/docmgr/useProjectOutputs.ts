@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
 import { useState, useCallback, useEffect } from "react";
+
 import { docmgrApi } from "../api";
 
 // EAI-CUSTOM: 项目区 outputs（跨用户共享文件系统视图）
@@ -41,7 +42,7 @@ export function useProjectOutputs(projectId: string | null | undefined) {
   }, [projectId]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   return { files, total, loading, refresh };

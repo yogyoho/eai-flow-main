@@ -1,10 +1,31 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronDown, Database, Globe, Layers, Loader2, Pencil, Play, Plus, Power, PowerOff, Scale, Trash2, Zap } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  Database,
+  Globe,
+  Layers,
+  Loader2,
+  Pencil,
+  Play,
+  Plus,
+  Power,
+  PowerOff,
+  Scale,
+  Trash2,
+  Zap,
+} from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { scraperApi } from "@/extensions/api";
 import { cn } from "@/lib/utils";
 
@@ -60,7 +81,11 @@ function SchemaDropdown({
   useEffect(() => {
     if (!open) return;
     function handleClick(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      )
+        setOpen(false);
     }
     document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
@@ -68,19 +93,41 @@ function SchemaDropdown({
 
   useEffect(() => {
     if (!open) return;
-    function handleKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
   }, [open]);
 
   function pick(schema: SchemaItem | undefined) {
-    onChange(schema?.name, schema?.category || "");
+    onChange(schema?.name, schema?.category ?? "");
     setOpen(false);
   }
 
-  const groups: { key: string; label: string; icon: React.ComponentType<{ className?: string }>; color: string; items: SchemaItem[] }[] = [];
-  if (lawSchemas.length) groups.push({ key: "law", label: "法规标准", icon: Scale, color: "text-primary", items: lawSchemas });
-  if (generalSchemas.length) groups.push({ key: "general", label: "通用模板", icon: Layers, color: "text-warning", items: generalSchemas });
+  const groups: {
+    key: string;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color: string;
+    items: SchemaItem[];
+  }[] = [];
+  if (lawSchemas.length)
+    groups.push({
+      key: "law",
+      label: "法规标准",
+      icon: Scale,
+      color: "text-primary",
+      items: lawSchemas,
+    });
+  if (generalSchemas.length)
+    groups.push({
+      key: "general",
+      label: "通用模板",
+      icon: Layers,
+      color: "text-warning",
+      items: generalSchemas,
+    });
 
   return (
     <div ref={containerRef} className="relative">
@@ -88,29 +135,45 @@ function SchemaDropdown({
         type="button"
         onClick={() => setOpen(!open)}
         className={cn(
-          "w-full flex items-center gap-2 px-3 py-2.5 border rounded-xl text-sm bg-background shadow-sm text-left transition-all outline-none",
-          open ? "border-primary ring-[3px] ring-primary/20" : "hover:border-primary/30 focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-[3px]"
+          "bg-background flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm shadow-sm transition-all outline-none",
+          open
+            ? "border-primary ring-primary/20 ring-[3px]"
+            : "hover:border-primary/30 focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-[3px]",
         )}
       >
         {selected ? (
           <>
-            <span className="flex-1 truncate font-medium">{selected.display_name}</span>
-            <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md font-medium">{selected.category}</span>
+            <span className="flex-1 truncate font-medium">
+              {selected.display_name}
+            </span>
+            <span className="text-muted-foreground bg-muted/60 rounded-md px-1.5 py-0.5 text-[10px] font-medium">
+              {selected.category}
+            </span>
           </>
         ) : (
-          <span className="flex-1 text-muted-foreground">无（通用提取）</span>
+          <span className="text-muted-foreground flex-1">无（通用提取）</span>
         )}
-        <ChevronDown className={cn("h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200", open && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "text-muted-foreground h-4 w-4 shrink-0 transition-transform duration-200",
+            open && "rotate-180",
+          )}
+        />
       </button>
       {open && (
-        <div className="absolute z-[60] top-full left-0 right-0 mt-1.5 bg-popover border rounded-xl shadow-lg overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-150">
+        <div className="bg-popover animate-in fade-in-0 slide-in-from-top-1 absolute top-full right-0 left-0 z-[60] mt-1.5 overflow-hidden rounded-xl border shadow-lg duration-150">
           <div className="max-h-72 overflow-auto py-1">
             <button
               onClick={() => pick(undefined)}
-              className={cn("w-full flex items-center gap-2.5 px-3 py-2.5 text-sm text-left transition-colors", !value ? "bg-primary/8 text-primary font-medium" : "text-foreground hover:bg-muted/60")}
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors",
+                !value
+                  ? "bg-primary/8 text-primary font-medium"
+                  : "text-foreground hover:bg-muted/60",
+              )}
             >
               <div className="flex-1">通用提取（无模板）</div>
-              {!value && <Check className="h-4 w-4 text-primary shrink-0" />}
+              {!value && <Check className="text-primary h-4 w-4 shrink-0" />}
             </button>
             {groups.map((group) => {
               const GroupIcon = group.icon;
@@ -118,8 +181,10 @@ function SchemaDropdown({
                 <div key={group.key}>
                   <div className="flex items-center gap-2 px-3 pt-2 pb-1">
                     <GroupIcon className={cn("h-3.5 w-3.5", group.color)} />
-                    <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{group.label}</span>
-                    <span className="flex-1 border-b border-dashed border-border" />
+                    <span className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                      {group.label}
+                    </span>
+                    <span className="border-border flex-1 border-b border-dashed" />
                   </div>
                   {group.items.map((s) => {
                     const active = value === s.name;
@@ -127,10 +192,19 @@ function SchemaDropdown({
                       <button
                         key={s.name}
                         onClick={() => pick(s)}
-                        className={cn("w-full flex items-center gap-2.5 pl-7 pr-3 py-2 text-sm text-left transition-colors", active ? "bg-primary/8 text-primary font-medium" : "text-foreground hover:bg-muted/60")}
+                        className={cn(
+                          "flex w-full items-center gap-2.5 py-2 pr-3 pl-7 text-left text-sm transition-colors",
+                          active
+                            ? "bg-primary/8 text-primary font-medium"
+                            : "text-foreground hover:bg-muted/60",
+                        )}
                       >
-                        <span className="flex-1 truncate">{s.display_name}</span>
-                        {active && <Check className="h-4 w-4 text-primary shrink-0" />}
+                        <span className="flex-1 truncate">
+                          {s.display_name}
+                        </span>
+                        {active && (
+                          <Check className="text-primary h-4 w-4 shrink-0" />
+                        )}
                       </button>
                     );
                   })}
@@ -145,9 +219,9 @@ function SchemaDropdown({
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  "法规标准": "bg-primary/10 text-primary border-primary/20",
-  "行业标准": "bg-info/10 text-info border-info/20",
-  "技术规范": "bg-warning/10 text-warning border-warning/20",
+  法规标准: "bg-primary/10 text-primary border-primary/20",
+  行业标准: "bg-info/10 text-info border-info/20",
+  技术规范: "bg-warning/10 text-warning border-warning/20",
 };
 
 export default function ScraperSourceManager() {
@@ -161,7 +235,12 @@ export default function ScraperSourceManager() {
 
   // Load schemas once
   useEffect(() => {
-    scraperApi.listSchemas().then((res) => setSchemas(res.schemas || [])).catch(() => {});
+    scraperApi
+      .listSchemas()
+      .then((res) => setSchemas(res.schemas || []))
+      .catch(() => {
+        // schemas are optional for the source form; ignore load errors
+      });
   }, []);
 
   const { data, isLoading } = useQuery({
@@ -170,18 +249,22 @@ export default function ScraperSourceManager() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (d: Record<string, unknown>) => scraperApi.createSource(d as Parameters<typeof scraperApi.createSource>[0]),
+    mutationFn: (d: Record<string, unknown>) =>
+      scraperApi.createSource(
+        d as Parameters<typeof scraperApi.createSource>[0],
+      ),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["scraper-sources"] });
+      void queryClient.invalidateQueries({ queryKey: ["scraper-sources"] });
       setShowForm(false);
       setForm(EMPTY_FORM);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) => scraperApi.updateSource(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Record<string, unknown> }) =>
+      scraperApi.updateSource(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["scraper-sources"] });
+      void queryClient.invalidateQueries({ queryKey: ["scraper-sources"] });
       setShowForm(false);
       setEditingId(null);
       setForm(EMPTY_FORM);
@@ -190,11 +273,12 @@ export default function ScraperSourceManager() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => scraperApi.deleteSource(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["scraper-sources"] }),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["scraper-sources"] }),
   });
 
-  const sources = data?.sources || [];
-  const total = data?.total || 0;
+  const sources = data?.sources ?? [];
+  const total = data?.total ?? 0;
   const totalPages = Math.ceil(total / 20);
 
   function openCreate() {
@@ -203,7 +287,12 @@ export default function ScraperSourceManager() {
     setShowForm(true);
   }
 
-  function openEdit(source: { id: string; name: string; url_pattern: string; [key: string]: unknown }) {
+  function openEdit(source: {
+    id: string;
+    name: string;
+    url_pattern: string;
+    [key: string]: unknown;
+  }) {
     setForm({
       name: source.name,
       url_pattern: source.url_pattern,
@@ -232,56 +321,78 @@ export default function ScraperSourceManager() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 py-3 border-b shrink-0 bg-card/50">
+      <div className="bg-card/50 flex shrink-0 items-center justify-between border-b px-5 py-3">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">共 <span className="font-semibold text-foreground tabular-nums">{total}</span> 个数据源</span>
+          <span className="text-muted-foreground text-sm">
+            共{" "}
+            <span className="text-foreground font-semibold tabular-nums">
+              {total}
+            </span>{" "}
+            个数据源
+          </span>
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 shadow-sm transition-all duration-200 active:scale-[0.98]"
+          className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm transition-all duration-200 active:scale-[0.98]"
         >
           <Plus className="h-4 w-4" /> 新增数据源
         </button>
       </div>
 
       {/* Create/Edit dialog */}
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingId(null); } }}>
-        <DialogContent className="sm:max-w-[560px] max-h-[85vh] overflow-y-auto">
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowForm(false);
+            setEditingId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[560px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-primary" />
+              <Database className="text-primary h-5 w-5" />
               {editingId ? "编辑数据源" : "新增数据源"}
             </DialogTitle>
             <DialogDescription>
-              {editingId ? "修改数据源配置信息" : "配置数据源以便快速发起抓取任务"}
+              {editingId
+                ? "修改数据源配置信息"
+                : "配置数据源以便快速发起抓取任务"}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-5 py-2">
             {/* Name + URL row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold tracking-tight">名称 <span className="text-destructive">*</span></label>
+                <label className="text-sm font-semibold tracking-tight">
+                  名称 <span className="text-destructive">*</span>
+                </label>
                 <input
                   type="text"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   required
-                  className="w-full px-3 py-2.5 border rounded-xl text-sm bg-background shadow-sm focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-[3px] outline-none transition-all"
+                  className="bg-background focus-visible:border-primary focus-visible:ring-primary/20 w-full rounded-xl border px-3 py-2.5 text-sm shadow-sm transition-all outline-none focus-visible:ring-[3px]"
                   placeholder="例：国家标准全文公开系统"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-sm font-semibold tracking-tight">URL 模式 <span className="text-destructive">*</span></label>
+                <label className="text-sm font-semibold tracking-tight">
+                  URL 模式 <span className="text-destructive">*</span>
+                </label>
                 <div className="relative">
-                  <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Globe className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                   <input
                     type="text"
                     value={form.url_pattern}
-                    onChange={(e) => setForm({ ...form, url_pattern: e.target.value })}
+                    onChange={(e) =>
+                      setForm({ ...form, url_pattern: e.target.value })
+                    }
                     required
-                    className="w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm bg-background shadow-sm focus-visible:border-primary focus-visible:ring-primary/20 focus-visible:ring-[3px] outline-none transition-all"
+                    className="bg-background focus-visible:border-primary focus-visible:ring-primary/20 w-full rounded-xl border py-2.5 pr-3 pl-10 text-sm shadow-sm transition-all outline-none focus-visible:ring-[3px]"
                     placeholder="https://openstd.samr.gov.cn/*"
                   />
                 </div>
@@ -290,17 +401,23 @@ export default function ScraperSourceManager() {
 
             {/* Schema (category + template) dropdown */}
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold tracking-tight">提取模板</label>
+              <label className="text-sm font-semibold tracking-tight">
+                提取模板
+              </label>
               <SchemaDropdown
                 schemas={schemas}
                 value={form.default_schema || undefined}
-                onChange={(name, category) => setForm({ ...form, default_schema: name || "", category })}
+                onChange={(name, category) =>
+                  setForm({ ...form, default_schema: name ?? "", category })
+                }
               />
             </div>
 
             {/* Provider card selector */}
             <div className="space-y-1.5">
-              <label className="text-sm font-semibold tracking-tight">默认引擎</label>
+              <label className="text-sm font-semibold tracking-tight">
+                默认引擎
+              </label>
               <div className="grid grid-cols-2 gap-2">
                 {PROVIDER_OPTIONS.map((p) => {
                   const Icon = p.icon;
@@ -309,16 +426,36 @@ export default function ScraperSourceManager() {
                     <button
                       key={p.value}
                       type="button"
-                      onClick={() => setForm({ ...form, default_provider: p.value })}
+                      onClick={() =>
+                        setForm({ ...form, default_provider: p.value })
+                      }
                       className={cn(
-                        "flex items-center gap-2.5 px-4 py-3 rounded-xl border text-left transition-all",
-                        active ? "border-primary/30 bg-primary/5 shadow-sm" : "border-border hover:border-primary/20 hover:bg-muted/50"
+                        "flex items-center gap-2.5 rounded-xl border px-4 py-3 text-left transition-all",
+                        active
+                          ? "border-primary/30 bg-primary/5 shadow-sm"
+                          : "border-border hover:border-primary/20 hover:bg-muted/50",
                       )}
                     >
-                      <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                      <Icon
+                        className={cn(
+                          "h-4 w-4 shrink-0",
+                          active ? "text-primary" : "text-muted-foreground",
+                        )}
+                      />
                       <div>
-                        <span className={cn("text-sm font-medium block", active ? "text-foreground" : "text-muted-foreground")}>{p.label}</span>
-                        <span className="text-xs text-muted-foreground">{p.desc}</span>
+                        <span
+                          className={cn(
+                            "block text-sm font-medium",
+                            active
+                              ? "text-foreground"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {p.label}
+                        </span>
+                        <span className="text-muted-foreground text-xs">
+                          {p.desc}
+                        </span>
                       </div>
                     </button>
                   );
@@ -331,15 +468,22 @@ export default function ScraperSourceManager() {
               <button
                 type="submit"
                 disabled={createMutation.isPending || updateMutation.isPending}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:bg-primary/90 shadow-sm transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold shadow-sm transition-all duration-200 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40"
               >
-                {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {createMutation.isPending || updateMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4" />
+                )}
                 {editingId ? "保存修改" : "创建数据源"}
               </button>
               <button
                 type="button"
-                onClick={() => { setShowForm(false); setEditingId(null); }}
-                className="px-5 py-2.5 border rounded-xl text-sm font-medium hover:bg-muted transition-colors shadow-sm"
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                }}
+                className="hover:bg-muted rounded-xl border px-5 py-2.5 text-sm font-medium shadow-sm transition-colors"
               >
                 取消
               </button>
@@ -351,20 +495,22 @@ export default function ScraperSourceManager() {
       {/* Source list */}
       <div className="flex-1 overflow-auto p-3">
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin mb-3 text-primary/60" />
+          <div className="text-muted-foreground flex flex-col items-center justify-center py-24">
+            <Loader2 className="text-primary/60 mb-3 h-6 w-6 animate-spin" />
             <p className="text-sm">加载数据源...</p>
           </div>
         ) : sources.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-            <div className="bg-muted/50 rounded-2xl p-6 mb-4">
-              <Globe className="h-12 w-12 text-muted-foreground/30" />
+          <div className="text-muted-foreground flex flex-col items-center justify-center py-24">
+            <div className="bg-muted/50 mb-4 rounded-2xl p-6">
+              <Globe className="text-muted-foreground/30 h-12 w-12" />
             </div>
-            <p className="text-sm font-medium mb-1">暂无数据源</p>
-            <p className="text-xs text-muted-foreground/70 mb-4">添加数据源以便快速发起抓取任务</p>
+            <p className="mb-1 text-sm font-medium">暂无数据源</p>
+            <p className="text-muted-foreground/70 mb-4 text-xs">
+              添加数据源以便快速发起抓取任务
+            </p>
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 shadow-sm transition-all"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm transition-all"
             >
               <Plus className="h-3.5 w-3.5" /> 添加第一个数据源
             </button>
@@ -372,68 +518,102 @@ export default function ScraperSourceManager() {
         ) : (
           <div className="grid gap-2">
             {sources.map((source) => {
-              const categoryColor = CATEGORY_COLORS[source.category || ""] || "bg-muted text-muted-foreground border-border";
+              const categoryColor =
+                CATEGORY_COLORS[source.category ?? ""] ??
+                "bg-muted text-muted-foreground border-border";
               return (
                 <div
                   key={source.id}
                   className={cn(
-                    "group flex items-center gap-4 px-4 py-3.5 rounded-xl border transition-all duration-200",
+                    "group flex items-center gap-4 rounded-xl border px-4 py-3.5 transition-all duration-200",
                     source.is_enabled
-                      ? "border-border bg-card shadow-sm hover:shadow-md hover:border-primary/20"
-                      : "border-border/50 bg-muted/20 opacity-70"
+                      ? "border-border bg-card hover:border-primary/20 shadow-sm hover:shadow-md"
+                      : "border-border/50 bg-muted/20 opacity-70",
                   )}
                 >
                   {/* Enable/Disable indicator */}
-                  <div className={cn("shrink-0", source.is_enabled ? "text-success" : "text-muted-foreground/40")}>
-                    {source.is_enabled ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
+                  <div
+                    className={cn(
+                      "shrink-0",
+                      source.is_enabled
+                        ? "text-success"
+                        : "text-muted-foreground/40",
+                    )}
+                  >
+                    {source.is_enabled ? (
+                      <Power className="h-4 w-4" />
+                    ) : (
+                      <PowerOff className="h-4 w-4" />
+                    )}
                   </div>
 
                   {/* Name + URL */}
-                  <div className="flex-1 min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">{source.name}</p>
+                      <p className="truncate text-sm font-medium">
+                        {source.name}
+                      </p>
                       {!source.is_enabled && (
-                        <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md uppercase tracking-wider font-bold">已禁用</span>
+                        <span className="text-muted-foreground bg-muted rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                          已禁用
+                        </span>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5 font-mono">{source.url_pattern}</p>
+                    <p className="text-muted-foreground mt-0.5 truncate font-mono text-xs">
+                      {source.url_pattern}
+                    </p>
                   </div>
 
                   {/* Badges */}
                   {source.category && (
-                    <span className={cn("px-2 py-0.5 rounded-lg text-xs font-medium border shrink-0", categoryColor)}>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-lg border px-2 py-0.5 text-xs font-medium",
+                        categoryColor,
+                      )}
+                    >
                       {source.category}
                     </span>
                   )}
                   {source.default_schema && (
-                    <span className="px-2 py-0.5 bg-primary/8 text-primary rounded-lg text-xs font-medium shrink-0 border border-primary/10">
+                    <span className="bg-primary/8 text-primary border-primary/10 shrink-0 rounded-lg border px-2 py-0.5 text-xs font-medium">
                       {source.default_schema}
                     </span>
                   )}
 
                   {/* Actions */}
-                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
-                      onClick={(e) => { e.stopPropagation(); openScrapeDialog({
-                        url: source.url_pattern,
-                        provider: source.default_provider,
-                        schema: source.default_schema,
-                      }); }}
-                      className="p-2 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openScrapeDialog({
+                          url: source.url_pattern,
+                          provider: source.default_provider,
+                          schema: source.default_schema,
+                        });
+                      }}
+                      className="hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-lg p-2 transition-colors"
                       title="立即抓取"
                     >
                       <Play className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); openEdit(source); }}
-                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEdit(source);
+                      }}
+                      className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg p-2 transition-colors"
                       title="编辑"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={(e) => { e.stopPropagation(); if (confirm("确定删除该数据源？")) deleteMutation.mutate(source.id); }}
-                      className="p-2 rounded-lg hover:bg-destructive/5 text-muted-foreground hover:text-destructive transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm("确定删除该数据源？"))
+                          deleteMutation.mutate(source.id);
+                      }}
+                      className="hover:bg-destructive/5 text-muted-foreground hover:text-destructive rounded-lg p-2 transition-colors"
                       title="删除"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -448,19 +628,21 @@ export default function ScraperSourceManager() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 px-4 py-3 border-t shrink-0 bg-card/50">
+        <div className="bg-card/50 flex shrink-0 items-center justify-center gap-3 border-t px-4 py-3">
           <button
             onClick={() => setPage(Math.max(1, page - 1))}
             disabled={page <= 1}
-            className="px-4 py-1.5 text-sm rounded-lg border bg-card hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-sm"
+            className="bg-card hover:bg-muted rounded-lg border px-4 py-1.5 text-sm shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-40"
           >
             上一页
           </button>
-          <span className="text-sm text-muted-foreground font-medium tabular-nums">{page} / {totalPages}</span>
+          <span className="text-muted-foreground text-sm font-medium tabular-nums">
+            {page} / {totalPages}
+          </span>
           <button
             onClick={() => setPage(Math.min(totalPages, page + 1))}
             disabled={page >= totalPages}
-            className="px-4 py-1.5 text-sm rounded-lg border bg-card hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors shadow-sm"
+            className="bg-card hover:bg-muted rounded-lg border px-4 py-1.5 text-sm shadow-sm transition-colors disabled:pointer-events-none disabled:opacity-40"
           >
             下一页
           </button>

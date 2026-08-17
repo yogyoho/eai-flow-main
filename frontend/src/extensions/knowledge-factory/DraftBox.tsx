@@ -39,7 +39,9 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [selectedDraft, setSelectedDraft] = useState<ScrapDraftDetail | null>(null);
+  const [selectedDraft, setSelectedDraft] = useState<ScrapDraftDetail | null>(
+    null,
+  );
   const [showPreview, setShowPreview] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
@@ -49,7 +51,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
     setLoading(true);
     try {
       const data = await scraperApi.listDrafts({
-        status: statusFilter || undefined,
+        status: statusFilter ?? undefined,
         page_size: 50,
       });
       setDrafts(data.drafts || []);
@@ -61,7 +63,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
   }, [statusFilter]);
 
   useEffect(() => {
-    loadDrafts();
+    void loadDrafts();
   }, [loadDrafts]);
 
   // 删除草稿
@@ -109,7 +111,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
       toast.success("已成功导入到知识库！");
       setShowImportModal(false);
       setSelectedDraft(null);
-      loadDrafts();
+      void loadDrafts();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "导入失败");
     }
@@ -120,8 +122,11 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
     const matchSearch =
       !searchTerm ||
       draft.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      draft.source_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      draft.tags.some((tag) => tag.toLowerCase().includes(searchTerm.toLowerCase()));
+      (draft.source_title?.toLowerCase().includes(searchTerm.toLowerCase()) ??
+        false) ||
+      draft.tags.some((tag) =>
+        tag.toLowerCase().includes(searchTerm.toLowerCase()),
+      );
 
     const matchStatus = !statusFilter || draft.status === statusFilter;
 
@@ -156,28 +161,28 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
 
   return (
     <>
-      <div className="flex flex-col h-full">
+      <div className="flex h-full flex-col">
         {/* Header */}
-        <div className="p-4 border-b bg-background">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-              <FileText className="w-5 h-5" />
+        <div className="bg-background border-b p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-foreground flex items-center gap-2 text-lg font-semibold">
+              <FileText className="h-5 w-5" />
               草稿箱 ({filteredDrafts.length})
             </h2>
             <div className="flex gap-2">
               <button
                 onClick={loadDrafts}
-                className="p-2 hover:bg-accent rounded-lg"
+                className="hover:bg-accent rounded-lg p-2"
                 title="刷新"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className="h-4 w-4" />
               </button>
               {onClose && (
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-accent rounded-lg"
+                  className="hover:bg-accent rounded-lg p-2"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="h-4 w-4" />
                 </button>
               )}
             </div>
@@ -185,20 +190,20 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
 
           {/* 搜索和筛选 */}
           <div className="flex gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <div className="relative flex-1">
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="搜索草稿..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background"
+                className="border-border bg-background w-full rounded-lg border py-2 pr-4 pl-10"
               />
             </div>
             <select
-              value={statusFilter || ""}
+              value={statusFilter ?? ""}
               onChange={(e) => setStatusFilter(e.target.value || null)}
-              className="px-3 py-2 border border-border rounded-lg bg-background"
+              className="border-border bg-background rounded-lg border px-3 py-2"
             >
               <option value="">全部状态</option>
               <option value="draft">草稿</option>
@@ -211,12 +216,12 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
         {/* 草稿列表 */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+            <div className="flex h-full items-center justify-center">
+              <RefreshCw className="text-muted-foreground h-6 w-6 animate-spin" />
             </div>
           ) : filteredDrafts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-              <FileText className="w-12 h-12 mb-3 text-muted-foreground/30" />
+            <div className="text-muted-foreground flex h-full flex-col items-center justify-center">
+              <FileText className="text-muted-foreground/30 mb-3 h-12 w-12" />
               <p>暂无草稿</p>
               <p className="text-sm">爬取网页后将自动保存到草稿箱</p>
             </div>
@@ -227,30 +232,30 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                   key={draft.id}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="p-4 hover:bg-accent cursor-pointer group"
+                  className="hover:bg-accent group cursor-pointer p-4"
                   onClick={() => handlePreview(draft)}
                 >
                   <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-medium truncate">{draft.title}</h3>
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-1 flex items-center gap-2">
+                        <h3 className="truncate font-medium">{draft.title}</h3>
                         <span
                           className={cn(
-                            "px-2 py-0.5 text-xs rounded-full shrink-0",
-                            getStatusBadge(draft.status)
+                            "shrink-0 rounded-full px-2 py-0.5 text-xs",
+                            getStatusBadge(draft.status),
                           )}
                         >
                           {getStatusText(draft.status)}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground mb-2">
+                      <div className="text-muted-foreground mb-2 flex items-center gap-3 text-sm">
                         <span className="flex items-center gap-1">
-                          <Tag className="w-3 h-3" />
-                          {draft.schema_display_name || draft.schema_name}
+                          <Tag className="h-3 w-3" />
+                          {draft.schema_display_name ?? draft.schema_name}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" />
+                          <Calendar className="h-3 w-3" />
                           {new Date(draft.created_at).toLocaleDateString()}
                         </span>
                       </div>
@@ -261,19 +266,19 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="text-sm text-primary hover:underline flex items-center gap-1"
+                          className="text-primary flex items-center gap-1 text-sm hover:underline"
                         >
-                          <ExternalLink className="w-3 h-3" />
-                          {draft.source_title || draft.source_url}
+                          <ExternalLink className="h-3 w-3" />
+                          {draft.source_title ?? draft.source_url}
                         </a>
                       )}
 
                       {draft.tags.length > 0 && (
-                        <div className="flex gap-1 mt-2">
+                        <div className="mt-2 flex gap-1">
                           {draft.tags.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
-                              className="px-2 py-0.5 bg-muted text-muted-foreground text-xs rounded"
+                              className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs"
                             >
                               {tag}
                             </span>
@@ -288,7 +293,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                     </div>
 
                     {/* 操作按钮 */}
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                       {draft.status === "draft" && (
                         <>
                           <button
@@ -296,32 +301,32 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                               e.stopPropagation();
                               onEdit?.(draft);
                             }}
-                            className="p-2 hover:bg-accent rounded-lg"
+                            className="hover:bg-accent rounded-lg p-2"
                             title="编辑"
                           >
-                            <Edit2 className="w-4 h-4" />
+                            <Edit2 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOpenImport(draft);
+                              void handleOpenImport(draft);
                             }}
-                            className="p-2 hover:bg-accent rounded-lg text-primary"
+                            className="hover:bg-accent text-primary rounded-lg p-2"
                             title="导入知识库"
                           >
-                            <Upload className="w-4 h-4" />
+                            <Upload className="h-4 w-4" />
                           </button>
                         </>
                       )}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleDelete(draft.id);
+                          void handleDelete(draft.id);
                         }}
-                        className="p-2 hover:bg-red-500/10 rounded-lg text-red-500"
+                        className="rounded-lg p-2 text-red-500 hover:bg-red-500/10"
                         title="删除"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -339,19 +344,21 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-8"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-8"
             onClick={() => setShowPreview(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-background rounded-2xl max-w-4xl w-full max-h-full overflow-hidden flex flex-col"
+              className="bg-background flex max-h-full w-full max-w-4xl flex-col overflow-hidden rounded-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 border-b flex items-center justify-between">
+              <div className="flex items-center justify-between border-b p-6">
                 <div>
-                  <h2 className="text-xl font-semibold text-foreground">{selectedDraft.title}</h2>
-                  <p className="text-sm text-muted-foreground">
+                  <h2 className="text-foreground text-xl font-semibold">
+                    {selectedDraft.title}
+                  </h2>
+                  <p className="text-muted-foreground text-sm">
                     {selectedDraft.schema_display_name} •{" "}
                     {new Date(selectedDraft.created_at).toLocaleDateString()}
                   </p>
@@ -361,18 +368,18 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                     <button
                       onClick={() => {
                         setShowPreview(false);
-                        handleOpenImport(selectedDraft);
+                        void handleOpenImport(selectedDraft);
                       }}
-                      className="px-4 py-2 bg-primary text-primary-foreground rounded-lg flex items-center gap-2"
+                      className="bg-primary text-primary-foreground flex items-center gap-2 rounded-lg px-4 py-2"
                     >
-                      <Upload className="w-4 h-4" /> 存入知识库
+                      <Upload className="h-4 w-4" /> 存入知识库
                     </button>
                   )}
                   <button
                     onClick={() => setShowPreview(false)}
-                    className="p-2 hover:bg-accent rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                    className="hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg p-2 transition-colors"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -395,32 +402,36 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
             onClick={() => setShowImportModal(false)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-background rounded-2xl w-full max-w-md p-6"
+              className="bg-background w-full max-w-md rounded-2xl p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <h2 className="text-xl font-semibold mb-4">选择目标知识库</h2>
+              <h2 className="mb-4 text-xl font-semibold">选择目标知识库</h2>
 
               {knowledgeBases.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-muted-foreground py-8 text-center">
                   暂无可用知识库，请先创建知识库
                 </div>
               ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="max-h-96 space-y-2 overflow-y-auto">
                   {knowledgeBases.map((kb) => (
                     <button
                       key={kb.id}
                       onClick={() => handleImport(kb.id)}
-                      className="w-full p-4 border border-border rounded-lg hover:bg-accent text-left"
+                      className="border-border hover:bg-accent w-full rounded-lg border p-4 text-left"
                     >
-                      <div className="font-medium text-foreground">{kb.name}</div>
+                      <div className="text-foreground font-medium">
+                        {kb.name}
+                      </div>
                       {kb.description && (
-                        <div className="text-sm text-muted-foreground">{kb.description}</div>
+                        <div className="text-muted-foreground text-sm">
+                          {kb.description}
+                        </div>
                       )}
                     </button>
                   ))}
@@ -430,7 +441,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={() => setShowImportModal(false)}
-                  className="px-4 py-2 border border-border rounded-lg hover:bg-accent text-foreground"
+                  className="border-border hover:bg-accent text-foreground rounded-lg border px-4 py-2"
                 >
                   取消
                 </button>

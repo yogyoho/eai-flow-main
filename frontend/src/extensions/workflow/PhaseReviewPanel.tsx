@@ -13,7 +13,10 @@ interface PhaseReviewPanelProps {
   phaseNode: string;
 }
 
-export function PhaseReviewPanel({ projectId, phaseNode }: PhaseReviewPanelProps) {
+export function PhaseReviewPanel({
+  projectId,
+  phaseNode,
+}: PhaseReviewPanelProps) {
   const [status, setStatus] = useState<ReviewStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
@@ -28,22 +31,29 @@ export function PhaseReviewPanel({ projectId, phaseNode }: PhaseReviewPanelProps
   }, [projectId, phaseNode]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
-  if (loading) return <div className="p-4 text-sm text-muted-foreground">加载审核状态...</div>;
+  if (loading)
+    return (
+      <div className="text-muted-foreground p-4 text-sm">加载审核状态...</div>
+    );
   if (!status) return null;
 
-  const chapterReviews = status.reviews.filter((r) => r.reviewType === "chapter");
-  const dimensionReviews = status.reviews.filter((r) => r.reviewType === "dimension");
+  const chapterReviews = status.reviews.filter(
+    (r) => r.reviewType === "chapter",
+  );
+  const dimensionReviews = status.reviews.filter(
+    (r) => r.reviewType === "dimension",
+  );
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4 p-4">
       <div className="flex items-center justify-between">
         <div className="text-sm font-semibold">审核进度</div>
         <button
           onClick={() => setShowAssignDialog(true)}
-          className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
+          className="bg-primary text-primary-foreground rounded px-3 py-1 text-xs hover:opacity-90"
         >
           分配审核人
         </button>
@@ -51,14 +61,18 @@ export function PhaseReviewPanel({ projectId, phaseNode }: PhaseReviewPanelProps
 
       {/* Progress bar */}
       <div className="space-y-1">
-        <div className="flex justify-between text-xs text-muted-foreground">
-          <span>通过 {status.approved}/{status.total}</span>
-          <span>{status.rejected} 退回 · {status.pending} 待审</span>
+        <div className="text-muted-foreground flex justify-between text-xs">
+          <span>
+            通过 {status.approved}/{status.total}
+          </span>
+          <span>
+            {status.rejected} 退回 · {status.pending} 待审
+          </span>
         </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
+        <div className="bg-muted h-2 overflow-hidden rounded-full">
           {status.total > 0 && (
             <div
-              className="h-full bg-green-500 rounded-full transition-all"
+              className="h-full rounded-full bg-green-500 transition-all"
               style={{ width: `${(status.approved / status.total) * 100}%` }}
             />
           )}
@@ -68,7 +82,9 @@ export function PhaseReviewPanel({ projectId, phaseNode }: PhaseReviewPanelProps
       {/* Chapter reviews */}
       {chapterReviews.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground">章节审核</div>
+          <div className="text-muted-foreground text-xs font-semibold">
+            章节审核
+          </div>
           {chapterReviews.map((r) => (
             <ChapterReviewCard key={r.id} review={r} onAction={refresh} />
           ))}
@@ -78,7 +94,9 @@ export function PhaseReviewPanel({ projectId, phaseNode }: PhaseReviewPanelProps
       {/* Dimension reviews */}
       {dimensionReviews.length > 0 && (
         <div className="space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground">维度审核</div>
+          <div className="text-muted-foreground text-xs font-semibold">
+            维度审核
+          </div>
           {dimensionReviews.map((r) => (
             <DimensionReviewCard key={r.id} review={r} />
           ))}
@@ -86,7 +104,7 @@ export function PhaseReviewPanel({ projectId, phaseNode }: PhaseReviewPanelProps
       )}
 
       {status.reviews.length === 0 && (
-        <div className="text-xs text-muted-foreground text-center py-4">
+        <div className="text-muted-foreground py-4 text-center text-xs">
           尚未分配审核人，点击上方按钮开始分配
         </div>
       )}

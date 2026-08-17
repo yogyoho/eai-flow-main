@@ -33,14 +33,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  useClaimCustomer,
-  useCreateCustomer,
-  useCustomers,
-  useMergeCustomers,
-  useResolveCustomers,
-  useUpdateCustomer,
-} from "@/extensions/spare-parts/hooks";
-import { EmptyRow, PageHeader } from "@/extensions/spare-parts/components/PageHeader";
+  EmptyRow,
+  PageHeader,
+} from "@/extensions/spare-parts/components/PageHeader";
 import {
   Table,
   TableBody,
@@ -49,6 +44,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/spare-parts/components/ui/table";
+import {
+  useClaimCustomer,
+  useCreateCustomer,
+  useCustomers,
+  useMergeCustomers,
+  useResolveCustomers,
+  useUpdateCustomer,
+} from "@/extensions/spare-parts/hooks";
 import type { CspCustomer } from "@/extensions/spare-parts/types";
 
 const STATUS_TONE: Record<string, string> = {
@@ -81,7 +84,7 @@ export function CustomersView() {
     status: status || undefined,
     limit: 200,
   });
-  const customers = data?.items ?? [];
+  const customers = useMemo(() => data?.items ?? [], [data]);
 
   // --- 多选合并 ---
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -91,12 +94,20 @@ export function CustomersView() {
   // --- 新建 / 编辑(共用表单) ---
   type EditState = { id: string | null; canonical: string; aliases: string };
   const [editOpen, setEditOpen] = useState(false);
-  const [edit, setEdit] = useState<EditState>({ id: null, canonical: "", aliases: "" });
+  const [edit, setEdit] = useState<EditState>({
+    id: null,
+    canonical: "",
+    aliases: "",
+  });
   const createMut = useCreateCustomer();
   const updateMut = useUpdateCustomer();
 
   // --- 认领 ---
-  const [claim, setClaim] = useState<{ id: string; canonical: string; raw: string } | null>(null);
+  const [claim, setClaim] = useState<{
+    id: string;
+    canonical: string;
+    raw: string;
+  } | null>(null);
   const claimMut = useClaimCustomer();
 
   // --- 解析预览 ---
@@ -123,7 +134,11 @@ export function CustomersView() {
     setEditOpen(true);
   };
   const openEdit = (c: CspCustomer) => {
-    setEdit({ id: c.id, canonical: c.canonical_name, aliases: c.aliases.join("\n") });
+    setEdit({
+      id: c.id,
+      canonical: c.canonical_name,
+      aliases: c.aliases.join("\n"),
+    });
     setEditOpen(true);
   };
 
@@ -132,7 +147,10 @@ export function CustomersView() {
     if (!canonical) return;
     const aliases = parseAliases(edit.aliases);
     if (edit.id) {
-      updateMut.mutate({ id: edit.id, body: { canonical_name: canonical, aliases } });
+      updateMut.mutate({
+        id: edit.id,
+        body: { canonical_name: canonical, aliases },
+      });
     } else {
       createMut.mutate({ canonical_name: canonical, aliases });
     }
@@ -155,7 +173,7 @@ export function CustomersView() {
   };
 
   const submitClaim = () => {
-    if (!claim || !claim.raw.trim()) return;
+    if (!claim?.raw.trim()) return;
     claimMut.mutate(
       { id: claim.id, raw_name: claim.raw.trim() },
       { onSettled: () => setClaim(null) },
@@ -180,10 +198,16 @@ export function CustomersView() {
         actions={
           <>
             <Button variant="outline" size="sm" onClick={() => refetch()}>
-              <RefreshCw className={`mr-1.5 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`mr-1.5 h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              />
               刷新
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setResolveOpen(true)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setResolveOpen(true)}
+            >
               <Wand2 className="mr-1.5 h-4 w-4" />
               解析预览
             </Button>
@@ -198,7 +222,7 @@ export function CustomersView() {
       {/* 过滤 */}
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative w-72">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="搜索标准名或别名…"
             className="pl-8"
@@ -206,7 +230,10 @@ export function CustomersView() {
             onChange={(e) => setKeyword(e.target.value)}
           />
         </div>
-        <Select value={status || "all"} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>
+        <Select
+          value={status || "all"}
+          onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+        >
           <SelectTrigger className="w-40">
             <SelectValue placeholder="状态" />
           </SelectTrigger>
@@ -217,7 +244,9 @@ export function CustomersView() {
             <SelectItem value="merged">merged</SelectItem>
           </SelectContent>
         </Select>
-        <span className="text-sm text-muted-foreground">共 {customers.length} 个客户</span>
+        <span className="text-muted-foreground text-sm">
+          共 {customers.length} 个客户
+        </span>
       </div>
 
       {/* 合并栏(选中 ≥2 时浮现) */}
@@ -245,11 +274,17 @@ export function CustomersView() {
             >
               {mergeMut.isPending ? "合并中…" : "合并"}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setSelected(new Set())}
+            >
               取消
             </Button>
             {mergeMut.error ? (
-              <span className="text-xs text-destructive">合并失败:已重指文档与明细</span>
+              <span className="text-destructive text-xs">
+                合并失败:已重指文档与明细
+              </span>
             ) : null}
           </CardContent>
         </Card>
@@ -274,10 +309,15 @@ export function CustomersView() {
               {isLoading ? (
                 <EmptyRow colSpan={7}>加载中…</EmptyRow>
               ) : customers.length === 0 ? (
-                <EmptyRow colSpan={7}>暂无客户,先「新建客户」或上传文档后由管线自动认领</EmptyRow>
+                <EmptyRow colSpan={7}>
+                  暂无客户,先「新建客户」或上传文档后由管线自动认领
+                </EmptyRow>
               ) : (
                 customers.map((c) => (
-                  <TableRow key={c.id} className={c.status === "merged" ? "opacity-50" : ""}>
+                  <TableRow
+                    key={c.id}
+                    className={c.status === "merged" ? "opacity-50" : ""}
+                  >
                     <TableCell>
                       {c.status !== "merged" ? (
                         <Checkbox
@@ -286,8 +326,10 @@ export function CustomersView() {
                         />
                       ) : null}
                     </TableCell>
-                    <TableCell className="font-medium">{c.canonical_name}</TableCell>
-                    <TableCell className="max-w-md text-xs text-muted-foreground">
+                    <TableCell className="font-medium">
+                      {c.canonical_name}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground max-w-md text-xs">
                       {c.aliases.length > 0 ? c.aliases.join("、") : "—"}
                     </TableCell>
                     <TableCell>
@@ -297,14 +339,32 @@ export function CustomersView() {
                         {c.status}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{c.doc_count}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{c.source ?? "—"}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {c.doc_count}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs">
+                      {c.source ?? "—"}
+                    </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(c)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => openEdit(c)}
+                        >
                           编辑
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => setClaim({ id: c.id, canonical: c.canonical_name, raw: "" })}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            setClaim({
+                              id: c.id,
+                              canonical: c.canonical_name,
+                              raw: "",
+                            })
+                          }
+                        >
                           认领
                         </Button>
                       </div>
@@ -323,7 +383,8 @@ export function CustomersView() {
           <DialogHeader>
             <DialogTitle>{edit.id ? "编辑客户" : "新建客户"}</DialogTitle>
             <DialogDescription>
-              标准名为客户唯一标识;别名每行一个,匹配时大小写不敏感。OCR 解析出的脏名若命中任一别名即归到该客户。
+              标准名为客户唯一标识;别名每行一个,匹配时大小写不敏感。OCR
+              解析出的脏名若命中任一别名即归到该客户。
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2">
@@ -332,7 +393,9 @@ export function CustomersView() {
               <Input
                 id="cust-canonical"
                 value={edit.canonical}
-                onChange={(e) => setEdit({ ...edit, canonical: e.target.value })}
+                onChange={(e) =>
+                  setEdit({ ...edit, canonical: e.target.value })
+                }
                 placeholder="如:华东医药股份有限公司"
               />
             </div>
@@ -353,7 +416,11 @@ export function CustomersView() {
             </Button>
             <Button
               onClick={submitEdit}
-              disabled={!edit.canonical.trim() || createMut.isPending || updateMut.isPending}
+              disabled={
+                !edit.canonical.trim() ||
+                createMut.isPending ||
+                updateMut.isPending
+              }
             >
               {edit.id ? "保存" : "创建"}
             </Button>
@@ -367,7 +434,8 @@ export function CustomersView() {
           <DialogHeader>
             <DialogTitle>认领脏客户名 → {claim?.canonical}</DialogTitle>
             <DialogDescription>
-              把一个 OCR 识别出的脏客户名挂到「{claim?.canonical}」(作为新别名追加,去重)。已归到该客户的文档/明细不受影响。
+              把一个 OCR 识别出的脏客户名挂到「{claim?.canonical}
+              」(作为新别名追加,去重)。已归到该客户的文档/明细不受影响。
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-1.5 py-2">
@@ -375,7 +443,12 @@ export function CustomersView() {
             <Input
               id="claim-raw"
               value={claim?.raw ?? ""}
-              onChange={(e) => setClaim({ ...(claim as { id: string; canonical: string; raw: string }), raw: e.target.value })}
+              onChange={(e) =>
+                setClaim({
+                  ...(claim as { id: string; canonical: string; raw: string }),
+                  raw: e.target.value,
+                })
+              }
               placeholder="如:华东医药股份有限公哥"
             />
           </div>
@@ -383,7 +456,10 @@ export function CustomersView() {
             <Button variant="ghost" onClick={() => setClaim(null)}>
               取消
             </Button>
-            <Button onClick={submitClaim} disabled={!claim?.raw.trim() || claimMut.isPending}>
+            <Button
+              onClick={submitClaim}
+              disabled={!claim?.raw.trim() || claimMut.isPending}
+            >
               认领
             </Button>
           </DialogFooter>
@@ -396,7 +472,9 @@ export function CustomersView() {
           <DialogHeader>
             <DialogTitle>解析预览(只读)</DialogTitle>
             <DialogDescription>
-              粘贴一批 OCR 脏客户名(每行一个),预览它们能匹配到哪些已有客户。未匹配的会显示「未匹配」(将来由管线标为 pending,不会丢弃)。
+              粘贴一批 OCR
+              脏客户名(每行一个),预览它们能匹配到哪些已有客户。未匹配的会显示「未匹配」(将来由管线标为
+              pending,不会丢弃)。
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2 py-2">
@@ -406,7 +484,12 @@ export function CustomersView() {
               onChange={(e) => setResolveText(e.target.value)}
               placeholder={"每行一个脏客户名…"}
             />
-            <Button size="sm" className="self-start" onClick={submitResolve} disabled={resolveMut.isPending}>
+            <Button
+              size="sm"
+              className="self-start"
+              onClick={submitResolve}
+              disabled={resolveMut.isPending}
+            >
               {resolveMut.isPending ? "解析中…" : "预览匹配"}
             </Button>
           </div>
@@ -425,7 +508,10 @@ export function CustomersView() {
                       <TableCell className="text-sm">{r.raw_name}</TableCell>
                       <TableCell className="text-sm">
                         {r.customer_id ? (
-                          <span className="text-emerald-600">{custMap.get(r.customer_id) ?? r.customer_id.slice(0, 8)}</span>
+                          <span className="text-emerald-600">
+                            {custMap.get(r.customer_id) ??
+                              r.customer_id.slice(0, 8)}
+                          </span>
                         ) : (
                           <span className="text-amber-600">未匹配</span>
                         )}

@@ -56,8 +56,6 @@ import type {
   ChunkConfig,
   SampleReport,
   SampleReportListResponse,
-  KnowledgeBaseExtended,
-  CreateKnowledgeBaseRequestExtended,
   KnowledgeBaseStatus,
   RAGChatRequest,
   RAGChatResponse,
@@ -68,35 +66,38 @@ import type {
 
 // Folder types
 export interface FolderNode {
-  id: string
-  name: string
-  parent_id: string | null
-  project_id: string | null
-  owner_id: string
-  sort_order: number
-  is_system: boolean
-  doc_count: number
-  children: FolderNode[]
-  created_at: string
-  updated_at: string
+  id: string;
+  name: string;
+  parent_id: string | null;
+  project_id: string | null;
+  owner_id: string;
+  sort_order: number;
+  is_system: boolean;
+  doc_count: number;
+  children: FolderNode[];
+  created_at: string;
+  updated_at: string;
 }
 
 export interface FolderTreeResponse {
-  folders: FolderNode[]
+  folders: FolderNode[];
 }
 
 export interface FolderDeleteInfo {
-  folder_id: string
-  folder_name: string
-  subfolder_count: number
-  doc_count: number
+  folder_id: string;
+  folder_name: string;
+  subfolder_count: number;
+  doc_count: number;
 }
 
 const API_BASE = "/api/extensions";
 const KF_API_BASE = "/api/kf";
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
     super(message);
     this.name = "ApiError";
   }
@@ -121,13 +122,21 @@ function withCsrf(headers: HeadersInit, method?: string): HeadersInit {
   return headers;
 }
 
-async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function kfRequest<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const isFormData = options.body instanceof FormData;
-  const baseHeaders: Record<string, string> = isFormData ? {} : { "Content-Type": "application/json" };
-  const headers: HeadersInit = withCsrf({
-    ...baseHeaders,
-    ...options.headers,
-  }, options.method);
+  const baseHeaders: Record<string, string> = isFormData
+    ? {}
+    : { "Content-Type": "application/json" };
+  const headers: HeadersInit = withCsrf(
+    {
+      ...baseHeaders,
+      ...options.headers,
+    },
+    options.method,
+  );
 
   let response: Response;
   try {
@@ -139,7 +148,12 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
-    throw new ApiError(0, msg.includes("fetch") ? "Network connection failed, please check if backend is running" : msg);
+    throw new ApiError(
+      0,
+      msg.includes("fetch")
+        ? "Network connection failed, please check if backend is running"
+        : msg,
+    );
   }
 
   if (!response.ok) {
@@ -148,11 +162,15 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
     try {
       if (contentType?.includes("application/json")) {
         const error = await response.json();
+        // EAI note: 保留原 `join || message` 语义——全部 msg 为空时回退默认 message（`??` 会得到空串）
+        const detailMessages: string[] = Array.isArray(error.detail)
+          ? error.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean)
+          : [];
         message =
           typeof error.detail === "string"
             ? error.detail
-            : Array.isArray(error.detail)
-              ? error.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean).join("; ") || message
+            : detailMessages.length > 0
+              ? detailMessages.join("; ")
               : message;
       } else {
         const text = await response.text();
@@ -168,10 +186,13 @@ async function kfRequest<T>(path: string, options: RequestInit = {}): Promise<T>
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: HeadersInit = withCsrf({
-    "Content-Type": "application/json",
-    ...options.headers,
-  }, options.method);
+  const headers: HeadersInit = withCsrf(
+    {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    options.method,
+  );
 
   let response: Response;
   try {
@@ -182,7 +203,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
-    throw new ApiError(0, msg.includes("fetch") ? "Network connection failed, please check if backend is running" : msg);
+    throw new ApiError(
+      0,
+      msg.includes("fetch")
+        ? "Network connection failed, please check if backend is running"
+        : msg,
+    );
   }
 
   if (!response.ok) {
@@ -191,11 +217,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     try {
       if (contentType?.includes("application/json")) {
         const error = await response.json();
+        // EAI note: 保留原 `join || message` 语义——全部 msg 为空时回退默认 message（`??` 会得到空串）
+        const detailMessages: string[] = Array.isArray(error.detail)
+          ? error.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean)
+          : [];
         message =
           typeof error.detail === "string"
             ? error.detail
-            : Array.isArray(error.detail)
-              ? error.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean).join("; ") || message
+            : detailMessages.length > 0
+              ? detailMessages.join("; ")
               : message;
       } else {
         const text = await response.text();
@@ -216,7 +246,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 // ===== User API =====
 
 export const userApi = {
-  list: (params?: { skip?: number; limit?: number; keyword?: string; dept_id?: string; role_id?: string; status?: string }) => {
+  list: (params?: {
+    skip?: number;
+    limit?: number;
+    keyword?: string;
+    dept_id?: string;
+    role_id?: string;
+    status?: string;
+  }) => {
     const query = new URLSearchParams();
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
@@ -233,7 +270,10 @@ export const userApi = {
     request<User>("/users", { method: "POST", body: JSON.stringify(data) }),
 
   update: (id: string, data: UpdateUserRequest) =>
-    request<User>(`/users/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<User>(`/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   delete: (id: string) =>
     request<MessageResponse>(`/users/${id}`, { method: "DELETE" }),
@@ -246,12 +286,20 @@ export const userApi = {
 
   // Multi-department APIs
   getDepartments: (id: string) =>
-    request<{ dept_ids: string[]; primary_dept_id: string | null }>(`/users/${id}/departments`),
+    request<{ dept_ids: string[]; primary_dept_id: string | null }>(
+      `/users/${id}/departments`,
+    ),
 
   updateDepartments: (id: string, deptIds: string[], primaryDeptId?: string) =>
     request<{ dept_ids: string[]; primary_dept_id: string | null }>(
       `/users/${id}/departments`,
-      { method: "PUT", body: JSON.stringify({ dept_ids: deptIds, primary_dept_id: primaryDeptId }) }
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          dept_ids: deptIds,
+          primary_dept_id: primaryDeptId,
+        }),
+      },
     ),
 };
 
@@ -271,7 +319,10 @@ export const roleApi = {
     request<Role>("/roles", { method: "POST", body: JSON.stringify(data) }),
 
   update: (id: string, data: UpdateRoleRequest) =>
-    request<Role>(`/roles/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<Role>(`/roles/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   delete: (id: string) =>
     request<MessageResponse>(`/roles/${id}`, { method: "DELETE" }),
@@ -298,35 +349,45 @@ const PERM_API_BASE = "/api";
 
 export const permissionsApi = {
   getRegistry: async () => {
-    const res = await fetch(`${PERM_API_BASE}/permissions/registry`, { credentials: "include" });
+    const res = await fetch(`${PERM_API_BASE}/permissions/registry`, {
+      credentials: "include",
+    });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
     return res.json() as Promise<PermissionsRegistryResponse>;
   },
   listPolicies: async () => {
-    const res = await fetch(`${PERM_API_BASE}/policies`, { credentials: "include" });
+    const res = await fetch(`${PERM_API_BASE}/policies`, {
+      credentials: "include",
+    });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
     return res.json() as Promise<PolicyListResponse>;
   },
   createPolicy: async (data: PolicyCreateRequest) => {
     const res = await fetch(`${PERM_API_BASE}/policies`, {
       // EAI-CUSTOM: 裸 fetch 必须带 withCsrf —— 否则后端 CSRF 中间件 403（策略 UI 保存一直失败的根因）
-      method: "POST", headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
-      body: JSON.stringify(data), credentials: "include",
+      method: "POST",
+      headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
+      body: JSON.stringify(data),
+      credentials: "include",
     });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
     return res.json() as Promise<PolicyItem>;
   },
   updatePolicy: async (id: string, data: Partial<PolicyCreateRequest>) => {
     const res = await fetch(`${PERM_API_BASE}/policies/${id}`, {
-      method: "PUT", headers: withCsrf({ "Content-Type": "application/json" }, "PUT"),
-      body: JSON.stringify(data), credentials: "include",
+      method: "PUT",
+      headers: withCsrf({ "Content-Type": "application/json" }, "PUT"),
+      body: JSON.stringify(data),
+      credentials: "include",
     });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
     return res.json() as Promise<PolicyItem>;
   },
   deletePolicy: async (id: string) => {
     const res = await fetch(`${PERM_API_BASE}/policies/${id}`, {
-      method: "DELETE", headers: withCsrf({}, "DELETE"), credentials: "include",
+      method: "DELETE",
+      headers: withCsrf({}, "DELETE"),
+      credentials: "include",
     });
     if (!res.ok) throw new ApiError(res.status, res.statusText || "Not Found");
     return res.json() as Promise<MessageResponse>;
@@ -346,10 +407,16 @@ export const deptApi = {
   get: (id: string) => request<Department>(`/departments/${id}`),
 
   create: (data: CreateDepartmentRequest) =>
-    request<Department>("/departments", { method: "POST", body: JSON.stringify(data) }),
+    request<Department>("/departments", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   update: (id: string, data: UpdateDepartmentRequest) =>
-    request<Department>(`/departments/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<Department>(`/departments/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   delete: (id: string) =>
     request<MessageResponse>(`/departments/${id}`, { method: "DELETE" }),
@@ -361,7 +428,10 @@ export const projectApi = {
     const query = new URLSearchParams();
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
-    return request<{ projects: Array<{ id: string; name: string }>; total: number }>(`/projects?${query}`);
+    return request<{
+      projects: Array<{ id: string; name: string }>;
+      total: number;
+    }>(`/projects?${query}`);
   },
 };
 
@@ -378,10 +448,16 @@ export const kbApi = {
   get: (id: string) => request<KnowledgeBase>(`/knowledge-bases/${id}`),
 
   create: (data: CreateKnowledgeBaseRequest) =>
-    request<KnowledgeBase>("/knowledge-bases", { method: "POST", body: JSON.stringify(data) }),
+    request<KnowledgeBase>("/knowledge-bases", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   update: (id: string, data: UpdateKnowledgeBaseRequest) =>
-    request<KnowledgeBase>(`/knowledge-bases/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<KnowledgeBase>(`/knowledge-bases/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   delete: (id: string) =>
     request<MessageResponse>(`/knowledge-bases/${id}`, { method: "DELETE" }),
@@ -390,7 +466,9 @@ export const kbApi = {
     const query = new URLSearchParams();
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
-    return request<DocumentListResponse>(`/knowledge-bases/${kbId}/documents?${query}`);
+    return request<DocumentListResponse>(
+      `/knowledge-bases/${kbId}/documents?${query}`,
+    );
   },
 
   uploadDoc: (kbId: string, file: File, chunkConfig?: ChunkConfig) => {
@@ -407,6 +485,8 @@ export const kbApi = {
     }).then(async (res) => {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        // EAI note: 保留 `||` 语义——err.detail 为 ""（后端返回空 detail 错误体）时仍回退默认消息，`??` 不会
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- deliberate truthy fallback on untyped JSON field
         throw new ApiError(res.status, err.detail || "Upload failed");
       }
       return res.json() as Promise<Document>;
@@ -414,21 +494,33 @@ export const kbApi = {
   },
 
   deleteDoc: (kbId: string, docId: string) =>
-    request<MessageResponse>(`/knowledge-bases/${kbId}/documents/${docId}`, { method: "DELETE" }),
+    request<MessageResponse>(`/knowledge-bases/${kbId}/documents/${docId}`, {
+      method: "DELETE",
+    }),
 
-  listChunks: (kbId: string, docId: string, params?: { page?: number; size?: number }) => {
+  listChunks: (
+    kbId: string,
+    docId: string,
+    params?: { page?: number; size?: number },
+  ) => {
     const query = new URLSearchParams();
     if (params?.page) query.set("page", String(params.page));
     if (params?.size) query.set("size", String(params.size));
     return request<{
       total: number;
-      chunks: Array<{ id?: string; content?: string; document_id?: string; [k: string]: unknown }>;
+      chunks: Array<{
+        id?: string;
+        content?: string;
+        document_id?: string;
+        [k: string]: unknown;
+      }>;
       message?: string;
     }>(`/knowledge-bases/${kbId}/documents/${docId}/chunks?${query}`);
   },
 
   // Get knowledge base sync status
-  getStatus: (id: string) => request<KnowledgeBaseStatus>(`/knowledge-bases/${id}/status`),
+  getStatus: (id: string) =>
+    request<KnowledgeBaseStatus>(`/knowledge-bases/${id}/status`),
 
   // Chat with knowledge base
   chat: (id: string, data: RAGChatRequest) =>
@@ -446,17 +538,32 @@ export const kbApi = {
 
   // List available RAGFlow embedding models
   listEmbeddingModels: () =>
-    request<{ models: string[]; error?: string }>("/knowledge-bases/ragflow/embedding-models"),
+    request<{ models: string[]; error?: string }>(
+      "/knowledge-bases/ragflow/embedding-models",
+    ),
 
   // Access grants (EAI-CUSTOM Task 7)
   grants: {
-    list: (kbId: string) => request<KnowledgeBaseGrant[]>(`/knowledge-bases/${kbId}/grants`),
+    list: (kbId: string) =>
+      request<KnowledgeBaseGrant[]>(`/knowledge-bases/${kbId}/grants`),
     create: (kbId: string, data: KnowledgeBaseGrantCreate) =>
-      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants`, { method: "POST", body: JSON.stringify(data) }),
-    update: (kbId: string, grantId: string, data: { permission?: "read" | "write"; expires_at?: string | null }) =>
-      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "PATCH", body: JSON.stringify(data) }),
+      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (
+      kbId: string,
+      grantId: string,
+      data: { permission?: "read" | "write"; expires_at?: string | null },
+    ) =>
+      request<KnowledgeBaseGrant>(
+        `/knowledge-bases/${kbId}/grants/${grantId}`,
+        { method: "PATCH", body: JSON.stringify(data) },
+      ),
     remove: (kbId: string, grantId: string) =>
-      request<MessageResponse>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "DELETE" }),
+      request<MessageResponse>(`/knowledge-bases/${kbId}/grants/${grantId}`, {
+        method: "DELETE",
+      }),
   },
 };
 
@@ -471,19 +578,78 @@ export const conversationApi = {
     return request<ConversationListResponse>(`/conversations?${query}`);
   },
 
-  get: (threadId: string) => request<Conversation>(`/conversations/${threadId}`),
+  get: (threadId: string) =>
+    request<Conversation>(`/conversations/${threadId}`),
 
   create: (data?: CreateConversationRequest) =>
-    request<Conversation>("/conversations", { method: "POST", body: JSON.stringify(data || {}) }),
+    request<Conversation>("/conversations", {
+      method: "POST",
+      body: JSON.stringify(data ?? {}),
+    }),
 
   update: (threadId: string, data: UpdateConversationRequest) =>
-    request<Conversation>(`/conversations/${threadId}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<Conversation>(`/conversations/${threadId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   delete: (threadId: string, hard?: boolean) =>
-    request<MessageResponse>(`/conversations/${threadId}?hard=${hard || false}`, { method: "DELETE" }),
+    request<MessageResponse>(
+      `/conversations/${threadId}?hard=${hard ?? false}`,
+      { method: "DELETE" },
+    ),
 };
 
 // ===== Document Manager API =====
+
+// Mirrors backend ShareResponse (app/extensions/docmgr/share_schemas.py)
+interface DocmgrShare {
+  id: string;
+  document_id: string;
+  share_type: string;
+  share_target_id: string | null;
+  share_token: string | null;
+  permission: string;
+  created_by: string;
+  created_at: string;
+}
+
+// Mirrors ShareService.get_shared_document payload
+interface DocmgrSharedDocument {
+  document: {
+    id: string;
+    title: string;
+    content: string | null;
+    doc_type: string;
+  };
+  permission: string;
+  shared_by: string;
+}
+
+// Mirrors ShareService.list_shared_with_me payload
+interface DocmgrSharedWithMeItem extends DocmgrSharedDocument {
+  document: {
+    id: string;
+    title: string;
+    content: string | null;
+    doc_type: string;
+    folder: string | null;
+    updated_at: string;
+  };
+  share_type: string;
+}
+
+// Mirrors backend AIReviewResponse (app/extensions/docmgr/collab_schemas.py)
+interface DocmgrAIReviewResponse {
+  review_id: string;
+  comments: Array<{
+    block_id: string | null;
+    comment: string;
+    severity: string;
+  }>;
+  overall_score: number | null;
+  summary: string | null;
+}
 
 export const docmgrApi = {
   list: (params?: {
@@ -501,8 +667,10 @@ export const docmgrApi = {
     const query = new URLSearchParams();
     if (params?.folder) query.set("folder", params.folder);
     if (params?.folder_id) query.set("folder_id", params.folder_id);
-    if (params?.starred !== undefined) query.set("starred", String(params.starred));
-    if (params?.shared !== undefined) query.set("shared", String(params.shared));
+    if (params?.starred !== undefined)
+      query.set("starred", String(params.starred));
+    if (params?.shared !== undefined)
+      query.set("shared", String(params.shared));
     if (params?.q) query.set("q", params.q);
     if (params?.doc_type) query.set("doc_type", params.doc_type);
     if (params?.project_scope) query.set("project_scope", params.project_scope);
@@ -515,16 +683,27 @@ export const docmgrApi = {
   get: (id: string) => request<AIDocument>(`/docmgr/documents/${id}`),
 
   create: (data: CreateAIDocumentRequest) =>
-    request<AIDocument>("/docmgr/documents", { method: "POST", body: JSON.stringify(data) }),
+    request<AIDocument>("/docmgr/documents", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   update: (id: string, data: UpdateAIDocumentRequest) =>
-    request<AIDocument>(`/docmgr/documents/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+    request<AIDocument>(`/docmgr/documents/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   delete: (id: string) =>
     request<MessageResponse>(`/docmgr/documents/${id}`, { method: "DELETE" }),
 
   preview: (id: string) =>
-    request<{ content: string | null; doc_type: string; file_mime?: string; file_size?: number }>(`/docmgr/documents/${id}/preview`),
+    request<{
+      content: string | null;
+      doc_type: string;
+      file_mime?: string;
+      file_size?: number;
+    }>(`/docmgr/documents/${id}/preview`),
 
   listFolders: (params?: { project_scope?: string }) => {
     const query = new URLSearchParams();
@@ -570,7 +749,10 @@ export const docmgrApi = {
 
     if (!response.ok) {
       const err = await response.text().catch(() => "Unknown error");
-      throw new ApiError(response.status, `AI stream failed: ${response.status} ${err}`);
+      throw new ApiError(
+        response.status,
+        `AI stream failed: ${response.status} ${err}`,
+      );
     }
 
     const reader = response.body?.getReader();
@@ -598,7 +780,9 @@ export const docmgrApi = {
               fullText += parsed.token;
               try {
                 onToken(parsed.token);
-              } catch { /* swallow callback errors to keep reader alive */ }
+              } catch {
+                /* swallow callback errors to keep reader alive */
+              }
             }
             if (parsed.error) {
               throw new ApiError(500, parsed.error);
@@ -610,20 +794,25 @@ export const docmgrApi = {
         }
       }
     } finally {
-      reader.cancel();
+      void reader.cancel();
     }
 
     return fullText;
   },
 
-  syncThreadFiles: async (threadId: string): Promise<{ synced: number; skipped: number }> => {
+  syncThreadFiles: async (
+    threadId: string,
+  ): Promise<{ synced: number; skipped: number }> => {
     return request("/docmgr/sync-thread-files", {
       method: "POST",
       body: JSON.stringify({ thread_id: threadId }),
     });
   },
 
-  moveDocument: async (id: string, data: { folder?: string; toDocuments?: boolean }): Promise<AIDocument> => {
+  moveDocument: async (
+    id: string,
+    data: { folder?: string; toDocuments?: boolean },
+  ): Promise<AIDocument> => {
     return request(`/docmgr/documents/${id}/move`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -644,18 +833,28 @@ export const docmgrApi = {
     });
   },
 
-  previewDocument: async (id: string): Promise<{ content: string | null; doc_type: string; file_mime?: string; file_size?: number }> => {
+  previewDocument: async (
+    id: string,
+  ): Promise<{
+    content: string | null;
+    doc_type: string;
+    file_mime?: string;
+    file_size?: number;
+  }> => {
     return request(`/docmgr/documents/${id}/preview`);
   },
 
-  shareDocument: async (docId: string, data: { share_type: string; share_target_id?: string; permission: string }): Promise<any> => {
+  shareDocument: async (
+    docId: string,
+    data: { share_type: string; share_target_id?: string; permission: string },
+  ): Promise<DocmgrShare> => {
     return request(`/docmgr/documents/${docId}/share`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  listShares: async (docId: string): Promise<any[]> => {
+  listShares: async (docId: string): Promise<DocmgrShare[]> => {
     return request(`/docmgr/documents/${docId}/shares`);
   },
 
@@ -663,11 +862,13 @@ export const docmgrApi = {
     return request(`/docmgr/shares/${shareId}`, { method: "DELETE" });
   },
 
-  sharedWithMe: async (): Promise<any[]> => {
+  sharedWithMe: async (): Promise<DocmgrSharedWithMeItem[]> => {
     return request("/docmgr/shared-with-me");
   },
 
-  accessSharedDocument: async (token: string): Promise<any> => {
+  accessSharedDocument: async (
+    token: string,
+  ): Promise<DocmgrSharedDocument> => {
     return request(`/docmgr/shared/${token}`);
   },
 
@@ -677,14 +878,20 @@ export const docmgrApi = {
     return request(`/docmgr/documents/${docId}/comments`);
   },
 
-  createComment: async (docId: string, data: CommentCreateRequest): Promise<CollabComment> => {
+  createComment: async (
+    docId: string,
+    data: CommentCreateRequest,
+  ): Promise<CollabComment> => {
     return request(`/docmgr/documents/${docId}/comments`, {
       method: "POST",
       body: JSON.stringify(data),
     });
   },
 
-  updateComment: async (commentId: string, data: CommentUpdateRequest): Promise<CollabComment> => {
+  updateComment: async (
+    commentId: string,
+    data: CommentUpdateRequest,
+  ): Promise<CollabComment> => {
     return request(`/docmgr/comments/${commentId}`, {
       method: "PUT",
       body: JSON.stringify(data),
@@ -707,26 +914,47 @@ export const docmgrApi = {
     return request(`/docmgr/documents/${docId}/versions`);
   },
 
-  createVersion: async (docId: string, data?: VersionCreateRequest): Promise<CollabVersion> => {
+  createVersion: async (
+    docId: string,
+    data?: VersionCreateRequest,
+  ): Promise<CollabVersion> => {
     return request(`/docmgr/documents/${docId}/versions`, {
       method: "POST",
       body: JSON.stringify(data ?? {}),
     });
   },
 
-  getVersion: async (docId: string, version: number): Promise<CollabVersion> => {
+  getVersion: async (
+    docId: string,
+    version: number,
+  ): Promise<CollabVersion> => {
     return request(`/docmgr/documents/${docId}/versions/${version}`);
   },
 
-  restoreVersion: async (docId: string, version: number): Promise<{ version: number; message: string }> => {
-    return request(`/docmgr/documents/${docId}/versions/${version}/restore`, { method: "POST" });
+  restoreVersion: async (
+    docId: string,
+    version: number,
+  ): Promise<{ version: number; message: string }> => {
+    return request(`/docmgr/documents/${docId}/versions/${version}/restore`, {
+      method: "POST",
+    });
   },
 
-  diffVersions: async (docId: string, fromVer: number, toVer: number): Promise<VersionDiffResponse> => {
-    return request(`/docmgr/documents/${docId}/versions/diff?from=${fromVer}&to=${toVer}`);
+  diffVersions: async (
+    docId: string,
+    fromVer: number,
+    toVer: number,
+  ): Promise<VersionDiffResponse> => {
+    return request(
+      `/docmgr/documents/${docId}/versions/diff?from=${fromVer}&to=${toVer}`,
+    );
   },
 
-  aiReview: async (data: { doc_id: string; review_type: string; content?: string }): Promise<any> => {
+  aiReview: async (data: {
+    doc_id: string;
+    review_type: string;
+    content?: string;
+  }): Promise<DocmgrAIReviewResponse> => {
     return request(`/docmgr/documents/ai-review`, {
       method: "POST",
       body: JSON.stringify(data),
@@ -738,35 +966,91 @@ export const docmgrApi = {
     const qs = new URLSearchParams();
     if (params.skip != null) qs.set("skip", String(params.skip));
     if (params.limit != null) qs.set("limit", String(params.limit));
-    return request<{ threads: Array<{ thread_id: string; display_name: string; files: Array<{ name: string; rel_path: string; size: number; mime: string; modified_at: string; starred: boolean; shared: boolean }> }>; total: number; has_more: boolean }>(`/docmgr/personal-outputs${qs.toString() ? `?${qs}` : ""}`);
+    return request<{
+      threads: Array<{
+        thread_id: string;
+        display_name: string;
+        files: Array<{
+          name: string;
+          rel_path: string;
+          size: number;
+          mime: string;
+          modified_at: string;
+          starred: boolean;
+          shared: boolean;
+        }>;
+      }>;
+      total: number;
+      has_more: boolean;
+    }>(`/docmgr/personal-outputs${qs.toString() ? `?${qs}` : ""}`);
   },
 
-  togglePersonalStar: (threadId: string, data: { rel_path: string; starred: boolean }) =>
-    request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/star`, { method: "PUT", body: JSON.stringify(data) }),
+  togglePersonalStar: (
+    threadId: string,
+    data: { rel_path: string; starred: boolean },
+  ) =>
+    request<{ ok: boolean }>(
+      `/docmgr/personal-docs/${encodeURIComponent(threadId)}/star`,
+      { method: "PUT", body: JSON.stringify(data) },
+    ),
 
-  togglePersonalShare: (threadId: string, data: { rel_path: string; shared: boolean }) =>
-    request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/share`, { method: "PUT", body: JSON.stringify(data) }),
+  togglePersonalShare: (
+    threadId: string,
+    data: { rel_path: string; shared: boolean },
+  ) =>
+    request<{ ok: boolean }>(
+      `/docmgr/personal-docs/${encodeURIComponent(threadId)}/share`,
+      { method: "PUT", body: JSON.stringify(data) },
+    ),
 
   /** 写回线程 outputs/ 文件（编辑器保存）。 */
-  savePersonalContent: (threadId: string, data: { rel_path: string; content: string }) =>
-    request<{ ok: boolean }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`, { method: "PUT", body: JSON.stringify(data) }),
+  savePersonalContent: (
+    threadId: string,
+    data: { rel_path: string; content: string },
+  ) =>
+    request<{ ok: boolean }>(
+      `/docmgr/personal-docs/${encodeURIComponent(threadId)}/content`,
+      { method: "PUT", body: JSON.stringify(data) },
+    ),
 
   // ── C10 版本历史 ───────────────────────────────────────────────────
-  createPersonalVersion: (threadId: string, data: { rel_path: string; content: string; label?: string }) =>
-    request<{ ok: boolean; id: string }>(`/docmgr/personal-docs/${encodeURIComponent(threadId)}/versions`, { method: "POST", body: JSON.stringify(data) }),
+  createPersonalVersion: (
+    threadId: string,
+    data: { rel_path: string; content: string; label?: string },
+  ) =>
+    request<{ ok: boolean; id: string }>(
+      `/docmgr/personal-docs/${encodeURIComponent(threadId)}/versions`,
+      { method: "POST", body: JSON.stringify(data) },
+    ),
 
   listPersonalVersions: (threadId: string, relPath: string) =>
-    request<{ versions: Array<{ id: string; label: string | null; created_at: string; preview: string; content_length: number }> }>(
+    request<{
+      versions: Array<{
+        id: string;
+        label: string | null;
+        created_at: string;
+        preview: string;
+        content_length: number;
+      }>;
+    }>(
       `/docmgr/personal-docs/${encodeURIComponent(threadId)}/versions?rel_path=${encodeURIComponent(relPath)}`,
     ),
 
   getPersonalVersion: (versionId: string) =>
-    request<{ id: string; label: string | null; created_at: string; content: string }>(
-      `/docmgr/personal-docs/versions/${encodeURIComponent(versionId)}`,
-    ),
+    request<{
+      id: string;
+      label: string | null;
+      created_at: string;
+      content: string;
+    }>(`/docmgr/personal-docs/versions/${encodeURIComponent(versionId)}`),
 
   restorePersonalVersion: (versionId: string) =>
-    request<{ ok: boolean; content: string; thread_id: string; rel_path: string }>(
+    request<{
+      ok: boolean;
+      content: string;
+      thread_id: string;
+      rel_path: string;
+    }>(
       `/docmgr/personal-docs/versions/${encodeURIComponent(versionId)}/restore`,
       { method: "POST" },
     ),
@@ -788,7 +1072,10 @@ export const docmgrApi = {
     }>(`/docmgr/projects/${encodeURIComponent(projectId)}/outputs`),
 
   /** 读单个项目文件内容 + 当前 mtime（编辑器 seed；mtime 回传做乐观锁）。 */
-  readProjectOutput: (projectId: string, params: { thread_id: string; rel_path: string }) =>
+  readProjectOutput: (
+    projectId: string,
+    params: { thread_id: string; rel_path: string },
+  ) =>
     request<{ content: string; mtime: number }>(
       `/docmgr/projects/${encodeURIComponent(projectId)}/outputs/content?thread_id=${encodeURIComponent(params.thread_id)}&rel_path=${encodeURIComponent(params.rel_path)}`,
     ),
@@ -796,7 +1083,12 @@ export const docmgrApi = {
   /** 跨用户写回（编辑器保存，带 mtime 乐观锁；返回新 mtime 供下次写回）。 */
   saveProjectContent: (
     projectId: string,
-    data: { thread_id: string; rel_path: string; content: string; if_mtime?: number },
+    data: {
+      thread_id: string;
+      rel_path: string;
+      content: string;
+      if_mtime?: number;
+    },
   ) =>
     request<{ ok: boolean; mtime: number }>(
       `/docmgr/projects/${encodeURIComponent(projectId)}/outputs`,
@@ -830,10 +1122,17 @@ export const docmgrApi = {
       thread_id: string;
       rel_path: string;
       editor_user_id: string;
-    }>(`/docmgr/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}`),
+    }>(
+      `/docmgr/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}`,
+    ),
 
   restoreProjectVersion: (projectId: string, versionId: string) =>
-    request<{ ok: boolean; content: string; thread_id: string; rel_path: string }>(
+    request<{
+      ok: boolean;
+      content: string;
+      thread_id: string;
+      rel_path: string;
+    }>(
       `/docmgr/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(versionId)}/restore`,
       { method: "POST" },
     ),
@@ -842,35 +1141,46 @@ export const docmgrApi = {
 // ===== Folder API =====
 
 export const folderApi = {
-  getTree: async (params?: { project_id?: string; project_scope?: string; doc_type?: string }): Promise<FolderTreeResponse> => {
-    const searchParams = new URLSearchParams()
-    if (params?.project_id) searchParams.set("project_id", params.project_id)
-    if (params?.project_scope) searchParams.set("project_scope", params.project_scope)
-    if (params?.doc_type) searchParams.set("doc_type", params.doc_type)
-    const qs = searchParams.toString()
-    return request(`/docmgr/folders/tree${qs ? `?${qs}` : ""}`)
+  getTree: async (params?: {
+    project_id?: string;
+    project_scope?: string;
+    doc_type?: string;
+  }): Promise<FolderTreeResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params?.project_id) searchParams.set("project_id", params.project_id);
+    if (params?.project_scope)
+      searchParams.set("project_scope", params.project_scope);
+    if (params?.doc_type) searchParams.set("doc_type", params.doc_type);
+    const qs = searchParams.toString();
+    return request(`/docmgr/folders/tree${qs ? `?${qs}` : ""}`);
   },
 
-  create: async (data: { name: string; parent_id?: string; project_id?: string }): Promise<FolderNode> => {
+  create: async (data: {
+    name: string;
+    parent_id?: string;
+    project_id?: string;
+  }): Promise<FolderNode> => {
     return request("/docmgr/folders", {
       method: "POST",
       body: JSON.stringify(data),
-    })
+    });
   },
 
   rename: async (folderId: string, name: string): Promise<FolderNode> => {
     return request(`/docmgr/folders/${folderId}`, {
       method: "PATCH",
       body: JSON.stringify({ name }),
-    })
+    });
   },
 
   getDeleteInfo: async (folderId: string): Promise<FolderDeleteInfo> => {
-    return request(`/docmgr/folders/${folderId}/delete-info`)
+    return request(`/docmgr/folders/${folderId}/delete-info`);
   },
 
   delete: async (folderId: string): Promise<void> => {
-    await request<{ message: string }>(`/docmgr/folders/${folderId}`, { method: "DELETE" })
+    await request<{ message: string }>(`/docmgr/folders/${folderId}`, {
+      method: "DELETE",
+    });
   },
 };
 
@@ -884,18 +1194,27 @@ interface ModelInfo {
   supports_reasoning_effort?: boolean;
 }
 
-async function fetchApi<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers: HeadersInit = withCsrf({
-    "Content-Type": "application/json",
-    ...options.headers,
-  }, options.method);
+async function fetchApi<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const headers: HeadersInit = withCsrf(
+    {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    options.method,
+  );
   let response: Response;
   try {
-    response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_BASE_URL || ""}${path}`, {
-      ...options,
-      headers,
-      credentials: "include",
-    });
+    response = await fetch(
+      `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL ?? ""}${path}`,
+      {
+        ...options,
+        headers,
+        credentials: "include",
+      },
+    );
   } catch {
     throw new ApiError(0, "Network connection failed");
   }
@@ -1018,11 +1337,12 @@ export const scraperApi = {
   listProviders: () =>
     request<{ providers: ProviderInfo[] }>("/web-scraper/providers"),
 
-  listSchemas: () =>
-    request<{ schemas: SchemaInfo[] }>("/web-scraper/schemas"),
+  listSchemas: () => request<{ schemas: SchemaInfo[] }>("/web-scraper/schemas"),
 
   cancel: (taskId: string) =>
-    request<MessageResponse>(`/web-scraper/cancel/${taskId}`, { method: "POST" }),
+    request<MessageResponse>(`/web-scraper/cancel/${taskId}`, {
+      method: "POST",
+    }),
 
   getResult: (taskId: string) =>
     request<{
@@ -1034,11 +1354,16 @@ export const scraperApi = {
       structured_data?: Record<string, unknown>;
     }>(`/web-scraper/result/${taskId}`),
 
-  listDrafts: (params?: { status?: string; page?: number; page_size?: number }) => {
+  listDrafts: (params?: {
+    status?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
     const query = new URLSearchParams();
     if (params?.status) query.set("status", params.status);
     if (params?.page !== undefined) query.set("page", String(params.page));
-    if (params?.page_size !== undefined) query.set("page_size", String(params.page_size));
+    if (params?.page_size !== undefined)
+      query.set("page_size", String(params.page_size));
     return request<ScrapDraftListResponse>(`/web-scraper/drafts?${query}`);
   },
 
@@ -1067,11 +1392,16 @@ export const scraperApi = {
     }),
 
   // Task History
-  listTasks: (params?: { status?: string; page?: number; page_size?: number }) => {
+  listTasks: (params?: {
+    status?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
     const query = new URLSearchParams();
     if (params?.status) query.set("status", params.status);
     if (params?.page !== undefined) query.set("page", String(params.page));
-    if (params?.page_size !== undefined) query.set("page_size", String(params.page_size));
+    if (params?.page_size !== undefined)
+      query.set("page_size", String(params.page_size));
     return request<{
       tasks: {
         task_id: string;
@@ -1106,22 +1436,38 @@ export const scraperApi = {
       prompt?: string;
       result?: string;
       structured_data?: Record<string, unknown>;
-      logs: { type: string; level?: string; message?: string; content?: string }[];
+      logs: {
+        type: string;
+        level?: string;
+        message?: string;
+        content?: string;
+      }[];
       draft_id?: string;
     }>(`/web-scraper/tasks/${taskId}`),
 
-  rerunTask: (taskId: string, overrides?: { provider?: string; schema_name?: string; llm_model?: string }) =>
-    request<{ task_id: string; status: string; message: string }>(`/web-scraper/tasks/${taskId}/rerun`, {
-      method: "POST",
-      body: JSON.stringify(overrides || {}),
-    }),
+  rerunTask: (
+    taskId: string,
+    overrides?: { provider?: string; schema_name?: string; llm_model?: string },
+  ) =>
+    request<{ task_id: string; status: string; message: string }>(
+      `/web-scraper/tasks/${taskId}/rerun`,
+      {
+        method: "POST",
+        body: JSON.stringify(overrides ?? {}),
+      },
+    ),
 
   // Data Sources
-  listSources: (params?: { category?: string; page?: number; page_size?: number }) => {
+  listSources: (params?: {
+    category?: string;
+    page?: number;
+    page_size?: number;
+  }) => {
     const query = new URLSearchParams();
     if (params?.category) query.set("category", params.category);
     if (params?.page !== undefined) query.set("page", String(params.page));
-    if (params?.page_size !== undefined) query.set("page_size", String(params.page_size));
+    if (params?.page_size !== undefined)
+      query.set("page_size", String(params.page_size));
     return request<{
       sources: {
         id: string;
@@ -1182,20 +1528,30 @@ export const scraperApi = {
     }>(`/web-scraper/sources/${id}`),
 
   updateSource: (id: string, data: Record<string, unknown>) =>
-    request<{ id: string; name: string; [key: string]: unknown }>(`/web-scraper/sources/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(data),
-    }),
+    request<{ id: string; name: string; [key: string]: unknown }>(
+      `/web-scraper/sources/${id}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(data),
+      },
+    ),
 
   deleteSource: (id: string) =>
-    request<{ message: string; success: boolean }>(`/web-scraper/sources/${id}`, { method: "DELETE" }),
+    request<{ message: string; success: boolean }>(
+      `/web-scraper/sources/${id}`,
+      { method: "DELETE" },
+    ),
 };
 
 // ===== Knowledge Factory API =====
 
 export const kfApi = {
   // Knowledge base
-  listKnowledgeBases: (params?: { skip?: number; limit?: number; kb_type?: string }) => {
+  listKnowledgeBases: (params?: {
+    skip?: number;
+    limit?: number;
+    kb_type?: string;
+  }) => {
     const query = new URLSearchParams();
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
@@ -1204,14 +1560,19 @@ export const kfApi = {
   },
 
   createKnowledgeBase: (data: CreateKnowledgeBaseRequest) =>
-    request<KnowledgeBase>("/knowledge-bases", { method: "POST", body: JSON.stringify(data) }),
+    request<KnowledgeBase>("/knowledge-bases", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   // Documents
   listDocs: (kbId: string, params?: { skip?: number; limit?: number }) => {
     const query = new URLSearchParams();
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
-    return request<DocumentListResponse>(`/knowledge-bases/${kbId}/documents?${query}`);
+    return request<DocumentListResponse>(
+      `/knowledge-bases/${kbId}/documents?${query}`,
+    );
   },
 
   uploadDoc: (kbId: string, file: File, chunkConfig?: ChunkConfig) => {
@@ -1228,6 +1589,8 @@ export const kfApi = {
     }).then(async (res) => {
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
+        // EAI note: 保留 `||` 语义——err.detail 为 ""（后端返回空 detail 错误体）时仍回退默认消息，`??` 不会
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- deliberate truthy fallback on untyped JSON field
         throw new ApiError(res.status, err.detail || "Upload failed");
       }
       return res.json() as Promise<SampleReport>;
@@ -1235,17 +1598,32 @@ export const kfApi = {
   },
 
   deleteDoc: (kbId: string, docId: string) =>
-    request<MessageResponse>(`/knowledge-bases/${kbId}/documents/${docId}`, { method: "DELETE" }),
+    request<MessageResponse>(`/knowledge-bases/${kbId}/documents/${docId}`, {
+      method: "DELETE",
+    }),
 
   // Access grants (EAI-CUSTOM Task 7)
   grants: {
-    list: (kbId: string) => request<KnowledgeBaseGrant[]>(`/knowledge-bases/${kbId}/grants`),
+    list: (kbId: string) =>
+      request<KnowledgeBaseGrant[]>(`/knowledge-bases/${kbId}/grants`),
     create: (kbId: string, data: KnowledgeBaseGrantCreate) =>
-      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants`, { method: "POST", body: JSON.stringify(data) }),
-    update: (kbId: string, grantId: string, data: { permission?: "read" | "write"; expires_at?: string | null }) =>
-      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "PATCH", body: JSON.stringify(data) }),
+      request<KnowledgeBaseGrant>(`/knowledge-bases/${kbId}/grants`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (
+      kbId: string,
+      grantId: string,
+      data: { permission?: "read" | "write"; expires_at?: string | null },
+    ) =>
+      request<KnowledgeBaseGrant>(
+        `/knowledge-bases/${kbId}/grants/${grantId}`,
+        { method: "PATCH", body: JSON.stringify(data) },
+      ),
     remove: (kbId: string, grantId: string) =>
-      request<MessageResponse>(`/knowledge-bases/${kbId}/grants/${grantId}`, { method: "DELETE" }),
+      request<MessageResponse>(`/knowledge-bases/${kbId}/grants/${grantId}`, {
+        method: "DELETE",
+      }),
   },
 
   // Batch upload
@@ -1253,7 +1631,7 @@ export const kfApi = {
     kbId: string,
     files: File[],
     chunkConfig?: ChunkConfig,
-    onProgress?: (current: number, total: number) => void
+    onProgress?: (current: number, total: number) => void,
   ) => {
     const results: SampleReport[] = [];
     for (let i = 0; i < files.length; i++) {
@@ -1278,23 +1656,32 @@ export const kfApi = {
     if (params?.skip) query.set("skip", String(params.skip));
     if (params?.limit) query.set("limit", String(params.limit));
     if (params?.status) query.set("status", params.status);
-    return request<SampleReportListResponse>(`/knowledge-factory/reports?${query}`);
+    return request<SampleReportListResponse>(
+      `/knowledge-factory/reports?${query}`,
+    );
   },
 
   getSampleReport: (reportId: string) =>
     request<SampleReport>(`/knowledge-factory/reports/${reportId}`),
 
-  updateSampleReport: (reportId: string, data: { quality_score?: number; template_version?: string }) =>
+  updateSampleReport: (
+    reportId: string,
+    data: { quality_score?: number; template_version?: string },
+  ) =>
     request<SampleReport>(`/knowledge-factory/reports/${reportId}`, {
       method: "PUT",
       body: JSON.stringify(data),
     }),
 
   deleteSampleReport: (reportId: string) =>
-    request<MessageResponse>(`/knowledge-factory/reports/${reportId}`, { method: "DELETE" }),
+    request<MessageResponse>(`/knowledge-factory/reports/${reportId}`, {
+      method: "DELETE",
+    }),
 
   syncReportStatus: (reportId: string) =>
-    request<{ status: string; progress?: number }>(`/knowledge-factory/reports/${reportId}/sync`),
+    request<{ status: string; progress?: number }>(
+      `/knowledge-factory/reports/${reportId}/sync`,
+    ),
 
   // ============== Knowledge Factory: Extraction ==============
 
@@ -1302,44 +1689,99 @@ export const kfApi = {
   listDomains: () =>
     kfRequest<{ domains: ExtractionDomain[]; total: number }>("/domains"),
 
-  updateDomain: (domainId: string, data: { name?: string; description?: string; parent_domain?: string; standard_chapters?: Record<string, unknown>; industry?: string; report_type?: string }) =>
-    kfRequest<ExtractionDomain>(`/domains/${domainId}`, { method: "PUT", body: JSON.stringify(data) }),
+  updateDomain: (
+    domainId: string,
+    data: {
+      name?: string;
+      description?: string;
+      parent_domain?: string;
+      standard_chapters?: Record<string, unknown>;
+      industry?: string;
+      report_type?: string;
+    },
+  ) =>
+    kfRequest<ExtractionDomain>(`/domains/${domainId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   deleteDomain: (domainId: string) =>
-    kfRequest<{ message: string }>(`/domains/${domainId}`, { method: "DELETE" }),
+    kfRequest<{ message: string }>(`/domains/${domainId}`, {
+      method: "DELETE",
+    }),
 
-  createDomain: (data: { id: string; name: string; description?: string; standard_chapters?: Record<string, unknown>; industry?: string; report_type?: string }) =>
-    kfRequest<ExtractionDomain>("/domains", { method: "POST", body: JSON.stringify(data) }),
+  createDomain: (data: {
+    id: string;
+    name: string;
+    description?: string;
+    standard_chapters?: Record<string, unknown>;
+    industry?: string;
+    report_type?: string;
+  }) =>
+    kfRequest<ExtractionDomain>("/domains", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   inferChapters: (file: File, maxDepth = 3) => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("max_depth", String(maxDepth));
-    return kfRequest<{ sections: Array<{ id: string; title: string; level?: number; required?: boolean; purpose?: string; children?: unknown[] }> }>(
-      "/domains/infer-chapters",
-      { method: "POST", body: formData },
-    );
+    return kfRequest<{
+      sections: Array<{
+        id: string;
+        title: string;
+        level?: number;
+        required?: boolean;
+        purpose?: string;
+        children?: unknown[];
+      }>;
+    }>("/domains/infer-chapters", { method: "POST", body: formData });
   },
 
   // Dictionaries
   listDictCategories: () =>
-    kfRequest<{ category: string; label: string; count: number }[]>("/dictionaries/categories"),
+    kfRequest<{ category: string; label: string; count: number }[]>(
+      "/dictionaries/categories",
+    ),
 
-  listDictItems: (category: string, params?: { page?: number; limit?: number }) => {
+  listDictItems: (
+    category: string,
+    params?: { page?: number; limit?: number },
+  ) => {
     const query = new URLSearchParams();
     if (params?.page) query.set("page", String(params.page));
     if (params?.limit) query.set("limit", String(params.limit));
-    return kfRequest<{ items: DictItemResponse[]; total: number }>(`/dictionaries/${category}?${query}`);
+    return kfRequest<{ items: DictItemResponse[]; total: number }>(
+      `/dictionaries/${category}?${query}`,
+    );
   },
 
-  createDictItem: (data: { id: string; category: string; label: string; sort_order?: number; enabled?: boolean }) =>
-    kfRequest<DictItemResponse>("/dictionaries", { method: "POST", body: JSON.stringify(data) }),
+  createDictItem: (data: {
+    id: string;
+    category: string;
+    label: string;
+    sort_order?: number;
+    enabled?: boolean;
+  }) =>
+    kfRequest<DictItemResponse>("/dictionaries", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
-  updateDictItem: (itemId: string, data: { label?: string; sort_order?: number; enabled?: boolean }) =>
-    kfRequest<DictItemResponse>(`/dictionaries/${itemId}`, { method: "PUT", body: JSON.stringify(data) }),
+  updateDictItem: (
+    itemId: string,
+    data: { label?: string; sort_order?: number; enabled?: boolean },
+  ) =>
+    kfRequest<DictItemResponse>(`/dictionaries/${itemId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   deleteDictItem: (itemId: string) =>
-    kfRequest<{ message: string }>(`/dictionaries/${itemId}`, { method: "DELETE" }),
+    kfRequest<{ message: string }>(`/dictionaries/${itemId}`, {
+      method: "DELETE",
+    }),
 
   // Rule dictionaries (dynamic from business dictionary DB, fallback to seed)
   getRuleDictionaries: () =>
@@ -1353,7 +1795,10 @@ export const kfApi = {
 
   // Extraction tasks
   createTask: (data: ExtractionTaskCreate) =>
-    kfRequest<ExtractionTaskResponse>("/extraction/tasks", { method: "POST", body: JSON.stringify(data) }),
+    kfRequest<ExtractionTaskResponse>("/extraction/tasks", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   listTasks: (params?: { page?: number; limit?: number; status?: string }) => {
     const query = new URLSearchParams();
@@ -1367,23 +1812,36 @@ export const kfApi = {
     kfRequest<ExtractionTaskResponse>(`/extraction/tasks/${taskId}`),
 
   pauseTask: (taskId: string) =>
-    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}/pause`, { method: "POST" }),
+    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}/pause`, {
+      method: "POST",
+    }),
 
   resumeTask: (taskId: string) =>
-    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}/resume`, { method: "POST" }),
+    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}/resume`, {
+      method: "POST",
+    }),
 
   cancelTask: (taskId: string) =>
-    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}/cancel`, { method: "POST" }),
+    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}/cancel`, {
+      method: "POST",
+    }),
 
   rerunTask: (taskId: string) =>
-    kfRequest<ExtractionTaskResponse>(`/extraction/tasks/${taskId}/rerun`, { method: "POST" }),
+    kfRequest<ExtractionTaskResponse>(`/extraction/tasks/${taskId}/rerun`, {
+      method: "POST",
+    }),
 
   deleteTask: (taskId: string) =>
-    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}`, { method: "DELETE" }),
+    kfRequest<{ message: string }>(`/extraction/tasks/${taskId}`, {
+      method: "DELETE",
+    }),
 
   clearTasks: (statuses?: string[]) => {
     const params = statuses ? `?statuses=${statuses.join(",")}` : "";
-    return kfRequest<{ message: string; deleted_count: number }>(`/extraction/tasks${params}`, { method: "DELETE" });
+    return kfRequest<{ message: string; deleted_count: number }>(
+      `/extraction/tasks${params}`,
+      { method: "DELETE" },
+    );
   },
 
   // Template management
@@ -1402,26 +1860,42 @@ export const kfApi = {
   },
 
   createTemplate: (data: { name: string; domain: string }) =>
-    kfRequest<{ template_id: string; message: string }>("/templates", { method: "POST", body: JSON.stringify(data) }),
+    kfRequest<{ template_id: string; message: string }>("/templates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
 
   getTemplate: (templateId: string) =>
     kfRequest<TemplateDocument>(`/templates/${templateId}`),
 
   updateTemplate: (templateId: string, data: Partial<TemplateDocument>) =>
-    kfRequest<{ message: string; id: string }>(`/templates/${templateId}`, { method: "PUT", body: JSON.stringify(data) }),
+    kfRequest<{ message: string; id: string }>(`/templates/${templateId}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
 
   publishTemplate: (templateId: string) =>
-    kfRequest<{ message: string; id: string }>(`/templates/${templateId}/publish`, { method: "POST" }),
+    kfRequest<{ message: string; id: string }>(
+      `/templates/${templateId}/publish`,
+      { method: "POST" },
+    ),
 
   deleteTemplate: (templateId: string) =>
-    kfRequest<{ message: string }>(`/templates/${templateId}`, { method: "DELETE" }),
+    kfRequest<{ message: string }>(`/templates/${templateId}`, {
+      method: "DELETE",
+    }),
 
-  exportTemplate: (templateId: string) => `${KF_API_BASE}/templates/${templateId}/export`,
+  exportTemplate: (templateId: string) =>
+    `${KF_API_BASE}/templates/${templateId}/export`,
 
   getTemplateVersions: (templateId: string) =>
     kfRequest<TemplateVersionResponse[]>(`/templates/${templateId}/versions`),
 
-  rollbackTemplate: (templateId: string, versionId: string, changelog?: string) =>
+  rollbackTemplate: (
+    templateId: string,
+    versionId: string,
+    changelog?: string,
+  ) =>
     kfRequest<TemplateRollbackResponse>(`/templates/${templateId}/rollback`, {
       method: "POST",
       body: JSON.stringify({ version_id: versionId, changelog }),
@@ -1430,12 +1904,21 @@ export const kfApi = {
   compareVersions: (versionAId: string, versionBId: string) =>
     kfRequest<VersionCompareResult>("/templates/compare", {
       method: "POST",
-      body: JSON.stringify({ version_a_id: versionAId, version_b_id: versionBId }),
+      body: JSON.stringify({
+        version_a_id: versionAId,
+        version_b_id: versionBId,
+      }),
     }),
 
   assessQuality: (templateId: string) =>
-    kfRequest<QualityAssessmentResult>(`/templates/${templateId}/assess-quality`, { method: "POST" }),
+    kfRequest<QualityAssessmentResult>(
+      `/templates/${templateId}/assess-quality`,
+      { method: "POST" },
+    ),
 
   suggestRagSources: (templateId: string, sectionId: string) =>
-    kfRequest<{ suggestions: RAGSourceConfig[] }>(`/templates/${templateId}/sections/${sectionId}/suggest-rag-sources`, { method: "POST" }),
+    kfRequest<{ suggestions: RAGSourceConfig[] }>(
+      `/templates/${templateId}/sections/${sectionId}/suggest-rag-sources`,
+      { method: "POST" },
+    ),
 };

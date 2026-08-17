@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
 const {
   buildRuleCreatePayload,
@@ -8,7 +8,7 @@ const {
   validateRuleDraft,
 } = await import("./rule-form-utils");
 
-test("buildRuleCreatePayload normalizes names and nationwide region", () => {
+void test("buildRuleCreatePayload normalizes names and nationwide region", () => {
   const draft = createEmptyRuleDraft();
   draft.ruleId = " CSR-100 ";
   draft.name = " 新规则 ";
@@ -24,7 +24,7 @@ test("buildRuleCreatePayload normalizes names and nationwide region", () => {
   assert.deepEqual(payload.applicableRegions, ["nationwide"]);
 });
 
-test("validateRuleDraft requires local rules to pick regions", () => {
+void test("validateRuleDraft requires local rules to pick regions", () => {
   const draft = createEmptyRuleDraft();
   draft.ruleId = "CSR-200";
   draft.name = "地方规则";
@@ -36,7 +36,7 @@ test("validateRuleDraft requires local rules to pick regions", () => {
   assert.deepEqual(errors, ["地方规则至少选择一个适用地区"]);
 });
 
-test("parseCommaSeparatedInput removes empty items", () => {
+void test("parseCommaSeparatedInput removes empty items", () => {
   assert.deepEqual(parseCommaSeparatedInput("sec_01, ，\n sec_02"), [
     "sec_01",
     "sec_02",

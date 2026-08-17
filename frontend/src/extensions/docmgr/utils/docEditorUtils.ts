@@ -17,9 +17,15 @@ export function computeDocStats(md: string): DocStats {
     .replace(/\[[^\]]*\]\([^)]*\)/g, "") // 链接
     .replace(/^#{1,6}\s+/gm, "") // 标题标记
     .replace(/[*_`>#|\-]/g, ""); // 其余 markdown 符号
-  const cjk = (text.match(/[一-鿿㐀-䶿]/g) || []).length;
-  const latin = (text.match(/[A-Za-z0-9]+/g) || []).length;
+  const cjk = (text.match(/[一-鿿㐀-䶿]/g) ?? []).length;
+  const latin = (text.match(/[A-Za-z0-9]+/g) ?? []).length;
   return { words: cjk + latin, chars: text.replace(/\s/g, "").length };
+}
+
+/** 块内联内容节点的结构子集（文本节点，宽松类型） */
+interface ContentNode {
+  type: string;
+  text?: string;
 }
 
 /**
@@ -27,13 +33,13 @@ export function computeDocStats(md: string): DocStats {
  * 返回新 content（即使无替换也返回新数组）与替换次数；调用方仅当 replaced > 0 时 updateBlock。
  */
 export function replaceTextInContent(
-  content: any[],
+  content: ContentNode[],
   query: string,
   replacement: string,
-): { content: any[]; replaced: number } {
+): { content: ContentNode[]; replaced: number } {
   if (!query) return { content, replaced: 0 };
   let replaced = 0;
-  const newContent = content.map((node: any) => {
+  const newContent = content.map((node: ContentNode) => {
     if (node.type !== "text" || !node.text) return node;
     const parts = node.text.split(query);
     if (parts.length > 1) {

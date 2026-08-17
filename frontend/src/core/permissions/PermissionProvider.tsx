@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useEffect, useState, useCallback } from "react";
+
 import type { PermissionState } from "./usePermission";
 
 interface PermissionContextValue extends PermissionState {
@@ -54,12 +55,12 @@ export function PermissionProvider({
       }
       const data = await res.json();
       setState({
-        permissions: data.permissions || [],
-        nav: data.nav || [],
-        pages: data.pages || [],
+        permissions: data.permissions ?? [],
+        nav: data.nav ?? [],
+        pages: data.pages ?? [],
         // EAI-CUSTOM: A3 /me 返回 is_admin（基于角色 is_system），前端以它判 admin 布局权限
-        is_admin: data.is_admin || false,
-        identity: data.identity || {
+        is_admin: data.is_admin ?? false,
+        identity: data.identity ?? {
           user_id: "",
           username: "",
           role_code: null,
@@ -85,7 +86,7 @@ export function PermissionProvider({
   }, []);
 
   useEffect(() => {
-    fetchPermissions();
+    void fetchPermissions();
   }, [fetchPermissions]);
 
   return (

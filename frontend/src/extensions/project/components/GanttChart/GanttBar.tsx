@@ -12,7 +12,7 @@ export function GanttBar({ entry, timelineStart, colWidth }: GanttBarProps) {
   const dayToOffset = (dateStr: string) => {
     const d = new Date(dateStr);
     const days = Math.ceil(
-      (d.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24)
+      (d.getTime() - timelineStart.getTime()) / (1000 * 60 * 60 * 24),
     );
     return days * colWidth;
   };
@@ -43,21 +43,23 @@ export function GanttBar({ entry, timelineStart, colWidth }: GanttBarProps) {
   const overdue = isOverdue();
 
   return (
-    <div className="relative h-10 border-b flex items-center">
+    <div className="relative flex h-10 items-center border-b">
       {/* Planned outline */}
       <div
-        className="absolute top-1.5 h-7 border-2 rounded-sm opacity-40"
+        className="absolute top-1.5 h-7 rounded-sm border-2 opacity-40"
         style={{
           left: plannedStart,
           width: plannedWidth,
-          borderColor: overdue ? "var(--color-warning, #f59e0b)" : "var(--color-primary, #3b82f6)",
+          borderColor: overdue
+            ? "var(--color-warning, #f59e0b)"
+            : "var(--color-primary, #3b82f6)",
         }}
       />
 
       {/* Actual filled */}
-      {(entry.actual_start || entry.progress_pct > 0) && (
+      {(entry.actual_start ?? entry.progress_pct > 0) && (
         <div
-          className={`absolute top-1.5 h-7 rounded-sm flex items-center px-2 text-xs text-white ${
+          className={`absolute top-1.5 flex h-7 items-center rounded-sm px-2 text-xs text-white ${
             overdue ? "bg-warning" : "bg-primary"
           }`}
           style={{
@@ -72,7 +74,7 @@ export function GanttBar({ entry, timelineStart, colWidth }: GanttBarProps) {
       )}
 
       {/* Milestones */}
-      {(entry.milestones || []).map((ms, i) =>
+      {(entry.milestones ?? []).map((ms, i) =>
         ms.target_date ? (
           <div
             key={i}
@@ -82,7 +84,7 @@ export function GanttBar({ entry, timelineStart, colWidth }: GanttBarProps) {
           >
             ◆
           </div>
-        ) : null
+        ) : null,
       )}
     </div>
   );

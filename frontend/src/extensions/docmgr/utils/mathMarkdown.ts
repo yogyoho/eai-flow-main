@@ -18,8 +18,14 @@ export function sanitizeMarkdownForEditor(md: string): string {
   // 1) 数学内的双(多)反斜杠命令归一: $...$ / $$...$$ 里 \\frac → \frac
   //    (函数返回值是字面的,直接拼 $$ ;body 内层用字符串替换 "\\$1"→\X)
   const deDouble = (body: string) => body.replace(/\\{2,}([a-zA-Z])/g, "\\$1");
-  s = s.replace(/\$\$([\s\S]+?)\$\$/g, (_m, body: string) => "$$" + deDouble(body) + "$$");
-  s = s.replace(/\$([^\$\n]+?)\$/g, (_m, body: string) => "$" + deDouble(body) + "$");
+  s = s.replace(
+    /\$\$([\s\S]+?)\$\$/g,
+    (_m, body: string) => "$$" + deDouble(body) + "$$",
+  );
+  s = s.replace(
+    /\$([^\$\n]+?)\$/g,
+    (_m, body: string) => "$" + deDouble(body) + "$",
+  );
   // 2) $$...$$ 块公式后紧跟内容(标题/加粗/文字)→ 在块后补空行(\n\n)
   //    关键: encodeMath 把 $$...$$ 转成 <div>(HTML 块),Markdown 规范要求 HTML 块后必须有空行
   //    才能解析后续 markdown(否则 **加粗** / ### 标题 会被当 HTML 块延续,字面显示)。
@@ -36,14 +42,23 @@ export function sanitizeMarkdownForEditor(md: string): string {
   s = s.replace(/\\{2,}> /g, "> ");
   // 7) $$ 块内卷入了非数学文本(以 &gt; 或 > 开头的引用/粗体→被 AI 或编辑器错包进数学块) → 拆回 markdown
   //    7a) 有闭 $$ 的正常块
-  s = s.replace(/\$\$&gt;([\s\S]*?)\$\$/g, (_m: string, content: string) =>
-    "\n> " + content.replace(/\\\*/g, "*") + "\n");
-  s = s.replace(/\$\$>([\s\S]*?)\$\$/g, (_m: string, content: string) =>
-    "\n> " + content.replace(/\\\*/g, "*") + "\n");
+  s = s.replace(
+    /\$\$&gt;([\s\S]*?)\$\$/g,
+    (_m: string, content: string) =>
+      "\n> " + content.replace(/\\\*/g, "*") + "\n",
+  );
+  s = s.replace(
+    /\$\$>([\s\S]*?)\$\$/g,
+    (_m: string, content: string) =>
+      "\n> " + content.replace(/\\\*/g, "*") + "\n",
+  );
   //    7b) 只有开 $$ 没有闭 $$/$,纯文字行尾的未闭合块(L226 的 96.4 m³/h 这条)
   //         (注意: step 0 全局 &gt;→> 已先跑,故此处匹配 $$> 而非 $$&gt;)
-  s = s.replace(/^\$\$>([^\n]+)/gm, (_m: string, content: string) =>
-    "> " + content.replace(/\\\*/g, "*").replace(/\\{2,}\*/g, "*"));
+  s = s.replace(
+    /^\$\$>([^\n]+)/gm,
+    (_m: string, content: string) =>
+      "> " + content.replace(/\\\*/g, "*").replace(/\\{2,}\*/g, "*"),
+  );
   // 8) 表格行全部挤到一行(编辑器保存丢失换行) → 按分隔行 |:--- 作锚点,按列数拆分重组各行
   s = splitCollapsedTableLines(s);
   return s;
@@ -68,7 +83,7 @@ function splitOneTableLine(line: string): string {
   // 跳过 " |" (header row-boundary), rest 从分隔行开头的 |: 开始
   const rest = line.slice(sepStart + 3); // +1=闭管, +2=空格, +3=分隔行第一个 |
   // 表头管道总数(含首尾管) = 每行管道数
-  const colCount = (header.match(/\|/g) || []).length;
+  const colCount = (header.match(/\|/g) ?? []).length;
   // 找到分隔行结束: 第一个后面跟着普通文本(非 : 非 -)的 | 即数据行起点
   const sepRowEnd = rest.search(/\| [^:\-]/);
   const sepEnd = sepRowEnd > 0 ? sepRowEnd : rest.length;
@@ -79,17 +94,20 @@ function splitOneTableLine(line: string): string {
   const dataRows: string[] = [];
   let cur = "";
   let pipes = 0;
-  for (let i = 0; i < dataPart.length; i++) {
-    cur += dataPart[i];
-    if (dataPart[i] === "|") {
+  for (const ch of dataPart) {
+    cur += ch;
+    if (ch === "|") {
       pipes++;
-      if (pipes === colCount) { dataRows.push(cur.trimEnd()); cur = ""; pipes = 0; }
+      if (pipes === colCount) {
+        dataRows.push(cur.trimEnd());
+        cur = "";
+        pipes = 0;
+      }
     }
   }
   if (cur.trim()) dataRows.push(cur.trim());
   return [header, sepRow, ...dataRows].map((r) => r.trim()).join("\n");
 }
-
 
 const ESC: Array<[RegExp, string]> = [
   [/&/g, "&amp;"],

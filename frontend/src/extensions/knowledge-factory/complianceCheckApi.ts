@@ -15,13 +15,17 @@ import { buildLawLibraryUrl } from "./law-library-api";
  * 执行合规性检查
  */
 export async function checkCompliance(
-  request: ComplianceCheckRequest
+  request: ComplianceCheckRequest,
 ): Promise<ComplianceCheckResponse> {
   const url = buildLawLibraryUrl("/kf/rules/check");
-  return authFetch<ComplianceCheckResponse>(url, {
-    method: "POST",
-    body: JSON.stringify(request),
-  }, "");
+  return authFetch<ComplianceCheckResponse>(
+    url,
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
+    "",
+  );
 }
 
 /**
@@ -30,7 +34,7 @@ export async function checkCompliance(
 export async function checkSingleRule(
   ruleId: string,
   reportData: Record<string, unknown>,
-  extractedFields?: Record<string, unknown>
+  extractedFields?: Record<string, unknown>,
 ): Promise<{
   success: boolean;
   issues: ValidationIssue[];
@@ -43,13 +47,17 @@ export async function checkSingleRule(
     success: boolean;
     issues: ValidationIssue[];
     duration_ms: number;
-  }>(url, {
-    method: "POST",
-    body: JSON.stringify({
-      report_data: reportData,
-      extracted_fields: extractedFields || {},
-    }),
-  }, "");
+  }>(
+    url,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        report_data: reportData,
+        extracted_fields: extractedFields ?? {},
+      }),
+    },
+    "",
+  );
 }
 
 /**
@@ -78,11 +86,11 @@ export async function validateRule(ruleId: string): Promise<{
 export async function checkMultipleRules(
   ruleIds: string[],
   reportData: Record<string, unknown>,
-  extractedFields?: Record<string, unknown>
+  extractedFields?: Record<string, unknown>,
 ): Promise<ComplianceCheckResponse> {
   return checkCompliance({
     reportData: reportData,
-    extractedFields: extractedFields || {},
+    extractedFields: extractedFields ?? {},
     ruleIds: ruleIds,
     checkAll: false,
   });

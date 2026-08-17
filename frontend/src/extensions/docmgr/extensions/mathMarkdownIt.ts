@@ -5,14 +5,42 @@
 
 /** HTML 转义 latex 内容（与 encodeMath 的 escapeAttr 一致） */
 function escapeHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** markdown-it ruler 规则函数（宽松签名：接受任意规则形参） */
+type MdRuleFn = (...args: never[]) => boolean;
+
+/** markdown-it token 的宽松类型（渲染规则只读 content） */
+interface MdToken {
+  content: string;
 }
 
 /** markdown-it 实例的宽松类型（避免直接 import markdown-it 类型） */
-interface MdInstance {
-  block: { ruler: { before: (before: string, name: string, fn: Function, opts?: object) => void } };
-  inline: { ruler: { after: (after: string, name: string, fn: Function, opts?: object) => void } };
-  renderer: { rules: Record<string, (tokens: any[], idx: number) => string> };
+export interface MdInstance {
+  block: {
+    ruler: {
+      before: (
+        before: string,
+        name: string,
+        fn: MdRuleFn,
+        opts?: object,
+      ) => void;
+    };
+  };
+  inline: {
+    ruler: {
+      after: (after: string, name: string, fn: MdRuleFn, opts?: object) => void;
+    };
+  };
+  renderer: {
+    rules: Record<string, (tokens: MdToken[], idx: number) => string>;
+  };
+  use: (plugin: (md: MdInstance) => void, ...params: unknown[]) => unknown;
 }
 
 /** markdown-it block ruler 状态的宽松类型 */
@@ -22,7 +50,11 @@ interface BlockState {
   eMarks: number[];
   tShift: number[];
   line: number;
-  push(type: string, tag: string, nesting: number): { content: string; markup: string; map: [number, number]; block: boolean };
+  push(
+    type: string,
+    tag: string,
+    nesting: number,
+  ): { content: string; markup: string; map: [number, number]; block: boolean };
 }
 
 /** markdown-it inline ruler 状态的宽松类型 */
@@ -30,20 +62,33 @@ interface InlineState {
   src: string;
   pos: number;
   posMax: number;
-  push(type: string, tag: string, nesting: number): { content: string; markup: string };
+  push(
+    type: string,
+    tag: string,
+    nesting: number,
+  ): { content: string; markup: string };
 }
 
 /**
  * 块级数学规则：识别 $$...$$（单行或跨行）
  * 注册在 paragraph 之前，确保 markdown-it 先处理数学再处理段落
  */
-function mathBlockRule(state: BlockState, startLine: number, endLine: number, silent: boolean): boolean {
+function mathBlockRule(
+  state: BlockState,
+  startLine: number,
+  endLine: number,
+  silent: boolean,
+): boolean {
   const start = state.bMarks[startLine]! + state.tShift[startLine]!;
   const max = state.eMarks[startLine]!;
 
   // 必须以 $$ 开头
   if (start + 2 > max) return false;
-  if (state.src.charCodeAt(start) !== 0x24 /* $ */ || state.src.charCodeAt(start + 1) !== 0x24) return false;
+  if (
+    state.src.charCodeAt(start) !== 0x24 /* $ */ ||
+    state.src.charCodeAt(start + 1) !== 0x24
+  )
+    return false;
 
   // $$ 后面的内容
   const afterDelim = state.src.slice(start + 2, max).trim();
@@ -153,16 +198,18 @@ function mathInlineRule(state: InlineState, silent: boolean): boolean {
  */
 export function mathMarkdownIt(md: MdInstance): void {
   // 块级规则：在 paragraph 之前注册，确保 $$ 先于段落处理
-  md.block.ruler.before("paragraph", "math_block", mathBlockRule, { alt: ["paragraph", "reference", "blockquote", "list"] });
+  md.block.ruler.before("paragraph", "math_block", mathBlockRule, {
+    alt: ["paragraph", "reference", "blockquote", "list"],
+  });
   // 行内规则：在 escape 之后注册
   md.inline.ruler.after("escape", "math_inline", mathInlineRule);
   // 渲染规则
-  md.renderer.rules["math_block"] = (tokens: any[], idx: number) => {
-    const latex = escapeHtml(tokens[idx].content);
+  md.renderer.rules.math_block = (tokens: MdToken[], idx: number) => {
+    const latex = escapeHtml(tokens[idx]!.content);
     return `<div data-math-block data-latex="${latex}"></div>\n`;
   };
-  md.renderer.rules["math_inline"] = (tokens: any[], idx: number) => {
-    const latex = escapeHtml(tokens[idx].content);
+  md.renderer.rules.math_inline = (tokens: MdToken[], idx: number) => {
+    const latex = escapeHtml(tokens[idx]!.content);
     return `<span data-math-inline data-latex="${latex}"></span>`;
   };
 }

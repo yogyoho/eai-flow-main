@@ -6,7 +6,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  ChevronUp,
   Crosshair,
   PackageSearch,
   RefreshCw,
@@ -25,9 +24,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
+import { PageHeader } from "@/extensions/spare-parts/components/PageHeader";
 import { TracebackDrawer } from "@/extensions/spare-parts/components/TracebackDrawer";
-import { EmptyRow, PageHeader } from "@/extensions/spare-parts/components/PageHeader";
 import {
   Table,
   TableBody,
@@ -36,7 +34,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/extensions/spare-parts/components/ui/table";
-import type { CspItem, CspRun } from "@/extensions/spare-parts/types";
 import {
   useBatchDeleteItems,
   useBatchValidateItems,
@@ -47,6 +44,8 @@ import {
   useRuns,
   useUpdateItem,
 } from "@/extensions/spare-parts/hooks";
+import type { CspItem, CspRun } from "@/extensions/spare-parts/types";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 50;
 
@@ -62,19 +61,37 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 /** Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). */
-function FilterCheckbox({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
+function FilterCheckbox({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  label: string;
+}) {
   return (
-    <label className="group flex items-center gap-2 text-sm cursor-pointer select-none">
-      <input type="checkbox" checked={checked} onChange={onChange} className="sr-only peer" />
+    <label className="group flex cursor-pointer items-center gap-2 text-sm select-none">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="peer sr-only"
+      />
       <span
         className={cn(
-          "relative inline-flex items-center justify-center w-[18px] h-[18px] shrink-0 rounded-[5px] border-[1.5px] transition-all duration-200 ease-out",
+          "relative inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.5px] transition-all duration-200 ease-out",
           checked
             ? "bg-primary border-primary shadow-[0_1px_4px_rgba(var(--color-primary),0.3)]"
-            : "bg-transparent border-muted-foreground/30 group-hover:border-muted-foreground/50",
+            : "border-muted-foreground/30 group-hover:border-muted-foreground/50 bg-transparent",
         )}
       >
-        <svg viewBox="0 0 14 14" fill="none" className="w-[11px] h-[11px]" aria-hidden="true">
+        <svg
+          viewBox="0 0 14 14"
+          fill="none"
+          className="h-[11px] w-[11px]"
+          aria-hidden="true"
+        >
           <path
             d="M3 7.5L5.8 10.2L11 4"
             stroke="currentColor"
@@ -83,12 +100,19 @@ function FilterCheckbox({ checked, onChange, label }: { checked: boolean; onChan
             strokeLinejoin="round"
             className={cn(
               "transition-all duration-200 ease-out",
-              checked ? "text-primary-foreground opacity-100" : "text-transparent opacity-0",
+              checked
+                ? "text-primary-foreground opacity-100"
+                : "text-transparent opacity-0",
             )}
           />
         </svg>
       </span>
-      <span className={cn("transition-colors duration-200", checked ? "text-foreground font-medium" : "text-muted-foreground")}>
+      <span
+        className={cn(
+          "transition-colors duration-200",
+          checked ? "text-foreground font-medium" : "text-muted-foreground",
+        )}
+      >
         {label}
       </span>
     </label>
@@ -96,7 +120,9 @@ function FilterCheckbox({ checked, onChange, label }: { checked: boolean; onChan
 }
 
 /** Render tech_params dict as "k: v · k: v", or "无" when empty/null. */
-function formatTechParams(tp: Record<string, string> | null | undefined): string {
+function formatTechParams(
+  tp: Record<string, string> | null | undefined,
+): string {
   if (!tp) return "无";
   const entries = Object.entries(tp).filter(([, v]) => v != null && v !== "");
   if (entries.length === 0) return "无";
@@ -104,7 +130,15 @@ function formatTechParams(tp: Record<string, string> | null | undefined): string
 }
 
 /** Compact label/value field for the expanded detail row. */
-function DetailField({ label, value, span }: { label: string; value: string; span?: boolean }) {
+function DetailField({
+  label,
+  value,
+  span,
+}: {
+  label: string;
+  value: string;
+  span?: boolean;
+}) {
   return (
     <div className={span ? "col-span-2 sm:col-span-3 lg:col-span-4" : ""}>
       <span className="text-muted-foreground">{label}: </span>
@@ -173,14 +207,18 @@ export function ItemsView() {
   const items = data?.items ?? [];
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const runs: CspRun[] = runsData?.items ?? [];
+  const runs: CspRun[] = useMemo(() => runsData?.items ?? [], [runsData]);
 
-  const runMap = useMemo(() => new Map(runs.map((r) => [r.id, r] as const)), [runs]);
+  const runMap = useMemo(
+    () => new Map(runs.map((r) => [r.id, r] as const)),
+    [runs],
+  );
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -191,7 +229,8 @@ export function ItemsView() {
     setSelected((prev) => {
       const next = new Set(prev);
       for (const id of ids) {
-        if (allSelected) next.delete(id); else next.add(id);
+        if (allSelected) next.delete(id);
+        else next.add(id);
       }
       return next;
     });
@@ -200,7 +239,8 @@ export function ItemsView() {
   const toggleExpand = (id: string) => {
     setExpanded((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -208,7 +248,11 @@ export function ItemsView() {
   const handleDelete = async (id: string) => {
     await deleteItem.mutateAsync(id);
     setConfirmDelete(null);
-    setSelected((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    setSelected((prev) => {
+      const n = new Set(prev);
+      n.delete(id);
+      return n;
+    });
   };
 
   const handleBatchDelete = async () => {
@@ -237,10 +281,17 @@ export function ItemsView() {
       <PageHeader
         title="合同中提取出的货物价格校验"
         description="每条货物的含税单价与参数。待核验项(OCR 数字粘连/量级异常)需用溯源对照原文后修正。"
-        icon={<PackageSearch className="w-4 h-4" />}
+        icon={<PackageSearch className="h-4 w-4" />}
         actions={
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+            />
             刷新
           </Button>
         }
@@ -259,7 +310,7 @@ export function ItemsView() {
               }}
             >
               <div className="relative max-w-sm">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                 <Input
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
@@ -273,25 +324,40 @@ export function ItemsView() {
             </form>
             <FilterCheckbox
               checked={onlyOutliers}
-              onChange={() => { setOnlyOutliers(!onlyOutliers); setPage(0); setSelected(new Set()); }}
+              onChange={() => {
+                setOnlyOutliers(!onlyOutliers);
+                setPage(0);
+                setSelected(new Set());
+              }}
               label="仅看异常价格"
             />
             <FilterCheckbox
               checked={onlyReview}
-              onChange={() => { setOnlyReview(!onlyReview); setPage(0); setSelected(new Set()); }}
+              onChange={() => {
+                setOnlyReview(!onlyReview);
+                setPage(0);
+                setSelected(new Set());
+              }}
               label="仅看待核验"
             />
             <Select
               value={contractFilter}
-              onValueChange={(v) => { setContractFilter(v); setPage(0); setSelected(new Set()); }}
+              onValueChange={(v) => {
+                setContractFilter(v);
+                setPage(0);
+                setSelected(new Set());
+              }}
             >
-              <SelectTrigger className="w-[200px] h-9">
+              <SelectTrigger className="h-9 w-[200px]">
                 <SelectValue placeholder="来源合同" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">全部合同</SelectItem>
                 {(contractsData ?? []).map((c) => (
-                  <SelectItem key={c.source_contract_no} value={c.source_contract_no}>
+                  <SelectItem
+                    key={c.source_contract_no}
+                    value={c.source_contract_no}
+                  >
                     {c.source_contract_no} ({c.count})
                   </SelectItem>
                 ))}
@@ -305,7 +371,7 @@ export function ItemsView() {
                 setSelected(new Set());
               }}
             >
-              <SelectTrigger className="w-[220px] h-9">
+              <SelectTrigger className="h-9 w-[220px]">
                 <SelectValue placeholder="来源任务" />
               </SelectTrigger>
               <SelectContent>
@@ -320,13 +386,20 @@ export function ItemsView() {
             <div className="ml-auto flex items-center gap-2">
               {runDeleteOpen ? (
                 <div className="flex items-center gap-1">
-                  <span className="text-xs text-muted-foreground">整批作废:</span>
+                  <span className="text-muted-foreground text-xs">
+                    整批作废:
+                  </span>
                   {runFilter !== "all" ? (
-                    <span className="text-xs text-muted-foreground">
-                      删除任务「{formatRunLabel(runMap.get(runFilter) ?? null, runFilter)}」全部货物?
+                    <span className="text-muted-foreground text-xs">
+                      删除任务「
+                      {formatRunLabel(runMap.get(runFilter) ?? null, runFilter)}
+                      」全部货物?
                     </span>
                   ) : (
-                    <Select value={runDeleteTarget} onValueChange={(v) => setRunDeleteTarget(v)}>
+                    <Select
+                      value={runDeleteTarget}
+                      onValueChange={(v) => setRunDeleteTarget(v)}
+                    >
                       <SelectTrigger className="h-7 w-[200px] text-xs">
                         <SelectValue placeholder="选择任务" />
                       </SelectTrigger>
@@ -342,16 +415,18 @@ export function ItemsView() {
                   <Button
                     size="sm"
                     variant="destructive"
-                    className="text-xs h-7"
+                    className="h-7 text-xs"
                     onClick={handleRunDelete}
-                    disabled={runDeleteTarget === "all" || deleteItemsByRun.isPending}
+                    disabled={
+                      runDeleteTarget === "all" || deleteItemsByRun.isPending
+                    }
                   >
                     确认删除
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="text-xs h-7"
+                    className="h-7 text-xs"
                     onClick={() => {
                       setRunDeleteOpen(false);
                       setRunDeleteTarget("all");
@@ -364,10 +439,12 @@ export function ItemsView() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="text-xs h-7 text-destructive hover:text-destructive"
+                  className="text-destructive hover:text-destructive h-7 text-xs"
                   onClick={openRunDelete}
                   disabled={runs.length === 0}
-                  title={runs.length === 0 ? "暂无任务" : "按抽取任务整批删除货物"}
+                  title={
+                    runs.length === 0 ? "暂无任务" : "按抽取任务整批删除货物"
+                  }
                 >
                   <Trash2 className="h-3 w-3" />
                   整批作废
@@ -375,14 +452,29 @@ export function ItemsView() {
               )}
               {selected.size > 0 && (
                 <>
-                  <span className="text-xs text-muted-foreground">已选 {selected.size} 条</span>
+                  <span className="text-muted-foreground text-xs">
+                    已选 {selected.size} 条
+                  </span>
                   {confirmBatchDelete ? (
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground">确认删除已选?</span>
-                      <Button size="sm" variant="destructive" className="text-xs h-7" onClick={handleBatchDelete} disabled={batchDeleteItems.isPending}>
+                      <span className="text-muted-foreground text-xs">
+                        确认删除已选?
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-7 text-xs"
+                        onClick={handleBatchDelete}
+                        disabled={batchDeleteItems.isPending}
+                      >
                         确认
                       </Button>
-                      <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setConfirmBatchDelete(false)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs"
+                        onClick={() => setConfirmBatchDelete(false)}
+                      >
                         取消
                       </Button>
                     </div>
@@ -399,7 +491,12 @@ export function ItemsView() {
                         <Check className="h-4 w-4" />
                         批量确认校验
                       </Button>
-                      <Button size="sm" variant="ghost" className="text-xs h-7 text-destructive hover:text-destructive" onClick={() => setConfirmBatchDelete(true)}>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive h-7 text-xs"
+                        onClick={() => setConfirmBatchDelete(true)}
+                      >
                         <Trash2 className="h-3 w-3" />
                         批量删除
                       </Button>
@@ -411,20 +508,27 @@ export function ItemsView() {
           </div>
 
           {isLoading ? (
-            <div className="text-sm text-muted-foreground py-8 text-center">加载中…</div>
+            <div className="text-muted-foreground py-8 text-center text-sm">
+              加载中…
+            </div>
           ) : items.length === 0 ? (
-            <div className="text-sm text-muted-foreground py-8 text-center">暂无明细。</div>
+            <div className="text-muted-foreground py-8 text-center text-sm">
+              暂无明细。
+            </div>
           ) : (
             <>
               {/* Flat table — scrollable container */}
-              <div className="max-h-[calc(100vh-340px)] overflow-y-auto border border-border rounded-lg">
+              <div className="border-border max-h-[calc(100vh-340px)] overflow-y-auto rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-10">
                         <input
                           type="checkbox"
-                          checked={items.length > 0 && items.every((it) => selected.has(it.id))}
+                          checked={
+                            items.length > 0 &&
+                            items.every((it) => selected.has(it.id))
+                          }
                           ref={(el) => {
                             if (el)
                               el.indeterminate =
@@ -438,227 +542,302 @@ export function ItemsView() {
                       <TableHead>货物名称</TableHead>
                       <TableHead className="whitespace-nowrap">规格</TableHead>
                       <TableHead>来源合同</TableHead>
-                      <TableHead className="whitespace-nowrap">来源任务</TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        来源任务
+                      </TableHead>
                       <TableHead className="whitespace-nowrap">状态</TableHead>
                       <TableHead className="text-right">含税单价</TableHead>
-                      <TableHead className="text-right w-[180px]">操作</TableHead>
+                      <TableHead className="w-[180px] text-right">
+                        操作
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {items.map((item) => (
-                            <Fragment key={item.id}>
-                            <TableRow
-                              className={cn(
-                                "hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors",
-                                item.is_outlier && !selected.has(item.id) ? "bg-destructive/10" : "",
-                                selected.has(item.id) ? "bg-blue-50 dark:bg-blue-950/30" : "",
-                              )}
-                              style={{ cursor: "pointer" }}
-                              onClick={(e) => {
-                                const tag = (e.target as HTMLElement).tagName;
-                                if (tag !== "BUTTON" && tag !== "INPUT" && tag !== "A" && tag !== "SVG" && tag !== "PATH") {
-                                  toggleSelect(item.id);
-                                }
-                              }}
-                            >
-                              <TableCell>
-                                <input
-                                  type="checkbox"
-                                  checked={selected.has(item.id)}
-                                  onChange={() => toggleSelect(item.id)}
-                                  className="accent-primary"
-                                />
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                <div className="flex items-center gap-1.5">
-                                  {editingId !== item.id && (
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleExpand(item.id)}
-                                      className="text-muted-foreground hover:text-foreground shrink-0"
-                                      title={expanded.has(item.id) ? "收起明细" : "展开明细"}
-                                    >
-                                      {expanded.has(item.id)
-                                        ? <ChevronDown className="h-3.5 w-3.5" />
-                                        : <ChevronRight className="h-3.5 w-3.5" />}
-                                    </button>
-                                  )}
-                                  {editingId === item.id ? (
-                                    <Input
-                                      value={nameInput}
-                                      onChange={(e) => setNameInput(e.target.value)}
-                                      className="h-8 min-w-[140px]"
-                                    />
-                                  ) : item.is_outlier ? (
-                                    <span className="inline-flex items-center gap-1">
-                                      <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-                                      {item.part_name}
-                                    </span>
-                                  ) : (
-                                    item.part_name
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-muted-foreground">{item.spec ?? "—"}</TableCell>
-                              <TableCell className="text-muted-foreground">
-                                {item.source_contract_no ?? "—"}
-                              </TableCell>
-                              <TableCell className="text-muted-foreground whitespace-nowrap">
-                                {(() => {
-                                  const r = item.run_id ? runMap.get(item.run_id) ?? null : null;
-                                  return (
-                                    <span title={formatRunLabel(r, item.run_id)}>
-                                      {formatRunCompact(r, item.run_id)}
-                                    </span>
-                                  );
-                                })()}
-                              </TableCell>
-                              <TableCell className="whitespace-nowrap">
-                                <span
-                                  className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
-                                    STATUS_TONE[item.validation_status] ?? STATUS_TONE.ok
-                                  }`}
+                      <Fragment key={item.id}>
+                        <TableRow
+                          className={cn(
+                            "transition-colors hover:bg-blue-50 dark:hover:bg-blue-950/30",
+                            item.is_outlier && !selected.has(item.id)
+                              ? "bg-destructive/10"
+                              : "",
+                            selected.has(item.id)
+                              ? "bg-blue-50 dark:bg-blue-950/30"
+                              : "",
+                          )}
+                          style={{ cursor: "pointer" }}
+                          onClick={(e) => {
+                            const tag = (e.target as HTMLElement).tagName;
+                            if (
+                              tag !== "BUTTON" &&
+                              tag !== "INPUT" &&
+                              tag !== "A" &&
+                              tag !== "SVG" &&
+                              tag !== "PATH"
+                            ) {
+                              toggleSelect(item.id);
+                            }
+                          }}
+                        >
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selected.has(item.id)}
+                              onChange={() => toggleSelect(item.id)}
+                              className="accent-primary"
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-1.5">
+                              {editingId !== item.id && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpand(item.id)}
+                                  className="text-muted-foreground hover:text-foreground shrink-0"
+                                  title={
+                                    expanded.has(item.id)
+                                      ? "收起明细"
+                                      : "展开明细"
+                                  }
                                 >
-                                  {STATUS_LABEL[item.validation_status] ?? item.validation_status}
+                                  {expanded.has(item.id) ? (
+                                    <ChevronDown className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                  )}
+                                </button>
+                              )}
+                              {editingId === item.id ? (
+                                <Input
+                                  value={nameInput}
+                                  onChange={(e) => setNameInput(e.target.value)}
+                                  className="h-8 min-w-[140px]"
+                                />
+                              ) : item.is_outlier ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <AlertTriangle className="text-destructive h-3.5 w-3.5" />
+                                  {item.part_name}
                                 </span>
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {editingId === item.id ? (
-                                  <Input
-                                    type="number"
-                                    value={priceInput}
-                                    onChange={(e) => setPriceInput(e.target.value)}
-                                    className="h-8 w-28 text-right"
-                                  />
-                                ) : item.unit_price == null ? (
-                                  <span className="text-amber-600">待核验</span>
-                                ) : item.is_outlier ? (
-                                  <span className="text-destructive">{item.unit_price.toLocaleString()}</span>
-                                ) : (
-                                  item.unit_price.toLocaleString()
+                              ) : (
+                                item.part_name
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.spec ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.source_contract_no ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground whitespace-nowrap">
+                            {(() => {
+                              const r = item.run_id
+                                ? (runMap.get(item.run_id) ?? null)
+                                : null;
+                              return (
+                                <span title={formatRunLabel(r, item.run_id)}>
+                                  {formatRunCompact(r, item.run_id)}
+                                </span>
+                              );
+                            })()}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
+                                STATUS_TONE[item.validation_status] ??
+                                STATUS_TONE.ok
+                              }`}
+                            >
+                              {STATUS_LABEL[item.validation_status] ??
+                                item.validation_status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {editingId === item.id ? (
+                              <Input
+                                type="number"
+                                value={priceInput}
+                                onChange={(e) => setPriceInput(e.target.value)}
+                                className="h-8 w-28 text-right"
+                              />
+                            ) : item.unit_price == null ? (
+                              <span className="text-amber-600">待核验</span>
+                            ) : item.is_outlier ? (
+                              <span className="text-destructive">
+                                {item.unit_price.toLocaleString()}
+                              </span>
+                            ) : (
+                              item.unit_price.toLocaleString()
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {editingId === item.id ? (
+                              <div className="flex items-center justify-end gap-1">
+                                <Input
+                                  value={note}
+                                  onChange={(e) => setNote(e.target.value)}
+                                  placeholder="修正原因"
+                                  className="h-8 w-32"
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={async () => {
+                                    await updateItem.mutateAsync({
+                                      id: item.id,
+                                      body: {
+                                        unit_price: Number(priceInput),
+                                        part_name:
+                                          nameInput.trim() || undefined,
+                                        note: note || undefined,
+                                      },
+                                    });
+                                    setEditingId(null);
+                                    setNote("");
+                                  }}
+                                >
+                                  保存
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingId(null)}
+                                >
+                                  取消
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingId(item.id);
+                                    setPriceInput(
+                                      String(item.unit_price ?? ""),
+                                    );
+                                    setNameInput(item.part_name ?? "");
+                                  }}
+                                >
+                                  修正
+                                </Button>
+                                {item.validation_status === "needs_review" && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-emerald-600 hover:text-emerald-600"
+                                    title="溯源确认正确后标记为已校验(价格进入统计)"
+                                    onClick={() =>
+                                      updateItem.mutateAsync({
+                                        id: item.id,
+                                        body: { validation_status: "ok" },
+                                      })
+                                    }
+                                  >
+                                    ✓ 已校验
+                                  </Button>
                                 )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {editingId === item.id ? (
-                                  <div className="flex items-center justify-end gap-1">
-                                    <Input
-                                      value={note}
-                                      onChange={(e) => setNote(e.target.value)}
-                                      placeholder="修正原因"
-                                      className="h-8 w-32"
-                                    />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={item.source_page == null}
+                                  title={
+                                    item.source_page == null
+                                      ? "无溯源坐标"
+                                      : "溯源到原文"
+                                  }
+                                  onClick={() => setTrace(item)}
+                                >
+                                  <Crosshair className="h-3.5 w-3.5 text-rose-500" />
+                                  溯源
+                                </Button>
+                                {confirmDelete === item.id ? (
+                                  <div className="flex items-center gap-1">
                                     <Button
                                       size="sm"
-                                      onClick={async () => {
-                                        await updateItem.mutateAsync({
-                                          id: item.id,
-                                          body: {
-                                            unit_price: Number(priceInput),
-                                            part_name: nameInput.trim() || undefined,
-                                            note: note || undefined,
-                                          },
-                                        });
-                                        setEditingId(null);
-                                        setNote("");
-                                      }}
+                                      variant="destructive"
+                                      className="h-7 text-xs"
+                                      onClick={() => handleDelete(item.id)}
+                                      disabled={deleteItem.isPending}
                                     >
-                                      保存
+                                      确认
                                     </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs"
+                                      onClick={() => setConfirmDelete(null)}
+                                    >
                                       取消
                                     </Button>
                                   </div>
                                 ) : (
-                                  <div className="flex items-center justify-end gap-1">
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => {
-                                        setEditingId(item.id);
-                                        setPriceInput(String(item.unit_price ?? ""));
-                                        setNameInput(item.part_name ?? "");
-                                      }}
-                                    >
-                                      修正
-                                    </Button>
-                                    {item.validation_status === "needs_review" && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-emerald-600 hover:text-emerald-600"
-                                        title="溯源确认正确后标记为已校验(价格进入统计)"
-                                        onClick={() =>
-                                          updateItem.mutateAsync({
-                                            id: item.id,
-                                            body: { validation_status: "ok" },
-                                          })
-                                        }
-                                      >
-                                        ✓ 已校验
-                                      </Button>
-                                    )}
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      disabled={item.source_page == null}
-                                      title={item.source_page == null ? "无溯源坐标" : "溯源到原文"}
-                                      onClick={() => setTrace(item)}
-                                    >
-                                      <Crosshair className="h-3.5 w-3.5 text-rose-500" />
-                                      溯源
-                                    </Button>
-                                    {confirmDelete === item.id ? (
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          className="text-xs h-7"
-                                          onClick={() => handleDelete(item.id)}
-                                          disabled={deleteItem.isPending}
-                                        >
-                                          确认
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          className="text-xs h-7"
-                                          onClick={() => setConfirmDelete(null)}
-                                        >
-                                          取消
-                                        </Button>
-                                      </div>
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-muted-foreground hover:text-destructive"
-                                        onClick={() => setConfirmDelete(item.id)}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    )}
-                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="text-muted-foreground hover:text-destructive"
+                                    onClick={() => setConfirmDelete(item.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
                                 )}
-                              </TableCell>
-                            </TableRow>
-                            {expanded.has(item.id) && (
-                              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                                <TableCell colSpan={8} className="py-3">
-                                  <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-4">
-                                    <DetailField label="工程量" value={item.quantity != null ? `${item.quantity}${item.unit ? " " + item.unit : ""}` : "—"} />
-                                    <DetailField label="含税单价" value={item.unit_price != null ? item.unit_price.toLocaleString() : "—"} />
-                                    <DetailField label="不含税单价(审计)" value={item.price_untaxed != null ? item.price_untaxed.toLocaleString() : "—"} />
-                                    <DetailField
-                                      label="置信度"
-                                      value={item.confidence != null ? `${(item.confidence * 100).toFixed(0)}%` : "—"}
-                                    />
-                                    <DetailField label="溯源页" value={item.source_page != null ? `第 ${item.source_page} 页` : "—"} />
-                                    <DetailField label="技术参数" value={formatTechParams(item.tech_params)} span />
-                                  </div>
-                                </TableCell>
-                              </TableRow>
+                              </div>
                             )}
-                            </Fragment>
+                          </TableCell>
+                        </TableRow>
+                        {expanded.has(item.id) && (
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableCell colSpan={8} className="py-3">
+                              <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-4">
+                                <DetailField
+                                  label="工程量"
+                                  value={
+                                    item.quantity != null
+                                      ? `${item.quantity}${item.unit ? " " + item.unit : ""}`
+                                      : "—"
+                                  }
+                                />
+                                <DetailField
+                                  label="含税单价"
+                                  value={
+                                    item.unit_price != null
+                                      ? item.unit_price.toLocaleString()
+                                      : "—"
+                                  }
+                                />
+                                <DetailField
+                                  label="不含税单价(审计)"
+                                  value={
+                                    item.price_untaxed != null
+                                      ? item.price_untaxed.toLocaleString()
+                                      : "—"
+                                  }
+                                />
+                                <DetailField
+                                  label="置信度"
+                                  value={
+                                    item.confidence != null
+                                      ? `${(item.confidence * 100).toFixed(0)}%`
+                                      : "—"
+                                  }
+                                />
+                                <DetailField
+                                  label="溯源页"
+                                  value={
+                                    item.source_page != null
+                                      ? `第 ${item.source_page} 页`
+                                      : "—"
+                                  }
+                                />
+                                <DetailField
+                                  label="技术参数"
+                                  value={formatTechParams(item.tech_params)}
+                                  span
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
@@ -666,7 +845,7 @@ export function ItemsView() {
 
               {/* Pagination */}
               <div className="flex items-center justify-between pt-2">
-                <span className="text-xs text-muted-foreground">
+                <span className="text-muted-foreground text-xs">
                   共 {total} 条 · 第 {page + 1}/{totalPages} 页
                 </span>
                 <div className="flex items-center gap-1">
@@ -674,7 +853,10 @@ export function ItemsView() {
                     size="sm"
                     variant="outline"
                     disabled={page <= 0}
-                    onClick={() => { setPage(0); setSelected(new Set()); }}
+                    onClick={() => {
+                      setPage(0);
+                      setSelected(new Set());
+                    }}
                   >
                     首页
                   </Button>
@@ -682,19 +864,28 @@ export function ItemsView() {
                     size="sm"
                     variant="outline"
                     disabled={page <= 0}
-                    onClick={() => { setPage(page - 1); setSelected(new Set()); }}
+                    onClick={() => {
+                      setPage(page - 1);
+                      setSelected(new Set());
+                    }}
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
                   {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const start = Math.max(0, Math.min(page - 2, totalPages - 5));
+                    const start = Math.max(
+                      0,
+                      Math.min(page - 2, totalPages - 5),
+                    );
                     const p = start + i;
                     return (
                       <Button
                         key={p}
                         size="sm"
                         variant={p === page ? "default" : "outline"}
-                        onClick={() => { setPage(p); setSelected(new Set()); }}
+                        onClick={() => {
+                          setPage(p);
+                          setSelected(new Set());
+                        }}
                       >
                         {p + 1}
                       </Button>
@@ -704,7 +895,10 @@ export function ItemsView() {
                     size="sm"
                     variant="outline"
                     disabled={page >= totalPages - 1}
-                    onClick={() => { setPage(page + 1); setSelected(new Set()); }}
+                    onClick={() => {
+                      setPage(page + 1);
+                      setSelected(new Set());
+                    }}
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -712,7 +906,10 @@ export function ItemsView() {
                     size="sm"
                     variant="outline"
                     disabled={page >= totalPages - 1}
-                    onClick={() => { setPage(totalPages - 1); setSelected(new Set()); }}
+                    onClick={() => {
+                      setPage(totalPages - 1);
+                      setSelected(new Set());
+                    }}
                   >
                     末页
                   </Button>

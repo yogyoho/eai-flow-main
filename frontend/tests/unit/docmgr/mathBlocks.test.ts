@@ -1,6 +1,8 @@
 import { expect, test } from "vitest";
 
 import {
+  type InlineNode,
+  type TableContentStyle,
   convertInlineMathInContent,
   prepareBlocksForMarkdownExport,
   transformMathInBlocks,
@@ -18,9 +20,9 @@ test("transformMathInBlocks: 标题内联 $V_s$ → latex 内联节点（原 bug
   ];
   const result = transformMathInBlocks(blocks);
   expect(result).toHaveLength(1);
-  expect(result[0].type).toBe("heading"); // 标题结构保留
-  expect(result[0].props.level).toBe(2);
-  expect(result[0].content).toEqual([
+  expect(result[0]!.type).toBe("heading"); // 标题结构保留
+  expect(result[0]!.props!.level).toBe(2);
+  expect(result[0]!.content).toEqual([
     { type: "text", text: "总压损失 ", styles: {} },
     { type: "latex", props: { latex: "V_s", displayMode: false } },
     { type: "text", text: " 计算", styles: {} },
@@ -36,7 +38,7 @@ test("transformMathInBlocks: 段落内联公式仍正常", () => {
     },
   ];
   const result = transformMathInBlocks(blocks);
-  expect(result[0].content).toEqual([
+  expect(result[0]!.content).toEqual([
     { type: "text", text: "流速 ", styles: {} },
     { type: "latex", props: { latex: "v", displayMode: false } },
     { type: "text", text: " 取 1.5 m/s", styles: {} },
@@ -67,10 +69,12 @@ test("transformMathInBlocks: 标题整段 $$...$$ 不得变成 equation 块（�
   ];
   const result = transformMathInBlocks(blocks);
   expect(result).toHaveLength(1);
-  expect(result[0].type).toBe("heading");
-  expect(result[0].props.level).toBe(3);
+  expect(result[0]!.type).toBe("heading");
+  expect(result[0]!.props!.level).toBe(3);
   // 退化为行内 latex（不丢标题,也不留字面 $$）
-  expect(result[0].content.some((c: any) => c.type === "latex")).toBe(true);
+  expect(
+    (result[0]!.content as InlineNode[]).some((c) => c.type === "latex"),
+  ).toBe(true);
 });
 
 // ── 表格内联公式 ─────────────────────────────────────────────────────────
@@ -95,7 +99,7 @@ test("transformMathInBlocks: 表格单元格 $...$ → latex", () => {
     },
   ];
   const result = transformMathInBlocks(blocks);
-  const cell = result[0].content.rows[0].cells[0];
+  const cell = (result[0]!.content as TableContentStyle).rows![0]!.cells![0]!;
   expect(cell.content).toEqual([
     { type: "text", text: "Q=", styles: {} },
     { type: "latex", props: { latex: "V_s", displayMode: false } },
@@ -117,17 +121,17 @@ test("prepareBlocksForMarkdownExport: 标题 latex 内联 → $latex$ 文本", (
     },
   ];
   const result = prepareBlocksForMarkdownExport(blocks);
-  expect(result[0].type).toBe("heading");
+  expect(result[0]!.type).toBe("heading");
   // latex 节点被替换为 $latex$ 文本节点;相邻文本不合并,序列化时拼接(块内多 text 节点 = 同段连续文本)
-  expect(result[0].content).toEqual([
+  expect(result[0]!.content).toEqual([
     { type: "text", text: "总压损失 ", styles: {} },
     { type: "text", text: "$V_s$", styles: {} },
     { type: "text", text: " 计算", styles: {} },
   ]);
   // 拼接后即期望的 markdown 文本
-  expect(result[0].content.map((c: any) => c.text).join("")).toBe(
-    "总压损失 $V_s$ 计算",
-  );
+  expect(
+    (result[0]!.content as InlineNode[]).map((c) => c.text ?? "").join(""),
+  ).toBe("总压损失 $V_s$ 计算");
 });
 
 test("prepareBlocksForMarkdownExport: equation 块 → 段落 $$latex$$", () => {

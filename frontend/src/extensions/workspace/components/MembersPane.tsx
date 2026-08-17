@@ -3,8 +3,8 @@
 // Collab Workspace — 成员面板（人类/数字员工）
 // EAI-CUSTOM: 全新模块。UI 对齐 cyber 主题。
 
-import { useCallback, useEffect, useState } from "react";
 import { Plus, Trash2, Bot, User } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,10 @@ import { workspaceApi } from "../api";
 import type { CollabMember } from "../types";
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: "Owner", editor: "编辑", reviewer: "审核", coordinator: "协调",
+  owner: "Owner",
+  editor: "编辑",
+  reviewer: "审核",
+  coordinator: "协调",
 };
 
 interface MembersPaneProps {
@@ -66,7 +69,7 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
       setShowAdd(false);
       setAgentName("");
       setUserId("");
-      load();
+      void load();
     } catch {
       toast.error("添加失败");
     }
@@ -76,29 +79,41 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
     try {
       await workspaceApi.removeMember(projectId, memberId);
       toast.success("成员已移除");
-      load();
+      void load();
     } catch {
       toast.error("移除失败");
     }
   };
 
   if (loading) {
-    return <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return (
+      <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
+        加载中...
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-bold" style={{ color: "var(--cyber-text-main)" }}>项目成员 · {projectName}</h2>
+    <div className="max-w-2xl p-6">
+      <div className="mb-4 flex items-center justify-between">
+        <h2
+          className="text-sm font-bold"
+          style={{ color: "var(--cyber-text-main)" }}
+        >
+          项目成员 · {projectName}
+        </h2>
         <Button size="sm" onClick={() => setShowAdd((v) => !v)}>
-          <Plus className="h-4 w-4 mr-1" /> 添加成员
+          <Plus className="mr-1 h-4 w-4" /> 添加成员
         </Button>
       </div>
 
       {showAdd && (
         <div
-          className="rounded-xl border p-4 mb-4 flex flex-col gap-3"
-          style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+          className="mb-4 flex flex-col gap-3 rounded-xl border p-4"
+          style={{
+            background: "var(--cyber-bg-secondary)",
+            borderColor: "var(--cyber-border-muted)",
+          }}
         >
           <div className="flex gap-2">
             {(["agent", "human"] as const).map((t) => (
@@ -106,8 +121,10 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
                 key={t}
                 type="button"
                 onClick={() => setMemberType(t)}
-                className={`flex-1 rounded-lg border px-3 py-2 text-xs font-bold transition cursor-pointer ${
-                  memberType === t ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                className={`flex-1 cursor-pointer rounded-lg border px-3 py-2 text-xs font-bold transition ${
+                  memberType === t
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground"
                 }`}
               >
                 {t === "agent" ? "数字员工" : "真人"}
@@ -116,14 +133,14 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
           </div>
           {memberType === "agent" ? (
             <input
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
               placeholder="agent_name（如 writing-assistant）"
               value={agentName}
               onChange={(e) => setAgentName(e.target.value)}
             />
           ) : (
             <input
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+              className="border-input bg-background flex h-9 w-full rounded-md border px-3 py-1 text-sm"
               placeholder="user_id (UUID)"
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
@@ -135,15 +152,19 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
                 key={r}
                 type="button"
                 onClick={() => setRole(r)}
-                className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
-                  role === r ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+                className={`flex-1 cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                  role === r
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground"
                 }`}
               >
                 {ROLE_LABEL[r]}
               </button>
             ))}
           </div>
-          <Button size="sm" onClick={addMember}>添加</Button>
+          <Button size="sm" onClick={addMember}>
+            添加
+          </Button>
         </div>
       )}
 
@@ -151,26 +172,48 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
         {members.map((m) => (
           <div
             key={m.id}
-            className="rounded-xl border p-3 flex items-center justify-between"
-            style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+            className="flex items-center justify-between rounded-xl border p-3"
+            style={{
+              background: "var(--cyber-bg-secondary)",
+              borderColor: "var(--cyber-border-muted)",
+            }}
           >
             <div className="flex items-center gap-3">
-              <span className={`p-1.5 rounded-lg ${m.memberType === "agent" ? "bg-purple-500/10" : "bg-cyan-500/10"}`}>
-                {m.memberType === "agent" ? <Bot className="h-4 w-4 text-purple-400" /> : <User className="h-4 w-4 text-cyan-400" />}
+              <span
+                className={`rounded-lg p-1.5 ${m.memberType === "agent" ? "bg-purple-500/10" : "bg-cyan-500/10"}`}
+              >
+                {m.memberType === "agent" ? (
+                  <Bot className="h-4 w-4 text-purple-400" />
+                ) : (
+                  <User className="h-4 w-4 text-cyan-400" />
+                )}
               </span>
               <div>
-                <p className="text-sm font-bold" style={{ color: "var(--cyber-text-main)" }}>
+                <p
+                  className="text-sm font-bold"
+                  style={{ color: "var(--cyber-text-main)" }}
+                >
                   {m.memberType === "agent" ? m.agentName : m.userId}
                 </p>
-                <p className="text-[11px] font-mono text-muted-foreground">{ROLE_LABEL[m.role] ?? m.role}</p>
+                <p className="text-muted-foreground font-mono text-[11px]">
+                  {ROLE_LABEL[m.role] ?? m.role}
+                </p>
               </div>
             </div>
-            <button type="button" onClick={() => removeMember(m.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-red-400 cursor-pointer">
+            <button
+              type="button"
+              onClick={() => removeMember(m.id)}
+              className="text-muted-foreground cursor-pointer rounded-lg p-1.5 hover:text-red-400"
+            >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         ))}
-        {members.length === 0 && <div className="p-6 text-center text-xs text-muted-foreground">暂无成员</div>}
+        {members.length === 0 && (
+          <div className="text-muted-foreground p-6 text-center text-xs">
+            暂无成员
+          </div>
+        )}
       </div>
     </div>
   );

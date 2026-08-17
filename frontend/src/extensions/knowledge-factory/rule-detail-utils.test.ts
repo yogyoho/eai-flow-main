@@ -4,7 +4,7 @@ import test from "node:test";
 const { buildRuleUpdatePayload, formatValidationConfig, getRegionLabel } =
   await import("./rule-detail-utils");
 
-test("buildRuleUpdatePayload normalizes nationwide, sections, and validation config", () => {
+void test("buildRuleUpdatePayload normalizes nationwide, sections, and validation config", () => {
   const payload = buildRuleUpdatePayload({
     rule: {
       id: "1",
@@ -48,7 +48,7 @@ test("buildRuleUpdatePayload normalizes nationwide, sections, and validation con
   assert.equal(payload.description, "desc");
 });
 
-test("buildRuleUpdatePayload removes nationwide for local rules", () => {
+void test("buildRuleUpdatePayload removes nationwide for local rules", () => {
   const payload = buildRuleUpdatePayload({
     rule: {
       id: "1",
@@ -85,7 +85,7 @@ test("buildRuleUpdatePayload removes nationwide for local rules", () => {
   assert.deepEqual(payload.applicableRegions, ["jilin"]);
 });
 
-test("buildRuleUpdatePayload rejects invalid validation config json", () => {
+void test("buildRuleUpdatePayload rejects invalid validation config json", () => {
   assert.throws(
     () =>
       buildRuleUpdatePayload({
@@ -117,18 +117,18 @@ test("buildRuleUpdatePayload rejects invalid validation config json", () => {
         targetSectionsInput: "",
         validationConfigText: "{bad json}",
       }),
-    /合法/
+    /合法/,
   );
 });
 
-test("formatValidationConfig pretty prints json", () => {
+void test("formatValidationConfig pretty prints json", () => {
   assert.match(
     formatValidationConfig({ fields: [], comparisonType: "exact_match" }),
-    /\n/
+    /\n/,
   );
 });
 
-test("getRegionLabel resolves known region labels", () => {
+void test("getRegionLabel resolves known region labels", () => {
   assert.equal(getRegionLabel("jilin"), "吉林");
   assert.equal(getRegionLabel("unknown"), "unknown");
 });

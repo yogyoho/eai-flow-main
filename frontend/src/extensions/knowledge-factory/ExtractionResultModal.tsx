@@ -28,7 +28,13 @@ interface Props {
   onExport: () => void;
 }
 
-function SectionNode({ section, depth = 0 }: { section: TemplateSection; depth?: number }) {
+function SectionNode({
+  section,
+  depth = 0,
+}: {
+  section: TemplateSection;
+  depth?: number;
+}) {
   const [expanded, setExpanded] = useState(depth === 0);
   const hasChildren = section.children && section.children.length > 0;
 
@@ -43,47 +49,57 @@ function SectionNode({ section, depth = 0 }: { section: TemplateSection; depth?:
     <div>
       <div
         className={cn(
-          "flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors",
-          depth > 0 && "ml-4"
+          "hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 transition-colors",
+          depth > 0 && "ml-4",
         )}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => hasChildren && setExpanded(!expanded)}
       >
         {hasChildren ? (
           <button
-            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            className="p-0.5 hover:bg-accent rounded transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            className="hover:bg-accent rounded p-0.5 transition-colors"
           >
             {expanded ? (
-              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+              <ChevronDown className="text-muted-foreground h-3.5 w-3.5" />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+              <ChevronRight className="text-muted-foreground h-3.5 w-3.5" />
             )}
           </button>
         ) : (
           <div className="w-4" />
         )}
 
-        <span className="text-sm font-medium text-foreground flex-1 truncate">
+        <span className="text-foreground flex-1 truncate text-sm font-medium">
           {section.title}
         </span>
 
         {section.completeness_score != null && (
-          <span className={cn("text-xs tabular-nums font-medium", scoreColor(section.completeness_score))}>
+          <span
+            className={cn(
+              "text-xs font-medium tabular-nums",
+              scoreColor(section.completeness_score),
+            )}
+          >
             {section.completeness_score}%
           </span>
         )}
 
-        {section.completeness_score != null && section.completeness_score >= 85 && (
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-        )}
-        {section.completeness_score != null && section.completeness_score < 60 && (
-          <AlertCircle className="w-3.5 h-3.5 text-red-500" />
-        )}
+        {section.completeness_score != null &&
+          section.completeness_score >= 85 && (
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+          )}
+        {section.completeness_score != null &&
+          section.completeness_score < 60 && (
+            <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+          )}
       </div>
 
       {expanded && hasChildren && (
-        <div className="border-l border-border/50 ml-4">
+        <div className="border-border/50 ml-4 border-l">
           {section.children!.map((child) => (
             <SectionNode key={child.id} section={child} depth={depth + 1} />
           ))}
@@ -93,7 +109,12 @@ function SectionNode({ section, depth = 0 }: { section: TemplateSection; depth?:
   );
 }
 
-export default function ExtractionResultModal({ task, result, onClose, onExport }: Props) {
+export default function ExtractionResultModal({
+  task,
+  result,
+  onClose,
+  onExport,
+}: Props) {
   const [template, setTemplate] = useState<TemplateDocument | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -103,9 +124,15 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
       setLoading(false);
       return;
     }
-    kfApi.getTemplate(result.template_id)
-      .then((t) => { setTemplate(t); setLoading(false); })
-      .catch(() => { setLoading(false); });
+    kfApi
+      .getTemplate(result.template_id)
+      .then((t) => {
+        setTemplate(t);
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
   }, [result?.template_id]);
 
   const handlePublish = async () => {
@@ -114,22 +141,26 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
     try {
       await kfApi.publishTemplate(result.template_id);
       onClose();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setPublishing(false);
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-background rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="bg-background flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl shadow-2xl">
         {/* Header */}
-        <div className="flex justify-between items-center px-6 py-4 border-b border-border shrink-0">
+        <div className="border-border flex shrink-0 items-center justify-between border-b px-6 py-4">
           <div>
-            <h3 className="text-lg font-semibold text-foreground">
-              抽取结果: {result?.name || task.name} {result?.version && `(${result.version})`}
+            <h3 className="text-foreground text-lg font-semibold">
+              抽取结果: {result?.name ?? task.name}{" "}
+              {result?.version && `(${result.version})`}
             </h3>
             {result && (
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {result.chapters}章 / {result.sections}节 · 完整度 {result.completeness_score}%
+              <p className="text-muted-foreground mt-0.5 text-sm">
+                {result.chapters}章 / {result.sections}节 · 完整度{" "}
+                {result.completeness_score}%
               </p>
             )}
           </div>
@@ -138,22 +169,29 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
               <>
                 <button
                   onClick={onExport}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="border-border hover:bg-muted/50 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors"
                 >
-                  <Download className="w-4 h-4" /> 导出
+                  <Download className="h-4 w-4" /> 导出
                 </button>
                 <button
                   disabled={publishing}
                   onClick={handlePublish}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors disabled:opacity-50"
                 >
-                  {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  {publishing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                   发布
                 </button>
               </>
             )}
-            <button onClick={onClose} className="p-1.5 hover:bg-accent rounded-lg transition-colors">
-              <X className="w-5 h-5 text-muted-foreground" />
+            <button
+              onClick={onClose}
+              className="hover:bg-accent rounded-lg p-1.5 transition-colors"
+            >
+              <X className="text-muted-foreground h-5 w-5" />
             </button>
           </div>
         </div>
@@ -161,44 +199,55 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin mr-2" />
+            <div className="text-muted-foreground flex items-center justify-center py-20">
+              <Loader2 className="mr-2 h-6 w-6 animate-spin" />
               加载模板详情...
             </div>
           ) : !template ? (
-            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-              <AlertCircle className="w-10 h-10 mb-3 opacity-40" />
+            <div className="text-muted-foreground flex flex-col items-center justify-center py-20">
+              <AlertCircle className="mb-3 h-10 w-10 opacity-40" />
               <p>无法加载模板详情</p>
             </div>
           ) : (
             <div className="space-y-4">
               {/* 统计信息 */}
-              <div className="flex items-center gap-6 p-4 bg-muted/30 rounded-xl border border-border">
+              <div className="bg-muted/30 border-border flex items-center gap-6 rounded-xl border p-4">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{result?.chapters || 0}</div>
-                  <div className="text-xs text-muted-foreground">一级章节</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{result?.sections || 0}</div>
-                  <div className="text-xs text-muted-foreground">总节数</div>
-                </div>
-                <div className="text-center">
-                  <div className={cn(
-                    "text-2xl font-bold",
-                    (result?.completeness_score || 0) >= 85 ? "text-emerald-500" :
-                    (result?.completeness_score || 0) >= 60 ? "text-amber-500" : "text-red-500"
-                  )}>
-                    {result?.completeness_score || 0}%
+                  <div className="text-primary text-2xl font-bold">
+                    {result?.chapters ?? 0}
                   </div>
-                  <div className="text-xs text-muted-foreground">完整度</div>
+                  <div className="text-muted-foreground text-xs">一级章节</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-primary text-2xl font-bold">
+                    {result?.sections ?? 0}
+                  </div>
+                  <div className="text-muted-foreground text-xs">总节数</div>
+                </div>
+                <div className="text-center">
+                  <div
+                    className={cn(
+                      "text-2xl font-bold",
+                      (result?.completeness_score ?? 0) >= 85
+                        ? "text-emerald-500"
+                        : (result?.completeness_score ?? 0) >= 60
+                          ? "text-amber-500"
+                          : "text-red-500",
+                    )}
+                  >
+                    {result?.completeness_score ?? 0}%
+                  </div>
+                  <div className="text-muted-foreground text-xs">完整度</div>
                 </div>
                 <div className="ml-auto flex items-center gap-2">
-                  <span className={cn(
-                    "px-2 py-1 rounded-full text-xs font-medium border",
-                    template.status === "published"
-                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                      : "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                  )}>
+                  <span
+                    className={cn(
+                      "rounded-full border px-2 py-1 text-xs font-medium",
+                      template.status === "published"
+                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
+                        : "border-amber-500/20 bg-amber-500/10 text-amber-500",
+                    )}
+                  >
                     {template.status === "published" ? "已发布" : "草稿"}
                   </span>
                 </div>
@@ -206,35 +255,46 @@ export default function ExtractionResultModal({ task, result, onClose, onExport 
 
               {/* 章节树 */}
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold text-foreground mb-2">章节结构</h4>
+                <h4 className="text-foreground mb-2 text-sm font-semibold">
+                  章节结构
+                </h4>
                 {template.root_sections.map((section) => (
                   <SectionNode key={section.id} section={section} />
                 ))}
               </div>
 
               {/* 选中章节详情 */}
-              {template.cross_section_rules && template.cross_section_rules.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-semibold text-foreground">跨章节规则</h4>
-                  {template.cross_section_rules.map((rule) => (
-                    <div key={rule.rule_id} className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm">
-                      <span className="font-medium text-amber-500">{rule.description}</span>
-                      <div className="text-xs text-amber-500/70 mt-1">
-                        涉及章节: {rule.source_sections.join(", ")} → {rule.target_sections.join(", ")}
+              {template.cross_section_rules &&
+                template.cross_section_rules.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-foreground text-sm font-semibold">
+                      跨章节规则
+                    </h4>
+                    {template.cross_section_rules.map((rule) => (
+                      <div
+                        key={rule.rule_id}
+                        className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm"
+                      >
+                        <span className="font-medium text-amber-500">
+                          {rule.description}
+                        </span>
+                        <div className="mt-1 text-xs text-amber-500/70">
+                          涉及章节: {rule.source_sections.join(", ")} →{" "}
+                          {rule.target_sections.join(", ")}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-border shrink-0 flex justify-end">
+        <div className="border-border flex shrink-0 justify-end border-t px-6 py-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
+            className="border-border hover:bg-muted/50 rounded-lg border px-4 py-2 text-sm transition-colors"
           >
             关闭
           </button>

@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
 const { mapRuleImportResponse } = await import("./rule-import-utils");
 
-test("mapRuleImportResponse maps error_messages to errorMessages", () => {
+void test("mapRuleImportResponse maps error_messages to errorMessages", () => {
   const result = mapRuleImportResponse({
     success: true,
     total: 10,

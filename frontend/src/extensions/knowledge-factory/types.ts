@@ -86,10 +86,26 @@ export interface ExtractionTaskCreate {
 /** 模板合并模式 */
 export type MergeMode = "overwrite" | "merge" | "append";
 
-export const MERGE_MODE_OPTIONS: { value: MergeMode; label: string; description: string }[] = [
-  { value: "overwrite", label: "覆盖替换", description: "用提取结果完全替换目标模板的所有章节和内容" },
-  { value: "merge", label: "合并差分", description: "逐章节对比，同标题章节合并内容，新增章节追加，已有章节保留" },
-  { value: "append", label: "内容追加", description: "仅追加目标模板中不存在的章节，已有章节不受影响" },
+export const MERGE_MODE_OPTIONS: {
+  value: MergeMode;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "overwrite",
+    label: "覆盖替换",
+    description: "用提取结果完全替换目标模板的所有章节和内容",
+  },
+  {
+    value: "merge",
+    label: "合并差分",
+    description: "逐章节对比，同标题章节合并内容，新增章节追加，已有章节保留",
+  },
+  {
+    value: "append",
+    label: "内容追加",
+    description: "仅追加目标模板中不存在的章节，已有章节不受影响",
+  },
 ];
 
 // ============== Template Editor Types ==============
@@ -324,13 +340,30 @@ export interface RAGSourceConfig {
   vector_similarity_weight: number;
 }
 
-export const RETRIEVAL_STRATEGIES: { value: RAGSourceConfig["retrieval_strategy"]; label: string; description: string }[] = [
+export const RETRIEVAL_STRATEGIES: {
+  value: RAGSourceConfig["retrieval_strategy"];
+  label: string;
+  description: string;
+}[] = [
   { value: "hybrid", label: "混合检索", description: "语义+关键词混合，推荐" },
   { value: "semantic", label: "语义检索", description: "基于语义相似度匹配" },
   { value: "keyword", label: "关键词检索", description: "基于关键词精确匹配" },
 ];
 
-export function normalizeRagSources(raw: unknown[] | undefined): RAGSourceConfig[] {
+function toIdString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint"
+  )
+    return String(value);
+  return "";
+}
+
+export function normalizeRagSources(
+  raw: unknown[] | undefined,
+): RAGSourceConfig[] {
   if (!raw || !Array.isArray(raw)) return [];
   return raw.map((item) => {
     if (typeof item === "object" && item !== null && "kb_id" in item) {
@@ -338,10 +371,14 @@ export function normalizeRagSources(raw: unknown[] | undefined): RAGSourceConfig
     }
     const obj = item as Record<string, unknown>;
     return {
-      kb_id: String(obj.kb_id ?? obj.id ?? ""),
-      kb_name: String(obj.kb_name ?? obj.name ?? ""),
-      ragflow_dataset_id: obj.ragflow_dataset_id ? String(obj.ragflow_dataset_id) : undefined,
-      retrieval_strategy: (obj.retrieval_strategy as RAGSourceConfig["retrieval_strategy"]) ?? "hybrid",
+      kb_id: toIdString(obj.kb_id ?? obj.id),
+      kb_name: toIdString(obj.kb_name ?? obj.name),
+      ragflow_dataset_id: obj.ragflow_dataset_id
+        ? toIdString(obj.ragflow_dataset_id)
+        : undefined,
+      retrieval_strategy:
+        (obj.retrieval_strategy as RAGSourceConfig["retrieval_strategy"]) ??
+        "hybrid",
       top_k: Number(obj.top_k ?? 5),
       similarity_threshold: Number(obj.similarity_threshold ?? 0.2),
       vector_similarity_weight: Number(obj.vector_similarity_weight ?? 0.3),
@@ -352,7 +389,12 @@ export function normalizeRagSources(raw: unknown[] | undefined): RAGSourceConfig
 export type SectionOperation =
   | { type: "add"; parentId: string | null; level: number }
   | { type: "delete"; sectionId: string }
-  | { type: "move"; sectionId: string; targetParentId: string | null; index: number }
+  | {
+      type: "move";
+      sectionId: string;
+      targetParentId: string | null;
+      index: number;
+    }
   | { type: "update"; sectionId: string; changes: Partial<EditorSection> };
 
 // ============== Law / Regulation Types ==============
@@ -770,7 +812,11 @@ export type LawViewType = "list" | "scraper";
 
 // ==================== Scraper Sub-Tab Types ====================
 
-export type ScraperSubTab = "task-center" | "new-scrape" | "source-manager" | "draft-box";
+export type ScraperSubTab =
+  | "task-center"
+  | "new-scrape"
+  | "source-manager"
+  | "draft-box";
 
 export interface ScrapTaskItem {
   task_id: string;

@@ -4,8 +4,16 @@
 // 已知 ceiling：仅处理 \text{...} 末尾连续的上标/度数；文本中间的 ²³¹ 仍是字面字符（罕见）。
 
 const SUP_MAP: Record<string, string> = {
-  "⁰": "0", "¹": "1", "²": "2", "³": "3", "⁴": "4",
-  "⁵": "5", "⁶": "6", "⁷": "7", "⁸": "8", "⁹": "9",
+  "⁰": "0",
+  "¹": "1",
+  "²": "2",
+  "³": "3",
+  "⁴": "4",
+  "⁵": "5",
+  "⁶": "6",
+  "⁷": "7",
+  "⁸": "8",
+  "⁹": "9",
 };
 
 /**
@@ -16,7 +24,7 @@ export function normalizeLatexForKatex(input: string): string {
   if (!input) return input;
   // 编辑器 markdown 往返会把 \frac 存成 \\frac(双反斜杠);KaTeX 把 \\ 当换行,命令变文本 → 渲染坏。
   // 归一 \\X → \X(只压字母命令,不碰 \\ 换行符=非字母场景)。
-  let s = input.replace(/\\{2,}([a-zA-Z])/g, "\\$1");
+  const s = input.replace(/\\{2,}([a-zA-Z])/g, "\\$1");
   return s.replace(/\\text\{([^{}]*)\}/g, (whole, content: string) => {
     let cleaned = content;
     let tail = "";
@@ -54,13 +62,13 @@ export function rehypeNormalizeMath() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const textOf = (n: any): string => {
       if (!n) return "";
-      if (n.type === "text") return n.value || "";
+      if (n.type === "text") return n.value ?? "";
       if (Array.isArray(n.children)) return n.children.map(textOf).join("");
       return "";
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const walk = (node: any) => {
-      if (node && node.type === "element") {
+      if (node?.type === "element") {
         const cls = node.properties?.className;
         const classes = Array.isArray(cls) ? cls : [];
         if (
@@ -83,5 +91,3 @@ export function rehypeNormalizeMath() {
     return tree;
   };
 }
-
-

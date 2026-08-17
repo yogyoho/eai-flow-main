@@ -23,7 +23,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { projectApi } from "@/extensions/project/api";
-import { MEMBER_ROLE_LABELS, type MemberRole } from "@/extensions/project/types";
+import {
+  MEMBER_ROLE_LABELS,
+  type MemberRole,
+} from "@/extensions/project/types";
 
 interface AddMemberDialogProps {
   projectId: string;
@@ -32,9 +35,16 @@ interface AddMemberDialogProps {
   onAdded: () => void;
 }
 
-export function AddMemberDialog({ projectId, open, onOpenChange, onAdded }: AddMemberDialogProps) {
+export function AddMemberDialog({
+  projectId,
+  open,
+  onOpenChange,
+  onAdded,
+}: AddMemberDialogProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ id: string; username: string; fullName?: string }>>([]);
+  const [searchResults, setSearchResults] = useState<
+    Array<{ id: string; username: string; fullName?: string }>
+  >([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [newRole, setNewRole] = useState<MemberRole>("writer");
   const [adding, setAdding] = useState(false);
@@ -55,16 +65,20 @@ export function AddMemberDialog({ projectId, open, onOpenChange, onAdded }: AddM
       setSearchResults([]);
       return;
     }
-    const timer = setTimeout(async () => {
-      try {
-        const resp = await fetch(`/api/extensions/users/search?keyword=${encodeURIComponent(searchQuery)}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          setSearchResults((data.users ?? data.items ?? []).slice(0, 10));
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const resp = await fetch(
+            `/api/extensions/users/search?keyword=${encodeURIComponent(searchQuery)}`,
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            setSearchResults((data.users ?? data.items ?? []).slice(0, 10));
+          }
+        } catch {
+          /* ignore */
         }
-      } catch {
-        /* ignore */
-      }
+      })();
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -112,21 +126,30 @@ export function AddMemberDialog({ projectId, open, onOpenChange, onAdded }: AddM
                       setSearchQuery(u.username);
                     }}
                     className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
-                      selectedUserId === u.id ? "bg-primary/10 text-primary" : "hover:bg-accent/40"
+                      selectedUserId === u.id
+                        ? "bg-primary/10 text-primary"
+                        : "hover:bg-accent/40"
                     }`}
                   >
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+                    <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium">
                       {u.username.charAt(0).toUpperCase()}
                     </div>
                     <span>{u.username}</span>
-                    {u.fullName && <span className="text-muted-foreground">({u.fullName})</span>}
+                    {u.fullName && (
+                      <span className="text-muted-foreground">
+                        ({u.fullName})
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
             </ScrollArea>
           )}
           <div className="flex items-center gap-2">
-            <Select value={newRole} onValueChange={(v) => setNewRole(v as MemberRole)}>
+            <Select
+              value={newRole}
+              onValueChange={(v) => setNewRole(v as MemberRole)}
+            >
               <SelectTrigger className="h-8 w-32 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -143,11 +166,25 @@ export function AddMemberDialog({ projectId, open, onOpenChange, onAdded }: AddM
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+          >
             取消
           </Button>
-          <Button size="sm" disabled={!selectedUserId || adding} onClick={handleAdd}>
-            {adding ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <UserPlus className="h-3 w-3 mr-1" />}
+          <Button
+            size="sm"
+            disabled={!selectedUserId || adding}
+            onClick={() => {
+              void handleAdd();
+            }}
+          >
+            {adding ? (
+              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+            ) : (
+              <UserPlus className="mr-1 h-3 w-3" />
+            )}
             添加
           </Button>
         </DialogFooter>

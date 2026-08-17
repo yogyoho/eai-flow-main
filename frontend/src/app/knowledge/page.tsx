@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import React, { Suspense, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useState } from "react";
 
 import SimpleShellLayout from "@/app/extensions/shell-old/SimpleShellLayout";
 import { Button } from "@/components/ui/button";
@@ -58,12 +58,36 @@ const CHUNK_METHOD_OPTIONS: { value: string; label: string }[] = [
   { value: "tag", label: "标签集 (Tag)" },
 ];
 
-const LAYOUT_RECOGNIZE_OPTIONS: { value: string; label: string; desc: string }[] = [
-  { value: "DeepDOC", label: "DeepDOC (默认)", desc: "OCR + TSR + DLR，默认视觉模型，准确但较慢" },
-  { value: "Naive", label: "快速解析 (Naive)", desc: "跳过 OCR/TSR/DLR，仅适用于纯文本 PDF" },
-  { value: "MinerU", label: "MinerU", desc: "开源 PDF 转换工具，将 PDF 转为机器可读格式" },
-  { value: "Docling", label: "Docling", desc: "开源文档处理工具，为生成式 AI 优化" },
-  { value: "OpenDataLoader", label: "OpenDataLoader", desc: "确定性本地 PDF 解析器，输出 JSON + Markdown" },
+const LAYOUT_RECOGNIZE_OPTIONS: {
+  value: string;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    value: "DeepDOC",
+    label: "DeepDOC (默认)",
+    desc: "OCR + TSR + DLR，默认视觉模型，准确但较慢",
+  },
+  {
+    value: "Naive",
+    label: "快速解析 (Naive)",
+    desc: "跳过 OCR/TSR/DLR，仅适用于纯文本 PDF",
+  },
+  {
+    value: "MinerU",
+    label: "MinerU",
+    desc: "开源 PDF 转换工具，将 PDF 转为机器可读格式",
+  },
+  {
+    value: "Docling",
+    label: "Docling",
+    desc: "开源文档处理工具，为生成式 AI 优化",
+  },
+  {
+    value: "OpenDataLoader",
+    label: "OpenDataLoader",
+    desc: "确定性本地 PDF 解析器，输出 JSON + Markdown",
+  },
 ];
 
 function knowledgeBaseTypeLabel(kbType: string | undefined): string {
@@ -73,7 +97,11 @@ function knowledgeBaseTypeLabel(kbType: string | undefined): string {
 
 // ─── KnowledgeBaseManagement ─────────────────────────────────────────────────
 
-function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: string }) {
+function KnowledgeBaseManagement({
+  initialSearch = "",
+}: {
+  initialSearch?: string;
+}) {
   // EAI-CUSTOM: button-level permission check
   const { can } = usePermission();
   const { toasts, show: toast, remove } = useToast();
@@ -112,20 +140,25 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
     let cancelled = false;
     setEmbeddingModelsLoading(true);
     setEmbeddingModelsError(false);
-    kbApi.listEmbeddingModels().then((res) => {
-      if (cancelled) return;
-      setEmbeddingModels(res.models || []);
-      setEmbeddingModelsLoading(false);
-      if (!res.models?.length && res.error) {
+    kbApi
+      .listEmbeddingModels()
+      .then((res) => {
+        if (cancelled) return;
+        setEmbeddingModels(res.models || []);
+        setEmbeddingModelsLoading(false);
+        if (!res.models?.length && res.error) {
+          setEmbeddingModelsError(true);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setEmbeddingModels([]);
+        setEmbeddingModelsLoading(false);
         setEmbeddingModelsError(true);
-      }
-    }).catch(() => {
-      if (cancelled) return;
-      setEmbeddingModels([]);
-      setEmbeddingModelsLoading(false);
-      setEmbeddingModelsError(true);
-    });
-    return () => { cancelled = true; };
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [isCreateOpen, createForm.kb_type]);
 
   // Edit modal
@@ -133,21 +166,21 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
   const [editForm, setEditForm] = useState<UpdateKnowledgeBaseRequest>({});
   const [editLoading, setEditLoading] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const res = await kbApi.list({ limit: 500 });
       setKbs(res.knowledge_bases);
-    } catch (e: any) {
-      toast(e?.message ?? "加载失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "加载失败", "error");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   const filteredKBs = kbs.filter((kb) => {
     const matchesSearch =
@@ -179,8 +212,8 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
         language: "Chinese",
       });
       toast("知识库创建成功", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "创建失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "创建失败", "error");
     }
   };
 
@@ -191,8 +224,8 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
       await kbApi.delete(id);
       setKbs((prev) => prev.filter((kb) => kb.id !== id));
       toast("知识库已删除", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "删除失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "删除失败", "error");
     }
   };
 
@@ -207,8 +240,8 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
         ),
       );
       toast("同步状态已刷新", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "同步失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "同步失败", "error");
     } finally {
       setSyncingIds((prev) => {
         const s = new Set(prev);
@@ -237,38 +270,59 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
       setKbs((prev) => prev.map((kb) => (kb.id === editKb.id ? updated : kb)));
       setEditKb(null);
       toast("知识库信息已更新", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "更新失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "更新失败", "error");
     } finally {
       setEditLoading(false);
     }
   };
 
   const getStatusBadge = (status: string) => {
-    const base = "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium";
+    const base =
+      "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium";
     if (status === "active" || status === "done")
       return (
-        <span className={cn(base, "border border-success/20 bg-success/10 text-success")}>
+        <span
+          className={cn(
+            base,
+            "border-success/20 bg-success/10 text-success border",
+          )}
+        >
           <CheckCircle2 className="h-3 w-3" />
           已就绪
         </span>
       );
     if (status === "syncing" || status === "processing")
       return (
-        <span className={cn(base, "border border-primary/20 bg-primary/10 text-primary")}>
+        <span
+          className={cn(
+            base,
+            "border-primary/20 bg-primary/10 text-primary border",
+          )}
+        >
           <RefreshCw className="h-3 w-3 animate-spin" />
           同步中
         </span>
       );
     if (status === "error" || status === "failed")
       return (
-        <span className={cn(base, "border border-destructive/20 bg-destructive/10 text-destructive")}>
+        <span
+          className={cn(
+            base,
+            "border-destructive/20 bg-destructive/10 text-destructive border",
+          )}
+        >
           <AlertCircle className="h-3 w-3" />
           同步失败
         </span>
       );
     return (
-      <span className={cn(base, "border border-border bg-muted text-muted-foreground")}>
+      <span
+        className={cn(
+          base,
+          "border-border bg-muted text-muted-foreground border",
+        )}
+      >
         <Clock className="h-3 w-3" />
         未同步
       </span>
@@ -276,17 +330,19 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
   };
 
   return (
-    <main className="flex-1 overflow-y-auto bg-muted/50 p-8">
+    <main className="bg-muted/50 flex-1 overflow-y-auto p-8">
       <div className="mx-auto max-w-6xl space-y-8">
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-              <BookOpen className="w-6 h-6" />
+            <div className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-600">
+              <BookOpen className="h-6 w-6" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">知识库管理</h1>
-              <p className="text-sm text-muted-foreground mt-1">
+              <h1 className="text-foreground text-2xl font-bold tracking-tight">
+                知识库管理
+              </h1>
+              <p className="text-muted-foreground mt-1 text-sm">
                 管理 RAGFlow 知识库，上传文档并监控同步状态。
               </p>
             </div>
@@ -301,15 +357,15 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col items-center justify-between gap-4 rounded-xl border border-border bg-background p-4 shadow-sm sm:flex-row">
+        <div className="border-border bg-background flex flex-col items-center justify-between gap-4 rounded-xl border p-4 shadow-sm sm:flex-row">
           <div className="relative w-full sm:w-64">
-            <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               type="text"
               placeholder="搜索知识库名称或描述..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-muted pl-9 pr-4"
+              className="bg-muted w-full pr-4 pl-9"
             />
           </div>
           <div className="w-full sm:w-48">
@@ -339,7 +395,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
         {/* Grid */}
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex items-center justify-center gap-2 py-12 text-center text-sm">
             <Loader2 className="h-5 w-5 animate-spin" />
             加载中...
           </div>
@@ -358,7 +414,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                     onClick={() => router.push(`/knowledge/${kb.id}`)}
-                    className="group flex cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md"
+                    className="group border-border bg-background flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md"
                   >
                     <div className="flex-1 p-5">
                       <div className="mb-4 flex items-center gap-3">
@@ -377,7 +433,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                           )}
                         </div>
                         <div className="min-w-0">
-                          <h3 className="line-clamp-1 font-semibold text-foreground">
+                          <h3 className="text-foreground line-clamp-1 font-semibold">
                             {kb.name}
                           </h3>
                           <div className="mt-0.5 flex items-center gap-1.5">
@@ -396,46 +452,47 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                         </div>
                       </div>
 
-                      <p className="mb-4 line-clamp-2 h-10 text-sm text-muted-foreground">
-                        {kb.description || "暂无描述"}
+                      <p className="text-muted-foreground mb-4 line-clamp-2 h-10 text-sm">
+                        {/* EAI-CUSTOM: truthiness check via .length (not `??`) — description can legitimately be "" (create form defaults to ""), placeholder must still show */}
+                        {kb.description?.length ? kb.description : "暂无描述"}
                       </p>
 
-                      <div className="grid grid-cols-3 gap-3 border-t border-border py-3">
+                      <div className="border-border grid grid-cols-3 gap-3 border-t py-3">
                         <div>
-                          <div className="mb-1 text-xs text-muted-foreground">
+                          <div className="text-muted-foreground mb-1 text-xs">
                             知识库类型
                           </div>
                           <div
-                            className="truncate text-sm font-medium text-foreground"
+                            className="text-foreground truncate text-sm font-medium"
                             title={knowledgeBaseTypeLabel(kbType)}
                           >
                             {knowledgeBaseTypeLabel(kbType)}
                           </div>
                         </div>
                         <div>
-                          <div className="mb-1 text-xs text-muted-foreground">
+                          <div className="text-muted-foreground mb-1 text-xs">
                             创建时间
                           </div>
-                          <div className="text-sm font-medium text-foreground">
+                          <div className="text-foreground text-sm font-medium">
                             {new Date(kb.created_at).toLocaleDateString(
                               "zh-CN",
                             )}
                           </div>
                         </div>
                         <div>
-                          <div className="mb-1 text-xs text-muted-foreground">
+                          <div className="text-muted-foreground mb-1 text-xs">
                             分块方式
                           </div>
-                          <div className="truncate text-sm font-medium text-foreground">
+                          <div className="text-foreground truncate text-sm font-medium">
                             {kb.chunk_method || "naive"}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between border-t border-border bg-muted/50 px-5 py-3">
-                      <div className="text-xs text-muted-foreground">
-                        {kb.owner_name || "未知"}
+                    <div className="border-border bg-muted/50 flex items-center justify-between border-t px-5 py-3">
+                      <div className="text-muted-foreground text-xs">
+                        {kb.owner_name ?? "未知"}
                       </div>
                       <div className="flex items-center gap-1">
                         <Button
@@ -485,12 +542,12 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
             </AnimatePresence>
 
             {filteredKBs.length === 0 && (
-              <div className="col-span-full rounded-xl border border-dashed border-border bg-background py-12 text-center">
-                <Database className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                <h3 className="text-sm font-medium text-foreground">
+              <div className="border-border bg-background col-span-full rounded-xl border border-dashed py-12 text-center">
+                <Database className="text-muted-foreground/50 mx-auto mb-3 h-12 w-12" />
+                <h3 className="text-foreground text-sm font-medium">
                   未找到知识库
                 </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-1 text-sm">
                   尝试调整搜索词或筛选条件
                 </p>
               </div>
@@ -514,24 +571,24 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-background shadow-xl"
+              className="bg-background relative flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-xl"
             >
-              <div className="flex shrink-0 items-center gap-3 border-b border-border bg-muted/50 px-6 py-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+              <div className="border-border bg-muted/50 flex shrink-0 items-center gap-3 border-b px-6 py-4">
+                <div className="border-primary/20 bg-primary/10 text-primary flex h-10 w-10 items-center justify-center rounded-lg border">
                   <Database className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg leading-tight font-semibold text-foreground">
+                  <h3 className="text-foreground text-lg leading-tight font-semibold">
                     新建知识库
                   </h3>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-muted-foreground text-xs">
                     创建一个新的文档知识库
                   </div>
                 </div>
               </div>
               <div className="flex-1 space-y-5 overflow-y-auto p-6">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库名称 <span className="text-destructive">*</span>
                   </label>
                   <Input
@@ -545,7 +602,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     访问权限
                   </label>
                   <CustomSelect
@@ -585,7 +642,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库类型
                   </label>
                   <CustomSelect
@@ -606,7 +663,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     描述
                   </label>
                   <Textarea
@@ -625,15 +682,15 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
                 {/* RAGFlow Parameters — conditional */}
                 {createForm.kb_type === "ragflow" && (
-                  <div className="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <Settings className="h-4 w-4 text-primary" />
+                  <div className="border-primary/20 bg-primary/5 space-y-4 rounded-xl border p-4">
+                    <div className="text-foreground flex items-center gap-2 text-sm font-semibold">
+                      <Settings className="text-primary h-4 w-4" />
                       RAGFlow 参数
                     </div>
 
                     {/* Language */}
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">
+                      <label className="text-foreground mb-1 block text-sm font-medium">
                         语言
                       </label>
                       <CustomSelect
@@ -650,7 +707,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
                     {/* Chunk Method */}
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">
+                      <label className="text-foreground mb-1 block text-sm font-medium">
                         分块方式
                       </label>
                       <CustomSelect
@@ -667,27 +724,35 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
                     {/* Embedding Model */}
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">
+                      <label className="text-foreground mb-1 block text-sm font-medium">
                         嵌入模型
                       </label>
                       {embeddingModelsLoading ? (
-                        <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-muted-foreground">
+                        <div className="border-input bg-background text-muted-foreground flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm">
                           <Loader2 className="h-4 w-4 animate-spin" />
                           加载模型列表...
                         </div>
-                      ) : embeddingModelsError || embeddingModels.length === 0 ? (
+                      ) : embeddingModelsError ||
+                        embeddingModels.length === 0 ? (
                         <Input
                           type="text"
                           value={createForm.embedding_model ?? ""}
                           onChange={(e) =>
-                            setCreateForm({ ...createForm, embedding_model: e.target.value || undefined })
+                            setCreateForm({
+                              ...createForm,
+                              embedding_model: e.target.value || undefined,
+                            })
                           }
                           className="w-full"
                           placeholder="model_name@factory（例如：BAAI/bge-large-zh-v1.5@BAAI）"
                         />
                       ) : (
                         <CustomSelect
-                          value={createForm.embedding_model ?? embeddingModels[0] ?? ""}
+                          value={
+                            createForm.embedding_model ??
+                            embeddingModels[0] ??
+                            ""
+                          }
                           onChange={(v) =>
                             setCreateForm({ ...createForm, embedding_model: v })
                           }
@@ -698,7 +763,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                         />
                       )}
                       {embeddingModelsError && (
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className="text-muted-foreground mt-1 text-xs">
                           无法获取模型列表，请手动输入 model_name@factory 格式
                         </p>
                       )}
@@ -706,9 +771,9 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
                     {/* Chunk Size (chunk_token_num) */}
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">
+                      <label className="text-foreground mb-1 block text-sm font-medium">
                         分块大小{" "}
-                        <span className="font-normal text-muted-foreground">
+                        <span className="text-muted-foreground font-normal">
                           （token 数量）
                         </span>
                       </label>
@@ -718,7 +783,9 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                           min={128}
                           max={2048}
                           step={128}
-                          value={createForm.parser_config?.chunk_token_num ?? 512}
+                          value={
+                            createForm.parser_config?.chunk_token_num ?? 512
+                          }
                           onChange={(e) =>
                             setCreateForm({
                               ...createForm,
@@ -728,9 +795,9 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                               },
                             })
                           }
-                          className="flex-1 accent-primary"
+                          className="accent-primary flex-1"
                         />
-                        <span className="w-12 text-center text-sm font-medium text-foreground">
+                        <span className="text-foreground w-12 text-center text-sm font-medium">
                           {createForm.parser_config?.chunk_token_num ?? 512}
                         </span>
                       </div>
@@ -738,7 +805,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
                     {/* Delimiter */}
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">
+                      <label className="text-foreground mb-1 block text-sm font-medium">
                         分隔符
                       </label>
                       <Input
@@ -760,11 +827,14 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
                     {/* PDF Parser (layout_recognize) */}
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-foreground">
+                      <label className="text-foreground mb-1 block text-sm font-medium">
                         PDF 解析方式
                       </label>
                       <CustomSelect
-                        value={createForm.parser_config?.layout_recognize ?? "DeepDOC"}
+                        value={
+                          createForm.parser_config?.layout_recognize ??
+                          "DeepDOC"
+                        }
                         onChange={(v) =>
                           setCreateForm({
                             ...createForm,
@@ -784,7 +854,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   </div>
                 )}
               </div>
-              <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
+              <div className="border-border bg-muted/50 flex shrink-0 items-center justify-end gap-3 border-t px-6 py-4">
                 <Button
                   variant="outline"
                   onClick={() => setIsCreateOpen(false)}
@@ -818,10 +888,10 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-background shadow-xl"
+              className="bg-background relative w-full max-w-lg overflow-hidden rounded-2xl shadow-xl"
             >
-              <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                <h3 className="text-lg font-semibold text-foreground">
+              <div className="border-border flex items-center justify-between border-b px-6 py-4">
+                <h3 className="text-foreground text-lg font-semibold">
                   编辑知识库
                 </h3>
                 <Button
@@ -834,7 +904,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
               </div>
               <div className="space-y-5 p-6">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库名称 <span className="text-destructive">*</span>
                   </label>
                   <Input
@@ -847,7 +917,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     访问权限
                   </label>
                   <CustomSelect
@@ -887,7 +957,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库类型
                   </label>
                   <CustomSelect
@@ -906,7 +976,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     描述
                   </label>
                   <Textarea
@@ -919,11 +989,8 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setEditKb(null)}
-                >
+              <div className="border-border bg-muted/50 flex items-center justify-end gap-3 border-t px-6 py-4">
+                <Button variant="outline" onClick={() => setEditKb(null)}>
                   取消
                 </Button>
                 <Button
@@ -948,7 +1015,7 @@ function KnowledgeBaseManagement({ initialSearch = "" }: { initialSearch?: strin
 
 function KnowledgePageInner() {
   const searchParams = useSearchParams();
-  const initialSearch = searchParams.get("search") || "";
+  const initialSearch = searchParams.get("search") ?? "";
   return <KnowledgeBaseManagement initialSearch={initialSearch} />;
 }
 
@@ -956,7 +1023,13 @@ export default function KnowledgePage() {
   return (
     <PermissionProvider>
       <SimpleShellLayout>
-        <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="text-primary h-8 w-8 animate-spin" />
+            </div>
+          }
+        >
           <KnowledgePageInner />
         </Suspense>
       </SimpleShellLayout>

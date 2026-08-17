@@ -87,8 +87,14 @@ export function KnowledgeBaseDetail({
   const [isFormatted, setIsFormatted] = useState(false);
   const [query, setQuery] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
-  const [chatResult, setChatResult] = useState<{ answer?: string; sources?: RAGChatResponse["sources"] } | null>(null);
-  const [previewChunk, setPreviewChunk] = useState<{ content: string; name?: string } | null>(null);
+  const [chatResult, setChatResult] = useState<{
+    answer?: string;
+    sources?: RAGChatResponse["sources"];
+  } | null>(null);
+  const [previewChunk, setPreviewChunk] = useState<{
+    content: string;
+    name?: string;
+  } | null>(null);
   const [docs, setDocs] = useState<Document[]>([]);
   const [docsLoading, setDocsLoading] = useState(true);
   const [fileSearch, setFileSearch] = useState("");
@@ -113,7 +119,9 @@ export function KnowledgeBaseDetail({
   const [grantType, setGrantType] = useState<"user" | "dept" | "role">("user");
   const [grantTargetId, setGrantTargetId] = useState("");
   const [grantSearch, setGrantSearch] = useState("");
-  const [grantPermission, setGrantPermission] = useState<"read" | "write">("read");
+  const [grantPermission, setGrantPermission] = useState<"read" | "write">(
+    "read",
+  );
   const [grantExpires, setGrantExpires] = useState("");
   const [grantSaving, setGrantSaving] = useState(false);
 
@@ -150,14 +158,14 @@ export function KnowledgeBaseDetail({
     (g: KnowledgeBaseGrant) => {
       if (g.grantee_type === "user") {
         const u = grantUsers.find((x) => x.id === g.grantee_id);
-        return u?.full_name || u?.username || g.grantee_id;
+        return u?.full_name ?? u?.username ?? g.grantee_id;
       }
       if (g.grantee_type === "dept") {
         const d = grantDepts.find((x) => x.id === g.grantee_id);
-        return d?.name || d?.code || g.grantee_id;
+        return d?.name ?? d?.code ?? g.grantee_id;
       }
       const r = grantRoles.find((x) => x.id === g.grantee_id);
-      return r?.name || r?.code || g.grantee_id;
+      return r?.name ?? r?.code ?? g.grantee_id;
     },
     [grantUsers, grantDepts, grantRoles],
   );
@@ -187,7 +195,7 @@ export function KnowledgeBaseDetail({
             u.username.toLowerCase().includes(q) ||
             (u.full_name ?? "").toLowerCase().includes(q),
         )
-        .map((u) => ({ id: u.id, label: u.full_name || u.username || u.id }));
+        .map((u) => ({ id: u.id, label: u.full_name ?? u.username ?? u.id }));
     }
     if (grantType === "dept") {
       return grantDepts
@@ -197,7 +205,7 @@ export function KnowledgeBaseDetail({
             d.name.toLowerCase().includes(q) ||
             (d.code ?? "").toLowerCase().includes(q),
         )
-        .map((d) => ({ id: d.id, label: d.name || d.code || d.id }));
+        .map((d) => ({ id: d.id, label: d.name ?? d.code ?? d.id }));
     }
     return grantRoles
       .filter(
@@ -225,8 +233,8 @@ export function KnowledgeBaseDetail({
       toast("授权已添加", "success");
       setShowAddGrant(false);
       void loadGrants();
-    } catch (e: any) {
-      toast(e?.message ?? "添加授权失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "添加授权失败", "error");
     } finally {
       setGrantSaving(false);
     }
@@ -238,8 +246,8 @@ export function KnowledgeBaseDetail({
       await kbApi.grants.remove(g.kb_id, g.id);
       setKbGrants((prev) => prev.filter((x) => x.id !== g.id));
       toast("授权已移除", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "移除授权失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "移除授权失败", "error");
     }
   };
 
@@ -268,8 +276,8 @@ export function KnowledgeBaseDetail({
       const res = await kbApi.listDocs(kb.id, { limit: 200 });
       setDocs(res.documents);
       return res.documents;
-    } catch (e: any) {
-      toast(e?.message ?? "加载文档失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "加载文档失败", "error");
       return [];
     } finally {
       setDocsLoading(false);
@@ -277,7 +285,7 @@ export function KnowledgeBaseDetail({
   }, [kb.id, toast]);
 
   useEffect(() => {
-    loadDocs();
+    void loadDocs();
   }, [loadDocs]);
 
   // Poll while any doc is in processing state
@@ -286,7 +294,9 @@ export function KnowledgeBaseDetail({
       ["uploading", "processing", "pending"].includes(d.status),
     );
     if (hasProcessing && !pollRef.current) {
-      pollRef.current = setInterval(loadDocs, 3000);
+      pollRef.current = setInterval(() => {
+        void loadDocs();
+      }, 3000);
     } else if (!hasProcessing && pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
@@ -306,8 +316,8 @@ export function KnowledgeBaseDetail({
       await kbApi.deleteDoc(kb.id, docId);
       setDocs((prev) => prev.filter((d) => d.id !== docId));
       toast("文件已删除", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "删除失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "删除失败", "error");
     }
   };
 
@@ -364,8 +374,8 @@ export function KnowledgeBaseDetail({
       onKbUpdated?.(updated);
       toast("知识库信息已更新", "success");
       setShowEditKb(false);
-    } catch (e: any) {
-      toast(e?.message ?? "更新失败", "error");
+    } catch (e) {
+      toast((e as { message?: string })?.message ?? "更新失败", "error");
     } finally {
       setEditLoading(false);
     }
@@ -380,18 +390,16 @@ export function KnowledgeBaseDetail({
       {/* Left Pane */}
       <div className="flex w-1/2 flex-col gap-4 overflow-hidden">
         {/* Header Card */}
-        <div className="shrink-0 rounded-xl border border-border bg-background p-6">
+        <div className="border-border bg-background shrink-0 rounded-xl border p-6">
           <div className="mb-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onBack}
-              >
+              <Button variant="ghost" size="icon" onClick={onBack}>
                 <ChevronLeft className="h-5 w-5" />
               </Button>
-              <h2 className="text-lg font-semibold text-foreground">{kb.name}</h2>
-              <span className="rounded bg-muted px-2 py-1 font-mono text-xs text-muted-foreground">
+              <h2 className="text-foreground text-lg font-semibold">
+                {kb.name}
+              </h2>
+              <span className="bg-muted text-muted-foreground rounded px-2 py-1 font-mono text-xs">
                 ID: {kb.id}
               </span>
             </div>
@@ -421,14 +429,15 @@ export function KnowledgeBaseDetail({
               )}
             </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {kb.description || "暂无描述"}
+          <p className="text-muted-foreground text-sm">
+            {/* EAI-CUSTOM: truthiness check via .length (not `??`) — description can legitimately be "" (create form defaults to ""), placeholder must still show */}
+            {kb.description?.length ? kb.description : "暂无描述"}
           </p>
         </div>
 
         {/* File List Card */}
-        <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background">
-          <div className="flex shrink-0 items-center justify-between border-b border-border p-4">
+        <div className="border-border bg-background flex flex-1 flex-col overflow-hidden rounded-xl border">
+          <div className="border-border flex shrink-0 items-center justify-between border-b p-4">
             {/* EAI-CUSTOM: gate upload button by kb:upload permission */}
             {can("kb:upload") && (
               <Button
@@ -449,7 +458,7 @@ export function KnowledgeBaseDetail({
                   onChange={(e) => setFileSearch(e.target.value)}
                   className="w-48 pr-8"
                 />
-                <Search className="absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Search className="text-muted-foreground absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2" />
               </div>
               <Button
                 variant="ghost"
@@ -467,12 +476,10 @@ export function KnowledgeBaseDetail({
 
           <div className="flex-1 overflow-auto">
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 z-10 bg-muted/50 text-xs text-muted-foreground">
+              <thead className="bg-muted/50 text-muted-foreground sticky top-0 z-10 text-xs">
                 <tr>
                   <th className="w-10 px-4 py-3 font-medium">
-                    <input
-                      type="checkbox"
-                    />
+                    <input type="checkbox" />
                   </th>
                   <th className="px-4 py-3 font-medium">文件名</th>
                   <th className="w-28 px-4 py-3 font-medium">上传时间</th>
@@ -482,12 +489,12 @@ export function KnowledgeBaseDetail({
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-border divide-y">
                 {docsLoading ? (
                   <tr>
                     <td
                       colSpan={5}
-                      className="px-4 py-8 text-center text-sm text-muted-foreground"
+                      className="text-muted-foreground px-4 py-8 text-center text-sm"
                     >
                       <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                     </td>
@@ -496,7 +503,7 @@ export function KnowledgeBaseDetail({
                   <tr>
                     <td
                       colSpan={5}
-                      className="px-4 py-8 text-center text-sm text-muted-foreground"
+                      className="text-muted-foreground px-4 py-8 text-center text-sm"
                     >
                       暂无文件
                     </td>
@@ -506,7 +513,7 @@ export function KnowledgeBaseDetail({
                     <tr
                       key={doc.id}
                       onClick={() => setShowChunksDoc(doc)}
-                      className="group cursor-pointer transition-colors hover:bg-muted/50"
+                      className="group hover:bg-muted/50 cursor-pointer transition-colors"
                     >
                       <td
                         className="px-4 py-3"
@@ -514,29 +521,29 @@ export function KnowledgeBaseDetail({
                       >
                         <input
                           type="checkbox"
-                          className="w-4 h-4 shrink-0 rounded border-input focus:ring-2 focus:ring-ring/30 focus:ring-offset-0"
+                          className="border-input focus:ring-ring/30 h-4 w-4 shrink-0 rounded focus:ring-2 focus:ring-offset-0"
                         />
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary text-primary-foreground">
+                          <div className="bg-primary text-primary-foreground flex h-6 w-6 shrink-0 items-center justify-center rounded">
                             <span className="text-[10px] leading-none font-bold">
                               {doc.file_type?.toUpperCase().slice(0, 1) ?? "F"}
                             </span>
                           </div>
                           <div className="min-w-0">
-                            <span className="block truncate text-foreground">
+                            <span className="text-foreground block truncate">
                               {doc.name}
                             </span>
                             {doc.file_size > 0 && (
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-muted-foreground text-[10px]">
                                 {formatFileSize(doc.file_size)}
                               </span>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">
+                      <td className="text-muted-foreground px-4 py-3 text-xs">
                         {formatDate(doc.created_at)}
                       </td>
                       <td className="px-4 py-3">
@@ -564,21 +571,30 @@ export function KnowledgeBaseDetail({
             </table>
           </div>
 
-          <div className="flex shrink-0 items-center justify-end border-t border-border p-3 text-xs text-muted-foreground">
+          <div className="border-border text-muted-foreground flex shrink-0 items-center justify-end border-t p-3 text-xs">
             共 {docs.length} 个文件
           </div>
         </div>
       </div>
 
       {/* Right Pane */}
-      <div className="flex w-1/2 flex-col overflow-hidden rounded-xl border border-border bg-background">
-        <Tabs defaultValue="test" className="flex flex-1 flex-col overflow-hidden">
-          <TabsList variant="line" className="shrink-0 justify-start rounded-none border-b border-border px-4">
+      <div className="border-border bg-background flex w-1/2 flex-col overflow-hidden rounded-xl border">
+        <Tabs
+          defaultValue="test"
+          className="flex flex-1 flex-col overflow-hidden"
+        >
+          <TabsList
+            variant="line"
+            className="border-border shrink-0 justify-start rounded-none border-b px-4"
+          >
             <TabsTrigger value="test">检索测试</TabsTrigger>
             <TabsTrigger value="config">检索配置</TabsTrigger>
           </TabsList>
-          <TabsContent value="test" className="m-0 flex flex-1 flex-col gap-4 overflow-auto bg-muted/30 p-4">
-            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+          <TabsContent
+            value="test"
+            className="bg-muted/30 m-0 flex flex-1 flex-col gap-4 overflow-auto p-4"
+          >
+            <div className="border-border bg-background focus-within:border-primary focus-within:ring-primary flex flex-col overflow-hidden rounded-xl border shadow-sm transition-all focus-within:ring-1">
               <Textarea
                 className="min-h-[120px] w-full resize-none border-0 p-4 text-sm outline-none"
                 placeholder="输入查询内容..."
@@ -586,12 +602,12 @@ export function KnowledgeBaseDetail({
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.ctrlKey || e.metaKey))
-                    handleSearch();
+                    void handleSearch();
                 }}
               />
-              <div className="flex items-center justify-between border-t border-border bg-muted/50 px-4 py-3">
+              <div className="border-border bg-muted/50 flex items-center justify-between border-t px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
+                  <span className="bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs font-medium">
                     格式化
                   </span>
                   <button
@@ -627,35 +643,40 @@ export function KnowledgeBaseDetail({
             {chatResult && (
               <div className="space-y-3">
                 {chatResult.answer && (
-                  <div className="rounded-xl border border-primary/10 bg-primary/5 p-4">
-                    <h4 className="mb-2 text-sm font-medium text-foreground">
+                  <div className="border-primary/10 bg-primary/5 rounded-xl border p-4">
+                    <h4 className="text-foreground mb-2 text-sm font-medium">
                       回答
                     </h4>
-                    <p className="text-sm whitespace-pre-wrap text-foreground/80">
+                    <p className="text-foreground/80 text-sm whitespace-pre-wrap">
                       {chatResult.answer}
                     </p>
                   </div>
                 )}
                 {chatResult.sources && chatResult.sources.length > 0 && (
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-foreground">
+                    <h4 className="text-foreground mb-2 text-sm font-medium">
                       参考来源
                     </h4>
                     <div className="space-y-2">
                       {chatResult.sources.map((src, idx) => (
                         <div
                           key={idx}
-                          onClick={() => setPreviewChunk({ content: src.content ?? "", name: src.document_name })}
-                          className="cursor-pointer rounded-lg border border-border bg-background p-3 text-xs transition-colors hover:border-primary/40 hover:bg-muted/40"
+                          onClick={() =>
+                            setPreviewChunk({
+                              content: src.content ?? "",
+                              name: src.document_name,
+                            })
+                          }
+                          className="border-border bg-background hover:border-primary/40 hover:bg-muted/40 cursor-pointer rounded-lg border p-3 text-xs transition-colors"
                         >
-                          <div className="mb-1 font-medium text-foreground/80">
+                          <div className="text-foreground/80 mb-1 font-medium">
                             {src.document_name ?? `来源 ${idx + 1}`}
                           </div>
-                          <p className="line-clamp-3 text-muted-foreground">
+                          <p className="text-muted-foreground line-clamp-3">
                             {src.content}
                           </p>
                           {src.score != null && (
-                            <div className="mt-1 text-muted-foreground/70">
+                            <div className="text-muted-foreground/70 mt-1">
                               相似度: {(src.score * 100).toFixed(1)}%
                             </div>
                           )}
@@ -672,11 +693,11 @@ export function KnowledgeBaseDetail({
                 onClick={() => setPreviewChunk(null)}
               >
                 <div
-                  className="max-h-[70vh] w-full max-w-2xl overflow-auto rounded-xl border border-border bg-background p-5"
+                  className="border-border bg-background max-h-[70vh] w-full max-w-2xl overflow-auto rounded-xl border p-5"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <h4 className="text-sm font-medium text-foreground">
+                    <h4 className="text-foreground text-sm font-medium">
                       {previewChunk.name ?? "分块原文"}
                     </h4>
                     <button
@@ -686,24 +707,27 @@ export function KnowledgeBaseDetail({
                       <X className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="whitespace-pre-wrap text-sm text-foreground/80">
+                  <p className="text-foreground/80 text-sm whitespace-pre-wrap">
                     {previewChunk.content}
                   </p>
                 </div>
               </div>
             )}
           </TabsContent>
-          <TabsContent value="config" className="m-0 flex flex-1 flex-col gap-4 overflow-auto bg-muted/30 p-4">
+          <TabsContent
+            value="config"
+            className="bg-muted/30 m-0 flex flex-1 flex-col gap-4 overflow-auto p-4"
+          >
             <div className="space-y-5">
-              <div className="space-y-5 rounded-xl border border-border bg-background p-5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Settings className="h-4 w-4 text-muted-foreground" />
+              <div className="border-border bg-background space-y-5 rounded-xl border p-5">
+                <div className="text-foreground flex items-center gap-2 text-sm font-semibold">
+                  <Settings className="text-muted-foreground h-4 w-4" />
                   检索参数
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     Top K{" "}
-                    <span className="font-normal text-muted-foreground">
+                    <span className="text-muted-foreground font-normal">
                       （返回结果数量）
                     </span>
                   </label>
@@ -717,17 +741,17 @@ export function KnowledgeBaseDetail({
                         setTopK(Number(e.target.value));
                         markDirty();
                       }}
-                      className="flex-1 accent-primary"
+                      className="accent-primary flex-1"
                     />
-                    <span className="w-8 text-center text-sm font-medium text-foreground">
+                    <span className="text-foreground w-8 text-center text-sm font-medium">
                       {topK}
                     </span>
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     相似度阈值{" "}
-                    <span className="font-normal text-muted-foreground">
+                    <span className="text-muted-foreground font-normal">
                       （过滤低相关结果）
                     </span>
                   </label>
@@ -742,18 +766,18 @@ export function KnowledgeBaseDetail({
                         setSimilarityThreshold(Number(e.target.value));
                         markDirty();
                       }}
-                      className="flex-1 accent-primary"
+                      className="accent-primary flex-1"
                     />
-                    <span className="w-10 text-center text-sm font-medium text-foreground">
+                    <span className="text-foreground w-10 text-center text-sm font-medium">
                       {similarityThreshold.toFixed(2)}
                     </span>
                   </div>
                 </div>
                 {/* 向量权重 */}
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     向量权重{" "}
-                    <span className="font-normal text-muted-foreground">
+                    <span className="text-muted-foreground font-normal">
                       （向量/关键词检索权重）
                     </span>
                   </label>
@@ -768,9 +792,9 @@ export function KnowledgeBaseDetail({
                         setVectorWeight(Number(e.target.value));
                         markDirty();
                       }}
-                      className="flex-1 accent-primary"
+                      className="accent-primary flex-1"
                     />
-                    <span className="w-10 text-center text-sm font-medium text-foreground">
+                    <span className="text-foreground w-10 text-center text-sm font-medium">
                       {vectorWeight.toFixed(2)}
                     </span>
                   </div>
@@ -781,7 +805,7 @@ export function KnowledgeBaseDetail({
                     type="button"
                     disabled={configSaving || !configDirty}
                     onClick={handleSaveConfig}
-                    className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                    className="bg-primary text-primary-foreground rounded-md px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                   >
                     {configSaving ? "保存中…" : "保存配置"}
                   </button>
@@ -789,16 +813,16 @@ export function KnowledgeBaseDetail({
                     type="button"
                     disabled={!configDirty}
                     onClick={handleResetConfig}
-                    className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground disabled:opacity-50"
+                    className="border-border text-foreground rounded-md border px-3 py-1.5 text-sm font-medium disabled:opacity-50"
                   >
                     重置
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-4 rounded-xl border border-border bg-background p-5">
-                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Database className="h-4 w-4 text-muted-foreground" />
+              <div className="border-border bg-background space-y-4 rounded-xl border p-5">
+                <div className="text-foreground flex items-center gap-2 text-sm font-semibold">
+                  <Database className="text-muted-foreground h-4 w-4" />
                   知识库信息
                 </div>
                 <div className="grid grid-cols-2 gap-3">
@@ -809,14 +833,16 @@ export function KnowledgeBaseDetail({
                     },
                     { label: "分块方式", value: kb.chunk_method || "naive" },
                     { label: "访问权限", value: kb.access_type },
-                    { label: "嵌入模型", value: kb.embedding_model || "默认" },
+                    { label: "嵌入模型", value: kb.embedding_model ?? "默认" },
                     {
                       label: "分块大小",
-                      value: kb.parser_config?.chunk_token_num ? `${kb.parser_config.chunk_token_num} tokens` : "默认",
+                      value: kb.parser_config?.chunk_token_num
+                        ? `${kb.parser_config.chunk_token_num} tokens`
+                        : "默认",
                     },
                     {
                       label: "PDF 解析",
-                      value: kb.parser_config?.layout_recognize || "默认",
+                      value: kb.parser_config?.layout_recognize ?? "默认",
                     },
                     {
                       label: "创建时间",
@@ -827,10 +853,12 @@ export function KnowledgeBaseDetail({
                   ].map(({ label, value }) => (
                     <div
                       key={label}
-                      className="rounded-lg border border-border bg-muted/50 p-3"
+                      className="border-border bg-muted/50 rounded-lg border p-3"
                     >
-                      <div className="mb-1 text-xs text-muted-foreground">{label}</div>
-                      <div className="text-sm font-medium text-foreground">
+                      <div className="text-muted-foreground mb-1 text-xs">
+                        {label}
+                      </div>
+                      <div className="text-foreground text-sm font-medium">
                         {value}
                       </div>
                     </div>
@@ -840,22 +868,22 @@ export function KnowledgeBaseDetail({
 
               {/* Data access grants (EAI-CUSTOM Task 8) — owner|admin only */}
               {canManageGrants && (
-                <div className="space-y-4 rounded-xl border border-border bg-background p-5">
+                <div className="border-border bg-background space-y-4 rounded-xl border p-5">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <Settings className="h-4 w-4 text-muted-foreground" />
+                    <div className="text-foreground flex items-center gap-2 text-sm font-semibold">
+                      <Settings className="text-muted-foreground h-4 w-4" />
                       数据访问授权
                     </div>
                     <button
                       type="button"
                       onClick={openAddGrant}
-                      className="rounded-lg border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+                      className="border-primary/20 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg border px-2.5 py-1 text-xs font-medium transition-colors"
                     >
                       + 添加授权
                     </button>
                   </div>
                   {kbGrants.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       暂无显式授权。私有知识库可在此授权特定用户/部门/角色访问。
                     </p>
                   ) : (
@@ -883,15 +911,16 @@ export function KnowledgeBaseDetail({
                                   : "角色"}
                             </span>
                             <span className="truncate">{granteeName(g)}</span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-muted-foreground text-xs">
                               {g.permission === "write" ? "读写" : "只读"}
                             </span>
-                            {g.expires_at && new Date(g.expires_at) < new Date() ? (
-                              <span className="text-xs text-muted-foreground/60">
+                            {g.expires_at &&
+                            new Date(g.expires_at) < new Date() ? (
+                              <span className="text-muted-foreground/60 text-xs">
                                 (已过期)
                               </span>
                             ) : g.expires_at ? (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-muted-foreground text-xs">
                                 至 {new Date(g.expires_at).toLocaleDateString()}
                               </span>
                             ) : null}
@@ -899,7 +928,7 @@ export function KnowledgeBaseDetail({
                           <button
                             type="button"
                             onClick={() => removeGrant(g)}
-                            className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                            className="text-muted-foreground hover:text-destructive shrink-0 transition-colors"
                             aria-label={`移除 ${granteeName(g)} 的授权`}
                           >
                             ×
@@ -955,10 +984,10 @@ export function KnowledgeBaseDetail({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-background shadow-xl"
+              className="bg-background relative w-full max-w-lg overflow-hidden rounded-2xl shadow-xl"
             >
-              <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                <h3 className="text-lg font-semibold text-foreground">
+              <div className="border-border flex items-center justify-between border-b px-6 py-4">
+                <h3 className="text-foreground text-lg font-semibold">
                   编辑知识库
                 </h3>
                 <Button
@@ -971,7 +1000,7 @@ export function KnowledgeBaseDetail({
               </div>
               <div className="space-y-5 p-6">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库名称 <span className="text-destructive">*</span>
                   </label>
                   <Input
@@ -984,7 +1013,7 @@ export function KnowledgeBaseDetail({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库类型
                   </label>
                   <CustomSelect
@@ -1003,7 +1032,7 @@ export function KnowledgeBaseDetail({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     描述
                   </label>
                   <Textarea
@@ -1016,11 +1045,8 @@ export function KnowledgeBaseDetail({
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowEditKb(false)}
-                >
+              <div className="border-border bg-muted/50 flex items-center justify-end gap-3 border-t px-6 py-4">
+                <Button variant="outline" onClick={() => setShowEditKb(false)}>
                   取消
                 </Button>
                 <Button
@@ -1051,10 +1077,10 @@ export function KnowledgeBaseDetail({
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative w-full max-w-md overflow-hidden rounded-2xl bg-background shadow-xl"
+              className="bg-background relative w-full max-w-md overflow-hidden rounded-2xl shadow-xl"
             >
-              <div className="flex items-center justify-between border-b border-border px-6 py-4">
-                <h3 className="text-lg font-semibold text-foreground">
+              <div className="border-border flex items-center justify-between border-b px-6 py-4">
+                <h3 className="text-foreground text-lg font-semibold">
                   添加数据访问授权
                 </h3>
                 <Button
@@ -1067,7 +1093,7 @@ export function KnowledgeBaseDetail({
               </div>
               <div className="space-y-5 p-6">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     授权类型
                   </label>
                   <CustomSelect
@@ -1093,7 +1119,7 @@ export function KnowledgeBaseDetail({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     授权对象 <span className="text-destructive">*</span>
                   </label>
                   <Input
@@ -1112,9 +1138,9 @@ export function KnowledgeBaseDetail({
                     }}
                     className="w-full"
                   />
-                  <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-border bg-background">
+                  <div className="border-border bg-background mt-2 max-h-48 overflow-y-auto rounded-lg border">
                     {grantTargets.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-muted-foreground">
+                      <p className="text-muted-foreground px-3 py-2 text-xs">
                         未找到匹配项
                       </p>
                     ) : (
@@ -1126,13 +1152,13 @@ export function KnowledgeBaseDetail({
                           className={cn(
                             "flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors",
                             grantTargetId === t.id
-                              ? "bg-primary/10 font-medium text-primary"
+                              ? "bg-primary/10 text-primary font-medium"
                               : "text-foreground hover:bg-muted",
                           )}
                         >
                           <span className="truncate">{t.label}</span>
                           {grantTargetId === t.id && (
-                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+                            <CheckCircle2 className="text-primary h-3.5 w-3.5 shrink-0" />
                           )}
                         </button>
                       ))
@@ -1140,7 +1166,7 @@ export function KnowledgeBaseDetail({
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     权限
                   </label>
                   <CustomSelect
@@ -1153,9 +1179,9 @@ export function KnowledgeBaseDetail({
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-foreground">
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     过期时间{" "}
-                    <span className="font-normal text-muted-foreground">
+                    <span className="text-muted-foreground font-normal">
                       （可选）
                     </span>
                   </label>
@@ -1167,7 +1193,7 @@ export function KnowledgeBaseDetail({
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
+              <div className="border-border bg-muted/50 flex items-center justify-end gap-3 border-t px-6 py-4">
                 <Button
                   variant="outline"
                   onClick={() => setShowAddGrant(false)}

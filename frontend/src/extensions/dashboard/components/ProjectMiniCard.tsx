@@ -22,45 +22,52 @@ const ROLE_COLORS: Record<string, string> = {
 
 export function ProjectMiniCard({ project }: { project: MyProjectItem }) {
   const firstChar = project.project_name.charAt(0).toUpperCase();
-  const roleBadgeClass = ROLE_COLORS[project.role_label] || "bg-muted text-muted-foreground";
+  const roleBadgeClass =
+    ROLE_COLORS[project.role_label] ?? "bg-muted text-muted-foreground";
 
   return (
     <Link
       href={`/projects/${project.project_id}`}
-      className="block rounded-lg border bg-card px-4 py-3 hover:shadow-md hover:border-primary/20 transition-all"
+      className="bg-card hover:border-primary/20 block rounded-lg border px-4 py-3 transition-all hover:shadow-md"
     >
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        <div className="h-8 w-8 rounded-full bg-primary/10 text-primary text-xs font-medium flex items-center justify-center shrink-0">
+        <div className="bg-primary/10 text-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-medium">
           {firstChar}
         </div>
         {/* Name + phase */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium truncate">{project.project_name}</p>
-            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${roleBadgeClass}`}>
-              {ROLE_LABELS[project.role_label] || project.role_label}
+            <p className="truncate text-sm font-medium">
+              {project.project_name}
+            </p>
+            <span
+              className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${roleBadgeClass}`}
+            >
+              {ROLE_LABELS[project.role_label] ?? project.role_label}
             </span>
           </div>
           {project.current_phase && (
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-muted-foreground mt-0.5 text-xs">
               {project.current_phase}
             </p>
           )}
         </div>
       </div>
       {/* Progress bar */}
-      <div className="flex items-center gap-2 mt-2 ml-11">
-        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+      <div className="mt-2 ml-11 flex items-center gap-2">
+        <div className="bg-muted h-1.5 flex-1 overflow-hidden rounded-full">
           <div
-            className="h-full rounded-full bg-primary transition-all"
+            className="bg-primary h-full rounded-full transition-all"
             style={{ width: `${project.progress_pct}%` }}
           />
         </div>
-        <span className="text-xs text-muted-foreground shrink-0">{project.progress_pct}%</span>
+        <span className="text-muted-foreground shrink-0 text-xs">
+          {project.progress_pct}%
+        </span>
       </div>
       {project.pending_task_count > 0 && (
-        <p className="text-xs text-muted-foreground mt-1 ml-11">
+        <p className="text-muted-foreground mt-1 ml-11 text-xs">
           {project.pending_task_count} 项待办
         </p>
       )}

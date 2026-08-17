@@ -2,19 +2,18 @@
  * 规则卡片组件
  */
 
-import {
-  AlertCircle,
-  ChevronRight,
-  Terminal,
-  FileText,
-} from "lucide-react";
+import { AlertCircle, Terminal, FileText } from "lucide-react";
 import React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ComplianceRule } from "@/extensions/knowledge-factory/types";
-import { SEVERITY_LEVELS, RULE_TYPES, INDUSTRIES } from "@/extensions/knowledge-factory/types";
+import {
+  SEVERITY_LEVELS,
+  RULE_TYPES,
+  INDUSTRIES,
+} from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
 
 interface RuleCardProps {
@@ -44,16 +43,18 @@ export function RuleCard({
 }: RuleCardProps) {
   // 获取严重级别颜色和标签
   const severityInfo = SEVERITY_LEVELS.find((s) => s.value === rule.severity);
-  const severityColor = severityInfo?.color || "var(--muted-foreground)";
-  const severityLabel = rule.severityName || severityInfo?.label || rule.severity;
+  const severityLabel =
+    rule.severityName || severityInfo?.label || rule.severity; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- *Name 字段是 API 层归一化出的 ""（非 nullish），空串必须回退到派生 label
 
   // 获取规则类型标签
   const typeInfo = RULE_TYPES.find((t) => t.value === rule.type);
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- 同上：typeName 为 "" 时需回退
   const typeLabel = rule.typeName || typeInfo?.label || rule.type;
 
   // 获取行业标签
   const industryInfo = INDUSTRIES.find((i) => i.value === rule.industry);
-  const industryLabel = rule.industryName || industryInfo?.label || rule.industry;
+  const industryLabel =
+    rule.industryName || industryInfo?.label || rule.industry; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- 同上：industryName 为 "" 时需回退
 
   // 处理启用/禁用切换
   const handleToggleEnabled = async (e: React.MouseEvent) => {
@@ -74,16 +75,16 @@ export function RuleCard({
     rule.severity === "critical"
       ? "bg-destructive/10 text-destructive border-destructive/20"
       : rule.severity === "warning"
-      ? "bg-warning/10 text-warning border-warning/20"
-      : "bg-muted text-muted-foreground border-transparent";
+        ? "bg-warning/10 text-warning border-warning/20"
+        : "bg-muted text-muted-foreground border-transparent";
 
   return (
     <Card
       className={cn(
-        "relative cursor-pointer overflow-hidden transition-all hover:border-primary/30 hover:shadow-md",
-        selected && "border-primary ring-2 ring-primary/20",
+        "hover:border-primary/30 relative cursor-pointer overflow-hidden transition-all hover:shadow-md",
+        selected && "border-primary ring-primary/20 ring-2",
         !rule.enabled && "opacity-60",
-        selectionMode && checked && "border-primary/40 bg-primary/5"
+        selectionMode && checked && "border-primary/40 bg-primary/5",
       )}
       onClick={onSelect}
       role="button"
@@ -97,13 +98,15 @@ export function RuleCard({
       {/* 选择模式复选框 */}
       {selectionMode && (
         <div
-          className="absolute left-3 top-3 z-10"
+          className="absolute top-3 left-3 z-10"
           onClick={handleCheckboxClick}
         >
           <input
             type="checkbox"
             checked={checked}
-            onChange={() => {}}
+            onChange={() => {
+              /* intentional no-op: click is handled by wrapper div */
+            }}
             className="h-4 w-4"
           />
         </div>
@@ -112,7 +115,7 @@ export function RuleCard({
       <div className="p-5">
         {/* 头部：规则ID和严重级别 */}
         <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
+          <div className="flex min-w-0 flex-1 items-start gap-3">
             {/* 严重级别图标 */}
             <div
               className={cn(
@@ -120,16 +123,16 @@ export function RuleCard({
                 rule.severity === "critical"
                   ? "bg-destructive/10 text-destructive"
                   : rule.severity === "warning"
-                  ? "bg-warning/10 text-warning"
-                  : "bg-muted text-muted-foreground"
+                    ? "bg-warning/10 text-warning"
+                    : "bg-muted text-muted-foreground",
               )}
             >
               <AlertCircle className="h-5 w-5" />
             </div>
 
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-mono text-xs text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-muted-foreground font-mono text-xs">
                   {rule.ruleId}
                 </span>
                 <Badge
@@ -141,7 +144,7 @@ export function RuleCard({
               </div>
 
               {/* 规则名称 */}
-              <h3 className="mt-1 font-semibold text-foreground line-clamp-1">
+              <h3 className="text-foreground mt-1 line-clamp-1 font-semibold">
                 {rule.name}
               </h3>
             </div>
@@ -150,7 +153,7 @@ export function RuleCard({
 
         {/* 规则描述 */}
         {rule.description && (
-          <p className="mb-3 text-sm text-muted-foreground line-clamp-2">
+          <p className="text-muted-foreground mb-3 line-clamp-2 text-sm">
             {rule.description}
           </p>
         )}
@@ -164,7 +167,10 @@ export function RuleCard({
             {industryLabel}
           </Badge>
           {rule.nationalLevel && (
-            <Badge variant="outline" className="text-xs border-warning/20 bg-warning/10 text-warning">
+            <Badge
+              variant="outline"
+              className="border-warning/20 bg-warning/10 text-warning text-xs"
+            >
               国家标准
             </Badge>
           )}
@@ -172,13 +178,13 @@ export function RuleCard({
 
         {/* 报告类型 */}
         {(rule.reportTypes?.length ?? 0) > 0 && (
-          <div className="mb-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="text-muted-foreground mb-3 flex items-center gap-2 text-xs">
             <span className="shrink-0 font-medium">适用报告:</span>
             <div className="flex flex-wrap gap-1">
               {(rule.reportTypes ?? []).slice(0, 2).map((rt, idx) => (
                 <span
                   key={idx}
-                  className="rounded bg-muted px-1.5 py-0.5 text-xs"
+                  className="bg-muted rounded px-1.5 py-0.5 text-xs"
                 >
                   {rt}
                 </span>
@@ -194,7 +200,7 @@ export function RuleCard({
 
         {/* 源章节 */}
         {(rule.sourceSections?.length ?? 0) > 0 && (
-          <div className="mb-4 text-xs text-muted-foreground">
+          <div className="text-muted-foreground mb-4 text-xs">
             <span className="font-medium">来源: </span>
             {(rule.sourceSections ?? []).slice(0, 3).join("、")}
             {(rule.sourceSections?.length ?? 0) > 3 && "..."}
@@ -202,7 +208,7 @@ export function RuleCard({
         )}
 
         {/* 底部操作 */}
-        <div className="flex items-center justify-between border-t border-border pt-4">
+        <div className="border-border flex items-center justify-between border-t pt-4">
           {/* 启用/禁用开关 */}
           {!readOnly && onToggleEnabled && (
             <Button
@@ -213,7 +219,7 @@ export function RuleCard({
                 "h-7 text-xs",
                 rule.enabled
                   ? "border-success/20 bg-success/10 text-success hover:bg-success/10"
-                  : "border-border bg-muted text-muted-foreground hover:bg-accent"
+                  : "border-border bg-muted text-muted-foreground hover:bg-accent",
               )}
             >
               {rule.enabled ? "已启用" : "已禁用"}
@@ -223,7 +229,7 @@ export function RuleCard({
             <span
               className={cn(
                 "text-xs font-medium",
-                rule.enabled ? "text-success" : "text-muted-foreground"
+                rule.enabled ? "text-success" : "text-muted-foreground",
               )}
             >
               {rule.enabled ? "启用" : "禁用"}

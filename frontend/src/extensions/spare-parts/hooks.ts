@@ -19,14 +19,22 @@ const KEYS = {
 };
 
 export function useDashboard() {
-  return useQuery({ queryKey: KEYS.dashboard, queryFn: sparePartsApi.dashboard });
+  return useQuery({
+    queryKey: KEYS.dashboard,
+    queryFn: sparePartsApi.dashboard,
+  });
 }
 
-export function usePartAnalysis(params: { name?: string; cluster_id?: string; skip?: number; limit?: number }) {
+export function usePartAnalysis(params: {
+  name?: string;
+  cluster_id?: string;
+  skip?: number;
+  limit?: number;
+}) {
   return useQuery({
     queryKey: ["csp", "goods-analysis", params],
     queryFn: () => sparePartsApi.partsAnalysis(params),
-    enabled: !!(params.name || params.cluster_id),
+    enabled: !!(params.name ?? params.cluster_id),
   });
 }
 
@@ -101,8 +109,13 @@ export function useRunPipeline() {
 export function useMoveItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ item_id, target_cluster_id }: { item_id: string; target_cluster_id: string }) =>
-      sparePartsApi.moveItem(item_id, target_cluster_id),
+    mutationFn: ({
+      item_id,
+      target_cluster_id,
+    }: {
+      item_id: string;
+      target_cluster_id: string;
+    }) => sparePartsApi.moveItem(item_id, target_cluster_id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp"] });
     },
@@ -112,8 +125,13 @@ export function useMoveItem() {
 export function useConfirmCluster() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, expected_version }: { id: string; expected_version?: number }) =>
-      sparePartsApi.confirmCluster(id, { expected_version }),
+    mutationFn: ({
+      id,
+      expected_version,
+    }: {
+      id: string;
+      expected_version?: number;
+    }) => sparePartsApi.confirmCluster(id, { expected_version }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp"] });
     },
@@ -123,8 +141,13 @@ export function useConfirmCluster() {
 export function useRejectCluster() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, expected_version }: { id: string; expected_version?: number }) =>
-      sparePartsApi.rejectCluster(id, { expected_version }),
+    mutationFn: ({
+      id,
+      expected_version,
+    }: {
+      id: string;
+      expected_version?: number;
+    }) => sparePartsApi.rejectCluster(id, { expected_version }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp"] });
     },
@@ -139,7 +162,9 @@ export function useBatchConfirmClusters() {
     // alone and the rest still confirm.
     mutationFn: async (clusters: { id: string; version: number }[]) => {
       const results = await Promise.allSettled(
-        clusters.map((c) => sparePartsApi.confirmCluster(c.id, { expected_version: c.version })),
+        clusters.map((c) =>
+          sparePartsApi.confirmCluster(c.id, { expected_version: c.version }),
+        ),
       );
       const fail = results.filter((r) => r.status === "rejected").length;
       return { ok: results.length - fail, fail, total: results.length };
@@ -153,8 +178,13 @@ export function useBatchConfirmClusters() {
 export function useUpdateCluster() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { category?: string; representative_name?: string } }) =>
-      sparePartsApi.updateCluster(id, body),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { category?: string; representative_name?: string };
+    }) => sparePartsApi.updateCluster(id, body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp"] });
     },
@@ -172,7 +202,8 @@ export function useMergeClusters() {
       cluster_ids: string[];
       representative_name: string;
       category?: string;
-    }) => sparePartsApi.mergeClusters(cluster_ids, representative_name, category),
+    }) =>
+      sparePartsApi.mergeClusters(cluster_ids, representative_name, category),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp"] });
     },
@@ -234,8 +265,13 @@ export function useUpdateDocument() {
 export function useConfirmDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, confirm_status }: { id: string; confirm_status: "confirmed" | "skipped" }) =>
-      sparePartsApi.confirmDocument(id, confirm_status),
+    mutationFn: ({
+      id,
+      confirm_status,
+    }: {
+      id: string;
+      confirm_status: "confirmed" | "skipped";
+    }) => sparePartsApi.confirmDocument(id, confirm_status),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp"] });
     },
@@ -276,7 +312,8 @@ export function useBatchDeleteItems() {
 export function useBatchValidateItems() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (itemIds: string[]) => sparePartsApi.batchValidateItems(itemIds),
+    mutationFn: (itemIds: string[]) =>
+      sparePartsApi.batchValidateItems(itemIds),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp"] });
     },
@@ -333,8 +370,13 @@ export function useCreateCustomer() {
 export function useUpdateCustomer() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { canonical_name?: string; aliases?: string[] } }) =>
-      sparePartsApi.updateCustomer(id, body),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { canonical_name?: string; aliases?: string[] };
+    }) => sparePartsApi.updateCustomer(id, body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp", "customers"] });
     },
@@ -355,8 +397,13 @@ export function useClaimCustomer() {
 export function useMergeCustomers() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ source_ids, target_id }: { source_ids: string[]; target_id: string }) =>
-      sparePartsApi.mergeCustomers(source_ids, target_id),
+    mutationFn: ({
+      source_ids,
+      target_id,
+    }: {
+      source_ids: string[];
+      target_id: string;
+    }) => sparePartsApi.mergeCustomers(source_ids, target_id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp", "customers"] });
     },
@@ -366,7 +413,8 @@ export function useMergeCustomers() {
 export function useResolveCustomers() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (raw_names: string[]) => sparePartsApi.resolveCustomers(raw_names),
+    mutationFn: (raw_names: string[]) =>
+      sparePartsApi.resolveCustomers(raw_names),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["csp", "customers"] });
     },

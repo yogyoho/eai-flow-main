@@ -19,12 +19,13 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
 
   addOptions() {
     return {
-      onActivate: () => {},
+      onActivate: () => undefined,
     };
   },
 
   addProseMirrorPlugins() {
-    const extensionThis = this;
+    // Destructure options instead of aliasing `this` (no-this-alias).
+    const { options } = this;
 
     return [
       new Plugin({
@@ -44,10 +45,12 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
 
         props: {
           handleKeyDown(view, event) {
-            const pluginState = SlashCommandPluginKey.getState(view.state) as SlashCommandPluginState | undefined;
+            const pluginState = SlashCommandPluginKey.getState(view.state) as
+              | SlashCommandPluginState
+              | undefined;
 
             if (event.key === "Escape" && pluginState?.active) {
-              extensionThis.options.onActivate({
+              options.onActivate({
                 active: false,
                 query: "",
                 range: null,
@@ -74,9 +77,12 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
                 });
                 view.dispatch(tr);
                 // Insert the "/" character ourselves
-                const insertTr = view.state.tr.insertText("/", state.selection.from);
+                const insertTr = view.state.tr.insertText(
+                  "/",
+                  state.selection.from,
+                );
                 view.dispatch(insertTr);
-                extensionThis.options.onActivate({
+                options.onActivate({
                   active: true,
                   query: "",
                   range: {
@@ -91,7 +97,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
 
             if (event.key === "Backspace") {
               if (pluginState.query.length === 0) {
-                extensionThis.options.onActivate({
+                options.onActivate({
                   active: false,
                   query: "",
                   range: null,
@@ -111,7 +117,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
                 range: pluginState.range,
               });
               view.dispatch(tr);
-              extensionThis.options.onActivate({
+              options.onActivate({
                 active: true,
                 query: newQuery,
                 range: pluginState.range,
@@ -120,7 +126,7 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
             }
 
             if (event.key === " " && pluginState.query === "") {
-              extensionThis.options.onActivate({
+              options.onActivate({
                 active: false,
                 query: "",
                 range: null,
@@ -138,11 +144,13 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
           },
 
           handleTextInput(view, from, to, text) {
-            const pluginState = SlashCommandPluginKey.getState(view.state) as SlashCommandPluginState | undefined;
+            const pluginState = SlashCommandPluginKey.getState(view.state) as
+              | SlashCommandPluginState
+              | undefined;
             if (!pluginState?.active) return false;
 
             const newQuery = pluginState.query + text;
-            extensionThis.options.onActivate({
+            options.onActivate({
               active: true,
               query: newQuery,
               range: pluginState.range,
@@ -160,9 +168,11 @@ export const SlashCommand = Extension.create<SlashCommandOptions>({
           },
 
           handleClick(view) {
-            const pluginState = SlashCommandPluginKey.getState(view.state) as SlashCommandPluginState | undefined;
+            const pluginState = SlashCommandPluginKey.getState(view.state) as
+              | SlashCommandPluginState
+              | undefined;
             if (pluginState?.active) {
-              extensionThis.options.onActivate({
+              options.onActivate({
                 active: false,
                 query: "",
                 range: null,

@@ -1,14 +1,22 @@
-"use client"
+"use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+
 import { docmgrApi } from "../api";
 
-interface PersonalDocFile {
-  name: string; rel_path: string; size: number; mime: string;
-  modified_at: string; starred: boolean; shared: boolean;
+export interface PersonalDocFile {
+  name: string;
+  rel_path: string;
+  size: number;
+  mime: string;
+  modified_at: string;
+  starred: boolean;
+  shared: boolean;
 }
-interface PersonalThreadOutput {
-  thread_id: string; display_name: string; files: PersonalDocFile[];
+export interface PersonalThreadOutput {
+  thread_id: string;
+  display_name: string;
+  files: PersonalDocFile[];
 }
 
 const PAGE_SIZE = 20;
@@ -26,14 +34,19 @@ export function usePersonalOutputs() {
   const fetchFirst = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await docmgrApi.listPersonalOutputs({ skip: 0, limit: PAGE_SIZE });
+      const data = await docmgrApi.listPersonalOutputs({
+        skip: 0,
+        limit: PAGE_SIZE,
+      });
       setThreads(data.threads);
       setTotal(data.total);
       setHasMore(data.has_more);
       skipRef.current = data.threads.length;
     } catch (err) {
       console.error("Failed to fetch personal outputs:", err);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const fetchMore = useCallback(async () => {
@@ -43,10 +56,13 @@ export function usePersonalOutputs() {
     fetchingMoreRef.current = true;
     setLoadingMore(true);
     try {
-      const data = await docmgrApi.listPersonalOutputs({ skip: skipRef.current, limit: PAGE_SIZE });
-      setThreads(prev => {
-        const existing = new Set(prev.map(t => t.thread_id));
-        const fresh = data.threads.filter(t => !existing.has(t.thread_id));
+      const data = await docmgrApi.listPersonalOutputs({
+        skip: skipRef.current,
+        limit: PAGE_SIZE,
+      });
+      setThreads((prev) => {
+        const existing = new Set(prev.map((t) => t.thread_id));
+        const fresh = data.threads.filter((t) => !existing.has(t.thread_id));
         skipRef.current += fresh.length;
         return [...prev, ...fresh];
       });
@@ -59,41 +75,107 @@ export function usePersonalOutputs() {
     }
   }, [hasMore]);
 
-  useEffect(() => { fetchFirst(); }, [fetchFirst]);
+  useEffect(() => {
+    void fetchFirst();
+  }, [fetchFirst]);
 
   const toggleExpand = useCallback((threadId: string) => {
     setExpandedKeys((prev) => {
       const next = new Set(prev);
-      next.has(threadId) ? next.delete(threadId) : next.add(threadId);
+      if (next.has(threadId)) {
+        next.delete(threadId);
+      } else {
+        next.add(threadId);
+      }
       return next;
     });
   }, []);
 
-  const toggleStar = useCallback(async (threadId: string, relPath: string, current: boolean) => {
-    setThreads(prev => prev.map(t => t.thread_id === threadId ? {
-      ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, starred: !current } : f),
-    } : t));
-    try {
-      await docmgrApi.togglePersonalStar(threadId, { rel_path: relPath, starred: !current });
-    } catch {
-      setThreads(prev => prev.map(t => t.thread_id === threadId ? {
-        ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, starred: current } : f),
-      } : t));
-    }
-  }, []);
+  const toggleStar = useCallback(
+    async (threadId: string, relPath: string, current: boolean) => {
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.thread_id === threadId
+            ? {
+                ...t,
+                files: t.files.map((f) =>
+                  f.rel_path === relPath ? { ...f, starred: !current } : f,
+                ),
+              }
+            : t,
+        ),
+      );
+      try {
+        await docmgrApi.togglePersonalStar(threadId, {
+          rel_path: relPath,
+          starred: !current,
+        });
+      } catch {
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.thread_id === threadId
+              ? {
+                  ...t,
+                  files: t.files.map((f) =>
+                    f.rel_path === relPath ? { ...f, starred: current } : f,
+                  ),
+                }
+              : t,
+          ),
+        );
+      }
+    },
+    [],
+  );
 
-  const toggleShare = useCallback(async (threadId: string, relPath: string, current: boolean) => {
-    setThreads(prev => prev.map(t => t.thread_id === threadId ? {
-      ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, shared: !current } : f),
-    } : t));
-    try {
-      await docmgrApi.togglePersonalShare(threadId, { rel_path: relPath, shared: !current });
-    } catch {
-      setThreads(prev => prev.map(t => t.thread_id === threadId ? {
-        ...t, files: t.files.map(f => f.rel_path === relPath ? { ...f, shared: current } : f),
-      } : t));
-    }
-  }, []);
+  const toggleShare = useCallback(
+    async (threadId: string, relPath: string, current: boolean) => {
+      setThreads((prev) =>
+        prev.map((t) =>
+          t.thread_id === threadId
+            ? {
+                ...t,
+                files: t.files.map((f) =>
+                  f.rel_path === relPath ? { ...f, shared: !current } : f,
+                ),
+              }
+            : t,
+        ),
+      );
+      try {
+        await docmgrApi.togglePersonalShare(threadId, {
+          rel_path: relPath,
+          shared: !current,
+        });
+      } catch {
+        setThreads((prev) =>
+          prev.map((t) =>
+            t.thread_id === threadId
+              ? {
+                  ...t,
+                  files: t.files.map((f) =>
+                    f.rel_path === relPath ? { ...f, shared: current } : f,
+                  ),
+                }
+              : t,
+          ),
+        );
+      }
+    },
+    [],
+  );
 
-  return { threads, total, hasMore, loading, loadingMore, expandedKeys, toggleExpand, toggleStar, toggleShare, fetchMore, refresh: fetchFirst };
+  return {
+    threads,
+    total,
+    hasMore,
+    loading,
+    loadingMore,
+    expandedKeys,
+    toggleExpand,
+    toggleStar,
+    toggleShare,
+    fetchMore,
+    refresh: fetchFirst,
+  };
 }

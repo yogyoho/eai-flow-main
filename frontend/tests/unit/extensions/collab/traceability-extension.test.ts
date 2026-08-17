@@ -6,7 +6,8 @@
  * updateTraceabilitySources).
  */
 import { Schema } from "prosemirror-model";
-import { EditorState, Plugin } from "prosemirror-state";
+import { EditorState, Plugin, type Transaction } from "prosemirror-state";
+import type { EditorView } from "prosemirror-view";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -35,9 +36,7 @@ const testSchema = new Schema({
 
 function createTestDoc(content: string) {
   return testSchema.node("doc", null, [
-    testSchema.node("paragraph", null, [
-      testSchema.text(content),
-    ]),
+    testSchema.node("paragraph", null, [testSchema.text(content)]),
   ]);
 }
 
@@ -77,7 +76,9 @@ describe("TraceabilityExtension — Plugin structure", () => {
   });
 
   it("should have a plugin key named 'traceability'", () => {
-    expect((traceabilityPluginKey as unknown as { key: string }).key).toContain("traceability");
+    expect((traceabilityPluginKey as unknown as { key: string }).key).toContain(
+      "traceability",
+    );
   });
 
   it("should initialise with empty decorations and sources", () => {
@@ -197,7 +198,9 @@ describe("TraceabilityExtension — Decoration content", () => {
     expect(deco.from).toBeGreaterThan(0);
     expect(deco.to).toBeGreaterThan(deco.from);
 
-    const attrs = (deco as unknown as { type: { attrs: Record<string, unknown> } }).type.attrs;
+    const attrs = (
+      deco as unknown as { type: { attrs: Record<string, unknown> } }
+    ).type.attrs;
     expect(attrs.style).toBeDefined();
     expect(typeof attrs.style).toBe("string");
     expect(attrs.style as string).toContain("background-color");
@@ -235,8 +238,12 @@ describe("TraceabilityExtension — Decoration content", () => {
         sources: new Map([[1, source]]),
       });
       const newState = state.apply(tr);
-      const decos = traceabilityPluginKey.getState(newState)!.decorations.find();
-      return ((decos[0]! as unknown as { type: { attrs: Record<string, unknown> } }).type.attrs as Record<string, unknown>).style as string;
+      const decos = traceabilityPluginKey
+        .getState(newState)!
+        .decorations.find();
+      return (
+        decos[0]! as unknown as { type: { attrs: Record<string, unknown> } }
+      ).type.attrs.style as string;
     });
 
     // Each style string should be unique (different colors per type)
@@ -278,11 +285,13 @@ describe("TraceabilityExtension — registerTraceabilityPlugin", () => {
     const view = {
       state: simpleState,
       updateState: (newState: EditorState) => {
-        (view.state) = newState;
+        view.state = newState;
       },
     };
 
-    expect(() => registerTraceabilityPlugin(view as any)).not.toThrow();
+    expect(() =>
+      registerTraceabilityPlugin(view as unknown as EditorView),
+    ).not.toThrow();
   });
 
   it("should be idempotent (second call is no-op)", () => {
@@ -295,14 +304,18 @@ describe("TraceabilityExtension — registerTraceabilityPlugin", () => {
     const view = {
       state,
       updateState: (newState: EditorState) => {
-        (view.state) = newState;
+        view.state = newState;
       },
     };
 
     // First call registers
-    expect(() => registerTraceabilityPlugin(view as any)).not.toThrow();
+    expect(() =>
+      registerTraceabilityPlugin(view as unknown as EditorView),
+    ).not.toThrow();
     // Second call should be idempotent (no crash)
-    expect(() => registerTraceabilityPlugin(view as any)).not.toThrow();
+    expect(() =>
+      registerTraceabilityPlugin(view as unknown as EditorView),
+    ).not.toThrow();
   });
 });
 
@@ -318,13 +331,13 @@ describe("TraceabilityExtension — updateTraceabilitySources", () => {
       plugins: [traceabilityPlugin],
     });
 
-    let dispatchedTr: any = null;
+    let dispatchedTr: Transaction | null = null;
     const view = {
       state,
-      dispatch: (tr: any) => {
+      dispatch: (tr: Transaction) => {
         dispatchedTr = tr;
         // Apply the transaction so view.state stays consistent
-        (view.state) = view.state.apply(tr);
+        view.state = view.state.apply(tr);
       },
     };
 
@@ -338,7 +351,7 @@ describe("TraceabilityExtension — updateTraceabilitySources", () => {
       },
     ];
 
-    updateTraceabilitySources(view as any, sources);
+    updateTraceabilitySources(view as unknown as EditorView, sources);
 
     expect(dispatchedTr).not.toBeNull();
     const meta = dispatchedTr!.getMeta(traceabilityPluginKey);
@@ -360,17 +373,19 @@ describe("TraceabilityExtension — updateTraceabilitySources", () => {
 
     // Pre-load a source
     const sources = createTestSources();
-    const s1 = state.apply(state.tr.setMeta(traceabilityPluginKey, { sources }));
+    const s1 = state.apply(
+      state.tr.setMeta(traceabilityPluginKey, { sources }),
+    );
 
     const view = {
       state: s1,
-      dispatch: (tr: any) => {
-        (view.state) = view.state.apply(tr);
+      dispatch: (tr: Transaction) => {
+        view.state = view.state.apply(tr);
       },
     };
 
     // Now clear with empty array
-    updateTraceabilitySources(view as any, []);
+    updateTraceabilitySources(view as unknown as EditorView, []);
 
     const pluginState = traceabilityPluginKey.getState(view.state);
     expect(pluginState!.sources.size).toBe(0);

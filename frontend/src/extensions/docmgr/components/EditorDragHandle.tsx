@@ -1,7 +1,13 @@
 "use client";
 
 import type { Editor } from "@tiptap/react";
-import { Trash2, Copy, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
+import {
+  Trash2,
+  Copy,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
+} from "lucide-react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -74,28 +80,50 @@ function OperationMenu({ editor, getPos, onClose }: OperationMenuProps) {
 
   return (
     <div ref={menuRef} className="notion-drag-handle-menu">
-      <button className="notion-drag-handle-menu-item" onClick={deleteBlock} title="删除">
-        <Trash2 className="w-3.5 h-3.5" />
+      <button
+        className="notion-drag-handle-menu-item"
+        onClick={deleteBlock}
+        title="删除"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
         <span>删除</span>
       </button>
-      <button className="notion-drag-handle-menu-item" onClick={duplicateBlock} title="复制">
-        <Copy className="w-3.5 h-3.5" />
+      <button
+        className="notion-drag-handle-menu-item"
+        onClick={duplicateBlock}
+        title="复制"
+      >
+        <Copy className="h-3.5 w-3.5" />
         <span>复制</span>
       </button>
       <div className="notion-drag-handle-menu-divider" />
-      <button className="notion-drag-handle-menu-item" onClick={moveBlockUp} title="上移">
-        <ChevronUp className="w-3.5 h-3.5" />
+      <button
+        className="notion-drag-handle-menu-item"
+        onClick={moveBlockUp}
+        title="上移"
+      >
+        <ChevronUp className="h-3.5 w-3.5" />
         <span>上移</span>
       </button>
-      <button className="notion-drag-handle-menu-item" onClick={moveBlockDown} title="下移">
-        <ChevronDown className="w-3.5 h-3.5" />
+      <button
+        className="notion-drag-handle-menu-item"
+        onClick={moveBlockDown}
+        title="下移"
+      >
+        <ChevronDown className="h-3.5 w-3.5" />
         <span>下移</span>
       </button>
     </div>
   );
 }
 
-function DragHandle({ editor, getPos, onDragStart, onHideCancel, didDragRef }: DragHandleProps) {
+function DragHandle({
+  editor,
+  getPos,
+  onDragStart,
+  onHideCancel,
+  didDragRef,
+}: DragHandleProps) {
   const [showMenu, setShowMenu] = useState(false);
 
   if (!editor) return null;
@@ -116,10 +144,14 @@ function DragHandle({ editor, getPos, onDragStart, onHideCancel, didDragRef }: D
           onDragStart(e);
         }}
       >
-        <GripVertical className="w-4 h-4" />
+        <GripVertical className="h-4 w-4" />
       </div>
       {showMenu && (
-        <OperationMenu editor={editor} getPos={getPos} onClose={() => setShowMenu(false)} />
+        <OperationMenu
+          editor={editor}
+          getPos={getPos}
+          onClose={() => setShowMenu(false)}
+        />
       )}
     </div>
   );
@@ -164,7 +196,10 @@ function getBlockFromPoint(x: number, y: number): HTMLElement | null {
 const SCROLL_ZONE = 60;
 const SCROLL_SPEED = 10;
 
-export default function EditorDragHandle({ editor, scrollContainerRef }: EditorDragHandleProps) {
+export default function EditorDragHandle({
+  editor,
+  scrollContainerRef,
+}: EditorDragHandleProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [activeHandle, setActiveHandle] = useState<{
@@ -176,7 +211,9 @@ export default function EditorDragHandle({ editor, scrollContainerRef }: EditorD
   // Drag state
   const [isDragging, setIsDragging] = useState(false);
   const dragSourcePosRef = useRef<number | null>(null);
-  const [dropIndicator, setDropIndicator] = useState<DropIndicatorState | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<DropIndicatorState | null>(
+    null,
+  );
   const dropIndicatorRef = useRef<DropIndicatorState | null>(null);
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const didDragRef = useRef(false);
@@ -247,7 +284,11 @@ export default function EditorDragHandle({ editor, scrollContainerRef }: EditorD
     const handleMouseOut = (e: MouseEvent) => {
       if (isDragging) return;
       const relatedTarget = e.relatedTarget as HTMLElement | null;
-      if (relatedTarget?.closest(".notion-drag-handle-wrapper") || relatedTarget?.closest(".notion-drag-handle-menu")) return;
+      if (
+        relatedTarget?.closest(".notion-drag-handle-wrapper") ||
+        relatedTarget?.closest(".notion-drag-handle-menu")
+      )
+        return;
       hideTimerRef.current = setTimeout(() => setActiveHandle(null), 300);
     };
 
@@ -275,7 +316,10 @@ export default function EditorDragHandle({ editor, scrollContainerRef }: EditorD
     document.body.style.userSelect = "";
 
     if (dragListenersRef.current) {
-      document.removeEventListener("mousemove", dragListenersRef.current.mousemove);
+      document.removeEventListener(
+        "mousemove",
+        dragListenersRef.current.mousemove,
+      );
       document.removeEventListener("mouseup", dragListenersRef.current.mouseup);
       document.removeEventListener("keydown", dragListenersRef.current.keydown);
       dragListenersRef.current = null;
@@ -283,7 +327,7 @@ export default function EditorDragHandle({ editor, scrollContainerRef }: EditorD
   }, []);
 
   const handleDragStart = useCallback(
-    (e: React.MouseEvent) => {
+    (_e: React.MouseEvent) => {
       const pos = getPos();
       if (pos === null) return;
 
@@ -359,7 +403,12 @@ export default function EditorDragHandle({ editor, scrollContainerRef }: EditorD
           const sourcePos = dragSourcePosRef.current;
           const indicator = dropIndicatorRef.current;
           if (indicator && sourcePos !== null && editor) {
-            moveTopLevelBlockToPosition(editor, sourcePos, indicator.targetIndex, indicator.placement);
+            moveTopLevelBlockToPosition(
+              editor,
+              sourcePos,
+              indicator.targetIndex,
+              indicator.placement,
+            );
           }
         }
         cancelDrag();
@@ -388,9 +437,18 @@ export default function EditorDragHandle({ editor, scrollContainerRef }: EditorD
   useEffect(() => {
     return () => {
       if (dragListenersRef.current) {
-        document.removeEventListener("mousemove", dragListenersRef.current.mousemove);
-        document.removeEventListener("mouseup", dragListenersRef.current.mouseup);
-        document.removeEventListener("keydown", dragListenersRef.current.keydown);
+        document.removeEventListener(
+          "mousemove",
+          dragListenersRef.current.mousemove,
+        );
+        document.removeEventListener(
+          "mouseup",
+          dragListenersRef.current.mouseup,
+        );
+        document.removeEventListener(
+          "keydown",
+          dragListenersRef.current.keydown,
+        );
       }
     };
   }, []);

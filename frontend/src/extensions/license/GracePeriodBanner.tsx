@@ -22,8 +22,10 @@ export function GracePeriodBanner() {
         // ignore
       }
     }
-    check();
-    return () => { mounted = false; };
+    void check();
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   if (!show) return null;

@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 
 // EAI-CUSTOM: 按客户品牌化（构建期注入，见 brand.ts）
 import { BRAND_NAME } from "@/brand";
-
 import { Button } from "@/components/ui/button";
 import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { Input } from "@/components/ui/input";

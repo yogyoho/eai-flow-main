@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { kfApi } from "@/extensions/api";
-import type { TemplateVersionResponse, VersionCompareResult } from "@/extensions/knowledge-factory/types";
+import type {
+  TemplateVersionResponse,
+  VersionCompareResult,
+} from "@/extensions/knowledge-factory/types";
 
 interface VersionCompareModalProps {
   templateId: string;
@@ -12,10 +15,22 @@ interface VersionCompareModalProps {
 }
 
 const STATUS_CONFIG = {
-  added: { label: "新增", color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
-  removed: { label: "删除", color: "bg-red-500/10 text-red-500 border-red-500/20" },
-  modified: { label: "修改", color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20" },
-  unchanged: { label: "未变", color: "bg-muted text-muted-foreground border-border" },
+  added: {
+    label: "新增",
+    color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  },
+  removed: {
+    label: "删除",
+    color: "bg-red-500/10 text-red-500 border-red-500/20",
+  },
+  modified: {
+    label: "修改",
+    color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+  },
+  unchanged: {
+    label: "未变",
+    color: "bg-muted text-muted-foreground border-border",
+  },
 };
 
 export default function VersionCompareModal({
@@ -27,32 +42,33 @@ export default function VersionCompareModal({
   const [loadingVersions, setLoadingVersions] = useState(false);
   const [selectedA, setSelectedA] = useState<string | null>(null);
   const [selectedB, setSelectedB] = useState<string | null>(null);
-  const [compareResult, setCompareResult] = useState<VersionCompareResult | null>(null);
+  const [compareResult, setCompareResult] =
+    useState<VersionCompareResult | null>(null);
   const [comparing, setComparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (open) {
-      loadVersions();
-    }
-  }, [open, templateId]);
-
-  const loadVersions = async () => {
+  const loadVersions = useCallback(async () => {
     setLoadingVersions(true);
     try {
       const data = await kfApi.getTemplateVersions(templateId);
-      setVersions(data || []);
+      setVersions(data ?? []);
       if (data && data.length >= 2) {
         // 默认选择最近两个版本
         setSelectedA(data[1]!.id);
         setSelectedB(data[0]!.id);
       }
-    } catch (err) {
+    } catch {
       setError("加载版本列表失败");
     } finally {
       setLoadingVersions(false);
     }
-  };
+  }, [templateId]);
+
+  useEffect(() => {
+    if (open) {
+      void loadVersions();
+    }
+  }, [open, loadVersions]);
 
   const handleCompare = async () => {
     if (!selectedA || !selectedB) return;
@@ -76,25 +92,48 @@ export default function VersionCompareModal({
   const getDiffStats = () => {
     if (!compareResult) return null;
     return [
-      { label: "新增", count: compareResult.added_count, color: "text-emerald-500" },
-      { label: "删除", count: compareResult.removed_count, color: "text-red-500" },
-      { label: "修改", count: compareResult.modified_count, color: "text-yellow-500" },
-      { label: "未变", count: compareResult.unchanged_count, color: "text-muted-foreground" },
+      {
+        label: "新增",
+        count: compareResult.added_count,
+        color: "text-emerald-500",
+      },
+      {
+        label: "删除",
+        count: compareResult.removed_count,
+        color: "text-red-500",
+      },
+      {
+        label: "修改",
+        count: compareResult.modified_count,
+        color: "text-yellow-500",
+      },
+      {
+        label: "未变",
+        count: compareResult.unchanged_count,
+        color: "text-muted-foreground",
+      },
     ];
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative w-full max-w-4xl rounded-lg bg-background shadow-xl">
+      <div className="bg-background relative w-full max-w-4xl rounded-lg shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <h2 className="text-lg font-semibold">版本对比</h2>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 hover:bg-accent"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <button onClick={onClose} className="hover:bg-accent rounded-md p-1">
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -102,11 +141,11 @@ export default function VersionCompareModal({
         {/* Version Selection */}
         <div className="flex items-center justify-center gap-4 border-b px-6 py-4">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">版本 A:</span>
+            <span className="text-muted-foreground text-sm">版本 A:</span>
             <select
-              value={selectedA || ""}
+              value={selectedA ?? ""}
               onChange={(e) => setSelectedA(e.target.value)}
-              className="rounded-md border border-input px-3 py-1.5 text-sm bg-background"
+              className="border-input bg-background rounded-md border px-3 py-1.5 text-sm"
             >
               <option value="">选择版本</option>
               {versions.map((v) => (
@@ -117,16 +156,26 @@ export default function VersionCompareModal({
             </select>
           </div>
 
-          <svg className="h-5 w-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+          <svg
+            className="text-muted-foreground h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M14 5l7 7m0 0l-7 7m7-7H3"
+            />
           </svg>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">版本 B:</span>
+            <span className="text-muted-foreground text-sm">版本 B:</span>
             <select
-              value={selectedB || ""}
+              value={selectedB ?? ""}
               onChange={(e) => setSelectedB(e.target.value)}
-              className="rounded-md border border-input px-3 py-1.5 text-sm bg-background"
+              className="border-input bg-background rounded-md border px-3 py-1.5 text-sm"
             >
               <option value="">选择版本</option>
               {versions.map((v) => (
@@ -140,7 +189,7 @@ export default function VersionCompareModal({
           <button
             onClick={handleCompare}
             disabled={!selectedA || !selectedB || comparing}
-            className="rounded-lg bg-primary text-primary-foreground px-4 py-1.5 text-sm hover:bg-primary/90 disabled:opacity-50"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-1.5 text-sm disabled:opacity-50"
           >
             {comparing ? "对比中..." : "开始对比"}
           </button>
@@ -150,16 +199,27 @@ export default function VersionCompareModal({
         <div className="max-h-[50vh] overflow-y-auto p-6">
           {loadingVersions && (
             <div className="flex items-center justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-              <span className="ml-3 text-muted-foreground">加载版本列表...</span>
+              <div className="border-primary/20 border-t-primary h-8 w-8 animate-spin rounded-full border-4" />
+              <span className="text-muted-foreground ml-3">
+                加载版本列表...
+              </span>
             </div>
           )}
 
           {!loadingVersions && versions.length < 2 && (
-            <div className="flex flex-col items-center py-8 text-muted-foreground">
-              <svg className="h-12 w-12 text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <div className="text-muted-foreground flex flex-col items-center py-8">
+              <svg
+                className="text-muted-foreground/30 h-12 w-12"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                />
               </svg>
               <p className="mt-2">需要至少两个版本才能进行对比</p>
             </div>
@@ -178,18 +238,23 @@ export default function VersionCompareModal({
                 {getDiffStats()?.map((stat) => (
                   <div
                     key={stat.label}
-                    className="rounded-lg border border-border bg-muted p-4 text-center"
+                    className="border-border bg-muted rounded-lg border p-4 text-center"
                   >
-                    <p className={`text-2xl font-bold ${stat.color}`}>{stat.count}</p>
-                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <p className={`text-2xl font-bold ${stat.color}`}>
+                      {stat.count}
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      {stat.label}
+                    </p>
                   </div>
                 ))}
               </div>
 
               {/* Version Info */}
-              <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex items-center justify-center gap-4 text-sm">
                 <span>
-                  <span className="font-medium">{compareResult.version_a}</span> vs{" "}
+                  <span className="font-medium">{compareResult.version_a}</span>{" "}
+                  vs{" "}
                   <span className="font-medium">{compareResult.version_b}</span>
                 </span>
               </div>
@@ -212,7 +277,7 @@ export default function VersionCompareModal({
                       >
                         {sec.title || "未命名章节"}
                       </span>
-                      <span className="ml-auto text-xs text-muted-foreground/60">
+                      <span className="text-muted-foreground/60 ml-auto text-xs">
                         {sec.status === "modified" && "内容有变更"}
                       </span>
                     </div>
@@ -221,7 +286,7 @@ export default function VersionCompareModal({
               </div>
 
               {compareResult.sections.length === 0 && (
-                <p className="text-center text-muted-foreground">未发现差异</p>
+                <p className="text-muted-foreground text-center">未发现差异</p>
               )}
             </div>
           )}
@@ -231,7 +296,7 @@ export default function VersionCompareModal({
         <div className="flex justify-end border-t px-6 py-4">
           <button
             onClick={onClose}
-            className="rounded-md px-4 py-2 text-foreground hover:bg-accent"
+            className="text-foreground hover:bg-accent rounded-md px-4 py-2"
           >
             关闭
           </button>

@@ -22,7 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -31,9 +30,9 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
+import { usePermission } from "@/core/permissions";
 import { useAuth } from "@/extensions/hooks/useAuth";
 import { useLicense } from "@/extensions/license/useLicense";
-import { usePermission } from "@/core/permissions";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -48,17 +47,79 @@ interface NavItem {
 }
 
 const allNavItems: NavItem[] = [
-  { href: "/dashboard", label: "工作台", icon: LayoutDashboard, licenseModule: "dashboard", navId: "nav:dashboard" },
-  { href: "/workspace/chats/new", label: "智能写作", icon: Bot, newTab: true, licenseModule: "platform", navId: "nav:writing" },
-  { href: "/projects", label: "报告项目", icon: ClipboardList, licenseModule: "project", navId: "nav:projects" },
+  {
+    href: "/dashboard",
+    label: "工作台",
+    icon: LayoutDashboard,
+    licenseModule: "dashboard",
+    navId: "nav:dashboard",
+  },
+  {
+    href: "/workspace/chats/new",
+    label: "智能写作",
+    icon: Bot,
+    newTab: true,
+    licenseModule: "platform",
+    navId: "nav:writing",
+  },
+  {
+    href: "/projects",
+    label: "报告项目",
+    icon: ClipboardList,
+    licenseModule: "project",
+    navId: "nav:projects",
+  },
   // EAI-CUSTOM: Collab Workspace 协作工作台（避开 /workspace 对话布局，独立路由）
-  { href: "/agentspace", label: "协作工作台", icon: KanbanSquare, licenseModule: "platform", navId: "nav:collab-workspace" },
-  { href: "/docmgr", label: "文档空间", icon: FolderCheck, licenseModule: "platform", navId: "nav:docmgr" },
-  { href: "/knowledge-factory", label: "知识工厂", icon: Factory, licenseModule: "platform", navId: "nav:knowledge-factory" },
-  { href: "/knowledge", label: "知识库", icon: BookOpen, licenseModule: "platform", navId: "nav:knowledge" },
-  { href: "/app-center", label: "应用中心", icon: Blocks, licenseModule: "platform", navId: "nav:app-center" },
-  { href: "/admin", label: "系统管理", icon: Settings2, adminOnly: true, licenseModule: "platform", navId: "nav:admin" },
-  { href: "/settings", label: "设置", icon: Settings, licenseModule: "platform", navId: "nav:settings" },
+  {
+    href: "/agentspace",
+    label: "协作工作台",
+    icon: KanbanSquare,
+    licenseModule: "platform",
+    navId: "nav:collab-workspace",
+  },
+  {
+    href: "/docmgr",
+    label: "文档空间",
+    icon: FolderCheck,
+    licenseModule: "platform",
+    navId: "nav:docmgr",
+  },
+  {
+    href: "/knowledge-factory",
+    label: "知识工厂",
+    icon: Factory,
+    licenseModule: "platform",
+    navId: "nav:knowledge-factory",
+  },
+  {
+    href: "/knowledge",
+    label: "知识库",
+    icon: BookOpen,
+    licenseModule: "platform",
+    navId: "nav:knowledge",
+  },
+  {
+    href: "/app-center",
+    label: "应用中心",
+    icon: Blocks,
+    licenseModule: "platform",
+    navId: "nav:app-center",
+  },
+  {
+    href: "/admin",
+    label: "系统管理",
+    icon: Settings2,
+    adminOnly: true,
+    licenseModule: "platform",
+    navId: "nav:admin",
+  },
+  {
+    href: "/settings",
+    label: "设置",
+    icon: Settings,
+    licenseModule: "platform",
+    navId: "nav:settings",
+  },
 ];
 
 const bottomNavItems: NavItem[] = [];
@@ -83,10 +144,10 @@ function NavIcon({
           href={href}
           target={newTab ? "_blank" : undefined}
           className={cn(
-            "flex items-center justify-center w-10 h-10 rounded-lg transition-colors",
+            "flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
             isActive
               ? "text-primary bg-primary/10"
-              : "text-muted-foreground hover:text-primary hover:bg-accent"
+              : "text-muted-foreground hover:text-primary hover:bg-accent",
           )}
         >
           <Icon className="h-5 w-5" />
@@ -115,7 +176,8 @@ export function ExtensionsSidebar() {
     // Admin-only items: skip if not admin
     if (item.adminOnly && !isAdmin) return false;
     // License-gated items: skip if module not authorized (show during loading)
-    if (item.licenseModule && !licenseLoading && !hasModule(item.licenseModule)) return false;
+    if (item.licenseModule && !licenseLoading && !hasModule(item.licenseModule))
+      return false;
     // Nav-level permission: skip if user doesn't have nav permission
     if (item.navId && !canNav(item.navId)) return false;
     return true;
@@ -135,45 +197,46 @@ export function ExtensionsSidebar() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="relative z-30 w-14 shrink-0 flex flex-col items-center border-r border-border bg-background dark:bg-sidebar">
+      <div className="border-border bg-background dark:bg-sidebar relative z-30 flex w-14 shrink-0 flex-col items-center border-r">
         {/* Logo */}
         <div className="p-3">
           <Link
             href="/"
-            className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-accent transition-colors"
+            className="hover:bg-accent flex h-9 w-9 items-center justify-center rounded-lg transition-colors"
           >
-            <img src="/favicon.svg" alt="Logo" className="w-7 h-7" />
+            <img src="/favicon.svg" alt="Logo" className="h-7 w-7" />
           </Link>
         </div>
 
         {/* Main navigation */}
-        <nav className="flex flex-col items-center py-4 gap-2 flex-1">
-          {!navReady ? (
-            /* Skeleton while permissions/license resolve — nothing flashes in/out */
-            Array.from({ length: 7 }).map((_, i) => (
-              <div key={i} className="w-10 h-10 rounded-lg bg-muted/60 animate-pulse" />
-            ))
-          ) : (
-            navItems.map(({ href, label, icon, newTab }) => {
-              const isActive =
-                pathname === href ||
-                (href !== "/" && pathname.startsWith(href + "/"));
-              return (
-                <NavIcon
-                  key={href}
-                  href={href}
-                  label={label}
-                  icon={icon}
-                  isActive={isActive}
-                  newTab={newTab}
+        <nav className="flex flex-1 flex-col items-center gap-2 py-4">
+          {!navReady
+            ? /* Skeleton while permissions/license resolve — nothing flashes in/out */
+              Array.from({ length: 7 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="bg-muted/60 h-10 w-10 animate-pulse rounded-lg"
                 />
-              );
-            })
-          )}
+              ))
+            : navItems.map(({ href, label, icon, newTab }) => {
+                const isActive =
+                  pathname === href ||
+                  (href !== "/" && pathname.startsWith(href + "/"));
+                return (
+                  <NavIcon
+                    key={href}
+                    href={href}
+                    label={label}
+                    icon={icon}
+                    isActive={isActive}
+                    newTab={newTab}
+                  />
+                );
+              })}
         </nav>
 
         {/* Bottom navigation (settings) */}
-        <nav className="flex flex-col items-center gap-2 mt-auto">
+        <nav className="mt-auto flex flex-col items-center gap-2">
           {bottomNavItems.map(({ href, label, icon }) => {
             const isActive = pathname === href;
             return (
@@ -189,7 +252,7 @@ export function ExtensionsSidebar() {
         </nav>
 
         {/* User menu */}
-        <div className="p-2 flex flex-col items-center gap-1">
+        <div className="flex flex-col items-center gap-1 p-2">
           {mounted && (
             <DropdownMenu>
               <Tooltip delayDuration={300}>
@@ -197,7 +260,7 @@ export function ExtensionsSidebar() {
                   <DropdownMenuTrigger asChild>
                     <button
                       type="button"
-                      className="flex items-center justify-center w-10 h-10 rounded-lg text-muted-foreground hover:text-primary hover:bg-accent transition-colors"
+                      className="text-muted-foreground hover:text-primary hover:bg-accent flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
                     >
                       <UserCircle className="h-5 w-5" />
                     </button>
@@ -208,16 +271,16 @@ export function ExtensionsSidebar() {
                 </TooltipContent>
               </Tooltip>
               <DropdownMenuContent side="right" sideOffset={8} className="w-48">
-                <div className="px-2 py-2 border-b border-border">
-                  <div className="text-sm font-medium text-foreground">
+                <div className="border-border border-b px-2 py-2">
+                  <div className="text-foreground text-sm font-medium">
                     {user?.username ?? "—"}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-muted-foreground text-xs">
                     {user?.role_name ?? ""}
                   </div>
                 </div>
                 <DropdownMenuItem
-                  className="cursor-pointer text-destructive focus:text-destructive"
+                  className="text-destructive focus:text-destructive cursor-pointer"
                   onClick={handleLogout}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

@@ -1,14 +1,23 @@
 "use client";
 
-import { Bell, Clock, Mail, MessageSquare } from "lucide-react";
+import { Clock, Mail, MessageSquare } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
 import { dashboardApi } from "../api";
-import type { NotificationPreference, NotificationPreferenceUpdate } from "../types";
+import type {
+  NotificationPreference,
+  NotificationPreferenceUpdate,
+} from "../types";
 
 const NOTIFICATION_TYPES: { key: string; label: string }[] = [
   { key: "deadline", label: "截止提醒" },
@@ -39,7 +48,9 @@ export function NotificationPreferencePanel() {
     if (!prefs) return;
     setSaving(true);
     try {
-      const updated = await dashboardApi.updateNotificationPreferences({ [key]: value });
+      const updated = await dashboardApi.updateNotificationPreferences({
+        [key]: value,
+      });
       setPrefs(updated);
     } catch (err) {
       console.error("Failed to update preference:", err);
@@ -51,32 +62,38 @@ export function NotificationPreferencePanel() {
   async function toggleType(typeKey: string, enabled: boolean) {
     if (!prefs) return;
     const newSettings = { ...prefs.type_settings, [typeKey]: enabled };
-    const updated = await dashboardApi.updateNotificationPreferences({ type_settings: newSettings });
+    const updated = await dashboardApi.updateNotificationPreferences({
+      type_settings: newSettings,
+    });
     setPrefs(updated);
   }
 
   if (loading) {
     return (
-      <div className="space-y-3 animate-pulse">
+      <div className="animate-pulse space-y-3">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-8 bg-muted rounded" />
+          <div key={i} className="bg-muted h-8 rounded" />
         ))}
       </div>
     );
   }
 
   if (!prefs) {
-    return <div className="text-sm text-muted-foreground">无法加载通知偏好设置</div>;
+    return (
+      <div className="text-muted-foreground text-sm">无法加载通知偏好设置</div>
+    );
   }
 
   return (
     <div className="space-y-4">
       {/* Channel toggles */}
       <div className="space-y-3">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">通知渠道</h4>
+        <h4 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+          通知渠道
+        </h4>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+            <MessageSquare className="text-muted-foreground h-4 w-4" />
             <Label htmlFor="channel-in-app" className="text-sm">
               站内通知
             </Label>
@@ -90,7 +107,7 @@ export function NotificationPreferencePanel() {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-muted-foreground" />
+            <Mail className="text-muted-foreground h-4 w-4" />
             <Label htmlFor="channel-email" className="text-sm">
               邮件通知
             </Label>
@@ -106,8 +123,15 @@ export function NotificationPreferencePanel() {
 
       {/* Digest mode */}
       <div className="space-y-2">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">汇总方式</h4>
-        <Select value={prefs.digest_mode} onValueChange={(v) => updatePref("digest_mode", v as "instant" | "daily" | "off")}>
+        <h4 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+          汇总方式
+        </h4>
+        <Select
+          value={prefs.digest_mode}
+          onValueChange={(v) =>
+            updatePref("digest_mode", v as "instant" | "daily" | "off")
+          }
+        >
           <SelectTrigger className="h-8 text-sm">
             <SelectValue />
           </SelectTrigger>
@@ -121,7 +145,9 @@ export function NotificationPreferencePanel() {
 
       {/* Type toggles */}
       <div className="space-y-2">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">通知类型</h4>
+        <h4 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+          通知类型
+        </h4>
         {NOTIFICATION_TYPES.map(({ key, label }) => (
           <div key={key} className="flex items-center justify-between">
             <Label htmlFor={`type-${key}`} className="text-sm">
@@ -139,7 +165,7 @@ export function NotificationPreferencePanel() {
 
       {/* Deadline remind days */}
       <div className="space-y-2">
-        <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+        <h4 className="text-muted-foreground flex items-center gap-1 text-xs font-medium tracking-wider uppercase">
           <Clock className="h-3 w-3" />
           截止提醒提前天数
         </h4>

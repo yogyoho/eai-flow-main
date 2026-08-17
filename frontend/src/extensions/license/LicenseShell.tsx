@@ -39,8 +39,10 @@ export function LicenseShell({ children }: { children: React.ReactNode }) {
       }
     }
 
-    check();
-    const interval = setInterval(check, POLL_INTERVAL);
+    void check();
+    const interval = setInterval(() => {
+      void check();
+    }, POLL_INTERVAL);
     return () => {
       mounted = false;
       clearInterval(interval);

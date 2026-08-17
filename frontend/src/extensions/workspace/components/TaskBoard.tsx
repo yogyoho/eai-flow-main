@@ -3,8 +3,8 @@
 // Collab Workspace — 任务板（AgentSpace Kanban：按状态/负责人分组 + 拖拽 + 统计行）
 // EAI-CUSTOM: 全新模块，Kanban 组件为 workspace 自有副本（零引用 extensions/project）。UI 对齐 cyber 主题。
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus, Bot, User, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -50,7 +50,10 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
   const createTask = async () => {
     if (!title.trim()) return;
     try {
-      const t = await workspaceApi.createTask(projectId, { title: title.trim(), kind: "section_write" });
+      const t = await workspaceApi.createTask(projectId, {
+        title: title.trim(),
+        kind: "section_write",
+      });
       setTasks((prev) => [...prev, t]);
       setTitle("");
       setShowCreate(false);
@@ -67,9 +70,12 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
       return;
     }
     try {
-      await workspaceApi.assignTask(projectId, taskId, { assigneeType: "agent", agentName: name });
+      await workspaceApi.assignTask(projectId, taskId, {
+        assigneeType: "agent",
+        agentName: name,
+      });
       toast.success("已指派给 agent");
-      load();
+      void load();
     } catch {
       toast.error("指派失败");
     }
@@ -80,7 +86,7 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
     try {
       const r = await workspaceApi.spawnRun(projectId, taskId, {});
       toast.success(`agent run 已启动（${r.status}）`);
-      load();
+      void load();
     } catch {
       toast.error("启动失败（请确认 task 已指派给 agent）");
     } finally {
@@ -92,10 +98,18 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
     if (groupBy === "assignee") {
       const byAssignee = new Map<string, CollabTask[]>();
       for (const t of tasks) {
-        const key = t.assigneeAgentName ? `agent:${t.assigneeAgentName}` : t.assigneeUserId ? "人类" : "未指派";
+        const key = t.assigneeAgentName
+          ? `agent:${t.assigneeAgentName}`
+          : t.assigneeUserId
+            ? "人类"
+            : "未指派";
         byAssignee.set(key, [...(byAssignee.get(key) ?? []), t]);
       }
-      return Array.from(byAssignee.entries()).map(([key, items]) => ({ key, label: key, items }));
+      return Array.from(byAssignee.entries()).map(([key, items]) => ({
+        key,
+        label: key,
+        items,
+      }));
     }
     return COLUMNS.map((c) => ({
       key: c.key,
@@ -105,76 +119,135 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
   }, [tasks, groupBy]);
 
   if (loading) {
-    return <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">加载中...</div>;
+    return (
+      <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
+        加载中...
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 flex flex-col h-full" style={{ minHeight: 0 }}>
-      <div className="flex items-center justify-between mb-4 shrink-0">
+    <div className="flex h-full flex-col p-6" style={{ minHeight: 0 }}>
+      <div className="mb-4 flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2">
           {(["status", "assignee"] as const).map((g) => (
             <button
               key={g}
               type="button"
               onClick={() => setGroupBy(g)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                groupBy === g ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
+              className={`cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
+                groupBy === g
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground"
               }`}
             >
               {g === "status" ? "按状态" : "按负责人"}
             </button>
           ))}
-          <span className="text-xs font-mono ml-2" style={{ color: "var(--cyber-text-muted)" }}>
-            {tasks.length} 个任务 · {tasks.filter((t) => t.status === "done").length} 完成
+          <span
+            className="ml-2 font-mono text-xs"
+            style={{ color: "var(--cyber-text-muted)" }}
+          >
+            {tasks.length} 个任务 ·{" "}
+            {tasks.filter((t) => t.status === "done").length} 完成
           </span>
         </div>
         <Button size="sm" onClick={() => setShowCreate((v) => !v)}>
-          <Plus className="h-4 w-4 mr-1" /> 新建任务
+          <Plus className="mr-1 h-4 w-4" /> 新建任务
         </Button>
       </div>
 
       {showCreate && (
         <div
-          className="rounded-xl border p-3 mb-4 max-w-md shrink-0"
-          style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+          className="mb-4 max-w-md shrink-0 rounded-xl border p-3"
+          style={{
+            background: "var(--cyber-bg-secondary)",
+            borderColor: "var(--cyber-border-muted)",
+          }}
         >
           <div className="flex gap-2">
             <input
-              className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              className="border-input bg-background flex h-9 flex-1 rounded-md border px-3 py-1 text-sm"
               placeholder="任务标题"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && createTask()}
             />
-            <Button size="sm" onClick={createTask}>创建</Button>
+            <Button size="sm" onClick={createTask}>
+              创建
+            </Button>
           </div>
         </div>
       )}
 
-      <div className="flex gap-4 overflow-x-auto flex-1" style={{ minHeight: 0 }}>
+      <div
+        className="flex flex-1 gap-4 overflow-x-auto"
+        style={{ minHeight: 0 }}
+      >
         {columns.map((col) => (
-          <div key={col.key} className="flex flex-col w-64 shrink-0" style={{ minHeight: 0 }}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold" style={{ color: "var(--cyber-text-main)" }}>{col.label}</span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">{col.items.length}</span>
+          <div
+            key={col.key}
+            className="flex w-64 shrink-0 flex-col"
+            style={{ minHeight: 0 }}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <span
+                className="text-xs font-bold"
+                style={{ color: "var(--cyber-text-main)" }}
+              >
+                {col.label}
+              </span>
+              <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 font-mono text-[10px]">
+                {col.items.length}
+              </span>
             </div>
-            <div className="flex flex-col gap-2 flex-1 overflow-auto" style={{ minHeight: 0 }}>
+            <div
+              className="flex flex-1 flex-col gap-2 overflow-auto"
+              style={{ minHeight: 0 }}
+            >
               {col.items.map((t) => (
                 <div
                   key={t.id}
                   className="rounded-xl border p-3"
-                  style={{ background: "var(--cyber-bg-secondary)", borderColor: "var(--cyber-border-muted)" }}
+                  style={{
+                    background: "var(--cyber-bg-secondary)",
+                    borderColor: "var(--cyber-border-muted)",
+                  }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <h4 className="text-sm font-bold" style={{ color: "var(--cyber-text-main)" }}>{t.title}</h4>
+                    <h4
+                      className="text-sm font-bold"
+                      style={{ color: "var(--cyber-text-main)" }}
+                    >
+                      {t.title}
+                    </h4>
                     <span className="shrink-0">
-                      {t.assigneeType === "agent" ? <Bot className="h-3.5 w-3.5 text-purple-400" /> : <User className="h-3.5 w-3.5 text-cyan-400" />}
+                      {t.assigneeType === "agent" ? (
+                        <Bot className="h-3.5 w-3.5 text-purple-400" />
+                      ) : (
+                        <User className="h-3.5 w-3.5 text-cyan-400" />
+                      )}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-2 text-[11px] font-mono text-muted-foreground flex-wrap">
-                    {t.assigneeAgentName && <span className="px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/30">{t.assigneeAgentName}</span>}
-                    {t.handoffState && <span className="px-1.5 py-0.5 rounded bg-muted">交接:{t.handoffState}</span>}
-                    {t.lastError && <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-400" title={t.lastError}>错误</span>}
+                  <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                    {t.assigneeAgentName && (
+                      <span className="rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-purple-400">
+                        {t.assigneeAgentName}
+                      </span>
+                    )}
+                    {t.handoffState && (
+                      <span className="bg-muted rounded px-1.5 py-0.5">
+                        交接:{t.handoffState}
+                      </span>
+                    )}
+                    {t.lastError && (
+                      <span
+                        className="rounded bg-red-500/10 px-1.5 py-0.5 text-red-400"
+                        title={t.lastError}
+                      >
+                        错误
+                      </span>
+                    )}
                   </div>
                   {t.assigneeType === "agent" ? (
                     <Button
@@ -184,24 +257,34 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
                       disabled={spawning === t.id}
                       onClick={() => handleSpawnRun(t.id)}
                     >
-                      {spawning === t.id ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                      {spawning === t.id ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : null}
                       启动 agent 执行
                     </Button>
                   ) : (
                     <div className="mt-2 flex gap-1">
                       <input
-                        className="flex h-7 flex-1 rounded-md border border-input bg-background px-2 text-xs"
+                        className="border-input bg-background flex h-7 flex-1 rounded-md border px-2 text-xs"
                         placeholder="agent_name"
                         value={agentName}
                         onChange={(e) => setAgentName(e.target.value)}
                       />
-                      <Button size="sm" variant="outline" onClick={() => handleAssignAgent(t.id)}>指派</Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleAssignAgent(t.id)}
+                      >
+                        指派
+                      </Button>
                     </div>
                   )}
                 </div>
               ))}
               {col.items.length === 0 && (
-                <div className="rounded-lg border border-dashed p-3 text-center text-xs text-muted-foreground">空</div>
+                <div className="text-muted-foreground rounded-lg border border-dashed p-3 text-center text-xs">
+                  空
+                </div>
               )}
             </div>
           </div>

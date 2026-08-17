@@ -2,7 +2,7 @@ import type { RegistryModule } from "@/extensions/types";
 
 /** 收集所有 registry module 的页面 id。 */
 export function allPageIds(modules: RegistryModule[]): string[] {
-  return (modules || []).flatMap((m) => (m.pages || []).map((p) => p.id));
+  return (modules || []).flatMap((m) => (m.pages ?? []).map((p) => p.id));
 }
 
 /**
@@ -23,7 +23,10 @@ export function resolveVisiblePages(
 }
 
 /** 将可见页面集合序列化回 role.pages 的 wire 格式（全选时用 "*"）。 */
-export function serializePages(visible: Set<string>, modules: RegistryModule[]): string[] {
+export function serializePages(
+  visible: Set<string>,
+  modules: RegistryModule[],
+): string[] {
   const ids = allPageIds(modules);
   if (ids.length > 0 && ids.every((id) => visible.has(id))) {
     return ["*"];
@@ -43,5 +46,9 @@ export function shouldHideModule(mod: RegistryModule): boolean {
 
 /** 可见性纯模块：pages 非空且全部子页无操作 → 只控制子页可见性，无操作网格。 */
 export function isVisibilityOnlyModule(mod: RegistryModule): boolean {
-  return !!mod.pages && mod.pages.length > 0 && mod.pages.every((p) => p.operations.length === 0);
+  return (
+    !!mod.pages &&
+    mod.pages.length > 0 &&
+    mod.pages.every((p) => p.operations.length === 0)
+  );
 }

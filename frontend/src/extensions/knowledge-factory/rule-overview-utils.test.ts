@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 
 const { mapRuleOverviewResponse } = await import("./rule-overview-utils");
 
-test("mapRuleOverviewResponse maps nested snake_case payload to camelCase", () => {
+void test("mapRuleOverviewResponse maps nested snake_case payload to camelCase", () => {
   const overview = mapRuleOverviewResponse({
     statistics: {
       total: 10,
@@ -36,5 +36,7 @@ test("mapRuleOverviewResponse maps nested snake_case payload to camelCase", () =
   assert.equal(overview.statistics.fromSeed, 7);
   assert.equal(overview.seedStatus.seedVersion, "2026.04");
   assert.equal(overview.triggerStatistics.monthBlocked, 6);
-  assert.deepEqual(overview.statistics.industryDistribution, { environmental: 10 });
+  assert.deepEqual(overview.statistics.industryDistribution, {
+    environmental: 10,
+  });
 });

@@ -33,7 +33,7 @@ test("replaceTextInContent: 单节点替换", () => {
     "设计参数",
   );
   expect(replaced).toBe(1);
-  expect(out[0].text).toBe("设计参数 $V_s$ 计算");
+  expect(out[0]!.text).toBe("设计参数 $V_s$ 计算");
 });
 
 test("replaceTextInContent: 同一节点多处替换 + 保留 latex 节点", () => {
@@ -43,8 +43,8 @@ test("replaceTextInContent: 同一节点多处替换 + 保留 latex 节点", () 
   ];
   const { content: out, replaced } = replaceTextInContent(content, "a", "A");
   expect(replaced).toBe(2);
-  expect(out[0].text).toBe("A b A b");
-  expect(out[1].type).toBe("latex"); // 非 text 节点原样保留
+  expect(out[0]!.text).toBe("A b A b");
+  expect(out[1]!.type).toBe("latex"); // 非 text 节点原样保留
 });
 
 test("replaceTextInContent: 空 query 或未命中不替换", () => {

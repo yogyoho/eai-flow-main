@@ -18,7 +18,13 @@ import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { kfApi, kbApi } from "@/extensions/api";
-import type { KnowledgeBase, ChunkConfig, KBBusinessType, ChunkMethod, SampleReport } from "@/extensions/types";
+import type {
+  KnowledgeBase,
+  ChunkConfig,
+  KBBusinessType,
+  ChunkMethod,
+  SampleReport,
+} from "@/extensions/types";
 
 import { StyledRangeSlider } from "./StyledRangeSlider";
 
@@ -80,33 +86,38 @@ export default function AdvancedUploadModal({
 }: AdvancedUploadModalProps) {
   // 步骤状态
   const [step, setStep] = useState<"kb" | "config" | "upload">("kb");
-  
+
   // 知识库相关
   const [kbOptions, setKbOptions] = useState<KBSelectOption[]>([]);
-  const [selectedKbId, setSelectedKbId] = useState<string>(defaultKbId || "");
+  const [selectedKbId, setSelectedKbId] = useState<string>(defaultKbId ?? "");
   const [showKbDropdown, setShowKbDropdown] = useState(false);
   const [showNewKbForm, setShowNewKbForm] = useState(false);
   const [loadingKbs, setLoadingKbs] = useState(true);
-  
+
   // 新建知识库表单
   const [newKbName, setNewKbName] = useState("");
   const [newKbDescription, setNewKbDescription] = useState("");
   const [creatingKb, setCreatingKb] = useState(false);
-  
+
   // 分块配置
-  const [chunkConfig, setChunkConfig] = useState<ChunkConfig>(PRESETS[businessType]);
+  const [chunkConfig, setChunkConfig] = useState<ChunkConfig>(
+    PRESETS[businessType],
+  );
   const [useRecommended, setUseRecommended] = useState(true);
-  
+
   // 文件相关
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [uploadProgress, setUploadProgress] = useState({
+    current: 0,
+    total: 0,
+  });
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // 加载知识库列表
   useEffect(() => {
-    loadKnowledgeBases();
+    void loadKnowledgeBases();
   }, []);
 
   const loadKnowledgeBases = async () => {
@@ -118,9 +129,9 @@ export default function AdvancedUploadModal({
           ...kb,
           label: kb.name,
           subLabel: `${kb.chunk_method || "naive"} · ${kb.id.slice(0, 8)}...`,
-        }))
+        })),
       );
-    } catch (e) {
+    } catch {
       toast.error("加载知识库列表失败");
     } finally {
       setLoadingKbs(false);
@@ -150,8 +161,10 @@ export default function AdvancedUploadModal({
       setNewKbName("");
       setNewKbDescription("");
       toast.success("知识库创建成功");
-    } catch (e: any) {
-      toast.error(e.message || "创建知识库失败");
+    } catch (e) {
+      toast.error(
+        e instanceof Error && e.message ? e.message : "创建知识库失败",
+      );
     } finally {
       setCreatingKb(false);
     }
@@ -161,10 +174,12 @@ export default function AdvancedUploadModal({
     if (!newFiles) return;
     const validFiles = Array.from(newFiles).filter((f) => {
       const ext = f.name.split(".").pop()?.toLowerCase();
-      return ["pdf", "docx", "doc", "txt", "md"].includes(ext || "");
+      return ["pdf", "docx", "doc", "txt", "md"].includes(ext ?? "");
     });
     if (validFiles.length < newFiles.length) {
-      toast.info(`已过滤 ${newFiles.length - validFiles.length} 个不支持的文件`);
+      toast.info(
+        `已过滤 ${newFiles.length - validFiles.length} 个不支持的文件`,
+      );
     }
     setFiles((prev) => [...prev, ...validFiles]);
   };
@@ -187,13 +202,13 @@ export default function AdvancedUploadModal({
         selectedKbId,
         files,
         chunkConfig,
-        (current, total) => setUploadProgress({ current, total })
+        (current, total) => setUploadProgress({ current, total }),
       );
       toast.success(`成功上传 ${results.length} 个文件`);
       onSuccess(results);
       onClose();
-    } catch (e: any) {
-      toast.error(e.message || "上传失败");
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : "上传失败");
     } finally {
       setUploading(false);
     }
@@ -205,7 +220,7 @@ export default function AdvancedUploadModal({
   const renderStepKB = () => (
     <div className="space-y-6">
       <div>
-        <label className="mb-2 block text-sm font-medium text-foreground">
+        <label className="text-foreground mb-2 block text-sm font-medium">
           选择知识库 <span className="text-red-500">*</span>
         </label>
 
@@ -215,9 +230,13 @@ export default function AdvancedUploadModal({
             type="button"
             onClick={() => !loadingKbs && setShowKbDropdown(!showKbDropdown)}
             disabled={loadingKbs}
-            className="flex w-full items-center justify-between rounded-lg border border-input bg-background px-4 py-3 text-left shadow-sm transition-all hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+            className="border-input bg-background hover:border-primary/40 focus:border-primary focus:ring-primary/20 flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left shadow-sm transition-all focus:ring-2 disabled:opacity-50"
           >
-            <span className={selectedKbId ? "text-foreground" : "text-muted-foreground"}>
+            <span
+              className={
+                selectedKbId ? "text-foreground" : "text-muted-foreground"
+              }
+            >
               {selectedKbId
                 ? kbOptions.find((o) => o.id === selectedKbId)?.label
                 : loadingKbs
@@ -225,12 +244,12 @@ export default function AdvancedUploadModal({
                   : "选择已有知识库或创建新的..."}
             </span>
             {loadingKbs ? (
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
             ) : (
               <ChevronDown
                 className={cn(
-                  "h-5 w-5 text-muted-foreground transition-transform",
-                  showKbDropdown && "rotate-180"
+                  "text-muted-foreground h-5 w-5 transition-transform",
+                  showKbDropdown && "rotate-180",
                 )}
               />
             )}
@@ -242,10 +261,10 @@ export default function AdvancedUploadModal({
                 initial={{ opacity: 0, y: -8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
-                className="absolute top-full left-0 right-0 z-[100] mt-2 max-h-64 overflow-auto rounded-xl border border-border bg-background shadow-lg"
+                className="border-border bg-background absolute top-full right-0 left-0 z-[100] mt-2 max-h-64 overflow-auto rounded-xl border shadow-lg"
               >
                 {kbOptions.length === 0 ? (
-                  <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <div className="text-muted-foreground px-4 py-8 text-center text-sm">
                     暂无法知识库，请先创建
                   </div>
                 ) : (
@@ -261,37 +280,41 @@ export default function AdvancedUploadModal({
                         "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors",
                         selectedKbId === kb.id
                           ? "bg-primary/10 text-primary"
-                          : "hover:bg-muted/50"
+                          : "hover:bg-muted/50",
                       )}
                     >
-                      <Database className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                      <Database className="text-primary mt-0.5 h-5 w-5 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div
                           className={cn(
                             "font-medium",
-                            selectedKbId === kb.id ? "text-primary" : "text-foreground"
+                            selectedKbId === kb.id
+                              ? "text-primary"
+                              : "text-foreground",
                           )}
                         >
                           {kb.label}
                         </div>
                         {kb.subLabel && (
-                          <div className="mt-0.5 text-xs text-muted-foreground">{kb.subLabel}</div>
+                          <div className="text-muted-foreground mt-0.5 text-xs">
+                            {kb.subLabel}
+                          </div>
                         )}
                       </div>
                       {selectedKbId === kb.id && (
-                        <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
+                        <CheckCircle2 className="text-primary h-5 w-5 shrink-0" />
                       )}
                     </button>
                   ))
                 )}
-                <div className="border-t border-border" />
+                <div className="border-border border-t" />
                 <button
                   type="button"
                   onClick={() => {
                     setShowKbDropdown(false);
                     setShowNewKbForm(true);
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-primary transition-colors hover:bg-primary/10"
+                  className="text-primary hover:bg-primary/10 flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
                 >
                   <Plus className="h-5 w-5" />
                   <span className="font-medium">创建新知识库</span>
@@ -311,13 +334,13 @@ export default function AdvancedUploadModal({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-xl border border-primary/50 bg-primary/10 text-primary/50 p-5 space-y-4">
-              <div className="flex items-center gap-2 text-primary">
+            <div className="border-primary/50 bg-primary/10 text-primary/50 space-y-4 rounded-xl border p-5">
+              <div className="text-primary flex items-center gap-2">
                 <Plus className="h-5 w-5" />
                 <h4 className="font-medium">创建新知识库</h4>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">
+                <label className="text-foreground mb-1 block text-sm font-medium">
                   知识库名称 <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -325,24 +348,26 @@ export default function AdvancedUploadModal({
                   value={newKbName}
                   onChange={(e) => setNewKbName(e.target.value)}
                   placeholder="例如：环评报告样例库"
-                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="border-input bg-background focus:border-primary focus:ring-primary/20 w-full rounded-lg border px-4 py-2.5 text-sm focus:ring-2"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">描述</label>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  描述
+                </label>
                 <textarea
                   value={newKbDescription}
                   onChange={(e) => setNewKbDescription(e.target.value)}
                   rows={2}
                   placeholder="简要描述该知识库的用途..."
-                  className="w-full resize-none rounded-lg border border-input bg-background px-4 py-2.5 text-sm focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  className="border-input bg-background focus:border-primary focus:ring-primary/20 w-full resize-none rounded-lg border px-4 py-2.5 text-sm focus:ring-2"
                 />
               </div>
               <div className="flex gap-3">
                 <button
                   type="button"
                   onClick={() => setShowNewKbForm(false)}
-                  className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+                  className="border-input bg-background text-foreground hover:bg-muted/50 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
                 >
                   取消
                 </button>
@@ -350,7 +375,7 @@ export default function AdvancedUploadModal({
                   type="button"
                   onClick={handleCreateKb}
                   disabled={!newKbName.trim() || creatingKb}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                  className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
                 >
                   {creatingKb ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -372,12 +397,21 @@ export default function AdvancedUploadModal({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="font-medium text-foreground">分块策略配置</h4>
-          <p className="mt-1 text-sm text-muted-foreground">RAGFlow 将按此配置解析和分块文档</p>
+          <h4 className="text-foreground font-medium">分块策略配置</h4>
+          <p className="text-muted-foreground mt-1 text-sm">
+            RAGFlow 将按此配置解析和分块文档
+          </p>
         </div>
         {/* 推荐配置开关 */}
-        <label className="flex items-center gap-2 cursor-pointer">
-          <span className={cn("text-sm", useRecommended ? "text-primary font-medium" : "text-muted-foreground")}>
+        <label className="flex cursor-pointer items-center gap-2">
+          <span
+            className={cn(
+              "text-sm",
+              useRecommended
+                ? "text-primary font-medium"
+                : "text-muted-foreground",
+            )}
+          >
             推荐配置
           </span>
           <button
@@ -385,13 +419,13 @@ export default function AdvancedUploadModal({
             onClick={() => setUseRecommended(!useRecommended)}
             className={cn(
               "relative h-6 w-11 rounded-full transition-colors",
-              useRecommended ? "bg-primary" : "bg-input"
+              useRecommended ? "bg-primary" : "bg-input",
             )}
           >
             <span
               className={cn(
-                "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform",
-                useRecommended && "translate-x-5"
+                "bg-background absolute top-0.5 left-0.5 h-5 w-5 rounded-full shadow transition-transform",
+                useRecommended && "translate-x-5",
               )}
             />
           </button>
@@ -399,13 +433,16 @@ export default function AdvancedUploadModal({
       </div>
 
       {useRecommended ? (
-        <div className="rounded-xl border border-primary/50 bg-primary/10 text-primary/50 p-4">
+        <div className="border-primary/50 bg-primary/10 text-primary/50 rounded-xl border p-4">
           <div className="flex items-start gap-3">
-            <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+            <Sparkles className="text-primary mt-0.5 h-5 w-5 shrink-0" />
             <div>
-              <h5 className="font-medium text-primary">推荐：工程报告分块配置</h5>
-              <p className="mt-1 text-sm text-primary/80">
-                自动按章节分块，识别 3 级标题，保留页码溯源，适合环评报告、技术方案等工程文档。
+              <h5 className="text-primary font-medium">
+                推荐：工程报告分块配置
+              </h5>
+              <p className="text-primary/80 mt-1 text-sm">
+                自动按章节分块，识别 3
+                级标题，保留页码溯源，适合环评报告、技术方案等工程文档。
               </p>
             </div>
           </div>
@@ -416,9 +453,9 @@ export default function AdvancedUploadModal({
               ["页码溯源", "启用"],
               ["OCR识别", "启用"],
             ].map(([k, v]) => (
-              <div key={k} className="rounded-lg bg-background/80 px-3 py-2">
+              <div key={k} className="bg-background/80 rounded-lg px-3 py-2">
                 <span className="text-muted-foreground">{k}: </span>
-                <span className="font-medium text-foreground">{v}</span>
+                <span className="text-foreground font-medium">{v}</span>
               </div>
             ))}
           </div>
@@ -427,13 +464,16 @@ export default function AdvancedUploadModal({
         <div className="space-y-4">
           {/* 分块方式 */}
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-foreground">
+            <label className="text-foreground mb-1.5 block text-sm font-medium">
               分块方式
             </label>
             <AdminSelect
               value={chunkConfig.chunk_method}
               onChange={(v) =>
-                setChunkConfig({ ...chunkConfig, chunk_method: v as ChunkMethod })
+                setChunkConfig({
+                  ...chunkConfig,
+                  chunk_method: v as ChunkMethod,
+                })
               }
               options={[
                 { value: "naive", label: "简单分块" },
@@ -443,7 +483,7 @@ export default function AdvancedUploadModal({
                 { value: "book", label: "书籍" },
               ]}
               placeholder="选择分块方式"
-              className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm"
+              className="border-input bg-background w-full rounded-lg border px-4 py-2.5 text-sm"
             />
           </div>
 
@@ -451,11 +491,11 @@ export default function AdvancedUploadModal({
           {chunkConfig.chunk_method === "report" && (
             <>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-foreground">
+                <label className="text-foreground mb-1.5 block text-sm font-medium">
                   报告类型
                 </label>
                 <AdminSelect
-                  value={chunkConfig.report_type || "general"}
+                  value={chunkConfig.report_type ?? "general"}
                   onChange={(v) =>
                     setChunkConfig({
                       ...chunkConfig,
@@ -467,27 +507,30 @@ export default function AdvancedUploadModal({
                     { value: "engineering_report", label: "工程报告" },
                   ]}
                   placeholder="选择报告类型"
-                  className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm"
+                  className="border-input bg-background w-full rounded-lg border px-4 py-2.5 text-sm"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-foreground">
+                <label className="text-foreground mb-1 block text-sm font-medium">
                   标题识别深度{" "}
-                  <span className="ml-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums">
-                    H{chunkConfig.heading_depth || 3}
+                  <span className="bg-primary/10 text-primary ml-1 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums">
+                    H{chunkConfig.heading_depth ?? 3}
                   </span>
                 </label>
                 <StyledRangeSlider
                   min={1}
                   max={6}
                   step={1}
-                  value={chunkConfig.heading_depth || 3}
+                  value={chunkConfig.heading_depth ?? 3}
                   onChange={(e) =>
-                    setChunkConfig({ ...chunkConfig, heading_depth: Number(e.target.value) })
+                    setChunkConfig({
+                      ...chunkConfig,
+                      heading_depth: Number(e.target.value),
+                    })
                   }
                   footer={
-                    <div className="flex justify-between px-0.5 text-xs font-medium text-muted-foreground">
+                    <div className="text-muted-foreground flex justify-between px-0.5 text-xs font-medium">
                       <span>H1</span>
                       <span>H6</span>
                     </div>
@@ -499,22 +542,25 @@ export default function AdvancedUploadModal({
 
           {/* 通用配置 */}
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
+            <label className="text-foreground mb-1 block text-sm font-medium">
               每块 Token 数{" "}
-              <span className="ml-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary tabular-nums">
-                {chunkConfig.chunk_token_num || 128}
+              <span className="bg-primary/10 text-primary ml-1 rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums">
+                {chunkConfig.chunk_token_num ?? 128}
               </span>
             </label>
             <StyledRangeSlider
               min={32}
               max={512}
               step={32}
-              value={chunkConfig.chunk_token_num || 128}
+              value={chunkConfig.chunk_token_num ?? 128}
               onChange={(e) =>
-                setChunkConfig({ ...chunkConfig, chunk_token_num: Number(e.target.value) })
+                setChunkConfig({
+                  ...chunkConfig,
+                  chunk_token_num: Number(e.target.value),
+                })
               }
               footer={
-                <div className="flex justify-between px-0.5 text-xs font-medium text-muted-foreground">
+                <div className="text-muted-foreground flex justify-between px-0.5 text-xs font-medium">
                   <span>32</span>
                   <span>512</span>
                 </div>
@@ -525,37 +571,64 @@ export default function AdvancedUploadModal({
           {/* 开关选项 */}
           <div className="space-y-3">
             {[
-              { key: "include_page_index", label: "页码溯源", desc: "保留页码信息用于定位" },
-              { key: "preserve_tables", label: "保留表格", desc: "表格作为独立块" },
-              { key: "ocr_enabled", label: "OCR识别", desc: "启用图像文字识别" },
-            ].map(({ key, label, desc }) => (
-              <label
-                key={key}
-                className="flex items-center justify-between rounded-lg border border-border bg-background px-4 py-3 cursor-pointer"
-              >
-                <div>
-                  <span className="font-medium text-foreground">{label}</span>
-                  <span className="ml-2 text-sm text-muted-foreground">({desc})</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setChunkConfig({ ...chunkConfig, [key]: !(chunkConfig as any)[key] })
-                  }
-                  className={cn(
-                    "relative h-6 w-11 rounded-full transition-colors",
-                    (chunkConfig as any)[key] !== false ? "bg-primary" : "bg-input"
-                  )}
+              {
+                key: "include_page_index" as const,
+                label: "页码溯源",
+                desc: "保留页码信息用于定位",
+              },
+              {
+                key: "preserve_tables" as const,
+                label: "保留表格",
+                desc: "表格作为独立块",
+              },
+              {
+                key: "ocr_enabled" as const,
+                label: "OCR识别",
+                desc: "启用图像文字识别",
+              },
+            ].map(
+              ({
+                key,
+                label,
+                desc,
+              }: {
+                key: "include_page_index" | "preserve_tables" | "ocr_enabled";
+                label: string;
+                desc: string;
+              }) => (
+                <label
+                  key={key}
+                  className="border-border bg-background flex cursor-pointer items-center justify-between rounded-lg border px-4 py-3"
                 >
-                  <span
+                  <div>
+                    <span className="text-foreground font-medium">{label}</span>
+                    <span className="text-muted-foreground ml-2 text-sm">
+                      ({desc})
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setChunkConfig({
+                        ...chunkConfig,
+                        [key]: !chunkConfig[key],
+                      })
+                    }
                     className={cn(
-                      "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform",
-                      (chunkConfig as any)[key] !== false && "translate-x-5"
+                      "relative h-6 w-11 rounded-full transition-colors",
+                      chunkConfig[key] !== false ? "bg-primary" : "bg-input",
                     )}
-                  />
-                </button>
-              </label>
-            ))}
+                  >
+                    <span
+                      className={cn(
+                        "bg-background absolute top-0.5 left-0.5 h-5 w-5 rounded-full shadow transition-transform",
+                        chunkConfig[key] !== false && "translate-x-5",
+                      )}
+                    />
+                  </button>
+                </label>
+              ),
+            )}
           </div>
         </div>
       )}
@@ -582,12 +655,16 @@ export default function AdvancedUploadModal({
           "cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all",
           dragOver
             ? "border-primary/40 bg-primary/10 text-primary"
-            : "border-border hover:border-primary/40 hover:bg-muted/50"
+            : "border-border hover:border-primary/40 hover:bg-muted/50",
         )}
       >
-        <Upload className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-        <p className="text-sm font-medium text-foreground">拖拽文件到此处，或点击选择</p>
-        <p className="mt-1 text-xs text-muted-foreground">支持 PDF、Word、TXT、Markdown 格式</p>
+        <Upload className="text-muted-foreground mx-auto mb-3 h-10 w-10" />
+        <p className="text-foreground text-sm font-medium">
+          拖拽文件到此处，或点击选择
+        </p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          支持 PDF、Word、TXT、Markdown 格式
+        </p>
         <input
           ref={inputRef}
           type="file"
@@ -600,20 +677,24 @@ export default function AdvancedUploadModal({
 
       {/* 文件列表 */}
       {files.length > 0 && (
-        <div className="max-h-48 space-y-2 overflow-auto rounded-lg border border-border bg-muted/50 p-3">
+        <div className="border-border bg-muted/50 max-h-48 space-y-2 overflow-auto rounded-lg border p-3">
           {files.map((f, i) => (
             <div
               key={i}
-              className="flex items-center justify-between rounded-lg bg-background px-3 py-2 shadow-sm"
+              className="bg-background flex items-center justify-between rounded-lg px-3 py-2 shadow-sm"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <FileText className="h-5 w-5 shrink-0 text-primary" />
-                <span className="truncate text-sm text-foreground">{f.name}</span>
+              <div className="flex min-w-0 items-center gap-3">
+                <FileText className="text-primary h-5 w-5 shrink-0" />
+                <span className="text-foreground truncate text-sm">
+                  {f.name}
+                </span>
               </div>
               <button
                 type="button"
-                onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                className="shrink-0 p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                onClick={() =>
+                  setFiles((prev) => prev.filter((_, j) => j !== i))
+                }
+                className="text-muted-foreground shrink-0 p-1 transition-colors hover:text-red-500"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -624,17 +705,19 @@ export default function AdvancedUploadModal({
 
       {/* 上传进度 */}
       {uploading && (
-        <div className="rounded-lg border border-primary/50 bg-primary/10 text-primary/50 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-primary">
+        <div className="border-primary/50 bg-primary/10 text-primary/50 rounded-lg border p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-primary text-sm font-medium">
               上传中... ({uploadProgress.current}/{uploadProgress.total})
             </span>
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <Loader2 className="text-primary h-5 w-5 animate-spin" />
           </div>
-          <div className="h-2 bg-primary/10 rounded-full overflow-hidden">
+          <div className="bg-primary/10 h-2 overflow-hidden rounded-full">
             <div
-              className="h-full bg-primary transition-all duration-300"
-              style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+              className="bg-primary h-full transition-all duration-300"
+              style={{
+                width: `${(uploadProgress.current / uploadProgress.total) * 100}%`,
+              }}
             />
           </div>
         </div>
@@ -652,7 +735,7 @@ export default function AdvancedUploadModal({
   const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto overflow-x-hidden">
+    <div className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -665,152 +748,162 @@ export default function AdvancedUploadModal({
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
-          className="relative z-10 w-full max-w-2xl overflow-visible rounded-2xl bg-background shadow-2xl"
+          className="bg-background relative z-10 w-full max-w-2xl overflow-visible rounded-2xl shadow-2xl"
         >
-        {/* Header — overflow-visible 时由首尾区块承担圆角 */}
-        <div className="flex items-center justify-between rounded-t-2xl border-b border-border bg-background px-6 py-4">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">
-              {businessType === "sample_reports"
-                ? "上传样例报告"
-                : businessType === "laws_regulations"
-                  ? "上传法规标准"
-                  : "上传模板"}
-            </h3>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {businessType === "sample_reports"
-                ? "上传工程报告样例到知识库"
-                : "上传文档到知识库"}
-            </p>
+          {/* Header — overflow-visible 时由首尾区块承担圆角 */}
+          <div className="border-border bg-background flex items-center justify-between rounded-t-2xl border-b px-6 py-4">
+            <div>
+              <h3 className="text-foreground text-lg font-semibold">
+                {businessType === "sample_reports"
+                  ? "上传样例报告"
+                  : businessType === "laws_regulations"
+                    ? "上传法规标准"
+                    : "上传模板"}
+              </h3>
+              <p className="text-muted-foreground mt-0.5 text-sm">
+                {businessType === "sample_reports"
+                  ? "上传工程报告样例到知识库"
+                  : "上传文档到知识库"}
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-muted-foreground hover:bg-accent hover:text-foreground rounded-lg p-2 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
 
-        {/* Step Indicator */}
-        <div className="flex border-b border-border px-6 py-3 bg-muted">
-          {steps.map((s, i) => (
-            <div key={s.key} className="flex items-center">
-              {i > 0 && <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground" />}
-              <button
-                type="button"
-                onClick={() => {
-                  // 只允许返回上一步或点击已完成步骤
-                  const targetIndex = steps.findIndex((x) => x.key === s.key);
-                  if (targetIndex < currentStepIndex || !selectedKbId) {
-                    if (targetIndex === 0) setStep("kb");
-                    else if (targetIndex === 1 && selectedKbId) setStep("config");
-                    else if (targetIndex === 2 && selectedKbId) setStep("upload");
-                  }
-                }}
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  step === s.key
-                    ? "bg-primary/10 text-primary"
-                    : currentStepIndex > i
-                      ? "text-muted-foreground hover:bg-accent cursor-pointer"
-                      : "text-muted-foreground cursor-not-allowed"
+          {/* Step Indicator */}
+          <div className="border-border bg-muted flex border-b px-6 py-3">
+            {steps.map((s, i) => (
+              <div key={s.key} className="flex items-center">
+                {i > 0 && (
+                  <ChevronRight className="text-muted-foreground mx-2 h-4 w-4" />
                 )}
-              >
-                <span
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 只允许返回上一步或点击已完成步骤
+                    const targetIndex = steps.findIndex((x) => x.key === s.key);
+                    if (targetIndex < currentStepIndex || !selectedKbId) {
+                      if (targetIndex === 0) setStep("kb");
+                      else if (targetIndex === 1 && selectedKbId)
+                        setStep("config");
+                      else if (targetIndex === 2 && selectedKbId)
+                        setStep("upload");
+                    }
+                  }}
                   className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-full text-xs",
+                    "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
                     step === s.key
-                      ? "bg-primary text-white"
+                      ? "bg-primary/10 text-primary"
                       : currentStepIndex > i
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
+                        ? "text-muted-foreground hover:bg-accent cursor-pointer"
+                        : "text-muted-foreground cursor-not-allowed",
                   )}
                 >
-                  {currentStepIndex > i ? <CheckCircle2 className="h-3 w-3" /> : i + 1}
-                </span>
-                {s.label}
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Content：步骤1 不设内部滚动，下拉可自然增高；整页由最外层 overflow-y-auto 承载 */}
-        <div className="relative z-10 p-6">
-          {step === "kb" && renderStepKB()}
-          {step === "config" && (
-            <div className="max-h-[min(70vh,720px)] overflow-y-auto overflow-x-hidden pr-1 [-webkit-overflow-scrolling:touch]">
-              {renderStepConfig()}
-            </div>
-          )}
-          {step === "upload" && renderStepUpload()}
-        </div>
-
-        {/* Footer */}
-        <div className="relative z-0 flex items-center justify-between rounded-b-2xl border-t border-border bg-muted/50 px-6 py-4">
-          <div>
-            {selectedKb && (
-              <span className="text-sm text-muted-foreground">
-                目标知识库:{" "}
-                <span className="font-medium text-foreground">{selectedKb.name}</span>
-              </span>
-            )}
+                  <span
+                    className={cn(
+                      "flex h-5 w-5 items-center justify-center rounded-full text-xs",
+                      step === s.key
+                        ? "bg-primary text-white"
+                        : currentStepIndex > i
+                          ? "bg-primary/10 text-primary"
+                          : "bg-muted text-muted-foreground",
+                    )}
+                  >
+                    {currentStepIndex > i ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      i + 1
+                    )}
+                  </span>
+                  {s.label}
+                </button>
+              </div>
+            ))}
           </div>
-          <div className="flex gap-3">
-            {step !== "kb" && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (step === "config") setStep("kb");
-                  else if (step === "upload") setStep("config");
-                }}
-                className="rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
-              >
-                上一步
-              </button>
-            )}
-            {step === "kb" && (
-              <button
-                type="button"
-                onClick={() => selectedKbId && setStep("config")}
-                disabled={!selectedKbId}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
-              >
-                下一步
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            )}
+
+          {/* Content：步骤1 不设内部滚动，下拉可自然增高；整页由最外层 overflow-y-auto 承载 */}
+          <div className="relative z-10 p-6">
+            {step === "kb" && renderStepKB()}
             {step === "config" && (
-              <button
-                type="button"
-                onClick={() => setStep("upload")}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-              >
-                下一步
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              <div className="max-h-[min(70vh,720px)] overflow-x-hidden overflow-y-auto pr-1 [-webkit-overflow-scrolling:touch]">
+                {renderStepConfig()}
+              </div>
             )}
-            {step === "upload" && (
-              <button
-                type="button"
-                onClick={handleUpload}
-                disabled={!files.length || uploading}
-                className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
-              >
-                {uploading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    上传中...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4" />
-                    开始上传
-                  </>
-                )}
-              </button>
-            )}
+            {step === "upload" && renderStepUpload()}
           </div>
-        </div>
+
+          {/* Footer */}
+          <div className="border-border bg-muted/50 relative z-0 flex items-center justify-between rounded-b-2xl border-t px-6 py-4">
+            <div>
+              {selectedKb && (
+                <span className="text-muted-foreground text-sm">
+                  目标知识库:{" "}
+                  <span className="text-foreground font-medium">
+                    {selectedKb.name}
+                  </span>
+                </span>
+              )}
+            </div>
+            <div className="flex gap-3">
+              {step !== "kb" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (step === "config") setStep("kb");
+                    else if (step === "upload") setStep("config");
+                  }}
+                  className="border-input bg-background text-foreground hover:bg-muted/50 rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
+                >
+                  上一步
+                </button>
+              )}
+              {step === "kb" && (
+                <button
+                  type="button"
+                  onClick={() => selectedKbId && setStep("config")}
+                  disabled={!selectedKbId}
+                  className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                >
+                  下一步
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
+              {step === "config" && (
+                <button
+                  type="button"
+                  onClick={() => setStep("upload")}
+                  className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
+                >
+                  下一步
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
+              {step === "upload" && (
+                <button
+                  type="button"
+                  onClick={handleUpload}
+                  disabled={!files.length || uploading}
+                  className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-medium text-white transition-colors disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      上传中...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      开始上传
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
         </motion.div>
       </div>
     </div>

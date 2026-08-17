@@ -4,10 +4,15 @@ import type { ChatTransport, UIMessage, UIMessageChunk } from "ai";
 
 import { fetch as fetchWithAuth } from "@/core/api/fetcher";
 
+// Note: `find(Boolean)` (not `??`) so an env var explicitly set to an empty
+// string falls through to the next candidate, matching the original `||` chain.
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL
-  || process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL
-  || (typeof window !== "undefined" && (window.location.port === "4000" || window.location.port === "3000")
+  [
+    process.env.NEXT_PUBLIC_API_BASE_URL,
+    process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL,
+  ].find(Boolean) ??
+  (typeof window !== "undefined" &&
+  (window.location.port === "4000" || window.location.port === "3000")
     ? "http://127.0.0.1:8001"
     : "/api");
 
@@ -20,20 +25,28 @@ export function createCollabAITransport(): ChatTransport<UIMessage> {
   return {
     async sendMessages(options): Promise<ReadableStream<UIMessageChunk>> {
       const { messages, abortSignal } = options;
-      const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
-      const userText = lastUserMsg?.parts
-        ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
-        .map((p) => p.text)
-        .join("") ?? "";
+      const lastUserMsg = [...messages]
+        .reverse()
+        .find((m) => m.role === "user");
+      const userText =
+        lastUserMsg?.parts
+          ?.filter(
+            (p): p is { type: "text"; text: string } => p.type === "text",
+          )
+          .map((p) => p.text)
+          .join("") ?? "";
 
       const operation = mapPromptToOperation(userText);
 
-      const res = await fetchWithAuth(`${getBaseUrl()}/extensions/docmgr/documents/ai-edit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: userText, operation }),
-        signal: abortSignal,
-      });
+      const res = await fetchWithAuth(
+        `${getBaseUrl()}/extensions/docmgr/documents/ai-edit`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: userText, operation }),
+          signal: abortSignal,
+        },
+      );
 
       if (!res.ok) {
         const errorText = await res.text().catch(() => res.statusText);
@@ -62,10 +75,30 @@ export function createCollabAITransport(): ChatTransport<UIMessage> {
 
 function mapPromptToOperation(prompt: string): string {
   const lower = prompt.toLowerCase();
-  if (lower.includes("润色") || lower.includes("polish") || lower.includes("improve")) return "polish";
-  if (lower.includes("扩写") || lower.includes("expand") || lower.includes("elaborate")) return "expand";
-  if (lower.includes("精简") || lower.includes("condense") || lower.includes("shorten") || lower.includes("summarize"))
+  if (
+    lower.includes("润色") ||
+    lower.includes("polish") ||
+    lower.includes("improve")
+  )
+    return "polish";
+  if (
+    lower.includes("扩写") ||
+    lower.includes("expand") ||
+    lower.includes("elaborate")
+  )
+    return "expand";
+  if (
+    lower.includes("精简") ||
+    lower.includes("condense") ||
+    lower.includes("shorten") ||
+    lower.includes("summarize")
+  )
     return "condense";
-  if (lower.includes("头脑风暴") || lower.includes("brainstorm") || lower.includes("ideas")) return "brainstorm";
+  if (
+    lower.includes("头脑风暴") ||
+    lower.includes("brainstorm") ||
+    lower.includes("ideas")
+  )
+    return "brainstorm";
   return "polish";
 }

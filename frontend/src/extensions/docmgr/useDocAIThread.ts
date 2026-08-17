@@ -7,7 +7,7 @@ const STORAGE_PREFIX = "docmgr-ai-subthread:";
 /** Read the CSRF cookie value from document.cookie. */
 function readCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
-  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  const match = /(?:^|;\s*)csrf_token=([^;]+)/.exec(document.cookie);
   return match ? match[1]! : null;
 }
 

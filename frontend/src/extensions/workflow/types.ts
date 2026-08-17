@@ -1,6 +1,12 @@
 // ── DAG Node Types ──
 
-export type DAGNodeType = "subflow" | "task" | "review" | "ai_generate" | "condition" | "merge";
+export type DAGNodeType =
+  | "subflow"
+  | "task"
+  | "review"
+  | "ai_generate"
+  | "condition"
+  | "merge";
 
 export interface RoleSlot {
   roleKey: string;
@@ -10,7 +16,12 @@ export interface RoleSlot {
 
 /** Notification configuration for any node. */
 export interface NotificationConfig {
-  trigger: "on_start" | "on_complete" | "on_error" | "on_review_pending" | "on_review_complete";
+  trigger:
+    | "on_start"
+    | "on_complete"
+    | "on_error"
+    | "on_review_pending"
+    | "on_review_complete";
   targets?: string; // e.g. "role:manager, user:uuid" — empty = all members
   message?: string;
 }
@@ -102,7 +113,10 @@ export interface WorkflowDefinition {
   reportType: string | null;
   graphJson: WorkflowGraph;
   isTemplate: boolean;
-  orgBindings: Record<string, { deptCode?: string; departmentCode?: string }> | null;
+  orgBindings: Record<
+    string,
+    { deptCode?: string; departmentCode?: string }
+  > | null;
   createdBy: string | null;
   createdAt: string | null;
   updatedAt: string | null;
@@ -156,6 +170,17 @@ export interface DAGValidationResult {
   valid: boolean;
   errors: string[];
   warnings: string[];
+}
+
+// ── Traceability / Sources ──
+
+export interface ChapterSource {
+  id: string;
+  blockIndex: number;
+  sourceType: string;
+  sourceRef: string;
+  snippet: string | null;
+  confidence: number | null;
 }
 
 // ── Phase Review ──

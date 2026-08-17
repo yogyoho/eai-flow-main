@@ -1,77 +1,77 @@
-"use client"
+"use client";
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback, useEffect } from "react";
 
-import { folderApi, type FolderNode } from "@/extensions/api"
+import { folderApi, type FolderNode } from "@/extensions/api";
 
 export function useFolderTree(projectScope?: string, docType?: string) {
-  const [folders, setFolders] = useState<FolderNode[]>([])
-  const [loading, setLoading] = useState(true)
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+  const [folders, setFolders] = useState<FolderNode[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 
   const fetchTree = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const params: { project_scope?: string; doc_type?: string } = {}
-      if (projectScope) params.project_scope = projectScope
-      if (docType) params.doc_type = docType
-      const data = await folderApi.getTree(params)
-      setFolders(data.folders)
+      const params: { project_scope?: string; doc_type?: string } = {};
+      if (projectScope) params.project_scope = projectScope;
+      if (docType) params.doc_type = docType;
+      const data = await folderApi.getTree(params);
+      setFolders(data.folders);
     } catch (err) {
-      console.error("Failed to fetch folder tree:", err)
+      console.error("Failed to fetch folder tree:", err);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [projectScope, docType])
+  }, [projectScope, docType]);
 
   useEffect(() => {
-    fetchTree()
-  }, [fetchTree])
+    void fetchTree();
+  }, [fetchTree]);
 
   const toggleExpand = useCallback((folderId: string) => {
     setExpandedKeys((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(folderId)) {
-        next.delete(folderId)
+        next.delete(folderId);
       } else {
-        next.add(folderId)
+        next.add(folderId);
       }
-      return next
-    })
-  }, [])
+      return next;
+    });
+  }, []);
 
   const createFolder = useCallback(
     async (name: string, parentId: string | null, projectId?: string) => {
       const folder = await folderApi.create({
         name,
-        parent_id: parentId || undefined,
+        parent_id: parentId ?? undefined,
         project_id: projectId,
-      })
-      await fetchTree()
+      });
+      await fetchTree();
       // Auto-expand parent
       if (parentId) {
-        setExpandedKeys((prev) => new Set(prev).add(parentId))
+        setExpandedKeys((prev) => new Set(prev).add(parentId));
       }
-      return folder
+      return folder;
     },
     [fetchTree],
-  )
+  );
 
   const renameFolder = useCallback(
     async (folderId: string, name: string) => {
-      await folderApi.rename(folderId, name)
-      await fetchTree()
+      await folderApi.rename(folderId, name);
+      await fetchTree();
     },
     [fetchTree],
-  )
+  );
 
   const deleteFolder = useCallback(
     async (folderId: string) => {
-      await folderApi.delete(folderId)
-      await fetchTree()
+      await folderApi.delete(folderId);
+      await fetchTree();
     },
     [fetchTree],
-  )
+  );
 
   return {
     folders,
@@ -82,5 +82,5 @@ export function useFolderTree(projectScope?: string, docType?: string) {
     renameFolder,
     deleteFolder,
     refreshTree: fetchTree,
-  }
+  };
 }

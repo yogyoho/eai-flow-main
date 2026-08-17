@@ -23,7 +23,7 @@ export function MyProjects() {
     return (
       <div className="space-y-2">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="h-20 rounded-lg bg-muted animate-pulse" />
+          <div key={i} className="bg-muted h-20 animate-pulse rounded-lg" />
         ))}
       </div>
     );
@@ -31,9 +31,9 @@ export function MyProjects() {
 
   if (!data || data.total_count === 0) {
     return (
-      <div className="py-6 flex flex-col items-center gap-2">
-        <FolderOpen className="h-10 w-10 text-muted-foreground/50" />
-        <p className="text-sm text-muted-foreground">暂无项目</p>
+      <div className="flex flex-col items-center gap-2 py-6">
+        <FolderOpen className="text-muted-foreground/50 h-10 w-10" />
+        <p className="text-muted-foreground text-sm">暂无项目</p>
       </div>
     );
   }
@@ -53,7 +53,7 @@ export function MyProjects() {
         <div key={key}>
           <button
             onClick={() => toggleGroup(key)}
-            className="flex items-center justify-between w-full px-3 py-2 rounded-lg hover:bg-accent/50 transition-colors"
+            className="hover:bg-accent/50 flex w-full items-center justify-between rounded-lg px-3 py-2 transition-colors"
           >
             <span className="flex items-center gap-1.5 text-sm font-medium">
               {collapsed.has(key) ? (
@@ -61,14 +61,14 @@ export function MyProjects() {
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-              {GROUP_LABELS[key] || key}
+              {GROUP_LABELS[key] ?? key}
             </span>
-            <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">
+            <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs">
               {projects.length}
             </span>
           </button>
           {!collapsed.has(key) && (
-            <div className="space-y-2 mt-2">
+            <div className="mt-2 space-y-2">
               {projects.map((p) => (
                 <ProjectMiniCard key={p.project_id} project={p} />
               ))}

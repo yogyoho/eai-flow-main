@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense } from "react";
 import { useParams } from "next/navigation";
+import { Suspense } from "react";
 
-import { ProjectDetail } from "@/extensions/workspace/ProjectDetail";
 import { ShellLayout } from "@/extensions/shell";
+import { ProjectDetail } from "@/extensions/workspace/ProjectDetail";
 
 export default function CollabProjectPage() {
   const params = useParams<{ id: string }>();
@@ -12,7 +12,9 @@ export default function CollabProjectPage() {
     <ShellLayout>
       <Suspense
         fallback={
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">加载中...</div>
+          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+            加载中...
+          </div>
         }
       >
         <ProjectDetail projectId={params.id} />

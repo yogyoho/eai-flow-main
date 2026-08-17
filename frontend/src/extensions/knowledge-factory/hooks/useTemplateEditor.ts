@@ -6,12 +6,10 @@ import type {
   TemplateDocument,
   TemplateSection,
   TemplateListItem,
-  TemplateListResponse,
   EditorSection,
   EditorTemplate,
   EditorContentContract,
   TemplateUpdatePayload,
-  RAGSourceConfig,
 } from "@/extensions/knowledge-factory/types";
 import { normalizeRagSources } from "@/extensions/knowledge-factory/types";
 
@@ -71,7 +69,9 @@ function sectionToBackend(section: EditorSection): Record<string, unknown> {
     level: section.level,
     required: section.required,
     purpose: section.purpose ?? null,
-    children: section.children?.length ? section.children.map(sectionToBackend) : [],
+    children: section.children?.length
+      ? section.children.map(sectionToBackend)
+      : [],
     content_contract: section.contentContract
       ? {
           key_elements: section.contentContract.keyElements,
@@ -111,7 +111,12 @@ export function useTemplateList() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchTemplates = useCallback(
-    async (params?: { domain?: string; status?: string; page?: number; limit?: number }) => {
+    async (params?: {
+      domain?: string;
+      status?: string;
+      page?: number;
+      limit?: number;
+    }) => {
       setLoading(true);
       setError(null);
       try {
@@ -123,7 +128,7 @@ export function useTemplateList() {
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   const deleteTemplate = useCallback(async (id: string) => {
@@ -135,7 +140,14 @@ export function useTemplateList() {
     }
   }, []);
 
-  return { templates, loading, error, fetchTemplates, deleteTemplate, setTemplates };
+  return {
+    templates,
+    loading,
+    error,
+    fetchTemplates,
+    deleteTemplate,
+    setTemplates,
+  };
 }
 
 /**
@@ -164,7 +176,7 @@ export function useTemplateEditor(templateId: string | null) {
   }, [templateId]);
 
   useEffect(() => {
-    loadTemplate();
+    void loadTemplate();
   }, [loadTemplate]);
 
   // 更新模板基本信息
@@ -177,18 +189,15 @@ export function useTemplateEditor(templateId: string | null) {
               ...updates,
               isDirty: true,
             }
-          : null
+          : null,
       );
     },
-    []
+    [],
   );
 
   // 查找章节（递归）
   const findSection = useCallback(
-    (
-      sections: EditorSection[],
-      id: string
-    ): EditorSection | null => {
+    (sections: EditorSection[], id: string): EditorSection | null => {
       for (const section of sections) {
         if (section.id === id) return section;
         if (section.children) {
@@ -198,7 +207,7 @@ export function useTemplateEditor(templateId: string | null) {
       }
       return null;
     },
-    []
+    [],
   );
 
   // 更新章节
@@ -207,7 +216,9 @@ export function useTemplateEditor(templateId: string | null) {
       setTemplate((prev) => {
         if (!prev) return null;
 
-        const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
+        const updateRecursive = (
+          sections: EditorSection[],
+        ): EditorSection[] => {
           return sections.map((section) => {
             if (section.id === sectionId) {
               return { ...section, ...changes };
@@ -229,7 +240,7 @@ export function useTemplateEditor(templateId: string | null) {
         };
       });
     },
-    []
+    [],
   );
 
   // 添加章节
@@ -252,9 +263,7 @@ export function useTemplateEditor(templateId: string | null) {
           },
         };
 
-        const addRecursive = (
-          sections: EditorSection[]
-        ): EditorSection[] => {
+        const addRecursive = (sections: EditorSection[]): EditorSection[] => {
           if (parentId === null) {
             return [...sections, newSection];
           }
@@ -263,7 +272,7 @@ export function useTemplateEditor(templateId: string | null) {
             if (section.id === parentId) {
               return {
                 ...section,
-                children: [...(section.children || []), newSection],
+                children: [...(section.children ?? []), newSection],
               };
             }
             if (section.children) {
@@ -283,7 +292,7 @@ export function useTemplateEditor(templateId: string | null) {
         };
       });
     },
-    []
+    [],
   );
 
   // 删除章节
@@ -319,7 +328,9 @@ export function useTemplateEditor(templateId: string | null) {
       setTemplate((prev) => {
         if (!prev) return null;
 
-        const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
+        const updateRecursive = (
+          sections: EditorSection[],
+        ): EditorSection[] => {
           return sections.map((section) => {
             if (section.id === sectionId) {
               return {
@@ -347,87 +358,81 @@ export function useTemplateEditor(templateId: string | null) {
         };
       });
     },
-    []
+    [],
   );
 
   // 添加关键要素
-  const addKeyElement = useCallback(
-    (sectionId: string, element: string) => {
-      setTemplate((prev) => {
-        if (!prev) return null;
+  const addKeyElement = useCallback((sectionId: string, element: string) => {
+    setTemplate((prev) => {
+      if (!prev) return null;
 
-        const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
-          return sections.map((section) => {
-            if (section.id === sectionId) {
-              return {
-                ...section,
-                contentContract: {
-                  ...section.contentContract,
-                  keyElements: [
-                    ...(section.contentContract?.keyElements || []),
-                    element,
-                  ],
-                } as EditorContentContract,
-              };
-            }
-            if (section.children) {
-              return {
-                ...section,
-                children: updateRecursive(section.children),
-              };
-            }
-            return section;
-          });
-        };
+      const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
+        return sections.map((section) => {
+          if (section.id === sectionId) {
+            return {
+              ...section,
+              contentContract: {
+                ...section.contentContract,
+                keyElements: [
+                  ...(section.contentContract?.keyElements ?? []),
+                  element,
+                ],
+              } as EditorContentContract,
+            };
+          }
+          if (section.children) {
+            return {
+              ...section,
+              children: updateRecursive(section.children),
+            };
+          }
+          return section;
+        });
+      };
 
-        return {
-          ...prev,
-          sections: updateRecursive(prev.sections),
-          isDirty: true,
-        };
-      });
-    },
-    []
-  );
+      return {
+        ...prev,
+        sections: updateRecursive(prev.sections),
+        isDirty: true,
+      };
+    });
+  }, []);
 
   // 删除关键要素
-  const removeKeyElement = useCallback(
-    (sectionId: string, index: number) => {
-      setTemplate((prev) => {
-        if (!prev) return null;
+  const removeKeyElement = useCallback((sectionId: string, index: number) => {
+    setTemplate((prev) => {
+      if (!prev) return null;
 
-        const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
-          return sections.map((section) => {
-            if (section.id === sectionId) {
-              return {
-                ...section,
-                contentContract: {
-                  ...section.contentContract,
-                  keyElements: (section.contentContract?.keyElements || []).filter(
-                    (_, i) => i !== index
-                  ),
-                } as EditorContentContract,
-              };
-            }
-            if (section.children) {
-              return {
-                ...section,
-                children: updateRecursive(section.children),
-              };
-            }
-            return section;
-          });
-        };
+      const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
+        return sections.map((section) => {
+          if (section.id === sectionId) {
+            return {
+              ...section,
+              contentContract: {
+                ...section.contentContract,
+                keyElements: (
+                  section.contentContract?.keyElements ?? []
+                ).filter((_, i) => i !== index),
+              } as EditorContentContract,
+            };
+          }
+          if (section.children) {
+            return {
+              ...section,
+              children: updateRecursive(section.children),
+            };
+          }
+          return section;
+        });
+      };
 
-        return {
-          ...prev,
-          sections: updateRecursive(prev.sections),
-          isDirty: true,
-        };
-      });
-    },
-    []
-  );
+      return {
+        ...prev,
+        sections: updateRecursive(prev.sections),
+        isDirty: true,
+      };
+    });
+  }, []);
 
   // 添加禁用短语
   const addForbiddenPhrase = useCallback(
@@ -435,7 +440,9 @@ export function useTemplateEditor(templateId: string | null) {
       setTemplate((prev) => {
         if (!prev) return null;
 
-        const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
+        const updateRecursive = (
+          sections: EditorSection[],
+        ): EditorSection[] => {
           return sections.map((section) => {
             if (section.id === sectionId) {
               return {
@@ -443,7 +450,7 @@ export function useTemplateEditor(templateId: string | null) {
                 contentContract: {
                   ...section.contentContract,
                   forbiddenPhrases: [
-                    ...(section.contentContract?.forbiddenPhrases || []),
+                    ...(section.contentContract?.forbiddenPhrases ?? []),
                     phrase,
                   ],
                 } as EditorContentContract,
@@ -466,7 +473,7 @@ export function useTemplateEditor(templateId: string | null) {
         };
       });
     },
-    []
+    [],
   );
 
   // 删除禁用短语
@@ -475,7 +482,9 @@ export function useTemplateEditor(templateId: string | null) {
       setTemplate((prev) => {
         if (!prev) return null;
 
-        const updateRecursive = (sections: EditorSection[]): EditorSection[] => {
+        const updateRecursive = (
+          sections: EditorSection[],
+        ): EditorSection[] => {
           return sections.map((section) => {
             if (section.id === sectionId) {
               return {
@@ -483,7 +492,7 @@ export function useTemplateEditor(templateId: string | null) {
                 contentContract: {
                   ...section.contentContract,
                   forbiddenPhrases: (
-                    section.contentContract?.forbiddenPhrases || []
+                    section.contentContract?.forbiddenPhrases ?? []
                   ).filter((_, i) => i !== index),
                 } as EditorContentContract,
               };
@@ -505,7 +514,7 @@ export function useTemplateEditor(templateId: string | null) {
         };
       });
     },
-    []
+    [],
   );
 
   // 保存草稿
@@ -529,7 +538,7 @@ export function useTemplateEditor(templateId: string | null) {
               isDirty: false,
               lastSaved: new Date().toISOString(),
             }
-          : null
+          : null,
       );
     } catch (e) {
       throw e;
@@ -555,7 +564,7 @@ export function useTemplateEditor(templateId: string | null) {
               status: "published",
               isDirty: false,
             }
-          : null
+          : null,
       );
     } catch (e) {
       throw e;
@@ -568,7 +577,7 @@ export function useTemplateEditor(templateId: string | null) {
       if (!template) return null;
       return findSection(template.sections, sectionId);
     },
-    [template, findSection]
+    [template, findSection],
   );
 
   return {

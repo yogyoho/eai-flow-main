@@ -11,18 +11,24 @@ interface WorkflowMonitorProps {
 export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
   const { status, loading, refresh } = useWorkflowStatus(projectId);
 
-  if (loading) return <div className="p-4 text-sm text-muted-foreground">加载工作流状态...</div>;
-  if (!status) return <div className="p-4 text-sm text-muted-foreground">未配置工作流</div>;
+  if (loading)
+    return (
+      <div className="text-muted-foreground p-4 text-sm">加载工作流状态...</div>
+    );
+  if (!status)
+    return (
+      <div className="text-muted-foreground p-4 text-sm">未配置工作流</div>
+    );
 
   const handleStart = async () => {
     if (!status.workflowId) return;
     await workflowApi.startWorkflow(projectId, status.workflowId);
-    refresh();
+    await refresh();
   };
 
   const handleCancel = async () => {
     await workflowApi.cancelWorkflow(projectId);
-    refresh();
+    await refresh();
   };
 
   const statusColor =
@@ -35,7 +41,7 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
           : "text-muted-foreground";
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4 p-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -51,7 +57,7 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
           {status.status === "idle" && status.workflowId && (
             <button
               onClick={handleStart}
-              className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded hover:opacity-90"
+              className="bg-primary text-primary-foreground rounded px-3 py-1 text-xs hover:opacity-90"
             >
               启动工作流
             </button>
@@ -59,7 +65,7 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
           {status.status === "running" && (
             <button
               onClick={handleCancel}
-              className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+              className="rounded bg-red-600 px-3 py-1 text-xs text-white hover:bg-red-700"
             >
               取消
             </button>
@@ -69,8 +75,9 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
 
       {/* Current phase */}
       {status.currentPhaseNode && (
-        <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs">
-          当前节点: <span className="font-medium">{status.currentPhaseNode}</span>
+        <div className="rounded border border-blue-200 bg-blue-50 p-2 text-xs">
+          当前节点:{" "}
+          <span className="font-medium">{status.currentPhaseNode}</span>
         </div>
       )}
 
@@ -82,7 +89,7 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
       </div>
 
       {status.nodes.length === 0 && (
-        <div className="text-xs text-muted-foreground text-center py-4">
+        <div className="text-muted-foreground py-4 text-center text-xs">
           该项目未关联工作流定义
         </div>
       )}

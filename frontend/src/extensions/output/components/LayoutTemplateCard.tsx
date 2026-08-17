@@ -101,7 +101,7 @@ export function LayoutTemplateCard({
   const ratio = ps?.orientation === "landscape" ? 1 / baseRatio : baseRatio;
 
   const hasCover = Boolean(
-    template.coverTemplate || template.coverMaster || template.coverElements,
+    template.coverTemplate ?? template.coverMaster ?? template.coverElements,
   );
 
   const metaParts: string[] = [];
@@ -122,8 +122,7 @@ export function LayoutTemplateCard({
   const chips: { icon: React.ElementType; label: string }[] = [];
   if (hasCover) chips.push({ icon: BookOpen, label: "封面" });
   if (template.tocSettings) chips.push({ icon: ListOrdered, label: "目录" });
-  if (template.headerFooter)
-    chips.push({ icon: PanelTop, label: "页眉页脚" });
+  if (template.headerFooter) chips.push({ icon: PanelTop, label: "页眉页脚" });
   if (template.tableStyles) chips.push({ icon: Table, label: "表格" });
   if (template.figureStyles) chips.push({ icon: ImageIcon, label: "图注" });
 
@@ -140,18 +139,18 @@ export function LayoutTemplateCard({
       onKeyDown={onEdit ? handleKeyDown : undefined}
     >
       {/* Hover accent hairline */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="via-primary/50 pointer-events-none absolute inset-x-0 top-0 z-10 h-px bg-gradient-to-r from-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
       {/* LEFT — page-preview hero (reflects real paper size / orientation / cover) */}
-      <div className="bg-muted/30 relative flex w-32 shrink-0 items-center justify-center border-r border-border/50 p-3">
+      <div className="bg-muted/30 border-border/50 relative flex w-32 shrink-0 items-center justify-center border-r p-3">
         <div
-          className="relative h-36 overflow-hidden rounded-md border border-border/70 bg-gradient-to-b from-background to-muted/40 shadow-[0_6px_16px_-6px_var(--shadow-2)] transition-transform duration-300 ease-out group-hover:-translate-y-1 group-hover:rotate-[-1.5deg]"
+          className="border-border/70 from-background to-muted/40 relative h-36 overflow-hidden rounded-md border bg-gradient-to-b shadow-[0_6px_16px_-6px_var(--shadow-2)] transition-transform duration-300 ease-out group-hover:-translate-y-1 group-hover:rotate-[-1.5deg]"
           style={{ aspectRatio: ratio }}
           aria-hidden
         >
           <div className="absolute inset-0 flex flex-col gap-1 p-1.5">
             {hasCover && (
-              <div className="flex flex-[0_0_36%] flex-col items-center justify-center gap-1 rounded-[2px] bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5">
+              <div className="from-primary/20 via-primary/10 to-primary/5 flex flex-[0_0_36%] flex-col items-center justify-center gap-1 rounded-[2px] bg-gradient-to-br">
                 <div className="bg-primary/45 h-[3px] w-1/2 rounded-full" />
                 <div className="bg-primary/25 h-[2px] w-1/3 rounded-full" />
               </div>
@@ -221,7 +220,9 @@ export function LayoutTemplateCard({
           {!template.isBuiltin && (
             <button
               type="button"
-              onClick={handleDuplicate}
+              onClick={(e) => {
+                void handleDuplicate(e);
+              }}
               title="复制"
               className="text-muted-foreground hover:bg-accent hover:text-primary inline-flex size-7 items-center justify-center rounded-md transition-colors"
             >
@@ -231,7 +232,9 @@ export function LayoutTemplateCard({
           {!template.isBuiltin && (
             <button
               type="button"
-              onClick={handleDelete}
+              onClick={(e) => {
+                void handleDelete(e);
+              }}
               title="删除"
               disabled={deleting}
               className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive inline-flex size-7 items-center justify-center rounded-md transition-colors disabled:opacity-40"

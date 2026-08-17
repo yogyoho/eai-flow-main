@@ -55,7 +55,9 @@ export function useReportTypes(): {
   labelMap: Record<string, string>;
   loading: boolean;
 } {
-  const [options, setOptions] = useState<ReportTypeOption[]>(_cachedOptions ?? []);
+  const [options, setOptions] = useState<ReportTypeOption[]>(
+    _cachedOptions ?? [],
+  );
   const [loading, setLoading] = useState(!_cachedOptions);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export function useReportTypes(): {
     }
     let cancelled = false;
     setLoading(true);
-    fetchReportTypes().then((data) => {
+    void fetchReportTypes().then((data) => {
       if (!cancelled) {
         setOptions(data);
         setLoading(false);
@@ -97,7 +99,7 @@ export function getReportTypeColor(value: string | null | undefined): string {
   if (!value) return COLOR_PALETTE[0];
   let hash = 0;
   for (let i = 0; i < value.length; i++) {
-    hash = ((hash << 5) - hash) + value.charCodeAt(i);
+    hash = (hash << 5) - hash + value.charCodeAt(i);
     hash |= 0;
   }
   return COLOR_PALETTE[Math.abs(hash) % COLOR_PALETTE.length]!;

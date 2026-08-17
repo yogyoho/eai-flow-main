@@ -25,7 +25,13 @@ export const AiReview = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const severity = HTMLAttributes.severity || "info";
+    const severity = HTMLAttributes.severity ?? "info";
+    // 空字符串/缺省时回退默认文案（等价于原 `comment || "查看审核意见"`，避免 ?? 改变空串行为）
+    const comment = HTMLAttributes.comment;
+    const commentTitle =
+      comment !== "" && comment !== null && comment !== undefined
+        ? comment
+        : "查看审核意见";
     const severityColor =
       severity === "error"
         ? "#ef4444"
@@ -42,7 +48,7 @@ export const AiReview = Mark.create({
         "data-clause-ref": HTMLAttributes.clauseRef,
         class: `ai-review severity-${severity}`,
         style: `text-decoration: underline; text-decoration-style: wavy; text-decoration-color: ${severityColor}; text-underline-offset: 4px; cursor: pointer;`,
-        title: HTMLAttributes.comment || "查看审核意见",
+        title: commentTitle,
       },
       0,
     ];

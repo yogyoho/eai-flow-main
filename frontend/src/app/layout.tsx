@@ -9,17 +9,17 @@ import "katex/dist/katex.min.css";
 
 import { type Metadata } from "next";
 
+import { BRAND_NAME } from "@/brand";
+import { ChunkErrorHandler } from "@/components/chunk-error-handler";
 import { ThemeProvider } from "@/components/theme-provider";
-import { I18nProvider } from "@/core/i18n/context";
-import { detectLocaleServer } from "@/core/i18n/server";
 import { AuthProvider as CoreAuthProvider } from "@/core/auth/AuthProvider";
 import { getServerSideUser } from "@/core/auth/server";
 import { assertNever, type User } from "@/core/auth/types";
+import { I18nProvider } from "@/core/i18n/context";
+import { detectLocaleServer } from "@/core/i18n/server";
 import { AuthProvider } from "@/extensions/hooks/useAuth";
 import { LicenseShell } from "@/extensions/license/LicenseShell";
-import { ChunkErrorHandler } from "@/components/chunk-error-handler";
 // EAI-CUSTOM: 按客户品牌化（构建期注入，见 brand.ts）
-import { BRAND_NAME } from "@/brand";
 
 export const metadata: Metadata = {
   title: BRAND_NAME,

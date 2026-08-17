@@ -25,19 +25,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
 // Import components
 import ImportLawModal from "@/extensions/knowledge-factory/components/ImportLawModal";
 import LawDetailDrawer from "@/extensions/knowledge-factory/components/LawDetailDrawer";
 import RAGFlowStatusPanel from "@/extensions/knowledge-factory/components/RAGFlowStatusPanel";
 import { getCategoryColor } from "@/extensions/knowledge-factory/config/lawCategories";
-import { LAW_CATEGORIES, LAW_TYPE_OPTIONS, getCategoryByCode } from "@/extensions/knowledge-factory/config/lawCategories";
+import {
+  LAW_CATEGORIES,
+  LAW_TYPE_OPTIONS,
+  getCategoryByCode,
+} from "@/extensions/knowledge-factory/config/lawCategories";
 import {
   useLawList,
   useLawStatistics,
   useRAGFlowStatus,
   useSyncAllLaws,
-  useInitRAGFlow,
   useDeleteLaw,
 } from "@/extensions/knowledge-factory/hooks/useLawLibrary";
 import type { LawItem, LawType } from "@/extensions/knowledge-factory/types";
@@ -74,7 +76,6 @@ export default function LawLibrary() {
 
   // Mutations
   const syncAllMutation = useSyncAllLaws();
-  const initRAGFlowMutation = useInitRAGFlow();
   const deleteMutation = useDeleteLaw();
 
   // Handle keyword search (debounced)
@@ -94,31 +95,29 @@ export default function LawLibrary() {
     return () => clearTimeout(timer);
   }, [keyword]);
 
-  // Get category counts from API
-  const categoryCounts = data?.by_type || {};
-  const totalCount = statistics?.total_count || data?.total || 0;
-  const activeCount = statistics?.active_count || 0;
-  const deprecatedCount = statistics?.deprecated_count || 0;
+  const totalCount = statistics?.total_count ?? data?.total ?? 0;
+  const activeCount = statistics?.active_count ?? 0;
+  const deprecatedCount = statistics?.deprecated_count ?? 0;
 
   // Check RAGFlow status for warnings
   const hasMissingKBs =
-    ragflowStatus?.statuses?.some((s) => s.status === "missing") || false;
+    ragflowStatus?.statuses?.some((s) => s.status === "missing") ?? false;
 
   // Handle import success
   const handleImportSuccess = () => {
-    refetch();
+    void refetch();
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border bg-card shrink-0">
-        <h2 className="text-lg font-medium flex items-center gap-2 text-foreground tracking-tight">
-          <Library className="w-5 h-5 text-primary" />
+      <div className="border-border bg-card flex shrink-0 items-center justify-between border-b p-4">
+        <h2 className="text-foreground flex items-center gap-2 text-lg font-medium tracking-tight">
+          <Library className="text-primary h-5 w-5" />
           法规标准库
           {hasMissingKBs && (
-            <span className="text-xs bg-warning/10 text-warning px-2 py-0.5 rounded-full flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" />
+            <span className="bg-warning/10 text-warning flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
+              <AlertCircle className="h-3 w-3" />
               未初始化
             </span>
           )}
@@ -126,66 +125,66 @@ export default function LawLibrary() {
         <div className="flex gap-2">
           <button
             onClick={() => setShowRAGFlowStatus(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground flex items-center gap-2 px-3 py-2 text-sm transition-colors"
             title="RAGFlow状态"
           >
             {ragflowStatus ? (
               ragflowStatus.missing_kbs > 0 ? (
-                <AlertCircle className="w-4 h-4 text-warning" />
+                <AlertCircle className="text-warning h-4 w-4" />
               ) : (
-                <CheckCircle className="w-4 h-4 text-success" />
+                <CheckCircle className="text-success h-4 w-4" />
               )
             ) : (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             )}
             <span className="hidden sm:inline">知识库状态</span>
           </button>
           <button
             onClick={() => syncAllMutation.mutate(undefined)}
             disabled={syncAllMutation.isPending}
-            className="flex items-center gap-2 px-4 py-2 text-foreground bg-card border border-border rounded-lg hover:bg-accent transition-colors shadow-sm font-medium text-sm disabled:opacity-50"
+            className="text-foreground bg-card border-border hover:bg-accent flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:opacity-50"
           >
             {syncAllMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="h-4 w-4" />
             )}
             同步更新
           </button>
           <button
             onClick={() => setShowImportModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium shadow-sm transition-colors"
           >
-            <Plus className="w-4 h-4" /> 导入新法规
+            <Plus className="h-4 w-4" /> 导入新法规
           </button>
         </div>
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 min-h-0 overflow-hidden bg-muted/30">
+      <div className="bg-muted/30 min-h-0 flex-1 overflow-hidden">
         <LawListView
-            data={data}
-            isLoading={isLoading}
-            error={error}
-            refetch={refetch}
-            statistics={statistics}
-            totalCount={totalCount}
-            activeCount={activeCount}
-            deprecatedCount={deprecatedCount}
-            filterType={filterType}
-            setFilterType={setFilterType}
-            filterStatus={filterStatus}
-            setFilterStatus={setFilterStatus}
-            keyword={keyword}
-            handleKeywordChange={handleKeywordChange}
-            page={page}
-            setPage={setPage}
-            limit={limit}
-            selectedLaw={selectedLaw}
-            setSelectedLaw={setSelectedLaw}
-            setShowImportModal={setShowImportModal}
-            onDeleteLaw={setDeletingLaw}
-          />
+          data={data}
+          isLoading={isLoading}
+          error={error}
+          refetch={refetch}
+          statistics={statistics}
+          totalCount={totalCount}
+          activeCount={activeCount}
+          deprecatedCount={deprecatedCount}
+          filterType={filterType}
+          setFilterType={setFilterType}
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          keyword={keyword}
+          handleKeywordChange={handleKeywordChange}
+          page={page}
+          setPage={setPage}
+          limit={limit}
+          selectedLaw={selectedLaw}
+          setSelectedLaw={setSelectedLaw}
+          setShowImportModal={setShowImportModal}
+          onDeleteLaw={setDeletingLaw}
+        />
       </div>
 
       {/* Modals */}
@@ -201,11 +200,19 @@ export default function LawLibrary() {
       )}
 
       {selectedLaw && (
-        <LawDetailDrawer law={selectedLaw} onClose={() => setSelectedLaw(null)} />
+        <LawDetailDrawer
+          law={selectedLaw}
+          onClose={() => setSelectedLaw(null)}
+        />
       )}
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deletingLaw} onOpenChange={(open) => { if (!open) setDeletingLaw(null); }}>
+      <Dialog
+        open={!!deletingLaw}
+        onOpenChange={(open) => {
+          if (!open) setDeletingLaw(null);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>确认删除法规</DialogTitle>
@@ -215,24 +222,34 @@ export default function LawLibrary() {
           </DialogHeader>
           <div className="space-y-2 py-2">
             <div className="flex items-start gap-2">
-              <FileText className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+              <FileText className="text-muted-foreground mt-0.5 h-5 w-5 shrink-0" />
               <div>
-                <p className="font-medium text-foreground">{deletingLaw?.title}</p>
+                <p className="text-foreground font-medium">
+                  {deletingLaw?.title}
+                </p>
                 {deletingLaw?.law_number && (
-                  <p className="text-sm text-muted-foreground">标准号: {deletingLaw.law_number}</p>
+                  <p className="text-muted-foreground text-sm">
+                    标准号: {deletingLaw.law_number}
+                  </p>
                 )}
               </div>
             </div>
             {deletingLaw?.is_synced === "synced" && (
-              <div className="flex items-start gap-2 text-warning text-sm">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>该法规已同步到 RAGFlow 知识库，将同时删除知识库中的文档。</span>
+              <div className="text-warning flex items-start gap-2 text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  该法规已同步到 RAGFlow 知识库，将同时删除知识库中的文档。
+                </span>
               </div>
             )}
             {deleteMutation.isError && (
-              <div className="flex items-start gap-2 text-destructive text-sm">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{deleteMutation.error instanceof Error ? deleteMutation.error.message : "删除失败"}</span>
+              <div className="text-destructive flex items-start gap-2 text-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <span>
+                  {deleteMutation.error instanceof Error
+                    ? deleteMutation.error.message
+                    : "删除失败"}
+                </span>
               </div>
             )}
           </div>
@@ -240,7 +257,7 @@ export default function LawLibrary() {
             <button
               onClick={() => setDeletingLaw(null)}
               disabled={deleteMutation.isPending}
-              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-muted-foreground hover:text-foreground px-4 py-2 text-sm transition-colors"
             >
               取消
             </button>
@@ -256,9 +273,11 @@ export default function LawLibrary() {
                 }
               }}
               disabled={deleteMutation.isPending}
-              className="px-4 py-2 text-sm bg-destructive text-white rounded-lg hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="bg-destructive hover:bg-destructive/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-white transition-colors disabled:opacity-50"
             >
-              {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {deleteMutation.isPending && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
               确认删除
             </button>
           </DialogFooter>
@@ -322,24 +341,23 @@ function LawListView({
   page,
   setPage,
   limit,
-  selectedLaw,
   setSelectedLaw,
   setShowImportModal,
   onDeleteLaw,
 }: LawListViewProps) {
   return (
-    <div className="h-full flex flex-col">
-      <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6">
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
         {/* Search & Filter */}
-        <div className="bg-gradient-to-br from-card to-card/80 p-4 rounded-xl border border-border/50 shadow-sm flex flex-wrap gap-4 items-center">
-          <div className="relative flex-1 min-w-[300px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="from-card to-card/80 border-border/50 flex flex-wrap items-center gap-4 rounded-xl border bg-gradient-to-br p-4 shadow-sm">
+          <div className="relative min-w-[300px] flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <input
               type="text"
               placeholder="请输入法规名称/标准号/关键词..."
               value={keyword}
               onChange={(e) => handleKeywordChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
+              className="bg-muted border-border focus:ring-primary/20 focus:border-primary w-full rounded-lg border py-2 pr-4 pl-10 text-sm transition-all outline-none focus:ring-2"
             />
           </div>
           <div className="flex gap-3">
@@ -349,7 +367,10 @@ function LawListView({
                 setFilterType(v as LawType | "all");
                 setPage(1);
               }}
-              options={[{ value: "all", label: "全部类型" }, ...LAW_TYPE_OPTIONS]}
+              options={[
+                { value: "all", label: "全部类型" },
+                ...LAW_TYPE_OPTIONS,
+              ]}
               className="w-40"
             />
             <AdminSelect
@@ -371,12 +392,12 @@ function LawListView({
 
         {/* Error State */}
         {error && (
-          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-destructive shrink-0" />
+          <div className="bg-destructive/10 border-destructive/20 flex items-center gap-3 rounded-lg border p-4">
+            <AlertCircle className="text-destructive h-5 w-5 shrink-0" />
             <span className="text-destructive">{error.message}</span>
             <button
               onClick={() => refetch()}
-              className="ml-auto text-sm text-destructive hover:underline"
+              className="text-destructive ml-auto text-sm hover:underline"
             >
               重试
             </button>
@@ -385,12 +406,12 @@ function LawListView({
 
         {/* Category Grid */}
         <div className="space-y-3">
-          <h3 className="text-md font-semibold text-foreground flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-primary" /> 知识库分类
+          <h3 className="text-md text-foreground flex items-center gap-2 font-semibold">
+            <BookOpen className="text-primary h-5 w-5" /> 知识库分类
           </h3>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
             {LAW_CATEGORIES.map((cat) => {
-              const count = data?.by_type?.[cat.code] || 0;
+              const count = data?.by_type?.[cat.code] ?? 0;
               const isActive = filterType === cat.code;
               return (
                 <div
@@ -400,25 +421,36 @@ function LawListView({
                     setPage(1);
                   }}
                   className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-xl border border-border/50 bg-gradient-to-br from-card to-card/80 p-5 shadow-sm transition-all hover:shadow-md border-l-[3px]",
+                    "border-border/50 from-card to-card/80 flex cursor-pointer items-center gap-3 rounded-xl border border-l-[3px] bg-gradient-to-br p-5 shadow-sm transition-all hover:shadow-md",
                     isActive
-                      ? "border-primary ring-2 ring-primary/20 border-l-primary"
-                      : "border-l-transparent hover:border-primary/30 hover:border-l-primary/30"
+                      ? "border-primary ring-primary/20 border-l-primary ring-2"
+                      : "hover:border-primary/30 hover:border-l-primary/30 border-l-transparent",
                   )}
                 >
                   <div
                     className={cn(
                       "flex size-12 shrink-0 items-center justify-center rounded-xl",
-                      cat.bgColor
+                      cat.bgColor,
                     )}
                   >
                     <cat.icon className={cn("size-6", cat.color)} aria-hidden />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="mb-1 truncate text-sm text-muted-foreground">{cat.name}</div>
-                    <div className={cn("flex flex-wrap items-baseline gap-x-1 tabular-nums", cat.color)}>
-                      <span className="text-2xl font-bold font-cyber">{count}</span>
-                      <span className="text-sm font-medium text-muted-foreground">份</span>
+                    <div className="text-muted-foreground mb-1 truncate text-sm">
+                      {cat.name}
+                    </div>
+                    <div
+                      className={cn(
+                        "flex flex-wrap items-baseline gap-x-1 tabular-nums",
+                        cat.color,
+                      )}
+                    >
+                      <span className="font-cyber text-2xl font-bold">
+                        {count}
+                      </span>
+                      <span className="text-muted-foreground text-sm font-medium">
+                        份
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -429,19 +461,19 @@ function LawListView({
 
         {/* Law List */}
         <div className="space-y-3">
-          <h3 className="text-md font-semibold text-foreground flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
+          <h3 className="text-md text-foreground flex items-center gap-2 font-semibold">
+            <FileText className="text-primary h-5 w-5" />
             {filterType !== "all"
-              ? `${getCategoryByCode(filterType)?.name || filterType}列表`
+              ? `${getCategoryByCode(filterType)?.name ?? filterType}列表`
               : "全部法规"}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({data?.total || 0} 份)
+            <span className="text-muted-foreground text-sm font-normal">
+              ({data?.total ?? 0} 份)
             </span>
           </h3>
 
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <Loader2 className="text-primary h-8 w-8 animate-spin" />
             </div>
           ) : data?.laws && data.laws.length > 0 ? (
             <div className="space-y-3">
@@ -455,12 +487,12 @@ function LawListView({
               ))}
             </div>
           ) : (
-            <div className="bg-card rounded-xl border border-border p-8 text-center">
-              <FileText className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+            <div className="bg-card border-border rounded-xl border p-8 text-center">
+              <FileText className="text-muted-foreground/50 mx-auto mb-3 h-12 w-12" />
               <p className="text-muted-foreground">暂无法规数据</p>
               <button
                 onClick={() => setShowImportModal(true)}
-                className="mt-3 text-sm text-primary hover:underline"
+                className="text-primary mt-3 text-sm hover:underline"
               >
                 导入第一份法规
               </button>
@@ -473,7 +505,7 @@ function LawListView({
               <button
                 onClick={() => setPage(Math.max(1, page - 1))}
                 disabled={page === 1}
-                className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-50 hover:bg-accent"
+                className="hover:bg-accent rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 上一页
               </button>
@@ -483,7 +515,7 @@ function LawListView({
               <button
                 onClick={() => setPage(page + 1)}
                 disabled={page >= Math.ceil(data.total / limit)}
-                className="px-3 py-1.5 text-sm border rounded-lg disabled:opacity-50 hover:bg-accent"
+                className="hover:bg-accent rounded-lg border px-3 py-1.5 text-sm disabled:opacity-50"
               >
                 下一页
               </button>
@@ -493,14 +525,15 @@ function LawListView({
       </div>
 
       {/* Footer */}
-      <div className="shrink-0 border-t border-border bg-card/80 backdrop-blur-sm px-6 py-3 text-sm text-muted-foreground flex flex-wrap items-center justify-between gap-2">
+      <div className="border-border bg-card/80 text-muted-foreground flex shrink-0 flex-wrap items-center justify-between gap-2 border-t px-6 py-3 text-sm backdrop-blur-sm">
         <span>
-          共 {totalCount.toLocaleString()} 份法规标准 | 现行有效 {activeCount} | 已废止{" "}
-          {deprecatedCount}
+          共 {totalCount.toLocaleString()} 份法规标准 | 现行有效 {activeCount} |
+          已废止 {deprecatedCount}
         </span>
         {statistics && (
           <span className="text-xs">
-            已同步 {statistics.synced_count} | 待同步 {statistics.pending_sync_count} | 同步失败{" "}
+            已同步 {statistics.synced_count} | 待同步{" "}
+            {statistics.pending_sync_count} | 同步失败{" "}
             {statistics.failed_sync_count}
           </span>
         )}
@@ -526,20 +559,20 @@ function LawListItem({
     switch (status) {
       case "active":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-success/10 text-success">
-            <CheckCircle className="w-3 h-3" /> 现行
+          <span className="bg-success/10 text-success inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
+            <CheckCircle className="h-3 w-3" /> 现行
           </span>
         );
       case "deprecated":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-muted text-muted-foreground">
+          <span className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
             已废止
           </span>
         );
       case "updating":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning">
-            <Loader2 className="w-3 h-3" /> 修订中
+          <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs">
+            <Loader2 className="h-3 w-3" /> 修订中
           </span>
         );
       default:
@@ -551,20 +584,29 @@ function LawListItem({
     switch (isSynced) {
       case "synced":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-info/10 text-info" title="已同步到RAGFlow">
-            <CheckCircle className="w-3 h-3" /> 已同步
+          <span
+            className="bg-info/10 text-info inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+            title="已同步到RAGFlow"
+          >
+            <CheckCircle className="h-3 w-3" /> 已同步
           </span>
         );
       case "pending":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-warning/10 text-warning" title="待同步">
-            <Clock className="w-3 h-3" /> 待同步
+          <span
+            className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+            title="待同步"
+          >
+            <Clock className="h-3 w-3" /> 待同步
           </span>
         );
       case "failed":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-destructive/10 text-destructive" title="同步失败">
-            <AlertCircle className="w-3 h-3" /> 同步失败
+          <span
+            className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
+            title="同步失败"
+          >
+            <AlertCircle className="h-3 w-3" /> 同步失败
           </span>
         );
       default:
@@ -573,22 +615,29 @@ function LawListItem({
   };
 
   return (
-    <div className={cn(
-      "bg-card p-4 rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-md transition-all border-l-[3px]",
-      color.replace("text-", "border-l-") + "/60"
-    )}>
+    <div
+      className={cn(
+        "bg-card border-border/50 hover:border-primary/30 rounded-xl border border-l-[3px] p-4 shadow-sm transition-all hover:shadow-md",
+        color.replace("text-", "border-l-") + "/60",
+      )}
+    >
       <div className="flex items-start gap-4">
         {/* Category Icon */}
-        <div className={cn("w-10 h-10 shrink-0 rounded-lg flex items-center justify-center", bgColor.replace("/10", "/20"))}>
-          {category && <category.icon className={cn("w-5 h-5", color)} />}
+        <div
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+            bgColor.replace("/10", "/20"),
+          )}
+        >
+          {category && <category.icon className={cn("h-5 w-5", color)} />}
         </div>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <h4
-                className="font-medium text-foreground cursor-pointer hover:text-primary transition-colors"
+                className="text-foreground hover:text-primary cursor-pointer font-medium transition-colors"
                 onClick={onView}
               >
                 {law.title}
@@ -597,14 +646,18 @@ function LawListItem({
               {getSyncBadge(law.is_synced)}
             </div>
             {law.law_number && (
-              <p className="text-sm text-muted-foreground mt-0.5">{law.law_number}</p>
+              <p className="text-muted-foreground mt-0.5 text-sm">
+                {law.law_number}
+              </p>
             )}
           </div>
 
-          <div className="flex items-center gap-6 text-sm text-muted-foreground mt-2">
+          <div className="text-muted-foreground mt-2 flex items-center gap-6 text-sm">
             {law.department && <span>发布: {law.department}</span>}
             {law.effective_date && (
-              <span>生效: {new Date(law.effective_date).toLocaleDateString()}</span>
+              <span>
+                生效: {new Date(law.effective_date).toLocaleDateString()}
+              </span>
             )}
             {law.ref_count > 0 && (
               <span className="text-warning">引用 {law.ref_count} 次</span>
@@ -614,36 +667,38 @@ function LawListItem({
 
           {/* Keywords */}
           {law.keywords && law.keywords.length > 0 && (
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <div className="mt-2 flex flex-wrap items-center gap-2">
               {law.keywords.slice(0, 5).map((kw, i) => (
                 <span
                   key={i}
-                  className="px-2 py-0.5 text-xs bg-muted text-muted-foreground rounded"
+                  className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs"
                 >
                   {kw}
                 </span>
               ))}
               {law.keywords.length > 5 && (
-                <span className="text-xs text-muted-foreground">+{law.keywords.length - 5}</span>
+                <span className="text-muted-foreground text-xs">
+                  +{law.keywords.length - 5}
+                </span>
               )}
             </div>
           )}
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 shrink-0">
+        <div className="flex shrink-0 gap-2">
           <button
             onClick={onView}
-            className="text-sm text-primary hover:text-primary/70 hover:underline flex items-center gap-1 transition-colors"
+            className="text-primary hover:text-primary/70 flex items-center gap-1 text-sm transition-colors hover:underline"
           >
-            详情 <ExternalLink className="w-3 h-3" />
+            详情 <ExternalLink className="h-3 w-3" />
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
+            className="text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-lg p-1.5 transition-colors"
             title="删除法规"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>

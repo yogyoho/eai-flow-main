@@ -20,7 +20,9 @@ import type { AgentThreadState } from "@/core/threads/types";
 // model-viewer is a web component — client-only to avoid Next SSR.
 const ModelViewer = dynamic(() => import("./ModelViewer"), {
   ssr: false,
-  loading: () => <p className="p-4 text-sm text-muted-foreground">加载 3D 预览…</p>,
+  loading: () => (
+    <p className="text-muted-foreground p-4 text-sm">加载 3D 预览…</p>
+  ),
 });
 
 interface ArtifactLike {
@@ -50,11 +52,17 @@ export function CadDesigner() {
     const arts = (state.artifacts ?? []) as unknown as ArtifactLike[];
     // Pick the latest artifacts (multi-turn: later turns append)
     const glbArts = arts.filter((a) => a.filepath?.endsWith(".glb"));
-    const stepArts = arts.filter(
-      (a) => a.filepath?.endsWith(".step") || a.filepath?.endsWith(".stp"),
+    // EAI-CUSTOM: truthiness OR (not `??`) — `.some` keeps old `||` semantics where
+    // a defined filepath that fails ".step" must still match ".stp"
+    const stepArts = arts.filter((a) =>
+      [".step", ".stp"].some((ext) => a.filepath?.endsWith(ext)),
     );
-    const glb = glbArts.length ? glbArts[glbArts.length - 1]!.filepath ?? null : null;
-    const step = stepArts.length ? stepArts[stepArts.length - 1]!.filepath ?? null : null;
+    const glb = glbArts.length
+      ? (glbArts[glbArts.length - 1]!.filepath ?? null)
+      : null;
+    const step = stepArts.length
+      ? (stepArts[stepArts.length - 1]!.filepath ?? null)
+      : null;
     setGlbPath(glb);
     setStepPath(step);
     setStatus(glb || step ? "生成完成 ✓" : "完成，但未找到 STEP/GLB 产物");
@@ -103,13 +111,13 @@ export function CadDesigner() {
       {/* Header */}
       <header className="shrink-0 border-b px-6 py-3">
         <h1 className="text-lg font-bold">CAD 制图</h1>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-muted-foreground text-xs">
           描述零件（mm）→ AI 生成 STEP + 3D 预览 → 下载
         </p>
       </header>
 
       {/* Body: chat left, preview right */}
-      <div className="grid flex-1 min-h-0 grid-cols-1 lg:grid-cols-[1fr_380px]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_380px]">
         {/* LEFT: Chat */}
         <div className="flex min-h-0 flex-col border-r">
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -138,11 +146,11 @@ export function CadDesigner() {
 
         {/* RIGHT: 3D Preview + Downloads */}
         <div className="flex min-h-0 flex-col">
-          <div className="flex-1 min-h-[420px]">
+          <div className="min-h-[420px] flex-1">
             {glbUrl ? (
               <ModelViewer src={glbUrl} />
             ) : (
-              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
                 {busy
                   ? "生成中…"
                   : "生成的零件 GLB 会在此 3D 预览（可旋转/缩放）"}
@@ -154,27 +162,25 @@ export function CadDesigner() {
             {stepUrl ? (
               <a
                 href={stepUrl}
-                className="text-sm text-primary underline"
+                className="text-primary text-sm underline"
                 download
               >
                 下载 STEP 文件
               </a>
             ) : (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 生成后出现下载链接
               </p>
             )}
             {glbPath && (
-              <p className="mt-2 break-all text-xs text-muted-foreground">
+              <p className="text-muted-foreground mt-2 text-xs break-all">
                 GLB: {glbPath}
               </p>
             )}
             {status && (
-              <p className="mt-2 text-xs text-muted-foreground">{status}</p>
+              <p className="text-muted-foreground mt-2 text-xs">{status}</p>
             )}
-            {error && (
-              <p className="mt-2 text-xs text-destructive">{error}</p>
-            )}
+            {error && <p className="text-destructive mt-2 text-xs">{error}</p>}
           </div>
         </div>
       </div>

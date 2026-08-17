@@ -26,6 +26,7 @@ import React, { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import "./index.css";
+import { MobileNav } from "@/components/landing/mobile-nav";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +36,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Toaster } from "@/components/ui/sonner";
-import { MobileNav } from "@/components/landing/mobile-nav";
 import { PermissionProvider, usePermission } from "@/core/permissions";
 import { useAuth } from "@/extensions/hooks/useAuth";
 
@@ -48,14 +48,17 @@ export default function LandingNew() {
     setMounted(true);
   }, []);
 
-  const handleNavClick = useCallback((path: string) => {
-    if (!user) {
-      const redirect = encodeURIComponent(path);
-      router.push(`/login?redirect=${redirect}`);
-    } else {
-      router.push(path);
-    }
-  }, [user, router]);
+  const handleNavClick = useCallback(
+    (path: string) => {
+      if (!user) {
+        const redirect = encodeURIComponent(path);
+        router.push(`/login?redirect=${redirect}`);
+      } else {
+        router.push(path);
+      }
+    },
+    [user, router],
+  );
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
@@ -78,27 +81,27 @@ export default function LandingNew() {
   };
 
   return (
-    <div className="min-h-screen relative bg-background dark:bg-[#0a0a0a] overflow-hidden font-sans">
+    <div className="bg-background relative min-h-screen overflow-hidden font-sans dark:bg-[#0a0a0a]">
       <Toaster />
       {/* 科技感背景：网格与柔和光晕 */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 bg-grid-pattern opacity-60"></div>
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="bg-grid-pattern absolute inset-0 opacity-60"></div>
         {/* 左下角蓝色光晕 */}
-        <div className="absolute -left-[20%] top-[40%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]"></div>
+        <div className="bg-primary/10 absolute top-[40%] -left-[20%] h-[60%] w-[60%] rounded-full blur-[120px]"></div>
         {/* 右上角青色光晕 */}
-        <div className="absolute -right-[10%] -top-[10%] w-[50%] h-[50%] rounded-full bg-teal-400/10 blur-[120px]"></div>
+        <div className="absolute -top-[10%] -right-[10%] h-[50%] w-[50%] rounded-full bg-teal-400/10 blur-[120px]"></div>
       </div>
 
       {/* 顶部导航栏 */}
-      <nav className="relative z-10 flex items-center justify-between px-8 py-4 bg-card/70 dark:bg-card/70 backdrop-blur-md border-b border-border dark:border-border">
+      <nav className="bg-card/70 dark:bg-card/70 border-border dark:border-border relative z-10 flex items-center justify-between border-b px-8 py-4 backdrop-blur-md">
         <div className="flex items-center space-x-3">
           {/* Logo */}
           <img
             src="/favicon.svg"
             alt="Logo"
-            className="w-8 h-auto object-contain"
+            className="h-auto w-8 object-contain"
           />
-          <span className="text-xl font-bold text-primary tracking-wide">
+          <span className="text-primary text-xl font-bold tracking-wide">
             XXXX工程有限公司
           </span>
         </div>
@@ -108,78 +111,93 @@ export default function LandingNew() {
         </PermissionProvider>
 
         <div className="flex items-center">
-          {!isLoading && (
-            user ? (
+          {!isLoading &&
+            (user ? (
               mounted ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm whitespace-nowrap">
-                      <UserCircle className="w-6 h-6" strokeWidth={1.5} />
+                    <button className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm whitespace-nowrap">
+                      <UserCircle className="h-6 w-6" strokeWidth={1.5} />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-64 rounded-xl" align="end" sideOffset={8}>
-                    <div className="px-3 py-2 border-b border-border dark:border-border">
-                      <p className="text-sm font-medium text-foreground dark:text-foreground">{user.username}</p>
-                      <p className="text-xs text-muted-foreground dark:text-muted-foreground">{user.email}</p>
+                  <DropdownMenuContent
+                    className="w-64 rounded-xl"
+                    align="end"
+                    sideOffset={8}
+                  >
+                    <div className="border-border dark:border-border border-b px-3 py-2">
+                      <p className="text-foreground dark:text-foreground text-sm font-medium">
+                        {user.username}
+                      </p>
+                      <p className="text-muted-foreground dark:text-muted-foreground text-xs">
+                        {user.email}
+                      </p>
                     </div>
                     <DropdownMenuGroup className="py-1">
-                      <DropdownMenuItem onClick={() => router.push("/settings")}>
+                      <DropdownMenuItem
+                        onClick={() => router.push("/settings")}
+                      >
                         <Settings className="mr-2 h-4 w-4" />
                         配置
                       </DropdownMenuItem>
                     </DropdownMenuGroup>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout} className="text-red-500 dark:text-red-400 focus:text-red-500 dark:focus:text-red-400">
+                    <DropdownMenuItem
+                      onClick={logout}
+                      className="text-red-500 focus:text-red-500 dark:text-red-400 dark:focus:text-red-400"
+                    >
                       <LogOutIcon className="mr-2 h-4 w-4" />
                       退出登录
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <div className="w-9 h-9 rounded-full bg-primary/10 animate-pulse" />
+                <div className="bg-primary/10 h-9 w-9 animate-pulse rounded-full" />
               )
             ) : (
               <button
                 onClick={() => router.push("/login")}
-                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm whitespace-nowrap"
+                className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 text-sm whitespace-nowrap"
               >
-                <LogIn className="w-4 h-4" />
+                <LogIn className="h-4 w-4" />
                 登录
               </button>
-            )
-          )}
+            ))}
         </div>
       </nav>
 
       {/* 主内容区 */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 pt-20 pb-24">
+      <main className="relative z-10 mx-auto max-w-7xl px-6 pt-20 pb-24">
         <motion.div
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center"
+          className="grid grid-cols-1 items-center gap-16 lg:grid-cols-2"
         >
           {/* 左侧：Hero 文本区 */}
           <div className="space-y-8">
             <motion.div variants={itemVariants}>
-              <span className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-sm font-medium border border-primary/20">
-                <Sparkles className="w-4 h-4" />
+              <span className="bg-primary/10 text-primary border-primary/20 inline-flex items-center space-x-2 rounded-full border px-4 py-1.5 text-sm font-medium">
+                <Sparkles className="h-4 w-4" />
                 <span>企业智能体平台套件，融合知识工厂与RAG知识库</span>
               </span>
             </motion.div>
 
             <motion.div variants={itemVariants} className="space-y-6">
-              <h1 className="text-3xl md:text-6xl font-extrabold text-foreground dark:text-white leading-[1.15] tracking-tight">
+              <h1 className="text-foreground text-3xl leading-[1.15] font-extrabold tracking-tight md:text-6xl dark:text-white">
                 XXXX工程: 石化设计领域智能应用平台
               </h1>
               {/* 渐变装饰线 */}
-              <div className="h-1.5 w-full bg-gradient-to-r from-primary via-primary/70 to-teal-400 rounded-full"></div>
-              <p className="text-xl text-muted-foreground dark:text-muted-foreground font-medium">
+              <div className="from-primary via-primary/70 h-1.5 w-full rounded-full bg-gradient-to-r to-teal-400"></div>
+              <p className="text-muted-foreground dark:text-muted-foreground text-xl font-medium">
                 统一编排 Agent、知识库、skills、MCP与工具链
               </p>
             </motion.div>
 
-            <motion.div variants={itemVariants} className="flex flex-wrap gap-4 pt-4">
+            <motion.div
+              variants={itemVariants}
+              className="flex flex-wrap gap-4 pt-4"
+            >
               <PermissionProvider>
                 <HeroActions onNavClick={handleNavClick} />
               </PermissionProvider>
@@ -187,14 +205,14 @@ export default function LandingNew() {
           </div>
 
           {/* 右侧：数据统计卡片 */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 relative">
+          <div className="relative grid grid-cols-1 gap-5 sm:grid-cols-2">
             {/* 装饰性背景 — subtle warm glow in light, cool glow in dark */}
-            <div className="absolute -inset-10 bg-primary/5 dark:bg-primary/[0.03] blur-[100px] rounded-full -z-10" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[60%] bg-teal-400/5 dark:bg-teal-400/[0.04] blur-[80px] rounded-full -z-10" />
+            <div className="bg-primary/5 dark:bg-primary/[0.03] absolute -inset-10 -z-10 rounded-full blur-[100px]" />
+            <div className="absolute top-1/2 left-1/2 -z-10 h-[60%] w-[120%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-teal-400/5 blur-[80px] dark:bg-teal-400/[0.04]" />
 
             <StatsCard
               variants={itemVariants}
-              icon={<Star className="w-5 h-5" />}
+              icon={<Star className="h-5 w-5" />}
               number="2300+"
               title="知识量"
               desc="业务人员的参与与支持"
@@ -202,7 +220,7 @@ export default function LandingNew() {
             />
             <StatsCard
               variants={itemVariants}
-              icon={<CheckCircle2 className="w-5 h-5" />}
+              icon={<CheckCircle2 className="h-5 w-5" />}
               number="200+"
               title="SKILLS数量"
               desc="持续改进和问题解决能力"
@@ -210,7 +228,7 @@ export default function LandingNew() {
             />
             <StatsCard
               variants={itemVariants}
-              icon={<GitMerge className="w-5 h-5" />}
+              icon={<GitMerge className="h-5 w-5" />}
               number="50+"
               title="MCP数量"
               desc="活跃的开发迭代和功能更新"
@@ -218,7 +236,7 @@ export default function LandingNew() {
             />
             <StatsCard
               variants={itemVariants}
-              icon={<ShieldCheck className="w-5 h-5" />}
+              icon={<ShieldCheck className="h-5 w-5" />}
               number="10+"
               title="报告种类"
               desc="煤炭行业工程设计类报告生成"
@@ -235,11 +253,17 @@ export default function LandingNew() {
           variants={containerVariants}
           className="mt-32"
         >
-          <div className="text-center mb-12 space-y-3">
-            <motion.h2 variants={itemVariants} className="text-3xl font-bold text-foreground dark:text-white">
+          <div className="mb-12 space-y-3 text-center">
+            <motion.h2
+              variants={itemVariants}
+              className="text-foreground text-3xl font-bold dark:text-white"
+            >
               快速访问
             </motion.h2>
-            <motion.p variants={itemVariants} className="text-muted-foreground dark:text-muted-foreground">
+            <motion.p
+              variants={itemVariants}
+              className="text-muted-foreground dark:text-muted-foreground"
+            >
               探索平台核心功能模块
             </motion.p>
           </div>
@@ -251,7 +275,7 @@ export default function LandingNew() {
       </main>
 
       {/* 底部版权 */}
-      <footer className="relative z-10 bg-[#1a1a1a] dark:bg-[#1a1a1a] text-muted-foreground dark:text-muted-foreground py-8 text-center text-sm">
+      <footer className="text-muted-foreground dark:text-muted-foreground relative z-10 bg-[#1a1a1a] py-8 text-center text-sm dark:bg-[#1a1a1a]">
         <p>© XXXX工程有限公司 2026 v0.5.0</p>
       </footer>
     </div>
@@ -268,9 +292,9 @@ function HeroActions({ onNavClick }: { onNavClick: (path: string) => void }) {
     return (
       <Link
         href="/login"
-        className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
+        className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 flex items-center space-x-2 rounded-xl px-8 py-3.5 font-medium shadow-lg transition-colors"
       >
-        <LogIn className="w-5 h-5" />
+        <LogIn className="h-5 w-5" />
         <span>欢迎登录</span>
       </Link>
     );
@@ -280,18 +304,18 @@ function HeroActions({ onNavClick }: { onNavClick: (path: string) => void }) {
       {canNav("nav:writing") && (
         <button
           onClick={() => onNavClick("/workspace/chats/new")}
-          className="flex items-center space-x-2 px-8 py-3.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-medium shadow-lg shadow-primary/20 transition-colors"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 flex items-center space-x-2 rounded-xl px-8 py-3.5 font-medium shadow-lg transition-colors"
         >
-          <Rocket className="w-5 h-5" />
+          <Rocket className="h-5 w-5" />
           <span>开始写作</span>
         </button>
       )}
       {canNav("nav:knowledge-factory") && (
         <button
           onClick={() => onNavClick("/knowledge-factory?tab=reports")}
-          className="flex items-center space-x-2 px-8 py-3.5 bg-card dark:bg-card hover:bg-primary/10 text-primary border border-primary/30 hover:border-primary/50 rounded-xl font-medium shadow-sm transition-all duration-200 hover:shadow-md hover:shadow-primary/15 hover:scale-[1.02] hover:-translate-y-0.5 active:scale-[0.98]"
+          className="bg-card dark:bg-card hover:bg-primary/10 text-primary border-primary/30 hover:border-primary/50 hover:shadow-primary/15 flex items-center space-x-2 rounded-xl border px-8 py-3.5 font-medium shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-md active:scale-[0.98]"
         >
-          <FolderCog className="w-5 h-5" />
+          <FolderCog className="h-5 w-5" />
           <span>知识加工</span>
         </button>
       )}
@@ -306,7 +330,11 @@ function NavItems({ onNavClick }: { onNavClick: (path: string) => void }) {
 
   const items = [
     { label: "工程报告", path: "/workspace/chats/new", navId: "nav:writing" },
-    { label: "知识工厂", path: "/knowledge-factory?tab=reports", navId: "nav:knowledge-factory" },
+    {
+      label: "知识工厂",
+      path: "/knowledge-factory?tab=reports",
+      navId: "nav:knowledge-factory",
+    },
     { label: "文档空间", path: "/docmgr", navId: "nav:docmgr" },
     { label: "应用中心", path: "/app-center", navId: "nav:app-center" },
   ];
@@ -315,19 +343,24 @@ function NavItems({ onNavClick }: { onNavClick: (path: string) => void }) {
   if (!user) return null;
   return (
     <>
-      <div className="hidden md:flex items-center space-x-2 text-muted-foreground dark:text-muted-foreground font-medium">
+      <div className="text-muted-foreground dark:text-muted-foreground hidden items-center space-x-2 font-medium md:flex">
         {visible.map((item) => (
           <button
             key={item.path}
             onClick={() => onNavClick(item.path)}
-            className="px-4 py-2 rounded-lg hover:bg-primary/10 hover:text-primary transition-all duration-200"
+            className="hover:bg-primary/10 hover:text-primary rounded-lg px-4 py-2 transition-all duration-200"
           >
             {item.label}
           </button>
         ))}
       </div>
       {visible.length > 0 && (
-        <MobileNav links={visible.map((item) => ({ href: item.path, label: item.label }))} />
+        <MobileNav
+          links={visible.map((item) => ({
+            href: item.path,
+            label: item.label,
+          }))}
+        />
       )}
     </>
   );
@@ -348,12 +381,35 @@ function StatsCard({
   variants: Variants;
   accent?: "amber" | "emerald" | "violet" | "sky" | "primary";
 }) {
-  const accentColors: Record<string, { light: string; dark: string; glow: string }> = {
-    amber:   { light: "bg-amber-50 border-amber-200 text-amber-600", dark: "dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400", glow: "dark:shadow-amber-500/10" },
-    emerald: { light: "bg-emerald-50 border-emerald-200 text-emerald-600", dark: "dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400", glow: "dark:shadow-emerald-500/10" },
-    violet:  { light: "bg-violet-50 border-violet-200 text-violet-600", dark: "dark:bg-violet-500/10 dark:border-violet-500/20 dark:text-violet-400", glow: "dark:shadow-violet-500/10" },
-    sky:     { light: "bg-sky-50 border-sky-200 text-sky-600", dark: "dark:bg-sky-500/10 dark:border-sky-500/20 dark:text-sky-400", glow: "dark:shadow-sky-500/10" },
-    primary: { light: "bg-primary/10 border-primary/20 text-primary", dark: "dark:bg-primary/10 dark:border-primary/20 dark:text-primary", glow: "dark:shadow-primary/10" },
+  const accentColors: Record<
+    string,
+    { light: string; dark: string; glow: string }
+  > = {
+    amber: {
+      light: "bg-amber-50 border-amber-200 text-amber-600",
+      dark: "dark:bg-amber-500/10 dark:border-amber-500/20 dark:text-amber-400",
+      glow: "dark:shadow-amber-500/10",
+    },
+    emerald: {
+      light: "bg-emerald-50 border-emerald-200 text-emerald-600",
+      dark: "dark:bg-emerald-500/10 dark:border-emerald-500/20 dark:text-emerald-400",
+      glow: "dark:shadow-emerald-500/10",
+    },
+    violet: {
+      light: "bg-violet-50 border-violet-200 text-violet-600",
+      dark: "dark:bg-violet-500/10 dark:border-violet-500/20 dark:text-violet-400",
+      glow: "dark:shadow-violet-500/10",
+    },
+    sky: {
+      light: "bg-sky-50 border-sky-200 text-sky-600",
+      dark: "dark:bg-sky-500/10 dark:border-sky-500/20 dark:text-sky-400",
+      glow: "dark:shadow-sky-500/10",
+    },
+    primary: {
+      light: "bg-primary/10 border-primary/20 text-primary",
+      dark: "dark:bg-primary/10 dark:border-primary/20 dark:text-primary",
+      glow: "dark:shadow-primary/10",
+    },
   };
   const a = (accentColors[accent] ?? accentColors.primary)!;
 
@@ -361,24 +417,32 @@ function StatsCard({
     <motion.div
       variants={variants}
       whileHover={{ y: -6, scale: 1.02 }}
-      className="glass-card stats-card-glow rounded-3xl p-7 flex flex-col justify-between transition-all duration-300 hover:shadow-2xl cursor-pointer group"
+      className="glass-card stats-card-glow group flex cursor-pointer flex-col justify-between rounded-3xl p-7 transition-all duration-300 hover:shadow-2xl"
     >
       {/* icon container — tinted per accent */}
-      <div className={`w-11 h-11 rounded-2xl border flex items-center justify-center mb-5 transition-colors duration-300 ${a.light} ${a.dark}`}>
+      <div
+        className={`mb-5 flex h-11 w-11 items-center justify-center rounded-2xl border transition-colors duration-300 ${a.light} ${a.dark}`}
+      >
         {icon}
       </div>
 
       {/* stat body */}
       <div>
-        <h3 className="text-[2.25rem] font-black text-foreground dark:text-white mb-1.5 tracking-tight tabular-nums leading-none">
+        <h3 className="text-foreground mb-1.5 text-[2.25rem] leading-none font-black tracking-tight tabular-nums dark:text-white">
           {number}
         </h3>
-        <p className="text-sm font-semibold text-foreground/80 dark:text-white/80 mb-1">{title}</p>
-        <p className="text-xs text-muted-foreground dark:text-white/45 leading-relaxed">{desc}</p>
+        <p className="text-foreground/80 mb-1 text-sm font-semibold dark:text-white/80">
+          {title}
+        </p>
+        <p className="text-muted-foreground text-xs leading-relaxed dark:text-white/45">
+          {desc}
+        </p>
       </div>
 
       {/* subtle bottom accent bar — visible on hover */}
-      <div className={`mt-5 h-0.5 w-0 group-hover:w-full rounded-full transition-all duration-500 ease-out bg-gradient-to-r ${accent === "amber" ? "from-amber-400 to-amber-500" : accent === "emerald" ? "from-emerald-400 to-emerald-500" : accent === "violet" ? "from-violet-400 to-violet-500" : accent === "sky" ? "from-sky-400 to-sky-500" : "from-primary to-primary/60"}`} />
+      <div
+        className={`mt-5 h-0.5 w-0 rounded-full bg-gradient-to-r transition-all duration-500 ease-out group-hover:w-full ${accent === "amber" ? "from-amber-400 to-amber-500" : accent === "emerald" ? "from-emerald-400 to-emerald-500" : accent === "violet" ? "from-violet-400 to-violet-500" : accent === "sky" ? "from-sky-400 to-sky-500" : "from-primary to-primary/60"}`}
+      />
     </motion.div>
   );
 }
@@ -398,11 +462,37 @@ function QuickAccessGrid({ variants }: { variants: Variants }) {
   const router = useRouter();
 
   const cards: QuickAccessCardData[] = [
-    { title: "Dashboard", path: "/dashboard", navId: "nav:dashboard", icon: <BarChart2 className="w-6 h-6 text-primary" /> },
-    { title: "知识库", path: "/knowledge", navId: "nav:knowledge", icon: <BookOpen className="w-6 h-6 text-primary" /> },
-    { title: "文档中心", path: "/docmgr", navId: "nav:docmgr", icon: <FileText className="w-6 h-6 text-primary" /> },
-    { title: "API接口查询", path: "/docs", adminOnly: true, icon: <Layers className="w-6 h-6 text-primary" /> },
-    { title: "系统管理", path: "/admin", adminOnly: true, navId: "nav:admin", icon: <Network className="w-6 h-6 text-primary" /> },
+    {
+      title: "Dashboard",
+      path: "/dashboard",
+      navId: "nav:dashboard",
+      icon: <BarChart2 className="text-primary h-6 w-6" />,
+    },
+    {
+      title: "知识库",
+      path: "/knowledge",
+      navId: "nav:knowledge",
+      icon: <BookOpen className="text-primary h-6 w-6" />,
+    },
+    {
+      title: "文档中心",
+      path: "/docmgr",
+      navId: "nav:docmgr",
+      icon: <FileText className="text-primary h-6 w-6" />,
+    },
+    {
+      title: "API接口查询",
+      path: "/docs",
+      adminOnly: true,
+      icon: <Layers className="text-primary h-6 w-6" />,
+    },
+    {
+      title: "系统管理",
+      path: "/admin",
+      adminOnly: true,
+      navId: "nav:admin",
+      icon: <Network className="text-primary h-6 w-6" />,
+    },
   ];
 
   const isAllowed = (card: QuickAccessCardData) => {
@@ -421,7 +511,7 @@ function QuickAccessGrid({ variants }: { variants: Variants }) {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (
         <QuickAccessCard
           key={card.title}
@@ -458,26 +548,30 @@ function QuickAccessCard({
       whileHover={disabled ? undefined : { y: -4 }}
       onClick={onClick}
       className={
-        "group relative bg-card dark:bg-card rounded-2xl p-6 flex items-center justify-between transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] border border-border dark:border-border overflow-hidden " +
+        "group bg-card dark:bg-card border-border dark:border-border relative flex items-center justify-between overflow-hidden rounded-2xl border p-6 shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-300 dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] " +
         (disabled
-          ? "opacity-60 cursor-not-allowed"
-          : "cursor-pointer hover:shadow-lg hover:shadow-primary/10 hover:border-primary/40")
+          ? "cursor-not-allowed opacity-60"
+          : "hover:shadow-primary/10 hover:border-primary/40 cursor-pointer hover:shadow-lg")
       }
     >
       {/* Hover时的左侧主色竖线（与 hover 边框同色系） */}
-      <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary/70 dark:bg-primary/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="bg-primary/70 dark:bg-primary/70 absolute top-0 bottom-0 left-0 w-1.5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
 
-      <div className="flex items-center space-x-4 relative z-10">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+      <div className="relative z-10 flex items-center space-x-4">
+        <div className="bg-primary/10 group-hover:bg-primary/20 flex h-14 w-14 items-center justify-center rounded-2xl transition-colors">
           {icon}
         </div>
         <div>
-          <h4 className="text-lg font-bold text-foreground dark:text-white mb-0.5">{title}</h4>
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground font-mono">{path}</p>
+          <h4 className="text-foreground mb-0.5 text-lg font-bold dark:text-white">
+            {title}
+          </h4>
+          <p className="text-muted-foreground dark:text-muted-foreground font-mono text-sm">
+            {path}
+          </p>
         </div>
       </div>
 
-      <ArrowRight className="w-5 h-5 text-primary/40 group-hover:text-primary transition-colors relative z-10" />
+      <ArrowRight className="text-primary/40 group-hover:text-primary relative z-10 h-5 w-5 transition-colors" />
     </motion.div>
   );
 }

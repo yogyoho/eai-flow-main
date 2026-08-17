@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Send, Clock } from "lucide-react";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -34,11 +34,7 @@ export function ApprovalPanel({
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string>();
 
-  useEffect(() => {
-    loadData();
-  }, [projectId, reportType]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError(undefined);
     try {
@@ -55,10 +51,12 @@ export function ApprovalPanel({
 
       // Determine current step: find the first step without an approve record
       if (workflow) {
-        const sortedSteps = [...workflow.steps].sort((a, b) => a.order - b.order);
+        const sortedSteps = [...workflow.steps].sort(
+          (a, b) => a.order - b.order,
+        );
         for (const step of sortedSteps) {
           const hasApproval = recordList.some(
-            (r) => r.stepId === step.id && r.action === "approve"
+            (r) => r.stepId === step.id && r.action === "approve",
           );
           if (!hasApproval) {
             setCurrentStepId(step.id);
@@ -68,12 +66,16 @@ export function ApprovalPanel({
           }
         }
       }
-    } catch (err) {
+    } catch {
       setError("加载审批数据失败");
     } finally {
       setLoading(false);
     }
-  };
+  }, [projectId, reportType]);
+
+  useEffect(() => {
+    void loadData();
+  }, [loadData]);
 
   const isCurrentReviewer = useMemo(() => {
     if (!authenticated || !currentReviewerId) return false;
@@ -93,7 +95,10 @@ export function ApprovalPanel({
     }
   };
 
-  const handleAction = async (action: "approve" | "reject" | "comment", comment: string) => {
+  const handleAction = async (
+    action: "approve" | "reject" | "comment",
+    comment: string,
+  ) => {
     if (!currentStepId) return;
     setActionLoading(true);
     setError(undefined);
@@ -115,14 +120,14 @@ export function ApprovalPanel({
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="text-muted-foreground h-6 w-6 animate-spin" />
       </div>
     );
   }
 
   if (error && steps.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-destructive">
+      <div className="text-destructive flex h-64 items-center justify-center text-sm">
         {error}
       </div>
     );
@@ -130,7 +135,7 @@ export function ApprovalPanel({
 
   if (steps.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground flex h-64 items-center justify-center text-sm">
         暂无可用的审批流程
       </div>
     );
@@ -158,7 +163,7 @@ export function ApprovalPanel({
             className={cn(
               "flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium",
               "bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80",
-              "disabled:opacity-50 disabled:cursor-not-allowed"
+              "disabled:cursor-not-allowed disabled:opacity-50",
             )}
           >
             {submitting ? (
@@ -172,11 +177,11 @@ export function ApprovalPanel({
 
         {/* Current step action panel */}
         {currentStepId && (
-          <div className="rounded-xl border border-border bg-background p-6">
+          <div className="border-border bg-background rounded-xl border p-6">
             {!authenticated ? (
               <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <Clock className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
+                <Clock className="text-muted-foreground h-8 w-8" />
+                <p className="text-muted-foreground text-sm">
                   请先登录后再进行审批操作
                 </p>
               </div>
@@ -190,12 +195,12 @@ export function ApprovalPanel({
               </>
             ) : (
               <div className="flex flex-col items-center gap-3 py-4 text-center">
-                <Clock className="h-8 w-8 text-muted-foreground" />
+                <Clock className="text-muted-foreground h-8 w-8" />
                 <div>
                   <p className="text-sm font-medium">
                     当前等待 {currentReviewerName ?? "审批人"} 审批
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="text-muted-foreground mt-1 text-xs">
                     请耐心等待审批完成
                   </p>
                 </div>
@@ -206,7 +211,7 @@ export function ApprovalPanel({
 
         {/* Error display */}
         {error && steps.length > 0 && (
-          <p className="text-center text-xs text-destructive">{error}</p>
+          <p className="text-destructive text-center text-xs">{error}</p>
         )}
       </div>
     </div>

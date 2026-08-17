@@ -19,6 +19,11 @@ interface VersionItem {
   content_length: number;
 }
 
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
 interface VersionHistoryDialogProps {
   threadId: string;
   relPath: string;
@@ -55,8 +60,8 @@ export function VersionHistoryDialog({
         label: "手动保存",
       });
       await load();
-    } catch (e: any) {
-      setError(e?.message || "保存版本失败");
+    } catch (e) {
+      setError(getErrorMessage(e, "保存版本失败"));
     } finally {
       setSaving(false);
     }
@@ -68,8 +73,8 @@ export function VersionHistoryDialog({
     try {
       const res = await docmgrApi.listPersonalVersions(threadId, relPath);
       setVersions(res.versions);
-    } catch (e: any) {
-      setError(e?.message || "加载版本失败");
+    } catch (e) {
+      setError(getErrorMessage(e, "加载版本失败"));
     } finally {
       setLoading(false);
     }
@@ -87,8 +92,8 @@ export function VersionHistoryDialog({
       const res = await docmgrApi.restorePersonalVersion(v.id);
       onRestored(res.content);
       onOpenChange(false);
-    } catch (e: any) {
-      setError(e?.message || "恢复失败");
+    } catch (e) {
+      setError(getErrorMessage(e, "恢复失败"));
     } finally {
       setRestoring(null);
     }
@@ -175,7 +180,7 @@ export function VersionHistoryDialog({
                   >
                     <div className="mb-1.5 flex items-center gap-2">
                       <span className="text-foreground truncate font-medium">
-                        {v.label || "版本"}
+                        {v.label ?? "版本"}
                       </span>
                       <span className="text-muted-foreground ml-auto shrink-0 text-xs">
                         {new Date(v.created_at).toLocaleString("zh-CN")} ·{" "}

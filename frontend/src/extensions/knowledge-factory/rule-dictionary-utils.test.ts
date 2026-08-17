@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { mergeRuleDictionaries, getDictionaryLabel } = await import("./rule-dictionary-utils");
+const { mergeRuleDictionaries, getDictionaryLabel } =
+  await import("./rule-dictionary-utils");
 
-test("mergeRuleDictionaries falls back to defaults when remote dictionaries are incomplete", () => {
+void test("mergeRuleDictionaries falls back to defaults when remote dictionaries are incomplete", () => {
   const dictionaries = mergeRuleDictionaries({
     industries: [{ value: "custom_industry", label: "自定义行业" }],
     reportTypes: [],
@@ -14,10 +15,10 @@ test("mergeRuleDictionaries falls back to defaults when remote dictionaries are 
   assert.equal(dictionaries.regions[0]?.value, "nationwide");
 });
 
-test("getDictionaryLabel falls back to raw value for unknown options", () => {
+void test("getDictionaryLabel falls back to raw value for unknown options", () => {
   assert.equal(
     getDictionaryLabel([{ value: "jilin", label: "吉林" }], "jilin"),
-    "吉林"
+    "吉林",
   );
   assert.equal(getDictionaryLabel([], "unknown"), "unknown");
 });

@@ -1,11 +1,11 @@
 const OPENAI_BASE_URL =
-  process.env.COLLAB_AI_BASE_URL || "https://api.deepseek.com/v1";
+  process.env.COLLAB_AI_BASE_URL ?? "https://api.deepseek.com/v1";
 const OPENAI_API_KEY =
-  process.env.COLLAB_AI_API_KEY ||
-  process.env.DEEPSEEK_API_KEY ||
-  process.env.ZHIPU_API_KEY ||
+  process.env.COLLAB_AI_API_KEY ??
+  process.env.DEEPSEEK_API_KEY ??
+  process.env.ZHIPU_API_KEY ??
   "";
-const MODEL_NAME = process.env.COLLAB_AI_MODEL || "deepseek-chat";
+const MODEL_NAME = process.env.COLLAB_AI_MODEL ?? "deepseek-chat";
 
 function stripHtml(html: string): string {
   return html
@@ -29,10 +29,7 @@ interface ChatMessage {
   content: string | null;
 }
 
-function toChatMessages(
-  raw: unknown[],
-  hasTools: boolean,
-): ChatMessage[] {
+function toChatMessages(raw: unknown[], hasTools: boolean): ChatMessage[] {
   const systemContent = hasTools
     ? "You are an AI writing assistant embedded in a block-based document editor.\n" +
       "You MUST use the applyDocumentOperations tool to modify the document.\n" +
@@ -54,7 +51,7 @@ function toChatMessages(
     const msg = msgs[i];
     // EAI-CUSTOM: noUncheckedIndexedAccess 下 msgs[i] 可能 undefined，跳过空槽
     if (!msg) continue;
-    let role = String(msg.role ?? "user");
+    let role = typeof msg.role === "string" ? msg.role : "user";
     if (role === "developer") role = "system";
     if (!["system", "user", "assistant"].includes(role)) role = "user";
 
@@ -64,7 +61,7 @@ function toChatMessages(
     } else if (Array.isArray(msg.parts)) {
       content = (msg.parts as Array<Record<string, unknown>>)
         .filter((p) => p.type === "text")
-        .map((p) => String(p.text ?? ""))
+        .map((p) => (typeof p.text === "string" ? p.text : ""))
         .join("\n");
     } else if (msg.content) {
       content = JSON.stringify(msg.content);
@@ -81,9 +78,10 @@ function toChatMessages(
       if (Array.isArray(blocks) && blocks.length > 0) {
         const blockInfo = blocks
           .map((b) => {
-            const html = String(b.block ?? "");
+            const html = typeof b.block === "string" ? b.block : "";
             const text = stripHtml(html);
-            return `Block ID: ${b.id}\nHTML: ${html}\nText: ${text}`;
+            const id = typeof b.id === "string" ? b.id : "";
+            return `Block ID: ${id}\nHTML: ${html}\nText: ${text}`;
           })
           .join("\n\n");
         if (blockInfo) {
@@ -193,7 +191,7 @@ function streamTextResponse(upstream: Response): Response {
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+          buffer = lines.pop() ?? "";
 
           for (const line of lines) {
             const trimmed = line.trim();
@@ -275,7 +273,7 @@ function streamToolResponse(upstream: Response): Response {
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n");
-          buffer = lines.pop() || "";
+          buffer = lines.pop() ?? "";
 
           for (const line of lines) {
             const trimmed = line.trim();

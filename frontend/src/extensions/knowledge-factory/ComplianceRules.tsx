@@ -2,21 +2,10 @@
  * 合规规则管理组件
  */
 
-import {
-  ShieldCheck,
-  RefreshCw,
-  Database,
-  AlertCircle,
-  Plus,
-  Search,
-  ChevronRight,
-  Terminal,
-} from "lucide-react";
+import { RefreshCw, Database, AlertCircle, Search } from "lucide-react";
 import React, { useState, useCallback, useEffect } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -26,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { kfApi } from "@/extensions/api";
 import {
   fetchRules,
   fetchRuleStatistics,
@@ -50,8 +40,6 @@ import {
   INDUSTRIES,
   REPORT_TYPES,
 } from "@/extensions/knowledge-factory/types";
-import { kfApi } from "@/extensions/api";
-import { cn } from "@/lib/utils";
 
 import { RuleCard } from "./RuleCard";
 import { RuleDetail } from "./RuleDetail";
@@ -90,35 +78,54 @@ export function ComplianceRules({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
-  const [selectedRules, setSelectedRules] = useState<string[]>(initialSelectedRules);
+  const [selectedRules, setSelectedRules] =
+    useState<string[]>(initialSelectedRules);
   const [showSeedManager, setShowSeedManager] = useState(false);
 
   // 日志弹窗状态
-  const [logsModalRule, setLogsModalRule] = useState<ComplianceRule | null>(null);
+  const [logsModalRule, setLogsModalRule] = useState<ComplianceRule | null>(
+    null,
+  );
   const [logs, setLogs] = useState<RuleExecutionLog[]>([]);
-  const [logStatistics, setLogStatistics] = useState<RuleExecutionStatistics | null>(null);
+  const [logStatistics, setLogStatistics] =
+    useState<RuleExecutionStatistics | null>(null);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
   // 测试弹窗状态
-  const [testModalRule, setTestModalRule] = useState<ComplianceRule | null>(null);
+  const [testModalRule, setTestModalRule] = useState<ComplianceRule | null>(
+    null,
+  );
 
   // 动态字典（从 /rule-dictionaries 加载，失败时 fallback 到 types.ts 硬编码常量）
-  const [dictIndustries, setDictIndustries] = useState<{ value: string; label: string }[]>([...INDUSTRIES]);
-  const [dictReportTypes, setDictReportTypes] = useState<{ value: string; label: string }[]>([...REPORT_TYPES]);
+  const [dictIndustries, setDictIndustries] = useState<
+    { value: string; label: string }[]
+  >([...INDUSTRIES]);
+  const [dictReportTypes, setDictReportTypes] = useState<
+    { value: string; label: string }[]
+  >([...REPORT_TYPES]);
 
   useEffect(() => {
-    kfApi.getRuleDictionaries()
+    kfApi
+      .getRuleDictionaries()
       .then((d) => {
         if (d.industries?.length) setDictIndustries(d.industries);
         if (d.report_types?.length) setDictReportTypes(d.report_types);
       })
-      .catch(() => { /* fallback to hardcoded constants already in state */ });
+      .catch(() => {
+        /* fallback to hardcoded constants already in state */
+      });
   }, []);
 
   // 统计数据
-  const [statistics, setStatistics] = useState<ComplianceRuleStatistics | null>(null);
-  const [seedStatus, setSeedStatus] = useState<ComplianceRuleStatus | null>(null);
-  const [triggerStats, setTriggerStats] = useState<TriggerStatistics | null>(null);
+  const [statistics, setStatistics] = useState<ComplianceRuleStatistics | null>(
+    null,
+  );
+  const [seedStatus, setSeedStatus] = useState<ComplianceRuleStatus | null>(
+    null,
+  );
+  const [triggerStats, setTriggerStats] = useState<TriggerStatistics | null>(
+    null,
+  );
 
   // 筛选状态
   const [filters, setFilters] = useState<RuleFilterParams>({
@@ -209,15 +216,18 @@ export function ComplianceRules({
 
   // 初始加载
   useEffect(() => {
-    loadRules();
+    void loadRules();
     if (showManagement) {
-      loadStatistics();
-      loadSeedStatus();
+      void loadStatistics();
+      void loadSeedStatus();
     }
   }, [loadRules, loadStatistics, loadSeedStatus, showManagement]);
 
   // 切换筛选条件
-  const handleFilterChange = (key: keyof RuleFilterParams, value: string | boolean | number | undefined) => {
+  const handleFilterChange = (
+    key: keyof RuleFilterParams,
+    value: string | boolean | number | undefined,
+  ) => {
     setFilters((prev) => ({
       ...prev,
       [key]: value,
@@ -235,9 +245,9 @@ export function ComplianceRules({
 
   // 刷新列表
   const handleRefresh = () => {
-    loadRules();
-    loadStatistics();
-    loadSeedStatus();
+    void loadRules();
+    void loadStatistics();
+    void loadSeedStatus();
   };
 
   // 选择规则
@@ -260,7 +270,7 @@ export function ComplianceRules({
   const handleRuleDeleted = (ruleId: string) => {
     setRules((prev) => prev.filter((r) => r.id !== ruleId));
     setSelectedRuleId(null);
-    loadStatistics();
+    void loadStatistics();
   };
 
   // 切换选中规则（选择模式）
@@ -304,10 +314,10 @@ export function ComplianceRules({
 
   // 计算是否有活跃筛选
   const hasActiveFilters = !!(
-    filters.industry ||
-    filters.reportType ||
-    filters.type ||
-    filters.severity ||
+    filters.industry ??
+    filters.reportType ??
+    filters.type ??
+    filters.severity ??
     filters.enabled !== undefined
   );
 
@@ -315,27 +325,27 @@ export function ComplianceRules({
     <div className="flex h-full flex-col">
       {/* 头部统计和操作栏 */}
       {showManagement && (
-        <div className="shrink-0 border-b border-border bg-card p-4">
+        <div className="border-border bg-card shrink-0 border-b p-4">
           <div className="flex items-center justify-between">
             {/* 统计卡片 */}
             <div className="flex gap-6">
               {statistics ? (
                 <>
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">总计</span>
-                    <span className="text-xl font-bold text-foreground font-cyber">
+                    <span className="text-muted-foreground text-xs">总计</span>
+                    <span className="text-foreground font-cyber text-xl font-bold">
                       {statistics.total}
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">启用</span>
-                    <span className="text-xl font-bold text-success font-cyber">
+                    <span className="text-muted-foreground text-xs">启用</span>
+                    <span className="text-success font-cyber text-xl font-bold">
                       {statistics.enabled}
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">禁用</span>
-                    <span className="text-xl font-bold text-muted-foreground font-cyber">
+                    <span className="text-muted-foreground text-xs">禁用</span>
+                    <span className="text-muted-foreground font-cyber text-xl font-bold">
                       {statistics.disabled}
                     </span>
                   </div>
@@ -344,7 +354,7 @@ export function ComplianceRules({
                 <div className="flex gap-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="flex flex-col">
-                      <Skeleton className="h-3 w-12 mb-1" />
+                      <Skeleton className="mb-1 h-3 w-12" />
                       <Skeleton className="h-6 w-8" />
                     </div>
                   ))}
@@ -353,14 +363,18 @@ export function ComplianceRules({
               {triggerStats && (
                 <>
                   <div className="ml-4 flex flex-col">
-                    <span className="text-xs text-muted-foreground">本月触发</span>
-                    <span className="text-xl font-bold text-primary">
+                    <span className="text-muted-foreground text-xs">
+                      本月触发
+                    </span>
+                    <span className="text-primary text-xl font-bold">
                       {triggerStats.monthTriggers.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-xs text-muted-foreground">拦截问题</span>
-                    <span className="text-xl font-bold text-destructive">
+                    <span className="text-muted-foreground text-xs">
+                      拦截问题
+                    </span>
+                    <span className="text-destructive text-xl font-bold">
                       {triggerStats.monthBlocked}
                     </span>
                   </div>
@@ -388,12 +402,15 @@ export function ComplianceRules({
       )}
 
       {/* 筛选栏 */}
-      <div className="shrink-0 border-b border-border bg-card p-4">
+      <div className="border-border bg-card shrink-0 border-b p-4">
         <div className="flex flex-wrap items-center gap-3">
           <Select
-            value={filters.industry || "all"}
+            value={filters.industry ?? "all"}
             onValueChange={(value) =>
-              handleFilterChange("industry", value === "all" ? undefined : value)
+              handleFilterChange(
+                "industry",
+                value === "all" ? undefined : value,
+              )
             }
           >
             <SelectTrigger className="w-36">
@@ -410,7 +427,7 @@ export function ComplianceRules({
           </Select>
 
           <Select
-            value={filters.type || "all"}
+            value={filters.type ?? "all"}
             onValueChange={(value) =>
               handleFilterChange("type", value === "all" ? undefined : value)
             }
@@ -429,9 +446,12 @@ export function ComplianceRules({
           </Select>
 
           <Select
-            value={filters.severity || "all"}
+            value={filters.severity ?? "all"}
             onValueChange={(value) =>
-              handleFilterChange("severity", value === "all" ? undefined : value)
+              handleFilterChange(
+                "severity",
+                value === "all" ? undefined : value,
+              )
             }
           >
             <SelectTrigger className="w-32">
@@ -448,9 +468,12 @@ export function ComplianceRules({
           </Select>
 
           <Select
-            value={filters.reportType || "all"}
+            value={filters.reportType ?? "all"}
             onValueChange={(value) =>
-              handleFilterChange("reportType", value === "all" ? undefined : value)
+              handleFilterChange(
+                "reportType",
+                value === "all" ? undefined : value,
+              )
             }
           >
             <SelectTrigger className="w-44">
@@ -471,8 +494,8 @@ export function ComplianceRules({
               filters.enabled === undefined
                 ? "all"
                 : filters.enabled
-                ? "true"
-                : "false"
+                  ? "true"
+                  : "false"
             }
             onValueChange={(value) => {
               if (value === "all") {
@@ -492,13 +515,15 @@ export function ComplianceRules({
             </SelectContent>
           </Select>
 
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative min-w-[200px] flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
               placeholder="搜索规则..."
               className="pl-10"
-              value={filters.keyword || ""}
-              onChange={(e) => handleFilterChange("keyword", e.target.value || undefined)}
+              value={filters.keyword ?? ""}
+              onChange={(e) =>
+                handleFilterChange("keyword", e.target.value || undefined)
+              }
             />
           </div>
 
@@ -508,7 +533,7 @@ export function ComplianceRules({
             </Button>
           )}
 
-          <span className="ml-auto text-sm text-muted-foreground">
+          <span className="text-muted-foreground ml-auto text-sm">
             共 {total} 条规则
           </span>
         </div>
@@ -520,17 +545,19 @@ export function ComplianceRules({
         <div className="flex-1 overflow-y-auto p-4">
           {/* 选择模式头部 */}
           {selectionMode && (
-            <div className="mb-4 flex items-center justify-between rounded-xl border border-border bg-muted p-4">
+            <div className="border-border bg-muted mb-4 flex items-center justify-between rounded-xl border p-4">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={selectedRules.length === rules.length && rules.length > 0}
+                  checked={
+                    selectedRules.length === rules.length && rules.length > 0
+                  }
                   onChange={handleSelectAll}
                   className="h-4 w-4"
                 />
                 <span className="text-sm font-medium">全选</span>
               </label>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 已选择 {selectedRules.length} 条规则
               </span>
             </div>
@@ -538,7 +565,7 @@ export function ComplianceRules({
 
           {/* 加载状态 */}
           {loading && (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <div className="text-muted-foreground flex flex-col items-center justify-center py-16">
               <RefreshCw className="mb-4 h-8 w-8 animate-spin" />
               <span>加载中...</span>
             </div>
@@ -546,7 +573,7 @@ export function ComplianceRules({
 
           {/* 错误状态 */}
           {error && (
-            <div className="flex flex-col items-center justify-center py-16 text-destructive">
+            <div className="text-destructive flex flex-col items-center justify-center py-16">
               <AlertCircle className="mb-4 h-8 w-8" />
               <span className="mb-2 text-lg font-medium">{error}</span>
               <Button variant="outline" size="sm" onClick={loadRules}>
@@ -557,7 +584,7 @@ export function ComplianceRules({
 
           {/* 空状态 */}
           {!loading && !error && rules.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+            <div className="text-muted-foreground flex flex-col items-center justify-center py-16">
               <span className="mb-4 text-4xl">📋</span>
               <span className="mb-2 text-lg">
                 {hasActiveFilters ? "没有符合条件的规则" : "暂无规则"}
@@ -591,8 +618,12 @@ export function ComplianceRules({
                         }
                       : undefined
                   }
-                  onViewLogs={showManagement ? () => handleViewLogs(rule) : undefined}
-                  onTestRule={showManagement ? () => handleTestRule(rule) : undefined}
+                  onViewLogs={
+                    showManagement ? () => handleViewLogs(rule) : undefined
+                  }
+                  onTestRule={
+                    showManagement ? () => handleTestRule(rule) : undefined
+                  }
                 />
               ))}
             </div>
@@ -609,7 +640,7 @@ export function ComplianceRules({
               >
                 上一页
               </Button>
-              <span className="text-sm text-muted-foreground">
+              <span className="text-muted-foreground text-sm">
                 第 {page} / {Math.ceil(total / limit)} 页
               </span>
               <Button
@@ -654,7 +685,7 @@ export function ComplianceRules({
       {logsModalRule && (
         <RuleLogsViewer
           logs={logs}
-          statistics={logStatistics || undefined}
+          statistics={logStatistics ?? undefined}
           loading={loadingLogs}
           onClose={handleCloseLogs}
         />

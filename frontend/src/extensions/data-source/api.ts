@@ -30,7 +30,9 @@ function transformDataSource(data: Record<string, unknown>): DataSource {
 
 export const dataSourceApi = {
   list: async (): Promise<DataSource[]> => {
-    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}`);
+    const data = await authFetch<{ items: Record<string, unknown>[] }>(
+      `${API_BASE}`,
+    );
     return data.items.map(transformDataSource);
   },
 
@@ -44,7 +46,7 @@ export const dataSourceApi = {
       method: "POST",
       body: JSON.stringify({
         name: req.name,
-        description: req.description || undefined,
+        description: req.description !== "" ? req.description : undefined,
         type: req.type,
         connection_config: req.connectionConfig,
         auth_type: req.authType,
@@ -55,12 +57,15 @@ export const dataSourceApi = {
     return dataSourceApi.get(data.id as string);
   },
 
-  update: async (id: string, req: Partial<CreateDataSourceRequest>): Promise<DataSource> => {
+  update: async (
+    id: string,
+    req: Partial<CreateDataSourceRequest>,
+  ): Promise<DataSource> => {
     await authFetch(`${API_BASE}/${id}`, {
       method: "PATCH",
       body: JSON.stringify({
         name: req.name,
-        description: req.description || undefined,
+        description: req.description !== "" ? req.description : undefined,
         type: req.type,
         connection_config: req.connectionConfig,
         auth_type: req.authType,
@@ -76,9 +81,12 @@ export const dataSourceApi = {
   },
 
   testConnection: async (id: string): Promise<TestConnectionResult> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/${id}/test`, {
-      method: "POST",
-    });
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/${id}/test`,
+      {
+        method: "POST",
+      },
+    );
     return {
       success: data.success as boolean,
       message: data.message as string,
@@ -107,35 +115,49 @@ function transformDataset(data: Record<string, unknown>): DataSourceDataset {
 
 export const datasetApi = {
   list: async (sourceId: string): Promise<DataSourceDataset[]> => {
-    const data = await authFetch<{ items: Record<string, unknown>[] }>(`${API_BASE}/${sourceId}/datasets`);
+    const data = await authFetch<{ items: Record<string, unknown>[] }>(
+      `${API_BASE}/${sourceId}/datasets`,
+    );
     return data.items.map(transformDataset);
   },
 
-  create: async (sourceId: string, req: DatasetCreateRequest): Promise<DataSourceDataset> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/${sourceId}/datasets`, {
-      method: "POST",
-      body: JSON.stringify({
-        table_name: req.tableName,
-        label: req.label,
-        description: req.description,
-        key_columns: req.keyColumns,
-        default_query: req.defaultQuery,
-      }),
-    });
+  create: async (
+    sourceId: string,
+    req: DatasetCreateRequest,
+  ): Promise<DataSourceDataset> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/${sourceId}/datasets`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          table_name: req.tableName,
+          label: req.label,
+          description: req.description,
+          key_columns: req.keyColumns,
+          default_query: req.defaultQuery,
+        }),
+      },
+    );
     return transformDataset(data);
   },
 
-  update: async (datasetId: string, req: Partial<DatasetCreateRequest>): Promise<DataSourceDataset> => {
-    const data = await authFetch<Record<string, unknown>>(`${API_BASE}/datasets/${datasetId}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        table_name: req.tableName,
-        label: req.label,
-        description: req.description,
-        key_columns: req.keyColumns,
-        default_query: req.defaultQuery,
-      }),
-    });
+  update: async (
+    datasetId: string,
+    req: Partial<DatasetCreateRequest>,
+  ): Promise<DataSourceDataset> => {
+    const data = await authFetch<Record<string, unknown>>(
+      `${API_BASE}/datasets/${datasetId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          table_name: req.tableName,
+          label: req.label,
+          description: req.description,
+          key_columns: req.keyColumns,
+          default_query: req.defaultQuery,
+        }),
+      },
+    );
     return transformDataset(data);
   },
 

@@ -9,9 +9,6 @@ import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import { BrowserTrigger } from "@/components/workspace/browser-view";
-import { ChatBox } from "./chat-box";
-import { useSpecificChatMode } from "./use-chat-mode";
-import { useThreadChat } from "./use-thread-chat";
 import { ContextUsageBadge } from "@/components/workspace/context-usage-badge";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { GoalStatus } from "@/components/workspace/goal-status";
@@ -59,6 +56,10 @@ import {
 import { textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
+
+import { ChatBox } from "./chat-box";
+import { useSpecificChatMode } from "./use-chat-mode";
+import { useThreadChat } from "./use-thread-chat";
 
 export default function ChatPage() {
   const { t } = useI18n();

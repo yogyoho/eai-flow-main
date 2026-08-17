@@ -1,6 +1,6 @@
 "use client";
 
-import { Factory, LayoutDashboard } from "lucide-react";
+import { Factory } from "lucide-react";
 import React, { useState } from "react";
 
 import {
@@ -17,7 +17,6 @@ import {
 } from "@/extensions/knowledge-factory/index";
 import type { TabId } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
-
 
 export default function KnowledgeFactoryPage() {
   const [activeTab, setActiveTab] = useState<TabId>("reports");
@@ -49,19 +48,19 @@ export default function KnowledgeFactoryPage() {
   };
 
   return (
-    <div className="flex h-full bg-background overflow-hidden">
+    <div className="bg-background flex h-full overflow-hidden">
       {/* Sidebar */}
       <div
         className={cn(
-          "flex flex-col shrink-0 transition-all duration-300",
-          sidebarCollapsed ? "w-[72px]" : "w-[240px]"
+          "flex shrink-0 flex-col transition-all duration-300",
+          sidebarCollapsed ? "w-[72px]" : "w-[240px]",
         )}
       >
-        <div className="p-4 flex items-center gap-2 border-b border-border">
-          <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 shrink-0">
-            <Factory className="w-4 h-4" />
+        <div className="border-border flex items-center gap-2 border-b p-4">
+          <div className="shrink-0 rounded-sm border border-amber-200 bg-amber-50 p-1 text-amber-600">
+            <Factory className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-foreground text-l">知识工厂</span>
+          <span className="text-foreground text-l font-semibold">知识工厂</span>
         </div>
         <TabNavigation
           activeTab={activeTab}

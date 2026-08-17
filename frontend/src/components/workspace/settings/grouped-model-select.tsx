@@ -77,7 +77,6 @@ export function GroupedModelSelect({
   const currentStatus = value ? modelStatuses[value] : undefined;
   const isValidating = value && validatingModels?.has(value);
   const statusIcon = getStatusIcon(currentStatus?.status);
-  const statusColor = getStatusColor(currentStatus?.status);
   const statusBgColor = getStatusBgColor(currentStatus?.status);
 
   const [selectOpen, setSelectOpen] = React.useState(false);
@@ -110,7 +109,7 @@ export function GroupedModelSelect({
       onOpenChange={handleOpenChange}
     >
       <SelectTrigger className={cn("w-full", statusBgColor)}>
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <SelectValue placeholder={placeholder}>
             {currentModel?.display_name ?? currentModel?.name ?? value}
           </SelectValue>
@@ -118,13 +117,16 @@ export function GroupedModelSelect({
         {showValidateArea && (
           <div
             className={cn(
-              "flex items-center justify-center p-1 rounded transition-colors cursor-pointer select-none",
-              "hover:bg-accent/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "flex cursor-pointer items-center justify-center rounded p-1 transition-colors select-none",
+              "hover:bg-accent/80 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
               isValidating && "animate-spin",
-              currentStatus?.status === "available" && "text-green-500 hover:text-green-600",
-              currentStatus?.status === "unavailable" && "text-red-500 hover:text-red-600",
-              currentStatus?.status === "error" && "text-yellow-500 hover:text-yellow-600",
-              !currentStatus?.status && "text-muted-foreground"
+              currentStatus?.status === "available" &&
+                "text-green-500 hover:text-green-600",
+              currentStatus?.status === "unavailable" &&
+                "text-red-500 hover:text-red-600",
+              currentStatus?.status === "error" &&
+                "text-yellow-500 hover:text-yellow-600",
+              !currentStatus?.status && "text-muted-foreground",
             )}
             onClick={handleValidateClick}
             onPointerDown={(e) => e.stopPropagation()}
@@ -135,7 +137,7 @@ export function GroupedModelSelect({
             ) : statusIcon ? (
               <span className="text-sm font-bold">{statusIcon}</span>
             ) : (
-              <span className="text-xs px-1">验证</span>
+              <span className="px-1 text-xs">验证</span>
             )}
           </div>
         )}
@@ -150,7 +152,7 @@ export function GroupedModelSelect({
               const itemStatusColor = getStatusColor(status?.status);
               return (
                 <SelectItem key={model.name} value={model.name}>
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
                     <span className="truncate">{model.display_name}</span>
                     {itemStatusIcon && (
                       <span

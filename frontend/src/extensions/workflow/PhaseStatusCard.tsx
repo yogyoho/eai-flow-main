@@ -29,23 +29,23 @@ const NODE_TYPE_COLORS: Record<string, string> = {
 };
 
 export function PhaseStatusCard({ node }: PhaseStatusCardProps) {
-  const style = STATUS_STYLES[node.status] || STATUS_STYLES.pending;
-  const icon = STATUS_ICONS[node.status] || "○";
-  const typeColor = NODE_TYPE_COLORS[node.nodeType] || "text-foreground";
+  const style = STATUS_STYLES[node.status] ?? STATUS_STYLES.pending;
+  const icon = STATUS_ICONS[node.status] ?? "○";
+  const typeColor = NODE_TYPE_COLORS[node.nodeType] ?? "text-foreground";
 
   return (
-    <div className={`border rounded-lg p-3 ${style}`}>
+    <div className={`rounded-lg border p-3 ${style}`}>
       <div className="flex items-center gap-2">
         <span className="text-lg">{icon}</span>
-        <div className="flex-1 min-w-0">
-          <div className={`text-sm font-medium truncate ${typeColor}`}>
+        <div className="min-w-0 flex-1">
+          <div className={`truncate text-sm font-medium ${typeColor}`}>
             {node.label}
           </div>
-          <div className="text-[10px] text-muted-foreground">
+          <div className="text-muted-foreground text-[10px]">
             {node.nodeType} · {node.nodeId}
           </div>
         </div>
-        <span className="text-[10px] uppercase font-medium text-muted-foreground">
+        <span className="text-muted-foreground text-[10px] font-medium uppercase">
           {node.status}
         </span>
       </div>

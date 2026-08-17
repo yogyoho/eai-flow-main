@@ -34,17 +34,25 @@ const TYPE_BADGE_COLORS: Record<string, string> = {
 export function SourceFootnote({ sources }: SourceFootnoteProps) {
   if (sources.length === 0) return null;
   return (
-    <div className="border-t pt-3 mt-3 space-y-2">
-      <div className="text-xs font-semibold text-muted-foreground">溯源标注</div>
+    <div className="mt-3 space-y-2 border-t pt-3">
+      <div className="text-muted-foreground text-xs font-semibold">
+        溯源标注
+      </div>
       {sources.map((source, idx) => (
-        <div key={source.id} className="flex gap-2 items-baseline text-xs">
+        <div key={source.id} className="flex items-baseline gap-2 text-xs">
           <span className="font-bold text-amber-600">[{idx + 1}]</span>
-          <span className={`px-1.5 py-0.5 rounded text-[10px] ${TYPE_BADGE_COLORS[source.sourceType] || "bg-gray-100"}`}>
-            {TYPE_LABELS[source.sourceType] || source.sourceType}
+          <span
+            className={`rounded px-1.5 py-0.5 text-[10px] ${TYPE_BADGE_COLORS[source.sourceType] ?? "bg-gray-100"}`}
+          >
+            {TYPE_LABELS[source.sourceType] ?? source.sourceType}
           </span>
-          <span className="text-muted-foreground flex-1 truncate">{source.sourceRef}</span>
+          <span className="text-muted-foreground flex-1 truncate">
+            {source.sourceRef}
+          </span>
           {source.confidence !== null && (
-            <span className="text-[10px] text-muted-foreground">{(source.confidence * 100).toFixed(0)}%</span>
+            <span className="text-muted-foreground text-[10px]">
+              {(source.confidence * 100).toFixed(0)}%
+            </span>
           )}
         </div>
       ))}

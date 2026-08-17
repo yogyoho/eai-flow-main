@@ -27,14 +27,24 @@ import {
   Eye,
   Database,
   Settings2,
-  Sparkles,
 } from "lucide-react";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
 import { kfApi } from "@/extensions/api";
-import type { EditorSection, EditorTemplate, TemplateVersionResponse, ExtractionDomain } from "@/extensions/knowledge-factory/types";
+import type {
+  EditorSection,
+  EditorTemplate,
+  TemplateVersionResponse,
+  ExtractionDomain,
+} from "@/extensions/knowledge-factory/types";
 import type { RAGSourceConfig } from "@/extensions/knowledge-factory/types";
 import { RETRIEVAL_STRATEGIES } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
@@ -66,16 +76,18 @@ function TemplateSelector({
     <div className="relative">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center gap-2 px-3 py-1.5 bg-secondary hover:bg-accent rounded-lg transition-colors text-sm"
+        className="bg-secondary hover:bg-accent flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors"
       >
-        <FileText className="w-4 h-4 text-muted-foreground" />
-        <span className="font-medium text-foreground max-w-[200px] truncate">
-          {selected?.name || "选择模板"}
+        <FileText className="text-muted-foreground h-4 w-4" />
+        <span className="text-foreground max-w-[200px] truncate font-medium">
+          {selected?.name ?? "选择模板"}
         </span>
         {selected && (
-          <span className="text-xs text-muted-foreground">{selected.version}</span>
+          <span className="text-muted-foreground text-xs">
+            {selected.version}
+          </span>
         )}
-        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        <ChevronDown className="text-muted-foreground h-4 w-4" />
       </button>
 
       {showDropdown && (
@@ -84,9 +96,9 @@ function TemplateSelector({
             className="fixed inset-0 z-10"
             onClick={() => setShowDropdown(false)}
           />
-          <div className="absolute top-full left-0 mt-2 w-72 bg-background rounded-xl border border-border shadow-lg z-20 overflow-hidden">
-            <div className="p-3 border-b border-border flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <div className="bg-background border-border absolute top-full left-0 z-20 mt-2 w-72 overflow-hidden rounded-xl border shadow-lg">
+            <div className="border-border flex items-center justify-between border-b p-3">
+              <span className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                 选择模板
               </span>
               <button
@@ -94,17 +106,20 @@ function TemplateSelector({
                   e.stopPropagation();
                   onRefresh();
                 }}
-                className="p-1 hover:bg-accent rounded transition-colors"
+                className="hover:bg-accent rounded p-1 transition-colors"
                 disabled={loading}
               >
                 <RefreshCw
-                  className={cn("w-3.5 h-3.5 text-muted-foreground", loading && "animate-spin")}
+                  className={cn(
+                    "text-muted-foreground h-3.5 w-3.5",
+                    loading && "animate-spin",
+                  )}
                 />
               </button>
             </div>
             <div className="max-h-64 overflow-y-auto">
               {templates.length === 0 ? (
-                <div className="p-4 text-center text-sm text-muted-foreground">
+                <div className="text-muted-foreground p-4 text-center text-sm">
                   暂无可用模板
                 </div>
               ) : (
@@ -116,39 +131,39 @@ function TemplateSelector({
                       setShowDropdown(false);
                     }}
                     className={cn(
-                      "w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b border-border last:border-0",
-                      selectedId === template.id && "bg-accent"
+                      "hover:bg-accent border-border w-full border-b px-4 py-3 text-left transition-colors last:border-0",
+                      selectedId === template.id && "bg-accent",
                     )}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm text-foreground">
+                      <span className="text-foreground text-sm font-medium">
                         {template.name}
                       </span>
                       {selectedId === template.id && (
-                        <Check className="w-4 h-4 text-primary" />
+                        <Check className="text-primary h-4 w-4" />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-muted-foreground">
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-muted-foreground text-xs">
                         {template.version}
                       </span>
                       <span
                         className={cn(
-                          "text-xs px-1.5 py-0.5 rounded-full",
+                          "rounded-full px-1.5 py-0.5 text-xs",
                           template.status === "published"
                             ? "bg-emerald-500/10 text-emerald-500"
                             : template.status === "draft"
-                            ? "bg-amber-500/10 text-amber-500"
-                            : "bg-muted text-muted-foreground"
+                              ? "bg-amber-500/10 text-amber-500"
+                              : "bg-muted text-muted-foreground",
                         )}
                       >
                         {template.status === "published"
                           ? "已发布"
                           : template.status === "draft"
-                          ? "草稿"
-                          : "已废弃"}
+                            ? "草稿"
+                            : "已废弃"}
                       </span>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-muted-foreground text-xs">
                         {template.completenessScore}% 完整
                       </span>
                     </div>
@@ -196,10 +211,10 @@ function SectionTree({
       <div key={section.id}>
         <div
           className={cn(
-            "group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-colors text-sm",
+            "group flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-sm transition-colors",
             isSelected
               ? "bg-primary/10 text-primary font-medium"
-              : "hover:bg-accent text-foreground"
+              : "hover:bg-accent text-foreground",
           )}
           style={{ marginLeft: depth * 16 }}
           onClick={() => onSelect(section.id)}
@@ -209,13 +224,13 @@ function SectionTree({
               e.stopPropagation();
               if (hasChildren) onToggleExpand(section.id);
             }}
-            className="p-0.5 hover:bg-accent rounded transition-colors"
+            className="hover:bg-accent rounded p-0.5 transition-colors"
           >
             {hasChildren ? (
               isExpanded ? (
-                <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                <ChevronDown className="text-muted-foreground h-4 w-4" />
               ) : (
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                <ChevronRight className="text-muted-foreground h-4 w-4" />
               )
             ) : (
               <div className="w-4" />
@@ -226,32 +241,32 @@ function SectionTree({
             <span className="text-[10px] text-red-500">必</span>
           )}
           {canDelete && (
-            <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity">
+            <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onAdd(section.id, section.level + 1);
                 }}
-                className="p-1 hover:bg-accent rounded transition-colors"
+                className="hover:bg-accent rounded p-1 transition-colors"
                 title="添加子章节"
               >
-                <Plus className="w-3 h-3 text-primary" />
+                <Plus className="text-primary h-3 w-3" />
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete(section.id);
                 }}
-                className="p-1 hover:bg-red-500/10 rounded transition-colors"
+                className="rounded p-1 transition-colors hover:bg-red-500/10"
                 title="删除章节"
               >
-                <Trash2 className="w-3 h-3 text-red-500" />
+                <Trash2 className="h-3 w-3 text-red-500" />
               </button>
             </div>
           )}
         </div>
         {hasChildren && isExpanded && (
-          <div className="border-l border-border ml-2 mt-1">
+          <div className="border-border mt-1 ml-2 border-l">
             {section.children!.map((child) => renderSection(child, depth + 1))}
           </div>
         )}
@@ -262,7 +277,7 @@ function SectionTree({
   return (
     <div className="space-y-1">
       {sections.length === 0 ? (
-        <div className="text-center py-8 text-sm text-muted-foreground">
+        <div className="text-muted-foreground py-8 text-center text-sm">
           暂无章节
         </div>
       ) : (
@@ -287,7 +302,11 @@ interface KnowledgeBaseItem {
   ragflow_dataset_id?: string;
 }
 
-function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelectorProps) {
+function RAGSourceSelector({
+  selected,
+  onUpdate,
+  isReadOnly,
+}: RAGSourceSelectorProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBaseItem[]>([]);
@@ -296,7 +315,8 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
 
   useEffect(() => {
     setLoadingKbs(true);
-    kfApi.listKnowledgeBases({ limit: 200 })
+    kfApi
+      .listKnowledgeBases({ limit: 200 })
       .then((res) => {
         setKnowledgeBases(
           (res.knowledge_bases || []).map((kb) => ({
@@ -304,20 +324,26 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
             name: kb.name,
             description: kb.description,
             ragflow_dataset_id: kb.ragflow_dataset_id,
-          }))
+          })),
         );
       })
-      .catch(() => {})
+      .catch(() => {
+        // intentional no-op: KB list load failure keeps previous list
+      })
       .finally(() => setLoadingKbs(false));
   }, []);
 
-  const selectedKbIds = new Set(selected.filter((s) => s.kb_id).map((s) => s.kb_id));
+  const selectedKbIds = new Set(
+    selected.filter((s) => s.kb_id).map((s) => s.kb_id),
+  );
 
   const filteredKbs = knowledgeBases.filter(
     (kb) =>
       !selectedKbIds.has(kb.id) &&
       (kb.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (kb.description ?? "").toLowerCase().includes(searchQuery.toLowerCase()))
+        (kb.description ?? "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase())),
   );
 
   const handleAddKb = (kb: KnowledgeBaseItem) => {
@@ -341,19 +367,33 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
     onUpdate(selected.filter((_, i) => i !== index));
   };
 
-  const handleUpdateSource = (index: number, changes: Partial<RAGSourceConfig>) => {
+  const handleUpdateSource = (
+    index: number,
+    changes: Partial<RAGSourceConfig>,
+  ) => {
     onUpdate(selected.map((s, i) => (i === index ? { ...s, ...changes } : s)));
   };
 
   const strategyBadge = (strategy: string) => {
     const labels: Record<string, { text: string; cls: string }> = {
-      semantic: { text: "语义", cls: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
-      keyword: { text: "关键词", cls: "bg-purple-500/10 text-purple-500 border-purple-500/20" },
-      hybrid: { text: "混合", cls: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+      semantic: {
+        text: "语义",
+        cls: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+      },
+      keyword: {
+        text: "关键词",
+        cls: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+      },
+      hybrid: {
+        text: "混合",
+        cls: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+      },
     };
     const badge = labels[strategy] ?? labels.hybrid!;
     return (
-      <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${badge.cls}`}>
+      <span
+        className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${badge.cls}`}
+      >
         {badge.text}
       </span>
     );
@@ -365,19 +405,25 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
         {selected.map((source, index) => {
           const isLegacy = !source.kb_id;
           return (
-            <div key={`${source.kb_id || source.kb_name}-${index}`} className="relative group">
+            <div
+              key={`${source.kb_id || source.kb_name}-${index}`}
+              className="group relative"
+            >
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer ${
+                className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
                   isLegacy
-                    ? "bg-muted/50 text-muted-foreground border border-dashed border-border"
-                    : "bg-amber-500/10 text-amber-500 dark:bg-amber-500/20 border border-amber-500/20 dark:border-amber-500/30"
+                    ? "bg-muted/50 text-muted-foreground border-border border border-dashed"
+                    : "border border-amber-500/20 bg-amber-500/10 text-amber-500 dark:border-amber-500/30 dark:bg-amber-500/20"
                 }`}
-                onClick={() => !isReadOnly && setEditingIndex(editingIndex === index ? null : index)}
+                onClick={() =>
+                  !isReadOnly &&
+                  setEditingIndex(editingIndex === index ? null : index)
+                }
               >
                 {isLegacy ? (
-                  <AlertCircle className="w-3 h-3 text-muted-foreground" />
+                  <AlertCircle className="text-muted-foreground h-3 w-3" />
                 ) : (
-                  <Database className="w-3 h-3" />
+                  <Database className="h-3 w-3" />
                 )}
                 {source.kb_name}
                 {strategyBadge(source.retrieval_strategy)}
@@ -387,59 +433,77 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
                       e.stopPropagation();
                       handleRemove(index);
                     }}
-                    className="hover:text-red-500 transition-colors ml-0.5"
+                    className="ml-0.5 transition-colors hover:text-red-500"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="h-3 w-3" />
                   </button>
                 )}
               </span>
 
               {/* Inline edit popover */}
               {editingIndex === index && !isReadOnly && (
-                <div className="absolute top-full left-0 mt-1 w-64 bg-background rounded-xl border border-border shadow-lg z-30 p-3 space-y-3">
-                  <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Settings2 className="w-3 h-3" /> 检索参数
+                <div className="bg-background border-border absolute top-full left-0 z-30 mt-1 w-64 space-y-3 rounded-xl border p-3 shadow-lg">
+                  <div className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
+                    <Settings2 className="h-3 w-3" /> 检索参数
                   </div>
                   <div className="space-y-2">
-                    <label className="text-xs text-foreground">检索策略</label>
+                    <label className="text-foreground text-xs">检索策略</label>
                     <select
                       value={source.retrieval_strategy}
-                      onChange={(e) => handleUpdateSource(index, { retrieval_strategy: e.target.value as RAGSourceConfig["retrieval_strategy"] })}
-                      className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                      onChange={(e) =>
+                        handleUpdateSource(index, {
+                          retrieval_strategy: e.target
+                            .value as RAGSourceConfig["retrieval_strategy"],
+                        })
+                      }
+                      className="bg-background border-border focus:border-primary w-full rounded-lg border px-2 py-1.5 text-xs focus:outline-none"
                     >
                       {RETRIEVAL_STRATEGIES.map((s) => (
-                        <option key={s.value} value={s.value}>{s.label} — {s.description}</option>
+                        <option key={s.value} value={s.value}>
+                          {s.label} — {s.description}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-foreground">Top K</label>
+                      <label className="text-foreground text-xs">Top K</label>
                       <input
                         type="number"
                         value={source.top_k}
-                        onChange={(e) => handleUpdateSource(index, { top_k: parseInt(e.target.value) || 5 })}
+                        onChange={(e) =>
+                          handleUpdateSource(index, {
+                            top_k: parseInt(e.target.value) || 5,
+                          })
+                        }
                         min={1}
                         max={50}
-                        className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                        className="bg-background border-border focus:border-primary w-full rounded-lg border px-2 py-1.5 text-xs focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-foreground">相似度阈值</label>
+                      <label className="text-foreground text-xs">
+                        相似度阈值
+                      </label>
                       <input
                         type="number"
                         value={source.similarity_threshold}
-                        onChange={(e) => handleUpdateSource(index, { similarity_threshold: parseFloat(e.target.value) || 0.2 })}
+                        onChange={(e) =>
+                          handleUpdateSource(index, {
+                            similarity_threshold:
+                              parseFloat(e.target.value) || 0.2,
+                          })
+                        }
                         min={0}
                         max={1}
                         step={0.05}
-                        className="w-full px-2 py-1.5 text-xs bg-background border border-border rounded-lg focus:outline-none focus:border-primary"
+                        className="bg-background border-border focus:border-primary w-full rounded-lg border px-2 py-1.5 text-xs focus:outline-none"
                       />
                     </div>
                   </div>
                   <button
                     onClick={() => setEditingIndex(null)}
-                    className="w-full text-xs text-primary hover:underline"
+                    className="text-primary w-full text-xs hover:underline"
                   >
                     关闭
                   </button>
@@ -447,8 +511,8 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
               )}
 
               {isLegacy && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center">
-                  <AlertCircle className="w-2 h-2 text-white" />
+                <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-amber-500">
+                  <AlertCircle className="h-2 w-2 text-white" />
                 </span>
               )}
             </div>
@@ -459,55 +523,69 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="w-8 h-8 rounded-full border border-dashed border-amber-500/40 flex items-center justify-center text-amber-500 hover:bg-amber-500/10 transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-amber-500/40 text-amber-500 transition-colors hover:bg-amber-500/10"
               title="关联知识库"
             >
-              {loadingKbs ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {loadingKbs ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
             </button>
 
             {showDropdown && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowDropdown(false)} />
-                <div className="absolute top-full left-0 mt-2 w-80 bg-background rounded-xl border border-border shadow-lg z-20 overflow-hidden">
-                  <div className="p-3 border-b border-border">
+                <div
+                  className="fixed inset-0 z-10"
+                  onClick={() => setShowDropdown(false)}
+                />
+                <div className="bg-background border-border absolute top-full left-0 z-20 mt-2 w-80 overflow-hidden rounded-xl border shadow-lg">
+                  <div className="border-border border-b p-3">
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="搜索知识库..."
-                      className="w-full px-3 py-2 text-sm bg-muted border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                      className="bg-muted border-border focus:ring-primary/30 focus:border-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                       autoFocus
                     />
                   </div>
                   <div className="max-h-56 overflow-y-auto">
                     {knowledgeBases.length === 0 && loadingKbs ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin inline mr-2" />加载中...
+                      <div className="text-muted-foreground p-4 text-center text-sm">
+                        <Loader2 className="mr-2 inline h-4 w-4 animate-spin" />
+                        加载中...
                       </div>
                     ) : filteredKbs.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-muted-foreground">
-                        {knowledgeBases.length === 0 ? "暂无知识库，请先创建知识库并上传文档" : "没有匹配的知识库"}
+                      <div className="text-muted-foreground p-4 text-center text-sm">
+                        {knowledgeBases.length === 0
+                          ? "暂无知识库，请先创建知识库并上传文档"
+                          : "没有匹配的知识库"}
                       </div>
                     ) : (
                       filteredKbs.map((kb) => (
                         <button
                           key={kb.id}
                           onClick={() => handleAddKb(kb)}
-                          className="w-full text-left px-4 py-3 hover:bg-accent transition-colors border-b border-border last:border-0"
+                          className="hover:bg-accent border-border w-full border-b px-4 py-3 text-left transition-colors last:border-0"
                         >
-                          <div className="font-medium text-sm text-foreground flex items-center gap-2">
-                            <Database className="w-3.5 h-3.5 text-amber-500" />
+                          <div className="text-foreground flex items-center gap-2 text-sm font-medium">
+                            <Database className="h-3.5 w-3.5 text-amber-500" />
                             {kb.name}
                           </div>
                           {kb.description && (
-                            <div className="text-xs text-muted-foreground mt-0.5 ml-5.5">
+                            <div className="text-muted-foreground mt-0.5 ml-5.5 text-xs">
                               {kb.description}
                             </div>
                           )}
                           {kb.ragflow_dataset_id ? (
-                            <div className="text-[10px] text-emerald-500 mt-0.5 ml-5.5">已连接 RAGFlow</div>
+                            <div className="mt-0.5 ml-5.5 text-[10px] text-emerald-500">
+                              已连接 RAGFlow
+                            </div>
                           ) : (
-                            <div className="text-[10px] text-muted-foreground mt-0.5 ml-5.5">未连接 RAGFlow</div>
+                            <div className="text-muted-foreground mt-0.5 ml-5.5 text-[10px]">
+                              未连接 RAGFlow
+                            </div>
                           )}
                         </button>
                       ))
@@ -521,56 +599,10 @@ function RAGSourceSelector({ selected, onUpdate, isReadOnly }: RAGSourceSelector
       </div>
 
       {selected.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          提示：关联知识库后，AI 生成内容时会从这些知识库检索相关参考资料。点击已关联的知识库可调整检索参数。
+        <p className="text-muted-foreground text-xs">
+          提示：关联知识库后，AI
+          生成内容时会从这些知识库检索相关参考资料。点击已关联的知识库可调整检索参数。
         </p>
-      )}
-    </div>
-  );
-}
-
-// ============== Compliance Rule Templates ==============
-
-interface ComplianceRuleTemplatesProps {
-  onSelect: (rule: string) => void;
-}
-
-const COMPLIANCE_RULE_TEMPLATES = [
-  { id: "env-law-7", name: "《建设项目环境保护管理条例》第七条", rule: "需引用《建设项目环境保护管理条例》第七条关于环境影响评价的规定" },
-  { id: "soil-law-87", name: "《土壤污染防治法》第八十七条", rule: "需符合《土壤污染防治法》第八十七条关于土壤污染风险管控的规定" },
-  { id: "air-law-40", name: "《大气污染防治法》第四十条", rule: "需符合《大气污染防治法》第四十条关于挥发性有机物控制的要求" },
-  { id: "EIA-guideline", name: "环评编制技术导则", rule: "应符合《建设项目环境影响评价技术导则》的相关要求" },
-  { id: "emission-standard", name: "排放标准符合性", rule: "排放浓度和排放量需满足相应行业污染物排放标准的要求" },
-];
-
-function ComplianceRuleTemplates({ onSelect }: ComplianceRuleTemplatesProps) {
-  const [showTemplates, setShowTemplates] = useState(false);
-
-  return (
-    <div>
-      <button
-        onClick={() => setShowTemplates(!showTemplates)}
-        className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors"
-      >
-        从模板选择...
-      </button>
-
-      {showTemplates && (
-        <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border max-h-48 overflow-y-auto">
-          {COMPLIANCE_RULE_TEMPLATES.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => {
-                onSelect(template.rule);
-                setShowTemplates(false);
-              }}
-              className="w-full text-left p-2 hover:bg-accent rounded transition-colors mb-1 last:mb-0"
-            >
-              <div className="text-xs font-medium text-foreground">{template.name}</div>
-              <div className="text-xs text-primary mt-0.5">{template.rule}</div>
-            </button>
-          ))}
-        </div>
       )}
     </div>
   );
@@ -593,7 +625,8 @@ function VersionHistoryModal({
 }: VersionHistoryModalProps) {
   const [versions, setVersions] = useState<TemplateVersionResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedVersion, setSelectedVersion] = useState<TemplateVersionResponse | null>(null);
+  const [selectedVersion, setSelectedVersion] =
+    useState<TemplateVersionResponse | null>(null);
 
   useEffect(() => {
     const fetchVersions = async () => {
@@ -609,7 +642,7 @@ function VersionHistoryModal({
         setLoading(false);
       }
     };
-    fetchVersions();
+    void fetchVersions();
   }, [templateId]);
 
   const formatDate = (dateString: string) => {
@@ -625,31 +658,33 @@ function VersionHistoryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[80vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <div className="bg-background relative mx-4 flex max-h-[80vh] w-full max-w-3xl flex-col rounded-2xl shadow-2xl">
+        <div className="border-border flex items-center justify-between border-b px-6 py-4">
           <div className="flex items-center gap-3">
-            <History className="w-5 h-5 text-primary" />
+            <History className="text-primary h-5 w-5" />
             <div>
-              <h2 className="text-lg font-medium text-foreground">版本历史</h2>
-              <p className="text-sm text-muted-foreground">{templateName}</p>
+              <h2 className="text-foreground text-lg font-medium">版本历史</h2>
+              <p className="text-muted-foreground text-sm">{templateName}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg p-2 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-hidden flex">
-          <div className="w-64 border-r border-border overflow-y-auto p-4 shrink-0">
+        <div className="flex flex-1 overflow-hidden">
+          <div className="border-border w-64 shrink-0 overflow-y-auto border-r p-4">
             {loading ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <Loader2 className="text-primary h-6 w-6 animate-spin" />
               </div>
             ) : versions.length === 0 ? (
-              <div className="text-center py-8 text-sm text-muted-foreground">暂无版本历史</div>
+              <div className="text-muted-foreground py-8 text-center text-sm">
+                暂无版本历史
+              </div>
             ) : (
               <div className="space-y-2">
                 {versions.map((version) => (
@@ -657,24 +692,28 @@ function VersionHistoryModal({
                     key={version.id}
                     onClick={() => setSelectedVersion(version)}
                     className={cn(
-                      "w-full text-left p-3 rounded-lg border transition-all",
+                      "w-full rounded-lg border p-3 text-left transition-all",
                       selectedVersion?.id === version.id
                         ? "bg-primary/5 border-primary/20"
-                        : "bg-card border-border hover:border-primary/30"
+                        : "bg-card border-border hover:border-primary/30",
                     )}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-foreground">{version.version}</span>
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-foreground font-medium">
+                        {version.version}
+                      </span>
                       {version.version === currentVersion && (
-                        <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded">
+                        <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5 text-xs">
                           当前
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">{formatDate(version.published_at)}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {formatDate(version.published_at)}
+                    </div>
                     {version.published_by && (
-                      <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                        <User className="w-3 h-3" />
+                      <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
+                        <User className="h-3 w-3" />
                         {version.published_by}
                       </div>
                     )}
@@ -688,26 +727,32 @@ function VersionHistoryModal({
             {selectedVersion ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-foreground">
+                  <h3 className="text-foreground text-lg font-bold">
                     版本 {selectedVersion.version}
                   </h3>
                   {selectedVersion.version === currentVersion && (
-                    <span className="text-sm text-primary font-medium">当前使用中</span>
+                    <span className="text-primary text-sm font-medium">
+                      当前使用中
+                    </span>
                   )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-xs text-muted-foreground mb-1">发布时间</div>
-                    <div className="text-sm font-medium text-foreground">
+                  <div className="bg-muted/50 border-border rounded-lg border p-4">
+                    <div className="text-muted-foreground mb-1 text-xs">
+                      发布时间
+                    </div>
+                    <div className="text-foreground text-sm font-medium">
                       {formatDate(selectedVersion.published_at)}
                     </div>
                   </div>
                   {selectedVersion.published_by && (
-                    <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                      <div className="text-xs text-muted-foreground mb-1">发布者</div>
-                      <div className="text-sm font-medium text-foreground flex items-center gap-1">
-                        <User className="w-4 h-4" />
+                    <div className="bg-muted/50 border-border rounded-lg border p-4">
+                      <div className="text-muted-foreground mb-1 text-xs">
+                        发布者
+                      </div>
+                      <div className="text-foreground flex items-center gap-1 text-sm font-medium">
+                        <User className="h-4 w-4" />
                         {selectedVersion.published_by}
                       </div>
                     </div>
@@ -715,21 +760,23 @@ function VersionHistoryModal({
                 </div>
 
                 {selectedVersion.changelog && (
-                  <div className="p-4 bg-muted/50 rounded-lg border border-border">
-                    <div className="text-xs text-muted-foreground mb-2">更新说明</div>
-                    <div className="text-sm text-foreground whitespace-pre-wrap">
+                  <div className="bg-muted/50 border-border rounded-lg border p-4">
+                    <div className="text-muted-foreground mb-2 text-xs">
+                      更新说明
+                    </div>
+                    <div className="text-foreground text-sm whitespace-pre-wrap">
                       {selectedVersion.changelog}
                     </div>
                   </div>
                 )}
 
-                <button className="flex items-center gap-2 px-4 py-2 text-sm text-primary hover:bg-primary/10 rounded-lg transition-colors">
-                  <Eye className="w-4 h-4" />
+                <button className="text-primary hover:bg-primary/10 flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors">
+                  <Eye className="h-4 w-4" />
                   预览此版本
                 </button>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
+              <div className="text-muted-foreground flex h-full items-center justify-center">
                 选择一个版本查看详情
               </div>
             )}
@@ -765,15 +812,17 @@ function SectionEditor({
   const [newForbiddenPhrase, setNewForbiddenPhrase] = useState("");
   const [newComplianceRule, setNewComplianceRule] = useState("");
   const [structureType, setStructureType] = useState<string>(
-    section?.contentContract?.structureType || "narrative_text"
+    section?.contentContract?.structureType ?? "narrative_text",
   );
   const [sectionLevel, setSectionLevel] = useState<string>(
-    String(section?.level || 1)
+    String(section?.level ?? 1),
   );
 
   useEffect(() => {
     if (section) {
-      setStructureType(section.contentContract?.structureType || "narrative_text");
+      setStructureType(
+        section.contentContract?.structureType ?? "narrative_text",
+      );
       setSectionLevel(String(section.level));
     }
   }, [section]);
@@ -796,33 +845,33 @@ function SectionEditor({
 
   if (!section) {
     return (
-              <div className="flex items-center justify-center h-64 text-muted-foreground">
-                <div className="text-center">
-                  <FileJson className="w-12 h-12 mx-auto mb-3 text-muted opacity-50" />
-                  <p className="text-sm">请从左侧选择一个章节进行编辑</p>
-                </div>
-              </div>
+      <div className="text-muted-foreground flex h-64 items-center justify-center">
+        <div className="text-center">
+          <FileJson className="text-muted mx-auto mb-3 h-12 w-12 opacity-50" />
+          <p className="text-sm">请从左侧选择一个章节进行编辑</p>
+        </div>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
       {/* Basic Info */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-6">
+      <div className="bg-card border-border space-y-6 rounded-xl border p-6 shadow-sm">
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-foreground text-sm font-medium">
               章节ID
             </label>
             <input
               type="text"
               value={section.id}
               readOnly
-              className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-muted-foreground text-sm"
+              className="bg-muted border-border text-muted-foreground w-full rounded-lg border px-3 py-2 text-sm"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
+            <label className="text-foreground text-sm font-medium">
               章节标题 <span className="text-red-500">*</span>
             </label>
             <input
@@ -830,11 +879,11 @@ function SectionEditor({
               value={section.title}
               onChange={(e) => onUpdate({ title: e.target.value })}
               disabled={isReadOnly}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all disabled:bg-muted disabled:text-muted-foreground"
+              className="bg-background border-input focus:ring-primary/30 focus:border-primary disabled:bg-muted disabled:text-muted-foreground w-full rounded-lg border px-3 py-2 text-sm transition-all focus:ring-2 focus:outline-none"
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">层级</label>
+            <label className="text-foreground text-sm font-medium">层级</label>
             <AdminSelect
               value={sectionLevel}
               onValueChange={(v) => {
@@ -851,7 +900,7 @@ function SectionEditor({
             />
           </div>
           <div className="flex items-center gap-2 pt-6">
-            <label className="relative flex items-center gap-2.5 cursor-pointer select-none group">
+            <label className="group relative flex cursor-pointer items-center gap-2.5 select-none">
               <div className="relative">
                 <input
                   type="checkbox"
@@ -860,66 +909,78 @@ function SectionEditor({
                   disabled={isReadOnly}
                   className="peer sr-only"
                 />
-                <div className={cn(
-                  "w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200",
-                  "peer-checked:bg-primary peer-checked:border-primary",
-                  "peer-focus-visible:ring-2 peer-focus-visible:ring-primary/30 peer-focus-visible:ring-offset-2",
-                  "group-hover:border-primary/60",
-                  isReadOnly
-                    ? "border-muted bg-muted cursor-not-allowed opacity-50"
-                    : section.required
-                      ? "border-primary bg-primary"
-                      : "border-input bg-background"
-                )}>
-                  <Check className={cn(
-                    "w-3.5 h-3.5 text-primary-foreground transition-all duration-200",
-                    section.required ? "scale-100 opacity-100" : "scale-0 opacity-0"
-                  )} />
+                <div
+                  className={cn(
+                    "flex h-5 w-5 items-center justify-center rounded-md border-2 transition-all duration-200",
+                    "peer-checked:bg-primary peer-checked:border-primary",
+                    "peer-focus-visible:ring-primary/30 peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2",
+                    "group-hover:border-primary/60",
+                    isReadOnly
+                      ? "border-muted bg-muted cursor-not-allowed opacity-50"
+                      : section.required
+                        ? "border-primary bg-primary"
+                        : "border-input bg-background",
+                  )}
+                >
+                  <Check
+                    className={cn(
+                      "text-primary-foreground h-3.5 w-3.5 transition-all duration-200",
+                      section.required
+                        ? "scale-100 opacity-100"
+                        : "scale-0 opacity-0",
+                    )}
+                  />
                 </div>
               </div>
-              <span className="text-sm font-medium text-foreground">必选章节</span>
+              <span className="text-foreground text-sm font-medium">
+                必选章节
+              </span>
             </label>
           </div>
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">编写目的</label>
+          <label className="text-foreground text-sm font-medium">
+            编写目的
+          </label>
           <textarea
-            value={section.purpose || ""}
+            value={section.purpose ?? ""}
             onChange={(e) => onUpdate({ purpose: e.target.value })}
             disabled={isReadOnly}
             rows={2}
             placeholder="描述本章的编写目的和主要内容..."
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
+            className="bg-background border-input focus:ring-primary/30 focus:border-primary disabled:bg-muted w-full resize-y rounded-lg border px-3 py-2 text-sm transition-all focus:ring-2 focus:outline-none"
           />
         </div>
       </div>
 
       {/* Content Contract */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-primary border-b border-border pb-2">
-          <Info className="w-4 h-4" />
-          <h4 className="font-bold text-sm uppercase tracking-wider">内容契约</h4>
+      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+        <div className="text-primary border-border flex items-center gap-2 border-b pb-2">
+          <Info className="h-4 w-4" />
+          <h4 className="text-sm font-bold tracking-wider uppercase">
+            内容契约
+          </h4>
         </div>
 
         {/* Key Elements */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
+          <label className="text-foreground text-sm font-medium">
             关键要素 (每行一个)
           </label>
-          <div className="border border-border rounded-lg p-3 space-y-2">
-            {(section.contentContract?.keyElements || []).map((item, i) => (
+          <div className="border-border space-y-2 rounded-lg border p-3">
+            {(section.contentContract?.keyElements ?? []).map((item, i) => (
               <div
                 key={i}
-                className="flex items-center justify-between bg-muted/50 px-3 py-1.5 rounded border border-border text-sm"
+                className="bg-muted/50 border-border flex items-center justify-between rounded border px-3 py-1.5 text-sm"
               >
                 <span className="text-foreground">• {item}</span>
                 <button
                   onClick={() => onRemoveKeyElement(i)}
                   disabled={isReadOnly}
-                  className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
+                  className="text-muted-foreground transition-colors hover:text-red-500 disabled:opacity-50"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))}
@@ -931,14 +992,14 @@ function SectionEditor({
                 onKeyDown={(e) => e.key === "Enter" && handleAddKeyElement()}
                 disabled={isReadOnly}
                 placeholder="输入后按回车添加"
-                className="flex-1 px-2 py-1.5 text-sm border border-dashed border-border rounded focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
+                className="border-border focus:border-primary flex-1 rounded border border-dashed px-2 py-1.5 text-sm transition-colors focus:outline-none disabled:opacity-50"
               />
               <button
                 onClick={handleAddKeyElement}
                 disabled={isReadOnly || !newKeyElement.trim()}
-                className="px-3 py-1.5 bg-primary/10 text-primary rounded border border-dashed border-primary/30 text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 rounded border border-dashed px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Plus className="w-3 h-3" />
+                <Plus className="h-3 w-3" />
               </button>
             </div>
           </div>
@@ -947,7 +1008,9 @@ function SectionEditor({
         {/* Structure Type & Min Word Count */}
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">结构类型</label>
+            <label className="text-foreground text-sm font-medium">
+              结构类型
+            </label>
             <AdminSelect
               value={structureType}
               onValueChange={(v) => {
@@ -955,7 +1018,12 @@ function SectionEditor({
                 onUpdate({
                   contentContract: {
                     ...section.contentContract,
-                    structureType: v as "narrative_text" | "table" | "formula" | "diagram" | "mixed",
+                    structureType: v as
+                      | "narrative_text"
+                      | "table"
+                      | "formula"
+                      | "diagram"
+                      | "mixed",
                   } as EditorSection["contentContract"],
                 });
               }}
@@ -971,10 +1039,12 @@ function SectionEditor({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">最小字数</label>
+            <label className="text-foreground text-sm font-medium">
+              最小字数
+            </label>
             <input
               type="number"
-              value={section.contentContract?.minWordCount || 0}
+              value={section.contentContract?.minWordCount ?? 0}
               onChange={(e) =>
                 onUpdate({
                   contentContract: {
@@ -985,16 +1055,18 @@ function SectionEditor({
               }
               disabled={isReadOnly}
               min={0}
-              className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm transition-all disabled:bg-muted"
+              className="bg-background border-input focus:ring-primary/30 focus:border-primary disabled:bg-muted w-full rounded-lg border px-3 py-2 text-sm transition-all focus:ring-2 focus:outline-none"
             />
           </div>
         </div>
 
         {/* Style Rules */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">编写规范</label>
+          <label className="text-foreground text-sm font-medium">
+            编写规范
+          </label>
           <textarea
-            value={section.contentContract?.styleRules || ""}
+            value={section.contentContract?.styleRules ?? ""}
             onChange={(e) =>
               onUpdate({
                 contentContract: {
@@ -1006,32 +1078,34 @@ function SectionEditor({
             disabled={isReadOnly}
             rows={2}
             placeholder="描述本章的编写风格要求，如：使用被动语态、客观陈述..."
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
+            className="bg-background border-input focus:ring-primary/30 focus:border-primary disabled:bg-muted w-full resize-y rounded-lg border px-3 py-2 text-sm transition-all focus:ring-2 focus:outline-none"
           />
         </div>
 
         {/* Forbidden Phrases */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">
+          <label className="text-foreground text-sm font-medium">
             禁用短语 (检测到会警告)
           </label>
           <div className="flex flex-wrap gap-2">
-            {(section.contentContract?.forbiddenPhrases || []).map((phrase, i) => (
-              <span
-                key={i}
-                className="bg-red-500/10 text-red-500 px-2 py-1 rounded border border-red-500/20 text-xs flex items-center gap-1"
-              >
-                {phrase}
-                <button
-                  onClick={() => onRemoveForbiddenPhrase(i)}
-                  disabled={isReadOnly}
-                  className="hover:text-red-500 transition-colors disabled:opacity-50"
+            {(section.contentContract?.forbiddenPhrases ?? []).map(
+              (phrase, i) => (
+                <span
+                  key={i}
+                  className="flex items-center gap-1 rounded border border-red-500/20 bg-red-500/10 px-2 py-1 text-xs text-red-500"
                 >
-                  <X className="w-3 h-3 cursor-pointer" />
-                </button>
-              </span>
-            ))}
-            <div className="flex gap-2 items-center">
+                  {phrase}
+                  <button
+                    onClick={() => onRemoveForbiddenPhrase(i)}
+                    disabled={isReadOnly}
+                    className="transition-colors hover:text-red-500 disabled:opacity-50"
+                  >
+                    <X className="h-3 w-3 cursor-pointer" />
+                  </button>
+                </span>
+              ),
+            )}
+            <div className="flex items-center gap-2">
               <input
                 type="text"
                 value={newForbiddenPhrase}
@@ -1041,12 +1115,12 @@ function SectionEditor({
                 }
                 disabled={isReadOnly}
                 placeholder="添加禁用短语"
-                className="w-32 px-2 py-1 text-xs border border-dashed border-border rounded focus:outline-none focus:border-red-500 transition-colors disabled:opacity-50"
+                className="border-border w-32 rounded border border-dashed px-2 py-1 text-xs transition-colors focus:border-red-500 focus:outline-none disabled:opacity-50"
               />
               <button
                 onClick={handleAddForbiddenPhrase}
                 disabled={isReadOnly || !newForbiddenPhrase.trim()}
-                className="text-xs text-primary hover:text-primary/80 hover:underline transition-colors disabled:opacity-50"
+                className="text-primary hover:text-primary/80 text-xs transition-colors hover:underline disabled:opacity-50"
               >
                 + 添加
               </button>
@@ -1056,28 +1130,30 @@ function SectionEditor({
       </div>
 
       {/* Compliance Rules */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-primary border-b border-border pb-2">
-          <ShieldCheck className="w-4 h-4" />
-          <h4 className="font-bold text-sm uppercase tracking-wider">合规规则</h4>
+      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+        <div className="text-primary border-border flex items-center gap-2 border-b pb-2">
+          <ShieldCheck className="h-4 w-4" />
+          <h4 className="text-sm font-bold tracking-wider uppercase">
+            合规规则
+          </h4>
         </div>
         <div className="space-y-2">
-          {(section.complianceRules || []).map((rule, i) => (
+          {(section.complianceRules ?? []).map((rule, i) => (
             <div
               key={i}
-              className="flex items-center justify-between bg-primary/5 p-3 rounded-lg border border-primary/10 text-sm"
+              className="bg-primary/5 border-primary/10 flex items-center justify-between rounded-lg border p-3 text-sm"
             >
               <span className="text-foreground">{rule}</span>
               <button
                 onClick={() => {
-                  const newRules = [...(section.complianceRules || [])];
+                  const newRules = [...(section.complianceRules ?? [])];
                   newRules.splice(i, 1);
                   onUpdate({ complianceRules: newRules });
                 }}
                 disabled={isReadOnly}
-                className="text-muted-foreground hover:text-red-500 transition-colors disabled:opacity-50"
+                className="text-muted-foreground transition-colors hover:text-red-500 disabled:opacity-50"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
@@ -1090,7 +1166,7 @@ function SectionEditor({
                 if (e.key === "Enter" && newComplianceRule.trim()) {
                   onUpdate({
                     complianceRules: [
-                      ...(section.complianceRules || []),
+                      ...(section.complianceRules ?? []),
                       newComplianceRule.trim(),
                     ],
                   });
@@ -1099,14 +1175,14 @@ function SectionEditor({
               }}
               disabled={isReadOnly}
               placeholder="添加合规规则，如：必须引用XX法规第X条"
-              className="flex-1 px-3 py-2 text-sm border border-dashed border-border rounded-lg focus:outline-none focus:border-primary transition-colors disabled:opacity-50"
+              className="border-border focus:border-primary flex-1 rounded-lg border border-dashed px-3 py-2 text-sm transition-colors focus:outline-none disabled:opacity-50"
             />
             <button
               onClick={() => {
                 if (newComplianceRule.trim()) {
                   onUpdate({
                     complianceRules: [
-                      ...(section.complianceRules || []),
+                      ...(section.complianceRules ?? []),
                       newComplianceRule.trim(),
                     ],
                   });
@@ -1114,55 +1190,63 @@ function SectionEditor({
                 }
               }}
               disabled={isReadOnly || !newComplianceRule.trim()}
-              className="px-4 py-2 bg-primary/10 text-primary rounded-lg border border-dashed border-primary/30 text-xs font-medium hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-primary/10 text-primary border-primary/30 hover:bg-primary/20 rounded-lg border border-dashed px-4 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="h-4 w-4" />
             </button>
           </div>
         </div>
       </div>
 
       {/* RAG Sources */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
-        <div className="flex items-center gap-2 text-primary border-b border-border pb-2">
-          <Link className="w-4 h-4" />
-          <h4 className="font-bold text-sm uppercase tracking-wider">RAG 数据源</h4>
-          <span className="text-xs text-muted-foreground font-normal ml-auto">报告生成时的检索知识库</span>
+      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+        <div className="text-primary border-border flex items-center gap-2 border-b pb-2">
+          <Link className="h-4 w-4" />
+          <h4 className="text-sm font-bold tracking-wider uppercase">
+            RAG 数据源
+          </h4>
+          <span className="text-muted-foreground ml-auto text-xs font-normal">
+            报告生成时的检索知识库
+          </span>
         </div>
-        
+
         {/* 可用的 RAG 数据源 */}
         <RAGSourceSelector
-          selected={section.ragSources || []}
+          selected={section.ragSources ?? []}
           onUpdate={(newSources) => onUpdate({ ragSources: newSources })}
           isReadOnly={isReadOnly}
         />
       </div>
 
       {/* Generation Hint & Example */}
-      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
-        <h4 className="font-bold text-sm text-foreground uppercase tracking-wider">
+      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+        <h4 className="text-foreground text-sm font-bold tracking-wider uppercase">
           生成辅助
         </h4>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">生成提示</label>
+          <label className="text-foreground text-sm font-medium">
+            生成提示
+          </label>
           <textarea
-            value={section.generationHint || ""}
+            value={section.generationHint ?? ""}
             onChange={(e) => onUpdate({ generationHint: e.target.value })}
             disabled={isReadOnly}
             rows={2}
             placeholder="AI 生成时的参考提示..."
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
+            className="bg-background border-input focus:ring-primary/30 focus:border-primary disabled:bg-muted w-full resize-y rounded-lg border px-3 py-2 text-sm transition-all focus:ring-2 focus:outline-none"
           />
         </div>
         <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">示例片段</label>
+          <label className="text-foreground text-sm font-medium">
+            示例片段
+          </label>
           <textarea
-            value={section.exampleSnippet || ""}
+            value={section.exampleSnippet ?? ""}
             onChange={(e) => onUpdate({ exampleSnippet: e.target.value })}
             disabled={isReadOnly}
             rows={3}
             placeholder="本章的参考示例文本..."
-            className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary text-sm resize-y transition-all disabled:bg-muted"
+            className="bg-background border-input focus:ring-primary/30 focus:border-primary disabled:bg-muted w-full resize-y rounded-lg border px-3 py-2 text-sm transition-all focus:ring-2 focus:outline-none"
           />
         </div>
       </div>
@@ -1176,16 +1260,20 @@ function SectionEditor({
 // ============== Main TemplateEditor Component ==============
 
 export default function TemplateEditor() {
-  const {
-    templates,
-    loading: listLoading,
-    fetchTemplates,
-  } = useTemplateList();
+  const { templates, loading: listLoading, fetchTemplates } = useTemplateList();
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  );
+  const [selectedSectionId, setSelectedSectionId] = useState<string | null>(
+    null,
+  );
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [confirmAction, setConfirmAction] = useState<{ action: () => Promise<void>; title: string; message: string } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    action: () => Promise<void>;
+    title: string;
+    message: string;
+  } | null>(null);
 
   // 版本历史弹窗状态
   const [showVersionHistory, setShowVersionHistory] = useState(false);
@@ -1199,12 +1287,17 @@ export default function TemplateEditor() {
 
   // 加载领域列表（用于新建模板）
   useEffect(() => {
-    kfApi.listDomains().then((res) => {
-      if (res.domains.length > 0) {
-        setDomains(res.domains);
-        setNewTemplateDomain(res.domains[0]!.id);
-      }
-    }).catch(() => {});
+    kfApi
+      .listDomains()
+      .then((res) => {
+        if (res.domains.length > 0) {
+          setDomains(res.domains);
+          setNewTemplateDomain(res.domains[0]!.id);
+        }
+      })
+      .catch(() => {
+        // intentional no-op: domain list load failure keeps empty options
+      });
   }, []);
 
   // 创建新模板
@@ -1232,7 +1325,8 @@ export default function TemplateEditor() {
   };
 
   // 撤销功能 - 保存原始状态的快照
-  const [originalSnapshot, setOriginalSnapshot] = useState<EditorTemplate | null>(null);
+  const [originalSnapshot, setOriginalSnapshot] =
+    useState<EditorTemplate | null>(null);
 
   const {
     template,
@@ -1250,12 +1344,11 @@ export default function TemplateEditor() {
     saveDraft,
     publishTemplate,
     getSection,
-    loadTemplate,
   } = useTemplateEditor(selectedTemplateId);
 
   // 加载模板列表
   useEffect(() => {
-    fetchTemplates({ status: "draft,published", limit: 50 });
+    void fetchTemplates({ status: "draft,published", limit: 50 });
   }, [fetchTemplates]);
 
   // 将列表项转换为 EditorTemplate 用于选择器
@@ -1275,9 +1368,13 @@ export default function TemplateEditor() {
   // 都会通过 sections.map(...) 产生新的数组引用，若依赖 sections，每次输入都会
   // 重跑本 effect 并把选中项重置回第一个一级章节 → 编辑子章节时焦点"跳到父章节"。
   // 只在切换到不同模板（id 变化）时自动选中，编辑中保持用户当前选中。
+  // sectionsRef 持有最新 sections 但不作为依赖：避免每次编辑章节都重跑本 effect。
+  const sectionsRef = useRef<EditorSection[] | undefined>(undefined);
+  sectionsRef.current = template?.sections;
   useEffect(() => {
-    if (template?.sections?.length) {
-      const firstSection = findFirstSection(template.sections);
+    const sections = sectionsRef.current;
+    if (sections?.length) {
+      const firstSection = findFirstSection(sections);
       if (firstSection) {
         setSelectedSectionId(firstSection.id);
         setExpandedIds((prev) => new Set([...prev, firstSection.id]));
@@ -1288,7 +1385,9 @@ export default function TemplateEditor() {
   }, [template?.id]);
 
   // 查找第一个章节
-  const findFirstSection = (sections: EditorSection[]): EditorSection | null => {
+  const findFirstSection = (
+    sections: EditorSection[],
+  ): EditorSection | null => {
     for (const section of sections) {
       return section;
     }
@@ -1322,7 +1421,7 @@ export default function TemplateEditor() {
         return prev;
       });
     },
-    [addSection]
+    [addSection],
   );
 
   // 删除章节
@@ -1333,7 +1432,7 @@ export default function TemplateEditor() {
       }
       deleteSection(id);
     },
-    [deleteSection, selectedSectionId]
+    [deleteSection, selectedSectionId],
   );
 
   // 保存草稿
@@ -1342,9 +1441,7 @@ export default function TemplateEditor() {
       await saveDraft();
       toast.success("草稿保存成功");
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "保存失败"
-      );
+      toast.error(e instanceof Error ? e.message : "保存失败");
     }
   };
 
@@ -1401,20 +1498,24 @@ export default function TemplateEditor() {
   // 撤销更改 - 使用快照恢复
   const handleRevert = useCallback(() => {
     if (!originalSnapshot) return;
-    
+
     if (!window.confirm("确定要撤销所有未保存的更改吗？")) {
       return;
     }
-    
+
     // 恢复原始状态
     setTemplate(originalSnapshot);
     toast.success("已撤销所有更改");
   }, [originalSnapshot, setTemplate]);
 
   // 当模板加载或保存后，更新快照
+  // templateRef 持有最新 template 但不作为依赖：快照更新仍只在 id/isDirty 变化时触发。
+  const templateRef = useRef<EditorTemplate | null>(null);
+  templateRef.current = template;
   useEffect(() => {
-    if (template && !template.isDirty) {
-      setOriginalSnapshot(JSON.parse(JSON.stringify(template)));
+    const current = templateRef.current;
+    if (current && !current.isDirty) {
+      setOriginalSnapshot(JSON.parse(JSON.stringify(current)));
     }
   }, [template?.id, template?.isDirty]);
 
@@ -1455,13 +1556,13 @@ export default function TemplateEditor() {
   const isPublished = template?.status === "published";
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="sticky top-0 z-10 p-4 border-b border-border bg-background flex justify-between items-center shrink-0">
+      <div className="border-border bg-background sticky top-0 z-10 flex shrink-0 items-center justify-between border-b p-4">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <Edit3 className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-medium text-foreground tracking-tight">
+            <Edit3 className="text-primary h-5 w-5" />
+            <h2 className="text-foreground text-lg font-medium tracking-tight">
               模板编辑器
             </h2>
           </div>
@@ -1469,18 +1570,20 @@ export default function TemplateEditor() {
             templates={editorTemplates}
             selectedId={selectedTemplateId}
             onSelect={setSelectedTemplateId}
-            onRefresh={() => fetchTemplates({ status: "draft,published", limit: 50 })}
+            onRefresh={() =>
+              fetchTemplates({ status: "draft,published", limit: 50 })
+            }
             loading={listLoading}
           />
           <button
             onClick={() => setShowCreateDialog(true)}
-            className="px-3 py-1.5 text-sm font-medium text-primary bg-primary/10 border border-dashed border-primary/30 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1.5"
+            className="text-primary bg-primary/10 border-primary/30 hover:bg-primary/20 flex items-center gap-1.5 rounded-lg border border-dashed px-3 py-1.5 text-sm font-medium transition-colors"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
             新建模板
           </button>
           {template?.isDirty && (
-            <span className="text-xs text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
+            <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-500">
               有未保存的更改
             </span>
           )}
@@ -1490,19 +1593,19 @@ export default function TemplateEditor() {
           <button
             onClick={() => setShowVersionHistory(true)}
             disabled={!template}
-            className="px-3 py-2 text-foreground bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-accent transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-foreground bg-card border-border hover:bg-accent flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <History className="w-4 h-4" />
+            <History className="h-4 w-4" />
             版本历史
           </button>
-          
+
           {/* 导出 */}
           <button
             onClick={handleExport}
             disabled={!template}
-            className="px-3 py-2 text-foreground bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-accent transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-foreground bg-card border-border hover:bg-accent flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Download className="w-4 h-4" />
+            <Download className="h-4 w-4" />
             导出
           </button>
 
@@ -1510,33 +1613,33 @@ export default function TemplateEditor() {
           <button
             onClick={handleDeleteTemplate}
             disabled={!template}
-            className="px-3 py-2 text-destructive bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-destructive/10 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-destructive bg-card border-border hover:bg-destructive/10 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4" />
             删除
           </button>
-          
+
           <button
             onClick={handleSaveDraft}
             disabled={saving || !template || !template.isDirty || isPublished}
-            className="px-4 py-2 text-foreground bg-card border border-border rounded-lg flex items-center gap-2 hover:bg-accent transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="text-foreground bg-card border-border hover:bg-accent flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Save className="w-4 h-4" />
+              <Save className="h-4 w-4" />
             )}
             保存草稿
           </button>
           <button
             onClick={handlePublish}
             disabled={saving || !template || isPublished}
-            className="px-4 py-2 bg-primary text-white rounded-lg flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="w-4 h-4" />
+              <Send className="h-4 w-4" />
             )}
             发布
           </button>
@@ -1546,18 +1649,22 @@ export default function TemplateEditor() {
       {/* Confirmation Modal */}
       {confirmAction && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-sm flex flex-col">
+          <div className="bg-background flex w-full max-w-sm flex-col rounded-2xl shadow-2xl">
             <div className="px-6 py-5 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-                <AlertCircle className="h-6 w-6 text-destructive" />
+              <div className="bg-destructive/10 mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full">
+                <AlertCircle className="text-destructive h-6 w-6" />
               </div>
-              <h3 className="text-base font-medium text-foreground mb-1">{confirmAction.title}</h3>
-              <p className="text-sm text-muted-foreground">{confirmAction.message}</p>
+              <h3 className="text-foreground mb-1 text-base font-medium">
+                {confirmAction.title}
+              </h3>
+              <p className="text-muted-foreground text-sm">
+                {confirmAction.message}
+              </p>
             </div>
-            <div className="flex justify-center gap-3 px-6 py-4 border-t border-border">
+            <div className="border-border flex justify-center gap-3 border-t px-6 py-4">
               <button
                 onClick={() => setConfirmAction(null)}
-                className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent transition-colors"
+                className="border-border hover:bg-accent rounded-lg border px-4 py-2 text-sm transition-colors"
               >
                 取消
               </button>
@@ -1567,7 +1674,7 @@ export default function TemplateEditor() {
                   setConfirmAction(null);
                   await action();
                 }}
-                className="px-4 py-2 bg-destructive text-white rounded-lg text-sm font-medium hover:bg-destructive/90 transition-colors"
+                className="bg-destructive hover:bg-destructive/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
               >
                 确认
               </button>
@@ -1589,36 +1696,45 @@ export default function TemplateEditor() {
       {/* Create Template Dialog */}
       {showCreateDialog && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-background rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-semibold text-foreground">新建模板</h3>
+          <div className="bg-background w-full max-w-md space-y-5 rounded-2xl p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-foreground text-lg font-semibold">
+                新建模板
+              </h3>
               <button
                 onClick={() => setShowCreateDialog(false)}
-                className="p-1.5 hover:bg-accent rounded-lg transition-colors"
+                className="hover:bg-accent rounded-lg p-1.5 transition-colors"
               >
-                <X className="w-5 h-5 text-muted-foreground" />
+                <X className="text-muted-foreground h-5 w-5" />
               </button>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">模板名称</label>
+                <label className="text-foreground text-sm font-medium">
+                  模板名称
+                </label>
                 <input
                   type="text"
                   value={newTemplateName}
                   onChange={(e) => setNewTemplateName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleCreateTemplate()}
                   placeholder="例如：消防设计专篇标准模板"
-                  className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                  className="border-input focus:ring-primary/30 focus:border-primary w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                   autoFocus
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">业务领域</label>
+                <label className="text-foreground text-sm font-medium">
+                  业务领域
+                </label>
                 {domains.length > 0 ? (
                   <AdminSelect
                     value={newTemplateDomain}
                     onValueChange={setNewTemplateDomain}
-                    options={domains.map((d) => ({ value: d.id, label: d.name }))}
+                    options={domains.map((d) => ({
+                      value: d.id,
+                      label: d.name,
+                    }))}
                     placeholder="选择领域"
                   />
                 ) : (
@@ -1627,7 +1743,7 @@ export default function TemplateEditor() {
                     value={newTemplateDomain}
                     onChange={(e) => setNewTemplateDomain(e.target.value)}
                     placeholder="输入领域标识"
-                    className="w-full px-3 py-2 border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="border-input focus:ring-primary/30 w-full rounded-lg border px-3 py-2 text-sm focus:ring-2 focus:outline-none"
                   />
                 )}
               </div>
@@ -1635,17 +1751,19 @@ export default function TemplateEditor() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 onClick={() => setShowCreateDialog(false)}
-                className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-accent transition-colors"
+                className="border-border hover:bg-accent rounded-lg border px-4 py-2 text-sm transition-colors"
               >
                 取消
               </button>
               <button
                 disabled={creating || !newTemplateName.trim()}
                 onClick={handleCreateTemplate}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {creating ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> 创建中...</>
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> 创建中...
+                  </>
                 ) : (
                   "创建"
                 )}
@@ -1656,26 +1774,30 @@ export default function TemplateEditor() {
       )}
 
       {/* Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex flex-1 overflow-hidden">
         {templateLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="text-primary h-8 w-8 animate-spin" />
           </div>
         ) : error ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-1 items-center justify-center">
             <div className="text-center">
-              <AlertCircle className="w-12 h-12 mx-auto mb-3 text-red-500" />
+              <AlertCircle className="mx-auto mb-3 h-12 w-12 text-red-500" />
               <p className="text-red-500">{error}</p>
             </div>
           </div>
         ) : !template ? (
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-1 items-center justify-center">
             <div className="flex flex-col items-center">
-              <FileJson className="w-16 h-16 text-muted-foreground/20 mb-4" />
-              <p className="text-foreground font-medium mb-1">请从上方选择一个模板进行编辑</p>
+              <FileJson className="text-muted-foreground/20 mb-4 h-16 w-16" />
+              <p className="text-foreground mb-1 font-medium">
+                请从上方选择一个模板进行编辑
+              </p>
               <button
-                onClick={() => fetchTemplates({ status: "draft,published", limit: 50 })}
-                className="text-sm text-primary hover:text-primary/80 hover:underline"
+                onClick={() =>
+                  fetchTemplates({ status: "draft,published", limit: 50 })
+                }
+                className="text-primary hover:text-primary/80 text-sm hover:underline"
               >
                 刷新模板列表
               </button>
@@ -1684,18 +1806,18 @@ export default function TemplateEditor() {
         ) : (
           <>
             {/* Sidebar Tree */}
-            <div className="w-72 border-r border-border bg-muted/50 overflow-y-auto p-4 shrink-0">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-                  <FileJson className="w-3 h-3" /> 章节树
+            <div className="border-border bg-muted/50 w-72 shrink-0 overflow-y-auto border-r p-4">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-muted-foreground flex items-center gap-2 text-xs font-bold tracking-wider uppercase">
+                  <FileJson className="h-3 w-3" /> 章节树
                 </h3>
                 {!isPublished && (
                   <button
                     onClick={() => handleAddSection(null, 1)}
-                    className="p-1.5 hover:bg-accent rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                    className="hover:bg-accent text-muted-foreground hover:text-primary rounded-lg p-1.5 transition-colors"
                     title="添加一级章节"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="h-4 w-4" />
                   </button>
                 )}
               </div>
@@ -1712,45 +1834,48 @@ export default function TemplateEditor() {
             </div>
 
             {/* Editor Area */}
-            <div className="flex-1 overflow-y-auto bg-muted/30 p-8">
-              <div className="max-w-4xl mx-auto">
+            <div className="bg-muted/30 flex-1 overflow-y-auto p-8">
+              <div className="mx-auto max-w-4xl">
                 {/* Section Navigation */}
-                <div className="flex items-center justify-between mb-4 bg-card rounded-lg border border-border px-4 py-2">
+                <div className="bg-card border-border mb-4 flex items-center justify-between rounded-lg border px-4 py-2">
                   <div className="flex items-center gap-2">
                     <button
                       onClick={goToPrevSection}
                       disabled={currentSectionIndex <= 0}
-                      className="p-1.5 hover:bg-accent rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="hover:bg-accent rounded p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
                       title="上一章节"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="h-4 w-4" />
                     </button>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-muted-foreground text-sm">
                       第 {currentSectionIndex + 1} / {allSections.length} 章节
                     </span>
                     <button
                       onClick={goToNextSection}
                       disabled={currentSectionIndex >= allSections.length - 1}
-                      className="p-1.5 hover:bg-accent rounded disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="hover:bg-accent rounded p-1.5 transition-colors disabled:cursor-not-allowed disabled:opacity-30"
                       title="下一章节"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="h-4 w-4" />
                     </button>
                   </div>
                   <div className="flex items-center gap-2">
                     {template?.isDirty && (
                       <button
                         onClick={handleRevert}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-amber-500 hover:bg-amber-500/10 rounded transition-colors"
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-500 transition-colors hover:bg-amber-500/10"
                       >
-                        <Undo2 className="w-3 h-3" />
+                        <Undo2 className="h-3 w-3" />
                         撤销更改
                       </button>
                     )}
                     {selectedSection && (
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        最后修改: {template.lastSaved ? new Date(template.lastSaved).toLocaleTimeString() : '未保存'}
+                      <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                        <Clock className="h-3 w-3" />
+                        最后修改:{" "}
+                        {template.lastSaved
+                          ? new Date(template.lastSaved).toLocaleTimeString()
+                          : "未保存"}
                       </span>
                     )}
                   </div>

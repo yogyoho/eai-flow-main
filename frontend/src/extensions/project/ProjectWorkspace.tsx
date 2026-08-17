@@ -7,22 +7,37 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/extensions/hooks/useAuth";
 import { projectApi } from "@/extensions/project/api";
 import { SettingsDialog } from "@/extensions/project/components/SettingsDialog";
-import { createProjectIdentity, getVisibleTabs, type ProjectIdentity } from "@/extensions/project/tabRegistry";
+import {
+  createProjectIdentity,
+  getVisibleTabs,
+  type ProjectIdentity,
+} from "@/extensions/project/tabRegistry";
 import {
   MEMBER_ROLE_LABELS,
   type ProjectPermissions,
   type ReportProject,
 } from "@/extensions/project/types";
 import { workflowApi } from "@/extensions/workflow/api";
-import { isLegacyGraph, migrateLegacyToUnified } from "@/extensions/workflow/templates/migration";
+import {
+  isLegacyGraph,
+  migrateLegacyToUnified,
+} from "@/extensions/workflow/templates/migration";
 import type { WorkflowGraph } from "@/extensions/workflow/types";
 
-const OverviewTab = dynamic(() => import("./tabs/OverviewTab").then((m) => ({ default: m.OverviewTab })), { ssr: false });
-const EditorTab = dynamic(() => import("./tabs/EditorTab").then((m) => ({ default: m.EditorTab })), { ssr: false });
-const ReviewTab = dynamic(() => import("./tabs/ReviewTab").then((m) => ({ default: m.ReviewTab })), { ssr: false });
+const OverviewTab = dynamic(
+  () => import("./tabs/OverviewTab").then((m) => ({ default: m.OverviewTab })),
+  { ssr: false },
+);
+const EditorTab = dynamic(
+  () => import("./tabs/EditorTab").then((m) => ({ default: m.EditorTab })),
+  { ssr: false },
+);
+const ReviewTab = dynamic(
+  () => import("./tabs/ReviewTab").then((m) => ({ default: m.ReviewTab })),
+  { ssr: false },
+);
 
 interface ProjectWorkspaceProps {
   projectId: string;
@@ -34,12 +49,16 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<string>("overview");
   const [entering, setEntering] = useState(false);
   const [identity, setIdentity] = useState<ProjectIdentity | null>(null);
-  const [workflowGraph, setWorkflowGraph] = useState<WorkflowGraph | null>(null);
+  const [workflowGraph, setWorkflowGraph] = useState<WorkflowGraph | null>(
+    null,
+  );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fileCount, setFileCount] = useState<number | null>(null);
-  const [lastSync, setLastSync] = useState<{ time: string; synced: number } | null>(null);
+  const [lastSync, setLastSync] = useState<{
+    time: string;
+    synced: number;
+  } | null>(null);
   const [syncing, setSyncing] = useState(false);
-  const { user: currentUser } = useAuth();
 
   const loadProject = useCallback(async () => {
     try {
@@ -54,20 +73,35 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
         try {
           perms = await projectApi.getMyPermissions(projectId);
         } catch {
-          perms = { role: null, permissions: [], phaseDuties: null, isAdmin: false };
+          perms = {
+            role: null,
+            permissions: [],
+            phaseDuties: null,
+            isAdmin: false,
+          };
         }
       }
       setProject(data);
       setIdentity(createProjectIdentity(perms));
       // Load workflow graph if project has an associated workflow definition
       if (data.workflowId) {
-        workflowApi.get(data.workflowId).then((def) => {
-          if (!def.graphJson) { setWorkflowGraph(null); return; }
-          const raw = def.graphJson as unknown as Record<string, unknown>;
-          setWorkflowGraph(isLegacyGraph(raw)
-            ? migrateLegacyToUnified(raw as Parameters<typeof migrateLegacyToUnified>[0])
-            : def.graphJson);
-        }).catch(() => setWorkflowGraph(null));
+        workflowApi
+          .get(data.workflowId)
+          .then((def) => {
+            if (!def.graphJson) {
+              setWorkflowGraph(null);
+              return;
+            }
+            const raw = def.graphJson as unknown as Record<string, unknown>;
+            setWorkflowGraph(
+              isLegacyGraph(raw)
+                ? migrateLegacyToUnified(
+                    raw as Parameters<typeof migrateLegacyToUnified>[0],
+                  )
+                : def.graphJson,
+            );
+          })
+          .catch(() => setWorkflowGraph(null));
       } else if (data.currentPhaseNode || data.temporalWorkflowId) {
         // No workflow_id linked, but project has active Temporal workflow —
         // leave workflowGraph null; WorkflowProgressCompact will fetch status via project-scoped API
@@ -83,17 +117,18 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   }, [projectId]);
 
   useEffect(() => {
-    loadProject();
+    void loadProject();
   }, [loadProject]);
 
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        loadProject();
+        void loadProject();
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
-    return () => document.removeEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
   }, [loadProject]);
 
   // Load file count + sync docs (for header subtitle)
@@ -110,8 +145,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     setSyncing(true);
     try {
       const result = await projectApi.syncDocs(projectId);
-      setLastSync({ time: new Date().toLocaleTimeString("zh-CN"), synced: result.synced ?? 0 });
-      loadStats();
+      setLastSync({
+        time: new Date().toLocaleTimeString("zh-CN"),
+        synced: result.synced ?? 0,
+      });
+      void loadStats();
     } catch {
       // Non-critical
     } finally {
@@ -121,7 +159,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   useEffect(() => {
     if (project) {
-      handleSync();
+      void handleSync();
     }
   }, [project, handleSync]);
 
@@ -132,7 +170,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   );
 
   // Derive visible tabs from identity
-  const visibleTabs = identity ? getVisibleTabs(identity) : [];
+  const visibleTabs = useMemo(
+    () => (identity ? getVisibleTabs(identity) : []),
+    [identity],
+  );
 
   // Derive visible chapter IDs from permissions for chapter-level filtering.
   const visibleChapterIds = useMemo(() => {
@@ -152,7 +193,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
 
   // If activeTab is no longer visible, reset to first visible tab
   useEffect(() => {
-    if (visibleTabs.length > 0 && !visibleTabs.some((t) => t.id === activeTab)) {
+    if (
+      visibleTabs.length > 0 &&
+      !visibleTabs.some((t) => t.id === activeTab)
+    ) {
       setActiveTab(visibleTabs[0]!.id);
     }
   }, [visibleTabs, activeTab]);
@@ -169,13 +213,19 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
     return () => window.removeEventListener("switchTab", handleSwitchTab);
   }, [visibleTabs]);
 
-  const canSeeSettings = identity?.isAdmin ||
-    identity?.hasAnyPermission(["settings:edit", "project:edit", "project:delete"]);
+  const canSeeSettings =
+    identity !== null &&
+    (identity.isAdmin ||
+      identity.hasAnyPermission([
+        "settings:edit",
+        "project:edit",
+        "project:delete",
+      ]));
 
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <Loader2 className="text-primary h-6 w-6 animate-spin" />
       </div>
     );
   }
@@ -183,9 +233,11 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
   if (!project) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
-        <p className="text-sm text-destructive">项目不存在</p>
+        <p className="text-destructive text-sm">项目不存在</p>
         <Link href="/projects">
-          <Button variant="outline" size="sm">返回项目列表</Button>
+          <Button variant="outline" size="sm">
+            返回项目列表
+          </Button>
         </Link>
       </div>
     );
@@ -207,55 +259,70 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
       style={{ background: "var(--cyber-bg-primary)" }}
     >
       <header
-        className="flex flex-col px-6 shrink-0 pb-4 pt-3"
+        className="flex shrink-0 flex-col px-6 pt-3 pb-4"
         style={{ borderBottom: "1px solid var(--cyber-border-muted)" }}
       >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex flex-col justify-between gap-3 md:flex-row md:items-center">
           {/* Left: back button + title + subtitle */}
-          <div className="flex items-center gap-3 min-w-0">
+          <div className="flex min-w-0 items-center gap-3">
             <Link href="/projects">
               <button
                 type="button"
-                className="p-2 rounded-lg border flex items-center justify-center group cursor-pointer shrink-0"
+                className="group flex shrink-0 cursor-pointer items-center justify-center rounded-lg border p-2"
                 style={{
                   background: "var(--cyber-bg-tertiary)",
                   borderColor: "var(--cyber-border-muted)",
                   color: "var(--cyber-text-muted)",
                 }}
               >
-                <ArrowLeft className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+                <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
               </button>
             </Link>
             <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold tracking-tight truncate" style={{ color: "var(--cyber-text-main)" }}>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1
+                  className="truncate text-xl font-bold tracking-tight"
+                  style={{ color: "var(--cyber-text-main)" }}
+                >
                   {project.name}
                 </h1>
-                <span className="text-[10px] uppercase font-cyber px-2.5 py-0.5 rounded border border-primary/30 bg-primary/10 text-primary font-bold tracking-widest shrink-0">
+                <span className="font-cyber border-primary/30 bg-primary/10 text-primary shrink-0 rounded border px-2.5 py-0.5 text-[10px] font-bold tracking-widest uppercase">
                   {project.reportType}
                 </span>
-                {identity && identity.projectRole && (
-                  <span className="text-[10px] px-2 py-0.5 rounded bg-muted border border-border text-muted-foreground font-bold shrink-0">
-                    {MEMBER_ROLE_LABELS[identity.projectRole as keyof typeof MEMBER_ROLE_LABELS] ?? identity.projectRole}
+                {identity?.projectRole && (
+                  <span className="bg-muted border-border text-muted-foreground shrink-0 rounded border px-2 py-0.5 text-[10px] font-bold">
+                    {MEMBER_ROLE_LABELS[
+                      identity.projectRole as keyof typeof MEMBER_ROLE_LABELS
+                    ] ?? identity.projectRole}
                   </span>
                 )}
               </div>
               {/* Subtitle — matches SciFiProjectDetail */}
-              <p className="text-[11px] font-mono mt-1" style={{ color: "var(--cyber-text-muted)" }}>
-                创建于: {project.createdAt
+              <p
+                className="mt-1 font-mono text-[11px]"
+                style={{ color: "var(--cyber-text-muted)" }}
+              >
+                创建于:{" "}
+                {project.createdAt
                   ? new Date(project.createdAt).toLocaleDateString("zh-CN")
                   : "未知"}
                 <span className="mx-1.5">•</span>
                 章节: {totalCount}
                 <span className="mx-1.5">•</span>
-                文件数: {fileCount !== null ? fileCount : "..."}
+                文件数: {fileCount ?? "..."}
                 {lastSync && (
                   <>
                     <span className="mx-1.5">•</span>
                     {syncing ? (
-                      <span className="inline-flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" />同步中...</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        同步中...
+                      </span>
                     ) : (
-                      <>上次同步: {lastSync.time} · 新增 {lastSync.synced} 个文件</>
+                      <>
+                        上次同步: {lastSync.time} · 新增 {lastSync.synced}{" "}
+                        个文件
+                      </>
                     )}
                   </>
                 )}
@@ -264,10 +331,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
           </div>
 
           {/* Right: tabs + actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             {/* Tabs in header — cyber-themed matching SciFiProjectDetail */}
             <div
-              className="flex items-center gap-2 p-1 rounded-xl overflow-x-auto"
+              className="flex items-center gap-2 overflow-x-auto rounded-xl p-1"
               style={{
                 background: "var(--cyber-bg-tertiary)",
                 border: "1px solid var(--cyber-border-muted)",
@@ -277,21 +344,29 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 const activeColors: Record<string, string> = {
-                  overview: "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(7,70,255,0.3)]",
-                  editor: "bg-[#7c3aed] text-white shadow-[0_0_10px_rgba(124,58,237,0.3)]",
-                  review: "bg-success text-white shadow-[0_0_10px_rgba(82,196,26,0.3)]",
+                  overview:
+                    "bg-primary text-primary-foreground shadow-[0_0_10px_rgba(7,70,255,0.3)]",
+                  editor:
+                    "bg-[#7c3aed] text-white shadow-[0_0_10px_rgba(124,58,237,0.3)]",
+                  review:
+                    "bg-success text-white shadow-[0_0_10px_rgba(82,196,26,0.3)]",
                 };
                 return (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                    className={`flex cursor-pointer items-center gap-1 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-all ${
                       isActive
-                        ? (activeColors[tab.id] ?? "bg-primary text-primary-foreground")
+                        ? (activeColors[tab.id] ??
+                          "bg-primary text-primary-foreground")
                         : "hover:bg-muted/50"
                     }`}
-                    style={!isActive ? { color: "var(--cyber-text-muted)" } : undefined}
+                    style={
+                      !isActive
+                        ? { color: "var(--cyber-text-muted)" }
+                        : undefined
+                    }
                   >
                     <Icon className="h-3.5 w-3.5" />
                     {tab.label}
@@ -299,7 +374,10 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                 );
               })}
 
-              <div className="h-4 w-[1px] mx-1" style={{ background: "var(--cyber-border-muted)" }} />
+              <div
+                className="mx-1 h-4 w-[1px]"
+                style={{ background: "var(--cyber-border-muted)" }}
+              />
 
               {/* Enter conversation */}
               <button
@@ -309,16 +387,19 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
                   setEntering(true);
                   try {
                     const { threadId } = await projectApi.enter(projectId);
-                    window.open(`/workspace/chats/${threadId}?from=project&projectId=${projectId}&projectName=${encodeURIComponent(project.name)}`, "_blank");
+                    window.open(
+                      `/workspace/chats/${threadId}?from=project&projectId=${projectId}&projectName=${encodeURIComponent(project.name)}`,
+                      "_blank",
+                    );
                   } catch {
                     toast.error("进入对话失败");
                   } finally {
                     setEntering(false);
                   }
                 }}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-bold bg-primary hover:opacity-90 text-primary-foreground flex items-center gap-1.5 transition-all shadow-md group cursor-pointer"
+                className="bg-primary text-primary-foreground group flex cursor-pointer items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold shadow-md transition-all hover:opacity-90"
               >
-                <MessageSquare className="h-3.5 w-3.5 group-hover:scale-110 transition-transform" />
+                <MessageSquare className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
                 <span>{entering ? "进入中..." : "进入对话"}</span>
               </button>
             </div>
@@ -328,7 +409,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               <button
                 type="button"
                 onClick={() => setSettingsOpen(true)}
-                className="p-1.5 rounded-lg border cursor-pointer"
+                className="cursor-pointer rounded-lg border p-1.5"
                 style={{
                   background: "var(--cyber-bg-tertiary)",
                   borderColor: "var(--cyber-border-muted)",

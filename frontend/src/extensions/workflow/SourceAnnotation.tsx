@@ -17,14 +17,24 @@ const TYPE_COLORS: Record<string, string> = {
   external_data: "bg-cyan-100 border-b-2 border-cyan-700",
 };
 
-export function SourceAnnotation({ index, sourceType, sourceRef, confidence }: SourceAnnotationProps) {
-  const colorClass = TYPE_COLORS[sourceType] || "bg-gray-100 border-b-2 border-gray-300";
+export function SourceAnnotation({
+  index,
+  sourceType,
+  sourceRef,
+  confidence,
+}: SourceAnnotationProps) {
+  const colorClass =
+    TYPE_COLORS[sourceType] ?? "bg-gray-100 border-b-2 border-gray-300";
   return (
-    <span className={`inline ${colorClass} px-0.5 rounded-sm group relative`}>
+    <span className={`inline ${colorClass} group relative rounded-sm px-0.5`}>
       <sup className="text-[10px] font-medium text-amber-700">{index}</sup>
-      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 rounded bg-gray-900 px-2 py-1 text-[10px] whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100">
         {sourceType}: {sourceRef.slice(0, 60)}
-        {confidence !== null && <span className="ml-1 text-gray-400">{(confidence * 100).toFixed(0)}%</span>}
+        {confidence !== null && (
+          <span className="ml-1 text-gray-400">
+            {(confidence * 100).toFixed(0)}%
+          </span>
+        )}
       </span>
     </span>
   );

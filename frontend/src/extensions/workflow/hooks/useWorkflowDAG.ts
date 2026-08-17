@@ -1,9 +1,21 @@
 "use client";
 
-import { addEdge, useEdgesState, useNodesState, type Connection } from "@xyflow/react";
+import {
+  addEdge,
+  useEdgesState,
+  useNodesState,
+  type Connection,
+} from "@xyflow/react";
 import { useCallback, useRef } from "react";
 
-import type { DAGNode, DAGNodeData, DAGNodeType, DAGEdge, FlatGraph, WorkflowGraph } from "../types";
+import type {
+  DAGNode,
+  DAGNodeData,
+  DAGNodeType,
+  DAGEdge,
+  FlatGraph,
+  WorkflowGraph,
+} from "../types";
 
 let nodeCounter = 0;
 
@@ -77,27 +89,32 @@ export function useWorkflowDAG() {
   const updateNodeData = useCallback(
     (id: string, data: Partial<DAGNodeData>) => {
       setNodes((nds) =>
-        nds.map((n) => (n.id === id ? { ...n, data: { ...n.data, ...data } } : n)),
+        nds.map((n) =>
+          n.id === id ? { ...n, data: { ...n.data, ...data } } : n,
+        ),
       );
     },
     [setNodes],
   );
 
   /** Get a flat graph from the current canvas state. */
-  const currentFlatGraph = useCallback((): FlatGraph => ({
-    nodes: nodes.map((n) => ({
-      id: n.id,
-      type: n.type,
-      position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
-      data: { ...n.data },
-    })),
-    edges: edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      label: e.label,
-    })),
-  }), [nodes, edges]);
+  const currentFlatGraph = useCallback(
+    (): FlatGraph => ({
+      nodes: nodes.map((n) => ({
+        id: n.id,
+        type: n.type,
+        position: { x: Math.round(n.position.x), y: Math.round(n.position.y) },
+        data: { ...n.data },
+      })),
+      edges: edges.map((e) => ({
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        label: e.label,
+      })),
+    }),
+    [nodes, edges],
+  );
 
   /** Serialize full graph (mainGraph + all subGraphs). */
   const toGraphJson = useCallback((): WorkflowGraph => {
@@ -110,94 +127,106 @@ export function useWorkflowDAG() {
   }, [currentFlatGraph]);
 
   /** Load mainGraph onto the canvas. */
-  const fromGraphJson = useCallback((graph: WorkflowGraph) => {
-    fullGraphRef.current = graph;
-    const mainGraph = graph.mainGraph;
-    if (!mainGraph) {
-      console.warn("fromGraphJson: graph is missing mainGraph", graph);
-      return;
-    }
-    setNodes(
-      (mainGraph.nodes ?? []).map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        data: n.data,
-      })),
-    );
-    setEdges(
-      (mainGraph.edges ?? []).map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-      })),
-    );
-  }, [setNodes, setEdges]);
+  const fromGraphJson = useCallback(
+    (graph: WorkflowGraph) => {
+      fullGraphRef.current = graph;
+      const mainGraph = graph.mainGraph;
+      if (!mainGraph) {
+        console.warn("fromGraphJson: graph is missing mainGraph", graph);
+        return;
+      }
+      setNodes(
+        (mainGraph.nodes ?? []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          position: n.position,
+          data: n.data,
+        })),
+      );
+      setEdges(
+        (mainGraph.edges ?? []).map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          label: e.label,
+        })),
+      );
+    },
+    [setNodes, setEdges],
+  );
 
   /** Save current canvas into a subGraph slot, then load the subGraph for `subflowId`. */
-  const enterSubflow = useCallback((subflowId: string) => {
-    if (!fullGraphRef.current) return;
-    const graph = fullGraphRef.current;
+  const enterSubflow = useCallback(
+    (subflowId: string) => {
+      if (!fullGraphRef.current) return;
+      const graph = fullGraphRef.current;
 
-    // Save current canvas into mainGraph
-    graph.mainGraph = currentFlatGraph();
+      // Save current canvas into mainGraph
+      graph.mainGraph = currentFlatGraph();
 
-    // Load the subGraph for this subflow
-    const subGraph = graph.subGraphs?.[subflowId] ?? { nodes: [], edges: [] };
-    setNodes(
-      (subGraph.nodes ?? []).map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        data: n.data,
-      })),
-    );
-    setEdges(
-      (subGraph.edges ?? []).map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-      })),
-    );
-  }, [currentFlatGraph, setNodes, setEdges]);
+      // Load the subGraph for this subflow
+      const subGraph = graph.subGraphs?.[subflowId] ?? { nodes: [], edges: [] };
+      setNodes(
+        (subGraph.nodes ?? []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          position: n.position,
+          data: n.data,
+        })),
+      );
+      setEdges(
+        (subGraph.edges ?? []).map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          label: e.label,
+        })),
+      );
+    },
+    [currentFlatGraph, setNodes, setEdges],
+  );
 
   /** Save current canvas into the active subGraph slot, then load mainGraph. */
-  const exitSubflow = useCallback((activeSubflowId: string) => {
-    if (!fullGraphRef.current) return;
-    const graph = fullGraphRef.current;
+  const exitSubflow = useCallback(
+    (activeSubflowId: string) => {
+      if (!fullGraphRef.current) return;
+      const graph = fullGraphRef.current;
 
-    // Save current canvas into the subGraph slot
-    if (!graph.subGraphs) graph.subGraphs = {};
-    graph.subGraphs[activeSubflowId] = currentFlatGraph();
+      // Save current canvas into the subGraph slot
+      graph.subGraphs ??= {};
+      graph.subGraphs[activeSubflowId] = currentFlatGraph();
 
-    // Reload mainGraph
-    const mainGraph = graph.mainGraph;
-    setNodes(
-      (mainGraph?.nodes ?? []).map((n) => ({
-        id: n.id,
-        type: n.type,
-        position: n.position,
-        data: n.data,
-      })),
-    );
-    setEdges(
-      (mainGraph?.edges ?? []).map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        label: e.label,
-      })),
-    );
-  }, [currentFlatGraph, setNodes, setEdges]);
+      // Reload mainGraph
+      const mainGraph = graph.mainGraph;
+      setNodes(
+        (mainGraph?.nodes ?? []).map((n) => ({
+          id: n.id,
+          type: n.type,
+          position: n.position,
+          data: n.data,
+        })),
+      );
+      setEdges(
+        (mainGraph?.edges ?? []).map((e) => ({
+          id: e.id,
+          source: e.source,
+          target: e.target,
+          label: e.label,
+        })),
+      );
+    },
+    [currentFlatGraph, setNodes, setEdges],
+  );
 
   /** Save current canvas into the active subGraph slot (call before toGraphJson if inside a subflow). */
-  const saveCurrentSubGraph = useCallback((activeSubflowId: string) => {
-    if (!fullGraphRef.current) return;
-    if (!fullGraphRef.current.subGraphs) fullGraphRef.current.subGraphs = {};
-    fullGraphRef.current.subGraphs[activeSubflowId] = currentFlatGraph();
-  }, [currentFlatGraph]);
+  const saveCurrentSubGraph = useCallback(
+    (activeSubflowId: string) => {
+      if (!fullGraphRef.current) return;
+      fullGraphRef.current.subGraphs ??= {};
+      fullGraphRef.current.subGraphs[activeSubflowId] = currentFlatGraph();
+    },
+    [currentFlatGraph],
+  );
 
   /** Save current mainGraph (call before toGraphJson if on main canvas). */
   const saveCurrentMainGraph = useCallback(() => {

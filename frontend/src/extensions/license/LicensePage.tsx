@@ -34,7 +34,7 @@ export default function LicensePage() {
     onSuccess: (data) => {
       setImportSuccess(data.message);
       setImportError(null);
-      queryClient.invalidateQueries({ queryKey: ["license"] });
+      void queryClient.invalidateQueries({ queryKey: ["license"] });
     },
     onError: (err: Error) => {
       setImportError(err.message);
@@ -98,7 +98,7 @@ export default function LicensePage() {
       subscription: "订阅",
       grace: "宽限期",
     };
-    return map[t ?? ""] ?? (t ?? "—");
+    return map[t ?? ""] ?? t ?? "—";
   };
 
   return (
@@ -140,7 +140,9 @@ export default function LicensePage() {
           </div>
           <div className="col-span-2">
             <dt className="text-gray-500">机器ID</dt>
-            <dd className="font-mono text-xs break-all mt-1">{status?.machine_id ?? "—"}</dd>
+            <dd className="mt-1 font-mono text-xs break-all">
+              {status?.machine_id ?? "—"}
+            </dd>
           </div>
           <div>
             <dt className="text-gray-500">类型</dt>
@@ -169,7 +171,7 @@ export default function LicensePage() {
         {/* Module badges */}
         {status?.modules && Object.keys(status.modules).length > 0 && (
           <div className="mt-5">
-            <span className="mb-3 block text-xs font-medium uppercase tracking-widest text-gray-400">
+            <span className="mb-3 block text-xs font-medium tracking-widest text-gray-400 uppercase">
               模块授权
             </span>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -236,7 +238,11 @@ export default function LicensePage() {
       <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
         <h2 className="mb-4 text-lg font-semibold">导入许可证</h2>
         <p className="mb-4 text-sm text-gray-500">
-          如已获取 <code className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">license.lic</code> 文件，可直接导入。如尚未申请，请先下载申请文件并提交给厂商制作许可证。
+          如已获取{" "}
+          <code className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">
+            license.lic
+          </code>{" "}
+          文件，可直接导入。如尚未申请，请先下载申请文件并提交给厂商制作许可证。
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
@@ -298,10 +304,10 @@ export default function LicensePage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-gray-500">
-                  <th className="pb-2 pr-4">许可证 ID</th>
-                  <th className="pb-2 pr-4">类型</th>
-                  <th className="pb-2 pr-4">客户</th>
-                  <th className="pb-2 pr-4">导入时间</th>
+                  <th className="pr-4 pb-2">许可证 ID</th>
+                  <th className="pr-4 pb-2">类型</th>
+                  <th className="pr-4 pb-2">客户</th>
+                  <th className="pr-4 pb-2">导入时间</th>
                   <th className="pb-2">状态</th>
                 </tr>
               </thead>
@@ -313,7 +319,9 @@ export default function LicensePage() {
                     </td>
                     <td className="py-2 pr-4">{typeLabel(item.type)}</td>
                     <td className="py-2 pr-4">{item.customer ?? "—"}</td>
-                    <td className="py-2 pr-4">{formatDate(item.imported_at)}</td>
+                    <td className="py-2 pr-4">
+                      {formatDate(item.imported_at)}
+                    </td>
                     <td className="py-2">
                       {item.is_active ? (
                         <span className="text-green-600">生效中</span>

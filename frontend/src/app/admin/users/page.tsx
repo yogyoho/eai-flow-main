@@ -26,10 +26,14 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { StyledCheckbox } from "@/components/ui/styled-checkbox";
 import { AdminSelect } from "@/components/ui/admin-select";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { StyledCheckbox } from "@/components/ui/styled-checkbox";
 // EAI-CUSTOM: button-level permission control
 import { usePermission } from "@/core/permissions";
 import { userApi, roleApi, deptApi } from "@/extensions/api";
@@ -67,7 +71,14 @@ interface DeptSelectTreeNodeProps {
 }
 
 /** Recursive multi-select department tree node (used in the user form modal). */
-function DeptSelectTreeNode({ dept, level, selectedIds, expandedIds, onToggleExpand, onToggleSelect }: DeptSelectTreeNodeProps) {
+function DeptSelectTreeNode({
+  dept,
+  level,
+  selectedIds,
+  expandedIds,
+  onToggleExpand,
+  onToggleSelect,
+}: DeptSelectTreeNodeProps) {
   const hasChildren = dept.children && dept.children.length > 0;
   const isExpanded = expandedIds.has(dept.id);
   const isChecked = selectedIds.includes(dept.id);
@@ -75,26 +86,44 @@ function DeptSelectTreeNode({ dept, level, selectedIds, expandedIds, onToggleExp
   return (
     <div className="select-none">
       <div
-        className="flex items-center gap-1 py-2 px-3 rounded-lg cursor-pointer text-sm text-foreground hover:bg-accent transition-colors"
+        className="text-foreground hover:bg-accent flex cursor-pointer items-center gap-1 rounded-lg px-3 py-2 text-sm transition-colors"
         style={{ paddingLeft: `${level * 1.5 + 0.75}rem` }}
         onClick={() => onToggleSelect(dept, !isChecked)}
       >
         <div
-          className={cn("w-5 h-5 flex items-center justify-center mr-1", hasChildren ? "cursor-pointer text-muted-foreground hover:text-foreground" : "opacity-0")}
+          className={cn(
+            "mr-1 flex h-5 w-5 items-center justify-center",
+            hasChildren
+              ? "text-muted-foreground hover:text-foreground cursor-pointer"
+              : "opacity-0",
+          )}
           onClick={(e) => {
             e.stopPropagation();
             if (hasChildren) onToggleExpand(dept.id);
           }}
         >
-          {hasChildren ? (isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />) : null}
+          {hasChildren ? (
+            isExpanded ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )
+          ) : null}
         </div>
-        <div className="mr-2 flex items-center" onClick={(e) => e.stopPropagation()}>
-          <StyledCheckbox checked={isChecked} onChange={(checked) => onToggleSelect(dept, checked)} />
+        <div
+          className="mr-2 flex items-center"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <StyledCheckbox
+            checked={isChecked}
+            onChange={(checked) => onToggleSelect(dept, checked)}
+          />
         </div>
-        <Building2 className="w-4 h-4 mr-2 text-muted-foreground" />
-        <span className="truncate flex-1">{dept.name}</span>
+        <Building2 className="text-muted-foreground mr-2 h-4 w-4" />
+        <span className="flex-1 truncate">{dept.name}</span>
       </div>
-      {hasChildren && isExpanded &&
+      {hasChildren &&
+        isExpanded &&
         (dept.children ?? []).map((child) => (
           <DeptSelectTreeNode
             key={child.id}
@@ -123,7 +152,9 @@ export default function AdminUsersPage() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [filterDept, setFilterDept] = useState<string>("all");
   const [filterRole, setFilterRole] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "active" | "inactive"
+  >("all");
 
   // Data
   const [users, setUsers] = useState<User[]>([]);
@@ -139,7 +170,9 @@ export default function AdminUsersPage() {
   const [newPassword, setNewPassword] = useState("");
   const [hireDatePopoverOpen, setHireDatePopoverOpen] = useState(false);
   const [deptPopoverOpen, setDeptPopoverOpen] = useState(false);
-  const [deptExpandedIds, setDeptExpandedIds] = useState<Set<string>>(new Set());
+  const [deptExpandedIds, setDeptExpandedIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   const [formData, setFormData] = useState({
     username: "",
@@ -167,7 +200,8 @@ export default function AdminUsersPage() {
         keyword: appliedSearch || undefined,
         dept_id: filterDept && filterDept !== "all" ? filterDept : undefined,
         role_id: filterRole && filterRole !== "all" ? filterRole : undefined,
-        status: filterStatus && filterStatus !== "all" ? filterStatus : undefined,
+        status:
+          filterStatus && filterStatus !== "all" ? filterStatus : undefined,
       });
       setUsers(res.users);
       setTotal(res.total);
@@ -182,7 +216,10 @@ export default function AdminUsersPage() {
   useEffect(() => {
     const loadMeta = async () => {
       try {
-        const [rolesRes, deptsRes] = await Promise.all([roleApi.list(), deptApi.list()]);
+        const [rolesRes, deptsRes] = await Promise.all([
+          roleApi.list(),
+          deptApi.list(),
+        ]);
         setRoles(rolesRes.roles);
         setDepartments(deptsRes.departments);
       } catch (err) {
@@ -193,11 +230,15 @@ export default function AdminUsersPage() {
   }, []);
 
   // Reload users when page or filters change
-   
-  useEffect(() => { void loadUsers(); }, [loadUsers]);
+
+  useEffect(() => {
+    void loadUsers();
+  }, [loadUsers]);
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [appliedSearch, filterDept, filterRole, filterStatus]);
+  useEffect(() => {
+    setPage(1);
+  }, [appliedSearch, filterDept, filterRole, filterStatus]);
 
   const handleSearch = () => {
     setAppliedSearch(searchQuery);
@@ -263,7 +304,12 @@ export default function AdminUsersPage() {
   };
 
   const handleSaveUser = async () => {
-    if (!formData.username.trim() || !formData.full_name.trim() || !formData.email.trim()) return;
+    if (
+      !formData.username.trim() ||
+      !formData.full_name.trim() ||
+      !formData.email.trim()
+    )
+      return;
     if (!editingUser && !formData.password.trim()) return;
 
     try {
@@ -277,7 +323,8 @@ export default function AdminUsersPage() {
           phone: formData.phone || undefined,
           emp_no: formData.emp_no || undefined,
           hire_date: formData.hire_date || undefined,
-          dept_ids: formData.dept_ids.length > 0 ? formData.dept_ids : undefined,
+          dept_ids:
+            formData.dept_ids.length > 0 ? formData.dept_ids : undefined,
           tags: formData.tags,
         };
         if (formData.password) {
@@ -295,7 +342,8 @@ export default function AdminUsersPage() {
           phone: formData.phone || undefined,
           emp_no: formData.emp_no || undefined,
           hire_date: formData.hire_date || undefined,
-          dept_ids: formData.dept_ids.length > 0 ? formData.dept_ids : undefined,
+          dept_ids:
+            formData.dept_ids.length > 0 ? formData.dept_ids : undefined,
           tags: formData.tags.length > 0 ? formData.tags : undefined,
         };
         await userApi.create(createData);
@@ -369,8 +417,8 @@ export default function AdminUsersPage() {
 
   if (isLoading && users.length === 0) {
     return (
-      <main className="h-full flex flex-col overflow-hidden max-w-[1600px] w-full mx-auto bg-background">
-        <div className="flex-1 flex items-center justify-center">
+      <main className="bg-background mx-auto flex h-full w-full max-w-[1600px] flex-col overflow-hidden">
+        <div className="flex flex-1 items-center justify-center">
           <div className="text-muted-foreground">加载中...</div>
         </div>
       </main>
@@ -378,47 +426,49 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <main className="h-full flex flex-col overflow-hidden max-w-[1600px] w-full mx-auto bg-background">
+    <main className="bg-background mx-auto flex h-full w-full max-w-[1600px] flex-col overflow-hidden">
       {/* Header & Controls */}
-      <div className="px-8 py-6 border-b border-border shrink-0">
-        <div className="flex items-center justify-between mb-6">
+      <div className="border-border shrink-0 border-b px-8 py-6">
+        <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">用户管理</h1>
-            <p className="text-muted-foreground mt-1 text-sm">管理企业内所有用户的账号、部门归属及角色权限。</p>
+            <h1 className="text-foreground text-2xl font-bold">用户管理</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              管理企业内所有用户的账号、部门归属及角色权限。
+            </p>
           </div>
           {/* EAI-CUSTOM: gate create user button by user:create permission */}
           {can("user:create") && (
             <button
               onClick={() => handleOpenModal()}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm shadow-sm flex items-center gap-2"
+              className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors"
             >
-              <Plus className="w-4 h-4" /> 添加用户
+              <Plus className="h-4 w-4" /> 添加用户
             </button>
           )}
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div className="relative max-w-md flex-1">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <input
               type="text"
               placeholder="搜索姓名、邮箱或用户名..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="w-full pl-9 pr-4 py-2 bg-muted border border-input rounded-lg focus:bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 text-sm transition-all outline-none"
+              className="bg-muted border-input focus:bg-background focus:border-primary focus:ring-primary/20 w-full rounded-lg border py-2 pr-4 pl-9 text-sm transition-all outline-none focus:ring-2"
             />
           </div>
 
           <button
             onClick={handleSearch}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors font-medium text-sm"
+            className="bg-primary hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors"
           >
             搜索
           </button>
 
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Filter className="text-muted-foreground h-4 w-4" />
             <AdminSelect
               value={filterDept}
               onChange={setFilterDept}
@@ -441,7 +491,9 @@ export default function AdminUsersPage() {
 
             <AdminSelect
               value={filterStatus}
-              onChange={(val) => setFilterStatus(val as "all" | "active" | "inactive")}
+              onChange={(val) =>
+                setFilterStatus(val as "all" | "active" | "inactive")
+              }
               options={[
                 { value: "all", label: "所有状态" },
                 { value: "active", label: "正常" },
@@ -454,119 +506,157 @@ export default function AdminUsersPage() {
       </div>
 
       {/* User Table */}
-      <div className="flex-1 overflow-y-scroll [scrollbar-width:none] [&::-webkit-scrollbar]:hidden p-8 bg-muted/30">
-        <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
-          <table className="w-full text-left border-collapse">
+      <div className="bg-muted/30 flex-1 overflow-y-scroll p-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="bg-background border-border overflow-hidden rounded-xl border shadow-sm">
+          <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">用户信息</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">部门</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">角色</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">状态</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">最后登录</th>
-                <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">操作</th>
+              <tr className="border-border bg-muted/50 border-b">
+                <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                  用户信息
+                </th>
+                <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                  部门
+                </th>
+                <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                  角色
+                </th>
+                <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                  状态
+                </th>
+                <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                  最后登录
+                </th>
+                <th className="text-muted-foreground px-6 py-3 text-right text-xs font-semibold tracking-wider uppercase">
+                  操作
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-border divide-y">
               {users.length > 0 ? (
                 users.map((user) => (
-                  <tr key={user.id} className="hover:bg-muted/50 transition-colors group">
-                    <td className="py-4 px-6">
+                  <tr
+                    key={user.id}
+                    className="hover:bg-muted/50 group transition-colors"
+                  >
+                    <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
-                          {(user.full_name ?? user.username).charAt(0).toUpperCase()}
+                        <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-full font-bold">
+                          {(user.full_name ?? user.username)
+                            .charAt(0)
+                            .toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-medium text-foreground">
+                          <div className="text-foreground font-medium">
                             {user.full_name ?? user.username}
-                            <span className="text-muted-foreground font-normal ml-1.5 text-xs">@{user.username}</span>
+                            <span className="text-muted-foreground ml-1.5 text-xs font-normal">
+                              @{user.username}
+                            </span>
                           </div>
-                          <div className="text-sm text-muted-foreground">{user.email}</div>
+                          <div className="text-muted-foreground text-sm">
+                            {user.email}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="px-6 py-4">
                       {user.dept_ids && user.dept_ids.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-foreground text-sm">
-                            <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
-                            {getDepartmentName(user.primary_dept_id ?? user.dept_ids[0])}
+                          <div className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm">
+                            <Building2 className="text-muted-foreground h-3.5 w-3.5" />
+                            {getDepartmentName(
+                              user.primary_dept_id ?? user.dept_ids[0],
+                            )}
                           </div>
                           {user.dept_ids.length > 1 && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                            <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-1 text-xs font-medium">
                               +{user.dept_ids.length - 1}
                             </span>
                           )}
                         </div>
                       ) : (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-foreground text-sm">
-                          <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                        <div className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm">
+                          <Building2 className="text-muted-foreground h-3.5 w-3.5" />
                           {getDepartmentName(user.dept_id, user.dept_name)}
                         </div>
                       )}
                     </td>
-                    <td className="py-4 px-6">
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary/10 text-primary text-sm">
-                        <Shield className="w-3.5 h-3.5 text-primary" />
+                    <td className="px-6 py-4">
+                      <div className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm">
+                        <Shield className="text-primary h-3.5 w-3.5" />
                         {getRoleName(user.role_id)}
                       </div>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="px-6 py-4">
                       <span
                         className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium",
-                          user.status === "active" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"
+                          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                          user.status === "active"
+                            ? "bg-success/10 text-success"
+                            : "bg-muted text-muted-foreground",
                         )}
                       >
-                        <span className={cn("w-1.5 h-1.5 rounded-full", user.status === "active" ? "bg-success" : "bg-muted-foreground")} />
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            user.status === "active"
+                              ? "bg-success"
+                              : "bg-muted-foreground",
+                          )}
+                        />
                         {user.status === "active" ? "正常" : "已停用"}
                       </span>
                     </td>
-                    <td className="py-4 px-6 text-sm text-muted-foreground">
+                    <td className="text-muted-foreground px-6 py-4 text-sm">
                       {user.last_login_at
                         ? new Date(user.last_login_at).toLocaleString("zh-CN")
                         : "-"}
                     </td>
-                    <td className="py-4 px-6 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 transition-opacity group-hover:opacity-100">
                         {/* EAI-CUSTOM: gate status toggle by user:update permission (calls userApi.update) */}
                         {can("user:update") && (
                           <button
                             onClick={() => toggleUserStatus(user)}
-                            className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                            title={user.status === "active" ? "停用账号" : "启用账号"}
+                            className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-md p-1.5 transition-colors"
+                            title={
+                              user.status === "active" ? "停用账号" : "启用账号"
+                            }
                           >
-                            {user.status === "active" ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                            {user.status === "active" ? (
+                              <UserX className="h-4 w-4" />
+                            ) : (
+                              <UserCheck className="h-4 w-4" />
+                            )}
                           </button>
                         )}
                         {/* EAI-CUSTOM: gate edit button by user:update permission */}
                         {can("user:update") && (
                           <button
                             onClick={() => handleOpenModal(user)}
-                            className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-colors"
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md p-1.5 transition-colors"
                             title="编辑用户"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Edit className="h-4 w-4" />
                           </button>
                         )}
                         {/* EAI-CUSTOM: gate reset-password button by user:update permission */}
                         {can("user:update") && (
                           <button
                             onClick={() => openPasswordDialog(user)}
-                            className="p-1.5 text-muted-foreground hover:text-warning hover:bg-warning/10 rounded-md transition-colors"
+                            className="text-muted-foreground hover:text-warning hover:bg-warning/10 rounded-md p-1.5 transition-colors"
                             title="重置密码"
                           >
-                            <Lock className="w-4 h-4" />
+                            <Lock className="h-4 w-4" />
                           </button>
                         )}
                         {/* EAI-CUSTOM: gate delete user button by user:delete permission */}
                         {can("user:delete") && (
                           <button
                             onClick={() => handleDeleteUser(user.id)}
-                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md p-1.5 transition-colors"
                             title="删除用户"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="h-4 w-4" />
                           </button>
                         )}
                       </div>
@@ -575,9 +665,12 @@ export default function AdminUsersPage() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-muted-foreground">
+                  <td
+                    colSpan={6}
+                    className="text-muted-foreground py-12 text-center"
+                  >
                     <div className="flex flex-col items-center justify-center">
-                      <UserCircle className="w-12 h-12 text-muted-foreground mb-3" />
+                      <UserCircle className="text-muted-foreground mb-3 h-12 w-12" />
                       <p>没有找到匹配的用户</p>
                     </div>
                   </td>
@@ -589,21 +682,25 @@ export default function AdminUsersPage() {
 
         {/* Pagination */}
         {total > 0 && (
-          <div className="flex items-center justify-between mt-4 px-1">
-            <div className="text-sm text-muted-foreground">
-              共 <span className="font-medium text-foreground">{total}</span> 条记录，第 {page}/{totalPages} 页
+          <div className="mt-4 flex items-center justify-between px-1">
+            <div className="text-muted-foreground text-sm">
+              共 <span className="text-foreground font-medium">{total}</span>{" "}
+              条记录，第 {page}/{totalPages} 页
             </div>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => goToPage(page - 1)}
                 disabled={page <= 1}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg p-2 transition-colors disabled:pointer-events-none disabled:opacity-40"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="h-4 w-4" />
               </button>
               {getPageNumbers().map((p, i) =>
                 p === "ellipsis" ? (
-                  <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground text-sm">
+                  <span
+                    key={`ellipsis-${i}`}
+                    className="text-muted-foreground px-2 text-sm"
+                  >
                     ...
                   </span>
                 ) : (
@@ -611,22 +708,22 @@ export default function AdminUsersPage() {
                     key={p}
                     onClick={() => goToPage(p)}
                     className={cn(
-                      "min-w-[36px] h-9 rounded-lg text-sm font-medium transition-colors",
+                      "h-9 min-w-[36px] rounded-lg text-sm font-medium transition-colors",
                       p === page
                         ? "bg-primary text-white"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted",
                     )}
                   >
                     {p}
                   </button>
-                )
+                ),
               )}
               <button
                 onClick={() => goToPage(page + 1)}
                 disabled={page >= totalPages}
-                className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg p-2 transition-colors disabled:pointer-events-none disabled:opacity-40"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -648,50 +745,59 @@ export default function AdminUsersPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative bg-background rounded-2xl shadow-xl w-full max-w-lg flex flex-col max-h-[calc(100vh-2rem)] overflow-hidden"
+              className="bg-background relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl shadow-xl"
             >
-              <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">
+              <div className="border-border flex items-center justify-between border-b px-6 py-4">
+                <h3 className="text-foreground text-lg font-semibold">
                   {editingUser ? "编辑用户" : "添加用户"}
                 </h3>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg p-2 transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
                 <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
+                    <label className="text-foreground mb-1 block text-sm font-medium">
                       登录账号 <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
-                      <UserCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <UserCircle className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                       <input
                         type="text"
                         value={formData.username}
-                        onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, username: e.target.value })
+                        }
                         disabled={!!editingUser}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary disabled:bg-muted disabled:text-muted-foreground"
+                        className="bg-background border-input focus:ring-primary/50 focus:border-primary disabled:bg-muted disabled:text-muted-foreground w-full rounded-lg border py-2 pr-3 pl-9 focus:ring-2 focus:outline-none"
                         placeholder="例如：zhangsan"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
-                      登录密码 {!editingUser && <span className="text-destructive">*</span>}
+                    <label className="text-foreground mb-1 block text-sm font-medium">
+                      登录密码{" "}
+                      {!editingUser && (
+                        <span className="text-destructive">*</span>
+                      )}
                     </label>
                     <div className="relative">
-                      <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Lock className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                       <input
                         type="password"
                         value={formData.password}
-                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-                        placeholder={editingUser ? "留空表示不修改" : "设置初始密码"}
+                        onChange={(e) =>
+                          setFormData({ ...formData, password: e.target.value })
+                        }
+                        className="bg-background border-input focus:ring-primary/50 focus:border-primary w-full rounded-lg border py-2 pr-3 pl-9 focus:ring-2 focus:outline-none"
+                        placeholder={
+                          editingUser ? "留空表示不修改" : "设置初始密码"
+                        }
                       />
                     </div>
                   </div>
@@ -699,31 +805,38 @@ export default function AdminUsersPage() {
 
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
+                    <label className="text-foreground mb-1 block text-sm font-medium">
                       姓名 <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
-                      <UserCircle className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <UserCircle className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                       <input
                         type="text"
                         value={formData.full_name}
-                        onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            full_name: e.target.value,
+                          })
+                        }
+                        className="bg-background border-input focus:ring-primary/50 focus:border-primary w-full rounded-lg border py-2 pr-3 pl-9 focus:ring-2 focus:outline-none"
                         placeholder="例如：张三"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">
+                    <label className="text-foreground mb-1 block text-sm font-medium">
                       邮箱 <span className="text-destructive">*</span>
                     </label>
                     <div className="relative">
-                      <Mail className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Mail className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                       <input
                         type="email"
                         value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        onChange={(e) =>
+                          setFormData({ ...formData, email: e.target.value })
+                        }
+                        className="bg-background border-input focus:ring-primary/50 focus:border-primary w-full rounded-lg border py-2 pr-3 pl-9 focus:ring-2 focus:outline-none"
                         placeholder="zhangsan@example.com"
                       />
                     </div>
@@ -732,27 +845,35 @@ export default function AdminUsersPage() {
 
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">工号</label>
+                    <label className="text-foreground mb-1 block text-sm font-medium">
+                      工号
+                    </label>
                     <div className="relative">
-                      <Hash className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Hash className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                       <input
                         type="text"
                         value={formData.emp_no}
-                        onChange={(e) => setFormData({ ...formData, emp_no: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        onChange={(e) =>
+                          setFormData({ ...formData, emp_no: e.target.value })
+                        }
+                        className="bg-background border-input focus:ring-primary/50 focus:border-primary w-full rounded-lg border py-2 pr-3 pl-9 focus:ring-2 focus:outline-none"
                         placeholder="EMP001"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">手机号码</label>
+                    <label className="text-foreground mb-1 block text-sm font-medium">
+                      手机号码
+                    </label>
                     <div className="relative">
-                      <Phone className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <Phone className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full pl-9 pr-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                        onChange={(e) =>
+                          setFormData({ ...formData, phone: e.target.value })
+                        }
+                        className="bg-background border-input focus:ring-primary/50 focus:border-primary w-full rounded-lg border py-2 pr-3 pl-9 focus:ring-2 focus:outline-none"
                         placeholder="138xxxx"
                       />
                     </div>
@@ -761,26 +882,53 @@ export default function AdminUsersPage() {
 
                 <div className="grid grid-cols-2 gap-5">
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">入职日期</label>
-                    <Popover open={hireDatePopoverOpen} onOpenChange={setHireDatePopoverOpen}>
+                    <label className="text-foreground mb-1 block text-sm font-medium">
+                      入职日期
+                    </label>
+                    <Popover
+                      open={hireDatePopoverOpen}
+                      onOpenChange={setHireDatePopoverOpen}
+                    >
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="relative w-full flex items-center justify-start pl-9 pr-3 py-2 bg-background border border-input rounded-lg hover:border-input hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                          className="bg-background border-input hover:border-input hover:bg-muted focus:ring-primary/50 focus:border-primary relative flex w-full items-center justify-start rounded-lg border py-2 pr-3 pl-9 transition-colors focus:ring-2 focus:outline-none"
                         >
-                          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                          <span className={formData.hire_date ? "text-foreground" : "text-muted-foreground"}>
-                            {formData.hire_date ? format(new Date(formData.hire_date), "yyyy年MM月dd日", { locale: zhCN }) : "选择日期"}
+                          <CalendarIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+                          <span
+                            className={
+                              formData.hire_date
+                                ? "text-foreground"
+                                : "text-muted-foreground"
+                            }
+                          >
+                            {formData.hire_date
+                              ? format(
+                                  new Date(formData.hire_date),
+                                  "yyyy年MM月dd日",
+                                  { locale: zhCN },
+                                )
+                              : "选择日期"}
                           </span>
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 bg-background border border-border shadow-lg rounded-lg" align="start">
+                      <PopoverContent
+                        className="bg-background border-border w-auto rounded-lg border p-0 shadow-lg"
+                        align="start"
+                      >
                         <Calendar
                           mode="single"
-                          selected={formData.hire_date ? new Date(formData.hire_date) : undefined}
+                          selected={
+                            formData.hire_date
+                              ? new Date(formData.hire_date)
+                              : undefined
+                          }
                           onSelect={(date) => {
                             if (date) {
-                              setFormData({ ...formData, hire_date: format(date, "yyyy-MM-dd") });
+                              setFormData({
+                                ...formData,
+                                hire_date: format(date, "yyyy-MM-dd"),
+                              });
                               setHireDatePopoverOpen(false);
                             }
                           }}
@@ -792,31 +940,44 @@ export default function AdminUsersPage() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">分配角色</label>
+                    <label className="text-foreground mb-1 block text-sm font-medium">
+                      分配角色
+                    </label>
                     <AdminSelect
                       value={formData.role_id}
-                      onChange={(val) => setFormData({ ...formData, role_id: val })}
-                      options={roles.map((r) => ({ value: r.id, label: r.name }))}
+                      onChange={(val) =>
+                        setFormData({ ...formData, role_id: val })
+                      }
+                      options={roles.map((r) => ({
+                        value: r.id,
+                        label: r.name,
+                      }))}
                       className="w-full"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">所属部门（可多选）</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
+                    <label className="text-foreground mb-1 block text-sm font-medium">
+                      所属部门（可多选）
+                    </label>
+                    <div className="mb-2 flex flex-wrap gap-2">
                       {formData.dept_ids.map((deptId) => (
                         <span
                           key={deptId}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm"
+                          className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-sm"
                         >
                           {getDepartmentName(deptId)}
                           <button
                             type="button"
-                            onClick={() => setFormData({
-                              ...formData,
-                              dept_ids: formData.dept_ids.filter((id) => id !== deptId),
-                            })}
-                            className="ml-1 hover:text-primary/80"
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                dept_ids: formData.dept_ids.filter(
+                                  (id) => id !== deptId,
+                                ),
+                              })
+                            }
+                            className="hover:text-primary/80 ml-1"
                           >
                             ×
                           </button>
@@ -829,25 +990,40 @@ export default function AdminUsersPage() {
                         setDeptPopoverOpen(open);
                         // Expand the whole tree the first time the picker opens
                         if (open && deptExpandedIds.size === 0) {
-                          setDeptExpandedIds(new Set(collectAllDeptIds(departments)));
+                          setDeptExpandedIds(
+                            new Set(collectAllDeptIds(departments)),
+                          );
                         }
                       }}
                     >
                       <PopoverTrigger asChild>
                         <button
                           type="button"
-                          className="flex w-full items-center justify-between gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm transition-colors hover:border-input hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                          className="border-input bg-background hover:border-input hover:bg-muted focus:ring-primary/50 focus:border-primary flex w-full items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
                         >
-                          <span className={cn(formData.dept_ids.length > 0 ? "text-foreground" : "text-muted-foreground")}>
-                            {formData.dept_ids.length > 0 ? `已选 ${formData.dept_ids.length} 个部门` : "选择部门..."}
+                          <span
+                            className={cn(
+                              formData.dept_ids.length > 0
+                                ? "text-foreground"
+                                : "text-muted-foreground",
+                            )}
+                          >
+                            {formData.dept_ids.length > 0
+                              ? `已选 ${formData.dept_ids.length} 个部门`
+                              : "选择部门..."}
                           </span>
-                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          <ChevronDown className="text-muted-foreground h-4 w-4" />
                         </button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-72 p-2 bg-background border border-border shadow-lg rounded-lg" align="start">
+                      <PopoverContent
+                        className="bg-background border-border w-72 rounded-lg border p-2 shadow-lg"
+                        align="start"
+                      >
                         <div className="max-h-64 overflow-y-auto">
                           {departments.length === 0 && (
-                            <p className="py-4 text-center text-sm text-muted-foreground">暂无部门</p>
+                            <p className="text-muted-foreground py-4 text-center text-sm">
+                              暂无部门
+                            </p>
                           )}
                           {departments.map((d) => (
                             <DeptSelectTreeNode
@@ -869,7 +1045,9 @@ export default function AdminUsersPage() {
                                   ...prev,
                                   dept_ids: checked
                                     ? [...new Set([...prev.dept_ids, dept.id])]
-                                    : prev.dept_ids.filter((id) => id !== dept.id),
+                                    : prev.dept_ids.filter(
+                                        (id) => id !== dept.id,
+                                      ),
                                 }))
                               }
                             />
@@ -881,17 +1059,26 @@ export default function AdminUsersPage() {
 
                   <div className="col-span-2">
                     {/* EAI-CUSTOM (标签池 A): 用户显式标签（回车添加、× 删除） */}
-                    <label className="block text-sm font-medium text-foreground mb-1">标签</label>
-                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-input bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-primary/50 focus-within:border-primary">
+                    <label className="text-foreground mb-1 block text-sm font-medium">
+                      标签
+                    </label>
+                    <div className="border-input bg-background focus-within:ring-primary/50 focus-within:border-primary flex flex-wrap items-center gap-1.5 rounded-lg border px-3 py-2 focus-within:ring-2">
                       {formData.tags.map((tag, i) => (
                         <span
                           key={`${tag}-${i}`}
-                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-sm text-primary"
+                          className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-sm"
                         >
                           {tag}
                           <button
                             type="button"
-                            onClick={() => setFormData({ ...formData, tags: formData.tags.filter((_, idx) => idx !== i) })}
+                            onClick={() =>
+                              setFormData({
+                                ...formData,
+                                tags: formData.tags.filter(
+                                  (_, idx) => idx !== i,
+                                ),
+                              })
+                            }
                             className="text-primary/70 hover:text-primary"
                             aria-label={`删除标签 ${tag}`}
                           >
@@ -906,61 +1093,87 @@ export default function AdminUsersPage() {
                             e.preventDefault();
                             const v = e.currentTarget.value.trim();
                             if (v && !formData.tags.includes(v)) {
-                              setFormData({ ...formData, tags: [...formData.tags, v] });
+                              setFormData({
+                                ...formData,
+                                tags: [...formData.tags, v],
+                              });
                             }
                             e.currentTarget.value = "";
-                          } else if (e.key === "Backspace" && !e.currentTarget.value && formData.tags.length > 0) {
-                            setFormData({ ...formData, tags: formData.tags.slice(0, -1) });
+                          } else if (
+                            e.key === "Backspace" &&
+                            !e.currentTarget.value &&
+                            formData.tags.length > 0
+                          ) {
+                            setFormData({
+                              ...formData,
+                              tags: formData.tags.slice(0, -1),
+                            });
                           }
                         }}
-                        className="min-w-[120px] flex-1 border-none bg-transparent px-0.5 py-0.5 text-sm text-foreground outline-none placeholder:text-muted-foreground"
-                        placeholder={formData.tags.length === 0 ? "输入标签后回车" : ""}
+                        className="text-foreground placeholder:text-muted-foreground min-w-[120px] flex-1 border-none bg-transparent px-0.5 py-0.5 text-sm outline-none"
+                        placeholder={
+                          formData.tags.length === 0 ? "输入标签后回车" : ""
+                        }
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">输入后回车添加标签，点击 × 删除；用于策略条件 tags 属性（后端会并入 role:/dept: 自动标签）</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      输入后回车添加标签，点击 × 删除；用于策略条件 tags
+                      属性（后端会并入 role:/dept: 自动标签）
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">账号状态</label>
-                    <div className="flex h-10 w-full items-center gap-4 rounded-lg border border-input bg-background px-3">
-                      <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="text-foreground mb-2 block text-sm font-medium">
+                      账号状态
+                    </label>
+                    <div className="border-input bg-background flex h-10 w-full items-center gap-4 rounded-lg border px-3">
+                      <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
                           name="status"
                           value="active"
                           checked={formData.status === "active"}
-                          onChange={() => setFormData({ ...formData, status: "active" })}
+                          onChange={() =>
+                            setFormData({ ...formData, status: "active" })
+                          }
                           className="text-primary focus:ring-primary"
                         />
-                        <span className="text-sm text-foreground">正常</span>
+                        <span className="text-foreground text-sm">正常</span>
                       </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
+                      <label className="flex cursor-pointer items-center gap-2">
                         <input
                           type="radio"
                           name="status"
                           value="inactive"
                           checked={formData.status === "inactive"}
-                          onChange={() => setFormData({ ...formData, status: "inactive" })}
+                          onChange={() =>
+                            setFormData({ ...formData, status: "inactive" })
+                          }
                           className="text-primary focus:ring-primary"
                         />
-                        <span className="text-sm text-foreground">停用</span>
+                        <span className="text-foreground text-sm">停用</span>
                       </label>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-3">
+              <div className="bg-muted border-border flex items-center justify-end gap-3 border-t px-6 py-4">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-lg hover:bg-muted transition-colors"
+                  className="text-foreground bg-background border-input hover:bg-muted rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
                 >
                   取消
                 </button>
                 <button
                   onClick={handleSaveUser}
-                  disabled={!formData.username.trim() || !formData.full_name.trim() || !formData.email.trim() || (!editingUser && !formData.password.trim())}
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                  disabled={
+                    !formData.username.trim() ||
+                    !formData.full_name.trim() ||
+                    !formData.email.trim() ||
+                    (!editingUser && !formData.password.trim())
+                  }
+                  className="bg-primary hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors disabled:opacity-50"
                 >
                   {editingUser ? "保存更改" : "确认添加"}
                 </button>
@@ -985,40 +1198,42 @@ export default function AdminUsersPage() {
               initial={{ opacity: 0, scale: 0.95, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="relative bg-background rounded-2xl shadow-xl w-full max-w-sm overflow-hidden"
+              className="bg-background relative w-full max-w-sm overflow-hidden rounded-2xl shadow-xl"
             >
-              <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-foreground">
+              <div className="border-border flex items-center justify-between border-b px-6 py-4">
+                <h3 className="text-foreground text-lg font-semibold">
                   重置密码 - {passwordUser?.username}
                 </h3>
                 <button
                   onClick={() => setShowPasswordDialog(false)}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg p-2 transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
               <div className="p-6">
-                <label className="block text-sm font-medium text-foreground mb-1">新密码</label>
+                <label className="text-foreground mb-1 block text-sm font-medium">
+                  新密码
+                </label>
                 <input
                   type="password"
                   placeholder="请输入新密码"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  className="bg-background border-input focus:ring-primary/50 focus:border-primary w-full rounded-lg border px-3 py-2 focus:ring-2 focus:outline-none"
                 />
               </div>
-              <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-end gap-3">
+              <div className="bg-muted border-border flex items-center justify-end gap-3 border-t px-6 py-4">
                 <button
                   onClick={() => setShowPasswordDialog(false)}
-                  className="px-4 py-2 text-sm font-medium text-foreground bg-background border border-input rounded-lg hover:bg-muted transition-colors"
+                  className="text-foreground bg-background border-input hover:bg-muted rounded-lg border px-4 py-2 text-sm font-medium transition-colors"
                 >
                   取消
                 </button>
                 <button
                   onClick={handleResetPassword}
                   disabled={!newPassword}
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary/90 transition-colors shadow-sm disabled:opacity-50"
+                  className="bg-primary hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors disabled:opacity-50"
                 >
                   确定重置
                 </button>

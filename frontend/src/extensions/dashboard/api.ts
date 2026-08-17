@@ -21,10 +21,10 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
     "Content-Type": "application/json",
   };
   if (csrf) {
-    (headers)["X-CSRF-Token"] = csrf;
+    headers["X-CSRF-Token"] = csrf;
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "";
+  const baseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL ?? "";
   const response = await fetch(`${baseUrl}${path}`, {
     headers,
     credentials: "include",
@@ -53,14 +53,25 @@ export const dashboardApi = {
     if (start) params.set("start", start);
     if (end) params.set("end", end);
     const qs = params.toString();
-    return fetchApi<MyCalendarResponse>(`${BASE}/my-calendar${qs ? `?${qs}` : ""}`);
+    return fetchApi<MyCalendarResponse>(
+      `${BASE}/my-calendar${qs ? `?${qs}` : ""}`,
+    );
   },
-  createCalendarEvent: (data: { title: string; date: string; time?: string; type?: string }) =>
-    fetchApi<{ id: string; title: string; date: string; type: string }>(`${BASE}/my-calendar`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    }),
-  getNotificationPreferences: () => fetchApi<NotificationPreference>(`${BASE}/notification-preferences`),
+  createCalendarEvent: (data: {
+    title: string;
+    date: string;
+    time?: string;
+    type?: string;
+  }) =>
+    fetchApi<{ id: string; title: string; date: string; type: string }>(
+      `${BASE}/my-calendar`,
+      {
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+    ),
+  getNotificationPreferences: () =>
+    fetchApi<NotificationPreference>(`${BASE}/notification-preferences`),
   updateNotificationPreferences: (data: NotificationPreferenceUpdate) =>
     putApi<NotificationPreference>(`${BASE}/notification-preferences`, data),
 };

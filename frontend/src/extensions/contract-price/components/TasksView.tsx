@@ -4,9 +4,12 @@ import { Download, PackageSearch, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
-import { EmptyRow, PageHeader } from "@/extensions/contract-price/components/PageHeader";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  EmptyRow,
+  PageHeader,
+} from "@/extensions/contract-price/components/PageHeader";
 import {
   Table,
   TableBody,
@@ -32,15 +35,20 @@ function formatDate(s: string | null): string {
 /** Download a run's Excel via credentialed fetch → blob (auth-cookie safe,
  * unlike window.open which can silently fail on expired sessions). */
 async function downloadExcel(runId: string) {
-  const res = await fetch(`/api/extensions/contract-price/runs/${runId}/excel`, {
-    credentials: "include",
-  });
+  const res = await fetch(
+    `/api/extensions/contract-price/runs/${runId}/excel`,
+    {
+      credentials: "include",
+    },
+  );
   if (!res.ok) throw new Error(`下载失败 (${res.status})`);
   const blob = await res.blob();
   // try Content-Disposition filename, else derive from run id
   const cd = res.headers.get("content-disposition") ?? "";
-  const match = cd.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)/i);
-  const filename = match?.[1] ? decodeURIComponent(match[1]) : `run-${runId.slice(0, 8)}.xlsx`;
+  const match = /filename\*?=(?:UTF-8'')?["']?([^"';]+)/i.exec(cd);
+  const filename = match?.[1]
+    ? decodeURIComponent(match[1])
+    : `run-${runId.slice(0, 8)}.xlsx`;
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -54,17 +62,21 @@ async function downloadExcel(runId: string) {
 const COL_SPAN = 12;
 
 export function TasksView() {
-  const [runStatus, setRunStatus] = useState<"all" | "running" | "completed" | "failed">("all");
+  const [runStatus, setRunStatus] = useState<
+    "all" | "running" | "completed" | "failed"
+  >("all");
   const { data, isLoading, isFetching, refetch } = useRuns({
     run_status: runStatus === "all" ? undefined : runStatus,
     limit: 50,
   });
   const deleteRun = useDeleteRun();
-  const runs = data?.items ?? [];
+  const runs = useMemo(() => data?.items ?? [], [data]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // clear selection when filter/refetch changes which runs are visible
-  useEffect(() => { setSelected(new Set()); }, [runStatus, data]);
+  useEffect(() => {
+    setSelected(new Set());
+  }, [runStatus, data]);
 
   const allSelected = useMemo(
     () => runs.length > 0 && runs.every((r) => selected.has(r.id)),
@@ -78,7 +90,11 @@ export function TasksView() {
   const toggleOne = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
@@ -88,7 +104,7 @@ export function TasksView() {
       <PageHeader
         title="任务中心"
         description="手动与定时分析任务的运行记录，可下载产出的 Excel 报告。"
-        icon={<PackageSearch className="w-4 h-4" />}
+        icon={<PackageSearch className="h-4 w-4" />}
         actions={
           <>
             <div className="flex rounded-md border">
@@ -98,15 +114,30 @@ export function TasksView() {
                   onClick={() => setRunStatus(f)}
                   className={cn(
                     "px-3 py-1.5 text-xs transition-colors",
-                    runStatus === f ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                    runStatus === f
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {f === "all" ? "全部" : f === "running" ? "运行中" : f === "completed" ? "完成" : "失败"}
+                  {f === "all"
+                    ? "全部"
+                    : f === "running"
+                      ? "运行中"
+                      : f === "completed"
+                        ? "完成"
+                        : "失败"}
                 </button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              />
               刷新
             </Button>
           </>
@@ -115,17 +146,18 @@ export function TasksView() {
 
       {/* Batch delete bar */}
       {selected.size > 0 ? (
-        <div className="flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5">
+        <div className="border-destructive/30 bg-destructive/5 flex items-center gap-3 rounded-lg border px-4 py-2.5">
           <span className="text-sm font-medium">已选 {selected.size} 项</span>
           <Button
             variant="destructive"
             size="sm"
             disabled={deleteRun.isPending}
             onClick={() => {
-              if (!confirm(`确认删除选中的 ${selected.size} 条运行记录？`)) return;
-              Promise.all([...selected].map((id) => deleteRun.mutateAsync(id))).finally(() =>
-                setSelected(new Set()),
-              );
+              if (!confirm(`确认删除选中的 ${selected.size} 条运行记录？`))
+                return;
+              Promise.all([...selected].map((id) => deleteRun.mutateAsync(id)))
+                .catch((e) => console.error("批量删除失败:", e))
+                .finally(() => setSelected(new Set()));
             }}
           >
             <Trash2 className="h-4 w-4" />
@@ -162,24 +194,40 @@ export function TasksView() {
                 <EmptyRow colSpan={COL_SPAN}>暂无运行记录。</EmptyRow>
               ) : (
                 runs.map((run) => (
-                  <TableRow key={run.id} className={selected.has(run.id) ? "bg-primary/5" : undefined}>
+                  <TableRow
+                    key={run.id}
+                    className={
+                      selected.has(run.id) ? "bg-primary/5" : undefined
+                    }
+                  >
                     <TableCell>
-                      <Checkbox checked={selected.has(run.id)} onCheckedChange={() => toggleOne(run.id)} />
+                      <Checkbox
+                        checked={selected.has(run.id)}
+                        onCheckedChange={() => toggleOne(run.id)}
+                      />
                     </TableCell>
-                    <TableCell>{run.label || "—"}</TableCell>
-                    <TableCell className="whitespace-nowrap">{formatDate(run.started_at)}</TableCell>
-                    <TableCell>{run.trigger_type === "scheduled" ? "定时" : "手动"}</TableCell>
-                    <TableCell className={cn(statusTone[run.status] ?? "")}>{run.status}</TableCell>
+                    <TableCell>{run.label ?? "—"}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(run.started_at)}
+                    </TableCell>
+                    <TableCell>
+                      {run.trigger_type === "scheduled" ? "定时" : "手动"}
+                    </TableCell>
+                    <TableCell className={cn(statusTone[run.status] ?? "")}>
+                      {run.status}
+                    </TableCell>
                     <TableCell className="text-right">
                       {run.status === "running" && run.progress ? (
                         <div className="flex flex-col items-end gap-1">
                           <span className="text-xs tabular-nums">
                             {run.progress.done}/{run.progress.total}
-                            {run.progress.failed ? `（失败 ${run.progress.failed}）` : ""}
+                            {run.progress.failed
+                              ? `（失败 ${run.progress.failed}）`
+                              : ""}
                           </span>
-                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                          <div className="bg-muted h-1.5 w-20 overflow-hidden rounded-full">
                             <div
-                              className="h-full bg-primary transition-all"
+                              className="bg-primary h-full transition-all"
                               style={{
                                 width: `${run.progress.total ? (run.progress.done / run.progress.total) * 100 : 0}%`,
                               }}
@@ -187,7 +235,7 @@ export function TasksView() {
                           </div>
                           {run.progress.processing?.length ? (
                             <span
-                              className="max-w-[220px] truncate text-[10px] text-muted-foreground"
+                              className="text-muted-foreground max-w-[220px] truncate text-[10px]"
                               title={run.progress.processing.join(", ")}
                             >
                               处理中: {run.progress.processing.join(", ")}
@@ -198,11 +246,19 @@ export function TasksView() {
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{run.docs_processed}</TableCell>
-                    <TableCell className="text-right tabular-nums">{run.items_extracted}</TableCell>
-                    <TableCell className="text-right tabular-nums">{run.clusters_formed}</TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {run.duration_ms != null ? `${(run.duration_ms / 1000).toFixed(1)}s` : "—"}
+                      {run.docs_processed}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {run.items_extracted}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {run.clusters_formed}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {run.duration_ms != null
+                        ? `${(run.duration_ms / 1000).toFixed(1)}s`
+                        : "—"}
                     </TableCell>
                     <TableCell className="text-right">
                       {run.excel_path ? (
@@ -212,7 +268,9 @@ export function TasksView() {
                           title="下载 Excel"
                           onClick={() => {
                             downloadExcel(run.id).catch((e) => {
-                              alert(e instanceof Error ? e.message : "下载失败");
+                              alert(
+                                e instanceof Error ? e.message : "下载失败",
+                              );
                             });
                           }}
                         >
@@ -233,7 +291,7 @@ export function TasksView() {
                           deleteRun.mutate(run.id);
                         }}
                       >
-                        <Trash2 className="h-4 w-4 text-muted-foreground hover:text-destructive" />
+                        <Trash2 className="text-muted-foreground hover:text-destructive h-4 w-4" />
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -242,7 +300,7 @@ export function TasksView() {
             </TableBody>
           </Table>
           {runs.some((r) => r.status === "failed" && r.error) ? (
-            <div className="mt-4 space-y-1 text-xs text-destructive">
+            <div className="text-destructive mt-4 space-y-1 text-xs">
               {runs
                 .filter((r) => r.status === "failed" && r.error)
                 .slice(0, 3)

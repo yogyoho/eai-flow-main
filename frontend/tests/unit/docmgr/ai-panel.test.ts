@@ -1,7 +1,13 @@
 import { expect, test, describe } from "vitest";
 
-import { levenshteinDistance, findBlockByAnchor } from "@/extensions/docmgr/PersonalBlockNoteEditor";
-import { buildPrompt, parseOperations } from "@/extensions/docmgr/DocAIAgentPanel";
+import {
+  buildPrompt,
+  parseOperations,
+} from "@/extensions/docmgr/DocAIAgentPanel";
+import {
+  levenshteinDistance,
+  findBlockByAnchor,
+} from "@/extensions/docmgr/PersonalBlockNoteEditor";
 
 // ─── levenshteinDistance ──────────────────────────────────────────────
 
@@ -46,13 +52,23 @@ describe("levenshteinDistance", () => {
 
 /** Helper: create a mock BlockNote block. */
 function block(type: string, id: string, text: string) {
-  return { type, id, content: [{ type: "text", text, styles: {} }], children: [], props: {} };
+  return {
+    type,
+    id,
+    content: [{ type: "text", text, styles: {} }],
+    children: [],
+    props: {},
+  };
 }
 
 // ponytail: minimal document fixture matching spec §7 matching levels.
 const sampleDoc = [
   block("heading", "h1", "## 设计参数分析"),
-  block("paragraph", "p1", "根据 GB/T 50746-2012 表3.3.3，蒸发损失系数计算公式如下："),
+  block(
+    "paragraph",
+    "p1",
+    "根据 GB/T 50746-2012 表3.3.3，蒸发损失系数计算公式如下：",
+  ),
   block("heading", "h2", "### 计算公式"),
   block("paragraph", "p2", "$$K_{ZF} = 0.001461$$"),
   block("paragraph", "p3", "其中 K_{ZF} 为蒸发损失系数。"),
@@ -115,20 +131,24 @@ describe("findBlockByAnchor", () => {
   });
 
   test("table anchor with pipe chars → normalized match", () => {
-    const tableDoc = [
-      block("table", "t1", ""), // table blocks have special content structure
-    ];
     // Simulate a table block with cell-style content
     const tableBlock = {
-      type: "table", id: "t1",
-      content: { type: "tableContent", rows: [
-        { cells: [
-          { content: [{ type: "text", text: "4", styles: {} }] },
-          { content: [{ type: "text", text: "循环水场占地", styles: {} }] },
-          { content: [{ type: "text", text: "m²", styles: {} }] },
-        ]}
-      ]},
-      children: [], props: {},
+      type: "table",
+      id: "t1",
+      content: {
+        type: "tableContent",
+        rows: [
+          {
+            cells: [
+              { content: [{ type: "text", text: "4", styles: {} }] },
+              { content: [{ type: "text", text: "循环水场占地", styles: {} }] },
+              { content: [{ type: "text", text: "m²", styles: {} }] },
+            ],
+          },
+        ],
+      },
+      children: [],
+      props: {},
     };
     // Agent anchor from markdown table format
     const result = findBlockByAnchor([tableBlock], "| 4 | 循环水场占地 | m² |");
@@ -186,7 +206,8 @@ describe("parseOperations", () => {
   });
 
   test("bare object auto-wrapped in array", () => {
-    const input = '---OPERATIONS---\n{"op":"replace","anchor":"test","content":"## new"}';
+    const input =
+      '---OPERATIONS---\n{"op":"replace","anchor":"test","content":"## new"}';
     const result = parseOperations(input);
     expect(result.parseError).toBeNull();
     expect(result.operations).not.toBeNull();
@@ -232,23 +253,36 @@ describe("parseOperations", () => {
 // ─── buildPrompt ───────────────────────────────────────────────────────
 
 describe("buildPrompt", () => {
-  function b(mode: string, msg: string) { return buildPrompt({ mode: mode as any, docContent: "# 测试文档\n\n内容。", anchors: '[0] H1 "# 测试文档"', userMessage: msg }); }
+  function b(mode: "ask" | "auto" | "plan", msg: string) {
+    return buildPrompt({
+      mode,
+      docContent: "# 测试文档\n\n内容。",
+      anchors: '[0] H1 "# 测试文档"',
+      userMessage: msg,
+    });
+  }
 
-  test("ask mode — includes document content", () => { expect(b("ask","总结")).toContain("# 测试文档"); });
-  test("includes anchor index", () => { expect(b("ask","操作")).toContain('[0] H1 "# 测试文档"'); });
-  test("includes user message", () => { expect(b("ask","润色")).toContain("润色"); });
+  test("ask mode — includes document content", () => {
+    expect(b("ask", "总结")).toContain("# 测试文档");
+  });
+  test("includes anchor index", () => {
+    expect(b("ask", "操作")).toContain('[0] H1 "# 测试文档"');
+  });
+  test("includes user message", () => {
+    expect(b("ask", "润色")).toContain("润色");
+  });
   test("ask mode — includes operation format", () => {
-    const p = b("ask","test");
+    const p = b("ask", "test");
     expect(p).toContain("---OPERATIONS---");
     expect(p).toContain('"replace"');
   });
   test("ask mode — includes examples", () => {
-    const p = b("ask","test");
+    const p = b("ask", "test");
     expect(p).toContain("设计参数分析");
     expect(p).toContain("示例1");
   });
   test("plan mode — no operations format", () => {
-    const p = b("plan","分析");
+    const p = b("plan", "分析");
     expect(p).not.toContain("---OPERATIONS---");
     expect(p).toContain("不要输出任何文档编辑操作");
   });

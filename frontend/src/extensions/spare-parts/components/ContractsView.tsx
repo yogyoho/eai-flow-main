@@ -2,14 +2,40 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { zhCN } from "date-fns/locale";
-import { AlertTriangle, ArrowRight, CalendarIcon, Check, ChevronRight, FileSearch, FileUp, FolderOpen, Layers, PackageSearch, RefreshCw, RotateCcw, Search, Trash2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CalendarIcon,
+  ChevronRight,
+  FileSearch,
+  FileUp,
+  FolderOpen,
+  Layers,
+  PackageSearch,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { sparePartsApi } from "@/extensions/spare-parts/api";
 import { PageHeader } from "@/extensions/spare-parts/components/PageHeader";
 import {
@@ -29,9 +55,12 @@ function docStage(doc: { parse_status: string; confirm_status: string }): {
 } {
   if (doc.confirm_status === "clustered")
     return { label: "已分组", tone: "text-blue-600", pending: false };
-  if (doc.parse_status === "failed") return { label: "解析失败", tone: "text-destructive", pending: false };
-  if (doc.parse_status === "pending") return { label: "已上传", tone: "text-muted-foreground", pending: false };
-  if (doc.parse_status === "parsing") return { label: "解析中", tone: "text-primary", pending: false };
+  if (doc.parse_status === "failed")
+    return { label: "解析失败", tone: "text-destructive", pending: false };
+  if (doc.parse_status === "pending")
+    return { label: "已上传", tone: "text-muted-foreground", pending: false };
+  if (doc.parse_status === "parsing")
+    return { label: "解析中", tone: "text-primary", pending: false };
   return { label: "已解析", tone: "text-emerald-600", pending: false };
 }
 
@@ -70,7 +99,7 @@ function ProjectFieldInput({
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
       }}
       placeholder={placeholder}
-      className={`h-8 ${width} border-transparent bg-transparent px-1 hover:border-border focus-visible:border-border`}
+      className={`h-8 ${width} hover:border-border focus-visible:border-border border-transparent bg-transparent px-1`}
     />
   );
 }
@@ -96,11 +125,16 @@ function UploadDialog({
 
   const addFiles = (files: FileList | File[]) => {
     const filtered = Array.from(files).filter(
-      (f) => f.name.toLowerCase().endsWith(".pdf") || f.name.toLowerCase().endsWith(".docx"),
+      (f) =>
+        f.name.toLowerCase().endsWith(".pdf") ||
+        f.name.toLowerCase().endsWith(".docx"),
     );
     setSelected((prev) => {
       const seen = new Set(prev.map((f) => `${f.name}-${f.size}`));
-      return [...prev, ...filtered.filter((f) => !seen.has(`${f.name}-${f.size}`))];
+      return [
+        ...prev,
+        ...filtered.filter((f) => !seen.has(`${f.name}-${f.size}`)),
+      ];
     });
   };
 
@@ -128,7 +162,9 @@ function UploadDialog({
         {/* Drag-drop zone */}
         <div
           className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-8 transition-colors ${
-            dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-muted-foreground/50"
+            dragOver
+              ? "border-primary bg-primary/5"
+              : "border-muted-foreground/30 hover:border-muted-foreground/50"
           }`}
           onDragOver={(e) => {
             e.preventDefault();
@@ -142,33 +178,55 @@ function UploadDialog({
           }}
           onClick={() => fileRef.current?.click()}
         >
-          <FileUp className="h-10 w-10 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">拖拽合同文件到此处</p>
-          <p className="text-xs text-muted-foreground">或点击选择文件 · 支持多选</p>
+          <FileUp className="text-muted-foreground h-10 w-10" />
+          <p className="text-foreground text-sm font-medium">
+            拖拽合同文件到此处
+          </p>
+          <p className="text-muted-foreground text-xs">
+            或点击选择文件 · 支持多选
+          </p>
         </div>
 
         {/* Auto-parse toggle */}
-        <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+        <label className="flex cursor-pointer items-center gap-2 text-sm select-none">
           <input
             type="checkbox"
             checked={autoParse}
             onChange={(e) => setAutoParse(e.target.checked)}
             className="accent-primary"
           />
-          <span className={autoParse ? "text-foreground font-medium" : "text-muted-foreground"}>
+          <span
+            className={
+              autoParse
+                ? "text-foreground font-medium"
+                : "text-muted-foreground"
+            }
+          >
             上传后自动解析
           </span>
-          <span className="text-xs text-muted-foreground">
-            {autoParse ? "（上传完即触发 OCR 提取）" : "（上传后需手动点「开始解析」）"}
+          <span className="text-muted-foreground text-xs">
+            {autoParse
+              ? "（上传完即触发 OCR 提取）"
+              : "（上传后需手动点「开始解析」）"}
           </span>
         </label>
 
         {/* Browse buttons */}
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => fileRef.current?.click()}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => fileRef.current?.click()}
+          >
             <FileUp className="h-4 w-4" /> 选择文件
           </Button>
-          <Button size="sm" variant="outline" className="flex-1" onClick={() => folderRef.current?.click()}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => folderRef.current?.click()}
+          >
             <FolderOpen className="h-4 w-4" /> 选择文件夹
           </Button>
         </div>
@@ -190,7 +248,10 @@ function UploadDialog({
           type="file"
           multiple
           className="hidden"
-          {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+          {...({ webkitdirectory: "", directory: "" } as Record<
+            string,
+            string
+          >)}
           onChange={(e) => {
             if (e.target.files) addFiles(e.target.files);
             e.target.value = "";
@@ -200,23 +261,26 @@ function UploadDialog({
         {/* Selected files list */}
         {selected.length > 0 && (
           <div className="max-h-48 space-y-1 overflow-y-auto">
-            <p className="text-xs text-muted-foreground">
+            <p className="text-muted-foreground text-xs">
               已选 {selected.length} 个文件 · 共{" "}
-              {(selected.reduce((s, f) => s + f.size, 0) / 1048576).toFixed(1)}MB
+              {(selected.reduce((s, f) => s + f.size, 0) / 1048576).toFixed(1)}
+              MB
             </p>
             {selected.map((f, i) => (
               <div
                 key={`${f.name}-${i}`}
-                className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-1.5 text-sm"
+                className="bg-muted/50 flex items-center justify-between rounded-md px-3 py-1.5 text-sm"
               >
                 <span className="flex-1 truncate">{f.name}</span>
                 <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-xs tabular-nums text-muted-foreground">
+                  <span className="text-muted-foreground text-xs tabular-nums">
                     {(f.size / 1048576).toFixed(1)}MB
                   </span>
                   {!uploading && (
                     <button
-                      onClick={() => setSelected((prev) => prev.filter((_, j) => j !== i))}
+                      onClick={() =>
+                        setSelected((prev) => prev.filter((_, j) => j !== i))
+                      }
                       className="text-destructive hover:text-destructive/80"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -239,7 +303,10 @@ function UploadDialog({
           >
             取消
           </Button>
-          <Button disabled={selected.length === 0 || uploading} onClick={() => onUpload(selected, autoParse)}>
+          <Button
+            disabled={selected.length === 0 || uploading}
+            onClick={() => onUpload(selected, autoParse)}
+          >
             <FileUp className="h-4 w-4" />
             {uploading ? "上传中…" : `开始上传 (${selected.length})`}
           </Button>
@@ -250,7 +317,13 @@ function UploadDialog({
 }
 
 /** Styled date picker cell (Shadcn Calendar + Popover, not native input). */
-function DateCell({ value, onCommit }: { value: string | null; onCommit: (v: string | null) => void }) {
+function DateCell({
+  value,
+  onCommit,
+}: {
+  value: string | null;
+  onCommit: (v: string | null) => void;
+}) {
   const [open, setOpen] = useState(false);
   const date = value ? new Date(value + "T00:00:00") : undefined;
   return (
@@ -258,10 +331,12 @@ function DateCell({ value, onCommit }: { value: string | null; onCommit: (v: str
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="flex h-8 w-[130px] items-center gap-1.5 rounded border-transparent bg-transparent px-1 text-sm tabular-nums hover:border-border"
+          className="hover:border-border flex h-8 w-[130px] items-center gap-1.5 rounded border-transparent bg-transparent px-1 text-sm tabular-nums"
         >
-          <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className={value ? "text-foreground" : "text-muted-foreground/50"}>
+          <CalendarIcon className="text-muted-foreground h-3.5 w-3.5" />
+          <span
+            className={value ? "text-foreground" : "text-muted-foreground/50"}
+          >
             {value ?? "选择日期"}
           </span>
         </button>
@@ -297,17 +372,23 @@ export function ContractsView() {
   const runCluster = useRunCluster();
   const runPipeline = useRunPipeline();
   const reparse = useReparseDocument();
-  const [batch, setBatch] = useState<{ total: number; done: number; failed: number } | null>(null);
+  const [batch, setBatch] = useState<{
+    total: number;
+    done: number;
+    failed: number;
+  } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [showClusterConfirm, setShowClusterConfirm] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
 
   /** Batch upload: push each file to the csp documents bucket sequentially,
    * track per-file progress, then trigger a parse run (upload implies parse). */
-  const handleFiles = async (files: FileList | File[], autoParse: boolean = false) => {
+  const handleFiles = async (files: FileList | File[], autoParse = false) => {
     // Filter to .pdf/.docx (webkitdirectory grabs ALL files in a folder).
     const list = Array.from(files).filter(
-      (f) => f.name.toLowerCase().endsWith(".pdf") || f.name.toLowerCase().endsWith(".docx"),
+      (f) =>
+        f.name.toLowerCase().endsWith(".pdf") ||
+        f.name.toLowerCase().endsWith(".docx"),
     );
     if (!list.length) return;
     setBatch({ total: list.length, done: 0, failed: 0 });
@@ -347,7 +428,7 @@ export function ContractsView() {
       <PageHeader
         title="合同解析"
         description="上传合同扫描件(PDF/DOCX),存入独立 MinIO bucket。合同上传后进行合同文件解析处理,其中的图片内容将触发 OCR 提取。"
-        icon={<PackageSearch className="w-4 h-4" />}
+        icon={<PackageSearch className="h-4 w-4" />}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -362,17 +443,25 @@ export function ContractsView() {
                   : `上传中 ${batch.done}/${batch.total}`
                 : "上传合同"}
             </Button>
-            <ArrowRight className="h-4 w-4 text-muted-foreground/60" />
+            <ArrowRight className="text-muted-foreground/60 h-4 w-4" />
             <Button
               size="sm"
               disabled={runPipeline.isPending || pendingCount === 0}
               onClick={() => runPipeline.mutate({ trigger: "manual" })}
-              title={pendingCount > 0 ? `解析 ${pendingCount} 份待解析合同` : "没有待解析的合同"}
+              title={
+                pendingCount > 0
+                  ? `解析 ${pendingCount} 份待解析合同`
+                  : "没有待解析的合同"
+              }
             >
               <FileSearch className="h-4 w-4" />
-              {runPipeline.isPending ? "解析中…" : pendingCount > 0 ? `开始解析 (${pendingCount})` : "开始解析"}
+              {runPipeline.isPending
+                ? "解析中…"
+                : pendingCount > 0
+                  ? `开始解析 (${pendingCount})`
+                  : "开始解析"}
             </Button>
-            <ChevronRight className="h-4 w-4 text-muted-foreground/30" />
+            <ChevronRight className="text-muted-foreground/30 h-4 w-4" />
             <Button
               size="sm"
               disabled={runCluster.isPending}
@@ -381,8 +470,15 @@ export function ContractsView() {
               <Layers className="h-4 w-4" />
               {runCluster.isPending ? "聚类中…" : "聚类分析"}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              disabled={isFetching}
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              />
               刷新
             </Button>
           </div>
@@ -399,7 +495,7 @@ export function ContractsView() {
         }}
       >
         <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
@@ -412,43 +508,75 @@ export function ContractsView() {
         </Button>
       </form>
 
-      <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
+      <div className="bg-background border-border overflow-hidden rounded-xl border shadow-sm">
+        <table className="w-full border-collapse text-left">
           <thead>
-            <tr className="border-b border-border bg-muted/50">
-              <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">合同</th>
-              <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">项目名称</th>
-              <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">项目所在地</th>
-              <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">供应商</th>
-              <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">签订日期</th>
-              <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">状态</th>
-              <th className="py-3 px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">操作</th>
+            <tr className="border-border bg-muted/50 border-b">
+              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                合同
+              </th>
+              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                项目名称
+              </th>
+              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                项目所在地
+              </th>
+              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                供应商
+              </th>
+              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                签订日期
+              </th>
+              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
+                状态
+              </th>
+              <th className="text-muted-foreground px-6 py-3 text-right text-xs font-semibold tracking-wider uppercase">
+                操作
+              </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-border divide-y">
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-muted-foreground">加载中…</td>
+                <td
+                  colSpan={7}
+                  className="text-muted-foreground py-12 text-center"
+                >
+                  加载中…
+                </td>
               </tr>
             ) : docs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-muted-foreground">暂无合同。点右上「上传合同」或总览页「立即分析」。</td>
+                <td
+                  colSpan={7}
+                  className="text-muted-foreground py-12 text-center"
+                >
+                  暂无合同。点右上「上传合同」或总览页「立即分析」。
+                </td>
               </tr>
             ) : (
               docs.map((doc) => {
-                const meta = doc.parse_meta as
-                  | { tables_found?: number; goods_tables?: number; rows_extracted?: number }
-                  | null;
+                const meta = doc.parse_meta as {
+                  tables_found?: number;
+                  goods_tables?: number;
+                  rows_extracted?: number;
+                } | null;
                 const stage = docStage(doc);
                 return (
-                  <tr key={doc.id} className="hover:bg-muted/50 transition-colors group">
-                    <td className="py-4 px-6">
+                  <tr
+                    key={doc.id}
+                    className="hover:bg-muted/50 group transition-colors"
+                  >
+                    <td className="px-6 py-4">
                       {/* 折行:文件名(主) + 类型·健康度·解析时间(次,淡小字) */}
-                      <div className="min-w-[220px] max-w-[340px]">
-                        <div className="truncate font-medium" title={doc.file_name}>
+                      <div className="max-w-[340px] min-w-[220px]">
+                        <div
+                          className="truncate font-medium"
+                          title={doc.file_name}
+                        >
                           {doc.file_name}
                         </div>
-                        <div className="truncate text-xs text-muted-foreground tabular-nums">
+                        <div className="text-muted-foreground truncate text-xs tabular-nums">
                           {(doc.file_type ?? "?").toUpperCase()}
                           <span className="mx-1 opacity-40">·</span>
                           {meta
@@ -459,38 +587,52 @@ export function ContractsView() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-6 align-middle">
+                    <td className="px-6 py-4 align-middle">
                       <ProjectFieldInput
                         value={doc.project_name}
                         placeholder="项目名称"
-                        onCommit={(v) => update.mutate({ id: doc.id, body: { project_name: v } })}
+                        onCommit={(v) =>
+                          update.mutate({
+                            id: doc.id,
+                            body: { project_name: v },
+                          })
+                        }
                       />
                     </td>
-                    <td className="py-4 px-6 align-middle">
+                    <td className="px-6 py-4 align-middle">
                       <ProjectFieldInput
                         value={doc.project_location}
                         placeholder="项目所在地"
                         width="w-[120px]"
-                        onCommit={(v) => update.mutate({ id: doc.id, body: { project_location: v } })}
+                        onCommit={(v) =>
+                          update.mutate({
+                            id: doc.id,
+                            body: { project_location: v },
+                          })
+                        }
                       />
                     </td>
-                    <td className="py-4 px-6 align-middle">
+                    <td className="px-6 py-4 align-middle">
                       <ProjectFieldInput
                         value={doc.supplier}
                         placeholder="供应商"
-                        onCommit={(v) => update.mutate({ id: doc.id, body: { supplier: v } })}
+                        onCommit={(v) =>
+                          update.mutate({ id: doc.id, body: { supplier: v } })
+                        }
                       />
                     </td>
-                    <td className="py-4 px-6 align-middle">
+                    <td className="px-6 py-4 align-middle">
                       <DateCell
                         value={doc.sign_date}
-                        onCommit={(v) => update.mutate({ id: doc.id, body: { sign_date: v } })}
+                        onCommit={(v) =>
+                          update.mutate({ id: doc.id, body: { sign_date: v } })
+                        }
                       />
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="px-6 py-4">
                       <span className={stage.tone}>{stage.label}</span>
                     </td>
-                    <td className="py-4 px-6 text-right">
+                    <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-0.5">
                         <Button
                           size="icon"
@@ -501,16 +643,18 @@ export function ContractsView() {
                           onClick={() => {
                             if (
                               !confirm(
-                                `重新解析 ${doc.file_name}?\n会重新 OCR(约几分钟),完成后状态回到 parsed/needs_review。`
+                                `重新解析 ${doc.file_name}?\n会重新 OCR(约几分钟),完成后状态回到 parsed/needs_review。`,
                               )
                             )
                               return;
                             reparse.mutate(doc.id, {
                               onSuccess: () =>
-                                setNotice(`已启动「${doc.file_name}」的重新解析,在「任务」页看进度。`),
+                                setNotice(
+                                  `已启动「${doc.file_name}」的重新解析,在「任务」页看进度。`,
+                                ),
                               onError: (e) =>
                                 alert(
-                                  `重解析启动失败:${e instanceof Error ? e.message : e}\n(可能已有解析任务在跑,去「任务」页确认)`
+                                  `重解析启动失败:${e instanceof Error ? e.message : e}\n(可能已有解析任务在跑,去「任务」页确认)`,
                                 ),
                             });
                           }}
@@ -523,7 +667,10 @@ export function ContractsView() {
                           className="text-destructive hover:text-destructive"
                           title="删除合同及其分项"
                           onClick={async () => {
-                            if (!confirm(`删除合同 ${doc.file_name} 及其分项？`)) return;
+                            if (
+                              !confirm(`删除合同 ${doc.file_name} 及其分项？`)
+                            )
+                              return;
                             await sparePartsApi.deleteDocument(doc.id);
                             void qc.invalidateQueries({ queryKey: ["csp"] });
                           }}
@@ -552,7 +699,10 @@ export function ContractsView() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-center">
-            <Button variant="outline" onClick={() => setShowClusterConfirm(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowClusterConfirm(false)}
+            >
               取消
             </Button>
             <Button

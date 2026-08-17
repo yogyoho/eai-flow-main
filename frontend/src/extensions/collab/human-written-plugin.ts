@@ -36,9 +36,7 @@ interface PluginState {
 // Plugin key
 // ---------------------------------------------------------------------------
 
-export const humanWrittenPluginKey = new PluginKey<PluginState>(
-  "humanWritten",
-);
+export const humanWrittenPluginKey = new PluginKey<PluginState>("humanWritten");
 
 // ---------------------------------------------------------------------------
 // Decoration builder
@@ -46,7 +44,10 @@ export const humanWrittenPluginKey = new PluginKey<PluginState>(
 
 const HUMAN_ATTR = { "data-source-type": "human_written" };
 
-function buildDecorations(doc: ProseMirrorNode, humanBlocks: Set<number>): DecorationSet {
+function buildDecorations(
+  doc: ProseMirrorNode,
+  humanBlocks: Set<number>,
+): DecorationSet {
   const decorations: Decoration[] = [];
 
   doc.forEach((block, offset) => {
@@ -156,12 +157,13 @@ export function registerHumanWrittenPlugin(view: EditorView): void {
  * Get the set of block positions that were human-edited.
  * Returns block content as an array of { blockIndex, text } for source creation.
  */
-export function getHumanWrittenBlocks(view: EditorView): { blockIndex: number; text: string }[] {
+export function getHumanWrittenBlocks(
+  view: EditorView,
+): { blockIndex: number; text: string }[] {
   const pluginState = humanWrittenPluginKey.getState(view.state);
   if (!pluginState || pluginState.humanBlocks.size === 0) return [];
 
   const results: { blockIndex: number; text: string }[] = [];
-  let offset = 0;
 
   view.state.doc.forEach((block, blockOffset) => {
     if (pluginState.humanBlocks.has(blockOffset)) {
@@ -170,7 +172,6 @@ export function getHumanWrittenBlocks(view: EditorView): { blockIndex: number; t
         text: block.textContent,
       });
     }
-    offset = blockOffset;
   });
 
   return results;

@@ -2,7 +2,10 @@
 
 import React from "react";
 
-import { ScraperContextProvider, useScraperContext } from "./components/scraper/ScraperContext";
+import {
+  ScraperContextProvider,
+  useScraperContext,
+} from "./components/scraper/ScraperContext";
 import ScraperDraftBox from "./components/scraper/ScraperDraftBox";
 import ScraperScrapeDialog from "./components/scraper/ScraperScrapeDialog";
 import ScraperSourceManager from "./components/scraper/ScraperSourceManager";
@@ -17,10 +20,10 @@ const SUB_TAB_COMPONENTS: Record<string, React.ComponentType> = {
 
 function ScraperPageInner() {
   const { activeSubTab } = useScraperContext();
-  const ActiveComponent = SUB_TAB_COMPONENTS[activeSubTab] || ScraperTaskCenter;
+  const ActiveComponent = SUB_TAB_COMPONENTS[activeSubTab] ?? ScraperTaskCenter;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       <ScraperSubNav />
       <div className="flex-1 overflow-hidden">
         <ActiveComponent />

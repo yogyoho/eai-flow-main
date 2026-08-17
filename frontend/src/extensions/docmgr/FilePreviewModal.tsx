@@ -3,8 +3,12 @@
 import { Loader2, FileQuestion } from "lucide-react";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 import { docmgrApi } from "../api";
 import type { AIDocument } from "../types";
@@ -38,7 +42,11 @@ export function formatFileSize(bytes?: number | null): string {
   return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-export default function FilePreviewModal({ doc, open, onOpenChange }: FilePreviewModalProps) {
+export default function FilePreviewModal({
+  doc,
+  open,
+  onOpenChange,
+}: FilePreviewModalProps) {
   const [loading, setLoading] = useState(false);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +78,7 @@ export default function FilePreviewModal({ doc, open, onOpenChange }: FilePrevie
   const handleDialogOpen = (isOpen: boolean) => {
     handleOpenChange(isOpen);
     if (isOpen && doc) {
-      handlePreview();
+      void handlePreview();
     }
   };
 
@@ -82,47 +90,47 @@ export default function FilePreviewModal({ doc, open, onOpenChange }: FilePrevie
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpen}>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+      <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 truncate">
             {doc.title || "无标题"}
             {doc.file_size != null && (
-              <span className="text-xs font-normal text-muted-foreground">
+              <span className="text-muted-foreground text-xs font-normal">
                 {formatFileSize(doc.file_size)}
               </span>
             )}
           </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-hidden flex items-center justify-center min-h-[200px]">
+        <div className="flex min-h-[200px] flex-1 items-center justify-center overflow-hidden">
           {loading ? (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin" />
+            <div className="text-muted-foreground flex flex-col items-center gap-2">
+              <Loader2 className="h-6 w-6 animate-spin" />
               <span className="text-sm">加载中...</span>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center gap-2 text-destructive">
-              <FileQuestion className="w-8 h-8" />
+            <div className="text-destructive flex flex-col items-center gap-2">
+              <FileQuestion className="h-8 w-8" />
               <span className="text-sm">{error}</span>
             </div>
           ) : !canPreview ? (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <FileQuestion className="w-8 h-8" />
+            <div className="text-muted-foreground flex flex-col items-center gap-2">
+              <FileQuestion className="h-8 w-8" />
               <span className="text-sm">该文件类型暂不支持预览</span>
             </div>
           ) : isImage && doc.file_ref_path ? (
             <img
               src={doc.file_ref_path}
               alt={doc.title || "预览"}
-              className="max-w-full max-h-[60vh] object-contain rounded-lg"
+              className="max-h-[60vh] max-w-full rounded-lg object-contain"
               onError={() => setError("图片加载失败")}
             />
           ) : previewContent ? (
-            <pre className="text-xs text-foreground whitespace-pre-wrap break-words max-h-[60vh] overflow-auto w-full bg-muted/50 rounded-lg p-4">
+            <pre className="text-foreground bg-muted/50 max-h-[60vh] w-full overflow-auto rounded-lg p-4 text-xs break-words whitespace-pre-wrap">
               {previewContent}
             </pre>
           ) : (
-            <div className="flex flex-col items-center gap-2 text-muted-foreground">
-              <FileQuestion className="w-8 h-8" />
+            <div className="text-muted-foreground flex flex-col items-center gap-2">
+              <FileQuestion className="h-8 w-8" />
               <span className="text-sm">暂无预览内容</span>
             </div>
           )}

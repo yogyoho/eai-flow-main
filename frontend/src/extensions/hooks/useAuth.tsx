@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
 
 import type { CurrentUser } from "../types";
 
@@ -33,13 +39,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = () => {
     const redirect = encodeURIComponent(
-      typeof window !== "undefined" ? window.location.pathname + window.location.search : "/docmgr"
+      typeof window !== "undefined"
+        ? window.location.pathname + window.location.search
+        : "/docmgr",
     );
     window.location.href = `/login?redirect=${redirect}`;
   };
 
   const logout = () => {
     fetch("/api/v1/auth/logout", { method: "POST", credentials: "include" })
+      .catch((e) => console.error("logout request failed", e))
       .finally(() => {
         setUser(null);
         window.location.href = "/";

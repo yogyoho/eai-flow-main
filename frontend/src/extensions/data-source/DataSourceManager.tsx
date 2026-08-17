@@ -19,7 +19,6 @@ import { DataSourceCard } from "./components/DataSourceCard";
 import { DataSourceForm } from "./components/DataSourceForm";
 import type { CreateDataSourceRequest, DataSource } from "./types";
 
-
 // ─── Toast ─────────────────────────────────────────────────────────────────────
 
 type ToastType = "success" | "error" | "info";
@@ -30,7 +29,13 @@ interface Toast {
   message: string;
 }
 
-function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: number) => void }) {
+function ToastContainer({
+  toasts,
+  onRemove,
+}: {
+  toasts: Toast[];
+  onRemove: (id: number) => void;
+}) {
   return (
     <div className="pointer-events-none fixed right-6 bottom-6 z-[100] flex flex-col gap-2">
       <AnimatePresence>
@@ -43,16 +48,22 @@ function ToastContainer({ toasts, onRemove }: { toasts: Toast[]; onRemove: (id: 
             transition={{ duration: 0.2 }}
             className={cn(
               "pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm",
-              t.type === "success" && "border-green-200 bg-green-600 text-white",
+              t.type === "success" &&
+                "border-green-200 bg-green-600 text-white",
               t.type === "error" && "border-red-200 bg-red-600 text-white",
               t.type === "info" && "border-blue-200 bg-blue-600 text-white",
             )}
           >
-            {t.type === "success" && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+            {t.type === "success" && (
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+            )}
             {t.type === "error" && <AlertCircle className="h-4 w-4 shrink-0" />}
             {t.type === "info" && <Loader2 className="h-4 w-4 shrink-0" />}
             <span>{t.message}</span>
-            <button onClick={() => onRemove(t.id)} className="ml-1 opacity-60 transition-opacity hover:opacity-100">
+            <button
+              onClick={() => onRemove(t.id)}
+              className="ml-1 opacity-60 transition-opacity hover:opacity-100"
+            >
               <X className="h-3.5 w-3.5" />
             </button>
           </motion.div>
@@ -68,10 +79,24 @@ function useToast() {
   const show = useCallback((message: string, type: ToastType = "info") => {
     const id = ++counter.current;
     setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+    setTimeout(
+      () => setToasts((prev) => prev.filter((t) => t.id !== id)),
+      3500,
+    );
   }, []);
-  const remove = useCallback((id: number) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
+  const remove = useCallback(
+    (id: number) => setToasts((prev) => prev.filter((t) => t.id !== id)),
+    [],
+  );
   return { toasts, show, remove };
+}
+
+// ─── Error helper ─────────────────────────────────────────────────────────────
+// authFetch throws `Error & { status: number }`; network failures may be plain Errors
+type ApiErrorLike = Error & { status?: number };
+
+function toApiError(e: unknown): ApiErrorLike | null {
+  return e instanceof Error ? (e as ApiErrorLike) : null;
 }
 
 // ─── DataSourceManager ────────────────────────────────────────────────────────
@@ -91,9 +116,10 @@ export function DataSourceManager() {
     try {
       const data = await dataSourceApi.list();
       setSources(data);
-    } catch (e: any) {
-      if (e?.status !== 404) {
-        toast(e?.message ?? "加载数据源失败", "error");
+    } catch (e) {
+      const err = toApiError(e);
+      if (err?.status !== 404) {
+        toast(err?.message ?? "加载数据源失败", "error");
       }
     } finally {
       setIsLoading(false);
@@ -101,7 +127,7 @@ export function DataSourceManager() {
   }, [toast]);
 
   useEffect(() => {
-    loadSources();
+    void loadSources();
   }, [loadSources]);
 
   // ── CRUD handlers ──
@@ -112,9 +138,9 @@ export function DataSourceManager() {
       await dataSourceApi.create(data);
       setShowForm(false);
       toast("数据源创建成功", "success");
-      loadSources();
-    } catch (e: any) {
-      toast(e?.message ?? "创建失败", "error");
+      void loadSources();
+    } catch (e) {
+      toast(toApiError(e)?.message ?? "创建失败", "error");
     } finally {
       setFormLoading(false);
     }
@@ -127,9 +153,9 @@ export function DataSourceManager() {
       await dataSourceApi.update(editingSource.id, data);
       setEditingSource(null);
       toast("数据源已更新", "success");
-      loadSources();
-    } catch (e: any) {
-      toast(e?.message ?? "更新失败", "error");
+      void loadSources();
+    } catch (e) {
+      toast(toApiError(e)?.message ?? "更新失败", "error");
     } finally {
       setFormLoading(false);
     }
@@ -141,8 +167,8 @@ export function DataSourceManager() {
       await dataSourceApi.delete(id);
       setSources((prev) => prev.filter((s) => s.id !== id));
       toast("数据源已删除", "success");
-    } catch (e: any) {
-      toast(e?.message ?? "删除失败", "error");
+    } catch (e) {
+      toast(toApiError(e)?.message ?? "删除失败", "error");
     }
   };
 
@@ -156,9 +182,9 @@ export function DataSourceManager() {
         toast(`连接测试失败: ${result.message}`, "error");
       }
       // Refresh to get updated status
-      loadSources();
-    } catch (e: any) {
-      toast(e?.message ?? "连接测试失败", "error");
+      void loadSources();
+    } catch (e) {
+      toast(toApiError(e)?.message ?? "连接测试失败", "error");
     } finally {
       setTestingIds((prev) => {
         const s = new Set(prev);
@@ -174,9 +200,11 @@ export function DataSourceManager() {
       await dataSourceApi.sync(id);
       toast("数据同步已触发", "success");
       // Refresh to get updated lastSyncAt
-      setTimeout(loadSources, 1500);
-    } catch (e: any) {
-      toast(e?.message ?? "同步失败", "error");
+      setTimeout(() => {
+        void loadSources();
+      }, 1500);
+    } catch (e) {
+      toast(toApiError(e)?.message ?? "同步失败", "error");
     } finally {
       setSyncingIds((prev) => {
         const s = new Set(prev);
@@ -191,15 +219,15 @@ export function DataSourceManager() {
   };
 
   return (
-    <main className="flex-1 overflow-y-auto bg-muted/50 p-8">
+    <main className="bg-muted/50 flex-1 overflow-y-auto p-8">
       <div className="mx-auto max-w-6xl space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-foreground text-2xl font-bold tracking-tight">
               数据源管理
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm">
               管理和监控各类数据源连接，支持数据库、API、文件和GIS数据。
             </p>
           </div>
@@ -211,7 +239,7 @@ export function DataSourceManager() {
 
         {/* Card Grid */}
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 py-12 text-center text-sm text-muted-foreground">
+          <div className="text-muted-foreground flex items-center justify-center gap-2 py-12 text-center text-sm">
             <Loader2 className="h-5 w-5 animate-spin" />
             加载中...
           </div>
@@ -233,12 +261,12 @@ export function DataSourceManager() {
             </AnimatePresence>
 
             {sources.length === 0 && (
-              <div className="col-span-full rounded-xl border border-dashed border-border bg-background py-12 text-center">
-                <Database className="mx-auto mb-3 h-12 w-12 text-muted-foreground/50" />
-                <h3 className="text-sm font-medium text-foreground">
+              <div className="border-border bg-background col-span-full rounded-xl border border-dashed py-12 text-center">
+                <Database className="text-muted-foreground/50 mx-auto mb-3 h-12 w-12" />
+                <h3 className="text-foreground text-sm font-medium">
                   暂无数据源
                 </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="text-muted-foreground mt-1 text-sm">
                   点击上方按钮添加第一个数据源
                 </p>
               </div>

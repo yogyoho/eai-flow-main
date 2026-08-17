@@ -22,16 +22,20 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { authFetch } from "@/extensions/api/client";
 import { projectApi } from "@/extensions/project/api";
 import { AssignmentStrategySelect } from "@/extensions/project/components/AssignmentStrategySelect";
-import { useReportTypes, getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
 import {
-  MEMBER_ROLE_LABELS,
-  type MemberRole,
-} from "@/extensions/project/types";
+  useReportTypes,
+  getReportTypeLabel,
+} from "@/extensions/project/hooks/useReportTypes";
+import { type MemberRole } from "@/extensions/project/types";
 import { workflowApi } from "@/extensions/workflow/api";
 import { cn } from "@/lib/utils";
 
@@ -79,11 +83,15 @@ const SKIP_WORKFLOW: TemplateOption = {
 
 async function fetchPublishedTemplates(): Promise<TemplateOption[]> {
   try {
-    const data = await authFetch<{ templates: Array<{ id: string; name: string; domain: string; status: string }>; total: number }>(
-      "/api/kf/templates?status=published&limit=100",
-      {},
-      "",
-    );
+    const data = await authFetch<{
+      templates: Array<{
+        id: string;
+        name: string;
+        domain: string;
+        status: string;
+      }>;
+      total: number;
+    }>("/api/kf/templates?status=published&limit=100", {}, "");
     return (data.templates ?? []).map((t) => ({
       id: t.id,
       name: t.name,
@@ -95,7 +103,9 @@ async function fetchPublishedTemplates(): Promise<TemplateOption[]> {
   }
 }
 
-async function fetchWorkflowTemplates(reportType?: string): Promise<TemplateOption[]> {
+async function fetchWorkflowTemplates(
+  reportType?: string,
+): Promise<TemplateOption[]> {
   try {
     const res = await workflowApi.listTemplates(reportType);
     return res.items.map((t) => ({
@@ -109,8 +119,6 @@ async function fetchWorkflowTemplates(reportType?: string): Promise<TemplateOpti
     return [];
   }
 }
-
-const MEMBER_ROLES: MemberRole[] = ["owner", "writer"];
 
 /** A team member carries a display name plus the UUID we submit to the API.
  *  DF-2: the wizard used to submit usernames and 422 on UUID validation. */
@@ -145,14 +153,24 @@ function CustomSelect({
         className={cn(
           "flex h-[34px] w-full items-center justify-between rounded-md px-3 text-sm",
           "border bg-white transition-all duration-150",
-          open ? "border-blue-500 ring-2 ring-blue-500/20" : "border-gray-200 hover:border-gray-300",
+          open
+            ? "border-blue-500 ring-2 ring-blue-500/20"
+            : "border-gray-200 hover:border-gray-300",
         )}
       >
-        <span className={cn("truncate", selected ? "text-foreground" : "text-gray-400")}>
+        <span
+          className={cn(
+            "truncate",
+            selected ? "text-foreground" : "text-gray-400",
+          )}
+        >
           {selected?.label ?? placeholder ?? "请选择"}
         </span>
         <ChevronDown
-          className={cn("h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200", open && "rotate-180")}
+          className={cn(
+            "h-4 w-4 shrink-0 text-gray-400 transition-transform duration-200",
+            open && "rotate-180",
+          )}
         />
       </button>
       {open && (
@@ -173,7 +191,9 @@ function CustomSelect({
               )}
             >
               {o.label}
-              {o.value === value && <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-blue-600" />}
+              {o.value === value && (
+                <Check className="ml-auto h-3.5 w-3.5 shrink-0 text-blue-600" />
+              )}
             </button>
           ))}
         </div>
@@ -189,7 +209,7 @@ function WizardSidebar({ currentStep }: { currentStep: WizardStep }) {
     <div className="flex h-full w-[220px] shrink-0 flex-col border-r border-gray-200 bg-white">
       {/* Logo */}
       <div className="flex h-[56px] items-center px-5">
-        <span className="text-lg font-bold text-foreground">项目创建向导</span>
+        <span className="text-foreground text-lg font-bold">项目创建向导</span>
       </div>
 
       {/* Steps */}
@@ -215,7 +235,11 @@ function WizardSidebar({ currentStep }: { currentStep: WizardStep }) {
                 <span
                   className={cn(
                     "text-sm font-medium",
-                    isActive ? "text-foreground" : isCompleted ? "text-green-600" : "text-gray-400",
+                    isActive
+                      ? "text-foreground"
+                      : isCompleted
+                        ? "text-green-600"
+                        : "text-gray-400",
                   )}
                 >
                   步骤 {s.step}：{s.label}
@@ -269,15 +293,18 @@ function StepBasicInfo({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-semibold text-foreground">项目基本信息</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          填写项目的基本信息，带 <span className="text-red-500">*</span> 的为必填项
+        <h3 className="text-foreground text-base font-semibold">
+          项目基本信息
+        </h3>
+        <p className="text-muted-foreground mt-1 text-[13px]">
+          填写项目的基本信息，带 <span className="text-red-500">*</span>{" "}
+          的为必填项
         </p>
       </div>
 
       <div className="space-y-5">
         <div className="space-y-1.5">
-          <Label className="text-sm text-foreground">
+          <Label className="text-foreground text-sm">
             项目名称 <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -286,14 +313,16 @@ function StepBasicInfo({
             placeholder="请输入项目名称"
             className={cn(
               "h-[34px] rounded-md bg-white text-sm",
-              errors.name ? "border-red-500 focus-visible:ring-red-500/30" : "border-gray-200",
+              errors.name
+                ? "border-red-500 focus-visible:ring-red-500/30"
+                : "border-gray-200",
             )}
           />
           {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm text-foreground">报告类型</Label>
+          <Label className="text-foreground text-sm">报告类型</Label>
           <CustomSelect
             value={reportType}
             onChange={onReportTypeChange}
@@ -303,7 +332,7 @@ function StepBasicInfo({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm text-foreground">
+          <Label className="text-foreground text-sm">
             客户单位 <span className="text-red-500">*</span>
           </Label>
           <Input
@@ -312,32 +341,58 @@ function StepBasicInfo({
             placeholder="请输入客户单位名称"
             className={cn(
               "h-[34px] rounded-md bg-white text-sm",
-              errors.client ? "border-red-500 focus-visible:ring-red-500/30" : "border-gray-200",
+              errors.client
+                ? "border-red-500 focus-visible:ring-red-500/30"
+                : "border-gray-200",
             )}
           />
-          {errors.client && <p className="text-xs text-red-500">{errors.client}</p>}
+          {errors.client && (
+            <p className="text-xs text-red-500">{errors.client}</p>
+          )}
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm text-foreground">截止日期</Label>
+          <Label className="text-foreground text-sm">截止日期</Label>
           <Popover>
             <PopoverTrigger asChild>
               <button
                 type="button"
                 className={cn(
                   "flex h-[34px] w-full items-center justify-between rounded-md border bg-white px-3 text-sm transition-colors",
-                  deadline ? "border-gray-200 text-foreground" : "border-gray-200 text-gray-400",
+                  deadline
+                    ? "text-foreground border-gray-200"
+                    : "border-gray-200 text-gray-400",
                 )}
               >
-                <span>{deadline ? (() => { const [y, m, d] = deadline.split("-"); return `${y}年${Number(m)}月${Number(d)}日`; })() : "选择截止日期"}</span>
+                <span>
+                  {deadline
+                    ? (() => {
+                        const [y, m, d] = deadline.split("-");
+                        return `${y}年${Number(m)}月${Number(d)}日`;
+                      })()
+                    : "选择截止日期"}
+                </span>
                 <CalendarIcon className="h-4 w-4 shrink-0 text-gray-400" />
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
               <Calendar
                 mode="single"
-                selected={deadline ? (() => { const [y, m, d] = deadline.split("-"); return new Date(Number(y), Number(m) - 1, Number(d)); })() : undefined}
-                onSelect={(date) => onDeadlineChange(date ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}` : "")}
+                selected={
+                  deadline
+                    ? (() => {
+                        const [y, m, d] = deadline.split("-");
+                        return new Date(Number(y), Number(m) - 1, Number(d));
+                      })()
+                    : undefined
+                }
+                onSelect={(date) =>
+                  onDeadlineChange(
+                    date
+                      ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+                      : "",
+                  )
+                }
                 initialFocus
               />
             </PopoverContent>
@@ -345,14 +400,18 @@ function StepBasicInfo({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-sm text-foreground">项目说明/要求（选填）</Label>
+          <Label className="text-foreground text-sm">
+            项目说明/要求（选填）
+          </Label>
           <Textarea
             value={description}
             onChange={(e) => onDescriptionChange(e.target.value)}
             placeholder="例如：按《建筑设计防火规范》GB 50016 编写，重点覆盖防火分区与疏散……"
             className="min-h-[90px] resize-none rounded-md bg-white text-sm"
           />
-          <p className="text-[11px] text-muted-foreground">将作为「项目要求」一并注入给 AI 写作助手</p>
+          <p className="text-muted-foreground text-[11px]">
+            将作为「项目要求」一并注入给 AI 写作助手
+          </p>
         </div>
       </div>
     </div>
@@ -373,13 +432,18 @@ function StepTemplate({
   onSkip: () => void;
 }) {
   // Only KF templates (no workflow templates) + blank
-  const options = [...templates.filter((t) => !t.workflowDefId), BLANK_TEMPLATE];
+  const options = [
+    ...templates.filter((t) => !t.workflowDefId),
+    BLANK_TEMPLATE,
+  ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-semibold text-foreground">选择内容大纲模板</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h3 className="text-foreground text-base font-semibold">
+          选择内容大纲模板
+        </h3>
+        <p className="text-muted-foreground mt-1 text-[13px]">
           选择一个内容模板定义报告的章节大纲结构，或使用空白模板从零开始
         </p>
       </div>
@@ -401,7 +465,9 @@ function StepTemplate({
               <div
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                  templateId === tpl.id ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-500",
+                  templateId === tpl.id
+                    ? "bg-blue-100 text-blue-600"
+                    : "bg-gray-100 text-gray-500",
                 )}
               >
                 <FileText className="h-5 w-5" />
@@ -415,7 +481,9 @@ function StepTemplate({
                 >
                   {tpl.name}
                 </p>
-                <p className="mt-1 line-clamp-2 text-xs text-gray-500">{tpl.description}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-gray-500">
+                  {tpl.description}
+                </p>
               </div>
             </div>
             {templateId === tpl.id && (
@@ -459,9 +527,12 @@ function StepWorkflow({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-semibold text-foreground">选择工作流模板</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
-          工作流定义项目的写作流程：分阶段写作、AI 生成初稿、人工审阅等。选择一个适合项目类型的流程模板，或跳过手动管理
+        <h3 className="text-foreground text-base font-semibold">
+          选择工作流模板
+        </h3>
+        <p className="text-muted-foreground mt-1 text-[13px]">
+          工作流定义项目的写作流程：分阶段写作、AI
+          生成初稿、人工审阅等。选择一个适合项目类型的流程模板，或跳过手动管理
         </p>
       </div>
 
@@ -482,7 +553,9 @@ function StepWorkflow({
               <div
                 className={cn(
                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
-                  workflowId === tpl.id ? "bg-violet-100 text-violet-600" : "bg-gray-100 text-gray-500",
+                  workflowId === tpl.id
+                    ? "bg-violet-100 text-violet-600"
+                    : "bg-gray-100 text-gray-500",
                 )}
               >
                 <Sparkles className="h-5 w-5" />
@@ -491,12 +564,16 @@ function StepWorkflow({
                 <p
                   className={cn(
                     "text-sm font-medium",
-                    workflowId === tpl.id ? "text-violet-600" : "text-foreground",
+                    workflowId === tpl.id
+                      ? "text-violet-600"
+                      : "text-foreground",
                   )}
                 >
                   {tpl.name}
                 </p>
-                <p className="mt-1 line-clamp-2 text-xs text-gray-500">{tpl.description}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-gray-500">
+                  {tpl.description}
+                </p>
               </div>
             </div>
             {workflowId === tpl.id && (
@@ -555,19 +632,23 @@ function StepTeam({
       setResults([]);
       return;
     }
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const resp = await fetch(`/api/extensions/users/search?keyword=${encodeURIComponent(q)}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          setResults((data.users ?? data.items ?? []).slice(0, 10));
+    const timer = setTimeout(() => {
+      void (async () => {
+        setSearching(true);
+        try {
+          const resp = await fetch(
+            `/api/extensions/users/search?keyword=${encodeURIComponent(q)}`,
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            setResults((data.users ?? data.items ?? []).slice(0, 10));
+          }
+        } catch {
+          /* ignore */
+        } finally {
+          setSearching(false);
         }
-      } catch {
-        /* ignore */
-      } finally {
-        setSearching(false);
-      }
+      })();
     }, 300);
     return () => clearTimeout(timer);
   }, [searchValue]);
@@ -590,8 +671,10 @@ function StepTeam({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-semibold text-foreground">组建项目团队</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <h3 className="text-foreground text-base font-semibold">
+          组建项目团队
+        </h3>
+        <p className="text-muted-foreground mt-1 text-[13px]">
           团队由组长和组员组成，负责报告编写。审核、批准等环节由团队外的相关部门或领导负责。
         </p>
       </div>
@@ -599,7 +682,7 @@ function StepTeam({
       {/* Search + Add */}
       <div className="relative flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <Input
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
@@ -608,9 +691,13 @@ function StepTeam({
           />
           {searchValue.trim() && (
             <div className="absolute top-full left-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg">
-              {searching && <div className="px-3 py-2 text-xs text-gray-400">搜索中…</div>}
+              {searching && (
+                <div className="px-3 py-2 text-xs text-gray-400">搜索中…</div>
+              )}
               {!searching && results.length === 0 && (
-                <div className="px-3 py-2 text-xs text-gray-400">无匹配用户</div>
+                <div className="px-3 py-2 text-xs text-gray-400">
+                  无匹配用户
+                </div>
               )}
               {results.map((u) => (
                 <button
@@ -619,11 +706,15 @@ function StepTeam({
                   onClick={() => pick(u)}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50"
                 >
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+                  <div className="bg-muted flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium">
                     {u.username.charAt(0).toUpperCase()}
                   </div>
                   <span>{u.username}</span>
-                  {u.fullName && <span className="text-muted-foreground">({u.fullName})</span>}
+                  {u.fullName && (
+                    <span className="text-muted-foreground">
+                      ({u.fullName})
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -635,15 +726,19 @@ function StepTeam({
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-foreground">组长</span>
-            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">必选</span>
+            <span className="text-foreground text-sm font-medium">组长</span>
+            <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+              必选
+            </span>
           </div>
-          <span className="text-[11px] text-gray-400">负责创建任务、选择模板、提交审核</span>
+          <span className="text-[11px] text-gray-400">
+            负责创建任务、选择模板、提交审核
+          </span>
         </div>
         {!leader ? (
           <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-3 text-xs text-gray-400">
             <UserCircle className="h-4 w-4" />
-            请先添加组员，再在组员卡片上点击"设为组长"
+            请先添加组员，再在组员卡片上点击&quot;设为组长&quot;
           </div>
         ) : (
           <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-600">
@@ -663,8 +758,10 @@ function StepTeam({
       {/* Members */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-foreground">组员</span>
-          <span className="text-[11px] text-gray-400">负责修改AI生成的初稿 · {members.length} 人</span>
+          <span className="text-foreground text-sm font-medium">组员</span>
+          <span className="text-[11px] text-gray-400">
+            负责修改AI生成的初稿 · {members.length} 人
+          </span>
         </div>
         {members.length === 0 ? (
           <div className="flex items-center gap-2 rounded-lg border border-dashed border-gray-200 px-3 py-3 text-xs text-gray-400">
@@ -676,7 +773,7 @@ function StepTeam({
             {members.map((m) => (
               <span
                 key={m.id}
-                className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-sm font-medium text-foreground"
+                className="text-foreground inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-sm font-medium"
               >
                 <UserCircle className="h-3.5 w-3.5 text-gray-400" />
                 {m.username}
@@ -689,7 +786,10 @@ function StepTeam({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { onSetLeader(m); onRemoveMember(m.id); }}
+                  onClick={() => {
+                    onSetLeader(m);
+                    onRemoveMember(m.id);
+                  }}
                   className="ml-0.5 rounded px-1.5 py-0.5 text-[10px] text-blue-600 transition-colors hover:bg-blue-50"
                 >
                   设为组长
@@ -702,7 +802,10 @@ function StepTeam({
 
       {/* EAI-CUSTOM: 分工策略(ADR 2026-08-10) */}
       <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <AssignmentStrategySelect value={assignmentStrategy} onChange={onStrategyChange} />
+        <AssignmentStrategySelect
+          value={assignmentStrategy}
+          onChange={onStrategyChange}
+        />
       </div>
 
       <div className="flex justify-end">
@@ -728,7 +831,6 @@ function StepConfirm({
   templates,
   leader,
   teamMembers,
-  reportTypeOptions,
   autoStartWorkflow,
   onAutoStartChange,
   workflowId,
@@ -741,7 +843,6 @@ function StepConfirm({
   templates: TemplateOption[];
   leader: TeamMember | null;
   teamMembers: TeamMember[];
-  reportTypeOptions: SelectOption[];
   autoStartWorkflow: boolean;
   onAutoStartChange: (v: boolean) => void;
   workflowId: string;
@@ -757,8 +858,12 @@ function StepConfirm({
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-base font-semibold text-foreground">确认项目信息</h3>
-        <p className="mt-1 text-[13px] text-muted-foreground">请核实以下信息无误后点击创建</p>
+        <h3 className="text-foreground text-base font-semibold">
+          确认项目信息
+        </h3>
+        <p className="text-muted-foreground mt-1 text-[13px]">
+          请核实以下信息无误后点击创建
+        </p>
       </div>
 
       <div className="space-y-4">
@@ -768,20 +873,24 @@ function StepConfirm({
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-blue-50">
               <FileText className="h-4 w-4 text-blue-600" />
             </div>
-            <span className="text-sm font-medium text-foreground">基本信息</span>
+            <span className="text-foreground text-sm font-medium">
+              基本信息
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
             <div>
               <span className="text-gray-400">项目名称</span>
-              <p className="mt-0.5 text-foreground">{name}</p>
+              <p className="text-foreground mt-0.5">{name}</p>
             </div>
             <div>
               <span className="text-gray-400">报告类型</span>
-              <p className="mt-0.5 text-foreground">{getReportTypeLabel(reportType)}</p>
+              <p className="text-foreground mt-0.5">
+                {getReportTypeLabel(reportType)}
+              </p>
             </div>
             <div>
               <span className="text-gray-400">客户单位</span>
-              <p className="mt-0.5 text-foreground">{client}</p>
+              <p className="text-foreground mt-0.5">{client}</p>
             </div>
           </div>
         </div>
@@ -792,11 +901,15 @@ function StepConfirm({
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-purple-50">
               <FileText className="h-4 w-4 text-purple-600" />
             </div>
-            <span className="text-sm font-medium text-foreground">内容大纲模板</span>
+            <span className="text-foreground text-sm font-medium">
+              内容大纲模板
+            </span>
           </div>
           <div className="text-sm">
             <span className="text-gray-400">选用模板</span>
-            <p className="mt-0.5 text-foreground">{selectedTemplate?.name ?? "未选择模板"}</p>
+            <p className="text-foreground mt-0.5">
+              {selectedTemplate?.name ?? "未选择模板"}
+            </p>
           </div>
         </div>
 
@@ -806,14 +919,18 @@ function StepConfirm({
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-violet-50">
               <Sparkles className="h-4 w-4 text-violet-600" />
             </div>
-            <span className="text-sm font-medium text-foreground">工作流模板</span>
+            <span className="text-foreground text-sm font-medium">
+              工作流模板
+            </span>
           </div>
           <div className="text-sm">
             <span className="text-gray-400">选用工作流</span>
-            <p className="mt-0.5 text-foreground">{selectedWorkflow?.name ?? "未选择工作流"}</p>
+            <p className="text-foreground mt-0.5">
+              {selectedWorkflow?.name ?? "未选择工作流"}
+            </p>
           </div>
           {hasWorkflow && (
-            <label className="mt-3 flex items-center gap-2 rounded-md bg-amber-50 px-3 py-2 text-sm cursor-pointer select-none border border-amber-200">
+            <label className="mt-3 flex cursor-pointer items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm select-none">
               <input
                 type="checkbox"
                 checked={autoStartWorkflow}
@@ -821,8 +938,12 @@ function StepConfirm({
                 className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
               />
               <div>
-                <span className="font-medium text-amber-800">创建后自动启动工作流</span>
-                <p className="text-xs text-amber-600">勾选后项目创建完成将立即启动工作流引擎，无需手动操作</p>
+                <span className="font-medium text-amber-800">
+                  创建后自动启动工作流
+                </span>
+                <p className="text-xs text-amber-600">
+                  勾选后项目创建完成将立即启动工作流引擎，无需手动操作
+                </p>
               </div>
             </label>
           )}
@@ -834,7 +955,9 @@ function StepConfirm({
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-green-50">
               <UserCircle className="h-4 w-4 text-green-600" />
             </div>
-            <span className="text-sm font-medium text-foreground">项目团队</span>
+            <span className="text-foreground text-sm font-medium">
+              项目团队
+            </span>
             <span className="text-xs text-gray-400">{totalMembers} 人</span>
           </div>
           {totalMembers === 0 ? (
@@ -856,7 +979,7 @@ function StepConfirm({
                     {teamMembers.map((m) => (
                       <span
                         key={m.id}
-                        className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-foreground"
+                        className="text-foreground inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs"
                       >
                         {m.username}
                       </span>
@@ -896,16 +1019,19 @@ export function ProjectCreateWizard() {
 
   // Step 3: Workflow template (workflow definitions only)
   const [workflowId, setWorkflowId] = useState<string>("wf_skip");
-  const [workflowTemplates, setWorkflowTemplates] = useState<TemplateOption[]>([]);
+  const [workflowTemplates, setWorkflowTemplates] = useState<TemplateOption[]>(
+    [],
+  );
 
   // Fetch templates on mount
   React.useEffect(() => {
-    Promise.all([fetchPublishedTemplates(), fetchWorkflowTemplates(reportType)]).then(
-      ([kfs, wfs]) => {
-        setKfTemplates(kfs);
-        setWorkflowTemplates(wfs);
-      },
-    );
+    void Promise.all([
+      fetchPublishedTemplates(),
+      fetchWorkflowTemplates(reportType),
+    ]).then(([kfs, wfs]) => {
+      setKfTemplates(kfs);
+      setWorkflowTemplates(wfs);
+    });
   }, [reportType]);
 
   // Step 4: Team
@@ -916,7 +1042,9 @@ export function ProjectCreateWizard() {
   const [autoStartWorkflow, setAutoStartWorkflow] = useState(true);
 
   // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
-  const [assignmentStrategy, setAssignmentStrategy] = useState<"by_chapter" | "by_role">("by_chapter");
+  const [assignmentStrategy, setAssignmentStrategy] = useState<
+    "by_chapter" | "by_role"
+  >("by_chapter");
 
   // Submitting
   const [submitting, setSubmitting] = useState(false);
@@ -1029,7 +1157,7 @@ export function ProjectCreateWizard() {
   };
 
   return (
-    <div className="flex h-screen bg-muted">
+    <div className="bg-muted flex h-screen">
       {/* Sidebar */}
       <WizardSidebar currentStep={step} />
 
@@ -1041,11 +1169,13 @@ export function ProjectCreateWizard() {
             <button
               type="button"
               onClick={goPrev}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100 hover:text-foreground"
+              className="hover:text-foreground flex h-8 w-8 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-gray-100"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <h2 className="text-base font-semibold text-foreground">新建项目</h2>
+            <h2 className="text-foreground text-base font-semibold">
+              新建项目
+            </h2>
             <span className="text-sm text-gray-400">步骤 {step}/5</span>
           </div>
 
@@ -1059,9 +1189,17 @@ export function ProjectCreateWizard() {
                 deadline={deadline}
                 errors={errors}
                 reportTypeOptions={reportTypeOptions}
-                onNameChange={(v) => { setName(v); if (errors.name) setErrors((e) => ({ ...e, name: undefined })); }}
-                onReportTypeChange={(v) => setReportType(v )}
-                onClientChange={(v) => { setClient(v); if (errors.client) setErrors((e) => ({ ...e, client: undefined })); }}
+                onNameChange={(v) => {
+                  setName(v);
+                  if (errors.name)
+                    setErrors((e) => ({ ...e, name: undefined }));
+                }}
+                onReportTypeChange={(v) => setReportType(v)}
+                onClientChange={(v) => {
+                  setClient(v);
+                  if (errors.client)
+                    setErrors((e) => ({ ...e, client: undefined }));
+                }}
                 onDeadlineChange={setDeadline}
                 description={description}
                 onDescriptionChange={setDescription}
@@ -1104,7 +1242,6 @@ export function ProjectCreateWizard() {
                 templates={kfTemplates}
                 leader={leader}
                 teamMembers={teamMembers}
-                reportTypeOptions={reportTypeOptions}
                 autoStartWorkflow={autoStartWorkflow}
                 onAutoStartChange={setAutoStartWorkflow}
                 workflowId={workflowId}
@@ -1117,19 +1254,33 @@ export function ProjectCreateWizard() {
           <div className="flex h-[60px] items-center justify-between border-t border-gray-200 px-6">
             <div>
               {step === 1 && (
-                <Button type="button" variant="ghost" onClick={handleBack} className="text-gray-500">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleBack}
+                  className="text-gray-500"
+                >
                   取消
                 </Button>
               )}
             </div>
             <div className="flex gap-3">
               {step > 1 && (
-                <Button type="button" variant="outline" onClick={goPrev} className="gap-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={goPrev}
+                  className="gap-1"
+                >
                   上一步
                 </Button>
               )}
               {step < 5 ? (
-                <Button type="button" onClick={goNext} className="gap-1 bg-blue-600 hover:bg-blue-700">
+                <Button
+                  type="button"
+                  onClick={goNext}
+                  className="gap-1 bg-blue-600 hover:bg-blue-700"
+                >
                   下一步
                   <ChevronRight className="h-4 w-4" />
                 </Button>

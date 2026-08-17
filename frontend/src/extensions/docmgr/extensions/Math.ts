@@ -2,7 +2,8 @@ import { Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
 import { MathNodeView } from "../components/MathNodeView";
-import { mathMarkdownIt } from "./mathMarkdownIt";
+
+import { type MdInstance, mathMarkdownIt } from "./mathMarkdownIt";
 
 const latexAttr = {
   default: "",
@@ -42,7 +43,7 @@ export const MathInline = Node.create({
           state.write(`$${node.attrs.latex}$`);
         },
         parse: {
-          setup(md: any) {
+          setup(md: MdInstance) {
             md.use(mathMarkdownIt);
           },
         },
@@ -77,7 +78,7 @@ export const MathBlock = Node.create({
           state.closeBlock();
         },
         parse: {
-          setup(md: any) {
+          setup(md: MdInstance) {
             md.use(mathMarkdownIt);
           },
         },

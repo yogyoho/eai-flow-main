@@ -16,7 +16,10 @@ function getCsrfToken(): string | null {
 const CSRF_HEADER = "X-CSRF-Token";
 const STATE_CHANGING_METHODS = new Set(["POST", "PUT", "DELETE", "PATCH"]);
 
-function withCsrf(headers: Record<string, string>, method?: string): Record<string, string> {
+function withCsrf(
+  headers: Record<string, string>,
+  method?: string,
+): Record<string, string> {
   if (method && STATE_CHANGING_METHODS.has(method)) {
     const token = getCsrfToken();
     if (token) {
@@ -32,12 +35,15 @@ function withCsrf(headers: Record<string, string>, method?: string): Record<stri
 export async function authFetch<T>(
   url: string,
   options: RequestInit = {},
-  baseUrl: string = API_BASE
+  baseUrl: string = API_BASE,
 ): Promise<T> {
-  const headers: Record<string, string> = withCsrf({
-    "Content-Type": "application/json",
-    ...((options.headers as Record<string, string>) || {}),
-  }, options.method);
+  const headers: Record<string, string> = withCsrf(
+    {
+      "Content-Type": "application/json",
+      ...((options.headers as Record<string, string>) || {}),
+    },
+    options.method,
+  );
 
   const response = await fetch(`${baseUrl}${url}`, {
     ...options,
@@ -52,11 +58,16 @@ export async function authFetch<T>(
     try {
       if (contentType?.includes("application/json")) {
         const error = await response.json();
-        message = typeof error.detail === "string"
-          ? error.detail
-          : Array.isArray(error.detail)
-            ? error.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean).join("; ") || message
-            : message;
+        // EAI note: 保留原 `join || message` 语义——全部 msg 为空时回退默认 message（`??` 会得到空串）
+        const detailMessages: string[] = Array.isArray(error.detail)
+          ? error.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean)
+          : [];
+        message =
+          typeof error.detail === "string"
+            ? error.detail
+            : detailMessages.length > 0
+              ? detailMessages.join("; ")
+              : message;
       } else {
         const text = await response.text();
         if (text) message = text.slice(0, 200);
@@ -70,7 +81,10 @@ export async function authFetch<T>(
     throw err;
   }
 
-  if (response.status === 204 || response.headers.get("content-length") === "0") {
+  if (
+    response.status === 204 ||
+    response.headers.get("content-length") === "0"
+  ) {
     return undefined as T;
   }
 
@@ -83,7 +97,7 @@ export async function authFetch<T>(
 export async function authFormFetch<T>(
   url: string,
   formData: FormData,
-  baseUrl: string = API_BASE
+  baseUrl: string = API_BASE,
 ): Promise<T> {
   const response = await fetch(`${baseUrl}${url}`, {
     method: "POST",
@@ -94,7 +108,11 @@ export async function authFormFetch<T>(
 
   if (!response.ok) {
     const errJson = await response.json().catch(() => ({}));
-    const error = new Error(errJson.detail || "Request failed") as Error & { status: number };
+    // EAI note: 保留 `||` 语义——errJson.detail 为 ""（后端返回空 detail 错误体）时仍回退默认消息，`??` 不会
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- deliberate truthy fallback on untyped JSON field
+    const error = new Error(errJson.detail || "Request failed") as Error & {
+      status: number;
+    };
     error.status = response.status;
     throw error;
   }

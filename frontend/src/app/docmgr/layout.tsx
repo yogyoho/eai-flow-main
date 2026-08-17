@@ -4,7 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 import { PageLoadingOverlay } from "@/components/ui/page-loading-overlay";
-import { AuthProvider, useAuth } from "@/extensions/hooks/useAuth";
+import { useAuth } from "@/extensions/hooks/useAuth";
 
 function DocMgrAuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -14,7 +14,9 @@ function DocMgrAuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (isLoading) return;
     if (!user) {
-      const loginUrl = "/workspace/chats/new?redirect=" + encodeURIComponent(pathname || "/docmgr");
+      const loginUrl =
+        "/workspace/chats/new?redirect=" +
+        encodeURIComponent(pathname || "/docmgr");
       router.replace(loginUrl);
     }
   }, [user, isLoading, router, pathname]);
@@ -30,8 +32,10 @@ function DocMgrAuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export default function DocMgrShellLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <DocMgrAuthGuard>{children}</DocMgrAuthGuard>
-  );
+export default function DocMgrShellLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <DocMgrAuthGuard>{children}</DocMgrAuthGuard>;
 }

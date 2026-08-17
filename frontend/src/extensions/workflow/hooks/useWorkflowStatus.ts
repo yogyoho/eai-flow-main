@@ -5,7 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { workflowApi } from "../api";
 import type { WorkflowStatusResponse } from "../types";
 
-export function useWorkflowStatus(projectId: string | null, pollIntervalMs = 5000) {
+export function useWorkflowStatus(
+  projectId: string | null,
+  pollIntervalMs = 5000,
+) {
   const [status, setStatus] = useState<WorkflowStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -21,10 +24,14 @@ export function useWorkflowStatus(projectId: string | null, pollIntervalMs = 500
   }, [projectId]);
 
   useEffect(() => {
-    refresh();
+    refresh().catch((e) => console.error("workflow status refresh failed", e));
 
     if (projectId) {
-      intervalRef.current = setInterval(refresh, pollIntervalMs);
+      intervalRef.current = setInterval(() => {
+        refresh().catch((e) =>
+          console.error("workflow status refresh failed", e),
+        );
+      }, pollIntervalMs);
     }
 
     return () => {

@@ -1,6 +1,16 @@
 "use client";
 
-import { BarChart3, TrendingUp, AlertTriangle, Info, Loader2, AlertCircle, CheckCircle2, Check, ChevronsUpDown, FileText } from "lucide-react";
+import {
+  BarChart3,
+  TrendingUp,
+  AlertTriangle,
+  Loader2,
+  AlertCircle,
+  CheckCircle2,
+  Check,
+  ChevronsUpDown,
+  FileText,
+} from "lucide-react";
 import React, { useState, useEffect, useCallback } from "react";
 import {
   RadarChart,
@@ -11,8 +21,19 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { kfApi } from "@/extensions/api";
 import type {
   TemplateListItem,
@@ -26,9 +47,14 @@ function useColorScheme() {
     const isDark = document.documentElement.classList.contains("dark");
     setColorScheme(isDark ? "dark" : "light");
     const observer = new MutationObserver(() => {
-      setColorScheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+      setColorScheme(
+        document.documentElement.classList.contains("dark") ? "dark" : "light",
+      );
     });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
     return () => observer.disconnect();
   }, []);
   return colorScheme;
@@ -52,18 +78,33 @@ const DIMENSION_COLORS: Record<string, string> = {
 
 function getGradeLabel(grade: string): { label: string; color: string } {
   const grades: Record<string, { label: string; color: string }> = {
-    优秀: { label: "优秀", color: "bg-success/10 text-success border-success/20" },
-    良好: { label: "良好", color: "bg-primary/10 text-primary border-primary/20" },
+    优秀: {
+      label: "优秀",
+      color: "bg-success/10 text-success border-success/20",
+    },
+    良好: {
+      label: "良好",
+      color: "bg-primary/10 text-primary border-primary/20",
+    },
     一般: { label: "一般", color: "bg-info/10 text-info border-info/20" },
-    较差: { label: "较差", color: "bg-warning/10 text-warning border-warning/20" },
-    差: { label: "差", color: "bg-destructive/10 text-destructive border-destructive/20" },
+    较差: {
+      label: "较差",
+      color: "bg-warning/10 text-warning border-warning/20",
+    },
+    差: {
+      label: "差",
+      color: "bg-destructive/10 text-destructive border-destructive/20",
+    },
   };
-  return grades[grade] ?? { label: grade, color: "bg-muted text-muted-foreground" };
+  return (
+    grades[grade] ?? { label: grade, color: "bg-muted text-muted-foreground" }
+  );
 }
 
 export default function QualityAssessment() {
   const colorScheme = useColorScheme();
-  const gridColor = colorScheme === "dark" ? "var(--gray-500)" : "var(--gray-200)";
+  const gridColor =
+    colorScheme === "dark" ? "var(--gray-500)" : "var(--gray-200)";
   const axisColor = "var(--gray-400)";
   const radarColor = "var(--primary)";
 
@@ -137,7 +178,7 @@ export default function QualityAssessment() {
           dimension: DIMENSION_LABELS[key] ?? key,
           title: issue,
           type: dim.score >= 60 ? "warning" : "error",
-        }))
+        })),
       )
     : [];
 
@@ -148,31 +189,32 @@ export default function QualityAssessment() {
           id: `${key}-strength-${i}`,
           dimension: DIMENSION_LABELS[key] ?? key,
           title: strength,
-        }))
+        })),
       )
     : [];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex justify-between items-center p-4 border-b border-border bg-card shrink-0">
-        <h2 className="text-lg font-medium flex items-center gap-2 text-foreground tracking-tight">
-          <BarChart3 className="w-5 h-5 text-primary" />
+      <div className="border-border bg-card flex shrink-0 items-center justify-between border-b p-4">
+        <h2 className="text-foreground flex items-center gap-2 text-lg font-medium tracking-tight">
+          <BarChart3 className="text-primary h-5 w-5" />
           知识质量评估
         </h2>
         <div className="flex gap-2">
           <button
             onClick={handleAssess}
             disabled={!selectedId || assessing}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-sm font-medium text-sm disabled:opacity-50"
+            className="bg-primary hover:bg-primary/90 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors disabled:opacity-50"
           >
             {assessing ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" /> 评估中...
+                <Loader2 className="h-4 w-4 animate-spin" /> 评估中...
               </>
             ) : (
               <>
-                <TrendingUp className="w-4 h-4" /> {result ? "重新评估" : "开始评估"}
+                <TrendingUp className="h-4 w-4" />{" "}
+                {result ? "重新评估" : "开始评估"}
               </>
             )}
           </button>
@@ -180,40 +222,58 @@ export default function QualityAssessment() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/30">
+      <div className="bg-muted/30 flex-1 space-y-6 overflow-y-auto p-6">
         {/* Template Selector */}
-        <div className="bg-gradient-to-br from-card to-card/80 rounded-xl border border-border/50 shadow-sm p-4">
-          <label className="block text-sm font-medium text-muted-foreground mb-2">选择模板</label>
+        <div className="from-card to-card/80 border-border/50 rounded-xl border bg-gradient-to-br p-4 shadow-sm">
+          <label className="text-muted-foreground mb-2 block text-sm font-medium">
+            选择模板
+          </label>
           {loadingTemplates && !templates.length ? (
-            <div className="flex items-center gap-2 text-muted-foreground text-sm">
-              <Loader2 className="w-4 h-4 animate-spin" /> 加载模板列表...
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> 加载模板列表...
             </div>
           ) : templates.length === 0 ? (
-            <p className="text-sm text-muted-foreground">暂无模板，请先创建或抽取模板</p>
+            <p className="text-muted-foreground text-sm">
+              暂无模板，请先创建或抽取模板
+            </p>
           ) : (
             <Popover open={comboboxOpen} onOpenChange={setComboboxOpen}>
               <PopoverTrigger asChild>
                 <button
                   role="combobox"
                   aria-expanded={comboboxOpen}
-                  className="w-full flex items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 py-2.5 text-sm text-left hover:bg-accent/50 focus:outline-none focus:ring-2 focus:ring-ring/50 focus:ring-offset-1 transition-colors"
+                  aria-controls="qa-template-combobox-list"
+                  className="border-input bg-background hover:bg-accent/50 focus:ring-ring/50 flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2.5 text-left text-sm transition-colors focus:ring-2 focus:ring-offset-1 focus:outline-none"
                 >
                   {selectedTemplate ? (
-                    <div className="flex items-center gap-2 min-w-0">
-                      <FileText className="w-4 h-4 text-primary shrink-0" />
-                      <span className="truncate font-medium text-foreground">{selectedTemplate.name}</span>
-                      <span className="text-xs text-muted-foreground shrink-0">{selectedTemplate.version}</span>
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0", statusColor(selectedTemplate.status))}>
+                    <div className="flex min-w-0 items-center gap-2">
+                      <FileText className="text-primary h-4 w-4 shrink-0" />
+                      <span className="text-foreground truncate font-medium">
+                        {selectedTemplate.name}
+                      </span>
+                      <span className="text-muted-foreground shrink-0 text-xs">
+                        {selectedTemplate.version}
+                      </span>
+                      <span
+                        className={cn(
+                          "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                          statusColor(selectedTemplate.status),
+                        )}
+                      >
                         {statusLabel(selectedTemplate.status)}
                       </span>
                     </div>
                   ) : (
                     <span className="text-muted-foreground">选择模板...</span>
                   )}
-                  <ChevronsUpDown className="w-4 h-4 shrink-0 text-muted-foreground" />
+                  <ChevronsUpDown className="text-muted-foreground h-4 w-4 shrink-0" />
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+              <PopoverContent
+                id="qa-template-combobox-list"
+                className="w-[var(--radix-popover-trigger-width)] p-0"
+                align="start"
+              >
                 <Command>
                   <CommandInput placeholder="搜索模板名称..." />
                   <CommandList>
@@ -229,22 +289,40 @@ export default function QualityAssessment() {
                             setError(null);
                             setComboboxOpen(false);
                           }}
-                          className="flex items-center gap-2 px-3 py-2.5 cursor-pointer"
+                          className="flex cursor-pointer items-center gap-2 px-3 py-2.5"
                         >
-                          <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                          <div className="flex-1 min-w-0">
+                          <FileText className="text-muted-foreground h-4 w-4 shrink-0" />
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm truncate">{t.name}</span>
-                              <span className="text-xs text-muted-foreground shrink-0">{t.version}</span>
+                              <span className="truncate text-sm font-medium">
+                                {t.name}
+                              </span>
+                              <span className="text-muted-foreground shrink-0 text-xs">
+                                {t.version}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <span className="text-xs text-muted-foreground">{t.domain}</span>
-                              <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium", statusColor(t.status))}>
+                            <div className="mt-0.5 flex items-center gap-2">
+                              <span className="text-muted-foreground text-xs">
+                                {t.domain}
+                              </span>
+                              <span
+                                className={cn(
+                                  "rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                                  statusColor(t.status),
+                                )}
+                              >
                                 {statusLabel(t.status)}
                               </span>
                             </div>
                           </div>
-                          <Check className={cn("w-4 h-4 shrink-0", selectedId === t.id ? "text-primary" : "opacity-0")} />
+                          <Check
+                            className={cn(
+                              "h-4 w-4 shrink-0",
+                              selectedId === t.id
+                                ? "text-primary"
+                                : "opacity-0",
+                            )}
+                          />
                         </CommandItem>
                       ))}
                     </CommandGroup>
@@ -257,25 +335,31 @@ export default function QualityAssessment() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-lg bg-destructive/10 p-4 text-destructive text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          <div className="bg-destructive/10 text-destructive flex items-center gap-2 rounded-lg p-4 text-sm">
+            <AlertCircle className="h-4 w-4 shrink-0" /> {error}
           </div>
         )}
 
         {/* No result yet */}
         {!result && !assessing && !error && selectedId && (
-          <div className="flex flex-col items-center py-12 text-muted-foreground">
-            <BarChart3 className="w-16 h-16 text-muted-foreground/20 mb-4" />
-            <p className="text-foreground font-medium mb-1">点击「开始评估」启动 AI 质量评估</p>
-            <p className="text-sm">将从完整性、准确性、一致性、合规性、时效性五个维度进行分析</p>
+          <div className="text-muted-foreground flex flex-col items-center py-12">
+            <BarChart3 className="text-muted-foreground/20 mb-4 h-16 w-16" />
+            <p className="text-foreground mb-1 font-medium">
+              点击「开始评估」启动 AI 质量评估
+            </p>
+            <p className="text-sm">
+              将从完整性、准确性、一致性、合规性、时效性五个维度进行分析
+            </p>
           </div>
         )}
 
         {/* Assessing */}
         {assessing && (
-          <div className="flex flex-col items-center py-12 text-muted-foreground">
-            <Loader2 className="w-12 h-12 animate-spin text-primary mb-4" />
-            <p className="text-foreground font-medium">AI 正在分析模板质量...</p>
+          <div className="text-muted-foreground flex flex-col items-center py-12">
+            <Loader2 className="text-primary mb-4 h-12 w-12 animate-spin" />
+            <p className="text-foreground font-medium">
+              AI 正在分析模板质量...
+            </p>
             <p className="text-sm">预计需要 10-30 秒</p>
           </div>
         )}
@@ -284,54 +368,79 @@ export default function QualityAssessment() {
         {result && !assessing && (
           <>
             {/* Score Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* Overall Score */}
-              <div className="lg:col-span-1 bg-gradient-to-br from-card to-card/80 p-8 rounded-xl border border-border/50 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-                <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
+              <div className="from-card to-card/80 border-border/50 flex flex-col items-center justify-center space-y-4 rounded-xl border bg-gradient-to-br p-8 text-center shadow-sm lg:col-span-1">
+                <h3 className="text-muted-foreground text-sm font-bold tracking-widest uppercase">
                   整体评分
                 </h3>
-                <div className="relative w-48 h-48 flex items-center justify-center">
-                  <div className="absolute inset-0 rounded-full border-8 border-muted" />
-                  <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 200 200">
+                <div className="relative flex h-48 w-48 items-center justify-center">
+                  <div className="border-muted absolute inset-0 rounded-full border-8" />
+                  <svg
+                    className="absolute inset-0 h-full w-full -rotate-90"
+                    viewBox="0 0 200 200"
+                  >
                     <circle
-                      cx="100" cy="100" r="88"
+                      cx="100"
+                      cy="100"
+                      r="88"
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="8"
                       className={cn(
-                        result.overall_score >= 80 ? "text-success" :
-                        result.overall_score >= 60 ? "text-info" : "text-destructive"
+                        result.overall_score >= 80
+                          ? "text-success"
+                          : result.overall_score >= 60
+                            ? "text-info"
+                            : "text-destructive",
                       )}
                       strokeDasharray={`${(result.overall_score / 100) * 553} 553`}
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="text-center">
-                    <div className={cn(
-                      "text-5xl font-black",
-                      result.overall_score >= 80 ? "text-success" :
-                      result.overall_score >= 60 ? "text-info" : "text-destructive"
-                    )}>
+                    <div
+                      className={cn(
+                        "text-5xl font-black",
+                        result.overall_score >= 80
+                          ? "text-success"
+                          : result.overall_score >= 60
+                            ? "text-info"
+                            : "text-destructive",
+                      )}
+                    >
                       {result.overall_score}
                     </div>
-                    <div className="text-sm text-muted-foreground font-bold">/ 100</div>
+                    <div className="text-muted-foreground text-sm font-bold">
+                      / 100
+                    </div>
                   </div>
                 </div>
-                <div className={cn("border px-4 py-1 rounded-full font-medium text-sm", getGradeLabel(result.quality_grade).color)}>
+                <div
+                  className={cn(
+                    "rounded-full border px-4 py-1 text-sm font-medium",
+                    getGradeLabel(result.quality_grade).color,
+                  )}
+                >
                   {getGradeLabel(result.quality_grade).label}
                 </div>
               </div>
 
               {/* Dimension Scores */}
-              <div className="lg:col-span-2 bg-gradient-to-br from-card to-card/80 p-8 rounded-xl border border-border/50 shadow-sm">
-                <h3 className="text-lg font-semibold text-foreground mb-6">
+              <div className="from-card to-card/80 border-border/50 rounded-xl border bg-gradient-to-br p-8 shadow-sm lg:col-span-2">
+                <h3 className="text-foreground mb-6 text-lg font-semibold">
                   维度评分
                 </h3>
-                <div className="flex gap-8 items-center">
+                <div className="flex items-center gap-8">
                   {radarData.length > 0 && (
-                    <div className="shrink-0 w-64 h-64">
+                    <div className="h-64 w-64 shrink-0">
                       <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                        <RadarChart
+                          cx="50%"
+                          cy="50%"
+                          outerRadius="75%"
+                          data={radarData}
+                        >
                           <PolarGrid stroke={gridColor} />
                           <PolarAngleAxis
                             dataKey="subject"
@@ -353,27 +462,36 @@ export default function QualityAssessment() {
                     {Object.entries(result.dimensions).map(([key, dim]) => (
                       <div key={key} className="space-y-1.5">
                         <div className="flex justify-between text-sm font-medium">
-                          <span className="text-foreground">{DIMENSION_LABELS[key] ?? key}</span>
-                          <span className={cn(
-                            "font-bold",
-                            dim.score >= 80 ? "text-success" :
-                            dim.score >= 60 ? "text-info" : "text-destructive"
-                          )}>
+                          <span className="text-foreground">
+                            {DIMENSION_LABELS[key] ?? key}
+                          </span>
+                          <span
+                            className={cn(
+                              "font-bold",
+                              dim.score >= 80
+                                ? "text-success"
+                                : dim.score >= 60
+                                  ? "text-info"
+                                  : "text-destructive",
+                            )}
+                          >
                             {dim.score}%
                           </span>
                         </div>
                         <div className="flex items-center gap-4">
-                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
                             <div
                               className={cn(
                                 "h-full rounded-full transition-all duration-1000",
-                                DIMENSION_COLORS[key] ?? "bg-muted-foreground"
+                                DIMENSION_COLORS[key] ?? "bg-muted-foreground",
                               )}
                               style={{ width: `${dim.score}%` }}
                             />
                           </div>
-                          <span className="text-xs text-muted-foreground whitespace-nowrap min-w-[120px]">
-                            {dim.issues && dim.issues.length > 0 ? `${dim.issues.length} 个问题` : "通过"}
+                          <span className="text-muted-foreground min-w-[120px] text-xs whitespace-nowrap">
+                            {dim.issues && dim.issues.length > 0
+                              ? `${dim.issues.length} 个问题`
+                              : "通过"}
                           </span>
                         </div>
                       </div>
@@ -386,20 +504,20 @@ export default function QualityAssessment() {
             {/* Suggestions */}
             {result.suggestions && result.suggestions.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-primary" /> 改进建议
+                <h3 className="text-foreground flex items-center gap-2 text-lg font-semibold">
+                  <CheckCircle2 className="text-primary h-5 w-5" /> 改进建议
                 </h3>
                 <div className="space-y-3">
                   {result.suggestions.map((suggestion, i) => (
                     <div
                       key={i}
-                      className="bg-card p-5 rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-md transition-all flex items-start gap-4 group border-l-[3px] border-l-primary/40"
+                      className="bg-card border-border/50 hover:border-primary/30 group border-l-primary/40 flex items-start gap-4 rounded-xl border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md"
                     >
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5 text-primary shrink-0">
-                        <CheckCircle2 className="w-5 h-5" />
+                      <div className="from-primary/20 to-primary/5 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br">
+                        <CheckCircle2 className="h-5 w-5" />
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm text-foreground">{suggestion}</p>
+                        <p className="text-foreground text-sm">{suggestion}</p>
                       </div>
                     </div>
                   ))}
@@ -410,25 +528,25 @@ export default function QualityAssessment() {
             {/* Strengths */}
             {allStrengths.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-success" /> 模板亮点
+                <h3 className="text-foreground flex items-center gap-2 text-lg font-semibold">
+                  <CheckCircle2 className="text-success h-5 w-5" /> 模板亮点
                 </h3>
                 <div className="space-y-3">
                   {allStrengths.map((s) => (
                     <div
                       key={s.id}
-                      className="bg-card p-5 rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-md transition-all flex items-start gap-4 border-l-[3px] border-l-success/60"
+                      className="bg-card border-border/50 hover:border-primary/30 border-l-success/60 flex items-start gap-4 rounded-xl border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md"
                     >
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-gradient-to-br from-success/20 to-success/5 text-success shrink-0">
-                        <CheckCircle2 className="w-5 h-5" />
+                      <div className="from-success/20 to-success/5 text-success flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br">
+                        <CheckCircle2 className="h-5 w-5" />
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                          <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
                             {s.dimension}
                           </span>
                         </div>
-                        <p className="text-sm text-foreground">{s.title}</p>
+                        <p className="text-foreground text-sm">{s.title}</p>
                       </div>
                     </div>
                   ))}
@@ -439,35 +557,37 @@ export default function QualityAssessment() {
             {/* Issue List */}
             {allIssues.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                  <AlertTriangle className="w-5 h-5 text-warning" /> 问题清单
+                <h3 className="text-foreground flex items-center gap-2 text-lg font-semibold">
+                  <AlertTriangle className="text-warning h-5 w-5" /> 问题清单
                 </h3>
                 <div className="space-y-3">
                   {allIssues.map((issue) => (
                     <div
                       key={issue.id}
                       className={cn(
-                        "bg-card p-5 rounded-xl border border-border/50 shadow-sm hover:border-primary/30 hover:shadow-md transition-all flex items-start gap-4 border-l-[3px]",
-                        issue.type === "error" ? "border-l-destructive/60" : "border-l-warning/60"
+                        "bg-card border-border/50 hover:border-primary/30 flex items-start gap-4 rounded-xl border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md",
+                        issue.type === "error"
+                          ? "border-l-destructive/60"
+                          : "border-l-warning/60",
                       )}
                     >
                       <div
                         className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
                           issue.type === "error"
-                            ? "bg-gradient-to-br from-destructive/20 to-destructive/5 text-destructive"
-                            : "bg-gradient-to-br from-warning/20 to-warning/5 text-warning"
+                            ? "from-destructive/20 to-destructive/5 text-destructive bg-gradient-to-br"
+                            : "from-warning/20 to-warning/5 text-warning bg-gradient-to-br",
                         )}
                       >
-                        <AlertTriangle className="w-5 h-5" />
+                        <AlertTriangle className="h-5 w-5" />
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                          <span className="bg-muted text-muted-foreground rounded px-2 py-0.5 text-xs">
                             {issue.dimension}
                           </span>
                         </div>
-                        <p className="text-sm text-foreground">{issue.title}</p>
+                        <p className="text-foreground text-sm">{issue.title}</p>
                       </div>
                     </div>
                   ))}
@@ -475,12 +595,16 @@ export default function QualityAssessment() {
               </div>
             )}
 
-            {allIssues.length === 0 && allStrengths.length === 0 && result.suggestions.length === 0 && (
-              <div className="flex flex-col items-center py-8 text-muted-foreground">
-                <CheckCircle2 className="w-12 h-12 text-success mb-2" />
-                <p className="text-foreground font-medium">模板质量良好，未发现明显问题</p>
-              </div>
-            )}
+            {allIssues.length === 0 &&
+              allStrengths.length === 0 &&
+              result.suggestions.length === 0 && (
+                <div className="text-muted-foreground flex flex-col items-center py-8">
+                  <CheckCircle2 className="text-success mb-2 h-12 w-12" />
+                  <p className="text-foreground font-medium">
+                    模板质量良好，未发现明显问题
+                  </p>
+                </div>
+              )}
           </>
         )}
       </div>

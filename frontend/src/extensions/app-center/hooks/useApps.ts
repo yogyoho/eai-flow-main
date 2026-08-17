@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 
 import { usePermission } from "@/core/permissions";
 import { useLicense } from "@/extensions/license/useLicense";
@@ -48,7 +48,10 @@ export interface UseAppsReturn {
 // ponytail: cache domain labels per-domain so AppCard doesn't need to thread domains prop
 let _domainLabelCache: Map<string, string> | null = null;
 
-function toAppDefinition(a: AppResponse, domains?: DomainResponse[]): AppDefinition {
+function toAppDefinition(
+  a: AppResponse,
+  domains?: DomainResponse[],
+): AppDefinition {
   // Build domain label cache on first call
   if (!_domainLabelCache && domains) {
     _domainLabelCache = new Map(domains.map((d) => [d.key, d.label]));
@@ -83,7 +86,7 @@ function deriveNavId(path: string): string | null {
     "workflow-admin": "nav:workflow-admin",
     "app-center": "nav:app-center",
   };
-  return mapping[segment] || `nav:${segment}`;
+  return mapping[segment] ?? `nav:${segment}`;
 }
 
 /**
@@ -124,7 +127,7 @@ export function useApps(
 
   const isLoading = appsLoading || domainsLoading;
   const isError = appsError != null || domainsError != null;
-  const error = (appsError ?? domainsError ?? null) as Error | null;
+  const error = appsError ?? domainsError ?? null;
 
   // Convert API response to AppDefinition
   const rawDefinitions = useMemo<AppDefinition[]>(
@@ -215,7 +218,14 @@ export function useApps(
         break;
     }
     return sorted;
-  }, [visibleApps, activeDomain, searchQuery, sortMode, favorites, isFavoriteHydrated]);
+  }, [
+    visibleApps,
+    activeDomain,
+    searchQuery,
+    sortMode,
+    favorites,
+    isFavoriteHydrated,
+  ]);
 
   return {
     apps,

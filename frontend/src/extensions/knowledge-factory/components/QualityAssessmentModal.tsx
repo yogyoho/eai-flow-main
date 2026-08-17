@@ -70,7 +70,7 @@ export default function QualityAssessmentModal({
       差: "E",
       未知: "?",
     };
-    return labels[grade] || grade;
+    return labels[grade] ?? grade;
   };
 
   const getGradeColor = (grade: string) => {
@@ -82,24 +82,31 @@ export default function QualityAssessmentModal({
       差: "bg-red-500/10 text-red-500",
       未知: "bg-muted text-muted-foreground",
     };
-    return colors[grade] || "bg-muted text-muted-foreground";
+    return colors[grade] ?? "bg-muted text-muted-foreground";
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="relative w-full max-w-2xl rounded-lg bg-background shadow-xl">
+      <div className="bg-background relative w-full max-w-2xl rounded-lg shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">AI 质量评估</h2>
-            <p className="text-sm text-muted-foreground">{templateName}</p>
+            <p className="text-muted-foreground text-sm">{templateName}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 hover:bg-accent"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <button onClick={onClose} className="hover:bg-accent rounded-md p-1">
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -110,7 +117,7 @@ export default function QualityAssessmentModal({
             <div className="flex flex-col items-center py-8">
               <div className="mb-4 text-center">
                 <svg
-                  className="mx-auto h-16 w-16 text-primary"
+                  className="text-primary mx-auto h-16 w-16"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -122,16 +129,16 @@ export default function QualityAssessmentModal({
                     d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <p className="mt-4 text-foreground">
+                <p className="text-foreground mt-4">
                   点击下方按钮启动 AI 质量评估
                 </p>
-                <p className="mt-1 text-sm text-muted-foreground/60">
+                <p className="text-muted-foreground/60 mt-1 text-sm">
                   评估将从完整性、准确性、一致性、合规性、时效性五个维度进行分析
                 </p>
               </div>
               <button
                 onClick={handleAssess}
-                className="rounded-lg bg-primary text-primary-foreground px-6 py-2.5 hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-6 py-2.5"
               >
                 开始评估
               </button>
@@ -140,16 +147,23 @@ export default function QualityAssessmentModal({
 
           {loading && (
             <div className="flex flex-col items-center py-8">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-              <p className="mt-4 text-foreground">AI 正在分析模板质量...</p>
-              <p className="mt-1 text-sm text-muted-foreground/60">预计需要 10-30 秒</p>
+              <div className="border-primary/20 border-t-primary h-12 w-12 animate-spin rounded-full border-4" />
+              <p className="text-foreground mt-4">AI 正在分析模板质量...</p>
+              <p className="text-muted-foreground/60 mt-1 text-sm">
+                预计需要 10-30 秒
+              </p>
             </div>
           )}
 
           {error && (
             <div className="flex flex-col items-center py-8">
               <div className="mb-4 rounded-full bg-red-500/10 p-4">
-                <svg className="h-12 w-12 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="h-12 w-12 text-red-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -161,7 +175,7 @@ export default function QualityAssessmentModal({
               <p className="text-red-500">{error}</p>
               <button
                 onClick={handleAssess}
-                className="mt-4 rounded-lg bg-primary text-primary-foreground px-6 py-2.5 hover:bg-primary/90"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 mt-4 rounded-lg px-6 py-2.5"
               >
                 重试
               </button>
@@ -171,49 +185,58 @@ export default function QualityAssessmentModal({
           {result && (
             <div className="space-y-6">
               {/* Overall Score */}
-              <div className="flex items-center justify-between rounded-lg bg-gradient-to-r from-primary/10 to-primary/5 p-4">
+              <div className="from-primary/10 to-primary/5 flex items-center justify-between rounded-lg bg-gradient-to-r p-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">总体评分</p>
-                  <p className={`text-4xl font-bold ${getScoreColor(result.overall_score)}`}>
+                  <p className="text-muted-foreground text-sm">总体评分</p>
+                  <p
+                    className={`text-4xl font-bold ${getScoreColor(result.overall_score)}`}
+                  >
                     {result.overall_score}
-                    <span className="text-lg font-normal text-muted-foreground/60">/100</span>
+                    <span className="text-muted-foreground/60 text-lg font-normal">
+                      /100
+                    </span>
                   </p>
                 </div>
                 <div className="text-center">
                   <span
                     className={`inline-block rounded-full px-4 py-2 text-2xl font-bold ${getGradeColor(
-                      result.quality_grade
+                      result.quality_grade,
                     )}`}
                   >
                     {getGradeLabel(result.quality_grade)}
                   </span>
-                  <p className="mt-1 text-sm text-muted-foreground">{result.quality_grade}</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {result.quality_grade}
+                  </p>
                 </div>
               </div>
 
               {/* Dimension Scores */}
               <div>
-                <h3 className="mb-3 text-sm font-medium text-foreground">
+                <h3 className="text-foreground mb-3 text-sm font-medium">
                   各维度评分
                 </h3>
                 <div className="space-y-3">
                   {Object.entries(result.dimensions).map(([key, dim]) => (
                     <div key={key} className="flex items-center gap-4">
-                      <div className="w-20 text-sm text-muted-foreground">
-                        {DIMENSION_LABELS[key] || key}
+                      <div className="text-muted-foreground w-20 text-sm">
+                        {DIMENSION_LABELS[key] ?? key}
                       </div>
                       <div className="flex-1">
-                        <div className="h-2.5 overflow-hidden rounded-full bg-muted">
+                        <div className="bg-muted h-2.5 overflow-hidden rounded-full">
                           <div
                             className="h-full rounded-full transition-all duration-500"
                             style={{
                               width: `${dim.score}%`,
-                              backgroundColor: DIMENSION_COLORS[key] || "#6b7280",
+                              backgroundColor:
+                                DIMENSION_COLORS[key] ?? "#6b7280",
                             }}
                           />
                         </div>
                       </div>
-                      <div className={`w-12 text-right text-sm font-medium ${getScoreColor(dim.score)}`}>
+                      <div
+                        className={`w-12 text-right text-sm font-medium ${getScoreColor(dim.score)}`}
+                      >
                         {dim.score}
                       </div>
                     </div>
@@ -223,7 +246,7 @@ export default function QualityAssessmentModal({
 
               {/* Issues */}
               <div>
-                <h3 className="mb-3 text-sm font-medium text-foreground">
+                <h3 className="text-foreground mb-3 text-sm font-medium">
                   发现的问题
                 </h3>
                 <div className="space-y-2">
@@ -231,7 +254,7 @@ export default function QualityAssessmentModal({
                     dim.issues && dim.issues.length > 0 ? (
                       <div key={key} className="rounded-lg bg-amber-500/10 p-3">
                         <p className="text-sm font-medium text-amber-500">
-                          {DIMENSION_LABELS[key] || key}
+                          {DIMENSION_LABELS[key] ?? key}
                         </p>
                         <ul className="mt-1 list-inside list-disc text-sm text-amber-500/80">
                           {dim.issues.map((issue, i) => (
@@ -239,10 +262,14 @@ export default function QualityAssessmentModal({
                           ))}
                         </ul>
                       </div>
-                    ) : null
+                    ) : null,
                   )}
-                  {Object.values(result.dimensions).every((d) => !d.issues || d.issues.length === 0) && (
-                    <p className="text-sm text-muted-foreground">各维度均无明显问题</p>
+                  {Object.values(result.dimensions).every(
+                    (d) => !d.issues || d.issues.length === 0,
+                  ) && (
+                    <p className="text-muted-foreground text-sm">
+                      各维度均无明显问题
+                    </p>
                   )}
                 </div>
               </div>
@@ -250,17 +277,17 @@ export default function QualityAssessmentModal({
               {/* Suggestions */}
               {result.suggestions && result.suggestions.length > 0 && (
                 <div>
-                  <h3 className="mb-3 text-sm font-medium text-foreground">
+                  <h3 className="text-foreground mb-3 text-sm font-medium">
                     改进建议
                   </h3>
                   <ul className="space-y-2">
                     {result.suggestions.map((s, i) => (
                       <li
                         key={i}
-                        className="flex items-start gap-2 rounded-lg bg-primary/10 p-3 text-sm text-primary"
+                        className="bg-primary/10 text-primary flex items-start gap-2 rounded-lg p-3 text-sm"
                       >
                         <svg
-                          className="mt-0.5 h-4 w-4 shrink-0 text-primary/60"
+                          className="text-primary/60 mt-0.5 h-4 w-4 shrink-0"
                           fill="currentColor"
                           viewBox="0 0 20 20"
                         >
@@ -282,7 +309,7 @@ export default function QualityAssessmentModal({
                 <button
                   onClick={handleAssess}
                   disabled={loading}
-                  className="rounded-lg border border-input px-4 py-2 text-sm text-foreground hover:bg-accent disabled:opacity-50"
+                  className="border-input text-foreground hover:bg-accent rounded-lg border px-4 py-2 text-sm disabled:opacity-50"
                 >
                   重新评估
                 </button>
@@ -295,7 +322,7 @@ export default function QualityAssessmentModal({
         <div className="flex justify-end gap-2 border-t px-6 py-4">
           <button
             onClick={onClose}
-            className="rounded-md px-4 py-2 text-foreground hover:bg-accent"
+            className="text-foreground hover:bg-accent rounded-md px-4 py-2"
           >
             关闭
           </button>

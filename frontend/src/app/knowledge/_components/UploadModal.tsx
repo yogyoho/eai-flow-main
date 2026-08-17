@@ -16,9 +16,13 @@ export function formatFileSize(bytes: number) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const CHUNK_METHOD_ACCEPT: Record<string, { extensions: string; label: string }> = {
+const CHUNK_METHOD_ACCEPT: Record<
+  string,
+  { extensions: string; label: string }
+> = {
   naive: {
-    extensions: ".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.csv,.json,.html,.eml,.jpg,.jpeg,.png,.gif,.bmp,.tiff",
+    extensions:
+      ".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,.md,.csv,.json,.html,.eml,.jpg,.jpeg,.png,.gif,.bmp,.tiff",
     label: "支持 PDF、Word、Excel、PPT、TXT、Markdown、图片等格式",
   },
   manual: {
@@ -63,18 +67,22 @@ export function UploadModal({
 
   // EAI-CUSTOM: noUncheckedIndexedAccess makes Record<string,T> lookups yield T | undefined;
   // narrow with an early guard so every downstream acceptInfo.* access is defined.
-  const acceptInfo = CHUNK_METHOD_ACCEPT[chunkMethod || "naive"] ?? CHUNK_METHOD_ACCEPT.naive;
+  const acceptInfo =
+    CHUNK_METHOD_ACCEPT[chunkMethod ?? "naive"] ?? CHUNK_METHOD_ACCEPT.naive;
   if (!acceptInfo) {
     // Unknown chunk method — no accept config available, render nothing.
     return null;
   }
 
-  const getFileExt = (name: string) => name.split(".").pop()?.toLowerCase() || "";
+  const getFileExt = (name: string) =>
+    name.split(".").pop()?.toLowerCase() ?? "";
 
   const isFileAccepted = (file: File): boolean => {
     const ext = getFileExt(file.name);
     if (!ext) return false;
-    const allowedExts = acceptInfo.extensions.split(",").map((e) => e.trim().replace(".", ""));
+    const allowedExts = acceptInfo.extensions
+      .split(",")
+      .map((e) => e.trim().replace(".", ""));
     return allowedExts.includes(ext);
   };
 
@@ -91,7 +99,10 @@ export function UploadModal({
       }
     }
     if (rejected.length > 0) {
-      toast(`${rejected.join("、")} 格式不受支持。${acceptInfo.label}`, "error");
+      toast(
+        `${rejected.join("、")} 格式不受支持。${acceptInfo.label}`,
+        "error",
+      );
     }
     if (accepted.length > 0) {
       setFiles((prev) => [...prev, ...accepted]);
@@ -112,8 +123,9 @@ export function UploadModal({
       try {
         await kbApi.uploadDoc(kbId, file);
         success++;
-      } catch (e: any) {
-        toast(`${file.name} 上传失败: ${e?.message ?? "未知错误"}`, "error");
+      } catch (e) {
+        const reason = e instanceof Error && e.message ? e.message : "未知错误";
+        toast(`${file.name} 上传失败: ${reason}`, "error");
       }
     }
     setUploading(false);
@@ -137,15 +149,11 @@ export function UploadModal({
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-background shadow-xl"
+        className="bg-background relative w-full max-w-lg overflow-hidden rounded-2xl shadow-xl"
       >
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <h3 className="text-lg font-semibold text-foreground">上传文件</h3>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-          >
+        <div className="border-border flex items-center justify-between border-b px-6 py-4">
+          <h3 className="text-foreground text-lg font-semibold">上传文件</h3>
+          <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>
         </div>
@@ -165,11 +173,11 @@ export function UploadModal({
                 : "border-input hover:border-primary/50 hover:bg-muted",
             )}
           >
-            <Upload className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-medium text-foreground">
+            <Upload className="text-muted-foreground mx-auto mb-3 h-8 w-8" />
+            <p className="text-foreground text-sm font-medium">
               拖拽文件到此处，或点击选择
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-xs">
               {acceptInfo.label}
             </p>
             <input
@@ -186,19 +194,19 @@ export function UploadModal({
               {files.map((f, i) => (
                 <div
                   key={i}
-                  className="flex items-center justify-between rounded-lg bg-muted px-3 py-2 text-sm"
+                  className="bg-muted flex items-center justify-between rounded-lg px-3 py-2 text-sm"
                 >
-                  <span className="flex-1 truncate text-foreground">
+                  <span className="text-foreground flex-1 truncate">
                     {f.name}
                   </span>
-                  <span className="ml-2 shrink-0 text-muted-foreground">
+                  <span className="text-muted-foreground ml-2 shrink-0">
                     {formatFileSize(f.size)}
                   </span>
                   <button
                     onClick={() =>
                       setFiles((prev) => prev.filter((_, j) => j !== i))
                     }
-                    className="ml-2 shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive ml-2 shrink-0 transition-colors"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -207,17 +215,11 @@ export function UploadModal({
             </div>
           )}
         </div>
-        <div className="flex items-center justify-end gap-3 border-t border-border bg-muted/50 px-6 py-4">
-          <Button
-            variant="outline"
-            onClick={onClose}
-          >
+        <div className="border-border bg-muted/50 flex items-center justify-end gap-3 border-t px-6 py-4">
+          <Button variant="outline" onClick={onClose}>
             取消
           </Button>
-          <Button
-            onClick={handleUpload}
-            disabled={!files.length || uploading}
-          >
+          <Button onClick={handleUpload} disabled={!files.length || uploading}>
             {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
             上传
           </Button>

@@ -31,7 +31,7 @@ const ICONS: Record<string, string> = {
 export function TimelineView({ nodes }: TimelineViewProps) {
   if (nodes.length === 0) {
     return (
-      <div className="p-4 text-center text-sm text-muted-foreground">
+      <div className="text-muted-foreground p-4 text-center text-sm">
         暂无工作流节点
       </div>
     );
@@ -40,34 +40,35 @@ export function TimelineView({ nodes }: TimelineViewProps) {
   return (
     <div className="relative py-2">
       {/* Vertical connector line */}
-      <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
+      <div className="bg-border absolute top-0 bottom-0 left-5 w-px" />
 
       <div className="space-y-0">
         {nodes.map((node, idx) => {
           const isLast = idx === nodes.length - 1;
-          const color = STATUS_COLORS[node.status] || STATUS_COLORS.pending;
-          const stroke = STATUS_STROKE[node.status] || STATUS_STROKE.pending;
-          const icon = ICONS[node.nodeType] || "●";
+          const color = STATUS_COLORS[node.status] ?? STATUS_COLORS.pending;
+          const stroke = STATUS_STROKE[node.status] ?? STATUS_STROKE.pending;
+          const icon = ICONS[node.nodeType] ?? "●";
 
           return (
-            <div key={node.nodeId} className="relative flex items-start gap-3 py-3">
+            <div
+              key={node.nodeId}
+              className="relative flex items-start gap-3 py-3"
+            >
               {/* Timeline dot */}
               <div
-                className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 ${stroke} ${color} text-white text-sm`}
+                className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 ${stroke} ${color} text-sm text-white`}
               >
                 {icon}
               </div>
 
               {/* Content */}
-              <div className={`flex-1 min-w-0 ${isLast ? "" : "pb-1"}`}>
-                <div className="text-sm font-medium truncate">
-                  {node.label}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-[10px] text-muted-foreground uppercase">
+              <div className={`min-w-0 flex-1 ${isLast ? "" : "pb-1"}`}>
+                <div className="truncate text-sm font-medium">{node.label}</div>
+                <div className="mt-0.5 flex items-center gap-2">
+                  <span className="text-muted-foreground text-[10px] uppercase">
                     {node.nodeType}
                   </span>
-                  <span className="text-[10px] text-muted-foreground">·</span>
+                  <span className="text-muted-foreground text-[10px]">·</span>
                   <span
                     className={`text-[10px] font-medium ${
                       node.status === "completed"
@@ -86,12 +87,12 @@ export function TimelineView({ nodes }: TimelineViewProps) {
                   </span>
                 </div>
                 {node.startedAt && (
-                  <div className="text-[10px] text-muted-foreground mt-0.5">
+                  <div className="text-muted-foreground mt-0.5 text-[10px]">
                     开始: {new Date(node.startedAt).toLocaleString()}
                   </div>
                 )}
                 {node.completedAt && (
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-muted-foreground text-[10px]">
                     完成: {new Date(node.completedAt).toLocaleString()}
                   </div>
                 )}

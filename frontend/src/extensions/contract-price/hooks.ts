@@ -19,14 +19,22 @@ const KEYS = {
 };
 
 export function useDashboard() {
-  return useQuery({ queryKey: KEYS.dashboard, queryFn: contractPriceApi.dashboard });
+  return useQuery({
+    queryKey: KEYS.dashboard,
+    queryFn: contractPriceApi.dashboard,
+  });
 }
 
-export function useGoodsAnalysis(params: { name?: string; cluster_id?: string; skip?: number; limit?: number }) {
+export function useGoodsAnalysis(params: {
+  name?: string;
+  cluster_id?: string;
+  skip?: number;
+  limit?: number;
+}) {
   return useQuery({
     queryKey: ["cpa", "goods-analysis", params],
     queryFn: () => contractPriceApi.goodsAnalysis(params),
-    enabled: !!(params.name || params.cluster_id),
+    enabled: [params.name, params.cluster_id].some(Boolean),
   });
 }
 
@@ -84,7 +92,10 @@ export function useDeleteRun() {
 }
 
 export function useConfig() {
-  return useQuery({ queryKey: KEYS.config, queryFn: contractPriceApi.getConfig });
+  return useQuery({
+    queryKey: KEYS.config,
+    queryFn: contractPriceApi.getConfig,
+  });
 }
 
 export function useRunPipeline() {
@@ -101,8 +112,13 @@ export function useRunPipeline() {
 export function useMoveItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ item_id, target_cluster_id }: { item_id: string; target_cluster_id: string }) =>
-      contractPriceApi.moveItem(item_id, target_cluster_id),
+    mutationFn: ({
+      item_id,
+      target_cluster_id,
+    }: {
+      item_id: string;
+      target_cluster_id: string;
+    }) => contractPriceApi.moveItem(item_id, target_cluster_id),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
@@ -112,8 +128,13 @@ export function useMoveItem() {
 export function useConfirmCluster() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, expected_version }: { id: string; expected_version?: number }) =>
-      contractPriceApi.confirmCluster(id, { expected_version }),
+    mutationFn: ({
+      id,
+      expected_version,
+    }: {
+      id: string;
+      expected_version?: number;
+    }) => contractPriceApi.confirmCluster(id, { expected_version }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
@@ -123,8 +144,13 @@ export function useConfirmCluster() {
 export function useRejectCluster() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, expected_version }: { id: string; expected_version?: number }) =>
-      contractPriceApi.rejectCluster(id, { expected_version }),
+    mutationFn: ({
+      id,
+      expected_version,
+    }: {
+      id: string;
+      expected_version?: number;
+    }) => contractPriceApi.rejectCluster(id, { expected_version }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
@@ -139,7 +165,11 @@ export function useBatchConfirmClusters() {
     // alone and the rest still confirm.
     mutationFn: async (clusters: { id: string; version: number }[]) => {
       const results = await Promise.allSettled(
-        clusters.map((c) => contractPriceApi.confirmCluster(c.id, { expected_version: c.version })),
+        clusters.map((c) =>
+          contractPriceApi.confirmCluster(c.id, {
+            expected_version: c.version,
+          }),
+        ),
       );
       const fail = results.filter((r) => r.status === "rejected").length;
       return { ok: results.length - fail, fail, total: results.length };
@@ -153,8 +183,13 @@ export function useBatchConfirmClusters() {
 export function useUpdateCluster() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, body }: { id: string; body: { category?: string; representative_name?: string } }) =>
-      contractPriceApi.updateCluster(id, body),
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string;
+      body: { category?: string; representative_name?: string };
+    }) => contractPriceApi.updateCluster(id, body),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
@@ -172,7 +207,12 @@ export function useMergeClusters() {
       cluster_ids: string[];
       representative_name: string;
       category?: string;
-    }) => contractPriceApi.mergeClusters(cluster_ids, representative_name, category),
+    }) =>
+      contractPriceApi.mergeClusters(
+        cluster_ids,
+        representative_name,
+        category,
+      ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
@@ -234,8 +274,13 @@ export function useUpdateDocument() {
 export function useConfirmDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, confirm_status }: { id: string; confirm_status: "confirmed" | "skipped" }) =>
-      contractPriceApi.confirmDocument(id, confirm_status),
+    mutationFn: ({
+      id,
+      confirm_status,
+    }: {
+      id: string;
+      confirm_status: "confirmed" | "skipped";
+    }) => contractPriceApi.confirmDocument(id, confirm_status),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
@@ -266,7 +311,8 @@ export function useDeleteItem() {
 export function useBatchDeleteItems() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (itemIds: string[]) => contractPriceApi.batchDeleteItems(itemIds),
+    mutationFn: (itemIds: string[]) =>
+      contractPriceApi.batchDeleteItems(itemIds),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },
@@ -276,7 +322,8 @@ export function useBatchDeleteItems() {
 export function useBatchValidateItems() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (itemIds: string[]) => contractPriceApi.batchValidateItems(itemIds),
+    mutationFn: (itemIds: string[]) =>
+      contractPriceApi.batchValidateItems(itemIds),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },

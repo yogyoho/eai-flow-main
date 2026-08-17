@@ -1,6 +1,13 @@
 "use client";
 
-import { AlertTriangle, Check, Loader2, Pencil, Settings, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  Loader2,
+  Pencil,
+  Settings,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -9,12 +16,10 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -22,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { projectApi } from "@/extensions/project/api";
 import { AssignmentStrategySelect } from "@/extensions/project/components/AssignmentStrategySelect";
 import { getReportTypeLabel } from "@/extensions/project/hooks/useReportTypes";
@@ -52,21 +58,29 @@ export function SettingsDialog({
   const [projectName, setProjectName] = useState(project.name);
   const [editingName, setEditingName] = useState(false);
   const [savingName, setSavingName] = useState(false);
-  const [projectDescription, setProjectDescription] = useState(project.description ?? "");
+  const [projectDescription, setProjectDescription] = useState(
+    project.description ?? "",
+  );
   const [editingDescription, setEditingDescription] = useState(false);
   const [savingDescription, setSavingDescription] = useState(false);
-  const [projectStatus, setProjectStatus] = useState<ProjectStatus>(project.status);
+  const [projectStatus, setProjectStatus] = useState<ProjectStatus>(
+    project.status,
+  );
   const [savingStatus, setSavingStatus] = useState(false);
   // EAI-CUSTOM: 分工策略(ADR 2026-08-10)
-  const [assignmentStrategy, setAssignmentStrategy] = useState<"by_chapter" | "by_role">(
-    project.assignmentStrategy ?? "by_chapter",
-  );
+  const [assignmentStrategy, setAssignmentStrategy] = useState<
+    "by_chapter" | "by_role"
+  >(project.assignmentStrategy ?? "by_chapter");
   const [savingStrategy, setSavingStrategy] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
 
-  const canEdit = identity?.isAdmin || identity?.hasAnyPermission(["settings:edit", "project:edit"]);
-  const canDelete = identity?.isAdmin || identity?.hasAnyPermission(["project:delete"]);
+  const canEdit =
+    (identity?.isAdmin ?? false) ||
+    identity?.hasAnyPermission(["settings:edit", "project:edit"]);
+  const canDelete =
+    (identity?.isAdmin ?? false) ||
+    identity?.hasAnyPermission(["project:delete"]);
 
   // Reset on open
   const handleOpenChange = (nextOpen: boolean) => {
@@ -101,7 +115,9 @@ export function SettingsDialog({
   const handleSaveDescription = async () => {
     setSavingDescription(true);
     try {
-      await projectApi.update(projectId, { description: projectDescription.trim() });
+      await projectApi.update(projectId, {
+        description: projectDescription.trim(),
+      });
       setEditingDescription(false);
       onRefresh();
       toast.success("项目说明已更新");
@@ -190,7 +206,9 @@ export function SettingsDialog({
         <div className="space-y-4">
           {/* Project Name */}
           <div className="space-y-1.5">
-            <label className="text-[12px] text-muted-foreground font-medium">项目名称</label>
+            <label className="text-muted-foreground text-[12px] font-medium">
+              项目名称
+            </label>
             {editingName ? (
               <div className="flex items-center gap-2">
                 <Input
@@ -198,10 +216,23 @@ export function SettingsDialog({
                   onChange={(e) => setProjectName(e.target.value)}
                   className="h-8 text-sm"
                   autoFocus
-                  onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void handleSaveName();
+                  }}
                 />
-                <Button size="sm" className="h-8" onClick={handleSaveName} disabled={savingName}>
-                  {savingName ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                <Button
+                  size="sm"
+                  className="h-8"
+                  onClick={() => {
+                    void handleSaveName();
+                  }}
+                  disabled={savingName}
+                >
+                  {savingName ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Check className="h-3 w-3" />
+                  )}
                 </Button>
                 <Button
                   size="sm"
@@ -217,9 +248,14 @@ export function SettingsDialog({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <p className="text-sm text-foreground">{project.name}</p>
+                <p className="text-foreground text-sm">{project.name}</p>
                 {canEdit && (
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => setEditingName(true)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 p-0"
+                    onClick={() => setEditingName(true)}
+                  >
                     <Pencil className="h-3 w-3" />
                   </Button>
                 )}
@@ -229,7 +265,9 @@ export function SettingsDialog({
 
           {/* Description — EAI-CUSTOM: 项目说明/要求,注入 agent */}
           <div className="space-y-1.5">
-            <label className="text-[12px] text-muted-foreground font-medium">项目说明/要求</label>
+            <label className="text-muted-foreground text-[12px] font-medium">
+              项目说明/要求
+            </label>
             {editingDescription ? (
               <div className="space-y-2">
                 <Textarea
@@ -240,8 +278,19 @@ export function SettingsDialog({
                   autoFocus
                 />
                 <div className="flex items-center gap-2">
-                  <Button size="sm" className="h-8" onClick={handleSaveDescription} disabled={savingDescription}>
-                    {savingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                  <Button
+                    size="sm"
+                    className="h-8"
+                    onClick={() => {
+                      void handleSaveDescription();
+                    }}
+                    disabled={savingDescription}
+                  >
+                    {savingDescription ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Check className="h-3 w-3" />
+                    )}
                   </Button>
                   <Button
                     size="sm"
@@ -258,11 +307,18 @@ export function SettingsDialog({
               </div>
             ) : (
               <div className="flex items-start gap-2">
-                <p className="text-sm text-foreground flex-1 whitespace-pre-wrap">
-                  {project.description || "（未填写）"}
+                <p className="text-foreground flex-1 text-sm whitespace-pre-wrap">
+                  {project.description != null && project.description !== ""
+                    ? project.description
+                    : "（未填写）"}
                 </p>
                 {canEdit && (
-                  <Button size="sm" variant="ghost" className="h-6 w-6 p-0 shrink-0" onClick={() => setEditingDescription(true)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 w-6 shrink-0 p-0"
+                    onClick={() => setEditingDescription(true)}
+                  >
                     <Pencil className="h-3 w-3" />
                   </Button>
                 )}
@@ -272,15 +328,27 @@ export function SettingsDialog({
 
           {/* Report Type */}
           <div className="space-y-1.5">
-            <label className="text-[12px] text-muted-foreground font-medium">报告类型</label>
-            <p className="text-sm text-foreground">{getReportTypeLabel(project.reportType)}</p>
+            <label className="text-muted-foreground text-[12px] font-medium">
+              报告类型
+            </label>
+            <p className="text-foreground text-sm">
+              {getReportTypeLabel(project.reportType)}
+            </p>
           </div>
 
           {/* Status */}
           <div className="space-y-1.5">
-            <label className="text-[12px] text-muted-foreground font-medium">项目状态</label>
+            <label className="text-muted-foreground text-[12px] font-medium">
+              项目状态
+            </label>
             {canEdit ? (
-              <Select value={projectStatus} onValueChange={handleStatusChange} disabled={savingStatus}>
+              <Select
+                value={projectStatus}
+                onValueChange={(v) => {
+                  void handleStatusChange(v);
+                }}
+                disabled={savingStatus}
+              >
                 <SelectTrigger className="h-8 w-48 text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -293,7 +361,9 @@ export function SettingsDialog({
                 </SelectContent>
               </Select>
             ) : (
-              <p className="text-sm text-foreground">{PROJECT_STATUS_LABELS[project.status]}</p>
+              <p className="text-foreground text-sm">
+                {PROJECT_STATUS_LABELS[project.status]}
+              </p>
             )}
           </div>
 
@@ -302,14 +372,20 @@ export function SettingsDialog({
             {canEdit ? (
               <AssignmentStrategySelect
                 value={assignmentStrategy}
-                onChange={(v) => handleStrategyChange(v)}
+                onChange={(v) => {
+                  void handleStrategyChange(v);
+                }}
                 disabled={savingStrategy}
               />
             ) : (
               <>
-                <label className="text-[12px] text-muted-foreground font-medium">分工策略</label>
-                <p className="text-sm text-foreground">
-                  {project.assignmentStrategy === "by_role" ? "按职责分工（按角色）" : "按章节分工"}
+                <label className="text-muted-foreground text-[12px] font-medium">
+                  分工策略
+                </label>
+                <p className="text-foreground text-sm">
+                  {project.assignmentStrategy === "by_role"
+                    ? "按职责分工（按角色）"
+                    : "按章节分工"}
                 </p>
               </>
             )}
@@ -317,53 +393,77 @@ export function SettingsDialog({
 
           {/* Archive — EAI-CUSTOM: orthogonal archivedAt bucket (ADR P5) */}
           <div className="space-y-1.5">
-            <label className="text-[12px] text-muted-foreground font-medium">归档</label>
+            <label className="text-muted-foreground text-[12px] font-medium">
+              归档
+            </label>
             {canEdit ? (
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" className="h-8" onClick={handleArchive} disabled={archiving}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-8"
+                  onClick={() => {
+                    void handleArchive();
+                  }}
+                  disabled={archiving}
+                >
                   {archiving ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                   ) : project.archivedAt ? (
                     "取消归档"
                   ) : (
                     "归档项目"
                   )}
                 </Button>
-                <p className="text-[11px] text-muted-foreground">
-                  {project.archivedAt ? "已归档，从项目列表隐藏" : "归档后从项目列表隐藏，状态保留"}
+                <p className="text-muted-foreground text-[11px]">
+                  {project.archivedAt
+                    ? "已归档，从项目列表隐藏"
+                    : "归档后从项目列表隐藏，状态保留"}
                 </p>
               </div>
             ) : (
-              <p className="text-sm text-foreground">{project.archivedAt ? "已归档" : "未归档"}</p>
+              <p className="text-foreground text-sm">
+                {project.archivedAt ? "已归档" : "未归档"}
+              </p>
             )}
           </div>
 
           {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-[12px] text-muted-foreground font-medium">创建时间</label>
-              <p className="text-sm text-foreground">
-                {project.createdAt ? new Date(project.createdAt).toLocaleString("zh-CN") : "未知"}
+              <label className="text-muted-foreground text-[12px] font-medium">
+                创建时间
+              </label>
+              <p className="text-foreground text-sm">
+                {project.createdAt
+                  ? new Date(project.createdAt).toLocaleString("zh-CN")
+                  : "未知"}
               </p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[12px] text-muted-foreground font-medium">更新时间</label>
-              <p className="text-sm text-foreground">
-                {project.updatedAt ? new Date(project.updatedAt).toLocaleString("zh-CN") : "未知"}
+              <label className="text-muted-foreground text-[12px] font-medium">
+                更新时间
+              </label>
+              <p className="text-foreground text-sm">
+                {project.updatedAt
+                  ? new Date(project.updatedAt).toLocaleString("zh-CN")
+                  : "未知"}
               </p>
             </div>
           </div>
 
           {/* Danger Zone */}
           {canDelete && (
-            <div className="border-t border-border/40 pt-4">
-              <h4 className="text-sm font-semibold text-destructive flex items-center gap-1.5 mb-3">
+            <div className="border-border/40 border-t pt-4">
+              <h4 className="text-destructive mb-3 flex items-center gap-1.5 text-sm font-semibold">
                 <AlertTriangle className="h-3.5 w-3.5" />
                 危险操作
               </h4>
-              <div className="rounded-lg border border-destructive/30 p-4 space-y-3">
-                <p className="text-sm text-muted-foreground">以下操作不可撤销，请谨慎操作。</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="border-destructive/30 space-y-3 rounded-lg border p-4">
+                <p className="text-muted-foreground text-sm">
+                  以下操作不可撤销，请谨慎操作。
+                </p>
+                <p className="text-muted-foreground text-sm">
                   请输入项目名称 <strong>{project.name}</strong> 以确认删除：
                 </p>
                 <Input
@@ -377,12 +477,14 @@ export function SettingsDialog({
                   size="sm"
                   className="h-8"
                   disabled={deleteConfirm !== project.name || deleting}
-                  onClick={handleDelete}
+                  onClick={() => {
+                    void handleDelete();
+                  }}
                 >
                   {deleting ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
                   ) : (
-                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                   )}
                   永久删除
                 </Button>

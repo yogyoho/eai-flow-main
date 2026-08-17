@@ -1,68 +1,6 @@
-import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 
 import { mockLangGraphAPI } from "./utils/mock-api";
-
-// ---------------------------------------------------------------------------
-// Mock helpers for extensions API
-// ---------------------------------------------------------------------------
-
-/** Mock the extensions API endpoints used by the knowledge factory page. */
-function mockExtensionsAPI(page: Page) {
-  // Mock auth/me — critical: must be set before page navigation
-  void page.route("**/api/extensions/auth/me", (route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        id: "00000000-0000-0000-0000-000000000001",
-        username: "admin",
-        email: "admin@example.com",
-        full_name: "Admin User",
-        role_name: "admin",
-        role_code: "admin",
-        permissions: ["kb:read", "kb:create", "kb:upload", "kb:update", "kb:delete"],
-      }),
-    });
-  });
-
-  // Mock knowledge-bases list — returns an empty list
-  void page.route("**/api/extensions/knowledge-bases*", (route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ knowledge_bases: [], total: 0 }),
-    });
-  });
-
-  // Mock permissions/me — sub-page visibility: all pages visible (["*"])
-  // Required since Task 4 filters knowledge-factory tabs by canPage(pageId).
-  void page.route("**/api/permissions/me", (route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        permissions: ["kb:read", "kb:create", "kb:upload", "kb:update", "kb:delete", "kf:read"],
-        nav: ["*"],
-        pages: ["*"],
-        data_scopes: [],
-        is_admin: true,
-        identity: {
-          user_id: "00000000-0000-0000-0000-000000000001",
-          username: "admin",
-          role_code: "admin",
-          role_level: 100,
-          dept_id: null,
-          dept_ids: [],
-          member_projects: [],
-          project_roles: {},
-          tags: [],
-          labels: {},
-        },
-      }),
-    });
-  });
-}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -75,15 +13,24 @@ test.describe("Knowledge Factory page", () => {
     await page.addInitScript(() => {
       window.localStorage.setItem("access_token", "mock-e2e-token");
       // Store a fake user so the sidebar renders without calling auth/me
-      window.localStorage.setItem("_mock_user", JSON.stringify({
-        id: "00000000-0000-0000-0000-000000000001",
-        username: "admin",
-        email: "admin@example.com",
-        full_name: "Admin User",
-        role_name: "admin",
-        role_code: "admin",
-        permissions: ["kb:read", "kb:create", "kb:upload", "kb:update", "kb:delete"],
-      }));
+      window.localStorage.setItem(
+        "_mock_user",
+        JSON.stringify({
+          id: "00000000-0000-0000-0000-000000000001",
+          username: "admin",
+          email: "admin@example.com",
+          full_name: "Admin User",
+          role_name: "admin",
+          role_code: "admin",
+          permissions: [
+            "kb:read",
+            "kb:create",
+            "kb:upload",
+            "kb:update",
+            "kb:delete",
+          ],
+        }),
+      );
     });
 
     // Intercept auth/me — return mock user directly
@@ -98,7 +45,13 @@ test.describe("Knowledge Factory page", () => {
           full_name: "Admin User",
           role_name: "admin",
           role_code: "admin",
-          permissions: ["kb:read", "kb:create", "kb:upload", "kb:update", "kb:delete"],
+          permissions: [
+            "kb:read",
+            "kb:create",
+            "kb:upload",
+            "kb:update",
+            "kb:delete",
+          ],
         }),
       });
     });
@@ -115,11 +68,15 @@ test.describe("Knowledge Factory page", () => {
     mockLangGraphAPI(page);
   });
 
-  test("renders the page header and all 9 navigation tabs", async ({ page }) => {
+  test("renders the page header and all 9 navigation tabs", async ({
+    page,
+  }) => {
     await page.goto("/knowledge-factory");
 
     // Page title / header
-    await expect(page.locator("span", { hasText: "知识工厂" }).first()).toBeVisible({ timeout: 10_000 });
+    await expect(
+      page.locator("span", { hasText: "知识工厂" }).first(),
+    ).toBeVisible({ timeout: 10_000 });
 
     // All 9 nav tabs
     const tabs = [
@@ -134,11 +91,15 @@ test.describe("Knowledge Factory page", () => {
       "业务字典",
     ];
     for (const label of tabs) {
-      await expect(page.locator("nav", { has: page.locator(`text="${label}"`) })).toBeVisible({ timeout: 5_000 });
+      await expect(
+        page.locator("nav", { has: page.locator(`text="${label}"`) }),
+      ).toBeVisible({ timeout: 5_000 });
     }
   });
 
-  test("SampleReports tab loads without 500 error and shows empty state", async ({ page }) => {
+  test("SampleReports tab loads without 500 error and shows empty state", async ({
+    page,
+  }) => {
     const consoleErrors: string[] = [];
     page.on("console", (msg) => {
       if (msg.type() === "error") {
@@ -149,16 +110,22 @@ test.describe("Knowledge Factory page", () => {
     await page.goto("/knowledge-factory?tab=reports");
 
     // Heading visible
-    await expect(page.locator("h2", { hasText: "样例报告库" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("h2", { hasText: "样例报告库" })).toBeVisible({
+      timeout: 10_000,
+    });
 
     // Upload button visible
-    await expect(page.getByRole("button", { name: /上传新报告/i })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /上传新报告/i }),
+    ).toBeVisible();
 
     // Refresh button visible
     await expect(page.getByRole("button", { name: /刷新/i })).toBeVisible();
 
     // Search textbox visible
-    await expect(page.getByRole("textbox", { name: /搜索报告名称/i })).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { name: /搜索报告名称/i }),
+    ).toBeVisible();
 
     // Combobox controls visible (AdminSelect with Radix Select renders as combobox)
     await expect(page.locator("[role=combobox]").first()).toBeVisible();
@@ -166,14 +133,16 @@ test.describe("Knowledge Factory page", () => {
 
     // No 500 error logged
     const kb500Errors = consoleErrors.filter(
-      (t) => t.includes("500") || t.includes("Internal Server Error")
+      (t) => t.includes("500") || t.includes("Internal Server Error"),
     );
     expect(kb500Errors).toHaveLength(0);
   });
 
   test("search box accepts input without crashing", async ({ page }) => {
     await page.goto("/knowledge-factory?tab=reports");
-    await expect(page.locator("h2", { hasText: "样例报告库" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("h2", { hasText: "样例报告库" })).toBeVisible({
+      timeout: 10_000,
+    });
 
     const searchBox = page.getByRole("textbox", { name: /搜索报告名称/i });
     await expect(searchBox).toBeVisible();
@@ -183,7 +152,9 @@ test.describe("Knowledge Factory page", () => {
 
   test("upload button is visible and clickable", async ({ page }) => {
     await page.goto("/knowledge-factory?tab=reports");
-    await expect(page.locator("h2", { hasText: "样例报告库" })).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator("h2", { hasText: "样例报告库" })).toBeVisible({
+      timeout: 10_000,
+    });
 
     const uploadBtn = page.getByRole("button", { name: /上传新报告/i });
     await expect(uploadBtn).toBeVisible();

@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useState, type ReactNode } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 
 export interface ScrapePrefill {
   url?: string;
@@ -29,13 +35,17 @@ const ScraperContext = createContext<ScraperContextValue | null>(null);
 export function ScraperContextProvider({ children }: { children: ReactNode }) {
   const [activeSubTab, setActiveSubTab] = useState("task-center");
   const [scrapeDialogOpen, setScrapeDialogOpen] = useState(false);
-  const [scrapePrefill, setScrapePrefill] = useState<ScrapePrefill | null>(null);
-  const [newlyCreatedTaskId, setNewlyCreatedTaskId] = useState<string | null>(null);
+  const [scrapePrefill, setScrapePrefill] = useState<ScrapePrefill | null>(
+    null,
+  );
+  const [newlyCreatedTaskId, setNewlyCreatedTaskId] = useState<string | null>(
+    null,
+  );
   const [taskRefreshTrigger, setTaskRefreshTrigger] = useState(0);
   const [draftRefreshTrigger, setDraftRefreshTrigger] = useState(0);
 
   const openScrapeDialog = useCallback((prefill?: ScrapePrefill) => {
-    setScrapePrefill(prefill || null);
+    setScrapePrefill(prefill ?? null);
     setScrapeDialogOpen(true);
   }, []);
 
@@ -44,8 +54,14 @@ export function ScraperContextProvider({ children }: { children: ReactNode }) {
     setScrapePrefill(null);
   }, []);
 
-  const triggerTaskRefresh = useCallback(() => setTaskRefreshTrigger((n) => n + 1), []);
-  const triggerDraftRefresh = useCallback(() => setDraftRefreshTrigger((n) => n + 1), []);
+  const triggerTaskRefresh = useCallback(
+    () => setTaskRefreshTrigger((n) => n + 1),
+    [],
+  );
+  const triggerDraftRefresh = useCallback(
+    () => setDraftRefreshTrigger((n) => n + 1),
+    [],
+  );
 
   return (
     <ScraperContext.Provider
@@ -71,6 +87,9 @@ export function ScraperContextProvider({ children }: { children: ReactNode }) {
 
 export function useScraperContext() {
   const ctx = useContext(ScraperContext);
-  if (!ctx) throw new Error("useScraperContext must be used within ScraperContextProvider");
+  if (!ctx)
+    throw new Error(
+      "useScraperContext must be used within ScraperContextProvider",
+    );
   return ctx;
 }

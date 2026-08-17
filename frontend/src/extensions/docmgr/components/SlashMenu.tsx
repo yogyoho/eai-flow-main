@@ -13,8 +13,12 @@ import { createPortal } from "react-dom";
 
 import { cn } from "@/lib/utils";
 
-import { SlashCommandPluginKey, type SlashCommandPluginState } from "../extensions/SlashCommand";
-import { editorCommands, filterCommands, type CommandItem } from "../utils/editorCommands";
+import { type SlashCommandPluginState } from "../extensions/SlashCommand";
+import {
+  editorCommands,
+  filterCommands,
+  type CommandItem,
+} from "../utils/editorCommands";
 import { getSlashMenuViewportPosition } from "../utils/slashMenuPosition";
 
 export interface SlashMenuRef {
@@ -31,7 +35,7 @@ interface SlashMenuProps {
 }
 
 const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
-  ({ editor, visible, position, query, onClose, onCommand }, _ref) => {
+  ({ editor: _editor, visible, position, query, onClose, onCommand }, _ref) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [computedPosition, setComputedPosition] = useState(position);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -47,7 +51,7 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
         onCommand(item);
         onClose();
       },
-      [filteredItems, onCommand, onClose]
+      [filteredItems, onCommand, onClose],
     );
 
     useEffect(() => {
@@ -65,7 +69,7 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
         if (e.key === "ArrowDown") {
           e.preventDefault();
           setSelectedIndex((prev) =>
-            prev + 1 < filteredItems.length ? prev + 1 : prev
+            prev + 1 < filteredItems.length ? prev + 1 : prev,
           );
         } else if (e.key === "ArrowUp") {
           e.preventDefault();
@@ -98,7 +102,7 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
       const nextPosition = getSlashMenuViewportPosition(
         position,
         { width: menuRect.width, height: menuRect.height },
-        { width: window.innerWidth, height: window.innerHeight }
+        { width: window.innerWidth, height: window.innerHeight },
       );
 
       if (
@@ -107,7 +111,14 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
       ) {
         setComputedPosition(nextPosition);
       }
-    }, [visible, position, query, filteredItems.length, computedPosition.top, computedPosition.left]);
+    }, [
+      visible,
+      position,
+      query,
+      filteredItems.length,
+      computedPosition.top,
+      computedPosition.left,
+    ]);
 
     useEffect(() => {
       const handleClickOutside = (e: MouseEvent) => {
@@ -118,12 +129,15 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
 
       if (visible) {
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        return () =>
+          document.removeEventListener("mousedown", handleClickOutside);
       }
     }, [visible, onClose]);
 
     useImperativeHandle(_ref, () => ({
-      onActivate: (_state: SlashCommandPluginState) => {},
+      onActivate: (_state: SlashCommandPluginState) => {
+        // intentional no-op: menu visibility/query arrive via props from the plugin host
+      },
     }));
 
     if (!visible) return null;
@@ -147,7 +161,7 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
           ) : (
             editorCommands.map((group) => {
               const groupItems = filteredItems.filter((item) =>
-                group.items.some((gi) => gi.title === item.title)
+                group.items.some((gi) => gi.title === item.title),
               );
               if (groupItems.length === 0) return null;
 
@@ -168,7 +182,7 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
                         ref={refCallback}
                         className={cn(
                           "notion-slash-menu-item",
-                          currentIndex === selectedIndex && "selected"
+                          currentIndex === selectedIndex && "selected",
                         )}
                         onClick={() => selectItem(currentIndex)}
                         onMouseEnter={() => setSelectedIndex(currentIndex)}
@@ -197,8 +211,10 @@ const SlashMenu = React.forwardRef<SlashMenuRef, SlashMenuProps>(
       </div>
     );
 
-    return typeof document !== "undefined" ? createPortal(menu, document.body) : menu;
-  }
+    return typeof document !== "undefined"
+      ? createPortal(menu, document.body)
+      : menu;
+  },
 );
 
 SlashMenu.displayName = "SlashMenu";

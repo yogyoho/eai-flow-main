@@ -42,7 +42,7 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
-      load();
+      void load();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -75,7 +75,10 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
       tableName: tableName.trim(),
       description: description.trim() || undefined,
       defaultQuery: defaultQuery.trim() || undefined,
-      keyColumns: keyColumns.split(",").map((s) => s.trim()).filter(Boolean),
+      keyColumns: keyColumns
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
     };
     setSaving(true);
     try {
@@ -128,14 +131,18 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-background shadow-xl"
+            className="bg-background relative flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl shadow-xl"
           >
-            <div className="flex items-center justify-between border-b border-border bg-muted/50 px-6 py-4">
+            <div className="border-border bg-muted/50 flex items-center justify-between border-b px-6 py-4">
               <div className="flex items-center gap-2">
-                <Table className="h-5 w-5 text-primary" />
+                <Table className="text-primary h-5 w-5" />
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground">{source.name} · 业务数据集</h3>
-                  <p className="text-xs text-muted-foreground">标注关键业务表,AI 按业务名直查</p>
+                  <h3 className="text-foreground text-lg font-semibold">
+                    {source.name} · 业务数据集
+                  </h3>
+                  <p className="text-muted-foreground text-xs">
+                    标注关键业务表,AI 按业务名直查
+                  </p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={onClose}>
@@ -144,22 +151,36 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
             </div>
 
             <div className="flex-1 space-y-6 overflow-y-auto p-6">
-              <div className="space-y-3 rounded-xl border border-border p-4">
-                <div className="text-sm font-medium text-foreground">
+              <div className="border-border space-y-3 rounded-xl border p-4">
+                <div className="text-foreground text-sm font-medium">
                   {editing ? "编辑数据集" : "添加数据集"}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">业务标签 *</label>
-                    <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="如:厂界噪声" />
+                    <label className="text-muted-foreground mb-1 block text-xs">
+                      业务标签 *
+                    </label>
+                    <Input
+                      value={label}
+                      onChange={(e) => setLabel(e.target.value)}
+                      placeholder="如:厂界噪声"
+                    />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">表名 *</label>
-                    <Input value={tableName} onChange={(e) => setTableName(e.target.value)} placeholder="如:noise_monitor" />
+                    <label className="text-muted-foreground mb-1 block text-xs">
+                      表名 *
+                    </label>
+                    <Input
+                      value={tableName}
+                      onChange={(e) => setTableName(e.target.value)}
+                      placeholder="如:noise_monitor"
+                    />
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">描述(给 AI)</label>
+                  <label className="text-muted-foreground mb-1 block text-xs">
+                    描述(给 AI)
+                  </label>
                   <Input
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -167,7 +188,9 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">关键列(逗号分隔)</label>
+                  <label className="text-muted-foreground mb-1 block text-xs">
+                    关键列(逗号分隔)
+                  </label>
                   <Input
                     value={keyColumns}
                     onChange={(e) => setKeyColumns(e.target.value)}
@@ -175,7 +198,7 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">
+                  <label className="text-muted-foreground mb-1 block text-xs">
                     默认查询 SQL(只读,Agent 按标签取数时执行)
                   </label>
                   <textarea
@@ -183,7 +206,7 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                     onChange={(e) => setDefaultQuery(e.target.value)}
                     rows={2}
                     placeholder="如:SELECT 点位, Leq FROM noise_monitor ORDER BY 时间 DESC LIMIT 100"
-                    className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="border-input bg-background focus-visible:ring-ring w-full resize-none rounded-lg border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none"
                   />
                 </div>
                 <div className="flex justify-end gap-2">
@@ -193,22 +216,24 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                     </Button>
                   )}
                   <Button size="sm" onClick={submit} disabled={saving}>
-                    {saving && <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />}
+                    {saving && (
+                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    )}
                     {editing ? "保存修改" : "添加"}
                   </Button>
                 </div>
               </div>
 
               <div>
-                <div className="mb-2 text-sm font-medium text-foreground">
+                <div className="text-foreground mb-2 text-sm font-medium">
                   已有数据集({datasets.length})
                 </div>
                 {loading ? (
                   <div className="flex justify-center py-6">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <Loader2 className="text-muted-foreground h-5 w-5 animate-spin" />
                   </div>
                 ) : datasets.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border py-6 text-center text-sm text-muted-foreground">
+                  <div className="border-border text-muted-foreground rounded-lg border border-dashed py-6 text-center text-sm">
                     暂无数据集,用上方表单添加第一个
                   </div>
                 ) : (
@@ -216,18 +241,24 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                     {datasets.map((d) => (
                       <div
                         key={d.id}
-                        className="flex items-start justify-between gap-2 rounded-lg border border-border p-3"
+                        className="border-border flex items-start justify-between gap-2 rounded-lg border p-3"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium text-foreground">{d.label}</span>
-                            <span className="text-xs text-muted-foreground">· {d.tableName}</span>
+                            <span className="text-foreground font-medium">
+                              {d.label}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              · {d.tableName}
+                            </span>
                           </div>
                           {d.description && (
-                            <p className="mt-0.5 truncate text-xs text-muted-foreground">{d.description}</p>
+                            <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                              {d.description}
+                            </p>
                           )}
                           {d.defaultQuery && (
-                            <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground/70">
+                            <p className="text-muted-foreground/70 mt-0.5 truncate font-mono text-[11px]">
                               {d.defaultQuery}
                             </p>
                           )}
@@ -236,7 +267,7 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                            className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-7 w-7"
                             onClick={() => startEdit(d)}
                             title="编辑"
                           >
@@ -245,7 +276,7 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-7 w-7"
                             onClick={() => remove(d)}
                             title="删除"
                           >

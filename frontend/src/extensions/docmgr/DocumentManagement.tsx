@@ -2,73 +2,184 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft, ArrowUp, BookOpen, ChevronDown, ChevronRight, ChevronLeft, MousePointerClick,
-  CheckCircle2, Copy, Download, FileText, LayoutGrid, List, Loader2, MoreHorizontal, PenLine, Plus,
-  RefreshCw, Scissors, Search, FolderCheck, Star, Sparkles, FolderSync, AlertCircle,
-  Trash2, Wand2, X, Undo2, Redo2, Maximize, Minimize, ChevronUp, History,
+  ArrowLeft,
+  ChevronDown,
+  ChevronRight,
+  ChevronLeft,
+  MousePointerClick,
+  CheckCircle2,
+  Copy,
+  Download,
+  FileText,
+  LayoutGrid,
+  List,
+  Loader2,
+  MoreHorizontal,
+  PenLine,
+  Plus,
+  Search,
+  FolderCheck,
+  Star,
+  FolderSync,
+  AlertCircle,
+  Trash2,
+  X,
+  Undo2,
+  Redo2,
+  Maximize,
+  Minimize,
+  ChevronUp,
+  History,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useModels } from "@/core/models/hooks";
+import { useLicense } from "@/extensions/license/useLicense";
 import { cn } from "@/lib/utils";
 
-
-const CollabEditor = dynamic(() => import("../collab/CollabEditor").then((m) => m.CollabEditor), {
-  ssr: false,
-  loading: () => <div className="flex-1 flex items-center justify-center text-muted-foreground">加载编辑器...</div>,
-});
+const CollabEditor = dynamic(
+  () => import("../collab/CollabEditor").then((m) => m.CollabEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="text-muted-foreground flex flex-1 items-center justify-center">
+        加载编辑器...
+      </div>
+    ),
+  },
+);
 import { docmgrApi, type FolderNode } from "../api";
 import type { CollabEditorRef } from "../collab/CollabEditor";
 import type { AIDocument } from "../types";
 
 import BatchActionBar from "./BatchActionBar";
-import { ExportDocxDialog } from "./ExportDocxDialog";
-import FilePreviewModal, { isImageFile, isTextFile, formatFileSize } from "./FilePreviewModal";
-import FolderPickerDialog from "./FolderPickerDialog";
 import DocAIAgentPanel from "./DocAIAgentPanel";
-import PersonalBlockNoteEditor, { type PersonalBlockNoteEditorRef } from "./PersonalBlockNoteEditor";
+import { ExportDocxDialog } from "./ExportDocxDialog";
+import FilePreviewModal, { formatFileSize } from "./FilePreviewModal";
+import FolderPickerDialog from "./FolderPickerDialog";
+import PersonalBlockNoteEditor, {
+  type PersonalBlockNoteEditorRef,
+} from "./PersonalBlockNoteEditor";
 import { ProjectFolderTree } from "./ProjectFolderTree";
 import { useDocAIThread } from "./useDocAIThread";
+import { useDocuments } from "./useDocuments";
+import {
+  usePersonalOutputs,
+  type PersonalDocFile,
+  type PersonalThreadOutput,
+} from "./usePersonalOutputs";
+import { useProjectOutputs, type ProjectDocFile } from "./useProjectOutputs";
 import { computeDocStats } from "./utils/docEditorUtils";
 import { VersionHistoryDialog } from "./VersionHistoryDialog";
-import { useDocuments } from "./useDocuments";
-import { usePersonalOutputs } from "./usePersonalOutputs";
-import { useProjectOutputs, type ProjectDocFile } from "./useProjectOutputs";
-import { useLicense } from "@/extensions/license/useLicense";
 
-type AIOperation = "polish" | "expand" | "condense" | "chat";
 type View = "list" | "editor";
+
+function getErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
 
 /** Windows 风格黄色文件夹图标（资源管理器样式） */
 function WindowsFolder({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M1.5 6.5C1.5 5.4 2.4 4.5 3.5 4.5h4.7c.6 0 1.2.25 1.62.69L11.06 6.5H18.5c1.1 0 2 .9 2 2V10H3.5C2.4 10 1.5 9.1 1.5 8V6.5z" fill="#E6A106" />
-      <path d="M1.5 9.5C1.5 8.4 2.4 7.5 3.5 7.5h17c1.1 0 2 .9 2 2v8c0 1.1-.9 2-2 2h-17c-1.1 0-2-.9-2-2v-8z" fill="#FFC83D" />
-      <path d="M1.5 9.5C1.5 8.4 2.4 7.5 3.5 7.5h17c1.1 0 2 .9 2 2V11H1.5V9.5z" fill="#FFD86B" />
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M1.5 6.5C1.5 5.4 2.4 4.5 3.5 4.5h4.7c.6 0 1.2.25 1.62.69L11.06 6.5H18.5c1.1 0 2 .9 2 2V10H3.5C2.4 10 1.5 9.1 1.5 8V6.5z"
+        fill="#E6A106"
+      />
+      <path
+        d="M1.5 9.5C1.5 8.4 2.4 7.5 3.5 7.5h17c1.1 0 2 .9 2 2v8c0 1.1-.9 2-2 2h-17c-1.1 0-2-.9-2-2v-8z"
+        fill="#FFC83D"
+      />
+      <path
+        d="M1.5 9.5C1.5 8.4 2.4 7.5 3.5 7.5h17c1.1 0 2 .9 2 2V11H1.5V9.5z"
+        fill="#FFD86B"
+      />
     </svg>
   );
 }
 
 /** 判断是否二进制文件（点击应直接下载而非进编辑器） */
 function isBinaryFile(mime: string | undefined | null, name: string): boolean {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
   const textExts = new Set([
-    "txt","md","markdown","py","js","mjs","cjs","ts","tsx","jsx","vue","svelte",
-    "java","c","cpp","cc","h","hpp","go","rs","rb","php","swift","kt","scala",
-    "sh","bash","zsh","fish","sql","html","htm","css","scss","sass","less",
-    "json","yaml","yml","xml","svg","toml","ini","conf","cfg","csv","tsv","log","env",
+    "txt",
+    "md",
+    "markdown",
+    "py",
+    "js",
+    "mjs",
+    "cjs",
+    "ts",
+    "tsx",
+    "jsx",
+    "vue",
+    "svelte",
+    "java",
+    "c",
+    "cpp",
+    "cc",
+    "h",
+    "hpp",
+    "go",
+    "rs",
+    "rb",
+    "php",
+    "swift",
+    "kt",
+    "scala",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "sql",
+    "html",
+    "htm",
+    "css",
+    "scss",
+    "sass",
+    "less",
+    "json",
+    "yaml",
+    "yml",
+    "xml",
+    "svg",
+    "toml",
+    "ini",
+    "conf",
+    "cfg",
+    "csv",
+    "tsv",
+    "log",
+    "env",
   ]);
   if (mime) {
     if (mime.startsWith("text/")) return false;
-    if (["application/json", "application/javascript", "application/xml",
-         "application/x-yaml", "application/x-sh", "application/x-python",
-         "image/svg+xml"].includes(mime)) return false;
+    if (
+      [
+        "application/json",
+        "application/javascript",
+        "application/xml",
+        "application/x-yaml",
+        "application/x-sh",
+        "application/x-python",
+        "image/svg+xml",
+      ].includes(mime)
+    )
+      return false;
   }
   if (!mime || mime === "application/octet-stream") {
     return !textExts.has(ext);
@@ -78,49 +189,120 @@ function isBinaryFile(mime: string | undefined | null, name: string): boolean {
 
 /** 代码文件扩展名 → 代码块语言（用于编辑器里 ```lang 包裹） */
 function getLanguageFromName(name: string): string | null {
-  const ext = name.split(".").pop()?.toLowerCase() || "";
+  const ext = name.split(".").pop()?.toLowerCase() ?? "";
   const map: Record<string, string> = {
-    py: "python", js: "javascript", mjs: "javascript", cjs: "javascript",
-    ts: "typescript", tsx: "tsx", jsx: "jsx", vue: "vue", svelte: "svelte",
-    java: "java", c: "c", cpp: "cpp", cc: "cpp", h: "c", hpp: "cpp",
-    go: "go", rs: "rust", rb: "ruby", php: "php", swift: "swift", kt: "kotlin",
-    sh: "bash", bash: "bash", zsh: "bash", sql: "sql",
-    html: "html", htm: "html", css: "css", scss: "scss",
-    json: "json", yaml: "yaml", yml: "yaml", xml: "xml", toml: "toml",
+    py: "python",
+    js: "javascript",
+    mjs: "javascript",
+    cjs: "javascript",
+    ts: "typescript",
+    tsx: "tsx",
+    jsx: "jsx",
+    vue: "vue",
+    svelte: "svelte",
+    java: "java",
+    c: "c",
+    cpp: "cpp",
+    cc: "cpp",
+    h: "c",
+    hpp: "cpp",
+    go: "go",
+    rs: "rust",
+    rb: "ruby",
+    php: "php",
+    swift: "swift",
+    kt: "kotlin",
+    sh: "bash",
+    bash: "bash",
+    zsh: "bash",
+    sql: "sql",
+    html: "html",
+    htm: "html",
+    css: "css",
+    scss: "scss",
+    json: "json",
+    yaml: "yaml",
+    yml: "yaml",
+    xml: "xml",
+    toml: "toml",
   };
-  return map[ext] || null;
+  return map[ext] ?? null;
 }
 
 /** Windows 风格「打开的」黄色文件夹（展开态） */
 function WindowsFolderOpen({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
       {/* 后片 */}
-      <path d="M1.5 6.5C1.5 5.4 2.4 4.5 3.5 4.5h4.7c.6 0 1.2.25 1.62.69L11.06 6.5H18.5c1.1 0 2 .9 2 2V10H3.5C2.4 10 1.5 9.1 1.5 8V6.5z" fill="#E6A106" />
+      <path
+        d="M1.5 6.5C1.5 5.4 2.4 4.5 3.5 4.5h4.7c.6 0 1.2.25 1.62.69L11.06 6.5H18.5c1.1 0 2 .9 2 2V10H3.5C2.4 10 1.5 9.1 1.5 8V6.5z"
+        fill="#E6A106"
+      />
       {/* 内部（露出浅黄） */}
-      <path d="M3 10.5h18l-1.2 7.2c-.15.9-.93 1.55-1.84 1.55H4.04c-.91 0-1.69-.65-1.84-1.55L3 10.5z" fill="#FFE082" />
+      <path
+        d="M3 10.5h18l-1.2 7.2c-.15.9-.93 1.55-1.84 1.55H4.04c-.91 0-1.69-.65-1.84-1.55L3 10.5z"
+        fill="#FFE082"
+      />
       {/* 打开的前盖（翻开向右） */}
-      <path d="M3 10.5l2.5-2.8c.38-.42.92-.66 1.48-.66h13.6c.97 0 1.62.99 1.27 1.9l-.7 1.56H3z" fill="#FFC83D" />
-      <path d="M3 10.5l2.5-2.8c.38-.42.92-.66 1.48-.66h13.6c.2 0 .38.04.54.11L7.5 10.5H3z" fill="#FFD86B" />
+      <path
+        d="M3 10.5l2.5-2.8c.38-.42.92-.66 1.48-.66h13.6c.97 0 1.62.99 1.27 1.9l-.7 1.56H3z"
+        fill="#FFC83D"
+      />
+      <path
+        d="M3 10.5l2.5-2.8c.38-.42.92-.66 1.48-.66h13.6c.2 0 .38.04.54.11L7.5 10.5H3z"
+        fill="#FFD86B"
+      />
     </svg>
   );
 }
 
 // EAI-CUSTOM: 项目区 outputs 文件系统视图——项目文件 = outputs 直读（跨用户共享），替代旧 file_ref 文件夹树
-export type ProjectFileRef = { project_id: string; thread_id: string; rel_path: string; title: string; member: string };
+export type ProjectFileRef = {
+  project_id: string;
+  thread_id: string;
+  rel_path: string;
+  title: string;
+  member: string;
+};
 
-export default function DocumentManagement({ initialDocId }: { initialDocId?: string }) {
+export default function DocumentManagement({
+  initialDocId,
+}: {
+  initialDocId?: string;
+}) {
   const [view, setView] = useState<View>(initialDocId ? "editor" : "list");
-  const [activeDocId, setActiveDocId] = useState<string | null>(initialDocId ?? null);
-  const [activePersonalFile, setActivePersonalFile] = useState<{ thread_id: string; rel_path: string; title: string } | null>(null);
-  const [activeProjectFile, setActiveProjectFile] = useState<ProjectFileRef | null>(null);
+  const [activeDocId, setActiveDocId] = useState<string | null>(
+    initialDocId ?? null,
+  );
+  const [activePersonalFile, setActivePersonalFile] = useState<{
+    thread_id: string;
+    rel_path: string;
+    title: string;
+  } | null>(null);
+  const [activeProjectFile, setActiveProjectFile] =
+    useState<ProjectFileRef | null>(null);
   // 项目文件夹树导航：folder=个人，file_ref_folder=项目文件夹
-  const [activeNav, setActiveNav] = useState<"folder" | "file_ref_folder">("folder");
+  const [activeNav, setActiveNav] = useState<"folder" | "file_ref_folder">(
+    "folder",
+  );
   const [currentFolder, setCurrentFolder] = useState("默认文件夹");
   const handleSelectDoc = (doc: AIDocument) => {
     // 二进制文件（PDF / Word / Excel / 图片 / 压缩包等）→ 直接下载，不进编辑器
-    if (doc.source_thread_id && doc.file_ref_path && isBinaryFile(doc.file_mime, doc.title)) {
-      downloadPersonalFile(doc.source_thread_id, doc.file_ref_path, doc.title);
+    if (
+      doc.source_thread_id &&
+      doc.file_ref_path &&
+      isBinaryFile(doc.file_mime, doc.title)
+    ) {
+      void downloadPersonalFile(
+        doc.source_thread_id,
+        doc.file_ref_path,
+        doc.title,
+      );
       return;
     }
     // EAI-CUSTOM (bug-1145 根因⑤ 协同诉求): 仅 proj/ 虚拟文件（无 AIDocument 行、bash cp 落盘）
@@ -128,7 +310,12 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     // 连不了 Hocuspocus 协同 store（collab-server canAccessDocument 查 ai_documents WHERE id）。
     // 已 present_files 同步成 AIDocument 的 file_ref（有真实 id + project_id）落到下方 docId
     // 分支 → CollabEditor 协同：collab-server loadMarkdownForDoc 首次从磁盘 seed，之后 collab_documents 为真。
-    if (doc.id.startsWith("proj/") && doc.project_id && doc.source_thread_id && doc.file_ref_path) {
+    if (
+      doc.id.startsWith("proj/") &&
+      doc.project_id &&
+      doc.source_thread_id &&
+      doc.file_ref_path
+    ) {
       handleSelectProjectFile({
         project_id: doc.project_id,
         thread_id: doc.source_thread_id,
@@ -140,7 +327,11 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     }
     // 个人文档（直接映射）：用 thread_id + rel_path 读 artifacts，不走 AIDocument id
     if (doc.source_thread_id && doc.file_ref_path && doc.id.includes("/")) {
-      setActivePersonalFile({ thread_id: doc.source_thread_id, rel_path: doc.file_ref_path, title: doc.title });
+      setActivePersonalFile({
+        thread_id: doc.source_thread_id,
+        rel_path: doc.file_ref_path,
+        title: doc.title,
+      });
       setActiveDocId(null);
     } else {
       setActiveDocId(doc.id);
@@ -154,11 +345,22 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     setActivePersonalFile(null);
     setView("editor");
   };
-  const handleBack = () => { setActiveDocId(null); setActivePersonalFile(null); setActiveProjectFile(null); setView("list"); };
+  const handleBack = () => {
+    setActiveDocId(null);
+    setActivePersonalFile(null);
+    setActiveProjectFile(null);
+    setView("list");
+  };
   // 二进制文件直接下载（拉取 artifacts blob → 触发浏览器下载）
-  const downloadPersonalFile = async (threadId: string, relPath: string, filename: string) => {
+  const downloadPersonalFile = async (
+    threadId: string,
+    relPath: string,
+    filename: string,
+  ) => {
     try {
-      const res = await fetch(`/api/threads/${threadId}/artifacts/mnt/user-data/outputs/${encodeURIComponent(relPath)}`);
+      const res = await fetch(
+        `/api/threads/${threadId}/artifacts/mnt/user-data/outputs/${encodeURIComponent(relPath)}`,
+      );
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -173,9 +375,14 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
     }
   };
   return (
-    <div className="h-full flex overflow-hidden bg-background relative">
+    <div className="bg-background relative flex h-full overflow-hidden">
       {/* Always keep DocumentList mounted (CSS-hidden when editing) to preserve sidebar navigation state */}
-      <div className={cn("h-full w-full flex overflow-hidden", view === "editor" && "hidden")}>
+      <div
+        className={cn(
+          "flex h-full w-full overflow-hidden",
+          view === "editor" && "hidden",
+        )}
+      >
         <DocumentList
           onSelectDoc={handleSelectDoc}
           activeNav={activeNav}
@@ -185,19 +392,40 @@ export default function DocumentManagement({ initialDocId }: { initialDocId?: st
         />
       </div>
       {/* Editor slides in on top when active */}
-      {view === "editor" && (activeDocId || activePersonalFile || activeProjectFile) && (
-        <motion.div key={activeDocId || activePersonalFile?.rel_path || activeProjectFile?.rel_path} className="absolute inset-0 z-10 flex overflow-hidden"
-          initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-          <DocumentEditor docId={activeDocId} personalFile={activePersonalFile} projectFile={activeProjectFile} onBack={handleBack} />
-        </motion.div>
-      )}
+      {view === "editor" &&
+        (activeDocId ?? activePersonalFile ?? activeProjectFile) && (
+          <motion.div
+            key={
+              activeDocId ??
+              activePersonalFile?.rel_path ??
+              activeProjectFile?.rel_path
+            }
+            className="absolute inset-0 z-10 flex overflow-hidden"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <DocumentEditor
+              docId={activeDocId}
+              personalFile={activePersonalFile}
+              projectFile={activeProjectFile}
+              onBack={handleBack}
+            />
+          </motion.div>
+        )}
     </div>
   );
 }
 
 // ─── Document List ────────────────────────────────────────────────────────────
 
-function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFolderChange, view = "list" }: {
+function DocumentList({
+  onSelectDoc,
+  activeNav,
+  onNavChange,
+  currentFolder,
+  onFolderChange,
+}: {
   onSelectDoc: (doc: AIDocument) => void;
   activeNav: "folder" | "file_ref_folder";
   onNavChange: (nav: "folder" | "file_ref_folder") => void;
@@ -213,40 +441,68 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const canUseProject = licenseLoading || hasModule("project");
   const [viewMode, setViewMode] = useState<"grid-icon" | "list">("grid-icon");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(
+    null,
+  );
   const menuButtonRef = useRef<Record<string, HTMLButtonElement | null>>({});
   const debouncedSearch = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [previewDocState, setPreviewDocState] = useState<AIDocument | null>(null);
+  const [previewDocState, setPreviewDocState] = useState<AIDocument | null>(
+    null,
+  );
   const [showFolderPicker, setShowFolderPicker] = useState(false);
   const [personalOpen, setPersonalOpen] = useState(true);
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "starred">("all");
   const [sidebarWidth, setSidebarWidth] = useState(240);
-  const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
-  const handleSidebarDragStart = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    sidebarDragRef.current = { startX: e.clientX, startWidth: sidebarWidth };
-    const onMove = (ev: MouseEvent) => {
-      if (!sidebarDragRef.current) return;
-      const delta = ev.clientX - sidebarDragRef.current.startX;
-      setSidebarWidth(Math.max(180, Math.min(480, sidebarDragRef.current.startWidth + delta)));
-    };
-    const onUp = () => {
-      sidebarDragRef.current = null;
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-    document.body.style.cursor = "col-resize";
-    document.body.style.userSelect = "none";
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  }, [sidebarWidth]);
-  const { docs, total, loading, page, pageSize, setPage, folders, folderTree, createDoc, deleteDoc, toggleStar, setFilter, moveToFolder, batchDeleteDocs, renameDoc } =
-    useDocuments({ folder: currentFolder });
+  const sidebarDragRef = useRef<{ startX: number; startWidth: number } | null>(
+    null,
+  );
+  const handleSidebarDragStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      sidebarDragRef.current = { startX: e.clientX, startWidth: sidebarWidth };
+      const onMove = (ev: MouseEvent) => {
+        if (!sidebarDragRef.current) return;
+        const delta = ev.clientX - sidebarDragRef.current.startX;
+        setSidebarWidth(
+          Math.max(
+            180,
+            Math.min(480, sidebarDragRef.current.startWidth + delta),
+          ),
+        );
+      };
+      const onUp = () => {
+        sidebarDragRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+      };
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+    },
+    [sidebarWidth],
+  );
+  const {
+    docs,
+    total,
+    loading,
+    page,
+    pageSize,
+    setPage,
+    folders,
+    folderTree,
+    createDoc,
+    deleteDoc,
+    toggleStar,
+    setFilter,
+    moveToFolder,
+    batchDeleteDocs,
+  } = useDocuments({ folder: currentFolder });
   // Personal outputs — direct filesystem view (replaces old personal folder tree)
   const personalOutputs = usePersonalOutputs();
 
@@ -255,7 +511,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   useEffect(() => {
     if (navSynced.current) return;
     navSynced.current = true;
-    if (activeNav === "file_ref_folder") setFilter({ project_scope: "project", folder: currentFolder });
+    if (activeNav === "file_ref_folder")
+      setFilter({ project_scope: "project", folder: currentFolder });
     // Default: 全部个人文件，不限定 doc_type（document 与 file_ref 合并显示）
     else setFilter({ project_scope: "personal", folder: currentFolder });
   }, [activeNav, currentFolder, setFilter]);
@@ -263,7 +520,10 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const handleSearch = (v: string) => {
     setSearch(v);
     clearTimeout(debouncedSearch.current);
-    debouncedSearch.current = setTimeout(() => setFilter((f) => ({ ...f, q: v || undefined })), 400);
+    debouncedSearch.current = setTimeout(
+      () => setFilter((f) => ({ ...f, q: v || undefined })),
+      400,
+    );
   };
 
   const handleFilterToggle = (mode: "all" | "starred") => {
@@ -274,19 +534,31 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const handleNavClick = (nav: typeof activeNav, folder?: string, folderId?: string | null) => {
+  const handleNavClick = (
+    nav: typeof activeNav,
+    folder?: string,
+    folderId?: string | null,
+  ) => {
     onNavChange(nav);
     setSelectedIds(new Set());
     if (nav === "folder") {
       const nextFolder = folder ?? "默认文件夹";
       onFolderChange(nextFolder);
       // 合并显示全部类型（document + file_ref），不再限定 doc_type
-      setFilter({ project_scope: "personal", folder_id: folderId || undefined, q: search || undefined });
+      setFilter({
+        project_scope: "personal",
+        folder_id: folderId ?? undefined,
+        q: search || undefined,
+      });
     } else if (nav === "file_ref_folder") {
       if (folder) onFolderChange(folder);
       // EAI-CUSTOM: 只用 folder_id 过滤——doc.folder 字符串是 finalize.py 硬编码的「项目文件夹」，
       // 与文件夹行名不一致，同时传 folder+ folder_id 会被后端 AND 掉导致空列表。
-      setFilter({ project_scope: "project", folder_id: folderId || undefined, q: search || undefined });
+      setFilter({
+        project_scope: "project",
+        folder_id: folderId ?? undefined,
+        q: search || undefined,
+      });
     }
   };
 
@@ -294,7 +566,8 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     if (id.startsWith("proj/")) return; // EAI-CUSTOM (bug-1145 根因④): 虚拟 outputs 文件无 AIDocument 行，不可选中/批操作
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -329,7 +602,10 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   const isFileRefView = activeNav === "file_ref_folder";
 
   // 选中线程后，主体区显示该线程文件（适配为 DocCard 期望的形状）
-  const adaptPersonalFile = (file: any, thread: any) => ({
+  const adaptPersonalFile = (
+    file: PersonalDocFile & { user_id?: string; created_at?: string },
+    thread: Pick<PersonalThreadOutput, "thread_id" | "display_name">,
+  ) => ({
     id: `${thread.thread_id}/${file.rel_path}`,
     title: file.name,
     doc_type: "file_ref" as const,
@@ -350,7 +626,10 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   // source_thread_id + file_ref_path，点击时 handleSelectDoc 自动路由到 handleSelectProjectFile
   // → DocumentEditor 跨用户直读/写（readProjectOutput/saveProjectContent）。id 用 proj/ 前缀，
   // 供 star/delete/select 守卫识别这类「无 AIDocument 行」的虚拟文件。
-  const adaptProjectOutput = (pf: ProjectDocFile, projectId: string): AIDocument => ({
+  const adaptProjectOutput = (
+    pf: ProjectDocFile,
+    projectId: string,
+  ): AIDocument => ({
     id: `proj/${projectId}/${pf.thread_id}/${pf.rel_path}`,
     title: pf.name,
     doc_type: "file_ref",
@@ -370,56 +649,94 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   });
   // 从 personalOutputs.threads 派生当前选中线程 —— 单一数据源，
   // 这样 toggleStar 的乐观更新会同时反映到左侧列表和主体区域
-  const selectedThread = personalOutputs.threads.find((t) => t.thread_id === selectedThreadId) || null;
+  const selectedThread =
+    personalOutputs.threads.find((t) => t.thread_id === selectedThreadId) ??
+    null;
 
   // EAI-CUSTOM (bug-1145 根因④): 项目根文件夹视图聚合 outputs 文件系统视图——
   // 把 agent 未走 present_files（如 bash cp）落盘到 thread outputs/ 的文件也显示出来。
   // 仅在选中「项目根文件夹」(parent_id===null) 时聚合；outputs 是扁平全项目视图，无文件夹结构。
   const folderById = useMemo(() => {
     const m = new Map<string, FolderNode>();
-    const walk = (nodes: FolderNode[]) => { for (const n of nodes) { m.set(n.id, n); if (n.children?.length) walk(n.children); } };
+    const walk = (nodes: FolderNode[]) => {
+      for (const n of nodes) {
+        m.set(n.id, n);
+        if (n.children?.length) walk(n.children);
+      }
+    };
     walk(folderTree.folders);
     return m;
   }, [folderTree.folders]);
-  const activeProjectRoot = isFileRefView && activeFolderId ? (folderById.get(activeFolderId) ?? null) : null;
-  const activeProjectId = activeProjectRoot?.parent_id === null ? activeProjectRoot.project_id : null;
+  const activeProjectRoot =
+    isFileRefView && activeFolderId
+      ? (folderById.get(activeFolderId) ?? null)
+      : null;
+  const activeProjectId =
+    activeProjectRoot?.parent_id === null ? activeProjectRoot.project_id : null;
   const projectOutputs = useProjectOutputs(activeProjectId);
   // 已被 present_files 回调同步为 AIDocument 的 file_ref 按 线程/rel_path 去重，避免与 outputs 重复显示
   const syncedProjectKeys = useMemo(() => {
     const s = new Set<string>();
-    for (const d of docs) if (d.source_thread_id && d.file_ref_path) s.add(`${d.source_thread_id}/${d.file_ref_path}`);
+    for (const d of docs)
+      if (d.source_thread_id && d.file_ref_path)
+        s.add(`${d.source_thread_id}/${d.file_ref_path}`);
     return s;
   }, [docs]);
-  const projectExtraDocs: AIDocument[] = isFileRefView && activeProjectId
-    ? projectOutputs.files
-        .filter((pf) => !syncedProjectKeys.has(`${pf.thread_id}/${pf.rel_path}`))
-        .map((pf) => adaptProjectOutput(pf, activeProjectId))
-    : [];
+  const projectExtraDocs: AIDocument[] =
+    isFileRefView && activeProjectId
+      ? projectOutputs.files
+          .filter(
+            (pf) => !syncedProjectKeys.has(`${pf.thread_id}/${pf.rel_path}`),
+          )
+          .map((pf) => adaptProjectOutput(pf, activeProjectId))
+      : [];
 
   const displayDocs = selectedThread
     ? selectedThread.files
-        .filter((f: any) => (filterMode === "all" ? true : f.starred))
-        .map((f: any) => adaptPersonalFile(f, selectedThread))
+        .filter((f) => (filterMode === "all" ? true : f.starred))
+        .map((f) => adaptPersonalFile(f, selectedThread))
     : [...docs, ...projectExtraDocs];
-  const displayTotal = selectedThread ? selectedThread.files.length : total + projectExtraDocs.length;
+  const displayTotal = selectedThread
+    ? selectedThread.files.length
+    : total + projectExtraDocs.length;
   const displayLoading = !selectedThread && loading;
 
   // 全局搜索：跨所有线程搜文件名 / 线程名
   const isSearching = search.trim().length > 0;
   const searchResults = useMemo(() => {
-    if (!isSearching) return [] as Array<{ file: any; thread_id: string; thread_name: string }>;
+    if (!isSearching)
+      return [] as Array<{
+        file: PersonalDocFile;
+        thread_id: string;
+        thread_name: string;
+      }>;
     const q = search.trim().toLowerCase();
-    return personalOutputs.threads.flatMap(t =>
+    return personalOutputs.threads.flatMap((t) =>
       t.files
-        .filter(f => f.name.toLowerCase().includes(q) || t.display_name.toLowerCase().includes(q))
-        .map(f => ({ file: f, thread_id: t.thread_id, thread_name: t.display_name })),
+        .filter(
+          (f) =>
+            f.name.toLowerCase().includes(q) ||
+            t.display_name.toLowerCase().includes(q),
+        )
+        .map((f) => ({
+          file: f,
+          thread_id: t.thread_id,
+          thread_name: t.display_name,
+        })),
     );
   }, [isSearching, search, personalOutputs.threads]);
 
   const handlePersonalStar = (docId: string) => {
     if (!selectedThread) return;
-    const file = selectedThread.files.find((f: any) => `${selectedThread.thread_id}/${f.rel_path}` === docId);
-    if (file) personalOutputs.toggleStar(selectedThread.thread_id, file.rel_path, file.starred);
+    const file = selectedThread.files.find(
+      (f) => `${selectedThread.thread_id}/${f.rel_path}` === docId,
+    );
+    if (file)
+      void personalOutputs.toggleStar(
+        selectedThread.thread_id,
+        file.rel_path,
+        file.starred,
+      );
   };
 
   const handleCreate = async (title: string) => {
@@ -433,13 +750,17 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
     if (btn) {
       const rect = btn.getBoundingClientRect();
       const menuW = 128; // w-32
-      const x = rect.right + menuW > window.innerWidth ? rect.left - menuW : rect.right;
+      const x =
+        rect.right + menuW > window.innerWidth ? rect.left - menuW : rect.right;
       setMenuAnchor({ x, y: rect.top });
     }
     setOpenMenuId(id);
   };
 
-  const handleCloseMenu = () => { setOpenMenuId(null); setMenuAnchor(null); };
+  const handleCloseMenu = () => {
+    setOpenMenuId(null);
+    setMenuAnchor(null);
+  };
 
   useEffect(() => {
     if (!openMenuId) return;
@@ -449,73 +770,108 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
   }, [openMenuId]);
 
   return (
-    <div className="flex h-full w-full bg-background">
-      <div className="border-r border-border flex flex-col shrink-0 bg-muted/50 relative" style={{ width: sidebarWidth }}>
-        <div className="p-3.5 flex items-center gap-2 border-b border-border">
-          <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
-            <FolderCheck className="w-4 h-4" />
+    <div className="bg-background flex h-full w-full">
+      <div
+        className="border-border bg-muted/50 relative flex shrink-0 flex-col border-r"
+        style={{ width: sidebarWidth }}
+      >
+        <div className="border-border flex items-center gap-2 border-b p-3.5">
+          <div className="shrink-0 rounded-sm border border-blue-200 bg-blue-50 p-1 text-blue-600">
+            <FolderCheck className="h-4 w-4" />
           </div>
-          <span className="font-semibold text-foreground text-l">文档空间</span>
+          <span className="text-foreground text-l font-semibold">文档空间</span>
         </div>
         <nav
-          className="flex-1 overflow-y-auto px-2 py-1 space-y-1"
+          className="flex-1 space-y-1 overflow-y-auto px-2 py-1"
           onScroll={(e) => {
             const el = e.currentTarget;
             if (el.scrollHeight - el.scrollTop - el.clientHeight < 80) {
-              personalOutputs.fetchMore();
+              void personalOutputs.fetchMore();
             }
           }}
         >
           {/* 我的文档 — 树形结构 */}
           <div>
             <button
-              onClick={() => { setPersonalOpen((v) => !v); setSelectedThreadId(null); }}
+              onClick={() => {
+                setPersonalOpen((v) => !v);
+                setSelectedThreadId(null);
+              }}
               className={cn(
-                "flex w-full items-center justify-between px-3 py-1.5 text-sm rounded-lg transition-colors",
+                "flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors",
                 selectedThreadId === null
                   ? "bg-primary/10 text-primary font-medium"
                   : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
               )}
             >
               <div className="flex items-center gap-2">
-                {personalOpen
-                  ? <WindowsFolderOpen className="w-4 h-4" />
-                  : <WindowsFolder className="w-4 h-4" />}
+                {personalOpen ? (
+                  <WindowsFolderOpen className="h-4 w-4" />
+                ) : (
+                  <WindowsFolder className="h-4 w-4" />
+                )}
                 <span>我的文档</span>
-                <span className="text-[10px] text-muted-foreground/60">共 {personalOutputs.total} 个</span>
+                <span className="text-muted-foreground/60 text-[10px]">
+                  共 {personalOutputs.total} 个
+                </span>
               </div>
-              {personalOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+              {personalOpen ? (
+                <ChevronDown className="h-3 w-3" />
+              ) : (
+                <ChevronRight className="h-3 w-3" />
+              )}
             </button>
             {personalOpen && (
               <div className="ml-2 space-y-0.5">
-                {personalOutputs.threads.length === 0 && !personalOutputs.loading && (
-                  <p className="text-xs text-muted-foreground px-3 py-1.5">暂无输出文件</p>
-                )}
+                {personalOutputs.threads.length === 0 &&
+                  !personalOutputs.loading && (
+                    <p className="text-muted-foreground px-3 py-1.5 text-xs">
+                      暂无输出文件
+                    </p>
+                  )}
                 {personalOutputs.loading && (
-                  <p className="text-xs text-muted-foreground px-3 py-1.5">加载中...</p>
+                  <p className="text-muted-foreground px-3 py-1.5 text-xs">
+                    加载中...
+                  </p>
                 )}
                 {personalOutputs.threads.map((thread) => {
-                  const isExpanded = personalOutputs.expandedKeys.has(thread.thread_id);
+                  const isExpanded = personalOutputs.expandedKeys.has(
+                    thread.thread_id,
+                  );
                   return (
                     <div key={thread.thread_id}>
                       <button
-                        onClick={() => { personalOutputs.toggleExpand(thread.thread_id); setSelectedThreadId(thread.thread_id); setActiveFolderId(null); }}
+                        onClick={() => {
+                          personalOutputs.toggleExpand(thread.thread_id);
+                          setSelectedThreadId(thread.thread_id);
+                          setActiveFolderId(null);
+                        }}
                         className={cn(
-                          "flex w-full items-center justify-between px-3 py-1.5 text-xs rounded-lg transition-colors",
+                          "flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-xs transition-colors",
                           selectedThreadId === thread.thread_id
                             ? "bg-primary/10 text-primary font-medium"
                             : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
                         )}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {isExpanded
-                            ? <WindowsFolderOpen className="w-3.5 h-3.5 shrink-0" />
-                            : <WindowsFolder className="w-3.5 h-3.5 shrink-0" />}
-                          <span className="truncate">{thread.display_name}</span>
+                        <div className="flex min-w-0 items-center gap-2">
+                          {isExpanded ? (
+                            <WindowsFolderOpen className="h-3.5 w-3.5 shrink-0" />
+                          ) : (
+                            <WindowsFolder className="h-3.5 w-3.5 shrink-0" />
+                          )}
+                          <span className="truncate">
+                            {thread.display_name}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[10px] text-muted-foreground/60">{thread.files.length} 个文件</span>
-                          {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <span className="text-muted-foreground/60 text-[10px]">
+                            {thread.files.length} 个文件
+                          </span>
+                          {isExpanded ? (
+                            <ChevronDown className="h-3 w-3" />
+                          ) : (
+                            <ChevronRight className="h-3 w-3" />
+                          )}
                         </div>
                       </button>
                       {isExpanded && (
@@ -523,21 +879,36 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                           {thread.files.map((file) => (
                             <div
                               key={file.rel_path}
-                              className="flex items-center justify-between px-3 py-1 text-xs text-muted-foreground hover:bg-muted/50 rounded transition-colors"
+                              className="text-muted-foreground hover:bg-muted/50 flex items-center justify-between rounded px-3 py-1 text-xs transition-colors"
                             >
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <FileText className="w-3 h-3 shrink-0 opacity-60" />
+                              <div className="flex min-w-0 items-center gap-1.5">
+                                <FileText className="h-3 w-3 shrink-0 opacity-60" />
                                 <span className="truncate">{file.name}</span>
-                                <span className="text-[10px] text-muted-foreground/50 shrink-0">
-                                  {file.size > 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${file.size} B`}
+                                <span className="text-muted-foreground/50 shrink-0 text-[10px]">
+                                  {file.size > 1024
+                                    ? `${(file.size / 1024).toFixed(1)} KB`
+                                    : `${file.size} B`}
                                 </span>
                               </div>
                               <button
-                                onClick={(e) => { e.stopPropagation(); personalOutputs.toggleStar(thread.thread_id, file.rel_path, file.starred); }}
-                                className="shrink-0 p-0.5 hover:text-amber-400 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void personalOutputs.toggleStar(
+                                    thread.thread_id,
+                                    file.rel_path,
+                                    file.starred,
+                                  );
+                                }}
+                                className="shrink-0 p-0.5 transition-colors hover:text-amber-400"
                                 title={file.starred ? "取消收藏" : "收藏"}
                               >
-                                <Star className={cn("w-3 h-3", file.starred && "text-amber-400")} fill={file.starred ? "currentColor" : "none"} />
+                                <Star
+                                  className={cn(
+                                    "h-3 w-3",
+                                    file.starred && "text-amber-400",
+                                  )}
+                                  fill={file.starred ? "currentColor" : "none"}
+                                />
                               </button>
                             </div>
                           ))}
@@ -547,68 +918,79 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                   );
                 })}
                 {personalOutputs.loadingMore && (
-                  <p className="text-xs text-muted-foreground px-3 py-1.5 flex items-center gap-1.5">
-                    <Loader2 className="w-3 h-3 animate-spin" /> 加载更多...
+                  <p className="text-muted-foreground flex items-center gap-1.5 px-3 py-1.5 text-xs">
+                    <Loader2 className="h-3 w-3 animate-spin" /> 加载更多...
                   </p>
                 )}
                 {personalOutputs.hasMore && !personalOutputs.loadingMore && (
-                  <p className="text-[10px] text-muted-foreground/50 px-3 py-1.5">↓ 滚动加载更多</p>
+                  <p className="text-muted-foreground/50 px-3 py-1.5 text-[10px]">
+                    ↓ 滚动加载更多
+                  </p>
                 )}
               </div>
             )}
           </div>
           {canUseProject && ( // 项目文件夹 - 树形结构（权限：后端按项目成员过滤）
-          <div className="pt-2 mt-2">
-            <button
-              onClick={() => setArchiveOpen((v) => !v)}
-              className="flex w-full items-center justify-between px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted rounded-lg transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <FolderSync className="w-3.5 h-3.5 text-amber-500" />
-                <span>项目文件夹</span>
-              </div>
-              {archiveOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            </button>
-            {archiveOpen && (
-              <ProjectFolderTree
-                folders={folderTree.folders}
-                expandedKeys={folderTree.expandedKeys}
-                onToggleExpand={folderTree.toggleExpand}
-                onSelectFolder={(folderId, folderName) => {
-                  setActiveFolderId(folderId);
-                  handleNavClick("file_ref_folder", folderName, folderId);
-                }}
-                onCreateFolder={async (name, parentId, projectId) => { await folderTree.createFolder(name, parentId, projectId) }}
-                onRenameFolder={folderTree.renameFolder}
-                onDeleteFolder={folderTree.deleteFolder}
-                activeFolderId={activeFolderId}
-              />
-            )}
-          </div>
+            <div className="mt-2 pt-2">
+              <button
+                onClick={() => setArchiveOpen((v) => !v)}
+                className="text-muted-foreground hover:bg-muted flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <FolderSync className="h-3.5 w-3.5 text-amber-500" />
+                  <span>项目文件夹</span>
+                </div>
+                {archiveOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
+              </button>
+              {archiveOpen && (
+                <ProjectFolderTree
+                  folders={folderTree.folders}
+                  expandedKeys={folderTree.expandedKeys}
+                  onToggleExpand={folderTree.toggleExpand}
+                  onSelectFolder={(folderId, folderName) => {
+                    setActiveFolderId(folderId);
+                    handleNavClick("file_ref_folder", folderName, folderId);
+                  }}
+                  onCreateFolder={async (name, parentId, projectId) => {
+                    await folderTree.createFolder(name, parentId, projectId);
+                  }}
+                  onRenameFolder={folderTree.renameFolder}
+                  onDeleteFolder={folderTree.deleteFolder}
+                  activeFolderId={activeFolderId}
+                />
+              )}
+            </div>
           )}
         </nav>
         <div
           onMouseDown={handleSidebarDragStart}
-          className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-primary/40 active:bg-primary/60 transition-colors z-30"
+          className="hover:bg-primary/40 active:bg-primary/60 absolute top-0 right-0 z-30 h-full w-1.5 cursor-col-resize transition-colors"
           title="拖动调整宽度"
         />
       </div>
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="h-14 flex items-center justify-between px-6 border-b border-border shrink-0 bg-background">
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="border-border bg-background flex h-14 shrink-0 items-center justify-between border-b px-6">
           <div className="flex items-center gap-3">
             {!isFileRefView && (
               <Button onClick={() => setShowNewModal(true)}>
-                <Plus className="w-4 h-4" />新建文档
+                <Plus className="h-4 w-4" />
+                新建文档
               </Button>
             )}
-            <div className="flex items-center gap-0.5 bg-muted/60 rounded-md p-0.5">
+            <div className="bg-muted/60 flex items-center gap-0.5 rounded-md p-0.5">
               {(["all", "starred"] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => handleFilterToggle(mode)}
                   className={cn(
-                    "px-2.5 py-1 text-xs rounded-sm font-medium transition-colors",
-                    filterMode === mode ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+                    "rounded-sm px-2.5 py-1 text-xs font-medium transition-colors",
+                    filterMode === mode
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   {mode === "all" ? "全部" : "收藏"}
@@ -616,18 +998,25 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               ))}
             </div>
             <div className="relative w-60">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input type="text" value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="搜索文档..."
-                className="w-full pl-9 pr-4" />
+              <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+              <Input
+                type="text"
+                value={search}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="搜索文档..."
+                className="w-full pr-4 pl-9"
+              />
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex h-[30px] items-center overflow-hidden rounded-[6px] border border-border bg-card">
+            <div className="border-border bg-card flex h-[30px] items-center overflow-hidden rounded-[6px] border">
               <button
                 onClick={() => setViewMode("grid-icon")}
                 className={cn(
                   "flex h-[30px] w-[30px] items-center justify-center transition-colors",
-                  viewMode === "grid-icon" ? "text-foreground bg-muted" : "text-muted-foreground",
+                  viewMode === "grid-icon"
+                    ? "text-foreground bg-muted"
+                    : "text-muted-foreground",
                 )}
                 title="图标网格"
               >
@@ -637,69 +1026,112 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
                 onClick={() => setViewMode("list")}
                 className={cn(
                   "flex h-[30px] w-[30px] items-center justify-center transition-colors",
-                  viewMode === "list" ? "text-foreground bg-muted" : "text-muted-foreground",
+                  viewMode === "list"
+                    ? "text-foreground bg-muted"
+                    : "text-muted-foreground",
                 )}
                 title="列表"
               >
                 <List className="h-3.5 w-3.5" />
               </button>
             </div>
-            <span className="text-xs text-muted-foreground">共 {displayTotal} 篇文档</span>
+            <span className="text-muted-foreground text-xs">
+              共 {displayTotal} 篇文档
+            </span>
           </div>
         </div>
-        <div className={cn(
-          "flex-1 p-6 bg-muted/30",
-          displayDocs.length === 0 ? "flex flex-col items-center justify-center" : "overflow-y-auto"
-        )}>
+        <div
+          className={cn(
+            "bg-muted/30 flex-1 p-6",
+            displayDocs.length === 0
+              ? "flex flex-col items-center justify-center"
+              : "overflow-y-auto",
+          )}
+        >
           {isSearching ? (
-            <div className="overflow-y-auto h-full">
-              <div className="max-w-5xl mx-auto">
+            <div className="h-full overflow-y-auto">
+              <div className="mx-auto max-w-5xl">
                 <div className="mb-5">
-                  <h2 className="text-lg font-semibold text-foreground">搜索结果</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    关键词 “<span className="text-foreground font-medium">{search.trim()}</span>” — 找到
-                    <span className="text-primary font-medium mx-1">{searchResults.length}</span>个文件
+                  <h2 className="text-foreground text-lg font-semibold">
+                    搜索结果
+                  </h2>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    关键词 “
+                    <span className="text-foreground font-medium">
+                      {search.trim()}
+                    </span>
+                    ” — 找到
+                    <span className="text-primary mx-1 font-medium">
+                      {searchResults.length}
+                    </span>
+                    个文件
                   </p>
                 </div>
                 {searchResults.length === 0 ? (
-                  <div className="flex flex-col items-center text-center py-20 text-muted-foreground">
-                    <Search className="w-12 h-12 mb-3 opacity-25" />
+                  <div className="text-muted-foreground flex flex-col items-center py-20 text-center">
+                    <Search className="mb-3 h-12 w-12 opacity-25" />
                     <p className="text-sm">未找到匹配的文件</p>
-                    <p className="text-xs mt-1 opacity-70">试试其他关键词，或检查文件名</p>
+                    <p className="mt-1 text-xs opacity-70">
+                      试试其他关键词，或检查文件名
+                    </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
                     {searchResults.map(({ file, thread_id, thread_name }) => {
-                      const doc = adaptPersonalFile(file, { thread_id, display_name: thread_name });
+                      const doc = adaptPersonalFile(file, {
+                        thread_id,
+                        display_name: thread_name,
+                      });
                       return (
                         <div
                           key={`${thread_id}/${file.rel_path}`}
                           onClick={() => onSelectDoc(doc)}
-                          className="group bg-background border border-border rounded-xl p-4 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer"
+                          className="group bg-background border-border hover:border-primary/40 cursor-pointer rounded-xl border p-4 transition-all hover:shadow-md"
                         >
                           <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-lg bg-blue-50 shrink-0">
-                              <FileText className="w-4 h-4 text-blue-500" />
+                            <div className="shrink-0 rounded-lg bg-blue-50 p-2">
+                              <FileText className="h-4 w-4 text-blue-500" />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-foreground group-hover:text-primary truncate text-sm font-medium transition-colors">
                                 {file.name}
                               </div>
-                              <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                                <WindowsFolder className="w-3 h-3 shrink-0" />
+                              <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
+                                <WindowsFolder className="h-3 w-3 shrink-0" />
                                 <span className="truncate">{thread_name}</span>
                               </div>
-                              <div className="text-[10px] text-muted-foreground/60 mt-2">
-                                {file.size > 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${file.size} B`}
-                                {file.starred && <span className="ml-2 text-amber-500">★ 已收藏</span>}
+                              <div className="text-muted-foreground/60 mt-2 text-[10px]">
+                                {file.size > 1024
+                                  ? `${(file.size / 1024).toFixed(1)} KB`
+                                  : `${file.size} B`}
+                                {file.starred && (
+                                  <span className="ml-2 text-amber-500">
+                                    ★ 已收藏
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <button
-                              onClick={(e) => { e.stopPropagation(); personalOutputs.toggleStar(thread_id, file.rel_path, file.starred); }}
-                              className={cn("p-1 rounded transition-colors shrink-0", file.starred ? "text-amber-400" : "text-muted-foreground/40 hover:text-amber-400")}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                void personalOutputs.toggleStar(
+                                  thread_id,
+                                  file.rel_path,
+                                  file.starred,
+                                );
+                              }}
+                              className={cn(
+                                "shrink-0 rounded p-1 transition-colors",
+                                file.starred
+                                  ? "text-amber-400"
+                                  : "text-muted-foreground/40 hover:text-amber-400",
+                              )}
                               title={file.starred ? "取消收藏" : "收藏"}
                             >
-                              <Star className="w-3.5 h-3.5" fill={file.starred ? "currentColor" : "none"} />
+                              <Star
+                                className="h-3.5 w-3.5"
+                                fill={file.starred ? "currentColor" : "none"}
+                              />
                             </button>
                           </div>
                         </div>
@@ -710,95 +1142,199 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               </div>
             </div>
           ) : displayLoading ? (
-            <div className="flex items-center justify-center h-40 text-muted-foreground text-sm">加载中...</div>
+            <div className="text-muted-foreground flex h-40 items-center justify-center text-sm">
+              加载中...
+            </div>
           ) : displayDocs.length === 0 ? (
-            <div className="flex flex-col items-center text-center max-w-xs">
-              <MousePointerClick className="w-10 h-10 text-muted-foreground/25 mb-4" />
-              <p className="text-sm font-medium text-muted-foreground">点击左侧文件夹查看文档</p>
-              <p className="text-xs text-muted-foreground/60 mt-1.5 leading-relaxed">{selectedThread ? "该线程暂无输出文件" : isFileRefView ? "选中项目文件夹后，同步的文件会出现在这里" : "在左侧选择一个文件夹，或通过 AI 对话生成新文档"}</p>
+            <div className="flex max-w-xs flex-col items-center text-center">
+              <MousePointerClick className="text-muted-foreground/25 mb-4 h-10 w-10" />
+              <p className="text-muted-foreground text-sm font-medium">
+                点击左侧文件夹查看文档
+              </p>
+              <p className="text-muted-foreground/60 mt-1.5 text-xs leading-relaxed">
+                {selectedThread
+                  ? "该线程暂无输出文件"
+                  : isFileRefView
+                    ? "选中项目文件夹后，同步的文件会出现在这里"
+                    : "在左侧选择一个文件夹，或通过 AI 对话生成新文档"}
+              </p>
             </div>
           ) : viewMode === "grid-icon" ? (
             <AnimatePresence>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {displayDocs.map((doc) => (
-                    <DocCard key={doc.id} doc={doc}
-                      variant="icon"
-                      isMenuOpen={openMenuId === doc.id}
-                      onOpenMenu={handleOpenMenu}
-                      menuButtonRef={(el) => { menuButtonRef.current[doc.id] = el; }}
-                      onSelect={() => onSelectDoc(doc)}
-                      onToggleStar={() => doc.id.startsWith("proj/") ? undefined : (selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false))}
-                      onDelete={async () => { handleCloseMenu(); if (doc.id.startsWith("proj/")) return; if (confirm("确认删除该文档？")) await deleteDoc(doc.id); }}
-                      onShare={() => {}}
-                      selected={selectedIds.has(doc.id)}
-                      onToggleSelect={() => handleToggleSelect(doc.id)} />
+                  <DocCard
+                    key={doc.id}
+                    doc={doc}
+                    variant="icon"
+                    isMenuOpen={openMenuId === doc.id}
+                    onOpenMenu={handleOpenMenu}
+                    menuButtonRef={(el) => {
+                      menuButtonRef.current[doc.id] = el;
+                    }}
+                    onSelect={() => onSelectDoc(doc)}
+                    onToggleStar={() =>
+                      doc.id.startsWith("proj/")
+                        ? undefined
+                        : selectedThread
+                          ? handlePersonalStar(doc.id)
+                          : toggleStar(doc.id, doc.is_starred ?? false)
+                    }
+                    onDelete={async () => {
+                      handleCloseMenu();
+                      if (doc.id.startsWith("proj/")) return;
+                      if (confirm("确认删除该文档？")) await deleteDoc(doc.id);
+                    }}
+                    onShare={() => {
+                      /* intentional no-op */
+                    }}
+                    selected={selectedIds.has(doc.id)}
+                    onToggleSelect={() => handleToggleSelect(doc.id)}
+                  />
                 ))}
               </div>
             </AnimatePresence>
           ) : (
-            <div className="bg-background border border-border rounded-xl shadow-sm overflow-hidden">
-              <table className="w-full text-left border-collapse">
+            <div className="bg-background border-border overflow-hidden rounded-xl border shadow-sm">
+              <table className="w-full border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">名称</th>
-                    <th className="py-3 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">类型</th>
-                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">大小</th>
-                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">更新时间</th>
-                    <th className="py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider text-right">操作</th>
+                  <tr className="border-border bg-muted/50 border-b">
+                    <th className="text-muted-foreground px-4 py-3 text-xs font-semibold tracking-wider uppercase">
+                      名称
+                    </th>
+                    <th className="text-muted-foreground px-3 py-3 text-xs font-semibold tracking-wider uppercase">
+                      类型
+                    </th>
+                    <th className="text-muted-foreground px-4 py-3 text-xs font-semibold tracking-wider whitespace-nowrap uppercase">
+                      大小
+                    </th>
+                    <th className="text-muted-foreground px-4 py-3 text-xs font-semibold tracking-wider whitespace-nowrap uppercase">
+                      更新时间
+                    </th>
+                    <th className="text-muted-foreground px-4 py-3 text-right text-xs font-semibold tracking-wider uppercase">
+                      操作
+                    </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border">
+                <tbody className="divide-border divide-y">
                   {displayDocs.map((doc) => {
                     const isFileRef = doc.doc_type === "file_ref";
                     const fileSize = formatFileSize(doc.file_size);
-                    const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
+                    const updatedAt = doc.updated_at
+                      ? new Date(doc.updated_at)
+                          .toLocaleString("zh-CN", {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          })
+                          .replace(/\//g, "/")
+                      : "";
                     const handleClick = (e: React.MouseEvent) => {
-                      if (e.ctrlKey || e.metaKey) { e.preventDefault(); handleToggleSelect(doc.id); }
-                      else { onSelectDoc(doc); }
+                      if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                        handleToggleSelect(doc.id);
+                      } else {
+                        onSelectDoc(doc);
+                      }
                     };
                     return (
-                      <tr key={doc.id}
-                        className={cn("hover:bg-muted/50 transition-colors group cursor-pointer", selectedIds.has(doc.id) && "bg-primary/5")}
-                        onClick={handleClick}>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-3 min-w-0">
+                      <tr
+                        key={doc.id}
+                        className={cn(
+                          "hover:bg-muted/50 group cursor-pointer transition-colors",
+                          selectedIds.has(doc.id) && "bg-primary/5",
+                        )}
+                        onClick={handleClick}
+                      >
+                        <td className="px-4 py-4">
+                          <div className="flex min-w-0 items-center gap-3">
                             {selectedIds.has(doc.id) ? (
-                              <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+                              <CheckCircle2 className="text-primary h-4 w-4 shrink-0" />
                             ) : isFileRef ? (
-                              <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="sm" />
+                              <FileTypeIcon
+                                mime={doc.file_mime}
+                                title={doc.title}
+                                docType={doc.doc_type}
+                                size="sm"
+                              />
                             ) : (
-                              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                              <FileText className="text-muted-foreground h-4 w-4 shrink-0" />
                             )}
-                            <span className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                              {doc.title || "无标题"}
+                            <span className="text-foreground group-hover:text-primary truncate font-medium transition-colors">
+                              {doc.title != null && doc.title !== ""
+                                ? doc.title
+                                : "无标题"}
                             </span>
                           </div>
                         </td>
-                        <td className="py-4 px-3">
+                        <td className="px-3 py-4">
                           {(() => {
-                            const fic = FILE_ICON_CONFIG[getFileType(doc.file_mime, doc.title, doc.doc_type)]!;
+                            const fic =
+                              FILE_ICON_CONFIG[
+                                getFileType(
+                                  doc.file_mime,
+                                  doc.title,
+                                  doc.doc_type,
+                                )
+                              ]!;
                             return (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
-                                style={{ backgroundColor: fic.primary + "18", color: fic.primary }}>
+                              <span
+                                className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold"
+                                style={{
+                                  backgroundColor: fic.primary + "18",
+                                  color: fic.primary,
+                                }}
+                              >
                                 {fic.label}
                               </span>
                             );
                           })()}
                         </td>
-                        <td className="py-4 px-4 text-sm text-muted-foreground whitespace-nowrap">
+                        <td className="text-muted-foreground px-4 py-4 text-sm whitespace-nowrap">
                           {fileSize || "—"}
                         </td>
-                        <td className="py-4 px-4 text-sm text-muted-foreground whitespace-nowrap">{updatedAt}</td>
-                        <td className="py-4 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                              onClick={(e) => { e.stopPropagation(); if (doc.id.startsWith("proj/")) return; selectedThread ? handlePersonalStar(doc.id) : toggleStar(doc.id, doc.is_starred ?? false); }}>
-                              <Star className={cn("w-4 h-4", doc.is_starred && "text-amber-400")} fill={doc.is_starred ? "currentColor" : "none"} />
+                        <td className="text-muted-foreground px-4 py-4 text-sm whitespace-nowrap">
+                          {updatedAt}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                            <button
+                              className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-md p-1.5 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (doc.id.startsWith("proj/")) return;
+                                if (selectedThread) {
+                                  handlePersonalStar(doc.id);
+                                } else {
+                                  void toggleStar(
+                                    doc.id,
+                                    doc.is_starred ?? false,
+                                  );
+                                }
+                              }}
+                            >
+                              <Star
+                                className={cn(
+                                  "h-4 w-4",
+                                  doc.is_starred && "text-amber-400",
+                                )}
+                                fill={doc.is_starred ? "currentColor" : "none"}
+                              />
                             </button>
-                            <button ref={(el) => { menuButtonRef.current[doc.id] = el; }}
-                              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-                              onClick={(e) => { e.stopPropagation(); handleOpenMenu(doc.id); }}>
-                              <MoreHorizontal className="w-4 h-4" />
+                            <button
+                              ref={(el) => {
+                                menuButtonRef.current[doc.id] = el;
+                              }}
+                              className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-md p-1.5 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenMenu(doc.id);
+                              }}
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
                             </button>
                           </div>
                         </td>
@@ -811,14 +1347,14 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
           )}
         </div>
         {totalPages > 1 && (
-          <div className="px-6 py-3 border-t border-border flex items-center justify-end gap-2 shrink-0 bg-background">
+          <div className="border-border bg-background flex shrink-0 items-center justify-end gap-2 border-t px-6 py-3">
             <Button
               variant="outline"
               size="icon"
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
               <Button
@@ -836,39 +1372,66 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
               disabled={page >= totalPages}
               onClick={() => setPage(page + 1)}
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         )}
-        {openMenuId && menuAnchor && (() => {
-          const doc = displayDocs.find((d) => d.id === openMenuId);
-          if (!doc) return null;
-          const isFileRef = doc.doc_type === "file_ref";
-          return (
-            <div
-              className="fixed w-32 bg-background rounded-xl shadow-xl border border-border py-1.5 z-[100]"
-              style={{ left: menuAnchor.x, top: menuAnchor.y + 4 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button type="button" onClick={() => { handleCloseMenu(); onSelectDoc(doc); }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-foreground hover:bg-muted">
-                <PenLine className="w-3 h-3" /> 打开编辑
-              </button>
-              <div className="h-px bg-border my-1 mx-2" />
-              {!doc.id.startsWith("proj/") && (
-                <button type="button" onClick={async () => { handleCloseMenu(); if (confirm(`确认删除该${isFileRef ? "文件" : "文档"}？`)) await deleteDoc(doc.id); }}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10">
-                  <Trash2 className="w-3 h-3" /> 删除
+        {openMenuId &&
+          menuAnchor &&
+          (() => {
+            const doc = displayDocs.find((d) => d.id === openMenuId);
+            if (!doc) return null;
+            const isFileRef = doc.doc_type === "file_ref";
+            return (
+              <div
+                className="bg-background border-border fixed z-[100] w-32 rounded-xl border py-1.5 shadow-xl"
+                style={{ left: menuAnchor.x, top: menuAnchor.y + 4 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCloseMenu();
+                    onSelectDoc(doc);
+                  }}
+                  className="text-foreground hover:bg-muted flex w-full items-center gap-2 px-3 py-1.5 text-xs"
+                >
+                  <PenLine className="h-3 w-3" /> 打开编辑
                 </button>
-              )}
-            </div>
-          );
-        })()}
+                <div className="bg-border mx-2 my-1 h-px" />
+                {!doc.id.startsWith("proj/") && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      handleCloseMenu();
+                      if (confirm(`确认删除该${isFileRef ? "文件" : "文档"}？`))
+                        await deleteDoc(doc.id);
+                    }}
+                    className="text-destructive hover:bg-destructive/10 flex w-full items-center gap-2 px-3 py-1.5 text-xs"
+                  >
+                    <Trash2 className="h-3 w-3" /> 删除
+                  </button>
+                )}
+              </div>
+            );
+          })()}
       </div>
       <AnimatePresence>
-        {showNewModal && <NewDocModal isOpen={showNewModal} onClose={() => setShowNewModal(false)} onCreate={handleCreate} />}
+        {showNewModal && (
+          <NewDocModal
+            isOpen={showNewModal}
+            onClose={() => setShowNewModal(false)}
+            onCreate={handleCreate}
+          />
+        )}
       </AnimatePresence>
-      <FilePreviewModal doc={previewDocState} open={!!previewDocState} onOpenChange={(o) => { if (!o) setPreviewDocState(null); }} />
+      <FilePreviewModal
+        doc={previewDocState}
+        open={!!previewDocState}
+        onOpenChange={(o) => {
+          if (!o) setPreviewDocState(null);
+        }}
+      />
       <FolderPickerDialog
         folders={folders}
         open={showFolderPicker}
@@ -888,59 +1451,134 @@ function DocumentList({ onSelectDoc, activeNav, onNavChange, currentFolder, onFo
 
 // ─── Doc Card ─────────────────────────────────────────────────────────────────
 
-function DocCard({ doc, variant = "auto", isMenuOpen, onOpenMenu, menuButtonRef, onSelect, onToggleStar, onDelete, onShare, selected, onToggleSelect }: {
-  doc: AIDocument; variant?: "auto" | "icon" | "summary"; isMenuOpen: boolean;
-  onOpenMenu: (id: string) => void; menuButtonRef: (el: HTMLButtonElement | null) => void;
-  onSelect: () => void; onToggleStar: () => void; onDelete: () => void; onShare?: () => void;
-  selected?: boolean; onToggleSelect?: () => void;
+function DocCard({
+  doc,
+  variant = "auto",
+  onOpenMenu,
+  menuButtonRef,
+  onSelect,
+  onToggleStar,
+  selected,
+  onToggleSelect,
+}: {
+  doc: AIDocument;
+  variant?: "auto" | "icon" | "summary";
+  isMenuOpen: boolean;
+  onOpenMenu: (id: string) => void;
+  menuButtonRef: (el: HTMLButtonElement | null) => void;
+  onSelect: () => void;
+  onToggleStar: () => void;
+  onDelete: () => void;
+  onShare?: () => void;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const isFileRef = doc.doc_type === "file_ref";
   const rawPreview = (doc.content ?? "").replace(/[#*`>\-_]/g, "").trim();
   const preview = rawPreview.slice(0, 120);
-  const showSummary = variant === "summary" ? !!preview : (variant === "auto" && !!preview);
-  const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
+  const showSummary =
+    variant === "summary" ? !!preview : variant === "auto" && !!preview;
+  const updatedAt = doc.updated_at
+    ? new Date(doc.updated_at)
+        .toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })
+        .replace(/\//g, "/")
+    : "";
   const fileSize = isFileRef ? formatFileSize(doc.file_size) : "";
 
   // For file_ref without content, build a file-info preview line
   const fileInfoLine = isFileRef
-    ? [getFileType(doc.file_mime, doc.title, doc.doc_type).toUpperCase(), fileSize].filter(Boolean).join(" · ")
+    ? [
+        getFileType(doc.file_mime, doc.title, doc.doc_type).toUpperCase(),
+        fileSize,
+      ]
+        .filter(Boolean)
+        .join(" · ")
     : "";
 
   return (
-    <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
-      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-50 group hover:shadow-md hover:border-primary/50 relative"
-      onClick={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); onToggleSelect?.(); } else { onSelect(); } }}>
-      <div className="flex-1 mb-4 relative overflow-hidden">
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className="bg-background border-border group hover:border-primary/50 relative flex h-50 cursor-pointer flex-col rounded-xl border p-4 transition-all hover:shadow-md"
+      onClick={(e) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          onToggleSelect?.();
+        } else {
+          onSelect();
+        }
+      }}
+    >
+      <div className="relative mb-4 flex-1 overflow-hidden">
         {showSummary ? (
-          <div className="bg-muted/50 rounded-lg p-4 h-full border border-border relative overflow-hidden">
-            <div className="absolute left-0 top-4 bottom-4 w-1 bg-purple-200 dark:bg-purple-500/50 rounded-r-full" />
-            <p className="text-sm text-muted-foreground leading-relaxed pl-3 line-clamp-4">{preview}</p>
+          <div className="bg-muted/50 border-border relative h-full overflow-hidden rounded-lg border p-4">
+            <div className="absolute top-4 bottom-4 left-0 w-1 rounded-r-full bg-purple-200 dark:bg-purple-500/50" />
+            <p className="text-muted-foreground line-clamp-4 pl-3 text-sm leading-relaxed">
+              {preview}
+            </p>
           </div>
         ) : (
-          <div className="bg-muted/50 rounded-lg h-full border border-border relative overflow-hidden flex flex-col items-center justify-center gap-2">
-            <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="lg" />
-            {fileInfoLine && <span className="text-xs text-muted-foreground">{fileInfoLine}</span>}
+          <div className="bg-muted/50 border-border relative flex h-full flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border">
+            <FileTypeIcon
+              mime={doc.file_mime}
+              title={doc.title}
+              docType={doc.doc_type}
+              size="lg"
+            />
+            {fileInfoLine && (
+              <span className="text-muted-foreground text-xs">
+                {fileInfoLine}
+              </span>
+            )}
           </div>
         )}
       </div>
-      <h3 className="font-bold text-foreground text-base line-clamp-1 mb-4 group-hover:text-primary transition-colors">
+      <h3 className="text-foreground group-hover:text-primary mb-4 line-clamp-1 text-base font-bold transition-colors">
         {doc.title || "无标题"}
       </h3>
-      <div className="flex items-center justify-between text-muted-foreground mt-auto">
+      <div className="text-muted-foreground mt-auto flex items-center justify-between">
         <span className="text-xs">{updatedAt}</span>
         <div className="flex items-center gap-3 text-xs">
-          <button ref={menuButtonRef} className="hover:text-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onOpenMenu(doc.id); }}>
-            <MoreHorizontal className="w-4 h-4" />
+          <button
+            ref={menuButtonRef}
+            className="hover:text-foreground transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenMenu(doc.id);
+            }}
+          >
+            <MoreHorizontal className="h-4 w-4" />
           </button>
-          <button className={cn("transition-colors", doc.is_starred ? "text-amber-400" : "hover:text-foreground")} onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
-            <Star className="w-4 h-4" fill={doc.is_starred ? "currentColor" : "none"} />
+          <button
+            className={cn(
+              "transition-colors",
+              doc.is_starred ? "text-amber-400" : "hover:text-foreground",
+            )}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStar();
+            }}
+          >
+            <Star
+              className="h-4 w-4"
+              fill={doc.is_starred ? "currentColor" : "none"}
+            />
           </button>
         </div>
       </div>
       {selected && (
-        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-          <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
+        <div className="bg-primary absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full">
+          <CheckCircle2 className="text-primary-foreground h-3 w-3" />
         </div>
       )}
     </motion.div>
@@ -958,36 +1596,135 @@ interface FileIconConfig {
 }
 
 const FILE_ICON_CONFIG: Record<string, FileIconConfig> = {
-  markdown:   { primary: "#0EA5E9", secondary: "#FFFFFF", label: "MD",  symbol: "doc" },
-  python:     { primary: "#8B5CF6", secondary: "#FDE68A", label: "PY",  symbol: "code" },
-  javascript: { primary: "#EAB308", secondary: "#1E293B", label: "JS",  dark: true, symbol: "code" },
-  typescript: { primary: "#3B82F6", secondary: "#FFFFFF", label: "TS",  symbol: "code" },
-  json:       { primary: "#F97316", secondary: "#FFFFFF", label: "JSON", symbol: "data" },
-  html:       { primary: "#EF4444", secondary: "#FFFFFF", label: "HTML", symbol: "code" },
-  css:        { primary: "#06B6D4", secondary: "#FFFFFF", label: "CSS",  symbol: "code" },
-  pdf:        { primary: "#DC2626", secondary: "#FFFFFF", label: "PDF",  symbol: "doc" },
-  word:       { primary: "#2563EB", secondary: "#FFFFFF", label: "DOC",  symbol: "doc" },
-  excel:      { primary: "#16A34A", secondary: "#FFFFFF", label: "XLS",  symbol: "data" },
-  csv:        { primary: "#65A30D", secondary: "#FFFFFF", label: "CSV",  symbol: "data" },
-  image:      { primary: "#D946EF", secondary: "#FFFFFF", label: "IMG",  symbol: "image" },
-  text:       { primary: "#94A3B8", secondary: "#FFFFFF", label: "TXT",  symbol: "doc" },
-  xml:        { primary: "#EA580C", secondary: "#FFFFFF", label: "XML",  symbol: "code" },
-  yaml:       { primary: "#EC4899", secondary: "#FFFFFF", label: "YML",  symbol: "data" },
-  shell:      { primary: "#22C55E", secondary: "#FFFFFF", label: "SH",   symbol: "terminal" },
+  markdown: {
+    primary: "#0EA5E9",
+    secondary: "#FFFFFF",
+    label: "MD",
+    symbol: "doc",
+  },
+  python: {
+    primary: "#8B5CF6",
+    secondary: "#FDE68A",
+    label: "PY",
+    symbol: "code",
+  },
+  javascript: {
+    primary: "#EAB308",
+    secondary: "#1E293B",
+    label: "JS",
+    dark: true,
+    symbol: "code",
+  },
+  typescript: {
+    primary: "#3B82F6",
+    secondary: "#FFFFFF",
+    label: "TS",
+    symbol: "code",
+  },
+  json: {
+    primary: "#F97316",
+    secondary: "#FFFFFF",
+    label: "JSON",
+    symbol: "data",
+  },
+  html: {
+    primary: "#EF4444",
+    secondary: "#FFFFFF",
+    label: "HTML",
+    symbol: "code",
+  },
+  css: {
+    primary: "#06B6D4",
+    secondary: "#FFFFFF",
+    label: "CSS",
+    symbol: "code",
+  },
+  pdf: {
+    primary: "#DC2626",
+    secondary: "#FFFFFF",
+    label: "PDF",
+    symbol: "doc",
+  },
+  word: {
+    primary: "#2563EB",
+    secondary: "#FFFFFF",
+    label: "DOC",
+    symbol: "doc",
+  },
+  excel: {
+    primary: "#16A34A",
+    secondary: "#FFFFFF",
+    label: "XLS",
+    symbol: "data",
+  },
+  csv: {
+    primary: "#65A30D",
+    secondary: "#FFFFFF",
+    label: "CSV",
+    symbol: "data",
+  },
+  image: {
+    primary: "#D946EF",
+    secondary: "#FFFFFF",
+    label: "IMG",
+    symbol: "image",
+  },
+  text: {
+    primary: "#94A3B8",
+    secondary: "#FFFFFF",
+    label: "TXT",
+    symbol: "doc",
+  },
+  xml: {
+    primary: "#EA580C",
+    secondary: "#FFFFFF",
+    label: "XML",
+    symbol: "code",
+  },
+  yaml: {
+    primary: "#EC4899",
+    secondary: "#FFFFFF",
+    label: "YML",
+    symbol: "data",
+  },
+  shell: {
+    primary: "#22C55E",
+    secondary: "#FFFFFF",
+    label: "SH",
+    symbol: "terminal",
+  },
 };
 
-function getFileType(mime: string | undefined | null, title: string | undefined | null, docType?: string | null): string {
+function getFileType(
+  mime: string | undefined | null,
+  title: string | undefined | null,
+  docType?: string | null,
+): string {
   if (!mime && title) {
-    const ext = title.split(".").pop()?.toLowerCase() || "";
+    const ext = title.split(".").pop()?.toLowerCase() ?? "";
     const extMap: Record<string, string> = {
-      md: "markdown", py: "python", js: "javascript", ts: "typescript",
-      json: "json", html: "html", css: "css", pdf: "pdf",
-      doc: "word", docx: "word", xls: "excel", xlsx: "excel",
-      csv: "csv", xml: "xml", yml: "yaml", yaml: "yaml", sh: "shell", txt: "text",
+      md: "markdown",
+      py: "python",
+      js: "javascript",
+      ts: "typescript",
+      json: "json",
+      html: "html",
+      css: "css",
+      pdf: "pdf",
+      doc: "word",
+      docx: "word",
+      xls: "excel",
+      xlsx: "excel",
+      csv: "csv",
+      xml: "xml",
+      yml: "yaml",
+      yaml: "yaml",
+      sh: "shell",
+      txt: "text",
     };
-    return extMap[ext] || (docType === "document" ? "markdown" : "text");
+    return extMap[ext] ?? (docType === "document" ? "markdown" : "text");
   }
-  const m = (mime || "").toLowerCase();
+  const m = (mime ?? "").toLowerCase();
   if (m.includes("markdown") || m.includes("x-markdown")) return "markdown";
   if (m.includes("python")) return "python";
   if (m.includes("javascript")) return "javascript";
@@ -1010,41 +1747,152 @@ function getFileType(mime: string | undefined | null, title: string | undefined 
 const SymbolPaths = {
   doc: (fill: string) => (
     <g>
-      <rect x="8" y="11" width="24" height="2" rx="1" fill={fill} opacity="0.5" />
-      <rect x="8" y="16" width="18" height="2" rx="1" fill={fill} opacity="0.35" />
-      <rect x="8" y="21" width="12" height="2" rx="1" fill={fill} opacity="0.2" />
+      <rect
+        x="8"
+        y="11"
+        width="24"
+        height="2"
+        rx="1"
+        fill={fill}
+        opacity="0.5"
+      />
+      <rect
+        x="8"
+        y="16"
+        width="18"
+        height="2"
+        rx="1"
+        fill={fill}
+        opacity="0.35"
+      />
+      <rect
+        x="8"
+        y="21"
+        width="12"
+        height="2"
+        rx="1"
+        fill={fill}
+        opacity="0.2"
+      />
     </g>
   ),
   code: (fill: string) => (
     <g>
-      <polyline points="10,12 6,17 10,22" fill="none" stroke={fill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-      <polyline points="30,12 34,17 30,22" fill="none" stroke={fill} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-      <line x1="24" y1="10" x2="16" y2="24" stroke={fill} strokeWidth="1.5" strokeLinecap="round" opacity="0.4" />
+      <polyline
+        points="10,12 6,17 10,22"
+        fill="none"
+        stroke={fill}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.5"
+      />
+      <polyline
+        points="30,12 34,17 30,22"
+        fill="none"
+        stroke={fill}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.5"
+      />
+      <line
+        x1="24"
+        y1="10"
+        x2="16"
+        y2="24"
+        stroke={fill}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        opacity="0.4"
+      />
     </g>
   ),
   data: (fill: string) => (
     <g>
-      <rect x="8" y="11" width="9" height="5" rx="1" fill={fill} opacity="0.4" />
-      <rect x="19" y="11" width="9" height="5" rx="1" fill={fill} opacity="0.3" />
-      <rect x="8" y="18" width="9" height="5" rx="1" fill={fill} opacity="0.3" />
-      <rect x="19" y="18" width="9" height="5" rx="1" fill={fill} opacity="0.2" />
+      <rect
+        x="8"
+        y="11"
+        width="9"
+        height="5"
+        rx="1"
+        fill={fill}
+        opacity="0.4"
+      />
+      <rect
+        x="19"
+        y="11"
+        width="9"
+        height="5"
+        rx="1"
+        fill={fill}
+        opacity="0.3"
+      />
+      <rect
+        x="8"
+        y="18"
+        width="9"
+        height="5"
+        rx="1"
+        fill={fill}
+        opacity="0.3"
+      />
+      <rect
+        x="19"
+        y="18"
+        width="9"
+        height="5"
+        rx="1"
+        fill={fill}
+        opacity="0.2"
+      />
     </g>
   ),
   image: (fill: string) => (
     <g>
       <circle cx="16" cy="15" r="3.5" fill={fill} opacity="0.45" />
-      <polyline points="8,26 16,19 21,23 26,18 32,24 32,27 8,27" fill={fill} opacity="0.3" />
+      <polyline
+        points="8,26 16,19 21,23 26,18 32,24 32,27 8,27"
+        fill={fill}
+        opacity="0.3"
+      />
     </g>
   ),
   terminal: (fill: string) => (
     <g>
-      <polyline points="9,13 15,18 9,23" fill="none" stroke={fill} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-      <rect x="19" y="22" width="8" height="2.5" rx="1" fill={fill} opacity="0.35" />
+      <polyline
+        points="9,13 15,18 9,23"
+        fill="none"
+        stroke={fill}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.5"
+      />
+      <rect
+        x="19"
+        y="22"
+        width="8"
+        height="2.5"
+        rx="1"
+        fill={fill}
+        opacity="0.35"
+      />
     </g>
   ),
 };
 
-function FileTypeIcon({ mime, title, docType, size = "lg" }: { mime?: string | null; title?: string | null; docType?: string | null; size?: "sm" | "lg" }) {
+function FileTypeIcon({
+  mime,
+  title,
+  docType,
+  size = "lg",
+}: {
+  mime?: string | null;
+  title?: string | null;
+  docType?: string | null;
+  size?: "sm" | "lg";
+}) {
   const fileType = getFileType(mime, title, docType);
   const config = FILE_ICON_CONFIG[fileType]!;
   const labelFill = config.dark ? config.secondary : "#fff";
@@ -1054,7 +1902,7 @@ function FileTypeIcon({ mime, title, docType, size = "lg" }: { mime?: string | n
 
   if (size === "lg") {
     return (
-      <svg className="w-12 h-14" viewBox="0 0 40 48" fill="none">
+      <svg className="h-14 w-12" viewBox="0 0 40 48" fill="none">
         <defs>
           <clipPath id={cid}>
             <path d="M4 2H26L40 16V44C40 46.2 38.2 48 36 48H4C1.8 48 0 46.2 0 44V6C0 3.8 1.8 2 4 2Z" />
@@ -1068,19 +1916,44 @@ function FileTypeIcon({ mime, title, docType, size = "lg" }: { mime?: string | n
         <g clipPath={`url(#${cid})`}>
           <rect width="40" height="48" fill={config.primary} />
           <rect width="40" height="48" fill={`url(#${gid})`} />
-          <path d="M26 2V12C26 14.2 27.8 16 30 16H40V16L26 2Z" fill="rgba(0,0,0,0.12)" />
+          <path
+            d="M26 2V12C26 14.2 27.8 16 30 16H40V16L26 2Z"
+            fill="rgba(0,0,0,0.12)"
+          />
         </g>
-        <path d="M4 2H26L40 16V44C40 46.2 38.2 48 36 48H4C1.8 48 0 46.2 0 44V6C0 3.8 1.8 2 4 2Z"
-          className="stroke-black/8" strokeWidth="0.5" fill="none" />
+        <path
+          d="M4 2H26L40 16V44C40 46.2 38.2 48 36 48H4C1.8 48 0 46.2 0 44V6C0 3.8 1.8 2 4 2Z"
+          className="stroke-black/8"
+          strokeWidth="0.5"
+          fill="none"
+        />
         {SymbolPaths[config.symbol](symbolFill)}
-        <rect x="5" y="34" width="30" height="11" rx="3" fill="rgba(0,0,0,0.18)" />
-        <text x="20" y="43" textAnchor="middle" fill={labelFill} fontSize="10" fontWeight="800" fontFamily="system-ui, -apple-system, sans-serif" letterSpacing="0.5">{config.label}</text>
+        <rect
+          x="5"
+          y="34"
+          width="30"
+          height="11"
+          rx="3"
+          fill="rgba(0,0,0,0.18)"
+        />
+        <text
+          x="20"
+          y="43"
+          textAnchor="middle"
+          fill={labelFill}
+          fontSize="10"
+          fontWeight="800"
+          fontFamily="system-ui, -apple-system, sans-serif"
+          letterSpacing="0.5"
+        >
+          {config.label}
+        </text>
       </svg>
     );
   }
 
   return (
-    <svg className="w-5 h-6" viewBox="0 0 20 24" fill="none">
+    <svg className="h-6 w-5" viewBox="0 0 20 24" fill="none">
       <defs>
         <clipPath id={cid}>
           <path d="M2 1H13L20 8V22C20 23.1 19.1 24 18 24H2C0.9 24 0 23.1 0 22V3C0 1.9 0.9 1 2 1Z" />
@@ -1093,106 +1966,106 @@ function FileTypeIcon({ mime, title, docType, size = "lg" }: { mime?: string | n
       <g clipPath={`url(#${cid})`}>
         <rect width="20" height="24" fill={config.primary} />
         <rect width="20" height="24" fill={`url(#${gid})`} />
-        <path d="M13 1V6C13 7.1 13.9 8 15 8H20V8L13 1Z" fill="rgba(0,0,0,0.12)" />
+        <path
+          d="M13 1V6C13 7.1 13.9 8 15 8H20V8L13 1Z"
+          fill="rgba(0,0,0,0.12)"
+        />
       </g>
-      <path d="M2 1H13L20 8V22C20 23.1 19.1 24 18 24H2C0.9 24 0 23.1 0 22V3C0 1.9 0.9 1 2 1Z"
-        className="stroke-black/8" strokeWidth="0.5" fill="none" />
-      <rect x="3" y="17" width="14" height="5" rx="1.5" fill="rgba(0,0,0,0.18)" />
-      <text x="10" y="21" textAnchor="middle" fill={labelFill} fontSize="4.5" fontWeight="800" fontFamily="system-ui, -apple-system, sans-serif">{config.label}</text>
+      <path
+        d="M2 1H13L20 8V22C20 23.1 19.1 24 18 24H2C0.9 24 0 23.1 0 22V3C0 1.9 0.9 1 2 1Z"
+        className="stroke-black/8"
+        strokeWidth="0.5"
+        fill="none"
+      />
+      <rect
+        x="3"
+        y="17"
+        width="14"
+        height="5"
+        rx="1.5"
+        fill="rgba(0,0,0,0.18)"
+      />
+      <text
+        x="10"
+        y="21"
+        textAnchor="middle"
+        fill={labelFill}
+        fontSize="4.5"
+        fontWeight="800"
+        fontFamily="system-ui, -apple-system, sans-serif"
+      >
+        {config.label}
+      </text>
     </svg>
-  );
-}
-
-// ─── File Ref Card ─────────────────────────────────────────────────────────────
-
-function FileRefCard({ doc, isMenuOpen, onOpenMenu, menuButtonRef, onToggleStar, onDelete, onSelect, onShare, selected, onToggleSelect }: {
-  doc: AIDocument; isMenuOpen: boolean;
-  onOpenMenu: (id: string) => void; menuButtonRef: (el: HTMLButtonElement | null) => void;
-  onToggleStar: () => void; onDelete: () => void; onSelect: () => void; onShare?: () => void;
-  selected?: boolean; onToggleSelect?: () => void;
-}) {
-  const isImage = isImageFile(doc.file_mime);
-  const updatedAt = doc.updated_at ? new Date(doc.updated_at).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }).replace(/\//g, "/") : "";
-  const fileSize = formatFileSize(doc.file_size);
-
-  return (
-    <motion.div layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.2 }}
-      className="bg-background rounded-xl border border-border p-4 cursor-pointer transition-all flex flex-col h-48 group hover:shadow-md hover:border-primary/50 relative"
-      onClick={(e) => { if (e.ctrlKey || e.metaKey) { e.preventDefault(); onToggleSelect?.(); } else { onSelect(); } }}>
-      <div className="flex-1 mb-4 flex items-center justify-center relative overflow-hidden">
-        {isImage && doc.file_ref_path ? (
-          <img
-            src={doc.file_ref_path}
-            alt={doc.title || "预览"}
-            className="max-w-full max-h-full object-contain rounded-lg"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-          />
-        ) : (
-          <FileTypeIcon mime={doc.file_mime} title={doc.title} docType={doc.doc_type} size="lg" />
-        )}
-      </div>
-      <h3 className="font-medium text-foreground text-sm line-clamp-1 mb-2 group-hover:text-primary transition-colors">
-        {doc.title || "无标题"}
-      </h3>
-      <div className="flex items-center justify-between text-muted-foreground mt-auto">
-        <div className="flex items-center gap-2 text-xs">
-          {fileSize && <span>{fileSize}</span>}
-          {updatedAt && <span>{updatedAt}</span>}
-        </div>
-        <div className="flex items-center gap-3 text-xs">
-          <button ref={menuButtonRef} className="hover:text-foreground transition-colors" onClick={(e) => { e.stopPropagation(); onOpenMenu(doc.id); }}>
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
-          <button className={cn("transition-colors", doc.is_starred ? "text-amber-400" : "hover:text-foreground")} onClick={(e) => { e.stopPropagation(); onToggleStar(); }}>
-            <Star className="w-4 h-4" fill={doc.is_starred ? "currentColor" : "none"} />
-          </button>
-        </div>
-      </div>
-      {selected && (
-        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-          <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
-        </div>
-      )}
-    </motion.div>
   );
 }
 
 // ─── New Doc Modal ────────────────────────────────────────────────────────────
 
-function NewDocModal({ isOpen, onClose, onCreate }: {
-  isOpen: boolean; onClose: () => void; onCreate: (title: string) => Promise<void>;
+function NewDocModal({
+  isOpen,
+  onClose,
+  onCreate,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onCreate: (title: string) => Promise<void>;
 }) {
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
   const handleSubmit = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    try { await onCreate(title.trim()); setTitle(""); } finally { setSaving(false); }
+    try {
+      await onCreate(title.trim());
+      setTitle("");
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-          <motion.div initial={{ opacity: 0, scale: 0.95, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="relative bg-background rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-              <h3 className="text-base font-semibold text-foreground">新建文档</h3>
+            className="bg-background relative w-full max-w-md overflow-hidden rounded-2xl shadow-xl"
+          >
+            <div className="border-border flex items-center justify-between border-b px-6 py-4">
+              <h3 className="text-foreground text-base font-semibold">
+                新建文档
+              </h3>
               <Button variant="ghost" size="icon" onClick={onClose}>
-                <X className="w-4 h-4" />
+                <X className="h-4 w-4" />
               </Button>
             </div>
             <div className="p-6">
-              <label className="block text-sm font-medium text-foreground mb-1.5">文档标题 <span className="text-destructive">*</span></label>
-              <Input autoFocus type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()} placeholder="请输入文档标题"
-                className="w-full" />
+              <label className="text-foreground mb-1.5 block text-sm font-medium">
+                文档标题 <span className="text-destructive">*</span>
+              </label>
+              <Input
+                autoFocus
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                placeholder="请输入文档标题"
+                className="w-full"
+              />
             </div>
-            <div className="px-6 py-4 bg-muted/50 border-t border-border flex items-center justify-end gap-2.5">
-              <Button variant="outline" onClick={onClose}>取消</Button>
+            <div className="bg-muted/50 border-border flex items-center justify-end gap-2.5 border-t px-6 py-4">
+              <Button variant="outline" onClick={onClose}>
+                取消
+              </Button>
               <Button onClick={handleSubmit} disabled={!title.trim() || saving}>
                 {saving ? "创建中..." : "创建"}
               </Button>
@@ -1213,7 +2086,8 @@ function ExportMenu({ onExport }: { onExport: (fmt: "md" | "docx") => void }) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -1221,13 +2095,15 @@ function ExportMenu({ onExport }: { onExport: (fmt: "md" | "docx") => void }) {
 
   return (
     <div className="relative" ref={ref}>
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <Download className="w-3.5 h-3.5" />导出
-        <ChevronDown className={cn("w-3 h-3 transition-transform ml-1", open && "rotate-180")} />
+      <Button variant="secondary" size="sm" onClick={() => setOpen((v) => !v)}>
+        <Download className="h-3.5 w-3.5" />
+        导出
+        <ChevronDown
+          className={cn(
+            "ml-1 h-3 w-3 transition-transform",
+            open && "rotate-180",
+          )}
+        />
       </Button>
       <AnimatePresence>
         {open && (
@@ -1236,28 +2112,34 @@ function ExportMenu({ onExport }: { onExport: (fmt: "md" | "docx") => void }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-1 w-44 bg-background rounded-xl shadow-xl border border-border py-1 z-50"
+            className="bg-background border-border absolute top-full right-0 z-50 mt-1 w-44 rounded-xl border py-1 shadow-xl"
           >
             <button
               type="button"
-              onClick={() => { onExport("md"); setOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+              onClick={() => {
+                onExport("md");
+                setOpen(false);
+              }}
+              className="text-foreground hover:bg-muted flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors"
             >
-              <FileText className="w-4 h-4 text-muted-foreground" />
+              <FileText className="text-muted-foreground h-4 w-4" />
               <div className="text-left">
                 <div className="font-medium">Markdown</div>
-                <div className="text-xs text-muted-foreground">.md 格式</div>
+                <div className="text-muted-foreground text-xs">.md 格式</div>
               </div>
             </button>
             <button
               type="button"
-              onClick={() => { onExport("docx"); setOpen(false); }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+              onClick={() => {
+                onExport("docx");
+                setOpen(false);
+              }}
+              className="text-foreground hover:bg-muted flex w-full items-center gap-2.5 px-3 py-2 text-sm transition-colors"
             >
-              <FileText className="w-4 h-4 text-primary" />
+              <FileText className="text-primary h-4 w-4" />
               <div className="text-left">
                 <div className="font-medium">Word 文档</div>
-                <div className="text-xs text-muted-foreground">.docx 格式</div>
+                <div className="text-muted-foreground text-xs">.docx 格式</div>
               </div>
             </button>
           </motion.div>
@@ -1269,7 +2151,17 @@ function ExportMenu({ onExport }: { onExport: (fmt: "md" | "docx") => void }) {
 
 // ─── Document Editor ──────────────────────────────────────────────────────────
 
-export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { docId: string | null; personalFile: { thread_id: string; rel_path: string; title: string } | null; projectFile: ProjectFileRef | null; onBack: () => void }) {
+export function DocumentEditor({
+  docId,
+  personalFile,
+  projectFile,
+  onBack,
+}: {
+  docId: string | null;
+  personalFile: { thread_id: string; rel_path: string; title: string } | null;
+  projectFile: ProjectFileRef | null;
+  onBack: () => void;
+}) {
   const [doc, setDoc] = useState<AIDocument | null>(null);
   const [title, setTitle] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1281,14 +2173,18 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
   const [panelWidth, setPanelWidth] = useState(420);
   const resizingRef = useRef(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [exportContent, setExportContent] = useState<string | undefined>(undefined);
+  const [exportContent, setExportContent] = useState<string | undefined>(
+    undefined,
+  );
   const [loading, setLoading] = useState(true);
   const editorRef = useRef<PersonalBlockNoteEditorRef | CollabEditorRef>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const titleRef = useRef(title);
   titleRef.current = title;
   // 最近一次待保存的保存逻辑（闭包最新 content），供 unmount flush 用。
-  const flushPendingRef = useRef<() => void>(() => {});
+  const flushPendingRef = useRef<() => void>(() => {
+    /* intentional no-op */
+  });
   // EAI-CUSTOM: 项目文件写回乐观锁——读端点返回 mtime，保存时回传；后端比对不一致返 409。
   const projectMtimeRef = useRef<number | null>(null);
 
@@ -1297,7 +2193,9 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
   const [replaceText, setReplaceText] = useState("");
-  const [findMatches, setFindMatches] = useState<Array<{ blockId: string; blockIndex: number; count: number }>>([]);
+  const [findMatches, setFindMatches] = useState<
+    Array<{ blockId: string; blockIndex: number; count: number }>
+  >([]);
   const [activeMatch, setActiveMatch] = useState(-1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const editorAreaRef = useRef<HTMLDivElement>(null);
@@ -1307,20 +2205,32 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
   const [editorKey, setEditorKey] = useState(0); // 恢复版本后强制重挂载编辑器重新 seed
 
   // AI sub-thread persisted at editor level — survives panel close/reopen
-  const aiThreadId = projectFile?.thread_id ?? personalFile?.thread_id ?? docId ?? "default";
-  const { subThreadId, ensureThread, isCreating, resetThread } = useDocAIThread(aiThreadId);
+  const aiThreadId =
+    projectFile?.thread_id ?? personalFile?.thread_id ?? docId ?? "default";
+  const { subThreadId, ensureThread, isCreating, resetThread } =
+    useDocAIThread(aiThreadId);
 
   useEffect(() => {
     setLoading(true);
     // EAI-CUSTOM: 项目文档——跨用户直读 outputs（artifacts API 是 owner-scoped，组员走 read_project_output）
     if (projectFile) {
       docmgrApi
-        .readProjectOutput(projectFile.project_id, { thread_id: projectFile.thread_id, rel_path: projectFile.rel_path })
+        .readProjectOutput(projectFile.project_id, {
+          thread_id: projectFile.thread_id,
+          rel_path: projectFile.rel_path,
+        })
         .then(({ content, mtime }) => {
           projectMtimeRef.current = mtime;
           const lang = getLanguageFromName(projectFile.title);
-          const displayContent = lang ? "```" + lang + "\n" + content + "\n```" : content;
-          setDoc({ id: "project", title: projectFile.title, content: displayContent, doc_type: "file_ref" } as AIDocument);
+          const displayContent = lang
+            ? "```" + lang + "\n" + content + "\n```"
+            : content;
+          setDoc({
+            id: "project",
+            title: projectFile.title,
+            content: displayContent,
+            doc_type: "file_ref",
+          } as AIDocument);
           setTitle(projectFile.title);
           setLoading(false);
         })
@@ -1335,92 +2245,147 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
         .then((content) => {
           // 代码文件用代码块包裹（在 markdown 编辑器里有语法高亮 + 等宽显示）
           const lang = getLanguageFromName(personalFile.title);
-          const displayContent = lang ? "```" + lang + "\n" + content + "\n```" : content;
-          setDoc({ id: "personal", title: personalFile.title, content: displayContent, doc_type: "file_ref" } as AIDocument);
+          const displayContent = lang
+            ? "```" + lang + "\n" + content + "\n```"
+            : content;
+          setDoc({
+            id: "personal",
+            title: personalFile.title,
+            content: displayContent,
+            doc_type: "file_ref",
+          } as AIDocument);
           setTitle(personalFile.title);
           setLoading(false);
         })
         .catch(() => setLoading(false));
       return;
     }
-    if (!docId) { setLoading(false); return; }
-    docmgrApi.get(docId).then(async (d) => {
-      // For file_ref documents, load file content via preview API
-      if (d.doc_type === "file_ref" && !d.content) {
-        try {
-          const preview = await docmgrApi.preview(docId);
-          if (preview.content) {
-            d = { ...d, content: preview.content };
-          }
-        } catch { /* fall through with empty content */ }
-      }
-      setDoc(d);
-      setTitle(d.title);
+    if (!docId) {
       setLoading(false);
-    }).catch(() => setLoading(false));
+      return;
+    }
+    docmgrApi
+      .get(docId)
+      .then(async (d) => {
+        // For file_ref documents, load file content via preview API
+        if (d.doc_type === "file_ref" && !d.content) {
+          try {
+            const preview = await docmgrApi.preview(docId);
+            if (preview.content) {
+              d = { ...d, content: preview.content };
+            }
+          } catch {
+            /* fall through with empty content */
+          }
+        }
+        setDoc(d);
+        setTitle(d.title);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, [docId, personalFile, projectFile]);
 
-  const scheduleSave = useCallback((content: string) => {
-    setSaved(false);
-    setSaveError(null);
-    setDocStats(computeDocStats(content));
-    clearTimeout(saveTimer.current);
-    // 具体保存逻辑闭包最新 content；unmount flush 与防抖超时都走它。
-    const doSave = async () => {
-      setSaving(true);
-      try {
-        if (projectFile) {
-          // EAI-CUSTOM: 项目文件跨用户写回，带 mtime 乐观锁；保存成功后更新 mtime 供下次比对
-          let saveContent = content;
-          if (getLanguageFromName(projectFile.title)) {
-            const m = content.match(/^```[^\n]*\n([\s\S]*)\n```\s*$/);
-            if (m) saveContent = m[1]!;
+  const scheduleSave = useCallback(
+    (content: string) => {
+      setSaved(false);
+      setSaveError(null);
+      setDocStats(computeDocStats(content));
+      clearTimeout(saveTimer.current);
+      // 具体保存逻辑闭包最新 content；unmount flush 与防抖超时都走它。
+      const doSave = async () => {
+        setSaving(true);
+        try {
+          if (projectFile) {
+            // EAI-CUSTOM: 项目文件跨用户写回，带 mtime 乐观锁；保存成功后更新 mtime 供下次比对
+            let saveContent = content;
+            if (getLanguageFromName(projectFile.title)) {
+              const m = /^```[^\n]*\n([\s\S]*)\n```\s*$/.exec(content);
+              if (m) saveContent = m[1]!;
+            }
+            const res = await docmgrApi.saveProjectContent(
+              projectFile.project_id,
+              {
+                thread_id: projectFile.thread_id,
+                rel_path: projectFile.rel_path,
+                content: saveContent,
+                if_mtime: projectMtimeRef.current ?? undefined,
+              },
+            );
+            projectMtimeRef.current = res.mtime;
+          } else if (personalFile) {
+            // 代码文件在编辑器里被 ```lang 包裹，保存时去掉 fence 写回原始内容
+            let saveContent = content;
+            if (getLanguageFromName(personalFile.title)) {
+              const m = /^```[^\n]*\n([\s\S]*)\n```\s*$/.exec(content);
+              if (m) saveContent = m[1]!;
+            }
+            await docmgrApi.savePersonalContent(personalFile.thread_id, {
+              rel_path: personalFile.rel_path,
+              content: saveContent,
+            });
+          } else if (docId) {
+            await docmgrApi.update(docId, { title: titleRef.current, content });
           }
-          const res = await docmgrApi.saveProjectContent(projectFile.project_id, {
-            thread_id: projectFile.thread_id,
-            rel_path: projectFile.rel_path,
-            content: saveContent,
-            if_mtime: projectMtimeRef.current ?? undefined,
-          });
-          projectMtimeRef.current = res.mtime;
-        } else if (personalFile) {
-          // 代码文件在编辑器里被 ```lang 包裹，保存时去掉 fence 写回原始内容
-          let saveContent = content;
-          if (getLanguageFromName(personalFile.title)) {
-            const m = content.match(/^```[^\n]*\n([\s\S]*)\n```\s*$/);
-            if (m) saveContent = m[1]!;
-          }
-          await docmgrApi.savePersonalContent(personalFile.thread_id, { rel_path: personalFile.rel_path, content: saveContent });
-        } else if (docId) {
-          await docmgrApi.update(docId, { title: titleRef.current, content });
+          setSaved(true);
+          setSaveError(null);
+          setSavedAt(
+            new Date().toLocaleTimeString("zh-CN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+              hour12: false,
+            }),
+          );
+        } catch (e) {
+          // 保存失败不再静默 —— 顶部栏展示错误，用户可继续编辑触发重试
+          // 409 = 并发写回冲突（mtime 乐观锁），提示刷新
+          const status =
+            typeof e === "object" && e !== null && "status" in e
+              ? (e as { status?: unknown }).status
+              : undefined;
+          setSaveError(
+            status === 409
+              ? "文件已被他人修改，请刷新后重试"
+              : getErrorMessage(e, "保存失败，请重试"),
+          );
+          console.error("[docmgr] save failed:", e);
+        } finally {
+          setSaving(false);
         }
-        setSaved(true);
-        setSaveError(null);
-        setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
-      } catch (e: any) {
-        // 保存失败不再静默 —— 顶部栏展示错误，用户可继续编辑触发重试
-        // 409 = 并发写回冲突（mtime 乐观锁），提示刷新
-        setSaveError(e?.status === 409 ? "文件已被他人修改，请刷新后重试" : e?.message || "保存失败，请重试");
-        console.error("[docmgr] save failed:", e);
-      } finally { setSaving(false); }
-    };
-    flushPendingRef.current = () => { void doSave(); };
-    saveTimer.current = setTimeout(() => {
-      flushPendingRef.current = () => {};
-      void doSave();
-    }, 1500);
-  }, [docId, personalFile, projectFile]);
+      };
+      flushPendingRef.current = () => {
+        void doSave();
+      };
+      saveTimer.current = setTimeout(() => {
+        flushPendingRef.current = () => {
+          /* intentional no-op */
+        };
+        void doSave();
+      }, 1500);
+    },
+    [docId, personalFile, projectFile],
+  );
 
   const handleTitleBlur = async () => {
     if (!doc || title === doc.title || personalFile || projectFile) return;
     if (!docId) return;
     setSaving(true);
     try {
-      const content = (await editorRef.current?.getMarkdown()) ?? doc.content ?? "";
+      const content =
+        (await editorRef.current?.getMarkdown()) ?? doc.content ?? "";
       await docmgrApi.update(docId, { title, content });
       setSaved(true);
-      setSavedAt(new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false }));
-    } finally { setSaving(false); }
+      setSavedAt(
+        new Date().toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }),
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   // 防抖窗口内卸载（关闭编辑器/切档/刷新）时 flush 最近一次待保存内容，避免丢未落盘编辑
@@ -1428,7 +2393,9 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
     return () => {
       clearTimeout(saveTimer.current);
       flushPendingRef.current();
-      flushPendingRef.current = () => {};
+      flushPendingRef.current = () => {
+        /* intentional no-op */
+      };
     };
   }, []);
 
@@ -1452,12 +2419,20 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
 
   // 查找: 打开或 query 变化时实时搜索（个人 BlockNote 编辑器）
   const runFind = (target = 0) => {
-    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const bn =
+      editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
     const q = findQuery.trim();
-    if (!q || !bn?.findText) { setFindMatches([]); setActiveMatch(-1); return; }
+    if (!q || !bn?.findText) {
+      setFindMatches([]);
+      setActiveMatch(-1);
+      return;
+    }
     const m = bn.findText(q);
     setFindMatches(m);
-    if (!m.length) { setActiveMatch(-1); return; }
+    if (!m.length) {
+      setActiveMatch(-1);
+      return;
+    }
     const idx = Math.min(target, m.length - 1);
     setActiveMatch(idx);
     bn.scrollToBlock?.(m[idx]!.blockId);
@@ -1469,15 +2444,18 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
 
   const goMatch = (delta: number) => {
     if (!findMatches.length) return;
-    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
-    const next = (activeMatch + delta + findMatches.length) % findMatches.length;
+    const bn =
+      editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const next =
+      (activeMatch + delta + findMatches.length) % findMatches.length;
     setActiveMatch(next);
     bn?.scrollToBlock?.(findMatches[next]!.blockId);
   };
 
   const replaceOne = () => {
     if (activeMatch < 0 || !findMatches.length) return;
-    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const bn =
+      editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
     const q = findQuery.trim();
     if (!q || !bn?.replaceInBlock) return;
     bn.replaceInBlock(findMatches[activeMatch]!.blockId, q, replaceText);
@@ -1485,7 +2463,8 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
   };
 
   const replaceAll = () => {
-    const bn = editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
+    const bn =
+      editorRef.current as unknown as PersonalBlockNoteEditorRef | null;
     const q = findQuery.trim();
     if (!q || !bn?.replaceInBlock) return;
     for (const m of findMatches) bn.replaceInBlock(m.blockId, q, replaceText);
@@ -1512,7 +2491,9 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
     if (fmt === "docx") {
       // ponytail: capture live editor markdown so personal/thread files (docId=null)
       // can export via the content-based endpoint.
-      setExportContent((await editorRef.current?.getMarkdown()) ?? doc?.content ?? "");
+      setExportContent(
+        (await editorRef.current?.getMarkdown()) ?? doc?.content ?? "",
+      );
       setShowExportDialog(true);
       return;
     }
@@ -1521,7 +2502,9 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
       const blob = new Blob([doc?.content ?? ""], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url; a.download = `${title}.${fmt}`; a.click();
+      a.href = url;
+      a.download = `${title}.${fmt}`;
+      a.click();
       URL.revokeObjectURL(url);
       return;
     }
@@ -1529,65 +2512,123 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `${title}.${fmt}`; a.click();
+    a.href = url;
+    a.download = `${title}.${fmt}`;
+    a.click();
     URL.revokeObjectURL(url);
   };
 
   // 项目文档用 CollabEditor（无 undo/redo/find 能力），个人文档用 PersonalBlockNoteEditor
   const isCollab = !!doc?.project_id;
-  if (loading) return <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">加载中...</div>;
+  if (loading)
+    return (
+      <div className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
+        加载中...
+      </div>
+    );
 
   return (
-    <div className="h-full flex-1 flex flex-col overflow-hidden bg-background">
-      <div className="shrink-0 bg-background border-b border-border z-20">
-        <div className="h-11 flex items-center justify-between px-4 gap-4">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
+    <div className="bg-background flex h-full flex-1 flex-col overflow-hidden">
+      <div className="bg-background border-border z-20 shrink-0 border-b">
+        <div className="flex h-11 items-center justify-between gap-4 px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
               onClick={onBack}
               className="shrink-0"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleBlur}
-              className="text-lg font-semibold bg-transparent border-none outline-none min-w-0 flex-1 truncate"
+              className="min-w-0 flex-1 truncate border-none bg-transparent text-lg font-semibold outline-none"
               placeholder="无标题文档"
             />
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-xs text-muted-foreground mr-1 select-none whitespace-nowrap">{docStats.words} 字 · {docStats.chars} 字符</span>
-            <span className="flex items-center gap-1.5 text-xs mr-2 select-none">
+          <div className="flex shrink-0 items-center gap-1">
+            <span className="text-muted-foreground mr-1 text-xs whitespace-nowrap select-none">
+              {docStats.words} 字 · {docStats.chars} 字符
+            </span>
+            <span className="mr-2 flex items-center gap-1.5 text-xs select-none">
               {saveError ? (
-                <span className="flex items-center gap-1.5 text-red-600" title={saveError}>
-                  <AlertCircle className="w-3.5 h-3.5" />{saveError}
+                <span
+                  className="flex items-center gap-1.5 text-red-600"
+                  title={saveError}
+                >
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {saveError}
                 </span>
               ) : saving ? (
-                <span className="flex items-center gap-1.5 text-muted-foreground"><Loader2 className="w-3.5 h-3.5 animate-spin" />保存中...</span>
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  保存中...
+                </span>
               ) : savedAt ? (
-                <span className="flex items-center gap-1.5 text-muted-foreground"><CheckCircle2 className="w-3.5 h-3.5 text-success" />已保存于 {savedAt}</span>
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <CheckCircle2 className="text-success h-3.5 w-3.5" />
+                  已保存于 {savedAt}
+                </span>
               ) : null}
             </span>
-            <Button variant="ghost" size="icon" disabled={isCollab} onClick={() => (editorRef.current as any)?.undo?.()} title="撤销 (Ctrl+Z)">
-              <Undo2 className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={isCollab}
+              onClick={() =>
+                (
+                  editorRef.current as PersonalBlockNoteEditorRef | null
+                )?.undo?.()
+              }
+              title="撤销 (Ctrl+Z)"
+            >
+              <Undo2 className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" disabled={isCollab} onClick={() => (editorRef.current as any)?.redo?.()} title="重做 (Ctrl+Y)">
-              <Redo2 className="w-4 h-4" />
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={isCollab}
+              onClick={() =>
+                (
+                  editorRef.current as PersonalBlockNoteEditorRef | null
+                )?.redo?.()
+              }
+              title="重做 (Ctrl+Y)"
+            >
+              <Redo2 className="h-4 w-4" />
             </Button>
             {!isCollab && (
-              <Button variant={findOpen ? "secondary" : "ghost"} size="icon" onClick={() => setFindOpen((v) => !v)} title="查找 / 替换">
-                <Search className="w-4 h-4" />
+              <Button
+                variant={findOpen ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => setFindOpen((v) => !v)}
+                title="查找 / 替换"
+              >
+                <Search className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="ghost" size="icon" onClick={toggleFullscreen} title={isFullscreen ? "退出全屏" : "全屏专注"}>
-              {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "退出全屏" : "全屏专注"}
+            >
+              {isFullscreen ? (
+                <Minimize className="h-4 w-4" />
+              ) : (
+                <Maximize className="h-4 w-4" />
+              )}
             </Button>
             {!isCollab && (
-              <Button variant="ghost" size="icon" onClick={() => setShowVersions(true)} title="版本历史">
-                <History className="w-4 h-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowVersions(true)}
+                title="版本历史"
+              >
+                <History className="h-4 w-4" />
               </Button>
             )}
             <Button
@@ -1600,16 +2641,21 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
                 setShowAI((v) => !v);
               }}
             >
-              {!showAI && isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : null}
+              {!showAI && isCreating ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : null}
               AI 助手
             </Button>
             <Button
               variant="ghost"
               size="icon"
-              onClick={async () => { const md = (await editorRef.current?.getMarkdown()) ?? ""; navigator.clipboard.writeText(md); }}
+              onClick={async () => {
+                const md = (await editorRef.current?.getMarkdown()) ?? "";
+                void navigator.clipboard.writeText(md);
+              }}
               title="复制内容"
             >
-              <Copy className="w-4 h-4" />
+              <Copy className="h-4 w-4" />
             </Button>
             <ExportMenu onExport={handleExport} />
           </div>
@@ -1617,13 +2663,20 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
       </div>
       {findOpen && (
         <div
-          className="flex items-center gap-2 px-3 py-1.5 border-b border-border text-xs bg-muted/20"
-          onKeyDown={(e) => { if (e.key === "Escape") setFindOpen(false); }}
+          className="border-border bg-muted/20 flex items-center gap-2 border-b px-3 py-1.5 text-xs"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setFindOpen(false);
+          }}
         >
           <Input
             value={findQuery}
             onChange={(e) => setFindQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); goMatch(1); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                goMatch(1);
+              }
+            }}
             placeholder="查找"
             className="h-7 w-44 text-xs"
             autoFocus
@@ -1631,30 +2684,73 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
           <Input
             value={replaceText}
             onChange={(e) => setReplaceText(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); replaceOne(); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                replaceOne();
+              }
+            }}
             placeholder="替换为"
             className="h-7 w-32 text-xs"
           />
-          <span className="text-muted-foreground shrink-0 min-w-[3em] text-center">
-            {findMatches.length > 0 ? `${activeMatch + 1}/${findMatches.length}` : "无结果"}
+          <span className="text-muted-foreground min-w-[3em] shrink-0 text-center">
+            {findMatches.length > 0
+              ? `${activeMatch + 1}/${findMatches.length}`
+              : "无结果"}
           </span>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goMatch(-1)} disabled={!findMatches.length} title="上一个 (Shift+Enter)">
-            <ChevronUp className="w-3.5 h-3.5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => goMatch(-1)}
+            disabled={!findMatches.length}
+            title="上一个 (Shift+Enter)"
+          >
+            <ChevronUp className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => goMatch(1)} disabled={!findMatches.length} title="下一个 (Enter)">
-            <ChevronDown className="w-3.5 h-3.5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => goMatch(1)}
+            disabled={!findMatches.length}
+            title="下一个 (Enter)"
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={replaceOne} disabled={!findMatches.length}>替换</Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs px-2" onClick={replaceAll} disabled={!findMatches.length}>全部替换</Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7 ml-auto" onClick={() => setFindOpen(false)} title="关闭 (Esc)">
-            <X className="w-3.5 h-3.5" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={replaceOne}
+            disabled={!findMatches.length}
+          >
+            替换
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={replaceAll}
+            disabled={!findMatches.length}
+          >
+            全部替换
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="ml-auto h-7 w-7"
+            onClick={() => setFindOpen(false)}
+            title="关闭 (Esc)"
+          >
+            <X className="h-3.5 w-3.5" />
           </Button>
         </div>
       )}
-      <div className="flex-1 flex overflow-hidden" ref={editorAreaRef}>
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {doc !== null && (
-            doc.project_id ? (
+      <div className="flex flex-1 overflow-hidden" ref={editorAreaRef}>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {doc !== null &&
+            (doc.project_id ? (
               <CollabEditor
                 ref={editorRef as React.Ref<CollabEditorRef>}
                 documentId={docId ?? ""}
@@ -1670,67 +2766,83 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
                 initialContent={doc.content ?? ""}
                 onChange={scheduleSave}
                 className="flex-1"
-                hideSideMenu={!!getLanguageFromName(personalFile?.title ?? doc?.title ?? "")}
+                hideSideMenu={
+                  !!getLanguageFromName(personalFile?.title ?? doc?.title ?? "")
+                }
               />
-            )
-          )}
+            ))}
         </div>
         <AnimatePresence>
-          {showAI && (() => {
-            const aiDocTitle = personalFile?.title ?? title ?? "untitled";
-            const aiRelPath = personalFile?.rel_path ?? `${aiDocTitle}.md`;
-            return (
-            <>
-            {/* Resize handle */}
-            <div
-              className="w-1.5 hover:w-1.5 cursor-col-resize hover:bg-primary/30 active:bg-primary/50 transition-colors shrink-0 relative group"
-              onMouseDown={(e) => {
-                e.preventDefault();
-                resizingRef.current = true;
-                const startX = e.clientX;
-                const startWidth = panelWidth;
-                const onMove = (ev: MouseEvent) => {
-                  const delta = startX - ev.clientX;
-                  setPanelWidth(Math.max(280, Math.min(800, startWidth + delta)));
-                };
-                const onUp = () => {
-                  resizingRef.current = false;
-                  document.removeEventListener("mousemove", onMove);
-                  document.removeEventListener("mouseup", onUp);
-                  document.body.style.cursor = "";
-                  document.body.style.userSelect = "";
-                };
-                document.body.style.cursor = "col-resize";
-                document.body.style.userSelect = "none";
-                document.addEventListener("mousemove", onMove);
-                document.addEventListener("mouseup", onUp);
-              }}
-            >
-              <div className="absolute inset-y-0 -left-1 -right-1" />
-            </div>
-            <motion.div initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: panelWidth }}
-              exit={{ opacity: 0, width: 0 }} transition={{ duration: 0.2 }}
-              className="border-l border-border overflow-hidden shrink-0">
-              <DocAIAgentPanel
-                key={aiPanelKey}
-                docTitle={aiDocTitle}
-                docRelPath={aiRelPath}
-                threadId={aiThreadId}
-                editorRef={editorRef as React.RefObject<PersonalBlockNoteEditorRef | null>}
-                onClose={() => setShowAI(false)}
-                subThreadId={subThreadId}
-                ensureThread={ensureThread}
-                isCreating={isCreating}
-                resetThread={resetThread}
-                onClearHistory={() => setAiPanelKey((k) => k + 1)}
-              />
-            </motion.div>
-            </>
-            );
-          })()}
+          {showAI &&
+            (() => {
+              const aiDocTitle = personalFile?.title ?? title ?? "untitled";
+              const aiRelPath = personalFile?.rel_path ?? `${aiDocTitle}.md`;
+              return (
+                <>
+                  {/* Resize handle */}
+                  <div
+                    className="hover:bg-primary/30 active:bg-primary/50 group relative w-1.5 shrink-0 cursor-col-resize transition-colors hover:w-1.5"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      resizingRef.current = true;
+                      const startX = e.clientX;
+                      const startWidth = panelWidth;
+                      const onMove = (ev: MouseEvent) => {
+                        const delta = startX - ev.clientX;
+                        setPanelWidth(
+                          Math.max(280, Math.min(800, startWidth + delta)),
+                        );
+                      };
+                      const onUp = () => {
+                        resizingRef.current = false;
+                        document.removeEventListener("mousemove", onMove);
+                        document.removeEventListener("mouseup", onUp);
+                        document.body.style.cursor = "";
+                        document.body.style.userSelect = "";
+                      };
+                      document.body.style.cursor = "col-resize";
+                      document.body.style.userSelect = "none";
+                      document.addEventListener("mousemove", onMove);
+                      document.addEventListener("mouseup", onUp);
+                    }}
+                  >
+                    <div className="absolute inset-y-0 -right-1 -left-1" />
+                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: panelWidth }}
+                    exit={{ opacity: 0, width: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="border-border shrink-0 overflow-hidden border-l"
+                  >
+                    <DocAIAgentPanel
+                      key={aiPanelKey}
+                      docTitle={aiDocTitle}
+                      docRelPath={aiRelPath}
+                      threadId={aiThreadId}
+                      editorRef={
+                        editorRef as React.RefObject<PersonalBlockNoteEditorRef | null>
+                      }
+                      onClose={() => setShowAI(false)}
+                      subThreadId={subThreadId}
+                      ensureThread={ensureThread}
+                      isCreating={isCreating}
+                      resetThread={resetThread}
+                      onClearHistory={() => setAiPanelKey((k) => k + 1)}
+                    />
+                  </motion.div>
+                </>
+              );
+            })()}
         </AnimatePresence>
       </div>
-      <ExportDocxDialog docId={docId} docTitle={title} content={exportContent} open={showExportDialog} onOpenChange={setShowExportDialog} />
+      <ExportDocxDialog
+        docId={docId}
+        docTitle={title}
+        content={exportContent}
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+      />
       {!isCollab && (
         <VersionHistoryDialog
           threadId={personalFile?.thread_id ?? docId ?? ""}
@@ -1738,410 +2850,11 @@ export function DocumentEditor({ docId, personalFile, projectFile, onBack }: { d
           open={showVersions}
           onOpenChange={setShowVersions}
           onRestored={handleRestored}
-          getCurrentContent={async () => (await editorRef.current?.getMarkdown()) ?? ""}
+          getCurrentContent={async () =>
+            (await editorRef.current?.getMarkdown()) ?? ""
+          }
         />
       )}
-    </div>
-  );
-}
-
-// ─── AI Edit Panel ────────────────────────────────────────────────────────────
-
-const AI_OPS: { key: AIOperation; label: string; icon: React.ReactNode }[] = [
-  { key: "polish",     label: "润色",    icon: <Wand2 className="w-3 h-3" /> },
-  { key: "expand",     label: "扩写",    icon: <BookOpen className="w-3 h-3" /> },
-  { key: "condense",   label: "缩写",    icon: <Scissors className="w-3 h-3" /> },
-];
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  operation?: AIOperation;
-}
-
-const SUGGESTED_PROMPTS = [
-  "请阅读全文并总结要点",
-  "帮我优化文档结构",
-];
-
-function AIEditPanel({ docKey, onClose, getSelectedText, getFullText, getCursorParagraph, onResult, onInsert, onHighlightSelection, onClearHighlight }: {
-  docKey: string;
-  onClose: () => void;
-  getSelectedText: () => string;
-  getFullText: () => string;
-  getCursorParagraph: () => string;
-  onResult: (text: string) => void;
-  onInsert: (text: string) => void;
-  onHighlightSelection: () => void;
-  onClearHighlight: () => void;
-}) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  // 对话持久化缓存：按 docKey 缓存最近 50 条消息
-  const chatCache = useRef<Map<string, ChatMessage[]>>(new Map());
-  const prevDocKey = useRef<string>(docKey);
-
-  // 切换文档时保存/恢复对话
-  if (prevDocKey.current !== docKey) {
-    // 保存当前对话
-    if (messages.length > 0) {
-      chatCache.current.set(prevDocKey.current, messages.slice(-50));
-    }
-    // 恢复目标文档对话（或空数组）
-    setMessages(chatCache.current.get(docKey) ?? []);
-    prevDocKey.current = docKey;
-  }
-
-  const [input, setInput] = useState("");
-  const [activeOp, setActiveOp] = useState<AIOperation>("polish");
-  const [modelName, setModelName] = useState<string | null>(null);
-  const [running, setRunning] = useState(false);
-  const [modelMenuOpen, setModelMenuOpen] = useState(false);
-  const [hasSelection, setHasSelection] = useState(false);
-  const { models } = useModels();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const modelMenuRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
-
-  useEffect(() => {
-    return () => { abortRef.current?.abort(); };
-  }, []);
-
-  const selectedModelLabel = modelName
-    ? models.find((m) => m.name === modelName)?.display_name ?? modelName
-    : "默认模型";
-
-  const scrollToBottom = () => {
-    requestAnimationFrame(() => {
-      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    });
-  };
-
-  const resetInputHeight = () => {
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-    }
-  };
-
-  const autoResizeInput = () => {
-    const el = inputRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
-  };
-
-  useEffect(() => {
-    if (!modelMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) setModelMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [modelMenuOpen]);
-
-  useEffect(() => {
-    const handler = () => setHasSelection(!!getSelectedText().trim());
-    document.addEventListener("selectionchange", handler);
-    return () => document.removeEventListener("selectionchange", handler);
-  }, [getSelectedText]);
-
-  const sendMessage = async (text: string, operation?: AIOperation, displayContent?: string) => {
-    const capturedDocKey = docKey;
-    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content: displayContent ?? text, operation };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    resetInputHeight();
-    setRunning(true);
-    scrollToBottom();
-
-    const assistantId = crypto.randomUUID();
-    const assistantMsg: ChatMessage = { id: assistantId, role: "assistant", content: "" };
-    setMessages((prev) => [...prev, assistantMsg]);
-
-    const abortController = new AbortController();
-    abortRef.current = abortController;
-
-    try {
-      await docmgrApi.aiEditStream(
-        { text, operation: operation ?? activeOp, model_name: modelName ?? undefined },
-        (token) => {
-          if (capturedDocKey !== docKey) return;
-          setMessages((prev) =>
-            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + token } : m)),
-          );
-          scrollToBottom();
-        },
-        abortController.signal,
-      );
-    } catch (e) {
-      if (capturedDocKey !== docKey) return;
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, content: `⚠️ ${e instanceof Error ? e.message : "AI 处理失败"}` }
-            : m,
-        ),
-      );
-    } finally {
-      if (abortRef.current === abortController) abortRef.current = null;
-      setRunning(false);
-      scrollToBottom();
-    }
-  };
-
-  const handleSubmit = () => {
-    const trimmed = input.trim();
-    if (!trimmed || running) return;
-    const selected = getSelectedText();
-    if (selected.trim()) onHighlightSelection(); else onClearHighlight();
-    const text = selected.trim() ? `${trimmed}\n\n【选中文字】：\n${selected}` : trimmed;
-    void sendMessage(text, "chat");
-  };
-
-  const handleQuickAction = (op: AIOperation) => {
-    if (running) return;
-    setActiveOp(op);
-    const selected = getSelectedText();
-    if (selected.trim()) {
-      onHighlightSelection();
-      void sendMessage(selected, op);
-    } else {
-      onClearHighlight();
-      // 无选中时：作用于光标所在段落（无则退回全文）
-      const actionText = getCursorParagraph() || getFullText();
-      if (!actionText.trim()) return;
-      void sendMessage(actionText, op);
-    }
-  };
-
-  const handleSuggestedPrompt = (prompt: string) => {
-    const selected = getSelectedText();
-    if (selected.trim()) onHighlightSelection(); else onClearHighlight();
-    const fullText = getFullText();
-    const apiText = selected.trim()
-      ? `${prompt}\n\n【选中文字】：\n${selected}`
-      : `${prompt}\n\n【文档全文】：\n${fullText}`;
-    void sendMessage(apiText, "chat", prompt);
-  };
-
-  const handleCopy = async (content: string) => {
-    await navigator.clipboard.writeText(content);
-  };
-
-  const handleReplace = (content: string) => {
-    onResult(content);
-  };
-
-  const handleNewChat = () => {
-    setMessages([]);
-    setInput("");
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    }
-  };
-
-  return (
-    <div className="w-[360px] h-full flex flex-col bg-background">
-      {/* Header */}
-      <div className="px-4 py-2.5 border-b border-border flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">AI 助手</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNewChat} title="新对话">
-            <RefreshCw className="w-3.5 h-3.5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-            <X className="w-3.5 h-3.5" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Quick action pills */}
-      <div className="px-4 py-2 border-b border-border/60 shrink-0">
-        <div className="flex gap-1.5 flex-wrap">
-          {AI_OPS.map(({ key, label, icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => handleQuickAction(key)}
-              className={cn(
-                "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[13px] font-medium transition-all border",
-                activeOp === key
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              {icon}{label}
-            </button>
-          ))}
-        </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5">
-          {hasSelection ? "将对选中文字执行操作" : "将对全文执行操作（可选中文字后精确操作）"}
-        </p>
-      </div>
-
-      {/* Message area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          /* Empty state */
-          <div className="flex flex-col items-center justify-center h-full px-6 text-center">
-            <div className="text-3xl mb-3 opacity-40">💬</div>
-            <div className="text-sm font-medium text-foreground mb-1">AI 文档助手</div>
-            <div className="text-[13px] text-muted-foreground leading-relaxed mb-4">
-              在编辑器中选中文字，选择操作后发送<br />或在下方直接输入自定义指令
-            </div>
-            <div className="w-full space-y-2">
-              {SUGGESTED_PROMPTS.map((prompt) => (
-                <button
-                  key={prompt}
-                  type="button"
-                  onClick={() => handleSuggestedPrompt(prompt)}
-                  className="w-full text-left px-3 py-2 border border-border rounded-lg text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                >
-                  {prompt}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          /* Conversation */
-          <div className="p-4 space-y-4">
-            {messages.map((msg) => (
-              msg.role === "user" ? (
-                /* User message */
-                <div key={msg.id} className="flex justify-end">
-                  <div className="bg-blue-50 border border-blue-200 text-slate-800 px-3 py-2 rounded-2xl rounded-br-sm max-w-[85%] text-xs leading-relaxed">
-                    {msg.operation && msg.operation !== "chat" && (
-                      <div className="text-[10px] opacity-70 mb-1">{AI_OPS.find((o) => o.key === msg.operation)?.label}</div>
-                    )}
-                    {msg.content}
-                  </div>
-                </div>
-              ) : (
-                /* Assistant message */
-                <div key={msg.id}>
-                  <div className="bg-muted border border-border rounded-2xl rounded-bl-sm px-3 py-2.5 text-xs leading-relaxed text-foreground prose prose-xs prose-neutral max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0 [&_strong]:text-foreground [&_code]:text-primary [&_pre]:bg-background [&_pre]:rounded-lg [&_pre]:p-2 [&_blockquote]:border-primary [&_blockquote]:pl-2.5">
-                    {msg.content ? (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-muted-foreground/70 italic">
-                        <Loader2 className="w-3 h-3 animate-spin" />正在思考...
-                      </span>
-                    )}
-                  </div>
-                  {msg.content.trim() && !msg.content.startsWith("⚠️") && (
-                    <div className="mt-1.5 flex gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleReplace(msg.content)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-primary/30 text-primary text-[11px] hover:bg-primary/10 transition-colors"
-                      >
-                        <Wand2 className="w-3 h-3" />替换
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onInsert(msg.content)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border text-muted-foreground text-[11px] hover:bg-muted transition-colors"
-                      >
-                        <Plus className="w-3 h-3" />插入
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleCopy(msg.content)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border text-muted-foreground text-[11px] hover:bg-muted transition-colors"
-                      >
-                        <Copy className="w-3 h-3" />复制
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Bottom input bar */}
-      <div className="px-3 py-3 shrink-0">
-        <div className="bg-muted/30 border border-gray-200 rounded-2xl px-3 py-2">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => { setInput(e.target.value); autoResizeInput(); }}
-            onFocus={() => { if (getSelectedText().trim()) onHighlightSelection(); else onClearHighlight(); }}
-            onKeyDown={handleKeyDown}
-            placeholder="输入指令或直接发送..."
-            rows={1}
-            className="w-full border-none outline-none bg-transparent text-[13px] text-foreground min-w-0 placeholder:text-gray-400 resize-none leading-relaxed max-h-[120px]"
-          />
-          <div className="flex items-center justify-between mt-1.5">
-            {models.length > 0 ? (
-              <div ref={modelMenuRef} className="relative shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setModelMenuOpen((v) => !v)}
-                  className="flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground transition-colors rounded-md px-1.5 py-0.5 hover:bg-muted"
-                >
-                  <span className="max-w-[72px] truncate">{selectedModelLabel}</span>
-                  <ChevronDown className={cn("w-2.5 h-2.5 transition-transform", modelMenuOpen && "rotate-180")} />
-                </button>
-                <AnimatePresence>
-                  {modelMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 4 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute bottom-full left-0 mb-2 w-40 bg-background rounded-xl shadow-lg border border-border py-1 z-50"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => { setModelName(null); setModelMenuOpen(false); }}
-                        className={cn("w-full flex items-center gap-2 px-3 py-1.5 text-[13px] transition-colors",
-                          !modelName ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
-                      >
-                        <span>默认模型</span>
-                      </button>
-                      {models.map((m) => (
-                        <button
-                          key={m.name}
-                          type="button"
-                          onClick={() => { setModelName(m.name); setModelMenuOpen(false); }}
-                          className={cn("w-full flex items-center gap-2 px-3 py-1.5 text-[13px] transition-colors",
-                            modelName === m.name ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-muted hover:text-foreground")}
-                        >
-                          <span className="truncate">{m.display_name || m.name}</span>
-                          {modelName === m.name && <CheckCircle2 className="w-3 h-3 ml-auto" />}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            ) : <div />}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={running || !input.trim()}
-              className={cn(
-                "w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors",
-                input.trim() && !running
-                  ? "bg-primary text-primary-foreground hover:opacity-90"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ArrowUp className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

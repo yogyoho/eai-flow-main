@@ -1,9 +1,18 @@
 "use client";
 
-import { ArrowLeft, ChevronDown, ChevronUp, Loader2, CheckCircle2, Send, Save, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  CheckCircle2,
+  Send,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { AdminSelect } from "@/components/ui/admin-select";
@@ -13,9 +22,15 @@ import { usePermission } from "@/core/permissions";
 import { deptApi } from "@/extensions/api/index";
 import { useReportTypes } from "@/extensions/project/hooks/useReportTypes";
 import { workflowApi } from "@/extensions/workflow/api";
-import { isLegacyGraph, migrateLegacyToUnified } from "@/extensions/workflow/templates/migration";
+import {
+  isLegacyGraph,
+  migrateLegacyToUnified,
+} from "@/extensions/workflow/templates/migration";
 import type { WorkflowGraph } from "@/extensions/workflow/types";
-import { WorkflowEditor, type WorkflowEditorHandle } from "@/extensions/workflow/WorkflowEditor";
+import {
+  WorkflowEditor,
+  type WorkflowEditorHandle,
+} from "@/extensions/workflow/WorkflowEditor";
 
 interface DeptItem {
   id: string;
@@ -40,9 +55,13 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   const [description, setDescription] = useState("");
   const [visibleDeptIds, setVisibleDeptIds] = useState<string[]>([]);
   const [templateStatus, setTemplateStatus] = useState<string>("draft");
-  const [orgBindings, setOrgBindings] = useState<Record<string, { deptCode?: string }>>({});
+  const [orgBindings, setOrgBindings] = useState<
+    Record<string, { deptCode?: string }>
+  >({});
 
-  const [initialGraphJson, setInitialGraphJson] = useState<WorkflowGraph | undefined>(undefined);
+  const [initialGraphJson, setInitialGraphJson] = useState<
+    WorkflowGraph | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(!!templateId);
   const [saving, setSaving] = useState(false);
   const [validating, setValidating] = useState(false);
@@ -50,20 +69,31 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
   const [departments, setDepartments] = useState<DeptItem[]>([]);
   useEffect(() => {
-    deptApi.list({ limit: 100 }).then((res) => {
-      // The API returns a tree (parent nodes with children). Flatten it.
-      const tree = (res.departments || []) as Array<DeptItem & { children?: DeptItem[] }>;
-      const flat: DeptItem[] = [];
-      for (const node of tree) {
-        flat.push({ id: node.id, name: node.name, code: node.code });
-        if (node.children) {
-          for (const child of node.children) {
-            flat.push({ id: child.id, name: `　${child.name}`, code: child.code });
+    deptApi
+      .list({ limit: 100 })
+      .then((res) => {
+        // The API returns a tree (parent nodes with children). Flatten it.
+        const tree = (res.departments || []) as Array<
+          DeptItem & { children?: DeptItem[] }
+        >;
+        const flat: DeptItem[] = [];
+        for (const node of tree) {
+          flat.push({ id: node.id, name: node.name, code: node.code });
+          if (node.children) {
+            for (const child of node.children) {
+              flat.push({
+                id: child.id,
+                name: `　${child.name}`,
+                code: child.code,
+              });
+            }
           }
         }
-      }
-      setDepartments(flat);
-    }).catch(() => {});
+        setDepartments(flat);
+      })
+      .catch(() => {
+        /* intentional no-op: department list is non-critical */
+      });
   }, []);
 
   useEffect(() => {
@@ -73,17 +103,19 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
       .get(templateId)
       .then((def) => {
         setName(def.name);
-        setReportType(def.reportType || "");
-        setDescription(def.description || "");
-        setVisibleDeptIds(def.visibleDeptIds || []);
-        setTemplateStatus(def.templateStatus || "draft");
-        setOrgBindings(def.orgBindings || {});
+        setReportType(def.reportType ?? "");
+        setDescription(def.description ?? "");
+        setVisibleDeptIds(def.visibleDeptIds ?? []);
+        setTemplateStatus(def.templateStatus ?? "draft");
+        setOrgBindings(def.orgBindings ?? {});
         if (def.graphJson) {
           // Auto-migrate legacy v1 flat graphs to v2
           const raw = def.graphJson as unknown as Record<string, unknown>;
           let graph: WorkflowGraph;
           if (isLegacyGraph(raw)) {
-            graph = migrateLegacyToUnified(raw as Parameters<typeof migrateLegacyToUnified>[0]);
+            graph = migrateLegacyToUnified(
+              raw as Parameters<typeof migrateLegacyToUnified>[0],
+            );
           } else {
             graph = def.graphJson;
           }
@@ -97,17 +129,20 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
       .finally(() => setIsLoading(false));
   }, [templateId]);
 
-  const handleOrgBindingChange = useCallback((nodeId: string, deptCode: string | null) => {
-    setOrgBindings((prev) => {
-      const next = { ...prev };
-      if (deptCode) {
-        next[nodeId] = { deptCode };
-      } else {
-        delete next[nodeId];
-      }
-      return next;
-    });
-  }, []);
+  const handleOrgBindingChange = useCallback(
+    (nodeId: string, deptCode: string | null) => {
+      setOrgBindings((prev) => {
+        const next = { ...prev };
+        if (deptCode) {
+          next[nodeId] = { deptCode };
+        } else {
+          delete next[nodeId];
+        }
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleSave = useCallback(
     async (_name: string, graphJson: WorkflowGraph) => {
@@ -141,7 +176,15 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         setSaving(false);
       }
     },
-    [templateId, name, orgBindings, description, visibleDeptIds, reportType, router],
+    [
+      templateId,
+      name,
+      orgBindings,
+      description,
+      visibleDeptIds,
+      reportType,
+      router,
+    ],
   );
 
   const handlePublish = useCallback(async () => {
@@ -189,30 +232,39 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
 
   const statusLabel: Record<string, { text: string; color: string }> = {
     draft: { text: "草稿", color: "bg-gray-100 text-gray-600 border-gray-200" },
-    pending_approval: { text: "待审批", color: "bg-amber-50 text-amber-600 border-amber-200" },
-    published: { text: "已发布", color: "bg-green-50 text-green-600 border-green-200" },
-    rejected: { text: "已拒绝", color: "bg-red-50 text-red-600 border-red-200" },
+    pending_approval: {
+      text: "待审批",
+      color: "bg-amber-50 text-amber-600 border-amber-200",
+    },
+    published: {
+      text: "已发布",
+      color: "bg-green-50 text-green-600 border-green-200",
+    },
+    rejected: {
+      text: "已拒绝",
+      color: "bg-red-50 text-red-600 border-red-200",
+    },
   };
   const st = statusLabel[templateStatus] ?? statusLabel.draft!;
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Top toolbar — replaces the hidden DAG internal toolbar */}
-      <div className="shrink-0 border-b border-border bg-card px-4 py-2.5 flex items-center gap-3">
+      <div className="border-border bg-card flex shrink-0 items-center gap-3 border-b px-4 py-2.5">
         <Link
           href="/workflow-admin"
-          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg p-1.5 transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
         </Link>
 
-        <div className="w-px h-5 bg-border" />
+        <div className="bg-border h-5 w-px" />
 
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="模板名称"
-          className="px-3 py-1.5 text-sm font-medium border border-border rounded-lg bg-background w-60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-colors"
+          className="border-border bg-background focus:ring-primary/20 focus:border-primary/40 w-60 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors focus:ring-2 focus:outline-none"
         />
 
         <AdminSelect
@@ -223,7 +275,9 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
           className="w-auto min-w-[6rem]"
         />
 
-        <span className={`text-[10px] font-medium px-2.5 py-1 rounded-full border ${st.color}`}>
+        <span
+          className={`rounded-full border px-2.5 py-1 text-[10px] font-medium ${st.color}`}
+        >
           {st.text}
         </span>
 
@@ -232,33 +286,55 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         <button
           onClick={handleToolbarValidate}
           disabled={validating}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
         >
-          {validating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ShieldCheck className="w-3.5 h-3.5" />}
+          {validating ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <ShieldCheck className="h-3.5 w-3.5" />
+          )}
           校验
         </button>
 
         <button
           onClick={handleToolbarSave}
           disabled={saving}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 disabled:opacity-50"
         >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+          {saving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Save className="h-3.5 w-3.5" />
+          )}
           保存
         </button>
 
         <button
           onClick={handlePublish}
-          disabled={saving || templateStatus === "published" || templateStatus === "pending_approval"}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          disabled={
+            saving ||
+            templateStatus === "published" ||
+            templateStatus === "pending_approval"
+          }
+          className="text-primary-foreground bg-primary hover:bg-primary/90 flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
         >
-          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : isSuperAdmin ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
-          {templateStatus === "published" ? "已发布" : isSuperAdmin ? "发布" : "提交审批"}
+          {saving ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : isSuperAdmin ? (
+            <CheckCircle2 className="h-3.5 w-3.5" />
+          ) : (
+            <Send className="h-3.5 w-3.5" />
+          )}
+          {templateStatus === "published"
+            ? "已发布"
+            : isSuperAdmin
+              ? "发布"
+              : "提交审批"}
         </button>
       </div>
 
       {/* DAG editor — built-in toolbar hidden, controlled via ref */}
-      <div className="flex-1 min-h-0">
+      <div className="min-h-0 flex-1">
         <WorkflowEditor
           ref={editorRef}
           initialGraphJson={initialGraphJson}
@@ -271,31 +347,42 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
       </div>
 
       {/* Bottom settings panel */}
-      <div className="shrink-0 border-t border-border bg-card">
+      <div className="border-border bg-card shrink-0 border-t">
         <button
           onClick={() => setBottomOpen(!bottomOpen)}
-          className="w-full flex items-center justify-between px-5 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted/50 flex w-full items-center justify-between px-5 py-2 text-xs font-medium transition-colors"
         >
-          <span className="uppercase tracking-wider">模板设置</span>
-          {bottomOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+          <span className="tracking-wider uppercase">模板设置</span>
+          {bottomOpen ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronUp className="h-3.5 w-3.5" />
+          )}
         </button>
         {bottomOpen && (
-          <div className="px-5 pb-4 pt-1 flex items-start gap-5">
+          <div className="flex items-start gap-5 px-5 pt-1 pb-4">
             <div className="flex-1">
-              <label className="text-[11px] font-medium text-muted-foreground block mb-1.5">模板描述</label>
+              <label className="text-muted-foreground mb-1.5 block text-[11px] font-medium">
+                模板描述
+              </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="描述此模板的用途和适用场景..."
                 rows={2}
-                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 transition-colors"
+                className="border-border bg-background focus:ring-primary/20 focus:border-primary/40 w-full resize-none rounded-lg border px-3 py-2 text-sm transition-colors focus:ring-2 focus:outline-none"
               />
             </div>
             <div className="w-60">
-              <label className="text-[11px] font-medium text-muted-foreground block mb-1.5">可见部门（留空 = 全部可见）</label>
-              <div className="max-h-24 overflow-y-auto border border-border rounded-lg bg-background p-2 space-y-0.5">
+              <label className="text-muted-foreground mb-1.5 block text-[11px] font-medium">
+                可见部门（留空 = 全部可见）
+              </label>
+              <div className="border-border bg-background max-h-24 space-y-0.5 overflow-y-auto rounded-lg border p-2">
                 {departments.map((dept) => (
-                  <label key={dept.id} className="flex items-center gap-2 text-xs cursor-pointer py-0.5 px-1 rounded hover:bg-muted/50 transition-colors">
+                  <label
+                    key={dept.id}
+                    className="hover:bg-muted/50 flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 text-xs transition-colors"
+                  >
                     <input
                       type="checkbox"
                       checked={visibleDeptIds.includes(dept.id)}
@@ -303,10 +390,12 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
                         if (e.target.checked) {
                           setVisibleDeptIds((prev) => [...prev, dept.id]);
                         } else {
-                          setVisibleDeptIds((prev) => prev.filter((id) => id !== dept.id));
+                          setVisibleDeptIds((prev) =>
+                            prev.filter((id) => id !== dept.id),
+                          );
                         }
                       }}
-                      className="rounded accent-primary"
+                      className="accent-primary rounded"
                     />
                     {dept.name}
                   </label>

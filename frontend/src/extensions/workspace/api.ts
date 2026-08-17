@@ -17,24 +17,26 @@ import type {
 
 const API_BASE = "/workspace";
 
-async function request<T>(
-  path: string,
-  options: RequestInit = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const method = options.method ?? "GET";
   const hasBody = method !== "GET" && method !== "HEAD";
   // 请求体转 snake_case
-  const body = hasBody && options.body
-    ? JSON.stringify(toSnakeCase(JSON.parse(options.body as string)))
-    : options.body;
+  const body =
+    hasBody && options.body
+      ? JSON.stringify(toSnakeCase(JSON.parse(options.body as string)))
+      : options.body;
   const data = await authFetch<unknown>(path, { ...options, body });
   // 响应转 camelCase（对象/数组）
   if (data === null || data === undefined) return data as T;
   if (Array.isArray(data)) {
-    return data.map((item) => (item && typeof item === "object" ? toCamelCase(item as Record<string, unknown>) : item)) as T;
+    return data.map((item) =>
+      item && typeof item === "object"
+        ? toCamelCase(item as Record<string, unknown>)
+        : item,
+    ) as T;
   }
   if (typeof data === "object") {
-    return toCamelCase(data as Record<string, unknown>) as T;
+    return toCamelCase(data as Record<string, unknown>);
   }
   return data as T;
 }
@@ -47,7 +49,10 @@ export const workspaceApi = {
     return data ?? [];
   },
 
-  createProject: async (name: string, kind: "quickdoc" | "report"): Promise<CollabProject> => {
+  createProject: async (
+    name: string,
+    kind: "quickdoc" | "report",
+  ): Promise<CollabProject> => {
     return request<CollabProject>(`${API_BASE}/projects`, {
       method: "POST",
       body: JSON.stringify({ name, kind }),
@@ -58,7 +63,10 @@ export const workspaceApi = {
     return request<CollabProject>(`${API_BASE}/projects/${id}`);
   },
 
-  updateProject: async (id: string, patch: Record<string, unknown>): Promise<CollabProject> => {
+  updateProject: async (
+    id: string,
+    patch: Record<string, unknown>,
+  ): Promise<CollabProject> => {
     return request<CollabProject>(`${API_BASE}/projects/${id}`, {
       method: "PATCH",
       body: JSON.stringify(patch),
@@ -69,16 +77,23 @@ export const workspaceApi = {
     await request<void>(`${API_BASE}/projects/${id}`, { method: "DELETE" });
   },
 
-  getTier: async (id: string): Promise<{ tierState: string; signals: CollabProject["tierSignals"] }> => {
+  getTier: async (
+    id: string,
+  ): Promise<{ tierState: string; signals: CollabProject["tierSignals"] }> => {
     return request(`${API_BASE}/projects/${id}/tier`);
   },
 
   release: async (id: string): Promise<CollabProject> => {
-    return request<CollabProject>(`${API_BASE}/projects/${id}/release`, { method: "POST" });
+    return request<CollabProject>(`${API_BASE}/projects/${id}/release`, {
+      method: "POST",
+    });
   },
 
   promoteToReport: async (id: string): Promise<CollabSection[]> => {
-    return request<CollabSection[]>(`${API_BASE}/projects/${id}/promote-to-report`, { method: "POST" });
+    return request<CollabSection[]>(
+      `${API_BASE}/projects/${id}/promote-to-report`,
+      { method: "POST" },
+    );
   },
 
   // ── Sections ──
@@ -100,7 +115,15 @@ export const workspaceApi = {
     return request<CollabMember[]>(`${API_BASE}/projects/${id}/members`);
   },
 
-  addMember: async (id: string, member: { memberType: "human" | "agent"; userId?: string; agentName?: string; role?: string }): Promise<CollabMember> => {
+  addMember: async (
+    id: string,
+    member: {
+      memberType: "human" | "agent";
+      userId?: string;
+      agentName?: string;
+      role?: string;
+    },
+  ): Promise<CollabMember> => {
     return request<CollabMember>(`${API_BASE}/projects/${id}/members`, {
       method: "POST",
       body: JSON.stringify(member),
@@ -108,7 +131,9 @@ export const workspaceApi = {
   },
 
   removeMember: async (id: string, memberId: string): Promise<void> => {
-    await request<void>(`${API_BASE}/projects/${id}/members/${memberId}`, { method: "DELETE" });
+    await request<void>(`${API_BASE}/projects/${id}/members/${memberId}`, {
+      method: "DELETE",
+    });
   },
 
   // ── Tasks ──
@@ -117,21 +142,39 @@ export const workspaceApi = {
     return request<CollabTask[]>(`${API_BASE}/projects/${id}/tasks`);
   },
 
-  createTask: async (id: string, task: { title: string; kind: string }): Promise<CollabTask> => {
+  createTask: async (
+    id: string,
+    task: { title: string; kind: string },
+  ): Promise<CollabTask> => {
     return request<CollabTask>(`${API_BASE}/projects/${id}/tasks`, {
       method: "POST",
       body: JSON.stringify(task),
     });
   },
 
-  assignTask: async (id: string, taskId: string, assign: { assigneeType: "human" | "agent"; userId?: string; agentName?: string }): Promise<CollabTask> => {
-    return request<CollabTask>(`${API_BASE}/projects/${id}/tasks/${taskId}/assign`, {
-      method: "POST",
-      body: JSON.stringify(assign),
-    });
+  assignTask: async (
+    id: string,
+    taskId: string,
+    assign: {
+      assigneeType: "human" | "agent";
+      userId?: string;
+      agentName?: string;
+    },
+  ): Promise<CollabTask> => {
+    return request<CollabTask>(
+      `${API_BASE}/projects/${id}/tasks/${taskId}/assign`,
+      {
+        method: "POST",
+        body: JSON.stringify(assign),
+      },
+    );
   },
 
-  spawnRun: async (id: string, taskId: string, body: { agentName?: string } = {}): Promise<{ runId: string; status: string }> => {
+  spawnRun: async (
+    id: string,
+    taskId: string,
+    body: { agentName?: string } = {},
+  ): Promise<{ runId: string; status: string }> => {
     return request(`${API_BASE}/projects/${id}/tasks/${taskId}/runs`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -139,7 +182,9 @@ export const workspaceApi = {
   },
 
   listRuns: async (id: string, taskId: string): Promise<CollabAgentRun[]> => {
-    return request<CollabAgentRun[]>(`${API_BASE}/projects/${id}/tasks/${taskId}/runs`);
+    return request<CollabAgentRun[]>(
+      `${API_BASE}/projects/${id}/tasks/${taskId}/runs`,
+    );
   },
 
   // ── Gates ──
@@ -148,21 +193,35 @@ export const workspaceApi = {
     return request<CollabGate[]>(`${API_BASE}/projects/${id}/gates`);
   },
 
-  judgeGate: async (id: string, gateId: string, action: "approve" | "reject" | "comment", comment?: string): Promise<{ id: string; state: string }> => {
+  judgeGate: async (
+    id: string,
+    gateId: string,
+    action: "approve" | "reject" | "comment",
+    comment?: string,
+  ): Promise<{ id: string; state: string }> => {
     return request(`${API_BASE}/projects/${id}/gates/${gateId}/judge`, {
       method: "POST",
       body: JSON.stringify({ action, comment }),
     });
   },
 
-  reopenGate: async (id: string, gateId: string): Promise<{ id: string; state: string }> => {
-    return request(`${API_BASE}/projects/${id}/gates/${gateId}/reopen`, { method: "POST" });
+  reopenGate: async (
+    id: string,
+    gateId: string,
+  ): Promise<{ id: string; state: string }> => {
+    return request(`${API_BASE}/projects/${id}/gates/${gateId}/reopen`, {
+      method: "POST",
+    });
   },
 
   // ── Publish / Activity ──
 
-  publishDoc: async (id: string): Promise<{ synced: string[]; skipped: string[] }> => {
-    return request(`${API_BASE}/projects/${id}/publish-doc`, { method: "POST" });
+  publishDoc: async (
+    id: string,
+  ): Promise<{ synced: string[]; skipped: string[] }> => {
+    return request(`${API_BASE}/projects/${id}/publish-doc`, {
+      method: "POST",
+    });
   },
 
   listActivities: async (id: string): Promise<CollabActivity[]> => {

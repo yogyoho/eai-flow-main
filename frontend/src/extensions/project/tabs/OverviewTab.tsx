@@ -16,7 +16,6 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-
 import { projectApi } from "@/extensions/project/api";
 import { AddMemberDialog } from "@/extensions/project/components/AddMemberDialog";
 import { KanbanBoard } from "@/extensions/project/components/KanbanBoard/KanbanBoard";
@@ -40,6 +39,7 @@ import {
   inferStatus,
 } from "@/extensions/project/utils";
 import { workflowApi } from "@/extensions/workflow/api";
+import type { WorkflowGraph } from "@/extensions/workflow/types";
 
 interface OverviewTabProps {
   project: ReportProject;
@@ -47,7 +47,7 @@ interface OverviewTabProps {
   onRefresh: () => void;
   identity: ProjectIdentity | null;
   visibleChapterIds?: string[];
-  workflowGraph?: any;
+  workflowGraph?: WorkflowGraph | null;
 }
 
 // ── Status Badge Styles ──
@@ -107,26 +107,34 @@ function StatCard({
   const c = STAT_CARD_COLORS[color];
   return (
     <div
-      className={`rounded-xl p-4 flex flex-col justify-between group hover:scale-[1.015] transition-all relative overflow-hidden border ${c.border}`}
+      className={`group relative flex flex-col justify-between overflow-hidden rounded-xl border p-4 transition-all hover:scale-[1.015] ${c.border}`}
     >
-      <span className={`absolute top-0 right-0 w-2 h-2 ${c.dot}`} />
+      <span className={`absolute top-0 right-0 h-2 w-2 ${c.dot}`} />
       <div className="flex items-center justify-between gap-2.5">
-        <span className="text-xs font-bold" style={{ color: "var(--cyber-text-main)" }}>
+        <span
+          className="text-xs font-bold"
+          style={{ color: "var(--cyber-text-main)" }}
+        >
           {label}
         </span>
-        <div className={`p-1 rounded-md border ${c.border} ${c.text}`}>
-          <Icon className={`w-4 h-4 ${color === "blue" ? "animate-pulse" : ""}`} />
+        <div className={`rounded-md border p-1 ${c.border} ${c.text}`}>
+          <Icon
+            className={`h-4 w-4 ${color === "blue" ? "animate-pulse" : ""}`}
+          />
         </div>
       </div>
       <div
-        className={`my-2 text-3xl font-extrabold font-cyber ${c.text} ${
+        className={`font-cyber my-2 text-3xl font-extrabold ${c.text} ${
           color === "blue" ? "text-shadow-glow" : ""
         }`}
       >
         {value}
       </div>
       {sub && (
-        <p className="text-[10px] font-mono tracking-wider" style={{ color: "var(--cyber-text-muted)" }}>
+        <p
+          className="font-mono text-[10px] tracking-wider"
+          style={{ color: "var(--cyber-text-muted)" }}
+        >
           {sub}
         </p>
       )}
@@ -157,26 +165,34 @@ function ChapterNode({
   return (
     <>
       <div
-        className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-accent/40 transition-colors group"
+        className="hover:bg-accent/40 group flex items-center gap-3 rounded-lg px-3 py-2 transition-colors"
         style={{ paddingLeft: `${depth * 20 + 12}px` }}
       >
-        <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-        <span className="flex-1 truncate text-xs font-normal text-foreground">{chapter.title}</span>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_STYLES[status]}`}>
+        <FileText className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
+        <span className="text-foreground flex-1 truncate text-xs font-normal">
+          {chapter.title}
+        </span>
+        <span
+          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_STYLES[status]}`}
+        >
           {STATUS_LABELS[status]}
         </span>
         {activity && (
-          <span className="text-[11px] text-muted-foreground/70 shrink-0">{activity}</span>
+          <span className="text-muted-foreground/70 shrink-0 text-[11px]">
+            {activity}
+          </span>
         )}
         {chapter.assignedName && (
-          <span className="text-[11px] text-muted-foreground/70 shrink-0">{chapter.assignedName}</span>
+          <span className="text-muted-foreground/70 shrink-0 text-[11px]">
+            {chapter.assignedName}
+          </span>
         )}
         {/* Hover actions */}
-        <div className="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex shrink-0 items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
           {onEdit && (
             <button
               type="button"
-              className="rounded-md px-2 py-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors"
               onClick={() => onEdit(chapter.id)}
             >
               编辑
@@ -185,7 +201,7 @@ function ChapterNode({
           {onMarkComplete && canComplete && (
             <button
               type="button"
-              className="rounded-md px-2 py-0.5 text-[11px] font-medium text-success hover:opacity-80 hover:bg-success/10 transition-colors"
+              className="text-success hover:bg-success/10 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80"
               disabled={isCompleting}
               onClick={() => onMarkComplete(chapter.id)}
             >
@@ -210,13 +226,21 @@ function ChapterNode({
 
 // ── Main Component ──
 
-export function OverviewTab({ project, projectId, onRefresh, identity, workflowGraph }: OverviewTabProps) {
+export function OverviewTab({
+  project,
+  projectId,
+  onRefresh,
+  identity,
+  workflowGraph,
+}: OverviewTabProps) {
   const [fileCount, setFileCount] = useState<number | null>(null);
   const [kanbanView, setKanbanView] = useState(false);
   const [addMemberOpen, setAddMemberOpen] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
-  const canManageMembers = identity?.isAdmin || identity?.hasAnyPermission(["member:add", "member:remove"]);
+  const canManageMembers =
+    (identity?.isAdmin ?? false) ||
+    identity?.hasAnyPermission(["member:add", "member:remove"]);
 
   const handleMarkComplete = useCallback(
     async (chapterId: string) => {
@@ -248,7 +272,9 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
         const flat = flattenChapters(project.chapters ?? []);
         const chapter = flat.find((c) => c.id === chapterId);
         sessionStorage.setItem("openChapterTitle", chapter?.title ?? "");
-        window.dispatchEvent(new CustomEvent("switchTab", { detail: { tab: "editor" } }));
+        window.dispatchEvent(
+          new CustomEvent("switchTab", { detail: { tab: "editor" } }),
+        );
       } catch {
         toast.error("打开章节失败");
       }
@@ -304,36 +330,53 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
   }, [projectId]);
 
   useEffect(() => {
-    loadStats();
+    void loadStats();
   }, [loadStats]);
 
   // Sync documents on mount
   useEffect(() => {
-    projectApi.syncDocs(projectId).then(() => loadStats()).catch(() => {});
+    projectApi
+      .syncDocs(projectId)
+      .then(() => loadStats())
+      .catch(() => {
+        /* ignore sync errors */
+      });
   }, [projectId, loadStats]);
 
   // Listen for phase-advanced and doc-status-changed events to refresh stats
   useEffect(() => {
     const handleRefresh = () => {
-      loadStats();
+      void loadStats();
       onRefresh();
     };
     window.addEventListener("phase-advanced", handleRefresh);
-    window.addEventListener("doc-status-changed", handleRefresh as EventListener);
+    window.addEventListener(
+      "doc-status-changed",
+      handleRefresh as EventListener,
+    );
     return () => {
       window.removeEventListener("phase-advanced", handleRefresh);
-      window.removeEventListener("doc-status-changed", handleRefresh as EventListener);
+      window.removeEventListener(
+        "doc-status-changed",
+        handleRefresh as EventListener,
+      );
     };
   }, [loadStats, onRefresh]);
 
   // Derived stats
-  const flatChapters = useMemo(() => flattenChapters(project.chapters ?? []), [project.chapters]);
+  const flatChapters = useMemo(
+    () => flattenChapters(project.chapters ?? []),
+    [project.chapters],
+  );
   const activeCount = useMemo(
     () => flatChapters.filter((ch) => inferStatus(ch) === "draft").length, // EAI-CUSTOM: canonical (ADR 2026-08-02 P4)
     [flatChapters],
   );
   const totalCount = flatChapters.length;
-  const totalWords = useMemo(() => aggregateWordCount(project.chapters ?? []), [project.chapters]);
+  const totalWords = useMemo(
+    () => aggregateWordCount(project.chapters ?? []),
+    [project.chapters],
+  );
 
   // Member management handlers
   const handleRemoveMember = async (userId: string) => {
@@ -351,16 +394,20 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
 
   // EAI-CUSTOM: 章节进度区块状态机(ADR 2026-08-10)
   const blockState = useMemo(
-    () => deriveBlockState(project.temporalWorkflowId, hasAnyContent(project.chapters ?? [])),
+    () =>
+      deriveBlockState(
+        project.temporalWorkflowId,
+        hasAnyContent(project.chapters ?? []),
+      ),
     [project.temporalWorkflowId, project.chapters],
   );
 
   const [starting, setStarting] = useState(false);
   const canStartGenerate =
-    (identity?.isAdmin ||
+    ((identity?.isAdmin ?? false) ||
       identity?.projectRole === "owner" ||
-      identity?.hasAnyPermission(["project:advance", "project:edit"]) ||
-      false) &&
+      (identity?.hasAnyPermission(["project:advance", "project:edit"]) ??
+        false)) &&
     !!project.workflowId;
 
   const handleStartGenerate = useCallback(async () => {
@@ -379,42 +426,70 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="px-4 md:px-8 py-6 flex flex-col gap-6 max-w-7xl mx-auto">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 md:px-8">
         {/* Stats Grid — cyber-themed cards matching SciFiProjectDetail */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={BookOpen} label="活跃章节" value={`${activeCount}/${totalCount}`} sub="编写中 / CYBERNETIC CO-WRITING" color="blue" />
-          <StatCard icon={Users} label="成员数" value={project.members?.length ?? 0} sub="ACTIVE RESEARCHERS" color="green" />
-          <StatCard icon={FileText} label="文件数" value={fileCount !== null ? String(fileCount) : "..."} sub="COMPILED DOSSIERS" color="cyan" />
-          <StatCard icon={BookOpen} label="已写字数" value={totalWords.toLocaleString()} sub="累计 / ACCUMULATIVE GLYPHS" color="amber" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            icon={BookOpen}
+            label="活跃章节"
+            value={`${activeCount}/${totalCount}`}
+            sub="编写中 / CYBERNETIC CO-WRITING"
+            color="blue"
+          />
+          <StatCard
+            icon={Users}
+            label="成员数"
+            value={project.members?.length ?? 0}
+            sub="ACTIVE RESEARCHERS"
+            color="green"
+          />
+          <StatCard
+            icon={FileText}
+            label="文件数"
+            value={fileCount !== null ? String(fileCount) : "..."}
+            sub="COMPILED DOSSIERS"
+            color="cyan"
+          />
+          <StatCard
+            icon={BookOpen}
+            label="已写字数"
+            value={totalWords.toLocaleString()}
+            sub="累计 / ACCUMULATIVE GLYPHS"
+            color="amber"
+          />
         </div>
 
         {/* Chapter Status Distribution */}
-        {totalCount > 0 && <StatusDistribution chapters={project.chapters ?? []} />}
+        {totalCount > 0 && (
+          <StatusDistribution chapters={project.chapters ?? []} />
+        )}
 
         {/* Workflow Progress — always show card; prompts setup if no workflow */}
         <WorkflowProgressCompact
           projectId={projectId}
           workflowGraph={workflowGraph ?? null}
           canAdvancePhase={
-            identity?.isAdmin ||
+            (identity?.isAdmin ?? false) ||
             identity?.projectRole === "owner" ||
-            identity?.hasAnyPermission(["project:advance", "project:edit"]) ||
-            false
+            (identity?.hasAnyPermission(["project:advance", "project:edit"]) ??
+              false)
           }
           onPhaseCompleted={onRefresh}
         />
 
         {/* Two Column Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
           {/* Chapter Progress — 3 cols — EAI-CUSTOM: 状态驱动(ADR 2026-08-10) */}
           <div className="lg:col-span-3">
-            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
+            <div className="border-border bg-background flex flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between px-5 pt-4 pb-0">
-                <h3 className="text-sm font-medium text-foreground">章节进度</h3>
+                <h3 className="text-foreground text-sm font-medium">
+                  章节进度
+                </h3>
                 {blockState === "human_edit" &&
                   project.assignmentStrategy !== "by_role" &&
                   kanbanCards.length > 0 && (
-                    <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+                    <div className="border-border flex items-center gap-1 rounded-md border p-0.5">
                       <Button
                         variant={kanbanView ? "ghost" : "secondary"}
                         size="icon-sm"
@@ -436,44 +511,59 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
               </div>
 
               {blockState === "not_generated" && (
-                <div className="px-5 pb-6 pt-4">
+                <div className="px-5 pt-4 pb-6">
                   <div className="flex flex-col items-center text-center">
-                    <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                      <Wand2 className="h-6 w-6 text-primary" />
+                    <div className="bg-primary/10 mb-4 flex h-12 w-12 items-center justify-center rounded-full">
+                      <Wand2 className="text-primary h-6 w-6" />
                     </div>
-                    <p className="text-sm font-medium text-foreground mb-1">尚未生成初稿</p>
-                    <p className="text-xs text-muted-foreground mb-4">
-                      AI 将按所选大纲生成初稿（可能调整结构），随后进入「人工修改确认」。
+                    <p className="text-foreground mb-1 text-sm font-medium">
+                      尚未生成初稿
+                    </p>
+                    <p className="text-muted-foreground mb-4 text-xs">
+                      AI
+                      将按所选大纲生成初稿（可能调整结构），随后进入「人工修改确认」。
                     </p>
                     <Button
-                      onClick={handleStartGenerate}
+                      onClick={() => {
+                        void handleStartGenerate();
+                      }}
                       disabled={!canStartGenerate || starting}
                       className="mb-5"
                     >
                       {starting ? (
-                        <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                       ) : (
-                        <Wand2 className="h-4 w-4 mr-1.5" />
+                        <Wand2 className="mr-1.5 h-4 w-4" />
                       )}
                       开始 AI 生成初稿
                     </Button>
                     {!project.workflowId && (
-                      <p className="text-[11px] text-muted-foreground mb-4">
+                      <p className="text-muted-foreground mb-4 text-[11px]">
                         请先在「项目设置」关联工作流后再开始生成。
                       </p>
                     )}
                     <ol className="w-full max-w-sm space-y-2 text-left">
-                      <li className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">1</span>
+                      <li className="text-muted-foreground flex items-start gap-2 text-xs">
+                        <span className="bg-primary/10 text-primary mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-medium">
+                          1
+                        </span>
                         AI 按所选大纲生成初稿（可能调整结构）
                       </li>
-                      <li className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">2</span>
+                      <li className="text-muted-foreground flex items-start gap-2 text-xs">
+                        <span className="bg-primary/10 text-primary mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-medium">
+                          2
+                        </span>
                         进入「人工修改确认」阶段
                       </li>
-                      <li className="flex items-start gap-2 text-xs text-muted-foreground">
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary">3</span>
-                        按「{project.assignmentStrategy === "by_role" ? "按职责" : "按章节"}」分工修改确认
+                      <li className="text-muted-foreground flex items-start gap-2 text-xs">
+                        <span className="bg-primary/10 text-primary mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-medium">
+                          3
+                        </span>
+                        按「
+                        {project.assignmentStrategy === "by_role"
+                          ? "按职责"
+                          : "按章节"}
+                        」分工修改确认
                       </li>
                     </ol>
                   </div>
@@ -481,10 +571,12 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
               )}
 
               {blockState === "generating" && (
-                <div className="px-5 pb-6 pt-4 flex flex-col items-center justify-center text-center">
-                  <Loader2 className="h-7 w-7 text-primary animate-spin mb-3" />
-                  <p className="text-sm font-medium text-foreground">AI 正在生成初稿…</p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                <div className="flex flex-col items-center justify-center px-5 pt-4 pb-6 text-center">
+                  <Loader2 className="text-primary mb-3 h-7 w-7 animate-spin" />
+                  <p className="text-foreground text-sm font-medium">
+                    AI 正在生成初稿…
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs">
                     生成完成后将进入「人工修改确认」，届时可按分工策略修改确认。
                   </p>
                 </div>
@@ -498,13 +590,17 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                     onEdit={handleEditChapter}
                   />
                 ) : kanbanView ? (
-                  <div className="px-5 pb-4 pt-2 max-h-[480px] overflow-y-auto overflow-x-auto pr-1 cyber-scroll">
-                    <KanbanBoard cards={kanbanCards} onCardMove={handleCardMove} onCardEdit={handleEditChapter} />
+                  <div className="cyber-scroll max-h-[480px] overflow-x-auto overflow-y-auto px-5 pt-2 pr-1 pb-4">
+                    <KanbanBoard
+                      cards={kanbanCards}
+                      onCardMove={handleCardMove}
+                      onCardEdit={handleEditChapter}
+                    />
                   </div>
                 ) : (
-                  <div className="px-5 pb-4 pt-2">
+                  <div className="px-5 pt-2 pb-4">
                     {project.chapters?.length > 0 ? (
-                      <div className="max-h-[480px] overflow-y-auto pr-1 cyber-scroll divide-y divide-border/40">
+                      <div className="cyber-scroll divide-border/40 max-h-[480px] divide-y overflow-y-auto pr-1">
                         {project.chapters.map((ch) => (
                           <ChapterNode
                             key={ch.id}
@@ -518,9 +614,13 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-12">
-                        <BookOpen className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                        <p className="text-sm text-muted-foreground">暂无章节</p>
-                        <p className="text-xs text-muted-foreground/60 mt-1">从模板创建项目或手动添加章节</p>
+                        <BookOpen className="text-muted-foreground/30 mb-2 h-8 w-8" />
+                        <p className="text-muted-foreground text-sm">
+                          暂无章节
+                        </p>
+                        <p className="text-muted-foreground/60 mt-1 text-xs">
+                          从模板创建项目或手动添加章节
+                        </p>
                       </div>
                     )}
                   </div>
@@ -530,9 +630,11 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
 
           {/* Right Sidebar — Members — 2 cols */}
           <div className="lg:col-span-2">
-            <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md">
+            <div className="border-border bg-background flex flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md">
               <div className="flex items-center justify-between px-5 pt-4 pb-0">
-                <h3 className="text-sm font-medium text-foreground">项目成员</h3>
+                <h3 className="text-foreground text-sm font-medium">
+                  项目成员
+                </h3>
                 {canManageMembers && (
                   <Button
                     size="sm"
@@ -540,29 +642,39 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                     className="h-7 text-[12px]"
                     onClick={() => setAddMemberOpen(true)}
                   >
-                    <UserPlus className="h-3.5 w-3.5 mr-1" />
+                    <UserPlus className="mr-1 h-3.5 w-3.5" />
                     添加成员
                   </Button>
                 )}
               </div>
-              <div className="px-5 pb-4 pt-2 divide-y divide-border/40">
+              <div className="divide-border/40 divide-y px-5 pt-2 pb-4">
                 {project.members?.length > 0 ? (
                   project.members.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2.5 px-3 py-2.5">
-                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-medium text-primary">
+                    <div
+                      key={m.id}
+                      className="flex items-center gap-2.5 px-3 py-2.5"
+                    >
+                      <div className="bg-primary/10 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-medium">
                         {(m.username ?? "?").charAt(0).toUpperCase()}
                       </div>
-                      <span className="flex-1 text-sm text-foreground truncate">{m.username}</span>
-                      <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
+                      <span className="text-foreground flex-1 truncate text-sm">
+                        {m.username}
+                      </span>
+                      <Badge
+                        variant="secondary"
+                        className="shrink-0 text-[10px] font-normal"
+                      >
                         {MEMBER_ROLE_LABELS[m.role] ?? m.role}
                       </Badge>
                       {canManageMembers && m.role !== "owner" && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          className="text-muted-foreground hover:text-destructive h-6 w-6 p-0"
                           disabled={removingId === m.userId}
-                          onClick={() => handleRemoveMember(m.userId)}
+                          onClick={() => {
+                            void handleRemoveMember(m.userId);
+                          }}
                         >
                           {removingId === m.userId ? (
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -575,8 +687,8 @@ export function OverviewTab({ project, projectId, onRefresh, identity, workflowG
                   ))
                 ) : (
                   <div className="px-3 py-6 text-center">
-                    <Users className="h-6 w-6 text-muted-foreground/30 mx-auto mb-1.5" />
-                    <p className="text-xs text-muted-foreground">暂无成员</p>
+                    <Users className="text-muted-foreground/30 mx-auto mb-1.5 h-6 w-6" />
+                    <p className="text-muted-foreground text-xs">暂无成员</p>
                   </div>
                 )}
               </div>

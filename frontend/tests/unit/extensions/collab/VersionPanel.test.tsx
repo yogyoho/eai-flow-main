@@ -4,6 +4,7 @@ import { act } from "react";
 import ReactDOMClient from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 
+import { VersionPanel } from "@/extensions/collab/VersionPanel";
 import type { CollabVersion, VersionDiffResponse } from "@/extensions/types";
 
 // Mock lucide-react icons
@@ -11,12 +12,12 @@ vi.mock("lucide-react", () => ({
   Eye: () => <span data-testid="icon-eye" />,
   GitCompare: () => <span data-testid="icon-compare" />,
   History: () => <span data-testid="icon-history" />,
+  Loader2: () => <span data-testid="icon-loader" />,
   RotateCcw: () => <span data-testid="icon-rotate" />,
   Save: () => <span data-testid="icon-save" />,
+  Sparkles: () => <span data-testid="icon-sparkles" />,
   ArrowRight: () => <span data-testid="icon-arrow" />,
 }));
-
-import { VersionPanel } from "@/extensions/collab/VersionPanel";
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -78,7 +79,9 @@ function render(element: React.ReactElement) {
   });
 }
 
-function defaultProps(overrides: Partial<Parameters<typeof VersionPanel>[0]> = {}) {
+function defaultProps(
+  overrides: Partial<Parameters<typeof VersionPanel>[0]> = {},
+) {
   return {
     versions: defaultVersions,
     loading: false,
@@ -119,7 +122,9 @@ test("renders '关闭' button and calls onClose", async () => {
   await render(<VersionPanel {...defaultProps({ onClose })} />);
 
   const closeButtons = container!.querySelectorAll("button");
-  const closeButton = Array.from(closeButtons).find((b) => b.textContent === "关闭");
+  const closeButton = Array.from(closeButtons).find(
+    (b) => b.textContent === "关闭",
+  );
   expect(closeButton).toBeTruthy();
 
   await act(async () => {
@@ -135,7 +140,9 @@ test("clicking version item calls onPreviewVersion", async () => {
 
   // Find the "预览" button for the first version (v3)
   const buttons = container!.querySelectorAll("button");
-  const previewButton = Array.from(buttons).find((b) => b.textContent?.includes("预览"));
+  const previewButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("预览"),
+  );
   expect(previewButton).toBeTruthy();
 
   await act(async () => {
@@ -150,7 +157,9 @@ test("shows '保存当前版本' and calls onCreateVersion", async () => {
   await render(<VersionPanel {...defaultProps({ onCreateVersion })} />);
 
   const buttons = container!.querySelectorAll("button");
-  const saveButton = Array.from(buttons).find((b) => b.textContent?.includes("保存当前版本"));
+  const saveButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("保存当前版本"),
+  );
   expect(saveButton).toBeTruthy();
 
   await act(async () => {
@@ -161,13 +170,17 @@ test("shows '保存当前版本' and calls onCreateVersion", async () => {
 });
 
 test("shows empty state when no versions", async () => {
-  await render(<VersionPanel {...defaultProps({ versions: [], loading: false })} />);
+  await render(
+    <VersionPanel {...defaultProps({ versions: [], loading: false })} />,
+  );
 
   expect(container!.textContent).toContain("暂无版本记录");
 });
 
 test("shows loading state when loading with no versions", async () => {
-  await render(<VersionPanel {...defaultProps({ versions: [], loading: true })} />);
+  await render(
+    <VersionPanel {...defaultProps({ versions: [], loading: true })} />,
+  );
 
   expect(container!.textContent).toContain("加载中");
 });
@@ -192,7 +205,9 @@ test("toggling diff mode shows DiffViewer", async () => {
 
   // Click the diff toggle button
   const buttons = container!.querySelectorAll("button");
-  const diffButton = Array.from(buttons).find((b) => b.textContent?.includes("对比"));
+  const diffButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("对比"),
+  );
   expect(diffButton).toBeTruthy();
 
   await act(async () => {
@@ -211,7 +226,9 @@ test("in diff mode, shows checkboxes for version selection", async () => {
 
   // Enable diff mode
   const buttons = container!.querySelectorAll("button");
-  const diffButton = Array.from(buttons).find((b) => b.textContent?.includes("对比"));
+  const diffButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("对比"),
+  );
 
   await act(async () => {
     diffButton!.click();
@@ -228,7 +245,9 @@ test("selecting two versions in diff mode calls onDiffVersions", async () => {
 
   // Enable diff mode
   const buttons = container!.querySelectorAll("button");
-  const diffButton = Array.from(buttons).find((b) => b.textContent?.includes("对比"));
+  const diffButton = Array.from(buttons).find((b) =>
+    b.textContent?.includes("对比"),
+  );
 
   await act(async () => {
     (diffButton as HTMLElement).click();
@@ -241,7 +260,9 @@ test("selecting two versions in diff mode calls onDiffVersions", async () => {
   });
 
   // Click second checkbox (v2)
-  const updatedCheckboxes = container!.querySelectorAll('input[type="checkbox"]');
+  const updatedCheckboxes = container!.querySelectorAll(
+    'input[type="checkbox"]',
+  );
   await act(async () => {
     (updatedCheckboxes[1] as HTMLElement).click();
   });

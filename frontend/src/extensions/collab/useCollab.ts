@@ -1,7 +1,7 @@
 "use client";
 
 import { HocuspocusProvider } from "@hocuspocus/provider";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 function getCollabUrl(): string {
@@ -38,7 +38,13 @@ export function useCollab(docId: string | null) {
   const providerRef = useRef<HocuspocusProvider | null>(null);
 
   // Create a separate Y.Doc for each collaborative document.
-  const ydoc = useMemo(() => new Y.Doc(), [docId]);
+  // Keyed ref (instead of useMemo with docId as a dep) so a fresh Y.Doc is
+  // created whenever docId changes without listing an "unused" dep.
+  const ydocEntryRef = useRef<{ id: string | null; doc: Y.Doc } | null>(null);
+  if (ydocEntryRef.current?.id !== docId) {
+    ydocEntryRef.current = { id: docId, doc: new Y.Doc() };
+  }
+  const ydoc = ydocEntryRef.current.doc;
 
   useEffect(() => {
     if (!docId) return;
@@ -48,8 +54,14 @@ export function useCollab(docId: string | null) {
       name: docId,
       document: ydoc,
       onConnect: () => setConnected(true),
-      onDisconnect: () => { setConnected(false); setSynced(false); },
-      onClose: () => { setConnected(false); setSynced(false); },
+      onDisconnect: () => {
+        setConnected(false);
+        setSynced(false);
+      },
+      onClose: () => {
+        setConnected(false);
+        setSynced(false);
+      },
       onSynced: () => setSynced(true),
     });
     providerRef.current = provider;
@@ -57,12 +69,14 @@ export function useCollab(docId: string | null) {
     if (provider.awareness) {
       provider.awareness.on("change", () => {
         const userList: CollabUser[] = [];
-        provider.awareness!.getStates().forEach((state: Record<string, unknown>, clientId: number) => {
-          if (state.user) {
-            const user = state.user as { name: string; color: string };
-            userList.push({ name: user.name, color: user.color, clientId });
-          }
-        });
+        provider
+          .awareness!.getStates()
+          .forEach((state: Record<string, unknown>, clientId: number) => {
+            if (state.user) {
+              const user = state.user as { name: string; color: string };
+              userList.push({ name: user.name, color: user.color, clientId });
+            }
+          });
         setUsers(userList);
       });
     }
@@ -76,14 +90,17 @@ export function useCollab(docId: string | null) {
     };
   }, [docId, ydoc]);
 
-  const broadcastEvent = useCallback((event: { type: string; payload: unknown }) => {
-    if (providerRef.current?.awareness) {
-      providerRef.current.awareness.setLocalStateField("collabEvent", {
-        ...event,
-        timestamp: Date.now(),
-      });
-    }
-  }, []);
+  const broadcastEvent = useCallback(
+    (event: { type: string; payload: unknown }) => {
+      if (providerRef.current?.awareness) {
+        providerRef.current.awareness.setLocalStateField("collabEvent", {
+          ...event,
+          timestamp: Date.now(),
+        });
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!providerRef.current?.awareness) return;
@@ -91,17 +108,21 @@ export function useCollab(docId: string | null) {
     const seenTimestamps = new Map<number, number>();
 
     const handler = () => {
-      awareness.getStates().forEach((state: Record<string, unknown>, clientId: number) => {
-        if (state.collabEvent && clientId !== awareness.clientID) {
-          const collabEvent = state.collabEvent as Record<string, unknown>;
-          const ts = (collabEvent.timestamp as number) ?? 0;
-          const lastTs = seenTimestamps.get(clientId) ?? 0;
-          if (ts > lastTs) {
-            seenTimestamps.set(clientId, ts);
-            window.dispatchEvent(new CustomEvent("collab-event", { detail: collabEvent }));
+      awareness
+        .getStates()
+        .forEach((state: Record<string, unknown>, clientId: number) => {
+          if (state.collabEvent && clientId !== awareness.clientID) {
+            const collabEvent = state.collabEvent as Record<string, unknown>;
+            const ts = (collabEvent.timestamp as number) ?? 0;
+            const lastTs = seenTimestamps.get(clientId) ?? 0;
+            if (ts > lastTs) {
+              seenTimestamps.set(clientId, ts);
+              window.dispatchEvent(
+                new CustomEvent("collab-event", { detail: collabEvent }),
+              );
+            }
           }
-        }
-      });
+        });
     };
     awareness.on("change", handler);
     return () => {
@@ -109,5 +130,12 @@ export function useCollab(docId: string | null) {
     };
   }, [connected]);
 
-  return { ydoc, provider: providerRef.current, connected, synced, users, broadcastEvent };
+  return {
+    ydoc,
+    provider: providerRef.current,
+    connected,
+    synced,
+    users,
+    broadcastEvent,
+  };
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext } from "react";
+
 import { PermissionContext } from "./PermissionProvider";
 
 export interface PermissionState {

@@ -13,9 +13,21 @@ import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -50,10 +62,6 @@ interface ModelStatus {
   message?: string | null;
 }
 
-interface ModelValidationRequest {
-  models: string[];
-}
-
 interface ModelValidationResponse {
   results: ModelValidationResult[];
 }
@@ -80,8 +88,12 @@ export function BasicSettings() {
   const [embedModelChoices, setEmbedModelChoices] = useState<ModelChoice[]>([]);
   const [rerankerChoices, setRerankerChoices] = useState<string[]>([]);
   const [chatModelGroups, setChatModelGroups] = useState<ChatModelGroup[]>([]);
-  const [modelStatuses, setModelStatuses] = useState<Record<string, ModelStatus>>({});
-  const [validatingModels, setValidatingModels] = useState<Set<string>>(new Set());
+  const [modelStatuses, setModelStatuses] = useState<
+    Record<string, ModelStatus>
+  >({});
+  const [validatingModels, setValidatingModels] = useState<Set<string>>(
+    new Set(),
+  );
   const { theme, setTheme, systemTheme } = useTheme();
   const currentTheme = (theme ?? "system") as "system" | "light" | "dark";
   // 当前访问主机名 — 服务链接(RAGFlow/MinIO 等)用同一主机 + 各自端口,
@@ -115,14 +127,16 @@ export function BasicSettings() {
   ];
 
   useEffect(() => {
-    loadConfig();
-    loadModelChoices();
+    void loadConfig();
+    void loadModelChoices();
     setHostname(window.location.hostname);
   }, []);
 
   const loadConfig = async () => {
     try {
-      const response = await fetch("/api/extensions/config", { credentials: "include" });
+      const response = await fetch("/api/extensions/config", {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
         setConfig(data);
@@ -136,12 +150,14 @@ export function BasicSettings() {
 
   const loadModelChoices = async () => {
     try {
-      const response = await fetch("/api/extensions/models/choices", { credentials: "include" });
+      const response = await fetch("/api/extensions/models/choices", {
+        credentials: "include",
+      });
       if (response.ok) {
         const data = await response.json();
-        setEmbedModelChoices(data.embed_models || []);
-        setRerankerChoices(data.rerankers || []);
-        setChatModelGroups(data.chat_models || []);
+        setEmbedModelChoices(data.embed_models ?? []);
+        setRerankerChoices(data.rerankers ?? []);
+        setChatModelGroups(data.chat_models ?? []);
       }
     } catch (error) {
       console.error("Failed to load model choices:", error);
@@ -162,7 +178,7 @@ export function BasicSettings() {
       } else {
         toast.error(t.settings.basic.saveFailed);
       }
-    } catch (error) {
+    } catch {
       toast.error(t.settings.basic.saveFailed);
     } finally {
       setSaving(false);
@@ -217,7 +233,7 @@ export function BasicSettings() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
@@ -229,14 +245,18 @@ export function BasicSettings() {
       <Card>
         <CardHeader>
           <CardTitle>{t.settings.basic.retrieval.title}</CardTitle>
-          <CardDescription>{t.settings.basic.retrieval.description}</CardDescription>
+          <CardDescription>
+            {t.settings.basic.retrieval.description}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 w-full">
-              <Label htmlFor="default_model">{t.settings.basic.retrieval.defaultModel}</Label>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="w-full space-y-2">
+              <Label htmlFor="default_model">
+                {t.settings.basic.retrieval.defaultModel}
+              </Label>
               <GroupedModelSelect
-                value={config.default_model || ""}
+                value={config.default_model ?? ""}
                 onChange={(value) => handleChange("default_model", value)}
                 groups={chatModelGroups}
                 placeholder="例如: gpt-4o"
@@ -245,10 +265,12 @@ export function BasicSettings() {
                 onValidate={handleValidateModel}
               />
             </div>
-            <div className="space-y-2 w-full">
-              <Label htmlFor="fast_model">{t.settings.basic.retrieval.fastModel}</Label>
+            <div className="w-full space-y-2">
+              <Label htmlFor="fast_model">
+                {t.settings.basic.retrieval.fastModel}
+              </Label>
               <GroupedModelSelect
-                value={config.fast_model || ""}
+                value={config.fast_model ?? ""}
                 onChange={(value) => handleChange("fast_model", value)}
                 groups={chatModelGroups}
                 placeholder="用于快速响应的模型"
@@ -258,27 +280,39 @@ export function BasicSettings() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2 w-full">
-              <Label htmlFor="embed_model">{t.settings.basic.retrieval.embedModel}</Label>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="w-full space-y-2">
+              <Label htmlFor="embed_model">
+                {t.settings.basic.retrieval.embedModel}
+              </Label>
               <Select
-                value={config.embed_model || ""}
+                value={config.embed_model ?? ""}
                 onValueChange={(value) => handleChange("embed_model", value)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t.settings.basic.retrieval.placeholder} />
+                  <SelectValue
+                    placeholder={t.settings.basic.retrieval.placeholder}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {embedModelChoices.map((model) => {
                     const embStatus = modelStatuses[model.name];
-                    const statusColor = embStatus?.status === "available" ? "text-green-500"
-                      : embStatus?.status === "unavailable" ? "text-red-500"
-                      : embStatus?.status === "error" ? "text-yellow-500"
-                      : "text-muted-foreground";
-                    const statusIcon = embStatus?.status === "available" ? "✓"
-                      : embStatus?.status === "unavailable" ? "✗"
-                      : embStatus?.status === "error" ? "⚠"
-                      : "○";
+                    const statusColor =
+                      embStatus?.status === "available"
+                        ? "text-green-500"
+                        : embStatus?.status === "unavailable"
+                          ? "text-red-500"
+                          : embStatus?.status === "error"
+                            ? "text-yellow-500"
+                            : "text-muted-foreground";
+                    const statusIcon =
+                      embStatus?.status === "available"
+                        ? "✓"
+                        : embStatus?.status === "unavailable"
+                          ? "✗"
+                          : embStatus?.status === "error"
+                            ? "⚠"
+                            : "○";
                     return (
                       <SelectItem key={model.name} value={model.name}>
                         <div className="flex items-center gap-2">
@@ -291,14 +325,18 @@ export function BasicSettings() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 w-full">
-              <Label htmlFor="reranker">{t.settings.basic.retrieval.reranker}</Label>
+            <div className="w-full space-y-2">
+              <Label htmlFor="reranker">
+                {t.settings.basic.retrieval.reranker}
+              </Label>
               <Select
-                value={config.reranker || ""}
+                value={config.reranker ?? ""}
                 onValueChange={(value) => handleChange("reranker", value)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={t.settings.basic.retrieval.placeholder} />
+                  <SelectValue
+                    placeholder={t.settings.basic.retrieval.placeholder}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {rerankerChoices.map((name) => (
@@ -317,20 +355,26 @@ export function BasicSettings() {
       <Card>
         <CardHeader>
           <CardTitle>{t.settings.basic.contentGuard.title}</CardTitle>
-          <CardDescription>{t.settings.basic.contentGuard.description}</CardDescription>
+          <CardDescription>
+            {t.settings.basic.contentGuard.description}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="enable_content_guard">{t.settings.basic.contentGuard.enable}</Label>
-              <p className="text-sm text-muted-foreground">
+              <Label htmlFor="enable_content_guard">
+                {t.settings.basic.contentGuard.enable}
+              </Label>
+              <p className="text-muted-foreground text-sm">
                 {t.settings.basic.contentGuard.enableHint}
               </p>
             </div>
             <Switch
               id="enable_content_guard"
-              checked={config.enable_content_guard || false}
-              onCheckedChange={(checked) => handleChange("enable_content_guard", checked)}
+              checked={config.enable_content_guard ?? false}
+              onCheckedChange={(checked) =>
+                handleChange("enable_content_guard", checked)
+              }
             />
           </div>
           {config.enable_content_guard && (
@@ -338,23 +382,31 @@ export function BasicSettings() {
               <Separator />
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="enable_content_guard_llm">{t.settings.basic.contentGuard.enableLLM}</Label>
-                  <p className="text-sm text-muted-foreground">
+                  <Label htmlFor="enable_content_guard_llm">
+                    {t.settings.basic.contentGuard.enableLLM}
+                  </Label>
+                  <p className="text-muted-foreground text-sm">
                     {t.settings.basic.contentGuard.enableLLMHint}
                   </p>
                 </div>
                 <Switch
                   id="enable_content_guard_llm"
-                  checked={config.enable_content_guard_llm || false}
-                  onCheckedChange={(checked) => handleChange("enable_content_guard_llm", checked)}
+                  checked={config.enable_content_guard_llm ?? false}
+                  onCheckedChange={(checked) =>
+                    handleChange("enable_content_guard_llm", checked)
+                  }
                 />
               </div>
               {config.enable_content_guard_llm && (
                 <div className="space-y-2">
-                  <Label htmlFor="content_guard_llm_model">{t.settings.basic.contentGuard.model}</Label>
+                  <Label htmlFor="content_guard_llm_model">
+                    {t.settings.basic.contentGuard.model}
+                  </Label>
                   <GroupedModelSelect
-                    value={config.content_guard_llm_model || ""}
-                    onChange={(value) => handleChange("content_guard_llm_model", value)}
+                    value={config.content_guard_llm_model ?? ""}
+                    onChange={(value) =>
+                      handleChange("content_guard_llm_model", value)
+                    }
                     groups={chatModelGroups}
                     placeholder={t.settings.basic.contentGuard.modelPlaceholder}
                     modelStatuses={modelStatuses}
@@ -424,7 +476,9 @@ export function BasicSettings() {
       <Card>
         <CardHeader>
           <CardTitle>{t.settings.basic.services.title}</CardTitle>
-          <CardDescription>{t.settings.basic.services.description}</CardDescription>
+          <CardDescription>
+            {t.settings.basic.services.description}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
@@ -456,7 +510,7 @@ export function BasicSettings() {
             <ServiceLinkCard
               title={t.settings.basic.services.ragflow}
               description={t.settings.basic.services.ragflowDesc}
-              href={`http://${hostname}:${process.env.NEXT_PUBLIC_RAGFLOW_WEB_PORT || "9381"}/`}
+              href={`http://${hostname}:${process.env.NEXT_PUBLIC_RAGFLOW_WEB_PORT ?? "9381"}/`}
             />
           </div>
         </CardContent>
@@ -465,7 +519,11 @@ export function BasicSettings() {
       {/* 保存按钮 */}
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          {saving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Save className="mr-2 h-4 w-4" />
+          )}
           {t.settings.basic.save}
         </Button>
       </div>
@@ -567,10 +625,10 @@ function ServiceLinkCard({
   href: string;
 }) {
   return (
-    <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors">
+    <div className="hover:bg-accent/50 flex items-center justify-between rounded-lg border p-4 transition-colors">
       <div className="space-y-1">
-        <h4 className="font-medium text-sm">{title}</h4>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <h4 className="text-sm font-medium">{title}</h4>
+        <p className="text-muted-foreground text-xs">{description}</p>
       </div>
       <Button variant="outline" size="sm" asChild>
         <a href={href} target="_blank" rel="noopener noreferrer">

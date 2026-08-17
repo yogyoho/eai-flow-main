@@ -23,16 +23,28 @@ export function DimensionReviewCard({ review }: DimensionReviewCardProps) {
         : "border-amber-300 bg-amber-50";
 
   return (
-    <div className={`border rounded-lg p-3 ${statusColor}`}>
+    <div className={`rounded-lg border p-3 ${statusColor}`}>
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">
-          {DIMENSION_LABELS[review.dimension || ""] || review.dimension || "未知维度"}
+          {/* truthiness fallback preserved: empty-string dimension renders "未知维度", not blank */}
+          {DIMENSION_LABELS[review.dimension ?? ""] ??
+            (review.dimension != null && review.dimension !== ""
+              ? review.dimension
+              : "未知维度")}
         </span>
-        <span className="text-xs text-muted-foreground">
-          {review.status === "approved" ? "✓ 通过" : review.status === "rejected" ? "✗ 退回" : "○ 待审核"}
+        <span className="text-muted-foreground text-xs">
+          {review.status === "approved"
+            ? "✓ 通过"
+            : review.status === "rejected"
+              ? "✗ 退回"
+              : "○ 待审核"}
         </span>
       </div>
-      {review.comment && <div className="mt-1 text-xs text-muted-foreground">{review.comment}</div>}
+      {review.comment && (
+        <div className="text-muted-foreground mt-1 text-xs">
+          {review.comment}
+        </div>
+      )}
     </div>
   );
 }
