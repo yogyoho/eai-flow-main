@@ -75,7 +75,7 @@ export function SelfRateDistChart({
       meta="10% 分桶 · 门槛线可拖"
       action={action}
     >
-      {/* 门槛滑杆 + 低于门槛项目计数 */}
+      {/* 门槛滑杆 + 低于门槛项目计数(灰轨加粗+绿thumb;文字 nowrap 单行,滑杆相应变短) */}
       <div className="mb-2 flex items-center gap-3">
         <input
           type="range"
@@ -84,9 +84,9 @@ export function SelfRateDistChart({
           value={threshold}
           onChange={(e) => setThreshold(Number(e.target.value))}
           aria-label="自产率门槛"
-          className="h-1 flex-1 cursor-pointer accent-emerald-500"
+          className="h-1.5 max-w-[320px] flex-1 cursor-pointer appearance-none rounded-full bg-muted focus-visible:ring-emerald-500/40 focus-visible:ring-2 focus-visible:outline-none [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:shadow [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:shadow"
         />
-        <span className="text-muted-foreground w-24 text-right text-[11px] font-bold">
+        <span className="text-muted-foreground shrink-0 text-right text-[11px] font-bold whitespace-nowrap">
           门槛 {threshold}% · 低于 {below} 个
         </span>
       </div>
