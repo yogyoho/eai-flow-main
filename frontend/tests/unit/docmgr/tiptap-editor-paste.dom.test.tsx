@@ -1,17 +1,16 @@
-// @vitest-environment jsdom
 
+import { afterEach, expect, rs, test } from "@rstest/core";
 import React, { createRef } from "react";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
-import { afterEach, expect, test, vi } from "vitest";
 
 import TiptapEditor, { type TiptapEditorRef } from "@/extensions/docmgr/TiptapEditor";
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-window.HTMLElement.prototype.scrollIntoView = vi.fn();
-window.scrollBy = vi.fn();
+window.HTMLElement.prototype.scrollIntoView = rs.fn();
+window.scrollBy = rs.fn();
 
 function createRect(): DOMRect {
   return {
@@ -39,23 +38,23 @@ function createRectList(): DOMRectList {
   return rectList as unknown as DOMRectList;
 }
 
-window.HTMLElement.prototype.getBoundingClientRect = vi.fn(createRect);
-window.HTMLElement.prototype.getClientRects = vi.fn(createRectList);
+window.HTMLElement.prototype.getBoundingClientRect = rs.fn(createRect);
+window.HTMLElement.prototype.getClientRects = rs.fn(createRectList);
 
 if ("Range" in window) {
-  window.Range.prototype.getBoundingClientRect = vi.fn(createRect);
-  window.Range.prototype.getClientRects = vi.fn(createRectList);
+  window.Range.prototype.getBoundingClientRect = rs.fn(createRect);
+  window.Range.prototype.getClientRects = rs.fn(createRectList);
 }
 
 if ("Text" in window) {
   (window.Text.prototype as Text & {
     getBoundingClientRect?: () => DOMRect;
     getClientRects?: () => DOMRectList;
-  }).getBoundingClientRect = vi.fn(createRect);
+  }).getBoundingClientRect = rs.fn(createRect);
   (window.Text.prototype as Text & {
     getBoundingClientRect?: () => DOMRect;
     getClientRects?: () => DOMRectList;
-  }).getClientRects = vi.fn(createRectList);
+  }).getClientRects = rs.fn(createRectList);
 }
 
 let container: HTMLDivElement | null = null;
@@ -86,7 +85,7 @@ afterEach(() => {
 });
 
 test("pasting markdown renders structured blocks in the editor", async () => {
-  const onChange = vi.fn();
+  const onChange = rs.fn();
   const editorRef = createRef<TiptapEditorRef>();
 
   container = document.createElement("div");

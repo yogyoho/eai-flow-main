@@ -1,4 +1,4 @@
-import { expect, test, describe } from "vitest";
+import { expect, test, describe } from "@rstest/core";
 
 import { transformTemplate } from "@/extensions/output/transforms";
 import type { LayoutTemplate } from "@/extensions/output/types";

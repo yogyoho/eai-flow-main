@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "@rstest/core";
 
 import { allPageIds, isSinglePageModule, isVisibilityOnlyModule, resolveVisiblePages, serializePages, shouldHideModule } from "@/extensions/role/pageVisibility";
 import type { RegistryModule } from "@/extensions/types";

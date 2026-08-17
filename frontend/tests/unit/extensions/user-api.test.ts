@@ -1,24 +1,24 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, rs, test } from "@rstest/core";
 
 import { userApi } from "@/extensions/api";
 
 describe("userApi.resetPassword", () => {
   beforeEach(() => {
-    vi.unstubAllGlobals();
+    rs.unstubAllGlobals();
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
+    rs.unstubAllGlobals();
   });
 
   test("sends new_password in the JSON body, not the query string", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
+    const fetchMock = rs.fn().mockResolvedValue(
       new Response(JSON.stringify({ message: "Password reset successfully" }), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       })
     );
-    vi.stubGlobal("fetch", fetchMock);
+    rs.stubGlobal("fetch", fetchMock);
 
     await userApi.resetPassword("user-123", "NewPass123");
 

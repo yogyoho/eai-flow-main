@@ -1,5 +1,5 @@
+import { expect, test } from "@rstest/core";
 import MarkdownIt from "markdown-it";
-import { expect, test } from "vitest";
 
 import { mathMarkdownIt } from "@/extensions/docmgr/extensions/mathMarkdownIt";
 

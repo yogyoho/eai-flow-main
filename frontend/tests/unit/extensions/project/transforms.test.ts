@@ -1,4 +1,4 @@
-import { expect, test, describe } from "vitest";
+import { expect, test, describe } from "@rstest/core";
 
 import { toCamelCase, toSnakeCase } from "@/extensions/project/transforms";
 

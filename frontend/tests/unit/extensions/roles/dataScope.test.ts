@@ -1,4 +1,4 @@
-import { expect, test, describe } from "vitest";
+import { expect, test, describe } from "@rstest/core";
 
 import { resolveDataScopeSelections } from "@/extensions/role/dataScope";
 import { type RegistryModule } from "@/extensions/types";

@@ -43,8 +43,10 @@ describe("三问框架新图 SQL 形状(2026-08-15)", () => {
     // 口径锁:溢价相对【友商最低价】(相对中标价会退化——胜场溢价恒 0)
     expect(sql).toContain("MIN(winning_price) AS cmin_price");
     expect(sql).not.toContain("w.won");
-    // EXISTS 友商过滤必须引用 base 的 FROM 表(未别名 mock_bid),不能是裸列
-    expect(sql).toContain("c2.project_name = mock_bid.project_name");
+    // 友商过滤为行级语义(2026-08-17),前缀引用 base 的 FROM 表(未别名 mock_bid)
+    expect(sql).toContain(
+      "(mock_bid.bidder_name IN ('北方重工') OR mock_bid.bidder_role='ours')",
+    );
   });
 
   it("sqlPriceBand: 三分位数 + 成本底线走 mock_bid_item", () => {
@@ -67,7 +69,10 @@ describe("三问框架新图 SQL 形状(2026-08-15)", () => {
   it("sqlCompetitorGoods: 仅中标行 + 外层别名 b 的 EXISTS 外引用", () => {
     const sql = sqlCompetitorGoods(f);
     expect(sql).toContain("b.won");
-    expect(sql).toContain("c2.project_name = b.project_name"); // 外层别名是 b
+    // 行级语义(2026-08-17):外层别名是 b
+    expect(sql).toContain(
+      "(b.bidder_name IN ('北方重工') OR b.bidder_role='ours')",
+    );
   });
 
   it("sqlHead2Head: 竞争对手名单引号转义 + 双方同场判定", () => {

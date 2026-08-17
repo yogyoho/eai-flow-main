@@ -13,9 +13,19 @@ const shared = {
     },
   },
   output: {
-    // Streamdown imports KaTeX CSS as a side effect. Bundle these packages so
-    // Rsbuild processes that CSS import instead of Node trying to load it.
-    bundleDependencies: ["streamdown", "katex"],
+    // Streamdown imports KaTeX CSS as a side effect, and the @blocknote/*
+    // packages import their own dist/style.css. Bundle these packages so
+    // Rsbuild processes the CSS imports instead of Node trying to load them.
+    bundleDependencies: [
+      "streamdown",
+      "katex",
+      "@blocknote/core",
+      "@blocknote/react",
+      "@blocknote/shadcn",
+      "@blocknote/xl-ai",
+      "@defensestation/blocknote-math",
+      "highlight.js",
+    ],
   },
 };
 

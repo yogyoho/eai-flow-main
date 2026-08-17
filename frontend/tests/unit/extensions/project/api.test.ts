@@ -1,17 +1,17 @@
-import { expect, test, describe, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, rs, test } from "@rstest/core";
 
 // Mock authFetch before importing api
-vi.mock("@/extensions/api/client", () => ({
-  authFetch: vi.fn(),
+rs.mock("@/extensions/api/client", () => ({
+  authFetch: rs.fn(),
 }));
 
 import { authFetch } from "@/extensions/api/client";
 import { projectApi } from "@/extensions/project/api";
 
-const mockFetch = vi.mocked(authFetch);
+const mockFetch = rs.mocked(authFetch);
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  rs.clearAllMocks();
 });
 
 describe("projectApi.list", () => {

@@ -5,7 +5,13 @@ import { describe, expect, it } from "@rstest/core";
 
 const frontendRoot = join(import.meta.dirname, "../../../..");
 
-describe("decorative animation scheduling", () => {
+// EAI-CUSTOM: these assert upstream's landing perf work (#4622) — the
+// useRenderActivity hook, dynamic galaxy/magic-bento imports, pointermove
+// throttling — which the EAI-rewritten landing (hero/whats-new/skills
+// sections) has not ported. EAI renders galaxy statically and animates on
+// mount. Re-enable when/if the upstream animation-scheduling optimizations
+// are ported to the EAI landing.
+describe.skip("decorative animation scheduling", () => {
   it("suspends the Galaxy render loop when its container is inactive", () => {
     const source = readFileSync(
       join(frontendRoot, "src/components/landing/hero.tsx"),

@@ -5,10 +5,10 @@
  * and the React-facing public API (registerTraceabilityPlugin,
  * updateTraceabilitySources).
  */
+import { describe, expect, it } from "@rstest/core";
 import { Schema } from "prosemirror-model";
 import { EditorState, Plugin, type Transaction } from "prosemirror-state";
 import type { EditorView } from "prosemirror-view";
-import { describe, expect, it } from "vitest";
 
 import {
   registerTraceabilityPlugin,

@@ -14,11 +14,13 @@ describe("core copy loading", () => {
     expect(chinese.inputBox.disclaimer).toBe(
       "内容由AI生成，重要信息请务必核查",
     );
-    expect(english.channels.descriptions.buzz).toBe(
-      "Buzz channels and direct messages through your DeerFlow agent.",
+    // EAI-CUSTOM: upstream asserts a `buzz` channel EAI does not ship; the
+    // closest EAI channel is wechat (iLink integration).
+    expect(english.channels.descriptions.wechat).toBe(
+      "WeChat iLink messages through your DeerFlow bot.",
     );
-    expect(chinese.channels.descriptions.buzz).toBe(
-      "通过 DeerFlow 智能体接收 Buzz 频道消息和私聊。",
+    expect(chinese.channels.descriptions.wechat).toBe(
+      "通过 DeerFlow Bot 接收微信 iLink 消息。",
     );
   });
 });

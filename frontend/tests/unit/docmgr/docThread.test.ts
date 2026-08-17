@@ -1,10 +1,10 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, rs, test } from "@rstest/core";
 
 import { resolveSubThreadId } from "@/extensions/docmgr/utils/docThread";
 
 describe("resolveSubThreadId", () => {
   test("存储线程有效 (exists=true) → 复用，不新建", async () => {
-    const create = vi.fn();
+    const create = rs.fn();
     const { id, reused } = await resolveSubThreadId({
       storedId: "valid-123",
       exists: async () => true,

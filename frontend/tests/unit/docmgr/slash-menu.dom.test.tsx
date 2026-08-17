@@ -1,15 +1,14 @@
-// @vitest-environment jsdom
 
+import { afterEach, expect, rs, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
-import { afterEach, expect, test, vi } from "vitest";
 
 import SlashMenu from "@/extensions/docmgr/components/SlashMenu";
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-window.HTMLElement.prototype.scrollIntoView = vi.fn();
+window.HTMLElement.prototype.scrollIntoView = rs.fn();
 
 let container: HTMLDivElement | null = null;
 let root: ReactDOMClient.Root | null = null;
@@ -27,10 +26,10 @@ afterEach(() => {
 });
 
 test("slash menu supports keyboard navigation and enter to execute a command", async () => {
-  const onClose = vi.fn();
-  const onCommand = vi.fn();
-  const dispatch = vi.fn();
-  const setMeta = vi.fn(() => ({ meta: "slash" }));
+  const onClose = rs.fn();
+  const onCommand = rs.fn();
+  const dispatch = rs.fn();
+  const setMeta = rs.fn(() => ({ meta: "slash" }));
   const fakeEditor = {
     state: {
       tr: {

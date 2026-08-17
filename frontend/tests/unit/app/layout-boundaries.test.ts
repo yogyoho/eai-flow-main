@@ -9,7 +9,14 @@ function source(relativePath: string) {
   return readFileSync(path.join(FRONTEND_ROOT, relativePath), "utf8");
 }
 
-describe("layout performance boundaries", () => {
+// EAI-CUSTOM: these assert upstream's layout perf discipline — i18n
+// (detectLocaleServer/I18nProvider) and rich-content CSS (katex/streamdown)
+// kept OUT of the root layout and scoped to leaf layouts. EAI's root
+// layout intentionally wires I18nProvider + rich-content styles globally
+// (EAI i18n/landing architecture diverges from upstream — see
+// .wolf full-upstream-gap-triage "不可同步核心"). Re-enable if EAI later
+// adopts per-route locale/rich-content scoping.
+describe.skip("layout performance boundaries", () => {
   it("keeps request locale and rich-content styles out of the root layout", () => {
     const rootLayout = source("src/app/layout.tsx");
 

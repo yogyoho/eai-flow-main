@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "@rstest/core";
 
 import { getSlashMenuViewportPosition } from "@/extensions/docmgr/utils/slashMenuPosition";
 

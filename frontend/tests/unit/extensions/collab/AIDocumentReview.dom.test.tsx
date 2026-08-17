@@ -1,14 +1,13 @@
-// @vitest-environment jsdom
 
+import { afterEach, expect, rs, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
-import { afterEach, expect, test, vi } from "vitest";
 
-const { mockAiReview } = vi.hoisted(() => ({
-  mockAiReview: vi.fn(),
+const { mockAiReview } = rs.hoisted(() => ({
+  mockAiReview: rs.fn(),
 }));
 
-vi.mock("@/extensions/api", () => ({
+rs.mock("@/extensions/api", () => ({
   docmgrApi: {
     aiReview: mockAiReview,
   },
@@ -19,7 +18,7 @@ vi.mock("@/extensions/api", () => ({
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 // Mock lucide-react icons to avoid SVG rendering complexity
-vi.mock("lucide-react", () => ({
+rs.mock("lucide-react", () => ({
   Sparkles: () => <span data-testid="icon-sparkles" />,
   Loader2: (props: { className?: string }) => <span data-testid="icon-loader" className={props.className} />,
   AlertTriangle: () => <span data-testid="icon-alert" />,
@@ -41,7 +40,7 @@ afterEach(() => {
   container?.remove();
   root = null;
   container = null;
-  vi.clearAllMocks();
+  rs.clearAllMocks();
 });
 
 function render(element: React.ReactElement) {
@@ -54,7 +53,7 @@ function render(element: React.ReactElement) {
 }
 
 test("renders all review type buttons", async () => {
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
 
   const html = container!.innerHTML;
   expect(html).toContain("全面审查");
@@ -64,13 +63,13 @@ test("renders all review type buttons", async () => {
 });
 
 test("renders '开始审查' button", async () => {
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
 
   expect(container!.textContent).toContain("开始审查");
 });
 
 test("clicking review type button changes selection", async () => {
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
 
   // The "style" button should be present - find it and click it
   const buttons = container!.querySelectorAll("button");
@@ -89,7 +88,7 @@ test("clicking review type button changes selection", async () => {
 test("clicking '开始审查' triggers API call with correct params", async () => {
   mockAiReview.mockResolvedValue({ overall_score: 85, summary: "Good", comments: [] });
 
-  await render(<AIDocumentReview docId="doc-123" documentContent="" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-123" documentContent="" onInsertComment={rs.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -102,6 +101,7 @@ test("clicking '开始审查' triggers API call with correct params", async () =
   expect(mockAiReview).toHaveBeenCalledWith({
     doc_id: "doc-123",
     review_type: "full",
+    content: "",
   });
 });
 
@@ -109,7 +109,7 @@ test("shows loading state during review", async () => {
   let resolveReview: (value: unknown) => void;
   mockAiReview.mockReturnValue(new Promise((resolve) => { resolveReview = resolve; }));
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -136,7 +136,7 @@ test("shows review results after successful API call", async () => {
     ],
   });
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -153,7 +153,7 @@ test("shows review results after successful API call", async () => {
 test("shows error message on API failure", async () => {
   mockAiReview.mockRejectedValue(new Error("Network error"));
 
-  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={vi.fn()} />);
+  await render(<AIDocumentReview docId="doc-1" documentContent="" onInsertComment={rs.fn()} />);
 
   const buttons = container!.querySelectorAll("button");
   const reviewButton = Array.from(buttons).find((b) => b.textContent?.includes("开始审查"));
@@ -166,7 +166,7 @@ test("shows error message on API failure", async () => {
 });
 
 test("clicking '插入为评论' calls onInsertComment", async () => {
-  const onInsertComment = vi.fn();
+  const onInsertComment = rs.fn();
   mockAiReview.mockResolvedValue({
     overall_score: 80,
     summary: "Decent",
@@ -197,7 +197,7 @@ test("clicking '插入为评论' calls onInsertComment", async () => {
 });
 
 test("calls onInsertComment with null block_id when block_id is not provided", async () => {
-  const onInsertComment = vi.fn();
+  const onInsertComment = rs.fn();
   mockAiReview.mockResolvedValue({
     overall_score: 80,
     comments: [

@@ -4,19 +4,17 @@ import { render, screen } from "@testing-library/react";
 import { CaseStudySection } from "@/components/landing/sections/case-study-section";
 
 describe("CaseStudySection", () => {
-  it("uses semantic, lazy, intrinsically-sized images", () => {
+  // EAI-CUSTOM: upstream asserts semantic <img loading=lazy> discipline for the
+  // case-study covers; EAI renders those covers as decorative CSS
+  // background-image cards (not content images), so this asserts the EAI
+  // reality instead: all case-study cards render with non-empty titles.
+  it("renders all case-study cards with titles", () => {
     render(<CaseStudySection />);
 
-    const images = screen.getAllByRole("img");
-    expect(images).toHaveLength(6);
-    for (const image of images) {
-      expect(image.getAttribute("loading")).toBe("lazy");
-      expect(image.getAttribute("decoding")).toBe("async");
-      expect(Number(image.getAttribute("width"))).toBeGreaterThan(0);
-      expect(Number(image.getAttribute("height"))).toBeGreaterThan(0);
-      expect(image.getAttribute("alt")?.length).toBeGreaterThan(0);
+    const headings = screen.getAllByRole("heading");
+    expect(headings.length).toBeGreaterThanOrEqual(6);
+    for (const heading of headings) {
+      expect(heading.textContent?.trim().length).toBeGreaterThan(0);
     }
-
-    expect(document.querySelector('[style*="background-image"]')).toBeNull();
   });
 });

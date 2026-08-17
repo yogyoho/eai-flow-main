@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "@rstest/core";
 
 import { getVisibleTabs, createProjectIdentity, TAB_REGISTRY } from "@/extensions/project/tabRegistry";
 import type { ProjectPermissions } from "@/extensions/project/types";
@@ -58,8 +58,10 @@ describe("tabRegistry", () => {
       const ctx = makeIdentity({ isAdmin: true });
       const tabs = getVisibleTabs(ctx);
       const ids = tabs.map((t) => t.id);
-      expect(ids).toContain("settings");
-      expect(ids).toContain("workflow");
+      // EAI-CUSTOM: workflow/settings were merged into overview (d3966051a),
+      // so the registry only carries overview/editor/review.
+      expect(ids).toContain("overview");
+      expect(ids).toContain("editor");
       expect(ids).toContain("review");
       expect(ids.length).toBe(TAB_REGISTRY.length);
     });
@@ -109,7 +111,7 @@ describe("tabRegistry", () => {
       expect(ids).not.toContain("history");
     });
 
-    it("phase lead gets workflow tab via member:add permission", () => {
+    it("phase lead sees overview and editor access", () => {
       const ctx = makeIdentity({
         role: "member",
         permissions: ["chapter:write_own", "member:add", "outline:edit", "ai:start_writing"],
@@ -117,8 +119,10 @@ describe("tabRegistry", () => {
       });
       const tabs = getVisibleTabs(ctx);
       const ids = tabs.map((t) => t.id);
-      expect(ids).toContain("workflow");
-      expect(ids).toContain("settings"); // member:add triggers settings
+      // EAI-CUSTOM: workflow/settings tabs were merged into overview
+      // (d3966051a); a phase lead with chapter:write_own gets overview+editor.
+      expect(ids).toContain("overview");
+      expect(ids).toContain("editor");
     });
 
     it("tabs are sorted by order", () => {

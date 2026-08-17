@@ -7,7 +7,13 @@ const FRONTEND_ROOT = path.resolve(__dirname, "../../../..");
 const read = (relativePath: string) =>
   readFileSync(path.join(FRONTEND_ROOT, relativePath), "utf8");
 
-describe("interaction-only bundle boundaries", () => {
+// EAI-CUSTOM: these assert upstream bundle-boundary patterns — dynamic()
+// hosts around settings-dialog (9 per-section dynamic pages), a
+// lazy-panels host that never statically imports the dialog, and the
+// chat-box right-panel dynamic imports. EAI's settings-dialog renders all
+// sections statically (no per-page dynamic()) and lazy-panels.tsx does not
+// exist in the EAI layout. Re-enable when/if EAI adopts those boundaries.
+describe.skip("interaction-only bundle boundaries", () => {
   it("does not import the settings dialog until its store is open", () => {
     const host = read(
       "src/components/workspace/settings/settings-dialog-host.tsx",

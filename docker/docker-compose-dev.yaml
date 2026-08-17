@@ -106,7 +106,17 @@ services:
       - ../frontend/public:/app/frontend/public
       # EAI-CUSTOM: bind-mount tests/ so `pnpm typecheck`/`pnpm test` see host tests (without this the image-baked tests/ goes stale and diverges from src/)
       - ../frontend/tests:/app/frontend/tests
+      # EAI-CUSTOM: mount repo-root contracts/ read-only so contract tests
+      # (tests/unit/core/{skills,tasks}/*-contract.test.ts) can read the
+      # cross-language fixtures (shared with backend pytest) inside the container
+      - ../contracts:/app/contracts:ro
       - ../frontend/next.config.js:/app/frontend/next.config.js:ro
+      # EAI-CUSTOM: rstest.config.ts is image-baked otherwise; bind it so
+      # bundleDependencies/test-project changes take effect without an image rebuild
+      - ../frontend/rstest.config.ts:/app/frontend/rstest.config.ts:ro
+      # EAI-CUSTOM: eslint.config.js likewise image-baked; bind so ignore
+      # patterns / rule changes take effect without an image rebuild
+      - ../frontend/eslint.config.js:/app/frontend/eslint.config.js:ro
       - ../logs:/app/logs
       # Mount pnpm store for caching
       - ${PNPM_STORE_PATH:-~/.local/share/pnpm/store}:/root/.local/share/pnpm/store

@@ -44,21 +44,21 @@ describe("buildWhere", () => {
       "1=1 AND project_name IN ('甲','乙')",
     );
   });
-  it("competitors → 统一 EXISTS 语义(筛“有选中友商参与的项目”,保留我方行)", () => {
+  it("competitors → 行级语义(保留我方行 + 选中友商行)", () => {
     const g: FilterState = { ...EMPTY_FILTERS, competitors: ["友A"] };
     const w = buildWhere(g, "mock_bid.project_name");
     expect(w).toContain(
-      "EXISTS (SELECT 1 FROM mock_bid c2 WHERE c2.project_name = mock_bid.project_name",
+      "(mock_bid.bidder_name IN ('友A') OR mock_bid.bidder_role='ours')",
     );
-    expect(w).toContain("c2.bidder_name IN ('友A')");
-    // 不再产出裸 bidder_name IN(会把仅我方查询清成空集,C1)
-    expect(w).not.toContain(" bidder_name IN");
+    expect(w).not.toContain("EXISTS (SELECT 1");
   });
-  it("competitors + 别名外层(b.project_name)→ 关联列跟随别名", () => {
+  it("competitors + 别名外层(b.project_name)→ 列前缀跟随别名", () => {
     const g: FilterState = { ...EMPTY_FILTERS, competitors: ["友A"] };
     const w = buildWhere(g, "b.project_name");
-    expect(w).toContain("c2.project_name = b.project_name");
-    expect(w).not.toContain("mock_bid.project_name");
+    expect(w).toContain(
+      "(b.bidder_name IN ('友A') OR b.bidder_role='ours')",
+    );
+    expect(w).not.toContain("mock_bid.");
   });
   it("日期范围", () => {
     const g: FilterState = {
@@ -118,28 +118,29 @@ describe("sqlFor 组装", () => {
     const sql = sqlFor("summary", EMPTY_FILTERS);
     expect(sql).toContain("FROM mock_bid WHERE 1=1");
   });
-  it("selfRate + competitors → EXISTS 关联 b.project_name(非恒真、不清空我方行)", () => {
+  it("selfRate + competitors → 行级(保留我方行 + 选中友商行)", () => {
     const g: FilterState = { ...EMPTY_FILTERS, competitors: ["友A", "友C"] };
     const sql = sqlFor("selfRate", g);
     expect(sql).toContain(
-      "EXISTS (SELECT 1 FROM mock_bid c2 WHERE c2.project_name = b.project_name",
+      "(b.bidder_name IN ('友A','友C') OR b.bidder_role='ours')",
     );
-    expect(sql).toContain("c2.bidder_name IN ('友A','友C')");
-    expect(sql).toContain("WHERE b.bidder_role='ours' AND 1=1 AND EXISTS");
+    expect(sql).toContain("WHERE b.bidder_role='ours' AND 1=1 AND");
   });
-  it("composition + competitors → EXISTS 关联 b.project_name(我方聚合不被 IN 清空)", () => {
+  it("composition + competitors → 行级前缀 b.(我方聚合不被 IN 清空)", () => {
     const g: FilterState = { ...EMPTY_FILTERS, competitors: ["友A"] };
     const sql = sqlFor("composition", g);
-    expect(sql).toContain("c2.project_name = b.project_name");
-    expect(sql).not.toContain(" bidder_name IN");
+    expect(sql).toContain(
+      "(b.bidder_name IN ('友A') OR b.bidder_role='ours')",
+    );
+    expect(sql).not.toContain("EXISTS (SELECT 1");
   });
-  it("summary/showdown + competitors → EXISTS 关联 mock_bid.project_name(未别名外层)", () => {
+  it("summary/showdown + competitors → 行级前缀 mock_bid.(未别名外层)", () => {
     const g: FilterState = { ...EMPTY_FILTERS, competitors: ["友A"] };
     expect(sqlFor("summary", g)).toContain(
-      "c2.project_name = mock_bid.project_name",
+      "(mock_bid.bidder_name IN ('友A') OR mock_bid.bidder_role='ours')",
     );
     expect(sqlFor("showdown", g)).toContain(
-      "c2.project_name = mock_bid.project_name",
+      "(mock_bid.bidder_name IN ('友A') OR mock_bid.bidder_role='ours')",
     );
   });
 });

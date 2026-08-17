@@ -1,14 +1,13 @@
-// @vitest-environment jsdom
 
+import { afterEach, expect, rs, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
-import { afterEach, expect, test, vi } from "vitest";
 
 import { VersionPanel } from "@/extensions/collab/VersionPanel";
 import type { CollabVersion, VersionDiffResponse } from "@/extensions/types";
 
 // Mock lucide-react icons
-vi.mock("lucide-react", () => ({
+rs.mock("lucide-react", () => ({
   Eye: () => <span data-testid="icon-eye" />,
   GitCompare: () => <span data-testid="icon-compare" />,
   History: () => <span data-testid="icon-history" />,
@@ -67,7 +66,7 @@ afterEach(() => {
   container?.remove();
   root = null;
   container = null;
-  vi.restoreAllMocks();
+  rs.restoreAllMocks();
 });
 
 function render(element: React.ReactElement) {
@@ -87,11 +86,11 @@ function defaultProps(
     loading: false,
     diffLoading: false,
     diffResult: null as VersionDiffResponse | null,
-    onCreateVersion: vi.fn(),
-    onRestoreVersion: vi.fn(),
-    onPreviewVersion: vi.fn(),
-    onDiffVersions: vi.fn(),
-    onClose: vi.fn(),
+    onCreateVersion: rs.fn(),
+    onRestoreVersion: rs.fn(),
+    onPreviewVersion: rs.fn(),
+    onDiffVersions: rs.fn(),
+    onClose: rs.fn(),
     ...overrides,
   };
 }
@@ -118,7 +117,7 @@ test("renders '对比' toggle button", async () => {
 });
 
 test("renders '关闭' button and calls onClose", async () => {
-  const onClose = vi.fn();
+  const onClose = rs.fn();
   await render(<VersionPanel {...defaultProps({ onClose })} />);
 
   const closeButtons = container!.querySelectorAll("button");
@@ -135,7 +134,7 @@ test("renders '关闭' button and calls onClose", async () => {
 });
 
 test("clicking version item calls onPreviewVersion", async () => {
-  const onPreviewVersion = vi.fn();
+  const onPreviewVersion = rs.fn();
   await render(<VersionPanel {...defaultProps({ onPreviewVersion })} />);
 
   // Find the "预览" button for the first version (v3)
@@ -153,7 +152,7 @@ test("clicking version item calls onPreviewVersion", async () => {
 });
 
 test("shows '保存当前版本' and calls onCreateVersion", async () => {
-  const onCreateVersion = vi.fn().mockResolvedValue(undefined);
+  const onCreateVersion = rs.fn().mockResolvedValue(undefined);
   await render(<VersionPanel {...defaultProps({ onCreateVersion })} />);
 
   const buttons = container!.querySelectorAll("button");
@@ -221,8 +220,10 @@ test("toggling diff mode shows DiffViewer", async () => {
 test("in diff mode, shows checkboxes for version selection", async () => {
   await render(<VersionPanel {...defaultProps()} />);
 
-  // No checkboxes before diff mode
-  expect(container!.querySelectorAll('input[type="checkbox"]').length).toBe(0);
+  // EAI-CUSTOM: the "AI 生成变更摘要" checkbox is always rendered (not gated
+  // by diff mode), so before diff mode there is 1 checkbox, and after diff
+  // mode the per-version checkboxes follow it.
+  expect(container!.querySelectorAll('input[type="checkbox"]').length).toBe(1);
 
   // Enable diff mode
   const buttons = container!.querySelectorAll("button");
@@ -234,13 +235,13 @@ test("in diff mode, shows checkboxes for version selection", async () => {
     diffButton!.click();
   });
 
-  // Checkboxes should now appear
+  // Checkboxes should now appear: AI-summary + one per version
   const checkboxes = container!.querySelectorAll('input[type="checkbox"]');
-  expect(checkboxes.length).toBe(3); // one per version
+  expect(checkboxes.length).toBe(4);
 });
 
 test("selecting two versions in diff mode calls onDiffVersions", async () => {
-  const onDiffVersions = vi.fn().mockResolvedValue(undefined);
+  const onDiffVersions = rs.fn().mockResolvedValue(undefined);
   await render(<VersionPanel {...defaultProps({ onDiffVersions })} />);
 
   // Enable diff mode
@@ -253,18 +254,18 @@ test("selecting two versions in diff mode calls onDiffVersions", async () => {
     (diffButton as HTMLElement).click();
   });
 
-  // Click first checkbox (v3)
+  // Click the v3 + v2 version checkboxes. checkboxes[0] is the always-rendered
+  // "AI 生成变更摘要" checkbox; version checkboxes follow it in version order.
   const checkboxes = container!.querySelectorAll('input[type="checkbox"]');
   await act(async () => {
-    (checkboxes[0] as HTMLElement).click();
+    (checkboxes[1] as HTMLElement).click(); // v3
   });
 
-  // Click second checkbox (v2)
   const updatedCheckboxes = container!.querySelectorAll(
     'input[type="checkbox"]',
   );
   await act(async () => {
-    (updatedCheckboxes[1] as HTMLElement).click();
+    (updatedCheckboxes[2] as HTMLElement).click(); // v2
   });
 
   // onDiffVersions should be called with the two selected version numbers

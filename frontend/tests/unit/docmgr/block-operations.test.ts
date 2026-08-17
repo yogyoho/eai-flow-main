@@ -1,5 +1,5 @@
+import { expect, test } from "@rstest/core";
 import { Schema } from "@tiptap/pm/model";
-import { expect, test } from "vitest";
 
 import {
   duplicateTopLevelBlock,

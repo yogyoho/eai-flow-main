@@ -1,5 +1,5 @@
 // EAI-CUSTOM: 策略条件/授权 shape 转换器单测（UI 数组 ⇄ 引擎 dict）
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, rs } from "@rstest/core";
 
 import { toEngineConditions, toGrantArray, toUIConditions } from "@/extensions/role/policyConverters";
 
@@ -111,5 +111,5 @@ describe("toGrantArray (引擎授权 dict → UI 数组)", () => {
 });
 
 afterEach(() => {
-  vi.restoreAllMocks();
+  rs.restoreAllMocks();
 });

@@ -1,8 +1,7 @@
-// @vitest-environment jsdom
 
+import { afterEach, expect, test } from "@rstest/core";
 import { act } from "react";
 import ReactDOMClient from "react-dom/client";
-import { afterEach, expect, test } from "vitest";
 
 import { DiffViewer } from "@/extensions/collab/DiffViewer";
 import type { VersionDiffResponse } from "@/extensions/types";
