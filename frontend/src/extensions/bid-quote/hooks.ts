@@ -8,6 +8,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import {
   buildWhere,
+  esc,
   fetchFilterOptions,
   queryFiltered,
   querySql,
@@ -184,5 +185,20 @@ export function useFilterOptions() {
   return useQuery({
     queryKey: KEYS.filterOptions,
     queryFn: async (): Promise<FilterOptions> => fetchFilterOptions(),
+  });
+}
+
+/** 项目下拉懒加载 + 服务端搜索:enabled(首次打开)才发请求,kw 防抖由调用方处理后传入。
+ *  LIMIT 50 兜底,列表打满时 UI 提示继续输入关键字。 */
+export function useProjectOptions(kw: string, enabled: boolean) {
+  const sql = `SELECT DISTINCT project_name AS v FROM mock_bid ${kw ? `WHERE project_name ILIKE '%${esc(kw)}%'` : ""} ORDER BY project_name LIMIT 50`;
+  return useQuery({
+    queryKey: ["bqa", "projectOptions", kw] as const,
+    enabled,
+    queryFn: async (): Promise<string[]> => {
+      const res = await queryFiltered(sql);
+      return res.rows.map((r) => String(r.v));
+    },
+    placeholderData: keepPreviousData,
   });
 }
