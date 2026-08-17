@@ -135,11 +135,11 @@ class ScoreSimulateError(Exception):
 
 
 def _load_json_file(path: Path, what: str):
-    """装载 UTF-8 JSON 文件; 缺失/不可解析 → ScoreSimulateError(退出码 1), 绝不静默。"""
+    """装载 UTF-8 JSON 文件(容忍 BOM——人工/记事本编辑场景); 缺失/不可解析 → ScoreSimulateError(退出码 1), 绝不静默。"""
     if not path.is_file():
         raise ScoreSimulateError(f"{what} 不存在: {path}")
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError, OSError) as exc:
         raise ScoreSimulateError(f"{what} 不可读/不可解析(需 UTF-8; 疑似截断或编码错): {path}: {exc}") from exc
 

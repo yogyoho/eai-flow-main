@@ -38,7 +38,7 @@
         },
         "table_spec": {
           "type": ["object", "null"],
-          "description": "table 槽复刻的列头/行列结构(自由对象:columns/rows 等);非 table 槽为 null。合并单元格/列宽等 markdown 管道无法表达的部分由 build_output.py 标 [待人工复刻] 并入人核清单。"
+          "description": "table 槽复刻的表格结构。形状(build_output.py 消费侧校验,即出即拒): columns=非空列头标量数组;rows=数据行数整数≥1(缺省按 1)——是行数计数,不是行数据数组。非 table 槽为 null。合并单元格/列宽等 markdown 管道无法表达的部分由 build_output.py 标 [待人工复刻] 并入人核清单。"
         }
       }
     },

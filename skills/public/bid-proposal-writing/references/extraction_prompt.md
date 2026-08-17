@@ -60,13 +60,13 @@ ingest 只给出格式章节的章节树骨架;本子模板完成槽位语义定
   "volume": "commercial | technical",
   "path": "<章节标题链,如 投标文件格式/三、法定代表人身份证明>",
   "slot_type": "text | table | image | format_check | group",
-  "required_format": {"desc": "<格式要求/待填内容提示|null>", "table_spec": <列头/行列结构对象|null>},
+  "required_format": {"desc": "<格式要求/待填内容提示|null>", "table_spec": {"columns": ["<列头1>", "<列头2>"], "rows": <数据行数,整数≥1>|null}, 或 null},
   "linked_clause_ids": ["<关联条款 clause_id,无则空数组>"]
 }
 
 硬性纪律:
 - 章节结构只镜像招标文件规定,绝不自创章节/改写标题;path 的每一段必须是原文标题。
-- slot_type 判定:文字内容=text;要求复刻表格=table(table_spec 从原文复原列头与行列数);
+- slot_type 判定:文字内容=text;要求复刻表格=table(table_spec 形状钉死:columns=非空列头字符串数组,rows=数据行数整数≥1(缺省按 1)——不要把行数据数组放进 rows,行内容渲染时人工填);
   需插入证件/图纸扫描件=image;签字/盖章/份数/页码/目录等非内容格式义务=format_check;纯容器=group。
 - 合并单元格/列宽等无法在 table_spec 中精确表达时,如实降级标注,交确认门1 人工确认。
 - 无出处的格式要求标 [待确认],绝不编造。

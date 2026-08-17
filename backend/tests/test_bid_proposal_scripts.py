@@ -4558,7 +4558,17 @@ class TestReingestVolumeSelection:
         """10 商务节点 + 6 活技术条款(审查员复现配比: fixture 5+2 → 追加 5 商务/4 技术)。"""
         state = _copy_prestate(tmp_path, merged=True)
         for i in range(1, 6):
-            _add_structure_node(state, {"node_id": f"S-10{i}", "volume": "commercial", "path": f"投标文件格式/附录{i} 商务附件", "slot_type": "text", "required_format": {"desc": f"商务附录{i} 材料清单", "table_spec": None}, "linked_clause_ids": []})
+            _add_structure_node(
+                state,
+                {
+                    "node_id": f"S-10{i}",
+                    "volume": "commercial",
+                    "path": f"投标文件格式/附录{i} 商务附件",
+                    "slot_type": "text",
+                    "required_format": {"desc": f"商务附录{i} 材料清单", "table_spec": None},
+                    "linked_clause_ids": [],
+                },
+            )
         for i in range(1, 5):
             _add_clause(state, _extra_technical_clause(f"ZB-C-10{i}"))
         return state
@@ -4613,7 +4623,12 @@ class TestReingestVolumeSelection:
         """--volume commercial: 分母=10 商务节点全命中, 技术条款不遍历/不更新权威态。"""
         state = self._split_state(tmp_path)
         sections = "".join(f"## 附录{i} 商务附件\n\n已按要求提供。\n\n" for i in range(1, 6))
-        text = "# 投标文件格式\n\n## 一、投标函\n\n致:招标人。我方投标总价为人民币玖佰捌拾万元整。\n\n## 二、法定代表人身份证明\n\n(此处已插入加盖公章的身份证扫描件)\n\n## 三、开标一览表\n\n| 序号 | 货物名称 | 数量 | 总价(元) |\n| --- | --- | --- | --- |\n| 1 | 智能控制系统 | 1 套 | 9800000 |\n\n## 四、投标文件签章与份数\n\n正本壹份,副本肆份。\n\n" + sections
+        text = (
+            "# 投标文件格式\n\n## 一、投标函\n\n致:招标人。我方投标总价为人民币玖佰捌拾万元整。\n\n"
+            "## 二、法定代表人身份证明\n\n(此处已插入加盖公章的身份证扫描件)\n\n"
+            "## 三、开标一览表\n\n| 序号 | 货物名称 | 数量 | 总价(元) |\n| --- | --- | --- | --- |\n| 1 | 智能控制系统 | 1 套 | 9800000 |\n\n"
+            "## 四、投标文件签章与份数\n\n正本壹份,副本肆份。\n\n" + sections
+        )
         source = _write_source(tmp_path, text, name="投标文件-商务卷-回传.md")
         assert _run_reingest(state, source, volume="commercial") == 0
         summary = _last_summary_json(capsys)
@@ -4636,6 +4651,17 @@ class TestReingestVolumeSelection:
 
 class TestAssembleEvidence:
     """assemble-evidence: 逐 rubric 项组装确定性证据包(grep 证据行), 供 Agent 主观评审。"""
+
+    def test_bom_state_files_accepted(self, tmp_path, capsys):
+        """终审 M5 补齐: _load_json_file 容忍 BOM(对齐 ingest/merge_addenda/build_output
+        及 extract 全部装载器既定口径)——人工编辑器加 BOM 的 rubric.json 不得报"不可读"退出 1。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        source = _write_source(tmp_path, _fixture_source_text())
+        _run_reingest(state, source)
+        capsys.readouterr()
+        rubric = state / "rubric.json"
+        rubric.write_bytes(b"\xef\xbb\xbf" + rubric.read_bytes())
+        assert _score_module().main(["assemble-evidence", "--state-dir", str(state)]) == 0, "带 BOM 的 rubric.json 是合法 UTF-8, 不得拒绝"
 
     def test_pack_shape_and_evidence_lines(self, tmp_path, capsys):
         state = _copy_prestate(tmp_path, merged=True)
