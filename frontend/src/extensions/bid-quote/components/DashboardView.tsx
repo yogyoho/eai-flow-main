@@ -404,7 +404,8 @@ export function DashboardView() {
           <CompetitorProfileTable filters={filters} onDrill={setDrill} />
           <HeadToHeadCard
             filters={filters}
-            competitors={competitors}
+            // 行级友商过滤后,未选友商在 base 里无行 → 下拉只给全局选中集(未选=全量)
+            competitors={filters.competitors.length ? filters.competitors : competitors}
             onDrill={setDrill}
           />
         </div>

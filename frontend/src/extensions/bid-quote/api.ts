@@ -90,8 +90,9 @@ const SEG_WHERE: Record<string, string> = {
 /**
  * 拼 WHERE 子句片段(不含 WHERE 关键字)。全局 + 每图 AND 叠加。
  * selfAttribute 不在此处理:货物构成图前端 filter / 自产率图渲染层。
- * 友商过滤统一 EXISTS 语义(spec §4.3/§9):筛"有选中友商参与的项目",保留我方行 ——
- * 裸 bidder_name IN 会把"仅我方"查询清成空集、把混合行集查询的我方聚合清零。
+ * 友商过滤为行级语义(2026-08-17 从 EXISTS 项目集语义改):保留我方行 + 选中友商行,
+ * 所有"我方 vs 友商"聚合(中标率/自产率/溢价曲线友商最低价/报价对比友商柱)只统计选中友商;
+ * 裸 bidder_name IN 不带 OR ours 会把"仅我方"查询清成空集,故必须带上。
  * outerProjectRef = 外层查询的项目列引用,随模板外层表别名变化:
  *   未别名 mock_bid → "mock_bid.project_name";JOIN 别名 b → "b.project_name"。
  */
@@ -115,9 +116,9 @@ export function buildWhere(
     const list = sorted(g.competitors)
       .map((x) => `'${esc(x)}'`)
       .join(",");
-    c.push(
-      `EXISTS (SELECT 1 FROM mock_bid c2 WHERE c2.project_name = ${outerProjectRef} AND c2.bidder_role='competitor' AND c2.bidder_name IN (${list}))`,
-    );
+    // 行级:我方行恒保留 + 友商仅统计选中几家(列引用前缀随外层表别名)
+    const pfx = outerProjectRef.slice(0, -"project_name".length);
+    c.push(`(${pfx}bidder_name IN (${list}) OR ${pfx}bidder_role='ours')`);
   }
   if (g.dateFrom) c.push(`bid_date >= '${esc(g.dateFrom)}'`);
   if (g.dateTo) c.push(`bid_date <= '${esc(g.dateTo)}'`);
