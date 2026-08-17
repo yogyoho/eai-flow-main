@@ -1,7 +1,7 @@
 "use client";
 
 import { Scale, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -67,6 +67,40 @@ function wan(v: string | null): string {
   return `${(toNum(v) / 10000).toFixed(1)}万`;
 }
 
+// 投标日期文本:SQL bid_dt("YYYY-MM-DD…")只取年月 —— mon 给 HTML 时间窗(2024/06),monShort 给 SVG 柄旁(24/06)
+function mon(dt: string | null | undefined): string {
+  return dt && dt.length >= 7 ? `${dt.slice(0, 4)}/${dt.slice(5, 7)}` : "—";
+}
+function monShort(v: string | null | undefined): string {
+  const s = v ?? "";
+  return s.length >= 7 ? `${s.slice(2, 4)}/${s.slice(5, 7)}` : s || "—";
+}
+
+/** 图4 Brush 双柄:蓝色圆角浮柄(上下留 4px)+ 白色 grip 双线,替代默认灰色矩形。 */
+function TimeHandle({
+  x,
+  y,
+  width,
+  height,
+}: {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+}) {
+  const h = (height ?? 28) - 8;
+  const top = (y ?? 0) + 4;
+  const cx = (x ?? 0) + (width ?? 10) / 2;
+  const cy = top + h / 2;
+  return (
+    <g>
+      <rect x={x} y={top} width={width} height={h} rx={3} fill={BLUE} />
+      <line x1={cx - 2.5} x2={cx - 2.5} y1={cy - 3.5} y2={cy + 3.5} stroke="#fff" strokeWidth={1.2} strokeLinecap="round" />
+      <line x1={cx + 2.5} x2={cx + 2.5} y1={cy - 3.5} y2={cy + 3.5} stroke="#fff" strokeWidth={1.2} strokeLinecap="round" />
+    </g>
+  );
+}
+
 /**
  * 仪表盘 tab(2026-08-15 三问框架重设计,原型 block1/2/3):
  * ①我们赢在哪、输在哪 ②下次报多少 ③对手是谁。DeepSeek usage 风格(浅色单主题)。
@@ -129,6 +163,30 @@ export function DashboardView() {
     .sort((a, b) => a.我方 - a.友商 - (b.我方 - b.友商));
   const partRate =
     s && s.bid_count > 0 ? `${((100 * s.ours_bid) / s.bid_count).toFixed(0)}% 参与率` : "";
+
+  // 图4 时间窗:win=null → 默认最近 10 个项目;拖 Brush 后跟随;数据集变更(筛选)重置回默认
+  const sd = useMemo(() => showdownQ.data ?? [], [showdownQ.data]);
+  // 图4 柱状图数据行(memo 固定引用:recharts Brush 依赖 chartData 引用稳定性,内联 map 每次渲染新引用会触发窗口重置)
+  const sdChart = useMemo(
+    () =>
+      sd.map((r) => ({
+        project_name: r.project_name,
+        // Brush 手柄 aria-label 内部读 data[index].name;顺带给上,免得读出 undefined
+        name: r.project_name,
+        我方: r.our_price ? Number(r.our_price) / 10000 : 0,
+        友商: r.competitor_price ? Number(r.competitor_price) / 10000 : 0,
+        we_won: r.we_won,
+        bid_dt: r.bid_dt,
+      })),
+    [sd],
+  );
+  const defStart = Math.max(0, sd.length - 10);
+  const defEnd = Math.max(0, sd.length - 1);
+  const [win, setWin] = useState<[number, number] | null>(null);
+  useEffect(() => {
+    setWin(null);
+  }, [sd]);
+  const [start, end] = win ?? [defStart, defEnd];
 
   return (
     <div
@@ -353,17 +411,7 @@ export function DashboardView() {
           meta="拖下方滑块缩时间窗 · 点击我方柱下钻"
         >
           <ResponsiveContainer width="100%" height={320}>
-            <BarChart
-              data={(showdownQ.data ?? []).map((r) => ({
-                project_name: r.project_name,
-                我方: r.our_price ? Number(r.our_price) / 10000 : 0,
-                友商: r.competitor_price
-                  ? Number(r.competitor_price) / 10000
-                  : 0,
-                we_won: r.we_won,
-              }))}
-              margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
-            >
+            <BarChart data={sdChart} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
               <CartesianGrid stroke={GRID} vertical={false} />
               <XAxis
                 dataKey="project_name"
@@ -375,34 +423,43 @@ export function DashboardView() {
               />
               <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} />
               <Tooltip content={<TechTooltip />} cursor={CURSOR} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              {/* 时间范围滑块:双柄拖动缩窗,窗口内标签自动重排不再重叠;默认聚焦最近 10 个项目 */}
+              {/* 时间范围滑块:项目行序=投标时间序(SQL ORDER BY MIN(bid_date)),滑块即时间轴;
+                  dataKey 指向 bid_dt → 拖动时柄旁文本显示投标日期而非金额;默认聚焦最近 10 个项目。
+                  startIndex/endIndex 必须跟 win 活窗走:recharts 在 chartData 引用变化时会把内部窗口
+                  强制回写成 props 值,写死默认值会让拖动结果被下一次渲染悄悄吃掉(柱图不动、chip 独走) */}
               <Brush
-                dataKey="我方"
-                height={26}
-                travellerWidth={8}
-                stroke={AXIS.fill}
-                fill="rgba(0,0,0,0.08)"
-                startIndex={Math.max(0, (showdownQ.data?.length ?? 0) - 10)}
-                endIndex={Math.max(0, (showdownQ.data?.length ?? 1) - 1)}
+                dataKey="bid_dt"
+                tickFormatter={monShort}
+                height={28}
+                travellerWidth={10}
+                traveller={<TimeHandle />}
+                stroke={BLUE}
+                fill="rgba(0,0,0,0.06)"
+                startIndex={start}
+                endIndex={end}
+                onChange={(w) => setWin([w.startIndex, w.endIndex])}
               />
               <Bar
                 dataKey="我方"
                 radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
-                onClick={(_d: unknown, idx: number) => {
-                  // recharts Bar onClick(data, index):按索引回查原始行;esc 单引号转义防 SQL 注入(与 api.ts 同源,勿内联第三份)
-                  const r = showdownQ.data?.[idx];
-                  if (r) {
-                    const v = esc(r.project_name);
+                onClick={(d: unknown, idx: number) => {
+                  // recharts Bar onClick(data, index):缩放后 index 是可见窗口内序号(barSelectors
+                  // displayedData=slice(dataStartIndex,…)),直接查全表会错位;优先 data.payload(被点柱
+                  // 原始行,project_name 为 GROUP BY 键全表唯一)按名回查,payload 缺失时退回 start+idx。
+                  // esc 单引号转义防 SQL 注入(与 api.ts 同源,勿内联第三份)
+                  const p = (d as { payload?: { project_name?: string } })?.payload?.project_name;
+                  const row = (p ? sd.find((x) => x.project_name === p) : undefined) ?? sd[start + idx];
+                  if (row) {
+                    const v = esc(row.project_name);
                     setDrill({
-                      title: `项目报价 · ${r.project_name}`,
+                      title: `项目报价 · ${row.project_name}`,
                       sql: `SELECT bidder_name, bidder_role, winning_price, won FROM mock_bid WHERE project_name='${v}' ORDER BY winning_price`,
                     });
                   }
                 }}
               >
-                {(showdownQ.data ?? []).map((r, i) => (
+                {sdChart.slice(start, end + 1).map((r, i) => (
                   <Cell key={i} fill={r.we_won ? GREEN : RED_55} />
                 ))}
               </Bar>
@@ -414,6 +471,31 @@ export function DashboardView() {
               />
             </BarChart>
           </ResponsiveContainer>
+          {/* 图例(自定义):柱色由 Cell 逐根给(胜绿/负红),recharts Legend 只取 Bar 级 fill,
+              我方 Bar 无 fill → 图例色与柱色对不上;改为手写三项图例 + 常显时间窗 */}
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-muted-foreground flex items-center gap-4 text-[11px]">
+              {(
+                [
+                  ["我方中标", GREEN],
+                  ["我方失标", RED_55],
+                  ["友商中标", COMPETITOR],
+                ] as const
+              ).map(([label, color]) => (
+                <span key={label} className="flex items-center gap-1.5">
+                  <span
+                    className="h-2 w-2 shrink-0 rounded-[3px]"
+                    style={{ background: color }}
+                  />
+                  {label}
+                </span>
+              ))}
+            </div>
+            <span className="text-muted-foreground [font-variant-numeric:tabular-nums] text-[11px] font-semibold whitespace-nowrap">
+              时间窗 {mon(sd[start]?.bid_dt)} – {mon(sd[end]?.bid_dt)} ·{" "}
+              {end - start + 1}/{sd.length} 项目
+            </span>
+          </div>
         </ChartCard>
       </SectionCard>
 

@@ -41,6 +41,8 @@ export interface ShowdownRow {
   we_won: boolean | null;
   // EAI-CUSTOM: 对齐 T2 适配后的真实 schema —— mock_bid 无 customer 列,取 project_location 作上下文
   project_location: string | null;
+  // 项目首次投标日期(SQL MIN(bid_date),行序即时间序);Brush 时间窗文本用
+  bid_dt: string | null;
 }
 
 /** mock_bid / mock_bid_item 明细行:列动态,用索引签名。 */
