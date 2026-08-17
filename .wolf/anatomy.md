@@ -1,7 +1,15 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-15T09:45:59.577Z
-> Files: 2128 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-17T10:52:21.385Z
+> Files: 2209 tracked | Anatomy hits: 0 | Misses: 0
+
+## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
+
+- `drive_extract.py` — 投标提取联调驱动(工作区一次性脚本, 不进 repo——repo 脚本禁 LLM 调用)。 (~8089 tok)
+- `drive_respond.py` — 响应点起草驱动(工作区一次性脚本, 不进 repo)。 (~1514 tok)
+- `drive_review.py` — 主观项模拟评审驱动(一次性, 不进 repo)。 (~1499 tok)
+- `verify_dedup.py` — 人核裁决脚本(确认门2, 一次性): 解除 structure.json 重复标题链。 (~580 tok)
+- `verify_rubric.py` — 人核裁决(确认门2, 一次性): rubric Σ564→400 对齐评标因素汇总表。 (~754 tok)
 
 ## ../../aiproj/Pisuan-Know/web/src/
 
@@ -51,6 +59,7 @@
 - `.mcp.json` (~84 tok)
 - `.opencode.json` (~55 tok)
 - `.pre-commit-config.yaml` (~322 tok)
+- `.tmp_review_probe.py` (~582 tok)
 - `.windsurfrules` (~467 tok)
 - `开发日志.md` — 提问： (~2745 tok)
 - `手动差分技术方案.md` — 手动差分技术方案：将 bytedance/deer-flow 同步到 feature/extensions-migration (~3219 tok)
@@ -68,7 +77,7 @@
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
 - `deer-flow.code-workspace` (~310 tok)
 - `extensions_config.example.json` (~295 tok)
-- `extensions_config.json` (~2078 tok)
+- `extensions_config.json` (~2205 tok)
 - `GEMINI.md` — MCP Tools: code-review-graph (~438 tok)
 - `headers.txt` (~75 tok)
 - `Install.md` — DeerFlow Install (~1177 tok)
@@ -499,6 +508,10 @@
 - `wiggly-whistling-fern.md` — Plan: Fix Collab AI Chat Endpoint (~991 tok)
 - `zazzy-hugging-pearl.md` — Plan: Add EAI-CUSTOM annotations to WeChat integration code (~414 tok)
 
+## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/
+
+- `fix-frontend-lint-wf_afbc7755-81b.js` — Exports meta (~2184 tok)
+
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/7be62368-49b4-47e9-ae38-fc140e3e96c4/workflows/scripts/
 
 - `threads-py-alignment-wf.js` — and backend/app/gateway/**). Pay special attention to: deerflow.persistence.thread_meta (dir exists (~2545 tok)
@@ -522,7 +535,7 @@
 - `ilink-protocol-reference.md` (~481 tok)
 - `main-dev-fork-branch.md` (~101 tok)
 - `market-analysis-modules-design.md` (~435 tok)
-- `market-modules-build-progress.md` (~458 tok)
+- `market-modules-build-progress.md` (~552 tok)
 - `mcp-agent-extension-bridge.md` (~349 tok)
 - `MEMORY.md` (~1811 tok)
 - `new-module-over-modify.md` (~197 tok)
@@ -555,14 +568,49 @@
 
 - `admin-fix-four-module-p0-df2-df3-df5-df6-eng-review-test-plan-20260620-153158.md` — Test Plan (~299 tok)
 - `admin-main-dev-fork-design-20260716-145829.md` — Design: 石化公用工程设计专篇智能编写系统 (~1863 tok)
+- `admin-main-dev-fork-design-20260816-075816.md` — Design: 投标方案编写 Skill(bid-proposal-writing) (~4498 tok)
 - `admin-main-dev-fork-eng-review-test-plan-20260815.md` — Test Plan (~421 tok)
+- `admin-main-dev-fork-eng-review-test-plan-20260816-103902.md` — Test Plan — bid-proposal-writing skill (eng-review, 2026-08-16) (~390 tok)
 - `yogyoho-main-dev-fork-design-20260801-124035.md` — Design: 项目管理模块 agent 桥修复（project MCP 脑裂 + 死代码 + 写路径不提交） (~2836 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
+- `eslint_batches.py` — chunk (~441 tok)
+- `eslint_group.py` (~182 tok)
 - `fork_csp_frontend.py` — 一次性机械 fork:contract-price 前端 → spare-parts 前端。 (~564 tok)
 - `fork_csp.py` — 一次性机械 fork:contract_price → spare_parts 后端管理层。 (~475 tok)
+- `gstack-codex-oh-bid.txt` (~1444 tok)
 - `gstack-codex-oh-prompt.txt` (~698 tok)
+- `gstack-codex-per-bid.txt` — Declares in (~675 tok)
+
+## C:/Users/admin/AppData/Local/Temp/bidpipe/
+
+- `gen_candidates.py` — Lens-A smoke: generate 10 minimal-but-valid candidate verdict JSONs (full D5 coverage). (~1664 tok)
+
+## C:/Users/admin/AppData/Local/Temp/bidpipe/candidates/
+
+- `subjective_scores_v1.json` (~99 tok)
+
+## C:/Users/admin/AppData/Local/Temp/bidpipe/state/
+
+- `entities_whitelist.json` (~85 tok)
+
+## C:/Users/admin/AppData/Local/Temp/bidverify/
+
+- `probe_t3.py` — 终审独立验证探针: T3-1(无空格多级编号锚点坍缩) + T3-2(写盘 I/O 异常退出码契约) (~1472 tok)
+- `probe_t4.py` — 终审独立验证探针: T4-1(sections.json anchor 真值非 dict 装载校验) (~960 tok)
+- `probe_t5.py` — 终审独立验证探针: T5-1(modify 重放缺载荷内容一致性校验) + T5-2(linked_clause_ids 畸形) (~2334 tok)
+- `probe_t7.py` — 终审独立验证探针: T7-1(锚点计数前缀污染 ZB-C-1 vs ZB-C-12) + T7-2(assemble-evidence 源不可达静默空证据包) (~2063 tok)
+
+## C:/Users/admin/AppData/Local/Temp/bpv-recheck/
+
+- `e2e_smoke.py` — 端到端六阶段冒烟(冷读复验, 只写 %TEMP%)。 (~3865 tok)
+- `make_docx.py` — 构造 R2 探针用最小 docx(python-docx, 经 backend venv uv run 执行)。 (~395 tok)
+- `probe_bom.py` — M5 独立探针: merge_addenda/build_output/score_simulate 的 JSON 装载 BOM 容忍(冷读复验)。 (~1374 tok)
+- `probe_extract.py` — R1/R3 独立探针: extract merge 契约(冷读复验, 只写 %TEMP%)。 (~2456 tok)
+- `probe_ingest.py` — R2 独立探针: ingest 同名重跑幂等保号 + 替换信号(冷读复验, 只写 %TEMP%)。 (~1288 tok)
+- `probe_score.py` — R4/M2/M3 独立探针: score_simulate reingest --volume / 合成标题豁免 / total null 报错(冷读复验)。 (~2541 tok)
+- `probe_write_errors.py` — R5 独立探针: merge_addenda/build_output 写盘 OSError → 干净 rc=1 无 traceback(冷读复验)。 (~1151 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/fire_extract_t9/
 
@@ -1820,17 +1868,19 @@
 - `ontology_eval_navigation.py` — Ontology 跨模块导航 eval（plan T8: 1 条, 作 1b go/no-go）. (~649 tok)
 - `ontology_link_recall_probe.py` — Ontology 跨模块链接召回预测量（eng-review D12 / plan T1）. (~2460 tok)
 - `ontology_lint.py` — Ontology registry lint — §2.2 acceptance checklist, exit 1 on failure. (~1808 tok)
-- `seed_mock_market.py` — 模块① 投标报价分析 — mock 数据 + data_source 元数据 seed(幂等)。 (~7741 tok)
+- `seed_mock_market.py` — 模块① 投标报价分析 — mock 数据 + data_source 元数据 seed(幂等)。 (~7951 tok)
 - `seed_mock_pipeline.py` — 模块③ 投标/合同/开票管线查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~3028 tok)
 - `seed_mock_sales.py` — 模块② 销售人员查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~4296 tok)
 
 ## backend/tests/
 
 - `_backfill_homeless_docs.py` — One-off backfill: file homeless chat docs for a (user, thread) into a subfolder. (~418 tok)
+- `_dbg_join.py` (~83 tok)
 - `_global_backfill.py` — One-off global backfill: file all homeless thread-originated docs. (~774 tok)
 - `rbac_helpers.py` — 共享 RBAC 深度测试工具：canned identity、policy mock、smart_db、app builder。 (~1762 tok)
 - `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2641 tok)
 - `test_auth_type_system.py` — Tests for auth type system hardening. (~12394 tok)
+- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~78734 tok)
 - `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
 - `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
 - `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
@@ -1929,7 +1979,7 @@
 - `test_role_calibration.py` — Tests for _calibrate_roles_from_registry — ensures DB roles mirror yaml registry. (~1474 tok)
 - `test_role_definition_f1.py` — F1 回归：dept_head 权限被 overlay 清空后必须恢复（#inherit:user + 部门扩展）。 (~440 tok)
 - `test_role_overlay_store.py` — Tests for RoleOverlayStore — atomic write + mtime optimistic lock. (~4470 tok)
-- `test_seed_mock_market_patterns.py` — 模块① 投标报价分析 — seed 扩量生成器规律回归测试。 (~1342 tok)
+- `test_seed_mock_market_patterns.py` — 模块① 投标报价分析 — seed 扩量生成器规律回归测试。 (~1536 tok)
 - `test_serialization_strip_images.py` — Tests for the API serialization helpers ported from upstream (Tier 2 C). (~809 tok)
 - `test_snapshot_cli.py` — snapshot.py CLI 测试（反馈7 跨轮承接 + 版本历史）。 (~1919 tok)
 - `test_spare_parts_extension.py` — Tests for the spare_parts extension (④ 备品备件价格体系分析). (~3748 tok)
@@ -1954,6 +2004,11 @@
 - `test_workflow_integration.py` — Integration tests for the full writing-project workflow chain. (~6608 tok)
 - `test_workflow_signal.py` — TDD tests for POST /projects/{id}/workflow-signal endpoint (spec §8.1). (~790 tok)
 - `test_workflow_template.py` — Tests for workflow template management — approval workflow, visibility, state transitions. (~3010 tok)
+
+## backend/tests/fixtures/bid_proposal/
+
+- `clauses.json` (~653 tok)
+- `gen_fixtures.py` — bid-proposal-writing 技能测试 fixture 生成器（设计 D4 测试计划，任务 T1）。 (~4828 tok)
 
 ## config/
 
@@ -2169,6 +2224,8 @@
 - `2026-08-14-ontology-enterprise-expansion-plan.md` — Ontology 企业级扩张方案 — 前向约定（非重构）+ 逐域路线 + 能力层清单 (~2530 tok)
 - `2026-08-14-ontology-semantic-layer-design.md` — Ontology 概念移植设计 — 统一语义层（市场/分析数据域） (~6107 tok)
 - `2026-08-15-bid-quote-dashboard-content-design.md` — 投标报价分析 · 仪表盘内容重构设计（三问框架 + DeepSeek 风格） (~1214 tok)
+- `2026-08-16-bid-proposal-writing-skill-design.md` — Design: 投标方案编写 Skill(bid-proposal-writing) (~5861 tok)
+- `2026-08-17-biz-pipeline-dashboard-prototype.html` — 管线战情总览原型 (~5158 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -2227,18 +2284,18 @@
 
 ## frontend/src/app/admin/app-center/
 
-- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3988 tok)
+- `AppManagement.tsx` — Radix Select 不允许空字符串 value，用 "none" 哨兵表示「无阶段标签」。 (~3989 tok)
 - `controls.tsx` — 强调色时显示的色块（可选） (~452 tok)
-- `DomainManagement.tsx` — accent → 实心色块背景类（用于下拉项的色点） (~2761 tok)
+- `DomainManagement.tsx` — accent → 实心色块背景类（用于下拉项的色点） (~2805 tok)
 - `page.tsx` — AdminAppCenterPage (~275 tok)
 
 ## frontend/src/app/admin/departments/
 
-- `page.tsx` — flattenDepts (~9626 tok)
+- `page.tsx` — flattenDepts (~9669 tok)
 
 ## frontend/src/app/admin/roles/
 
-- `page.tsx` — Check whether any module in the registry has the pages array (v3 tree format). (~38154 tok)
+- `page.tsx` — Check whether any module in the registry has the pages array (v3 tree format). (~38450 tok)
 
 ## frontend/src/app/admin/templates/
 
@@ -2265,7 +2322,7 @@
 
 ## frontend/src/app/api/collab/ai-chat/
 
-- `route.ts` — Stream plain text deltas in AI SDK UI message format (~3452 tok)
+- `route.ts` — Stream plain text deltas in AI SDK UI message format (~3488 tok)
 
 ## frontend/src/app/api/memory/
 
@@ -2326,13 +2383,17 @@
 
 - `page.tsx` — DashboardRoute (~143 tok)
 
+## frontend/src/app/docmgr/
+
+- `layout.tsx` — DocMgrAuthGuard (~275 tok)
+
 ## frontend/src/app/knowledge-factory/
 
 - `page.tsx` — NAV_ITEMS (~1526 tok)
 
 ## frontend/src/app/knowledge/
 
-- `page.tsx` — KB_TYPE_OPTIONS (~10730 tok)
+- `page.tsx` — KB_TYPE_OPTIONS (~10832 tok)
 
 ## frontend/src/app/knowledge/[kbId]/
 
@@ -2340,13 +2401,13 @@
 
 ## frontend/src/app/knowledge/_components/
 
-- `ChunkModal.tsx` — Heuristic: RAGFlow often stores chunks as HTML fragments (tables, etc.). (~1625 tok)
+- `ChunkModal.tsx` — Heuristic: RAGFlow often stores chunks as HTML fragments (tables, etc.). (~1647 tok)
 - `CustomSelect.tsx` — CustomSelect (~1106 tok)
 - `DocStatusBadge.tsx` — DocStatusBadge (~170 tok)
-- `KnowledgeBaseDetail.tsx` — formatDate (~13173 tok)
+- `KnowledgeBaseDetail.tsx` — formatDate (~13270 tok)
 - `sources-sort.ts` — Sort retrieval sources by score descending. (~139 tok)
 - `toast.tsx` — ToastContainer (~737 tok)
-- `UploadModal.tsx` — formatFileSize (~2063 tok)
+- `UploadModal.tsx` — formatFileSize (~2080 tok)
 
 ## frontend/src/app/login/
 
@@ -2372,6 +2433,7 @@
 
 ## frontend/src/app/settings/
 
+- `basic-settings.tsx` — BasicSettings (~5814 tok)
 - `page.tsx` — SettingsPage (~960 tok)
 
 ## frontend/src/app/spare-parts/
@@ -2389,11 +2451,12 @@
 ## frontend/src/app/workflow-admin/
 
 - `layout.tsx` — WorkflowAdminLayout (~451 tok)
-- `page.tsx` — REPORT_TYPE_FILTERS (~3845 tok)
+- `page.tsx` — REPORT_TYPE_FILTERS (~3848 tok)
 
 ## frontend/src/app/workflow-admin/components/
 
-- `TemplateEditorPage.tsx` — TemplateEditorPage (~3544 tok)
+- `SubmitApprovalDialog.tsx` — SubmitApprovalDialog (~554 tok)
+- `TemplateEditorPage.tsx` — TemplateEditorPage (~3558 tok)
 
 ## frontend/src/app/workspace/
 
@@ -2424,10 +2487,14 @@
 
 - `page.tsx` — CollabProjectPage (~170 tok)
 
+## frontend/src/app/writing/
+
+- `layout.tsx` — WritingAuthGuard (~276 tok)
+
 ## frontend/src/components/
 
 - `chunk-error-handler.tsx` — Catches ChunkLoadError from dynamic imports (common with Turbopack HMR) (~554 tok)
-- `theme-provider.tsx` — ThemeProvider (~182 tok)
+- `theme-provider.tsx` — ThemeProvider (~150 tok)
 
 ## frontend/src/components/ai-elements/
 
@@ -2467,10 +2534,10 @@
 - `thread-list-virtualizer.tsx` — VIRTUALIZATION_THRESHOLD (~741 tok)
 - `token-usage-indicator.tsx` — TokenUsageIndicator (~1632 tok)
 - `welcome.tsx` — Welcome (~620 tok)
-- `workspace-container.tsx` — WorkspaceContainer (~932 tok)
+- `workspace-container.tsx` — WorkspaceContainer (~964 tok)
 - `workspace-header.tsx` — WorkspaceHeader (~776 tok)
 - `workspace-nav-chat-list.tsx` — WorkspaceNavChatList (~1083 tok)
-- `workspace-nav-menu.tsx` — NavMenuButtonContent (~1052 tok)
+- `workspace-nav-menu.tsx` — NavMenuButtonContent (~1132 tok)
 - `workspace-sidebar.tsx` — WorkspaceSidebar (~309 tok)
 
 ## frontend/src/components/workspace/agents/
@@ -2508,6 +2575,7 @@
 ## frontend/src/components/workspace/settings/
 
 - `about.md` — 🦌 [About EAIFlow 2.0](https://github.com/bytedance/eai-flow) (~512 tok)
+- `grouped-model-select.tsx` — Per-model status: available / unavailable / error (~1538 tok)
 - `integrations-settings-page.tsx` — LARK_AUTH_DOMAINS (~8541 tok)
 - `settings-dialog.tsx` — SettingsDialog — renders modal (~1595 tok)
 - `skill-settings-page.tsx` — SkillSettingsPage (~1306 tok)
@@ -2564,7 +2632,7 @@
 
 ## frontend/src/core/permissions/
 
-- `PermissionProvider.tsx` — PermissionContext (~610 tok)
+- `PermissionProvider.tsx` — PermissionContext (~656 tok)
 - `usePermission.ts` — Exports PermissionState, usePermission (~578 tok)
 
 ## frontend/src/core/rehype/
@@ -2578,7 +2646,7 @@
 ## frontend/src/core/streamdown/
 
 - `components.tsx` — SafeStreamdown (~342 tok)
-- `latexNormalize.ts` — Normalize LaTeX so KaTeX renders unicode superscripts/degrees that it otherwise can't. (~896 tok)
+- `latexNormalize.ts` — Normalize LaTeX so KaTeX renders unicode superscripts/degrees that it otherwise can't. (~895 tok)
 - `plugins.ts` — Exports streamdownPlugins, streamdownPluginsWithWordAnimation, streamdownPluginsWithoutRawHtml, reas (~533 tok)
 - `preprocess.ts` — Exports capBlockquoteNesting, capListNesting, capMarkdownNesting, preprocessStreamdownMarkdown (~1001 tok)
 - `safe-children.ts` — Exports getSafeStreamdownMarkdown, getSafeStreamdownChildren, useSafeStreamdownChildren, useSafeStre (~407 tok)
@@ -2601,7 +2669,8 @@
 
 ## frontend/src/extensions/api/
 
-- `index.ts` — API routes: GET (2 endpoints) (~14586 tok)
+- `client.ts` — API Client — uses Gateway Auth HttpOnly cookie (credentials: "include"). (~964 tok)
+- `index.ts` — API routes: GET (2 endpoints) (~15130 tok)
 
 ## frontend/src/extensions/app-center/
 
@@ -2627,14 +2696,18 @@
 
 ## frontend/src/extensions/app-center/hooks/
 
-- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1945 tok)
+- `useApps.ts` — 原始领域列表（来自 API，用于标签/accent 查找） (~1940 tok)
 - `useFavorites.ts` — 应用收藏状态管理。 (~487 tok)
+
+## frontend/src/extensions/approval/
+
+- `ApprovalPanel.tsx` — ApprovalPanel (~1862 tok)
 
 ## frontend/src/extensions/bid-quote/
 
-- `api.ts` — bid-quote API client —— Route B 薄前端直调 data_source REST。 (~4708 tok)
-- `hooks.ts` — bid-quote TanStack Query hooks。queryKey 统一 ["bqa", ...] 命名空间。 (~1704 tok)
-- `types.ts` — 投标报价分析(bid-quote)类型 —— 对齐 data_source 罐装 dataset 列。 (~1223 tok)
+- `api.ts` — bid-quote API client —— Route B 薄前端直调 data_source REST。 (~4745 tok)
+- `hooks.ts` — bid-quote TanStack Query hooks。queryKey 统一 ["bqa", ...] 命名空间。 (~1874 tok)
+- `types.ts` — 投标报价分析(bid-quote)类型 —— 对齐 data_source 罐装 dataset 列。 (~1245 tok)
 
 ## frontend/src/extensions/bid-quote/components (2026-08-15 三问框架新图)
 
@@ -2645,17 +2718,17 @@
 - `ChartFilterPopover.tsx` — 启用的维度子集。 (~934 tok)
 - `chartTheme.ts` — bid-quote 图表共享主题常量 — DeepSeek usage 页风格(2026-08-15 仪表盘重构定稿)。 (~434 tok)
 - `CompetitorProfileTable.tsx` — 点行下钻(与项目报价对比图同 DrillDownModal 通道)。 (~1812 tok)
-- `DashboardView.tsx` — 仪表盘 tab(2026-08-15 三问框架重设计,原型 block1/2/3): (~4440 tok)
+- `DashboardView.tsx` — 图4 Brush 双柄:蓝色圆角浮柄(上下留 4px)+ 白色 grip 双线,替代默认灰色矩形。 (~5680 tok)
 - `DrillDownModal.tsx` — 已拼好的参数化只读 SQL(白名单维度,值来自行数据)。null 时关闭。 (~1886 tok)
-- `FilterBar.tsx` — MultiDropdown (~1891 tok)
+- `FilterBar.tsx` — 触发按钮/面板统一样式(手写控件,14px;不依赖 shadcn Popover/Select)。 (~4057 tok)
 - `HeadToHeadCard.tsx` — 图11(新增):遭遇战 — 选定友商与我方在共同投标项目上的直接对垒(原型 block3-competitors 图C): (~1627 tok)
 - `PremiumCurveChart.tsx` — 固定 6 桶边界(与 SQL CASE 严格一致)。 (~1394 tok)
 - `PriceBandChart.tsx` — 图8(新增):报价区间建议 — 每金额段一行的区间条图(原型 block2-pricing 图B): (~1500 tok)
 - `QueryView.tsx` — TABS — renders table (~2079 tok)
 - `SectionCard.tsx` — 区块序号徽标(①/②/③,原型 .section-badge)。 (~522 tok)
-- `SelfRateDistChart.tsx` — 可选自产属性行过滤(与货物构成图共用 matchesSelfAttribute,阈值不发散)。 (~1004 tok)
-- `SelfVsOutsourceChart.tsx` — 每图高级筛选(货物维度,spec §5.5)。 (~1039 tok)
-- `ShareStackChart.tsx` — 我方(种子数据固定名);泛化失败时退化为普通着色。 (~1598 tok)
+- `SelfRateDistChart.tsx` — 可选自产属性行过滤(与货物构成图共用 matchesSelfAttribute,阈值不发散)。 (~1468 tok)
+- `SelfVsOutsourceChart.tsx` — 每图高级筛选(货物维度,spec §5.5)。 (~1208 tok)
+- `ShareStackChart.tsx` — 我方(种子数据固定名);泛化失败时退化为普通着色。 (~2072 tok)
 - `StatCard.tsx` — 注脚行(原型 .delta:12px 弱色;delta 主数字靠字重,涨跌用绿/红 b 强调)。 (~444 tok)
 - `TechTooltip.tsx` — TechTooltip (~411 tok)
 - `TrendChart.tsx` — qtr(时间戳 ISO 串)→ "25Q1" 短标签;解析失败原样返回。 (~1000 tok)
@@ -2672,12 +2745,14 @@
 
 ## frontend/src/extensions/biz-pipeline/components/
 
-- `ChartCard.tsx` — ChartCard (~259 tok)
-- `DashboardView.tsx` — C_BLUE (~2547 tok)
+- `ChartCard.tsx` — 标题下说明行(12px 弱色,支持 <b> 强调,传 string 或 ReactNode)。 (~306 tok)
+- `chartTheme.ts` — biz-pipeline 图表共享主题常量 —— 克隆自 bid-quote/chartTheme.ts(DeepSeek usage 页风格, (~298 tok)
+- `DashboardView.tsx` — 自定义图例(①bid-quote 同构):8px 圆角色点 + 11px 名称。 (~5408 tok)
 - `DrillDownModal.tsx` — 已拼好的参数化只读 SQL(白名单维度,值来自行数据)。null 时关闭。 (~910 tok)
 - `QueryView.tsx` — TABS — renders table (~2000 tok)
-- `StatCard.tsx` — HEX (~525 tok)
-- `TechTooltip.tsx` — TechTooltip (~356 tok)
+- `SectionCard.tsx` — 区块序号徽标(①/②,克隆自 bid-quote 三问框架)。 (~512 tok)
+- `StatCard.tsx` — 注脚行(12px 弱色;涨跌/警示用绿/红 b 强调)。 (~385 tok)
+- `TechTooltip.tsx` — 值后缀单位(万/次)——bpp 在 call site 传,bid-quote 版无此参。 (~454 tok)
 
 ## frontend/src/extensions/biz-pipeline/components/ui/
 
@@ -2685,23 +2760,25 @@
 
 ## frontend/src/extensions/cad-design/components/
 
-- `CadDesigner.tsx` — ModelViewer (~1690 tok)
+- `CadDesigner.tsx` — ModelViewer (~1729 tok)
 
 ## frontend/src/extensions/collab/
 
 - `AIDocumentReview.tsx` — REVIEW_TYPES (~1037 tok)
-- `aiMenuItems.tsx` — getCollabAIMenuItems (~826 tok)
-- `aiTransport.ts` — Exports createCollabAITransport (~766 tok)
+- `aiMenuItems.tsx` — getCollabAIMenuItems (~1134 tok)
+- `aiTransport.ts` — Exports createCollabAITransport (~815 tok)
 - `BlockCommentAnchor.tsx` — BlockCommentAnchor (~313 tok)
-- `BlockNoteEditor.tsx` — Optional list of block IDs to show in the outline panel. (~7662 tok)
+- `BlockNoteEditor.tsx` — Optional list of block IDs to show in the outline panel. (~7793 tok)
 - `CollabEditor.tsx` — Wrapper around BlockNoteEditor. Forwards visibleChapterIds for chapter permission filtering. (~445 tok)
+- `CommentSidebar.tsx` — CommentSidebar (~1140 tok)
+- `CommentThread.tsx` — CommentThread (~1324 tok)
 - `DiffViewer.tsx` — DiffViewer (~729 tok)
-- `human-written-plugin.ts` — ProseMirror plugin for detecting and marking human-written blocks. (~1693 tok)
+- `human-written-plugin.ts` — ProseMirror plugin for detecting and marking human-written blocks. (~1680 tok)
 - `InlineCommentThread.tsx` — InlineCommentThread (~758 tok)
-- `OutlinePanel.tsx` — Document heading outline with scroll-spy. Filters headings via visibleChapterIds prop for permission-based visibility. (~3290 tok)
+- `OutlinePanel.tsx` — BlockNote block ID (~3063 tok)
 - `patch-prosemirror.ts` — Patch prosemirror-model's renderSpec to handle DOM element nodes. (~366 tok)
 - `traceability-extension.ts` — ProseMirror plugin for inline traceability decorations. (~2026 tok)
-- `useCollab.ts` — Exports CollabUser, useCollab (~1022 tok)
+- `useCollab.ts` — Exports CollabUser, useCollab (~1111 tok)
 - `useComments.ts` — Exports useComments (~901 tok)
 - `useVersions.ts` — Exports useVersions (~720 tok)
 - `VersionPanel.tsx` — VersionPanel — renders modal (~2709 tok)
@@ -2718,16 +2795,17 @@
 
 ## frontend/src/extensions/contract-price/components/
 
-- `BoxPlot.tsx` — Custom SVG box plot — renders min/Q1/median/Q3/max + outliers. (~1239 tok)
-- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~5366 tok)
-- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6662 tok)
+- `BoxPlot.tsx` — Custom SVG box plot — renders min/Q1/median/Q3/max + outliers. (~1220 tok)
+- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~6717 tok)
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6492 tok)
 - `DashboardView.tsx` — DashboardView (~892 tok)
 - `GoodsAnalysis.tsx` — badgeColors (~5225 tok)
-- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~9678 tok)
+- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~9679 tok)
 - `PageHeader.tsx` — PageHeader — renders table (~356 tok)
 - `SettingsView.tsx` — SettingsView (~1715 tok)
 - `StatCard.tsx` — colorClasses (~411 tok)
-- `TasksView.tsx` — Download a run's Excel via credentialed fetch → blob (auth-cookie safe, (~3046 tok)
+- `TasksView.tsx` — Download a run's Excel via credentialed fetch → blob (auth-cookie safe, (~3153 tok)
+- `TracebackDrawer.tsx` — CpaDocument.id; null closes the drawer. (~2829 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
@@ -2743,13 +2821,13 @@
 ## frontend/src/extensions/dashboard/components/
 
 - `DashboardCard.tsx` — DashboardCard (~328 tok)
-- `Header.tsx` — getGreeting (~1801 tok)
+- `Header.tsx` — getGreeting (~1802 tok)
 - `LogPanel.tsx` — BASE (~2487 tok)
 - `MetricsRow.tsx` — MetricsRow (~936 tok)
-- `MiniCalendar.tsx` — WEEKDAYS — renders form (~3669 tok)
-- `MyProjects.tsx` — GROUP_LABELS (~666 tok)
-- `NotificationFeed.tsx` — BASE (~2217 tok)
-- `NotificationPreferencePanel.tsx` — NOTIFICATION_TYPES (~1597 tok)
+- `MiniCalendar.tsx` — WEEKDAYS — renders form (~3674 tok)
+- `MyProjects.tsx` — GROUP_LABELS (~667 tok)
+- `NotificationFeed.tsx` — BASE (~2529 tok)
+- `NotificationPreferencePanel.tsx` — NOTIFICATION_TYPES (~1596 tok)
 - `ProjectMiniCard.tsx` — ROLE_LABELS (~692 tok)
 - `ProjectPanel.tsx` — ProjectPanel (~1759 tok)
 - `QuickActions.tsx` — actions (~255 tok)
@@ -2757,11 +2835,11 @@
 - `StatsPanel.tsx` — StatsPanel (~689 tok)
 - `TaskItemCard.tsx` — TYPE_ICONS (~480 tok)
 - `TaskPanel.tsx` — TaskPanel (~1458 tok)
-- `TodayTasks.tsx` — TodayTasks (~468 tok)
+- `TodayTasks.tsx` — TodayTasks (~322 tok)
 
 ## frontend/src/extensions/dashboard/hooks/
 
-- `useMyCalendar.ts` — Exports useMyCalendar (~111 tok)
+- `useMyCalendar.ts` — Exports useMyCalendar (~98 tok)
 - `useMyProjects.ts` — Exports useMyProjects (~75 tok)
 - `useMyStats.ts` — Exports useMyStats (~72 tok)
 - `useMyTasks.ts` — Exports useMyTasks (~72 tok)
@@ -2769,43 +2847,48 @@
 ## frontend/src/extensions/data-source/
 
 - `api.ts` — Exports dataSourceApi, datasetApi (~1401 tok)
+- `DataSourceManager.tsx` — ToastContainer (~2599 tok)
 - `types.ts` — Exports DataSourceType, AuthType, SyncMode, ConnectionStatus + 9 more (~568 tok)
 
 ## frontend/src/extensions/data-source/components/
 
 - `DataSourceCard.tsx` — TYPE_ICON_MAP — renders table (~1870 tok)
-- `DataSourceForm.tsx` — CustomSelect (~4680 tok)
-- `SourceDatasetsModal.tsx` — SourceDatasetsModal — renders table (~2898 tok)
+- `DataSourceForm.tsx` — CustomSelect (~4679 tok)
+- `SourceDatasetsModal.tsx` — SourceDatasetsModal — renders table (~2900 tok)
 
 ## frontend/src/extensions/docmgr/
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
-- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~8960 tok)
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~29783 tok)
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~9195 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~23677 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~13232 tok)
-- `FilePreviewModal.tsx` — isImageFile — renders modal (~1265 tok)
+- `FilePreviewModal.tsx` — isImageFile — renders modal (~1252 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~538 tok)
-- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~7255 tok)
-- `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~4915 tok)
-- `ProjectFolderTree.tsx` — ProjectFolderTree (~3157 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~7678 tok)
+- `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~5493 tok)
+- `ProjectFolderTree.tsx` — ProjectFolderTree (~3225 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)
-- `TiptapEditor.tsx` — 临时高亮 AI 操作选中的文字范围（仅装饰，不写入文档） (~8437 tok)
+- `TiptapEditor.tsx` — 临时高亮 AI 操作选中的文字范围（仅装饰，不写入文档） (~8424 tok)
 - `useDocAIThread.ts` — Read the CSRF cookie value from document.cookie. (~1388 tok)
-- `useDocuments.ts` — Exports DocumentFilter, useDocuments (~1426 tok)
-- `useFolderTree.ts` — Exports useFolderTree (~617 tok)
-- `VersionHistoryDialog.tsx` — 版本历史对话框: 列表+预览+恢复+保存当前版本 (C10) (~2800 tok)
+- `useDocuments.ts` — Exports DocumentFilter, useDocuments (~1479 tok)
+- `useFolderTree.ts` — Exports useFolderTree (~618 tok)
+- `usePersonalOutputs.ts` — Exports PersonalDocFile, PersonalThreadOutput, usePersonalOutputs (~1073 tok)
+- `useProjectOutputs.ts` — Exports ProjectDocFile, useProjectOutputs (~338 tok)
+- `VersionHistoryDialog.tsx` — 恢复成功后回调（内容已写回 outputs 文件），宿主用它重载编辑器。 (~2156 tok)
 - `VersionHistoryDialog.tsx` — 恢复成功后回调（内容已写回 outputs 文件），宿主用它重载编辑器。 (~2002 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
-- `EditorDragHandle.tsx` — OperationMenu (~3783 tok)
+- `EditorDragHandle.tsx` — OperationMenu (~3774 tok)
 - `MathNodeView.tsx` — KATEX_OPTS (~434 tok)
+- `SlashMenu.tsx` — SlashMenu (~1937 tok)
 
 ## frontend/src/extensions/docmgr/extensions/
 
-- `Math.ts` — Exports MathInline, MathBlock (~616 tok)
-- `mathMarkdownIt.ts` — HTML 转义 latex 内容（与 encodeMath 的 escapeAttr 一致） (~1501 tok)
+- `Math.ts` — Exports MathInline, MathBlock (~625 tok)
+- `mathMarkdownIt.ts` — HTML 转义 latex 内容（与 encodeMath 的 escapeAttr 一致） (~1579 tok)
+- `SlashCommand.ts` — Exports SlashCommandPluginKey, SlashCommandPluginState, SlashCommandOptions, SlashCommand (~1557 tok)
 
 ## frontend/src/extensions/docmgr/tiptap/
 
@@ -2815,63 +2898,76 @@
 - `ai-format.ts` — AI 格式调整标记 — 蓝色下划线（轻微提示）。 (~181 tok)
 - `ai-insertion.ts` — AI 新增文字标记: 绿色下划线 (~200 tok)
 - `ai-insertion.ts` — AI 新增文字标记 — 绿色下划线。 (~190 tok)
-- `ai-review.ts` — AI 审核批注: 橙色波浪虚线+点击弹窗 (~300 tok)
+- `ai-review.ts` — AI 审核批注标记 — 橙色波浪虚线。 (~449 tok)
 - `ai-review.ts` — AI 审核批注标记 — 橙色波浪虚线。 (~394 tok)
 
 ## frontend/src/extensions/docmgr/utils/
 
 - `blockOperations.ts` — Exports getTopLevelBlockIndex, removeTopLevelBlock, duplicateTopLevelBlock, moveTopLevelBlock + 6 mo (~1536 tok)
-- `docEditorUtils.ts` — 字数 = 汉字数 + 连续拉丁/数字词数 (~422 tok)
+- `docEditorUtils.ts` — 字数 = 汉字数 + 连续拉丁/数字词数 (~454 tok)
 - `docEditorUtils.ts` — 编辑器辅助纯函数:computeDocStats(字数统计)+replaceTextInContent(查找/替换文本重写,B 组) (~1100 tok)
 - `docThread.ts` — true = 复用存储的线程；false = 重建了新线程（原 ID 失效或没有存储） (~233 tok)
 - `headingIdManager.ts` — headingIdManager.ts (~339 tok)
-- `mathBlocks.ts` — Block types whose inline content may contain $...$ / $$...$$ math. (~2407 tok)
+- `mathBlocks.ts` — Block types whose inline content may contain $...$ / $$...$$ math. (~2796 tok)
 - `mathBlocks.ts` — BlockNote↔markdown 数学块转换纯函数;TEXT_BLOCK_TYPES 含 heading(EAI-CUSTOM 标题内联公式 $V_s$ 修复),整段 $$→equation 仅 paragraph 类 (~2900 tok)
-- `mathMarkdown.ts` — 修复编辑器保存往返(getMarkdown→decodeMath)对 markdown 的累积损坏: (~1676 tok)
+- `mathMarkdown.ts` — 修复编辑器保存往返(getMarkdown→decodeMath)对 markdown 的累积损坏: (~1667 tok)
+
+## frontend/src/extensions/hooks/
+
+- `useAuth.tsx` — AuthContext (~495 tok)
 
 ## frontend/src/extensions/knowledge-factory/
 
 - `aiRuleExtractApi.ts` — Exports ExtractedRule, ExtractRulesResponse, BatchCreateResponse, extractRulesFromDocument, batchCre (~826 tok)
-- `AiRuleExtractModal.tsx` — AiRuleExtractModal (~5862 tok)
-- `BusinessDictionary.tsx` — CATEGORY_TABS (~9343 tok)
-- `CheckResultPanel.tsx` — 检查结果展示组件 (~2836 tok)
-- `ComplianceRules.tsx` — 合规规则管理组件 (~5935 tok)
+- `AiRuleExtractModal.tsx` — AiRuleExtractModal (~5856 tok)
+- `BusinessDictionary.tsx` — CATEGORY_TABS (~9320 tok)
+- `CheckResultPanel.tsx` — 检查结果展示组件 (~2817 tok)
+- `complianceCheckApi.ts` — 合规性检查 API (~582 tok)
+- `ComplianceRules.tsx` — 合规规则管理组件 (~5894 tok)
 - `complianceRulesApi.ts` — 获取规则列表 (~3902 tok)
-- `DraftBox.tsx` — DraftBox (~4591 tok)
-- `ExtractionTaskModal.tsx` — DEFAULT_CONFIG (~7611 tok)
+- `DraftBox.tsx` — DraftBox (~4601 tok)
+- `ExtractionResultModal.tsx` — SectionNode (~2656 tok)
+- `ExtractionTaskModal.tsx` — DEFAULT_CONFIG (~10028 tok)
 - `index.ts` (~348 tok)
-- `KnowledgeFactoryPage.tsx` — KnowledgeFactoryPage (~649 tok)
+- `KnowledgeFactoryPage.tsx` — KnowledgeFactoryPage (~644 tok)
 - `law-library-api.ts` — Exports buildLawLibraryUrl (~346 tok)
-- `LawLibrary.tsx` — LawLibrary — renders modal (~6588 tok)
-- `QualityAssessment.tsx` — useColorScheme (~6285 tok)
-- `RichMetadataEditor.tsx` — RichMetadataEditor (~2753 tok)
-- `rule-detail-utils.test.ts` — Declares payload (~1177 tok)
-- `rule-dictionary-utils.test.ts` — Declares dictionaries (~248 tok)
+- `LawLibrary.tsx` — LawLibrary — renders modal (~6543 tok)
+- `QualityAssessment.tsx` — useColorScheme (~6309 tok)
+- `RichMetadataEditor.tsx` — RichMetadataEditor (~2720 tok)
+- `rule-detail-utils.test.ts` — Declares payload (~1184 tok)
+- `rule-dictionary-utils.test.ts` — Declares dictionaries (~251 tok)
 - `rule-dictionary-utils.ts` — Exports mergeRuleDictionaries, getDictionaryLabel (~398 tok)
-- `rule-form-utils.test.ts` — Declares draft (~372 tok)
-- `rule-import-utils.test.ts` — Declares result (~143 tok)
+- `rule-filter-utils.test.ts` — Declares next (~200 tok)
+- `rule-form-utils.test.ts` — Declares draft (~376 tok)
+- `rule-import-utils.test.ts` — Declares result (~145 tok)
 - `rule-overview-utils.test.ts` — Declares overview (~343 tok)
-- `RuleCard.tsx` — 规则卡片组件 (~2325 tok)
+- `RuleCard.tsx` — 规则卡片组件 (~2432 tok)
 - `RuleDetail.tsx` — RuleDetail (~7790 tok)
 - `RuleEngine.tsx` — RuleEngine (~9662 tok)
 - `SampleReports.tsx` — formatFileSize (~6672 tok)
+- `ScraperPage.tsx` — SUB_TAB_COMPONENTS (~343 tok)
 - `TabNavigation.tsx` — NAV_ITEMS (~1158 tok)
 - `TemplateEditor.tsx` — TemplateSelector (~19634 tok)
 - `TemplateExtraction.tsx` — POLL_INTERVAL (~7968 tok)
-- `types.ts` — 直接上传的 Word/PDF 文件 ID（优先用 doc_parser 解析） (~5912 tok)
+- `types.ts` — 直接上传的 Word/PDF 文件 ID（优先用 doc_parser 解析） (~5976 tok)
 - `VersionControl.tsx` — VersionControl (~4530 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/
 
-- `AdvancedUploadModal.tsx` — cn (~8521 tok)
+- `AdvancedUploadModal.tsx` — cn (~8565 tok)
+- `ExtractionProgressDrawer.tsx` — POLL_INTERVAL (~3475 tok)
+- `LawDetailDrawer.tsx` — LawDetailDrawer (~3364 tok)
 - `QualityAssessmentModal.tsx` — DIMENSION_LABELS (~3201 tok)
 - `RAGFlowStatusPanel.tsx` — RAGFlowStatusPanel (~4421 tok)
+- `VersionCompareModal.tsx` — STATUS_CONFIG (~2675 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/scraper/
 
-- `ScraperScrapeDialog.tsx` — SchemaDropdown — renders modal (~3367 tok)
-- `ScraperSourceManager.tsx` — EMPTY_FORM — renders form, modal (~5961 tok)
-- `ScraperTaskCenter.tsx` — STATUS_CONFIG (~4794 tok)
+- `ScraperContext.tsx` — ScraperContext (~682 tok)
+- `ScraperDraftBox.tsx` — STATUS_TABS (~4329 tok)
+- `ScraperScrapeDialog.tsx` — SchemaDropdown — renders modal (~3388 tok)
+- `ScraperSourceManager.tsx` — EMPTY_FORM — renders form, modal (~5990 tok)
+- `ScraperTaskCenter.tsx` — STATUS_CONFIG (~4796 tok)
 
 ## frontend/src/extensions/knowledge-factory/config/
 
@@ -2879,13 +2975,16 @@
 
 ## frontend/src/extensions/knowledge-factory/hooks/
 
-- `useTemplateEditor.ts` — 将后端 TemplateSection（snake_case API 响应）转换为前端 EditorSection（camelCase） (~4560 tok)
+- `useTemplateEditor.ts` — 将后端 TemplateSection（snake_case API 响应）转换为前端 EditorSection（camelCase） (~4549 tok)
 
 ## frontend/src/extensions/license/
 
+- `__lint_probe__.ts` — Exports probe (~40 tok)
 - `api.ts` — Canonical license module keys (for the admin App Management dropdown). (~756 tok)
+- `GracePeriodBanner.tsx` — frontend/src/extensions/license/GracePeriodBanner.tsx (~290 tok)
 - `labels.ts` — Canonical license module key → user-facing label. (~177 tok)
-- `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~3540 tok)
+- `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~3541 tok)
+- `LicenseShell.tsx` — frontend/src/extensions/license/LicenseShell.tsx (~467 tok)
 - `ModuleLockedPage.tsx` — frontend/src/extensions/license/ModuleLockedPage.tsx (~209 tok)
 
 ## frontend/src/extensions/output/
@@ -2897,7 +2996,7 @@
 
 ## frontend/src/extensions/output/components/
 
-- `LayoutTemplateCard.tsx` — LayoutTemplateCard (~1376 tok)
+- `LayoutTemplateCard.tsx` — Disables the edit button while the editor fetches this template's full detail. (~2642 tok)
 - `LayoutTemplateEditor.tsx` — Section — renders table (~7707 tok)
 - `OutputConfigPanel.tsx` — FORMAT_OPTIONS (~2334 tok)
 
@@ -2907,15 +3006,16 @@
 
 ## frontend/src/extensions/project/
 
+- `__lint_probe.ts` — temporary lint probe — delete after use (~119 tok)
 - `AiToolbox.tsx` — TOOLS (~4097 tok)
 - `api.ts` — Get project stats (file count, doc size). Falls back to getFiles count. (~2528 tok)
-- `ApprovalWorkflow.tsx` — flattenChapters (~2626 tok)
+- `ApprovalWorkflow.tsx` — flattenChapters (~2621 tok)
 - `OutlineEditor.tsx` — ExpandCtx (~3522 tok)
 - `OutlinePreview.tsx` — PreviewNode (~682 tok)
-- `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11366 tok)
-- `ProjectList.tsx` — TYPE_PALETTE (~6525 tok)
-- `ProjectWorkspace.tsx` — OverviewTab (~2728 tok)
-- `SciFiProjectDetail.tsx` — STATUS_LABELS (~16457 tok)
+- `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~11332 tok)
+- `ProjectList.tsx` — TYPE_PALETTE (~6562 tok)
+- `ProjectWorkspace.tsx` — OverviewTab (~4055 tok)
+- `SciFiProjectDetail.tsx` — STATUS_LABELS (~16864 tok)
 - `SciFiProjectDetail.tsx` — Sci-fi themed project detail page, 3 tabs (overview/editor/review), wired to projectApi (~850 tok)
 - `tabRegistry.ts` — Derived identity context for tab visibility decisions. (~864 tok)
 - `types.ts` — ── Enums ── (~1706 tok)
@@ -2923,7 +3023,7 @@
 
 ## frontend/src/extensions/project/components/
 
-- `AddMemberDialog.tsx` — AddMemberDialog — renders modal (~1473 tok)
+- `AddMemberDialog.tsx` — AddMemberDialog — renders modal (~1537 tok)
 - `AiToolsTab.tsx` — AiToolsTab: accepts can prop for RBAC (~182 tok)
 - `ApprovalTab.tsx` — StepIndicator (~4775 tok)
 - `AssignmentStrategySelect.tsx` — STRATEGY_LABELS (~429 tok)
@@ -2935,15 +3035,15 @@
 - `OutlineTab.tsx` — chaptersToTreeNodes (~931 tok)
 - `ProjectCard.tsx` — REPORT_TYPE_COLORS (~1745 tok)
 - `RoleBoard.tsx` — ROLE_ORDER (~709 tok)
-- `SettingsDialog.tsx` — SettingsDialog — renders modal (~4072 tok)
+- `SettingsDialog.tsx` — SettingsDialog — renders modal (~4146 tok)
 - `StatusBadge.tsx` — STATUS_CONFIG (~787 tok)
 - `StatusDistribution.tsx` — STATUS_ITEMS (~766 tok)
-- `WorkflowProgressCompact.tsx` — Whether current user can advance phases (~2401 tok)
+- `WorkflowProgressCompact.tsx` — Whether current user can advance phases (~3179 tok)
 - `WorkspaceTabs.tsx` — ICON_MAP (~348 tok)
 
 ## frontend/src/extensions/project/components/GanttChart/
 
-- `GanttBar.tsx` — GanttBar (~724 tok)
+- `GanttBar.tsx` — GanttBar (~730 tok)
 - `GanttChart.tsx` — GanttChart (~1234 tok)
 - `types.ts` — Exports TimelineEntry, TimelineListResponse, ZoomLevel (~144 tok)
 
@@ -2951,21 +3051,21 @@
 
 - `KanbanBoard.tsx` — Called when user clicks edit on a card (~592 tok)
 - `KanbanCard.tsx` — KanbanCard (~679 tok)
-- `KanbanColumn.tsx` — KanbanColumn (~579 tok)
+- `KanbanColumn.tsx` — KanbanColumn (~566 tok)
 - `types.ts` — Exports KanbanCardData (~75 tok)
 
 ## frontend/src/extensions/project/hooks/
 
 - `useProjectPermissions.ts` — Exports useProjectPermissions (~251 tok)
-- `useReportTypes.ts` — Exports ReportTypeOption, useReportTypes, getReportTypeLabel, getReportTypeColor, getReportTypeIcon (~831 tok)
+- `useReportTypes.ts` — Exports ReportTypeOption, useReportTypes, getReportTypeLabel, getReportTypeColor, getReportTypeIcon (~832 tok)
 
 ## frontend/src/extensions/project/tabs/
 
 - `DocCollabView.tsx` — CollabEditor (~1525 tok)
-- `EditorTab.tsx` — EditorTab (~725 tok)
+- `EditorTab.tsx` — asString (~1083 tok)
 - `HistoryTab.tsx` — HistoryTab — renders modal (~3433 tok)
-- `OverviewTab.tsx` — STATUS_BADGE_STYLES (~6604 tok)
-- `ReviewTab.tsx` — STATUS_CONFIG (~3638 tok)
+- `OverviewTab.tsx` — STATUS_BADGE_STYLES (~6651 tok)
+- `ReviewTab.tsx` — STATUS_CONFIG (~3605 tok)
 - `SettingsTab.tsx` — SECTIONS (~5643 tok)
 - `TraceabilityTab.tsx` — SOURCE_TYPE_CONFIG (~3379 tok)
 
@@ -2997,7 +3097,7 @@
 ## frontend/src/extensions/shell/
 
 - `ShellLayout.tsx` — ShellLayout (~292 tok)
-- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~2296 tok)
+- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~2358 tok)
 
 ## frontend/src/extensions/spare-parts/
 
@@ -3007,12 +3107,16 @@
 
 ## frontend/src/extensions/spare-parts/components/
 
-- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6657 tok)
-- `CustomersView.tsx` — 客户管理(D3: master/alias 归并)。 (~4515 tok)
+- `BoxPlot.tsx` — Custom SVG box plot — renders min/Q1/median/Q3/max + outliers. (~1257 tok)
+- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~6710 tok)
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~6652 tok)
+- `CustomersView.tsx` — 客户管理(D3: master/alias 归并)。 (~4519 tok)
 - `DashboardView.tsx` — DashboardView (~944 tok)
+- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~9671 tok)
 - `PartAnalysis.tsx` — badgeColors (~5806 tok)
 - `StatCard.tsx` — colorClasses (~439 tok)
-- `TasksView.tsx` — statusTone — renders table (~2666 tok)
+- `TasksView.tsx` — statusTone — renders table (~2691 tok)
+- `TracebackDrawer.tsx` — CspDocument.id; null closes the drawer. (~2826 tok)
 
 ## frontend/src/extensions/types/
 
@@ -3020,10 +3124,10 @@
 
 ## frontend/src/extensions/workflow/
 
-- `api.ts` — Exports workflowApi (~2219 tok)
-- `ChapterReviewCard.tsx` — ChapterReviewCard (~707 tok)
-- `DimensionReviewCard.tsx` — DIMENSION_LABELS (~330 tok)
-- `PhaseReviewPanel.tsx` — PhaseReviewPanel (~948 tok)
+- `api.ts` — Exports workflowApi (~2230 tok)
+- `ChapterReviewCard.tsx` — ChapterReviewCard (~708 tok)
+- `DimensionReviewCard.tsx` — DIMENSION_LABELS (~374 tok)
+- `PhaseReviewPanel.tsx` — PhaseReviewPanel (~950 tok)
 - `PhaseStatusCard.tsx` — STATUS_STYLES (~437 tok)
 - `ReviewAssignmentDialog.tsx` — PRESET_DIMENSIONS (~1288 tok)
 - `SourceAnnotation.tsx` — TYPE_COLORS (~396 tok)
@@ -3031,9 +3135,9 @@
 - `TimelineView.tsx` — STATUS_COLORS (~990 tok)
 - `TraceabilityPanel.tsx` — TraceabilityPanel (~781 tok)
 - `transforms.ts` — Exports toCamelCase, toSnakeCase (~307 tok)
-- `types.ts` — Notification configuration for any node. (~1645 tok)
-- `WorkflowEditor.tsx` — Imperative handle exposed via ref when hideToolbar is true. (~4397 tok)
-- `WorkflowMonitor.tsx` — WorkflowMonitor (~792 tok)
+- `types.ts` — Notification configuration for any node. (~1703 tok)
+- `WorkflowEditor.tsx` — Imperative handle exposed via ref when hideToolbar is true. (~4430 tok)
+- `WorkflowMonitor.tsx` — WorkflowMonitor (~795 tok)
 - `WorkflowProgressView.tsx` — nodeTypes (~1823 tok)
 
 ## frontend/src/extensions/workflow/components/
@@ -3049,15 +3153,15 @@
 
 - `useSemanticValidation.ts` — Semantic validation for v2 two-layer graphs. (~1477 tok)
 - `useValidation.ts` — Exports useValidation (~174 tok)
-- `useWorkflowDAG.ts` — Get a flat graph from the current canvas state. (~1788 tok)
-- `useWorkflowStatus.ts` — Exports useWorkflowStatus (~289 tok)
+- `useWorkflowDAG.ts` — Get a flat graph from the current canvas state. (~1773 tok)
+- `useWorkflowStatus.ts` — Exports useWorkflowStatus (~334 tok)
 
 ## frontend/src/extensions/workflow/nodes/
 
 - `AIGenerateNode.tsx` — AIGenerateNode (~268 tok)
-- `ConditionNode.tsx` — ConditionNode (~278 tok)
+- `ConditionNode.tsx` — ConditionNode (~403 tok)
 - `ManualEditNode.tsx` — ManualEditNode (~338 tok)
-- `MergeNode.tsx` — MergeNode (~194 tok)
+- `MergeNode.tsx` — MergeNode (~192 tok)
 - `NotifyNode.tsx` — NotifyNode (~330 tok)
 - `PhaseNode.tsx` — PhaseNode (~543 tok)
 - `ProgressPhaseNode.tsx` — STATUS_CONFIG (~1003 tok)
@@ -3065,6 +3169,7 @@
 - `ReviewNode.tsx` — ReviewNode (~247 tok)
 - `SubflowNode.tsx` — ROLE_COLORS (~620 tok)
 - `SubWorkflowNode.tsx` — SubWorkflowNode (~341 tok)
+- `TaskNode.tsx` — TaskNode (~476 tok)
 
 ## frontend/src/extensions/workflow/panels/
 
@@ -3094,7 +3199,7 @@
 - `components/QuickDocEditor.tsx` — Tier1 快速文档(复用 CollabEditor+AI menu) (~40 tok)
 - `components/TaskBoard.tsx` — Kanban 任务板(按状态/负责人+agent 指派+run 启动) (~170 tok)
 - `index.tsx` — Collab Workspace — 入口 (~68 tok)
-- `ProjectDetail.tsx` — TIER_LABEL (~3103 tok)
+- `ProjectDetail.tsx` — TIER_LABEL (~3105 tok)
 - `ProjectDetail.tsx` — 项目详情 5 Tab(概览/文档/任务/闸门/成员) (~160 tok)
 - `transforms.ts` — Collab Workspace — camelCase/snakeCase 转换（与 project 模块同款） (~463 tok)
 - `types.ts` — Collab Workspace — 类型定义 (~870 tok)
@@ -3103,10 +3208,10 @@
 
 ## frontend/src/extensions/workspace/components/
 
-- `ApprovalsQueue.tsx` — STATE_LABEL (~2381 tok)
-- `MembersPane.tsx` — ROLE_LABEL (~1781 tok)
-- `QuickDocEditor.tsx` — QuickDocEditor (~396 tok)
-- `TaskBoard.tsx` — COLUMNS (~2374 tok)
+- `ApprovalsQueue.tsx` — STATE_LABEL (~2384 tok)
+- `MembersPane.tsx` — ROLE_LABEL (~1784 tok)
+- `QuickDocEditor.tsx` — QuickDocEditor (~394 tok)
+- `TaskBoard.tsx` — COLUMNS (~2377 tok)
 
 ## frontend/src/styles/
 
@@ -3115,9 +3220,9 @@
 
 ## frontend/tests/e2e/
 
-- `knowledge-factory.spec.ts` — Mock the extensions API endpoints used by the knowledge factory page. (~1891 tok)
+- `knowledge-factory.spec.ts` — --------------------------------------------------------------------------- (~1302 tok)
 - `load-more.spec.ts` — E2E test: "Load More" button on conversation page (~1394 tok)
-- `traceability-tab.spec.ts` — E2E test: 文档空间协同编辑页中溯源 Tab 测试 (~2182 tok)
+- `traceability-tab.spec.ts` — E2E test: 文档空间协同编辑页中溯源 Tab 测试 (~2183 tok)
 
 ## frontend/tests/unit/
 
@@ -3143,10 +3248,10 @@
 
 ## frontend/tests/unit/docmgr/
 
-- `ai-panel.test.ts` — Helper: create a mock BlockNote block. (~2595 tok)
-- `docEditorUtils.test.ts` — Declares md (~510 tok)
+- `ai-panel.test.ts` — Helper: create a mock BlockNote block. (~2565 tok)
+- `docEditorUtils.test.ts` — Declares md (~519 tok)
 - `docThread.test.ts` — Declares create (~400 tok)
-- `mathBlocks.test.ts` — Declares blocks (~1554 tok)
+- `mathBlocks.test.ts` — Declares InlineNode (~1678 tok)
 - `mathMarkdown.test.ts` — Declares samples (~656 tok)
 - `mathMarkdownIt.test.ts` — ponytail: markdown-it 是 tiptap-markdown 的传递依赖，pnpm 下可直接 import (~486 tok)
 - `useDocAIThread.dom.test.tsx` — PREFIX (~836 tok)
@@ -3164,9 +3269,9 @@
 
 - `AIDocumentReview.test.tsx` — render (~2031 tok)
 - `DiffViewer.test.tsx` — render (~1100 tok)
-- `traceability-extension.test.ts` — Tests for the ProseMirror traceability extension. (~3876 tok)
+- `traceability-extension.test.ts` — Tests for the ProseMirror traceability extension. (~3923 tok)
 - `types.test.ts` — Declares has (~888 tok)
-- `VersionPanel.test.tsx` — Mock lucide-react icons (~2238 tok)
+- `VersionPanel.test.tsx` — Mock lucide-react icons (~2269 tok)
 
 ## frontend/tests/unit/extensions/contract-price/
 
@@ -3339,6 +3444,27 @@
 ## skills/custom/water-drainage-report/scripts/
 
 - `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~3532 tok)
+
+## skills/public/bid-proposal-writing/
+
+- `SKILL.md` — 投标方案编写技能(bid-proposal-writing) (~3597 tok)
+
+## skills/public/bid-proposal-writing/references/
+
+- `classification.md` — 条款分类规则(classification.md) (~597 tok)
+- `clauses.schema.json` (~1076 tok)
+- `extraction_prompt.md` — 提取 prompt 模板(extraction_prompt.md) (~1016 tok)
+- `rubric.schema.json` (~696 tok)
+- `scoring_prompt.md` — 模拟评分 prompt 模板(scoring_prompt.md) (~351 tok)
+- `structure.schema.json` (~717 tok)
+
+## skills/public/bid-proposal-writing/scripts/
+
+- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 双卷骨架渲染(无 LLM)。 (~9846 tok)
+- `extract.py` — extract.py — 投标方案编写技能·阶段2 候选 JSON 的确定性校验 + 合并(无 LLM)。 (~9981 tok)
+- `ingest.py` — ingest.py — 投标方案编写技能·阶段1 输入分流与纯结构化解析(确定性, 无 LLM)。 (~9674 tok)
+- `merge_addenda.py` — merge_addenda.py — 投标方案编写技能·阶段3 补遗/答疑增量确定性落账(无 LLM)。 (~12551 tok)
+- `score_simulate.py` — score_simulate.py — 投标方案编写技能·阶段5 模拟评分(确定性骨架, 无 LLM)。 (~15994 tok)
 
 ## skills/public/bid-quote-analysis/
 

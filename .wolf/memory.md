@@ -8121,3 +8121,1602 @@
 | 18:45 | 容器全量suite带--continue-on-collection-errors实际执行45min+后挂在某网络型测试(pid 186零CPU)→终止;容器内全量属CI职责,容器验证以37个ontology测试通过+runtime冒烟为准 | gateway容器 | 终止(非ontology相关) | ~12k |
 | 06:41 | 事故+恢复: PS5.1无-Encoding读buglog.json致解析失败且$null+=new回写清空1166条→git HEAD恢复1162条+本会话bug-1210/1211重写+从并发session transcript逐字恢复bid-quote的bug-1213/1214(原号1211/1212,避让冲突)=1166条对齐;教训:该文件只用host python json处理 | .wolf/buglog.json | 恢复完成 | ~25k |
 | 06:41 | Session end: 3 writes across 2 files (TrendChart.tsx, sql-shape.test.ts) | 0 reads | ~130 tok |
+
+## Session: 2026-08-15 06:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:54 | 竞标战情总览 原型vs实现对比页拼装(proto3+impl7截图)并打开供用户确认 | .wolf/designqc-captures/compare-bid-quote.html | done | ~4k |
+| 07:05 | Created frontend/src/extensions/bid-quote/components/ShareStackChart.tsx | — | ~2020 |
+| 07:10 | Edited frontend/src/extensions/bid-quote/components/ShareStackChart.tsx | modified if() | ~293 |
+
+## Session: 2026-08-15 07:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:5x | 份额格局图(图12)按用户要求对齐原型block3图C:年份置顶加粗/我方段置顶/图例沉底/双行注解(rawShare防Top5折叠假0) | frontend/src/extensions/bid-quote/components/ShareStackChart.tsx | 对齐完成+psql核实东方宏业2025=0中标+commit b949a6e16+push | ~28k |
+| 07:51 | Created C:/Users/admin/AppData/Local/Temp/gstack-codex-oh-bid.txt | — | ~1540 |
+| 07:59 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | — | ~2213 |
+| 07:58 | office-hours 投标方案编写skill需求诊断完成(六问+codex二意见+方案B选定),设计文档已写待评审 | .wolf/memory.md, ~/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 进行中 | ~60k |
+| 08:00 | Session end: 2 writes across 2 files (gstack-codex-oh-bid.txt, admin-main-dev-fork-design-20260816-075816.md) | 2 reads | ~6095 tok |
+| 09:27 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 5→6 lines | ~94 |
+| 09:27 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 11→14 lines | ~212 |
+| 09:27 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | modified 1() | ~395 |
+| 09:27 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~48 |
+
+## Session: 2026-08-16 09:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:32 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~69 |
+| 09:32 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~26 |
+| 09:32 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~48 |
+| 09:32 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 8→10 lines | ~175 |
+| 09:32 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~27 |
+| 09:32 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 3→3 lines | ~55 |
+| 09:39 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 11→13 lines | ~138 |
+| 09:39 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | expanded (+9 lines) | ~136 |
+| 09:39 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | expanded (+14 lines) | ~154 |
+| 09:39 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 1→3 lines | ~47 |
+| 09:39 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 7→9 lines | ~121 |
+| 09:40 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | expanded (+6 lines) | ~164 |
+| 09:40 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~51 |
+| 09:40 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 1→3 lines | ~96 |
+| 09:40 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~26 |
+| 09:40 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 1→2 lines | ~44 |
+| 09:40 | 投标skill设计:评审1轮17问题全修+用户补双部分结构(商务镜像/技术双证据源)+知识库可达性实测(kf可达/RAGFlow无接线)整合 | ~/.gstack/.../admin-main-dev-fork-design-20260816-075816.md | 文档升级 | ~15k |
+| 09:41 | Session end: 16 writes across 1 files (admin-main-dev-fork-design-20260816-075816.md) | 15 reads | ~27934 tok |
+| 09:44 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~53 |
+| 09:44 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 6→8 lines | ~130 |
+| 09:44 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | expanded (+13 lines) | ~112 |
+| 09:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | expanded (+10 lines) | ~150 |
+| 09:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 1→2 lines | ~49 |
+| 09:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 2→1 lines | ~15 |
+| 09:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 1→2 lines | ~54 |
+| 09:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~29 |
+| 09:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~84 |
+| 09:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 4→5 lines | ~69 |
+| 09:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~11 |
+| 09:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~23 |
+| 09:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 1→2 lines | ~34 |
+| 09:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~30 |
+| 09:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 5→6 lines | ~88 |
+| 09:47 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 2→4 lines | ~66 |
+| 09:47 | 用户追加模拟评分需求→整合阶段5(rubric.json/客观确定性+主观LLM评审/评分纪律铁律/二期校准闭环);脚本4→5,管线五→六阶段 | admin-main-dev-fork-design-20260816-075816.md | 已整合 | ~8k |
+| 09:47 | Session end: 32 writes across 1 files (admin-main-dev-fork-design-20260816-075816.md) | 15 reads | ~29001 tok |
+| 09:50 | Session end: 32 writes across 1 files (admin-main-dev-fork-design-20260816-075816.md) | 15 reads | ~29999 tok |
+| 09:56 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | "knowledge" → "deploy/offline/docker-com" | ~119 |
+
+## Session: 2026-08-16 09:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:02 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~33 |
+| 10:03 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~28 |
+| 10:03 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~74 |
+| 10:03 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~33 |
+| 10:03 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~48 |
+| 10:04 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | expanded (+7 lines) | ~322 |
+| 10:05 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 5→8 lines | ~156 |
+| 10:05 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 13→16 lines | ~214 |
+| 10:05 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 5→7 lines | ~105 |
+| 10:05 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | modified 1() | ~923 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 2→1 lines | ~51 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 3→3 lines | ~80 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | 2→2 lines | ~110 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~66 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~28 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~39 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~49 |
+| 10:06 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | "eai-flow-ocr" → "http://eai-flow-ocr:8010" | ~54 |
+| 10:15 | 投标skill设计:RAGFlow v0.25.3非文字检索结论(表格HTML现成/图片image_id+取图端点未封装/公式需入库配置)写入OQ9;落实round-2+targeted评审24项修复(复合clause_id/回传稿重灌/rubric归属阶段2/format_check槽/五件套/铁律4-6/沙箱前提修正/kf价值存疑) | admin-main-dev-fork-design-20260816-075816.md | 修复全部落地,round-3终验运行中 | ~25k |
+| 10:08 | Session end: 18 writes across 1 files (admin-main-dev-fork-design-20260816-075816.md) | 1 reads | ~7041 tok |
+| 10:10 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~15 |
+| 10:10 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~44 |
+| 10:10 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~33 |
+| 10:11 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260816-075816.md | inline fix | ~16 |
+| 10:45 | 投标skill设计:round-3终验9/10 APPROVE-READY→用户批准;终稿拷贝docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md;office-hours收尾(3资源+handoff) | docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | Status APPROVED,接 /plan-eng-review | ~3k |
+
+## Session: 2026-08-16 10:19
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-16 10:34
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:35 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | 2→5 lines | ~74 |
+| 10:36 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | expanded (+14 lines) | ~260 |
+| 10:36 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | 1→3 lines | ~35 |
+| 10:38 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | expanded (+14 lines) | ~185 |
+| 10:39 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-eng-review-test-plan-20260816-103902.md | — | ~331 |
+| 10:40 | Created C:/Users/admin/AppData/Local/Temp/gstack-codex-per-bid.txt | — | ~720 |
+
+## Session: 2026-08-16 10:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-16 10:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:10 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | 3→7 lines | ~107 |
+| 16:11 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | 2→4 lines | ~56 |
+| 16:11 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | modified 1() | ~35 |
+| 16:11 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | inline fix | ~34 |
+| 16:12 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | expanded (+9 lines) | ~134 |
+| 16:12 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | inline fix | ~39 |
+| 16:14 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | 1→6 lines | ~105 |
+| 16:14 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | inline fix | ~26 |
+| 16:16 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | inline fix | ~64 |
+| 16:17 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-eng-review-test-plan-20260816-103902.md | 6→9 lines | ~188 |
+| 16:17 | Edited docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | expanded (+70 lines) | ~720 |
+| 10:46 | plan-eng-review 完成:4节内审+codex外审,8决策(D2-D8)全落设计文档,任务JSONL+测试计划工件落盘 | docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md | APPROVED-ENG-LOCKED | ~8k |
+| 16:33 | Session end: 11 writes across 2 files (2026-08-16-bid-proposal-writing-skill-design.md, admin-main-dev-fork-eng-review-test-plan-20260816-103902.md) | 2 reads | ~7474 tok |
+| 16:56 | Created backend/tests/test_bid_proposal_scripts.py | — | ~4852 |
+| 16:56 | Created backend/tests/fixtures/bid_proposal/gen_fixtures.py | — | ~4800 |
+| 16:58 | Created skills/public/bid-proposal-writing/references/clauses.schema.json | — | ~1010 |
+| 16:58 | Created skills/public/bid-proposal-writing/references/structure.schema.json | — | ~700 |
+| 16:59 | Created skills/public/bid-proposal-writing/references/rubric.schema.json | — | ~696 |
+| 16:59 | Created skills/public/bid-proposal-writing/references/classification.md | — | ~636 |
+| 16:59 | Created backend/tests/test_bid_proposal_scripts.py | — | ~6292 |
+| 17:00 | Edited backend/tests/test_bid_proposal_scripts.py | 3→2 lines | ~52 |
+| 17:01 | Edited backend/tests/test_bid_proposal_scripts.py | added 1 import(s) | ~34 |
+| 17:05 | T1 bid-proposal-writing 测试先行: test_bid_proposal_scripts.py(44测试) + fixtures/bid_proposal 全套(docx/pdf/6 JSON/md/gen_fixtures.py), 占位5脚本importorskip, 全绿提交16057bdae | backend/tests/test_bid_proposal_scripts.py, backend/tests/fixtures/bid_proposal/* | DONE 44 passed+5 skipped | ~60k |
+| 17:02 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_generator_exists() | ~4564 |
+| 17:03 | Created skills/public/bid-proposal-writing/references/extraction_prompt.md | — | ~1000 |
+| 17:04 | Created skills/public/bid-proposal-writing/references/scoring_prompt.md | — | ~374 |
+| 17:04 | Edited skills/public/bid-proposal-writing/references/extraction_prompt.md | expanded (+6 lines) | ~142 |
+| 17:05 | Edited skills/public/bid-proposal-writing/references/clauses.schema.json | 4→5 lines | ~57 |
+| 17:17 | Session end: 25 writes across 10 files (2026-08-16-bid-proposal-writing-skill-design.md, admin-main-dev-fork-eng-review-test-plan-20260816-103902.md, test_bid_proposal_scripts.py, gen_fixtures.py, clauses.schema.json) | 12 reads | ~52843 tok |
+| 18:36 | Session end: 25 writes across 10 files (2026-08-16-bid-proposal-writing-skill-design.md, admin-main-dev-fork-eng-review-test-plan-20260816-103902.md, test_bid_proposal_scripts.py, gen_fixtures.py, clauses.schema.json) | 12 reads | ~52843 tok |
+| 19:05 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_extraction_prompt_fill_status_is_derived_only() | ~5207 |
+| 19:05 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_summary_reports_code_allocation() | ~164 |
+| 19:05 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_detect_format_regions_unit() | ~127 |
+| 19:06 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_xml_fallback_matches_primary() | ~268 |
+| 19:11 | Created skills/public/bid-proposal-writing/scripts/ingest.py | — | ~7434 |
+| 19:11 | Session end: 30 writes across 11 files (2026-08-16-bid-proposal-writing-skill-design.md, admin-main-dev-fork-eng-review-test-plan-20260816-103902.md, test_bid_proposal_scripts.py, gen_fixtures.py, clauses.schema.json) | 14 reads | ~66043 tok |
+| 19:11 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~23 |
+| 19:12 | Edited backend/tests/test_bid_proposal_scripts.py | 3→4 lines | ~99 |
+| 19:13 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 2→2 lines | ~27 |
+| 19:13 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 2→3 lines | ~73 |
+| 19:35 | Edited backend/tests/test_bid_proposal_scripts.py | modified _make_docx() | ~702 |
+| 19:35 | Edited backend/tests/test_bid_proposal_scripts.py | skip() → xml_rows() | ~308 |
+| 19:36 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_atomic_write_json_survives_bad_dir() | ~2414 |
+| 19:36 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_image_only_pdf_exit_2_with_ocr_hint() | ~256 |
+| 19:36 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 6→8 lines | ~76 |
+| 19:37 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 2→6 lines | ~60 |
+| 19:37 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified _count_tr() | ~82 |
+| 19:37 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 7→11 lines | ~205 |
+| 19:37 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 7→8 lines | ~106 |
+| 19:38 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 5→6 lines | ~74 |
+| 19:38 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 5→6 lines | ~83 |
+| 19:38 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified load_sections() | ~262 |
+| 19:38 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified parse_pdf_pages() | ~526 |
+| 19:39 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified _check_docx_text_layer() | ~323 |
+| 19:39 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | expanded (+9 lines) | ~157 |
+| 19:40 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified docx_has_images() | ~156 |
+| 19:40 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_nested_table_no_false_mismatch() | ~405 |
+| 19:41 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_truncated_json_exit_1() | ~86 |
+| 20:12 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_load_sections_unit_rejects_bad_types() | ~6913 |
+| 20:13 | Edited backend/tests/test_bid_proposal_scripts.py | 5→5 lines | ~130 |
+| 20:15 | Created skills/public/bid-proposal-writing/scripts/extract.py | — | ~8206 |
+
+## Session: 2026-08-16 20:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:19 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified strip_derived_fields() | ~133 |
+| 20:19 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 2→4 lines | ~62 |
+| 20:19 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified quarantine() | ~239 |
+| 20:20 | Edited skills/public/bid-proposal-writing/scripts/extract.py | quarantine() → quarantine_name() | ~174 |
+| 20:20 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 3→3 lines | ~42 |
+| 20:20 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 5→5 lines | ~46 |
+| 20:20 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 5→5 lines | ~70 |
+| 20:20 | Session end: 7 writes across 1 files (extract.py) | 0 reads | ~766 tok |
+| 20:20 | Edited skills/public/bid-proposal-writing/scripts/extract.py | expanded (+6 lines) | ~422 |
+| 20:21 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 1→2 lines | ~91 |
+| 20:21 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 2→2 lines | ~85 |
+| 20:21 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 2→3 lines | ~95 |
+
+## Session: 2026-08-16 20:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:33 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_bad_item_quarantined_clean_merged_with_fk_cascade() | ~183 |
+| 20:33 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_sum_gap_attributable_to_quarantined_block_still_aborts() | ~400 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified quarantine() | ~72 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | quarantine_name() → quarantine() | ~54 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | quarantine_name() → quarantine() | ~60 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 3→3 lines | ~45 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 5→5 lines | ~47 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 3→3 lines | ~42 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 3→3 lines | ~41 |
+| 20:34 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 9→6 lines | ~130 |
+| 21:12 | Edited backend/tests/test_bid_proposal_scripts.py | modified _run_extract() | ~166 |
+| 21:13 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_strip_derived_fields() | ~4248 |
+| 21:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 2→4 lines | ~66 |
+| 21:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified ExtractError() | ~77 |
+| 21:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified load_sections() | ~364 |
+| 21:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified ExtractError() | ~70 |
+| 21:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 7→7 lines | ~120 |
+| 21:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified load_state() | ~524 |
+| 21:16 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified exists() | ~71 |
+| 21:16 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified quarantine() | ~361 |
+| 21:16 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 11→11 lines | ~171 |
+| 21:16 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 3→3 lines | ~45 |
+| 21:16 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified enumerate() | ~781 |
+| 21:17 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 9→10 lines | ~186 |
+| 21:17 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 31→36 lines | ~575 |
+| 21:18 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified cmd_merge() | ~48 |
+| 21:18 | Edited skills/public/bid-proposal-writing/scripts/extract.py | inline fix | ~43 |
+| 21:21 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 5→6 lines | ~137 |
+| 21:30 | Created .tmp_review_probe.py | — | ~582 |
+
+## Session: 2026-08-16 21:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:54 | Edited skills/public/bid-proposal-writing/references/clauses.schema.json | 7→11 lines | ~112 |
+| 21:54 | Edited backend/tests/fixtures/bid_proposal/clauses.json | 5→6 lines | ~32 |
+| 21:54 | Edited backend/tests/fixtures/bid_proposal/clauses.json | 5→6 lines | ~32 |
+| 21:55 | Edited backend/tests/fixtures/bid_proposal/clauses.json | 3→4 lines | ~25 |
+| 22:16 | Edited backend/tests/fixtures/bid_proposal/clauses.json | 4→5 lines | ~23 |
+
+## Session: 2026-08-16 22:18
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:19 | Edited backend/tests/fixtures/bid_proposal/gen_fixtures.py | 5→6 lines | ~38 |
+| 22:19 | Edited backend/tests/fixtures/bid_proposal/gen_fixtures.py | 5→6 lines | ~38 |
+| 22:19 | Edited backend/tests/fixtures/bid_proposal/gen_fixtures.py | 3→4 lines | ~29 |
+| 22:19 | Edited backend/tests/fixtures/bid_proposal/gen_fixtures.py | 4→5 lines | ~28 |
+| 22:19 | Edited backend/tests/test_bid_proposal_scripts.py | 2→3 lines | ~79 |
+| 22:19 | Edited backend/tests/test_bid_proposal_scripts.py | 2→3 lines | ~79 |
+| 22:19 | Edited backend/tests/test_bid_proposal_scripts.py | 2→4 lines | ~57 |
+| 22:20 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~38 |
+| 22:20 | Edited backend/tests/test_bid_proposal_scripts.py | 2→3 lines | ~38 |
+| 22:20 | Edited backend/tests/test_bid_proposal_scripts.py | 2→3 lines | ~29 |
+
+## Session: 2026-08-16 22:25
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:30 | Edited backend/tests/test_bid_proposal_scripts.py | modified _merge_module() | ~9099 |
+| 22:47 | Created skills/public/bid-proposal-writing/scripts/merge_addenda.py | — | ~10716 |
+| 22:55 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~34 |
+| 22:55 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified in() | ~272 |
+| 22:57 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 1→2 lines | ~70 |
+| 22:57 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 2→2 lines | ~80 |
+| 22:57 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | inline fix | ~43 |
+| 22:57 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 2→3 lines | ~113 |
+| 22:57 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified _is_active() | ~112 |
+| 22:58 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | expanded (+11 lines) | ~198 |
+| 22:58 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified _is_active() | ~125 |
+| 23:00 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 2→1 lines | ~10 |
+| 23:05 | T5 merge_addenda.py 落地+修复3失败测试(helper items默认值/reject裁决解除同目标冲突)+41例全绿+lint净+CLI冒烟(幂等字节不变/void外键异常rc3) 提交a9401ca4b | skills/public/bid-proposal-writing/scripts/merge_addenda.py; backend/tests/test_bid_proposal_scripts.py; fixtures+schema voided字段 | DONE | ~30k |
+| 23:31 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~36 |
+| 23:32 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_two_new_items_same_clause_id_different_content() | ~1079 |
+| 23:32 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_decisions_reject_drops_item() | ~673 |
+| 23:33 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_blank_addendum_file_falls_back_uniformly() | ~582 |
+| 23:33 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_malformed_record_no_items_key() | ~457 |
+| 23:33 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_corrupt_state_refuses_overwrite() | ~327 |
+| 23:34 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_malformed_anchor_shape_anomaly_not_silent_downgrade() | ~390 |
+| 23:34 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 4→8 lines | ~121 |
+| 23:34 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 3→4 lines | ~72 |
+| 23:35 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified enumerate() | ~138 |
+| 23:35 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified normalize_addendum_clause() | ~439 |
+| 23:36 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified not() | ~316 |
+| 23:36 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | inline fix | ~51 |
+| 23:36 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | expanded (+8 lines) | ~249 |
+| 23:36 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 5→6 lines | ~74 |
+| 23:36 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | expanded (+7 lines) | ~381 |
+| 23:37 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified process_entities() | ~285 |
+| 23:38 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified is_file() | ~485 |
+| 23:38 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | inline fix | ~18 |
+| 23:38 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 2→2 lines | ~30 |
+| 23:39 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 3→4 lines | ~110 |
+| 23:54 | Edited frontend/src/components/theme-provider.tsx | CSS: EAI-CUSTOM | ~91 |
+| 00:06 | Edited backend/scripts/seed_mock_market.py | inline fix | ~18 |
+| 00:06 | Edited backend/scripts/seed_mock_market.py | 1→3 lines | ~40 |
+| 00:06 | Edited backend/scripts/seed_mock_market.py | inline fix | ~14 |
+| 00:06 | Edited backend/scripts/seed_mock_market.py | modified enumerate() | ~72 |
+| 00:06 | Edited backend/scripts/seed_mock_market.py | modified handwritten_bid_rows() | ~321 |
+| 00:07 | Edited backend/scripts/seed_mock_market.py | modified handwritten_bid_rows() | ~59 |
+| 21:0x | fix landing-new强制dark:恢复EAI forcedTheme=undefined(7-19上游sync回退所致,bug-2159) | theme-provider.tsx | fixed+verified html class=light | ~25k |
+| 00:07 | Edited backend/tests/test_seed_mock_market_patterns.py | modified test_low_baller_dongfang_hongye_avg_premium_negative() | ~384 |
+
+## Session: 2026-08-16 00:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:09 | Edited backend/scripts/seed_mock_market.py | 3→6 lines | ~74 |
+| 00:09 | Edited backend/scripts/seed_mock_market.py | modified enumerate() | ~75 |
+| 00:09 | Edited backend/scripts/seed_mock_market.py | inline fix | ~19 |
+| 00:09 | Edited backend/scripts/seed_mock_market.py | modified _price() | ~115 |
+
+## Session: 2026-08-16 00:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:17 | Edited backend/tests/test_seed_mock_market_patterns.py | inline fix | ~16 |
+| 14:20 | 东方宏业低价抢标人设复现: LOW_BALL_K_GEN=0.94/LOW_BALL_K_HAND=0.875,线上验证 -2.1% 精确命中原型;pytest 改仪表盘口径锁定区间;bug-2160 | backend/scripts/seed_mock_market.py, backend/tests/test_seed_mock_market_patterns.py | 提交 7503286eb+99e347fbb 已推送,6/6 测试绿 | ~8k |
+| 00:19 | Session end: 1 writes across 1 files (test_seed_mock_market_patterns.py) | 0 reads | ~16 tok |
+| 00:19 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_content_hash_canonical() | ~4076 |
+| 00:21 | Created skills/public/bid-proposal-writing/scripts/build_output.py | — | ~7903 |
+| 00:23 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 4→5 lines | ~121 |
+| 00:23 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 2→3 lines | ~97 |
+| 00:25 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified _ensure_blank() | ~125 |
+| 00:25 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified enumerate() | ~298 |
+| 00:25 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 4→5 lines | ~82 |
+| 00:26 | T6 build_output.py 双卷渲染六件套+28例测试 TDD全绿 已提交 b8d5ccfdc | skills/public/bid-proposal-writing/scripts/build_output.py; backend/tests/test_bid_proposal_scripts.py | DONE 提交main-dev-fork不push | ~90k |
+| 00:4x | T6 build_output.py 冷读审查: 28测试全绿/ruff净; 发现1 Important=company lint 正则 \w{2,30}贪婪前缀污染(白名单公司嵌中文句中→误报[待核对]/退出码3, test_quote_fragment_scanned 子串断言掩盖) + 3 Minor(table_spec畸形崩溃/条目编号可撞/rows=None 渲染) | skills/public/bid-proposal-writing/scripts/build_output.py | 审查结论 approved=false(无Critical) | ~45k |
+
+## Session: 2026-08-16 00:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:56 | Edited backend/tests/test_bid_proposal_scripts.py | modified _add_clause() | ~334 |
+| 00:57 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_quote_fragment_scanned() | ~158 |
+| 00:57 | Edited backend/tests/test_bid_proposal_scripts.py | added 1 condition(s) | ~2423 |
+| 00:57 | Edited backend/tests/test_bid_proposal_scripts.py | 3→2 lines | ~58 |
+| 00:58 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | expanded (+7 lines) | ~213 |
+| 00:58 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified isinstance() | ~386 |
+| 00:59 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified _table_rows() | ~1769 |
+| 00:59 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 4→4 lines | ~66 |
+| 00:59 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified render_deviation_md() | ~122 |
+| 01:00 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 4→4 lines | ~102 |
+| 01:00 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified _entity_norm() | ~1168 |
+| 01:00 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified startswith() | ~106 |
+| 01:00 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified match() | ~82 |
+| 01:01 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 9→12 lines | ~196 |
+| 01:01 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | inline fix | ~12 |
+| 01:01 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 15→20 lines | ~289 |
+| 01:02 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified _extract_entity_candidates() | ~90 |
+| 01:02 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified BuildOutputError() | ~100 |
+| 01:02 | Edited backend/tests/test_bid_proposal_scripts.py | expanded (+13 lines) | ~206 |
+| 01:30 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_deviation_rows_computed_once_per_run() | ~9303 |
+| 01:37 | Created skills/public/bid-proposal-writing/scripts/score_simulate.py | — | ~13224 |
+
+## Session: 2026-08-16 01:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:42 | Edited backend/tests/test_bid_proposal_scripts.py | 5→5 lines | ~147 |
+| 01:42 | Edited backend/tests/test_bid_proposal_scripts.py | _snapshot() → read_bytes() | ~101 |
+| 01:42 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 4→6 lines | ~82 |
+| 01:42 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | inline fix | ~19 |
+| 01:43 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified run_report() | ~236 |
+| 01:43 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 6→8 lines | ~219 |
+| 01:43 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→3 lines | ~85 |
+| 01:44 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 1→2 lines | ~81 |
+| 01:44 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 6→10 lines | ~287 |
+| 01:44 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 17→20 lines | ~500 |
+| 01:44 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 3→4 lines | ~148 |
+| 01:44 | Edited backend/tests/test_bid_proposal_scripts.py | 3→3 lines | ~46 |
+
+## Session: 2026-08-16 02:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 02:15 | Edited backend/tests/test_bid_proposal_scripts.py | added 1 import(s) | ~13 |
+| 02:15 | Edited backend/tests/test_bid_proposal_scripts.py | 3→3 lines | ~40 |
+| 02:16 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_duplicate_clause_id_to_anomaly() | ~794 |
+| 02:16 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_bom_source_first_heading_matches() | ~455 |
+| 02:16 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_non_int_max_score_rejected() | ~400 |
+| 02:16 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_over_max_score_excluded() | ~270 |
+| 02:16 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_fk_check_symmetric_without_reingest_d7() | ~287 |
+| 02:17 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | added 1 import(s) | ~28 |
+| 02:17 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→3 lines | ~57 |
+| 02:17 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified ScoreSimulateError() | ~83 |
+| 02:17 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | enumerate() → len() | ~733 |
+| 02:17 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified is_file() | ~126 |
+| 02:17 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified isinstance() | ~216 |
+| 02:17 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 4→6 lines | ~156 |
+| 02:18 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified run_aggregate() | ~362 |
+| 02:18 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→3 lines | ~49 |
+| 02:18 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 4→5 lines | ~76 |
+| 02:19 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~29 |
+| 02:43 | Created skills/public/bid-proposal-writing/SKILL.md | — | ~3711 |
+| 02:44 | Created backend/tests/_dbg_join.py | — | ~83 |
+| 02:45 | Edited backend/tests/test_bid_proposal_scripts.py | "\\n" → "\\\n" | ~20 |
+| 02:58 | Edited backend/tests/test_bid_proposal_scripts.py | modified _capture_documented_namespaces() | ~930 |
+| 02:59 | Edited skills/public/bid-proposal-writing/SKILL.md | 2→2 lines | ~17 |
+| 02:59 | Edited skills/public/bid-proposal-writing/SKILL.md | 3→3 lines | ~55 |
+| 03:13 | Edited extensions_config.json | 5→8 lines | ~36 |
+| 02:59 | T9 bid-proposal-writing 技能注册 extensions_config.json(enabled true)+沙箱路径实测:/mnt/skills 为虚拟前缀映射到 .deer-flow/skills_view/public(容器内已含本技能),运行中 gateway 热加载列出 enabled:true;379 测试全绿;commit f6ab4ec79 | extensions_config.json | DONE | ~15k |
+| 03:20 | T9合规审查(冷读): 注册/沙箱映射/测试三项全部独立复现(API live 44 skills含新技能/容器投影目录/379 passed) | extensions_config.json, config.yaml | compliant | ~25k |
+
+## Session: 2026-08-16 03:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 03:26 | bid-proposal T1-T9 全部落地:39agent workflow 完成,9/9 规格过,379 tests+ruff 净;T3/T4/T5/T7 留 7 项 Critical/Important 残留→第二轮修复 workflow 启动(wf_252e4753) | skills/public/bid-proposal-writing/* + backend/tests | commits 16057bdae..f6ab4ec79(18个) | ~30k |
+| 03:32 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_load_sections_unit_rejects_bad_types() | ~1929 |
+| 03:32 | Edited backend/tests/test_bid_proposal_scripts.py | added 1 import(s) | ~23 |
+| 03:32 | Edited backend/tests/test_bid_proposal_scripts.py | 2→4 lines | ~55 |
+| 03:32 | Edited backend/tests/test_bid_proposal_scripts.py | 2→4 lines | ~73 |
+| 03:33 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 3→8 lines | ~132 |
+| 03:33 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified is_file() | ~148 |
+| 03:33 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified 1() | ~181 |
+| 03:33 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 3→3 lines | ~42 |
+| 03:34 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 2→4 lines | ~55 |
+| 03:34 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified strip_heading_number() | ~96 |
+| 03:43 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_atomic_write_cleanup_failure_does_not_mask_original() | ~2313 |
+| 03:44 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified in() | ~281 |
+| 03:44 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified endswith() | ~118 |
+| 03:44 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified atomic_write_json() | ~292 |
+| 03:44 | Edited skills/public/bid-proposal-writing/scripts/extract.py | "utf-8" → "utf-8-sig" | ~14 |
+| 03:44 | Edited skills/public/bid-proposal-writing/scripts/extract.py | "utf-8" → "utf-8-sig" | ~22 |
+| 03:45 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_merge_rejects_trailing_newline_id() | ~311 |
+| 03:53 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_anchor_replay_with_edited_payload_surfaces_anomaly() | ~1197 |
+| 03:54 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_help_returns_0() | ~700 |
+| 03:54 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 4→7 lines | ~113 |
+| 03:54 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 2→3 lines | ~51 |
+| 03:55 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified _validate_linked_clause_ids() | ~775 |
+| 03:55 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | expanded (+9 lines) | ~296 |
+| 04:05 | Edited backend/tests/test_bid_proposal_scripts.py | modified _clean_source_text() | ~161 |
+| 04:06 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_prefix_id_pair_not_duplicate() | ~697 |
+| 04:06 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_mirror_exemption_requires_digit_tail_boundary() | ~392 |
+| 04:06 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_session_state_without_reingest() | ~644 |
+| 04:06 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_invalid_response_status_exit_1_all_subcommands() | ~246 |
+| 04:07 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_rubric_sum_reports_real_computed_value() | ~331 |
+| 04:07 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_report_requires_aggregate_unless_degraded() | ~678 |
+| 04:07 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_pipe_in_table_cells_escaped() | ~210 |
+| 04:08 | Edited backend/tests/test_bid_proposal_scripts.py | 3→7 lines | ~106 |
+| 04:08 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~17 |
+| 04:08 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_mirror_exemption_requires_digit_tail_boundary() | ~75 |
+| 04:09 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~18 |
+| 04:09 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 3→5 lines | ~94 |
+| 04:09 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified _is_active() | ~151 |
+| 04:10 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 6→8 lines | ~154 |
+| 04:10 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | expanded (+8 lines) | ~328 |
+| 04:10 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified _load_optional_json() | ~280 |
+| 04:11 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified run_assemble_evidence() | ~324 |
+| 04:11 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→4 lines | ~70 |
+| 04:11 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 5→8 lines | ~199 |
+| 04:11 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified _check_rubric_sum() | ~351 |
+| 04:11 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 4→4 lines | ~79 |
+| 04:11 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 5→5 lines | ~88 |
+| 04:11 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | inline fix | ~44 |
+| 04:12 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified _md_cell() | ~68 |
+| 04:12 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 8→8 lines | ~162 |
+| 04:12 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified enumerate() | ~68 |
+| 04:12 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 5→5 lines | ~145 |
+| 04:12 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | added 1 condition(s) | ~437 |
+| 04:12 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified run_report() | ~282 |
+| 04:13 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→3 lines | ~53 |
+| 04:13 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | inline fix | ~18 |
+| 04:13 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→2 lines | ~36 |
+
+## Session: 2026-08-16 04:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:16 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 3→4 lines | ~118 |
+| 04:16 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→6 lines | ~107 |
+| 04:26 | Created C:/Users/admin/AppData/Local/Temp/bidverify/probe_t3.py | — | ~1472 |
+| 04:26 | Created C:/Users/admin/AppData/Local/Temp/bidverify/probe_t4.py | — | ~936 |
+| 04:27 | Created C:/Users/admin/AppData/Local/Temp/bidverify/probe_t5.py | — | ~2334 |
+| 04:27 | Created C:/Users/admin/AppData/Local/Temp/bidverify/probe_t7.py | — | ~2066 |
+| 04:28 | Edited C:/Users/admin/AppData/Local/Temp/bidverify/probe_t7.py | 2→4 lines | ~60 |
+| 04:29 | Created C:/Users/admin/AppData/Local/Temp/bidverify/probe_t4.py | — | ~960 |
+| 04:35 | 7项残留修复完成(4e53c4aae/d1c6ed48b/226a0c390/061178871):终审红→绿独立复现全过,417 tests+ruff净;buglog+2161..2167;清理 agent 残留 backend/backend;整体三镜头终审启动(wf_662a84d1) | 同上 | 4 fix commits | ~25k |
+| 04:35 | Session end: 8 writes across 5 files (score_simulate.py, probe_t3.py, probe_t4.py, probe_t5.py, probe_t7.py) | 10 reads | ~75066 tok |
+| 04:40 | Created C:/Users/admin/AppData/Local/Temp/bidpipe/gen_candidates.py | — | ~1664 |
+| 04:43 | Created C:/Users/admin/AppData/Local/Temp/bidpipe/state/entities_whitelist.json | — | ~85 |
+
+## Session: 2026-08-16 04:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:46 | Created C:/Users/admin/AppData/Local/Temp/bidpipe/candidates/subjective_scores_v1.json | — | ~97 |
+| 04:47 | Created C:/Users/admin/AppData/Local/Temp/bidpipe/candidates/subjective_scores_v1.json | — | ~99 |
+
+## Session: 2026-08-16 04:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 05:01 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_top_level_array_candidate_exit_1() | ~2516 |
+| 05:01 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_existing_fractional_total_reused_as_baseline() | ~262 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | added 1 import(s) | ~28 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified strip_derived_fields() | ~328 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified R1() | ~209 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified load_state() | ~116 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified enumerate() | ~183 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | inline fix | ~44 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 6→8 lines | ~133 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified _declared_total_type() | ~325 |
+| 05:02 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 3→3 lines | ~68 |
+| 05:11 | Edited backend/tests/test_bid_proposal_scripts.py | modified _ingest_summary_json() | ~113 |
+| 05:12 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_rerun_unchanged_keeps_ids_and_bytes() | ~1840 |
+| 05:13 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 2→5 lines | ~81 |
+| 05:13 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | added 1 import(s) | ~12 |
+| 05:13 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 3→5 lines | ~76 |
+| 05:14 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified _next_seq() | ~389 |
+| 05:14 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | inline fix | ~38 |
+| 05:14 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified zip() | ~1428 |
+| 05:14 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified is_file() | ~108 |
+| 05:14 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~50 |
+| 05:16 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 6→9 lines | ~183 |
+| 05:17 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 2→3 lines | ~88 |
+| 05:28 | Edited backend/tests/test_bid_proposal_scripts.py | modified _run_reingest() | ~189 |
+| 05:29 | Edited backend/tests/test_bid_proposal_scripts.py | modified _split_state() | ~1580 |
+| 05:29 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 5→5 lines | ~96 |
+| 05:29 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | expanded (+6 lines) | ~122 |
+| 05:30 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified run_reingest() | ~1059 |
+| 05:30 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified in() | ~850 |
+| 05:30 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 4→5 lines | ~128 |
+| 05:31 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 4→4 lines | ~146 |
+| 05:31 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 4→5 lines | ~207 |
+| 05:31 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified not() | ~78 |
+| 05:31 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_reingest_single_volume_documented() | ~206 |
+| 05:32 | Edited skills/public/bid-proposal-writing/SKILL.md | 7→10 lines | ~220 |
+| 05:33 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~65 |
+| 05:34 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~62 |
+
+## Session: 2026-08-16 05:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 05:37 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_build_output_synthetic_headings_exempt_from_mirror_check() | ~389 |
+| 05:37 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified range() | ~223 |
+| 05:37 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→6 lines | ~78 |
+| 05:38 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_null_total_score_message_split() | ~291 |
+| 05:38 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified ScoreSimulateError() | ~197 |
+| 05:39 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_exit_code_table_documents_score_simulate_exception() | ~209 |
+| 05:39 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~69 |
+| 05:40 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | inline fix | ~53 |
+| 05:40 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 3→3 lines | ~78 |
+| 05:47 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_help_returns_0() | ~906 |
+| 05:47 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_out_points_to_existing_file_exit_1() | ~463 |
+| 05:48 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 5→5 lines | ~61 |
+| 05:48 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified _load_json_file() | ~149 |
+| 05:48 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified 1() | ~207 |
+| 05:48 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 4→4 lines | ~39 |
+| 05:48 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified _load_json_file() | ~148 |
+| 05:48 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified 1() | ~170 |
+| 05:50 | Chunk4终审修复: merge/build OSError包装+utf-8-sig(BOM), 439→444绿, commit 863215ef6 | skills/public/bid-proposal-writing/scripts/merge_addenda.py,build_output.py + backend/tests/test_bid_proposal_scripts.py | DONE | ~28k |
+| 06:00 | Created C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_extract.py | — | ~2467 |
+| 06:01 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_extract.py | Path() → references() | ~100 |
+| 06:01 | Created C:/Users/admin/AppData/Local/Temp/bpv-recheck/make_docx.py | — | ~260 |
+| 06:01 | Created C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_ingest.py | — | ~1140 |
+| 06:02 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/make_docx.py | expanded (+15 lines) | ~224 |
+| 06:02 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_ingest.py | modified run() | ~520 |
+| 06:02 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_ingest.py | 2→2 lines | ~61 |
+| 06:03 | Created C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_score.py | — | ~2471 |
+| 06:04 | Created C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_write_errors.py | — | ~1112 |
+| 06:04 | Created C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_bom.py | — | ~1335 |
+| 06:05 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_ingest.py | 2→3 lines | ~86 |
+| 06:07 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_ingest.py | modified sections_snapshot() | ~254 |
+
+## Session: 2026-08-16 06:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:08 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_ingest.py | modified sections_snapshot() | ~381 |
+| 06:08 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_ingest.py | 16→16 lines | ~274 |
+| 06:09 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_score.py | 8→12 lines | ~184 |
+| 06:11 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_write_errors.py | 7→9 lines | ~230 |
+| 06:11 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/probe_bom.py | 14→16 lines | ~321 |
+| 06:15 | Created C:/Users/admin/AppData/Local/Temp/bpv-recheck/e2e_smoke.py | — | ~3686 |
+| 06:16 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/e2e_smoke.py | expanded (+8 lines) | ~319 |
+| 06:16 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/e2e_smoke.py | 3→4 lines | ~125 |
+| 06:17 | Edited C:/Users/admin/AppData/Local/Temp/bpv-recheck/e2e_smoke.py | inline fix | ~48 |
+| 06:20 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified is_file() | ~71 |
+| 06:20 | Edited skills/public/bid-proposal-writing/references/extraction_prompt.md | inline fix | ~36 |
+| 06:20 | Edited skills/public/bid-proposal-writing/references/extraction_prompt.md | inline fix | ~33 |
+| 06:20 | Edited skills/public/bid-proposal-writing/references/structure.schema.json | inline fix | ~59 |
+| 06:21 | Edited backend/tests/test_bid_proposal_scripts.py | modified range() | ~143 |
+| 06:21 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_commercial_volume_return_skips_technical() | ~170 |
+| 06:22 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_bom_state_files_accepted() | ~230 |
+| 08:08 | bid-proposal 终审12项修复完成(wf_430c2c3b): R1-R5+M1-M5全清,445 passed,lint双净,tail=3534605bd | skills/public/bid-proposal-writing/*, backend/tests/test_bid_proposal_scripts.py | 10/10发现落地+复验8红→绿 | ~70k |
+| 08:09 | Session end: 16 writes across 9 files (probe_ingest.py, probe_score.py, probe_write_errors.py, probe_bom.py, e2e_smoke.py) | 5 reads | ~102542 tok |
+| 09:11 | Session end: 16 writes across 9 files (probe_ingest.py, probe_score.py, probe_write_errors.py, probe_bom.py, e2e_smoke.py) | 5 reads | ~102542 tok |
+
+## Session: 2026-08-17 09:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:30 | Created ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | — | ~6252 |
+| 09:32 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | inline fix | ~9 |
+| 09:32 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified flush() | ~391 |
+| 09:35 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 3→6 lines | ~48 |
+| 09:35 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 4→3 lines | ~28 |
+| 09:35 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 3→1 lines | ~18 |
+| 09:36 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | expanded (+7 lines) | ~60 |
+| 14:40 | 仪表盘全局过滤 FilterBar 上移到页头「竞标战情总览」之下(原嵌在①区块 KPI 行后) | frontend/src/extensions/bid-quote/components/DashboardView.tsx | 纯 JSX 块移动,等前端容器起后目检 | ~2k |
+| 09:41 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | 8192 → 16384 | ~6 |
+| 09:41 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified call_agnes() | ~584 |
+| 15:05 | FilterBar 上移页头下已提交(3ae27b590);排障:容器 restart 脏 .next 致路由 404,rm -rf .next+restart 修复(bug-2161) | DashboardView.tsx, buglog.json | 线上验证顺序=标题→过滤→①区块,数据无回归 | ~6k |
+| 09:48 | Session end: 9 writes across 2 files (drive_extract.py, DashboardView.tsx) | 5 reads | ~33106 tok |
+| 09:49 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | 2→2 lines | ~26 |
+| 09:49 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified load_api_key() | ~112 |
+| 09:50 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified find_scoring_sections() | ~129 |
+| 09:51 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | find_scoring_pages() → find_scoring_sections() | ~203 |
+| 09:53 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified run_phase_b() | ~133 |
+| 09:53 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | 5→5 lines | ~73 |
+| 09:57 | Edited frontend/src/extensions/bid-quote/hooks.ts | 7→8 lines | ~35 |
+| 09:57 | Edited frontend/src/extensions/bid-quote/hooks.ts | modified useFilterOptions() | ~230 |
+| 09:58 | Created frontend/src/extensions/bid-quote/components/FilterBar.tsx | — | ~4001 |
+
+## Session: 2026-08-17 09:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:00 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | modified useProjectOptions() | ~72 |
+| 10:04 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified _pool_key() | ~216 |
+
+## Session: 2026-08-17 10:08
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:12 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | CSS: onChange, onClear | ~88 |
+| 10:12 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | 5→5 lines | ~62 |
+| 10:13 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | CSS: competitors | ~80 |
+| 10:16 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | inline fix | ~39 |
+| 10:22 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | added nullish coalescing | ~20 |
+| 10:23 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | inline fix | ~14 |
+| 16:45 | FilterBar 控件手写化(弃shadcn/原生): 项目懒加载+搜索/友商复选/日期自绘月历范围; 修清空选择闭包bug; label 12px 控件14px; :3000全交互验证 | FilterBar.tsx, hooks.ts | commit bd5a3c012 pushed | ~95k |
+| 10:26 | Session end: 6 writes across 2 files (FilterBar.tsx, drive_extract.py) | 1 reads | ~303 tok |
+| 10:29 | Edited frontend/src/extensions/bid-quote/components/TrendChart.tsx | inline fix | ~20 |
+| 10:29 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified range() | ~21 |
+| 10:30 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified in() | ~134 |
+| 10:30 | Session end: 9 writes across 3 files (FilterBar.tsx, drive_extract.py, TrendChart.tsx) | 3 reads | ~1478 tok |
+| 10:3x | T10联调: 切换glm-4.7-flash(智谱v4 API,thinking:disabled,429退避)全量提取启动 182非格式chunk+51格式+评分表 | bid-run/drive_extract.py | running | ~5k |
+| 10:34 | Edited frontend/src/extensions/bid-quote/api.ts | 8→9 lines | ~109 |
+| 10:34 | Edited frontend/src/extensions/bid-quote/api.ts | EXISTS() → slice() | ~88 |
+| 10:35 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | CSS: competitors | ~70 |
+
+## Session: 2026-08-17 10:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 17:20 | 友商多选 EXISTS 项目集语义→行级(我方行+选中友商行),聚合图只统计选中;遭遇战下拉跟随全局选中 | api.ts, DashboardView.tsx | commit 2406eb519 pushed, :3000验证73/画像2行/下拉2项 | ~30k |
+
+## Session: 2026-08-17 10:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:46 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | CSS: value, onPick | ~604 |
+| 10:46 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | added 2 condition(s) | ~244 |
+| 10:46 | Edited frontend/src/extensions/bid-quote/components/FilterBar.tsx | added nullish coalescing | ~94 |
+| 17:4x | bid-quote 友商过滤改单选+默认第一家(settled守卫effect);实测 55/58/138 三态 | FilterBar.tsx | 提交60d0c0b32已push | ~15k |
+| 10:57 | Session end: 3 writes across 1 files (FilterBar.tsx) | 0 reads | ~942 tok |
+| 11:07 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | added nullish coalescing | ~163 |
+| 11:09 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 62→62 lines | ~629 |
+| 11:09 | Created frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | — | ~994 |
+| 11:09 | Created frontend/src/extensions/bid-quote/components/SelfVsOutsourceChart.tsx | — | ~1204 |
+| 11:16 | Session end: 7 writes across 4 files (FilterBar.tsx, DashboardView.tsx, SelfRateDistChart.tsx, SelfVsOutsourceChart.tsx) | 5 reads | ~6820 tok |
+
+## Session: 2026-08-17 11:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:19 | Edited frontend/src/extensions/bid-quote/components/SelfVsOutsourceChart.tsx | 2→2 lines | ~33 |
+| 11:20 | Edited frontend/src/extensions/bid-quote/components/SelfVsOutsourceChart.tsx | inline fix | ~14 |
+| 11:20 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 2→2 lines | ~29 |
+| 11:21 | Session end: 3 writes across 2 files (SelfVsOutsourceChart.tsx, DashboardView.tsx) | 0 reads | ~76 tok |
+| 11:25 | Created C:/Users/admin/AppData/Local/Temp/eslint_group.py | — | ~166 |
+| 11:26 | Edited C:/Users/admin/AppData/Local/Temp/eslint_group.py | added 1 import(s) | ~28 |
+| 11:27 | Edited C:/Users/admin/AppData/Local/Temp/eslint_group.py | "/tmp/eslint-files.json" → "%TEMP%\eslint-files.json" | ~32 |
+| 17:55 | bid-quote 三图去x轴重叠:图2横向分组/图C直方图10%分桶+门槛堆叠/图B横向堆叠;DOM验证0重叠+排序方向翻转 | DashboardView/SelfRateDist/SelfVsOutsource.tsx | 提交f5db16909已push | ~20k |
+| 11:29 | Session end: 6 writes across 3 files (SelfVsOutsourceChart.tsx, DashboardView.tsx, eslint_group.py) | 0 reads | ~302 tok |
+| 11:32 | Edited frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | CSS: focus-visible, focus-visible, focus-visible | ~351 |
+| 11:34 | Edited frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | "h-1.5 flex-1 cursor-point" → "h-1.5 max-w-[320px] flex-" | ~211 |
+| 18:0x | bid-quote 门槛滑杆美化:6px灰轨+绿thumb白描边+320px封顶+计数nowrap单行;Tailwind新任意值类需整页reload才生效 | SelfRateDistChart.tsx | 提交52546624e已push | ~8k |
+| 11:36 | Session end: 8 writes across 4 files (SelfVsOutsourceChart.tsx, DashboardView.tsx, eslint_group.py, SelfRateDistChart.tsx) | 0 reads | ~864 tok |
+| 11:37 | Edited frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | CSS: background | ~347 |
+| 11:37 | Created C:/Users/admin/AppData/Local/Temp/eslint_batches.py | — | ~441 |
+| 18:1x | 门槛滑杆轨道改左绿右灰进度填充(linear-gradient分界=门槛值,随拖动实时) | SelfRateDistChart.tsx | 提交d57a98062已push | ~4k |
+| 11:39 | Session end: 10 writes across 5 files (SelfVsOutsourceChart.tsx, DashboardView.tsx, eslint_group.py, SelfRateDistChart.tsx, eslint_batches.py) | 0 reads | ~1652 tok |
+| 11:40 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/fix-frontend-lint-wf_afbc7755-81b.js | entries() → VERIFY_CMD() | ~146 |
+| 11:40 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/fix-frontend-lint-wf_afbc7755-81b.js | 7→4 lines | ~104 |
+| 11:41 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/fix-frontend-lint-wf_afbc7755-81b.js | 2→2 lines | ~56 |
+| 11:41 | Edited frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | added 1 import(s) | ~67 |
+| 11:41 | Edited frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | added optional chaining | ~180 |
+| 11:41 | Edited frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | 13→14 lines | ~100 |
+| 11:42 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/fix-frontend-lint-wf_afbc7755-81b.js | inline fix | ~42 |
+| 11:43 | Edited frontend/src/extensions/bid-quote/components/SelfRateDistChart.tsx | 13→12 lines | ~60 |
+| 11:45 | Session end: 18 writes across 6 files (SelfVsOutsourceChart.tsx, DashboardView.tsx, eslint_group.py, SelfRateDistChart.tsx, eslint_batches.py) | 2 reads | ~2407 tok |
+| 11:47 | Edited frontend/src/extensions/contract-price/components/BoxPlot.tsx | 3→2 lines | ~15 |
+| 11:47 | Edited frontend/src/extensions/contract-price/components/BoxPlot.tsx | 3→2 lines | ~25 |
+| 11:47 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | added nullish coalescing | ~11 |
+| 11:47 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | inline fix | ~8 |
+| 11:47 | Edited frontend/src/extensions/dashboard/components/DashboardCard.tsx | added nullish coalescing | ~18 |
+| 18:2x | 直方图堆叠柱圆角对齐:栈顶段独占圆角,绿段自定义shape按桶内琥珀计数判定;DOM弧命令验证每柱1弧且在栈顶 | SelfRateDistChart.tsx | 提交d97ec839d已push | ~9k |
+| 11:47 | Edited frontend/src/extensions/dashboard/components/Header.tsx | added nullish coalescing | ~18 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/LogPanel.tsx | added nullish coalescing | ~18 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/MyProjects.tsx | added nullish coalescing | ~8 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/NotificationFeed.tsx | added nullish coalescing | ~18 |
+| 11:48 | Session end: 27 writes across 14 files (SelfVsOutsourceChart.tsx, DashboardView.tsx, eslint_group.py, SelfRateDistChart.tsx, eslint_batches.py) | 29 reads | ~65696 tok |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/NotificationFeed.tsx | added nullish coalescing | ~24 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/ProjectMiniCard.tsx | added nullish coalescing | ~26 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/ProjectMiniCard.tsx | added nullish coalescing | ~16 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/TaskItemCard.tsx | added nullish coalescing | ~18 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/TaskItemCard.tsx | added nullish coalescing | ~13 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/NotificationPreferencePanel.tsx | inline fix | ~17 |
+| 11:48 | Edited frontend/src/extensions/dashboard/components/TodayTasks.tsx | inline fix | ~13 |
+| 11:48 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 3→2 lines | ~8 |
+| 11:48 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | inline fix | ~23 |
+| 11:49 | Edited frontend/src/extensions/dashboard/components/MiniCalendar.tsx | added nullish coalescing | ~159 |
+| 11:49 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | inline fix | ~22 |
+| 11:49 | Edited frontend/src/extensions/dashboard/components/MiniCalendar.tsx | inline fix | ~25 |
+| 11:49 | Edited frontend/src/extensions/contract-price/components/TasksView.tsx | inline fix | ~16 |
+| 11:49 | Edited frontend/src/extensions/contract-price/components/TasksView.tsx | added 1 condition(s) | ~43 |
+| 11:49 | Edited frontend/src/extensions/contract-price/components/TasksView.tsx | 3→3 lines | ~56 |
+| 11:49 | Edited frontend/src/extensions/contract-price/components/TasksView.tsx | added nullish coalescing | ~18 |
+| 11:49 | Edited frontend/src/extensions/knowledge-factory/rule-detail-utils.test.ts | 2→2 lines | ~4 |
+| 11:49 | Edited frontend/src/extensions/contract-price/components/TracebackDrawer.tsx | inline fix | ~12 |
+| 11:49 | Edited frontend/src/extensions/knowledge-factory/rule-dictionary-utils.test.ts | 2→2 lines | ~4 |
+| 11:49 | Edited frontend/src/extensions/knowledge-factory/rule-filter-utils.test.ts | 2→2 lines | ~4 |
+| 11:49 | Edited frontend/src/extensions/knowledge-factory/rule-form-utils.test.ts | 2→2 lines | ~4 |
+| 11:49 | Edited frontend/src/extensions/knowledge-factory/rule-import-utils.test.ts | 2→2 lines | ~4 |
+| 11:50 | Edited frontend/src/extensions/knowledge-factory/complianceCheckApi.ts | added nullish coalescing | ~14 |
+| 11:50 | Edited frontend/src/extensions/knowledge-factory/complianceCheckApi.ts | added nullish coalescing | ~13 |
+| 11:50 | Edited frontend/src/extensions/knowledge-factory/ScraperPage.tsx | added nullish coalescing | ~23 |
+| 11:50 | Edited frontend/src/extensions/docmgr/useDocuments.ts | expanded (+6 lines) | ~99 |
+| 11:50 | Edited frontend/src/extensions/docmgr/useDocuments.ts | 3→3 lines | ~19 |
+| 11:50 | Edited frontend/src/extensions/docmgr/useFolderTree.ts | 3→3 lines | ~17 |
+| 11:50 | Edited frontend/src/extensions/docmgr/useFolderTree.ts | added nullish coalescing | ~12 |
+| 11:51 | Edited frontend/src/extensions/docmgr/usePersonalOutputs.ts | inline fix | ~16 |
+| 11:51 | Edited frontend/src/extensions/docmgr/usePersonalOutputs.ts | added 1 condition(s) | ~33 |
+| 11:51 | Edited frontend/src/extensions/docmgr/useProjectOutputs.ts | 3→3 lines | ~16 |
+| 11:51 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | reduced (-6 lines) | ~70 |
+| 11:51 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | 4→3 lines | ~25 |
+| 11:51 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | added nullish coalescing | ~18 |
+| 11:51 | Edited frontend/src/extensions/docmgr/ProjectDocListPanel.tsx | added nullish coalescing | ~34 |
+| 11:52 | Edited frontend/src/extensions/docmgr/ProjectFolderTree.tsx | inline fix | ~19 |
+| 11:52 | Edited frontend/src/extensions/docmgr/FilePreviewModal.tsx | inline fix | ~8 |
+| 11:52 | Edited frontend/src/extensions/docmgr/FilePreviewModal.tsx | 5→4 lines | ~52 |
+| 11:52 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | modified if() | ~60 |
+| 11:52 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | 6→6 lines | ~35 |
+| 11:52 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | 4→4 lines | ~35 |
+| 11:52 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | 7→7 lines | ~47 |
+| 11:52 | Edited frontend/src/extensions/docmgr/TiptapEditor.tsx | inline fix | ~13 |
+| 11:52 | Edited frontend/src/extensions/docmgr/TiptapEditor.tsx | added nullish coalescing | ~14 |
+| 11:52 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | added nullish coalescing | ~13 |
+| 11:53 | Edited frontend/src/extensions/docmgr/TiptapEditor.tsx | added nullish coalescing | ~12 |
+| 11:53 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | added nullish coalescing | ~12 |
+| 11:53 | Edited frontend/src/extensions/docmgr/TiptapEditor.tsx | inline fix | ~16 |
+| 11:53 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | added nullish coalescing | ~13 |
+| 11:53 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | added nullish coalescing | ~14 |
+| 11:53 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | added nullish coalescing | ~13 |
+| 11:53 | Edited frontend/src/extensions/knowledge-factory/ComplianceRules.tsx | added nullish coalescing | ~14 |
+| 11:54 | Edited frontend/src/extensions/docmgr/VersionHistoryDialog.tsx | CSS: err, fallback | ~81 |
+| 11:54 | Edited frontend/src/extensions/knowledge-factory/ExtractionResultModal.tsx | added nullish coalescing | ~26 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | added 1 import(s) | ~43 |
+| 11:54 | Edited frontend/src/extensions/docmgr/VersionHistoryDialog.tsx | modified catch() | ~32 |
+| 11:54 | Edited frontend/src/extensions/knowledge-factory/ExtractionResultModal.tsx | added nullish coalescing | ~28 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | modified CommentToolbarButton() | ~39 |
+| 11:54 | Edited frontend/src/extensions/docmgr/VersionHistoryDialog.tsx | modified catch() | ~23 |
+| 11:54 | Edited frontend/src/extensions/knowledge-factory/ExtractionResultModal.tsx | added nullish coalescing | ~28 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | added optional chaining | ~20 |
+| 11:54 | Edited frontend/src/extensions/docmgr/VersionHistoryDialog.tsx | modified catch() | ~22 |
+| 11:54 | Edited frontend/src/extensions/knowledge-factory/ExtractionResultModal.tsx | added nullish coalescing | ~73 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | added nullish coalescing | ~22 |
+| 11:54 | Edited frontend/src/extensions/knowledge-factory/types.ts | added 2 condition(s) | ~217 |
+| 11:54 | Edited frontend/src/extensions/docmgr/VersionHistoryDialog.tsx | added nullish coalescing | ~12 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | inline fix | ~24 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | inline fix | ~14 |
+| 11:54 | Edited frontend/src/extensions/knowledge-factory/AiRuleExtractModal.tsx | 6→5 lines | ~40 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | expanded (+9 lines) | ~97 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | added nullish coalescing | ~37 |
+| 11:54 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | 4→4 lines | ~56 |
+| 11:55 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | added nullish coalescing | ~99 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/BusinessDictionary.tsx | 3→2 lines | ~42 |
+| 11:55 | Edited frontend/src/extensions/collab/CommentSidebar.tsx | added nullish coalescing | ~12 |
+| 11:55 | Edited frontend/src/extensions/collab/CommentThread.tsx | inline fix | ~28 |
+| 11:55 | Edited frontend/src/extensions/collab/CommentThread.tsx | added nullish coalescing | ~26 |
+| 11:55 | Edited frontend/src/extensions/collab/CommentThread.tsx | added nullish coalescing | ~30 |
+| 11:55 | Edited frontend/src/extensions/collab/CommentThread.tsx | added nullish coalescing | ~23 |
+| 11:55 | Edited frontend/src/extensions/collab/CommentThread.tsx | added nullish coalescing | ~27 |
+| 11:55 | Edited frontend/src/extensions/collab/CommentThread.tsx | inline fix | ~30 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/BusinessDictionary.tsx | 4→3 lines | ~33 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/BusinessDictionary.tsx | "{deleteTarget.type === " → "domain" | ~36 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | added nullish coalescing | ~23 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | 3→3 lines | ~18 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/CheckResultPanel.tsx | added nullish coalescing | ~21 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | 2→2 lines | ~13 |
+| 11:55 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | CSS: message | ~27 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | added nullish coalescing | ~20 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/CheckResultPanel.tsx | 3→2 lines | ~32 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | CSS: message | ~26 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | added nullish coalescing | ~18 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | added nullish coalescing | ~16 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | added nullish coalescing | ~16 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | added nullish coalescing | ~15 |
+| 11:56 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | added nullish coalescing | ~16 |
+| 11:56 | Edited frontend/src/extensions/collab/OutlinePanel.tsx | reduced (-16 lines) | ~98 |
+| 11:56 | Edited frontend/src/extensions/collab/OutlinePanel.tsx | added nullish coalescing | ~12 |
+| 11:56 | Edited frontend/src/extensions/collab/aiMenuItems.tsx | 3→3 lines | ~19 |
+| 11:56 | Edited frontend/src/extensions/collab/aiTransport.ts | added nullish coalescing | ~75 |
+| 11:56 | Edited frontend/src/extensions/collab/human-written-plugin.ts | 12→10 lines | ~80 |
+| 11:57 | Edited frontend/src/extensions/collab/useCollab.ts | useMemo() → ref() | ~134 |
+| 11:57 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | added nullish coalescing | ~36 |
+| 11:57 | Edited frontend/src/extensions/collab/useCollab.ts | inline fix | ~19 |
+| 11:57 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | 3→3 lines | ~18 |
+| 11:57 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | 3→3 lines | ~25 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | added nullish coalescing | ~83 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | added nullish coalescing | ~12 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | 5→5 lines | ~117 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | added nullish coalescing | ~22 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | 5→5 lines | ~81 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | added nullish coalescing | ~19 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/components/AdvancedUploadModal.tsx | inline fix | ~20 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | 5→5 lines | ~78 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | 4→4 lines | ~49 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/components/ExtractionProgressDrawer.tsx | inline fix | ~24 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/DraftBox.tsx | 4→4 lines | ~50 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/components/ExtractionProgressDrawer.tsx | modified if() | ~31 |
+| 11:58 | Edited frontend/src/extensions/knowledge-factory/components/ExtractionProgressDrawer.tsx | 3→3 lines | ~30 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/components/ExtractionProgressDrawer.tsx | reduced (-10 lines) | ~19 |
+| 11:59 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 23→21 lines | ~392 |
+| 11:59 | Edited frontend/src/extensions/collab/useCollab.ts | added optional chaining | ~13 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | added nullish coalescing | ~20 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/components/ExtractionProgressDrawer.tsx | added nullish coalescing | ~6 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | added nullish coalescing | ~122 |
+| 11:59 | Edited frontend/src/extensions/bid-quote/api.ts | 6→7 lines | ~98 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | 3→3 lines | ~60 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/components/LawDetailDrawer.tsx | 4→4 lines | ~58 |
+| 11:59 | Edited frontend/src/extensions/bid-quote/api.ts | " GROUP BY project_name OR" → " GROUP BY project_name OR" | ~27 |
+| 11:59 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | CSS: id, type | ~434 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | added nullish coalescing | ~14 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/components/LawDetailDrawer.tsx | added nullish coalescing | ~15 |
+| 11:59 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | inline fix | ~34 |
+| 11:59 | Edited frontend/src/extensions/knowledge-factory/components/LawDetailDrawer.tsx | added nullish coalescing | ~12 |
+| 11:59 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 11→12 lines | ~41 |
+| 11:59 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 4→4 lines | ~52 |
+| 12:00 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | added optional chaining | ~478 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/components/QualityAssessmentModal.tsx | added nullish coalescing | ~10 |
+| 12:00 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 4→4 lines | ~40 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/components/QualityAssessmentModal.tsx | added nullish coalescing | ~18 |
+| 12:00 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | added nullish coalescing | ~34 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/components/QualityAssessmentModal.tsx | added nullish coalescing | ~24 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/components/QualityAssessmentModal.tsx | added nullish coalescing | ~24 |
+| 12:00 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 4→4 lines | ~60 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | 3→4 lines | ~51 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/components/QualityAssessmentModal.tsx | added nullish coalescing | ~25 |
+| 12:00 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | inline fix | ~19 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/components/VersionCompareModal.tsx | inline fix | ~17 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | 4→4 lines | ~51 |
+| 12:00 | Edited frontend/src/extensions/knowledge-factory/components/VersionCompareModal.tsx | added nullish coalescing | ~154 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/VersionCompareModal.tsx | added nullish coalescing | ~11 |
+| 12:01 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 2→2 lines | ~17 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | added nullish coalescing | ~42 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/VersionCompareModal.tsx | added nullish coalescing | ~11 |
+| 12:01 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | CSS: newContent | ~566 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperContext.tsx | added nullish coalescing | ~11 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperDraftBox.tsx | inline fix | ~22 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/KnowledgeFactoryPage.tsx | inline fix | ~12 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperDraftBox.tsx | added nullish coalescing | ~37 |
+| 12:01 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | CSS: message | ~199 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperScrapeDialog.tsx | added nullish coalescing | ~26 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperScrapeDialog.tsx | 1→3 lines | ~46 |
+| 12:01 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperScrapeDialog.tsx | added nullish coalescing | ~142 |
+| 12:01 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | added 1 condition(s) | ~142 |
+| 12:02 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 3→3 lines | ~50 |
+| 12:02 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | inline fix | ~15 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx | added nullish coalescing | ~15 |
+| 12:02 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 4→4 lines | ~106 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx | 1→3 lines | ~48 |
+| 12:02 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | inline fix | ~24 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx | 13→13 lines | ~168 |
+| 12:02 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | inline fix | ~10 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx | added nullish coalescing | ~21 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx | inline fix | ~23 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | 4→3 lines | ~40 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | 8→7 lines | ~45 |
+| 12:02 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | 4→3 lines | ~29 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx | added nullish coalescing | ~47 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | added nullish coalescing | ~117 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | 7→6 lines | ~23 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | added nullish coalescing | ~17 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | added nullish coalescing | ~21 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperSourceManager.tsx | added nullish coalescing | ~36 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/LawLibrary.tsx | added nullish coalescing | ~11 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx | 15→15 lines | ~142 |
+| 12:03 | Edited frontend/src/extensions/knowledge-factory/components/VersionCompareModal.tsx | modified if() | ~165 |
+| 12:04 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx | added nullish coalescing | ~72 |
+| 12:04 | Edited frontend/src/extensions/knowledge-factory/QualityAssessment.tsx | inline fix | ~40 |
+| 12:04 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx | added nullish coalescing | ~20 |
+| 12:04 | Edited frontend/src/extensions/knowledge-factory/QualityAssessment.tsx | 5→6 lines | ~127 |
+| 12:04 | Edited frontend/src/extensions/knowledge-factory/QualityAssessment.tsx | "w-[var(--radix-popover-tr" → "qa-template-combobox-list" | ~38 |
+| 12:04 | Edited frontend/src/extensions/knowledge-factory/components/scraper/ScraperTaskCenter.tsx | added nullish coalescing | ~23 |
+| 12:04 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | reduced (-6 lines) | ~22 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | 3→1 lines | ~22 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | 5→5 lines | ~88 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | added nullish coalescing | ~66 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | 5→5 lines | ~96 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | added nullish coalescing | ~63 |
+| 12:05 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | CSS: v | ~117 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | 5→5 lines | ~95 |
+| 12:05 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 10→10 lines | ~119 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | added nullish coalescing | ~55 |
+| 12:05 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | 5→5 lines | ~94 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | CSS: err, fallback | ~70 |
+| 12:06 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | added nullish coalescing | ~54 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | 21→21 lines | ~230 |
+| 12:06 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | added nullish coalescing | ~24 |
+| 12:06 | Edited frontend/src/extensions/knowledge-factory/RuleCard.tsx | 6→5 lines | ~20 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | added nullish coalescing | ~30 |
+| 12:06 | Edited frontend/src/extensions/knowledge-factory/RuleCard.tsx | added nullish coalescing | ~142 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | modified catch() | ~28 |
+| 12:06 | Edited frontend/src/extensions/knowledge-factory/RuleCard.tsx | inline fix | ~26 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | added nullish coalescing | ~36 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | inline fix | ~16 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | modified catch() | ~25 |
+| 12:06 | Edited frontend/src/extensions/spare-parts/components/BoxPlot.tsx | 2→1 lines | ~10 |
+| 12:06 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | 6→4 lines | ~40 |
+| 12:07 | Edited frontend/src/extensions/spare-parts/components/BoxPlot.tsx | 3→2 lines | ~25 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | inline fix | ~15 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | modified DocAIAgentPanel() | ~16 |
+| 12:07 | Edited frontend/src/extensions/spare-parts/components/ClustersView.tsx | added nullish coalescing | ~20 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | modified catch() | ~56 |
+| 12:07 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | inline fix | ~52 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | added optional chaining | ~14 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | CSS: message, status | ~395 |
+| 12:07 | Edited frontend/src/extensions/spare-parts/components/CustomersView.tsx | inline fix | ~18 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | 2→2 lines | ~20 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | 6→6 lines | ~64 |
+| 12:07 | Edited frontend/src/extensions/spare-parts/components/ItemsView.tsx | 5→4 lines | ~17 |
+| 12:07 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | CSS: t | ~108 |
+| 12:07 | Edited frontend/src/extensions/spare-parts/components/ItemsView.tsx | inline fix | ~22 |
+| 12:08 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | 3→3 lines | ~66 |
+| 12:08 | Edited frontend/src/extensions/spare-parts/components/ItemsView.tsx | inline fix | ~22 |
+| 12:08 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | added nullish coalescing | ~26 |
+| 12:08 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | inline fix | ~16 |
+| 12:08 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | added 1 condition(s) | ~19 |
+| 12:08 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | 3→3 lines | ~58 |
+| 12:08 | Edited frontend/src/extensions/spare-parts/components/TasksView.tsx | added nullish coalescing | ~18 |
+| 18:3x | 图4时间范围滑块:showdown SQL改ORDER BY MIN(bid_date)+recharts Brush双柄,默认最近10项目,标签8字截断;0重叠+键盘拖动验证 | api.ts/DashboardView.tsx | 提交2bbeac9a5已push | ~12k |
+| 12:08 | Edited frontend/src/extensions/spare-parts/components/TracebackDrawer.tsx | inline fix | ~12 |
+| 12:08 | Created frontend/src/extensions/project/__lint_probe.ts | — | ~119 |
+| 12:09 | Edited frontend/src/extensions/docmgr/usePersonalOutputs.ts | 7→7 lines | ~77 |
+| 12:09 | Session end: 268 writes across 74 files (SelfVsOutsourceChart.tsx, DashboardView.tsx, eslint_group.py, SelfRateDistChart.tsx, eslint_batches.py) | 103 reads | ~300274 tok |
+| 12:09 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added 1 import(s) | ~69 |
+| 12:09 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~24 |
+| 12:09 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 5→4 lines | ~88 |
+| 12:09 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~17 |
+| 12:09 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~8 |
+| 12:10 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~24 |
+| 12:10 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~70 |
+| 12:10 | Edited frontend/src/extensions/workflow/types.ts | expanded (+11 lines) | ~64 |
+| 12:10 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~26 |
+| 12:10 | Edited frontend/src/extensions/workflow/ChapterReviewCard.tsx | added nullish coalescing | ~9 |
+| 12:10 | Edited frontend/src/extensions/workflow/DimensionReviewCard.tsx | added nullish coalescing | ~24 |
+| 12:10 | Edited frontend/src/extensions/workflow/PhaseReviewPanel.tsx | 3→3 lines | ~16 |
+| 12:10 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified DocumentList() | ~94 |
+| 12:10 | Edited frontend/src/extensions/workflow/PhaseStatusCard.tsx | added nullish coalescing | ~55 |
+| 12:10 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 2→2 lines | ~58 |
+| 12:10 | Edited frontend/src/extensions/workflow/SourceAnnotation.tsx | added nullish coalescing | ~26 |
+| 12:11 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: note | ~55 |
+| 12:11 | Edited frontend/src/extensions/workflow/SourceFootnote.tsx | added nullish coalescing | ~54 |
+| 12:11 | Edited frontend/src/extensions/workflow/TimelineView.tsx | added nullish coalescing | ~59 |
+| 12:11 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | 4→4 lines | ~93 |
+| 12:11 | Edited frontend/src/extensions/project/ApprovalWorkflow.tsx | 3→3 lines | ~43 |
+| 12:11 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | inline fix | ~16 |
+| 12:11 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~30 |
+| 12:11 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | 4→3 lines | ~19 |
+| 12:11 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | CSS: projectId | ~15 |
+| 12:11 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~30 |
+| 12:11 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | 3→1 lines | ~22 |
+| 12:11 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | added nullish coalescing | ~17 |
+| 12:11 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | modified if() | ~139 |
+| 12:11 | Edited frontend/src/extensions/workflow/WorkflowMonitor.tsx | 2→2 lines | ~25 |
+| 12:11 | Edited frontend/src/brand.ts | added nullish coalescing | ~42 |
+| 12:11 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~38 |
+| 12:11 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | inline fix | ~13 |
+| 12:11 | Edited frontend/src/app/docmgr/layout.tsx | inline fix | ~16 |
+| 12:11 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~30 |
+| 12:11 | Edited frontend/src/extensions/workflow/WorkflowMonitor.tsx | 2→2 lines | ~20 |
+| 12:12 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 5→5 lines | ~65 |
+| 12:12 | Edited frontend/src/extensions/workflow/api.ts | modified async() | ~102 |
+| 12:12 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~31 |
+| 12:12 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | modified StepConfirm() | ~142 |
+| 12:12 | Edited frontend/src/extensions/workflow/api.ts | 2→3 lines | ~16 |
+| 12:12 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 2→2 lines | ~60 |
+| 12:12 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | 9→9 lines | ~78 |
+| 12:12 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified if() | ~39 |
+| 12:12 | Edited frontend/src/app/admin/app-center/AppManagement.tsx | 4→4 lines | ~34 |
+| 12:12 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | 10→9 lines | ~96 |
+| 12:12 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~44 |
+| 12:12 | Edited frontend/src/app/admin/app-center/DomainManagement.tsx | 3→3 lines | ~14 |
+| 12:12 | Edited frontend/src/extensions/project/ProjectList.tsx | inline fix | ~15 |
+| 12:12 | Edited frontend/src/extensions/project/ProjectList.tsx | CSS: status, message | ~60 |
+| 12:12 | Edited frontend/src/app/admin/app-center/DomainManagement.tsx | inline fix | ~20 |
+| 12:12 | Edited frontend/src/extensions/project/ProjectList.tsx | CSS: message | ~28 |
+| 12:12 | Edited frontend/src/extensions/project/ProjectList.tsx | 4→4 lines | ~33 |
+| 12:13 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~42 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | 3→2 lines | ~30 |
+| 12:13 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~19 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | 4→3 lines | ~28 |
+| 12:13 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~15 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | modified if() | ~62 |
+| 12:13 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~64 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | 2→2 lines | ~35 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | modified if() | ~28 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | modified getVisibleTabs() | ~38 |
+| 12:13 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified DocCard() | ~141 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | 2→2 lines | ~44 |
+| 12:13 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | added nullish coalescing | ~187 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | added optional chaining | ~53 |
+| 12:13 | Edited frontend/src/extensions/project/ProjectWorkspace.tsx | added nullish coalescing | ~12 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | reduced (-6 lines) | ~132 |
+| 12:14 | Edited frontend/src/extensions/project/SciFiProjectDetail.tsx | 36→31 lines | ~173 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | CSS: EAI-CUSTOM | ~202 |
+| 12:14 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | removed 56 lines | ~24 |
+| 12:14 | Edited frontend/src/extensions/project/SciFiProjectDetail.tsx | 3→2 lines | ~21 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | 6→6 lines | ~27 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | modified catch() | ~64 |
+| 12:14 | Edited frontend/src/extensions/project/SciFiProjectDetail.tsx | 3→3 lines | ~19 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | modified catch() | ~41 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | modified catch() | ~48 |
+| 12:14 | Edited frontend/src/extensions/project/SciFiProjectDetail.tsx | modified if() | ~145 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | modified findParentName() | ~41 |
+| 12:14 | Edited frontend/src/extensions/project/SciFiProjectDetail.tsx | 2→2 lines | ~16 |
+| 12:14 | Edited frontend/src/extensions/app-center/hooks/useApps.ts | added nullish coalescing | ~14 |
+| 12:14 | Edited frontend/src/app/admin/departments/page.tsx | added nullish coalescing | ~17 |
+| 12:15 | Edited frontend/src/extensions/project/SciFiProjectDetail.tsx | 3→3 lines | ~24 |
+| 12:15 | Edited frontend/src/extensions/cad-design/components/CadDesigner.tsx | added nullish coalescing | ~22 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | 2→2 lines | ~27 |
+| 12:15 | Edited frontend/src/extensions/project/SciFiProjectDetail.tsx | 3→3 lines | ~32 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | added nullish coalescing | ~18 |
+| 12:15 | Edited frontend/src/extensions/contract-price/hooks.ts | added nullish coalescing | ~15 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | added nullish coalescing | ~23 |
+| 12:15 | Edited frontend/src/extensions/dashboard/api.ts | added nullish coalescing | ~19 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | added nullish coalescing | ~16 |
+| 12:15 | Edited frontend/src/extensions/dashboard/hooks/useMyCalendar.ts | 2→1 lines | ~11 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | added nullish coalescing | ~17 |
+| 12:15 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 4→4 lines | ~117 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | 6→6 lines | ~87 |
+| 12:15 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~40 |
+| 12:15 | Edited frontend/src/extensions/approval/ApprovalPanel.tsx | modified if() | ~318 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | 6→6 lines | ~66 |
+| 12:15 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~23 |
+| 12:15 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 1→2 lines | ~24 |
+| 12:15 | Edited frontend/src/app/admin/departments/page.tsx | 2→2 lines | ~56 |
+| 12:15 | Edited frontend/src/extensions/approval/ApprovalPanel.tsx | inline fix | ~19 |
+| 12:15 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 3→2 lines | ~40 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | CSS: status, e | ~119 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | modified catch() | ~46 |
+| 12:16 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: status | ~117 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | 3→3 lines | ~19 |
+| 12:16 | Edited frontend/src/extensions/api/index.ts | 3→1 lines | ~7 |
+| 12:16 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 4→4 lines | ~42 |
+| 12:16 | Edited frontend/src/app/api/collab/ai-chat/route.ts | added nullish coalescing | ~82 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | modified catch() | ~43 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | modified catch() | ~43 |
+| 12:16 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 3→3 lines | ~40 |
+| 12:16 | Edited frontend/src/app/api/collab/ai-chat/route.ts | "user" → "string" | ~19 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | modified catch() | ~24 |
+| 12:16 | Edited frontend/src/extensions/api/index.ts | added nullish coalescing | ~11 |
+| 12:16 | Edited frontend/src/app/api/collab/ai-chat/route.ts | inline fix | ~18 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | modified catch() | ~45 |
+| 12:16 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | CSS: err, fallback | ~70 |
+| 12:16 | Edited frontend/src/extensions/api/index.ts | added nullish coalescing | ~52 |
+| 12:16 | Edited frontend/src/app/api/collab/ai-chat/route.ts | 5→6 lines | ~79 |
+| 12:16 | Edited frontend/src/extensions/api/index.ts | added nullish coalescing | ~28 |
+| 12:16 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | modified catch() | ~58 |
+| 12:17 | Edited frontend/src/app/api/collab/ai-chat/route.ts | added nullish coalescing | ~151 |
+| 12:17 | Edited frontend/src/extensions/api/index.ts | added nullish coalescing | ~30 |
+| 12:17 | Edited frontend/src/app/api/collab/ai-chat/route.ts | added nullish coalescing | ~156 |
+| 12:17 | Edited frontend/src/extensions/data-source/api.ts | added nullish coalescing | ~15 |
+| 12:17 | Edited frontend/src/extensions/data-source/components/DataSourceForm.tsx | 4→3 lines | ~12 |
+| 12:17 | Edited frontend/src/app/knowledge/_components/ChunkModal.tsx | CSS: message | ~158 |
+| 12:17 | Edited frontend/src/extensions/data-source/components/SourceDatasetsModal.tsx | modified if() | ~12 |
+| 12:17 | Edited frontend/src/extensions/api/index.ts | 3→3 lines | ~14 |
+| 12:17 | Edited frontend/src/extensions/docmgr/components/EditorDragHandle.tsx | 3→4 lines | ~30 |
+| 12:17 | Edited frontend/src/extensions/api/index.ts | expanded (+45 lines) | ~332 |
+| 12:17 | Edited frontend/src/app/knowledge/_components/ChunkModal.tsx | inline fix | ~11 |
+| 12:17 | Edited frontend/src/extensions/docmgr/components/EditorDragHandle.tsx | CSS: _e | ~26 |
+| 12:17 | Edited frontend/src/extensions/api/index.ts | modified async() | ~113 |
+| 12:17 | Edited frontend/src/extensions/api/index.ts | modified async() | ~72 |
+| 12:17 | Edited frontend/src/extensions/docmgr/components/SlashMenu.tsx | inline fix | ~22 |
+| 12:18 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified getErrorMessage() | ~52 |
+| 12:18 | Edited frontend/src/extensions/api/index.ts | inline fix | ~35 |
+| 12:18 | Edited frontend/src/app/knowledge/_components/UploadModal.tsx | inline fix | ~27 |
+| 12:18 | Edited frontend/src/extensions/docmgr/components/SlashMenu.tsx | inline fix | ~23 |
+| 12:18 | Edited frontend/src/extensions/api/index.ts | added nullish coalescing | ~26 |
+| 12:18 | Edited frontend/src/app/knowledge/_components/UploadModal.tsx | added nullish coalescing | ~24 |
+| 12:18 | Edited frontend/src/extensions/docmgr/components/SlashMenu.tsx | CSS: no-op | ~58 |
+| 12:18 | Edited frontend/src/extensions/api/index.ts | added nullish coalescing | ~13 |
+| 12:18 | Edited frontend/src/app/knowledge/_components/UploadModal.tsx | CSS: message | ~46 |
+| 12:18 | Edited frontend/src/extensions/api/index.ts | added nullish coalescing | ~53 |
+| 12:18 | Edited frontend/src/extensions/api/client.ts | added nullish coalescing | ~29 |
+| 12:18 | Edited frontend/src/extensions/api/client.ts | added nullish coalescing | ~27 |
+| 12:18 | Edited frontend/src/core/streamdown/latexNormalize.ts | added nullish coalescing | ~15 |
+| 12:18 | Edited frontend/src/core/permissions/PermissionProvider.tsx | added nullish coalescing | ~80 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | added nullish coalescing | ~128 |
+| 12:19 | Edited frontend/src/core/permissions/PermissionProvider.tsx | 3→3 lines | ~22 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | added nullish coalescing | ~23 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | added nullish coalescing | ~20 |
+| 12:19 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 16→13 lines | ~182 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | modified catch() | ~46 |
+| 12:19 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~20 |
+| 12:19 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~17 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | modified catch() | ~37 |
+| 12:19 | Edited frontend/src/app/workflow-admin/page.tsx | 3→2 lines | ~35 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | modified catch() | ~34 |
+| 12:19 | Edited frontend/src/app/workflow-admin/page.tsx | modified catch() | ~125 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | 3→3 lines | ~17 |
+| 12:19 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~28 |
+| 12:19 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | 1→3 lines | ~24 |
+| 12:19 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~34 |
+| 12:20 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | modified catch() | ~36 |
+| 12:20 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~28 |
+| 12:20 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | modified catch() | ~33 |
+| 12:20 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~29 |
+| 12:20 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | added nullish coalescing | ~11 |
+| 12:20 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~26 |
+| 12:20 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | 2→2 lines | ~32 |
+| 12:20 | Edited frontend/src/app/workflow-admin/page.tsx | added nullish coalescing | ~17 |
+| 12:20 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | added nullish coalescing | ~21 |
+| 12:20 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | added nullish coalescing | ~21 |
+| 12:20 | Edited frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx | inline fix | ~19 |
+| 12:20 | Edited frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx | CSS: no-op | ~32 |
+| 12:20 | Edited frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx | added nullish coalescing | ~79 |
+| 12:20 | Edited frontend/src/app/workflow-admin/components/SubmitApprovalDialog.tsx | inline fix | ~30 |
+| 12:21 | Edited frontend/src/app/writing/layout.tsx | inline fix | ~16 |
+| 12:21 | Edited frontend/src/components/theme-provider.tsx | modified ThemeProvider() | ~114 |
+| 12:21 | Edited frontend/src/components/workspace/workspace-container.tsx | modified WorkspaceContainer() | ~21 |
+| 12:21 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | 4→3 lines | ~37 |
+| 12:21 | Edited frontend/src/components/workspace/settings/grouped-model-select.tsx | 3→2 lines | ~36 |
+| 12:21 | Edited frontend/src/app/knowledge/page.tsx | inline fix | ~22 |
+| 12:21 | Edited frontend/src/app/knowledge/page.tsx | modified catch() | ~108 |
+| 12:21 | Edited frontend/src/app/knowledge/page.tsx | modified catch() | ~37 |
+| 12:22 | Edited frontend/src/app/knowledge/page.tsx | modified catch() | ~37 |
+| 12:22 | Edited frontend/src/app/knowledge/page.tsx | modified catch() | ~35 |
+| 12:22 | Edited frontend/src/app/knowledge/page.tsx | modified catch() | ~36 |
+| 12:22 | Edited frontend/src/app/knowledge/page.tsx | added nullish coalescing | ~15 |
+| 12:22 | Edited frontend/src/app/knowledge/page.tsx | added nullish coalescing | ~14 |
+| 12:22 | Edited frontend/src/app/knowledge/page.tsx | added nullish coalescing | ~17 |
+| 12:23 | Edited frontend/src/extensions/docmgr/extensions/Math.ts | inline fix | ~20 |
+| 12:23 | Edited frontend/src/extensions/docmgr/extensions/Math.ts | inline fix | ~10 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | 5→1 lines | ~10 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | 5→5 lines | ~36 |
+| 12:23 | Edited frontend/src/extensions/workflow/hooks/useWorkflowStatus.ts | modified if() | ~59 |
+| 12:23 | Edited frontend/src/extensions/docmgr/extensions/mathMarkdownIt.ts | expanded (+8 lines) | ~158 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~45 |
+| 12:23 | Edited frontend/src/extensions/workflow/hooks/useWorkflowDAG.ts | 2→2 lines | ~22 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | 3→3 lines | ~22 |
+| 12:23 | Edited frontend/src/extensions/workflow/hooks/useWorkflowDAG.ts | 2→2 lines | ~24 |
+| 12:23 | Edited frontend/src/extensions/docmgr/extensions/mathMarkdownIt.ts | 5→5 lines | ~76 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~15 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~14 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~14 |
+
+## Session: 2026-08-17 12:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~13 |
+| 12:23 | Edited frontend/src/extensions/docmgr/extensions/mathMarkdownIt.ts | 2→2 lines | ~36 |
+| 12:23 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~18 |
+| 12:24 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~19 |
+| 12:24 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~19 |
+| 12:24 | Edited frontend/src/extensions/spare-parts/hooks.ts | added nullish coalescing | ~15 |
+| 12:24 | Edited frontend/src/app/settings/basic-settings.tsx | added nullish coalescing | ~28 |
+| 12:24 | Edited frontend/src/extensions/docmgr/extensions/SlashCommand.ts | modified addOptions() | ~60 |
+| 12:24 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~43 |
+| 12:24 | Edited frontend/src/extensions/docmgr/tiptap/ai-review.ts | added nullish coalescing | ~16 |
+| 12:24 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | inline fix | ~27 |
+| 12:24 | Edited frontend/src/extensions/docmgr/tiptap/ai-review.ts | added nullish coalescing | ~15 |
+| 12:24 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~8 |
+| 12:24 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~11 |
+| 12:24 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | added 3 condition(s) | ~310 |
+| 12:24 | Edited frontend/src/extensions/workflow/nodes/ConditionNode.tsx | added nullish coalescing | ~14 |
+| 12:24 | Edited frontend/src/app/admin/roles/page.tsx | 5→5 lines | ~52 |
+| 12:25 | Edited frontend/src/extensions/docmgr/tiptap/ai-review.ts | inline fix | ~22 |
+| 12:25 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~426 |
+| 12:25 | Edited frontend/src/extensions/workflow/nodes/TaskNode.tsx | added nullish coalescing | ~12 |
+| 12:25 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | added 1 condition(s) | ~338 |
+| 12:25 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~17 |
+| 12:25 | Edited frontend/src/extensions/workflow/nodes/MergeNode.tsx | inline fix | ~22 |
+| 12:25 | Edited frontend/src/extensions/docmgr/utils/docEditorUtils.ts | added nullish coalescing | ~33 |
+| 12:25 | Edited frontend/src/extensions/docmgr/utils/docEditorUtils.ts | modified replaceTextInContent() | ~137 |
+| 12:25 | Edited frontend/src/extensions/workflow/nodes/ConditionNode.tsx | inline fix | ~15 |
+| 12:25 | Edited frontend/src/extensions/workflow/nodes/SubflowNode.tsx | added nullish coalescing | ~12 |
+| 12:25 | Edited frontend/src/extensions/output/components/LayoutTemplateCard.tsx | added nullish coalescing | ~22 |
+| 12:25 | Edited frontend/src/extensions/workflow/nodes/SubflowNode.tsx | added nullish coalescing | ~34 |
+| 12:25 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | expanded (+34 lines) | ~220 |
+| 12:25 | Edited frontend/src/extensions/project/components/AddMemberDialog.tsx | modified if() | ~121 |
+| 12:25 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | modified convertInlineMathInContent() | ~52 |
+| 12:25 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | 7→6 lines | ~32 |
+| 12:25 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | added nullish coalescing | ~61 |
+| 12:25 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~32 |
+| 12:26 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | modified prepareBlocksForMarkdownExport() | ~317 |
+| 12:26 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~17 |
+| 12:26 | Edited frontend/src/extensions/workflow/panels/SubflowConfigPanel.tsx | inline fix | ~19 |
+| 12:26 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~21 |
+| 12:26 | Edited frontend/src/app/admin/roles/page.tsx | modified PoliciesPanel() | ~102 |
+| 12:26 | Edited frontend/src/extensions/workflow/panels/SubflowConfigPanel.tsx | added nullish coalescing | ~39 |
+| 12:26 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~11 |
+| 12:26 | Edited frontend/src/extensions/workflow/panels/SubflowConfigPanel.tsx | inline fix | ~9 |
+| 12:26 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | modified if() | ~247 |
+| 12:26 | Edited frontend/src/extensions/project/components/GanttChart/GanttBar.tsx | added nullish coalescing | ~18 |
+| 12:26 | Edited frontend/src/extensions/workflow/panels/SubflowConfigPanel.tsx | added nullish coalescing | ~10 |
+| 12:26 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~27 |
+| 12:26 | Edited frontend/src/extensions/project/components/GanttChart/GanttBar.tsx | added nullish coalescing | ~14 |
+| 12:26 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | 4→4 lines | ~58 |
+| 12:26 | Edited frontend/src/extensions/project/components/KanbanBoard/KanbanColumn.tsx | 5→3 lines | ~17 |
+| 12:26 | Edited frontend/src/extensions/project/components/WorkflowProgressCompact.tsx | 3→2 lines | ~38 |
+| 12:26 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | added nullish coalescing | ~242 |
+| 12:26 | Edited frontend/src/extensions/project/components/WorkflowProgressCompact.tsx | inline fix | ~24 |
+| 12:26 | Edited frontend/src/extensions/workspace/ProjectDetail.tsx | inline fix | ~27 |
+| 12:27 | Edited frontend/src/extensions/role/pageVisibility.ts | added nullish coalescing | ~22 |
+| 12:27 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~36 |
+| 12:27 | Edited frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | 3→3 lines | ~20 |
+| 12:27 | Edited frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | 2→2 lines | ~14 |
+| 12:27 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | added nullish coalescing | ~502 |
+| 12:27 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~21 |
+| 12:27 | Edited frontend/src/extensions/project/hooks/useReportTypes.ts | inline fix | ~13 |
+| 12:27 | Edited frontend/src/extensions/workspace/components/MembersPane.tsx | 5→5 lines | ~34 |
+| 12:27 | Edited frontend/src/app/admin/roles/page.tsx | 3→3 lines | ~114 |
+| 12:27 | Edited frontend/src/extensions/workspace/components/MembersPane.tsx | 2→2 lines | ~14 |
+| 12:27 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | added nullish coalescing | ~96 |
+| 12:27 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~11 |
+| 12:27 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified _run_pool() | ~183 |
+| 12:27 | Edited frontend/src/extensions/project/tabs/EditorTab.tsx | added nullish coalescing | ~141 |
+| 12:27 | Edited frontend/src/extensions/workspace/components/QuickDocEditor.tsx | inline fix | ~19 |
+| 12:27 | Edited frontend/src/extensions/project/tabs/EditorTab.tsx | inline fix | ~17 |
+| 12:27 | Edited frontend/src/extensions/project/tabs/EditorTab.tsx | String() → asString() | ~279 |
+| 12:27 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | added nullish coalescing | ~91 |
+| 12:27 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~21 |
+| 12:27 | Edited frontend/src/extensions/workflow/hooks/useWorkflowStatus.ts | 3→3 lines | ~45 |
+| 12:27 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | added nullish coalescing | ~54 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/ReviewTab.tsx | 25→23 lines | ~227 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/ReviewTab.tsx | 10→10 lines | ~95 |
+| 12:28 | Edited frontend/src/extensions/docmgr/utils/mathMarkdown.ts | added nullish coalescing | ~16 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/ReviewTab.tsx | modified ReviewTab() | ~50 |
+| 12:28 | Edited frontend/src/extensions/docmgr/utils/mathMarkdown.ts | modified for() | ~51 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/ReviewTab.tsx | 3→3 lines | ~17 |
+| 12:28 | Edited frontend/src/extensions/hooks/useAuth.tsx | 5→6 lines | ~66 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/OverviewTab.tsx | added 1 import(s) | ~96 |
+| 12:28 | Edited frontend/src/extensions/license/GracePeriodBanner.tsx | inline fix | ~5 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/OverviewTab.tsx | added nullish coalescing | ~34 |
+| 12:28 | Edited frontend/src/extensions/license/LicensePage.tsx | inline fix | ~20 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/OverviewTab.tsx | 15→15 lines | ~122 |
+| 12:28 | Edited frontend/src/extensions/license/LicenseShell.tsx | 2→2 lines | ~26 |
+| 12:28 | Edited frontend/src/extensions/project/tabs/OverviewTab.tsx | added nullish coalescing | ~62 |
+| 12:29 | Edited frontend/src/extensions/project/tabs/OverviewTab.tsx | added nullish coalescing | ~63 |
+| 12:29 | Edited frontend/src/extensions/knowledge-factory/hooks/useTemplateEditor.ts | 11→9 lines | ~59 |
+| 12:29 | Edited frontend/src/extensions/knowledge-factory/hooks/useTemplateEditor.ts | 3→3 lines | ~19 |
+| 12:29 | Edited frontend/src/extensions/shell/Sidebar.tsx | 7→6 lines | ~38 |
+| 12:29 | Edited frontend/src/extensions/knowledge-factory/hooks/useTemplateEditor.ts | added nullish coalescing | ~20 |
+| 12:29 | Edited frontend/src/extensions/knowledge-factory/hooks/useTemplateEditor.ts | added nullish coalescing | ~44 |
+| 12:29 | Edited frontend/src/extensions/knowledge-factory/hooks/useTemplateEditor.ts | added nullish coalescing | ~42 |
+| 12:29 | Edited frontend/src/extensions/knowledge-factory/hooks/useTemplateEditor.ts | added nullish coalescing | ~46 |
+| 12:29 | Edited frontend/src/extensions/knowledge-factory/hooks/useTemplateEditor.ts | added nullish coalescing | ~45 |
+| 12:30 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~25 |
+| 12:30 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~15 |
+| 12:30 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | modified if() | ~104 |
+| 12:30 | eslint fix batch mixed#5: 12 files extensions(output/project/role/shell), 49 msgs -> nullish/misused-promise/unused/any/escapes | frontend/src/extensions/* | fixed | ~60k |
+| 12:30 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 2→2 lines | ~80 |
+| 12:31 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | inline fix | ~69 |
+| 12:31 | Edited frontend/src/app/admin/roles/page.tsx | inline fix | ~22 |
+| 12:31 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~183 |
+| 12:31 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~21 |
+| 12:31 | Edited frontend/src/app/admin/roles/page.tsx | CSS: pattern | ~248 |
+| 12:31 | Edited frontend/src/app/admin/roles/page.tsx | 2→2 lines | ~34 |
+| 12:31 | Edited frontend/src/app/admin/roles/page.tsx | 2→2 lines | ~16 |
+| 12:31 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~12 |
+| 12:32 | Edited frontend/src/app/admin/roles/page.tsx | 2→2 lines | ~16 |
+| 12:32 | Edited frontend/src/app/admin/roles/page.tsx | modified if() | ~69 |
+| 12:33 | Edited frontend/src/extensions/workspace/components/TaskBoard.tsx | 3→3 lines | ~44 |
+| 12:33 | Edited frontend/src/extensions/workspace/components/TaskBoard.tsx | 2→2 lines | ~20 |
+| 12:33 | Edited frontend/tests/e2e/knowledge-factory.spec.ts | removed 69 lines | ~78 |
+| 12:33 | Edited frontend/tests/e2e/traceability-tab.spec.ts | inline fix | ~24 |
+| 12:33 | Edited frontend/tests/unit/docmgr/ai-panel.test.ts | 6→3 lines | ~42 |
+| 12:33 | Edited frontend/tests/unit/docmgr/ai-panel.test.ts | "# 测试文档\n\n内容。" → "ask" | ~48 |
+| 12:33 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | added optional chaining | ~116 |
+| 12:33 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | added optional chaining | ~89 |
+| 12:33 | Edited frontend/tests/unit/docmgr/mathBlocks.test.ts | inline fix | ~26 |
+| 12:34 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | inline fix | ~19 |
+| 12:34 | Edited frontend/tests/unit/docmgr/mathBlocks.test.ts | added nullish coalescing | ~29 |
+| 12:34 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | inline fix | ~17 |
+| 12:34 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | inline fix | ~17 |
+| 12:34 | Edited frontend/tests/unit/extensions/collab/VersionPanel.test.tsx | 17→15 lines | ~187 |
+| 12:34 | Edited frontend/src/extensions/docmgr/tiptap/ai-review.ts | modified renderHTML() | ~95 |
+| 12:34 | Edited frontend/tests/unit/extensions/collab/traceability-extension.test.ts | added 1 import(s) | ~60 |
+| 12:34 | Edited frontend/src/extensions/docmgr/tiptap/ai-review.ts | inline fix | ~8 |
+| 12:34 | Edited frontend/tests/unit/extensions/collab/traceability-extension.test.ts | 4→4 lines | ~45 |
+| 12:34 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | CSS: description | ~43 |
+| 12:34 | Edited frontend/tests/unit/extensions/collab/traceability-extension.test.ts | 4→4 lines | ~75 |
+| 12:34 | Edited frontend/tests/unit/extensions/collab/traceability-extension.test.ts | 9→9 lines | ~78 |
+| 12:35 | Edited frontend/tests/unit/extensions/collab/traceability-extension.test.ts | inline fix | ~20 |
+| 12:35 | Edited frontend/tests/unit/extensions/collab/traceability-extension.test.ts | 9→9 lines | ~68 |
+| 12:35 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~32 |
+| 12:35 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~24 |
+| 12:35 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~150 |
+| 12:36 | Edited frontend/src/app/admin/roles/page.tsx | 2→2 lines | ~38 |
+| 12:36 | Edited frontend/src/app/admin/roles/page.tsx | 5→5 lines | ~124 |
+| 12:36 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified is_summary_table() | ~134 |
+| 12:36 | Edited frontend/src/app/admin/roles/page.tsx | 4→4 lines | ~68 |
+| 12:36 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~26 |
+| 12:36 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~38 |
+| 12:36 | Edited frontend/src/app/admin/roles/page.tsx | added 1 import(s) | ~134 |
+| 12:36 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified is_file() | ~121 |
+| 12:37 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~16 |
+| 12:38 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~126 |
+| 12:38 | Edited frontend/tests/unit/extensions/collab/VersionPanel.test.tsx | 5→6 lines | ~78 |
+| 12:38 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~20 |
+| 12:38 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~16 |
+| 12:39 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 11→8 lines | ~94 |
+| 12:39 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 10→10 lines | ~120 |
+| 12:43 | Edited frontend/src/app/admin/roles/page.tsx | added nullish coalescing | ~20 |
+| 18:4x | 图4标签改水平(interval=preserveEnd自动抽稀)+Brush滑轨/双柄加深#9c9da0 | DashboardView.tsx | 提交434afe6c2已push | ~5k |
+| 12:43 | Session end: 154 writes across 48 files (basic-settings.tsx, mathMarkdownIt.ts, hooks.ts, SlashCommand.ts, DocumentManagement.tsx) | 44 reads | ~144352 tok |
+| 12:44 | Edited frontend/src/extensions/docmgr/extensions/mathMarkdownIt.ts | 6→7 lines | ~128 |
+| 12:44 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | 33→33 lines | ~210 |
+| 12:45 | Edited frontend/tests/unit/docmgr/mathBlocks.test.ts | 5→7 lines | ~54 |
+| 12:45 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified is_summary_table() | ~45 |
+| 12:45 | Edited frontend/tests/unit/docmgr/mathBlocks.test.ts | 19→19 lines | ~171 |
+| 12:45 | Edited frontend/tests/unit/docmgr/mathBlocks.test.ts | 4→4 lines | ~60 |
+| 12:45 | Edited frontend/tests/unit/docmgr/mathBlocks.test.ts | inline fix | ~23 |
+| 12:45 | Edited frontend/tests/unit/docmgr/mathBlocks.test.ts | 11→11 lines | ~126 |
+| 12:45 | Edited frontend/tests/unit/docmgr/docEditorUtils.test.ts | inline fix | ~13 |
+| 12:45 | Edited frontend/tests/unit/docmgr/docEditorUtils.test.ts | 2→2 lines | ~27 |
+| 12:45 | Edited frontend/src/extensions/knowledge-factory/RuleDetail.tsx | inline fix | ~50 |
+| 12:45 | Edited frontend/src/extensions/knowledge-factory/RuleDetail.tsx | inline fix | ~51 |
+
+## Session: 2026-08-17 12:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 12:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 12:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 12:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 12:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 12:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 12:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:52 | Edited frontend/src/extensions/bid-quote/types.ts | 3→5 lines | ~58 |
+| 12:54 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | CSS: bid_dt, background, font-variant-numeric | ~1202 |
+| 12:54 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | added nullish coalescing | ~118 |
+| 12:54 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 2→2 lines | ~27 |
+| 12:55 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | added nullish coalescing | ~332 |
+| 12:55 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | added nullish coalescing | ~47 |
+| 12:55 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | modified _as_str() | ~1209 |
+| 12:55 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | 2→2 lines | ~35 |
+| 12:56 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | 4→5 lines | ~83 |
+| 12:56 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | 3→4 lines | ~61 |
+| 12:56 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_extract.py | 3→4 lines | ~66 |
+| 12:57 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | added 1 condition(s) | ~36 |
+| 12:57 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~33 |
+| 12:58 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~38 |
+| 12:58 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~36 |
+| 12:58 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~20 |
+| 12:58 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | modified monShort() | ~44 |
+| 12:58 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~38 |
+| 12:58 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | inline fix | ~20 |
+| 12:59 | Edited frontend/src/extensions/project/components/SettingsDialog.tsx | inline fix | ~17 |
+| 12:59 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | inline fix | ~16 |
+| 12:59 | Edited frontend/src/extensions/output/components/LayoutTemplateCard.tsx | inline fix | ~17 |
+| 12:59 | Edited frontend/src/extensions/output/components/LayoutTemplateCard.tsx | inline fix | ~16 |
+| 13:00 | Edited frontend/src/extensions/project/components/AddMemberDialog.tsx | inline fix | ~30 |
+| 13:00 | Edited frontend/src/extensions/project/components/WorkflowProgressCompact.tsx | inline fix | ~17 |
+| 13:00 | Edited frontend/src/extensions/project/tabs/OverviewTab.tsx | inline fix | ~20 |
+| 13:00 | Edited frontend/src/extensions/project/tabs/OverviewTab.tsx | inline fix | ~23 |
+| 13:00 | Edited frontend/src/extensions/project/tabs/ReviewTab.tsx | inline fix | ~22 |
+| 13:00 | Edited frontend/src/extensions/project/tabs/ReviewTab.tsx | inline fix | ~22 |
+| 13:00 | biz-pipeline 仪表盘图表评估:需求数值全部达标(7332/5182/2150万);改进点=chart2小数刻度+chart3待开票未直接编码+虚线网格+dark橙出带 | docs/superpowers/specs/2026-08-14-biz-pipeline-frontend-design.md + DashboardView.tsx | 完成 | ~16k |
+| 13:02 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/market-modules-build-progress.md | 1→3 lines | ~179 |
+| 13:04 | Created ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_respond.py | — | ~1514 |
+| 13:04 | Created frontend/src/extensions/license/__lint_probe__.ts | — | ~40 |
+| 13:08 | eslint mixed#4批(12文件)验证:并发会话已完成修复,host eslint(eslint9.39.2/tseslint8.55.0)全clean;Docker Desktop API 500不可用改用host node_modules | frontend/src/extensions/{docmgr,license,knowledge-factory,hooks} | clean | ~30k |
+| 13:16 | Session end: 32 writes across 12 files (types.ts, DashboardView.tsx, drive_extract.py, SettingsDialog.tsx, LayoutTemplateCard.tsx) | 110 reads | ~189256 tok |
+| 17:xx | T10联调: extract validate归一修复(quarantined 0)→merge 747/133/64→build六件套; buglog+4 (2175-2178) | bid-run + .wolf/buglog.json | ok | ~40k |
+| 13:22 | Session end: 32 writes across 12 files (types.ts, DashboardView.tsx, drive_extract.py, SettingsDialog.tsx, LayoutTemplateCard.tsx) | 113 reads | ~205151 tok |
+| 13:24 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | inline fix | ~15 |
+| 13:24 | Edited frontend/src/extensions/collab/BlockNoteEditor.tsx | inline fix | ~24 |
+| 13:26 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~15 |
+| 13:26 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | inline fix | ~30 |
+| 13:26 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | inline fix | ~36 |
+| 13:27 | Edited frontend/src/extensions/dashboard/components/Header.tsx | inline fix | ~18 |
+| 18:xx | T10联调收尾: reingest 技术卷183/183(h1.0)+商务卷降级(多标包同名格式章节82 multi_hit); assemble-evidence按D6④守卫拒绝; buglog+1 | bid-run + .wolf | ok | ~25k |
+| 13:28 | Edited frontend/src/extensions/knowledge-factory/RuleCard.tsx | 11→14 lines | ~237 |
+| 13:28 | Session end: 39 writes across 17 files (types.ts, DashboardView.tsx, drive_extract.py, SettingsDialog.tsx, LayoutTemplateCard.tsx) | 128 reads | ~276186 tok |
+| 13:28 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | CSS: denied | ~218 |
+| 13:29 | Edited frontend/src/extensions/dashboard/components/Header.tsx | added nullish coalescing | ~18 |
+| 13:30 | Edited frontend/src/extensions/collab/aiTransport.ts | 6→6 lines | ~75 |
+| 13:30 | Edited frontend/src/extensions/knowledge-factory/RuleDetail.tsx | added nullish coalescing | ~10 |
+| 13:30 | Edited frontend/src/extensions/knowledge-factory/RuleDetail.tsx | added nullish coalescing | ~10 |
+| 13:31 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | inline fix | ~18 |
+| 13:31 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | added nullish coalescing | ~94 |
+| 13:31 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | inline fix | ~45 |
+| 13:32 | Edited frontend/src/extensions/collab/aiTransport.ts | 6→7 lines | ~124 |
+| 13:33 | Created ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/verify_dedup.py | — | ~548 |
+| 13:33 | Created docs/superpowers/specs/2026-08-17-biz-pipeline-dashboard-prototype.html | — | ~5156 |
+| 13:34 | adversarial recheck knowledge-factory eslint batch: 12 files clean; reverted RuleCard label ?? + ExtractionTaskModal error-path ?? (API归一化""回退被破坏) | frontend/src/extensions/knowledge-factory/RuleCard.tsx,ExtractionTaskModal.tsx | fixed | ~45k |
+| 13:34 | adversarial recheck dashboard eslint batch: 10 files clean (host+container); probed || -> ?? swaps, none are real regressions | frontend/src/extensions/dashboard/components/* | clean | ~60k |
+| 13:35 | adversarial re-check eslint fixes knowledge-factory 3 files: container eslint exit 0; toIdString/void-test diffs behavior-preserving; node:test files not run by rstest (pre-existing) | frontend/src/extensions/knowledge-factory/*.test.ts,types.ts | clean, no regression | ~40k |
+
+## Session: 2026-08-17 13:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:35 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | "无标题" → " ? doc.title : " | ~26 |
+| 13:36 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/verify_dedup.py | modified items() | ~186 |
+| 13:36 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/verify_dedup.py | inline fix | ~37 |
+| 13:39 | adversarial recheck knowledge-factory eslint batch: 2 leftover prefer-nullish-coalescing errors in RuleDetail.tsx fixed (ternary->??) | frontend/src/extensions/knowledge-factory/RuleDetail.tsx | eslint exit 0 for all 12 files | ~30k |
+| 13:39 | Edited docs/superpowers/specs/2026-08-17-biz-pipeline-dashboard-prototype.html | inline fix | ~15 |
+| 13:39 | adversarial recheck of 8 collab eslint fixes: fixed tsc TS2314 cast + aiTransport ?? env semantics | frontend/src/extensions/collab/{BlockNoteEditor,aiTransport}.tsx | eslint+tsc clean (host+container) | ~90k |
+| 13:40 | Edited docs/superpowers/specs/2026-08-17-biz-pipeline-dashboard-prototype.html | inline fix | ~7 |
+| 13:40 | Edited docs/superpowers/specs/2026-08-17-biz-pipeline-dashboard-prototype.html | inline fix | ~41 |
+| 13:41 | Created ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_review.py | — | ~1481 |
+| 13:41 | Edited ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/drive_review.py | 1→2 lines | ~42 |
+| log | adversarial recheck docmgr eslint fixes: reverted 3 ?? regressions, container eslint+tsc clean | docmgr/* | ok | ~30k |
+| 21:5x | Created+verified docs/superpowers/specs/2026-08-17-biz-pipeline-dashboard-prototype.html | ①风重构原型,浏览器渲染验证通过 | ~25k |
+| 13:42 | Session end: 8 writes across 4 files (DocumentManagement.tsx, verify_dedup.py, 2026-08-17-biz-pipeline-dashboard-prototype.html, drive_review.py) | 4 reads | ~16744 tok |
+| 13:45 | adversarial recheck spare-parts eslint batch (7 files): clean, 0 problems; diffs verified behavior-preserving (label ?? safe: backend never sets label; useMemo wraps only stabilize refs) | frontend/src/extensions/spare-parts/components/* | pass | ~15k |
+| 13:47 | Created frontend/src/extensions/biz-pipeline/components/chartTheme.ts | — | ~298 |
+| 13:47 | Created frontend/src/extensions/biz-pipeline/components/SectionCard.tsx | — | ~511 |
+| 13:48 | Created frontend/src/extensions/biz-pipeline/components/StatCard.tsx | — | ~396 |
+| 13:48 | Edited frontend/src/extensions/biz-pipeline/components/StatCard.tsx | Delta() → Emph() | ~70 |
+| 13:48 | Created frontend/src/extensions/biz-pipeline/components/ChartCard.tsx | — | ~306 |
+| 13:48 | Created frontend/src/extensions/biz-pipeline/components/TechTooltip.tsx | — | ~454 |
+
+## Session: 2026-08-17 13:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:49 | Edited frontend/src/extensions/workflow/nodes/ConditionNode.tsx | inline fix | ~14 |
+| 13:50 | Edited frontend/src/extensions/workflow/DimensionReviewCard.tsx | added nullish coalescing | ~58 |
+| 13:50 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | CSS: preserved, initialName | ~45 |
+| 13:50 | Created frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | — | ~3122 |
+| 13:51 | Created ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/verify_rubric.py | — | ~754 |
+| 13:52 | T10评分模拟闭环: rubric人核裁决564→400(删4父行/公式行重复项)+aggregate+report v1 | bid-run/verify_rubric.py,rubric.json | 60项/Σ400/主观24of280 | ~8k |
+| 13:52 | Session end: 5 writes across 5 files (ConditionNode.tsx, DimensionReviewCard.tsx, WorkflowEditor.tsx, DashboardView.tsx, verify_rubric.py) | 5 reads | ~24710 tok |
+| 13:54 | Edited frontend/src/extensions/workflow/nodes/ConditionNode.tsx | CSS: EAI-CUSTOM, expression, expression | ~108 |
+| 13:55 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | 2→2 lines | ~54 |
+| 13:55 | Edited frontend/src/extensions/workflow/DimensionReviewCard.tsx | 2→2 lines | ~60 |
+| 13:56 | Edited frontend/src/extensions/workflow/DimensionReviewCard.tsx | "] ?? (review.dimension !=" → "] ?? (review.dimension !=" | ~40 |
+| 13:58 | Edited frontend/src/extensions/cad-design/components/CadDesigner.tsx | CSS: EAI-CUSTOM | ~73 |
+| 14:00 | Edited frontend/src/extensions/workflow/nodes/ConditionNode.tsx | 4→4 lines | ~102 |
+| 14:01 | Edited frontend/src/extensions/api/client.ts | inline fix | ~29 |
+| 14:01 | Edited frontend/src/extensions/api/index.ts | inline fix | ~30 |
+| 14:01 | Edited frontend/src/extensions/workflow/nodes/ConditionNode.tsx | 4→5 lines | ~140 |
+| 14:02 | Edited frontend/src/app/admin/departments/page.tsx | CSS: EAI-CUSTOM, description | ~71 |
+| 14:02 | Edited frontend/src/app/admin/roles/page.tsx | CSS: EAI-CUSTOM, description | ~76 |
+| 14:02 | Edited frontend/src/app/knowledge/page.tsx | CSS: EAI-CUSTOM, description | ~67 |
+| 14:02 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | CSS: EAI-CUSTOM, description | ~60 |
+| 14:03 | Edited frontend/tests/unit/extensions/collab/traceability-extension.test.ts | inline fix | ~22 |
+| 14:03 | adversarial recheck of 12-file eslint batch: caught ConditionNode ||->?? regression (blank diamond on expression:""), restored with justified disable; batch clean | frontend/src/extensions/workflow/nodes/ConditionNode.tsx, .wolf/buglog.json | clean exit 0 | ~40k |
+| 14:04 | Edited frontend/src/extensions/api/client.ts | inline fix | ~27 |
+| 14:04 | Edited frontend/src/extensions/api/index.ts | inline fix | ~20 |
+| 14:05 | Edited frontend/src/app/admin/departments/page.tsx | added optional chaining | ~77 |
+| 14:05 | Edited frontend/src/app/admin/roles/page.tsx | added optional chaining | ~81 |
+| 14:05 | Edited frontend/src/app/knowledge/page.tsx | added optional chaining | ~73 |
+| 14:05 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | added optional chaining | ~66 |
+| 14:05 | adversarial eslint recheck: 2 ||->?? regressions fixed (CadDesigner .stp match, data-source description "" payload) | frontend/src/extensions/{cad-design,data-source,contract-price} | clean host+container | ~60k |
+| 14:06 | Edited frontend/src/extensions/api/client.ts | modified filter() | ~134 |
+| 14:06 | Edited frontend/src/extensions/api/client.ts | 1→2 lines | ~55 |
+| 14:07 | Edited frontend/src/extensions/api/index.ts | modified filter() | ~139 |
+| 22:1x | Restyled bpp dashboard to ①DeepSeek style (6 files: chartTheme/SectionCard new, StatCard/ChartCard/TechTooltip/DashboardView rewritten; stacked recon + int ticks + solid grid) | typecheck+eslint clean; browser verified (gateway died mid-verify, restarted) | ~60k |
+| 14:07 | Edited frontend/src/extensions/api/index.ts | 1→2 lines | ~47 |
+| 06:10 | Adversarial re-check of 7 eslint-fixed files: found+fixed Plugin runtime-import regression in traceability-extension.test.ts; batch eslint exit 0 | frontend/tests/unit/extensions/collab/traceability-extension.test.ts | clean, tests 16/16 | ~60k |
+| 14:09 | Edited frontend/src/extensions/api/client.ts | 2→3 lines | ~88 |
+| 14:09 | Edited frontend/src/extensions/api/index.ts | 2→3 lines | ~82 |
+| 14:09 | adversarial re-check eslint batch (12 files): eslint+typecheck clean; reverted 4 ||->?? placeholder regressions via ?.length ternary | frontend/src/app/{admin,knowledge} | clean | ~40k |
+| 14:11 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | CSS: name | ~63 |
+| 14:12 | adversarial recheck of eslint fixes: fixed 6 ||->?? behavior regressions in extensions/api error paths; eslint+tsc clean | frontend/src/extensions/api/{client,index}.ts | clean | ~80k |
+
+## Session: 2026-08-17 14:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:23 | Edited frontend/tests/unit/extensions/collab/VersionPanel.test.tsx | CSS: Loader2, Sparkles | ~132 |
+| 14:27 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | expanded (+14 lines) | ~187 |
+| 14:27 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | removed 14 lines | ~26 |
+| 14:27 | Session end: 3 writes across 2 files (VersionPanel.test.tsx, DashboardView.tsx) | 16 reads | ~24747 tok |
+| 14:28 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | CSS: d | ~536 |
+
+## Session: 2026-08-17 14:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:35 | Edited frontend/src/extensions/bid-quote/components/DashboardView.tsx | added nullish coalescing | ~174 |
+| 22:40 | bid-quote 图4 Brush:滑块显示投标时间+图例修正+深度美化+缩放联动3处修复(受控props/下钻错位/Cell错位) | DashboardView.tsx types.ts | commit e84a47866 pushed, browser 全验证 | ~45k |
+| 14:41 | Session end: 1 writes across 1 files (DashboardView.tsx) | 3 reads | ~174 tok |
+
+## Session: 2026-08-17 15:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 17:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 17:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 17:43
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 17:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 18:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:25 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | inline fix | ~34 |
+| 18:26 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 5→6 lines | ~15 |
+| 18:26 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | expanded (+8 lines) | ~92 |
+| 18:26 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | modified toNum() | ~230 |
+| 18:26 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | added optional chaining | ~253 |
+| 18:26 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | CSS: customer, amount | ~105 |
+| 18:26 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 3→3 lines | ~48 |
+| 18:26 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 2→6 lines | ~57 |
+| 18:27 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | modified wan() | ~196 |
+| 18:27 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | added optional chaining | ~894 |
+| 18:27 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | added optional chaining | ~950 |
+| 18:27 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | added optional chaining | ~990 |
+| 18:28 | Edited frontend/src/extensions/biz-pipeline/components/SectionCard.tsx | inline fix | ~9 |
+| 18:28 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 6→5 lines | ~13 |
+
+## Session: 2026-08-17 18:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:34 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 4→5 lines | ~107 |
+| 18:49 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 3→5 lines | ~104 |
+| 18:50 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 8→7 lines | ~102 |
+
+## Session: 2026-08-17 18:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:51 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 3→4 lines | ~39 |
+| 18:51 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | 2→3 lines | ~30 |
+| 18:52 | Edited frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx | 4→3 lines | ~62 |
+| 18:52 | Edited frontend/src/extensions/knowledge-factory/RuleCard.tsx | 3→2 lines | ~60 |
+| 18:52 | Edited frontend/src/extensions/knowledge-factory/RuleCard.tsx | 3→2 lines | ~53 |
+| 19:15 | biz-pipeline 11项review修复:Cell radius断言+TechTooltip补active+chevron反转 | DashboardView.tsx, SectionCard.tsx | typecheck/eslint clean | ~60k |
+| 19:20 | 浏览器复验:KPI注脚/整数刻度0-1/次label/三tooltip/Cell圆角路径/chevron折叠态 全过 | localhost:3000/biz-pipeline | 11/11确认 | ~40k |
+| 18:55 | Session end: 5 writes across 3 files (DashboardView.tsx, ExtractionTaskModal.tsx, RuleCard.tsx) | 1 reads | ~244 tok |
+| 19:30 | 提交 biz-pipeline 重构+11修复(显式7文件,bid-quote在途未动) | commit 1b3c91ca3@main-dev-fork | done | ~2k |
+| 18:57 | Session end: 5 writes across 3 files (DashboardView.tsx, ExtractionTaskModal.tsx, RuleCard.tsx) | 1 reads | ~244 tok |
+| 18:58 | Session end: 5 writes across 3 files (DashboardView.tsx, ExtractionTaskModal.tsx, RuleCard.tsx) | 1 reads | ~244 tok |
+| 18:59 | 前端lint全量清零(847+163→0/0,19批agent工作流+prettier)提交08bded652;2回归已修;基线worktree已清理 | frontend/(194文件) | committed | ~2.5M subagent |
+| 18:59 | Session end: 5 writes across 3 files (DashboardView.tsx, ExtractionTaskModal.tsx, RuleCard.tsx) | 1 reads | ~244 tok |
+| 19:07 | Session end: 5 writes across 3 files (DashboardView.tsx, ExtractionTaskModal.tsx, RuleCard.tsx) | 1 reads | ~244 tok |
+
+## Session: 2026-08-17 19:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|

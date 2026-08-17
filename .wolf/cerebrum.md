@@ -19,6 +19,14 @@
 - **Palantir Ontology 概念移植意图（2026-08-14, 用户三轮拍板）:** ①**意图=概念移植**（轻量原生语义层），不采购 Palantir 产品、不建索引/funnel；②一期价值=**统一语义层（平台一致性）**，Action 写路径/函数/对象级 ACL 全延后；③一期覆盖域=**市场/分析数据域**（cpa_/csp_/bid），协作/文档域二期；④消费端=**MCP + 前端语义地图页**；⑤方案=**声明式 YAML 注册表 + 通用引擎**（弃代码驱动/纯文档）；⑥跨模块链接=**聚类代表名匹配**（复用 DBSCAN 归一，不做原始脏名/模糊匹配）；⑦权限=**管理员级门控**（REST 需 system:access，MCP 注册级门控 + hidden:true 列级隐藏，不行级 ACL）；⑧前端=**独立应用中心 app /ontology**。设计文档 `docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md`。
 
 ## Key Learnings
+
+- **prettier --write 与 eslint-disable-next-line 相互破坏（2026-08-17, lint 全量清零）：** prettier 会把 >80 列的长表达式折到下一行，`disable-next-line` 只盖紧邻行 → 出现 Unused directive warning + 被抑制的 error 复活。免疫写法：表达式能收进单行（≤80 列）就提取短变量让指令紧邻 `||`；放不下就改**行尾** `eslint-disable-line`（prettier 不移位行尾注释）。lint 修复批次若含手工 disable，prettier 之后必须重跑 eslint 终验。
+- **lint 修复的 `||`→`??` 是行为改动，不是纯格式（2026-08-17, aiTransport 回归）：** set-but-empty 的环境变量（`NEXT_PUBLIC_X=""`）在 `||` 下会回退、`??` 下不会；部署 README 明文依赖该回退。凡左侧运行时可能合法为 `""`/`0`/`false` 的（API 归一化空串、split 尾空段、env 回退链），保留 `||` + 带由注释的 disable，比盲改 `??` 正确。
+
+- 2026-08-17 bid-proposal 联调: LLM 输出必须确定性 sanitize(枚举/长度/锚点)再 validate; glm-4.7-flash: thinking disabled+429退避; PDF 伪粗体用评+标+因+素+; 百文件 CLI 用内部 glob。
+- **recharts 自带 Brush=现成时间范围滑块；合成事件拖不动它，用键盘验证（2026-08-17, 图4 x轴粘连）：** x 轴类目过多标签粘连的标准解法之一：SQL 按日期排序 + `<Brush startIndex endIndex>`（默认窗口=最近 N 项）+ XAxis `tickFormatter` 截断（formatter 只影响轴刻度，tooltip 仍拿原始值）。Brush 内部是 d3-drag——evaluate_script 合成 PointerEvent/MouseEvent 全都拖不动（需真实输入序列）；验证走两条路：traveller 在 a11y 树是 role=slider，先 click 再 ArrowLeft（实测柱数 10→11 即窗口生效），指针拖动为其原生能力可推定。另：长名类目图的首选仍是横向条形（见上条），Brush 适合"保留柱状+按时间缩放"的场景。
+- **Tailwind 新增任意值类(如 max-w-[320px])经组件 HMR 不生效，需整页 reload（2026-08-17, 门槛滑杆）：** HMR 只热替换组件 JS，class 在 DOM 里但 CSS 未生成（computed max-width:none）；F5 触发 Tailwind JIT 重扫后正常。排查这类"类名在样式不生效"先看 computed style 再 reload 一次。
+- **recharts 纵向条形图(layout="vertical")的 data[0] 渲染在最顶部，不是底部（2026-08-17, 三图横向化实测）：** 类目 Y 轴自顶向下按数组顺序排——想让"最大值/最关注项"置顶，sort 必须**降序**（直觉的"升序+自底向上"是错的，本次图B初版因此最大总额落底部）。配套模式：20+ 长中文类目名 → 横向条形（名移 Y 轴整名，9 字截断，x 轴只放数字）；"分布"语义图用真直方图（10% 分桶 + 门槛两段堆叠，滑杆重配色即时）；行数多时 `max-h-[280px] overflow-y-auto` 包 ResponsiveContainer + 动态 `height={rows*22~26+pad}`。"X 轴文字重叠"类反馈的第一解法是换图形布局（横向/分桶），不是缩字号/旋转。验证图表标签重叠用 DOM 包围盒两两求交（`svg text` getBoundingClientRect），截图视觉模型会给猜测性套话不可信。
 - **引擎/SQL 层单测用 Fake resolver 罐头行时，join 列名正确性测不到——必须留一条连真库的 eval/probe 脚本（2026-08-15, bug-1210）：** ontology engine 反向 FK join 写反（`s.fk = t.pk` 应为 `t.fk = s.pk`），12 条 FakeResolver 单测全绿（只断言 SQL 片段 `JOIN`/`:n0`），`scripts/ontology_eval_navigation.py` 连真库首跑即 asyncpg UndefinedColumnError。**铁律：SQL 生成层的测试矩阵 = 假连接体单测（注入/契约）+ 至少 1 条真库 smoke/eval（列名/类型/方言）**；且负向覆盖要含"反方向遍历"这类别名换边的分支。另：FastAPI 不支持 `list[dict]` 作 query 参数（collection 报 AssertionError）→ filters 传 JSON 字符串后端 json.loads。
 - **Git Bash 里 docker exec 带容器内绝对路径必须加 `MSYS_NO_PATHCONV=1`（2026-08-15, bug-1185）：** `docker exec c python /app/backend/x.py` 会被 MSYS 转成 `/app/C:/Program Files/Git/app/...` 报 No such file。命令前缀 `MSYS_NO_PATHCONV=1` 即可；容器内跑 backend 脚本一律 `/app/backend/.venv/bin/python`（系统 python 无依赖，见既有教训）。
 - **前端单测官方 runner 是 Rstest，测试文件必须 `import ... from "@rstest/core"`（2026-08-15, build-where.test.ts 修复）：** `pnpm test` → rstest（两 project：node 默认 / `*.dom.test.*` 走 happy-dom，见 frontend/AGENTS.md）。写成 `import from "vitest"` 在 rstest 下解析到真实 @vitest/runner 而未注册环境，**整文件崩溃** `Cannot read properties of undefined (reading 'config')`——不是断言失败是导入期炸。仓库尚有 ~38 个 vitest-importing 测试文件属既有债。新测试文件一律 `@rstest/core`。
@@ -206,6 +214,10 @@
 
 - YAML flow mapping (`{a: 1, b: 2}`) 中标量含 ASCII 逗号必须加引号——逗号是 flow 分隔符, 中文全角逗号（，）不受影响 (bug-1187)
 
+- recharts 3.10.1: Cell 组件类型未声明 radius(落入 React SVGAttributes string|number),但运行期 cells[index].props 会展开进 barRectangleItem → 数组 radius 实际生效,需 `as unknown as number` 断言(bug-2162)
+- TechTooltip(biz-pipeline 克隆版)自带 `!active → null` guard:call-site 合成 payload 调用时必须显式传 active,否则 tooltip 恒空(bug-2161)
+- 全 1 数据下 recharts allowDecimals={false} 会把 Y 轴刻度撑到 [0..4](柱被压扁);小值域显式传整数 ticks 数组修复
+
 ## Do-Not-Repeat
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
@@ -266,6 +278,8 @@
 
 - [2026-07-27] skill 目录迁移(custom→public, commit 86735708)后必须全局 grep 旧路径。`backend/app/extensions/contract_price/service.py:_SKILL_DIR` 漏改,仍指 `skills/custom/contract-price-analysis`(gitignored + 磁盘不存在)→ 后台子进程 cwd 指向不存在目录 → `NotADirectoryError` → run 标 failed,而端点已 200 返回(半静默)。`upload→自动 parse` 整条 workflow 断掉。`test_cli.py` 是 v1 RAGFlow 化石(import 已删的 `run_pipeline`/`RagflowClient`),从没跑到 v2 → 回归零覆盖。修:路径改 public + 重写 test_cli 为 v2 + 加 `test_skill_dir_exists` 守卫 `_SKILL_DIR.exists()`。**规则:被 subprocess launcher 引用的路径常量必须有存在性测试;迁移/重命名目录 = 全局 grep 旧路径(.py 字符串 + anatomy.md + 文档)。** 见 [[bug-526]]。
 - [2026-07-27] OCR 服务吞吐轴 = **进程级并发,不是页级线程**。onnxruntime 每次推理已榨干全部 CPU 核(intra-op threads),所以并发甜点是 N 个 uvicorn worker 进程(Phase-2 T1 压测:N=4 甜点、N=8 劣化),而不是在一个 worker 里给「页」加线程池——那会和 intra-op 抢核反而劣化。**落地坑:** 压测结论"N=4"当时只写进文档,从没接进 compose(`server.py __main__` 跑默认 1 worker,compose `ocr:` 服务没 `command`/env)→ OCR 一直单 worker 跑。修:`server.py` 读 `OCR_WORKERS` env(默认1,workers>1 时用 `"server:app"` import-string 形式传 uvicorn),compose 设 `OCR_WORKERS=4`。**规则:压测得出的并发参数必须落到 compose 的 command/env,不能只停在文档。** 改 OCR 镜像内代码后必须 `docker compose -f docker/docker-compose-dev.yaml -p eai-docker up -d --build ocr` 重建(server.py 是 COPY 进镜像的,非 bind-mount),日志应见 1 parent + N "Started server process"。文档级并发配对:skill `run_parse` 用 `asyncio.Semaphore(CPA_PARSE_CONCURRENCY=4)` + `gather` 并发喂这 N 个 worker(每 /ocr 是 async HTTP 等待,event loop 重叠 N 个在途解析;store.get 用 `asyncio.to_thread` 避免阻塞)。扫描增量:`scan_changed` 加 size 预筛(cached size 从 quick_fp 取,obj.size 匹配则跳过下载+哈希),否则每次扫描把整个 bucket 全下载一遍算 hash(1000 份=几十 GB/次)。
+- 2026-08-17: theme-provider.tsx 的 forcedTheme={"/":dark} 是上游设计(上游landing纯暗色);EAI须为 forcedTheme={undefined},现已带EAI-CUSTOM注释。上游sync会回退无标记的定制——每次sync后 grep forcedTheme 确认未被回退。bug-2159
+
 
 ## Decision Log
 
@@ -298,6 +312,8 @@
 - **[2026-08-05] 标签池(方案 A)落地:显式用户标签 = `users.tags` 列 + resolver 合并 + admin 用户页标签编辑。** 三条接点打通:①模型 `User.tags: Mapped[list[str] | None]`(ARRAY(String),nullable)+ migration `ALTER TABLE users ADD COLUMN IF NOT EXISTS tags VARCHAR[]`;②`DefaultTagResolver.resolve` 先并显式 `user.tags`(admin 用户管理设置)再派生 `role:<code>`/`dept:<name>` 自动标签,供策略 `conditions.tags`(如 `tags contains role:dept_head`);③CRUD 全链:schemas(`UserBase`/`UserUpdate`/`UserResponse.tags`)+ service(`create_user` 新建+软删复活两分支、`update_user`、`to_response` `tags=user.tags or []`)+ admin 用户 modal 逗号分隔输入(`page.tsx`)+ 前端 `types.ts` 三处 + api 透传。测试:`test_identity_provider.py::TestDefaultTagResolver` 3 例(显式+自动合并/仅自动派生/查无用户空)。**Why A:** 显式标签存 DB 列(用户级真源),resolver 只读不建新表;复用既有 role:/dept: 派生标签兜底。**不做:** 标签池全量管理(去重/池 CRUD/自动补全)——YAGNI,需求出现再升级 COMMON_TAGS 池。
 
 - **[2026-08-06] 自定义策略授权重构（方案2）: 页面/模块可见性并入策略 grant。** 授权=完整访问单元：`grants.permissions` 可含三类——操作 id(`kb:delete`)、`page:<page_id>`(页面可见)、`nav:<nav_id>`(模块可见)。级联 checkbox 树(前端 `TriCheckbox`):勾操作自动带出页面/模块可见；勾页面=可见+全操作；勾模块=全部子项；三态半选。**后端**: `engine.list_permissions` 过滤 page:/nav: 前缀(不进 /me permissions,`check()` 操作检查不受影响)；`permission_routers /me` 对命中条件的策略把 page:/nav: 并入 pages/nav(与角色取并集)。**前端**: `GrantPermissionDropdown` 重写为三态级联树,移除 可见/不可见 pill 与 roleNav/rolePages 回写链(角色可见性仍由权限 tab 的 detailNavSet/detailPagesSet 管)。**Why 方案2 而非方案1(写角色):** 用户明确"页面可见在操作权限范畴内"→ 策略授予完整访问单元(含条件页访问),语义更纯。**坑**: page id/nav id 本身含冒号(`dashboard:page:overview`/`nav:dashboard`),前缀剥离用 `len("page:")`/`len("nav:")` 而非 split。测试锚点 `test_policy_enforcement.py::test_list_permissions_excludes_page_nav_visibility_grants`。相关 [[role-management-yaml-driven]] [[policy-grant-page-visibility]]。
+
+- 2026-08-17 biz-pipeline 仪表盘:三图保持 isAnimationActive={false}(dataviz 规范禁入场动画);KPI 卡入场渐隐是 2026-08-17 review 时唯一被记录的豁免,理由=与 bid-quote 原型一致的轻量 page-load 序列,非数据标记动画
 
 ## Do-Not-Repeat（2026-07-17 session）
 
@@ -896,3 +912,59 @@
 ### 2026-08-15 �� PowerShell ���� UTF-8 JSON �ļ�������ʽ -Encoding utf8
 - **Do-Not-Repeat:** �� PowerShell 5.1 �� `Get-Content -Raw`(���� -Encoding)�� ANSI/GBK �� UTF-8 �ļ� �� ���ı� mojibake �� ConvertFrom-Json ʧ�� �� ���� `Set-Content` ��������д�أ��ٵ�ԭ�ļ���.wolf/buglog.json �¹ʣ��� git HEAD + GBK��UTF8 ��ת�ָ�����
 - **��ȷ����:** �� JSON һ���� `uv run python`(backend ����) �� Bash + python heredoc��PowerShell ֻ���� Add-Content ׷�Ӵ��ı����ָ����ɣ���������� echo �� mojibake �ı����� `[Text.Encoding]::UTF8.GetString([Text.Encoding]::GetEncoding(936).GetBytes($s))` ��ת��
+## Key Learnings (2026-08-16 — bid-quote 份额格局原型对齐)
+- 原型对齐类任务:先读原型 HTML 源码的具体几何/字号/色值(不是看截图猜),再逐点移植;对齐后用 offsetTop 链滚动到卡片截屏,并把原型截屏+实现截屏放进 compare html 给用户目检
+- 份额堆叠图的「退场」注解必须用原始年度份额(rawShare):Top5 折叠会把掉出榜的友商算成 0,得出假 0 注解;psql 核实数据后再定真伪
+- restart frontend 后首次 reload 超时属冷启动编译,不是回归;等 warm-up 后重试(90s timeout)
+
+### cmin 锚定使低价友商系数在"我方胜行"上失灵 + 测试口径必须镜像图表 SQL(bug-2160, 2026-08-17)
+
+- **Key Learning**: bid-quote seed 里我方报价 = cmin×(1+prem+ε),而 cmin 常来自东方宏业的低价报价——
+  因此我方胜行里该友商溢价 = -prem/(1+prem),与它自身的报价系数无关;加上自胜 8 行溢价恒 0,
+  生成侧 12 行被结构性钉死在 +0.55%。**想调某友商的平均溢价,手写项目行才是自由杠杆。**
+- **Key Learning**: seed 规律测试的口径必须与消费该数据的图表 SQL 完全一致(相对中标价、全量行),
+  否则出现"测试绿着、图表错着"。sqlCompetitorProfile 的口径 = (报价-中标价)/中标价。
+- **Key Learning**: `.wolf/buglog.json` 在多会话并发时 id 会撞号(bug-1217 被另一会话的 jq 问题占用)——
+  写入前先查 max numeric id;测试/代码注释里引用 bug id 要在 buglog 落笔后回填核对。
+- **Do-Not-Repeat** (2026-08-17): 不要手工按旧 SQL 结果线性外推新系数——重跑 seed 会重算我方报价锚,
+  耦合变量使手算失准(0.94 预测 -2.02% 实测 -0.76%);必须逐行分解(自胜0/我胜4/手写3)找自由度。
+
+## [2026-08-17] Key Learnings (bid-proposal 终审轮)
+
+- 逐任务单阶段测试(每阶段手工构造 state)结构性漏掉跨脚本接缝: 写方不归一某字段而读方硬要求/同脚本写读路径类型分叉/文档化主流程与分母口径矛盾——只有"真实状态目录贯穿六阶段+三镜头终审"能抓住。多脚本管线交付前必跑一次 holistic e2e 终审。
+- Workflow 修复轮按 chunk 拆任务时, 每个发现的文件必须有 chunk 认领: 本轮 references/ 文档(M1)无归属被漏, score_simulate 的 BOM 行被拆进只管 merge/build 的 chunk——拆 chunk 前先做 发现→文件→chunk 映射表。
+- 修复 agent 提交前只跑 pytest 不跑 lint 会回归 CI(make lint 是提交门); 要求每个 fix agent 收尾命令=pytest+ruff check+format 三连。
+
+### 2026-08-17 FilterBar 手写控件批次
+- **Key Learnings**: 批量清空多选过滤禁用 `selected.forEach(onToggle)` — React 同一 tick 内多次 onChange 都读过期 props,后者覆盖前者;必须单次 onChange 传整组新值(bug-2162)。宿主机 :3000 dev server 与 Docker :2026 同源(bind-mount 同目录),HMR 生效有 1-4s 延迟,自动化点击测试须在改动后等足再操作,否则测的是旧代码(本次误判修复无效一次)。视觉模型估 12px vs 14px 字号不可靠,字号验证一律用 evaluate_script getComputedStyle。
+- **User Preferences**: bid-quote FilterBar 控件不要 shadcn 也不要原生(checkbox 除外);控件字号 14px、label 12px;项目下拉要懒加载+服务端搜索;日期要自绘月历范围选择。页面测试用宿主机 localhost:3000。
+
+### 2026-08-17 友商多选语义调整
+- **Decision Log**: bid-quote 全局友商过滤从 EXISTS(筛选中友商参与的项目,行全保留)改为行级 `(bidder_name IN 选中 OR bidder_role='ours')`。用户反馈:选 2 家时聚合图的"友商"仍混全部 6 家,等于没筛。行级一处改动使所有"我方vs友商"聚合(中标率/自产率/溢价曲线友商最低价/报价对比)只统计选中;我方行必须恒保留否则"仅我方"查询清空(沿用 spec §4.3 当年教训)。遭遇战图内单选下拉跟随全局选中集。备选"每图拆多系列"否决:6 家全选图爆炸且原型即单一友商聚合系列。
+
+### 2026-08-17 友商改单选(同日晚,取代上面的多选机制)
+- **Decision Log**: 用户定论"友商只能单选,初始化默认第一家,否则逻辑混乱"——多选语义(行级 IN 列表)保留在 SQL 层但 UI 永远只传 0/1 家。实现:CompetitorDropdown 改单选行选(与项目下拉同交互,checkbox/onToggle/onClear 全删,bug-2162 的清空机制随之退役);默认值放 FilterBar 内(settled ref 守卫:选项就绪且未选→补 `competitors:[first]`,用户任何主动选择后永久退出,选"全部"/点清空不会被默认值覆写)。FilterState.competitors 保持 string[] 零迁移。默认第一家=东方宏业时 bidTotal 55(我方40+友商15),切航天晨光 58,全部 138——实测核对公式=ours行+该友商行。
+- **Key Learning**: 默认值 effect 放共享 FilterBar 而非各 View——DashboardView/QueryView 各持 filters 状态,一处放默认两页都生效;settled 守卫防"清空后又被默认值抢回"。
+
+## Key Learnings (2026-08-17 — biz-pipeline 仪表盘图表评估)
+- 图表数值核验别信缩略截图(小字易误读出 10x 假 bug),用 DOM eval 取权威值:`JSON.stringify([...document.querySelectorAll('main p.font-cyber')].map(p=>p.textContent))` + `.recharts-surface text` 取全部刻度。调色板复验直接跑 dataviz `scripts/validate_palette.js`。
+- recharts 计数轴必须显式 `allowDecimals={false}`,否则小样本(月度 0-2 次)y 轴出 0.25/0.5 小数刻度。①②③ 仪表盘同构克隆,此坑大概率三处同在,修时同查。
+- biz-pipeline 图3 偏离设计稿:设计=横向红色待开票柱(催开票预警直接编码),实现=垂直分组柱(合同额 vs 已开票),待开票成隐性差值。改进方向=堆叠柱(已开票橙 slot2 + 待开票红,顶=合同额)。
+- C_BLUE #2a78d6 / C_ORANGE #eb6834:light 全过;dark 模式橙 L=0.671 出带(ponytail 注释声明的 light 字面 hex 取舍,对比度仍 ≥3:1)。若修,dark 单独换深橙即可。
+
+## Key Learnings (2026-08-17 — ③仪表盘按①DeepSeek风格重构落地)
+
+- **市场三模块设计系统同步**:①②③ 各自持有一份组件克隆(无跨 extension import 先例,grep 验证零例外)。bpp 现在克隆了①的 chartTheme/SectionCard/StatCard/ChartCard/TechTooltip;①若再调 token 需 bqa/bpp/spq 三处同步——未来若要收敛,应提取到 extensions/shared,但那是明确决策,不要顺手做。
+- **bpp 组件 API 已变**:StatCard 不再收 icon/color(现在 label/value/delta + Emph);ChartCard 的 meta 从胶囊变 12px 弱色副行(ReactNode);TechTooltip 保留 unit prop(①版没有)。
+- **recharts 堆叠段间留白**:双 Bar stroke="#fff" strokeWidth={2} 实现 2px 段间留白 + 相邻柱间隔;顶圆角只给最上段(radius [4,4,0,0]),全发票的柱顶是方角(①同款局限)。
+- **双 LabelList 空串技巧**:同一 Bar 上两条 LabelList(红"待开 X万" / 灰"已全额开票"),互补空串 → 每行恰一枚柱顶标签,免写 content renderer。
+- **图表验证要用 DOM 而非截图**:缩放截图会把 tabular 数字的间隙看成千分位逗号(KPI "7332.0万" 看似 "7,332.0万");DOM textContent 才是权威。
+- **gateway 容器会单独死**:nginx(2026)/frontend(3000) 活着页面能开,但 /api/extensions/* fetch 永久挂起(不是 401/500!)→ 表现为 KPI 全 "—" 图表空。Docker Desktop engine API 同时 500 时 `ps` 不可用但 `restart`/`logs`/`inspect` 仍可用。
+
+### 2026-08-17 recharts 3.8 Brush 受控语义(bid-quote 图4 踩坑,适用所有带 Brush 的图)
+- Brush 的 startIndex/endIndex props 是**受控真值源**:内部 useEffect 会在 chartData 引用变化时把 Redux 窗口强制回写成 props 值。要窗口可拖,必须让 props 跟 onChange 回写的 state 走;写死默认值 = 拖动被下一次渲染吃掉。
+- chart 的 data prop 必须 useMemo 固定引用(inline map 每渲染新引用 → chartData 引用变化 → 窗口/scale 重建)。
+- 缩放后 Bar 的 onClick index 是 displayedData(barSelectors.js:145 = chartData.slice(dataStartIndex,…))窗口内序号,**不是全表索引**;可靠取行用 data.payload(=原始行)。
+- Cell 颜色与可见柱按 slice 位置配对,Cells 要 `data.slice(start, end+1).map(...)`。
+- Brush aria-label 内部读 data[index].name → 数据行需带 name 字段,否则读 undefined。
+- recharts 3.8 DOM 类名与 2.x 不同:tick 文本是 text.recharts-cartesian-axis-tick-value(无 .recharts-cartesian-axis-tick 包装类);CDP 合成 click/pointer 事件触发不了 Bar onClick(需真实鼠标),验证交互用键盘(Tab→Arrow)或读 DOM 状态。

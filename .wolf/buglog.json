@@ -19475,5 +19475,129 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-08-15"
+  },
+  {
+    "id": "bug-eslint-nullish-placeholder",
+    "timestamp": "2026-08-17",
+    "error_message": "ESLint batch fix changed description||placeholder to ?? — blank render instead of placeholder when description is empty string",
+    "file": "frontend/src/app/admin/departments/page.tsx; frontend/src/app/admin/roles/page.tsx; frontend/src/app/knowledge/page.tsx; frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx",
+    "root_cause": "@typescript-eslint/prefer-nullish-coalescing fix || -> ?? treats empty string as a value; create forms default description to empty string and backend stores as-is (live dept row with description=\"\"), so placeholder text stopped rendering",
+    "fix": "restored truthiness via kb.description?.length ? kb.description : placeholder (lint-clean, exactly equals old || semantics), with EAI-CUSTOM comment",
+    "tags": [
+      "eslint",
+      "prefer-nullish-coalescing",
+      "behavior-preservation",
+      "description-placeholder"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-17"
+  },
+  {
+    "id": "bug-2159",
+    "timestamp": "2026-08-17",
+    "error_message": "eslint fix batch: || -> ?? in extensions/api error paths changed behavior (empty-string fallback lost)",
+    "file": "frontend/src/extensions/api/client.ts, frontend/src/extensions/api/index.ts",
+    "root_cause": "@typescript-eslint/prefer-nullish-coalescing (stylisticTypeChecked, ignorePrimitives default false) flags || on string/any operands; mechanical ?? swap lost truthy fallback: join(\"\")||message and err.detail||\"Upload failed\" previously fell back on empty string, ?? does not",
+    "fix": "join sites (3): hoist detailMessages + length>0 check (exact || semantics, lint-clean). detail sites (3): kept || with justified eslint-disable-next-line comment. Rule also rejects truthy ternary a?a:b, so disable is the minimal exact-preserving form",
+    "tags": [
+      "eslint",
+      "prefer-nullish-coalescing",
+      "behavior-preservation",
+      "error-message"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-17"
+  },
+  {
+    "id": "bug-2160",
+    "timestamp": "2026-08-17",
+    "error_message": "bid-quote 图4 Brush 拖动/键盘后柱图不动,自定义时间窗 chip 与图内容失步(chip 11/40 但柱图仍 10 根);偶发窗口跳到 39/40",
+    "file": "frontend/src/extensions/bid-quote/components/DashboardView.tsx",
+    "root_cause": "recharts 3.8 Brush 的 startIndex/endIndex props 是受控真值源:BrushInternal useEffect 会在 chartData 引用变化时把内部 Redux 窗口强制回写成 props 值(Brush.js:776-787)。写死默认值 [len-10, len-1] 时,onChange→setWin 触发的重渲染(inline map 每次新数组引用)会把拖动结果吃掉",
+    "fix": "startIndex={start}/endIndex={end} 跟 win 活窗走(onChange 回写一致闭环);chart data 行 useMemo 固定引用。连带修复:Bar onClick 缩放后 index 为 displayedData(barSelectors:145 slice)窗口内序号→改 data.payload.project_name 按名回查+start+idx 兜底;Cell 颜色按 slice(start,end+1) 配对",
+    "tags": [
+      "recharts",
+      "Brush",
+      "controlled-props",
+      "zoom",
+      "startIndex",
+      "chartData-identity",
+      "useMemo"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-17"
+  },
+  {
+    "id": "bug-2161",
+    "timestamp": "2026-08-17",
+    "error_message": "biz-pipeline 仪表盘三张图 hover 无 tooltip(wrapper visible 但内容为空)",
+    "file": "frontend/src/extensions/biz-pipeline/components/DashboardView.tsx",
+    "root_cause": "call-site 自定义 tooltip 以合成 payload 数组调用 TechTooltip,但 TechTooltip 自身 guard 是 if (!active || !payload?.length) return null —— 未传 active → 恒返回 null",
+    "fix": "三处 call-site 的 <TechTooltip> 显式加 active(content fn 里已先判 active,传字面量 true 语义正确)",
+    "tags": [
+      "recharts",
+      "tooltip",
+      "TechTooltip",
+      "biz-pipeline",
+      "active-prop"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-17"
+  },
+  {
+    "id": "bug-2162",
+    "timestamp": "2026-08-17",
+    "error_message": "TS2322: Type 'number[]' is not assignable to type 'string | number | undefined' (DashboardView Cell radius)",
+    "file": "frontend/src/extensions/biz-pipeline/components/DashboardView.tsx",
+    "root_cause": "recharts 3.10.1 Cell 组件类型未声明 radius(落入 React SVGAttributes 的 string|number);但运行期 Bar.js 会把 cells[index].props 展开进 barRectangleItem,数组 radius 实际生效",
+    "fix": "radius 数组断言 as unknown as number 并留注释说明运行期透传依据",
+    "tags": [
+      "recharts",
+      "typescript",
+      "Cell",
+      "radius",
+      "typecheck"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-17"
+  },
+  {
+    "id": "bug-2163",
+    "timestamp": "2026-08-17",
+    "error_message": "SectionCard 折叠箭头方向反了(展开时指上、折叠时指下)",
+    "file": "frontend/src/extensions/biz-pipeline/components/SectionCard.tsx",
+    "root_cause": "rotate-180 条件写反:open && 'rotate-180' 使展开态旋转,ChevronDown 默认朝下被翻转成朝上",
+    "fix": "改为 !open && 'rotate-180'(展开=∨朝下,折叠=∧朝上,与原型一致)",
+    "tags": [
+      "chevron",
+      "SectionCard",
+      "biz-pipeline",
+      "ui"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-17"
+  },
+  {
+    "id": "bug-1078",
+    "timestamp": "2026-08-17",
+    "error_message": "prettier --write 后 eslint 报 3×Unused eslint-disable directive + 3×prefer-nullish-coalescing error (ExtractionTaskModal.tsx / RuleCard.tsx)",
+    "file": "frontend/src/extensions/knowledge-factory/ExtractionTaskModal.tsx; RuleCard.tsx",
+    "root_cause": "prettier 重排把长表达式折到下一行,disable-next-line 只作用于紧邻行,原指令盖不住移位后的 || 所在行",
+    "fix": "单行放得下的提取短变量使 disable-next-line 紧邻 || (ExtractionTaskModal hint);放不下的(>80列)改用行尾 eslint-disable-line,行号漂移免疫 (RuleCard)",
+    "tags": [
+      "prettier",
+      "eslint-disable",
+      "line-shift",
+      "prefer-nullish-coalescing"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-17"
   }
 ]
