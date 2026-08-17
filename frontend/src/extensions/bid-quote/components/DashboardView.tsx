@@ -148,6 +148,9 @@ export function DashboardView() {
         </Button>
       </div>
 
+      {/* 全局过滤(页头之下、所有区块之上——页面级控件) */}
+      <FilterBar filters={filters} onChange={setFilters} />
+
       {/* ── 三问 ①:我们赢在哪、输在哪? ───────────────────── */}
       <SectionCard
         badge="①"
@@ -190,9 +193,6 @@ export function DashboardView() {
             delta="我方中标口径"
           />
         </div>
-
-        {/* 全局过滤(KPI 之下) */}
-        <FilterBar filters={filters} onChange={setFilters} />
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
           {/* 图1:按金额段我方中标率(纯色蓝柱,无渐变) */}
