@@ -2,33 +2,47 @@
 
 import type { ReactNode } from "react";
 
-// recharts 3.x:TooltipProps 不再带 payload/label,用内联结构接口。
+import { CARD, INK, INK_2 } from "@/extensions/biz-pipeline/components/chartTheme";
+
+// recharts 自定义 tooltip:DeepSeek 风白卡(克隆自 bid-quote/TechTooltip,无光晕无玻璃)。
+// recharts 3.x 的 TooltipProps 泛型不再直出 payload/label,这里用结构化内联接口
+// (content 接受任意 ReactElement 并在运行期克隆注入 active/payload/label)。
+interface TooltipEntry {
+  name?: string | number;
+  value?: string | number;
+  color?: string;
+}
 interface TechTooltipProps {
   active?: boolean;
-  payload?: Array<{ name?: string; value?: number | string; color?: string }>;
+  payload?: TooltipEntry[];
   label?: string | number;
+  /** 值后缀单位(万/次)——bpp 在 call site 传,bid-quote 版无此参。 */
   unit?: string;
 }
 
-// dataviz:数值用 text token(次要墨色)+ tabular-nums;色点承载身份,色从不承载文字。
 export function TechTooltip({ active, payload, label, unit }: TechTooltipProps): ReactNode {
   if (!active || !payload?.length) return null;
   const suffix = unit ? ` ${unit}` : "";
   return (
-    <div className="rounded-lg border border-border bg-popover px-3 py-2 text-xs shadow-md">
-      {label !== undefined ? <p className="mb-1.5 font-semibold text-foreground">{label}</p> : null}
-      <div className="space-y-1">
-        {payload.map((p, i) => (
-          <p key={i} className="flex items-center gap-2">
-            <span className="inline-block h-2 w-2 shrink-0 rounded-full" style={{ background: p.color }} />
-            <span className="text-muted-foreground">{p.name}</span>
-            <span className="ml-auto font-semibold tabular-nums text-foreground">
-              {p.value}
-              {suffix}
-            </span>
-          </p>
-        ))}
-      </div>
+    <div
+      className="rounded-[10px] px-3 py-2 text-xs shadow-[0_4px_16px_rgba(0,0,0,0.08)]"
+      style={{ background: CARD, border: "1px solid rgba(0,0,0,0.08)" }}
+    >
+      {label !== undefined ? (
+        <p className="mb-1 text-[12px] font-semibold" style={{ color: INK }}>
+          {label}
+        </p>
+      ) : null}
+      {payload.map((p, i) => (
+        <p key={i} className="flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-[3px]" style={{ background: p.color }} />
+          <span style={{ color: INK_2 }}>{p.name}:</span>
+          <span className="font-semibold [font-variant-numeric:tabular-nums]" style={{ color: INK }}>
+            {p.value}
+            {suffix}
+          </span>
+        </p>
+      ))}
     </div>
   );
 }

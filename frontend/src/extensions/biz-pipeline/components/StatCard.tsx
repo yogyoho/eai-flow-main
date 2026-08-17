@@ -1,47 +1,57 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
-import { cn } from "@/lib/utils";
-
-type StatColor = "primary" | "chart2" | "chart3" | "destructive" | "chart5";
+import {
+  CARD,
+  CARD_BORDER,
+  GREEN,
+  INK,
+  INK_2,
+  INK_3,
+  RED,
+} from "@/extensions/biz-pipeline/components/chartTheme";
 
 interface StatCardProps {
   label: string;
   value: string | number;
-  icon: LucideIcon;
-  hint?: string;
-  color?: StatColor;
+  /** 注脚行(12px 弱色;涨跌/警示用绿/红 b 强调)。 */
+  delta?: ReactNode;
 }
 
-// EAI-CUSTOM: 本项目 chart/success/destructive CSS 变量为完整颜色(oklch/hex),非 HSL 通道,
-// 故用字面 hex + 8 位 alpha(末2位=透明度:14≈8%/33≈20%),与 bid-quote / spare-parts 同法。
-const HEX: Record<StatColor, { bg: string; border: string; text: string }> = {
-  primary: { bg: "#3b82f614", border: "#3b82f633", text: "#3b82f6" },
-  chart2: { bg: "#8b5cf614", border: "#8b5cf633", text: "#8b5cf6" },
-  chart3: { bg: "#f6bd1614", border: "#f6bd1633", text: "#f6bd16" },
-  destructive: { bg: "#f43f5e14", border: "#f43f5e33", text: "#f43f5e" },
-  chart5: { bg: "#10b98114", border: "#10b98133", text: "#10b981" },
-};
-
-export function StatCard({ label, value, icon: Icon, hint, color = "primary" }: StatCardProps) {
-  const c = HEX[color];
+/** DeepSeek 风 KPI 白卡(克隆自 bid-quote/StatCard):label 次级色 → 主数字 26px/650 → 注脚弱色行。 */
+export function StatCard({ label, value, delta }: StatCardProps) {
   return (
     <div
-      className={cn(
-        "relative overflow-hidden rounded-xl p-4 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08)] transition-all hover:scale-[1.015]",
-      )}
-      style={{ background: c.bg, borderColor: c.border, borderWidth: 1 }}
+      className="rounded-[14px] px-5 py-[18px]"
+      style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
     >
-      <span className="absolute right-0 top-0 h-2 w-2 rounded-bl-md" style={{ background: c.text }} />
-      <div className="flex items-center gap-2 text-muted-foreground/70">
-        <Icon className="h-4 w-4" />
-        <p className="text-xs uppercase tracking-wide">{label}</p>
-      </div>
-      <p className="mt-2 font-cyber text-3xl font-extrabold tracking-tight text-shadow-glow" style={{ color: c.text }}>
+      <p className="text-[12.5px]" style={{ color: INK_2 }}>
+        {label}
+      </p>
+      <p
+        className="mt-2 text-[26px] leading-none font-[650] tracking-[-0.5px] [font-variant-numeric:tabular-nums]"
+        style={{ color: INK }}
+      >
         {value}
       </p>
-      {hint ? <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{hint}</p> : null}
+      {delta ? (
+        <p
+          className="mt-1.5 text-xs [font-variant-numeric:tabular-nums]"
+          style={{ color: INK_3 }}
+        >
+          {delta}
+        </p>
+      ) : null}
     </div>
+  );
+}
+
+/** KPI 注脚强调片段:正=绿 / 负=红,600 字重(供 delta 行组装)。 */
+export function Emph({ value, neg = false }: { value: string; neg?: boolean }) {
+  return (
+    <b className="font-semibold" style={{ color: neg ? RED : GREEN }}>
+      {value}
+    </b>
   );
 }
