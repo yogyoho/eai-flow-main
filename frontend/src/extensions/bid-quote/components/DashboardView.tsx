@@ -116,6 +116,16 @@ export function DashboardView() {
       : latest
         ? `${latest.yr} 年度`
         : "";
+  // 图2:横向分组条形数据——货物名让位给 Y 轴整名;按(我方−友商)差距升序,
+  // recharts 纵向布局 data[0] 在最顶部 → 差距最负(我方自产最落后=失标根因)置顶
+  const compData = (compQ.data ?? [])
+    .filter((r) => matchesSelfAttribute(r.ours_self_pct, compChart.selfAttribute))
+    .map((r) => ({
+      goods_name: r.goods_name,
+      我方: toNum(r.ours_self_pct),
+      友商: toNum(r.competitor_self_pct),
+    }))
+    .sort((a, b) => a.我方 - a.友商 - (b.我方 - b.友商));
   const partRate =
     s && s.bid_count > 0 ? `${((100 * s.ours_bid) / s.bid_count).toFixed(0)}% 参与率` : "";
 
@@ -236,10 +246,10 @@ export function DashboardView() {
           {/* 图3(新):中标率时间趋势 */}
           <TrendChart filters={filters} />
 
-          {/* 图2:货物构成对比 自产%(每图筛选) */}
+          {/* 图2:货物构成对比 自产%(每图筛选;横向条形,长货物名在 Y 轴整名显示) */}
           <ChartCard
             title="货物构成对比 · 自产率(我方 vs 友商)"
-            meta="失标根因"
+            meta="按差距排序 · 失标根因"
             action={
               <ChartFilterPopover
                 chart={compChart}
@@ -248,55 +258,55 @@ export function DashboardView() {
               />
             }
           >
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart
-                data={(compQ.data ?? [])
-                  .filter((r) =>
-                    matchesSelfAttribute(
-                      r.ours_self_pct,
-                      compChart.selfAttribute,
-                    ),
-                  )
-                  .map((r) => ({
-                    goods_name: r.goods_name,
-                    ours_self_pct: toNum(r.ours_self_pct),
-                    competitor_self_pct: toNum(r.competitor_self_pct),
-                  }))}
-                margin={{ top: 8, right: 8, left: -8, bottom: 0 }}
+            <div className="max-h-[280px] overflow-y-auto pr-1">
+              <ResponsiveContainer
+                width="100%"
+                height={Math.max(compData.length * 26 + 26, 120)}
               >
-                <CartesianGrid stroke={GRID} vertical={false} />
-                <XAxis
-                  dataKey="goods_name"
-                  tick={{ ...AXIS, fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={{ stroke: GRID }}
-                  interval={0}
-                />
-                <YAxis
-                  tick={AXIS}
-                  tickLine={false}
-                  axisLine={false}
-                  unit="%"
-                  width={40}
-                />
-                <Tooltip content={<TechTooltip />} cursor={CURSOR} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar
-                  dataKey="ours_self_pct"
-                  name="我方自产%"
-                  fill={BLUE}
-                  radius={[3, 3, 0, 0]}
-                  isAnimationActive={false}
-                />
-                <Bar
-                  dataKey="competitor_self_pct"
-                  name="友商自产%"
-                  fill={AMBER}
-                  radius={[3, 3, 0, 0]}
-                  isAnimationActive={false}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+                <BarChart
+                  data={compData}
+                  layout="vertical"
+                  margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid stroke={GRID} horizontal={false} />
+                  <XAxis
+                    type="number"
+                    domain={[0, 100]}
+                    tick={AXIS}
+                    tickLine={false}
+                    axisLine={{ stroke: GRID }}
+                    unit="%"
+                    width={44}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="goods_name"
+                    tick={{ ...AXIS, fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={84}
+                  />
+                  <Tooltip content={<TechTooltip />} cursor={CURSOR} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                  <Bar
+                    dataKey="我方"
+                    name="我方自产%"
+                    fill={BLUE}
+                    radius={[0, 3, 3, 0]}
+                    barSize={9}
+                    isAnimationActive={false}
+                  />
+                  <Bar
+                    dataKey="友商"
+                    name="友商自产%"
+                    fill={AMBER}
+                    radius={[0, 3, 3, 0]}
+                    barSize={9}
+                    isAnimationActive={false}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </ChartCard>
 
           {/* 图C:项目整标自产率分布 */}
