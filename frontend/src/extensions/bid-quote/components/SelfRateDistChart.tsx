@@ -84,7 +84,12 @@ export function SelfRateDistChart({
           value={threshold}
           onChange={(e) => setThreshold(Number(e.target.value))}
           aria-label="自产率门槛"
-          className="h-1.5 max-w-[320px] flex-1 cursor-pointer appearance-none rounded-full bg-muted focus-visible:ring-emerald-500/40 focus-visible:ring-2 focus-visible:outline-none [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:shadow [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:shadow"
+          // 左绿右灰:thumb 左侧(已含入 ≥门槛 段)用 GREEN 渐变填充,右侧 GRID 灰;
+          // 分界百分比 = 当前门槛值,随拖动即时重算(每次 setThreshold 都重渲染)
+          style={{
+            background: `linear-gradient(to right, ${GREEN} 0%, ${GREEN} ${threshold}%, ${GRID} ${threshold}%, ${GRID} 100%)`,
+          }}
+          className="h-1.5 max-w-[320px] flex-1 cursor-pointer appearance-none rounded-full focus-visible:ring-emerald-500/40 focus-visible:ring-2 focus-visible:outline-none [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:bg-emerald-500 [&::-moz-range-thumb]:shadow [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-emerald-500 [&::-webkit-slider-thumb]:shadow"
         />
         <span className="text-muted-foreground shrink-0 text-right text-[11px] font-bold whitespace-nowrap">
           门槛 {threshold}% · 低于 {below} 个
