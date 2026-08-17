@@ -1,11 +1,12 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ComponentProps, type ReactNode, useState } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   Legend,
+  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -37,6 +38,21 @@ interface SelfRateDistChartProps {
 }
 
 const BIN = 10; // 直方图桶宽 10%
+
+// 栈顶圆角规则:每根堆叠柱只有最上段带顶部圆角,下方段方角——
+// 两段都圆会在接缝处各圆各的,露出背景缺口(2026-08-17 绿/琥珀圆角对齐)
+type SegProps = ComponentProps<typeof Rectangle> & { payload?: Record<string, number> };
+const R_TOP: [number, number, number, number] = [3, 3, 0, 0];
+const R_NONE: [number, number, number, number] = [0, 0, 0, 0];
+
+/** 绿段(底段):本桶"低于门槛"为 0 时自己即栈顶,才给圆角。 */
+function GreenSeg({ payload: d, ...rest }: SegProps) {
+  return <Rectangle {...rest} radius={(d?.["低于门槛"] ?? 0) > 0 ? R_NONE : R_TOP} />;
+}
+/** 琥珀段(顶段):计数 > 0 才渲染,恒为栈顶,恒带圆角。 */
+function AmberSeg(props: SegProps) {
+  return <Rectangle {...props} radius={R_TOP} />;
+}
 
 /**
  * 图C:项目整标自产率分布——直方图(10% 一桶),每桶内按门槛拆两段堆叠:
@@ -119,13 +135,14 @@ export function SelfRateDistChart({
             stackId="a"
             fill={GREEN}
             isAnimationActive={false}
+            shape={<GreenSeg />}
           />
           <Bar
             dataKey="低于门槛"
             stackId="a"
             fill={AMBER}
-            radius={[3, 3, 0, 0]}
             isAnimationActive={false}
+            shape={<AmberSeg />}
           />
         </BarChart>
       </ResponsiveContainer>
