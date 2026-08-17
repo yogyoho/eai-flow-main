@@ -126,39 +126,42 @@ function ProjectDropdown({
   );
 }
 
-/** 友商多选下拉:复选框列表(选项来自共享 useFilterOptions,与页面其他消费方同 queryKey 去重复用)。 */
+/** 友商单选下拉(2026-08-17 需求调整:多选改单选,初始化默认第一家;选项来自共享 useFilterOptions)。
+ *  FilterState.competitors 仍是 string[](单选即 0/1 元素),SQL/hooks 不变。 */
 function CompetitorDropdown({
   options,
-  selected,
-  onToggle,
-  onClear,
+  value,
+  onPick,
   status,
 }: {
   options: string[];
-  selected: string[];
-  onToggle: (v: string) => void;
-  // 清空必须单次 onChange:forEach(onToggle) 两次都基于同一份过期 filters 计算,后一次覆盖前一次只清掉一家
-  onClear: () => void;
+  value: string;
+  onPick: (v: string) => void;
   status: "pending" | "error" | "ok";
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   useDismiss(rootRef, open, () => setOpen(false));
+  const pick = (v: string) => {
+    onPick(v);
+    setOpen(false);
+  };
   return (
     <div className="relative" ref={rootRef}>
       <button type="button" className={TRIGGER} onClick={() => setOpen((o) => !o)} aria-label="友商">
-        <span className="truncate">
-          {selected.length === 0
-            ? "全部"
-            : selected.length === 1
-              ? selected[0]
-              : `已选 ${selected.length} 项`}
-        </span>
+        <span className="truncate">{value || "全部"}</span>
         <ChevronDown className="text-muted-foreground h-4 w-4 shrink-0" />
       </button>
       {open && (
         <div className={`${PANEL} w-64 max-w-[calc(100vw-3rem)]`}>
           <div className="max-h-60 overflow-auto">
+            <button
+              type="button"
+              onClick={() => pick("")}
+              className={`hover:bg-accent w-full cursor-pointer rounded px-2 py-1.5 text-left text-[14px] ${!value ? "text-primary font-medium" : "text-foreground"}`}
+            >
+              全部
+            </button>
             {status === "pending" && options.length === 0 && (
               <div className="text-muted-foreground/60 px-2 py-1.5 text-[14px]">加载中…</div>
             )}
@@ -166,30 +169,17 @@ function CompetitorDropdown({
               <div className="text-destructive/80 px-2 py-1.5 text-[14px]">选项加载失败</div>
             )}
             {options.map((o) => (
-              <label
+              <button
                 key={o}
-                className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-[14px]"
+                type="button"
+                onClick={() => pick(o)}
+                title={o}
+                className={`hover:bg-accent w-full cursor-pointer truncate rounded px-2 py-1.5 text-left text-[14px] ${o === value ? "text-primary font-medium" : "text-foreground"}`}
               >
-                <input
-                  type="checkbox"
-                  checked={selected.includes(o)}
-                  onChange={() => onToggle(o)}
-                  className="h-3.5 w-3.5 shrink-0"
-                  style={{ accentColor: BLUE }}
-                />
-                <span className="truncate">{o}</span>
-              </label>
+                {o}
+              </button>
             ))}
           </div>
-          {selected.length > 0 && (
-            <button
-              type="button"
-              onClick={onClear}
-              className="text-muted-foreground hover:text-foreground w-full cursor-pointer px-2 py-1 text-left text-[13px]"
-            >
-              清空选择
-            </button>
-          )}
         </div>
       )}
     </div>
@@ -341,13 +331,18 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
   const opts = optsQ.data ?? { projects: [], competitors: [], goods: [] };
   // 用查询状态而非 options.length 区分 加载中/失败,避免请求失败时永远显示"加载中…"
   const status = optsQ.isPending ? "pending" : optsQ.isError ? "error" : "ok";
-  const toggle = (key: "projects" | "competitors", v: string) => {
-    const cur = filters[key];
-    onChange({
-      ...filters,
-      [key]: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v],
-    });
-  };
+
+  // 初始化默认第一家友商(需求 2026-08-17):选项就绪且尚未选过时补默认值;
+  // settled 后不再干预——用户清空/选"全部"是主动选择,保持原样。
+  const settled = useRef(false);
+  useEffect(() => {
+    if (settled.current) return;
+    if (opts.competitors.length > 0 && filters.competitors.length === 0) {
+      settled.current = true;
+      onChange({ ...filters, competitors: [opts.competitors[0]!] });
+    }
+  }, [opts.competitors, filters, onChange]);
+
   const active =
     !!filters.dateFrom ||
     !!filters.dateTo ||
@@ -388,9 +383,11 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
           <span className="text-muted-foreground text-[12px]">友商</span>
           <CompetitorDropdown
             options={opts.competitors}
-            selected={filters.competitors}
-            onToggle={(v) => toggle("competitors", v)}
-            onClear={() => onChange({ ...filters, competitors: [] })}
+            value={filters.competitors[0] ?? ""}
+            onPick={(v) => {
+              settled.current = true; // 用户主动选择后,默认值逻辑永久退出
+              onChange({ ...filters, competitors: v ? [v] : [] });
+            }}
             status={status}
           />
         </div>
