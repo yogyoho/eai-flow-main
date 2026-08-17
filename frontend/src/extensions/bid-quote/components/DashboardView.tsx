@@ -371,10 +371,7 @@ export function DashboardView() {
                 tickFormatter={(v: string) => (v.length > 8 ? v.slice(0, 8) + "…" : v)}
                 tickLine={false}
                 axisLine={{ stroke: GRID }}
-                interval={0}
-                angle={-12}
-                textAnchor="end"
-                height={50}
+                interval="preserveEnd"
               />
               <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} />
               <Tooltip content={<TechTooltip />} cursor={CURSOR} />
@@ -384,8 +381,8 @@ export function DashboardView() {
                 dataKey="我方"
                 height={26}
                 travellerWidth={8}
-                stroke={GRID}
-                fill="rgba(0,0,0,0.03)"
+                stroke={AXIS.fill}
+                fill="rgba(0,0,0,0.08)"
                 startIndex={Math.max(0, (showdownQ.data?.length ?? 0) - 10)}
                 endIndex={Math.max(0, (showdownQ.data?.length ?? 1) - 1)}
               />
