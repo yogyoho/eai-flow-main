@@ -65,6 +65,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import state_guard
+
 # --- 退出码约定 -----------------------------------------------------------------
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -746,6 +748,10 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
     if mutated:
         atomic_write_json(state_dir / STATE_FILES["clauses"], clauses)
         written.append(STATE_FILES["clauses"])
+        # clauses.json 属登记在册的权威状态文件 → 写盘后重登签名(写盘方重签不变量;
+        # 不重签会让 extract/score_simulate 的读盘校验误报"内容被直写")。
+        # 同时收编在盘其余权威文件为本轮基线, 消除部分签名形态(F4 误报源头)
+        state_guard.sign_all_authoritative(state_dir)
 
     clean = not anomalies and not pending
     ledger_recorded = False
@@ -769,6 +775,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="merge_addenda.py",
         description="投标方案编写·阶段3 补遗/答疑确定性落账: 三级合并(锚点自动/相似度候选待人裁/平手须裁决) + 内容哈希幂等台账 + D3 新实体增量 + D7 悬挂外键拦截(无 LLM)",
+        epilog="示例: python merge_addenda.py --addendum-candidates candidates/BY-001.json --state-dir state [--decisions decisions.json]",
     )
     parser.add_argument("--addendum-candidates", required=True, help="补遗候选 JSON 文件(一份补遗=一次调用=一个文件: addendum_file/entities/items)")
     parser.add_argument("--state-dir", required=True, help="状态目录(读/写 clauses.json / merge_ledger.json / addendum_entities_pending.json; 原子写盘)")
@@ -786,6 +793,10 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         state_dir = Path(args.state_dir)
+        # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状)
+        guard_problems = state_guard.verify_state_files(state_dir)
+        if guard_problems:
+            raise MergeAddendaError("权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(guard_problems))
         record_path = Path(args.addendum_candidates)
         record = load_candidates(record_path)
         decisions_entries = load_decisions(args.decisions) if args.decisions is not None else []

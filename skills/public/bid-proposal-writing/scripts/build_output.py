@@ -3,8 +3,8 @@
 
 规格: docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md
 「阶段4 build」+ D2(重灌锚点载体在渲染时埋定)/D7(派生字段现算不落盘/原子写盘)。
-本脚本只做确定性渲染; Word 转换由 Agent 另调 markdown-to-docx 技能(强制条款
-**加粗**——convert.py 链路仅支持粗体/斜体, 不支持高亮/隐藏标记/HTML注释)。
+本脚本只做确定性渲染, 产出六件套 md 即止; **不做 Word 转换**——排版与 .docx
+导出由用户在文档空间完成(present_files 交付后自动同步)。
 
 用法:
     python build_output.py --state-dir <dir> --out <dir>
@@ -14,19 +14,25 @@
 
 职责(设计文档锁定, 不缺不漏不加):
     ① 商务卷 = structure.json 镜像渲染: path 标题链 → # 层级章节树, 层级完整,
-       只镜像不自创; 每槽位标注 类型/格式要求/待填提示/填写状态(现算);
+       只镜像不自创; 正文只含交付内容——template_text 纯正文段落/表格列头+
+       fixed_rows 逐字+剩余待填行/image 槽干净占位; 槽位编排元数据(类型/格式
+       要求/填写状态/关联条款)全部迁覆盖率报表"槽位编排表"sidecar 节(回放实证
+       2026-08-18 线程 1a80a1d8: 槽位 bullet 被当正文写进交付物/转换进 docx);
        image 槽在卷末汇总扫描件清单(图片不经 md 链路插入)。
     ② 技术卷 = 格式章节规定结构部分按镜像渲染 + 逐条款条目: 条目标题嵌 clause_id
        (如 "2.1 响应[ZB-C-001]"——clause_id 入标题是阶段5 重灌唯一可存活的锚点
        载体, 交付物中保留不删, D2); mandatory 条款条目标题整体**加粗**;
        条目节号优先取槽位标题前导数字, 撞号/无号顺延(全卷 N 唯一, 观感去重——
        锚点是 clause_id, 编号不承担契约职责);
-       条目体 = 要求原文锚点→响应要点→证据引用→满足状态→suggestion;
-       活条款(technical 类)无挂接槽时入卷末"未挂接条款"节, 零遗漏。
+       条目体正文 = responses.json(阶段4a 三模式生成)的 response_text(+points
+       要点列表); 无响应条目骨架回退为待填占位; 锚点/满足状态等编排元数据迁
+       覆盖率报表 sidecar; 活条款(technical/service 类)无挂接槽时入卷末
+       "其他技术要求响应"节(标题中性化, 出处 sidecar 标注), 零遗漏。
     ③ 偏离表 = 仅 class=mandatory 或 response_status=deviation 的活条款。
     ④ 覆盖率报表 = 清单总数/已响应/待确认/未分配(已响应=compliant+deviation,
        待确认=draft+pending_confirm, 未分配=unassigned; superseded/voided 是
-       历史条款, 除外列示不计入总数)。
+       历史条款, 除外列示不计入总数)+ 槽位编排表 sidecar(双卷净化后的槽位
+       元数据归属地, 含关联条款悬挂外键标注)。
     ⑤ 实体 lint = 白名单 diff 全部 evidence_ref 与引用片段(source_ref.quote):
        确定性候选提取——company 先掩蔽白名单值再按全部工商后缀位置扫描(同一
        结束位置取最长后缀, 前导连接词仅修剪显示值; 防贪婪正则把白名单公司连同
@@ -38,7 +44,8 @@
        确定性 diff 但覆盖受白名单与模式能力限制)。
     ⑥ 人核清单 = format_check 槽(签字/盖章/份数/页码)全部入清单不进确定性判定
        + [待人工复刻]表格槽(管道表格无法表达合并单元格/列宽——如实声明渲染
-       边界, 所有表格槽均标[待人工复刻]并列头骨架照渲染)。
+       边界, 所有表格槽均标[待人工复刻]并列头骨架照渲染)
+       + 生成内容人核节(needs_human_verify/web 引用逐条核实)。
 
 脚本纪律: 纯 Python 3.12; stdlib only; 不调用 LLM; 不 import app.*/deerflow.*;
     状态目录只读(D7: fill_status 等派生字段渲染时现算不落盘); 输出文件临时
@@ -60,6 +67,8 @@ import re
 import sys
 from pathlib import Path
 
+import state_guard
+
 # --- 退出码约定 -----------------------------------------------------------------
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -71,6 +80,9 @@ CLAUSE_CATEGORIES = ("technical", "commercial", "qualification", "format", "serv
 RESPONSE_STATUSES = ("unassigned", "draft", "pending_confirm", "compliant", "deviation")
 SLOT_TYPES = ("text", "table", "image", "format_check", "group")
 VOLUMES = ("commercial", "technical")
+# 技术卷条目承载口径(v2): technical+service——与 responses.py RESPONSE_CATEGORIES
+# 对齐(服务承诺响应同走生成管线; 商务/资格/格式条款走模板镜像管线, 不产条目)。
+ENTRY_CATEGORIES = ("technical", "service")
 
 OUTPUT_FILES = ("商务卷.md", "技术卷.md", "偏离表.md", "覆盖率报表.md", "人核清单.md", "实体lint报告.md")
 
@@ -80,6 +92,17 @@ STATUS_LABELS = {"unassigned": "未分配", "draft": "草稿", "pending_confirm"
 # 口径桶: 已响应=compliant+deviation 待确认=draft+pending_confirm 未分配=unassigned
 RESPONDED_STATUSES = ("compliant", "deviation")
 PENDING_STATUSES = ("draft", "pending_confirm")
+
+# 模板原文预填(用户决策 2026-08-16): 所有商务类格式模板——投标响应函/法定代表人
+# 授权委托书/报价一览表/分项价格表/投标货物分项报价明细表/商务偏离表(项目要求及
+# 报价响应表)/技术偏离表(技术条款响应/偏离表)等, 不限于——的固定文字原文照抄进
+# required_format.template_text。渲染为**纯正文段落**(v2: 引用块前缀与标记行是管线
+# 元数据, 不进交付物——回放实证曾连同 bullet 一起被当正文转进 docx); 照抄非确定性
+# → 人核清单第三节比对兜底。
+
+# 技术卷兜底节标题(v2 中性化): 内部标签"未挂接格式槽的技术条款(清单驱动)"是管线
+# 词汇, 不进交付物; 出处口径在覆盖率报表 sidecar 标注。
+ORPHAN_SECTION_TITLE = "其他技术要求响应"
 
 # 实体 lint 可确定性提取的候选(白名单外 → [待核对]);
 # person/project 无确定性模式, 由白名单命中统计覆盖——报告如实声明此边界。
@@ -147,22 +170,6 @@ def _cell(value) -> str:
     return str(value).replace("|", "\\|").replace("\n", " ")
 
 
-def _anchor_line(clause: dict) -> str:
-    """要求原文锚点: 「quote」(source_file §section 段para 页page)。"""
-    ref = clause.get("source_ref") or {}
-    quote = ref.get("quote")
-    parts = [str(clause.get("source_file") or "")]
-    if ref.get("section"):
-        parts.append(f"§{ref['section']}")
-    if ref.get("para") is not None:
-        parts.append(f"段{ref['para']}")
-    if ref.get("page") is not None:
-        parts.append(f"页{ref['page']}")
-    loc = " ".join(p for p in parts if p)
-    quoted = f"「{quote}」" if isinstance(quote, str) and quote.strip() else "(缺原文锚点)"
-    return f"{quoted}({loc})" if loc else quoted
-
-
 def derive_fill_status(node: dict) -> tuple[str, str]:
     """fill_status 现算不落盘(D7): 骨架渲染时 text=unfilled, 其余均含人核成分。"""
     slot_type = node["slot_type"]
@@ -173,6 +180,23 @@ def derive_fill_status(node: dict) -> tuple[str, str]:
     if slot_type == "table":
         return "needs_human_verify", "合并单元格/列宽管道表格无法表达, 标[待人工复刻]"
     return "unfilled", "骨架待填"
+
+
+def template_text_of(node: dict) -> str | None:
+    """节点携带的模板原文(非空字符串或 None); 空串/非字符串属装载期校验职责。"""
+    template_text = (node.get("required_format") or {}).get("template_text")
+    return template_text if isinstance(template_text, str) and template_text.strip() else None
+
+
+def template_body_lines(node: dict) -> list[str]:
+    """模板原文 → 纯正文段落(v2 净化: 引用块前缀与标记行是管线元数据, 不进交付物)。
+
+    无模板返回空列表; 适用于全部槽位类型。空行保留(模板段落的排版语义)。
+    """
+    template_text = template_text_of(node)
+    if template_text is None:
+        return []
+    return [ln.rstrip() for ln in template_text.splitlines()]
 
 
 # =============================================================================
@@ -217,6 +241,10 @@ def load_structure(state_dir: Path) -> list[dict]:
             raise BuildOutputError(f"structure.json items[{index}] path 应为非空字符串: {path}")
         if not isinstance(node.get("linked_clause_ids") or [], list):
             raise BuildOutputError(f"structure.json items[{index}] linked_clause_ids 应为数组: {path}")
+        template_text = (node.get("required_format") or {}).get("template_text")
+        if template_text is not None and (not isinstance(template_text, str) or not template_text.strip()):
+            # schema minLength:1 的消费侧收口(同 table_spec 形状校验先例): 空串=半成品照抄, 拒绝渲染
+            raise BuildOutputError(f"structure.json items[{index}] {node['node_id']} required_format.template_text 应为非空字符串或 null(模板原文照抄): {path}")
         if node["slot_type"] == "table":
             table_spec = (node.get("required_format") or {}).get("table_spec")
             if table_spec is not None:
@@ -249,32 +277,52 @@ def load_whitelist(state_dir: Path) -> dict | None:
     return data
 
 
+def load_responses(state_dir: Path) -> list[dict]:
+    """装载 responses.json(阶段4a 技术响应权威态, responses.py merge 落账+签名)。
+
+    缺失 → [](骨架模式回退: 条目体渲染待填占位); 在盘但形态异常/缺必填 → 拒绝渲染
+    (退出码 1, 先跑 responses.py merge 而不是带病渲染)。签名校验由 state_guard 前置
+    覆盖(responses.json 在 AUTHORITATIVE_FILES 五元组内, 脚本外直写会在读盘前被拦)。
+    """
+    path = state_dir / "responses.json"
+    if not path.is_file():
+        return []
+    data = _load_json_file(path, "responses.json")
+    if not isinstance(data, list) or not all(isinstance(r, dict) for r in data):
+        raise BuildOutputError(f"responses.json 结构异常(应为对象数组), 拒绝渲染(先人工核查): {path}")
+    for index, item in enumerate(data):
+        for field in ("clause_id", "response_text", "source_mode"):
+            if not isinstance(item.get(field), str) or not item[field].strip():
+                raise BuildOutputError(f"responses.json items[{index}] 缺非空字符串 {field}, 拒绝渲染(先重跑 responses.py merge): {path}")
+    return data
+
+
 # =============================================================================
 # ② 条目渲染(技术卷逐条款条目, D2 锚点载体)
 # =============================================================================
 
 
-def render_clause_entry(clause: dict, num: str, level: int = 3) -> list[str]:
-    """条目 = 标题(N.M 响应[clause_id], mandatory 整体加粗) + 五字段条目体。"""
+def render_clause_entry(clause: dict, num: str, level: int = 3, response: dict | None = None) -> list[str]:
+    """条目 = 标题(N.M 响应[clause_id], mandatory 整体加粗) + 正文(response_text)。
+
+    正文只含交付内容: 有响应 → response_text(+points 要点列表); 无响应 → 骨架回退
+    待填占位。锚点/满足状态/证据引用等编排元数据不进双卷正文(回放实证 2026-08-18
+    线程 1a80a1d8: 五字段 bullet 被当正文写进交付物/转换进 docx)——条款原文锚点在
+    偏离表可查, 状态在覆盖率报表逐条款附录 sidecar 可查。
+    """
     title = f"{num} 响应[{clause['clause_id']}]"
     if clause["class"] == "mandatory":
-        title = f"**{title}**"  # convert.py 不支持高亮, 加粗是唯一强调载体
-    skeleton = clause.get("response_skeleton") or {}
+        title = f"**{title}**"  # mandatory 条款是废标级风险, 加粗是唯一强调载体
     lines = ["#" * level + " " + title, ""]
-    lines.append(f"- **要求原文锚点**: {_anchor_line(clause)}")
-    points = skeleton.get("points") or []
-    if points:
-        lines.append("- **响应要点**:")
-        lines.extend(f"  - {_cell(p)}" for p in points)
+    if response is not None:
+        points = response.get("points") or []
+        if points:
+            lines.extend(f"- {_cell(p)}" for p in points)
+            lines.append("")
+        lines.extend(ln.rstrip() for ln in response["response_text"].splitlines())
+        lines.append("")
     else:
-        lines.append("- **响应要点**: (待填)")
-    evidence = skeleton.get("evidence_ref")
-    lines.append(f"- **证据引用**: {evidence if isinstance(evidence, str) and evidence.strip() else '(待填)'}")
-    status = clause["response_status"]
-    lines.append(f"- **满足状态**: {status}({STATUS_LABELS.get(status, status)})")
-    suggestion = skeleton.get("suggestion")
-    lines.append(f"- **suggestion**: {suggestion if isinstance(suggestion, str) and suggestion.strip() else '(待填)'}")
-    lines.append("")
+        lines.extend(["(响应正文待生成或待填写)", ""])
     return lines
 
 
@@ -290,6 +338,13 @@ def _table_rows(table_spec: dict) -> int:
     return rows if isinstance(rows, int) and not isinstance(rows, bool) and rows >= 1 else 1
 
 
+def _fixed_row_count(node: dict) -> int:
+    """节点表格槽的固定行数(非表格/无 fixed_rows → 0); 摘要 fixed_rows_replicated 计数用。"""
+    table_spec = (node.get("required_format") or {}).get("table_spec")
+    fixed = table_spec.get("fixed_rows") if isinstance(table_spec, dict) else None
+    return len(fixed) if isinstance(fixed, list) else 0
+
+
 def _next_free_number(claimed: set[int]) -> int:
     """下一个未占用节号(从已占用最大值 +1 起顺延)。"""
     number = max(claimed) + 1 if claimed else 1
@@ -303,12 +358,14 @@ def _allocate_section_numbers(nodes: list[dict]) -> tuple[dict[str, str], set[in
 
     优先认领槽位标题前导数字; 撞号或无数字时顺延取未占用号——原实现两槽同前导
     数字(或无数字回退计数与带号槽重合)会产出重复"N.1 响应[...]"标题, 卷末孤儿节
-    max(titled)+1 也可能与顺延号撞号。返回 (node_id → 节号, 已占用集合——供孤儿节续号)。
+    max(titled)+1 也可能与顺延号撞号。镜像 group 不占号; origin=self_created 的
+    自拟挂接位(responses.py 建)承载条目, 必须占号。返回 (node_id → 节号, 已占用
+    集合——供孤儿节续号)。
     """
     claimed: set[int] = set()
     numbers: dict[str, str] = {}
     for node in nodes:
-        if node["slot_type"] == "group":
+        if node["slot_type"] == "group" and node.get("origin") != "self_created":
             continue
         matched = re.match(r"\s*(\d+)", node["path"].split("/")[-1])
         number = int(matched.group(1)) if matched else _next_free_number(claimed)
@@ -319,30 +376,51 @@ def _allocate_section_numbers(nodes: list[dict]) -> tuple[dict[str, str], set[in
     return numbers, claimed
 
 
-def render_volume_md(volume: str, structure: list[dict], clauses: list[dict]) -> tuple[str, list[dict]]:
-    """渲染单卷: 镜像章节树(path 标题链→# 层级) + 槽位标注 + 技术卷条目挂接。
+def _linked_clause_labels(node: dict, clauses_by_id: dict[str, dict]) -> list[str]:
+    """关联条款标注(覆盖率报表"槽位编排表"专用): 缺失→异常标注; superseded/voided→历史状态。"""
+    parts = []
+    for cid in node.get("linked_clause_ids") or []:
+        clause = clauses_by_id.get(cid)
+        if clause is None:
+            parts.append(f"{cid}(不存在——异常, 不静默)")
+        elif clause.get("superseded_by") is not None:
+            parts.append(f"{cid}(已被 {clause['superseded_by']} 取代)")
+        elif clause.get("voided"):
+            parts.append(f"{cid}(已作废)")
+        else:
+            parts.append(f"{cid}({clause['response_status']})")
+    return parts
 
-    纯函数: 返回 (markdown, 本卷异常)——悬挂外键等异常由调用方合并, 不以出参方式
-    变异共享列表(隐藏副作用)。
+
+def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], responses: list[dict] | None = None) -> tuple[str, list[dict]]:
+    """渲染单卷: 镜像章节树(path 标题链→# 层级) + 交付正文 + 技术卷条目挂接。
+
+    v2 双卷净化(回放实证 2026-08-18 线程 1a80a1d8: 槽位 bullet/引用块标记等管线
+    元数据被当正文写进交付物/转换进 docx): 正文只含交付内容——模板原文纯段落/
+    表格列头+固定行逐字+剩余待填行/image 干净占位/条目 response_text; 槽位编排
+    元数据迁覆盖率报表"槽位编排表" sidecar。纯函数: 返回 (markdown, 本卷异常)——
+    悬挂外键等异常由调用方合并, 不以出参方式变异共享列表(隐藏副作用)。
     """
+    responses_by_id = {r["clause_id"]: r for r in (responses or [])}
     clauses_by_id = {c["clause_id"]: c for c in clauses}
     nodes = [n for n in structure if n["volume"] == volume]
-    active_tech = [c for c in clauses if _is_active(c) and c.get("category") == "technical"]
+    active_tech = [c for c in clauses if _is_active(c) and c.get("category") in ENTRY_CATEGORIES]
     section_numbers: dict[str, str] = {}
     claimed: set[int] = set()
     if volume == "technical":
         section_numbers, claimed = _allocate_section_numbers(nodes)
 
-    # 活技术条款 → 首个挂接它的非 group 技术卷节点(多处挂接以首处为准渲染, 零遗漏优先)
+    # 活条款 → 首个挂接它的可承载节点(镜像 group 不承载; origin=self_created 自拟
+    # 挂接位承载——多处挂接以首处为准渲染, 零遗漏优先)
     linked_map: dict[str, str] = {}
     for node in nodes:
-        if node["slot_type"] == "group":
+        if node["slot_type"] == "group" and node.get("origin") != "self_created":
             continue
         for cid in node.get("linked_clause_ids") or []:
             linked_map.setdefault(cid, node["node_id"])
 
     def _ensure_blank() -> None:
-        """块与块之间保证空行分隔(md 解析器/convert.py 对紧跟列表的标题敏感)。"""
+        """块与块之间保证空行分隔(md 解析器对紧跟列表/表格的标题敏感)。"""
         if lines and lines[-1] != "":
             lines.append("")
 
@@ -356,46 +434,39 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict]) ->
         lines.append("")
         required_format = node.get("required_format") or {}
         desc = required_format.get("desc")
-        if node["slot_type"] == "group":
-            if desc:
-                lines.extend([f"> {desc}", ""])
-            continue
+        # 模板原文预填(用户决策): 所有商务类格式模板固定文字原文带入骨架——单调用点
+        # 在 group 早退之前, 全部槽位类型(含 group 格式章节说明)统一生效; v2 渲染为
+        # 纯正文段落(引用块前缀与标记行是管线元数据, 不进交付物)
+        template_lines = template_body_lines(node)
+        if template_lines:
+            lines.extend(template_lines)
+            lines.append("")
         slot_type = node["slot_type"]
-        lines.append(f"- **槽位类型**: {SLOT_TYPE_LABELS[slot_type]}")
-        if desc:
-            lines.append(f"- **格式要求**: {desc}")
-        fill, reason = derive_fill_status(node)
-        lines.append(f"- **填写状态(现算)**: {fill}({reason})")
-        if slot_type == "text":
-            lines.append("- **待填提示**: 按格式要求填写正文(格式即合规, 不得自创结构)")
-        elif slot_type == "image":
-            lines.append("- **待填提示**: 需提供扫描件(见卷末扫描件清单; 图片不经 md 链路插入, 终稿人工替换占位)")
+        if slot_type == "group" and node.get("origin") != "self_created":
+            continue  # 镜像结构组无正文; desc(编排说明)迁覆盖率报表槽位编排表 sidecar。
+            # 自拟挂接位(responses.py 建)是 group 但承载条目——不得在此早退, 否则其
+            # 挂接条款既不出条目也不落卷末兜底节, 静默丢失(与 linked_map 跳过条件对齐)。
+        if slot_type == "image":
+            # 干净占位: 终稿由用户在文档空间排版时插入扫描件(图片不经 md 链路插入)
+            lines.append(f"[此处插入:{desc or title}]")
+            lines.append("")
 
-        # 关联条款解析(缺失→异常不静默; superseded/voided→标注历史状态)
-        linked_ids = node.get("linked_clause_ids") or []
-        if linked_ids:
-            parts = []
-            for cid in linked_ids:
-                clause = clauses_by_id.get(cid)
-                if clause is None:
-                    message = f"structure {node['node_id']} 悬挂外键 {cid}(reason=missing)——异常不静默, 待人工改链(D7)"
-                    anomalies.append({"kind": "clause_fk_invalid", "source": "structure", "item_id": node["node_id"], "clause_id": cid, "reason": "missing", "message": message})
-                    parts.append(f"{cid}(不存在——异常, 不静默)")
-                elif clause.get("superseded_by") is not None:
-                    parts.append(f"{cid}(已被 {clause['superseded_by']} 取代)")
-                elif clause.get("voided"):
-                    parts.append(f"{cid}(已作废)")
-                else:
-                    parts.append(f"{cid}({clause['response_status']})")
-            lines.append(f"- **关联条款**: {'; '.join(parts)}")
+        # 悬挂外键(缺失→异常不静默; 标注进覆盖率报表槽位编排表, 不进交付正文)
+        for cid in node.get("linked_clause_ids") or []:
+            if cid not in clauses_by_id:
+                message = f"structure {node['node_id']} 悬挂外键 {cid}(reason=missing)——异常不静默, 待人工改链(D7)"
+                anomalies.append({"kind": "clause_fk_invalid", "source": "structure", "item_id": node["node_id"], "clause_id": cid, "reason": "missing", "message": message})
 
-        # 表格槽: 列头骨架照渲染 + [待人工复刻] 渲染边界如实声明
+        # 表格槽: 列头 + fixed_rows 逐字复刻 + 剩余空白待填行 + [待人工复刻] 边界声明
         table_spec = required_format.get("table_spec")
         if slot_type == "table":
             if isinstance(table_spec, dict) and table_spec.get("columns"):
                 columns = [str(c) for c in table_spec["columns"]]
+                fixed_rows = table_spec.get("fixed_rows") if isinstance(table_spec.get("fixed_rows"), list) else []
                 lines.extend(["", "| " + " | ".join(_cell(c) for c in columns) + " |", "| " + " | ".join("---" for _ in columns) + " |"])
-                for _ in range(_table_rows(table_spec)):
+                for row in fixed_rows:  # 模板固定行逐字复刻(反馈2: 表格也要 1:1)
+                    lines.append("| " + " | ".join(_cell("" if c is None else c) for c in row) + " |")
+                for _ in range(max(0, _table_rows(table_spec) - len(fixed_rows))):
                     lines.append("| " + " | ".join("(待填)" for _ in columns) + " |")
                 lines.append("")
             lines.append("> [待人工复刻] 合并单元格/列宽等原表格式 markdown 管道无法表达, 须人工按招标文件原样复刻——已入人核清单。")
@@ -404,33 +475,34 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict]) ->
             lines.append("> 人核项(签字/盖章/份数/页码), 不做确定性判定——已入人核清单, 终稿人工核签。")
             lines.append("")
 
-        # 技术卷: 活技术条款挂接本槽位 → 渲染条目(标题 N.M 响应[clause_id], D2;
-        # N 取预分配节号——撞号/无号已顺延去重, 全卷唯一)
+        # 技术卷: 活条款挂接本槽位 → 渲染条目(标题 N.M 响应[clause_id], D2;
+        # N 取预分配节号——撞号/无号已顺延去重, 全卷唯一; 正文=阶段4a 响应,
+        # 无响应骨架回退待填占位)
         if volume == "technical":
             entries = [c for c in active_tech if linked_map.get(c["clause_id"]) == node["node_id"]]
             if entries:
                 parent_num = section_numbers[node["node_id"]]
                 for index, clause in enumerate(entries, 1):
                     _ensure_blank()
-                    lines.extend(render_clause_entry(clause, f"{parent_num}.{index}"))
+                    lines.extend(render_clause_entry(clause, f"{parent_num}.{index}", response=responses_by_id.get(clause["clause_id"])))
 
-    # 技术卷兜底: 未挂接任何槽位的活技术条款 → 卷末专节渲染(逐条款条目零遗漏);
-    # 节号在已占用集合之后顺延, 不与既有编号节撞号
+    # 技术卷兜底: 未挂接任何槽位的活条款 → 卷末专节渲染(逐条款条目零遗漏);
+    # 节号在已占用集合之后顺延, 不与既有编号节撞号; 标题中性化(出处 sidecar 标注)
     if volume == "technical":
         orphans = [c for c in active_tech if c["clause_id"] not in linked_map]
         if orphans:
             parent_num = str(_next_free_number(claimed))
             _ensure_blank()
-            lines.append(f"## {parent_num} 未挂接格式槽的技术条款(清单驱动)")
+            lines.append(f"## {parent_num} {ORPHAN_SECTION_TITLE}")
             lines.append("")
             for index, clause in enumerate(orphans, 1):
-                lines.extend(render_clause_entry(clause, f"{parent_num}.{index}"))
+                lines.extend(render_clause_entry(clause, f"{parent_num}.{index}", response=responses_by_id.get(clause["clause_id"])))
 
     # 扫描件清单(image 槽汇总; 图片不经 md 链路插入)
     image_nodes = [n for n in nodes if n["slot_type"] == "image"]
     if image_nodes:
         _ensure_blank()
-        lines.extend(["## 扫描件清单(图片槽汇总)", "", "图片不经 md 链路插入: 终稿由 python-docx 后处理插占位图后人工替换。", "", "| 槽位 | 位置 | 要求 |", "| --- | --- | --- |"])
+        lines.extend(["## 扫描件清单(图片槽汇总)", "", "图片不经 md 链路插入: 终稿由用户在文档空间排版时插入扫描件。", "", "| 槽位 | 位置 | 要求 |", "| --- | --- | --- |"])
         lines.extend(f"| {n['node_id']} | {_cell(n['path'])} | {_cell((n.get('required_format') or {}).get('desc') or '')} |" for n in image_nodes)
         lines.append("")
 
@@ -447,24 +519,36 @@ def deviation_rows(clauses: list[dict]) -> list[dict]:
     return [c for c in clauses if _is_active(c) and (c["class"] == "mandatory" or c["response_status"] == "deviation")]
 
 
-def render_deviation_md(rows: list[dict]) -> str:
-    """渲染偏离表; rows 由调用方经 deviation_rows(clauses) 预计算一次(渲染与摘要共用, 不重算)。"""
+def render_deviation_md(rows: list[dict], structure: list[dict]) -> str:
+    """渲染偏离表——按招标文件模板拆商务/技术两张(用户决策): category=technical 入
+    技术偏离表, 其余(commercial/qualification/format/service)入商务偏离表; rows 由调用方
+    经 deviation_rows(clauses) 预计算一次(渲染与摘要共用, 不重算)。"""
     lines = [
         "# 偏离表",
         "",
         "> 口径: 仅强制条款(class=mandatory)与偏离项(response_status=deviation)入表——",
         "> 强制条款即使已响应也须声明零偏离; 其余条款不入表。superseded/voided 历史条款除外。",
+        "> 按招标文件模板拆两张: category=technical 入技术偏离表, 其余入商务偏离表。",
         "",
-        "| 条款ID | 类别 | 响应状态 | 招标要求 | 原文锚点 | 偏离说明 |",
-        "| --- | --- | --- | --- | --- | --- |",
     ]
-    for clause in rows:
-        requirement = _cell(clause.get("requirement") or "")
-        quote = _cell((clause.get("source_ref") or {}).get("quote") or "")
-        lines.append(f"| {clause['clause_id']} | {CLASS_LABELS.get(clause['class'], clause['class'])} | {clause['response_status']}({STATUS_LABELS.get(clause['response_status'], '')}) | {requirement} | {quote} | (待填) |")
-    if not rows:
-        lines.append("| (无强制条款且无偏离项) | | | | | |")
-    lines.append("")
+
+    def _table(title: str, section_rows: list[dict]) -> None:
+        lines.extend([f"## {title}", "", "| 条款ID | 类别 | 响应状态 | 招标要求 | 原文锚点 | 偏离说明 |", "| --- | --- | --- | --- | --- | --- |"])
+        for clause in section_rows:
+            requirement = _cell(clause.get("requirement") or "")
+            quote = _cell((clause.get("source_ref") or {}).get("quote") or "")
+            lines.append(f"| {clause['clause_id']} | {CLASS_LABELS.get(clause['class'], clause['class'])} | {clause['response_status']}({STATUS_LABELS.get(clause['response_status'], '')}) | {requirement} | {quote} | (待填) |")
+        if not section_rows:
+            lines.append("| (无) | | | | | |")
+        lines.append("")
+
+    _table("技术偏离表(technical 条款)", [c for c in rows if c.get("category") == "technical"])
+    _table("商务偏离表(其余条款: commercial/qualification/format/service)", [c for c in rows if c.get("category") != "technical"])
+
+    # 招标偏离表模板槽(path 含"偏离"的 table 槽): 模板原文已由商务卷镜像预填, 指回防两处填报
+    dev_templates = [n for n in structure if n["slot_type"] == "table" and "偏离" in n["path"]]
+    if dev_templates:
+        lines.extend(["", "> 招标模板原文(商务偏离表/技术偏离表的列头与固定文字)见商务卷对应章节镜像(template_text 预填), 终稿按模板原样填报:", *(f"> - {n['node_id']} {_cell(n['path'])}" for n in dev_templates), ""])
     return "\n".join(lines)
 
 
@@ -493,7 +577,7 @@ def _bucket(status: str) -> str:
     return "未分配"
 
 
-def render_coverage_md(clauses: list[dict], coverage: dict) -> str:
+def render_coverage_md(clauses: list[dict], coverage: dict, structure: list[dict]) -> str:
     lines = [
         "# 覆盖率报表",
         "",
@@ -521,12 +605,36 @@ def render_coverage_md(clauses: list[dict], coverage: dict) -> str:
         lines.append(f"| {clause['clause_id']} | {CLASS_LABELS.get(clause['class'], clause['class'])} | {clause.get('category', '')} | {status}({STATUS_LABELS.get(status, '')}) | {_bucket(status)} |")
     if coverage["total"] == 0:
         lines.append("| (无活条款) | | | | |")
+
+    # 槽位编排表(v2 sidecar): 双卷净化后槽位元数据的归属地——不进交付双卷正文
+    # (回放实证: 槽位类型/格式要求/填写状态/关联条款 bullet 曾被当正文写进交付物)。
+    clauses_by_id = {c["clause_id"]: c for c in clauses}
+    lines.extend(["", "## 槽位编排表(sidecar——槽位元数据不进交付双卷正文)", "", "| 节点 | 卷 | 位置 | 槽位类型 | 格式要求 | 填写状态(现算) | 关联条款 |", "| --- | --- | --- | --- | --- | --- | --- |"])
+    for node in structure:
+        if node["slot_type"] == "group":
+            fill, reason = "—", "结构组"
+        else:
+            fill, reason = derive_fill_status(node)
+        origin = " / 自拟" if node.get("origin") == "self_created" else ""
+        labels = "; ".join(_linked_clause_labels(node, clauses_by_id))
+        slot_label = f"{SLOT_TYPE_LABELS.get(node['slot_type'], node['slot_type'])}{origin}"
+        desc_label = _cell((node.get("required_format") or {}).get("desc") or "")
+        lines.append(f"| {node['node_id']} | {node['volume']} | {_cell(node['path'])} | {slot_label} | {desc_label} | {fill}({reason}) | {_cell(labels)} |")
+    if not structure:
+        lines.append("| (无) | | | | | | |")
+    lines.extend(
+        [
+            "",
+            f"> 技术卷「{ORPHAN_SECTION_TITLE}」节 = 未挂接任何格式槽的活条款({'/'.join(ENTRY_CATEGORIES)})兜底;",
+            "> 关联条款列标注(不存在) = 悬挂外键, 同时计入摘要 anomalies 待人工改链。",
+        ]
+    )
     lines.append("")
     return "\n".join(lines)
 
 
-def render_checklist_md(structure: list[dict]) -> tuple[str, dict]:
-    """人核清单: format_check 项(签字/盖章/份数/页码) + [待人工复刻]表格槽, 全部人核。"""
+def render_checklist_md(structure: list[dict], responses: list[dict] | None = None) -> tuple[str, dict]:
+    """人核清单: format_check 项(签字/盖章/份数/页码) + [待人工复刻]表格槽 + 生成内容人核。"""
     format_checks = [n for n in structure if n["slot_type"] == "format_check"]
     replica_tables = [n for n in structure if n["slot_type"] == "table"]
     lines = [
@@ -551,8 +659,30 @@ def render_checklist_md(structure: list[dict]) -> tuple[str, dict]:
         lines.append(f"| {node['node_id']} | {_cell(node['path'])} | {_cell(columns)} | {_table_rows(spec)} | {_cell((node.get('required_format') or {}).get('desc') or '')} |")
     if not replica_tables:
         lines.append("| (无) | | | | |")
+
+    # 模板原文比对(用户决策): template_text 照抄非确定性 → 终稿前逐字比对招标原文
+    template_nodes = [n for n in structure if template_text_of(n) is not None]
+    lines.extend(["", "## 三、模板原文比对(照抄非确定性, 终稿前逐字比对招标文件)", "", "| 节点 | 位置 | 字数 |", "| --- | --- | --- |"])
+    for node in template_nodes:
+        lines.append(f"| {node['node_id']} | {_cell(node['path'])} | {len(template_text_of(node))} |")
+    if not template_nodes:
+        lines.append("| (无) | | |")
+
+    # 生成内容人核(v2 反馈3/4): 阶段4a 三模式生成的响应正文——web 引用逐条核实
+    # (引用不进交付正文, 只在此留痕) + needs_human_verify 项供源留痕复核。
+    verify_items = [r for r in (responses or []) if r.get("needs_human_verify") or r.get("citations")]
+    lines.extend(["", "## 四、生成内容人核(阶段4a 生成响应: web 引用逐条核实 + 供源留痕复核)", "", "| 条款 | 供源 | 人核标记 | 引用标题 | URL | 引用片段 |", "| --- | --- | --- | --- | --- | --- |"])
+    for item in verify_items:
+        mark = "需人核" if item.get("needs_human_verify") else "-"
+        citations = item.get("citations") or []
+        if citations:
+            lines.extend(f"| {item.get('clause_id')} | {item.get('source_mode')} | {mark} | {_cell(c.get('title') or '')} | {_cell(c.get('url') or '')} | {_cell(c.get('quote') or '')} |" for c in citations)
+        else:
+            lines.append(f"| {item.get('clause_id')} | {item.get('source_mode')} | {mark} | - | - | - |")
+    if not verify_items:
+        lines.append("| (无) | | | | | |")
     lines.append("")
-    return "\n".join(lines), {"format_check": len(format_checks), "replica_tables": len(replica_tables)}
+    return "\n".join(lines), {"format_check": len(format_checks), "replica_tables": len(replica_tables), "template_compare": len(template_nodes), "generated_content": len(verify_items)}
 
 
 # =============================================================================
@@ -695,23 +825,28 @@ def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict) -> s
 
 def run_build(state_dir: Path, out_dir: Path) -> int:
     """读状态(只读) → 渲染六件套 → 原子写盘 → stdout 单行 JSON 摘要; 返回退出码。"""
+    # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状)
+    guard_problems = state_guard.verify_state_files(state_dir)
+    if guard_problems:
+        raise BuildOutputError("权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(guard_problems))
     clauses = load_clauses(state_dir)
     structure = load_structure(state_dir)
     whitelist = load_whitelist(state_dir)
+    responses = load_responses(state_dir)  # 阶段4a 权威态; 缺失 → 骨架模式回退
 
     anomalies: list[dict] = []
     if whitelist is None:
         anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, lint 按空集 diff(全部候选进[待核对])——确认门1 未锁定白名单或文件被移动"})
 
-    commercial_md, commercial_anomalies = render_volume_md("commercial", structure, clauses)
-    technical_md, technical_anomalies = render_volume_md("technical", structure, clauses)
+    commercial_md, commercial_anomalies = render_volume_md("commercial", structure, clauses, responses)
+    technical_md, technical_anomalies = render_volume_md("technical", structure, clauses, responses)
     anomalies.extend(commercial_anomalies)
     anomalies.extend(technical_anomalies)
     dev_rows = deviation_rows(clauses)  # 渲染与摘要共用一份, 不对同一数据计算两次
-    deviation_md = render_deviation_md(dev_rows)
+    deviation_md = render_deviation_md(dev_rows, structure)
     coverage = compute_coverage(clauses)
-    coverage_md = render_coverage_md(clauses, coverage)
-    checklist_md, checklist_counts = render_checklist_md(structure)
+    coverage_md = render_coverage_md(clauses, coverage, structure)
+    checklist_md, checklist_counts = render_checklist_md(structure, responses)
     flagged, hits = run_entity_lint(clauses, whitelist)
     anomalies.extend(flagged)
     lint_md = render_lint_md(whitelist, flagged, hits)
@@ -727,10 +862,15 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     for name in OUTPUT_FILES:
         atomic_write_text(out_dir / name, outputs[name])
 
+    responded_ids = {r.get("clause_id") for r in responses}
     summary = {
         "written": list(OUTPUT_FILES),
         "coverage": coverage,
         "deviation_rows": len(dev_rows),
+        "template_prefill_count": sum(1 for n in structure if template_text_of(n) is not None),
+        "responses_rendered": sum(1 for c in clauses if _is_active(c) and c.get("category") in ENTRY_CATEGORIES and c["clause_id"] in responded_ids),
+        "fixed_rows_replicated": sum(_fixed_row_count(n) for n in structure),
+        "self_created_sections": sum(1 for n in structure if n.get("origin") == "self_created"),
         "human_checklist": checklist_counts,
         "lint": {"flagged": len(flagged), "entity_hits": len(hits), "whitelist_missing": whitelist is None},
         "anomalies": anomalies,
@@ -744,6 +884,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="build_output.py",
         description="投标方案编写·阶段4 双卷骨架渲染: 商务卷=structure 镜像 / 技术卷=逐条款条目(标题嵌 clause_id, D2) / 偏离表 / 覆盖率报表 / 人核清单 / 实体lint(无 LLM, 不做 Word 转换)",
+        epilog="示例: python build_output.py --state-dir state --out output",
     )
     parser.add_argument("--state-dir", required=True, help="状态目录(只读: clauses.json / structure.json / entities_whitelist.json; 派生字段现算不落盘)")
     parser.add_argument("--out", required=True, help="输出目录(六件套 md, 临时文件+os.replace 原子写盘, 重跑字节级幂等)")

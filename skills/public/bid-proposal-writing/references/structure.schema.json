@@ -38,7 +38,31 @@
         },
         "table_spec": {
           "type": ["object", "null"],
-          "description": "table 槽复刻的表格结构。形状(build_output.py 消费侧校验,即出即拒): columns=非空列头标量数组;rows=数据行数整数≥1(缺省按 1)——是行数计数,不是行数据数组。非 table 槽为 null。合并单元格/列宽等 markdown 管道无法表达的部分由 build_output.py 标 [待人工复刻] 并入人核清单。"
+          "description": "table 槽复刻的表格结构。形状(build_output.py 消费侧校验,即出即拒): columns=非空列头标量数组;rows=数据行数整数≥1(缺省按 1)——是行数计数,不是行数据数组。非 table 槽为 null。合并单元格/列宽等 markdown 管道无法表达的部分由 build_output.py 标 [待人工复刻] 并入人核清单。",
+          "properties": {
+            "columns": {
+              "type": "array",
+              "items": {"type": ["string", "number"]},
+              "minItems": 1,
+              "description": "非空列头标量数组(与招标文件表格列头逐字一致)。"
+            },
+            "rows": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "数据行数计数(缺省按 1),不是行数据数组。"
+            },
+            "fixed_rows": {
+              "type": ["array", "null"],
+              "items": {"type": "array", "items": {"type": ["string", "number", "null"]}},
+              "description": "表格模板既有固定行的逐字拷贝(二维数组:示例行/说明行等非空白待填行;每行列数=columns 长度,待填单元格写空串,空白待填行不入列)。check_format.py 对源文件逐单元格校验,build_output.py 复刻渲染;无法辨认时为 null,不猜。"
+            }
+          }
+        },
+        "template_text": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 10000,
+          "description": "招标格式模板的固定文字原文照抄(法人身份证明声明文/承诺函正文/偏离表表格原文等)。阶段2 子模板②从 chunk 原文逐字照抄,不得改写/概括/拼接;chunk 原文不存在该模板文字时为 null。build_output 渲染为引用块并计入 summary template_prefill_count,并入人核清单模板比对项(照抄非确定性,终稿人工比对兜底)。"
         }
       }
     },
@@ -54,6 +78,11 @@
       "type": "string",
       "enum": ["unfilled", "filled", "needs_human_verify"],
       "description": "D7 派生字段:不入库,渲染/重灌时现算——镜像槽不存在『偏离』概念,条款状态权威、槽位状态派生同步。本 schema 仅定义其值域供内存态/渲染态校验;候选 JSON 与落盘文件均不得包含该字段。"
+    },
+    "origin": {
+      "type": "string",
+      "enum": ["mirror", "self_created"],
+      "description": "节点来源(可选,缺省=mirror):mirror=镜像招标文件规定结构(默认,check_format 逐字校验) | self_created=阶段4a 技术响应自拟挂接位(招标文件未给技术章节锚点时由 responses.py merge 落位创建,免逐字校验、确认门呈现给人核)。"
     }
   }
 }

@@ -50,7 +50,7 @@ CLAUSE_FIELDS = {"clause_id", "source_file", "class", "category", "source_ref", 
 SOURCE_REF_FIELDS = {"page", "section", "para", "quote"}
 RESPONSE_SKELETON_FIELDS = {"points", "evidence_ref", "suggestion"}
 NODE_FIELDS = {"node_id", "volume", "path", "slot_type", "required_format", "linked_clause_ids"}
-REQUIRED_FORMAT_FIELDS = {"desc", "table_spec"}
+REQUIRED_FORMAT_FIELDS = {"desc", "table_spec", "template_text"}
 RUBRIC_ITEM_FIELDS = {"rubric_id", "item", "max_score", "scoring_method", "score_type", "linked_clause_ids", "source_ref"}
 
 CLAUSE_ID_RE = re.compile(r"^[A-Z]{2}-C-\d{3}$")  # 复合 ID: <文件代号>-C-<全局序号>
@@ -61,7 +61,7 @@ RUBRIC_ID_RE = re.compile(r"^R-\d{3}$")
 CHUNK_ID_RE = re.compile(r"^CH-\d{3,}$")
 TABLE_ID_RE = re.compile(r"^T-\d{3,}$")
 
-SCRIPT_MODULE_NAMES = ["ingest", "extract", "merge_addenda", "build_output", "score_simulate"]
+SCRIPT_MODULE_NAMES = ["ingest", "extract", "merge_addenda", "check_format", "responses", "build_output", "score_simulate", "snapshot", "state_guard"]
 
 
 def load_json(name: str):
@@ -481,10 +481,11 @@ class TestGenFixtures:
 # structure schema 额外声明派生字段 fill_status(值域供内存态/渲染态校验, 候选/落盘不含, D7)。
 
 REFERENCES_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "references"
-SCHEMA_FILES = ("clauses.schema.json", "structure.schema.json", "rubric.schema.json")
+SCHEMA_FILES = ("clauses.schema.json", "structure.schema.json", "rubric.schema.json", "responses.schema.json")
 DOC_FILES = ("classification.md", "extraction_prompt.md", "scoring_prompt.md")
 DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
-STRUCTURE_SCHEMA_FIELDS = NODE_FIELDS | {"fill_status"}
+# structure schema: 持久化字段 + 派生字段值域(fill_status) + 节点来源(origin, v2 阶段4a 自拟挂接位)
+STRUCTURE_SCHEMA_FIELDS = NODE_FIELDS | {"fill_status", "origin"}
 
 # 复合 clause_id 形态: <文件代号>-C-<全局序号>(ZB=招标文件/JS=技术规范书/PB=评分办法…)。
 # schema 契约比 fixture 正则宽(代号 2-4 字母/序号 1-6 位), 覆盖真实招标文件多卷量级。
@@ -3566,7 +3567,7 @@ class TestMergeAddendaUnitHelpers:
 
 # ===========================================================================
 # T6 build_output: 阶段4 双卷骨架渲染 + D2 clause_id 埋锚 + 偏离表/覆盖率 +
-#    实体 lint + 人核清单(无 LLM; 不做 Word 转换——Agent 另调 markdown-to-docx)
+#    实体 lint + 人核清单(无 LLM; 不做 Word 转换——交付止于 md, 排版导出在文档空间)
 # CLI: --state-dir <dir> --out <dir> → 六个 md: 商务卷/技术卷/偏离表/覆盖率报表/
 #    人核清单/实体lint报告
 # ① 商务卷=structure.json 镜像(只镜像不自创); ② 技术卷=镜像+逐条款条目,
@@ -3709,15 +3710,22 @@ class TestBuildOutputMirrorVolumes:
         for heading in ("# 技术部分", "## 1 技术方案", "## 2 技术参数响应表"):
             assert heading in lines, f"技术卷镜像缺 {heading!r}"
 
-    def test_slot_annotations_present(self, tmp_path):
+    def test_slot_annotations_migrated_to_coverage_sidecar(self, tmp_path):
+        """v2 双卷净化: 槽位编排元数据(类型/格式要求/填写状态/关联条款)迁覆盖率报表
+        "槽位编排表" sidecar, 不进交付双卷正文(回放实证: bullet 曾被当正文转进 docx)。"""
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
-        text = _out_text(tmp_path / "out", "商务卷.md")
-        for label in ("槽位类型", "格式要求", "待填提示", "填写状态"):
-            assert label in text, f"槽位标注缺 {label}"
+        coverage = _out_text(tmp_path / "out", "覆盖率报表.md")
+        commercial = _out_text(tmp_path / "out", "商务卷.md")
+        assert "## 槽位编排表" in coverage, "槽位编排元数据归属覆盖率报表 sidecar"
+        for label in ("槽位类型", "格式要求", "填写状态"):
+            assert label in coverage, f"槽位编排表缺 {label}"
         for label in ("文字槽", "表格槽", "图片槽", "格式核验槽"):
-            assert label in text
-        assert "按给定格式填报投标函并加盖投标人公章" in text, "格式要求=required_format.desc 原文"
+            assert label in coverage
+        assert "关联条款" in coverage, "关联条款列(sidecar 含悬挂外键标注)"
+        assert "按给定格式填报投标函并加盖投标人公章" in coverage, "格式要求=required_format.desc 原文"
+        for label in ("槽位类型", "待填提示", "填写状态", "关联条款"):
+            assert label not in commercial, f"交付正文不得携带管线元数据 {label}"
 
     def test_technical_entry_titles_embed_clause_id(self, tmp_path):
         """D2 锚点契约: 条目标题嵌 clause_id(交付物保留不删); superseded 条款不出条目。"""
@@ -3737,16 +3745,21 @@ class TestBuildOutputMirrorVolumes:
         assert any(ln.startswith("### **") and "响应[ZB-C-001]" in ln for ln in lines), "mandatory 条款 ZB-C-001 条目标题须加粗"
         assert "### 1.1 响应[ZB-C-002]" in lines, "非强制条款不加粗"
 
-    def test_entry_body_five_fields(self, tmp_path):
-        """条目体 = 要求原文锚点→响应要点→证据引用→满足状态→suggestion(不缺不漏)。"""
+    def test_entry_body_renders_response_text(self, tmp_path):
+        """v2: 条目体正文 = responses.json 的 response_text(+points); 编排元数据(锚点/
+        满足状态等)不进双卷——原文锚点在偏离表可查, 状态在覆盖率报表可查。"""
         state = _copy_prestate(tmp_path, merged=True)
+        responses = [
+            {"clause_id": "ZB-C-001", "response_text": "我方设备防护等级满足IP65,控制器采用S7-1500系列PLC。", "points": ["防护等级IP65", "控制器S7-1500"], "source_mode": "kf"},
+        ]  # noqa: E501
+        (state / "responses.json").write_text(json.dumps(responses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         _run_build(state, tmp_path / "out")
         text = _out_text(tmp_path / "out", "技术卷.md")
-        for field in ("要求原文锚点", "响应要点", "证据引用", "满足状态", "suggestion"):
-            assert field in text, f"条目体缺字段 {field}"
-        assert "设备防护等级不低于IP65,控制器采用S7-1500系列" in text, "原文锚点=source_ref.quote 原文"
-        assert "3.2.1" in text and "防护等级IP65" in text, "锚点定位(§section)与响应要点(points)入文"
-        assert "compliant" in text, "满足状态用枚举原值(机器可核)"
+        assert "我方设备防护等级满足IP65,控制器采用S7-1500系列PLC。" in text, "response_text 全文入条目体"
+        assert "- 防护等级IP65" in text and "- 控制器S7-1500" in text, "points 渲染为要点列表"
+        assert "(响应正文待生成或待填写)" in text, "无响应条目(ZB-C-002)骨架回退待填占位"
+        for field in ("要求原文锚点", "suggestion"):
+            assert field not in text, f"编排元数据 {field} 不得进交付正文"
 
     def test_image_slot_scan_list(self, tmp_path):
         """image 槽汇总扫描件清单(图片不经 md 链路插入, 终稿人工替换占位)。"""
@@ -3767,7 +3780,8 @@ class TestBuildOutputMirrorVolumes:
         assert "| 序号 | 招标要求 | 响应情况 | 满足状态 |" in technical
 
     def test_dangling_linked_clause_anomaly(self, tmp_path, capsys):
-        """linked_clause_ids 指向缺失条款 → 异常不静默(渲染标注 + 摘要 anomalies)。"""
+        """linked_clause_ids 指向缺失条款 → 异常不静默(摘要 anomalies + 覆盖率报表
+        槽位编排表标注; v2 净化后交付正文不再携带该标注)。"""
         state = _copy_prestate(tmp_path, merged=True)
         structure = _state_json(state, "structure.json")
         structure[1]["linked_clause_ids"] = ["ZB-C-999"]  # S-002
@@ -3775,7 +3789,8 @@ class TestBuildOutputMirrorVolumes:
         assert _run_build(state, tmp_path / "out") == 3
         summary = _last_summary_json(capsys)
         assert "clause_fk_invalid" in _anomaly_kinds(summary)
-        assert "ZB-C-999" in _out_text(tmp_path / "out", "商务卷.md"), "渲染处标注缺失, 不静默"
+        assert "ZB-C-999" in _out_text(tmp_path / "out", "覆盖率报表.md"), "覆盖率报表槽位编排表标注缺失, 不静默"
+        assert "ZB-C-999" not in _out_text(tmp_path / "out", "商务卷.md"), "交付正文不带管线标注"
 
 
 class TestBuildOutputDeviationTable:
@@ -3798,6 +3813,332 @@ class TestBuildOutputDeviationTable:
         text = _out_text(tmp_path / "out", "偏离表.md")
         for cid in ("ZB-C-001", "ZB-C-002", "BY-C-004"):
             assert cid in text, f"偏离项 {cid} 必须入表"
+
+
+class TestBuildOutputTemplatePrefill:
+    """模板原文预填(用户决策 2026-08-16): 所有商务类格式模板(投标响应函/授权委托书/报价一览表/
+    分项价格表/投标货物分项报价明细表/商务偏离表/技术偏离表等, 不限于)的固定文字原文照抄进
+    required_format.template_text, 渲染为**纯正文段落**(v2 净化: 引用块前缀与标记行是管线
+    元数据, 不进交付物)——适用于全部槽位类型。"""
+
+    @staticmethod
+    def _set_template(state, node_id, value):
+        nodes = _state_json(state, "structure.json")
+        for n in nodes:
+            if n["node_id"] == node_id:
+                rf = dict(n["required_format"])
+                rf["template_text"] = value
+                n["required_format"] = rf
+        (state / "structure.json").write_text(json.dumps(nodes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def test_text_slot_template_renders_plain_body(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-002", "致:XX大学\n我方经研究决定参加贵方项目投标。")
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "商务卷.md").splitlines()
+        assert "致:XX大学" in lines and "我方经研究决定参加贵方项目投标。" in lines, "template_text 逐行渲染为纯正文"
+        assert "> 致:XX大学" not in lines and "> 我方经研究决定" not in lines, "v2: 不带引用块前缀"
+        assert not any("模板原文" in ln and ln.startswith(">") for ln in lines), "v2: 无标记行"
+
+    def test_table_slot_template_coexists_with_column_skeleton(self, tmp_path):
+        """报价一览表/分项价格表/偏离表类 table 槽: 模板原文照抄 + 列头骨架共存。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-004", "投标报价一览表\n| 序号 | 货物名称 | 数量 | 总价(元) |")
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "商务卷.md")
+        lines = text.splitlines()
+        assert "投标报价一览表" in lines, "表格模板标题行照抄(纯正文行)"
+        assert "| 序号 | 货物名称 | 数量 | 总价(元) |" in text, "列头骨架照常渲染(待填行不动)"
+        assert "> 投标报价一览表" not in lines, "v2: 不带引用块前缀"
+
+    def test_group_node_template_rendered(self, tmp_path):
+        """group 节点(格式章节容器)带格式说明原文时同样预填。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-001", "投标文件装订顺序:投标函→法定代表人身份证明→开标一览表…")
+        _run_build(state, tmp_path / "out")
+        lines = _out_text(tmp_path / "out", "商务卷.md").splitlines()
+        assert "投标文件装订顺序:投标函→法定代表人身份证明→开标一览表…" in lines
+        assert "> 投标文件装订顺序" not in lines, "v2: 不带引用块前缀"
+
+    def test_null_template_no_body(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-002", "致:XX大学")
+        _run_build(state, tmp_path / "out")
+        with_template = _out_text(tmp_path / "out", "商务卷.md")
+        assert "致:XX大学" in with_template
+        # 撤掉模板重跑: 同一槽位不再出现模板正文(null → 空列表, 非残留)
+        self._set_template(state, "S-002", None)
+        _run_build(state, tmp_path / "out")
+        assert "致:XX大学" not in _out_text(tmp_path / "out", "商务卷.md"), "无模板=无正文段(无标记行残留)"
+
+    def test_empty_template_rejected_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-002", "")
+        assert _run_build(state, tmp_path / "out") == 1
+        assert "template_text" in capsys.readouterr().err
+
+    def test_non_string_template_rejected_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-002", 123)
+        assert _run_build(state, tmp_path / "out") == 1
+        assert "template_text" in capsys.readouterr().err
+
+    def test_checklist_section_three_template_compare(self, tmp_path):
+        """人核清单第三节: 模板原文比对项(照抄非确定性, 终稿人工比对兜底)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-002", "致:XX大学")
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "人核清单.md")
+        assert "## 三、模板原文比对" in text, "人核清单须有第三节模板比对"
+        assert "S-002" in text and "投标函" in text, "比对表列节点与位置"
+
+    def test_summary_template_prefill_count(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_template(state, "S-002", "致:XX大学")
+        self._set_template(state, "S-004", "投标报价一览表")
+        _run_build(state, tmp_path / "out")
+        summary = _last_summary_json(capsys)
+        assert summary["template_prefill_count"] == 2
+
+
+class TestBuildOutputFixedRowsReplication:
+    """v2 反馈2: 表格槽 fixed_rows 逐字复刻 + 剩余空白待填行 = max(0, rows - len(fixed_rows))。"""
+
+    @staticmethod
+    def _set_fixed_rows(state, node_id, fixed_rows):
+        nodes = _state_json(state, "structure.json")
+        for n in nodes:
+            if n["node_id"] == node_id:
+                rf = dict(n["required_format"])
+                spec = dict(rf.get("table_spec") or {})
+                spec["fixed_rows"] = fixed_rows
+                rf["table_spec"] = spec
+                n["required_format"] = rf
+        (state / "structure.json").write_text(json.dumps(nodes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def test_fixed_rows_verbatim_plus_computed_blanks(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        # S-004 商务卷表格 rows=3、4 列; 2 固定行 → 1 空白待填行
+        self._set_fixed_rows(state, "S-004", [["1", "一体化智能讲台", "10", "480000"], ["2", "智慧黑板", "20", ""]])
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "商务卷.md")
+        assert "| 1 | 一体化智能讲台 | 10 | 480000 |" in text, "固定行逐字复刻(反馈2: 表格 1:1)"
+        assert "| 2 | 智慧黑板 | 20 |  |" in text, "固定行空串单元格渲染为空"
+        assert text.count("| (待填) | (待填) | (待填) | (待填) |") == 1, "rows=3 - 2 固定行 = 1 空白待填行"
+
+    def test_fixed_rows_exceed_rows_no_blanks(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        # 固定行数 >= rows → 零空白行(max(0, ...) 不产负数)
+        self._set_fixed_rows(state, "S-004", [["1", "A", "1", "100"], ["2", "B", "2", "200"], ["3", "C", "3", "300"]])
+        _run_build(state, tmp_path / "out")
+        assert "| (待填) | (待填) | (待填) | (待填) |" not in _out_text(tmp_path / "out", "商务卷.md")
+
+    def test_summary_fixed_rows_replicated(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._set_fixed_rows(state, "S-004", [["1", "A", "1", "100"], ["2", "B", "2", "200"]])
+        self._set_fixed_rows(state, "S-008", [["合计", "", "", ""]])
+        _run_build(state, tmp_path / "out")
+        summary = _last_summary_json(capsys)
+        assert summary["fixed_rows_replicated"] == 3
+
+
+class TestBuildOutputResponsesRendering:
+    """v2 反馈3/4: responses.json(阶段4a 三模式生成)→ 条目正文渲染; citations 留痕
+    人核清单第四节(引用不进交付正文)。"""
+
+    @staticmethod
+    def _write_responses(state, items):
+        (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+    def test_missing_responses_skeleton_fallback(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")  # 无 responses.json = 骨架模式回退, 不是错误
+        assert "(响应正文待生成或待填写)" in _out_text(tmp_path / "out", "技术卷.md")
+
+    def test_service_category_clause_gets_entry(self, tmp_path):
+        """service 条款与 technical 同走条目管线(ENTRY_CATEGORIES 对齐 responses.py 口径)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _add_clause(
+            state,
+            {
+                "clause_id": "ZB-C-010",
+                "source_file": "招标文件.docx",
+                "class": "normal",
+                "category": "service",
+                "source_ref": {"page": 3, "section": "6.1", "para": 1, "quote": "质保期不少于三年"},
+                "requirement": "质保期不少于三年",
+                "response_status": "unassigned",
+                "response_skeleton": {"points": [], "evidence_ref": None, "suggestion": None},
+                "from_addendum": False,
+                "superseded_by": None,
+                "voided": False,
+            },
+        )  # noqa: E501
+        _run_build(state, tmp_path / "out")
+        assert "响应[ZB-C-010]" in _out_text(tmp_path / "out", "技术卷.md"), "service 活条款无挂接槽 → 卷末兜底节条目(零遗漏)"
+
+    def test_citations_in_checklist_not_in_volume(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._write_responses(
+            state,
+            [
+                {
+                    "clause_id": "ZB-C-001",
+                    "response_text": "控制器采用S7-1500系列。",
+                    "points": [],
+                    "source_mode": "web",
+                    "citations": [{"title": "西门子官网 S7-1500", "url": "https://www.siemens.com/s7-1500", "quote": "SIMATIC S7-1500"}],
+                    "needs_human_verify": True,
+                }
+            ],
+        )  # noqa: E501
+        _run_build(state, tmp_path / "out")
+        tech = _out_text(tmp_path / "out", "技术卷.md")
+        checklist = _out_text(tmp_path / "out", "人核清单.md")
+        assert "siemens.com" not in tech, "web 引用不进交付正文"
+        assert "## 四、生成内容人核" in checklist, "人核清单须有第四节生成内容人核"
+        assert "siemens.com" in checklist and "需人核" in checklist and "ZB-C-001" in checklist
+
+    def test_malformed_responses_rejected_exit_1(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._write_responses(state, [{"clause_id": "ZB-C-001", "response_text": "", "source_mode": "kf"}])
+        assert _run_build(state, tmp_path / "out") == 1
+        assert "responses.json" in capsys.readouterr().err
+
+    def test_summary_responses_rendered(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._write_responses(state, [{"clause_id": "ZB-C-001", "response_text": "技术响应A。", "source_mode": "kf"}, {"clause_id": "ZB-C-002", "response_text": "技术响应B。", "source_mode": "self"}])
+        _run_build(state, tmp_path / "out")
+        summary = _last_summary_json(capsys)
+        assert summary["responses_rendered"] == 2, "已渲染响应 = 有 responses 条目的活 technical/service 条款数"
+
+
+class TestBuildOutputSelfCreatedSection:
+    """v2 反馈3: 自拟挂接位(origin=self_created 的 group 节点, responses.py 建)承载条目
+    ——必须占号、必须可挂条款; 商务/格式镜像 group 仍不占号不承载(既有不变量)。"""
+
+    def test_self_created_group_carries_entries_and_number(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _add_clause(state, _extra_technical_clause("ZB-C-020"))
+        _add_structure_node(
+            state,
+            {
+                "node_id": "S-010",
+                "volume": "technical",
+                "path": "技术部分/3 技术解决方案(自拟)",
+                "slot_type": "group",
+                "origin": "self_created",
+                "required_format": {"desc": None, "table_spec": None, "template_text": None},
+                "linked_clause_ids": ["ZB-C-020"],
+            },
+        )  # noqa: E501
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "技术卷.md")
+        coverage = _out_text(tmp_path / "out", "覆盖率报表.md")
+        assert "## 3 技术解决方案(自拟)" in text, "自拟挂接位渲染为章节标题并占号(镜像 group 不占号)"
+        assert "### 3.1 响应[ZB-C-020]" in text, "挂接自拟位的条款入其下条目, 不落卷末兜底节"
+        assert "其他技术要求响应" not in text, "全部条款已挂接 → 不出兜底节"
+        assert "结构组 / 自拟" in coverage, "覆盖率报表槽位编排表 origin 标注自拟"
+        summary = _last_summary_json(capsys)
+        assert summary["self_created_sections"] == 1
+
+
+class TestBuildOutputDeviationSplit:
+    """偏离表拆分(用户决策): 按招标文件模板拆商务/技术两张——technical 条款入技术偏离表,
+    其余(commercial/qualification/format/service)入商务偏离表; 招标模板原文由商务卷镜像承载。"""
+
+    def test_technical_mandatory_into_tech_table(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "偏离表.md")
+        assert "## 技术偏离表" in text and "## 商务偏离表" in text, "必须拆两张表"
+        tech_section = text.split("## 技术偏离表", 1)[1].split("## 商务偏离表", 1)[0]
+        assert "ZB-C-001" in tech_section, "mandatory 技术条款入技术偏离表"
+
+    def test_commercial_deviation_into_commercial_table(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "BY-C-004", response_status="deviation")
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "偏离表.md")
+        commercial_section = text.split("## 商务偏离表", 1)[1]
+        assert "BY-C-004" in commercial_section, "商务偏离项入商务偏离表"
+
+    def test_deviation_routed_by_category(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-002", response_status="deviation")  # technical
+        _set_clause(state, "BY-C-004", response_status="deviation")  # commercial
+        _run_build(state, tmp_path / "out")
+        text = _out_text(tmp_path / "out", "偏离表.md")
+        tech_section = text.split("## 技术偏离表", 1)[1].split("## 商务偏离表", 1)[0]
+        assert "ZB-C-001" in tech_section and "ZB-C-002" in tech_section
+        assert "BY-C-004" not in tech_section
+        commercial_section = text.split("## 商务偏离表", 1)[1]
+        assert "BY-C-004" in commercial_section and "ZB-C-001" not in commercial_section
+
+    def test_empty_tech_table_renders_none(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", voided=True)  # 唯一技术强制条款作废 → 技术表空
+        _run_build(state, tmp_path / "out")
+        tech_section = _out_text(tmp_path / "out", "偏离表.md").split("## 技术偏离表", 1)[1].split("## 商务偏离表", 1)[0]
+        assert "(无)" in tech_section
+
+    def test_empty_commercial_table_renders_none(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        commercial_section = _out_text(tmp_path / "out", "偏离表.md").split("## 商务偏离表", 1)[1]
+        assert "(无)" in commercial_section, "基线无商务偏离项 → 显式(无)"
+
+    def test_deviation_table_template_slots_noted(self, tmp_path):
+        """structure 中偏离表类 table 槽(path 含'偏离')→ 偏离表.md 注明'招标模板原文见商务卷镜像'。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        nodes = _state_json(state, "structure.json")
+        rf = dict(nodes[3]["required_format"])  # S-004 开标一览表 → 改名技术偏离表模板
+        rf["template_text"] = "技术条款响应/偏离表\n| 序号 | 招标要求 | 响应情况 | 偏离说明 |"
+        nodes[3]["required_format"] = rf
+        nodes[3]["path"] = "投标文件格式/三、技术偏离表(技术条款响应/偏离表)"
+        (state / "structure.json").write_text(json.dumps(nodes, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        _run_build(state, tmp_path / "out")
+        assert "招标模板" in _out_text(tmp_path / "out", "偏离表.md"), "偏离表模板槽须注明模板原文去向"
+
+    def test_baseline_backward_compat_no_template_text(self, tmp_path, capsys):
+        """老 structure(无 template_text 键)照常构建, 无模板正文, 计数 0。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        assert _run_build(state, tmp_path / "out") == 0
+        assert "模板原文" not in _out_text(tmp_path / "out", "商务卷.md"), "v2: 无标记行概念, 无模板=零正文段"
+        assert _last_summary_json(capsys)["template_prefill_count"] == 0
+
+
+class TestExtractTemplateText:
+    """extract 侧 template_text: schema-driven 校验自动生效(validate 零改动验证)+合并落盘。"""
+
+    @staticmethod
+    def _template_candidate_files(tmp_path, template_value):
+        files = _happy_candidate_files(tmp_path)
+        nodes = [dict(n) for n in load_json("structure.json")]
+        rf = dict(nodes[1]["required_format"])  # S-002
+        rf["template_text"] = template_value
+        nodes[1]["required_format"] = rf
+        files[4] = _write_candidate(tmp_path, "c5.json", chunk_id="CH-003", kind="structure", items=nodes)
+        return files
+
+    def test_valid_template_text_passes_and_merges(self, tmp_path, capsys):
+        files = self._template_candidate_files(tmp_path, "致:XX大学\n我方参加贵方项目投标。")
+        assert _run_extract("validate", files, declared_total=100) == 0
+        state_dir = tmp_path / "state"
+        assert _run_extract("merge", files, declared_total=100, state_dir=state_dir) == 0
+        structure = json.loads((state_dir / "structure.json").read_text(encoding="utf-8"))
+        by_id = {n["node_id"]: n for n in structure}
+        assert by_id["S-002"]["required_format"]["template_text"].startswith("致:XX大学")
+
+    def test_empty_template_text_schema_violation(self, tmp_path, capsys):
+        files = self._template_candidate_files(tmp_path, "")
+        assert _run_extract("validate", files, declared_total=100) == 3
+        assert "schema_violation" in _anomaly_kinds(_last_summary_json(capsys))
+
+    def test_non_string_template_text_schema_violation(self, tmp_path, capsys):
+        files = self._template_candidate_files(tmp_path, 123)
+        assert _run_extract("validate", files, declared_total=100) == 3
+        assert "schema_violation" in _anomaly_kinds(_last_summary_json(capsys))
 
 
 class TestBuildOutputCoverage:
@@ -4016,7 +4357,7 @@ class TestBuildOutputEntryNumbering:
         lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
         assert "### 1.1 响应[ZB-C-002]" in lines, "带号槽'1 技术方案'保留 1"
         assert "### **2.1 响应[ZB-C-001]**" in lines, "无数字槽顺延取 2(旧算法回退计数同为 2——孤儿节撞号根源)"
-        assert "## 3 未挂接格式槽的技术条款(清单驱动)" in lines, "孤儿节继续顺延取 3(旧算法 max+1=2 与上面撞号)"
+        assert "## 3 其他技术要求响应" in lines, "孤儿节继续顺延取 3(旧算法 max+1=2 与上面撞号); v2 标题中性化"
         assert "### 3.1 响应[JS-C-001]" in lines
         nums = [re.match(r"^### (?:\*\*)?(\d+\.\d+)", ln).group(1) for ln in lines if re.match(r"^### (?:\*\*)?\d+\.\d+ 响应\[", ln)]
         assert len(nums) == len(set(nums)) == 3, f"含孤儿节条目在内全卷编号不得重复: {nums}"
@@ -4255,7 +4596,7 @@ class TestReingestHeadingChain:
         assert summary["anchors"] == {"total": 7, "matched": 6, "needs_human_verify": 0, "multi_hit": 0, "duplicate_id": 1}
         assert abs(summary["hit_rate"] - 6 / 7) < 1e-6
         assert summary["degraded"] is False
-        assert not any(p.name.startswith(".") for p in state.iterdir()), "无 .tmp 残留(原子写盘)"
+        assert not any(p.name.startswith(".") and p.name != ".meta.json" for p in state.iterdir()), "无 .tmp 残留(原子写盘; .meta.json 防篡改签名登记表除外)"
 
     def test_state_authority_only_d7(self, tmp_path, capsys):
         """重灌只更新权威态: clauses.json 按 fill 事实改 response_status;
@@ -4497,7 +4838,7 @@ class TestReingestMatcherHardening:
         assert _clauses_by_id(state)["ABCD-C-12"]["response_status"] == "compliant"
 
     def test_build_output_synthetic_headings_exempt_from_mirror_check(self, tmp_path, capsys):
-        """M2: build_output 两处卷末合成标题("## {N} 未挂接格式槽的技术条款(清单驱动)" 与
+        """M2: build_output 两处卷末合成标题("## {N} 其他技术要求响应"(v2 中性化) 与
         "## 扫描件清单(图片槽汇总)")不在 structure 镜像里也不嵌 clause_id, 却是阶段4 渲染的
         法定产物——build→reingest 原样往返不该产 unmatched_heading 噪音(归一化全词等值豁免)。"""
         state = _copy_prestate(tmp_path, merged=True)
@@ -4506,7 +4847,7 @@ class TestReingestMatcherHardening:
         out = tmp_path / "out"
         assert _run_build(state, out) == 0
         tech_md = _out_text(out, "技术卷.md")
-        assert "未挂接格式槽的技术条款" in tech_md and "扫描件清单" in tech_md, "用例前提: 两处合成标题都已渲染"
+        assert "其他技术要求响应" in tech_md and "扫描件清单" in tech_md, "用例前提: 两处合成标题都已渲染"
         assert _run_reingest(state, out / "技术卷.md", volume="technical") == 0, "阶段4→5 法定往返零 unmatched_heading"
         summary = _last_summary_json(capsys)
         assert "unmatched_heading" not in _anomaly_kinds(summary)
@@ -5122,6 +5463,563 @@ class TestReport:
 
 
 # ===========================================================================
+# WP2 check_format: 格式 1:1 复刻确定性校验(标题逐字/template_text/fixed_rows/骨架覆盖)
+# 回放实证(线程 1a80a1d8): LLM 归一化标题/漏抄模板固定文字/骨架漏节点全部静默漏过。
+# CLI: --state-dir <dir> --sources <md>... → 退出码 0/1/3, stdout 单行 JSON 摘要。
+# ===========================================================================
+
+
+def _cf_module():
+    """硬导入 check_format(模块缺失=测试失败而非 skip——管线脚本必须存在)。"""
+    import importlib
+
+    return importlib.import_module("check_format")
+
+
+# 源 md: 格式章节含（格式）后缀标题 + 一处 char-dup 伪影标题("三三三、开标一览览览 表")
+_CF_MD = """# 第三章 投标文件格式（格式）
+
+## 一、投标函（格式）
+
+致:XX水泥有限责任公司。
+我方投标总价为人民币玖佰捌拾万元整,投标有效期90天。
+
+## 二、法定代表人身份证明（格式）
+
+兹证明王建国系我单位法定代表人。
+
+## 三三三、开标一览览览 表（格式）
+
+| 序号 | 货物名称 | 数量 | 总价(元) |
+| --- | --- | --- | --- |
+| 1 | 智能控制系统 | 1 套 | 9800000 |
+
+## 四、投标文件签章与份数（格式）
+
+正本壹份,副本肆份,全部页面加盖公章。
+"""
+
+
+def _cf_node(node_id, path, slot_type="text", *, template_text=None, table_spec=None):
+    return {
+        "node_id": node_id,
+        "volume": "commercial",
+        "path": path,
+        "slot_type": slot_type,
+        "required_format": {"desc": None, "table_spec": table_spec, "template_text": template_text},
+        "linked_clause_ids": [],
+    }
+
+
+def _cf_structure(**extra_nodes_by_id):
+    """五节点干净基线(源 md 的四个叶子标题全部有节点, 骨架覆盖才干净):
+    S-004 标题是"干净版"(md 里是 char-dup 伪影版——折叠比对应通过)。"""
+    nodes = [
+        _cf_node("S-001", "第三章 投标文件格式（格式）", "group"),
+        _cf_node("S-002", "第三章 投标文件格式（格式）/一、投标函（格式）", template_text="致:XX水泥有限责任公司。\n我方投标总价为人民币玖佰捌拾万元整,投标有效期90天。"),
+        _cf_node("S-003", "第三章 投标文件格式（格式）/二、法定代表人身份证明（格式）", "image"),
+        _cf_node(
+            "S-004",
+            "第三章 投标文件格式（格式）/三、开标一览表（格式）",
+            "table",
+            table_spec={"columns": ["序号", "货物名称", "数量", "总价(元)"], "rows": 1, "fixed_rows": [["1", "智能控制系统", "1 套", "9800000"]]},
+        ),
+        _cf_node("S-005", "第三章 投标文件格式（格式）/四、投标文件签章与份数（格式）", "format_check"),
+    ]
+    for node in nodes:
+        if node["node_id"] in extra_nodes_by_id:
+            node.update(extra_nodes_by_id[node["node_id"]])
+    return nodes
+
+
+def _cf_state(tmp_path, structure=None, *, chunks=None):
+    state = tmp_path / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    payload = structure if structure is not None else _cf_structure()
+    (state / "structure.json").write_bytes((json.dumps(payload, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    (state / "sections.json").write_bytes((json.dumps({"chunks": chunks or [], "tables": []}, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    return state
+
+
+def _cf_write_md(tmp_path, text=None, name="招标文件.md"):
+    path = tmp_path / name
+    path.write_text(text if text is not None else _CF_MD, encoding="utf-8", newline="\n")
+    return path
+
+
+def _cf_run(state, sources=(), capsys=None):
+    argv = ["--state-dir", str(state)] + (["--sources", *[str(s) for s in sources]] if sources else [])
+    rc = _cf_module().main(argv)
+    summary = _last_summary_json(capsys) if capsys is not None else None
+    return rc, summary
+
+
+def _cf_kinds(summary):
+    return {a["kind"] for a in summary["anomalies"]}
+
+
+class TestCheckFormatCliContract:
+    def test_help_ok(self):
+        assert _cf_module().main(["--help"]) == 0, "--help 属正常终止, 不得按错误处理"
+
+    def test_missing_state_files_rc1(self, tmp_path):
+        state = tmp_path / "state"
+        state.mkdir()
+        assert _cf_module().main(["--state-dir", str(state)]) == 1, "structure.json/sections.json 缺失=文件错误归 1"
+
+    def test_sources_file_missing_rc1(self, tmp_path, capsys):
+        state = _cf_state(tmp_path)
+        assert _cf_module().main(["--state-dir", str(state), "--sources", str(tmp_path / "不存在.md")]) == 1
+
+    def test_missing_sources_degrades_rc3_explicit(self, tmp_path, capsys):
+        state = _cf_state(tmp_path)
+        rc, summary = _cf_run(state, capsys=capsys)
+        assert rc == 3, "未给 --sources 是显式降级 anomaly, 不是静默跳过"
+        assert "source_md_missing" in _cf_kinds(summary)
+
+    def test_clean_baseline_rc0(self, tmp_path, capsys):
+        rc, summary = _cf_run(_cf_state(tmp_path), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 0, f"干净基线应通过(含 char-dup 伪影折叠): {summary}"
+        assert summary["nodes_checked"] == 5 and summary["anomaly_count"] == 0
+
+    def test_stdout_single_line_json_with_tool_tag(self, tmp_path, capsys):
+        assert _cf_module().main(["--state-dir", str(_cf_state(tmp_path)), "--sources", str(_cf_write_md(tmp_path))]) == 0
+        out = capsys.readouterr().out.strip().splitlines()
+        assert len(out) == 1 and json.loads(out[0])["tool"] == "check_format", "单行 JSON 摘要口径"
+
+
+class TestCheckFormatVerbatimTitles:
+    def test_normalized_title_flagged(self, tmp_path, capsys):
+        """回放实证场景: 剥掉（格式）后缀的归一化标题必须被抓(1:1 复刻)。"""
+        structure = _cf_structure()
+        structure[1]["path"] = "第三章 投标文件格式（格式）/一、投标函"
+        rc, summary = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3
+        kinds = _cf_kinds(summary)
+        assert "title_mismatch" in kinds
+        flagged = [a for a in summary["anomalies"] if a["kind"] == "title_mismatch"]
+        assert any(a["node_id"] == "S-002" and a["segment"] == "一、投标函" for a in flagged), flagged
+
+    def test_numbering_stripped_flagged(self, tmp_path, capsys):
+        structure = _cf_structure()
+        structure[2]["path"] = "第三章 投标文件格式（格式）/法定代表人身份证明（格式）"
+        rc, summary = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3 and "title_mismatch" in _cf_kinds(summary)
+
+    def test_char_dup_artifact_folded_pass(self, tmp_path, capsys):
+        """S-004 干净标题 vs md 伪影标题("三三三、开标一览览览 表")——折叠后相等应通过(干净基线已含, 此处单测钉死该行为)。"""
+        import check_format as cf
+
+        assert cf.norm_title("三三三、开标一览览览 表（格式）") == cf.norm_title("三、开标一览表（格式）")
+        rc, _ = _cf_run(_cf_state(tmp_path), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 0
+
+    def test_whitespace_and_case_fold_only(self):
+        import check_format as cf
+
+        assert cf.norm_title("三、开标 一览表（格式）") == cf.norm_title("三、开标一览表（格式）"), "空白差异被吸收"
+        assert cf.norm_title("Technical Spec") == cf.norm_title("technical  spec"), "英文 casefold+空白"
+        assert cf.norm_title("投标书（格式）") != cf.norm_title("投标书"), "（格式）后缀剥除不会被折叠吸收"
+
+    def test_invented_path_flagged_both_ways(self, tmp_path, capsys):
+        """自创章节根(源文件不存在该标题链): 标题不逐字 + 路径链无对应, 双重点名。"""
+        structure = _cf_structure()
+        structure[1]["path"] = "第四章 售后服务方案（格式）/一、投标函（格式）"
+        rc, summary = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3
+        kinds = _cf_kinds(summary)
+        assert "title_mismatch" in kinds and "path_unmatched" in kinds
+
+
+class TestCheckFormatTemplateText:
+    def test_rewritten_template_flagged(self, tmp_path, capsys):
+        """回放实证场景: 模板固定文字被概括改写("有限责任公司"→"公司")→非逐字子串。"""
+        structure = _cf_structure()
+        structure[1]["required_format"]["template_text"] = "致:XX水泥公司。我方投标总价为人民币玖佰捌拾万元整。"
+        rc, summary = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3 and "template_text_not_found" in _cf_kinds(summary)
+
+    def test_missing_sources_skips_template_check(self, tmp_path, capsys):
+        rc, summary = _cf_run(_cf_state(tmp_path), capsys=capsys)
+        assert _cf_kinds(summary) == {"source_md_missing"}, "无 sources 时 template_text 校验跳过而非误报"
+
+    def test_multiline_template_whitespace_normalized(self, tmp_path, capsys):
+        """template_text 换行/空格差异被吸收(去空白后包含), 内容逐字不变即通过。"""
+        structure = _cf_structure()
+        structure[1]["required_format"]["template_text"] = "致: XX水泥有限责任公司。 我方投标总价为人民币玖佰捌拾万元整, 投标有效期90天。"
+        rc, _ = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 0
+
+
+class TestCheckFormatFixedRows:
+    def _table_node(self, fixed_rows):
+        return _cf_node(
+            "S-004",
+            "第三章 投标文件格式（格式）/三、开标一览表（格式）",
+            "table",
+            table_spec={"columns": ["序号", "货物名称", "数量", "总价(元)"], "rows": 1, "fixed_rows": fixed_rows},
+        )
+
+    def test_cell_mismatch_flagged(self, tmp_path, capsys):
+        structure = _cf_structure()
+        structure[3] = self._table_node([["1", "智能控制系统", "1 套", "9600000"]])
+        rc, summary = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3 and "fixed_rows_cell_not_found" in _cf_kinds(summary)
+
+    def test_column_count_mismatch_flagged(self, tmp_path, capsys):
+        structure = _cf_structure()
+        structure[3] = self._table_node([["1", "智能控制系统", "1 套"]])
+        rc, summary = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3 and "fixed_rows_shape" in _cf_kinds(summary)
+
+    def test_non_list_flagged(self, tmp_path, capsys):
+        structure = _cf_structure()
+        structure[3] = self._table_node("1|智能控制系统|1 套|9800000")
+        rc, summary = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3 and "fixed_rows_shape" in _cf_kinds(summary)
+
+    def test_null_fixed_rows_passes(self, tmp_path, capsys):
+        structure = _cf_structure()
+        structure[3] = self._table_node(None)
+        rc, _ = _cf_run(_cf_state(tmp_path, structure), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 0, "fixed_rows=null(无法辨认不猜)是合法形态"
+
+
+class TestCheckFormatSkeletonCoverage:
+    def test_unmirrored_source_heading_flagged(self, tmp_path, capsys):
+        """回放实证场景: 源格式章节有该标题、structure 无节点(静默丢项)→点名。"""
+        md = _CF_MD + "\n## 五、中小企业声明函（格式）\n\n本单位声明属于中小企业。\n"
+        rc, summary = _cf_run(_cf_state(tmp_path), [_cf_write_md(tmp_path, md)], capsys=capsys)
+        assert rc == 3 and "skeleton_gap" in _cf_kinds(summary)
+        assert any("五、中小企业声明函（格式）" in a["detail"] for a in summary["anomalies"])
+
+    def test_unrelated_chapter_not_flagged(self, tmp_path, capsys):
+        md = _CF_MD + "\n# 第一章 投标邀请\n\n招标编号:EAI-BID-2026-017。\n\n## 一、项目概况\n\n正文。\n"
+        rc, summary = _cf_run(_cf_state(tmp_path), [_cf_write_md(tmp_path, md)], capsys=capsys)
+        assert rc == 0, f"镜像根之外的章节不参与骨架覆盖: {summary}"
+
+    def test_sections_heading_path_union(self, tmp_path, capsys):
+        """sections.json 的 heading_path 同为源素材: 其格式章节标题未被镜像→点名。"""
+        chunks = [{"chunk_id": "CH-001", "source_file": "招标文件.docx", "anchor": {"section": "五", "para": 1}, "heading_path": ["第三章 投标文件格式（格式）", "五、中小企业声明函（格式）"], "n_paras": 1}]
+        rc, summary = _cf_run(_cf_state(tmp_path, chunks=chunks), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 3 and "skeleton_gap" in _cf_kinds(summary)
+
+    def test_node_covered_only_via_sections_pass(self, tmp_path, capsys):
+        chunks = [{"chunk_id": "CH-001", "source_file": "招标文件.docx", "anchor": {"section": "五", "para": 1}, "heading_path": ["第三章 投标文件格式（格式）", "五、中小企业声明函（格式）"], "n_paras": 1}]
+        structure = _cf_structure() + [_cf_node("S-005", "第三章 投标文件格式（格式）/五、中小企业声明函（格式）")]
+        rc, _ = _cf_run(_cf_state(tmp_path, structure, chunks=chunks), [_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 0, "仅存在于 sections.json heading_path 的标题链同样可作覆盖来源"
+
+
+class TestCheckFormatStateGuard:
+    def test_tampered_structure_rejected_rc1(self, tmp_path, capsys):
+        import state_guard
+
+        state = _cf_state(tmp_path)
+        state_guard.sign_state_files(state, ["structure.json", "sections.json"])
+        structure = _cf_structure()
+        structure[1]["path"] = "第三章 投标文件格式（格式）/一、投标函"
+        (state / "structure.json").write_bytes((json.dumps(structure, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        rc = _cf_module().main(["--state-dir", str(state), "--sources", str(_cf_write_md(tmp_path))])
+        assert rc == 1, "装载前签名复核失败=硬错误(不是格式异常)"
+        assert "签名" in capsys.readouterr().err
+
+    def test_unregistered_authoritative_rejected_rc1(self, tmp_path, capsys):
+        """F4 注入拦截在 check_format 读盘侧同样生效: 在盘未登记权威文件拒载。"""
+        import state_guard
+
+        state = _cf_state(tmp_path)
+        state_guard.sign_state_files(state, ["sections.json"])
+        rc = _cf_module().main(["--state-dir", str(state), "--sources", str(_cf_write_md(tmp_path))])
+        assert rc == 1
+
+    def test_readonly_no_state_writes(self, tmp_path, capsys):
+        state = _cf_state(tmp_path)
+        before = {p.name: p.read_bytes() for p in state.iterdir()}
+        _cf_run(state, [_cf_write_md(tmp_path)], capsys=capsys)
+        after = {p.name: p.read_bytes() for p in state.iterdir()}
+        assert before == after, "只读校验, 绝不回写修正/新增状态文件"
+
+
+# ===========================================================================
+# WP3 responses: 阶段4a 技术响应候选确定性校验/合并(三模式供源落账 + 落位 + 只升不降)
+# CLI: validate|merge --candidates <json>... --state-dir <dir> → 退出码 0/1/3。
+# ===========================================================================
+
+
+def _rs_module():
+    """硬导入 responses(模块缺失=测试失败而非 skip——管线脚本必须存在)。"""
+    import importlib
+
+    return importlib.import_module("responses")
+
+
+def _rs_node(node_id, path, volume="technical", slot_type="group", linked=None):
+    return {
+        "node_id": node_id,
+        "volume": volume,
+        "path": path,
+        "slot_type": slot_type,
+        "required_format": {"desc": None, "table_spec": None, "template_text": None},
+        "linked_clause_ids": list(linked or []),
+    }
+
+
+def _rs_structure():
+    """两节点技术卷锚: S-001=技术方案锚(挂接目标), S-002=售后服务锚(插入位参照)。"""
+    return [
+        _rs_node("S-001", "第三章 投标文件格式（格式）/七、技术方案（格式）"),
+        _rs_node("S-002", "第三章 投标文件格式（格式）/八、售后服务承诺（格式）"),
+    ]
+
+
+def _rs_clauses():
+    """六条款矩阵: 001 干净technical | 002 被替代 | 003 活 | 004 商务(域外) | 005 已compliant | 006 service。"""
+    return [
+        _sample_clause(clause_id="ZB-C-001"),
+        _sample_clause(clause_id="ZB-C-002", superseded_by="ZB-C-003"),
+        _sample_clause(clause_id="ZB-C-003"),
+        _sample_clause(clause_id="ZB-C-004", category="commercial"),
+        _sample_clause(clause_id="ZB-C-005", response_status="compliant"),
+        _sample_clause(clause_id="ZB-C-006", category="service"),
+    ]
+
+
+def _rs_state(tmp_path, clauses=None, structure=None):
+    state = tmp_path / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    payload_clauses = clauses if clauses is not None else _rs_clauses()
+    payload_structure = structure if structure is not None else _rs_structure()
+    (state / "clauses.json").write_bytes((json.dumps(payload_clauses, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    (state / "structure.json").write_bytes((json.dumps(payload_structure, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    return state
+
+
+def _rs_item(clause_id="ZB-C-001", **overrides):
+    item = {
+        "clause_id": clause_id,
+        "response_text": "我方智能控制系统采用模块化架构, 支持按招标技术参数逐项配置并支持远程诊断。",
+        "source_mode": "kf",
+        "evidence_ref": "kf:tpl-017",
+    }
+    item.update(overrides)
+    return item
+
+
+def _rs_candidate(tmp_path, items, name="RESP-tech-001.json"):
+    path = tmp_path / "candidates"
+    path.mkdir(parents=True, exist_ok=True)
+    target = path / name
+    target.write_bytes((json.dumps({"kind": "responses", "items": items, "note": "测试批次"}, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+    return target
+
+
+def _rs_run(command, state, candidates, capsys=None):
+    argv = [command, "--candidates", *[str(c) for c in candidates], "--state-dir", str(state)]
+    rc = _rs_module().main(argv)
+    summary = _last_summary_json(capsys) if capsys is not None else None
+    return rc, summary
+
+
+class TestResponsesCliContract:
+    def test_help_ok(self):
+        assert _rs_module().main(["--help"]) == 0, "--help 属正常终止, 不得按错误处理"
+
+    def test_no_subcommand_rc1(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        candidate = _rs_candidate(tmp_path, [_rs_item()])
+        assert _rs_module().main(["--candidates", str(candidate), "--state-dir", str(state)]) == 1
+        assert "参数用法错误" in capsys.readouterr().err
+
+    def test_missing_candidate_file_rc1(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        assert _rs_run("validate", state, [tmp_path / "不存在.json"])[0] == 1
+        assert "候选文件不存在" in capsys.readouterr().err
+
+    def test_missing_state_inputs_rc1(self, tmp_path, capsys):
+        empty = tmp_path / "state"
+        empty.mkdir(parents=True)
+        candidate = _rs_candidate(tmp_path, [_rs_item()])
+        assert _rs_run("validate", empty, [candidate])[0] == 1
+        assert "clauses.json" in capsys.readouterr().err, "先跑完 ingest/extract 是 responses 的前置"
+
+    def test_tampered_signature_rc1(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        state_guard = pytest.importorskip("state_guard")
+        state_guard.sign_state_files(state, ["clauses.json", "structure.json"])
+        (state / "clauses.json").write_text("[]", encoding="utf-8")  # 脚本外直写
+        candidate = _rs_candidate(tmp_path, [_rs_item()])
+        assert _rs_run("validate", state, [candidate])[0] == 1
+        assert "签名校验失败" in capsys.readouterr().err
+
+
+class TestResponsesValidate:
+    def test_clean_kf_item_rc0(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item()])], capsys)
+        assert rc == 0
+        assert summary["counts"]["responses"] == 1
+        assert summary["anomalies"] == []
+
+    def test_service_category_in_scope(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(clause_id="ZB-C-006")])], capsys)
+        assert rc == 0
+        assert summary["counts"]["responses"] == 1, "service 条款与技术条款同走响应生成通道"
+
+    def test_clause_fk_invalid(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(clause_id="ZB-C-999")])], capsys)
+        assert rc == 3
+        assert "clause_fk_invalid" in _anomaly_kinds(summary)
+        assert summary["counts"]["responses"] == 0
+
+    def test_clause_not_live_superseded(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(clause_id="ZB-C-002")])], capsys)
+        assert rc == 3
+        assert "clause_not_live" in _anomaly_kinds(summary)
+
+    def test_clause_not_live_voided(self, tmp_path, capsys):
+        clauses = _rs_clauses() + [_sample_clause(clause_id="ZB-C-007", voided=True)]
+        rc, summary = _rs_run("validate", _rs_state(tmp_path, clauses=clauses), [_rs_candidate(tmp_path, [_rs_item(clause_id="ZB-C-007")])], capsys)
+        assert rc == 3
+        assert "clause_not_live" in _anomaly_kinds(summary), "作废条款同样不得生成响应"
+
+    def test_clause_category_out_of_scope(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(clause_id="ZB-C-004")])], capsys)
+        assert rc == 3
+        assert "clause_category_out_of_scope" in _anomaly_kinds(summary), "商务条款走格式模板镜像管线, 不走响应生成"
+
+    def test_citations_missing_for_web(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(source_mode="web", evidence_ref=None)])], capsys)
+        assert rc == 3
+        assert "citations_missing_for_web" in _anomaly_kinds(summary), "无引用的网搜深写不可信, 拒绝落账"
+
+    def test_web_with_citations_rc0(self, tmp_path, capsys):
+        item = _rs_item(
+            source_mode="web",
+            evidence_ref=None,
+            needs_human_verify=True,
+            citations=[{"title": "某某技术白皮书", "url": "https://example.com/whitepaper", "quote": "支持远程诊断与模块化部署"}],
+        )
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 0
+        assert summary["counts"]["responses"] == 1
+
+    def test_pipeline_metadata_in_text(self, tmp_path, capsys):
+        item = _rs_item(response_text="本项目响应如下。槽位类型: 文本槽; 待填提示: 按格式填写。")
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 3
+        assert "pipeline_metadata_in_text" in _anomaly_kinds(summary), "回放实证: 管线 bullet 曾被当正文写进交付物"
+
+    def test_placement_node_missing(self, tmp_path, capsys):
+        item = _rs_item(placement={"anchor_node_id": "S-999"})
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 3
+        assert "placement_node_missing" in _anomaly_kinds(summary)
+
+    def test_placement_shape_rejects_both_and_after_mix(self, tmp_path, capsys):
+        both = _rs_candidate(tmp_path, [_rs_item(placement={"anchor_node_id": "S-001", "self_created_path": "技术方案/一、系统架构"})], name="RESP-a.json")
+        mix = _rs_candidate(tmp_path, [_rs_item(placement={"anchor_node_id": "S-001", "after_node_id": "S-002"})], name="RESP-b.json")
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [both, mix], capsys)
+        assert rc == 3
+        assert summary["anomalies"] and all(a["kind"] == "placement_shape" for a in summary["anomalies"]), "anchor/self 二选一, after_node_id 仅与 self 同用"
+
+    def test_schema_violation_missing_source_mode(self, tmp_path, capsys):
+        item = _rs_item()
+        del item["source_mode"]
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 3
+        assert "schema_violation" in _anomaly_kinds(summary)
+
+    def test_duplicate_clause_response_across_files(self, tmp_path, capsys):
+        first = _rs_candidate(tmp_path, [_rs_item()], name="RESP-001.json")
+        second = _rs_candidate(tmp_path, [_rs_item(response_text="另一版正文。")], name="RESP-002.json")
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [first, second], capsys)
+        assert rc == 3
+        assert "duplicate_clause_response" in _anomaly_kinds(summary)
+        assert summary["counts"]["responses"] == 0, "同 clause_id 多份候选全部隔离, 绝不静默取首个"
+
+    def test_validate_writes_nothing(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        _rs_run("validate", state, [_rs_candidate(tmp_path, [_rs_item()])], capsys)
+        assert not (state / "responses.json").exists(), "validate 只校验不落盘"
+        assert not (state / ".meta.json").exists(), "validate 不触碰签名登记"
+
+
+class TestResponsesMerge:
+    def test_clean_merge_defaults_and_status_upgrade(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        rc, summary = _rs_run("merge", state, [_rs_candidate(tmp_path, [_rs_item(placement={"anchor_node_id": "S-001"})])], capsys)
+        assert rc == 0
+        assert summary["merged"]["responses"] == 1
+        assert summary["merged"]["status_upgraded"] == 1
+        assert summary["merged"]["placement"] == {"anchored": 1, "self_created": 0}
+        assert set(summary["written"]) == {"responses.json", "structure.json", "clauses.json"}
+        merged = json.loads((state / "responses.json").read_text(encoding="utf-8"))
+        assert merged[0]["points"] == [] and merged[0]["citations"] == [] and merged[0]["needs_human_verify"] is False, "缺省归一由 merge 落账"
+        clauses = {c["clause_id"]: c for c in json.loads((state / "clauses.json").read_text(encoding="utf-8"))}
+        assert clauses["ZB-C-001"]["response_status"] == "draft", "unassigned→draft 只升不降"
+
+    def test_no_status_downgrade(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        rc, summary = _rs_run("merge", state, [_rs_candidate(tmp_path, [_rs_item(clause_id="ZB-C-005")])], capsys)
+        assert rc == 0
+        assert summary["merged"]["status_upgraded"] == 0, "compliant 条款不回退 draft"
+        clauses = {c["clause_id"]: c for c in json.loads((state / "clauses.json").read_text(encoding="utf-8"))}
+        assert clauses["ZB-C-005"]["response_status"] == "compliant"
+
+    def test_anchor_placement_idempotent(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        candidate = _rs_candidate(tmp_path, [_rs_item(placement={"anchor_node_id": "S-001"})])
+        _rs_run("merge", state, [candidate], capsys)
+        _rs_run("merge", state, [candidate], capsys)
+        structure = json.loads((state / "structure.json").read_text(encoding="utf-8"))
+        node = next(n for n in structure if n["node_id"] == "S-001")
+        assert node["linked_clause_ids"] == ["ZB-C-001"], "锚挂接幂等: 重复合并不重复追加"
+
+    def test_self_created_node_created_and_reused(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        first = _rs_candidate(tmp_path, [_rs_item(placement={"self_created_path": "技术方案/一、系统架构设计", "after_node_id": "S-001"})], name="RESP-001.json")
+        rc, summary = _rs_run("merge", state, [first], capsys)
+        assert rc == 0
+        assert summary["merged"]["placement"] == {"anchored": 0, "self_created": 1}
+        structure = json.loads((state / "structure.json").read_text(encoding="utf-8"))
+        assert [n["node_id"] for n in structure] == ["S-001", "S-003", "S-002"], "自拟节点插入 after_node_id 之后"
+        created = structure[1]
+        assert created["origin"] == "self_created" and created["linked_clause_ids"] == ["ZB-C-001"]
+        # 第二批同路径条目 → 复用既有自拟节点, 不重复建节
+        second = _rs_candidate(tmp_path, [_rs_item(clause_id="ZB-C-003", placement={"self_created_path": "技术方案/一、系统架构设计"})], name="RESP-002.json")
+        _rs_run("merge", state, [second], capsys)
+        structure = json.loads((state / "structure.json").read_text(encoding="utf-8"))
+        same_path = [n for n in structure if n.get("path") == "技术方案/一、系统架构设计"]
+        assert len(same_path) == 1 and set(same_path[0]["linked_clause_ids"]) == {"ZB-C-001", "ZB-C-003"}
+
+    def test_merge_registers_signatures(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        _rs_run("merge", state, [_rs_candidate(tmp_path, [_rs_item()])], capsys)
+        state_guard = pytest.importorskip("state_guard")
+        meta = json.loads((state / ".meta.json").read_text(encoding="utf-8"))
+        assert {"responses.json", "structure.json", "clauses.json"} <= set(meta["signatures"])
+        assert state_guard.verify_state_files(state) == []
+
+    def test_tampered_responses_after_merge_rc1(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        _rs_run("merge", state, [_rs_candidate(tmp_path, [_rs_item()])], capsys)
+        (state / "responses.json").write_text("[]", encoding="utf-8")  # 脚本外直写
+        assert _rs_run("validate", state, [_rs_candidate(tmp_path, [_rs_item()])])[0] == 1, "responses.json 纳入权威态签名防线"
+
+
+class TestCheckFormatSelfCreatedOrigin:
+    """responses merge 建的 origin=self_created 节点: check_format 免逐字镜像校验(非镜像产物)。"""
+
+    def test_self_created_node_exempt_from_verbatim(self, tmp_path, capsys):
+        node = _cf_node("S-003", "第三章 投标文件格式（格式）/七、技术方案（自拟）", "group", template_text="自拟章节的正文不受源文件逐字约束")
+        node["origin"] = "self_created"
+        state = _cf_state(tmp_path, structure=_cf_structure() + [node])
+        rc, summary = _cf_run(state, sources=[_cf_write_md(tmp_path)], capsys=capsys)
+        assert rc == 0, "自拟挂接位不做标题/template_text 逐字比对, 交确认门人核"
+        assert summary["nodes_checked"] == 6
+
+
+# ===========================================================================
 # T8: SKILL.md — Agent 编排总纲(frontmatter 对齐先例 + 内容要件 + 命令-CLI 一致性)
 # ===========================================================================
 
@@ -5139,20 +6037,37 @@ SKILL_MD_REQUIRED_TOKENS = (
     "先跑通 ingest/extract 才允许谈清单",  # 铁律2
     "整篇方案生成器",  # 铁律3
     "只镜像不自创",  # 铁律3
-    "每卷单次成文",  # 铁律4
+    "单次成文",  # 铁律4: 最终交付 md 单次成文(不 append 拼接)
+    "不做 Word 转换",  # 铁律4: Word 导出由用户在文档空间完成
     "偏轨停下",  # 铁律5 耗时自检
     "project_snapshot.json",  # 铁律6 多轮承接锚点
     "评分纪律",  # 铁律7
     "不为留印象给分",  # 铁律7
-    # ② 六阶段编排 + 两道确认门
+    "失败熔断",  # 铁律8
+    "禁止任何途径写盘",  # 铁律9: write_file/str_replace/bash 重定向/inline python/rm 一律禁
+    "反弃线",  # 铁律10: 工作量大不是绕过管线直接整篇生成的理由
+    "自拟挂接位",  # 铁律3 唯一例外(origin=self_created, 确认门2 人核落位)
+    # ② 六阶段编排 + 两道确认门(含 v2 阶段4a 三模式供源)
     "阶段0",
     "阶段1",
     "阶段2",
     "阶段3",
+    "阶段4a",
     "阶段4",
     "阶段5",
     "确认门1",
     "确认门2",
+    # ②b 阶段4a 三模式: kf 探测→无高置信 ask_clarification 停问样例→web 深写→self 兜底
+    "tech_response_prompt.md",
+    "source_mode",
+    "ask_clarification",
+    "web_search",
+    "web_fetch",
+    "参考样例",
+    "自拟",
+    "needs_human_verify=true",
+    "anchor_node_id",
+    "self_created_path",
     # ③ 门1: 计数(N1/N2/N3) + 异常项 + 完整清单落盘 + clause_id 改分类回写 + 实体白名单锁定
     "N1",
     "N2",
@@ -5161,6 +6076,15 @@ SKILL_MD_REQUIRED_TOKENS = (
     "总分不符",  # rubric Σmax_score 与评分办法总分不符
     "clause_id 改分类",
     "实体白名单",
+    # ③b v2 格式 1:1 复刻(check_format 确定性防线)与渲染净化
+    "check_format.py",
+    "responses.py",
+    "格式保真",
+    "fixed_rows",
+    "template_prefill_count",
+    "槽位编排表",
+    "生成内容人核",
+    "其他技术要求响应",
     # ③ 门2: 补遗 diff 表(新增/被替代/作废) + 新实体确认 + 终稿复核清单 + format_check 人工签字
     "新增/被替代/作废",
     "新实体确认",
@@ -5184,7 +6108,8 @@ SKILL_MD_REQUIRED_TOKENS = (
     "extraction_prompt.md",
     "scoring_prompt.md",
     "classification.md",
-    "markdown-to-docx",  # 阶段4 双卷 Word 走 convert.py 链路
+    "present_files",  # 阶段4 六件套 md 交付(present_files→文档空间)
+    "文档空间",  # 排版与 Word 导出在文档空间完成, 本技能不产 .docx
     "eai-flow-ocr",  # 阶段0 扫描件分流(V1 受限支持)
 )
 
@@ -5325,3 +6250,168 @@ class TestSkillMd:
             assert validator.match(value), f"SKILL.md 示例 {module_name} --{dest.replace('_', '-')} {value!r} 不满足脚本值域校验 {validator.pattern}(实测 main() 退出码 1; argv={argv})"
             checked += 1
         assert checked > 0, "SKILL.md 应包含 ingest 的 --code 示例(值域校验对象), 实际未捕获到"
+
+
+# ===========================================================================
+# 回放加固(2026-08-18 线程 bfa917ce 实证): 权威态防篡改签名 + 确定性进度快照
+# ===========================================================================
+
+
+def _state_guard_module():
+    import importlib
+
+    return importlib.import_module("state_guard")
+
+
+def _snapshot_module():
+    import importlib
+
+    return importlib.import_module("snapshot")
+
+
+class TestStateGuard:
+    """铁律9: 权威状态文件 sha256 签名登记(.meta.json)——write_file 直写/rm 从"远处
+    症状+试错烧上下文"变成一声带恢复指令的硬错误(退出码 1)。"""
+
+    def _signed_state(self, tmp_path):
+        sg = _state_guard_module()
+        (tmp_path / "clauses.json").write_text('{"a": 1}', encoding="utf-8")
+        (tmp_path / "rubric.json").write_text('{"total_score": 100}', encoding="utf-8")
+        sg.sign_state_files(tmp_path, ["clauses.json", "rubric.json"])
+        return sg
+
+    def test_sign_then_verify_passes(self, tmp_path):
+        sg = self._signed_state(tmp_path)
+        assert sg.verify_state_files(tmp_path) == []
+        assert (tmp_path / ".meta.json").is_file(), "签名登记表应落盘"
+
+    def test_no_meta_backward_compat_passes(self, tmp_path):
+        """既有工作区/fixture 无 .meta.json → 无签名可校验, 放行(守卫只收紧已签名工作区)。"""
+        (tmp_path / "clauses.json").write_text("{}", encoding="utf-8")
+        assert _state_guard_module().verify_state_files(tmp_path) == []
+
+    def test_tampered_content_detected(self, tmp_path, capsys):
+        sg = self._signed_state(tmp_path)
+        (tmp_path / "clauses.json").write_text('{"a": 2}', encoding="utf-8")
+        problems = sg.verify_state_files(tmp_path)
+        assert problems and "clauses.json" in problems[0] and "直写" in problems[0]
+        assert "恢复方法" in problems[0], "问题行必须自带恢复指令(不给手改/删除留口子)"
+        assert sg.main(["verify", "--state-dir", str(tmp_path)]) == 1
+        capsys.readouterr()
+
+    def test_deleted_file_detected(self, tmp_path):
+        sg = self._signed_state(tmp_path)
+        (tmp_path / "rubric.json").unlink()
+        problems = sg.verify_state_files(tmp_path)
+        assert problems and "rubric.json" in problems[0] and "rm" in problems[0]
+
+    def test_unregistered_authoritative_file_detected(self, tmp_path):
+        """F4(回放实证 2026-08-16 江西师大 E2E): 仅登记 sections.json 时, 盘上多出的未登记
+        clauses.json = agent 脚本外直写注入, 必须报问题——旧 verify 只迭代已登记名, 对注入失明。"""
+        sg = _state_guard_module()
+        (tmp_path / "sections.json").write_text('{"chunks": []}', encoding="utf-8")
+        sg.sign_state_files(tmp_path, ["sections.json"])
+        (tmp_path / "clauses.json").write_text("[]", encoding="utf-8")
+        problems = sg.verify_state_files(tmp_path)
+        assert problems and "clauses.json" in problems[0] and "未登记" in problems[0], "在盘未登记的权威文件必须被点名"
+        assert "恢复方法" in problems[0]
+
+    def test_aux_files_outside_allowlist_pass(self, tmp_path):
+        """entities_whitelist.json 由 agent 按设计写(永不签名)、snapshot.json 非权威装载路径——
+        不在权威清单内, 在盘未登记也放行(守卫只拦四件套)。"""
+        sg = self._signed_state(tmp_path)
+        (tmp_path / "entities_whitelist.json").write_text("[]", encoding="utf-8")
+        (tmp_path / "snapshot.json").write_text("{}", encoding="utf-8")
+        assert sg.verify_state_files(tmp_path) == []
+
+    def test_sign_idempotent_bytes(self, tmp_path):
+        """重签字节级不变——extract merge 重复合并的 before==after 全目录比对依赖此性质。"""
+        sg = self._signed_state(tmp_path)
+        before = (tmp_path / ".meta.json").read_bytes()
+        sg.sign_state_files(tmp_path, ["clauses.json"])
+        assert (tmp_path / ".meta.json").read_bytes() == before
+
+    def test_bom_rewrite_tolerated(self, tmp_path):
+        """编辑器加 BOM 重写=编码工件非内容篡改, 校验放行(既有 ingest BOM 容忍测试前提)。"""
+        sg = self._signed_state(tmp_path)
+        raw = (tmp_path / "clauses.json").read_bytes()
+        (tmp_path / "clauses.json").write_bytes(b"\xef\xbb\xbf" + raw)
+        assert sg.verify_state_files(tmp_path) == []
+
+    def test_cli_sign_rejects_missing_file(self, tmp_path, capsys):
+        sg = self._signed_state(tmp_path)
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "不存在.json"]) == 1
+        capsys.readouterr()
+
+    def test_extract_merge_tamper_blocked_then_re_sign_recovers(self, tmp_path, capsys):
+        """端到端: merge#1 签名 → 手改 clauses.json → merge#2 硬错误(rc=1, 带恢复指令);
+        state_guard sign 重登(确认门1 class 编辑的获准通道)后 merge#3 恢复正常。"""
+        files = _happy_candidate_files(tmp_path)
+        state = tmp_path / "state"
+        assert _run_extract("merge", files, declared_total=100, state_dir=state) == 0
+        capsys.readouterr()
+        clauses = json.loads((state / "clauses.json").read_text(encoding="utf-8"))
+        clauses[0]["class"] = "scoring"  # 模拟 write_file 直写改分类(未经确认门流程)
+        (state / "clauses.json").write_text(json.dumps(clauses, ensure_ascii=False), encoding="utf-8")
+        assert _run_extract("merge", files, declared_total=100, state_dir=state) == 1, "签名不符必须硬错误, 不得带病装载"
+        captured = capsys.readouterr()
+        assert "签名校验失败" in captured.err and "恢复方法" in captured.err
+        assert _state_guard_module().main(["sign", "--state-dir", str(state), "--files", "clauses.json"]) == 0
+        capsys.readouterr()
+        assert _run_extract("merge", files, declared_total=100, state_dir=state) == 0, "重登签名后管线恢复"
+
+
+class TestSnapshot:
+    """铁律6: project_snapshot.json 由 snapshot.py 确定性落盘(阶段推断链+代号沿用+单行摘要),
+    取代回放实证中"从未落地"的会话末手写快照。"""
+
+    def _run(self, tmp_path, capsys, *extra):
+        rc = _snapshot_module().main(["--workspace", str(tmp_path), *extra])
+        snap = json.loads((tmp_path / "project_snapshot.json").read_text(encoding="utf-8"))
+        return rc, snap, _last_summary_json(capsys)
+
+    def test_empty_workspace_phase0(self, tmp_path, capsys):
+        rc, snap, summary = self._run(tmp_path, capsys, "--project", "测试项目", "--code", "ZB=招标文件")
+        assert rc == 0
+        assert snap["phase"] == "0-受理"
+        assert snap["project"] == "测试项目"
+        assert snap["codes"] == {"ZB": "招标文件"}
+        assert summary["phase"] == snap["phase"], "stdout 单行摘要与快照文件同源"
+
+    def test_phase_inference_chain(self, tmp_path, capsys):
+        """状态文件存在性推断: 2-提取中→确认门1-待锁定→3/4→4-已构建→5(vN 取最大版)。"""
+        state = tmp_path / "state"
+        state.mkdir()
+        (state / "sections.json").write_text('{"chunks": [{"chunk_id": "CH-001"}], "tables": []}', encoding="utf-8")
+        _, snap, _ = self._run(tmp_path, capsys)
+        assert snap["phase"] == "2-提取中"
+        assert snap["state"]["sections_chunks"] == 1
+        (state / "clauses.json").write_text('[{"clause_id": "ZB-C-001"}]', encoding="utf-8")
+        _, snap, _ = self._run(tmp_path, capsys)
+        assert snap["phase"] == "确认门1-待锁定" and snap["state"]["clauses"] == 1
+        (state / "entities_whitelist.json").write_text("{}", encoding="utf-8")
+        _, snap, _ = self._run(tmp_path, capsys)
+        assert snap["phase"] == "3/4-合并与构建"
+        out = tmp_path / "output"
+        out.mkdir()
+        (out / "商务卷.md").write_text("x", encoding="utf-8")
+        _, snap, _ = self._run(tmp_path, capsys)
+        assert snap["phase"] == "4-已构建" and snap["output_files"] == ["商务卷.md"]
+        reports = state / "评分报告"
+        reports.mkdir()
+        (reports / "version_1.md").write_text("r1", encoding="utf-8")
+        (reports / "version_2.md").write_text("r2", encoding="utf-8")
+        _, snap, _ = self._run(tmp_path, capsys)
+        assert snap["phase"] == "5-评分已完成(v2)"
+
+    def test_codes_and_project_preserved_when_omitted(self, tmp_path, capsys):
+        """续作快照省略 --project/--code: 既有值沿用; 新 --code 增量并入(补遗到达场景)。"""
+        self._run(tmp_path, capsys, "--project", "项目A", "--code", "ZB=招标文件")
+        _, snap, _ = self._run(tmp_path, capsys, "--code", "BY=补遗01")
+        assert snap["project"] == "项目A"
+        assert snap["codes"] == {"ZB": "招标文件", "BY": "补遗01"}
+
+    def test_bad_code_format_exit_1(self, tmp_path, capsys):
+        assert _snapshot_module().main(["--workspace", str(tmp_path), "--code", "无等号"]) == 1
+        assert not (tmp_path / "project_snapshot.json").exists(), "用法错误不得半途落盘"
+        capsys.readouterr()

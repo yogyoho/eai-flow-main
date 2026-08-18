@@ -49,6 +49,8 @@ from collections import Counter
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
+import state_guard
+
 # --- 退出码约定 ---------------------------------------------------------------
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -637,6 +639,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="ingest.py",
         description="投标方案编写·阶段1 纯结构化解析: 招标文件(docx/pdf)→ sections.json(章节切块+锚点+表行数, 无 LLM)",
+        epilog="示例: python ingest.py --input uploads/招标文件.docx --code ZB --out state ; 补遗: python ingest.py --input uploads/补遗01.pdf --code BY --out state --addendum",
     )
     parser.add_argument("--input", nargs="+", required=True, help="基础招标文件路径(可多份: 招标文件/技术规范书/评分办法分卷; .docx/.pdf)")
     parser.add_argument("--code", required=True, help="文件代号(2-4 位大写字母, 如 ZB/JS/PB; clause_id 复合前缀按此分配)")
@@ -702,6 +705,11 @@ def main(argv: list[str] | None = None) -> int:
         #   指纹有变 → 保留删旧块发新号语义, 摘要显式给出 replaced 计数与被替换
         #   旧 id 清单(编排方据此判"候选裁决已失效, 需重跑阶段2 提取")。
         out_path = Path(args.out) / "sections.json"
+        # 读盘前校验既有 sections.json 签名(回放实证 bfa917ce: write_file 直写/rm 后
+        # 下游只报"缺键/结构异常"等远处症状, agent 靠试错烧掉整轮上下文)
+        guard_problems = state_guard.verify_state_files(args.out)
+        if guard_problems:
+            raise IngestError("既有 sections.json 签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(guard_problems))
         sections = load_sections(out_path)
 
         rerun: dict[str, dict] = {}
@@ -764,6 +772,8 @@ def main(argv: list[str] | None = None) -> int:
         sections_changed = any((r["old_chunks"] or r["old_tables"]) or (r["new_chunks"] or r["new_tables"]) for r in rerun.values() if r["status"] != "kept")
         if sections_changed or not out_path.is_file():
             atomic_write_json(out_path, sections)
+        # 权威状态文件落盘后登记防篡改签名(kept 保号重跑不写盘时旧签名仍匹配, 无需重登)
+        state_guard.sign_state_files(args.out, ["sections.json"])
 
         summary = {
             "written": str(out_path),

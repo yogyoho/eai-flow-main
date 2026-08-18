@@ -61,6 +61,8 @@ import re
 import sys
 from pathlib import Path
 
+import state_guard
+
 # --- 退出码约定 -----------------------------------------------------------------
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -627,8 +629,16 @@ def _base_summary(command: str, args, report: dict) -> dict:
     return summary
 
 
+def _verify_state_guard(state_dir: str | Path, context: str) -> None:
+    """读盘前校验权威状态签名(回放实证 bfa917ce: write_file 直写/rm 后下游只报远处症状)。"""
+    problems = state_guard.verify_state_files(state_dir)
+    if problems:
+        raise ExtractError(f"{context}: 权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(problems))
+
+
 def cmd_validate(args) -> int:
     """validate: 只校验不落盘; 异常项交确认门1。"""
+    _verify_state_guard(Path(args.sections).parent, "validate 前置校验(sections 所在目录)")
     sections, schemas, records = _load_inputs(args)
     report = evaluate(sections, schemas, records, args.declared_total)
     summary = _base_summary("validate", args, report)
@@ -641,6 +651,8 @@ def cmd_merge(args) -> int:
 
     Σ 校验基准: --declared-total 优先, 缺省回用既有 rubric.json total_score(evaluate 内统一)。
     """
+    _verify_state_guard(Path(args.sections).parent, "merge 前置校验(sections 所在目录)")
+    _verify_state_guard(args.state_dir, "merge 前置校验(state-dir)")
     sections, schemas, records = _load_inputs(args)
     state = load_state(args.state_dir)
     report = evaluate(sections, schemas, records, args.declared_total, existing=state)
@@ -670,6 +682,9 @@ def cmd_merge(args) -> int:
         written.append(STATE_FILES["rubric"])
 
     summary["written"] = sorted(written)
+    if written:
+        # 权威状态文件写盘后登记防篡改签名(仅本次落盘文件; 未动文件旧签名仍匹配内容)
+        state_guard.sign_state_files(state_dir, written)
     summary["merged"] = {"clauses": len(merged_clauses), "structure": len(merged_structure), "rubric": len(merged_rubric_items)}
     print(json.dumps(summary, ensure_ascii=False))
     return EXIT_ANOMALY if report["anomalies"] else EXIT_OK
@@ -700,6 +715,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="extract.py",
         description="投标方案编写·阶段2 候选校验/合并: 对 Agent 分块提取循环产出的候选 JSON 做确定性校验(锚点/枚举/去重/Σ/全量裁决/外键), merge 原子合并进三状态文件(无 LLM)",
+        epilog="示例: python extract.py validate --candidates candidates/CH-001.json candidates/TB-001.json --sections state/sections.json --declared-total 100 ; "
+        "python extract.py merge --candidates candidates/CH-001.json --sections state/sections.json --state-dir state --declared-total 100",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
     validate_parser = subparsers.add_parser("validate", help="只校验候选(不落盘), 异常项交确认门1")

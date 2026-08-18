@@ -91,6 +91,9 @@ import re
 import sys
 from pathlib import Path
 
+import build_output
+import state_guard
+
 # --- 退出码约定 -----------------------------------------------------------------
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -256,12 +259,14 @@ def normalize_title(text: str) -> str:
     return s.casefold()
 
 
-# build_output 两处卷末合成标题(M2): "## {N} 未挂接格式槽的技术条款(清单驱动)" 与
+# build_output 两处卷末合成标题(M2): "## {N} 其他技术要求响应"(v2 中性化, 常量单一
+# 来源=build_output.ORPHAN_SECTION_TITLE, 双脚本各写一份曾致改名后豁免漂移)与
 # "## 扫描件清单(图片槽汇总)"——不在 structure.json 镜像里也不嵌 clause_id, 却是阶段4
 # 渲染的法定产物, 阶段4→5 原样往返不豁免会每卷必产 unmatched_heading 噪音。豁免口径=
-# 归一化全词等值(编号被 normalize_title 剥离, "## 4 未挂接…"同名豁免); 手改标题不再
-# 全词等值, 仍走镜像检查报异常待人核。
-SYNTHETIC_HEADING_NORMS = frozenset({normalize_title("未挂接格式槽的技术条款(清单驱动)"), normalize_title("扫描件清单(图片槽汇总)")})
+# 归一化全词等值(编号被 normalize_title 剥离, "## 4 其他…"同名豁免); 手改标题不再
+# 全词等值, 仍走镜像检查报异常待人核。旧标题"未挂接格式槽的技术条款(清单驱动)"保留
+# 豁免——v2 前构建的回传卷重灌不因改名报噪音。
+SYNTHETIC_HEADING_NORMS = frozenset({normalize_title(build_output.ORPHAN_SECTION_TITLE), normalize_title("未挂接格式槽的技术条款(清单驱动)"), normalize_title("扫描件清单(图片槽汇总)")})
 
 
 # =============================================================================
@@ -517,6 +522,9 @@ def run_reingest(source: Path, state_dir: Path, threshold: float, volume: str = 
         updated_clauses = len(pending_updates)
         if pending_updates:
             atomic_write_json(state_dir / "clauses.json", clauses)
+            # clauses.json 属登记在册的权威状态文件 → 写盘后重登签名(写盘方重签不变量)
+            # 同时收编在盘其余权威文件为本轮基线, 消除部分签名形态(F4 误报源头)
+            state_guard.sign_all_authoritative(state_dir)
 
     anchors = {
         "total": total_anchors,
@@ -1076,6 +1084,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="score_simulate.py",
         description="投标方案编写·阶段5 模拟评分: reingest 回传稿锚点重灌(D2/D6) / assemble-evidence 证据包 / aggregate Σ复检+客观汇总+主观消费 / report 评分报告 version++(无 LLM)",
+        epilog="示例: python score_simulate.py reingest --source output/商务卷.md --state-dir state | python score_simulate.py aggregate --scores candidates/scores.json --state-dir state",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -1106,6 +1115,11 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ERROR
 
     try:
+        # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状,
+        # agent 靠试错烧掉整轮上下文; 一声带恢复指令的硬错误替代"结构异常/缺键")
+        guard_problems = state_guard.verify_state_files(args.state_dir)
+        if guard_problems:
+            raise ScoreSimulateError("权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(guard_problems))
         if args.command == "reingest":
             if not (0 < args.threshold <= 1):
                 raise ScoreSimulateError(f"--threshold 须在 (0,1] 区间: {args.threshold}")
