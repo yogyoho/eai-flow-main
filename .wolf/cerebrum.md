@@ -1013,3 +1013,9 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - 楔死判定与处置：CPU 平坦 + 输出文件 0 增长 = 阻塞在 I/O；用 Get-CimInstance Win32_Process 看进程树，Bash taskkill //PID <pid> //F //T 杀树（PowerShell 分类器可能临时不可用，直接用 Bash）。pytest 输出必须 PYTHONUNBUFFERED=1 -v 且不要接 tail（tail 缓冲到 EOF，interim 输出全空）。
 - tracebacks 显示 /app/... 路径是容器写入 backend/__pycache__ 的 .pyc 被宿主复用（同 Python 版本），不影响语义，别误判为容器内运行。
 - 归因方法：可疑文件 standalone 跑一遍即可区分 standalone 故障 vs 顺序依赖；本次 gateway 22 失败 standalone 复现 → 既有债务，非本次改动所致。
+
+## Do-Not-Repeat + Key Learnings (2026-08-19 — buglog 覆盖事故 bug-2181)
+
+- .wolf/buglog.json 低段 id（001~055+）是 auto-detected 工具占用区，手写条目一律用 2176+ 空闲段并先查重；id 撞车会在中国去重合并时静默丢条目。
+- buglog 曾被外部 IDE 插件整文件重写为 {version,bugs} dict（08-18，1173 条数组历史全丢）；append 前先校验顶层是 list，发现 dict 先从 git 恢复合并。约定格式=顶层数组。
+- 中文内容绝不经 bash argv 传给 `python -c`（Windows 下 argv 按 GBK 解码 → 乱码）；写 UTF-8 脚本文件执行或用 heredoc 字节直写。
