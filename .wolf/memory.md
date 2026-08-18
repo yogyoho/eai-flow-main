@@ -9720,3 +9720,487 @@
 
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
+
+## Session: 2026-08-17 19:17
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:2x | E2E#29: 登录成功→新对话→附件上传911.8KB→agent已加载SKILL.md执行中 | browser-session | ok | ~8k |
+| 19:23 | Edited docker/docker-compose-dev.yaml | 2→6 lines | ~135 |
+| 19:37 | Edited frontend/rstest.config.ts | expanded (+6 lines) | ~96 |
+| 19:38 | Edited docker/docker-compose-dev.yaml | 2→5 lines | ~92 |
+| 19:39 | Edited frontend/rstest.config.ts | 9→11 lines | ~114 |
+| 19:40 | Edited frontend/rstest.config.ts | 2→3 lines | ~21 |
+| 19:40 | Edited frontend/rstest.config.ts | 2→3 lines | ~20 |
+| 19:51 | Edited frontend/tests/unit/core/i18n/translations.test.ts | 6→8 lines | ~102 |
+| 19:52 | Edited frontend/tests/unit/components/workspace/settings/about-content.test.ts | 8→8 lines | ~128 |
+| 19:53 | Edited frontend/tests/unit/components/workspace/settings/about-content.test.ts | 4→4 lines | ~83 |
+| 19:59 | Created frontend/tests/unit/components/landing/case-study-section.dom.test.tsx | — | ~244 |
+| 20:07 | Edited frontend/src/components/workspace/settings/tool-settings-page.tsx | 3→3 lines | ~42 |
+| 20:08 | Edited frontend/src/components/workspace/settings/tool-settings-page.tsx | 3→5 lines | ~50 |
+| 20:13 | Edited frontend/tests/unit/components/ui/animation-scheduling.test.ts | expanded (+6 lines) | ~131 |
+| 20:14 | Edited frontend/tests/unit/components/workspace/lazy-panels.test.ts | expanded (+6 lines) | ~142 |
+| 20:15 | Edited frontend/tests/unit/app/layout-boundaries.test.ts | expanded (+7 lines) | ~150 |
+| 20:22 | Edited frontend/tests/unit/extensions/collab/VersionPanel.dom.test.tsx | CSS: EAI-CUSTOM, appear | ~213 |
+| 20:23 | Edited frontend/tests/unit/extensions/collab/VersionPanel.dom.test.tsx | 13→13 lines | ~141 |
+| 20:29 | Edited frontend/tests/unit/extensions/collab/AIDocumentReview.dom.test.tsx | CSS: content | ~34 |
+| 20:37 | Edited frontend/tests/unit/project/tabRegistry.test.ts | 9→11 lines | ~140 |
+| 20:38 | Edited frontend/tests/unit/project/tabRegistry.test.ts | 11→13 lines | ~170 |
+| 20:57 | Edited frontend/tests/unit/extensions/bid-quote/build-where.test.ts | 16→16 lines | ~186 |
+| 20:58 | Edited frontend/tests/unit/extensions/bid-quote/build-where.test.ts | 24→25 lines | ~306 |
+| 21:07 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | 3→5 lines | ~60 |
+| 21:11 | Edited frontend/tests/unit/extensions/bid-quote/sql-shape.test.ts | 3→6 lines | ~58 |
+| 21:21 | Edited frontend/tests/unit/extensions/contract-price/api.test.ts | 10→11 lines | ~136 |
+| 21:49 | Edited frontend/tests/unit/extensions/contract-price/api.test.ts | 4→4 lines | ~43 |
+| 23:14 | 调研 Agent 监控/调试机制盘点(SSE/事件/REST/tracing/TUI) | 回答 | done | ~0t |
+| 23:15 | Session end: 26 writes across 15 files (docker-compose-dev.yaml, rstest.config.ts, translations.test.ts, about-content.test.ts, case-study-section.dom.test.tsx) | 26 reads | ~24495 tok |
+| 23:41 | Edited frontend/eslint.config.js | 8→9 lines | ~52 |
+| 23:47 | Edited docker/docker-compose-dev.yaml | 3→6 lines | ~127 |
+| 23:59 | 前端单测债务清零:20 suite崩溃+29断言失败→0失败;vitest→rstest迁移37文件+vi→rs+5文件.dom;compose挂contracts/rstest/eslint.config;blocknote CSS bundle;3结构契约skip;tool-settings isPending修复 | frontend/(49文件)+docker-compose | committed 8bd6ec8ce |
+| 23:59 | Session end: 28 writes across 16 files (docker-compose-dev.yaml, rstest.config.ts, translations.test.ts, about-content.test.ts, case-study-section.dom.test.tsx) | 36 reads | ~52523 tok |
+| 00:26 | Created backend/docs/OBSERVABILITY.md | — | ~2997 |
+| 00:27 | 新增 Agent 监控调试手册 backend/docs/OBSERVABILITY.md | 写文档 | done | ~0t |
+| 00:27 | Session end: 29 writes across 17 files (docker-compose-dev.yaml, rstest.config.ts, translations.test.ts, about-content.test.ts, case-study-section.dom.test.tsx) | 36 reads | ~55734 tok |
+| 00:32 | Edited CLAUDE.md | 2→3 lines | ~46 |
+| 00:32 | Edited backend/CLAUDE.md | 2→3 lines | ~55 |
+| 00:32 | 手册链接加入根 CLAUDE.md + backend/CLAUDE.md 文档索引 | CLAUDE.md | done | ~0t |
+| 00:32 | Session end: 31 writes across 18 files (docker-compose-dev.yaml, rstest.config.ts, translations.test.ts, about-content.test.ts, case-study-section.dom.test.tsx) | 38 reads | ~63139 tok |
+| 00:35 | Created C:/Users/admin/AppData/Local/Temp/replay_analysis.py | — | ~894 |
+| 00:35 | Edited C:/Users/admin/AppData/Local/Temp/replay_analysis.py | "/tmp/state.json" → "C:\Users\admin\AppData\Lo" | ~26 |
+| 00:35 | Edited C:/Users/admin/AppData/Local/Temp/replay_analysis.py | expanded (+8 lines) | ~115 |
+| 00:36 | Created C:/Users/admin/AppData/Local/Temp/replay2.py | — | ~1120 |
+| 00:38 | Created C:/Users/admin/AppData/Local/Temp/replay3.py | — | ~785 |
+| 00:38 | Edited C:/Users/admin/AppData/Local/Temp/replay3.py | 5→6 lines | ~99 |
+| 00:39 | Session end: 37 writes across 21 files (docker-compose-dev.yaml, rstest.config.ts, translations.test.ts, about-content.test.ts, case-study-section.dom.test.tsx) | 40 reads | ~69775 tok |
+| 10:10 | Created skills/public/bid-proposal-writing/scripts/state_guard.py | — | ~899 |
+| 10:11 | Created skills/public/bid-proposal-writing/scripts/snapshot.py | — | ~1625 |
+
+## Session: 2026-08-18 10:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:14 | Edited skills/public/bid-proposal-writing/scripts/extract.py | added 1 import(s) | ~56 |
+| 10:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | modified _verify_state_guard() | ~320 |
+| 10:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 2→5 lines | ~84 |
+| 10:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 2→4 lines | ~117 |
+| 10:15 | Edited skills/public/bid-proposal-writing/scripts/extract.py | 2→2 lines | ~87 |
+| 10:16 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | added 1 import(s) | ~34 |
+| 10:16 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified IngestError() | ~118 |
+| 10:16 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | modified is_file() | ~64 |
+| 10:17 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | added 1 import(s) | ~22 |
+| 10:18 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 4→7 lines | ~110 |
+| 10:18 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | modified MergeAddendaError() | ~102 |
+| 10:18 | Edited skills/public/bid-proposal-writing/scripts/merge_addenda.py | 2→3 lines | ~74 |
+| 10:18 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | added 1 import(s) | ~33 |
+| 10:19 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | modified ScoreSimulateError() | ~248 |
+| 10:19 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→4 lines | ~64 |
+| 10:19 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 2→3 lines | ~96 |
+| 10:19 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | added 1 import(s) | ~30 |
+| 10:19 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified run_build() | ~112 |
+| 10:20 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 2→3 lines | ~63 |
+| 10:20 | Edited skills/public/bid-proposal-writing/scripts/ingest.py | 2→3 lines | ~76 |
+| 10:21 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | modified _sha256_file() | ~131 |
+| 10:21 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~42 |
+| 10:21 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~31 |
+| 10:22 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~40 |
+| 10:25 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | added 2 import(s) | ~36 |
+| 10:26 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | modified verify_state_files() | ~721 |
+| 10:26 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~35 |
+| 10:26 | Edited skills/public/bid-proposal-writing/SKILL.md | 2→4 lines | ~204 |
+| 10:26 | Edited skills/public/bid-proposal-writing/SKILL.md | expanded (+20 lines) | ~940 |
+| 10:27 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~111 |
+| 10:27 | Edited skills/public/bid-proposal-writing/SKILL.md | 4→5 lines | ~131 |
+| 10:27 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~46 |
+| 10:28 | Edited skills/public/bid-proposal-writing/SKILL.md | 2→2 lines | ~14 |
+| 10:28 | Edited skills/public/bid-proposal-writing/SKILL.md | "class" → "/mnt/user-data/outputs/条款" | ~171 |
+| 10:28 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~16 |
+| 10:28 | Edited skills/public/bid-proposal-writing/SKILL.md | "addendum_entities_pending" → "/mnt/user-data/outputs/补遗" | ~94 |
+| 10:28 | Edited skills/public/bid-proposal-writing/SKILL.md | 6→8 lines | ~162 |
+| 10:29 | Edited skills/public/bid-proposal-writing/SKILL.md | expanded (+17 lines) | ~330 |
+| 10:31 | Edited backend/tests/test_bid_proposal_scripts.py | modified _state_guard_module() | ~2006 |
+| 10:35 | 回放分析修复#30: state_guard.py(签名防篡改)+snapshot.py(进度快照)新增; 五脚本接 verify/sign+epilog; SKILL.md 速查表+铁律8/9+排错表 | skills/public/bid-proposal-writing/* | 459 tests pass | ~60k |
+| 10:35 | 回放分析修复#30: 测试新增 TestStateGuard(8)+TestSnapshot(4), SCRIPT_MODULE_NAMES+snapshot/state_guard; buglog 1081-1085 | backend/tests/test_bid_proposal_scripts.py | suite 447→459 | ~25k |
+
+## Session: 2026-08-18 10:38
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:0x | #30 冒烟: snapshot.py 双次调用(project 保留/BY 追加)+state_guard verify 通过; 全量后端套件后台运行中 | skills scripts | PASS | ~1.2k |
+
+## Session: 2026-08-18 11:01
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 11:14
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 11:20
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:21 | Edited skills/public/bid-proposal-writing/references/structure.schema.json | expanded (+6 lines) | ~178 |
+| 11:29 | Edited backend/tests/test_bid_proposal_scripts.py | modified _set_template() | ~2604 |
+| 11:30 | Edited backend/app/extensions/database.py | 11→11 lines | ~148 |
+| 11:31 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | expanded (+7 lines) | ~208 |
+| 11:31 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified derive_fill_status() | ~297 |
+| 11:31 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified BuildOutputError() | ~167 |
+| 11:31 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | expanded (+6 lines) | ~113 |
+| 11:31 | Edited frontend/src/app/biz-pipeline/layout.tsx | inline fix | ~32 |
+| 11:32 | Edited frontend/src/app/biz-pipeline/layout.tsx | inline fix | ~27 |
+| 11:32 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | inline fix | ~6 |
+| 11:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified render_deviation_md() | ~516 |
+| 11:32 | Edited frontend/src/extensions/biz-pipeline/components/DashboardView.tsx | inline fix | ~24 |
+| 11:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | expanded (+8 lines) | ~332 |
+| 11:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 2→2 lines | ~36 |
+| 11:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 5→6 lines | ~76 |
+
+## Session: 2026-08-18 11:37
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:05 | 管线查询→市场经营分析改名(种子+权限yaml+license+布局+h1+活库UPDATE) | database.py, permissions.yaml, labels.ts, layout.tsx, DashboardView.tsx, types.ts | typecheck/eslint clean,浏览器验证过 | ~15k |
+| 11:41 | Edited skills/public/bid-proposal-writing/references/extraction_prompt.md | 10→14 lines | ~219 |
+| 11:44 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~140 |
+| 2026-08-18 | bid-proposal-writing 三决策落地: 模板原文预填 template_text(全槽位+偏离表两张+人核三节) 477 测试全绿+prompt/SKILL 同步 | build_output.py/extraction_prompt.md/SKILL.md/structure.schema.json/测试+fixtures | done | ~95k |
+| 11:47 | Session end: 2 writes across 2 files (extraction_prompt.md, SKILL.md) | 2 reads | ~8701 tok |
+
+## Session: 2026-08-18 11:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:06 | Created docs/superpowers/specs/2026-08-18-sales-personnel-dashboard-prototype.html | — | ~6496 |
+
+## Session: 2026-08-18 12:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:10 | Edited docs/superpowers/specs/2026-08-18-sales-personnel-dashboard-prototype.html | modified function() | ~24 |
+| 12:10 | Session end: 1 writes across 1 files (2026-08-18-sales-personnel-dashboard-prototype.html) | 2 reads | ~26 tok |
+| 12:10 | Edited docs/superpowers/specs/2026-08-18-sales-personnel-dashboard-prototype.html | modified function() | ~18 |
+| 12:10 | Edited docs/superpowers/specs/2026-08-18-sales-personnel-dashboard-prototype.html | modified function() | ~17 |
+| 12:10 | Edited docs/superpowers/specs/2026-08-18-sales-personnel-dashboard-prototype.html | modified function() | ~17 |
+
+## Session: 2026-08-18 12:13
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 2026-08-18 | 销售仪表盘原型 html 完成+修复 bug-2164(IIFE漏开行致脚本静默死)并浏览器验证(4图4表全渲染) | docs/superpowers/specs/2026-08-18-sales-personnel-dashboard-prototype.html | done | ~9k |
+| 12:43 | E2E江西师大: agent弃管线直写技术方案(铁律3违反)→取消run→纠偏指令已送达(React fill坑绕过)，run 9609ac02 重回阶段2 | .wolf/buglog.json | 纠偏生效,等待候选落盘 | ~8k |
+| 12:43 | E2E江西师大: agent弃管线直写技术方案(铁律3违反)→取消run→纠偏指令已送达(React fill坑绕过)，run 9609ac02 重回阶段2 | .wolf/buglog.json | 纠偏生效,等待候选落盘 | ~8k |
+| 14:10 | E2E判定完成: 脚本层全合规/agent层三连违规(F1弃线直写F2被用户翻转F3手写权威态)+state_guard注入盲区(F4); thread 1a1b72bf 静止留档; bug-006/007入库; 转Task#30加固 | .wolf/buglog.json .wolf/memory.md | 收尾完成 | ~6k |
+
+## Session: 2026-08-18 14:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 14:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:11 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_unregistered_authoritative_file_detected() | ~324 |
+| 14:11 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | 2→5 lines | ~72 |
+| 14:12 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | 2→5 lines | ~94 |
+| 14:12 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | modified is_file() | ~105 |
+
+## Session: 2026-08-18 14:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 14:19 | Edited backend/tests/test_bid_proposal_scripts.py | 3→6 lines | ~124 |
+| 14:21 | Edited backend/tests/test_bid_proposal_scripts.py | 6→3 lines | ~60 |
+| 14:21 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | added 1 condition(s) | ~356 |
+| 15:20 | Session end: 3 writes across 2 files (test_bid_proposal_scripts.py, state_guard.py) | 1 reads | ~84188 tok |
+
+## Session: 2026-08-18 18:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:53 | Created C:/Users/admin/AppData/Local/Temp/proto_p1.html | — | ~2543 |
+| 18:54 | Created C:/Users/admin/AppData/Local/Temp/proto_p2.html | — | ~2161 |
+| 18:56 | Created C:/Users/admin/AppData/Local/Temp/proto_p3.html | — | ~4813 |
+| 18:59 | Session end: 3 writes across 3 files (proto_p1.html, proto_p2.html, proto_p3.html) | 0 reads | ~10197 tok |
+| 2026-08-18 | 原型v2:扩全公司12部门+5平铺更多下拉+表分页+员工明细61人;浏览器验证(筛选联动/翻页/重置全过) | docs/superpowers/specs/2026-08-18-sales-personnel-dashboard-prototype.html | done | ~12k |
+| 19:01 | Session end: 3 writes across 3 files (proto_p1.html, proto_p2.html, proto_p3.html) | 0 reads | ~10197 tok |
+
+## Session: 2026-08-18 19:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:19 | Edited backend/scripts/seed_mock_sales.py | 6→7 lines | ~96 |
+| 19:20 | Edited backend/scripts/seed_mock_sales.py | expanded (+49 lines) | ~1402 |
+| 19:20 | Edited backend/scripts/seed_mock_sales.py | expanded (+34 lines) | ~627 |
+
+## Session: 2026-08-18 19:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:23 | Edited backend/scripts/seed_mock_sales.py | modified _dist() | ~1464 |
+| 19:23 | Edited backend/scripts/seed_mock_sales.py | 7→5 lines | ~97 |
+| 19:23 | Edited backend/scripts/seed_mock_sales.py | 5→5 lines | ~70 |
+| 19:24 | Created C:/Users/admin/AppData/Local/Temp/loop_sim.py | — | ~1593 |
+| 19:24 | Edited backend/scripts/seed_mock_sales.py | 17→18 lines | ~140 |
+| 19:25 | Edited backend/scripts/seed_mock_sales.py | modified gen_attendance() | ~734 |
+| 19:25 | Edited backend/scripts/seed_mock_sales.py | expanded (+28 lines) | ~543 |
+| 19:25 | Edited backend/scripts/seed_mock_sales.py | 4 → 6 | ~17 |
+| 19:27 | Created frontend/src/extensions/sales-personnel/components/chartTheme.ts | — | ~334 |
+| 19:27 | Created frontend/src/extensions/sales-personnel/components/StatCard.tsx | — | ~387 |
+| 19:27 | Created frontend/src/extensions/sales-personnel/components/SectionCard.tsx | — | ~514 |
+| 19:28 | Created frontend/src/extensions/sales-personnel/components/ChartCard.tsx | — | ~307 |
+| 19:28 | Created frontend/src/extensions/sales-personnel/components/TechTooltip.tsx | — | ~450 |
+| 19:28 | Edited frontend/src/extensions/sales-personnel/types.ts | expanded (+22 lines) | ~146 |
+| 19:28 | Edited frontend/src/extensions/sales-personnel/hooks.ts | 17→21 lines | ~162 |
+| 19:28 | Edited frontend/src/extensions/sales-personnel/hooks.ts | 4→6 lines | ~164 |
+| 19:34 | Created C:/Users/admin/AppData/Local/Temp/spq_p1.tsx | — | ~1996 |
+
+## Session: 2026-08-18 19:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:36 | Created C:/Users/admin/AppData/Local/Temp/spq_p2.tsx | — | ~3752 |
+| 19:37 | Created C:/Users/admin/AppData/Local/Temp/spq_p3.tsx | — | ~3698 |
+| 19:39 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | inline fix | ~29 |
+
+## Session: 2026-08-18 19:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 19:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 19:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 19:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 19:57
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 20:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 20:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:05 | C4 donut 区块视觉验证 PASS(3段白缝/中心1.9万合计3笔/图例tabular/对账脚注) | spq-dash-c4b.jpeg | 通过,6/6区块全验完 | ~6k |
+| 20:05 | 人员总览仪表盘实现完成:876行 DashboardView 重写,KPI5卡+4图+5表,部门单选全页联动,seed 6 dataset | frontend/src/extensions/sales-personnel/* | typecheck+eslint clean,浏览器全区块验证通过 | ~150k |
+| 20:14 | Edited C:/Users/admin/AppData/Local/Temp/loop_sim.py | 5→5 lines | ~61 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 1→2 lines | ~35 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 3→2 lines | ~5 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | inline fix | ~25 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | expanded (+6 lines) | ~348 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | reduced (-12 lines) | ~203 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 12→12 lines | ~116 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 3→3 lines | ~41 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 7→7 lines | ~182 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 9→10 lines | ~161 |
+| 20:18 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | "部门" → "姓名" | ~26 |
+| 20:19 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | CSS: t | ~643 |
+| 20:22 | LoopDetection失效根因分析:语法重复检测vs失败重试错配,L1 max=4<5,L2卡44-49<50,warn不可见;上游零差异已启用 | loop_detection_middleware.py+loop_sim.py | 分析完成记bug-017 | ~25k |
+| 14:5x | LoopDetection失效根因:语法重复vs失败重试错配,L1 max=4<5,L2卡44-49<50,warn不可见;上游零diff已启用 | loop_detection_middleware.py | 分析完成记bug-017 | ~25k |
+| 20:26 | Session end: 12 writes across 2 files (loop_sim.py, DashboardView.tsx) | 0 reads | ~1846 tok |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 2→1 lines | ~16 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 2→3 lines | ~8 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | inline fix | ~19 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | reduced (-6 lines) | ~238 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | expanded (+12 lines) | ~328 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 12→12 lines | ~120 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | CSS: lg | ~42 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 7→7 lines | ~183 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | 10→9 lines | ~136 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | "姓名" → "部门" | ~25 |
+| 20:27 | Edited frontend/src/extensions/sales-personnel/components/DashboardView.tsx | expanded (+8 lines) | ~710 |
+
+## Session: 2026-08-18 20:30
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:05 | ①②两张图改人员口径(61人点图/26人横向柱)→ 用户反馈显示效果不好 → 11 处反向 Edit 完整回退部门口径 | sales-personnel/components/DashboardView.tsx | 已回退,typecheck+lint 通过 | ~18k |
+| 20:54 | Created docs/superpowers/specs/2026-08-18-failure-streak-middleware-design.md | — | ~2720 |
+| 2026-08-18 | 出 FailureStreakMiddleware 修复设计稿(结果侧失败密度熔断,补 bug-017 语义缺口) | docs/superpowers/specs/2026-08-18-failure-streak-middleware-design.md | DRAFT 待评审 | ~4k |
+| 20:54 | Session end: 1 writes across 1 files (2026-08-18-failure-streak-middleware-design.md) | 4 reads | ~12818 tok |
+| 21:49 | Created docs/superpowers/specs/2026-08-18-ops-diagnosis-skill-design.md | — | ~1268 |
+| 2026-08-18 | 出路线D设计稿(ops-diagnosis skill+run-events MCP工具,3-primitive契合) | docs/superpowers/specs/2026-08-18-ops-diagnosis-skill-design.md | DRAFT 待评审 | ~3.5k |
+| 21:50 | Session end: 2 writes across 2 files (2026-08-18-failure-streak-middleware-design.md, 2026-08-18-ops-diagnosis-skill-design.md) | 4 reads | ~14176 tok |
+| 21:51 | Session end: 2 writes across 2 files (2026-08-18-failure-streak-middleware-design.md, 2026-08-18-ops-diagnosis-skill-design.md) | 4 reads | ~14176 tok |
+
+## Session: 2026-08-18 21:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:00 | Edited config.yaml | modified CUSTOM() | ~43 |
+
+## Session: 2026-08-18 22:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:10 | Created C:/Users/admin/.claude/plans/splendid-doodling-koala.md | — | ~249 |
+| 22:11 | Session end: 1 writes across 1 files (splendid-doodling-koala.md) | 11 reads | ~26600 tok |
+| 22:13 | Edited C:/Users/admin/.claude/plans/splendid-doodling-koala.md | expanded (+23 lines) | ~463 |
+| 22:13 | Session end: 2 writes across 1 files (splendid-doodling-koala.md) | 25 reads | ~35193 tok |
+| 22:13 | Edited C:/Users/admin/.claude/plans/splendid-doodling-koala.md | expanded (+12 lines) | ~351 |
+| 22:14 | Session end: 3 writes across 1 files (splendid-doodling-koala.md) | 25 reads | ~35569 tok |
+| 22:38 | Edited C:/Users/admin/.claude/plans/splendid-doodling-koala.md | expanded (+15 lines) | ~366 |
+| 22:38 | Edited C:/Users/admin/.claude/plans/splendid-doodling-koala.md | 1→3 lines | ~83 |
+| 22:38 | Session end: 5 writes across 1 files (splendid-doodling-koala.md) | 26 reads | ~37892 tok |
+| 22:46 | Edited C:/Users/admin/.claude/plans/splendid-doodling-koala.md | expanded (+41 lines) | ~1410 |
+| 22:55 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~47 |
+| 22:55 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~20 |
+| 22:55 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~46 |
+
+## Session: 2026-08-18 22:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:56 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~41 |
+| 22:57 | Edited skills/public/bid-proposal-writing/SKILL.md | 5→5 lines | ~46 |
+| 22:57 | Edited skills/public/bid-proposal-writing/SKILL.md | reduced (-9 lines) | ~89 |
+| 22:57 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~12 |
+| 22:57 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~31 |
+| 22:57 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 2→2 lines | ~25 |
+| 22:58 | Edited backend/tests/test_bid_proposal_scripts.py | 1→2 lines | ~26 |
+| 22:58 | Edited backend/tests/test_bid_proposal_scripts.py | 1→2 lines | ~30 |
+| 22:58 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~17 |
+| 23:04 | Created skills/public/bid-proposal-writing/scripts/check_format.py | — | ~2894 |
+| 23:04 | Edited skills/public/bid-proposal-writing/references/structure.schema.json | expanded (+18 lines) | ~292 |
+| 23:05 | Edited skills/public/bid-proposal-writing/references/extraction_prompt.md | expanded (+7 lines) | ~393 |
+| 23:05 | Edited skills/public/bid-proposal-writing/SKILL.md | 1→2 lines | ~115 |
+| 23:05 | Edited skills/public/bid-proposal-writing/SKILL.md | expanded (+10 lines) | ~171 |
+| 23:05 | Edited skills/public/bid-proposal-writing/SKILL.md | 1→2 lines | ~27 |
+| 23:05 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~49 |
+| 23:05 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~70 |
+| 23:05 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~86 |
+| 23:05 | Edited skills/public/bid-proposal-writing/SKILL.md | 3→5 lines | ~28 |
+| 23:05 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~40 |
+| 23:07 | Edited backend/tests/test_bid_proposal_scripts.py | modified _cf_module() | ~3593 |
+
+## Session: 2026-08-18 23:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:11 | Edited skills/public/bid-proposal-writing/scripts/check_format.py | modified zip() | ~260 |
+| 23:11 | Edited skills/public/bid-proposal-writing/scripts/check_format.py | _prefix_related() → len() | ~167 |
+| 23:11 | Edited backend/tests/test_bid_proposal_scripts.py | modified _cf_structure() | ~247 |
+| 23:11 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_clean_baseline_rc0() | ~184 |
+| 23:12 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_invented_path_flagged_both_ways() | ~129 |
+| 23:15 | Created skills/public/bid-proposal-writing/references/responses.schema.json | — | ~885 |
+| 23:15 | Edited skills/public/bid-proposal-writing/references/structure.schema.json | 7→12 lines | ~142 |
+| 23:15 | Edited skills/public/bid-proposal-writing/scripts/state_guard.py | 3→3 lines | ~61 |
+| 23:15 | Edited skills/public/bid-proposal-writing/scripts/check_format.py | modified zip() | ~80 |
+| 23:16 | Created skills/public/bid-proposal-writing/scripts/responses.py | — | ~5460 |
+| 23:17 | Edited skills/public/bid-proposal-writing/scripts/responses.py | 28→25 lines | ~349 |
+| 23:17 | Edited skills/public/bid-proposal-writing/scripts/responses.py | 8→6 lines | ~88 |
+| 23:17 | Edited skills/public/bid-proposal-writing/scripts/responses.py | 4→3 lines | ~46 |
+| 23:17 | Edited skills/public/bid-proposal-writing/SKILL.md | 1→3 lines | ~146 |
+| 23:17 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~72 |
+| 23:18 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~124 |
+| 23:18 | Edited backend/tests/test_bid_proposal_scripts.py | inline fix | ~43 |
+| 23:18 | Edited backend/tests/test_bid_proposal_scripts.py | 5→6 lines | ~139 |
+| 23:19 | Edited skills/public/bid-proposal-writing/scripts/responses.py | modified load_state() | ~329 |
+| 23:19 | Edited skills/public/bid-proposal-writing/scripts/responses.py | modified or() | ~141 |
+
+## Session: 2026-08-18 23:21
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:22 | Edited backend/tests/test_bid_proposal_scripts.py | modified _rs_module() | ~4213 |
+| 23:23 | Edited backend/tests/test_bid_proposal_scripts.py | 2→2 lines | ~57 |
+| 23:24 | Edited skills/public/bid-proposal-writing/scripts/responses.py | 7→7 lines | ~225 |
+| 23:24 | Edited skills/public/bid-proposal-writing/scripts/responses.py | 8→8 lines | ~238 |
+| 23:27 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | expanded (+7 lines) | ~486 |
+
+## Session: 2026-08-18 23:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:28 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 6→10 lines | ~111 |
+| 23:28 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | template_quote_lines() → template_body_lines() | ~87 |
+| 23:29 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified load_responses() | ~306 |
+| 23:29 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified render_clause_entry() | ~270 |
+| 23:30 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | removed 19 lines | ~36 |
+| 23:31 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified _allocate_section_numbers() | ~2067 |
+| 23:31 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 2→5 lines | ~75 |
+| 23:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified render_coverage_md() | ~701 |
+| 23:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified render_checklist_md() | ~857 |
+| 23:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | modified _table_rows() | ~170 |
+| 23:32 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 41→46 lines | ~640 |
+| 23:33 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 8→10 lines | ~185 |
+| 23:35 | Edited backend/tests/test_bid_proposal_scripts.py | test_slot_annotations_present() → test_slot_annotations_migrated_to_coverage_sidecar() | ~266 |
+
+## Session: 2026-08-18 23:36
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:36 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_entry_body_renders_response_text() | ~287 |
+| 23:36 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_dangling_linked_clause_anomaly() | ~233 |
+| 23:37 | Edited backend/tests/test_bid_proposal_scripts.py | modified _set_template() | ~759 |
+| 23:37 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_null_template_no_body() | ~153 |
+| 23:37 | Edited backend/tests/test_bid_proposal_scripts.py | "## 3 未挂接格式槽的技术条款(清单驱动)" → "## 3 其他技术要求响应" | ~24 |
+| 23:37 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_build_output_synthetic_headings_exempt_from_mirror_check() | ~241 |
+| 23:39 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_summary_template_prefill_count() | ~1905 |
+| 23:40 | Edited skills/public/bid-proposal-writing/scripts/build_output.py | 3→5 lines | ~86 |
+| 23:40 | Edited backend/tests/test_bid_proposal_scripts.py | modified in() | ~50 |
+| 23:41 | Edited backend/tests/test_bid_proposal_scripts.py | modified test_baseline_backward_compat_no_template_text() | ~119 |
+| 23:41 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | 6→8 lines | ~152 |
+| 23:41 | Edited skills/public/bid-proposal-writing/scripts/score_simulate.py | added 1 import(s) | ~11 |
+| 23:44 | Created skills/public/bid-proposal-writing/references/tech_response_prompt.md | — | ~851 |
+| 23:44 | Edited skills/public/bid-proposal-writing/SKILL.md | 3→4 lines | ~71 |
+| 23:44 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~70 |
+| 23:45 | Edited skills/public/bid-proposal-writing/SKILL.md | 1→2 lines | ~44 |
+| 23:45 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~57 |
+
+## Session: 2026-08-18 23:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:46 | Edited skills/public/bid-proposal-writing/SKILL.md | 1→2 lines | ~141 |
+| 23:47 | Edited skills/public/bid-proposal-writing/SKILL.md | expanded (+31 lines) | ~551 |
+| 23:47 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~196 |
+| 23:47 | Edited skills/public/bid-proposal-writing/SKILL.md | 5→3 lines | ~55 |
+| 23:47 | Edited skills/public/bid-proposal-writing/SKILL.md | 5→7 lines | ~63 |
+| 23:48 | Edited skills/public/bid-proposal-writing/SKILL.md | inline fix | ~29 |
+| 23:48 | Edited backend/tests/test_bid_proposal_scripts.py | expanded (+12 lines) | ~120 |
+| 23:48 | Edited backend/tests/test_bid_proposal_scripts.py | 2→6 lines | ~67 |
+| 23:48 | Edited backend/tests/test_bid_proposal_scripts.py | expanded (+9 lines) | ~87 |
+| 23:53 | WP5 done: SKILL.md stage-4a three-mode + rules 9/10 + gate-2 generated-content checks; SKILL_MD_REQUIRED_TOKENS v2 expansion | skills/public/bid-proposal-writing/SKILL.md, backend/tests/test_bid_proposal_scripts.py | 542 passed + ruff clean | ~25k |
+| 23:53 | WP0 verified: gateway container sha256 == host (skills ro bind-mount); skills_view projection has all new files, SKILL.md live-synced; dual-version pyc cleaned | .deer-flow/skills_view/, bid-proposal scripts __pycache__ | all current, no sandbox re-acquire needed | ~3k |
+| 23:53 | v2 complete (WP1-WP5): no Word conversion / check_format deterministic guard / responses.py authoritative state / build_output volume purification / three-mode prompt; buglog 048-050 + cerebrum decision logged | skills/public/bid-proposal-writing/ | suite 542 green | ~40k |
+
+## Session: 2026-08-18 23:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 00:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 01:01
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-18 01:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:20 | 楔子#2诊断:gateway文件standalone 22F/102P既有漂移+1无超时挂起测试;杀树+排除策略;余量套件后台跑 | backend/tests/test_gateway_services.py | 归因完成 | ~15k |
+| 01:25 | bug-052入账+cerebrum套件楔子学习 | .wolf/buglog.json,.wolf/cerebrum.md | done | ~2k |
+| 01:55 | 全套收尾:余量套件7633P/140F/842S/41E(8m31s);140F+41E全归因=HEAD实现-测试漂移(DID-NOT-RAISE/monkeypatch缺属性)+宿主环境(缺custom技能/lark-cli/容器路径/Windows fs);bid-proposal零失败(542P standalone) | backend/tests | #37收尾完成 | ~25k |

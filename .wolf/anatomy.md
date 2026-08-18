@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-17T10:52:21.385Z
-> Files: 2209 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-18T15:48:35.465Z
+> Files: 2246 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -67,11 +67,11 @@
 - `app_center_seed_fix.sql` — app_center_seed_fix.sql — manually seed the 5 domains + 10 built-in apps (~831 tok)
 - `body.txt` (~19 tok)
 - `check_fonts.py` (~81 tok)
-- `CLAUDE.md` — page login info (~3649 tok)
+- `CLAUDE.md` — page login info (~3667 tok)
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
 - `config.example.yaml` — Configuration for the DeerFlow application (~26931 tok)
-- `config.yaml` (~3183 tok)
+- `config.yaml` (~3274 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow (~2542 tok)
 - `cookies.txt` — Netscape HTTP Cookie File (~34 tok)
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
@@ -497,6 +497,7 @@
 - `sharded-drifting-wolf.md` — Fix Plan: 3 Workflow Bugs (~1676 tok)
 - `snappy-scribbling-piglet-agent-aac5246b64c3241fb.md` — App-Center DB Persistence Migration Plan (~7989 tok)
 - `snug-exploring-stream.md` — 同步 bytedance/main 291 个落后提交（2026-08-14） (~953 tok)
+- `splendid-doodling-koala.md` — bid-proposal-writing 技能 v2 修订（用户四点反馈 + F4 收尾） (~2675 tok)
 - `tab-ok-explore-review-version-fizzy-token.md` — Version History Panel Improvements (~1244 tok)
 - `ticklish-mixing-wirth.md` — Plan: 法规标准库注册到 KnowledgeBase 表 (~711 tok)
 - `tingly-pondering-pretzel.md` — 分页组件显示异常 — 根因分析 & 修复 (~423 tok)
@@ -582,6 +583,16 @@
 - `gstack-codex-oh-bid.txt` (~1444 tok)
 - `gstack-codex-oh-prompt.txt` (~698 tok)
 - `gstack-codex-per-bid.txt` — Declares in (~675 tok)
+- `loop_sim.py` — Simulate LoopDetectionMiddleware over the real bfa917ce event stream. (~1612 tok)
+- `proto_p1.html` — 人员总览原型 (~2543 tok)
+- `proto_p2.html` (~2161 tok)
+- `proto_p3.html` — DEPTS: bindTip, toggleSec, vbar + 8 more (~4813 tok)
+- `replay_analysis.py` — trunc (~1010 tok)
+- `replay2.py` — trunc, content_str (~1120 tok)
+- `replay3.py` — cs (~810 tok)
+- `spq_p1.tsx` — 考勤四段(固定顺序,色随身份不随筛选重绘)。 (~1996 tok)
+- `spq_p2.tsx` — DashboardView (~3752 tok)
+- `spq_p3.tsx` — row (~3698 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/bidpipe/
 
@@ -758,7 +769,7 @@
 - `.gitignore` — Git ignore rules (~86 tok)
 - `.python-version` (~2 tok)
 - `AGENTS.md` (~16 tok)
-- `CLAUDE.md` — CLAUDE.md (~13127 tok)
+- `CLAUDE.md` — CLAUDE.md (~13143 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow Backend (~2414 tok)
 - `debug.py` — main (~1415 tok)
 - `Dockerfile` — Docker container definition (~1296 tok)
@@ -1352,7 +1363,7 @@
 ## backend/app/extensions/
 
 - `config.py` — Extensions module configuration. (~2604 tok)
-- `database.py` — Database connection and session management for extensions module. (~24268 tok)
+- `database.py` — Database connection and session management for extensions module. (~24736 tok)
 - `models/__init__.py` — SQLAlchemy data models for extensions module. (~10531 tok)
 - `models/role_permission.py` — Unified RolePermission model with ProjectRole enum and DEFAULT_ROLE_PERMISSIONS. (~2249 tok)
 - `schemas.py` — Pydantic schemas for extensions module. (~6284 tok)
@@ -1707,6 +1718,10 @@
 - `persistence.test.ts` — Mock pg — Pool must be a constructable function (~1488 tok)
 - `persistence.ts` — Exports loadDocument, storeDocument, recordUpdate, createVersion + 4 more (~1462 tok)
 
+## backend/docs/
+
+- `OBSERVABILITY.md` — Agent 执行监控与调试手册 (~2810 tok)
+
 ## backend/packages/harness/
 
 - `pyproject.toml` — DeerFlow agent harness framework (~914 tok)
@@ -1870,7 +1885,7 @@
 - `ontology_lint.py` — Ontology registry lint — §2.2 acceptance checklist, exit 1 on failure. (~1808 tok)
 - `seed_mock_market.py` — 模块① 投标报价分析 — mock 数据 + data_source 元数据 seed(幂等)。 (~7951 tok)
 - `seed_mock_pipeline.py` — 模块③ 投标/合同/开票管线查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~3028 tok)
-- `seed_mock_sales.py` — 模块② 销售人员查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~4296 tok)
+- `seed_mock_sales.py` — 模块② 销售人员查询 — mock 数据 + data_source 元数据 seed(幂等)。 (~6965 tok)
 
 ## backend/tests/
 
@@ -1880,7 +1895,7 @@
 - `rbac_helpers.py` — 共享 RBAC 深度测试工具：canned identity、policy mock、smart_db、app builder。 (~1762 tok)
 - `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2641 tok)
 - `test_auth_type_system.py` — Tests for auth type system hardening. (~12394 tok)
-- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~78734 tok)
+- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~94040 tok)
 - `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
 - `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
 - `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
@@ -2043,7 +2058,7 @@
 ## docker/
 
 - `dev-entrypoint.sh` — ' --reload-include='*.yaml .env' (~1158 tok)
-- `docker-compose-dev.yaml` — DeerFlow Development Environment (~4745 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~4949 tok)
 - `docker-compose-offline.yaml` — DeerFlow Offline Deployment (~978 tok)
 - `docker-compose.business.yaml` — Business Microservices (~1533 tok)
 - `docker-compose.extensions-offline.yaml` — DeerFlow Extensions Services — Offline Version (~538 tok)
@@ -2226,6 +2241,9 @@
 - `2026-08-15-bid-quote-dashboard-content-design.md` — 投标报价分析 · 仪表盘内容重构设计（三问框架 + DeepSeek 风格） (~1214 tok)
 - `2026-08-16-bid-proposal-writing-skill-design.md` — Design: 投标方案编写 Skill(bid-proposal-writing) (~5861 tok)
 - `2026-08-17-biz-pipeline-dashboard-prototype.html` — 管线战情总览原型 (~5158 tok)
+- `2026-08-18-failure-streak-middleware-design.md` — FailureStreakMiddleware 修复设计稿 (~2550 tok)
+- `2026-08-18-ops-diagnosis-skill-design.md` — 路线D设计稿：ops-diagnosis 技能（把"问题分析"产品化） (~1189 tok)
+- `2026-08-18-sales-personnel-dashboard-prototype.html` — 销售团队总览原型 (~6510 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -2236,8 +2254,10 @@
 - `.npmrc` (~31 tok)
 - `CLAUDE.md` — CLAUDE.md (~1303 tok)
 - `Dockerfile` — Docker container definition (~698 tok)
+- `eslint.config.js` — Declares compat (~732 tok)
 - `next.config.js` — Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful (~943 tok)
 - `package.json` — Node.js package manifest (~1608 tok)
+- `rstest.config.ts` — /*.test.ts", "tests/unit/**/*.test.tsx"], (~416 tok)
 - `scratch-rule-test.ts` — Exports out (~148 tok)
 - `test_debug_login.py` — Login via form submission (handles CSRF automatically) then test plugin tabs. (~2055 tok)
 - `test_plugin_tabs.py` — Test plugin sub-tabs stay within settings page. (~1262 tok)
@@ -2347,7 +2367,7 @@
 
 ## frontend/src/app/biz-pipeline/
 
-- `layout.tsx` — navItems (~644 tok)
+- `layout.tsx` — navItems (~645 tok)
 - `page.tsx` — BizPipelineDashboardPage (~48 tok)
 
 ## frontend/src/app/biz-pipeline/query/
@@ -2579,6 +2599,7 @@
 - `integrations-settings-page.tsx` — LARK_AUTH_DOMAINS (~8541 tok)
 - `settings-dialog.tsx` — SettingsDialog — renders modal (~1595 tok)
 - `skill-settings-page.tsx` — SkillSettingsPage (~1306 tok)
+- `tool-settings-page.tsx` — ToolSettingsPage (~728 tok)
 - `wechat-settings-page.tsx` — BotStatusCard (~1942 tok)
 
 ## frontend/src/content/en/
@@ -3078,17 +3099,19 @@
 ## frontend/src/extensions/sales-personnel/
 
 - `api.ts` — sales-personnel API client —— Route B 薄前端直调 data_source REST(零后端增量,复用①端点)。 (~520 tok)
-- `hooks.ts` — sales-personnel TanStack Query hooks。queryKey 统一 ["spq", ...] 命名空间。 (~718 tok)
-- `types.ts` — 销售人员(sales-personnel)类型 —— 对齐 data_source 罐装 dataset 列。 (~358 tok)
+- `hooks.ts` — sales-personnel TanStack Query hooks。queryKey 统一 ["spq", ...] 命名空间。 (~813 tok)
+- `types.ts` — 销售人员(sales-personnel)类型 —— 对齐 data_source 罐装 dataset 列。 (~492 tok)
 
 ## frontend/src/extensions/sales-personnel/components/
 
-- `ChartCard.tsx` — ChartCard (~259 tok)
-- `DashboardView.tsx` — C_BLUE (~3011 tok)
+- `ChartCard.tsx` — 标题下说明行(12px 弱色,支持 <b> 强调,传 string 或 ReactNode)。 (~307 tok)
+- `chartTheme.ts` — sales-personnel 图表共享主题常量 —— 克隆自 biz-pipeline/chartTheme.ts(DeepSeek usage 页风格), (~334 tok)
+- `DashboardView.tsx` — 考勤四段(固定顺序,色随身份不随筛选重绘)。 (~9453 tok)
 - `DrillDownModal.tsx` — 已拼好的参数化只读 SQL(白名单维度,值来自行数据)。null 时关闭。 (~912 tok)
 - `QueryView.tsx` — TABS — renders table (~2167 tok)
-- `StatCard.tsx` — HEX (~525 tok)
-- `TechTooltip.tsx` — TechTooltip (~356 tok)
+- `SectionCard.tsx` — 区块序号徽标(①/②/③,克隆自 biz-pipeline 三问框架)。 (~514 tok)
+- `StatCard.tsx` — 注脚行(12px 弱色;达标/警示用绿/红 b 强调)。 (~387 tok)
+- `TechTooltip.tsx` — 值后缀单位(万/天/笔)——call site 传。 (~450 tok)
 
 ## frontend/src/extensions/sales-personnel/components/ui/
 
@@ -3228,13 +3251,37 @@
 
 - `brand.test.ts` (~107 tok)
 
+## frontend/tests/unit/app/
+
+- `layout-boundaries.test.ts` — FRONTEND_ROOT: source (~586 tok)
+
 ## frontend/tests/unit/app/knowledge/_components/
 
 - `sources-sort.test.ts` — Declares srcs (~210 tok)
 
+## frontend/tests/unit/components/landing/
+
+- `case-study-section.dom.test.tsx` — headings (~244 tok)
+
+## frontend/tests/unit/components/ui/
+
+- `animation-scheduling.test.ts` — Declares frontendRoot (~668 tok)
+
+## frontend/tests/unit/components/workspace/
+
+- `lazy-panels.test.ts` — Declares FRONTEND_ROOT (~549 tok)
+
+## frontend/tests/unit/components/workspace/settings/
+
+- `about-content.test.ts` — Declares original (~403 tok)
+
 ## frontend/tests/unit/core/api/
 
 - `stream-mode.test.ts` — Declares sanitized (~248 tok)
+
+## frontend/tests/unit/core/i18n/
+
+- `translations.test.ts` (~257 tok)
 
 ## frontend/tests/unit/core/messages/
 
@@ -3262,20 +3309,22 @@
 
 ## frontend/tests/unit/extensions/bid-quote/
 
-- `build-where.test.ts` — EAI-CUSTOM: 从 vitest 改 @rstest/core —— 项目官方 runner 是 rstest(pnpm test), (~1619 tok)
-- `sql-shape.test.ts` — Declares FilterState (~988 tok)
+- `build-where.test.ts` — EAI-CUSTOM: 从 vitest 改 @rstest/core —— 项目官方 runner 是 rstest(pnpm test), (~1571 tok)
+- `sql-shape.test.ts` — Declares FilterState (~1015 tok)
 
 ## frontend/tests/unit/extensions/collab/
 
+- `AIDocumentReview.dom.test.tsx` — render (~2094 tok)
 - `AIDocumentReview.test.tsx` — render (~2031 tok)
 - `DiffViewer.test.tsx` — render (~1100 tok)
 - `traceability-extension.test.ts` — Tests for the ProseMirror traceability extension. (~3923 tok)
 - `types.test.ts` — Declares has (~888 tok)
+- `VersionPanel.dom.test.tsx` — Mock lucide-react icons (~2446 tok)
 - `VersionPanel.test.tsx` — Mock lucide-react icons (~2269 tok)
 
 ## frontend/tests/unit/extensions/contract-price/
 
-- `api.test.ts` — Mock authFetch so tests assert URL + method without hitting the network. (~754 tok)
+- `api.test.ts` — EAI-CUSTOM: rs.mock is NOT fully hoisted under rstest — the module import (~776 tok)
 
 ## frontend/tests/unit/extensions/project/
 
@@ -3295,7 +3344,7 @@
 
 ## frontend/tests/unit/project/
 
-- `tabRegistry.test.ts` — Helper to create identity from partial permissions (~1510 tok)
+- `tabRegistry.test.ts` — Helper to create identity from partial permissions (~1580 tok)
 
 ## mcp-server/cad-mcp/
 
@@ -3447,24 +3496,30 @@
 
 ## skills/public/bid-proposal-writing/
 
-- `SKILL.md` — 投标方案编写技能(bid-proposal-writing) (~3597 tok)
+- `SKILL.md` — 投标方案编写技能(bid-proposal-writing) v2: 六阶段+两门+阶段4a 三模式供源, 无 Word 转换 (~7400 tok)
 
 ## skills/public/bid-proposal-writing/references/
 
 - `classification.md` — 条款分类规则(classification.md) (~597 tok)
 - `clauses.schema.json` (~1076 tok)
-- `extraction_prompt.md` — 提取 prompt 模板(extraction_prompt.md) (~1016 tok)
+- `extraction_prompt.md` — 提取 prompt 模板(extraction_prompt.md) (~1217 tok)
+- `responses.schema.json` (~885 tok)
 - `rubric.schema.json` (~696 tok)
 - `scoring_prompt.md` — 模拟评分 prompt 模板(scoring_prompt.md) (~351 tok)
-- `structure.schema.json` (~717 tok)
+- `structure.schema.json` (~1100 tok)
+- `tech_response_prompt.md` — 技术响应生成 prompt 模板(tech_response_prompt.md) (~798 tok)
 
 ## skills/public/bid-proposal-writing/scripts/
 
-- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 双卷骨架渲染(无 LLM)。 (~9846 tok)
-- `extract.py` — extract.py — 投标方案编写技能·阶段2 候选 JSON 的确定性校验 + 合并(无 LLM)。 (~9981 tok)
-- `ingest.py` — ingest.py — 投标方案编写技能·阶段1 输入分流与纯结构化解析(确定性, 无 LLM)。 (~9674 tok)
-- `merge_addenda.py` — merge_addenda.py — 投标方案编写技能·阶段3 补遗/答疑增量确定性落账(无 LLM)。 (~12551 tok)
-- `score_simulate.py` — score_simulate.py — 投标方案编写技能·阶段5 模拟评分(确定性骨架, 无 LLM)。 (~15994 tok)
+- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 双卷骨架渲染(无 LLM)。 (~12171 tok)
+- `check_format.py` — check_format.py — 投标方案编写技能·格式 1:1 复刻确定性校验(无 LLM, 只读)。 (~3014 tok)
+- `extract.py` — extract.py — 投标方案编写技能·阶段2 候选 JSON 的确定性校验 + 合并(无 LLM)。 (~10263 tok)
+- `ingest.py` — ingest.py — 投标方案编写技能·阶段1 输入分流与纯结构化解析(确定性, 无 LLM)。 (~9853 tok)
+- `merge_addenda.py` — merge_addenda.py — 投标方案编写技能·阶段3 补遗/答疑增量确定性落账(无 LLM)。 (~12721 tok)
+- `responses.py` — responses.py — 投标方案编写技能·阶段4a 技术响应候选的确定性校验 + 合并(无 LLM)。 (~5415 tok)
+- `score_simulate.py` — score_simulate.py — 投标方案编写技能·阶段5 模拟评分(确定性骨架, 无 LLM)。 (~16567 tok)
+- `snapshot.py` — 投标方案编写技能·进度快照(扫描 workspace 推断 phase/next_step, project_snapshot.json 确定性落盘, 无 LLM)。 (~1625 tok)
+- `state_guard.py` — 权威状态防篡改签名(.meta.json, AUTHORITATIVE_FILES 五元组)——共享守卫模块(纯 stdlib, 无 LLM)。 (~1848 tok)
 
 ## skills/public/bid-quote-analysis/
 
@@ -3606,6 +3661,7 @@
 
 ## tools/license/
 
+- `2026-08-18-sales-personnel-dashboard-prototype.html` — 人员总览仪表盘原型 v2(全公司12部门+5平铺更多下拉+表分页+员工明细61人;三问①人②差旅③报销) (~6900 tok)
 - `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1329 tok)
 - `license_request.json` (~51 tok)
 - `OPERATIONS_MANUAL.md` — DeerFlow 许可证功能操作手册 (~5191 tok)

@@ -16,9 +16,14 @@
 - **新功能做成全新独立模块，不改现有 dashboard/project/project-detail (2026-07-27, 用户强制要求):** 所有新功能/重构一律做成**全新独立 extension 模块**（新后端目录 + 新前端目录 + 新路由），**禁止改动现有 `extensions/dashboard`、`extensions/project`、`extensions/approval`、`extensions/shell` 的业务代码**（用户原话「风险太高」）。唯一允许的轻微触点：`shell/Sidebar.tsx` 加一行导航（或模块自注册导航）。样式复用通过 import 现有 `dashboard.css`，不改它。关联 [[no-core-code-changes]]（harness 也不动）、[[eai-custom-annotation-rule]]。
 - **企业内网认证模型 (2026-08-02, 用户拍板):** ①**无自注册**——用户由管理员统一创建并绑定角色（复用 admin 用户管理 + `sync.py`）。②登录页**双轨并存**：工号+密码（主）与 邮箱+验证码。③验证码发邮件走**企业 SMTP**（smtplib）。④主登录方式与 SSO 谁主谁次**先不拍板**，架构上两种都作为一等公民纳入。
 - **表单密度偏好——标签字体调小 (2026-08-06, 用户纠正):** 排版模板编辑器里 Field 的 label 默认 `text-xs`(12px)，用户嫌大，要求调小 → 改为 `text-[11px]`。信号：该用户偏好**紧凑、高密度的表单**，label/辅助文字往小做（11px label / 10px hint）。适用所有 output 扩展及类似设置类表单。提示项用 `text-muted-foreground/60`，避免抢主信息焦点。
+- **仪表盘类页面必须全公司口径 + 筛选平铺5+更多 + 表格分页 (2026-08-18, 用户对销售仪表盘原型的修正):** 销售人员 app 不要聚焦销售/市场部门,要扩大到整个公司各部门;头部部门筛选平铺 5 个常用部门、其余收进「更多」下拉;行数会多的数据表(尤其人员明细)必须支持分页。后续做任何人事/报表类仪表盘默认按此口径。
 - **Palantir Ontology 概念移植意图（2026-08-14, 用户三轮拍板）:** ①**意图=概念移植**（轻量原生语义层），不采购 Palantir 产品、不建索引/funnel；②一期价值=**统一语义层（平台一致性）**，Action 写路径/函数/对象级 ACL 全延后；③一期覆盖域=**市场/分析数据域**（cpa_/csp_/bid），协作/文档域二期；④消费端=**MCP + 前端语义地图页**；⑤方案=**声明式 YAML 注册表 + 通用引擎**（弃代码驱动/纯文档）；⑥跨模块链接=**聚类代表名匹配**（复用 DBSCAN 归一，不做原始脏名/模糊匹配）；⑦权限=**管理员级门控**（REST 需 system:access，MCP 注册级门控 + hidden:true 列级隐藏，不行级 ACL）；⑧前端=**独立应用中心 app /ontology**。设计文档 `docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md`。
 
 ## Key Learnings
+
+- **rstest 不是 vitest 的透明替身（2026-08-17, 前端单测全绿）：** ① `import from "vitest"` 会解析到真实 @vitest/runner 而无环境 → 整文件 "Vitest failed to find the current suite" 崩溃（会掩埋同文件所有真实断言失败，必须先迁移才看得见真错误）。② @rstest/core **没有 `vi` 导出**（`vi.fn` = undefined → `fn is not a function`），mock API 全在 `rs` 上（rs.fn/rs.mock/rs.mocked/rs.clearAllMocks/rs.restoreAllMocks…，是 vitest 超集）。③ `@vitest-environment jsdom` pragma 在 rstest 无效 → 用 `.dom.test.tsx` 后缀归入 happy-dom 工程。④ `beforeEach` 注册有坑：contract-price 案例 beforeEach 导致 afterEachFns 队列混入非函数 → "fn is not a function"，删掉 beforeEach（每测试自带 mockResolvedValue 覆盖）即愈。⑤ rs.mock 的 import 顺序敏感（ESM hoist 行为不同），照 passing 文件模式（mock 在 import 前）。
+- **容器里 config/契约文件 image-baked 需 bind-mount（2026-08-17）：** compose 只挂 src/public/tests/next.config，`rstest.config.ts`/`eslint.config.js`/根目录 `contracts/`（跨语言契约夹具）都在镜像里 → 改配置容器不可见、contract 测试 ENOENT。dev 容器默认就是"代码改了要重启，配置改了要加挂载"——新增依赖的 config 一律走 `- ../frontend/xxx:/app/frontend/xxx:ro` EAI-CUSTOM 挂载。
+- **rstest 的 node 工程跑带 CSS side-effect 的包会 "Unknown file extension .css"（2026-08-17）：** @blocknote/*（dist/style.css）、highlight.js、streamdown/katex 都要进 `bundleDependencies` 让 Rsbuild 处理 CSS import。
 
 - **prettier --write 与 eslint-disable-next-line 相互破坏（2026-08-17, lint 全量清零）：** prettier 会把 >80 列的长表达式折到下一行，`disable-next-line` 只盖紧邻行 → 出现 Unused directive warning + 被抑制的 error 复活。免疫写法：表达式能收进单行（≤80 列）就提取短变量让指令紧邻 `||`；放不下就改**行尾** `eslint-disable-line`（prettier 不移位行尾注释）。lint 修复批次若含手工 disable，prettier 之后必须重跑 eslint 终验。
 - **lint 修复的 `||`→`??` 是行为改动，不是纯格式（2026-08-17, aiTransport 回归）：** set-but-empty 的环境变量（`NEXT_PUBLIC_X=""`）在 `||` 下会回退、`??` 下不会；部署 README 明文依赖该回退。凡左侧运行时可能合法为 `""`/`0`/`false` 的（API 归一化空串、split 尾空段、env 回退链），保留 `||` + 带由注释的 disable，比盲改 `??` 正确。
@@ -284,6 +289,7 @@
 ## Decision Log
 
 <!-- Significant technical decisions with rationale. Why X was chosen over Y. -->
+- [2026-08-18] **bid-proposal-writing v2 = 从"骨架交付+人工填"转向"生成交付"，确定性防线同步收紧。** 用户实测四反馈(线程 1a80a1d8)：不做 Word 转换(排版导出归文档空间)/格式 1:1 复刻/技术响应生成落位/三模式供源。决策：①格式保真不靠提示词加硬而靠**确定性校验**(check_format.py 对 structure path 标题/template_text/fixed_rows 与原文逐字比对，LLM 归一化标题在 merge 后即被拦)；②技术响应正文=新权威态 responses.json(responses.py validate/merge，state_guard 五元组签名)，build 只渲染权威态；③三模式供源 kf 探测一次如实降级(不虚设)→ask_clarification 停问样例→web 深写强制 citations(空引用拒收)→self 兜底；④落位优先格式章节锚点，无锚自拟 origin=self_created group 节点(铁律3 唯一例外，确认门2 人核)；⑤管线元数据(槽位 bullet/引用块标记/内部标签标题)全部迁覆盖率报表 sidecar，交付双卷只含交付内容——回放实证它们曾被当正文转进 docx。教训：group 节点跳过条件必须三处一致(_allocate_section_numbers/linked_map/render 循环)，否则自拟挂接位条款静默丢失；跨脚本共享常量(ORPHAN_SECTION_TITLE)必须单一来源 import，双写必漂移(bug-048/049)。
 - [2026-08-14] **Palantir Ontology 企业级扩张 = 前向约定（非重构），用户已批准。** 用户问"是否用 Ontology 方法论重构全企业业务架构"。决策：**不重构**（无被阻塞的跨域真实需求 + 与 `no-core-code-changes`/`new-module-over-modify` 冲突），改为**前向约定注册表**：新业务域模块强制在 ontology 注册表登记对象/链接类型（CI lint 卡 merge），老模块仅在"有跨链需求或本 sprint 改了 models.py"时回填，不设专项回填 sprint。三个可行性死锁的闭环方案：①HR PII → "注册但不联网"（MCP 无 per-call 身份，跨域链接先 `enabled:false` stub）；②写路径 → 读永远走 ontology、过渡期写走模块自持 REST 端点（skill 直写 DB 仍禁）、Action 等第一个真实受治理写需求；③跨域键 → 复用市场域 goods_cluster/part_cluster 作共享物料主键（需匹配率预估+人工簇合并）。微服务只拆外部系统连接器（ERP/EAM/HRIS 独立 MCP 容器，照 text-to-cad@8004 模式），ontology 引擎留 gateway。设计文档 `docs/superpowers/specs/2026-08-14-ontology-enterprise-expansion-plan.md`（APPROVED，2 轮对抗性评审 27 问题全修复）。
 - [2026-08-01] RoleService.update_role 首次编辑内置角色(overlay 无该 code)时,overlay 条目必须从 **registry defaults** 合成(而非 DB 行),以保留 data_scopes/is_system 并保留 `#inherit:` 标记。若从 DB 行(已 resolve 的 permissions)合成会**展平继承**(丢失 `#inherit:base` → 后续父角色加权限不再动态继承),且 data_scopes 被清空。`_calibrate_single_role` 同步补 description 镜像(INSERT+UPDATE 两分支)。Task8 评审修正,commit d2bb9a36。
 - [2026-08-02] **认证统一 = EAI 登录门面（零上游改动）。** 决策：不修改 `packages/harness/*` 与 `app/gateway/auth/*`，只在 EAI 层重写 `/api/extensions/auth/login`（工号或 email+密码）+ 新增 `otp/send`、`login/otp`（邮箱验证码，企业 SMTP + bcrypt 存储），复用上游 `get_local_provider()` / `create_access_token()` / `get_auth_config()` / `is_secure_request()` import。职责划分：extensions PostgreSQL=组织目录真源（工号/部门/角色/启停），gateway=会话层。**密码验证委托 gateway argon2**（admin 建号/改密时 `sync.py` 已镜像），extensions 只做 username→email 目录解析——这是与现有 sync/会话最自洽、改动最小的取向（用户确认）。OTP 验证码 6 位数字熵低→必须 bcrypt 慢哈希防离线爆破。设计文档 `docs/superpowers/specs/2026-08-02-auth-unify-design.md`，实施计划 `docs/superpowers/plans/2026-08-02-auth-unify.md`。
@@ -315,6 +321,13 @@
 
 - 2026-08-17 biz-pipeline 仪表盘:三图保持 isAnimationActive={false}(dataviz 规范禁入场动画);KPI 卡入场渐隐是 2026-08-17 review 时唯一被记录的豁免,理由=与 bid-quote 原型一致的轻量 page-load 序列,非数据标记动画
 
+
+
+### 2026-08-16/18 — bid-proposal-writing 三产品决策落地(用户拍板)
+1. **模板原文预填**: 招标文件中**所有商务类格式模板**(且不限于: 投标响应函/法定代表人授权委托书/报价一览表/分项价格表/投标货物分项报价明细表/商务偏离表(项目要求及报价响应表)/技术偏离表(技术条款响应/偏离表))的固定文字原文照抄进 `required_format.template_text`(schema string|null, minLength 1, maxLength 10000), build_output 渲染为引用块, 全槽位类型生效(含 group)。照抄非确定性 → 人核清单第三节逐字比对 + summary template_prefill_count 兜底。
+2. **偏离表拆分**: 偏离表.md 按招标模板拆两张——category=technical 入技术偏离表, 其余(commercial/qualification/format/service)入商务偏离表。
+3. **素材双轨**: 上传样例即时检索(主源) + 语料库二期(只做手动上传单源, 不虚设)。
+fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲染走注入测试; 消费侧收口在 load_structure(空串/非字符串→退出码 1)。
 ## Do-Not-Repeat（2026-07-17 session）
 
 - **[2026-07-17] `make rebuild-frontend` after adding ANY new npm dependency.** `@google/model-viewer` was in `package.json` but the Docker image was never rebuilt → `node_modules` baked into the image lacked it → Turbopack crashed on first `/cad-design` access → cache corrupted → ALL pages went 500 + React stopped hydrating (zero `__reactFiber` on any element). Fix: `cd frontend && pnpm install --lockfile-only && cd .. && make rebuild-frontend`. The `make check-frontend-deps` command detects this drift. See [[frontend-deps-need-image-rebuild]].
@@ -968,3 +981,35 @@
 - Cell 颜色与可见柱按 slice 位置配对,Cells 要 `data.slice(start, end+1).map(...)`。
 - Brush aria-label 内部读 data[index].name → 数据行需带 name 字段,否则读 undefined。
 - recharts 3.8 DOM 类名与 2.x 不同:tick 文本是 text.recharts-cartesian-axis-tick-value(无 .recharts-cartesian-axis-tick 包装类);CDP 合成 click/pointer 事件触发不了 Bar onClick(需真实鼠标),验证交互用键盘(Tab→Arrow)或读 DOM 状态。
+
+## Key Learnings (2026-08-18 — bid-proposal 回放加固 bfa917ce: skill 层防幻觉/防篡改/快照收敛)
+
+- **回放实证的 agent 失效模式**(产品对话页 8 run/394 调用/805 万 tokens 只到阶段4): ①write_file 直写权威态 ②rm 删 state/candidates 重来 ③幻觉脚本名/参数/子命令 15+ 次 ④相对路径 cd → FileNotFoundError 10+ 次 ⑤手写快照从未落地 → 跨 run 反复读旧项目路径 ⑥每 run 重读全套 references 上下文翻倍。修复全在 skill 层(SKILL.md+脚本), 沙箱只读护栏属 harness 改动明确 defer。
+- **防幻觉最有效的是速查表+测试契约**: SKILL.md 的命令速查表(全绝对路径逐字照抄)+ 防幻觉契约(点名不存在的名字) 由 test_bid_proposal_scripts.py TestSkillMd 双向锁定——文档命令必须被实际 CLI argparse 接受, 且 {文档模块集} == SCRIPT_MODULE_NAMES(新增脚本必须两侧同步, 漏一侧即红)。
+- **SKILL.md 里写脚本名必须裸名**(不带 scripts/ 前缀): 测试正则 `bid-proposal-writing/scripts/([a-z_]+)\.py` 会把任何带前缀的行当"调用行"并要求该行以 `python /mnt/skills/public/...` 开头; 排错表/黑名单里的假名一律裸写。
+- **权威态签名(.meta.json)设计要点**: 只签脚本写过的文件(写盘方重签不变量: extract merge→3 文件, merge_addenda/score_simulate 重写 clauses 后必须重签); 无 meta=放行(fixture 兼容); meta 无时间戳+sort_keys=字节级幂等(重复合并 before==after 全目录比对依赖); **sha256 前剥离 UTF-8 BOM**(BOM 是编码工件非篡改, 不剥会误伤既有 BOM 容忍测试); 确认门1 的 class str_replace 是唯一获准编辑, 改完跑 state_guard.py sign 重登。
+- **给 LLM 编排者的状态文件防线要"一声带恢复指令的硬错误"**: 只报"结构异常/缺键"远处症状会诱发 agent 试错烧上下文; 错误行直接给恢复指令(重跑产生该文件的脚本重建)并显式禁止手改/删除绕过。
+- **snapshot.py 的 phase 推断链只依赖文件存在性**(sections→clauses→entities_whitelist→output/商务卷.md→评分报告/version_N), 不依赖任何 LLM 记忆——这是"确定性续作锚点"能收敛的原因; --project/--code 省略时沿用快照既有值(补遗场景只增量给新代号)。
+- **present_files 只认 /mnt/user-data/outputs/**: skill 里凡是要 present 给用户的工件(确认门清单/diff 表)必须直写该目录, 写 output/ 再 cp 是已被回放实证的弯路。
+
+## Key Learnings (2026-08-18 — sales-personnel 人员总览仪表盘落地)
+- noUncheckedIndexedAccess:`Record<string, T>` 索引返回 `T | undefined` → 用字面量联合键 `Record<"approved" | "pending" | "rejected", T>` 收窄消除;数组 `[0]` 同理,先存局部变量再判空分支(勿 `arr[0]!`)。
+- **截图验证滚动铁律**:SectionCard 标题不是 h2/h3(仅 ChartCard 图题是 heading)→ `querySelectorAll('h2,h3')` 匹配不到时 `t?.scrollIntoView` 静默 no-op,截到旧视口;验证脚本必须**返回实测** `getBoundingClientRect().top`,绝不能无条件返回 "ok"。页面在内部容器滚动(`window.scrollY` 恒 0),`scrollIntoView({block:'start'})` 后补 `window.scrollBy(0,-80)`。
+- 验证图片链路:Read 大 JPEG → CDN URL(带 Expires,会过期)→ `mcp analyze_image` 消费该 URL;fullPage 截图盖不满整页 → 每节滚动 + 视口截图;CDN URL 路径文件名与本地不符时换新文件名重截。
+- `PopoverTrigger asChild` 内放原生 `<button>`(自带 style/token),Radex 合并 props 无冲突,比套 ui/Button 再覆写样式干净。
+- 容器内 HMR 不吃改动 → `docker compose -p eai-docker restart frontend`;extensions JWT 过期 401("Request failed")→ /login 重登(admin@eai-flow.com)。
+- recharts 3.x 速查:横向 100% 堆叠 = `layout="vertical"` + YAxis type="category";点图 = ScatterChart + 自定义 `shape`;donut 中心文字 = absolute inset-0 + pointer-events-none 叠层;`isAnimationActive={false}` 防截图截到动画中途。
+- 61 行量级部门筛选:客户端 useMemo 过滤重算即可,不必服务端分页;`key={tick}` 整树重挂复位的模式同时清空分页 state。
+
+## User Preference + Decision Log (2026-08-18 — sales-personnel 图表口径被否决)
+- 用户要求把「部门出勤率 vs 目标线」「部门差旅金额(万)」两张图改成人员口径 → 实现后用户反馈"显示效果不好",要求回退。
+- **结论:该仪表盘两张聚合图保持部门口径。** 61 人的点图/横向柱行长图(1500px)阅读体验差是直接原因;人员级明细已由「员工明细」分页表承载,聚合图不再下钻到人。
+- 教训:把 12 行聚合图直接换成 61 行人员图前,先考虑可读性(行数>30 的 category 轴长图基本不可读),应先问用户接受度或给 top-N 方案。
+- 回退方式:整文件未提交不能 git restore,逐处反向 Edit(11 处)——改动前后字符串都要留痕才能可靠回退。
+
+## Key Learnings (2026-08-19 — 后端全套测试的两个楔子 + test_gateway_services 既有漂移)
+
+- 本仓跑全套后端测试必须排除两个文件：① tests/test_create_deerflow_agent_live.py（profile 里 OPENAI_API_KEY 已设 → skipif 不生效 → 实际连外部 ark-cn-beijing 端点，内网不可达 → 卡死）；② tests/test_gateway_services.py（分支 HEAD 既有 22 failed/102 passed 的实现-测试漂移，全是 DID-NOT-RAISE 类，如 services.py:1071 normalize_stream_modes 不再抛测试期望的 ValueError；且 test_pending_cancel_bypasses_thread_metadata_and_logs_failure 的 thread_store.get side_effect 永久阻塞在 asyncio.Event().wait() 无超时 → 任何包含它的运行都会楔死）。
+- 楔死判定与处置：CPU 平坦 + 输出文件 0 增长 = 阻塞在 I/O；用 Get-CimInstance Win32_Process 看进程树，Bash taskkill //PID <pid> //F //T 杀树（PowerShell 分类器可能临时不可用，直接用 Bash）。pytest 输出必须 PYTHONUNBUFFERED=1 -v 且不要接 tail（tail 缓冲到 EOF，interim 输出全空）。
+- tracebacks 显示 /app/... 路径是容器写入 backend/__pycache__ 的 .pyc 被宿主复用（同 Python 版本），不影响语义，别误判为容器内运行。
+- 归因方法：可疑文件 standalone 跑一遍即可区分 standalone 故障 vs 顺序依赖；本次 gateway 22 失败 standalone 复现 → 既有债务，非本次改动所致。
