@@ -10204,3 +10204,64 @@
 | 01:20 | 楔子#2诊断:gateway文件standalone 22F/102P既有漂移+1无超时挂起测试;杀树+排除策略;余量套件后台跑 | backend/tests/test_gateway_services.py | 归因完成 | ~15k |
 | 01:25 | bug-052入账+cerebrum套件楔子学习 | .wolf/buglog.json,.wolf/cerebrum.md | done | ~2k |
 | 01:55 | 全套收尾:余量套件7633P/140F/842S/41E(8m31s);140F+41E全归因=HEAD实现-测试漂移(DID-NOT-RAISE/monkeypatch缺属性)+宿主环境(缺custom技能/lark-cli/容器路径/Windows fs);bid-proposal零失败(542P standalone) | backend/tests | #37收尾完成 | ~25k |
+| 04:45 | Created backend/fix_buglog.py | — | ~773 |
+| 04:46 | Created backend/fix_buglog2.py | — | ~784 |
+
+## Session: 2026-08-18 04:46
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:49 | Created backend/app/extensions/ops_diagnosis/__init__.py | — | ~88 |
+| 04:49 | Created backend/app/extensions/ops_diagnosis/service.py | — | ~1316 |
+| 04:49 | Created backend/app/extensions/ops_diagnosis/mcp.py | — | ~1562 |
+
+## Session: 2026-08-18 04:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 04:51 | Created skills/public/ops-diagnosis/scripts/_common.py | — | ~1464 |
+| 04:51 | Created skills/public/ops-diagnosis/scripts/summarize_runs.py | — | ~776 |
+| 04:51 | Created skills/public/ops-diagnosis/scripts/extract_failures.py | — | ~559 |
+| 04:52 | Created skills/public/ops-diagnosis/scripts/extract_sequences.py | — | ~667 |
+| 04:52 | Created skills/public/ops-diagnosis/references/failure-signatures.md | — | ~442 |
+| 04:52 | Created skills/public/ops-diagnosis/SKILL.md | — | ~765 |
+| 04:54 | Created backend/tests/test_ops_diagnosis.py | — | ~2981 |
+| 04:55 | Edited backend/app/extensions/ops_diagnosis/service.py | 2→3 lines | ~22 |
+| 04:55 | Edited backend/tests/test_ops_diagnosis.py | 6→4 lines | ~94 |
+| 04:55 | Edited backend/tests/test_ops_diagnosis.py | 1→4 lines | ~76 |
+| 04:55 | Edited backend/tests/test_ops_diagnosis.py | mark() → sync() | ~28 |
+| 04:56 | Edited backend/tests/test_ops_diagnosis.py | 3→2 lines | ~84 |
+| 05:00 | Created frontend/src/components/workspace/settings/settings-dialog-host.tsx | — | ~377 |
+| 05:00 | Edited frontend/src/components/workspace/settings/settings-dialog.tsx | modified SettingsPageLoading() | ~580 |
+| 05:00 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | CSS: EAI-CUSTOM | ~80 |
+| 05:00 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | 2→1 lines | ~14 |
+| 05:01 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | inline fix | ~8 |
+| 05:01 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | inline fix | ~24 |
+| 05:01 | Edited frontend/tests/unit/components/workspace/lazy-panels.test.ts | added 1 condition(s) | ~331 |
+| 05:01 | Edited frontend/tests/unit/components/ui/animation-scheduling.test.ts | 7→5 lines | ~72 |
+| 05:02 | Edited frontend/tests/unit/app/layout-boundaries.test.ts | 8→9 lines | ~149 |
+| 05:02 | Edited frontend/src/components/workspace/settings/settings-dialog.tsx | 3→3 lines | ~43 |
+| 05:03 | Edited backend/docs/OBSERVABILITY.md | 1→2 lines | ~61 |
+| 05:03 | Edited backend/docs/OBSERVABILITY.md | 2→2 lines | ~43 |
+| 05:03 | Edited backend/docs/OBSERVABILITY.md | expanded (+31 lines) | ~430 |
+
+## Session: 2026-08-18 05:04
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 05:05 | 查证附件问答标题污染根因(TitleMiddleware读污染content+model_name=null走fallback截断50字符;上游同款bug) | title_middleware.py, uploads_middleware.py | 报告已交付,用户选择暂不修复,记bug-2182 | ~40k |
+| 05:06 | Edited skills/public/ops-diagnosis/scripts/_common.py | 2→5 lines | ~74 |
+| 05:06 | Edited skills/public/ops-diagnosis/SKILL.md | inline fix | ~26 |
+| 05:06 | Edited skills/public/ops-diagnosis/SKILL.md | 1→2 lines | ~53 |
+| 05:06 | Session end: 3 writes across 2 files (_common.py, SKILL.md) | 1 reads | ~1622 tok |
+| 05:10 | 验收run 16df9c0c success:技能激活+双MCP工具+3脚本+报告present_files全链路通;数字与DB一致(22727 tok/6 events) | run_events.db, skills/public/ops-diagnosis | PASS | ~30k |
+| 05:10 | 修复验收中途JSON转写崩溃:_common.py报错带文件名+SKILL.md落盘铁律;测试4/4过 | _common.py, SKILL.md | fixed bug-2185 | ~6k |
+| 05:10 | OBSERVABILITY.md §13 自然语言诊断+变更记录;buglog +2183/2184/2185 | backend/docs/OBSERVABILITY.md, .wolf/* | done | ~8k |
+| 05:10 | Session summary: 路线D ops-diagnosis 全部落地(db持久化+扩展+技能+测试+验收+文档) | 6处 | DONE | — |
+| 05:07 | Edited backend/CLAUDE.md | inline fix | ~30 |
+| 05:08 | Session end: 4 writes across 3 files (_common.py, SKILL.md, CLAUDE.md) | 1 reads | ~1654 tok |
+| 05:08 | Edited frontend/src/app/workspace/workspace-content.tsx | CSS: EAI-CUSTOM | ~125 |
+| 05:08 | Edited frontend/src/app/workspace/workspace-content.tsx | 2→4 lines | ~47 |
+| 05:08 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | 5→5 lines | ~76 |
+| 05:09 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | 3→2 lines | ~13 |
+| 05:21 | 3个skip契约测试定案: settings分包已差分(host挂content+7页dynamic+nav触发器+deep-link挂载,修palette静默bug), root layout不采纳, landing永久不适配; lazy-panels解封 | settings-dialog*.tsx/nav-menu/workspace-content + 3 tests | 全绿+浏览器三链路实测 | ~8k |

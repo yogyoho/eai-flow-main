@@ -21,6 +21,7 @@
 
 ## Key Learnings
 
+- **标题生成读消息要用 original_user_content 备份（2026-08-19, bug-2182）：** UploadsMiddleware 会把 `<current_uploads>` 引导块前置进人消息 content 并持久化；任何"取用户原文"的中间件（title/skill_activation/mcp_routing…）必须走 `deerflow.utils.messages.get_original_user_content_text(content, additional_kwargs)`，不能读 raw content。且 `config.yaml title.model_name: null` = 关闭 LLM 标题、走前 50 字符本地 fallback（title_middleware.py:221-223）——附件场景两条路径都被引导块污染；与 bytedance/main byte-identical 属上游同款 bug，用户定暂不修复。
 - **rstest 不是 vitest 的透明替身（2026-08-17, 前端单测全绿）：** ① `import from "vitest"` 会解析到真实 @vitest/runner 而无环境 → 整文件 "Vitest failed to find the current suite" 崩溃（会掩埋同文件所有真实断言失败，必须先迁移才看得见真错误）。② @rstest/core **没有 `vi` 导出**（`vi.fn` = undefined → `fn is not a function`），mock API 全在 `rs` 上（rs.fn/rs.mock/rs.mocked/rs.clearAllMocks/rs.restoreAllMocks…，是 vitest 超集）。③ `@vitest-environment jsdom` pragma 在 rstest 无效 → 用 `.dom.test.tsx` 后缀归入 happy-dom 工程。④ `beforeEach` 注册有坑：contract-price 案例 beforeEach 导致 afterEachFns 队列混入非函数 → "fn is not a function"，删掉 beforeEach（每测试自带 mockResolvedValue 覆盖）即愈。⑤ rs.mock 的 import 顺序敏感（ESM hoist 行为不同），照 passing 文件模式（mock 在 import 前）。
 - **容器里 config/契约文件 image-baked 需 bind-mount（2026-08-17）：** compose 只挂 src/public/tests/next.config，`rstest.config.ts`/`eslint.config.js`/根目录 `contracts/`（跨语言契约夹具）都在镜像里 → 改配置容器不可见、contract 测试 ENOENT。dev 容器默认就是"代码改了要重启，配置改了要加挂载"——新增依赖的 config 一律走 `- ../frontend/xxx:/app/frontend/xxx:ro` EAI-CUSTOM 挂载。
 - **rstest 的 node 工程跑带 CSS side-effect 的包会 "Unknown file extension .css"（2026-08-17）：** @blocknote/*（dist/style.css）、highlight.js、streamdown/katex 都要进 `bundleDependencies` 让 Rsbuild 处理 CSS import。
@@ -328,6 +329,12 @@
 2. **偏离表拆分**: 偏离表.md 按招标模板拆两张——category=technical 入技术偏离表, 其余(commercial/qualification/format/service)入商务偏离表。
 3. **素材双轨**: 上传样例即时检索(主源) + 语料库二期(只做手动上传单源, 不虚设)。
 fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲染走注入测试; 消费侧收口在 load_structure(空串/非字符串→退出码 1)。
+### 2026-08-19 — 上游 3 个 skip 结构契约测试定案(lazy-panels/layout-boundaries/animation-scheduling)
+1. **settings 分包 = 已差分落地**: EAI 此前 nav-menu 用本地 useState 静态挂 <SettingsDialog>，绕过共享 store → dialog+7页全进 workspace 首屏 chunk，且 command-palette/deep-link 的 openSettings 静默无效(store 无人消费)。已恢复上游形态: host(dynamic+ssr:false+if(!open)) 挂 workspace-content，dialog 内 7 页 dynamic()(上游9/EAI7)，nav-menu 退纯触发器，deep-link 桥首次真正挂载。lazy-panels.test 解除 skip。
+2. **root layout 最小化 = 不采纳**: 上游 root layout 仅 ThemeProvider 的前提是无全局认证+i18n只覆盖docs/blog；EAI 多用户企业部署必须全局包裹 CoreAuthProvider/I18nProvider/LicenseShell(不可同步核心)。katex 全局CSS(~9KB gz)换扩展页零回归，有意取舍。
+3. **landing Galaxy 动画调度 = 永久不适配**(用户定案): 落地页已由 landing-new 替代上游 landing，断言的 hero.tsx 不在渲染路径。
+教训: 上游"结构契约"测试 skip 前先查挂载链——本例 host/deep-link 组件文件都在但从未被挂载(死代码)，恢复挂载即恢复契约。
+
 ## Do-Not-Repeat（2026-07-17 session）
 
 - **[2026-07-17] `make rebuild-frontend` after adding ANY new npm dependency.** `@google/model-viewer` was in `package.json` but the Docker image was never rebuilt → `node_modules` baked into the image lacked it → Turbopack crashed on first `/cad-design` access → cache corrupted → ALL pages went 500 + React stopped hydrating (zero `__reactFiber` on any element). Fix: `cd frontend && pnpm install --lockfile-only && cd .. && make rebuild-frontend`. The `make check-frontend-deps` command detects this drift. See [[frontend-deps-need-image-rebuild]].
@@ -1019,3 +1026,12 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - .wolf/buglog.json 低段 id（001~055+）是 auto-detected 工具占用区，手写条目一律用 2176+ 空闲段并先查重；id 撞车会在中国去重合并时静默丢条目。
 - buglog 曾被外部 IDE 插件整文件重写为 {version,bugs} dict（08-18，1173 条数组历史全丢）；append 前先校验顶层是 list，发现 dict 先从 git 恢复合并。约定格式=顶层数组。
 - 中文内容绝不经 bash argv 传给 `python -c`（Windows 下 argv 按 GBK 解码 → 乱码）；写 UTF-8 脚本文件执行或用 heredoc 字节直写。
+
+## Key Learnings (2026-08-19 — route-D ops-diagnosis 落地)
+
+- API 冒烟链路：登录 POST /api/extensions/auth/login 字段是 `username`(可填 email)+密码；改状态请求需从 cookie jar 取 `csrf` 值放 `X-CSRF-Token` 头；skills API 是 GET /api/skills（尾斜杠会 307）。
+- gateway 日志在容器内 `/app/logs/gateway.log`（`docker logs` 是空的）；`docker exec` 里带 /app 路径要 `MSYS_NO_PATHCONV=1` 防止 git-bash 路径改写。
+- run 清单查 `runs` 表（RunRow，持久、含 status/token/llm_call_count），事件查 `run_events` 表——RunStore 只有 memory 后端，别往它接持久化。
+- 起 run 别带 `assistant_id="agent"`（500 FileNotFoundError Agent directory not found）；完全省略该字段即可。
+- agent 用 write_file 落盘 MCP JSON 时会手工转写出语法错——技能 SKILL.md 必须写明"原样整体粘贴"，crunch 脚本解析失败要报出文件名而不是裸 traceback。
+- nginx /runs/wait ~60s 会 504 但 run 后台继续：改轮询 GET /api/threads/{tid}/runs 查状态。

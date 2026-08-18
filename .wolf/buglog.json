@@ -19760,5 +19760,94 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-19"
+  },
+  {
+    "id": "bug-2182",
+    "timestamp": "2026-08-19T05:05:53",
+    "error_message": "上传附件问答后对话标题为 '<current_uploads> The following files were uploade...'",
+    "file": "backend/packages/harness/deerflow/agents/middlewares/title_middleware.py",
+    "root_cause": "UploadsMiddleware 把 <current_uploads> 引导块前置进人消息 content 并持久化；TitleMiddleware 读 raw content 而非 additional_kwargs.original_user_content（现成 helper get_original_user_content_text 未被 title 使用）；且 config.yaml title.model_name=null 关闭 LLM 路径，fallback 取前 50 字符恰为引导块开头。与 bytedance/main@62ffcff45 byte-identical，属上游同款 bug。",
+    "fix": "用户选择仅出报告暂不修复。建议修法：title_middleware._get_title_user_message/_build_title_prompt 改用 deerflow.utils.messages.get_original_user_content_text（~8 行，需 EAI-CUSTOM 三重注释）；可选再设 title.model_name 开 LLM 标题。",
+    "tags": [
+      "title",
+      "uploads",
+      "middleware",
+      "upstream-bug",
+      "fallback-title"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-19T05:05:53"
+  },
+  {
+    "id": "bug-2183",
+    "timestamp": "2026-08-19T05:10:00",
+    "error_message": "gateway startup ERROR: ChannelManager.__init__() got an unexpected keyword argument 'shutdown_grace_period_seconds'",
+    "file": "backend/app/channels/service.py",
+    "root_cause": "service.py passes shutdown_grace_period_seconds kwarg that app/channels/manager.py ChannelManager.__init__ does not accept (uncommitted working-tree drift from concurrent session; startup still completes)",
+    "fix": "NOT FIXED — observed during route-D ops-diagnosis acceptance; flagged to user",
+    "tags": [
+      "channels",
+      "ChannelManager",
+      "startup",
+      "kwargs-mismatch"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-19T05:10:00"
+  },
+  {
+    "id": "bug-2184",
+    "timestamp": "2026-08-19T05:10:00",
+    "error_message": "POST /api/threads/{id}/runs/wait with assistant_id=agent returns 500 FileNotFoundError: Agent directory not found: .../agents/agent",
+    "file": "backend/app (agent resolution path)",
+    "root_cause": "assistant_id='agent' treated as custom-agent directory name; no such directory exists; frontend does not send this value",
+    "fix": "workaround: omit assistant_id entirely when starting runs (upstream behavior, not EAI bug); logged for awareness",
+    "tags": [
+      "runs",
+      "assistant_id",
+      "500",
+      "api-smoke"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-19T05:10:00"
+  },
+  {
+    "id": "bug-2185",
+    "timestamp": "2026-08-19T05:10:00",
+    "error_message": "ops-diagnosis acceptance run: all 3 crunch scripts crashed with json.decoder.JSONDecodeError (Expecting ',' delimiter line 1 col 737) on agent-written events file",
+    "file": "skills/public/ops-diagnosis/scripts/_common.py",
+    "root_cause": "agent hand-transcribed MCP tool JSON into write_file instead of pasting verbatim — transcription introduced a JSON syntax error; load_events raised bare traceback without naming the file",
+    "fix": "1) _common.py load_events: catch ValueError, SystemExit with filename + Chinese hint to overwrite with raw MCP output; 2) SKILL.md step1 added verbatim-save iron rule. Agent had self-corrected on retry (run finished success)",
+    "tags": [
+      "ops-diagnosis",
+      "skill",
+      "json",
+      "write_file",
+      "agent-transcription"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-19T05:10:00"
+  },
+  {
+    "id": "bug-2186",
+    "timestamp": "2026-08-19",
+    "error_message": "command palette/deep-link 的 openSettings 静默无效——settings-dialog-host 与 workspace-settings-deep-link 组件存在但从未挂载，workspace-nav-menu 用本地 useState 静态挂载 <SettingsDialog> 绕过共享 store",
+    "file": "frontend/src/app/workspace/workspace-content.tsx",
+    "root_cause": "EAI 早前移植 settings 弹窗时只搬了 dialog 本体，漏了上游 workspace-content.tsx 里的 <SettingsDialogHost/> + <WorkspaceSettingsDeepLink/> 挂载；nav-menu 改用本地 state 兜底导致 store 无消费者，且 dialog+7个section页全进 workspace 首屏 chunk(无 dynamic 分包)",
+    "fix": "对齐上游: host 恢复 dynamic()+ssr:false+if(!open) 形态并挂到 workspace-content(CommandPalette 旁)，deep-link 桥同步挂载；settings-dialog 内 7 页改 dynamic()；nav-menu 退纯触发器(openSettingsDialog('account'))。lazy-panels.test 解除 skip 计数适配 7(上游9)。浏览器实测 nav/section切换/deep-link 三链路通过",
+    "tags": [
+      "settings-dialog",
+      "dynamic-import",
+      "code-splitting",
+      "upstream-sync",
+      "dead-code",
+      "store"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-19"
   }
 ]

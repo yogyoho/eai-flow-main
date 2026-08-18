@@ -9,6 +9,7 @@ import {
   UserIcon,
   WrenchIcon,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -18,15 +19,67 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AccountSettingsPage } from "@/components/workspace/settings/account-settings-page";
-import { ChannelsSettingsPage } from "@/components/workspace/settings/channels-settings-page";
-import { MemorySettingsPage } from "@/components/workspace/settings/memory-settings-page";
-import { NotificationSettingsPage } from "@/components/workspace/settings/notification-settings-page";
-import { SkillSettingsPage } from "@/components/workspace/settings/skill-settings-page";
-import { ToolSettingsPage } from "@/components/workspace/settings/tool-settings-page";
-import { WechatSettingsPage } from "@/components/workspace/settings/wechat-settings-page";
 import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
+
+// EAI-CUSTOM: 对齐上游分包纪律 —— 每个 section page 一个懒加载 chunk
+// (上游 9 个，EAI 7 个：无 appearance/about/integrations 懒加载项)。
+// 打开设置只下载当前激活 section 的代码，而不是全部 7 页。
+function SettingsPageLoading() {
+  return (
+    <p role="status" className="text-muted-foreground py-8 text-center text-sm">
+      Loading…
+    </p>
+  );
+}
+
+const AccountSettingsPage = dynamic(
+  () =>
+    import("./account-settings-page").then(
+      (module) => module.AccountSettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
+const ChannelsSettingsPage = dynamic(
+  () =>
+    import("./channels-settings-page").then(
+      (module) => module.ChannelsSettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
+const MemorySettingsPage = dynamic(
+  () =>
+    import("./memory-settings-page").then(
+      (module) => module.MemorySettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
+const NotificationSettingsPage = dynamic(
+  () =>
+    import("./notification-settings-page").then(
+      (module) => module.NotificationSettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
+const SkillSettingsPage = dynamic(
+  () =>
+    import("./skill-settings-page").then(
+      (module) => module.SkillSettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
+const ToolSettingsPage = dynamic(
+  () =>
+    import("./tool-settings-page").then((module) => module.ToolSettingsPage),
+  { loading: SettingsPageLoading },
+);
+const WechatSettingsPage = dynamic(
+  () =>
+    import("./wechat-settings-page").then(
+      (module) => module.WechatSettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
 
 export type SettingsSection =
   | "account"

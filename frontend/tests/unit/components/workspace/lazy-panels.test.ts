@@ -7,13 +7,12 @@ const FRONTEND_ROOT = path.resolve(__dirname, "../../../..");
 const read = (relativePath: string) =>
   readFileSync(path.join(FRONTEND_ROOT, relativePath), "utf8");
 
-// EAI-CUSTOM: these assert upstream bundle-boundary patterns — dynamic()
-// hosts around settings-dialog (9 per-section dynamic pages), a
-// lazy-panels host that never statically imports the dialog, and the
-// chat-box right-panel dynamic imports. EAI's settings-dialog renders all
-// sections statically (no per-page dynamic()) and lazy-panels.tsx does not
-// exist in the EAI layout. Re-enable when/if EAI adopts those boundaries.
-describe.skip("interaction-only bundle boundaries", () => {
+// EAI-CUSTOM: 2026-08-19 已对齐上游分包边界——settings-dialog-host 恢复
+// dynamic()+if(!open) 形态、workspace-nav-menu 改挂 host、dialog 内 7 个
+// section page 全部 dynamic()（上游 9 个，EAI 无 appearance/about/
+// integrations 项）、chat-box 右侧面板 4 个 dynamic() 早已就位。
+// 断言已按 EAI section 数适配（7 而非 9）。
+describe("interaction-only bundle boundaries", () => {
   it("does not import the settings dialog until its store is open", () => {
     const host = read(
       "src/components/workspace/settings/settings-dialog-host.tsx",
@@ -29,7 +28,9 @@ describe.skip("interaction-only bundle boundaries", () => {
     const dialog = read(
       "src/components/workspace/settings/settings-dialog.tsx",
     );
-    expect(dialog.match(/dynamic\(/g)).toHaveLength(9);
+    // EAI-CUSTOM: 上游为 9；EAI settings dialog 渲染 7 个 section
+    // (account/wechat/channels/memory/tools/skills/notification)。
+    expect(dialog.match(/dynamic\(/g)).toHaveLength(7);
     expect(dialog).not.toMatch(
       /import \{ \w+SettingsPage \} from "@\/components\/workspace\/settings\//,
     );

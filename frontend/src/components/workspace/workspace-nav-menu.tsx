@@ -27,7 +27,11 @@ import {
 // EAI-CUSTOM: nav-level permission gating
 import { usePermission } from "@/core/permissions";
 
-import { SettingsDialog } from "./settings";
+// EAI-CUSTOM: 对齐上游单实例挂载 —— 之前用本地 useState 静态挂载
+// <SettingsDialog>，绕过了共享 store（command palette / deep-link 的
+// openSettings 实际打不开 dialog），且 dialog 代码进首屏 chunk。
+// 现改为纯触发器：单实例 host 挂在 workspace-content，这里只走 store。
+import { openSettingsDialog } from "./settings";
 
 function NavMenuButtonContent({ isSidebarOpen }: { isSidebarOpen: boolean }) {
   return isSidebarOpen ? (
@@ -44,7 +48,6 @@ function NavMenuButtonContent({ isSidebarOpen }: { isSidebarOpen: boolean }) {
 }
 
 export function WorkspaceNavMenu() {
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { open: isSidebarOpen } = useSidebar();
   const router = useRouter();
@@ -68,7 +71,6 @@ export function WorkspaceNavMenu() {
 
   return (
     <>
-      <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
       <SidebarMenu className="w-full">
         <SidebarMenuItem>
           {mounted ? (
@@ -88,7 +90,7 @@ export function WorkspaceNavMenu() {
               >
                 <DropdownMenuGroup>
                   {canNav("nav:settings") && (
-                    <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+                    <DropdownMenuItem onClick={() => openSettingsDialog("account")}>
                       <SettingsIcon className="size-4" />
                       设置
                     </DropdownMenuItem>

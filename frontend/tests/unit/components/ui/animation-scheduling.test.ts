@@ -5,12 +5,10 @@ import { describe, expect, it } from "@rstest/core";
 
 const frontendRoot = join(import.meta.dirname, "../../../..");
 
-// EAI-CUSTOM: these assert upstream's landing perf work (#4622) — the
-// useRenderActivity hook, dynamic galaxy/magic-bento imports, pointermove
-// throttling — which the EAI-rewritten landing (hero/whats-new/skills
-// sections) has not ported. EAI renders galaxy statically and animates on
-// mount. Re-enable when/if the upstream animation-scheduling optimizations
-// are ported to the EAI landing.
+// EAI-CUSTOM: 永久不适配（用户定案 2026-08-19）——本系统落地页已由
+// landing-new（src/components/landing-new/）替代上游 landing，测试断言的
+// src/components/landing/hero.tsx 等文件不再是线上渲染路径，以本地代码为
+// 准，不做差分移植。保留 skip 仅作上游对照标记。
 describe.skip("decorative animation scheduling", () => {
   it("suspends the Galaxy render loop when its container is inactive", () => {
     const source = readFileSync(
