@@ -612,6 +612,17 @@ class ChannelManager:
         store: ChannelStore,
         *,
         max_concurrency: int = 5,
+        # EAI-CUSTOM(START) bug-2193: upstream #4800 (ce4ef1bb2) added these kwargs and
+        # app/channels/service.py passes them; accept so ChannelService construction
+        # doesn't crash. The #4800 lifecycle rework (worker-pool drain via grace,
+        # dedupe admission, stream-bridge follow-up watcher) is NOT ported — EAI's
+        # immediate-cancel stop() and no-dedupe dispatch behavior are unchanged.
+        # Upgrade note: if upstream evolves ChannelManager further, re-check this
+        # signature against service.py's call site.
+        shutdown_grace_period_seconds: float = DEFAULT_CHANNEL_SHUTDOWN_GRACE_PERIOD_SECONDS,
+        inbound_dedupe_store: Any | None = None,
+        get_stream_bridge: Callable[[], Any | None] | None = None,
+        # EAI-CUSTOM(END)
         langgraph_url: str = DEFAULT_LANGGRAPH_URL,
         gateway_url: str = DEFAULT_GATEWAY_URL,
         assistant_id: str = DEFAULT_ASSISTANT_ID,
@@ -623,6 +634,9 @@ class ChannelManager:
         self.bus = bus
         self.store = store
         self._max_concurrency = max_concurrency
+        self._shutdown_grace_period_seconds = float(shutdown_grace_period_seconds)
+        self._inbound_dedupe_store = inbound_dedupe_store
+        self._get_stream_bridge = get_stream_bridge
         self._langgraph_url = langgraph_url
         self._gateway_url = gateway_url
         self._assistant_id = assistant_id
