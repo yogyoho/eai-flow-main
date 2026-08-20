@@ -74,8 +74,55 @@ def test_update_params_output() -> None:
         assert all("." not in k for k in fresh), "params.json 不应含公式输出键"
 
 
+def test_impacted_must_run_before_update() -> None:
+    """impacted 是对磁盘旧状态的 dry-run 值差分：update 落盘后再跑 impacted 必得空集。
+
+    2026-08-20 线程 9509c508：agent 先 update(N=5) 后 impacted → affected_formulas=[]
+    （差分基准已被覆盖）。SKILL 步骤2 因此规定 impacted 先于 update——本测试锁死该依据。
+    """
+    formulas_path = SP.parent / "references" / "formulas.json"
+    base_params = {"Q": 12000, "delta_t": 9, "N": 4, "pool_area": 520, "V_suction": 1200,
+                   "KZF": 0.001461, "drift_rate": 0.001, "sf_ratio": 0.05,
+                   "effective_depth": 1.5, "backwash_intensity": 15.0, "backwash_duration": 2.0,
+                   "pump_motor_spacing": 3.0, "filter_unit_capacity": 100,
+                   "filter_area": 10.0, "concurrent_backwash": 1}
+    with tempfile.TemporaryDirectory() as d:
+        state_path = Path(d) / "formula_state.json"
+        manifest_path = Path(d) / "chapter_manifest.json"
+        formulas = json.loads(formulas_path.read_text(encoding="utf-8"))["formulas"]
+        manifest_path.write_text(json.dumps(chapter_planner.build_manifest(formulas), ensure_ascii=False), encoding="utf-8")
+
+        def run_impacted() -> dict:
+            r = subprocess.run(
+                [sys.executable, str(SP / "formula_runner.py"), "impacted",
+                 "--formulas", str(formulas_path), "--state", str(state_path),
+                 "--param", "N", "--value", "5", "--manifest", str(manifest_path)],
+                capture_output=True, text=True,
+            )
+            assert r.returncode == 0, r.stderr
+            return json.loads(r.stdout)
+
+        # 对旧状态（N=4）dry-run 改 N=5 → 非空且 ch11/ch5 必在（SKILL 步骤2 的正确顺序）
+        state_path.write_text(json.dumps({"all_params": dict(base_params)}), encoding="utf-8")
+        before = run_impacted()
+        assert "Qb" in before["affected_formulas"], before
+        assert "ch5_calc" in before["affected_chapters"], before
+        assert "ch11_compliance" in before["affected_chapters"], before
+
+        # update 落盘后，同样的 impacted 差分基准已被覆盖 → 空集（文档化既有语义）
+        subprocess.run(
+            [sys.executable, str(SP / "formula_runner.py"), "update",
+             "--formulas", str(formulas_path), "--state", str(state_path),
+             "--param", "N", "--value", "5", "--output", str(state_path)],
+            capture_output=True, text=True, check=True,
+        )
+        after = run_impacted()
+        assert after["affected_formulas"] == [], after
+
+
 if __name__ == "__main__":
     test_ch11_compliance_in_manifest_and_impacted()
     test_snapshot_rejects_side_filename()
     test_update_params_output()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output")
+    test_impacted_must_run_before_update()
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update")

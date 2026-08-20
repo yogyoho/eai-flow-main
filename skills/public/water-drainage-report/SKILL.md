@@ -44,7 +44,7 @@ description: |
 
 2. **第 2 轮+ = 增量指令，绝不回退整篇重生成。** 本会话第 2 轮及以后的任何消息，默认是对当前基准的**增量/修改/追加**指令。**禁止**把"改参/补参数/调章节/追加校验"误读为"重新生成一份完整计算书"。判别：快照存在 + 用户消息含"改成/调整/补/换成/比选/增加/去掉"等变更动词 → 一律走增量路径（改参→步骤2 改参定点；补参数→步骤2 update；追加校验→步骤6/7），**不回步骤1 重新收集参数**。
 
-3. **改参必走 update + impacted，禁回落 present 旧报告。** 用户说改参（"把 Q 改成 25000"/"方案比选"等）→ 必须执行步骤2「改参定点重生成」全流程（`formula_runner.py update` → `impacted` → 仅重生成受影响章节 → 单次 write_file 覆盖 → 步骤5 save）。**绝不**直接 `present_files` 一份未改参的旧报告充数。改参前后关键值对比必须给出（取 `impacted` 的 value_diff）。
+3. **改参必走 impacted + update，禁回落 present 旧报告。** 用户说改参（"把 Q 改成 25000"/"方案比选"等）→ 必须执行步骤2「改参定点重生成」全流程（`formula_runner.py impacted` **先** → `update` **后** → 仅重生成受影响章节 → 单次 write_file 覆盖 → 步骤5 save）。**绝不**直接 `present_files` 一份未改参的旧报告充数。改参前后关键值对比必须给出（取 `impacted` 的 value_diff）。
 
 4. **每轮收尾必须 `snapshot.py save`，且在 `present_files` 之前。** 首次交付与每一次改参/补参/追加，都必须在步骤5 调 `present_files` **之前**先 `snapshot.py save --task "<本轮一句话>"` 固化当前状态、`version++`、追加 changelog，拿到 `SNAPSHOT_READY` 才能收尾。**顺序颠倒（先 present_files 后 save）= 本轮未完成**，因为 agent 在 `present_files` 后即视为交付完成、不会回头执行 save——下一轮将因无 `last_task` 锚点而漂移（bug-1171 重现）。**⛔ 快照唯一合法产生方式 = `snapshot.py save`（bug-2198）：禁止用 `write_file` 手写/复制/改名生成任何 `project_snapshot*.json` 旁路文件**（如 `project_snapshot_N5.json`——2026-08-20 实跑中 agent 手搓旁路文件致正典锚点停留在 v1，bug-1171 复发）；`--output` 必须是正典 `$WORK/project_snapshot.json`（CLI 会拒绝其他文件名），且 stdout 必须出现 `SNAPSHOT_READY: version=N`（N = 上一版 +1，新线程首轮 =1）——version 没涨 = save 没走到正典上 = 本轮未完成。
 
@@ -91,9 +91,12 @@ description: |
 
 **进流程第一动作（多轮承接铁律 #1）——读快照锚点：**
 ```bash
-python /mnt/skills/public/water-drainage-report/scripts/snapshot.py show
+python /mnt/skills/public/water-drainage-report/scripts/snapshot.py show \
+  --input /mnt/user-data/workspace/project_snapshot.json
 # → SNAPSHOT_VERSION / SNAPSHOT_LAST_TASK / SNAPSHOT_LAST_CHANGE / SNAPSHOT_REPORT
 # 或 SNAPSHOT_NONE（无快照，全新运行）
+# ⛔ --input 必须显式写：默认路径在脚本源码里，不出现在命令文本中就不会被沙箱
+#    路径翻译层替换，裸调用必然误报 SNAPSHOT_NONE（2026-08-20 线程 9509c508 实证）
 ```
 
 - **`SNAPSHOT_LAST_TASK` 存在** → **这就是当前任务上下文**（防漂移锚点）。向用户展示「当前基准状态」（v{version} + 最近一次变更 + report_path），后续指令默认基于该基准增量理解，**不重复追问全局参数、绝不被对话历史首条消息主导**。直接跳到用户本轮指令对应的步骤（改参→步骤2 改参定点；补参数→步骤2 update；追加校验→步骤6/7）。
@@ -230,13 +233,16 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py update
 ```bash
 # 0. 刷新章节映射（bug-2199：manifest 必须含 ch11_compliance 合规附录章——它由 check 结果渲染，永远随改参受影响）
 python $SCRIPTS/chapter_planner.py manifest --formulas $FORMULAS --output $WORK/chapter_manifest.json
-# 1. 增量重算（已有；--params-output 同步刷新 params.json，供第 3 步 check 用）
+# 1. 查受影响章节（⛔ 必须先于 #2 的 update：impacted 对磁盘上的旧状态 dry-run 改参做
+#    值差分——若 update 已把新值落盘，差分为空 → affected_formulas/chapters 全空，
+#    受影响章节反查失效（2026-08-20 线程 9509c508 实证）。
+#    ch11_compliance 必在结果中——附录整表依赖全量公式）
+python $SCRIPTS/formula_runner.py impacted --formulas $FORMULAS --state $WORK/formula_state.json \
+  --param <参数名> --value <新值> --manifest $WORK/chapter_manifest.json   # IMPACTED_READY
+# 2. 增量重算落盘（--params-output 同步刷新 params.json，供第 3 步 check 用）
 python $SCRIPTS/formula_runner.py update --formulas $FORMULAS --state $WORK/formula_state.json \
   --param <参数名> --value <新值> --output $WORK/formula_state.json \
   --params-output $WORK/params.json   # STATE_READY + PARAMS_READY
-# 2. 查受影响章节（ch11_compliance 必在结果中——附录整表依赖全量公式）
-python $SCRIPTS/formula_runner.py impacted --formulas $FORMULAS --state $WORK/formula_state.json \
-  --param <参数名> --value <新值> --manifest $WORK/chapter_manifest.json   # IMPACTED_READY
 # 3. ⛔ 重跑一致性校验（bug-2199：合规附录的数据源，禁止沿用改参前的旧 check 结果——
 #    否则交付"参数表 N=5 / 合规表 N=4"并存的自相矛盾报告）
 python $SCRIPTS/formula_runner.py check \
