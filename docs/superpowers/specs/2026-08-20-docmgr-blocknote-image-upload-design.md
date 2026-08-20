@@ -67,8 +67,10 @@ harness/gateway 上游同步面）。
   无 threadId 时行为不变（仅 URL 插入）。
 - 新 API helper `uploadDocImage(threadId, file)`（fetch + FormData，~15 行，
   放 docmgr 既有 api 文件或就近新建）。
-- `DocumentManagement.tsx` / `DocAIAgentPanel.tsx`：把已有 `source_thread_id`
-  作为 `threadId` 传入编辑器。
+- `DocumentManagement.tsx`（唯一渲染点）：`threadId={doc.source_thread_id ?? personalFile?.thread_id ?? undefined}`。
+  DB 文档走 `source_thread_id`；file_ref 个人文件（线程 outputs/ 树打开）无该字段，
+  回退 `personalFile.thread_id`——否则该入口面图片三入口仍不激活（终审补充）。
+  `DocAIAgentPanel.tsx` 只持 editorRef，不渲染编辑器，无需改动。
 
 ## 5. 错误处理与边界
 
@@ -82,15 +84,16 @@ harness/gateway 上游同步面）。
 
 ## 6. 已知限制（接受）
 
-1. **分享文档**：被分享者打开时图片 URL 因 artifacts `owner_check` 403 看不到图；
+1. **分享文档**：被分享者打开时图片 URL 因 artifacts `owner_check` 看不到图
+   （实测为 404 "Thread not found"，非 403——owner_check 失败统一回 404）；
    后续做"分享可见"时换 docmgr 代理端点。
-1. **线程所有权校验沿用 router 既有模式**：与 `sync-thread-files`（routers.py:692）
+2. **线程所有权校验沿用 router 既有模式**：与 `sync-thread-files`（routers.py:692）
    一致——`doc:upload` 权限门 + `_resolve_thread_sandbox_dir` 跨桶兜底扫描，不做
    per-thread 严格所有权断言（Gateway/extensions 用户 UUID 分裂所致）。跨租户加固
    属于整个 router 的存量课题，不随本设计单点引入或解决。
-2. **Word 导出无图片处理**（存量缺口，非本设计引入；docmgr 导出代码 img 相关为零）。
+3. **Word 导出无图片处理**（存量缺口，非本设计引入；docmgr 导出代码 img 相关为零）。
    修复路径：导出器把 `/api/threads/...` URL 解析回线程本地路径直读文件——单独小迭代。
-3. collab 项目文档编辑器无图片上传（范围外）。
+4. collab 项目文档编辑器无图片上传（范围外）。
 
 ## 7. 测试
 

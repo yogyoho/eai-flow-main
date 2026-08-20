@@ -52,6 +52,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 
 import { useI18n } from "@/core/i18n/hooks";
 
@@ -361,8 +362,13 @@ const PersonalBlockNoteEditor = forwardRef<
     ...(threadId
       ? {
           uploadFile: async (file: File) => {
-            const { url } = await uploadDocImage(threadId, file);
-            return url;
+            try {
+              const { url } = await uploadDocImage(threadId, file);
+              return url;
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "图片上传失败"); // 三入口共用此路径，统一提示原因（spec §5）
+              throw e; // 保留 BlockNote 自身的错误占位回退
+            }
           },
         }
       : {}),

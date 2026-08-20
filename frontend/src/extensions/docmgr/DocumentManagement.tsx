@@ -2760,13 +2760,14 @@ export function DocumentEditor({
                 className="flex-1"
               />
             ) : (
+              // EAI-CUSTOM: file_ref 个人文件面无 source_thread_id，回退 personalFile.thread_id，图片三入口才能激活
               <PersonalBlockNoteEditor
                 key={editorKey}
                 ref={editorRef as React.Ref<PersonalBlockNoteEditorRef>}
                 initialContent={doc.content ?? ""}
                 onChange={scheduleSave}
                 className="flex-1"
-                threadId={doc.source_thread_id ?? undefined}
+                threadId={doc.source_thread_id ?? personalFile?.thread_id ?? undefined}
                 hideSideMenu={
                   !!getLanguageFromName(personalFile?.title ?? doc?.title ?? "")
                 }
