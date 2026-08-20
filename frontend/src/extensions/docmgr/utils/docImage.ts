@@ -32,5 +32,14 @@ export async function uploadDocImage(
     }
     throw new Error(detail);
   }
-  return (await resp.json()) as { url: string };
+  const body: unknown = await resp.json();
+  if (
+    typeof body === "object" &&
+    body !== null &&
+    "url" in body &&
+    typeof (body as { url: unknown }).url === "string" &&
+    (body as { url: string }).url
+  )
+    return { url: (body as { url: string }).url };
+  throw new Error("图片上传响应异常");
 }

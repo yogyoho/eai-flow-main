@@ -357,7 +357,7 @@ const PersonalBlockNoteEditor = forwardRef<
     schema,
     dictionary,
     // EAI-CUSTOM: uploadFile 激活图片三入口（面板上传tab/拖拽/粘贴文件）。
-    // 编辑器按文档 remount（key={editorKey}），threadId 在实例生命周期内稳定。
+    // 编辑器按文档 remount（祖先容器 key，见 DocumentManagement 渲染点），threadId 在实例生命周期内稳定。
     ...(threadId
       ? {
           uploadFile: async (file: File) => {
