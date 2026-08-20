@@ -30,6 +30,9 @@ FALLBACK_CHAPTERS = [
     {"id": "ch8_filter",     "title": "旁滤设备",                     "type": "narrative", "section_prefixes": ["9"]},
     {"id": "ch9_equiplist",  "title": "设备一览表",                   "type": "table",    "section_prefixes": [], "render": "equipment_table", "formula_ids": ["filter_count"]},
     {"id": "ch10_drawings",  "title": "图纸清单",                     "type": "narrative", "section_prefixes": []},
+    # bug-2199：合规附录/建议区整表由 consistency_check.json 渲染，check 又引用全部公式/参数——
+    # 任意公式变化它都受影响。formula_ids 留空占位，由 build_manifest 填成全量公式 id（见下）。
+    {"id": "ch11_compliance", "title": "合规校验结果与调整建议（附录）", "type": "table",  "section_prefixes": [], "render": "compliance_appendix"},
 ]
 
 
@@ -67,6 +70,12 @@ def build_manifest(formulas_data: list[dict]) -> dict:
         idx = prefix_to_chidx.get(pfx)
         if idx is not None:
             chapters[idx]["formula_ids"].append(fdef["id"])
+
+    # bug-2199：ch11_compliance（合规附录+建议区）引用全部 check 结果 → 依赖全量公式，
+    # 任一公式变化都必须重生成，否则报告会出现"参数表 N=5 / 合规表 N=4"并存的自相矛盾。
+    for ch in chapters:
+        if ch["id"] == "ch11_compliance":
+            ch["formula_ids"] = [f["id"] for f in formulas_data]
 
     return {"version": 1, "chapters": chapters}
 

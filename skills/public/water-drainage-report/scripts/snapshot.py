@@ -63,6 +63,11 @@ def _maybe_load_json_file(p: str | None) -> object | None:
 
 def cmd_save(args: argparse.Namespace) -> int:
     out = Path(args.output)
+    # bug-2198 守卫：快照只有正典文件名。禁止 save 到旁路文件（如 project_snapshot_N5.json）——
+    # 旁路快照会让正典锚点停留在旧版本，下一轮 show 读到旧 last_task，bug-1171 漂移复活。
+    if out.name != "project_snapshot.json":
+        print(f"SNAPSHOT_ERROR: 快照必须写入正典文件 project_snapshot.json，收到: {out.name}（bug-2198 守卫）")
+        return 1
     prev = _load_existing(out)
     prev_version = prev.get("version", 0) or 0
     try:
@@ -113,7 +118,7 @@ def cmd_save(args: argparse.Namespace) -> int:
 
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(snap, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"SNAPSHOT_READY: version={new_version} last_task={args.task}")
+    print(f"SNAPSHOT_READY: version={new_version} last_task={args.task} path={out}")
     print(f"SNAPSHOT_FILE: {out}")
     return 0
 

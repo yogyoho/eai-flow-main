@@ -20,6 +20,12 @@
 - **Palantir Ontology 概念移植意图（2026-08-14, 用户三轮拍板）:** ①**意图=概念移植**（轻量原生语义层），不采购 Palantir 产品、不建索引/funnel；②一期价值=**统一语义层（平台一致性）**，Action 写路径/函数/对象级 ACL 全延后；③一期覆盖域=**市场/分析数据域**（cpa_/csp_/bid），协作/文档域二期；④消费端=**MCP + 前端语义地图页**；⑤方案=**声明式 YAML 注册表 + 通用引擎**（弃代码驱动/纯文档）；⑥跨模块链接=**聚类代表名匹配**（复用 DBSCAN 归一，不做原始脏名/模糊匹配）；⑦权限=**管理员级门控**（REST 需 system:access，MCP 注册级门控 + hidden:true 列级隐藏，不行级 ACL）；⑧前端=**独立应用中心 app /ontology**。设计文档 `docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md`。
 
 ## Key Learnings
+- **agent 复述的成功标记 ≠ CLI 落盘（2026-08-20，water-drainage 第二轮验证，[[bug-2198]]）：** 事件流出现 SAVE/SNAPSHOT_READY 标记只证明 agent *说了*保存，不等于走了正典工具。增量轮 agent 曾用 write_file 手搓旁路文件 project_snapshot_N5.json（还带着旧参数 N=4）代替 snapshot.py save 读改写——正典锚点未升级，bug-1171 漂移条件复活。验证持久化产物必须文件系统实查正典路径 + 排查同名旁路文件；修法方向=铁律写明"快照只能由 snapshot.py save 产生，禁 write_file 手写 project_snapshot*"。配套教训：impacted 反查必须包含合规附录/建议章（凡引用 check 结果的章节都依赖被改参数，[[bug-2199]]），增量轮强制重跑 consistency check。
+
+- config.yaml 中任何激活的 $VAR 引用在加载时硬失败（app_config.py resolve_env_variables），与所在节 enabled 与否无关。从 config.example.yaml 搬运渠道/工具模板时，必须把 $WECHAT_BOT_TOKEN/$WECOM_BOT_ID 等内网不存在的环境变量改成字面量空串（bug-2198）。
+- 上游移植时 service.py(调用方) 与 manager.py(EAI 定制被调方) 必须同一次提交对齐签名——ce4ef1bb2 只搬了调用方，075557f50 只搬常量，造成 #4800 kwargs 漂移（bug-2199）。以后 port 上游 commit 前先 grep 调用点。
+- deer-flow-gateway 的 dev 容器日志在 /app/logs/gateway.log（docker logs 为空），排查启动问题先看这个文件或用 docker exec 起 scratch 端口 uvicorn 看 lifespan 报错。
+- (2026-08-19) prompt 层记忆污染防线要按【注入面枚举】设计：bug-2191 原始症状是记忆值预填确认表+标"用户提供"，堵住后发现残余通道=辅助参数缺失时 agent 拿旧项目记忆充当澄清表单"建议值"（"基于同类项目历史数据"话术）。三注入面=预填/来源标注/建议值，都要显式禁。技能层防线模式：定义参数权威（本线程消息+快照锚点）→ 来源列法定值枚举 → 缺失走分层放开（参考值库）而非记忆。
 
 - **标题生成读消息要用 original_user_content 备份（2026-08-19, bug-2182）：** UploadsMiddleware 会把 `<current_uploads>` 引导块前置进人消息 content 并持久化；任何"取用户原文"的中间件（title/skill_activation/mcp_routing…）必须走 `deerflow.utils.messages.get_original_user_content_text(content, additional_kwargs)`，不能读 raw content。且 `config.yaml title.model_name: null` = 关闭 LLM 标题、走前 50 字符本地 fallback（title_middleware.py:221-223）——附件场景两条路径都被引导块污染；与 bytedance/main byte-identical 属上游同款 bug，用户定暂不修复。
 - **rstest 不是 vitest 的透明替身（2026-08-17, 前端单测全绿）：** ① `import from "vitest"` 会解析到真实 @vitest/runner 而无环境 → 整文件 "Vitest failed to find the current suite" 崩溃（会掩埋同文件所有真实断言失败，必须先迁移才看得见真错误）。② @rstest/core **没有 `vi` 导出**（`vi.fn` = undefined → `fn is not a function`），mock API 全在 `rs` 上（rs.fn/rs.mock/rs.mocked/rs.clearAllMocks/rs.restoreAllMocks…，是 vitest 超集）。③ `@vitest-environment jsdom` pragma 在 rstest 无效 → 用 `.dom.test.tsx` 后缀归入 happy-dom 工程。④ `beforeEach` 注册有坑：contract-price 案例 beforeEach 导致 afterEachFns 队列混入非函数 → "fn is not a function"，删掉 beforeEach（每测试自带 mockResolvedValue 覆盖）即愈。⑤ rs.mock 的 import 顺序敏感（ESM hoist 行为不同），照 passing 文件模式（mock 在 import 前）。
@@ -1035,3 +1041,14 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - 起 run 别带 `assistant_id="agent"`（500 FileNotFoundError Agent directory not found）；完全省略该字段即可。
 - agent 用 write_file 落盘 MCP JSON 时会手工转写出语法错——技能 SKILL.md 必须写明"原样整体粘贴"，crunch 脚本解析失败要报出文件名而不是裸 traceback。
 - nginx /runs/wait ~60s 会 504 但 run 后台继续：改轮询 GET /api/threads/{tid}/runs 查状态。
+
+## 前端自动化经验 (2026-08-19)
+- E2E 填写澄清表单（React 受控 textarea）时 mcp fill 工具报告成功但不触发 onChange，提交被"请填写所有必填字段"拦截；正确姿势=click 输入框后用 type_text 键盘输入，再 evaluate_script 验证 value 绑定后提交。
+
+- **E2E复测(2026-08-19, fd49b085): v2技能提示级纪律对flash档模型完全失效**——agent 3次直写state/、4个自写生成器、自创平行schema、18.9M输入后摘要失忆重启3次;签名强制只在v2脚本被调用时存在。修复方向=脚手架化+模型档位门槛,不是加更多铁律文字。check_format工具本身负例验证通过(rc=3 title_mismatch)。
+
+
+### 2026-08-19 对话页验证给排水7反馈（跨线程记忆回显）
+- **Key Learning**: harness Memory 中间件会跨线程召回同名技能旧项目工程参数（按 user 维度），agent 可能据此渲染"参数确认表"并标注来源"用户提供"，还会引用旧线程对话细节（如"容积比0.4"）。防御：验证多轮技能时，新线程必须让用户消息显式携带全部核心参数；技能层可在步骤0 声明"记忆参数仅参考、禁止标为本项目用户提供"。
+- **验证方法**: agent 运行的权威证据 = GET /api/threads/{tid}/runs/{rid}/messages 事件流（标记序列可证 tool 先后顺序）；前端消息列表虚拟化会剔除视口外 DOM，DOM 探测不可靠。
+- **实测**: 增量轮(改1参) turn_duration 320s 反慢于全量 226s——瓶颈在 save→present 之间的多次 write_file + 长上下文终调，非章节生成量；优化反馈1 耗时要收敛收尾调用链。

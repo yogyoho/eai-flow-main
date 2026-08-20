@@ -46,11 +46,11 @@ description: |
 
 3. **改参必走 update + impacted，禁回落 present 旧报告。** 用户说改参（"把 Q 改成 25000"/"方案比选"等）→ 必须执行步骤2「改参定点重生成」全流程（`formula_runner.py update` → `impacted` → 仅重生成受影响章节 → 单次 write_file 覆盖 → 步骤5 save）。**绝不**直接 `present_files` 一份未改参的旧报告充数。改参前后关键值对比必须给出（取 `impacted` 的 value_diff）。
 
-4. **每轮收尾必须 `snapshot.py save`，且在 `present_files` 之前。** 首次交付与每一次改参/补参/追加，都必须在步骤5 调 `present_files` **之前**先 `snapshot.py save --task "<本轮一句话>"` 固化当前状态、`version++`、追加 changelog，拿到 `SNAPSHOT_READY` 才能收尾。**顺序颠倒（先 present_files 后 save）= 本轮未完成**，因为 agent 在 `present_files` 后即视为交付完成、不会回头执行 save——下一轮将因无 `last_task` 锚点而漂移（bug-1171 重现）。
+4. **每轮收尾必须 `snapshot.py save`，且在 `present_files` 之前。** 首次交付与每一次改参/补参/追加，都必须在步骤5 调 `present_files` **之前**先 `snapshot.py save --task "<本轮一句话>"` 固化当前状态、`version++`、追加 changelog，拿到 `SNAPSHOT_READY` 才能收尾。**顺序颠倒（先 present_files 后 save）= 本轮未完成**，因为 agent 在 `present_files` 后即视为交付完成、不会回头执行 save——下一轮将因无 `last_task` 锚点而漂移（bug-1171 重现）。**⛔ 快照唯一合法产生方式 = `snapshot.py save`（bug-2198）：禁止用 `write_file` 手写/复制/改名生成任何 `project_snapshot*.json` 旁路文件**（如 `project_snapshot_N5.json`——2026-08-20 实跑中 agent 手搓旁路文件致正典锚点停留在 v1，bug-1171 复发）；`--output` 必须是正典 `$WORK/project_snapshot.json`（CLI 会拒绝其他文件名），且 stdout 必须出现 `SNAPSHOT_READY: version=N`（N = 上一版 +1，新线程首轮 =1）——version 没涨 = save 没走到正典上 = 本轮未完成。
 
 5. **数值汇报仍守执行铁律 #1。** 跨轮承接只承接"任务意图 + 参数基准"，公式数值仍唯一来自 `formula_state.json`/`traces.json`/`consistency_check.json`，原样引用、禁 prose 重算。
 
-6. **⛔ 记忆污染防线（bug-2191）。** 本项目参数权威只有两个：**本线程用户消息明确给出的值** + **`project_snapshot.json` 锚点**。系统记忆可能注入**其他线程/其他项目**的历史参数（项目名、数值均可能不同）。对记忆中的参数：① 不得作为本项目参数参与计算或预填参数确认表；② 不得把来源标为"用户提供"——"用户提供"仅指**本线程**用户消息中明确给出的值，其他线程的"用户提供"对本项目无效；③ 记忆与当前请求对不上（项目名/参数不一致）→ 直接忽略，按参数缺失走步骤1 正常收集（核心参数缺失 → `ask_clarification`），**绝不基于记忆预填参数确认表或发起澄清表单**，更不得引用"您提到过…"等本线程未发生的历史对话细节；④ 唯一例外：用户本轮明确说"沿用上次/记忆中的参数"——此时也必须复述数值请用户逐项确认后才可用；⑤ 记忆值同样**不得作为澄清表单/追问的"建议值/参考值"**（含"基于同类/历史项目取值，因比例相近"等话术）——非库内参数缺失时，只做两件事：请用户提供，或按步骤1「分层放开」以行业常规值名义给出并标注【待核实】；绝不以其他项目的记忆数据充当建议值。
+6. **⛔ 记忆污染防线（bug-2191）。** 本项目参数权威只有两个：**本线程用户消息明确给出的值** + **`project_snapshot.json` 锚点**。系统记忆可能注入**其他线程/其他项目**的历史参数（项目名、数值均可能不同）。对记忆中的参数：① 不得作为本项目参数参与计算或预填参数确认表；② 不得把来源标为"用户提供"——"用户提供"仅指**本线程**用户消息中明确给出的值，其他线程的"用户提供"对本项目无效；③ 记忆与当前请求对不上（项目名/参数不一致）→ 直接忽略，按参数缺失走步骤1 正常收集（核心参数缺失 → `ask_clarification`），**绝不基于记忆预填参数确认表或发起澄清表单**，更不得引用"您提到过…"等本线程未发生的历史对话细节；④ 唯一例外：用户本轮明确说"沿用上次/记忆中的参数"——此时也必须复述数值请用户逐项确认后才可用；⑤ 记忆值同样**不得作为澄清表单/追问的"建议值/参考值"**（含"基于同类/历史项目取值，因比例相近"等话术）——非库内参数缺失时，只做两件事：请用户提供，或按步骤1「分层放开」以行业常规值名义给出并标注【待核实】；绝不以其他项目的记忆数据充当建议值；⑥ **记忆不得引导文件读取（2026-08-20 增）**：不读取记忆/跨项目上下文提到的任何文件路径（"历史报告""上次的计算书"等）——本项目文件只认本线程 `/mnt/user-data/**` 与快照锚点 `report_path` 记录的路径，其他路径一律不存在、不尝试打开；⑦ **`present_files` 即本轮终点（2026-08-20 增）**：交付后**不得**再发起任何澄清/确认表单或追问——尤其禁止"要生成哪个项目的计算文档？"类问题，表单/追问选项**绝不含记忆中其他项目**（如其他线程的 Q=20000/Q=15000 项目）。交付完成就结束，等用户下一轮指令。
 
 ## 工具范围
 
@@ -228,14 +228,24 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py update
 
 **改参定点重生成（反馈6，替代整篇重跑）：**
 ```bash
-# 1. 增量重算（已有）
+# 0. 刷新章节映射（bug-2199：manifest 必须含 ch11_compliance 合规附录章——它由 check 结果渲染，永远随改参受影响）
+python $SCRIPTS/chapter_planner.py manifest --formulas $FORMULAS --output $WORK/chapter_manifest.json
+# 1. 增量重算（已有；--params-output 同步刷新 params.json，供第 3 步 check 用）
 python $SCRIPTS/formula_runner.py update --formulas $FORMULAS --state $WORK/formula_state.json \
-  --param <参数名> --value <新值> --output $WORK/formula_state.json   # STATE_READY
-# 2. 查受影响章节
+  --param <参数名> --value <新值> --output $WORK/formula_state.json \
+  --params-output $WORK/params.json   # STATE_READY + PARAMS_READY
+# 2. 查受影响章节（ch11_compliance 必在结果中——附录整表依赖全量公式）
 python $SCRIPTS/formula_runner.py impacted --formulas $FORMULAS --state $WORK/formula_state.json \
   --param <参数名> --value <新值> --manifest $WORK/chapter_manifest.json   # IMPACTED_READY
-# 3. 仅重生成受影响章节（table 重渲染 / narrative 子 agent 重生成），其余章节原样保留 → 内存内整体覆盖 → 单次 write_file（步骤5）
-# 4. 记录本轮 value_diffs（{参数:{old,new}}）+ affected_formulas/chapters（取自上面 impacted 输出），
+# 3. ⛔ 重跑一致性校验（bug-2199：合规附录的数据源，禁止沿用改参前的旧 check 结果——
+#    否则交付"参数表 N=5 / 合规表 N=4"并存的自相矛盾报告）
+python $SCRIPTS/formula_runner.py check \
+  --formulas $FORMULAS \
+  --params "$(cat $WORK/params.json)" \
+  --output $WORK/consistency_check.json   # CHECK_READY
+# 4. 仅重生成受影响章节（含 ch11 合规附录+调整建议区，数值取新 consistency_check.json；table 重渲染 / narrative 子 agent 重生成），
+#    其余章节原样保留 → 内存内整体覆盖 → 单次 write_file（步骤5）
+# 5. 记录本轮 value_diffs（{参数:{old,new}}）+ affected_formulas/chapters（取自上面 impacted 输出），
 #    供步骤5 末尾的 snapshot.py save --diff/--affected 固化（不在本步 save；每轮收尾只在步骤5 save 一次）
 ```
 不做像素级差异高亮 UI（顶回去）；「差异」以变更日志文本落地，复用文档空间版本能力。
@@ -368,7 +378,7 @@ write_file(
 - ❌ 禁止"先写 workspace 再 `cp`/`mv` 复制到 outputs"——直接写到 `outputs/`
 - 报告文件落盘只允许上面这一次 `write_file`
 
-**② ⛔ 固化会话快照（写盘后、present_files 前，多轮承接铁律 #4，不可跳过）：**
+**② ⛔ 固化会话快照（写盘后、present_files 前，多轮承接铁律 #4，不可跳过）：** 快照**只能**由下面的 `snapshot.py save` 产生——⛔ 禁止用 `write_file` 手写/复制/改名任何 `project_snapshot*.json` 旁路文件（bug-2198）。
 ```bash
 python /mnt/skills/public/water-drainage-report/scripts/snapshot.py save \
   --task "首次生成 {项目名称} 给排水计算书（Q=<值> m³/h）" \

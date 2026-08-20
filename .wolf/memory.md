@@ -10265,3 +10265,186 @@
 | 05:08 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | 5→5 lines | ~76 |
 | 05:09 | Edited frontend/src/components/workspace/workspace-nav-menu.tsx | 3→2 lines | ~13 |
 | 05:21 | 3个skip契约测试定案: settings分包已差分(host挂content+7页dynamic+nav触发器+deep-link挂载,修palette静默bug), root layout不采纳, landing永久不适配; lazy-panels解封 | settings-dialog*.tsx/nav-menu/workspace-content + 3 tests | 全绿+浏览器三链路实测 | ~8k |
+| 05:22 | Session end: 8 writes across 5 files (_common.py, SKILL.md, CLAUDE.md, workspace-content.tsx, workspace-nav-menu.tsx) | 2 reads | ~2247 tok |
+
+## Session: 2026-08-18 05:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 05:36 | Created C:/Users/admin/.claude/plans/prancy-dazzling-brook.md | — | ~259 |
+| 05:38 | Session end: 1 writes across 1 files (prancy-dazzling-brook.md) | 2 reads | ~27209 tok |
+| 05:40 | Session end: 1 writes across 1 files (prancy-dazzling-brook.md) | 2 reads | ~27209 tok |
+| 05:43 | Session end: 1 writes across 1 files (prancy-dazzling-brook.md) | 2 reads | ~27209 tok |
+| 05:44 | Session end: 1 writes across 1 files (prancy-dazzling-brook.md) | 2 reads | ~27209 tok |
+| 05:46 | Created backend/docs/CONFIG-GUIDE.md | — | ~4172 |
+| 15:04 | config.example.yaml(v34)逐项解读+config.yaml(v11)差距分析，报告落盘 backend/docs/CONFIG-GUIDE.md | backend/docs/CONFIG-GUIDE.md | done | ~60k |
+| 05:47 | Session end: 2 writes across 2 files (prancy-dazzling-brook.md, CONFIG-GUIDE.md) | 2 reads | ~31679 tok |
+| 05:47 | Session end: 2 writes across 2 files (prancy-dazzling-brook.md, CONFIG-GUIDE.md) | 2 reads | ~31679 tok |
+| 05:49 | Session end: 2 writes across 2 files (prancy-dazzling-brook.md, CONFIG-GUIDE.md) | 2 reads | ~31679 tok |
+| 05:50 | Session end: 2 writes across 2 files (prancy-dazzling-brook.md, CONFIG-GUIDE.md) | 2 reads | ~31679 tok |
+
+## Session: 2026-08-18 05:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 05:5x | E2E复测(fd49b085)中期: 投影=repo v2 hash一致,漂移非版本问题; agent 138步绕圈(手写extract_clauses.py+双卷md绕管线)后自我纠正转extract.py正规路径; 输入token已4.8M | thread fd49b085 (只读) | 观察中 | ~1k |
+| 06:1x | E2E复测: agent阶段2中途停门问'如何继续'(自创门,非技能定义门),以用户身份批复继续+三纪律(候选唯一路径/merge落账/手写双卷作废,交付必走build_output) | thread fd49b085 | 运行恢复 | ~0.5k |
+| 06:2x | E2E: 澄清门二度提交成功(click+type_text;此前fill未触发React onChange被校验拦) | thread fd49b085 | 运行恢复,提取循环中 | ~0.3k |
+| 06:4x | E2E观察: 候选路径漂移#2—agent写state/candidates/CH-004.json(规范=candidates/CH-001.clauses.json,SKILL.md:53,140);信封kind完整,merge显式传路径可兼容,未干预 | thread fd49b085 | 观察中 | ~0.3k |
+| 07:0x | E2E关键发现: agent第3次重启管线(06:14重ingest已签名),候选仅CH-004/005;上下文15.4M输入,54chunks逐轮LLM提取超预算→摘要失忆→重启循环;SKILL.md:140计数纪律未被遵守 | thread fd49b085 | 观察中 | ~0.5k |
+| 07:1x | E2E: 旁路平行管线成型—自创schema(clauses=包裹dict30条/structure=chapters+slots/pricing.json),非v2契约形状;签名摩擦只在调v2脚本时触发,agent不调则无约束;上下文15M+ | thread fd49b085 | 观察中 | ~0.4k |
+| 07:3x | E2E: 阶段4a模式2门(是否有参考样例)已答"无→网络搜索",进入模式3;注意agent走的是自创平行管线的4a命名,v2 responses.py路径未被采用 | thread fd49b085 | mode3进行中 | ~0.3k |
+| 07:5x | E2E定论性观察: 显式用户指令(正规管线/勿用自创schema)后agent仍延用自创schema(structure_adjudicated.json=chapters/slots+计数器);提示级纪律对Agnes-2.5-Flash无效,需机械化强制 | thread fd49b085 | 等待跑完取证据 | ~0.3k |
+| 08:0x | E2E: 旁路渲染农场—generate_technical/company/qualification/service.py四生成器+产物md+商务卷完整版(铁律3唯一渲染器被四连击);prompt_CH-00x.txt批量落state | thread fd49b085 | 等最终交付 | ~0.3k |
+| 08:1x | E2E交付: outputs/仅2个docx(商务/技术卷)零md—复测①双轴FAIL(用户反馈1原样复现);运行仍执行中(写投标策略) | thread fd49b085 | 等收尾 | ~0.3k |
+| 06:54 | Created backend/cf_negative_test.py | — | ~562 |
+| 06:54 | Edited backend/cf_negative_test.py | "check_format.py" → "-X" | ~56 |
+| 08:3x | E2E复测收官(fd49b085): ①FAIL(仅2docx零md) ②FAIL(标题自创编号) ③FAIL(零供源) ④工具PASS/agent未调用; 根因=提示级纪律失效+上下文爆炸+签名强制未被触发; bug-2188 | .wolf/buglog.json | 已记录 | ~1k |
+| 06:55 | Session end: 2 writes across 1 files (cf_negative_test.py) | 0 reads | ~618 tok |
+| 06:57 | Session end: 2 writes across 1 files (cf_negative_test.py) | 0 reads | ~618 tok |
+| 09:55 | Session end: 2 writes across 1 files (cf_negative_test.py) | 4 reads | ~31219 tok |
+
+## Session: 2026-08-19 10:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:2x | RCA定案: GraphRecursionError根因=config.yaml:251 summary_prompt缺{messages}占位符致84轮空摘要+每轮失忆循环; loop_detection双重盲区; 前端1000=钳制天花板; 修复分层已给 | .wolf/buglog.json config.yaml frontend/hooks.ts | RCA delivered | ~30k |
+| 10:43 | Edited config.yaml | "请用中文对以下对话进行简洁总结。保留关键事实、决策" → "请用中文对以下对话进行简洁总结。保留关键事实、决策" | ~51 |
+| 10:5x | 修复落地: config.yaml:251 summary_prompt补{messages}占位符; gateway重启后健康(2026启动502=启动延迟~2min); 容器内AppConfig.from_file验证通过; 顺手记录channels ChannelManager启动TypeError存量bug | config.yaml .wolf/buglog.json | fixed+verified | ~12k |
+| 10:50 | Session end: 1 writes across 1 files (config.yaml) | 3 reads | ~25514 tok |
+| 10:53 | Session end: 1 writes across 1 files (config.yaml) | 3 reads | ~25514 tok |
+| 10:55 | Edited config.yaml | 7→7 lines | ~34 |
+| 11:0x | 修复②落地: summarization trigger 15564→80000, keep 10→30, trim 15564→40000(三者联动语义已核实); gateway重启健康+容器内加载值验证 | config.yaml .wolf/buglog.json | fixed+verified | ~8k |
+| 11:00 | Session end: 2 writes across 1 files (config.yaml) | 3 reads | ~25548 tok |
+
+## Session: 2026-08-19 12:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-19 12:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-19 12:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:06 | Created .gstack/qa-reports/qa-report-localhost-2026-2026-08-19.md | — | ~1027 |
+| 13:07 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/water-drainage-report-optimization.md | 1→3 lines | ~178 |
+| 13:09 | 对话页逐项验证给排水7反馈(线程7d58e494三轮实跑): 2/3/4/5/6/7 PASS, 1 PARTIAL(增量轮320s反慢); 发现跨线程记忆回显 bug-2191 | skills/public/water-drainage-report, .gstack/qa-reports/qa-report-localhost-2026-2026-08-19.md | 3 runs success, 报告+快照v1→v2落盘 | ~30k |
+| 13:08 | Session end: 2 writes across 2 files (qa-report-localhost-2026-2026-08-19.md, water-drainage-report-optimization.md) | 2 reads | ~1892 tok |
+| 13:14 | Edited skills/public/water-drainage-report/SKILL.md | 1→3 lines | ~122 |
+
+## Session: 2026-08-19 13:15
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 13:18 | Edited skills/public/water-drainage-report/SKILL.md | 1→3 lines | ~142 |
+| 13:19 | Edited skills/public/water-drainage-report/SKILL.md | inline fix | ~32 |
+| 13:20 | Edited skills/public/water-drainage-report/SKILL.md | 1→3 lines | ~46 |
+| 13:30 | Created docs/superpowers/specs/2026-08-19-water-drainage-7-feedbacks-solutions.md | — | ~1513 |
+| 13:48 | Edited skills/public/water-drainage-report/SKILL.md | inline fix | ~48 |
+| 13:48 | Edited docs/superpowers/specs/2026-08-19-water-drainage-7-feedbacks-solutions.md | inline fix | ~100 |
+|13:50| bug-2191 两层修复(c16e9bd34+60d37ba3b 铁律#6①~⑤) 复测:核心参数表干净/残余建议值口子当场复现并堵死; 7反馈方案MD | skills/public/water-drainage-report/SKILL.md, docs/superpowers/specs/2026-08-19-water-drainage-7-feedbacks-solutions.md | 修复+复测中 | ~28k |
+| 13:50 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/water-drainage-report-optimization.md | "用户提供" → "本线程用户消息 + project_snapsho" | ~112 |
+| 13:51 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/water-drainage-report-optimization.md | 1→3 lines | ~170 |
+|14:04| bug-2191 复测终局(线程f2739b4a run a2ada97c): 终稿12.4KB交付+快照v1全我方值+save先于present; 核心注入面已证FIXED, 建议值残余面文本已堵未再实跑 | SKILL.md, .wolf/buglog.json | PASS(带说明) | ~35k |
+| 14:04 | Session end: 8 writes across 3 files (SKILL.md, 2026-08-19-water-drainage-7-feedbacks-solutions.md, water-drainage-report-optimization.md) | 1 reads | ~6983 tok |
+
+## Session: 2026-08-19 21:33
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:36 | Edited config.yaml | 3→4 lines | ~35 |
+| 21:36 | Edited config.yaml | 3→4 lines | ~33 |
+| 21:43 | Edited backend/app/channels/manager.py | modified __init__() | ~451 |
+| 21:52 | 修复 gateway 启动失败：config.yaml 整体替换后 \$WECHAT_BOT_TOKEN 等未定义环境变量硬失败→置空；顺带修复 ChannelManager kwargs 漂移(bug-2193) | config.yaml, backend/app/channels/manager.py | gateway UP 8001, ChannelManager started | ~25k |
+| 21:46 | Session end: 3 writes across 2 files (config.yaml, manager.py) | 3 reads | ~23178 tok |
+| 21:51 | Edited config.yaml | expanded (+13 lines) | ~164 |
+| 21:51 | Edited config.yaml | 2→3 lines | ~42 |
+| 21:51 | Edited config.yaml | 3→4 lines | ~55 |
+| 21:51 | Edited config.yaml | 1→2 lines | ~32 |
+| 21:51 | Edited config.yaml | 2→3 lines | ~23 |
+
+## Session: 2026-08-19 21:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:53 | Edited config.yaml | 4→4 lines | ~30 |
+| 21:53 | Edited config.yaml | 4→4 lines | ~24 |
+| 21:53 | Edited config.yaml | 15564 → 40000 | ~10 |
+| 21:53 | Edited config.yaml | 1→2 lines | ~62 |
+| 21:53 | Edited config.yaml | 3→6 lines | ~84 |
+| 21:53 | Edited config.yaml | 3→4 lines | ~35 |
+| 21:53 | Edited config.yaml | 1→2 lines | ~34 |
+| 21:53 | Edited config.yaml | 3→4 lines | ~31 |
+| 21:53 | Edited config.yaml | modified CUSTOM() | ~43 |
+| 21:54 | Edited config.yaml | removed 11 lines | ~4 |
+| 21:54 | Edited config.yaml | 5→6 lines | ~51 |
+| 21:54 | Edited config.yaml | 2→3 lines | ~53 |
+| 21:54 | Edited config.yaml | reduced (-13 lines) | ~130 |
+| 21:54 | Edited config.yaml | expanded (+28 lines) | ~302 |
+| 21:58 | config v34 补齐 EAI 定制块19处(browserless/沙箱/摘要8w-30-4w/中文prompt/checkpointer+delta+cache/run_events db/wechat+wecom/petrochem agent/agents_api/char计数) 重启验证全通过 | config.yaml, .wolf/ | OK 8001+nginx200 | ~15k |
+| 21:59 | Session end: 14 writes across 1 files (config.yaml) | 1 reads | ~37817 tok |
+| 22:22 | Session end: 14 writes across 1 files (config.yaml) | 1 reads | ~37886 tok |
+| 22:25 | Session end: 14 writes across 1 files (config.yaml) | 2 reads | ~47496 tok |
+| 22:31 | Edited config.yaml | modified CUSTOM() | ~51 |
+| 22:40 | 修复v34升级后侧栏/设置渠道入口消失(bug-2194): channel_connections.enabled=false→true, API验证wechat connectable+wecom unconfigured | config.yaml | OK | ~8k |
+| 22:35 | Session end: 15 writes across 1 files (config.yaml) | 2 reads | ~47547 tok |
+| 22:36 | Session end: 15 writes across 1 files (config.yaml) | 2 reads | ~47547 tok |
+| 22:45 | Session end: 15 writes across 1 files (config.yaml) | 2 reads | ~47547 tok |
+| 22:46 | Session end: 15 writes across 1 files (config.yaml) | 2 reads | ~47547 tok |
+| 22:51 | Session end: 15 writes across 1 files (config.yaml) | 2 reads | ~47547 tok |
+| 23:43 | Created backend/app/extensions/knowledge_factory/mcp_server/tools/search_tools.py | — | ~998 |
+| 23:43 | Edited backend/app/extensions/knowledge_factory/mcp_server/server.py | expanded (+30 lines) | ~305 |
+| 23:43 | Edited backend/app/extensions/knowledge_factory/mcp_server/server.py | modified _handle_check_compliance() | ~144 |
+| 23:43 | Edited backend/app/extensions/knowledge_factory/mcp_server/server.py | 2→3 lines | ~49 |
+| 23:43 | Edited docker/docker-compose-dev.yaml | modified CUSTOM() | ~107 |
+
+## Session: 2026-08-19 23:45
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:46 | Edited backend/app/extensions/knowledge_factory/mcp_server/tools/search_tools.py | expanded (+8 lines) | ~525 |
+| 23:50 | kf_search_knowledge MCP 工具落地：Agent 可跨 RAGFlow 知识库检索（嵌入模型混用时自动逐库降级）| server.py/search_tools.py/docker-compose-dev.yaml | 容器内实测通过，gateway 已重启 | ~30k |
+| 23:48 | Session end: 1 writes across 1 files (search_tools.py) | 0 reads | ~525 tok |
+| 00:21 | Edited backend/app/extensions/knowledge_factory/mcp_server/server.py | 7→10 lines | ~124 |
+| 00:27 | Created skills/public/local-knowledge-first/SKILL.md | — | ~214 |
+| 00:30 | Edited config.yaml | modified CUSTOM() | ~58 |
+| 00:4x | 修复 agent 不查本地知识库直达 web_search(bug-2196)：tool_search.enabled=true + local-knowledge-first skill + KF routing prefer | config.yaml/extensions_config.json/skills/public/local-knowledge-first | 复现验证 kf_search_knowledge 命中 DZ/T0033 | ~60k |
+| 00:36 | Session end: 4 writes across 4 files (search_tools.py, server.py, SKILL.md, config.yaml) | 4 reads | ~27946 tok |
+| 02:43 | Session end: 4 writes across 4 files (search_tools.py, server.py, SKILL.md, config.yaml) | 4 reads | ~27946 tok |
+| 02:48 | Session end: 4 writes across 4 files (search_tools.py, server.py, SKILL.md, config.yaml) | 4 reads | ~27946 tok |
+| 03:00 | Edited backend/app/extensions/knowledge_factory/mcp_server/server.py | 2→5 lines | ~66 |
+| 03:00 | Edited skills/public/local-knowledge-first/SKILL.md | 1→3 lines | ~54 |
+| 03:00 | Edited backend/app/extensions/knowledge_factory/mcp_server/tools/search_tools.py | 6→8 lines | ~106 |
+| 01:1x | 修复本地知识库引用编造 URL(bug-2197)：工具描述+返回体 citation_note+skill 三层禁造链接 | search_tools.py/server.py/SKILL.md | 绑定+返回体验证通过，待页面复测 | ~15k |
+| 03:04 | Session end: 7 writes across 4 files (search_tools.py, server.py, SKILL.md, config.yaml) | 5 reads | ~29348 tok |
+
+## Session: 2026-08-20 10:53
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:56 | Created .gstack/qa-reports/qa-report-localhost-2026-2026-08-20.md | — | ~1146 |
+| 10:51 | R3增量化验:formula_state N=5✓ 第5章重算✓ 但快照save写旁路手搓文件(bug-2192)+合规表漏N=5(bug-2193)+结尾记忆表单 | 容器线程文件 | 3新缺陷入buglog | ~3k |
+| 10:56 | buglog又遭并发会话截断(7条)——从HEAD恢复1186+当前5合并去重1164,重建bug-2191 → 1165条 | .wolf/buglog.json | 恢复完成 | ~2k |
+| 11:00 | 7反馈第二轮全新线程验证QA报告落盘(线程b2e2ab65) | .gstack/qa-reports/qa-report-localhost-2026-2026-08-20.md | 报告完成 | ~1k |
+| 10:59 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/water-drainage-report-optimization.md | 1→3 lines | ~146 |
+| 10:59 | Session end: 2 writes across 2 files (qa-report-localhost-2026-2026-08-20.md, water-drainage-report-optimization.md) | 0 reads | ~1384 tok |
+| 11:05 | Edited skills/public/water-drainage-report/scripts/chapter_planner.py | 3→6 lines | ~160 |
+| 11:05 | Edited skills/public/water-drainage-report/scripts/chapter_planner.py | modified in() | ~146 |
+| 11:05 | Edited skills/public/water-drainage-report/scripts/snapshot.py | modified cmd_save() | ~113 |
+| 11:05 | Edited skills/public/water-drainage-report/scripts/snapshot.py | "SNAPSHOT_READY: version={" → "SNAPSHOT_READY: version={" | ~24 |
+| 11:06 | Edited skills/public/water-drainage-report/SKILL.md | inline fix | ~180 |
+| 11:06 | Edited skills/public/water-drainage-report/SKILL.md | inline fix | ~115 |
+| 11:06 | Edited skills/public/water-drainage-report/SKILL.md | expanded (+7 lines) | ~336 |
+| 11:07 | Edited skills/public/water-drainage-report/SKILL.md | 4→6 lines | ~68 |
+| 11:07 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | expanded (+8 lines) | ~259 |
+| 11:08 | Edited skills/public/water-drainage-report/scripts/formula_runner.py | 2→4 lines | ~64 |
+| 11:08 | Edited skills/public/water-drainage-report/SKILL.md | 3→4 lines | ~78 |
+| 11:08 | Edited skills/public/water-drainage-report/SKILL.md | inline fix | ~43 |
+| 11:08 | Created skills/public/water-drainage-report/scripts/test_bugfixes.py | — | ~929 |
+| 11:09 | Edited skills/public/water-drainage-report/scripts/test_bugfixes.py | 3→5 lines | ~134 |
+| 11:12 | Edited skills/public/water-drainage-report/scripts/test_bugfixes.py | inline fix | ~19 |

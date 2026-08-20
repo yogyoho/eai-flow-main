@@ -263,6 +263,14 @@ def cmd_update(args: argparse.Namespace) -> None:
     else:
         print(json.dumps(output, ensure_ascii=False, indent=2))
 
+    # bug-2199：可选同步刷新 params.json（check 子命令的数据源）。
+    # 改参轮若不刷新 params.json，重跑 check 仍用旧参数 → 合规附录与参数表自相矛盾。
+    if args.params_output:
+        fresh_user_params = {k: v for k, v in output["all_params"].items() if "." not in k}
+        with open(args.params_output, "w", encoding="utf-8") as f:
+            json.dump(fresh_user_params, f, ensure_ascii=False, indent=2)
+        print(f"PARAMS_READY: {args.params_output} ({args.param}={args.value})")
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 子命令: check — 执行公式 + 规范性校验
@@ -478,6 +486,8 @@ def main() -> None:
                           help="要修改的参数名（如 Q, N, delta_t）")
     p_update.add_argument("--value", required=True,
                           help="新的参数值")
+    p_update.add_argument("--params-output",
+                          help="bug-2199：同步把改参后的用户参数写回 params.json（check 的数据源），改参轮必传")
     p_update.add_argument("--output",
                           help="输出更新后的状态文件路径")
 
