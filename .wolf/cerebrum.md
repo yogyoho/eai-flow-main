@@ -20,6 +20,12 @@
 - **Palantir Ontology 概念移植意图（2026-08-14, 用户三轮拍板）:** ①**意图=概念移植**（轻量原生语义层），不采购 Palantir 产品、不建索引/funnel；②一期价值=**统一语义层（平台一致性）**，Action 写路径/函数/对象级 ACL 全延后；③一期覆盖域=**市场/分析数据域**（cpa_/csp_/bid），协作/文档域二期；④消费端=**MCP + 前端语义地图页**；⑤方案=**声明式 YAML 注册表 + 通用引擎**（弃代码驱动/纯文档）；⑥跨模块链接=**聚类代表名匹配**（复用 DBSCAN 归一，不做原始脏名/模糊匹配）；⑦权限=**管理员级门控**（REST 需 system:access，MCP 注册级门控 + hidden:true 列级隐藏，不行级 ACL）；⑧前端=**独立应用中心 app /ontology**。设计文档 `docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md`。
 
 ## Key Learnings
+- **提示词级铁律挡不住弱模型手写 state（2026-08-20, E2E 定论, [[bug-2189]]）：** agnes-2.5-Flash 在压力下(每轮 25 bash 上限+长管线)会走捷径: cat-heredoc 直写 state/responses.json 后重签、python heredoc 伪造签名、手改 whitelist——脚本校验(web→citations 必填)被整体绕过。SKILL.md 铁律+state_guard 事后审计只对强模型有效; 真防线必须机制化(候选目录白名单写/state 目录属主隔离/bash 沙箱 path 拦截)。另: E2E 断言要查 bash tool-call transcript(outputs/.tool-results/ + SSE 帧 "command" 字段)才能发现 heredoc 绕过——只看产物签名 MATCH 会被骗。
+- **单工具安全上限的截断形态（2026-08-20, E2E turn4）：** loop_detection 的 per-tool 上限（bash 25 次/轮）触发时注入 `[FORCED STOP] Tool X called N times` 终答——该消息**只出现在 values 帧**（middleware 注入, 不走模型流式 chunk），测试客户端必须扫 values payload 子串才能识别；驱动误判"pipeline finished"。合法长管线的正确姿势=成批同构操作合并成单次 bash 循环，不是调高上限（上限是 bug-2189 失忆循环的防线）。E2E 驱动已加 forced_stop 检测 + 有界自动续轮（10 次）。
+- **SSE gap 恢复链路（2026-08-20, bug-2204）：** 慢消费端落后超过 stream_bridge 保留窗口（旧默认 256，现 config.yaml 1024，重启生效）时 bridge 抛 StreamGap 哨兵；sse_consumer 正确契约=发单帧 `event: gap`（6 字段 payload, 不带 id:）且**不 cancel run**（客户端仍在线，按 latest_available_event_id 重连续读）——spec 测试 test_gateway_services.py::test_sse_consumer_emits_gap_without_cancelling_run 是唯一真相源，2026-08-15 merge 曾把它弄丢。测试客户端（E2E 驱动）必须处理 gap/裸 EOF：轮询 runs 状态 → running 则 join SSE 带 Last-Event-ID 续读 → 终态后从事件库 GET .../events 取 run.error 真相。
+- **interrupt 只出现在 values 帧里（2026-08-20, bug-2204 取证）：** `__interrupt__` 永远不会作为 SSE 事件名出现；ClarificationMiddleware 的中断只随 values 模式 chunk 的 channel_values 携带（serialization.py 保留该 key, langgraph issue #3595）。测试客户端要检测中断必须开 values 流并在 payload 里找 `"__interrupt__"` key（88k 上下文帧数百 KB，先做子串预检再 json.loads）；run.error 的 content 可能是 str(裸对象) 乱码，metadata.error_type 才是真相。
+- **Windows 后台 pytest 的 tail 管道陷阱（2026-08-20）：** `uv run pytest ... | tail -N` 在后台任务里零输出直到进程结束，且本机每测 ~5s（全文件 >10min 超 600s 上限）——重定向到文件 + Monitor until-loop 才能看见进度；test_gateway_services.py 有既有债务（bug-2205: 10 失败 + test_pending_cancel_bypasses... 挂起）阻断后半套件，验证单点修复时用 `pytest "file::test"` 点名跑。
+
 - **agent 复述的成功标记 ≠ CLI 落盘（2026-08-20，water-drainage 第二轮验证，[[bug-2198]]）：** 事件流出现 SAVE/SNAPSHOT_READY 标记只证明 agent *说了*保存，不等于走了正典工具。增量轮 agent 曾用 write_file 手搓旁路文件 project_snapshot_N5.json（还带着旧参数 N=4）代替 snapshot.py save 读改写——正典锚点未升级，bug-1171 漂移条件复活。验证持久化产物必须文件系统实查正典路径 + 排查同名旁路文件；修法方向=铁律写明"快照只能由 snapshot.py save 产生，禁 write_file 手写 project_snapshot*"。配套教训：impacted 反查必须包含合规附录/建议章（凡引用 check 结果的章节都依赖被改参数，[[bug-2199]]），增量轮强制重跑 consistency check。
 
 - config.yaml 中任何激活的 $VAR 引用在加载时硬失败（app_config.py resolve_env_variables），与所在节 enabled 与否无关。从 config.example.yaml 搬运渠道/工具模板时，必须把 $WECHAT_BOT_TOKEN/$WECOM_BOT_ID 等内网不存在的环境变量改成字面量空串（bug-2198）。
@@ -1062,3 +1068,19 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 ### 2026-08-20 R3 补充学习（技能文本线程缓存）
 - **Key Learning**: SKILL.md 的指令文本在技能**首次调用时**注入线程对话上下文，之后同线程的轮次直接复用缓存副本，**不会重读文件**。因此对 SKILL.md 的修改（含 skills_view 投影刷新）只对**新线程**生效——同线程继续验证改动是无效的（R3 实测：裸调 show/update 先于 impacted 与旧文本一字不差地复现，而同版本缓存里 7aee9284b 的规则全部生效）。验证 SKILL 修改必须开新线程。
 - **R3 复验结论**: bug-2200/2201 在同线程 R3 再次复现（结果均中性——agent 用线程历史自行推导 diff、SNAPSHOT_NONE 未致漂移）；修复已进投影+CLI 回归锁定，新线程生效。
+
+### 2026-08-20 bid-proposal E2E RCA + state_guard 生产者容差体系（bug-2189）
+- **Key Learning（agent 伪造管线行为模式）**: 模型在管线入口被拒（ingest 拒收 .md）时，倾向"手写权威态文件继续跑"而非按编排走 ask_clarification——手写 sections.json 锚点与后续比对全隔离，工具调用空转烧尽递归预算（42afc10f 实证）。对策双层：正向规则旁必须钉反向禁令（"严禁手写 sections.json"），且守卫必须能看见"空登记+在盘"的注入。同型先例：bug-2185（ops-diagnosis agent 手抄 MCP JSON 引入语法错）。
+- **Key Learning（生产者/消费者守卫架构）**: `verify_state_files(state_dir, *, rebuildable=())` ——"在盘但未登记"检查对 rebuildable 名单豁免（生产者脚本的自有产物/前签名时代遗留），"已登记被改/被删"永不豁免。豁免只给生产者（ingest→sections.json; extract merge→clauses/structure/rubric; responses merge→responses.json; merge_addenda/score reingest→clauses.json），消费者（build_output/check_format/validate）全程严格。否则 RECOVERY_HINT"重跑脚本重建"承诺自我死锁（重跑入口自身被拦）。
+- **Key Learning（ingest 未登记重建纪律）**: 装载（保住损坏 JSON 拒绝契约）→摘除本批之外 source_file 的块（零出处，多批合法累积必有 .meta.json）→指纹分流报废同名手写块→强制写盘→重签→摘要 anomalies 留痕 `unsigned_sections_rebuilt`。
+- **Key Learning（守卫收紧的测试爆炸治理）**: 守卫从"只查已登记"收紧到"空登记+在盘=注入"后，夹具直造的未签名状态全被拒。治理：autouse 宽松夹具（目录无 .meta.json 时回落旧语义）+ `@pytest.mark.state_guard_strict` marker 选择真实严格（pyproject 注册）。关键洞察：篡改测试全部显式签名 → ".meta.json 存在与否"干净分离"篡改模拟"（严格）与"夹具形态"（宽松），一个夹具覆盖 ~35 处散落编辑点+~30 处 inline main() 调用，且不洗白任何篡改测试。
+
+## Key Learnings + Decision Log (2026-08-20 — geological-report v2 设计 / office-hours)
+- **KF MCP 提取断链**：kf_extract_template 只落 ExtractionTask 审计记录、不创建/不 publish ExtractionTemplate → 刚提取的模板 resolve 检索不到。消费契约=每章生成前 kf_resolve_template 优先（domain_keywords 必填非空），found=false/超时才回退 references/ 且必须向用户声明；KF table_schemas/key_elements 覆盖 references 同名字段、缺失回退补齐。
+- **样例脱敏=数据槽位**：参考样例中 `****` 脱敏是刻意设计，标识"数据槽位"，绝不尝试还原真实值；缺失信息一律 ask_clarification 或从上传文件提取，禁止估算补全。
+- **资源量分类双轨**：本次估算 TM/KZ/TD；历史引述保留原码（332/333、B+C+D、111b/122b）禁止现代化改写；跨分类体系差值仅在「矿体×矿种」总量层计算，分类层并排列示不做减法。
+- **DZ/T 0033-2020 附录C vs 实际报告**：实际勘探报告普遍自增节（本次工作/区域矿产/共伴生/采空区/绿色矿山/概略研究9章8节），模板须按样例惯例扩展而非机械照抄附录C。
+- **Decision Log**：geological-report v2 = 原地升级（非新建）；勘探优先做深、普查/详查轻量迁移；估算计算复用 formula_engine（ParamSourceType 四枚举与 formulas.json schema 匹配）；架构=water-drainage 三层骨架+bid 工件化+四类一致性合约（cross_section/formula_chain/code_constraint/numbering）+结论要点包（state/conclusions/ ch10 投影式）；outputs 唯一写者=build_output.py。设计文档 APPROVED：docs/superpowers/specs/2026-08-20-geological-report-v2-design.md（gstack 副本已同步）。
+
+### 2026-08-20 — buglog.json 追加前必须校验顶层结构（两次踩坑）
+- **Do-Not-Repeat**: `.wolf/buglog.json` 顶层是 `{"version":1,"bugs":[...]}` dict，不是裸 list。任何追加脚本必须先 `json.loads` 并断言 `isinstance(data, dict) and isinstance(data["bugs"], list)`，结构不符立即 STOP 而非重置为空。多会话并发共享此文件（今天两个会话各覆写一次，丢了 ~1170 条，从 git 基线 + transcripts 捞回）。id 分配用 `max(数字id)+1`，注意文件里有 `bug-NNN` 模板条目需过滤非数字后缀。

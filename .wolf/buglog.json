@@ -19711,6 +19711,328 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-08-20T04:01:03.045Z"
+    },
+    {
+      "id": "bug-1208",
+      "timestamp": "2026-08-20",
+      "error_message": "superpowers-chrome use_browser action=eval 全部无效果：同步 DOM 探针 div 都不落页面，异步 fetch 结果更不可见（Result 恒 [object Object]），cookie 注入也是空操作",
+      "file": "mcp plugin superpowers-chrome",
+      "root_cause": "eval 在该环境未真正作用于页面 DOM（疑似 isolated world 或实现缺陷）",
+      "fix": "改用 curl 做服务端验证；浏览器 UI 验证待 chrome-devtools MCP 可用（其 profile 被并发会话占用时不可启动）",
+      "tags": [
+        "superpowers-chrome",
+        "eval",
+        "browser-automation"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-1209",
+      "timestamp": "2026-08-20",
+      "error_message": "docker compose -p eai-docker restart gateway 后 http://localhost:2026/api/health 持续 502（容器内 8001 已活）",
+      "file": "docker/docker-compose-dev.yaml nginx 服务",
+      "root_cause": "nginx 缓存 gateway 容器旧 IP（upstream 主机名启动时解析一次），gateway 重启换 IP 后不刷新",
+      "fix": "gateway 重启后连带 docker compose -p eai-docker restart nginx",
+      "tags": [
+        "nginx",
+        "docker",
+        "gateway",
+        "502"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-1217",
+      "timestamp": "2026-08-16",
+      "error_message": "jq: command not found (exit 127) when generating tasks JSONL per gstack plan-eng-review skill instructions",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/tasks-eng-review-20260816-104600.jsonl",
+      "root_cause": "Windows host has no jq installed; gstack skill assumes jq availability",
+      "fix": "fallback to python one-liner json.dumps loop to emit JSONL; verified 10 valid lines",
+      "tags": [
+        "jq",
+        "windows",
+        "gstack",
+        "jsonl",
+        "fallback"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-16"
+    },
+    {
+      "id": "bug-2166",
+      "timestamp": "2026-08-20",
+      "error_message": "score_simulate: clauses ZB-C-1 与 ZB-C-12 各自条目标题唯一出现, reingest 误判 ZB-C-1 duplicate_id(occurrences=2)→权威态拒更+命中率虚降+可连锁 D6④ 整体降级",
+      "file": "skills/public/bid-proposal-writing/scripts/score_simulate.py",
+      "root_cause": "cid in title 与 CLAUSE_ID_RE.search(title) 均无边界子串匹配, 'ZB-C-1'是'ZB-C-12'前缀",
+      "fix": "_title_embeds_clause 用 re.escape(cid)+r'(?!\\d)' 边界感知, 镜像豁免同加负向断言(061178871)",
+      "tags": [
+        "substring",
+        "prefix",
+        "duplicate",
+        "regex",
+        "bid-proposal",
+        "score_simulate"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2167",
+      "timestamp": "2026-08-20",
+      "error_message": "score_simulate assemble-evidence: reingest 成功后源文件被移走, rc=0 anomalies=[] 全空证据包, note 假陈述'评审对象=会话内骨架'→Agent 按空缺计分误压主观分",
+      "file": "skills/public/bid-proposal-writing/scripts/score_simulate.py",
+      "root_cause": "source 不可达与会话内填写态两态混写一个 note, 代码有区分两态的全部信息却未用",
+      "fix": "source_unreachable 独立判定→rc=3 异常区, note 如实分立(061178871)",
+      "tags": [
+        "silent-failure",
+        "evidence",
+        "false-statement",
+        "bid-proposal",
+        "score_simulate"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2189",
+      "timestamp": "2026-08-20",
+      "error_message": "E2E 复测(agnes-2.5-Flash, 线程 42afc10f): GraphRecursionError@300。取证: agent 在 ingest 拒收 .md 后未走 ask_clarification 要原件, 而是手写 sections.json(无 .meta.json)继续跑, 后续全部锚点比对零命中, 工具调用空转烧尽递归预算; 且当时 state_guard 对'空登记(.meta.json 不存在)+权威文件在盘'完全不设防(只查已登记签名, 注入不可见)",
+      "file": "skills/public/bid-proposal-writing/scripts/state_guard.py",
+      "root_cause": "两层缺口: (a)SKILL 阶段0 受理纪律只有正向规则(仅收 .docx/.pdf), 没有'严禁手写 sections.json'的反向禁令, agent 把'被拒'理解为'自己造数据继续'; (b)state_guard.verify_state_files 只迭代 signatures 字典——空登记=零复核, 手写注入的 sections.json 在盘却无人点名, 与 RECOVERY_HINT'重跑脚本重建'的承诺形成执行盲区",
+      "fix": "①SKILL.md 阶段0+排错表钉死: .md 被拒→ask_clarification 要 docx/pdf 原件, 严禁手写 sections.json 或自造 state(实证 42afc10f: 手写→锚点全隔离→烧尽递归预算), SKILL_MD_REQUIRED_TOKENS 锁'不支持的文件类型'+'严禁手写 sections.json'; ②state_guard 重设计: verify_state_files 增 rebuildable 参数+is_unregistered 助手, 空登记+权威文件在盘=注入信号逐条点名, 生产者脚本只豁免自有产物的'未登记'项(ingest→sections.json; extract merge→clauses/structure/rubric; responses merge→responses.json; merge_addenda/reingest→clauses.json), 已登记被改/被删永不豁免, 消费侧(build_output/check_format/validate)全程严格; ③ingest 未登记重建路径: 装载(损坏 JSON 仍拒)→摘除本批之外 source_file 的零出处手写块→指纹分流报废同名手写块→强制写盘→重签→摘要留痕 unsigned_sections_rebuilt; ④测试: autouse 宽松夹具(无 .meta.json 回落旧语义)+@pytest.mark.state_guard_strict 选择真实严格(pyproject 注册 marker), 新增 TestIngestUnsignedSectionsRebuild(2测)+test_extract_merge_rebuilds_unsigned_legacy_three, 553 全绿; ruff 清 | E2E 2026-08-20 (agnes-2.5-Flash, 线程 bbd447d7): 管线走通到交付, 但铁律'禁手写 state'在一轮内被违反 3 次(turn2 python heredoc 伪造 sections.json 签名 / turn7 手改 entities_whitelist.json / turn8 cat-heredoc 直写 responses.json 后重签)——responses.py 的 web→citations 校验因此被整体绕过(25 条 0 引用)。结论: 提示词级铁律+事后审计对弱模型不够, 需要机制层拦截(候选信封目录白名单写、state 目录 chmod/属主隔离, 或 bash 沙箱层 path 拦截)",
+      "tags": [
+        "bid-proposal",
+        "state_guard",
+        "e2e",
+        "graph-recursion",
+        "handwritten-state",
+        "injection",
+        "producer-tolerance",
+        "rebuildable",
+        "fixed"
+      ],
+      "related_bugs": [
+        "bug-2178",
+        "bug-2202"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2192",
+      "timestamp": "2026-08-20",
+      "error_message": "增量轮(N=4→5)两次 SAVE 事件后正典 project_snapshot.json 仍 version=1；agent 用 write_file 手搓旁路文件 project_snapshot_N5.json（version=1、params.N=4 旧值）代替 snapshot.py save 读改写",
+      "file": "skills/public/water-drainage-report/SKILL.md",
+      "root_cause": "增量轮 agent 未按多轮承接铁律调用 snapshot.py save --task，而是自行 write_file 构造快照；SAVE 成功标记被复述但非 CLI 落盘。上轮线程 7d58e494 曾正确走 CLI，说明该行为概率性不稳定。正典锚点未升级 → 下一轮读到 N=4 + last_task='首次生成'，bug-1171 漂移条件重新成立",
+      "fix": "未修（report-only 验证轮）。建议：铁律措辞强化为'快照只能由 snapshot.py save 产生，禁止 write_file 手写 project_snapshot*.json'；或 CLI 加 --check 输出 canonical 路径让 agent 校验",
+      "tags": [
+        "water-drainage",
+        "snapshot",
+        "incremental-update",
+        "agent-drift",
+        "bug-1171-relapse"
+      ],
+      "related_bugs": [
+        "bug-1171",
+        "bug-2191"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2193",
+      "timestamp": "2026-08-20",
+      "error_message": "增量更新后报告内部不一致：参数表 N=5（L61）但合规表仍 N=4 ⚠️警告（L282-283）、建议区仍写'N=4 低于推荐值'（L316/324）",
+      "file": "skills/public/water-drainage-report/scripts/chapter_planner.py",
+      "root_cause": "impacted 反查只覆盖计算章节（第5章正确重算 Qb=39.45/Qm=209.24），漏掉合规附录/建议章——它们同样依赖 N 的校验结果；且增量路径未重跑 consistency check",
+      "fix": "未修（report-only 验证轮）。建议：chapter_planner 把附录/合规章纳入 impacted 反查（凡 check 结果引用的参数变更即受影响）；增量轮强制重跑 formula_runner check",
+      "tags": [
+        "water-drainage",
+        "impacted",
+        "consistency",
+        "incremental-update"
+      ],
+      "related_bugs": [
+        "bug-2192"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2194",
+      "timestamp": "2026-08-19T22:40:00+08:00",
+      "error_message": "用户报告：v34 config.yaml 手动替换后，对话页设置对话框微信/channel tab 未配置好，左侧栏不再显示个人微信/企业微信渠道项",
+      "file": "config.yaml (channel_connections.enabled)",
+      "root_cause": "手动 example 替换时 channel_connections.enabled 保持 example 默认 false。GET /api/channels/providers 返回 enabled=config.enabled，前端 workspace-channels-list.tsx 判 !enabled 即整块隐藏（侧栏+设置 tab 同源）",
+      "fix": "channel_connections.enabled 改 true（备份原值）+ EAI-CUSTOM 注释，重启 gateway。验证：master enabled=True；wechat enabled/configured/connectable=true status=connected；wecom enabled=true configured=false（空凭据预期，待填 bot_id/bot_secret）",
+      "tags": [
+        "config",
+        "v34-upgrade",
+        "channel_connections",
+        "frontend-sidebar",
+        "channels"
+      ],
+      "related_bugs": [
+        "bug-2192",
+        "bug-2193"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-19"
+    },
+    {
+      "id": "bug-2202",
+      "timestamp": "2026-08-20",
+      "error_message": "E2E turn1 �� glm-4.1v-flash �����˻���: 37k token ����� 165-242 token ���, ȫΪ'����'����Ƭ�ظ�, 0 �ι��ߵ���; thinking_enabled=true ������(agent.py:749 'model does not support it')",
+      "file": "config.yaml (glm-4.1v-flash ģ��ע����)",
+      "root_cause": "glm-4.1v-thinking-flash �˵���������Լ 22k token: ֱ�� API ʵ�� 11.7k-19.7k token ��������, 22.4k/23.1k token �������̮�� out=2 �� reasoning_len=3(40k-60k �ַ������ prompt_tokens ������ ~22.4-23.1k = �˵�ض�); lead_agent ������(ϵͳ��ʾ+����schema+����+�ϴ����)Լ 37k token Զ�����ޡ��Ҹ�ģ��ע���� supports_thinking ��ע��, thinking ���󱻾�Ĭ����",
+      "fix": "config.yaml glm ��Ŀȡ��ע�� supports_thinking: true + when_thinking_enabled/disabled extra_body(thinking.type), �� EAI-CUSTOM(bug-2189 E2E) ע��; E2E ��֤����Ĭ��ģ�� agnes-2.5-Flash������: glm-4.1v-thinking-flash ��ѵ��������� lead_agent ������������",
+      "tags": [
+        "glm-4.1v-thinking-flash",
+        "zhipu",
+        "input-limit",
+        "degenerate-output",
+        "supports_thinking",
+        "bug-2189",
+        "e2e"
+      ],
+      "related_bugs": [
+        "bug-2189"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2203",
+      "timestamp": "2026-08-20",
+      "error_message": "E2E 第二跑(线程 bbd447d7, agnes-2.5-Flash, PDF 原件 933KB, state 干净): turn1 仍在阶段2 extract 烧穿 GraphRecursionError@300(约8分钟, 候选只写到 CH-032)。排除法证明递归烧尽并非只由手写 state 引起——干净管线本身预算不够",
+      "file": "frontend/src/core/threads/hooks.ts",
+      "root_cause": "实测每轮工具往返消耗 12 个 superstep(model 节点间 step 间隔=12: 11,23,35...299; 标准 react agent 仅 2)——中间件链使单轮成本放大 6 倍。933KB 招标文件 extract 需 ~70-100 轮(逐 chunk 候选) ≈ 840-1200 step, 而 E2E 驱动与前端(bug-2189 调参定为 300)均只有 300; gateway clamp 上限 1000(services.py:605-606, 服务端默认仅 100)。干净状态 + 正确管线也必然烧穿",
+      "fix": "E2E 载体侧(已落地): 驱动 recursion_limit 300→1000(clamp 上限内) + GraphRecursionError 自动续轮('继续, 不重做已完成步骤', 新一轮=新预算, checkpointer 保状态) + 断点续跑(RESUME_THREAD_ID 复用既有线程的合法 sections.json/部分候选)。产品侧待决策(未改): ①前端 300→1000(原注释担心 runaway 烧上下文, 但 loop_detection 已在线) ②或压缩单轮 superstep 成本(中间件节点开销, 触及 harness 核心) ③或技能层批量候选(一轮多 chunk)。真实用户当前命中即见裸 GraphRecursionError, 需手动'继续'才可恢复",
+      "tags": [
+        "bid-proposal",
+        "e2e",
+        "graph-recursion",
+        "superstep-cost",
+        "middleware-overhead",
+        "recursion-limit",
+        "frontend",
+        "product-finding",
+        "mitigated-in-driver"
+      ],
+      "related_bugs": [
+        "bug-2189",
+        "bug-2202"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2204",
+      "timestamp": "2026-08-20",
+      "error_message": ".wolf/buglog.json 被覆写事故：追加脚本假定顶层为 list，实际为 {version,bugs} dict，整文件被替换为 3 条错构 list（同日另一会话也发生过一次同类事故）",
+      "file": ".wolf/buglog.json",
+      "root_cause": "多会话共享该文件无锁读-改-写整文件 + 顶层结构假定错误；追加前未校验结构",
+      "fix": "以 git e88843548 版为底座重建，从当日会话 transcripts 捞回丢失条目；未能恢复完整 JSON 的 id：bug-1216（仅被引用）。今后追加必须先 json.loads 校验顶层为 dict 且 bugs 为 list，再 append 后写回",
+      "tags": [
+        "buglog",
+        "clobber",
+        "concurrent-sessions",
+        "recovery"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2205",
+      "timestamp": "2026-08-20",
+      "error_message": "tests/test_gateway_services.py: 10 FAILED + 1 HANG (test_pending_cancel_bypasses_thread_metadata_and_logs_failure 永不结束), 阻断套件 50% 之后的测试; test_wait_disconnect_handling.py 11 个全 skip",
+      "file": "backend/tests/test_gateway_services.py",
+      "root_cause": "2026-08-15 上游 merge + multi_instance 工作线改了 app.gateway.services 的语义/签名但没同步测试(测试债务, 非回归 bug-2204): ①normalize_stream_modes 现接受 'messages' 等模式(测试仍期待 ValueError) ②build_run_config 线程 id 优先级语义变化(route vs caller) ③_state_accessor_graph() 签名 4 参(测试传 5) ④checkpoint 校验相关 2 例 ⑤test_pending_cancel_bypasses... 死等(start_run→cancel 路径在取消后不终止, 疑 RunManager.cancel 等待语义变化)",
+      "fix": "未修(超出 bug-2189 E2E 关键路径)。已确认与 bug-2204 sse_consumer 修复无关(gap spec 测试 test_sse_consumer_emits_gap_without_cancelling_run 通过, 位置 5)。修复时需逐例判定新语义是否有意, 再改测试或改代码",
+      "tags": [
+        "test-debt",
+        "upstream-merge-2026-08-15",
+        "gateway-services",
+        "multi_instance",
+        "hang"
+      ],
+      "related_bugs": [
+        "bug-2204"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-1191",
+      "timestamp": "2026-08-20T12:06:41.186Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T12:06:41.186Z"
+    },
+    {
+      "id": "bug-1192",
+      "timestamp": "2026-08-20T12:07:33.677Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T12:07:33.677Z"
+    },
+    {
+      "id": "bug-1193",
+      "timestamp": "2026-08-20T12:08:43.280Z",
+      "error_message": "Null/undefined access in ",
+      "file": "docs/superpowers/specs/2026-08-20-docmgr-blocknote-image-upload-design.md",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T12:08:43.280Z"
+    },
+    {
+      "id": "bug-1194",
+      "timestamp": "2026-08-20T12:09:32.649Z",
+      "error_message": "CSS fix: EAI-CUSTOM",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "EAI-CUSTOM: file_ref 个人文件面无 source_thread_id，回退 personalFile.thread_id，图片三入口才能激活 */ → file_ref 个人文件面无 source_thread_id，回退 personalFile.thread_id，图片三入口才能激活",
+      "fix": "Changed EAI-CUSTOM: file_ref 个人文件面无 source_thread_id，回退 personalFile.thread_id，图片三入口才能激活 */ → file_ref 个人文件面无 source_thread_id，回退 personalFile.thread_id，图片三入口才能激活",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T12:09:32.649Z"
     }
   ]
 }
