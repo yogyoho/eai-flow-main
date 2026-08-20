@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 import re
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -41,10 +41,25 @@ from app.extensions.schemas import (
     ProjectVersionDetailResponse,
     ProjectVersionListResponse,
 )
+from deerflow.config.paths import Paths
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/extensions/docmgr", tags=["AI Documents"])
+
+# EAI-CUSTOM: BlockNote uploadFile 图片上传——白名单/大小上限（SVG 因 artifacts 强制下载防 XSS 而排除）
+_IMAGE_MAX_BYTES = 10 * 1024 * 1024
+_IMAGE_MIME_EXT = {
+    "image/png": ".png",
+    "image/jpeg": ".jpg",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+    "image/bmp": ".bmp",
+}
+
+
+class ThreadImageResponse(BaseModel):
+    url: str
 
 
 class SyncThreadFilesRequest(BaseModel):
@@ -714,6 +729,34 @@ async def sync_thread_files(
         sandbox_dir=str(user_data_dir),
     )
     return result
+
+
+# EAI-CUSTOM: 个人文档 BlockNote 编辑器图片上传（uploadFile 后端）。
+# 图片落盘线程 user-data/outputs/images/，前端拿 artifacts 相对 URL 渲染。
+@router.post("/threads/{thread_id}/images", response_model=ThreadImageResponse)
+async def upload_thread_image(
+    thread_id: str,
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
+):
+    """Upload an image into the thread's outputs/images/ dir; return an artifacts URL."""
+    ext = _IMAGE_MIME_EXT.get(file.content_type or "")
+    if ext is None:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f"不支持的图片类型: {file.content_type}")
+    data = await file.read()
+    if len(data) > _IMAGE_MAX_BYTES:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="图片超过 10MB 上限")
+
+    user_data_dir = _resolve_thread_sandbox_dir(Paths(), thread_id, str(current_user.id))
+    name = uuid4().hex[:12] + ext
+    target = user_data_dir / "outputs" / "images" / name
+
+    def _write() -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+
+    await asyncio.to_thread(_write)
+    return ThreadImageResponse(url=f"/api/threads/{thread_id}/artifacts/mnt/user-data/outputs/images/{name}")
 
 
 def _resolve_thread_sandbox_dir(paths, thread_id: str, fallback_user_id: str):
