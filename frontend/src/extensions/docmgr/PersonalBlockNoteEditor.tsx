@@ -56,6 +56,7 @@ import {
 import { useI18n } from "@/core/i18n/hooks";
 
 import { replaceTextInContent } from "./utils/docEditorUtils";
+import { uploadDocImage } from "./utils/docImage";
 import {
   convertInlineMathInContent,
   prepareBlocksForMarkdownExport,
@@ -291,12 +292,14 @@ interface PersonalBlockNoteEditorProps {
   onChange: (markdown: string) => void;
   className?: string;
   hideSideMenu?: boolean;
+  /** 文档所属线程 id；传入后激活图片上传（面板/拖拽/粘贴截图）。 */
+  threadId?: string;
 }
 
 const PersonalBlockNoteEditor = forwardRef<
   PersonalBlockNoteEditorRef,
   PersonalBlockNoteEditorProps
->(({ initialContent, onChange, className, hideSideMenu }, ref) => {
+>(({ initialContent, onChange, className, hideSideMenu, threadId }, ref) => {
   const [seeded, setSeeded] = useState(false);
   const [headings, setHeadings] = useState<
     Array<{ id: string; level: number; text: string }>
@@ -353,6 +356,16 @@ const PersonalBlockNoteEditor = forwardRef<
   const editor = useCreateBlockNote({
     schema,
     dictionary,
+    // EAI-CUSTOM: uploadFile 激活图片三入口（面板上传tab/拖拽/粘贴文件）。
+    // 编辑器按文档 remount（key={editorKey}），threadId 在实例生命周期内稳定。
+    ...(threadId
+      ? {
+          uploadFile: async (file: File) => {
+            const { url } = await uploadDocImage(threadId, file);
+            return url;
+          },
+        }
+      : {}),
     extensions: [AIExtension({ transport: aiTransport }), highlightExtension],
   });
 

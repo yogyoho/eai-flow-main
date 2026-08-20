@@ -2766,6 +2766,7 @@ export function DocumentEditor({
                 initialContent={doc.content ?? ""}
                 onChange={scheduleSave}
                 className="flex-1"
+                threadId={doc.source_thread_id ?? undefined}
                 hideSideMenu={
                   !!getLanguageFromName(personalFile?.title ?? doc?.title ?? "")
                 }
