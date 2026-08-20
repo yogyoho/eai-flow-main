@@ -733,6 +733,7 @@ async def sync_thread_files(
 
 # EAI-CUSTOM: 个人文档 BlockNote 编辑器图片上传（uploadFile 后端）。
 # 图片落盘线程 user-data/outputs/images/，前端拿 artifacts 相对 URL 渲染。
+# 跨桶扫描沿用 sync_thread_files 既有模式（spec §6 已知限制#2），存在性门用于收窄凭空造目录的种文件面。
 @router.post("/threads/{thread_id}/images", response_model=ThreadImageResponse)
 async def upload_thread_image(
     thread_id: str,
@@ -740,14 +741,22 @@ async def upload_thread_image(
     current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
 ):
     """Upload an image into the thread's outputs/images/ dir; return an artifacts URL."""
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", thread_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="线程不存在")
     ext = _IMAGE_MIME_EXT.get(file.content_type or "")
     if ext is None:
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f"不支持的图片类型: {file.content_type}")
-    data = await file.read()
+    data = await file.read(_IMAGE_MAX_BYTES + 1)  # 有界读取：最多读上限+1字节，防任意大 body 全量进内存
     if len(data) > _IMAGE_MAX_BYTES:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="图片超过 10MB 上限")
 
-    user_data_dir = _resolve_thread_sandbox_dir(Paths(), thread_id, str(current_user.id))
+    def _resolve_existing_dir():
+        d = _resolve_thread_sandbox_dir(Paths(), thread_id, str(current_user.id))
+        if not d.exists():  # 仅允许写入已存在线程目录（收窄跨桶种文件面）
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="线程目录不存在")
+        return d
+
+    user_data_dir = await asyncio.to_thread(_resolve_existing_dir)
     name = uuid4().hex[:12] + ext
     target = user_data_dir / "outputs" / "images" / name
 

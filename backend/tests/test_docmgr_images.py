@@ -30,6 +30,7 @@ def _upload(data: bytes, filename: str, content_type: str) -> UploadFile:
 def _patch_fs(monkeypatch, tmp_path):
     """把线程目录解析与 Paths() 都指到 tmp_path，端点不碰真实文件系统。"""
     user_data = tmp_path / "user-data"
+    user_data.mkdir()  # 模拟已存在的线程目录（存在性门只放行已存在目录）
     monkeypatch.setattr(docmgr_routers, "Paths", lambda: None)
     monkeypatch.setattr(
         docmgr_routers,
@@ -45,10 +46,9 @@ def test_image_route_registered():
 
 
 def test_image_route_gated_by_doc_upload():
-    """端点必须挂 doc:upload 权限门（require_permission 闭包首个 cell 是权限名）。"""
+    """端点必须挂 doc:upload 权限门（require_permission 闭包 cell 含权限名）。"""
     route = next(r for r in router.routes if getattr(r, "path", "") == "/api/extensions/docmgr/threads/{thread_id}/images")
-    perms = [dep.call.__closure__[0].cell_contents for dep in route.dependant.dependencies if getattr(dep.call, "__closure__", None)]
-    assert "doc:upload" in perms
+    assert any(c.cell_contents == "doc:upload" for dep in route.dependant.dependencies for c in (getattr(dep.call, "__closure__", None) or []))
 
 
 @pytest.mark.asyncio
@@ -78,3 +78,27 @@ async def test_upload_rejects_oversize(tmp_path, monkeypatch):
     with pytest.raises(HTTPException) as ei:
         await docmgr_routers.upload_thread_image("tid-1", _upload(big, "big.png", "image/png"), current_user=_FakeUser())
     assert ei.value.status_code == 413
+
+
+@pytest.mark.asyncio
+async def test_upload_filename_traversal_is_ignored(tmp_path, monkeypatch):
+    """filename 穿越（../../evil.png）不影响落盘——服务端生成 uuid 名，路径钉死在 outputs/images/ 下。"""
+    user_data = _patch_fs(monkeypatch, tmp_path)
+    resp = await docmgr_routers.upload_thread_image("tid-1", _upload(b"\x89PNG-fake", "../../evil.png", "image/png"), current_user=_FakeUser())
+    name = resp.url.rsplit("/", 1)[-1]
+    assert len(name) == 16 and name.endswith(".png")  # 12 hex + ".png"，无路径分量
+    written = list((user_data / "outputs" / "images").iterdir())
+    assert [f.name for f in written] == [name]
+    assert written[0].read_bytes() == b"\x89PNG-fake"
+    assert not (tmp_path / "evil.png").exists()  # 穿越目标未被创建
+
+
+@pytest.mark.asyncio
+async def test_upload_404_when_thread_dir_missing(tmp_path, monkeypatch):
+    """线程目录不存在时 404（存在性门），且不写任何文件。"""
+    user_data = _patch_fs(monkeypatch, tmp_path)
+    user_data.rmdir()  # 制造"线程目录不存在"
+    with pytest.raises(HTTPException) as ei:
+        await docmgr_routers.upload_thread_image("tid-1", _upload(b"\x89PNG-fake", "shot.png", "image/png"), current_user=_FakeUser())
+    assert ei.value.status_code == 404
+    assert not user_data.exists()
