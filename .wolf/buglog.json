@@ -6901,20 +6901,22 @@
       "timestamp": "2026-08-20",
       "error_message": "增量轮(N=4→5)两次 SAVE 事件后正典 project_snapshot.json 仍 version=1；agent 用 write_file 手搓旁路文件 project_snapshot_N5.json（version=1、params.N=4 旧值）代替 snapshot.py save 读改写",
       "file": "skills/public/water-drainage-report/SKILL.md",
-      "root_cause": "增量轮 agent 未按多轮承接铁律调用 snapshot.py save --task，而是自行 write_file 构造快照；SAVE 成功标记被复述但非 CLI 落盘。上轮线程 7d58e494 曾正确走 CLI，说明该行为概率性不稳定。正典锚点未升级 → 下一轮读到 N=4 + last_task='首次生成'，bug-1171 漂移条件重新成立",
-      "fix": "未修（report-only 验证轮）。建议：铁律措辞强化为'快照只能由 snapshot.py save 产生，禁止 write_file 手写 project_snapshot*.json'；或 CLI 加 --check 输出 canonical 路径让 agent 校验",
+      "root_cause": "agent 在增量轮用 write_file 手搓 project_snapshot_N5.json 而非走 snapshot.py save 读改写正典; SKILL 未禁止旁路文件名, CLI 未校验输出文件名",
+      "fix": "已修(7aee9284b)+实跑验证(ac19632f2 轮): snapshot.py cmd_save 拒绝非正典 --output 文件名(SNAPSHOT_ERROR exit 1); SKILL 铁律#4 禁 write_file 旁路写 project_snapshot*.json。线程9509c508 R2 实证: 正典 v2->v3, 零旁路文件",
       "tags": [
         "water-drainage",
         "snapshot",
         "incremental-update",
         "agent-drift",
-        "bug-1171-relapse"
+        "bug-1171-relapse",
+        "fixed",
+        "verified-live"
       ],
       "related_bugs": [
         "bug-1171",
         "bug-2191"
       ],
-      "occurrences": 1,
+      "occurrences": 2,
       "last_seen": "2026-08-20"
     },
     {
@@ -6923,17 +6925,19 @@
       "error_message": "增量更新后报告内部不一致：参数表 N=5（L61）但合规表仍 N=4 ⚠️警告（L282-283）、建议区仍写'N=4 低于推荐值'（L316/324）",
       "file": "skills/public/water-drainage-report/scripts/chapter_planner.py",
       "root_cause": "impacted 反查只覆盖计算章节（第5章正确重算 Qb=39.45/Qm=209.24），漏掉合规附录/建议章——它们同样依赖 N 的校验结果；且增量路径未重跑 consistency check",
-      "fix": "未修（report-only 验证轮）。建议：chapter_planner 把附录/合规章纳入 impacted 反查（凡 check 结果引用的参数变更即受影响）；增量轮强制重跑 formula_runner check",
+      "fix": "已修(7aee9284b)+实跑验证: chapter_planner FALLBACK_CHAPTERS 增 ch11_compliance(合规附录,formula_ids=全量公式); formula_runner update 加 --params-output 刷新 params.json; SKILL 步骤2 改5步流(manifest->update->impacted->check重跑->重生成含附录)。线程9509c508 R2 实证: params N=5, check 重跑 浓缩倍数 pass, 报告 N=5 全一致零 N=4 残留",
       "tags": [
         "water-drainage",
         "impacted",
         "consistency",
-        "incremental-update"
+        "incremental-update",
+        "fixed",
+        "verified-live"
       ],
       "related_bugs": [
         "bug-2198"
       ],
-      "occurrences": 1,
+      "occurrences": 2,
       "last_seen": "2026-08-20"
     },
     {
@@ -19554,6 +19558,159 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-08-20T03:12:41.007Z"
+    },
+    {
+      "id": "bug-1169",
+      "timestamp": "2026-08-20T03:43:17.971Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/water-drainage-report/SKILL.md",
+      "root_cause": "Had `formula_runner.py update`",
+      "fix": "Changed to `formula_runner.py impacted`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T03:43:17.971Z"
+    },
+    {
+      "id": "bug-1170",
+      "timestamp": "2026-08-20T03:43:29.695Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/water-drainage-report/SKILL.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T03:43:29.695Z"
+    },
+    {
+      "id": "bug-1171",
+      "timestamp": "2026-08-20T03:53:02.768Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/bid-proposal-writing/scripts/snapshot.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 14→19 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T03:53:02.768Z"
+    },
+    {
+      "id": "bug-1172",
+      "timestamp": "2026-08-20T03:54:34.888Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/bid-proposal-writing/scripts/ingest.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T03:54:34.888Z"
+    },
+    {
+      "id": "bug-1173",
+      "timestamp": "2026-08-20T03:56:05.672Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/bid-proposal-writing/SKILL.md",
+      "root_cause": "Had `state_guard.py sign`",
+      "fix": "Changed to `state_guard.py sign --confirm-gate1-edit`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-20T03:58:49.835Z"
+    },
+    {
+      "id": "bug-2200",
+      "timestamp": "2026-08-20",
+      "error_message": "线程9509c508 R2: snapshot.py show 裸调用误报 SNAPSHOT_NONE(正典 v2 快照实存在于磁盘, 数秒前刚 cat 验证过)",
+      "file": "skills/public/water-drainage-report/SKILL.md",
+      "root_cause": "show 的默认 --input=/mnt/user-data/workspace/project_snapshot.json 只存在于脚本源码内部, 不在 bash 命令文本中; LocalSandbox 路径翻译层只替换命令文本里的虚拟路径, 脚本内部 open() 的字面 /mnt/user-data 路径在宿主文件系统不存在 -> _load_existing 捕获异常返回{} -> SNAPSHOT_NONE。save 之所以正常: --output 显式写在命令文本里被翻译",
+      "fix": "SKILL 步骤0 显式传 --input /mnt/user-data/workspace/project_snapshot.json(路径进命令文本即被翻译), 附实证注释; commit ac19632f2。注意: R3(同线程 dda58b12)复现同形态——SKILL 文本在首次调用时注入线程上下文且不重读, 修复仅对新线程生效; CLI 级回归(test_bugfixes 4/4 PASS)已锁死两行为",
+      "tags": [
+        "water-drainage",
+        "snapshot",
+        "sandbox-path-translation",
+        "false-negative",
+        "fixed"
+      ],
+      "related_bugs": [
+        "bug-1171",
+        "bug-2198"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-2201",
+      "timestamp": "2026-08-20",
+      "error_message": "线程9509c508 R2: formula_runner impacted 返回 {\"affected_formulas\":[],\"affected_chapters\":[]}(空集), 受影响章节反查失效",
+      "file": "skills/public/water-drainage-report/SKILL.md",
+      "root_cause": "impacted 语义=对磁盘状态 dry-run 改参做值差分; agent 先跑 update(N=5 已落盘 formula_state.json) 再跑 impacted, 差分基准已被覆盖 -> 无值变化 -> 空集。本轮结果仍正确纯属 SKILL 提示词硬编码 ch11 重生成兜底",
+      "fix": "SKILL 步骤2/铁律#3 排序改为 impacted 先于 update; test_bugfixes.py 加 test_impacted_must_run_before_update (旧状态N=4差分非空含ch11, update落盘后同参差分空集, 锁死排序依据); commit ac19632f2。注意: R3(同线程 dda58b12)复现同形态——SKILL 文本在首次调用时注入线程上下文且不重读, 修复仅对新线程生效; CLI 级回归(test_bugfixes 4/4 PASS)已锁死两行为",
+      "tags": [
+        "water-drainage",
+        "impacted",
+        "ordering",
+        "value-diff",
+        "fixed"
+      ],
+      "related_bugs": [
+        "bug-2199"
+      ],
+      "occurrences": 2,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-1176",
+      "timestamp": "2026-08-20T04:00:13.425Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_bid_proposal_scripts.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 25→32 lines (5 removed) | Also: state_guard sign 重登(确认门1 class 编辑的获准通道)后 merge#3 恢; assert _state_guard_module().main([\"sign\", \"--stat",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-20T04:00:46.728Z"
+    },
+    {
+      "id": "bug-1177",
+      "timestamp": "2026-08-20T04:01:03.045Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_bid_proposal_scripts.py",
+      "root_cause": "Had \".meta.json\"",
+      "fix": "Changed to \"clauses.json\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T04:01:03.045Z"
     }
   ]
 }

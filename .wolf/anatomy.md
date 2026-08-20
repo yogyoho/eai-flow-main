@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-18T15:48:35.465Z
-> Files: 2246 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-20T04:09:20.042Z
+> Files: 2267 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -71,7 +71,7 @@
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
 - `config.example.yaml` — Configuration for the DeerFlow application (~26931 tok)
-- `config.yaml` (~3274 tok)
+- `config.yaml` — Configuration for the DeerFlow application (~37156 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow (~2542 tok)
 - `cookies.txt` — Netscape HTTP Cookie File (~34 tok)
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
@@ -168,6 +168,8 @@
 - `qa-report-localhost-2026-08-10.md` — QA Report — 文档空间项目文件夹栏验证 (~910 tok)
 - `qa-report-localhost-2026-2026-06-18.md` — QA Report — 设置页 数据源 + 插件 tab 功能测试 (~653 tok)
 - `qa-report-localhost-2026-2026-08-06.md` — QA 报告 — localhost:2026 / localhost:3000 (~1140 tok)
+- `qa-report-localhost-2026-2026-08-19.md` — QA 报告：water-drainage-report 技能 7 项反馈优化逐项对话页验证 (~963 tok)
+- `qa-report-localhost-2026-2026-08-20.md` — QA 报告：water-drainage-report 7 项反馈优化 —— 全新线程第二轮实跑验证 (~1074 tok)
 - `test-fire-report-minimal.md` — 消防设计专篇 (~18 tok)
 - `test-fire-report.md` — 封面信息 (~810 tok)
 
@@ -491,6 +493,7 @@
 - `modular-painting-treasure.md` — Plan: 协作项目模块 AgentSpace 式重构 — 设计文档（spec） (~2622 tok)
 - `ngrok-ctrl-c-to-quit-hidden-frost.md` — ngrok 内网穿透 — nginx 配置分析 (~882 tok)
 - `piped-dazzling-raven.md` — Plan: Drag-and-Drop Block Reordering for Tiptap Editor (~1104 tok)
+- `prancy-dazzling-brook.md` — config.example.yaml 全量解读 + config.yaml 差距分析 — 交付计划 (~243 tok)
 - `purrfect-stirring-tome.md` — E 续:前端四大纠缠功能移植 — 详细执行计划 (~1893 tok)
 - `purring-scribbling-toast.md` — Plan: 许可证管理页面 + 申请文件下载 (~700 tok)
 - `robust-sauteeing-kitten.md` — 修复：微信分享二维码过期（实时刷新方案） (~896 tok)
@@ -554,7 +557,7 @@
 - `upstream-sync-2026-08-14-completed.md` (~628 tok)
 - `upstream-sync-2026-08-15.md` (~321 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
-- `water-drainage-report-optimization.md` (~602 tok)
+- `water-drainage-report-optimization.md` (~1019 tok)
 - `websearch-unreliable-for-gb-compliance.md` (~296 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
@@ -769,10 +772,13 @@
 - `.gitignore` — Git ignore rules (~86 tok)
 - `.python-version` (~2 tok)
 - `AGENTS.md` (~16 tok)
-- `CLAUDE.md` — CLAUDE.md (~13143 tok)
+- `cf_negative_test.py` — E2E 复测④: check_format 对归一化标题的拦截负例(临时目录, 只读线程数据). (~566 tok)
+- `CLAUDE.md` — CLAUDE.md (~13156 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow Backend (~2414 tok)
 - `debug.py` — main (~1415 tok)
 - `Dockerfile` — Docker container definition (~1296 tok)
+- `fix_buglog.py` — Repair .wolf/buglog.json after the dict-overwrite incident (bug-053). (~773 tok)
+- `fix_buglog2.py` — Final buglog repair: renumber my five bid-proposal entries (bug-048..052, (~784 tok)
 - `langgraph.json` (~112 tok)
 - `launch_gateway.py` — Simple gateway launcher. (~170 tok)
 - `Makefile` (~604 tok)
@@ -1352,7 +1358,7 @@
 - `connection_identity.py` — Helpers for attaching persisted channel connection ownership to inbound messages. (~373 tok)
 - `dingtalk.py` — DingTalk channel implementation. (~8879 tok)
 - `feishu.py` — Feishu/Lark channel — connects to Feishu via WebSocket (no public IP needed). (~11823 tok)
-- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~14193 tok)
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~14446 tok)
 - `message_bus.py` — MessageBus — async pub/sub hub that decouples channels from the agent dispatcher. (~1977 tok)
 - `service.py` — ChannelService — manages the lifecycle of all IM channels. (~5166 tok)
 - `slack.py` — Slack channel — connects via Socket Mode (no public IP needed). (~3094 tok)
@@ -1491,11 +1497,12 @@
 ## backend/app/extensions/knowledge_factory/mcp_server/
 
 - `http_server.py` — Knowledge Factory MCP Server — HTTP (streamable-http) entry point. (~402 tok)
-- `server.py` — Knowledge Factory MCP Server — exposes template, domain, and knowledge tools to DeerFlow lead_agent. (~2589 tok)
+- `server.py` — Knowledge Factory MCP Server — exposes template, domain, and knowledge tools to DeerFlow lead_agent. (~3034 tok)
 
 ## backend/app/extensions/knowledge_factory/mcp_server/tools/
 
 - `compliance_tools.py` — MCP tool handler for kf_check_compliance — bridges the compliance check engine. (~1915 tok)
+- `search_tools.py` — kf_search_knowledge — Agent 跨知识库检索（RAGFlow）。 (~1215 tok)
 - `template_tools.py` — Template resolution tools for the Knowledge Factory MCP server. (~4159 tok)
 
 ## backend/app/extensions/law/
@@ -1546,6 +1553,12 @@
 - `contract_price.yaml` — 合同价格分析域（cpa_ 表，零迁移直读） (~1481 tok)
 - `cross_module.yaml` — 跨模块链接（normalized_key_match，全部 enabled:false stub 上线） (~675 tok)
 - `spare_parts.yaml` — 备件价格分析域（csp_ 表，零迁移直读） (~2008 tok)
+
+## backend/app/extensions/ops_diagnosis/
+
+- `__init__.py` — Ops diagnosis extension — natural-language diagnosis of run/skill execution. (~88 tok)
+- `mcp.py` — Ops diagnosis MCP Server — read-only run/run-event queries for the agent. (~1562 tok)
+- `service.py` — Read-only query helpers over runs / run_events for ops diagnosis. (~1326 tok)
 
 ## backend/app/extensions/output/
 
@@ -1720,7 +1733,8 @@
 
 ## backend/docs/
 
-- `OBSERVABILITY.md` — Agent 执行监控与调试手册 (~2810 tok)
+- `CONFIG-GUIDE.md` — config.example.yaml 全量解读 + config.yaml 差距分析 (~3912 tok)
+- `OBSERVABILITY.md` — Agent 执行监控与调试手册 (~3222 tok)
 
 ## backend/packages/harness/
 
@@ -1895,7 +1909,7 @@
 - `rbac_helpers.py` — 共享 RBAC 深度测试工具：canned identity、policy mock、smart_db、app builder。 (~1762 tok)
 - `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2641 tok)
 - `test_auth_type_system.py` — Tests for auth type system hardening. (~12394 tok)
-- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~94040 tok)
+- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~95737 tok)
 - `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
 - `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
 - `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
@@ -1961,6 +1975,7 @@
 - `test_ontology_query.py` — Tests for ontology query engine (pure helpers + fake-connector integration). (~1862 tok)
 - `test_ontology_registry.py` — T2 单测：注册表加载 / 指纹+版本 / 坏 YAML 拒绝（fail-closed）. (~1727 tok)
 - `test_ontology_rest.py` — T6 集成测试：REST 6 端点（HTTP 级，真扩展库）. (~1059 tok)
+- `test_ops_diagnosis.py` — Tests for the ops-diagnosis extension (service queries, MCP handlers, skill scripts). (~3024 tok)
 - `test_output_cjk_font.py` — Regression: generate_docx must set w:eastAsia font so Chinese renders correctly. (~380 tok)
 - `test_output_cover.py` — Tests for cover-page rendering + cover field resolution. (~1027 tok)
 - `test_output_frontmatter.py` — Tests for markdown front-matter splitting. (~320 tok)
@@ -2058,7 +2073,7 @@
 ## docker/
 
 - `dev-entrypoint.sh` — ' --reload-include='*.yaml .env' (~1158 tok)
-- `docker-compose-dev.yaml` — DeerFlow Development Environment (~4949 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~5005 tok)
 - `docker-compose-offline.yaml` — DeerFlow Offline Deployment (~978 tok)
 - `docker-compose.business.yaml` — Business Microservices (~1533 tok)
 - `docker-compose.extensions-offline.yaml` — DeerFlow Extensions Services — Offline Version (~538 tok)
@@ -2244,6 +2259,7 @@
 - `2026-08-18-failure-streak-middleware-design.md` — FailureStreakMiddleware 修复设计稿 (~2550 tok)
 - `2026-08-18-ops-diagnosis-skill-design.md` — 路线D设计稿：ops-diagnosis 技能（把"问题分析"产品化） (~1189 tok)
 - `2026-08-18-sales-personnel-dashboard-prototype.html` — 销售团队总览原型 (~6510 tok)
+- `2026-08-19-water-drainage-7-feedbacks-solutions.md` — 给排水计算书技能 —— 7 项反馈建议技术解决方案汇总 (~1440 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -2480,7 +2496,7 @@
 
 ## frontend/src/app/workspace/
 
-- `workspace-content.tsx` — parseSidebarOpenCookie (~332 tok)
+- `workspace-content.tsx` — EAI-CUSTOM: 对齐上游 —— 设置弹窗统一挂在 workspace-content（app 级单实例， (~489 tok)
 
 ## frontend/src/app/workspace/agents/[agent_name]/chats/[thread_id]/
 
@@ -2557,7 +2573,7 @@
 - `workspace-container.tsx` — WorkspaceContainer (~964 tok)
 - `workspace-header.tsx` — WorkspaceHeader (~776 tok)
 - `workspace-nav-chat-list.tsx` — WorkspaceNavChatList (~1083 tok)
-- `workspace-nav-menu.tsx` — NavMenuButtonContent (~1132 tok)
+- `workspace-nav-menu.tsx` — NavMenuButtonContent (~1163 tok)
 - `workspace-sidebar.tsx` — WorkspaceSidebar (~309 tok)
 
 ## frontend/src/components/workspace/agents/
@@ -2597,7 +2613,8 @@
 - `about.md` — 🦌 [About EAIFlow 2.0](https://github.com/bytedance/eai-flow) (~512 tok)
 - `grouped-model-select.tsx` — Per-model status: available / unavailable / error (~1538 tok)
 - `integrations-settings-page.tsx` — LARK_AUTH_DOMAINS (~8541 tok)
-- `settings-dialog.tsx` — SettingsDialog — renders modal (~1595 tok)
+- `settings-dialog-host.tsx` — The single application-wide Settings dialog instance. (~377 tok)
+- `settings-dialog.tsx` — SettingsPageLoading — renders modal (~1866 tok)
 - `skill-settings-page.tsx` — SkillSettingsPage (~1306 tok)
 - `tool-settings-page.tsx` — ToolSettingsPage (~728 tok)
 - `wechat-settings-page.tsx` — BotStatusCard (~1942 tok)
@@ -2674,7 +2691,7 @@
 
 ## frontend/src/core/threads/
 
-- `hooks.ts` — Invoked exactly once when the send passes the in-flight guard and is (~29337 tok)
+- `hooks.ts` — Invoked exactly once when the send passes the in-flight guard and is (~30814 tok)
 - `thread-list-model.ts` — Exports ThreadListModel, buildThreadListModel (~382 tok)
 - `token-usage.ts` — Exports threadTokenUsageQueryKey, retainThreadTokenUsagePlaceholder, ContextUsage, selectContextUsag (~378 tok)
 - `types.ts` — Exports GoalState, AgentThreadState, AgentThreadContext, AgentThread + 3 more (~562 tok)
@@ -3253,7 +3270,7 @@
 
 ## frontend/tests/unit/app/
 
-- `layout-boundaries.test.ts` — FRONTEND_ROOT: source (~586 tok)
+- `layout-boundaries.test.ts` — FRONTEND_ROOT: source (~585 tok)
 
 ## frontend/tests/unit/app/knowledge/_components/
 
@@ -3265,11 +3282,11 @@
 
 ## frontend/tests/unit/components/ui/
 
-- `animation-scheduling.test.ts` — Declares frontendRoot (~668 tok)
+- `animation-scheduling.test.ts` — Declares frontendRoot (~608 tok)
 
 ## frontend/tests/unit/components/workspace/
 
-- `lazy-panels.test.ts` — Declares FRONTEND_ROOT (~549 tok)
+- `lazy-panels.test.ts` — Declares FRONTEND_ROOT (~538 tok)
 
 ## frontend/tests/unit/components/workspace/settings/
 
@@ -3496,7 +3513,7 @@
 
 ## skills/public/bid-proposal-writing/
 
-- `SKILL.md` — 投标方案编写技能(bid-proposal-writing) v2: 六阶段+两门+阶段4a 三模式供源, 无 Word 转换 (~7400 tok)
+- `SKILL.md` — 投标方案编写技能(bid-proposal-writing) (~6118 tok)
 
 ## skills/public/bid-proposal-writing/references/
 
@@ -3511,15 +3528,15 @@
 
 ## skills/public/bid-proposal-writing/scripts/
 
-- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 双卷骨架渲染(无 LLM)。 (~12171 tok)
+- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 双卷骨架渲染(无 LLM)。 (~12330 tok)
 - `check_format.py` — check_format.py — 投标方案编写技能·格式 1:1 复刻确定性校验(无 LLM, 只读)。 (~3014 tok)
 - `extract.py` — extract.py — 投标方案编写技能·阶段2 候选 JSON 的确定性校验 + 合并(无 LLM)。 (~10263 tok)
-- `ingest.py` — ingest.py — 投标方案编写技能·阶段1 输入分流与纯结构化解析(确定性, 无 LLM)。 (~9853 tok)
+- `ingest.py` — ingest.py — 投标方案编写技能·阶段1 输入分流与纯结构化解析(确定性, 无 LLM)。 (~10457 tok)
 - `merge_addenda.py` — merge_addenda.py — 投标方案编写技能·阶段3 补遗/答疑增量确定性落账(无 LLM)。 (~12721 tok)
 - `responses.py` — responses.py — 投标方案编写技能·阶段4a 技术响应候选的确定性校验 + 合并(无 LLM)。 (~5415 tok)
 - `score_simulate.py` — score_simulate.py — 投标方案编写技能·阶段5 模拟评分(确定性骨架, 无 LLM)。 (~16567 tok)
-- `snapshot.py` — 投标方案编写技能·进度快照(扫描 workspace 推断 phase/next_step, project_snapshot.json 确定性落盘, 无 LLM)。 (~1625 tok)
-- `state_guard.py` — 权威状态防篡改签名(.meta.json, AUTHORITATIVE_FILES 五元组)——共享守卫模块(纯 stdlib, 无 LLM)。 (~1848 tok)
+- `snapshot.py` — 投标方案编写技能·进度快照(project_snapshot.json 确定性落盘, 无 LLM)。 (~1763 tok)
+- `state_guard.py` — 权威状态防篡改签名(.meta.json)——共享守卫模块(纯 stdlib, 无 LLM)。 (~2433 tok)
 
 ## skills/public/bid-quote-analysis/
 
@@ -3614,6 +3631,25 @@
 
 - `SKILL.md` — ⛔ 第一步：检查是否应该使用本技能（路由关卡，必须最先判断） (~3158 tok)
 
+## skills/public/local-knowledge-first/
+
+- `SKILL.md` — 本地知识库优先检索 (~238 tok)
+
+## skills/public/ops-diagnosis/
+
+- `SKILL.md` — Ops 诊断技能(ops-diagnosis) (~741 tok)
+
+## skills/public/ops-diagnosis/references/
+
+- `failure-signatures.md` — 失败签名清单（单一参考源） (~415 tok)
+
+## skills/public/ops-diagnosis/scripts/
+
+- `_common.py` — Shared loaders for ops-diagnosis crunch scripts. Pure stdlib, no LLM calls. (~1510 tok)
+- `extract_failures.py` — Cluster tool failures by signature across all runs' events. Stats only. (~559 tok)
+- `extract_sequences.py` — Per-run tool-call sequences with consecutive-same-signature folding (xN). (~667 tok)
+- `summarize_runs.py` — Per-run metrics from runs.json + events dir. Stats only, no judgment. (~776 tok)
+
 ## skills/public/spare-parts-analysis/
 
 - `SKILL.md` — 备品备件价格体系分析技能(只读查询) (~882 tok)
@@ -3643,7 +3679,7 @@
 
 ## skills/public/water-drainage-report/
 
-- `SKILL.md` — 给排水设计专篇技能 (~4512 tok)
+- `SKILL.md` — 给排水设计专篇技能 (~5298 tok)
 
 ## skills/public/water-drainage-report/references/
 
@@ -3654,14 +3690,16 @@
 
 ## skills/public/water-drainage-report/scripts/
 
-- `chapter_planner.py` — 给排水设计专篇 — 章节规划器（反馈6 定点重生成的中枢）。 (~1337 tok)
-- `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~5116 tok)
-- `snapshot.py` — project_snapshot.json 读写器（反馈7 跨轮承接 + 版本历史）。 (~1692 tok)
+- `chapter_planner.py` — 给排水设计专篇 — 章节规划器（反馈6 定点重生成的中枢）。 (~1486 tok)
+- `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~5282 tok)
+- `snapshot.py` — project_snapshot.json 读写器（反馈7 跨轮承接 + 版本历史）。 (~1778 tok)
+- `test_bugfixes.py` — bug-2198/2199 修复回归检查（与 test_snapshot.py 同风格，subprocess 实跑 CLI）。 (~1718 tok)
 - `test_snapshot.py` — snapshot.py 自检（反馈7 v1→v2→v3 自增不变量）。 (~871 tok)
 
 ## tools/license/
 
 - `2026-08-18-sales-personnel-dashboard-prototype.html` — 人员总览仪表盘原型 v2(全公司12部门+5平铺更多下拉+表分页+员工明细61人;三问①人②差旅③报销) (~6900 tok)
+- `CONFIG-GUIDE.md` — config.example.yaml v34 全量配置解读 + 本地 config.yaml v11 差距分析（缺失节/取值分歧/EAI定制保留清单/升级路径） (~4600 tok)
 - `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1329 tok)
 - `license_request.json` (~51 tok)
 - `OPERATIONS_MANUAL.md` — DeerFlow 许可证功能操作手册 (~5191 tok)

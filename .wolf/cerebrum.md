@@ -1052,3 +1052,13 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - **Key Learning**: harness Memory 中间件会跨线程召回同名技能旧项目工程参数（按 user 维度），agent 可能据此渲染"参数确认表"并标注来源"用户提供"，还会引用旧线程对话细节（如"容积比0.4"）。防御：验证多轮技能时，新线程必须让用户消息显式携带全部核心参数；技能层可在步骤0 声明"记忆参数仅参考、禁止标为本项目用户提供"。
 - **验证方法**: agent 运行的权威证据 = GET /api/threads/{tid}/runs/{rid}/messages 事件流（标记序列可证 tool 先后顺序）；前端消息列表虚拟化会剔除视口外 DOM，DOM 探测不可靠。
 - **实测**: 增量轮(改1参) turn_duration 320s 反慢于全量 226s——瓶颈在 save→present 之间的多次 write_file + 长上下文终调，非章节生成量；优化反馈1 耗时要收敛收尾调用链。
+
+### 2026-08-20 给排水三轮复验 + 两个机器层缺陷（bug-2200/2201）
+- **Key Learning（skills_view 投影）**: 投影重建是惰性触发——`ensure_skill_projections` 只在 sandbox provider acquire 路径调用（local_sandbox_provider.py:220），gateway 重启不触发；源目录变更后下一个 agent run 会因 source_signature 不匹配自愈。手动预热：`docker exec deer-flow-gateway sh -c "cd /app/backend && .venv/bin/python -c 'from deerflow.config import get_app_config; from deerflow.skills.storage import get_or_new_skill_storage; from deerflow.skills.projection import ensure_skill_projections; ensure_skill_projections(get_or_new_skill_storage(app_config=get_app_config()))'"`（注意用 .venv/bin/python，系统 python 无 deerflow）。
+- **Key Learning（沙箱路径翻译边界，bug-2200 根因）**: LocalSandbox 路径翻译只作用于 **bash 命令文本中出现** 的 /mnt/* 虚拟路径；脚本源码内部的默认路径（如 snapshot.py show 的 `--input` 默认值）不会翻译，宿主 fs 上不存在 → 静默失败。技能 CLI 设计规则：**凡带默认 /mnt 路径的子命令，SKILL.md 必须显式传该路径参数**（进命令文本才会被翻译）。
+- **Key Learning（值差分型工具的排序约束，bug-2201）**: `impacted` 这类"对磁盘状态 dry-run 改参做值差分"的工具，必须在 `update` 落盘之前运行，否则差分基准被覆盖 → 空集。提示词中工具调用顺序即契约，回归测试锁死顺序（test_impacted_must_run_before_update）。
+- **验证方法补充**: chrome-devtools MCP 报 "browser already running" 时，taskkill 该 profile 的主 chrome 进程（`Get-CimInstance Win32_Process -Filter "Name='chrome.exe'" | Where CommandLine -like '*chrome-devtools-mcp*'`）后 MCP 自动重启新实例，profile 里的登录 cookie 仍在，无需重新登录。superpowers-chrome 的 eval 在本环境不真正执行页面代码（title/DOM 副作用均不生效），别用它做注入。
+
+### 2026-08-20 R3 补充学习（技能文本线程缓存）
+- **Key Learning**: SKILL.md 的指令文本在技能**首次调用时**注入线程对话上下文，之后同线程的轮次直接复用缓存副本，**不会重读文件**。因此对 SKILL.md 的修改（含 skills_view 投影刷新）只对**新线程**生效——同线程继续验证改动是无效的（R3 实测：裸调 show/update 先于 impacted 与旧文本一字不差地复现，而同版本缓存里 7aee9284b 的规则全部生效）。验证 SKILL 修改必须开新线程。
+- **R3 复验结论**: bug-2200/2201 在同线程 R3 再次复现（结果均中性——agent 用线程历史自行推导 diff、SNAPSHOT_NONE 未致漂移）；修复已进投影+CLI 回归锁定，新线程生效。

@@ -1,41 +1,129 @@
 {
-  "session_id": "session-2026-08-14-1629",
-  "started": "2026-08-14T08:29:21.575Z",
+  "session_id": "session-2026-08-20-1158",
+  "started": "2026-08-20T03:58:13.996Z",
   "files_read": {
-    "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md": {
+    "D:/eai/eai-flow-main/skills/public/bid-proposal-writing/SKILL.md": {
       "count": 1,
-      "tokens": 1688,
-      "first_read": "2026-08-14T08:35:52.075Z"
+      "tokens": 6091,
+      "first_read": "2026-08-20T03:58:38.714Z"
+    },
+    "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py": {
+      "count": 8,
+      "tokens": 95748,
+      "first_read": "2026-08-20T03:59:00.487Z"
+    },
+    "D:/eai/eai-flow-main/config.yaml": {
+      "count": 1,
+      "tokens": 37083,
+      "first_read": "2026-08-20T04:07:36.966Z"
+    },
+    "D:/eai/eai-flow-main/frontend/src/core/threads/hooks.ts": {
+      "count": 2,
+      "tokens": 29337,
+      "first_read": "2026-08-20T04:08:24.263Z"
     }
   },
   "files_written": [
     {
-      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-gap-snapshot-2026-08-14.md",
-      "action": "create",
-      "tokens": 295,
-      "at": "2026-08-14T08:35:47.240Z"
-    },
-    {
-      "file": "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md",
+      "file": "D:/eai/eai-flow-main/skills/public/bid-proposal-writing/SKILL.md",
       "action": "edit",
-      "tokens": 107,
-      "at": "2026-08-14T08:35:56.350Z"
+      "tokens": 39,
+      "at": "2026-08-20T03:58:49.819Z"
     },
     {
-      "file": "C:/Users/admin/.claude/plans/snug-exploring-stream.md",
-      "action": "create",
-      "tokens": 1089,
-      "at": "2026-08-14T08:41:40.294Z"
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 113,
+      "at": "2026-08-20T03:59:18.771Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/skills/public/bid-proposal-writing/SKILL.md",
+      "action": "edit",
+      "tokens": 23,
+      "at": "2026-08-20T03:59:43.591Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 604,
+      "at": "2026-08-20T04:00:13.407Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 920,
+      "at": "2026-08-20T04:00:46.708Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 37,
+      "at": "2026-08-20T04:01:03.030Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 32,
+      "at": "2026-08-20T04:01:18.933Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 661,
+      "at": "2026-08-20T04:02:14.312Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 323,
+      "at": "2026-08-20T04:03:09.792Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 133,
+      "at": "2026-08-20T04:03:45.142Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
+      "action": "edit",
+      "tokens": 39,
+      "at": "2026-08-20T04:04:57.927Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/config.yaml",
+      "action": "edit",
+      "tokens": 74,
+      "at": "2026-08-20T04:07:48.685Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/config.yaml",
+      "action": "edit",
+      "tokens": 52,
+      "at": "2026-08-20T04:08:01.558Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/core/threads/hooks.ts",
+      "action": "edit",
+      "tokens": 104,
+      "at": "2026-08-20T04:09:05.503Z"
+    },
+    {
+      "file": "D:/eai/eai-flow-main/frontend/src/core/threads/hooks.ts",
+      "action": "edit",
+      "tokens": 63,
+      "at": "2026-08-20T04:09:20.097Z"
     }
   ],
   "edit_counts": {
-    "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-gap-snapshot-2026-08-14.md": 1,
-    "C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md": 1,
-    "C:/Users/admin/.claude/plans/snug-exploring-stream.md": 1
+    "skills/public/bid-proposal-writing/SKILL.md": 2,
+    "backend/tests/test_bid_proposal_scripts.py": 9,
+    "config.yaml": 2,
+    "frontend/src/core/threads/hooks.ts": 2
   },
-  "anatomy_hits": 1,
+  "anatomy_hits": 4,
   "anatomy_misses": 0,
-  "repeated_reads_warned": 0,
+  "repeated_reads_warned": 8,
   "cerebrum_warnings": 0,
-  "stop_count": 1
+  "stop_count": 0
 }
