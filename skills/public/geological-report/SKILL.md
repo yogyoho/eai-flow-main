@@ -55,9 +55,10 @@ outputs/    # report.md + project_snapshot.json → present_files 交付
    > 知识工厂未命中模板，本次使用技能内置 `references/` 兜底（exploration.json 阶段表单 + standards_index）。
 2. `ingest.py forms` 生成空白表单（data/ 下按 schema）。
 3. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（矿种→阶段→项目信息→地质→矿体→勘查工程→样品→开采条件→资源量/经济）。每次只问一个类别。
+   **用户可见即表单（交互铁律，面向非 IT 用户）**：逐类收集一律用 `ask_clarification` 的 `fields` 渲染**中文填写表单**，绝不向用户展示或索要 JSON、英文键名。每个数据项一个 field：`name`=schema 英文键（仅内部映射用）、`label`=中文名+单位、`type` 按 schema 映射（`enum:a|b`→`select` 且 options=枚举值原文、number→`number`、日期→`date`、长文本/嵌套行数据→`textarea`）、`placeholder`=格式提示（如 "YYYY-MM-DD"、"每行一个拐点：序号,X2000,Y2000,X1980,Y1980"）。单卡片 ≤16 项，超出分两批问。面向用户一律称"**数据项**"，不说"字段"。
    **每收完一类立即落盘**：`ingest.py forms --stage S --data-dir D --family <族> --values '<json>'`（校验写入；族名见 state_manifest.json）。绝不只在对话里"记录"——对话被摘要数据即丢；也绝不手写 data/*.json（唯一写者 = ingest.py）。
-   **示例值≠数据（P2 红线，页面实测踩过）**：提问时给出的"示例格式"JSON 只示意结构，用户没给的字段写入时**一律 null**，绝不把示例值/自己编的格式值（如 C5300002023XXXXXX、1400~2000）当数据落盘。写完把落盘值回显用户核对。
-4. **门 1**：`ingest.py check` → 输出 `GATE1_COMPLETE` 才继续；rc=2 把缺项清单原样呈现用户补齐，不代填。
+   **示例值≠数据（P2 红线，页面实测踩过）**：表单 placeholder/说明里的示例只示意格式，用户没填的数据项写入时**一律 null**，绝不把示例值/自己编的格式值（如 C5300002023XXXXXX、1400~2000）当数据落盘。写完用中文数据项清单回显落盘值请用户核对。
+4. **门 1**：`ingest.py check` → 输出 `GATE1_COMPLETE` 才继续；rc=2 把缺项清单**译成中文数据项清单**（按类别分组，标注哪些必填）呈现用户补齐，不代填、不贴英文键名。
 
 ### 步骤 2–3 · 冻结计算 → 门 2
 
