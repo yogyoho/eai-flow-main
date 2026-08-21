@@ -57,7 +57,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/core/i18n/hooks";
 
 import { replaceTextInContent } from "./utils/docEditorUtils";
-import { uploadDocImage } from "./utils/docImage";
+import { uploadDocImage, uploadUserDocImage } from "./utils/docImage";
 import {
   convertInlineMathInContent,
   prepareBlocksForMarkdownExport,
@@ -359,19 +359,16 @@ const PersonalBlockNoteEditor = forwardRef<
     dictionary,
     // EAI-CUSTOM: uploadFile 激活图片三入口（面板上传tab/拖拽/粘贴文件）。
     // 编辑器按文档 remount（祖先容器 key，见 DocumentManagement 渲染点），threadId 在实例生命周期内稳定。
-    ...(threadId
-      ? {
-          uploadFile: async (file: File) => {
-            try {
-              const { url } = await uploadDocImage(threadId, file);
-              return url;
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "图片上传失败"); // 三入口共用此路径，统一提示原因（spec §5）
-              throw e; // 保留 BlockNote 自身的错误占位回退
-            }
-          },
-        }
-      : {}),
+    // 有线程→线程目录；无线程（docmgr 直接新建文档）→用户级目录兜底。
+    uploadFile: async (file: File) => {
+      try {
+        const { url } = await (threadId ? uploadDocImage(threadId, file) : uploadUserDocImage(file));
+        return url;
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "图片上传失败"); // 三入口共用此路径，统一提示原因（spec §5）
+        throw e; // 保留 BlockNote 自身的错误占位回退
+      }
+    },
     extensions: [AIExtension({ transport: aiTransport }), highlightExtension],
   });
 

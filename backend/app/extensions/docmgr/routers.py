@@ -7,7 +7,7 @@ import re
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -766,6 +766,58 @@ async def upload_thread_image(
 
     await asyncio.to_thread(_write)
     return ThreadImageResponse(url=f"/api/threads/{thread_id}/artifacts/mnt/user-data/outputs/images/{name}")
+
+
+# EAI-CUSTOM: 无线程文档（docmgr 直接新建的 AIDocument，source_thread_id 为空）的图片存储。
+# 用户级 docmgr-images 目录 + 本路由 GET 服务；无线程沙箱可挂靠，目录归 docmgr 自管，
+# 首次上传创建（无需线程端点的存在性门）。name 由服务端生成，GET 只放行 12hex+白名单后缀。
+def _user_images_dir(paths, user_id):
+    return paths.base_dir / "users" / str(user_id) / "docmgr-images"
+
+
+@router.post("/images", response_model=ThreadImageResponse)
+async def upload_user_image(
+    file: UploadFile = File(...),
+    current_user: CurrentUser = Depends(require_permission("doc:upload")),  # EAI-CUSTOM: Add permission check
+):
+    """Upload an image for a thread-less personal doc into the user's docmgr-images dir."""
+    ext = _IMAGE_MIME_EXT.get(file.content_type or "")
+    if ext is None:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=f"不支持的图片类型: {file.content_type}")
+    data = await file.read(_IMAGE_MAX_BYTES + 1)
+    if len(data) > _IMAGE_MAX_BYTES:
+        raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail="图片超过 10MB 上限")
+    name = uuid4().hex[:12] + ext
+    target = _user_images_dir(Paths(), current_user.id) / name
+
+    def _write() -> None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+
+    await asyncio.to_thread(_write)
+    return ThreadImageResponse(url=f"/api/extensions/docmgr/images/{name}")
+
+
+_IMAGE_EXT_MIME = {ext: mime for mime, ext in _IMAGE_MIME_EXT.items()}
+_USER_IMAGE_NAME = re.compile(r"[0-9a-f]{12}\.(png|jpg|gif|webp|bmp)")
+
+
+@router.get("/images/{name}")
+async def get_user_image(
+    name: str,
+    current_user: CurrentUser = Depends(require_permission("doc:read")),  # EAI-CUSTOM: Add permission check
+):
+    """Serve a user-scoped docmgr image inline (server-generated names only)."""
+    if not _USER_IMAGE_NAME.fullmatch(name):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="图片不存在")
+    target = _user_images_dir(Paths(), current_user.id) / name
+
+    def _stat() -> bool:
+        return target.is_file()
+
+    if not await asyncio.to_thread(_stat):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="图片不存在")
+    return FileResponse(target, media_type=_IMAGE_EXT_MIME[target.suffix])
 
 
 def _resolve_thread_sandbox_dir(paths, thread_id: str, fallback_user_id: str):

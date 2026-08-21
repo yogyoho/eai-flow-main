@@ -102,3 +102,71 @@ async def test_upload_404_when_thread_dir_missing(tmp_path, monkeypatch):
         await docmgr_routers.upload_thread_image("tid-1", _upload(b"\x89PNG-fake", "shot.png", "image/png"), current_user=_FakeUser())
     assert ei.value.status_code == 404
     assert not user_data.exists()
+
+
+# ---- 无线程文档：用户级图片上传/读取（EAI-CUSTOM，docmgr 直接新建的文档无 source_thread_id） ----
+
+
+def _patch_user_fs(monkeypatch, tmp_path):
+    """把用户级图片目录解析指到 tmp_path，端点不碰真实文件系统。"""
+    img_dir = tmp_path / "docmgr-images"
+    monkeypatch.setattr(docmgr_routers, "Paths", lambda: None)
+    monkeypatch.setattr(docmgr_routers, "_user_images_dir", lambda paths, uid: img_dir)
+    return img_dir
+
+
+def test_user_image_routes_registered():
+    assert ("/api/extensions/docmgr/images", "POST") in _routes()
+    assert ("/api/extensions/docmgr/images/{name}", "GET") in _routes()
+
+
+def _route(path: str):
+    return next(r for r in router.routes if getattr(r, "path", "") == path)
+
+
+def test_user_image_routes_gated():
+    """POST 挂 doc:upload 门，GET 挂 doc:read 门。"""
+    post = _route("/api/extensions/docmgr/images")
+    assert any(c.cell_contents == "doc:upload" for dep in post.dependant.dependencies for c in (getattr(dep.call, "__closure__", None) or []))
+    get = _route("/api/extensions/docmgr/images/{name}")
+    assert any(c.cell_contents == "doc:read" for dep in get.dependant.dependencies for c in (getattr(dep.call, "__closure__", None) or []))
+
+
+@pytest.mark.asyncio
+async def test_user_upload_creates_dir_writes_file_and_returns_url(tmp_path, monkeypatch):
+    img_dir = _patch_user_fs(monkeypatch, tmp_path)  # 目录不存在——首次上传应自动创建
+    resp = await docmgr_routers.upload_user_image(_upload(b"\x89PNG-fake", "shot.png", "image/png"), current_user=_FakeUser())
+    name = resp.url.rsplit("/", 1)[-1]
+    f = img_dir / name
+    assert f.read_bytes() == b"\x89PNG-fake"
+    assert len(name) == 16 and name.endswith(".png")
+    assert resp.url == f"/api/extensions/docmgr/images/{name}"
+
+
+@pytest.mark.asyncio
+async def test_user_upload_rejects_unsupported_type(tmp_path, monkeypatch):
+    img_dir = _patch_user_fs(monkeypatch, tmp_path)
+    with pytest.raises(HTTPException) as ei:
+        await docmgr_routers.upload_user_image(_upload(b"<svg/>", "evil.svg", "image/svg+xml"), current_user=_FakeUser())
+    assert ei.value.status_code == 415
+    assert not img_dir.exists()
+
+
+@pytest.mark.asyncio
+async def test_user_get_serves_file(tmp_path, monkeypatch):
+    _patch_user_fs(monkeypatch, tmp_path)
+    up = await docmgr_routers.upload_user_image(_upload(b"\x89PNG-fake", "shot.png", "image/png"), current_user=_FakeUser())
+    name = up.url.rsplit("/", 1)[-1]
+    resp = await docmgr_routers.get_user_image(name, current_user=_FakeUser())
+    assert str(resp.path).endswith(name)
+    assert resp.media_type == "image/png"
+
+
+@pytest.mark.asyncio
+async def test_user_get_rejects_traversal_and_unknown_names(tmp_path, monkeypatch):
+    """name 只放行服务端生成的 12hex+白名单后缀；穿越/陌生名一律 404。"""
+    _patch_user_fs(monkeypatch, tmp_path)
+    for bad in ("../../evil.png", "deadbeef.png", "aaaaaaaaaaaa.svg", "aaaaaaaaaaaa.png"):
+        with pytest.raises(HTTPException) as ei:
+            await docmgr_routers.get_user_image(bad, current_user=_FakeUser())
+        assert ei.value.status_code == 404
