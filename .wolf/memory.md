@@ -10971,3 +10971,17 @@
 | 22:48 | Edited config.yaml | modified CUSTOM() | ~98 |
 | 14:55 | 线程0506a910 FORCED STOP根因分析(run_events取证82次bash)+bug-2217四修+测试6项+gateway重启 | ingest.py SKILL.md config.yaml test | done | ~30k |
 | 22:50 | Session end: 15 writes across 4 files (ingest.py, test_geological_report_v2_scripts.py, SKILL.md, config.yaml) | 8 reads | ~15098 tok |
+| 23:35 | Session end: 15 writes across 4 files (ingest.py, test_geological_report_v2_scripts.py, SKILL.md, config.yaml) | 8 reads | ~15098 tok |
+
+## Session: 2026-08-21 23:59
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:11 | Edited skills/public/geological-report/SKILL.md | 1→2 lines | ~111 |
+
+## Session: 2026-08-21 00:26
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:36 | Edited skills/public/geological-report/SKILL.md | inline fix | ~68 |
+| —— | geological-report v2 页面复测收尾: 纠错落盘复核(null✓) + 第3类留空回归测试通过(bug-2218修复生效,climate对象型留空→null不编造) + 发现bug-2219(label泄漏JSON术语)并修复SKILL.md | skills/public/geological-report/SKILL.md, .wolf/buglog.json | 通过 | ~15k |

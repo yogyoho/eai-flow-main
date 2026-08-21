@@ -20594,6 +20594,48 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-08-21T14:50:00"
+    },
+    {
+      "id": "bug-2218",
+      "timestamp": "2026-08-22",
+      "error_message": "页面实测(线程cee60e84): 表单中刻意留空的5个数据项(保护地核查情况/估算标高上下限/估算拐点数量/估算面积)被agent编造值落盘——estimate_scope.elevation_from=1396/to=2000正是表单placeholder示例值, protected_areas_check被合成全false对象, corner_count=12321纯编造; 回显表还把编造值当已保存数据呈现",
+      "file": "skills/public/geological-report/SKILL.md",
+      "root_cause": "schema把protected_areas_check/estimate_scope标required:true(含note\"false亦须显式\")，模型误以为写入时必须凑齐required字段，于是抄自己写的placeholder示例值(如1396/如2000)合成对象通过校验。实际上ingest.py validate_values只校验传入键，缺键留null由门1报缺项——本可只传用户提供的8键。P2红线(示例值≠数据)在\"对象型required子字段\"场景被违反",
+      "fix": "SKILL.md交互铁律收紧: ①写入只传用户实际提交的键，留空项(无论必填选填)一律不写入 ②required仅作用于门1完备性检查，写入路径不需要凑齐 ③绝不为通过校验合成对象/抄placeholder示例值(含全false对象) ④回显表只列用户提供的项并明示其余未提供项数",
+      "tags": [
+        "geological-report",
+        "P2红线",
+        "编造数据",
+        "placeholder示例值",
+        "required误解",
+        "页面测试",
+        "ask_clarification"
+      ],
+      "related_bugs": [
+        "bug-2217"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-22"
+    },
+    {
+      "id": "bug-2219",
+      "timestamp": "2026-08-22",
+      "error_message": "页面实测(线程cee60e84): 第3类表单 label 显示「气候特征（JSON）」，把 JSON 术语泄漏给用户（用户最初的人机交互抱怨点复现）",
+      "file": "skills/public/geological-report/SKILL.md",
+      "root_cause": "schema 中 climate 为 object 类型，agent 生成 ask_clarification fields 时把类型后缀（JSON）写进了用户可见 label；SKILL.md 交互铁律只禁了'索要 JSON'未明确禁 label 内出现术语",
+      "fix": "SKILL.md 交互铁律补充： label/placeholder 不得出现「JSON」「字段」「field」等术语；嵌套对象当普通中文数据项用 textarea 收集（placeholder 给中文格式提示），结构化由 ingest 完成。同轮回归测试验证：必填留空项(含对象型 climate)正确落 null 不再编造(bug-2218 修复生效)",
+      "tags": [
+        "geological-report",
+        "ask_clarification",
+        "中文表单",
+        "label泄漏",
+        "人机交互"
+      ],
+      "related_bugs": [
+        "bug-2218"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-22"
     }
   ]
 }

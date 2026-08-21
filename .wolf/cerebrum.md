@@ -1128,3 +1128,15 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - **SL2×CC2 白名单冲突（bug-2211）**：历史分类编码 332/333/111b/122b/2M22/B+C+D 被 CC2 要求原样保留，但 SL2 溯源把它们打为不可溯源 FAIL——结构性编码非量测数值，必须在 SL 白名单豁免（regex 已加，带红线P4注释）。
 - **Do-Not-Repeat：f-string 里 `{{X}}` 坍缩为 `{X}`**——后续 `str.replace("{{X}}", v)` 静默落空（冒烟 ch6 的 422 因此没进正文，XS5 报缺）。f-string 中要事后替换的占位符别用双大括号，直接内插或用单大括号占位+单大括号 replace。
 - **冒烟数据类型占位术**：GATE1 缺项用类型驱动占位（enum→首项/number→1.0/array→[{"占位":1}]/object→{"result":"未涉及"}）+ try_fill 逐键容错重试（失败键丢弃换占位），比逐字段手填省 90% 行数。
+
+## Do-Not-Repeat + Key Learnings (2026-08-22 — geological-report v2 页面实测 / CDP 驱动受控组件)
+
+### Do-Not-Repeat
+- **CDP `fill` 工具填聊天 composer 会被静默吞掉**：原生 value 写入但 React 状态未更新 → 点 Submit 发送的是空消息（无任何报错）。必须用 React native setter：`Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el, val)` + `dispatchEvent(new Event('input',{bubbles:true}))` 再点提交，并用 `body.innerText.includes(msg)` 确认消息真进了线程。
+- **聊天输入框定位必须按 placeholder**（含「今天我能为你做些什么」），不能 `querySelector('form textarea')` —— 页面有多张历史表单卡，第一个命中的是旧表单的 textarea（踩过：纠错消息填进了第1类表单的「任务书/合同要点」框）。
+- **页面内 CDP evaluate_script 长轮询（>120s）会超 protocolTimeout** 且任务转后台后失败 —— 等落盘一律用 Bash 端 `for i in $(seq 1 N); do docker exec ... grep ...` 轮询磁盘。
+- **docker exec 嵌套 glob 别让外层 shell 展开**：`$(docker exec ... echo '*')` 会把宿主文件 dump 出来；通配符路径整体留在容器内 `sh -c "cat /path/*/..."` 展开。
+
+### Key Learnings
+- **页面测试驱动受控表单的全套打法**（geological-report v2 验证沉淀）：表单卡=普通 fill 可用；日期 spinbutton 必须走 React native setter；run 执行中表单 disabled、interrupt 落定后解锁（提交按钮 !disabled 即可判断）。ask_clarification 挂起时走聊天通道发文字同样能恢复 interrupt（会作为该轮回答传给 agent）。
+- **agent「required 误解」型编造的修法**（bug-2218）：schema required 会让模型凑齐字段抄 placeholder 示例值合成对象；正确约定=写入只传用户提交的键，required 只作用于门1完备性。提示层修复后回归验证：对象型必填留空 → 落 null 不编造 ✓。
