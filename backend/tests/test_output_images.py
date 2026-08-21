@@ -61,3 +61,27 @@ def test_export_image_fetcher_exception_does_not_crash():
     generate_docx_simple("![](u)", buf, image_fetcher=boom)
     doc = Document(buf)
     assert len(doc.inline_shapes) == 0
+
+
+def _jpg_with_orientation(w: int, h: int, orientation: int) -> bytes:
+    from PIL import Image
+
+    img = Image.new("L", (w, h), 0x80)
+    exif = Image.Exif()
+    exif[274] = orientation
+    out = BytesIO()
+    img.save(out, format="JPEG", exif=exif)
+    return out.getvalue()
+
+
+def test_export_applies_exif_orientation():
+    """手机照片 EXIF 方向：浏览器自动旋转、Word 不认 —— 导出必须把旋转烤进像素。"""
+    import pytest
+
+    pytest.importorskip("PIL")
+    # 原始像素横图 100×50，orientation=8 → 正确显示应为竖图
+    buf = BytesIO()
+    generate_docx_simple("![](u)", buf, image_fetcher=lambda url: _jpg_with_orientation(100, 50, 8))
+    doc = Document(buf)
+    shape = doc.inline_shapes[0]
+    assert shape.height > shape.width

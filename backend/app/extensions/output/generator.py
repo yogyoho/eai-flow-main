@@ -1387,6 +1387,32 @@ def _set_run_font(run, font_name: str) -> None:
             rFonts.set(qn("w:eastAsia"), font_name)
 
 
+def _bake_exif_orientation(blob: bytes) -> bytes:
+    """EAI-CUSTOM: 把 EXIF 方向烤进像素。
+
+    手机竖拍照片带 EXIF orientation（浏览器显示 <img> 时自动旋转，Word 不认
+    EXIF 按原始像素渲染）→ 导出的图在 Word 里会"躺倒 90°"。这里按标签转正像素，
+    同时 add_picture 的宽高/缩放也拿到转正后的尺寸。无 Pillow/无方向标签/异常
+    时原样返回字节，导出永不崩。
+    """
+    try:
+        from PIL import Image, ImageOps
+    except ImportError:
+        return blob
+    try:
+        img = Image.open(BytesIO(blob))
+        if img.getexif().get(274, 1) in (0, 1):  # 无需旋转 → 保留原始字节（不重编码）
+            return blob
+        fixed = ImageOps.exif_transpose(img)
+        out = BytesIO()
+        fmt = img.format or "PNG"
+        fixed.save(out, format=fmt, **({"quality": 90} if fmt == "JPEG" else {}))
+        return out.getvalue()
+    except Exception as exc:
+        logger.warning("exif orientation bake failed: %s", exc)
+        return blob
+
+
 def generate_docx_simple(
     markdown_content: str,
     buf,
@@ -1565,7 +1591,7 @@ def generate_docx_simple(
                     logger.warning("image fetch failed (%s): %s", block.text, exc)
             if blob:
                 try:
-                    pic = doc.add_picture(BytesIO(blob))
+                    pic = doc.add_picture(BytesIO(_bake_exif_orientation(blob)))
                     sec = doc.sections[-1]
                     avail = sec.page_width - sec.left_margin - sec.right_margin
                     if pic.width > avail:
