@@ -20033,6 +20033,355 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-08-20T12:09:32.649Z"
+    },
+    {
+      "id": "bug-2206",
+      "timestamp": "2026-08-20T22:55:00+08:00",
+      "error_message": "用户报告：个人文档 BlockNote 输入'/'弹出菜单，找不到上传/嵌入链接选项",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx:2770",
+      "root_cause": "两层：①命名误解——斜杠菜单项叫\"图片\"（高级功能组，别名含上传图片），上传/嵌入是点击图片后弹出面板内的 tab，不是菜单项；②frontend 容器 Turbopack HMR 未拾取终审修复 45c79ba36（threadId 回退 personalFile.thread_id），源文件已在容器内但运行 bundle 过期，线程文档也只渲染嵌入 tab（032 capture 实证 embed-only）",
+      "fix": "docker compose -p eai-docker restart frontend 后复验：线程文档面板 role=tab×2、上传 tab + type=file input 均在（session-1787219068189/038-click.html）；无线程文档（新建文档如 test.md，source_thread_id=NULL）仍仅嵌入 tab，属 spec 范围内设计（无存储位置）",
+      "tags": [
+        "docmgr",
+        "blocknote",
+        "slash-menu",
+        "image-upload",
+        "hmr-stale",
+        "docker-frontend"
+      ],
+      "related_bugs": [
+        "bug-2204"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T22:55:00+08:00"
+    },
+    {
+      "id": "bug-2207",
+      "timestamp": "2026-08-20",
+      "error_message": "use_browser type action double-inserts text into React controlled inputs (value attr literally 'admin@eai-flow.comadmin@eai-flow.com'), login submit silently fails; await_text timeout",
+      "file": "browser-tooling (superpowers-chrome use_browser)",
+      "root_cause": "type action fires input twice per keystroke-run on controlled inputs; also eval IS working now (bug-1208 note is stale)",
+      "fix": "use eval with native value setter + dispatchEvent('input',{bubbles:true}) to set field values, then form.requestSubmit(); verified E2E: docmgr image upload rendered 40x40 + file landed in thread outputs/images/",
+      "tags": [
+        "use-browser",
+        "type-double-insert",
+        "react-controlled-input",
+        "eval-workaround",
+        "login"
+      ],
+      "related_bugs": [
+        "bug-1208",
+        "bug-2206"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-20"
+    },
+    {
+      "id": "bug-1197",
+      "timestamp": "2026-08-20T15:50:46.066Z",
+      "error_message": "Wrong reference: ch8 should be 2",
+      "file": "docs/superpowers/specs/2026-08-20-geological-report-v2-design.md",
+      "root_cause": "Used \"ch8\" instead of \"2\"",
+      "fix": "Changed ch8 → 2",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T15:50:46.066Z"
+    },
+    {
+      "id": "bug-2208",
+      "timestamp": "2026-08-20T23:52:00",
+      "error_message": "codex exec 5min timeout (exit 143) during plan-eng-review outside voice on large Chinese spec",
+      "file": "n/a (environment)",
+      "root_cause": "codex CLI installed but too slow on large multi-section Chinese prompt within 5min bound",
+      "fix": "per skill protocol: fallback to Claude subagent with same prompt + filesystem boundary instruction + 5min bound; produced 12 usable findings",
+      "tags": [
+        "codex",
+        "timeout",
+        "plan-eng-review",
+        "outside-voice",
+        "fallback"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T23:52:00"
+    },
+    {
+      "id": "bug-2209",
+      "timestamp": "2026-08-20T23:52:00",
+      "error_message": "jq: command not found when writing gstack task JSONL",
+      "file": "n/a (environment)",
+      "root_cause": "jq not installed on Windows host",
+      "fix": "skill rule = skip+warn; used python json.dumps equivalent serialization (verified 7 lines valid). Suggest winget install jqlang.jq",
+      "tags": [
+        "jq",
+        "windows",
+        "gstack",
+        "jsonl",
+        "python-fallback"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-20T23:52:00"
+    },
+    {
+      "id": "bug-2210",
+      "timestamp": "2026-08-21T00:55:00",
+      "error_message": "样例6.2.3比拟法涌水量结果908/5531 m³/d无法由正文参数复现（ch8走查发现的样例数据缺陷，非本仓库代码bug）",
+      "file": "docs/superpowers/specs/2026-08-21-geol-v2-ch8-walkthrough.md",
+      "root_cause": "公式体是MathType OLE对象（word/embeddings/oleObject1.bin），正文只有参数无公式；从WMF预览(word/media/image23.wmf)转PNG视觉转录恢复公式Q=Q0·(F/F0)·√(S/S0)后，代入样例参数(S/S0=1,F/F0=1.4763)应得10183/18136，且908/5531比值0.164≠Q0比值0.562——任何单一乘法公式下不可能，样例连自身互不洽（疑套用他项目数字）",
+      "fix": "W1公式按恢复的公式体录入formula_engine；eval断言用公式正确值10183/18136，禁断言样例原值908/5531；用户提供类似不自洂数据时管线以公式重算为准并提示差异（不静默抄录）",
+      "tags": [
+        "geological-report",
+        "比拟法",
+        "mathtype-ole",
+        "wmf-to-png",
+        "sample-defect",
+        "eval-assertion",
+        "ch8-walkthrough"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T00:55:00"
+    },
+    {
+      "id": "bug-1201",
+      "timestamp": "2026-08-21T01:13:45.016Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/geological-report/scripts/consistency.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:13:45.016Z"
+    },
+    {
+      "id": "bug-1202",
+      "timestamp": "2026-08-21T01:15:47.066Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/geological-report/scripts/formula_runner.py",
+      "root_cause": "Had \"hydro\"",
+      "fix": "Changed to \"hydro.inflow_analogy\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:15:47.066Z"
+    },
+    {
+      "id": "bug-1203",
+      "timestamp": "2026-08-21T01:15:50.334Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/geological-report/scripts/consistency.py",
+      "root_cause": "Had \"engineering\"",
+      "fix": "Changed to \"engineering.goaf\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:15:50.334Z"
+    },
+    {
+      "id": "bug-1204",
+      "timestamp": "2026-08-21T01:15:57.895Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/geological-report/scripts/build_output.py",
+      "root_cause": "Had \"mine_name\"",
+      "fix": "Changed to \"project_name\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:15:57.895Z"
+    },
+    {
+      "id": "bug-1205",
+      "timestamp": "2026-08-21T01:16:52.958Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/docmgr/routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:16:52.959Z"
+    },
+    {
+      "id": "bug-1206",
+      "timestamp": "2026-08-21T01:17:06.341Z",
+      "error_message": "Wrong reference: StreamingResponse should be FileResponse",
+      "file": "backend/app/extensions/docmgr/routers.py",
+      "root_cause": "Used \"StreamingResponse\" instead of \"FileResponse\"",
+      "fix": "Changed StreamingResponse → FileResponse",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:17:06.341Z"
+    },
+    {
+      "id": "bug-1207",
+      "timestamp": "2026-08-21T01:17:54.373Z",
+      "error_message": "Wrong reference: chapters should be numbered_chapters",
+      "file": "skills/public/geological-report/scripts/consistency.py",
+      "root_cause": "Used \"chapters\" instead of \"numbered_chapters\"",
+      "fix": "Changed chapters → numbered_chapters",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:17:54.373Z"
+    },
+    {
+      "id": "bug-1208",
+      "timestamp": "2026-08-21T01:19:31.681Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py",
+      "root_cause": "Had \"查明资源量\"",
+      "fix": "Changed to \"查明矿体特征\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-21T01:20:49.137Z"
+    },
+    {
+      "id": "bug-1209",
+      "timestamp": "2026-08-21T01:27:46.388Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py",
+      "root_cause": "Had ')} m3/d。老窑采空区 {{SL_STRICT}} 个、体积 1383.95 万 m3，水文地",
+      "fix": "Changed to ')} m3/d。老窑采空区 422 个、体积 1383.95 万 m3，水文地质类型为岩溶裂隙弱-",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:27:46.388Z"
+    },
+    {
+      "id": "bug-2211",
+      "timestamp": "2026-08-21",
+      "error_message": "consistency SL2 将历史分类编码 332 判为不可溯源 FAIL，与 CC2(历史编码禁现代化改写须原样保留) 自相矛盾",
+      "file": "skills/public/geological-report/scripts/consistency.py",
+      "root_cause": "SL2 白名单缺历史资源量分类码(332/333/111b/122b/2M22/331/334/B+C+D)——结构性编码非量测数值, code_mapping 的键也不进 numeric_pool",
+      "fix": "WHITELIST_PATTERNS 追加历史编码豁免正则(带红线P4注释), 冒烟复跑 fail=0",
+      "tags": [
+        "geological-report",
+        "consistency",
+        "SL2",
+        "historical-code"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21"
+    },
+    {
+      "id": "bug-1211",
+      "timestamp": "2026-08-21T01:33:25.118Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_geological_report_v2_scripts.py",
+      "root_cause": "Had \"formula_state.json\"",
+      "fix": "Changed to \"formula_state_post\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-21T01:33:32.615Z"
+    },
+    {
+      "id": "bug-1212",
+      "timestamp": "2026-08-21T01:35:45.127Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_geological_report_v2_scripts.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→7 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T01:35:45.127Z"
+    },
+    {
+      "id": "bug-2212",
+      "timestamp": "2026-08-21",
+      "error_message": "用户报告：输入'/'点击图片后面板只有嵌入，没有上传tab（在 docmgr 直接新建的文档上）",
+      "file": "backend/app/extensions/docmgr/routers.py + frontend/src/extensions/docmgr/{PersonalBlockNoteEditor.tsx,utils/docImage.ts}",
+      "root_cause": "上传tab只在 editor.uploadFile 存在时由 BlockNote 渲染；原实现仅在 threadId（=doc.source_thread_id）存在时提供 uploadFile，而 docmgr 新建文档 source_thread_id 为 NULL → 无存储位置 → 仅嵌入。线程文档（如 循环水 doc）一直正常",
+      "fix": "新增无线程兜底：POST /api/extensions/docmgr/images 落盘用户级 users/{uid}/docmgr-images/ + GET /api/extensions/docmgr/images/{name}（name 仅放行服务端生成 12hex+白名单后缀）内联服务；前端 uploadDocImage/uploadUserDocImage 按 threadId 分流，uploadFile 恒提供。E2E 已验证：新建文档→上传tab→上传→渲染40x40→重开文档图片持久",
+      "tags": [
+        "docmgr",
+        "blocknote",
+        "image-upload",
+        "thread-less-docs",
+        "upload-file"
+      ],
+      "related_bugs": [
+        "bug-2206"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-21"
+    },
+    {
+      "id": "bug-2213",
+      "timestamp": "2026-08-21",
+      "error_message": "docmgr 个人文档导出 Word 后图片不显示，正文只有字面 ![](url) 路径文本",
+      "file": "backend/app/extensions/output/generator.py + backend/app/extensions/docmgr/routers.py",
+      "root_cause": "generate_docx_simple 的 parse_markdown 没有 image 块类型——独立 ![](url) 行落进 paragraph 分支按字面文本渲染；且生成器拿不到图片字节（URL 是站内相对路径，docx 里无法解析）",
+      "fix": "generator.py: IMAGE_RE + Block(kind=image) + image_fetcher 参数（url→bytes，add_picture 内嵌，宽度超版心等比缩放，取不到字节降级 URL 文本）。docmgr routers: _make_image_fetcher(user_id) 白名单解析 /api/extensions/docmgr/images/{name}（用户级）与 /api/threads/{tid}/artifacts/.../images/{name}（线程级）两种 URL，两个导出端点（/documents/{id}/export、/export-content）均传入。E2E 实测用户原始两张图按原字节嵌入 word/media。",
+      "tags": [
+        "docmgr",
+        "word-export",
+        "docx",
+        "image",
+        "blocknote",
+        "generate_docx_simple",
+        "parse_markdown"
+      ],
+      "related_bugs": [
+        "bug-2212"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-21"
     }
   ]
 }

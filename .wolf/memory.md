@@ -10756,3 +10756,174 @@
 | 20:08 | Edited docs/superpowers/specs/2026-08-20-docmgr-blocknote-image-upload-design.md | 9→10 lines | ~138 |
 | 20:08 | Edited docs/superpowers/specs/2026-08-20-docmgr-blocknote-image-upload-design.md | added optional chaining | ~74 |
 | 20:09 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 9→9 lines | ~136 |
+| 20:14 | Session end: 10 writes across 5 files (score_checkpoints.py, upd_bug_2189_e2e.py, DocumentManagement.tsx, PersonalBlockNoteEditor.tsx, 2026-08-20-docmgr-blocknote-image-upload-design.md) | 12 reads | ~73939 tok |
+
+## Session: 2026-08-20 22:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:55 | 用户报"/"菜单无上传选项=命名误解(菜单项叫图片)+HMR未拾取45c79ba36;重启frontend后上传tab复验通过(bug-2206) | DocumentManagement.tsx, buglog.json | fixed+verified | ~25k |
+
+## Session: 2026-08-20 23:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:00 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-eng-review-test-plan-20260820-2330.md | — | ~524 |
+| 23:08 | Session end: 1 writes across 1 files (admin-main-dev-fork-eng-review-test-plan-20260820-2330.md) | 2 reads | ~5162 tok |
+
+## Session: 2026-08-20 23:39
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-20 23:40
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-08-20 23:42
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:43 | Created TODOS.md | — | ~317 |
+| 23:46 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~31 |
+| 23:46 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | expanded (+7 lines) | ~210 |
+| 23:46 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~10 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | 1→3 lines | ~82 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~57 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | 2→2 lines | ~155 |
+| 00:15 | docmgr图片上传E2E页面自测全链路通过: 登录(绕过type双插bug用eval+requestSubmit)→搜索循环水doc→'/'→图片→file_upload→img渲染40x40+文件落盘outputs/images→块删除→文档回写无残留→上传文件已清理 (bug-2207工具坑) | browser session-1787219068189 | verified | ~30k |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~33 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~74 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~77 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~48 |
+| 23:47 | Session end: 11 writes across 2 files (TODOS.md, 2026-08-20-geological-report-v2-design.md) | 0 reads | ~1171 tok |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~25 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~28 |
+| 23:47 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | expanded (+16 lines) | ~319 |
+| 23:55 | plan-eng-review 完成:4节评审5发现+outside voice 12 findings全落定(7决策 D5-D11) | docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | ENG CLEARED | ~30k |
+| 23:56 | 评审产出:TODOS.md 新建(2条)+测试计划 artifact+任务 JSONL×7+GSTACK REVIEW REPORT 写入 spec 末节 | TODOS.md, ~/.gstack/** | 全部落盘 | ~5k |
+| 23:49 | Session end: 14 writes across 2 files (TODOS.md, 2026-08-20-geological-report-v2-design.md) | 1 reads | ~5912 tok |
+
+## Session: 2026-08-20 23:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 23:50 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~19 |
+| 23:52 | plan-eng-review 收尾: 对抗校验(ch4 依赖措辞修正) + learnings×2 + telemetry + buglog bug-2208/2209 + gstack spec 副本同步 | spec/TODOS.md/.wolf/* | 评审全闭环 | ~6k |
+
+## Session: 2026-08-20 23:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:0x | eng-review收尾: buglog结构核验(1199条,2208/2209在) + gstack副本重同步(吸收line-76修正) | .wolf/buglog.json, ~/.gstack/.../design-*.md | OK | ~1k |
+
+## Session: 2026-08-20 00:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 00:49 | Created docs/superpowers/specs/2026-08-21-geol-v2-ch8-walkthrough.md | — | ~2111 |
+| 00:50 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | 2→3 lines | ~67 |
+| 00:50 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~72 |
+| 00:50 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | inline fix | ~87 |
+| 00:50 | Edited docs/superpowers/specs/2026-08-20-geological-report-v2-design.md | 1→3 lines | ~125 |
+| 00:50 | T2 ch8人工走查完成：公式恢复(比拟法MathType OLE→WMF→PNG转录)+样例908/5531判错+14表单字段清单+L1-L12公式链+C1-C14合约+8.8.3/比拟法两口径定稿+5变更回写spec | docs/superpowers/specs/2026-08-21-geol-v2-ch8-walkthrough.md, 2026-08-20-geological-report-v2-design.md, .wolf/buglog.json(bug-2210) | T2通过→T3可开工 | ~28k |
+| 00:51 | Session end: 5 writes across 2 files (2026-08-21-geol-v2-ch8-walkthrough.md, 2026-08-20-geological-report-v2-design.md) | 2 reads | ~7089 tok |
+| 06:42 | Created skills/public/geological-report/references/formulas.json | — | ~4506 |
+| 06:43 | Created skills/public/geological-report/references/consistency_contracts.json | — | ~1095 |
+| 06:44 | Created skills/public/geological-report/references/standards_index.json | — | ~1665 |
+| 06:44 | Created skills/public/geological-report/references/reference_values.json | — | ~541 |
+| 06:45 | Created skills/public/geological-report/references/ore_packs/copper.json | — | ~391 |
+| 06:46 | Created skills/public/geological-report/references/stages/survey.json | — | ~276 |
+| 06:46 | Created skills/public/geological-report/references/stages/detail.json | — | ~291 |
+| 06:48 | Created skills/public/geological-report/references/stages/exploration.json | — | ~8655 |
+
+## Session: 2026-08-20 06:50
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 06:51 | Edited skills/public/geological-report/references/stages/exploration.json | 2→2 lines | ~6 |
+| 06:52 | T3 references/ 数据层 8 文件全部落地: formulas(26公式+ROUND_HALF_EVEN) contracts(22) standards_index(14标准+6查表) reference_values ore_packs/copper stages/survey+detail+exploration(10章模板+21表单族schema) | skills/public/geological-report/references/** | JSON全过+章级form/formula/contract引用0悬空 | ~30k |
+| 06:52 | Session end: 1 writes across 1 files (exploration.json) | 1 reads | ~8661 tok |
+| 08:55 | Created skills/public/geological-report/scripts/ingest.py | — | ~5670 |
+| 08:56 | Created skills/public/geological-report/scripts/chapter_planner.py | — | ~1626 |
+| 08:58 | Created skills/public/geological-report/scripts/formula_runner.py | — | ~8972 |
+
+## Session: 2026-08-21 09:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:05 | Created skills/public/geological-report/scripts/formula_runner.py | — | ~8277 |
+| 09:11 | Created skills/public/geological-report/scripts/consistency.py | — | ~5386 |
+| 09:12 | Created skills/public/geological-report/scripts/build_output.py | — | ~2530 |
+| 09:13 | Created skills/public/geological-report/scripts/snapshot.py | — | ~2312 |
+| 09:13 | Edited skills/public/geological-report/scripts/ingest.py | reduced (-8 lines) | ~20 |
+| 09:13 | Edited skills/public/geological-report/scripts/consistency.py | 5→3 lines | ~24 |
+| 09:13 | Edited skills/public/geological-report/scripts/consistency.py | 2→1 lines | ~20 |
+| 09:15 | Edited skills/public/geological-report/scripts/formula_runner.py | 3→3 lines | ~33 |
+| 09:15 | Edited skills/public/geological-report/scripts/consistency.py | 2→2 lines | ~23 |
+| 09:15 | Edited skills/public/geological-report/scripts/consistency.py | 7→7 lines | ~100 |
+| 09:15 | Edited skills/public/geological-report/scripts/build_output.py | 2→3 lines | ~80 |
+| 09:16 | Edited backend/tests/test_docmgr_images.py | modified test_upload_404_when_thread_dir_missing() | ~987 |
+| 09:16 | Edited backend/app/extensions/docmgr/routers.py | modified _user_images_dir() | ~655 |
+| 09:17 | Edited backend/app/extensions/docmgr/routers.py | inline fix | ~18 |
+| 09:17 | Edited skills/public/geological-report/scripts/consistency.py | 12→15 lines | ~246 |
+| 09:17 | Edited skills/public/geological-report/scripts/consistency.py | modified split_chapters() | ~156 |
+| 09:17 | Edited skills/public/geological-report/scripts/consistency.py | modified check_xs() | ~75 |
+| 09:17 | Edited skills/public/geological-report/scripts/consistency.py | modified check_sl() | ~43 |
+| 09:18 | Edited backend/tests/test_docmgr_images.py | modified test_user_get_serves_file() | ~29 |
+| 09:18 | Created C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py | — | ~3575 |
+| 09:19 | Edited frontend/src/extensions/docmgr/utils/docImage.ts | modified uploadImageTo() | ~145 |
+| 09:19 | Edited C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py | inline fix | ~34 |
+| 09:19 | Edited frontend/src/extensions/docmgr/utils/docImage.ts | modified uploadDocImage() | ~210 |
+| 09:19 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | modified await() | ~168 |
+| 09:20 | Edited C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py | expanded (+22 lines) | ~669 |
+| 09:20 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | inline fix | ~20 |
+| 09:20 | Edited C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py | inline fix | ~36 |
+| 09:21 | Edited C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py | modified ph() | ~912 |
+
+## Session: 2026-08-21 09:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:27 | Edited C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py | inline fix | ~55 |
+| 09:28 | Edited C:/Users/admin/AppData/Local/Temp/geo_smoke/smoke.py | modified items() | ~7 |
+| 09:28 | Edited skills/public/geological-report/scripts/consistency.py | 3→6 lines | ~97 |
+| 09:35 | T4 六脚本完成+端到端冒烟SMOKE_ALL_OK(17锚点/幂等build/篡改检测/update顺序铁律/C9 5.95→6.80真链路) | skills/public/geological-report/scripts/{ingest,formula_runner,chapter_planner,consistency,build_output,snapshot}.py | done, 冒烟@Temp/geo_smoke | ~45k |
+| 09:32 | Created backend/tests/test_geological_report_v2_scripts.py | — | ~5445 |
+| 09:33 | Edited backend/tests/test_geological_report_v2_scripts.py | 2→3 lines | ~68 |
+| 09:33 | Edited backend/tests/test_geological_report_v2_scripts.py | 1→2 lines | ~42 |
+| 09:33 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_execute_anchors() | ~86 |
+| 09:33 | Edited backend/tests/test_geological_report_v2_scripts.py | 3→3 lines | ~61 |
+| 09:34 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_check_and_trace() | ~255 |
+| 09:35 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_check_and_trace() | ~143 |
+| 09:36 | Edited backend/tests/test_geological_report_v2_scripts.py | 3→2 lines | ~11 |
+| 09:36 | Edited backend/tests/test_geological_report_v2_scripts.py | expanded (+8 lines) | ~215 |
+| 10:05 | T5 测试矩阵 24 用例全绿+lint 干净(session fixture 全链路+七类断言; v1 测试 4 failed 为预存债务指向 skills/custom 旧路径, T6 一并处理) | backend/tests/test_geological_report_v2_scripts.py | done | ~25k |
+| 09:39 | Created skills/public/geological-report/SKILL.md | — | ~1453 |
+| 09:39 | Created backend/tests/test_geological_report_skill.py | — | ~1861 |
+| 10:20 | T6 SKILL.md v2 重写(红线P1-P4+管线步骤0-7+两门+两波+命令速查表,无allowed-tools) + v1结构测试重写指向public路径(26用例全绿,预存4 failed清零) | skills/public/geological-report/SKILL.md, backend/tests/test_geological_report_skill.py | done | ~20k |
+| 09:42 | Created backend/tests/test_geological_report_v2_replay.py | — | ~710 |
+| 09:43 | Edited backend/tests/test_geological_report_v2_replay.py | 1→3 lines | ~25 |
+| 10:35 | T7 样例回放 eval: W1真参回放10183/18136公式正确值+反抄录守卫+比值互不洽锁定(2用例过) + LLM面四查基线L1-L4补走查§8; 清h.tmp/p.tmp补TODOS.md | backend/tests/test_geological_report_v2_replay.py, docs/.../ch8-walkthrough.md §8, skills/.../TODOS.md | done | ~18k |
+| 10:40 | v2 全量回归 95 passed/47 skipped(6测试文件: skill结构+v2矩阵+回放+lead_agent+skills_bundled+catalog) | — | green | ~5k |
+| 09:45 | Session end: 16 writes across 6 files (smoke.py, consistency.py, test_geological_report_v2_scripts.py, SKILL.md, test_geological_report_skill.py) | 6 reads | ~24587 tok |
+| 01:55 | 用户报无线程文档图片面板无上传tab(bug-2208)=uploadFile仅线程文档接线;新增用户级images端点+前端分流;新建文档E2E全链路验证(上传/渲染/重开持久);并发会话编辑致gateway reload风暴+nginx卡死已重启恢复 | routers.py/docImage.ts/PersonalBlockNoteEditor.tsx | fixed+verified | ~45k |
+| 09:49 | Session end: 16 writes across 6 files (smoke.py, consistency.py, test_geological_report_v2_scripts.py, SKILL.md, test_geological_report_skill.py) | 6 reads | ~24587 tok |
+| 10:55 | v2 提交 main-dev-fork: 6b873ae36(T2-T7 全量21文件+4100行) + d0ea0165c(清rules.tmp草稿); 未push待确认; 预存债务核实3 failed为干净HEAD既有 | git | committed | ~8k |
+| 11:00 | 会话收束: geological-report v2 T4-T7 闭环(六脚本冒烟SMOKE_ALL_OK→24+26+2测试矩阵→SKILL v2→W1回放eval); bug-2211修复; L8尺度不变/L8断言教训已入cerebrum | — | done | — |
+| 09:55 | Session end: 16 writes across 6 files (smoke.py, consistency.py, test_geological_report_v2_scripts.py, SKILL.md, test_geological_report_skill.py) | 8 reads | ~53212 tok |
+
+## Session: 2026-08-21 09:58
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:00 | Created backend/tests/test_output_images.py | — | ~688 |
+| 10:01 | Edited backend/app/extensions/output/generator.py | 1→3 lines | ~53 |
+| 10:01 | Edited backend/app/extensions/output/generator.py | expanded (+7 lines) | ~103 |
+| 10:01 | Edited backend/app/extensions/output/generator.py | 22→26 lines | ~405 |
+| 10:01 | Edited backend/app/extensions/output/generator.py | modified warning() | ~403 |
+| 10:01 | Edited backend/app/extensions/docmgr/routers.py | modified _make_image_fetcher() | ~461 |
+| 10:02 | Edited backend/app/extensions/docmgr/routers.py | modified ExportContentRequest() | ~153 |
+| 10:02 | Edited backend/app/extensions/docmgr/routers.py | 7→7 lines | ~142 |
+| 03:30 | Word导出内嵌图片修复——parse_markdown加image块+image_fetcher(url→bytes)内嵌add_picture/超宽等比缩放, docmgr两个导出端点接_make_image_fetcher(用户级+线程级URL白名单); E2E用户原图原字节入word/media | backend/app/extensions/output/generator.py, backend/app/extensions/docmgr/routers.py, backend/tests/test_output_images.py, backend/tests/test_docmgr_images.py | fixed+19tests pass+bug-2213 | ~40k |

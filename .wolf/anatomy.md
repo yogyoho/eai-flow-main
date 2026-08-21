@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-20T04:09:20.042Z
-> Files: 2267 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-21T02:02:14.340Z
+> Files: 2305 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -71,7 +71,7 @@
 - `CODE_OF_CONDUCT.md` — Contributor Covenant Code of Conduct (~1306 tok)
 - `commit_msg.txt` (~99 tok)
 - `config.example.yaml` — Configuration for the DeerFlow application (~26931 tok)
-- `config.yaml` — Configuration for the DeerFlow application (~37156 tok)
+- `config.yaml` — Configuration for the DeerFlow application (~38141 tok)
 - `CONTRIBUTING.md` — Contributing to DeerFlow (~2542 tok)
 - `cookies.txt` — Netscape HTTP Cookie File (~34 tok)
 - `cookies2.txt` — Netscape HTTP Cookie File (~34 tok)
@@ -93,7 +93,7 @@
 - `tmp_analyze_pdf.py` (~357 tok)
 - `tmp_analyze2.py` (~504 tok)
 - `tmp_test_shiki.mjs` — Declares h (~106 tok)
-- `TODOS.md` — TODOS — 报告模板提取 (~500 tok)
+- `TODOS.md` — TODOS (~297 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -248,6 +248,10 @@
 ## .superpowers/brainstorm/51743-1779257723/content/
 
 - `embedded-chat-design.html` (~2844 tok)
+
+## .tmp-geol/
+
+- `extract.py` — Extract structure + text from exploration report docx and DZ/T 0033-2020 pdf. (~1456 tok)
 
 ## .worktrees/abac-3level/backend/app/extensions/auth/
 
@@ -557,7 +561,7 @@
 - `upstream-sync-2026-08-14-completed.md` (~628 tok)
 - `upstream-sync-2026-08-15.md` (~321 tok)
 - `upstream-sync-tier1-state.md` — Declares which (~3700 tok)
-- `water-drainage-report-optimization.md` (~1019 tok)
+- `water-drainage-report-optimization.md` (~1059 tok)
 - `websearch-unreliable-for-gb-compliance.md` (~296 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
@@ -575,10 +579,13 @@
 - `admin-main-dev-fork-design-20260816-075816.md` — Design: 投标方案编写 Skill(bid-proposal-writing) (~4498 tok)
 - `admin-main-dev-fork-eng-review-test-plan-20260815.md` — Test Plan (~421 tok)
 - `admin-main-dev-fork-eng-review-test-plan-20260816-103902.md` — Test Plan — bid-proposal-writing skill (eng-review, 2026-08-16) (~390 tok)
+- `admin-main-dev-fork-eng-review-test-plan-20260820-2330.md` — Eng Review Test Plan — geological-report v2 (main-dev-fork) (~491 tok)
 - `yogyoho-main-dev-fork-design-20260801-124035.md` — Design: 项目管理模块 agent 桥修复（project MCP 脑裂 + 死代码 + 写路径不提交） (~2836 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
+- `add_bug_2189.py` — Append bug-2189 (E2E RCA + state_guard producer-tolerance redesign) to .wolf/buglog.json. (~688 tok)
+- `add_bug_2203.py` — Append bug-2203 (recursion budget structurally insufficient for bid-proposal extract) to .wolf/buglo (~554 tok)
 - `eslint_batches.py` — chunk (~441 tok)
 - `eslint_group.py` (~182 tok)
 - `fork_csp_frontend.py` — 一次性机械 fork:contract-price 前端 → spare-parts 前端。 (~564 tok)
@@ -596,6 +603,10 @@
 - `spq_p1.tsx` — 考勤四段(固定顺序,色随身份不随筛选重绘)。 (~1996 tok)
 - `spq_p2.tsx` — DashboardView (~3752 tok)
 - `spq_p3.tsx` — row (~3698 tok)
+- `upd_bug_2189_e2e.py` — E2E re-run observation: bump bug-2189 occurrences + append E2E evidence to fix notes. (~361 tok)
+- `upd_bug_2203.py` — Update bug-2203 fix field: config.yaml + frontend ceiling raised to 1000. (~330 tok)
+- `upd_bug_2204.py` — Log bug-2204: StreamGap crashes sse_consumer + cancel-on-gap kills live runs (regression from 2026-0 (~807 tok)
+- `upd_bug_2205.py` — Log bug-2205: pre-existing test_gateway_services.py debt found while verifying bug-2204 (10 stale fa (~530 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/bidpipe/
 
@@ -626,10 +637,22 @@
 - `probe_score.py` — R4/M2/M3 独立探针: score_simulate reingest --volume / 合成标题豁免 / total null 报错(冷读复验)。 (~2541 tok)
 - `probe_write_errors.py` — R5 独立探针: merge_addenda/build_output 写盘 OSError → 干净 rc=1 无 traceback(冷读复验)。 (~1151 tok)
 
+## C:/Users/admin/AppData/Local/Temp/claude/D--eai-eai-flow-main/53c83186-25f5-4d4f-9a35-597b767240a8/
+
+- `census_events.py` — Census of event types per run for thread bbd447d7 (driver gap-recovery design input). (~466 tok)
+- `e2e_bid_driver.py` — bid-proposal-writing E2E driver (bug-2189 修复验证, agnes-2.5-Flash). (~4369 tok)
+- `run_status.py` — Quick check: latest run status on the E2E thread. (~306 tok)
+- `score_checkpoints.py` — /*.md")) if ud.exists() else [] (~1224 tok)
+- `zhipu_probe.py` — Isolate glm-4.1v-thinking-flash behavior: short vs long input, thinking on/off. (~744 tok)
+
 ## C:/Users/admin/AppData/Local/Temp/fire_extract_t9/
 
 - `fill_contracts.py` — E3-fill: write chosen sources into the two contracts for the MISSING verbatim sections. (~1174 tok)
 - `search_helper.py` — Batch search helper: for each MISSING verbatim section, run guide[] keywords and show hits + context (~348 tok)
+
+## C:/Users/admin/AppData/Local/Temp/geo_smoke/
+
+- `smoke.py` — geological-report v2 T4 冒烟：合成数据走 forms→file→manifest→execute→check→ (~4610 tok)
 
 ## _workspace_temp/
 
@@ -782,7 +805,7 @@
 - `langgraph.json` (~112 tok)
 - `launch_gateway.py` — Simple gateway launcher. (~170 tok)
 - `Makefile` (~604 tok)
-- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~1429 tok)
+- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~1468 tok)
 - `README.md` — Project documentation (~3906 tok)
 - `reset_pwd.py` — Reset admin password in the gateway database. (~317 tok)
 - `ruff.toml` (~59 tok)
@@ -1442,7 +1465,7 @@
 - `editor_tools.py` — Editor tools registered via config.yaml function calling. (~3192 tok)
 - `finalize.py` — Finalize flow — precondition check → compliance → confirm → lock. (~1631 tok)
 - `folder_service.py` — Folder service for document space folder management. (~4474 tok)
-- `routers.py` — AI Document routers for extensions module. (~10695 tok)
+- `routers.py` — AI Document routers for extensions module. (~14181 tok)
 - `service.py` — AI Document service for extensions module. (~11883 tok)
 - `share_models.py` — Document share model. (~351 tok)
 - `share_schemas.py` — Document share schemas. (~176 tok)
@@ -1564,7 +1587,7 @@
 
 - `__init__.py` (~0 tok)
 - `cover_presets.py` — Built-in cover-page presets for the docmgr Word export. (~514 tok)
-- `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~14880 tok)
+- `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~18899 tok)
 - `layout_import.py` — Deterministic .docx → layout-template extraction. (~2355 tok)
 - `layout_import.py` — Deterministic .docx → layout-template extraction. (~2341 tok)
 - `models.py` — SQLAlchemy model for layout_templates table. (~501 tok)
@@ -1698,7 +1721,7 @@
 - `csrf_middleware.py` — CSRF protection middleware for FastAPI. (~3402 tok)
 - `deps.py` — Centralized accessors for singleton objects stored on ``app.state``. (~7522 tok)
 - `internal_auth.py` — Authentication for trusted Gateway internal callers. (~649 tok)
-- `services.py` — Run lifecycle service layer. (~15284 tok)
+- `services.py` — Run lifecycle service layer. (~15905 tok)
 
 ## backend/app/gateway/routers/
 
@@ -1909,7 +1932,7 @@
 - `rbac_helpers.py` — 共享 RBAC 深度测试工具：canned identity、policy mock、smart_db、app builder。 (~1762 tok)
 - `test_ai_writing_activity.py` — Tests for start_ai_writing Temporal activity. (~2641 tok)
 - `test_auth_type_system.py` — Tests for auth type system hardening. (~12394 tok)
-- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~95737 tok)
+- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~97249 tok)
 - `test_channel_manager_connections.py` — Unit tests for the connection-aware thread routing added in E-续 ③ C-2a. (~1614 tok)
 - `test_channel_owner_isolation.py` — Unit tests for per-user isolation via internal-auth owner_user_id (E-续 ③ C-2b). (~1787 tok)
 - `test_channel_service_runtime.py` — Unit tests for the channel-connections runtime surface added in E-续 ③. (~3173 tok)
@@ -1936,6 +1959,8 @@
 - `test_delegation_ledger.py` — Tests for the subagent delegation ledger (parent issue: redundant delegation). (~2562 tok)
 - `test_docmgr_data_access.py` — Docmgr data-access scope tests (Task 13 + Task L2). (~2712 tok)
 - `test_docmgr_export.py` — Regression tests for document-space export (Markdown + Word). (~3062 tok)
+- `test_docmgr_images.py` — Tests for personal-doc image upload endpoint (BlockNote uploadFile backend, EAI-CUSTOM). (~2058 tok)
+- `test_output_images.py` — Word 导出内嵌图片：image 块解析 + image_fetcher 内嵌/降级/宽度上限 + docmgr URL 解析。 (~2100 tok)
 - `test_docmgr_scopes.py` — F2/F3 回归：collab by-id 与 list_folders 必须走 scope 引擎（deny 生效）。 (~493 tok)
 - `test_docmgr_versions.py` — 版本历史路由注册 + restore 写文件 + cap 20 裁剪 (C10) (~2400 tok)
 - `test_docmgr_versions.py` — Tests for personal-doc version history (EAI-CUSTOM C10). (~1055 tok)
@@ -1948,7 +1973,9 @@
 - `test_formula_graph.py` — Test Formula DAG engine against real 给排水计算书 calculation chain. (~6087 tok)
 - `test_formula_runner_cli.py` — formula_runner CLI 端到端测试（反馈6 值差分流程）。 (~1774 tok)
 - `test_gateway_run_recovery.py` — Gateway startup recovery for stale persisted runs. (~4084 tok)
-- `test_geological_report_skill.py` — TDD tests for the geological-report SKILL.md. (~3851 tok)
+- `test_geological_report_skill.py` — geological-report SKILL.md v2 结构测试。 (~1861 tok)
+- `test_geological_report_v2_replay.py` — geological-report v2 样例回放 eval（T7，设计 D9）。 (~720 tok)
+- `test_geological_report_v2_scripts.py` — geological-report v2 六脚本测试矩阵（设计决策 5A 全矩阵；T5）。 (~5612 tok)
 - `test_identity_provider.py` — Tests for AttributeSet and IdentityProvider. (~4186 tok)
 - `test_kb_access_visibility.py` — Tests for knowledge base three-tier access visibility (private / dept / public). (~964 tok)
 - `test_kf_doc_parser.py` — Unit tests for doc_parser — heading detection, text normalization, regex fallback. (~1679 tok)
@@ -1980,6 +2007,7 @@
 - `test_output_cover.py` — Tests for cover-page rendering + cover field resolution. (~1027 tok)
 - `test_output_frontmatter.py` — Tests for markdown front-matter splitting. (~320 tok)
 - `test_output_generate_integration.py` — End-to-end: generate_docx produces cover + TOC + body sections with numbering. (~1193 tok)
+- `test_output_images.py` — Word export image embedding: markdown ``![](url)`` → inline picture (EAI-CUSTOM). (~688 tok)
 - `test_output_layout_import.py` — Tests for deterministic .docx → layout-template extraction. (~1520 tok)
 - `test_output_numbering.py` — Tests for decimal heading-number computation. (~426 tok)
 - `test_output_routers.py` — Tests for routers template_data assembly + cover field collection. (~474 tok)
@@ -2165,6 +2193,7 @@
 - `2026-08-14-ontology-semantic-layer.md` — Ontology 市场域统一语义层（后端 + CI lint）实施计划 (~22326 tok)
 - `2026-08-14-sales-personnel-frontend.md` — 销售人员查询 (sales-personnel) 前端 Implementation Plan (~3449 tok)
 - `2026-08-15-ontology-semantic-layer-1a.md` — Ontology 语义层 Phase 1a 实施计划（市场域后端楔子） (~3142 tok)
+- `2026-08-20-docmgr-blocknote-image-upload.md` — 个人文档 BlockNote 图片上传（线程目录存储）Implementation Plan (~3278 tok)
 
 ## docs/superpowers/reports/
 
@@ -2260,6 +2289,9 @@
 - `2026-08-18-ops-diagnosis-skill-design.md` — 路线D设计稿：ops-diagnosis 技能（把"问题分析"产品化） (~1189 tok)
 - `2026-08-18-sales-personnel-dashboard-prototype.html` — 销售团队总览原型 (~6510 tok)
 - `2026-08-19-water-drainage-7-feedbacks-solutions.md` — 给排水计算书技能 —— 7 项反馈建议技术解决方案汇总 (~1440 tok)
+- `2026-08-20-docmgr-blocknote-image-upload-design.md` — 文档空间「我的文档」BlockNote 编辑器 — 图片上传（线程目录存储）设计 (~1069 tok)
+- `2026-08-20-geological-report-v2-design.md` — geological-report skill v2 升级设计（固体矿产地质勘查报告编写） (~4565 tok)
+- `2026-08-21-geol-v2-ch8-walkthrough.md` — ch8 资源量估算人工走查（geological-report v2 · T2） (~1979 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -2691,7 +2723,7 @@
 
 ## frontend/src/core/threads/
 
-- `hooks.ts` — Invoked exactly once when the send passes the in-flight guard and is (~30814 tok)
+- `hooks.ts` — Invoked exactly once when the send passes the in-flight guard and is (~30864 tok)
 - `thread-list-model.ts` — Exports ThreadListModel, buildThreadListModel (~382 tok)
 - `token-usage.ts` — Exports threadTokenUsageQueryKey, retainThreadTokenUsagePlaceholder, ContextUsage, selectContextUsag (~378 tok)
 - `types.ts` — Exports GoalState, AgentThreadState, AgentThreadContext, AgentThread + 3 more (~562 tok)
@@ -2898,12 +2930,12 @@
 
 - `BatchActionBar.tsx` — BatchActionBar (~434 tok)
 - `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~9195 tok)
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~23677 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~27610 tok)
 - `ExportDocxDialog.tsx` — FieldLabel — renders table (~13232 tok)
 - `FilePreviewModal.tsx` — isImageFile — renders modal (~1252 tok)
 - `FolderPickerDialog.tsx` — FolderPickerDialog — renders modal (~870 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~538 tok)
-- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~7678 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~8547 tok)
 - `ProjectDocListPanel.tsx` — FILE_ICON_CONFIG (~5493 tok)
 - `ProjectFolderTree.tsx` — ProjectFolderTree (~3225 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1914 tok)
@@ -2944,6 +2976,7 @@
 - `blockOperations.ts` — Exports getTopLevelBlockIndex, removeTopLevelBlock, duplicateTopLevelBlock, moveTopLevelBlock + 6 mo (~1536 tok)
 - `docEditorUtils.ts` — 字数 = 汉字数 + 连续拉丁/数字词数 (~454 tok)
 - `docEditorUtils.ts` — 编辑器辅助纯函数:computeDocStats(字数统计)+replaceTextInContent(查找/替换文本重写,B 组) (~1100 tok)
+- `docImage.ts` — 上传图片，返回可直接用于 <img> / markdown 的同源相对 URL。失败抛 Error(detail)。 (~477 tok)
 - `docThread.ts` — true = 复用存储的线程；false = 重建了新线程（原 ID 失效或没有存储） (~233 tok)
 - `headingIdManager.ts` — headingIdManager.ts (~339 tok)
 - `mathBlocks.ts` — Block types whose inline content may contain $...$ / $$...$$ math. (~2796 tok)
@@ -3513,7 +3546,7 @@
 
 ## skills/public/bid-proposal-writing/
 
-- `SKILL.md` — 投标方案编写技能(bid-proposal-writing) (~6118 tok)
+- `SKILL.md` — 投标方案编写技能(bid-proposal-writing) (~6201 tok)
 
 ## skills/public/bid-proposal-writing/references/
 
@@ -3530,13 +3563,13 @@
 
 - `build_output.py` — build_output.py — 投标方案编写技能·阶段4 双卷骨架渲染(无 LLM)。 (~12330 tok)
 - `check_format.py` — check_format.py — 投标方案编写技能·格式 1:1 复刻确定性校验(无 LLM, 只读)。 (~3014 tok)
-- `extract.py` — extract.py — 投标方案编写技能·阶段2 候选 JSON 的确定性校验 + 合并(无 LLM)。 (~10263 tok)
-- `ingest.py` — ingest.py — 投标方案编写技能·阶段1 输入分流与纯结构化解析(确定性, 无 LLM)。 (~10457 tok)
-- `merge_addenda.py` — merge_addenda.py — 投标方案编写技能·阶段3 补遗/答疑增量确定性落账(无 LLM)。 (~12721 tok)
-- `responses.py` — responses.py — 投标方案编写技能·阶段4a 技术响应候选的确定性校验 + 合并(无 LLM)。 (~5415 tok)
-- `score_simulate.py` — score_simulate.py — 投标方案编写技能·阶段5 模拟评分(确定性骨架, 无 LLM)。 (~16567 tok)
+- `extract.py` — extract.py — 投标方案编写技能·阶段2 候选 JSON 的确定性校验 + 合并(无 LLM)。 (~10372 tok)
+- `ingest.py` — ingest.py — 投标方案编写技能·阶段1 输入分流与纯结构化解析(确定性, 无 LLM)。 (~10784 tok)
+- `merge_addenda.py` — merge_addenda.py — 投标方案编写技能·阶段3 补遗/答疑增量确定性落账(无 LLM)。 (~13000 tok)
+- `responses.py` — responses.py — 投标方案编写技能·阶段4a 技术响应候选的确定性校验 + 合并(无 LLM)。 (~5662 tok)
+- `score_simulate.py` — score_simulate.py — 投标方案编写技能·阶段5 模拟评分(确定性骨架, 无 LLM)。 (~16608 tok)
 - `snapshot.py` — 投标方案编写技能·进度快照(project_snapshot.json 确定性落盘, 无 LLM)。 (~1763 tok)
-- `state_guard.py` — 权威状态防篡改签名(.meta.json)——共享守卫模块(纯 stdlib, 无 LLM)。 (~2433 tok)
+- `state_guard.py` — 权威状态防篡改签名(.meta.json)——共享守卫模块(纯 stdlib, 无 LLM)。 (~2679 tok)
 
 ## skills/public/bid-quote-analysis/
 
@@ -3630,6 +3663,36 @@
 ## skills/public/fire-protection-report-v2/
 
 - `SKILL.md` — ⛔ 第一步：检查是否应该使用本技能（路由关卡，必须最先判断） (~3158 tok)
+
+## skills/public/geological-report/
+
+- `SKILL.md` — NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill (~1362 tok)
+
+## skills/public/geological-report/references/
+
+- `consistency_contracts.json` (~1095 tok)
+- `formulas.json` (~4506 tok)
+- `reference_values.json` (~541 tok)
+- `standards_index.json` (~1665 tok)
+
+## skills/public/geological-report/references/ore_packs/
+
+- `copper.json` (~391 tok)
+
+## skills/public/geological-report/references/stages/
+
+- `detail.json` (~291 tok)
+- `exploration.json` (~8655 tok)
+- `survey.json` (~276 tok)
+
+## skills/public/geological-report/scripts/
+
+- `build_output.py` — geological-report v2 — build_output.py：单次原子组装（步骤6）。 (~2552 tok)
+- `chapter_planner.py` — geological-report v2 — chapter_planner.py：章节清单 + 「改参 → 受影响章节」反查中枢。 (~1626 tok)
+- `consistency.py` — geological-report v2 — consistency.py：四类合约机器校验（步骤7）。 (~5549 tok)
+- `formula_runner.py` — geological-report v2 — formula_runner.py：冻结计算层（步骤2，门2 的数据面）。 (~8263 tok)
+- `ingest.py` — geological-report v2 — ingest.py：data/ 状态目录的唯一写者（D10）。 (~5599 tok)
+- `snapshot.py` — 逐文件 SHA-256（相对路径 → hash）。""" (~2312 tok)
 
 ## skills/public/local-knowledge-first/
 
