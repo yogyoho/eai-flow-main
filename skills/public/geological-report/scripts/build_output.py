@@ -144,6 +144,22 @@ def render_compliance_appendix(consistency: dict | None, state: dict, state_path
     return "\n".join(lines)
 
 
+# ── 章节卫生门（bug-2220：前置重复/越权块直通最终文件的根因是章节产物零校验）──
+
+# 脚本保留标题：前置部分与合规附录由 build_output 统一渲染，章节文件出现即重复源
+RESERVED_HEADINGS = ("# 前置部分", "## 外封面", "## 签署页", "## 目录", "## 附图附表目录", "## 合规性附录")
+
+
+def validate_chapter(ch_id: str, text: str) -> None:
+    first = next((ln for ln in text.splitlines() if ln.strip()), "")
+    if not first.startswith("## "):
+        raise ValueError(f"{ch_id}.md 首行必须是 `## N 章标题`（当前: {first[:40]!r}）——前置/目录等内容不得写入章节文件")
+    for ln in text.splitlines():
+        s = ln.strip()
+        if s.startswith(RESERVED_HEADINGS):
+            raise ValueError(f"{ch_id}.md 含脚本保留标题 {s[:24]!r}——前置部分与合规性附录由 build_output 统一渲染，章节文件禁写（bug-2220 前置重复根因）")
+
+
 # ── 组装 ────────────────────────────────────────────────────────────────────
 
 def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
@@ -175,7 +191,9 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
         cf = chap_dir / f"{ch_id}.md"
         if not cf.exists():
             raise FileNotFoundError(f"章节产物缺失: {cf}（波次生成未完成，不静默跳过）")
-        parts.append(inject(cf.read_text(encoding="utf-8")).rstrip() + "\n")
+        raw = cf.read_text(encoding="utf-8")
+        validate_chapter(ch_id, raw)
+        parts.append(inject(raw).rstrip() + "\n")
     parts.append(render_compliance_appendix(consistency, state, state_path))
     if unknown_keys:
         raise KeyError(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
@@ -202,7 +220,7 @@ def main() -> int:
     try:
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
         content = assemble(stage, Path(args.data_dir), Path(args.state_dir))
-    except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
+    except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as e:
         print(f"[build] 错误: {e}", file=sys.stderr)
         return EXIT_ERROR
     wrote = atomic_write(Path(args.output), content)

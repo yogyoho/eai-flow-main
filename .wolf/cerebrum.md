@@ -1140,3 +1140,8 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 ### Key Learnings
 - **页面测试驱动受控表单的全套打法**（geological-report v2 验证沉淀）：表单卡=普通 fill 可用；日期 spinbutton 必须走 React native setter；run 执行中表单 disabled、interrupt 落定后解锁（提交按钮 !disabled 即可判断）。ask_clarification 挂起时走聊天通道发文字同样能恢复 interrupt（会作为该轮回答传给 agent）。
 - **agent「required 误解」型编造的修法**（bug-2218）：schema required 会让模型凑齐字段抄 placeholder 示例值合成对象；正确约定=写入只传用户提交的键，required 只作用于门1完备性。提示层修复后回归验证：对象型必填留空 → 落 null 不编造 ✓。
+
+### 2026-08-22 — geological-report 报告单薄根因与修法（bug-2221）
+- **骨架不是_schema_问题是指令问题**：exploration.json 的 toc 已含全部三级节（1.1/2.2/4.3/4.6/6.x/8.4-8.11 都在），生成报告缺节是因为 wave1 指令没要求『toc 全覆盖+缺数保段落』——修 SKILL.md 指令层，不动 schema。
+- **LLM 写作纪律的 enforcement 分层**：格式/结构可确定性校验的（首行 ##N、保留标题污染）放 build_output 硬门；语义性的（覆盖度/深度/八要素）只能放 SKILL.md 规则让 agent 自检——build 硬门会卡死缺数据项目。
+- **条目式叙述范式**：矿体/含水层/岩组逐条分述用八要素链（层位→工程控制→形态产状→延伸→厚度+变化系数+判型→品位+变化系数+判型→岩性矿物+产出状态→占比），缺数据的要素写 [待确认] 不砍句。

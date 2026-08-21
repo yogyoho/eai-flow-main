@@ -551,6 +551,27 @@ class TestBuildOutput:
         (st / "chapters" / "ch1.md").write_text("## 1\n", encoding="utf-8")
         run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", tmp_path / "r.md", expect=(1,))
 
+    @staticmethod
+    def _copy_chapters(ws, tmp_path):
+        st = tmp_path / "st"
+        (st / "chapters").mkdir(parents=True)
+        (st / "formula_state.json").write_text((ws["state"] / "formula_state.json").read_text(encoding="utf-8"), encoding="utf-8")
+        for f in (ws["state"] / "chapters").glob("*.md"):
+            (st / "chapters" / f.name).write_text(f.read_text(encoding="utf-8"), encoding="utf-8")
+        return st
+
+    def test_front_matter_pollution_rc1(self, ws, tmp_path):
+        """bug-2220：章节文件混入脚本保留标题（如目录）→ build FAIL 阻断，不产出重复前置。"""
+        st = self._copy_chapters(ws, tmp_path)
+        (st / "chapters" / "ch2.md").write_text("## 2 区域地质\n\n## 目录\n\n- 手写目录（污染）\n", encoding="utf-8")
+        run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", tmp_path / "r.md", expect=(1,))
+
+    def test_chapter_bad_first_line_rc1(self, ws, tmp_path):
+        """bug-2220：章节首行非 `## N 章标题`（如一级标题/前置内容）→ build FAIL。"""
+        st = self._copy_chapters(ws, tmp_path)
+        (st / "chapters" / "ch2.md").write_text("# 云南省某铜矿勘探报告\n\n前置内容混入章节文件\n", encoding="utf-8")
+        run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", tmp_path / "r.md", expect=(1,))
+
 
 # ── 5. consistency：四类合约 + SL2 历史编码回归 ──────────────────────────────
 

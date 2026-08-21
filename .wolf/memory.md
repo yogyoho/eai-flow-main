@@ -10985,3 +10985,20 @@
 |------|--------|---------|---------|--------|
 | 00:36 | Edited skills/public/geological-report/SKILL.md | inline fix | ~68 |
 | —— | geological-report v2 页面复测收尾: 纠错落盘复核(null✓) + 第3类留空回归测试通过(bug-2218修复生效,climate对象型留空→null不编造) + 发现bug-2219(label泄漏JSON术语)并修复SKILL.md | skills/public/geological-report/SKILL.md, .wolf/buglog.json | 通过 | ~15k |
+| 00:38 | Session end: 1 writes across 1 files (SKILL.md) | 0 reads | ~73 tok |
+| 07:16 | Created ../../temp/geo-compare/对比评估报告.md | — | ~1015 |
+| —— | 样例docx vs 01-10_完整报告.md 对比评估: 总体还原度17%(1.5万/9.1万字),子节38%,证实用户“内容太简单”判断; 数字源自用户粘贴的典型参考值(非agent编造); 发现bug-2220(前置重复+管线偏离); 报告交付D:/temp/geo-compare/对比评估报告.md | D:/temp/geo-compare/, .wolf/buglog.json | 完成 | ~30k |
+| 07:17 | Session end: 2 writes across 2 files (SKILL.md, 对比评估报告.md) | 0 reads | ~1161 tok |
+
+## Session: 2026-08-21 07:48
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:51 | Edited skills/public/geological-report/scripts/build_output.py | modified validate_chapter() | ~230 |
+| 07:51 | Edited skills/public/geological-report/scripts/build_output.py | modified exists() | ~76 |
+| 07:52 | Edited skills/public/geological-report/scripts/build_output.py | inline fix | ~23 |
+| 07:52 | Edited skills/public/geological-report/SKILL.md | 6→10 lines | ~226 |
+| 07:52 | Edited skills/public/geological-report/SKILL.md | 1→3 lines | ~109 |
+| 07:52 | Edited skills/public/geological-report/SKILL.md | 1→2 lines | ~69 |
+| 07:53 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_missing_chapter_rc1() | ~497 |
+| 21:05 | 报告加深改动集落地: SKILL.md wave1 四铁律(toc全覆盖/深度下限/八要素/文件卫生)+交付回路+CSV引导; build_output validate_chapter 卫生门; 测试32绿(+2负例) | SKILL.md, build_output.py, test_geological_report_v2_scripts.py | bug-2220/2221 修复 | ~28k |

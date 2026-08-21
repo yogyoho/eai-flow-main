@@ -20636,6 +20636,48 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-08-22"
+    },
+    {
+      "id": "bug-2220",
+      "timestamp": "2026-08-22",
+      "error_message": "线程cee60e84最终交付01-10_完整报告.md: 前置部分(标题+外封面+矿权信息)重复出现两遍(1-33行/35-68行); 且state/consistency_check.json缺失、geo-report/outputs/为空、交付文件落在/mnt/user-data/outputs/且命名不符合{项目名}-{阶段}-地质勘查报告.md规范,存在01-0X_完整骨架.md等迭代残留",
+      "file": "skills/public/geological-report/SKILL.md",
+      "root_cause": "章节扩写发生在对话轮(用户'请补充各个章节详细叙述内容'后LLM直接扩写各章md到outputs/),绕过了build_output原子组装→consistency 22合约→snapshot的交付回路; 多轮骨架迭代文件未清理且合并时前置块拼了两次",
+      "fix": "SKILL.md 步骤4加章节文件卫生规则+步骤5-7加交付回路铁律（扩写必须重跑 build→consistency→snapshot，禁散文件直投 outputs/）；build_output.py 新增 validate_chapter 卫生门：章节首行必须 ## N、含脚本保留标题(# 前置部分/## 外封面/## 签署页/## 目录/## 附图附表目录/## 合规性附录)即 ValueError→exit 1；测试 +2 负例（test_front_matter_pollution_rc1 / test_chapter_bad_first_line_rc1）",
+      "tags": [
+        "geological-report",
+        "管线偏离",
+        "交付物",
+        "consistency缺失",
+        "前置重复"
+      ],
+      "related_bugs": [
+        "bug-2218",
+        "bug-2219"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-22"
+    },
+    {
+      "id": "bug-2221",
+      "timestamp": "2026-08-22",
+      "error_message": "用户：生成的报告太单薄了——对比样例 91k 有效字符仅还原 17%，子节覆盖 56/149=38%，ch6 仅 5%",
+      "file": "skills/public/geological-report/SKILL.md + scripts/build_output.py",
+      "root_cause": "三层断点：①wave1 生成指令没有『toc 全覆盖+缺数保段落』要求，缺数据的节被直接砍掉（样例缺失的 1.1/2.2/4.3/4.6/6.x三级/8.4-8.11 在 exploration.json toc 里其实都有定义）；②无叙述深度下限与条目式叙述范式（矿体八要素链）；③批量清单数据靠表单逐项问答收不齐（矿体/样品/钻探应走 CSV 导入）；④章节文件零校验使污染直通最终文件",
+      "fix": "SKILL.md 步骤4 wave1 新增 4 条铁律：骨架全覆盖（缺数写 [待确认] 占位句禁删节并节）/叙述深度下限（三级节≥1段≥3句、表前引入表后解读）/条目式叙述八要素范式（层位→工程控制→形态产状→延伸→厚度+变化系数+判型→品位+变化系数+判型→岩性矿物+产出状态→占比）/章节文件卫生；步骤1 加批量数据优先引导 CSV 上传；步骤5-7 加交付回路铁律；build_output.py validate_chapter 卫生门",
+      "tags": [
+        "geological-report",
+        "wave1",
+        "叙述深度",
+        "toc覆盖",
+        "八要素",
+        "报告单薄"
+      ],
+      "related_bugs": [
+        "bug-2220"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-22"
     }
   ]
 }

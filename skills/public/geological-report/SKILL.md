@@ -55,6 +55,7 @@ outputs/    # report.md + project_snapshot.json → present_files 交付
    > 知识工厂未命中模板，本次使用技能内置 `references/` 兜底（exploration.json 阶段表单 + standards_index）。
 2. `ingest.py forms` 生成空白表单（data/ 下按 schema）。
 3. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（矿种→阶段→项目信息→地质→矿体→勘查工程→样品→开采条件→资源量/经济）。每次只问一个类别。
+   **批量数据优先引导上传文件（bug-2221 根因④）**：矿体数 >3、或样品/钻孔/工作量/体重等清单类条目 >10 时，逐项问答收不齐也收不深——主动请用户上传 CSV/Excel 走 `ingest.py file`，表单只收叙述性字段。
    **用户可见即表单（交互铁律，面向非 IT 用户）**：逐类收集一律用 `ask_clarification` 的 `fields` 渲染**中文填写表单**，绝不向用户展示或索要 JSON、英文键名。每个数据项一个 field：`name`=schema 英文键（仅内部映射用）、`label`=中文名+单位、`type` 按 schema 映射（`enum:a|b`→`select` 且 options=枚举值原文、number→`number`、日期→`date`、长文本/嵌套行数据→`textarea`）、`placeholder`=格式提示（如 "YYYY-MM-DD"、"每行一个拐点：序号,X2000,Y2000,X1980,Y1980"）。单卡片 ≤16 项，超出分两批问。面向用户一律称"**数据项**"，不说"字段"；label/placeholder 里也**不得出现「JSON」「字段」「field」等术语**（页面实测踩过：把"气候特征"标成了"气候特征（JSON）"）——嵌套对象当普通中文数据项用 textarea 收（placeholder 给中文格式提示），结构化由 ingest 完成。
    **每收完一类立即落盘**：`ingest.py forms --stage S --data-dir D --family <族> --values '<json>'`（校验写入；族名见 state_manifest.json）。绝不只在对话里"记录"——对话被摘要数据即丢；也绝不手写 data/*.json（唯一写者 = ingest.py）。
    **示例值≠数据（P2 红线，页面实测踩过两次）**：表单 placeholder/说明里的示例只示意格式，用户没填的数据项**绝不落盘任何值**，更绝不把示例值/自己编的格式值（如 C5300002023XXXXXX、1396/2000）当数据写入。写完用中文数据项清单回显落盘值请用户核对。
@@ -75,11 +76,15 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 ### 步骤 4 · 两波生成（LLM 只写叙述）
 
 **wave1（ch1–ch9）**：逐章写 `state/chapters/chN.md`。规则：
-- 首行 `## N 章标题`，子节 `### N.M`；段内序号（1）（2）… 递增（NR2）
+- 首行 `## N 章标题`，子节 `### N.M`，三级节 `#### N.M.K`；段内序号（1）（2）… 递增（NR2）
+- **骨架全覆盖（bug-2221 根因①）**：动笔前先读 STAGE 文件该章 `toc`，全部二、三级节逐一落笔；**缺数据的节保留段落骨架并写占位句**（如「矿体平均厚度：[待确认]」），**禁止删节、并节或以概要代替逐节展开**；章成后对照 toc 自检无遗漏
+- **叙述深度下限（bug-2221 根因②）**：每个三级节 ≥1 段完整叙述（≥3 句）；每张表前有引入段、表后有解读段——禁「表后即下一节」
+- **条目式叙述范式（bug-2221 根因③）**：逐条目分述（矿体/含水层/岩组/块段等）时**每条一段完整专业叙述**，按要素链成文：产出层位/位置 → 中段/勘探线等工程控制 → 形态产状 → 走向/倾向延伸 → 厚度区间+变化系数+稳定型判定 → 品位区间+变化系数+均匀型判定 → 含矿岩性+矿物组合+产出状态 → 资源量占比/结论；某要素缺数据写 `[待确认]` 不砍句
 - 一切数字用 `{{SLOT:key}}`（key ∈ formula_state.values）；数据表用 `{{TABLE:fam}}`
 - 判定词（水文/工程/复合类型等 type_verdicts 值）**逐字**写入正文（XS3）
 - 表/图先声明（caption）后引用，编号 `表8-2` 章内递增（NR1）
 - 日期/项目名/勘查单位/许可证号与表单一致（NR3）；历史编码原样（P4）
+- **章节文件卫生（bug-2220）**：chN.md 里**严禁写入前置内容（外封面/签署页/目录/附图附表目录）或合规性附录**——build_output 检测到脚本保留标题或首行非 `## N` 即 FAIL 阻断（exit 1）
 
 **波间要点包**：wave1 完成后，从 formula_state 提取关键结论数字（L9 总量/分类量、L10 对比、
 E 链经济指标）作要点包呈现用户确认——这是 ch10 的唯一事实来源。
@@ -96,6 +101,8 @@ present_files     → 交付 report.md
 ```
 
 consistency 退出码：0 全过 / 1 有 FAIL（修章节重跑，禁改数据绕过）/ 2 需人工（如 CC1 标准未入库）/ 3 完成带 WARN/MANUAL（汇报用户）。合规性附录由 build_output 自动附加，勿手写。
+
+**交付回路铁律（bug-2220 页面实测）**：对话中任何扩写/补写/修改都只落 `state/chapters/chN.md`，随后**必须**重跑 build → consistency → snapshot save，经 present_files 交付唯一单文件 `outputs/report.md`（即 `{项目名}-{阶段}-地质勘查报告.md`）。**禁止**把对话轮直接生成的散文件（`01-10_完整报告.md`、`ch1_绪论.md` 之类迭代残留）放进 outputs/ 当交付物——绕过管线的文件没有槽位注入、没有一致性校验、没有快照溯源。
 
 ## 修改回路（顺序铁律，bug-2199）
 
