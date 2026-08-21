@@ -10952,3 +10952,22 @@
 | 11:17 | Edited skills/public/geological-report/scripts/ingest.py | 2214 → 2216 | ~5 |
 | 11:17 | Edited backend/tests/test_geological_report_v2_scripts.py | 2214 → 2216 | ~15 |
 | 11:38 | geological-report 页面验证收尾：终清确认(3用户值保留+6字段null) + buglog 2215/2216 + cerebrum 4条 | .wolf/buglog.json .wolf/cerebrum.md | done | ~6k |
+| 11:20 | Session end: 2 writes across 2 files (ingest.py, test_geological_report_v2_scripts.py) | 3 reads | ~11664 tok |
+| 11:34 | Edited skills/public/geological-report/SKILL.md | 3→4 lines | ~223 |
+| 11:34 | Edited skills/public/geological-report/SKILL.md | inline fix | ~30 |
+| 12:05 | 用户反馈交互不友好→SKILL.md交互铁律: ask_clarification fields中文表单+数据项术语+门1缺项译中文; 提交65bd6dff1 | skills/public/geological-report/SKILL.md | done | ~8k |
+| 11:35 | Session end: 4 writes across 3 files (ingest.py, test_geological_report_v2_scripts.py, SKILL.md) | 5 reads | ~11935 tok |
+| 11:39 | Session end: 4 writes across 3 files (ingest.py, test_geological_report_v2_scripts.py, SKILL.md) | 5 reads | ~11935 tok |
+| 22:45 | Edited skills/public/geological-report/scripts/ingest.py | with_suffix() → getpid() | ~102 |
+| 22:45 | Edited skills/public/geological-report/scripts/ingest.py | modified register_file() | ~304 |
+| 22:45 | Edited skills/public/geological-report/scripts/ingest.py | added 1 import(s) | ~14 |
+| 22:45 | Edited skills/public/geological-report/scripts/ingest.py | modified load_stage() | ~190 |
+| 22:46 | Edited skills/public/geological-report/scripts/ingest.py | modified strip() | ~177 |
+| 22:46 | Edited skills/public/geological-report/scripts/ingest.py | expanded (+7 lines) | ~118 |
+| 22:46 | Edited skills/public/geological-report/scripts/ingest.py | inline fix | ~30 |
+| 22:47 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_null_required_field_passthrough() | ~1373 |
+| 22:47 | Edited backend/tests/test_geological_report_v2_scripts.py | inline fix | ~15 |
+| 22:48 | Edited skills/public/geological-report/SKILL.md | 1→2 lines | ~108 |
+| 22:48 | Edited config.yaml | modified CUSTOM() | ~98 |
+| 14:55 | 线程0506a910 FORCED STOP根因分析(run_events取证82次bash)+bug-2217四修+测试6项+gateway重启 | ingest.py SKILL.md config.yaml test | done | ~30k |
+| 22:50 | Session end: 15 writes across 4 files (ingest.py, test_geological_report_v2_scripts.py, SKILL.md, config.yaml) | 8 reads | ~15098 tok |

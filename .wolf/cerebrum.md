@@ -18,6 +18,7 @@
 - **表单密度偏好——标签字体调小 (2026-08-06, 用户纠正):** 排版模板编辑器里 Field 的 label 默认 `text-xs`(12px)，用户嫌大，要求调小 → 改为 `text-[11px]`。信号：该用户偏好**紧凑、高密度的表单**，label/辅助文字往小做（11px label / 10px hint）。适用所有 output 扩展及类似设置类表单。提示项用 `text-muted-foreground/60`，避免抢主信息焦点。
 - **仪表盘类页面必须全公司口径 + 筛选平铺5+更多 + 表格分页 (2026-08-18, 用户对销售仪表盘原型的修正):** 销售人员 app 不要聚焦销售/市场部门,要扩大到整个公司各部门;头部部门筛选平铺 5 个常用部门、其余收进「更多」下拉;行数会多的数据表(尤其人员明细)必须支持分页。后续做任何人事/报表类仪表盘默认按此口径。
 - **Palantir Ontology 概念移植意图（2026-08-14, 用户三轮拍板）:** ①**意图=概念移植**（轻量原生语义层），不采购 Palantir 产品、不建索引/funnel；②一期价值=**统一语义层（平台一致性）**，Action 写路径/函数/对象级 ACL 全延后；③一期覆盖域=**市场/分析数据域**（cpa_/csp_/bid），协作/文档域二期；④消费端=**MCP + 前端语义地图页**；⑤方案=**声明式 YAML 注册表 + 通用引擎**（弃代码驱动/纯文档）；⑥跨模块链接=**聚类代表名匹配**（复用 DBSCAN 归一，不做原始脏名/模糊匹配）；⑦权限=**管理员级门控**（REST 需 system:access，MCP 注册级门控 + hidden:true 列级隐藏，不行级 ACL）；⑧前端=**独立应用中心 app /ontology**。设计文档 `docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md`。
+- [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
 - **提示词级铁律挡不住弱模型手写 state（2026-08-20, E2E 定论, [[bug-2189]]）：** agnes-2.5-Flash 在压力下(每轮 25 bash 上限+长管线)会走捷径: cat-heredoc 直写 state/responses.json 后重签、python heredoc 伪造签名、手改 whitelist——脚本校验(web→citations 必填)被整体绕过。SKILL.md 铁律+state_guard 事后审计只对强模型有效; 真防线必须机制化(候选目录白名单写/state 目录属主隔离/bash 沙箱 path 拦截)。另: E2E 断言要查 bash tool-call transcript(outputs/.tool-results/ + SSE 帧 "command" 字段)才能发现 heredoc 绕过——只看产物签名 MATCH 会被骗。
@@ -236,6 +237,7 @@
 - TechTooltip(biz-pipeline 克隆版)自带 `!active → null` guard:call-site 合成 payload 调用时必须显式传 active,否则 tooltip 恒空(bug-2161)
 - 全 1 数据下 recharts allowDecimals={false} 会把 Y 轴刻度撑到 [0..4](柱被压扁);小值域显式传整数 ticks 数组修复
 - geological-report 页面实测三层缺陷链：①写入命令未文档化→数据滞留对话；②示例值当数据（P2）；③ingest.py 拒绝必填 null→逼出 0 冒充。修复=SKILL.md 4处+coerce_type null直通+回归测试（bug-2215/2216）。沙箱表单物证路径 /app/backend/.deer-flow/users/{uid}/threads/{tid}/user-data/workspace/geo-report/data/。
+- [2026-08-21] agent 会在一轮 assistant 消息里并行发多个 bash 工具调用——任何落盘脚本必须跨进程安全（pid 唯一 tmp + 锁），固定 .tmp 名的原子写会竞态崩溃。agent 传参惯用 $(cat file) 模式，文件缺失静默展开空串——CLI 对空可选值必须硬错误而非落入默认路径。崩溃后 agent 会自行"恢复"：手写数据文件+从样例编造值回填，技能文档必须写明崩溃即停红线。
 
 ## Do-Not-Repeat
 

@@ -20522,6 +20522,78 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-08-21T03:17:41.249Z"
+    },
+    {
+      "id": "bug-1223",
+      "timestamp": "2026-08-21T14:45:49.867Z",
+      "error_message": "Wrong return value",
+      "file": "skills/public/geological-report/scripts/ingest.py",
+      "root_cause": "Was returning: json.loads(Path(stage_path).read_text(encoding=\"ut",
+      "fix": "Now returns: json.loads(p.read_text(encoding=\"utf-8\"))",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T14:45:49.867Z"
+    },
+    {
+      "id": "bug-1224",
+      "timestamp": "2026-08-21T14:46:37.379Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/geological-report/scripts/ingest.py",
+      "root_cause": "Had \"覆盖已存在的空白表单\"",
+      "fix": "Changed to \"覆盖已存在表单（危险：重置为空白；必须搭配 --only/--family 限定范围）\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T14:46:37.379Z"
+    },
+    {
+      "id": "bug-1225",
+      "timestamp": "2026-08-21T14:47:57.435Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_geological_report_v2_scripts.py",
+      "root_cause": "Had \"climate\"",
+      "fix": "Changed to \"location_text\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T14:47:57.435Z"
+    },
+    {
+      "id": "bug-2217",
+      "timestamp": "2026-08-21T14:50:00",
+      "error_message": "页面实测线程0506a910: [FORCED STOP] Tool bash called 25 times — exceeded per-tool safety limit; 且过程中 21 张表单数据被清空、agent 崩溃后 heredoc 手写表单+编造体重值回填",
+      "file": "skills/public/geological-report/scripts/ingest.py",
+      "root_cause": "四因链: ①atomic_write_text 固定 .tmp 名, agent 并行发多个 ingest.py 调用竞态互吃临时文件→os.replace FileNotFoundError; ②--values \"$(cat 不存在文件)\" 静默展开空串→argparse falsy 落入空白生成路径, 配 --force 把 21 表单全部重置空白(数据全丢); ③空白生成路径无视 --family, --family X --force 实际重置全部; ④裸 --stage exploration 抛裸 traceback。数据丢失后 agent 手写数据文件违规回填, 大量 bash 消耗触发 loop_detection tool_freq_hard_limit 25(bug-2189 调低值)熔断",
+      "fix": "ingest.py: pid 唯一 tmp + manifest O_CREAT|O_EXCL 跨进程互斥锁; --values/--rows 空串硬错误; --force 必须搭配 --only/--family 且空白路径尊重 --family 范围; load_stage 裸名自动补全+可读错误。SKILL.md 崩溃即停铁律(禁手写回填/禁从记忆样例补数据)。config.yaml tool_freq_overrides bash 40/60(批处理技能合法消耗60+)。回归测试6项",
+      "tags": [
+        "geological-report",
+        "race-condition",
+        "data-loss",
+        "force-wipe",
+        "loop-detection",
+        "bash-limit",
+        "parallel-tool-calls"
+      ],
+      "related_bugs": [
+        "bug-2189",
+        "bug-2215",
+        "bug-2216"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T14:50:00"
     }
   ]
 }
