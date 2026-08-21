@@ -170,3 +170,28 @@ async def test_user_get_rejects_traversal_and_unknown_names(tmp_path, monkeypatc
         with pytest.raises(HTTPException) as ei:
             await docmgr_routers.get_user_image(bad, current_user=_FakeUser())
         assert ei.value.status_code == 404
+
+
+# ---- Word 导出图片 URL→字节解析（_make_image_fetcher，EAI-CUSTOM） ----
+
+
+def test_image_fetcher_resolves_user_and_thread_urls(tmp_path, monkeypatch):
+    """fetcher 白名单两种 URL：用户级 docmgr-images 与线程 outputs/images；其余 None。"""
+    user_dir = tmp_path / "docmgr-images"
+    user_dir.mkdir()
+    thread_dir = tmp_path / "user-data"
+    thread_dir.mkdir()
+    monkeypatch.setattr(docmgr_routers, "Paths", lambda: None)
+    monkeypatch.setattr(docmgr_routers, "_user_images_dir", lambda paths, uid: user_dir)
+    monkeypatch.setattr(docmgr_routers, "_resolve_thread_sandbox_dir", lambda paths, tid, uid: thread_dir)
+    (user_dir / "aaaaaaaaaaaa.png").write_bytes(b"USERPNG")
+    tdir = thread_dir / "outputs" / "images"
+    tdir.mkdir(parents=True)
+    (tdir / "bbbbbbbbbbbb.jpg").write_bytes(b"THREADJPG")
+
+    fetch = docmgr_routers._make_image_fetcher("uid-1")
+    assert fetch("/api/extensions/docmgr/images/aaaaaaaaaaaa.png") == b"USERPNG"
+    assert fetch("/api/threads/t-1/artifacts/mnt/user-data/outputs/images/bbbbbbbbbbbb.jpg") == b"THREADJPG"
+    assert fetch("/api/extensions/docmgr/images/cccccccccccc.png") is None  # 文件不存在
+    assert fetch("https://evil.example/x.png") is None  # 非白名单 URL
+    assert fetch("/api/extensions/docmgr/images/..%2fevil.png") is None  # 穿越一律不认

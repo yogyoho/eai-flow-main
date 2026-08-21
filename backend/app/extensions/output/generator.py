@@ -27,6 +27,8 @@ HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 LIST_UL_RE = re.compile(r"^(\s*)[-*+]\s+(.+)$")
 LIST_OL_RE = re.compile(r"^(\s*)\d+\.\s+(.+)$")
 HR_RE = re.compile(r"^(-{3,}|\*{3,}|_{3,})$")
+# EAI-CUSTOM: standalone image line → inline picture (bytes supplied by image_fetcher)
+IMAGE_RE = re.compile(r"^!\[[^\]]*\]\(([^)]+)\)$")
 
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.S)
 
@@ -523,6 +525,13 @@ def parse_markdown(md: str) -> list[Block]:
         # Horizontal rule
         if HR_RE.match(line.strip()):
             blocks.append(Block(kind="hr"))
+            i += 1
+            continue
+
+        # Standalone image line (EAI-CUSTOM)
+        m = IMAGE_RE.match(line.strip())
+        if m:
+            blocks.append(Block(kind="image", text=m.group(1).strip()))
             i += 1
             continue
 
@@ -1386,6 +1395,7 @@ def generate_docx_simple(
     toc_settings: dict | None = None,
     cover_preset: dict | None = None,
     cover_values: dict | None = None,
+    image_fetcher=None,
 ) -> None:
     """Generate a DOCX from markdown into a writable buffer.
 
@@ -1405,6 +1415,9 @@ def generate_docx_simple(
         cover_values: Optional dict of field values for the cover preset
             (e.g. {"title": ..., "client": ...}); a line whose value is
             missing is skipped.
+        image_fetcher: Optional callable ``url -> bytes | None`` (EAI-CUSTOM).
+            Resolves standalone ``![alt](url)`` image lines to file bytes which
+            are embedded as inline pictures; None/raise → literal URL text.
     """
     td = template_data or {}
     # ponytail: lxml rejects C0 control chars (form-feed \x0c, vtab \x0b, bell, …) → 500.
@@ -1540,6 +1553,34 @@ def generate_docx_simple(
         elif block.kind == "hr":
             # Skip horizontal rules — not needed in Word export
             pass
+
+        elif block.kind == "image":
+            # EAI-CUSTOM: 内嵌图片 —— fetcher 把 URL 解析成本地文件字节流，doc.add_picture 嵌入。
+            # 取不到字节（文件缺失/异常）时降级为 URL 文本，导出永不崩。
+            blob = None
+            if image_fetcher is not None:
+                try:
+                    blob = image_fetcher(block.text)
+                except Exception as exc:
+                    logger.warning("image fetch failed (%s): %s", block.text, exc)
+            if blob:
+                try:
+                    pic = doc.add_picture(BytesIO(blob))
+                    sec = doc.sections[-1]
+                    avail = sec.page_width - sec.left_margin - sec.right_margin
+                    if pic.width > avail:
+                        pic.height = int(pic.height * avail / pic.width)
+                        pic.width = int(avail)
+                    doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+                except Exception as exc:
+                    logger.warning("image embed failed (%s): %s", block.text, exc)
+                    blob = None
+            if not blob:
+                para = doc.add_paragraph()
+                _add_inline_text(para, block.text)
+                for run in para.runs:
+                    _set_run_font(run, body_font)
+                    run.font.size = body_size
 
         elif block.kind == "code_block":
             para = doc.add_paragraph()

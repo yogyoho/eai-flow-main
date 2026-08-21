@@ -397,7 +397,16 @@ async def export_document_with_layout(
         cover_preset = get_cover_preset(request.cover_preset_id)
         if cover_preset is None:
             raise HTTPException(status_code=400, detail=f"Unknown cover preset: {request.cover_preset_id}")
-    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings, cover_preset=cover_preset, cover_values=request.cover_values)
+    generate_docx_simple(
+        content,
+        buf,
+        template_data=request.layout_template,
+        watermark=request.watermark,
+        toc_settings=toc_settings,
+        cover_preset=cover_preset,
+        cover_values=request.cover_values,
+        image_fetcher=_make_image_fetcher(current_user.id),
+    )
     return Response(
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -459,7 +468,16 @@ async def export_content(
         cover_preset = get_cover_preset(request.cover_preset_id)
         if cover_preset is None:
             raise HTTPException(status_code=400, detail=f"Unknown cover preset: {request.cover_preset_id}")
-    generate_docx_simple(content, buf, template_data=request.layout_template, watermark=request.watermark, toc_settings=toc_settings, cover_preset=cover_preset, cover_values=request.cover_values)
+    generate_docx_simple(
+        content,
+        buf,
+        template_data=request.layout_template,
+        watermark=request.watermark,
+        toc_settings=toc_settings,
+        cover_preset=cover_preset,
+        cover_values=request.cover_values,
+        image_fetcher=_make_image_fetcher(current_user.id),
+    )
     return Response(
         content=buf.getvalue(),
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -818,6 +836,41 @@ async def get_user_image(
     if not await asyncio.to_thread(_stat):
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="图片不存在")
     return FileResponse(target, media_type=_IMAGE_EXT_MIME[target.suffix])
+
+
+# EAI-CUSTOM: Word 导出内嵌图片 —— 文档 markdown 里的图片 URL → 本地文件字节流。
+_THREAD_IMAGE_URL = re.compile(r"^/api/threads/([^/]+)/artifacts/mnt/user-data/outputs/images/([^/]+)$")
+
+
+def _make_image_fetcher(user_id):
+    """Build a sync ``url -> bytes | None`` resolver for generate_docx_simple.
+
+    Resolves the two URL shapes the docmgr editor produces: user-scoped
+    ``/api/extensions/docmgr/images/{name}`` and thread-backed
+    ``/api/threads/{tid}/artifacts/mnt/user-data/outputs/images/{name}``.
+    Unknown shapes / non-server-generated names / missing files → None
+    (generator degrades to literal URL text, export never crashes).
+    """
+
+    def fetch(url: str) -> bytes | None:
+        prefix = "/api/extensions/docmgr/images/"
+        if url.startswith(prefix):
+            name = url[len(prefix) :]
+            if not _USER_IMAGE_NAME.fullmatch(name):
+                return None
+            target = _user_images_dir(Paths(), user_id) / name
+            return target.read_bytes() if target.is_file() else None
+        m = _THREAD_IMAGE_URL.match(url)
+        if m:
+            name = m.group(2)
+            if not _USER_IMAGE_NAME.fullmatch(name):
+                return None
+            base = _resolve_thread_sandbox_dir(Paths(), m.group(1), user_id)
+            target = base / "outputs" / "images" / name
+            return target.read_bytes() if target.is_file() else None
+        return None
+
+    return fetch
 
 
 def _resolve_thread_sandbox_dir(paths, thread_id: str, fallback_user_id: str):
