@@ -51,10 +51,12 @@ outputs/    # report.md + project_snapshot.json → present_files 交付
 
 ### 步骤 1 · 数据收集 → 门 1
 
-1. 模板解析：优先 KF MCP `kf_resolve_template`（报告模板+标准）；返回 `found=false` 时向用户声明：
+1. 模板解析：开题第一轮**必须**调用 KF MCP `kf_resolve_template`（工具全名 `knowledge-factory_kf_resolve_template`，报告模板+标准，与用户是否已给阶段无关）；返回 `found=false` 时向用户声明：
    > 知识工厂未命中模板，本次使用技能内置 `references/` 兜底（exploration.json 阶段表单 + standards_index）。
 2. `ingest.py forms` 生成空白表单（data/ 下按 schema）。
 3. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（矿种→阶段→项目信息→地质→矿体→勘查工程→样品→开采条件→资源量/经济）。每次只问一个类别。
+   **每收完一类立即落盘**：`ingest.py forms --stage S --data-dir D --family <族> --values '<json>'`（校验写入；族名见 state_manifest.json）。绝不只在对话里"记录"——对话被摘要数据即丢；也绝不手写 data/*.json（唯一写者 = ingest.py）。
+   **示例值≠数据（P2 红线，页面实测踩过）**：提问时给出的"示例格式"JSON 只示意结构，用户没给的字段写入时**一律 null**，绝不把示例值/自己编的格式值（如 C5300002023XXXXXX、1400~2000）当数据落盘。写完把落盘值回显用户核对。
 4. **门 1**：`ingest.py check` → 输出 `GATE1_COMPLETE` 才继续；rc=2 把缺项清单原样呈现用户补齐，不代填。
 
 ### 步骤 2–3 · 冻结计算 → 门 2
@@ -102,7 +104,7 @@ update 后只重写受影响章节 → build → consistency → snapshot save�
 
 | 命令 | 作用 | 关键退出码 |
 |---|---|---|
-| `ingest.py forms --stage S --data-dir D` | 生成空白表单 | 0 |
+| `ingest.py forms --stage S --data-dir D [--family F --values '<json>'\|--rows '<json[]>']` | 生成空白表单 / 按族校验写入（澄清值落盘唯一途径） | 0 |
 | `ingest.py file --stage S --data-dir D --input CSV --family F` | CSV 乱序列入库 | 0/3 异常必读 |
 | `ingest.py check --stage S --data-dir D` | **门 1** 完整性 | 0=GATE1_COMPLETE / 2 缺项清单 |
 | `chapter_planner.py manifest --stage S --output M` | 章节↔公式↔表单映射 | 0 |

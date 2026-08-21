@@ -102,7 +102,9 @@ def coerce_type(field_def: dict, key: str, value) -> tuple[bool, object, str]:
     """按 schema 字段定义做类型矫正。返回 (ok, coerced, err)。"""
     t = field_def.get("type", "string")
     if value is None:
-        return False, None, f"{key}: 值为 null（必填字段不允许）"
+        # null = 尚未提供（部分收集落盘）。完备性由 check（门1）统一裁决——
+        # 此处拒绝会逼出"用 0/示例值填结构冒充 null"（页面实测 bug-2216）。
+        return True, None, ""
     try:
         if t.startswith("enum:"):
             allowed = t[5:].split("|")

@@ -363,6 +363,20 @@ class TestIngest:
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
         run("ingest.py", "check", "--stage", STAGE, "--data-dir", d, expect=(2,))
 
+    def test_null_required_field_passthrough(self, tmp_path):
+        """bug-2216: 必填字段 null 直通写入（部分收集落盘），门1 仍报缺——
+        写入路径若拒绝 null，agent 会被迫用 0/示例值填结构冒充（页面实测）。"""
+        import ingest
+
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        ingest.write_form_values(str(STAGE), str(d), "tenement", {"tenement_no": "T-1", "holder": None})
+        doc = json.loads((d / "01_tenement.json").read_text(encoding="utf-8"))
+        assert doc["tenement_no"] == "T-1" and doc["holder"] is None
+        out = run("ingest.py", "check", "--stage", STAGE, "--data-dir", d, expect=(2,))
+        assert "holder" in out
+
 
 # ── 2. formula_runner：冻结计算 + 锚点 + ROUND_HALF_EVEN 红线 ───────────────
 
