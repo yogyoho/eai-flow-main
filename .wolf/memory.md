@@ -10927,3 +10927,13 @@
 | 10:02 | Edited backend/app/extensions/docmgr/routers.py | modified ExportContentRequest() | ~153 |
 | 10:02 | Edited backend/app/extensions/docmgr/routers.py | 7→7 lines | ~142 |
 | 03:30 | Word导出内嵌图片修复——parse_markdown加image块+image_fetcher(url→bytes)内嵌add_picture/超宽等比缩放, docmgr两个导出端点接_make_image_fetcher(用户级+线程级URL白名单); E2E用户原图原字节入word/media | backend/app/extensions/output/generator.py, backend/app/extensions/docmgr/routers.py, backend/tests/test_output_images.py, backend/tests/test_docmgr_images.py | fixed+19tests pass+bug-2213 | ~40k |
+| 10:13 | Session end: 8 writes across 3 files (test_output_images.py, generator.py, routers.py) | 2 reads | ~31033 tok |
+| 10:40 | Edited backend/app/extensions/output/generator.py | modified _bake_exif_orientation() | ~247 |
+
+## Session: 2026-08-21 10:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:41 | Edited backend/app/extensions/output/generator.py | 3→3 lines | ~35 |
+| 10:46 | Session end: 1 writes across 1 files (generator.py) | 0 reads | ~35 tok |
+| 05:10 | Word导出图片EXIF旋转修复——_bake_exif_orientation用Pillow exif_transpose把方向烤进像素(tag0/1原字节直过), 用户原图3013×2173 tag8→嵌入2173×3013竖图 | backend/app/extensions/output/generator.py, backend/tests/test_output_images.py | fixed+20tests pass+bug-2214 | ~25k |

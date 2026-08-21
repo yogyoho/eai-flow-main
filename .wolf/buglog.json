@@ -20382,6 +20382,45 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-08-21"
+    },
+    {
+      "id": "bug-1215",
+      "timestamp": "2026-08-21T02:41:04.298Z",
+      "error_message": "Wrong reference: blob should be _bake_exif_orientation",
+      "file": "backend/app/extensions/output/generator.py",
+      "root_cause": "Used \"blob\" instead of \"_bake_exif_orientation\"",
+      "fix": "Changed blob → _bake_exif_orientation",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T02:41:04.298Z"
+    },
+    {
+      "id": "bug-2214",
+      "timestamp": "2026-08-21",
+      "error_message": "Word 导出内嵌图片后大图被旋转 90 度（用户原话：大图片为何被旋转90度，是因为放不下的原因吗）",
+      "file": "backend/app/extensions/output/generator.py",
+      "root_cause": "手机照片 EXIF orientation（实测用户 jpg tag=8）：浏览器渲染 <img> 自动按 EXIF 旋转，Word 不认 EXIF 按原始像素渲染 → 横躺 90°。与宽度放不下无关。",
+      "fix": "generator.py 新增 _bake_exif_orientation：导出内嵌前用 Pillow ImageOps.exif_transpose 把方向烤进像素（tag 0/1 原字节直过不重编码，JPEG quality=90；无 Pillow/异常降级原字节）。转正后 add_picture 的宽高与版心缩放也拿到正确竖图尺寸。E2E 实测用户原图 3013×2173(tag8) → 嵌入 2173×3013 竖图、标签移除、宽钉版心。",
+      "tags": [
+        "docmgr",
+        "word-export",
+        "docx",
+        "image",
+        "exif",
+        "orientation",
+        "PIL",
+        "exif_transpose"
+      ],
+      "related_bugs": [
+        "bug-2213"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-21"
     }
   ]
 }
