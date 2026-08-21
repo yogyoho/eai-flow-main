@@ -1,0 +1,28 @@
+{
+  "version": "2.0",
+  "generated": "2026-08-21",
+  "ore": "copper",
+  "std_ref": "DZ/T 0214-2020《铜、铅、锌、银、镍、钼矿地质勘查规范》",
+  "basic_analysis_items": ["Cu", "Ag", "Au", "S", "As"],
+  "phase_analysis": {
+    "purpose": "氧化程度三带划分，确定矿石自然类型（硫化矿/混合矿/氧化矿）",
+    "items": ["硫化铜", "氧化铜（自由氧化铜+结合氧化铜）"],
+    "sample_practice": "物相样从基本分析副样抽取（sample_verbatim 7.4.2）",
+    "zone_split_rule": {"status": "【待核实】", "note": "氧化率分带阈值（硫化/混合/氧化界限）须对照 DZ/T 0214-2020 原文录入 standards_index 后自动判定，禁 LLM 记忆"}
+  },
+  "ore_natural_types_anchored": {"types": ["硫化铜矿石", "混合铜矿石"], "origin": "sample_verbatim（勘查区=硫化铜矿石；2011报告区=混合铜矿石——类型差异是体重/选矿叙述的关键变量）"},
+  "byproduct_policy": "所有有益伴生组分（Ag/Au/S 等）须单独评价与估算：伴生指标确认→组合样统计均值→主元素矿石量×伴生品位（formulas L11）；样例=仅 Ag 达标（6.07g/t，61件组合样2015/2018两年）",
+  "bulk_density_practice": {
+    "rule": "小体重样按品位过滤后分工业/低品位组统计（formulas S1）；特高品位样与低于边界品位样剔除；湿度校核",
+    "sample_anchor": "110件取样→72件参与→2.85 t/m3；样例沿用史对照：2011混合矿2.76→本次硫化矿2.85（变化原因句引用）"
+  },
+  "green_exploration": "DZ/T 0214-2020（2020版）新增绿色勘查要求——ch6.4.5 绿色矿山节 + 勘查施工环保叙述",
+  "typical_deposit_models": [
+    {"model": "东川式（沉积变质型铜矿）", "host": "落雪组白云岩", "analogy_sample": true},
+    {"model": "稀矿山式（铁铜矿）", "host": "因民组", "analogy_sample": true}
+  ],
+  "reporting_notes": [
+    "矿床规模分档（大型/中型/小型）影响五因素第一项系数——档位标准【待核实】后录入 standards_index",
+    "选矿叙述锚点（如适用）：闭路试验产率/品位/回收率三量自洽（formulas B1）；精矿品位与计价合成进 ch9 经济链（E3/E4）"
+  ]
+}

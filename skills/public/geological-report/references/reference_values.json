@@ -1,0 +1,34 @@
+{
+  "version": "2.0",
+  "generated": "2026-08-21",
+  "policy": "全部参考值标注【待核实】——仅作门1表单的预填建议，用户确认后方可进入 data/13_industrial_params.json。矿体实际品位/厚度/工程数据=核心参数，必须用户提供（红线：绝不编造）。来源标记：sample_verbatim=样例报告采信值；v1_skill=v1 技能库存值；handbook=《矿产资源工业要求手册(2022版)》引述",
+  "ores": {
+    "copper": {
+      "std_ref": "DZ/T 0214-2020",
+      "underground_mining_general": {
+        "boundary_grade_pct": {"value": 0.3, "status": "【待核实】", "origin": "sample_verbatim（东川样例 8.1）+ v1_skill 区间 0.2~0.3 下限"},
+        "min_industrial_grade_pct": {"value": 0.5, "status": "【待核实】", "origin": "sample_verbatim"},
+        "min_mining_thickness_m": {"value": 1.0, "status": "【待核实】", "origin": "sample_verbatim"},
+        "waste_exclusion_thickness_m": {"value": 2.0, "status": "【待核实】", "origin": "sample_verbatim"},
+        "byproduct_ag_indicator_gpt": {"value": 1.0, "status": "【待核实】", "origin": "sample_verbatim"},
+        "meter_percentage_pct_m": {"value": 0.5, "status": "派生=最低工业品位×最小可采厚度", "origin": "sample_verbatim规则"}
+      },
+      "notes": "矿石类型差异显著影响指标（硫化矿 vs 混合矿 vs 氧化矿）；伴生组分指标单独确认"
+    },
+    "lead_zinc": {
+      "std_ref": "DZ/T 0214-2020",
+      "general": {
+        "boundary_grade_pct": {"Pb": [0.3, 0.5], "Zn": [0.5, 1.0], "status": "【待核实】", "origin": "v1_skill"}
+      }
+    },
+    "silver": {"std_ref": "DZ/T 0214-2020", "general": {"status": "【待核实】", "origin": "v1_skill", "note": "伴生/独立矿床指标差异大，逐项引导用户提供"}},
+    "nickel": {"std_ref": "DZ/T 0214-2020", "general": {"status": "【待核实】"}},
+    "molybdenum": {"std_ref": "DZ/T 0214-2020", "general": {"status": "【待核实】"}},
+    "coal": {"std_ref": "DZ/T 0215-2020", "general": {"status": "【待核实】", "indicators": ["最低可采厚度", "最高灰分(Ad)", "最低发热量(Qnet,d)", "最高硫分(St,d)"], "origin": "v1_skill"}}
+  },
+  "hard_rules": [
+    "参考值仅预填建议，未经用户确认不得写入 data/",
+    "同一矿区历次报告沿用同套指标（样例实证：与2011核实报告一致）——先问历史指标再引手册",
+    "品位变化系数/特高品位阈值等派生判定值一律走 formulas + standards_index，不进本库"
+  ]
+}

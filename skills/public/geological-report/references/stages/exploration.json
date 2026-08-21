@@ -1,0 +1,423 @@
+{
+  "version": "2.0",
+  "stage": "勘探",
+  "std_ref": "DZ/T 0033-2020 附录C（勘探报告编写提纲）",
+  "generated": "2026-08-21",
+  "source": "东川样例逐章分析（13-agent workflow）+ ch8 人工走查定稿（2026-08-21-geol-v2-ch8-walkthrough.md）+ spec 分章编写思路",
+  "sample_anchors_note": "样例自身缺陷（D1-D6，走查 §6）生成时不得复制：比拟法 908/5531、8.6.1 序号错乱、8.10 重字、表8-2 品级列复合堆叠、表8-4 表头错位、5.1.3/9.3.2 重号",
+  "front_matter": {
+    "mode": "表单渲染（脚本直出，零 LLM）",
+    "outer_cover": ["矿区名", "报告题名（矿种组合+阶段+报告）", "编制单位", "年月"],
+    "signature_page_fixed_order": ["申报单位", "法人代表(申报)", "编制单位", "法人代表(编制)", "总工程师", "项目负责", "编写人员", "审核", "提交单位", "提交日期"],
+    "toc": {"levels": 3, "page_column": "留空——Word 排版阶段由引用自动填充（D11），Markdown 禁写页码"},
+    "attachment_lists": ["附图目录", "附表目录（样例附表Ⅰ-1 测量成果 ~ Ⅰ-7 外检误差统计）"]
+  },
+  "chapters": {
+    "ch1": {
+      "title": "绪论",
+      "toc": ["1.1 勘查目的和任务", "1.2 勘查区位置、交通", "1.3 勘查区自然地理、经济状况", "1.4 矿业权设置", "1.5 以往工作评述（1.5.1 以往工作评述 / 1.5.2 矿山设计、开采和资源利用概况）", "1.6 本次工作情况（1.6.1 工作情况 / 1.6.2 取得的主要成果）"],
+      "mode": "数据填充 60% + 引用汇编 + 叙述；难度 4/高",
+      "sample_diffs": "新增 1.6 本次工作情况（附录C 无）；自然保护地压缩为 1.4 内一句合规声明；估算范围前置到 1.4",
+      "key_elements": [
+        "1.1 目的任务=任务书/合同原文要点（来源必填）",
+        "1.2 位置交通=地理坐标极值+行政区划+交通线（拐点坐标脚本自动算极值）",
+        "1.3 气候水文地形经济（04_geography 同源，与 6.2.1 跨章合约 XS4）",
+        "1.4 探矿权证档案+拐点坐标表（双坐标系）+历次变更+保护地核查勾选+估算范围（14拐点/标高/面积）",
+        "1.5.1 以往工作时间线台账→「(N)年份+单位+工作+成果」固定句式；1.5.2 矿山设计开采史料（老矿山）",
+        "1.6.1 完成实物工作量表（05_workload）；1.6.2 主要成果引用估算模块输出（表8-2 结果槽同源 XS2）"
+      ],
+      "writing_patterns": ["固定句式汇编为主，LLM 仅组稿衔接", "证号/文号/坐标/储量数字逐项人工比对（门1）", "引述历史报告分类保留原编码（红线 P4）"],
+      "tables": ["表1-1 以往地质工作统计表", "表1-2 勘查许可证拐点坐标表（2000系）", "表1-3 拐点坐标表（1980系）", "表1-x 实物工作量统计表"],
+      "std_refs": ["DZ/T 0033-2020 附录C.1"],
+      "forms": ["project", "tenement", "prev_work", "mine_history", "geography", "workload"],
+      "formulas": [],
+      "contracts": ["XS2", "XS4", "NR3"]
+    },
+    "ch2": {
+      "title": "区域地质",
+      "toc": ["2.1 区域地质特征（2.1.1 地层 / 2.1.2 构造 / 2.1.3 岩浆岩 / 2.1.4 变质作用 / 2.1.5 地球物理、地球化学特征）", "2.2 区域矿产特征（2.2.1 区域矿产分布 / 2.2.2 区域控矿因素 / 2.2.3 矿床成因及区域成矿模式）"],
+      "mode": "叙述为主 + 表格直渲 + 引用；难度 4/高",
+      "sample_diffs": "实质扩为 2.1+2.2 两节，2.2 区域矿产为样例自扩",
+      "key_elements": [
+        "骨架硬编码（2.1.1~2.2.3 不可改编排）",
+        "大地构造定位句=构造单元分级表单（Ⅰ~Ⅳ级名+编码）驱动级联模板",
+        "区域资料包（区调/地质志/物化探/矿产汇总结构化摘要）驱动各节",
+        "断裂/褶皱条目模板（名称/等级/走向/长度/倾向/倾角/上下盘/性质）",
+        "矿床式↔赋矿层位配对校验（东川式=落雪组、稀矿山式=因民组…）",
+        "表2-2 同位素年龄自动附「转引自{文献}」表注"
+      ],
+      "writing_patterns": ["数字专名无来源即 [TBD]，缺 06_regional_pack 时相关小节降级并声明", "脱敏名「某」全局一致替换校验"],
+      "tables": ["表2-1 区域地层简表", "表2-2 同位素年龄统计表（含转引自表注）"],
+      "std_refs": [],
+      "forms": ["regional_pack"],
+      "formulas": [],
+      "contracts": ["XS4"]
+    },
+    "ch3": {
+      "title": "矿区地质",
+      "toc": ["3.1 地层", "3.2 构造", "3.3 岩浆岩", "3.4 变质作用及围岩蚀变（3.4.1 变质作用及变质岩 / 3.4.2 围岩蚀变）", "3.5 赋矿层位与矿化特征"],
+      "mode": "混合：骨架公式化 + 条目项目事实；难度 4/高",
+      "sample_diffs": "增 3.5 赋矿层位与矿化特征（向 ch4 过渡）；古生物省略（前寒武系合理——按矿区实际裁剪）",
+      "key_elements": [
+        "章骨架固定模板（地层老→新枚举/构造分述/岩浆岩/蚀变/矿体群枚举）",
+        "条目走「代号+岩性+厚度」渲染器，全部来自 07 表单",
+        "地层层序表/断层登记表/岩浆岩鉴定卡/蚀变清单表单收集，LLM 只组稿衔接",
+        "3.5 与 ch4 共享同一矿体清单数据源（08_orebody_list）"
+      ],
+      "writing_patterns": ["禁 LLM 生成数值/代号/图件出处", "矿体编号跨章一致性（XS1：全区 N 群 M 条 vs 勘查区子集口径分开表述）"],
+      "tables": ["表3-1 矿区地层层序表", "表3-2 断层登记表", "表3-3 岩浆岩一览表", "表3-4 蚀变类型统计表"],
+      "std_refs": [],
+      "forms": ["orefield_geology", "orebody_list"],
+      "formulas": [],
+      "contracts": ["XS1"]
+    },
+    "ch4": {
+      "title": "矿体地质",
+      "toc": ["4.1 矿体特征（4.1.1 矿体连接对比 / 4.1.2 矿体特征）", "4.2 矿石质量（4.2.1 矿石矿物成分及特征 / 4.2.2 矿石的化学成分 / 4.2.3 矿石结构、构造）", "4.3 矿石类型和品级（4.3.1 矿石类型 / 4.3.2 矿石品级）", "4.4 矿体围岩和夹石", "4.5 矿床成因及找矿标志（4.5.1 主要控矿因素 / 4.5.2 矿床成因及成矿模式 / 4.5.3 找矿标志及找矿方向）", "4.6 矿床共(伴)生矿产"],
+      "mode": "数据填充 + 规则计算 + 叙述；难度 4/高",
+      "sample_diffs": "附录C C.4+C.5 合并；增 4.5/4.6 两个整节；风化特征并入 4.3.1 不独立",
+      "key_elements": [
+        "三管线：①矿体参数——矿体清单表单+单工程样品库脚本统计（均值/变化系数/DZ/T 0214 阈值分型规则引擎），「群→矿体、全区→本区」两级参数化模板句",
+        "②实验室数据——组合分析/物相清单直接入表，氧化率三带与 Ag/Au 均值脚本统计回写结论句",
+        "③叙述——矿物名录建术语库+定义模板；4.5 成因/找矿 LLM 生成+文献引用表人工确认",
+        "4.3.2 品级统计依赖步骤2 冻结的估算计算输出注入（两波制下与 ch8 同波并行——依赖计算快照，非 ch8 章节文本）"
+      ],
+      "writing_patterns": ["平均厚度/品位/变化系数必须由单工程单样统计计算（L3/L4/S2）非生成", "分型阈值查 standards_index（CC1）"],
+      "tables": ["表4-1 矿体特征一览表（群→矿体两级）", "表4-2 组合分析结果表", "表4-3 物相分析结果表", "表4-4 矿石品级统计表"],
+      "std_refs": ["DZ/T 0214-2020（氧化率分带阈值——待核实录入后自动判定）"],
+      "forms": ["orebody_list", "sample_assays", "lab_assays"],
+      "formulas": ["L3", "L4", "S2"],
+      "contracts": ["XS1", "XS2", "CC1"]
+    },
+    "ch5": {
+      "title": "矿石加工技术性能",
+      "toc": ["5.1 试验研究（5.1.1 试样的来源及制备 / 5.1.2 配矿方案 / 5.1.3 原矿基本性质 / 5.1.4 验证试验）", "5.2 矿石工业利用性能评价", "5.3 结论"],
+      "mode": "数据填充 + 三段式模板；难度 4/高",
+      "sample_diffs": "增 5.1.2 配矿方案、5.1.3 药剂成本、5.3 结论；章名少「选冶」二字；含闭路试验流程与药剂成本估算（样例 5.1.3 小节重号——编号合约 NR2 防复制）",
+      "key_elements": [
+        "本章=选矿试验报告缩编转载：6 组采集表单（试样登记/化验多元素+物相/配矿方案/条件试验矩阵/开路闭路结果/药剂成本/生产指标）",
+        "同构表格渲染器（产率/品位/金属量/回收率/累积回收率 schema，超长自动拆续表）",
+        "LLM 仅三类模板段：试验条件罗列/趋势解读/择优决策",
+        "闭路指标冻结值供 ch9.2.2/E3/E4 同源引用（B1C 合约）"
+      ],
+      "writing_patterns": ["试验数值 AI 零推导", "结论↔正文↔表格数值一致性校验（B1C）", "表号/小节号连续性校验（样例重号不复制）"],
+      "tables": ["表5-x 试样多元素分析表", "表5-x 配矿方案表", "表5-x 条件试验结果表", "表5-x 闭路试验结果表", "表5-x 药剂成本估算表"],
+      "std_refs": ["DZ/T 0130-2006（试验测试质量语境）"],
+      "forms": ["beneficiation"],
+      "formulas": ["B1"],
+      "contracts": ["B1C", "NR1", "NR2"]
+    },
+    "ch6": {
+      "title": "矿床开采技术条件",
+      "toc": ["6.1 工作概况（6.1.1 目的任务 / 6.1.2 以往工作情况 / 6.1.3 矿区探采现状及本次工作情况）", "6.2 水文地质（6.2.1 区域水文地质 / 6.2.2 矿区水文地质 / 6.2.3 矿坑涌水量预测 / 6.2.4 矿床水文地质条件变化及现状评价 / 6.2.5 矿山供水水源）", "6.3 工程地质（6.3.1 工程地质岩组 / 6.3.2 断裂构造工程地质特征 / 6.3.3 开拓系统揭露工程地质特征 / 6.3.4 采空区工程地质特征 / 6.3.5 不良工程地质问题 / 6.3.6 矿区工程地质评价）", "6.4 环境地质（6.4.1 地震及区域稳定性评价 / 6.4.2 矿区自然环境和社会环境评述 / 6.4.3 矿区放射性污染及地温热害评价 / 6.4.4 矿区不良工程地质现象 / 6.4.5 绿色矿山 / 6.4.6 水环境质量影响预测 / 6.4.7 采矿对环境可能产生的影响及相应的预防措施 / 6.4.8 矿区环境地质条件现状评价）", "6.5 开采技术条件小结（6.5.1 结论 / 6.5.2 存在问题及建议）"],
+      "mode": "数据填充 60% + 模板叙述 + 单点计算；难度 5/高",
+      "sample_diffs": "增 6.1 工作概况、6.5 小结、6.3.4 采空区专节、6.4.5 绿色矿山；删 C.7.4 b~h 项（非煤地下矿不适用）",
+      "key_elements": [
+        "三专业分块：水/工/环各建结构化台账，LLM 按「分布-岩性-富水性-影响-评价」五段式渲染",
+        "涌水量预测=比拟法脚本计算（W1——公式体已恢复，LLM 绝不能补全公式，样例 908/5531 为错误数字不复制）",
+        "采空区节=用户提供源报告要点 LLM 转述不加数据（两处口径 XS5 exact_match）",
+        "四处复杂程度判定（水文/工程/环境/综合复合类型）=表单必填+人工确认关卡，判定词全章-跨章逐字一致（XS3）"
+      ],
+      "writing_patterns": ["中段排水台账直出表6-3 样式表格", "气象数据与 ch1 同源（XS4）", "放射性/地温/地震引标准（GB 6566/GB 50011——CC3 枚举）"],
+      "tables": ["表6-x 含水层统计表", "表6-x 水质分析表", "表6-3 各中段排水量统计表", "表6-x 工程地质岩组表", "表6-x 采空区统计表"],
+      "std_refs": ["GB/T 50218-2014", "GB 50011-2010", "GB 6566-2010"],
+      "forms": ["hydro_eng_env"],
+      "formulas": ["W1"],
+      "contracts": ["XS3", "XS4", "XS5", "CC3"]
+    },
+    "ch7": {
+      "title": "勘查工作及其质量评述",
+      "toc": ["7.1 勘查方法及工程布置（7.1.1 以往矿床勘查类型 / 7.1.2 本次勘查类型的确定 / 7.1.3 勘查手段选择及工程布置原则 / 7.1.4 勘查工程间距确定）", "7.2 勘查工程质量评述（7.2.1 坑探 / 7.2.2 钻探）", "7.3 地形测量、地质勘查工程测量及其质量评述（7.3.1 地表地形控制测量 / 7.3.2 井下控制测量 / 7.3.3 坐标系统转换说明 / 7.3.4 本报告采用的坐标系统）", "7.4 采样、化验和岩矿鉴定工作及其质量评述（7.4.1 样品采集及质量评述 / 7.4.2 样品加工化验及其质量评述）"],
+      "mode": "台账数据 + 规范引用 + 率值派生；难度 3/高",
+      "sample_diffs": "增 7.1.1 以往勘查类型、7.3.3/7.3.4 坐标系转换与声明；按实际开展工作裁剪（样例无填图/物化探/遥感/测井节——裁剪声明进 8.11 类说明）",
+      "key_elements": [
+        "勘查类型=五因素系数表单→脚本求和→standards_index.dz0214_exploration_type_mapping 判定（阈值未核实→「需人工对照」，样例锚点 2.3→第Ⅱ类偏简单型）→渲染表7-3 标准模板表",
+        "率值（抽检率/超差率/合格率如 137/1178=11.63%）全部统计脚本算",
+        "各工序三段式模板：规范引用句（标准号仅从 standards_index 枚举——CC3）+台账数据句+质量结论模板句",
+        "钻探台账（16字段×N孔）直出表7-4；坑探编录按 DZ/T 0078-2015 语境（1:100/压顶法两壁一顶/拐弯>15°裂开）",
+        "样品加工 Q=Kd² 缩分（K=0.1~0.5 类比值）叙述；内/外检按 DZ/T 0130-2006",
+        "工作量/类型/样品数入全局参数单源供 ch1/ch4/ch9/ch10 引用"
+      ],
+      "writing_patterns": ["规范编号/年份禁 LLM 记忆生成（防 2020/2002 张冠李戴）", "五因素定性档→系数查表（dz0214_factor_scores），未核实档位「需人工对照」"],
+      "tables": ["表7-1 矿体厚度变化系数统计表", "表7-2 矿体铜品位变化系数统计表", "表7-3 勘查类型确定表（标准模板勾选行）", "表7-4 钻探工程质量统计表"],
+      "std_refs": ["DZ/T 0214-2020", "DZ/T 0141（年份待核实）", "DZ/T 0227-2010", "DZ/T 0078-2015", "DZ/T 0130-2006"],
+      "forms": ["exploration_qc"],
+      "formulas": ["S2"],
+      "contracts": ["CC1", "CC3", "XS3"]
+    },
+    "ch8": {
+      "title": "资源量估算",
+      "toc": ["8.1 资源量估算的工业指标", "8.2 资源量估算范围、对象", "8.3 资源量估算方法（8.3.1 方法的选择及其依据 / 8.3.2 计算公式）", "8.4 资源量估算参数的确定（8.4.1 矿体厚度的确定 / 8.4.2 矿体平均品位的确定 / 8.4.3 块段面积的确定 / 8.4.4 矿石体重的确定 / 8.4.5 特高品位的处理 / 8.4.6 各类数值单位及数据取舍原则）", "8.5 矿体圈定原则（8.5.1 单工程 / 8.5.2 连接 / 8.5.3 推断）", "8.6 资源量分类（8.6.1 资源量类型的确定 / 8.6.2 尚难利用矿产资源 / 8.6.3 块段划分原则）", "8.7 资源量估算结果", "8.8 资源量变化情况（8.8.1 最近报告评审备案资源储量 / 8.8.2 本次估算查明矿产资源 / 8.8.3 资源量变化及原因分析）", "8.9 资源量估算的可靠性", "8.10 伴生矿产的资源估算方法及结果", "8.11 资源量估算中需说明的问题"],
+      "mode": "计算 + 数据填充 55% + 条款引用 35%；难度 5/高（数字密度全报告最高）",
+      "sample_diffs": "8.1-8.11 ↔ C.9.1-9.11 近 1:1 但顺序对调（工业指标先于范围；变化先于可靠性）；增 8.4.6 取舍原则、8.5.3 推断原则、8.6.3 块段划分原则；8.6.1 序号错乱不复制",
+      "key_elements": [
+        "三层：①条款模板库——8.3.2 公式（L7）、8.4 参数确定（L1-L6/S1/C9）、8.5 圈定/推断原则（有限外推½尖灭¼平推/无限外推等厚推断等条款参数化）、8.6 分类条件（GB/T 17766 + 网度）预置",
+        "②表单+计算引擎——13/13a/14/14a/15 表单族（两级颗粒度：A 块段级/B 矿体×类别汇总级）；表8-1 小体重统计（S1）、表8-2 汇总（L9）、8.7/8.8.2 同源槽位（C2/C3）、表8-3 差值（L10，无历史备案整体跳过）、表8-4 验证（L12）",
+        "③LLM 仅草拟 8.3.1 依据/8.8.3 原因/8.9 结论/8.10/8.11 定性段",
+        "8.8.3 增量句=总量层四口径（工业TM+KZ/工业TD/尚难KZ/尚难TD×矿石量+金属量）；原因分析=新增矿体组+对比矿体组拆分（走查 §5.1 定稿）",
+        "8.10 伴生：主元素矿石量×伴生品位（L11）；伴生类别随组合样类别（样例=TD）"
+      ],
+      "writing_patterns": ["估算数字绝不允许 LLM 生成（全槽位）", "历史分类双轨（CC2）", "块段编号由西向东、由上向下、由北向南阿拉伯数字（A 级）", "8.4.6 取舍规则=ROUND_HALF_EVEN 逐字条款"],
+      "tables": ["表8-1 小体重成果统计表（74行样例量级，渲染器直出）", "表8-2 资源量估算汇总表（行=矿体×类别+小计/总计）", "表8-3 与最近报告对比表（多行复合表头）", "表8-4 双方法验证结果表（3行复合表头，样例合计矿石量 52.68 万吨锚点）"],
+      "std_refs": ["DZ/T 0214-2020", "GB/T 17766-2020", "GB/T 13908-2020", "《矿产资源工业要求手册(2022版)》"],
+      "forms": ["industrial_params", "bulk_density", "block_model", "verification", "prior_estimate"],
+      "formulas": ["L1", "L2a", "L2b", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12", "S1", "C9"],
+      "contracts": ["XS1", "XS2", "FC1", "FC2", "FC3", "FC4", "FC5", "FC6", "CC1", "CC2", "NR1", "NR2", "NR3"]
+    },
+    "ch9": {
+      "title": "矿床开发经济意义评价",
+      "toc": ["9.1 市场前景分析", "9.2 矿床开发的内部条件（9.2.1 矿山资源条件 / 9.2.2 矿石加工技术性能 / 9.2.3 矿床开采技术条件）", "9.3 矿床开发的外部条件（9.3.1 矿山基础设施条件 / 9.3.2 区域经济和社会环境）", "9.4 矿山生产条件（生产规模/服务年限/矿山产品）", "9.5 矿山采选方案", "9.6 评价方法的选择及技术经济指标的选取（9.6.1 评价方法 / 9.6.2 技术经济指标的选取）", "9.7 企业经济效益和社会效益、环境保护问题", "9.8 项目综合评价"],
+      "mode": "公式链计算 + 数据填充；难度 3/中",
+      "sample_diffs": "附录C C.10 三条要求扩为 8 节完整概略研究（实质按概略研究附录展开）；样例 9.2.3 误编 9.3.2——编号合约 NR2 修正后生成",
+      "key_elements": [
+        "9.1 市场前景：价格时间序列必须用户提供可核实来源（红线），LLM 仅组织叙述",
+        "9.2 内部条件=ch8 表8-2（XS2）/ch5 闭路指标（B1C）/ch6 类型判定词（XS3）三处同源引用",
+        "9.6.2 指标选取：可信度系数（TM/KZ=1.0、TD=0.6）、损失率/贫化率、单位成本——全部表单来源+来源标注",
+        "9.7 计算：潜在总值（E5）+静态总利润（E6）公式链回填槽位；样例句式「××××10⁴t×0.90%×80.36%÷17.46%」保留算式展示",
+        "9.8 综合评价定性段 LLM 草拟"
+      ],
+      "writing_patterns": ["推导链环环相扣（FC7 容差 0.01）", "价格数据引来源与截止日期", "静态分析法声明句（9.6.1）"],
+      "tables": ["表9-x 技术经济指标汇总表（可选）"],
+      "std_refs": ["GB/T 13908-2020（概略研究）"],
+      "forms": ["economics"],
+      "formulas": ["E1", "E2", "E3", "E4", "E5", "E6", "E7"],
+      "contracts": ["XS2", "XS3", "B1C", "FC7", "NR2"]
+    },
+    "ch10": {
+      "title": "结论",
+      "toc": ["10.1 矿床勘查和研究程度（10.1.1 矿床勘查程度 / 10.1.2 矿床研究程度）", "10.2 矿床成矿规律及远景评价（10.2.1 矿床成矿规律 / 10.2.2 找矿远景评价）", "10.3 开采技术条件和地质环境问题", "10.4 矿床开采的经济效果", "10.5 地质工作的经验教训和存在问题", "10.6 下步地质勘查及矿床开采的建议"],
+      "mode": "引用汇编 70% + 占比计算；难度 2/中（第二波生成——投影章）",
+      "sample_diffs": "C.11.5 拆为 10.5 问题 + 10.6 建议；后记 C.12 缺失（不同观点说明可作可选模板段）",
+      "key_elements": [
+        "定位=「全文投影」非独立写作：前 9 章每章产出结构化结论要点包（核心结论句+数据元组+类型判定词），波间人工确认后入库",
+        "10.1.1 勘查程度：网度声明+TM 占比 16.32%、TM+KZ 占比 41.45% 样例句式——占比由脚本从表8-2 金属量汇总行计算（L13/FC8，金属量口径）",
+        "10.2.1 成因重组 LLM（唯一较高自由度段，附来源章节指针）；10.2.2 远景=ch4 找矿方向+中段/勘探线实况",
+        "10.3 类型判定词逐字引用（XS3）；10.4 经济效果=E5/E6 槽位",
+        "10.5/10.6 条目化：问题从各章「存在问题」要点包汇聚；建议扩写 LLM"
+      ],
+      "writing_patterns": ["每句附来源章节指针", "类型判定词逐字引用", "结论 vs 前章数字/判定词/中段/勘探线号逐字比对（收尾一致性校验）"],
+      "tables": [],
+      "std_refs": ["DZ/T 0033-2020 附录C.11"],
+      "forms": [],
+      "formulas": ["L13"],
+      "contracts": ["XS2", "XS3", "FC8"]
+    }
+  },
+  "forms": {
+    "project": {
+      "file": "00_project.json", "required": true, "chapters": ["ch1"],
+      "fields": [
+        {"name": "project_name", "type": "string", "required": true, "note": "全局唯一（NR3）"},
+        {"name": "stage", "type": "enum:普查|详查|勘探", "required": true},
+        {"name": "commodity", "type": "string", "required": true, "note": "主矿种（ore_pack 选择器）"},
+        {"name": "commissioning_unit", "type": "string", "required": true},
+        {"name": "undertaking_unit", "type": "string", "required": true},
+        {"name": "work_start", "type": "string", "required": true},
+        {"name": "work_end", "type": "string", "required": true},
+        {"name": "purpose_tasks", "type": "array<string>", "required": true, "note": "任务书/合同原文要点，来源必填"},
+        {"name": "cutoff_date", "type": "string", "required": true, "note": "资源量估算截止日（样例 2020-09-30），全局唯一（NR3）"}
+      ]
+    },
+    "tenement": {
+      "file": "01_tenement.json", "required": true, "chapters": ["ch1"],
+      "fields": [
+        {"name": "tenement_no", "type": "string", "required": true},
+        {"name": "tenement_type", "type": "enum:探矿权|采矿权", "required": true},
+        {"name": "holder", "type": "string", "required": true},
+        {"name": "area_km2", "type": "number", "required": true},
+        {"name": "issue_date", "type": "string", "required": true},
+        {"name": "valid_until", "type": "string", "required": true},
+        {"name": "corner_points", "type": "array<object>", "required": true, "fields": ["seq", "x_2000", "y_2000", "x_1980", "y_1980"], "note": "双坐标系；极值坐标脚本算"},
+        {"name": "history", "type": "array<object>", "required": false, "fields": ["date", "change", "doc_no"]},
+        {"name": "protected_areas_check", "type": "object", "required": true, "note": "各项保护地核查勾选 false 亦须显式"},
+        {"name": "estimate_scope", "type": "object", "required": true, "fields": ["elevation_from", "elevation_to", "corner_count", "area_km2"], "note": "估算范围（与矿权范围可不同）"}
+      ]
+    },
+    "prev_work": {
+      "file": "02_prev_work.json", "required": true, "chapters": ["ch1"],
+      "fields": [
+        {"name": "timeline", "type": "array<object>", "required": true, "fields": ["year", "org", "work_scope", "workload", "report_no", "review_no", "key_results"], "note": "固定句式「(N)年份+单位+工作+成果」的数据源；历史报告分类原样（P4）"}
+      ]
+    },
+    "mine_history": {
+      "file": "03_mine_history.json", "required": false, "chapters": ["ch1"], "note": "老矿山有；新立项目缺省",
+      "fields": [
+        {"name": "mine_name", "type": "string", "required": true},
+        {"name": "design_capacity", "type": "string", "required": false},
+        {"name": "mining_method", "type": "string", "required": false},
+        {"name": "production_span", "type": "string", "required": false},
+        {"name": "historical_reports", "type": "array<object>", "required": false, "fields": ["year", "title", "review_no", "resource_summary"], "note": "与 15_prior_estimate 联动"}
+      ]
+    },
+    "geography": {
+      "file": "04_geography.json", "required": true, "chapters": ["ch1", "ch6"],
+      "fields": [
+        {"name": "location_text", "type": "string", "required": true},
+        {"name": "coordinate_range", "type": "string", "required": true},
+        {"name": "distance_to_city", "type": "string", "required": true},
+        {"name": "transport", "type": "string", "required": true},
+        {"name": "topography", "type": "string", "required": true},
+        {"name": "climate", "type": "object", "required": true, "fields": ["mean_temp", "extreme_max_temp", "extreme_min_temp", "precipitation", "evaporation", "frost_free_days"], "note": "ch1/ch6.2.1 同源（XS4）"},
+        {"name": "hydrology", "type": "string", "required": false},
+        {"name": "economy_text", "type": "string", "required": true}
+      ]
+    },
+    "workload": {
+      "file": "05_workload.json", "required": true, "chapters": ["ch1"],
+      "fields": [
+        {"name": "items", "type": "array<object>", "required": true, "fields": ["category", "item", "unit", "this_phase_qty", "cumulative_qty", "note"], "note": "全局参数单源，ch1 表/其他章引用"}
+      ]
+    },
+    "regional_pack": {
+      "file": "06_regional_pack.json", "required": false, "chapters": ["ch2"], "note": "缺省→ch2 相关小节降级并声明",
+      "fields": [
+        {"name": "tectonic_units", "type": "array<object>", "required": true, "fields": ["level", "name", "code"], "note": "Ⅰ~Ⅳ级，定位句级联模板"},
+        {"name": "regional_strata", "type": "array<object>", "required": true, "fields": ["era", "formation", "code", "lithology", "thickness", "ore_relation"]},
+        {"name": "regional_faults", "type": "array<object>", "required": false, "fields": ["name", "grade", "strike", "length_km", "dip", "character"]},
+        {"name": "regional_intrusions", "type": "array<object>", "required": false, "fields": ["name", "era", "lithology", "shape", "scale"]},
+        {"name": "regional_deposits", "type": "array<object>", "required": false, "fields": ["name", "type", "commodity", "host_formation", "size"], "note": "矿床式↔赋矿层位配对校验数据"},
+        {"name": "isotope_ages", "type": "array<object>", "required": false, "fields": ["sample", "formation", "method", "age_ma", "source_ref"], "note": "source_ref 必填→「转引自」表注"},
+        {"name": "metallogenic_models", "type": "string", "required": false}
+      ]
+    },
+    "orefield_geology": {
+      "file": "07_orefield_geology.json", "required": true, "chapters": ["ch3"],
+      "fields": [
+        {"name": "strata", "type": "array<object>", "required": true, "fields": ["system", "formation", "member", "code", "lithology", "thickness_m", "ore_bearing"], "note": "老→新枚举序"},
+        {"name": "structures", "type": "array<object>", "required": true, "fields": ["kind", "id", "name", "orientation", "dip_angle", "scale", "character", "ore_control"]},
+        {"name": "magmatic_rocks", "type": "array<object>", "required": false, "fields": ["id", "era", "lithology", "occurrence", "scale"]},
+        {"name": "alterations", "type": "array<object>", "required": true, "fields": ["type", "minerals", "intensity", "distribution", "ore_relation"]},
+        {"name": "mineralization_horizon", "type": "object", "required": true, "fields": ["host_formation", "description"]}
+      ]
+    },
+    "orebody_list": {
+      "file": "08_orebody_list.json", "required": true, "chapters": ["ch3", "ch4", "ch8"],
+      "fields": [
+        {"name": "ore_bodies", "type": "array<object>", "required": true, "fields": ["id", "group", "rank", "shape", "strike", "dip", "dip_angle", "control_strike_m", "control_dip_m", "thickness_min", "thickness_max", "thickness_avg", "grade_cu_min", "grade_cu_max", "grade_cu_avg", "grade_ag_avg", "var_coeff_thickness", "var_coeff_grade", "grade_class", "spatial_position", "continuity"], "required_core": ["id", "group", "shape", "grade_class"], "note": "group 显式字段——编号前缀≠群归属（走查 §2.3）；统计量（avg/var_coeff）可由 08a 计算回填"}
+      ]
+    },
+    "sample_assays": {
+      "file": "08a_sample_assays.csv", "required": true, "chapters": ["ch4", "ch8"], "format": "csv",
+      "columns": ["工程号", "工程类型", "矿体编号", "样品编号", "起深度_m", "止深度_m", "样长_m", "品位Cu_pct", "品位Ag_gpt", "备注"],
+      "note": "L3/L4/S2 统计计算输入；特高品位替换在计算层做不改原始行"
+    },
+    "lab_assays": {
+      "file": "09_lab_assays.json", "required": true, "chapters": ["ch4", "ch5"],
+      "fields": [
+        {"name": "combination_assays", "type": "array<object>", "required": false, "fields": ["sample_no", "source", "Cu", "Ag", "Au", "S", "As"]},
+        {"name": "phase_assays", "type": "array<object>", "required": false, "fields": ["sample_no", "Cu_sulfide", "Cu_oxide_free", "Cu_oxide_bound"], "note": "氧化率三带划分输入（阈值待核实）"},
+        {"name": "mineral_list", "type": "array<object>", "required": true, "fields": ["mineral", "genus", "content", "occurrence"]},
+        {"name": "rock_mineral_terms", "type": "object", "required": false, "note": "术语库 term→定义模板"}
+      ]
+    },
+    "beneficiation": {
+      "file": "10_beneficiation.json", "required": true, "chapters": ["ch5", "ch9"],
+      "fields": [
+        {"name": "sample_register", "type": "object", "required": true, "fields": ["source", "count", "preparation"]},
+        {"name": "feed_assays", "type": "object", "required": true, "note": "多元素+物相"},
+        {"name": "ore_blending", "type": "array<object>", "required": false, "fields": ["scheme", "ratio", "grade"]},
+        {"name": "condition_tests", "type": "array<object>", "required": true, "fields": ["test_no", "conditions", "products"], "note": "products={name,yield,grade,recovery}"},
+        {"name": "locked_cycle", "type": "object", "required": true, "fields": ["products", "reagents"], "note": "products={name,yield,grade_cu,grade_ag,recovery_cu,recovery_ag}——冻结值供 ch9 同源（B1C）；样例锚点 3.94%/17.46%/98.07g/t/80.36%/63.66%"},
+        {"name": "reagent_costs", "type": "array<object>", "required": false, "fields": ["name", "dosage", "unit_price", "cost"]},
+        {"name": "production_indices", "type": "array<object>", "required": false, "note": "老选厂生产指标（类比叙述用）"}
+      ]
+    },
+    "hydro_eng_env": {
+      "file": "11_hydro_eng_env.json", "required": true, "chapters": ["ch6"],
+      "fields": [
+        {"name": "hydro.mid_level_drainage", "type": "array<object>", "required": true, "fields": ["level", "period", "min_m3d", "max_m3d", "avg_m3d"], "note": "表6-3 样式；样例 1218 中段 2019.7-2020.6 min 11790/max 12285/avg 12025"},
+        {"name": "hydro.aquifers", "type": "array<object>", "required": true, "fields": ["code", "name", "lithology", "thickness", "abundance", "permeability", "recharge"]},
+        {"name": "hydro.water_quality", "type": "array<object>", "required": false, "fields": ["sample", "item", "value", "standard_ref"]},
+        {"name": "hydro.inflow_analogy", "type": "object", "required": true, "fields": ["Q0_min", "Q0_max", "F0", "F", "S", "S0", "source_doc"], "note": "W1 输入；Q0 取自 mid_level_drainage 现状中段——一致性校验"},
+        {"name": "engineering.rock_groups", "type": "array<object>", "required": true, "fields": ["code", "name", "lithology", "hardness", "competence", "bq"]},
+        {"name": "engineering.goaf", "type": "object", "required": false, "fields": ["count", "volume_wm3", "source_report"], "note": "两处口径 XS5 exact_match；样例 422 个/1383.95 万 m3"},
+        {"name": "environment.seismic", "type": "object", "required": true, "fields": ["peak_accel", "intensity", "source_std"]},
+        {"name": "environment.radioactivity", "type": "object", "required": false},
+        {"name": "environment.geohazards", "type": "array<object>", "required": false},
+        {"name": "type_verdicts", "type": "object", "required": true, "fields": ["hydro_type", "engineering_type", "environment_type", "combined_type"], "note": "人工确认关卡字段（门2）；判定词 XS3 逐字一致；样例锚点四条"}
+      ]
+    },
+    "exploration_qc": {
+      "file": "12_exploration_qc.json", "required": true, "chapters": ["ch7"],
+      "fields": [
+        {"name": "five_factors", "type": "object", "required": true, "fields": ["factors", "sum", "type_verdict"], "note": "factors={factor, qualitative, coefficient, basis}；系数查 dz0214_factor_scores；和→类型档映射未核实时输出「需人工对照」（CC1）"},
+        {"name": "spacing", "type": "object", "required": true, "fields": ["lines_direction", "levels", "spacing_by_category"], "note": "样例：155°-335°，5 中段 1608/1560/1439/1320/1218；60/120/240"},
+        {"name": "drill_logs", "type": "array<object>", "required": false, "fields": ["hole_id", "x", "y", "z", "azimuth", "dip_angle", "depth", "ore_intervals", "core_recovery", "deviation_check", "hydro_obs", "closure", "acceptance"], "note": "坑内钻 16 字段台账→表7-4"},
+        {"name": "pit_works", "type": "object", "required": false, "note": "断面规格/坡度/编录方式（DZ/T 0078-2015 语境）"},
+        {"name": "surveying", "type": "object", "required": true, "fields": ["surface_control", "underground_control", "conversion_note", "adopted_system"]},
+        {"name": "sampling", "type": "object", "required": true, "fields": ["basic", "inner_check", "outer_check", "processing"], "note": "率值脚本算（如抽检 137/1178=11.63%）；加工 K 值"}
+      ]
+    },
+    "industrial_params": {
+      "file": "13_industrial_params.json", "required": true, "chapters": ["ch8"], "schema_ref": "ch8 走查 §2.1",
+      "fields": [
+        {"name": "boundary_grade_cu", "type": "number", "unit": "%", "required": true},
+        {"name": "min_industrial_grade_cu", "type": "number", "unit": "%", "required": true},
+        {"name": "min_mining_thickness", "type": "number", "unit": "m", "required": true},
+        {"name": "waste_exclusion_thickness", "type": "number", "unit": "m", "required": true},
+        {"name": "byproduct_ag_indicator", "type": "number", "unit": "g/t", "required": false},
+        {"name": "grade_variation_coeff_range", "type": "array<number>", "unit": "%", "required": true, "note": "S2 计算回填或用户给"},
+        {"name": "outlier_multiple", "type": "integer", "required": true, "note": "由区间查表推得，管线校验该推导（C9）"},
+        {"name": "deposit_avg_grade", "type": "number", "unit": "%", "required": true},
+        {"name": "outlier_threshold", "type": "number", "unit": "%", "required": false, "note": "派生=deposit_avg_grade×outlier_multiple，禁手填"},
+        {"name": "outlier_samples", "type": "array<object>", "required": false, "fields": ["work", "sample_no", "original", "processed"], "note": "校验 processed=含该样工程均值（FC4）"},
+        {"name": "byproduct_ag_avg_grade", "type": "number", "unit": "g/t", "required": false},
+        {"name": "byproduct_ag_sample_count", "type": "integer", "required": false},
+        {"name": "combo_sample_years", "type": "array<integer>", "required": false}
+      ]
+    },
+    "bulk_density": {
+      "file": "13a_bulk_density.csv", "required": true, "chapters": ["ch8"], "format": "csv", "schema_ref": "ch8 走查 §2.2",
+      "columns": ["序号", "样品编号", "送样编号", "品位Cu_pct", "体重_t_m3", "湿度_pct", "矿石类型"],
+      "note": "过滤 boundary≤品位<outlier_threshold；分组 工业组(≥min_industrial)/低品位组；S1 统计；eval 锚点 72件/2.85/0.75/0.04"
+    },
+    "block_model": {
+      "file": "14_block_model.json", "required": true, "chapters": ["ch8"], "schema_ref": "ch8 走查 §2.3（两级颗粒度定稿）",
+      "fields": [
+        {"name": "granularity", "type": "enum:A|B", "required": true, "note": "A=块段级（blocks），B=矿体×类别汇总级（aggregates）——样例正文即无块段明细，B 为合法降级"},
+        {"name": "blocks", "type": "array<object>", "required": false, "fields": ["orebody", "block_no", "category", "grade_class", "area_s_m2", "avg_thickness_m", "grade_c_pct", "bulk_density"], "note": "A 级：V/Q/P 全链公式算；块段编号 西→东、上→下、北→南 阿拉伯数字"},
+        {"name": "aggregates", "type": "array<object>", "required": false, "fields": ["orebody", "category", "grade_class", "ore_qty_wt", "metal_t", "grade_pct"], "note": "B 级：公式链从汇总层起算"},
+        {"name": "ore_bodies", "type": "array<object>", "required": true, "fields": ["id", "group", "group_label"], "note": "群归属显式字段——Ⅰ号群含 1-4/1-6/1-7 阿拉伯前缀矿体，禁从编号推断（XS1）"}
+      ]
+    },
+    "verification": {
+      "file": "14a_verification.json", "required": false, "chapters": ["ch8"], "schema_ref": "ch8 走查 §2.4",
+      "fields": [
+        {"name": "method", "type": "string", "required": true, "note": "样例=水平断面法"},
+        {"name": "rows", "type": "array<object>", "required": true, "fields": ["orebody", "category", "ore_qty_wt", "metal_t"], "note": "误差率 L12 脚本算；样例合计矿石量 52.68 万吨锚点"}
+      ]
+    },
+    "prior_estimate": {
+      "file": "15_prior_estimate.json", "required": false, "chapters": ["ch1", "ch8"], "schema_ref": "ch8 走查 §2.5", "note": "如有（东川样例=2011 备案）；缺省→门2 差值步骤与 8.8 相关内容整体跳过",
+      "fields": [
+        {"name": "report_meta", "type": "object", "required": true, "fields": ["title", "review_no", "cutoff_date", "review_date"]},
+        {"name": "full_extent", "type": "object", "required": true, "note": "原矿权全量备案（老分类编码原样：332/333/低品位332）"},
+        {"name": "split_extent", "type": "object", "required": true, "note": "分割后落在本次探矿权内的备案量——表8-3 对比基数"},
+        {"name": "code_mapping", "type": "object", "required": true, "note": "如 {332:KZ, 333:TD}；仅算差值，呈现保原码（CC2/P4）"}
+      ]
+    },
+    "economics": {
+      "file": "16_economics.json", "required": true, "chapters": ["ch9"],
+      "fields": [
+        {"name": "prices", "type": "object", "required": true, "fields": ["cu_yuan_t", "ag_yuan_kg", "ag_yuan_per_g", "as_of_date", "source_refs"], "note": "价格必须用户提供可核实来源（红线）；样例 51000 元/t、3500 元/kg、3.5 元/g"},
+        {"name": "costs", "type": "object", "required": true, "fields": ["mining_yuan_t", "beneficiation_yuan_t", "other_yuan_t"], "note": "合计=E6 的 unit_cost_total（样例 125.75 元/t）"},
+        {"name": "rates", "type": "object", "required": true, "fields": ["loss_rate", "dilution_rate"], "note": "样例 15%/10%"},
+        {"name": "recovery", "type": "object", "required": false, "note": "缺省回退 ch5 闭路冻结值（B1C 同源）"},
+        {"name": "concentrate", "type": "object", "required": true, "fields": ["grade_cu_pct", "grade_ag_gpt"]},
+        {"name": "capacity_10kt_a", "type": "number", "required": true, "note": "样例 80×10⁴t/a"},
+        {"name": "credibility", "type": "object", "required": true, "fields": ["TM", "KZ", "TD"], "note": "样例 1.0/1.0/0.6（standards_index.credibility_factors）"},
+        {"name": "mine_life_remaining", "type": "number", "unit": "年", "required": false}
+      ]
+    },
+    "figures_tables": {
+      "file": "17_figures_tables.json", "required": true, "chapters": ["前置部分"],
+      "fields": [
+        {"name": "figures", "type": "array<object>", "required": true, "fields": ["no", "title", "scale", "sheets", "description"], "note": "正文图位=占位槽位（图题+比例尺+内容描述+数据来源）"},
+        {"name": "tables", "type": "array<object>", "required": true, "fields": ["no", "title"]},
+        {"name": "signature_page", "type": "object", "required": true, "fields": ["申报单位", "法人代表(申报)", "编制单位", "法人代表(编制)", "总工程师", "项目负责", "编写人员", "审核", "提交单位", "提交日期"], "note": "固定顺序 10 字段"}
+      ]
+    }
+  },
+  "generation_waves": {"wave1": ["ch1", "ch2", "ch3", "ch4", "ch5", "ch6", "ch7", "ch8", "ch9"], "gate": "波间要点包集中人工确认（未确认条目降级 [待确认] 不阻塞）", "wave2": ["ch10"]},
+  "compliance_appendix": {"source": "consistency_check.json 四类合约结果面板 + 附录C 完备性核对清单", "note": "全量依赖——任何数据变化必受影响（与 ch10 同波重生成）"}
+}

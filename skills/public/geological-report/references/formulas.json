@@ -1,0 +1,360 @@
+{
+  "version": "2.0",
+  "generated": "2026-08-21",
+  "source": "ch8 人工走查定稿（docs/superpowers/specs/2026-08-21-geol-v2-ch8-walkthrough.md §3）+ 样例 ch9 经济链逐字核对",
+  "rounding_policy": {
+    "rule": "四舍六入五逢奇进偶舍 = ROUND_HALF_EVEN（样例 8.4.6 原文）",
+    "implementation": "decimal.Decimal + quantize(ROUND_HALF_EVEN)，禁用 float round()（二进制表示陷阱，如 round(2.675,2)=2.67）",
+    "precision_by_quantity": {
+      "品位": "0.01%",
+      "厚度": "0.01m",
+      "体重": "0.01t/m3",
+      "矿石量": "万吨 2 位小数",
+      "铜金属量": "整数 t",
+      "银金属量": "整数 kg",
+      "块段面积": "整数 m2",
+      "误差率": "0.01%"
+    }
+  },
+  "unit_conventions": {
+    "ore_quantity_display": "万吨（内部计算用 t，展示 ÷10000）",
+    "grade_in_product": "品位以 % 参与乘法时除以 100；Ag 以 g/t 参与乘法时直接乘（t×g/t=g，展示 kg ÷1000）",
+    "vertical_projection": "S 为垂直纵投影水平投影面积（非真面积）、M 为平均水平投影厚度（非真厚）——V=S×M 仅在垂直纵投影地质块段法下自洽"
+  },
+  "formulas": [
+    {
+      "id": "L1",
+      "name": "单样真厚度",
+      "chapter": "8.4.1",
+      "expr": "M = L × (sinα·cosβ·cosγ ± cosα·sinβ)",
+      "sign_rule": "工程中取样线坡向与矿体倾斜方向相反时取 +，相同取 −（样例 8.4.1 原文）",
+      "inputs": [
+        {"name": "L", "desc": "取样线长度", "unit": "m", "type": "user_input"},
+        {"name": "alpha", "desc": "矿体真倾角", "unit": "度", "type": "user_input"},
+        {"name": "beta", "desc": "取样线坡度角", "unit": "度", "type": "user_input"},
+        {"name": "gamma", "desc": "取样线方向与矿体倾向夹角", "unit": "度", "type": "user_input"}
+      ],
+      "outputs": [{"name": "M", "desc": "单样真厚度", "unit": "m"}],
+      "precision": "0.01m"
+    },
+    {
+      "id": "L2a",
+      "name": "单工程矿体水平厚度",
+      "chapter": "8.4.1",
+      "expr": "I = M / sin(alpha)",
+      "inputs": [{"name": "M", "type": "formula_output", "source": "L1"}, {"name": "alpha", "type": "user_input"}],
+      "outputs": [{"name": "I", "unit": "m"}],
+      "precision": "0.01m"
+    },
+    {
+      "id": "L2b",
+      "name": "单工程矿体水平投影厚度",
+      "chapter": "8.4.1",
+      "expr": "H = M / cos(alpha)，等价 H = I / cos(phi)",
+      "inputs": [
+        {"name": "M", "type": "formula_output", "source": "L1"},
+        {"name": "alpha", "type": "user_input"},
+        {"name": "phi", "desc": "矿体走向与投影线夹角", "unit": "度", "type": "user_input", "note": "仅等价式用"}
+      ],
+      "outputs": [{"name": "H", "desc": "水平投影厚度（块段法 V=S×M 的 M 即此值）", "unit": "m"}],
+      "precision": "0.01m"
+    },
+    {
+      "id": "L3",
+      "name": "单工程矿体厚度",
+      "chapter": "8.4.1",
+      "expr": "T_drill = sum(M_i)",
+      "inputs": [{"name": "M_i", "type": "formula_output", "source": "L1"}],
+      "outputs": [{"name": "T_drill", "unit": "m"}],
+      "precision": "0.01m",
+      "note": "单工程内同一矿体各单样真厚之和；分枝矿体用压缩法累计"
+    },
+    {
+      "id": "L4",
+      "name": "单工程矿体平均品位（样长加权）",
+      "chapter": "8.4.2",
+      "expr": "C_drill = sum(C_i × L_i) / sum(L_i)",
+      "inputs": [
+        {"name": "C_i", "desc": "单样品位", "unit": "%", "type": "user_input"},
+        {"name": "L_i", "desc": "单样长度", "unit": "m", "type": "user_input"}
+      ],
+      "outputs": [{"name": "C_drill", "unit": "%"}],
+      "precision": "0.01%",
+      "note": "特高品位样先按 8.4.5 规则替换后再进入加权"
+    },
+    {
+      "id": "L5",
+      "name": "块段平均厚度（算术平均）",
+      "chapter": "8.4.1",
+      "expr": "M_block = sum(m_i) / n",
+      "inputs": [{"name": "m_i", "desc": "块段内各单工程矿体厚度", "type": "formula_output", "source": "L3"}],
+      "outputs": [{"name": "M_block", "unit": "m"}],
+      "precision": "0.01m"
+    },
+    {
+      "id": "L6",
+      "name": "块段平均品位（水平厚度加权）",
+      "chapter": "8.4.2",
+      "expr": "C_block = sum(C_drill_i × I_i) / sum(I_i)",
+      "inputs": [
+        {"name": "C_drill_i", "type": "formula_output", "source": "L4"},
+        {"name": "I_i", "desc": "各单工程水平厚度", "type": "formula_output", "source": "L2a"}
+      ],
+      "outputs": [{"name": "C_block", "unit": "%"}],
+      "precision": "0.01%"
+    },
+    {
+      "id": "L7",
+      "name": "块段三量（垂直纵投影地质块段法核心）",
+      "chapter": "8.3.2",
+      "expr": "V = S × M；Q = V × D；P = Q × C / 100",
+      "inputs": [
+        {"name": "S", "desc": "块段垂直纵投影面积", "unit": "m2", "type": "user_input", "note": "MapGIS 圈定，整数 m2"},
+        {"name": "M", "desc": "块段平均水平投影厚度", "unit": "m", "type": "formula_output", "source": "L5"},
+        {"name": "D", "desc": "矿石平均体重", "unit": "t/m3", "type": "formula_output", "source": "S1"},
+        {"name": "C", "desc": "块段平均品位", "unit": "%", "type": "formula_output", "source": "L6"}
+      ],
+      "outputs": [
+        {"name": "V", "unit": "m3"},
+        {"name": "Q", "unit": "t（展示万吨）"},
+        {"name": "P", "desc": "块段金属量", "unit": "t"}
+      ],
+      "precision": "矿石量万吨 2 位、金属量整数"
+    },
+    {
+      "id": "L8",
+      "name": "矿体平均品位（矿石量加权）",
+      "chapter": "8.4.2",
+      "expr": "C_orebody = sum(Q_b × C_b) / sum(Q_b)",
+      "inputs": [
+        {"name": "Q_b", "type": "formula_output", "source": "L7"},
+        {"name": "C_b", "type": "formula_output", "source": "L6"}
+      ],
+      "outputs": [{"name": "C_orebody", "unit": "%"}],
+      "precision": "0.01%"
+    },
+    {
+      "id": "L9",
+      "name": "表8-2 汇总（小计/总计）",
+      "chapter": "8.7",
+      "expr": "subtotal(category, grade) = sum(rows)；total = sum(subtotals)",
+      "inputs": [{"name": "rows", "desc": "矿体×类别×品级结果行", "type": "formula_output", "source": "L7 或 14_block_model B级直录"}],
+      "outputs": [{"name": "table8_2", "desc": "TM/KZ/TD/合计 小计行 + 尚难利用分组小计"}],
+      "precision": "矿石量万吨 2 位、金属量整数、品位 0.01%",
+      "tolerance": "exact（同一冻结状态内重算必须逐值相等）"
+    },
+    {
+      "id": "L10",
+      "name": "资源量增量（本次 − 历史备案）",
+      "chapter": "8.8.3",
+      "expr": "delta = current - prior_split，按 code_mapping 对齐类别后相减",
+      "inputs": [
+        {"name": "current", "type": "formula_output", "source": "L9"},
+        {"name": "prior_split", "desc": "分割后落在本次探矿权内的历史备案量", "type": "user_input", "source_form": "15_prior_estimate.json"},
+        {"name": "code_mapping", "desc": "历史→本次类别数值对齐映射（如 332→KZ、333→TD）", "type": "user_input", "note": "仅用于差值计算；表内呈现保留 332/333 原编码（红线 P4）"}
+      ],
+      "outputs": [{"name": "delta", "desc": "四口径增量：工业TM+KZ / 工业TD / 尚难KZ / 尚难TD × 矿石量+金属量", "unit": "万吨、t"}],
+      "note": "历史估算常用不同工业指标/块段——差值仅总量层四口径，分类层并排列示不做减法（ch8 走查 §5.1 定稿）；无历史备案数据时整体跳过",
+      "tolerance": "exact"
+    },
+    {
+      "id": "L11",
+      "name": "伴生银金属量",
+      "chapter": "8.10",
+      "expr": "P_Ag(kg) = Q_ore(t) × C_Ag(g/t) / 1000",
+      "inputs": [
+        {"name": "Q_ore", "desc": "主元素矿石量（分工业矿/尚难利用两口径）", "type": "formula_output", "source": "L9"},
+        {"name": "C_Ag", "desc": "伴生银平均品位", "unit": "g/t", "type": "user_input", "source_form": "13_industrial_params.json"}
+      ],
+      "outputs": [{"name": "P_Ag", "unit": "kg"}],
+      "precision": "整数 kg",
+      "note": "伴生资源量类别随主元素组合样类别（样例=推断 TD）"
+    },
+    {
+      "id": "L12",
+      "name": "验证误差率（水平断面法对照）",
+      "chapter": "8.9",
+      "expr": "diff = Q_block - Q_horizontal；err = diff / Q_horizontal × 100",
+      "inputs": [
+        {"name": "Q_block", "type": "formula_output", "source": "L9"},
+        {"name": "Q_horizontal", "desc": "水平断面法验证结果", "type": "user_input", "source_form": "14a_verification.json"}
+      ],
+      "outputs": [{"name": "err", "unit": "%"}],
+      "precision": "0.01%",
+      "tolerance": "exact（差值与误差率由脚本算，正文只引用）"
+    },
+    {
+      "id": "L13",
+      "name": "资源量占比（ch10 结论用）",
+      "chapter": "10.1.1",
+      "expr": "share(category) = P_metal(category) / P_metal(total) × 100",
+      "inputs": [{"name": "P_metal", "desc": "金属量口径", "type": "formula_output", "source": "L9"}],
+      "outputs": [{"name": "share", "unit": "%"}],
+      "precision": "0.01%",
+      "note": "样例口径注记：TM 占 16.32%、TM+KZ 占 41.45% 用矿石量算不出（13.71/77.36=17.72%、28.68/77.36=37.07%）——基数为金属量（样例金属量脱敏无法复核）。占比一律金属量口径，来源表8-2 汇总行"
+    },
+    {
+      "id": "W1",
+      "name": "矿坑涌水量预测（比拟法）",
+      "chapter": "6.2.3",
+      "expr": "Q = Q0 × (F / F0) × sqrt(S / S0)",
+      "inputs": [
+        {"name": "Q0", "desc": "现有生产中段矿坑涌水量（min/max 两口径）", "unit": "m3/d", "type": "user_input"},
+        {"name": "F0", "desc": "现有中段疏干排水影响面积", "unit": "m2", "type": "user_input"},
+        {"name": "F", "desc": "未来开采疏干排水影响面积", "unit": "m2", "type": "user_input"},
+        {"name": "S", "desc": "预测水位降深", "unit": "m", "type": "user_input"},
+        {"name": "S0", "desc": "现状水位降深", "unit": "m", "type": "user_input"}
+      ],
+      "outputs": [{"name": "Q", "desc": "预测矿坑涌水量（min/max）", "unit": "m3/d"}],
+      "precision": "整数 m3/d",
+      "provenance": "公式体从样例 MathType OLE 的 WMF 预览视觉转录恢复（2026-08-21，bug-2210）",
+      "verification_note": "样例自身结果 908/5531 不可复现且内部互不洽（908/5531≠Q0 比值 6898/12285）——已判定样例数字错误；eval 断言用公式正确值（样例参数代入=10183/18136）。用户提供类似不自洽数据时以公式重算为准并向用户提示差异"
+    },
+    {
+      "id": "S1",
+      "name": "小体重样统计（表8-1）",
+      "chapter": "8.4.4",
+      "expr": "filter: boundary_grade <= C < outlier_threshold；group: C >= min_industrial_grade → 工业组，[boundary, min_industrial) → 低品位组；mean(体重/品位/湿度) per group + 全体",
+      "inputs": [
+        {"name": "samples", "desc": "13a_bulk_density.csv 全行", "type": "user_input", "source_form": "13a_bulk_density.csv"},
+        {"name": "boundary_grade", "type": "user_input", "source_form": "13_industrial_params.json"},
+        {"name": "min_industrial_grade", "type": "user_input", "source_form": "13_industrial_params.json"},
+        {"name": "outlier_threshold", "type": "formula_output", "source": "C9"}
+      ],
+      "outputs": [{"name": "D", "desc": "各组及全体平均体重/品位/湿度 + 件数", "unit": "t/m3、%、%"}],
+      "eval_anchors": "样例：全体 72 件 2.85/0.75/0.04；工业 34 件 2.85/1.17；低品位 38 件 2.85/0.37",
+      "note": "D 进入 L7；样例特例：工业组与低品位组体重均值同为 2.85，仍分组合算不合并预设"
+    },
+    {
+      "id": "C9",
+      "name": "特高品位阈值",
+      "chapter": "8.4.5",
+      "expr": "threshold = deposit_avg_grade × outlier_multiple",
+      "inputs": [
+        {"name": "deposit_avg_grade", "type": "user_input", "source_form": "13_industrial_params.json"},
+        {"name": "outlier_multiple", "desc": "按品位变化系数区间取 6/7/8 倍", "type": "lookup_table", "source": "standards_index.json#dz0214_outlier_multiple", "needs_verification": true}
+      ],
+      "outputs": [{"name": "outlier_threshold", "unit": "%"}],
+      "eval_anchors": "样例：变化系数 29.28%~65.58% ∈ [60,150) 有交集取 7 倍 → 0.85×7=5.95%",
+      "note": "变化系数跨区间时从高取（样例 29.28<60 但 65.58∈[60,150) 取 7）——区间判定规则按 DZ/T 0214-2020 原文核实后录入 standards_index"
+    },
+    {
+      "id": "S2",
+      "name": "品位变化系数",
+      "chapter": "7.1.2 / 8.4.5",
+      "expr": "Cv = stdev(C_i) / mean(C_i) × 100",
+      "inputs": [{"name": "C_i", "desc": "单工程品位序列", "type": "formula_output", "source": "L4"}],
+      "outputs": [{"name": "Cv", "unit": "%"}],
+      "precision": "0.01%",
+      "note": "stdev 用样本标准差（n-1）——地质惯例；进入五因素分型与特高品位倍数判定"
+    },
+    {
+      "id": "B1",
+      "name": "选矿金属平衡校验（ch5 表格内）",
+      "chapter": "5.1.4",
+      "expr": "recovery = yield × concentrate_grade / feed_grade × 100",
+      "inputs": [
+        {"name": "yield", "desc": "精矿产率", "unit": "%", "type": "user_input"},
+        {"name": "concentrate_grade", "unit": "%", "type": "user_input"},
+        {"name": "feed_grade", "desc": "原矿/给矿品位", "unit": "%", "type": "user_input"}
+      ],
+      "outputs": [{"name": "recovery", "unit": "%"}],
+      "precision": "0.01%",
+      "note": "闭路试验表内产率/品位/回收率三量自洽校验；累积回收率=Σ(γi×βi)/原矿品位×100",
+      "tolerance": "0.05 个百分点（试验数据修约残差容差）"
+    },
+    {
+      "id": "E1",
+      "name": "可利用（可采）矿石量（可信度系数折算）",
+      "chapter": "9.6.2",
+      "expr": "Q_usable = Q_TM × k_TM + Q_KZ × k_KZ + Q_TD × k_TD",
+      "inputs": [
+        {"name": "Q_TM/Q_KZ/Q_TD", "desc": "工业矿分类矿石量", "type": "formula_output", "source": "L9"},
+        {"name": "k_TM/k_KZ/k_TD", "desc": "可信度系数", "type": "user_input", "eval_anchor": "样例 TM=1.0、KZ=1.0、TD=0.6"}
+      ],
+      "outputs": [{"name": "Q_usable", "desc": "可利用工业矿矿石量及加权平均品位", "unit": "万吨、%"}],
+      "note": "加权平均品位同权重折算；系数取值依据规范条款须核实录入 standards_index"
+    },
+    {
+      "id": "E2",
+      "name": "可采出矿石量与采出品位",
+      "chapter": "9.6.2",
+      "expr": "Q_mined = Q_usable × (1 - loss_rate)；C_mined = C_usable × (1 - dilution_rate)",
+      "inputs": [
+        {"name": "Q_usable", "type": "formula_output", "source": "E1"},
+        {"name": "loss_rate", "desc": "采矿综合损失率", "unit": "%", "type": "user_input", "eval_anchor": "样例 15%"},
+        {"name": "dilution_rate", "desc": "采矿贫化率", "unit": "%", "type": "user_input", "eval_anchor": "样例 10%"}
+      ],
+      "outputs": [{"name": "Q_mined", "unit": "万吨"}, {"name": "C_mined", "unit": "%"}],
+      "eval_anchors": "样例句式：可采出=×××万吨×85.00%；采出品位=×××%×(1-10%)"
+    },
+    {
+      "id": "E3",
+      "name": "铜精矿产量",
+      "chapter": "9.6.2",
+      "expr": "conc_output = Q_mined × C_mined × recovery_cu / concentrate_grade_cu",
+      "inputs": [
+        {"name": "Q_mined", "type": "formula_output", "source": "E2"},
+        {"name": "C_mined", "type": "formula_output", "source": "E2"},
+        {"name": "recovery_cu", "desc": "选矿回收率（ch5 闭路试验结果槽同源）", "unit": "%", "type": "formula_output", "source": "B1/10_beneficiation.json"},
+        {"name": "concentrate_grade_cu", "desc": "精矿品位（同源）", "unit": "%", "type": "user_input", "source_form": "10_beneficiation.json"}
+      ],
+      "outputs": [{"name": "conc_output", "unit": "t"}],
+      "eval_anchors": "样例式：××××10⁴t × 0.90% × 80.36% ÷ 17.46%"
+    },
+    {
+      "id": "E4",
+      "name": "精矿含税价格合成",
+      "chapter": "9.6.2",
+      "expr": "price_conc = price_cu × concentrate_grade_cu + price_ag_per_g × concentrate_grade_ag_gpt",
+      "inputs": [
+        {"name": "price_cu", "desc": "铜金属价", "unit": "元/t", "type": "user_input", "eval_anchor": "样例 51000 元/t", "needs_verification": "价格时间序列必须用户提供可核实来源（红线）"},
+        {"name": "concentrate_grade_cu", "unit": "%", "type": "user_input"},
+        {"name": "price_ag_per_g", "desc": "银计价系数", "unit": "元/g", "type": "user_input", "eval_anchor": "样例 3.5 元/g"},
+        {"name": "concentrate_grade_ag_gpt", "desc": "精矿含银", "unit": "g/t", "type": "user_input"}
+      ],
+      "outputs": [{"name": "price_conc", "unit": "元/t"}],
+      "eval_anchors": "样例：51000×17.46%=8905 元/t；银 3.5×98.07=343 元/t"
+    },
+    {
+      "id": "E5",
+      "name": "矿产资源潜在总值",
+      "chapter": "9.7",
+      "expr": "gross_potential = P_cu × price_cu + P_ag_kg × price_ag_kg",
+      "inputs": [
+        {"name": "P_cu", "desc": "铜金属量（表8-2 结果槽）", "unit": "t", "type": "formula_output", "source": "L9"},
+        {"name": "P_ag_kg", "desc": "银金属量", "unit": "kg", "type": "formula_output", "source": "L11"},
+        {"name": "price_cu", "type": "user_input", "unit": "万元/t"},
+        {"name": "price_ag_kg", "type": "user_input", "unit": "万元/kg"}
+      ],
+      "outputs": [{"name": "gross_potential", "unit": "亿元"}],
+      "note": "样例定义：查明资源（假定可利用组分完全提取）的潜在矿产品价值"
+    },
+    {
+      "id": "E6",
+      "name": "静态总利润",
+      "chapter": "9.7",
+      "expr": "static_profit = conc_output × price_conc - Q_mined_t × unit_cost_total",
+      "inputs": [
+        {"name": "conc_output", "type": "formula_output", "source": "E3"},
+        {"name": "price_conc", "type": "formula_output", "source": "E4"},
+        {"name": "Q_mined_t", "type": "formula_output", "source": "E2"},
+        {"name": "unit_cost_total", "desc": "单位矿石综合成本=采矿+选矿+其它", "unit": "元/t", "type": "user_input", "source_form": "16_economics.json", "eval_anchor": "样例 125.75 元/t"}
+      ],
+      "outputs": [{"name": "static_profit", "unit": "万元"}],
+      "tolerance": "exact"
+    },
+    {
+      "id": "E7",
+      "name": "矿山服务年限增量",
+      "chapter": "9.4",
+      "expr": "years_added = Q_resource_t / capacity_t_per_a",
+      "inputs": [
+        {"name": "Q_resource_t", "desc": "勘查区探获 TM+KZ+TD 工业矿石量（t）", "type": "formula_output", "source": "L9"},
+        {"name": "capacity_t_per_a", "desc": "矿山设计生产规模", "unit": "10⁴t/a", "type": "user_input", "eval_anchor": "样例 80×10⁴t/a"}
+      ],
+      "outputs": [{"name": "years_added", "desc": "服务年限增长（保守上限，未扣损失贫化——与可采口径分开表述）", "unit": "年"}],
+      "precision": "0.1 年"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "version": "2.0",
+  "generated": "2026-08-21",
+  "source": "spec 四类合约表 + ch8 走查 C1-C14（docs/superpowers/specs/2026-08-21-geol-v2-ch8-walkthrough.md §4）",
+  "contract_types": {
+    "cross_section": "跨章/章内 exact_match——槽位同源即天然满足，本合约校验注入源一致性与槽位残留",
+    "formula_chain": "公式链重算值与正文/表格引用值在容差内相等",
+    "code_constraint": "条款判定值查 standards_index tier1 自动 pass/fail；未入库标「需人工对照」不给结论",
+    "numbering": "图/表/小节编号连续无重号；全局唯一量"
+  },
+  "contracts": [
+    {"id": "XS1", "type": "cross_section", "scope": "ch3/ch4/ch8", "rule": "矿体编号/厚度/品位在 3/4/8 章各处 exact_match；矿体群归属以 14_block_model.ore_bodies[].group 为唯一真相源（编号前缀≠群归属——样例Ⅰ号群含 1-4/1-6/1-7 阿拉伯前缀矿体）"},
+    {"id": "XS2", "type": "cross_section", "scope": "ch1.6.2/ch4 品级统计/ch8.7/ch8.8.2/ch9.2.1/ch10.4", "rule": "资源量数字（矿石量/金属量/品位）全部同源槽位（L9 表8-2 冻结值），逐处 exact_match"},
+    {"id": "XS3", "type": "cross_section", "scope": "ch6/ch7/ch9.3/ch10.1.1/ch10.3", "rule": "勘查类型/水文地质类型/工程地质类型/环境地质类型/开采技术条件复合类型判定词逐字一致（样例锚点：水文=岩溶裂隙弱-中等含水层充水为主、顶板直接充水简单类型；工程=半坚硬-坚硬层状白云岩为主中等类型；环境=中等；综合=以工程、环境复合地质问题为主的中等类型）"},
+    {"id": "XS4", "type": "cross_section", "scope": "ch1/ch6.2.1", "rule": "气候数据（气温/降水/蒸发）同源（04_geography.json）"},
+    {"id": "XS5", "type": "cross_section", "scope": "ch6.3.4 内两处", "rule": "采空区数量与体积两处口径 exact_match（样例锚点：422 个 / 1383.95 万 m3）"},
+    {"id": "FC1", "type": "formula_chain", "tolerance": "exact", "scope": "ch8 表8-2", "rule": "每小计行=Σ其上矿体行；总计=Σ小计。样例锚点：TM 13.71/KZ 14.97/TD 48.68/总 77.36 万吨；低品位 KZ 13.21/TD 27.23/计 40.44"},
+    {"id": "FC2", "type": "formula_chain", "tolerance": "exact", "scope": "ch8.8.3", "rule": "增量句四口径数=表8-3 合计行差值；8.8.3(2) 新增矿体组+对比矿体组=总增量"},
+    {"id": "FC3", "type": "formula_chain", "tolerance": "exact", "scope": "ch8 表8-1 ↔ 8.4.4", "rule": "表8-1 均值行=13a 重算值（样例 2.85/0.75/0.04）；8.4.4 叙述体重/品位=表8-1 均值行"},
+    {"id": "FC4", "type": "formula_chain", "tolerance": "exact", "scope": "ch8.4.5", "rule": "特高阈值=矿床平均品位×倍数（样例 0.85×7=5.95%）；处理后品位=含该样工程均值"},
+    {"id": "FC5", "type": "formula_chain", "tolerance": "exact", "scope": "ch8.9 表8-4", "rule": "误差率=L12 重算；表8-4 合计矿石量锚点 52.68 万吨"},
+    {"id": "FC6", "type": "formula_chain", "tolerance": "exact", "scope": "ch8.10", "rule": "伴生银金属量=L11 重算"},
+    {"id": "FC7", "type": "formula_chain", "tolerance": "0.01（修约链容差）", "scope": "ch9 全链", "rule": "E1→E6 上下游值相等；样例锚点链：1.00%×(1-10%)=0.90%、51000×17.46%=8905 元/t、3.5×98.07=343 元/t、单位成本合计=125.75 元/t"},
+    {"id": "FC8", "type": "formula_chain", "tolerance": "exact", "scope": "ch10.1.1", "rule": "TM/TM+KZ 占比=表8-2 金属量汇总行计算（L13，金属量口径——矿石量口径对不上样例 16.32%/41.45%，见 formulas.json L13 注记）"},
+    {"id": "B1C", "type": "formula_chain", "tolerance": "0.05 个百分点", "scope": "ch5 试验表", "rule": "产率×精矿品位/原矿品位=回收率 自洽；累积回收率校验；ch9.2.2 引用的选矿指标=ch5 闭路试验冻结值（样例锚点：产率 3.94%、铜 17.46%、银 98.07 g/t、铜回收 80.36%、银回收 63.66%）"},
+    {"id": "CC1", "type": "code_constraint", "scope": "ch7.1.2/ch8.4.5", "rule": "勘查类型五因素系数和→类型档、特高品位倍数区间 查 standards_index tier1 条款自动判定；未入库→「需人工对照」"},
+    {"id": "CC2", "type": "code_constraint", "scope": "ch8 全章/ch1 引史", "rule": "本次估算仅 TM/KZ/TD(+尚难利用)；引述历史报告保留原编码（332/333、B+C+D、111b/122b）禁现代化改写（红线 P4）；code_mapping 仅算差值"},
+    {"id": "CC3", "type": "code_constraint", "scope": "全文", "rule": "规范编号/年份仅从 standards_index.json 枚举生成，禁 LLM 记忆（防 DZ/T 0214-2020 与 2002 旧版张冠李戴）"},
+    {"id": "NR1", "type": "numbering", "scope": "全文", "rule": "表号/图号连续无重号（样例「表512」笔误不复制）"},
+    {"id": "NR2", "type": "numbering", "scope": "全文", "rule": "小节编号连续无重号（样例 5.1.3 重号、9.2.3 误编 9.3.2、8.6.1 序号(1)(1)(2) 错乱——三个实证均不复制）"},
+    {"id": "NR3", "type": "numbering", "scope": "全文", "rule": "估算截止日期/矿区名/编制单位名/探矿权证号 全局唯一同源"},
+    {"id": "SL1", "type": "cross_section", "scope": "成文后", "rule": "{{SLOT:key}} 残留检测=0（槽位注入协议 D5——残留即注入失败，FAIL 阻断 present_files）"},
+    {"id": "SL2", "type": "cross_section", "scope": "成文后", "rule": "正文数值可溯源性：所有数字可定位到 data/ 表单字段或 traces.json 公式输出（E2E 冒烟断言，SC-4/SC-6）"}
+  ]
+}
