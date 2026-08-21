@@ -235,6 +235,7 @@
 - recharts 3.10.1: Cell 组件类型未声明 radius(落入 React SVGAttributes string|number),但运行期 cells[index].props 会展开进 barRectangleItem → 数组 radius 实际生效,需 `as unknown as number` 断言(bug-2162)
 - TechTooltip(biz-pipeline 克隆版)自带 `!active → null` guard:call-site 合成 payload 调用时必须显式传 active,否则 tooltip 恒空(bug-2161)
 - 全 1 数据下 recharts allowDecimals={false} 会把 Y 轴刻度撑到 [0..4](柱被压扁);小值域显式传整数 ticks 数组修复
+- geological-report 页面实测三层缺陷链：①写入命令未文档化→数据滞留对话；②示例值当数据（P2）；③ingest.py 拒绝必填 null→逼出 0 冒充。修复=SKILL.md 4处+coerce_type null直通+回归测试（bug-2215/2216）。沙箱表单物证路径 /app/backend/.deer-flow/users/{uid}/threads/{tid}/user-data/workspace/geo-report/data/。
 
 ## Do-Not-Repeat
 
@@ -298,6 +299,9 @@
 - [2026-07-27] OCR 服务吞吐轴 = **进程级并发,不是页级线程**。onnxruntime 每次推理已榨干全部 CPU 核(intra-op threads),所以并发甜点是 N 个 uvicorn worker 进程(Phase-2 T1 压测:N=4 甜点、N=8 劣化),而不是在一个 worker 里给「页」加线程池——那会和 intra-op 抢核反而劣化。**落地坑:** 压测结论"N=4"当时只写进文档,从没接进 compose(`server.py __main__` 跑默认 1 worker,compose `ocr:` 服务没 `command`/env)→ OCR 一直单 worker 跑。修:`server.py` 读 `OCR_WORKERS` env(默认1,workers>1 时用 `"server:app"` import-string 形式传 uvicorn),compose 设 `OCR_WORKERS=4`。**规则:压测得出的并发参数必须落到 compose 的 command/env,不能只停在文档。** 改 OCR 镜像内代码后必须 `docker compose -f docker/docker-compose-dev.yaml -p eai-docker up -d --build ocr` 重建(server.py 是 COPY 进镜像的,非 bind-mount),日志应见 1 parent + N "Started server process"。文档级并发配对:skill `run_parse` 用 `asyncio.Semaphore(CPA_PARSE_CONCURRENCY=4)` + `gather` 并发喂这 N 个 worker(每 /ocr 是 async HTTP 等待,event loop 重叠 N 个在途解析;store.get 用 `asyncio.to_thread` 避免阻塞)。扫描增量:`scan_changed` 加 size 预筛(cached size 从 quick_fp 取,obj.size 匹配则跳过下载+哈希),否则每次扫描把整个 bucket 全下载一遍算 hash(1000 份=几十 GB/次)。
 - 2026-08-17: theme-provider.tsx 的 forcedTheme={"/":dark} 是上游设计(上游landing纯暗色);EAI须为 forcedTheme={undefined},现已带EAI-CUSTOM注释。上游sync会回退无标记的定制——每次sync后 grep forcedTheme 确认未被回退。bug-2159
 
+- [2026-08-21] Git Bash 后台轮询脚本里 docker exec 带 /app/... 路径参数被 MSYS 改写为 C:/Program Files/Git/app/... → grep 永远找不到文件 → 假阳性 CLEAN。凡 docker exec 带容器路径一律 MSYS_NO_PATHCONV=1 前缀。
+- [2026-08-21] 页面测试 agent 行为：SKILL.md 未明写的写入命令 agent 不会用（只会留在对话）；提问时给出的示例格式值会被当数据落盘。技能文档必须显式暴露 sanctioned 写入路径 + 示例值≠数据红线 + 落盘后回显核对。
+- [2026-08-21] 前端技能选择器触发是 / 斜杠（input-box.tsx slashSkillQuery），不是 #。
 
 ## Decision Log
 
@@ -1084,3 +1088,41 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 
 ### 2026-08-20 — buglog.json 追加前必须校验顶层结构（两次踩坑）
 - **Do-Not-Repeat**: `.wolf/buglog.json` 顶层是 `{"version":1,"bugs":[...]}` dict，不是裸 list。任何追加脚本必须先 `json.loads` 并断言 `isinstance(data, dict) and isinstance(data["bugs"], list)`，结构不符立即 STOP 而非重置为空。多会话并发共享此文件（今天两个会话各覆写一次，丢了 ~1170 条，从 git 基线 + transcripts 捞回）。id 分配用 `max(数字id)+1`，注意文件里有 `bug-NNN` 模板条目需过滤非数字后缀。
+
+### 2026-08-20 浏览器验证前先重启 frontend 容器
+- 若最后一次代码提交晚于最后一次 `docker compose -p eai-docker restart frontend`，Turbopack HMR 在 Docker bind-mount 下可能未拾取改动——容器内源文件已更新 ≠ 运行 bundle 已更新。本次 032 capture 把过期 bundle 的 embed-only 误判为设计缺陷，重启后 038 复验上传 tab 正常（bug-2206）。
+
+### 浏览器自动化: use_browser type 在 React 受控输入上双插文本 (2026-08-20)
+- `type` action 会在受控 input 上把文本插入两遍（HTML value 属性字面量为 `xxx`xxx`），登录表单静默失败。**正确做法**: `eval` + 原生 value setter + `dispatchEvent('input',{bubbles:true})`，提交用 `form.requestSubmit()`。
+- `eval` 现在可用（bug-1208 的"eval broken"记录已过时）。buglog bug-2207。
+
+## Decision Log + Key Learnings (2026-08-20 — geological-report v2 / plan-eng-review)
+
+**Decision Log（评审 7 决策，已写回 spec D5-D11）：**
+- D5 槽位注入协议：LLM 叙述章只写 `{{SLOT:key}}`，build_output 注入冻结值——数字永不经过 LLM 之手；cross_section 合约降为纵深防御。outside voice 独立重推导出同一方案（跨模型一致）。
+- D6 snapshot 增强：SHA-256 状态哈希清单（跨轮防静默篡改）+ 目录扫描差集报警（F5：manifest 漂移=快照盲区，曾为 critical gap）。
+- D7 接受 snapshot.py 第三份自包含副本（技能=自包含分发单元）；漂移风险入 TODOS.md 同步维护约定。
+- D8 两波生成：第一波 ch1-ch9 并行（各落盘 conclusions）→ 波间要点包确认关卡 → 第二波 ch10 投影+合规附录。消除结论投影竞态。
+- D9 全测试矩阵：7 个 stdlib subprocess CLI 测试文件+样例回放 eval；SC-1~6 全可证伪。
+- D10 ingest.py forms 子命令：schema 校验写入+自动登记 manifest——data/ 唯一写者，agent 不手写 JSON。
+- D11 目录页码列留空，Word 阶段引用自动填充（MD 无页概念，与 P5 一致）。
+
+**Key Learnings：**
+- 本机 codex CLI 装机但大中文 prompt 5min 超时；Claude subagent fallback 质量高（12 findings 中 2 项为评审盲区：表单写入无校验 CLI、TOC 页码矛盾）——outside voice 真有用，不是仪式。
+- 本机无 jq；gstack JSONL 用 python json.dumps 等价生成；gstack-slug 的 SLUG 变量在 python subprocess 里 eval 捕获不到（硬编码 yogyoho-eai-flow-main）。
+- AUQ 工具的 question/options 文本里不能出现裸 `\r`（AskUserQuestion 会原样显示控制字符）。
+- 步骤4 两波设计下「ch4 品级统计依赖 ch8 结果」指的是步骤2 公式引擎输出（traces），不是 ch8 章节文本——设计文档里区分「计算输出」与「章节产物」两个依赖源。
+
+### 2026-08-21 · Key Learnings（geological-report v2 ch8 走查）
+- **docx 里公式丢失的标准恢复路径**：正文"Q="后空白 → 查 `word/document.xml` 无 `m:oMath` → 公式是 MathType OLE（`word/embeddings/oleObject*.bin`），WMF 预览在 `word/media/image*.wmf` → PowerShell `System.Drawing.Image::FromFile` 直接支持 WMF metafile，固定画布 Bitmap+DrawImage 转 PNG → 视觉转录。东川样例比拟法公式即此法恢复。
+- **报告舍入规则「四舍六入五逢奇进偶舍」= ROUND_HALF_EVEN（银行家舍因）**，formula_engine 必须 `decimal.Decimal + quantize(ROUND_HALF_EVEN)`，禁 float `round()`（二进制陷阱 round(2.675,2)=2.67）。
+- **地质样例矿体编号前缀≠矿体群**（Ⅰ号群含 `1-4/1-6/1-7` 阿拉伯前缀矿体），群归属必须显式字段，禁从编号推断。
+- **样例 8.7 与 8.8.2 内容同源重复**——同槽位复用天然零漂移，勿当两处独立数据建模。
+- Key Learning: 大型 JSON 文件 Write 后必须立即 python json.load 验证（exploration.json 曾一处 } 笔误当场修复）；多文件 ID 交叉引用（chapter→forms/formulas/contracts）落地时跑一次性脚本校验 0 悬空
+
+### 2026-08-21 · Key Learnings + Do-Not-Repeat（geological-report v2 T4 冒烟收口）
+- **exploration.json 扁平点号键真相**：`hydro_eng_env` 的字段是顶层扁平键 `hydro.inflow_analogy`/`engineering.goaf`/`type_verdicts` 等（点号在键名里），**不是**嵌套 dict——读取必须 `hee.get("hydro.inflow_analogy")`。项目字段名是 `project_name/undertaking_unit/tenement_no`（非 mine_name/compilation_unit/license_no）。改脚本前先 dump schema 键。
+- **L8 尺度不变性**：L8=Σmetal/Σore×100，工业块段全用同一 d_ind → D(体重) 改变时分子分母同比例缩放 → **L8 值不变，impacted 值差分正确地不含 L8**。差分排除 ≠ 依赖缺失；断言应测 {L9,E1,S1,L11} ⊆ affected 且 L8 ∉ affected（把不变性本身当断言）。
+- **SL2×CC2 白名单冲突（bug-2211）**：历史分类编码 332/333/111b/122b/2M22/B+C+D 被 CC2 要求原样保留，但 SL2 溯源把它们打为不可溯源 FAIL——结构性编码非量测数值，必须在 SL 白名单豁免（regex 已加，带红线P4注释）。
+- **Do-Not-Repeat：f-string 里 `{{X}}` 坍缩为 `{X}`**——后续 `str.replace("{{X}}", v)` 静默落空（冒烟 ch6 的 422 因此没进正文，XS5 报缺）。f-string 中要事后替换的占位符别用双大括号，直接内插或用单大括号占位+单大括号 replace。
+- **冒烟数据类型占位术**：GATE1 缺项用类型驱动占位（enum→首项/number→1.0/array→[{"占位":1}]/object→{"result":"未涉及"}）+ try_fill 逐键容错重试（失败键丢弃换占位），比逐字段手填省 90% 行数。

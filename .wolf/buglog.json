@@ -20421,6 +20421,107 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-08-21"
+    },
+    {
+      "id": "bug-1217",
+      "timestamp": "2026-08-21T03:04:14.996Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/geological-report/SKILL.md",
+      "root_cause": "Had `found=false`",
+      "fix": "Changed to `knowledge-factory_kf_resolve_template`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-08-21T03:04:39.024Z"
+    },
+    {
+      "id": "bug-1218",
+      "timestamp": "2026-08-21T03:11:13.466Z",
+      "error_message": "Wrong return value",
+      "file": "skills/public/geological-report/scripts/ingest.py",
+      "root_cause": "Was returning: False, None, f\"{key}: 值为 null（必填字段不允许）\"",
+      "fix": "Now returns: True, None, \"\"",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T03:11:13.466Z"
+    },
+    {
+      "id": "bug-2215",
+      "timestamp": "2026-08-21T11:30:00",
+      "error_message": "页面实测 geological-report v2：agent 逐类收集后说\"已记录\"但 data/ 表单全 null——数据只留在对话上下文未落盘",
+      "file": "skills/public/geological-report/SKILL.md",
+      "root_cause": "SKILL.md 步骤1.3 只说逐类收集，未写收集后如何落盘；ingest.py forms --family --values 写入模式存在于 CLI 但速查表未暴露，agent 无从得知",
+      "fix": "SKILL.md 步骤1.3 增补\"每收完一类立即落盘\"+ 示例值≠数据红线；命令速查表补 --values/--rows 写入模式；KF resolve 改为开题第一轮必须调用并写明工具全名",
+      "tags": [
+        "geological-report",
+        "skill-doc",
+        "data-persistence",
+        "page-test"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T11:30:00"
+    },
+    {
+      "id": "bug-2216",
+      "timestamp": "2026-08-21T11:30:00",
+      "error_message": "页面实测：agent 把自己提问用的\"示例格式\"值当数据写入表单（project_name=某某铜矿/tenement_no=C5300002023XXXXXX/拐点坐标=示例模板值/标高1400~2000 编造）；纠正时必填字段用 (0,0) 冒充 null",
+      "file": "skills/public/geological-report/scripts/ingest.py",
+      "root_cause": "双因：① LLM 把示例当数据（P2 违规）；② coerce_type 对必填字段 null 直接拒绝（ingest.py:104），完备性本应归门1 check 管，写入路径拒绝逼 agent 用 0 填结构冒充",
+      "fix": "① SKILL.md 加\"示例值≠数据\"红线+落盘后回显核对；② coerce_type null 直通（True,None,'')，check 仍报缺；新增 test_null_required_field_passthrough 回归",
+      "tags": [
+        "geological-report",
+        "p2-redline",
+        "example-value-fabrication",
+        "null-passthrough",
+        "page-test"
+      ],
+      "related_bugs": [
+        "bug-2215"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T11:30:00"
+    },
+    {
+      "id": "bug-1221",
+      "timestamp": "2026-08-21T03:17:37.645Z",
+      "error_message": "Wrong reference: 2214 should be 2216",
+      "file": "skills/public/geological-report/scripts/ingest.py",
+      "root_cause": "Used \"2214\" instead of \"2216\"",
+      "fix": "Changed 2214 → 2216",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T03:17:37.645Z"
+    },
+    {
+      "id": "bug-1222",
+      "timestamp": "2026-08-21T03:17:41.249Z",
+      "error_message": "Wrong reference: 2214 should be 2216",
+      "file": "backend/tests/test_geological_report_v2_scripts.py",
+      "root_cause": "Used \"2214\" instead of \"2216\"",
+      "fix": "Changed 2214 → 2216",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-21T03:17:41.249Z"
     }
   ]
 }

@@ -10937,3 +10937,18 @@
 | 10:41 | Edited backend/app/extensions/output/generator.py | 3→3 lines | ~35 |
 | 10:46 | Session end: 1 writes across 1 files (generator.py) | 0 reads | ~35 tok |
 | 05:10 | Word导出图片EXIF旋转修复——_bake_exif_orientation用Pillow exif_transpose把方向烤进像素(tag0/1原字节直过), 用户原图3013×2173 tag8→嵌入2173×3013竖图 | backend/app/extensions/output/generator.py, backend/tests/test_output_images.py | fixed+20tests pass+bug-2214 | ~25k |
+| 10:46 | Session end: 1 writes across 1 files (generator.py) | 0 reads | ~35 tok |
+| 11:04 | Edited skills/public/geological-report/SKILL.md | inline fix | ~38 |
+| 11:04 | Edited skills/public/geological-report/SKILL.md | 1→2 lines | ~83 |
+| 11:04 | Edited skills/public/geological-report/SKILL.md | "ingest.py forms --stage S" → "ingest.py forms --stage S" | ~34 |
+| 11:08 | Edited skills/public/geological-report/SKILL.md | 1→2 lines | ~85 |
+| 11:11 | Edited skills/public/geological-report/scripts/ingest.py | 2→4 lines | ~45 |
+| 11:12 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_gate1_missing_required_rc2() | ~278 |
+
+## Session: 2026-08-21 11:16
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 11:17 | Edited skills/public/geological-report/scripts/ingest.py | 2214 → 2216 | ~5 |
+| 11:17 | Edited backend/tests/test_geological_report_v2_scripts.py | 2214 → 2216 | ~15 |
+| 11:38 | geological-report 页面验证收尾：终清确认(3用户值保留+6字段null) + buglog 2215/2216 + cerebrum 4条 | .wolf/buglog.json .wolf/cerebrum.md | done | ~6k |
