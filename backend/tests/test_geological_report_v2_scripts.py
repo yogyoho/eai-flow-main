@@ -377,6 +377,86 @@ class TestIngest:
         out = run("ingest.py", "check", "--stage", STAGE, "--data-dir", d, expect=(2,))
         assert "holder" in out
 
+    def test_empty_values_rejected_no_wipe(self, tmp_path):
+        """bug-2217: --values 空串（$(cat 不存在文件) 静默展开）必须报错退出，
+        绝不落入空白生成路径把已收集数据清掉（页面实测 21 表单全灭）。"""
+        import ingest
+
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        ingest.write_form_values(str(STAGE), str(d), "tenement", {"tenement_no": "T-1"})
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d), "--family", "tenement", "--force", "--values", ""],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        assert r.returncode == 1, f"空 --values 应报错\n{r.stdout}\n{r.stderr}"
+        assert json.loads((d / "01_tenement.json").read_text(encoding="utf-8"))["tenement_no"] == "T-1"
+
+    def test_force_requires_scope(self, tmp_path):
+        """bug-2217: 无 --only/--family 的 --force 会整目录重置空白——必须拒绝。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d), "--force"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        assert r.returncode == 1 and "--force" in r.stderr
+
+    def test_force_scoped_to_family(self, tmp_path):
+        """bug-2217: --family X --force 只重置 X 族，其余族已收集数据保留
+        （此前空白生成路径无视 --family，21 张表单全被重置）。"""
+        import ingest
+
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        ingest.write_form_values(str(STAGE), str(d), "tenement", {"tenement_no": "T-1"})
+        ingest.write_form_values(str(STAGE), str(d), "project", {"project_name": "P"})
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "tenement", "--force")
+        assert json.loads((d / "01_tenement.json").read_text(encoding="utf-8"))["tenement_no"] is None
+        assert json.loads((d / "00_project.json").read_text(encoding="utf-8"))["project_name"] == "P"
+
+    def test_stage_bare_name_resolves(self, tmp_path):
+        """bug-2217: 裸名 'exploration' 自动补全到内置 stages 路径，
+        不再抛 FileNotFoundError 裸 traceback；不存在的名字给可读错误。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        out = run("ingest.py", "forms", "--stage", "exploration", "--data-dir", d)
+        assert "FORMS_READY" in out
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", "nonexistent_stage", "--data-dir", str(d)],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        assert r.returncode == 1 and "找不到阶段 schema" in r.stderr
+
+    def test_parallel_writes_manifest_consistency(self, tmp_path):
+        """bug-2217: 并行 ingest 进程共享 .tmp 名 → os.replace FileNotFoundError、
+        manifest load-modify-write 丢条目。修复 = pid 唯一 tmp + manifest 互斥锁。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        jobs = [
+            ("tenement", {"tenement_no": "T-1"}),
+            ("project", {"project_name": "P"}),
+            ("geography", {"location_text": "L"}),
+        ]
+        procs = [
+            subprocess.Popen(
+                [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d),
+                 "--family", fam, "--values", json.dumps(vals, ensure_ascii=False)],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            )
+            for fam, vals in jobs
+        ]
+        for fam, p in zip(jobs, procs):
+            _, err = p.communicate()
+            assert p.returncode == 0, f"{fam[0]} 并行写失败:\n{err.decode('utf-8', 'replace')}"
+        m = json.loads((d / "state_manifest.json").read_text(encoding="utf-8"))
+        for fname in ("01_tenement.json", "00_project.json", "04_geography.json"):
+            assert fname in m["files"], f"manifest 丢条目: {fname}"
+
 
 # ── 2. formula_runner：冻结计算 + 锚点 + ROUND_HALF_EVEN 红线 ───────────────
 

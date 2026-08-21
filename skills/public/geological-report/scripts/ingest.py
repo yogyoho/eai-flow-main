@@ -29,6 +29,7 @@ import json
 import os
 import re
 import sys
+import time
 import zipfile
 from pathlib import Path
 from xml.etree import ElementTree as ET
@@ -51,7 +52,9 @@ def sha256_file(path: Path) -> str:
 
 def atomic_write_text(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    # bug-2217: 固定 .tmp 名在并行 ingest.py 进程间互吃临时文件 → os.replace
+    # FileNotFoundError（页面实测 seq133/152）。pid 后缀各写各的，replace 仍原子。
+    tmp = path.parent / f"{path.name}.{os.getpid()}.tmp"
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
 
@@ -68,19 +71,47 @@ def load_manifest(data_dir: Path) -> dict:
 
 
 def register_file(data_dir: Path, rel_name: str, family: str, required: bool, fmt: str) -> None:
-    """写入/更新 state_manifest 条目（文件须已落盘，hash 现算）。"""
-    m = load_manifest(data_dir)
-    m["files"][rel_name] = {
-        "sha256": sha256_file(data_dir / rel_name),
-        "family": family,
-        "required": required,
-        "format": fmt,
-    }
-    atomic_write_text(data_dir / MANIFEST_NAME, json.dumps(m, ensure_ascii=False, indent=2))
+    """写入/更新 state_manifest 条目（文件须已落盘，hash 现算）。
+
+    bug-2217: manifest 是 load-modify-write，并行 ingest.py 进程会互相覆盖丢条目。
+    O_CREAT|O_EXCL 自旋锁跨进程互斥（Windows/Linux 通用）；
+    # ponytail: 持锁进程崩溃会留死锁文件 → 10s 超时报错，需人工删 .lock
+    """
+    lock = data_dir / (MANIFEST_NAME + ".lock")
+    for _ in range(200):  # 0.05s × 200 = 10s 上限
+        try:
+            fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.close(fd)
+            break
+        except FileExistsError:
+            time.sleep(0.05)
+    else:
+        raise RuntimeError(f"{lock} 被占用超过 10s（若为残留死锁文件可删除后重试）")
+    try:
+        m = load_manifest(data_dir)
+        m["files"][rel_name] = {
+            "sha256": sha256_file(data_dir / rel_name),
+            "family": family,
+            "required": required,
+            "format": fmt,
+        }
+        atomic_write_text(data_dir / MANIFEST_NAME, json.dumps(m, ensure_ascii=False, indent=2))
+    finally:
+        lock.unlink(missing_ok=True)
 
 
 def load_stage(stage_path: Path) -> dict:
-    return json.loads(Path(stage_path).read_text(encoding="utf-8"))
+    # bug-2217: 裸名（如 'exploration'）此前抛裸 FileNotFoundError traceback。
+    # 自动补全到技能内置 references/stages/<name>.json；仍找不到给可读错误。
+    p = Path(stage_path)
+    if not p.exists():
+        alt = Path(__file__).resolve().parent.parent / "references" / "stages" / (p.name if p.suffix == ".json" else p.name + ".json")
+        if alt.exists():
+            p = alt
+        else:
+            print(f"[ingest] 错误: 找不到阶段 schema '{stage_path}'（内置路径 {alt} 也不存在）。用法: --stage references/stages/exploration.json，或裸名 exploration）", file=sys.stderr)
+            raise SystemExit(EXIT_ERROR)
+    return json.loads(p.read_text(encoding="utf-8"))
 
 
 # ── 表单族定位：族名 ↔ data/ 文件名（如 industrial ↔ 13_industrial_params.json）──
@@ -178,6 +209,15 @@ def cmd_forms(args) -> int:
     only = set(args.only.split(",")) if args.only else None
     anomalies: list[str] = []
 
+    # bug-2217: --values/--rows 传了但为空串（典型: --values "$(cat 不存在的文件)" 静默展开）
+    # 此前落入空白生成路径——配 --force 直接把 data/ 全部表单重置为空白，已收集数据全丢（页面实测）。
+    if args.values is not None and not args.values.strip():
+        print("[ingest] 错误: --values 是空字符串（常见于 $(cat 文件不存在) 静默展开为空）。请检查取值命令后重传完整 JSON。", file=sys.stderr)
+        return EXIT_ERROR
+    if args.rows is not None and not args.rows.strip():
+        print("[ingest] 错误: --rows 是空字符串。请检查取值命令后重传完整 JSON 数组。", file=sys.stderr)
+        return EXIT_ERROR
+
     if args.values or args.rows:
         # 校验写入路径（agent 收集到的值 → data/；唯一写者语义）
         if args.family not in families:
@@ -229,6 +269,13 @@ def cmd_forms(args) -> int:
         return EXIT_OK
 
     # 空白生成路径
+    # bug-2217: 空白生成此前无视 --family（--family 只在写入路径生效），
+    # "--family X --force" 会重置全部 21 张表单而非 X 一张。--force 必须有显式范围。
+    if args.family and only is None:
+        only = {args.family}
+    if args.force and only is None:
+        print("[ingest] 错误: --force 必须搭配 --only <族列表> 或 --family <族>。无范围的 --force 会把 data/ 全部表单重置为空白、清掉已收集数据。", file=sys.stderr)
+        return EXIT_ERROR
     written = skipped = 0
     for fam, spec in families.items():
         if only and fam not in only:
@@ -490,7 +537,7 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--stage", required=True, help="references/stages/{stage}.json 路径")
     f.add_argument("--data-dir", required=True)
     f.add_argument("--only", help="逗号分隔表单族名（只生成这些）")
-    f.add_argument("--force", action="store_true", help="覆盖已存在的空白表单")
+    f.add_argument("--force", action="store_true", help="覆盖已存在表单（危险：重置为空白；必须搭配 --only/--family 限定范围）")
     f.add_argument("--family", help="目标表单族（--values/--rows 写入模式必填）")
     f.add_argument("--values", help="JSON 对象字符串（JSON 表单）")
     f.add_argument("--rows", help="JSON 行数组字符串（CSV 表单）")

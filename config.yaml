@@ -89,6 +89,11 @@ token_budget:
 # runaway API cost / DoS. Invalid or non-positive client values fall back to
 # the server default of 100. Raise this only if you legitimately run very
 # deeply nested subagent graphs.
+# EAI-CUSTOM (bug-2189): 曾因"每轮失忆循环"回放实证(fd49b085)压到 300。bug-2203 复测推翻:
+# 中间件链使每轮工具往返消耗 12 superstep(标准 react agent 仅 2), bid-proposal 技能在 933KB
+# 真实招标件上仅阶段2 extract 就需 ~840-1200 step——300 把合法长管线一并熔断(干净状态亦然)。
+# 失控循环改由 loop_detection 单独拦(tuned 15/25, 见 loop_detection 注释), 递归上限回归
+# example 默认 1000。
 max_recursion_limit: 1000
 
 
@@ -137,16 +142,19 @@ models:
     request_timeout: 300.0
     max_tokens: 8192
     temperature: 0.7
-    # supports_thinking: true
-    # supports_vision: false
-    # when_thinking_enabled:
-    #   extra_body:
-    #     thinking:
-    #       type: enabled
-    # when_thinking_disabled:
-    #   extra_body:
-    #     thinking:
-    #       type: disabled
+    # EAI-CUSTOM (bug-2189 E2E): glm-4.1v-thinking-flash 是常开思维链模型, 未注册 supports_thinking
+    # 会导致请求 thinking_enabled=true 被静默降级(agent.py:749 warning)。
+    # 注意: 该免费模型输入超过约 22k token 时输出坍缩(out=2, 端点截断), 不适用于 lead_agent 长上下文任务。
+    supports_thinking: true
+    supports_vision: false
+    when_thinking_enabled:
+      extra_body:
+        thinking:
+          type: enabled
+    when_thinking_disabled:
+      extra_body:
+        thinking:
+          type: disabled
 
   - name: gemma-4
     display_name: gemma-4-E4B（llama.cpp）
@@ -1107,7 +1115,10 @@ tools:
 # multiple MCP servers expose a large number of tools.
 
 tool_search:
-  enabled: false
+  # EAI-CUSTOM(bug-2196): 开启 MCP 工具延迟绑定——模型按需经 tool_search 发现/自动提升
+  # (auto_promote_top_k) 匹配的工具 schema，配合 local-knowledge-first skill 实现
+  # "本地知识库优先、web_search 兜底" 的检索路由。
+  enabled: true
   # When tool_search is enabled, PR1 MCP routing metadata can auto-promote
   # matching deferred MCP tool schemas before a model call. This is the maximum
   # number of matched schemas promoted per model call. Valid range: 1..5.
@@ -1180,8 +1191,10 @@ loop_detection:
   hard_limit: 5
   window_size: 20
   max_tracked_threads: 100
-  tool_freq_warn: 30
-  tool_freq_hard_limit: 50
+  tool_freq_warn: 15
+  tool_freq_hard_limit: 25
+  # EAI-CUSTOM (bug-2189): 30/50 对"高频 bash 冲淡滑窗"结构盲区过宽(fd49b085 单 run
+  # 91 次 LLM 调用才被 recursion_limit 熔断); 15/25 把同类失控提前 ~2 轮窗口拦截。
   # Per-tool overrides for tool_freq_warn / tool_freq_hard_limit. Values can be
   # higher or lower than the global defaults. Commonly used to raise thresholds
   # for high-frequency tools like bash in batch workflows (e.g. RNA-seq pipelines)
@@ -1190,6 +1203,14 @@ loop_detection:
   #   bash:
   #     warn: 150
   #     hard_limit: 300
+  # EAI-CUSTOM (bug-2217): 地质报告等批处理技能单轮合法消耗 60+ 次 bash
+  # (22 表单读写 + 管线脚本 + 校验), 15/25 滑窗提前熔断正常任务(线程
+  # 0506a910 页面实测 25 次被拦)。bash 单独放宽 40/60——bug-2189 的失控场景
+  # (91 次连续调用)仍会被拦, 其余工具维持 15/25。
+  tool_freq_overrides:
+    bash:
+      warn: 40
+      hard_limit: 60
 
 # ============================================================================
 # Tool Progress State Machine Configuration (RFC #3177)
@@ -2251,6 +2272,15 @@ run_ownership:
 # The redis bridge requires the optional `redis` extra. It is auto-detected from
 # this section on `make dev`, and always installed in the Docker image. To install
 # it manually: cd backend && uv sync --all-packages --extra redis
+#
+# EAI-CUSTOM (bug-2204): 事件保活窗口 256(默认) 对本仓中间件链太窄——每轮工具往返
+# 12 superstep(bug-2203), 88k token 上下文的 values 帧数百 KB, 慢消费端(浏览器弱网/
+# E2E 驱动)极易落后 >256 事件触发 StreamGap 踢出。gap 恢复链路已修(sse_consumer
+# gap 事件 + 不误杀 run), 这里再放大窗口降低触发频率。1024 ≈ 每活跃 run 十几 MB
+# 引用驻留, dev 环境可接受。RESTART REQUIRED (bridge 在 startup 构造一次)。
+stream_bridge:
+  type: memory
+  queue_maxsize: 1024
 #
 # stream_bridge:
 #   type: memory                 # single-process only
