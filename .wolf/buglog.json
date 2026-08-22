@@ -20664,7 +20664,7 @@
       "error_message": "用户：生成的报告太单薄了——对比样例 91k 有效字符仅还原 17%，子节覆盖 56/149=38%，ch6 仅 5%",
       "file": "skills/public/geological-report/SKILL.md + scripts/build_output.py",
       "root_cause": "三层断点：①wave1 生成指令没有『toc 全覆盖+缺数保段落』要求，缺数据的节被直接砍掉（样例缺失的 1.1/2.2/4.3/4.6/6.x三级/8.4-8.11 在 exploration.json toc 里其实都有定义）；②无叙述深度下限与条目式叙述范式（矿体八要素链）；③批量清单数据靠表单逐项问答收不齐（矿体/样品/钻探应走 CSV 导入）；④章节文件零校验使污染直通最终文件",
-      "fix": "SKILL.md 步骤4 wave1 新增 4 条铁律：骨架全覆盖（缺数写 [待确认] 占位句禁删节并节）/叙述深度下限（三级节≥1段≥3句、表前引入表后解读）/条目式叙述八要素范式（层位→工程控制→形态产状→延伸→厚度+变化系数+判型→品位+变化系数+判型→岩性矿物+产出状态→占比）/章节文件卫生；步骤1 加批量数据优先引导 CSV 上传；步骤5-7 加交付回路铁律；build_output.py validate_chapter 卫生门",
+      "fix": "SKILL.md 步骤4 wave1 新增 4 条铁律：骨架全覆盖（缺数写 [待确认] 占位句禁删节并节）/叙述深度下限（三级节≥1段≥3句、表前引入表后解读）/条目式叙述八要素范式（层位→工程控制→形态产状→延伸→厚度+变化系数+判型→品位+变化系数+判型→岩性矿物+产出状态→占比）/章节文件卫生；步骤1 加批量数据优先引导 CSV 上传；步骤5-7 加交付回路铁律；build_output.py validate_chapter 卫生门；根因①数据侧配套：references/stages/exploration.json 补 sections 逐节要素链（10章148节623要素，10-agent workflow 产出，toc 节号集合==sections no 集合由 TestStageSections 锁定），wave1 按 elements 逐要素成句",
       "tags": [
         "geological-report",
         "wave1",
@@ -20678,6 +20678,38 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-08-22"
+    },
+    {
+      "id": "bug-1231",
+      "timestamp": "2026-08-22T00:36:32.962Z",
+      "error_message": "Wrong reference: toc should be sections",
+      "file": "skills/public/geological-report/SKILL.md",
+      "root_cause": "Used \"toc\" instead of \"sections\"",
+      "fix": "Changed toc → sections",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-22T00:36:32.962Z"
+    },
+    {
+      "id": "bug-1232",
+      "timestamp": "2026-08-22T00:52:41.937Z",
+      "error_message": "Significant refactor of ",
+      "file": "../../temp/geo-compare/merge_sections.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-08-22T00:52:41.937Z"
     }
   ]
 }

@@ -11002,3 +11002,19 @@
 | 07:52 | Edited skills/public/geological-report/SKILL.md | 1→2 lines | ~69 |
 | 07:53 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_missing_chapter_rc1() | ~497 |
 | 21:05 | 报告加深改动集落地: SKILL.md wave1 四铁律(toc全覆盖/深度下限/八要素/文件卫生)+交付回路+CSV引导; build_output validate_chapter 卫生门; 测试32绿(+2负例) | SKILL.md, build_output.py, test_geological_report_v2_scripts.py | bug-2220/2221 修复 | ~28k |
+| 07:55 | Session end: 7 writes across 3 files (build_output.py, SKILL.md, test_geological_report_v2_scripts.py) | 3 reads | ~8462 tok |
+| 08:03 | Session end: 7 writes across 3 files (build_output.py, SKILL.md, test_geological_report_v2_scripts.py) | 3 reads | ~8462 tok |
+| 08:21 | Session end: 7 writes across 3 files (build_output.py, SKILL.md, test_geological_report_v2_scripts.py) | 3 reads | ~8462 tok |
+| 08:31 | Session end: 7 writes across 3 files (build_output.py, SKILL.md, test_geological_report_v2_scripts.py) | 3 reads | ~8462 tok |
+| 08:36 | Edited skills/public/geological-report/SKILL.md | inline fix | ~49 |
+| 08:36 | Edited backend/tests/test_geological_report_v2_scripts.py | modified test_sections_cover_toc() | ~250 |
+| 08:42 | ch2区域地质逐节要素链：读exploration.json ch2+regional_pack表单，产出10节(2.1/2.1.1-2.1.5/2.2/2.2.1-2.2.3)要素条目 | skills/public/geological-report/references/stages/exploration.json | done | ~30k |
+| 08:43 | 勘探ch6逐节要素链构建:解析toc 5二级+24三级,并入W1/XS3-XS5/CC3/表6-x/hydro_eng_env台账引用 | exploration.json | done | ~14k |
+| 08:49 | Created ../../temp/geo-compare/merge_sections.py | — | ~712 |
+
+## Session: 2026-08-22 08:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 08:52 | Edited ../../temp/geo-compare/merge_sections.py | modified enumerate() | ~78 |
+| 17:20 | exploration.json 补齐逐节要素链 sections（10章148节623要素，workflow 产出+外科插入保 toc 单行格式），测试33绿 | references/stages/exploration.json + SKILL.md + test_geological_report_v2_scripts.py | done | ~9k |

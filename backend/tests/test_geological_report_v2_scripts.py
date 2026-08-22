@@ -517,7 +517,26 @@ class TestFormulaRunner:
         assert abs(v - 6.80) < 0.006, f"C9 应 5.95→6.80, got {v}"
 
 
-# ── 3. chapter_planner：manifest + 三路反查 ─────────────────────────────────
+# ── 3. stage schema：sections 逐节要素链与 toc 对齐（bug-2221 骨架防漂移）─────
+
+
+class TestStageSections:
+    def test_sections_cover_toc(self):
+        """每章 toc 的全部二/三级节号必须存在于 sections 要素链（wave1 按节写作的数据前提）。"""
+        import re
+
+        num_re = re.compile(r"\d+\.\d+(?:\.\d+)?")
+        stage = json.loads(STAGE.read_text(encoding="utf-8"))
+        for ch_id, ch in stage["chapters"].items():
+            toc_nos = {m for sub in ch.get("toc", []) for m in num_re.findall(sub)}
+            sec_nos = {s["no"] for s in ch.get("sections", [])}
+            assert toc_nos, f"{ch_id}: toc 未解析出节号"
+            assert sec_nos == toc_nos, f"{ch_id}: sections↔toc 不对齐: {sorted(sec_nos ^ toc_nos)}"
+            for s in ch["sections"]:
+                assert len(s["elements"]) >= 2, f"{ch_id} {s['no']}: elements 过少"
+
+
+# ── 3b. chapter_planner：manifest + 三路反查 ────────────────────────────────
 
 
 class TestChapterPlanner:
