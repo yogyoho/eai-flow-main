@@ -170,18 +170,20 @@ def _auto_user_context(request):
 # ---------------------------------------------------------------------------
 # Multiple skills publish same-named top-level scripts (water-drainage-report
 # and geological-report both have formula_runner.py / chapter_planner.py;
-# geological-report and bid-proposal-writing both have ingest.py). A
-# module-level ``import formula_runner`` in one test file poisons the
+# bid/water/geological all have snapshot.py; geological-report and
+# bid-proposal-writing both have ingest.py / build_output.py). A module-level
+# or lazily-imported ``formula_runner`` in one test file poisons the
 # process-global sys.modules for every later in-process import in another
 # skill's tests: in a full-suite (alphabetical) run the geological tests fail
 # with ``AttributeError: module 'formula_runner' has no attribute 'q'`` and
-# bid tests invoke geological's ingest CLI. Fix: while a test whose module
-# defines ``SCRIPTS`` (or ``SCRIPTS_DIR``) runs, the colliding names resolve
-# from THAT directory via a meta-path finder. Hook-based (not a fixture) on
-# purpose: pytest_runtest_setup fires before session/module-scoped fixtures
-# of the item instantiate, so fixtures importing these names are covered too.
+# bid tests invoke another skill's ingest/snapshot CLI. Fix: while a test
+# whose module defines ``SCRIPTS`` (or ``SCRIPTS_DIR``) runs, the colliding
+# names resolve from THAT directory via a meta-path finder. Hook-based (not a
+# fixture) on purpose: pytest_runtest_setup fires before session/module-scoped
+# fixtures of the item instantiate, so fixtures importing these names are
+# covered too.
 
-_SKILL_SCRIPT_NAMES = ("chapter_planner", "ingest", "formula_runner")
+_SKILL_SCRIPT_NAMES = ("build_output", "chapter_planner", "ingest", "formula_runner", "snapshot")
 _current_skill_scripts: Path | None = None
 
 
