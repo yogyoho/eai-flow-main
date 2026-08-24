@@ -10,7 +10,7 @@
 原子写：tmp + os.replace（bid-proposal 先例）；内容不变跳过写盘保 mtime（SC-4 字节不变）；
 全文无时间戳（幂等）。
 
-退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）
+退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含管线外散文件（交付名门，bug-2223）
 """
 
 from __future__ import annotations
@@ -31,6 +31,19 @@ TABLE_RE = re.compile(r"\{\{TABLE:([^}]+)\}\}")
 
 def sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+# ── 交付名门（bug-2223②：规范文件名唯一来源 = 00_project 表单直读）────────────
+
+
+def expected_deliverable_name(stage: dict, data_dir: Path) -> str:
+    """{项目名}-{阶段}-地质勘查报告.md（00_project 直读；缺参不编造，回退字段名提示）。"""
+    spec = stage.get("forms", {}).get("project", {})
+    p = data_dir / spec["file"]
+    proj = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    name = proj.get("project_name") or "未命名项目"
+    st = proj.get("stage") or stage.get("stage", "")
+    return f"{name}-{st}-地质勘查报告.md"
 
 
 # ── 前置部分（表单直出）────────────────────────────────────────────────────
@@ -187,7 +200,7 @@ def validate_depth(ch_id: str, text: str) -> None:
         raise ValueError(f"{ch_id}.md 深度门 FAIL（每节 ≥3 句，参照 references/samples/exploration/{ch_id}_sample.md 范文补写）: {'; '.join(thin)}")
     eff = sum(len(re.sub(r"[\s\|\-*#:{}]", "", l)) for l in text.splitlines() if l.strip() and not l.strip().startswith("|") and not l.strip().startswith("#"))
     if eff < 1000:
-        raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照同章范文扩写")
+        raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照 references/samples/exploration/{ch_id}_sample.md 范文扩写")
 
 
 # ── 组装 ────────────────────────────────────────────────────────────────────
@@ -256,6 +269,16 @@ def main() -> int:
     args = p.parse_args()
     try:
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
+        # ── bug-2223 交付名门：文件名规范 + outputs/ 无管线外散文件 ──
+        out_path = Path(args.output)
+        expected = expected_deliverable_name(stage, Path(args.data_dir))
+        if out_path.name != expected:
+            print(f"[build] 交付名门 FAIL: 输出 {out_path.name!r} ≠ 规范名 {expected!r}（{{项目名}}-{{阶段}}-地质勘查报告.md，bug-2220/2223）", file=sys.stderr)
+            return EXIT_ERROR
+        stray = sorted(p.name for p in out_path.parent.glob("*.md") if p.name != out_path.name)
+        if stray:
+            print(f"[build] 交付名门 FAIL: outputs/ 存在管线外散文件 {stray}——唯一交付单文件 {expected!r}，散文件移出或删除（bug-2220 交付回路铁律）", file=sys.stderr)
+            return EXIT_ERROR
         content = assemble(stage, Path(args.data_dir), Path(args.state_dir))
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as e:
         print(f"[build] 错误: {e}", file=sys.stderr)

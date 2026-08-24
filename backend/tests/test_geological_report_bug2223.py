@@ -298,3 +298,44 @@ class TestDepthGate:
         ws["out"].mkdir()
         r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
         assert "3.1" in r.stderr  # 表格块 0 句 → FAIL（表格不豁免叙述）
+
+    def test_table_heavy_chapter_fails_eff_chars(self, build_ws, tmp_path):
+        """M3 钉：每块 ≥3 句但有效字符量全靠表格行 → 有效字符 FAIL（表格不计入 eff）。"""
+        import shutil
+
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        # 200 行×~7 有效字符：M3 突变（表格计入 eff）时 eff≈1500 ≥1000 → 门放行 rc=0 → 本测试转 RED——钉住排除逻辑；真代码 eff=36 <1000 → FAIL
+        table = "\n".join(f"| 参数{i} | 数值{i} |" for i in range(200))
+        three = "第一句明确。第二句完整。第三句收束。\n"
+        (st / "chapters" / "ch3.md").write_text(f"## 3 矿区地质\n\n{three}\n\n### 3.1 表\n\n{three}\n{table}\n", encoding="utf-8")
+        out = tmp_path / "o"
+        out.mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", build_ws["data"], "--state-dir", st, "--output", out / DELIV, expect=(1,))
+        assert "有效字符" in r.stderr
+
+
+# ── Task 5: 交付名门（bug-2223②：文件名规范 + outputs/ 无散文件）──────────────
+
+
+class TestDeliverableNameGate:
+    def test_wrong_name_rejected_with_expected(self, build_ws):
+        """E2E 实测的违规名 01-10_完整报告.md → rc=1 + stderr 打印规范名。"""
+        r = _build(build_ws, out_name="01-10_完整报告.md", expect=(1,))
+        assert "交付名门" in r.stderr and DELIV in r.stderr
+
+    def test_stray_md_in_outputs_rejected(self, build_ws):
+        """outputs/ 出现管线外散 .md → rc=1 列出文件（交付回路铁律）。"""
+        stray = build_ws["out"] / "ch1_绪论.md"
+        stray.write_text("散文件", encoding="utf-8")
+        try:
+            r = _build(build_ws, expect=(1,))
+            assert "散文件" in r.stderr and "ch1_绪论.md" in r.stderr
+        finally:
+            stray.unlink()
+
+    def test_canonical_name_passes_idempotent(self, build_ws):
+        """规范名两连 build：第二次 unchanged（幂等，门不破坏 SC-4）。"""
+        _build(build_ws)
+        r = _build(build_ws)
+        assert "unchanged" in r.stdout
