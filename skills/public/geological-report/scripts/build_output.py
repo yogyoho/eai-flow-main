@@ -167,6 +167,8 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
     state = json.loads(state_path.read_text(encoding="utf-8"))
     # ── bug-2223 手改检测门：formula_runner.emit() 给每个槽位写 source 键；手改必丢 ──
     for key, slot in state.get("values", {}).items():
+        if not isinstance(slot, dict):
+            raise ValueError(f"formula_state 槽位 {key} 不是对象（数值裸写=手改特征，formula_runner 是唯一写者，bug-2223）")
         if isinstance(slot.get("value"), (int, float)) and not isinstance(slot.get("value"), bool) and "source" not in slot:
             raise ValueError(f"formula_state 槽位 {key} 缺 source 键——疑似手改（formula_runner 是唯一写者，数字永不经过 LLM，bug-2223）")
     consistency = None

@@ -35,6 +35,7 @@ def run(*args, expect=(0,)):
 class TestNormalize:
     def test_grade_class_map(self):
         import formula_runner as fr
+
         assert fr.norm_grade_class("工业矿") == "工业"
         assert fr.norm_grade_class("工业") == "工业"
         assert fr.norm_grade_class("低品位矿") == "低品位"
@@ -44,6 +45,7 @@ class TestNormalize:
 
     def test_category_map(self):
         import formula_runner as fr
+
         assert fr.norm_category("探明") == "TM"
         assert fr.norm_category("控制") == "KZ"
         assert fr.norm_category("推断") == "TD"
@@ -66,16 +68,21 @@ def l9_ws(tmp_path_factory):
     run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
     import ingest
 
-    ingest.write_form_values(str(STAGE), str(data), "industrial_params",
-                             {"boundary_grade_cu": 0.3, "min_industrial_grade_cu": 0.5, "min_mining_thickness": 1.0,
-                              "waste_exclusion_thickness": 2.0, "grade_variation_coeff_range": [30, 50],
-                              "outlier_multiple": 3, "deposit_avg_grade": 1.41})
+    ingest.write_form_values(
+        str(STAGE),
+        str(data),
+        "industrial_params",
+        {"boundary_grade_cu": 0.3, "min_industrial_grade_cu": 0.5, "min_mining_thickness": 1.0, "waste_exclusion_thickness": 2.0, "grade_variation_coeff_range": [30, 50], "outlier_multiple": 3, "deposit_avg_grade": 1.41},
+    )
     # 47d8c147 实喂结构：中文 category + 复合类别 + grade_class="工业矿"
-    bm = {"granularity": "B", "aggregates": [
-        {"orebody": "I-1", "category": "探明+控制", "grade_class": "工业矿", "ore_qty_wt": 485.6, "metal_t": 8352, "grade_pct": 1.72},
-        {"orebody": "I-2", "category": "控制", "grade_class": "工业矿", "ore_qty_wt": 120.3, "metal_t": 1299, "grade_pct": 1.08},
-        {"orebody": "II-1", "category": "推断", "grade_class": "低品位矿", "ore_qty_wt": 72.5, "metal_t": 624, "grade_pct": 0.86},
-    ]}
+    bm = {
+        "granularity": "B",
+        "aggregates": [
+            {"orebody": "I-1", "category": "探明+控制", "grade_class": "工业矿", "ore_qty_wt": 485.6, "metal_t": 8352, "grade_pct": 1.72},
+            {"orebody": "I-2", "category": "控制", "grade_class": "工业矿", "ore_qty_wt": 120.3, "metal_t": 1299, "grade_pct": 1.08},
+            {"orebody": "II-1", "category": "推断", "grade_class": "低品位矿", "ore_qty_wt": 72.5, "metal_t": 624, "grade_pct": 0.86},
+        ],
+    }
     ingest.write_form_values(str(STAGE), str(data), "block_model", bm)
     return {"data": data, "state": state}
 
@@ -101,9 +108,13 @@ class TestL9Normalization:
         data.mkdir()
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
         import ingest
-        bm = {"granularity": "B", "aggregates": [
-            {"orebody": "I-1", "category": "探明", "grade_class": "矿石", "ore_qty_wt": 100, "metal_t": 500, "grade_pct": 0.5},
-        ]}
+
+        bm = {
+            "granularity": "B",
+            "aggregates": [
+                {"orebody": "I-1", "category": "探明", "grade_class": "矿石", "ore_qty_wt": 100, "metal_t": 500, "grade_pct": 0.5},
+            ],
+        }
         ingest.write_form_values(str(STAGE), str(data), "block_model", bm)
         st_dir = tmp_path / "s2"
         st_dir.mkdir()
@@ -118,9 +129,13 @@ class TestL9Normalization:
         data.mkdir()
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
         import ingest
-        bm = {"granularity": "B", "aggregates": [
-            {"orebody": "I-1", "category": "推断", "grade_class": "低品位矿", "ore_qty_wt": 100, "metal_t": 500, "grade_pct": 0.3},
-        ]}
+
+        bm = {
+            "granularity": "B",
+            "aggregates": [
+                {"orebody": "I-1", "category": "推断", "grade_class": "低品位矿", "ore_qty_wt": 100, "metal_t": 500, "grade_pct": 0.3},
+            ],
+        }
         ingest.write_form_values(str(STAGE), str(data), "block_model", bm)
         st_dir = tmp_path / "s3"
         st_dir.mkdir()
@@ -173,11 +188,22 @@ def build_ws(tmp_path_factory):
     run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
     import ingest
 
-    ingest.write_form_values(str(STAGE), str(data), "project",
-                             {"project_name": PROJ_NAME, "stage": "勘探", "commodity": "铜银金",
-                              "commissioning_unit": "某矿业公司", "undertaking_unit": "某地质大队",
-                              "work_start": "2023-01", "work_end": "2025-12",
-                              "purpose_tasks": ["查明矿体特征", "估算资源量"], "cutoff_date": "2025-12-31"})
+    ingest.write_form_values(
+        str(STAGE),
+        str(data),
+        "project",
+        {
+            "project_name": PROJ_NAME,
+            "stage": "勘探",
+            "commodity": "铜银金",
+            "commissioning_unit": "某矿业公司",
+            "undertaking_unit": "某地质大队",
+            "work_start": "2023-01",
+            "work_end": "2025-12",
+            "purpose_tasks": ["查明矿体特征", "估算资源量"],
+            "cutoff_date": "2025-12-31",
+        },
+    )
     # 合规章节：每块 ≥3 句 + 每章 ≥1000 有效字符（供 Task 4 深度门正例）。
     # 合成内容只验管线不验文学性——SEC 2 句×~70字 ×8 重复 = 16句/~1120字/块，确定性凑量。
     SEC = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。"
@@ -186,9 +212,11 @@ def build_ws(tmp_path_factory):
         md = f"## {n} 第{n}章\n\n{SEC}\n\n### {n}.1 小节\n\n{SEC}\n"
         (state / "chapters" / f"ch{n}.md").write_text(md, encoding="utf-8")
     # formula_state：全部槽位带 source（公式产物特征）
-    fs = {"version": 2, "values": {"L9.total_ore_wt": {"value": 899.0, "display": "899.00", "unit": "万吨", "source": "formula:L9"},
-                                   "L9.TM_ore_wt": {"value": 339.92, "display": "339.92", "unit": "万吨", "source": "formula:L9"}},
-          "anomalies": []}
+    fs = {
+        "version": 2,
+        "values": {"L9.total_ore_wt": {"value": 899.0, "display": "899.00", "unit": "万吨", "source": "formula:L9"}, "L9.TM_ore_wt": {"value": 339.92, "display": "339.92", "unit": "万吨", "source": "formula:L9"}},
+        "anomalies": [],
+    }
     (state / "formula_state.json").write_text(json.dumps(fs, ensure_ascii=False), encoding="utf-8")
     return {"data": data, "state": state, "out": out}
 
@@ -205,11 +233,27 @@ class TestTamperGate:
     def test_missing_source_rejected(self, build_ws, tmp_path):
         """数值槽缺 source 键（=手改法医特征）→ rc=1。"""
         import shutil
+
         st = tmp_path / "state"
         shutil.copytree(build_ws["state"], st)
         p = st / "formula_state.json"
         d = json.loads(p.read_text(encoding="utf-8"))
         del d["values"]["L9.TM_ore_wt"]["source"]  # 模拟 agent 手改丢 source
+        p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+        ws = {"data": build_ws["data"], "state": st, "out": tmp_path / "o"}
+        ws["out"].mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
+        assert "手改" in r.stderr and "L9.TM_ore_wt" in r.stderr
+
+    def test_bare_number_slot_rejected(self, build_ws, tmp_path):
+        """整槽位裸数值替换（非对象）→ rc=1 且消息含手改特征（非 AttributeError 崩溃）。"""
+        import shutil
+
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        p = st / "formula_state.json"
+        d = json.loads(p.read_text(encoding="utf-8"))
+        d["values"]["L9.TM_ore_wt"] = 339.92  # 模拟 agent 整槽位裸写
         p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
         ws = {"data": build_ws["data"], "state": st, "out": tmp_path / "o"}
         ws["out"].mkdir()
