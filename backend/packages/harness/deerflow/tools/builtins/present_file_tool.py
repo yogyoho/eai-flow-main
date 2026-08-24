@@ -1,3 +1,5 @@
+import asyncio
+import json
 import logging
 from pathlib import Path
 from typing import Annotated
@@ -84,6 +86,59 @@ def _normalize_presented_filepath(
     return f"{OUTPUTS_VIRTUAL_PREFIX}/{relative_path.as_posix()}"
 
 
+# ── START EAI-CUSTOM (bug-2225) 交付契约门 ──────────────────────────────────
+# 背景: geological-report 等管线技能以 build_output.py 产唯一交付 .md（成功后写
+# outputs/delivery_manifest.json 放行凭据）。E2E 实测 agent 可绕过管线手拼 .md 并
+# present 成功（bug-2225）。ingest.py 沿祖先链在 outputs/ 落 .delivery-contract 契约
+# 标记——有标记的线程，未经管线产出的 .md 一律拒绝（工具层报错→agent 循环内自纠，
+# 零用户交互）。无标记线程零影响（全部放行）。同步层门：app/gateway/routers/artifacts.py
+# （GET 403）与 app/extensions/workspace/sandbox_sync.py（跳过旁路同步）。
+# 升级注意: 上游升级本文件时保留本块；门只读 outputs/ 下两个文件名级判据
+# （.delivery-contract / delivery_manifest.json），不耦合 manifest 内部字段结构。
+DELIVERY_CONTRACT_NAME = ".delivery-contract"
+DELIVERY_MANIFEST_NAME = "delivery_manifest.json"
+
+
+def _thread_outputs_dir(runtime: Runtime) -> Path | None:
+    """线程交付目录（来自 thread_data.outputs_path）；缺失→None（门不启用）。"""
+    thread_data = (runtime.state or {}).get("thread_data") or {}
+    outputs_path = thread_data.get("outputs_path")
+    return Path(outputs_path) if outputs_path else None
+
+
+def _delivery_gate_error(outputs_dir: Path, normalized_paths: list[str]) -> str | None:
+    """契约门判据（同步体，经 asyncio.to_thread 调用，勿在事件循环内直呼）：
+
+    - 无 .delivery-contract 标记 → None（非管线线程，全放行）
+    - present 清单无 .md → None（只交付图片/JSON 等，不涉报告）
+    - 有标记无 delivery_manifest.json → 管线从未成功 build → 拒
+    - manifest 在场但存在 != deliverable 的 .md → 手拼/散文件混入 → 拒
+    """
+    if not (outputs_dir / DELIVERY_CONTRACT_NAME).exists():
+        return None
+    md_names = [Path(p).name for p in normalized_paths if Path(p).suffix.lower() == ".md"]
+    if not md_names:
+        return None
+    manifest_path = outputs_dir / DELIVERY_MANIFEST_NAME
+    if not manifest_path.exists():
+        return (
+            "交付门 FAIL（bug-2225）：本线程存在交付契约（.delivery-contract）但 outputs/ 无 delivery_manifest.json——"
+            "报告必须经 skills/public/geological-report/scripts/build_output.py 产出（rc=0 且 stdout 出现 BUILD_READY+MANIFEST_READY），"
+            "禁止手工拼装 .md 交付。请先运行 build_output.py 成功后再 present_files。"
+        )
+    try:
+        deliverable = json.loads(manifest_path.read_text(encoding="utf-8")).get("deliverable", "")
+    except (json.JSONDecodeError, OSError):
+        return "交付门 FAIL（bug-2225）：delivery_manifest.json 损坏无法解析——请重跑 build_output.py 修复后再 present_files。"
+    rogue = sorted({name for name in md_names if name != deliverable})
+    if rogue:
+        return f"交付门 FAIL（bug-2225）：{rogue} 不是管线交付物（本线程唯一 .md 交付={deliverable!r}）——手拼/散 .md 禁止交付。请把非交付 .md 移出 outputs/ 并重跑 build_output.py（rc=0）后再 present_files。"
+    return None
+
+
+# ── END EAI-CUSTOM (bug-2225) ────────────────────────────────────────────────
+
+
 @tool("present_files", parse_docstring=True)
 async def present_file_tool(
     runtime: Runtime,
@@ -115,6 +170,16 @@ async def present_file_tool(
         return Command(
             update={"messages": [ToolMessage(f"Error: {exc}", tool_call_id=tool_call_id)]},
         )
+
+    # ── START EAI-CUSTOM (bug-2225) 交付契约门：未经管线产出的 .md 拒绝 present ──
+    # 门必须位于 bug-1145 docmgr 同步块之前——被拒的 present 绝不触发文档空间同步。
+    # 文件系统探测经 asyncio.to_thread 下放（gateway 运行于 Blockbuster 阻塞 IO 检测下）。
+    outputs_dir = _thread_outputs_dir(runtime)
+    if outputs_dir:
+        gate_error = await asyncio.to_thread(_delivery_gate_error, outputs_dir, normalized_paths)
+        if gate_error is not None:
+            return Command(update={"messages": [ToolMessage(gate_error, tool_call_id=tool_call_id)]})
+    # ── END EAI-CUSTOM (bug-2225) ────────────────────────────────────────────────
 
     # EAI-CUSTOM (bug-1145): fire registered present_files callbacks so the app
     # layer (docmgr) auto-syncs presented outputs into the document space
