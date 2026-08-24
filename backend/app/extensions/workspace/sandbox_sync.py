@@ -10,6 +10,7 @@ workspace 不直接 INSERT 猜版本；改调协编 REST POST /api/extensions/do
 
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from uuid import UUID
@@ -26,6 +27,28 @@ from .models import CollabProject, CollabSection
 logger = logging.getLogger(__name__)
 
 GATEWAY_BASE = "http://localhost:8001"
+
+# bug-2225 交付契约门：与 harness present_file_tool / gateway artifacts GET 同一套放行凭据。
+_DELIVERY_CONTRACT_NAME = ".delivery-contract"
+_DELIVERY_MANIFEST_NAME = "delivery_manifest.json"
+
+
+def _pipeline_allowed_md_name(outputs_dir: Path) -> str | None:
+    """bug-2225 交付契约门：契约线程允许同步的 .md 文件名。
+
+    返回 "*" = 无契约（不设限）；manifest.deliverable = 唯一放行名；
+    None = 有契约无 manifest（.md 全禁）。
+    """
+    if not (outputs_dir / _DELIVERY_CONTRACT_NAME).exists():
+        return "*"
+    manifest = outputs_dir / _DELIVERY_MANIFEST_NAME
+    if not manifest.exists():
+        return None
+    try:
+        deliverable = json.loads(manifest.read_text(encoding="utf-8")).get("deliverable")
+    except (json.JSONDecodeError, OSError):
+        return None
+    return deliverable if isinstance(deliverable, str) and deliverable else None
 
 
 async def _resolve_outputs_dir(thread_id: str, owner_user_id: str) -> Path | None:
@@ -94,10 +117,16 @@ async def sync_sandbox_outputs(
     if not target_doc_id:
         return {"synced": 0, "skipped": 0}
 
+    # bug-2225 交付门：契约线程只同步 manifest.deliverable（rogue .md 跳过并告警）；
+    # 无契约线程 allowed_md == "*"，维持原有 report.md 字面规则不变。
+    allowed_md = _pipeline_allowed_md_name(outputs_dir)
     synced = 0
     skipped = 0
     for md in sorted(outputs_dir.glob("*.md")):
-        if md.name == "report.md":
+        if allowed_md != "*" and md.name != allowed_md:
+            logger.warning("bug-2225 交付门: 跳过非管线交付 .md 同步: %s", md.name)
+            continue
+        if md.name == "report.md" or (allowed_md not in ("*", None) and md.name == allowed_md):
             content = md.read_text(encoding="utf-8")
             doc = await db.get(AIDocument, target_doc_id)
             if doc:

@@ -5,6 +5,10 @@ outputs/ carries a ``.delivery-contract`` marker may only present the pipeline
 deliverable ``.md`` named in ``outputs/delivery_manifest.json``; threads without
 the marker are entirely unaffected. The gate must fire before the bug-1145
 docmgr-sync callback block.
+
+Also covers the app-layer twin gates (Task 4):
+``app.extensions.workspace.sandbox_sync._pipeline_allowed_md_name`` and its wiring
+into ``sync_sandbox_outputs``' outputs loop.
 """
 
 from __future__ import annotations
@@ -14,8 +18,13 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
+
+import app.extensions.workspace.sandbox_sync as sandbox_sync
+from app.extensions.models import AIDocument
+from app.extensions.workspace.models import CollabProject
 
 # importlib (not ``import ... as``): the builtins package __init__ re-exports the
 # StructuredTool ``present_file_tool`` under the same name as this submodule, so an
@@ -140,3 +149,74 @@ class TestPresentFilesGate:
         assert DELIVERABLE_NAME in content
         assert "artifacts" not in result.update
         sync.assert_not_awaited()
+
+
+class TestSandboxSyncAllowedMd:
+    """bug-2225 sandbox_sync 门：契约线程仅 manifest.deliverable 可同步进 workspace 文档。"""
+
+    def test_no_marker_returns_star(self, tmp_path):
+        """无契约 → "*"（不设限，维持原 report.md 字面规则）。"""
+        outputs_dir = tmp_path / "outputs"
+        outputs_dir.mkdir()
+        (outputs_dir / "report.md").write_text("# r", encoding="utf-8")
+
+        assert sandbox_sync._pipeline_allowed_md_name(outputs_dir) == "*"
+
+    def test_marker_with_manifest_returns_deliverable(self, tmp_path):
+        """契约 + manifest → 唯一放行名 = manifest.deliverable。"""
+        outputs_dir = tmp_path / "outputs"
+        outputs_dir.mkdir()
+        _write_contract(outputs_dir)
+
+        assert sandbox_sync._pipeline_allowed_md_name(outputs_dir) == DELIVERABLE_NAME
+
+    def test_marker_without_or_corrupt_manifest_returns_none(self, tmp_path):
+        """契约无 manifest（管线从未 build）与损坏 manifest（凭据无效）都 → None（.md 全禁）。"""
+        outputs_dir = tmp_path / "outputs"
+        outputs_dir.mkdir()
+        _write_contract(outputs_dir, deliverable=None)
+        assert sandbox_sync._pipeline_allowed_md_name(outputs_dir) is None
+
+        (outputs_dir / "delivery_manifest.json").write_text("{corrupt json", encoding="utf-8")
+        assert sandbox_sync._pipeline_allowed_md_name(outputs_dir) is None
+
+    @pytest.mark.asyncio
+    async def test_sync_skips_rogue_and_syncs_deliverable(self, tmp_path, monkeypatch):
+        """集成：契约线程 sync 只吃 deliverable，rogue .md 不同步进文档。"""
+        outputs_dir = tmp_path / "outputs"
+        outputs_dir.mkdir()
+        _write_contract(outputs_dir)
+        (outputs_dir / DELIVERABLE_NAME).write_text("# 报告", encoding="utf-8")
+        (outputs_dir / "hand_made.md").write_text("# hand-made", encoding="utf-8")
+
+        async def fake_resolve_outputs_dir(_thread_id, _owner_user_id):
+            return outputs_dir
+
+        pushed: list[str] = []
+
+        async def fake_push_version(_db, _doc_id, content):
+            pushed.append(content)
+
+        monkeypatch.setattr(sandbox_sync, "_resolve_outputs_dir", fake_resolve_outputs_dir)
+        monkeypatch.setattr(sandbox_sync, "_push_version", fake_push_version)
+
+        project_id = uuid4()
+        project = SimpleNamespace(kind="quickdoc", doc_id=uuid4())
+        doc = SimpleNamespace(content="")
+
+        class _FakeDB:
+            async def get(self, model, _pk):
+                if model is CollabProject:
+                    return project
+                if model is AIDocument:
+                    return doc
+                return None
+
+            async def flush(self):
+                pass
+
+        result = await sandbox_sync.sync_sandbox_outputs(_FakeDB(), project_id, "thread-gate-1", "user-1", "agent")
+
+        assert result == {"synced": 1, "skipped": 0}
+        assert doc.content == "# 报告"  # deliverable 同步进文档；rogue 未覆盖
+        assert pushed == ["# 报告"]  # 版本推送也只发生一次（rogue 被跳过）

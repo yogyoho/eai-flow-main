@@ -1,10 +1,12 @@
 import asyncio
 import hashlib
+import json
 import stat
 import zipfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.parse import quote
 
 import pytest
 from _router_auth_helpers import call_unwrapped, make_authed_test_app
@@ -591,3 +593,84 @@ def test_skill_archive_preview_rejects_oversized_member_before_decompression(tmp
         artifacts_router._extract_file_from_skill_archive(skill_path, "SKILL.md")
 
     assert exc_info.value.status_code == 413
+
+
+class TestDeliveryGate:
+    """bug-2225 交付契约门：契约线程的 outputs/*.md GET 仅放行 manifest.deliverable。
+
+    标记线程 = outputs/ 有 .delivery-contract（ingest.py 落盘）。无标记线程完全不受影响。
+    """
+
+    DELIVERABLE_NAME = "X-勘探-地质勘查报告.md"
+
+    def _make_client(self, monkeypatch, outputs_dir: Path) -> TestClient:
+        """Resolve every virtual path into the planted outputs dir by file name."""
+
+        def fake_resolve(_thread_id, vpath, user_id=None):
+            return outputs_dir / Path(vpath.lstrip("/")).name
+
+        monkeypatch.setattr(artifacts_router, "resolve_thread_virtual_path", fake_resolve)
+        app = make_authed_test_app()
+        app.include_router(artifacts_router.router)
+        return TestClient(app)
+
+    def _plant_contract(self, outputs_dir: Path, *, deliverable: str | None = None) -> None:
+        (outputs_dir / ".delivery-contract").write_text("{}", encoding="utf-8")
+        if deliverable is not None:
+            manifest = {"bug": 2225, "deliverable": deliverable, "sha256": "ab" * 32, "bytes": 8}
+            (outputs_dir / "delivery_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+
+    def test_marker_without_manifest_403(self, tmp_path, monkeypatch) -> None:
+        # 管线从未成功 build（无 manifest 凭据）→ 手拼 .md 一律 403。
+        outputs_dir = tmp_path / "outputs"
+        outputs_dir.mkdir()
+        self._plant_contract(outputs_dir, deliverable=None)
+        (outputs_dir / "hand_made.md").write_text("# hand-made", encoding="utf-8")
+
+        with self._make_client(monkeypatch, outputs_dir) as client:
+            response = client.get("/api/threads/thread-1/artifacts/mnt/user-data/outputs/hand_made.md")
+
+        assert response.status_code == 403
+        detail = response.json()["detail"]
+        assert "管线交付" in detail
+        assert "delivery_manifest" in detail
+
+    def test_rogue_403_deliverable_200(self, tmp_path, monkeypatch) -> None:
+        # manifest.deliverable 是唯一放行的 .md；同名以外的 .md 403。
+        outputs_dir = tmp_path / "outputs"
+        outputs_dir.mkdir()
+        self._plant_contract(outputs_dir, deliverable=self.DELIVERABLE_NAME)
+        (outputs_dir / self.DELIVERABLE_NAME).write_text("# 报告", encoding="utf-8")
+        (outputs_dir / "hand_made.md").write_text("# hand-made", encoding="utf-8")
+
+        with self._make_client(monkeypatch, outputs_dir) as client:
+            rogue = client.get("/api/threads/thread-1/artifacts/mnt/user-data/outputs/hand_made.md")
+            deliverable = client.get(f"/api/threads/thread-1/artifacts/mnt/user-data/outputs/{quote(self.DELIVERABLE_NAME)}")
+
+        assert rogue.status_code == 403
+        rogue_detail = rogue.json()["detail"]
+        assert "不是管线产物" in rogue_detail
+        assert self.DELIVERABLE_NAME in rogue_detail
+
+        assert deliverable.status_code == 200
+        assert deliverable.text == "# 报告"
+
+    def test_unmarked_and_non_md_unaffected(self, tmp_path, monkeypatch) -> None:
+        # 无标记线程任何 .md 直通；标记线程的非 .md（manifest 本体）也不受门影响。
+        outputs_dir = tmp_path / "outputs"
+        outputs_dir.mkdir()
+        (outputs_dir / "hand_made.md").write_text("# hand-made", encoding="utf-8")
+
+        with self._make_client(monkeypatch, outputs_dir) as client:
+            unmarked = client.get("/api/threads/thread-1/artifacts/mnt/user-data/outputs/hand_made.md")
+
+        assert unmarked.status_code == 200
+        assert unmarked.text == "# hand-made"
+
+        self._plant_contract(outputs_dir, deliverable=self.DELIVERABLE_NAME)
+
+        with self._make_client(monkeypatch, outputs_dir) as client:
+            manifest_response = client.get("/api/threads/thread-1/artifacts/mnt/user-data/outputs/delivery_manifest.json")
+
+        assert manifest_response.status_code == 200
+        assert "delivery_manifest.json" in manifest_response.headers.get("content-disposition", "")
