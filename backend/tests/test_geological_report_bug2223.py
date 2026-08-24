@@ -49,6 +49,7 @@ class TestNormalize:
         assert fr.norm_category("推断") == "TD"
         assert fr.norm_category("TM") == "TM"
         assert fr.norm_category("探明+控制") == "探明+控制"  # 复合：原样保留进 total，不进分类别
+        assert fr.norm_category("探明＋控制") == "探明＋控制"  # 全角＋复合：同上（bug-2223 质量收口）
         assert fr.norm_category("xyz") is None  # 完全未知→None→anomaly
 
 
@@ -126,3 +127,31 @@ class TestL9Normalization:
         run("formula_runner.py", "execute", "--stage", STAGE, "--data-dir", data, "--state-dir", st_dir, expect=(0, 3))
         st = json.loads((st_dir / "formula_state.json").read_text(encoding="utf-8"))
         assert any("全部行被判为低品位" in a for a in st["anomalies"]), st["anomalies"]
+
+
+# ── Task 2 质量收口：execute 旗标契约 + 空白表单降级 anomaly 钉住 ───────────────
+
+
+class TestExecuteFlags:
+    """--output/--state-dir argparse 互斥组；二者皆缺走显式 rc=1 报错（不触碰数据目录）。"""
+
+    def test_neither_flag_errors(self, tmp_path):
+        r = run("formula_runner.py", "execute", "--stage", STAGE, "--data-dir", tmp_path, expect=(1,))
+        assert "--output" in r.stderr and "--state-dir" in r.stderr
+
+    def test_both_flags_usage_error(self, tmp_path):
+        run("formula_runner.py", "execute", "--stage", STAGE, "--data-dir", tmp_path, "--output", tmp_path / "s.json", "--state-dir", tmp_path, expect=(2,))
+
+
+class TestBlankFormAnomalies:
+    """空白表单（必填全 null 骨架）必须降级为显式 anomaly——契约钉住，不只锁 rc。"""
+
+    def test_blank_forms_pinned_anomalies(self, tmp_path):
+        data, state = tmp_path / "d6", tmp_path / "s6"
+        data.mkdir()
+        state.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)  # 全空白骨架（必填 null，不 write 任何值）
+        run("formula_runner.py", "execute", "--stage", STAGE, "--data-dir", data, "--state-dir", state, expect=(0, 3))
+        st = json.loads((state / "formula_state.json").read_text(encoding="utf-8"))
+        assert any("13_industrial_params" in a and "缺失/空白" in a for a in st["anomalies"]), st["anomalies"]
+        assert any("16_economics" in a for a in st["anomalies"]), st["anomalies"]

@@ -25,10 +25,9 @@ from __future__ import annotations
 
 import argparse
 import csv
-import io
 import json
 import sys
-from decimal import Decimal, ROUND_HALF_EVEN
+from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
 
 import chapter_planner
@@ -44,15 +43,17 @@ CATEGORY_MAP = {"探明": "TM", "TM": "TM", "控制": "KZ", "KZ": "KZ", "推断"
 
 
 def norm_grade_class(v) -> str | None:
-    """未知→None（调用方记 anomaly 跳行）；空/缺省→工业（原行为）。"""
+    """未知→None（调用方记 anomaly 跳行）；缺 key→工业（原行为）；空字符串→工业（bug-2223 行为收紧：旧代码空串落入低品位属同类误判）。"""
     s = str(v or "").strip()
-    return GRADE_CLASS_MAP.get(s, "工业") if not s else GRADE_CLASS_MAP.get(s)
+    if not s:
+        return "工业"
+    return GRADE_CLASS_MAP.get(s)
 
 
 def norm_category(v) -> str | None:
-    """单类中文/代码→TM/KZ/TD；复合（含+）原样保留（进 total 不进分类别）；未知→None。"""
+    """单类中文/代码→TM/KZ/TD；复合（含半角+或全角＋）原样保留（进 total 不进分类别）；未知→None。"""
     s = str(v or "").strip()
-    if not s or "+" in s:
+    if not s or "+" in s or "＋" in s:
         return s or None
     return CATEGORY_MAP.get(s)
 
@@ -157,7 +158,7 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         emit("C9.outlier_threshold", dec(p13["deposit_avg_grade"]) * dec(p13["outlier_multiple"]), "0.01", "%", "formula:C9",
              {"inputs": {"deposit_avg_grade": float(dec(p13["deposit_avg_grade"])), "outlier_multiple": int(dec(p13["outlier_multiple"]))}})
     else:
-        anomalies.append("13_industrial_params 缺失——C9/S1/L 链/E 链跳过（缺参不编造）")
+        anomalies.append("13_industrial_params 缺失/空白——C9/S1/L 链/E 链跳过（缺参不编造，bug-2223: 空白表单与缺失等价）")
 
     # ── S1 小体重统计（表8-1）──
     s1_density: dict[str, Decimal] = {}  # ''(全)/'_industrial'/'_low' → 平均体重
@@ -192,18 +193,18 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         for (work, ore), rs in sorted(works.items()):
             # ponytail: 08a 无钻孔方位/倾角列——样长即真厚（L1 需 α/β/γ，备注列可扩展）
             lens = [dec(r.get("样长_m")) for r in rs]
-            pairs = [(l, c) for l, c in ((dec(r.get("样长_m")), dec(r.get("品位Cu_pct"))) for r in rs) if l.is_finite() and c.is_finite()]
-            if any(l.is_finite() for l in lens):
-                emit(f"L3.T[{work}|{ore}]", sum((l for l in lens if l.is_finite()), D0), "0.01", "m", "formula:L3")
+            pairs = [(ln, c) for ln, c in ((dec(r.get("样长_m")), dec(r.get("品位Cu_pct"))) for r in rs) if ln.is_finite() and c.is_finite()]
+            if any(ln.is_finite() for ln in lens):
+                emit(f"L3.T[{work}|{ore}]", sum((ln for ln in lens if ln.is_finite()), D0), "0.01", "m", "formula:L3")
             if pairs:
-                sl = sum((l for l, _ in pairs), D0)
-                per_work[(work, ore)] = sum((l * c for l, c in pairs), D0) / sl
+                sl = sum((ln for ln, _ in pairs), D0)
+                per_work[(work, ore)] = sum((ln * c for ln, c in pairs), D0) / sl
                 emit(f"L4.C[{work}|{ore}]", per_work[(work, ore)], "0.01", "%", "formula:L4")
                 for r in rs:
-                    l, c, a = dec(r.get("样长_m")), dec(r.get("品位Cu_pct")), dec(r.get("品位Ag_gpt"))
-                    if l.is_finite() and c.is_finite() and a.is_finite() and c >= min_ind:
-                        ag_l += l * a
-                        ag_la += l
+                    ln, c, a = dec(r.get("样长_m")), dec(r.get("品位Cu_pct")), dec(r.get("品位Ag_gpt"))
+                    if ln.is_finite() and c.is_finite() and a.is_finite() and c >= min_ind:
+                        ag_l += ln * a
+                        ag_la += ln
         by_ore: dict[str, list[Decimal]] = {}
         for (_, ore), c in per_work.items():
             by_ore.setdefault(ore, []).append(c)
@@ -231,7 +232,7 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         if cat is None:
             anomalies.append(f"{anom_ctx}: 未知 category {cat_raw!r}（合法: 探明/控制/推断/TM/KZ/TD）——行跳过，缺参不编造")
             return None
-        if "+" in cat:
+        if "+" in cat or "＋" in cat:
             anomalies.append(f"{anom_ctx}: 复合类别 {cat!r} 无法整行映射 TM/KZ/TD——该行进总量不进分类别，需用户确认各类占比后拆分（禁止编造拆分，bug-2223）")
         return {"orebody": src.get("orebody", "?"), "category": cat, "grade_class": gc, **extra}
 
@@ -612,8 +613,11 @@ def main() -> int:
     e = sub.add_parser("execute", help="读 data/ 全量计算 → formula_state.json")
     e.add_argument("--stage", required=True)
     e.add_argument("--data-dir", required=True)
-    e.add_argument("--output", help="状态文件完整路径（与 --state-dir 二选一）")
-    e.add_argument("--state-dir", help="状态目录（写 {state-dir}/formula_state.json，与 --output 二选一；bug-2223）")
+    # bug-2223 质量收口: --output/--state-dir argparse 互斥组（both → usage 错误 rc=2，不再 --output 静默胜出）；
+    # "二者皆缺"仍走 cmd_execute 内的显式报错（rc=1），错误信息更可读
+    eg = e.add_mutually_exclusive_group()
+    eg.add_argument("--output", help="状态文件完整路径（与 --state-dir 二选一）")
+    eg.add_argument("--state-dir", help="状态目录（写 {state-dir}/formula_state.json，与 --output 二选一；bug-2223）")
     e.set_defaults(func=cmd_execute)
 
     c = sub.add_parser("check", help="自洽重算 + B1 容差 + 锚点回归")
