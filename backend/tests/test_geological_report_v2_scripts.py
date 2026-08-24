@@ -398,7 +398,10 @@ class TestIngest:
         ingest.write_form_values(str(STAGE), str(d), "tenement", {"tenement_no": "T-1"})
         r = subprocess.run(
             [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d), "--family", "tenement", "--force", "--values", ""],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert r.returncode == 1, f"空 --values 应报错\n{r.stdout}\n{r.stderr}"
         assert json.loads((d / "01_tenement.json").read_text(encoding="utf-8"))["tenement_no"] == "T-1"
@@ -410,7 +413,10 @@ class TestIngest:
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
         r = subprocess.run(
             [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d), "--force"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert r.returncode == 1 and "--force" in r.stderr
 
@@ -437,7 +443,10 @@ class TestIngest:
         assert "FORMS_READY" in out
         r = subprocess.run(
             [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", "nonexistent_stage", "--data-dir", str(d)],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert r.returncode == 1 and "找不到阶段 schema" in r.stderr
 
@@ -454,9 +463,9 @@ class TestIngest:
         ]
         procs = [
             subprocess.Popen(
-                [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d),
-                 "--family", fam, "--values", json.dumps(vals, ensure_ascii=False)],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d), "--family", fam, "--values", json.dumps(vals, ensure_ascii=False)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
             for fam, vals in jobs
         ]
@@ -574,6 +583,7 @@ class TestBuildOutput:
         assert "unchanged" in ws["build2"]
 
     def test_missing_chapter_rc1(self, ws, tmp_path):
+        """ch2 缺失 → rc=1；ch1 须整体拷 fixture（自身须过卫生/深度门）才能走到缺失分支。"""
         st = tmp_path / "st"
         (st / "chapters").mkdir(parents=True)
         (st / "formula_state.json").write_text((ws["state"] / "formula_state.json").read_text(encoding="utf-8"), encoding="utf-8")
