@@ -59,6 +59,34 @@ def atomic_write_text(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+# ── 交付契约标记（bug-2225：present_files/artifacts GET/工作区同步三门的判据）──
+
+DELIVERY_CONTRACT = ".delivery-contract"
+DELIVERY_CONTRACT_CONTENT = '{"skill": "geological-report"}\n'
+
+
+def write_delivery_contract(data_dir: Path) -> list[Path]:
+    """bug-2225: 在 data-dir 祖先链上已存在的 outputs/ 目录落交付契约标记（幂等）。
+
+    实测布局（线程 90c9d09d）：data 在 user-data/workspace/geo-report/data，交付面是
+    线程 outputs（宿主 …/user-data/outputs，沙箱内 /mnt/user-data/outputs）。沿祖先
+    找 outputs/ 同时覆盖本地沙箱（宿主路径）与 Docker 沙箱（虚拟挂载）；技能布局
+    geo-report/outputs（若已建）同样标记。文件系统根跳过——绝不在盘符根下落文件。
+    """
+    planted: list[Path] = []
+    for anc in data_dir.resolve().parents:
+        if anc == anc.parent:
+            continue  # 盘符/文件系统根
+        out = anc / "outputs"
+        if not out.is_dir():
+            continue
+        target = out / DELIVERY_CONTRACT
+        if not target.exists() or target.read_text(encoding="utf-8") != DELIVERY_CONTRACT_CONTENT:
+            atomic_write_text(target, DELIVERY_CONTRACT_CONTENT)
+        planted.append(target)
+    return planted
+
+
 def load_manifest(data_dir: Path) -> dict:
     p = data_dir / MANIFEST_NAME
     if not p.exists():
@@ -204,6 +232,9 @@ def cmd_forms(args) -> int:
     stage = load_stage(Path(args.stage))
     data_dir = Path(args.data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
+    contracts = write_delivery_contract(data_dir)
+    if contracts:
+        print(f"DELIVERY_CONTRACT: {len(contracts)} 个 outputs/ 已标记（交付门判据，勿删，bug-2225）")
     families: dict[str, dict] = stage.get("forms", {})
 
     only = set(args.only.split(",")) if args.only else None
@@ -403,6 +434,9 @@ def match_table(tables: list[list[list[str]]], columns: list[str]) -> list[list[
 def cmd_file(args) -> int:
     stage = load_stage(Path(args.stage))
     data_dir = Path(args.data_dir)
+    contracts = write_delivery_contract(data_dir)  # bug-2225: file 入口同样是数据落库面，先落契约
+    if contracts:
+        print(f"DELIVERY_CONTRACT: {len(contracts)} 个 outputs/ 已标记（交付门判据，勿删，bug-2225）")
     src = Path(args.input)
     if not src.exists():
         print(f"[ingest] 错误: 输入文件不存在 {src}", file=sys.stderr)
@@ -519,6 +553,9 @@ def write_form_values(stage_path: str, data_dir: str, family: str, values: dict)
     if errors:
         raise ValueError("; ".join(errors))
     ddir = Path(data_dir)
+    contracts = write_delivery_contract(ddir)  # bug-2225: 编程写入口同样落契约（保持唯一写者语义）
+    if contracts:
+        print(f"DELIVERY_CONTRACT: {len(contracts)} 个 outputs/ 已标记（交付门判据，勿删，bug-2225）")
     target = ddir / family_filename(spec)
     doc = json.loads(target.read_text(encoding="utf-8")) if target.exists() else json.loads(blank_json({**spec, "_stage": stage.get("stage", "exploration")}, family))
     doc.update(values)

@@ -339,3 +339,28 @@ class TestDeliverableNameGate:
         _build(build_ws)
         r = _build(build_ws)
         assert "unchanged" in r.stdout
+
+
+# ── bug-2225 Task 1: 交付契约标记（ingest 落 outputs/.delivery-contract）────────
+
+
+class TestDeliveryContract:
+    def test_ingest_plants_marker_in_ancestor_outputs(self, tmp_path):
+        """本地沙箱布局：data 在 user-data/workspace/geo-report/data → 标记落 user-data/outputs。"""
+        outputs = tmp_path / "user-data" / "outputs"
+        outputs.mkdir(parents=True)
+        data = tmp_path / "user-data" / "workspace" / "geo-report" / "data"
+        r = run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
+        marker = outputs / ".delivery-contract"
+        assert marker.exists(), "契约标记必须落线程 outputs"
+        assert json.loads(marker.read_text(encoding="utf-8"))["skill"] == "geological-report"
+        assert "DELIVERY_CONTRACT" in r.stdout
+        before = marker.read_text(encoding="utf-8")
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)  # 幂等：内容不变
+        assert marker.read_text(encoding="utf-8") == before
+
+    def test_no_outputs_ancestor_is_noop(self, tmp_path):
+        """祖先链无 outputs/ → 不落盘不报错（其他技能/纯测试目录零影响）。"""
+        data = tmp_path / "geo" / "data"
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
+        assert not list(tmp_path.rglob(".delivery-contract"))
