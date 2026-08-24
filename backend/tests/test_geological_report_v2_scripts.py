@@ -184,21 +184,27 @@ def ws(tmp_path_factory):
 
     # 章节（LLM 叙述产物模拟：槽位 + 表 + 段内序号 + 判定词逐字 + 历史编码 332）
     slot = lambda k: "{{SLOT:" + k + "}}"  # noqa: E731
+    # 章节合规内容（bug-2223 深度门：每块 ≥3 句 + 每章 ≥1000 有效字符；槽位引用保留原断言能力）
+    # SEC 合成凑量同 bug2223 fixture：2 句×64字 ×12 重复 = 24句/768字/块，每章 2 块+叙述句 ≈1536+ 有效字符（合成数据只验管线）
+    SEC = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。"
+    SEC *= 12
     chapters = {
-        1: f"## 1 绪论\n\n本次勘查共获得工业矿石量 {slot('L9.total_ore_wt')} 万吨。\n\n### 1.1 目的任务\n\n（1）查明矿体特征。（2）估算资源量。\n",
-        2: "## 2 区域地质\n\n区域大地构造位置属扬子板块西缘。（1）地层。（2）构造。（3）岩浆岩。\n",
-        3: "## 3 矿区地质\n\n矿区出露地层为震旦系灯影组白云岩。\n",
-        4: f"## 4 矿体\n\n①号矿体平均品位 {slot('L8.C_orebody[①]')}%。特高品位下限取 {slot('C9.outlier_threshold')}%。\n",
-        5: f"## 5 矿石加工选冶技术性能\n\n闭路试验铜精矿回收率 {slot('B1.recovery[铜精矿]')}%。\n",
+        1: f"## 1 绪论\n\n{SEC}\n\n本次勘查共获得工业矿石量 {slot('L9.total_ore_wt')} 万吨。\n\n### 1.1 目的任务\n\n（1）查明矿体特征。（2）估算资源量。（3）评价开采技术条件。\n\n### 1.2 工作部署\n\n{SEC}\n",
+        2: f"## 2 区域地质\n\n{SEC}\n\n区域大地构造位置属扬子板块西缘。（1）地层。（2）构造。（3）岩浆岩。\n\n### 2.1 区域地层\n\n{SEC}\n",
+        3: f"## 3 矿区地质\n\n{SEC}\n\n矿区出露地层为震旦系灯影组白云岩。\n\n### 3.1 矿区地层\n\n{SEC}\n",
+        4: f"## 4 矿体\n\n{SEC}\n\n①号矿体平均品位 {slot('L8.C_orebody[①]')}%。特高品位下限取 {slot('C9.outlier_threshold')}%。\n\n### 4.1 矿体特征\n\n{SEC}\n",
+        5: f"## 5 矿石加工选冶技术性能\n\n{SEC}\n\n闭路试验铜精矿回收率 {slot('B1.recovery[铜精矿]')}%。\n\n### 5.1 选矿试验\n\n{SEC}\n",
         6: (
-            "## 6 矿床开采技术条件\n\n坑道正常涌水量 " + slot("W1.Q_min") + "～" + slot("W1.Q_max") + " m3/d。老窑采空区 422 个、体积 1383.95 万 m3，"
+            "## 6 矿床开采技术条件\n\n" + SEC + "\n\n坑道正常涌水量 " + slot("W1.Q_min") + "～" + slot("W1.Q_max") + " m3/d。老窑采空区 422 个、体积 1383.95 万 m3，"
             "水文地质类型为岩溶裂隙弱-中等含水层充水为主、顶板直接充水简单类型；"
             "工程地质类型为半坚硬-坚硬层状白云岩为主中等类型；"
-            "复合类型为以工程、环境复合地质问题为主的中等类型。\n"
+            "复合类型为以工程、环境复合地质问题为主的中等类型。\n\n### 6.1 水文地质\n\n" + SEC + "\n"
         ),
-        7: f"## 7 勘查工作及其质量评述\n\n小体重样 {slot('S1.n')} 件，平均体重 {slot('S1.avg_density')} t/m3。\n",
+        7: f"## 7 勘查工作及其质量评述\n\n{SEC}\n\n小体重样 {slot('S1.n')} 件，平均体重 {slot('S1.avg_density')} t/m3。\n\n### 7.1 质量评述\n\n{SEC}\n",
         8: (
-            "## 8 资源量估算\n\n工业矿石量 "
+            "## 8 资源量估算\n\n"
+            + SEC
+            + "\n\n工业矿石量 "
             + slot("L9.total_ore_wt")
             + " 万吨、金属量 "
             + slot("L9.total_metal_t")
@@ -210,25 +216,27 @@ def ws(tmp_path_factory):
             + slot("L9.KZ_ore_wt")
             + " 万吨。历史备案（332）保有 5.0 万吨。\n\n### 8.1 伴生组分\n\n伴生银品位 "
             + slot("L11.ag_grade")
-            + " g/t。\n\n{{{{TABLE:bulk_density}}}}\n"
+            + " g/t。\n\n组合样分析结果显示伴生组分分布均匀，品位稳定，可在冶炼过程中综合回收。选矿试验闭路流程顺畅，指标稳定，表格试验数据如下。\n\n{{{{TABLE:bulk_density}}}}\n"
         ),
-        9: f"## 9 经济评价\n\n精矿含铜价格 {slot('E4.price_conc')} 元/t，潜在总值 {slot('E5.gross_potential_yi')} 亿元。\n",
-        10: f"## 10 结论\n\n本次估算工业矿石量 {slot('L9.total_ore_wt')} 万吨，与正文第 1、8 章一致。\n",
+        9: f"## 9 经济评价\n\n{SEC}\n\n精矿含铜价格 {slot('E4.price_conc')} 元/t，潜在总值 {slot('E5.gross_potential_yi')} 亿元。\n\n### 9.1 概略评价\n\n{SEC}\n",
+        10: f"## 10 结论\n\n{SEC}\n\n本次估算工业矿石量 {slot('L9.total_ore_wt')} 万吨，与正文第 1、8 章一致。\n\n### 10.1 主要成果\n\n{SEC}\n",
     }
     for n, md in chapters.items():
         (state / "chapters" / f"ch{n}.md").write_text(md, encoding="utf-8")
 
-    build1 = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", out / "report.md")
-    build2 = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", out / "report.md")
+    DELIV = f"{json.loads((data / '00_project.json').read_text(encoding='utf-8')).get('project_name', '东川区某铜银金多金属矿')}-勘探-地质勘查报告.md"
+    # （project_name 在 Step 之前已 fill 为 "东川区某铜银金多金属矿"；DELIV 即 "东川区某铜银金多金属矿-勘探-地质勘查报告.md"）
+    build1 = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", out / DELIV)
+    build2 = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", out / DELIV)
 
-    # 负例：未知槽位 → rc=1 阻断
+    # 负例：未知槽位 → rc=1 阻断（输出名保持规范名，隔离槽位门本身）
     bad = state / "chapters" / "ch10.md"
     orig10 = bad.read_text(encoding="utf-8")
     bad.write_text(orig10 + "\n未知 {{SLOT:XX.noexist}}\n", encoding="utf-8")
-    run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", out / "report_bad.md", expect=(1,))
+    run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", out / DELIV, expect=(1,))
     bad.write_text(orig10, encoding="utf-8")
 
-    cc = run("consistency.py", "--report", out / "report.md", "--data-dir", data, "--stage", STAGE, "--state", state / "formula_state.json", "--standards", STANDARDS, "--output", state / "consistency_check.json", expect=(0, 2, 3))
+    cc = run("consistency.py", "--report", out / DELIV, "--data-dir", data, "--stage", STAGE, "--state", state / "formula_state.json", "--standards", STANDARDS, "--output", state / "consistency_check.json", expect=(0, 2, 3))
 
     run(
         "snapshot.py",
@@ -248,7 +256,7 @@ def ws(tmp_path_factory):
         "--manifest",
         state / "chapter_manifest.json",
         "--report",
-        out / "report.md",
+        out / DELIV,
         "--output",
         out / "project_snapshot.json",
     )
@@ -333,7 +341,7 @@ def ws(tmp_path_factory):
         "formula_state_post": json.loads((state / "formula_state.json").read_text(encoding="utf-8")),
         "impacted": json.loads((state / "impacted.json").read_text(encoding="utf-8")),
         "consistency": json.loads((state / "consistency_check.json").read_text(encoding="utf-8")),
-        "report_md": (out / "report.md").read_text(encoding="utf-8"),
+        "report_md": (out / DELIV).read_text(encoding="utf-8"),
         "manifest": json.loads((state / "chapter_manifest.json").read_text(encoding="utf-8")),
     }
 
