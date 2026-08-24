@@ -38,6 +38,24 @@ D0 = Decimal("0")
 HUNDRED, THOUSAND, WAN = Decimal(100), Decimal(1000), Decimal(10000)
 CATS = ("TM", "KZ", "TD")
 
+# ── bug-2223: 块模型 schema 字典归一化（E2E 实测「工业矿」/「探明+控制」致 L9 静默 0）──
+GRADE_CLASS_MAP = {"工业": "工业", "工业矿": "工业", "低品位": "低品位", "低品位矿": "低品位"}
+CATEGORY_MAP = {"探明": "TM", "TM": "TM", "控制": "KZ", "KZ": "KZ", "推断": "TD", "TD": "TD"}
+
+
+def norm_grade_class(v) -> str | None:
+    """未知→None（调用方记 anomaly 跳行）；空/缺省→工业（原行为）。"""
+    s = str(v or "").strip()
+    return GRADE_CLASS_MAP.get(s, "工业") if not s else GRADE_CLASS_MAP.get(s)
+
+
+def norm_category(v) -> str | None:
+    """单类中文/代码→TM/KZ/TD；复合（含+）原样保留（进 total 不进分类别）；未知→None。"""
+    s = str(v or "").strip()
+    if not s or "+" in s:
+        return s or None
+    return CATEGORY_MAP.get(s)
+
 
 def q(x: Decimal, dp: str) -> Decimal:
     """ROUND_HALF_EVEN quantize。dp 例: '0.01' / '1' / '0.1'。"""
@@ -131,6 +149,10 @@ def compute(data: Data) -> tuple[dict, list[str]]:
 
     # ── C9 特高品位下限 ──
     p13 = data.form("industrial_params")
+    # bug-2223: 空白表单（必填字段全 null，仅 _meta 骨架）与缺失等价——否则 dec(None)=NaN
+    # 使 C9 emit 的 int(NaN) 抛 ValueError（exit 1 崩溃，而非门2 缺参异常路径）
+    if p13 and not (dec(p13.get("deposit_avg_grade")).is_finite() and dec(p13.get("outlier_multiple")).is_finite()):
+        p13 = None
     if p13:
         emit("C9.outlier_threshold", dec(p13["deposit_avg_grade"]) * dec(p13["outlier_multiple"]), "0.01", "%", "formula:C9",
              {"inputs": {"deposit_avg_grade": float(dec(p13["deposit_avg_grade"])), "outlier_multiple": int(dec(p13["outlier_multiple"]))}})
@@ -197,6 +219,22 @@ def compute(data: Data) -> tuple[dict, list[str]]:
     # ── 14 块段/汇总链 L7-L9 ──
     bm = data.form("block_model")
     rows: list[dict] = []  # {orebody, category, grade_class, ore_t, metal_t, grade}
+
+    def norm_row(src: dict, extra: dict, anom_ctx: str) -> dict | None:
+        """bug-2223: grade_class/category 归一化；未知值记 anomaly 跳行；复合类别保留原样（进 total 不进分类别）。"""
+        gc = norm_grade_class(src.get("grade_class", "工业"))
+        if gc is None:
+            anomalies.append(f"{anom_ctx}: 未知 grade_class {src.get('grade_class')!r}（合法: 工业/工业矿/低品位/低品位矿）——行跳过，缺参不编造")
+            return None
+        cat_raw = str(src.get("category", "")).strip()
+        cat = norm_category(cat_raw)
+        if cat is None:
+            anomalies.append(f"{anom_ctx}: 未知 category {cat_raw!r}（合法: 探明/控制/推断/TM/KZ/TD）——行跳过，缺参不编造")
+            return None
+        if "+" in cat:
+            anomalies.append(f"{anom_ctx}: 复合类别 {cat!r} 无法整行映射 TM/KZ/TD——该行进总量不进分类别，需用户确认各类占比后拆分（禁止编造拆分，bug-2223）")
+        return {"orebody": src.get("orebody", "?"), "category": cat, "grade_class": gc, **extra}
+
     if bm:
         if bm.get("granularity", "B") == "A" and bm.get("blocks"):
             d_ind = s1_density.get("_industrial")
@@ -207,18 +245,20 @@ def compute(data: Data) -> tuple[dict, list[str]]:
                 if not (S.is_finite() and M.is_finite() and C.is_finite()):
                     continue
                 # D 选取：S1 分组统计优先（SC-3 改小体重传导路径）；无 S1 用块段自带值
-                Dsel = (d_ind if b.get("grade_class", "工业") != "低品位" else d_low) or d_all or dec(b.get("bulk_density"))
+                Dsel = (d_ind if norm_grade_class(b.get("grade_class", "工业")) != "低品位" else d_low) or d_all or dec(b.get("bulk_density"))
                 if Dsel is None or not Dsel.is_finite():
                     anomalies.append(f"块段 {b.get('block_no')}: 无体重可用（13a/S1 与块段自带值皆缺）——链在此截断")
                     rows.clear()
                     break
                 qt = S * M * Dsel  # L7: V=S×M, Q=V×D
-                rows.append({"orebody": b["orebody"], "category": b["category"], "grade_class": b.get("grade_class", "工业"),
-                             "ore_t": qt, "metal_t": qt * C / HUNDRED, "grade": C})
+                r = norm_row(b, {"ore_t": qt, "metal_t": qt * C / HUNDRED, "grade": C}, f"块段 {b.get('block_no')}")
+                if r:
+                    rows.append(r)
         elif bm.get("aggregates"):
             for a in bm["aggregates"]:
-                rows.append({"orebody": a["orebody"], "category": a["category"], "grade_class": a.get("grade_class", "工业"),
-                             "ore_t": dec(a["ore_qty_wt"]) * WAN, "metal_t": dec(a["metal_t"]), "grade": dec(a.get("grade_pct", 0))})
+                r = norm_row(a, {"ore_t": dec(a["ore_qty_wt"]) * WAN, "metal_t": dec(a["metal_t"]), "grade": dec(a.get("grade_pct", 0))}, f"汇总行 {a.get('orebody')}")
+                if r:
+                    rows.append(r)
 
     def agg(sel: list[dict]) -> tuple[Decimal, Decimal, Decimal]:
         ore = sum((r["ore_t"] for r in sel), D0)
@@ -230,6 +270,8 @@ def compute(data: Data) -> tuple[dict, list[str]]:
     if rows:
         ind = [r for r in rows if r["grade_class"] == "工业"]
         low = [r for r in rows if r["grade_class"] != "工业"]
+        if not ind:
+            anomalies.append("块模型全部行被判为低品位——工业类资源量为 0，请核对 14_block_model 的 grade_class 取值（bug-2223：不再静默 0）")
         tot_ore, tot_metal, tot_grade = agg(ind)
         emit("L9.total_ore_wt", tot_ore / WAN, "0.01", "万吨", "formula:L9")
         emit("L9.total_metal_t", tot_metal, "1", "t", "formula:L9")
@@ -296,7 +338,7 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         # 两者皆无 → L11 跳过（降级路径：呈现层 [待确认] 槽位）
 
         # ── L12 验证误差率 ──
-        for r in data.form("verification").get("rows", []):
+        for r in data.form("verification").get("rows") or []:  # bug-2223: 空白表单 rows=null → 不可迭代崩溃
             qh = dec(r.get("ore_qty_wt")) * WAN
             if qh:
                 emit(f"L12.err[{r.get('orebody', '?')}|{r.get('category', '?')}]",
@@ -337,6 +379,11 @@ def compute(data: Data) -> tuple[dict, list[str]]:
 
     # ── E 经济链 ──
     eco = data.form("economics")
+    # bug-2223: 空白表单（嵌套对象全 null）与缺失等价——eco.get("credibility",{}) 得 None 再
+    # .get 会 AttributeError 崩溃；且嵌套缺参按默认 0 续算 E1-E7 属编造，整体跳过记 anomaly
+    if eco and not all(isinstance(eco.get(k), dict) for k in ("credibility", "rates", "concentrate", "prices", "costs")):
+        anomalies.append("16_economics 空白（嵌套对象未收集）——E1-E7 经济链整体跳过（缺参不编造，bug-2223）")
+        eco = None
     if eco and ind_stats:
         kcat = {c: dec(eco.get("credibility", {}).get(c, 1.0)) for c in CATS}
         rates = eco.get("rates", {})
@@ -352,7 +399,8 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         emit("E2.C_mined", c_m, "0.01", "%", "formula:E2")
         conc = eco.get("concentrate", {})
         gCu, gAg = dec(conc.get("grade_cu_pct", 0)), dec(conc.get("grade_ag_gpt", 0))
-        rCu = dec(eco.get("recovery", {}).get("recovery_cu", eco.get("recovery", {}).get("cu", 0))) / HUNDRED
+        rec = eco.get("recovery") or {}  # bug-2223: 可选字段空白(null)不可 .get
+        rCu = dec(rec.get("recovery_cu", rec.get("cu", 0))) / HUNDRED
         conc_t = q_m * (c_m / HUNDRED) * rCu / (gCu / HUNDRED) if gCu and rCu else None
         if conc_t is not None:
             emit("E3.conc_output_t", conc_t, "1", "t", "formula:E3")
@@ -414,13 +462,21 @@ def _stage_of(args) -> dict:
 
 
 def cmd_execute(args) -> int:
+    # bug-2223: --output 与 --state-dir 二选一（state-dir 写 {dir}/formula_state.json）
+    if args.output:
+        out = Path(args.output)
+    elif args.state_dir:
+        out = Path(args.state_dir) / "formula_state.json"
+    else:
+        print("[formula] 错误: execute 需要 --output <文件> 或 --state-dir <目录> 之一", file=sys.stderr)
+        return EXIT_ERROR
     try:
         values, anomalies = compute(_load(args))
     except KeyError as e:
         print(f"[formula] 错误: {e}", file=sys.stderr)
         return EXIT_ERROR
-    write_state(Path(args.output), values, anomalies)
-    print(f"STATE_READY: {args.output} slots={len(values)} anomalies={len(anomalies)}")
+    write_state(out, values, anomalies)
+    print(f"STATE_READY: {out} slots={len(values)} anomalies={len(anomalies)}")
     for a in anomalies:
         print(f"  ANOMALY: {a}")
     return EXIT_ANOMALY if anomalies else EXIT_OK
@@ -556,7 +612,8 @@ def main() -> int:
     e = sub.add_parser("execute", help="读 data/ 全量计算 → formula_state.json")
     e.add_argument("--stage", required=True)
     e.add_argument("--data-dir", required=True)
-    e.add_argument("--output", required=True)
+    e.add_argument("--output", help="状态文件完整路径（与 --state-dir 二选一）")
+    e.add_argument("--state-dir", help="状态目录（写 {state-dir}/formula_state.json，与 --output 二选一；bug-2223）")
     e.set_defaults(func=cmd_execute)
 
     c = sub.add_parser("check", help="自洽重算 + B1 容差 + 锚点回归")
