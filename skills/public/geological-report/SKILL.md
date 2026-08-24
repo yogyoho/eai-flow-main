@@ -36,7 +36,7 @@ license: MIT
 /mnt/user-data/workspace/geo-report/
   data/     # 33 份表单 + CSV（唯一写者 = ingest.py，绝不手写）
   state/    # formula_state.json / chapter_manifest.json / chapters/chN.md / consistency_check.json
-outputs/    # report.md + project_snapshot.json → present_files 交付
+outputs/    # {项目名}-{阶段}-地质勘查报告.md + project_snapshot.json → present_files 交付
 ```
 
 脚本调用统一前缀：`python -X utf8 /mnt/skills/public/geological-report/scripts/<脚本> …`
@@ -61,6 +61,7 @@ outputs/    # report.md + project_snapshot.json → present_files 交付
    **示例值≠数据（P2 红线，页面实测踩过两次）**：表单 placeholder/说明里的示例只示意格式，用户没填的数据项**绝不落盘任何值**，更绝不把示例值/自己编的格式值（如 C5300002023XXXXXX、1396/2000）当数据写入。写完用中文数据项清单回显落盘值请用户核对。
    **只传用户提交的键（bug-2218 页面实测）**：`--values '<json>'` 里**只放用户实际填写的键**；用户留空的项（无论必填选填）一律**不写入该键**。schema 的 `required` 只作用于门 1 完备性检查——写入路径不需要凑齐（ingest 只校验传入的键，缺键留 null 由门 1 统一报缺项再问用户）。绝不为通过校验合成对象（如把保护地核查编成全 false）、绝不抄自己写的 placeholder 示例值凑数。回显表只列用户提供的项，并明示"另有 N 项未提供（留空）"。
    **脚本崩溃即停（bug-2217 页面实测）**：管线脚本报错/崩溃时**停下**，把错误原样呈现用户等待指示；绝不回退到 `cat >` / python heredoc 手写 data/ 文件"恢复"（唯一写者 = ingest.py），更绝不从对话记忆或技能样例"补回"数据——表单数据丢了必须重新向用户收集。`--force` 只允许搭配 `--family`/`--only` 限定范围；`--values "$(cat 文件)"` 文件缺失会报错而非静默清空（已加固），可放心使用。
+   **公式结果为 0/空 = 数据缺失，与脚本崩溃同级（bug-2223 页面实测）**：公式正常退出但结果全 0/明显异常时**不是计算 bug**，是数据 schema 不匹配或缺参——停，把 anomaly 原样呈现用户，问数据或确认拆分占比。**绝不手改 `state/formula_state.json`**（formula_runner 是唯一写者；每个槽位带 `source` 键，手改必丢，build_output 手改检测门直接 FAIL）。**绝不自写 build 脚本/自定交付文件名**——交付只走 `build_output.py`，文件名由脚本从 00_project 拼 `{项目名}-{阶段}-地质勘查报告.md`，outputs/ 出现其他 .md 同样 FAIL。
 4. **门 1**：`ingest.py check` → 输出 `GATE1_COMPLETE` 才继续；rc=2 把缺项清单**译成中文数据项清单**（按类别分组，标注哪些必填）呈现用户补齐，不代填、不贴英文键名。
 
 ### 步骤 2–3 · 冻结计算 → 门 2
@@ -77,7 +78,7 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 
 **wave1（ch1–ch9）**：逐章写 `state/chapters/chN.md`。规则：
 - 首行 `## N 章标题`，子节 `### N.M`，三级节 `#### N.M.K`；段内序号（1）（2）… 递增（NR2）
-- **骨架全覆盖（bug-2221 根因①）**：动笔前先读 STAGE 文件该章 `toc` 与 `sections`（逐节要素链），全部二、三级节逐一落笔，**每节按其 `elements` 逐要素成句**（某要素缺数据写 `[待确认]` 占位句，如「矿体平均厚度：[待确认]」）；**禁止删节、并节或以概要代替逐节展开**；章成后对照 toc 自检无遗漏
+- **骨架全覆盖（bug-2221 根因①）**：动笔前先读 STAGE 文件该章 `toc` 与 `sections`（逐节要素链），全部二、三级节逐一落笔，**每节按其 `elements` 逐要素成句**（某要素缺数据写 `[待确认]` 占位句，如「矿体平均厚度：[待确认]」）；**禁止删节、并节或以概要代替逐节展开**；章成后对照 toc 自检无遗漏；动笔前同时读 `references/samples/exploration/chN_sample.md` 同章范文——**只学叙述范式**（要素组织成段的方式/专业表述/表格用法），仿写而非摘抄——禁止整句照搬范文。范文中任何数值/矿名/地名是样例项目的，一律不得进入本项目正文（本项目数值只经 `{{SLOT:key}}`；深度门 FAIL 时 stderr 会点名参照范文补写）；除本地范文集外，可经 MCP 工具 `kf_search_knowledge` 检索「固体矿产报告知识库」取同章叙述参考——检索 chunk 同样仅限叙述范式：chunk 中任何数值/矿名/地名不得进入本项目正文，本项目数值只经 `{{SLOT:key}}`（与本地 references/samples 同一红线）
 - **叙述深度下限（bug-2221 根因②）**：每个三级节 ≥1 段完整叙述（≥3 句）；每张表前有引入段、表后有解读段——禁「表后即下一节」
 - **条目式叙述范式（bug-2221 根因③）**：逐条目分述（矿体/含水层/岩组/块段等）时**每条一段完整专业叙述**，按要素链成文：产出层位/位置 → 中段/勘探线等工程控制 → 形态产状 → 走向/倾向延伸 → 厚度区间+变化系数+稳定型判定 → 品位区间+变化系数+均匀型判定 → 含矿岩性+矿物组合+产出状态 → 资源量占比/结论；某要素缺数据写 `[待确认]` 不砍句
 - 一切数字用 `{{SLOT:key}}`（key ∈ formula_state.values）；数据表用 `{{TABLE:fam}}`
@@ -94,15 +95,15 @@ E 链经济指标）作要点包呈现用户确认——这是 ch10 的唯一事
 ### 步骤 5–7 · 组装 → 校验 → 快照 → 交付
 
 ```
-build_output.py   → outputs/report.md（单次原子写；未知 SLOT key = FAIL 阻断）
+build_output.py   → outputs/{项目名}-{阶段}-地质勘查报告.md（单次原子写；未知 SLOT key = FAIL 阻断）
 consistency.py    → state/consistency_check.json（22 合约四类：XS/FC/CC/NR/SL）
 snapshot.py save  → outputs/project_snapshot.json（全文件 SHA-256 清单）
-present_files     → 交付 report.md
+present_files     → 交付 `{项目名}-{阶段}-地质勘查报告.md`（build_output 交付名门强制；outputs/ 禁其他 .md）
 ```
 
 consistency 退出码：0 全过 / 1 有 FAIL（修章节重跑，禁改数据绕过）/ 2 需人工（如 CC1 标准未入库）/ 3 完成带 WARN/MANUAL（汇报用户）。合规性附录由 build_output 自动附加，勿手写。
 
-**交付回路铁律（bug-2220 页面实测）**：对话中任何扩写/补写/修改都只落 `state/chapters/chN.md`，随后**必须**重跑 build → consistency → snapshot save，经 present_files 交付唯一单文件 `outputs/report.md`（即 `{项目名}-{阶段}-地质勘查报告.md`）。**禁止**把对话轮直接生成的散文件（`01-10_完整报告.md`、`ch1_绪论.md` 之类迭代残留）放进 outputs/ 当交付物——绕过管线的文件没有槽位注入、没有一致性校验、没有快照溯源。
+**交付回路铁律（bug-2220 页面实测）**：对话中任何扩写/补写/修改都只落 `state/chapters/chN.md`，随后**必须**重跑 build → consistency → snapshot save，经 present_files 交付唯一单文件 `outputs/{项目名}-{阶段}-地质勘查报告.md`。**禁止**把对话轮直接生成的散文件（`01-10_完整报告.md`、`ch1_绪论.md` 之类迭代残留）放进 outputs/ 当交付物——绕过管线的文件没有槽位注入、没有一致性校验、没有快照溯源。
 
 ## 修改回路（顺序铁律，bug-2199）
 
