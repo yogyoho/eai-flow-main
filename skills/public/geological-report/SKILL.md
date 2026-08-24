@@ -36,7 +36,9 @@ license: MIT
 /mnt/user-data/workspace/geo-report/
   data/     # 33 份表单 + CSV（唯一写者 = ingest.py，绝不手写）
   state/    # formula_state.json / chapter_manifest.json / chapters/chN.md / consistency_check.json
-outputs/    # {项目名}-{阶段}-地质勘查报告.md + project_snapshot.json → present_files 交付
+/mnt/user-data/outputs/  # 线程级交付目录（与 workspace 平级，不在 geo-report/ 下）：
+  {项目名}-{阶段}-地质勘查报告.md + project_snapshot.json → present_files 交付
+  delivery_manifest.json（build 成功后生成）+ .delivery-contract（ingest 落盘的交付契约标记，勿删）
 ```
 
 脚本调用统一前缀：`python -X utf8 /mnt/skills/public/geological-report/scripts/<脚本> …`
@@ -48,6 +50,7 @@ outputs/    # {项目名}-{阶段}-地质勘查报告.md + project_snapshot.json
 
 有 `outputs/project_snapshot.json` 先 `snapshot.py show --input … --verify`（rc=3=被篡改，停），
 读 last_task/changelog 决定续做还是新任务。开新则从步骤 1。
+旧线程恢复时若 `outputs/` 已有内容但无 `.delivery-contract` 标记：重跑 `ingest.py forms …`（已入库表单会 skipped_existing no-op）即可补落标记，无需重导数据。
 
 ### 步骤 1 · 数据收集 → 门 1
 
@@ -78,7 +81,7 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 
 **wave1（ch1–ch9）**：逐章写 `state/chapters/chN.md`。规则：
 - 首行 `## N 章标题`，子节 `### N.M`，三级节 `#### N.M.K`；段内序号（1）（2）… 递增（NR2）
-- **骨架全覆盖（bug-2221 根因①）**：动笔前先读 STAGE 文件该章 `toc` 与 `sections`（逐节要素链），全部二、三级节逐一落笔，**每节按其 `elements` 逐要素成句**（某要素缺数据写 `[待确认]` 占位句，如「矿体平均厚度：[待确认]」）；**禁止删节、并节或以概要代替逐节展开**；章成后对照 toc 自检无遗漏
+- **骨架全覆盖（bug-2221 根因①）**：动笔前先读 STAGE 文件该章 `toc` 与 `sections`（逐节要素链），全部二、三级节逐一落笔，**每节按其 `elements` 逐要素成句**（某要素缺数据写 `[待确认]` 占位句，如「矿体平均厚度：[待确认]」）；**禁止删节、并节或以概要代替逐节展开**；章成后对照 toc 自检无遗漏；复合条目（如「2.1 …（2.1.1 … / 2.1.2 …）」）拆出的子节号也须逐个落 `####` 标题，缺失任一节号 build_output 以**目录覆盖门** exit 1 拦截（bug-2225）
 - **范文参照（只学范式，禁抄）**：动笔前同时读 `references/samples/exploration/chN_sample.md` 同章范文——**只学叙述范式**（要素组织成段的方式/专业表述/表格用法），仿写而非摘抄——禁止整句照搬范文。范文中任何数值/矿名/地名是样例项目的，一律不得进入本项目正文（本项目数值只经 `{{SLOT:key}}`；深度门 FAIL 时 stderr 会点名参照范文补写）。除本地范文集外，可经 MCP 工具 `knowledge-factory_kf_search_knowledge`（参数 `kb_name="固体矿产报告知识库"`）检索取同章叙述参考——检索 chunk 同样仅限叙述范式：chunk 中任何数值/矿名/地名不得进入本项目正文，本项目数值只经 `{{SLOT:key}}`（与本地 references/samples 同一红线）。
 - **叙述深度下限（bug-2221 根因②）**：每个三级节 ≥1 段完整叙述（≥3 句）；每张表前有引入段、表后有解读段——禁「表后即下一节」
 - **条目式叙述范式（bug-2221 根因③）**：逐条目分述（矿体/含水层/岩组/块段等）时**每条一段完整专业叙述**，按要素链成文：产出层位/位置 → 中段/勘探线等工程控制 → 形态产状 → 走向/倾向延伸 → 厚度区间+变化系数+稳定型判定 → 品位区间+变化系数+均匀型判定 → 含矿岩性+矿物组合+产出状态 → 资源量占比/结论；某要素缺数据写 `[待确认]` 不砍句
@@ -104,7 +107,13 @@ present_files     → 交付 `{项目名}-{阶段}-地质勘查报告.md`（buil
 
 consistency 退出码：0 全过 / 1 有 FAIL（修章节重跑，禁改数据绕过）/ 2 需人工（如 CC1 标准未入库）/ 3 完成带 WARN/MANUAL（汇报用户）。合规性附录由 build_output 自动附加，勿手写。
 
-**交付回路铁律（bug-2220 页面实测）**：对话中任何扩写/补写/修改都只落 `state/chapters/chN.md`，随后**必须**重跑 build → consistency → snapshot save，经 present_files 交付唯一单文件 `outputs/{项目名}-{阶段}-地质勘查报告.md`。**禁止**把对话轮直接生成的散文件（`01-10_完整报告.md`、`ch1_绪论.md` 之类迭代残留）放进 outputs/ 当交付物——绕过管线的文件没有槽位注入、没有一致性校验、没有快照溯源。
+**交付铁律（bug-2225，违反=交付被硬拦）**——交付门已上线（present_files / 下载 / 工作区同步对非管线 .md 一律拒绝）：
+
+1. 步骤 5 **必须**以 `build_output.py` 收尾——**绝不手工拼装** `outputs/*.md`。对话轮直接生成的散文件（`01-10_完整报告.md`、`ch1_绪论.md` 之类迭代残留，bug-2220 页面实测）同样禁入 outputs/ 当交付物——绕过管线的文件没有槽位注入、没有一致性校验、没有快照溯源。
+2. build 成功后把 **BUILD_READY** 整行 + **退出码** 原样粘贴进回复（MANIFEST_READY 行一并粘贴）；rc≠0 时把 stderr 原样粘贴并停下修章节，禁止带病交付。
+3. present_files 前确认 `outputs/delivery_manifest.json` 在场；只交付 manifest 指名的唯一单文件交付物。
+4. `outputs/.delivery-contract` 是交付契约标记，**勿删**（删除=门失效=交付作废）。
+5. 交付后任何扩写/补写/修改都只落 `state/chapters/chN.md`，重跑 build_output → consistency → snapshot（禁止直接编辑 outputs/ 交付物后交付）。
 
 ## 修改回路（顺序铁律，bug-2199）
 
@@ -125,7 +134,7 @@ update 后只重写受影响章节 → build → consistency → snapshot save�
 | `formula_runner.py trace --state F --formulas J --output T` | 逐公式输入输出溯源 | 0 |
 | `formula_runner.py impacted --field K --value V --manifest M --output I` | 值差分 dry-run | 0 |
 | `formula_runner.py update --field K --value V --impacted-file I` | **顺序铁律**改参重算 | 0/3；1=守卫拒 |
-| `build_output.py --stage S --data-dir D --state-dir T --output R` | 原子组装+槽位注入 | 0/1 未知槽位 |
+| `build_output.py --stage S --data-dir D --state-dir T --output R` | 原子组装+槽位注入 | 0（BUILD_READY+MANIFEST_READY）/ 1 门拦（未知槽位/目录覆盖门） |
 | `consistency.py --report R --state F --standards IDX --output C` | 22 合约校验 | 0/1/2/3 |
 | `snapshot.py save --task 描述 … --output P` | 版本快照+SHA-256 | 0 |
 | `snapshot.py show --input P --verify` | 恢复/篡改检测 | 0/3=被篡改 |

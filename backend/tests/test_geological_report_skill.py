@@ -121,6 +121,33 @@ class TestV2PipelineSections:
         assert "anomalies" in self.content and "呈现用户" in self.content
 
 
+class TestDeliveryIronLaw:
+    """bug-2225 SKILL.md 交付铁律：build 收尾 + BUILD_READY 粘贴 + manifest 在场。"""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.content = _read_skill_content()
+
+    def test_delivery_iron_laws_present(self):
+        """律1–律4：build 收尾 / BUILD_READY+退出码粘贴 / manifest 在场 / 契约标记勿删。"""
+        text = self.content
+        assert "交付铁律" in text and "bug-2225" in text
+        assert "绝不手工拼装" in text  # 律1
+        assert "BUILD_READY" in text and "退出码" in text  # 律2
+        assert "delivery_manifest.json" in text  # 律3
+        assert ".delivery-contract" in text and "勿删" in text  # 律4
+
+    def test_toc_gate_script_enforced(self):
+        """toc 全覆盖由 build_output 目录覆盖门 exit 1 脚本化拦截。"""
+        assert "目录覆盖门" in self.content
+
+    def test_workspace_tree_and_command_table(self):
+        """outputs/ 是线程级 /mnt/user-data/outputs/（非 workspace 子目录）；步骤0 补标记；速查表退出码。"""
+        assert "/mnt/user-data/outputs" in self.content
+        assert "skipped_existing" in self.content  # 步骤0 恢复补 .delivery-contract
+        assert "MANIFEST_READY" in self.content  # 命令速查 build_output 行
+
+
 class TestDomainNotes:
     """v2 保留的领域速记（写叙述时的事实基准）。"""
 
