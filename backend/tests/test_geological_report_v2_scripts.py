@@ -185,7 +185,7 @@ def ws(tmp_path_factory):
     # 章节（LLM 叙述产物模拟：槽位 + 表 + 段内序号 + 判定词逐字 + 历史编码 332）
     slot = lambda k: "{{SLOT:" + k + "}}"  # noqa: E731
     # 章节合规内容（bug-2223 深度门：每块 ≥3 句 + 每章 ≥1000 有效字符；槽位引用保留原断言能力）
-    # SEC 合成凑量同 bug2223 fixture：2 句×64字 ×12 重复 = 24句/768字/块，每章 2 块+叙述句 ≈1536+ 有效字符（合成数据只验管线）
+    # SEC 合成凑量同 bug2223 fixture：2 句×64字 ×12 重复 = 24句/768字/块，每章 2 块+叙述句 ≈1536+ 有效字符（ch8 仅 1 块→SEC 双份 ≈1780；合成数据只验管线）
     SEC = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。"
     SEC *= 12
     chapters = {
@@ -203,6 +203,7 @@ def ws(tmp_path_factory):
         7: f"## 7 勘查工作及其质量评述\n\n{SEC}\n\n小体重样 {slot('S1.n')} 件，平均体重 {slot('S1.avg_density')} t/m3。\n\n### 7.1 质量评述\n\n{SEC}\n",
         8: (
             "## 8 资源量估算\n\n"
+            + SEC
             + SEC
             + "\n\n工业矿石量 "
             + slot("L9.total_ore_wt")
@@ -331,6 +332,7 @@ def ws(tmp_path_factory):
         "data": data,
         "state": state,
         "out": out,
+        "deliv": DELIV,
         "gate1": gate1,
         "build1": build1,
         "build2": build2,
@@ -575,8 +577,15 @@ class TestBuildOutput:
         st = tmp_path / "st"
         (st / "chapters").mkdir(parents=True)
         (st / "formula_state.json").write_text((ws["state"] / "formula_state.json").read_text(encoding="utf-8"), encoding="utf-8")
-        (st / "chapters" / "ch1.md").write_text("## 1\n", encoding="utf-8")
-        run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", tmp_path / "r.md", expect=(1,))
+        (st / "chapters" / "ch1.md").write_text((ws["state"] / "chapters" / "ch1.md").read_text(encoding="utf-8"), encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        assert r.returncode == 1 and "章节产物缺失" in r.stderr, r.stderr
 
     @staticmethod
     def _copy_chapters(ws, tmp_path):
@@ -591,13 +600,27 @@ class TestBuildOutput:
         """bug-2220：章节文件混入脚本保留标题（如目录）→ build FAIL 阻断，不产出重复前置。"""
         st = self._copy_chapters(ws, tmp_path)
         (st / "chapters" / "ch2.md").write_text("## 2 区域地质\n\n## 目录\n\n- 手写目录（污染）\n", encoding="utf-8")
-        run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", tmp_path / "r.md", expect=(1,))
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        assert r.returncode == 1 and "含脚本保留标题" in r.stderr, r.stderr
 
     def test_chapter_bad_first_line_rc1(self, ws, tmp_path):
         """bug-2220：章节首行非 `## N 章标题`（如一级标题/前置内容）→ build FAIL。"""
         st = self._copy_chapters(ws, tmp_path)
         (st / "chapters" / "ch2.md").write_text("# 云南省某铜矿勘探报告\n\n前置内容混入章节文件\n", encoding="utf-8")
-        run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", tmp_path / "r.md", expect=(1,))
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        assert r.returncode == 1 and "首行必须是" in r.stderr, r.stderr
 
 
 # ── 5. consistency：四类合约 + SL2 历史编码回归 ──────────────────────────────
