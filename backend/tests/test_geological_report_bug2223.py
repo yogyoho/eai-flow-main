@@ -8,7 +8,9 @@ E2E 证据: 线程 47d8c147（L9 静默 0 → agent 手改编造 TM/KZ/TD 拆分
 
 from __future__ import annotations
 
+import hashlib
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -208,9 +210,20 @@ def build_ws(tmp_path_factory):
     # 合成内容只验管线不验文学性——SEC 2 句×64字 ×12 重复 = 24句/768字/块，每章 2 块=~1536字（对 1000 阈值留余量），确定性凑量。
     SEC = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。"
     SEC *= 12
-    for n in range(1, 11):
-        md = f"## {n} 第{n}章\n\n{SEC}\n\n### {n}.1 小节\n\n{SEC}\n"
-        (state / "chapters" / f"ch{n}.md").write_text(md, encoding="utf-8")
+    # bug-2225 目录覆盖门：骨架节号直接从 STAGE toc 生成（148 个 N.M/N.M.K），fixture 永远与 stage 对齐
+    _num_re = re.compile(r"\d+\.\d+(?:\.\d+)?")
+    _stage_doc = json.loads(STAGE.read_text(encoding="utf-8"))
+    for ch_id, ch in _stage_doc["chapters"].items():
+        n = ch_id[2:]
+        md = [f"## {n} {ch.get('title', '')}", "", SEC]
+        seen: set[str] = set()
+        for sub in ch.get("toc", []):
+            for no in _num_re.findall(sub):
+                if no in seen:
+                    continue
+                seen.add(no)
+                md += [f"{'###' if no.count('.') == 1 else '####'} {no} 小节", "", SEC]
+        (state / "chapters" / f"{ch_id}.md").write_text("\n".join(md) + "\n", encoding="utf-8")
     # formula_state：全部槽位带 source（公式产物特征）
     fs = {
         "version": 2,
@@ -364,3 +377,52 @@ class TestDeliveryContract:
         data = tmp_path / "geo" / "data"
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
         assert not list(tmp_path.rglob(".delivery-contract"))
+
+
+# ── bug-2225 Task 2: 目录覆盖门 + 交付清单 ────────────────────────────────────
+
+_SEC12 = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。" * 12
+
+
+class TestTocGate:
+    def test_missing_toc_section_rejected(self, build_ws, tmp_path):
+        """章过深度门但只写了 3.1（stage ch3 toc 含 3.2+）→ rc=1 目录覆盖门。"""
+        import shutil
+
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        (st / "chapters" / "ch3.md").write_text(f"## 3 矿区地质\n\n{_SEC12}\n\n### 3.1 地层\n\n{_SEC12}\n", encoding="utf-8")
+        out = tmp_path / "o"
+        out.mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", build_ws["data"], "--state-dir", st, "--output", out / DELIV, expect=(1,))
+        assert "目录覆盖门" in r.stderr and "3.2" in r.stderr, r.stderr
+
+    def test_compound_entry_subnumbers_required(self, build_ws, tmp_path):
+        """复合条目（2.1（2.1.1 …/…））拆出的子节号也必须落标题——只写 2.1 不够。"""
+        import shutil
+
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        assert any("2.1.1" in s for s in json.loads(STAGE.read_text(encoding="utf-8"))["chapters"]["ch2"]["toc"])  # 前提钉住
+        (st / "chapters" / "ch2.md").write_text(f"## 2 区域地质\n\n{_SEC12}\n\n### 2.1 区域地质特征\n\n{_SEC12}\n", encoding="utf-8")
+        out = tmp_path / "o"
+        out.mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", build_ws["data"], "--state-dir", st, "--output", out / DELIV, expect=(1,))
+        assert "目录覆盖门" in r.stderr and "2.1.1" in r.stderr, r.stderr
+
+
+class TestDeliveryManifest:
+    def test_manifest_written_and_idempotent(self, build_ws):
+        """build 成功落 delivery_manifest.json（确定性），二连 build unchanged 且清单字节不变。"""
+        _build(build_ws)
+        m = build_ws["out"] / "delivery_manifest.json"
+        d = json.loads(m.read_text(encoding="utf-8"))
+        report = build_ws["out"] / DELIV
+        assert d["deliverable"] == DELIV
+        assert d["bytes"] == report.stat().st_size
+        assert d["sha256"] == hashlib.sha256(report.read_bytes()).hexdigest()
+        assert "formula_state_sha256" in d
+        assert d["chapters"]["ch2"]["toc_entries"] == d["chapters"]["ch2"]["toc_covered"] >= 10
+        before = m.read_text(encoding="utf-8")
+        r = _build(build_ws)
+        assert "unchanged" in r.stdout and "MANIFEST_READY" in r.stdout and m.read_text(encoding="utf-8") == before

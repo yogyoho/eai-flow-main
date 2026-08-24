@@ -14,6 +14,7 @@ Temp/geo_smoke/smoke.py），七类测试对产物逐项断言——管线任何
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from decimal import Decimal
@@ -222,6 +223,20 @@ def ws(tmp_path_factory):
         9: f"## 9 经济评价\n\n{SEC}\n\n精矿含铜价格 {slot('E4.price_conc')} 元/t，潜在总值 {slot('E5.gross_potential_yi')} 亿元。\n\n### 9.1 概略评价\n\n{SEC}\n",
         10: f"## 10 结论\n\n{SEC}\n\n本次估算工业矿石量 {slot('L9.total_ore_wt')} 万吨，与正文第 1、8 章一致。\n\n### 10.1 主要成果\n\n{SEC}\n",
     }
+    # bug-2225 目录覆盖门：补齐 STAGE toc 全部节号骨架（手写章节保留槽位/断言内容）
+    _num_re = re.compile(r"\d+\.\d+(?:\.\d+)?")
+    _heading_re = re.compile(r"^#{2,4}\s+(\d+(?:\.\d+)+)")
+    for n, md in list(chapters.items()):
+        have = {m.group(1) for ln in md.splitlines() if (m := _heading_re.match(ln.strip()))}
+        extra = []
+        for sub in _stage["chapters"][f"ch{n}"].get("toc", []):
+            for no in _num_re.findall(sub):
+                if no in have:
+                    continue
+                have.add(no)
+                extra.append(f"{'###' if no.count('.') == 1 else '####'} {no} 小节\n\n{SEC}")
+        if extra:
+            chapters[n] = md.rstrip("\n") + "\n\n" + "\n\n".join(extra) + "\n"
     for n, md in chapters.items():
         (state / "chapters" / f"ch{n}.md").write_text(md, encoding="utf-8")
 

@@ -8,9 +8,9 @@
   {{SLOT:key}}  → formula_state.values[key].display（数字永不经过 LLM；未知 key=FAIL）
   {{TABLE:fam}} → data/ 表单族渲染为 markdown 表（数组=行表，标量=键值表，CSV=行表）
 原子写：tmp + os.replace（bid-proposal 先例）；内容不变跳过写盘保 mtime（SC-4 字节不变）；
-全文无时间戳（幂等）。
+全文无时间戳（幂等）。成功后写 outputs/delivery_manifest.json（交付清单，确定性幂等——present_files/下载门的放行凭据，bug-2225）。
 
-退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含管线外散文件（交付名门，bug-2223）
+退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含管线外散文件（交付名门，bug-2223）、toc 节号缺失（目录覆盖门，bug-2225）
 """
 
 from __future__ import annotations
@@ -203,9 +203,31 @@ def validate_depth(ch_id: str, text: str) -> None:
         raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照 references/samples/exploration/{ch_id}_sample.md 范文扩写")
 
 
+# ── 目录覆盖门（bug-2225：E2E 实测 toc 覆盖仅 54.7%——bug-2223 遗留项收口）────
+
+NUM_RE = re.compile(r"\d+\.\d+(?:\.\d+)?")
+HEADING_NO_RE = re.compile(r"^#{2,4}\s+(\d+(?:\.\d+)+)")
+
+
+def validate_toc(ch_id: str, text: str, toc: list[str]) -> dict:
+    """stage toc 全部节号（复合条目拆出的子节号也算）必须出现在章节 ##/###/#### 标题。
+
+    num_re 与 backend/tests/test_geological_report_v2_scripts.py::TestStageSections 同源。
+    返回 {"toc_entries": 节号数, "toc_covered": 已落标题数}（供 delivery_manifest.json）。
+    """
+    toc_nos: set[str] = set()
+    for sub in toc or []:
+        toc_nos.update(NUM_RE.findall(sub))
+    heading_nos = {m.group(1) for ln in text.splitlines() if (m := HEADING_NO_RE.match(ln.strip()))}
+    missing = sorted(toc_nos - heading_nos)
+    if missing:
+        raise ValueError(f"{ch_id}.md 目录覆盖门 FAIL：toc 节号未落标题 {missing}（骨架全覆盖——动笔前读 STAGE 该章 toc 逐节展开，复合条目子节号须 #### 标题，禁删节/并节，bug-2221/2225）")
+    return {"toc_entries": len(toc_nos), "toc_covered": len(toc_nos & heading_nos)}
+
+
 # ── 组装 ────────────────────────────────────────────────────────────────────
 
-def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
+def assemble(stage: dict, data_dir: Path, state_dir: Path) -> tuple[str, dict[str, dict]]:
     state_path = state_dir / "formula_state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
     # ── bug-2223 手改检测门：formula_runner.emit() 给每个槽位写 source 键；手改必丢 ──
@@ -219,6 +241,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
     if cc_path.exists():
         consistency = json.loads(cc_path.read_text(encoding="utf-8"))
     unknown_keys: set[str] = set()
+    toc_stats: dict[str, dict] = {}
 
     def inject(text: str) -> str:
         def slot_sub(m: re.Match) -> str:
@@ -243,19 +266,26 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
         raw = cf.read_text(encoding="utf-8")
         validate_chapter(ch_id, raw)
         validate_depth(ch_id, raw)
+        toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
         parts.append(inject(raw).rstrip() + "\n")
     parts.append(render_compliance_appendix(consistency, state, state_path))
     if unknown_keys:
         raise KeyError(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
-    return "\n\n".join(parts) + "\n"
+    return "\n\n".join(parts) + "\n", toc_stats
 
 
 def atomic_write(path: Path, content: str) -> bool:
-    """幂等原子写：内容不变返回 False（保 mtime，SC-4 字节不变断言）。"""
-    if path.exists() and path.read_text(encoding="utf-8") == content:
+    """幂等原子写：内容不变返回 False（保 mtime，SC-4 字节不变断言）。
+
+    bug-2225: 字节精确写（newline="\\n"，bid-proposal atomic_write_text 同款）——
+    delivery_manifest 的 sha256/bytes 必须与盘上文件逐字节一致；Windows 文本模式默认
+    \\n→\\r\\n 翻译会使凭据 sha 与实文件不符（后续交付门比对即 FAIL）。
+    """
+    if path.exists() and path.read_bytes() == content.encode("utf-8"):
         return False
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(content, encoding="utf-8")
+    with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        f.write(content)
     os.replace(tmp, path)
     return True
 
@@ -279,12 +309,25 @@ def main() -> int:
         if stray:
             print(f"[build] 交付名门 FAIL: outputs/ 存在管线外散文件 {stray}——唯一交付单文件 {expected!r}，散文件移出或删除（bug-2220 交付回路铁律）", file=sys.stderr)
             return EXIT_ERROR
-        content = assemble(stage, Path(args.data_dir), Path(args.state_dir))
+        content, toc_stats = assemble(stage, Path(args.data_dir), Path(args.state_dir))
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as e:
         print(f"[build] 错误: {e}", file=sys.stderr)
         return EXIT_ERROR
-    wrote = atomic_write(Path(args.output), content)
+    wrote = atomic_write(out_path, content)
+    # ── bug-2225 交付清单：present_files/artifacts/工作区同步三门的放行凭据。
+    # 确定性（sort_keys、无时间戳）→ 二连 build 字节不变（幂等不破坏）。
+    manifest = {
+        "bug": 2225,
+        "deliverable": out_path.name,
+        "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+        "bytes": len(content.encode("utf-8")),
+        "formula_state_sha256": sha256_file(Path(args.state_dir) / "formula_state.json"),
+        "chapters": toc_stats,
+    }
+    m_path = out_path.parent / "delivery_manifest.json"
+    m_wrote = atomic_write(m_path, json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     print(f"BUILD_READY: {args.output} bytes={len(content.encode('utf-8'))} {'written' if wrote else 'unchanged(skip, idempotent)'}")
+    print(f"MANIFEST_READY: {m_path} {'written' if m_wrote else 'unchanged(skip, idempotent)'}")
     return EXIT_OK
 
 
