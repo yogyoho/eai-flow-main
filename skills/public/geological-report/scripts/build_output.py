@@ -10,7 +10,7 @@
 原子写：tmp + os.replace（bid-proposal 先例）；内容不变跳过写盘保 mtime（SC-4 字节不变）；
 全文无时间戳（幂等）。
 
-退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）
+退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）
 """
 
 from __future__ import annotations
@@ -160,6 +160,36 @@ def validate_chapter(ch_id: str, text: str) -> None:
             raise ValueError(f"{ch_id}.md 含脚本保留标题 {s[:24]!r}——前置部分与合规性附录由 build_output 统一渲染，章节文件禁写（bug-2220 前置重复根因）")
 
 
+# ── 深度门（bug-2223：E2E 实测 ch3 每节 ~41 字符——骨架覆盖了、叙述没写）──
+SENT_RE = re.compile(r"[。；？！]")
+
+
+def validate_depth(ch_id: str, text: str) -> None:
+    """每标题块（## / ###）正文 ≥3 句（表格行不计句、不豁免）；全章有效字符 ≥1000。"""
+    blocks: list[tuple[str, list[str]]] = []
+    cur_title, cur_lines = "", []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if s.startswith("## ") or s.startswith("### "):
+            blocks.append((cur_title, cur_lines))
+            cur_title, cur_lines = s, []
+        else:
+            cur_lines.append(ln)
+    blocks.append((cur_title, cur_lines))
+    thin = []
+    for title, lns in blocks:
+        if title == "" and not any(l.strip() for l in lns):
+            continue  # 首块无标题无内容（章文件以 ## 开头）
+        sents = sum(len(SENT_RE.findall(l)) for l in lns if l.strip() and not l.strip().startswith("|"))
+        if sents < 3:
+            thin.append(f"{title or '(章首段)'}={sents}句")
+    if thin:
+        raise ValueError(f"{ch_id}.md 深度门 FAIL（每节 ≥3 句，参照 references/samples/exploration/{ch_id}_sample.md 范文补写）: {'; '.join(thin)}")
+    eff = sum(len(re.sub(r"[\s\|\-*#:{}]", "", l)) for l in text.splitlines() if l.strip() and not l.strip().startswith("|") and not l.strip().startswith("#"))
+    if eff < 1000:
+        raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照同章范文扩写")
+
+
 # ── 组装 ────────────────────────────────────────────────────────────────────
 
 def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
@@ -170,7 +200,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
         if not isinstance(slot, dict):
             raise ValueError(f"formula_state 槽位 {key} 不是对象（数值裸写=手改特征，formula_runner 是唯一写者，bug-2223）")
         if isinstance(slot.get("value"), (int, float)) and not isinstance(slot.get("value"), bool) and "source" not in slot:
-            raise ValueError(f"formula_state 槽位 {key} 缺 source 键——疑似手改（formula_runner 是唯一写者，数字永不经过 LLM，bug-2223）")
+            raise ValueError(f"formula_state 槽位 {key} 缺 source 键——疑似手改（formula_runner 是唯一写者，数字永不经过 LLM，bug-2223）。改数请走 ingest.py forms → formula_runner execute，勿直接编辑 formula_state.json")
     consistency = None
     cc_path = state_dir / "consistency_check.json"
     if cc_path.exists():
@@ -199,6 +229,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
             raise FileNotFoundError(f"章节产物缺失: {cf}（波次生成未完成，不静默跳过）")
         raw = cf.read_text(encoding="utf-8")
         validate_chapter(ch_id, raw)
+        validate_depth(ch_id, raw)
         parts.append(inject(raw).rstrip() + "\n")
     parts.append(render_compliance_appendix(consistency, state, state_path))
     if unknown_keys:

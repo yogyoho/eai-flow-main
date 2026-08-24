@@ -205,9 +205,9 @@ def build_ws(tmp_path_factory):
         },
     )
     # 合规章节：每块 ≥3 句 + 每章 ≥1000 有效字符（供 Task 4 深度门正例）。
-    # 合成内容只验管线不验文学性——SEC 2 句×~70字 ×8 重复 = 16句/~1120字/块，确定性凑量。
+    # 合成内容只验管线不验文学性——SEC 2 句×64字 ×12 重复 = 24句/768字/块，每章 2 块=~1536字（对 1000 阈值留余量），确定性凑量。
     SEC = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。"
-    SEC *= 8
+    SEC *= 12
     for n in range(1, 11):
         md = f"## {n} 第{n}章\n\n{SEC}\n\n### {n}.1 小节\n\n{SEC}\n"
         (state / "chapters" / f"ch{n}.md").write_text(md, encoding="utf-8")
@@ -259,3 +259,42 @@ class TestTamperGate:
         ws["out"].mkdir()
         r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
         assert "手改" in r.stderr and "L9.TM_ore_wt" in r.stderr
+
+
+class TestDepthGate:
+    def test_thin_section_rejected(self, build_ws, tmp_path):
+        """三级节 <3 句 → rc=1 + 缺节清单（提示参照范文补写）。"""
+        import shutil
+
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        (st / "chapters" / "ch3.md").write_text("## 3 矿区地质\n\n矿区出露地层为震旦系灯影组白云岩。\n\n### 3.1 地层\n\n落雪组是主要含矿层。\n", encoding="utf-8")
+        ws = {"data": build_ws["data"], "state": st, "out": tmp_path / "o"}
+        ws["out"].mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
+        assert "深度门" in r.stderr and "3.1" in r.stderr
+
+    def test_thin_chapter_chars_rejected(self, build_ws, tmp_path):
+        """每块 ≥3 句但全章 <1000 有效字符 → rc=1。"""
+        import shutil
+
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        three = "第一句明确。第二句完整。第三句收束。\n"
+        (st / "chapters" / "ch3.md").write_text(f"## 3 矿区地质\n\n{three}\n\n### 3.1 地层\n\n{three}\n", encoding="utf-8")
+        ws = {"data": build_ws["data"], "state": st, "out": tmp_path / "o"}
+        ws["out"].mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
+        assert "有效字符" in r.stderr
+
+    def test_table_rows_not_counted_as_sentences(self, build_ws, tmp_path):
+        """表格行不算句（| 开头）；有表格的块仍需 3 句叙述。"""
+        import shutil
+
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        (st / "chapters" / "ch3.md").write_text("## 3 矿区地质\n\n第一句。第二句。第三句。\n\n### 3.1 表\n\n| a | b |\n|---|---|\n| 1 | 2 |\n", encoding="utf-8")
+        ws = {"data": build_ws["data"], "state": st, "out": tmp_path / "o"}
+        ws["out"].mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
+        assert "3.1" in r.stderr  # 表格块 0 句 → FAIL（表格不豁免叙述）
