@@ -163,3 +163,62 @@ def _auto_user_context(request):
         yield
     finally:
         reset_current_user(token)
+
+
+# ---------------------------------------------------------------------------
+# Skill-script module isolation (bug-2223)
+# ---------------------------------------------------------------------------
+# Multiple skills publish same-named top-level scripts (water-drainage-report
+# and geological-report both have formula_runner.py / chapter_planner.py;
+# geological-report and bid-proposal-writing both have ingest.py). A
+# module-level ``import formula_runner`` in one test file poisons the
+# process-global sys.modules for every later in-process import in another
+# skill's tests: in a full-suite (alphabetical) run the geological tests fail
+# with ``AttributeError: module 'formula_runner' has no attribute 'q'`` and
+# bid tests invoke geological's ingest CLI. Fix: while a test whose module
+# defines ``SCRIPTS`` (or ``SCRIPTS_DIR``) runs, the colliding names resolve
+# from THAT directory via a meta-path finder. Hook-based (not a fixture) on
+# purpose: pytest_runtest_setup fires before session/module-scoped fixtures
+# of the item instantiate, so fixtures importing these names are covered too.
+
+_SKILL_SCRIPT_NAMES = ("chapter_planner", "ingest", "formula_runner")
+_current_skill_scripts: Path | None = None
+
+
+class _SkillScriptsFinder:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname not in _SKILL_SCRIPT_NAMES or _current_skill_scripts is None:
+            return None
+        script = _current_skill_scripts / f"{fullname}.py"
+        if not script.is_file():
+            return None
+        return importlib.util.spec_from_file_location(fullname, script)
+
+
+sys.meta_path.insert(0, _SkillScriptsFinder())
+
+
+def _item_scripts_dir(item) -> Path | None:
+    module = item.getparent(pytest.Module)
+    if module is None:
+        return None
+    for attr in ("SCRIPTS", "SCRIPTS_DIR"):
+        scripts = getattr(module.obj, attr, None)
+        if scripts and Path(scripts).is_dir():
+            return Path(scripts)
+    return None
+
+
+def pytest_runtest_setup(item):
+    global _current_skill_scripts
+    _current_skill_scripts = _item_scripts_dir(item)
+    if _current_skill_scripts is not None:
+        # drop cached bindings so fresh imports re-resolve through the finder
+        for name in _SKILL_SCRIPT_NAMES:
+            if (_current_skill_scripts / f"{name}.py").is_file():
+                sys.modules.pop(name, None)
+
+
+def pytest_runtest_teardown(item, nextitem):
+    global _current_skill_scripts
+    _current_skill_scripts = None
