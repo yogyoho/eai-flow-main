@@ -10,7 +10,7 @@
 原子写：tmp + os.replace（bid-proposal 先例）；内容不变跳过写盘保 mtime（SC-4 字节不变）；
 全文无时间戳（幂等）。
 
-退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参
+退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）
 """
 
 from __future__ import annotations
@@ -165,6 +165,10 @@ def validate_chapter(ch_id: str, text: str) -> None:
 def assemble(stage: dict, data_dir: Path, state_dir: Path) -> str:
     state_path = state_dir / "formula_state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
+    # ── bug-2223 手改检测门：formula_runner.emit() 给每个槽位写 source 键；手改必丢 ──
+    for key, slot in state.get("values", {}).items():
+        if isinstance(slot.get("value"), (int, float)) and not isinstance(slot.get("value"), bool) and "source" not in slot:
+            raise ValueError(f"formula_state 槽位 {key} 缺 source 键——疑似手改（formula_runner 是唯一写者，数字永不经过 LLM，bug-2223）")
     consistency = None
     cc_path = state_dir / "consistency_check.json"
     if cc_path.exists():

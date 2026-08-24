@@ -155,3 +155,63 @@ class TestBlankFormAnomalies:
         st = json.loads((state / "formula_state.json").read_text(encoding="utf-8"))
         assert any("13_industrial_params" in a and "缺失/空白" in a for a in st["anomalies"]), st["anomalies"]
         assert any("16_economics" in a for a in st["anomalies"]), st["anomalies"]
+
+
+# ── Task 3/4/5: build_output 三门共用 fixture ───────────────────────────────
+
+PROJ_NAME = "东川区某铜银金多金属矿"
+DELIV = f"{PROJ_NAME}-勘探-地质勘查报告.md"  # 规范交付名
+
+
+@pytest.fixture(scope="module")
+def build_ws(tmp_path_factory):
+    """最小可 build 环境：project 表单 + 合规章节 + 带完整 source 的 formula_state。"""
+    base = tmp_path_factory.mktemp("bug2223build")
+    data, state, out = base / "data", base / "state", base / "out"
+    for d in (data, state, state / "chapters", out):
+        d.mkdir(parents=True)
+    run("ingest.py", "forms", "--stage", STAGE, "--data-dir", data)
+    import ingest
+
+    ingest.write_form_values(str(STAGE), str(data), "project",
+                             {"project_name": PROJ_NAME, "stage": "勘探", "commodity": "铜银金",
+                              "commissioning_unit": "某矿业公司", "undertaking_unit": "某地质大队",
+                              "work_start": "2023-01", "work_end": "2025-12",
+                              "purpose_tasks": ["查明矿体特征", "估算资源量"], "cutoff_date": "2025-12-31"})
+    # 合规章节：每块 ≥3 句 + 每章 ≥1000 有效字符（供 Task 4 深度门正例）。
+    # 合成内容只验管线不验文学性——SEC 2 句×~70字 ×8 重复 = 16句/~1120字/块，确定性凑量。
+    SEC = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。"
+    SEC *= 8
+    for n in range(1, 11):
+        md = f"## {n} 第{n}章\n\n{SEC}\n\n### {n}.1 小节\n\n{SEC}\n"
+        (state / "chapters" / f"ch{n}.md").write_text(md, encoding="utf-8")
+    # formula_state：全部槽位带 source（公式产物特征）
+    fs = {"version": 2, "values": {"L9.total_ore_wt": {"value": 899.0, "display": "899.00", "unit": "万吨", "source": "formula:L9"},
+                                   "L9.TM_ore_wt": {"value": 339.92, "display": "339.92", "unit": "万吨", "source": "formula:L9"}},
+          "anomalies": []}
+    (state / "formula_state.json").write_text(json.dumps(fs, ensure_ascii=False), encoding="utf-8")
+    return {"data": data, "state": state, "out": out}
+
+
+def _build(ws, out_name=DELIV, expect=(0,)):
+    return run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", ws["state"], "--output", ws["out"] / out_name, expect=expect)
+
+
+class TestTamperGate:
+    def test_happy_path_with_source(self, build_ws):
+        """全槽位带 source → 通过（三门都不拦）。"""
+        _build(build_ws)
+
+    def test_missing_source_rejected(self, build_ws, tmp_path):
+        """数值槽缺 source 键（=手改法医特征）→ rc=1。"""
+        import shutil
+        st = tmp_path / "state"
+        shutil.copytree(build_ws["state"], st)
+        p = st / "formula_state.json"
+        d = json.loads(p.read_text(encoding="utf-8"))
+        del d["values"]["L9.TM_ore_wt"]["source"]  # 模拟 agent 手改丢 source
+        p.write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
+        ws = {"data": build_ws["data"], "state": st, "out": tmp_path / "o"}
+        ws["out"].mkdir()
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", ws["data"], "--state-dir", st, "--output", ws["out"] / DELIV, expect=(1,))
+        assert "手改" in r.stderr and "L9.TM_ore_wt" in r.stderr
