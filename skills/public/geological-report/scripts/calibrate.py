@@ -80,7 +80,7 @@ def main() -> int:
         "per_chapter": per_chapter,
     }
     out = Path(args.output)
-    out.write_text(json.dumps(doc, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out.write_text(json.dumps(doc, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
     print(f"CALIBRATED: {len(per_chapter)} chapters -> {out}")
     for ch_id, c in per_chapter.items():
         print(f"  {ch_id}: median_eff={c['median_eff']} tables={c['median_table_rows']} paras={c['median_paragraphs']}")
