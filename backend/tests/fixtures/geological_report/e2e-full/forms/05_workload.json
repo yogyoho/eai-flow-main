@@ -1,0 +1,196 @@
+{
+ "items": [
+  {
+   "category": "测量工作",
+   "item": "1:2000地形测量",
+   "unit": "km²",
+   "current_qty": 4.2,
+   "cumulative_qty": 6.8,
+   "note": "GPS-RTK实测，满足规范要求"
+  },
+  {
+   "category": "测量工作",
+   "item": "工程点测量",
+   "unit": "点",
+   "current_qty": 86.0,
+   "cumulative_qty": "",
+   "note": "钻孔、探槽、坑口等"
+  },
+  {
+   "category": "地质测量",
+   "item": "1:2000地质简测",
+   "unit": "km²",
+   "current_qty": 4.2,
+   "cumulative_qty": "",
+   "note": "矿区重点地段"
+  },
+  {
+   "category": "地质测量",
+   "item": "1:10000水文地质调查",
+   "unit": "km²",
+   "current_qty": 8.5,
+   "cumulative_qty": 12.0,
+   "note": "覆盖整个勘查区及外围"
+  },
+  {
+   "category": "地质测量",
+   "item": "1:10000工程地质调查",
+   "unit": "km²",
+   "current_qty": 8.5,
+   "cumulative_qty": "",
+   "note": "同上"
+  },
+  {
+   "category": "地质测量",
+   "item": "1:10000环境地质调查",
+   "unit": "km²",
+   "current_qty": 8.5,
+   "cumulative_qty": "",
+   "note": "同上"
+  },
+  {
+   "category": "物探工作",
+   "item": "激电中梯剖面测量",
+   "unit": "km",
+   "current_qty": 18.6,
+   "cumulative_qty": "",
+   "note": "点距20m，AB距1200m"
+  },
+  {
+   "category": "物探工作",
+   "item": "高精度磁法剖面",
+   "unit": "km",
+   "current_qty": 3.2,
+   "cumulative_qty": "",
+   "note": "用于构造划分"
+  },
+  {
+   "category": "物探工作",
+   "item": "激电测深",
+   "unit": "点",
+   "current_qty": 45.0,
+   "cumulative_qty": "",
+   "note": "确定极化体埋深"
+  },
+  {
+   "category": "槽探工程",
+   "item": "探槽施工",
+   "unit": "m³",
+   "current_qty": 2650.0,
+   "cumulative_qty": 8500.0,
+   "note": "18条，全部编录、刻槽采样"
+  },
+  {
+   "category": "坑探工程",
+   "item": "穿脉平硐",
+   "unit": "m",
+   "current_qty": 340.0,
+   "cumulative_qty": 1620.0,
+   "note": "规格2.0×2.2m"
+  },
+  {
+   "category": "坑探工程",
+   "item": "沿脉平巷",
+   "unit": "m",
+   "current_qty": 220.0,
+   "cumulative_qty": "",
+   "note": "规格2.0×2.2m"
+  },
+  {
+   "category": "钻探工程",
+   "item": "机械岩芯钻探",
+   "unit": "孔/m",
+   "current_qty": 5210.6,
+   "cumulative_qty": 18620.4,
+   "note": "25孔/5210.6m，全部直孔，开孔Φ110，终孔Φ75"
+  },
+  {
+   "category": "钻探工程",
+   "item": "岩芯采取率",
+   "unit": "%",
+   "current_qty": 92.5,
+   "cumulative_qty": "",
+   "note": "平均，满足≥85%要求"
+  },
+  {
+   "category": "采样测试",
+   "item": "基本分析样（Cu）",
+   "unit": "件",
+   "current_qty": 458.0,
+   "cumulative_qty": "",
+   "note": "刻槽样、劈芯样，与08a表行数一致"
+  },
+  {
+   "category": "采样测试",
+   "item": "化学全分析样",
+   "unit": "件",
+   "current_qty": 8.0,
+   "cumulative_qty": "",
+   "note": "代表各类矿石"
+  },
+  {
+   "category": "采样测试",
+   "item": "物相分析样",
+   "unit": "件",
+   "current_qty": 35.0,
+   "cumulative_qty": "",
+   "note": "氧化率测定"
+  },
+  {
+   "category": "采样测试",
+   "item": "组合分析样（伴生组分）",
+   "unit": "件",
+   "current_qty": 25.0,
+   "cumulative_qty": "",
+   "note": "Ag、Au、Co等"
+  },
+  {
+   "category": "采样测试",
+   "item": "小体重样",
+   "unit": "件",
+   "current_qty": 82.0,
+   "cumulative_qty": "",
+   "note": "封蜡法测定，72件参与统计（8件低于边界品位、2件特高品位剔除）"
+  },
+  {
+   "category": "采样测试",
+   "item": "光薄片鉴定样",
+   "unit": "件",
+   "current_qty": 40.0,
+   "cumulative_qty": "",
+   "note": "岩矿鉴定"
+  },
+  {
+   "category": "采样测试",
+   "item": "水质分析样",
+   "unit": "件",
+   "current_qty": 6.0,
+   "cumulative_qty": "",
+   "note": "地下水、地表水"
+  },
+  {
+   "category": "采样测试",
+   "item": "选矿大样",
+   "unit": "件",
+   "current_qty": 1.0,
+   "cumulative_qty": "",
+   "note": "重量约500kg"
+  },
+  {
+   "category": "其他工作",
+   "item": "岩矿标本采集",
+   "unit": "块",
+   "current_qty": 60.0,
+   "cumulative_qty": "",
+   "note": "代表性岩石、矿石"
+  },
+  {
+   "category": "采样测试",
+   "item": "各类样品合计",
+   "unit": "件",
+   "current_qty": "",
+   "cumulative_qty": 2800.0,
+   "note": "含历史资料"
+  }
+ ]
+}

@@ -1,0 +1,102 @@
+{
+ "granularity": "B",
+ "blocks": [],
+ "aggregates": [
+  {
+   "orebody": "I-1",
+   "category": "探明",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 260.0,
+   "grade_pct": 1.85,
+   "metal_t": 48100
+  },
+  {
+   "orebody": "I-1",
+   "category": "控制",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 225.6,
+   "grade_pct": 1.58,
+   "metal_t": 35645
+  },
+  {
+   "orebody": "I-2",
+   "category": "控制",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 120.3,
+   "grade_pct": 1.08,
+   "metal_t": 12992
+  },
+  {
+   "orebody": "II-1",
+   "category": "控制",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 40.0,
+   "grade_pct": 0.9,
+   "metal_t": 3600
+  },
+  {
+   "orebody": "I-3",
+   "category": "推断",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 45.8,
+   "grade_pct": 1.95,
+   "metal_t": 8931
+  },
+  {
+   "orebody": "II-1",
+   "category": "推断",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 32.5,
+   "grade_pct": 0.81,
+   "metal_t": 2632
+  },
+  {
+   "orebody": "II-2",
+   "category": "推断",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 18.6,
+   "grade_pct": 1.54,
+   "metal_t": 2864
+  },
+  {
+   "orebody": "III-1",
+   "category": "推断",
+   "grade_class": "工业矿",
+   "ore_qty_wt": 156.2,
+   "grade_pct": 0.78,
+   "metal_t": 12184
+  }
+ ],
+ "ore_bodies": [
+  {
+   "id": "I-1",
+   "group": "Ⅰ号群",
+   "group_label": "I"
+  },
+  {
+   "id": "I-2",
+   "group": "Ⅰ号群",
+   "group_label": "I"
+  },
+  {
+   "id": "I-3",
+   "group": "Ⅰ号群",
+   "group_label": "I"
+  },
+  {
+   "id": "II-1",
+   "group": "Ⅱ号群",
+   "group_label": "II"
+  },
+  {
+   "id": "II-2",
+   "group": "Ⅱ号群",
+   "group_label": "II"
+  },
+  {
+   "id": "III-1",
+   "group": "Ⅲ号群",
+   "group_label": "III"
+  }
+ ]
+}

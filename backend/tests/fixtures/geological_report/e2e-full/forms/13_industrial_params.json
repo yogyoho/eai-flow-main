@@ -1,0 +1,19 @@
+{
+ "boundary_grade_cu": 0.3,
+ "min_industrial_grade_cu": 0.5,
+ "min_mining_thickness": 1.0,
+ "waste_exclusion_thickness": 2.0,
+ "byproduct_ag_indicator": 2.0,
+ "grade_variation_coeff_range": [
+  0.35,
+  0.52
+ ],
+ "outlier_multiple": 2,
+ "deposit_avg_grade": 1.41,
+ "byproduct_ag_avg_grade": 5.67,
+ "byproduct_ag_sample_count": 25,
+ "combo_sample_years": [
+  2023,
+  2024
+ ]
+}

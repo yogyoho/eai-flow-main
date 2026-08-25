@@ -1,0 +1,93 @@
+{
+ "five_factors": {
+  "factors": [
+   {
+    "factor": "矿床成因类型",
+    "qualitative": "层控沉积—热液叠加型",
+    "coefficient": 0.25,
+    "basis": "DZ/T 0214-2020表A.1"
+   },
+   {
+    "factor": "矿体形态复杂度",
+    "qualitative": "较简单（层状/似层状为主）",
+    "coefficient": 0.2,
+    "basis": "矿体产出稳定"
+   },
+   {
+    "factor": "构造复杂程度",
+    "qualitative": "中等（F1、F2两条主要断裂）",
+    "coefficient": 0.2,
+    "basis": "断裂对矿体有错动破坏"
+   },
+   {
+    "factor": "水文地质条件",
+    "qualitative": "中等（裂隙岩溶水，中等富水性）",
+    "coefficient": 0.15,
+    "basis": "现状1218中段正常涌水量约12000m³/d"
+   },
+   {
+    "factor": "开采技术条件",
+    "qualitative": "中等（围岩稳定性较好）",
+    "coefficient": 0.2,
+    "basis": "围岩为坚硬白云岩，岩体质量Ⅲ～Ⅳ级"
+   }
+  ],
+  "sum": 1.0,
+  "type_verdict": "Ⅱ类（中等类型）"
+ },
+ "spacing": {
+  "lines_direction": "155°-335°",
+  "levels": [
+   1608,
+   1560,
+   1439,
+   1320,
+   1218
+  ],
+  "spacing_by_category": [
+   {
+    "category": "探明",
+    "line_spacing": 60,
+    "level_spacing": 60
+   },
+   {
+    "category": "控制",
+    "line_spacing": 120,
+    "level_spacing": 120
+   },
+   {
+    "category": "推断",
+    "line_spacing": 240,
+    "level_spacing": 240
+   }
+  ]
+ },
+ "surveying": {
+  "surface_control": "GPS-RTK实测，精度<0.1m",
+  "underground_control": "地下巷道上附首级导线",
+  "conversion_note": "2000坐标系投影",
+  "adopted_system": "CGCS2000"
+ },
+ "sampling": {
+  "basic": {
+   "total": 458,
+   "check_rate": "11.6%"
+  },
+  "inner_check": {
+   "count": 137,
+   "sample_count": 1178,
+   "rate": "11.63%"
+  },
+  "outer_check": {
+   "count": 42,
+   "sample_count": 458,
+   "rate": "9.17%",
+   "note": "外检合格率100%，无系统偏差"
+  },
+  "processing": {
+   "crushing": ">95%",
+   "splitting": ">90%",
+   "drying": ">98%"
+  }
+ }
+}

@@ -1,0 +1,33 @@
+{
+ "prices": {
+  "cu_yuan_t": 58000,
+  "as_of_date": "2025-06-01",
+  "source_refs": [
+   "上海有色网(SMM)铜精矿长协价"
+  ]
+ },
+ "costs": {
+  "mining_yuan_t": 75,
+  "beneficiation_yuan_t": 35,
+  "other_yuan_t": 15.75
+ },
+ "rates": {
+  "loss_rate": 15,
+  "dilution_rate": 10
+ },
+ "recovery": {
+  "recovery_cu": 87.2,
+  "recovery_ag": 63.66
+ },
+ "concentrate": {
+  "grade_cu_pct": 24.8,
+  "grade_ag_gpt": 85.9
+ },
+ "capacity_10kt_a": 50,
+ "credibility": {
+  "TM": 1.0,
+  "KZ": 1.0,
+  "TD": 0.6
+ },
+ "mine_life_remaining": 14.4
+}

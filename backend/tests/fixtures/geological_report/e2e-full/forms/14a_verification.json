@@ -1,0 +1,12 @@
+{
+ "method": "水平断面法",
+ "rows": [
+  {
+   "orebody": "全矿区",
+   "category": "合计",
+   "ore_qty_wt": 885.0,
+   "grade_pct": 1.41,
+   "metal_t": 124961
+  }
+ ]
+}

@@ -1,0 +1,136 @@
+{
+ "hydro.mid_level_drainage": [
+  {
+   "level": 1608,
+   "period": "2019.7-2020.6",
+   "min_m3d": 11200,
+   "max_m3d": 12500,
+   "avg_m3d": 11850
+  },
+  {
+   "level": 1439,
+   "period": "2020.7-2021.6",
+   "min_m3d": 12100,
+   "max_m3d": 12900,
+   "avg_m3d": 12480
+  },
+  {
+   "level": 1218,
+   "period": "2021.7-2022.6",
+   "min_m3d": 11790,
+   "max_m3d": 12285,
+   "avg_m3d": 12025
+  }
+ ],
+ "hydro.aquifers": [
+  {
+   "code": "Q3",
+   "name": "落雪组白云岩裂隙岩溶水",
+   "lithology": "白云岩、大理岩",
+   "thickness": 350,
+   "abundance": "中等",
+   "permeability": "0.15～0.35 m/d",
+   "recharge": "大气降水入渗"
+  },
+  {
+   "code": "Q4",
+   "name": "基岩裂隙水",
+   "lithology": "板岩、凝灰岩",
+   "thickness": 200,
+   "abundance": "弱—中等",
+   "permeability": "0.05～0.15 m/d",
+   "recharge": "侧向径流"
+  }
+ ],
+ "hydro.water_quality": [
+  {
+   "sample_no": "S01",
+   "water_type": "坑道水（1218中段）",
+   "ph": 7.2,
+   "sulfate_mg_L": 210,
+   "total_hardness_mg_L": 350,
+   "standard": "GB/T 14848-2017",
+   "verdict": "Ⅲ类"
+  },
+  {
+   "sample_no": "S02",
+   "water_type": "老窿水",
+   "ph": 6.8,
+   "sulfate_mg_L": 480,
+   "total_hardness_mg_L": 520,
+   "standard": "GB/T 14848-2017",
+   "verdict": "Ⅳ类（酸性弱）"
+  },
+  {
+   "sample_no": "S03",
+   "water_type": "地表溪水",
+   "ph": 7.8,
+   "sulfate_mg_L": 85,
+   "total_hardness_mg_L": 180,
+   "standard": "GB/T 14848-2017",
+   "verdict": "Ⅲ类"
+  }
+ ],
+ "hydro.inflow_analogy": {
+  "Q0_min": 11790,
+  "Q0_max": 12285,
+  "F0": 85000,
+  "F": 120000,
+  "S0": 110,
+  "S": 165,
+  "source_doc": "1218中段生产排水观测（2021.7-2022.6）＋DZ/T 0214-2020附录C比拟法"
+ },
+ "engineering.rock_groups": [
+  {
+   "code": "III",
+   "name": "坚硬白云岩",
+   "lithology": "白云岩、大理岩",
+   "hardness": 8,
+   "competence": "稳定",
+   "bq": 75
+  },
+  {
+   "code": "IV",
+   "name": "半坚硬板岩",
+   "lithology": "板岩、凝灰岩",
+   "hardness": 6,
+   "competence": "较稳定",
+   "bq": 60
+  }
+ ],
+ "engineering.goaf": {
+  "count": 68,
+  "volume_wm3": 156.4,
+  "location": "1218m标高以上老采区",
+  "source": "2016年资源储量核实报告圈定",
+  "note": "民采及上世纪国采形成，分布零散"
+ },
+ "environment.seismic": {
+  "peak_accel": "0.1g",
+  "intensity": 7,
+  "source_std": "GB 18306-2015"
+ },
+ "environment.radioactivity": {
+  "gamma_dose_rate": "0.12～0.25μSv/h",
+  "radon_concentration": "12～35Bq/m³",
+  "verdict": "属正常本底范围，无放射性异常"
+ },
+ "environment.geohazards": [
+  {
+   "type": "采空塌陷",
+   "risk": "中等",
+   "note": "老窿及采空区分布地段，需留设保安矿柱"
+  },
+  {
+   "type": "崩塌滑坡",
+   "risk": "低",
+   "note": "局部陡崖及构造破碎带，暴雨期注意"
+  }
+ ],
+ "type_verdicts": {
+  "hydro_type": "岩溶裂隙弱—中等含水层充水为主、顶板直接充水简单类型",
+  "engineering_type": "半坚硬—坚硬层状白云岩为主中等类型",
+  "environment_type": "环境地质条件中等类型",
+  "combined_type": "以工程、环境复合地质问题为主的中等类型"
+ }
+}

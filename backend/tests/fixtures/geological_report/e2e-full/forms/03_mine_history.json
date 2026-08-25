@@ -1,0 +1,18 @@
+{
+ "mine_name": "东川区某铜矿（生产矿山）",
+ "design_capacity": "50×10⁴t/a",
+ "mining_method": "地下开采，浅孔留矿法为主",
+ "production_span": "2016年至今",
+ "historical_reports": [
+  {
+   "title": "云南省东川区某铜矿详查报告",
+   "year": 2011,
+   "review_no": "国土资储备字〔2012〕08号"
+  },
+  {
+   "title": "某铜矿资源储量核实报告",
+   "year": 2016,
+   "review_no": "云国土资储备字〔2017〕15号"
+  }
+ ]
+}

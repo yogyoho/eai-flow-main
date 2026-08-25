@@ -1,0 +1,111 @@
+{
+ "L9_table8_2": {
+  "TM": {
+   "ore_wt": 260.0,
+   "metal_t": 48100,
+   "grade_pct": 1.85
+  },
+  "KZ": {
+   "ore_wt": 385.9,
+   "metal_t": 52237,
+   "grade_pct": 1.35
+  },
+  "TD": {
+   "ore_wt": 253.1,
+   "metal_t": 26611,
+   "grade_pct": 1.05
+  },
+  "total": {
+   "ore_wt": 899.0,
+   "metal_t": 126948,
+   "grade_pct": 1.41
+  }
+ },
+ "L10_delta_vs_2011": {
+  "ind_TM_KZ": {
+   "ore_wt": 385.9,
+   "metal_t": 71737
+  },
+  "ind_TD": {
+   "ore_wt": 73.1,
+   "metal_t": 10811
+  },
+  "low_KZ": {
+   "ore_wt": -260.0,
+   "metal_t": -28600
+  },
+  "low_TD": {
+   "ore_wt": -180.0,
+   "metal_t": -15800
+  }
+ },
+ "L11_ag_grade_gpt": 5.42,
+ "L11_byproduct_ag_kg": 48738,
+ "L11_byproduct_ag_total_kg": 48738,
+ "L12_verification_err_pct": {
+  "全矿区|合计": 1.58
+ },
+ "L13_share_pct": {
+  "TM": 37.89,
+  "TM_KZ": 79.04
+ },
+ "S1_bulk_density": {
+  "filtered_count": 72,
+  "mean_cu_pct": 0.75,
+  "mean_rho": 2.85,
+  "mean_moisture_pct": 0.04,
+  "industrial": {
+   "n": 62,
+   "cu": 0.81,
+   "rho": 2.85,
+   "moisture": 0.04
+  },
+  "low": {
+   "n": 10,
+   "cu": 0.39,
+   "rho": 2.86,
+   "moisture": 0.03
+  }
+ },
+ "C9_outlier_threshold_pct": 2.82,
+ "W1_inflow_m3d": {
+  "min": 20386,
+  "max": 21241
+ },
+ "B1C_balance": {
+  "cu": 87.22,
+  "ag": 63.66
+ },
+ "E1_usable_ore_wt": 797.76,
+ "E1_usable_grade_pct": 1.46,
+ "E2_mined_ore_wt": 678.1,
+ "E2_mined_grade_pct": 1.31,
+ "E3_concentrate_t": 312838,
+ "E4_price_conc_yuan_t": 14384,
+ "E5_gross_potential_yi_yuan": 67.46,
+ "E6_static_profit_wan_yuan": 364715,
+ "E7_years_added": 16.0,
+ "assay_csv": {
+  "rows": 458,
+  "per_body_weighted_mean_cu": {
+   "I-1": 1.72,
+   "I-2": 1.08,
+   "I-3": 1.9501,
+   "II-1": 0.86,
+   "II-2": 1.54,
+   "III-1": 0.78
+  },
+  "per_body_rows": {
+   "I-1": 190,
+   "I-2": 72,
+   "I-3": 28,
+   "II-1": 62,
+   "II-2": 16,
+   "III-1": 90
+  }
+ },
+ "bulk_csv": {
+  "rows": 82,
+  "excluded": 10
+ }
+}

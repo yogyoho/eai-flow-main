@@ -1,0 +1,146 @@
+{
+ "tectonic_units": [
+  {
+   "level": "Ⅰ",
+   "name": "扬子准地台",
+   "code": "Yz",
+   "note": "稳定克拉通"
+  },
+  {
+   "level": "Ⅱ",
+   "name": "扬子地台被动大陆边缘沉降带",
+   "code": "Yz-P",
+   "note": "晋宁期被动陆缘裂谷盆地"
+  },
+  {
+   "level": "Ⅲ",
+   "name": "康滇地轴南东端",
+   "code": "Khz",
+   "note": "晋宁运动褶皱基底"
+  },
+  {
+   "level": "Ⅳ",
+   "name": "落雪—因民复式背斜构造带",
+   "code": "LX-YN",
+   "note": "区内主体构造"
+  }
+ ],
+ "regional_strata": [
+  {
+   "age": "元古界中元古界",
+   "series": "昆阳群·因民组",
+   "member": "Pt2yn",
+   "lithology": "紫红色绢云板岩、粉砂质板岩、铁质凝灰岩",
+   "thickness_min": 800,
+   "thickness_max": null,
+   "note": "＞800m，未见底，基底"
+  },
+  {
+   "age": "元古界中元古界",
+   "series": "昆阳群·落雪组",
+   "member": "Pt2yl",
+   "lithology": "青灰—肉红色含藻白云石大理岩、硅质条纹状白云岩",
+   "thickness_min": 500,
+   "thickness_max": 1200,
+   "note": "主要含矿层位"
+  },
+  {
+   "age": "元古界中元古界",
+   "series": "昆阳群·黑山组",
+   "member": "Pt2yh",
+   "lithology": "炭质板岩、钙质板岩夹白云岩透镜体",
+   "thickness_min": 200,
+   "thickness_max": 600,
+   "note": "落雪组之上"
+  },
+  {
+   "age": "元古界中元古界",
+   "series": "昆阳群·青龙山组",
+   "member": "Pt2yq",
+   "lithology": "灰色中厚层白云质大理岩、钙质板岩",
+   "thickness_min": 400,
+   "thickness_max": 700,
+   "note": ""
+  },
+  {
+   "age": "新元古界震旦系",
+   "series": "灯影组",
+   "member": "Z1d",
+   "lithology": "厚层细晶白云岩，含燧石结核",
+   "thickness_min": 200,
+   "thickness_max": 500,
+   "note": ""
+  },
+  {
+   "age": "新生界第四系",
+   "series": "Q",
+   "member": "Q",
+   "lithology": "粘土、碎石、砂砾（残坡积层）",
+   "thickness_min": 0,
+   "thickness_max": 20,
+   "note": ""
+  }
+ ],
+ "regional_faults": [
+  {
+   "name": "F1",
+   "tendency": "近EW向",
+   "type": "压扭性",
+   "length": ">2000m",
+   "dip_angle": "60°～75°",
+   "description": "区域主要导矿构造，控制矿化带展布"
+  },
+  {
+   "name": "F2",
+   "tendency": "NNW向",
+   "type": "张扭性",
+   "length": "约800m",
+   "dip_angle": "65°",
+   "description": "成矿后断裂，对矿体有错动破坏"
+  }
+ ],
+ "regional_intrusions": [
+  {
+   "name": "辉绿岩脉",
+   "age": "晋宁期",
+   "composition": "辉绿岩",
+   "size": "宽1～5m，长数十至数百米",
+   "orientation": "NE向",
+   "ore_relation": "规模小，与铜矿化关系不明显"
+  },
+  {
+   "name": "花岗斑岩脉",
+   "age": "燕山期",
+   "composition": "花岗斑岩",
+   "size": "宽1～3m，长百余米",
+   "orientation": "NE向",
+   "ore_relation": "局部脉岩旁侧见弱黄铁矿化"
+  }
+ ],
+ "regional_deposits": [
+  {
+   "name": "落雪式铜矿床",
+   "model": "层控沉积—热液叠加型",
+   "host_stratum": "落雪组",
+   "grade_range": "Cu 0.5%～3%",
+   "note": "区内典型矿床类型"
+  }
+ ],
+ "isotope_ages": [
+  {
+   "sample_no": "B1",
+   "target": "落雪组白云岩",
+   "method": "Pb-Pb 等时线",
+   "age": "1689±32Ma",
+   "source": "转引自1:20万区调报告"
+  },
+  {
+   "sample_no": "B2",
+   "target": "辉绿岩脉",
+   "method": "K-Ar法",
+   "age": "812±25Ma",
+   "source": "本次采样送测"
+  }
+ ],
+ "metallogenic_models": "沉积—改造型铜矿床，赋矿层位为落雪组二段（含藻纹层状白云石大理岩），受F1压扭性断裂控矿，成矿时代为晋宁期热液叠加改造。"
+}

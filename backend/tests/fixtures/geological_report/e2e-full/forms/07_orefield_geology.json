@@ -1,0 +1,122 @@
+{
+ "strata": [
+  {
+   "age": "新生界第四系",
+   "series": "残坡积层",
+   "member": "Qh",
+   "lithology": "粘土、碎石、砂砾",
+   "thickness_min": 0,
+   "thickness_max": 15,
+   "note": "沟谷及缓坡分布"
+  },
+  {
+   "age": "元古界中元古界",
+   "series": "昆阳群·黑山组",
+   "member": "Pt2yh",
+   "lithology": "炭质板岩、钙质板岩",
+   "thickness_min": 180,
+   "thickness_max": 420,
+   "note": "含矿层位之上，直接盖层"
+  },
+  {
+   "age": "元古界中元古界",
+   "series": "昆阳群·落雪组",
+   "member": "Pt2yl2",
+   "lithology": "含藻纹层状白云石大理岩、硅质条纹状白云岩",
+   "thickness_min": 100,
+   "thickness_max": 350,
+   "note": "区内唯一含矿层位，矿化集中于中上部"
+  },
+  {
+   "age": "元古界中元古界",
+   "series": "昆阳群·因民组",
+   "member": "Pt2yn",
+   "lithology": "绢云板岩、粉砂质板岩",
+   "thickness_min": 120,
+   "thickness_max": 360,
+   "note": "含矿层位之下，基底（背斜核部出露）"
+  }
+ ],
+ "structures": [
+  {
+   "name": "落雪—因民复式背斜",
+   "tendency": "近EW向",
+   "axis_strike": "EW",
+   "description": "主体褶皱，轴部出露因民组，两翼为落雪组及黑山组，核部被后期断裂破坏"
+  },
+  {
+   "name": "F1断裂",
+   "tendency": "近EW向",
+   "type": "压扭性",
+   "dip_angle": "60°～75°",
+   "description": "主要导矿构造，控制矿化带展布"
+  },
+  {
+   "name": "F2断裂",
+   "tendency": "NNW向",
+   "type": "张扭性",
+   "dip_angle": "65°",
+   "description": "成矿后断裂，对矿体有错动破坏"
+  }
+ ],
+ "magmatic_rocks": [
+  {
+   "name": "辉绿岩脉",
+   "age": "晋宁期",
+   "size": "宽1～5m",
+   "orientation": "NE向",
+   "relation": "弱黄铁矿化"
+  },
+  {
+   "name": "花岗斑岩脉",
+   "age": "燕山期",
+   "size": "宽1～3m",
+   "orientation": "NE向",
+   "relation": "弱黄铁矿化"
+  }
+ ],
+ "alterations": [
+  {
+   "type": "硅化",
+   "minerals": "石英（微晶—细晶）",
+   "intensity": "强",
+   "distribution": "紧邻矿体（0～20m）",
+   "ore_relation": "直接近矿标志，硅化愈强品位愈高"
+  },
+  {
+   "type": "碳酸盐化",
+   "minerals": "方解石+白云石",
+   "intensity": "中",
+   "distribution": "矿体两侧及外围（20～200m）",
+   "ore_relation": "与矿化关系较密切，常叠加硅化"
+  },
+  {
+   "type": "赤铁矿化",
+   "minerals": "赤铁矿+镜铁矿",
+   "intensity": "中",
+   "distribution": "矿体顶板及旁侧",
+   "ore_relation": "近矿蚀变，指示氧化环境"
+  },
+  {
+   "type": "绿泥石化",
+   "minerals": "绿泥石+绢云母",
+   "intensity": "弱",
+   "distribution": "断裂带及层间破碎带",
+   "ore_relation": "间接找矿标志"
+  },
+  {
+   "type": "黄铁矿化",
+   "minerals": "黄铁矿（细粒浸染状）",
+   "intensity": "弱—中",
+   "distribution": "矿体及围岩中",
+   "ore_relation": "与铜硫化物共生，直接找矿标志"
+  }
+ ],
+ "mineralization_horizon": {
+  "host_stratum": "落雪组二段（Pt2yl2）",
+  "lithology": "含藻纹层状白云石大理岩及硅质条纹状白云岩",
+  "thickness": 350,
+  "depositional_env": "浅海台地相沉积环境，藻席及潮坪相有利于铜的初始富集",
+  "position": "矿化主要集中于含矿层中上部"
+ }
+}

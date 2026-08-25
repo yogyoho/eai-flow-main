@@ -1,0 +1,108 @@
+{
+ "sample_register": {
+  "total": 1,
+  "weight_kg": 500,
+  "source": "ZK05等钻孔劈芯样＋TC03刻槽样联合",
+  "note": "选矿大样约500kg"
+ },
+ "feed_assays": {
+  "cu_avg_pct": 1.18,
+  "ag_avg_gt": 5.6,
+  "au_avg_gt": 0.15,
+  "s_pct": 12.5,
+  "siO2_pct": 35.2,
+  "al2O3_pct": 8.5,
+  "caO_pct": 18.6,
+  "mgO_pct": 5.2,
+  "fe2o3_pct": 15.3,
+  "note": "代表各类矿石"
+ },
+ "ore_blending": [
+  {
+   "name": "配样方案",
+   "blend": "Ⅰ号群矿样70%＋Ⅲ号群矿样30%",
+   "note": "代表首采区前15年矿石类型"
+  }
+ ],
+ "condition_tests": [
+  {
+   "name": "一段磨矿试验",
+   "param": "-0.074mm占比",
+   "value": "60%",
+   "result": "细度合适，解离良好"
+  },
+  {
+   "name": "二段再磨试验",
+   "param": "-0.074mm占比",
+   "value": "90%",
+   "result": "精矿品位提升"
+  },
+  {
+   "name": "石灰调浆试验",
+   "param": "pH值",
+   "value": 9.5,
+   "result": "最佳捕收条件"
+  },
+  {
+   "name": "丁基黄药用量试验",
+   "param": "g/t",
+   "value": 100,
+   "result": "最佳捕收剂用量"
+  },
+  {
+   "name": "松醇油用量试验",
+   "param": "g/t",
+   "value": 40,
+   "result": "最佳起泡剂用量"
+  }
+ ],
+ "locked_cycle": {
+  "concentrate_yield_pct": 4.15,
+  "concentrate_cu_pct": 24.8,
+  "concentrate_ag_gt": 85.9,
+  "tailings_cu_pct": 0.16,
+  "recovery_cu_pct": 87.2,
+  "recovery_ag_pct": 63.66,
+  "note": "闭路试验冻结值，供ch9同源引用"
+ },
+ "reagent_costs": [
+  {
+   "name": "丁基黄药",
+   "unit_cost_yuan_t": 12.5,
+   "dosage_g_t": 100,
+   "cost_yuan_t_mine": 1.25
+  },
+  {
+   "name": "松醇油",
+   "unit_cost_yuan_t": 18.0,
+   "dosage_g_t": 40,
+   "cost_yuan_t_mine": 0.72
+  },
+  {
+   "name": "石灰",
+   "unit_cost_yuan_t": 0.35,
+   "dosage_g_t": 800,
+   "cost_yuan_t_mine": 0.28
+  }
+ ],
+ "production_indices": [
+  {
+   "year": 2022,
+   "ore_treated_10kt": 46.8,
+   "conc_grade_cu_pct": 24.3,
+   "recovery_cu_pct": 86.5
+  },
+  {
+   "year": 2023,
+   "ore_treated_10kt": 48.2,
+   "conc_grade_cu_pct": 24.6,
+   "recovery_cu_pct": 87.0
+  },
+  {
+   "year": 2024,
+   "ore_treated_10kt": 49.5,
+   "conc_grade_cu_pct": 24.9,
+   "recovery_cu_pct": 87.4
+  }
+ ]
+}

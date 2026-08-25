@@ -1,0 +1,102 @@
+{
+ "combination_assays": [
+  {
+   "sample_no": "H01",
+   "assay_items": [
+    "Ag",
+    "Au",
+    "Co",
+    "Ni",
+    "Pb",
+    "Zn",
+    "Mo",
+    "As",
+    "Sb"
+   ],
+   "method": "ICP-MS",
+   "standard": "GB/T 14506",
+   "count": 25
+  },
+  {
+   "sample_no": "H02",
+   "assay_items": [
+    "Cu",
+    "Ag",
+    "Au",
+    "S"
+   ],
+   "method": "化学分析",
+   "standard": "GB/T 14353.1",
+   "count": 8
+  }
+ ],
+ "phase_assays": [
+  {
+   "sample_no": "P01",
+   "free_oxide_cu_pct": 6.9,
+   "combined_cu_pct": 3.2,
+   "sulfide_cu_pct": 89.9,
+   "oxidation_pct": 10.1,
+   "note": "原生带硫化矿石"
+  },
+  {
+   "sample_no": "P02",
+   "free_oxide_cu_pct": 18.6,
+   "combined_cu_pct": 8.4,
+   "sulfide_cu_pct": 73.0,
+   "oxidation_pct": 27.0,
+   "note": "混合带矿石"
+  }
+ ],
+ "mineral_list": [
+  {
+   "name": "黄铜矿",
+   "formula": "CuFeS2",
+   "abundance": "主要有色金属矿物",
+   "grade_relation": "铜的主要来源"
+  },
+  {
+   "name": "斑铜矿",
+   "formula": "Cu5FeS4",
+   "abundance": "次要",
+   "grade_relation": "铜的来源"
+  },
+  {
+   "name": "辉铜矿",
+   "formula": "Cu2S",
+   "abundance": "少量",
+   "grade_relation": "氧化带中少见"
+  },
+  {
+   "name": "黄铁矿",
+   "formula": "FeS2",
+   "abundance": "常见脉石矿物",
+   "grade_relation": "伴生S来源"
+  },
+  {
+   "name": "辉银矿",
+   "formula": "Ag2S",
+   "abundance": "微量",
+   "grade_relation": "银的主要来源"
+  },
+  {
+   "name": "自然银",
+   "formula": "Ag",
+   "abundance": "微量",
+   "grade_relation": "氧化带中与褐铁矿伴生"
+  },
+  {
+   "name": "方铅矿",
+   "formula": "PbS",
+   "abundance": "微量",
+   "grade_relation": "微量，不具回收价值"
+  },
+  {
+   "name": "闪锌矿",
+   "formula": "ZnS",
+   "abundance": "微量",
+   "grade_relation": "微量，组合分析查定"
+  }
+ ],
+ "rock_mineral_terms": {}
+}
