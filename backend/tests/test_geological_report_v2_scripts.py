@@ -729,16 +729,29 @@ class TestDepthTargetsFile:
         st = TestBuildOutput._copy_chapters(ws, tmp_path)
         # ws 固定样章本就厚到能过真实目标（BUILD_READY），须手工压薄一章：ch10 目标最低（2498×0.6≈1499），
         # 合成 ch10：全 toc 节号落标题+每节 3 句过 L0，零缺数信号 scale=1，eff≈1232 ∈ (1000, 目标) → 只被 L2 拦。
-        filler = "本章为回归锚定专用的合成薄章节正文，语句仅用于满足每节三句的深度门下限，不承载地质含义。全段不含缺数标记，覆盖缩放恒为一点零，目标固定为样例中位数乘以系数。有效字符总量压到该目标之下，用于验证省略参数时探测命中真实目标文件。"
-        heads = ["## 10 结论", "### 10.1 矿床勘查和研究程度", "#### 10.1.1 矿床勘查程度", "#### 10.1.2 矿床研究程度",
-                 "### 10.2 矿床成矿规律及远景评价", "#### 10.2.1 矿床成矿规律", "#### 10.2.2 找矿远景评价",
-                 "### 10.3 开采技术条件和地质环境问题", "### 10.4 矿床开采的经济效果",
-                 "### 10.5 地质工作的经验教训和存在问题", "### 10.6 下步地质勘查及矿床开采的建议"]
+        filler = (
+            "本章为回归锚定专用的合成薄章节正文，语句仅用于满足每节三句的深度门下限，不承载地质含义。全段不含缺数标记，覆盖缩放恒为一点零，目标固定为样例中位数乘以系数。有效字符总量压到该目标之下，用于验证省略参数时探测命中真实目标文件。"
+        )
+        heads = [
+            "## 10 结论",
+            "### 10.1 矿床勘查和研究程度",
+            "#### 10.1.1 矿床勘查程度",
+            "#### 10.1.2 矿床研究程度",
+            "### 10.2 矿床成矿规律及远景评价",
+            "#### 10.2.1 矿床成矿规律",
+            "#### 10.2.2 找矿远景评价",
+            "### 10.3 开采技术条件和地质环境问题",
+            "### 10.4 矿床开采的经济效果",
+            "### 10.5 地质工作的经验教训和存在问题",
+            "### 10.6 下步地质勘查及矿床开采的建议",
+        ]
         (st / "chapters" / "ch10.md").write_text("".join(h + "\n" + filler + "\n\n" for h in heads), encoding="utf-8")
         r = subprocess.run(
-            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE),
-             "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert r.returncode == 1 and "深度目标门" in r.stderr, r.stderr
 
