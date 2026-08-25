@@ -59,7 +59,7 @@ def render_front_matter(stage: dict, data_dir: Path) -> str:
     lines.append("## 外封面")
     lines.append("")
     cover_map = {"矿区名": proj.get("project_name", ""),
-                 "报告题名（矿种组合+阶段+报告）": (f"{proj.get('commodity', '')}{proj.get('stage', '') or stage.get('stage', '')}勘探报告" if proj.get("commodity") else ""),
+                 "报告题名（矿种组合+阶段+报告）": (f"{proj.get('commodity', '')}{proj.get('stage', '') or stage.get('stage', '')}报告" if proj.get("commodity") else ""),
                  "编制单位": proj.get("undertaking_unit", ""), "年月": ""}
     for item in fm.get("outer_cover", []):
         lines.append(f"**{item}**：{cover_map.get(item, '') or '　'}")

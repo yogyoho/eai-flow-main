@@ -697,6 +697,24 @@ class TestE2E:
     def test_front_matter_from_forms(self, ws):
         assert "东川区某铜银金多金属矿" in ws["report_md"] and "某地质大队" in ws["report_md"]
 
+    def test_cover_title_no_stage_duplication(self, ws):
+        """bug-2227 回归：题名=矿种组合+阶段+报告，阶段词不得重复（勘探勘探）。"""
+        assert "铜银金勘探报告" in ws["report_md"]
+        assert "勘探勘探" not in ws["report_md"]
+
+    def test_cover_title_type_word_follows_stage(self, tmp_path):
+        """bug-2227：类型词随 stage 走（详查→铜详查报告），不硬编码「勘探报告」。"""
+        import build_output
+
+        data = tmp_path / "data"
+        data.mkdir()
+        (data / "p.json").write_text(json.dumps({"commodity": "铜", "stage": "详查"}, ensure_ascii=False), encoding="utf-8")
+        md = build_output.render_front_matter(
+            {"stage": "详查", "forms": {"project": {"file": "p.json"}, "tenement": {"file": "t.json"}, "figures_tables": {"file": "ft.json"}}, "front_matter": {"outer_cover": ["报告题名（矿种组合+阶段+报告）"]}},
+            data,
+        )
+        assert "铜详查报告" in md and "勘探报告" not in md
+
     def test_no_page_numbers_in_toc(self, ws):
         """D11：目录禁写页码（Word 排版阶段自动填充）。"""
         toc = ws["report_md"].split("## 目录")[1].split("##")[0] if "## 目录" in ws["report_md"] else ""
