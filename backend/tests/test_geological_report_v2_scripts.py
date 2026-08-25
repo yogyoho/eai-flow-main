@@ -586,6 +586,17 @@ class TestChapterPlanner:
 # ── 4. build_output：注入 + 幂等 + 负例 ─────────────────────────────────────
 
 
+class TestEffectiveChars:
+    """eff 口径单一来源：标题行/表格行/装饰符剔除（calibrate 与 L0/L2 门共用）。"""
+
+    def test_excludes_headings_tables_and_decorations(self):
+        import build_output
+
+        text = "## 1 绪论\n\n正文第一句。正文第二句；正文第三句！\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- 要点：符号-与*#:{}剔除\n"
+        # 18 = 三句正文（。；！ 保留）；8 = 「要点：符号与剔除」（全角：保留，ASCII - * # : { } 与空白剔除）
+        assert build_output.effective_chars(text) == 26
+
+
 class TestBuildOutput:
     def test_slot_injected_no_residue(self, ws):
         assert "{{SLOT:" not in ws["report_md"]

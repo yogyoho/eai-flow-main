@@ -177,6 +177,15 @@ def validate_chapter(ch_id: str, text: str) -> None:
 SENT_RE = re.compile(r"[。；？！]")
 
 
+def effective_chars(text: str) -> int:
+    """有效字符数：排除空行/标题行/表格行，行内剔除空白与 |\\-*#:{} 装饰符。"""
+    return sum(
+        len(re.sub(r"[\s\|\-*#:{}]", "", line))
+        for line in text.splitlines()
+        if line.strip() and not line.strip().startswith("|") and not line.strip().startswith("#")
+    )
+
+
 def validate_depth(ch_id: str, text: str) -> None:
     """每标题块（## / ###）正文 ≥3 句（表格行不计句、不豁免）；全章有效字符 ≥1000。"""
     blocks: list[tuple[str, list[str]]] = []
@@ -198,7 +207,7 @@ def validate_depth(ch_id: str, text: str) -> None:
             thin.append(f"{title or '(章首段)'}={sents}句")
     if thin:
         raise ValueError(f"{ch_id}.md 深度门 FAIL（每节 ≥3 句，参照 references/samples/exploration/{ch_id}_sample.md 范文补写）: {'; '.join(thin)}")
-    eff = sum(len(re.sub(r"[\s\|\-*#:{}]", "", l)) for l in text.splitlines() if l.strip() and not l.strip().startswith("|") and not l.strip().startswith("#"))
+    eff = effective_chars(text)
     if eff < 1000:
         raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照 references/samples/exploration/{ch_id}_sample.md 范文扩写")
 
