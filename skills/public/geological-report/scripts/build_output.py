@@ -10,7 +10,7 @@
 原子写：tmp + os.replace（bid-proposal 先例）；内容不变跳过写盘保 mtime（SC-4 字节不变）；
 全文无时间戳（幂等）。成功后写 outputs/delivery_manifest.json（交付清单，确定性幂等——present_files/下载门的放行凭据，bug-2225）。
 
-退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含管线外散文件（交付名门，bug-2223）、toc 节号缺失（目录覆盖门，bug-2225）
+退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含管线外散文件（交付名门，bug-2223）、toc 节号缺失（目录覆盖门，bug-2225）、章节有效字符 < 样例中位 ×0.6×覆盖缩放（深度目标门 L2；targets 缺失时自动跳过回退地板门）
 """
 
 from __future__ import annotations
@@ -234,9 +234,64 @@ def validate_toc(ch_id: str, text: str, toc: list[str]) -> dict:
     return {"toc_entries": len(toc_nos), "toc_covered": len(toc_nos & heading_nos)}
 
 
+# ── L2 深度目标门（spec 2026-08-25 §4：eff ≥ 样例 median × coefficient × 覆盖缩放）──
+
+
+def coverage_scale(text: str, targets: dict) -> float:
+    """覆盖缩放：缺数信号越多目标越低，下限 scale_floor（缺数章防误拦）。"""
+    signals = text.count("[待确认]") + targets.get("missing_table_weight", 8) * text.count("数据未提供")
+    return max(targets.get("scale_floor", 0.25), 1 - targets.get("per_signal_penalty", 0.05) * signals)
+
+
+def validate_depth_target(ch_id: str, text: str, targets: dict) -> None:
+    """L2 深度目标门：inject 后文本 eff ≥ 样例 median × coefficient × 覆盖缩放。"""
+    ch = targets.get("per_chapter", {}).get(ch_id)
+    if not ch:
+        return  # targets 未覆盖该章 → 不拦（样例库不全时不误伤）
+    coeff = targets.get("coefficient", 0.6)
+    scale = coverage_scale(text, targets)
+    target_eff = ch.get("median_eff", 0) * coeff * scale
+    eff = effective_chars(text)
+    if eff < target_eff:
+        raise ValueError(
+            f"{ch_id}.md 深度目标门 FAIL：eff {eff} < 目标 {target_eff:.0f}"
+            f"（样例 median {ch.get('median_eff')} × {coeff} × 覆盖缩放 {scale:.2f}）"
+            f"——逐要素成段扩写（缺数写 [待确认] 不砍段，覆盖率不足时门自动放宽）；"
+            f"表后五步解读（陈述→规律识别→成因解释→规范对比→勘查意义）；"
+            f"范式参照 references/samples/exploration/{ch_id}_sample.md"
+        )
+
+
+def load_targets(path: Path) -> dict | None:
+    """装载 depth_targets.json；缺失/损坏 → stderr 提示后退回地板门（不阻断，spec §8）。"""
+    if not path.exists():
+        print(f"[build] depth_targets 不存在（{path}）——退回地板门（L0 深度门继续生效）", file=sys.stderr)
+        return None
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(doc.get("per_chapter"), dict):
+            raise ValueError("per_chapter 缺失或非对象")
+        return doc
+    except (json.JSONDecodeError, ValueError, AttributeError) as e:
+        print(f"[build] depth_targets 损坏（{path}: {e}）——退回地板门", file=sys.stderr)
+        return None
+
+
+def resolve_targets(args_targets: str | None, stage_path: Path) -> dict | None:
+    """--targets 显式路径优先；缺省沿 stage 文件向上三级探测 depth_targets.json。"""
+    if args_targets:
+        return load_targets(Path(args_targets))
+    for anc in (stage_path.parent, stage_path.parent.parent, stage_path.parent.parent.parent):
+        cand = anc / "depth_targets.json"
+        if cand.exists():
+            return load_targets(cand)
+    print("[build] 未找到 depth_targets.json——退回地板门（L0 深度门继续生效）", file=sys.stderr)
+    return None
+
+
 # ── 组装 ────────────────────────────────────────────────────────────────────
 
-def assemble(stage: dict, data_dir: Path, state_dir: Path) -> tuple[str, dict[str, dict]]:
+def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None = None) -> tuple[str, dict[str, dict]]:
     state_path = state_dir / "formula_state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
     # ── bug-2223 手改检测门：formula_runner.emit() 给每个槽位写 source 键；手改必丢 ──
@@ -276,7 +331,10 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path) -> tuple[str, dict[st
         validate_chapter(ch_id, raw)
         validate_depth(ch_id, raw)
         toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
-        parts.append(inject(raw).rstrip() + "\n")
+        injected = inject(raw).rstrip() + "\n"
+        if targets is not None:
+            validate_depth_target(ch_id, injected, targets)
+        parts.append(injected)
     parts.append(render_compliance_appendix(consistency, state, state_path))
     if unknown_keys:
         raise KeyError(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
@@ -304,10 +362,12 @@ def main() -> int:
     p.add_argument("--stage", required=True)
     p.add_argument("--data-dir", required=True)
     p.add_argument("--state-dir", required=True, help="state/（chapters/ + formula_state.json + consistency_check.json）")
+    p.add_argument("--targets", help="depth_targets.json 路径；缺省探测 stage 同目录/../ ../../")
     p.add_argument("--output", required=True)
     args = p.parse_args()
     try:
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
+        targets = resolve_targets(args.targets, Path(args.stage))
         # ── bug-2223 交付名门：文件名规范 + outputs/ 无管线外散文件 ──
         out_path = Path(args.output)
         expected = expected_deliverable_name(stage, Path(args.data_dir))
@@ -318,7 +378,7 @@ def main() -> int:
         if stray:
             print(f"[build] 交付名门 FAIL: outputs/ 存在管线外散文件 {stray}——唯一交付单文件 {expected!r}，散文件移出或删除（bug-2220 交付回路铁律）", file=sys.stderr)
             return EXIT_ERROR
-        content, toc_stats = assemble(stage, Path(args.data_dir), Path(args.state_dir))
+        content, toc_stats = assemble(stage, Path(args.data_dir), Path(args.state_dir), targets=targets)
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as e:
         print(f"[build] 错误: {e}", file=sys.stderr)
         return EXIT_ERROR

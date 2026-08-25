@@ -13,6 +13,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -25,8 +26,27 @@ STAGE = SKILL / "references/stages/exploration.json"
 sys.path.insert(0, str(SCRIPTS))
 
 
+_FLOOR_TARGETS: Path | None = None
+
+
+def _floor_targets() -> Path:
+    """permissive targets（median 全 1 → L2 目标 <1 必过）：既有负例只测各自关心的门，不被 L2 截胡（真实 targets 于 Task 4 入库）。"""
+    global _FLOOR_TARGETS
+    if _FLOOR_TARGETS is None:
+        d = Path(tempfile.mkdtemp(prefix="geo_floor_targets_"))
+        _FLOOR_TARGETS = d / "floor.json"
+        _FLOOR_TARGETS.write_text(
+            json.dumps({"per_chapter": {f"ch{i}": {"median_eff": 1, "median_table_rows": 0, "median_paragraphs": 1} for i in range(1, 11)}}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    return _FLOOR_TARGETS
+
+
 def run(*args, expect=(0,)):
-    r = subprocess.run([sys.executable, "-X", "utf8", str(SCRIPTS / args[0]), *map(str, args[1:])], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    argv = [str(SCRIPTS / args[0]), *map(str, args[1:])]
+    if argv[0].endswith("build_output.py") and "--targets" not in argv:
+        argv += ["--targets", str(_floor_targets())]
+    r = subprocess.run([sys.executable, "-X", "utf8", *argv], capture_output=True, text=True, encoding="utf-8", errors="replace")
     assert r.returncode in expect, f"{args[:3]} rc={r.returncode} (expect {expect})\n{r.stdout[-800:]}\n{r.stderr[:400]}"
     return r
 

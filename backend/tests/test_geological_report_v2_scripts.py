@@ -17,6 +17,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from decimal import Decimal
 from pathlib import Path
 
@@ -31,9 +32,28 @@ STANDARDS = SKILL / "references/standards_index.json"
 sys.path.insert(0, str(SCRIPTS))
 
 
+_FLOOR_TARGETS: Path | None = None
+
+
+def _floor_targets() -> Path:
+    """permissive targets（median 全 1 → L2 目标 <1 必过）：既有负例只测各自关心的门，不被 L2 截胡（真实 targets 于 Task 4 入库）。"""
+    global _FLOOR_TARGETS
+    if _FLOOR_TARGETS is None:
+        d = Path(tempfile.mkdtemp(prefix="geo_floor_targets_"))
+        _FLOOR_TARGETS = d / "floor.json"
+        _FLOOR_TARGETS.write_text(
+            json.dumps({"per_chapter": {f"ch{i}": {"median_eff": 1, "median_table_rows": 0, "median_paragraphs": 1} for i in range(1, 11)}}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    return _FLOOR_TARGETS
+
+
 def run(*args, expect=(0,)):
-    """调真实 CLI；断言退出码 ∈ expect。返回 stdout。"""
-    r = subprocess.run([sys.executable, "-X", "utf8", str(SCRIPTS / args[0]), *map(str, args[1:])], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    """调真实 CLI；断言退出码 ∈ expect。返回 stdout。build_output 未显式传 --targets 时注入 permissive targets。"""
+    argv = [str(SCRIPTS / args[0]), *map(str, args[1:])]
+    if argv[0].endswith("build_output.py") and "--targets" not in argv:
+        argv += ["--targets", str(_floor_targets())]
+    r = subprocess.run([sys.executable, "-X", "utf8", *argv], capture_output=True, text=True, encoding="utf-8", errors="replace")
     assert r.returncode in expect, f"{args[:3]} rc={r.returncode} (expect {expect})\n{r.stdout[-800:]}\n{r.stderr[:400]}"
     return r.stdout
 
@@ -638,6 +658,60 @@ class TestCalibrate:
         assert not (tmp_path / "t.json").exists()  # 绝不静默产出空 targets
 
 
+class TestDepthTargetGate:
+    """L2 深度目标门（spec 2026-08-25 §4）：eff ≥ median×0.6×覆盖缩放；缺 targets 回退地板门。"""
+
+    @staticmethod
+    def _targets(tmp_path, ch="ch2", median_eff=999999):
+        p = tmp_path / "tg.json"
+        p.write_text(
+            json.dumps({"coefficient": 0.6, "scale_floor": 0.25, "per_signal_penalty": 0.05, "missing_table_weight": 8, "per_chapter": {ch: {"median_eff": median_eff, "median_table_rows": 0, "median_paragraphs": 1}}}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        return p
+
+    @staticmethod
+    def _build(ws, st, out, targets=None):
+        argv = [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(out)]
+        if targets is not None:
+            argv += ["--targets", str(targets)]
+        return subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+    def test_thin_chapter_fail(self, ws, tmp_path):
+        """数据齐全但薄：scale=1，eff < median×0.6 → FAIL，报错含公式因子与覆盖缩放。"""
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        r = self._build(ws, st, tmp_path / ws["deliv"], self._targets(tmp_path, "ch2", 999999))
+        assert r.returncode == 1 and "深度目标门" in r.stderr and "覆盖缩放" in r.stderr, r.stderr
+
+    def test_met_target_pass(self, ws, tmp_path):
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        r = self._build(ws, st, tmp_path / ws["deliv"], self._targets(tmp_path, "ch2", 100))
+        assert r.returncode == 0 and "BUILD_READY" in r.stdout, r.stderr
+
+    def test_missing_targets_fallback_floor(self, ws, tmp_path):
+        """--targets 指向不存在文件 → stderr 退回地板门，继续跑成功（spec §8）。"""
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        r = self._build(ws, st, tmp_path / ws["deliv"], tmp_path / "nope.json")
+        assert r.returncode == 0 and "BUILD_READY" in r.stdout
+        assert "退回地板门" in r.stderr, r.stderr
+
+    def test_missing_data_signals_scale_down_pass(self, ws, tmp_path):
+        """缺数章（E2E 防误拦）：40×[待确认]+1×数据未提供 → 48 signals → scale 触底 0.25 → 目标 8000×0.6×0.25=1200 < eff → 放行。"""
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        raw = (st / "chapters" / "ch2.md").read_text(encoding="utf-8")
+        raw += "\n\n补充说明 [待确认] " * 40 + "\n（某族: 数据未提供——[待确认] 槽位，缺参不编造）\n"
+        (st / "chapters" / "ch2.md").write_text(raw, encoding="utf-8")
+        r = self._build(ws, st, tmp_path / ws["deliv"], self._targets(tmp_path, "ch2", 8000))
+        assert r.returncode == 0 and "BUILD_READY" in r.stdout, r.stderr
+
+    def test_coverage_scale_floor_unit(self):
+        import build_output
+
+        t = {"scale_floor": 0.25, "per_signal_penalty": 0.05, "missing_table_weight": 8}
+        assert build_output.coverage_scale("[待确认]" * 100, t) == 0.25
+        assert build_output.coverage_scale("全数据完整叙述。", t) == 1.0
+
+
 class TestBuildOutput:
     def test_slot_injected_no_residue(self, ws):
         assert "{{SLOT:" not in ws["report_md"]
@@ -656,7 +730,7 @@ class TestBuildOutput:
         (st / "formula_state.json").write_text((ws["state"] / "formula_state.json").read_text(encoding="utf-8"), encoding="utf-8")
         (st / "chapters" / "ch1.md").write_text((ws["state"] / "chapters" / "ch1.md").read_text(encoding="utf-8"), encoding="utf-8")
         r = subprocess.run(
-            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"]), "--targets", str(_floor_targets())],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -678,7 +752,7 @@ class TestBuildOutput:
         st = self._copy_chapters(ws, tmp_path)
         (st / "chapters" / "ch2.md").write_text("## 2 区域地质\n\n## 目录\n\n- 手写目录（污染）\n", encoding="utf-8")
         r = subprocess.run(
-            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"]), "--targets", str(_floor_targets())],
             capture_output=True,
             text=True,
             encoding="utf-8",
@@ -691,7 +765,7 @@ class TestBuildOutput:
         st = self._copy_chapters(ws, tmp_path)
         (st / "chapters" / "ch2.md").write_text("# 云南省某铜矿勘探报告\n\n前置内容混入章节文件\n", encoding="utf-8")
         r = subprocess.run(
-            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"]), "--targets", str(_floor_targets())],
             capture_output=True,
             text=True,
             encoding="utf-8",
