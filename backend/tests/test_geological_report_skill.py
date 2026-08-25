@@ -214,3 +214,19 @@ class TestDataExpectationPrompt:
     def test_data_expectation_present(self):
         assert "数据预告" in self.content
         assert "data_expectations.json" in self.content
+
+
+class TestDepthParadigm:
+    """SKILL.md 步骤4 深度范式升级 presence（spec 2026-08-25 §6）。"""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.content = _read_skill_content()
+
+    def test_step4_depth_rules(self):
+        for kw in ("逐要素成段", "五步解读", "动笔前读深度目标", "depth_targets.json", "深度目标门", "不砍段"):
+            assert kw in self.content, kw
+
+    def test_command_table(self):
+        assert "calibrate.py" in self.content  # 速查表新增行
+        assert "--targets" in self.content  # build_output 用法补可选参
