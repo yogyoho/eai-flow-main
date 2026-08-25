@@ -696,7 +696,7 @@ class TestDepthTargetGate:
         assert "退回地板门" in r.stderr, r.stderr
 
     def test_missing_data_signals_scale_down_pass(self, ws, tmp_path):
-        """缺数章（E2E 防误拦）：40×[待确认]+1×数据未提供 → 48 signals → scale 触底 0.25 → 目标 8000×0.6×0.25=1200 < eff → 放行。"""
+        """缺数章（E2E 防误拦）：40×[待确认]+1×数据未提供 → 49 signals → scale 触底 0.25 → 目标 8000×0.6×0.25=1200 < eff → 放行。"""
         st = TestBuildOutput._copy_chapters(ws, tmp_path)
         raw = (st / "chapters" / "ch2.md").read_text(encoding="utf-8")
         raw += "\n\n补充说明 [待确认] " * 40 + "\n（某族: 数据未提供——[待确认] 槽位，缺参不编造）\n"

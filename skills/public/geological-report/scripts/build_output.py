@@ -272,8 +272,8 @@ def load_targets(path: Path) -> dict | None:
         if not isinstance(doc.get("per_chapter"), dict):
             raise ValueError("per_chapter 缺失或非对象")
         return doc
-    except (json.JSONDecodeError, ValueError, AttributeError) as e:
-        print(f"[build] depth_targets 损坏（{path}: {e}）——退回地板门", file=sys.stderr)
+    except (json.JSONDecodeError, ValueError, AttributeError, OSError) as e:
+        print(f"[build] depth_targets 损坏（{path}: {e}）——退回地板门（L0 深度门继续生效）", file=sys.stderr)
         return None
 
 
