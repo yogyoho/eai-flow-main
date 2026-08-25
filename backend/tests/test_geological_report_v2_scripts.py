@@ -597,6 +597,47 @@ class TestEffectiveChars:
         assert build_output.effective_chars(text) == 26
 
 
+class TestCalibrate:
+    """calibrate.py：样例 → depth_targets.json（确定性幂等；无节号样例 rc=1 拒产）。"""
+
+    @staticmethod
+    def _mini_samples(base):
+        d = base / "samples"
+        d.mkdir()
+        (d / "ch1_sample.md").write_text(
+            "## 1 绪论\n\n### 1.1 目的目的\n\n本次勘查目的明确。任务安排合理。经费保障到位。\n\n| 项目 | 数量 |\n|---|---|\n| 钻探 | 1000 |\n",
+            encoding="utf-8",
+        )
+        (d / "ch2_sample.md").write_text("## 2 区域地质\n\n### 2.1 地层\n\n区域地层出露齐全。由老至新分述。各岩性组特征各异。\n", encoding="utf-8")
+        (d / "source.md").write_text("来源说明，非样例，须被过滤。\n", encoding="utf-8")
+        return d
+
+    @staticmethod
+    def _run(*argv):
+        return subprocess.run([sys.executable, "-X", "utf8", str(SCRIPTS / "calibrate.py"), *map(str, argv)], capture_output=True, text=True, encoding="utf-8", errors="replace")
+
+    def test_mini_targets_deterministic(self, tmp_path):
+        d = self._mini_samples(tmp_path)
+        out1, out2 = tmp_path / "t1.json", tmp_path / "t2.json"
+        for out in (out1, out2):
+            r = self._run("--samples-dir", d, "--output", out)
+            assert r.returncode == 0, r.stderr
+        assert out1.read_bytes() == out2.read_bytes()
+        doc = json.loads(out1.read_text(encoding="utf-8"))
+        assert (doc["coefficient"], doc["scale_floor"], doc["per_signal_penalty"], doc["missing_table_weight"]) == (0.6, 0.25, 0.05, 8)
+        assert set(doc["per_chapter"]) == {"ch1", "ch2"}  # source.md 被过滤
+        assert doc["per_chapter"]["ch1"] == {"median_eff": 23, "median_table_rows": 2, "median_paragraphs": 1}
+        assert doc["per_chapter"]["ch2"] == {"median_eff": 25, "median_table_rows": 0, "median_paragraphs": 1}
+
+    def test_sample_without_numbered_headings_rc1(self, tmp_path):
+        d = tmp_path / "samples"
+        d.mkdir()
+        (d / "ch1_sample.md").write_text("# 概述\n\n没有节号标题的文档。\n", encoding="utf-8")
+        r = self._run("--samples-dir", d, "--output", tmp_path / "t.json")
+        assert r.returncode == 1 and "ch1_sample.md" in r.stderr, r.stderr
+        assert not (tmp_path / "t.json").exists()  # 绝不静默产出空 targets
+
+
 class TestBuildOutput:
     def test_slot_injected_no_residue(self, ws):
         assert "{{SLOT:" not in ws["report_md"]
