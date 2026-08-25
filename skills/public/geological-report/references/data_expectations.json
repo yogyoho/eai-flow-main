@@ -1,0 +1,19 @@
+{
+  "_comment": "开题数据预告（手写静态文件，spec 2026-08-25）：按章列出所需数据族与 CSV 列样例，引导用户一次备齐。缺某族 → 相关小节落 [待确认]，缺数不编造。族名与 stages/exploration.json forms 键一致。",
+  "csv_columns": {
+    "sample_assays": ["样品编号", "工程编号", "矿体编号", "起止深度(m)", "样长(m)", "主元素品位(%)", "伴生元素品位(g/t)"],
+    "bulk_density": ["样品编号", "矿体编号", "矿石类型", "小体重(t/m³)", "品位(%)", "湿度(%)"]
+  },
+  "per_chapter": {
+    "ch1": {"families": ["project", "tenement", "prev_work", "mine_history"], "note": "绪论四件套：项目批文/矿权/以往工作/矿山沿革"},
+    "ch2": {"families": ["regional_pack"], "note": "知识章：区域地质包由技能叙述，通常无需用户提供数据"},
+    "ch3": {"families": ["geography", "orefield_geology"], "note": "交通地理 + 矿区地质"},
+    "ch4": {"families": ["orebody_list"], "note": "矿体清单（编号/产状/规模/品位）；矿体数 >3 建议整表上传"},
+    "ch5": {"families": ["sample_assays", "lab_assays", "beneficiation"], "note": "样品分析（sample_assays 为 CSV 族）+ 选冶试验"},
+    "ch6": {"families": ["hydro_eng_env"], "note": "水文/工程/环境地质条件"},
+    "ch7": {"families": ["workload", "exploration_qc", "bulk_density"], "note": "勘查工程量与质量评述（bulk_density 为 CSV 族）"},
+    "ch8": {"families": ["industrial_params", "block_model", "verification", "prior_estimate"], "note": "资源量估算四件套：工业指标/块段/验证/既往估算；块段多建议整表上传"},
+    "ch9": {"families": ["economics"], "note": "经济评价参数"},
+    "ch10": {"families": [], "note": "结论：无新数据，要点由前九章投影"}
+  }
+}

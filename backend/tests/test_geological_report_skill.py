@@ -202,3 +202,15 @@ class TestSkillLoadingIntegration:
     def test_skill_content_not_truncated(self):
         body = re.sub(r"^---\n.*?\n---\n", "", _read_skill_content(), flags=re.DOTALL)
         assert len(body.strip()) > 500
+
+
+class TestDataExpectationPrompt:
+    """SKILL.md 步骤1 数据预告 presence（spec 2026-08-25 §6）。"""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.content = _read_skill_content()
+
+    def test_data_expectation_present(self):
+        assert "数据预告" in self.content
+        assert "data_expectations.json" in self.content

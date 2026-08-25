@@ -896,3 +896,17 @@ def re_search_page(line: str) -> bool:
     import re
 
     return bool(re.search(r"\d+\s*页|\.{3,}\s*\d+", line))
+
+
+class TestDataExpectations:
+    """按章数据预告：10 章全覆盖、族名必须是 stage forms 实有键、CSV 列样例在场。"""
+
+    def test_covers_all_chapters_and_valid_families(self):
+        doc = json.loads((SKILL / "references" / "data_expectations.json").read_text(encoding="utf-8"))
+        pc = doc["per_chapter"]
+        assert set(pc) == {f"ch{i}" for i in range(1, 11)}
+        known = set(json.loads(STAGE.read_text(encoding="utf-8"))["forms"])
+        for ch, entry in pc.items():
+            assert set(entry["families"]) <= known, (ch, set(entry["families"]) - known)
+        assert "样品编号" in doc["csv_columns"]["sample_assays"]
+        assert any("小体重" in col for col in doc["csv_columns"]["bulk_density"])

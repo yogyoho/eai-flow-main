@@ -56,6 +56,7 @@ license: MIT
 
 1. 模板解析：开题第一轮**必须**调用 KF MCP `kf_resolve_template`（工具全名 `knowledge-factory_kf_resolve_template`，报告模板+标准，与用户是否已给阶段无关）；返回 `found=false` 时向用户声明：
    > 知识工厂未命中模板，本次使用技能内置 `references/` 兜底（exploration.json 阶段表单 + standards_index）。
+   返回模板后（或声明兜底后）立即做**数据预告**：读 `references/data_expectations.json`，把按章数据清单（每章所需数据族 + CSV 列样例）一并向用户预告，引导一次备齐；用户明确缺的族照常落 `[待确认]`，缺数不编造。
 2. `ingest.py forms` 生成空白表单（data/ 下按 schema）。
 3. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（矿种→阶段→项目信息→地质→矿体→勘查工程→样品→开采条件→资源量/经济）。每次只问一个类别。
    **批量数据优先引导上传文件（bug-2221 根因④）**：矿体数 >3、或样品/钻孔/工作量/体重等清单类条目 >10 时，逐项问答收不齐也收不深——主动请用户上传 CSV/Excel 走 `ingest.py file`，表单只收叙述性字段。
