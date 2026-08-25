@@ -1,0 +1,70 @@
+{
+  "coefficient": 0.6,
+  "missing_table_weight": 8,
+  "per_chapter": {
+    "ch1": {
+      "median_eff": 7487,
+      "median_paragraphs": 13,
+      "median_table_rows": 23
+    },
+    "ch10": {
+      "median_eff": 2498,
+      "median_paragraphs": 9,
+      "median_table_rows": 0
+    },
+    "ch2": {
+      "median_eff": 9370,
+      "median_paragraphs": 12,
+      "median_table_rows": 16
+    },
+    "ch3": {
+      "median_eff": 3378,
+      "median_paragraphs": 8,
+      "median_table_rows": 0
+    },
+    "ch4": {
+      "median_eff": 9157,
+      "median_paragraphs": 17,
+      "median_table_rows": 24
+    },
+    "ch5": {
+      "median_eff": 3952,
+      "median_paragraphs": 23,
+      "median_table_rows": 96
+    },
+    "ch6": {
+      "median_eff": 17537,
+      "median_paragraphs": 36,
+      "median_table_rows": 54
+    },
+    "ch7": {
+      "median_eff": 8085,
+      "median_paragraphs": 22,
+      "median_table_rows": 37
+    },
+    "ch8": {
+      "median_eff": 8071,
+      "median_paragraphs": 29,
+      "median_table_rows": 32
+    },
+    "ch9": {
+      "median_eff": 3930,
+      "median_paragraphs": 13,
+      "median_table_rows": 0
+    }
+  },
+  "per_signal_penalty": 0.05,
+  "samples": [
+    "ch10_sample.md",
+    "ch1_sample.md",
+    "ch2_sample.md",
+    "ch3_sample.md",
+    "ch4_sample.md",
+    "ch5_sample.md",
+    "ch6_sample.md",
+    "ch7_sample.md",
+    "ch8_sample.md",
+    "ch9_sample.md"
+  ],
+  "scale_floor": 0.25
+}

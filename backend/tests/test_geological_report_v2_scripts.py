@@ -712,6 +712,37 @@ class TestDepthTargetGate:
         assert build_output.coverage_scale("全数据完整叙述。", t) == 1.0
 
 
+class TestDepthTargetsFile:
+    """提交的 references/depth_targets.json：结构/量级锚（calibrate 产物回归）。"""
+
+    def test_structure_and_magnitude(self):
+        doc = json.loads((SKILL / "references" / "depth_targets.json").read_text(encoding="utf-8"))
+        assert (doc["coefficient"], doc["scale_floor"]) == (0.6, 0.25)
+        pc = doc["per_chapter"]
+        assert set(pc) == {f"ch{i}" for i in range(1, 11)}
+        assert all(c["median_eff"] > 1000 for c in pc.values())
+        assert max(pc, key=lambda k: pc[k]["median_eff"]) == "ch6"  # 证据表：ch6 样例最厚
+        assert pc["ch6"]["median_eff"] > 15000
+
+    def test_probe_finds_real_targets(self, ws, tmp_path):
+        """不传 --targets → 探测命中 references/depth_targets.json → 合成薄章节被真实目标拦截（探测链路端到端锚）。"""
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        # ws 固定样章本就厚到能过真实目标（BUILD_READY），须手工压薄一章：ch10 目标最低（2498×0.6≈1499），
+        # 合成 ch10：全 toc 节号落标题+每节 3 句过 L0，零缺数信号 scale=1，eff≈1232 ∈ (1000, 目标) → 只被 L2 拦。
+        filler = "本章为回归锚定专用的合成薄章节正文，语句仅用于满足每节三句的深度门下限，不承载地质含义。全段不含缺数标记，覆盖缩放恒为一点零，目标固定为样例中位数乘以系数。有效字符总量压到该目标之下，用于验证省略参数时探测命中真实目标文件。"
+        heads = ["## 10 结论", "### 10.1 矿床勘查和研究程度", "#### 10.1.1 矿床勘查程度", "#### 10.1.2 矿床研究程度",
+                 "### 10.2 矿床成矿规律及远景评价", "#### 10.2.1 矿床成矿规律", "#### 10.2.2 找矿远景评价",
+                 "### 10.3 开采技术条件和地质环境问题", "### 10.4 矿床开采的经济效果",
+                 "### 10.5 地质工作的经验教训和存在问题", "### 10.6 下步地质勘查及矿床开采的建议"]
+        (st / "chapters" / "ch10.md").write_text("".join(h + "\n" + filler + "\n\n" for h in heads), encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE),
+             "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"])],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        assert r.returncode == 1 and "深度目标门" in r.stderr, r.stderr
+
+
 class TestBuildOutput:
     def test_slot_injected_no_residue(self, ws):
         assert "{{SLOT:" not in ws["report_md"]
