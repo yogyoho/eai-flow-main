@@ -12,8 +12,163 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 DOCKER_DIR="$PROJECT_ROOT/docker"
 
-# Docker Compose command with project name
-COMPOSE_CMD="docker compose -p eai-docker -f docker-compose-dev.yaml"
+# Docker Compose command with project name.
+# Use a filename relative to DOCKER_DIR (we always `cd` there) so Windows
+# Docker Desktop does not receive a Git Bash `/c/...` path it cannot open.
+COMPOSE_FILE="docker-compose-dev.yaml"
+# Selected by require_compose_version: prefer the V2 plugin, else hyphenated binary.
+# Kept as an array so "docker compose" stays two words under set -u / quoting.
+COMPOSE_BIN=(docker compose)
+
+_refresh_compose_cmd() {
+    COMPOSE_CMD="${COMPOSE_BIN[*]} -p eai-docker -f ${COMPOSE_FILE}"
+}
+_refresh_compose_cmd
+
+# docker-compose-dev.yaml marks its env_file entries optional with the long-form
+# `- path: ... / required: false` syntax, understood by Compose v2.24.0 and up.
+# Older clients abort while parsing the file, before any preflight below can run.
+COMPOSE_MIN_VERSION="2.24.0"
+
+ensure_from_example() {
+    local dest="$1"
+    local src="$2"
+    local label="$3"
+
+    if [ -f "$dest" ]; then
+        return 0
+    fi
+    if [ -f "$src" ]; then
+        cp "$src" "$dest"
+        echo -e "${BLUE}Created ${label} from $(basename "$src")${NC}"
+        return 0
+    fi
+    echo -e "${YELLOW}✗ ${label} not found and no $(basename "$src") to copy from.${NC}"
+    echo "Create ${dest} before starting Docker."
+    exit 1
+}
+
+require_compose_file() {
+    if [ -f "$DOCKER_DIR/$COMPOSE_FILE" ]; then
+        return 0
+    fi
+    echo -e "${YELLOW}✗ ${COMPOSE_FILE} not found at ${DOCKER_DIR}/${COMPOSE_FILE}${NC}"
+    echo "Run this from the DeerFlow repository root, e.g. 'make docker-start'."
+    echo "Do not run 'docker compose -f docker/${COMPOSE_FILE}' from inside docker/ — that resolves to docker/docker/${COMPOSE_FILE}."
+    exit 1
+}
+
+# Prefer the Compose V2 plugin (`docker compose`); fall back to the legacy
+# hyphenated binary (`docker-compose`) when the plugin is missing. Whatever
+# binary answers is retained in COMPOSE_BIN / COMPOSE_CMD so start/logs/stop/
+# restart use the same executable. Must run in the current shell (not $(...))
+# so the COMPOSE_BIN assignment survives. Direct callers get no such check:
+# see CONTRIBUTING.md.
+_probe_compose() {
+    local out
+
+    out="$(docker compose version --short 2>/dev/null || true)"
+    if [ -n "$out" ]; then
+        COMPOSE_BIN=(docker compose)
+        _refresh_compose_cmd
+        COMPOSE_VERSION_RAW="$out"
+        return 0
+    fi
+    out="$(docker-compose version --short 2>/dev/null || true)"
+    if [ -n "$out" ]; then
+        COMPOSE_BIN=(docker-compose)
+        _refresh_compose_cmd
+        COMPOSE_VERSION_RAW="$out"
+        return 0
+    fi
+    COMPOSE_VERSION_RAW=""
+    return 1
+}
+
+# Fail with an actionable message instead of the parser error an older client
+# emits for the optional env_file syntax.
+require_compose_version() {
+    local raw major minor min_major min_minor
+
+    min_major="${COMPOSE_MIN_VERSION%%.*}"
+    min_minor="${COMPOSE_MIN_VERSION#*.}"
+    min_minor="${min_minor%%.*}"
+
+    COMPOSE_VERSION_RAW=""
+    _probe_compose || true
+    raw="${COMPOSE_VERSION_RAW#v}"
+    major="${raw%%.*}"
+    minor="${raw#*.}"
+    minor="${minor%%.*}"
+    major="${major//[!0-9]/}"
+    minor="${minor//[!0-9]/}"
+
+    if [ -z "$major" ] || [ -z "$minor" ]; then
+        echo -e "${YELLOW}⚠ Could not determine the Docker Compose version; ${COMPOSE_MIN_VERSION} or newer is required.${NC}"
+        return 0
+    fi
+    if [ "$major" -gt "$min_major" ] || { [ "$major" -eq "$min_major" ] && [ "$minor" -ge "$min_minor" ]; }; then
+        return 0
+    fi
+
+    echo -e "${YELLOW}✗ Docker Compose ${raw} is too old — ${COMPOSE_MIN_VERSION} or newer is required.${NC}"
+    echo "${COMPOSE_FILE} marks its env_file entries optional using the long-form"
+    echo "'- path: ... / required: false' syntax, which your client cannot parse."
+    echo "Update Docker Desktop, or install a current Compose v2 plugin:"
+    echo "  https://docs.docker.com/compose/install/"
+    exit 1
+}
+
+# Compose interpolates ${DEER_FLOW_ROOT} into host-side paths
+# (DEER_FLOW_HOST_BASE_DIR, THREADS_HOST_PATH) that AIO/provisioner sandbox
+# modes bind-mount. Unset, those render as /backend/.deer-flow — a plausible
+# looking absolute path on the wrong root, so mounts silently miss the checkout.
+ensure_deer_flow_root() {
+    if [ -z "$DEER_FLOW_ROOT" ]; then
+        export DEER_FLOW_ROOT="$PROJECT_ROOT"
+    fi
+}
+
+# Read-only with respect to configuration; safe for logs/stop/restart.
+compose_preflight() {
+    require_compose_file
+    require_compose_version
+    ensure_deer_flow_root
+}
+
+# Only `start` may create files. Compose env_file entries fail closed on Windows
+# when .env is missing ("The specified file cannot be found" /
+# "Le fichier spécifique est introuvable").
+ensure_env_files() {
+    ensure_from_example "$PROJECT_ROOT/.env" "$PROJECT_ROOT/.env.example" ".env"
+    ensure_from_example "$PROJECT_ROOT/frontend/.env" "$PROJECT_ROOT/frontend/.env.example" "frontend/.env"
+}
+
+load_proxy_env_from_dotenv() {
+    local env_file="$PROJECT_ROOT/.env"
+    local var
+    local line
+    local value
+
+    if [ ! -f "$env_file" ]; then
+        return
+    fi
+
+    for var in HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY http_proxy https_proxy all_proxy no_proxy; do
+        if [ -z "${!var+x}" ]; then
+            line="$(grep -E "^[[:space:]]*${var}=" "$env_file" | tail -n 1 || true)"
+            if [ -n "$line" ]; then
+                value="${line#*=}"
+                value="${value%\"}"
+                value="${value#\"}"
+                value="${value%\'}"
+                value="${value#\'}"
+                value="${value%$'\r'}"
+                export "${var}=${value}"
+            fi
+        fi
+    done
+}
 
 detect_sandbox_mode() {
     local config_file="$PROJECT_ROOT/config.yaml"
@@ -163,16 +318,29 @@ start() {
     echo "=========================================="
     echo ""
 
+    # Validate the toolchain before creating any config files below.
+    compose_preflight
+
     sandbox_mode="$(detect_sandbox_mode)"
 
-    services="frontend gateway nginx"
+    services="redis frontend gateway nginx"
     if [ "$sandbox_mode" = "provisioner" ]; then
-        services="frontend gateway provisioner nginx"
+        services="redis frontend gateway provisioner nginx"
     fi
-    # EAI-CUSTOM: also bring up the Temporal workflow engine (writing-project
-    # node advancement depends on it). Layered via its overlay compose file;
-    # postgres-ext (its dependency) lives in docker-compose.extensions.yaml.
-    services="$services temporal"
+
+    # Only aio mode (AioSandboxProvider without provisioner_url) needs the host
+    # Docker socket. Mount it via the opt-in docker-compose.dood.yaml overlay so
+    # the default (local) and provisioner modes never expose the host daemon.
+    # Mounting the socket = root-equivalent host control; see SECURITY.md.
+    if [ "$sandbox_mode" = "aio" ]; then
+        local docker_socket="${DEER_FLOW_DOCKER_SOCKET:-/var/run/docker.sock}"
+        if [ ! -S "$docker_socket" ]; then
+            echo -e "${YELLOW}⚠ Docker socket not found at $docker_socket — AioSandboxProvider (DooD) will not work.${NC}"
+            exit 1
+        fi
+        echo -e "${YELLOW}Mounting host Docker socket into gateway (DooD = host root-equivalent). See SECURITY.md.${NC}"
+        COMPOSE_CMD="$COMPOSE_CMD -f docker-compose.dood.yaml"
+    fi
 
     echo -e "${BLUE}Runtime: Gateway embedded agent runtime${NC}"
     echo -e "${BLUE}Detected sandbox mode: $sandbox_mode${NC}"
@@ -183,13 +351,11 @@ start() {
     fi
     echo ""
     
-    # Set DEER_FLOW_ROOT for provisioner if not already set
-    if [ -z "$DEER_FLOW_ROOT" ]; then
-        export DEER_FLOW_ROOT="$PROJECT_ROOT"
-        echo -e "${BLUE}Setting DEER_FLOW_ROOT=$DEER_FLOW_ROOT${NC}"
-        echo ""
-    fi
-    
+    # Set by compose_preflight above; shown because the provisioner turns it into
+    # host-side bind-mount paths.
+    echo -e "${BLUE}Using DEER_FLOW_ROOT=$DEER_FLOW_ROOT${NC}"
+    echo ""
+
     # Ensure config.yaml exists before starting.
     if [ ! -f "$PROJECT_ROOT/config.yaml" ]; then
         if [ -f "$PROJECT_ROOT/config.example.yaml" ]; then
@@ -224,16 +390,11 @@ start() {
         fi
     fi
 
+    ensure_env_files
+    load_proxy_env_from_dotenv
+
     echo "Building and starting containers..."
-    # EAI-CUSTOM: layer extensions + temporal overlays so the Temporal workflow
-    # engine starts with the core stack. `--remove-orphans` is intentionally
-    # OMITTED here: this dev env runs many on-demand extension stacks (ragflow,
-    # business-db, cad, ocr, collab) started from separate compose files;
-    # --remove-orphans would destroy them on every start. Sandbox containers
-    # are cleaned separately by cleanup-containers.sh below. (bug-1146)
-    cd "$DOCKER_DIR" && docker compose -p eai-docker \
-        -f docker-compose-dev.yaml -f docker-compose.extensions.yaml \
-        -f docker-compose.temporal.yaml up --build -d $services
+    cd "$DOCKER_DIR" && $COMPOSE_CMD up --build -d --remove-orphans $services
     echo ""
     echo "=========================================="
     echo "  DeerFlow Docker is starting!"
@@ -252,7 +413,9 @@ start() {
 # View Docker development logs
 logs() {
     local service=""
-    
+
+    compose_preflight
+
     case "$1" in
         --frontend)
             service="frontend"
@@ -266,6 +429,10 @@ logs() {
             service="nginx"
             echo -e "${BLUE}Viewing nginx logs...${NC}"
             ;;
+        --redis)
+            service="redis"
+            echo -e "${BLUE}Viewing redis logs...${NC}"
+            ;;
         --provisioner)
             service="provisioner"
             echo -e "${BLUE}Viewing provisioner logs...${NC}"
@@ -275,7 +442,7 @@ logs() {
             ;;
         *)
             echo -e "${YELLOW}Unknown option: $1${NC}"
-            echo "Usage: $0 logs [--frontend|--gateway|--nginx|--provisioner]"
+            echo "Usage: $0 logs [--frontend|--gateway|--nginx|--redis|--provisioner]"
             exit 1
             ;;
     esac
@@ -285,11 +452,7 @@ logs() {
 
 # Stop Docker development environment
 stop() {
-    # DEER_FLOW_ROOT is referenced in docker-compose-dev.yaml; set it before
-    # running compose down to suppress "variable is not set" warnings.
-    if [ -z "$DEER_FLOW_ROOT" ]; then
-        export DEER_FLOW_ROOT="$PROJECT_ROOT"
-    fi
+    compose_preflight
     echo "Stopping Docker development services..."
     cd "$DOCKER_DIR" && $COMPOSE_CMD down
     echo "Cleaning up sandbox containers..."
@@ -299,14 +462,11 @@ stop() {
 
 # Restart Docker development environment
 restart() {
+    compose_preflight
     echo "========================================"
     echo "  Restarting DeerFlow Docker Services"
     echo "========================================"
     echo ""
-    echo -e "${YELLOW}Note: restart does NOT rebuild images. If you changed frontend${NC}"
-    echo -e "${YELLOW}dependencies, run 'make rebuild-frontend' instead.${NC}"
-    echo ""
-    check_frontend_deps || true
     echo -e "${BLUE}Restarting containers...${NC}"
     cd "$DOCKER_DIR" && $COMPOSE_CMD restart
     echo ""
@@ -314,87 +474,6 @@ restart() {
     echo ""
     echo "  🌐 Application: http://localhost:2026"
     echo "  📋 View logs: make docker-logs"
-    echo ""
-}
-
-# Check whether the host frontend/pnpm-lock.yaml matches the deps baked into
-# the running frontend container. Dependency changes (version bumps, lockfile
-# edits, package add/remove) only take effect after an IMAGE REBUILD — a plain
-# `restart`/`up` keeps the old image-baked node_modules. This guard prevents
-# silent regressions like the recurring BlockNote "Duplicate selection JSON ID"
-# crash (host lockfile fixed, container deps stayed stale/mixed).
-# Returns 0 when in sync (or container not running), 1 on drift.
-check_frontend_deps() {
-    local host_lock="$PROJECT_ROOT/frontend/pnpm-lock.yaml"
-    local container_name="deer-flow-frontend"
-
-    if [ ! -f "$host_lock" ]; then
-        echo -e "${YELLOW}⚠ frontend/pnpm-lock.yaml not found on host; skipping dep-drift check.${NC}"
-        return 0
-    fi
-    # node_modules/package.json/pnpm-lock.yaml are NOT bind-mounted into the
-    # dev container (host=Windows, container=Linux — bind-mounting node_modules
-    # would break native binaries). So the container's baked lockfile is the
-    # ground truth for what is actually installed.
-    if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${container_name}$"; then
-        # Container not running — nothing to compare; a fresh build on start will sync it.
-        return 0
-    fi
-
-    local host_hash container_hash
-    host_hash="$(sha256sum "$host_lock" | awk '{print $1}')"
-    # NOTE: wrap in `sh -c '...'`. On a Windows host the script runs under Git
-    # Bash (MSYS2), which rewrites a bare `/app/...` argument into a Windows path
-    # (e.g. `C:/Program Files/Git/app/...`) before handing it to docker.exe, so
-    # `docker exec <c> sha256sum /app/...` would fail to open the file. The
-    # single-quoted sh -c form keeps the path literal.
-    container_hash="$(docker exec "$container_name" sh -c 'sha256sum /app/frontend/pnpm-lock.yaml' 2>/dev/null | awk '{print $1}')"
-
-    if [ -z "$container_hash" ]; then
-        echo -e "${YELLOW}⚠ Could not read pnpm-lock.yaml inside ${container_name}; skipping dep-drift check.${NC}"
-        return 0
-    fi
-
-    if [ "$host_hash" != "$container_hash" ]; then
-        echo ""
-        echo -e "${YELLOW}============================================================${NC}"
-        echo -e "${YELLOW}  ⚠ FRONTEND DEPENDENCY DRIFT DETECTED${NC}"
-        echo -e "${YELLOW}============================================================${NC}"
-        echo "  Host frontend/pnpm-lock.yaml differs from the deps baked into"
-        echo "  the running frontend container. Dependency changes (version"
-        echo "  bumps, lockfile edits, package add/remove) will NOT take effect"
-        echo "  until the image is rebuilt — 'restart'/'up' only reload src."
-        echo ""
-        echo -e "  Fix:  ${GREEN}make rebuild-frontend${NC}"
-        echo ""
-        echo "  (Prevents silent regressions like the recurring BlockNote"
-        echo "   'Duplicate selection JSON ID' crash.)"
-        echo -e "${YELLOW}============================================================${NC}"
-        echo ""
-        return 1
-    fi
-
-    echo -e "${GREEN}✓ frontend deps in sync (host lockfile == container).${NC}"
-    return 0
-}
-
-# Rebuild the frontend dev image from current host source (pins + lockfile)
-# and force-recreate the container. Use this whenever frontend dependencies
-# change — it is the correct alternative to `restart` (which does NOT rebuild
-# and would silently keep stale/mixed node_modules in the container).
-rebuild_frontend() {
-    echo "========================================"
-    echo "  Rebuilding frontend image (deps sync)"
-    echo "========================================"
-    echo ""
-    echo -e "${BLUE}Building from current host source (package.json + pnpm-lock.yaml)...${NC}"
-    cd "$DOCKER_DIR" && $COMPOSE_CMD build frontend
-    echo ""
-    echo -e "${BLUE}Force-recreating frontend container...${NC}"
-    cd "$DOCKER_DIR" && $COMPOSE_CMD up -d --force-recreate frontend
-    echo ""
-    echo -e "${GREEN}✓ Frontend image rebuilt and container recreated.${NC}"
-    echo -e "${BLUE}Verify: make check-frontend-deps${NC}"
     echo ""
 }
 
@@ -412,12 +491,9 @@ help() {
     echo "                  --frontend   View frontend logs only"
     echo "                  --gateway    View gateway logs only"
     echo "                  --nginx      View nginx logs only"
+    echo "                  --redis      View redis logs only"
     echo "                  --provisioner View provisioner logs only"
     echo "  stop          - Stop Docker development services"
-    echo "  rebuild-frontend - Rebuild the frontend image from current host deps"
-    echo "                    (use after changing frontend dependencies; 'restart' won't)"
-    echo "  check-frontend-deps - Warn if host pnpm-lock.yaml differs from the"
-    echo "                    frontend container's baked deps"
     echo "  help          - Show this help message"
     echo ""
 }
@@ -434,12 +510,6 @@ main() {
             ;;
         restart)
             restart
-            ;;
-        rebuild-frontend)
-            rebuild_frontend
-            ;;
-        check-frontend-deps)
-            check_frontend_deps
             ;;
         logs)
             logs "$2"

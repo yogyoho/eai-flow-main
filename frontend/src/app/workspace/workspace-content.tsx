@@ -4,8 +4,8 @@ import { Toaster } from "sonner";
 import { QueryClientProvider } from "@/components/query-client-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { CommandPalette } from "@/components/workspace/command-palette";
-// EAI-CUSTOM: 对齐上游 —— 设置弹窗统一挂在 workspace-content（app 级单实例，
-// 内部 dynamic 懒加载），nav-menu/palette/deep-link 都只通过 store 触发。
+import { GatewayOfflineBanner } from "@/components/workspace/gateway-offline-banner";
+import { ModelLoadErrorBanner } from "@/components/workspace/model-load-error-banner";
 import { SettingsDialogHost } from "@/components/workspace/settings";
 import { WorkspaceSettingsDeepLink } from "@/components/workspace/workspace-settings-deep-link";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
@@ -22,7 +22,11 @@ function parseSidebarOpenCookie(
 
 export async function WorkspaceContent({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+  gatewayUnavailable = false,
+}: Readonly<{
+  children: React.ReactNode;
+  gatewayUnavailable?: boolean;
+}>) {
   const cookieStore = await cookies();
   const initialSidebarOpen = parseSidebarOpenCookie(
     cookieStore.get("sidebar_state")?.value,
@@ -30,10 +34,15 @@ export async function WorkspaceContent({
 
   return (
     <QueryClientProvider>
+      {/* EAI-CUSTOM: PermissionProvider wraps the workspace for nav-level gating */}
       <PermissionProvider>
         <SidebarProvider className="h-screen" defaultOpen={initialSidebarOpen}>
           <WorkspaceSidebar />
-          <SidebarInset className="min-w-0">{children}</SidebarInset>
+          <SidebarInset className="min-w-0">
+            <GatewayOfflineBanner gatewayUnavailable={gatewayUnavailable} />
+            <ModelLoadErrorBanner gatewayUnavailable={gatewayUnavailable} />
+            {children}
+          </SidebarInset>
         </SidebarProvider>
         <CommandPalette />
         <SettingsDialogHost />

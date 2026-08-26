@@ -28,9 +28,9 @@ describe("interaction-only bundle boundaries", () => {
     const dialog = read(
       "src/components/workspace/settings/settings-dialog.tsx",
     );
-    // EAI-CUSTOM: 上游为 9；EAI settings dialog 渲染 7 个 section
-    // (account/wechat/channels/memory/tools/skills/notification)。
-    expect(dialog.match(/dynamic\(/g)).toHaveLength(7);
+    // EAI-CUSTOM: 上游为 10；EAI settings dialog 渲染 8 个 dynamic section
+    // (account/channels/memory/notification/skill/tool/subagent/wechat)。
+    expect(dialog.match(/dynamic\(/g)).toHaveLength(8);
     expect(dialog).not.toMatch(
       /import \{ \w+SettingsPage \} from "@\/components\/workspace\/settings\//,
     );

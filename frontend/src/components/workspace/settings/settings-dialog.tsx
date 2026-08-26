@@ -6,6 +6,7 @@ import {
   BrainIcon,
   MessageCircleIcon,
   SparklesIcon,
+  UsersRoundIcon,
   UserIcon,
   WrenchIcon,
 } from "lucide-react";
@@ -73,6 +74,17 @@ const ToolSettingsPage = dynamic(
     import("./tool-settings-page").then((module) => module.ToolSettingsPage),
   { loading: SettingsPageLoading },
 );
+const SubagentSettingsPage = dynamic(
+  () =>
+    import("./subagent-settings-page").then(
+      (module) => module.SubagentSettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
+// EAI-CUSTOM (upstream-sync 2026-08-26): upstream's AboutSettingsPage dynamic
+// dropped — EAI's settings nav intentionally has no "about"/"integrations"
+// sections, so the import is dead code here.
+// EAI-CUSTOM: WeChat channel settings page
 const WechatSettingsPage = dynamic(
   () =>
     import("./wechat-settings-page").then(
@@ -87,6 +99,7 @@ export type SettingsSection =
   | "channels"
   | "memory"
   | "tools"
+  | "subagents"
   | "skills"
   | "notification"
   | "appearance" // EAI-CUSTOM: appearance section (appearance-settings-page)
@@ -141,6 +154,11 @@ export function SettingsDialog(props: SettingsDialogProps) {
         icon: BrainIcon,
       },
       { id: "tools", label: t.settings.sections.tools, icon: WrenchIcon },
+      {
+        id: "subagents",
+        label: t.settings.sections.subagents,
+        icon: UsersRoundIcon,
+      },
       { id: "skills", label: t.settings.sections.skills, icon: SparklesIcon },
     ],
     [
@@ -148,6 +166,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       t.settings.sections.channels,
       t.settings.sections.memory,
       t.settings.sections.tools,
+      t.settings.sections.subagents,
       t.settings.sections.skills,
       t.settings.sections.notification,
     ],
@@ -198,6 +217,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               {activeSection === "wechat" && <WechatSettingsPage />}
               {activeSection === "memory" && <MemorySettingsPage />}
               {activeSection === "tools" && <ToolSettingsPage />}
+              {activeSection === "subagents" && <SubagentSettingsPage />}
               {activeSection === "skills" && (
                 <SkillSettingsPage
                   onClose={() => props.onOpenChange?.(false)}

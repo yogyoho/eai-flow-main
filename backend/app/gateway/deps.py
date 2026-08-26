@@ -122,7 +122,18 @@ def _enforce_postgres_for_multi_worker(config: AppConfig) -> None:
 
 
 def _validate_agent_storage(config: AppConfig) -> None:
-    """Fail fast on an agent-storage backend the database cannot support."""
+    """Fail fast on an agent-storage backend the database cannot support.
+
+    ``agent_storage.backend: db`` needs a durable, shared SQL database — a
+    ``memory`` database is per-process, so custom-agent and managed-subagent
+    definitions would silently diverge across nodes (and there is no SQL URL
+    to open). Mirrors deermem's create_storage fail-fast and the multi-worker
+    gate above.
+
+    Also warns when a multi-worker Postgres deployment leaves agent storage on
+    ``file``: custom agents created on one node's local disk are invisible to
+    the others, exactly the divergence the db backend exists to fix.
+    """
     agent_storage = getattr(config, "agent_storage", None)
     backend = getattr(agent_storage, "backend", "file")
     db_backend = getattr(getattr(config, "database", None), "backend", None)
@@ -138,7 +149,9 @@ def _validate_agent_storage(config: AppConfig) -> None:
         workers = 1
     if workers > 1 and db_backend == "postgres" and backend == "file":
         logger.warning(
-            "GATEWAY_WORKERS=%s with database.backend='postgres' but agent_storage.backend='file': custom agents are stored per-node on local disk and are not visible across workers/nodes. Set agent_storage.backend='db' to share them.",
+            "GATEWAY_WORKERS=%s with database.backend='postgres' but agent_storage.backend='file': "
+            "custom agents and managed subagents are stored per-node on local disk and are not visible "
+            "across workers/nodes. Set agent_storage.backend='db' to share them.",
             workers,
         )
 
@@ -291,28 +304,11 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
 
             app.state.run_store = RunRepository(sf)
             app.state.feedback_repo = FeedbackRepository(sf)
-            from deerflow.persistence.scheduled_task_runs import ScheduledTaskRunRepository
-            from deerflow.persistence.scheduled_tasks import ScheduledTaskRepository
-
-            app.state.scheduled_task_repo = ScheduledTaskRepository(
-                sf,
-                run_repository=app.state.run_store,
-            )
-            app.state.scheduled_task_run_repo = ScheduledTaskRunRepository(
-                sf,
-                run_repository=app.state.run_store,
-            )
-            from deerflow.persistence.mcp_tasks import McpTaskRepository
-
-            app.state.mcp_task_repo = McpTaskRepository(sf)
         else:
             from deerflow.runtime.runs.store.memory import MemoryRunStore
 
             app.state.run_store = MemoryRunStore()
             app.state.feedback_repo = None
-            app.state.scheduled_task_repo = None
-            app.state.scheduled_task_run_repo = None
-            app.state.mcp_task_repo = None
 
         # Services are app-scoped. Capture this app's immutable extension set
         # once and close over the same object for teardown; the process-wide
@@ -347,6 +343,29 @@ async def langgraph_runtime(app: FastAPI, startup_config: AppConfig) -> AsyncGen
         from deerflow.persistence.thread_meta import make_thread_store
 
         app.state.thread_store = make_thread_store(sf, app.state.store)
+        if sf is not None:
+            from deerflow.persistence.mcp_tasks import McpTaskRepository
+            from deerflow.persistence.scheduled_task_runs import (
+                ScheduledTaskRunRepository,
+            )
+            from deerflow.persistence.scheduled_tasks import ScheduledTaskRepository
+            from deerflow.persistence.subagent_batches import SubagentBatchRepository
+
+            app.state.scheduled_task_repo = ScheduledTaskRepository(
+                sf,
+                run_repository=app.state.run_store,
+            )
+            app.state.scheduled_task_run_repo = ScheduledTaskRunRepository(
+                sf,
+                run_repository=app.state.run_store,
+            )
+            app.state.mcp_task_repo = McpTaskRepository(sf)
+            app.state.subagent_batch_repo = SubagentBatchRepository(sf)
+        else:
+            app.state.mcp_task_repo = None
+            app.state.subagent_batch_repo = None
+            app.state.scheduled_task_repo = None
+            app.state.scheduled_task_run_repo = None
 
         # Run event store. The store and the matching ``run_events_config`` are
         # both frozen at startup so ``get_run_context`` does not combine a
@@ -413,28 +432,26 @@ def get_mcp_task_service(request: Request):
     return val
 
 
+def get_subagent_batch_repo(request: Request):
+    val = getattr(request.app.state, "subagent_batch_repo", None)
+    if val is None:
+        raise HTTPException(status_code=503, detail="Subagent batch repository not available")
+    return val
+
+
+def get_subagent_batch_service(request: Request):
+    val = getattr(request.app.state, "subagent_batch_service", None)
+    if val is None:
+        raise HTTPException(status_code=503, detail="Subagent batch service not available")
+    return val
+
+
 get_stream_bridge: Callable[[Request], StreamBridge] = _require("stream_bridge", "Stream bridge")
 get_run_manager: Callable[[Request], RunManager] = _require("run_manager", "Run manager")
 get_checkpointer: Callable[[Request], Checkpointer] = _require("checkpointer", "Checkpointer")
 get_run_event_store: Callable[[Request], RunEventStore] = _require("run_event_store", "Run event store")
 get_feedback_repo: Callable[[Request], FeedbackRepository] = _require("feedback_repo", "Feedback")
 get_run_store: Callable[[Request], RunStore] = _require("run_store", "Run store")
-
-
-async def require_admin_user(request: Request, *, detail: str) -> None:
-    """Require the authenticated caller to be an admin user.
-
-    ``AuthMiddleware`` normally stamps ``request.state.user`` before the request
-    reaches a router. Falling back to the strict dependency keeps the route safe
-    in tests or alternative ASGI compositions that mount a router without the
-    global middleware. ``detail`` is the route-specific 403 message.
-    """
-    user = getattr(request.state, "user", None)
-    if user is None:
-        user = await get_current_user_from_request(request)
-    role = getattr(user, "system_role", None) or getattr(user, "role", None)
-    if role != "admin":
-        raise HTTPException(status_code=403, detail=detail)
 
 
 def get_store(request: Request):
@@ -466,6 +483,7 @@ def get_run_context(request: Request) -> RunContext:
         event_store=get_run_event_store(request),
         run_events_config=getattr(request.app.state, "run_events_config", None),
         thread_store=get_thread_store(request),
+        mcp_task_repo=getattr(request.app.state, "mcp_task_repo", None),
         app_config=get_config(),
         checkpoint_channel_mode=getattr(request.app.state, "checkpoint_channel_mode", "full"),
     )
@@ -540,6 +558,38 @@ async def get_current_user_from_request(request: Request):
         )
 
     return user
+
+
+async def is_admin_user(request: Request) -> bool:
+    """Return whether the authenticated caller is an admin user.
+
+    ``AuthMiddleware`` normally stamps ``request.state.user`` before the request
+    reaches a router. Falling back to the strict dependency keeps the route safe
+    in tests or alternative ASGI compositions that mount a router without the
+    global middleware.
+
+    Centralising this here means a future change to the admin definition (e.g.
+    allowing an internal system role, adding audit logging, or switching to a
+    permission-based check) lands in one place instead of drifting across the
+    per-router copies that previously existed in ``mcp``, ``channel_connections``
+    and ``channels``.
+    """
+    user = getattr(request.state, "user", None)
+    if user is None:
+        user = await get_current_user_from_request(request)
+
+    return getattr(user, "system_role", None) == "admin"
+
+
+async def require_admin_user(request: Request, *, detail: str) -> None:
+    """Require the authenticated caller to be an admin user.
+
+    ``detail`` is the route-specific 403 message. The shared predicate keeps
+    read-side redaction and write authorization on the same admin definition.
+    """
+
+    if not await is_admin_user(request):
+        raise HTTPException(status_code=403, detail=detail)
 
 
 async def get_optional_user_from_request(request: Request):

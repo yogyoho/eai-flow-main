@@ -12,9 +12,11 @@ import json
 import logging
 import re
 from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from typing import Any
 
+from deerflow_extension_api import PROVENANCE_KEYS
 from fastapi import HTTPException, Request
 from langchain_core.messages import BaseMessage
 from langchain_core.messages.utils import convert_to_messages
@@ -28,14 +30,22 @@ from app.gateway.internal_auth import (
     get_internal_user,
     get_trusted_internal_owner_user_id,
 )
+from app.gateway.run_models import RunCreateRequest
 from app.gateway.utils import sanitize_log_param
+from app.mcp_tasks.errors import PermanentNotificationError
 from deerflow.agents.middlewares.dynamic_context_middleware import _DYNAMIC_CONTEXT_REMINDER_KEY, _REMINDER_DATE_KEY
+from deerflow.agents.middlewares.input_sanitization_middleware import frame_untrusted_text
+from deerflow.agents.middlewares.tool_receipt import TOOL_RECEIPT_KEY
+from deerflow.agents.middlewares.tool_transform_meta import TOOL_TRANSFORMS_KEY
+from deerflow.agents.middlewares.view_image_middleware import _IMAGE_CONTEXT_MESSAGE_MARKER_KEY
 from deerflow.config.app_config import get_app_config
+from deerflow.config.database_config import resolve_checkpoint_graph_cache_max
 from deerflow.runtime import (
     END_SENTINEL,
     HEARTBEAT_SENTINEL,
     ConflictError,
     DisconnectMode,
+    RunContext,
     RunManager,
     RunRecord,
     RunStatus,
@@ -45,7 +55,7 @@ from deerflow.runtime import (
     build_state_mutation_graph,
     run_agent,
 )
-from deerflow.runtime.checkpoint_mode import inject_checkpoint_mode
+from deerflow.runtime.checkpoint_mode import CheckpointModeMismatchError, checkpoint_tuple_uses_delta, inject_checkpoint_mode
 from deerflow.runtime.checkpoint_state import CheckpointStateAccessor, graph_state_schema
 from deerflow.runtime.goal import goal_thread_lock
 from deerflow.runtime.journal import build_checkpoint_history_seed_events
@@ -63,11 +73,19 @@ _TERMINAL_RUN_STATUSES = {
     RunStatus.interrupted,
 }
 
-_SERVER_OWNED_DYNAMIC_CONTEXT_KEYS = frozenset(
-    {
-        _DYNAMIC_CONTEXT_REMINDER_KEY,
-        _REMINDER_DATE_KEY,
-    }
+_THREAD_METADATA_SETUP_TIMEOUT_SECONDS = 5.0
+
+_SERVER_OWNED_MESSAGE_METADATA_KEYS = (
+    frozenset(
+        {
+            _DYNAMIC_CONTEXT_REMINDER_KEY,
+            _REMINDER_DATE_KEY,
+            _IMAGE_CONTEXT_MESSAGE_MARKER_KEY,
+            TOOL_RECEIPT_KEY,
+            TOOL_TRANSFORMS_KEY,
+        }
+    )
+    | PROVENANCE_KEYS
 )
 
 
@@ -92,8 +110,74 @@ def format_sse(event: str, data: Any, *, event_id: str | None = None) -> str:
     return "\n".join(parts)
 
 
+@asynccontextmanager
+async def reserve_checkpoint_write(
+    request: Request,
+    thread_id: str,
+    *,
+    user_id: str | None = None,
+) -> AsyncIterator[None]:
+    """Serialize an out-of-run checkpoint writer against all thread operations."""
+    run_manager = get_run_manager(request)
+    async with goal_thread_lock(thread_id):
+        async with run_manager.reserve_thread_operation(
+            thread_id,
+            kind=ThreadOperationKind.checkpoint_write,
+            user_id=user_id,
+        ):
+            yield
+
+
 def _run_is_terminal(record: RunRecord) -> bool:
     return record.status in _TERMINAL_RUN_STATUSES
+
+
+def _consume_task_result(task: asyncio.Task) -> None:
+    """Retrieve a detached task's exception without propagating cancellation."""
+    if not task.cancelled():
+        task.exception()
+
+
+def _log_thread_metadata_task_result(task: asyncio.Task, *, thread_id: str) -> None:
+    """Log detached metadata setup failures while ignoring cancellation."""
+    if task.cancelled():
+        return
+    try:
+        task.result()
+    except asyncio.CancelledError:
+        return
+    except Exception:
+        logger.warning(
+            "Failed to ensure thread_meta for %s after worker detached (non-fatal)",
+            sanitize_log_param(thread_id),
+            exc_info=True,
+        )
+
+
+async def _ensure_thread_metadata(
+    run_ctx: RunContext,
+    record: RunRecord,
+    *,
+    owner_user_id: str | None,
+    require_existing_thread: bool = False,
+) -> None:
+    """Ensure an admitted run's thread exists without delaying task attachment."""
+    thread_store = run_ctx.thread_store
+    existing = await thread_store.get(record.thread_id)
+    if existing is None and owner_user_id:
+        unscoped = await thread_store.get(record.thread_id, user_id=None)
+        if unscoped is not None:
+            if unscoped.get("user_id") != owner_user_id:
+                await thread_store.update_owner(record.thread_id, owner_user_id, user_id=None)
+            existing = await thread_store.get(record.thread_id)
+    if existing is None:
+        if require_existing_thread:
+            raise LookupError(f"Thread {record.thread_id} was deleted during run admission")
+        await thread_store.create(
+            record.thread_id,
+            assistant_id=record.assistant_id,
+            metadata=record.metadata,
+        )
 
 
 async def _terminal_record_stream_missing(bridge: StreamBridge, record: RunRecord) -> bool:
@@ -137,11 +221,51 @@ def _strip_external_message_metadata(message: Any) -> Any:
         return message
     additional_kwargs = dict(message.additional_kwargs)
     additional_kwargs.pop(ORIGINAL_USER_CONTENT_KEY, None)
-    for key in _SERVER_OWNED_DYNAMIC_CONTEXT_KEYS:
+    for key in _SERVER_OWNED_MESSAGE_METADATA_KEYS:
         additional_kwargs.pop(key, None)
     if additional_kwargs == message.additional_kwargs:
         return message
     return message.model_copy(update={"additional_kwargs": additional_kwargs})
+
+
+def _strip_external_metadata_from_message_like(item: Any) -> Any:
+    """Strip server-owned keys from a message, in object or raw-dict form.
+
+    Callers reach the checkpoint by two different routes and the message is a
+    ``BaseMessage`` on one and a plain dict on the other, so both shapes have
+    to be handled here rather than coercing — coercion would change what the
+    caller asked to be written.
+    """
+    if isinstance(item, BaseMessage):
+        return _strip_external_message_metadata(item)
+    if isinstance(item, dict) and isinstance(item.get("additional_kwargs"), dict):
+        additional_kwargs = {key: value for key, value in item["additional_kwargs"].items() if key not in _SERVER_OWNED_MESSAGE_METADATA_KEYS and key != ORIGINAL_USER_CONTENT_KEY}
+        if additional_kwargs == item["additional_kwargs"]:
+            return item
+        return {**item, "additional_kwargs": additional_kwargs}
+    return item
+
+
+def strip_server_owned_state_metadata(values: Mapping[str, Any]) -> dict[str, Any]:
+    """Remove server-owned message metadata from caller-supplied state values.
+
+    ``normalize_input`` does this for the run path. The thread-state mutation
+    route writes its values straight into a checkpoint, so without the same
+    treatment an authenticated client can persist forged provenance and
+    transform trails — and those keys exist precisely so a later reader can
+    treat them as facts about what the host did.
+
+    Every channel is walked, not just ``messages``: middleware-contributed
+    channels can carry messages too, and popping a key that was never there
+    costs nothing.
+    """
+    stripped: dict[str, Any] = {}
+    for channel, value in values.items():
+        if isinstance(value, list):
+            stripped[channel] = [_strip_external_metadata_from_message_like(item) for item in value]
+        else:
+            stripped[channel] = _strip_external_metadata_from_message_like(value)
+    return stripped
 
 
 def normalize_input(raw_input: dict[str, Any] | None, *, trusted_internal: bool = False) -> dict[str, Any]:
@@ -158,9 +282,10 @@ def normalize_input(raw_input: dict[str, Any] | None, *, trusted_internal: bool 
     of bubbling up as a 500.  The gateway is a system boundary, so per-entry
     validation errors are the right shape for clients to retry against.
 
-    ``original_user_content`` and dynamic-context reminder markers are
-    server-owned. External callers cannot supply them; trusted internal channel
-    calls may preserve metadata they added before invoking this boundary.
+    ``original_user_content``, dynamic-context reminder markers, the
+    transient view-image context marker, and tool receipts are server-owned.
+    External callers cannot supply them; trusted internal channel calls may
+    preserve metadata they added before invoking this boundary.
     """
     if raw_input is None:
         return {}
@@ -346,6 +471,18 @@ def inject_authenticated_user_context(
         for key in _SERVER_OWNED_AUTHZ_CONTEXT_KEYS:
             configurable.pop(key, None)
     auth_source = getattr(getattr(request, "state", None), "auth_source", None)
+    # ``user_id`` is server-owned for EXTERNAL callers: it now selects which
+    # user's credential user-scoped MCP auth injects, so a client-forged value
+    # must never survive any early return below — scrub it here and restamp it
+    # only from ``request.state.user``. Internal callers (IM channels, the
+    # scheduler) are the deliberate exception: they authenticate their own end
+    # users and supply that identity in run context (PR #3294), which the
+    # internal-role branch below preserves.
+    user = getattr(getattr(request, "state", None), "user", None)
+    if auth_source != AUTH_SOURCE_INTERNAL and getattr(user, "system_role", None) != INTERNAL_SYSTEM_ROLE:
+        runtime_context.pop("user_id", None)
+        if isinstance(configurable, dict):
+            configurable.pop("user_id", None)
     runtime_context["is_internal"] = auth_source == AUTH_SOURCE_INTERNAL
     if auth_source == AUTH_SOURCE_INTERNAL and request_context is not None:
         channel_user_id = request_context.get("channel_user_id")
@@ -382,218 +519,23 @@ def inject_authenticated_user_context(
         runtime_context["oauth_id"] = getattr(user, "oauth_id", None)
 
 
-_STATE_ACCESSOR_GRAPH_CACHE_MAX = 8
-_state_accessor_graph_cache: dict[tuple[str | None, str], tuple[Any, Any, Any]] = {}
-
-
-def _state_accessor_graph(agent_factory: Any, assistant_id: str | None, mode: str, config: dict[str, Any]) -> Any:
-    app_config = (config.get("context") or {}).get("app_config")
-    key = (assistant_id, mode)
-    cached = _state_accessor_graph_cache.get(key)
-    if cached is not None and cached[0] is agent_factory and cached[1] is app_config:
-        return cached[2]
-    if len(_state_accessor_graph_cache) >= _STATE_ACCESSOR_GRAPH_CACHE_MAX:
-        _state_accessor_graph_cache.clear()
-    graph = agent_factory(config=config)
-    _state_accessor_graph_cache[key] = (agent_factory, app_config, graph)
-    return graph
-
-
-class _RawCheckpointSnapshot:
-    """StateSnapshot-shaped view over a raw checkpoint tuple (full mode only)."""
-
-    __slots__ = ("config", "values", "metadata", "parent_config", "created_at", "tasks", "tasks_known", "next")
-
-    def __init__(self, config: dict[str, Any], tup: Any | None) -> None:
-        self.config = getattr(tup, "config", None) or config
-        checkpoint = getattr(tup, "checkpoint", None) or {}
-        self.values = dict(checkpoint.get("channel_values") or {})
-        self.metadata = dict(getattr(tup, "metadata", None) or {})
-        self.parent_config = getattr(tup, "parent_config", None)
-        self.created_at = checkpoint.get("ts") or self.metadata.get("created_at", "")
-        self.tasks: tuple = ()
-        self.tasks_known = False
-        self.next: tuple = ()
-
-
-class _RawCheckpointReadAccessor:
-    """Degraded full-mode read accessor for when the agent factory is down."""
-
-    def __init__(self, checkpointer: Any, mode: str) -> None:
-        self.checkpointer = checkpointer
-        self.mode = mode
-
-    async def aget(self, config: dict[str, Any]) -> _RawCheckpointSnapshot:
-        tup = await self.checkpointer.aget_tuple(config)
-        return _RawCheckpointSnapshot(config, tup)
-
-    async def ahistory(self, config: dict[str, Any], *, limit: int | None = None) -> list[_RawCheckpointSnapshot]:
-        if limit is not None and limit <= 0:
-            return []
-        result: list[_RawCheckpointSnapshot] = []
-        async for tup in self.checkpointer.alist(config, limit=limit):
-            result.append(_RawCheckpointSnapshot(config, tup))
-            if limit is not None and len(result) >= limit:
-                break
-        return result
-
-
-def build_checkpoint_state_accessor(
-    request: Request,
-    *,
-    thread_id: str,
-    assistant_id: str | None = None,
-    checkpoint_id: str | None = None,
-) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
-    """Build the mode-selected lead graph used for materialized checkpoint state (#4292)."""
-    ctx = get_run_context(request)
-    config = build_run_config(thread_id, None, None, assistant_id=assistant_id)
-    configurable = config.setdefault("configurable", {})
-    configurable["checkpoint_ns"] = ""
-    if checkpoint_id is not None:
-        configurable["checkpoint_id"] = checkpoint_id
-
-    if ctx.app_config is not None:
-        config.setdefault("context", {})["app_config"] = ctx.app_config
-    inject_checkpoint_mode(config, ctx.checkpoint_channel_mode)
-
-    agent_factory = resolve_agent_factory(assistant_id)
-    try:
-        graph = _state_accessor_graph(agent_factory, assistant_id, ctx.checkpoint_channel_mode, config)
-    except Exception:
-        if ctx.checkpoint_channel_mode != "full":
-            raise
-        logger.warning(
-            "Agent factory unavailable for thread %s; falling back to raw checkpointer reads",
-            thread_id,
-            exc_info=True,
-        )
-        return _RawCheckpointReadAccessor(ctx.checkpointer, ctx.checkpoint_channel_mode), config
-    accessor = CheckpointStateAccessor.bind(
-        graph,
-        ctx.checkpointer,
-        store=ctx.store,
-        mode=ctx.checkpoint_channel_mode,
-    )
-    return accessor, config
-
-
-async def resolve_thread_assistant_id(
-    request: Request,
-    thread_id: str,
-    *,
-    fail_closed: bool = False,
-) -> str | None:
-    """Return the assistant_id recorded in thread metadata, or ``None``.
-
-    Missing records degrade to ``None`` (the default lead agent). Store
-    failures do the same for read callers, while mutation callers set
-    ``fail_closed`` so they cannot compile a write graph with the wrong schema.
-    """
-    from app.gateway.deps import get_thread_store
-
-    try:
-        thread_store = get_thread_store(request)
-        record = await thread_store.get(thread_id)
-    except Exception:
-        logger.warning("Failed to resolve assistant_id for thread %s", thread_id, exc_info=True)
-        if fail_closed:
-            raise
-        return None
-    return record.get("assistant_id") if isinstance(record, dict) else None
-
-
-async def build_thread_checkpoint_state_accessor(
-    request: Request,
-    *,
-    thread_id: str,
-    checkpoint_id: str | None = None,
-    fail_closed: bool = False,
-) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
-    """Single resolution boundary for state endpoints.
-
-    Thread metadata -> assistant_id -> effective assistant graph. Materializing
-    with the default lead schema would drop channels contributed by a custom
-    ``AgentMiddleware.state_schema`` from the response.
-    """
-    assistant_id = await resolve_thread_assistant_id(request, thread_id, fail_closed=fail_closed)
-    return build_checkpoint_state_accessor(
-        request,
-        thread_id=thread_id,
-        assistant_id=assistant_id,
-        checkpoint_id=checkpoint_id,
-    )
-
-
-async def ensure_checkpoint_history_seeded(
-    request: Request,
-    *,
-    thread_id: str,
-    assistant_id: str | None,
-) -> None:
-    """Backfill an empty run-event feed from an existing checkpoint head.
-
-    No-op unless the feed is empty AND a checkpoint head with messages
-    exists — i.e. a legacy checkpoint-only thread facing its first journaled
-    run. This is a migration shim: remove it once pre-journal threads are no
-    longer a supported upgrade source. The info log on a successful seed is
-    the observability hook for that decision — when it stops appearing, the
-    shim is dead.
-    """
-    event_store = request.app.state.run_event_store
-    # The emptiness check is deliberately thread-scoped, never user-scoped:
-    # seed rows may be stamped with a different principal (NULL for ownerless
-    # seeds, or another user on a shared NULL-owner thread), so a user-scoped
-    # query would miss them and re-seed a duplicate history per principal.
-    # Passing user_id=None also opts out of AUTO resolution explicitly, which
-    # would raise when no user contextvar is set (e.g. the scheduler launch
-    # path for ownerless internal tasks).
-    if await event_store.list_messages(thread_id, limit=1, user_id=None):
-        return
-
-    checkpoint_config = {
-        "configurable": {
-            "thread_id": thread_id,
-            "checkpoint_ns": "",
-        }
-    }
-    if await get_checkpointer(request).aget_tuple(checkpoint_config) is None:
-        return
-
-    accessor, config = build_checkpoint_state_accessor(
-        request,
-        thread_id=thread_id,
-        assistant_id=assistant_id,
-    )
-    snapshot = await accessor.aget(config)
-    values = getattr(snapshot, "values", None)
-    messages = values.get("messages") if isinstance(values, dict) else None
-    if not isinstance(messages, list) or not messages:
-        return
-
-    events = build_checkpoint_history_seed_events(
-        messages,
-        thread_id=thread_id,
-        run_id_prefix=f"checkpoint-seed-{thread_id}",
-    )
-    if not events:
-        return
-    await event_store.put_batch(events)
-    logger.info("Seeded %d checkpoint-history events for thread %s", len(events), thread_id)
-
-
 def resolve_agent_factory(assistant_id: str | None):
     """Resolve the agent factory callable from config.
 
     Custom agents are implemented as ``lead_agent`` + an ``agent_name``
     injected into ``configurable`` or ``context`` — see
     :func:`build_run_config`.  All ``assistant_id`` values therefore map to the
-    same factory; the routing happens inside ``make_lead_agent`` when it reads
+    same factory; the routing happens inside the assembly when it reads
     ``cfg["agent_name"]``.
-    """
-    from deerflow.agents.lead_agent.agent import make_lead_agent
 
-    return make_lead_agent
+    The result is ``assemble_lead_agent``, which returns a
+    ``LeadAgentAssembly(graph, descriptor)`` rather than a bare graph, so every
+    consumer must unwrap ``.graph``. A third-party factory that still returns a
+    bare graph keeps working: the unwrap sites are type-checked, not assumed.
+    """
+    from deerflow.agents.lead_agent.agent import assemble_lead_agent
+
+    return assemble_lead_agent
 
 
 # Lead-agent recursion budget bounds. The Gateway must NOT trust a
@@ -617,6 +559,43 @@ def _resolve_max_recursion_limit() -> int:
         return get_app_config().max_recursion_limit
     except Exception:
         return _DEFAULT_MAX_RECURSION_LIMIT
+
+
+def _resolve_scheduler_recursion_limit() -> int:
+    """Resolve the scheduled-run recursion_limit from ``AppConfig.scheduler``.
+
+    Falls back to ``_DEFAULT_RECURSION_LIMIT`` when the app config cannot be
+    loaded so a missing ``config.yaml`` in tests still launches with the server
+    default rather than crashing dispatch. The value is clamped to
+    ``max_recursion_limit`` here, at dispatch, so an operator value above the
+    ceiling never reaches ``build_run_config`` as an unclamped value — which
+    would otherwise be misattributed as a "client" overage and emit a
+    ``clamped client recursion_limit`` warning on every scheduled run.
+    ``build_run_config`` keeps its own clamp for genuine client-supplied
+    bodies (defense in depth; its warning then only fires for real clients).
+
+    Both silent paths now emit an operator-visible warning: the pre-clamp
+    (operator value above ``max_recursion_limit``) and the config-load failure
+    fallback (``_DEFAULT_RECURSION_LIMIT`` returned instead of the operator
+    value).
+    """
+    try:
+        raw = get_app_config().scheduler.recursion_limit
+        max_limit = _resolve_max_recursion_limit()
+        if raw > max_limit:
+            logger.warning(
+                "scheduler.recursion_limit %d exceeds max_recursion_limit %d; clamped to %d for scheduled runs",
+                raw,
+                max_limit,
+                max_limit,
+            )
+        return min(raw, max_limit)
+    except Exception:
+        logger.warning(
+            "failed to load app config; falling back to recursion_limit=%d for scheduled runs",
+            _DEFAULT_RECURSION_LIMIT,
+        )
+        return _DEFAULT_RECURSION_LIMIT
 
 
 def _clamp_recursion_limit(value: Any, max_limit: int) -> int:
@@ -746,6 +725,348 @@ def build_run_config(
     return config
 
 
+def build_checkpoint_state_mutation_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    as_node: str,
+    checkpoint_id: str | None = None,
+    state_schema: Any | None = None,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Build a state-only graph whose writer node finishes immediately.
+
+    ``state_schema`` should be the thread's effective schema (from
+    :func:`graph_state_schema` on the assistant graph) whenever the write
+    carries materialized state; with the base-schema fallback, channels
+    contributed by custom middleware are silently discarded.
+    """
+    mode = getattr(request.app.state, "checkpoint_channel_mode", "full")
+    config: dict[str, Any] = {
+        "configurable": {
+            "thread_id": thread_id,
+            "checkpoint_ns": "",
+        }
+    }
+    if checkpoint_id is not None:
+        config["configurable"]["checkpoint_id"] = checkpoint_id
+    inject_checkpoint_mode(config, mode)
+
+    graph = build_state_mutation_graph(as_node, mode, state_schema)
+    accessor = CheckpointStateAccessor.bind(
+        graph,
+        get_checkpointer(request),
+        store=getattr(request.app.state, "store", None),
+        mode=mode,
+    )
+    return accessor, config
+
+
+# Cache of factory-built accessor graphs. Accessor operations (aget_state /
+# aupdate_state) never execute graph nodes or middleware, so per-request
+# variations (user, model, skills) cannot affect materialization semantics;
+# the compiled graph is stable per (assistant_id, mode, snapshot_frequency,
+# app_config). The
+# factory and app_config identities are re-validated on every call so patched
+# factories take effect immediately and a config.yaml hot-reload (which
+# rebuilds the AppConfig object) never serves a stale compiled graph — the
+# cached reference keeps the old config alive, so id-reuse cannot produce a
+# false hit. Bounded: cleared when too many distinct assistants appear. The
+# cap is configurable (database.checkpoint_graph_cache.accessor_graph_max)
+# and re-read on every eviction check, so a hot-reload takes effect without
+# a restart.
+_STATE_ACCESSOR_GRAPH_CACHE_MAX = 64
+_state_accessor_graph_cache: dict[tuple[str | None, str, int | None], tuple[Any, Any, Any]] = {}
+
+
+def _accessor_graph_cache_max(app_config: Any) -> int:
+    return resolve_checkpoint_graph_cache_max(
+        getattr(app_config, "database", None),
+        "accessor_graph_max",
+        _STATE_ACCESSOR_GRAPH_CACHE_MAX,
+    )
+
+
+def _state_accessor_graph(agent_factory: Any, assistant_id: str | None, mode: str, snapshot_frequency: int | None, config: dict[str, Any]) -> Any:
+    app_config = (config.get("context") or {}).get("app_config")
+    key = (assistant_id, mode, snapshot_frequency)
+    cached = _state_accessor_graph_cache.get(key)
+    if cached is not None and cached[0] is agent_factory and cached[1] is app_config:
+        return cached[2]
+    if len(_state_accessor_graph_cache) >= _accessor_graph_cache_max(app_config):
+        _state_accessor_graph_cache.clear()
+    agent_result = agent_factory(config=config)
+    try:
+        from deerflow.agents.lead_agent.agent import unwrap_agent_graph
+
+        graph = unwrap_agent_graph(agent_result)
+    except Exception:
+        # A custom factory must keep working even if importing the lead
+        # assembly type fails.
+        graph = agent_result
+    _state_accessor_graph_cache[key] = (agent_factory, app_config, graph)
+    return graph
+
+
+class _RawCheckpointSnapshot:
+    """StateSnapshot-shaped view over a raw checkpoint tuple (full mode only).
+
+    ``next``/``tasks`` are not derivable without the compiled graph and
+    degrade to empty; everything the read endpoints serialize (values,
+    metadata, config ancestry, created_at) comes straight from the tuple.
+    """
+
+    __slots__ = ("checkpoint_exists", "config", "values", "metadata", "parent_config", "created_at", "tasks", "tasks_known", "next")
+
+    def __init__(self, config: dict[str, Any], tup: Any | None) -> None:
+        self.checkpoint_exists = tup is not None
+        self.config = getattr(tup, "config", None) or config
+        checkpoint = getattr(tup, "checkpoint", None) or {}
+        self.values = dict(checkpoint.get("channel_values") or {})
+        self.metadata = dict(getattr(tup, "metadata", None) or {})
+        self.parent_config = getattr(tup, "parent_config", None)
+        self.created_at = checkpoint.get("ts") or self.metadata.get("created_at", "")
+        self.tasks: tuple = ()
+        self.tasks_known = False
+        self.next: tuple = ()
+
+
+class _RawCheckpointReadAccessor:
+    """Degraded full-mode read accessor for when the agent factory is down.
+
+    Full-mode checkpoints persist complete ``channel_values``, so reads do not
+    need the compiled graph. The fail-closed delta gate still applies: delta
+    checkpoints are rejected with :class:`CheckpointModeMismatchError` instead
+    of being served as partial state. Writes are unsupported — mutation paths
+    keep using the graph-backed accessor.
+    """
+
+    def __init__(self, checkpointer: Any, mode: str) -> None:
+        self.checkpointer = checkpointer
+        self.mode = mode
+
+    @staticmethod
+    def _gate(tup: Any) -> None:
+        if checkpoint_tuple_uses_delta(tup):
+            raise CheckpointModeMismatchError("Thread requires delta mode; materialize and convert its checkpoints before using full mode.")
+
+    async def aget(self, config: dict[str, Any]) -> _RawCheckpointSnapshot:
+        tup = await self.checkpointer.aget_tuple(config)
+        self._gate(tup)
+        return _RawCheckpointSnapshot(config, tup)
+
+    async def ahistory(self, config: dict[str, Any], *, limit: int | None = None) -> list[_RawCheckpointSnapshot]:
+        if limit is not None and limit <= 0:
+            return []
+        result: list[_RawCheckpointSnapshot] = []
+        before = None
+        walk_config = config
+        if config.get("configurable", {}).get("checkpoint_id"):
+            # Pregel's get_state_history treats config.checkpoint_id as the
+            # inclusive start of the walk, while alist(before=...) is
+            # exclusive — fetch the anchor explicitly so the degraded path
+            # matches the graph path.
+            before = config
+            walk_config = {
+                **config,
+                "configurable": {k: v for k, v in config.get("configurable", {}).items() if k != "checkpoint_id"},
+            }
+            anchor = await self.checkpointer.aget_tuple(before)
+            self._gate(anchor)
+            if anchor is not None:
+                result.append(_RawCheckpointSnapshot(config, anchor))
+        if limit is None or len(result) < limit:
+            remaining = None if limit is None else limit - len(result)
+            async for tup in self.checkpointer.alist(walk_config, before=before, limit=remaining):
+                self._gate(tup)
+                result.append(_RawCheckpointSnapshot(config, tup))
+                if limit is not None and len(result) >= limit:
+                    break
+        return result
+
+
+def build_checkpoint_state_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    assistant_id: str | None = None,
+    checkpoint_id: str | None = None,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Build the mode-selected lead graph used for materialized checkpoint state."""
+    ctx = get_run_context(request)
+    config = build_run_config(thread_id, None, None, assistant_id=assistant_id)
+    configurable = config.setdefault("configurable", {})
+    configurable["checkpoint_ns"] = ""
+    if checkpoint_id is not None:
+        configurable["checkpoint_id"] = checkpoint_id
+
+    if ctx.app_config is not None:
+        config.setdefault("context", {})["app_config"] = ctx.app_config
+    inject_checkpoint_mode(config, ctx.checkpoint_channel_mode)
+
+    agent_factory = resolve_agent_factory(assistant_id)
+    try:
+        graph = _state_accessor_graph(agent_factory, assistant_id, ctx.checkpoint_channel_mode, getattr(ctx, "checkpoint_snapshot_frequency", None), config)
+    except Exception:
+        if ctx.checkpoint_channel_mode != "full":
+            # Delta materialization needs the graph's channel table; there is
+            # no degraded path. Surface the factory failure as-is.
+            raise
+        # Full-mode checkpoints carry complete channel_values: degrade to raw
+        # checkpointer reads so state endpoints survive a broken agent factory
+        # (bad model config, MCP server down, misconfigured skill).
+        logger.warning(
+            "Agent factory unavailable for thread %s; falling back to raw checkpointer reads",
+            thread_id,
+            exc_info=True,
+        )
+        return _RawCheckpointReadAccessor(ctx.checkpointer, ctx.checkpoint_channel_mode), config
+    accessor = CheckpointStateAccessor.bind(
+        graph,
+        ctx.checkpointer,
+        store=ctx.store,
+        mode=ctx.checkpoint_channel_mode,
+    )
+    return accessor, config
+
+
+async def resolve_thread_assistant_id(
+    request: Request,
+    thread_id: str,
+    *,
+    fail_closed: bool = False,
+) -> str | None:
+    """Return the assistant_id recorded in thread metadata, or ``None``.
+
+    Missing records degrade to ``None`` (the default lead agent). Store
+    failures do the same for read callers, while mutation callers set
+    ``fail_closed`` so they cannot compile a write graph with the wrong schema.
+    """
+    from app.gateway.deps import get_thread_store
+
+    try:
+        thread_store = get_thread_store(request)
+        record = await thread_store.get(thread_id)
+    except Exception:
+        logger.warning("Failed to resolve assistant_id for thread %s", thread_id, exc_info=True)
+        if fail_closed:
+            raise
+        return None
+    return record.get("assistant_id") if isinstance(record, dict) else None
+
+
+async def build_thread_checkpoint_state_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    checkpoint_id: str | None = None,
+    fail_closed: bool = False,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Single resolution boundary for state endpoints.
+
+    Thread metadata -> assistant_id -> effective assistant graph. Materializing
+    with the default lead schema would drop channels contributed by a custom
+    ``AgentMiddleware.state_schema`` from the response.
+    """
+    assistant_id = await resolve_thread_assistant_id(request, thread_id, fail_closed=fail_closed)
+    return build_checkpoint_state_accessor(
+        request,
+        thread_id=thread_id,
+        assistant_id=assistant_id,
+        checkpoint_id=checkpoint_id,
+    )
+
+
+async def build_thread_checkpoint_state_mutation_accessor(
+    request: Request,
+    *,
+    thread_id: str,
+    as_node: str,
+    checkpoint_id: str | None = None,
+) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
+    """Mutation accessor compiled with the thread's effective state schema.
+
+    Derives the schema through :func:`build_thread_checkpoint_state_accessor`
+    so writes carrying materialized state do not silently discard
+    extension-owned channels.
+    """
+    read_accessor, _read_config = await build_thread_checkpoint_state_accessor(
+        request,
+        thread_id=thread_id,
+        checkpoint_id=checkpoint_id,
+        fail_closed=True,
+    )
+    state_schema = graph_state_schema(getattr(read_accessor, "graph", None))
+    return build_checkpoint_state_mutation_accessor(
+        request,
+        thread_id=thread_id,
+        as_node=as_node,
+        checkpoint_id=checkpoint_id,
+        state_schema=state_schema,
+    )
+
+
+async def ensure_checkpoint_history_seeded(
+    request: Request,
+    *,
+    thread_id: str,
+    assistant_id: str | None,
+) -> None:
+    """Backfill an empty run-event feed from an existing checkpoint head.
+
+    No-op unless the feed is empty AND a checkpoint head with messages
+    exists — i.e. a legacy checkpoint-only thread facing its first journaled
+    run. This is a migration shim: remove it once pre-journal threads are no
+    longer a supported upgrade source. The info log on a successful seed is
+    the observability hook for that decision — when it stops appearing, the
+    shim is dead.
+    """
+    event_store = request.app.state.run_event_store
+    # The emptiness check is deliberately thread-scoped, never user-scoped:
+    # seed rows may be stamped with a different principal (NULL for ownerless
+    # seeds, or another user on a shared NULL-owner thread), so a user-scoped
+    # query would miss them and re-seed a duplicate history per principal.
+    # Passing user_id=None also opts out of AUTO resolution explicitly, which
+    # would raise when no user contextvar is set (e.g. the scheduler launch
+    # path for ownerless internal tasks).
+    if await event_store.list_messages(thread_id, limit=1, user_id=None):
+        return
+
+    checkpoint_config = {
+        "configurable": {
+            "thread_id": thread_id,
+            "checkpoint_ns": "",
+        }
+    }
+    if await get_checkpointer(request).aget_tuple(checkpoint_config) is None:
+        return
+
+    accessor, config = build_checkpoint_state_accessor(
+        request,
+        thread_id=thread_id,
+        assistant_id=assistant_id,
+    )
+    snapshot = await accessor.aget(config)
+    values = getattr(snapshot, "values", None)
+    messages = values.get("messages") if isinstance(values, dict) else None
+    if not isinstance(messages, list) or not messages:
+        return
+
+    events = build_checkpoint_history_seed_events(
+        messages,
+        thread_id=thread_id,
+        run_id_prefix=f"checkpoint-seed-{thread_id}",
+    )
+    if not events:
+        return
+    await event_store.put_batch(events)
+    logger.info("Seeded %d checkpoint-history events for thread %s", len(events), thread_id)
+
+
+# ---------------------------------------------------------------------------
+# Run lifecycle
+# ---------------------------------------------------------------------------
+
+
 async def apply_checkpoint_to_run_config(
     config: dict[str, Any],
     *,
@@ -814,6 +1135,9 @@ async def start_run(
     body: Any,
     thread_id: str,
     request: Request,
+    *,
+    idempotency_key: str | None = None,
+    require_existing_thread: bool = False,
 ) -> RunRecord:
     """Create a RunRecord and launch the background agent task.
 
@@ -826,6 +1150,9 @@ async def start_run(
         Target thread.
     request : Request
         FastAPI request — used to retrieve singletons from ``app.state``.
+    require_existing_thread : bool
+        Reject a missing thread instead of auto-creating metadata. Internal
+        notification runs use this so a deleted chat cannot be resurrected.
     """
     bridge = get_stream_bridge(request)
     run_mgr = get_run_manager(request)
@@ -864,15 +1191,30 @@ async def start_run(
     # bypassing the check -- a leaked internal token must not grant cross-user
     # thread access.
     user = getattr(request.state, "user", None)
-    if user is not None:
-        allowed = await run_ctx.thread_store.check_access(thread_id, str(user.id))
+
+    async def thread_access_allowed() -> bool:
+        if user is None:
+            if not require_existing_thread:
+                return True
+            return await run_ctx.thread_store.get(thread_id) is not None
+        allowed = await run_ctx.thread_store.check_access(
+            thread_id,
+            str(user.id),
+            require_existing=require_existing_thread,
+        )
         if not allowed and owner_user_id and getattr(user, "system_role", None) == INTERNAL_SYSTEM_ROLE:
             # Channel workers may also act for the connection owner named in
             # the trusted header (e.g. claiming a legacy default-owned channel
             # thread for its real owner).
-            allowed = await run_ctx.thread_store.check_access(thread_id, owner_user_id)
-        if not allowed:
-            raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
+            allowed = await run_ctx.thread_store.check_access(
+                thread_id,
+                owner_user_id,
+                require_existing=require_existing_thread,
+            )
+        return allowed
+
+    if not await thread_access_allowed():
+        raise HTTPException(status_code=404, detail=f"Thread {thread_id} not found")
 
     owner_context_token = set_current_user(SimpleNamespace(id=owner_user_id)) if owner_user_id else None
     try:
@@ -896,7 +1238,10 @@ async def start_run(
                     multitask_strategy=body.multitask_strategy,
                     model_name=model_name,
                     user_id=owner_user_id,
+                    idempotency_key=idempotency_key,
                 )
+                if record.idempotency_reused:
+                    return record
         except ConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except UnsupportedStrategyError as exc:
@@ -951,6 +1296,9 @@ async def start_run(
             request_context=getattr(body, "context", None),
         )
 
+        # EAI-CUSTOM (upstream-sync 2026-08-26): keep EAI's early admission +
+        # synchronous thread-meta upsert; upstream's deferred run_after_metadata
+        # worker (late admission after config build) not adopted.
         stream_modes = normalize_stream_modes(body.stream_mode)
 
         task = asyncio.create_task(
@@ -1010,7 +1358,7 @@ async def launch_scheduled_thread_run(
         input={"messages": [{"role": "user", "content": prompt}]},
         command=None,
         metadata=metadata or {},
-        config=None,
+        config={"recursion_limit": _resolve_scheduler_recursion_limit()},
         # ``user_id`` mirrors what IM channels put in ``body.context`` so
         # runtime-context consumers without a ContextVar fallback (e.g.
         # user-scoped GuardrailMiddleware providers) see the owning user;
@@ -1031,7 +1379,99 @@ async def launch_scheduled_thread_run(
         if_not_exists="reject",
         feedback_keys=None,
     )
-    record = await start_run(body, thread_id, request)
+    scheduled_task_run_id = (metadata or {}).get("scheduled_task_run_id")
+    idempotency_key = f"scheduled-task:{scheduled_task_run_id}" if isinstance(scheduled_task_run_id, str) else None
+    record = await start_run(
+        body,
+        thread_id,
+        request,
+        idempotency_key=idempotency_key,
+    )
+    return {"run_id": record.run_id, "thread_id": record.thread_id}
+
+
+def _mcp_task_notification_prompt(event: dict[str, Any]) -> str:
+    """Build the internal user turn for one immutable MCP task event snapshot."""
+    payload = frame_untrusted_text(json.dumps(event, ensure_ascii=False, sort_keys=True, separators=(",", ":"), default=str))
+    instruction = (
+        "A durable background MCP task has an update that requires the user's attention. "
+        "Explain the update clearly and concisely. Do not expose or ask for a remote task ID. "
+        "When status is input_required, show the question but explain that this MCP integration "
+        "cannot resume the remote task with user input yet. When tracking_degraded is true, explain "
+        "that DeerFlow will continue retrying at a lower frequency."
+    )
+    return f"{instruction}\n\n{payload}"
+
+
+async def launch_mcp_task_notification_run(
+    *,
+    app: Any,
+    thread_id: str,
+    assistant_id: str | None,
+    owner_user_id: str,
+    task_id: str,
+    dispatch_version: int,
+    dispatch_attempt: int,
+    event: dict[str, Any],
+) -> dict[str, Any]:
+    """Idempotently launch the Agent run that delivers one task event."""
+    request = SimpleNamespace(
+        app=app,
+        headers={INTERNAL_OWNER_USER_ID_HEADER_NAME: owner_user_id},
+        state=SimpleNamespace(user=get_internal_user(), auth_source=AUTH_SOURCE_INTERNAL),
+        cookies={},
+    )
+    body = RunCreateRequest(
+        assistant_id=assistant_id,
+        input={
+            "messages": [
+                {
+                    "role": "user",
+                    "content": _mcp_task_notification_prompt(event),
+                    "additional_kwargs": {"hide_from_ui": True},
+                }
+            ]
+        },
+        command=None,
+        metadata={
+            "mcp_task_notification": {
+                "task_id": task_id,
+                "dispatch_version": dispatch_version,
+                "dispatch_attempt": dispatch_attempt,
+            }
+        },
+        config=None,
+        context={"non_interactive": True, "user_id": owner_user_id},
+        webhook=None,
+        checkpoint_id=None,
+        checkpoint=None,
+        interrupt_before=None,
+        interrupt_after=None,
+        stream_mode=None,
+        stream_subgraphs=False,
+        stream_resumable=None,
+        on_disconnect="continue",
+        on_completion=None,
+        multitask_strategy="reject",
+        after_seconds=None,
+        if_not_exists="create",
+        feedback_keys=None,
+    )
+    idempotency_key = f"mcp-task:{task_id}:{dispatch_version}:{dispatch_attempt}"
+    try:
+        record = await start_run(
+            body,
+            thread_id,
+            request,
+            idempotency_key=idempotency_key,
+            require_existing_thread=True,
+        )
+    except HTTPException as exc:
+        if exc.status_code == 409:
+            raise ConflictError(str(exc.detail)) from exc
+        if exc.status_code == 404:
+            raise PermanentNotificationError(str(exc.detail)) from exc
+        raise
     return {"run_id": record.run_id, "thread_id": record.thread_id}
 
 
@@ -1132,95 +1572,3 @@ async def wait_for_run_completion(
         if not completed and record.status in (RunStatus.pending, RunStatus.running):
             if record.on_disconnect == DisconnectMode.cancel:
                 await run_mgr.cancel(record.run_id)
-
-
-# ---------------------------------------------------------------------------
-# EAI-CUSTOM: three functions ported verbatim from upstream bytedance/main
-# (8659fca8) to satisfy the aligned threads.py materialized-state accessor.
-# threads.py (aligned) imports build_checkpoint_state_mutation_accessor,
-# build_thread_checkpoint_state_mutation_accessor and reserve_checkpoint_write
-# from this module. The rest of services.py is left untouched to preserve the
-# local permissive normalize_stream_modes / _state_accessor_graph variants.
-# ---------------------------------------------------------------------------
-
-
-async def reserve_checkpoint_write(
-    request: Request,
-    thread_id: str,
-    *,
-    user_id: str | None = None,
-) -> AsyncIterator[None]:
-    """Serialize an out-of-run checkpoint writer against all thread operations."""
-    run_manager = get_run_manager(request)
-    async with goal_thread_lock(thread_id):
-        async with run_manager.reserve_thread_operation(
-            thread_id,
-            kind=ThreadOperationKind.checkpoint_write,
-            user_id=user_id,
-        ):
-            yield
-
-
-def build_checkpoint_state_mutation_accessor(
-    request: Request,
-    *,
-    thread_id: str,
-    as_node: str,
-    checkpoint_id: str | None = None,
-    state_schema: Any | None = None,
-) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
-    """Build a state-only graph whose writer node finishes immediately.
-
-    ``state_schema`` should be the thread's effective schema (from
-    :func:`graph_state_schema` on the assistant graph) whenever the write
-    carries materialized state; with the base-schema fallback, channels
-    contributed by custom middleware are silently discarded.
-    """
-    mode = getattr(request.app.state, "checkpoint_channel_mode", "full")
-    config: dict[str, Any] = {
-        "configurable": {
-            "thread_id": thread_id,
-            "checkpoint_ns": "",
-        }
-    }
-    if checkpoint_id is not None:
-        config["configurable"]["checkpoint_id"] = checkpoint_id
-    inject_checkpoint_mode(config, mode)
-
-    graph = build_state_mutation_graph(as_node, mode, state_schema)
-    accessor = CheckpointStateAccessor.bind(
-        graph,
-        get_checkpointer(request),
-        store=getattr(request.app.state, "store", None),
-        mode=mode,
-    )
-    return accessor, config
-
-
-async def build_thread_checkpoint_state_mutation_accessor(
-    request: Request,
-    *,
-    thread_id: str,
-    as_node: str,
-    checkpoint_id: str | None = None,
-) -> tuple[CheckpointStateAccessor, dict[str, Any]]:
-    """Mutation accessor compiled with the thread's effective state schema.
-
-    Derives the schema through :func:`build_thread_checkpoint_state_accessor`
-    so writes carrying materialized state do not silently discard
-    extension-owned channels.
-    """
-    read_accessor, _read_config = await build_thread_checkpoint_state_accessor(
-        request,
-        thread_id=thread_id,
-        checkpoint_id=checkpoint_id,
-        fail_closed=True,
-    )
-    state_schema = graph_state_schema(getattr(read_accessor, "graph", None))
-    return build_checkpoint_state_mutation_accessor(
-        request,
-        thread_id=thread_id,
-        as_node=as_node,
-        checkpoint_id=checkpoint_id,
-        state_schema=state_schema,
-    )
