@@ -223,6 +223,18 @@ class TestDataExpectationPrompt:
         assert "question" in self.content and "首张表单" in self.content  # 预告载体=首张卡片，防只说不做
 
 
+class TestUploadRequestChannel:
+    """bug-2233 页面实测：索要文件上传用普通消息收尾，不做成 ask_clarification 卡片（无文件控件）。"""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.content = _read_skill_content()
+
+    def test_upload_request_is_plain_message(self):
+        assert "索要上传" in self.content and "模态错配" in self.content
+        assert "绝不做成 ask_clarification 卡片" in self.content
+
+
 class TestDepthParadigm:
     """SKILL.md 步骤4 深度范式升级 presence（spec 2026-08-25 §6）。"""
 
