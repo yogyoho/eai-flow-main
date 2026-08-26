@@ -41,6 +41,28 @@ export interface ReimburseStatusRow {
   total_amount: string;
 }
 
+/** spq_reimburse_dept:部门 × 报销状态。 */
+export interface ReimburseDeptRow {
+  department: string;
+  reimburse_status: string;
+  cnt: number;
+  total_amount: string;
+}
+
+/** spq_employee_detail:按员工考勤四态 + 差旅金额。 */
+export interface EmployeeDetailRow {
+  employee_id: string;
+  name: string;
+  department: string;
+  status: string;
+  present_days: number;
+  trip_days: number;
+  leave_days: number;
+  absent_days: number;
+  attendance_rate: string;
+  travel_amount: string;
+}
+
 /** mock_employee 明细行(直接 SELECT,列固定)。 */
 export interface EmployeeRow {
   employee_id: string;

@@ -23,6 +23,10 @@ from app.extensions.knowledge import kb_router as knowledge_router
 from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
 from app.extensions.law import router as law_router
 from app.extensions.license.routers import router as license_router
+
+# EAI-CUSTOM: ontology(统一语义层)——纯只读投影(registry YAML + 通用引擎),无自有表;
+# router 供语义地图/管理查询(/api/extensions/ontology/*), admin-gated(system:access)。
+from app.extensions.ontology.routers import router as ontology_router
 from app.extensions.output.routers import router as output_router
 from app.extensions.project import router as project_router
 from app.extensions.role.routers import router as role_router
@@ -910,6 +914,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Spare-parts price analysis management API (/api/extensions/spare-parts/*)  [EAI-CUSTOM]
     app.include_router(spare_parts_router)
+
+    # Ontology semantic layer read API (/api/extensions/ontology/*)  [EAI-CUSTOM]
+    app.include_router(ontology_router)
 
     # Settings API is mounted at /api/extensions
     app.include_router(settings_router)

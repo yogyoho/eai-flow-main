@@ -15,6 +15,6 @@ export const MODULE_LABELS: Record<string, string> = {
   contract_price: "合同价格分析",
   spare_parts: "备品备件价格分析",
   bid_quote: "投标报价分析",
-  biz_pipeline: "管线查询",
+  biz_pipeline: "市场经营分析",
   sales_personnel: "销售人员",
 };

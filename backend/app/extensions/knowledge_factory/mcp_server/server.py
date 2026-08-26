@@ -189,6 +189,42 @@ TOOLS = [
             "required": ["chapter_content"],
         },
     ),
+    Tool(
+        name="kf_search_knowledge",
+        description=(
+            "本地知识库全文检索（RAGFlow 向量+关键词混合）——查标准/规范/法规/行业标准的首选工具，"
+            "优先于 web_search。凡用户提到 标准编号（GB/DZ/HG/DL/TB…）、规范、法规、行业标准、"
+            "历史报告、样例报告、项目资料、合同条款，必须先用本工具检索本地知识库，"
+            "本地无命中或需要最新官方发布信息时才改用 web_search。"
+            "默认检索所有已同步知识库，可用 kb_name 模糊过滤。"
+            "返回命中文档块（所属知识库/文档名/相似度/原文内容）。"
+            "注意：本地知识库文档没有网页 URL，引用时禁止编造链接（如 knowledge-factory.internal 等），"
+            "来源只写 知识库名 + 文档名（可加相似度），不带 url 字段。"
+            "检索不到时换关键词重试或降低 similarity_threshold。"
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "检索问题或关键词（必填）",
+                },
+                "kb_name": {
+                    "type": "string",
+                    "description": "知识库名称模糊过滤；不填 = 检索全部知识库",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "返回块数上限，默认 5",
+                },
+                "similarity_threshold": {
+                    "type": "number",
+                    "description": "相似度阈值，默认 0.2；命中过少时可降低",
+                },
+            },
+            "required": ["query"],
+        },
+    ),
 ]
 
 
@@ -233,6 +269,12 @@ async def _handle_check_compliance(arguments: dict) -> list[TextContent]:
     return await handle_kf_check_compliance(arguments, _run_in_db)
 
 
+async def _handle_search_knowledge(arguments: dict) -> list[TextContent]:
+    from app.extensions.knowledge_factory.mcp_server.tools.search_tools import handle_kf_search_knowledge
+
+    return await handle_kf_search_knowledge(arguments, _run_in_db)
+
+
 # ── Server setup ──
 
 server = Server("knowledge-factory")
@@ -252,6 +294,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         "kf_list_domains": _handle_list_domains,
         "kf_check_compliance": _handle_check_compliance,
         "kf_extract_template": _handle_extract_template,
+        "kf_search_knowledge": _handle_search_knowledge,
     }
     handler = handlers.get(name)
     if not handler:

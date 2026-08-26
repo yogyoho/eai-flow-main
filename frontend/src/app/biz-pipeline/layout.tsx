@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 // EAI-CUSTOM: 子路由映射到子页面权限点(/api/permissions/me 的 pages),供 canPage 过滤
 const navItems = [
-  { href: "/biz-pipeline", label: "管线仪表盘", icon: LayoutDashboard, exact: true, pageId: "bpp:page:dashboard" },
+  { href: "/biz-pipeline", label: "经营仪表盘", icon: LayoutDashboard, exact: true, pageId: "bpp:page:dashboard" },
   { href: "/biz-pipeline/query", label: "数据查询", icon: Search, pageId: "bpp:page:query" },
 ];
 
@@ -24,7 +24,7 @@ function BizPipelineLayoutContent({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-full flex-col bg-background">
       <header className="flex h-16 shrink-0 items-center border-b border-border bg-background px-6">
-        <span className="mr-8 text-lg font-bold tracking-tight text-foreground">管线查询</span>
+        <span className="mr-8 text-lg font-bold tracking-tight text-foreground">市场经营分析</span>
         <nav className="flex h-full items-center gap-6 text-sm font-medium text-muted-foreground">
           {visibleItems.map(({ href, label, icon: Icon, exact }) => {
             const isActive = exact ? pathname === href : pathname.startsWith(href);

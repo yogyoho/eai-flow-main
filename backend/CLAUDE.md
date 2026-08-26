@@ -670,3 +670,4 @@ See `docs/` directory for detailed documentation:
 - [PATH_EXAMPLES.md](docs/PATH_EXAMPLES.md) - Path types and usage
 - [summarization.md](docs/summarization.md) - Context summarization
 - [plan_mode_usage.md](docs/plan_mode_usage.md) - Plan mode with TodoList
+- [OBSERVABILITY.md](docs/OBSERVABILITY.md) - Agent 执行监控与调试手册（§13 = 自然语言诊断：ops-diagnosis 技能 + MCP 工具，EAI-CUSTOM）

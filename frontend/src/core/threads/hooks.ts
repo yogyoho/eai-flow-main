@@ -2213,6 +2213,11 @@ export function useThreadStream({
             // subagent's values/messages into the thread view (#4399).
             streamResumable: true,
             config: {
+              // EAI-CUSTOM (bug-2189→bug-2203): 曾压到 300 提前暴露失忆循环;
+              // bug-2203 复测推翻——中间件链使每轮工具往返消耗 12 superstep
+              // (标准 react agent 仅 2), 长管线技能(如 bid-proposal extract)
+              // 一轮合法需 ~840-1200 step, 300 连正常任务一并熔断。失控循环
+              // 改由 loop_detection 单独拦; 1000 = gateway clamp ceiling。
               recursion_limit: 1000,
             },
             context: {
@@ -2335,6 +2340,9 @@ export function useThreadStream({
           // No streamSubgraphs — same contract as the main submit path (#4399).
           streamResumable: true,
           config: {
+            // EAI-CUSTOM (bug-2189→bug-2203): keep in sync with the main submit
+            // path's 1000 — see the rationale there (12 supersteps/tool-round;
+            // runaway loops are loop_detection's job, not this ceiling's).
             recursion_limit: 1000,
           },
           context: {

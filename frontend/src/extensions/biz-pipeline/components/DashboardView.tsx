@@ -160,7 +160,7 @@ export function DashboardView() {
         <div className="flex items-center gap-3">
           <GitCommitHorizontal className="h-5 w-5" style={{ color: BLUE }} />
           <h1 className="text-[22px] font-bold" style={{ color: INK }}>
-            管线战情总览
+            市场经营总览
           </h1>
         </div>
         <Button variant="outline" size="sm" onClick={refresh} disabled={funnelQ.isFetching}>
@@ -170,7 +170,7 @@ export function DashboardView() {
       </div>
 
       {/* ── ① 转化怎么样? ─────────────────────────────── */}
-      <SectionCard badge="①" title="转化怎么样?" sub="管线漏斗 · 投标 → 中标 → 合同 → 开票,金额逐级沉淀">
+      <SectionCard badge="①" title="转化怎么样?" sub="金额漏斗 · 投标 → 中标 → 合同 → 开票,金额逐级沉淀">
         {/* KPI 行(注脚=可从数据算出的口径) */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <StatCard label="投标总数" value={f?.bid_count ?? "—"} delta={f && year ? `${year} 年度 · ${f.bid_count} 个项目` : undefined} />

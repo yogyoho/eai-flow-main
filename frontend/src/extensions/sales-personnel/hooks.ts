@@ -12,9 +12,11 @@ import { queryDataset, querySql, resolveDatasetId, resolveSourceId } from "./api
 import type {
   AttendanceSummaryRow,
   DeptTravelRow,
+  EmployeeDetailRow,
   EmployeeRow,
   HrKpiRow,
   QueryResult,
+  ReimburseDeptRow,
   ReimburseStatusRow,
 } from "./types";
 
@@ -24,6 +26,8 @@ export const KEYS = {
   travel: ["spq", "travel"] as const,
   reimburse: ["spq", "reimburse"] as const,
   employees: ["spq", "employees"] as const,
+  detail: ["spq", "detail"] as const,
+  reimburseDept: ["spq", "reimburse-dept"] as const,
   drilldown: (sql: string) => ["spq", "drilldown", sql] as const,
 };
 
@@ -44,6 +48,8 @@ export const useHrKpi = () => useDatasetQuery<HrKpiRow>(KEYS.kpi, "HR总览");
 export const useAttendanceSummary = () => useDatasetQuery<AttendanceSummaryRow>(KEYS.attendance, "考勤汇总");
 export const useDeptTravel = () => useDatasetQuery<DeptTravelRow>(KEYS.travel, "部门差旅");
 export const useReimburseStatus = () => useDatasetQuery<ReimburseStatusRow>(KEYS.reimburse, "报销状态构成");
+export const useEmployeeDetail = () => useDatasetQuery<EmployeeDetailRow>(KEYS.detail, "员工明细");
+export const useReimburseDept = () => useDatasetQuery<ReimburseDeptRow>(KEYS.reimburseDept, "报销状态×部门");
 
 /** 员工明细:全量 mock_employee,下钻来源。 */
 export function useEmployeeList(enabled = true) {

@@ -98,6 +98,7 @@ markers = [
     "allow_blocking_io: opt out of the strict Blockbuster gate in tests/blocking_io/",
     "integration: tests that require an external service (e.g. Redis); skipped when unavailable",
     "live: tests that call real external APIs and require explicit opt-in",
+    "state_guard_strict: skip the lenient unsigned-state fixture patch in test_bid_proposal_scripts.py (verify real no-meta injection semantics)",
 ]
 
 [tool.uv]

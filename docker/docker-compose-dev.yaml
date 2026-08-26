@@ -396,6 +396,11 @@ services:
     working_dir: /app/backend
     environment:
       - KF_DATABASE_URL=postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow
+      # EAI-CUSTOM (bug-2195): kf_search_knowledge 工具需要访问 RAGFlow
+      # （覆盖 .env 里的 localhost 地址；API key 经 env_file 注入）
+      - RAGFLOW_BASE_URL=http://ragflow:9380
+    env_file:
+      - ../.env
     networks:
       - eai-flow-net
     restart: unless-stopped

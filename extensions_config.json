@@ -146,7 +146,33 @@
       "url": "http://knowledge-factory:8765/mcp",
       "headers": {},
       "oauth": null,
-      "description": "Knowledge factory template resolution and domain listing tools for report generation (HTTP long-lived process — no cold-start race)"
+      "description": "Knowledge factory template resolution and domain listing tools for report generation (HTTP long-lived process — no cold-start race)",
+      "routing": {
+        "mode": "prefer",
+        "priority": 80,
+        "keywords": [
+          "标准",
+          "规范",
+          "法规",
+          "行业标准",
+          "国标",
+          "知识库",
+          "检索",
+          "GB",
+          "GB/T",
+          "DZ",
+          "DZ/T",
+          "HG",
+          "HG/T",
+          "DL",
+          "TB",
+          "报告样例",
+          "历史报告",
+          "项目资料",
+          "合同条款",
+          "地质矿产"
+        ]
+      }
     },
     "word-document-server": {
       "enabled": false,
@@ -203,6 +229,21 @@
       "headers": {},
       "oauth": null,
       "description": "示例工具(演示接线): 演示插件→MCP 接线:启用后 Agent 获得 demo_greet 工具。"
+    },
+    "ops-diagnosis": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.ops_diagnosis.mcp"
+      ],
+      "env": {},
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Ops diagnosis read-only tools (thread run inventory + run event stream) over the harness runs/run_events tables. TRUST BOUNDARY v1: stdio session carries no caller identity — enabled servers let any agent read any user's thread events. Intranet admin/ops deployments only."
     }
   },
   "skills": {
@@ -270,6 +311,9 @@
       "enabled": true
     },
     "bid-proposal-writing": {
+      "enabled": true
+    },
+    "local-knowledge-first": {
       "enabled": true
     }
   }

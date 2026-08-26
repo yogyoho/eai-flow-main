@@ -1569,8 +1569,8 @@ async def seed_db() -> None:
                     },
                     {
                         "app_id": "biz-pipeline",
-                        "name": "管线查询",
-                        "desc": "投标/合同/开票管线漏斗与对账",
+                        "name": "市场经营分析",
+                        "desc": "投标→中标→合同→开票经营漏斗与对账",
                         "icon": "workflow",
                         "domain": "marketing",
                         "stage": "analysis",
@@ -1578,7 +1578,7 @@ async def seed_db() -> None:
                         "license": "biz_pipeline",
                         "admin": False,
                         "sort": 13,
-                        "sort_key": "guanxianchaxun",
+                        "sort_key": "shichangjingyingfenxi",
                     },
                     {
                         "app_id": "sales-personnel",

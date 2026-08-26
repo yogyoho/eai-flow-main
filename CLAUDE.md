@@ -201,6 +201,7 @@ cd frontend && BETTER_AUTH_SECRET=... pnpm build
 - **Architecture deep-dive**: `backend/docs/ARCHITECTURE.md`
 - **MCP setup**: `backend/docs/MCP_SERVER.md`
 - **Streaming design**: `backend/docs/STREAMING.md`
+- **Observability / debugging manual**: `backend/docs/OBSERVABILITY.md`
 
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph

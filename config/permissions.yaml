@@ -188,15 +188,15 @@ modules:
       - { id: "bqa_dept", display_name: "本部门投标", rule_template: { dept_id IN: "$identity.dept_ids" } }
 
   biz_pipeline:
-    display_name: "管线查询"
+    display_name: "市场经营分析"
     nav_id: "nav:biz-pipeline"
     pages:
       - id: "bpp:page:dashboard"
-        display_name: "管线仪表盘"
+        display_name: "经营仪表盘"
       - id: "bpp:page:query"
         display_name: "数据查询"
     data_scopes:
-      - { id: "bpp_all", display_name: "全部管线数据", rule_template: {} }
+      - { id: "bpp_all", display_name: "全部经营数据", rule_template: {} }
 
   sales_personnel:
     display_name: "销售人员"
@@ -208,6 +208,15 @@ modules:
         display_name: "数据查询"
     data_scopes:
       - { id: "spq_all", display_name: "全部人员数据", rule_template: {} }
+
+  # ─── Ontology 统一语义层（平台原语；REST admin-gated，语义地图前端页为独立后续计划）───
+  ontology:
+    display_name: "语义地图"
+    nav_id: "nav:ontology"
+    pages:
+      - id: "ontology:page:map"
+        display_name: "语义地图"
+    data_scopes: []
 
   # ─── 报告输出（应用中心 → 报告输出）───
   output:

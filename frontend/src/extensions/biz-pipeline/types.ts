@@ -1,5 +1,5 @@
 /**
- * 管线查询(biz-pipeline)类型 —— 对齐 data_source 罐装 dataset 列。
+ * 市场经营分析(biz-pipeline)类型 —— 对齐 data_source 罐装 dataset 列。
  * Decimal/numeric 经 JSON 序列化为 string。
  */
 
