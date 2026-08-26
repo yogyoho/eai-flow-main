@@ -220,6 +220,7 @@ class TestDataExpectationPrompt:
         assert "开题首动作" in self.content
         assert "只说不做" in self.content
         assert "口头声称" in self.content
+        assert "question" in self.content and "首张表单" in self.content  # 预告载体=首张卡片，防只说不做
 
 
 class TestDepthParadigm:
