@@ -95,6 +95,13 @@ fi
 
 # EAI-CUSTOM: exclude runtime projection dir (.deer-flow/skills_view rebuilds
 # hundreds of files every boot → triggers WatchFiles reload death-loop → nginx 502).
+# NOTE (bug-1239): the exclude MUST be a bare directory name, NOT '.deer-flow/**'.
+# uvicorn's FileFilter does `Path(pattern).is_dir()` — a literal '**' is never a
+# dir, so the pattern falls into path.match(), where '**' is NOT recursive
+# (right-anchored, single-component) and deep projection files don't match.
+# A real dir name goes into exclude_dirs → is_relative_to() → truly recursive.
+# Same for .venv (named volume inside the watched tree; uv sync rewrites it).
 PYTHONPATH=. exec uv run --no-sync uvicorn app.gateway.app:app \
     --host 0.0.0.0 --port 8001 \
-    --reload --reload-exclude='.deer-flow/**' --reload-include='*.yaml .env'
+    --reload --reload-exclude='.deer-flow' --reload-exclude='.venv' \
+    --reload-include='*.yaml .env'
