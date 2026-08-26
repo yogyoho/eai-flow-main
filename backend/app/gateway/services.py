@@ -50,19 +50,26 @@ from deerflow.runtime import (
     RunRecord,
     RunStatus,
     StreamBridge,
+    StreamGap,
     ThreadOperationKind,
     UnsupportedStrategyError,
     build_state_mutation_graph,
     run_agent,
 )
-from deerflow.runtime.checkpoint_mode import CheckpointModeMismatchError, checkpoint_tuple_uses_delta, inject_checkpoint_mode
+from deerflow.runtime.checkpoint_mode import INTERNAL_CHECKPOINT_MODE_KEY, CheckpointModeMismatchError, checkpoint_tuple_uses_delta, inject_checkpoint_mode
 from deerflow.runtime.checkpoint_state import CheckpointStateAccessor, graph_state_schema
 from deerflow.runtime.goal import goal_thread_lock
 from deerflow.runtime.journal import build_checkpoint_history_seed_events
 from deerflow.runtime.runs.naming import resolve_root_run_name
-from deerflow.runtime.secret_context import redact_config_secrets
+from deerflow.runtime.secret_context import (
+    LegacyRunMetadataSecretError,
+    redact_config_secrets,
+    validate_run_metadata_secrets,
+)
+from deerflow.runtime.stream_modes import normalize_stream_modes  # EAI-CUSTOM (upstream-sync 2026-08-26): upstream moved this to the harness module with strict validation; re-export keeps router/test imports stable
 from deerflow.runtime.user_context import reset_current_user, set_current_user
 from deerflow.utils.messages import ORIGINAL_USER_CONTENT_KEY
+from deerflow.utils.thread_id import validate_thread_id
 
 logger = logging.getLogger(__name__)
 
@@ -203,18 +210,6 @@ async def _terminal_record_stream_missing(bridge: StreamBridge, record: RunRecor
 # ---------------------------------------------------------------------------
 
 
-def normalize_stream_modes(raw: list[str] | str | None) -> list[str]:
-    """Normalize the stream_mode parameter to a list.
-
-    Default matches what ``useStream`` expects: values + messages-tuple.
-    """
-    if raw is None:
-        return ["values"]
-    if isinstance(raw, str):
-        return [raw]
-    return raw if raw else ["values"]
-
-
 def _strip_external_message_metadata(message: Any) -> Any:
     """Remove server-owned metadata from an untrusted input message."""
     if not isinstance(message, BaseMessage):
@@ -347,7 +342,18 @@ _CONTEXT_INTERNAL_CALLER_KEYS: frozenset[str] = frozenset({"non_interactive"})
 #   ``is_internal``       — derived from ``request.state.auth_source``
 #   ``authz_attributes`` — Phase 1A has no Gateway-side producer; always cleared.
 #   ``channel_user_id``  — accepted only from trusted internal ``body.context``.
-_SERVER_OWNED_AUTHZ_CONTEXT_KEYS: frozenset[str] = frozenset({"is_internal", "authz_attributes", "channel_user_id"})
+# EAI-CUSTOM (upstream-sync 2026-08-26): upstream added langgraph_auth_user /
+# langgraph_auth_user_id to the server-owned set (forged-identity hardening);
+# adopt the full upstream key set.
+_SERVER_OWNED_AUTHZ_CONTEXT_KEYS: frozenset[str] = frozenset(
+    {
+        "is_internal",
+        "authz_attributes",
+        "channel_user_id",
+        "langgraph_auth_user",
+        "langgraph_auth_user_id",
+    }
+)
 
 # Keys forwarded from ``body.context`` into ``config['context']`` ONLY (the
 # runtime context that becomes ``ToolRuntime.context`` / ``runtime.context``),
@@ -678,6 +684,7 @@ def build_run_config(
         else:
             configurable = {"thread_id": thread_id}
             configurable.update(request_config.get("configurable") or {})
+            configurable["thread_id"] = thread_id
             config["configurable"] = configurable
         for k, v in request_config.items():
             if k not in ("configurable", "context"):
@@ -720,6 +727,11 @@ def build_run_config(
         if isinstance(runtime_context, dict):
             runtime_context["agent_name"] = effective_agent_name
         config.setdefault("run_name", resolve_root_run_name(config, normalized))
+    for section in ("configurable", "context"):
+        external_values = config.get(section)
+        if isinstance(external_values, dict):
+            external_values.pop(INTERNAL_CHECKPOINT_MODE_KEY, None)
+
     if metadata:
         config.setdefault("metadata", {}).update(metadata)
     return config
@@ -1154,6 +1166,19 @@ async def start_run(
         Reject a missing thread instead of auto-creating metadata. Internal
         notification runs use this so a deleted chat cannot be resurrected.
     """
+    try:
+        validate_thread_id(thread_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    body_config = getattr(body, "config", None)
+    config_metadata = body_config.get("metadata") if isinstance(body_config, dict) else None
+    try:
+        validate_run_metadata_secrets(getattr(body, "metadata", None))
+        validate_run_metadata_secrets(config_metadata)
+    except LegacyRunMetadataSecretError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     bridge = get_stream_bridge(request)
     run_mgr = get_run_manager(request)
     run_ctx = get_run_context(request)
@@ -1350,10 +1375,7 @@ async def launch_scheduled_thread_run(
             ),
             cookies={},
         )
-    # SimpleNamespace stands in for the Pydantic run-request body that the
-    # HTTP path parses. If start_run gains a new body.* attribute that it reads
-    # directly, add the matching field here so the scheduler path stays in sync.
-    body = SimpleNamespace(
+    body = RunCreateRequest(
         assistant_id=assistant_id,
         input={"messages": [{"role": "user", "content": prompt}]},
         command=None,
@@ -1373,10 +1395,10 @@ async def launch_scheduled_thread_run(
         stream_subgraphs=False,
         stream_resumable=None,
         on_disconnect="continue",
-        on_completion="keep",
+        on_completion=None,
         multitask_strategy="reject",
         after_seconds=None,
-        if_not_exists="reject",
+        if_not_exists="create",
         feedback_keys=None,
     )
     scheduled_task_run_id = (metadata or {}).get("scheduled_task_run_id")
@@ -1492,6 +1514,24 @@ async def sse_consumer(
         yield format_sse("end", None)
         return
 
+    # EAI-CUSTOM (bug-2204) START
+    # The bridge kicks subscribers whose cursor fell behind the retained window by
+    # yielding a StreamGap sentinel (stream_bridge/base.py contract: the client
+    # reloads durable state and resumes at the current tail). Upstream sse_consumer
+    # treated that sentinel as a regular StreamEvent, so format_sse(entry.event, ...)
+    # crashed with AttributeError("'StreamGap' object has no attribute 'event'"):
+    # the SSE response aborted without an error frame AND the finally block below
+    # cancelled the still-running run. A gap exit must instead emit the documented
+    # `gap` SSE event and stop streaming WITHOUT cancelling — the client is still
+    # connected and is expected to reconnect (Last-Event-ID -> gap -> tail resume).
+    # Regression note: an earlier build of this repo already had this handling
+    # (tests/test_gateway_services.py::test_sse_consumer_emits_gap_without_cancelling_run
+    # is the in-repo spec) and it was lost in the 2026-08-15 upstream merge —
+    # bug-2204 restores it. If bytedance/main later teaches sse_consumer about
+    # StreamGap, drop this block in favour of the upstream handling.
+    gap_exit = False
+    # EAI-CUSTOM (bug-2204) END
+
     try:
         async for entry in bridge.subscribe(record.run_id, last_event_id=last_event_id):
             if await request.is_disconnected():
@@ -1508,6 +1548,23 @@ async def sse_consumer(
                 yield format_sse("end", None, event_id=entry.id or None)
                 return
 
+            # EAI-CUSTOM (bug-2204) START
+            if isinstance(entry, StreamGap):
+                gap_exit = True
+                yield format_sse(
+                    "gap",
+                    {
+                        "code": "stream_replay_gap",
+                        "run_id": record.run_id,
+                        "requested_event_id": entry.requested_event_id,
+                        "earliest_available_event_id": entry.earliest_available_event_id,
+                        "latest_available_event_id": entry.latest_available_event_id,
+                        "recovery": "reload_durable_state",
+                    },
+                )
+                return
+            # EAI-CUSTOM (bug-2204) END
+
             yield format_sse(entry.event, entry.data, event_id=entry.id or None)
 
     finally:
@@ -1515,7 +1572,10 @@ async def sse_consumer(
         # worker holds no in-memory task/abort state for them, so run_mgr.cancel()
         # cannot stop the task (it would 409). Skip on_disconnect cancellation for
         # those and only act on runs this worker actually owns.
-        if not record.store_only and record.status in (RunStatus.pending, RunStatus.running):
+        # EAI-CUSTOM (bug-2204): a StreamGap exit is not a client disconnect — skip
+        # the on_disconnect cancellation so the run survives for the client's
+        # tail-resume reconnect.
+        if not gap_exit and not record.store_only and record.status in (RunStatus.pending, RunStatus.running):
             if record.on_disconnect == DisconnectMode.cancel:
                 await run_mgr.cancel(record.run_id)
 

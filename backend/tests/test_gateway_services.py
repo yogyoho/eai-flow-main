@@ -1304,6 +1304,13 @@ def test_apply_checkpoint_to_run_config_rejects_missing_checkpoint():
 
 
 @pytest.mark.asyncio
+# EAI-CUSTOM (upstream-sync 2026-08-26): encodes upstream's late-admission
+# contract (RunRecord deferred until after checkpoint/config preparation +
+# background run_after_metadata worker). EAI keeps early admission with a
+# synchronous thread-meta upsert (deliberate divergence), so these
+# upstream-semantics tests do not apply. Drop the skips if EAI ever adopts
+# upstream's deferred admission.
+@pytest.mark.skip(reason="upstream late-admission semantics not adopted (EAI-CUSTOM early admission)")
 async def test_start_run_checkpoint_validation_failure_does_not_admit_run(_stub_app_config):
     from unittest.mock import patch
 
@@ -1332,6 +1339,13 @@ async def test_start_run_checkpoint_validation_failure_does_not_admit_run(_stub_
 
 
 @pytest.mark.asyncio
+# EAI-CUSTOM (upstream-sync 2026-08-26): encodes upstream's late-admission
+# contract (RunRecord deferred until after checkpoint/config preparation +
+# background run_after_metadata worker). EAI keeps early admission with a
+# synchronous thread-meta upsert (deliberate divergence), so these
+# upstream-semantics tests do not apply. Drop the skips if EAI ever adopts
+# upstream's deferred admission.
+@pytest.mark.skip(reason="upstream late-admission semantics not adopted (EAI-CUSTOM early admission)")
 async def test_pending_cancel_bypasses_thread_metadata_and_logs_failure(_stub_app_config, caplog):
     from unittest.mock import AsyncMock, patch
 
@@ -1377,6 +1391,13 @@ async def test_pending_cancel_bypasses_thread_metadata_and_logs_failure(_stub_ap
 
 
 @pytest.mark.asyncio
+# EAI-CUSTOM (upstream-sync 2026-08-26): encodes upstream's late-admission
+# contract (RunRecord deferred until after checkpoint/config preparation +
+# background run_after_metadata worker). EAI keeps early admission with a
+# synchronous thread-meta upsert (deliberate divergence), so these
+# upstream-semantics tests do not apply. Drop the skips if EAI ever adopts
+# upstream's deferred admission.
+@pytest.mark.skip(reason="upstream late-admission semantics not adopted (EAI-CUSTOM early admission)")
 async def test_thread_metadata_timeout_logs_and_run_still_starts(_stub_app_config, caplog, monkeypatch):
     from unittest.mock import AsyncMock, patch
 
@@ -2598,6 +2619,13 @@ def test_start_run_strict_mode_rejects_missing_thread(_stub_app_config):
     asyncio.run(_scenario())
 
 
+# EAI-CUSTOM (upstream-sync 2026-08-26): encodes upstream's late-admission
+# contract (RunRecord deferred until after checkpoint/config preparation +
+# background run_after_metadata worker). EAI keeps early admission with a
+# synchronous thread-meta upsert (deliberate divergence), so these
+# upstream-semantics tests do not apply. Drop the skips if EAI ever adopts
+# upstream's deferred admission.
+@pytest.mark.skip(reason="upstream late-admission semantics not adopted (EAI-CUSTOM early admission)")
 def test_start_run_strict_mode_rechecks_thread_after_checkpoint_preparation(_stub_app_config):
     import asyncio
     from types import SimpleNamespace
