@@ -82,6 +82,14 @@ export function GatewayOfflineBanner({
       if (action.type === "apply-user") {
         authFailuresRef.current = 0;
         applyUser(action.user);
+        // EAI-CUSTOM (bug-2235): this banner with gatewayUnavailable=true only
+        // mounts inside the SSR "gateway_unavailable" branches of the workspace
+        // and (auth) layouts, where the server already REPLACED the real page
+        // with static error markup. Hiding the banner is not enough — no client
+        // state can restore those children, and a soft nav reuses the mounted
+        // layout segment so the error page sticks forever. Only a full reload
+        // re-executes the force-dynamic layout, so hard-reload on recovery.
+        window.location.reload();
         return;
       }
       if (action.type === "delegate-refresh") {

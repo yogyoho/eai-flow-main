@@ -129,3 +129,37 @@ describe("GatewayOfflineBanner logout recovery (#3001)", () => {
     expect(logoutCall.method).not.toBe("GET");
   });
 });
+
+describe("GatewayOfflineBanner recovery reload (bug-2235)", () => {
+  it("hard-reloads the page once the probe confirms the gateway recovered", async () => {
+    // A healthy /auth/me response with a parseable user body — classifyProbe
+    // yields "ok" and decideProbeAction returns apply-user.
+    rs.spyOn(globalThis, "fetch").mockImplementation(
+      (_input: RequestInfo | URL) =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              id: "u1",
+              email: "admin@eai-flow.com",
+              system_role: "admin",
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          ),
+        ),
+    );
+    // happy-dom exposes reload as a plain method, so a spy can intercept it
+    // (jsdom makes it non-configurable; if this env ever follows suit, swap
+    // for an Object.defineProperty stub).
+    const reload = rs
+      .spyOn(window.location, "reload")
+      .mockImplementation(rs.fn());
+
+    renderBanner();
+
+    // Without the reload, applyUser only hides the banner — the SSR error
+    // branch's static children stay on screen forever (the original bug).
+    await waitFor(() => {
+      expect(reload).toHaveBeenCalledTimes(1);
+    });
+  });
+});
