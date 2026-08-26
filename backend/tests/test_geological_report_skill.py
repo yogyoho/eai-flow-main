@@ -215,6 +215,12 @@ class TestDataExpectationPrompt:
         assert "数据预告" in self.content
         assert "data_expectations.json" in self.content
 
+    def test_first_turn_atomic_actions(self):
+        """bug-2231 页面实测：开题三件套（KF 真实调用→兜底声明→数据预告用户可见）一轮做完、不可只说不做。"""
+        assert "开题首动作" in self.content
+        assert "只说不做" in self.content
+        assert "口头声称" in self.content
+
 
 class TestDepthParadigm:
     """SKILL.md 步骤4 深度范式升级 presence（spec 2026-08-25 §6）。"""
