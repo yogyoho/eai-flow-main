@@ -122,7 +122,19 @@ class RAGFlowClient:
             # successful empty list for an inaccessible ID, allowing callers to
             # classify only that result as a missing binding while preserving all
             # real API errors.
-            payload = await self._request("GET", "/datasets", params={"ids": dataset_id})
+            # EAI-CUSTOM (ragflow compat, 2026-08-26): START — the deployed
+            # eai-flow-ragflow build predates the `ids` filter and rejects it
+            # with code 101 "Extra inputs are not permitted"; fall back to the
+            # singular `id` filter those builds accept. Upgrade note: when the
+            # deployment is upgraded to a build that supports `ids`, this
+            # fallback becomes dead code and can be dropped (upstream semantics
+            # above remain the preferred path). END
+            try:
+                payload = await self._request("GET", "/datasets", params={"ids": dataset_id})
+            except RAGFlowAPIError as exc:
+                if exc.code != 101 or "Extra inputs are not permitted" not in str(exc):
+                    raise
+                payload = await self._request("GET", "/datasets", params={"id": dataset_id})
             data = payload.get("data")
             if not isinstance(data, list):
                 raise RAGFlowProtocolError("RAGFlow returned an invalid dataset list.")

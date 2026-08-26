@@ -745,6 +745,7 @@ tool_groups:
   - name: file:write
   - name: bash
   - name: browser
+  - name: knowledge
 
 # ============================================================================
 # Tools Configuration
@@ -760,6 +761,31 @@ tools:
     # backend: auto          # DDGS backend(s): auto, duckduckgo, brave, wikipedia, etc.
     # region: wt-wt          # wt-wt is normalized for Wikipedia when backend includes auto/all/wikipedia.
     # safesearch: moderate   # on, moderate, off
+
+  # RAGFlow read-only knowledge retrieval (upstream #4955, enabled 2026-08-26).
+  # base_url must NOT include /api/v1 — the client appends it.
+  # `datasets` allowlist: 合同知识库 (a8e8f3dc…, embedding-3@ZHIPU-AI) is EXCLUDED —
+  # its external embedding API is out of balance (429) and would fail every
+  # tenant-wide search. Re-add its id (or delete the `datasets` block) after
+  # topping up ZHIPU credits.
+  - name: knowledge_search
+    group: knowledge
+    use: deerflow.community.ragflow.tools:knowledge_search_tool
+    base_url: http://ragflow:9380   # RAGFlow service on the eai-flow-net compose network
+    api_key: $RAGFLOW_API_KEY       # tenant key, injected via root .env (compose env_file)
+    datasets:
+      - eaad624e9f5b11f1bba511abe0ebdcc5   # 固体矿产报告知识库
+      - 807c7cae720411f19b24fd8a014d76ac   # 煤矿作业规程知识库
+      - baa221ae661011f1ad61e1631bd6f152   # 煤炭环评报告样例库
+      - 20380e8a4f7711f19eef173e60d87254   # ragflow-laws-standards
+      - cffe1716488c11f1a2395d58df8d166d   # 消防报告样例库
+    timeout: 30
+    page_size: 8
+    similarity_threshold: 0.2
+    vector_similarity_weight: 0.3
+    top_k: 256
+    max_chars_per_chunk: 800
+    max_total_chars: 8000
 
   # Web search tool (uses SearXNG, self-hosted, no API key required)
   # SearXNG is a free internet metasearch engine which aggregates results from
