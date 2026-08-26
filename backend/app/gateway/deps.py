@@ -525,10 +525,27 @@ async def get_current_user_from_request(request: Request):
 
     Raises HTTPException 401 if not authenticated.
     """
+    # EAI-CUSTOM (upstream-sync 2026-08-26): state-first short-circuit adopted from
+    # upstream — when AuthMiddleware already resolved a trusted user onto
+    # request.state (session/auth-disabled/internal source), return it instead of
+    # re-decoding the cookie. Also keeps cookie-less request fakes (upstream tests)
+    # working when they carry state.user.
+    state = getattr(request, "state", None)
+    state_user = getattr(state, "user", None)
+    if state_user is not None:
+        from app.gateway.auth_disabled import AUTH_SOURCE_AUTH_DISABLED, AUTH_SOURCE_INTERNAL, AUTH_SOURCE_SESSION
+
+        if getattr(state, "auth_source", None) in {
+            AUTH_SOURCE_SESSION,
+            AUTH_SOURCE_AUTH_DISABLED,
+            AUTH_SOURCE_INTERNAL,
+        }:
+            return state_user
+
     from app.gateway.auth import decode_token
     from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse, TokenError, token_error_to_code
 
-    access_token = request.cookies.get("access_token")
+    access_token = getattr(getattr(request, "cookies", None), "get", lambda _k: None)("access_token")
     if not access_token:
         raise HTTPException(
             status_code=401,

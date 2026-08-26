@@ -1,6 +1,7 @@
 """Tests for RunManager."""
 
 import asyncio
+import itertools
 import logging
 import re
 import sqlite3
@@ -616,8 +617,14 @@ async def test_cancel_not_inflight(manager: RunManager):
 
 
 @pytest.mark.anyio
-async def test_list_by_thread(manager: RunManager):
+async def test_list_by_thread(manager: RunManager, monkeypatch: pytest.MonkeyPatch):
     """Same thread should return multiple runs."""
+    # EAI-CUSTOM (2026-08-26): Windows datetime.now() granularity can tie r1/r2
+    # timestamps within one clock tick; ties keep insertion order (see the
+    # tie-stability test below), which would flip this newest-first assertion.
+    # Force strictly increasing timestamps so ordering is deterministic.
+    _tick = itertools.count()
+    monkeypatch.setattr("deerflow.runtime.runs.manager._now_iso", lambda: f"2026-01-01T00:00:{next(_tick):06d}+00:00")
     r1 = await manager.create("thread-1")
     r2 = await manager.create("thread-1")
     await manager.create("thread-2")

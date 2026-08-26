@@ -23,6 +23,7 @@ from app.channels.message_bus import (
     OutboundMessage,
     ResolvedAttachment,
 )
+from app.channels.run_policy import CHANNEL_RUN_POLICY, ChannelRunPolicy
 from app.channels.store import ChannelStore
 from app.gateway.csrf_middleware import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, generate_csrf_token
 from app.gateway.internal_auth import create_internal_auth_headers
@@ -598,6 +599,25 @@ def _format_uploaded_files_block(files: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
+def _thread_channel_metadata(msg: InboundMessage) -> dict[str, Any]:
+    # EAI-CUSTOM (upstream-sync 2026-08-26): graft of upstream's thread
+    # provenance metadata — lets thread listings show which IM channel a
+    # thread originated from. Verbatim from bytedance/main.
+    channel_source: dict[str, Any] = {
+        "type": "im_channel",
+        "provider": msg.channel_name,
+        "chat_id": msg.chat_id,
+    }
+    if msg.topic_id:
+        channel_source["topic_id"] = msg.topic_id
+    if msg.thread_ts:
+        channel_source["thread_ts"] = msg.thread_ts
+    if msg.connection_id:
+        channel_source["connection_id"] = msg.connection_id
+
+    return {"channel_source": channel_source}
+
+
 class ChannelManager:
     """Core dispatcher that bridges IM channels to the DeerFlow agent.
 
@@ -903,11 +923,72 @@ class ChannelManager:
 
     async def _create_thread(self, client, msg: InboundMessage) -> str:
         """Create a new thread on the LangGraph Server and store the mapping."""
-        thread = await client.threads.create()
+        # EAI-CUSTOM (upstream-sync 2026-08-26): graft of upstream's preferred
+        # deterministic thread id — GitHub webhook channels pin (repo, PR/issue
+        # number) to one LangGraph thread via metadata["preferred_thread_id"],
+        # with ConflictError race recovery (two deliveries for the same issue
+        # within ms). Owner routing differs from upstream: EAI resolves the
+        # owner into the client (see _get_client), so there is no per-request
+        # owner header here.
+        meta = msg.metadata if isinstance(msg.metadata, dict) else {}
+        preferred_thread_id = meta.get("preferred_thread_id")
+        create_kwargs: dict[str, Any] = {"metadata": _thread_channel_metadata(msg)}
+        if isinstance(preferred_thread_id, str) and preferred_thread_id:
+            create_kwargs["thread_id"] = preferred_thread_id
+        try:
+            thread = await client.threads.create(**create_kwargs)
+        except ConflictError:
+            if not (isinstance(preferred_thread_id, str) and preferred_thread_id):
+                # Without a preferred id we cannot deterministically recover.
+                raise
+            # Verify the racing writer's thread actually exists before caching
+            # the mapping — otherwise a non-conflict failure could poison the
+            # store and every later delivery would 404 forever.
+            try:
+                await client.threads.get(preferred_thread_id)
+            except Exception as verify_exc:
+                logger.warning(
+                    "[Manager] threads.create raced on preferred_thread_id=%s but follow-up threads.get failed (%s); not caching the mapping",
+                    preferred_thread_id,
+                    verify_exc.__class__.__name__,
+                )
+                raise
+            logger.info("[Manager] threads.create raced on preferred_thread_id=%s; reusing the deterministic id", preferred_thread_id)
+            await self._store_thread_id(msg, preferred_thread_id)
+            return preferred_thread_id
         thread_id = thread["thread_id"]
         await self._store_thread_id(msg, thread_id)
         logger.info("[Manager] new thread created on LangGraph Server: thread_id=%s for chat_id=%s topic_id=%s", thread_id, msg.chat_id, msg.topic_id)
         return thread_id
+
+    async def _apply_channel_policy(self, msg: InboundMessage, run_context: dict[str, Any]) -> ChannelRunPolicy | None:
+        """Apply per-channel run policy that needs ``run_context`` access.
+
+        EAI-CUSTOM (upstream-sync 2026-08-26): graft, verbatim logic, from
+        bytedance/main. Run AFTER ``_resolve_run_params`` and BEFORE the agent
+        runs. Covers ``disable_clarification`` for non-interactive channels
+        (ClarificationMiddleware would dead-end a webhook run waiting for a
+        reply that only arrives as a later webhook delivery) and
+        channel-specific credentials providers (e.g. GitHub installation
+        token minting). Returns the resolved policy for caller branching.
+        """
+        policy = CHANNEL_RUN_POLICY.get(msg.channel_name)
+        if policy is None:
+            return None
+        if not policy.is_interactive:
+            run_context["disable_clarification"] = True
+        if policy.credentials_provider is not None:
+            try:
+                await policy.credentials_provider(msg, run_context)
+            except Exception:
+                # Credential failures must NOT drop the delivery — keep the
+                # run going (read-only is better than no response).
+                logger.warning(
+                    "[Manager] channel=%s credentials_provider raised; run proceeds without injected credentials",
+                    msg.channel_name,
+                    exc_info=True,
+                )
+        return policy
 
     async def _handle_chat(self, msg: InboundMessage, extra_context: dict[str, Any] | None = None) -> None:
         client = self._get_client(self._resolve_owner_user_id(msg))
@@ -937,6 +1018,11 @@ class ChannelManager:
             thread_id = await self._create_thread(client, msg)
 
         assistant_id, run_config, run_context = self._resolve_run_params(msg, thread_id)
+
+        # EAI-CUSTOM (upstream-sync 2026-08-26): apply per-channel run policy
+        # (non-interactive channels get disable_clarification; GitHub gets its
+        # token-mint credentials provider) before the agent runs.
+        await self._apply_channel_policy(msg, run_context)
 
         # If the inbound message contains file attachments, let the channel
         # materialize (download) them and update msg.text to include sandbox file paths.

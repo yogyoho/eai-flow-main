@@ -31,10 +31,15 @@ from app.gateway.checkpoint_lineage import (
     find_checkpoint_before_message_chronologically,
 )
 from app.gateway.context_usage import build_context_usage
-from app.gateway.deps import get_checkpointer, get_current_user, get_feedback_repo, get_run_event_store, get_run_manager, get_run_store, get_stream_bridge
+from app.gateway.deps import get_current_user, get_feedback_repo, get_run_event_store, get_run_manager, get_run_store, get_stream_bridge
 from app.gateway.pagination import trim_run_message_page
 from app.gateway.run_models import RunCreateRequest
-from app.gateway.services import build_thread_checkpoint_state_accessor, sse_consumer, start_run, wait_for_run_completion
+
+# EAI-CUSTOM (upstream-sync 2026-08-26): build_checkpoint_state_accessor restored
+# from upstream — an old EAI recovery commit (a5ec93888) dropped it in favor of an
+# inline checkpointer read; upstream (and test_thread_regenerate_prepare) expect
+# the accessor path, which honors checkpoint-mode/DeltaChannel state materialization.
+from app.gateway.services import build_checkpoint_state_accessor, build_thread_checkpoint_state_accessor, sse_consumer, start_run, wait_for_run_completion
 from app.gateway.utils import sanitize_log_param
 from deerflow.agents.middlewares.dynamic_context_middleware import strip_injected_user_message_id_suffix
 from deerflow.runtime import CancelOutcome, RunRecord, RunStatus, serialize_channel_values_for_api
@@ -913,14 +918,19 @@ async def wait_run(thread_id: str, body: RunCreateRequest, request: Request) -> 
         completed = await wait_for_run_completion(bridge, record, request, run_mgr)
 
     if completed:
-        checkpointer = get_checkpointer(request)
-        config = {"configurable": {"thread_id": thread_id}}
+        # EAI-CUSTOM (upstream-sync 2026-08-26): use the shared accessor instead of a
+        # raw checkpointer.aget_tuple read — matches upstream and respects
+        # checkpoint-mode selection (restored; see import note above).
         try:
-            checkpoint_tuple = await checkpointer.aget_tuple(config)
-            if checkpoint_tuple is not None:
-                checkpoint = getattr(checkpoint_tuple, "checkpoint", {}) or {}
-                channel_values = checkpoint.get("channel_values", {})
-                return serialize_channel_values_for_api(channel_values)
+            accessor, config = build_checkpoint_state_accessor(
+                request,
+                thread_id=thread_id,
+                assistant_id=body.assistant_id,
+            )
+            snapshot = await accessor.aget(config)
+            snapshot_config = snapshot.config or {}
+            if snapshot_config.get("configurable", {}).get("checkpoint_id"):
+                return serialize_channel_values_for_api(snapshot.values)
         except Exception:
             logger.exception("Failed to fetch final state for run %s", record.run_id)
 
