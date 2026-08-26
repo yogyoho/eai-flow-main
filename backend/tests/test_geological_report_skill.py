@@ -57,6 +57,12 @@ class TestFrontmatter:
         desc = str(_extract_frontmatter(_read_skill_content()).get("description", ""))
         assert "DZ/T 0033" in desc and "GB/T 13908" in desc
 
+    def test_frontmatter_description_trigger_keywords(self):
+        """bug-2234：description 是 system prompt 里唯一触发匹配面，须前置场景触发词+禁自创表单指令。"""
+        desc = str(_extract_frontmatter(_read_skill_content()).get("description", ""))
+        for kw in ("固体矿产地质勘查报告", "储量核实", "普查/详查/勘探", "不得即兴自创问卷"):
+            assert kw in desc, kw
+
     def test_frontmatter_license(self):
         assert _extract_frontmatter(_read_skill_content()).get("license") is not None
 

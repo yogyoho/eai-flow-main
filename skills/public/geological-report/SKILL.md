@@ -1,10 +1,11 @@
 ---
 name: geological-report
 description: >
-  固体矿产地质勘查报告制作技能 v2 — 基于 DZ/T 0033-2020、GB/T 13908-2020。
-  表单收集→公式冻结（Decimal ROUND_HALF_EVEN）→槽位注入两波生成→原子组装→
-  四类一致性合约（22条）→SHA-256 快照。数字永不经过 LLM：正文只写 {{SLOT:key}}，
-  由 build_output 从 formula_state.json 注入。勘探阶段做深，普查/详查轻量迁移。
+  固体矿产地质勘查报告编写技能。触发匹配（bug-2234）：凡用户要求编写/编制/生成/撰写
+  固体矿产地质勘查报告、地质勘查报告、矿产勘查报告、资源量储量核实报告——不限矿种
+  （金属/非金属/煤等）、不限阶段（普查/详查/勘探）、不限地区——必须立即加载本技能并
+  严格按其流程执行，不得即兴自创问卷、表单或输出格式。依据 DZ/T 0033-2020、
+  GB/T 13908-2020；数字永不经过 LLM，正文只写 {{SLOT:key}} 由脚本注入。
 license: MIT
 # NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill
 # makes skills/tool_policy.py treat it as a GLOBAL agent-wide whitelist (union across all
