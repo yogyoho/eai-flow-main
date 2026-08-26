@@ -123,6 +123,13 @@ class TestV2PipelineSections:
         """KF resolve 优先；found=false 须向用户声明 references/ 兜底。"""
         assert "kf_resolve_template" in self.content and "found=false" in self.content
 
+    def test_knowledge_search_wiring(self):
+        """knowledge_search（harness RAGFlow 检索）为范文参照主通道；红线不随工具接入放宽。"""
+        assert "knowledge_search" in self.content and "ragflow-laws-standards" in self.content
+        window = self.content[self.content.index("knowledge_search") : self.content.index("knowledge_search") + 600]
+        assert "矿名/地名" in window, "检索红线必须随工具接入同步在场"
+        assert "standards_index" in window, "规范引用仍只从 standards_index 枚举"
+
     def test_anomalies_must_be_surfaced(self):
         assert "anomalies" in self.content and "呈现用户" in self.content
 
