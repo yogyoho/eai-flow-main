@@ -28,7 +28,7 @@ description: |
 
 2. **必须先 execute，后生成。** 步骤2 的 `formula_runner.py execute` 必须是第一个计算动作并产出 STATE_READY；在它成功之前，**不得写任何报告内容或生成器代码**。execute 失败则按步骤2「失败处理」排查重试，**绝不绕过自算**。
 
-3. **禁止"整篇文档生成器"脚本。** 不得编写一个循环拼装全报告的 `.py`（如 `gen_report.py`）。table 章直接读 `traces.json` 在上下文内渲染为 Markdown（每式 = 摘要行 + `<details>` 折叠块）；narrative 章走 `task()` 子 agent。报告最终内容由 agent 在上下文内组装，一次 `write_file` 落盘（见步骤5）。渲染需要少量 helper 代码时，必须 `read_file` 读 `formula_state.json`/`traces.json` 取值，不得重算。
+3. **禁止"整篇文档生成器"脚本。** 不得编写一个循环拼装全报告的 `.py`（如 `gen_report.py`）。table 章的逐公式块由 `render_calc_blocks.py inject` 从 `traces.json` 注入（见步骤4，唯一例外：它只渲染公式片段、不拼装全报告）；narrative 章走 `task()` 子 agent。报告最终内容由 agent 在上下文内组装，一次 `write_file` 落盘（见步骤5）。渲染需要少量 helper 代码时，必须 `read_file` 读 `formula_state.json`/`traces.json` 取值，不得重算。
 
 4. **禁止分块 `write_file` 拼接。** 全程只允许两类写盘：① 步骤2 的单个 `params.json` heredoc；② 步骤5 的单次报告 `write_file(append=false)`。不得用多次 `append` 拼长脚本或长文档——这会丢自身结构、制造重复段、且每次 append 都是一次工具调用，直接吃掉耗时预算。
 
@@ -300,7 +300,11 @@ knowledge-factory_kf_resolve_template(
 
 **输入:** 步骤1 参数 + 步骤2 公式结果 + 步骤2 的 `traces.json`（冻结快照）+ 步骤3 模板
 **架构（计算与生成分离，Approach A）:**
-- **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。每公式渲染为「摘要行 + `<details><summary>计算过程</summary>` 折叠块（公式来源/取值依据/代入分步/结果）」。
+- **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。计算过程块必须脚本注入不得手写（历史：R4/R5/R6 三轮实测 agent 手写从不产 `<details>` 折叠；R6 即便生成了片段也不逐字粘贴——6K 字符复制对 LLM 不可靠）：
+  1. `write_file` 报告时计算章的逐公式块位置只写一个占位符 `<!-- CALC_BLOCKS -->`（章标题/叙述文字正常手写，逐公式 `### [节号] 名称` + `$$公式=代入=结果$$` + `<details>` 折叠块全部由脚本产出）；
+  2. 落盘后立刻注入：`python $SCRIPTS/render_calc_blocks.py inject --traces $WORK/traces.json --report $OUT/报告.md   # CALC_INJECT_READY`
+  3. 注入后自检：`grep -c '<details>' 报告.md` 必须 ≥ 公式数（12），为 0 即 inject 未执行。
+  ⛔ 禁止手写 KaTeX 公式块/计算过程折叠块替代脚本注入。
 - **narrative 章** = 并行子 agent 生成（`task()` 工具）。每个子 agent prompt 注入**同一份冻结快照**（`traces.json` 的数值 + 该章 `generation_hint`/`content_contract`/`compliance_rules`），只返回该章 Markdown。按 `chapter_manifest` 顺序合并。
 
 **核心不变量：** 所有数值在步骤2 固化进 `traces.json`；所有生成单元只读该快照——并行不引入跨章数值漂移。
@@ -352,6 +356,25 @@ knowledge-factory_kf_resolve_template(
   ```
   $$Q_e = Q \times K_{ZF} \times \Delta t = 20000 \times 0.001461 \times 10 = 292.20\ \text{m}^3/\text{h}$$
   ```
+
+**计算章逐公式块的目标形态**（由 `render_calc_blocks.py inject` 注入：`$$公式+结果$$` 正文可见、计算过程折叠——2026-08-28 用户样例）：
+
+```
+### [9.1.1] 旁滤处理水量
+
+$$Q_{sf} = Q \times sf_{ratio} = 20000 \times 0.05 = 1000\ \text{m}^3/\text{h}$$
+
+<details><summary>计算过程</summary>
+
+- 公式：$Q_{sf} = Q \times sf_{ratio}$
+- 取值：Q = 20000 m³/h；旁滤比 sf_ratio = 5%【待核实】
+- 代入：$20000 \times 0.05$
+- 结果：**1000 m³/h**
+
+</details>
+```
+
+取值行的【待核实】来自 `traces.json` 的 `needs_verification`（参考值库参数）。计算章手写的叙述、⚠️ 合规提示照常写在公式块之间；逐公式块本身交给脚本，禁止手写。
 
 **LaTeX 数学格式规范：**
 - 变量使用下标：`Q_e`, `Q_w`, `Q_b`, `Q_m`, `K_{ZF}`, `\Delta t`

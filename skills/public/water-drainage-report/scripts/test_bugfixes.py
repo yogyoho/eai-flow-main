@@ -94,8 +94,94 @@ def test_skill_text_guards() -> None:
         "同一文件的读/写禁止并行 tool_call",
         "params.json 文件必须真实落盘",
         "直改正典文件本体",
+        "render_calc_blocks.py",
+        "禁止手写 KaTeX 公式块/计算过程折叠块替代脚本注入",
+        "<!-- CALC_BLOCKS -->",
     ]:
         assert needle in text, f"SKILL.md 缺铁律文本: {needle}"
+
+
+def test_render_calc_blocks_details() -> None:
+    """反馈3 用户样例格式：$$公式+结果$$ 可见 + <details> 紧凑过程（公式/取值/代入/结果 bullets）。"""
+    traces = {"traces": [
+        {
+            "id": "Qe", "name": "蒸发水量", "section": "6.1.1",
+            "expression": "Q * KZF * delta_t", "source": "蒸发损失系数",
+            "substituted": "16000 * 0.001461 * 9", "result": 210.38400000000001, "unit": "m3/h",
+            "inputs": [
+                {"name": "Q", "value": 16000, "unit": "m3/h", "source": "循环水设计水量", "needs_verification": False},
+                {"name": "KZF", "value": 0.001461, "unit": "1/℃", "source": "参考值库", "needs_verification": True},
+            ],
+        },
+        {
+            "id": "filter_count", "name": "过滤器台数", "section": "9.1.2",
+            "expression": "math.ceil(Qsf / filter_unit_capacity)", "source": "",
+            "substituted": "math.ceil(800 / 45)", "result": 18.0, "unit": "台",
+            "inputs": [
+                {"name": "Qsf", "value": 800.0, "unit": "", "source": "formula:Qsf.Qsf", "needs_verification": False},
+                {"name": "filter_unit_capacity", "value": 45, "unit": "m3/h", "source": "单台过滤器处理能力", "needs_verification": False},
+            ],
+        },
+    ]}
+    with tempfile.TemporaryDirectory() as d:
+        tp = Path(d) / "traces.json"
+        tp.write_text(json.dumps(traces, ensure_ascii=False), encoding="utf-8")
+        out = Path(d) / "calc_blocks.md"
+        r = subprocess.run(
+            [sys.executable, str(SP / "render_calc_blocks.py"), "--traces", str(tp), "--output", str(out)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "CALCBLOCKS_READY: 2" in r.stdout, r.stdout
+        text = out.read_text(encoding="utf-8")
+        for needle in [
+            "### [6.1.1] 蒸发水量",
+            # $$ 可见公式块：符号=表达式=代入=结果+latex单位；浮点收敛 210.38400000000001→210.384
+            "$$Q_{e} = Q \\times KZF \\times \\Delta t = 16000 \\times 0.001461 \\times 9 = 210.384\\ \\text{m}^3/\\text{h}$$",
+            "<details><summary>计算过程</summary>",
+            "- 公式：$Q_{e} = Q \\times KZF \\times \\Delta t$",
+            "- 取值：Q = 16000 m³/h；KZF = 0.001461 1/℃【待核实】",
+            "- 代入：$16000 \\times 0.001461 \\times 9$",
+            "- 结果：**210.384 m³/h**",
+            # ceil → \lceil \frac \rceil；上游公式输出参数标注来源
+            "### [9.1.2] 过滤器台数",
+            "\\lceil \\frac{Qsf}{filter\\_unit\\_capacity} \\rceil",
+            "\\lceil \\frac{800}{45} \\rceil = 18\\ \\text{台}$$",
+            "Qsf = 800（由 [Qsf] 求得）",
+            "- 结果：**18 台**",
+            "</details>",
+        ]:
+            assert needle in text, f"calc_blocks 缺: {needle}"
+
+
+def test_render_calc_blocks_inject() -> None:
+    """反馈3 注入：占位符 <!-- CALC_BLOCKS --> 被替换为公式折叠块；缺占位符报 CALC_INJECT_ERROR 且文件不动。"""
+    traces = {"traces": [{
+        "id": "Qe", "name": "蒸发水量", "expression": "Q * KZF * delta_t", "source": "蒸发损失系数",
+        "substituted": "16000 * 0.001461 * 9", "result": 210.384, "unit": "m3/h", "inputs": [],
+    }]}
+    with tempfile.TemporaryDirectory() as d:
+        tp = Path(d) / "traces.json"
+        tp.write_text(json.dumps(traces, ensure_ascii=False), encoding="utf-8")
+        rp = Path(d) / "report.md"
+        rp.write_text("# 报告\n\n## 第5章 工艺计算\n\n<!-- CALC_BLOCKS -->\n", encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "CALC_INJECT_READY: 1" in r.stdout, r.stdout
+        injected = rp.read_text(encoding="utf-8")
+        assert injected.count("<details>") == 1 and "<!-- CALC_BLOCKS -->" not in injected
+
+        rp.write_text("# 报告（无占位符）\n", encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 1
+        assert "CALC_INJECT_ERROR" in r.stdout
+        assert "<details>" not in rp.read_text(encoding="utf-8"), "缺占位符时不得改动报告"
 
 
 def test_impacted_must_run_before_update() -> None:
@@ -151,4 +237,6 @@ if __name__ == "__main__":
     test_impacted_must_run_before_update()
     test_snapshot_warns_on_missing_params()
     test_skill_text_guards()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫")
+    test_render_calc_blocks_details()
+    test_render_calc_blocks_inject()
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（用户样例格式）+注入")
