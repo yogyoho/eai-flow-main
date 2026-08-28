@@ -94,8 +94,42 @@ def test_skill_text_guards() -> None:
         "同一文件的读/写禁止并行 tool_call",
         "params.json 文件必须真实落盘",
         "直改正典文件本体",
+        "render_calc_blocks.py",
+        "禁止手写全展开 KaTeX 计算过程块",
     ]:
         assert needle in text, f"SKILL.md 缺铁律文本: {needle}"
+
+
+def test_render_calc_blocks_details() -> None:
+    """反馈3 折叠形态：render_calc_blocks.py 必须产出 <details> 折叠块（摘要行+取值依据+代入分步）。"""
+    traces = {"traces": [{
+        "id": "Qe", "name": "蒸发水量", "section": "6.1.1",
+        "expression": "Q * KZF * delta_t", "source": "蒸发损失系数（GB/T 50746 附录）",
+        "substituted": "16000 * 0.001461 * 9", "result": 210.38400000000001, "unit": "m3/h",
+        "inputs": [
+            {"name": "Q", "value": 16000, "unit": "m3/h", "source": "循环水设计水量", "needs_verification": False},
+            {"name": "KZF", "value": 0.001461, "unit": "1/℃", "source": "参考值库", "needs_verification": True},
+        ],
+    }]}
+    with tempfile.TemporaryDirectory() as d:
+        tp = Path(d) / "traces.json"
+        tp.write_text(json.dumps(traces, ensure_ascii=False), encoding="utf-8")
+        out = Path(d) / "calc_blocks.md"
+        r = subprocess.run(
+            [sys.executable, str(SP / "render_calc_blocks.py"), "--traces", str(tp), "--output", str(out)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "CALCBLOCKS_READY: 1" in r.stdout, r.stdout
+        text = out.read_text(encoding="utf-8")
+        for needle in [
+            "<details>", "<summary>", "</details>",
+            "**蒸发水量（Qe）= 210.384 m3/h**",  # 摘要行（float 收敛去尾零）
+            "| Q | 16000 | m3/h | 循环水设计水量 | — |",
+            "| KZF | 0.001461 | 1/℃ | 参考值库 | ✅ 待核实 |",
+            "16000 * 0.001461 * 9",  # 代入分步
+        ]:
+            assert needle in text, f"calc_blocks 缺: {needle}"
 
 
 def test_impacted_must_run_before_update() -> None:
@@ -151,4 +185,5 @@ if __name__ == "__main__":
     test_impacted_must_run_before_update()
     test_snapshot_warns_on_missing_params()
     test_skill_text_guards()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫")
+    test_render_calc_blocks_details()
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 折叠块渲染")
