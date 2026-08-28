@@ -36,6 +36,9 @@ import sys
 from pathlib import Path
 
 MARKER = "<!-- CALC_BLOCKS -->"
+# 注入签名：snapshot.py save 据此校验"公式块确实由脚本注入"（R8 实测 agent 手写 12 块
+# 且跳过 inject——文本铁律压不住 flash 模型，快照门禁是 agent 必经的强制点）。
+SIGNATURE = "<!-- CALC_BLOCKS_INJECTED:v1 -->"
 
 # 输出符号（公式左侧）pretty 化映射；未列出的 id 按下划线转下标处理
 SYMBOL = {
@@ -139,7 +142,7 @@ def render(traces: list) -> str:
             "</details>",
             "",
         ]))
-    return "\n".join(blocks)
+    return "\n".join(blocks) + SIGNATURE + "\n"
 
 
 def cmd_inject(args: argparse.Namespace) -> int:
@@ -147,6 +150,10 @@ def cmd_inject(args: argparse.Namespace) -> int:
     report = Path(args.report)
     text = report.read_text(encoding="utf-8")
     if MARKER not in text:
+        if SIGNATURE in text:
+            # 幂等：已注入过（agent 重试 / 二次 inject 不炸、不重复注入）
+            print(f"CALC_INJECT_SKIP: 公式块已注入（含 {SIGNATURE}），跳过")
+            return 0
         print(f"CALC_INJECT_ERROR: 报告未含占位符 {MARKER}（计算章须以占位符占位，再 inject 注入）")
         return 1
     data = json.loads(Path(args.traces).read_text(encoding="utf-8"))

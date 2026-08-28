@@ -155,7 +155,8 @@ def test_render_calc_blocks_details() -> None:
 
 
 def test_render_calc_blocks_inject() -> None:
-    """反馈3 注入：占位符 <!-- CALC_BLOCKS --> 被替换为公式折叠块；缺占位符报 CALC_INJECT_ERROR 且文件不动。"""
+    """反馈3 注入：占位符 <!-- CALC_BLOCKS --> 被替换为公式折叠块；缺占位符报 CALC_INJECT_ERROR 且文件不动；
+    已注入（含签名）重跑 → CALC_INJECT_SKIP 幂等。"""
     traces = {"traces": [{
         "id": "Qe", "name": "蒸发水量", "expression": "Q * KZF * delta_t", "source": "蒸发损失系数",
         "substituted": "16000 * 0.001461 * 9", "result": 210.384, "unit": "m3/h", "inputs": [],
@@ -173,8 +174,18 @@ def test_render_calc_blocks_inject() -> None:
         assert "CALC_INJECT_READY: 1" in r.stdout, r.stdout
         injected = rp.read_text(encoding="utf-8")
         assert injected.count("<details>") == 1 and "<!-- CALC_BLOCKS -->" not in injected
+        assert "<!-- CALC_BLOCKS_INJECTED:v1 -->" in injected, "注入后必须落签名（快照门禁依据）"
 
-        rp.write_text("# 报告（无占位符）\n", encoding="utf-8")
+        # 幂等：已注入报告重跑 inject → SKIP 不重复注入
+        r = subprocess.run(
+            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "CALC_INJECT_SKIP" in r.stdout, r.stdout
+        assert rp.read_text(encoding="utf-8").count("<details>") == 1, "SKIP 不得重复注入"
+
+        rp.write_text("# 报告（无占位符无签名）\n", encoding="utf-8")
         r = subprocess.run(
             [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
             capture_output=True, text=True,
@@ -182,6 +193,51 @@ def test_render_calc_blocks_inject() -> None:
         assert r.returncode == 1
         assert "CALC_INJECT_ERROR" in r.stdout
         assert "<details>" not in rp.read_text(encoding="utf-8"), "缺占位符时不得改动报告"
+
+
+def test_snapshot_gate_calc_blocks() -> None:
+    """R8 快照门禁：save --report 校验注入契约——占位符残留 / 无签名手写 <details> → SNAPSHOT_ERROR；
+    已注入（含签名）→ 正常 SNAPSHOT_READY。"""
+    snap_out = {"task": "t", "report": None}  # placeholder, real args below
+    with tempfile.TemporaryDirectory() as d:
+        d = Path(d)
+        traces = {"traces": [{"id": "Qe", "name": "蒸发水量", "expression": "Q * KZF", "substituted": "1 * 2",
+                              "result": 2, "unit": "m3/h", "inputs": []}]}
+        tp = d / "traces.json"
+        tp.write_text(json.dumps(traces, ensure_ascii=False), encoding="utf-8")
+        rp = d / "report.md"
+        out = d / "project_snapshot.json"
+
+        def save() -> subprocess.CompletedProcess:
+            return subprocess.run(
+                [sys.executable, str(SP / "snapshot.py"), "save", "--task", "t",
+                 "--report", str(rp), "--output", str(out)],
+                capture_output=True, text=True,
+            )
+
+        # ① 占位符未注入 → 拒绝
+        rp.write_text("# 报告\n\n<!-- CALC_BLOCKS -->\n", encoding="utf-8")
+        r = save()
+        assert r.returncode == 1 and "SNAPSHOT_ERROR" in r.stdout, r.stdout
+        assert "CALC_BLOCKS" in r.stdout, r.stdout
+        assert not out.exists(), "门禁打回时不得写快照"
+
+        # ② 手写 <details> 无签名 → 拒绝（R8 实测形态）
+        rp.write_text("# 报告\n\n<details><summary>计算过程</summary>\n- 公式：$x$\n</details>\n", encoding="utf-8")
+        r = save()
+        assert r.returncode == 1 and "SNAPSHOT_ERROR" in r.stdout, r.stdout
+        assert "手写" in r.stdout, r.stdout
+        assert not out.exists()
+
+        # ③ 走正道：占位符 → inject → save 通过
+        rp.write_text("# 报告\n\n<!-- CALC_BLOCKS -->\n", encoding="utf-8")
+        subprocess.run(
+            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
+            capture_output=True, text=True, check=True,
+        )
+        r = save()
+        assert r.returncode == 0 and "SNAPSHOT_READY" in r.stdout, r.stdout
+        assert out.exists()
 
 
 def test_impacted_must_run_before_update() -> None:
@@ -239,4 +295,5 @@ if __name__ == "__main__":
     test_skill_text_guards()
     test_render_calc_blocks_details()
     test_render_calc_blocks_inject()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（用户样例格式）+注入")
+    test_snapshot_gate_calc_blocks()
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（用户样例格式）+注入+幂等 / R8 快照门禁")

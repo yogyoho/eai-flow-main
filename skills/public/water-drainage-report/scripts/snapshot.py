@@ -68,6 +68,21 @@ def cmd_save(args: argparse.Namespace) -> int:
     if out.name != "project_snapshot.json":
         print(f"SNAPSHOT_ERROR: 快照必须写入正典文件 project_snapshot.json，收到: {out.name}（bug-2198 守卫）")
         return 1
+
+    # R8 守卫（快照门禁）：agent 手写公式折叠块 + 跳过 inject（文本铁律压不住 flash 模型）。
+    # save 是交付前必经步骤，在这里把「未注入」打回，agent 才会回头走占位符+inject 正道。
+    if args.report:
+        rp = Path(args.report)
+        if rp.exists():
+            rtext = rp.read_text(encoding="utf-8")
+            _MARKER = "<!-- CALC_BLOCKS -->"
+            _SIGNATURE = "<!-- CALC_BLOCKS_INJECTED:v1 -->"  # 与 render_calc_blocks.py SIGNATURE 同步
+            if _MARKER in rtext:
+                print(f"SNAPSHOT_ERROR: 报告仍含未注入占位符 {_MARKER}——先运行 render_calc_blocks.py inject 再 save（R8 守卫）")
+                return 1
+            if "<details>" in rtext and _SIGNATURE not in rtext:
+                print(f"SNAPSHOT_ERROR: 报告含手写 <details> 计算过程块但缺脚本注入签名 {_SIGNATURE}——禁止手写公式块；删除手写块，改回占位符后运行 render_calc_blocks.py inject（R8 守卫）")
+                return 1
     prev = _load_existing(out)
     prev_version = prev.get("version", 0) or 0
     try:
