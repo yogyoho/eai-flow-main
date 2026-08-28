@@ -1620,6 +1620,9 @@ sandbox:
 
 # EAI-CUSTOM: 石化设计院公用工程室定制子代理（给排水/消防/暖通/管道专篇）
 subagents:
+  # EAI-CUSTOM: geological-report 步骤4 控制器全扇出需 10 初派+重派余量（默认 6 不够；clamp [1,50]，
+  # per-run 热加载——改完下一条消息生效）。设计: docs/superpowers/specs/2026-08-28-geo-skill-controller-design.md §5.6
+  max_total_per_run: 16
   custom_agents:
     petrochem-utilities-agent:
       description: 石化设计院公用工程室AI助手 — 管理给排水、消防、暖通、管道设计专篇编写。消防用已有skill，给排水用多轮交互模式（参数确认→公式计算→章节生成→一致性校验→合规检查）。
