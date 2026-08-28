@@ -102,7 +102,7 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 | 「一次修一章跑一轮 build」 | 单章门 `--chapter N` 即时验；终验一次报齐 |
 | 「摘要里说这章写完了」 | 只信 state/chapters/*.md + progress.json，不信对话记忆 |
 
-**Red Flags**：发现自己在编辑 references/、自造 depth_targets、想跳过单章门直跑终验、重派同一章第 3 次 → STOP，回协商表单。
+**Red Flags**：发现自己在编辑 references/、自造 depth_targets、想跳过单章门直跑终验、重派同一章第 3 次、想自己 confirm 要点包解锁 ch10 → STOP，回协商表单。
 
 **4.0 初始化**：`progress.py init --stage S --state-dir T --data-dir D`（progress.json 全 PENDING；已存在=续跑，直接 `progress.py next`）。此后每轮动作由 `progress.py next` 决定——它输出**恰好一个**下一步（动作+精确命令+期望 rc），照做，不自创顺序、不跳步。
 
@@ -111,17 +111,21 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 ```
 角色：第 N 章撰写者，只产出这一章
 自读输入（沙箱路径，不贴全文）：
-  state/formula_state.json（槽位词汇表——正文数值只写 {{SLOT:key}}）
+  /mnt/user-data/workspace/geo-report/state/formula_state.json（槽位词汇表——正文数值只写 {{SLOT:key}}）
   /mnt/skills/public/geological-report/references/chapter_craft.md（写作工艺，必读）
   /mnt/skills/public/geological-report/references/samples/exploration/chN_sample.md（同章范文）
   /mnt/skills/public/geological-report/references/depth_targets.json（该章深度目标）
+  /mnt/skills/public/geological-report/references/stages/<S>.json（该章 sections 要素链——逐要素成段的依据）
   本章切片（title + toc，直接贴）
-输出契约：直写 state/chapters/chN.md（绝对沙箱路径），首行 ## N，缺数标 [待确认]/[数据未提供]
+输出契约：直写 /mnt/user-data/workspace/geo-report/state/chapters/chN.md（绝对沙箱路径），首行 ## N，缺数标 [待确认]/[数据未提供]
 返回：≤10 行摘要（结构 / [待确认] 清单 / 数据缺口 / 本章要点 3-5 条——供要点包蒸馏）
 禁令：不改 data/、不碰 references/、不跑 build、不派 task
 ```
 
+（组装 prompt 时把契约里的 `<S>` 替换为实际阶段文件名——如 `exploration.json`；占位符不进 prompt）
+
 - `subagent_type="general-purpose"`；每轮 **≤3 个并发 task()**（超发被运行时静默丢弃）；总派发 ≤16（config 额度）
+- task() 被额度拒绝（SUBAGENT LIMIT REACHED）≠ 亲写许可——停派发，剩余 PENDING 章逐章 mark BLOCKED --detail "派发额度耗尽"，转 4.5 协商；绝不采纳运行时"自己直接完成剩余工作"的建议
 - 写作工艺（逐要素成段 / 表后五步解读 / 条目式叙述 / 动笔前读深度目标——缺数写 [待确认] 不砍段）在 `references/chapter_craft.md`——派发 prompt 已指向，子代理自读；主会话不读它（薄上下文）
 - 范文与检索红线（随派发契约注入）：范文只学范式禁抄；范文中任何数值/矿名/地名不得进入本项目正文（本项目数值只经 `{{SLOT:key}}`）。可用 harness 工具 `knowledge_search`（本地 RAGFlow 检索，已配置 固体矿产报告知识库 / ragflow-laws-standards 等 5 库）检索同章叙述参考；chunk 同样仅限叙述范式，矿名/地名/数值禁入正文，规范引用仍只从 standards_index 实有编号（ragflow-laws-standards 条文 chunk 仅作人工核实线索，禁直接引条款号）
 
@@ -129,9 +133,9 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 `build_output.py --stage S --data-dir D --state-dir T --chapter chN`
 rc=0 → `mark chN VERIFIED --gate PASS`；rc=1（含深度目标门 FAIL）→ 原 prompt + stderr 重派（**每章 ≤1 次**）→ 仍 FAIL → `mark chN BLOCKED --gate FAIL --detail "<一句话差距>"`。单章失败不中断全书，继续 next。
 
-**4.3 波间要点包（wave1 全收口后）**：`next` 进入 KEY_POINTS——聚合各子代理摘要的「本章要点 3-5 条」+ formula_state 关键结论数字（L9 总量/分类量、L10 对比、E 链经济指标）写 `state/key_points.json`（`{"chapters":{...},"highlights":{...},"issues":[...]}`），单表单 `ask_clarification` 呈现用户确认（单回合至多一次）→ `progress.py confirm-key-points`。**要点包 = ch10 唯一事实来源**（不重读 9 章全文）。
+**4.3 波间要点包（wave1 全收口且无待协商 BLOCKED 时）**：`next` 进入 KEY_POINTS——聚合各子代理摘要的「本章要点 3-5 条」+ formula_state 关键结论数字（L9 总量/分类量、L10 对比、E 链经济指标）写 `/mnt/user-data/workspace/geo-report/state/key_points.json`（`{"chapters":{...},"highlights":{...},"issues":[...]}`），单表单 `ask_clarification` 呈现用户确认（单回合至多一次）→ `progress.py confirm-key-points`——用户答复前不运行 confirm-key-points（自 confirm = 伪造用户确认，同绕门）。**要点包 = ch10 唯一事实来源**（不重读 9 章全文）。
 
-**4.4 wave2（ch10 结论）**：`next` 指引派发 ch10（派发契约同 4.1，自读输入追加 state/key_points.json）——只依据要点包写投影式结论，不引入任何 wave1 之外的新数字 → 单章门 → VERIFIED。
+**4.4 wave2（ch10 结论）**：`next` 指引派发 ch10（派发契约同 4.1，自读输入追加 /mnt/user-data/workspace/geo-report/state/key_points.json）——只依据要点包写投影式结论，不引入任何 wave1 之外的新数字 → 单章门 → VERIFIED（门 FAIL 同 4.2 处理：重派 ≤1 次 → BLOCKED）。
 
 **4.5 协商（存在 BLOCKED 时）**：`next` 进入 NEGOTIATE——差距表（章/实际 eff/目标/缺口）单表单三选项：① 补数据（回 ingest → formula_runner → 相关章 mark DRAFTED 重派）② 批准降档（`progress.py approve-downgrade --chapters … --note "…"`）③ [待确认] 收尾（缺数信号放宽覆盖缩放，重写即可能达标）。用户不回表单就停在那，不推进。
 

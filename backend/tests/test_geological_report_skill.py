@@ -278,7 +278,7 @@ class TestControllerProtocol:
         self.content = _read_skill_content()
 
     def test_dispatch_protocol_keywords(self):
-        for kw in ("派发协议", "控制器", "task(", "general-purpose", "≤3", "≤10 行摘要", "直写", "重派"):
+        for kw in ("派发协议", "控制器", "task(", "general-purpose", "≤3", "≤10 行摘要", "直写", "重派", "/mnt/user-data/workspace/geo-report/state"):
             assert kw in self.content, kw
 
     def test_iron_law_and_excuse_reality(self):
