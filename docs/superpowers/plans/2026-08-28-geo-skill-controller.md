@@ -1417,6 +1417,11 @@ docker compose -p eai-docker ps   # gateway/frontend/nginx Up
 
 ---
 
+## 执行期勘误（controller 裁定）
+
+1. **Task 1 TRANSITIONS 表（2026-08-28，实施时发现）**：计划正文的 `TRANSITIONS["PENDING"] = {"DRAFTED","BLOCKED"}` 与计划测试 `test_verified_requires_gate_pass` / `test_illegal_transition_refused`（均从 PENDING 直接 mark VERIFIED）自相矛盾——按原表两测必 FAIL。裁定取测试语义：`"PENDING": {"DRAFTED", "VERIFIED", "BLOCKED"}`（PENDING→VERIFIED = 记账滞后凭门 PASS 补记，仍强制 `--gate PASS`，"只信产物" 不变量不变；spec §5.1 未枚举转移表，不构成 spec 偏离）。
+2. **Task 1 质量评审追加（2026-08-28）**：`main()` 异常捕获从 `json.JSONDecodeError` 扩为 `(json.JSONDecodeError, KeyError, TypeError, OSError)` 统一诊断行（手改 progress.json / stage 缺文件不再裸 traceback）；DISPATCH_BUDGET 加"展示与 WAVE1 路由提示、硬执行在 harness"注释。另裁定**有意语义**：wave1 章 VERIFIED→DRAFTED 修改回路不重置 `key_points_confirmed`——章节散文编辑不改槽位值（数字只来自 formula_state），不为局部修补强制 ch10 重写。
+
 ## Self-Review 记录（写完计划后已核对）
 
 1. **Spec 覆盖**：§5.1 progress.py→Task 1；§5.2 --chapter/--allow-partial→Task 2/3；§5.3 key_points.json→Task 1（progress 命令）+Task 4（4.3 流程+测试断言）；§5.4 chapter_craft.md→Task 4；§5.5 SKILL.md 五要素+Iron Law+Excuse|Reality+Red Flags→Task 4；§5.6 config 提额→Task 5；§5.7 snapshot 哈希→Task 1 TestSnapshotCoverage（rglob 零改码，测试锁定）；§6 派发契约模板→Task 4.1（内嵌 SKILL.md，不另立文件）；§7 错误矩阵→Task 1（预算/转移拒）+Task 2（缺章/手改/伪槽位探针）+Task 4（Excuse|Reality）；§8 测试策略→Task 1/2/3/5/6 各层；§9 六步切分→Task 1-6 一一对应。
