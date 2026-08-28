@@ -312,10 +312,8 @@ def resolve_targets(args_targets: str | None, stage_path: Path) -> tuple[dict | 
 # ── 组装 ────────────────────────────────────────────────────────────────────
 
 
-def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None = None) -> tuple[str, dict[str, dict]]:
-    if targets is None:
-        # 防绕：直调 assemble（targets=None）也吃技能真基准——页面实测线程 03e18e4a 直调跳过 L2 ~10 次
-        targets = load_targets(CANONICAL_TARGETS)
+def load_state_and_check(state_dir: Path) -> tuple[dict, dict | None]:
+    """formula_state 装载 + bug-2223 手改检测门 + consistency 装载（assemble 与单章门共用）。"""
     state_path = state_dir / "formula_state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
     # ── bug-2223 手改检测门：formula_runner.emit() 给每个槽位写 source 键；手改必丢 ──
@@ -328,8 +326,11 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
     cc_path = state_dir / "consistency_check.json"
     if cc_path.exists():
         consistency = json.loads(cc_path.read_text(encoding="utf-8"))
-    unknown_keys: set[str] = set()
-    toc_stats: dict[str, dict] = {}
+    return state, consistency
+
+
+def make_inject(stage: dict, data_dir: Path, state: dict, unknown_keys: set[str]):
+    """{{SLOT:key}}/{{TABLE:fam}} 注入闭包工厂（assemble 与单章门共用；unknown_keys 就地累积）。"""
 
     def inject(text: str) -> str:
         def slot_sub(m: re.Match) -> str:
@@ -344,6 +345,19 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
             return render_family(m.group(1).strip(), stage, data_dir)
 
         return TABLE_RE.sub(table_sub, SLOT_RE.sub(slot_sub, text))
+
+    return inject
+
+
+def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None = None, skip_l2: set[str] | None = None, partial: dict | None = None) -> tuple[str, dict[str, dict]]:
+    if targets is None:
+        # 防绕：直调 assemble（targets=None）也吃技能真基准——页面实测线程 03e18e4a 直调跳过 L2 ~10 次
+        targets = load_targets(CANONICAL_TARGETS)
+    state_path = state_dir / "formula_state.json"
+    state, consistency = load_state_and_check(state_dir)  # 重构：手改检测提取
+    unknown_keys: set[str] = set()
+    inject = make_inject(stage, data_dir, state, unknown_keys)  # 重构：注入闭包提取
+    toc_stats: dict[str, dict] = {}
 
     parts = [render_front_matter(stage, data_dir)]
     chap_dir = state_dir / "chapters"
@@ -360,7 +374,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
             validate_depth(ch_id, raw)
             toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
             injected = inject(raw).rstrip() + "\n"
-            if targets is not None:
+            if targets is not None and not (skip_l2 and ch_id in skip_l2):  # skip_l2：--allow-partial 批准集（Task 3）
                 validate_depth_target(ch_id, injected, targets)
         except ValueError as e:
             errors.append(str(e))
