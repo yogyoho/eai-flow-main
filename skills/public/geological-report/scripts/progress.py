@@ -34,6 +34,7 @@ EXIT_OK, EXIT_ERROR = 0, 1
 
 # 派发额度 = config.yaml subagents.max_total_per_run（本计划 Task 5 提额到 16；clamp [1,50]）。
 # progress.py 不读 harness 配置（技能脚本自包含），按 16 做预算展示与耗尽判定。
+# 注意：脚本内预算只做展示与 WAVE1 路由提示；硬执行在 harness SubagentLimitMiddleware（WAVE2 ch10 重派不检额度属预期）。
 DISPATCH_BUDGET = 16
 
 TRANSITIONS: dict[str, set[str]] = {
@@ -317,8 +318,8 @@ def main() -> int:
     args = p.parse_args()
     try:
         return args.fn(args)
-    except json.JSONDecodeError as e:
-        print(f"[progress] JSON 损坏: {e}", file=sys.stderr)
+    except (json.JSONDecodeError, KeyError, TypeError, OSError) as e:
+        print(f"[progress] progress.json/stage 文件损坏或不可读（手改特征或路径错误）: {e!r}", file=sys.stderr)
         return EXIT_ERROR
 
 
