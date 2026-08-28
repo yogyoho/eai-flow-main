@@ -1422,6 +1422,7 @@ docker compose -p eai-docker ps   # gateway/frontend/nginx Up
 1. **Task 1 TRANSITIONS 表（2026-08-28，实施时发现）**：计划正文的 `TRANSITIONS["PENDING"] = {"DRAFTED","BLOCKED"}` 与计划测试 `test_verified_requires_gate_pass` / `test_illegal_transition_refused`（均从 PENDING 直接 mark VERIFIED）自相矛盾——按原表两测必 FAIL。裁定取测试语义：`"PENDING": {"DRAFTED", "VERIFIED", "BLOCKED"}`（PENDING→VERIFIED = 记账滞后凭门 PASS 补记，仍强制 `--gate PASS`，"只信产物" 不变量不变；spec §5.1 未枚举转移表，不构成 spec 偏离）。
 2. **Task 1 质量评审追加（2026-08-28）**：`main()` 异常捕获从 `json.JSONDecodeError` 扩为 `(json.JSONDecodeError, KeyError, TypeError, OSError)` 统一诊断行（手改 progress.json / stage 缺文件不再裸 traceback）；DISPATCH_BUDGET 加"展示与 WAVE1 路由提示、硬执行在 harness"注释。另裁定**有意语义**：wave1 章 VERIFIED→DRAFTED 修改回路不重置 `key_points_confirmed`——章节散文编辑不改槽位值（数字只来自 formula_state），不为局部修补强制 ch10 重写。
 3. **Task 2 质量评审追加（2026-08-28）**：`run_chapter_gate` 补 `targets=None → load_targets(CANONICAL_TARGETS)` 防绕钳制（对齐 assemble，03e18e4a 直调教训）；两处五步门序列加同步改注释；删测试死常量 `_THIN`。**裁定拒绝**（YAGNI）：`validate_chapter_block` 五步序列合并重构——两消费点 ~8 行且均有测试锚，刚双重认证过的门不再动；若页面测试暴露门漂移再议。
+4. **Task 3 质量评审追加（2026-08-29）**：`load_progress`/`approved_chapters` 补手改形状校验（chapters 非字典 / downgrade_approvals 为 null / 条目非字符串列表 → `[build] 错误:` 手改特征诊断行而非裸 traceback，对齐 progress.py 四类捕获惯例；评审六种对抗形状全闭）；目标公式三处（validate_depth_target / _depth_row / run_chapter_gate PASS 行）加同步改注释（**裁定拒绝**抽取共享函数——门代码刚双重认证不再动）；`PARTIAL_DELIVERY` 断言收紧为 `1 章降档 ['ch2']`；新增 2 个对抗形状回归测试（TestPartialDelivery 7 测）。批准偏差：拒绝消息经 `msg` 变量过 E501（内容等价）；return 字典 ruff 逐行规范化；消费点一行内联注释。
 
 ## Self-Review 记录（写完计划后已核对）
 
