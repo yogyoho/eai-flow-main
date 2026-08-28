@@ -79,6 +79,9 @@ def cmd_save(args: argparse.Namespace) -> int:
     # params：优先 --params 文件内容，其次保留旧值，最后 {}
     params = _maybe_load_json_file(args.params)
     if params is None:
+        # bug-2203：--params 显式指定但文件缺失 → 大声警告（锚点参数回显降级）
+        if args.params:
+            print(f"SNAPSHOT_WARN: --params 文件不存在（{args.params}），快照 params 将回退旧值/为空——先补写 params.json 再 save", flush=True)
         params = prev.get("params", {})
 
     standards = json.loads(args.standards) if args.standards else prev.get("standards_selected", [])

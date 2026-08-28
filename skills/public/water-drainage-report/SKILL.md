@@ -34,6 +34,8 @@ description: |
 
 5. **耗时自检（反馈1）：** 单轮工具调用累计超 ~90s 仍未拿到 `STATE_READY`/`TRACE_READY` → 已偏离正轨，立即停下、重读步骤2，**勿继续堆砌自写代码**。规范计算本身亚秒级；耗时全在编排，编排必须走规范工具链。
 
+6. **⛔ 同一文件的读/写禁止并行 tool_call（bug-2202）。** 同一回合发出的多条 bash / str_replace 会被**并行执行**：两条 `update` 并行时各自读旧 state 后写回，后完成者覆盖先完成者（2026-08-28 实测：`N=5` 与 `pool_area=2700` 两条 update 并行，pool_area 更新丢失）；`check --params "$(cat params.json)"` 并行跑在 update 落盘前会拿到空参数直接 Traceback；两批 `str_replace` 并行打同一报告文件会 "String not found" 报错 + 重读重试循环（增量轮被拖到 15min+）。规则：**对同一文件的写、或依赖前一条命令落盘结果的读，必须用 `&&` 合并为一条命令，或拆到下一回合串行**；多个参数变更 = 多条 update 以 `&&` 串联，绝不并行发出。
+
 ## ⛔ 多轮承接铁律（反馈7，与执行铁律同级，先于一切步骤）
 
 **实证教训（2026-08-13 页面验证）：** 线程 `1366cf6c` 第 2 轮明确要求"把 Q 改成 25000 做 impacted 定点重生成"，agent 读到了基准 state、确认了 CLI 可用，却**漂移回"重新交付 Q=20000 报告"**——根因是 `project_snapshot.json` 从未被写出，无"当前任务"锚点，agent 被线程首条历史消息 + 累积记忆拉回"生成"语义（bug-1171）。以下铁律杜绝该模式——**违反任一条即视为流程失败**。
@@ -46,7 +48,7 @@ description: |
 
 3. **改参必走 impacted + update，禁回落 present 旧报告。** 用户说改参（"把 Q 改成 25000"/"方案比选"等）→ 必须执行步骤2「改参定点重生成」全流程（`formula_runner.py impacted` **先** → `update` **后** → 仅重生成受影响章节 → 单次 write_file 覆盖 → 步骤5 save）。**绝不**直接 `present_files` 一份未改参的旧报告充数。改参前后关键值对比必须给出（取 `impacted` 的 value_diff）。
 
-4. **每轮收尾必须 `snapshot.py save`，且在 `present_files` 之前。** 首次交付与每一次改参/补参/追加，都必须在步骤5 调 `present_files` **之前**先 `snapshot.py save --task "<本轮一句话>"` 固化当前状态、`version++`、追加 changelog，拿到 `SNAPSHOT_READY` 才能收尾。**顺序颠倒（先 present_files 后 save）= 本轮未完成**，因为 agent 在 `present_files` 后即视为交付完成、不会回头执行 save——下一轮将因无 `last_task` 锚点而漂移（bug-1171 重现）。**⛔ 快照唯一合法产生方式 = `snapshot.py save`（bug-2198）：禁止用 `write_file` 手写/复制/改名生成任何 `project_snapshot*.json` 旁路文件**（如 `project_snapshot_N5.json`——2026-08-20 实跑中 agent 手搓旁路文件致正典锚点停留在 v1，bug-1171 复发）；`--output` 必须是正典 `$WORK/project_snapshot.json`（CLI 会拒绝其他文件名），且 stdout 必须出现 `SNAPSHOT_READY: version=N`（N = 上一版 +1，新线程首轮 =1）——version 没涨 = save 没走到正典上 = 本轮未完成。
+4. **每轮收尾必须 `snapshot.py save`，且在 `present_files` 之前。** 首次交付与每一次改参/补参/追加，都必须在步骤5 调 `present_files` **之前**先 `snapshot.py save --task "<本轮一句话>"` 固化当前状态、`version++`、追加 changelog，拿到 `SNAPSHOT_READY` 才能收尾。**顺序颠倒（先 present_files 后 save）= 本轮未完成**，因为 agent 在 `present_files` 后即视为交付完成、不会回头执行 save——下一轮将因无 `last_task` 锚点而漂移（bug-1171 重现）。**⛔ 快照唯一合法产生方式 = `snapshot.py save`（bug-2198）：禁止用 `write_file` 手写/复制/改名生成任何 `project_snapshot*.json` 旁路文件**（如 `project_snapshot_N5.json`——2026-08-20 实跑中 agent 手搓旁路文件致正典锚点停留在 v1，bug-1171 复发）；`--output` 必须是正典 `$WORK/project_snapshot.json`（CLI 会拒绝其他文件名），且 stdout 必须出现 `SNAPSHOT_READY: version=N`（N = 上一版 +1，新线程首轮 =1）——version 没涨 = save 没走到正典上 = 本轮未完成。**⛔ 同样禁止 `python3`/heredoc/`str_replace` 直改正典文件本体**（bug-2198 变体，2026-08-28 线程 e8cf3d2f 实测：agent 手搓 `snap['version']=2` 后 last_task 仍停在 N=5.0、changelog 无 v2 条目、updated_at 未刷新——直改不维护任何锚点字段，锚点即废，bug-1171 复发条件）；增量轮 save 应带 `--diff`/`--affected`（取步骤2 记录的 value_diffs 与 impacted 输出）。
 
 5. **数值汇报仍守执行铁律 #1。** 跨轮承接只承接"任务意图 + 参数基准"，公式数值仍唯一来自 `formula_state.json`/`traces.json`/`consistency_check.json`，原样引用、禁 prose 重算。
 
@@ -177,6 +179,8 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py execut
   --params "$(cat $WORK/params.json)" \
   --output $WORK/formula_state.json
 ```
+
+**⛔ params.json 文件必须真实落盘（bug-2203）：** execute 必须如上引用 `cat $WORK/params.json`，**禁止把参数 JSON 内联进命令行绕过文件**——步骤2 的 check 与步骤5 的 `snapshot.py save --params` 都依赖该文件存在（2026-08-28 实测内联绕过 → 快照 params={} 静默降级 + 增量轮 check 首跑即 Traceback 重试）。
 
 **生成步骤轨迹 + 章节清单（供后续折叠渲染与定点重生成）：**
 ```bash

@@ -74,6 +74,30 @@ def test_update_params_output() -> None:
         assert all("." not in k for k in fresh), "params.json 不应含公式输出键"
 
 
+def test_snapshot_warns_on_missing_params() -> None:
+    """bug-2203：--params 显式指定但文件缺失 → 必须打 SNAPSHOT_WARN（锚点参数回显降级要可见）。"""
+    with tempfile.TemporaryDirectory() as d:
+        r = subprocess.run(
+            [sys.executable, str(SP / "snapshot.py"), "save", "--task", "t",
+             "--output", str(Path(d) / "project_snapshot.json"),
+             "--params", str(Path(d) / "no_such_params.json")],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "SNAPSHOT_WARN" in r.stdout, r.stdout
+
+
+def test_skill_text_guards() -> None:
+    """bug-2202/2203/2198变体：SKILL 文本必须含并行竞态禁令 / params.json 落盘令 / 直改正典禁令。"""
+    text = (SP.parent / "SKILL.md").read_text(encoding="utf-8")
+    for needle in [
+        "同一文件的读/写禁止并行 tool_call",
+        "params.json 文件必须真实落盘",
+        "直改正典文件本体",
+    ]:
+        assert needle in text, f"SKILL.md 缺铁律文本: {needle}"
+
+
 def test_impacted_must_run_before_update() -> None:
     """impacted 是对磁盘旧状态的 dry-run 值差分：update 落盘后再跑 impacted 必得空集。
 
@@ -125,4 +149,6 @@ if __name__ == "__main__":
     test_snapshot_rejects_side_filename()
     test_update_params_output()
     test_impacted_must_run_before_update()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update")
+    test_snapshot_warns_on_missing_params()
+    test_skill_text_guards()
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫")
