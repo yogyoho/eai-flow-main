@@ -300,14 +300,11 @@ knowledge-factory_kf_resolve_template(
 
 **输入:** 步骤1 参数 + 步骤2 公式结果 + 步骤2 的 `traces.json`（冻结快照）+ 步骤3 模板
 **架构（计算与生成分离，Approach A）:**
-- **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。计算过程块**必须脚本注入，不得手写**（历史：8-12 gen_report.py 时代有折叠 → Approach A 禁生成器后 R4/R5/R6 手写 KaTeX 回归；R6 实测 agent 即便生成了 calc_blocks.md 也不粘贴——6K 字符逐字复制对 LLM 不可靠）：
-  1. `write_file` 报告时，计算章（工艺计算/水量平衡等公式密集章）的逐公式过程位置**只写一个占位符** `<!-- CALC_BLOCKS -->`（章节标题、汇总表可正常手写）；
-  2. 落盘后立刻注入：
+- **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。计算过程块**必须**由确定性脚本生成（`read_file` 读回后原样粘贴进对应章节，可加自己的章节标题，不得改写块体）：
   ```bash
-  python $SCRIPTS/render_calc_blocks.py inject --traces $WORK/traces.json --report $OUT/报告.md   # CALC_INJECT_READY
+  python $SCRIPTS/render_calc_blocks.py --traces $WORK/traces.json --output $WORK/calc_blocks.md   # CALCBLOCKS_READY
   ```
-  3. 注入后自检：`grep -c '<details>' 报告.md` 必须 ≥ 公式数，为 0 即 inject 未执行。
-  每公式 = 「摘要行（名称=结果 单位）+ `<details><summary>计算过程</summary>` 折叠块（公式来源/取值依据表/代入分步）」。**⛔ 禁止手写全展开 KaTeX 计算过程块替代折叠块**（前端 Markdown 链 rehype-raw + GitHub sanitize 显式保留 `<details>`，折叠原生可用）。
+  每公式 = 「摘要行（名称=结果 单位）+ `<details><summary>计算过程</summary>` 折叠块（公式来源/取值依据表/代入分步）」。**⛔ 禁止手写全展开 KaTeX 计算过程块替代折叠块**（2026-08-28 R4/R5 两轮实测 agent 全部渲染成可见 KaTeX 块、折叠形态从未出现——反馈3 的"默认显示结果、点击展开过程"因此未落地；前端 Markdown 链 rehype-raw + GitHub sanitize 显式保留 `<details>`，折叠原生可用）。
 - **narrative 章** = 并行子 agent 生成（`task()` 工具）。每个子 agent prompt 注入**同一份冻结快照**（`traces.json` 的数值 + 该章 `generation_hint`/`content_contract`/`compliance_rules`），只返回该章 Markdown。按 `chapter_manifest` 顺序合并。
 
 **核心不变量：** 所有数值在步骤2 固化进 `traces.json`；所有生成单元只读该快照——并行不引入跨章数值漂移。

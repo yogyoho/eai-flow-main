@@ -96,7 +96,6 @@ def test_skill_text_guards() -> None:
         "直改正典文件本体",
         "render_calc_blocks.py",
         "禁止手写全展开 KaTeX 计算过程块",
-        "<!-- CALC_BLOCKS -->",
     ]:
         assert needle in text, f"SKILL.md 缺铁律文本: {needle}"
 
@@ -131,36 +130,6 @@ def test_render_calc_blocks_details() -> None:
             "16000 * 0.001461 * 9",  # 代入分步
         ]:
             assert needle in text, f"calc_blocks 缺: {needle}"
-
-
-def test_render_calc_blocks_inject() -> None:
-    """反馈3 注入：占位符 <!-- CALC_BLOCKS --> 被替换为折叠块；缺占位符报 CALC_INJECT_ERROR 且文件不动。"""
-    traces = {"traces": [{
-        "id": "Qe", "name": "蒸发水量", "expression": "Q * KZF * delta_t", "source": "蒸发损失系数",
-        "substituted": "16000 * 0.001461 * 9", "result": 210.384, "unit": "m3/h", "inputs": [],
-    }]}
-    with tempfile.TemporaryDirectory() as d:
-        tp = Path(d) / "traces.json"
-        tp.write_text(json.dumps(traces, ensure_ascii=False), encoding="utf-8")
-        rp = Path(d) / "report.md"
-        rp.write_text("# 报告\n\n## 第5章 工艺计算\n\n<!-- CALC_BLOCKS -->\n", encoding="utf-8")
-        r = subprocess.run(
-            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
-            capture_output=True, text=True,
-        )
-        assert r.returncode == 0, r.stderr
-        assert "CALC_INJECT_READY: 1" in r.stdout, r.stdout
-        injected = rp.read_text(encoding="utf-8")
-        assert injected.count("<details>") == 1 and "<!-- CALC_BLOCKS -->" not in injected
-
-        rp.write_text("# 报告（无占位符）\n", encoding="utf-8")
-        r = subprocess.run(
-            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
-            capture_output=True, text=True,
-        )
-        assert r.returncode == 1
-        assert "CALC_INJECT_ERROR" in r.stdout
-        assert "<details>" not in rp.read_text(encoding="utf-8"), "缺占位符时不得改动报告"
 
 
 def test_impacted_must_run_before_update() -> None:
@@ -217,5 +186,4 @@ if __name__ == "__main__":
     test_snapshot_warns_on_missing_params()
     test_skill_text_guards()
     test_render_calc_blocks_details()
-    test_render_calc_blocks_inject()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 折叠块渲染+注入")
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 折叠块渲染")

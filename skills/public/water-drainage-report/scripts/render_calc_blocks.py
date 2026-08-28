@@ -13,11 +13,6 @@ SKILL 步骤4 约定每公式渲染为「摘要行 + <details><summary>计算过
   python render_calc_blocks.py --traces $WORK/traces.json --output $WORK/calc_blocks.md
   → CALCBLOCKS_READY: N 公式 → path
 
-  python render_calc_blocks.py inject --traces $WORK/traces.json --report $OUT/报告.md
-  → 把报告中的 `<!-- CALC_BLOCKS -->` 占位符替换为折叠块（CALC_INJECT_READY）
-  （2026-08-28 R6 实测：agent 生成片段后仍手写 KaTeX 未粘贴——6K 字符逐字复制对 LLM
-  不可靠，粘贴必须脚本化；占位符缺失时 CALC_INJECT_ERROR 报错退出，不静默。）
-
 stdlib only（json/argparse/pathlib），与 snapshot.py 同风格。
 """
 
@@ -76,30 +71,7 @@ def render(traces: list) -> str:
     return "\n".join(blocks)
 
 
-MARKER = "<!-- CALC_BLOCKS -->"
-
-
-def cmd_inject(args: argparse.Namespace) -> int:
-    """把报告中的 MARKER 占位符原地替换为折叠块（粘贴脚本化——LLM 逐字长拷贝不可靠）。"""
-    report = Path(args.report)
-    text = report.read_text(encoding="utf-8")
-    if MARKER not in text:
-        print(f"CALC_INJECT_ERROR: 报告未含占位符 {MARKER}（计算章须以占位符占位，再 inject 注入）")
-        return 1
-    data = json.loads(Path(args.traces).read_text(encoding="utf-8"))
-    traces = data.get("traces", data if isinstance(data, list) else [])
-    report.write_text(text.replace(MARKER, render(traces)), encoding="utf-8")
-    print(f"CALC_INJECT_READY: {len(traces)} 公式折叠块已注入 {report}")
-    return 0
-
-
 def main() -> int:
-    if len(sys.argv) > 1 and sys.argv[1] == "inject":
-        p = argparse.ArgumentParser(description="报告占位符注入折叠块（反馈3）")
-        p.add_argument("--traces", required=True)
-        p.add_argument("--report", required=True)
-        return cmd_inject(p.parse_args(sys.argv[2:]))
-
     p = argparse.ArgumentParser(description="traces.json → 计算过程折叠块片段（反馈3）")
     p.add_argument("--traces", required=True, help="formula_runner.py trace 输出的 traces.json 路径")
     p.add_argument("--output", required=True, help="Markdown 片段输出路径（如 $WORK/calc_blocks.md）")
