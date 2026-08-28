@@ -370,6 +370,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
             continue
         raw = cf.read_text(encoding="utf-8")
         try:
+            # 五步门序列与 run_chapter_gate 须同步改（新增校验两处同加）
             validate_chapter(ch_id, raw)
             validate_depth(ch_id, raw)
             toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
@@ -395,6 +396,9 @@ def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, t
     不产交付物（交付名门/散文件门不适用）、不写 progress.json（唯一写者=progress.py）。
     PASS 打 CHAPTER_GATE_PASS 行（eff/目标/覆盖缩放——mark VERIFIED 与重派决策的数据面）。
     """
+    if targets is None:
+        # 防绕：直调 run_chapter_gate(targets=None) 同 assemble 强制技能真基准（03e18e4a 教训）
+        targets = load_targets(CANONICAL_TARGETS)
     order = sorted(stage.get("chapters", {}), key=lambda x: int(x[2:]) if x[2:].isdigit() else 99)
     if ch_id not in stage.get("chapters", {}):
         raise ValueError(f"未知章节 {ch_id}（stage 在册: {order}）")
@@ -409,6 +413,7 @@ def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, t
     toc: dict = {}
     injected = ""
     try:
+        # 五步门序列与 assemble 循环体须同步改（新增校验两处同加）
         validate_chapter(ch_id, raw)
         validate_depth(ch_id, raw)
         toc = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
