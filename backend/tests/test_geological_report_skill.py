@@ -268,3 +268,35 @@ class TestDepthParadigm:
     def test_command_table(self):
         assert "calibrate.py" in self.content  # 速查表新增行
         assert "--targets" in self.content  # build_output 用法补可选参
+
+
+class TestControllerProtocol:
+    """步骤4 派发协议 presence（spec 2026-08-28 控制器化改造 §5.5）。"""
+
+    @pytest.fixture(autouse=True)
+    def _load(self):
+        self.content = _read_skill_content()
+
+    def test_dispatch_protocol_keywords(self):
+        for kw in ("派发协议", "控制器", "task(", "general-purpose", "≤3", "≤10 行摘要", "直写", "重派"):
+            assert kw in self.content, kw
+
+    def test_iron_law_and_excuse_reality(self):
+        assert "Iron Law" in self.content and "Excuse" in self.content and "Reality" in self.content
+        assert "approve-downgrade" in self.content
+
+    def test_progress_commands_wired(self):
+        assert "progress.py" in self.content and "confirm-key-points" in self.content
+
+    def test_chapter_gate_and_partial_modes(self):
+        assert "--chapter" in self.content and "--allow-partial" in self.content
+
+    def test_key_points_state_file(self):
+        assert "key_points.json" in self.content
+
+    def test_chapter_craft_file(self):
+        p = SKILL_DIR / "references" / "chapter_craft.md"
+        assert p.exists(), "references/chapter_craft.md 未创建"
+        t = p.read_text(encoding="utf-8")
+        for kw in ("逐要素成段", "五步解读", "判定词", "条目式", "分节写作"):
+            assert kw in t, kw
