@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """traces.json → 「$$公式+结果$$ 可见 + <details>计算过程</details> 折叠」Markdown（反馈3 用户样例格式）。
 
-目标形态（2026-08-28 用户样例，线程 a6aeb9b2 退回后重做）：
+目标形态（2026-08-29 用户定案 A：注入块**不带标题**——小节标题由报告自己的 TOC 承担，
+如 `#### 5.1.1 蒸发水量计算`；旧版 `### [9.1.1]` 标题印的是公式登记表 section 号，
+与报告 TOC 双编号/双标题（R10 实测 5.1.1 与 [6.1.1] 并排），已去除）：
 
-    ### [9.1.1] 旁滤处理水量
+    #### 9.1.1 旁滤处理水量        ← 报告自己的小节标题（write_file 写，编号跟随报告 TOC）
+    <!-- CALC:Qsf -->              ← 按公式占位符（write_file 写，id 取自 traces.json）
 
+    （inject 后占位符处变为：）
     $$Q_{sf} = Q \\times sf\\_ratio = 20000 \\times 0.05 = 1000\\ \\text{m}^3/\\text{h}$$
 
     <details><summary>计算过程</summary>
@@ -19,12 +23,17 @@
 为什么脚本化（R4/R5/R6 三轮实测）：agent 手写从不产 <details>（纯文本约定压不住）；
 R6 实测即便生成片段也不逐字粘贴（6K 字符复制不可靠）→ 占位符 + inject 原地注入。
 
+为什么按公式占位（2026-08-29 R10 实测）：单一 <!-- CALC_BLOCKS --> 会把全部块顺序堆到
+一处（R10 报告 12 块全挤在 5.1.1 小节下）；`<!-- CALC:公式id -->` 让每块落在报告 TOC
+对应小节标题下。旧式单一占位符仍兼容（全块顺序注入），不再推荐。
+
 前端契约：workspace Markdown = rehype-raw + GitHub sanitize（显式保留 details/summary 与 KaTeX）。
 
 用法:
   python render_calc_blocks.py --traces $WORK/traces.json --output $WORK/calc_blocks.md
   python render_calc_blocks.py inject --traces $WORK/traces.json --report $OUT/报告.md
-  （报告须含占位符 <!-- CALC_BLOCKS -->；缺失时 CALC_INJECT_ERROR 退出 1 不静默）
+  （报告须含每公式一个 <!-- CALC:id -->（推荐）或旧式 <!-- CALC_BLOCKS -->；
+   未知 id / 公式缺标记 / 重复标记 → CALC_INJECT_ERROR 退出 1 不静默）
 
 stdlib only，与 snapshot.py 同风格。
 """
@@ -36,10 +45,15 @@ import sys
 from pathlib import Path
 
 MARKER = "<!-- CALC_BLOCKS -->"
+# 按公式占位符（2026-08-29 用户定案 A）：`<!-- CALC:Qe -->` 每公式一个，块落在报告 TOC
+# 对应小节标题下；单一 MARKER 会把全部块堆到一处（R10 实测），仅作兼容保留。
+PER_FORMULA_RE = re.compile(r"<!-- CALC:([A-Za-z_][A-Za-z0-9_]*) -->")
 # 注入签名：snapshot.py save 据此校验"公式块确实由脚本注入"（R8 实测 agent 手写 12 块
 # 且跳过 inject——文本铁律压不住 flash 模型，快照门禁是 agent 必经的强制点）。
 # v2（R9）：签名携带注入块数——门禁比对「签名数之和 == 报告 <details> 总数」，
 # 抓"注入了但又在别处手写折叠块"的混合违约（R9 实测 ch6-8 手写 8 块且单位抄错 0.202 h）。
+# v2.1（用户定案 A）：每块尾各带一条 count=1 签名——按公式注入/整组注入两路径下
+# 「求和 == <details> 数」恒成立，门禁逻辑零改动。
 SIGNATURE_PREFIX = "<!-- CALC_BLOCKS_INJECTED:v2 count="
 
 
@@ -125,45 +139,72 @@ def _values_line(inputs: list) -> str:
     return "；".join(parts)
 
 
+def block(t: dict) -> str:
+    """单个公式块：$$公式=代入=结果$$ + <details>过程</details> + count=1 签名。
+    不带标题（用户定案 A）——小节标题由报告自己的 TOC 承担，块紧跟占位符处。"""
+    sym = SYMBOL.get(t.get("id", ""), t.get("id", "?").replace("_", "_"))
+    rhs = _to_latex(t.get("expression", "?"))
+    sub = _to_latex(t.get("substituted", "?"))
+    res, ul, ut = _fmt(t.get("result", "?")), _unit_latex(t.get("unit", "")), _unit_text(t.get("unit", ""))
+    eq_tail = (rf" = {res}" + (rf"\ {ul}" if ul else ""))
+    return "\n".join([
+        f"$${sym} = {rhs} = {sub}{eq_tail}$$",
+        "",
+        "<details><summary>计算过程</summary>",
+        "",
+        f"- 公式：${sym} = {rhs}$",
+        f"- 取值：{_values_line(t.get('inputs') or [])}",
+        f"- 代入：${sub}$",
+        f"- 结果：**{res}{(' ' + ut) if ut else ''}**",
+        "",
+        "</details>",
+        "",
+        signature_line(1),
+    ])
+
+
 def render(traces: list) -> str:
-    blocks = []
-    for t in traces:
-        sym = SYMBOL.get(t.get("id", ""), t.get("id", "?").replace("_", "_"))
-        rhs = _to_latex(t.get("expression", "?"))
-        sub = _to_latex(t.get("substituted", "?"))
-        res, ul, ut = _fmt(t.get("result", "?")), _unit_latex(t.get("unit", "")), _unit_text(t.get("unit", ""))
-        eq_tail = (rf" = {res}" + (rf"\ {ul}" if ul else ""))
-        blocks.append("\n".join([
-            f"### [{t.get('section', '?')}] {t.get('name', '?')}",
-            "",
-            f"$${sym} = {rhs} = {sub}{eq_tail}$$",
-            "",
-            "<details><summary>计算过程</summary>",
-            "",
-            f"- 公式：${sym} = {rhs}$",
-            f"- 取值：{_values_line(t.get('inputs') or [])}",
-            f"- 代入：${sub}$",
-            f"- 结果：**{res}{(' ' + ut) if ut else ''}**",
-            "",
-            "</details>",
-            "",
-        ]))
-    return "\n".join(blocks) + signature_line(len(traces)) + "\n"
+    return "\n".join(block(t) for t in traces)
 
 
 def cmd_inject(args: argparse.Namespace) -> int:
-    """把报告中的 MARKER 占位符原地替换为公式块（粘贴脚本化——LLM 逐字长拷贝不可靠）。"""
+    """把报告中的占位符原地替换为公式块（粘贴脚本化——LLM 逐字长拷贝不可靠）。
+    首选按公式占位符 `<!-- CALC:id -->`（每公式恰好一个，未知/缺失/重复皆打回）；
+    兼容旧式单一 `<!-- CALC_BLOCKS -->`（全部块顺序注入到该处）。"""
     report = Path(args.report)
     text = report.read_text(encoding="utf-8")
-    if MARKER not in text:
-        if SIGNATURE_PREFIX in text:
-            # 幂等：已注入过（agent 重试 / 二次 inject 不炸、不重复注入）
-            print(f"CALC_INJECT_SKIP: 公式块已注入（含 {SIGNATURE_PREFIX}N -->），跳过")
-            return 0
-        print(f"CALC_INJECT_ERROR: 报告未含占位符 {MARKER}（计算章须以占位符占位，再 inject 注入）")
-        return 1
+    if SIGNATURE_PREFIX in text:
+        # 幂等：已注入过（agent 重试 / 二次 inject 不炸、不重复注入）
+        print(f"CALC_INJECT_SKIP: 公式块已注入（含 {SIGNATURE_PREFIX}N -->），跳过")
+        return 0
     data = json.loads(Path(args.traces).read_text(encoding="utf-8"))
     traces = data.get("traces", data if isinstance(data, list) else [])
+    by_id = {t.get("id"): t for t in traces}
+
+    ids = [m.group(1) for m in PER_FORMULA_RE.finditer(text)]
+    if ids:
+        unknown = [i for i in ids if i not in by_id]
+        if unknown:
+            print(f"CALC_INJECT_ERROR: 占位符引用未知公式 id {unknown}（合法 id: {sorted(by_id)}）——核对 traces.json")
+            return 1
+        dup = sorted({i for i in ids if ids.count(i) > 1})
+        if dup:
+            print(f"CALC_INJECT_ERROR: 公式 {dup} 的占位符出现多次——每公式恰好一个 <!-- CALC:id -->")
+            return 1
+        missing = [t.get("id") for t in traces if ids.count(t.get("id")) == 0]
+        if missing:
+            print(f"CALC_INJECT_ERROR: 公式 {missing} 缺占位符——每个公式的计算块小节都要有 <!-- CALC:id -->，缺块会被门禁数量核对漏检")
+            return 1
+        new = text
+        for i in ids:
+            new = new.replace(f"<!-- CALC:{i} -->", block(by_id[i]))
+        report.write_text(new, encoding="utf-8")
+        print(f"CALC_INJECT_READY: {len(ids)} 公式折叠块已按占位符注入 {report}")
+        return 0
+
+    if MARKER not in text:
+        print(f"CALC_INJECT_ERROR: 报告未含占位符 <!-- CALC:公式id -->（推荐，每公式一个）或旧式 {MARKER}")
+        return 1
     report.write_text(text.replace(MARKER, render(traces)), encoding="utf-8")
     print(f"CALC_INJECT_READY: {len(traces)} 公式折叠块已注入 {report}")
     return 0

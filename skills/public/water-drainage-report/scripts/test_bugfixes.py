@@ -135,7 +135,6 @@ def test_render_calc_blocks_details() -> None:
         assert "CALCBLOCKS_READY: 2" in r.stdout, r.stdout
         text = out.read_text(encoding="utf-8")
         for needle in [
-            "### [6.1.1] 蒸发水量",
             # $$ 可见公式块：符号=表达式=代入=结果+latex单位；浮点收敛 210.38400000000001→210.384
             "$$Q_{e} = Q \\times KZF \\times \\Delta t = 16000 \\times 0.001461 \\times 9 = 210.384\\ \\text{m}^3/\\text{h}$$",
             "<details><summary>计算过程</summary>",
@@ -144,7 +143,6 @@ def test_render_calc_blocks_details() -> None:
             "- 代入：$16000 \\times 0.001461 \\times 9$",
             "- 结果：**210.384 m³/h**",
             # ceil → \lceil \frac \rceil；上游公式输出参数标注来源
-            "### [9.1.2] 过滤器台数",
             "\\lceil \\frac{Qsf}{filter\\_unit\\_capacity} \\rceil",
             "\\lceil \\frac{800}{45} \\rceil = 18\\ \\text{台}$$",
             "Qsf = 800（由 [Qsf] 求得）",
@@ -152,11 +150,16 @@ def test_render_calc_blocks_details() -> None:
             "</details>",
         ]:
             assert needle in text, f"calc_blocks 缺: {needle}"
+        # 用户定案 A：注入块不带标题——小节标题由报告 TOC 承担，登记表 section 号不得进正文
+        assert "### [" not in text, "注入块不得自带 [section] 标题（双编号/双标题）"
+        # v2.1 签名：每块各带 count=1，求和==块数（快照门禁依据）
+        assert text.count("CALC_BLOCKS_INJECTED:v2 count=1") == 2, "每块应各带 count=1 签名"
 
 
 def test_render_calc_blocks_inject() -> None:
-    """反馈3 注入：占位符 <!-- CALC_BLOCKS --> 被替换为公式折叠块；缺占位符报 CALC_INJECT_ERROR 且文件不动；
-    已注入（含签名）重跑 → CALC_INJECT_SKIP 幂等。"""
+    """反馈3 注入（用户定案 A）：按公式占位符 <!-- CALC:Qe --> 替换为无标题公式块；
+    未知 id / 公式缺标记 / 重复标记 / 无任何占位符 → CALC_INJECT_ERROR 且文件不动；
+    已注入重跑 → SKIP 幂等；旧式单一 <!-- CALC_BLOCKS --> 兼容。"""
     traces = {"traces": [{
         "id": "Qe", "name": "蒸发水量", "expression": "Q * KZF * delta_t", "source": "蒸发损失系数",
         "substituted": "16000 * 0.001461 * 9", "result": 210.384, "unit": "m3/h", "inputs": [],
@@ -165,33 +168,62 @@ def test_render_calc_blocks_inject() -> None:
         tp = Path(d) / "traces.json"
         tp.write_text(json.dumps(traces, ensure_ascii=False), encoding="utf-8")
         rp = Path(d) / "report.md"
-        rp.write_text("# 报告\n\n## 第5章 工艺计算\n\n<!-- CALC_BLOCKS -->\n", encoding="utf-8")
-        r = subprocess.run(
-            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
-            capture_output=True, text=True,
-        )
+
+        def inject() -> subprocess.CompletedProcess:
+            return subprocess.run(
+                [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
+                capture_output=True, text=True,
+            )
+
+        # ① 按公式占位符：块落标记处、无标题、count=1 签名
+        rp.write_text("# 报告\n\n#### 5.1.1 蒸发水量计算\n\n<!-- CALC:Qe -->\n", encoding="utf-8")
+        r = inject()
         assert r.returncode == 0, r.stderr
         assert "CALC_INJECT_READY: 1" in r.stdout, r.stdout
         injected = rp.read_text(encoding="utf-8")
-        assert injected.count("<details>") == 1 and "<!-- CALC_BLOCKS -->" not in injected
-        assert "<!-- CALC_BLOCKS_INJECTED:v2 count=1 -->" in injected, "注入后必须落带块数的 v2 签名（快照门禁依据）"
+        assert injected.count("<details>") == 1 and "<!-- CALC:Qe -->" not in injected
+        assert "<!-- CALC_BLOCKS_INJECTED:v2 count=1 -->" in injected, "注入后必须落 v2 签名（快照门禁依据）"
+        assert "### [" not in injected and "$$Q_{e}" in injected, "块不带标题，紧跟小节标题"
 
-        # 幂等：已注入报告重跑 inject → SKIP 不重复注入
-        r = subprocess.run(
-            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
-            capture_output=True, text=True,
-        )
-        assert r.returncode == 0, r.stderr
-        assert "CALC_INJECT_SKIP" in r.stdout, r.stdout
+        # ② 幂等：已注入报告重跑 inject → SKIP 不重复注入
+        r = inject()
+        assert r.returncode == 0 and "CALC_INJECT_SKIP" in r.stdout, r.stdout
         assert rp.read_text(encoding="utf-8").count("<details>") == 1, "SKIP 不得重复注入"
 
+        # ③ 未知公式 id → 打回且文件不动
+        rp.write_text("# 报告\n\n<!-- CALC:Nope -->\n", encoding="utf-8")
+        r = inject()
+        assert r.returncode == 1 and "CALC_INJECT_ERROR" in r.stdout, r.stdout
+        assert "未知公式" in r.stdout, r.stdout
+        assert "<details>" not in rp.read_text(encoding="utf-8"), "打回时不得改动报告"
+
+        # ④ 重复占位符 → 打回（防同公式注入两份）
+        rp.write_text("# 报告\n\n<!-- CALC:Qe -->\n\n<!-- CALC:Qe -->\n", encoding="utf-8")
+        r = inject()
+        assert r.returncode == 1 and "CALC_INJECT_ERROR" in r.stdout, r.stdout
+        assert "<details>" not in rp.read_text(encoding="utf-8"), "打回时不得改动报告"
+
+        # ⑤ 公式缺占位符（traces 两公式只放一个标记）→ 打回：缺块会被门禁数量核对漏检
+        two = {"traces": traces["traces"] + [{
+            "id": "Qw", "name": "风吹损失水量", "expression": "Q * drift_rate", "source": "",
+            "substituted": "16000 * 0.001", "result": 16.0, "unit": "m3/h", "inputs": [],
+        }]}
+        tp.write_text(json.dumps(two, ensure_ascii=False), encoding="utf-8")
+        rp.write_text("# 报告\n\n<!-- CALC:Qe -->\n", encoding="utf-8")
+        r = inject()
+        assert r.returncode == 1 and "缺占位符" in r.stdout, r.stdout
+        assert "<details>" not in rp.read_text(encoding="utf-8"), "打回时不得改动报告"
+
+        # ⑥ 旧式单一占位符兼容：全块顺序注入
+        rp.write_text("# 报告\n\n## 第5章 工艺计算\n\n<!-- CALC_BLOCKS -->\n", encoding="utf-8")
+        r = inject()
+        assert r.returncode == 0 and "CALC_INJECT_READY: 2" in r.stdout, r.stdout
+        assert rp.read_text(encoding="utf-8").count("<details>") == 2
+
+        # ⑦ 无任何占位符 → 打回
         rp.write_text("# 报告（无占位符无签名）\n", encoding="utf-8")
-        r = subprocess.run(
-            [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
-            capture_output=True, text=True,
-        )
-        assert r.returncode == 1
-        assert "CALC_INJECT_ERROR" in r.stdout
+        r = inject()
+        assert r.returncode == 1 and "CALC_INJECT_ERROR" in r.stdout, r.stdout
         assert "<details>" not in rp.read_text(encoding="utf-8"), "缺占位符时不得改动报告"
 
 
@@ -306,4 +338,4 @@ if __name__ == "__main__":
     test_render_calc_blocks_details()
     test_render_calc_blocks_inject()
     test_snapshot_gate_calc_blocks()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（用户样例格式）+注入+幂等 / R8+R9 快照门禁（占位符/手写/块数不符）")
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（定案A 无标题块+按公式占位符+错误形态打回） / R8+R9 快照门禁（占位符/手写/块数不符）")
