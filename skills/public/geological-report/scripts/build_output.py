@@ -388,6 +388,48 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
     return "\n\n".join(parts) + "\n", toc_stats
 
 
+def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, targets: dict | None) -> None:
+    """--chapter 单章全门（spec §5.2①）：validate_chapter + validate_depth + validate_toc + inject
+    + validate_depth_target，一次报齐该章全部问题（同 assemble 章内块格式）。
+
+    不产交付物（交付名门/散文件门不适用）、不写 progress.json（唯一写者=progress.py）。
+    PASS 打 CHAPTER_GATE_PASS 行（eff/目标/覆盖缩放——mark VERIFIED 与重派决策的数据面）。
+    """
+    order = sorted(stage.get("chapters", {}), key=lambda x: int(x[2:]) if x[2:].isdigit() else 99)
+    if ch_id not in stage.get("chapters", {}):
+        raise ValueError(f"未知章节 {ch_id}（stage 在册: {order}）")
+    state, _consistency = load_state_and_check(state_dir)
+    unknown_keys: set[str] = set()
+    inject = make_inject(stage, data_dir, state, unknown_keys)
+    cf = state_dir / "chapters" / f"{ch_id}.md"
+    if not cf.exists():
+        raise ValueError(f"章节产物缺失: {cf}（子代理未完成或未派发——先按 progress.py next 指引派发/重派该章）")
+    raw = cf.read_text(encoding="utf-8")
+    errors: list[str] = []
+    toc: dict = {}
+    injected = ""
+    try:
+        validate_chapter(ch_id, raw)
+        validate_depth(ch_id, raw)
+        toc = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
+        injected = inject(raw).rstrip() + "\n"
+        if targets is not None:
+            validate_depth_target(ch_id, injected, targets)
+    except ValueError as e:
+        errors.append(str(e))
+    if unknown_keys:
+        errors.append(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
+    if errors:
+        raise ValueError(f"{ch_id} 单章门 FAIL（{len(errors)} 项，一次报齐——补写该章正文后重跑）:\n" + "\n".join(errors))
+    ch = (targets or {}).get("per_chapter", {}).get(ch_id)
+    if ch:
+        scale = coverage_scale(injected, targets)
+        t = ch.get("median_eff", 0) * targets.get("coefficient", 0.6) * scale
+        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)} ≥ 目标 {t:.0f}（样例 median {ch.get('median_eff')} × {targets.get('coefficient', 0.6)} × 覆盖缩放 {scale:.2f}）")
+    else:
+        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)}（L2 基准未覆盖该章，地板门通过）")
+
+
 def atomic_write(path: Path, content: str) -> bool:
     """幂等原子写：内容不变返回 False（保 mtime，SC-4 字节不变断言）。
 
@@ -410,11 +452,22 @@ def main() -> int:
     p.add_argument("--data-dir", required=True)
     p.add_argument("--state-dir", required=True, help="state/（chapters/ + formula_state.json + consistency_check.json）")
     p.add_argument("--targets", help="depth_targets.json 路径；缺省探测 stage 同目录/../ ../../")
-    p.add_argument("--output", required=True)
+    p.add_argument("--chapter", help="单章门模式：只验证该章（ch_id 如 ch3），不产交付物/不写 progress.json")
+    p.add_argument("--allow-partial", action="store_true", help="分级交付：progress.json 已批准的 BLOCKED 章跳过 L2 深度目标门（L0/L1/toc/槽位门仍在场），manifest 留痕")
+    p.add_argument("--output", help="交付物输出路径（--chapter 模式不需要）")
     args = p.parse_args()
+    if args.chapter and (args.output or args.allow_partial):
+        print("[build] --chapter 与 --output/--allow-partial 互斥（单章门不产交付物）", file=sys.stderr)
+        return EXIT_ERROR
+    if not args.chapter and not args.output:
+        print("[build] 需要 --output（或用 --chapter 走单章门）", file=sys.stderr)
+        return EXIT_ERROR
     try:
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
         targets, targets_src = resolve_targets(args.targets, Path(args.stage))
+        if args.chapter:
+            run_chapter_gate(stage, Path(args.data_dir), Path(args.state_dir), args.chapter, targets)
+            return EXIT_OK
         # ── bug-2223 交付名门：文件名规范 + outputs/ 无管线外散文件 ──
         out_path = Path(args.output)
         expected = expected_deliverable_name(stage, Path(args.data_dir))
