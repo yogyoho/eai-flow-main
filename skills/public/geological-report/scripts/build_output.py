@@ -406,8 +406,11 @@ def load_progress(state_dir: Path) -> dict:
 
 def approved_chapters(progress: dict) -> set[str]:
     out: set[str] = set()
-    for a in progress.get("downgrade_approvals", []):
-        if not isinstance(a, dict) or not isinstance(a.get("chapters", []), list):
+    appr = progress.get("downgrade_approvals", [])
+    if not isinstance(appr, list):  # .get 默认值只兜 key 缺席——显式 null 是手改形状，须拒（.get(…, []) 对 null 不生效）
+        raise ValueError(f"downgrade_approvals 结构损坏（手改特征）——progress.py 是唯一写者: {appr!r}")
+    for a in appr:
+        if not isinstance(a, dict) or not isinstance(a.get("chapters", []), list) or not all(isinstance(c, str) for c in a["chapters"]):
             raise ValueError(f"downgrade_approvals 结构损坏（手改特征）——progress.py 是唯一写者: {a!r}")
         out.update(a["chapters"])
     return out

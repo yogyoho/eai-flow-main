@@ -252,3 +252,15 @@ class TestPartialDelivery:
         assert r.stderr.startswith("[build] 错误:")  # 房风诊断行
         assert "结构损坏" in r.stderr and "手改特征" in r.stderr
         assert "Traceback" not in r.stderr
+
+    def test_null_downgrade_approvals_refused_cleanly(self, ctrl, tmp_path):
+        """显式 null downgrade_approvals（.get 默认值不生效的手改形状）→ 同 [build] 诊断行拒绝，非裸 TypeError traceback。"""
+        bad = tmp_path / "nullstate"
+        bad.mkdir()
+        (bad / "progress.json").write_text(json.dumps({"chapters": {"ch2": {"status": "BLOCKED"}}, "downgrade_approvals": None}), encoding="utf-8")
+        proj = json.loads((ctrl["data"] / "00_project.json").read_text(encoding="utf-8"))
+        out = tmp_path / f"{proj['project_name']}-{proj['stage']}-地质勘查报告.md"
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", ctrl["data"], "--state-dir", bad, "--allow-partial", "--output", out, expect=(1,))
+        assert r.stderr.startswith("[build] 错误:")
+        assert "结构损坏" in r.stderr and "手改特征" in r.stderr
+        assert "Traceback" not in r.stderr
