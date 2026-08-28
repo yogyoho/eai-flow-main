@@ -303,8 +303,8 @@ knowledge-factory_kf_resolve_template(
 - **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。计算过程块必须脚本注入不得手写（历史：R4/R5/R6 三轮实测 agent 手写从不产 `<details>` 折叠；R6 即便生成了片段也不逐字粘贴——6K 字符复制对 LLM 不可靠；**R8 实测 agent 把 12 块全文手写进 write_file 并跳过 inject**，故 2026-08-29 起由快照门禁强制）：
   1. `write_file` 报告时计算章的逐公式块位置**只写一个占位符** `<!-- CALC_BLOCKS -->`——write_file 的 content 里**严禁出现** `<details>` 或 `$$`（手写块与注入块叠加会重复，且快照门禁必打回）；
   2. 落盘后立刻注入：`python $SCRIPTS/render_calc_blocks.py inject --traces $WORK/traces.json --report $OUT/报告.md   # CALC_INJECT_READY`（对已注入报告重跑返回 `CALC_INJECT_SKIP`，幂等不重复注入）
-  3. 注入后自检：`grep -c '<details>' 报告.md` 必须 ≥ 公式数（12），为 0 即 inject 未执行。
-  ⛔ 禁止手写 KaTeX 公式块/计算过程折叠块替代脚本注入。**快照门禁（R8）**：`snapshot.py save --report ...` 校验报告——含未注入占位符或含无签名手写 `<details>` → `SNAPSHOT_ERROR` 退出 1，此时必须删除手写块、恢复占位符、重跑 inject 后再 save。
+  3. 注入后自检：`grep -c '<details>' 报告.md` 必须**恰好等于**公式数（12）——大于也是违约（多出的必是手写块）。
+  ⛔ 禁止手写 KaTeX 公式块/计算过程折叠块替代脚本注入——**全文任何位置**（含 narrative 章的水池/泵房/旁滤小节）都不许写 `<details>` 或 `$$` 公式块；narrative 章引用数值用纯文本并标注"计算见第X章"。**快照门禁（R8+R9）**：`snapshot.py save --report ...` 校验报告——① 含未注入占位符；② 含无签名手写 `<details>`；③ `<details>` 总数 ≠ 注入签名块数（R9 实测：注入 12 块后又在第6-8章手写 8 块、其中 V_ratio 单位抄错成"0.202 h"）→ 一律 `SNAPSHOT_ERROR` 退出 1。打回后必须删除全部手写折叠块（保留唯一占位符注入产物）再 save。
 - **narrative 章** = 并行子 agent 生成（`task()` 工具）。每个子 agent prompt 注入**同一份冻结快照**（`traces.json` 的数值 + 该章 `generation_hint`/`content_contract`/`compliance_rules`），只返回该章 Markdown。按 `chapter_manifest` 顺序合并。
 
 **核心不变量：** 所有数值在步骤2 固化进 `traces.json`；所有生成单元只读该快照——并行不引入跨章数值漂移。

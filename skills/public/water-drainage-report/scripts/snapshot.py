@@ -28,6 +28,7 @@ stdlib only（json/argparse/pathlib/subprocess）——不 import backend/harnes
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -71,17 +72,24 @@ def cmd_save(args: argparse.Namespace) -> int:
 
     # R8 守卫（快照门禁）：agent 手写公式折叠块 + 跳过 inject（文本铁律压不住 flash 模型）。
     # save 是交付前必经步骤，在这里把「未注入」打回，agent 才会回头走占位符+inject 正道。
+    # R9 升级：签名带块数（v2），比对「签名数之和 == <details> 总数」——抓"注入了但又在
+    # 别处手写折叠块"的混合违约（R9 实测 ch6-8 手写 8 块，且 V_ratio 单位抄错成 0.202 h）。
     if args.report:
         rp = Path(args.report)
         if rp.exists():
             rtext = rp.read_text(encoding="utf-8")
             _MARKER = "<!-- CALC_BLOCKS -->"
-            _SIGNATURE = "<!-- CALC_BLOCKS_INJECTED:v1 -->"  # 与 render_calc_blocks.py SIGNATURE 同步
+            _SIG_RE = re.compile(r"CALC_BLOCKS_INJECTED:v2 count=(\d+)")  # 与 render_calc_blocks.py SIGNATURE_PREFIX 同步
             if _MARKER in rtext:
                 print(f"SNAPSHOT_ERROR: 报告仍含未注入占位符 {_MARKER}——先运行 render_calc_blocks.py inject 再 save（R8 守卫）")
                 return 1
-            if "<details>" in rtext and _SIGNATURE not in rtext:
-                print(f"SNAPSHOT_ERROR: 报告含手写 <details> 计算过程块但缺脚本注入签名 {_SIGNATURE}——禁止手写公式块；删除手写块，改回占位符后运行 render_calc_blocks.py inject（R8 守卫）")
+            _injected = [int(m) for m in _SIG_RE.findall(rtext)]
+            _details = rtext.count("<details>")
+            if "<details>" in rtext and not _injected:
+                print("SNAPSHOT_ERROR: 报告含手写 <details> 计算过程块但缺脚本注入签名 CALC_BLOCKS_INJECTED:v2——禁止手写公式块；删除手写块，改回占位符后运行 render_calc_blocks.py inject（R8 守卫）")
+                return 1
+            if _injected and sum(_injected) != _details:
+                print(f"SNAPSHOT_ERROR: 报告 <details> 共 {_details} 块，但脚本注入签名合计 {sum(_injected)} 块——多出的手写折叠块/被删注入块必须清除：正文只保留注入块，其余计算叙述去 <details> 化（R9 守卫）")
                 return 1
     prev = _load_existing(out)
     prev_version = prev.get("version", 0) or 0

@@ -174,7 +174,7 @@ def test_render_calc_blocks_inject() -> None:
         assert "CALC_INJECT_READY: 1" in r.stdout, r.stdout
         injected = rp.read_text(encoding="utf-8")
         assert injected.count("<details>") == 1 and "<!-- CALC_BLOCKS -->" not in injected
-        assert "<!-- CALC_BLOCKS_INJECTED:v1 -->" in injected, "注入后必须落签名（快照门禁依据）"
+        assert "<!-- CALC_BLOCKS_INJECTED:v2 count=1 -->" in injected, "注入后必须落带块数的 v2 签名（快照门禁依据）"
 
         # 幂等：已注入报告重跑 inject → SKIP 不重复注入
         r = subprocess.run(
@@ -196,8 +196,8 @@ def test_render_calc_blocks_inject() -> None:
 
 
 def test_snapshot_gate_calc_blocks() -> None:
-    """R8 快照门禁：save --report 校验注入契约——占位符残留 / 无签名手写 <details> → SNAPSHOT_ERROR；
-    已注入（含签名）→ 正常 SNAPSHOT_READY。"""
+    """R8/R9 快照门禁：save --report 校验注入契约——占位符残留 / 无签名手写 <details> /
+    签名块数与 <details> 总数不符（混合手写）→ SNAPSHOT_ERROR；已注入（签名数==块数）→ SNAPSHOT_READY。"""
     snap_out = {"task": "t", "report": None}  # placeholder, real args below
     with tempfile.TemporaryDirectory() as d:
         d = Path(d)
@@ -238,6 +238,16 @@ def test_snapshot_gate_calc_blocks() -> None:
         r = save()
         assert r.returncode == 0 and "SNAPSHOT_READY" in r.stdout, r.stdout
         assert out.exists()
+
+        # ④ R9 混合违约：已注入（1 块）+ 正文又手写 1 块 → 块数对不上，拒绝
+        cur = rp.read_text(encoding="utf-8")
+        rp.write_text(cur + "\n<details><summary>计算过程</summary>\n- 公式：$y$\n</details>\n", encoding="utf-8")
+        r = save()
+        assert r.returncode == 1 and "SNAPSHOT_ERROR" in r.stdout, r.stdout
+        assert "手写" in r.stdout or "R9" in r.stdout, r.stdout
+        # 快照不得被 v2 的失败覆盖：仍只有 ③ 的版本
+        snap = json.loads(out.read_text(encoding="utf-8"))
+        assert snap["version"] == 1, "④ 打回时不得写新快照版本"
 
 
 def test_impacted_must_run_before_update() -> None:
@@ -296,4 +306,4 @@ if __name__ == "__main__":
     test_render_calc_blocks_details()
     test_render_calc_blocks_inject()
     test_snapshot_gate_calc_blocks()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（用户样例格式）+注入+幂等 / R8 快照门禁")
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（用户样例格式）+注入+幂等 / R8+R9 快照门禁（占位符/手写/块数不符）")
