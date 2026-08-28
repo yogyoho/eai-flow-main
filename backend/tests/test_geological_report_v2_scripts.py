@@ -712,6 +712,95 @@ class TestDepthTargetGate:
         assert build_output.coverage_scale("全数据完整叙述。", t) == 1.0
 
 
+class TestGateHardening:
+    """门硬化三锚（页面实测线程 03e18e4a 死循环取证）：L1 父节豁免 / 失败一次报齐 / --targets 收口+直调防绕。"""
+
+    def test_parent_section_with_children_exempt(self):
+        """## 父节 2 句引言+子节充实 → 不再误拦（线程 03e18e4a ch5「## 5=2句」结构陷阱：句子写进子节却报父节）。
+
+        压到 eff<1000 只允许 eff 门报错——若父节瘦块误拦会先报「## 5=2句」，match 即失败。
+        """
+        import build_output
+
+        md = "## 5 矿石加工技术性能\n\n矿石加工技术性能是矿床勘查与开发的重要环节。本次工作对矿石工业利用性能进行了系统评价。\n\n### 5.1 试验研究\n\n试样采自勘查区矿体。试样覆盖三种工业类型。试验结果可靠。\n"
+        with pytest.raises(ValueError, match="有效字符"):
+            build_output.validate_depth("ch5", md)  # 唯一允许的报错=eff 门；「## 5=2句」不得出现
+
+    def test_leaf_section_still_enforced_with_location_hint(self):
+        """叶子节（无子节）<3 句仍拦，报错带位置指引（句子写在该节正文、下一级子标题之前）。"""
+        import build_output
+
+        md = "## 5 矿石加工技术性能\n\n引言句一。引言句二。\n\n### 5.1 试验研究\n\n试样一。试样二。\n"
+        with pytest.raises(ValueError, match=r"下一级子标题之前.*5\.1 试验研究=2句"):
+            build_output.validate_depth("ch5", md)
+
+    def test_aggregate_reports_all_chapters_one_run(self, ws, tmp_path):
+        """两章重写压薄 → 同一次 build stderr 同时列出两章（不再逐章打回喂 60 次熔断）。"""
+        import subprocess
+
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        for n in (2, 3):
+            (st / "chapters" / f"ch{n}.md").write_text(f"## {n} 章\n\n引言句。引言句二。\n\n### {n}.1 小节\n\n句子一。句子二。\n", encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(tmp_path / ws["deliv"]), "--targets", str(_floor_targets())],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        assert r.returncode == 1
+        assert "ch2.md" in r.stderr and "ch3.md" in r.stderr, r.stderr
+        assert "一次报齐" in r.stderr, r.stderr
+
+    def test_custom_targets_warn_and_manifest_trace(self, ws, tmp_path):
+        """--targets 非技能基准：stderr 高声警告（调试专用）+ delivery_manifest 记 path/sha256 留痕。"""
+        import hashlib
+        import subprocess
+
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        out = tmp_path / ws["deliv"]
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(out), "--targets", str(_floor_targets())],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        assert r.returncode == 0 and "BUILD_READY" in r.stdout, r.stderr
+        assert "警告" in r.stderr and "调试基准" in r.stderr, r.stderr
+        m = json.loads((out.parent / "delivery_manifest.json").read_text(encoding="utf-8"))
+        ft = _floor_targets()
+        assert m["targets"]["sha256"] == hashlib.sha256(ft.read_bytes()).hexdigest()
+
+    def test_direct_assemble_call_enforces_canonical(self, ws, tmp_path):
+        """直调 assemble（targets=None）不再绕 L2——强制吃技能真基准（线程 03e18e4a 直调绕门 ~10 次）。"""
+        import build_output
+
+        st = TestBuildOutput._copy_chapters(ws, tmp_path)
+        self._thin_ch10(st)
+        stage = json.loads(STAGE.read_text(encoding="utf-8"))
+        with pytest.raises(ValueError, match="深度目标门"):
+            build_output.assemble(stage, ws["data"], st, targets=None)
+
+    @staticmethod
+    def _thin_ch10(st):
+        """ch10 压到 (1000, 真实目标) 区间：L0/L1/toc 全过、只被 L2 拦（同 test_probe_finds_real_targets 合成法，从 stage toc 程序生成）。"""
+        import re as _re
+
+        filler = "本章为防绕回归专用的合成薄章节正文，语句仅用于满足每节三句的深度门下限，不承载地质含义。全段不含缺数标记，覆盖缩放恒为一点零，目标固定为样例中位数乘以系数。有效字符总量压到该目标之下，用于验证直调也吃真基准。"
+        stage = json.loads(STAGE.read_text(encoding="utf-8"))
+        num_re = _re.compile(r"\d+\.\d+(?:\.\d+)?")
+        md = ["## 10 结论", "", filler]
+        seen: set[str] = set()
+        for sub in stage["chapters"]["ch10"]["toc"]:
+            for no in num_re.findall(sub):
+                if no in seen:
+                    continue
+                seen.add(no)
+                md += [f"{'###' if no.count('.') == 1 else '####'} {no} 小节", "", filler]
+        (st / "chapters" / "ch10.md").write_text("\n".join(md) + "\n", encoding="utf-8")
+
+
 class TestDepthTargetsFile:
     """提交的 references/depth_targets.json：结构/量级锚（calibrate 产物回归）。"""
 

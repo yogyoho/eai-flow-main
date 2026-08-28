@@ -10,7 +10,14 @@
 原子写：tmp + os.replace（bid-proposal 先例）；内容不变跳过写盘保 mtime（SC-4 字节不变）；
 全文无时间戳（幂等）。成功后写 outputs/delivery_manifest.json（交付清单，确定性幂等——present_files/下载门的放行凭据，bug-2225）。
 
-退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含管线外散文件（交付名门，bug-2223）、toc 节号缺失（目录覆盖门，bug-2225）、章节有效字符 < 样例中位 ×0.6×覆盖缩放（深度目标门 L2；targets 缺失时自动跳过回退地板门）
+退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、
+章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223；有子节的父节豁免 3 句门——正文在子节，防「补句进子节、
+错误却报父节」修不动假象，页面实测线程 03e18e4a）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含
+管线外散文件（交付名门，bug-2223）、toc 节号缺失（目录覆盖门，bug-2225）、章节有效字符 < 样例中位 ×0.6×覆盖缩放
+（深度目标门 L2；基准只认技能 references/depth_targets.json——--targets 是调试通道，非技能基准 stderr 高声警告并
+记入 delivery_manifest；技能基准缺失才回退地板门）。
+
+失败一次报齐（不 fail-fast 逐章打回——那会把一轮扩写切成 N 轮 build 循环，60 次工具熔断的燃料，页面实测线程 03e18e4a）。
 """
 
 from __future__ import annotations
@@ -48,6 +55,7 @@ def expected_deliverable_name(stage: dict, data_dir: Path) -> str:
 
 # ── 前置部分（表单直出）────────────────────────────────────────────────────
 
+
 def render_front_matter(stage: dict, data_dir: Path) -> str:
     fm = stage.get("front_matter", {})
     proj = json.loads((data_dir / stage["forms"]["project"]["file"]).read_text(encoding="utf-8")) if (data_dir / stage["forms"]["project"]["file"]).exists() else {}
@@ -58,9 +66,12 @@ def render_front_matter(stage: dict, data_dir: Path) -> str:
     lines.append("")
     lines.append("## 外封面")
     lines.append("")
-    cover_map = {"矿区名": proj.get("project_name", ""),
-                 "报告题名（矿种组合+阶段+报告）": (f"{proj.get('commodity', '')}{proj.get('stage', '') or stage.get('stage', '')}报告" if proj.get("commodity") else ""),
-                 "编制单位": proj.get("undertaking_unit", ""), "年月": ""}
+    cover_map = {
+        "矿区名": proj.get("project_name", ""),
+        "报告题名（矿种组合+阶段+报告）": (f"{proj.get('commodity', '')}{proj.get('stage', '') or stage.get('stage', '')}报告" if proj.get("commodity") else ""),
+        "编制单位": proj.get("undertaking_unit", ""),
+        "年月": "",
+    }
     for item in fm.get("outer_cover", []):
         lines.append(f"**{item}**：{cover_map.get(item, '') or '　'}")
         lines.append("")
@@ -103,6 +114,7 @@ def render_front_matter(stage: dict, data_dir: Path) -> str:
 
 # ── 表渲染 ──────────────────────────────────────────────────────────────────
 
+
 def _md_table(header: list[str], rows: list[list[str]]) -> str:
     out = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     out += ["| " + " | ".join(r) + " |" for r in rows]
@@ -136,6 +148,7 @@ def render_family(fam: str, stage: dict, data_dir: Path) -> str:
 
 
 # ── 合规性附录 ──────────────────────────────────────────────────────────────
+
 
 def render_compliance_appendix(consistency: dict | None, state: dict, state_path: Path) -> str:
     lines = ["## 合规性附录（脚本自动生成）", ""]
@@ -179,15 +192,11 @@ SENT_RE = re.compile(r"[。；？！]")
 
 def effective_chars(text: str) -> int:
     """有效字符数：排除空行/标题行/表格行，行内剔除空白与 |\\-*#:{} 装饰符。"""
-    return sum(
-        len(re.sub(r"[\s\|\-*#:{}]", "", line))
-        for line in text.splitlines()
-        if line.strip() and not line.strip().startswith("|") and not line.strip().startswith("#")
-    )
+    return sum(len(re.sub(r"[\s\|\-*#:{}]", "", line)) for line in text.splitlines() if line.strip() and not line.strip().startswith("|") and not line.strip().startswith("#"))
 
 
 def validate_depth(ch_id: str, text: str) -> None:
-    """每标题块（## / ###）正文 ≥3 句（表格行不计句、不豁免）；全章有效字符 ≥1000。"""
+    """每个标题块（## / ###）正文 ≥3 句（表格行不计句、不豁免；有子节的父节豁免——父节块在首个 ### 处截断，正文在子节）；全章有效字符 ≥1000。"""
     blocks: list[tuple[str, list[str]]] = []
     cur_title, cur_lines = "", []
     for ln in text.splitlines():
@@ -199,14 +208,16 @@ def validate_depth(ch_id: str, text: str) -> None:
             cur_lines.append(ln)
     blocks.append((cur_title, cur_lines))
     thin = []
-    for title, lns in blocks:
-        if title == "" and not any(l.strip() for l in lns):
+    for i, (title, lns) in enumerate(blocks):
+        if title == "" and not any(ln.strip() for ln in lns):
             continue  # 首块无标题无内容（章文件以 ## 开头）
-        sents = sum(len(SENT_RE.findall(l)) for l in lns if l.strip() and not l.strip().startswith("|"))
+        if title.startswith("## ") and i + 1 < len(blocks) and blocks[i + 1][0].startswith("### "):
+            continue  # 父节豁免：正文在子节（页面实测线程 03e18e4a「## 5=2句」结构陷阱——往子节补句永远修不掉报在父节的错）
+        sents = sum(len(SENT_RE.findall(ln)) for ln in lns if ln.strip() and not ln.strip().startswith("|"))
         if sents < 3:
             thin.append(f"{title or '(章首段)'}={sents}句")
     if thin:
-        raise ValueError(f"{ch_id}.md 深度门 FAIL（每节 ≥3 句，参照 references/samples/exploration/{ch_id}_sample.md 范文补写）: {'; '.join(thin)}")
+        raise ValueError(f"{ch_id}.md 深度门 FAIL（每节 ≥3 句——句子写进该节自己的正文、下一级子标题之前；表格行不计句；有子节的父节不适用本门）瘦块: {'; '.join(thin)}；参照 references/samples/exploration/{ch_id}_sample.md 范文补写")
     eff = effective_chars(text)
     if eff < 1000:
         raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照 references/samples/exploration/{ch_id}_sample.md 范文扩写")
@@ -277,21 +288,34 @@ def load_targets(path: Path) -> dict | None:
         return None
 
 
-def resolve_targets(args_targets: str | None, stage_path: Path) -> dict | None:
-    """--targets 显式路径优先；缺省沿 stage 文件向上三级探测 depth_targets.json。"""
+CANONICAL_TARGETS = Path(__file__).resolve().parent.parent / "references" / "depth_targets.json"
+
+
+def resolve_targets(args_targets: str | None, stage_path: Path) -> tuple[dict | None, Path]:
+    """--targets 显式路径优先（调试通道：非技能基准 stderr 高声警告 + 记入 delivery_manifest）；缺省沿 stage 文件向上三级探测，探测不中兜底技能自身基准。返回 (targets, 来源路径)。
+
+    页面实测线程 03e18e4a 教训：agent 伪造 coefficient=0.01 的 depth_targets.json 显式传入，L2 目标全变 0——非技能基准必须醒目可见且留痕，不可静默生效。
+    """
     if args_targets:
-        return load_targets(Path(args_targets))
+        p = Path(args_targets)
+        if p.exists() and p.resolve() != CANONICAL_TARGETS:
+            print(f"[build] 警告: --targets 调试基准 {p}（sha256 {sha256_file(p)[:12]}…）≠ 技能基准 references/depth_targets.json——正式交付绝不传 --targets 换基准绕深度门；本次基准来源已记入 delivery_manifest.json", file=sys.stderr)
+        return load_targets(p), p
     for anc in (stage_path.parent, stage_path.parent.parent, stage_path.parent.parent.parent):
         cand = anc / "depth_targets.json"
         if cand.exists():
-            return load_targets(cand)
-    print("[build] 未找到 depth_targets.json——退回地板门（L0 深度门继续生效）", file=sys.stderr)
-    return None
+            return load_targets(cand), cand
+    print(f"[build] stage 附近未探测到 depth_targets.json——兜底技能自身基准 {CANONICAL_TARGETS}", file=sys.stderr)
+    return load_targets(CANONICAL_TARGETS), CANONICAL_TARGETS
 
 
 # ── 组装 ────────────────────────────────────────────────────────────────────
 
+
 def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None = None) -> tuple[str, dict[str, dict]]:
+    if targets is None:
+        # 防绕：直调 assemble（targets=None）也吃技能真基准——页面实测线程 03e18e4a 直调跳过 L2 ~10 次
+        targets = load_targets(CANONICAL_TARGETS)
     state_path = state_dir / "formula_state.json"
     state = json.loads(state_path.read_text(encoding="utf-8"))
     # ── bug-2223 手改检测门：formula_runner.emit() 给每个槽位写 source 键；手改必丢 ──
@@ -323,21 +347,30 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
 
     parts = [render_front_matter(stage, data_dir)]
     chap_dir = state_dir / "chapters"
+    # 一次报齐：全部章节全部门跑完汇总（页面实测线程 03e18e4a——fail-fast 逐章打回把一轮扩写切成 N 轮 build 循环，60 次工具熔断的燃料）
+    errors: list[str] = []
     for ch_id in sorted(stage.get("chapters", {}), key=lambda x: int(x[2:]) if x[2:].isdigit() else 99):
         cf = chap_dir / f"{ch_id}.md"
         if not cf.exists():
-            raise FileNotFoundError(f"章节产物缺失: {cf}（波次生成未完成，不静默跳过）")
+            errors.append(f"章节产物缺失: {cf}（波次生成未完成，不静默跳过）")
+            continue
         raw = cf.read_text(encoding="utf-8")
-        validate_chapter(ch_id, raw)
-        validate_depth(ch_id, raw)
-        toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
-        injected = inject(raw).rstrip() + "\n"
-        if targets is not None:
-            validate_depth_target(ch_id, injected, targets)
+        try:
+            validate_chapter(ch_id, raw)
+            validate_depth(ch_id, raw)
+            toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
+            injected = inject(raw).rstrip() + "\n"
+            if targets is not None:
+                validate_depth_target(ch_id, injected, targets)
+        except ValueError as e:
+            errors.append(str(e))
+            continue
         parts.append(injected)
     parts.append(render_compliance_appendix(consistency, state, state_path))
     if unknown_keys:
-        raise KeyError(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
+        errors.append(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
+    if errors:
+        raise ValueError(f"{len(errors)} 项未过门（一次报齐，逐项修完再重跑——勿修一章跑一轮）:\n" + "\n".join(errors))
     return "\n\n".join(parts) + "\n", toc_stats
 
 
@@ -367,7 +400,7 @@ def main() -> int:
     args = p.parse_args()
     try:
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
-        targets = resolve_targets(args.targets, Path(args.stage))
+        targets, targets_src = resolve_targets(args.targets, Path(args.stage))
         # ── bug-2223 交付名门：文件名规范 + outputs/ 无管线外散文件 ──
         out_path = Path(args.output)
         expected = expected_deliverable_name(stage, Path(args.data_dir))
@@ -392,6 +425,8 @@ def main() -> int:
         "bytes": len(content.encode("utf-8")),
         "formula_state_sha256": sha256_file(Path(args.state_dir) / "formula_state.json"),
         "chapters": toc_stats,
+        # 基准溯源：正式交付只认技能 references/depth_targets.json；他处基准=调试/绕门，事后可查（线程 03e18e4a 伪造基准教训）
+        "targets": {"path": str(targets_src), "sha256": sha256_file(targets_src) if targets_src.exists() else None},
     }
     m_path = out_path.parent / "delivery_manifest.json"
     m_wrote = atomic_write(m_path, json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")

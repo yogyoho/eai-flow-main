@@ -88,7 +88,7 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 - **范文参照（只学范式，禁抄）**：动笔前同时读 `references/samples/exploration/chN_sample.md` 同章范文——**只学叙述范式**（要素组织成段的方式/专业表述/表格用法），仿写而非摘抄——禁止整句照搬范文。范文中任何数值/矿名/地名是样例项目的，一律不得进入本项目正文（本项目数值只经 `{{SLOT:key}}`；深度门 FAIL 时 stderr 会点名参照范文补写）。除本地范文集外，优先用 harness 工具 `knowledge_search`（本地 RAGFlow 检索，已配置 固体矿产报告知识库 / ragflow-laws-standards 等 5 库）检索同章叙述参考；工具不可用或未命中再退 MCP `knowledge-factory_kf_search_knowledge`（参数 `kb_name="固体矿产报告知识库"`）。两路检索 chunk 同样仅限叙述范式：chunk 中任何数值/矿名/地名不得进入本项目正文，本项目数值只经 `{{SLOT:key}}`（与本地 references/samples 同一红线；知识库样例可能与本项目同题材同矿区，矿名/地名不在数字合约覆盖内，成段后逐句自查）。ragflow-laws-standards 的规范条文 chunk 仅作人工核实线索——规范引用仍只从 standards_index 实有编号，不得直接引 chunk 条款号。
 - **叙述深度下限（bug-2221 根因②）**：每个三级节 ≥1 段完整叙述（≥3 句）；每张表前有引入段、表后**五步解读**——陈述→规律识别→成因解释→规范对比→勘查意义（规范对比只引 standards_index 实有编号，禁凭记忆写条款号）——禁「表后即下一节」
 - **条目式叙述范式（bug-2221 根因③）**：逐条目分述（矿体/含水层/岩组/块段等）时**每条一段完整专业叙述**，按要素链成文：产出层位/位置 → 中段/勘探线等工程控制 → 形态产状 → 走向/倾向延伸 → 厚度区间+变化系数+稳定型判定 → 品位区间+变化系数+均匀型判定 → 含矿岩性+矿物组合+产出状态 → 资源量占比/结论；某要素缺数据写 `[待确认]` 不砍句
-- **动笔前读深度目标（bug-2221 根治）**：写每章前读 `references/depth_targets.json` 该章 `median_eff`/`median_table_rows`/`median_paragraphs`，以此为篇幅下限自检；build_output **深度目标门**兜底（eff ≥ 样例 median × 0.6 × 覆盖缩放，FAIL exit 1），按 stderr 指引逐要素成段补写——缺数写 `[待确认]` 不砍段，数据覆盖不足时门自动放宽目标
+- **动笔前读深度目标（bug-2221 根治）**：写每章前读 `references/depth_targets.json` 该章 `median_eff`/`median_table_rows`/`median_paragraphs`，以此为篇幅下限自检；build_output **深度目标门**兜底（eff ≥ 样例 median × 0.6 × 覆盖缩放，FAIL exit 1），按 stderr 指引逐要素成段补写——缺数写 `[待确认]` 不砍段，数据覆盖不足时门自动放宽目标。**深度基准只认技能自带 `references/depth_targets.json`，绝不传 `--targets` 换基准、绝不自造/改写 depth_targets 文件、绝不绕过 build_output 直调 assemble**（页面实测线程 03e18e4a：伪造 coefficient=0.01 基准 + 直调 assemble 绕门 → 死循环熔断；FAIL 是让你补写正文，不是让你松门）
 - 一切数字用 `{{SLOT:key}}`（key ∈ formula_state.values）；数据表用 `{{TABLE:fam}}`
 - 判定词（水文/工程/复合类型等 type_verdicts 值）**逐字**写入正文（XS3）
 - 表/图先声明（caption）后引用，编号 `表8-2` 章内递增（NR1）
@@ -139,7 +139,7 @@ update 后只重写受影响章节 → build → consistency → snapshot save�
 | `formula_runner.py impacted --field K --value V --manifest M --output I` | 值差分 dry-run | 0 |
 | `formula_runner.py update --field K --value V --impacted-file I` | **顺序铁律**改参重算 | 0/3；1=守卫拒 |
 | `calibrate.py --samples-dir DIR --output T` | 样例→深度基线（维护者：样例变更后重跑生成 depth_targets.json） | 0/1 样例无节号拒产 |
-| `build_output.py --stage S --data-dir D --state-dir T --output R [--targets P]` | 原子组装+槽位注入+深度目标门 | 0（BUILD_READY+MANIFEST_READY）/ 1 门拦（未知槽位/目录覆盖门/深度目标门） |
+| `build_output.py --stage S --data-dir D --state-dir T --output R [--targets P]` | 原子组装+槽位注入+深度目标门（一次报齐全部未过门项）；`--targets` 仅限调试，正式交付绝不传（基准只认技能 references/，传入即 stderr 警告+manifest 留痕） | 0（BUILD_READY+MANIFEST_READY）/ 1 门拦（未知槽位/目录覆盖门/深度目标门，报错一次列全） |
 | `consistency.py --report R --state F --standards IDX --output C` | 22 合约校验 | 0/1/2/3 |
 | `snapshot.py save --task 描述 … --output P` | 版本快照+SHA-256 | 0 |
 | `snapshot.py show --input P --verify` | 恢复/篡改检测 | 0/3=被篡改 |
