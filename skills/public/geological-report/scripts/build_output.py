@@ -377,6 +377,8 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
             injected = inject(raw).rstrip() + "\n"
             if targets is not None and not (skip_l2 and ch_id in skip_l2):  # skip_l2：--allow-partial 批准集（Task 3）
                 validate_depth_target(ch_id, injected, targets)
+            if partial is not None:  # 过门章才留深度行（校验抛错的章进 errors 硬 FAIL，不进表——产物缺失/未过门章仍阻断交付）
+                partial.setdefault("chapter_depth", []).append(_depth_row(ch_id, injected, targets, bool(skip_l2 and ch_id in skip_l2)))
         except ValueError as e:
             errors.append(str(e))
             continue
@@ -387,6 +389,29 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
     if errors:
         raise ValueError(f"{len(errors)} 项未过门（一次报齐，逐项修完再重跑——勿修一章跑一轮）:\n" + "\n".join(errors))
     return "\n\n".join(parts) + "\n", toc_stats
+
+
+def load_progress(state_dir: Path) -> dict:
+    """progress.json 装载（--allow-partial 前置：进度档案不在场=没走控制器流程，拒绝）。"""
+    p = state_dir / "progress.json"
+    if not p.exists():
+        raise ValueError(f"{p} 不存在——分级交付需要 progress.py 建立的进度档案（先走步骤4 控制器流程）")
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def approved_chapters(progress: dict) -> set[str]:
+    out: set[str] = set()
+    for a in progress.get("downgrade_approvals", []):
+        out.update(a.get("chapters", []))
+    return out
+
+
+def _depth_row(ch_id: str, injected: str, targets: dict | None, downgraded: bool) -> dict:
+    """交付清单逐章深度行（--allow-partial 留痕：达标章与降档章同表可见，差多少可查）。"""
+    eff = effective_chars(injected)
+    ch = (targets or {}).get("per_chapter", {}).get(ch_id)
+    target_eff = ch.get("median_eff", 0) * (targets or {}).get("coefficient", 0.6) * coverage_scale(injected, targets or {}) if ch else 0
+    return {"chapter": ch_id, "effective_chars": eff, "target": int(round(target_eff)), "ratio": round(eff / target_eff, 2) if target_eff > 0 else None, "status": "DOWNGRADED" if downgraded else "VERIFIED"}
 
 
 def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, targets: dict | None) -> None:
@@ -483,7 +508,19 @@ def main() -> int:
         if stray:
             print(f"[build] 交付名门 FAIL: outputs/ 存在管线外散文件 {stray}——唯一交付单文件 {expected!r}，散文件移出或删除（bug-2220 交付回路铁律）", file=sys.stderr)
             return EXIT_ERROR
-        content, toc_stats = assemble(stage, Path(args.data_dir), Path(args.state_dir), targets=targets)
+        partial: dict | None = None
+        skip_l2: set[str] = set()
+        if args.allow_partial:
+            progress = load_progress(Path(args.state_dir))
+            blocked = {c for c, s in progress.get("chapters", {}).items() if s.get("status") == "BLOCKED"}
+            unapproved = blocked - approved_chapters(progress)
+            if unapproved:
+                msg = f'[build] 分级交付 FAIL: BLOCKED 章未获用户批准: {sorted(unapproved)}——先走协商（progress.py next 指引）；批准: progress.py approve-downgrade --chapters {",".join(sorted(unapproved))} --note "<用户批准依据>"'
+                print(msg, file=sys.stderr)
+                return EXIT_ERROR
+            skip_l2 = blocked  # 只放行 L2；L0/L1/toc/槽位门在场；产物缺失章仍由 assemble 硬 FAIL（含 PENDING 未派发）
+            partial = {"downgrade_approvals": progress.get("downgrade_approvals", []), "chapter_depth": [], "downgraded": sorted(blocked)}
+        content, toc_stats = assemble(stage, Path(args.data_dir), Path(args.state_dir), targets=targets, skip_l2=skip_l2 or None, partial=partial)
     except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as e:
         print(f"[build] 错误: {e}", file=sys.stderr)
         return EXIT_ERROR
@@ -500,10 +537,14 @@ def main() -> int:
         # 基准溯源：正式交付只认技能 references/depth_targets.json；他处基准=调试/绕门，事后可查（线程 03e18e4a 伪造基准教训）
         "targets": {"path": str(targets_src), "sha256": sha256_file(targets_src) if targets_src.exists() else None},
     }
+    if partial is not None:
+        manifest["partial"] = partial  # 仅 --allow-partial 模式加 → 全量 build manifest 字节不变
     m_path = out_path.parent / "delivery_manifest.json"
     m_wrote = atomic_write(m_path, json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
     print(f"BUILD_READY: {args.output} bytes={len(content.encode('utf-8'))} {'written' if wrote else 'unchanged(skip, idempotent)'}")
     print(f"MANIFEST_READY: {m_path} {'written' if m_wrote else 'unchanged(skip, idempotent)'}")
+    if partial is not None:
+        print(f"PARTIAL_DELIVERY: 分级交付 {len(partial['downgraded'])} 章降档 {partial['downgraded']}（深度未达标明细见 delivery_manifest.json → partial.chapter_depth，交付时向用户如实汇报）")
     return EXIT_OK
 
 

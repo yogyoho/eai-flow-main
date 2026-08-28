@@ -132,7 +132,24 @@ def ctrl(tmp_path_factory):
     run("progress.py", "confirm-key-points", "--state-dir", state)
     next4 = run("progress.py", "next", "--state-dir", state).stdout  # NEGOTIATE（ch2 未批准）
 
-    # —— Task 3 扩展点：协商 → partial 交付 → 复活 → 干净终验 ——
+    project = json.loads((data / "00_project.json").read_text(encoding="utf-8"))
+    deliv = out / f"{project['project_name']}-{project['stage']}-地质勘查报告.md"
+
+    # 无批准 → --allow-partial 拒绝
+    noappr = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--allow-partial", "--output", deliv, expect=(1,))
+    run("progress.py", "approve-downgrade", "--state-dir", state, "--chapters", "ch2", "--note", "测试批准 2026-08-28")
+    next5 = run("progress.py", "next", "--state-dir", state).stdout  # FINAL --allow-partial
+
+    partial_build = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--allow-partial", "--output", deliv)
+    partial_manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+
+    # ch2 复活（BLOCKED→DRAFTED）→ 重写达标 → 单章门 → 干净终验（manifest 无 partial 键）
+    (state / "chapters" / "ch2.md").write_text(fat_chapter(stage, "ch2"), encoding="utf-8")
+    run("progress.py", "mark", "ch2", "DRAFTED", "--state-dir", state)
+    revival_gate = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--chapter", "ch2")
+    run("progress.py", "mark", "ch2", "VERIFIED", "--state-dir", state, "--gate", "PASS")
+    clean_build = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", deliv)
+    clean_manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
 
     return {
         "prog": prog,
@@ -140,11 +157,18 @@ def ctrl(tmp_path_factory):
         "next2": next2,
         "next3": next3,
         "next4": next4,
+        "next5": next5,
         "gate1": gate1,
         "gate2": gate2,
         "miss": miss,
         "tamper": tamper,
         "badslot": badslot,
+        "noappr": noappr,
+        "partial_build": partial_build,
+        "partial_manifest": partial_manifest,
+        "revival_gate": revival_gate,
+        "clean_build": clean_build,
+        "clean_manifest": clean_manifest,
         "base": base,
         "data": data,
         "state": state,
@@ -187,3 +211,32 @@ class TestControllerFlow:
 
     def test_negotiate_when_wave1_closed(self, ctrl):
         assert "PHASE: NEGOTIATE" in ctrl["next4"] and "ch2" in ctrl["next4"]
+
+
+class TestPartialDelivery:
+    """--allow-partial 分级交付（spec §5.2②）：无批准拒 / 批准后放行 / manifest 逐章留痕 / 复活后干净终验。"""
+
+    def test_without_approval_refused(self, ctrl):
+        assert "未获用户批准" in ctrl["noappr"].stderr and "approve-downgrade" in ctrl["noappr"].stderr
+
+    def test_final_next_routes_to_allow_partial(self, ctrl):
+        assert "PHASE: FINAL" in ctrl["next5"] and "--allow-partial" in ctrl["next5"]
+
+    def test_partial_build_ready_with_banner(self, ctrl):
+        assert "BUILD_READY" in ctrl["partial_build"].stdout and "MANIFEST_READY" in ctrl["partial_build"].stdout
+        assert "PARTIAL_DELIVERY" in ctrl["partial_build"].stdout and "ch2" in ctrl["partial_build"].stdout
+
+    def test_partial_manifest_chapter_depth_table(self, ctrl):
+        p = ctrl["partial_manifest"]["partial"]
+        assert p["downgraded"] == ["ch2"]
+        assert p["downgrade_approvals"][-1]["chapters"] == ["ch2"]  # 批准原文留痕
+        rows = {r["chapter"]: r for r in p["chapter_depth"]}
+        assert len(rows) == 10
+        assert rows["ch2"]["status"] == "DOWNGRADED" and rows["ch2"]["ratio"] < 1  # 差多少可见
+        assert all(r["status"] == "VERIFIED" for c, r in rows.items() if c != "ch2")
+        assert all(r["effective_chars"] > 0 for r in rows.values())
+
+    def test_revival_then_clean_build_has_no_partial_key(self, ctrl):
+        assert "CHAPTER_GATE_PASS: ch2" in ctrl["revival_gate"].stdout  # 复活重写达标
+        assert "BUILD_READY" in ctrl["clean_build"].stdout
+        assert "partial" not in ctrl["clean_manifest"]  # 全量 build manifest 字节不变（无 partial 键）
