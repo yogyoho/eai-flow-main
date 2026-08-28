@@ -261,6 +261,7 @@ def validate_depth_target(ch_id: str, text: str, targets: dict) -> None:
         return  # targets 未覆盖该章 → 不拦（样例库不全时不误伤）
     coeff = targets.get("coefficient", 0.6)
     scale = coverage_scale(text, targets)
+    # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——median_eff × coefficient × coverage_scale）
     target_eff = ch.get("median_eff", 0) * coeff * scale
     eff = effective_chars(text)
     if eff < target_eff:
@@ -392,17 +393,23 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
 
 
 def load_progress(state_dir: Path) -> dict:
-    """progress.json 装载（--allow-partial 前置：进度档案不在场=没走控制器流程，拒绝）。"""
+    """progress.json 装载（--allow-partial 前置：进度档案不在场=没走控制器流程，拒绝；chapters 形状损坏=手改特征，同拒）。"""
     p = state_dir / "progress.json"
     if not p.exists():
         raise ValueError(f"{p} 不存在——分级交付需要 progress.py 建立的进度档案（先走步骤4 控制器流程）")
-    return json.loads(p.read_text(encoding="utf-8"))
+    doc = json.loads(p.read_text(encoding="utf-8"))
+    chs = doc.get("chapters", {}) if isinstance(doc, dict) else None
+    if not isinstance(chs, dict) or not all(isinstance(s, dict) for s in chs.values()):
+        raise ValueError(f"{p} chapters 结构损坏（手改特征）——progress.py 是唯一写者，续跑勿手改")
+    return doc
 
 
 def approved_chapters(progress: dict) -> set[str]:
     out: set[str] = set()
     for a in progress.get("downgrade_approvals", []):
-        out.update(a.get("chapters", []))
+        if not isinstance(a, dict) or not isinstance(a.get("chapters", []), list):
+            raise ValueError(f"downgrade_approvals 结构损坏（手改特征）——progress.py 是唯一写者: {a!r}")
+        out.update(a["chapters"])
     return out
 
 
@@ -410,6 +417,7 @@ def _depth_row(ch_id: str, injected: str, targets: dict | None, downgraded: bool
     """交付清单逐章深度行（--allow-partial 留痕：达标章与降档章同表可见，差多少可查）。"""
     eff = effective_chars(injected)
     ch = (targets or {}).get("per_chapter", {}).get(ch_id)
+    # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——median_eff × coefficient × coverage_scale）
     target_eff = ch.get("median_eff", 0) * (targets or {}).get("coefficient", 0.6) * coverage_scale(injected, targets or {}) if ch else 0
     return {"chapter": ch_id, "effective_chars": eff, "target": int(round(target_eff)), "ratio": round(eff / target_eff, 2) if target_eff > 0 else None, "status": "DOWNGRADED" if downgraded else "VERIFIED"}
 
@@ -454,6 +462,7 @@ def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, t
     ch = (targets or {}).get("per_chapter", {}).get(ch_id)
     if ch:
         scale = coverage_scale(injected, targets)
+        # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——median_eff × coefficient × coverage_scale）
         t = ch.get("median_eff", 0) * targets.get("coefficient", 0.6) * scale
         print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)} ≥ 目标 {t:.0f}（样例 median {ch.get('median_eff')} × {targets.get('coefficient', 0.6)} × 覆盖缩放 {scale:.2f}）")
     else:

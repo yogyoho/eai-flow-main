@@ -224,7 +224,7 @@ class TestPartialDelivery:
 
     def test_partial_build_ready_with_banner(self, ctrl):
         assert "BUILD_READY" in ctrl["partial_build"].stdout and "MANIFEST_READY" in ctrl["partial_build"].stdout
-        assert "PARTIAL_DELIVERY" in ctrl["partial_build"].stdout and "ch2" in ctrl["partial_build"].stdout
+        assert "PARTIAL_DELIVERY" in ctrl["partial_build"].stdout and "1 章降档 ['ch2']" in ctrl["partial_build"].stdout
 
     def test_partial_manifest_chapter_depth_table(self, ctrl):
         p = ctrl["partial_manifest"]["partial"]
@@ -240,3 +240,15 @@ class TestPartialDelivery:
         assert "CHAPTER_GATE_PASS: ch2" in ctrl["revival_gate"].stdout  # 复活重写达标
         assert "BUILD_READY" in ctrl["clean_build"].stdout
         assert "partial" not in ctrl["clean_manifest"]  # 全量 build manifest 字节不变（无 partial 键）
+
+    def test_corrupted_progress_refused_cleanly(self, ctrl, tmp_path):
+        """手改 progress.json（chapters 值为字符串）→ [build] 诊断行拒绝，非裸 traceback（03e18e4a 伪造门威胁模型）。"""
+        bad = tmp_path / "badstate"
+        bad.mkdir()
+        (bad / "progress.json").write_text(json.dumps({"chapters": {"ch2": "BLOCKED"}}), encoding="utf-8")
+        proj = json.loads((ctrl["data"] / "00_project.json").read_text(encoding="utf-8"))
+        out = tmp_path / f"{proj['project_name']}-{proj['stage']}-地质勘查报告.md"  # 交付名门先于 allow_partial 分支，须规范名
+        r = run("build_output.py", "--stage", STAGE, "--data-dir", ctrl["data"], "--state-dir", bad, "--allow-partial", "--output", out, expect=(1,))
+        assert r.stderr.startswith("[build] 错误:")  # 房风诊断行
+        assert "结构损坏" in r.stderr and "手改特征" in r.stderr
+        assert "Traceback" not in r.stderr
