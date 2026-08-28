@@ -133,6 +133,12 @@ class TestV2PipelineSections:
     def test_anomalies_must_be_surfaced(self):
         assert "anomalies" in self.content and "呈现用户" in self.content
 
+    def test_single_clarification_per_turn(self):
+        """单回合至多一次 ask_clarification：连发多张表单只有最后一张可填（线程 03e18e4a 页面实测 5/2/4/4 连发）。"""
+        assert "单回合至多一次" in self.content and "一次只问一个类别" in self.content
+        # 机制原因必须在场——带原因的铁律在长上下文里更不容易被模型丢弃
+        assert "冻结" in self.content and "落盘" in self.content
+
 
 class TestDeliveryIronLaw:
     """bug-2225 SKILL.md 交付铁律：build 收尾 + BUILD_READY 粘贴 + manifest 在场。"""
