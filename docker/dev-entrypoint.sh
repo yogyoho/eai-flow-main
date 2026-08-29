@@ -107,12 +107,14 @@ fi
 # Absolute paths (upstream's mechanism, see test_gateway_runtime_cleanup) avoid
 # any cwd dependence; .venv is a named volume inside the watched tree that
 # uv sync rewrites.
+# EAI-CUSTOM (bug-1242): NO --reload. WatchFiles restarts kill in-flight KF
+# extraction tasks (asyncio task dies with the process; DB row stuck at
+# running = zombie) — happened 3× on 2026-08-29 (tests/ edits, then
+# app/extensions/docmgr/routers.py). Hot reload is redundant with the
+# documented workflow (CLAUDE.md: restart gateway after backend changes) and
+# previously caused the .deer-flow/skills_view reload death-loop (see excludes
+# below, kept for reference if reload is ever re-enabled).
+# Upgrade path: uvicorn --reload --reload-exclude='/app/backend/.deer-flow'
+#   --reload-exclude='/app/backend/.venv' --reload-include='*.yaml .env'
 PYTHONPATH=. exec uv run --no-sync uvicorn app.gateway.app:app \
-    --host 0.0.0.0 --port 8001 \
-    --reload --reload-exclude='/app/backend/.deer-flow' --reload-exclude='/app/backend/.venv' \
-    --reload-exclude='/app/backend/tests' \
-    --reload-include='*.yaml .env'
-# EAI-CUSTOM (bug-1242): exclude tests/ — concurrent sessions editing/running
-# backend tests fire WatchFiles reloads that kill in-flight KF extraction tasks
-# (asyncio task dies with the process; DB row stuck at running = zombie).
-# App-code edits still hot-reload; full-immunity upgrade path: drop --reload.
+    --host 0.0.0.0 --port 8001
