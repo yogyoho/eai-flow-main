@@ -458,8 +458,10 @@ $COMPOSE up -d
 $COMPOSE ps
 
 # 3. 恢复数据库（用 upgrade.sh 自动留的，或 §6 手工备的）
-docker exec -i prod-eai-flow-postgres-ext psql -U agentflow agentflow < backup-pre-<新版本>.sql
-docker exec -i prod-eai-flow-postgres-ext psql -U agentflow deerflow < backup-pre-<新版本>-core.sql
+#    dump 用 --clean --if-exists 生成（先 DROP 后 CREATE，可直接灌回已建表的库）；
+#    ON_ERROR_STOP=1 让首错即停——静默吞错会得到"看似成功"的半恢复库。
+docker exec -i prod-eai-flow-postgres-ext psql -v ON_ERROR_STOP=1 -U agentflow agentflow < backup-pre-<新版本>.sql
+docker exec -i prod-eai-flow-postgres-ext psql -v ON_ERROR_STOP=1 -U agentflow deerflow < backup-pre-<新版本>-core.sql
 #   若用手工备份：psql ... < /opt/eai-backup-<日期>/db.sql + core-db.sql
 
 # 4. 验证功能
@@ -478,7 +480,7 @@ docker exec -i prod-eai-flow-postgres-ext psql -U agentflow deerflow < backup-pr
 | `rm -rf` 部署目录（含 `./data`）| 删认证/线程/上传/license |
 | `docker system prune -af` | 删已 load 未 up 的镜像（含回滚快照）|
 | 生产环境跑 `install.sh` | 触发 generate-config（本版本已非破坏，但生产仍只用 `upgrade.sh`）|
-| 换新部署目录但不拷 `./data` | 丢聊天历史/认证（旧 deerflow.db 没带过来）|
+| 换新部署目录但不拷 `./data` | 丢上传文件/memory/渠道登录态/license（聊天历史+认证已入 postgres named volume，不受部署目录影响）|
 
 `docker compose down`（**不带 `-v`**）安全 —— 卷保留。
 

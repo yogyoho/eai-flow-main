@@ -83,16 +83,23 @@ if [ -n "$NEW_CFG" ] && [ "$NEW_CFG" != "$CUR_CFG" ]; then
     --origin "http://$(hostname -I | awk '{print $1}'):${ACCESS_PORT}"
 fi
 
-# 3. 应用变更
+# 3. 数据库备份（EAI-CUSTOM bug-3017: 必须在 up 之前——新 gateway 起来即跑 alembic
+#    bootstrap，边迁移边 dump 会拿到撕裂快照；失败/空输出直接中止升级，没有回滚点不能继续）
+log "备份数据库 → backup-pre-${NEW_TAG}.sql"
+dump_db() { # $1=库名 $2=输出文件
+  docker exec prod-eai-flow-postgres-ext pg_dump --clean --if-exists -U agentflow "$1" > "$2" \
+    || { warn "pg_dump $1 失败（中止升级）"; exit 1; }
+  [ -s "$2" ] || { warn "pg_dump $1 输出为空（中止升级）"; exit 1; }
+}
+dump_db agentflow "backup-pre-${NEW_TAG}.sql"
+# EAI-CUSTOM (2026-08-29): 核心库已切 postgres（config.yaml database.backend: postgres，
+# deerflow 库），线程/checkpoint 在这里，一并备份。--clean --if-exists 使 restore 可直接
+# 灌回已建表的库（先 DROP 后 CREATE），配 ON_ERROR_STOP 使用。
+dump_db deerflow "backup-pre-${NEW_TAG}-core.sql"
+
+# 4. 应用变更 + 迁移
 log "docker compose up -d"
 docker compose -p "$P" "${COMPOSE[@]}" up -d
-
-# 4. 数据库备份 + 迁移
-log "备份数据库 → backup-pre-${NEW_TAG}.sql"
-docker exec prod-eai-flow-postgres-ext pg_dump -U agentflow agentflow > "backup-pre-${NEW_TAG}.sql" 2>/dev/null || warn "pg_dump 失败（继续）"
-# EAI-CUSTOM (2026-08-29): 核心库已切 postgres（config.yaml database.backend: postgres，
-# deerflow 库），线程/checkpoint 在这里，一并备份
-docker exec prod-eai-flow-postgres-ext pg_dump -U agentflow deerflow > "backup-pre-${NEW_TAG}-core.sql" 2>/dev/null || warn "pg_dump(core) 失败（继续）"
 log "等待 gateway 健康..."
 HEALTHY=0
 for i in $(seq 1 40); do

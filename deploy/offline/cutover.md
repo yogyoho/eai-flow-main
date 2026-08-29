@@ -117,22 +117,22 @@ docker image prune                               # 只删悬空镜像，安全
 
 ## ⚠️ 已知坑（2026-07-30 服务器实测）
 
-### 坑 1：部署到新目录会丢 `./data`（deerflow.db + 聊天历史）
-**症状**：割接后旧的聊天会话历史没了（但知识库/文档/合同价数据都在）。
-**根因**：`./data`（bind mount）是相对部署目录的。新版本解压到**新目录**，其 `./data` 是**空的新目录** → 旧 `deerflow.db`（Gateway 认证用户 + 聊天 thread/run/feedback）+ thread 上传文件没带过来。
-**注意**：named volume（`eai-prod_prod-postgres-ext-data` 等）与部署目录无关、**会**随割接保留 → 知识库/文档/合同价都在。丢的只是 `./data` 里的 Gateway 认证 + 聊天历史。
+### 坑 1：部署到新目录会丢 `./data`（上传文件/memory/渠道登录态/license）
+**症状**：割接后 thread 里的历史附件/图片打不开，或 license 需重新导入。
+**根因**：`./data`（bind mount）是相对部署目录的。新版本解压到**新目录**，其 `./data` 是**空的新目录** → 上传文件、memory、渠道登录态、`license.lic`、`machine_id` 没带过来。
+**注意（EAI 2026-08-29 核心库切 postgres 后更新）**：Gateway 认证用户 + 聊天 thread/run/checkpoint 已在 named volume `eai-prod_prod-postgres-ext-data`（`deerflow` 库），与部署目录无关、**随割接保留**——聊天历史不再丢。知识库/文档/合同价（agentflow 库）同理。
 **对策**：割接后把旧 `./data` 从备份恢复到新部署目录：
 ```bash
 cd /opt/eai-flow-offline-<新版本>
-tar xzf /opt/eai-backup-<日期>/data.tgz          # 解出旧 data/（含 deerflow.db + threads）
-ls -la data/data/deerflow.db                      # 确认在位
+tar xzf /opt/eai-backup-<日期>/data.tgz          # 解出旧 data/（threads 上传文件 + license 等）
+ls -la data/                                     # 确认在位
 docker compose -p eai-prod -f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml \
   -f docker/docker-compose.ragflow.yaml up -d --force-recreate gateway
 ```
 恢复后用**旧 admin** 登录（密码是旧部署设的，不是 Admin@2026；忘了见坑 2 重置法）。
 
 ### 坑 2：install.sh 的 admin 初始化在 gateway 不健康时静默失败
-**症状**：install.sh 跑完了，但 `admin@eai-flow.com` 登录报「Incorrect email or password」，`deerflow.db` 的 `users` 表为空。
+**症状**：install.sh 跑完了，但 `admin@eai-flow.com` 登录报「Incorrect email or password」，postgres `deerflow` 库的 `users` 表为空。
 **根因**：install.sh 在 gateway 健康检查后调 `/api/v1/auth/initialize` 建 admin。若 gateway 当时 crash-loop（如坑 3 的 config 缺 sandbox），initialize 调用失败（502）→ admin 没建成。
 **对策**：gateway 修复健康后，手动补建 admin（users 表为空时 initialize 会成功，返回 201）：
 ```bash
@@ -140,16 +140,17 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" -X POST http://localhost:4026/api/
   -H "Content-Type: application/json" \
   -d '{"email":"admin@eai-flow.com","password":"Admin@2026"}'
 ```
-**重置已有 admin 密码**（users 表非空但忘了旧密码时）：
+**重置已有 admin 密码**（users 表非空但忘了旧密码时；EAI 2026-08-29 起 users 在 postgres `deerflow` 库，不再用 sqlite）：
 ```bash
 docker exec -e PYTHONPATH=/app/backend prod-eai-flow-gateway /app/backend/.venv/bin/python -c "
-import sqlite3
+import psycopg
 from app.gateway.auth.password import hash_password
-con = sqlite3.connect('/app/backend/.deer-flow/data/deerflow.db')
-cur = con.execute('UPDATE users SET password_hash=? WHERE email=?', (hash_password('Admin@2026'), 'admin@eai-flow.com'))
+con = psycopg.connect('postgresql://agentflow:agentflow123@postgres-ext:5432/deerflow')
+cur = con.execute('UPDATE users SET password_hash=%s WHERE email=%s', (hash_password('Admin@2026'), 'admin@eai-flow.com'))
 con.commit(); print('reset rows:', cur.rowcount)
 "
 ```
+> `UPDATE 1` 才是改到了；`UPDATE 0` 说明 users 表为空——走上面的 initialize 补建。
 > 限流：连续登录失败 5 次锁 5 分钟（429）。`docker restart prod-eai-flow-gateway` 清内存计数器再登。
 
 ### 坑 3：generate-config.sh 曾用最小 config 覆盖（缺 sandbox → gateway crash）

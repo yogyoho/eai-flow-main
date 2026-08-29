@@ -339,7 +339,7 @@ $COMPOSE up -d --force-recreate --no-deps gateway
 ```
 
 ### 坑 2：install.sh 的 admin 初始化在 gateway 不健康时静默失败
-**症状**：install.sh 跑完，但 `admin@eai-flow.com` 登录报「Incorrect」，`deerflow.db` 的 users 表为空。
+**症状**：install.sh 跑完，但 `admin@eai-flow.com` 登录报「Incorrect」，postgres `agentflow` 库的 users 表为空（EAI 2026-08-29 核心库切 postgres，不再有 deerflow.db）。
 **根因**：gateway 当时 crash-loop，`/api/v1/auth/initialize` 返回 502 → admin 没建成。
 **对策**：gateway 修复健康后手动补建（见步骤 12）。
 
@@ -348,7 +348,10 @@ $COMPOSE up -d --force-recreate --no-deps gateway
 # 密码真源在 extensions agentflow 库 users 表；gateway 侧镜像行在下一次成功登录时自动重建
 HASH=$(docker exec -e PYTHONPATH=/app/backend prod-eai-flow-gateway /app/backend/.venv/bin/python -c "
 from app.gateway.auth.password import hash_password; print(hash_password('Admin@2026'))")
+# 校验 HASH 非空再落库——空 HASH 会把密码清成空串，锁死账号
+[ -n "$HASH" ] || { echo "HASH 为空（gateway 内 hash_password 执行失败），中止"; exit 1; }
 docker exec prod-eai-flow-postgres-ext psql -U agentflow -d agentflow -c "UPDATE users SET password_hash='$HASH' WHERE email='admin@eai-flow.com'"
+# 必须输出 UPDATE 1；UPDATE 0 = 没这个用户（表空 → 走步骤 12 initialize 补建）
 ```
 
 ### 坑 3：License 升级后失效，需重新申请

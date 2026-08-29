@@ -283,9 +283,21 @@ loop_detection:
   tool_freq_warn: 30
   tool_freq_hard_limit: 50
 run_events:
-  backend: memory
+  # EAI-CUSTOM (2026-08-30, bug-3017): .env GATEWAY_WORKERS=4 下 deps.py 启动门要求
+  # run_events.backend=db（memory/JSONL 是进程局部，跨 worker 单例保证不成立）。
+  backend: db
   max_trace_content: 10240
   track_token_usage: true
+# EAI-CUSTOM (2026-08-30, bug-3017): 同一门要求 heartbeat_enabled=true（否则滚动更新时
+# Worker B 会把 Worker A 的在跑 run 当孤儿杀掉）。单 worker 部署开启亦无害。
+run_ownership:
+  lease_seconds: 30
+  grace_seconds: 10
+  heartbeat_enabled: true
+# EAI-CUSTOM (2026-08-30): 与 dev config.yaml 对齐——启用原生 subagent 批处理调度器
+# （database.backend=postgres 已使 repository_available=true）。
+subagent_batches:
+  enabled: true
 tool_output:
   enabled: true
   externalize_min_chars: 12000

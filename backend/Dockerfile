@@ -13,9 +13,6 @@ FROM python:3.12-slim-bookworm AS builder
 ARG NODE_MAJOR=22
 ARG APT_MIRROR
 ARG UV_INDEX_URL
-# Optional extras to install (e.g. "postgres" for PostgreSQL support)
-# Usage: docker build --build-arg UV_EXTRAS=postgres ...
-ARG UV_EXTRAS
 
 # Optionally override apt mirror for restricted networks (e.g. APT_MIRROR=mirrors.aliyun.com)
 RUN if [ -n "${APT_MIRROR}" ]; then \
@@ -51,6 +48,13 @@ COPY backend ./backend
 # to Redis (DEER_FLOW_STREAM_BRIDGE_REDIS_URL); it is an optional extra elsewhere
 # so slim non-Docker installs do not pull it.
 # When UV_EXTRAS is set (comma- or whitespace-separated), installs optional dependencies.
+# EAI-CUSTOM (2026-08-30, bug-3017): ARG UV_EXTRAS moved here from the top of the builder
+# stage — an ARG declared before the apt/RUN layers invalidates their cache when its value
+# changes, forcing a rebuild from the nodesource apt repo (frequently unreachable on this
+# network). Declared at point-of-use, only the uv sync layer re-runs (pypi only).
+# Upgrade note: this reorder is cache hygiene only; drop it without ceremony if upstream
+# restructures the builder stage.
+ARG UV_EXTRAS
 RUN --mount=type=cache,target=/root/.cache/uv \
     sh -c 'cd backend && \
     set -f; \

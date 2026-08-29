@@ -121,6 +121,12 @@ def merge(target, source, path=''):
     \"\"\"Recursively merge source into target, adding missing keys only.\"\"\"
     for key, value in source.items():
         key_path = f'{path}.{key}' if path else key
+        # EAI-CUSTOM (2026-08-30, bug-3017): memory.backend_config is memory-backend-private
+        # (OpenVikingConfig.from_backend_config raises ValueError on unknown keys). Copying
+        # the example's DeerMem-shaped block into a user config running a different backend
+        # poisons it — skip the subtree entirely; backend docs own this schema.
+        if key_path == 'memory.backend_config':
+            continue
         if key not in target:
             target[key] = copy.deepcopy(value)
             added.append(key_path)
