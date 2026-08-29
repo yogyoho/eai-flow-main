@@ -93,6 +93,29 @@ def test_missing_params_skip_diagram():
         render_diagrams.draw_screen_lift({}, pen)
 
 
+def test_p_resolves_namespaced_formula_keys():
+    """E2E 实测 bug-3011：formula_state all_params 部分公式输出键带 formula_id 前缀
+    （lift_rope_len.lift_rope_len 等），裸键查找 KeyError → 图3 被 DIAGRAM_SKIP。
+    _p 须唯一后缀解析；歧义后缀视为缺失（宁可 skip 不猜值）。"""
+    ns = {f"{k}.{k}": v for k, v in SMOKE.items()}  # 全命名空间形式
+    pen, rec = _recording_pen(None)
+    render_diagrams.draw_pumphouse(ns, pen)
+    assert "H=9.19m（H1=5.88m + H2=3.3m）" in rec.texts
+    pen, rec = _recording_pen(None)
+    render_diagrams.draw_screen_lift(ns, pen)
+    assert "H=5.21" in rec.texts  # screen_lift_height 同为命名空间键，不再退链和
+    # 混合形式（真实 state：部分裸、部分带前缀）
+    mixed = dict(SMOKE)
+    for k in ("lift_rope_len", "pumphouse_h1", "pumphouse_height"):
+        mixed[f"{k}.{k}"] = mixed.pop(k)
+    pen, rec = _recording_pen(None)
+    render_diagrams.draw_pumphouse(mixed, pen)
+    assert "x=1.87" in rec.texts and "H1=5.88" in rec.texts
+    # 歧义后缀不猜
+    assert render_diagrams._p({"a.a": 1.0, "b.a": 2.0}, "a") is None
+    assert render_diagrams._p({"a.a": 1.0, "a": 2.0}, "a") == 2.0  # 裸键在场时精确优先
+
+
 def test_dim_v_prefers_explicit_state_value():
     """铁律#1 核心：dim_v 的 value= 显式 state 值压过坐标差——H1=0.81 回归锁。"""
     pen, rec = _recording_pen(None)

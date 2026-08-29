@@ -405,7 +405,9 @@ async def export_document_with_layout(
         toc_settings=toc_settings,
         cover_preset=cover_preset,
         cover_values=request.cover_values,
-        image_fetcher=_make_image_fetcher(current_user.id),
+        image_fetcher=_make_image_fetcher(
+            current_user.id, source_thread_id=str(doc.source_thread_id) if doc.source_thread_id else None
+        ),
     )
     return Response(
         content=buf.getvalue(),
@@ -418,6 +420,8 @@ class ExportContentRequest(BaseModel):
     """Export raw markdown content (no AIDocument row) — used for personal/thread files."""
 
     content: str = ""
+    # EAI-CUSTOM (bug-3004): 线程文件经此端点导出时，相对图片引用按此线程解析
+    source_thread_id: str | None = Field(None, max_length=100)
     format: str = "docx"
     layout_template: dict | None = None
     watermark: str | None = None
@@ -476,7 +480,7 @@ async def export_content(
         toc_settings=toc_settings,
         cover_preset=cover_preset,
         cover_values=request.cover_values,
-        image_fetcher=_make_image_fetcher(current_user.id),
+        image_fetcher=_make_image_fetcher(current_user.id, source_thread_id=request.source_thread_id),
     )
     return Response(
         content=buf.getvalue(),
@@ -842,15 +846,27 @@ async def get_user_image(
 _THREAD_IMAGE_URL = re.compile(r"^/api/threads/([^/]+)/artifacts/mnt/user-data/outputs/images/([^/]+)$")
 
 
-def _make_image_fetcher(user_id):
+_RELATIVE_THREAD_IMAGE_URL = re.compile(r"^(?:/mnt/user-data/outputs/)?images/([0-9a-f]{12}\.(?:png|jpg|gif|webp|bmp))$")
+
+
+def _make_image_fetcher(user_id, source_thread_id: str | None = None):
     """Build a sync ``url -> bytes | None`` resolver for generate_docx_simple.
 
-    Resolves the two URL shapes the docmgr editor produces: user-scoped
-    ``/api/extensions/docmgr/images/{name}`` and thread-backed
-    ``/api/threads/{tid}/artifacts/mnt/user-data/outputs/images/{name}``.
+    Resolves the URL shapes the docmgr editor produces: user-scoped
+    ``/api/extensions/docmgr/images/{name}``, thread-backed
+    ``/api/threads/{tid}/artifacts/mnt/user-data/outputs/images/{name}``,
+    and — EAI-CUSTOM (bug-3004) — sandbox 相对引用 ``images/{name}``（或虚拟路径
+    ``/mnt/user-data/outputs/images/{name}``），按本文档的 source_thread_id 落到
+    同一线程 outputs/images/ 目录。技能/agent 在沙箱里写报告时拿不到 thread_id，
+    只能写相对引用；导出时文档行自带 source_thread_id，由服务端补全解析。
     Unknown shapes / non-server-generated names / missing files → None
     (generator degrades to literal URL text, export never crashes).
     """
+    # EAI-CUSTOM (bug-3004): extensions 鉴权给出的 current_user.id 是 asyncpg 原生
+    # UUID（非 str）；不落地成 str 时 paths._validate_user_id 的正则会抛
+    # ``expected string or bytes-like object`` → 所有图片引用降级为字面文本。
+    user_id = str(user_id) if user_id is not None else user_id
+    source_thread_id = str(source_thread_id) if source_thread_id is not None else source_thread_id
 
     def fetch(url: str) -> bytes | None:
         prefix = "/api/extensions/docmgr/images/"
@@ -867,6 +883,12 @@ def _make_image_fetcher(user_id):
                 return None
             base = _resolve_thread_sandbox_dir(Paths(), m.group(1), user_id)
             target = base / "outputs" / "images" / name
+            return target.read_bytes() if target.is_file() else None
+        # EAI-CUSTOM (bug-3004): 相对/虚拟图片引用 → 本文档 source_thread_id 的 outputs/images/
+        m = _RELATIVE_THREAD_IMAGE_URL.match(url)
+        if m and source_thread_id:
+            base = _resolve_thread_sandbox_dir(Paths(), source_thread_id, user_id)
+            target = base / "outputs" / "images" / m.group(1)
             return target.read_bytes() if target.is_file() else None
         return None
 

@@ -218,3 +218,30 @@ def test_image_fetcher_resolves_relative_ref_via_source_thread(tmp_path, monkeyp
     assert fetch("images/../../evil.png") is None  # 穿越一律不认
     no_thread = docmgr_routers._make_image_fetcher("uid-1")  # 无 source_thread_id（线程外导出）→ 相对引用解析不了
     assert no_thread("images/08bb824f44bb.png") is None
+
+
+def test_image_fetcher_coerces_non_str_ids(tmp_path, monkeypatch):
+    """EAI-CUSTOM (bug-3004 回归): extensions 鉴权给出 asyncpg 原生 UUID（非 str）时，
+    fetcher 必须自行 str() 落地，否则 paths._validate_user_id 的正则抛 TypeError →
+    所有图片降级为字面文本（E2E 实测 docx 零 media 的根因）。"""
+    import uuid as _uuid
+
+    thread_dir = tmp_path / "user-data"
+    img_dir = thread_dir / "outputs" / "images"
+    img_dir.mkdir(parents=True)
+    monkeypatch.setattr(docmgr_routers, "Paths", lambda: None)
+    monkeypatch.setattr(docmgr_routers, "_user_images_dir", lambda paths, uid: tmp_path / "docmgr-images")
+    seen: list[object] = []
+
+    def _fake_resolve(paths, tid, uid):
+        seen.extend([tid, uid])
+        return thread_dir
+
+    monkeypatch.setattr(docmgr_routers, "_resolve_thread_sandbox_dir", _fake_resolve)
+    (img_dir / "08bb824f44bb.png").write_bytes(b"UUIDPNG")
+
+    uid_obj = _uuid.UUID("f8766d55-2b1b-422e-a945-5fcf268a8a39")
+    tid_obj = _uuid.UUID("5f3a42ff-f893-470a-b468-85d660dfac92")
+    fetch = docmgr_routers._make_image_fetcher(uid_obj, source_thread_id=tid_obj)
+    assert fetch("images/08bb824f44bb.png") == b"UUIDPNG"
+    assert seen[-2] == str(tid_obj) and seen[-1] == str(uid_obj)  # 落到 resolver 前已 str()

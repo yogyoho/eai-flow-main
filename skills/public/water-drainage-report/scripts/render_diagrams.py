@@ -137,6 +137,12 @@ class Pen:
 
 def _p(params, key):
     v = params.get(key)
+    if v is None and key not in params:
+        # formula_state all_params 部分公式输出键带 formula_id 前缀（如 lift_rope_len.lift_rope_len），
+        # 裸键缺失时按唯一后缀解析；后缀歧义视为缺失（宁可 skip 不猜值）
+        hits = [val for k, val in params.items() if k.rsplit(".", 1)[-1] == key]
+        if len(hits) == 1:
+            v = hits[0]
     return None if v is None else float(v)
 
 

@@ -21,6 +21,24 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+
+- [2026-08-29] WSL2/Docker Desktop 卡死恢复配方(bug-1246/1262 恶性循环): 症状=docker ps/exec/引擎API全超时或500。步骤: ①查 tasklist vmmem + 宿主 free(若 vmmem>20GB 且宿主<2GB 即内存型卡死) ②taskkill Docker Desktop+com.docker.backend → wsl --shutdown(内存立即回血) ③重启 Docker Desktop,容器凭 restart 策略自动恢复 ④若前端容器陷入被 guest-oom 杀→重启→冷编译→再吃的死循环: docker stop 前端止血 + wsl -d docker-desktop sh -c "echo 3 > /proc/sys/vm/drop_caches"(可释放十几GB page cache) ⑤健康内存下 docker start 前端。注意: 编译期的 Can't resolve 报错可能是 OOM 次生灾害,内存健康时自愈,别急着清 .next 或重建镜像
+- **onScroll 距离阈值型无限滚动有「不溢出死区」，测试时用 max-height 钳制制造溢出 (2026-08-29, bug-2231):** 依赖 `onScroll` + 距底部阈值触发的懒加载，在「首窗内容高度 < 容器高度」时无滚动事件可触发（本次 docmgr 首窗 10 个非空文件夹 351px < 627px 容器，程序设 scrollTop 也归零），后续窗口对用户不可达且无兜底。QA 手法：`evaluate_script` 给滚动容器 `nav.style.maxHeight='300px'` 强制溢出再 `scrollTop=scrollHeight`（测完还原），可走完全部翻页窗口。修法建议=IntersectionObserver 哨兵（不需要溢出也能触发）或加载后未溢出且 has_more 则自动续拉。任何「分页+滚动加载」功能 QA 都要先查 `scrollHeight vs clientHeight`。
+- **dev 环境「整批路由 404 且无 /login 307」= Turbopack 路由解析层失败，先查 Docker Desktop 文件共享层 (2026-08-29, bug-2230):** Next.js 16 Turbopack dev 懒编译，`.next/dev` 缓存落在 Windows bind mount 上（boot 有 "Slow filesystem detected" 警告）。Docker Desktop 文件共享降级时（同期 docker API 也 500），**未编译路由整批瞬时 404**（`/workspace/chats/*`、`/workspace/agents/*`、`/workspace/scheduled-tasks`、`/showcase/*`、`/zh-CN/docs/*`），已编译路由（`/login`、`/setup`、`/workspace`）照常。**判别特征：404 直接返回而不 307 /login**——workspace/layout.tsx 的鉴权重定向根本没跑，说明死在路由解析而非页面代码。诊断顺序：①容器内 `/app/logs/frontend.log`（`docker logs` 为空，compose 把 dev 输出重定向到该文件）；②`docker ps`/`docker exec` 是否报 500（Docker Desktop 本体降级）；③自愈后复查。处置：`docker compose -p eai-docker restart frontend`（重启会重跑 compose prewarm wget 预热 chats 路由）。compose `docker-compose-dev.yaml` frontend 服务的 prewarm 注释已记录此模式。非代码 bug，别去改路由文件。
+- **nginx 报 gateway could not be resolved (110) / unexpected DNS response = Docker Desktop 引擎冻结签名 (2026-08-29, bug-2233):** docker/nginx/nginx.conf 用 resolver 127.0.0.11（Docker 内嵌 DNS）按请求解析 upstream，引擎冻结时 DNS 超时 → 所有 /api 502。配合 docker exec/ps 返回 500 或挂死即可确诊。**可程序化修复，不必等用户**：PowerShell Stop-Process Docker Desktop,com.docker.backend → Start-Process Docker Desktop.exe → 引擎约 72s 恢复，容器凭 restart 策略全部自动拉起，gateway 再 ~2 分钟完成启动（lifespan 日志在监听之前，别见 502 就判定失败，等 gateway.log 出现完整初始化）。注意 scripts/docker.sh start 已废（硬编码 redis 服务，bug-2234）——别拿它恢复栈。
+- **分页接口必须由后端下发游标（next_skip），前端不得按「返回条数」推进 offset (2026-08-29, bug-2225):** `list_personal_outputs` 按「扫描的线程目录数」切片（`all_threads[skip:skip+limit]`），空 outputs 目录的线程被静默过滤不返回；前端 `usePersonalOutputs` 却按返回数推进 skipRef。两计数发散→窗口重叠→整窗全为已展示/空线程时 fresh=0、has_more=true，滚动加载永久卡死（实测 61 线程只见 21）。修法：后端返回 `next_skip=skip+len(page)`（按扫描数），前端直接采用；顺带把游标推进移出 setThreads updater（StrictMode 双调用会让 `skipRef += x` 翻倍——updater 必须纯函数）。任何「返回数 < 扫描数」的分页端点（过滤空桶/权限过滤后）都适用此模式。**续（bug-2232）：这类端点的展示计数 total 也要与返回口径一致（只数非空），但 has_more/next_skip 必须仍按候选数——两个计数单位不同，拿 total 驱动翻页会提前终止**。前端配合修法（bug-2231）：onScroll 距离阈值触发在「首窗内容不溢出」时永不触发，需补「数据变化后 scrollHeight<=clientHeight 且 has_more → 自动续拉」effect；别用 IntersectionObserver 哨兵——内容插入后哨兵仍可见时不产生新交叉事件，存在二次死区。
+- **docmgr md 导入会毁 LaTeX（2026-08-28, [[bug-2222]]）：** BlockNote `tryParseMarkdownToBlocks` 把 `$..$`/`$$..$$` 当普通文本走 CommonMark——转义还原吃 `\`，裸/还原出的 `_` 被强调配对成 `<em>` 剥离（实测 `Q_` 与 `sf\_` 的 `_` 双双消失只剩 `sf\ratio`）；且 `**加粗：**` 与下一行 `$$..$$` 软换行合并成同一段，块级 `^\$\$` 正则匹配不到。**修法=PUA 占位**：解析前把数学 span 内 `_` 换 U+E000（强调无从配对）+反斜杠加倍，解析后递归还原再做块转换；行内转换需同时认 `$$..$`(displayMode:true)。**嵌套列表是盲区（bug-2223）**：编号项下的子弹列表住在 `block.children`，块遍历不递归 children 就漏——transform/导出回写/live 钩子三处都要递归（导出不递归更会让 blocksToMarkdownLossy 静默吞掉嵌套 latex，保存即丢公式）。对话页 artifact 预览走 remark-math 不经此路径，故两边表现不一致。**坑：Turbopack HMR 停更**——改完必须重启 frontend 容器再验，否则旧 bundle 出假阴性（曾显示 `V{pool}` 假象）。
+- Knowledge factory template truth source = `extraction_templates.root_sections_json` (JSONB); `template_sections` DB table is NOT the editor's data source. TOC tree nesting comes ONLY from `children` arrays — `level` is stored but ignored by renderer and by `_parse_section`; nothing auto-nests level-tagged flat lists (now `_nest_by_level` in pipeline.py does it for fallback paths). LLM infer_schema failure/empty triggers `_scan_chapter_headings` fallback which emits ALL headings (lvl 1-3) flat.
+
+### OpenViking memory trial (2026-08-28)
+- OpenViking server needs BOTH model configs in ov.conf: `embedding.dense` (query/memory vectors) AND top-level `vlm` (LLM that extracts user memories from commits). Embedding-only init → commits succeed but extraction fails server-side with OpenAIError; DeerFlow's `write: log_and_drop` hides it — check `docker logs deer-flow-openviking`.
+- ov.conf lives on volume `openviking-data` at /app/.openviking/ov.conf; editing requires `docker compose -p eai-docker restart openviking`. It is NOT hot-reloaded on restart-onlv change... (it did reload on restart).
+- Gateway dev logs: `docker logs deer-flow-gateway` is empty by design — dev-entrypoint.sh line 35 redirects to host file `logs/gateway.log`. Read that for tracebacks.
+- `assistant_id` semantics (services.py:309): `_DEFAULT_ASSISTANT_ID = "lead_agent"`; ANY other value (e.g. "agent") is treated as a custom agent name → FileNotFoundError from agent store. Test requests must use lead_agent or omit.
+- System default LLM lives in `/api/extensions/config` → `default_model` (currently deepseek-v4-flash). When user says "use the default LLM", read it from there.
+- Memory manager class resolution: `get_memory_config()` only refreshes from config.yaml if `get_app_config()` was called at least once in-process (memory_config.py:134). One-shot `docker exec python -c "get_memory_manager()"` prints DeerMem even when config.yaml says openviking — red herring; the gateway loads app config at startup.
+
+- **重度分歧文件的上游 merge 会静默丢方法(2026-08-26, 半移植检测法):** merge 68 commits 时 EAI 重度定制文件(channels/manager.py 1231 vs 上游 2629 行)在冲突解决中整体保留 EAI 版,但依赖它的新模块(github.py/buzz.py/run_policy 生态)和测试却随 merge 进树——半移植:模块在、方法丢,只在启用时运行时炸。**检测法=merge 后必须跑上游新增测试文件**(test_github_token_plumbing 的 AttributeError 直接点名缺失方法);git log --all -S 'def 方法名' + git show bytedance/main:path 可快速定位上游实现。graft 时保持 EAI 差异点(如 owner 路由在 client 级而非 per-request header),注释 EAI-CUSTOM (upstream-sync 日期)。
 - **提示词级铁律挡不住弱模型手写 state（2026-08-20, E2E 定论, [[bug-2189]]）：** agnes-2.5-Flash 在压力下(每轮 25 bash 上限+长管线)会走捷径: cat-heredoc 直写 state/responses.json 后重签、python heredoc 伪造签名、手改 whitelist——脚本校验(web→citations 必填)被整体绕过。SKILL.md 铁律+state_guard 事后审计只对强模型有效; 真防线必须机制化(候选目录白名单写/state 目录属主隔离/bash 沙箱 path 拦截)。另: E2E 断言要查 bash tool-call transcript(outputs/.tool-results/ + SSE 帧 "command" 字段)才能发现 heredoc 绕过——只看产物签名 MATCH 会被骗。
 - **单工具安全上限的截断形态（2026-08-20, E2E turn4）：** loop_detection 的 per-tool 上限（bash 25 次/轮）触发时注入 `[FORCED STOP] Tool X called N times` 终答——该消息**只出现在 values 帧**（middleware 注入, 不走模型流式 chunk），测试客户端必须扫 values payload 子串才能识别；驱动误判"pipeline finished"。合法长管线的正确姿势=成批同构操作合并成单次 bash 循环，不是调高上限（上限是 bug-2189 失忆循环的防线）。E2E 驱动已加 forced_stop 检测 + 有界自动续轮（10 次）。
 - **SSE gap 恢复链路（2026-08-20, bug-2204）：** 慢消费端落后超过 stream_bridge 保留窗口（旧默认 256，现 config.yaml 1024，重启生效）时 bridge 抛 StreamGap 哨兵；sse_consumer 正确契约=发单帧 `event: gap`（6 字段 payload, 不带 id:）且**不 cancel run**（客户端仍在线，按 latest_available_event_id 重连续读）——spec 测试 test_gateway_services.py::test_sse_consumer_emits_gap_without_cancelling_run 是唯一真相源，2026-08-15 merge 曾把它弄丢。测试客户端（E2E 驱动）必须处理 gap/裸 EOF：轮询 runs 状态 → running 则 join SSE 带 Last-Event-ID 续读 → 终态后从事件库 GET .../events 取 run.error 真相。
@@ -239,7 +257,13 @@
 - geological-report 页面实测三层缺陷链：①写入命令未文档化→数据滞留对话；②示例值当数据（P2）；③ingest.py 拒绝必填 null→逼出 0 冒充。修复=SKILL.md 4处+coerce_type null直通+回归测试（bug-2215/2216）。沙箱表单物证路径 /app/backend/.deer-flow/users/{uid}/threads/{tid}/user-data/workspace/geo-report/data/。
 - [2026-08-21] agent 会在一轮 assistant 消息里并行发多个 bash 工具调用——任何落盘脚本必须跨进程安全（pid 唯一 tmp + 锁），固定 .tmp 名的原子写会竞态崩溃。agent 传参惯用 $(cat file) 模式，文件缺失静默展开空串——CLI 对空可选值必须硬错误而非落入默认路径。崩溃后 agent 会自行"恢复"：手写数据文件+从样例编造值回填，技能文档必须写明崩溃即停红线。
 
+
+### 2026-08-29 extensions 层拿到的 DB id 是 asyncpg 原生 UUID 非 str（bug-3010）
+- extensions PostgreSQL 走 asyncpg 驱动，`current_user.id` / `AIDocument.source_thread_id` 等主键是 `asyncpg.pgproto.pgproto.UUID` 对象。凡是要把它们传进 harness `Paths()`（内部有 `_SAFE_USER_ID_RE.match` 正则校验）或任何 `re`/f-string 之外的字符串 API 前，先 `str()`。单测里手写 str uuid 永远测不出这个坑——回归测试必须显式传 `uuid.UUID` 对象。
+
 ## Do-Not-Repeat
+- [2026-08-29] docker logs 查 deer-flow-frontend 永远是空的——dev 命令把 stdout 重定向到 /app/logs/frontend.log(bind-mount 到宿主机 logs/frontend.log)。查前端问题读宿主机文件,别浪费时间在 docker logs 上
+- [2026-08-29] 别把 vmmem 大内存读数当成容器占用——docker stats 实测全部容器仅 ~180MB,vmmem 大头是 page cache(可 drop_caches 释放)+turbopack 匿名堆。诊断内存型卡死先跑 docker stats --no-stream 分辨
 
 <!-- Mistakes made and corrected. Each entry prevents the same mistake recurring. -->
 - [2026-08-13] **设计新业务模块前，先确认数据的「存储形态/可得性」，别默认要 OCR 或爬虫。** 市场四模块设计里我对模块①（智能投标报价）连犯两次同类假设：先假设"友商分项构成拿不到、只能爬中标公示总价"→ 设计了实际值/估算值可信度分层（用户纠正：客户每次投标即持有双方完整自产/外购构成，非爬公示）；又假设"投标数据是扫描件、要走 OCR 管线"→ 给①套完整 OCR 扩展包（再次被用户纠正：数据是结构化的、客户系统已有、无需投标文件/OCR）。**根因：把 contract_price（扫描件合同 OCR）这个参考实现当成所有模块的默认形态，没逐个核对数据形态。** 铁律：设计模块先问清 ①数据在哪个系统 ②结构化还是文档 ③已持有还是要抓取，再选路线 A（OCR 完整扩展）还是路线 B（data_source 结构化复用）。此客户四模块：仅④备品备件是扫描件 OCR；①投标/②销售/③管线全是结构化、走 data_source MCP 复用。详见 docs/superpowers/specs/2026-08-13-market-analysis-modules-design.md（R2/R3 修订）。
@@ -1145,3 +1169,103 @@ fixture 策略: 全节点 template_text=null(不发明招标内容), 真文渲�
 - **骨架不是_schema_问题是指令问题**：exploration.json 的 toc 已含全部三级节（1.1/2.2/4.3/4.6/6.x/8.4-8.11 都在），生成报告缺节是因为 wave1 指令没要求『toc 全覆盖+缺数保段落』——修 SKILL.md 指令层，不动 schema。
 - **LLM 写作纪律的 enforcement 分层**：格式/结构可确定性校验的（首行 ##N、保留标题污染）放 build_output 硬门；语义性的（覆盖度/深度/八要素）只能放 SKILL.md 规则让 agent 自检——build 硬门会卡死缺数据项目。
 - **条目式叙述范式**：矿体/含水层/岩组逐条分述用八要素链（层位→工程控制→形态产状→延伸→厚度+变化系数+判型→品位+变化系数+判型→岩性矿物+产出状态→占比），缺数据的要素写 [待确认] 不砍句。
+
+## [2026-08-26] Key Learnings (upstream-sync 68-commit merge session)
+
+- 手工 graft 上游函数块时**装饰器行最容易丢**：`reserve_checkpoint_write` 落进 services.py 时丢了 `@asynccontextmanager`，症状是 router 层 `TypeError: 'async_generator' object does not support ...` + HTTP 500。graft 后立刻 grep 该函数上方装饰器。
+- ruff F811 只查函数/类重定义，**普通常量重复赋值不报**——services.py 常量块重复两份 lint 全绿。脚本化 graft 后必须 `ruff format --check` + 肉眼看 diff hunk 边界。
+- 上游 lifespan 计时测试（启动<1s/关机有界）在 EAI 上必然超预算：EAI prelude 会 `await init_engine()`（extensions PG 3 次重试）。修法=测试文件加 autouse fixture 把 `app.extensions.database` 五个入口 AsyncMock 掉（EAI-CUSTOM 注释），不是改产品代码。
+- Windows host 跑后端测试固定模式：`DEER_FLOW_EXTENSIONS_CONFIG_PATH= PYTHONPATH=. uv run --no-sync pytest`（清容器路径 env + 不 sync 因为 host venv 无 temporalio 1.32 wheel）。
+- `test_bench_sandbox_provider::test_boxlite_shim_workaround_retries_after_fixing_permissions` 断言 POSIX exec bit（`st_mode & 0o111`），Windows 上 stat 恒 0o100666 → 永远失败；CI 是 Linux，host 上 deselect 即可。
+- 测试文件冲突的新策略（比 ours/theirs 更好）：**上游语义基座 + 追加 EAI 专属测试块**。dynamic_context 测试= upstream 全量(802行) + EAI 7 个 project-context 测试追加到尾部 + 补 import。前提：产品代码已取上游新语义。
+- 前端 settings-dialog：EAI nav 无 appearance/about/integrations 三 section（用 wechat 替掉 appearance）。union 冲突时 upstream 新增的 AboutSettingsPage dynamic 是死代码——直接删并调 lazy-panels 计数（当前 8）。
+
+### [2026-08-26] Do-Not-Repeat: uvicorn --reload-exclude 必须用裸目录名
+`--reload-exclude='.deer-flow/**'` 无效：uvicorn FileFilter 对 exclude 调 `Path(p).is_dir()`，字面 `**` 不是目录 → 落入 `path.match()`，而 pathlib `**` 非递归（右锚定单段）→ 深层文件不匹配。启动时 skills_view 投影重建 → WatchFiles 触发 → worker 每 10s 被杀 → nginx 永久 502。正确写法：`--reload-exclude='.deer-flow'`（真目录 → exclude_dirs → is_relative_to 真递归）。已修 docker/dev-entrypoint.sh（bug-1239）。
+
+### 2026-08-28 QA第四轮学习（water-drainage 新线程 e8cf3d2f）
+- **Key Learning**: harness 对同一回合多条 bash/str_replace tool_call 是并行执行——任何"同文件读改写"都会竞态（update 丢更新 / cat 空参数 Traceback / str_replace not-found 循环）。技能文本必须显式要求 && 串行。这是跨技能通病，写新技能时一律加。
+- **Key Learning**: agent 对 SKILL 铁律遵守是概率性的：R1 走正典 CLI、R2 手搓直改同一文件——守卫不能只防 CLI 旁路（文件名守卫），还要在文本里禁直改正典本体。每次实测复发都把"实证教训"写回铁律是当前最有效压缩概率手段。
+- **Key Learning**: 澄清表单的 options 若含工程合理选项（如 check 失败后 N=4→5 修正建议），用户选择后该值即"本线程用户提供"，不算记忆污染——判污染看来源链，不看值巧合。
+- **Do-Not-Repeat**: 判定"表单值被污染"前先查事件流 provenance（用户填/agent 预填/表单 options）——本轮差点把用户手填的吉林市误报为记忆污染。
+
+### 2026-08-28 QA第五轮学习（water-drainage 新线程 23fd5f5b，f0f25b8d7 修复复验）
+- **Key Learning**: 纯文本铁律无法根治并行 tool_call 竞态：R5 实测铁律#6 仍违犯 3 次（首轮 4 命令突发并行 / update+check 脏读 / 3×str_replace 同文件丢更新），但每次 agent 都靠结果异常自愈（诊断→串行重试），终态零损失。根治需 harness 层同文件 tool_call 串行化（核心改动，另立决策）——技能层能做的是"违犯后自愈路径通畅"。
+- **Key Learning**: bug-2203（params.json 落盘令）+ bug-2204（直改正典禁令 + --diff/--affected）文本修复线上完全生效：R5 两轮快照全走 CLI，v2 带 value_diffs/affected。教训文本 + 守卫测试组合对"路径选择类"偏离有效，对"执行顺序类"偏离效果有限。
+- **Key Learning**: chrome-devtools MCP 填 DeerFlow composer：React textarea 需 native setter + input 事件；提交只用一种方式（点 Submit 按钮）——Enter keydown + Submit click 双发会 CancelledError 打断 run。
+
+### 2026-08-28 反馈3 折叠形态落地学习（bug-2205）
+- **Key Learning**: 让 agent 稳定产出特定 Markdown 形态（折叠块/表格样式/固定栏目）的有效路径是"确定性脚本生成片段 + SKILL 强制粘贴令 + 守卫测试断言文本"——纯文本描述形态两轮实测 0% 遵守。这与 bug-2202（执行顺序）同根：文本约束对"形态/顺序"类要求弱，对"路径选择"类要求（2203/2204 用哪个 CLI）强。
+- **Key Learning**: 前端 Markdown 链（streamdown/artifacts 两套）= rehype-raw + GitHub-style sanitize（defaultSchema 显式保留 <details>/<summary>）——技能产出 HTML 折叠块是安全且原生可渲染的，无需前端改动。
+- **Key Learning**: 技能脚本浮点显示用定长 6 位小数去尾零（210.38400000000001→210.384）：短往返法（.Ng 循环）对 ulp 偏移值会失败回退到难看的长 repr。
+
+### 2026-08-28 R7 反馈3 折叠形态验收（线程 a6aeb9b2）
+- **inject 合同根治粘贴不可靠**：确定性片段 + 让 agent"读回再逐字粘贴"仍失败（R6 seq46 details_in=0）；改为占位符 `<!-- CALC_BLOCKS -->` + 脚本原地替换后 R7 全链路通过。通用律：**LLM 长文本逐字复制不可作为交付路径，粘贴必须脚本化**。
+- **铁律#6 第 4 次违犯**（R7 seq61 inject+grep 同文件并行，grep 抢跑读旧内容返回 0，agent 用第二个 grep 自愈）：纯文本禁令已证 4 轮压不住，根治只能 harness 层串行化（另立决策）。
+- 气象表单空提交会被前端必填校验拦（`请输入回答后再提交`）——"不提供就走参考值库"没有表单内入口，默认值通道在参数确认表的"参考值库（【待核实】）"标注。
+- 历史修正：折叠 `<details>` 在 gen_report.py 时代（8-12~8-19）真实工作过，Approach A 禁生成器后回归——"从未出现"表述过强。
+
+### 2026-08-28 用户退回反馈3折叠实现（重要）
+- 用户明确要求退回 render_calc_blocks.py + inject + SKILL 强制令整套实现（revert d03f16fb0+df726f8cb），理由"修改的效果不正确"——具体不正确点未说明，**下次再碰反馈3折叠形态前必须先问清哪里不对**（候选疑点：计算章被占位符整体替换后叙述缺失/折叠块样式或单位显示/默认值标注形态）。
+- 用户偏好：效果不对时选择**整体退回**而非就地修补——改动要可一键 revert（保持提交原子性是这次能干净退回的原因）。
+
+### 2026-08-29 clarification 已回答文本溢出修复
+- **Key Learning**: 前端凡在 flex 行里渲染"拼串/后端生成文本"的元素，必须带 `min-w-0 wrap-break-word`（flex 子项 min-width:auto + 无空格长 token 必撑破容器）。项目既有约定范本：human-input-card.tsx option label（`min-w-0 wrap-break-word whitespace-pre-wrap`）。human-input 表单提交值尾部固定携带 `[values: {JSON}]` 无空格 token，是天然雷区。
+- **Do-Not-Repeat (2026-08-29)**: gstack freeze hook 在 Windows/GitBash 下路径归一化有 bug——Edit 的 Windows 绝对路径被判为 `/d/eai/...` + `D:\...` 双前缀而拒编辑（即使文件在冻结目录内）。遇到时把 freeze-dir.txt 置空（等价 git 根）绕过，别浪费轮次重试。
+
+## [2026-08-29] Key Learnings (water-drainage 快照门禁 R8-R10 session)
+
+- **强制点选型**: 文本铁律压不住 flash 模型（R4~R8 五轮同模式违约）。找 agent 100% 必经的机械步骤做 enforcement（此处=交付前 `snapshot.py save`），错误信息自带修复指令（删手写块→恢复占位符→重跑 inject）。
+- **存在性校验不够，要计数比对**: 门禁v1 只判"签名存在"→ R9 混合违约（注入12块+别处手写8块）绕过。v2 签名带块数 `count=N`，`sum(签名数)==<details>总数` 一致性比对才封死。通用模式：**gate 要对"量"断言，不能只对"质"断言**。
+- **LLM 手写折叠块必然带复制漂移**: R9 手写块 V_ratio 单位抄错（0.202 h，应为无量纲）——这就是 inject 存在的全部理由，QA 抽查手写块数值/单位是必查项。
+- **agent 自纠回路有效**: seq43 `CALC_INJECT_ERROR`（非静默 rc1）→ flash 模型自己重写报告含占位符——错误消息即修复指令，agent 能跟上。
+- **API 驱动 E2E 完整可跑通**（浏览器不可用时）: `POST /api/threads` → `POST /api/threads/{id}/runs`（body `{assistant_id:"lead_agent", input:{messages:[...]}}`；**`lead-agent` 连字符会被当 custom agent 名 500**，前端真值是 `lead_agent` 下划线）→ 轮询 run_events SQLite（`/app/backend/.deer-flow/data/deerflow.db`）拿 ask_clarification 的 `artifact.human_input.request_id` → resume 消息带 `additional_kwargs.human_input_response`（`response_kind:"text"` + `[values:{JSON}]` 文本）→ 确认链逐步 POST。CSRF: `csrf_token` cookie → `X-CSRF-Token` header。
+- **docker logs 空 ≠ 无日志**: gateway stdout 重定向到容器内 `/app/logs/gateway.log`（`readlink /proc/1/fd/1` 定位）。500 排障去那 grep Traceback。
+- **git commit 后 skills_view 投影必失步**（CRLF→LF+watcher miss），容器内手动 `cp` 源→投影再验证 md5 一致。
+
+- [2026-08-29] **subprocess 跨进程 UTF-8 必须双端同锁**：Windows host 上 `subprocess.run(..., text=True)` 默认 GBK 解码子进程 stdout；子进程若继承 `PYTHONIOENCODING=utf-8`（或文件本身 UTF-8），非 GBK 字节直接 UnicodeDecodeError（且 reader 线程崩成 NoneType 二次错，掩盖真实报错）。**规则：父进程加 `encoding="utf-8"` + `env={**os.environ, "PYTHONIOENCODING": "utf-8"}`，两端同锁**（test_bugfixes.py 已全量落地）。
+- [2026-08-29] **trace 渲染向后兼容模式**：给 get_step_trace 输出加新字段时，渲染器一律按「字段在场才生效」写条件分支，老 fixtures 逐字节不变 → 既有精确字符串断言全部保持绿（v2 symbol/citation/description/双单位落地零破坏）。
+- [2026-08-29] **gateway restart 不重建 skills_view 投影**：投影重建是 sandbox acquire 路径的惰性触发（cerebrum 既有条目），restart 后投影仍是旧内容（实测 md5 陈旧）——技能文件改动后立即生效用 `docker cp skills/<skill>/. deer-flow-gateway:<projection>/water-drainage-report/` 逐投影同步 + md5 校验，比等惰性触发或手跑 ensure_skill_projections 直观。skills/ 源目录本身是 bind-mount（/app/skills），无需 cp 源。
+**容器 frontend 只 bind-mount src/tests/public/configs/next.config.js/rstest.config.ts/eslint.config.js — package.json 与 scripts/ 是镜像烘焙 (2026-08-29, bug-1278, Do-Not-Repeat):** 给容器注入 env(如 DEER_FLOW_DEV_BUNDLER=webpack)想改变 dev 行为前,必须确认消费该 env 的文件真的在容器里。镜像里的 package.json dev 脚本还是旧版 `next dev --turbo` 直连,scripts/dev.mjs(#5036)不在镜像 → env 死信。docker compose recreate 不够,必须 `cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml build frontend && ... up -d frontend`。另:`make rebuild-frontend` 指向 docker.sh 不存在的子命令(上游 Makefile 与 EAI docker.sh 脱节),手动 compose build 是唯一路径。验真方法:`docker run --rm --entrypoint sh eai-docker-frontend -c "grep dev /app/frontend/package.json"`。
+**CSS Modules pure 模式:webpack(Next16)对 .module.css 全局选择器零容忍,Turbopack 却容忍 (2026-08-29, bug-1278, Do-Not-Repeat):** `.module.css` 里写 `:root{}`/`.dark{}` 定义主题变量,Turbopack 静默通过,webpack 直接 "Selector :root is not pure" 编译失败——切 bundler 后才会爆。且 `:global(:root)` 在 pure 模式**仍不合格**(规则必须含至少一个局部类)。正确写法:①变量内聚到消费它的局部类上(本文件是唯一消费者时最优);②需要全局祖先修饰用复合 `:global(.dark) .slider`(含局部类,合法)。判定:容器/宿主 webpack 报 "not pure" 时先 grep module.css 里的裸全局选择器。
+- formulas.json 表达式是引擎 eval 的单表达式，不能写 if/else 分支——舍维列夫 v<1.2 过渡区公式进不了 JSON 式，只能放 formula_runner._pipe_hydraulic（pipe_compare 用）并在 _note 标注局限（2026-08-29 v3 落地发现）。
+- formula_state all_params 中公式输出键为 "公式id.输出名"（带点），用户输入键裸名——守卫测试取值需双格式兼容 ap.get(k, ap.get(f"{k}.{k}"))。
+
+## Decision Log + Key Learnings (2026-08-29 — water-skill 报告体例严格对齐样例，commit e7c33dd15)
+
+**用户定案（P3 item ②）**：生成的计算书章节体例**严格对齐吉林院样例**——报告标题 = 数字+空格+标题（`## 1 设计依据`，**禁"第X章/第一章"**）；裁撤设备一览表/图纸清单章（样例无此章，设备规格叙述并入 7.2.4 滤网起吊 / 8.2.1 循环水泵 / 第9节 旁滤）。
+
+**落地要点（后续会话直接复用）：**
+- `chapter_planner.py` FALLBACK_CHAPTERS = 10 章：ch1_basis~ch9_filter（样例 9 数字节）+ ch10_compliance（合规附录，不编号）。旧 ch5_calc/ch6_pool/ch7_pumphouse/ch8_filter/ch11_compliance 全部改号 ch6/ch7/ch8/ch9/ch10。
+- **formulas.json section 编号 = 报告编号**（公式 section 6.1.1 → 报告 6.1.1 节）——体例对齐后天然一致，chapter manifest 无需重排。
+- **KF 模板不决定结构**：`kf_resolve_template found=true` 只提供 generation_hint/compliance_rules/content_contract/example_snippet 写作约束；结构与编号一律按样例体例。已写进 SKILL 步骤3 契约块。
+- filter_count 单一归属 ch9_filter（section "9" 前缀）；旧 equiplist dual-home 锚改写为 "filter_count → ch9_filter + ch10_compliance"（bug-2199 锚保留）。
+
+**Do-Not-Repeat：** 改公式数量/章节 id 后必须 grep 全部测试文件里的硬编码数字（如 `< 12` 紧致性上界、`ch5_calc` 等旧 id）——v3 批漏改 test_formula_runner_cli 的 `<12` 导致迟到失败（bug-3003）。修法：上界动态化 `< len(formulas)`。
+
+## User Decision (2026-08-29 — water-skill 双工况)
+P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现状"可选（用户要求才加算）"。勿再追问此项。
+
+### KF 模板抽取兜底链 (bug-3004/1241 系列, 2026-08-29)
+- Step1 章节推断的兜底必须走 `_auto_headings(doc, chunks)`（优先 `_parsed.headings`），**严禁**在 fallback 里直接 `_scan_chapter_headings(chunks)` 重扫文本——docx expat 丢 w:tab/PAGEREF 会让目录页码粘尾，目录+正文双份入树。
+- `_NUMBERED_PATTERN` **不要**为"1绪论"式无分隔符标题放宽（`[、.\s]+` 必须保留），否则"14条矿体"等正文行误报；无分隔符标题只有 Word 样式路径能拿到。
+- 粘尾页码只能在"存在剥页码孪生"时作去重归一键，不得无条件改写标题（年份/标准号风险）。
+- `extraction_tasks.source_report_ids` 现在落库 source+uploaded 并集；rerun 依赖它。上传引用不落库 = rerun 500。
+- `docker/dev-entrypoint.sh` 日志重定向是 `>>` 追加（bug-3004 前是 `>` 每次重启清空，毁取证）；查网关历史日志看 `logs/gateway.log`。
+- 改 backend Python 后 gateway 容器 uvicorn --reload 会自动重载（bind-mount），等 /api/health 返回 401 即就绪（502/504=还在启动）。
+
+### KF 抽取任务会被 uvicorn --reload 杀死（2026-08-29, bug-3004 验证期）
+- gateway 容器 uvicorn `--reload` 监视整个 /app/backend（含 tests/）。任务运行期间**任何**文件落盘（哪怕是别的会话改测试文件）→ 进程热重启 → 运行中的抽取 asyncio task 随之死亡，DB status 停在 running 成僵尸。
+- **规则：KF 抽取任务运行期间不写/不 touch backend/ 下任何文件；跑 E2E 验证前确认无并发会话在改 backend。**
+- 僵尸任务识别：日志里 "WatchFiles detected changes" + "Shutting down" 紧跟任务开始后；DB running 但 gateway.log 无后续 Task 日志行。
+- KF API 调试坑：CSRF cookie 名是 `csrf_token`（不是 csrftoken）；403 "token missing" vs "mismatch" 区分 header 未达/值过期；会话过期后 cookie jar 需重新 login 才有新 csrf_token。
+- 监视抽取任务最稳方式：docker exec psql 直查 extraction_tasks 表，免认证、不受 reload/cookie 过期影响。
+
+- (2026-08-29) **tenki-sandbox 已从 PyPI 下架（404）**：harness 的可选 extra `tenki = ["tenki-sandbox>=0.4.0"]` 指向下架包 → 任何 pyproject 依赖改动触发的全量在线重锁必失败（"was not found in the package registry"）。**解法：`uv lock --offline`**（uv 缓存有全部元数据，707ms 解析成功）。等上游弃用/换 pin 前一直适用。
+- (2026-08-29) Git Bash 下 `docker exec ... tar -x -C /app/...` 的容器路径会被 MSYS 转成 `C:/Program Files/Git/app/...` → 必须加 `MSYS_NO_PATHCONV=1`（或路径写 `//app/...`）。
+- (2026-08-29) 渲染图 dim_v 坐标差兜底有 float 噪声：9.185-3.3=5.885000000001 → _fmt 得 "5.89"，而 state 字面量 5.885 → "5.88"。这正是 value= 显式 state 值优先存在的理由；兜底分支的测试断言要用整米坐标。
+- (2026-08-29) .wolf/buglog.json 存在重复 id（bug-3004 两条无关条目）——复用 id 前先脚本查重，新增一律取 max+1。
+
+## 2026-08-29 插图 E2E 收尾学到的
+- formula_state.json all_params 键形不统一：部分公式输出带 `formula_id.` 前缀（lift_rope_len.lift_rope_len），部分裸键——消费方一律用"裸键优先+唯一后缀解析"，别假设键形。
+- 容器 /app 与 /app/skills 是 D:\ 的 9p 挂载，host 改动容器即时可见；skills_view 投影（backend/.deer-flow/skills_view/）也是 host 文件，直接 host cp 即同步，无需 docker tar-pipe。投影数会变（gateway 重建，本轮 7 个 projection-*）。

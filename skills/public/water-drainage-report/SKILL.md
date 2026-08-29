@@ -433,7 +433,7 @@ $$Q_{sf} = Q \times sf_{ratio} = 20000 \times 0.05 = 1000\ \text{m}^3/\text{h}$$
    - 7.2.3 节末：`![滤网起吊示意图](images/08bb824f44bb.png)`
    - 8.2.1 喇叭口选型段后：`![吸水喇叭口安装示意图](images/35115cff8642.png)`
    - 8.2.3 泵房高度计算后：`![泵房剖面示意图](images/b1cfb1ccb5a3.png)`
-3. 出现 `DIAGRAM_SKIP` 或 `FONT_MISSING` → 该图不写图片行，改写占位标记一行（数值取 traces 实际值），留给 Word 阶段人工贴图：
+3. 出现 `DIAGRAM_SKIP` 或 `FONT_MISSING` → 先核对缺参是否属实（`formula_state.json` 的 all_params 中该键可能带 `formula_id.` 前缀，脚本会自动解析；键确实无值才算缺参），属实才占位：该图不写图片行，改写占位标记一行（数值取 traces 实际值），留给 Word 阶段人工贴图：
    `【插图待人工补充：滤网起吊示意图——请按 H=5.21m（a=0.86+b=0.45+c=2.20+d=1.00+e=0.70）贴标准图或剖面简图】`
 4. 图片行必须独占一行（Word 导出仅解析整行 `![alt](url)` 形态，行内混排不识别）；图片文件在 threads 的 outputs/images/ 下随文档空间同步，导出 Word 时由服务端按相对引用嵌图。
 
