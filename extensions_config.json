@@ -215,21 +215,6 @@
       "oauth": null,
       "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container — start via docker/docker-compose-dev.yaml `text-to-cad` service (port 8004), then set enabled=true."
     },
-    "plugin_fba4fa1d-92cc-45d3-850c-c5a595168705": {
-      "enabled": true,
-      "type": "stdio",
-      "command": "/app/backend/.venv/bin/python",
-      "args": [
-        "-m",
-        "app.extensions.plugin.builtin.demo_mcp"
-      ],
-      "env": {},
-      "cwd": "/app/backend",
-      "url": null,
-      "headers": {},
-      "oauth": null,
-      "description": "示例工具(演示接线): 演示插件→MCP 接线:启用后 Agent 获得 demo_greet 工具。"
-    },
     "ops-diagnosis": {
       "enabled": true,
       "type": "stdio",

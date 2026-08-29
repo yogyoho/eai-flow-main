@@ -258,14 +258,22 @@ skill_evolution:
   moderation_model_name: null
 suggestions:
   enabled: true
-checkpointer:
-  type: sqlite
-  # EAI-CUSTOM: 必须落在持久目录 /app/backend/.deer-flow/data（bind-mount ./data），
-  # 否则容器重建会丢全部线程/checkpoint（见 buglog bug-877）。与开发环境根 config.yaml 保持一致。
-  connection_string: /app/backend/.deer-flow/data/checkpoints.db
+# EAI-CUSTOM (2026-08-29): 核心库 sqlite→postgres，与开发环境对齐。legacy `checkpointer:`
+# 节已删（checkpointer 优先级高于 database，留着会导致 checkpoint/Store 仍走 sqlite）——
+# 统一 database 节驱动 checkpointer+Store+应用数据。复用 postgres-ext 实例的独立 `deerflow`
+# 库，勿与 extensions 的 agentflow 库共用（同名表 users/roles 冲突；temporal 各用各库不冲突）。
+# 库不存在时 gateway 启动自建（自动 CREATE DATABASE）。
+# 两个前置条件：
+#   1. 镜像须含 postgres 驱动（psycopg/langgraph-checkpoint-postgres）——离线镜像由
+#      scripts/offline-export.sh 从 dev 导出，dev 已设 UV_EXTRAS=postgres,memory-zh。
+#   2. 线程/checkpoint 数据随之迁出 ./data 进入 named volume prod-postgres-ext-data，
+#      备份/升级须同时 pg_dump agentflow + deerflow 两个库（见 MANUAL-UPGRADE §6 / upgrade.sh）。
+# postgres_url 中密码须与 .env 的 POSTGRES_EXT_PASSWORD 保持一致。
 database:
-  backend: sqlite
-  sqlite_dir: /app/backend/.deer-flow/data
+  backend: postgres
+  postgres_url: postgresql://agentflow:agentflow123@postgres-ext:5432/deerflow
+  # 内网防火墙常掐空闲连接，5 分钟回收 ORM 连接池防 "server closed the connection"
+  pool_recycle: 300
 loop_detection:
   enabled: true
   warn_threshold: 3

@@ -1,129 +1,44 @@
 {
-  "session_id": "session-2026-08-20-1158",
-  "started": "2026-08-20T03:58:13.996Z",
+  "session_id": "session-2026-08-29-0012",
+  "started": "2026-08-29T16:12:47.390Z",
   "files_read": {
-    "D:/eai/eai-flow-main/skills/public/bid-proposal-writing/SKILL.md": {
-      "count": 1,
-      "tokens": 6091,
-      "first_read": "2026-08-20T03:58:38.714Z"
-    },
-    "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py": {
-      "count": 8,
-      "tokens": 95748,
-      "first_read": "2026-08-20T03:59:00.487Z"
-    },
     "D:/eai/eai-flow-main/config.yaml": {
       "count": 1,
-      "tokens": 37083,
-      "first_read": "2026-08-20T04:07:36.966Z"
+      "tokens": 36617,
+      "first_read": "2026-08-29T16:12:56.522Z"
     },
-    "D:/eai/eai-flow-main/frontend/src/core/threads/hooks.ts": {
+    "D:/eai/eai-flow-main/extensions_config.json": {
+      "count": 1,
+      "tokens": 0,
+      "first_read": "2026-08-29T16:12:56.863Z"
+    },
+    "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py": {
       "count": 2,
-      "tokens": 29337,
-      "first_read": "2026-08-20T04:08:24.263Z"
+      "tokens": 0,
+      "first_read": "2026-08-29T16:15:34.990Z"
     }
   },
   "files_written": [
     {
-      "file": "D:/eai/eai-flow-main/skills/public/bid-proposal-writing/SKILL.md",
-      "action": "edit",
-      "tokens": 39,
-      "at": "2026-08-20T03:58:49.819Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 113,
-      "at": "2026-08-20T03:59:18.771Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/skills/public/bid-proposal-writing/SKILL.md",
-      "action": "edit",
-      "tokens": 23,
-      "at": "2026-08-20T03:59:43.591Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 604,
-      "at": "2026-08-20T04:00:13.407Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 920,
-      "at": "2026-08-20T04:00:46.708Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 37,
-      "at": "2026-08-20T04:01:03.030Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 32,
-      "at": "2026-08-20T04:01:18.933Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 661,
-      "at": "2026-08-20T04:02:14.312Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 323,
-      "at": "2026-08-20T04:03:09.792Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 133,
-      "at": "2026-08-20T04:03:45.142Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py",
-      "action": "edit",
-      "tokens": 39,
-      "at": "2026-08-20T04:04:57.927Z"
-    },
-    {
       "file": "D:/eai/eai-flow-main/config.yaml",
       "action": "edit",
-      "tokens": 74,
-      "at": "2026-08-20T04:07:48.685Z"
+      "tokens": 117,
+      "at": "2026-08-29T16:13:08.865Z"
     },
     {
-      "file": "D:/eai/eai-flow-main/config.yaml",
+      "file": "D:/eai/eai-flow-main/extensions_config.json",
       "action": "edit",
-      "tokens": 52,
-      "at": "2026-08-20T04:08:01.558Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/frontend/src/core/threads/hooks.ts",
-      "action": "edit",
-      "tokens": 104,
-      "at": "2026-08-20T04:09:05.503Z"
-    },
-    {
-      "file": "D:/eai/eai-flow-main/frontend/src/core/threads/hooks.ts",
-      "action": "edit",
-      "tokens": 63,
-      "at": "2026-08-20T04:09:20.097Z"
+      "tokens": 7,
+      "at": "2026-08-29T16:13:12.224Z"
     }
   ],
   "edit_counts": {
-    "skills/public/bid-proposal-writing/SKILL.md": 2,
-    "backend/tests/test_bid_proposal_scripts.py": 9,
-    "config.yaml": 2,
-    "frontend/src/core/threads/hooks.ts": 2
+    "config.yaml": 1,
+    "extensions_config.json": 1
   },
-  "anatomy_hits": 4,
-  "anatomy_misses": 0,
-  "repeated_reads_warned": 8,
+  "anatomy_hits": 1,
+  "anatomy_misses": 2,
+  "repeated_reads_warned": 1,
   "cerebrum_warnings": 0,
-  "stop_count": 0
+  "stop_count": 2
 }

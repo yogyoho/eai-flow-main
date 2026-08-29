@@ -90,6 +90,9 @@ docker compose -p "$P" "${COMPOSE[@]}" up -d
 # 4. 数据库备份 + 迁移
 log "备份数据库 → backup-pre-${NEW_TAG}.sql"
 docker exec prod-eai-flow-postgres-ext pg_dump -U agentflow agentflow > "backup-pre-${NEW_TAG}.sql" 2>/dev/null || warn "pg_dump 失败（继续）"
+# EAI-CUSTOM (2026-08-29): 核心库已切 postgres（config.yaml database.backend: postgres，
+# deerflow 库），线程/checkpoint 在这里，一并备份
+docker exec prod-eai-flow-postgres-ext pg_dump -U agentflow deerflow > "backup-pre-${NEW_TAG}-core.sql" 2>/dev/null || warn "pg_dump(core) 失败（继续）"
 log "等待 gateway 健康..."
 HEALTHY=0
 for i in $(seq 1 40); do

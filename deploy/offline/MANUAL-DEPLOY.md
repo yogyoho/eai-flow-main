@@ -345,13 +345,10 @@ $COMPOSE up -d --force-recreate --no-deps gateway
 
 **重置已有 admin 密码**（users 表非空但忘了密码）：
 ```bash
-docker exec -e PYTHONPATH=/app/backend prod-eai-flow-gateway /app/backend/.venv/bin/python -c "
-import sqlite3
-from app.gateway.auth.password import hash_password
-con = sqlite3.connect('/app/backend/.deer-flow/data/deerflow.db')
-cur = con.execute('UPDATE users SET password_hash=? WHERE email=?', (hash_password('Admin@2026'), 'admin@eai-flow.com'))
-con.commit(); print('reset rows:', cur.rowcount)
-"
+# 密码真源在 extensions agentflow 库 users 表；gateway 侧镜像行在下一次成功登录时自动重建
+HASH=$(docker exec -e PYTHONPATH=/app/backend prod-eai-flow-gateway /app/backend/.venv/bin/python -c "
+from app.gateway.auth.password import hash_password; print(hash_password('Admin@2026'))")
+docker exec prod-eai-flow-postgres-ext psql -U agentflow -d agentflow -c "UPDATE users SET password_hash='$HASH' WHERE email='admin@eai-flow.com'"
 ```
 
 ### 坑 3：License 升级后失效，需重新申请
@@ -416,7 +413,8 @@ docker exec prod-eai-flow-postgres-ext psql -U agentflow -d agentflow -c "SELECT
 |------|------|------|
 | 主库（用户/文档/知识库/合同价/license镜像）| `eai-prod_prod-postgres-ext-data` | named volume |
 | RAGFlow 索引/MinIO对象/MySQL | `eai-prod_prod-ragflow-*-data` | named volume |
-| 认证+线程+反馈+上传+checkpoints+machine_id+license | `./data`（→ `/app/backend/.deer-flow`）| bind mount |
+| 核心库（线程/运行/checkpoints；EAI 2026-08-29 切 postgres）| `eai-prod_prod-postgres-ext-data`（`deerflow` 库）| named volume |
+| 上传+memory/渠道登录态+machine_id+license | `./data`（→ `/app/backend/.deer-flow`）| bind mount |
 
 ---
 

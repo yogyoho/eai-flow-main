@@ -186,7 +186,10 @@ BK=/opt/eai-backup-$(date +%Y%m%d-%H%M); mkdir -p "$BK"
 # 6a. 主库逻辑备份（用户/文档/知识库/合同价/license镜像）
 docker exec prod-eai-flow-postgres-ext pg_dump -U agentflow agentflow > "$BK/db.sql"
 
-# 6b. ./data 物理备份（认证 deerflow.db / 线程 / 上传 / license.lic / machine_id / checkpoints）
+# 6a-2. 核心库逻辑备份（线程/运行/checkpoints；EAI 2026-08-29 核心库已切 postgres）
+docker exec prod-eai-flow-postgres-ext pg_dump -U agentflow deerflow > "$BK/core-db.sql"
+
+# 6b. ./data 物理备份（上传 / memory / 渠道登录态 / license.lic / machine_id）
 tar czf "$BK/data.tgz" -C /opt/eai-flow-offline data
 
 ls -lh "$BK"                    # 确认两个文件都有内容
@@ -456,7 +459,8 @@ $COMPOSE ps
 
 # 3. 恢复数据库（用 upgrade.sh 自动留的，或 §6 手工备的）
 docker exec -i prod-eai-flow-postgres-ext psql -U agentflow agentflow < backup-pre-<新版本>.sql
-#   若用手工备份：psql ... < /opt/eai-backup-<日期>/db.sql
+docker exec -i prod-eai-flow-postgres-ext psql -U agentflow deerflow < backup-pre-<新版本>-core.sql
+#   若用手工备份：psql ... < /opt/eai-backup-<日期>/db.sql + core-db.sql
 
 # 4. 验证功能
 ```
@@ -484,7 +488,8 @@ docker exec -i prod-eai-flow-postgres-ext psql -U agentflow agentflow < backup-p
 |------|------|------|
 | 主库（用户/文档/知识库/合同价/license镜像）| `eai-prod_prod-postgres-ext-data` | named volume |
 | RAGFlow 索引/MinIO/MySQL | `eai-prod_prod-ragflow-*-data` | named volume |
-| 认证+线程+上传+checkpoints+machine_id+license | `./data`（→ `/app/backend/.deer-flow`）| bind mount |
+| 核心库（线程/运行/checkpoints；EAI 2026-08-29 切 postgres）| `eai-prod_prod-postgres-ext-data`（`deerflow` 库）| named volume |
+| 上传+memory/渠道登录态+machine_id+license | `./data`（→ `/app/backend/.deer-flow`）| bind mount |
 
 ---
 

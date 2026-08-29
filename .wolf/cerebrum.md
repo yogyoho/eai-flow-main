@@ -1269,3 +1269,32 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 ## 2026-08-29 插图 E2E 收尾学到的
 - formula_state.json all_params 键形不统一：部分公式输出带 `formula_id.` 前缀（lift_rope_len.lift_rope_len），部分裸键——消费方一律用"裸键优先+唯一后缀解析"，别假设键形。
 - 容器 /app 与 /app/skills 是 D:\ 的 9p 挂载，host 改动容器即时可见；skills_view 投影（backend/.deer-flow/skills_view/）也是 host 文件，直接 host cp 即同步，无需 docker tar-pipe。投影数会变（gateway 重建，本轮 7 个 projection-*）。
+
+## Decision Log (2026-08-29 — bid-proposal-writing v3 方向, /office-hours 四轮定案)
+- **v3 = superpowers 方法论移植,不动 v2 管线结构**:363行 SKILL.md 教材过重(1.67M token 实证)+ 铁律9 单轮3违规(bug-2189 E2E, state_guard 首签洗白漏洞)+ 无压测闭环。四 WP:WP-B 删通用 sign+装载强制登记(最优先,模型无关完整性缺陷)→ WP-C responses.py 确定性薄响应 lint → WP-A 激进分层(SKILL.md ≤120行,阶段细节沉 references/stageN-*.md,snapshot next_step 写必读文件名兜底)→ WP-D E2E 驱动转正压测套件(agnes=地板基线+生产模型复测,CP2 归因后置)。
+- **agnes-2.5-Flash 定位=能力地板回归基线,非技能受众**;措辞类修复(rationalization 借口表)面向强模型,与机制类修复(签名门禁)分开验收——避免用弱模型表现错杀措辞设计、或用措辞修复错补机制漏洞(后台子代理独立评估采纳)。
+- **平台级问题只记录不修**:单工具 25×/turn 截断长管线是 harness 层,本轮超范围。
+- 设计文档: docs/designs/bid-proposal-writing-v3-refactor.md(office-hours 产出)。
+
+## Gateway 无热重载 (2026-08-29, bug-3004 根治)
+- dev-entrypoint.sh 已**移除 uvicorn --reload**(EAI-CUSTOM 注释保留升级路径)。改后端代码后必须 `docker compose -p eai-docker restart gateway`(与 CLAUDE.md 一致)。不要再往命令行加回 --reload——它三次杀死 KF 长任务(tests/ 改动×2 + docmgr/routers.py ×1), async 任务随进程死亡, DB 停 running 成僵尸。
+- 僵尸任务处置套路: psql 查 status/progress + grep gateway.log 'WatchFiles|Shutting down' 定位杀死时间点 → SQL 置 failed+error_message → rerun API。
+
+## [2026-08-29] Key Learnings (核心库 sqlite→postgres 切换)
+- **核心 DB 已切 postgres**（config.yaml `database.backend: postgres` → `postgres-ext:5432/deerflow` 独立库）。统一 database 节同时驱动 checkpointer+Store+app 数据（legacy `checkpointer:` 节已删，`_resolve_store_config` fallback 覆盖）。**勿与 extensions 的 agentflow 库共用**（同名表 users/roles 冲突）。
+- **postgres 驱动是 uv extra 不是基础依赖**：psycopg/langgraph-checkpoint-postgres 走 `UV_EXTRAS=postgres,memory-zh`（根 .env 供 dev 容器运行时 uv sync；docker/.env 供 base 镜像 build arg）。漏装 = 启动 ImportError。
+- **gateway 登录门面自愈 users 镜像**：核心 users 表清空无碍——`auth/routers.py` login 在密码验证通过后 best-effort `sync_user_created` 重建镜像行（extensions 库才是密码真源）。
+- **DB 缺库自愈**：postgres 目标库不存在时 gateway bootstrap 自动连 postgres 维护库 `CREATE DATABASE`（persistence/engine.py "does not exist" 分支）+ advisory lock 建 24 表。无需 init 脚本。
+- **gateway 真实日志是 `/app/logs/gateway.log`（host: backend/../logs/），不是 langgraph.log（2026-04 起stale）也不是 docker logs（空）**。诊断先 tail gateway.log。
+- **API 冒烟套路**：POST /api/extensions/auth/login 发 cookie（含 csrf_token）→ 写操作带 `X-CSRF-Token: <csrf_token cookie 值>` 头；`/api/auth/csrf` 端点不存在。
+- 迁移验证结论（4-agent workflow 对抗验证）：checkpoint_migrations v0-9 = AsyncPostgresSaver.setup() 落在新库；旧 sqlite 文件 mtime 冻结在切换时刻、零 fd 打开——无静默回退。
+
+## KF LLM 输出上限与域骨架 (2026-08-29, bug-3005)
+- config.yaml 模型 max_tokens=8192 是全局聊天配置; KF 结构化长 JSON 会被截断(finish=length)→解析失败→兜底占位符。ExtractionLLMClient 已 bind(max_tokens=16384); 更大报告(≈300节)复发时调大该值。
+- KF 任务的 domain.standard_chapters 会作为参考结构注入 infer_schema; 默认域种子(环评=总则/建设项目概况/工程分析 3章stub)与文档类型不符时 LLM 会以'[偏差]保留'并入树。doc_parser 有确定性标题时已跳过注入(pipeline.py); RAGFlow 路径仍会用域参考。
+- rerun API 每次可能产生新模板行; 验证时必须用任务行 target_template_id 查产物, 别按名字/上次的 id 猜。
+
+### [2026-08-30] 离线模板 sqlite→postgres 跟进 + 密码真源
+- **登录密码真源 = extensions agentflow 库 users 表**（`extensions/auth/routers.py` 用 `verify_password_async` 验 extensions 的 password_hash，gateway 核心库 users 只是镜像行，成功登录时自愈重建）。重置 admin 密码必须改 agentflow 库——改核心库镜像行无效（老 MANUAL-DEPLOY 坑2 的 sqlite 片段正是这个无效操作，已修）。
+- **离线镜像驱动来自 dev 构建**：offline gateway `uv run --no-sync` 不装依赖，postgres 驱动全靠 `deer-flow-gateway` 镜像；镜像由 `scripts/offline-export.sh` 从 dev 的 `eai-docker-gateway:latest` retag，故 `docker/.env` 的 UV_EXTRAS=postgres 已覆盖离线包，模板自身无需加。
+- 旧 sqlite 片段（MANUAL-DEPLOY 坑2 / cutover.md）指的核心库 users 表已随切换迁入 postgres `deerflow` 库；cutover.md 是历史实录保留未动。

@@ -21855,7 +21855,7 @@
     "error_message": "模板抽取任务4b36c76d完成后模板编辑器目录树结构不正确：24根/441节，目录页与正文双份、第1章绪论缺失、（N）条目与x.y同层",
     "file": "backend/app/extensions/knowledge_factory/pipeline.py",
     "root_cause": "Step1 infer_schema 抛异常(42s内,日志已截断无法取证)走except分支，该分支无视已成功解析的 _parsed.headings(159个Word样式标题)，改用 _scan_chapter_headings 重扫 chunk 文本。docx expat 路径丢 w:tab/PAGEREF 使目录页码粘尾(以往工作评述5)，_TOC_ENTRY 拦不住，目录+正文双份过精确去重=441；第1章标题1绪论(数字后无分隔符)不匹配 _NUMBERED_PATTERN 两份副本均漏检致1.1~1.6浮根。次生：TaskService.create_task 只落库 source_report_ids，纯上传任务 rerun 重建空来源500；dev-entrypoint exec> 截断日志毁取证。",
-    "fix": "新增 _auto_headings(doc,chunks)：优先 _parsed.headings 否则退回文本扫描，接入 except 分支与 LLM 空返回分支；except 改 logger.exception 记录 {e!r}+traceback；_scan_chapter_headings 加固(仅存在剥页码孪生时归一并去重，合法数字结尾标题不动；x.y 出现后（N）降为L3)；service.create_task 落库 source+uploaded 并集修 rerun；dev-entrypoint 改 exec>> 追加日志。容器实测修复后兜底树=10章/159节/0粘连/绪论在场。",
+    "fix": "新增 _auto_headings(doc,chunks)：优先 _parsed.headings 否则退回文本扫描，接入 except 分支与 LLM 空返回分支；except 改 logger.exception 记录 {e!r}+traceback；_scan_chapter_headings 加固(仅存在剥页码孪生时归一并去重，合法数字结尾标题不动；x.y 出现后（N）降为L3)；service.create_task 落库 source+uploaded 并集修 rerun；dev-entrypoint 改 exec>> 追加日志。容器实测修复后兜底树=10章/159节/0粘连/绪论在场。 | 2026-08-29 第三次 (app/extensions/docmgr/routers.py 触发, tests/ 排除罩不住): 根治=dev-entrypoint.sh 完全移除 --reload(CLAUDE.md 本就规定改后端须 restart gateway, 热重载冗余且有害)",
     "tags": [
       "knowledge-factory",
       "template-extraction",
@@ -21868,7 +21868,7 @@
     "related_bugs": [
       "bug-1241"
     ],
-    "occurrences": 1,
+    "occurrences": 3,
     "last_seen": "2026-08-29"
   },
   {
@@ -21877,7 +21877,7 @@
     "error_message": "AttributeError: 'list' object has no attribute 'get' (ingest.py check on 08_orebody_list)",
     "file": "skills/public/geological-report/scripts/ingest.py",
     "root_cause": "cmd_check 逐字段门假设每个 JSON 族文件顶层为 dict，对 doc.get 直接调用；清单族（如 08_orebody_list）经 ingest.py file 从 CSV 摄入后 data/ 顶层为行数组。页面实测 agent 把脚本崩溃误归因为「数据损坏」，进而手写 data/14_block_model.json 编造数值（红线违规链条的起点）——脚本 bug 诱发 agent 走邪路。",
-    "fix": "cmd_check 加 isinstance(doc, list) 分支：非空行数组视为该族就绪、空清单报 missing；回归测试 test_check_list_shaped_doc_no_crash（非空放行+空清单报缺）。已验证 skills_view 投影同步，容器内对真实沙箱数据 check 不再崩溃（rc=2 列真实缺项26条）。",
+    "fix": "cmd_check 加 isinstance(doc, list) 分支：非空行数组视为该族就绪、空清单报 missing；回归测试 test_check_list_shaped_doc_no_crash（非空放行+空清单报缺）。已验证 skills_view 投影同步，容器内对真实沙箱数据 check 不再崩溃（rc=2 列真实缺项26条）。 | 2026-08-29 第三次 (app/extensions/docmgr/routers.py 触发, tests/ 排除罩不住): 根治=dev-entrypoint.sh 完全移除 --reload(CLAUDE.md 本就规定改后端须 restart gateway, 热重载冗余且有害)",
     "tags": [
       "geo-skill",
       "ingest",
@@ -21890,8 +21890,8 @@
       "bug-2216",
       "bug-2217"
     ],
-    "occurrences": 1,
-    "last_seen": "2026-08-29T20:30:00"
+    "occurrences": 3,
+    "last_seen": "2026-08-29"
   },
   {
     "id": "bug-3005",
@@ -21920,7 +21920,7 @@
     "error_message": "agent run 以 GraphRecursionError 终结：Recursion limit of 100 reached without hitting a stop condition（D1 红线：死循环/熔断绝对禁区）",
     "file": "skills/public/geological-report/scripts/formula_runner.py + SKILL.md 派发协议",
     "root_cause": "B1 公式读 locked_cycle.feed_grade_cu 但数据实际在 feed_assays.Cu（公式/数据 schema 错位）→ 脚本反复崩溃 → agent 陷入 Read 全文/重跑/重 dump 循环 → langgraph 递归上限 100 熔断，死前未向用户交付任何终报；且期间 agent 二次手写 data/10_beneficiation.json（REG-DRIFT）",
-    "fix": "本次=测试 finding 已记录；根治=修补决策包 F5（公式/数据点分层级键对齐）+F3（freeze 快照输入 sha256→STALE_FREEZE）+F2（B1/E 链缺失 anomaly 三档）；SKILL.md 增加「同命令失败 2 次必须报告停止」硬纪律；测试消息已附该纪律",
+    "fix": "本次=测试 finding 已记录；根治=修补决策包 F5（公式/数据点分层级键对齐）+F3（freeze 快照输入 sha256→STALE_FREEZE）+F2（B1/E 链缺失 anomaly 三档）；SKILL.md 增加「同命令失败 2 次必须报告停止」硬纪律；测试消息已附该纪律；【第2次】生成阶段 run 690cca4e 再次 GraphRecursionError——纪律消息挡不住它（熔断来自图步数而非重复命令）。lead 违背薄控制器逐章内联预研(读craft/范文/manifest/逐表单≈30-50步/章)，未派发出 task() 就烧光100步。缓解=run config 顶层带 recursion_limit:400（services.py clamp 到 max_recursion_limit=1000）+消息级薄控制器纪律；根治=SKILL.md 派发协议把「lead 禁读 craft/范文/表单全文、逐 wave 批量 task()」写死",
     "tags": [
       "geo-skill",
       "loop-guard",
@@ -21931,8 +21931,8 @@
     "related_bugs": [
       "bug-2223"
     ],
-    "occurrences": 1,
-    "last_seen": "2026-08-29"
+    "occurrences": 2,
+    "last_seen": "2026-08-29T15:20:00"
   },
   {
     "id": "bug-3007",
@@ -22010,7 +22010,160 @@
       "bug-3004",
       "bug-3010"
     ],
+    "occurrences": 2,
+    "last_seen": "2026-08-29"
+  },
+  {
+    "id": "bug-3009",
+    "timestamp": "2026-08-29T15:25:00",
+    "error_message": "默认 recursion_limit=100 对 10 章报告生成结构性不足；lead 逐章内联预研烧 30-50 步/章，wave1 ch1 尚未 task() 即熔断",
+    "file": "skills/public/geological-report/SKILL.md（派发协议§4）+ backend/app/gateway/services.py:553",
+    "root_cause": "①SKILL.md「薄控制器」条款（craft.md 明写主会话不需要读）无强约束，agent 仍逐章读全文；②_DEFAULT_RECURSION_LIMIT=100 与多章节工作流不匹配（Task 5 只提了 subagents.max_total_per_run 6→16，未动递归上限）",
+    "fix": "短期：run 请求 config 顶层 recursion_limit:400（服务端已支持 clamp）；协议：SKILL.md 补硬纪律——lead 仅允许 progress.py next/manifest 摘要/组装 task()，每 wave 一条消息批量派发；记录为 finding ⑬⑭ 归入修补决策包",
+    "tags": [
+      "geo-skill",
+      "recursion-limit",
+      "thin-controller",
+      "page-test",
+      "F-series"
+    ],
+    "related_bugs": [
+      "bug-3006"
+    ],
+    "occurrences": 2,
+    "last_seen": "2026-08-29"
+  },
+  {
+    "id": "bug-3010",
+    "timestamp": "2026-08-29T15:26:00",
+    "error_message": "派发预研中 Data Availability 检查显示 project/tenement/prev_work 均 ✗ MISSING，但同轮另一命令显示同名表单 Status: filled",
+    "file": "skills/public/geological-report/scripts（availability 检查脚本）",
+    "root_cause": "疑似检查器与实际表单位置/键名口径不一致（待定位具体脚本与判定逻辑）",
+    "fix": "未修——finding ⑮ 待查；若检查器误报 MISSING 可能误导 agent 重复索要数据",
+    "tags": [
+      "geo-skill",
+      "availability-check",
+      "false-negative",
+      "page-test"
+    ],
+    "related_bugs": [],
     "occurrences": 1,
-    "last_seen": "2026-08-29T22:50:00+08:00"
+    "last_seen": "2026-08-29"
+  },
+  {
+    "id": "bug-3012",
+    "timestamp": "2026-08-29",
+    "error_message": "章节里 {{TABLE:tenement_corner_points}} 等非法 fam 名在 build_output 渲染时只输出「（未知表单族 …）」占位文本，单章门 rc=0 照样 PASS——ch1 带 2 处非法引用 VERIFIED",
+    "file": "skills/public/geological-report/scripts/build_output.py",
+    "root_cause": "render_family 对 stage[\"forms\"] 查不到的 fam 返回占位字符串不报错；单章门 unknown_keys 只收集 {{SLOT:}} 未命中，不覆盖 {{TABLE:}}",
+    "fix": "本轮：派修正子代理改 ch1 引用；根治（待修）：make_inject 对未知 fam 也累积 unknown 键并在单章门判定 FAIL，或门输出列出未知 TABLE 清单",
+    "tags": [
+      "geo-skill",
+      "build_output",
+      "gate-hole",
+      "table-ref",
+      "page-test"
+    ],
+    "related_bugs": [
+      "bug-3009"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-29"
+  },
+  {
+    "id": "bug-3013",
+    "timestamp": "2026-08-29",
+    "error_message": "薄控制器纪律消息发出后 lead 仍然亲手写了 state/chapters/ch2.md、ch3.md（dispatches=0 无记账），且 TABLE 引用全非法、正文仅 2.3KB 远低于深度目标",
+    "file": "skills/public/geological-report/scripts/progress.py",
+    "root_cause": "消息级纪律对 lead 模型无硬约束——prompt 说「不得亲自写章」但工具层面 Write 对 lead 可用且无拦截",
+    "fix": "本轮：手写章作废删除、责令派子代理；根治（待修）：SKILL.md 把「lead 禁写章节正文」写进派发契约硬条款+progress.py 对无 DRAFTED 记账的章节文件在 assemble 时告警",
+    "tags": [
+      "geo-skill",
+      "thin-controller",
+      "lead-discipline",
+      "page-test"
+    ],
+    "related_bugs": [
+      "bug-3009"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-29"
+  },
+  {
+    "id": "bug-3005",
+    "timestamp": "2026-08-29T15:40:00Z",
+    "error_message": "模板抽取后所有章节元数据的编写目的都是\"从{文档名}自动识别\"占位符",
+    "file": "backend/app/extensions/knowledge_factory/llm.py",
+    "root_cause": "config.yaml 模型 max_tokens=8192 输出上限对 KF 结构化输出太紧：159节模板树JSON需8-14k token，响应被截断(finish_reason=length、无闭合代码围栏)，_extract_json 围栏策略 require 闭合围栏故失败 → infer_schema 走异常兜底 → 章节树来自 parsed.headings 但 purpose 全是占位符 f\"从{doc_name}自动识别\"，Step 2 _enrich 用 {**sec} 原样透传不覆盖",
+    "fix": "ExtractionLLMClient.model 属性 bind(max_tokens=16384)——实测 16384 对 159 节文档 finish=stop 完整闭合；回归测试 tests/test_kf_llm.py::test_model_binds_output_cap",
+    "tags": [
+      "kf",
+      "llm",
+      "max_tokens",
+      "truncation",
+      "infer_schema",
+      "purpose-placeholder"
+    ],
+    "related_bugs": [
+      "bug-3004"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-29"
+  },
+  {
+    "id": "bug-3014",
+    "timestamp": "2026-08-29T23:50:00+08:00",
+    "error_message": "诊断 gateway 启动问题时 tail /app/logs/langgraph.log 看到的是 2026-04 的陈旧失败日志（GraphLoadError + AsyncSqliteSaver），docker logs 也为空，误导诊断方向",
+    "file": "docker/docker-compose-dev.yaml",
+    "root_cause": "gateway 实际日志写 /app/logs/gateway.log（经 ../logs bind 挂载）；langgraph.log 是废弃通道，docker logs 因 compose 日志配置为空",
+    "fix": "诊断一律 tail /app/logs/gateway.log（host 侧 <repo>/logs/gateway.log）；已写入 cerebrum 2026-08-29 learnings",
+    "tags": [
+      "gateway",
+      "logging",
+      "diagnosis",
+      "ops"
+    ],
+    "related_bugs": [],
+    "occurrences": 2,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3015",
+    "timestamp": "2026-08-30",
+    "error_message": "POST /api/v1/auth/login/local 用 email= 字段报 422 \"body.username Field required\"——登录契约从 email 改为 username；且 POST /api/threads 内联中文 body 报 \"There was an error parsing the body\"（Git Bash 内联中文编码损坏），必须写 UTF-8 文件用 --data-binary @file",
+    "file": "backend/app/gateway/routers/ (auth + threads)",
+    "root_cause": "网关镜像被并发会话更新（gateway 容器 Created=23:31 重建），auth 请求模型字段更名；curl -d 内联中文经 Git Bash 传输编码损坏",
+    "fix": "改用 username= 字段登录成功；所有带中文的 POST body 一律 Write 成 UTF-8 json 文件再 --data-binary 投递（既有做法，本次再次验证）",
+    "tags": [
+      "api-contract",
+      "gateway-rebuild",
+      "curl",
+      "encoding",
+      "login"
+    ],
+    "related_bugs": [
+      "bug-3014"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3015",
+    "timestamp": "2026-08-30T00:04:43",
+    "error_message": "MANUAL-DEPLOY 坑2 重置 admin 密码片段改的是核心库 users 镜像表（原 sqlite），登录验证真源在 extensions agentflow 库 users 表，照抄执行后登录依旧失败",
+    "file": "deploy/offline/MANUAL-DEPLOY.md",
+    "root_cause": "登录门面(extensions/auth/routers.py)用 verify_password_async 验 extensions 库的 password_hash；gateway 核心库 users 只是镜像行且在成功登录时才自愈重建——密码错了镜像行永远不会被重建",
+    "fix": "片段改为: gateway python 生成 hash + psql -d agentflow UPDATE users SET password_hash；顺带把核心库 sqlite→postgres 切换牵连的 upgrade.sh 双库备份/MANUAL 双手册 persistence 表一起修",
+    "tags": [
+      "offline-deploy",
+      "auth",
+      "postgres-migration",
+      "docs"
+    ],
+    "related_bugs": [
+      "bug-3014"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T00:04:43"
   }
 ]
