@@ -432,7 +432,9 @@ class AIDocumentService:
     ) -> dict:
         """分页扫描线程 outputs/：先按 created_at 排序全部线程（不扫文件），
 
-        切片后只对分页内的线程扫描文件详情。返回 {threads, total, has_more}。
+        切片后只对分页内的线程扫描文件详情。返回 {threads, total, has_more, next_skip}。
+        total 只数有可见文件的非空线程（与前端文件夹数一致，bug-2232）；
+        has_more/next_skip 按候选目录数推进（驱动翻页，与 total 单位不同）。
         """
         import sqlite3
         from datetime import datetime as _dt
@@ -446,7 +448,7 @@ class AIDocumentService:
         if not threads_dir.is_dir():
             threads_dir = paths.base_dir / "users" / str(user_id) / "threads"
         if not threads_dir.is_dir():
-            return {"threads": [], "total": 0, "has_more": False}
+            return {"threads": [], "total": 0, "has_more": False, "next_skip": 0}
 
         # created_at + display_name from threads_meta（一次 sqlite 查询）
         display_names: dict[str, str] = {}
@@ -503,12 +505,26 @@ class AIDocumentService:
         # 次级 key thread_id 保证排序稳定（created_at 相同/为空时分页不重复/遗漏）
         all_threads.sort(key=lambda t: (_sort_key(t), t["thread_id"]), reverse=True)
 
-        total = len(all_threads)
+        def _has_visible_file(outputs_dir: Path) -> bool:
+            """outputs 目录里是否存在非隐藏文件（与下方文件收集的过滤口径一致）。"""
+            try:
+                for fp in outputs_dir.rglob("*"):
+                    if fp.is_file() and not any(p.startswith(".") for p in fp.relative_to(outputs_dir).parts):
+                        return True
+            except OSError:
+                pass
+            return False
+
+        # EAI-CUSTOM (bug-2232): total 只数「有可见文件」的线程，与前端可见文件夹数一致
+        # （旧实现按候选目录数计，空 outputs 线程不渲染但被计入 → 「共 64 个」对不上 38 个文件夹）。
+        # has_more/next_skip 仍按候选数推进——两个计数单位不同，混用会让翻页提前终止。
+        scanned = len(all_threads)
+        total = sum(1 for t in all_threads if _has_visible_file(t["thread_dir"] / "user-data" / "outputs"))
         page = all_threads[skip : skip + limit]
-        has_more = skip + limit < total
+        has_more = skip + limit < scanned
 
         if not page:
-            return {"threads": [], "total": total, "has_more": has_more}
+            return {"threads": [], "total": total, "has_more": has_more, "next_skip": skip}
 
         # star/share：只查分页内的线程
         page_tids = [t["thread_id"] for t in page]
@@ -577,7 +593,9 @@ class AIDocumentService:
                 }
             )
 
-        return {"threads": result, "total": total, "has_more": has_more}
+        # EAI-CUSTOM (bug-2225): next_skip 按 len(page)（本轮扫描数）而非 len(result)（过滤
+        # 空 outputs 后的返回数）推进，否则前端游标滞后→窗口重叠→整窗无新增时滚动加载卡死
+        return {"threads": result, "total": total, "has_more": has_more, "next_skip": skip + len(page)}
 
     # ── EAI-CUSTOM: 项目 outputs 跨用户聚合（不动 harness） ──────────────────
 

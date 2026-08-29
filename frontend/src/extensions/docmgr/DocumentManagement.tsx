@@ -506,6 +506,32 @@ function DocumentList({
   // Personal outputs — direct filesystem view (replaces old personal folder tree)
   const personalOutputs = usePersonalOutputs();
 
+  // EAI-CUSTOM (bug-2231): 首窗非空文件夹不足以撑满容器时没有滚动事件，
+  // onScroll 永不触发 → 懒加载死区（提示可见但后续窗口拉不出来）。
+  // 数据/加载态变化后容器仍未溢出且 has_more=true 则自动续拉，直到溢出（交给 onScroll）或加载完。
+  const personalNavRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = personalNavRef.current;
+    if (!el || !personalOpen) return;
+    if (
+      !personalOutputs.hasMore ||
+      personalOutputs.loading ||
+      personalOutputs.loadingMore ||
+      personalOutputs.threads.length === 0
+    )
+      return;
+    if (el.scrollHeight <= el.clientHeight) void personalOutputs.fetchMore();
+    // 成员级依赖即可（整个对象每次渲染都是新建的，进了 deps 会导致 effect 逐渲染重跑）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    personalOpen,
+    personalOutputs.hasMore,
+    personalOutputs.loading,
+    personalOutputs.loadingMore,
+    personalOutputs.threads.length,
+    personalOutputs.fetchMore,
+  ]);
+
   // Sync filter to match activeNav on mount (preserves nav state when returning from editor)
   const navSynced = useRef(false);
   useEffect(() => {
@@ -782,6 +808,7 @@ function DocumentList({
           <span className="text-foreground text-l font-semibold">文档空间</span>
         </div>
         <nav
+          ref={personalNavRef}
           className="flex-1 space-y-1 overflow-y-auto px-2 py-1"
           onScroll={(e) => {
             const el = e.currentTarget;

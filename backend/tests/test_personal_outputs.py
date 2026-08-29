@@ -35,6 +35,26 @@ class TestListPersonalOutputs:
         assert result["threads"] == [] and result["total"] == 0
 
     @pytest.mark.asyncio
+    async def test_total_counts_only_threads_with_visible_files(self, tmp_path: Path):
+        """bug-2232 回归：total 只数非空线程（与前端可见文件夹数一致），
+        空 outputs 候选线程不进 total；has_more 仍按候选目录数（两个计数单位不同）。"""
+        user_id = uuid4()
+        threads_dir = tmp_path / "users" / str(user_id) / "threads"
+        (threads_dir / "tid-2" / "user-data" / "outputs").mkdir(parents=True)  # 空 outputs
+        (threads_dir / "tid-1" / "user-data" / "outputs").mkdir(parents=True)
+        (threads_dir / "tid-1" / "user-data" / "outputs" / "a.md").write_text("# a")
+
+        with patch("deerflow.config.paths.Paths") as mock_paths:
+            mock_paths.return_value.base_dir = tmp_path
+            result = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id, skip=0, limit=1)
+
+        assert result["total"] == 1, "total 不得计入空 outputs 线程"
+        assert result["has_more"] is True, "候选 2 个、扫描 1 个后仍应可翻页"
+        assert result["next_skip"] == 1
+        # thread_id 倒序 → 首页只扫到空 outputs 的 tid-2，返回空但不卡翻页
+        assert [t["thread_id"] for t in result["threads"]] == []
+
+    @pytest.mark.asyncio
     async def test_returns_files_for_thread_with_outputs(self, tmp_path: Path):
         user_id = uuid4()
         threads_dir = tmp_path / "users" / str(user_id) / "threads"
@@ -91,6 +111,67 @@ class TestListPersonalOutputs:
                 user_id,
             )
         assert result["threads"][0]["display_name"] == "基地项目消防设计专篇"
+
+    @pytest.mark.asyncio
+    async def test_next_skip_advances_by_scanned_count_past_empty_threads(self, tmp_path: Path):
+        """bug-2225 回归：空 outputs 线程被过滤后返回数 < 扫描数，游标必须按扫描数推进。
+
+        构造 tid-3(有文件) / tid-2(空 outputs) / tid-1(有文件)（无 threads_meta 时按
+        thread_id 倒序），limit=2。第一页扫描 [tid-3, tid-2] 只返回 tid-3，next_skip
+        必须是 2——旧逻辑按返回数推进（skip=1）会让第二页重扫 [tid-2, tid-1]，
+        若整窗无新增则滚动加载永久卡死。
+        """
+        user_id = uuid4()
+        threads_dir = tmp_path / "users" / str(user_id) / "threads"
+        (threads_dir / "tid-3" / "user-data" / "outputs").mkdir(parents=True)
+        (threads_dir / "tid-3" / "user-data" / "outputs" / "a.md").write_text("# a")
+        (threads_dir / "tid-2" / "user-data" / "outputs").mkdir(parents=True)  # 空 outputs
+        (threads_dir / "tid-1" / "user-data" / "outputs").mkdir(parents=True)
+        (threads_dir / "tid-1" / "user-data" / "outputs" / "b.md").write_text("# b")
+
+        with patch("deerflow.config.paths.Paths") as mock_paths:
+            mock_paths.return_value.base_dir = tmp_path
+
+            # 第一页：扫描 2 个线程，仅返回 1 个非空
+            page1 = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id, skip=0, limit=2)
+            assert page1["next_skip"] == 2, "游标必须按扫描数(2)而非返回数(1)推进"
+            assert [t["thread_id"] for t in page1["threads"]] == ["tid-3"]
+            assert page1["has_more"] is True
+
+            # 按 next_skip 翻页能到达全部非空线程（旧逻辑在此数据上第二页只返回 tid-1，
+            # 但窗口起点错误；构造更多空线程时旧逻辑会整窗无新增而卡死）
+            page2 = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id, skip=page1["next_skip"], limit=2)
+            assert page2["next_skip"] == 3
+            assert [t["thread_id"] for t in page2["threads"]] == ["tid-1"]
+            assert page2["has_more"] is False
+
+    @pytest.mark.asyncio
+    async def test_pagination_never_stalls_on_all_empty_window(self, tmp_path: Path):
+        """bug-2225 回归（卡死形态）：整页全是空 outputs 线程时，按 next_skip 翻页仍前进。
+
+        旧前端算法（按返回数推进）在此数据上 skip 永远停在 0，has_more=true，
+        滚动加载永远拉不出 tid-1 的文件。
+        """
+        user_id = uuid4()
+        threads_dir = tmp_path / "users" / str(user_id) / "threads"
+        for i in range(2, 7):  # tid-6..tid-2 空，tid-1 有文件（thread_id 倒序 → 空的排前）
+            (threads_dir / f"tid-{i}" / "user-data" / "outputs").mkdir(parents=True)
+        (threads_dir / "tid-1" / "user-data" / "outputs").mkdir(parents=True)
+        (threads_dir / "tid-1" / "user-data" / "outputs" / "x.md").write_text("# x")
+
+        with patch("deerflow.config.paths.Paths") as mock_paths:
+            mock_paths.return_value.base_dir = tmp_path
+            skip, seen, hops = 0, set(), 0
+            while hops < 10:
+                hops += 1
+                page = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id, skip=skip, limit=2)
+                seen.update(t["thread_id"] for t in page["threads"])
+                if not page["has_more"]:
+                    break
+                assert page["next_skip"] > skip, f"卡死：skip={skip} 无法前进"
+                skip = page["next_skip"]
+            assert seen == {"tid-1"}, "按 next_skip 翻页必须能到达全部非空线程"
+            assert hops < 10
 
 
 class TestPersonalDocMetaModel:

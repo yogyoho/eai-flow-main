@@ -982,6 +982,7 @@ export const docmgrApi = {
       }>;
       total: number;
       has_more: boolean;
+      next_skip: number; // EAI-CUSTOM (bug-2225): 游标按本轮扫描数推进，空 outputs 线程不计
     }>(`/docmgr/personal-outputs${qs.toString() ? `?${qs}` : ""}`);
   },
 
