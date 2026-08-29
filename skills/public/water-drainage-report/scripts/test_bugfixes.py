@@ -9,10 +9,14 @@
 """
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+# Windows GBK 控制台：子进程输出统一 UTF-8 编解码（父解码 + 子写侧同锁，缺一则 UnicodeDecodeError）
+RUNENV = {**os.environ, "PYTHONIOENCODING": "utf-8"}
 
 SP = Path(__file__).parent
 sys.path.insert(0, str(SP))
@@ -41,7 +45,7 @@ def test_snapshot_rejects_side_filename() -> None:
         side = Path(d) / "project_snapshot_N5.json"
         r = subprocess.run(
             [sys.executable, str(SP / "snapshot.py"), "save", "--task", "增量更新N=5", "--output", str(side)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
         )
         assert r.returncode != 0, "save 写旁路文件名应当失败"
         assert "SNAPSHOT_ERROR" in r.stdout, r.stdout
@@ -64,7 +68,7 @@ def test_update_params_output() -> None:
              "--formulas", str(formulas_path), "--state", str(state_path),
              "--param", "N", "--value", "5",
              "--output", str(state_path), "--params-output", str(params_out)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
         )
         assert r.returncode == 0, r.stderr
         assert "PARAMS_READY" in r.stdout, r.stdout
@@ -81,7 +85,7 @@ def test_snapshot_warns_on_missing_params() -> None:
             [sys.executable, str(SP / "snapshot.py"), "save", "--task", "t",
              "--output", str(Path(d) / "project_snapshot.json"),
              "--params", str(Path(d) / "no_such_params.json")],
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
         )
         assert r.returncode == 0, r.stderr
         assert "SNAPSHOT_WARN" in r.stdout, r.stdout
@@ -129,7 +133,7 @@ def test_render_calc_blocks_details() -> None:
         out = Path(d) / "calc_blocks.md"
         r = subprocess.run(
             [sys.executable, str(SP / "render_calc_blocks.py"), "--traces", str(tp), "--output", str(out)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
         )
         assert r.returncode == 0, r.stderr
         assert "CALCBLOCKS_READY: 2" in r.stdout, r.stdout
@@ -172,7 +176,7 @@ def test_render_calc_blocks_inject() -> None:
         def inject() -> subprocess.CompletedProcess:
             return subprocess.run(
                 [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
-                capture_output=True, text=True,
+                capture_output=True, text=True, encoding="utf-8", env=RUNENV,
             )
 
         # ① 按公式占位符：块落标记处、无标题、count=1 签名
@@ -227,6 +231,81 @@ def test_render_calc_blocks_inject() -> None:
         assert "<details>" not in rp.read_text(encoding="utf-8"), "缺占位符时不得改动报告"
 
 
+def test_render_calc_blocks_v2_fields() -> None:
+    """v2 公式库新字段渲染：trace.symbol 替代代码键名（式中图例）、citation → 依据行、
+    description → 取值行中文括注、L/s → m³/h 双单位（样例 84.75L/s=305.1m3/h 形态）。"""
+    traces = {"traces": [{
+        "id": "backwash_flow", "name": "反洗瞬时流量", "section": "9.1.3",
+        "symbol": "q_{bw}",
+        "citation": [
+            {"code": "GB/T 50050-2017", "clause": "4.0.4", "text": "旁滤水量宜为循环水量的1%~5%"},
+            {"code": "90S503", "clause": "", "text": "格网选用图集"},
+        ],
+        "expression": "filter_area * backwash_intensity * concurrent_backwash",
+        "substituted": "11.3 * 15 * 5", "result": 84.75, "unit": "L/s",
+        "inputs": [
+            {"name": "filter_area", "symbol": "A", "value": 11.3, "unit": "m2",
+             "description": "单罐过滤面积", "source": "厂家返资资料", "needs_verification": True},
+            {"name": "backwash_intensity", "symbol": "q", "value": 15, "unit": "L/s·m2",
+             "description": "反洗强度", "source": "GB/T 50050-2017", "needs_verification": False},
+            {"name": "concurrent_backwash", "symbol": "", "value": 5, "unit": "台",
+             "description": "", "source": "formula:filter_count.filter_count", "needs_verification": False},
+        ],
+    }]}
+    with tempfile.TemporaryDirectory() as d:
+        tp = Path(d) / "traces.json"
+        tp.write_text(json.dumps(traces, ensure_ascii=False), encoding="utf-8")
+        out = Path(d) / "calc_blocks.md"
+        r = subprocess.run(
+            [sys.executable, str(SP / "render_calc_blocks.py"), "--traces", str(tp), "--output", str(out)],
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
+        )
+        assert r.returncode == 0, r.stderr
+        text = out.read_text(encoding="utf-8")
+        for needle in [
+            "$$q_{bw} = filter_{area} \\times backwash_{intensity} \\times concurrent_{backwash} = 11.3 \\times 15 \\times 5 = 84.75\\ \\text{L/s}$$",
+            "- 公式：$q_{bw} = filter_{area} \\times backwash_{intensity} \\times concurrent_{backwash}$",
+            # 依据行：clause 在场带条号、缺条号只写规范号（绝不编造），多条以"；"连接
+            "- 依据：GB/T 50050-2017 第4.0.4条：旁滤水量宜为循环水量的1%~5%；90S503：格网选用图集",
+            # 式中图例：symbol 替代代码键名 + description 中文括注 + 待核实；公式输出回落代码键名+来源标注
+            "- 取值：A = 11.3 m²（单罐过滤面积）【待核实】；q = 15 L/(s·m²)（反洗强度）；concurrent_backwash = 5 台（由 [filter_count] 求得）",
+            # L/s 双单位（脚本侧确定性 ×3.6）
+            "- 结果：**84.75 L/s（= 305.1 m³/h）**",
+        ]:
+            assert needle in text, f"v2 渲染缺: {needle}"
+        assert text.count("CALC_BLOCKS_INJECTED:v2 count=1") == 1
+
+
+def test_formulas_v2_route_and_execute() -> None:
+    """v2 公式库守卫：全部公式可路由（chapter_planner）且默认值+核心参数即可全量执行（无悬空 null 输入）。"""
+    formulas_path = SP.parent / "references" / "formulas.json"
+    formulas = json.loads(formulas_path.read_text(encoding="utf-8"))["formulas"]
+    assert len(formulas) == 37, f"公式数漂移: {len(formulas)}"
+    manifest = chapter_planner.build_manifest(formulas)
+    routed = {fid for c in manifest["chapters"] for fid in c["formula_ids"]}
+    missing = [f["id"] for f in formulas if f["id"] not in routed]
+    assert not missing, f"公式缺章节路由: {missing}"
+    # 核心用户参数（样例值）+ 全部带默认值的经验参数 → execute 必须零 KeyError
+    core = {"Q": 20000, "delta_t": 9, "N": 5, "pool_area": 520, "V_suction": 1200,
+            "pump_motor_spacing": 5.2, "filter_unit_capacity": 40,
+            "filter_area": 1.13, "concurrent_backwash": 5}
+    state_out = Path(formulas_path.parent.parent / ".." / ".." / ".." / ".tmp-geol" / "cmp" / "guard_state.json").resolve()
+    state_out.parent.mkdir(parents=True, exist_ok=True)
+    r = subprocess.run(
+        [sys.executable, str(SP / "formula_runner.py"), "execute",
+         "--formulas", str(formulas_path), "--params", json.dumps(core), "--output", str(state_out)],
+        capture_output=True, text=True, encoding="utf-8", env=RUNENV,
+    )
+    assert r.returncode == 0, r.stderr or r.stdout
+    state = json.loads(state_out.read_text(encoding="utf-8"))
+    assert len(state["results"]) == 37, f"执行结果缺公式: {set(f['id'] for f in formulas) - set(state['results'])}"
+    # 抽查样例锚点值（vs sample.md 已核实）
+    assert round(state["results"]["backwash_flow"]["backwash_flow"], 2) == 84.75
+    assert round(state["results"]["backwash_volume"]["backwash_volume"], 2) == 50.85
+    assert round(state["results"]["pumphouse_h1"]["pumphouse_h1"], 3) == 5.885
+    assert state["results"]["screen_lift_height"]["screen_lift_height"] == 5.21
+
+
 def test_snapshot_gate_calc_blocks() -> None:
     """R8/R9 快照门禁：save --report 校验注入契约——占位符残留 / 无签名手写 <details> /
     签名块数与 <details> 总数不符（混合手写）→ SNAPSHOT_ERROR；已注入（签名数==块数）→ SNAPSHOT_READY。"""
@@ -244,7 +323,7 @@ def test_snapshot_gate_calc_blocks() -> None:
             return subprocess.run(
                 [sys.executable, str(SP / "snapshot.py"), "save", "--task", "t",
                  "--report", str(rp), "--output", str(out)],
-                capture_output=True, text=True,
+                capture_output=True, text=True, encoding="utf-8", env=RUNENV,
             )
 
         # ① 占位符未注入 → 拒绝
@@ -265,7 +344,7 @@ def test_snapshot_gate_calc_blocks() -> None:
         rp.write_text("# 报告\n\n<!-- CALC_BLOCKS -->\n", encoding="utf-8")
         subprocess.run(
             [sys.executable, str(SP / "render_calc_blocks.py"), "inject", "--traces", str(tp), "--report", str(rp)],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV, check=True,
         )
         r = save()
         assert r.returncode == 0 and "SNAPSHOT_READY" in r.stdout, r.stdout
@@ -305,7 +384,7 @@ def test_impacted_must_run_before_update() -> None:
                 [sys.executable, str(SP / "formula_runner.py"), "impacted",
                  "--formulas", str(formulas_path), "--state", str(state_path),
                  "--param", "N", "--value", "5", "--manifest", str(manifest_path)],
-                capture_output=True, text=True,
+                capture_output=True, text=True, encoding="utf-8", env=RUNENV,
             )
             assert r.returncode == 0, r.stderr
             return json.loads(r.stdout)
@@ -322,7 +401,7 @@ def test_impacted_must_run_before_update() -> None:
             [sys.executable, str(SP / "formula_runner.py"), "update",
              "--formulas", str(formulas_path), "--state", str(state_path),
              "--param", "N", "--value", "5", "--output", str(state_path)],
-            capture_output=True, text=True, check=True,
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV, check=True,
         )
         after = run_impacted()
         assert after["affected_formulas"] == [], after
@@ -336,6 +415,8 @@ if __name__ == "__main__":
     test_snapshot_warns_on_missing_params()
     test_skill_text_guards()
     test_render_calc_blocks_details()
+    test_render_calc_blocks_v2_fields()
+    test_formulas_v2_route_and_execute()
     test_render_calc_blocks_inject()
     test_snapshot_gate_calc_blocks()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（定案A 无标题块+按公式占位符+错误形态打回） / R8+R9 快照门禁（占位符/手写/块数不符）")
+    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（定案A 无标题块+按公式占位符+错误形态打回） / R8+R9 快照门禁（占位符/手写/块数不符） / v2 公式库37式路由+执行+渲染新字段（symbol/依据/括注/双单位）")

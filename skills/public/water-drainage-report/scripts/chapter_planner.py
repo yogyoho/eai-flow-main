@@ -20,10 +20,10 @@ from pathlib import Path
 
 # fallback 10 章结构：section_prefixes 指明该章吸收哪些 section 首段（报告章节号 ≠ 文档 section 号）
 FALLBACK_CHAPTERS = [
-    {"id": "ch1_basis",      "title": "设计依据及采用的标准",         "type": "narrative", "section_prefixes": []},
+    {"id": "ch1_basis",      "title": "设计依据",                     "type": "narrative", "section_prefixes": []},  # 样例第1章仅委托书/统一规定，标准归 ch4（2026-08-29 对齐样例）
     {"id": "ch2_scope",      "title": "设计范围与设计规模",           "type": "narrative", "section_prefixes": []},
     {"id": "ch3_params",     "title": "设计参数",                     "type": "table",    "section_prefixes": [], "render": "param_table"},
-    {"id": "ch4_standards",  "title": "设计中采用的主要标准及规范",   "type": "narrative", "section_prefixes": []},
+    {"id": "ch4_standards",  "title": "设计中采用的主要标准及规范",   "type": "narrative", "section_prefixes": []},  # 两列表逐项列规范号+名称（样例12项），标准依据只此一章
     {"id": "ch5_calc",       "title": "循环水装置工艺计算",           "type": "table",    "section_prefixes": ["6"], "render": "calc_steps"},
     {"id": "ch6_pool",       "title": "塔底水池、吸水池、滤网及滤网井", "type": "narrative", "section_prefixes": ["7"]},
     {"id": "ch7_pumphouse",  "title": "吸水池及循环水泵房工艺计算",   "type": "narrative", "section_prefixes": ["8"]},

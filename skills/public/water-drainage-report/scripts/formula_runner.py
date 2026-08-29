@@ -142,6 +142,7 @@ def build_graph(formulas_data: list[dict], params: dict) -> FormulaGraph:
                 type=src_type,
                 value=value,
                 unit=psrc.get("unit", ""),
+                symbol=psrc.get("symbol", ""),
                 source_formula_id=psrc.get("source_formula_id", ""),
                 source_param_name=psrc.get("source_param_name", ""),
                 description=psrc.get("description", ""),
@@ -155,6 +156,8 @@ def build_graph(formulas_data: list[dict], params: dict) -> FormulaGraph:
             expression=fdef["expression"],
             inputs=inputs,
             outputs=fdef["outputs"],
+            symbol=fdef.get("symbol", ""),
+            citation=fdef.get("citation", []),
         )
         nodes.append(node)
 

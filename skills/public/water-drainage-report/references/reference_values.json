@@ -1,5 +1,5 @@
 {
-  "description": "给排水/循环水 行业经验参考值库（仅系数/经验类，核心工艺参数 Q/N/Δt/构筑物尺寸不在此库）",
+  "description": "给排水/循环水 行业经验参考值库（v2 收录图集/经验/物性类锚点值；选型类默认——流速/DN/泵房高度分量等——以 formulas.json 各 input 的 value 为唯一载体，本库不重复收录以免双源漂移）",
   "policy": "用户未提供时，技能可取此默认值并标注【待核实】；用户核实后可晋升为项目定值。核心工艺参数缺失必须 ask_clarification，绝不从此库取。",
   "values": [
     {
@@ -48,6 +48,94 @@
       "unit": "—",
       "source": "工程经验（飘水率与除水器效率相关，常规 0.01%~0.1%；默认取 0.1% 需核实）",
       "applies_when": "用户未提供风吹/飘水损失率",
+      "needs_verification": true
+    },
+    {
+      "key": "mu_screen",
+      "default": 0.3,
+      "unit": "—",
+      "source": "工程经验（摩擦系数一般取0.3）",
+      "applies_when": "用户未提供滤网起吊摩擦系数",
+      "needs_verification": true
+    },
+    {
+      "key": "delta_h_screen",
+      "default": 0.3,
+      "unit": "m",
+      "source": "90S503（格网前后设计水位差0.15m，最大允许值0.3m，起吊阻力按最大值取）",
+      "applies_when": "用户未提供格网前后水位差",
+      "needs_verification": true
+    },
+    {
+      "key": "screen_safety_factor",
+      "default": 1.2,
+      "unit": "—",
+      "source": "工程经验（安全系数取1.1~1.3，默认1.2）",
+      "applies_when": "用户未提供滤网起吊安全系数",
+      "needs_verification": true
+    },
+    {
+      "key": "screen_net_weight",
+      "default": 705.9,
+      "unit": "kg",
+      "source": "90S503（按选型规格查阅净重，样例值需核实）",
+      "applies_when": "用户未提供格栅净重 G1",
+      "needs_verification": true
+    },
+    {
+      "key": "gamma_w",
+      "default": 1000,
+      "unit": "kg/m3",
+      "source": "水的密度",
+      "applies_when": "起吊力计算用水的密度",
+      "needs_verification": false
+    },
+    {
+      "key": "screen_net_area",
+      "default": 1.75,
+      "unit": "m2",
+      "source": "90S503 选型规格对应的有效过水面积（样例 2200×2000 滤网 Fw=1.75，需按选型核实）",
+      "applies_when": "用户未提供滤网有效过水面积",
+      "needs_verification": true
+    },
+    {
+      "key": "screen_ring_height",
+      "default": 0.45,
+      "unit": "m",
+      "source": "90S503（格栅吊环高度0.45m）",
+      "applies_when": "用户未提供吊环高度",
+      "needs_verification": true
+    },
+    {
+      "key": "bell_mouth_D1",
+      "default": 1620,
+      "unit": "mm",
+      "source": "02S403 喇叭口直径（样例 DN1500 规格 D1=1620mm，需按选型核实）",
+      "applies_when": "用户未提供吸水喇叭口 D1",
+      "needs_verification": true
+    },
+    {
+      "key": "backwash_daily_times",
+      "default": 4,
+      "unit": "次/d",
+      "source": "反洗周期6h一次推算日4次（需按厂家资料核实）",
+      "applies_when": "用户未提供日反洗次数",
+      "needs_verification": true
+    },
+    {
+      "key": "backwash_pool_factor",
+      "default": 2.0,
+      "unit": "—",
+      "source": "样例按2次反洗水量容积计（或厂家返资给定有效容积65m³），需核实",
+      "applies_when": "用户未提供反洗水池容积倍数",
+      "needs_verification": true
+    },
+    {
+      "key": "backwash_drain_hours",
+      "default": 6.0,
+      "unit": "h",
+      "source": "样例：污水6h连续抽空（需核实）；泵按1用1备设置",
+      "applies_when": "用户未提供反洗排水时长",
       "needs_verification": true
     }
   ]

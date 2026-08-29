@@ -62,6 +62,7 @@ class ParamSource:
     type: ParamSourceType  # 参数来源类型
     value: float | None = None  # 当前值（FORMULA_OUTPUT 类型时由公式计算填充）
     unit: str = ""  # 单位，如 "m³/h", "℃"
+    symbol: str = ""  # 工程符号，如 "Q", "K_{ZF}"（EAI-CUSTOM：式下图例用，空则回退代码键名）
     source_formula_id: str = ""  # FORMULA_OUTPUT 专属：来源公式的 ID
     source_param_name: str = ""  # FORMULA_OUTPUT 专属：来源公式的输出参数名
     description: str = ""  # 人类可读说明，如 "查GB/T 50746表3.3.3内插"
@@ -154,6 +155,8 @@ class FormulaNode:
     expression: str = ""  # Python 计算表达式，如 "Q * KZF * delta_t"
     inputs: dict[str, ParamSource] = field(default_factory=dict)  # 参数名 → 来源描述
     outputs: dict[str, str] = field(default_factory=dict)  # 输出参数名 → 单位
+    symbol: str = ""  # 输出工程符号，如 "Q_{e}"（EAI-CUSTOM：报告正文用它替代代码键名）
+    citation: list = field(default_factory=list)  # 规范依据 [{"code","clause","text"}]，clause 可空（绝不编造条号）
 
     # ── 运行时状态（不参与序列化）──
     _output_values: dict[str, float] = field(default_factory=dict, repr=False)  # 上次计算结果缓存
@@ -554,7 +557,8 @@ class FormulaGraph:
               "id", "name", "section", "expression", "source"(公式出处),
               "substituted"(变量替换为数值后的表达式串),
               "result", "unit",
-              "inputs": [{"name","value","unit","source","needs_verification"}, ...]
+              "symbol"(输出工程符号), "citation"(规范依据列表),
+              "inputs": [{"name","symbol","value","unit","description","source","needs_verification"}, ...]
             }
         公式不存在返回 None。
         """
@@ -571,8 +575,10 @@ class FormulaGraph:
         inputs_trace = [
             {
                 "name": name,
+                "symbol": src.symbol,
                 "value": resolved.get(name),
                 "unit": src.unit,
+                "description": src.description,
                 "source": _source_label(src),
                 "needs_verification": src.needs_verification,
             }
@@ -587,6 +593,8 @@ class FormulaGraph:
             "substituted": substituted,
             "result": result,
             "unit": unit,
+            "symbol": node.symbol,
+            "citation": node.citation,
             "inputs": inputs_trace,
         }
 

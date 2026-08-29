@@ -150,7 +150,21 @@ python /mnt/skills/public/water-drainage-report/scripts/snapshot.py show \
 
 只有在用户回复"确认"/"没问题"/"开始"或等价肯定答复后，才能进入步骤2。
 
-**「来源」列仅限三种合法值：** `本线程用户提供`、`说明书提取`、`参考值库（【待核实】）`。系统记忆注入的跨线程参数不属于任何一种——**不得填入本表、不得标"用户提供"、不得据此发起参数确认或澄清表单**（多轮承接铁律 #6，bug-2191）。
+**「来源」列仅限四种合法值：** `本线程用户提供`、`说明书提取`、`参考值库（【待核实】）`、`厂家返资资料`。系统记忆注入的跨线程参数不属于任何一种——**不得填入本表、不得标"用户提供"、不得据此发起参数确认或澄清表单**（多轮承接铁律 #6，bug-2191）。
+
+**分装置水量统计（样例表3.1-1 定式）：** Q 的来源要落成「循环水水量统计表」——7 列（序号/用水单位/生产连续用水量 正常、最大 m³/h/进界区压力 MPa/出界区压力 MPa/温度 ℃），逐行列各装置水量、合计行=Q；统计表后紧跟两条定水量依据句（HG/T 20690-2000 3.1.2、GB/T 50746-2012 3.2.2）。用户给不出分项明细时允许只报 Q 总量，但第2章标注 `[待补充: 用水单位明细]`。
+
+**气象参数（样例第3章五行，KZF 内插的输入）：** 干球温度 θ、湿球温度 τ、相对湿度 φ、大气压、风速必须入参数表——缺气象参数则 KZF 取值无法按 GB/T 50746-2012 表3.3.3 内插溯源。缺失按核心工艺参数同策略 `ask_clarification`。
+
+**双工况对比（样例定式，可选）：** 默认按 N=5（主工况）计算；用户要求校核时加算 N=3 工况——用独立状态文件，禁止污染主工况 state：
+```bash
+python $SCRIPTS/formula_runner.py execute --formulas $FORMULAS \
+  --params "$(cat $WORK/params.json | python -c "import json,sys; p=json.load(sys.stdin); p['N']=3; print(json.dumps(p))")" \
+  --output $WORK/formula_state_N3.json   # STATE_READY
+```
+报告配管节并排双工况（样例：补充水 366 m³/h→1.39 m/s 与 439 m³/h→1.66 m/s（N=3）），管径按包络选取；校核值不回写主工况结论。
+
+**设备一览表规格列契约（第9章）：** 规格列必须回填可计算结果（DN/单罐水量/台数/组数等，取自 traces.json 公式输出，样例"DN1500吸水喇叭口 D=1200/D1=1620/H=1150"形态），**禁止写"待定"**；设备选型来源合法值含 `厂家返资资料`（样例：单罐 40m³/h、每5罐1组共5组即出自厂家返资）。
 
 **⛔ 参数缺失策略：** 参数必须在用户提供或设计说明书中明确标出，两者都没有 → 标注 `[待确认: 参数名]` → 暂不进入步骤2，等用户补充。
 
@@ -169,9 +183,11 @@ FORMULAS=/mnt/skills/public/water-drainage-report/references/formulas.json
 SCRIPTS=/mnt/skills/public/water-drainage-report/scripts
 WORK=/mnt/user-data/workspace
 
-# 构建参数JSON（将步骤1确认的参数填入）
+# 构建参数JSON（只填步骤1确认的核心参数；流速/DN/滤网规格/泵房高度分量等选型参数
+# formulas.json 已带默认值——可不填，缺省自动生效并在计算块标【待核实】；
+# total_filters 已改为公式输出（=filter_count），禁止手工填入）
 cat > $WORK/params.json << 'PARAMS'
-{"Q": 20000, "delta_t": 10, "N": 5, "pool_area": 912, "V_suction": 2099.5, "pump_motor_spacing": 5.2, "filter_unit_capacity": 40, "filter_area": 1.13, "concurrent_backwash": 5, "total_filters": 25}
+{"Q": 20000, "delta_t": 10, "N": 5, "pool_area": 912, "V_suction": 2099.5, "pump_motor_spacing": 5.2, "filter_unit_capacity": 40, "filter_area": 1.13, "concurrent_backwash": 5}
 PARAMS
 
 python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py execute \
@@ -197,7 +213,7 @@ python $SCRIPTS/chapter_planner.py manifest \
 **展示计算结果摘要，格式如下（公式使用 LaTeX 数学格式，前端 KaTeX 渲染）：**
 
 ```
-公式计算完成。12个公式，3个执行批次。
+公式计算完成。37个公式，5个执行批次。
 
 水量平衡链:
   [6.1.1] 蒸发水量 $$Q_e = Q \times K_{ZF} \times \Delta t = 20000 \times 0.001461 \times 10 = 292.20\ \text{m}^3/\text{h}$$
@@ -213,7 +229,12 @@ python $SCRIPTS/chapter_planner.py manifest \
   [8.2.1] 基础尺寸 $L = 5.7\ \text{m}$
   [9.1.1] 旁滤水量 $Q_{sf} = 1000\ \text{m}^3/\text{h}$, 过滤器 $n = 25$ 台
 
-执行批次: [Qe,Qsf,Qw,V_pool,backwash_flow,pump_foundation_L] → [Qb,V_system,filter_count] → [Qm,V_ratio_check,backwash_volume]
+执行批次（以 execute 输出的 execution_order 为准，v2 共5批37式）:
+  批0: Q_connect,Qe,Qsf,Qw,V_pool,backwash_flow,backwash_single_volume,bell_mouth_ratio,bell_mouth_velocity,lift_rope_len,pipe_v_outlet,pipe_v_suction,pump_foundation_B,pump_foundation_L,pump_min_spacing,screen_drag,screen_lift_height
+  批1: Qb,V_system,filter_count,pipe_v_connect,pipe_v_sidefilter,pumphouse_h1,screen_area,screen_lift_weight,screen_velocity_actual
+  批2: Qm,V_ratio_check,backwash_volume,pipe_d_blowdown,pipe_v_blowdown,pumphouse_height
+  批3: backwash_daily_volume,backwash_pool_volume,pipe_d_makeup,pipe_v_makeup
+  批4: backwash_pump_flow
 ```
 
 **⛔ 公式审核门禁 — 在用户确认前禁止进入步骤3：**
@@ -284,10 +305,10 @@ knowledge-factory_kf_resolve_template(
 **拿到 `found=false` 时：**
 - 输出提示：`⚠️ 知识工厂返回 found=false，使用内置参考结构`
 - 使用以下 fallback 章节结构（10章）：
-  1. 设计依据及采用的标准
+  1. 设计依据 ← **只写**设计委托书/工程统一规定（样例第1章仅此2项，标准不得混入）
   2. 设计范围与设计规模
   3. 设计参数
-  4. 设计中采用的主要标准及规范
+  4. 设计中采用的主要标准及规范 ← 两列表逐项列规范号+名称（样例12项：GB50013/GB50014/GB50050/GB50648/GB50016/GB50160/GB50265/GB/T50102/GB/T50746/HG/T20690/HG/T20524/SH3099），标准依据只此一章
   5. 循环水装置工艺计算 ← 公式计算结果注入此章
   6. 塔底水池、吸水池、滤网及滤网井
   7. 吸水池及循环水泵房工艺计算
@@ -301,9 +322,9 @@ knowledge-factory_kf_resolve_template(
 **输入:** 步骤1 参数 + 步骤2 公式结果 + 步骤2 的 `traces.json`（冻结快照）+ 步骤3 模板
 **架构（计算与生成分离，Approach A）:**
 - **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。计算过程块必须脚本注入不得手写（历史：R4/R5/R6 三轮实测 agent 手写从不产 `<details>` 折叠；R6 即便生成了片段也不逐字粘贴——6K 字符复制对 LLM 不可靠；**R8 实测 agent 把 12 块全文手写进 write_file 并跳过 inject**，故 2026-08-29 起由快照门禁强制）：
-  1. `write_file` 报告时，计算章**每个公式的小节**（标题编号跟随你自己的报告 TOC，如 `#### 5.1.1 蒸发水量计算`）标题下写**该公式的占位符** `<!-- CALC:公式id -->`（id 取自 `traces.json`，12 个公式每个**恰好一个**）——write_file 的 content 里**严禁出现** `<details>` 或 `$$`（手写块与注入块叠加会重复，且快照门禁必打回）。注入块**不带标题**——小节标题由你的 TOC 承担，禁止写 `### [6.1.1]` 之类公式登记表编号标题（与报告 TOC 双编号，2026-08-29 用户定案去除）。（旧式单一占位符 `<!-- CALC_BLOCKS -->` 仍兼容——全部块顺序堆到一处，不推荐）；
+  1. `write_file` 报告时，计算章**每个公式的小节**（标题编号跟随你自己的报告 TOC，如 `#### 5.1.1 蒸发水量计算`）标题下写**该公式的占位符** `<!-- CALC:公式id -->`（id 取自 `traces.json`，每个公式**恰好一个**）——write_file 的 content 里**严禁出现** `<details>` 或 `$$`（手写块与注入块叠加会重复，且快照门禁必打回）。注入块**不带标题**——小节标题由你的 TOC 承担，禁止写 `### [6.1.1]` 之类公式登记表编号标题（与报告 TOC 双编号，2026-08-29 用户定案去除）。（旧式单一占位符 `<!-- CALC_BLOCKS -->` 仍兼容——全部块顺序堆到一处，不推荐）；
   2. 落盘后立刻注入：`python $SCRIPTS/render_calc_blocks.py inject --traces $WORK/traces.json --report $OUT/报告.md   # CALC_INJECT_READY`（对已注入报告重跑返回 `CALC_INJECT_SKIP`，幂等不重复注入；未知 id / 公式缺占位符 / 重复占位符 → `CALC_INJECT_ERROR` 打回，修正报告后重注）
-  3. 注入后自检：`grep -c '<details>' 报告.md` 必须**恰好等于**公式数（12）——大于也是违约（多出的必是手写块）。
+  3. 注入后自检：`grep -c '<details>' 报告.md` 必须**恰好等于公式数**（traces.json 公式总数，v2 为 37）——大于也是违约（多出的必是手写块）。
   ⛔ 禁止手写 KaTeX 公式块/计算过程折叠块替代脚本注入——**全文任何位置**（含 narrative 章的水池/泵房/旁滤小节）都不许写 `<details>` 或 `$$` 公式块；narrative 章引用数值用纯文本并标注"计算见第X章"。**快照门禁（R8+R9）**：`snapshot.py save --report ...` 校验报告——① 含未注入占位符；② 含无签名手写 `<details>`；③ `<details>` 总数 ≠ 注入签名块数（R9 实测：注入 12 块后又在第6-8章手写 8 块、其中 V_ratio 单位抄错成"0.202 h"）→ 一律 `SNAPSHOT_ERROR` 退出 1。打回后必须删除全部手写折叠块（保留唯一占位符注入产物）再 save。
 - **narrative 章** = 并行子 agent 生成（`task()` 工具）。每个子 agent prompt 注入**同一份冻结快照**（`traces.json` 的数值 + 该章 `generation_hint`/`content_contract`/`compliance_rules`），只返回该章 Markdown。按 `chapter_manifest` 顺序合并。
 
@@ -317,11 +338,12 @@ knowledge-factory_kf_resolve_template(
 
 | 章节 | 注入的公式结果 |
 |------|-------------|
-| 第3章 设计参数 | 全部用户输入参数（Q, Δt, N, 气象条件） |
-| 第5章 工艺计算 | Qe, Qw, Qb, Qm 的完整计算步骤（含代入值和结果） |
-| 第6章 水池 | V_pool, V_system, V_ratio_check（含规范校核） |
-| 第7章 泵房 | pump_foundation_L + 管径选择 + 流速验证 |
-| 第8章 旁滤 | Qsf, filter_count, backwash_flow, backwash_volume |
+| 第3章 设计参数 | 全部用户输入参数（Q, Δt, N, 气象条件，分装置水量统计表） |
+| 第5章 工艺计算 | Qe/Qw/Qb/Qm 水量平衡链 + 补充水/排污水管选径与流速校核（pipe_d_makeup/pipe_v_makeup/pipe_d_blowdown/pipe_v_blowdown，含水力坡降叙述） |
+| 第6章 水池·滤网 | V_pool/V_system/V_ratio_check（含规范校核）；连通管 Q_connect/pipe_v_connect；滤网族 screen_area/screen_velocity_actual/screen_drag/screen_lift_weight/screen_lift_height |
+| 第7章 泵房 | pump_foundation_L/pump_foundation_B/pump_min_spacing；吸出水管 pipe_v_suction/pipe_v_outlet；喇叭口 bell_mouth_velocity/bell_mouth_ratio；泵房高度 lift_rope_len/pumphouse_h1/pumphouse_height |
+| 第8章 旁滤 | Qsf/filter_count/pipe_v_sidefilter + 反洗链 backwash_flow/backwash_single_volume/backwash_volume/backwash_daily_volume/backwash_pool_volume/backwash_pump_flow |
+| 第9章 设备一览表 | filter_count 等规格回填（禁止"待定"） |
 
 **使用模板时，每章按以下元数据约束生成：**
 
@@ -377,6 +399,18 @@ $$Q_{sf} = Q \times sf_{ratio} = 20000 \times 0.05 = 1000\ \text{m}^3/\text{h}$$
 ```
 
 取值行的【待核实】来自 `traces.json` 的 `needs_verification`（参考值库参数）。计算章手写的叙述、⚠️ 合规提示照常写在公式块之间；逐公式块本身交给脚本，禁止手写。
+
+**⛔ 写作契约（样例定式，narrative 章逐小节强制）：** 每个计算小节按「引条款 → 计算 → 收口」三段式——
+1. **先引条款号+限值原文**：`根据《石油化工循环水场设计规范》GB/T 50746-2012 第3.3.3条：<限值原文>`。条款号与限值只准取自注入块的「依据」行与 `standards_index.json` 入库原文，**禁止凭记忆编条号**（样例 16 处"根据"句中 13+ 处为此形态）；
+2. **计算**交给占位符注入块（禁手写 $$）；
+3. **"本项目按X设计"一句收口**：如"本项目浓缩倍数按5设计"、"过水断面流速按1.0m/s设计"、"本项目根据统一规定取5%"（样例"本项目"14 处）。
+
+规范要求密集的节（水池/滤网/吸水池）再加 `#### 规范要求` 小节逐条引用原文（样例 7.1.1 引 GB/T 50746-2012 4.3.13 逐条 (1)~(7) 形态），随后 `#### 本项目设计`（或直接接计算）。
+
+**样例正文中数值叙述的锚点形态（叙述须与注入块数值一致）：**
+- 管径+流速成对出现："补充水水量366m³/h，管径DN300，流速1.39m/s"（配管表带水力坡降 i 列：7000|DN1200|1.72|0.0025）
+- 图集引用落地到具体规格："查阅标准图90S503，格栅净重为G1=705.9kg"、"参考《钢制管件》02S403，DN1500吸水喇叭口（D=1200/D1=1620/H=1150）"
+- 瞬时流量双单位："84.75L/s=305.1m³/h"（注入块结果行已自动带换算，叙述沿用同值）
 
 **LaTeX 数学格式规范：**
 - 变量使用下标：`Q_e`, `Q_w`, `Q_b`, `Q_m`, `K_{ZF}`, `\Delta t`
@@ -490,7 +524,7 @@ python $SCRIPTS/formula_runner.py check \
 
 ## 参考文件
 
-- `references/formulas.json` — 12 个公式定义（系数/经验类 input 带 source + needs_verification）
+- `references/formulas.json` — 37 个公式定义（v2：配管选径/滤网起吊/泵房高度/喇叭口/反洗配套链；symbol/citation 字段驱动式中图例与依据行；系数/经验类 input 带 source + needs_verification）
 - `references/reference_values.json` — 行业经验参考值库（反馈2）
 - `references/standards_index.json` — 可勾选规范清单（反馈5）
 - `references/consistency_contracts.json` — 一致性 + 多规范围框合约（含 code_constraint_multi）

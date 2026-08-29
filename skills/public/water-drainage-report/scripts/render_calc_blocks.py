@@ -60,7 +60,8 @@ SIGNATURE_PREFIX = "<!-- CALC_BLOCKS_INJECTED:v2 count="
 def signature_line(n: int) -> str:
     return f"{SIGNATURE_PREFIX}{n} -->"
 
-# 输出符号（公式左侧）pretty 化映射；未列出的 id 按下划线转下标处理
+# 输出符号（公式左侧）pretty 化映射；traces 带 symbol 字段时优先用 trace 值（v2 公式库全量带 symbol），
+# 旧 traces 回退本映射，仍未命中再按下划线转下标
 SYMBOL = {
     "Qe": "Q_{e}", "Qw": "Q_{w}", "Qb": "Q_{b}", "Qm": "Q_{m}",
     "V_pool": "V_{pool}", "V_system": "V_{system}", "V_ratio_check": "V_{ratio}",
@@ -71,11 +72,44 @@ SYMBOL = {
 # latex 单位映射（$$ 内 \text 包裹）；文本态单位（取值/结果行）用 unicode 上标
 UNIT_LATEX = {
     "m3/h": r"\text{m}^3/\text{h}", "m3": r"\text{m}^3", "m2": r"\text{m}^2",
-    "L/s": r"\text{L/s}", "L/(s·m2)": r"\text{L/(s·m}^2\text{)}",
-    "m": r"\text{m}", "台": r"\text{台}", "℃": r"\text{℃}", "1/℃": r"\text{1/℃}",
+    "kg/m3": r"\text{kg/m}^3", "L/s": r"\text{L/s}", "L/s·m2": r"\text{L/(s·m}^2\text{)}",
+    "L/(s·m2)": r"\text{L/(s·m}^2\text{)}",
+    "m": r"\text{m}", "mm": r"\text{mm}", "kg": r"\text{kg}", "台": r"\text{台}",
+    "℃": r"\text{℃}", "1/℃": r"\text{1/℃}", "min": r"\text{min}", "h": r"\text{h}",
     "—": "", "": "",
 }
-UNIT_TEXT = {"m3/h": "m³/h", "m3": "m³", "m2": "m²"}
+UNIT_TEXT = {"m3/h": "m³/h", "m3": "m³", "m2": "m²", "kg/m3": "kg/m³", "L/s·m2": "L/(s·m²)"}
+
+
+def _sym_of(t: dict) -> str:
+    """公式左侧符号：trace.symbol 优先 → SYMBOL 映射 → id 下划线转下标（pipe_d_makeup → pipe_{d}…）."""
+    fid = t.get("id", "?")
+    return t.get("symbol") or SYMBOL.get(fid) or re.sub(r"[A-Za-z_]+_[A-Za-z_]+", _subscript, fid)
+
+
+def _dual_unit(res: str, unit: str) -> str:
+    """L/s 瞬时流量补 m³/h 换算（样例形态：84.75L/s=305.1m3/h）；其余单位原样。"""
+    if unit == "L/s":
+        try:
+            return f"（= {_fmt(float(res) * 3.6)} m³/h）"
+        except (TypeError, ValueError):
+            return ""
+    return ""
+
+
+def _citation_line(citation: list) -> str:
+    """依据行：GB/T 50746-2012 第3.3.3条：text（clause 为空只写规范号——绝不编造条号）；无 citation 不出该行。"""
+    parts = []
+    for c in citation or []:
+        code = str(c.get("code", "")).strip()
+        clause = str(c.get("clause", "")).strip()
+        text = str(c.get("text", "")).strip()
+        seg = f"{code} 第{clause}条" if clause else code
+        if text:
+            seg += f"：{text}"
+        if seg:
+            parts.append(seg)
+    return "；".join(parts)
 
 
 def _fmt(v) -> str:
@@ -122,14 +156,28 @@ def _unit_text(unit: str) -> str:
     return UNIT_TEXT.get(unit, "" if unit == "—" else unit)
 
 
+def _param_sym(i: dict) -> str:
+    """取值行参数符号：symbol 优先（缺失回退代码键名，兼容旧 traces）；
+    仅 symbol 自带 latex 字符（\\ _ { ^）时用 $…$ 包裹——回退的代码键名保持字面（KaTeX 会吃裸下划线）。"""
+    s = i.get("symbol") or i.get("name", "?")
+    if i.get("symbol") and any(ch in s for ch in "\\_{^"):
+        return f"${s}$"
+    return s
+
+
 def _values_line(inputs: list) -> str:
-    """取值行：Q = 16000 m³/h；旁滤比 sf_ratio = 0.05【待核实】（公式输出参数标注来源公式）。"""
+    """取值行：Q = 16000 m³/h（循环水设计水量）；K_{ZF} = 0.001461 1/℃【待核实】。
+    symbol 存在则替代代码键名（样例'式中'图例形态），description 存在则补中文括注；
+    两者皆缺时输出与旧版逐字节一致（兼容既有快照门禁）。公式输出参数标注来源公式。"""
     parts = []
     for i in inputs:
-        seg = f"{i.get('name', '?')} = {_fmt(i.get('value', '?'))}"
+        seg = f"{_param_sym(i)} = {_fmt(i.get('value', '?'))}"
         u = _unit_text(i.get("unit", ""))
         if u:
             seg += f" {u}"
+        desc = str(i.get("description") or "")
+        if desc and not str(i.get("source", "")).startswith("formula:"):
+            seg += f"（{desc}）"
         src = str(i.get("source", ""))
         if src.startswith("formula:"):
             seg += f"（由 [{src.split(':')[1].split('.')[0]}] 求得）"
@@ -141,26 +189,34 @@ def _values_line(inputs: list) -> str:
 
 def block(t: dict) -> str:
     """单个公式块：$$公式=代入=结果$$ + <details>过程</details> + count=1 签名。
-    不带标题（用户定案 A）——小节标题由报告自己的 TOC 承担，块紧跟占位符处。"""
-    sym = SYMBOL.get(t.get("id", ""), t.get("id", "?").replace("_", "_"))
+    不带标题（用户定案 A）——小节标题由报告自己的 TOC 承担，块紧跟占位符处。
+    v2 增量：式中图例（symbol+description 取值行）、依据行（citation）、L/s 双单位（结果行）。"""
+    sym = _sym_of(t)
     rhs = _to_latex(t.get("expression", "?"))
     sub = _to_latex(t.get("substituted", "?"))
-    res, ul, ut = _fmt(t.get("result", "?")), _unit_latex(t.get("unit", "")), _unit_text(t.get("unit", ""))
+    unit = t.get("unit", "")
+    res, ul, ut = _fmt(t.get("result", "?")), _unit_latex(unit), _unit_text(unit)
     eq_tail = (rf" = {res}" + (rf"\ {ul}" if ul else ""))
-    return "\n".join([
+    lines = [
         f"$${sym} = {rhs} = {sub}{eq_tail}$$",
         "",
         "<details><summary>计算过程</summary>",
         "",
         f"- 公式：${sym} = {rhs}$",
+    ]
+    cit = _citation_line(t.get("citation"))
+    if cit:
+        lines.append(f"- 依据：{cit}")
+    lines += [
         f"- 取值：{_values_line(t.get('inputs') or [])}",
         f"- 代入：${sub}$",
-        f"- 结果：**{res}{(' ' + ut) if ut else ''}**",
+        f"- 结果：**{res}{(' ' + ut) if ut else ''}{_dual_unit(res, unit)}**",
         "",
         "</details>",
         "",
         signature_line(1),
-    ])
+    ]
+    return "\n".join(lines)
 
 
 def render(traces: list) -> str:

@@ -1,16 +1,22 @@
 {
-  "description": "循环水装置给排水设计计算 — 公式定义集",
+  "description": "循环水装置给排水设计计算 — 公式定义集（v2：配管选径/滤网起吊/泵房高度/喇叭口/反洗配套链，全部条款号经样例计算书逐字核实）",
   "source": "GB/T 50746-2012 石油化工循环水场设计规范",
+  "citation_schema": "citation 数组：{code(规范号), clause(条款号，可空), text(限值摘要)}；clause 仅收录经样例/原文核实的条号，未核实的只写 code+text 绝不编造",
   "formulas": [
     {
       "id": "Qe",
       "name": "蒸发水量",
       "section": "6.1.1",
+      "symbol": "Q_{e}",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "3.3.3", "text": "蒸发水量按循环水量×蒸发损失系数×进出水温差计算，KZF 按表3.3.3取值，气温为中间值时采用内插法"},
+        {"code": "GB 50648-2011", "clause": "4.2.1", "text": "蒸发损失量计算"}
+      ],
       "expression": "Q * KZF * delta_t",
       "inputs": {
-        "Q": {"type": "user_input", "value": null, "unit": "m3/h", "description": "循环水设计水量"},
-        "KZF": {"type": "lookup_table", "value": 0.001461, "unit": "1/℃", "source": "GB/T 50746-2012 表3.3.3 内插", "description": "蒸发损失系数", "needs_verification": false},
-        "delta_t": {"type": "user_input", "value": null, "unit": "℃", "description": "冷却塔进出水温差"}
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h", "symbol": "Q", "description": "循环水设计水量"},
+        "KZF": {"type": "lookup_table", "value": 0.001461, "unit": "1/℃", "symbol": "K_{ZF}", "source": "GB/T 50746-2012 表3.3.3 内插", "description": "蒸发损失系数", "needs_verification": false},
+        "delta_t": {"type": "user_input", "value": null, "unit": "℃", "symbol": "\\Delta t", "description": "冷却塔进出水温差"}
       },
       "outputs": {"Qe": "m3/h"}
     },
@@ -18,10 +24,14 @@
       "id": "Qw",
       "name": "风吹损失水量",
       "section": "6.1.2",
+      "symbol": "Q_{w}",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "3.3.4", "text": "冷却塔风吹损失水量，机械通风冷却塔按0.1%计算"}
+      ],
       "expression": "Q * drift_rate",
       "inputs": {
-        "Q": {"type": "user_input", "value": null, "unit": "m3/h"},
-        "drift_rate": {"type": "code_requirement", "value": 0.001, "unit": "—", "source": "工程经验（飘水率与除水器效率相关，常规 0.01%~0.1%；本项目取 0.1% 需核实）", "description": "风吹（飘水）损失率", "needs_verification": true}
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h", "symbol": "Q", "description": "循环水设计水量"},
+        "drift_rate": {"type": "code_requirement", "value": 0.001, "unit": "—", "symbol": "\\eta", "source": "工程经验（飘水率与除水器效率相关，常规 0.01%~0.1%；本项目取 0.1% 需核实）", "description": "风吹（飘水）损失率", "needs_verification": true}
       },
       "outputs": {"Qw": "m3/h"}
     },
@@ -29,10 +39,14 @@
       "id": "Qb",
       "name": "排污水量",
       "section": "6.1.3",
+      "symbol": "Q_{b}",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "3.3.5", "text": "排污水量应根据循环冷却水水质和浓缩倍数的要求经计算确定"}
+      ],
       "expression": "Qe / (N - 1)",
       "inputs": {
         "Qe": {"type": "formula_output", "source_formula_id": "Qe", "source_param_name": "Qe"},
-        "N": {"type": "user_input", "value": null, "description": "浓缩倍数，宜≥5.0且不应低于3.0"}
+        "N": {"type": "user_input", "value": null, "unit": "—", "symbol": "N", "description": "浓缩倍数，宜≥5.0且不应低于3.0"}
       },
       "outputs": {"Qb": "m3/h"}
     },
@@ -40,6 +54,10 @@
       "id": "Qm",
       "name": "补充水量",
       "section": "6.1.4",
+      "symbol": "Q_{m}",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "3.3.2", "text": "补充水量 = 蒸发水量 + 风吹损失水量 + 排污水量"}
+      ],
       "expression": "Qe + Qw + Qb",
       "inputs": {
         "Qe": {"type": "formula_output", "source_formula_id": "Qe", "source_param_name": "Qe"},
@@ -49,13 +67,99 @@
       "outputs": {"Qm": "m3/h"}
     },
     {
+      "id": "pipe_d_makeup",
+      "name": "补充水管选径",
+      "section": "6.1.5",
+      "symbol": "D",
+      "citation": [],
+      "expression": "1000 * sqrt(4 * Qm / (3600 * pi * v_makeup))",
+      "inputs": {
+        "Qm": {"type": "formula_output", "source_formula_id": "Qm", "source_param_name": "Qm"},
+        "v_makeup": {"type": "user_input", "value": 1.5, "unit": "m/s", "symbol": "v", "source": "工程经验（补充水管流速 1.0~2.0 m/s，默认取1.5）", "description": "补充水管设计流速", "needs_verification": true}
+      },
+      "outputs": {"pipe_d_makeup": "mm"}
+    },
+    {
+      "id": "pipe_v_makeup",
+      "name": "补充水管流速校核",
+      "section": "6.1.5",
+      "symbol": "v",
+      "citation": [],
+      "expression": "Qm / (3600 * pi * (DN_makeup / 2000) ** 2)",
+      "inputs": {
+        "Qm": {"type": "formula_output", "source_formula_id": "Qm", "source_param_name": "Qm"},
+        "DN_makeup": {"type": "user_input", "value": 300, "unit": "mm", "symbol": "DN", "source": "管径规格系列试选（依据 pipe_d_makeup 计算值就近上靠，需用户确认）", "description": "补充水管公称直径", "needs_verification": true}
+      },
+      "outputs": {"pipe_v_makeup": "m/s"}
+    },
+    {
+      "id": "pipe_d_blowdown",
+      "name": "排污水管选径",
+      "section": "6.1.5",
+      "symbol": "D",
+      "citation": [],
+      "expression": "1000 * sqrt(4 * Qb / (3600 * pi * v_blowdown))",
+      "inputs": {
+        "Qb": {"type": "formula_output", "source_formula_id": "Qb", "source_param_name": "Qb"},
+        "v_blowdown": {"type": "user_input", "value": 1.5, "unit": "m/s", "symbol": "v", "source": "工程经验（排污水管流速 1.0~2.0 m/s，默认取1.5）", "description": "排污水管设计流速", "needs_verification": true}
+      },
+      "outputs": {"pipe_d_blowdown": "mm"}
+    },
+    {
+      "id": "pipe_v_blowdown",
+      "name": "排污水管流速校核",
+      "section": "6.1.5",
+      "symbol": "v",
+      "citation": [],
+      "expression": "Qb / (3600 * pi * (DN_blowdown / 2000) ** 2)",
+      "inputs": {
+        "Qb": {"type": "formula_output", "source_formula_id": "Qb", "source_param_name": "Qb"},
+        "DN_blowdown": {"type": "user_input", "value": 100, "unit": "mm", "symbol": "DN", "source": "管径规格系列试选（依据 pipe_d_blowdown 计算值就近上靠，需用户确认）", "description": "排污水管公称直径", "needs_verification": true}
+      },
+      "outputs": {"pipe_v_blowdown": "m/s"}
+    },
+    {
+      "id": "Q_connect",
+      "name": "连通管单管流量",
+      "section": "7.1.2",
+      "symbol": "Q_{c}",
+      "citation": [
+        {"code": "GB 50648-2011", "clause": "7.3.3", "text": "塔下水池与吸水池间过水廊道的过水流量应满足循环冷却水泵组最大小时吸水量，过水断面流速宜为0.8~1.0m/s；过水廊道（管道）不宜少于两条"}
+      ],
+      "expression": "Q / connect_pipe_count",
+      "inputs": {
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h", "symbol": "Q", "description": "循环水设计水量"},
+        "connect_pipe_count": {"type": "user_input", "value": 2, "unit": "条", "symbol": "n", "source": "GB 50648-2011 §7.3.3（不宜少于两条，默认2条）", "description": "塔底水池与吸水池间连通管条数", "needs_verification": true}
+      },
+      "outputs": {"Q_connect": "m3/h"}
+    },
+    {
+      "id": "pipe_v_connect",
+      "name": "连通管流速校核",
+      "section": "7.1.2",
+      "symbol": "v",
+      "citation": [
+        {"code": "GB 50648-2011", "clause": "7.3.3", "text": "过水断面流速宜为0.8~1.0m/s"}
+      ],
+      "expression": "Q_connect / (3600 * pi * (DN_connect / 2000) ** 2)",
+      "inputs": {
+        "Q_connect": {"type": "formula_output", "source_formula_id": "Q_connect", "source_param_name": "Q_connect"},
+        "DN_connect": {"type": "user_input", "value": 1400, "unit": "mm", "symbol": "DN", "source": "管径规格系列试选（依据单管流量就近上靠，需用户确认）", "description": "连通管公称直径", "needs_verification": true}
+      },
+      "outputs": {"pipe_v_connect": "m/s"}
+    },
+    {
       "id": "V_pool",
       "name": "塔底水池有效容积",
       "section": "7.1.1",
+      "symbol": "V_{pool}",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "4.3.13", "text": "冷却塔水池有效水深宜为1.0m~1.5m，池壁超高不宜小于0.3m"}
+      ],
       "expression": "pool_area * effective_depth",
       "inputs": {
-        "pool_area": {"type": "user_input", "value": null, "unit": "m2", "description": "水池平面面积"},
-        "effective_depth": {"type": "code_requirement", "value": 1.5, "unit": "m", "source": "GB/T 50746-2012 §4.3.13（有效水深 1.0~1.5m，默认取区间上限1.5m；条款号与区间均待回原文核实）", "description": "塔底水池有效水深", "needs_verification": true}
+        "pool_area": {"type": "user_input", "value": null, "unit": "m2", "symbol": "A", "description": "水池平面面积"},
+        "effective_depth": {"type": "code_requirement", "value": 1.5, "unit": "m", "symbol": "h", "source": "GB/T 50746-2012 §4.3.13（有效水深 1.0~1.5m，默认取区间上限1.5m；条款号与区间均待回原文核实）", "description": "塔底水池有效水深", "needs_verification": true}
       },
       "outputs": {"V_pool": "m3"}
     },
@@ -63,10 +167,12 @@
       "id": "V_system",
       "name": "系统总容积",
       "section": "7.1.1",
+      "symbol": "V_{system}",
+      "citation": [],
       "expression": "V_pool + V_suction",
       "inputs": {
         "V_pool": {"type": "formula_output", "source_formula_id": "V_pool", "source_param_name": "V_pool"},
-        "V_suction": {"type": "user_input", "value": null, "unit": "m3", "description": "吸水池容积"}
+        "V_suction": {"type": "user_input", "value": null, "unit": "m3", "symbol": "V_{s}", "description": "吸水池容积"}
       },
       "outputs": {"V_system": "m3"}
     },
@@ -74,32 +180,257 @@
       "id": "V_ratio_check",
       "name": "系统容积比校验",
       "section": "7.1.1",
+      "symbol": "V_{ratio}",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "6.1.9", "text": "循环冷却水系统容积应控制在循环水小时流量的1/3~1/2，且应小于药剂允许停留时间与排污量及风吹损失量和的乘积"}
+      ],
       "expression": "V_system / Q",
       "inputs": {
         "V_system": {"type": "formula_output", "source_formula_id": "V_system", "source_param_name": "V_system"},
-        "Q": {"type": "user_input", "value": null}
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h", "symbol": "Q", "description": "循环水设计水量"}
       },
-      "outputs": {"V_ratio_check": ""},
+      "outputs": {"V_ratio_check": "—"},
       "_note": "GB/T 50746 §6.1.9: 容积应控制在循环水小时流量的1/3~1/2"
+    },
+    {
+      "id": "screen_area",
+      "name": "滤网有效面积",
+      "section": "7.2.2",
+      "symbol": "F",
+      "citation": [
+        {"code": "GB 50050-2007", "clause": "3.2.11", "text": "敞开式循环水系统冷却塔集水池出口设置便于清洗的拦污滤网2道，网眼尺寸为12mm×12mm（5目），滤网参照《给水排水标准图集》90S503选用"},
+        {"code": "HG/T 20690-2000", "clause": "3.2.8", "text": "集水池出口或循环水泵吸水井入口应设置便于清洗的拦污滤网，宜设两道，网眼尺寸宜为12mm×12mm"}
+      ],
+      "expression": "Q_connect / 3600 / v_screen",
+      "inputs": {
+        "Q_connect": {"type": "formula_output", "source_formula_id": "Q_connect", "source_param_name": "Q_connect"},
+        "v_screen": {"type": "user_input", "value": 1.0, "unit": "m/s", "symbol": "v", "source": "过水断面流速按1.0m/s设计（样例取值，需核实）", "description": "滤网前过水断面设计流速", "needs_verification": true}
+      },
+      "outputs": {"screen_area": "m2"}
+    },
+    {
+      "id": "screen_velocity_actual",
+      "name": "实际过网流速校核",
+      "section": "7.2.2",
+      "symbol": "v",
+      "citation": [
+        {"code": "90S503", "clause": "", "text": "《给水排水标准图集》90S503 格网选用（有效过水面积按选型规格扣除栅条遮挡）"}
+      ],
+      "expression": "Q_connect / (3600 * screen_net_area * screen_rows)",
+      "inputs": {
+        "Q_connect": {"type": "formula_output", "source_formula_id": "Q_connect", "source_param_name": "Q_connect"},
+        "screen_net_area": {"type": "user_input", "value": 1.75, "unit": "m2", "symbol": "F_{w}", "source": "90S503 选型规格对应的有效过水面积（样例 2200×2000 滤网 Fw=1.75，需按选型核实）", "description": "单片格网有效过水面积", "needs_verification": true},
+        "screen_rows": {"type": "user_input", "value": 3, "unit": "道", "symbol": "n", "source": "拦污滤网道数（规范宜设两道，样例按3道设，需核实）", "description": "格网设置道数", "needs_verification": true}
+      },
+      "outputs": {"screen_velocity_actual": "m/s"}
+    },
+    {
+      "id": "screen_drag",
+      "name": "滤网起吊阻力",
+      "section": "7.2.4",
+      "symbol": "G_{2}",
+      "citation": [],
+      "expression": "mu_screen * delta_h_screen * gamma_w * screen_proj_area",
+      "inputs": {
+        "mu_screen": {"type": "lookup_table", "value": 0.3, "unit": "—", "symbol": "\\mu", "source": "工程经验（摩擦系数一般取0.3）", "description": "滤网与槽壁摩擦系数", "needs_verification": true},
+        "delta_h_screen": {"type": "lookup_table", "value": 0.3, "unit": "m", "symbol": "\\Delta h", "source": "90S503（格网前后设计水位差0.15m，最大允许值0.3m，起吊阻力按最大值取）", "description": "滤网前后设计液位差", "needs_verification": true},
+        "gamma_w": {"type": "code_requirement", "value": 1000, "unit": "kg/m3", "symbol": "\\gamma", "source": "水的密度", "description": "水的密度", "needs_verification": false},
+        "screen_proj_area": {"type": "user_input", "value": 3.13, "unit": "m2", "symbol": "A", "source": "按滤网选型规格计（样例 2200×2000 滤网按3.13m²计，需核实）", "description": "滤网面积", "needs_verification": true}
+      },
+      "outputs": {"screen_drag": "kg"}
+    },
+    {
+      "id": "screen_lift_weight",
+      "name": "滤网起吊重量",
+      "section": "7.2.4",
+      "symbol": "G",
+      "citation": [
+        {"code": "90S503", "clause": "", "text": "格网净重按选型规格查阅标准图（样例 2200×2000 格网净重 G1=705.9kg）"}
+      ],
+      "expression": "screen_safety_factor * (screen_net_weight + screen_drag)",
+      "inputs": {
+        "screen_net_weight": {"type": "user_input", "value": 705.9, "unit": "kg", "symbol": "G_{1}", "source": "90S503（按选型规格查阅净重，样例值需核实）", "description": "滤网净重", "needs_verification": true},
+        "screen_drag": {"type": "formula_output", "source_formula_id": "screen_drag", "source_param_name": "screen_drag"},
+        "screen_safety_factor": {"type": "lookup_table", "value": 1.2, "unit": "—", "symbol": "n", "source": "工程经验（安全系数取1.1~1.3，默认1.2）", "description": "起吊安全系数", "needs_verification": true}
+      },
+      "outputs": {"screen_lift_weight": "kg"}
+    },
+    {
+      "id": "screen_lift_height",
+      "name": "滤网起升高度",
+      "section": "7.2.4",
+      "symbol": "H",
+      "citation": [
+        {"code": "90S503", "clause": "", "text": "格栅吊环高度参考标准图（0.45m）；起升高度 H=a+b+c+d+e"}
+      ],
+      "expression": "screen_hoist_len + screen_ring_height + screen_height + screen_clearance + platform_elev",
+      "inputs": {
+        "screen_hoist_len": {"type": "user_input", "value": 0.86, "unit": "m", "symbol": "a", "source": "滑车高度+起重葫芦钢丝绳绕紧状态长度（参考2t CD1电动葫芦 0.86m，需核实）", "description": "滑车与起重葫芦长度", "needs_verification": true},
+        "screen_ring_height": {"type": "user_input", "value": 0.45, "unit": "m", "symbol": "b", "source": "90S503（格栅吊环高度0.45m）", "description": "格栅吊环高度", "needs_verification": true},
+        "screen_height": {"type": "user_input", "value": 2.2, "unit": "m", "symbol": "c", "source": "滤网高度（按选型规格，样例2.20m）", "description": "滤网高度", "needs_verification": true},
+        "screen_clearance": {"type": "user_input", "value": 1.0, "unit": "m", "symbol": "d", "source": "滤网底部与平台顶部距离（含0.3m操作距离+0.7m护栏高度，样例取1.0m）", "description": "滤网底部与平台顶部距离", "needs_verification": true},
+        "platform_elev": {"type": "user_input", "value": 0.7, "unit": "m", "symbol": "e", "source": "平台顶部标高（样例0.7m，需核实）", "description": "平台顶部标高", "needs_verification": true}
+      },
+      "outputs": {"screen_lift_height": "m"}
+    },
+    {
+      "id": "pipe_v_suction",
+      "name": "吸水管流速校核",
+      "section": "8.2.1",
+      "symbol": "v",
+      "citation": [
+        {"code": "GB 50013-2006", "clause": "", "text": "《室外给水设计规范》水泵吸水管流速分档：直径<250mm 取1.0~1.2m/s；250~1000mm 取1.2~1.6m/s；>1000mm 取1.5~2.0m/s"}
+      ],
+      "expression": "Q_pump_set / (3600 * pi * (DN_suction / 2000) ** 2)",
+      "inputs": {
+        "Q_pump_set": {"type": "user_input", "value": 7000, "unit": "m3/h", "symbol": "Q", "source": "单台循环水泵设计水量（需用户确认）", "description": "单泵设计水量", "needs_verification": true},
+        "DN_suction": {"type": "user_input", "value": 1200, "unit": "mm", "symbol": "DN", "source": "吸水管公称直径试选（按分档流速比选后确定，需用户确认）", "description": "吸水管公称直径", "needs_verification": true}
+      },
+      "outputs": {"pipe_v_suction": "m/s"}
+    },
+    {
+      "id": "pipe_v_outlet",
+      "name": "出水管流速校核",
+      "section": "8.2.1",
+      "symbol": "v",
+      "citation": [
+        {"code": "GB 50013-2006", "clause": "", "text": "《室外给水设计规范》水泵出水管流速分档：直径<250mm 取1.5~2.0m/s；250~1000mm 取2.0~2.5m/s；>1000mm 取2.0~3.0m/s"}
+      ],
+      "expression": "Q_outlet / (3600 * pi * (DN_outlet / 2000) ** 2)",
+      "inputs": {
+        "Q_outlet": {"type": "user_input", "value": 21000, "unit": "m3/h", "symbol": "Q", "source": "输水干管流量（水泵并联组合工况，需用户确认）", "description": "出水（输水干）管流量", "needs_verification": true},
+        "DN_outlet": {"type": "user_input", "value": 1600, "unit": "mm", "symbol": "DN", "source": "出水管公称直径试选（按分档流速比选后确定，需用户确认）", "description": "出水管公称直径", "needs_verification": true}
+      },
+      "outputs": {"pipe_v_outlet": "m/s"}
     },
     {
       "id": "pump_foundation_L",
       "name": "水泵基础长度",
       "section": "8.2.1",
+      "symbol": "L",
+      "citation": [
+        {"code": "《给水排水设计手册》第三册", "clause": "5.4.2（P371）", "text": "无底盘的大、中型水泵：基础长度=水泵和电机最外端螺孔间距+(0.4~0.6)m，并长于水泵和电机总长"}
+      ],
       "expression": "pump_motor_spacing + 0.5",
       "inputs": {
-        "pump_motor_spacing": {"type": "user_input", "value": null, "unit": "m", "description": "水泵和电机最外端螺孔间距"}
+        "pump_motor_spacing": {"type": "user_input", "value": null, "unit": "m", "symbol": "l", "description": "水泵和电机最外端螺孔间距（长度方向）"}
       },
       "outputs": {"pump_foundation_L": "m"}
+    },
+    {
+      "id": "pump_foundation_B",
+      "name": "水泵基础宽度",
+      "section": "8.2.1",
+      "symbol": "B",
+      "citation": [
+        {"code": "《给水排水设计手册》第三册", "clause": "5.4.2（P371）", "text": "基础宽度=水泵或电动机最外端螺孔间距+(0.4~0.6)m"}
+      ],
+      "expression": "pump_motor_spacing_b + 0.5",
+      "inputs": {
+        "pump_motor_spacing_b": {"type": "user_input", "value": 1.65, "unit": "m", "symbol": "b", "source": "水泵或电动机最外端螺孔间距（宽度方向，样例推算1.65m，需按泵样本核实）", "description": "最外端螺孔间距（宽度方向）", "needs_verification": true}
+      },
+      "outputs": {"pump_foundation_B": "m"}
+    },
+    {
+      "id": "pump_min_spacing",
+      "name": "水泵机组最小间距",
+      "section": "8.2.1",
+      "symbol": "s_{min}",
+      "citation": [
+        {"code": "《给水排水设计手册》第三册", "clause": "5.4.2（P371）", "text": "电动机容量大于55kW时，机组最小间距≥1.5m"}
+      ],
+      "expression": "1.5",
+      "inputs": {},
+      "outputs": {"pump_min_spacing": "m"}
+    },
+    {
+      "id": "bell_mouth_velocity",
+      "name": "吸水喇叭口流速校核",
+      "section": "8.1.1",
+      "symbol": "v",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "5.4.3", "text": "最大流量时，吸水喇叭口流速宜取1.0m/s~1.5m/s；喇叭口直径不宜小于吸水管直径的1.25倍"},
+        {"code": "02S403", "clause": "", "text": "《钢制管件》吸水喇叭口规格（D/D1/H），样例 DN1500 喇叭口 D=1200、D1=1620、H=1150"}
+      ],
+      "expression": "Q_pump_set / (3600 * pi * (bell_mouth_D1 / 2000) ** 2)",
+      "inputs": {
+        "Q_pump_set": {"type": "user_input", "value": 7000, "unit": "m3/h", "symbol": "Q", "source": "单台循环水泵设计水量（需用户确认）", "description": "单泵设计水量", "needs_verification": true},
+        "bell_mouth_D1": {"type": "user_input", "value": 1620, "unit": "mm", "symbol": "D_{1}", "source": "02S403 喇叭口直径（样例 DN1500 规格 D1=1620mm，需按选型核实）", "description": "吸水喇叭口直径", "needs_verification": true}
+      },
+      "outputs": {"bell_mouth_velocity": "m/s"}
+    },
+    {
+      "id": "bell_mouth_ratio",
+      "name": "喇叭口直径比校核",
+      "section": "8.1.1",
+      "symbol": "K",
+      "citation": [
+        {"code": "GB/T 50746-2012", "clause": "5.4.3", "text": "喇叭口直径不宜小于吸水管直径的1.25倍"}
+      ],
+      "expression": "bell_mouth_D1 / DN_suction",
+      "inputs": {
+        "bell_mouth_D1": {"type": "user_input", "value": 1620, "unit": "mm", "symbol": "D_{1}", "source": "02S403 喇叭口直径（需按选型核实）", "description": "吸水喇叭口直径", "needs_verification": true},
+        "DN_suction": {"type": "user_input", "value": 1200, "unit": "mm", "symbol": "DN", "source": "吸水管公称直径（需用户确认）", "description": "吸水管公称直径", "needs_verification": true}
+      },
+      "outputs": {"bell_mouth_ratio": "—"}
+    },
+    {
+      "id": "lift_rope_len",
+      "name": "起重绳垂直长度",
+      "section": "8.2.3",
+      "symbol": "d",
+      "citation": [
+        {"code": "《给水排水设计手册》第三册", "clause": "", "text": "起重绳的垂直长度：对于水泵为0.85x，对于电机为1.2x（x为起重部件宽度）"}
+      ],
+      "expression": "0.85 * pump_body_width",
+      "inputs": {
+        "pump_body_width": {"type": "user_input", "value": 2.2, "unit": "m", "symbol": "x", "source": "起重部件（水泵）宽度（样例2.20m，需按泵样本核实）", "description": "起重构件宽度", "needs_verification": true}
+      },
+      "outputs": {"lift_rope_len": "m"}
+    },
+    {
+      "id": "pumphouse_h1",
+      "name": "泵房地面上高度",
+      "section": "8.2.3",
+      "symbol": "H_{1}",
+      "citation": [
+        {"code": "《给水排水设计手册》第三册", "clause": "", "text": "泵房高度 H=a+b+c+d+e+f+g；吊起物底部和最高一台机组顶部的距离一般大于等于0.5m"}
+      ],
+      "expression": "hoist_assembly_len + lift_rope_len + pump_height + lift_clearance",
+      "inputs": {
+        "hoist_assembly_len": {"type": "user_input", "value": 1.475, "unit": "m", "symbol": "a+b+c", "source": "单轨吊车梁高度+滑车高度+起重葫芦钢丝绳绕紧长度（样例合计1.475m，需按起重设备核实）", "description": "吊车梁+滑车+葫芦总长", "needs_verification": true},
+        "lift_rope_len": {"type": "formula_output", "source_formula_id": "lift_rope_len", "source_param_name": "lift_rope_len"},
+        "pump_height": {"type": "user_input", "value": 2.04, "unit": "m", "symbol": "e", "source": "最大一台水泵或电动机高度（样例2.04m，需按泵样本核实）", "description": "最大泵或电机高度", "needs_verification": true},
+        "lift_clearance": {"type": "user_input", "value": 0.5, "unit": "m", "symbol": "f", "source": "《给水排水设计手册》第三册（吊起物底部与机组顶部距离≥0.5m）", "description": "吊起物底部离机组顶部距离", "needs_verification": false}
+      },
+      "outputs": {"pumphouse_h1": "m"}
+    },
+    {
+      "id": "pumphouse_height",
+      "name": "泵房总高度",
+      "section": "8.2.3",
+      "symbol": "H",
+      "citation": [],
+      "expression": "pumphouse_h1 + pumphouse_h2",
+      "inputs": {
+        "pumphouse_h1": {"type": "formula_output", "source_formula_id": "pumphouse_h1", "source_param_name": "pumphouse_h1"},
+        "pumphouse_h2": {"type": "user_input", "value": 3.3, "unit": "m", "symbol": "H_{2}", "source": "半地下泵房地面下深度（样例3.3m，需核实）", "description": "泵房地面下深度", "needs_verification": true}
+      },
+      "outputs": {"pumphouse_height": "m"}
     },
     {
       "id": "Qsf",
       "name": "旁滤处理水量",
       "section": "9.1.1",
+      "symbol": "Q_{sf}",
+      "citation": [
+        {"code": "GB 50050-2017", "clause": "4.0.4", "text": "间冷开式系统旁滤水量宜为循环水量的1%~5%，对于多沙尘地区或空气灰尘指数偏高地区可适当提高"},
+        {"code": "HG/T 20690-2000", "clause": "4.0.3", "text": "敞开式系统旁流过滤水量亦可按循环水量的2%~5%，或结合国内经验及循环冷却水的特点确定"}
+      ],
       "expression": "Q * sf_ratio",
       "inputs": {
-        "Q": {"type": "user_input", "value": null, "unit": "m3/h"},
-        "sf_ratio": {"type": "code_requirement", "value": 0.05, "source": "GB/T 50050-2017 §4.0.4（缺含尘数据时 1%~5%；沙尘区可上调，本项目取5%需核实）", "description": "旁滤比例", "needs_verification": true}
+        "Q": {"type": "user_input", "value": null, "unit": "m3/h", "symbol": "Q", "description": "循环水设计水量"},
+        "sf_ratio": {"type": "code_requirement", "value": 0.05, "unit": "—", "symbol": "\\alpha", "source": "GB/T 50050-2017 §4.0.4（缺含尘数据时 1%~5%；沙尘区可上调，本项目取5%需核实）", "description": "旁滤比例", "needs_verification": true}
       },
       "outputs": {"Qsf": "m3/h"}
     },
@@ -107,36 +438,110 @@
       "id": "filter_count",
       "name": "过滤器台数",
       "section": "9.1.2",
+      "symbol": "n",
+      "citation": [],
       "expression": "math.ceil(Qsf / filter_unit_capacity)",
       "inputs": {
         "Qsf": {"type": "formula_output", "source_formula_id": "Qsf", "source_param_name": "Qsf"},
-        "filter_unit_capacity": {"type": "user_input", "value": null, "unit": "m3/h", "description": "单台过滤器处理能力"}
+        "filter_unit_capacity": {"type": "user_input", "value": null, "unit": "m3/h", "symbol": "q", "description": "单台过滤器处理能力（可由厂家返资资料确定）"}
       },
       "outputs": {"filter_count": "台"}
+    },
+    {
+      "id": "pipe_v_sidefilter",
+      "name": "旁滤水管流速校核",
+      "section": "9.1.2",
+      "symbol": "v",
+      "citation": [],
+      "expression": "Qsf / (3600 * pi * (DN_sidefilter / 2000) ** 2)",
+      "inputs": {
+        "Qsf": {"type": "formula_output", "source_formula_id": "Qsf", "source_param_name": "Qsf"},
+        "DN_sidefilter": {"type": "user_input", "value": 500, "unit": "mm", "symbol": "DN", "source": "旁滤水管公称直径试选（需用户确认）", "description": "旁滤水管公称直径", "needs_verification": true}
+      },
+      "outputs": {"pipe_v_sidefilter": "m/s"}
     },
     {
       "id": "backwash_flow",
       "name": "反洗瞬时流量",
       "section": "9.1.3",
+      "symbol": "q_{bw}",
+      "citation": [],
       "expression": "filter_area * backwash_intensity * concurrent_backwash",
       "inputs": {
-        "filter_area": {"type": "user_input", "value": null, "unit": "m2", "description": "单罐过滤面积"},
-        "backwash_intensity": {"type": "lookup_table", "value": 15.0, "unit": "L/s·m2", "source": "GB/T 50050-2017 §4.0.4 条文说明 / 工程经验 12~16", "description": "反洗强度", "needs_verification": true},
-        "concurrent_backwash": {"type": "user_input", "value": null, "description": "同时反洗罐数"}
+        "filter_area": {"type": "user_input", "value": null, "unit": "m2", "symbol": "A", "description": "单罐过滤面积（可由厂家返资资料确定）"},
+        "backwash_intensity": {"type": "lookup_table", "value": 15.0, "unit": "L/s·m2", "symbol": "q", "source": "GB/T 50050-2017 §4.0.4 条文说明 / 工程经验 12~16", "description": "反洗强度", "needs_verification": true},
+        "concurrent_backwash": {"type": "user_input", "value": null, "unit": "台", "symbol": "n", "description": "同时反洗罐数"}
       },
       "outputs": {"backwash_flow": "L/s"}
+    },
+    {
+      "id": "backwash_single_volume",
+      "name": "单罐一次反洗水量",
+      "section": "9.1.3",
+      "symbol": "V_{bw1}",
+      "citation": [],
+      "expression": "filter_area * backwash_intensity * backwash_duration * 60 / 1000",
+      "inputs": {
+        "filter_area": {"type": "user_input", "value": null, "unit": "m2", "symbol": "A", "description": "单罐过滤面积（可由厂家返资资料确定）"},
+        "backwash_intensity": {"type": "lookup_table", "value": 15.0, "unit": "L/s·m2", "symbol": "q", "source": "GB/T 50050-2017 §4.0.4 条文说明 / 工程经验 12~16", "description": "反洗强度", "needs_verification": true},
+        "backwash_duration": {"type": "lookup_table", "value": 2.0, "unit": "min", "symbol": "t", "source": "工程经验（砂滤一般 1~3 min，本项目取 2 min 需核实）", "description": "单罐反洗一次时间", "needs_verification": true}
+      },
+      "outputs": {"backwash_single_volume": "m3"}
     },
     {
       "id": "backwash_volume",
       "name": "单次反洗总水量",
       "section": "9.1.3",
-      "expression": "backwash_flow * backwash_duration * 60 * total_filters / 1000",
+      "symbol": "V_{bw}",
+      "citation": [],
+      "expression": "backwash_single_volume * total_filters",
       "inputs": {
-        "backwash_flow": {"type": "formula_output", "source_formula_id": "backwash_flow", "source_param_name": "backwash_flow"},
-        "backwash_duration": {"type": "lookup_table", "value": 2.0, "unit": "min", "source": "工程经验（砂滤一般 1~3 min，本项目取 2 min 需核实）", "description": "单罐反洗一次时间", "needs_verification": true},
+        "backwash_single_volume": {"type": "formula_output", "source_formula_id": "backwash_single_volume", "source_param_name": "backwash_single_volume"},
         "total_filters": {"type": "formula_output", "source_formula_id": "filter_count", "source_param_name": "filter_count"}
       },
-      "outputs": {"backwash_volume": "m3"}
+      "outputs": {"backwash_volume": "m3"},
+      "_note": "总水量=单罐水量×罐数（样例 2.034×25=50.85）；并发数只影响瞬时流量不进入水量"
+    },
+    {
+      "id": "backwash_daily_volume",
+      "name": "日产反洗水量",
+      "section": "9.1.3",
+      "symbol": "V_{bw,d}",
+      "citation": [
+        {"code": "厂家返资资料", "clause": "", "text": "样例：设置6h反洗一次，一日反洗4次（反洗周期需按厂家资料核实）"}
+      ],
+      "expression": "backwash_volume * backwash_daily_times",
+      "inputs": {
+        "backwash_volume": {"type": "formula_output", "source_formula_id": "backwash_volume", "source_param_name": "backwash_volume"},
+        "backwash_daily_times": {"type": "user_input", "value": 4, "unit": "次/d", "symbol": "n_{d}", "source": "反洗周期6h一次推算日4次（需按厂家资料核实）", "description": "每日反洗次数", "needs_verification": true}
+      },
+      "outputs": {"backwash_daily_volume": "m3"}
+    },
+    {
+      "id": "backwash_pool_volume",
+      "name": "反洗水池有效容积",
+      "section": "9.1.3",
+      "symbol": "V_{bwp}",
+      "citation": [],
+      "expression": "backwash_volume * backwash_pool_factor",
+      "inputs": {
+        "backwash_volume": {"type": "formula_output", "source_formula_id": "backwash_volume", "source_param_name": "backwash_volume"},
+        "backwash_pool_factor": {"type": "user_input", "value": 2.0, "unit": "—", "symbol": "k", "source": "样例按2次反洗水量容积计（或厂家返资给定有效容积65m³），需核实", "description": "反洗水池容积倍数", "needs_verification": true}
+      },
+      "outputs": {"backwash_pool_volume": "m3"}
+    },
+    {
+      "id": "backwash_pump_flow",
+      "name": "反洗排水泵流量",
+      "section": "9.1.3",
+      "symbol": "Q_{p}",
+      "citation": [],
+      "expression": "backwash_pool_volume / backwash_drain_hours",
+      "inputs": {
+        "backwash_pool_volume": {"type": "formula_output", "source_formula_id": "backwash_pool_volume", "source_param_name": "backwash_pool_volume"},
+        "backwash_drain_hours": {"type": "user_input", "value": 6.0, "unit": "h", "symbol": "t", "source": "样例：污水6h连续抽空（需核实）；泵按1用1备设置", "description": "反洗污水抽空时长", "needs_verification": true}
+      },
+      "outputs": {"backwash_pump_flow": "m3/h"}
     }
   ]
 }
