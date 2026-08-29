@@ -257,7 +257,12 @@ class ExtractionLLMClient:
             import os
 
             effective_name = self._model_name or os.getenv("DEFAULT_MODEL") or None
-            self._model = create_chat_model(name=effective_name, thinking_enabled=False)
+            # bug-1243: bind 更高的输出上限。config.yaml 模型默认 max_tokens=8192 是
+            # 全局聊天配置，对 KF 结构化输出太紧——159 节模板树 + purpose 的 JSON
+            # 需要 8-14k token，8192 处被拦腰截断（finish_reason=length、无闭合 ```），
+            # _extract_json 必然失败 → 兜底建树 → purpose 全成"从{doc}自动识别"占位符。
+            # 实测 16384 对 159 节文档 finish=stop；更大报告(≈300节)若复发，调大此值。
+            self._model = create_chat_model(name=effective_name, thinking_enabled=False).bind(max_tokens=16384)
         return self._model
 
     def _invoke(self, messages: list, **kwargs) -> str:

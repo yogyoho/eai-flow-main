@@ -1101,6 +1101,12 @@ class ExtractionPipeline:
             try:
                 logger.info(f"[Task {task_id}] Step 1: 调用 LLM infer_schema...")
                 ref_chapters = ctx.get("_reference_chapters")
+                # bug-1243续: doc_parser 已给出确定性标题时不注入领域参考骨架——
+                # 参考结构与文档类型不符时 LLM 会把不适用章节以"[偏差]…保留"并入树
+                # （实测矿产勘探报告混入环评默认骨架 总则/建设项目概况/工程分析）。
+                _parsed_ref = doc.get("_parsed")
+                if _parsed_ref is not None and getattr(_parsed_ref, "headings", None):
+                    ref_chapters = None
                 # If no reference chapters from domain, build them from detected
                 # H1 headings so the LLM is forced to use the document's actual
                 # chapter structure instead of inventing its own.
