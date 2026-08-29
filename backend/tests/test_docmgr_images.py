@@ -195,3 +195,26 @@ def test_image_fetcher_resolves_user_and_thread_urls(tmp_path, monkeypatch):
     assert fetch("/api/extensions/docmgr/images/cccccccccccc.png") is None  # 文件不存在
     assert fetch("https://evil.example/x.png") is None  # 非白名单 URL
     assert fetch("/api/extensions/docmgr/images/..%2fevil.png") is None  # 穿越一律不认
+
+
+# ---- bug-3004：SKILL 相对引用 images/{12hex}.png 经 source_thread_id 解析（EAI-CUSTOM） ----
+
+
+def test_image_fetcher_resolves_relative_ref_via_source_thread(tmp_path, monkeypatch):
+    """export 时 agent 只写得出 images/xxx.png（不知道 thread_id）；fetcher 用 AIDocument.source_thread_id 兜底解析。"""
+    thread_dir = tmp_path / "user-data"
+    img_dir = thread_dir / "outputs" / "images"
+    img_dir.mkdir(parents=True)
+    monkeypatch.setattr(docmgr_routers, "Paths", lambda: None)
+    monkeypatch.setattr(docmgr_routers, "_user_images_dir", lambda paths, uid: tmp_path / "docmgr-images")
+    monkeypatch.setattr(docmgr_routers, "_resolve_thread_sandbox_dir", lambda paths, tid, uid: thread_dir)
+    (img_dir / "08bb824f44bb.png").write_bytes(b"RELPNG")
+
+    fetch = docmgr_routers._make_image_fetcher("uid-1", source_thread_id="t-9")
+    assert fetch("images/08bb824f44bb.png") == b"RELPNG"  # SKILL.md 写的裸相对引用
+    assert fetch("/mnt/user-data/outputs/images/08bb824f44bb.png") == b"RELPNG"  # 带虚拟前缀的等价形式
+    assert fetch("images/999999999999.png") is None  # 文件不存在
+    assert fetch("images/notahexname.png") is None  # 非 12hex 名不认
+    assert fetch("images/../../evil.png") is None  # 穿越一律不认
+    no_thread = docmgr_routers._make_image_fetcher("uid-1")  # 无 source_thread_id（线程外导出）→ 相对引用解析不了
+    assert no_thread("images/08bb824f44bb.png") is None

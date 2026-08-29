@@ -50,6 +50,8 @@ dependencies = [
     "minio>=7.0.0",
     "temporalio[pydantic]>=1.27.0",
     "python-docx>=1.2.0",
+    # water-drainage-report render_diagrams.py (subprocess PIL drawing)
+    "Pillow>=10.0.0",
     # contract-price-analysis skill pipeline (run as subprocess inside gateway).
     # NOTE: deliberately NOT using scikit-learn — it pulls scipy (~33MB) which
     # fails to download on flaky networks and blocks gateway startup. The skill's
