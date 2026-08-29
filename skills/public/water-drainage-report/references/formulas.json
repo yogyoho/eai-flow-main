@@ -542,6 +542,320 @@
         "backwash_drain_hours": {"type": "user_input", "value": 6.0, "unit": "h", "symbol": "t", "source": "样例：污水6h连续抽空（需核实）；泵按1用1备设置", "description": "反洗污水抽空时长", "needs_verification": true}
       },
       "outputs": {"backwash_pump_flow": "m3/h"}
+    },
+    {
+      "id": "bell_clearance",
+      "name": "喇叭口距池底高度比",
+      "section": "8.1.1",
+      "symbol": "K_{cb}",
+      "citation": [
+        {
+          "code": "GB/T 50746-2012",
+          "clause": "5.4.3",
+          "text": "吸水喇叭口距吸水池池底距离，垂直布置时可取喇叭口直径的0.6~0.8倍"
+        }
+      ],
+      "expression": "bell_bottom_clearance / (bell_mouth_D1 / 1000)",
+      "inputs": {
+        "bell_bottom_clearance": {
+          "type": "user_input",
+          "value": 1.13,
+          "unit": "m",
+          "symbol": "h_{b}",
+          "source": "按5.4.3垂直布置区间中值0.7×D1预填，需布置资料核实",
+          "description": "喇叭口距吸水池池底高度",
+          "needs_verification": true
+        },
+        "bell_mouth_D1": {
+          "type": "user_input",
+          "value": 1620,
+          "unit": "mm",
+          "symbol": "D_{1}",
+          "source": "02S403 喇叭口直径（需按选型核实）",
+          "description": "吸水喇叭口直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "bell_clearance": "—"
+      }
+    },
+    {
+      "id": "bell_submerge",
+      "name": "喇叭口淹没深度比",
+      "section": "8.1.1",
+      "symbol": "K_{cs}",
+      "citation": [
+        {
+          "code": "GB/T 50746-2012",
+          "clause": "5.4.3",
+          "text": "吸水喇叭口的淹没深度，垂直布置时应大于喇叭口直径的1.0~1.25倍"
+        }
+      ],
+      "expression": "bell_submerge_depth / (bell_mouth_D1 / 1000)",
+      "inputs": {
+        "bell_submerge_depth": {
+          "type": "user_input",
+          "value": 1.78,
+          "unit": "m",
+          "symbol": "h_{s}",
+          "source": "按5.4.3垂直布置区间中值1.1×D1预填，需布置资料核实",
+          "description": "吸水喇叭口淹没深度",
+          "needs_verification": true
+        },
+        "bell_mouth_D1": {
+          "type": "user_input",
+          "value": 1620,
+          "unit": "mm",
+          "symbol": "D_{1}",
+          "source": "02S403 喇叭口直径（需按选型核实）",
+          "description": "吸水喇叭口直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "bell_submerge": "—"
+      }
+    },
+    {
+      "id": "bell_rear_wall",
+      "name": "喇叭口后墙距比",
+      "section": "8.1.1",
+      "symbol": "K_{cw}",
+      "citation": [
+        {
+          "code": "GB/T 50746-2012",
+          "clause": "5.4.3",
+          "text": "吸水喇叭口中心线与后墙距离应取喇叭口直径的0.8~1.0倍"
+        }
+      ],
+      "expression": "bell_rear_wall_dist / (bell_mouth_D1 / 1000)",
+      "inputs": {
+        "bell_rear_wall_dist": {
+          "type": "user_input",
+          "value": 1.46,
+          "unit": "m",
+          "symbol": "L_{r}",
+          "source": "按5.4.3区间中值0.9×D1预填，需布置资料核实",
+          "description": "喇叭口中心线与后墙距离",
+          "needs_verification": true
+        },
+        "bell_mouth_D1": {
+          "type": "user_input",
+          "value": 1620,
+          "unit": "mm",
+          "symbol": "D_{1}",
+          "source": "02S403 喇叭口直径（需按选型核实）",
+          "description": "吸水喇叭口直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "bell_rear_wall": "—"
+      }
+    },
+    {
+      "id": "bell_side_wall",
+      "name": "喇叭口侧墙距比",
+      "section": "8.1.1",
+      "symbol": "K_{cwl}",
+      "citation": [
+        {
+          "code": "GB/T 50746-2012",
+          "clause": "5.4.3",
+          "text": "吸水喇叭口中心线与侧墙的距离可取喇叭口直径的1.5倍"
+        }
+      ],
+      "expression": "bell_side_wall_dist / (bell_mouth_D1 / 1000)",
+      "inputs": {
+        "bell_side_wall_dist": {
+          "type": "user_input",
+          "value": 2.43,
+          "unit": "m",
+          "symbol": "L_{s}",
+          "source": "按5.4.3建议值1.5×D1预填，需布置资料核实",
+          "description": "喇叭口中心线与侧墙距离",
+          "needs_verification": true
+        },
+        "bell_mouth_D1": {
+          "type": "user_input",
+          "value": 1620,
+          "unit": "mm",
+          "symbol": "D_{1}",
+          "source": "02S403 喇叭口直径（需按选型核实）",
+          "description": "吸水喇叭口直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "bell_side_wall": "—"
+      }
+    },
+    {
+      "id": "V_suction_pool",
+      "name": "吸水池几何容积",
+      "section": "8.1.2",
+      "symbol": "V_{s}",
+      "citation": [],
+      "expression": "L_suction_pool * W_suction_pool * H_suction_pool",
+      "inputs": {
+        "L_suction_pool": {
+          "type": "user_input",
+          "value": 34.0,
+          "unit": "m",
+          "symbol": "L",
+          "source": "样例8.1.2吸水池平面尺寸（需按布置核实）",
+          "description": "吸水池长度",
+          "needs_verification": true
+        },
+        "W_suction_pool": {
+          "type": "user_input",
+          "value": 8.5,
+          "unit": "m",
+          "symbol": "W",
+          "source": "样例8.1.2吸水池平面尺寸（需按布置核实）",
+          "description": "吸水池宽度",
+          "needs_verification": true
+        },
+        "H_suction_pool": {
+          "type": "user_input",
+          "value": 6.1,
+          "unit": "m",
+          "symbol": "H",
+          "source": "样例8.1.2吸水池水深（需按布置核实）",
+          "description": "吸水池水深",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "V_suction_pool": "m3"
+      },
+      "_note": "样例：吸水池容积34x8.50x6.1=1762.9m3"
+    },
+    {
+      "id": "pipe_v_drain",
+      "name": "放空管流速校核",
+      "section": "7.1.2",
+      "symbol": "v",
+      "citation": [],
+      "expression": "Q_drain / (3600 * pi * (DN_drain / 2000) ** 2)",
+      "inputs": {
+        "Q_drain": {
+          "type": "user_input",
+          "value": 750,
+          "unit": "m3/h",
+          "symbol": "Q",
+          "source": "样例7.1.2放空管流量（需按池容放空时间核实）",
+          "description": "放空管流量",
+          "needs_verification": true
+        },
+        "DN_drain": {
+          "type": "user_input",
+          "value": 500,
+          "unit": "mm",
+          "symbol": "DN",
+          "source": "样例7.1.2放空管选径（需核实）",
+          "description": "放空管公称直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "pipe_v_drain": "m/s"
+      },
+      "_note": "样例：放空管选DN500管线，流速为1.02m/s，750m3/h（本式按几何内径得≈1.06，差异为内径取值口径）"
+    },
+    {
+      "id": "pipe_i_suction",
+      "name": "吸水管水力坡降",
+      "section": "8.2.1",
+      "symbol": "i",
+      "citation": [],
+      "expression": "0.00107 * (Q_pump_set / (3600 * pi * (DN_suction / 2000) ** 2)) ** 2 / (DN_suction / 1000) ** 1.3",
+      "inputs": {
+        "Q_pump_set": {
+          "type": "user_input",
+          "value": 7000,
+          "unit": "m3/h",
+          "symbol": "Q",
+          "source": "单台循环水泵设计水量（需用户确认）",
+          "description": "单泵设计水量",
+          "needs_verification": true
+        },
+        "DN_suction": {
+          "type": "user_input",
+          "value": 1200,
+          "unit": "mm",
+          "symbol": "DN",
+          "source": "吸水管公称直径（需用户确认）",
+          "description": "吸水管公称直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "pipe_i_suction": "m/m"
+      },
+      "_note": "舍维列夫公式 i=0.00107·v²/d^1.3（v≥1.2m/s）；样例比选表 i 列锚点对齐。v<1.2 时需过渡区公式，样例范围均≥1.2"
+    },
+    {
+      "id": "pipe_i_outlet",
+      "name": "出水管水力坡降",
+      "section": "8.2.1",
+      "symbol": "i",
+      "citation": [],
+      "expression": "0.00107 * (Q_outlet / (3600 * pi * (DN_outlet / 2000) ** 2)) ** 2 / (DN_outlet / 1000) ** 1.3",
+      "inputs": {
+        "Q_outlet": {
+          "type": "user_input",
+          "value": 21000,
+          "unit": "m3/h",
+          "symbol": "Q",
+          "source": "出水（输水干）管流量（需用户确认）",
+          "description": "出水管流量",
+          "needs_verification": true
+        },
+        "DN_outlet": {
+          "type": "user_input",
+          "value": 1600,
+          "unit": "mm",
+          "symbol": "DN",
+          "source": "出水管公称直径（需用户确认）",
+          "description": "出水管公称直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "pipe_i_outlet": "m/m"
+      },
+      "_note": "同 pipe_i_suction（舍维列夫，v≥1.2）"
+    },
+    {
+      "id": "pipe_i_sidefilter",
+      "name": "旁滤水管水力坡降",
+      "section": "9.1.2",
+      "symbol": "i",
+      "citation": [],
+      "expression": "0.00107 * (Qsf / (3600 * pi * (DN_sidefilter / 2000) ** 2)) ** 2 / (DN_sidefilter / 1000) ** 1.3",
+      "inputs": {
+        "Qsf": {
+          "type": "formula_output",
+          "source_formula_id": "Qsf",
+          "source_param_name": "Qsf",
+          "description": "旁滤水量（上游公式输出）"
+        },
+        "DN_sidefilter": {
+          "type": "user_input",
+          "value": 500,
+          "unit": "mm",
+          "symbol": "DN",
+          "source": "旁滤水管公称直径（需核实）",
+          "description": "旁滤水管公称直径",
+          "needs_verification": true
+        }
+      },
+      "outputs": {
+        "pipe_i_sidefilter": "m/m"
+      },
+      "_note": "同 pipe_i_suction（舍维列夫快流区单分支：JSON 表达式无分支，仅适用 v≥1.2 m/s；低流速过渡区用 pipe_compare 双分支）。样例 i=0.0048 按 v=1.36 口径，本式按几何内径 v=1.41 得 0.0053"
     }
   ]
 }

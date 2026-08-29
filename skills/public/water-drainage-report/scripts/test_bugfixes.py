@@ -277,10 +277,11 @@ def test_render_calc_blocks_v2_fields() -> None:
 
 
 def test_formulas_v2_route_and_execute() -> None:
-    """v2 公式库守卫：全部公式可路由（chapter_planner）且默认值+核心参数即可全量执行（无悬空 null 输入）。"""
+    """v2 公式库守卫：全部公式可路由（chapter_planner）且默认值+核心参数即可全量执行（无悬空 null 输入）。
+    v3 起数量与顺序锁定移至 test_formulas_v3_sample_anchors（37→46）。"""
     formulas_path = SP.parent / "references" / "formulas.json"
     formulas = json.loads(formulas_path.read_text(encoding="utf-8"))["formulas"]
-    assert len(formulas) == 37, f"公式数漂移: {len(formulas)}"
+    assert len(formulas) >= 37, f"公式数漂移: {len(formulas)}"
     manifest = chapter_planner.build_manifest(formulas)
     routed = {fid for c in manifest["chapters"] for fid in c["formula_ids"]}
     missing = [f["id"] for f in formulas if f["id"] not in routed]
@@ -298,7 +299,7 @@ def test_formulas_v2_route_and_execute() -> None:
     )
     assert r.returncode == 0, r.stderr or r.stdout
     state = json.loads(state_out.read_text(encoding="utf-8"))
-    assert len(state["results"]) == 37, f"执行结果缺公式: {set(f['id'] for f in formulas) - set(state['results'])}"
+    assert len(state["results"]) == len(formulas), f"执行结果缺公式: {set(f['id'] for f in formulas) - set(state['results'])}"
     # 抽查样例锚点值（vs sample.md 已核实）
     assert round(state["results"]["backwash_flow"]["backwash_flow"], 2) == 84.75
     assert round(state["results"]["backwash_volume"]["backwash_volume"], 2) == 50.85
@@ -407,6 +408,99 @@ def test_impacted_must_run_before_update() -> None:
         assert after["affected_formulas"] == [], after
 
 
+def test_formulas_v3_sample_anchors() -> None:
+    """v3 样例差距批（2026-08-29）：46 式 + pipe_compare，锁吉林院样例锚点。
+
+    - 旧 37 式 id 顺序不变（v2 回归）；
+    - 新式锚点：吸水池容积 34x8.5x6.1=1762.9、放空管 750/DN500≈1.06、
+      舍维列夫坡降 7000/DN1200→0.0025、21000/DN1600→0.0049（样例比选表 i 列）；
+    - 喇叭口几何 4 比值落在 GB/T 50746 §5.4.3 区间（0.698/1.099/0.901/1.50）；
+    - pipe_compare：suction 分档判定（DN1000 偏大 / DN1200 满足）+ 显式区间。
+    """
+    formulas_path = SP.parent / "references" / "formulas.json"
+    old37 = ["Qe", "Qw", "Qb", "Qm", "pipe_d_makeup", "pipe_v_makeup", "pipe_d_blowdown",
+             "pipe_v_blowdown", "Q_connect", "pipe_v_connect", "V_pool", "V_system",
+             "V_ratio_check", "screen_area", "screen_velocity_actual", "screen_drag",
+             "screen_lift_weight", "screen_lift_height", "pipe_v_suction", "pipe_v_outlet",
+             "pump_foundation_L", "pump_foundation_B", "pump_min_spacing", "bell_mouth_velocity",
+             "bell_mouth_ratio", "lift_rope_len", "pumphouse_h1", "pumphouse_height", "Qsf",
+             "filter_count", "pipe_v_sidefilter", "backwash_flow", "backwash_single_volume",
+             "backwash_volume", "backwash_daily_volume", "backwash_pool_volume",
+             "backwash_pump_flow"]
+    data = json.loads(formulas_path.read_text(encoding="utf-8"))["formulas"]
+    assert len(data) == 46, len(data)
+    assert [f["id"] for f in data[:37]] == old37, "旧 37 式顺序被破坏"
+    assert [f["id"] for f in data[37:]] == [
+        "bell_clearance", "bell_submerge", "bell_rear_wall", "bell_side_wall",
+        "V_suction_pool", "pipe_v_drain", "pipe_i_suction", "pipe_i_outlet", "pipe_i_sidefilter"]
+
+    # execute 全量跑通（复用 impacted 测试的 base_params；新式输入均带库内默认值）
+    with tempfile.TemporaryDirectory() as d:
+        state_path = Path(d) / "formula_state.json"
+        base_params = {"Q": 12000, "delta_t": 9, "N": 4, "pool_area": 520, "V_suction": 1200,
+                       "KZF": 0.001461, "drift_rate": 0.001, "sf_ratio": 0.05,
+                       "effective_depth": 1.5, "backwash_intensity": 15.0, "backwash_duration": 2.0,
+                       "pump_motor_spacing": 3.0, "filter_unit_capacity": 100,
+                       "filter_area": 10.0, "concurrent_backwash": 1}
+        r = subprocess.run(
+            [sys.executable, str(SP / "formula_runner.py"), "execute",
+             "--formulas", str(formulas_path), "--params", json.dumps(base_params),
+             "--output", str(state_path)],
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "STATE_READY" in r.stdout, r.stdout
+        ap = json.loads(state_path.read_text(encoding="utf-8"))["all_params"]
+
+        def val(k: str) -> float:
+            v = ap.get(k, ap.get(f"{k}.{k}"))
+            assert v is not None, f"{k} 不在 all_params: {sorted(ap)[:10]}..."
+            return float(v)
+
+        assert abs(val("V_suction_pool") - 1762.9) < 0.01, val("V_suction_pool")
+        assert abs(val("pipe_v_drain") - 1.061) < 0.01, val("pipe_v_drain")
+        assert abs(val("pipe_i_suction") - 0.0025) < 0.0005, val("pipe_i_suction")
+        assert abs(val("pipe_i_outlet") - 0.0049) < 0.0005, val("pipe_i_outlet")
+        # 旁滤坡降跟随上游 Qsf；JSON 表达式为单分支（仅 v≥1.2 快流区公式，_note 已注明），
+        # 低流速过渡区场景由 pipe_compare 的双分支覆盖——测试按同口径计算期望值
+        qsf = val("Qsf")
+        v_sf = qsf / (3600 * 3.141592653589793 * (500 / 2000) ** 2)
+        expect_i = 0.00107 * v_sf ** 2 / 0.5 ** 1.3
+        assert abs(val("pipe_i_sidefilter") - expect_i) < 1e-6, (val("pipe_i_sidefilter"), expect_i)
+        # 喇叭口几何比值（§5.4.3：距底0.6~0.8 / 淹没>1.0 / 后墙0.8~1.0 / 侧墙1.5）
+        assert 0.6 <= val("bell_clearance") <= 0.8, val("bell_clearance")
+        assert val("bell_submerge") >= 1.0, val("bell_submerge")
+        assert 0.8 <= val("bell_rear_wall") <= 1.0, val("bell_rear_wall")
+        assert abs(val("bell_side_wall") - 1.5) < 0.05, val("bell_side_wall")
+
+    # pipe_compare：样例 8.2.1 吸水管比选（suction 分档 DN>1000 → 1.5~2.0 m/s）
+    with tempfile.TemporaryDirectory() as d:
+        out = Path(d) / "cmp.json"
+        r = subprocess.run(
+            [sys.executable, str(SP / "formula_runner.py"), "pipe_compare",
+             "--q", "7000", "--dns", "1000,1200", "--mode", "suction", "--output", str(out)],
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
+        )
+        assert r.returncode == 0, r.stderr
+        assert "PIPE_COMPARE_READY" in r.stdout, r.stdout
+        rows = {row["DN"]: row for row in json.loads(out.read_text(encoding="utf-8"))["rows"]}
+        assert rows[1200]["verdict"] == "满足" and abs(rows[1200]["v"] - 1.72) < 0.01, rows[1200]
+        assert abs(rows[1200]["i"] - 0.0025) < 0.0005, rows[1200]
+        assert rows[1000]["verdict"] == "偏大" and abs(rows[1000]["v"] - 2.48) < 0.01, rows[1000]
+        # 显式区间优先于分档（旁滤 0.8~1.2 形态）
+        r = subprocess.run(
+            [sys.executable, str(SP / "formula_runner.py"), "pipe_compare",
+             "--q", "7000", "--dns", "1400", "--min-v", "0.8", "--max-v", "1.2",
+             "--output", str(out)],
+            capture_output=True, text=True, encoding="utf-8", env=RUNENV,
+        )
+        assert r.returncode == 0, r.stderr
+        row = json.loads(out.read_text(encoding="utf-8"))["rows"][0]
+        # 7000/DN1400 v≈1.263 > 1.2 → 偏大；v_min/v_max 字段来自显式区间（优先于分档）
+        assert row["v_min"] == 0.8 and row["v_max"] == 1.2, row
+        assert row["verdict"] == "偏大" and abs(row["v"] - 1.26) < 0.01, row
+
+
 if __name__ == "__main__":
     test_ch11_compliance_in_manifest_and_impacted()
     test_snapshot_rejects_side_filename()
@@ -417,6 +511,7 @@ if __name__ == "__main__":
     test_render_calc_blocks_details()
     test_render_calc_blocks_v2_fields()
     test_formulas_v2_route_and_execute()
+    test_formulas_v3_sample_anchors()
     test_render_calc_blocks_inject()
     test_snapshot_gate_calc_blocks()
-    print("PASS: bug-2198 守卫 / bug-2199 ch11+params 刷新 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 文本守卫 / 反馈3 公式可见+过程折叠（定案A 无标题块+按公式占位符+错误形态打回） / R8+R9 快照门禁（占位符/手写/块数不符） / v2 公式库37式路由+执行+渲染新字段（symbol/依据/括注/双单位）")
+    print("PASS: bug-2198 / bug-2199 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 守卫 / 反馈3 折叠渲染 / R8+R9 快照门禁 / v2 37式 / v3 样例锚点")

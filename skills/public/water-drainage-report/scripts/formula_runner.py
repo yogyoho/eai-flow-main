@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -454,6 +455,76 @@ def cmd_impacted(args: argparse.Namespace) -> None:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 子命令: pipe_compare — 配管比选表（样例 TABLE 4/5/7 对齐：候选 DN × 流速 × 水力坡降）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# 舍维列夫公式（v≥1.2 速流区 / v<1.2 过渡区），样例比选表 i 列锚点已标定：
+# 7000/DN1200→0.0025、21000/DN1600→0.0049、1000/DN500(v=1.36口径)→0.0048
+def _pipe_hydraulic(q_m3h: float, dn_mm: float) -> tuple[float, float]:
+    """给定流量(m3/h)与公称直径(mm)，返回 (流速 m/s, 水力坡降 m/m)。"""
+    v = q_m3h / (3600 * math.pi * (dn_mm / 2000) ** 2)
+    d = dn_mm / 1000
+    if v >= 1.2:
+        i = 0.00107 * v ** 2 / d ** 1.3
+    else:
+        i = 0.000912 * v ** 2 / d ** 1.3 * (1 + 0.867 / v) ** 0.3
+    return v, i
+
+
+# GB 50013（样例《室外给水设计规范》P29/P30）流速分档，单位 m/s
+_SPEED_TIERS = {
+    "suction": [  # 水泵吸水管：DN<250 → 1.0~1.2；250~1000 → 1.2~1.6；>1000 → 1.5~2.0
+        (250, 1.0, 1.2), (1000, 1.2, 1.6), (float("inf"), 1.5, 2.0),
+    ],
+    "outlet": [  # 水泵出水管：DN<250 → 1.5~2.0；250~1000 → 2.0~2.5；>1000 → 2.0~3.0
+        (250, 1.5, 2.0), (1000, 2.0, 2.5), (float("inf"), 2.0, 3.0),
+    ],
+}
+
+
+def _speed_range(mode: str, dn_mm: float, min_v: float | None, max_v: float | None) -> tuple[float, float] | None:
+    """解析判定区间：显式 --min-v/--max-v 优先，否则按 mode 分档表。"""
+    if min_v is not None or max_v is not None:
+        return (min_v if min_v is not None else 0.0, max_v if max_v is not None else float("inf"))
+    for cap, lo, hi in _SPEED_TIERS.get(mode, []):
+        if dn_mm <= cap:
+            return (lo, hi)
+    return None
+
+
+def cmd_pipe_compare(args: argparse.Namespace) -> None:
+    """pipe_compare 子命令：给定流量 + 候选 DN 列表 → 流速/坡降/区间判定表。
+
+    输出 JSON（rows 数组），agent 据此渲染样例式比选表 markdown：
+        {"q": 7000, "mode": "suction", "rows": [
+            {"DN": 1000, "v": 2.48, "i": 0.0066, "v_min": 1.5, "v_max": 2.0, "verdict": "偏大"},
+            {"DN": 1200, "v": 1.72, "i": 0.0025, "v_min": 1.5, "v_max": 2.0, "verdict": "满足"}
+        ]}
+    verdict：满足 / 偏大（>max）/ 偏小（<min）；未提供区间时 verdict 为 "—"。
+    """
+    dns = [float(x) for x in str(args.dns).split(",") if x.strip()]
+    rows = []
+    for dn in sorted(dns):
+        v, i = _pipe_hydraulic(args.q, dn)
+        rng = _speed_range(args.mode, dn, args.min_v, args.max_v)
+        row = {"DN": int(dn) if dn == int(dn) else dn, "v": round(v, 2), "i": round(i, 4)}
+        if rng:
+            lo, hi = rng
+            row["v_min"], row["v_max"] = lo, hi
+            row["verdict"] = "满足" if lo <= v <= hi else ("偏大" if v > hi else "偏小")
+        else:
+            row["verdict"] = "—"
+        rows.append(row)
+    output = {"q": args.q, "mode": args.mode, "rows": rows}
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            json.dump(output, f, ensure_ascii=False, indent=2)
+        print(f"PIPE_COMPARE_READY: {args.output}")
+    else:
+        print(json.dumps(output, ensure_ascii=False, indent=2))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # CLI 入口
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -519,6 +590,16 @@ def main() -> None:
     p_impacted.add_argument("--manifest", help="chapter_manifest.json 路径（反查受影响章节）")
     p_impacted.add_argument("--output", help="输出受影响集文件路径")
 
+    # pipe_compare 子命令（比选表）
+    p_cmp = sub.add_parser("pipe_compare", help="配管比选表：候选 DN × 流速 × 水力坡降 × 区间判定")
+    p_cmp.add_argument("--q", type=float, required=True, help="输送水量 m3/h")
+    p_cmp.add_argument("--dns", required=True, help="候选公称直径列表（mm，逗号分隔，如 1000,1200,1400）")
+    p_cmp.add_argument("--mode", default="", choices=["", "suction", "outlet"],
+                       help="区间判定模式：suction/outlet 按 GB 50013 分档；空则不做区间判定")
+    p_cmp.add_argument("--min-v", type=float, help="显式流速下限 m/s（优先于 --mode 分档）")
+    p_cmp.add_argument("--max-v", type=float, help="显式流速上限 m/s（优先于 --mode 分档）")
+    p_cmp.add_argument("--output", help="输出 JSON 文件路径")
+
     args = parser.parse_args()
 
     if args.command == "execute":
@@ -531,6 +612,8 @@ def main() -> None:
         cmd_trace(args)
     elif args.command == "impacted":
         cmd_impacted(args)
+    elif args.command == "pipe_compare":
+        cmd_pipe_compare(args)
     else:
         parser.print_help()
         sys.exit(1)

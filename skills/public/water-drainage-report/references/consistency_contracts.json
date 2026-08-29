@@ -123,6 +123,32 @@
         {"code": "GB 50648-2011", "clause": "§4.1.1", "min": 5.0, "severity": "warn", "note": "宜≥5.0"},
         {"code": "GB/T 50050-2017", "clause": "§3.1.x", "min": 3.0, "severity": "fail", "note": "不应低于3.0"}
       ]
-    }
+    },
+{
+    "id": "bell-clearance-code",
+    "type": "code_constraint",
+    "expression": "bell_clearance_bell_clearance",
+    "expected_min": 0.6,
+    "expected_max": 0.8,
+    "severity": "warn",
+    "description": "吸水喇叭口距池底距离宜为喇叭口直径的0.6~0.8倍（垂直布置，GB/T 50746 §5.4.3）"
+},
+{
+    "id": "bell-submerge-code",
+    "type": "code_constraint",
+    "expression": "bell_submerge_bell_submerge",
+    "expected_min": 1.0,
+    "severity": "warn",
+    "description": "吸水喇叭口淹没深度应大于喇叭口直径的1.0~1.25倍（垂直布置，GB/T 50746 §5.4.3）"
+},
+{
+    "id": "bell-rear-wall-code",
+    "type": "code_constraint",
+    "expression": "bell_rear_wall_bell_rear_wall",
+    "expected_min": 0.8,
+    "expected_max": 1.0,
+    "severity": "warn",
+    "description": "吸水喇叭口中心线与后墙距离应取喇叭口直径的0.8~1.0倍（GB/T 50746 §5.4.3）"
+}
   ]
 }
