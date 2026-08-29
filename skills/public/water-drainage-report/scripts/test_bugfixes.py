@@ -2,8 +2,8 @@
 """bug-2198/2199 修复回归检查（与 test_snapshot.py 同风格，subprocess 实跑 CLI）。
 
 覆盖：
-1. bug-2199 — build_manifest 产出 ch11_compliance 且 formula_ids=全量公式；
-   impacted_chapters 在任一公式受影响时必含 ch11。
+1. bug-2199 — build_manifest 产出 ch10_compliance 且 formula_ids=全量公式；
+   impacted_chapters 在任一公式受影响时必含 ch10（2026-08-29 体例对齐：ch11→ch10）。
 2. bug-2198 — snapshot save 拒绝非正典文件名（旁路文件守卫）。
 3. bug-2199 — update --params-output 把改参后的用户参数写回（check 数据源不陈旧）。
 """
@@ -23,20 +23,20 @@ sys.path.insert(0, str(SP))
 import chapter_planner  # noqa: E402
 
 
-def test_ch11_compliance_in_manifest_and_impacted() -> None:
+def test_ch10_compliance_in_manifest_and_impacted() -> None:
     formulas = [
         {"id": "Qe", "section": "6.1.1"},
         {"id": "Qb", "section": "6.2"},
         {"id": "filter_count", "section": "9.1"},
     ]
     m = chapter_planner.build_manifest(formulas)
-    ch11 = [c for c in m["chapters"] if c["id"] == "ch11_compliance"]
-    assert ch11, "manifest 缺 ch11_compliance 章"
-    assert set(ch11[0]["formula_ids"]) == {"Qe", "Qb", "filter_count"}, ch11[0]["formula_ids"]
+    ch10 = [c for c in m["chapters"] if c["id"] == "ch10_compliance"]
+    assert ch10, "manifest 缺 ch10_compliance 章"
+    assert set(ch10[0]["formula_ids"]) == {"Qe", "Qb", "filter_count"}, ch10[0]["formula_ids"]
 
     hit = chapter_planner.impacted_chapters(["Qb"], m)
-    assert "ch11_compliance" in hit, f"改 Qb 未标记合规附录: {hit}"
-    assert "ch5_calc" in hit, f"改 Qb 未标记计算章: {hit}"
+    assert "ch10_compliance" in hit, f"改 Qb 未标记合规附录: {hit}"
+    assert "ch6_calc" in hit, f"改 Qb 未标记计算章: {hit}"
     assert chapter_planner.impacted_chapters([], m) == [], "空受影响集不应命中任何章"
 
 
@@ -310,7 +310,6 @@ def test_formulas_v2_route_and_execute() -> None:
 def test_snapshot_gate_calc_blocks() -> None:
     """R8/R9 快照门禁：save --report 校验注入契约——占位符残留 / 无签名手写 <details> /
     签名块数与 <details> 总数不符（混合手写）→ SNAPSHOT_ERROR；已注入（签名数==块数）→ SNAPSHOT_READY。"""
-    snap_out = {"task": "t", "report": None}  # placeholder, real args below
     with tempfile.TemporaryDirectory() as d:
         d = Path(d)
         traces = {"traces": [{"id": "Qe", "name": "蒸发水量", "expression": "Q * KZF", "substituted": "1 * 2",
@@ -390,12 +389,12 @@ def test_impacted_must_run_before_update() -> None:
             assert r.returncode == 0, r.stderr
             return json.loads(r.stdout)
 
-        # 对旧状态（N=4）dry-run 改 N=5 → 非空且 ch11/ch5 必在（SKILL 步骤2 的正确顺序）
+        # 对旧状态（N=4）dry-run 改 N=5 → 非空且 ch10/ch6 必在（SKILL 步骤2 的正确顺序）
         state_path.write_text(json.dumps({"all_params": dict(base_params)}), encoding="utf-8")
         before = run_impacted()
         assert "Qb" in before["affected_formulas"], before
-        assert "ch5_calc" in before["affected_chapters"], before
-        assert "ch11_compliance" in before["affected_chapters"], before
+        assert "ch6_calc" in before["affected_chapters"], before
+        assert "ch10_compliance" in before["affected_chapters"], before
 
         # update 落盘后，同样的 impacted 差分基准已被覆盖 → 空集（文档化既有语义）
         subprocess.run(
@@ -502,7 +501,7 @@ def test_formulas_v3_sample_anchors() -> None:
 
 
 if __name__ == "__main__":
-    test_ch11_compliance_in_manifest_and_impacted()
+    test_ch10_compliance_in_manifest_and_impacted()
     test_snapshot_rejects_side_filename()
     test_update_params_output()
     test_impacted_must_run_before_update()
@@ -514,4 +513,4 @@ if __name__ == "__main__":
     test_formulas_v3_sample_anchors()
     test_render_calc_blocks_inject()
     test_snapshot_gate_calc_blocks()
-    print("PASS: bug-2198 / bug-2199 / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 守卫 / 反馈3 折叠渲染 / R8+R9 快照门禁 / v2 37式 / v3 样例锚点")
+    print("PASS: bug-2198 / bug-2199(ch10) / update --params-output / impacted 先于 update / SNAPSHOT_WARN / SKILL 守卫 / 反馈3 折叠渲染 / R8+R9 快照门禁 / v2 37式 / v3 样例锚点")

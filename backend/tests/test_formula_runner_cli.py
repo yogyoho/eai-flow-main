@@ -88,13 +88,15 @@ class TestImpactedEndToEnd:
         # 值差分生效：Q 变 → Qe 等下游公式输出真变化 → 收进 affected_formulas
         assert result["param"] == "Q"
         assert "Qe" in result["affected_formulas"]
-        # 紧致性：不是全部 12 公式（证明用了值差分,而非 update_param 全量标记）
-        assert 0 < len(result["affected_formulas"]) < 12
+        # 紧致性：受影响公式 < 全量公式数（v2=37/v3=46，动态取 formulas.json 实际数；
+        # 证明用了值差分,而非 update_param 全量标记）
+        total = len(json.loads(_FORMULAS.read_text(encoding="utf-8"))["formulas"])
+        assert 0 < len(result["affected_formulas"]) < total
 
-        # 章节级定点：ch5_calc（Qe/Qm 计算章）必在
-        assert "ch5_calc" in result["affected_chapters"]
-        # ch9_equiplist（设备一览表,显式展示 filter_count）必在——评审 I1 回归锚
-        assert "ch9_equiplist" in result["affected_chapters"]
+        # 章节级定点：ch6_calc（Qe/Qm 计算章,样例体例 2026-08-29 改号）必在
+        assert "ch6_calc" in result["affected_chapters"]
+        # ch9_filter（旁滤设备节,section 9 前缀收 filter_count）必在——原 ch9_equiplist 锚改写
+        assert "ch9_filter" in result["affected_chapters"]
         # 紧致性：不是全部 10 章（反馈6 的核心承诺：只重生成受影响章节）
         assert len(result["affected_chapters"]) < 10
 

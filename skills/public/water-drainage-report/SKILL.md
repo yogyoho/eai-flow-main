@@ -82,7 +82,7 @@ description: |
 
 **允许联网搜索的内容**（仅三类辅助信息）：
 - ✅ **地理信息**：项目所在城市/区域的经纬度、周边环境（如"吉林市 龙潭区 地理位置"）
-- ✅ **气象信息**：项目所在地的气象参数（如"吉林市 年平均气温 降水量 风速 气压"）——用于报告第2章
+- ✅ **气象信息**：项目所在地的气象参数（如"吉林市 年平均气温 降水量 风速 气压"）——用于报告第4节（设计参数）
 - ✅ **标准规范**：GB/HG 标准的具体条款、版本、适用范围（如"GB/T 50746-2012 浓缩倍数 条款"）
 
 判断标准：**能查到的客观地理/气候/法规信息 → 可搜；属于某个具体工程项目的内部数据 → 绝不搜，问用户。**
@@ -152,9 +152,9 @@ python /mnt/skills/public/water-drainage-report/scripts/snapshot.py show \
 
 **「来源」列仅限四种合法值：** `本线程用户提供`、`说明书提取`、`参考值库（【待核实】）`、`厂家返资资料`。系统记忆注入的跨线程参数不属于任何一种——**不得填入本表、不得标"用户提供"、不得据此发起参数确认或澄清表单**（多轮承接铁律 #6，bug-2191）。
 
-**分装置水量统计（样例表3.1-1 定式）：** Q 的来源要落成「循环水水量统计表」——7 列（序号/用水单位/生产连续用水量 正常、最大 m³/h/进界区压力 MPa/出界区压力 MPa/温度 ℃），逐行列各装置水量、合计行=Q；统计表后紧跟两条定水量依据句（HG/T 20690-2000 3.1.2、GB/T 50746-2012 3.2.2）。用户给不出分项明细时允许只报 Q 总量，但第2章标注 `[待补充: 用水单位明细]`。
+**分装置水量统计（样例 3.1 工艺装置循环水量表 定式）：** Q 的来源要落成「循环水水量统计表」——7 列（序号/用水单位/生产连续用水量 正常、最大 m³/h/进界区压力 MPa/出界区压力 MPa/温度 ℃），逐行列各装置水量、合计行=Q；统计表后紧跟两条定水量依据句（HG/T 20690-2000 3.1.2、GB/T 50746-2012 3.2.2）。用户给不出分项明细时允许只报 Q 总量，但第3节（设计规模）标注 `[待补充: 用水单位明细]`。
 
-**气象参数（样例第3章五行，KZF 内插的输入）：** 干球温度 θ、湿球温度 τ、相对湿度 φ、大气压、风速必须入参数表——缺气象参数则 KZF 取值无法按 GB/T 50746-2012 表3.3.3 内插溯源。缺失按核心工艺参数同策略 `ask_clarification`。
+**气象参数（样例第4节"设计参数"五行，KZF 内插的输入）：** 干球温度 θ、湿球温度 τ、相对湿度 φ、大气压、风速必须入参数表——缺气象参数则 KZF 取值无法按 GB/T 50746-2012 表3.3.3 内插溯源。缺失按核心工艺参数同策略 `ask_clarification`。
 
 **双工况对比（样例定式，可选）：** 默认按 N=5（主工况）计算；用户要求校核时加算 N=3 工况——用独立状态文件，禁止污染主工况 state：
 ```bash
@@ -164,7 +164,7 @@ python $SCRIPTS/formula_runner.py execute --formulas $FORMULAS \
 ```
 报告配管节并排双工况（样例：补充水 366 m³/h→1.39 m/s 与 439 m³/h→1.66 m/s（N=3）），管径按包络选取；校核值不回写主工况结论。
 
-**设备一览表规格列契约（第9章）：** 规格列必须回填可计算结果（DN/单罐水量/台数/组数等，取自 traces.json 公式输出，样例"DN1500吸水喇叭口 D=1200/D1=1620/H=1150"形态），**禁止写"待定"**；设备选型来源合法值含 `厂家返资资料`（样例：单罐 40m³/h、每5罐1组共5组即出自厂家返资）。
+**设备选型规格叙述契约（并入计算节，样例不单设设备表章）：** 各计算节内的设备选型叙述必须回填可计算结果（DN/单罐水量/台数/组数等，取自 traces.json 公式输出，样例"DN1500吸水喇叭口 D=1200/D1=1620/H=1150"形态），**禁止写"待定"**；设备选型来源合法值含 `厂家返资资料`（样例：单罐 40m³/h、每5罐1组共5组即出自厂家返资）。落点：滤网/起吊设备规格写 7.2.4（滤网起吊设备），泵/喇叭口/起重机规格写 8.2.1（循环水泵），旁滤罐组写第9节。
 
 **⛔ 参数缺失策略：** 参数必须在用户提供或设计说明书中明确标出，两者都没有 → 标注 `[待确认: 参数名]` → 暂不进入步骤2，等用户补充。
 
@@ -256,12 +256,12 @@ python /mnt/skills/public/water-drainage-report/scripts/formula_runner.py update
 
 **改参定点重生成（反馈6，替代整篇重跑）：**
 ```bash
-# 0. 刷新章节映射（bug-2199：manifest 必须含 ch11_compliance 合规附录章——它由 check 结果渲染，永远随改参受影响）
+# 0. 刷新章节映射（bug-2199：manifest 必须含 ch10_compliance 合规附录章——它由 check 结果渲染，永远随改参受影响）
 python $SCRIPTS/chapter_planner.py manifest --formulas $FORMULAS --output $WORK/chapter_manifest.json
 # 1. 查受影响章节（⛔ 必须先于 #2 的 update：impacted 对磁盘上的旧状态 dry-run 改参做
 #    值差分——若 update 已把新值落盘，差分为空 → affected_formulas/chapters 全空，
 #    受影响章节反查失效（2026-08-20 线程 9509c508 实证）。
-#    ch11_compliance 必在结果中——附录整表依赖全量公式）
+#    ch10_compliance 必在结果中——附录整表依赖全量公式）
 python $SCRIPTS/formula_runner.py impacted --formulas $FORMULAS --state $WORK/formula_state.json \
   --param <参数名> --value <新值> --manifest $WORK/chapter_manifest.json   # IMPACTED_READY
 # 2. 增量重算落盘（--params-output 同步刷新 params.json，供第 3 步 check 用）
@@ -274,7 +274,7 @@ python $SCRIPTS/formula_runner.py check \
   --formulas $FORMULAS \
   --params "$(cat $WORK/params.json)" \
   --output $WORK/consistency_check.json   # CHECK_READY
-# 4. 仅重生成受影响章节（含 ch11 合规附录+调整建议区，数值取新 consistency_check.json；table 重渲染 / narrative 子 agent 重生成），
+# 4. 仅重生成受影响章节（含 ch10 合规附录+调整建议区，数值取新 consistency_check.json；table 重渲染 / narrative 子 agent 重生成），
 #    其余章节原样保留 → 内存内整体覆盖 → 单次 write_file（步骤5）
 # 5. 记录本轮 value_diffs（{参数:{old,new}}）+ affected_formulas/chapters（取自上面 impacted 输出），
 #    供步骤5 末尾的 snapshot.py save --diff/--affected 固化（不在本步 save；每轮收尾只在步骤5 save 一次）
@@ -297,32 +297,39 @@ knowledge-factory_kf_resolve_template(
 )
 ```
 
+**⛔ 报告体例契约（严格对齐吉林院样例，2026-08-29 定案，优先于一切模板）：**
+- **标题体例 = 数字+空格+标题**：一级节 `## 1 设计依据`，子节 `### 6.1.1 蒸发水量`。**禁止"第X章/第一章"式标题**。
+- **formulas.json 的 section 编号即报告编号**：公式 section `6.1.1` → 报告 `6.1.1` 节，`chapter_manifest.json` 的章节号与公式 section 天然一致，不要重排错位。
+- **不设设备一览表、图纸清单章**：设备选型规格叙述并入 7.2.4（滤网起吊设备）/8.2.1（循环水泵）与第9节正文（样例即此体例）。
+- **知识工厂模板不决定结构与编号**：拿到 `found=true` 时，模板**只提供**各节 `generation_hint` / `compliance_rules` / `content_contract` / `example_snippet` 写作约束；章节结构与标题编号一律按下方体例结构执行（避免模板结构覆盖样例体例）。
+
 **拿到 `found=true` 时：**
-- 使用返回的 `sections` / `root_sections` 作为报告章节结构
-- 每个章节独立拥有 `generation_hint`、`compliance_rules`、`content_contract`、`example_snippet`
+- 每个章节独立拥有 `generation_hint`、`compliance_rules`、`content_contract`、`example_snippet`——按体例契约映射到对应编号节
 - 输出提示：`✅ 已从知识工厂获取模板：{name} v{version}（完整度: {completeness_score}/100）`
 
 **拿到 `found=false` 时：**
 - 输出提示：`⚠️ 知识工厂返回 found=false，使用内置参考结构`
-- 使用以下 fallback 章节结构（10章）：
-  1. 设计依据 ← **只写**设计委托书/工程统一规定（样例第1章仅此2项，标准不得混入）
-  2. 设计范围与设计规模
-  3. 设计参数
-  4. 设计中采用的主要标准及规范 ← 两列表逐项列规范号+名称（样例12项：GB50013/GB50014/GB50050/GB50648/GB50016/GB50160/GB50265/GB/T50102/GB/T50746/HG/T20690/HG/T20524/SH3099），标准依据只此一章
-  5. 循环水装置工艺计算 ← 公式计算结果注入此章
-  6. 塔底水池、吸水池、滤网及滤网井
-  7. 吸水池及循环水泵房工艺计算
-  8. 旁滤设备
-  9. 设备一览表
-  10. 图纸清单
-- 使用全局 GB 标准列表替代逐章 compliance_rules
+- 结构仍按下方体例结构执行
+- 使用全局 GB 标准列表替代逐节 compliance_rules
+
+**fallback 章节结构（样例 9 节 + 合规附录，标题=数字+空格+标题）：**
+1. 设计依据 ← **只写**设计委托书/工程统一规定（样例第1节仅此2项，标准不得混入）
+2. 设计范围
+3. 设计规模 ← 工艺装置循环水量统计表（7列，合计行=Q）+ 两条定水量依据句（样例 3.1 定式）
+4. 设计参数 ← 气象5参数 + 核心工艺参数表（样例第4节定式）
+5. 设计中采用的主要标准及规范 ← 两列表逐项列规范号+名称（样例12项：GB50013/GB50014/GB50050/GB50648/GB50016/GB50160/GB50265/GB/T50102/GB/T50746/HG/T20690/HG/T20524/SH3099），标准依据只此一节
+6. 循环水装置工艺计算 ← 公式计算结果注入此节（6.1.1 蒸发水量 ~ 6.1.4 补充水量、6.1.5 配管设计）
+7. 塔底水池、吸水池、滤网及滤网井（7.1.1 塔底水池 / 7.1.2 管线 / 7.2 滤网与滤网井 / 7.2.4 滤网起吊设备）
+8. 吸水池及循环水泵房工艺计算（8.1.1 规范要求 / 8.1.2 本项目设计 / 8.2.1 循环水泵 / 8.2 泵房高度）
+9. 旁滤设备
+- 合规校验结果与调整建议（附录，**不编号**）
 
 ### 步骤4：生成报告（章节并行，冻结快照驱动）
 
 **输入:** 步骤1 参数 + 步骤2 公式结果 + 步骤2 的 `traces.json`（冻结快照）+ 步骤3 模板
 **架构（计算与生成分离，Approach A）:**
 - **table 章**（参数表/工艺计算表/设备表）= 纯公式输出 + `traces.json` 机械渲染，**不走 LLM**：最快、最准、天然带步骤轨迹。计算过程块必须脚本注入不得手写（历史：R4/R5/R6 三轮实测 agent 手写从不产 `<details>` 折叠；R6 即便生成了片段也不逐字粘贴——6K 字符复制对 LLM 不可靠；**R8 实测 agent 把 12 块全文手写进 write_file 并跳过 inject**，故 2026-08-29 起由快照门禁强制）：
-  1. `write_file` 报告时，计算章**每个公式的小节**（标题编号跟随你自己的报告 TOC，如 `#### 5.1.1 蒸发水量计算`）标题下写**该公式的占位符** `<!-- CALC:公式id -->`（id 取自 `traces.json`，每个公式**恰好一个**）——write_file 的 content 里**严禁出现** `<details>` 或 `$$`（手写块与注入块叠加会重复，且快照门禁必打回）。注入块**不带标题**——小节标题由你的 TOC 承担，禁止写 `### [6.1.1]` 之类公式登记表编号标题（与报告 TOC 双编号，2026-08-29 用户定案去除）。（旧式单一占位符 `<!-- CALC_BLOCKS -->` 仍兼容——全部块顺序堆到一处，不推荐）；
+  1. `write_file` 报告时，计算节**每个公式的小节**（标题编号 = 公式 section 编号，体例对齐后天然一致，如 `#### 6.1.1 蒸发水量`）标题下写**该公式的占位符** `<!-- CALC:公式id -->`（id 取自 `traces.json`，每个公式**恰好一个**）——write_file 的 content 里**严禁出现** `<details>` 或 `$$`（手写块与注入块叠加会重复，且快照门禁必打回）。注入块**不带标题**——小节标题由你的 TOC 承担，禁止写 `### [6.1.1]` 之类公式登记表编号标题（与报告 TOC 双编号，2026-08-29 用户定案去除）。（旧式单一占位符 `<!-- CALC_BLOCKS -->` 仍兼容——全部块顺序堆到一处，不推荐）；
   2. 落盘后立刻注入：`python $SCRIPTS/render_calc_blocks.py inject --traces $WORK/traces.json --report $OUT/报告.md   # CALC_INJECT_READY`（对已注入报告重跑返回 `CALC_INJECT_SKIP`，幂等不重复注入；未知 id / 公式缺占位符 / 重复占位符 → `CALC_INJECT_ERROR` 打回，修正报告后重注）
   3. 注入后自检：`grep -c '<details>' 报告.md` 必须**恰好等于公式数**（traces.json 公式总数，v3 为 46）——大于也是违约（多出的必是手写块）。
   ⛔ 禁止手写 KaTeX 公式块/计算过程折叠块替代脚本注入——**全文任何位置**（含 narrative 章的水池/泵房/旁滤小节）都不许写 `<details>` 或 `$$` 公式块；narrative 章引用数值用纯文本并标注"计算见第X章"。**快照门禁（R8+R9）**：`snapshot.py save --report ...` 校验报告——① 含未注入占位符；② 含无签名手写 `<details>`；③ `<details>` 总数 ≠ 注入签名块数（R9 实测：注入 12 块后又在第6-8章手写 8 块、其中 V_ratio 单位抄错成"0.202 h"）→ 一律 `SNAPSHOT_ERROR` 退出 1。打回后必须删除全部手写折叠块（保留唯一占位符注入产物）再 save。
@@ -330,20 +337,20 @@ knowledge-factory_kf_resolve_template(
 
 **核心不变量：** 所有数值在步骤2 固化进 `traces.json`；所有生成单元只读该快照——并行不引入跨章数值漂移。
 
-**提速预算：** 10 章典型报告 = ~3 table 章瞬时 + ~7 narrative 章分批并行（子 agent 池 3 并发）→ 目标 ≤3min。
+**提速预算：** 9 节（+合规附录）典型报告 = ~3 table 节瞬时 + ~6 narrative 节分批并行（子 agent 池 3 并发）→ 目标 ≤3min。
 
 **⛔ 禁止生成目录：** 报告中**不要包含目录页（TOC）**。原因：Markdown 里手写的目录在导出 Word 后既不能自动更新页码、也不能联动跳转，反而是死文本占篇幅。Word 的目录应在文档空间排版阶段由 Word 的"引用→目录"功能自动生成（基于标题样式）。本技能只生成正文（封面 + 各章正文 + 附录），目录交给 Word。
 
-**每章生成时注入公式结果：**
+**每节生成时注入公式结果：**
 
 | 章节 | 注入的公式结果 |
 |------|-------------|
-| 第3章 设计参数 | 全部用户输入参数（Q, Δt, N, 气象条件，分装置水量统计表） |
-| 第5章 工艺计算 | Qe/Qw/Qb/Qm 水量平衡链 + 补充水/排污水管选径与流速校核（pipe_d_makeup/pipe_v_makeup/pipe_d_blowdown/pipe_v_blowdown，含水力坡降叙述） |
-| 第6章 水池·滤网 | V_pool/V_system/V_ratio_check（含规范校核）；连通管 Q_connect/pipe_v_connect；放空管 pipe_v_drain；滤网族 screen_area/screen_velocity_actual/screen_drag/screen_lift_weight/screen_lift_height |
-| 第7章 泵房 | pump_foundation_L/pump_foundation_B/pump_min_spacing；吸出水管 pipe_v_suction/pipe_v_outlet + 坡降 pipe_i_suction/pipe_i_outlet（配 pipe_compare 比选表）；吸水池容积 V_suction_pool；喇叭口 bell_mouth_velocity/bell_mouth_ratio + 安装几何 bell_clearance/bell_submerge/bell_rear_wall/bell_side_wall（§5.4.3 ②~⑥ 逐项在规范要求小节引出）；起重机选型（查表契约）；泵房高度 lift_rope_len/pumphouse_h1/pumphouse_height |
-| 第8章 旁滤 | Qsf/filter_count/pipe_v_sidefilter + 坡降 pipe_i_sidefilter（旁滤水管比选表）+ 悬浮物≤20→≤5mg/L/浅层砂叙述 + 反洗链 backwash_flow/backwash_single_volume/backwash_volume/backwash_daily_volume/backwash_pool_volume/backwash_pump_flow |
-| 第9章 设备一览表 | filter_count 等规格回填（禁止"待定"） |
+| 第3节 设计规模 | 分装置水量统计表（7列，合计行=Q）+ 定水量依据句 |
+| 第4节 设计参数 | 全部用户输入参数（Q, Δt, N, 气象5参数） |
+| 第6节 工艺计算 | Qe/Qw/Qb/Qm 水量平衡链 + 补充水/排污水管选径与流速校核（pipe_d_makeup/pipe_v_makeup/pipe_d_blowdown/pipe_v_blowdown，含水力坡降叙述） |
+| 第7节 水池·滤网 | V_pool/V_system/V_ratio_check（含规范校核）；连通管 Q_connect/pipe_v_connect；放空管 pipe_v_drain；滤网族 screen_area/screen_velocity_actual/screen_drag/screen_lift_weight/screen_lift_height + 滤网/起吊设备规格叙述（禁"待定"） |
+| 第8节 泵房 | pump_foundation_L/pump_foundation_B/pump_min_spacing；吸出水管 pipe_v_suction/pipe_v_outlet + 坡降 pipe_i_suction/pipe_i_outlet（配 pipe_compare 比选表）；吸水池容积 V_suction_pool；喇叭口 bell_mouth_velocity/bell_mouth_ratio + 安装几何 bell_clearance/bell_submerge/bell_rear_wall/bell_side_wall（§5.4.3 ②~⑥ 逐项在规范要求小节引出）；起重机选型（查表契约）+ 泵/喇叭口规格叙述（禁"待定"）；泵房高度 lift_rope_len/pumphouse_h1/pumphouse_height |
+| 第9节 旁滤 | Qsf/filter_count/pipe_v_sidefilter + 坡降 pipe_i_sidefilter（旁滤水管比选表）+ 悬浮物≤20→≤5mg/L/浅层砂叙述 + 反洗链 backwash_flow/backwash_single_volume/backwash_volume/backwash_daily_volume/backwash_pool_volume/backwash_pump_flow |
 
 **多泵组口径（样例 8.2 定式）：** 样例含泵A（7000×3台，基础5700x2150、吸水DN1200、喇叭口D1=1620）与泵B（3000×2台，基础5000x1850、吸水DN900、喇叭口D1=1220）两型。公式库以**主泵组**（水量最大的泵A）为单值式载体；第二泵组的比选表/流速/喇叭口用 `pipe_compare` 与 02S403 选型值成表叙述（"b）循环水泵B…基础尺寸：5000x1850"形态），不重复建式。
 
@@ -369,7 +376,7 @@ knowledge-factory_kf_resolve_template(
 
 **公式计算步骤展示格式（LaTeX 数学渲染）：**
 
-公式章节（第5/6/7/8章）中，每个公式使用 LaTeX 数学格式呈现。前端已集成 KaTeX（`remark-math` + `rehype-katex`）：
+公式章节（第6/7/8/9节）中，每个公式使用 LaTeX 数学格式呈现。前端已集成 KaTeX（`remark-math` + `rehype-katex`）：
 
 - **行内公式**：使用 `$...$` 包裹，如 `$Q = 20000\ \text{m}^3/\text{h}$`
 - **块级公式（独占一行）**：使用 `$$...$$` 包裹，如：
@@ -538,7 +545,7 @@ python $SCRIPTS/formula_runner.py check \
 - `references/consistency_contracts.json` — 一致性 + 多规范围框合约（含 code_constraint_multi）
 - `scripts/formula_runner.py` — 公式 CLI（execute / update / check / trace / impacted）
 - `scripts/chapter_planner.py` — 章节规划（manifest / impacted 反查）
-- 知识工厂模板（优先） > 内置 fallback 10 章结构
+- 知识工厂模板（仅提供写作约束） > 内置 fallback 9 节 + 合规附录结构（样例体例）
 
 ---
 
