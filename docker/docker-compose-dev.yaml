@@ -158,6 +158,12 @@ services:
       - CI=true
       - DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://gateway:8001
       - DEER_FLOW_DEV_ALLOWED_ORIGINS=${DEER_FLOW_DEV_ALLOWED_ORIGINS:-127.0.0.1,::1}
+      # EAI-CUSTOM (bug-1246, 2026-08-29): container Turbopack dead-loops resolving the
+      # CSS @import "@fontsource/share-tech-mono" (enhanced-resolve context '/app', colon-joined
+      # modules string) while the same tree compiles fine under webpack (host dev server proof).
+      # dev.mjs already defaults Windows to webpack for stability (#5036); pin the container
+      # to webpack too. Upgrade note: retest DEER_FLOW_DEV_BUNDLER=turbo after a Next upgrade.
+      - DEER_FLOW_DEV_BUNDLER=webpack
     env_file:
       - path: ../frontend/.env
         required: false

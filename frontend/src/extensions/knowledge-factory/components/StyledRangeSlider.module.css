@@ -1,16 +1,13 @@
 /* 知识工厂 / 上传弹窗 — 范围滑块 */
-:root {
+/* EAI-CUSTOM (bug-1278, 2026-08-29): 变量原写在 :root/.dark 上——CSS Modules pure 模式下
+   webpack 报 "Selector is not pure"（Turbopack 容忍过）。变量全部内聚到 .slider 本身
+   （本文件是唯一消费者），dark 用 :global(.dark) .slider 复合选择器（含局部类，pure 合法）。
+   升级注意：若迁回 Turbopack 此写法同样合法，无需回退。 */
+.slider {
+  --slider-pct: 50%;
   --slider-track: #e4e4e7;
   --slider-fill: var(--primary);
   --slider-thumb-bg: #fff;
-}
-
-.dark {
-  --slider-track: #404040;
-}
-
-.slider {
-  --slider-pct: 50%;
   width: 100%;
   height: 1.25rem;
   margin: 0;
@@ -18,6 +15,10 @@
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
+}
+
+:global(.dark) .slider {
+  --slider-track: #404040;
 }
 
 .slider:focus {
