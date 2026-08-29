@@ -181,7 +181,9 @@ That prompt is intended for coding agents. It tells the agent to clone the repo 
 
    To route OpenAI models through `/v1/responses`, keep using `langchain_openai:ChatOpenAI` and set `use_responses_api: true` with `output_version: responses/v1`.
 
-   For vLLM 0.19.0, use `deerflow.models.vllm_provider:VllmChatModel`. For Qwen-style reasoning models, DeerFlow toggles reasoning with `extra_body.chat_template_kwargs.enable_thinking` and preserves vLLM's non-standard `reasoning` field across multi-turn tool-call conversations. Legacy `thinking` configs are normalized automatically for backward compatibility. Reasoning models may also require the server to be started with `--reasoning-parser ...`. If your local vLLM deployment accepts any non-empty API key, you can still set `VLLM_API_KEY` to a placeholder value.
+   The setup wizard includes a Z.AI GLM-5.3-Flash profile. Because that model requires thinking and only accepts its own restricted effort levels, the compatibility profile keeps thinking enabled for every foreground and background call and temporarily suppresses DeerFlow's generic effort selector. See `config.example.yaml` for the equivalent manual configuration.
+
+   For vLLM 0.19.0, use `deerflow.models.vllm_provider:VllmChatModel`. For Qwen-style reasoning models, DeerFlow toggles reasoning with `extra_body.chat_template_kwargs.enable_thinking` and preserves vLLM's non-standard `reasoning` field across multi-turn tool-call conversations. Legacy `thinking` configs are normalized automatically for backward compatibility. If the endpoint reports a cumulative usage snapshot on every streaming chunk, set `cumulative_stream_usage: true` so DeerFlow converts those snapshots into per-chunk deltas; the option is disabled by default and leaves usage unchanged when a stable completion id is unavailable. Reasoning models may also require the server to be started with `--reasoning-parser ...`. If your local vLLM deployment accepts any non-empty API key, you can still set `VLLM_API_KEY` to a placeholder value.
 
    CLI-backed provider examples:
 
@@ -325,6 +327,11 @@ DeerFlow runs the agent runtime inside the Gateway API. Development mode enables
 |---|---|---|---|
 | **Stop** | `./scripts/serve.sh --stop`<br/>`make stop` | `./scripts/docker.sh stop`<br/>`make docker-stop` | `./scripts/deploy.sh down`<br/>`make down` |
 | **Restart** | `./scripts/serve.sh --restart [flags]` | `./scripts/docker.sh restart` | — |
+
+`make start` and `make start-daemon` rebuild the frontend with `next build` on
+every run. To reuse the last build instead, pass `SKIP_FRONTEND_BUILD=1` (or add
+`--skip-frontend-build` when calling `./scripts/serve.sh --prod` directly). This
+is opt-in: it fails fast when `frontend/.next` has no completed build.
 
 Gateway owns `/api/langgraph/*` and translates those public LangGraph-compatible paths to its native `/api/*` routers behind nginx.
 
@@ -650,7 +657,7 @@ Users can explicitly activate an enabled skill for a single turn by starting the
 
 An enabled skill's `allowed-tools` policy applies only after that skill is explicitly slash-activated or captured in the thread's active skill context after a `read_file` load. Merely enabling, advertising, or listing a skill in a custom agent's `skills` allowlist does not reduce the lead agent's normal toolset. During a slash-activated run, that explicit skill's policy is authoritative: reading another `SKILL.md` may provide instructions but cannot widen the slash skill's tools. Without slash activation, policies from skills actually loaded into active context retain their union semantics. Once active, the policy filters both model-visible tool schemas and tool execution. Framework discovery tools (`tool_search` and `describe_skill`) remain available so an allowed deferred tool or installed skill can still be discovered, but discovery and promotion never grant permission to execute a business tool omitted from `allowed-tools`. `task` is not framework-exempt; a restrictive skill must list it explicitly to delegate to a subagent. Per-step policy decisions are internal runtime context and are removed from observable or persisted context copies. Registry failures and an active set with no remaining valid skill fail closed to framework-safe tools; individual stale paths are ignored only when another valid active skill remains. This is best-effort behavioral scoping, not a hard security boundary: loading skill instructions through another tool is not captured, and active-skill entries can be evicted from bounded context.
 
-When you install `.skill` archives through the Gateway, DeerFlow accepts standard optional frontmatter metadata such as `version`, `author`, and `compatibility` instead of rejecting otherwise valid external skills.
+When you install `.skill` archives through the Gateway, DeerFlow accepts standard space-separated `allowed-tools`, optional frontmatter metadata, and the Claude-compatible `argument-hint` field instead of rejecting otherwise valid external skills. YAML lists remain supported for `allowed-tools` and preserve exact runtime names. Exact portable spellings such as `WebFetch`, `WebSearch`, `Glob`, `Grep`, and `Read` map to DeerFlow's `web_fetch`, `web_search`, `glob`, `grep`, and `read_file` tools; lowercase or otherwise unknown scalar names remain unchanged so custom and MCP tools keep their exact runtime spelling. Parenthesized entries such as `Bash(tvly *)` are tokenized as one literal entry, including spaces, quoted text, and escaped parentheses, but remain inactive because DeerFlow does not inspect tool arguments; declare `bash` only when the skill may use the full Bash tool.
 
 If a trusted operator manages the configured skills directory through an external mount such as MinIO, NFS, or CSI, an administrator can call `POST /api/skills/reload` after changing files. This invalidates skill prompt caches for the current Gateway process and waits up to the bounded refresh timeout so subsequent runs rescan the latest files; running tasks are unchanged. A loader-level filesystem failure returns a generic server error and preserves the last successfully loaded process cache rather than publishing an empty catalog. Uvicorn workers and Kubernetes Pods must each be targeted separately. Direct mount writes bypass the validation, SkillScan, and history applied by DeerFlow's install/edit APIs, so only operator-controlled systems should have write access.
 
@@ -664,6 +671,126 @@ uv run python -m deerflow.skills.review.cli ../skills/public/data-analysis --for
 ```
 
 Tools follow the same philosophy. DeerFlow comes with a core toolset — web search, web fetch, rendered web capture, file operations, bash execution — and supports custom tools via MCP servers and Python functions. Swap anything. Add anything.
+
+Advanced deployments can enable pluggable authorization with `authorization.enabled` in `config.yaml`. A configured `AuthorizationProvider` filters denied tools before they reach the model or deferred-tool catalog, then the same provider is checked again before every business-tool execution through the existing guardrail middleware. Gateway `threads:*` and `runs:*` route permissions are derived from the same provider, while existing owner checks and admin-only management gates remain in force. Every HTTP route that starts or enables a future Agent run requires `runs:create`: this includes the stateless `POST /api/runs/stream` and `POST /api/runs/wait` endpoints plus scheduled-task create, update, resume, and manual-trigger mutations. Scheduled-task mutations retain their existing `threads:write` requirement, and the stateless routes separately enforce ownership when the optional thread ID is supplied in the request body. A generated `tool_search` may bypass the second tool check only when it fronts the current build's already-filtered deferred catalog. Model access follows the same provider: the Gateway `models` list is filtered per principal, `model:use` is enforced on model detail requests and again when the runtime resolves the agent's model, and a denied default model falls back to the first remaining candidate that also passes `model:use`. The built-in RBAC provider supports per-role `tools`, `routes`, `models`, `skills`, and `sandbox` allow/deny policies and validates that `default_role` names a configured role; authorization is disabled by default. See `config.example.yaml` and the [authorization RFC](docs/plans/2026-07-10-pluggable-authorization-rfc.md).
+
+Advanced deployments can also extend the agent runtime itself by declaring zero-argument `AgentMiddleware` classes under `extensions.middlewares` in `config.yaml` or `extensions_config.json`. DeerFlow loads the same configured class list into the lead-agent and subagent pipelines after their built-in runtime middlewares and loop/token guards, but before the terminal-response/safety/clarification tail, so enterprise forks can add domain guardrails, tool-call governance, or observability hooks without patching the built-in middleware builders. Missing packages, invalid classes, and broken modules fail loudly at agent creation. Treat `config.yaml` and `extensions_config.json` as trusted operator-controlled files: middleware paths are code execution, just like custom tool, model, sandbox, guardrail, MCP server, and MCP interceptor declarations. Gateway skill/MCP toggle endpoints preserve this field but do not expose an API write path for `extensions.middlewares`. Per-context parameterization and separate lead-only/subagent-only middleware lists are not supported yet.
+
+For packaged and configurable runtime integrations, use DeerFlow's extension manager.
+It accepts a Python package requirement, a public HTTPS Git URL, or a local directory, installs the
+package into the backend's dedicated `extensions` dependency group, updates
+`backend/uv.lock`, and adds an enabled entry to the startup-only top-level `plugins:` list
+in `config.yaml`:
+
+```bash
+# PyPI — pin a version for a reproducible deployment
+make extension-install SOURCE="deerflow-extension-acme==1.2.3"
+
+# Public HTTPS Git — pin an immutable commit
+make extension-install \
+  SOURCE="git+https://github.com/acme/deerflow-extension-acme.git@0123456789abcdef0123456789abcdef01234567"
+
+# Local package — an absolute path avoids Make's backend-relative working directory
+make extension-install SOURCE="$PWD/examples/deerflow-extension-example"
+
+make extension-list
+make extension-disable NAME=acme
+make extension-enable NAME=acme
+make extension-remove NAME=acme
+```
+
+Installation is interactive because package installation can execute Python build hooks,
+and the loaded extension later runs with Gateway privileges. For an already-reviewed
+source, automation can acknowledge that boundary explicitly with
+`cd backend && uv run --frozen --no-group extensions deerflow extensions install <source> --yes`.
+The manager requires uv 0.8.0 or newer; the provided Docker images pin uv 0.11.1.
+The other direct
+commands are `deerflow extensions list`, `enable NAME`, `disable NAME`, and `remove NAME`;
+`NAME` may be the extension name, Python distribution, or `module:install` value. Do not
+put credentials in a source URL — a URL carrying embedded userinfo or a credential-looking
+query parameter is rejected before uv runs. Remote Git sources must use public HTTPS; SSH
+Git URLs are rejected because the stock Docker builder does not forward host SSH
+credentials. Installing from a loopback URL is allowed for local tooling but warns, because
+`127.0.0.1` recorded in the lock is a different machine inside the Docker builder.
+
+A managed package declares exactly one standard PEP 621 entry point:
+
+```toml
+[project.entry-points."deerflow.extensions"]
+acme = "acme_deerflow_extension:install"
+```
+
+That callable uses the standalone `deerflow-extension-api` contract and can register five
+contribution kinds: isolated middleware at semantic lead/subagent model or tool positions,
+lead and subagent task-lifecycle hooks, observers for DeerFlow-owned model calls that are
+not wrapped by middleware model-call hooks (goal, memory, title, and summarization),
+Gateway-lifetime services, and eager FastAPI HTTP routers. The contract package has no
+framework dependencies; extensions must declare FastAPI, LangChain, LangGraph, or other
+libraries they import.
+
+DeerFlow allocates a task-scoped extension store only for middleware, lifecycle, or
+system-model observation. Services receive app-scoped runtime dependencies after Gateway
+persistence is ready and stop in reverse order after active runs drain. Extension HTTP
+routers are mounted after every host route; definite shadows and routes entering the
+host's authentication- or CSRF-exempt paths are rejected with attributed diagnostics,
+while unrelated routers continue to load. Because the host's public paths are a reserved
+prefix list that extensions cannot enter, **every contributed endpoint requires an
+authenticated session** — there is currently no way for an extension to expose an
+unauthenticated route, so inbound provider webhooks and public status endpoints are out of
+scope for this release. Within that, an extension distinguishes an ordinary user from an
+administrator through `deerflow_extension_api.auth`: `resolve_principal(request)` returns
+the caller, `require_admin(request)` raises `PermissionError` for anyone else and fails
+closed when identity cannot be determined. Extensions receive a projection — user id, admin
+flag, internal flag, roles — never the host's auth context. Router startup/shutdown hooks,
+custom lifespans, Mounts, and WebSocket routes are not accepted; lifetime resources belong in
+`ExtensionService`, and WebSocket contributions require a future host-owned
+authentication/Origin wrapper. Lifecycle and system-model callbacks use the Gateway's
+canonical notification loop, including subagents on isolated loops.
+Plugin order is deterministic, per-plugin configuration is passed to `install()`, and
+`required: true` makes load failure abort startup; otherwise failures are reported and
+skipped. `enabled: false` skips resolution and import. The manager preserves the extension's
+private `config` when toggling it and writes `name`, `package`, `use`, `enabled`, and
+`required` metadata for managed installs. Installs are recorded `required: false` so a
+later broken extension is reported rather than blocking Gateway startup; pass
+`extensions install <source> --required` when the package's absence should abort startup
+instead. Plugins load once when the Gateway app is
+constructed, so install, enable, disable, remove, and manual `plugins:` edits all require a
+Gateway restart. Because this imports Python code, `plugins:` is intentionally unavailable
+through the API-writable `extensions_config.json`.
+
+Management commands bootstrap the checkout environment without the extension group via
+`uv run --frozen --no-group extensions`. Frozen mode lets `disable` and `remove` start even
+when an installed extension's remote source or managed snapshot has become unavailable,
+while a fresh checkout can still create the non-extension environment from the existing lock. The
+manager itself owns the subsequent locked dependency transaction.
+Mutations for one checkout are serialized through a process lock. The initial manager
+surface is create/remove rather than in-place upgrade: to change an installed source, save
+its private `plugins[].config`, remove it, reinstall the new pin, and restore that config.
+
+Local-directory installs are copied into
+`backend/extensions/sources/<normalized-distribution>/`; this deployable snapshot, rather
+than the original directory, is recorded in the lock. Git metadata, virtual environments,
+bytecode caches, symbolic links, and likely credential files are not accepted as snapshot
+content. Review what you install anyway: filtering accidental files does not sandbox an
+extension, its build backend, or its runtime code.
+
+Local `make dev`/`make start`, Docker development, and the production Gateway image all
+consume the same `backend/pyproject.toml` and `backend/uv.lock`. Local and Docker-dev
+launchers perform a locked sync before starting; the production image performs that sync
+during its build and includes managed local snapshots in the build context. Gateway runtime
+commands then use the already-created environment without resolving or installing packages.
+Local and Docker-development pre-start syncs may download missing locked artifacts. A
+production deployment instead downloads them only during the explicit install or image
+build; starting the resulting production Gateway container never resolves or installs
+extensions from the network. A local wheel or `file://` Git URL is rejected because it
+would not exist in the Docker build context; pass a source directory to create a managed
+snapshot instead. Because environment configuration (such as a `UV_FIND_LINKS` wheelhouse)
+can still resolve a plain package name to a local wheel, the manager audits every new lock
+before enabling the extension: any local reference the stock image build cannot reproduce
+rolls back the entire install or removal.
+Rebuild with `make up` after changing the managed extension set. See
+`config.example.yaml` and the
+[reference extension](examples/deerflow-extension-example/) for a complete example.
 
 Gateway-generated follow-up suggestions now normalize both plain-string model output and block/list-style rich content before parsing the JSON array response, so provider-specific content wrappers do not silently drop suggestions.
 
@@ -828,7 +955,8 @@ DeerFlow now includes a first-class scheduled-task MVP in the workspace.
 Current MVP capabilities:
 
 - Manage tasks at `/workspace/scheduled-tasks`
-- Choose whether each scheduled task reuses a thread or creates a fresh thread per run
+- Choose whether each scheduled task reuses a thread and its conversation history or creates a fresh thread per run
+- Duplicate an existing task into the create form as an editable draft without copying its run history
 - Support `once` and `cron` schedules
 - Run background scheduled executions as non-interactive DeerFlow runs (`ask_clarification` is not exposed there)
 - Use `skip` overlap behavior for due cron executions that collide with an active run on the same reused thread
