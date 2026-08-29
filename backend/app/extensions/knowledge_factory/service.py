@@ -466,7 +466,10 @@ class TaskService:
             domain=data.domain,
             industry=data.industry,
             report_type=data.report_type,
-            source_report_ids=[str(s) for s in data.source_report_ids],
+            # bug-1242: uploaded_file_ids 一并落库（两类 id 同为 documents 表行，
+            # run_pipeline_background 用同一 join 解析）——只存 source_report_ids
+            # 会使纯上传任务的 rerun 重建出空来源而 500。
+            source_report_ids=[str(s) for s in [*data.source_report_ids, *data.uploaded_file_ids]],
             config=config_dict,
             status="pending",
             progress=0,

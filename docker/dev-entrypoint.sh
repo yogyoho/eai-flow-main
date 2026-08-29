@@ -31,8 +31,12 @@ fi
 # Mirror the legacy command's behavior: redirect both stdout and stderr to the
 # host-mounted log file (../logs/gateway.log → /app/logs/gateway.log). Skip
 # the redirect under --print-extras so the test runner can capture stdout.
+# EAI-CUSTOM (bug-1242): append (>>) instead of truncate (>) — `>` wipes the
+# log on every container restart, destroying forensic evidence for incidents
+# that occurred before the restart. Upgrade path: logrotate/compression if the
+# file grows unbounded in long-lived dev environments.
 if [ "$PRINT_EXTRAS_ONLY" = "0" ]; then
-    exec >/app/logs/gateway.log 2>&1
+    exec >>/app/logs/gateway.log 2>&1
 fi
 
 # ── Resolve extras ──────────────────────────────────────────────────────────
@@ -106,4 +110,9 @@ fi
 PYTHONPATH=. exec uv run --no-sync uvicorn app.gateway.app:app \
     --host 0.0.0.0 --port 8001 \
     --reload --reload-exclude='/app/backend/.deer-flow' --reload-exclude='/app/backend/.venv' \
+    --reload-exclude='/app/backend/tests' \
     --reload-include='*.yaml .env'
+# EAI-CUSTOM (bug-1242): exclude tests/ — concurrent sessions editing/running
+# backend tests fire WatchFiles reloads that kill in-flight KF extraction tasks
+# (asyncio task dies with the process; DB row stuck at running = zombie).
+# App-code edits still hot-reload; full-immunity upgrade path: drop --reload.

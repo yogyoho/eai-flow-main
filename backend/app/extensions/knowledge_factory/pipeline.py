@@ -63,6 +63,55 @@ def _flatten_sections(sections: list[dict]) -> list[dict]:
     return flat
 
 
+def _nest_by_level(flat: list[dict]) -> list[dict]:
+    """按 level 序列把平铺章节组装成树（_flatten_sections 的逆运算）。
+
+    bug-1241: 自动识别 fallback 产出的是带 level(1-3) 的平铺列表，而模板编辑器
+    只认 children 嵌套（level 不参与渲染），不组装树则目录扁平化。栈式挂载：
+    level 跳级(1→3)时挂到最近的更浅节点下。
+    """
+    roots: list[dict] = []
+    stack: list[dict] = []
+    for sec in flat:
+        node = dict(sec)
+        lvl = max(1, int(node.get("level", 1) or 1))
+        # 弹掉所有同级/更深节点，栈顶剩下的就是最近的最浅父节点。
+        # 比较节点自身的 level（而非栈长度）：首个标题可能是 level 2+，此时
+        # 它做根，后继同级标题应是兄弟而不是子节点。
+        while stack and int(stack[-1].get("level", 1) or 1) >= lvl:
+            stack.pop()
+        if not stack:
+            roots.append(node)
+        else:
+            stack[-1].setdefault("children", []).append(node)
+        stack.append(node)
+
+    # 空数组 children 与"无 children"等价，清掉保持 JSON 干净
+    def _strip_empty(n: dict) -> dict:
+        if n.get("children"):
+            for c in n["children"]:
+                _strip_empty(c)
+        else:
+            n.pop("children", None)
+        return n
+
+    return [_strip_empty(r) for r in roots]
+
+
+def _auto_headings(doc: dict, chunks: list[dict]) -> list[dict]:
+    """LLM 兜底建树用的标题源 (bug-1242)。
+
+    优先 doc_parser 的确定性标题（Word 样式可靠、含全部层级、天然不含目录行），
+    没有才退回逐行正则扫 chunk 文本。此前 except 分支无视 _parsed 直接重扫文本，
+    目录页粘连行（"以往工作评述5"）与正文标题双份入树、无分隔符章标题（"1绪论"）
+    漏检。
+    """
+    parsed = doc.get("_parsed")
+    if parsed is not None and getattr(parsed, "headings", None):
+        return [{"title": h.title, "level_guess": h.level} for h in parsed.headings]
+    return _scan_chapter_headings(chunks)
+
+
 def _count_sections(sections: list[dict]) -> tuple[int, int]:
     """Count chapters (level-1) and total sections."""
     chapters = 0
@@ -241,6 +290,29 @@ def _scan_chapter_headings(chunks: list[dict]) -> list[dict]:
                         }
                     )
             line_no += 1
+    # 目录行页码粘连（"以往工作评述5"）：docx expat 解析丢 w:tab/PAGEREF 后，
+    # 目录页码直接粘在标题尾部，_TOC_ENTRY 拦不住，与正文标题字符串不同逃过
+    # 精确去重 → 目录+正文双份入树 (bug-1242)。仅在存在剥页码孪生（正文标题）
+    # 时才归一为剥页码形态，不无条件改写——合法以数字结尾的标题不受影响。
+    all_titles = {h["title"] for h in headings}
+    for h in headings:
+        m = re.search(r"^(.+?[^\d\s])\s*\d{1,4}$", h["title"])
+        if m and m.group(1) in all_titles:
+            h["title"] = m.group(1)
+
+    # 编号体系（x.y）一旦出现，其后的（N）条目是三级列举而非二级标题，
+    # 降级避免与 x.y 同层（"（1）褶皱"浮成 "2.1 区域地质特征" 的兄弟，
+    # 甚至后续（N）挂错父节点）(bug-1242)。纯 第X章+（一） 式文档无 x.y，不受影响。
+    seen_numbered_l2 = False
+    for h in headings:
+        if h["level_guess"] == 1:
+            seen_numbered_l2 = False
+        elif h["level_guess"] == 2:
+            if re.match(r"^\d+\.\d+", h["title"]):
+                seen_numbered_l2 = True
+            elif h["title"][:1] in "（(" and seen_numbered_l2:
+                h["level_guess"] = 3
+
     # Deduplicate: RAGFlow chunks include page headers which repeat chapter
     # titles on every page. Keep only the first occurrence of each unique title;
     # subsequent occurrences are likely page headers or TOC cross-references.
@@ -1102,9 +1174,10 @@ class ExtractionPipeline:
                 # Fallback: 若 LLM 未能推断出章节，尝试用自动识别的标题构建章节树
                 if not sections and content.strip():
                     logger.warning(f"[Task {task_id}] Step 1: LLM 返回空章节，尝试自动识别标题")
-                    if h1_headings:
+                    auto_headings = _auto_headings(doc, chunks)
+                    if auto_headings:
                         sections = []
-                        for i, h in enumerate(h1_headings):
+                        for i, h in enumerate(auto_headings):
                             sections.append(
                                 {
                                     "id": f"sec_{i + 1:02d}",
@@ -1114,6 +1187,9 @@ class ExtractionPipeline:
                                     "purpose": f"从{doc_name}自动识别",
                                 }
                             )
+                        # h1_headings 此时是全部标题(1-3级)的平铺列表，按 level 组装成树，
+                        # 否则编辑器目录扁平化 (bug-1241)
+                        sections = _nest_by_level(sections)
                         logger.info(f"[Task {task_id}] Step 1: 自动识别出 {len(sections)} 个章节")
                     else:
                         logger.warning(f"[Task {task_id}] Step 1: 无自动识别标题，回退为整文档单章节")
@@ -1135,10 +1211,13 @@ class ExtractionPipeline:
                     }
                 )
             except Exception as e:
-                logger.error(f"[Task {task_id}] Step 1: 文档 '{doc_name}' 章节推断失败: {e}")
-                # 即使 LLM 调用异常，也尝试用自动识别的标题构建章节树
+                # bug-1242: 记录完整异常（repr + traceback）——infer_schema 整个 try 块
+                # 都会进这里，仅 str(e) 无法定位故障源（本次事故因日志截断零证据）
+                logger.exception(f"[Task {task_id}] Step 1: 文档 '{doc_name}' 章节推断失败: {e!r}")
+                # 即使 LLM 调用异常，也尝试用自动识别的标题构建章节树（bug-1242: 优先
+                # doc_parser 确定性标题，而非重扫 chunk 文本）
                 if content.strip():
-                    auto_headings = _scan_chapter_headings(chunks)
+                    auto_headings = _auto_headings(doc, chunks)
                     if auto_headings:
                         sections = []
                         for i, h in enumerate(auto_headings):
@@ -1151,6 +1230,8 @@ class ExtractionPipeline:
                                     "purpose": f"从{doc_name}自动识别",
                                 }
                             )
+                        # 同上：平铺 → 树 (bug-1241)
+                        sections = _nest_by_level(sections)
                         logger.info(f"[Task {task_id}] Step 1: LLM 异常，自动识别出 {len(sections)} 个章节")
                     else:
                         logger.warning(f"[Task {task_id}] Step 1: LLM 异常且无自动识别标题，回退为单章节")
