@@ -528,6 +528,12 @@ def cmd_check(args) -> int:
         except Exception:
             missing_fields.append(f"{fam}: JSON 损坏")
             continue
+        if isinstance(doc, list):
+            # bug-3004: 清单族经 `ingest.py file` 从 CSV 摄入后落成行数组（如 08_orebody_list），
+            # 逐字段门只适用于 dict 形状——行数组按非空判完备，避免 doc.get AttributeError。
+            if not doc:
+                missing_fields.append(f"{fam}: 清单为空")
+            continue
         for f in spec.get("fields", []):
             if f.get("required", True) and doc.get(f["name"]) in (None, "", []):
                 missing_fields.append(f"{fam}.{f['name']}")

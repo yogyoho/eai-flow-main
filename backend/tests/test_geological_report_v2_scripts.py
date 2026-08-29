@@ -408,6 +408,28 @@ class TestIngest:
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
         run("ingest.py", "check", "--stage", STAGE, "--data-dir", d, expect=(2,))
 
+    def test_check_list_shaped_doc_no_crash(self, tmp_path):
+        """bug-3004: 清单族文件顶层为行数组（CSV 摄入形状，如 08_orebody_list）时
+        check 曾崩溃 AttributeError: 'list' object has no attribute 'get'——
+        agent 据此误判「数据损坏」转而手写 data/。行数组按非空判完备。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        (d / "01_tenement.json").write_text(json.dumps([{"矿权编号": "T-1"}, {"矿权编号": "T-2"}]), encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "check", "--stage", str(STAGE), "--data-dir", str(d)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        assert "AttributeError" not in r.stdout + r.stderr, f"list 顶层 doc 不应崩溃\n{r.stdout[-500:]}\n{r.stderr[:300]}"
+        assert r.returncode == 2  # 其余空白表单仍报缺项
+        assert "tenement" not in r.stdout  # 非空行数组 → 该族视为就绪，不列缺
+        (d / "01_tenement.json").write_text("[]", encoding="utf-8")
+        out = run("ingest.py", "check", "--stage", STAGE, "--data-dir", d, expect=(2,))
+        assert "tenement" in out  # 空清单仍要报缺
+
     def test_null_required_field_passthrough(self, tmp_path):
         """bug-2216: 必填字段 null 直通写入（部分收集落盘），门1 仍报缺——
         写入路径若拒绝 null，agent 会被迫用 0/示例值填结构冒充（页面实测）。"""
