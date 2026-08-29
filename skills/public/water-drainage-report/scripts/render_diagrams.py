@@ -317,10 +317,16 @@ def render(fig_id: str, params: dict, outdir: Path) -> Path:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="给排水计算书 — 参数驱动示意图生成器")
-    ap.add_argument("--state", required=True, help="formula_state.json 路径")
-    ap.add_argument("--outdir", required=True, help="图片输出目录（应为 /mnt/user-data/outputs/images）")
+    ap.add_argument("--state", default="/mnt/user-data/workspace/formula_state.json",
+                    help="formula_state.json 路径（默认沙箱 canonical 路径）")
+    ap.add_argument("--outdir", default="/mnt/user-data/outputs/images",
+                    help="图片输出目录（默认 /mnt/user-data/outputs/images）")
     ap.add_argument("--only", help="只画指定 fig_id（逗号分隔）")
-    args = ap.parse_args()
+    # bug-3017：agent 会幻觉出 --report/--output-dir 等不存在的旗标——忽略未知参数照常出图，
+    # 不给 argparse 报错→自造 DIAGRAMS_SKIPPED 的机会
+    args, unknown = ap.parse_known_args()
+    if unknown:
+        print(f"DIAGRAM_NOTE: 忽略未知参数 {unknown}（合法旗标仅 --state/--outdir/--only）")
 
     state = json.loads(Path(args.state).read_text(encoding="utf-8"))
     params = state.get("all_params") or state  # 兼容裸 params

@@ -428,7 +428,7 @@ $$Q_{sf} = Q \times sf_{ratio} = 20000 \times 0.05 = 1000\ \text{m}^3/\text{h}$$
 - 起重机选型（样例 8.2.1 定式）：泵房高度计算前先选起重机——最重部件（如"循环水泵6.5t"）向上取标准吨位档（1/2/3/5/10/16/20t）写"起重量按10t设计"，并给跨度（"跨度13.50m"）与电动单梁/桥式型式；档位查找是查表不是计算，禁止跳过
 
 **插图契约（样例三处设备示意图，参数驱动生成，禁 LLM 文生图/禁外链图片/禁自造文件名）：** 样例在 7.2.3 滤网起吊设备节末、8.2.1 喇叭口 02S403 选型文字下、8.2.3 泵房高度计算处各有一张示意图。落图流程：
-1. 交付前（present_files 之前、写报告 md 的同一轮）运行：`python render_diagrams.py --state <formula_state.json> --outdir <outputs>/images`（state=本轮冻结公式快照；图上标注数值自动取自 state，本脚本不做任何计算）。
+1. 交付前（present_files 之前、写报告 md 的同一轮）运行：`python render_diagrams.py --state <formula_state.json> --outdir <outputs>/images`（state=本轮冻结公式快照；图上标注数值自动取自 state，本脚本不做任何计算）。合法旗标仅 `--state/--outdir/--only`，且均可省略（默认沙箱路径）；出现 argparse usage 报错说明命令写错——**修正参数重跑，禁止当作跳过理由**。
 2. 输出含 `DIAGRAMS_READY: 3` → 把 `DIAGRAM_FILE:` 行给出的引用**独立成行**写进对应章节（文件名逐字复制脚本输出，禁止手改）：
    - 7.2.3 节末：`![滤网起吊示意图](images/08bb824f44bb.png)`
    - 8.2.1 喇叭口选型段后：`![吸水喇叭口安装示意图](images/35115cff8642.png)`

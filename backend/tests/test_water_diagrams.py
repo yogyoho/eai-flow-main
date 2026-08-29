@@ -9,6 +9,8 @@
 """
 
 import importlib.util
+import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -157,6 +159,27 @@ def test_fig1_h_follows_state_screen_lift_height():
     # 链内分段仍按各自 state 值标注
     for label in ("a=0.86", "b=0.45", "c=2.2", "d=1", "e=0.7"):
         assert label in rec.texts
+
+
+def test_main_tolerates_hallucinated_flags(tmp_path, monkeypatch, capsys):
+    """bug-3017 回归：agent 会幻觉出 --report/--output-dir 等不存在的旗标（E2E 实测，
+    argparse 报错后 agent 自造 DIAGRAMS_SKIPPED 并手写语义名图片行）——脚本必须忽略
+    未知参数照常出图。"""
+    state = tmp_path / "formula_state.json"
+    state.write_text(json.dumps({"all_params": dict(SMOKE)}), encoding="utf-8")
+    outdir = tmp_path / "images"
+    monkeypatch.setattr(
+        sys, "argv",
+        ["render_diagrams.py", "--report", "x.md", "--output-dir", "/tmp",
+         "--state", str(state), "--outdir", str(outdir)],
+    )
+    with pytest.raises(SystemExit) as ei:
+        render_diagrams.main()
+    assert ei.value.code == 0
+    out = capsys.readouterr().out
+    assert "忽略未知参数" in out
+    assert "DIAGRAMS_READY: 3" in out
+    assert {p.name for p in outdir.iterdir()} == {"08bb824f44bb.png", "35115cff8642.png", "b1cfb1ccb5a3.png"}
 
 
 def test_font_charset_covers_all_labels():
