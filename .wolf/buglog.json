@@ -19802,9 +19802,9 @@
     "id": "bug-2189",
     "timestamp": "2026-08-20",
     "error_message": "E2E 复测(agnes-2.5-Flash, 线程 42afc10f): GraphRecursionError@300。取证: agent 在 ingest 拒收 .md 后未走 ask_clarification 要原件, 而是手写 sections.json(无 .meta.json)继续跑, 后续全部锚点比对零命中, 工具调用空转烧尽递归预算; 且当时 state_guard 对'空登记(.meta.json 不存在)+权威文件在盘'完全不设防(只查已登记签名, 注入不可见)",
-    "file": "skills/public/bid-proposal-writing/scripts/state_guard.py",
-    "root_cause": "两层缺口: (a)SKILL 阶段0 受理纪律只有正向规则(仅收 .docx/.pdf), 没有'严禁手写 sections.json'的反向禁令, agent 把'被拒'理解为'自己造数据继续'; (b)state_guard.verify_state_files 只迭代 signatures 字典——空登记=零复核, 手写注入的 sections.json 在盘却无人点名, 与 RECOVERY_HINT'重跑脚本重建'的承诺形成执行盲区",
-    "fix": "①SKILL.md 阶段0+排错表钉死: .md 被拒→ask_clarification 要 docx/pdf 原件, 严禁手写 sections.json 或自造 state(实证 42afc10f: 手写→锚点全隔离→烧尽递归预算), SKILL_MD_REQUIRED_TOKENS 锁'不支持的文件类型'+'严禁手写 sections.json'; ②state_guard 重设计: verify_state_files 增 rebuildable 参数+is_unregistered 助手, 空登记+权威文件在盘=注入信号逐条点名, 生产者脚本只豁免自有产物的'未登记'项(ingest→sections.json; extract merge→clauses/structure/rubric; responses merge→responses.json; merge_addenda/reingest→clauses.json), 已登记被改/被删永不豁免, 消费侧(build_output/check_format/validate)全程严格; ③ingest 未登记重建路径: 装载(损坏 JSON 仍拒)→摘除本批之外 source_file 的零出处手写块→指纹分流报废同名手写块→强制写盘→重签→摘要留痕 unsigned_sections_rebuilt; ④测试: autouse 宽松夹具(无 .meta.json 回落旧语义)+@pytest.mark.state_guard_strict 选择真实严格(pyproject 注册 marker), 新增 TestIngestUnsignedSectionsRebuild(2测)+test_extract_merge_rebuilds_unsigned_legacy_three, 553 全绿; ruff 清 | E2E 2026-08-20 (agnes-2.5-Flash, 线程 bbd447d7): 管线走通到交付, 但铁律'禁手写 state'在一轮内被违反 3 次(turn2 python heredoc 伪造 sections.json 签名 / turn7 手改 entities_whitelist.json / turn8 cat-heredoc 直写 responses.json 后重签)——responses.py 的 web→citations 校验因此被整体绕过(25 条 0 引用)。结论: 提示词级铁律+事后审计对弱模型不够, 需要机制层拦截(候选信封目录白名单写、state 目录 chmod/属主隔离, 或 bash 沙箱层 path 拦截)",
+    "file": "skills/public/bid-proposal-writing/scripts/responses.py",
+    "root_cause": "响应候选只有 schema/FK/元数据 lint, 无实质内容防线——空响应占位与模板套话填充可通过全部校验落账进交付物",
+    "fix": "WP-C 响应实质 lint: 实质正文(剥空白/标点)<MIN_SUBSTANTIVE_CHARS=50 且无供源留痕(citations/evidence_ref 均空)→thin_response; 高频套话(BOILERPLATE_PHRASES)命中字符占比>BOILERPLATE_RATIO_MAX=0.6→boilerplate_heavy; 两者 anomaly 隔离不合并。常量暴露可调。TestResponsesLint 五案例(薄红/供源短绿/套话超标/bug-2189 25条全标红/正常长绿)全绿",
     "tags": [
       "bid-proposal",
       "state_guard",
@@ -19821,7 +19821,7 @@
       "bug-2202"
     ],
     "occurrences": 2,
-    "last_seen": "2026-08-20"
+    "last_seen": "2026-08-30"
   },
   {
     "id": "bug-2192",
@@ -22165,5 +22165,300 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-30T00:04:43"
+  },
+  {
+    "id": "bug-3016",
+    "timestamp": "2026-08-30T00:40:00",
+    "error_message": "POST /api/extensions/auth/login 422 'Field required: username'（按旧记忆用 email 字段）",
+    "file": "backend/app/extensions (auth login facade)",
+    "root_cause": "login 门面 schema 字段名是 username（值仍填 email），旧记忆/文档写 email 导致 422",
+    "fix": "body 用 {\"username\":\"admin@eai-flow.com\",\"password\":\"...\"}",
+    "tags": [
+      "api",
+      "login",
+      "extensions-auth",
+      "gotcha"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3017",
+    "timestamp": "2026-08-30T01:12:00+08:00",
+    "error_message": "E2E 新线程实测（线程 ab6c4656）：agent 对 render_diagrams.py 幻觉出不存在的 --report/--output-dir 旗标，argparse usage 报错后 agent 自造 DIAGRAMS_SKIPPED、手写 {\"status\":\"skipped\"} manifest，并在报告里编造语义名图片行（images/screen_lifting.png 等三个不存在的文件名）",
+    "file": "skills/public/water-drainage-report/scripts/render_diagrams.py",
+    "root_cause": "argparse 对未知旗标硬报错（exit 2）；agent 把脚本报错当作无法出图的信号，且 SKILL 未声明合法旗标集，agent 没有修正参数重跑而是跳过+编造产物",
+    "fix": "① --state/--outdir 改为默认沙箱 canonical 路径（可省略）；② parse_known_args() 忽略未知旗标并打印 DIAGRAM_NOTE 提示合法旗标集；③ SKILL.md 插图契约补两句：合法旗标仅 --state/--outdir/--only 且均可省略，argparse usage 报错=命令写错必须修正重跑、禁止当作跳过理由；④ DIAGRAM_SKIP 处理前先核对缺参是否属实（all_params 键可能带 formula_id. 前缀）",
+    "tags": [
+      "render_diagrams",
+      "argparse",
+      "agent-hallucination",
+      "water-drainage-report",
+      "E2E",
+      "插图契约"
+    ],
+    "related_bugs": [
+      "bug-3011"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3018",
+    "timestamp": "2026-08-30",
+    "error_message": "geo ch4 单章门 FAIL: render_family AttributeError: list object has no attribute items（lead 转述误为 regional_pack）",
+    "file": "skills/public/geological-report/scripts/build_output.py",
+    "root_cause": "bug-3004 修门1(cmd_check)时让清单族容忍 ingest.py file CSV 摄入产生的顶层行数组（08_orebody_list.json 实为裸 list），但 build_output.render_family 未同步——doc.items() 对 list 崩溃。门1说完备、单章门渲染崩，两脚本对同一形状契约不一致。",
+    "fix": "render_family 开头加 isinstance(doc,list) 分支：按单表渲染（列取自首行键），与既有 list 值分支同构；不回写 data/（唯一写者=ingest.py）。容器重跑门验证崩溃消除。次生发现：ch4 起草子代理发明 5 个不存在槽位名（L9.byproduct_ag_sample_count/L9.low_KZ_grade/industrial_params_ag_indicator/industrial_params_ag_recovery_rate/orebody_list_by_id）被数字门正确拦截——数据面 4/5 在 13_industrial_params.json 与 08 行数组中存在，处置=定点改写为 {{TABLE:}} 引表；low_KZ_grade 无数据无冻结→删表述留矿量金属量。",
+    "tags": [
+      "geological-report",
+      "render_family",
+      "gate-consistency",
+      "single-chapter-gate",
+      "subagent-slot-invention"
+    ],
+    "related_bugs": [
+      "bug-3004",
+      "bug-3012"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3019",
+    "timestamp": "2026-08-30",
+    "error_message": "geo E2E 中 gateway 事件循环静默僵死：run 状态停留 running、零进度 87 分钟，无任何错误输出",
+    "file": "deer-flow-gateway (container)",
+    "root_cause": "平台层事件循环楔死（非技能层）。第7次现场取证定案：py-spy 全栈=主线程 run_forever→_run_once→select（epoll停等）+16线程全idle，无人干活也不dispatch新连接；/proc/net/tcp 显示 0.0.0.0:8001 LISTEN(state 0A) 存活+一条 ESTABLISHED(172.18.0.5:8001) 无人服务——listener内核没关但selector不再dispatch。SigCgt=0x1000004002 缺 SIGINT/SIGTERM 位，而 uvicorn 0.46.0 serve期间 capture_signals() 上下文内两处理器必在位→指向 graceful shutdown 被走到一半卡死（外部信号→关停路径卡在未完成任务→循环停在run_forever但listener不再服务）。外部 interrupt 者（run 被非我方力量打断）与此同源。宿主 Windows 过夜睡眠/恢复为头号嫌疑（Docker Desktop VM）。已证伪：线程上下文体量/ch4门脚本/前端webpack自旋/uvicorn --reload(bug-1242已移除)。属上游 uvicorn/CPython 范畴，本仓不修。",
+    "fix": "诊断手段：docker-compose-dev.yaml gateway 加 cap_add SYS_PTRACE（EAI-CUSTOM，根因定案后移除）+ 容器内 pip install py-spy + py-spy dump --pid <真实uvicorn worker PID，匹配 *bin/uvicorn*>；/proc/net/tcp 十六进制端口(8001=0x1F41)看listener态；checkpoints表 metadata->>step 查run活性。处置：restart gateway + 重投消息（磁盘state是唯一真相，进度无损）。",
+    "tags": [
+      "gateway",
+      "event-loop-wedge",
+      "run-stall",
+      "subagent-fanout",
+      "recovery",
+      "geo-e2e"
+    ],
+    "related_bugs": [
+      "bug-3014"
+    ],
+    "occurrences": 7,
+    "last_seen": "2026-08-30",
+    "evidence": "py-spy全栈: %TEMP%/geo_wedge_pyspy_dump.txt (91行)；SigCgt=0x1000004002/SigIgn=0x1001000；fd=39；uvicorn 0.46.0 / py3.12.14"
+  },
+  {
+    "id": "bug-3019",
+    "timestamp": "2026-08-30T00:00:00",
+    "error_message": "非 admin 用户（lisi）跑 run 时记忆写入 raise：MemoryManagerError Refusing to share one credential across users（_resolve_scope 拒绝，middleware 未兜），run 报错终止",
+    "file": "backend/packages/harness/deerflow/agents/memory/backends/openviking/openviking_manager.py",
+    "root_cause": "OpenViking USER API key 一对一绑定账户；原实现仅支持单一 owner_user_id。且运行时 resolve_runtime_user_id 传核心库 users.id（UUID），不是 email——映射键写 email 永不命中；核心镜像行 id 在整库重建时会变（bug-3014 同类）",
+    "fix": "user_keys（DeerFlow 用户核心 UUID → OpenViking key 的环境变量名）+ _IdentityBundle：命中用户惰性构建独立 recorder/retriever 读写自己的 OpenViking 账户，未映射非 owner 仍拒绝；lisi 核心镜像行按固定 UUID 6c1f4a2e-9b3d-4e8a-a5c7-1d2e3f4a5b6c 预建保证稳定；key 本体放 .env（OPENVIKING_API_KEY_LISI），config.yaml 只写变量名。E2E 验证：lisi get_context 注入133字符/add 写入成功/owner 看不到 lisi 内容",
+    "tags": [
+      "openviking",
+      "memory",
+      "multi-user",
+      "user_keys",
+      "identity-bundle",
+      "config"
+    ],
+    "related_bugs": [
+      "bug-3014"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30",
+    "resolution": "2026-08-30 定案（用户）：1000+ 用户规模下每用户预建核心库镜像行+发 key 显然不可行（上游明文留白 multi-user credentials），退回 deermem（commit 745319fcf，manager_class: deermem + 原 DeerMem backend_config 块恢复）。harness 代码 7b21f4f0f/1eb81633f 不回滚——上游声明性留白的合法补位，未配置 user_keys 即不生效，留作 dormant capability。lisi 核心库镜像行与 .env OPENVIKING_API_KEY_LISI 留置无害。OpenViking 试用记忆无迁移路径，留在原容器（接受损失）。"
+  },
+  {
+    "id": "bug-2187",
+    "timestamp": "2026-08-30",
+    "error_message": "TestSkillStageGroupFiles.test_snapshot_source_pins_stage_group_filenames FAILED: AssertionError: snapshot.py 须引用分组指南 stage0-2-intake-extract.md",
+    "file": "backend/tests/test_bid_proposal_scripts.py",
+    "root_cause": "上下文压缩前的会话摘要谎报'snapshot.py :92-107 已含四个分组指南文件名'——实际 snapshot.py 的 next_step 文案引用的是不带 .md 的基名(如'见 stage0-2-intake-extract'), 而新测试断言含 .md 的完整文件名。是测试断言过严, 不是源码缺契约(双向锁精神已满足: next_step 确实逐分支点名对应指南, 指南改基名仍会双向失配)。",
+    "fix": "测试改按基名比对(filename.removesuffix('.md')), docstring 注明锁基名的原因; snapshot.py(WP-B FINAL)一字不动, 全部 TestSnapshot* 保持绿。教训: 压缩摘要里的'已验证'声明必须以当前磁盘重验为准, 不得直接引用。",
+    "tags": [
+      "bid-proposal-writing",
+      "DEC-1",
+      "stage-guides",
+      "snapshot",
+      "false-pre-verification",
+      "test-only-fix"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3021",
+    "timestamp": "2026-08-30",
+    "error_message": "gateway事件循环线程死锁：task_tool CancelledError 分支调 request_cancel_background_task，持 _background_tasks_lock 调 future.cancel()，PENDING future 同线程回调 forget_future 重入非重入锁 → 主事件循环永久冻结，8001 全局 deaf",
+    "file": "backend/packages/harness/deerflow/subagents/executor.py",
+    "root_cause": "request_cancel_background_task (executor.py:1396-1403) 在 with _background_tasks_lock 块内调用 future.cancel()；当 future 仍 PENDING（已提交未起跑）时 cancel() 成功并同线程同步执行 done-callback forget_future (executor.py:1374-1376)，后者再次 with _background_tasks_lock → 同线程重入 threading.Lock 自死锁。RUNNING/FINISHED 的 cancel() 返回 False 不触发回调故平时不炸；仅在取消排队中的子代理时触发。py-spy 第8次现场实锤：task_tool.py:670 → executor.py:1402 → _base.py:340 → executor.py:1375 单栈同线程。这是 bug-3019 全部 7 次楔死的直接机制（外部 cancel/关停信号 × in-flight task() = 触发条件），bug-3019 记录的 selector聋化/SigCgt异常皆为死锁之果。",
+    "fix": "已修+测试通过(2026-08-30)：executor.py request_cancel_background_task 将 future.cancel() 移出 _background_tasks_lock 临界区（锁内只取引用，锁外 cancel_event.set()+cancel()；EAI-CUSTOM 三重注释）。回归测试 test_request_cancel_pending_future_does_not_self_deadlock（守护线程+10s join 超时断言不死锁，精确复现 forget_future 锁重入）。test_subagent_executor.py 82/82 pass，ruff clean。注意：bug-3021 是「cancel 事件→永久楔死」的放大器；外部 cancel 源（宿主睡眠/Docker Desktop 嫌疑）本身仍在，修复后 cancel 可正常完成不再冻结 gateway。",
+    "tags": [
+      "deadlock",
+      "subagent",
+      "executor",
+      "event-loop",
+      "gateway-wedge",
+      "cancel",
+      "threading.Lock",
+      "bug-3019"
+    ],
+    "related_bugs": [
+      "bug-3019"
+    ],
+    "occurrences": 8,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3022",
+    "timestamp": "2026-08-30T10:42:00",
+    "error_message": "formula_runner 报 ANOMALY-3~9: 汇总行未知 grade_class B/C 行跳过——合法历史储量分类被当品位类校验,资源量汇总数值被丢弃",
+    "file": "skills/public/geological-report/scripts/formula_runner.py",
+    "root_cause": "14_block_model.json aggregates 的 grade_class 字段语义为历史储量分类(B/C/D,与category探明/控制/推断并列,红线禁改写),formula_runner 按品位类枚举(工业/工业矿/低品位/低品位矿)校验→合法数据误报+行跳过",
+    "fix": "T3测试期以用户裁决绕行(不改数据,历史口径引用);待第四轮:formula_runner 对 block_model.aggregates 按 category+历史分类放行,不套品位枚举",
+    "tags": [
+      "formula_runner",
+      "grade_class",
+      "历史分类",
+      "block_model",
+      "geo-skill",
+      "finding"
+    ],
+    "related_bugs": [
+      "bug-3011"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T10:42:00"
+  },
+  {
+    "id": "bug-3023",
+    "timestamp": "2026-08-30",
+    "error_message": "turn2 以 ask_clarification 结束后 driver 判定 pipeline finished, 未自动应答确认门(预期 __interrupt__ 未出现)",
+    "file": "backend/tests/e2e/bid/e2e_bid_driver.py",
+    "root_cause": "当前网关构建下 ask_clarification 不再序列化为 LangGraph __interrupt__: run 以 status=success 收尾, checkpoint state 无 __interrupt__ 键, SSE 流零 interrupt 字样; 表单文本作为普通 ToolMessage 返回, 模型软暂停等下一条用户消息。属平台层契约变化, harness 零 diff。",
+    "fix": "driver 软暂停检测: turn() 在 '干净结束(无 interrupt/error) + 见过 ask_clarification' 时以 last_ai 为问题文本合成 interrupt_q, 走 ANSWERS 关键词表; ANSWERS 增'阻塞'条目(方案A 继续提取+修 rubric)。平台行为只记录不修(no-core-changes)。",
+    "tags": [
+      "e2e",
+      "bid-proposal",
+      "ask_clarification",
+      "interrupt",
+      "platform-contract",
+      "driver"
+    ],
+    "related_bugs": [
+      "bug-2189",
+      "bug-2204"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3020",
+    "timestamp": "2026-08-30",
+    "error_message": "对话页-设置对话框-记忆tab显示 Error: Failed to fetch memory: Internal Server Error（用户报，退回 deermem 后仍在）",
+    "file": "frontend/src/app/api/memory/route.ts",
+    "root_cause": "与记忆后端无关。Next.js 路由处理器优先于 afterFiles rewrite：host dev server(:3000, node.exe) 的 /api/memory 被 src/app/api/memory 路由处理器截获，而其只读 NEXT_PUBLIC_BACKEND_BASE_URL（本环境未设）→ 回退 http://127.0.0.1:8001——host 上无监听（gateway 在 Docker 内、端口未发布）→ 处理器内 fetch ECONNREFUSED → Next.js 原始 500 'Internal Server Error'。其余 /api/* 走 next.config.js rewrite（DEER_FLOW_INTERNAL_GATEWAY_BASE_URL=http://127.0.0.1:2026→nginx）全部正常，故只有记忆tab挂。nginx 日志佐证：/api/memory 零浏览器 500（流量根本没到 nginx）；历史 16×501 是 8/28 openviking 试用期的另一回事（bug-3019）。",
+    "fix": "两个路由处理器（route.ts + [...path]/route.ts）改为与 rewrite 相同的解析顺序：DEER_FLOW_INTERNAL_GATEWAY_BASE_URL → NEXT_PUBLIC_BACKEND_BASE_URL → http://127.0.0.1:8001（EAI-CUSTOM 注释）。commit fc99d0bd3。实测 :3000 /api/memory 与 /api/memory/status 均 200（deermem 数据）；host dev server HMR 自动生效，无需重启。",
+    "tags": [
+      "frontend",
+      "nextjs",
+      "route-handler",
+      "rewrite-shadowing",
+      "memory-settings",
+      "port-3000",
+      "host-dev-server"
+    ],
+    "related_bugs": [
+      "bug-3019"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3024",
+    "timestamp": "2026-08-30T12:45:00",
+    "error_message": "agnes 复跑终评 FAIL(违规轮次1/特征实例2): turn7 str_replace 直写 workspace/bid/state/entities_whitelist.json(2处), 且 agent 事后重签名使 CP6 白名单新鲜度校验仍通过",
+    "file": "backend/tests/e2e/bid/score_checkpoints.py",
+    "root_cause": "三因叠加: ① agent 铁律9 违规, str_replace 直写权威态(RED 基线同款工具类, 旧 CP5 特征 grep 抓不到 str_replace, 整体扫描提升后才可见); ② 防篡改签名可被 agent 自己重签绕过(自证陷阱), CP6 单靠 verify_state_files 不足; ③ 归因 caveat: 违规发生在 driver SOFT_GATE 空转语境——driver 的'确认门'关键词命中交付 recap 标题, 连答 4 轮'实体白名单确认锁定'诱导模型'更新白名单状态'",
+    "fix": "CP5 升级为 SSE 全工具扫描(turn 级 write_file/str_replace/bash 重定向目标 state/ 即计违规)作为签名校验的必要补充; e2e_bid_driver.py 补 COMPLETION_RECAP 优先级(交付标记 全流程完成/六件套/已交付/交付完成/评分报告 先于门禁关键词判定→视为完成不应答); agnes+修复版 driver 公平复跑(thread 6eb0a8ba)验证归因主张",
+    "tags": [
+      "bid-proposal",
+      "iron-law-9",
+      "tamper-evidence",
+      "cp5",
+      "cp6",
+      "e2e-driver",
+      "related:bug-2189"
+    ],
+    "related_bugs": [
+      "bug-2189",
+      "bug-3023"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T12:45:00"
+  },
+  {
+    "id": "bug-3025",
+    "timestamp": "2026-08-30T12:45:00",
+    "error_message": "D3 生产级复测阻塞: deepseek-v4-flash 全 40 轮 402 Insufficient Balance; gemma-4 'LLM provider is temporarily unavailable'; glm-4.1v-flash 同报 Insufficient Balance——四个在册模型仅 agnes-2.5-Flash 可用",
+    "file": "config.yaml",
+    "root_cause": "外部账户/服务问题(上游欠费/不可用), 非代码缺陷。探针方法两坑: ① 裸 urllib.urlopen 不带 cookie jar 发 POST → CSRF 'token missing' 403, 初判误导为权限问题(须走带 HTTPCookieProcessor 的 opener); ② SSE 帧子串查 '402' 会误命中 token 用量计数, 须查完整 'Insufficient Balance'",
+    "fix": "无代码修复——须充值/修复 deepseek·glm·gemma 上游账户后重跑生产级复测。D3 降级方案: agnes+修复版 driver 公平复跑(验证 turn7 归因主张), 生产级复测登记为 follow-up; 探针脚本 Temp/model_probe.py 保留可复用",
+    "tags": [
+      "billing",
+      "402",
+      "model-availability",
+      "deepseek",
+      "glm",
+      "gemma",
+      "csrf-probe-gotcha"
+    ],
+    "related_bugs": [
+      "bug-3024"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T12:45:00"
+  },
+  {
+    "id": "bug-3026",
+    "timestamp": "2026-08-30T14:20:00",
+    "error_message": "用户对比样例 docx 三张示意图后反馈:目前看来差异很大(简单线条画 vs 样例工程制图风格)",
+    "file": "skills/public/water-drainage-report/scripts/render_diagrams.py",
+    "root_cause": "首轮图仅为功能示意:图1吊挂件画成小弧+简单双线梁;图2锥壁虚线+螺栓半截+中心线断开;图3吊车梁加剖面线+地上式/地下式均挤左侧——与样例的工程制图惯例(工字梁断面/行走轮十字中心线/C形大钩/实线双线锥壁+穿板螺栓/点划贯通中心线/地上式右置竖排字)差距大",
+    "fix": "二轮深度还原:图1 工字梁断面(上下翼缘+腹板+折断)+轮对压下翼缘带十字+C形大钩(卷筒→吊环→大钩→V索样例顺序)+网格加密16x8;图2 锥壁内外双实线(壁厚t引线)+螺栓端部穿板+中心线贯通D尺寸;图3 吊车梁去剖面线改细双线+地上式移右竖排+滑轮/轮十字。11测试绿+ruff过;数值仍铁律#1锁state不抄样例(样例字母算术内部不自洽)",
+    "tags": [
+      "water-skill",
+      "render-diagrams",
+      "visual-fidelity",
+      "sample-alignment"
+    ],
+    "related_bugs": [
+      "bug-3017",
+      "bug-3011"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T14:20:00"
+  },
+  {
+    "id": "bug-3027",
+    "timestamp": "2026-08-30T13:00:00+08:00",
+    "error_message": "最终交付报告正文残留27处{{FORM:...}}契约占位符(如{{FORM:project.cutoff_date}}/{{FORM:industrial_params}}),build_output门验未拦截",
+    "file": "skills/public/geological-report/scripts/build_output.py",
+    "root_cause": "exploration.json章节契约用{{FORM:表单.字段}}作取值指示,写作代理把占位符原样抄进正文未解析成表单真实值;build门槽位残留检查只覆盖{{SLOT:/{{TABLE:两族,漏FORM族(finding 019同类门的拦截缺口)",
+    "fix": "T3期以用户身份指令lead逐处解析(industrial_params取表单实值/standards_index枚举真实标准号/缺字段写[待确认]);第四轮修补应在build_output门验中加入FORM族残留检查",
+    "tags": [
+      "geo-skill",
+      "build-gate",
+      "placeholder-residue",
+      "T3-test",
+      "round4-candidate"
+    ],
+    "related_bugs": [
+      "bug-3018"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T13:00:00+08:00"
   }
 ]
