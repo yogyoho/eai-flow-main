@@ -904,9 +904,6 @@ export const zhCN: Translations = {
       summaryReadOnly:
         "摘要分区当前仍为只读。现在你可以清空全部记忆或删除单条事实。",
       memoryFullyEmpty: "还没有保存任何记忆。",
-      // EAI-CUSTOM: OpenViking 等后端不支持记忆文档管理时的降级提示
-      unsupportedBackendNotice:
-        "当前记忆后端不支持记忆文档管理：长期记忆在对话中自动提取与召回，此处不提供查看、编辑或手动管理。",
       factPreviewLabel: "即将删除的事实",
       searchPlaceholder: "搜索记忆",
       filterAll: "全部",
