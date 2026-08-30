@@ -1880,7 +1880,7 @@ memory:
   # Memory backend selector. Either a registered backend name (matching a
   # backends/<name>/ folder that exposes MANAGER_CLASS, e.g. deermem / mem0 / noop)
   # or a dotted import path to a MemoryManager subclass.
-  manager_class: openviking
+  manager_class: deermem
   # Memory operation mode:
   #   middleware (default) - passive background extraction after each turn.
   #   tool - experimental opt-in; the model calls memory_search/memory_add/
@@ -1935,36 +1935,84 @@ memory:
   #   # user_peer_overrides: {}    # map specific user ids to custom peer names
   #   assistant_peer: deerflow
   backend_config:
-    # EAI-CUSTOM 2026-08-28: 试用 OpenViking 记忆后端（account=eai / user=deerflow，容器
-    # deer-flow-openviking，embedding 走本地 Ollama bge-m3）。原 DeerMem backend_config 块
-    # 见 git 历史；切回 = manager_class 改回 deermem 并恢复原块。
-    # 注意: owner_user_id 一对一绑定 admin@eai-flow.com，试用期间其他用户记忆不写入。
-    # EAI-CUSTOM 2026-08-30: deerflow 核心库被整库重建后 admin 用户 id 变更
-    # （1ffb1664…→06824890…，见 buglog bug-3014），此处同步更新绑定，否则
-    # MemoryManagerError 拒绝服务、run 直接报错终止（openviking_manager.py:453）。
-    # EAI-CUSTOM 2026-08-30 bug-3019: user_keys = DeerFlow 用户 → OpenViking USER
-    # API key 的环境变量名（key 本体放 .env，勿写进本文件）。键是核心库 users.id
-    # （deerflow 库 SELECT id FROM users WHERE email=...；运行时传的就是它，不是 email）。
-    # 有映射的用户用自己的 key 读写自己的 OpenViking 账户；未映射的非 owner 仍拒绝。
-    base_url: http://openviking:1933
-    owner_user_id: 06824890-ca32-475b-9ac9-d773d4c35b92
-    api_key_env: OPENVIKING_API_KEY
-    user_keys:
-      6c1f4a2e-9b3d-4e8a-a5c7-1d2e3f4a5b6c: OPENVIKING_API_KEY_LISI # lisi@eai-flow.com
-    timeout_seconds: 30
-    default_peer_id: deerflow
-    startup_policy: fail_fast
-    failure_policy:
-      read: fail_open
-      write: log_and_drop
-    retrieval:
-      top_k: 8
-      score_threshold: 0.25
-      max_injection_chars: 12000
-      content_mode: overview
-      injection_query: >-
-        user profile preferences important entities events ongoing goals
-        constraints and prior decisions
+    # EAI-CUSTOM 2026-08-30: 1000+ 用户规模下 OpenViking 每用户 USER API key 不可行（上游明文
+    # 留白 multi-user credentials，每用户预建核心库镜像行+发 key 均不可扩展），退回 DeerMem。
+    # OpenViking 试用块见 git 历史 1eb81633f；重启用 = manager_class 改回 openviking 并恢复
+    # 该块（user_keys 每用户绑定语义见 bug-3019 提交 7b21f4f0f，代码保留、未配置即不生效）。
+    storage_path: ""            # empty = deer-flow base_dir (factory injects absolute runtime_home); a non-empty path is the root DIRECTORY (per-user memory under {storage_path}/users/{uid}/memory.json)
+    storage_class: file         # file (default) or a dotted MemoryStorage class path; invalid persistent backends fail fast
+    strict_user_scope: false    # set true in authenticated deployments after all callers propagate user_id
+    manifest_filename: memory.json # user-global JSON: version/revision/time + user/history only; no facts or fact index
+    file_lock_timeout_seconds: 10 # per-scope cross-process advisory lock timeout (single-machine local filesystem)
+    retrieval_adapter: fts5     # fts5 (default), empty to disable, or a dotted RetrievalPort factory(config)
+    debounce_seconds: 30 # Wait time before processing queued updates
+    # Backpressure cap on pending items. 0 = unlimited. At the cap, new
+    # non-signal updates are rejected (QueueFull); signal updates are always
+    # admitted so important memories are never shed.
+    queue_max_depth: 1000
+    model:                      # LLM for memory extraction; omit all fields = no extraction (non-LLM ops still work; an update raises)
+      # provider: openai
+      # model: gpt-4o-mini
+      # api_key: $OPENAI_API_KEY
+      # base_url:               # optional, for OpenAI-compatible gateways (e.g. DeepSeek)
+      # temperature:            # optional
+    max_facts: 100 # Maximum number of facts to store
+    fact_confidence_threshold: 0.7 # Minimum confidence for storing facts
+    max_injection_tokens: 2000 # Maximum tokens for memory injection
+    # Token counting strategy for memory-injection budgeting:
+    #   tiktoken (default) - accurate, but the encoding BPE data may be
+    #     downloaded from a public network endpoint on first use. In
+    #     network-restricted environments this download can block for a long
+    #     time (see issues #3402 / #3429). Pre-cache the encoding or set this
+    #     to "char" to avoid it.
+    #   char - network-free CJK-aware character-based estimate; never touches
+    #     tiktoken. Slightly less precise budgeting, zero network I/O.
+    # EAI-CUSTOM: 内网无外网——tiktoken 首次用会联网下载 BPE 数据（可长时间阻塞，#3402/#3429），改用无网络的 char 估算
+    token_counting: char
+    # Guaranteed injection: fact categories that bypass the regular token budget
+    # and draw from a reserved allowance, so high-signal corrections (e.g.
+    # "don use pip, use uv") survive even when the budget is tight.
+    guaranteed_categories:
+      - correction
+    guaranteed_token_budget: 500
+    # Staleness review: periodically prune aged facts that may no longer reflect
+    # the user current situation. When triggered, the LLM reviews facts older
+    # than their individual review window (expected_valid_days, or
+    # staleness_age_days as fallback) during the normal memory-update call (same
+    # LLM invocation - no extra API call) and decides KEEP, REMOVE, or EXTEND
+    # for each. The LLM assigns expected_valid_days when creating a fact; EXTEND
+    # (staleFactsToExtend) recalibrates that window at review time.
+    staleness_review_enabled: true
+    staleness_age_days: 90
+    staleness_min_candidates: 3
+    staleness_max_removals_per_cycle: 10
+    staleness_protected_categories:
+      - correction
+    staleness_max_lifetime_multiplier: 20.0   # creation cap = staleness_age_days x multiplier (90 x 20 = 1800d)
+    staleness_max_extension_days: 3650        # absolute ceiling on extended expected_valid_days (~10 years)
+    # Memory consolidation (opt-in, lossy: source facts are replaced by a
+    # synthesized one; only consolidatedFrom IDs are kept). Runs in the same
+    # memory-update LLM call as extraction/staleness - no extra API cost.
+    # consolidation_enabled defaults to false because consolidation is lossy.
+    consolidation_enabled: false       # set true to opt into fact consolidation
+    consolidation_min_facts: 8         # min facts in one category to trigger review (3-30)
+    consolidation_max_groups_per_cycle: 3  # max groups merged per update cycle (1-10)
+    consolidation_max_sources: 8       # max source facts per consolidation group (2-20)
+    # extraction_callback is a host-injected post-extraction observability hook
+    # (token usage, facts accepted/rejected, rejection rate). The factory
+    # injects a logging default; set programmatically to emit a Langfuse span.
+    # Message processing (externalized patterns / prompt templates):
+    #   patterns_dir        - dir with correction.yaml / reinforcement.yaml overriding
+    #                         the bundled signal-detection patterns. None (default) =
+    #                         bundled core/message_patterns/. When explicitly set, both
+    #                         files must exist (typos or missing mounts raise an error).
+    #   prompts_dir         - dir with custom memory-extraction prompt templates
+    #                         (memory_update.chat.yaml, staleness_review.yaml,
+    #                         consolidation.yaml, fact_extraction.yaml). None (default)
+    #                         = bundled core/prompts/. Supports per-agent subdirectories.
+    # patterns_dir: ""            # empty = bundled defaults
+    # prompts_dir: ""             # empty = bundled defaults
+
 
 # ============================================================================
 # Custom Agent Management API
