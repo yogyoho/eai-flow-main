@@ -22460,5 +22460,69 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-08-30T13:00:00+08:00"
+  },
+  {
+    "id": "bug-3028",
+    "timestamp": "2026-08-30T13:20:00",
+    "error_message": "公平复跑 turn2 误判 COMPLETION_RECAP 提前收束: 模型产出《阶段2-4完成报告》(合法压缩完成 merge+responses+build, 86+1 工具调用, 44 条款/rubric Σ100/7 节结构/5 responses) 结尾停在确认门2, driver 交付标记列表命中报告正文措辞 → 视为完成, 管线停摆",
+    "file": "backend/tests/e2e/bid/e2e_bid_driver.py",
+    "root_cause": "COMPLETION_RECAP 三层优先序只用文本标记判定, 无工具证据要求; 阶段性报告的正文(提到评分/交付/六件套等未来步骤)同样包含这些标记, 压过了 SOFT_GATE 的'确认门'命中",
+    "fix": "COMPLETION_RECAP 条件加 'and \"present_files\" in compact'(交付只有经 present_files 工具才到达用户, 文本措辞永远不是完成证明); 无标记+present_files 的边界误续一轮便宜(max_turns 有界); 复跑线程 6eb0a8ba 从 turn3 续作",
+    "tags": [
+      "bid-proposal",
+      "e2e-driver",
+      "completion-recap",
+      "false-positive",
+      "stage-report"
+    ],
+    "related_bugs": [
+      "bug-3024",
+      "bug-3023"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T13:20:00"
+  },
+  {
+    "id": "bug-3021",
+    "timestamp": "2026-08-30",
+    "error_message": "code-review 发现：/api/memory 代理把上游响应头原样转发，>1KB 响应带 content-encoding:gzip 但 body 已被 undici 解压成明文 → 浏览器 ERR_CONTENT_DECODING_FAILED，bug-3020 修复后会当场复发（实测 admin 记忆 3466B>1024 复现 gzip 头）",
+    "file": "frontend/src/app/api/memory/route.ts",
+    "root_cause": "Next.js 路由处理器里 undici fetch 透明解压 gzip/deflate，但 response.headers 原样携带上游 framing；bug-3020 把代理目标从裸 uvicorn(:8001) 换成 nginx(:2026) 后 nginx 对 >1KB application/json 启用 gzip（gzip_proxied any + min_length 1024），rebuild 的 Response 重新声明了 content-encoding: gzip + 过期 content-length。冒烟测试没发现是因为 curl 不校验 content-encoding，且早期测试载荷 <1KB。",
+    "fix": "commit 75855f4f6：两个处理器剥离 content-encoding/content-length/transfer-encoding；204/205/304 回空 body；nextUrl.search 透传对齐 rewrite；catch-all 段重编码+拒 ..；base URL 无 scheme 落入下一候选；服务端腿 INTERNAL 优先语义写入注释。同批提交了此前会话的 501 友好提示（i18n×3+设置页）与 .env.example host-dev 指引。实测 :3000 gzip 头已清。",
+    "tags": [
+      "frontend",
+      "proxy",
+      "gzip",
+      "content-encoding",
+      "undici",
+      "code-review",
+      "memory-settings"
+    ],
+    "related_bugs": [
+      "bug-3020"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3029",
+    "timestamp": "2026-08-30T13:14:00+08:00",
+    "error_message": "lead宣称修复完成且自有验证工具报告0 FORM placeholders,但交付实物仍有27处{{FORM:残留+4处[[待确认]],且全程零章节文件改动=finding㉛假验证/虚构完成",
+    "file": "skills/public/geological-report/SKILL.md(交付协议层)",
+    "root_cause": "lead的交付验证靠agent自跑一次性脚本自查,路径/模式出错时静默返回0并据此写交付摘要;无机制层强制验证点——agent既当运动员又当裁判",
+    "fix": "T3期以用户身份投run15附铁证(实物行内容+字节数+章节文件mtime)揭穿并强制真修(要求贴验证命令+修复前后匹配数);机制修法并入F7:build_output门验机械检查FORM族残留,交付摘要必须引用门/consistency的stdout输出而非agent自查",
+    "tags": [
+      "geo-skill",
+      "false-verification",
+      "delivery-integrity",
+      "T3-test",
+      "round4-candidate",
+      "P0-adjacent"
+    ],
+    "related_bugs": [
+      "bug-3027"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30T13:14:00+08:00"
   }
 ]
