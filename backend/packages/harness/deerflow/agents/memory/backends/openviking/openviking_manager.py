@@ -34,7 +34,7 @@ from .session import (
 logger = logging.getLogger(__name__)
 
 
-# EAI-CUSTOM (2026-08-30, bug-3018): per-DeerFlow-user OpenViking identity.
+# EAI-CUSTOM (2026-08-30, bug-3019): per-DeerFlow-user OpenViking identity.
 # A USER API key binds to one OpenViking account, so each DeerFlow user with a
 # mapped key (memory.backend_config.user_keys) gets its own recorder/client/
 # retriever bundle; the class docstring's "single-user" statement predates this
@@ -54,7 +54,7 @@ class OpenVikingMemoryManager(MemoryManager):
     adapter owns SDK transport, message conversion, batching, commit retries,
     and retrieval behavior.
 
-    EAI-CUSTOM (bug-3018): additionally supports per-DeerFlow-user identity —
+    EAI-CUSTOM (bug-3019): additionally supports per-DeerFlow-user identity —
     users mapped in ``backend_config.user_keys`` get their own OpenViking
     recorder/retriever so each account writes with its own USER API key.
     """
@@ -65,11 +65,11 @@ class OpenVikingMemoryManager(MemoryManager):
     _client: Any = PrivateAttr()
     _recorder: Any = PrivateAttr()
     _retriever: Any = PrivateAttr()
-    # EAI-CUSTOM (2026-08-30, bug-3018) START — per-DeerFlow-user identity bundles
+    # EAI-CUSTOM (2026-08-30, bug-3019) START — per-DeerFlow-user identity bundles
     _integration: dict[str, Any] = PrivateAttr()
     _bundles: dict[str, _IdentityBundle] = PrivateAttr(default_factory=dict)
     _bundle_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
-    # EAI-CUSTOM (2026-08-30, bug-3018) END
+    # EAI-CUSTOM (2026-08-30, bug-3019) END
     _use_actor_peer: Any = PrivateAttr()
     _partial_write_error: type[Exception] = PrivateAttr()
     _should_keep_hidden_message: Any = PrivateAttr(default=None)
@@ -108,9 +108,9 @@ class OpenVikingMemoryManager(MemoryManager):
         )
         self._use_actor_peer = integration["use_actor_peer"]
         self._partial_write_error = integration["OpenVikingPartialWriteError"]
-        # EAI-CUSTOM (2026-08-30, bug-3018) START
+        # EAI-CUSTOM (2026-08-30, bug-3019) START
         self._integration = integration
-        # EAI-CUSTOM (2026-08-30, bug-3018) END
+        # EAI-CUSTOM (2026-08-30, bug-3019) END
 
     @classmethod
     def from_config(
@@ -189,7 +189,7 @@ class OpenVikingMemoryManager(MemoryManager):
         if not self._begin_operation():
             return ""
         try:
-            # EAI-CUSTOM (2026-08-30, bug-3018) START
+            # EAI-CUSTOM (2026-08-30, bug-3019) START
             bundle, peer_id = self._resolve_scope(user_id, agent_name)
             retriever = copy.copy(bundle.retriever)
             retriever.target_uri = _memory_target_uris(peer_id)
@@ -200,7 +200,7 @@ class OpenVikingMemoryManager(MemoryManager):
                     peer_id,
                     thread_id,
                 )
-            # EAI-CUSTOM (2026-08-30, bug-3018) END
+            # EAI-CUSTOM (2026-08-30, bug-3019) END
             try:
                 with self._actor_peer_scope(peer_id):
                     documents = retriever.invoke(self._config.injection_query)
@@ -245,12 +245,12 @@ class OpenVikingMemoryManager(MemoryManager):
         if not query.strip() or not self._begin_operation():
             return []
         try:
-            # EAI-CUSTOM (2026-08-30, bug-3018) START
+            # EAI-CUSTOM (2026-08-30, bug-3019) START
             bundle, peer_id = self._resolve_scope(user_id, agent_name)
             retriever = copy.copy(bundle.retriever)
             retriever.target_uri = _memory_target_uris(peer_id)
             retriever.search_mode = "find"
-            # EAI-CUSTOM (2026-08-30, bug-3018) END
+            # EAI-CUSTOM (2026-08-30, bug-3019) END
             retriever.session_id = None
             retriever.limit = max(1, min(int(top_k), 100))
             if category:
@@ -354,7 +354,7 @@ class OpenVikingMemoryManager(MemoryManager):
         try:
             if not thread_id:
                 raise ValueError("OpenViking memory write requires thread_id")
-            # EAI-CUSTOM (2026-08-30, bug-3018) START
+            # EAI-CUSTOM (2026-08-30, bug-3019) START
             bundle, peer_id = self._resolve_scope(user_id, agent_name)
             session_id = _session_id(
                 bundle.owner_user_id,
@@ -371,11 +371,11 @@ class OpenVikingMemoryManager(MemoryManager):
                     ),
                     bundle,
                 )
-            # EAI-CUSTOM (2026-08-30, bug-3018) END
+            # EAI-CUSTOM (2026-08-30, bug-3019) END
         finally:
             self._end_operation()
 
-    # EAI-CUSTOM (2026-08-30, bug-3018) START — bundle-aware capture
+    # EAI-CUSTOM (2026-08-30, bug-3019) START — bundle-aware capture
     def _capture_locked(
         self,
         session_id: str,
@@ -477,9 +477,9 @@ class OpenVikingMemoryManager(MemoryManager):
                 commit_pending=False,
             ),
         )
-    # EAI-CUSTOM (2026-08-30, bug-3018) END
+    # EAI-CUSTOM (2026-08-30, bug-3019) END
 
-    # EAI-CUSTOM (2026-08-30, bug-3018) START — per-user identity resolution
+    # EAI-CUSTOM (2026-08-30, bug-3019) START — per-user identity resolution
     def _resolve_scope(
         self,
         user_id: str | None,
@@ -544,7 +544,7 @@ class OpenVikingMemoryManager(MemoryManager):
             client=recorder.client,
             retriever=retriever,
         )
-    # EAI-CUSTOM (2026-08-30, bug-3018) END
+    # EAI-CUSTOM (2026-08-30, bug-3019) END
 
     def _actor_peer_scope(
         self,
@@ -584,14 +584,14 @@ class OpenVikingMemoryManager(MemoryManager):
             if self._resources_closed:
                 return
             self._recorder.close()
-            # EAI-CUSTOM (2026-08-30, bug-3018) START — close per-user recorders too
+            # EAI-CUSTOM (2026-08-30, bug-3019) START — close per-user recorders too
             for bundle in list(self._bundles.values()):
                 try:
                     bundle.recorder.close()
                 except Exception:
                     logger.exception("Failed to close OpenViking per-user recorder (user=%s)", bundle.owner_user_id)
             self._bundles.clear()
-            # EAI-CUSTOM (2026-08-30, bug-3018) END
+            # EAI-CUSTOM (2026-08-30, bug-3019) END
             self._resources_closed = True
 
     def _state_path(self, session_id: str) -> Path:

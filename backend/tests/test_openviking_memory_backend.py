@@ -350,7 +350,7 @@ def test_manager_refuses_to_share_single_user_key_across_deerflow_users(
     assert manager._recorder.calls == []
 
 
-# EAI-CUSTOM (2026-08-30, bug-3018) START — per-DeerFlow-user USER API keys
+# EAI-CUSTOM (2026-08-30, bug-3019) START — per-DeerFlow-user USER API keys
 def test_config_resolves_user_keys_from_env_names(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -453,7 +453,7 @@ def test_close_shuts_down_per_user_recorders(
         assert bob_recorder.recorder.closed is True
     assert manager._bundles == {}
     assert manager._recorder.closed is True
-# EAI-CUSTOM (2026-08-30, bug-3018) END
+# EAI-CUSTOM (2026-08-30, bug-3019) END
 
 
 def test_manager_records_only_unseen_suffix(

@@ -1942,7 +1942,7 @@ memory:
     # EAI-CUSTOM 2026-08-30: deerflow 核心库被整库重建后 admin 用户 id 变更
     # （1ffb1664…→06824890…，见 buglog bug-3014），此处同步更新绑定，否则
     # MemoryManagerError 拒绝服务、run 直接报错终止（openviking_manager.py:453）。
-    # EAI-CUSTOM 2026-08-30 bug-3018: user_keys = DeerFlow 用户 → OpenViking USER
+    # EAI-CUSTOM 2026-08-30 bug-3019: user_keys = DeerFlow 用户 → OpenViking USER
     # API key 的环境变量名（key 本体放 .env，勿写进本文件）。键是核心库 users.id
     # （deerflow 库 SELECT id FROM users WHERE email=...；运行时传的就是它，不是 email）。
     # 有映射的用户用自己的 key 读写自己的 OpenViking 账户；未映射的非 owner 仍拒绝。
