@@ -9,6 +9,7 @@ created_at 保留、changelog 追加、last_task 更新、show 锚点、无快�
 修复后首轮写出 v1；本测试锁死"写出后再 save 必须自增到 v2/v3 且不丢 created_at"
 —— 即多轮承接所依赖的不变量。
 """
+
 import json
 import subprocess
 import sys
@@ -24,12 +25,19 @@ def _save(out, task, diff=None):
     if not params.exists():
         params.write_text('{"Q": 20000}', encoding="utf-8")
     cmd = [
-        sys.executable, str(SP), "save",
-        "--task", task,
-        "--params", str(params),
-        "--report", str(out.parent / "r.md"),
-        "--standards", '["GB/T 50050-2017"]',
-        "--output", str(out),
+        sys.executable,
+        str(SP),
+        "save",
+        "--task",
+        task,
+        "--params",
+        str(params),
+        "--report",
+        str(out.parent / "r.md"),
+        "--standards",
+        '["GB/T 50050-2017"]',
+        "--output",
+        str(out),
     ]
     if diff:
         cmd += ["--diff", diff]
@@ -70,18 +78,49 @@ def main():
         # 4. show 子命令读锚点（agent 步骤0 用的就是这个）
         show = subprocess.run(
             [sys.executable, str(SP), "show", "--input", str(out)],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert "SNAPSHOT_LAST_TASK: 改参 25000->30000" in show.stdout, show.stdout
 
         # 5. 无快照 → SNAPSHOT_NONE（步骤0 降级全新运行）
         none = subprocess.run(
             [sys.executable, str(SP), "show", "--input", str(d / "nope.json")],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         assert "SNAPSHOT_NONE" in none.stdout, none.stdout
 
-    print("PASS: snapshot.py v1→v2→v3 自增 / created_at 保留 / changelog 追加 / show 锚点 / SNAPSHOT_NONE")
+        # 6. R11 守卫（b2117e88 实测穿透）：手写整份报告（0 details+0 占位符+0 签名）必须被打回。
+        #    现有 _save 的 --report r.md 从不落盘 → 门禁整段被 if rp.exists() 跳过——本节补真文件用例。
+        def _run_save():
+            return subprocess.run(
+                [sys.executable, str(SP), "save", "--task", "R11 守卫回归", "--params", str(out.parent / "params.json"), "--report", str(out.parent / "r.md"), "--output", str(out)],
+                capture_output=True,
+                text=True,
+            )
+
+        rmd = out.parent / "r.md"
+        # 6a. 全手写（无签名）→ R11 打回
+        rmd.write_text("# 计算书\n\n#### 6.1.1 蒸发水量\n\nQe = 18000 * 0.001461 * 8 = 210.38 m3/h（手写）\n", encoding="utf-8")
+        r = _run_save()
+        assert r.returncode == 1, f"手写报告必须被 R11 打回: rc={r.returncode}"
+        assert "R11" in r.stdout and "无脚本注入签名" in r.stdout, r.stdout
+        # 6b. per-formula 占位符未 inject → R11 打回
+        rmd.write_text("# 计算书\n\n#### 6.1.1 蒸发水量\n\n<!-- CALC:Qe -->\n", encoding="utf-8")
+        r = _run_save()
+        assert r.returncode == 1 and "R11" in r.stdout and "未注入占位符" in r.stdout, r.stdout
+        # 6c. 合法注入产物（签名 count=1 + 恰好 1 个 details）→ 放行且 version 自增
+        rmd.write_text(
+            "# 计算书\n\n#### 6.1.1 蒸发水量\n\n<details><summary>计算过程</summary>\n$$Qe=210.38$$\n</details>\n\n<!-- CALC_BLOCKS_INJECTED:v2 count=1 -->\n",
+            encoding="utf-8",
+        )
+        r = _run_save()
+        assert r.returncode == 0, f"合法注入产物必须放行: {r.stdout}"
+        assert "SNAPSHOT_READY" in r.stdout, r.stdout
+        rmd.unlink()
+
+    print("PASS: snapshot.py v1→v2→v3 自增 / created_at 保留 / changelog 追加 / show 锚点 / SNAPSHOT_NONE / R11 手写报告打回")
     return 0
 
 

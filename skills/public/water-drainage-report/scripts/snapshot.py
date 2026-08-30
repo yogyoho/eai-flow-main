@@ -91,6 +91,19 @@ def cmd_save(args: argparse.Namespace) -> int:
             if _injected and sum(_injected) != _details:
                 print(f"SNAPSHOT_ERROR: 报告 <details> 共 {_details} 块，但脚本注入签名合计 {sum(_injected)} 块——多出的手写折叠块/被删注入块必须清除：正文只保留注入块，其余计算叙述去 <details> 化（R9 守卫）")
                 return 1
+            # R11 守卫（正向）：R8/R9 只防「注入后又手写」，b2117e88 实测 agent 整份手写报告
+            # （0 details + 0 占位符 + 0 签名）三项全过穿透交付。save 是交付必经点，在这里
+            # 正向要求「必须有注入产物」：仍含 per-formula 占位符 = 忘 inject；连签名都没有 =
+            # 整个 inject 被跳过。打回后 agent 只能走 占位符 + render_calc_blocks.py inject 正道。
+            if "<!-- CALC:" in rtext:
+                print("SNAPSHOT_ERROR: 报告仍含未注入占位符 <!-- CALC:公式id -->——先运行 render_calc_blocks.py inject 再 save（R11 守卫）")
+                return 1
+            if not _injected:
+                print(
+                    "SNAPSHOT_ERROR: 报告无脚本注入签名 CALC_BLOCKS_INJECTED:v2——计算折叠块整批缺失（手写报告/跳过 inject）。"
+                    "打回：计算节每公式小节写 <!-- CALC:id --> 占位符（id 取自 traces.json，禁写 <details>/$$）后运行 render_calc_blocks.py inject，再 save（R11 守卫）"
+                )
+                return 1
     prev = _load_existing(out)
     prev_version = prev.get("version", 0) or 0
     try:
@@ -161,7 +174,7 @@ def cmd_show(args: argparse.Namespace) -> int:
     cl = snap.get("changelog") or snap.get("change_log") or []
     if cl:
         last = cl[-1]
-        print(f"SNAPSHOT_LAST_CHANGE: v{last.get('version')} {last.get('task','')}")
+        print(f"SNAPSHOT_LAST_CHANGE: v{last.get('version')} {last.get('task', '')}")
     return 0
 
 
