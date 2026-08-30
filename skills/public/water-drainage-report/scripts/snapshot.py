@@ -104,6 +104,44 @@ def cmd_save(args: argparse.Namespace) -> int:
                     "打回：计算节每公式小节写 <!-- CALC:id --> 占位符（id 取自 traces.json，禁写 <details>/$$）后运行 render_calc_blocks.py inject，再 save（R11 守卫）"
                 )
                 return 1
+            # R12 守卫（插图）：bug-3017/bug-3039 两次复发——render_diagrams.py 成功产出契约名
+            # PNG，agent 写报告时却手造不存在的文件名（b7c56031 三个全错，一个连 hex 都不是）。
+            # 与 R11 同理，写入侧无校验就必须在交付必经点正向校验：
+            # ① 每个图片行必须独占一行（Word 导出仅解析整行，行内混排不识别）；
+            # ② 文件名必须是契约形态 images/<12位hex>.<ext> 且真实存在于 outputs/images/；
+            # ③ 盘上有图而报告零引用 = 插图行被弄丢；
+            # ④ 盘上无图且无【插图待人工补充】占位 = 插图步骤整跳。
+            _img_re = re.compile(r"!\[[^\]]*\]\(([^)\s]+)\)")
+            _name_re = re.compile(r"^images/[0-9a-f]{12}\.(?:png|jpg|jpeg|gif|webp|bmp)$")
+            _problems: list[str] = []
+            _refs: list[str] = []
+            for _line in rtext.splitlines():
+                if not _img_re.search(_line):
+                    continue
+                if _line.strip() != _img_re.search(_line).group(0):
+                    _problems.append(f"图片行未独占一行（Word 导出不识别行内混排）：{_line.strip()[:80]}")
+                    continue
+                _url = _img_re.search(_line).group(1)
+                _fn = _url.split("/")[-1]
+                if not _name_re.match(_url):
+                    _problems.append(f"文件名不符合契约形态 images/<12位hex>.<扩展名>：{_url}")
+                    continue
+                if not (rp.parent / "images" / _fn).exists():
+                    _problems.append(f"引用的图片文件不存在于 outputs/images/：{_url}（禁止手造文件名，逐字复制 DIAGRAM_FILE 输出）")
+                    continue
+                _refs.append(_fn)
+            _imgdir = rp.parent / "images"
+            _ondisk = sorted(p.name for p in _imgdir.glob("*.png")) if _imgdir.is_dir() else []
+            for _fn in _ondisk:
+                if _fn not in _refs:
+                    _problems.append(f"outputs/images/ 存在未被报告引用的图：{_fn}——插图行被弄丢，按 DIAGRAM_FILE 输出逐字补写")
+            if not _ondisk and not _refs and "【插图待人工补充：" not in rtext:
+                _problems.append("outputs/images/ 无任何 PNG 且报告无【插图待人工补充】占位——插图步骤被整跳，必须运行 render_diagrams.py")
+            if _problems:
+                print("SNAPSHOT_ERROR: 插图引用校验失败（R12 守卫）——图片行文件名必须逐字复制 render_diagrams.py 的 DIAGRAM_FILE 输出：")
+                for _p in _problems:
+                    print(f"  - {_p}")
+                return 1
     prev = _load_existing(out)
     prev_version = prev.get("version", 0) or 0
     try:

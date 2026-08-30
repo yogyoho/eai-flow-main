@@ -110,17 +110,44 @@ def main():
         rmd.write_text("# 计算书\n\n#### 6.1.1 蒸发水量\n\n<!-- CALC:Qe -->\n", encoding="utf-8")
         r = _run_save()
         assert r.returncode == 1 and "R11" in r.stdout and "未注入占位符" in r.stdout, r.stdout
-        # 6c. 合法注入产物（签名 count=1 + 恰好 1 个 details）→ 放行且 version 自增
+        # 6c. 合法注入产物（签名 count=1 + 恰好 1 个 details + 合法插图引用）→ 放行且 version 自增
+        imgs = out.parent / "images"
+        imgs.mkdir(exist_ok=True)
+        (imgs / "08bb824f44bb.png").write_bytes(b"\x89PNG-fake")
         rmd.write_text(
-            "# 计算书\n\n#### 6.1.1 蒸发水量\n\n<details><summary>计算过程</summary>\n$$Qe=210.38$$\n</details>\n\n<!-- CALC_BLOCKS_INJECTED:v2 count=1 -->\n",
+            "# 计算书\n\n#### 6.1.1 蒸发水量\n\n<details><summary>计算过程</summary>\n$$Qe=210.38$$\n</details>\n\n<!-- CALC_BLOCKS_INJECTED:v2 count=1 -->\n\n![滤网起吊示意图](images/08bb824f44bb.png)\n",
             encoding="utf-8",
         )
         r = _run_save()
         assert r.returncode == 0, f"合法注入产物必须放行: {r.stdout}"
         assert "SNAPSHOT_READY" in r.stdout, r.stdout
-        rmd.unlink()
 
-    print("PASS: snapshot.py v1→v2→v3 自增 / created_at 保留 / changelog 追加 / show 锚点 / SNAPSHOT_NONE / R11 手写报告打回")
+        # 7. R12 守卫（bug-3017/bug-3039 复发）：图片行文件名/形态/存在性校验。
+        _ok_body = "<details><summary>计算过程</summary>\n$$Qe=210.38$$\n</details>\n\n<!-- CALC_BLOCKS_INJECTED:v2 count=1 -->\n"
+        # 7a. 编造文件名（盘上无此文件）→ R12 打回
+        rmd.write_text(f"# 计算书\n\n{_ok_body}\n![滤网起吊示意图](images/2c1e8b3f4a5d.png)\n", encoding="utf-8")
+        r = _run_save()
+        assert r.returncode == 1 and "R12" in r.stdout and "不存在于 outputs/images/" in r.stdout, r.stdout
+        # 7b. 图片行未独占一行（行内混排）→ R12 打回
+        rmd.write_text(f"# 计算书\n\n{_ok_body}\n安装示意见 ![图](images/08bb824f44bb.png) 所示。\n", encoding="utf-8")
+        r = _run_save()
+        assert r.returncode == 1 and "未独占一行" in r.stdout, r.stdout
+        # 7c. 盘上有图但报告零引用（插图行被弄丢）→ R12 打回
+        rmd.write_text(f"# 计算书\n\n{_ok_body}\n", encoding="utf-8")
+        r = _run_save()
+        assert r.returncode == 1 and "未被报告引用" in r.stdout, r.stdout
+        # 7d. 盘上无图且无人工贴图占位（插图步骤整跳）→ R12 打回
+        (imgs / "08bb824f44bb.png").unlink()
+        r = _run_save()
+        assert r.returncode == 1 and "整跳" in r.stdout, r.stdout
+        # 7e. 缺参合法跳过：无图但有【插图待人工补充】占位 → 放行
+        rmd.write_text(f"# 计算书\n\n{_ok_body}\n【插图待人工补充：滤网起吊示意图——请贴标准图】\n", encoding="utf-8")
+        r = _run_save()
+        assert r.returncode == 0 and "SNAPSHOT_READY" in r.stdout, r.stdout
+        rmd.unlink()
+        imgs.rmdir()
+
+    print("PASS: snapshot.py v1→v2→v3 自增 / created_at 保留 / changelog 追加 / show 锚点 / R11 手写报告打回 / R12 插图引用校验")
     return 0
 
 
