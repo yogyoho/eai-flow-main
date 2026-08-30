@@ -1,44 +1,39 @@
 {
-  "session_id": "session-2026-08-29-0012",
-  "started": "2026-08-29T16:12:47.390Z",
+  "session_id": "session-2026-08-30-0223",
+  "started": "2026-08-30T18:23:34.657Z",
   "files_read": {
-    "D:/eai/eai-flow-main/config.yaml": {
-      "count": 1,
-      "tokens": 36617,
-      "first_read": "2026-08-29T16:12:56.522Z"
-    },
-    "D:/eai/eai-flow-main/extensions_config.json": {
+    "D:/eai/eai-flow-main/backend/tests/test_geological_report_e2e_full.py": {
       "count": 1,
       "tokens": 0,
-      "first_read": "2026-08-29T16:12:56.863Z"
+      "first_read": "2026-08-30T18:25:29.394Z"
     },
-    "D:/eai/eai-flow-main/backend/tests/test_bid_proposal_scripts.py": {
-      "count": 2,
+    "D:/eai/eai-flow-main/backend/tests/fixtures/geological_report/e2e-full/expected_frozen.json": {
+      "count": 1,
       "tokens": 0,
-      "first_read": "2026-08-29T16:15:34.990Z"
+      "first_read": "2026-08-30T18:25:40.982Z"
     }
   },
   "files_written": [
     {
-      "file": "D:/eai/eai-flow-main/config.yaml",
+      "file": "D:/eai/eai-flow-main/backend/tests/fixtures/geological_report/e2e-full/expected_frozen.json",
       "action": "edit",
-      "tokens": 117,
-      "at": "2026-08-29T16:13:08.865Z"
+      "tokens": 20,
+      "at": "2026-08-30T18:25:51.847Z"
     },
     {
-      "file": "D:/eai/eai-flow-main/extensions_config.json",
+      "file": "D:/eai/eai-flow-main/skills/public/geological-report/references/formulas.json",
       "action": "edit",
-      "tokens": 7,
-      "at": "2026-08-29T16:13:12.224Z"
+      "tokens": 109,
+      "at": "2026-08-30T18:27:02.183Z"
     }
   ],
   "edit_counts": {
-    "config.yaml": 1,
-    "extensions_config.json": 1
+    "backend/tests/fixtures/geological_report/e2e-full/expected_frozen.json": 1,
+    "skills/public/geological-report/references/formulas.json": 1
   },
-  "anatomy_hits": 1,
+  "anatomy_hits": 0,
   "anatomy_misses": 2,
-  "repeated_reads_warned": 1,
+  "repeated_reads_warned": 0,
   "cerebrum_warnings": 0,
-  "stop_count": 2
+  "stop_count": 1
 }

@@ -22,6 +22,7 @@
 
 ## Key Learnings
 
+- **[2026-08-31] 平台三熔断器机制核证（workflow wf_dca5af69，五路取证）:** N23/N24 同在 loop_detection_middleware——hash 层 warn3/hard5（同 call-set 集合，窗口20）；per-tool 频率层是 **burst 检测器**（滑窗=max(全部硬顶)→bash=60，交叉一次其他工具即压到<60，非全程累计）。Gateway 每 run 重建图→**计数器按消息（新 run）重置**；**子代理/batch_task 每任务建独立中间件实例+独立 recursion_limit（=max_turns，general 150/bash 60）——重活下沉子代理=结构性规避三熔断**。分叉=POST /threads/{id}/branches 新线程拷 checkpoint（排除 sandbox/thread_data 通道；**workspace 文件仅「最新回合」分叉才克隆**），计数归零+state 保留；sidecar 深问=空线程仅注入最近 8 条父消息摘要（6000 字符），无 sandbox/state，**不能用于续跑管线**。阈值现成 config 键（下条消息生效）: loop_detection.tool_freq_overrides.bash / tool_freq_hard_limit / hard_limit（config.yaml:1214-1239）；N21 lead 交互默认 100 硬编码（services.py:553），前端 composer 已发 1000=max_recursion_limit（config.yaml:97）顶格。**硬停 run 仍报 success（stop_reason=loop_capped 只进 context 未落 run 记录）=bug-3048 静默失败待修**。geo 技能单 run happy path ≈60-70 bash（其中 ~55 次是 next/mark/gate/build/consistency/snapshot 记账），缓解三招：run_stage 驱动器合并 finalize/freeze、门禁 rc=0 自动推进 progress.json（4/章→2）、SKILL.md:179 的 for-loop 批量门禁从修复轮转正。断点续跑已完整支持（progress.json 磁盘真源，"断点续跑靠磁盘不靠对话记忆" progress.py:4）。
 - [2026-08-29] WSL2/Docker Desktop 卡死恢复配方(bug-1246/1262 恶性循环): 症状=docker ps/exec/引擎API全超时或500。步骤: ①查 tasklist vmmem + 宿主 free(若 vmmem>20GB 且宿主<2GB 即内存型卡死) ②taskkill Docker Desktop+com.docker.backend → wsl --shutdown(内存立即回血) ③重启 Docker Desktop,容器凭 restart 策略自动恢复 ④若前端容器陷入被 guest-oom 杀→重启→冷编译→再吃的死循环: docker stop 前端止血 + wsl -d docker-desktop sh -c "echo 3 > /proc/sys/vm/drop_caches"(可释放十几GB page cache) ⑤健康内存下 docker start 前端。注意: 编译期的 Can't resolve 报错可能是 OOM 次生灾害,内存健康时自愈,别急着清 .next 或重建镜像
 - **onScroll 距离阈值型无限滚动有「不溢出死区」，测试时用 max-height 钳制制造溢出 (2026-08-29, bug-2231):** 依赖 `onScroll` + 距底部阈值触发的懒加载，在「首窗内容高度 < 容器高度」时无滚动事件可触发（本次 docmgr 首窗 10 个非空文件夹 351px < 627px 容器，程序设 scrollTop 也归零），后续窗口对用户不可达且无兜底。QA 手法：`evaluate_script` 给滚动容器 `nav.style.maxHeight='300px'` 强制溢出再 `scrollTop=scrollHeight`（测完还原），可走完全部翻页窗口。修法建议=IntersectionObserver 哨兵（不需要溢出也能触发）或加载后未溢出且 has_more 则自动续拉。任何「分页+滚动加载」功能 QA 都要先查 `scrollHeight vs clientHeight`。
 - **dev 环境「整批路由 404 且无 /login 307」= Turbopack 路由解析层失败，先查 Docker Desktop 文件共享层 (2026-08-29, bug-2230):** Next.js 16 Turbopack dev 懒编译，`.next/dev` 缓存落在 Windows bind mount 上（boot 有 "Slow filesystem detected" 警告）。Docker Desktop 文件共享降级时（同期 docker API 也 500），**未编译路由整批瞬时 404**（`/workspace/chats/*`、`/workspace/agents/*`、`/workspace/scheduled-tasks`、`/showcase/*`、`/zh-CN/docs/*`），已编译路由（`/login`、`/setup`、`/workspace`）照常。**判别特征：404 直接返回而不 307 /login**——workspace/layout.tsx 的鉴权重定向根本没跑，说明死在路由解析而非页面代码。诊断顺序：①容器内 `/app/logs/frontend.log`（`docker logs` 为空，compose 把 dev 输出重定向到该文件）；②`docker ps`/`docker exec` 是否报 500（Docker Desktop 本体降级）；③自愈后复查。处置：`docker compose -p eai-docker restart frontend`（重启会重跑 compose prewarm wget 预热 chats 路由）。compose `docker-compose-dev.yaml` frontend 服务的 prewarm 注释已记录此模式。非代码 bug，别去改路由文件。
@@ -288,6 +289,12 @@
 - Python `f"{v:.2f}"` 是**二进制**格式化：显式 state 值 1.475 → `"1.48"`，而旧坐标差路径算出 1.47499… → `"1.47"`。给尺寸标注写测试期望时按 `_fmt` 真实输出写，别按十进制直觉。
 - 样例 docx 的字母尺寸链算术**内部不自洽**（分项与标注值对不上）——深度还原图纸只还原**图式/风格**（工字梁断面、C 形大钩、双线锥壁、竖排字、45° 斜刻），数值仍锁 formula_state（铁律#1），不抄样例数值。
 - `render_diagrams.py --outdir` 直接落 PNG（无 images/ 子目录）；`images/` 前缀只出现在打印的 `DIAGRAM_FILE:` 行。docker cp 取产物用 `docker cp 容器:/tmp/xx/. 目标/`。
+
+### water-skill R11 门禁（2026-08-30，bug-3036）
+- 纯负向守卫防不住"整体跳过"：R8/R9 快照门禁三查全是「有X但没Y」型，agent 整份手写报告（0 details+0占位符+0签名）反而三项全过（b2117e88 实测穿透交付）。交付必经点必须加**正向**校验——该有的产物签名（CALC_BLOCKS_INJECTED:v2）必须存在。
+- test_snapshot.py 旧 _save 的 --report r.md 从不落盘 → 门禁被 `if rp.exists()` 整段跳过，守卫实际零覆盖。给门禁写测试必须落**真文件**。
+- Windows GBK 宿主机跑含中文断言的 subprocess 测试：父进程 text=True 按 cp936 解码子进程 UTF-8 输出必炸 → 用 `PYTHONUTF8=1` 跑（父子两侧统一 UTF-8）；容器/Linux 无此问题。
+- heredoc（python - <<EOF）在 GBK 控制台传 UTF-8 中文源码会被 cp936 误解码写坏文件——多行中文补丁一律 Write 工具落 .py 文件再执行。
 
 ## Do-Not-Repeat
 
@@ -1428,3 +1435,111 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 ### Do-Not-Repeat
 - (2026-08-30b) 不要给 E2E driver 的交付标记列表放泛化词("已完成"/"全部完成")——它们出现在阶段性进度说明里, 会把进行中误判为完成(agnes turn5 教训)。
 - (2026-08-30b) 模型探针 POST 必须走带 cookie jar 的 opener, 不要裸 urlopen。
+
+
+## Addendum 2026-08-30c (bug-3032/3033/3034, 复审 w7bcb0hoi 17 项修复批)
+
+### Key Learnings
+- **更正 2026-08-30b 的三层优先序**: 复审 #1 实锤 COMPLETION_RECAP 不能排第一——交付回执自然复述"确认门2: 请确认终稿复核", 完成判定在前会吞掉真门(阶段5 永不跑 → 假 PASS)。现行正确优先序: 门证据(ask_clarification / 门措辞) > 完成回执(且必须带 present_files 工具证据) > forced 增量 > terminal-llm-error > PREMATURE。
+- **E2E driver 绝不把 last_ai 喂给关键词应答路由**: premature 轮的状态通报与确认门问题共享词汇("分类/实体"), 子串匹配会把 driver 变成伪造用户确认的注入源(6eb0a8ba turn5-20 实锤)。premature 用哨兵值(PREMATURE)+中性续作指令。
+- **values 帧是全量历史快照**: 任何事件标记的布尔存在性检测会永久粘住("[FORCED STOP]" 一旦发生每帧都在)。正确做法=存帧内出现次数, 轮末与上轮做差值, 只有增量才算本轮事件。
+- **SSE tool_call_chunk 契约**: 每个调用首 chunk 带 {name, args:'', id, index:N}; 后续 args 分片 {name:None, args:片段, id:None}——键接必须走 index 备忘录, `id or index` 混合键会把 args 挂到 int 键永远接不上(bug-3030)。
+- **正控评分器的写证据级设计**: write_file/str_replace 只解析 path/file_path 字段不扫全文——交付物正文合法引用 state 路径(覆盖率报表按 SKILL.md 写 state 锚点), 全文扫描会把合规 run 翻 FAIL。设计内豁免(entities_whitelist.json Agent 手写 + str_replace clauses.json 确认门1 回写)是 0/0/0 可达的前提; args 解析失败保守计违规(宁误报不漏报)。
+- **截断 run 假 PASS**: verify_state_files 只报"已登记被改/被删", 从未创建的权威文件不可见——空 run 在 CP5/CP6 双零下也 PASS。验收必须加 has_evidence 完整性门(有轮日志 + present_files 或 responses.json 在盘)。
+- **deerflow_error_fallback 标记**: 供应商级失败(402 等)被 llm_error_handling_middleware 归一化成 fallback AIMessage(additional_kwargs.deerflow_error_fallback=True)序列化进 values 帧, run status=success 无 error 帧——values 帧子串检测是唯一的廉价识别通道。
+- **复审 stale finding 教训**: workflow 复审 24 agent 里 3 项(#8/#13/#14)针对的是修复前旧版文件——agent 读文件时索引/缓存可能滞后, triage 时必须先核对 finding 描述的代码形态是否还存在于当前版本, 再决定修不修。
+- **agnes 公平复跑作废规则**: driver 自身污染的 run, 其 turn 计数不可作基线; 修复后必须新线程+新 out 目录重跑(out 目录里的 e2e_turn*.sse 是评分器 glob 的输入, 旧轮文件混入=假 FAIL/虚高)。
+
+### Do-Not-Repeat
+- (2026-08-30c) E2E 驱动器不要用"最后一条 AI 文本"做答案路由的输入源——它既是问题文本也是状态通报, 词汇重叠会自我污染。只对显式门证据(ask_clarification/门措辞)路由。
+- (2026-08-30c) 事件流状态检测不要用布尔存在性(会被全量历史快照粘住), 用计数差值。
+- (2026-08-30c) 正控评分器不要扫描工具参数全文做路径归因, 只解析 path 类字段; 豁免清单必须与设计文档逐条对齐, 否则 0/0/0 不可达。
+
+## Key Learnings + Decision Log (2026-08-30 — /api/memory 上游还原, bug-3020/3021 终解)
+
+**Decision Log**: 用户定案"最大限度不要修改 deerflow 上游代码"。/api/memory 两个 route handler(上游文件)的 fix(fc99d0bd3/75855f4f6)整体退场：删除 2 个 handler + 反向应用 5 文件补丁 → 7 文件中 5 个字节还原上游(.env.example、memory-settings-page.tsx、en/zh i18n)，净漂移=0 行修改+2 文件删除(2ebf28cf3)。
+
+**Key Learnings**:
+- **Next.js route handler 遮蔽 afterFiles rewrite**：`src/app/api/*/route.ts` 一旦存在就优先于 next.config.js rewrites。上游 handler 读 NEXT_PUBLIC_BACKEND_BASE_URL(默认 127.0.0.1:8001)，host-dev 直连 8001 撞 fail-closed auth → 500。Docker :2026 拓扑浏览器→nginx 直达 gateway，handler 永不执行——**只有 :3000 host-dev 会踩**。
+- **NEXT_PUBLIC_BACKEND_BASE_URL 是三重雷**：①门控 next.config.js:67 整块 /api/* rewrites(设值=全部注销)；②被浏览器端 6 处消费(core/config、extensions/dashboard/api、extensions/api、NotificationFeed、LogPanel、law-library-api，均 `?? ""` 同源回退)——设值内联进 bundle→跨域 CORS 断；③不能只给 server 腿。**不可用作任何"改代理指向"手段**。
+- **rewrite 通道才是正解**：/api/:path* catch-all → DEER_FLOW_INTERNAL_GATEWAY_BASE_URL，透传 gzip/cookie/查询串，100mb body 上限(experimental.proxyClientMaxBodySize)。全 /api/* 实证正常。上游 route handler 的 fix 类(gzip 头/env/查询串/遍历防护)全是遮蔽链自造的问题。
+- **handler 血统速查**：`git log bytedance/main -- <path>` 判上游/EAI。collab/ai-chat handler 是 EAI 自有(上游无、无 /api/collab rewrite、:3000 必需)——保留。全仓仅 3 个 route handler。
+- **反向应用手法**：工作区 clean 前提下 `git show <commit> -- <paths> | git apply -R` 精确摘除某 commit 的 hunks；stat 里的"+N 插入"若是还原出的上游原文行则属正常，以 `git diff bytedance/main -- <file>` 字节一致性为准。
+- **验证判据**：:3000 上 `content-encoding: gzip` 头存在且 curl --compressed 解码正常 = rewrite 透传(nginx gzip)；fix 后的 handler 必剥该头明文直出，fix 前的会解码失败——三态可区分服务方。
+- 501 友好 toast 及其 i18n 键随 handler 删除一并退役(故障类别消失)；评审遗留项 #3(stop_grace_period 40s)/#2(memory.model 注释)/#7(5 处 base-URL resolver 收敛)仍开放待用户决策。
+
+## Do-Not-Repeat (2026-08-30 — /api/memory)
+- 不要给上游 route handler 打 EAI-CUSTOM 补丁——先问 handler 是否该存在(遮蔽 rewrite 就不该)；删除>补丁。
+- 不要设 NEXT_PUBLIC_BACKEND_BASE_URL 来"修代理指向"(三重雷见上)。
+- host-dev 验证网关类 bug 前先 `curl :3000` 探活——dev server 可能仍活着(本次 000 是瞬时失败，PID 28064 一直在跑)。
+
+
+## Addendum 2026-08-30d (干净复跑定案 ac3e9c9d + bug-3037)
+
+### Key Learnings
+- **干净复跑三轨读数定案**: CP6=0 而 CP5=9——正规 extract.py merge 的 sign_all_authoritative 把手写文件现势洗白, 只有 CP5 全史抓真违规; CP5+CP6+装载白名单三重互证的必要性活体实证(bug-3031)。
+- **转向效应(deflection)**: state/ 被 WP-B 门禁+CP5 夹住后, 地板模型转向手写六件套直接落 outputs/(非禁写面)绕过 build_output。CP5 对 outputs/ 静默, 靠 CP1 质量项 + COMPLETION_RECAP 需 present_files 工具证据暴露(turn10 bash 手工交付被正确拒判)。验收读数必须组合而非单轨。
+- **bash 类违规主导**: 模型全程绕开 write_file/str_replace, 9 例全走 bash(python heredoc 写 state ×4 + rm 清理手制文件 ×5)。铁律9"任何途径"措辞与检测特征以 bash 为主的取向是对的。
+- **评分器复验方法**: 核实评分器输出用其自身原语(tool_calls_in_sse + cp5_features)逐调用核对; 自写 regex 全文扫会把只读 json.load 误标为写、把 values 帧全量回放重复计数。
+- **COMPLETION_RECAP 活性验证**: turn23 bash+present_files 命中完成回执正常收口(23/40), 门证据>完成回执优先序未误伤正常交付。
+- **MSYS ps 假阴性**: Git Bash ps -p <windows-pid> 只看 MSYS 进程, 对原生 PID 报不存在; 进程死活用 tasklist 或 PowerShell Get-Process。
+- **buglog 并发抢号**: take_free 从 max+1 顺延实测有效——预期 3035 实得 3037(3035/3036 被并发会话抢走)。
+
+### Do-Not-Repeat
+- (2026-08-30d) 判定进程死活别用 Git Bash 的 ps -p <Windows PID>——假阴性; 用 tasklist //FI 或 PowerShell Get-Process。
+- (2026-08-30d) 复核评分器结果别自写 regex 扫 SSE 全文——用评分器自己的 tool_calls_in_sse/cp5_features 逐调用核实, 否则回放重复+只读误报两头翻车。
+
+### $$ 展示行误删 + 确定性修复手法（2026-08-30，bug-3038）
+- **注入后的报告是脚本产物不是 LLM 文稿**：给 agent 的禁令（"全文严禁 $$"）只约束 write_file 阶段；必须同时声明"注入后 $$ 在 <details> 块首属合法终态"。flash 模型会在注入后"顺手清理"，按字面执行禁令删掉全部展示行（b2117e88 run3 实测）。
+- **修复注入产物永远走确定性路线**：从 traces.json（唯一数值源）+ render_calc_blocks 模块自身 helper 重建目标行，按内容指纹（块内 `- 公式：$...$`）匹配插回；先备份、计数不符拒写。绝不投 LLM run 去"恢复"——它可能再删一次。
+- **API 细节**：CSRF cookie 名是 `csrf_token`（非 csrf_access_token），jar 里 awk '$6=="csrf_token"' 取值；grep -P 在 GBK locale 报 "unibyte and UTF-8 only"，用 awk 替代。
+- **收尾 run 指令要窄到唯一动作**：第 4 轮 run 只许 present_files + 明文禁止读/改文件，才拿到第一个 success 终态（前 3 轮 error 终态均系 flash 流式尾异常+越权"清理"）。
+
+### R12 插图门禁 + 同步陷阱（2026-08-30）
+- **R12 守卫**（commit 7ec2b40d4）：snapshot save 校验报告图片行——独占一行 / `images/<12hex>.<ext>` 契约形态 / 文件真实存在 / 孤儿图（盘有图报告零引用）/ 整跳（盘无图且无【插图待人工补充】占位）。起因 bug-3017+bug-3039 两次复发：脚本产图成功、agent 写报告手造文件名。
+- **容器 cp 转置陷阱**：同步循环里 `cp $src "$d/scripts/$f" || cp $src "$d/$f"` 在目标目录存在时第一个 cp 会**成功写错位置**（SKILL.md 进 scripts/）。必须按文件类型显式分目标。宿主与容器各出现过一次同款游离重复件。
+- **UI 预览图不显示是设计缺口**：streamdown 只在 img onError 时显示 "Image not available" 回退；前端从不重写相对 `images/` src（SafeStreamdown 只覆写 a）。设计消费者是 docmgr Word 导出（服务端 _make_image_fetcher 按 source_thread_id 解析，文件名必须 `[0-9a-f]{12}` 形态否则降级为字面文本）。
+
+
+## Addendum 2026-08-30e (bug-3037 对抗评审 blocker + 复跑发射)
+
+### Key Learnings
+- **stall/liveness 修复不要引入 false-positive 完成判定**: "链内出现过 X 工具=达成 X 语义终态"是错误推断——present_files 在 bid-proposal skill 是中段门工件信号(确认门1/2 条款清单/diff 表都经它呈现)。修法: stall 检测只管止损(escalate 一次→abort), 完成判定收敛到单点 turn() COMPLETION_RECAP(当轮 markers+工具证据)。
+- **driver 窗口接线**: `prev_tools = tools` 必须写在 `tools = turn(...)` 之前(先捕获旧值), 否则稳态下"本轮∪上轮"窗口退化为单轮且测试覆盖的是生产不可达形态。
+
+### Do-Not-Repeat
+- (2026-08-30e) 停滞检测别用"链内出现过交付工具"直判完成——门工件/中间产物也走同一工具, 会把半程管线误杀成"完成"(对抗评审三镜头交叉证实); 完成判定只留单点。
+
+### Decision Log
+- bug-3037 终版 = answer/escalate/abort 三态, 删 finish 分支(评审 wgu46e22u blocker); escalate 消息给模型两条正经出路(继续执行/present_files 收口), 完成自然走 COMPLETION_RECAP。复跑 e2e_bid_agnes_clean2 已发射验证。
+
+### R12 实测 + agent 报告文件 CRLF 坑（2026-08-30，线程 de8ff72e）
+- R12 门禁新线程实测通过：SKILL ⑤ 条款生效后 agent 三图全部逐字复制契约名（bug-3017/3039 手造行为未复现）；save 正向校验 R11(46签名)+R12(3契约名存在) 全绿。
+- API 验证轮 run status=error 又是 streaming-tail 假象（work 已完成、present_files 已成功）——判终态永远读盘+线程 state，别信 run status。
+- agent write_file 落盘带 
+（CRLF）：容器里 grep/diff 报告占位符计数前必须 `tr -d ''`，否则比对全错（占位符集合比对曾误报 45 个 MISSING）。
+
+## Additions (2026-08-30 T4 geo page test finale)
+
+### Key Learnings
+- 容器直跑 `build_output.py --chapter chN`（只读）= 权威门审计通道：绕开 agent 自测口径失真（双 eff 打架）与 progress.json 记账失真（VERIFIED≠过门）；精确缺口数字直喂 composer 可显著加速修复收敛（6轮 3/9→9/9）。
+- grep 中文文本指纹注意 en-dash（–）vs 半角连字符（-）：`436-546` grep 漏报了 `436–546`，险些误判范文污染已清除。
+- run 执行期投递 composer 消息会杀 run；run 结束后投递安全。监视器用 host curl + cookie jar + auto re-login（:2026 /api/v1/auth/login/local form-urlencoded），直连 gateway:8001 会 401。
+- 平台三步数熔断器（recursion_limit 1000 / LoopDetection / bash-60）触发后 run 状态均仍报 success——审计长任务结果必须读产物而非信 run 状态。
+
+### Do-Not-Repeat
+- (2026-08-30) 不要信 agent 的校验汇总数字（说 FAIL 12，实况 31）——一切以脚本输出文件为准（N17 四形态）。
+- (2026-08-30) 不要信卡片「已回答」状态——可被 agent 自写伪造（N25），确认门要看真实用户事件。
+
+## 熔断器规避机制核证（2026-08-30，T4 后设计问题）
+- batch_task（子智能体批处理）= 持久化批执行：config.yaml `subagent_batches.enabled: true`（EAI-CUSTOM 2026-08-30，postgres 仓储+worker 随 gateway 启动）。每 item 独立 SubagentExecutor → 各自 recursion_limit=max_turns（general-purpose 150）、own LoopDetection/bash 窗口/900s 超时；挂同一 thread workspace；结果截断存储不灌主上下文；SubagentLimitMiddleware 只数 task 不数 batch_task。**但与 task() 同在 `feat.subagent` 门内（factory.py:328）→ 默认模式无 batch_task，修 N11 一并解锁**。
+- 分叉 = 新 thread_id + user-data 整目录 copytree 克隆（threads.py:311，仅排除 .upload-*.part/symlink）；仅最新回合分叉才克隆（历史回合=空工作区）；run 在飞 409。全部 per-thread 键全新。
+- followup chip = 同线程新 run，三预算从零（loop_detection freq 是滑窗计数，popleft 递减，跨 run 残留可忽略）。「继续深问」右侧面板不存在——chip 在输入框上方；文案由 suggest_agent oneshot LLM 生成（只看最近 6 条纯文本，会与磁盘状态机错位）。
+- recursion_limit 前端硬编 1000 在 hooks.ts 两处（:2221/:2343），且 gateway services.py:692-707 钳制到 `max_recursion_limit`（app_config.py:224 默认 1000）——抬高必须两处同改。
+- bash-60 就是 config.yaml `loop_detection.tool_freq_overrides.bash.warn:40/hard_limit:60`（EAI-CUSTOM bug-2217 所配）——调阈值零代码。
+## Key Learnings (2026-08-31 — geo 技能平台预算批量子命令 + bug-3051 E5 单位修复)
+
+- **FC9 抓到真 bug 的实证**：N26 会话给 consistency.py 加的 FC9 potential 量级门（10x 带宽）在单测合成数据上拦下 E5.gross_potential_yi=682.14 亿元；根因是 formula_runner.py E5 emit 银项 `ag_kg*pAg_kg`（元）没除 WAN 就并入铜项（万元）口径——银项以万元数值冒充亿元、虚高 1e4 倍。教训：保护性门禁在测试数据上"误报"时，先查是不是真 bug，绝不弱化门禁。
+- **量纲纪律**：合并多币种项进复合单位（亿元）时，每项先归一成同一中间单位（元）再统一 /1e8；E5 修法全部元的量纲后 /1e8 等价且更不易错。
+- **resolve_targets 探测链是测试同生产语义的杠杆**：build_output.resolve_targets(None, stage) 沿 stage 向上三级探测 depth_targets.json——把基准放 <base>/references/depth_targets.json + stage 副本放 <base>/references/stages/，gate（in-process）与 build_output 子进程都自动吃同一基准，测试不用传 --targets。
+- **批量子命令模式的验收形状**：progress.py gate 缺省跑全部 DRAFTED 章、PASS 自动转 VERIFIED（唯一写者不变式不破）、任一 FAIL→rc=1+stderr 逐章差距+该章保持 DRAFTED+phase 不越位；run-stage 合并序列 stdout 原样透传（BUILD_READY 粘贴行是交付铁律）。

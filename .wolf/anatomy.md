@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-29T16:13:12.184Z
-> Files: 61 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-08-30T18:27:02.175Z
+> Files: 5 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -35,8 +35,6 @@
 
 ## ./
 
-- `config.yaml` — Configuration for the DeerFlow application (~36683 tok)
-- `extensions_config.json` (~2324 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -113,21 +111,20 @@
 ## .superpowers/brainstorm/51743-1779257723/content/
 
 
+## .tmp-geo-test/
+
+
 ## .tmp-geol/
 
 
 ## .tmp-geol/cmp/
 
-- `extend_contracts.py` — 向 consistency_contracts.json 追加 3 条喇叭口几何区间校验（文本级拼接保旧内容不变）。 (~491 tok)
-- `extend_formulas.py` — v3 公式扩展：向 formulas.json 文本级追加 9 式（保旧 37 式逐字节不变）。 (~1899 tok)
 
 ## .tmp-geol/diagram_smoke/
 
-- `state.json` (~142 tok)
 
 ## .tmp-geol/e2e-illustration/
 
-- `probe_testclient.py` (~482 tok)
 
 ## .worktrees/abac-3level/backend/app/extensions/auth/
 
@@ -257,11 +254,12 @@
 
 ## C:/Users/admin/
 
-- `.wslconfig` (~52 tok)
+
+## C:/Users/admin/.claude/
+
 
 ## C:/Users/admin/.claude/plans/
 
-- `quizzical-wishing-thompson.md` — 给排水计算书 vs 吉林院样例 —— 二次对比差距清单与完善方案 (~933 tok)
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/
 
@@ -271,11 +269,6 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `core-db-postgres-cutover.md` (~406 tok)
-- `frontend-deps-need-image-rebuild.md` — Declares errors (~1288 tok)
-- `gateway-run-lifecycle-and-api-testing.md` (~407 tok)
-- `MEMORY.md` (~2097 tok)
-- `water-drainage-report-optimization.md` (~1687 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -285,30 +278,9 @@
 
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
 
-- `admin-main-dev-fork-design-20260829-bid-proposal-v3.md` — Design: bid-proposal-writing 技能 v3 重构（superpowers 方法论移植） (~2242 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
-- `geo_correction_payload.json` (~244 tok)
-- `geo_fix_families.py` — 操作者修复：经 ingest.py（D10 唯一写者）重录被 agent 手写污染的族。 (~1264 tok)
-- `geo_msg_gate2_confirm.json` (~128 tok)
-- `geo_msg_gen2.json` (~188 tok)
-- `geo_msg_gen4.json` (~467 tok)
-- `geo_msg_maint_fix.json` (~360 tok)
-- `geo_msg_resume.json` (~355 tok)
-- `geo_msg_resume2.json` (~209 tok)
-- `geo_nudge_payload.json` (~96 tok)
-- `geo_schema_reaudit.py` — schema 复审 + 冻结值抽查。validate_values 逐族复跑（18 违规基线）+ 关键锚点核对。 (~1042 tok)
-- `geo_supplement_01.json` (~502 tok)
-- `geo_tamper_audit.py` — Manifest 哈希审计：比对 state_manifest.json 登记的 sha256 与盘上实际文件。 (~660 tok)
-- `kf_probe.py` — Probe: does agnes-2.5-Flash truncate long JSON at the config max_tokens cap? (~290 tok)
-- `kf-doc-evidence.txt` — 任务C 源文档 chunk 取证 — 最终汇总结论 (~573 tok)
-- `kf-evidence.py` — -*- coding: utf-8 -*- (~1101 tok)
-- `kf-evidence2.py` — -*- coding: utf-8 -*- (~949 tok)
-- `kf-evidence3.py` — -*- coding: utf-8 -*- (~1265 tok)
-- `kf-evidence4.py` — -*- coding: utf-8 -*- (~579 tok)
-- `kf-evidence5.py` — -*- coding: utf-8 -*- (~678 tok)
-- `kf-evidence6.py` — -*- coding: utf-8 -*- (~531 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/bidpipe/
 
@@ -357,12 +329,14 @@
 
 ## backend/
 
-- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~1628 tok)
 
 ## backend/.deer-flow/
 
 
 ## backend/.deer-flow/data/
+
+
+## backend/.deer-flow/e2e_bid_agnes_rerun/
 
 
 ## backend/.deer-flow/threads/bf4680b9-5ea2-4fa3-a732-4f6576c7e671/user-data/workspace/
@@ -574,7 +548,6 @@
 
 ## backend/app/extensions/docmgr/
 
-- `routers.py` — AI Document routers for extensions module. (~14624 tok)
 
 ## backend/app/extensions/formula_engine/
 
@@ -584,9 +557,6 @@
 
 ## backend/app/extensions/knowledge_factory/
 
-- `llm.py` — LLM client wrapper for knowledge factory extraction. (~6373 tok)
-- `pipeline.py` — Template extraction pipeline - 5-stage pipeline with callback-based progress. (~20260 tok)
-- `service.py` — Business logic for knowledge factory extraction. (~7869 tok)
 
 ## backend/app/extensions/knowledge_factory/data/
 
@@ -708,6 +678,9 @@
 ## backend/packages/harness/deerflow/agents/memory/
 
 
+## backend/packages/harness/deerflow/agents/memory/backends/openviking/
+
+
 ## backend/packages/harness/deerflow/agents/middlewares/
 
 
@@ -782,15 +755,19 @@
 
 ## backend/tests/
 
-- `test_chapter_planner.py` — chapter_planner 测试：章节 manifest 生成 + 受影响章节反查（反馈6）。 (~1044 tok)
-- `test_docmgr_images.py` — Tests for personal-doc image upload endpoint (BlockNote uploadFile backend, EAI-CUSTOM). (~3146 tok)
-- `test_formula_runner_cli.py` — formula_runner CLI 端到端测试（反馈6 值差分流程）。 (~1794 tok)
-- `test_geological_report_v2_scripts.py` — geological-report v2 六脚本测试矩阵（设计决策 5A 全矩阵；T5）。 (~12941 tok)
-- `test_kf_llm.py` — Regression test for bug-1243: KF extraction LLM client must bind a higher (~370 tok)
-- `test_kf_pipeline.py` — Unit tests for knowledge_factory pipeline helpers. (~1510 tok)
-- `test_water_diagrams.py` — water-drainage-report render_diagrams.py 契约锁（EAI-CUSTOM，插图占位方案）。 (~1962 tok)
+- `test_geological_report_v2_scripts.py` — geological-report v2 六脚本测试矩阵（设计决策 5A 全矩阵；T5）。 (~18210 tok)
+
+## backend/tests/e2e/bid/
+
 
 ## backend/tests/fixtures/bid_proposal/
+
+
+## backend/tests/fixtures/geological_report/e2e-full/
+
+- `expected_frozen.json` (~529 tok)
+
+## backend/tests/fixtures/geological_report/e2e-full/forms/
 
 
 ## config/
@@ -798,10 +775,6 @@
 
 ## deploy/offline/
 
-- `config.yaml` (~3086 tok)
-- `MANUAL-DEPLOY.md` — EAI-Flow 全新部署手册（离线生产环境 · 完整操作步骤） (~3163 tok)
-- `MANUAL-UPGRADE.md` — EAI-Flow 更新手册（离线生产环境 · 完整操作步骤） (~3685 tok)
-- `upgrade.sh` — upgrade.sh — 服务器端增量升级（配合 scripts/offline-export.sh --delta 产出的 delta 包） (~1253 tok)
 
 ## deploy/offline/brand-assets/
 
@@ -811,8 +784,6 @@
 
 ## docker/
 
-- `dev-entrypoint.sh` — '. uvicorn's FileFilter does `Path(pattern).is_dir()` — a literal (~1542 tok)
-- `docker-compose-dev.yaml` — DeerFlow Development Environment (~5758 tok)
 
 ## docker/nginx/
 
@@ -1173,8 +1144,6 @@
 
 ## frontend/src/extensions/docmgr/
 
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~27880 tok)
-- `ExportDocxDialog.tsx` — FieldLabel — renders table (~15320 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1196,7 +1165,6 @@
 
 ## frontend/src/extensions/knowledge-factory/components/
 
-- `StyledRangeSlider.module.css` — Styles: 13 rules, 5 vars (~718 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/scraper/
 
@@ -1497,9 +1465,11 @@
 
 ## skills/public/geological-report/
 
+- `SKILL.md` — NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill (~4198 tok)
 
 ## skills/public/geological-report/references/
 
+- `formulas.json` (~4631 tok)
 
 ## skills/public/geological-report/references/ore_packs/
 
@@ -1509,7 +1479,7 @@
 
 ## skills/public/geological-report/scripts/
 
-- `ingest.py` — geological-report v2 — ingest.py：data/ 状态目录的唯一写者（D10）。 (~6782 tok)
+- `progress.py` — geological-report v2 — progress.py：章节进度状态机（步骤4 控制器）。 (~5989 tok)
 
 ## skills/public/local-knowledge-first/
 
@@ -1537,17 +1507,12 @@
 
 ## skills/public/water-drainage-report/
 
-- `SKILL.md` — 给排水设计专篇技能 (~7435 tok)
 
 ## skills/public/water-drainage-report/references/
 
 
 ## skills/public/water-drainage-report/scripts/
 
-- `chapter_planner.py` — 给排水设计专篇 — 章节规划器（反馈6 定点重生成的中枢）。 (~1545 tok)
-- `formula_runner.py` — 给排水设计专篇 — 公式计算 CLI 工具。 (~6527 tok)
-- `render_diagrams.py` — 参数驱动示意图生成器（插图占位契约的图片侧）。 (~3772 tok)
-- `test_bugfixes.py` — bug-2198/2199 修复回归检查（与 test_snapshot.py 同风格，subprocess 实跑 CLI）。 (~7555 tok)
 
 ## tools/license/
 
