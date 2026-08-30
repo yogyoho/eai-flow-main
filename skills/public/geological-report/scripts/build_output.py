@@ -135,6 +135,15 @@ def render_family(fam: str, stage: dict, data_dir: Path) -> str:
             return "（空表）"
         return _md_table(rows[0], rows[1:])
     doc = json.loads(p.read_text(encoding="utf-8"))
+    # bug-3018: 清单族经 `ingest.py file` CSV 摄入落成顶层行数组（bug-3004 已让门1容忍此形状），
+    # render_family 未同步 → doc.items() AttributeError 单章门崩溃（ch4 实测）。行数组按
+    # 单表渲染，与下方 list 分支同构；不回写 data/（唯一写者=ingest.py）。
+    if isinstance(doc, list):
+        if not doc:
+            return "（空表）"
+        cols = list(doc[0].keys()) if isinstance(doc[0], dict) else [fam]
+        rows = [[str(x.get(c, "")) for c in cols] if isinstance(x, dict) else [str(x)] for x in doc]
+        return _md_table(cols, rows)
     scalars = {k: v for k, v in doc.items() if not isinstance(v, (list, dict)) and not k.startswith("_")}
     parts = []
     if scalars:
