@@ -803,6 +803,8 @@ export interface Translations {
       noFacts: string;
       summaryReadOnly: string;
       memoryFullyEmpty: string;
+      // EAI-CUSTOM: graceful notice when the memory backend (e.g. OpenViking) has no document view
+      unsupportedBackendNotice: string;
       factPreviewLabel: string;
       searchPlaceholder: string;
       filterAll: string;

@@ -939,6 +939,9 @@ export const enUS: Translations = {
       summaryReadOnly:
         "Summary sections are read-only for now. You can currently add, edit, or delete individual facts, or clear all memory.",
       memoryFullyEmpty: "No memory saved yet.",
+      // EAI-CUSTOM: graceful notice when the memory backend (e.g. OpenViking) has no document view
+      unsupportedBackendNotice:
+        "The current memory backend does not support memory document management: long-term memory is captured and recalled automatically during conversations; viewing, editing, and manual management are unavailable here.",
       factPreviewLabel: "Fact to delete",
       searchPlaceholder: "Search memory",
       filterAll: "All",

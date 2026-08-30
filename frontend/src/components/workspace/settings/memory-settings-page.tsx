@@ -339,6 +339,15 @@ export function MemorySettingsPage() {
   const summaryReadOnly = t.settings.memory.summaryReadOnly;
   const memoryFullyEmpty =
     t.settings.memory.memoryFullyEmpty ?? "No memory saved yet.";
+  // EAI-CUSTOM: backends without a memory document view (e.g. OpenViking) return
+  // 501 "Operation 'get memory' not supported by memory backend '...'" — show a
+  // friendly notice instead of the raw error line.
+  const unsupportedBackendNotice =
+    t.settings.memory.unsupportedBackendNotice ??
+    "The current memory backend does not support memory document management.";
+  const isUnsupportedBackendError = error?.message.includes(
+    "not supported by memory backend",
+  );
   const factPreviewLabel =
     t.settings.memory.factPreviewLabel ?? "Fact to delete";
   const searchPlaceholder =
@@ -546,7 +555,13 @@ export function MemorySettingsPage() {
             {t.common.loading}
           </div>
         ) : error ? (
-          <div>Error: {error.message}</div>
+          isUnsupportedBackendError ? (
+            <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-sm">
+              {unsupportedBackendNotice}
+            </div>
+          ) : (
+            <div>Error: {error.message}</div>
+          )
         ) : !memory ? (
           <div className="text-muted-foreground text-sm">
             {t.settings.memory.empty}
