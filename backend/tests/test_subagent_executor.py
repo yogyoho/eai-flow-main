@@ -2328,6 +2328,55 @@ class TestCooperativeCancellation:
         """Test that requesting cancellation on a nonexistent task does not raise."""
         executor_module.request_cancel_background_task("nonexistent-task")
 
+    def test_request_cancel_pending_future_does_not_self_deadlock(self, executor_module, classes):
+        """Regression (bug-3021): cancelling a PENDING background future must not
+        self-deadlock on _background_tasks_lock.
+
+        For a pending future, Future.cancel() synchronously runs done-callbacks in
+        the caller's thread. forget_future re-acquires _background_tasks_lock, so
+        calling cancel() while still holding that lock deadlocked the caller — and
+        froze the whole event loop when reached from the task tool's CancelledError
+        branch. The callback here mimics forget_future's lock re-entry exactly.
+        """
+        import concurrent.futures
+        import threading
+
+        SubagentResult = classes["SubagentResult"]
+        SubagentStatus = classes["SubagentStatus"]
+
+        task_id = "test-cancel-pending-future"
+        result = SubagentResult(
+            task_id=task_id,
+            trace_id="test-trace",
+            status=SubagentStatus.RUNNING,
+            started_at=datetime.now(),
+        )
+        executor_module._background_tasks[task_id] = result
+
+        future: concurrent.futures.Future = concurrent.futures.Future()
+
+        def forget_like_callback(_future: concurrent.futures.Future) -> None:
+            with executor_module._background_tasks_lock:
+                executor_module._background_futures.pop(task_id, None)
+
+        future.add_done_callback(forget_like_callback)
+        executor_module._background_futures[task_id] = future
+
+        # Run in a worker thread with a join timeout: pre-fix this call never
+        # returns (same-thread lock re-entry), post-fix it completes promptly.
+        done = threading.Event()
+
+        def call_cancel() -> None:
+            executor_module.request_cancel_background_task(task_id)
+            done.set()
+
+        worker = threading.Thread(target=call_cancel, daemon=True)
+        worker.start()
+        assert done.wait(timeout=10), "request_cancel_background_task deadlocked on a PENDING future (bug-3021)"
+
+        assert result.cancel_event.is_set()
+        assert future.cancelled()
+
     def test_execute_async_runs_without_calling_execute(self, executor_module, classes, base_config):
         """Regression: execute_async should not route through execute()/asyncio.run()."""
         import concurrent.futures

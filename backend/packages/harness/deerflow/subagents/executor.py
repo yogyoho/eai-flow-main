@@ -1393,14 +1393,25 @@ def request_cancel_background_task(execution_id: str) -> None:
     Args:
         execution_id: The execution ID returned by execute_async.
     """
+    # EAI-CUSTOM (2026-08-30, bug-3021): future.cancel() must run OUTSIDE
+    # _background_tasks_lock. For a PENDING future, cancel() synchronously
+    # invokes the done-callback forget_future (executor.py:1374), which
+    # re-acquires this same non-reentrant lock — same-thread re-entry
+    # self-deadlocked the caller, and when that caller is the tool path
+    # running on the main event loop (task_tool CancelledError branch,
+    # task_tool.py:670) the whole gateway froze (the recurring silent wedge,
+    # bug-3019, occ=8). Lock scope now only fetches references; cancel runs
+    # after release. Upgrade note: drop this comment once ported upstream.
+    future: Future[SubagentResult] | None = None
     with _background_tasks_lock:
         result = _background_tasks.get(execution_id)
         if result is not None:
-            result.cancel_event.set()
             future = _background_futures.get(execution_id)
-            if future is not None:
-                future.cancel()
-            logger.info("Requested cancellation for background execution %s", execution_id)
+    if result is not None:
+        result.cancel_event.set()
+        if future is not None:
+            future.cancel()
+        logger.info("Requested cancellation for background execution %s", execution_id)
 
 
 def get_background_task_result(execution_id: str) -> SubagentResult | None:
