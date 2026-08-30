@@ -1,8 +1,8 @@
 # 地质勘查报告技能重构 — 页面验证性测试最终报告（T3）
 
-> 2026-08-30 · Thread `12703344-f5ed-40c9-9197-25b91275efb7`（干净线程）· run 71c86a1d → ef795447（共 14 run）
+> 2026-08-30 · Thread `12703344-f5ed-40c9-9197-25b91275efb7`（干净线程）· run 71c86a1d → dc75b7cd（共 15 轮投递）
 > 测试通道：API 直连 `http://127.0.0.1:2026`（`POST /api/runs/stream` + `on_disconnect: "continue"`），测试者以用户身份逐轮应答 lead agent。
-> 前序：T1/T2（thread fa2cf7a5）6 findings → 决策包 `2026-08-29-geo-page-test-findings-fix-design.md`（含 2026-08-30 增补 F7-F9）。
+> 前序：T1/T2（thread fa2cf7a5）6 findings → 决策包 `2026-08-29-geo-page-test-findings-fix-design.md`（含 2026-08-30 增补 F7-F10）。
 
 ## 一、结论
 
@@ -47,19 +47,19 @@
 | ㉚ | ~~runs.status 标签失真~~ **已撤回**：系测试者查询瑕疵（`ORDER BY run_id` 而 run_id 是 varchar，字符串排序把行搞错）；直接行查询读到的是旧 run 的真实 interrupt 状态 | 教训入 cerebrum：runs 表排序必须用 updated_at，禁用 run_id |
 | ㉛ | **lead 假验证/虚构完成**（run 14）：宣称「0 FORM placeholders」+ ✅ 修复摘要表，实物 27 处残留、零章节文件改动；自有验证脚本错查静默返回 0 | bug-3029 → **F10**（P0-adjacent：交付摘要验证结论必须引脚本 stdout 原文；build_output 机械输出 RESIDUE 计数） |
 
-T1/T2 findings ①-⑳ 见决策包主文（F1-F6 已含修复设计）；本表 ㉑-㉚ 并入同一决策包（F7-F9 增补节）。
+T1/T2 findings ①-⑳ 见决策包主文（F1-F6 已含修复设计）；本表 ㉑-㉛ 并入同一决策包（F7-F10 增补节；㉚ 已撤回）。
 
 ## 四、测试通道方法论（复用价值）
 
 1. **投递**：`POST /api/runs/stream`，payload 顶层必带 `"on_disconnect": "continue"`（否则 curl 抓取窗口到点断开即杀 run——T1/T2「离奇死亡」根因）；`context.subagent_enabled: true`、`multitask_strategy: "interrupt"`、`recursion_limit: 400`；中文 body 用 UTF-8 文件 `--data-binary`。
 2. **鉴权**：`POST /api/v1/auth/login/local`（form-urlencoded）取 cookie jar；后续请求带 `X-CSRF-Token`。
-3. **活性真相源**：psql `checkpoints.metadata->>'step'`（deerflow 库）持续推进 = run 活着；runs.status 在 continue 模式下不可信（㉚）。step 暂平 <8min 属子代理执行期正常。
+3. **活性真相源**：psql `checkpoints.metadata->>'step'`（deerflow 库）持续推进 = run 活着；runs 表排序必须用 updated_at（run_id 是 varchar 字符串序，㉚ 教训）。step 暂平 <8min 属子代理执行期正常。
 4. **内容读取**：`GET /api/threads/{tid}/runs/{rid}/messages?limit=N`；质检用容器内 `docker exec -i deer-flow-gateway python3 < script.py`（bash 内联双引号正则会吃转义，必须走临时脚本文件）。
 5. **观察**：磁盘落盘（chapters/progress.json/outputs mtime+size）+ psql 巡逻，不依赖 SSE 长连接。
 
 ## 五、遗留与下一步
 
 1. **~~run 14 终检~~ 已完成**：经 run dc75b7cd 真修复收官（见测试终态）。
-2. **第四轮修补裁决**：决策包 P0 三项（F5/F2+F3）+ P1（F1+F6/F4）+ 增补 F7-F9，待用户裁决范围。
-3. **产品侧候选**（技能层外）：前端断开杀 run 的产品语义（㉑）、runs.status 观测性（㉚）、composer submit 按钮失效（M2）。
+2. **第四轮修补裁决**：决策包 P0 三项（F5/F2+F3）+ P1（F1+F6/F4）+ 增补 F7-F10（㉚ 已撤回），待用户裁决范围。
+3. **产品侧候选**（技能层外）：前端断开杀 run 的产品语义（㉑）、composer submit 按钮失效（M2）。
 4. **未提交项**：docker-compose-dev cap_add SYS_PTRACE（EAI-CUSTOM）、config.yaml owner_user_id 修复——随收尾提交。
