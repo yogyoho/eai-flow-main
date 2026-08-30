@@ -1,10 +1,23 @@
 import type { NextRequest } from "next/server";
 
-const BACKEND_BASE_URL =
-  process.env.NEXT_PUBLIC_BACKEND_BASE_URL ?? "http://127.0.0.1:8001";
+// EAI-CUSTOM (2026-08-30, bug-3020): same shadowing issue as ../route.ts — this
+// catch-all shadows the rewrite for /api/memory/* but read only
+// NEXT_PUBLIC_BACKEND_BASE_URL (unset in our host dev server → dead
+// http://127.0.0.1:8001). Resolve the env var the rewrites use instead.
+// Upstream fallback chain preserved below it.
+function resolveBackendBaseURL() {
+  const internal = process.env.DEER_FLOW_INTERNAL_GATEWAY_BASE_URL?.trim();
+  if (internal) {
+    return internal.replace(/\/+$/, "");
+  }
+  return (
+    process.env.NEXT_PUBLIC_BACKEND_BASE_URL?.trim().replace(/\/+$/, "") ||
+    "http://127.0.0.1:8001"
+  );
+}
 
 function buildBackendUrl(pathname: string) {
-  return new URL(pathname, BACKEND_BASE_URL);
+  return new URL(pathname, resolveBackendBaseURL());
 }
 
 async function proxyRequest(request: NextRequest, pathname: string) {
