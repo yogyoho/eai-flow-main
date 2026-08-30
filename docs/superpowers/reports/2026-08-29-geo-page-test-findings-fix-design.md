@@ -345,8 +345,8 @@ build stderr 固定含 token `STALE_FREEZE` + 「重跑 formula_runner execute�
 ### F8-bracket-double-bracket-typography — P2（S）
 正文 4 处 `[[待确认]]` 双括号写法（ch8 标高句）。代理把 [待确认] 写成 `[[待确认]]`，门与 consistency 均不查。修法：单章门/consistency 增加 `[[待确认]]` 归一化警告或 build 时替换；亦可在 chapter_craft.md 写明唯一合法写法。
 
-### F9-runs-status-label-misleads-patrol — P2（观测性，后端 lane）
-`on_disconnect=continue` 投递后，runs 表 status 显示 `interrupted` 而 checkpoint step 持续推进（实测 2713→2728/45s）——status 跟随 SSE 流状态而非图执行态。巡逻/监控若以 runs.status 断 run 死活会误杀重启（本判差点触发 gateway restart）。**修法候选**：RunManager 在 on_disconnect=continue 断开时保持 status=running（或引入 streaming 状态）；最小做法仅文档化「以 checkpoints step 推进为活性真相源」。属 app/gateway 层（非 harness），需 EAI-CUSTOM 注释。
+### F9-runs-status-label-misleads-patrol — **已撤回（2026-08-30 复核）**
+原判「status=interrupted 但 step 推进」系测试者查询瑕疵：`ORDER BY run_id` 而 run_id 是 **varchar**（字符串序 ef>9>7），取到的是早期真实 interrupted run 的行；直接行查询读到旧状态被误判为当前 run 标签失真。后续按 updated_at 排序核查，9d159e1c/dc75b7cd 状态流转正常（success），无实证失真。**保留教训**：T3 测试通道查询 runs 表必须 ORDER BY updated_at，禁用 run_id varchar 排序。后端 lane 无需修复。
 
 ### 复测确认项
 - **bug-3022**（formula_runner 历史分类 B/C 误校验）在干净线程复现——维持 P1 修补候选（按 category+历史分类放行）。

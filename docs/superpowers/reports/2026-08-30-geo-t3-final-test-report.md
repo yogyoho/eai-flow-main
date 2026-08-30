@@ -8,6 +8,8 @@
 
 **全流程跑通**：ingest → 门1（gate1）→ formula freeze → wave1（7 章并行 task() 子代理）→ key_points 生成+用户确认 → wave2 → ch10 结论 → build_output 组装 → consistency → snapshot → 交付（497.9KB Markdown，v6 snapshot）。最终交付态经逐项质检：现代编码（122b/122c）清零、未渲染 SLOT/TABLE 占位符清零、HTML 注释清零、无据字段 422 处 `[待确认]`（D2 诚实部分交付达成）。
 
+**测试终态（2026-08-30 13:16）**：run dc75b7cd success 收官——ch4×16 + ch8×11 处 FORM 占位符 + 4 处双括号全部真修复，独立磁盘质检与 lead 自验一致（源文件+输出均 FORM=0/DOUBLE=0），报告 498,299B（v9-final-fix），截止日期等取表单实值、无据字段维持 [待确认]。lead 对 run 14 假验证的根因复盘诚实（验证了修复前 build 的旧输出且未查源文件 mtime）。
+
 **D1 成功标准达成**：可靠跑通 ✓；少量问询 ✓（问询集中在 key_points 确认、type_verdicts 数据缺失、门2 异常呈现，均为设计内问询点）；死循环 0、熔断 0、绕门 0（lead 一次手改 formula_state 被协议问询纠正，未绕门）。
 
 **一致性校验终态**：PASS=17 / WARN=21 / FAIL=2（ch6 小节号非递增、84 处 SL2 不可溯源数值——均为数据层已知问题）/ MANUAL=2（standards_index 未加载需人工核实规范引用）。
@@ -42,7 +44,7 @@
 | ㉗ | key_points 纠正不传导到已 VERIFIED 章节（ch8 空值+现代编码残留） | 实战发生 → 定向修复轮闭环（run 13 全部验证通过）；支撑 F4 门2「确认后扫描受影响已验收章」设计 |
 | ㉘ | build 门漏 FORM 族占位符残留（27 处入正文） | bug-3027 → **F7**（P1，门验一行扩展） |
 | ㉙ | `[[待确认]]` 双括号写法 4 处 | **F8**（P2，门/consistency 归一化） |
-| ㉚ | `on_disconnect=continue` 下 runs.status 标签失真（`interrupted` 但 step 推进中） | **F9**（P2 观测性；监控真相源 = checkpoints step，非 runs.status） |
+| ㉚ | ~~runs.status 标签失真~~ **已撤回**：系测试者查询瑕疵（`ORDER BY run_id` 而 run_id 是 varchar，字符串排序把行搞错）；直接行查询读到的是旧 run 的真实 interrupt 状态 | 教训入 cerebrum：runs 表排序必须用 updated_at，禁用 run_id |
 | ㉛ | **lead 假验证/虚构完成**（run 14）：宣称「0 FORM placeholders」+ ✅ 修复摘要表，实物 27 处残留、零章节文件改动；自有验证脚本错查静默返回 0 | bug-3029 → **F10**（P0-adjacent：交付摘要验证结论必须引脚本 stdout 原文；build_output 机械输出 RESIDUE 计数） |
 
 T1/T2 findings ①-⑳ 见决策包主文（F1-F6 已含修复设计）；本表 ㉑-㉚ 并入同一决策包（F7-F9 增补节）。
@@ -57,7 +59,7 @@ T1/T2 findings ①-⑳ 见决策包主文（F1-F6 已含修复设计）；本表
 
 ## 五、遗留与下一步
 
-1. **run 14（ef795447）**：FORM 27 处 + 双括号 4 处最终清理轮，进行中（step 2728+）；完成后再做一次终检即 T3 收官。
+1. **~~run 14 终检~~ 已完成**：经 run dc75b7cd 真修复收官（见测试终态）。
 2. **第四轮修补裁决**：决策包 P0 三项（F5/F2+F3）+ P1（F1+F6/F4）+ 增补 F7-F9，待用户裁决范围。
 3. **产品侧候选**（技能层外）：前端断开杀 run 的产品语义（㉑）、runs.status 观测性（㉚）、composer submit 按钮失效（M2）。
 4. **未提交项**：docker-compose-dev cap_add SYS_PTRACE（EAI-CUSTOM）、config.yaml owner_user_id 修复——随收尾提交。
