@@ -261,7 +261,39 @@
 ### 2026-08-29 extensions 层拿到的 DB id 是 asyncpg 原生 UUID 非 str（bug-3010）
 - extensions PostgreSQL 走 asyncpg 驱动，`current_user.id` / `AIDocument.source_thread_id` 等主键是 `asyncpg.pgproto.pgproto.UUID` 对象。凡是要把它们传进 harness `Paths()`（内部有 `_SAFE_USER_ID_RE.match` 正则校验）或任何 `re`/f-string 之外的字符串 API 前，先 `str()`。单测里手写 str uuid 永远测不出这个坑——回归测试必须显式传 `uuid.UUID` 对象。
 
+### API/E2E 驱动（2026-08-30 water E2E）
+- POST /api/threads/{tid}/runs/wait 同步等待会被 nginx 60s 代理超时切 504，但 run 仍在服务端继续跑——一律 POST /runs（后台）+ 轮询 GET /runs/{rid} 的 status。
+- 每次浏览器登录生成新 gateway uid，线程目录在创建该线程的 uid 下（/app/backend/.deer-flow/users/{uid}/threads/...）——找不到 outputs 先按线程 id 前缀 find。
+- 容器内系统 python 无 PIL；需 pillow 的冒烟必须显式用 /app/backend/.venv/bin/python。
+- 前端 /chat 不是路由；工作台在 /，线程 URL 为 /workspace/chats/{uuid}。
+- 驱动 E2E 里 Radix 风格 select 无法用合成事件赋值（fill 无效静默保持默认）——必须 click 触发器再 click 选项。
+- run status=error 不代表工作失败：实测两轮 run 在 present_files 之后报 error（error=None，turn_duration 恒 99 的 agnes-2.5-flash 流式尾异常模式），产物完整——验收看产物不唯 status。
+
+### Agent 行为（bug-3017）
+- SKILL 未枚举脚本合法旗标集时，agent 会幻觉出相近名字的旗标（--report/--output-dir）；argparse 硬报错后 agent 会把报错当"无法出图"信号，进而自造跳过标记并编造产物文件名。防线：CLI 脚本用 parse_known_args 容忍+提示，SKILL 写明"报错=命令写错，修正重跑，禁止当跳过理由"。
+
+### OpenViking 记忆后端（2026-08-30 定案，bug-3019）
+- 上游 bytedance/main@0cb356858 明文声明 multi-user credential provisioning "intentionally outside this first adapter PR"——`user_keys` 每用户绑定实现（7b21f4f0f）是该声明性留白的合法补位；**代码保留不回滚**，`manager_class: deermem` 时完全不生效。
+- 运行时 user_id = **核心 deerflow 库 users.id（UUID）**，不是 email（`get_effective_user_id` → `str(user.id)`）；extensions 库 id ≠ 核心库 id；核心库镜像行在首次登录时新生成 UUID（bug-3014 同类）。
+- `get_memory_config()` 只在 `get_app_config()` 被调用时才刷新（副作用加载）；直接 exec 调 `get_memory_manager()` 会拿到默认单例（deermem）。**容器内验证记忆后端必须先调 `get_app_config()`**。
+- docker exec 里跑 python 路径要 `MSYS_NO_PATHCONV=1` 前缀，否则 Git Bash 会把 `/app/...` 改写成 Windows 路径。
+- 2026-08-30 用户定案：1000+ 用户每用户发 key/预建镜像行不可行，退回 deermem（745319fcf）。OpenViking 重启用 = manager_class 改回 openviking + 恢复 backend_config 块（语义见 config.yaml 注释）。
+
+### 前端双拓扑路由（2026-08-30，bug-3020）
+- 用户浏览器常在 **localhost:3000 = host 直跑的 `pnpm dev`（node.exe）**，不是 Docker :2026。host dev server 的 /api/* 靠 next.config.js rewrites 代理到 `DEER_FLOW_INTERNAL_GATEWAY_BASE_URL`（frontend/.env.local = http://127.0.0.1:2026 即 nginx）。
+- **Next.js 路由处理器优先于 afterFiles rewrites**：任何 `src/app/api/**/route.ts` 会截获 rewrite。处理器若只读 NEXT_PUBLIC_BACKEND_BASE_URL（本环境未设→127.0.0.1:8001 死端口）就会 500，而其余 API 正常——"只有某个 tab 挂"先查这里。已有处理器：/api/memory（已修 bug-3020）、/api/collab/ai-chat。
+- 排障通道：`docker logs deer-flow-nginx`（含 referer 可辨用户 origin）；gateway 日志在容器内 `/app/logs/gateway.log`（stdout 被 entrypoint 重定向，`docker logs gateway` 恒空）；登录用 `POST /api/extensions/auth/login` JSON `{"username","password"}`（cookie 不分端口，:2026 会话可直接打 :3000）。
+
+### water-skill 示意图深度还原（2026-08-30，bug-3026）
+- Python `f"{v:.2f}"` 是**二进制**格式化：显式 state 值 1.475 → `"1.48"`，而旧坐标差路径算出 1.47499… → `"1.47"`。给尺寸标注写测试期望时按 `_fmt` 真实输出写，别按十进制直觉。
+- 样例 docx 的字母尺寸链算术**内部不自洽**（分项与标注值对不上）——深度还原图纸只还原**图式/风格**（工字梁断面、C 形大钩、双线锥壁、竖排字、45° 斜刻），数值仍锁 formula_state（铁律#1），不抄样例数值。
+- `render_diagrams.py --outdir` 直接落 PNG（无 images/ 子目录）；`images/` 前缀只出现在打印的 `DIAGRAM_FILE:` 行。docker cp 取产物用 `docker cp 容器:/tmp/xx/. 目标/`。
+
 ## Do-Not-Repeat
+
+- **[2026-08-30] runs 表排序禁用 run_id**：run_id 是 varchar，ORDER BY run_id 是字符串序（ef>9>7），会把最新 run 行搞错——T3 期因此误产出 finding ㉚（已撤回）。查 runs 表一律 ORDER BY updated_at；行身份存疑时用 updated_at 重查。
+- **[2026-08-30] agent 自验不可信（假验证）**：T3 run 14 lead 宣称「0 残留」但实物 27 处——根因是验证了修复前 build 的旧输出。验收 agent 交付必须独立到磁盘/实物验证，不信 agent 报的数量；要求 agent 贴验证命令+完整输出。
+- **[2026-08-30] API 投递长任务必带 on_disconnect=continue**：curl --max-time 抓取窗口断开默认 cancel 杀 run（run_models.py 默认 cancel）。
 - [2026-08-29] docker logs 查 deer-flow-frontend 永远是空的——dev 命令把 stdout 重定向到 /app/logs/frontend.log(bind-mount 到宿主机 logs/frontend.log)。查前端问题读宿主机文件,别浪费时间在 docker logs 上
 - [2026-08-29] 别把 vmmem 大内存读数当成容器占用——docker stats 实测全部容器仅 ~180MB,vmmem 大头是 page cache(可 drop_caches 释放)+turbopack 匿名堆。诊断内存型卡死先跑 docker stats --no-stream 分辨
 
@@ -1298,3 +1330,101 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **登录密码真源 = extensions agentflow 库 users 表**（`extensions/auth/routers.py` 用 `verify_password_async` 验 extensions 的 password_hash，gateway 核心库 users 只是镜像行，成功登录时自愈重建）。重置 admin 密码必须改 agentflow 库——改核心库镜像行无效（老 MANUAL-DEPLOY 坑2 的 sqlite 片段正是这个无效操作，已修）。
 - **离线镜像驱动来自 dev 构建**：offline gateway `uv run --no-sync` 不装依赖，postgres 驱动全靠 `deer-flow-gateway` 镜像；镜像由 `scripts/offline-export.sh` 从 dev 的 `eai-docker-gateway:latest` retag，故 `docker/.env` 的 UV_EXTRAS=postgres 已覆盖离线包，模板自身无需加。
 - 旧 sqlite 片段（MANUAL-DEPLOY 坑2 / cutover.md）指的核心库 users 表已随切换迁入 postgres `deerflow` 库；cutover.md 是历史实录保留未动。
+
+### Login facade 字段名 (2026-08-30)
+- `POST /api/extensions/auth/login` 的 body 字段是 **username**（值填 email），不是 email——`{"email":...}` 返回 422。见 bug-3016。
+
+### Git 推送重试循环陷阱 (2026-08-30)
+- `git push | tail && break` / `if git push | tail; then` 判断的是 tail 的退出码，误报 PUSH_OK。正确：`if git push origin main-dev-fork >/tmp/push.log 2>&1; then`，用 rev-list --left-right --count 验证 0 0。
+
+### Gateway 重启 uv sync 副作用 (2026-08-30)
+- gateway 容器重启会跑 uv sync（按 UV_EXTRAS），可能卸载 extra 之外的手装包（fastmcp/authlib/keyring 等 28 个）再装 Office-Word-MCP 依赖；启动 1-2 分钟后才监听。`/api/health` 未认证返回 401 是正常现象不是故障。
+
+
+## 2026-08-30 bid-proposal-writing v3 设计 eng-review(9 决议,全部过门)
+
+### Key Learnings
+- **"脚本落盘但不在签名登记表"= 免检通道**(通用模式):AUTHORITATIVE_FILES 收紧到五件套后,merge_ledger.json/addendum_entities_pending.json 这类脚本落盘的语义性文件就成了 turn7 同款改写通道。新状态文件进 state/ 时必须同时问:谁写盘→要不要登记→合法终态是不是被删除(删除类需要 signatures 移除语义,否则 verify 误报"已登记但不存在")。
+- **stdout 摘要不能承载跨 run 比对**:易失性。任何"下一次运行要比对上一次运行记录"的场景,数据必须进持久回执(本项目惯例:last_build.json / merge_ledger.json / project_snapshot.json,不新增文件优先扩既有回执)。
+- **snapshot 阶段判定链的顺序陷阱**:前置布尔判定(entities_locked)会让后置强证据(last_build 回执)被"文件被删"拉回倒退;且链上没有"门已过"的持久判据时会永远指向重复跑门。修正方向:强证据优先,弱信号缺失降级为 problems 节 anomaly。
+- **lint 双规则要防互斥 pathology**:长度下限+套话占比两条规则方向互斥——模型为清长度异常垫话会推高套话占比。校准集必须三端(薄红/有供源短绿/长绿),"有 citations/evidence_ref 留痕的短响应"是天然豁免档。
+- **codex exec 5 分钟封顶超时(exit 143)**:外部声音降级 Claude 独立子代理(general-purpose 全新上下文)即可,预算 4 分钟,产出质量足够(5 条发现 3 条真问题全部有 file:line 依据)。
+
+### Decision Log(bid-v3,评审期 2026-08-30)
+- DEC-1 WP-A 九阶段文件降档 4 分组(stage0-2+门1 / stage3+门2 / stage4a+4 / stage5)——用户自选降档,非推荐项。
+- DEC-2 白名单新鲜度按"last build 消费 hash"比对(任意"最近消费方"会被 gate2 重跑 merge_addenda 洗掉 build 过期信号)。
+- DEC-3 snapshot 三副本同步走 TODO 记账,不本设计内做。
+- DEC-4 E2E 套件落 backend/tests/e2e/(测试资产归测试目录,技能=纯分发单元)。
+- DEC-5 build 白名单消费 hash 持久化进 last_build.json(whitelist_sha256 字段)。
+- DEC-6 补 TestSnapshotDegrade + TestWhitelistFreshness 按新语义改写(含"重跑 merge_addenda 不消异常"断言)。
+- DEC-7 merge_ledger+pending 纳入签名登记(pending 含清零移除语义)。
+- DEC-8 snapshot 链序修正+门2 前/后区分+恢复指令补"原件不在请用户重传"分支。
+- DEC-9 有供源留痕(citations/evidence_ref 非空)的短响应豁免 50 字下限,套话占比检查保留。
+
+### DEC-1 落地实录(2026-08-30, WP-A 完成)
+- SKILL.md 363→**120 行**(贴上限过线, test_skill_md_line_budget ≤120);verbatim 保留锚点=frontmatter/ASCII 管线图/速查表17条命令/防幻觉契约/退出码行/注意事项4条——这些是 8 个既有 TestSkillMd 测试的断言对象, 改写时先识别锚点再动笔。
+- 4 分组指南落 references/ 逐份 token 锁(STAGE_FILE_REQUIRED_TOKENS, 共90 token);SKILL.md 常驻层缩到 40 token;snapshot.py next_step 与 SKILL.md 路由的"双向锁"按**基名**(去 .md)比对——snapshot next_step 文案本来就是基名引用, 测试别断言超出契约现状的形态(bug-2187 教训: 压缩摘要的"已验证"必须以磁盘重验为准)。
+- 改写超长文档类 SKILL.md 的手法:先列"既有测试断言的 verbatim 锚点清单",新文保锚点→套件零改动通过;新增行为(路由表/单卷 --volume 提示)放新章节并配新 token 测试。
+
+## 2026-08-30 additions (postgres cutover review batch)
+- **Key Learning**: dev 镜像 build args 与运行时 uv sync 是两条安装路径——UV_EXTRAS 必须出现在 docker-compose-dev.yaml gateway build.args 才会烘焙进镜像；venv named volume 会遮蔽镜像 .venv，`docker run --rm`（无卷）才是测镜像内驱动的正确姿势。Git Bash 下需 MSYS_NO_PATHCONV=1 前缀防路径改写。
+- **Key Learning**: config-upgrade.sh 的 merge 只加不覆盖，但 example 里未注释的 memory.backend_config（DeerMem 形状）会被深拷进 OpenViking 用户配置 → OpenVikingConfig.from_backend_config ValueError。该子树已加跳过守卫（backend-private，schema 归 backend 文档管）。
+- **Key Learning**: deps.py 启动门（GATEWAY_WORKERS>1 时）要求三条件同时成立：database.backend=postgres + run_events.backend=db + run_ownership.heartbeat_enabled=true。任何多 worker 部署（含离线 .env GATEWAY_WORKERS=4）的 config 必须三件套齐全。
+- **Do-Not-Repeat** (2026-08-30): `git push | tail` 会取 tail 的退出码——用 `if git push ...; then` 或输出重定向后查 $?。
+- **Do-Not-Repeat** (2026-08-30): `docker compose build | tail` 管道使后台任务中途无输出可查；要观察进度就别接管道。
+- **Do-Not-Repeat** (2026-08-30, 实锤两次): 任何长命令接 `| tail`/`| head` 都会**用管道尾的退出码掩盖真失败**——build 失败(apt 100)却报 exit 0，浪费两轮重建。一律 `> /tmp/x.log 2>&1; echo EXIT=$?`。另: Dockerfile ARG 声明位置会切断层缓存——改 build-arg 时把 ARG 挪到唯一使用点旁，避免无关节点(nodesource apt)被迫重拉（backend/Dockerfile 已加 EAI-CUSTOM 注释）。
+- **Key Learning** (2026-08-30): `docker compose -f docker/...` 时插值 env 源是 **docker/.env**（第一个 -f 所在目录），不是仓库根 .env——UV_EXTRAS 长期"恰好生效"是因为 docker/.env 里也有同值；往根 .env 加 APT_MIRROR 白跑一整轮构建。验证手段：`docker compose ... config | grep APT_MIRROR` 看插值结果，别猜。
+- **Key Learning** (2026-08-30): 本机构建容器对 deb.debian.org 的 Fastly HTTP:80 会长时间拒连/超时（apt update 能过、包下载全灭，单步挂 80 分钟）；现成解 = docker/.env 取消注释 `APT_MIRROR=mirrors.aliyun.com`。nodesource 则是间歇性全死（000），等恢复即可。
+- **Key Learning** (2026-08-30, 用户纠正): OpenViking 不是云端服务——是本地 Docker 部署（容器 deer-flow-openviking，端口 1933，Studio 在 /studio/home，config 里 base_url=http://openviking:1933）。"一把 USER API key 绑定一个 owner_user_id"是 OpenViking 服务端自身的账号模型，与部署位置无关。config.yaml:1939-1944 注释块已准确记录了 raise 行为。
+
+## 2026-08-30 (bug-3018 per-user OpenViking keys)
+
+### Key Learnings
+- **运行时 user_id = 核心库 users.id（UUID），不是 email**。`resolve_runtime_user_id` 全部 5 条解析路径都落到 `str(user.id)`；核心镜像行由登录门面 `get_user_by_email` 找不到才 `create_user` 生成**随机** UUID（不复制 extensions id，admin 的 extensions=f8766d55 vs 核心=06824890 即证）。任何"按用户"的配置映射必须用核心 UUID。
+- **稳定 UUID 技巧**：核心 users 表可按选定 UUID 手工 INSERT 镜像行（email 唯一索引命中后登录门面直接复用，不重建），从此 id 不随核心库重建漂移。lisi = `6c1f4a2e-9b3d-4e8a-a5c7-1d2e3f4a5b6c`。password_hash 可 NULL（EAI 登录只查 extensions 库，核心 hash 不参与认证）。
+- **上游 deer-flow 明文留白多用户凭证**：OPENVIKING_HTTP_MEMORY_INTEGRATION 文档写 "Multi-user credential provisioning ... intentionally outside this first adapter PR"；我们的 user_keys/_IdentityBundle 正是补这块，其余 4 文件与上游字节一致，同步时按 EAI-CUSTOM 保留。
+- **bare `get_memory_config()` 陷阱**：不先调 `get_app_config()` 就读 memory 配置会拿到**默认单例（deermem）**——docker exec 裸调 `get_memory_manager()` 会误判后端。exec 验证脚本必须先 `get_app_config()`。
+- 真实 `OpenVikingSessionRecorder` 的连接属性是 `_connection`；测试 fake 里叫 `connection`。写容器内调试脚本别照搬测试 fake 的属性名。
+
+### Do-Not-Repeat
+- (2026-08-30) 给"按用户"配置写 email 当键——先确认运行时身份串到底是 email 还是 UUID（本次核心 UUID），否则映射静默永不命中。
+
+## API 直连测试通道（geo T3 实战验证，2026-08-30）
+- 登录 POST /api/v1/auth/login/local（form-urlencoded username/password）；POST /api/runs/stream 必带 X-CSRF-Token（cookie jar 里 csrf_token 值）+ context.subagent_enabled=true；中文 body 用 UTF-8 文件 --data-binary；multitask_strategy=interrupt 打断同线程旧 run。cookie 会话跨 gateway 重启存活（JWT 无状态）。
+- curl RC=28/18 是正常 SSE 截断/服务端断流，不等于 run 取消——run 服务端继续跑。查 run 活性用 deerflow 库 checkpoints 表 metadata->>'step'（ORDER BY checkpoint_id DESC LIMIT 1）；run_events 是死表、runs.updated_at 不随 step 写，都不可用。GET 单 run 端点会挂起。
+- 磁盘 state 是唯一真相：线程迁移 = cp -r geo-report/ 到新线程 workspace + 消息告知新路径，progress.py next 即续跑。
+- docker exec 陷阱：sh -c "echo $(ls ...)" 双引号内 $() 在宿主侧求值（假警报根因）；busybox awk 无 strtonum；容器无 ps，用 /proc/[0-9]*/cmdline 枚举进程。
+
+## SSE 投递通道必须 on_disconnect=continue（2026-08-30, geo T3 定案）
+- Gateway stateless run（`POST /api/runs/stream`）默认 `on_disconnect=cancel`：**SSE 客户端断开 → 后端取消 run**。测试观察用 curl `--max-time N` 到点断开 = 亲手杀死正在跑的 run。T1/T2/T3 的"外部打断者"全部由此而来（时间戳与 curl 窗口关闭逐一吻合）。
+- 解法：投递 payload 顶层加 `"on_disconnect": "continue"`（`run_models.py:33` RunCreate 已暴露）。run 与 SSE 解耦，断开后继续跑，用磁盘+psql checkpoints step 巡逻。产品含义：前端用户关页/断网也会杀长任务 run（报告生成 10min+ 高危），第四轮候选修复。
+- run 取消路径会触发 task_tool CancelledError → request_cancel_background_task（修复前 bug-3021 自死锁楔死 gateway；即观察行为=杀 run=触发死锁三连）。
+
+## 2026-08-30 WP-D (bid v3)
+
+- 设计稿实施回写模式: eng-review 决议(DEC-N)落地后,按 DEC 编号把偏差回写原设计稿(docs/designs/*.md),Open Questions 留占位待复测数据回填——文档-实现一致性由回写保证,不靠记忆。
+- E2E 压测套件转正模式: 文件名不带 test_ 前缀即可让 pytest 默认收集为 0(无需 skip 标记/conftest 排除),独立入口保留活网关依赖不出 CI。
+
+## Addendum 2026-08-30 (bid v3 E2E agnes 复跑, bug-3023)
+
+### Key Learnings
+- **平台契约变化 (bug-3023)**: 当前网关构建下 `ask_clarification` 不再序列化为 LangGraph `__interrupt__` —— run 以 status=success 收尾, checkpoint 无中断键, 表单文本作普通 ToolMessage 返回, 模型软暂停等下一条用户消息。不会自问自答。判"模型是否真在等输入"要查 SSE 尾部是否出现 ask_clarification 工具调用, 不能只看 run 终态。
+- **driver 软暂停检测模式**: "干净结束(无 interrupt/error) + 见过 ask_clarification" → 以 last_ai 为问题文本走 ANSWERS 关键词表。启发式成立因真正跑完的模型不会发起澄清。
+- E2E 长驱动必须脱管启动 (PowerShell Start-Process Hidden + 重定向 stdout/stderr), harness 会在 ~25min 杀后台任务; 网关侧 run 状态独立存活, 死掉的 driver 可 --resume 接管。
+- v3 门禁在真实 run 中实证生效: check_format 对缺失 structure.json/sections.json 硬错误 Exit 1; extract merge 因 rubric.json 缺失 + Σmax_score=0 与声称总分 100 不一致而失败; agent 停下问用户而未伪造 state (CP5 turn1+2 = 0/0)。
+
+### Do-Not-Repeat
+- (2026-08-30) 不要假设 ask_clarification 会产生 __interrupt__ —— 新网关下它只是软暂停; 判定逻辑要双轨 (interrupt 帧 + 干净结束&ask_clarification)。
+- (2026-08-30) curl | python json.load 在 Windows 管道会编码损坏 —— 用 python urllib + CookieJar 直接拉, 落盘再解析。
+
+## Addendum 2026-08-30b (bug-3024/3025, agnes 公平复跑)
+
+### Key Learnings
+- E2E driver 软暂停判定的**三层优先序**(turn 结束时): ① COMPLETION_RECAP(交付标记"全流程完成/六件套/已交付/交付完成/评分报告"出现在 last_ai → 视为完成, 永不应答——交付 recap 标题里含"确认门"字样); ② SOFT_CLARIFICATION(见过 ask_clarification → last_ai 即问题文本); ③ SOFT_GATE(纯文本门禁措辞) → 兜底 PREMATURE_STOP。设计原则: 误续一轮便宜(recap 后模型再答一句), 误停贵(管线停摆需人工重启)。
+- 防篡改签名是**自证陷阱**: agent 可重签自己直写过的文件 → CP6(verify_state_files) 通过 ≠ 无违规。必须有独立证据源的扫描(CP5 SSE 全工具扫描)互补。
+- 模型可用性探针坑: 裸 `urllib.request.urlopen` 不带 HTTPCookieProcessor → 双提交 cookie 缺失, 服务端报 "CSRF token missing" 403(误导为权限问题); SSE 帧子串查 `"402"` 会误命中 token 用量计数, 须查完整 `"Insufficient Balance"`。
+- 在册模型可用性矩阵(2026-08-30): agnes-2.5-Flash 可用; deepseek-v4-flash / glm-4.1v-flash 402 欠费; gemma-4 provider unavailable。生产级复测前先跑 Temp/model_probe.py 探针。
+
+### Do-Not-Repeat
+- (2026-08-30b) 不要给 E2E driver 的交付标记列表放泛化词("已完成"/"全部完成")——它们出现在阶段性进度说明里, 会把进行中误判为完成(agnes turn5 教训)。
+- (2026-08-30b) 模型探针 POST 必须走带 cookie jar 的 opener, 不要裸 urlopen。
