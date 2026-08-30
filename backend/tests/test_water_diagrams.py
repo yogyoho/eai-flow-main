@@ -47,7 +47,7 @@ SMOKE = {
 
 
 class _Recorder:
-    """Pen 的 draw 侧替身：只记录 text/line/rectangle 调用，不碰 PIL。"""
+    """Pen 的 draw 侧替身：只记录 text 调用，图形原语（line/rect/椭圆/弧/多边形/剖面线）不碰 PIL。"""
 
     def __init__(self):
         self.texts: list[str] = []
@@ -59,6 +59,15 @@ class _Recorder:
         pass
 
     def rectangle(self, *a, **kw):
+        pass
+
+    def ellipse(self, *a, **kw):
+        pass
+
+    def arc(self, *a, **kw):
+        pass
+
+    def polygon(self, *a, **kw):
         pass
 
 
@@ -134,7 +143,7 @@ def test_fig3_annotations_use_state_values():
     """图3 全部标注 = state 值原样格式化（a 滑车组/x 起重绳/f 间隙/e 泵高/H1/H2/H）。"""
     pen, rec = _recording_pen(None)
     render_diagrams.draw_pumphouse(dict(SMOKE), pen)
-    for label in ("a=1.47", "x=1.87", "f=0.5", "e=2.04", "H2=3.3", "H1=5.88"):
+    for label in ("a=1.48", "x=1.87", "f=0.5", "e=2.04", "H2=3.3", "H1=5.88"):  # a=1.475 state 值二进制格式化 1.48（旧坐标差路径曾是 1.47）
         assert label in rec.texts
     assert "H=9.19m（H1=5.88m + H2=3.3m）" in rec.texts
 
@@ -169,9 +178,9 @@ def test_main_tolerates_hallucinated_flags(tmp_path, monkeypatch, capsys):
     state.write_text(json.dumps({"all_params": dict(SMOKE)}), encoding="utf-8")
     outdir = tmp_path / "images"
     monkeypatch.setattr(
-        sys, "argv",
-        ["render_diagrams.py", "--report", "x.md", "--output-dir", "/tmp",
-         "--state", str(state), "--outdir", str(outdir)],
+        sys,
+        "argv",
+        ["render_diagrams.py", "--report", "x.md", "--output-dir", "/tmp", "--state", str(state), "--outdir", str(outdir)],
     )
     with pytest.raises(SystemExit) as ei:
         render_diagrams.main()
