@@ -211,6 +211,55 @@ def validate_values(spec: dict, values: dict) -> list[str]:
     return errors
 
 
+# ── 点分键归并（F5: 对象族子键有权威 schema 名，终结 agent 猜键→静默 0）────
+
+def _object_field_names(spec: dict) -> set[str]:
+    return {f["name"] for f in spec.get("fields", []) if f.get("type") == "object"}
+
+
+def _expand_dotted(values: dict, spec: dict) -> dict:
+    """点分键 → 嵌套 dict 归并（仅当前缀命中本族 type=object 字段名）。
+
+    hydro/engineering/environment 等前缀不命中任何 schema 字段名 → 原样保留
+    扁平键（formula_runner 按 `hee.get("hydro.inflow_analogy")` 扁平读取，合约不破）。
+    顶层整对象传法 {"prices": {...}} 本就非点分，不经此函数改动 → 存量合约零破坏。
+    """
+    obj_names = _object_field_names(spec)
+    out: dict = {}
+    for key, val in values.items():
+        prefix, dot, _ = key.partition(".")
+        if dot and prefix in obj_names:
+            cur = out.get(prefix)
+            cur = dict(cur) if isinstance(cur, dict) else {}
+            cur[key[len(prefix) + 1:]] = val
+            out[prefix] = cur
+        else:
+            out[key] = val
+    return out
+
+
+def _merge_values(doc: dict, values: dict) -> None:
+    """写入合并：双方均 dict 时逐子键深合并——分批补答不丢先前子键
+    （顺带修复 doc.update 浅更新抹掉先前子键的坑）；其余浅写。"""
+    for k, v in values.items():
+        if isinstance(v, dict) and isinstance(doc.get(k), dict):
+            _merge_values(doc[k], v)
+        else:
+            doc[k] = v
+
+
+def _get_dotted(doc: dict, name: str):
+    """点分 name 取值：嵌套 dict 形态（经 _expand_dotted 归并的 economics 族）取子键；
+    扁平点分键形态（hydro 族——前缀不命中 object 字段名，未经归并直落盘）回退整键查。"""
+    if "." not in name:
+        return doc.get(name)
+    prefix, _, sub = name.partition(".")
+    v = doc.get(prefix)
+    if isinstance(v, dict):
+        return v.get(sub)
+    return doc.get(name)
+
+
 # ── 子命令: forms ───────────────────────────────────────────────────────────
 
 def blank_json(spec: dict, family: str) -> str:
@@ -224,6 +273,8 @@ def blank_json(spec: dict, family: str) -> str:
         }
     }
     for f in spec.get("fields", []):
+        if "." in f["name"]:
+            continue  # F5: 点分子键不落占位（父条目占位已够，避免扁平 null 与嵌套双写）
         doc[f["name"]] = None if f.get("required", True) else []
     return json.dumps(doc, ensure_ascii=False, indent=2)
 
@@ -291,7 +342,7 @@ def cmd_forms(args) -> int:
                 print(f"[ingest] 校验失败: {e}", file=sys.stderr)
             return EXIT_ERROR
         doc = json.loads(blank_json(spec, args.family)) if not target.exists() else json.loads(target.read_text(encoding="utf-8"))
-        doc.update(values)
+        _merge_values(doc, _expand_dotted(values, spec))
         doc.setdefault("_meta", {})
         doc["_meta"]["status"] = "filled"
         atomic_write_text(target, json.dumps(doc, ensure_ascii=False, indent=2))
@@ -535,7 +586,7 @@ def cmd_check(args) -> int:
                 missing_fields.append(f"{fam}: 清单为空")
             continue
         for f in spec.get("fields", []):
-            if f.get("required", True) and doc.get(f["name"]) in (None, "", []):
+            if f.get("required", True) and _get_dotted(doc, f["name"]) in (None, "", []):
                 missing_fields.append(f"{fam}.{f['name']}")
     if missing_forms or missing_fields:
         print("GATE1_MISSING:")
@@ -564,7 +615,7 @@ def write_form_values(stage_path: str, data_dir: str, family: str, values: dict)
         print(f"DELIVERY_CONTRACT: {len(contracts)} 个 outputs/ 已标记（交付门判据，勿删，bug-2225）")
     target = ddir / family_filename(spec)
     doc = json.loads(target.read_text(encoding="utf-8")) if target.exists() else json.loads(blank_json({**spec, "_stage": stage.get("stage", "exploration")}, family))
-    doc.update(values)
+    _merge_values(doc, _expand_dotted(values, spec))
     doc.setdefault("_meta", {})["status"] = "filled"
     atomic_write_text(target, json.dumps(doc, ensure_ascii=False, indent=2))
     register_file(ddir, family_filename(spec), family, spec.get("required", True), "json")

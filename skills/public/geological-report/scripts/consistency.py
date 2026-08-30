@@ -2,20 +2,22 @@
 """geological-report v2 — consistency.py：四类合约机器校验（步骤7）。
 
 读 build_output 产出的报告全文 + formula_state + data/ → consistency_check.json。
-四类合约（references/consistency_contracts.json 22 条的机器可执行面）：
+四类合约（XS/FC/CC/NR/SL 25 条——含 T4 页面实测增补 SL3/FC9/XS6）：
   NR  编号规则    NR1 表/图号连续唯一（样例「表512」笔误防线）；NR2 小节号+段内序号
                   严格递增（样例 8.6.1 (1)(1)(2) 错乱防线）；NR3 截止日期/矿区名等
                   全局唯一同源
   XS  数字一致    槽位引用逐章 exact_match（不同章节同一数字必须同显示）；±2% 近似
-                  未精确 = 疑似改写 warn；XS3 判定词逐字在场；XS5 采空区两值在场
+                  未精确 = 疑似改写 warn；XS3 判定词逐字在场；XS5 采空区两值在场；
+                  XS6 同一中文指标标签跨章数值必须唯一
   FC  公式链      L9 小计=总计、L11/L12 重算、E 链关系、B1 声明差 ≤0.05pp、
-                  C9=均值×倍数、S1 分组自洽
+                  C9=均值×倍数、S1 分组自洽、FC9 potential 量级 10×带宽 sanity
   CC  编码约束    CC1 变化系数档次（standards_index 在库自动判，缺库→manual）；
                   CC2 历史编码禁现代化改写（332/333/111b/122b 红线 P4）；
                   CC3 规范编号只允许 standards_index 枚举（禁 LLM 记忆）
-  SL  槽位/溯源   SL1 {{SLOT:}}/{{TABLE:}} 残留=0（FAIL 阻断 present_files）；
-                  SL2 正文数值全部可溯源到 data/ 或 formula_state（12 以下小整数、
-                  年份、日期、编号白名单豁免）
+  SL  槽位/溯源   SL1 {{SLOT:}}/{{TABLE:}} 残留=0（宽匹配含畸形括号形，FAIL 阻断
+                  present_files）；SL2 正文数值全部可溯源到 data/ 或 formula_state
+                  （12 以下小整数、年份、日期、编号白名单豁免）；SL3 范文指纹抽检
+                  （样例库数值/地质单元专名禁凭空进入正文，N18）
 
 severity: pass / warn / manual / fail。退出码 fail>0→1，manual>0→2，warn>0→3，否则 0。
 """
@@ -212,6 +214,25 @@ def check_xs(rep: Report, chapters: list[tuple[str, str]], state: dict, data: fr
         for k in ("count", "volume_wm3"):
             tok = str(goaf.get(k))
             rep.add("XS5", "pass" if tok in full else "fail", f"采空区 {k}={tok} {'在场' if tok in full else '缺'}")
+    # XS6 跨章同指标冲突（N27，T4 页面实测同一「平均品位」两章两值）：槽位显示值前方的
+    # 中文标签跨章必须绑定唯一数值；小整数（≤12）豁免——（1）（2）序号噪声非指标。
+    lab_re = re.compile(r"([一-鿿]{2,})\s*$")
+    label_map: dict[str, set[str]] = {}
+    for _t, body in chapters:
+        for key, v in state.get("values", {}).items():
+            sv = fr.dec(v.get("value"))
+            disp = str(v.get("display", ""))
+            if not disp or not sv.is_finite():
+                continue
+            if sv == sv.to_integral_value() and abs(sv) <= SMALL_INT_EXEMPT:
+                continue
+            for m in re.finditer(r"(?<![\d.])" + re.escape(disp) + r"(?![\d.])", body):
+                lm = lab_re.search(body[max(0, m.start() - 12): m.start()])
+                if lm:
+                    label_map.setdefault(lm.group(1), set()).add(disp)
+    conflict = {lab: sorted(ds) for lab, ds in sorted(label_map.items()) if len(ds) > 1}
+    rep.add("XS6", "pass" if not conflict else "fail",
+            "跨章同指标标签数值唯一" if not conflict else f"同标签多值（口径冲突疑）: {conflict}")
 
 
 def check_fc(rep: Report, state: dict, data: fr.Data) -> None:
@@ -285,6 +306,26 @@ def check_fc(rep: Report, state: dict, data: fr.Data) -> None:
         if k.startswith("B1.recovery[") and v.get("declared_recovery") is not None:
             d, c = fr.dec(v["declared_recovery"]), fr.dec(v["value"])
             rep.add("B1C", "pass" if abs(d - c) <= Decimal("0.05") else "fail", f"{k}: 声明 {d} vs 计算 {c}")
+    # FC9 经济量级 sanity（N26，T4 页面实测 33209 亿元级虚高穿透）：potential 类槽位
+    # 与 L9金属量×E4精矿价格/(品位/100) 独立重算对表（10× 带宽）；单位从槽位 unit 字段
+    # 或键后缀判（亿/yi→1e8、万/wan/wy→1e4），判不出不猜、跳过该键；输入不全整体跳过不误伤。
+    tm9, pc9 = val("L9.total_metal_t"), val("E4.price_conc")
+    gcu9 = fr.dec(((data.form("economics") or {}).get("concentrate") or {}).get("grade_cu_pct") or 0)
+    pot = {k: v for k, v in V.items() if "potential" in k and fr.dec(v.get("value")).is_finite()}
+    if pot and tm9 is not None and pc9 and gcu9:
+        implied = tm9 * pc9 / (gcu9 / fr.HUNDRED)  # 元
+        bads = []
+        for k, v in pot.items():
+            unit = str(v.get("unit") or "")
+            mult = Decimal(10**8) if ("亿" in unit or k.endswith("_yi")) else \
+                Decimal(10**4) if ("万" in unit or k.endswith(("_wan", "_wy"))) else Decimal(1)
+            r = fr.dec(v["value"]) * mult / implied
+            if not (Decimal("0.1") <= r <= Decimal(10)):
+                bads.append(f"{k}={v['display']}")
+        rep.add("FC9", "pass" if not bads else "fail",
+                f"potential 量级 sanity {len(pot)} 项 vs 独立重算（10×带宽）: 超带 {bads or '无'}")
+    elif pot:
+        rep.add("FC9", "pass", f"potential 槽位 {len(pot)} 个但量级输入不全——跳过（缺 L9/E4/品位）")
 
 
 def check_cc(rep: Report, chapters: list[tuple[str, str]], state: dict, data: fr.Data, standards: dict | None) -> None:
@@ -334,10 +375,42 @@ def check_cc(rep: Report, chapters: list[tuple[str, str]], state: dict, data: fr
         rep.add("CC3", "pass" if not unknown else "fail", f"规范引用 {sorted(cites)}；未入库: {unknown or '无'}")
 
 
+def check_sl3(rep: Report, chapters: list[tuple[str, str]], data: fr.Data, stage_path: Path, pool: set[Decimal]) -> None:
+    """SL3 范文指纹抽检（N18，T4 页面实测范文数值/专名污染正文）：样例库 ≥100 的数值
+    不得凭空出现在正文——数值必须在 numeric_pool（fail，数值是硬事实）；「××组/群」
+    地质单元名须见于 data/（warn，专名上下文性强不当硬门）。样例库缺失降级 warn 跳过。"""
+    samples_dir = stage_path.parents[1] / "samples" / stage_path.stem
+    if not samples_dir.is_dir():
+        rep.add("SL3", "warn", f"样例库缺失 {samples_dir.name}——范文指纹抽检跳过")
+        return
+    snums: set[Decimal] = set()
+    snames: set[str] = set()
+    for p in samples_dir.glob("*.md"):
+        st = p.read_text(encoding="utf-8")
+        snums.update(d for tok in NUM_RE.findall(st) if (d := fr.dec(tok)).is_finite() and abs(d) >= 100)
+        snames.update(re.findall(r"[一-鿿]{1,4}(?:组|群)", st))
+    if not snums and not snames:
+        rep.add("SL3", "warn", "样例库无数值/专名指纹——范文指纹抽检跳过")
+        return
+    full = "".join(b for _, b in numbered_chapters(chapters))
+    stripped = full
+    for rx in WHITELIST_RE:
+        stripped = rx.sub(" ", stripped)
+    leaked = sorted({tok for tok in NUM_RE.findall(stripped) if fr.dec(tok) in snums and fr.dec(tok) not in pool})
+    rep.add("SL3", "pass" if not leaked else "fail",
+            f"范文数值指纹抽检（样例库 {len(snums)} 个≥100 数值）: 泄漏 {leaked or '无'}")
+    if snames:
+        blob = json.dumps(data.forms, ensure_ascii=False, default=str) + json.dumps(data.csvs, ensure_ascii=False, default=str)
+        strange = sorted(n for n in snames if n in full and n not in blob)
+        if strange:
+            rep.add("SL3", "warn", f"范文专名疑带入正文（data/ 无此名）: {strange[:6]}")
+
+
 def check_sl(rep: Report, chapters: list[tuple[str, str]], pool: set[Decimal]) -> None:
     full = "".join(b for _, b in numbered_chapters(chapters))
-    # SL1 槽位残留 = 0
-    residue = re.findall(r"\{\{(?:SLOT|TABLE):[^}]*\}\}", full)
+    # SL1 槽位残留 = 0（宽匹配，N19：双括号严匹配曾漏「{SLOT:k}」单开括号与
+    # 「{{SLOT:k}单位}」错配收形共 93 处穿透进终稿——凡 \{+SLOT:/TABLE: 一律残留）
+    residue = re.findall(r"\{+(?:SLOT|TABLE):[^{}]*(?:\}+[^{}\n]*\}|\}*)", full)
     rep.add("SL1", "pass" if not residue else "fail", f"{{{{SLOT:}}}}/{{{{TABLE:}}}} 残留 {len(residue)} 处" + (f": {residue[:5]}" if residue else ""))
     # SL2 数值溯源
     stripped = full
@@ -391,7 +464,9 @@ def run_checks(report_path: Path, data_dir: Path, stage_path: Path, state_path: 
     check_xs(rep, chapters, state, data)
     check_fc(rep, state, data)
     check_cc(rep, chapters, state, data, standards)
-    check_sl(rep, chapters, numeric_pool(data, state))
+    pool = numeric_pool(data, state)
+    check_sl(rep, chapters, pool)
+    check_sl3(rep, chapters, data, stage_path, pool)
     return {"summary": rep.counts(), "items": rep.items}
 
 

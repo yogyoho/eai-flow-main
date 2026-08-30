@@ -320,12 +320,12 @@
       "id": "E5",
       "name": "矿产资源潜在总值",
       "chapter": "9.7",
-      "expr": "gross_potential = P_cu × price_cu + P_ag_kg × price_ag_kg",
+      "expr": "gross_potential = (P_cu/10⁴ × price_cu + P_ag_kg × price_ag_kg/10⁴)/10⁴（亿元；P_cu×price_cu 为万元口径）",
       "inputs": [
-        {"name": "P_cu", "desc": "铜金属量（表8-2 结果槽）", "unit": "t", "type": "formula_output", "source": "L9"},
-        {"name": "P_ag_kg", "desc": "银金属量", "unit": "kg", "type": "formula_output", "source": "L11"},
-        {"name": "price_cu", "type": "user_input", "unit": "万元/t"},
-        {"name": "price_ag_kg", "type": "user_input", "unit": "万元/kg"}
+        {"name": "P_cu", "desc": "可利用工业铜金属量（E1 链口径：分类金属量×资源可信度加权，非 L9 已查明总量）", "unit": "t", "type": "formula_output", "source": "L9×credibility"},
+        {"name": "P_ag_kg", "desc": "伴生银金属量", "unit": "kg", "type": "formula_output", "source": "L11"},
+        {"name": "price_cu", "type": "user_input", "unit": "元/t"},
+        {"name": "price_ag_kg", "type": "user_input", "unit": "元/kg"}
       ],
       "outputs": [{"name": "gross_potential", "unit": "亿元"}],
       "note": "样例定义：查明资源（假定可利用组分完全提取）的潜在矿产品价值"

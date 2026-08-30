@@ -1,6 +1,7 @@
 {
  "prices": {
   "cu_yuan_t": 58000,
+  "ag_yuan_kg": 3500,
   "as_of_date": "2025-06-01",
   "source_refs": [
    "上海有色网(SMM)铜精矿长协价"

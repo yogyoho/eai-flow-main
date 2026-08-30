@@ -61,9 +61,10 @@ license: MIT
    ③ **数据预告必须用户可见**：读 `references/data_expectations.json`，把按章数据清单（每章所需数据族 + CSV 列样例）向用户预告，引导一次备齐；只在内部读了规划用、用户看不到 = 未做（bug-2231 实测踩过两次）；用户明确缺的族照常落 `[待确认]`，缺数不编造。
    **②声明+③预告的载体 = 第 3 条首张表单的 `question` 文本开头**（先声明+按章预告，再列首类表单说明）——不另发独立消息，独立消息会被"只说不做"跳过（bug-2231 复测实锤：口头说 Let me send the preview 却只调了表单）。三件齐备前不做其他事（读 schema、生成表单一律排后）；首张卡片发出前自检：① 的调用记录在场 + 卡片 question 开头带有 ②声明（若未命中）与 ③按章预告，缺哪个先补哪个。
 2. `ingest.py forms` 生成空白表单（data/ 下按 schema）。
-3. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（矿种→阶段→项目信息→地质→矿体→勘查工程→样品→开采条件→资源量/经济）。**单回合至多一次 `ask_clarification`（铁律，页面实测线程 03e18e4a：5/2/4/4 连发，只有最后一张能填）**——一次只问一个类别，一个 assistant 回合只发一张表单，绝不并行连发多张、绝不与其他工具调用混发：中断机制一次只挂起一张表单，连发时除最后一张外全部冻结成死卡、数据永远收不到，还会陷入重复重问循环；一张表单获答、`ingest.py forms` 落盘并回执后，才发下一类。
+3. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（矿种→阶段→项目信息→地质→矿体→勘查工程→样品→开采条件→资源量/经济）。**单回合至多一次 `ask_clarification`（铁律，页面实测线程 03e18e4a：5/2/4/4 连发，只有最后一张能填）**——一次只问一个类别，一个 assistant 回合只发一张表单，绝不并行连发多张、绝不与其他工具调用混发：中断机制一次只挂起一张表单，连发时除最后一张外全部冻结成死卡、数据永远收不到，还会陷入重复重问循环；一张表单获答、`ingest.py forms` 落盘并回执后，才发下一类。卡片建议词条/选项**不得提供「推导/假定/估算」路径**（红线 2：把推导做成选项 = 诱导编造数据，N4 页面实测）。
    **批量数据优先引导上传文件（bug-2221 根因④）**：矿体数 >3、或样品/钻孔/工作量/体重等清单类条目 >10 时，逐项问答收不齐也收不深——主动请用户上传 CSV/Excel 走 `ingest.py file`，表单只收叙述性字段。**索要上传必须用普通消息收尾，绝不做成 ask_clarification 卡片**（bug-2233 页面实测）：卡片没有文件控件、字段全是文本输入框，说明文字却叫人传文件——模态错配，用户无从下手。正确做法：普通消息列出文件清单（每类：用途+所需列+格式示例）+「在对话框用附件按钮上传，可分多条消息传」指引，然后**结束回合等待**；叙述性字段等文件到齐后另发卡片收。
-   **用户可见即表单（交互铁律，面向非 IT 用户）**：逐类收集一律用 `ask_clarification` 的 `fields` 渲染**中文填写表单**，绝不向用户展示或索要 JSON、英文键名。每个数据项一个 field：`name`=schema 英文键（仅内部映射用）、`label`=中文名+单位、`type` 按 schema 映射（`enum:a|b`→`select` 且 options=枚举值原文、number→`number`、日期→`date`、长文本/嵌套行数据→`textarea`）、`placeholder`=格式提示（如 "YYYY-MM-DD"、"每行一个拐点：序号,X2000,Y2000,X1980,Y1980"）。单卡片 ≤16 项，超出分两批问。面向用户一律称"**数据项**"，不说"字段"；label/placeholder 里也**不得出现「JSON」「字段」「field」等术语**（页面实测踩过：把"气候特征"标成了"气候特征（JSON）"）——嵌套对象当普通中文数据项用 textarea 收（placeholder 给中文格式提示），结构化由 ingest 完成。
+   **用户可见即表单（交互铁律，面向非 IT 用户）**：逐类收集一律用 `ask_clarification` 的 `fields` 渲染**中文填写表单**，绝不向用户展示或索要 JSON、英文键名。每个数据项一个 field：`name`=schema 英文键（仅内部映射用）、`label`=中文名+单位、`type` 按 schema 映射（`enum:a|b`→`select` 且 options=枚举值原文、number→`number`、日期→`date`、长文本→`textarea`）、`placeholder`=格式提示（如 "YYYY-MM-DD"、"每行一个拐点：序号,X2000,Y2000,X1980,Y1980"）。单卡片 ≤16 项，超出分两批问。面向用户一律称"**数据项**"，不说"字段"；label/placeholder 里也**不得出现「JSON」「字段」「field」等术语**（页面实测踩过：把"气候特征"标成了"气候特征（JSON）"）。
+   **对象族按点分子键逐项收集（F5，禁止 textarea 压制对象族）**：schema 已把对象族拆平为点分子键（如 `prices.cu_yuan_t`、`credibility.TM`）——每个子键=表单里一个独立数据项（number→number 输入框、日期→date、来源说明→text），**禁止把对象族压成单个 textarea 收叙述**（agent 自由解析叙述=猜键→静默 0→错误数值入报告）。economics 全族超 16 项，**必须分两批问**：价格+成本批 8 项 / 指标+可信度+产能批 10 项（rates×2 + recovery×2 选填 + concentrate×2 + credibility×3 + capacity）。array<object>（如 outlier_samples）≤10 条逐行收集（每行一个 textarea，placeholder 给「工作号,样品号,原值,处理后」格式），>10 条必须引导上传 CSV（见上条批量规则）。
    **每收完一类立即落盘**：`ingest.py forms --stage S --data-dir D --family <族> --values '<json>'`（校验写入；族名见 state_manifest.json）。绝不只在对话里"记录"——对话被摘要数据即丢；也绝不手写 data/*.json（唯一写者 = ingest.py）。
    **示例值≠数据（P2 红线，页面实测踩过两次）**：表单 placeholder/说明里的示例只示意格式，用户没填的数据项**绝不落盘任何值**，更绝不把示例值/自己编的格式值（如 C5300002023XXXXXX、1396/2000）当数据写入。写完用中文数据项清单回显落盘值请用户核对。
    **只传用户提交的键（bug-2218 页面实测）**：`--values '<json>'` 里**只放用户实际填写的键**；用户留空的项（无论必填选填）一律**不写入该键**。schema 的 `required` 只作用于门 1 完备性检查——写入路径不需要凑齐（ingest 只校验传入的键，缺键留 null 由门 1 统一报缺项再问用户）。绝不为通过校验合成对象（如把保护地核查编成全 false）、绝不抄自己写的 placeholder 示例值凑数。回显表只列用户提供的项，并明示"另有 N 项未提供（留空）"。
@@ -77,13 +78,14 @@ license: MIT
 chapter_planner.py manifest → state/chapter_manifest.json
 formula_runner.py  execute   → state/formula_state.json（槽位注册表，值+display+溯源）
 ```
+（二连可合并为一次 bash：`progress.py run-stage freeze --state-dir T`——退出码同门 2 语义透传）
 
-**门 2**：rc=0 干净通过；rc=3 = 有 `anomalies`（过滤行/缺参降级/口径注记），**必须逐条呈现用户并获确认**再生成——anomalies 是"计算完成了但你要知道这些事"，不是错误但不可隐瞒。公式结果全 0/空时同样走本门呈现（见步骤 1「公式结果为 0/空 = 数据缺失」铁律）。
+**门 2**：rc=0 干净通过；rc=3 = 有 `anomalies`（过滤行/缺参降级/口径注记），**必须逐条呈现用户并获确认**再生成——anomalies 是"计算完成了但你要知道这些事"，不是错误但不可隐瞒。**rc=3 一律发 `ask_clarification` 卡，即使用户此前要求「不再发问/免打扰」——确认门是免打扰指令的法定例外；用户已预先豁免时，卡中只给「按冻结值继续」单选项，绝不静默放行（N10 页面实测：agent 把免打扰泛化为跳过确认门）。**公式结果全 0/空时同样走本门呈现（见步骤 1「公式结果为 0/空 = 数据缺失」铁律）。
 （脚本用 Decimal ROUND_HALF_EVEN，与 backend FormulaGraph 的 float eval 无关，自包含。）
 
 ### 步骤 4 · 派发协议（wave1 全扇出 + wave2 结论，控制器模式）
 
-主会话是**控制器**：薄上下文，只协调——读进度、派发、跑门、记账，**不亲自写章**。章节写作全部走 `task()` 子代理（单上下文写不动 10 章 × 1k-6k 有效字符——薄初稿是 03e18e4a 死循环起点）。
+主会话是**控制器**：薄上下文，只协调——读进度、派发、跑门、记账，**不亲自写章**。章节写作全部走子代理派发——`batch_task` 优先，`task()` 兜底（单上下文写不动 10 章 × 1k-6k 有效字符——薄初稿是 03e18e4a 死循环起点）。
 
 **Iron Law（门 FAIL 的唯一合法出路）**
 
@@ -125,15 +127,16 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 （组装 prompt 时把契约里的 `<S>` 替换为实际阶段文件名——如 `exploration.json`；占位符不进 prompt）
 
 - `subagent_type="general-purpose"`；每轮 **≤3 个并发 task()**（超发被运行时静默丢弃）；总派发 ≤16（config 额度）
+- **batch_task 优先（平台预算规避，bug-3040）**：wave1 多章并行优先一次 `batch_task(title, items, subagent_type="general-purpose")` 整批投递（items = 各章派发契约 prompt，item 间相互独立、幂等）——每 item 独立子代理（独立递归/循环/bash 预算与超时），主会话零章稿上下文；`task()` 作兜底（batch 工具不可用时）。batch 已投章不计 task() 额度；`batch_status(batch_id)` 轮询收章，逐 item 按 4.2 跑门。
 - task() 被额度拒绝（SUBAGENT LIMIT REACHED）≠ 亲写许可——停派发，剩余 PENDING 章逐章 mark BLOCKED --detail "派发额度耗尽"，转 4.5 协商；绝不采纳运行时"自己直接完成剩余工作"的建议
 - 写作工艺（逐要素成段 / 表后五步解读 / 条目式叙述 / 动笔前读深度目标——缺数写 [待确认] 不砍段）在 `references/chapter_craft.md`——派发 prompt 已指向，子代理自读；主会话不读它（薄上下文）
 - 范文与检索红线（随派发契约注入）：范文只学范式禁抄；范文中任何数值/矿名/地名不得进入本项目正文（本项目数值只经 `{{SLOT:key}}`）。可用 harness 工具 `knowledge_search`（本地 RAGFlow 检索，已配置 固体矿产报告知识库 / ragflow-laws-standards 等 5 库）检索同章叙述参考；chunk 同样仅限叙述范式，矿名/地名/数值禁入正文，规范引用仍只从 standards_index 实有编号（ragflow-laws-standards 条文 chunk 仅作人工核实线索，禁直接引条款号）
 
-**4.2 收章跑门（只信产物，不信摘要）**：子代理返回后 `mark chN DRAFTED`，随即跑单章门
-`build_output.py --stage S --data-dir D --state-dir T --chapter chN`
-rc=0 → `mark chN VERIFIED --gate PASS`；rc=1（含深度目标门 FAIL）→ 原 prompt + stderr 重派（**每章 ≤1 次**）→ 仍 FAIL → `mark chN BLOCKED --gate FAIL --detail "<一句话差距>"`。单章失败不中断全书，继续 next。
+**4.2 收章跑门（只信产物，不信摘要）**：子代理返回后逐章 `mark chN DRAFTED`，随后**批量跑门**：
+`progress.py gate --state-dir T`（缺省一次跑完全部 DRAFTED 章的门禁，PASS 章自动 `mark VERIFIED --gate PASS`——推进凭据就是门 rc=0，唯一写者仍是 progress.py；`build_output.py --chapter chN` 仅单章调试用，不记账）
+rc=1 → failed 章按 stderr 原 prompt 重派（**每章 ≤1 次**）→ 仍 FAIL → `mark chN BLOCKED --gate FAIL --detail "<一句话差距>"`。单章失败不中断全书，继续 next。
 
-**4.3 波间要点包（wave1 全收口且无待协商 BLOCKED 时）**：`next` 进入 KEY_POINTS——聚合各子代理摘要的「本章要点 3-5 条」+ formula_state 关键结论数字（L9 总量/分类量、L10 对比、E 链经济指标）写 `/mnt/user-data/workspace/geo-report/state/key_points.json`（`{"chapters":{...},"highlights":{...},"issues":[...]}`），单表单 `ask_clarification` 呈现用户确认（单回合至多一次）→ `progress.py confirm-key-points`——用户答复前不运行 confirm-key-points（自 confirm = 伪造用户确认，同绕门）。**要点包 = ch10 唯一事实来源**（不重读 9 章全文）。
+**4.3 波间要点包（wave1 全收口且无待协商 BLOCKED 时）**：`next` 进入 KEY_POINTS——聚合各子代理摘要的「本章要点 3-5 条」+ formula_state 关键结论数字（L9 总量/分类量、L10 对比、E 链经济指标）写 `/mnt/user-data/workspace/geo-report/state/key_points.json`（`{"chapters":{...},"highlights":{...},"issues":[...]}`），单表单 `ask_clarification` 呈现用户确认（单回合至多一次）→ `progress.py confirm-key-points`——用户答复前不运行 confirm-key-points（自 confirm = 伪造用户确认，同绕门）。**要点包 = ch10 唯一事实来源**（不重读 9 章全文）。**发卡即停（N25）**：卡片发出后**立即结束本回合/run**，不执行任何后续动作；应答只能来自用户真实提交——同 run 自答、代填 progress 置位 = 伪造确认。
 
 **4.4 wave2（ch10 结论）**：`next` 指引派发 ch10（派发契约同 4.1，自读输入追加 /mnt/user-data/workspace/geo-report/state/key_points.json）——只依据要点包写投影式结论，不引入任何 wave1 之外的新数字 → 单章门 → VERIFIED（门 FAIL 同 4.2 处理：重派 ≤1 次 → BLOCKED）。
 
@@ -149,6 +152,8 @@ consistency.py    → state/consistency_check.json（22 合约四类：XS/FC/CC/
 snapshot.py save  → outputs/project_snapshot.json（全文件 SHA-256 清单）
 present_files     → 交付 `{项目名}-{阶段}-地质勘查报告.md`（build_output 交付名门强制；outputs/ 禁其他 .md）
 ```
+（三连可合并为一次 bash：`progress.py run-stage finalize --state-dir T --outputs-dir /mnt/user-data/outputs --task "<本轮用户指令一句话>"`
+——报告名由脚本从 data/ 直拼，BUILD_READY/MANIFEST_READY/退出码原样透传，交付铁律 #2 不变；已批准降档自动加 --allow-partial）
 
 consistency 退出码：0 全过 / 1 有 FAIL（修章节重跑，禁改数据绕过）/ 2 需人工（如 CC1 标准未入库）/ 3 完成带 WARN/MANUAL（汇报用户）。合规性附录由 build_output 自动附加，勿手写。
 
@@ -159,6 +164,25 @@ consistency 退出码：0 全过 / 1 有 FAIL（修章节重跑，禁改数据�
 3. present_files 前确认 `outputs/delivery_manifest.json` 在场；只交付 manifest 指名的唯一单文件交付物。
 4. `outputs/.delivery-contract` 是交付契约标记，**勿删**（删除=门失效=交付作废）。
 5. 交付后任何扩写/补写/修改都只落 `state/chapters/chN.md`，重跑 build_output → consistency → snapshot（禁止直接编辑 outputs/ 交付物后交付）。
+
+## 平台预算与停车契约（bug-3040，T4 页面实测）
+
+run 级预算硬顶（均为**按 run 计**）：recursion_limit 1000 步、LoopDetection 同形循环、bash 60 次。长管线单 run 烧穿即被熔断（run 报截断且可能仍标 success）。**停车点 = 每 run 合法终点**，到点即收尾汇报并结束 run，等用户/子代理结果驱动下一 run：
+
+| 停车点 | 动作 |
+|---|---|
+| 门 1 GATE1_COMPLETE | 汇报缺失/待确认清单后停车（批量上传场景本来就在此等文件） |
+| 门 2 rc=3 / 发任何 ask_clarification 卡 | **发卡即停**——卡在等的回合不做任何其他事 |
+| wave1 全章 VERIFIED/BLOCKED 收口 | 汇总门况 → 4.3 要点包（发卡即停）或 4.5 协商 |
+| batch_task 投递后 | items 后台跑，主 run 只 `batch_status` 轮询收章 |
+
+**步数预算意识（bug-3048，bash 60 硬顶）**：主循环单 run bash 目标 **≤25 次**——纯记账一律走批量子命令（`gate` 一次跑完全部章门并自动转正、`run-stage freeze/finalize` 合并固定脚本序列、`batch_task` 合并派发），绝不逐条 next/mark/单章门小步记账。到位即停车——run 级计数对用户不可见，被熔断的 run 侧仍报 success（FORCED STOP 只留在消息里），烧穿即静默截断。续跑靠磁盘 progress.json 不靠对话记忆：新 run 首动作 `progress.py next` 即恢复现场。
+
+**修复轮规约（补写/过门循环，T4 实测四条全被遵守且效果显著）**：
+1. **只增补，禁重写**——修复轮禁删已有正文/整章重写（T4 曾净删 1071 行倒退）；无来源数值（对不上 data/ 或 formula_state）→ 主动替换 `[待确认]`，修复轮亦然。
+2. **大块写入**——整节/整章一次 write_file，禁 str_replace 小步 patch 循环（烧 bash 预算 + LoopDetection 误杀源）。
+3. **一次批跑全章门**——`progress.py gate --state-dir T` 单次 bash 跑完所有 DRAFTED 章门禁并自动转正（默认路径，非修复轮专用；单章调试才用 `build_output.py --chapter chN`）。
+4. **缺键→[待确认]**——门 2 冻结后 formula_state 没有的键，正文化 `[待确认]`，**禁补写 formula_state**（绕冻结门）。
 
 ## 修改回路（顺序铁律，bug-2199）
 
@@ -185,6 +209,9 @@ update 后只重写受影响章节 → build → consistency → snapshot save�
 | `progress.py init --stage S --state-dir T [--data-dir D]` | 章节进度状态机初始化（全 PENDING；已存在=续跑拒重置） | 0 / 1 已存在 |
 | `progress.py next --state-dir T` | **控制器每轮先读**：恰好一个下一步动作+精确命令+期望 rc | 0 |
 | `progress.py mark chN DRAFTED\|VERIFIED\|BLOCKED --state-dir T [--gate PASS\|FAIL] [--detail …]` | 状态转移+派发记账（VERIFIED 必带 --gate PASS；DRAFTED 记一次派发） | 0 / 1 非法转移 |
+| `progress.py gate --state-dir T [--chapters ch2,ch3]` | **批量单章门**：一次跑完全部（缺省）/指定 DRAFTED 章门禁，PASS 自动转 VERIFIED --gate PASS（默认路径） | 0 全过 / 1 有 FAIL（stderr 逐章差距，未推进章保持 DRAFTED） |
+| `progress.py run-stage freeze --state-dir T` | **冻结二连**：chapter_planner manifest → formula_runner execute | 0 / 3 anomalies（同门 2） |
+| `progress.py run-stage finalize --state-dir T --outputs-dir O --task "…"` | **终验三连**：build_output → consistency → snapshot save（已批准降档自动 --allow-partial；BUILD_READY 原样透传） | 0 交付 / 1/2 门拦即停（绝不 snapshot）；consistency rc=3 不改总退出码，但 stdout/stderr 有 WARN/MANUAL 行——逐条汇报用户后再交付 |
 | `progress.py confirm-key-points --state-dir T` | 要点包已经用户单表单确认（解锁 ch10） | 0 |
 | `progress.py approve-downgrade --state-dir T --chapters ch3,ch8 --note "…"` | 用户批准降档留痕（--allow-partial 放行凭据） | 0 / 1 未知章 |
 | `consistency.py --report R --state F --standards IDX --output C` | 22 合约校验 | 0/1/2/3 |

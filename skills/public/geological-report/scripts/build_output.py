@@ -34,6 +34,12 @@ from pathlib import Path
 EXIT_OK, EXIT_ERROR = 0, 1
 SLOT_RE = re.compile(r"\{\{SLOT:([^}]+)\}\}")
 TABLE_RE = re.compile(r"\{\{TABLE:([^}]+)\}\}")
+# N19 畸形 SLOT 修复（T4 页面实测 93 处穿透全门进终稿）：降级写手系统性产出
+# 「{{SLOT:key}单位}」错配收形与「{SLOT:key}」单开括号形——SLOT_RE 不匹配 → 不注入
+# 也不报 FAIL，静默进交付稿。注入前先归一化为 {{SLOT:key}}（单位等尾缀移到槽外），
+# 修复后的键走正常 unknown-key FAIL 门（语义错配照样拦）。
+SLOT_DEFORM_CLOSE_RE = re.compile(r"\{\{SLOT:([^{}]+)\}(?!\})([^{}\n]*)\}")
+SLOT_DEFORM_OPEN_RE = re.compile(r"(?<!\{)\{SLOT:([^{}]+)\}")  # lookbehind 防 {{SLOT: 被当单括号形
 
 
 def sha256_file(p: Path) -> str:
@@ -354,6 +360,8 @@ def make_inject(stage: dict, data_dir: Path, state: dict, unknown_keys: set[str]
         def table_sub(m: re.Match) -> str:
             return render_family(m.group(1).strip(), stage, data_dir)
 
+        text = SLOT_DEFORM_CLOSE_RE.sub(r"{{SLOT:\1}}\2", text)  # {{SLOT:k}m} → {{SLOT:k}}m
+        text = SLOT_DEFORM_OPEN_RE.sub(r"{{SLOT:\1}}", text)     # {SLOT:k} → {{SLOT:k}}
         return TABLE_RE.sub(table_sub, SLOT_RE.sub(slot_sub, text))
 
     return inject

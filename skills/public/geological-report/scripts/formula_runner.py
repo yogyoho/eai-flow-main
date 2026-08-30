@@ -412,7 +412,9 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         emit("E4.price_conc", price_conc, "1", "元/t精矿", "formula:E4",
              {"cu_part": float(q(pCu * gCu / HUNDRED, "1")), "ag_part": float(q(pAg_kg / THOUSAND * gAg, "1"))})
         ag_kg = dec(V["L11.P_Ag_total_kg"]["value"]) if "L11.P_Ag_total_kg" in V else D0
-        emit("E5.gross_potential_yi", (m_u / WAN * pCu + ag_kg * pAg_kg) / WAN, "0.01", "亿元", "formula:E5")
+        # E5.gross_potential_yi（bug-3051）：银项 ag_kg×pAg_kg 是元，须先 /WAN 归万元再并入铜项
+        # （万吨×元/t），否则银项以万元数值冒充亿元、虚高 1e4 倍（FC9 量级门实测拦截 682.14 亿元）。
+        emit("E5.gross_potential_yi", (m_u / WAN * pCu + ag_kg * pAg_kg / WAN) / WAN, "0.01", "亿元", "formula:E5")
         costs = eco.get("costs", {})
         unit_cost = sum((dec(costs.get(k, 0)) for k in ("mining_yuan_t", "beneficiation_yuan_t", "other_yuan_t")), D0)
         if conc_t is not None:

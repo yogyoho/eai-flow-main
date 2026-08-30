@@ -13,8 +13,10 @@ Temp/geo_smoke/smoke.py），七类测试对产物逐项断言——管线任何
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -158,7 +160,15 @@ def ws(tmp_path_factory):
             continue
         p = data / spec["file"]
         doc = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-        need = {f["name"]: ph(f) for f in spec.get("fields", []) if f.get("required", True) and doc.get(f["name"]) in (None, "", [], {})}
+        obj_names = {g["name"] for g in spec.get("fields", []) if g.get("type") == "object"}
+        need = {
+            f["name"]: ph(f)
+            for f in spec.get("fields", [])
+            if f.get("required", True)
+            and doc.get(f["name"]) in (None, "", [], {})
+            and not ("." in f["name"] and f["name"].partition(".")[0] in obj_names)
+        }  # F5(C6b): 仅跳过可归并点分子键——ph 占位 1.0 经 _expand_dotted 深合并会覆盖已真填的嵌套值；
+        # hydro 族扁平点分键（前缀不命中 object 字段名）照常占位落盘
         if need:
             fill(fam, need)
 
@@ -491,6 +501,123 @@ class TestIngest:
         assert json.loads((d / "01_tenement.json").read_text(encoding="utf-8"))["tenement_no"] is None
         assert json.loads((d / "00_project.json").read_text(encoding="utf-8"))["project_name"] == "P"
 
+
+class TestIngestDotted:
+    """F5: economics 对象族拆平——点分子键经 _expand_dotted 深合并为嵌套 dict，
+    消灭「子键无权威名→agent 猜键→formula_runner .get(k,0) 静默 0」的错误数值通道。"""
+
+    def test_ingest_forms_dotted_keys_expand_to_nested(self, tmp_path):
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        run(
+            "ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics",
+            "--values", json.dumps({"prices.cu_yuan_t": 51000, "prices.ag_yuan_kg": 3500, "rates.loss_rate": 15, "costs.other_yuan_t": 20.75}, ensure_ascii=False),
+        )
+        doc = json.loads((d / "16_economics.json").read_text(encoding="utf-8"))
+        assert doc["prices"]["cu_yuan_t"] == 51000
+        assert "prices.cu_yuan_t" not in doc  # 顶层不留扁平点分键
+        # 第二批补答（指标+可信度）：深合并——第一批子键必须仍在
+        run(
+            "ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics",
+            "--values", json.dumps({"credibility.TM": 1.0, "credibility.KZ": 1.0, "credibility.TD": 0.6, "rates.dilution_rate": 10}, ensure_ascii=False),
+        )
+        doc = json.loads((d / "16_economics.json").read_text(encoding="utf-8"))
+        assert doc["prices"]["cu_yuan_t"] == 51000
+        assert doc["rates"]["loss_rate"] == 15 and doc["rates"]["dilution_rate"] == 10
+        assert doc["credibility"] == {"TM": 1.0, "KZ": 1.0, "TD": 0.6}
+
+    def test_ingest_forms_nested_object_still_accepted(self, tmp_path):
+        """回归守卫：顶层整对象传法（存量合约，ws 夹具即此形状）保持合法且落盘形状不变。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics", "--values", '{"prices": {"cu_yuan_t": 51000}}')
+        doc = json.loads((d / "16_economics.json").read_text(encoding="utf-8"))
+        assert doc["prices"] == {"cu_yuan_t": 51000}
+
+    def test_ingest_forms_dotted_unknown_key_rejected(self, tmp_path):
+        """未知点分键 rc=1（不在 schema 字段清单）——猜键在写入层即被拦，不再静默丢字段。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d), "--family", "economics", "--values", '{"prices.cu_typo": 1}'],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        assert r.returncode == 1 and "不在 schema 字段清单" in r.stderr, f"{r.stdout}\n{r.stderr}"
+
+    def test_ingest_hydro_dotted_stays_flat(self, tmp_path):
+        """锁归并判据：hydro 前缀不命中任何 object 字段名 → 保持扁平键落盘（formula_runner 合约）。"""
+        import ingest
+
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        hv = {"Q0_min": 908, "Q0_max": 5531, "F": 0.55, "F0": 0.30, "S": 3.0, "S0": 1.6}
+        ingest.write_form_values(str(STAGE), str(d), "hydro_eng_env", {"hydro.inflow_analogy": hv})
+        doc = json.loads((d / "11_hydro_eng_env.json").read_text(encoding="utf-8"))
+        assert doc["hydro.inflow_analogy"] == hv  # 扁平
+        assert not isinstance(doc.get("hydro"), dict)  # 未被误归并为嵌套
+
+    def test_ingest_check_missing_dotted_subkey_reports(self, tmp_path):
+        """门1 缺项走查到逐子字段：只填部分子键 → rc=2 且点名 economics.prices.ag_yuan_kg。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics", "--values", '{"prices.cu_yuan_t": 51000}')
+        out = run("ingest.py", "check", "--stage", STAGE, "--data-dir", d, expect=(2,))
+        assert "economics.prices.ag_yuan_kg" in out
+        assert "economics.concentrate.grade_cu_pct" in out
+
+    def test_formula_runner_e4_from_dotted_ingest(self, tmp_path):
+        """端到端锁死 E4=0 缺陷：点分路径落盘 → execute → E4.price_conc > 0。"""
+        import ingest
+
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        ingest.write_form_values(
+            str(STAGE), str(d), "industrial_params",
+            {"boundary_grade_cu": 0.2, "min_industrial_grade_cu": 0.4, "min_mining_thickness": 1, "waste_exclusion_thickness": 2, "grade_variation_coeff_range": [40, 120], "outlier_multiple": 7, "deposit_avg_grade": 0.85},
+        )
+        ingest.write_form_values(
+            str(STAGE), str(d), "block_model",
+            {"granularity": "A", "blocks": [{"orebody": "①", "block_no": "TM-1", "category": "TM", "grade_class": "工业", "area_s_m2": 10000, "avg_thickness_m": 2.0, "grade_c_pct": 0.5, "bulk_density": 2.85}]},
+        )
+        run(
+            "ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics",
+            "--values",
+            json.dumps(
+                {
+                    "prices.cu_yuan_t": 51000, "prices.ag_yuan_kg": 3500,
+                    "concentrate.grade_cu_pct": 17.46, "concentrate.grade_ag_gpt": 98.07,
+                    "credibility.TM": 1.0, "credibility.KZ": 1.0, "credibility.TD": 0.6,
+                    "rates.loss_rate": 15, "rates.dilution_rate": 10,
+                    "costs.mining_yuan_t": 45, "costs.beneficiation_yuan_t": 60, "costs.other_yuan_t": 20.75,
+                    "capacity_10kt_a": 80,
+                },
+                ensure_ascii=False,
+            ),
+        )
+        state = d.parent / "state"
+        state.mkdir()
+        run("formula_runner.py", "execute", "--stage", STAGE, "--data-dir", d, "--output", state / "formula_state.json", expect=(0, 3))
+        V = json.loads((state / "formula_state.json").read_text(encoding="utf-8"))["values"]
+        assert float(V["E4.price_conc"]["value"]) > 8000  # 51000×17.46/100 + 3500/1000×98.07 ≈ 9247.8
+
+    def test_exploration_schema_economics_flattened(self):
+        """schema 静态断言：economics 每个 object 父条目必有非空 fields 子清单（recovery 不再裸奔），
+        且每个子键存在对应点分字段条目（ask_clarification 可逐子字段发问）。"""
+        stage = json.loads(STAGE.read_text(encoding="utf-8"))
+        fields = stage["forms"]["economics"]["fields"]
+        names = {f["name"] for f in fields}
+        for f in fields:
+            if f.get("type") == "object":
+                assert f.get("fields"), f"object 条目 {f['name']} 缺子键清单"
+                for sub in f["fields"]:
+                    assert f"{f['name']}.{sub}" in names, f"缺点分条目 {f['name']}.{sub}"
+
     def test_stage_bare_name_resolves(self, tmp_path):
         """bug-2217: 裸名 'exploration' 自动补全到内置 stages 路径，
         不再抛 FileNotFoundError 裸 traceback；不存在的名字给可读错误。"""
@@ -553,6 +680,7 @@ ANCHORS = {
     "E1.Q_usable_wt": 14.25,
     "E2.Q_mined_wt": 12.82,
     "E4.price_conc": 9248,
+    "E5.gross_potential_yi": 0.41,  # bug-3051 锚：银项 /WAN 后 (0.067*51000 + 1948*3500/1e4)/1e4 ≈ 0.41（修前虚高 1e4 倍 = 682.14）
     "E7.years_added": 0.2,
     "B1.recovery[铜精矿]": 85.18,
 }
@@ -954,6 +1082,100 @@ class TestConsistency:
             assert wl.search(code), code
         assert not wl.search("422"), "422 是采空区数量（须走 numeric_pool 溯源），不得被此白名单豁免"
 
+    def test_sl1_wide_match_deformed_slots(self):
+        """bug-3040/N19 回归：畸形 SLOT 形（单开括号/错配收形）必须被宽匹配拦为残留。"""
+        import consistency as cons
+
+        rep = cons.Report()
+        cons.check_sl(rep, [("## 1 章", "## 1 章\n{SLOT:L9.total_ore_wt} 万吨 … {{SLOT:L9.total_metal_t}t} …")], set())
+        sl1 = [i for i in rep.items if i["contract"] == "SL1"]
+        assert sl1 and sl1[0]["severity"] == "fail", sl1
+
+    def test_make_inject_deformity_repair(self, tmp_path):
+        """bug-3040/N19 回归：注入前归一化 {{SLOT:k}m}→{{SLOT:k}}m、{SLOT:k}→{{SLOT:k}}；未知键仍走 FAIL 门。"""
+        import build_output
+
+        state = {"values": {
+            "L9.total_ore_wt": {"value": 1234.5, "display": "1234.5", "source": "t"},
+            "L9.total_metal_t": {"value": 8.9, "display": "8.9", "source": "t"},
+        }}
+        unknown: set[str] = set()
+        out = build_output.make_inject({"forms": {}}, tmp_path, state, unknown)(
+            "矿石量 {{SLOT:L9.total_ore_wt}} 万吨；金属量 {SLOT:L9.total_metal_t} t；错配 {{SLOT:L9.total_ore_wt}万吨}")
+        assert "SLOT" not in out, out
+        assert "1234.5 万吨" in out and "8.9 t" in out and "1234.5万吨" in out, out
+        unknown2: set[str] = set()
+        out2 = build_output.make_inject({"forms": {}}, tmp_path, state, unknown2)("坏键 {SLOT:XX.nope}")
+        assert "XX.nope" in unknown2 and "{{SLOT:XX.nope}}" in out2
+
+    def test_sl3_sample_fingerprint(self, tmp_path):
+        """N18/SL3 回归：范文数值泄漏→fail；数值在池→pass；样例库缺失→warn 跳过；范文专名→warn。"""
+        from decimal import Decimal
+        from types import SimpleNamespace
+
+        import consistency as cons
+
+        stage_path = tmp_path / "references" / "stages" / "exploration.json"
+        samples = tmp_path / "references" / "samples" / "exploration"
+        samples.mkdir(parents=True)
+        (samples / "ch1_sample.md").write_text("范文数据 7700 万吨 灯影组\n", encoding="utf-8")
+        data = SimpleNamespace(forms={}, csvs={})
+        ch = [("## 1 章", "## 1 章\n全区 7700 万吨\n灯影组出露")]
+        rep = cons.Report()
+        cons.check_sl3(rep, ch, data, stage_path, set())
+        items = [i for i in rep.items if i["contract"] == "SL3"]
+        assert any(i["severity"] == "fail" and "7700" in i["detail"] for i in items), items
+        assert any(i["severity"] == "warn" and "灯影组" in i["detail"] for i in items), items
+        rep2 = cons.Report()
+        cons.check_sl3(rep2, ch, data, stage_path, {Decimal("7700")})
+        assert not any(i["severity"] == "fail" for i in rep2.items if i["contract"] == "SL3"), rep2.items
+        rep3 = cons.Report()
+        cons.check_sl3(rep3, ch, data, tmp_path / "nonexistent.json", set())
+        assert any(i["contract"] == "SL3" and i["severity"] == "warn" and "跳过" in i["detail"] for i in rep3.items), rep3.items
+
+    def test_fc9_potential_magnitude(self):
+        """N26/FC9 回归：potential 量级 10× 带宽——虚高（33209 亿型）→fail；同量级→pass；缺输入→跳过。"""
+        from types import SimpleNamespace
+
+        import consistency as cons
+
+        eco = {"concentrate": {"grade_cu_pct": 10.0}}
+        data = SimpleNamespace(form=lambda name: eco if name == "economics" else {})
+        base = {"L9.total_metal_t": {"value": "8.9", "display": "8.9", "source": "t"},
+                "E4.price_conc": {"value": "60000", "display": "60000", "source": "t"}}
+        # implied = 8.9 × 60000 / (10/100) = 534 万元；0.0534 亿 × 1e8 = 同量级
+        bad = {**base, "E5.gross_potential_yi": {"value": "534000000000", "display": "53.4万亿", "source": "t", "unit": "亿元"}}
+        rep = cons.Report()
+        cons.check_fc(rep, {"values": bad}, data)
+        fc9 = [i for i in rep.items if i["contract"] == "FC9"]  # FC7 在假价格下另有噪声 fail，按合约过滤
+        assert fc9 and fc9[0]["severity"] == "fail" and "E5.gross_potential_yi" in fc9[0]["detail"], fc9
+        ok = {**base, "E5.gross_potential_yi": {"value": "0.0534", "display": "0.0534亿元", "source": "t", "unit": "亿元"}}
+        rep2 = cons.Report()
+        cons.check_fc(rep2, {"values": ok}, data)
+        fc9b = [i for i in rep2.items if i["contract"] == "FC9"]
+        assert fc9b and fc9b[0]["severity"] == "pass", fc9b
+        rep3 = cons.Report()
+        cons.check_fc(rep3, {"values": {k: v for k, v in ok.items() if not k.startswith("L9.")} | {"E5.gross_potential_yi": ok["E5.gross_potential_yi"]}}, data)
+        fc9c = [i for i in rep3.items if i["contract"] == "FC9"]
+        assert fc9c and fc9c[0]["severity"] == "pass" and "跳过" in fc9c[0]["detail"], fc9c
+
+    def test_xs6_same_label_conflict(self):
+        """N27/XS6 回归：同一中文指标标签跨章绑定两个不同槽位显示值→fail。"""
+        from types import SimpleNamespace
+
+        import consistency as cons
+
+        state = {"values": {
+            "L9.total_ore_wt": {"value": 1234.5, "display": "1234.5", "source": "t"},
+            "L10.diff_wt": {"value": 999, "display": "999", "source": "t"},
+        }}
+        ch = [("## 1 章", "## 1 章\n工业矿石量 1234.5 万吨"), ("## 8 章", "## 8 章\n工业矿石量 999 万吨")]
+        data = SimpleNamespace(form=lambda n: {})
+        rep = cons.Report()
+        cons.check_xs(rep, ch, state, data)
+        xs6 = [i for i in rep.items if i["contract"] == "XS6"]
+        assert xs6 and xs6[0]["severity"] == "fail" and "工业矿石量" in xs6[0]["detail"], xs6
+
 
 # ── 6. snapshot：正典 + 篡改检测 ────────────────────────────────────────────
 
@@ -1021,3 +1243,125 @@ class TestDataExpectations:
             assert set(entry["families"]) <= known, (ch, set(entry["families"]) - known)
         assert "样品编号" in doc["csv_columns"]["sample_assays"]
         assert any("小体重" in col for col in doc["csv_columns"]["bulk_density"])
+
+
+# ── 8. progress gate / run-stage：批量子命令（平台预算规避，bug-3040/3048）────
+
+
+def run_raw(*args) -> tuple[int, str, str]:
+    """同 run() 但返回 (rc, stdout, stderr)——gate/run-stage 的失败语义本身就是被测合约。"""
+    argv = [str(SCRIPTS / args[0]), *map(str, args[1:])]
+    if argv[0].endswith("build_output.py") and "--targets" not in argv:
+        argv += ["--targets", str(_floor_targets())]
+    r = subprocess.run([sys.executable, "-X", "utf8", *argv], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return r.returncode, r.stdout, r.stderr
+
+
+def _mk_prog_state(base: Path, stage_copy: Path, ws, *, corrupt: str | None = None) -> Path:
+    """控制器沙盒 state dir：formula_state + chapters 拷自 ws，init 后 wave1 全 DRAFTED（模拟收章）。"""
+    st = base / "state"
+    (st / "chapters").mkdir(parents=True)
+    shutil.copy(ws["state"] / "formula_state.json", st / "formula_state.json")
+    for md in (ws["state"] / "chapters").glob("*.md"):
+        shutil.copy(md, st / "chapters" / md.name)
+    if corrupt:
+        (st / "chapters" / f"{corrupt}.md").write_text(f"## {corrupt[2:]} 薄章\n\n只有一句话。\n", encoding="utf-8")
+    run("progress.py", "init", "--stage", stage_copy, "--state-dir", st, "--data-dir", ws["data"])
+    for i in range(1, 10):
+        run("progress.py", "mark", f"ch{i}", "DRAFTED", "--state-dir", st)
+    return st
+
+
+@pytest.fixture(scope="session")
+def prog(ws, tmp_path_factory):
+    """ws 之上的 gate/run-stage 沙盒：stage 副本 + 地板基准放 stage 探测路径（resolve_targets
+    沿 stage 向上三级探测——gate 与 build_output 子进程都吃同一基准，不传 --targets，同生产语义）。"""
+    base = tmp_path_factory.mktemp("geov2prog")
+    (base / "references" / "stages").mkdir(parents=True)
+    stage_copy = base / "references" / "stages" / "exploration.json"
+    stage_copy.write_text(STAGE.read_text(encoding="utf-8"), encoding="utf-8")
+    (base / "references" / "depth_targets.json").write_text(_floor_targets().read_text(encoding="utf-8"), encoding="utf-8")
+    st = _mk_prog_state(base, stage_copy, ws)
+    return {"base": base, "stage": stage_copy, "state": st, "data": ws["data"], "deliv": ws["deliv"]}
+
+
+class TestGateBatch:
+    def test_batch_gate_promotes_all_drafts(self, prog):
+        """缺省一次跑完全部 DRAFTED 章门禁，PASS 章自动转 VERIFIED（唯一写者仍是 progress.py）。"""
+        out = run("progress.py", "gate", "--state-dir", prog["state"])
+        assert "GATE_BATCH_DONE: passed=9 failed=0" in out
+        doc = json.loads((prog["state"] / "progress.json").read_text(encoding="utf-8"))
+        assert all(doc["chapters"][f"ch{i}"]["status"] == "VERIFIED" and doc["chapters"][f"ch{i}"]["last_gate"] == "PASS" for i in range(1, 10))
+        assert doc["phase"] == "KEY_POINTS"  # wave1 收口且无 BLOCKED → 进要点包相位
+
+    def test_gate_without_drafts_errors(self, prog):
+        """全部 VERIFIED 后再跑 gate：没有 DRAFTED 章 → rc=1（不空转）。"""
+        rc, _, err = run_raw("progress.py", "gate", "--state-dir", prog["state"])
+        assert rc == 1 and "没有 DRAFTED 章" in err
+
+    def test_batch_gate_fail_keeps_chapter_draft(self, ws, prog):
+        """任一章 FAIL → rc=1、stderr 逐条差距、该章保持 DRAFTED，其余章照常转正。"""
+        st = _mk_prog_state(prog["base"] / "neg", prog["stage"], ws, corrupt="ch3")
+        rc, out, err = run_raw("progress.py", "gate", "--state-dir", st)
+        assert rc == 1 and "CHAPTER_GATE_FAIL: ch3" in err and "failed=1" in out
+        doc = json.loads((st / "progress.json").read_text(encoding="utf-8"))
+        assert doc["chapters"]["ch3"]["status"] == "DRAFTED"
+        assert all(doc["chapters"][f"ch{i}"]["status"] == "VERIFIED" for i in (1, 2, 4, 5, 6, 7, 8, 9))
+        assert doc["phase"] == "WAVE1"  # 有 DRAFTED 未收口，不越相位
+
+    def test_gate_unknown_chapter_rejected(self, prog):
+        rc, _, err = run_raw("progress.py", "gate", "--state-dir", prog["state"], "--chapters", "ch99")
+        assert rc == 1 and "未知章节" in err
+
+
+class TestRunStage:
+    def test_freeze_merges_manifest_and_execute(self, prog):
+        """冻结二连一次 bash：manifest + execute，退出码语义透传（rc=3=anomalies，同门 2）。"""
+        rc, out, _ = run_raw("progress.py", "run-stage", "freeze", "--state-dir", prog["state"])
+        assert rc in (0, 3)
+        assert (prog["state"] / "chapter_manifest.json").exists()
+        assert (prog["state"] / "formula_state.json").exists()
+
+    def test_finalize_merges_build_consistency_snapshot(self, ws, prog, tmp_path):
+        """终验三连一次 bash：BUILD_READY/MANIFEST_READY 整行透传（交付铁律 #2 粘贴要求不丢），
+        交付名由脚本从 data/ 直拼，报告+delivery_manifest+project_snapshot 落 outputs。"""
+        outs = tmp_path / "outputs"
+        outs.mkdir()
+        rc, out, err = run_raw("progress.py", "run-stage", "finalize", "--state-dir", prog["state"], "--outputs-dir", outs, "--task", "测试终验")
+        assert "BUILD_READY" in out, err  # build 子进程 stdout 原样透传
+        assert (outs / prog["deliv"]).exists()
+        assert (outs / "delivery_manifest.json").exists()
+        if rc in (0, 3):  # rc=3=WARN/MANUAL 汇报后仍交付；rc=2 门拦 → snapshot 未执行
+            assert "MANIFEST_READY" in out
+            assert (outs / "project_snapshot.json").exists()
+        else:
+            assert rc == 2
+
+    def test_finalize_requires_outputs_dir(self, prog):
+        rc, _, err = run_raw("progress.py", "run-stage", "finalize", "--state-dir", prog["state"])
+        assert rc == 1 and "--outputs-dir" in err
+
+    def test_finalize_consistency_gate_stops_before_snapshot(self, prog, monkeypatch, tmp_path):
+        """停门不变式（review 必修1）：consistency rc=1/2 → snapshot 绝不启动（带病不交付）。
+        in-process 调 cmd_run_stage，_run_py 打桩按脚本名回放退出码，snapshot 被调即断言失败。"""
+        import progress as progress_mod
+
+        outs = tmp_path / "outputs"
+        outs.mkdir()
+        calls: list[str] = []
+
+        def fake_run_py(script, *a):
+            calls.append(script)
+            if script == "build_output.py":
+                (outs / prog["deliv"]).write_text("report\n", encoding="utf-8")
+                return 0
+            if script == "consistency.py":
+                return 2
+            raise AssertionError(f"consistency 门拦后不应再跑 {script}")
+
+        monkeypatch.setattr(progress_mod, "_run_py", fake_run_py)
+        ns = argparse.Namespace(stage_name="finalize", state_dir=str(prog["state"]), outputs_dir=str(outs), task="测试门拦", allow_partial=False)
+        rc = progress_mod.cmd_run_stage(ns)
+        assert rc == 2
+        assert calls == ["build_output.py", "consistency.py"]
+        assert not (outs / "project_snapshot.json").exists()
