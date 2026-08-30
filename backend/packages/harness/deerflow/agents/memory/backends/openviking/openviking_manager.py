@@ -11,6 +11,7 @@ import threading
 import time
 import weakref
 from contextlib import AbstractContextManager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, ClassVar, Literal
 
@@ -33,12 +34,29 @@ from .session import (
 logger = logging.getLogger(__name__)
 
 
+# EAI-CUSTOM (2026-08-30, bug-3018): per-DeerFlow-user OpenViking identity.
+# A USER API key binds to one OpenViking account, so each DeerFlow user with a
+# mapped key (memory.backend_config.user_keys) gets its own recorder/client/
+# retriever bundle; the class docstring's "single-user" statement predates this
+# multi-identity support (START/END markers wrap every edit below).
+@dataclass
+class _IdentityBundle:
+    owner_user_id: str
+    recorder: Any
+    client: Any
+    retriever: Any
+
+
 class OpenVikingMemoryManager(MemoryManager):
     """Single-user OpenViking backend using the official integration package.
 
     DeerFlow continues to choose when capture and recall occur. The official
     adapter owns SDK transport, message conversion, batching, commit retries,
     and retrieval behavior.
+
+    EAI-CUSTOM (bug-3018): additionally supports per-DeerFlow-user identity —
+    users mapped in ``backend_config.user_keys`` get their own OpenViking
+    recorder/retriever so each account writes with its own USER API key.
     """
 
     supports_search: ClassVar[bool] = True
@@ -47,6 +65,11 @@ class OpenVikingMemoryManager(MemoryManager):
     _client: Any = PrivateAttr()
     _recorder: Any = PrivateAttr()
     _retriever: Any = PrivateAttr()
+    # EAI-CUSTOM (2026-08-30, bug-3018) START — per-DeerFlow-user identity bundles
+    _integration: dict[str, Any] = PrivateAttr()
+    _bundles: dict[str, _IdentityBundle] = PrivateAttr(default_factory=dict)
+    _bundle_lock: threading.Lock = PrivateAttr(default_factory=threading.Lock)
+    # EAI-CUSTOM (2026-08-30, bug-3018) END
     _use_actor_peer: Any = PrivateAttr()
     _partial_write_error: type[Exception] = PrivateAttr()
     _should_keep_hidden_message: Any = PrivateAttr(default=None)
@@ -85,6 +108,9 @@ class OpenVikingMemoryManager(MemoryManager):
         )
         self._use_actor_peer = integration["use_actor_peer"]
         self._partial_write_error = integration["OpenVikingPartialWriteError"]
+        # EAI-CUSTOM (2026-08-30, bug-3018) START
+        self._integration = integration
+        # EAI-CUSTOM (2026-08-30, bug-3018) END
 
     @classmethod
     def from_config(
@@ -163,16 +189,18 @@ class OpenVikingMemoryManager(MemoryManager):
         if not self._begin_operation():
             return ""
         try:
-            peer_id = self._resolve_scope(user_id, agent_name)
-            retriever = copy.copy(self._retriever)
+            # EAI-CUSTOM (2026-08-30, bug-3018) START
+            bundle, peer_id = self._resolve_scope(user_id, agent_name)
+            retriever = copy.copy(bundle.retriever)
             retriever.target_uri = _memory_target_uris(peer_id)
             if thread_id:
                 retriever.search_mode = "search"
                 retriever.session_id = _session_id(
-                    self._config.owner_user_id,
+                    bundle.owner_user_id,
                     peer_id,
                     thread_id,
                 )
+            # EAI-CUSTOM (2026-08-30, bug-3018) END
             try:
                 with self._actor_peer_scope(peer_id):
                     documents = retriever.invoke(self._config.injection_query)
@@ -217,10 +245,12 @@ class OpenVikingMemoryManager(MemoryManager):
         if not query.strip() or not self._begin_operation():
             return []
         try:
-            peer_id = self._resolve_scope(user_id, agent_name)
-            retriever = copy.copy(self._retriever)
+            # EAI-CUSTOM (2026-08-30, bug-3018) START
+            bundle, peer_id = self._resolve_scope(user_id, agent_name)
+            retriever = copy.copy(bundle.retriever)
             retriever.target_uri = _memory_target_uris(peer_id)
             retriever.search_mode = "find"
+            # EAI-CUSTOM (2026-08-30, bug-3018) END
             retriever.session_id = None
             retriever.limit = max(1, min(int(top_k), 100))
             if category:
@@ -324,9 +354,10 @@ class OpenVikingMemoryManager(MemoryManager):
         try:
             if not thread_id:
                 raise ValueError("OpenViking memory write requires thread_id")
-            peer_id = self._resolve_scope(user_id, agent_name)
+            # EAI-CUSTOM (2026-08-30, bug-3018) START
+            bundle, peer_id = self._resolve_scope(user_id, agent_name)
             session_id = _session_id(
-                self._config.owner_user_id,
+                bundle.owner_user_id,
                 peer_id,
                 thread_id,
             )
@@ -338,15 +369,19 @@ class OpenVikingMemoryManager(MemoryManager):
                         messages,
                         self._should_keep_hidden_message,
                     ),
+                    bundle,
                 )
+            # EAI-CUSTOM (2026-08-30, bug-3018) END
         finally:
             self._end_operation()
 
+    # EAI-CUSTOM (2026-08-30, bug-3018) START — bundle-aware capture
     def _capture_locked(
         self,
         session_id: str,
         peer_id: str,
         messages: list[Any],
+        bundle: _IdentityBundle,
     ) -> None:
         state = self._load_cursor(session_id)
         signatures = [_message_signature(message) for message in messages]
@@ -354,7 +389,7 @@ class OpenVikingMemoryManager(MemoryManager):
         if state.get("commit_pending"):
             try:
                 with self._actor_peer_scope(peer_id):
-                    self._recorder.flush(session_id)
+                    bundle.recorder.flush(session_id)
             except Exception as exc:
                 self._handle_write_error(
                     exc,
@@ -391,7 +426,7 @@ class OpenVikingMemoryManager(MemoryManager):
 
         try:
             with self._actor_peer_scope(peer_id):
-                self._recorder.record(
+                bundle.recorder.record(
                     session_id,
                     pending,
                     peer_id=peer_id,
@@ -442,16 +477,74 @@ class OpenVikingMemoryManager(MemoryManager):
                 commit_pending=False,
             ),
         )
+    # EAI-CUSTOM (2026-08-30, bug-3018) END
 
+    # EAI-CUSTOM (2026-08-30, bug-3018) START — per-user identity resolution
     def _resolve_scope(
         self,
         user_id: str | None,
         agent_name: str | None,
-    ) -> str:
+    ) -> tuple[_IdentityBundle, str]:
         resolved_user = str(user_id or "default")
-        if resolved_user != self._config.owner_user_id:
-            raise MemoryManagerError(f"OpenViking USER API key is bound to DeerFlow owner_user_id {self._config.owner_user_id!r}, but this request belongs to {resolved_user!r}. Refusing to share one credential across users.")
-        return _canonical_peer_id(agent_name, self._config.default_peer_id)
+        bundle = self._bundle_for(resolved_user)
+        return bundle, _canonical_peer_id(agent_name, self._config.default_peer_id)
+
+    def _bundle_for(self, resolved_user: str) -> _IdentityBundle:
+        """Return the identity bundle for a DeerFlow user.
+
+        The owner uses the primary recorder; users mapped in
+        ``user_keys`` get a lazily built recorder bound to their own OpenViking
+        USER API key. Unmapped non-owner users are refused — one credential
+        must never write another account's memory.
+        """
+
+        if resolved_user == self._config.owner_user_id:
+            return _IdentityBundle(
+                owner_user_id=self._config.owner_user_id,
+                recorder=self._recorder,
+                client=self._client,
+                retriever=self._retriever,
+            )
+        mapped_key = self._config.user_api_keys.get(resolved_user)
+        if mapped_key is None:
+            raise MemoryManagerError(
+                f"OpenViking USER API key is bound to DeerFlow owner_user_id {self._config.owner_user_id!r}, "
+                f"but this request belongs to {resolved_user!r} with no user_keys mapping. "
+                "Refusing to share one credential across users."
+            )
+        with self._bundle_lock:
+            bundle = self._bundles.get(resolved_user)
+            if bundle is None:
+                bundle = self._build_bundle(resolved_user, mapped_key)
+                self._bundles[resolved_user] = bundle
+            return bundle
+
+    def _build_bundle(self, owner_user_id: str, api_key: str) -> _IdentityBundle:
+        integration = self._integration
+        commit_policy = integration["OpenVikingCommitPolicy"](mode="always")
+        recorder = integration["OpenVikingSessionRecorder"](
+            url=self._config.base_url,
+            api_key=api_key,
+            timeout=self._config.timeout_seconds,
+            extra_headers={},
+            commit_policy=commit_policy,
+        )
+        retriever = integration["OpenVikingRetriever"](
+            client=recorder.client,
+            search_mode="find",
+            limit=self._config.search_top_k,
+            score_threshold=self._config.score_threshold,
+            context_types=("memory",),
+            content_mode=self._config.content_mode,
+            max_content_chars=self._config.max_injection_chars,
+        )
+        return _IdentityBundle(
+            owner_user_id=owner_user_id,
+            recorder=recorder,
+            client=recorder.client,
+            retriever=retriever,
+        )
+    # EAI-CUSTOM (2026-08-30, bug-3018) END
 
     def _actor_peer_scope(
         self,
@@ -491,6 +584,14 @@ class OpenVikingMemoryManager(MemoryManager):
             if self._resources_closed:
                 return
             self._recorder.close()
+            # EAI-CUSTOM (2026-08-30, bug-3018) START — close per-user recorders too
+            for bundle in list(self._bundles.values()):
+                try:
+                    bundle.recorder.close()
+                except Exception:
+                    logger.exception("Failed to close OpenViking per-user recorder (user=%s)", bundle.owner_user_id)
+            self._bundles.clear()
+            # EAI-CUSTOM (2026-08-30, bug-3018) END
             self._resources_closed = True
 
     def _state_path(self, session_id: str) -> Path:

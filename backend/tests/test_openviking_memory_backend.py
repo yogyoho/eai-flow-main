@@ -350,6 +350,112 @@ def test_manager_refuses_to_share_single_user_key_across_deerflow_users(
     assert manager._recorder.calls == []
 
 
+# EAI-CUSTOM (2026-08-30, bug-3018) START — per-DeerFlow-user USER API keys
+def test_config_resolves_user_keys_from_env_names(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENVIKING_API_KEY", "secret")
+    monkeypatch.setenv("OPENVIKING_API_KEY_BOB", "bob-key")
+    config = OpenVikingConfig.from_backend_config(
+        _backend_config(tmp_path, user_keys={"bob@eai-flow.com": "OPENVIKING_API_KEY_BOB"}),
+    )
+
+    assert config.user_api_keys == {"bob@eai-flow.com": "bob-key"}
+    assert "bob-key" not in repr(config)
+
+
+def test_config_rejects_user_keys_with_missing_env(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("OPENVIKING_API_KEY", "secret")
+    monkeypatch.delenv("OPENVIKING_API_KEY_BOB", raising=False)
+
+    with pytest.raises(ValueError, match=r"set OPENVIKING_API_KEY_BOB \(user_keys\['bob@eai-flow.com'\]\)"):
+        OpenVikingConfig.from_backend_config(
+            _backend_config(tmp_path, user_keys={"bob@eai-flow.com": "OPENVIKING_API_KEY_BOB"}),
+        )
+
+
+def test_mapped_user_gets_its_own_recorder_and_credential(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    official_integration: None,
+) -> None:
+    monkeypatch.setenv("OPENVIKING_API_KEY_BOB", "bob-key")
+    manager = _manager(
+        tmp_path,
+        monkeypatch,
+        user_keys={"bob@eai-flow.com": "OPENVIKING_API_KEY_BOB"},
+    )
+
+    manager.add(
+        "thread-1",
+        [HumanMessage("bob private", id="h1")],
+        user_id="bob@eai-flow.com",
+        agent_name="research",
+    )
+    context = manager.get_context("bob@eai-flow.com", agent_name="research")
+
+    assert context == "- [preferences] Prefers concise answers."
+    bob_recorder = manager._bundles["bob@eai-flow.com"].recorder
+    assert bob_recorder is not manager._recorder
+    assert bob_recorder.connection["api_key"] == "bob-key"
+    assert bob_recorder.calls[0][1] == [HumanMessage("bob private", id="h1")]
+    assert manager._recorder.calls == []
+    # Cursor separation: bob's session_id embeds bob's identity, not alice's.
+    bob_session = bob_recorder.calls[0][0]
+    assert bob_session == _session_id("bob@eai-flow.com", "research", "thread-1")
+    assert (tmp_path / "openviking" / "sessions" / f"{bob_session}.json").exists()
+
+
+def test_owner_still_uses_primary_recorder_with_user_keys_configured(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    official_integration: None,
+) -> None:
+    monkeypatch.setenv("OPENVIKING_API_KEY_BOB", "bob-key")
+    manager = _manager(
+        tmp_path,
+        monkeypatch,
+        user_keys={"bob@eai-flow.com": "OPENVIKING_API_KEY_BOB"},
+    )
+
+    manager.add(
+        "thread-1",
+        [HumanMessage("alice private", id="h1")],
+        user_id="alice",
+        agent_name="research",
+    )
+
+    assert manager._recorder.connection["api_key"] == "user-key"
+    assert manager._recorder.calls
+    assert manager._bundles == {}
+
+
+def test_close_shuts_down_per_user_recorders(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    official_integration: None,
+) -> None:
+    monkeypatch.setenv("OPENVIKING_API_KEY_BOB", "bob-key")
+    manager = _manager(
+        tmp_path,
+        monkeypatch,
+        user_keys={"bob@eai-flow.com": "OPENVIKING_API_KEY_BOB"},
+    )
+    manager.get_context("bob@eai-flow.com", agent_name="research")
+
+    assert manager.close() is None
+    bob_recorder = manager._bundles.get("bob@eai-flow.com")
+    if bob_recorder is not None:
+        assert bob_recorder.recorder.closed is True
+    assert manager._bundles == {}
+    assert manager._recorder.closed is True
+# EAI-CUSTOM (2026-08-30, bug-3018) END
+
+
 def test_manager_records_only_unseen_suffix(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

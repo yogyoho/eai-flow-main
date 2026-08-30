@@ -45,6 +45,11 @@ class OpenVikingConfig:
     write_failure_policy: Literal["log_and_drop", "raise"]
     allow_insecure_http: bool
     max_seen_message_ids: int
+    # EAI-CUSTOM (2026-08-30, bug-3018) START — per-DeerFlow-user USER API keys
+    # Maps DeerFlow user_id → resolved OpenViking USER API key. Populated from
+    # backend_config.user_keys (user_id → env var NAME holding the key).
+    user_api_keys: dict[str, str] = field(default_factory=dict, repr=False)
+    # EAI-CUSTOM (2026-08-30, bug-3018) END
 
     @classmethod
     def from_backend_config(
@@ -66,6 +71,19 @@ class OpenVikingConfig:
         api_key_env = str(cfg.pop("api_key_env", "OPENVIKING_API_KEY")).strip()
         if not api_key_env:
             raise ValueError("OpenViking api_key_env must not be empty")
+
+        # EAI-CUSTOM (2026-08-30, bug-3018) START — user_keys: DeerFlow user_id → env var NAME
+        user_keys_cfg = _mapping(cfg.pop("user_keys", {}), "user_keys")
+        user_api_keys: dict[str, str] = {}
+        for map_user, env_name_raw in user_keys_cfg.items():
+            env_name = str(env_name_raw).strip()
+            if not env_name:
+                raise ValueError(f"OpenViking user_keys[{map_user!r}] must name an environment variable")
+            resolved = os.environ.get(env_name, "").strip()
+            if not resolved:
+                raise ValueError(f"OpenViking USER API key is missing; set {env_name} (user_keys[{map_user!r}])")
+            user_api_keys[str(map_user)] = resolved
+        # EAI-CUSTOM (2026-08-30, bug-3018) END
 
         result = cls(
             base_url=str(cfg.pop("base_url", "http://127.0.0.1:1933")).rstrip("/"),
@@ -93,6 +111,8 @@ class OpenVikingConfig:
                 "allow_insecure_http",
             ),
             max_seen_message_ids=int(cfg.pop("max_seen_message_ids", 512)),
+            # EAI-CUSTOM (2026-08-30, bug-3018)
+            user_api_keys=user_api_keys,
         )
 
         unknown = sorted(
