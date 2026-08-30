@@ -14,9 +14,12 @@
     DIAGRAM_SKIP: <fig_id> <原因>   缺参数/字体缺失时逐张跳过；全部失败 exit 1
 
 铁律#1 同源：图上标注数值 = state JSON 值（本脚本只做格式化，不做任何计算）。
-构图对齐样例（2026-08-30 深度还原）：图1 工字梁+电动葫芦总成+V 形吊索+网格滤网+斜刻
-尺寸链；图2 02S403 图集件风格（法兰+双线锥壁+点划中心线+箭头尺寸）；图3 吊车梁+
-蜗壳泵剖面+墙体剖面线+地上式/地下式竖排字。坐标一律米、y 向上，Pen 折算像素。
+构图对齐样例（2026-08-30 深度还原，对齐样图 image9/10/11）：图1 工字梁侧视双线+小车轮
+组十字中心+吊板/卷筒法兰+排绳剖面线+电机散热线+C 形吊钩+V 形吊索卸扣+网格滤网+左侧
+尺寸链（延长线过线+45°斜刻）+H 箭头；图2 02S403 图集件风格（法兰双头螺栓+n-b×30°引出
+线+锥壁剖面线+壁厚横壁小尺寸+点划中心线+D/D1 箭头尺寸）；图3 吊车梁搁墙顶+墙外埋土
+斜刻+小车/吊钩块/C 形钩+吊离间隙箭头+蜗壳泵双圆十字中心线+底座剖面线+字母链+竖排字。
+坐标一律米、y 向上，Pen 折算像素；箭头/刻度按像素定长（跨图比例一致）。
 中文字体：assets/NotoSansSC-subset.ttf（OFL 许可，按本脚本 label 词表子集化）；
 新增标注文字后须重跑子集化并把字符集同步进 assets/font_chars.txt（test_diagrams 锁）。
 """
@@ -194,14 +197,58 @@ class Pen:
                 )
             t = t2
 
-    def _arrowhead(self, x, y, dx, dy, color=INK, size=0.13):
+    def _arrowhead(self, x, y, dx, dy, color=INK, size=None):
+        # 箭头按像素定长（随图幅缩放微调），避免大比例图上箭头过大喧宾夺主
         n = math.hypot(dx, dy) or 1.0
         ux, uy = dx / n, dy / n
         wx, wy = -uy, ux
         tip = self.px(x, y)
-        b1 = self.px(x - ux * size + wx * size * 0.42, y - uy * size + wy * size * 0.42)
-        b2 = self.px(x - ux * size - wx * size * 0.42, y - uy * size - wy * size * 0.42)
+        s = size if size is not None else max(9.0, 0.052 * self.scale)
+        half = s * 0.36
+        b1 = (tip[0] - ux * s + wx * half, tip[1] - uy * s + wy * half)
+        b2 = (tip[0] - ux * s - wx * half, tip[1] - uy * s - wy * half)
         self.d.polygon([tip, b1, b2], fill=color)
+
+    def leader(self, x1, y1, x2, y2, text="", color=INK, small=True, anchor="lm"):
+        """引出线：起点文字 + 细线 + 指向端小箭头（样例 n-b×30°/壁厚注法）。"""
+        self.line(x1, y1, x2, y2, color=color, width=1)
+        self._arrowhead(x2, y2, x2 - x1, y2 - y1, color=color, size=max(7.0, 0.03 * self.scale))
+        if text:
+            self.text(x1, y1, text, color=color, small=small, anchor=anchor)
+
+    def hatch_quad(self, pts, spacing=0.04, color=INK, width=1):
+        """凸四边形带 45° 剖面线（喇叭口壁厚带等沿任意走向的窄带）。"""
+        ps = [self.px(x, y) for x, y in pts]
+        step = max(4, int(spacing * self.scale))
+        xs = [p[0] for p in ps]
+        ys = [p[1] for p in ps]
+        edges = list(zip(ps, ps[1:] + ps[:1]))
+        for c in range(min(ys) - max(xs), max(ys) - min(xs) + 1, step):
+            hits = []
+            for (xa, ya), (xb, yb) in edges:
+                da, db = ya - xa - c, yb - xb - c
+                if (da > 0) != (db > 0) or da == 0:
+                    t = da / (da - db) if da != db else 0.0
+                    hits.append((xa + (xb - xa) * t, ya + (yb - ya) * t))
+            if len(hits) >= 2:
+                hits.sort()
+                self.d.line([hits[0], hits[-1]], fill=color, width=width)
+
+    def soil(self, x1, x2, y, color=INK, width=1):
+        """地面/室外地坪斜短刻（朝左下，样例土侧惯例）。"""
+        span = x2 - x1
+        k = max(1, int(abs(span) / 0.22))
+        for i in range(k + 1):
+            xx = x1 + span * i / k
+            self.line(xx, y, xx - 0.13, y - 0.13, color=color, width=width)
+
+    def soil_v(self, x, y1, y2, color=INK, width=1):
+        """竖直墙/井壁外侧埋土斜短刻（沿墙面向下排布）。"""
+        ya, yb = min(y1, y2), max(y1, y2)
+        yy = yb - 0.22
+        while yy > ya + 0.05:
+            self.line(x, yy, x - 0.12, yy - 0.12, color=color, width=width)
+            yy -= 0.25
 
     def dim_arrow(self, x1, y1, x2, y2, text="", tx=0.0, ty=0.0, anchor="mm", color=DIM):
         """箭头式尺寸线（两端实心箭头），text 相对中点偏移 (tx,ty)。"""
@@ -248,8 +295,10 @@ def _p(params, key):
 
 # ── 图1：滤网起吊示意（7.2.3） ────────────────────────────────────────────
 # a 滑车+葫芦 / b 吊环 / c 滤网 / d 滤网底-平台顶 / e 平台顶标高；链和=起升高度。
-# 样例构图：顶部工字梁+行走小车+电动葫芦筒体（卷筒排绳+散热线圈），吊钩下 V 形吊索
-# 挂网格滤网，滤网悬于操作平台开口上方；左侧尺寸链 45° 斜刻 + 总高 H 箭头尺寸。
+# 样例构图（image9）：工字梁侧视双线（端部折断）+ 行走小车上排三组同心轮（十字中心线）
+# + 远侧下排轮对 + 吊板双线 → 电动葫芦卷筒（两端法兰板 + 排绳 45° 剖面线）+ 电机
+# （散热线 + 端环）→ 吊环 b → C 形大吊钩 → V 形吊索带卸扣挂网格滤网两上角；滤网悬于
+# 操作平台开口上方，平台板双线带剖面线；左侧尺寸链延长线过尺寸线 + 45° 斜刻 + 总高 H。
 def draw_screen_lift(params, pen: Pen) -> None:
     need = ["screen_hoist_len", "screen_ring_height", "screen_height", "screen_clearance", "platform_elev"]
     vals = {k: _p(params, k) for k in need}
@@ -259,73 +308,87 @@ def draw_screen_lift(params, pen: Pen) -> None:
     a, b, c, d, e = (vals[k] for k in need)
     sw = 2.2  # 滤网外形（宽取样例 2.2m 量级，仅示意比例）
     cx = 3.6
+    sx0, sx1 = cx - sw / 2, cx + sw / 2
     top = e + d + c + b + a  # 梁底 = a+b+c+d+e 链顶
-    # 地面 + 操作平台（开口井壁落到地面，地面下剖面线）
+    sc_top = e + d + c  # 滤网顶
+    # 地面（粗线 + 下方土剖面线）
     pen.line(0.3, 0, 7.6, 0, width=4)
     pen.hatch(0.3, -0.42, 7.6, 0, spacing=0.3)
-    pen.line(cx - 2.3, e, cx - 2.3, 0, width=3)
-    pen.line(cx + 2.3, e, cx + 2.3, 0, width=3)
+    # 滤网井井壁（落到地面）+ 平台板双线带剖面线 + 折断
+    pen.line(cx - 2.3, e, cx - 2.3, 0, width=4)
+    pen.line(cx + 2.3, e, cx + 2.3, 0, width=4)
     pen.line(cx - 2.3, e, cx + 2.3, e, width=5)
+    pen.line(cx - 2.3, e - 0.14, cx + 2.3, e - 0.14, width=2)
+    pen.hatch(cx - 2.3, e - 0.14, cx + 2.3, e, spacing=0.12, width=1)
     pen.break_mark(cx - 2.3, (e + 0) / 2, vertical=True)
     pen.break_mark(cx + 2.3, (e + 0) / 2, vertical=True)
     pen.text(cx - 2.3, e + 0.22, L["platform"], small=True, anchor="lm")
-    # 顶部工字梁断面（下翼缘/腹板/上翼缘，端部折断）+ 行走小车轮对（压下翼缘，十字中心）
-    fl_t, web_h = 0.05, 0.09
-    pen.rect(1.6, top, 5.8, top + fl_t, width=4)  # 下翼缘
-    pen.rect(1.6, top + fl_t + web_h, 5.8, top + fl_t * 2 + web_h, width=3)  # 上翼缘
-    pen.line(1.6, top, 1.6, top + fl_t * 2 + web_h, width=3)  # 腹板（断面端部）
-    pen.line(5.8, top, 5.8, top + fl_t * 2 + web_h, width=3)
-    pen.break_mark(1.6, top + fl_t + web_h / 2, vertical=True)
-    pen.break_mark(5.8, top + fl_t + web_h / 2, vertical=True)
-    for wx in (cx - 0.32, cx + 0.32):
-        pen.ellipse(wx, top + fl_t + 0.07, 0.07, 0.07, width=2)
-        pen.cross(wx, top + fl_t + 0.07, 0.13, width=1)
-    pen.line(cx - 0.32, top + fl_t + 0.07, cx + 0.32, top + fl_t + 0.07, width=2)  # 轮轴
-    # 电动葫芦总成：吊板 → 卷筒（排绳剖面线）→ 电机（散热线）
-    p_top = top
-    pen.line(cx - 0.5, p_top, cx - 0.8, p_top - 0.3, width=3)
-    pen.line(cx + 0.5, p_top, cx + 0.8, p_top - 0.3, width=3)
-    drum_y0, drum_y1 = p_top - 0.52, p_top - 0.3
-    pen.rect(cx - 0.85, drum_y0, cx + 0.4, drum_y1, width=3)
-    pen.hatch(cx - 0.72, drum_y0 + 0.02, cx + 0.27, drum_y1 - 0.02, spacing=0.09, width=1)
-    pen.line(cx - 0.85, drum_y0, cx - 0.85, drum_y0 - 0.06, width=3)
-    pen.line(cx + 0.4, drum_y0, cx + 0.4, drum_y0 - 0.06, width=3)
-    pen.rect(cx + 0.4, drum_y0 + 0.04, cx + 1.05, drum_y1 - 0.04, width=3)  # 电机
+    # 工字梁侧视（上下翼缘双线 + 端部折断）
+    beam_h = 0.2
+    pen.line(1.5, top, 5.9, top, width=4)
+    pen.line(1.5, top + beam_h, 5.9, top + beam_h, width=4)
+    for bxx in (1.5, 5.9):
+        pen.line(bxx, top, bxx, top + beam_h, width=3)
+        pen.break_mark(bxx, top + beam_h / 2, vertical=True)
+    # 行走小车：侧板轮廓 + 上排 3 组同心轮（十字中心）+ 下排远侧轮对 + 轮轴
+    wheel_y = top + beam_h / 2
+    pen.ellipse(cx, wheel_y, 0.62, beam_h / 2 + 0.03, width=2)
+    for wx in (cx - 0.5, cx, cx + 0.5):
+        pen.ellipse(wx, wheel_y, 0.1, 0.1, width=2)
+        pen.ellipse(wx, wheel_y, 0.055, 0.055, width=2)
+        pen.cross(wx, wheel_y, 0.17, width=1)
+    for wx in (cx - 0.35, cx + 0.35):
+        pen.ellipse(wx, top - 0.09, 0.05, 0.05, width=2)
+        pen.cross(wx, top - 0.09, 0.09, width=1)
+    pen.line(cx - 0.35, top - 0.09, cx + 0.35, top - 0.09, width=2)
+    # 吊板双线 → 卷筒（两端法兰板 + 排绳剖面线）→ 电机（散热线 + 端环）
+    drum_y1 = top - 0.2
+    drum_y0 = drum_y1 - 0.3
+    for hx in (cx - 0.5, cx + 0.5):
+        pen.line(hx - 0.04, top - 0.02, hx - 0.04, drum_y1, width=2)
+        pen.line(hx + 0.04, top - 0.02, hx + 0.04, drum_y1, width=2)
+    pen.rect(cx - 0.75, drum_y0, cx + 0.35, drum_y1, width=3)
+    pen.ellipse(cx - 0.75, (drum_y0 + drum_y1) / 2, 0.06, (drum_y1 - drum_y0) / 2, width=3)
+    for colx in (cx - 0.52, cx + 0.12):
+        pen.rect(colx - 0.035, drum_y0 - 0.05, colx + 0.035, drum_y1 + 0.05, width=2)
+    pen.hatch(cx - 0.46, drum_y0 + 0.02, cx + 0.08, drum_y1 - 0.02, spacing=0.055, width=1)
+    pen.rect(cx + 0.35, drum_y0 + 0.04, cx + 0.95, drum_y1 - 0.04, width=3)
     for i in range(5):
-        yy = drum_y0 + 0.06 + i * 0.045
-        pen.line(cx + 0.44, yy, cx + 1.01, yy, width=1)
-    pen.arc(cx + 1.08, (drum_y0 + drum_y1) / 2, 0.05, 270, 90, width=3)
+        yy = drum_y0 + 0.08 + i * 0.048
+        pen.line(cx + 0.39, yy, cx + 0.91, yy, width=1)
+    pen.arc(cx + 0.95, (drum_y0 + drum_y1) / 2, (drum_y1 - drum_y0) / 2 - 0.04, 270, 90, width=3)
     pen.text(cx - 1.6, top + 0.42, L["hoist"], small=True, anchor="rm")
     # 吊挂链：链环 → 吊环 b（竖椭圆环）→ 大吊钩（C 形钩身 + 内卷钩尖）
-    pen.line(cx, drum_y0, cx, drum_y0 - 0.1, width=3)
     ring_y0 = drum_y0 - 0.1
+    pen.line(cx, drum_y0, cx, ring_y0, width=3)
     pen.ellipse(cx, ring_y0 - b / 2, 0.06, b / 2 - 0.04, width=3)
     hook_cy = ring_y0 - b - 0.14
     pen.line(cx, ring_y0 - b, cx, hook_cy + 0.12, width=3)
     pen.arc(cx - 0.02, hook_cy, 0.15, 40, 320, width=3)
     pen.line(cx + 0.08, hook_cy + 0.14, cx - 0.03, hook_cy + 0.04, width=3)
-    # V 形吊索挂滤网两上角
-    sc_top = e + d + c
-    pen.line(cx, hook_cy - 0.15, cx - sw / 2, sc_top, width=3)
-    pen.line(cx, hook_cy - 0.15, cx + sw / 2, sc_top, width=3)
-    # 滤网：粗框 + 网格 + 竖中心线
-    pen.rect(cx - sw / 2, sc_top - c, cx + sw / 2, sc_top, width=4)
+    # V 形吊索挂滤网两上角（角上小卸扣）
+    pen.line(cx, hook_cy - 0.15, sx0 + 0.05, sc_top + 0.08, width=3)
+    pen.line(cx, hook_cy - 0.15, sx1 - 0.05, sc_top + 0.08, width=3)
+    for shx in (sx0 + 0.05, sx1 - 0.05):
+        pen.ellipse(shx, sc_top + 0.05, 0.05, 0.07, width=2)
+    # 滤网：粗框 + 网格 + 竖点划中心线（贯通吊钩轴线，样例惯例）
+    pen.rect(sx0, sc_top - c, sx1, sc_top, width=4)
     nx, ny = 16, 8
     for i in range(1, nx):
-        xx = cx - sw / 2 + sw * i / nx
+        xx = sx0 + sw * i / nx
         pen.line(xx, sc_top - c, xx, sc_top, width=1)
     for j in range(1, ny):
         yy = sc_top - c * j / ny
-        pen.line(cx - sw / 2, yy, cx + sw / 2, yy, width=1)
-    pen.centerline(cx, sc_top - c - 0.15, cx, sc_top + 0.15, width=1)
-    pen.text(cx - sw / 2 - 0.18, sc_top - c / 2, L["screen"], anchor="rm")
-    # 左侧尺寸链 a/b/c/d/e（45° 刻度）+ 总高 H 箭头尺寸
+        pen.line(sx0, yy, sx1, yy, width=1)
+    pen.centerline(cx, sc_top - c - 0.2, cx, drum_y0 - 0.3, width=1)
+    pen.text(sx0 - 0.18, sc_top - c / 2, L["screen"], anchor="rm")
+    # 左侧尺寸链 a/b/c/d/e（延长线过尺寸线 + 45° 刻度）+ 总高 H 箭头尺寸
     bounds = [0.0, e, e + d, e + d + c, e + d + c + b, top]
     seg_names = ["e", "d", "c", "b", "a"]
     seg_vals = [e, d, c, b, a]
     x_dim = 1.05
     for yy in bounds:
-        pen.line(cx - 1.15, yy, x_dim, yy, color=DIM, width=1)
+        pen.line(cx - 1.35, yy, x_dim - 0.15, yy, color=DIM, width=1)
     y_prev = bounds[0]
     for (name, v), yy in zip(zip(seg_names, seg_vals), bounds[1:]):
         pen.dim_v(x_dim, y_prev, yy, name, value=v)
@@ -339,10 +402,11 @@ def draw_screen_lift(params, pen: Pen) -> None:
     pen.text(0.2, -0.35, "a滑车+葫芦 b吊环 c滤网 d滤网底-平台顶 e平台顶标高", small=True, anchor="lm")
 
 
-# ── 图2：吸水喇叭口（8.2.1，02S403 图集件风格） ──────────────────────────
-# 样例构图：顶部法兰（螺栓孔刻度 + n-b×30° 钻孔注法）、双线锥壁（壁厚 t 引线）、
-# 点划竖中心线；箭头尺寸 D（上口=吸水管径）/ D1（下口喇叭口径）。安装间距
-# hb/hs/Lr/Ls 属池体布置尺寸，由正文 5.4.3 校核叙述承载，不入本图（对齐样例）。
+# ── 图2：吸水喇叭口（8.2.1，02S403 图集件风格，样例 image10） ─────────────
+# 样例构图：顶部短管 + 法兰板（两端双头螺栓穿上/穿下 + n-b×30° 引出线）、双线锥壁
+# （壁间 45° 剖面线，壁厚 t 小尺寸横穿双壁）、点划竖中心线；箭头尺寸 D（上口=吸水管
+# 径）/ D1（下口喇叭口径），延长线过尺寸线少许。安装间距 hb/hs/Lr/Ls 属池体布置
+# 尺寸，由正文 5.4.3 校核叙述承载，不入本图（对齐样例）。
 def draw_bell_mouth(params, pen: Pen) -> None:
     need = ["bell_mouth_D1", "DN_suction"]
     vals = {k: _p(params, k) for k in need}
@@ -356,40 +420,58 @@ def draw_bell_mouth(params, pen: Pen) -> None:
     fl_w = max(dnm + 0.18, d1m * 0.82)
     cone_h = 1.5
     mo_y = fl_y0 - cone_h  # 下口
-    # 上口短管 + 法兰（双线板 + 端部螺栓孔竖线穿板）
-    pen.rect(cx - dnm / 2, fl_y1, cx + dnm / 2, fl_y1 + 0.22, width=3)
-    pen.rect(cx - fl_w / 2, fl_y0, cx + fl_w / 2, fl_y1, width=3)
-    for bx in (cx - fl_w / 2 + 0.08, cx + fl_w / 2 - 0.08):
-        pen.line(bx, fl_y0 - 0.04, bx, fl_y1 + 0.04, width=2)
-    # 锥管：外轮廓双线（壁厚 t）+ 下口卷边短竖线
-    top_w, bot_w = dnm + 0.08, d1m
-    pen.poly([(cx - top_w / 2, fl_y0), (cx - bot_w / 2, mo_y)], width=4)
-    pen.poly([(cx + top_w / 2, fl_y0), (cx + bot_w / 2, mo_y)], width=4)
-    tin = 0.045
-    pen.poly([(cx - top_w / 2 + tin, fl_y0), (cx - bot_w / 2 + tin, mo_y)], width=1)
-    pen.poly([(cx + top_w / 2 - tin, fl_y0), (cx + bot_w / 2 - tin, mo_y)], width=1)
+    # 上口短管（双线 + 顶口开口线）
+    h_stub = 0.2
+    pen.rect(cx - dnm / 2, fl_y1, cx + dnm / 2, fl_y1 + h_stub, width=3)
+    # 法兰板 + 端部双头螺栓（穿上、穿下各露一截，样例画法）
+    pen.rect(cx - fl_w / 2, fl_y0, cx + fl_w / 2, fl_y1, width=4)
+    for bx in (cx - fl_w / 2 + 0.07, cx + fl_w / 2 - 0.07):
+        for ya, yb in ((fl_y1, fl_y1 + 0.09), (fl_y0 - 0.08, fl_y0)):
+            pen.line(bx - 0.014, ya, bx - 0.014, yb, width=2)
+            pen.line(bx + 0.014, ya, bx + 0.014, yb, width=2)
+    # 锥管：外轮廓双线（壁厚）+ 壁间 45° 剖面线 + 底口切线（内外双线示壁厚）
+    top_w, bot_w = dnm + 0.1, d1m
+    tin = 0.05
     for s in (-1, 1):
-        pen.line(cx + s * bot_w / 2, mo_y, cx + s * bot_w / 2, mo_y + 0.1, width=4)
-    pen.centerline(cx, mo_y - 0.3, cx, fl_y1 + 0.72, width=1)
-    # 壁厚 t 引线（指向双线间隙）
-    pen.dim_arrow(cx + top_w / 2 * 0.62, (fl_y0 + mo_y) / 2 + 0.28, cx + top_w / 2 * 0.82, (fl_y0 + mo_y) / 2 + 0.1, text="t", tx=0.16, ty=0.02, anchor="lm")
-    # 箭头尺寸：上口 D（=吸水管径）/ 下口 D1（=喇叭口径）
-    pen.dim_arrow(cx - top_w / 2, fl_y1 + 0.5, cx + top_w / 2, fl_y1 + 0.5, text=f"D={_fmt(dn)}", ty=0.22)
-    for xx in (cx - top_w / 2, cx + top_w / 2):
-        pen.line(xx, fl_y1 + 0.02, xx, fl_y1 + 0.58, color=DIM, width=1)
-    pen.dim_arrow(cx - bot_w / 2, mo_y - 0.25, cx + bot_w / 2, mo_y - 0.25, text=f"D1={_fmt(d1)}", ty=-0.24)
+        pen.poly([(cx + s * top_w / 2, fl_y0), (cx + s * bot_w / 2, mo_y)], width=4)
+        pen.poly([(cx + s * (top_w / 2 - tin), fl_y0), (cx + s * (bot_w / 2 - tin), mo_y)], width=2)
+        pen.hatch_quad(
+            [
+                (cx + s * top_w / 2, fl_y0),
+                (cx + s * (top_w / 2 - tin), fl_y0),
+                (cx + s * (bot_w / 2 - tin), mo_y),
+                (cx + s * bot_w / 2, mo_y),
+            ],
+            spacing=0.035,
+            width=1,
+        )
+    pen.line(cx - bot_w / 2, mo_y, cx + bot_w / 2, mo_y, width=3)
+    pen.line(cx - (bot_w / 2 - tin), mo_y, cx + (bot_w / 2 - tin), mo_y, width=1)
+    pen.centerline(cx, mo_y - 0.35, cx, fl_y1 + h_stub + 0.25, width=1)
+    # 壁厚 t：小尺寸横穿双壁（两端箭头各指内/外壁线，样例 δ 注法）
+    my = (fl_y0 + mo_y) / 2
+    xw_out = cx + top_w / 2 + (bot_w / 2 - top_w / 2) * (fl_y0 - my) / cone_h
+    pen.dim_arrow(xw_out - tin - 0.01, my - 0.02, xw_out + 0.01, my + 0.02, text="t", tx=0.22, ty=0.1)
+    # 箭头尺寸：上口 D（=吸水管径）/ 下口 D1（=喇叭口径），延长线过尺寸线少许
+    yd = fl_y1 + h_stub + 0.42
+    for xx in (cx - dnm / 2, cx + dnm / 2):
+        pen.line(xx, fl_y1 + h_stub - 0.02, xx, yd + 0.1, color=DIM, width=1)
+    pen.dim_arrow(cx - dnm / 2, yd, cx + dnm / 2, yd, text=f"D={_fmt(dn)}", ty=0.2)
+    yb = mo_y - 0.3
     for xx in (cx - bot_w / 2, cx + bot_w / 2):
-        pen.line(xx, mo_y + 0.02, xx, mo_y - 0.33, color=DIM, width=1)
-    # 法兰钻孔注法（样例 n-b×30°，n/b 按选型，不标数值；引线指向端部螺栓孔）
-    pen.line(cx - fl_w / 2 + 0.08, fl_y1 + 0.06, cx - fl_w / 2 - 0.5, fl_y1 + 0.34, color=INK, width=1)
-    pen.text(cx - fl_w / 2 - 0.52, fl_y1 + 0.36, "n-b×30°", small=True, anchor="rm")
-    pen.text(cx, mo_y - 0.72, f"{L['bell']}（02S403）", anchor="mm")
+        pen.line(xx, mo_y - 0.02, xx, yb - 0.1, color=DIM, width=1)
+    pen.dim_arrow(cx - bot_w / 2, yb, cx + bot_w / 2, yb, text=f"D1={_fmt(d1)}", ty=-0.24)
+    # 法兰钻孔注法（样例 n-b×30°，n/b 按选型，不标数值；引出线指端部螺栓）
+    pen.leader(cx - fl_w / 2 - 0.5, fl_y1 + 0.4, cx - fl_w / 2 + 0.07, fl_y1 + 0.07, text="n-b×30°", anchor="rm")
+    pen.text(cx, mo_y - 0.78, f"{L['bell']}（02S403）", anchor="mm")
 
 
-# ── 图3：泵房剖面（8.2.3） ──────────────────────────────────────────────
+# ── 图3：泵房剖面（8.2.3，样例 image11） ────────────────────────────────
 # H1 = a 滑车组 + x 起重绳 + f 吊离间隙 + e 泵高（自地坪向上链）；H = H1 + H2（地下）。
-# 样例构图：吊车梁工字钢剖面线 + 滑车组吊钩 + 蜗壳泵底座、右侧 a~f 字母尺寸链、
-# 左侧 H/H1 箭头尺寸、墙/地面 45° 剖面线、地上式/地下式竖排字。
+# 样例构图：吊车梁搁置墙顶（横贯出墙）+ 墙身双线（墙外埋土斜短刻）+ 室外地坪 +
+# 吊车小车（箱形 + 卷筒圆）→ 起重绳 → 吊钩块（滑轮圆 + C 形钩，钩底悬停于泵顶上方
+# f=吊离间隙）→ 蜗壳泵双圆 + 十字中心线 + 底座剖面线；竖直点划中心线贯通吊钩—泵轴；
+# 右侧 e/f/x/a 字母链（45° 刻度）+ H2，左侧 H1/H 箭头尺寸，地下式/地上式竖排字。
 def draw_pumphouse(params, pen: Pen) -> None:
     need = ["hoist_assembly_len", "lift_rope_len", "pump_height", "lift_clearance", "pumphouse_h1", "pumphouse_h2"]
     vals = {k: _p(params, k) for k in need}
@@ -401,75 +483,83 @@ def draw_pumphouse(params, pen: Pen) -> None:
     if htot is None:
         htot = h1 + h2  # 兜底：正式 state 恒有 pumphouse_height（v3 公式输出）
     ground = h2  # 室内地坪标高（地下部分 h2）
-    top = h1 + h2  # 吊车梁顶 = H1 顶；H = H1 + H2
+    top = h1 + h2  # 吊车梁底 = H1 顶；H = H1 + H2
     xl, xr = 0.0, 10.0
-    wl, wr = 0.25, xr - 0.25  # 墙内皮
-    # 外墙 + 屋顶梁 + 底板：双线带剖面线
-    for wx in (xl, xr):
+    wt = 0.22  # 墙厚（画幅示意）
+    wl, wr = xl + wt, xr - wt  # 墙内皮
+    # 吊车梁搁置墙顶（双线横梁，横贯出墙，样例画法）
+    pen.rect(xl - 0.2, top, xr + 0.2, top + 0.24, width=4)
+    # 外墙（外粗线 + 内细线，不加剖面线）+ 墙外埋土斜短刻（地下段）
+    for wx, wxx in ((xl, wl), (xr, wr)):
         pen.line(wx, 0, wx, top, width=4)
-    pen.line(xl + 0.25, 0, xl + 0.25, top, width=2)
-    pen.line(xr - 0.25, 0, xr - 0.25, top, width=2)
-    pen.hatch(xl, 0, xl + 0.25, top, spacing=0.22)
-    pen.hatch(xr - 0.25, 0, xr, top, spacing=0.22)
-    pen.line(0, top, xr, top, width=4)
-    pen.line(0, top - 0.25, xr, top - 0.25, width=2)
-    pen.hatch(0, top - 0.25, xr, top, spacing=0.22)
-    pen.line(0, 0, xr, 0, width=4)
-    pen.hatch(0, -0.3, xr, 0, spacing=0.24)
-    # 室内地坪（点划）+ 标高符号 + 室外地面（墙外侧短线 + 地下式/地上式竖排字）
+        pen.line(wxx, 0, wxx, top, width=2)
+    pen.soil_v(xl, 0, ground, width=1)
+    # 底板（粗线 + 下方剖面线）
+    pen.line(xl - 0.2, 0, xr + 0.2, 0, width=4)
+    pen.hatch(xl - 0.2, -0.3, xr + 0.2, 0, spacing=0.24)
+    # 室内地坪（点划）+ 室外地面（墙外侧短线 + 土斜刻）+ 地下式/地上式竖排字
     pen.centerline(wl, ground, wr, ground, width=2)
     pen.text(wl + 0.35, ground - 0.3, L["ground"], small=True, anchor="lm")
     pen.line(-0.95, ground, xl, ground, width=3)
-    pen.hatch(-0.95, ground - 0.16, xl, ground, spacing=0.14)
-    pen.vtext(xr + 0.45, ground + 1.35, L["aboveground"], small=True)
+    pen.soil(-0.95, xl, ground, width=1)
+    pen.line(xr, ground, xr + 0.55, ground, width=3)
+    pen.soil(xr, xr + 0.55, ground, width=1)
+    pen.vtext(xr + 0.9, ground + 1.35, L["aboveground"], small=True)
     pen.vtext(-1.25, ground - 0.5, L["underground"], small=True)
-    # 吊车梁（细双线 + 端部折断，样例不加剖面线）+ 行走小车
-    beam_y = top - 0.45
-    pen.line(1.0, beam_y + 0.2, 9.0, beam_y + 0.2, width=4)
-    pen.line(1.0, beam_y, 9.0, beam_y, width=4)
-    pen.break_mark(1.0, beam_y + 0.1, vertical=True)
-    pen.break_mark(9.0, beam_y + 0.1, vertical=True)
+    # 竖直点划中心线：贯通吊车—吊钩—泵轴（样例惯例）
     cx = 5.0
-    pen.rect(cx - 0.42, beam_y + 0.2, cx + 0.42, beam_y + 0.34, width=3)
-    for wx in (cx - 0.26, cx + 0.26):
-        pen.ellipse(wx, beam_y + 0.27, 0.06, 0.06, width=2)
-        pen.cross(wx, beam_y + 0.27, 0.1, width=1)
-    # 滑车组：滑轮 + 起重绳 + 吊钩（悬停位：泵顶上方留吊离间隙 f）
-    pul_y = beam_y - 0.12
-    pen.ellipse(cx, pul_y, 0.12, 0.08, width=3)
-    pen.cross(cx, pul_y, 0.17, width=1)
+    pen.centerline(cx, top + 0.3, cx, -0.35, width=1)
+    # 吊车小车（箱形 + 卷筒圆 + 十字中心）贴梁底
+    pen.rect(cx - 0.34, top - 0.3, cx + 0.34, top - 0.02, width=3)
+    pen.ellipse(cx, top - 0.16, 0.16, 0.09, width=2)
+    pen.cross(cx, top - 0.16, 0.22, width=1)
+    pul_y = top - 0.44
+    pen.ellipse(cx, pul_y, 0.1, 0.08, width=2)
+    pen.cross(cx, pul_y, 0.14, width=1)
+    # 滑车组吊钩块（滑轮圆）+ 起重绳 + C 形吊钩（悬停位：钩底 = 泵顶 + 吊离间隙 f）
     hook_y = ground + ph + fc
-    pen.line(cx, pul_y - 0.08, cx, hook_y + 0.22, width=2)
-    pen.ellipse(cx, hook_y + 0.14, 0.09, 0.06, width=2)
-    pen.arc(cx, hook_y + 0.03, 0.09, 300, 120, width=3)
-    pen.text(cx - 0.55, beam_y - 0.18, L["crane"], small=True, anchor="rm")
-    pen.text(cx + 0.4, (pul_y + hook_y) / 2, L["rope"], color=DIM, small=True, anchor="lm")
-    # 蜗壳泵：底座 + 泵壳圆 + 蜗舌弧 + 出水短管（画幅总高≈e 链段）
-    pen.rect(cx - 0.95, ground, cx + 0.95, ground + 0.2, width=3)
-    pen.hatch(cx - 0.95, ground, cx + 0.95, ground + 0.2, spacing=0.09, width=1)
-    cyc = ground + 0.2 + 0.8
-    pen.ellipse(cx - 0.3, cyc, 0.8, 0.8, width=4)
-    pen.arc(cx - 0.3, cyc, 0.52, 90, 300, width=2)
-    pen.rect(cx + 0.3, cyc + 0.15, cx + 1.2, cyc + 0.9, width=3)  # 出水管
-    pen.text(cx + 1.4, cyc + 0.1, L["pump"], small=True, anchor="lm")
-    pen.text(cx + 1.45, ground + ph + fc / 2, L["clear"], color=DIM, small=True, anchor="lm")
-    # 右侧字母尺寸链 e/f/x/a + H2（45° 刻度）
+    blk_y1 = hook_y + 0.75
+    blk_y0 = hook_y + 0.1
+    pen.line(cx, top - 0.52, cx, blk_y1, width=2)
+    pen.rect(cx - 0.12, blk_y0, cx + 0.12, blk_y1, width=3)
+    pen.ellipse(cx, hook_y + 0.42, 0.07, 0.05, width=2)
+    pen.cross(cx, hook_y + 0.42, 0.1, width=1)
+    pen.line(cx, blk_y0, cx, hook_y + 0.02, width=3)
+    pen.arc(cx - 0.02, hook_y - 0.06, 0.13, 40, 320, width=3)
+    pen.line(cx + 0.06, hook_y + 0.05, cx - 0.04, hook_y - 0.03, width=3)
+    pen.text(cx - 0.6, top - 0.55, L["crane"], small=True, anchor="rm")
+    pen.text(cx + 0.15, (top - 0.52 + blk_y1) / 2, L["rope"], color=DIM, small=True, anchor="lm")
+    # 吊离间隙 f：钩底 → 泵顶小箭头尺寸 + 文字
+    pen.dim_arrow(cx + 0.5, ground + ph, cx + 0.5, hook_y, text="", color=DIM)
+    pen.text(cx + 0.62, (ground + ph + hook_y) / 2, L["clear"], color=DIM, small=True, anchor="lm")
+    # 蜗壳泵：底座板（剖面线）+ 梯形支座 + 双圆泵壳 + 十字中心线（画幅总高≈e 链段）
+    pen.rect(cx - 0.62, ground, cx + 0.62, ground + 0.1, width=3)
+    pen.hatch(cx - 0.62, ground, cx + 0.62, ground + 0.1, spacing=0.07, width=1)
+    pen.poly([(cx - 0.5, ground + 0.1), (cx - 0.28, ground + 0.26), (cx + 0.28, ground + 0.26), (cx + 0.5, ground + 0.1)], width=3)
+    cyc = ground + 0.26 + 0.62
+    pen.ellipse(cx, cyc, 0.62, 0.62, width=4)
+    pen.ellipse(cx, cyc, 0.44, 0.44, width=2)
+    pen.centerline(cx - 0.85, cyc, cx + 0.85, cyc, width=1)
+    pen.text(cx + 0.85, cyc + 0.45, L["pump"], small=True, anchor="lm")
+    # 右侧字母尺寸链 e/f/x/a + H2（延长线过尺寸线 + 45° 刻度）
     x_dim = 9.4
-    bounds = [ground, ground + ph, ground + ph + fc, ground + ph + fc + rope, top]
+    bounds = [0.0, ground, ground + ph, ground + ph + fc, ground + ph + fc + rope, top]
     segs = [("e", ph), ("f", fc), ("x", rope), ("a", aa)]
     for yy in bounds:
-        pen.line(cx + 1.2, yy, x_dim, yy, color=DIM, width=1)
-    y_prev = bounds[0]
-    for (name, v), yy in zip(segs, bounds[1:]):
+        pen.line(cx + 1.25, yy, x_dim - 0.15, yy, color=DIM, width=1)
+    y_prev = bounds[1]
+    for (name, v), yy in zip(segs, bounds[2:]):
         pen.dim_v(x_dim, y_prev, yy, name, value=v)
         y_prev = yy
     pen.dim_v(x_dim, 0, ground, "H2", value=h2)
-    # 左侧箭头尺寸：H1（地坪→梁顶）与 H（全高，state 值优先）
+    # 左侧箭头尺寸：H1（地坪→梁底）与 H（全高，state 值优先）+ 延长线
+    for yy in (ground, top):
+        pen.line(wl, yy, -0.75, yy, color=DIM, width=1)
     pen.dim_arrow(0.75, ground, 0.75, top)
     pen.text(0.58, (ground + top) / 2, f"H1={_fmt(h1)}", color=DIM, small=True, anchor="rm")
     pen.dim_arrow(-0.6, 0, -0.6, top)
     pen.text(-0.72, top * 0.6, f"H={_fmt(htot)}m", color=DIM, small=True, anchor="rm")
-    pen.text(4.9, top + 0.5, f"H={_fmt(htot)}m（H1={_fmt(h1)}m + H2={_fmt(h2)}m）", color=DIM, anchor="mm")
+    pen.text(4.9, top + 0.55, f"H={_fmt(htot)}m（H1={_fmt(h1)}m + H2={_fmt(h2)}m）", color=DIM, anchor="mm")
 
 
 DIAGRAMS = [
