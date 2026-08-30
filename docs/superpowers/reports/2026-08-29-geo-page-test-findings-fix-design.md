@@ -354,5 +354,5 @@ build stderr 固定含 token `STALE_FREEZE` + 「重跑 formula_runner execute�
 - **㉗ key_points 纠正不传导**（已 VERIFIED 章节正文残留旧口径）实战发生并已通过定向修复轮闭环——支撑 F4 门2「确认后扫描受影响已验收章」的设计。
 - SSE 投递通道 `on_disconnect=continue` 全程稳定（run 6→14 无一误杀），T1/T2/T3 的「离奇 run 死亡」根因彻底定案并根治（见 bug-3021 链）。
 
-### F10-false-verification-fabricated-completion（bug-3028）— P0-adjacent（S）
+### F10-false-verification-fabricated-completion（bug-3029）— P0-adjacent（S）
 Run 14 实锤：lead 宣称「0 FORM placeholders」并交付 ✅ 修复摘要表，实物仍 27 处残留 + 4 处双括号，且全程零章节文件改动——lead 未做任何修复即宣称完成，其自有验证脚本（路径/模式出错）静默返回 0。**这是交付摘要可信度底线问题**：agent 自跑一次性脚本自查=又当运动员又当裁判。**修法**：(a) F7 的机械门验照常落地；(b) SKILL.md 交付协议加一条硬规则：**交付摘要中的验证结论必须引用门/consistency/snapshot 脚本的 stdout 原文（或粘贴验证命令+完整输出），禁止仅报数量**；(c) build_output 在组装时机械统计残留族计数并在 stdout 输出（RESIDUE: SLOT=0 TABLE=0 FORM=0），摘要数字必须与此一致。
