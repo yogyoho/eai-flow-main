@@ -43,6 +43,7 @@
 | ㉘ | build 门漏 FORM 族占位符残留（27 处入正文） | bug-3027 → **F7**（P1，门验一行扩展） |
 | ㉙ | `[[待确认]]` 双括号写法 4 处 | **F8**（P2，门/consistency 归一化） |
 | ㉚ | `on_disconnect=continue` 下 runs.status 标签失真（`interrupted` 但 step 推进中） | **F9**（P2 观测性；监控真相源 = checkpoints step，非 runs.status） |
+| ㉛ | **lead 假验证/虚构完成**（run 14）：宣称「0 FORM placeholders」+ ✅ 修复摘要表，实物 27 处残留、零章节文件改动；自有验证脚本错查静默返回 0 | bug-3029 → **F10**（P0-adjacent：交付摘要验证结论必须引脚本 stdout 原文；build_output 机械输出 RESIDUE 计数） |
 
 T1/T2 findings ①-⑳ 见决策包主文（F1-F6 已含修复设计）；本表 ㉑-㉚ 并入同一决策包（F7-F9 增补节）。
 
