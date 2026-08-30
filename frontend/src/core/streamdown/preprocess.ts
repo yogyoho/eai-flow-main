@@ -1,3 +1,5 @@
+// EAI-CUSTOM: thread-relative image rewrite needs the artifact URL builders.
+import { urlOfArtifact } from "@/core/artifacts/utils";
 import { INTERNAL_MARKER_TAGS } from "@/core/messages/utils";
 
 import { normalizeMermaidMarkdown } from "./mermaid";
@@ -386,4 +388,104 @@ export function preprocessStreamdownMarkdown(markdown: string): string {
   }
 
   return normalizeMermaidMarkdown(markdown);
+}
+
+// ── EAI-CUSTOM: thread-relative image reference rewrite ─────────────────────
+// Thread-generated reports (e.g. skill scripts writing outputs/<report>.md next
+// to outputs/images/<hash>.png) embed images with RELATIVE `images/<name>.<ext>`
+// sources. Streamdown renders those srcs verbatim, so the browser resolves them
+// against the page origin and every image falls back to streamdown's
+// "Image not available" placeholder. rewriteThreadImageReferences rewrites such
+// references — markdown `![alt](images/...)` and raw HTML `<img src="images/...">`
+// — to the owning thread's artifact URLs
+// (/api/threads/{threadId}/artifacts/mnt/user-data/outputs/images/...) before
+// rendering. Element-level src resolution for chat messages stays in
+// resolveMessageImageURL (core/artifacts/utils); this pass covers the
+// markdown-source level where no artifact registry lookup is available.
+
+const THREAD_IMAGE_EXT_PATTERN = "png|jpe?g|gif|webp|bmp";
+
+// Cheap gate so image-free markdown (the overwhelmingly common case) never
+// runs the line scanner. Deliberately broader than the rewrites below — it may
+// match absolute URLs that the rewrite then correctly leaves alone.
+const THREAD_IMAGE_HINT_RE = new RegExp(
+  `images\\/[^)\\s"'>]+\\.(?:${THREAD_IMAGE_EXT_PATTERN})`,
+  "i",
+);
+
+// ![alt](images/name.ext "optional title") — space-free destination, optional
+// ./ prefix, optional query/fragment suffix, anchored by the closing paren.
+const THREAD_IMAGE_MARKDOWN_RE = new RegExp(
+  `(!\\[[^\\]\\n]*\\]\\(\\s*)((?:\\./)?images\\/[^\\s()<>]+?\\.(?:${THREAD_IMAGE_EXT_PATTERN}))((?:[?#][^\\s()<>]*)?)((?:\\s+"[^"\\n]*"|\\s+'[^'\\n]*')?\\s*\\))`,
+  "g",
+);
+
+// <img src="images/name.ext"> raw HTML — parsed into a real img by rehype-raw
+// in the artifact preview chain (the chat chain keeps raw HTML inert text).
+const THREAD_IMAGE_HTML_RE = new RegExp(
+  `(<img\\b[^>]*?\\bsrc\\s*=\\s*)(["'])((?:\\./)?images\\/[^"\\s>]+?\\.(?:${THREAD_IMAGE_EXT_PATTERN}))((?:[?#][^"\\s>]*)?)\\2`,
+  "gi",
+);
+
+function threadImagesArtifactURL(
+  path: string,
+  threadId: string,
+  isMock: boolean,
+) {
+  return urlOfArtifact({
+    filepath: `/mnt/user-data/outputs/${path.replace(/^\.\//, "")}`,
+    threadId,
+    isMock,
+  });
+}
+
+/**
+ * Rewrite relative `images/<name>.<ext>` image references in markdown to the
+ * owning thread's artifact URLs so thread reports render their embedded
+ * images in chat and artifact previews. Only relative refs are touched —
+ * http(s)/data URLs and root-relative paths are left verbatim — and refs
+ * inside fenced or indented code blocks stay literal.
+ */
+export function rewriteThreadImageReferences(
+  markdown: string,
+  threadId: string,
+  isMock = false,
+): string {
+  if (!THREAD_IMAGE_HINT_RE.test(markdown)) {
+    return markdown;
+  }
+
+  let insideFence = false;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      if (CODE_FENCE_RE.test(line)) {
+        insideFence = !insideFence;
+        return line;
+      }
+      // References inside fenced or indented code blocks are literal content;
+      // rewriting them would corrupt what the reader sees.
+      if (insideFence || INDENTED_CODE_RE.test(line)) {
+        return line;
+      }
+      return line
+        .replace(
+          THREAD_IMAGE_MARKDOWN_RE,
+          (_match, prefix, path, suffix, tail) =>
+            prefix +
+            threadImagesArtifactURL(path, threadId, isMock) +
+            suffix +
+            tail,
+        )
+        .replace(
+          THREAD_IMAGE_HTML_RE,
+          (_match, prefix, quote, path, suffix) =>
+            prefix +
+            quote +
+            threadImagesArtifactURL(path, threadId, isMock) +
+            suffix +
+            quote,
+        );
+    })
+    .join("\n");
 }

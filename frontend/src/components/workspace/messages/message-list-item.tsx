@@ -57,6 +57,8 @@ import {
 } from "@/core/skills";
 import { useSkills } from "@/core/skills/hooks";
 import { SafeReasoningContent } from "@/core/streamdown/components";
+// EAI-CUSTOM: thread-relative image rewrite for report markdown.
+import { rewriteThreadImageReferences } from "@/core/streamdown/preprocess";
 import { cn } from "@/lib/utils";
 
 import { WorkspaceChangeBadge } from "../changes";
@@ -444,6 +446,19 @@ function MessageContent_({
     }
     return rawContent ?? "";
   }, [rawContent, isHuman]);
+  // EAI-CUSTOM: reports the agent writes into user-data/outputs embed images
+  // as relative `images/<name>.<ext>` refs. Rewrite them to the owning
+  // thread's artifact URLs so they resolve in the chat markdown render
+  // (streamdown's img would otherwise 404 against the page origin). The
+  // MessageImage override below still handles /mnt/... and registered
+  // artifact paths, which pass through this rewrite untouched.
+  const contentWithArtifactImages = useMemo(
+    () =>
+      isHuman
+        ? contentToDisplay
+        : rewriteThreadImageReferences(contentToDisplay, threadId),
+    [contentToDisplay, isHuman, threadId],
+  );
   const citationSources = useMemo(
     () => (isHuman ? [] : extractCitationSources(contentToDisplay)),
     [contentToDisplay, isHuman],
@@ -567,7 +582,7 @@ function MessageContent_({
         </Reasoning>
       )}
       <MarkdownContent
-        content={contentToDisplay}
+        content={contentWithArtifactImages}
         isLoading={isLoading}
         className="my-3"
         components={components}

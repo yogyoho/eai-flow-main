@@ -62,6 +62,8 @@ import {
   SafeStreamdown,
   toStreamdownComponents,
 } from "@/core/streamdown/components";
+// EAI-CUSTOM: thread-relative image rewrite for markdown previews.
+import { rewriteThreadImageReferences } from "@/core/streamdown/preprocess";
 import {
   canBrowserPreviewFile,
   checkCodeFile,
@@ -653,6 +655,8 @@ export function ArtifactFileDetail({
                 language={language}
                 scrollKey={filepathFromProps}
                 url={url}
+                threadId={threadId}
+                isMock={isMock}
               />
             )}
           {isCodeFile &&
@@ -801,11 +805,15 @@ export function ArtifactFilePreview({
   language,
   scrollKey,
   url,
+  threadId,
+  isMock,
 }: {
   content: string;
   language: string;
   scrollKey: string;
   url?: string;
+  threadId?: string;
+  isMock?: boolean;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const scrollPositionRef = useRef({ x: 0, y: 0 });
@@ -819,6 +827,16 @@ export function ArtifactFilePreview({
       language === "markdown" ? extractCitationSources(content ?? "") : [],
     [content, language],
   );
+  // EAI-CUSTOM: thread-generated reports embed images as relative
+  // `images/<name>.<ext>` refs that only resolve inside the owning thread's
+  // user-data/outputs tree. Rewrite them to the thread's artifact URLs before
+  // rendering; streamdown's img would otherwise 404 against the page origin.
+  const markdownContent = useMemo(() => {
+    if (language !== "markdown" || !threadId) {
+      return content ?? "";
+    }
+    return rewriteThreadImageReferences(content ?? "", threadId, isMock);
+  }, [content, language, threadId, isMock]);
 
   useEffect(() => {
     scrollPositionRef.current = { x: 0, y: 0 };
@@ -892,7 +910,7 @@ export function ArtifactFilePreview({
           {...artifactMarkdownPlugins}
           components={toStreamdownComponents({ a: ArtifactLink })}
         >
-          {content ?? ""}
+          {markdownContent}
         </SafeStreamdown>
         <CitationSourcesPanel sources={citationSources} className="mb-4" />
       </div>
