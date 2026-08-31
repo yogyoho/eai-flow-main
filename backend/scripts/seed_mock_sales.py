@@ -315,12 +315,12 @@ def gen_attendance() -> list[tuple]:
 
     rows: list[tuple] = []
 
-    def _emit(eid: str, wdays: list[date], t: int, l: int, a: int) -> None:
-        """把 (trip t / leave l / absent a / 其余 present) 铺到 wdays 上,互斥。"""
+    def _emit(eid: str, wdays: list[date], t: int, leave: int, a: int) -> None:
+        """把 (trip t / leave / absent a / 其余 present) 铺到 wdays 上,互斥。"""
         occupied: set[int] = set()
         n = len(wdays)
         trip_i = _pick(n, t, 0, occupied)
-        leave_i = _pick(n, l, n // 3, occupied)
+        leave_i = _pick(n, leave, n // 3, occupied)
         abs_i = _pick(n, a, 2 * n // 3, occupied)
         for idx, d in enumerate(wdays):
             if idx in trip_i:
