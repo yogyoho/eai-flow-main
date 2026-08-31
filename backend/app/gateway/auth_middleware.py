@@ -17,8 +17,16 @@ from starlette.responses import JSONResponse
 from starlette.types import ASGIApp
 
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse
-from app.gateway.authz import _ALL_PERMISSIONS, AuthContext
-from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, INTERNAL_OWNER_USER_ID_HEADER_NAME, get_internal_user, is_valid_internal_auth_token
+from app.gateway.auth_disabled import (
+    AUTH_SOURCE_AUTH_DISABLED,
+    AUTH_SOURCE_INTERNAL,
+    AUTH_SOURCE_PAT,
+    AUTH_SOURCE_SESSION,
+    get_auth_disabled_user,
+    is_auth_disabled,
+)
+from app.gateway.authz import AuthContext, resolve_route_permissions
+from app.gateway.internal_auth import INTERNAL_AUTH_HEADER_NAME, get_internal_user, is_valid_internal_auth_token
 from app.gateway.request_path import get_request_route_path
 from deerflow.config.paths import make_safe_user_id
 from deerflow.runtime.user_context import reset_current_user, set_current_user
@@ -105,17 +113,81 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
         internal_user = None
         if is_valid_internal_auth_token(request.headers.get(INTERNAL_AUTH_HEADER_NAME)):
-            # Trusted in-process channel callers may attribute the call to a
-            # per-message owner (e.g. the WeChat user a message came from) so
-            # the resulting agent run is scoped to that owner's memory/sandbox.
-            # Sanitize at the trust boundary (defense-in-depth): the owner
-            # header is only reachable with a valid internal token.
+            # Extract the channel owner user ID from the trusted header.
+            # When present, the synthetic internal user carries the actual
+            # owner identity so that get_effective_user_id() and per-user
+            # filesystem paths (custom skills, memory, thread data) resolve
+            # to the IM channel user instead of falling back to "default".
+            # EAI-CUSTOM (upstream-sync 2026-08-31): sanitize at the trust boundary
+            # (defense-in-depth) — the owner header is only reachable with a valid
+            # internal token, but still normalize through make_safe_user_id so a
+            # forged value can never traverse out of the per-user path root.
+            from app.gateway.internal_auth import INTERNAL_OWNER_USER_ID_HEADER_NAME
+
             raw_owner = request.headers.get(INTERNAL_OWNER_USER_ID_HEADER_NAME) or None
             owner = make_safe_user_id(raw_owner) if raw_owner else None
             internal_user = get_internal_user(owner_user_id=owner)
 
+        auth_source = AUTH_SOURCE_SESSION
+        access_token = request.cookies.get("access_token")
+        authorization = request.headers.get("authorization")
+        pat_scopes: frozenset[str] = frozenset()
+
         # Non-public path: require session cookie
-        if internal_user is None and not request.cookies.get("access_token"):
+        if internal_user is not None:
+            user = internal_user
+            auth_source = AUTH_SOURCE_INTERNAL
+        elif authorization is not None and not is_auth_disabled():
+            # Bearer (PAT) credential precedence (#4849): a present-but-invalid
+            # Authorization header is a hard 401 and never silently falls back
+            # to the session cookie. This is also what makes the CSRF
+            # middleware's Bearer skip safe — a cross-site attacker cannot ride
+            # a victim's cookie by padding the request with a garbage Bearer
+            # header, because the request dies here before any route runs.
+            # Auth-disabled mode is an operator override of all authentication,
+            # so it stays ahead of the Bearer check (a stray Authorization
+            # header from a proxy must not 401 an E2E sandbox).
+            from app.gateway.auth.pat import authenticate_pat, is_pat_allowed_route
+
+            try:
+                user, pat_scopes = await authenticate_pat(request.app, authorization)
+            except HTTPException as exc:
+                return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+            # Default-deny route boundary (#5041 review P1-1): scopes only
+            # constrain @require_permission routes, so any route outside the
+            # explicit PAT policy is closed to PAT callers outright — an
+            # all-scopes token must not reach undecorated mutation routes.
+            if not is_pat_allowed_route(request.method, get_request_route_path(request)):
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "PAT credentials are not permitted on this route"},
+                )
+            auth_source = AUTH_SOURCE_PAT
+        elif access_token:
+            # Strict JWT validation: reject junk/expired tokens with 401
+            # right here instead of silently passing through. This closes
+            # the "junk cookie bypass" gap (AUTH_TEST_PLAN test 7.5.8):
+            # without this, non-isolation routes like /api/models would
+            # accept any cookie-shaped string as authentication.
+            #
+            # We call the *strict* resolver so that fine-grained error
+            # codes (token_expired, token_invalid, user_not_found, …)
+            # propagate from AuthErrorCode, not get flattened into one
+            # generic code. BaseHTTPMiddleware doesn't let HTTPException
+            # bubble up, so we catch and render it as JSONResponse here.
+            from app.gateway.deps import get_current_user_from_request
+
+            try:
+                user = await get_current_user_from_request(request)
+            except HTTPException as exc:
+                if not is_auth_disabled():
+                    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+                user = get_auth_disabled_user()
+                auth_source = AUTH_SOURCE_AUTH_DISABLED
+        elif is_auth_disabled():
+            user = get_auth_disabled_user()
+            auth_source = AUTH_SOURCE_AUTH_DISABLED
+        else:
             return JSONResponse(
                 status_code=401,
                 content={
@@ -126,33 +198,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 },
             )
 
-        # Strict JWT validation: reject junk/expired tokens with 401
-        # right here instead of silently passing through. This closes
-        # the "junk cookie bypass" gap (AUTH_TEST_PLAN test 7.5.8):
-        # without this, non-isolation routes like /api/models would
-        # accept any cookie-shaped string as authentication.
-        #
-        # We call the *strict* resolver so that fine-grained error
-        # codes (token_expired, token_invalid, user_not_found, …)
-        # propagate from AuthErrorCode, not get flattened into one
-        # generic code. BaseHTTPMiddleware doesn't let HTTPException
-        # bubble up, so we catch and render it as JSONResponse here.
-        from app.gateway.deps import get_current_user_from_request
-
-        if internal_user is not None:
-            user = internal_user
-        else:
-            try:
-                user = await get_current_user_from_request(request)
-            except HTTPException as exc:
-                return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-
         # Stamp both request.state.user (for the contextvar pattern)
         # and request.state.auth (so @require_permission's "auth is
         # None" branch short-circuits instead of running the entire
         # JWT-decode + DB-lookup pipeline a second time per request).
         request.state.user = user
-        request.state.auth = AuthContext(user=user, permissions=_ALL_PERMISSIONS)
+        request.state.auth_source = auth_source
+        permissions = await resolve_route_permissions(
+            user,
+            is_internal=auth_source == AUTH_SOURCE_INTERNAL,
+        )
+        if auth_source == AUTH_SOURCE_PAT:
+            # A PAT can only narrow its owning user's permissions: the stored
+            # scopes intersect the resolved route permissions, never widen
+            # them, and role changes / authorization policy stay authoritative
+            # because they were resolved fresh from the owning user above.
+            permissions = [permission for permission in permissions if permission in pat_scopes]
+        request.state.auth = AuthContext(user=user, permissions=permissions)
         token = set_current_user(user)
         try:
             return await call_next(request)

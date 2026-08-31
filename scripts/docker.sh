@@ -21,6 +21,7 @@ COMPOSE_FILE="docker-compose-dev.yaml"
 COMPOSE_BIN=(docker compose)
 
 _refresh_compose_cmd() {
+    # EAI-CUSTOM: compose project name eai-docker (fork policy: all compose uses -p eai-docker).
     COMPOSE_CMD="${COMPOSE_BIN[*]} -p eai-docker -f ${COMPOSE_FILE}"
 }
 _refresh_compose_cmd
@@ -456,7 +457,7 @@ stop() {
     echo "Stopping Docker development services..."
     cd "$DOCKER_DIR" && $COMPOSE_CMD down
     echo "Cleaning up sandbox containers..."
-    "$SCRIPT_DIR/cleanup-containers.sh" deer-flow-sandbox 2>/dev/null || true
+    bash "$SCRIPT_DIR/cleanup-containers.sh" deer-flow-sandbox 2>/dev/null || true
     echo -e "${GREEN}✓ Docker services stopped${NC}"
 }
 
