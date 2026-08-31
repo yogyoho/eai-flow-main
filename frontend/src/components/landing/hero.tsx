@@ -1,5 +1,7 @@
 "use client";
 
+// EAI-CUSTOM: "with EAIFlow" branding; keeps the pre-upstream static hero —
+// upstream's dynamic Galaxy + useRenderActivity + AuroraText word-rotate not adopted.
 import { ChevronRightIcon } from "lucide-react";
 import Link from "next/link";
 

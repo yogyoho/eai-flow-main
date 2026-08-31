@@ -1,3 +1,5 @@
+# EAI-CUSTOM: registers EAI extension routers (agents, auth, channel_connections,
+# channels, features, feedback, memory, runs, ui) on top of upstream's core router set.
 from . import (
     agents,
     artifacts,

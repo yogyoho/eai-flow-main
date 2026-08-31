@@ -13,7 +13,7 @@ const shared = {
     },
   },
   output: {
-    // Streamdown imports KaTeX CSS as a side effect, and the @blocknote/*
+    // EAI-CUSTOM: Streamdown imports KaTeX CSS as a side effect, and the @blocknote/*
     // packages import their own dist/style.css. Bundle these packages so
     // Rsbuild processes the CSS imports instead of Node trying to load them.
     bundleDependencies: [

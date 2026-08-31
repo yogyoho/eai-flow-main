@@ -1,5 +1,7 @@
 "use client";
 
+// EAI-CUSTOM: eager static import of ProgressiveSkillsAnimation — upstream's
+// dynamic(ssr:false) + useRenderActivity lazy-mount gating intentionally not adopted.
 import { cn } from "@/lib/utils";
 
 import ProgressiveSkillsAnimation from "../progressive-skills-animation";

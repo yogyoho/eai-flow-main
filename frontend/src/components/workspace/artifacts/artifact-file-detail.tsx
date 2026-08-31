@@ -225,6 +225,8 @@ export function ArtifactFileDetail({
     isCodeFile,
     isWriteFile,
     isSkillFile,
+    // EAI-CUSTOM (36c817131): propagate threadId/isMock so thread-relative image
+    // refs resolve in preview (fixes "Image not available").
     isMock: Boolean(isMock),
     hasRevision: typeof sha256 === "string" && sha256.length === 64,
     isStaticWebsite: env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true",

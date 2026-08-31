@@ -1,5 +1,7 @@
 "use client";
 
+// EAI-CUSTOM: "Whats New in EAIFlow" branding; eager MagicBento import —
+// upstream useRenderActivity/usePrefersReducedMotion lazy gating not adopted.
 import MagicBento, { type BentoCardProps } from "@/components/ui/magic-bento";
 import { cn } from "@/lib/utils";
 

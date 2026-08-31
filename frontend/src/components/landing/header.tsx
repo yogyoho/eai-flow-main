@@ -1,3 +1,5 @@
+// EAI-CUSTOM: EAIFlow branding header — drops upstream MobileNav render and
+// locale-fallback edits; EAI landing-new owns its own nav surface.
 import { StarFilledIcon, GitHubLogoIcon } from "@radix-ui/react-icons";
 import Link from "next/link";
 

@@ -39,7 +39,7 @@ if [ -f "$REPO_ROOT/.env" ]; then
     set +a
 fi
 
-# Override Docker-specific paths for local dev (non-Docker runs).
+# EAI-CUSTOM: Override Docker-specific paths for local dev on the Windows host (non-Docker runs).
 # The .env file ships with container paths like /app/config.yaml; on the host
 # those paths don't exist and MSYS2 may mangle them into Git-installation paths.
 if [ -z "$IN_DOCKER" ]; then

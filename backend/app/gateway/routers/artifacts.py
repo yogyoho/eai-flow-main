@@ -44,7 +44,7 @@ MAX_EDITABLE_ARTIFACT_BYTES = 2 * 1024 * 1024
 _EDITABLE_OUTPUTS_PREFIX = "mnt/user-data/outputs/"
 _ARTIFACT_EDIT_TEMP_PREFIX = ".artifact-edit-"
 
-# ── bug-2225 交付契约门：契约线程的 outputs/*.md 下载放行凭据 = delivery_manifest.json ──
+# EAI-CUSTOM (bug-2225): 交付契约门 — 契约线程的 outputs/*.md 下载放行凭据 = delivery_manifest.json
 # ingest.py 落 .delivery-contract 标记后，GET 只放行 manifest.deliverable 指名的 .md，
 # 阻断 agent 手拼 .md 后经下载口流出（present_files 侧同款门见 harness present_file_tool）。
 _DELIVERY_CONTRACT_PATH = "mnt/user-data/outputs/.delivery-contract"
@@ -476,7 +476,7 @@ async def get_artifact(thread_id: ThreadId, path: str, request: Request, downloa
 
     logger.info(f"Resolving artifact path: thread_id={thread_id}, requested_path={path}, actual_path={actual_path}")
 
-    # ── bug-2225 交付契约门：契约线程仅放行 manifest.deliverable 的 .md ──
+    # EAI-CUSTOM (bug-2225): 交付契约门 — 契约线程仅放行 manifest.deliverable 的 .md
     # 标记不存在 → 无契约线程，行为与从前完全一致（此探测也走 to_thread）。
     try:
         marker = await asyncio.to_thread(resolve_thread_virtual_path, thread_id, _DELIVERY_CONTRACT_PATH, user_id=owner_user_id)

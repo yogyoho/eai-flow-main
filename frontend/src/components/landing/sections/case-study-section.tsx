@@ -1,3 +1,5 @@
+// EAI-CUSTOM: CSS background div instead of next/image; demo card routes via
+// pathOfThread?mock=true (EAI mock-thread routing) instead of upstream pathOfPublicDemoThread.
 import Link from "next/link";
 
 import { Card } from "@/components/ui/card";

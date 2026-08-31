@@ -9,6 +9,7 @@ export default tseslint.config(
   {
     ignores: [
       ".next",
+      // EAI-CUSTOM: Rsbuild/rstest build output dir.
       "dist",
       "playwright-report",
       "test-results",
