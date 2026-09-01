@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "eai-flow 系统功能分层架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1230, 786]
+  },
+  "components": [
+    { "id": "browser", "type": "external", "label": "浏览器", "sublabel": "用户入口", "pos": [480, 28], "size": [150, 52] },
+    { "id": "nginx", "type": "cloud", "label": "nginx :2026", "sublabel": "/api/langgraph/* 重写 → gateway · /* → 前端", "pos": [415, 116], "size": [280, 62] },
+    { "id": "frontend", "type": "frontend", "label": "Next.js :4000", "sublabel": "workspace 对话 + extensions 管理端 · 双认证", "pos": [210, 234], "size": [260, 62] },
+    { "id": "gateway", "type": "backend", "label": "Gateway FastAPI :8001", "sublabel": "13 routers · RunManager · StreamBridge SSE · JWT+CSRF", "pos": [325, 352], "size": [350, 62] },
+    { "id": "harness", "type": "backend", "label": "eaiflow harness", "sublabel": "Lead Agent · 中间件 · 子代理 · 沙箱 → L2 下钻", "pos": [260, 470], "size": [610, 66] },
+    { "id": "mcp", "type": "cloud", "label": "MCP 工具", "sublabel": "managed providers · extensions_config 注册", "pos": [155, 592], "size": [255, 60] },
+    { "id": "skills", "type": "cloud", "label": "Skills", "sublabel": "46 public + custom · 热加载", "pos": [505, 592], "size": [175, 60] },
+    { "id": "subagents", "type": "cloud", "label": "子代理", "sublabel": "task() 双线程池", "pos": [775, 592], "size": [140, 60] },
+    { "id": "pg_ext", "type": "database", "label": "Postgres agentflow", "sublabel": "extensions 数据库", "pos": [120, 700], "size": [160, 60] },
+    { "id": "pg_core", "type": "database", "label": "Postgres deerflow", "sublabel": "核心库 · checkpointer", "pos": [375, 700], "size": [166, 60] },
+    { "id": "sandbox_fs", "type": "database", "label": "沙箱文件区", "sublabel": "/mnt/user-data per-user", "pos": [652, 700], "size": [150, 60] },
+    { "id": "config", "type": "database", "label": "config.yaml + extensions_config.json", "sublabel": "变更自动重载", "pos": [890, 700], "size": [260, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "接入层", "wraps": ["nginx"], "pad": 16 },
+    { "kind": "region", "label": "前端层", "wraps": ["frontend"], "pad": 16 },
+    { "kind": "region", "label": "应用层", "wraps": ["gateway"], "pad": 16 },
+    { "kind": "region", "label": "框架层", "wraps": ["harness"], "pad": 16 },
+    { "kind": "region", "label": "能力层", "wraps": ["mcp", "skills", "subagents"], "pad": 16 },
+    { "kind": "region", "label": "数据层", "wraps": ["pg_ext", "pg_core", "sandbox_fs", "config"], "pad": 16 }
+  ],
+  "connections": [
+    { "from": "browser", "to": "nginx", "label": "HTTPS", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelAt": [555, 98] },
+    { "from": "nginx", "to": "frontend", "label": "/*", "fromSide": "bottom", "toSide": "top", "labelSegment": 2 },
+    { "from": "nginx", "to": "gateway", "label": "/api/* 重写", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelSegment": 2, "labelDx": 8 },
+    { "from": "frontend", "to": "gateway", "label": "useStream SSE", "fromSide": "bottom", "toSide": "top", "labelSegment": 1 },
+    { "from": "gateway", "to": "harness", "label": "RunManager → run_agent", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelSegment": 2 },
+    { "from": "harness", "to": "mcp", "label": "函数调用", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelSegment": 2, "labelDy": 12 },
+    { "from": "harness", "to": "skills", "label": "技能加载", "fromSide": "bottom", "toSide": "top", "labelSegment": 2, "labelDy": 12 },
+    { "from": "harness", "to": "subagents", "label": "task()", "fromSide": "bottom", "toSide": "top", "labelSegment": 2, "labelDy": 12 },
+    { "from": "gateway", "to": "pg_ext", "label": "仓储读写", "fromSide": "left", "toSide": "left", "via": [[80, 383], [80, 730]], "labelAt": [202, 383] },
+    { "from": "harness", "to": "pg_core", "label": "checkpointer", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelSegment": 2 },
+    { "from": "harness", "to": "sandbox_fs", "label": "虚拟路径", "fromSide": "bottom", "toSide": "top", "labelSegment": 2 },
+    { "from": "config", "to": "harness", "label": "热加载", "variant": "dashed", "fromSide": "top", "toSide": "right", "via": [[1020, 503]], "labelAt": [1020, 600] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "依赖方向铁律",
+      "items": [
+        "app → deerflow 单向依赖，反向 import 被禁止",
+        "tests/test_harness_boundary.py 在 CI 守护边界"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "3 原语能力模型",
+      "items": [
+        "能力只能经 MCP 工具 / Skills / 子代理到达 agent",
+        "其余皆为管理层，不接通三原语即为孤岛"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "热加载",
+      "items": [
+        "config.yaml 与 extensions_config.json 变更即生效",
+        "extensions_config 可经 Gateway API 热重载"
+      ]
+    }
+  ]
+}
