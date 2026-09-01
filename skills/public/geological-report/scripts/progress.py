@@ -11,7 +11,7 @@ spec 2026-08-28 控制器化改造：主 agent 薄上下文只协调——每轮
   DRAFTED  --重派--> DRAFTED（dispatches 递增；每章重派 ≤1 次由 SKILL.md 协议约束）
   DRAFTED  --门FAIL且重派耗尽--> BLOCKED --补数据/批准降档--> DRAFTED
   PENDING  --额度耗尽--> BLOCKED
-VERIFIED 只能来自单章门 rc=0（--gate PASS 强制）——只信产物，不信子代理摘要。
+VERIFIED 只能来自 `gate` 真跑单章门 rc=0 的自动回写（手动 mark VERIFIED 已禁用，bug-3049）——只信产物，不信子代理摘要。
 
 相位推导（derive_phase，单一事实）：
   wave1 有 PENDING/DRAFTED → WAVE1（单章 BLOCKED 不拖停全书）
@@ -48,7 +48,7 @@ STANDARDS_INDEX = Path(__file__).resolve().parent.parent / "references" / "stand
 DISPATCH_BUDGET = 16
 
 TRANSITIONS: dict[str, set[str]] = {
-    "PENDING": {"DRAFTED", "VERIFIED", "BLOCKED"},  # PENDING→BLOCKED = 派发额度耗尽；PENDING→VERIFIED = 记账滞后凭门 PASS 补记（仍强制 --gate PASS）
+    "PENDING": {"DRAFTED", "VERIFIED", "BLOCKED"},  # PENDING→BLOCKED = 派发额度耗尽；PENDING→VERIFIED = gate 真跑门 PASS 自动补记（手动 mark VERIFIED 已禁用，bug-3049）
     "DRAFTED": {"DRAFTED", "VERIFIED", "BLOCKED"},  # DRAFTED→DRAFTED = 重派
     "VERIFIED": {"DRAFTED"},  # 修改回路重写
     "BLOCKED": {"DRAFTED"},  # 补数据/批准降档后复活
@@ -119,7 +119,7 @@ def next_action(doc: dict, state_dir: Path) -> str:
             lines += [
                 f"[NEXT] 批量跑门: {', '.join(drafted)}（DRAFTED——只信产物，不信子代理摘要；一次 bash 全部跑完，PASS 章自动转 VERIFIED）",
                 f"命令: {_self_cmd('gate', '--state-dir', sd)}",
-                "期望 rc: 0（GATE_BATCH_DONE passed=N failed=0，PASS 章已 mark VERIFIED --gate PASS）",
+                "期望 rc: 0（GATE_BATCH_DONE passed=N failed=0，PASS 章已由 gate 真跑单章门自动转 VERIFIED）",
                 '        1 → failed 章按 stderr 原文重派（原 prompt + stderr，每章 ≤1 次）；重派仍 FAIL → mark BLOCKED --gate FAIL --detail "<一句话差距>"',
             ]
             return "\n".join(lines)
@@ -250,8 +250,10 @@ def cmd_mark(args: argparse.Namespace) -> int:
     if status not in TRANSITIONS[cur]:
         print(f"[progress] 非法转移 {ch_id}: {cur} → {status}（合法: {cur} → {sorted(TRANSITIONS[cur])}）", file=sys.stderr)
         return EXIT_ERROR
-    if status == "VERIFIED" and args.gate != "PASS":
-        print(f"[progress] {ch_id} VERIFIED 必须带 --gate PASS——VERIFIED 只能来自单章门 rc=0（只信产物，不信子代理摘要）", file=sys.stderr)
+    # bug-3049 定案：--gate PASS 是调用方自证（自申报），非官方凭据——VERIFIED 一律拒绝手动 mark。
+    # 唯一合法通道 = progress.py gate（内部真跑 build_output.run_chapter_gate，PASS 章自动回写）。
+    if status == "VERIFIED":
+        print(f"[progress] {ch_id} 手动 mark VERIFIED 已禁用（--gate PASS 是自证，bug-3049）——用 `progress.py gate`（真跑官方单章门，PASS 自动转 VERIFIED）或 `gate --chapters {ch_id}`", file=sys.stderr)
         return EXIT_ERROR
     ent = doc["chapters"][ch_id]
     ent["status"] = status
@@ -261,9 +263,6 @@ def cmd_mark(args: argparse.Namespace) -> int:
         ent["last_gate"] = None
         ent["gate_detail"] = ""
         ent["blocked_reason"] = None
-    elif status == "VERIFIED":
-        ent["last_gate"] = "PASS"
-        ent["gate_detail"] = args.detail or ""
     else:  # BLOCKED
         ent["last_gate"] = args.gate or "FAIL"
         ent["gate_detail"] = args.detail or ""
@@ -276,7 +275,7 @@ def cmd_mark(args: argparse.Namespace) -> int:
 
 def cmd_gate(args: argparse.Namespace) -> int:
     """批量单章门（平台预算规避，bug-3040/3048）：一次 bash 跑完全部指定章的门禁，
-    PASS 章当场 mark VERIFIED --gate PASS（VERIFIED 只能来自单章门 rc=0 的不变式不破——
+    PASS 章当场自动转 VERIFIED（last_gate=PASS；VERIFIED 只能来自单章门 rc=0 的不变式不破——
     推进凭据就是 run_chapter_gate 无异常返回，progress.py 仍是 progress.json 唯一写者）。
     任一章 FAIL → stderr 打该章完整差距，不推进该章，rc=1。"""
     state_dir = Path(args.state_dir)
@@ -363,7 +362,11 @@ def cmd_run_stage(args: argparse.Namespace) -> int:
     rc = _run_py("build_output.py", *build_args)
     if rc:
         return rc
-    cons_args = ["--report", str(report), "--data-dir", data, "--stage", stage, "--state", str(state_dir / "formula_state.json"), "--output", str(state_dir / "consistency_check.json")]
+    # 复核修复（bug-3058）：build_output 内联门已按去附录正文（body scope）跑过 consistency 并写
+    # consistency_check.json；此处再以完整报告重跑会以不同 scope 覆盖同一 JSON（附录文本/全文字数
+    # 差异 → 汇总漂移、rc 语义漂移）。统一 scope：优先复用 body 文件（build 成功时必在），CLI rc 语义不变。
+    _body = state_dir / "consistency_body.md"
+    cons_args = ["--report", str(_body if _body.exists() else report), "--data-dir", data, "--stage", stage, "--state", str(state_dir / "formula_state.json"), "--output", str(state_dir / "consistency_check.json")]
     if STANDARDS_INDEX.exists():
         cons_args += ["--standards", str(STANDARDS_INDEX)]
     rc = _run_py("consistency.py", *cons_args)
@@ -439,7 +442,7 @@ def main() -> int:
     sp.add_argument("--gate", choices=["PASS", "FAIL"])
     sp.add_argument("--detail", default="")
     sp.set_defaults(fn=cmd_mark)
-    sp = sub.add_parser("gate", help="批量单章门：一次跑完全部（缺省）或指定章的门禁，PASS 自动转 VERIFIED --gate PASS")
+    sp = sub.add_parser("gate", help="批量单章门：一次跑完全部（缺省）或指定章的门禁，PASS 章自动转 VERIFIED（bug-3049 后 VERIFIED 唯一通道）")
     sp.add_argument("--state-dir", required=True)
     sp.add_argument("--chapters", help="逗号分隔，如 ch2,ch3；缺省=全部 DRAFTED 章")
     sp.add_argument("--targets", help="depth_targets.json 路径；仅调试，正式跑门绝不传（同 build_output 语义）")

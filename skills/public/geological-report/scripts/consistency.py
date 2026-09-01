@@ -280,7 +280,11 @@ def check_fc(rep: Report, state: dict, data: fr.Data) -> None:
         pi = val("L11.P_Ag_industrial_kg")
         if pi is not None:
             want = po * fr.WAN * val("L11.ag_grade") / fr.THOUSAND
-            rep.add("FC6", "pass" if abs(want - pi) <= Decimal(1) else "fail", f"L11 工业伴生Ag {pi} vs 重算 {want.quantize(Decimal('1'))}")
+            # bug-3059：绝对 1 kg 容差只在小矿规模成立——大矿 L9 分类量各自 0.01 万吨四舍五入，
+            # 组合噪声随规模线性放大（899 万吨级实测 48738 vs 48726，差 0.02%）。改相对容差 0.1%
+            #（下限 1 kg）——真错值（错品位/错矿石量）差 % 级，门的缉假力不受损。
+            tol = max(Decimal(1), abs(pi) * Decimal("0.001"))
+            rep.add("FC6", "pass" if abs(want - pi) <= tol else "fail", f"L11 工业伴生Ag {pi} vs 重算 {want.quantize(Decimal('1'))}（容差 {tol.quantize(Decimal('0.1'))} kg）")
     # FC7 E 链关系
     eco = data.form("economics")
     if eco:

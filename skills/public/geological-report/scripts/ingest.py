@@ -588,6 +588,106 @@ def cmd_check(args) -> int:
         for f in spec.get("fields", []):
             if f.get("required", True) and _get_dotted(doc, f["name"]) in (None, "", []):
                 missing_fields.append(f"{fam}.{f['name']}")
+
+    # ── bug-3036 质量门（WARN 不阻断门1——完备性先行；下游 build 空槽/残留门兜底强制）────
+    quality: list[str] = []
+    for fam, spec in stage.get("forms", {}).items():
+        p = data_dir / family_filename(spec)
+        if not p.exists() or spec.get("format") == "csv" or "columns" in spec:
+            continue
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(doc, dict):
+            continue
+        declared = {f.get("name") for f in spec.get("fields", [])}
+
+        def _strings(o, prefix: str):
+            if isinstance(o, dict):
+                for k, v in o.items():
+                    yield from _strings(v, f"{prefix}.{k}" if prefix else str(k))
+            elif isinstance(o, list):
+                for i, v in enumerate(o):
+                    yield from _strings(v, f"{prefix}[{i}]")
+            elif isinstance(o, str):
+                yield prefix, o
+
+        for path, s in _strings(doc, ""):
+            # XX 缺数占位（邻接数字/量词）——正文残留门的根源在数据层就该显形；规范形是 [待确认]
+            if re.search(r"\d\s*XX|XX\s*\d|XX(?:万吨|亿吨|千米|公里|米|毫米|吨|克|个|处|条|件|孔|%)", s):
+                quality.append(f"{fam}.{path}: 缺数占位 {s[:40]!r}——XX 不得充当数字，改 [待确认] 或补数（bug-3036）")
+            elif "XX" in s:
+                # 匿名化残留：技能脱敏规范用「某」（XX地质队/XX幅 一类）
+                quality.append(f"{fam}.{path}: 匿名化 {s[:40]!r}——脱敏规范形是「某」，与全文统一（bug-3036）")
+        # 未声明点号键：doc 顶层点号键须是 stage fields 在册名——否则 {{TABLE:fam.key}} 子路径
+        # 寻址走扁平命中时命名与契约两张皮（证据池 hydro.* 实测：正族名是 hydro_eng_env）
+        for k in doc:
+            if "." in k and k not in declared:
+                quality.append(f"{fam} 顶层点号键 {k!r} 不在 stage fields——命名与骨架契约两张皮，改名或补登记（bug-3036）")
+
+    # 内检/外检分母 sanity（证据池实测 inner_check.sample_count=1178 > basic.total=458）
+    # 复核修复（bug-3058）：CSV 摄入可落行数组顶层（bug-3004 同源形状）——
+    # dict 守卫必须到底，AttributeError 裸崩会让 agent 误判「数据损坏」转手写 data/。
+    qc_spec = stage.get("forms", {}).get("exploration_qc")
+    if qc_spec:
+        qcp = data_dir / family_filename(qc_spec)
+        if qcp.exists():
+            try:
+                _qc_doc = json.loads(qcp.read_text(encoding="utf-8"))
+                smp = _qc_doc.get("sampling") if isinstance(_qc_doc, dict) else None
+                if not isinstance(smp, dict):
+                    smp = {}
+                total = (smp.get("basic") or {}).get("total") if isinstance(smp.get("basic"), dict) else None
+                for nm in ("inner_check", "outer_check"):
+                    blk = smp.get(nm) or {}
+                    if not isinstance(blk, dict):
+                        continue
+                    sc, cnt = blk.get("sample_count"), blk.get("count")
+                    if isinstance(total, (int, float)) and isinstance(sc, (int, float)) and sc > total:
+                        quality.append(f"exploration_qc.sampling.{nm}.sample_count={sc} > basic.total={total}——检查样分母不得超过基本分析总数（bug-3036）")
+                    rate = blk.get("rate")
+                    if isinstance(cnt, (int, float)) and isinstance(sc, (int, float)) and sc and isinstance(rate, str) and rate.endswith("%"):
+                        try:
+                            if abs(cnt / sc * 100 - float(rate[:-1])) > 0.5:
+                                quality.append(f"exploration_qc.sampling.{nm}: count/sc={cnt/sc*100:.2f}% ≠ 声明 rate={rate}（bug-3036）")
+                        except ValueError:
+                            pass
+            except (json.JSONDecodeError, OSError):
+                pass
+
+    # CV 实测锚点（bug-3036：正文声明变异系数 35-52%，实测数据仅 ~9%——写手动笔前先见真值）
+    sa_spec = stage.get("forms", {}).get("sample_assays")
+    if sa_spec:
+        sap = data_dir / family_filename(sa_spec)
+        if sap.exists():
+            try:
+                with open(sap, encoding="utf-8-sig", newline="") as f:
+                    rows = list(csv.DictReader(f))
+                grades = [float(r["品位Cu_pct"]) for r in rows if (r.get("品位Cu_pct") or "").strip()]
+                if len(grades) >= 2:
+                    m = sum(grades) / len(grades)
+                    cv = (sum((g - m) ** 2 for g in grades) / len(grades)) ** 0.5 / m if m else 0.0
+                    quality.append(f"CV_ANCHOR: sample_assays 品位Cu_pct n={len(grades)} 实测变异系数 {cv:.1%}——正文声明 CV 须与此同源，禁另写一套（bug-3036）")
+            except (ValueError, KeyError, OSError):
+                pass
+
+    # data/ 外来文件（唯一写者=ingest；证据池 formula_state.json 被写进 data/ 实测）
+    try:
+        registered = set(load_manifest(data_dir).get("files", {}))
+        for p in sorted(data_dir.iterdir()):
+            if p.name in registered or p.name.startswith(MANIFEST_NAME):
+                continue
+            if p.suffix in {".json", ".csv"}:
+                quality.append(f"data/ 存在未登记文件 {p.name}——data/ 唯一写者=ingest.py，外部产物移至 state/（bug-3036）")
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    if quality:
+        print("GATE1_QUALITY:")
+        for x in quality:
+            print(f"  warn: {x}")
+        print(f"SUMMARY: quality_warns={len(quality)}（不阻断门1；写手动笔前逐条消化——XX→[待确认]/补数、CV 引用实测锚点）")
     if missing_forms or missing_fields:
         print("GATE1_MISSING:")
         for x in missing_forms:

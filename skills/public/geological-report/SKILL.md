@@ -70,7 +70,7 @@ license: MIT
    **只传用户提交的键（bug-2218 页面实测）**：`--values '<json>'` 里**只放用户实际填写的键**；用户留空的项（无论必填选填）一律**不写入该键**。schema 的 `required` 只作用于门 1 完备性检查——写入路径不需要凑齐（ingest 只校验传入的键，缺键留 null 由门 1 统一报缺项再问用户）。绝不为通过校验合成对象（如把保护地核查编成全 false）、绝不抄自己写的 placeholder 示例值凑数。回显表只列用户提供的项，并明示"另有 N 项未提供（留空）"。
    **脚本崩溃即停（bug-2217 页面实测）**：管线脚本报错/崩溃时**停下**，把错误原样呈现用户等待指示；绝不回退到 `cat >` / python heredoc 手写 data/ 文件"恢复"（唯一写者 = ingest.py），更绝不从对话记忆或技能样例"补回"数据——表单数据丢了必须重新向用户收集。`--force` 只允许搭配 `--family`/`--only` 限定范围；`--values "$(cat 文件)"` 文件缺失会报错而非静默清空（已加固），可放心使用。
    **公式结果为 0/空 = 数据缺失，与脚本崩溃同级（bug-2223 页面实测）**：公式正常退出但结果全 0/明显异常时**不是计算 bug**，是数据 schema 不匹配或缺参——停，把 anomaly 原样呈现用户，问数据或确认拆分占比。**绝不手改 `state/formula_state.json`**（formula_runner 是唯一写者；每个槽位带 `source` 键，手改必丢，build_output 手改检测门直接 FAIL）。**绝不自写 build 脚本/自定交付文件名**——交付只走 `build_output.py`，文件名由脚本从 00_project 拼 `{项目名}-{阶段}-地质勘查报告.md`，outputs/ 出现其他 .md 同样 FAIL。
-4. **门 1**：`ingest.py check` → 输出 `GATE1_COMPLETE` 才继续；rc=2 把缺项清单**译成中文数据项清单**（按类别分组，标注哪些必填）呈现用户补齐，不代填、不贴英文键名。
+4. **门 1**：`ingest.py check` → 输出 `GATE1_COMPLETE` 才继续；rc=2 把缺项清单**译成中文数据项清单**（按类别分组，标注哪些必填）呈现用户补齐，不代填、不贴英文键名。`GATE1_QUALITY` warn 行（bug-3036）不阻断但**写手动笔前逐条消化**：XX 缺数占位→补数或 `[待确认]`（匿名化规范形「某」）、内检/外检 sample_count 分母 sanity、`CV_ANCHOR` 实测变异系数锚点（正文声明 CV 必须与此同源）、data/ 外来未登记文件（唯一写者=ingest.py）。
 
 ### 步骤 2–3 · 冻结计算 → 门 2
 
@@ -133,7 +133,7 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 - 范文与检索红线（随派发契约注入）：范文只学范式禁抄；范文中任何数值/矿名/地名不得进入本项目正文（本项目数值只经 `{{SLOT:key}}`）。可用 harness 工具 `knowledge_search`（本地 RAGFlow 检索，已配置 固体矿产报告知识库 / ragflow-laws-standards 等 5 库）检索同章叙述参考；chunk 同样仅限叙述范式，矿名/地名/数值禁入正文，规范引用仍只从 standards_index 实有编号（ragflow-laws-standards 条文 chunk 仅作人工核实线索，禁直接引条款号）
 
 **4.2 收章跑门（只信产物，不信摘要）**：子代理返回后逐章 `mark chN DRAFTED`，随后**批量跑门**：
-`progress.py gate --state-dir T`（缺省一次跑完全部 DRAFTED 章的门禁，PASS 章自动 `mark VERIFIED --gate PASS`——推进凭据就是门 rc=0，唯一写者仍是 progress.py；`build_output.py --chapter chN` 仅单章调试用，不记账）
+`progress.py gate --state-dir T`（缺省一次跑完全部 DRAFTED 章的门禁，PASS 章自动转 VERIFIED——推进凭据就是门 rc=0，唯一写者仍是 progress.py；**手动 `mark chN VERIFIED` 已禁用（bug-3049）——--gate PASS 是自证不是凭据**；`build_output.py --chapter chN` 仅单章调试用，不记账）
 rc=1 → failed 章按 stderr 原 prompt 重派（**每章 ≤1 次**）→ 仍 FAIL → `mark chN BLOCKED --gate FAIL --detail "<一句话差距>"`。单章失败不中断全书，继续 next。
 
 **4.3 波间要点包（wave1 全收口且无待协商 BLOCKED 时）**：`next` 进入 KEY_POINTS——聚合各子代理摘要的「本章要点 3-5 条」+ formula_state 关键结论数字（L9 总量/分类量、L10 对比、E 链经济指标）写 `/mnt/user-data/workspace/geo-report/state/key_points.json`（`{"chapters":{...},"highlights":{...},"issues":[...]}`），单表单 `ask_clarification` 呈现用户确认（单回合至多一次）→ `progress.py confirm-key-points`——用户答复前不运行 confirm-key-points（自 confirm = 伪造用户确认，同绕门）。**要点包 = ch10 唯一事实来源**（不重读 9 章全文）。**发卡即停（N25）**：卡片发出后**立即结束本回合/run**，不执行任何后续动作；应答只能来自用户真实提交——同 run 自答、代填 progress 置位 = 伪造确认。
@@ -156,6 +156,15 @@ present_files     → 交付 `{项目名}-{阶段}-地质勘查报告.md`（buil
 ——报告名由脚本从 data/ 直拼，BUILD_READY/MANIFEST_READY/退出码原样透传，交付铁律 #2 不变；已批准降档自动加 --allow-partial）
 
 consistency 退出码：0 全过 / 1 有 FAIL（修章节重跑，禁改数据绕过）/ 2 需人工（如 CC1 标准未入库）/ 3 完成带 WARN/MANUAL（汇报用户）。合规性附录由 build_output 自动附加，勿手写。
+
+**章节/组装门清单（bug-3036 硬化后，全部硬 FAIL 一次报齐——写作时直接避坑）**：
+- `{{TABLE:族}}` 引用未知表单族 = FAIL（旧「（未知表单族 …）」软兜底已删——骨架引用以 stage forms 在册名为准）；CSV 族不支持点号子路径
+- 槽位 display 空/数组/对象 = FAIL（数组走 `{{TABLE:…}}`，空槽补数重算或写 `[待确认]` 叙述）
+- 目录覆盖门 v2 三向：toc 节号全落标题 + 标题节号不超 toc（禁契约外自创/并节）+ 同号标题须相符（复合条目子节号用 #### 标题）
+- 残留扫描（注入后正文）：未注入 `{{SLOT/TABLE/FORM:…}}`、畸形槽位、脚手架词（要点包/台账数据句/LLM自算/禁止LLM 等）、合约 ID 内联引用、`XX` 占位（写 `[待确认]`）= FAIL
+- 深度目标门带绝对地板：堆 `[待确认]` 压低覆盖缩放不能把目标压穿 `median×absolute_floor`（越改越薄洗不成 PASS）
+- consistency FAIL>0：报告落盘但 delivery_manifest 不写=不可交付，**既有旧 manifest 一并作废删除**（bug-3058：旧 sha 凭据不得为未过门的新报告放行）；consistency 检查对象=去附录正文（幂等收敛；run-stage 复用同一 body scope，rc 语义不变）
+- formula_state 数值槽 source=manual = FAIL（bug-3036 根因①；bug-3058 复核定案：via=ingest 豁免无合法生产者已删除——数字唯一修复 = ingest 修数 → execute 重算）；formula_runner write_state 终检拒垃圾键形/空 display/非有限值（NaN 直接入不了冻结层）
 
 **交付铁律（bug-2225，违反=交付被硬拦）**——交付门已上线（present_files / 下载 / 工作区同步对非管线 .md 一律拒绝）：
 
@@ -205,11 +214,11 @@ update 后只重写受影响章节 → build → consistency → snapshot save�
 | `formula_runner.py update --field K --value V --impacted-file I` | **顺序铁律**改参重算 | 0/3；1=守卫拒 |
 | `calibrate.py --samples-dir DIR --output T` | 样例→深度基线（维护者：样例变更后重跑生成 depth_targets.json） | 0/1 样例无节号拒产 |
 | `build_output.py --stage S --data-dir D --state-dir T --chapter chN` | **单章门**：该章全门即时验（一次报齐；不产交付物/不写 progress） | 0=CHAPTER_GATE_PASS / 1 门拦 |
-| `build_output.py --stage S --data-dir D --state-dir T --output R [--allow-partial] [--targets P]` | 原子组装+槽位注入+深度目标门（一次报齐）；--allow-partial=分级交付（progress 批准集放行 BLOCKED 章 L2 门，manifest 留痕）；--targets 仅限调试，正式交付绝不传 | 0（BUILD_READY+MANIFEST_READY）/ 1 门拦（未知槽位/目录覆盖门/深度目标门，一次报齐） |
+| `build_output.py --stage S --data-dir D --state-dir T --output R [--allow-partial] [--targets P]` | 原子组装+槽位注入+深度目标门+一致性合约门（一次报齐；consistency 按 body scope 内联跑，FAIL>0 报告落盘但 manifest 不写/旧 manifest 作废）；--allow-partial=分级交付（progress 批准集放行 BLOCKED 章 L2 门，manifest 留痕）；--targets 仅限调试，正式交付绝不传 | 0（BUILD_READY+MANIFEST_READY）/ 1 门拦（未知槽位/目录覆盖门/深度目标门/一致性合约门，一次报齐） |
 | `progress.py init --stage S --state-dir T [--data-dir D]` | 章节进度状态机初始化（全 PENDING；已存在=续跑拒重置） | 0 / 1 已存在 |
 | `progress.py next --state-dir T` | **控制器每轮先读**：恰好一个下一步动作+精确命令+期望 rc | 0 |
-| `progress.py mark chN DRAFTED\|VERIFIED\|BLOCKED --state-dir T [--gate PASS\|FAIL] [--detail …]` | 状态转移+派发记账（VERIFIED 必带 --gate PASS；DRAFTED 记一次派发） | 0 / 1 非法转移 |
-| `progress.py gate --state-dir T [--chapters ch2,ch3]` | **批量单章门**：一次跑完全部（缺省）/指定 DRAFTED 章门禁，PASS 自动转 VERIFIED --gate PASS（默认路径） | 0 全过 / 1 有 FAIL（stderr 逐章差距，未推进章保持 DRAFTED） |
+| `progress.py mark chN DRAFTED\|BLOCKED --state-dir T [--gate FAIL] [--detail …]` | 状态转移+派发记账（DRAFTED 记一次派发；**VERIFIED 手动 mark 已禁用（bug-3049）——转正唯一通道=`gate` 真跑官方单章门**） | 0 / 1 非法转移 |
+| `progress.py gate --state-dir T [--chapters ch2,ch3]` | **批量单章门（VERIFIED 唯一通道）**：一次跑完全部（缺省）/指定 DRAFTED 章门禁，PASS 自动转 VERIFIED（默认路径） | 0 全过 / 1 有 FAIL（stderr 逐章差距，未推进章保持 DRAFTED） |
 | `progress.py run-stage freeze --state-dir T` | **冻结二连**：chapter_planner manifest → formula_runner execute | 0 / 3 anomalies（同门 2） |
 | `progress.py run-stage finalize --state-dir T --outputs-dir O --task "…"` | **终验三连**：build_output → consistency → snapshot save（已批准降档自动 --allow-partial；BUILD_READY 原样透传） | 0 交付 / 1/2 门拦即停（绝不 snapshot）；consistency rc=3 不改总退出码，但 stdout/stderr 有 WARN/MANUAL 行——逐条汇报用户后再交付 |
 | `progress.py confirm-key-points --state-dir T` | 要点包已经用户单表单确认（解锁 ch10） | 0 |

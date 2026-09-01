@@ -162,11 +162,7 @@ def ws(tmp_path_factory):
         doc = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
         obj_names = {g["name"] for g in spec.get("fields", []) if g.get("type") == "object"}
         need = {
-            f["name"]: ph(f)
-            for f in spec.get("fields", [])
-            if f.get("required", True)
-            and doc.get(f["name"]) in (None, "", [], {})
-            and not ("." in f["name"] and f["name"].partition(".")[0] in obj_names)
+            f["name"]: ph(f) for f in spec.get("fields", []) if f.get("required", True) and doc.get(f["name"]) in (None, "", [], {}) and not ("." in f["name"] and f["name"].partition(".")[0] in obj_names)
         }  # F5(C6b): 仅跳过可归并点分子键——ph 占位 1.0 经 _expand_dotted 深合并会覆盖已真填的嵌套值；
         # hydro 族扁平点分键（前缀不命中 object 字段名）照常占位落盘
         if need:
@@ -254,9 +250,30 @@ def ws(tmp_path_factory):
         10: f"## 10 结论\n\n{SEC}\n\n本次估算工业矿石量 {slot('L9.total_ore_wt')} 万吨，与正文第 1、8 章一致。\n\n### 10.1 主要成果\n\n{SEC}\n",
     }
     # bug-2225 目录覆盖门：补齐 STAGE toc 全部节号骨架（手写章节保留槽位/断言内容）
+    # bug-3036 门 v2 三向校验（编号同须标题相符 + 契约外节号拦截）→ 手写标题重写为 toc 真题、骨架带真题
     _num_re = re.compile(r"\d+\.\d+(?:\.\d+)?")
     _heading_re = re.compile(r"^#{2,4}\s+(\d+(?:\.\d+)+)")
+    _heading_full_re = re.compile(r"^(#{2,4}\s+)(\d+(?:\.\d+)+)\s*")
+
+    def _toc_titles(n: int) -> dict[str, str]:
+        out: dict[str, str] = {}
+        for sub in _stage["chapters"][f"ch{n}"].get("toc", []):
+            for piece in re.split(r"[/／]", sub):
+                m = re.match(r"^(\d+(?:\.\d+)*)\s*(.*)", piece.strip())
+                if m and m.group(2):
+                    out.setdefault(m.group(1), m.group(2).split("（")[0].split("(")[0].strip())
+        return out
+
     for n, md in list(chapters.items()):
+        titles = _toc_titles(n)
+
+        def _retitle(ln: str, _t: dict[str, str] = titles) -> str:
+            m = _heading_full_re.match(ln)
+            if m and m.group(2) in _t:
+                return f"{m.group(1)}{m.group(2)} {_t[m.group(2)]}"
+            return ln
+
+        md = "\n".join(_retitle(ln) for ln in md.splitlines())
         have = {m.group(1) for ln in md.splitlines() if (m := _heading_re.match(ln.strip()))}
         extra = []
         for sub in _stage["chapters"][f"ch{n}"].get("toc", []):
@@ -264,7 +281,7 @@ def ws(tmp_path_factory):
                 if no in have:
                     continue
                 have.add(no)
-                extra.append(f"{'###' if no.count('.') == 1 else '####'} {no} 小节\n\n{SEC}")
+                extra.append(f"{'###' if no.count('.') == 1 else '####'} {no} {titles.get(no, '小节')}\n\n{SEC}")
         if extra:
             chapters[n] = md.rstrip("\n") + "\n\n" + "\n\n".join(extra) + "\n"
     for n, md in chapters.items():
@@ -440,6 +457,25 @@ class TestIngest:
         out = run("ingest.py", "check", "--stage", STAGE, "--data-dir", d, expect=(2,))
         assert "tenement" in out  # 空清单仍要报缺
 
+    def test_check_qc_list_shape_no_crash(self, tmp_path):
+        """bug-3058（复核 P2）：exploration_qc 顶层行数组（CSV 摄入形状）不得让质量门
+        AttributeError 裸崩（.get 缺 dict 守卫——崩会被 agent 误判「数据损坏」转手写 data/）。"""
+        d = tmp_path / "d"
+        d.mkdir()
+        run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
+        spec = json.loads(STAGE.read_text(encoding="utf-8"))["forms"].get("exploration_qc")
+        assert spec, "stage 应有 exploration_qc 族（否则本测试空转）"
+        (d / spec["file"]).write_text('[{"row": 1}]', encoding="utf-8")
+        r = subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "check", "--stage", str(STAGE), "--data-dir", str(d)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        assert "AttributeError" not in r.stdout + r.stderr, f"行数组顶层不应崩溃\n{r.stdout[-500:]}\n{r.stderr[:300]}"
+        assert r.returncode == 2  # 其余空白表单仍报缺项
+
     def test_null_required_field_passthrough(self, tmp_path):
         """bug-2216: 必填字段 null 直通写入（部分收集落盘），门1 仍报缺——
         写入路径若拒绝 null，agent 会被迫用 0/示例值填结构冒充（页面实测）。"""
@@ -511,16 +547,32 @@ class TestIngestDotted:
         d.mkdir()
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
         run(
-            "ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics",
-            "--values", json.dumps({"prices.cu_yuan_t": 51000, "prices.ag_yuan_kg": 3500, "rates.loss_rate": 15, "costs.other_yuan_t": 20.75}, ensure_ascii=False),
+            "ingest.py",
+            "forms",
+            "--stage",
+            STAGE,
+            "--data-dir",
+            d,
+            "--family",
+            "economics",
+            "--values",
+            json.dumps({"prices.cu_yuan_t": 51000, "prices.ag_yuan_kg": 3500, "rates.loss_rate": 15, "costs.other_yuan_t": 20.75}, ensure_ascii=False),
         )
         doc = json.loads((d / "16_economics.json").read_text(encoding="utf-8"))
         assert doc["prices"]["cu_yuan_t"] == 51000
         assert "prices.cu_yuan_t" not in doc  # 顶层不留扁平点分键
         # 第二批补答（指标+可信度）：深合并——第一批子键必须仍在
         run(
-            "ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics",
-            "--values", json.dumps({"credibility.TM": 1.0, "credibility.KZ": 1.0, "credibility.TD": 0.6, "rates.dilution_rate": 10}, ensure_ascii=False),
+            "ingest.py",
+            "forms",
+            "--stage",
+            STAGE,
+            "--data-dir",
+            d,
+            "--family",
+            "economics",
+            "--values",
+            json.dumps({"credibility.TM": 1.0, "credibility.KZ": 1.0, "credibility.TD": 0.6, "rates.dilution_rate": 10}, ensure_ascii=False),
         )
         doc = json.loads((d / "16_economics.json").read_text(encoding="utf-8"))
         assert doc["prices"]["cu_yuan_t"] == 51000
@@ -543,7 +595,10 @@ class TestIngestDotted:
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
         r = subprocess.run(
             [sys.executable, "-X", "utf8", str(SCRIPTS / "ingest.py"), "forms", "--stage", str(STAGE), "--data-dir", str(d), "--family", "economics", "--values", '{"prices.cu_typo": 1}'],
-            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
         )
         assert r.returncode == 1 and "不在 schema 字段清单" in r.stderr, f"{r.stdout}\n{r.stderr}"
 
@@ -578,23 +633,41 @@ class TestIngestDotted:
         d.mkdir()
         run("ingest.py", "forms", "--stage", STAGE, "--data-dir", d)
         ingest.write_form_values(
-            str(STAGE), str(d), "industrial_params",
+            str(STAGE),
+            str(d),
+            "industrial_params",
             {"boundary_grade_cu": 0.2, "min_industrial_grade_cu": 0.4, "min_mining_thickness": 1, "waste_exclusion_thickness": 2, "grade_variation_coeff_range": [40, 120], "outlier_multiple": 7, "deposit_avg_grade": 0.85},
         )
         ingest.write_form_values(
-            str(STAGE), str(d), "block_model",
+            str(STAGE),
+            str(d),
+            "block_model",
             {"granularity": "A", "blocks": [{"orebody": "①", "block_no": "TM-1", "category": "TM", "grade_class": "工业", "area_s_m2": 10000, "avg_thickness_m": 2.0, "grade_c_pct": 0.5, "bulk_density": 2.85}]},
         )
         run(
-            "ingest.py", "forms", "--stage", STAGE, "--data-dir", d, "--family", "economics",
+            "ingest.py",
+            "forms",
+            "--stage",
+            STAGE,
+            "--data-dir",
+            d,
+            "--family",
+            "economics",
             "--values",
             json.dumps(
                 {
-                    "prices.cu_yuan_t": 51000, "prices.ag_yuan_kg": 3500,
-                    "concentrate.grade_cu_pct": 17.46, "concentrate.grade_ag_gpt": 98.07,
-                    "credibility.TM": 1.0, "credibility.KZ": 1.0, "credibility.TD": 0.6,
-                    "rates.loss_rate": 15, "rates.dilution_rate": 10,
-                    "costs.mining_yuan_t": 45, "costs.beneficiation_yuan_t": 60, "costs.other_yuan_t": 20.75,
+                    "prices.cu_yuan_t": 51000,
+                    "prices.ag_yuan_kg": 3500,
+                    "concentrate.grade_cu_pct": 17.46,
+                    "concentrate.grade_ag_gpt": 98.07,
+                    "credibility.TM": 1.0,
+                    "credibility.KZ": 1.0,
+                    "credibility.TD": 0.6,
+                    "rates.loss_rate": 15,
+                    "rates.dilution_rate": 10,
+                    "costs.mining_yuan_t": 45,
+                    "costs.beneficiation_yuan_t": 60,
+                    "costs.other_yuan_t": 20.75,
                     "capacity_10kt_a": 80,
                 },
                 ensure_ascii=False,
@@ -719,6 +792,23 @@ class TestFormulaRunner:
         assert "CHANGED_FORMULAS" in ws["upd"] and "C9" in ws["upd"]
         v = ws["formula_state_post"]["values"]["C9.outlier_threshold"]["value"]
         assert abs(v - 6.80) < 0.006, f"C9 应 5.95→6.80, got {v}"
+
+    def test_emit_rejects_junk_key_and_nonfinite(self):
+        """bug-3036 根因①配套：冻结层不产垃圾槽位——循环变量名键/表达式串键/空 display/NaN 就地抛。"""
+        import formula_runner as fr
+
+        good = {"C9.outlier_threshold": {"value": 6.8, "display": "6.80", "unit": "%", "source": "formula:C9"}, "L8.C_orebody[①]": {"value": 0.52, "display": "0.52", "unit": "%", "source": "formula:L8"}}
+        fr.write_state(Path(tempfile.mkdtemp()) / "fs.json", good, [])
+        for bad_key in ("key", "val", "a+b", "has space", ""):
+            bad = {bad_key: {"value": 1.0, "display": "1", "unit": "", "source": "formula:X"}}
+            with pytest.raises(ValueError, match="键形非法"):
+                fr.write_state(Path(tempfile.mkdtemp()) / "fs.json", bad, [])
+        with pytest.raises(ValueError, match="display 为空"):
+            fr.write_state(Path(tempfile.mkdtemp()) / "fs.json", {"E4.price_conc": {"value": 1.0, "display": "", "unit": "", "source": "formula:E4"}}, [])
+        with pytest.raises(ValueError, match="非对象"):
+            fr.write_state(Path(tempfile.mkdtemp()) / "fs.json", {"junk": 42}, [])
+        with pytest.raises(ValueError, match="Out of range|NaN|-?Infinity"):
+            fr.write_state(Path(tempfile.mkdtemp()) / "fs.json", {"X.nan": {"value": float("nan"), "display": "nan", "unit": "", "source": "formula:X"}}, [])
 
 
 # ── 3. stage schema：sections 逐节要素链与 toc 对齐（bug-2221 骨架防漂移）─────
@@ -940,6 +1030,13 @@ class TestGateHardening:
         filler = "本章为防绕回归专用的合成薄章节正文，语句仅用于满足每节三句的深度门下限，不承载地质含义。全段不含缺数标记，覆盖缩放恒为一点零，目标固定为样例中位数乘以系数。有效字符总量压到该目标之下，用于验证直调也吃真基准。"
         stage = json.loads(STAGE.read_text(encoding="utf-8"))
         num_re = _re.compile(r"\d+\.\d+(?:\.\d+)?")
+        # bug-3036 门 v2：编号同须标题相符 → 骨架标题取 toc 真题（复合条目首片在（处截断）
+        titles: dict[str, str] = {}
+        for sub in stage["chapters"]["ch10"]["toc"]:
+            for piece in _re.split(r"[/／]", sub):
+                m = _re.match(r"^(\d+(?:\.\d+)*)\s*(.*)", piece.strip())
+                if m and m.group(2):
+                    titles.setdefault(m.group(1), m.group(2).split("（")[0].split("(")[0].strip())
         md = ["## 10 结论", "", filler]
         seen: set[str] = set()
         for sub in stage["chapters"]["ch10"]["toc"]:
@@ -947,7 +1044,7 @@ class TestGateHardening:
                 if no in seen:
                     continue
                 seen.add(no)
-                md += [f"{'###' if no.count('.') == 1 else '####'} {no} 小节", "", filler]
+                md += [f"{'###' if no.count('.') == 1 else '####'} {no} {titles.get(no, '')}".rstrip(), "", filler]
         (st / "chapters" / "ch10.md").write_text("\n".join(md) + "\n", encoding="utf-8")
 
 
@@ -1056,6 +1153,72 @@ class TestBuildOutput:
         )
         assert r.returncode == 1 and "首行必须是" in r.stderr, r.stderr
 
+    def test_delivery_manifest_chapter_depth_not_duplicated(self, ws):
+        """bug-3058（复核 P1×4）：main() 两次 assemble 共享同一 depth_rows 引用——
+        修复前 manifest.chapter_depth 每章两行。二连 build 后仍须恰 10 行（每章一行）。"""
+        m = json.loads((ws["out"] / "delivery_manifest.json").read_text(encoding="utf-8"))
+        rows = m["chapter_depth"]
+        assert len(rows) == 10, f"chapter_depth 应 10 行，实得 {len(rows)}"
+        assert {r["chapter"] for r in rows} == {f"ch{i}" for i in range(1, 11)}
+
+    def test_consistency_fail_invalidates_stale_manifest(self, ws, tmp_path):
+        """bug-3058（复核 P1）：一致性门 FAIL 时旧 delivery_manifest 必须一并作废——
+        名字级交付门只查 manifest 在场+交付名，旧 sha 凭据不得为未过门的新报告放行。"""
+        st = self._copy_chapters(ws, tmp_path)
+        out = tmp_path / ws["deliv"]
+        self._build_ok(ws, st, out)
+        assert (out.parent / "delivery_manifest.json").exists()
+        # XS6 冲突：ch2 内嵌同标签不同值（ch1 槽位 14.25）→ 一致性合约 FAIL
+        ch2 = st / "chapters" / "ch2.md"
+        ch2.write_text(ch2.read_text(encoding="utf-8") + "\n补充叙述：工业矿石量 999 万吨，与第 1 章口径一致。本段仅用于触发跨章一致性冲突校验门。该句为测试注入内容，不含真实地质数据。\n", encoding="utf-8")
+        r = self._build_raw(ws, st, out)
+        assert r.returncode == 1 and "一致性合约门 FAIL" in r.stderr, r.stderr
+        assert not (out.parent / "delivery_manifest.json").exists(), "旧 manifest 未作废——stale 凭据放行通道仍开"
+
+    def test_body_split_line_anchored(self, ws, tmp_path):
+        """bug-3058（复核 P2）：body 切分按行首锚——章节正文行中段出现附录标记不得把
+        其后章节截出 25 合约检查范围。"""
+        st = self._copy_chapters(ws, tmp_path)
+        ch3 = st / "chapters" / "ch3.md"
+        lines = ch3.read_text(encoding="utf-8").splitlines()
+        for i, ln in enumerate(lines):
+            if ln.startswith("### "):
+                lines[i] = ln + "\n\n参见 ## 合规性附录（脚本自动生成） 中汇总说明的格式要求，本节叙述保持规范。勘查资料整理符合规范要求，质量可靠。"
+                break
+        ch3.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        out = tmp_path / ws["deliv"]
+        r = self._build_raw(ws, st, out)
+        assert r.returncode == 0 and "BUILD_READY" in r.stdout, r.stderr
+        body = (st / "consistency_body.md").read_text(encoding="utf-8")
+        assert "## 10 结论" in body, "行中段标记截断了 body——ch4..ch10 逃出合约检查"
+
+    @staticmethod
+    def _build_raw(ws, st, out):
+        return subprocess.run(
+            [sys.executable, "-X", "utf8", str(SCRIPTS / "build_output.py"), "--stage", str(STAGE), "--data-dir", str(ws["data"]), "--state-dir", str(st), "--output", str(out), "--targets", str(_floor_targets())],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+
+    @classmethod
+    def _build_ok(cls, ws, st, out):
+        r = cls._build_raw(ws, st, out)
+        assert r.returncode == 0 and "BUILD_READY" in r.stdout, r.stderr
+
+    def test_manual_numeric_slot_rejected_without_via(self, ws, tmp_path):
+        """bug-3058 复核定案：via=ingest 豁免已删（无合法生产者=自证凭据通道）——
+        数值槽 source=manual 一律 FAIL，修复指引=ingest 修数 → execute 重算。"""
+        st = self._copy_chapters(ws, tmp_path)
+        fs = json.loads((st / "formula_state.json").read_text(encoding="utf-8"))
+        k = next(iter(fs["values"]))
+        fs["values"][k]["source"] = "manual"
+        fs["values"][k]["via"] = "ingest"  # 豁免已删：带 via 也须拒
+        (st / "formula_state.json").write_text(json.dumps(fs, ensure_ascii=False), encoding="utf-8")
+        r = self._build_raw(ws, st, tmp_path / ws["deliv"])
+        assert r.returncode == 1 and "source=manual" in r.stderr, r.stderr
+
 
 # ── 5. consistency：四类合约 + SL2 历史编码回归 ──────────────────────────────
 
@@ -1095,13 +1258,14 @@ class TestConsistency:
         """bug-3040/N19 回归：注入前归一化 {{SLOT:k}m}→{{SLOT:k}}m、{SLOT:k}→{{SLOT:k}}；未知键仍走 FAIL 门。"""
         import build_output
 
-        state = {"values": {
-            "L9.total_ore_wt": {"value": 1234.5, "display": "1234.5", "source": "t"},
-            "L9.total_metal_t": {"value": 8.9, "display": "8.9", "source": "t"},
-        }}
+        state = {
+            "values": {
+                "L9.total_ore_wt": {"value": 1234.5, "display": "1234.5", "source": "t"},
+                "L9.total_metal_t": {"value": 8.9, "display": "8.9", "source": "t"},
+            }
+        }
         unknown: set[str] = set()
-        out = build_output.make_inject({"forms": {}}, tmp_path, state, unknown)(
-            "矿石量 {{SLOT:L9.total_ore_wt}} 万吨；金属量 {SLOT:L9.total_metal_t} t；错配 {{SLOT:L9.total_ore_wt}万吨}")
+        out = build_output.make_inject({"forms": {}}, tmp_path, state, unknown)("矿石量 {{SLOT:L9.total_ore_wt}} 万吨；金属量 {SLOT:L9.total_metal_t} t；错配 {{SLOT:L9.total_ore_wt}万吨}")
         assert "SLOT" not in out, out
         assert "1234.5 万吨" in out and "8.9 t" in out and "1234.5万吨" in out, out
         unknown2: set[str] = set()
@@ -1141,8 +1305,7 @@ class TestConsistency:
 
         eco = {"concentrate": {"grade_cu_pct": 10.0}}
         data = SimpleNamespace(form=lambda name: eco if name == "economics" else {})
-        base = {"L9.total_metal_t": {"value": "8.9", "display": "8.9", "source": "t"},
-                "E4.price_conc": {"value": "60000", "display": "60000", "source": "t"}}
+        base = {"L9.total_metal_t": {"value": "8.9", "display": "8.9", "source": "t"}, "E4.price_conc": {"value": "60000", "display": "60000", "source": "t"}}
         # implied = 8.9 × 60000 / (10/100) = 534 万元；0.0534 亿 × 1e8 = 同量级
         bad = {**base, "E5.gross_potential_yi": {"value": "534000000000", "display": "53.4万亿", "source": "t", "unit": "亿元"}}
         rep = cons.Report()
@@ -1165,10 +1328,12 @@ class TestConsistency:
 
         import consistency as cons
 
-        state = {"values": {
-            "L9.total_ore_wt": {"value": 1234.5, "display": "1234.5", "source": "t"},
-            "L10.diff_wt": {"value": 999, "display": "999", "source": "t"},
-        }}
+        state = {
+            "values": {
+                "L9.total_ore_wt": {"value": 1234.5, "display": "1234.5", "source": "t"},
+                "L10.diff_wt": {"value": 999, "display": "999", "source": "t"},
+            }
+        }
         ch = [("## 1 章", "## 1 章\n工业矿石量 1234.5 万吨"), ("## 8 章", "## 8 章\n工业矿石量 999 万吨")]
         data = SimpleNamespace(form=lambda n: {})
         rep = cons.Report()
@@ -1312,6 +1477,15 @@ class TestGateBatch:
     def test_gate_unknown_chapter_rejected(self, prog):
         rc, _, err = run_raw("progress.py", "gate", "--state-dir", prog["state"], "--chapters", "ch99")
         assert rc == 1 and "未知章节" in err
+
+    def test_manual_mark_verified_rejected(self, ws, prog):
+        """bug-3049：手动 mark VERIFIED 一律拒绝——--gate PASS 是调用方自证，唯一通道=gate 真跑官方门。"""
+        st = _mk_prog_state(prog["base"] / "veto", prog["stage"], ws)
+        for extra in ([], ["--gate", "PASS"]):
+            rc, _, err = run_raw("progress.py", "mark", "ch1", "VERIFIED", "--state-dir", st, *extra)
+            assert rc == 1 and "手动 mark VERIFIED 已禁用" in err and "gate" in err
+            doc = json.loads((st / "progress.json").read_text(encoding="utf-8"))
+            assert doc["chapters"]["ch1"]["status"] == "DRAFTED"  # 状态未被污染
 
 
 class TestRunStage:

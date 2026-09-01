@@ -40,6 +40,14 @@ def run(*args, expect=(0,)):
 def skeleton(stage: dict, ch_id: str, filler: str) -> str:
     ch = stage["chapters"][ch_id]
     n = ch_id[2:]
+    # bug-3059：toc 覆盖门 v2 三向校验（编号同须标题相符）——骨架标题必须取 toc 真题
+    # （复合条目「1.5 以往工作评述（1.5.1 …」在（处截断），不能再用占位「小节」。
+    titles: dict[str, str] = {}
+    for sub in ch.get("toc", []):
+        for piece in re.split(r"[/／]", sub):
+            m = re.match(r"^(\d+(?:\.\d+)*)\s*(.*)", piece.strip())
+            if m and m.group(2):
+                titles.setdefault(m.group(1), m.group(2).split("（")[0].split("(")[0].strip())
     md = [f"## {n} {ch.get('title', '')}", "", filler]
     seen: set[str] = set()
     for sub in ch.get("toc", []):
@@ -47,7 +55,7 @@ def skeleton(stage: dict, ch_id: str, filler: str) -> str:
             if no in seen:
                 continue
             seen.add(no)
-            md += [f"{'###' if no.count('.') == 1 else '####'} {no} 小节", "", filler]
+            md += [f"{'###' if no.count('.') == 1 else '####'} {no} {titles.get(no, '小节')}".rstrip(), "", filler]
     return "\n".join(md) + "\n"
 
 
@@ -110,11 +118,11 @@ def ctrl(tmp_path_factory):
     (slot / "chapters" / "ch1.md").write_text(fat_chapter(stage, "ch1").rstrip() + "\n\n未知槽位引用 {{SLOT:totally_bogus}} 收尾。\n", encoding="utf-8")
     badslot = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", slot, "--chapter", "ch1", expect=(1,))
 
-    # ch1：写够 → DRAFTED → 单章门 PASS → VERIFIED
+    # ch1：写够 → DRAFTED → 单章门 PASS → VERIFIED（bug-3049 后转正唯一通道 = progress.py gate 真跑）
     (state / "chapters" / "ch1.md").write_text(fat_chapter(stage, "ch1"), encoding="utf-8")
     run("progress.py", "mark", "ch1", "DRAFTED", "--state-dir", state)
     gate1 = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--chapter", "ch1")
-    run("progress.py", "mark", "ch1", "VERIFIED", "--state-dir", state, "--gate", "PASS")
+    run("progress.py", "gate", "--state-dir", state, "--chapters", "ch1")
     next2 = run("progress.py", "next", "--state-dir", state).stdout
 
     # ch2：半达标 → DRAFTED → 单章门 FAIL（L2）→ BLOCKED
@@ -124,16 +132,30 @@ def ctrl(tmp_path_factory):
     run("progress.py", "mark", "ch2", "BLOCKED", "--state-dir", state, "--gate", "FAIL", "--detail", "eff 不足目标")
     next3 = run("progress.py", "next", "--state-dir", state).stdout
 
-    # ch3..ch10 写够直接 VERIFIED（本夹具聚焦门/进度交互，不逐章跑门）
+    # ch3..ch10 写够 → DRAFTED → 批量 gate 真跑转正（bug-3049：手动 mark VERIFIED 已禁用）
     for i in range(3, 11):
         (state / "chapters" / f"ch{i}.md").write_text(fat_chapter(stage, f"ch{i}"), encoding="utf-8")
         run("progress.py", "mark", f"ch{i}", "DRAFTED", "--state-dir", state)
-        run("progress.py", "mark", f"ch{i}", "VERIFIED", "--state-dir", state, "--gate", "PASS")
+    run("progress.py", "gate", "--state-dir", state, "--chapters", ",".join(f"ch{i}" for i in range(3, 11)))
+
+    # bug-3059：一致性合约门（XS3/XS5）已接入 build——ch6 骨架须含 hydro 判定词逐字表述与
+    # 采空区两值（与 data/ 11_hydro_eng_env.json 同源，containment 语义见 consistency.py check_xs）。
+    hee = json.loads((data / "11_hydro_eng_env.json").read_text(encoding="utf-8"))
+    tv = hee.get("type_verdicts") or {}
+    goaf = hee.get("engineering.goaf") or {}
+    if tv or goaf:
+        ch6f = state / "chapters" / "ch6.md"
+        supp = (
+            f"水文地质类型为{tv.get('hydro_type', '')}；工程地质类型为{tv.get('engineering_type', '')}；"
+            f"环境地质条件为{tv.get('environment_type', '')}；复合类型为{tv.get('combined_type', '')}。"
+            f"老窑采空区 {goaf.get('count', '')} 个、体积 {goaf.get('volume_wm3', '')} 万 m3。"
+            "本段为一致性合约门回归的合成补充叙述，判定结论与 data/ 同源，不承载额外地质含义。"
+        )
+        ch6f.write_text(ch6f.read_text(encoding="utf-8") + supp + "\n", encoding="utf-8")
     run("progress.py", "confirm-key-points", "--state-dir", state)
     next4 = run("progress.py", "next", "--state-dir", state).stdout  # NEGOTIATE（ch2 未批准）
 
-    project = json.loads((data / "00_project.json").read_text(encoding="utf-8"))
-    deliv = out / f"{project['project_name']}-{project['stage']}-地质勘查报告.md"
+    deliv = out / build_output.expected_deliverable_name(stage, data)  # bug-3059：交付名唯一来源=脚本（阶段词去重）
 
     # 无批准 → --allow-partial 拒绝
     noappr = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--allow-partial", "--output", deliv, expect=(1,))
@@ -147,7 +169,7 @@ def ctrl(tmp_path_factory):
     (state / "chapters" / "ch2.md").write_text(fat_chapter(stage, "ch2"), encoding="utf-8")
     run("progress.py", "mark", "ch2", "DRAFTED", "--state-dir", state)
     revival_gate = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--chapter", "ch2")
-    run("progress.py", "mark", "ch2", "VERIFIED", "--state-dir", state, "--gate", "PASS")
+    run("progress.py", "gate", "--state-dir", state, "--chapters", "ch2")
     clean_build = run("build_output.py", "--stage", STAGE, "--data-dir", data, "--state-dir", state, "--output", deliv)
     clean_manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
 
@@ -246,8 +268,7 @@ class TestPartialDelivery:
         bad = tmp_path / "badstate"
         bad.mkdir()
         (bad / "progress.json").write_text(json.dumps({"chapters": {"ch2": "BLOCKED"}}), encoding="utf-8")
-        proj = json.loads((ctrl["data"] / "00_project.json").read_text(encoding="utf-8"))
-        out = tmp_path / f"{proj['project_name']}-{proj['stage']}-地质勘查报告.md"  # 交付名门先于 allow_partial 分支，须规范名
+        out = tmp_path / build_output.expected_deliverable_name(json.loads(STAGE.read_text(encoding="utf-8")), ctrl["data"])  # 交付名门先于 allow_partial 分支，须规范名（阶段词去重，bug-3059）
         r = run("build_output.py", "--stage", STAGE, "--data-dir", ctrl["data"], "--state-dir", bad, "--allow-partial", "--output", out, expect=(1,))
         assert r.stderr.startswith("[build] 错误:")  # 房风诊断行
         assert "结构损坏" in r.stderr and "手改特征" in r.stderr
@@ -258,8 +279,7 @@ class TestPartialDelivery:
         bad = tmp_path / "nullstate"
         bad.mkdir()
         (bad / "progress.json").write_text(json.dumps({"chapters": {"ch2": {"status": "BLOCKED"}}, "downgrade_approvals": None}), encoding="utf-8")
-        proj = json.loads((ctrl["data"] / "00_project.json").read_text(encoding="utf-8"))
-        out = tmp_path / f"{proj['project_name']}-{proj['stage']}-地质勘查报告.md"
+        out = tmp_path / build_output.expected_deliverable_name(json.loads(STAGE.read_text(encoding="utf-8")), ctrl["data"])  # 阶段词去重，bug-3059
         r = run("build_output.py", "--stage", STAGE, "--data-dir", ctrl["data"], "--state-dir", bad, "--allow-partial", "--output", out, expect=(1,))
         assert r.stderr.startswith("[build] 错误:")
         assert "结构损坏" in r.stderr and "手改特征" in r.stderr

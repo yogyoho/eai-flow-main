@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from decimal import ROUND_HALF_EVEN, Decimal
 from pathlib import Path
@@ -145,7 +146,11 @@ def compute(data: Data) -> tuple[dict, list[str]]:
     anomalies: list[str] = []
 
     def emit(key: str, val: Decimal, dp: str, unit: str, source: str, extra: dict | None = None) -> None:
+        # bug-3036 根因①配套：计算层自身也不得产垃圾槽位——非有限值（NaN/Inf 会经 json 混进
+        # 冻结层）就地抛错（键形/空 display 由 write_state 终检统一把关）。
         d = q(val, dp)
+        if not d.is_finite():
+            raise ValueError(f"emit 拒绝非有限值 {key}={val}（dp={dp}）——检查上游输入缺参/除零（bug-3036）")
         V[key] = {"value": float(d), "display": f"{d}", "unit": unit, "source": source, **(extra or {})}
 
     # ── C9 特高品位下限 ──
@@ -333,7 +338,7 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         if ag_grade is not None and ag_grade.is_finite():
             emit("L11.P_Ag_industrial_kg", tot_ore * ag_grade / THOUSAND, "1", "kg", "formula:L11")
             emit("L11.P_Ag_total_kg", (tot_ore + sum((v[0] for v in low_stats.values()), D0)) * ag_grade / THOUSAND, "1", "kg", "formula:L11")
-        elif p13 and p13.get("byproduct_ag_indicator") is not None:
+        elif p13 and dec(p13.get("byproduct_ag_indicator")).is_finite():
             anomalies.append("L11 用 13.byproduct_ag_indicator（指标值非加权品位）；08a 补 Ag 列后重算")
             emit("L11.P_Ag_industrial_kg", tot_ore * dec(p13["byproduct_ag_indicator"]) / THOUSAND, "1", "kg", "formula:L11")
         # 两者皆无 → L11 跳过（降级路径：呈现层 [待确认] 槽位）
@@ -428,10 +433,27 @@ def compute(data: Data) -> tuple[dict, list[str]]:
 
 # ── 状态落盘/差分 ───────────────────────────────────────────────────────────
 
+# 槽位键形（bug-3036）：C9.outlier_threshold / L8.C_orebody[①] / S1.n_industrial；
+# 拒绝循环变量名（"key"/"val"/…）与表达式串（含空白/运算符）——LLM 直写特征形状。
+_SLOT_KEY_RE = re.compile(r"^[A-Za-z]\w*(?:\.\w+)*(?:\[[^\]\s]+\])?$")
+_JUNK_KEYS = {"key", "val", "value", "x", "tmp", "result", "display", "unit", "source"}
+
+
 def write_state(path: Path, values: dict, anomalies: list[str]) -> None:
+    # 落盘前终检（bug-3036）：键形、空/缺失 display、非对象槽位、非有限数值就地拦——冻结层
+    # （唯一写者=本脚本）不得产出 LLM 直写特征形状。allow_nan=False 使 NaN/Inf 序列化即抛
+    # （Python 默认写出裸 NaN 是非法 JSON，下游 json.loads 虽容忍但交付链不认）。
+    for key, slot in values.items():
+        if key in _JUNK_KEYS or not _SLOT_KEY_RE.match(key):
+            raise ValueError(f"槽位键形非法 {key!r}（形如 C9.outlier_threshold / L8.C_orebody[①]；bug-3036）")
+        if not isinstance(slot, dict):
+            raise ValueError(f"槽位 {key} 非对象——emit 是唯一合法形状来源（bug-3036）")
+        disp = slot.get("display")
+        if disp is None or not str(disp).strip():
+            raise ValueError(f"槽位 {key} display 为空——空槽位禁入冻结层（bug-3036）")
     doc = {"version": 2, "values": values, "anomalies": anomalies}
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(json.dumps(doc, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
 
 
 def diff_values(old: dict, new: dict) -> dict[str, str]:
@@ -475,10 +497,16 @@ def cmd_execute(args) -> int:
         return EXIT_ERROR
     try:
         values, anomalies = compute(_load(args))
+        write_state(out, values, anomalies)
     except KeyError as e:
         print(f"[formula] 错误: {e}", file=sys.stderr)
         return EXIT_ERROR
-    write_state(out, values, anomalies)
+    except ValueError as e:
+        # 复核修复（bug-3058）：write_state 终检（键形/display/非有限值）不再裸 traceback——
+        # 键形非法多因数据标签含空白/特殊字符（如钻孔号 "ZK 0701"）或缺 display，给出可动手指引。
+        print(f"[formula] 错误: {e}", file=sys.stderr)
+        print("[formula] 提示: 键形非法多因 data/ 源数据标签含空白或特殊字符——清洗源数据（ingest.py file/forms）后重跑 execute；冻结层禁止手改", file=sys.stderr)
+        return EXIT_ERROR
     print(f"STATE_READY: {out} slots={len(values)} anomalies={len(anomalies)}")
     for a in anomalies:
         print(f"  ANOMALY: {a}")
