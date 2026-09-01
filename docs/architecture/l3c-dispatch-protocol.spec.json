@@ -1,0 +1,76 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "L3c 章节派发协议",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1240, 540]
+  },
+  "lanes": [
+    { "id": "session", "label": "控制器主会话" },
+    { "id": "subagent", "label": "子代理" },
+    { "id": "scripts", "label": "脚本" }
+  ],
+  "phases": [
+    { "id": "phase_loop", "label": "wave1 写作循环", "fromCol": 0, "toCol": 3, "variant": "emphasis" },
+    { "id": "phase_close", "label": "wave2 收束 · 记账", "fromCol": 4, "toCol": 5 }
+  ],
+  "mainPath": ["read_progress", "wave1", "write_ch", "ch_gate", "wave2", "ledger"],
+  "semanticChecks": {
+    "allowedRoots": ["read_progress"],
+    "allowedTerminals": ["ledger"],
+    "requiredEdges": [
+      { "from": "ch_gate", "to": "wave1" },
+      { "from": "ch_gate", "to": "wave2" },
+      { "from": "ch_gate", "to": "downgrade" },
+      { "from": "wave2", "to": "ledger" },
+      { "from": "downgrade", "to": "ledger" }
+    ]
+  },
+  "nodes": [
+    { "id": "read_progress", "lane": "session", "col": 0, "type": "backend", "label": "读 progress.json", "sublabel": "progress.py next", "tag": "唯一事实源 · 不信对话记忆", "width": 178 },
+    { "id": "wave1", "lane": "session", "col": 1, "type": "messagebus", "label": "wave1 全扇出派发", "sublabel": "batch_task(title, items)", "tag": "每章写够 · 禁薄初稿", "width": 180 },
+    { "id": "write_ch", "lane": "subagent", "col": 2, "type": "backend", "label": "子代理写章", "sublabel": "state/chapters/chN.md", "tag": "缺数标 [待确认]", "width": 168 },
+    { "id": "ch_gate", "lane": "scripts", "col": 3, "type": "security", "label": "单章门", "sublabel": "build_output --chapter N", "tag": "rc=0 达标 / rc=1 拦", "width": 184 },
+    { "id": "wave2", "lane": "subagent", "col": 4, "type": "backend", "label": "wave2 结论收束", "sublabel": "要点包 → ch10 结论", "tag": "不引 wave1 外新数字", "width": 178 },
+    { "id": "downgrade", "lane": "scripts", "col": 4, "type": "database", "label": "批准降档", "sublabel": "progress.py approve-downgrade", "tag": "用户批准 · 差距留痕", "width": 192 },
+    { "id": "ledger", "lane": "scripts", "col": 5, "type": "database", "label": "记账 progress.json", "sublabel": "唯一写者 progress.py", "tag": "VERIFIED / partial 留痕", "width": 186 }
+  ],
+  "edges": [
+    { "id": "e_read_wave1", "from": "read_progress", "to": "wave1", "variant": "default", "role": "main", "fromSide": "right", "toSide": "left" },
+    { "id": "e_wave1_write", "from": "wave1", "to": "write_ch", "variant": "default", "role": "main", "fromSide": "right", "toSide": "top" },
+    { "id": "e_write_gate", "from": "write_ch", "to": "ch_gate", "variant": "default", "role": "main", "fromSide": "bottom", "toSide": "left" },
+    { "id": "e_gate_wave1", "from": "ch_gate", "to": "wave1", "label": "未达标补写", "variant": "dashed", "role": "error", "fromSide": "bottom", "toSide": "bottom" },
+    { "id": "e_gate_wave2", "from": "ch_gate", "to": "wave2", "label": "达标", "variant": "emphasis", "role": "main", "fromSide": "top", "toSide": "bottom" },
+    { "id": "e_wave2_ledger", "from": "wave2", "to": "ledger", "variant": "emphasis", "role": "main", "fromSide": "right", "toSide": "top" },
+    { "id": "e_gate_downgrade", "from": "ch_gate", "to": "downgrade", "label": "申请降档", "variant": "default", "role": "branch", "fromSide": "right", "toSide": "left" },
+    { "id": "e_downgrade_ledger", "from": "downgrade", "to": "ledger", "label": "partial 留痕", "variant": "default", "role": "branch", "fromSide": "right", "toSide": "left" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Iron Law",
+      "items": [
+        "门 FAIL 唯一合法出路=补写正文或申请降档",
+        "改 references/ 或绕 build CLI = 伪造基准"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "控制器模式",
+      "items": [
+        "主会话薄上下文只协调不写章",
+        "只信 state/ 文件与 progress.json"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Excuse ≠ Reality",
+      "items": [
+        "「基准不合理我调一下」=违反红线",
+        "「先跑通再补深度」=死循环起点"
+      ]
+    }
+  ]
+}
