@@ -44,3 +44,10 @@ def test_overlapping_matches_keep_first():
     clean, events = redact_text(md)
     assert "云南" in clean or MASK in clean  # 不崩溃即可；重叠命中只记一条
     assert len([e for e in events if e["replaced"]]) == 1
+
+
+def test_uscc_pure_digits_negative():
+    """uscc 字符集要求含字母——纯 18 位数字串不得命中（质量审查指定的最高价值负样本）。"""
+    clean, events = redact_text("编号123456789012345678号")
+    assert events == []
+    assert "123456789012345678" in clean

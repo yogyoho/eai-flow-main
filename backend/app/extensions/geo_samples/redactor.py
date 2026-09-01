@@ -24,6 +24,10 @@ RULES: list[tuple[str, re.Pattern[str], str]] = [
     ("phone", _p(r"(?<!\d)1[3-9]\d{9}(?!\d)"), "auto"),
     ("tel", _p(r"(?<![0-9A-Za-z])0\d{2,3}-\d{7,8}(?![0-9A-Za-z])"), "auto"),
     ("email", _p(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"), "auto"),
+    # 已知误伤（auto 档不可逆，Phase 2 调优）：
+    # ① 泛后缀前缀误并——"提交本院设计院审核" 整段被 mask（动词并入）；
+    # ② 前缀字符类不含 ASCII——"云南XX勘查院有限公司" 只 mask "勘查院有限公司"，泄漏 "云南XX"；
+    # ③ 后缀字典刻意最小——"云南省煤田地质局"（局类后缀）零命中。调优 backlog 见 Phase 2。
     ("org_name", _p(r"[一-龥（）()]{2,24}(?:有限公司|股份有限公司|集团有限公司|勘查院|勘察院|研究院|设计院|地质队|地质大队)"), "auto"),
     # ── review 档：高误报，只标记待审 ──
     ("person_field", _p(r"(?:负责人|编制人|审核人|审查人|项目经理|技术负责人)[：:]\s*[一-龥]{2,4}"), "review"),
@@ -31,7 +35,10 @@ RULES: list[tuple[str, re.Pattern[str], str]] = [
 
 
 def redact_text(md: str) -> tuple[str, list[dict]]:
-    """返回 (脱敏后文本, 事件列表)。事件含 rule/mode/start/end/original_hash/replaced。"""
+    """返回 (脱敏后文本, 事件列表)。事件含 rule/mode/start/end/original_hash/replaced。
+
+    start/end 为原文（work/parsed.md）偏移，非脱敏后文本偏移（auto 替换后两者不再对应）。
+    """
     spans: list[tuple[int, int, str, str]] = []  # (start, end, rule, mode)
     for rule, rx, mode in RULES:
         for m in rx.finditer(md):

@@ -53,7 +53,10 @@ class GsbDocument(Base):
 
 
 class GsbRedaction(Base):
-    """脱敏事件流水——只落位置与原文 hash，绝不落明文。"""
+    """脱敏事件流水——只落位置与原文 hash，绝不落明文。
+
+    start/end 为原文（work/parsed.md）偏移，非脱敏后文本偏移（auto 替换后两者不再对应）。
+    """
 
     __tablename__ = "gsb_redactions"
 
