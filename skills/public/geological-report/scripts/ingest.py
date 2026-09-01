@@ -335,7 +335,7 @@ def cmd_forms(args) -> int:
             print(f"[ingest] 错误: JSON 表单用 --values '{{...}}'", file=sys.stderr)
             return EXIT_ERROR
         values = json.loads(args.values)
-        spec = {**spec, "_stage": stage.get("stage", "exploration")}
+        spec = {**spec, "_stage": Path(args.stage).stem or "exploration"}  # bug-3061: schema 标签=文件名，非 stage 中文名
         errors = validate_values(spec, values)
         if errors:
             for e in errors:
@@ -371,7 +371,7 @@ def cmd_forms(args) -> int:
             atomic_write_text(target, ",".join(spec["columns"]))
             fmt = "csv"
         else:
-            atomic_write_text(target, blank_json({**spec, "_stage": stage.get("stage", "exploration")}, fam))
+            atomic_write_text(target, blank_json({**spec, "_stage": Path(args.stage).stem or "exploration"}, fam))  # bug-3061
             fmt = "json"
         register_file(data_dir, fname, fam, spec.get("required", True), fmt)
         written += 1
@@ -706,7 +706,7 @@ def write_form_values(stage_path: str, data_dir: str, family: str, values: dict)
     """编程入口：等价于 `forms --family X --values '{...}'`。校验失败抛 ValueError。"""
     stage = load_stage(Path(stage_path))
     spec = stage["forms"][family]
-    errors = validate_values({**spec, "_stage": stage.get("stage", "exploration")}, values)
+    errors = validate_values({**spec, "_stage": Path(stage_path).stem or "exploration"}, values)  # bug-3061
     if errors:
         raise ValueError("; ".join(errors))
     ddir = Path(data_dir)
@@ -714,7 +714,7 @@ def write_form_values(stage_path: str, data_dir: str, family: str, values: dict)
     if contracts:
         print(f"DELIVERY_CONTRACT: {len(contracts)} 个 outputs/ 已标记（交付门判据，勿删，bug-2225）")
     target = ddir / family_filename(spec)
-    doc = json.loads(target.read_text(encoding="utf-8")) if target.exists() else json.loads(blank_json({**spec, "_stage": stage.get("stage", "exploration")}, family))
+    doc = json.loads(target.read_text(encoding="utf-8")) if target.exists() else json.loads(blank_json({**spec, "_stage": Path(stage_path).stem or "exploration"}, family))  # bug-3061
     _merge_values(doc, _expand_dotted(values, spec))
     doc.setdefault("_meta", {})["status"] = "filled"
     atomic_write_text(target, json.dumps(doc, ensure_ascii=False, indent=2))
