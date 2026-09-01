@@ -84,3 +84,31 @@ async def test_run_redact_writes_clean_and_summary(monkeypatch):
 
     assert doc.status == "redacted"
     assert doc.redaction_summary is not None and "exploration_cert" in doc.redaction_summary
+
+
+@pytest.mark.asyncio
+async def test_run_parse_survives_finish_run_failure(monkeypatch):
+    """⚡调整2 回归：finish_run 记账失败不得改写已提交状态、不得向调用方抛出。"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.extensions.geo_samples import service
+    from app.extensions.geo_samples.models import GsbDocument
+
+    doc = GsbDocument(report_id="r4", file_name="a.docx", file_hash="h", file_type="docx", status="uploaded", raw_uri="s3://geo-samples/raw/r4/a.docx")
+    db = MagicMock()
+    db.commit = AsyncMock()
+
+    async def _get(db_, did):
+        return doc
+
+    async def _accounting_boom(*a, **k):
+        raise RuntimeError("ledger exploded")
+
+    monkeypatch.setattr(service.crud, "get_document", _get)
+    monkeypatch.setattr(service.storage, "get_object", lambda uri: b"docx-bytes")
+    monkeypatch.setattr(service.parsers, "parse_document", AsyncMock(return_value=("# 报告", "docx")))
+    monkeypatch.setattr(service.storage, "put_work", lambda rid, data: f"s3://geo-samples/work/{rid}/parsed.md")
+    monkeypatch.setattr(service.crud, "finish_run", _accounting_boom)
+
+    await service.run_parse(db, "doc-4", run_id="run-4")  # 不得抛出
+    assert doc.status == "parsed"

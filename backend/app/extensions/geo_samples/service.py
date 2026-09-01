@@ -2,6 +2,8 @@
 # Phase 1 无 skill 依赖——解析/脱敏全部 in-process async；compile 子进程模式留 Phase 2。
 # ⚡ 调整 1：storage 的阻塞 MinIO 调用一律 asyncio.to_thread（本仓库有 blocking-IO 门，
 #   T3 质量审查指定；parsers 的 CPU 重活已在 parsers.parse_document 内部 to_thread）。
+# ⚡ 调整 3（质量审查 Important）：except 路径先 rollback 再守护式 commit——原异常可能
+#   本身就是 DB 故障（PendingRollbackError/InterfaceError），裸 commit 会二次抛并丢失失败落账。
 from __future__ import annotations
 
 import asyncio
@@ -11,6 +13,7 @@ import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from . import crud, parsers, storage
+from .redactor import redact_text
 
 log = logging.getLogger("geo_samples.service")
 
@@ -28,7 +31,7 @@ async def _finish_run(db: AsyncSession, run_id: str, status: str, detail: str | 
 
 
 async def run_parse(db: AsyncSession, document_id: str, run_id: str) -> None:
-    """后台任务：raw → md（work/）。任何异常 → status=failed + run 落账，不抛出。"""
+    """后台任务：raw → md（work/）。任何异常 → status=failed + run 落账，除 db 会话彻底不可用外不向调用方抛出。"""
     doc = await crud.get_document(db, document_id)
     if doc is None:
         await _finish_run(db, run_id, "failed", "document not found")
@@ -42,18 +45,24 @@ async def run_parse(db: AsyncSession, document_id: str, run_id: str) -> None:
         await db.commit()
         await _finish_run(db, run_id, "done", f"mode={mode}")
     except Exception as exc:  # noqa: BLE001 —— 后台任务必须吞异常落账
-        log.exception("parse failed for %s", doc.report_id)
+        log.exception("parse failed for %s (%s)", getattr(doc, "report_id", "?"), document_id)
+        try:
+            await db.rollback()
+        except Exception:  # noqa: BLE001
+            log.exception("rollback failed after parse failure (%s)", document_id)
         doc.status = "failed"
         doc.parse_mode = "failed"
-        await db.commit()
-        await _finish_run(db, run_id, "failed", str(exc))
+        try:
+            await db.commit()
+        except Exception:  # noqa: BLE001
+            log.exception("failure-status commit failed (%s) — doc keeps prior status", document_id)
+        await _finish_run(db, run_id, "failed", f"{type(exc).__name__}: {exc}")
 
 
 async def run_redact(db: AsyncSession, document_id: str, run_id: str) -> None:
     """后台任务：work/parsed.md → 规则脱敏 → clean/source.md + 事件流水。
-    事件与 doc 状态在同一 commit 原子落库（crud.add_redactions 不自行 commit）。"""
-    from .redactor import redact_text
-
+    事件与 doc 状态在同一 commit 原子落库（crud.add_redactions 不自行 commit）；
+    异常 → status=failed + run 落账，除 db 会话彻底不可用外不向调用方抛出。"""
     doc = await crud.get_document(db, document_id)
     if doc is None:
         await _finish_run(db, run_id, "failed", "document not found")
@@ -71,10 +80,17 @@ async def run_redact(db: AsyncSession, document_id: str, run_id: str) -> None:
         await db.commit()
         await _finish_run(db, run_id, "done", json.dumps(summary, ensure_ascii=False))
     except Exception as exc:  # noqa: BLE001
-        log.exception("redact failed for %s", doc.report_id)
+        log.exception("redact failed for %s (%s)", getattr(doc, "report_id", "?"), document_id)
+        try:
+            await db.rollback()
+        except Exception:  # noqa: BLE001
+            log.exception("rollback failed after redact failure (%s)", document_id)
         doc.status = "failed"
-        await db.commit()
-        await _finish_run(db, run_id, "failed", str(exc))
+        try:
+            await db.commit()
+        except Exception:  # noqa: BLE001
+            log.exception("failure-status commit failed (%s) — doc keeps prior status", document_id)
+        await _finish_run(db, run_id, "failed", f"{type(exc).__name__}: {exc}")
 
 
 async def apply_review(db: AsyncSession, document_id: str, decision: str, note: str | None) -> None:
