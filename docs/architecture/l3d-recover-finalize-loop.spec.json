@@ -26,7 +26,7 @@
   },
   "nodes": [
     { "id": "verify", "lane": "session", "col": 0, "type": "security", "label": "恢复或开新", "sublabel": "snapshot.py show --verify", "tag": "rc=3=被篡改即停 · 续做/新任务", "width": 178 },
-    { "id": "build", "lane": "scripts", "col": 1, "type": "messagebus", "label": "原子组装 · 槽位注入", "sublabel": "build_output.py", "tag": "未知 SLOT FAIL · 覆盖门 v2 · 深度地板", "width": 196 },
+    { "id": "build", "lane": "scripts", "col": 1, "type": "messagebus", "label": "原子组装 · 槽位注入", "sublabel": "build_output.py", "tag": "未知SLOT FAIL·覆盖门v2·残留扫描·深度地板", "width": 196 },
     { "id": "consistency", "lane": "scripts", "col": 2, "type": "security", "label": "22 合约一致性校验", "sublabel": "consistency.py", "tag": "0 过 / 1 FAIL / 2 需人工 / 3 WARN", "width": 186 },
     { "id": "snapshot", "lane": "scripts", "col": 3, "type": "database", "label": "版本快照落盘", "sublabel": "snapshot.py save", "tag": "project_snapshot.json · 全文件 SHA-256", "width": 188 },
     { "id": "manifest", "lane": "scripts", "col": 4, "type": "database", "label": "manifest 在场确认", "sublabel": "outputs/delivery_manifest.json", "tag": "在场才可交付 · FAIL 作废旧档", "width": 196 },
