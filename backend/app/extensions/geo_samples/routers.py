@@ -1,0 +1,151 @@
+# EAI-CUSTOM: forked from app.extensions.contract_price.routers (geo-sample-bank Phase 1).
+# 所有端点统一 require_permission("geo_samples:access")（最粗粒度，与 cpa 模式一致；
+# 细粒度审核权限留待有真实角色需求再加）。
+"""Geo sample bank management API — all functional areas.
+
+Mounted into the Gateway under ``/api/extensions/geo-samples``. Endpoints:
+
+  Functional area 1 (documents): GET /documents, GET /documents/{document_id},
+                                 POST /documents/upload
+  Functional area 2 (pipeline)  : POST /documents/{document_id}/parse,
+                                 POST /documents/{document_id}/redact
+  Functional area 3 (review)    : GET /documents/{document_id}/redactions,
+                                 POST /documents/{document_id}/review
+  Functional area 4 (tasks)     : GET /runs
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.extensions.auth.middleware import require_permission
+from app.extensions.database import get_db
+
+from . import crud, schemas, service, storage
+
+router = APIRouter(prefix="/api/extensions/geo-samples", tags=["Geo Sample Bank"])
+_PERM = Depends(require_permission("geo_samples:access"))
+
+
+# --- Functional area 1: documents -------------------------------------------
+
+
+@router.get("/documents")
+async def list_documents(stage: str | None = None, mineral: str | None = None, status: str | None = None, skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    rows = await crud.list_documents(db, stage=stage, mineral=mineral, status=status, skip=skip, limit=limit)
+    return {"items": [schemas.DocumentOut.model_validate(r).model_dump() for r in rows], "skip": skip, "limit": limit}
+
+
+@router.get("/documents/{document_id}")
+async def get_document(document_id: str, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    doc = await crud.get_document(db, document_id)
+    if doc is None:
+        raise HTTPException(404, "样例不存在")
+    return schemas.DocumentOut.model_validate(doc).model_dump()
+
+
+@router.post("/documents/upload")
+async def upload_document(
+    background: BackgroundTasks,
+    file: UploadFile = File(...),
+    report_id: str = Form(...),
+    stage: str = Form("exploration"),
+    mineral: str = Form("copper"),
+    year: int | None = Form(None),
+    region: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
+    _: object = _PERM,
+):
+    name = file.filename or ""
+    if not name.lower().endswith((".docx", ".pdf")):
+        raise HTTPException(400, "仅支持 .docx/.pdf")
+    try:
+        meta = schemas.UploadMeta(report_id=report_id, stage=stage, mineral=mineral, year=year, region=region)
+    except ValidationError as exc:
+        raise HTTPException(400, f"样例元数据非法：{exc.errors()[0].get('msg', 'validation error')}") from exc
+    if meta.stage not in schemas.ALLOWED_STAGES or meta.mineral not in schemas.ALLOWED_MINERALS:
+        raise HTTPException(400, "stage/mineral 取值非法")
+    if await crud.get_document_by_report_id(db, meta.report_id):
+        raise HTTPException(409, f"report_id {meta.report_id} 已存在")
+    data = await file.read()
+    digest = hashlib.sha256(data).hexdigest()
+    dup = await crud.find_duplicate_document(db, digest, exclude_uri=None)
+    if dup is not None:
+        raise HTTPException(409, "相同内容的样例已存在（file_hash 命中）")
+    file_type = "docx" if name.lower().endswith(".docx") else "pdf"
+    # storage.put_raw 是阻塞 MinIO 调用——必须 asyncio.to_thread（blocking-IO 门，同 service.py 约定）。
+    raw_uri = await asyncio.to_thread(storage.put_raw, meta.report_id, name, data)
+    doc = schemas.DocumentOut.model_validate(
+        await crud.create_document(db, report_id=meta.report_id, file_name=name, file_hash=digest, file_type=file_type, stage=meta.stage, mineral=meta.mineral, year=meta.year, region=meta.region, raw_uri=raw_uri)
+    )
+    await crud.sweep_stale_runs(db)
+    if await crud.has_running_run(db, doc.id, "parse"):
+        raise HTTPException(409, "该样例已有解析任务在跑")
+    run = await crud.create_run(db, doc.id, "parse")
+    background.add_task(service.run_parse, db, doc.id, run.id)
+    return {"document": doc.model_dump(), "run_id": run.id}
+
+
+# --- Functional area 2: parse / redact pipeline ------------------------------
+
+
+@router.post("/documents/{document_id}/parse")
+async def parse_document(document_id: str, background: BackgroundTasks, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    doc = await crud.get_document(db, document_id)
+    if doc is None:
+        raise HTTPException(404, "样例不存在")
+    await crud.sweep_stale_runs(db)
+    if await crud.has_running_run(db, document_id, "parse"):
+        raise HTTPException(409, "解析任务已在跑")
+    run = await crud.create_run(db, document_id, "parse")
+    background.add_task(service.run_parse, db, document_id, run.id)
+    return {"run_id": run.id}
+
+
+@router.post("/documents/{document_id}/redact")
+async def redact_document(document_id: str, background: BackgroundTasks, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    doc = await crud.get_document(db, document_id)
+    if doc is None:
+        raise HTTPException(404, "样例不存在")
+    if doc.status != "parsed":
+        raise HTTPException(409, f"仅 parsed 状态可脱敏（当前 {doc.status}）")
+    # 双重闸门：状态为 parsed 之外，还须无在跑的 parse——parse 进行中 work_uri 可能写入一半。
+    await crud.sweep_stale_runs(db)
+    if await crud.has_running_run(db, document_id, "parse"):
+        raise HTTPException(409, "解析任务在跑，work_uri 可能写入中——稍后再脱敏")
+    run = await crud.create_run(db, document_id, "redact")
+    background.add_task(service.run_redact, db, document_id, run.id)
+    return {"run_id": run.id}
+
+
+# --- Functional area 3: review -----------------------------------------------
+
+
+@router.get("/documents/{document_id}/redactions")
+async def list_redactions(document_id: str, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    rows = await crud.list_redactions(db, document_id)
+    return {"items": [schemas.RedactionOut.model_validate(r).model_dump() for r in rows]}
+
+
+@router.post("/documents/{document_id}/review")
+async def review_document(document_id: str, body: schemas.ReviewRequest, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    try:
+        await service.apply_review(db, document_id, body.decision, body.note)
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    doc = await crud.get_document(db, document_id)
+    return schemas.DocumentOut.model_validate(doc).model_dump()
+
+
+# --- Functional area 4: tasks -------------------------------------------------
+
+
+@router.get("/runs")
+async def list_runs(db: AsyncSession = Depends(get_db), _: object = _PERM):
+    rows = await crud.list_recent_runs(db, limit=50)
+    return {"items": [schemas.RunOut.model_validate(r).model_dump() for r in rows]}

@@ -19,6 +19,7 @@ from app.extensions.dept.routers import router as dept_router
 from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
 from app.extensions.docmgr.collab_routers import router as collab_router
 from app.extensions.docmgr.routers import router as docmgr_router
+from app.extensions.geo_samples import router as geo_samples_router
 from app.extensions.knowledge import kb_router as knowledge_router
 from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
 from app.extensions.law import router as law_router
@@ -919,6 +920,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Contract price analysis management API (/api/extensions/contract-price/*)
     app.include_router(contract_price_router)
+
+    # Geo sample bank management API (/api/extensions/geo-samples/*)  [EAI-CUSTOM]
+    app.include_router(geo_samples_router)
 
     # Spare-parts price analysis management API (/api/extensions/spare-parts/*)  [EAI-CUSTOM]
     app.include_router(spare_parts_router)

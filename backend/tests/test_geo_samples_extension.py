@@ -52,3 +52,29 @@ def test_schemas_roundtrip():
     assert meta.mineral == "gold"
     assert ReviewRequest(decision="reject", note="漏脱矿权人").decision == "reject"
     assert DocumentOut.model_fields["status"].annotation is not None
+
+
+def test_router_exposes_all_functional_areas():
+    from app.extensions.geo_samples import router
+
+    paths = {r.path for r in router.routes}
+    base = "/api/extensions/geo-samples"
+    assert f"{base}/documents" in paths
+    assert f"{base}/documents/upload" in paths
+    assert any("parse" in p for p in paths)
+    assert any("/redact" in p for p in paths)
+    assert any("review" in p for p in paths)
+    assert any("redactions" in p for p in paths)
+    assert f"{base}/runs" in paths
+
+
+def test_all_endpoints_require_permission_source_level():
+    """静态源码断言：每个 @router. 端点附近都有 _PERM/require_permission 防护。"""
+    import inspect
+
+    from app.extensions.geo_samples import routers
+
+    src = inspect.getsource(routers)
+    endpoints = src.count("@router.")
+    guarded = src.count("= _PERM") + src.count("require_permission(")
+    assert guarded >= endpoints, f"{endpoints} 个端点仅 {guarded} 处权限防护"

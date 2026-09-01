@@ -3,8 +3,8 @@
 
 Importing this package registers the gsb_ models on the shared
 ``app.extensions.database`` Base so the tables auto-create at gateway startup
-(same mechanism as contract_price). The management router is wired in Phase 1
-Task 8 (routers.py + Gateway mount).
+(same mechanism as contract_price), and exports the management router
+(routers.py, mounted by the Gateway at /api/extensions/geo-samples — Task 8).
 """
 
 from app.extensions.geo_samples.models import (  # noqa: F401
@@ -12,5 +12,6 @@ from app.extensions.geo_samples.models import (  # noqa: F401
     GsbRedaction,
     GsbRunHistory,
 )
+from app.extensions.geo_samples.routers import router  # noqa: F401
 
-__all__ = ["GsbDocument", "GsbRedaction", "GsbRunHistory"]
+__all__ = ["router", "GsbDocument", "GsbRedaction", "GsbRunHistory"]
