@@ -38,6 +38,9 @@ python -c "import json,io; d=json.load(io.open(r'D:\eai\eai-flow-main\.wolf\tmp\
 - 存储节点与唯一写者垂直对齐（避免 L 形横段贴 region 边）
 - region `pad:16`；链上相邻节点间隙 ≥ 最长标签宽 +8px
 - 卡片 ≤3 张（第 4 张折行 → 首屏溢出）；每卡 ≤3 条，每条 ≤40 字
+- **viewer 收缩资格线**：meta.viewBox 宽/高比必须 ≥1.55，否则 reader 不自适应收缩 → 全视口溢出；显式锁定 viewBox（L1 先例 1230×786）；层间走廊有转折段 ≥56px、直行 ≥48px（region 标签占 nodeTop-24）
+- **多边同侧禁用 via/labelAt**（会关闭 automaticPortSpread → 端口坍缩到边中心）；标签只准 labelSegment/labelDx/labelDy
+- **visual-check 的 PNG 旁证可能是未收敛帧**：以 JSON containment 量测为准；目检用 2048×1320 档交叉验证
 
 **P.3 deliver**（validate ok 后执行一次；失败不得描述为成功）：
 
