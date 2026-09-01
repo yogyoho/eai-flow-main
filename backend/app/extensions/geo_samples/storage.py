@@ -37,6 +37,7 @@ def _ensure_bucket(mc: Minio) -> None:
 
 def put_raw(report_id: str, file_name: str, data: bytes) -> str:
     """Store the original uploaded report file under raw/<id>/; return its s3:// uri."""
+    file_name = os.path.basename(file_name)  # strip any path component: keep the raw/ prefix layout intact
     key = f"raw/{report_id}/{file_name}"
     mc = _client()
     _ensure_bucket(mc)
@@ -65,7 +66,8 @@ def put_clean(report_id: str, data: bytes) -> str:
 def get_object(uri: str) -> bytes:
     """s3://bucket/key → bytes（work/clean/preview 通用读取）。"""
     prefix = f"s3://{BUCKET}/"
-    assert uri.startswith(prefix), f"unexpected uri: {uri}"
+    if not uri.startswith(prefix):
+        raise ValueError(f"unexpected uri: {uri}")  # ValueError, not assert: asserts are stripped under python -O
     resp = _client().get_object(BUCKET, uri[len(prefix) :])
     try:
         return resp.read()
