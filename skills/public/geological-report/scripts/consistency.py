@@ -53,6 +53,13 @@ def numeric_pool(data: fr.Data, state: dict) -> set[Decimal]:
             d = fr.dec(v)
             if d.is_finite():
                 pool.add(d)
+            # bug-3060：真实数据串大量内嵌数字（文号「〔2024〕0088号」、同位素年龄「1689±32Ma」、
+            # 历史工作量「钻探15600m」）——只试整串转数会漏，SL2/SL3 对正文引用这些数字全部误报
+            # 不可溯源。凡 data/ 串里出现的数字本身就是溯源凭据，逐个入池。
+            for m in re.finditer(r"\d+(?:\.\d+)?", v):
+                d2 = fr.dec(m.group(0))
+                if d2.is_finite():
+                    pool.add(d2)
         elif isinstance(v, dict):
             for x in v.values():
                 walk(x)
@@ -81,6 +88,10 @@ WHITELIST_PATTERNS = [
     r"(?m)^#{1,4}\s*\d+(?:\.\d+)*\s",                  # 标题编号
     r"[0-9a-f]{40,}",                                  # SHA-256 摘要（合规附录）
     r"(?:ZK|TC|PD|KD|YD|CM|XL)[-\s]?\d+",              # 工程编号
+    r"1\s*[：:]\s*\d+(?:\.\d+)?",                      # 比例尺 1:10000 / 1:2000（bug-3060 真实数据实测）
+    r"[〔\[]\d{4}[〕\]]\s*\d{2,6}\s*号",                # 文号 〔2024〕0088号
+    r"(?i)(?:GB|DZ|YS|HY|QB|Ch|TB)[A-Z]*(?:\s*/\s*[A-Z]+)+\s*\d{3,5}(?:\s*[-—~～]\s*\d{2,4})?",  # 标准代号 DZ/T 0141
+    r"(?:合计|共计|累计|总计)\s*\d+(?:\.\d+)?",          # 显式聚合标签后的数（合计560m——分项和，P0-1 审计要求的呈现形态）
     r"(?:DZ|GB|HG|YD|MT|TD)/[A-Z]?\s*\d+(?:[.\-–]\d+)+",  # 规范编号
     r"[A-Z]{1,4}\d{3,6}[A-Za-z0-9\-]*",                # 证号/图号等字母前缀码
     r"\d+(?:\.\d+)?°(?:\d{1,2}′?)?(?:\d{1,2}″?)?[NSEW]",  # 经纬度
@@ -231,8 +242,12 @@ def check_xs(rep: Report, chapters: list[tuple[str, str]], state: dict, data: fr
                 if lm:
                     label_map.setdefault(lm.group(1), set()).add(disp)
     conflict = {lab: sorted(ds) for lab, ds in sorted(label_map.items()) if len(ds) > 1}
-    rep.add("XS6", "pass" if not conflict else "fail",
-            "跨章同指标标签数值唯一" if not conflict else f"同标签多值（口径冲突疑）: {conflict}")
+    # bug-3060 降档 fail→warn：label_map 只收集【槽位 display】的出现（手写数根本进不了本图——
+    # 那类伪造是 SL2 的辖区）；槽位纯化报告里同标签绑不同 display = 不同口径槽位（分矿体/分类别/
+    # 全区）的合法并立，真实数据下 fail 全为误报（实测 7 组全是 L8/L9/S1 族内分 scope）。N27 的
+    # 「手写冲突」保护由 SL2（不可溯源数值）承担。降为口径复核提示。
+    rep.add("XS6", "pass" if not conflict else "warn",
+            "跨章同指标标签数值唯一" if not conflict else f"同标签多值（口径复核提示——均为槽位注入，非冲突）: {conflict}")
 
 
 def check_fc(rep: Report, state: dict, data: fr.Data) -> None:
@@ -348,7 +363,9 @@ def check_cc(rep: Report, chapters: list[tuple[str, str]], state: dict, data: fr
         rep.add("CC1", "manual", "13.grade_variation_coeff_range 未填——需人工对照勘查类型档次")
     if p13 and standards is not None:
         mult = p13.get("outlier_multiple")
-        tiers = standards if isinstance(standards, list) else standards.get("tier1", standards.get("items", []))
+        # bug-3060：实文件顶层键是 standards（14 条 {code,title,...}）——旧取值链 tier1/items 双双落空
+        # → 允许倍数集恒空（CC1 误判 manual/fail）。加 standards 首选。
+        tiers = standards if isinstance(standards, list) else standards.get("standards", standards.get("tier1", standards.get("items", [])))
         allowed = set()
         for t in tiers if isinstance(tiers, list) else []:
             for x in re.findall(r"特高品位[^。]{0,40}?(\d+)\s*[-～至]\s*(\d+)\s*倍", str(t.get("text", t.get("summary", "")))):
@@ -371,7 +388,8 @@ def check_cc(rep: Report, chapters: list[tuple[str, str]], state: dict, data: fr
         rep.add("CC3", "manual", f"规范引用 {sorted(cites)}——standards_index 未加载，需人工核实（web_search 不可靠）")
     else:
         known = set()
-        for t in (standards if isinstance(standards, list) else standards.get("tier1", standards.get("items", []))):
+        # bug-3060：同 CC1——顶层键 standards 优先（tier1/items 为旧形状兼容）。
+        for t in (standards if isinstance(standards, list) else standards.get("standards", standards.get("tier1", standards.get("items", [])))):
             if isinstance(t, dict):
                 known.add(str(t.get("code", "")))
                 known.add(f"{t.get('code','')} {t.get('year','')}".strip())

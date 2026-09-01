@@ -7,20 +7,128 @@
     "rule": "规范编号/年份仅允许从本清单枚举（合约 CC3）；LLM 禁止凭记忆生成任何标准号、年份、条款号、限值"
   },
   "standards": [
-    {"code": "DZ/T 0033-2020", "title": "固体矿产地质勘查报告编写规范", "role": "报告结构/章节框架/编写规则（附录A普查/B详查/C勘探提纲）", "chapters": "全文", "verified": true, "origin": "项目标准文件已导入（18固体矿产地质勘查报告编写规范DZ-T 0033-2020.pdf）"},
-    {"code": "GB/T 13908-2020", "title": "固体矿产地质勘查规范 总则", "role": "勘查程度/工程间距/资源量分类/概略研究", "chapters": "ch7/ch8/ch9", "verified": true, "origin": "sample_verbatim"},
-    {"code": "GB/T 33444-2016", "title": "固体矿产勘查工作规范", "role": "勘查工作程度/质量要求", "chapters": "ch7", "verified": true, "origin": "v1_skill"},
-    {"code": "DZ/T 0214-2020", "title": "铜、铅、锌、银、镍、钼矿地质勘查规范", "role": "有色金属专用：勘查类型五因素/特高品位/工程间距/工业指标", "chapters": "ch4/ch7/ch8", "verified": true, "origin": "sample_verbatim（样例引用6处，最高频）"},
-    {"code": "DZ/T 0215-2020", "title": "矿产地质勘查规范 煤", "role": "煤矿专用（ore_packs/coal 用；已移除泥炭内容，不生成泥炭评价章节）", "chapters": "全阶段", "verified": true, "origin": "v1_skill"},
-    {"code": "GB/T 17766-2020", "title": "固体矿产资源储量分类", "role": "TM/KZ/TD/尚难利用资源量 分类定义", "chapters": "ch8.6/ch1", "verified": true, "origin": "sample_verbatim"},
-    {"code": "DZ/T 0130-2006", "title": "地质矿产实验室测试质量管理规范", "role": "样品加工（Q=Kd²缩分）/化验/内外检质量规则", "chapters": "ch7.4", "verified": true, "origin": "sample_verbatim（2处引用）"},
-    {"code": "DZ/T 0227-2010", "title": "地质岩心钻探规程", "role": "钻探施工质量（坑内钻）", "chapters": "ch7.2.2", "verified": true, "origin": "sample_verbatim"},
-    {"code": "DZ/T 0078-2015", "title": "固体矿产勘查原始地质编录规定", "role": "坑探原始地质编录（统一图式/1:100/压顶法两壁一顶）", "chapters": "ch7.2.1", "verified": true, "origin": "sample_verbatim"},
-    {"code": "DZ/T 0141", "title": "地质勘查坑探工程规程", "role": "坑探工程施工（断面/坡度）", "chapters": "ch7.2.1", "verified": false, "origin": "sample_verbatim（样例引用未带年份——引用时年份留待核实，禁补猜）", "note": "近年版本常引作 DZ/T 0141-1994，须人工核实后补年份"},
-    {"code": "GB/T 50218-2014", "title": "工程岩体分级标准", "role": "工程地质岩组分级（BQ）", "chapters": "ch6.3", "verified": true, "origin": "sample_verbatim"},
-    {"code": "GB 50011-2010", "title": "建筑抗震设计规范", "role": "地震动峰值加速度/抗震设防烈度对应", "chapters": "ch6.4.1", "verified": true, "origin": "sample_verbatim"},
-    {"code": "GB 6566-2010", "title": "建筑材料放射性核素限量", "role": "矿石/废石放射性评价", "chapters": "ch6.4.3", "verified": true, "origin": "sample_verbatim"},
-    {"code": "—", "title": "矿产资源工业要求手册（2022版）", "role": "一般工业指标参考值来源", "chapters": "ch8.1", "verified": true, "origin": "sample_verbatim", "note": "非标准号文献，引用格式按手册"}
+    {
+      "code": "DZ/T 0033-2020",
+      "title": "固体矿产地质勘查报告编写规范",
+      "role": "报告结构/章节框架/编写规则（附录A普查/B详查/C勘探提纲）",
+      "chapters": "全文",
+      "verified": true,
+      "origin": "项目标准文件已导入（18固体矿产地质勘查报告编写规范DZ-T 0033-2020.pdf）"
+    },
+    {
+      "code": "GB/T 13908-2020",
+      "title": "固体矿产地质勘查规范 总则",
+      "role": "勘查程度/工程间距/资源量分类/概略研究",
+      "chapters": "ch7/ch8/ch9",
+      "verified": true,
+      "origin": "sample_verbatim"
+    },
+    {
+      "code": "GB/T 33444-2016",
+      "title": "固体矿产勘查工作规范",
+      "role": "勘查工作程度/质量要求",
+      "chapters": "ch7",
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "DZ/T 0214-2020",
+      "title": "铜、铅、锌、银、镍、钼矿地质勘查规范",
+      "role": "有色金属专用：勘查类型五因素/特高品位/工程间距/工业指标",
+      "chapters": "ch4/ch7/ch8",
+      "verified": true,
+      "origin": "sample_verbatim（样例引用6处，最高频）"
+    },
+    {
+      "code": "DZ/T 0215-2020",
+      "title": "矿产地质勘查规范 煤",
+      "role": "煤矿专用（ore_packs/coal 用；已移除泥炭内容，不生成泥炭评价章节）",
+      "chapters": "全阶段",
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB/T 17766-2020",
+      "title": "固体矿产资源储量分类",
+      "role": "TM/KZ/TD/尚难利用资源量 分类定义",
+      "chapters": "ch8.6/ch1",
+      "verified": true,
+      "origin": "sample_verbatim"
+    },
+    {
+      "code": "DZ/T 0130-2006",
+      "title": "地质矿产实验室测试质量管理规范",
+      "role": "样品加工（Q=Kd²缩分）/化验/内外检质量规则",
+      "chapters": "ch7.4",
+      "verified": true,
+      "origin": "sample_verbatim（2处引用）"
+    },
+    {
+      "code": "DZ/T 0227-2010",
+      "title": "地质岩心钻探规程",
+      "role": "钻探施工质量（坑内钻）",
+      "chapters": "ch7.2.2",
+      "verified": true,
+      "origin": "sample_verbatim"
+    },
+    {
+      "code": "DZ/T 0078-2015",
+      "title": "固体矿产勘查原始地质编录规定",
+      "role": "坑探原始地质编录（统一图式/1:100/压顶法两壁一顶）",
+      "chapters": "ch7.2.1",
+      "verified": true,
+      "origin": "sample_verbatim"
+    },
+    {
+      "code": "DZ/T 0141",
+      "title": "地质勘查坑探工程规程",
+      "role": "坑探工程施工（断面/坡度）",
+      "chapters": "ch7.2.1",
+      "verified": false,
+      "origin": "sample_verbatim（样例引用未带年份——引用时年份留待核实，禁补猜）",
+      "note": "近年版本常引作 DZ/T 0141-1994，须人工核实后补年份"
+    },
+    {
+      "code": "GB/T 50218-2014",
+      "title": "工程岩体分级标准",
+      "role": "工程地质岩组分级（BQ）",
+      "chapters": "ch6.3",
+      "verified": true,
+      "origin": "sample_verbatim"
+    },
+    {
+      "code": "GB 50011-2010",
+      "title": "建筑抗震设计规范",
+      "role": "地震动峰值加速度/抗震设防烈度对应",
+      "chapters": "ch6.4.1",
+      "verified": true,
+      "origin": "sample_verbatim"
+    },
+    {
+      "code": "GB 6566-2010",
+      "title": "建筑材料放射性核素限量",
+      "role": "矿石/废石放射性评价",
+      "chapters": "ch6.4.3",
+      "verified": true,
+      "origin": "sample_verbatim"
+    },
+    {
+      "code": "—",
+      "title": "矿产资源工业要求手册（2022版）",
+      "role": "一般工业指标参考值来源",
+      "chapters": "ch8.1",
+      "verified": true,
+      "origin": "sample_verbatim",
+      "note": "非标准号文献，引用格式按手册"
+    },
+    {
+      "code": "GB/T 14848-2017",
+      "title": "地下水质量标准",
+      "role": "地下水水质类别划分与评价（ch6 水文地质引用）",
+      "chapters": "6",
+      "verified": true,
+      "origin": "国家级推荐标准，编号经人工核实（返修 ch6 引用触发 CC3 补录，bug-3060）"
+    }
   ],
   "lookup_tables": {
     "dz0214_outlier_multiple": {
@@ -28,9 +136,18 @@
       "origin": "sample_verbatim（样例 8.4.5 逐字引述 DZ/T 0214-2020：品位值高于矿体平均品位 6-8 倍为特高品位）",
       "verified": false,
       "rows": [
-        {"condition": "品位变化系数 < 60%", "multiple": 6},
-        {"condition": "60% ≤ 品位变化系数 ≤ 150%", "multiple": 7},
-        {"condition": "品位变化系数 > 150%", "multiple": 8}
+        {
+          "condition": "品位变化系数 < 60%",
+          "multiple": 6
+        },
+        {
+          "condition": "60% ≤ 品位变化系数 ≤ 150%",
+          "multiple": 7
+        },
+        {
+          "condition": "品位变化系数 > 150%",
+          "multiple": 8
+        }
       ],
       "tie_break": "变化系数区间跨档时从高取（样例实证：29.28%~65.58% 与 [60,150] 有交集 → 取 7 倍）",
       "replacement_rule": "包含特高品位在内的单工程平均品位作为该件特高品位的计算品位，再参与工程矿体平均品位计算（sample_verbatim）"
@@ -41,11 +158,52 @@
       "verified": false,
       "note": "仅样例取值档已锚定，完整分档表（各因素全部档位系数）须对照 DZ/T 0214-2020 附表人工核实补全；未核实档位输出「需人工对照」",
       "factors": [
-        {"factor": "矿体规模", "levels_anchored": [{"level": "大型", "score": 0.9}], "sample_context": "走向>2000m 延深>1100m → 大型 0.9；低品位矿体 1000×600 亦大型"},
-        {"factor": "矿体形态复杂程度", "levels_anchored": [{"level": "中等（层状、似层状，少量夹石断续分布）", "score": 0.4}]},
-        {"factor": "构造影响程度", "levels_anchored": [{"level": "中等（断裂发育、断距不大）", "score": 0.2}]},
-        {"factor": "矿体厚度稳定程度", "levels_anchored": [{"level": "较稳定（变化系数 54.95%~66.10%）", "score": 0.4}]},
-        {"factor": "有用组分分布均匀程度", "levels_anchored": [{"level": "较均匀（变化系数 29.28%~65.58%）", "score": 0.4}]}
+        {
+          "factor": "矿体规模",
+          "levels_anchored": [
+            {
+              "level": "大型",
+              "score": 0.9
+            }
+          ],
+          "sample_context": "走向>2000m 延深>1100m → 大型 0.9；低品位矿体 1000×600 亦大型"
+        },
+        {
+          "factor": "矿体形态复杂程度",
+          "levels_anchored": [
+            {
+              "level": "中等（层状、似层状，少量夹石断续分布）",
+              "score": 0.4
+            }
+          ]
+        },
+        {
+          "factor": "构造影响程度",
+          "levels_anchored": [
+            {
+              "level": "中等（断裂发育、断距不大）",
+              "score": 0.2
+            }
+          ]
+        },
+        {
+          "factor": "矿体厚度稳定程度",
+          "levels_anchored": [
+            {
+              "level": "较稳定（变化系数 54.95%~66.10%）",
+              "score": 0.4
+            }
+          ]
+        },
+        {
+          "factor": "有用组分分布均匀程度",
+          "levels_anchored": [
+            {
+              "level": "较均匀（变化系数 29.28%~65.58%）",
+              "score": 0.4
+            }
+          ]
+        }
       ]
     },
     "dz0214_exploration_type_mapping": {
@@ -53,7 +211,11 @@
       "origin": "样例仅单点锚定，区间表未在样例中出现",
       "verified": false,
       "rows": [
-        {"sum": 2.3, "type": "第Ⅱ类偏简单型", "origin": "sample_verbatim（两主矿体+次要矿体马1 三处一致）"}
+        {
+          "sum": 2.3,
+          "type": "第Ⅱ类偏简单型",
+          "origin": "sample_verbatim（两主矿体+次要矿体马1 三处一致）"
+        }
       ],
       "thresholds": null,
       "note": "完整「系数和区间→Ⅰ/Ⅱ/Ⅲ类（及偏简单/偏复杂）」阈值表必须人工对照 DZ/T 0214-2020 原文录入后方可自动判定；在此之前该判定输出「需人工对照」"
@@ -63,9 +225,18 @@
       "origin": "sample_verbatim",
       "verified": false,
       "rows": [
-        {"category": "TM", "spacing": "走向60m × 倾向60m"},
-        {"category": "KZ", "spacing": "走向120m × 倾向120m"},
-        {"category": "TD", "spacing": "走向240m × 倾向240m"}
+        {
+          "category": "TM",
+          "spacing": "走向60m × 倾向60m"
+        },
+        {
+          "category": "KZ",
+          "spacing": "走向120m × 倾向120m"
+        },
+        {
+          "category": "TD",
+          "spacing": "走向240m × 倾向240m"
+        }
       ],
       "note": "为第Ⅱ类取值；Ⅰ/Ⅲ类及其它矿种间距表须人工核实补全"
     },
@@ -74,10 +245,26 @@
       "origin": "sample_verbatim",
       "verified": true,
       "classes": [
-        {"code": "TM", "name": "探明资源量", "criterion": "60×60m 工程间距控制圈定估算；已确定矿体空间分布/形态/产状/连续性，查明物质组分/结构构造/类型、夹石分布规律、开采技术条件（第Ⅱ类口径）"},
-        {"code": "KZ", "name": "控制资源量", "criterion": "120×120m 控制圈定估算；基本控制/基本查明同上（第Ⅱ类口径）"},
-        {"code": "TD", "name": "推断资源量", "criterion": "240×240m 控制圈定估算及 TM/KZ 外推部分；初步控制/大致控制（第Ⅱ类口径）"},
-        {"code": "尚难利用", "name": "尚难利用矿产资源（原低品位矿）", "criterion": "当前和可预见未来不满足开发需求的查明资源；分控制(KZ)/推断(TD)两级"}
+        {
+          "code": "TM",
+          "name": "探明资源量",
+          "criterion": "60×60m 工程间距控制圈定估算；已确定矿体空间分布/形态/产状/连续性，查明物质组分/结构构造/类型、夹石分布规律、开采技术条件（第Ⅱ类口径）"
+        },
+        {
+          "code": "KZ",
+          "name": "控制资源量",
+          "criterion": "120×120m 控制圈定估算；基本控制/基本查明同上（第Ⅱ类口径）"
+        },
+        {
+          "code": "TD",
+          "name": "推断资源量",
+          "criterion": "240×240m 控制圈定估算及 TM/KZ 外推部分；初步控制/大致控制（第Ⅱ类口径）"
+        },
+        {
+          "code": "尚难利用",
+          "name": "尚难利用矿产资源（原低品位矿）",
+          "criterion": "当前和可预见未来不满足开发需求的查明资源；分控制(KZ)/推断(TD)两级"
+        }
       ],
       "legacy_note": "历史分类 332/333、B+C+D、111b/122b 引述时保留原编码禁改写（红线 P4）"
     },
@@ -85,7 +272,11 @@
       "desc": "经济评价可利用资源量可信度系数（ch9.6.2 / formulas E1）",
       "origin": "sample_verbatim（样例称「根据相关规范」——具体条款出处待核实）",
       "verified": false,
-      "values": {"TM": 1.0, "KZ": 1.0, "TD": 0.6}
+      "values": {
+        "TM": 1.0,
+        "KZ": 1.0,
+        "TD": 0.6
+      }
     }
   }
 }

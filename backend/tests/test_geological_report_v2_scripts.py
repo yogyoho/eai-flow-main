@@ -1323,7 +1323,10 @@ class TestConsistency:
         assert fc9c and fc9c[0]["severity"] == "pass" and "跳过" in fc9c[0]["detail"], fc9c
 
     def test_xs6_same_label_conflict(self):
-        """N27/XS6 回归：同一中文指标标签跨章绑定两个不同槽位显示值→fail。"""
+        """N27/XS6 回归（bug-3060 降档）：同标签绑不同槽位 display → warn（口径复核提示）。
+        label_map 只收集槽位 display——手写数进不了本图，N27 的手写冲突保护由 SL2（不可溯源）
+        承担；槽位纯化报告里同标签多值 = 分口径槽位合法并立（真实数据实测 7 组全为 L8/L9/S1
+        族内分 scope），fail 全为误报。"""
         from types import SimpleNamespace
 
         import consistency as cons
@@ -1339,7 +1342,7 @@ class TestConsistency:
         rep = cons.Report()
         cons.check_xs(rep, ch, state, data)
         xs6 = [i for i in rep.items if i["contract"] == "XS6"]
-        assert xs6 and xs6[0]["severity"] == "fail" and "工业矿石量" in xs6[0]["detail"], xs6
+        assert xs6 and xs6[0]["severity"] == "warn" and "工业矿石量" in xs6[0]["detail"], xs6
 
 
 # ── 6. snapshot：正典 + 篡改检测 ────────────────────────────────────────────
