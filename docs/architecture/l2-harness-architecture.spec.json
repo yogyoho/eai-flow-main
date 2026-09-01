@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "eaiflow harness 架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1280, 780]
+  },
+  "components": [
+    { "id": "models", "type": "cloud", "label": "Models", "sublabel": "动态选择", "pos": [110, 96], "size": [150, 56] },
+    { "id": "skills", "type": "cloud", "label": "Skills", "sublabel": "技能加载", "pos": [520, 96], "size": [150, 56] },
+    { "id": "config", "type": "database", "label": "Config", "sublabel": "config.yaml 热加载", "pos": [880, 96], "size": [200, 56] },
+    { "id": "lead", "type": "backend", "label": "Lead Agent", "sublabel": "动态模型选择 · 工具加载 · 系统提示生成", "pos": [90, 256], "size": [290, 64] },
+    { "id": "mw_ctx", "type": "backend", "label": "中间件·上下文组", "sublabel": "ThreadData/Uploads/Memory/ViewImage", "pos": [444, 256], "size": [264, 64] },
+    { "id": "mw_sec", "type": "backend", "label": "中间件·安全组", "sublabel": "Guardrails/ErrorHandling/ToolError", "pos": [764, 256], "size": [258, 64] },
+    { "id": "sandbox", "type": "database", "label": "Sandbox 中间件", "sublabel": "per-user 目录挂载", "pos": [90, 456], "size": [170, 64] },
+    { "id": "mw_flow", "type": "backend", "label": "中间件·流程组", "sublabel": "Summarization/TodoList/LoopDetection/Clarification/SubagentLimit", "pos": [320, 456], "size": [456, 64] },
+    { "id": "mw_ledger", "type": "backend", "label": "中间件·记账组", "sublabel": "TokenUsage/Title", "pos": [832, 456], "size": [170, 64] },
+    { "id": "tools", "type": "backend", "label": "Tools", "sublabel": "函数调用工具集", "pos": [1070, 456], "size": [160, 64] },
+    { "id": "subagents", "type": "backend", "label": "子代理双线程池", "sublabel": "3 调度 + 3 执行 · general-purpose/bash", "pos": [300, 666], "size": [292, 60] },
+    { "id": "mcp", "type": "cloud", "label": "MCP", "sublabel": "managed providers", "pos": [1056, 666], "size": [170, 60] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "eaiflow harness (deerflow.*)", "wraps": ["lead", "mw_ctx", "mw_sec", "sandbox", "mw_flow", "mw_ledger", "subagents", "tools", "models", "mcp", "skills", "config"], "pad": 20 }
+  ],
+  "connections": [
+    { "from": "lead", "to": "mw_ctx", "label": "进入链", "fromSide": "right", "toSide": "left" },
+    { "from": "mw_ctx", "to": "mw_sec", "fromSide": "right", "toSide": "left" },
+    { "from": "mw_sec", "to": "sandbox", "fromSide": "bottom", "toSide": "top" },
+    { "from": "sandbox", "to": "mw_flow", "fromSide": "right", "toSide": "left" },
+    { "from": "mw_flow", "to": "mw_ledger", "fromSide": "right", "toSide": "left" },
+    { "from": "mw_ledger", "to": "tools", "label": "tool call", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "from": "mw_flow", "to": "subagents", "label": "task()", "variant": "emphasis", "fromSide": "bottom", "toSide": "top" },
+    { "from": "mcp", "to": "tools", "label": "注册工具", "variant": "dashed", "fromSide": "top", "toSide": "bottom" },
+    { "from": "skills", "to": "lead", "label": "加载", "fromSide": "bottom", "toSide": "top" },
+    { "from": "config", "to": "lead", "label": "热加载", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "labelDx": 150 },
+    { "from": "subagents", "to": "sandbox", "label": "沙箱执行", "fromSide": "top", "toSide": "bottom" },
+    { "from": "models", "to": "lead", "label": "模型路由", "fromSide": "bottom", "toSide": "top" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "中间件链为示意",
+      "items": ["实际 17+ 个按固定顺序执行，此图按功能分组"]
+    },
+    {
+      "dot": "rose",
+      "title": "ThreadState",
+      "items": ["扩展 AgentState：sandbox/thread_data/artifacts/todos/uploaded_files"]
+    },
+    {
+      "dot": "emerald",
+      "title": "SSE 合约",
+      "items": ["事件经 StreamBridge 匹配 LangGraph Platform 协议"]
+    }
+  ]
+}
