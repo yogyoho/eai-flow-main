@@ -5004,7 +5004,7 @@
     <!-- Main Diagram -->
     <div class="diagram-container" data-detail-level="read"
          data-preset-badge-editorial-plate="ARCHIFY / 图版 04">
-      <svg viewBox="0 0 1230 786" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
+      <svg viewBox="0 0 1280 780" role="img" lang="zh-CN" aria-labelledby="archify-diagram-title archify-diagram-description" data-preset="classic" data-quality-profile="showcase">
         <title id="archify-diagram-title">eai-flow 系统功能分层架构</title>
         <desc id="archify-diagram-description">由 Archify 生成的架构图。</desc>
         <!-- Definitions -->
@@ -5030,256 +5030,482 @@
         <rect width="100%" height="100%" fill="url(#grid)" />
 
         <!-- Boundaries (behind everything) -->
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="接入层" x="399" y="92" width="312" height="106" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="0" data-composition-frame-label="接入层" x="144" y="88" width="312" height="100" rx="12" class="c-region" stroke-width="1"/>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="前端层" x="194" y="210" width="292" height="106" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="1" data-composition-frame-label="前端层" x="104" y="172" width="352" height="100" rx="12" class="c-region" stroke-width="1"/>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="应用层" x="309" y="328" width="382" height="106" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="2" data-composition-frame-label="知识与文档" x="682" y="114" width="372" height="84" rx="12" class="c-region" stroke-width="1"/>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="3" data-composition-frame-label="框架层" x="244" y="446" width="642" height="110" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="3" data-composition-frame-label="项目 · 协作 · 工程" x="682" y="204" width="596" height="84" rx="12" class="c-region" stroke-width="1"/>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="4" data-composition-frame-label="能力层" x="139" y="568" width="792" height="104" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="4" data-composition-frame-label="运营与系统" x="682" y="282" width="478" height="96" rx="12" class="c-region" stroke-width="1"/>
 
-        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="5" data-composition-frame-label="数据层" x="104" y="676" width="1062" height="104" rx="12" class="c-region" stroke-width="1"/>
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="5" data-composition-frame-label="市场分析" x="682" y="384" width="576" height="84" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="6" data-composition-frame-label="应用层" x="44" y="296" width="472" height="106" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="7" data-composition-frame-label="框架层" x="44" y="404" width="532" height="110" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="8" data-composition-frame-label="能力层" x="24" y="506" width="602" height="98" rx="12" class="c-region" stroke-width="1"/>
+
+        <rect data-graph-role="structural-frame" data-composition-frame-kind="region" data-composition-frame-id="9" data-composition-frame-label="数据层" x="24" y="616" width="752" height="98" rx="12" class="c-region" stroke-width="1"/>
 
         <!-- Connection paths (before components for correct z-order) -->
-        <path data-edge-from="browser" data-edge-to="nginx" data-edge-label="HTTPS" data-edge-key="0" data-composition-points="555,80;555,116" d="M 555 80 L 555 116" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="nginx" data-edge-to="frontend" data-edge-label="/*" data-edge-key="1" data-composition-points="548,178;548,206;340,206;340,234" d="M 548 178 L 548 198 Q 548 206 540 206 L 348 206 Q 340 206 340 214 L 340 234" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="nginx" data-edge-to="gateway" data-edge-label="/api/* 重写" data-edge-key="2" data-composition-points="562,178;562,265;507,265;507,352" d="M 562 178 L 562 257 Q 562 265 554 265 L 515 265 Q 507 265 507 273 L 507 352" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="frontend" data-edge-to="gateway" data-edge-label="useStream SSE" data-edge-key="3" data-composition-points="340,296;340,324;493,324;493,352" d="M 340 296 L 340 316 Q 340 324 348 324 L 485 324 Q 493 324 493 332 L 493 352" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="gateway" data-edge-to="harness" data-edge-label="RunManager → run_agent" data-edge-key="4" data-composition-points="500,414;500,442;565,442;565,470" d="M 500 414 L 500 434 Q 500 442 508 442 L 557 442 Q 565 442 565 450 L 565 470" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="harness" data-edge-to="mcp" data-edge-label="函数调用" data-edge-key="5" data-composition-points="537,536;537,564;282.5,564;282.5,592" d="M 537 536 L 537 556 Q 537 564 529 564 L 290.5 564 Q 282.5 564 282.5 572 L 282.5 592" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="harness" data-edge-to="skills" data-edge-label="技能加载" data-edge-key="6" data-composition-points="565,536;565,564;592.5,564;592.5,592" d="M 565 536 L 565 556 Q 565 564 573 564 L 584.5 564 Q 592.5 564 592.5 572 L 592.5 592" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="harness" data-edge-to="subagents" data-edge-label="task()" data-edge-key="7" data-composition-points="593,536;593,564;845,564;845,592" d="M 593 536 L 593 556 Q 593 564 601 564 L 837 564 Q 845 564 845 572 L 845 592" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="gateway" data-edge-to="pg_ext" data-edge-label="仓储读写" data-edge-key="8" data-composition-points="325,383;80,383;80,730;120,730" d="M 325 383 L 88 383 Q 80 383 80 391 L 80 722 Q 80 730 88 730 L 120 730" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="harness" data-edge-to="pg_core" data-edge-label="checkpointer" data-edge-key="9" data-composition-points="551,536;551,560;458,560;458,700" d="M 551 536 L 551 552 Q 551 560 543 560 L 466 560 Q 458 560 458 568 L 458 700" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
-        <path data-edge-from="harness" data-edge-to="sandbox_fs" data-edge-label="虚拟路径" data-edge-key="10" data-composition-points="579,536;579,560;727,560;727,700" d="M 579 536 L 579 552 Q 579 560 587 560 L 719 560 Q 727 560 727 568 L 727 700" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
-        <path data-edge-from="config" data-edge-to="harness" data-edge-label="热加载" data-edge-key="11" data-composition-points="1020,700;1020,503;870,503" d="M 1020 700 L 1020 511 Q 1020 503 1012 503 L 870 503" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="browser" data-edge-to="nginx" data-edge-label="HTTPS" data-edge-key="0" data-edge-id="c_browser_nginx" data-composition-points="330,70;330,91;300,91;300,112" d="M 330 70 L 330 83 Q 330 91 322 91 L 308 91 Q 300 91 300 99 L 300 112" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="nginx" data-edge-to="frontend" data-edge-label="/*" data-edge-key="1" data-edge-id="c_nginx_frontend" data-composition-points="300,168;300,182;280,182;280,196" d="M 300 168 L 300 175 Q 300 182 293 182 L 287 182 Q 280 182 280 189 L 280 196" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="nginx" data-edge-to="gateway" data-edge-label="/api/* 重写" data-edge-key="2" data-edge-id="c_nginx_gateway" data-composition-points="440,140;524,140;524,337;500,337" d="M 440 140 L 516 140 Q 524 140 524 148 L 524 329 Q 524 337 516 337 L 500 337" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="frontend" data-edge-to="gateway" data-edge-label="useStream SSE" data-edge-key="3" data-edge-id="c_frontend_gateway" data-composition-points="280,252;280,320" d="M 280 252 L 280 320" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="gateway" data-edge-to="harness" data-edge-label="RunManager → run_agent" data-edge-key="4" data-edge-id="c_gateway_harness" data-composition-points="280,382;280,405;310,405;310,428" d="M 280 382 L 280 397 Q 280 405 288 405 L 302 405 Q 310 405 310 413 L 310 428" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="gateway" data-edge-to="docmgr" data-edge-label="模块 API 路由" data-edge-key="5" data-edge-id="c_gw_docmgr" data-composition-points="500,351;598,351;598,158;696,158" d="M 500 351 L 590 351 Q 598 351 598 343 L 598 166 Q 598 158 606 158 L 696 158" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="gateway" data-edge-to="bid_quote" data-edge-key="6" data-edge-id="c_gw_bid_quote" data-composition-points="500,365;598,365;598,428;696,428" d="M 500 365 L 590 365 Q 598 365 598 373 L 598 420 Q 598 428 606 428 L 696 428" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="harness" data-edge-to="mcp" data-edge-label="函数调用" data-edge-key="7" data-edge-id="c_harness_mcp" data-composition-points="282,494;282,512;120,512;120,530" d="M 282 494 L 282 504 Q 282 512 274 512 L 128 512 Q 120 512 120 520 L 120 530" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="harness" data-edge-to="skills" data-edge-label="技能加载" data-edge-key="8" data-edge-id="c_harness_skills" data-composition-points="310,494;310,512;330,512;330,530" d="M 310 494 L 310 504 Q 310 512 318 512 L 322 512 Q 330 512 330 520 L 330 530" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="harness" data-edge-to="subagents" data-edge-key="9" data-edge-id="c_harness_subagents" data-composition-points="338,494;338,512;535,512;535,530" d="M 338 494 L 338 504 Q 338 512 346 512 L 527 512 Q 535 512 535 520 L 535 530" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="harness" data-edge-to="sandbox_fs" data-edge-label="虚拟路径" data-edge-key="10" data-edge-id="c_harness_sandbox" data-composition-points="324,494;324,518;430,518;430,640" d="M 324 494 L 324 510 Q 324 518 332 518 L 422 518 Q 430 518 430 526 L 430 640" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="harness" data-edge-to="pg_core" data-edge-label="checkpointer" data-edge-key="11" data-edge-id="c_harness_pg_core" data-composition-points="296,494;296,518;250.5,518;250.5,640" d="M 296 494 L 296 510 Q 296 518 288 518 L 258.5 518 Q 250.5 518 250.5 526 L 250.5 640" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
+        <path data-edge-from="gateway" data-edge-to="pg_ext" data-edge-label="模块仓储" data-edge-key="12" data-edge-id="c_gateway_pg_ext" data-composition-points="60,351;26,351;26,667;40,667" d="M 60 351 L 34 351 Q 26 351 26 359 L 26 660 Q 26 667 33 667 L 40 667" class="a-default" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+        <path data-edge-from="config" data-edge-to="harness" data-edge-label="热重载" data-edge-key="13" data-edge-id="c_config_harness" data-composition-points="660,640;660,600;630,600;630,461;560,461" d="M 660 640 L 660 608 Q 660 600 652 600 L 638 600 Q 630 600 630 592 L 630 469 Q 630 461 622 461 L 560 461" class="a-dashed" stroke-width="1.5" marker-end="url(#arrowhead-dashed)"/>
 
         <!-- Components -->
         <g id="node-browser" data-node-id="browser" data-node-label="浏览器" tabindex="0" role="button" aria-label="聚焦浏览器，用户入口, 架构组件" aria-pressed="false" data-node-kind="external" data-node-sublabel="用户入口" data-node-context="架构组件">
           <title>浏览器 · 用户入口 · 架构组件</title>
-          <rect x="480" y="28" width="150" height="52" rx="6" class="c-mask"/>
-          <rect x="480" y="28" width="150" height="52" rx="6" class="c-external" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(486 34) scale(0.6875)">
+          <rect x="255" y="24" width="150" height="46" rx="6" class="c-mask"/>
+          <rect x="255" y="24" width="150" height="46" rx="6" class="c-external" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="external" class="semantic-sigil s-external" transform="translate(261 30) scale(0.6875)">
             <rect x="2.5" y="5" width="8.5" height="8" rx="1.5"/>
             <path d="M8 2.5h5.5V8M13.5 2.5 7.5 8.5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="555" y="52" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">浏览器</text>
-        <text data-detail="context" x="555" y="68" class="t-muted" font-size="9" text-anchor="middle">用户入口</text>
+          <text data-node-label="" data-detail-anchor="" x="330" y="45" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">浏览器</text>
+        <text data-detail="context" x="330" y="61" class="t-muted" font-size="9" text-anchor="middle">用户入口</text>
         </g>
 
-        <g id="node-nginx" data-node-id="nginx" data-node-label="nginx :2026" tabindex="0" role="button" aria-label="聚焦nginx :2026，/api/langgraph/* 重写 → gateway · /* → 前端, 接入层" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="/api/langgraph/* 重写 → gateway · /* → 前端" data-node-context="接入层">
-          <title>nginx :2026 · /api/langgraph/* 重写 → gateway · /* → 前端 · 接入层</title>
-          <rect x="415" y="116" width="280" height="62" rx="6" class="c-mask"/>
-          <rect x="415" y="116" width="280" height="62" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(421 122) scale(0.6875)">
+        <g id="node-nginx" data-node-id="nginx" data-node-label="nginx :2026" tabindex="0" role="button" aria-label="聚焦nginx :2026，/api/langgraph/* 重写 · /* → 前端, 接入层" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="/api/langgraph/* 重写 · /* → 前端" data-node-context="接入层">
+          <title>nginx :2026 · /api/langgraph/* 重写 · /* → 前端 · 接入层</title>
+          <rect x="160" y="112" width="280" height="56" rx="6" class="c-mask"/>
+          <rect x="160" y="112" width="280" height="56" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(166 118) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="555" y="145" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">nginx :2026</text>
-        <text data-detail="context" x="555" y="161" class="t-muted" font-size="9" text-anchor="middle">/api/langgraph/* 重写 → gateway · /* → 前端</text>
+          <text data-node-label="" data-detail-anchor="" x="300" y="138" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">nginx :2026</text>
+        <text data-detail="context" x="300" y="154" class="t-muted" font-size="9" text-anchor="middle">/api/langgraph/* 重写 · /* → 前端</text>
         </g>
 
-        <g id="node-frontend" data-node-id="frontend" data-node-label="Next.js :4000" tabindex="0" role="button" aria-label="聚焦Next.js :4000，workspace 对话 + extensions 管理端 · 双认证, 前端层" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="workspace 对话 + extensions 管理端 · 双认证" data-node-context="前端层">
-          <title>Next.js :4000 · workspace 对话 + extensions 管理端 · 双认证 · 前端层</title>
-          <rect x="210" y="234" width="260" height="62" rx="6" class="c-mask"/>
-          <rect x="210" y="234" width="260" height="62" rx="6" class="c-frontend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(216 240) scale(0.6875)">
+        <g id="node-frontend" data-node-id="frontend" data-node-label="Next.js :4000" tabindex="0" role="button" aria-label="聚焦Next.js :4000，对话工作台 + 20 余模块界面 · 双认证, 前端层" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="对话工作台 + 20 余模块界面 · 双认证" data-node-context="前端层">
+          <title>Next.js :4000 · 对话工作台 + 20 余模块界面 · 双认证 · 前端层</title>
+          <rect x="120" y="196" width="320" height="56" rx="6" class="c-mask"/>
+          <rect x="120" y="196" width="320" height="56" rx="6" class="c-frontend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(126 202) scale(0.6875)">
             <rect x="2" y="3" width="12" height="10" rx="2"/>
             <path d="M2 6.5h12"/>
             <circle cx="4.1" cy="4.8" r=".7" class="sigil-fill"/>
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="340" y="263" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Next.js :4000</text>
-        <text data-detail="context" x="340" y="279" class="t-muted" font-size="9" text-anchor="middle">workspace 对话 + extensions 管理端 · 双认证</text>
+          <text data-node-label="" data-detail-anchor="" x="280" y="222" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Next.js :4000</text>
+        <text data-detail="context" x="280" y="238" class="t-muted" font-size="9" text-anchor="middle">对话工作台 + 20 余模块界面 · 双认证</text>
         </g>
 
-        <g id="node-gateway" data-node-id="gateway" data-node-label="Gateway FastAPI :8001" tabindex="0" role="button" aria-label="聚焦Gateway FastAPI :8001，13 routers · RunManager · StreamBridge SSE · JWT+CSRF, 应用层" aria-pressed="false" data-node-kind="backend" data-node-sublabel="13 routers · RunManager · StreamBridge SSE · JWT+CSRF" data-node-context="应用层">
-          <title>Gateway FastAPI :8001 · 13 routers · RunManager · StreamBridge SSE · JWT+CSRF · 应用层</title>
-          <rect x="325" y="352" width="350" height="62" rx="6" class="c-mask"/>
-          <rect x="325" y="352" width="350" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(331 358) scale(0.6875)">
+        <g id="node-gateway" data-node-id="gateway" data-node-label="Gateway FastAPI :8001" tabindex="0" role="button" aria-label="聚焦Gateway FastAPI :8001，13 核心 routers + extensions 模块 API · SSE, 应用层" aria-pressed="false" data-node-kind="backend" data-node-sublabel="13 核心 routers + extensions 模块 API · SSE" data-node-context="应用层">
+          <title>Gateway FastAPI :8001 · 13 核心 routers + extensions 模块 API · SSE · 应用层</title>
+          <rect x="60" y="320" width="440" height="62" rx="6" class="c-mask"/>
+          <rect x="60" y="320" width="440" height="62" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(66 326) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="500" y="381" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Gateway FastAPI :8001</text>
-        <text data-detail="context" x="500" y="397" class="t-muted" font-size="9" text-anchor="middle">13 routers · RunManager · StreamBridge SSE · JWT+CSRF</text>
+          <text data-node-label="" data-detail-anchor="" x="280" y="349" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Gateway FastAPI :8001</text>
+        <text data-detail="context" x="280" y="365" class="t-muted" font-size="9" text-anchor="middle">13 核心 routers + extensions 模块 API · SSE</text>
         </g>
 
-        <g id="node-harness" data-node-id="harness" data-node-label="eaiflow harness" tabindex="0" role="button" aria-label="聚焦eaiflow harness，Lead Agent · 中间件 · 子代理 · 沙箱 → L2 下钻, 框架层" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Lead Agent · 中间件 · 子代理 · 沙箱 → L2 下钻" data-node-context="框架层">
-          <title>eaiflow harness · Lead Agent · 中间件 · 子代理 · 沙箱 → L2 下钻 · 框架层</title>
-          <rect x="260" y="470" width="610" height="66" rx="6" class="c-mask"/>
-          <rect x="260" y="470" width="610" height="66" rx="6" class="c-backend" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(266 476) scale(0.6875)">
+        <g id="node-harness" data-node-id="harness" data-node-label="eaiflow harness" tabindex="0" role="button" aria-label="聚焦eaiflow harness，Lead Agent · 17 中间件 · 子代理池 · 沙箱 → L2 下钻, 框架层" aria-pressed="false" data-node-kind="backend" data-node-sublabel="Lead Agent · 17 中间件 · 子代理池 · 沙箱 → L2 下钻" data-node-context="框架层">
+          <title>eaiflow harness · Lead Agent · 17 中间件 · 子代理池 · 沙箱 → L2 下钻 · 框架层</title>
+          <rect x="60" y="428" width="500" height="66" rx="6" class="c-mask"/>
+          <rect x="60" y="428" width="500" height="66" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(66 434) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="565" y="501" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">eaiflow harness</text>
-        <text data-detail="context" x="565" y="517" class="t-muted" font-size="9" text-anchor="middle">Lead Agent · 中间件 · 子代理 · 沙箱 → L2 下钻</text>
+          <text data-node-label="" data-detail-anchor="" x="310" y="459" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">eaiflow harness</text>
+        <text data-detail="context" x="310" y="475" class="t-muted" font-size="9" text-anchor="middle">Lead Agent · 17 中间件 · 子代理池 · 沙箱 → L2 下钻</text>
         </g>
 
-        <g id="node-mcp" data-node-id="mcp" data-node-label="MCP 工具" tabindex="0" role="button" aria-label="聚焦MCP 工具，managed providers · extensions_config 注册, 能力层" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="managed providers · extensions_config 注册" data-node-context="能力层">
-          <title>MCP 工具 · managed providers · extensions_config 注册 · 能力层</title>
-          <rect x="155" y="592" width="255" height="60" rx="6" class="c-mask"/>
-          <rect x="155" y="592" width="255" height="60" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(161 598) scale(0.6875)">
+        <g id="node-mcp" data-node-id="mcp" data-node-label="MCP 工具" tabindex="0" role="button" aria-label="聚焦MCP 工具，managed MCP providers, 能力层" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="managed MCP providers" data-node-context="能力层">
+          <title>MCP 工具 · managed MCP providers · 能力层</title>
+          <rect x="40" y="530" width="160" height="54" rx="6" class="c-mask"/>
+          <rect x="40" y="530" width="160" height="54" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(46 536) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="282.5" y="620" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">MCP 工具</text>
-        <text data-detail="context" x="282.5" y="636" class="t-muted" font-size="9" text-anchor="middle">managed providers · extensions_config 注册</text>
+          <text data-node-label="" data-detail-anchor="" x="120" y="555" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">MCP 工具</text>
+        <text data-detail="context" x="120" y="571" class="t-muted" font-size="9" text-anchor="middle">managed MCP providers</text>
         </g>
 
-        <g id="node-skills" data-node-id="skills" data-node-label="Skills" tabindex="0" role="button" aria-label="聚焦Skills，46 public + custom · 热加载, 能力层" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="46 public + custom · 热加载" data-node-context="能力层">
-          <title>Skills · 46 public + custom · 热加载 · 能力层</title>
-          <rect x="505" y="592" width="175" height="60" rx="6" class="c-mask"/>
-          <rect x="505" y="592" width="175" height="60" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(511 598) scale(0.6875)">
+        <g id="node-skills" data-node-id="skills" data-node-label="Skills" tabindex="0" role="button" aria-label="聚焦Skills，46+ · 热加载, 能力层" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="46+ · 热加载" data-node-context="能力层">
+          <title>Skills · 46+ · 热加载 · 能力层</title>
+          <rect x="260" y="530" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="260" y="530" width="140" height="54" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(266 536) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="592.5" y="620" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Skills</text>
-        <text data-detail="context" x="592.5" y="636" class="t-muted" font-size="9" text-anchor="middle">46 public + custom · 热加载</text>
+          <text data-node-label="" data-detail-anchor="" x="330" y="555" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Skills</text>
+        <text data-detail="context" x="330" y="571" class="t-muted" font-size="9" text-anchor="middle">46+ · 热加载</text>
         </g>
 
         <g id="node-subagents" data-node-id="subagents" data-node-label="子代理" tabindex="0" role="button" aria-label="聚焦子代理，task() 双线程池, 能力层" aria-pressed="false" data-node-kind="cloud" data-node-sublabel="task() 双线程池" data-node-context="能力层">
           <title>子代理 · task() 双线程池 · 能力层</title>
-          <rect x="775" y="592" width="140" height="60" rx="6" class="c-mask"/>
-          <rect x="775" y="592" width="140" height="60" rx="6" class="c-cloud" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(781 598) scale(0.6875)">
+          <rect x="460" y="530" width="150" height="54" rx="6" class="c-mask"/>
+          <rect x="460" y="530" width="150" height="54" rx="6" class="c-cloud" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="cloud" class="semantic-sigil s-cloud" transform="translate(466 536) scale(0.6875)">
             <path d="M4.3 12.5h7.3a2.4 2.4 0 0 0 .2-4.8 4 4 0 0 0-7.5-1.3A3.1 3.1 0 0 0 4.3 12.5Z"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="845" y="620" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">子代理</text>
-        <text data-detail="context" x="845" y="636" class="t-muted" font-size="9" text-anchor="middle">task() 双线程池</text>
+          <text data-node-label="" data-detail-anchor="" x="535" y="555" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">子代理</text>
+        <text data-detail="context" x="535" y="571" class="t-muted" font-size="9" text-anchor="middle">task() 双线程池</text>
         </g>
 
-        <g id="node-pg_ext" data-node-id="pg_ext" data-node-label="Postgres agentflow" tabindex="0" role="button" aria-label="聚焦Postgres agentflow，extensions 数据库, 数据层" aria-pressed="false" data-node-kind="database" data-node-sublabel="extensions 数据库" data-node-context="数据层">
-          <title>Postgres agentflow · extensions 数据库 · 数据层</title>
-          <rect x="120" y="700" width="160" height="60" rx="6" class="c-mask"/>
-          <rect x="120" y="700" width="160" height="60" rx="6" class="c-database" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(126 706) scale(0.6875)">
+        <g id="node-pg_ext" data-node-id="pg_ext" data-node-label="Postgres agentflow" tabindex="0" role="button" aria-label="聚焦Postgres agentflow，模块数据, 数据层" aria-pressed="false" data-node-kind="database" data-node-sublabel="模块数据" data-node-context="数据层">
+          <title>Postgres agentflow · 模块数据 · 数据层</title>
+          <rect x="40" y="640" width="118" height="54" rx="6" class="c-mask"/>
+          <rect x="40" y="640" width="118" height="54" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(46 646) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="200" y="728" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Postgres agentflow</text>
-        <text data-detail="context" x="200" y="744" class="t-muted" font-size="9" text-anchor="middle">extensions 数据库</text>
+          <text data-node-label="" data-detail-anchor="" x="99" y="665" class="t-primary" font-size="10.1" font-weight="600" text-anchor="middle">Postgres agentflow</text>
+        <text data-detail="context" x="99" y="681" class="t-muted" font-size="9" text-anchor="middle">模块数据</text>
         </g>
 
         <g id="node-pg_core" data-node-id="pg_core" data-node-label="Postgres deerflow" tabindex="0" role="button" aria-label="聚焦Postgres deerflow，核心库 · checkpointer, 数据层" aria-pressed="false" data-node-kind="database" data-node-sublabel="核心库 · checkpointer" data-node-context="数据层">
           <title>Postgres deerflow · 核心库 · checkpointer · 数据层</title>
-          <rect x="375" y="700" width="166" height="60" rx="6" class="c-mask"/>
-          <rect x="375" y="700" width="166" height="60" rx="6" class="c-database" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(381 706) scale(0.6875)">
+          <rect x="168" y="640" width="165" height="54" rx="6" class="c-mask"/>
+          <rect x="168" y="640" width="165" height="54" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(174 646) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="458" y="728" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Postgres deerflow</text>
-        <text data-detail="context" x="458" y="744" class="t-muted" font-size="9" text-anchor="middle">核心库 · checkpointer</text>
+          <text data-node-label="" data-detail-anchor="" x="250.5" y="665" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Postgres deerflow</text>
+        <text data-detail="context" x="250.5" y="681" class="t-muted" font-size="9" text-anchor="middle">核心库 · checkpointer</text>
         </g>
 
-        <g id="node-sandbox_fs" data-node-id="sandbox_fs" data-node-label="沙箱文件区" tabindex="0" role="button" aria-label="聚焦沙箱文件区，/mnt/user-data per-user, 数据层" aria-pressed="false" data-node-kind="database" data-node-sublabel="/mnt/user-data per-user" data-node-context="数据层">
-          <title>沙箱文件区 · /mnt/user-data per-user · 数据层</title>
-          <rect x="652" y="700" width="150" height="60" rx="6" class="c-mask"/>
-          <rect x="652" y="700" width="150" height="60" rx="6" class="c-database" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(658 706) scale(0.6875)">
+        <g id="node-sandbox_fs" data-node-id="sandbox_fs" data-node-label="沙箱文件区" tabindex="0" role="button" aria-label="聚焦沙箱文件区，/mnt/user-data, 数据层" aria-pressed="false" data-node-kind="database" data-node-sublabel="/mnt/user-data" data-node-context="数据层">
+          <title>沙箱文件区 · /mnt/user-data · 数据层</title>
+          <rect x="360" y="640" width="140" height="54" rx="6" class="c-mask"/>
+          <rect x="360" y="640" width="140" height="54" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(366 646) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="727" y="728" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">沙箱文件区</text>
-        <text data-detail="context" x="727" y="744" class="t-muted" font-size="9" text-anchor="middle">/mnt/user-data per-user</text>
+          <text data-node-label="" data-detail-anchor="" x="430" y="665" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">沙箱文件区</text>
+        <text data-detail="context" x="430" y="681" class="t-muted" font-size="9" text-anchor="middle">/mnt/user-data</text>
         </g>
 
-        <g id="node-config" data-node-id="config" data-node-label="config.yaml + extensions_config.json" tabindex="0" role="button" aria-label="聚焦config.yaml + extensions_config.json，变更自动重载, 数据层" aria-pressed="false" data-node-kind="database" data-node-sublabel="变更自动重载" data-node-context="数据层">
-          <title>config.yaml + extensions_config.json · 变更自动重载 · 数据层</title>
-          <rect x="890" y="700" width="260" height="60" rx="6" class="c-mask"/>
-          <rect x="890" y="700" width="260" height="60" rx="6" class="c-database" stroke-width="1.5"/>
-          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(896 706) scale(0.6875)">
+        <g id="node-config" data-node-id="config" data-node-label="配置文件" tabindex="0" role="button" aria-label="聚焦配置文件，config.yaml · extensions_config, 数据层" aria-pressed="false" data-node-kind="database" data-node-sublabel="config.yaml · extensions_config" data-node-context="数据层">
+          <title>配置文件 · config.yaml · extensions_config · 数据层</title>
+          <rect x="560" y="640" width="200" height="54" rx="6" class="c-mask"/>
+          <rect x="560" y="640" width="200" height="54" rx="6" class="c-database" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(566 646) scale(0.6875)">
             <ellipse cx="8" cy="4" rx="5" ry="2"/>
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="1020" y="728" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">config.yaml + extensions_config.json</text>
-        <text data-detail="context" x="1020" y="744" class="t-muted" font-size="9" text-anchor="middle">变更自动重载</text>
+          <text data-node-label="" data-detail-anchor="" x="660" y="665" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">配置文件</text>
+        <text data-detail="context" x="660" y="681" class="t-muted" font-size="9" text-anchor="middle">config.yaml · extensions_config</text>
+        </g>
+
+        <g id="node-docmgr" data-node-id="docmgr" data-node-label="文档空间" tabindex="0" role="button" aria-label="聚焦文档空间，知识与文档" aria-pressed="false" data-node-kind="backend" data-node-context="知识与文档">
+          <title>文档空间 · 知识与文档</title>
+          <rect x="696" y="138" width="104" height="40" rx="6" class="c-mask"/>
+          <rect x="696" y="138" width="104" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(702 144) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="748" y="162" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">文档空间</text>
+        </g>
+
+        <g id="node-knowledge" data-node-id="knowledge" data-node-label="知识库" tabindex="0" role="button" aria-label="聚焦知识库，知识与文档" aria-pressed="false" data-node-kind="backend" data-node-context="知识与文档">
+          <title>知识库 · 知识与文档</title>
+          <rect x="808" y="138" width="104" height="40" rx="6" class="c-mask"/>
+          <rect x="808" y="138" width="104" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(814 144) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="860" y="162" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">知识库</text>
+        </g>
+
+        <g id="node-knowledge_factory" data-node-id="knowledge_factory" data-node-label="知识工厂" tabindex="0" role="button" aria-label="聚焦知识工厂，知识与文档" aria-pressed="false" data-node-kind="backend" data-node-context="知识与文档">
+          <title>知识工厂 · 知识与文档</title>
+          <rect x="920" y="138" width="120" height="40" rx="6" class="c-mask"/>
+          <rect x="920" y="138" width="120" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(926 144) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="980" y="162" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">知识工厂</text>
+        </g>
+
+        <g id="node-project" data-node-id="project" data-node-label="报告项目" tabindex="0" role="button" aria-label="聚焦报告项目，项目 · 协作 · 工程" aria-pressed="false" data-node-kind="backend" data-node-context="项目 · 协作 · 工程">
+          <title>报告项目 · 项目 · 协作 · 工程</title>
+          <rect x="696" y="228" width="104" height="40" rx="6" class="c-mask"/>
+          <rect x="696" y="228" width="104" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(702 234) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="748" y="252" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">报告项目</text>
+        </g>
+
+        <g id="node-collab" data-node-id="collab" data-node-label="协作工作台" tabindex="0" role="button" aria-label="聚焦协作工作台，项目 · 协作 · 工程" aria-pressed="false" data-node-kind="backend" data-node-context="项目 · 协作 · 工程">
+          <title>协作工作台 · 项目 · 协作 · 工程</title>
+          <rect x="808" y="228" width="116" height="40" rx="6" class="c-mask"/>
+          <rect x="808" y="228" width="116" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(814 234) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="866" y="252" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">协作工作台</text>
+        </g>
+
+        <g id="node-approval" data-node-id="approval" data-node-label="流程与审批" tabindex="0" role="button" aria-label="聚焦流程与审批，项目 · 协作 · 工程" aria-pressed="false" data-node-kind="backend" data-node-context="项目 · 协作 · 工程">
+          <title>流程与审批 · 项目 · 协作 · 工程</title>
+          <rect x="932" y="228" width="112" height="40" rx="6" class="c-mask"/>
+          <rect x="932" y="228" width="112" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(938 234) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="988" y="252" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">流程与审批</text>
+        </g>
+
+        <g id="node-cad" data-node-id="cad" data-node-label="CAD 设计" tabindex="0" role="button" aria-label="聚焦CAD 设计，项目 · 协作 · 工程" aria-pressed="false" data-node-kind="backend" data-node-context="项目 · 协作 · 工程">
+          <title>CAD 设计 · 项目 · 协作 · 工程</title>
+          <rect x="1056" y="228" width="100" height="40" rx="6" class="c-mask"/>
+          <rect x="1056" y="228" width="100" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1062 234) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="1106" y="252" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">CAD 设计</text>
+        </g>
+
+        <g id="node-data_source" data-node-id="data_source" data-node-label="数据源" tabindex="0" role="button" aria-label="聚焦数据源，项目 · 协作 · 工程" aria-pressed="false" data-node-kind="backend" data-node-context="项目 · 协作 · 工程">
+          <title>数据源 · 项目 · 协作 · 工程</title>
+          <rect x="1164" y="228" width="100" height="40" rx="6" class="c-mask"/>
+          <rect x="1164" y="228" width="100" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1170 234) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="1214" y="252" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">数据源</text>
+        </g>
+
+        <g id="node-app_center" data-node-id="app_center" data-node-label="应用中心" tabindex="0" role="button" aria-label="聚焦应用中心，应用条目 · 权限可见, 运营与系统" aria-pressed="false" data-node-kind="backend" data-node-sublabel="应用条目 · 权限可见" data-node-context="运营与系统">
+          <title>应用中心 · 应用条目 · 权限可见 · 运营与系统</title>
+          <rect x="696" y="306" width="128" height="52" rx="6" class="c-mask"/>
+          <rect x="696" y="306" width="128" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(702 312) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="760" y="330" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">应用中心</text>
+        <text data-detail="context" x="760" y="346" class="t-muted" font-size="9" text-anchor="middle">应用条目 · 权限可见</text>
+        </g>
+
+        <g id="node-dashboard" data-node-id="dashboard" data-node-label="仪表盘" tabindex="0" role="button" aria-label="聚焦仪表盘，运营与系统" aria-pressed="false" data-node-kind="backend" data-node-context="运营与系统">
+          <title>仪表盘 · 运营与系统</title>
+          <rect x="836" y="312" width="80" height="40" rx="6" class="c-mask"/>
+          <rect x="836" y="312" width="80" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(842 318) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="876" y="336" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">仪表盘</text>
+        </g>
+
+        <g id="node-admin" data-node-id="admin" data-node-label="系统管理" tabindex="0" role="button" aria-label="聚焦系统管理，用户·角色·部门, 运营与系统" aria-pressed="false" data-node-kind="backend" data-node-sublabel="用户·角色·部门" data-node-context="运营与系统">
+          <title>系统管理 · 用户·角色·部门 · 运营与系统</title>
+          <rect x="928" y="306" width="110" height="52" rx="6" class="c-mask"/>
+          <rect x="928" y="306" width="110" height="52" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(934 312) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" data-detail-anchor="" x="983" y="330" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">系统管理</text>
+        <text data-detail="context" x="983" y="346" class="t-muted" font-size="9" text-anchor="middle">用户·角色·部门</text>
+        </g>
+
+        <g id="node-license" data-node-id="license" data-node-label="授权许可" tabindex="0" role="button" aria-label="聚焦授权许可，运营与系统" aria-pressed="false" data-node-kind="backend" data-node-context="运营与系统">
+          <title>授权许可 · 运营与系统</title>
+          <rect x="1050" y="312" width="96" height="40" rx="6" class="c-mask"/>
+          <rect x="1050" y="312" width="96" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1056 318) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="1098" y="336" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">授权许可</text>
+        </g>
+
+        <g id="node-bid_quote" data-node-id="bid_quote" data-node-label="投标报价" tabindex="0" role="button" aria-label="聚焦投标报价，市场分析" aria-pressed="false" data-node-kind="backend" data-node-context="市场分析">
+          <title>投标报价 · 市场分析</title>
+          <rect x="696" y="408" width="100" height="40" rx="6" class="c-mask"/>
+          <rect x="696" y="408" width="100" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(702 414) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="746" y="432" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">投标报价</text>
+        </g>
+
+        <g id="node-contract_price" data-node-id="contract_price" data-node-label="合同价格" tabindex="0" role="button" aria-label="聚焦合同价格，市场分析" aria-pressed="false" data-node-kind="backend" data-node-context="市场分析">
+          <title>合同价格 · 市场分析</title>
+          <rect x="808" y="408" width="100" height="40" rx="6" class="c-mask"/>
+          <rect x="808" y="408" width="100" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(814 414) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="858" y="432" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">合同价格</text>
+        </g>
+
+        <g id="node-sales" data-node-id="sales" data-node-label="销售分析" tabindex="0" role="button" aria-label="聚焦销售分析，市场分析" aria-pressed="false" data-node-kind="backend" data-node-context="市场分析">
+          <title>销售分析 · 市场分析</title>
+          <rect x="920" y="408" width="100" height="40" rx="6" class="c-mask"/>
+          <rect x="920" y="408" width="100" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(926 414) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="970" y="432" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">销售分析</text>
+        </g>
+
+        <g id="node-biz_pipeline" data-node-id="biz_pipeline" data-node-label="经营管线" tabindex="0" role="button" aria-label="聚焦经营管线，市场分析" aria-pressed="false" data-node-kind="backend" data-node-context="市场分析">
+          <title>经营管线 · 市场分析</title>
+          <rect x="1032" y="408" width="100" height="40" rx="6" class="c-mask"/>
+          <rect x="1032" y="408" width="100" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1038 414) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="1082" y="432" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">经营管线</text>
+        </g>
+
+        <g id="node-spare_parts" data-node-id="spare_parts" data-node-label="备件询价" tabindex="0" role="button" aria-label="聚焦备件询价，市场分析" aria-pressed="false" data-node-kind="backend" data-node-context="市场分析">
+          <title>备件询价 · 市场分析</title>
+          <rect x="1144" y="408" width="100" height="40" rx="6" class="c-mask"/>
+          <rect x="1144" y="408" width="100" height="40" rx="6" class="c-backend" stroke-width="1.5"/>
+          <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(1150 414) scale(0.6875)">
+            <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
+          </g>
+          <text data-node-label="" x="1194" y="432" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">备件询价</text>
         </g>
 
         <!-- Connection labels -->
-        <g data-detail="context" data-edge-from="browser" data-edge-to="nginx" data-edge-label="HTTPS" data-edge-key="0">
-          <rect x="538" y="88" width="34" height="14" rx="3" class="c-mask"/>
-          <text x="555" y="98" class="t-backend" font-size="8" text-anchor="middle">HTTPS</text>
+        <g data-detail="context" data-edge-from="browser" data-edge-to="nginx" data-edge-label="HTTPS" data-edge-key="0" data-edge-id="c_browser_nginx">
+          <rect x="298" y="71" width="34" height="14" rx="3" class="c-mask"/>
+          <text x="315" y="81" class="t-backend" font-size="8" text-anchor="middle">HTTPS</text>
         </g>
-        <g data-detail="context" data-edge-from="nginx" data-edge-to="frontend" data-edge-label="/*" data-edge-key="1">
-          <rect x="325" y="200" width="30" height="14" rx="3" class="c-mask"/>
-          <text x="340" y="210" class="t-muted" font-size="8" text-anchor="middle">/*</text>
+        <g data-detail="context" data-edge-from="nginx" data-edge-to="frontend" data-edge-label="/*" data-edge-key="1" data-edge-id="c_nginx_frontend">
+          <rect x="275" y="172" width="30" height="14" rx="3" class="c-mask"/>
+          <text x="290" y="182" class="t-muted" font-size="8" text-anchor="middle">/*</text>
         </g>
-        <g data-detail="context" data-edge-from="nginx" data-edge-to="gateway" data-edge-label="/api/* 重写" data-edge-key="2">
-          <rect x="483.6" y="288.5" width="62.8" height="14" rx="3" class="c-mask"/>
-          <text x="515" y="298.5" class="t-backend" font-size="8" text-anchor="middle">/api/* 重写</text>
+        <g data-detail="context" data-edge-from="nginx" data-edge-to="gateway" data-edge-label="/api/* 重写" data-edge-key="2" data-edge-id="c_nginx_gateway">
+          <rect x="512.6" y="218.5" width="62.8" height="14" rx="3" class="c-mask"/>
+          <text x="544" y="228.5" class="t-backend" font-size="8" text-anchor="middle">/api/* 重写</text>
         </g>
-        <g data-detail="context" data-edge-from="frontend" data-edge-to="gateway" data-edge-label="useStream SSE" data-edge-key="3">
-          <rect x="380.3" y="304" width="72.4" height="14" rx="3" class="c-mask"/>
-          <text x="416.5" y="314" class="t-muted" font-size="8" text-anchor="middle">useStream SSE</text>
+        <g data-detail="context" data-edge-from="frontend" data-edge-to="gateway" data-edge-label="useStream SSE" data-edge-key="3" data-edge-id="c_frontend_gateway">
+          <rect x="243.8" y="272" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="280" y="282" class="t-muted" font-size="8" text-anchor="middle">useStream SSE</text>
         </g>
-        <g data-detail="context" data-edge-from="gateway" data-edge-to="harness" data-edge-label="RunManager → run_agent" data-edge-key="4">
-          <rect x="507.2" y="436" width="115.6" height="14" rx="3" class="c-mask"/>
-          <text x="565" y="446" class="t-backend" font-size="8" text-anchor="middle">RunManager → run_agent</text>
+        <g data-detail="context" data-edge-from="gateway" data-edge-to="harness" data-edge-label="RunManager → run_agent" data-edge-key="4" data-edge-id="c_gateway_harness">
+          <rect x="237.2" y="385" width="115.6" height="14" rx="3" class="c-mask"/>
+          <text x="295" y="395" class="t-backend" font-size="8" text-anchor="middle">RunManager → run_agent</text>
         </g>
-        <g data-detail="context" data-edge-from="harness" data-edge-to="mcp" data-edge-label="函数调用" data-edge-key="5">
-          <rect x="258.3" y="570" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="282.5" y="580" class="t-messagebus" font-size="8" text-anchor="middle">函数调用</text>
+        <g data-detail="context" data-edge-from="gateway" data-edge-to="docmgr" data-edge-label="模块 API 路由" data-edge-key="5" data-edge-id="c_gw_docmgr">
+          <rect x="561.8" y="234.5" width="72.4" height="14" rx="3" class="c-mask"/>
+          <text x="598" y="244.5" class="t-muted" font-size="8" text-anchor="middle">模块 API 路由</text>
         </g>
-        <g data-detail="context" data-edge-from="harness" data-edge-to="skills" data-edge-label="技能加载" data-edge-key="6">
-          <rect x="568.3" y="570" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="592.5" y="580" class="t-muted" font-size="8" text-anchor="middle">技能加载</text>
+
+        <g data-detail="context" data-edge-from="harness" data-edge-to="mcp" data-edge-label="函数调用" data-edge-key="7" data-edge-id="c_harness_mcp">
+          <rect x="176.8" y="492" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="201" y="502" class="t-messagebus" font-size="8" text-anchor="middle">函数调用</text>
         </g>
-        <g data-detail="context" data-edge-from="harness" data-edge-to="subagents" data-edge-label="task()" data-edge-key="7">
-          <rect x="825.6" y="570" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="845" y="580" class="t-muted" font-size="8" text-anchor="middle">task()</text>
+        <g data-detail="context" data-edge-from="harness" data-edge-to="skills" data-edge-label="技能加载" data-edge-key="8" data-edge-id="c_harness_skills">
+          <rect x="315.8" y="592" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="340" y="602" class="t-muted" font-size="8" text-anchor="middle">技能加载</text>
         </g>
-        <g data-detail="context" data-edge-from="gateway" data-edge-to="pg_ext" data-edge-label="仓储读写" data-edge-key="8">
-          <rect x="177.8" y="373" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="202" y="383" class="t-muted" font-size="8" text-anchor="middle">仓储读写</text>
+
+        <g data-detail="context" data-edge-from="harness" data-edge-to="sandbox_fs" data-edge-label="虚拟路径" data-edge-key="10" data-edge-id="c_harness_sandbox">
+          <rect x="352.8" y="591" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="377" y="601" class="t-muted" font-size="8" text-anchor="middle">虚拟路径</text>
         </g>
-        <g data-detail="context" data-edge-from="harness" data-edge-to="pg_core" data-edge-label="checkpointer" data-edge-key="9">
-          <rect x="424.2" y="610" width="67.6" height="14" rx="3" class="c-mask"/>
-          <text x="458" y="620" class="t-messagebus" font-size="8" text-anchor="middle">checkpointer</text>
+        <g data-detail="context" data-edge-from="harness" data-edge-to="pg_core" data-edge-label="checkpointer" data-edge-key="11" data-edge-id="c_harness_pg_core">
+          <rect x="239.45" y="591" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="273.25" y="601" class="t-messagebus" font-size="8" text-anchor="middle">checkpointer</text>
         </g>
-        <g data-detail="context" data-edge-from="harness" data-edge-to="sandbox_fs" data-edge-label="虚拟路径" data-edge-key="10">
-          <rect x="702.8" y="610" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="727" y="620" class="t-muted" font-size="8" text-anchor="middle">虚拟路径</text>
+        <g data-detail="context" data-edge-from="gateway" data-edge-to="pg_ext" data-edge-label="模块仓储" data-edge-key="12" data-edge-id="c_gateway_pg_ext">
+          <rect x="1.8000000000000007" y="489" width="48.4" height="14" rx="3" class="c-mask"/>
+          <text x="26" y="499" class="t-muted" font-size="8" text-anchor="middle">模块仓储</text>
         </g>
-        <g data-detail="context" data-edge-from="config" data-edge-to="harness" data-edge-label="热加载" data-edge-key="11">
-          <rect x="1000.6" y="590" width="38.8" height="14" rx="3" class="c-mask"/>
-          <text x="1020" y="600" class="t-messagebus" font-size="8" text-anchor="middle">热加载</text>
+        <g data-detail="context" data-edge-from="config" data-edge-to="harness" data-edge-label="热重载" data-edge-key="13" data-edge-id="c_config_harness">
+          <rect x="625.6" y="580" width="38.8" height="14" rx="3" class="c-mask"/>
+          <text x="645" y="590" class="t-messagebus" font-size="8" text-anchor="middle">热重载</text>
         </g>
 
         <!-- Boundary labels (foreground masks keep routes out of titles) -->
         <g data-graph-role="structural-frame-label" data-composition-frame-id="0" data-composition-frame-kind="region" data-composition-frame-label="接入层">
-          <rect data-graph-role="structural-frame-label-mask" x="403" y="96" width="42.4" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="407" y="109" class="t-cloud" font-size="9" font-weight="600">接入层</text>
+          <rect data-graph-role="structural-frame-label-mask" x="148" y="92" width="42.4" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="152" y="105" class="t-cloud" font-size="9" font-weight="600">接入层</text>
         </g>
 
         <g data-graph-role="structural-frame-label" data-composition-frame-id="1" data-composition-frame-kind="region" data-composition-frame-label="前端层">
-          <rect data-graph-role="structural-frame-label-mask" x="198" y="214" width="42.4" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="202" y="227" class="t-cloud" font-size="9" font-weight="600">前端层</text>
+          <rect data-graph-role="structural-frame-label-mask" x="108" y="176" width="42.4" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="112" y="189" class="t-cloud" font-size="9" font-weight="600">前端层</text>
         </g>
 
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="2" data-composition-frame-kind="region" data-composition-frame-label="应用层">
-          <rect data-graph-role="structural-frame-label-mask" x="313" y="332" width="42.4" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="317" y="345" class="t-cloud" font-size="9" font-weight="600">应用层</text>
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="2" data-composition-frame-kind="region" data-composition-frame-label="知识与文档">
+          <rect data-graph-role="structural-frame-label-mask" x="686" y="118" width="64" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="690" y="131" class="t-cloud" font-size="9" font-weight="600">知识与文档</text>
         </g>
 
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="3" data-composition-frame-kind="region" data-composition-frame-label="框架层">
-          <rect data-graph-role="structural-frame-label-mask" x="248" y="450" width="42.4" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="252" y="463" class="t-cloud" font-size="9" font-weight="600">框架层</text>
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="3" data-composition-frame-kind="region" data-composition-frame-label="项目 · 协作 · 工程">
+          <rect data-graph-role="structural-frame-label-mask" x="686" y="208" width="107.2" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="690" y="221" class="t-cloud" font-size="9" font-weight="600">项目 · 协作 · 工程</text>
         </g>
 
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="4" data-composition-frame-kind="region" data-composition-frame-label="能力层">
-          <rect data-graph-role="structural-frame-label-mask" x="143" y="572" width="42.4" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="147" y="585" class="t-cloud" font-size="9" font-weight="600">能力层</text>
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="4" data-composition-frame-kind="region" data-composition-frame-label="运营与系统">
+          <rect data-graph-role="structural-frame-label-mask" x="686" y="286" width="64" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="690" y="299" class="t-cloud" font-size="9" font-weight="600">运营与系统</text>
         </g>
 
-        <g data-graph-role="structural-frame-label" data-composition-frame-id="5" data-composition-frame-kind="region" data-composition-frame-label="数据层">
-          <rect data-graph-role="structural-frame-label-mask" x="108" y="680" width="42.4" height="16" rx="3" class="c-mask"/>
-          <text data-boundary-label="" x="112" y="693" class="t-cloud" font-size="9" font-weight="600">数据层</text>
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="5" data-composition-frame-kind="region" data-composition-frame-label="市场分析">
+          <rect data-graph-role="structural-frame-label-mask" x="686" y="388" width="53.199999999999996" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="690" y="401" class="t-cloud" font-size="9" font-weight="600">市场分析</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="6" data-composition-frame-kind="region" data-composition-frame-label="应用层">
+          <rect data-graph-role="structural-frame-label-mask" x="48" y="300" width="42.4" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="52" y="313" class="t-cloud" font-size="9" font-weight="600">应用层</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="7" data-composition-frame-kind="region" data-composition-frame-label="框架层">
+          <rect data-graph-role="structural-frame-label-mask" x="48" y="408" width="42.4" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="52" y="421" class="t-cloud" font-size="9" font-weight="600">框架层</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="8" data-composition-frame-kind="region" data-composition-frame-label="能力层">
+          <rect data-graph-role="structural-frame-label-mask" x="28" y="510" width="42.4" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="32" y="523" class="t-cloud" font-size="9" font-weight="600">能力层</text>
+        </g>
+
+        <g data-graph-role="structural-frame-label" data-composition-frame-id="9" data-composition-frame-kind="region" data-composition-frame-label="数据层">
+          <rect data-graph-role="structural-frame-label-mask" x="28" y="620" width="42.4" height="16" rx="3" class="c-mask"/>
+          <text data-boundary-label="" x="32" y="633" class="t-cloud" font-size="9" font-weight="600">数据层</text>
         </g>
 
         <!-- Legend -->
-
+        <g data-legend="" data-legend-bridge="">
+          <text x="40" y="744" class="t-primary" font-size="12" font-weight="650">图例</text>
+          <g data-legend-semantic-kind="frontend" data-legend-kind="frontend" data-legend-label="前端" data-legend-x="40" data-legend-baseline="764" data-legend-width="63">
+            <rect x="40" y="755" width="16" height="10" rx="2.5" class="c-frontend" stroke-width="1"/>
+            <text x="62" y="764" class="t-muted" font-size="10" font-weight="500">前端</text>
+          </g>
+          <g data-legend-semantic-kind="backend" data-legend-kind="backend" data-legend-label="后端 / 功能模块" data-legend-x="125" data-legend-baseline="764" data-legend-width="118">
+            <rect x="125" y="755" width="16" height="10" rx="2.5" class="c-backend" stroke-width="1"/>
+            <text x="147" y="764" class="t-muted" font-size="10" font-weight="500">后端 / 功能模块</text>
+          </g>
+          <g data-legend-semantic-kind="database" data-legend-kind="database" data-legend-label="数据库" data-legend-x="265" data-legend-baseline="764" data-legend-width="73">
+            <rect x="265" y="755" width="16" height="10" rx="2.5" class="c-database" stroke-width="1"/>
+            <text x="287" y="764" class="t-muted" font-size="10" font-weight="500">数据库</text>
+          </g>
+          <g data-legend-semantic-kind="cloud" data-legend-kind="cloud" data-legend-label="云服务" data-legend-x="360" data-legend-baseline="764" data-legend-width="73">
+            <rect x="360" y="755" width="16" height="10" rx="2.5" class="c-cloud" stroke-width="1"/>
+            <text x="382" y="764" class="t-muted" font-size="10" font-weight="500">云服务</text>
+          </g>
+          <g data-legend-semantic-kind="external" data-legend-kind="external" data-legend-label="外部系统" data-legend-x="455" data-legend-baseline="764" data-legend-width="83">
+            <rect x="455" y="755" width="16" height="10" rx="2.5" class="c-external" stroke-width="1"/>
+            <text x="477" y="764" class="t-muted" font-size="10" font-weight="500">外部系统</text>
+          </g>
+        </g>
       </svg>
       <p class="intent-trace-status no-print" id="intent-trace-status" role="status" aria-live="polite" aria-atomic="true"></p>
       <div class="share-chapter-cue no-print" id="share-chapter-cue" hidden role="status" aria-live="polite">
@@ -5484,7 +5710,7 @@
         </div>
         <ul>
           <li>&bull; 能力只能经 MCP 工具 / Skills / 子代理到达 agent</li>
-          <li>&bull; 其余皆为管理层，不接通三原语即为孤岛</li>
+          <li>&bull; 模块经 extensions_config 注册 MCP 接通（数据源 provider · 知识工厂 kf）</li>
         </ul>
       </div>
 
