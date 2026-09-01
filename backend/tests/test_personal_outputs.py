@@ -51,8 +51,8 @@ class TestListPersonalOutputs:
         assert result["total"] == 1, "total 不得计入空 outputs 线程"
         assert result["has_more"] is True, "候选 2 个、扫描 1 个后仍应可翻页"
         assert result["next_skip"] == 1
-        # thread_id 倒序 → 首页只扫到空 outputs 的 tid-2，返回空但不卡翻页
-        assert [t["thread_id"] for t in result["threads"]] == []
+        # bug-3071 mtime 倒序 → 首页扫到最新的 tid-1（有文件）
+        assert [t["thread_id"] for t in result["threads"]] == ["tid-1"]
 
     @pytest.mark.asyncio
     async def test_returns_files_for_thread_with_outputs(self, tmp_path: Path):
@@ -117,9 +117,11 @@ class TestListPersonalOutputs:
         """bug-2225 回归：空 outputs 线程被过滤后返回数 < 扫描数，游标必须按扫描数推进。
 
         构造 tid-3(有文件) / tid-2(空 outputs) / tid-1(有文件)（无 threads_meta 时按
-        thread_id 倒序），limit=2。第一页扫描 [tid-3, tid-2] 只返回 tid-3，next_skip
-        必须是 2——旧逻辑按返回数推进（skip=1）会让第二页重扫 [tid-2, tid-1]，
-        若整窗无新增则滚动加载永久卡死。
+        outputs mtime 倒序——bug-3071：sqlite→postgres 切换后 threads_meta 停更，
+        created_at 全空，回退键=outputs 目录 mtime；目录按 tid-3/tid-2/tid-1 顺序创建，
+        tid-1 的文件最后写入 → mtime 最新在前），limit=2。第一页扫描 [tid-1, tid-3]
+        两个非空线程全返回，next_skip 必须是 2——旧逻辑按返回数推进会让窗口重叠，
+        整窗无新增时滚动加载永久卡死。
         """
         user_id = uuid4()
         threads_dir = tmp_path / "users" / str(user_id) / "threads"
@@ -135,14 +137,13 @@ class TestListPersonalOutputs:
             # 第一页：扫描 2 个线程，仅返回 1 个非空
             page1 = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id, skip=0, limit=2)
             assert page1["next_skip"] == 2, "游标必须按扫描数(2)而非返回数(1)推进"
-            assert [t["thread_id"] for t in page1["threads"]] == ["tid-3"]
+            assert [t["thread_id"] for t in page1["threads"]] == ["tid-1"]
             assert page1["has_more"] is True
 
-            # 按 next_skip 翻页能到达全部非空线程（旧逻辑在此数据上第二页只返回 tid-1，
-            # 但窗口起点错误；构造更多空线程时旧逻辑会整窗无新增而卡死）
+            # 按 next_skip 翻页到达剩余窗口（构造更多空线程时旧逻辑会整窗无新增而卡死）
             page2 = await AIDocumentService.list_personal_outputs(AsyncMock(), user_id, skip=page1["next_skip"], limit=2)
             assert page2["next_skip"] == 3
-            assert [t["thread_id"] for t in page2["threads"]] == ["tid-1"]
+            assert [t["thread_id"] for t in page2["threads"]] == ["tid-3"]
             assert page2["has_more"] is False
 
     @pytest.mark.asyncio

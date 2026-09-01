@@ -477,11 +477,19 @@ class AIDocumentService:
             if not (thread_dir / "user-data" / "outputs").is_dir():
                 continue
             tid = thread_dir.name
+            try:
+                outputs_mtime = (thread_dir / "user-data" / "outputs").stat().st_mtime
+            except OSError:
+                outputs_mtime = 0.0
             all_threads.append(
                 {
                     "thread_id": tid,
                     "thread_dir": thread_dir,
                     "_created_at": thread_created.get(tid, ""),
+                    # bug-3071：sqlite→postgres 切换后 threads_meta 不再更新（created_at 全空，
+                    # 排序退化为 thread_id 字典序、新线程被埋中段）。回退键 = outputs 目录 mtime
+                    #（最近产出时间，与「最近生成在前」直觉一致）。
+                    "_outputs_mtime": outputs_mtime,
                     "display_name": display_names.get(tid, ""),
                 }
             )
@@ -495,7 +503,7 @@ class AIDocumentService:
                     return _dt.fromisoformat(str(ca).replace("Z", "+00:00")).timestamp()
                 except Exception:
                     pass
-            return 0.0
+            return float(t.get("_outputs_mtime") or 0.0)  # bug-3071 回退键
 
         # EAI-CUSTOM: 排除绑定项目的线程（项目产物只出现在项目区，不回流个人区）
         project_tids = await AIDocumentService._personal_project_thread_ids(db)
