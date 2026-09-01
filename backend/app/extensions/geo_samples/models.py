@@ -1,4 +1,4 @@
-# EAI-CUSTOM: forked from app.extensions.contract_price/models.py (geo-sample-bank Phase 1, gsb_ 表).
+# EAI-CUSTOM: forked from app.extensions.contract_price/models.py (geo-sample-bank Phase 1, gsb_ 表), spec 2026-09-01.
 # gsb_ tables auto-create at gateway startup via shared Base; new columns MUST go
 # through database.migrate_db() idempotent ALTER (create_all never adds columns).
 """SQLAlchemy ORM models for the geo-sample-bank ``gsb_`` tables.
@@ -31,6 +31,7 @@ class GsbDocument(Base):
 
     __tablename__ = "gsb_documents"
 
+    # String(36) PK (not sibling's UUID(as_uuid=True)): all consumers (routers/schemas/MinIO URIs) treat ids as strings; no cross-family joins exist.
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
     report_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     file_name: Mapped[str] = mapped_column(String(512))
@@ -57,6 +58,7 @@ class GsbRedaction(Base):
     __tablename__ = "gsb_redactions"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    # no FK on purpose: audit event log must survive document deletion (retention semantics; cpa sibling uses FK, we intentionally diverge).
     document_id: Mapped[str] = mapped_column(String(36), index=True)
     rule: Mapped[str] = mapped_column(String(64))
     mode: Mapped[str] = mapped_column(String(16))  # auto / review
@@ -70,6 +72,7 @@ class GsbRunHistory(Base):
     __tablename__ = "gsb_run_history"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    # no FK on purpose: audit event log must survive document deletion (retention semantics; cpa sibling uses FK, we intentionally diverge).
     document_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     run_type: Mapped[str] = mapped_column(String(16))  # parse / redact
     status: Mapped[str] = mapped_column(String(16), default="running")  # running/done/failed

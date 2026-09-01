@@ -1,4 +1,4 @@
-# EAI-CUSTOM: forked from app.extensions.contract_price (geo-sample-bank Phase 1).
+# EAI-CUSTOM: forked from app.extensions.contract_price (geo-sample-bank Phase 1), spec 2026-09-01.
 """Geo sample bank extension (gsb_ tables). Phase 1 skeleton: models only.
 
 Importing this package registers the gsb_ models on the shared
