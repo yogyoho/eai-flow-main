@@ -56,7 +56,7 @@ license: MIT
 
 ### 步骤 1 · 数据收集 → 门 1
 
-1. **开题首动作三件套（bug-2231 页面实测：开题第一轮一轮做完，不可拆分、不可只说不做）**——按序完成：① **真实调用** KF MCP `kf_resolve_template`（工具全名 `knowledge-factory_kf_resolve_template`，报告模板+标准，与用户是否已给阶段无关），必须在本回复留下实际工具调用记录——口头声称"已解析 / found=false"而未调用 = 未做（工具不可用或调用失败视同 `found=false`，进 ②）；② `found=false` 时向用户声明：
+1. **开题首动作三件套（bug-2231 页面实测：开题第一轮一轮做完，不可拆分、不可只说不做）**——按序完成：① **真实调用** KF MCP `kf_resolve_template`（工具全名 `knowledge-factory_kf_resolve_template`，报告模板+标准，与用户是否已给阶段无关），必须在本回复留下实际工具调用记录——口头声称"已解析 / found=false"而未调用 = 未做（工具不可用或调用失败视同 `found=false`，进 ②；**`found=false` 且 `reason=missing_keywords` 时须按工具 suggestion 补 `domain_keywords`（如 `["固体矿产","地质勘查",<矿种>]`）重试 ≤1 次，仍 false 才兜底**——bug-3066 页面实测：该工具硬性要求 domain_keywords，缺参时连模板库都不查即返回 false）；② `found=false` 时向用户声明：
    > 知识工厂未命中模板，本次使用技能内置 `references/` 兜底（exploration.json 阶段表单 + standards_index）。
    ③ **数据预告必须用户可见**：读 `references/data_expectations.json`，把按章数据清单（每章所需数据族 + CSV 列样例）向用户预告，引导一次备齐；只在内部读了规划用、用户看不到 = 未做（bug-2231 实测踩过两次）；用户明确缺的族照常落 `[待确认]`，缺数不编造。
    **②声明+③预告的载体 = 第 3 条首张表单的 `question` 文本开头**（先声明+按章预告，再列首类表单说明）——不另发独立消息，独立消息会被"只说不做"跳过（bug-2231 复测实锤：口头说 Let me send the preview 却只调了表单）。三件齐备前不做其他事（读 schema、生成表单一律排后）；首张卡片发出前自检：① 的调用记录在场 + 卡片 question 开头带有 ②声明（若未命中）与 ③按章预告，缺哪个先补哪个。
