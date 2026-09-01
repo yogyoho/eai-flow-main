@@ -35,17 +35,44 @@ import {
   useGsbReview,
 } from "@/extensions/geo-samples/hooks";
 
+/** mutate 失败兜底：TanStack 默认吞 rejection，400「仅 redacted 状态可审」等后端 detail 需可见。 */
+const alertErr = (e: unknown) =>
+  alert(e instanceof Error ? e.message : String(e));
+
 export function ReviewView() {
   const [docId, setDocId] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const { data } = useGsbDocuments({ status: "redacted" });
-  const { data: reds } = useGsbRedactions(docId);
+  const { data, isPending } = useGsbDocuments({ status: "redacted" });
+  const { data: reds, isPending: redsPending } = useGsbRedactions(docId);
   const review = useGsbReview();
   const docs = data?.items ?? [];
   const docOptions: GsbOption[] = docs.map((d) => ({
     value: d.id,
     label: `${d.report_id}（${d.file_name}）`,
   }));
+  // 双保险：approve 清 docId 之外，列表刷新后已不在待审列表的选中项也不再渲染②区
+  // （防缓存命中清单 + 活按钮指向已过审文档、下拉回退裸 UUID）
+  const selected = docId ? (docs.find((d) => d.id === docId) ?? null) : null;
+
+  function submitReview(
+    decision: "approve" | "reject",
+    noteVal: string | null,
+  ) {
+    if (!docId) return;
+    review.mutate(
+      { id: docId, decision, note: noteVal },
+      {
+        onSuccess: (_doc, vars) => {
+          // approve 后文档离开 redacted 列表 → 清选择与备注；reject 保留（文档留在待审列表）
+          if (vars.decision === "approve") {
+            setDocId(null);
+            setNote("");
+          }
+        },
+        onError: alertErr,
+      },
+    );
+  }
 
   return (
     <div
@@ -76,11 +103,15 @@ export function ReviewView() {
               onChange={(v) => setDocId(v || null)}
             />
           </div>
-          {docs.length === 0 && (
+          {isPending ? (
+            <p className="mt-2 text-[13px]" style={{ color: INK_3 }}>
+              加载中…
+            </p>
+          ) : docs.length === 0 ? (
             <p className="mt-2 text-[13px]" style={{ color: INK_3 }}>
               暂无待审样例（先在样例文档库完成脱敏）
             </p>
-          )}
+          ) : null}
         </div>
       </SectionCard>
 
@@ -90,7 +121,7 @@ export function ReviewView() {
         title="脱敏命中清单"
         sub="审「漏脱」只看 规则/档位/位置/哈希，不回看全文；琥珀行 = 待审标记（mode=review）"
       >
-        {docId ? (
+        {selected ? (
           <>
             <div className="border-border bg-card rounded-xl border p-4">
               <Table>
@@ -103,39 +134,54 @@ export function ReviewView() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(reds?.items ?? []).map((r) => (
-                    <TableRow
-                      key={r.id}
-                      style={
-                        r.mode === "review"
-                          ? { background: ACCENT_SOFT }
-                          : undefined
-                      }
-                    >
-                      <TableCell className="text-[13px]">{r.rule}</TableCell>
-                      <TableCell
-                        className="text-[13px]"
-                        style={{ color: r.mode === "auto" ? INK_2 : AMBER }}
-                      >
-                        {r.mode === "auto" ? "自动替换" : "待审标记"}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {r.start}–{r.end}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">
-                        {r.original_hash.slice(0, 12)}…
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {(reds?.items ?? []).length === 0 && (
+                  {redsPending ? (
                     <TableRow>
                       <TableCell
                         colSpan={4}
                         className="text-muted-foreground py-6 text-center text-sm"
                       >
-                        无命中记录
+                        加载中…
                       </TableCell>
                     </TableRow>
+                  ) : (
+                    <>
+                      {(reds?.items ?? []).map((r) => (
+                        <TableRow
+                          key={r.id}
+                          style={
+                            r.mode === "review"
+                              ? { background: ACCENT_SOFT }
+                              : undefined
+                          }
+                        >
+                          <TableCell className="text-[13px]">
+                            {r.rule}
+                          </TableCell>
+                          <TableCell
+                            className="text-[13px]"
+                            style={{ color: r.mode === "auto" ? INK_2 : AMBER }}
+                          >
+                            {r.mode === "auto" ? "自动替换" : "待审标记"}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {r.start}–{r.end}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {r.original_hash.slice(0, 12)}…
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {(reds?.items ?? []).length === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={4}
+                            className="text-muted-foreground py-6 text-center text-sm"
+                          >
+                            无命中记录
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </>
                   )}
                 </TableBody>
               </Table>
@@ -151,13 +197,7 @@ export function ReviewView() {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() =>
-                    review.mutate({
-                      id: docId,
-                      decision: "approve",
-                      note: note || null,
-                    })
-                  }
+                  onClick={() => submitReview("approve", note || null)}
                   className="cursor-pointer rounded-md px-3 py-1.5 text-[14px] font-medium text-white"
                   style={{ background: GREEN }}
                 >
@@ -165,13 +205,7 @@ export function ReviewView() {
                 </button>
                 <button
                   type="button"
-                  onClick={() =>
-                    review.mutate({
-                      id: docId,
-                      decision: "reject",
-                      note: note || "未写理由",
-                    })
-                  }
+                  onClick={() => submitReview("reject", note || "未写理由")}
                   className="cursor-pointer rounded-md px-3 py-1.5 text-[14px] font-medium text-white"
                   style={{ background: RED }}
                 >
@@ -182,7 +216,9 @@ export function ReviewView() {
           </>
         ) : (
           <p className="text-[13px]" style={{ color: INK_3 }}>
-            请先在上方选择待审样例
+            {docId
+              ? "该样例已不在待审列表（可能已被审核），请重新选择"
+              : "请先在上方选择待审样例"}
           </p>
         )}
       </SectionCard>

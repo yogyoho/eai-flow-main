@@ -61,6 +61,10 @@ const MINERAL_LABEL: Record<string, string> = Object.fromEntries(
 const ACT_BTN =
   "border-border text-foreground hover:border-foreground/40 cursor-pointer rounded border px-2 py-0.5 text-xs transition-colors";
 
+/** mutate 失败兜底：TanStack 默认吞 rejection，409「任务已在跑」等后端 detail 不提示会变成死按钮。 */
+const alertErr = (e: unknown) =>
+  alert(e instanceof Error ? e.message : String(e));
+
 export function DocumentsView() {
   const router = useRouter();
   const [filters, setFilters] = useState<GsbDocFilters>({
@@ -97,7 +101,8 @@ export function DocumentsView() {
         if (fileRef.current) fileRef.current.value = "";
         if (reportIdRef.current) reportIdRef.current.value = "";
       },
-      onError: (e) => alert(`上传失败: ${String(e)}`),
+      onError: (e) =>
+        alert(`上传失败: ${e instanceof Error ? e.message : String(e)}`),
     });
   }
 
@@ -124,8 +129,12 @@ export function DocumentsView() {
           <StatCard
             key={o.value}
             label={o.label}
-            value={countBy(o.value)}
-            delta={o.value === "uploaded" ? `共 ${all.length} 份` : undefined}
+            value={allQ.isPending ? "—" : countBy(o.value)}
+            delta={
+              o.value === "uploaded" && !allQ.isPending
+                ? `共 ${all.length} 份`
+                : undefined
+            }
           />
         ))}
       </div>
@@ -220,7 +229,10 @@ export function DocumentsView() {
                             type="button"
                             className={ACT_BTN}
                             onClick={() =>
-                              action.mutate({ id: d.id, action: "parse" })
+                              action.mutate(
+                                { id: d.id, action: "parse" },
+                                { onError: alertErr },
+                              )
                             }
                           >
                             解析
@@ -231,7 +243,10 @@ export function DocumentsView() {
                             type="button"
                             className={ACT_BTN}
                             onClick={() =>
-                              action.mutate({ id: d.id, action: "redact" })
+                              action.mutate(
+                                { id: d.id, action: "redact" },
+                                { onError: alertErr },
+                              )
                             }
                           >
                             脱敏
@@ -252,7 +267,10 @@ export function DocumentsView() {
                             className={ACT_BTN}
                             style={{ color: RED }}
                             onClick={() =>
-                              action.mutate({ id: d.id, action: "parse" })
+                              action.mutate(
+                                { id: d.id, action: "parse" },
+                                { onError: alertErr },
+                              )
                             }
                           >
                             重试

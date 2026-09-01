@@ -40,7 +40,7 @@ const RUN_STATUS_COLOR: Record<string, string> = {
 };
 
 export function TasksView() {
-  const { data } = useGsbRuns();
+  const { data, isPending } = useGsbRuns();
   const runs = data?.items ?? [];
   return (
     <div
@@ -61,53 +61,59 @@ export function TasksView() {
         sub="后台任务执行轨迹，5 秒自动刷新"
       >
         <div className="border-border bg-card rounded-xl border p-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>类型</TableHead>
-                <TableHead>状态</TableHead>
-                <TableHead>文档</TableHead>
-                <TableHead>详情</TableHead>
-                <TableHead>时间</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {runs.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="text-[13px]">
-                    {RUN_TYPE_ZH[r.run_type] ?? r.run_type}
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className="text-[13px] font-medium"
-                      style={{ color: RUN_STATUS_COLOR[r.status] ?? INK_2 }}
-                    >
-                      {RUN_STATUS_ZH[r.status] ?? r.status}
-                    </span>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {r.document_id?.slice(0, 8) ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground max-w-72 truncate text-xs">
-                    {r.detail ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-[13px] whitespace-nowrap">
-                    {new Date(r.created_at).toLocaleString()}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {runs.length === 0 && (
+          {isPending ? (
+            <p className="text-muted-foreground py-8 text-center text-sm">
+              加载中…
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-muted-foreground py-6 text-center text-sm"
-                  >
-                    暂无运行
-                  </TableCell>
+                  <TableHead>类型</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableHead>文档</TableHead>
+                  <TableHead>详情</TableHead>
+                  <TableHead>时间</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {runs.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-[13px]">
+                      {RUN_TYPE_ZH[r.run_type] ?? r.run_type}
+                    </TableCell>
+                    <TableCell>
+                      <span
+                        className="text-[13px] font-medium"
+                        style={{ color: RUN_STATUS_COLOR[r.status] ?? INK_2 }}
+                      >
+                        {RUN_STATUS_ZH[r.status] ?? r.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {r.document_id?.slice(0, 8) ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground max-w-72 truncate text-xs">
+                      {r.detail ?? "—"}
+                    </TableCell>
+                    <TableCell className="text-[13px] whitespace-nowrap">
+                      {new Date(r.created_at).toLocaleString()}
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {runs.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-muted-foreground py-6 text-center text-sm"
+                    >
+                      暂无运行
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
         </div>
       </SectionCard>
     </div>
