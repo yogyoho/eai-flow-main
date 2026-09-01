@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "地质勘查报告技能架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "gates",
+        "label": "两道确认门",
+        "focus": [
+          "user",
+          "agent",
+          "ingest",
+          "freeze"
+        ],
+        "note": "门1 完备性检查；门2 异常确认后方可冻结"
+      },
+      {
+        "id": "dispatch",
+        "label": "控制器与派发",
+        "focus": [
+          "agent",
+          "writer",
+          "state_store"
+        ],
+        "note": "主会话薄上下文只协调，章节走子代理 wave1+wave2"
+      },
+      {
+        "id": "delivery",
+        "label": "终验与交付",
+        "focus": [
+          "build",
+          "finalize",
+          "outputs",
+          "present"
+        ],
+        "note": "BUILD_READY 后 consistency → snapshot → present_files 唯一交付物"
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "用户（项目委托方）",
+      "sublabel": "表单 · CSV/Excel · 确认",
+      "pos": [
+        40,
+        40
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "控制器主会话",
+      "sublabel": "薄上下文 · 派发 · 跑门 · 记账",
+      "pos": [
+        260,
+        40
+      ],
+      "size": [
+        200,
+        64
+      ],
+      "tag": "控制器"
+    },
+    {
+      "id": "kf",
+      "type": "external",
+      "label": "KF 知识工厂 MCP",
+      "sublabel": "kf_resolve_template 模板+标准",
+      "pos": [
+        530,
+        40
+      ],
+      "size": [
+        190,
+        60
+      ]
+    },
+    {
+      "id": "ingest",
+      "type": "backend",
+      "label": "ingest.py",
+      "sublabel": "步骤1 数据收集 · 门1",
+      "pos": [
+        80,
+        230
+      ],
+      "size": [
+        150,
+        68
+      ]
+    },
+    {
+      "id": "freeze",
+      "type": "backend",
+      "label": "冻结计算",
+      "sublabel": "formula_runner · 门2",
+      "pos": [
+        290,
+        230
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "writer",
+      "type": "backend",
+      "label": "章节子代理",
+      "sublabel": "wave1 全扇出 + wave2 结论",
+      "pos": [
+        520,
+        230
+      ],
+      "size": [
+        170,
+        68
+      ]
+    },
+    {
+      "id": "build",
+      "type": "backend",
+      "label": "build_output.py",
+      "sublabel": "步骤5 槽位注入组装",
+      "pos": [
+        750,
+        230
+      ],
+      "size": [
+        165,
+        68
+      ]
+    },
+    {
+      "id": "finalize",
+      "type": "backend",
+      "label": "校验 + 快照",
+      "sublabel": "consistency 22合约 · snapshot",
+      "pos": [
+        990,
+        230
+      ],
+      "size": [
+        175,
+        68
+      ]
+    },
+    {
+      "id": "data_store",
+      "type": "database",
+      "label": "data/",
+      "sublabel": "33 表单 + CSV",
+      "pos": [
+        75,
+        470
+      ],
+      "size": [
+        160,
+        68
+      ]
+    },
+    {
+      "id": "state_store",
+      "type": "database",
+      "label": "state/",
+      "sublabel": "formula_state · chapters · progress",
+      "pos": [
+        270,
+        470
+      ],
+      "size": [
+        210,
+        68
+      ]
+    },
+    {
+      "id": "outputs",
+      "type": "database",
+      "label": "outputs/",
+      "sublabel": "报告 · 快照 · 交付清单",
+      "pos": [
+        760,
+        470
+      ],
+      "size": [
+        190,
+        68
+      ]
+    },
+    {
+      "id": "present",
+      "type": "external",
+      "label": "present_files",
+      "sublabel": "线程级交付回调",
+      "pos": [
+        1020,
+        470
+      ],
+      "size": [
+        170,
+        68
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "报告管线 步骤1–7",
+      "wraps": [
+        "ingest",
+        "freeze",
+        "writer",
+        "build",
+        "finalize"
+      ],
+      "pad": 16
+    },
+    {
+      "kind": "region",
+      "label": "工作区 workspace/geo-report",
+      "wraps": [
+        "data_store",
+        "state_store"
+      ],
+      "pad": 16
+    },
+    {
+      "kind": "region",
+      "label": "线程交付目录 outputs/",
+      "wraps": [
+        "outputs"
+      ],
+      "pad": 16
+    }
+  ],
+  "connections": [
+    {
+      "from": "user",
+      "to": "agent",
+      "label": "数据 · 确认",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "agent",
+      "to": "kf",
+      "label": "模板解析",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "agent",
+      "to": "ingest",
+      "label": "收数",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelSegment": 2
+    },
+    {
+      "from": "agent",
+      "to": "freeze",
+      "label": "冻结",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelSegment": 2
+    },
+    {
+      "from": "agent",
+      "to": "writer",
+      "label": "派发写作",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "agent",
+      "to": "finalize",
+      "label": "终验",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "ingest",
+      "to": "freeze",
+      "label": "GATE1",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "freeze",
+      "to": "writer",
+      "label": "门2",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "writer",
+      "to": "build",
+      "label": "章节就绪",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "build",
+      "to": "finalize",
+      "label": "BUILD_READY",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "ingest",
+      "to": "data_store",
+      "label": "唯一写者",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 30
+    },
+    {
+      "from": "freeze",
+      "to": "state_store",
+      "label": "冻结值+溯源",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 40
+    },
+    {
+      "from": "writer",
+      "to": "state_store",
+      "label": "chapters/chN.md",
+      "fromSide": "bottom",
+      "toSide": "right"
+    },
+    {
+      "from": "finalize",
+      "to": "outputs",
+      "label": "报告+快照",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "from": "outputs",
+      "to": "present",
+      "label": "唯一交付物",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "from": "present",
+      "to": "user",
+      "label": "报告 .md",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "left",
+      "via": [
+        [
+          1105,
+          590
+        ],
+        [
+          20,
+          590
+        ],
+        [
+          20,
+          72
+        ]
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "两道确认门",
+      "items": [
+        "门1：ingest.py check 输出 GATE1_COMPLETE 才写笔，缺项译成中文清单补齐",
+        "门2：rc=3 异常清单必须逐条获用户确认，免打扰指令的法定例外",
+        "确认门不可静默放行，只能「按冻结值继续」"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "唯一写者铁律",
+      "items": [
+        "data/ 唯一写者 = ingest.py，绝不手写 JSON",
+        "chapter_planner 出章节清单；formula_state 唯一写者 = formula_runner.py",
+        "交付只走 build_output.py，outputs/ 出现其他 .md = FAIL"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "溯源与防篡改",
+      "items": [
+        "snapshot.py 全文件 SHA-256 清单，rc=3 = 被篡改即停",
+        "delivery_manifest.json 在场才可交付，.delivery-contract 勿删",
+        "consistency 22 合约（XS/FC/CC/NR/SL），FAIL>0 不可交付；只信 state/ 文件与 progress.json，不信对话记忆"
+      ]
+    }
+  ]
+}
