@@ -1,4 +1,4 @@
-"""三分支解析：docx→md（含 OLE 占位）、pdf 文字版、扫描判定异常。"""
+"""三分支解析：docx→md（含 OLE/OMML 占位）、pdf 文字版、扫描判定异常、OCR 契约与统一分发。"""
 
 import io
 
@@ -49,6 +49,25 @@ def test_docx_ole_formula_placeholder():
     assert "[公式:p1]" in docx_to_markdown(buf.getvalue())
 
 
+def test_docx_inline_and_omml_formula_placeholders():
+    """I3：有文本的段落夹公式对象 → 文本保留 + [公式:pN] 后缀；纯 OMML(m:oMath) → 独立占位。"""
+    from docx import Document
+    from docx.oxml.ns import qn
+
+    from app.extensions.geo_samples.parsers import docx_to_markdown
+
+    doc = Document()
+    p1 = doc.add_paragraph("比拟法估算资源量")
+    p1._p.append(p1._p.makeelement(qn("w:object"), {}))  # 行内 OLE
+    p2 = doc.add_paragraph()
+    p2._p.append(p2._p.makeelement(qn("m:oMath"), {}))  # 纯 OMML 公式
+    buf = io.BytesIO()
+    doc.save(buf)
+    md = docx_to_markdown(buf.getvalue())
+    assert "比拟法估算资源量 [公式:p1]" in md  # 文本 + 占位后缀（计数器从 1 起）
+    assert "[公式:p2]" in md  # 无文本 OMML → 独立占位行，计数递增
+
+
 def test_pdf_scan_detection_raises():
     from app.extensions.geo_samples.parsers import ScannedPdfError, pdf_text_to_markdown
 
@@ -76,7 +95,12 @@ def test_ocr_dispatch_contracts(monkeypatch):
             pass
 
         def json(self):
-            return {"pages": [{"page_no": 1, "text": "OCR 第一页"}, {"page_no": 2, "text": "OCR 第二页"}]}
+            return {
+                "pages": [
+                    {"page_no": 1, "text": "OCR 第一页"},
+                    {"page_no": 2, "text": "OCR 第二页", "tables": [{"rows": [["钻孔", "深度"], ["ZK1", "100"]]}]},
+                ]
+            }
 
     class FakeClient:
         def __init__(self, *a, **k):
@@ -88,9 +112,10 @@ def test_ocr_dispatch_contracts(monkeypatch):
         async def __aexit__(self, *a):
             return False
 
-        async def post(self, url, files=None):
+        async def post(self, url, files=None, data=None):
             captured["url"] = url
             captured["files"] = files
+            captured["data"] = data
             return FakeResp()
 
     monkeypatch.setattr(parsers.httpx, "AsyncClient", FakeClient)
@@ -100,3 +125,105 @@ def test_ocr_dispatch_contracts(monkeypatch):
     md = asyncio.run(parsers.ocr_pdf_to_markdown(b"pdfbytes"))
     assert "http" in captured["url"] and captured["url"].endswith("/ocr")
     assert "OCR 第一页" in md and "OCR 第二页" in md
+    # C1.b：显式放开整页文字 OCR 页数门控（默认只前 3 页）
+    assert captured["data"] == {"text_pages": "999"}
+    # C1.b：tables[].rows 拍平为 md 管道表（无表头分隔行），跟在该页文本之后
+    assert "| 钻孔 | 深度 |" in md
+    assert "| ZK1 | 100 |" in md
+    assert md.index("OCR 第二页") < md.index("| 钻孔 | 深度 |")
+
+
+def test_ocr_empty_result_guard(monkeypatch):
+    """C1.c：OCR 全空（无文本无表格）→ ValueError，不静默返回空 md。"""
+    from app.extensions.geo_samples import parsers
+
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"pages": [{"page_no": 1, "text": "  ", "tables": []}]}
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, files=None, data=None):
+            return FakeResp()
+
+    monkeypatch.setattr(parsers.httpx, "AsyncClient", FakeClient)
+
+    import asyncio
+
+    with pytest.raises(ValueError, match="OCR 返回空文本"):
+        asyncio.run(parsers.ocr_pdf_to_markdown(b"pdfbytes"))
+
+
+def test_ocr_retry_on_remote_protocol_error(monkeypatch):
+    """M3：对端半途断流（RemoteProtocolError）重试一次后成功；退避不真睡。"""
+    import asyncio
+
+    from app.extensions.geo_samples import parsers
+
+    calls = {"post": 0, "slept": []}
+
+    class FakeResp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"pages": [{"page_no": 1, "text": "重试后文本"}]}
+
+    class FakeClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, files=None, data=None):
+            calls["post"] += 1
+            if calls["post"] == 1:
+                raise parsers.httpx.RemoteProtocolError("peer closed connection")
+            return FakeResp()
+
+    async def fake_sleep(sec):
+        calls["slept"].append(sec)
+
+    monkeypatch.setattr(parsers.httpx, "AsyncClient", FakeClient)
+    monkeypatch.setattr(asyncio, "sleep", fake_sleep)
+
+    md = asyncio.run(parsers.ocr_pdf_to_markdown(b"pdfbytes"))
+    assert "重试后文本" in md
+    assert calls["post"] == 2
+    assert calls["slept"] == [30.0]  # 首败退避 30s
+
+
+def test_parse_document_dispatch(monkeypatch):
+    """M1：统一分发——docx 大小写不敏感；不支持类型 ValueError；稀疏 pdf 落到 OCR 通道。"""
+    import asyncio
+
+    from app.extensions.geo_samples import parsers
+
+    async def fake_ocr(data, base_url=None):
+        return "OCR TEXT"
+
+    monkeypatch.setattr(parsers, "ocr_pdf_to_markdown", fake_ocr)
+
+    md, mode = asyncio.run(parsers.parse_document("报告.DOCX", _build_docx()))
+    assert mode == "docx" and md.startswith("## 第1章 总论")
+
+    with pytest.raises(ValueError, match="不支持的文件类型"):
+        asyncio.run(parsers.parse_document("photo.png", b"x"))
+
+    md, mode = asyncio.run(parsers.parse_document("scan.pdf", _make_pdf_with_text("短")))
+    assert mode == "pdf_ocr" and md == "OCR TEXT"
