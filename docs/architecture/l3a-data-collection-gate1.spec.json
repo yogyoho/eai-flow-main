@@ -36,9 +36,9 @@
     { "id": "done", "lane": "session", "col": 5, "type": "database", "label": "进入冻结", "sublabel": "门 1 通过 · 数据冻结", "width": 156 }
   ],
   "edges": [
-    { "id": "e_kf_declare", "from": "kf_resolve", "to": "declare", "label": "found=false", "variant": "default", "role": "branch" },
-    { "id": "e_kf_forms", "from": "kf_resolve", "to": "gen_forms", "label": "命中模板", "variant": "dashed", "role": "branch" },
-    { "id": "e_declare_forms", "from": "declare", "to": "gen_forms", "variant": "default", "role": "main" },
+    { "id": "e_kf_declare", "from": "kf_resolve", "to": "declare", "label": "found=false", "variant": "default", "role": "branch", "fromSide": "right", "toSide": "left" },
+    { "id": "e_kf_forms", "from": "kf_resolve", "to": "gen_forms", "label": "命中模板", "variant": "dashed", "role": "branch", "toSide": "bottom" },
+    { "id": "e_declare_forms", "from": "declare", "to": "gen_forms", "variant": "default", "role": "main", "toSide": "left" },
     { "id": "e_forms_collect", "from": "gen_forms", "to": "collect", "variant": "default", "role": "main" },
     { "id": "e_collect_guide", "from": "collect", "to": "guide_csv", "label": "清单>10", "variant": "default", "role": "branch", "fromSide": "top", "toSide": "top" },
     { "id": "e_guide_write", "from": "guide_csv", "to": "ingest_write", "label": "CSV 上传", "variant": "default", "role": "branch" },
