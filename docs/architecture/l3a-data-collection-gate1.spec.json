@@ -1,0 +1,75 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "L3a 数据收集与门1",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1240, 580]
+  },
+  "lanes": [
+    { "id": "user", "label": "用户" },
+    { "id": "session", "label": "控制器主会话" },
+    { "id": "scripts", "label": "脚本" }
+  ],
+  "phases": [
+    { "id": "phase_boot", "label": "模板与预告", "fromCol": 0, "toCol": 1 },
+    { "id": "phase_collect", "label": "数据收集", "fromCol": 2, "toCol": 4, "variant": "emphasis" },
+    { "id": "phase_gate", "label": "门 1 · 冻结", "fromCol": 5, "toCol": 5 }
+  ],
+  "mainPath": ["kf_resolve", "declare", "gen_forms", "collect", "ingest_write", "gate1", "done"],
+  "semanticChecks": {
+    "allowedRoots": ["kf_resolve"],
+    "allowedTerminals": ["done"],
+    "requiredEdges": [
+      { "from": "gate1", "to": "collect" }
+    ]
+  },
+  "nodes": [
+    { "id": "kf_resolve", "lane": "session", "col": 0, "type": "backend", "label": "解析模板", "sublabel": "kf_resolve_template", "tag": "必须留调用记录", "width": 156 },
+    { "id": "declare", "lane": "session", "col": 1, "type": "backend", "label": "声明兜底 · 数据预告", "sublabel": "references / data_expectations", "width": 186 },
+    { "id": "gen_forms", "lane": "scripts", "col": 2, "type": "messagebus", "label": "生成空白表单", "sublabel": "ingest.py forms", "width": 140 },
+    { "id": "collect", "lane": "user", "col": 3, "type": "frontend", "label": "逐类收集", "sublabel": "ask_clarification · 对象族按子键", "tag": "单回合一卡 · ≤16 项", "width": 210 },
+    { "id": "guide_csv", "lane": "user", "col": 4, "type": "frontend", "label": "引导上传 CSV", "sublabel": "普通消息 · 绝不做卡片", "tag": "矿体>3 或 清单>10", "width": 184 },
+    { "id": "ingest_write", "lane": "scripts", "col": 4, "type": "messagebus", "label": "落盘 data/", "sublabel": "ingest.py file / forms", "tag": "唯一写者", "width": 168 },
+    { "id": "gate1", "lane": "scripts", "col": 5, "type": "security", "label": "门 1 校验", "sublabel": "ingest.py check", "tag": "GATE1_COMPLETE / rc=2", "width": 190 },
+    { "id": "done", "lane": "session", "col": 5, "type": "database", "label": "进入冻结", "sublabel": "门 1 通过 · 数据冻结", "width": 156 }
+  ],
+  "edges": [
+    { "id": "e_kf_declare", "from": "kf_resolve", "to": "declare", "label": "found=false", "variant": "default", "role": "branch" },
+    { "id": "e_kf_forms", "from": "kf_resolve", "to": "gen_forms", "label": "命中模板", "variant": "dashed", "role": "branch" },
+    { "id": "e_declare_forms", "from": "declare", "to": "gen_forms", "variant": "default", "role": "main" },
+    { "id": "e_forms_collect", "from": "gen_forms", "to": "collect", "variant": "default", "role": "main" },
+    { "id": "e_collect_guide", "from": "collect", "to": "guide_csv", "label": "清单>10", "variant": "default", "role": "branch" },
+    { "id": "e_guide_write", "from": "guide_csv", "to": "ingest_write", "label": "CSV 上传", "variant": "default", "role": "branch" },
+    { "id": "e_collect_write", "from": "collect", "to": "ingest_write", "label": "表单值", "variant": "emphasis", "role": "main" },
+    { "id": "e_write_gate", "from": "ingest_write", "to": "gate1", "variant": "emphasis", "role": "main" },
+    { "id": "e_gate_loop", "from": "gate1", "to": "collect", "label": "rc=2 缺项中文化回环", "variant": "dashed", "role": "error" },
+    { "id": "e_gate_done", "from": "gate1", "to": "done", "label": "GATE1_COMPLETE", "variant": "emphasis", "role": "main" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "示例值 ≠ 数据",
+      "items": [
+        "placeholder 示例绝不落盘",
+        "未提供的数据项绝不写值"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "崩溃即停",
+      "items": [
+        "脚本报错原样呈现用户",
+        "绝不手写 data/ 恢复"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "卡片词条禁区",
+      "items": [
+        "不得提供推导/假定/估算选项"
+      ]
+    }
+  ]
+}
