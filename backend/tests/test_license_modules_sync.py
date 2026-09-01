@@ -1,11 +1,11 @@
 """License module key sync guard.
 
-Locks the canonical 4-key license module set and ensures every hardcoded
+Locks the canonical 10-key license module set and ensures every hardcoded
 definition site stays in sync. Drift causes silent breakage: a key renamed in
 one place but not others makes licensed apps vanish from sidebar/app-center
 (hasModule returns false for the stale key).
 
-Canonical keys: project, dashboard, typography, contract_price, spare_parts, bid_quote, biz_pipeline, sales_personnel
+Canonical keys: project, dashboard, typography, contract_price, spare_parts, bid_quote, biz_pipeline, sales_personnel, geo_samples
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.skip(reason="EAI license extension differs (EAI-CUSTOM 
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-EXPECTED_KEYS = ["platform", "project", "dashboard", "typography", "contract_price", "spare_parts", "bid_quote", "biz_pipeline", "sales_personnel"]
+EXPECTED_KEYS = ["platform", "project", "dashboard", "typography", "contract_price", "spare_parts", "bid_quote", "biz_pipeline", "sales_personnel", "geo_samples"]
 REMOVED_KEYS = ["docmgr", "knowledge", "collab", "report", "approval", "workflow"]
 
 

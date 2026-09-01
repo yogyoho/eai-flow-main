@@ -8,6 +8,7 @@ import {
   FolderCheck,
   Gavel,
   LayoutDashboard,
+  Map,
   PackageSearch,
   Settings2,
   Users,
@@ -18,6 +19,7 @@ import type { LucideIcon } from "lucide-react";
 /** Maps DB-stored icon_name strings to Lucide React components. */
 export const ICON_MAP: Record<string, LucideIcon> = {
   "layout-dashboard": LayoutDashboard,
+  map: Map,
   bot: Bot,
   "clipboard-list": ClipboardList,
   "folder-check": FolderCheck,
