@@ -21,6 +21,8 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- (2026-09-01, bug-3059) 凭据生命周期必须覆盖失败路径：门 FAIL 只"不写新凭据"不够——上一轮成功留下的旧凭据（delivery_manifest）会继续放行新字节；FAIL 路径须显式作废既有凭据。同理：豁免通道（via=ingest / --gate PASS）若无合法生产者，它本身就是自证凭据通道，删而非留。
+- (2026-09-01, bug-3059) 同一可变 list 传两次 assemble 会逐次 append（chapter_depth 双份）；重入前 clear()。警告通道要覆盖"一切非技能基准来源"（显式 flag + 静默探测），只盖显式通道=探测通道静默绕过。
 
 - **[2026-08-31] 平台三熔断器机制核证（workflow wf_dca5af69，五路取证）:** N23/N24 同在 loop_detection_middleware——hash 层 warn3/hard5（同 call-set 集合，窗口20）；per-tool 频率层是 **burst 检测器**（滑窗=max(全部硬顶)→bash=60，交叉一次其他工具即压到<60，非全程累计）。Gateway 每 run 重建图→**计数器按消息（新 run）重置**；**子代理/batch_task 每任务建独立中间件实例+独立 recursion_limit（=max_turns，general 150/bash 60）——重活下沉子代理=结构性规避三熔断**。分叉=POST /threads/{id}/branches 新线程拷 checkpoint（排除 sandbox/thread_data 通道；**workspace 文件仅「最新回合」分叉才克隆**），计数归零+state 保留；sidecar 深问=空线程仅注入最近 8 条父消息摘要（6000 字符），无 sandbox/state，**不能用于续跑管线**。阈值现成 config 键（下条消息生效）: loop_detection.tool_freq_overrides.bash / tool_freq_hard_limit / hard_limit（config.yaml:1214-1239）；N21 lead 交互默认 100 硬编码（services.py:553），前端 composer 已发 1000=max_recursion_limit（config.yaml:97）顶格。**硬停 run 仍报 success（stop_reason=loop_capped 只进 context 未落 run 记录）=bug-3048 静默失败待修**。geo 技能单 run happy path ≈60-70 bash（其中 ~55 次是 next/mark/gate/build/consistency/snapshot 记账），缓解三招：run_stage 驱动器合并 finalize/freeze、门禁 rc=0 自动推进 progress.json（4/章→2）、SKILL.md:179 的 for-loop 批量门禁从修复轮转正。断点续跑已完整支持（progress.json 磁盘真源，"断点续跑靠磁盘不靠对话记忆" progress.py:4）。
 - [2026-08-29] WSL2/Docker Desktop 卡死恢复配方(bug-1246/1262 恶性循环): 症状=docker ps/exec/引擎API全超时或500。步骤: ①查 tasklist vmmem + 宿主 free(若 vmmem>20GB 且宿主<2GB 即内存型卡死) ②taskkill Docker Desktop+com.docker.backend → wsl --shutdown(内存立即回血) ③重启 Docker Desktop,容器凭 restart 策略自动恢复 ④若前端容器陷入被 guest-oom 杀→重启→冷编译→再吃的死循环: docker stop 前端止血 + wsl -d docker-desktop sh -c "echo 3 > /proc/sys/vm/drop_caches"(可释放十几GB page cache) ⑤健康内存下 docker start 前端。注意: 编译期的 Can't resolve 报错可能是 OOM 次生灾害,内存健康时自愈,别急着清 .next 或重建镜像
@@ -1517,7 +1519,8 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - R12 门禁新线程实测通过：SKILL ⑤ 条款生效后 agent 三图全部逐字复制契约名（bug-3017/3039 手造行为未复现）；save 正向校验 R11(46签名)+R12(3契约名存在) 全绿。
 - API 验证轮 run status=error 又是 streaming-tail 假象（work 已完成、present_files 已成功）——判终态永远读盘+线程 state，别信 run status。
 - agent write_file 落盘带 
-（CRLF）：容器里 grep/diff 报告占位符计数前必须 `tr -d ''`，否则比对全错（占位符集合比对曾误报 45 个 MISSING）。
+（CRLF）：容器里 grep/diff 报告占位符计数前必须 `tr -d '
+'`，否则比对全错（占位符集合比对曾误报 45 个 MISSING）。
 
 ## Additions (2026-08-30 T4 geo page test finale)
 
@@ -1543,3 +1546,47 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **量纲纪律**：合并多币种项进复合单位（亿元）时，每项先归一成同一中间单位（元）再统一 /1e8；E5 修法全部元的量纲后 /1e8 等价且更不易错。
 - **resolve_targets 探测链是测试同生产语义的杠杆**：build_output.resolve_targets(None, stage) 沿 stage 向上三级探测 depth_targets.json——把基准放 <base>/references/depth_targets.json + stage 副本放 <base>/references/stages/，gate（in-process）与 build_output 子进程都自动吃同一基准，测试不用传 --targets。
 - **批量子命令模式的验收形状**：progress.py gate 缺省跑全部 DRAFTED 章、PASS 自动转 VERIFIED（唯一写者不变式不破）、任一 FAIL→rc=1+stderr 逐章差距+该章保持 DRAFTED+phase 不越位；run-stage 合并序列 stdout 原样透传（BUILD_READY 粘贴行是交付铁律）。
+
+
+## Key Learnings (appended 2026-08-31 upstream-sync)
+- merge 冲突 hunk 级解决: `git checkout -m <file>` 重建标记后只编辑该 hunk; `checkout --ours/--theirs <file>` 取整个 stage 文件会丢全部自动合并块(bug: executor.py 曾因此丢 bug-3021 块)
+- `git apply -3` 同时写 index+worktree, 会把并发会话 WIP 污染进 merge index; 修复: `git show <mergetree>:<path> > tmp && git hash-object -w tmp && git update-index --cacheinfo 100644,<blob>,<path>`
+- `git merge-tree --write-tree` 的树对象可在动手前提取带冲突标记的预演文件, 用于无破坏冲突预览
+- canonical 后端全量 = `make test`(`-m "not live" --ignore=tests/blocking_io`); tests/blocking_io/ 是 POSIX 权限语义门禁(chmod/owner-only), Windows 宿主必败, 勿纳入本地全量
+- 上游同步验收标准: 上游新增测试模块必须单独跑(pat_auth 等), 冲突融合残留块(bug-3052)只有它们能抓到
+- 前端容器实际端口 3000(非 CLAUDE.md 的 4000); restart 后 webpack 冷编译 99%CPU ~10min 属常态, 判活用容器内日志 /app/logs/frontend.log(docker logs 为空)
+- deerflow 库在 eai-flow-postgres-ext 容器(非 eai-docker-postgres-ext-1); gateway 8001/前端4000 均不发布宿主, 唯一入口 2026
+
+## Do-Not-Repeat (2026-08-31)
+- workflow pipeline() 第一阶段写 `b => () => agent(...)` 返回 thunk 不执行 → 6 桶全空. 正确: `b => agent(...)` 直接调用; resume 修复时已完成 agent 走缓存
+- workflow schema 里 properties 对象内写兄弟键(如 deleted_ok 的 note 写成 keyword)→ strict mode 报 unknown keyword, 整个 run 秒败
+
+### Key Learnings (2026-08-31 追加)
+- workflows 整组 resync 前必须先 grep diff 里的 EAI-CUSTOM —— backend-unit-tests.yml 藏着 ontology lint 步骤, 取 theirs 会静默删掉, checkout 后要回植
+- test_wechat_channel.py 有 2 个 POSIX 权限位断言 (0o600) 在 Windows NTFS 宿主环境性必败 (st_mode 33206), 与 blocking_io 同类, 不算回归
+
+## Key Learnings (2026-08-31 — geological-report 门禁硬化 bug-3054..3057)
+- **门禁自伤模式**:硬化校验器(如 toc 门)首跑会同时暴露两类失败——旧产物真缺陷 + 校验器自身解析缺陷。复合 toc 条目「1.5 题（1.5.1 子题/…」拆片后必须先在（处截断再 norm,否则正确父标题被判不符(bug-3055)。教训:新门上真实样例目录/范文先行验证再上硬 FAIL。
+- **幂等性是门禁接入的隐藏约束**:给 build 加"检查结果随内容变"的环节(consistency 汇总表进附录)会破坏二连 build 字节不变——检查输入必须固定为稳定投影(去附录正文),否则 build2 永不 unchanged(bug-3056)。
+- **`is not None` 守卫对垃圾值是洞**:L11 `p13.get(x) is not None` 放过垃圾串→dec()→NaN→emit 照收。对"再 dec()"的输入守卫要写 `dec(x).is_finite()`(bug-3057)。
+- **docker cp 目录内容(`dir/.`)在 Git Bash 不可靠**——逐文件 cp 显式目标;docker exec 的路径参数会被 MSYS 翻译成 C:/Program Files/Git/...,验证类命令加 MSYS_NO_PATHCONV=1(docker cp 的源/宿主参数翻译反而正常,不必加)。
+- ** VERIFIED 凭据语义**:自申报 flag(--gate PASS)不是凭据;唯一凭据=官方门真跑。cmd_gate 已是真通道,cmd_mark 手动 VERIFIED 直接禁用比"再验一遍"更省更严(bug-3049 定案)。
+
+## Do-Not-Repeat (2026-08-31追加)
+- 勿把审计编号直接当 buglog id——bug-3036 已被 water-skill 占用,geo 审计硬化落地用 bug-3054..3057;写前先查 buglog 尾部 id
+
+## Key Learnings + Do-Not-Repeat (2026-09-01 — geo 技术方案 29 审计+5 用户指正事实核查修订)
+
+**Do-Not-Repeat:**
+- 写 finding 编号必须对照 findings registry 原文——脚本注释可自带错号（consistency.py:217 自注「N27」，T4 报告 findings 实至 N26 为止）；转述报告时禁止把注释里的编号当实证编号。
+- 引用行数/计数必须在引用时点实测（wc -l/实测统计），禁止凭记忆或沿用上游文档陈旧值；多轮修订后旧口径会在全文残留——本次 3308/3538/3643 三口径并存即为教训，修订时须全局 grep 对齐。
+- 引语归属：自己文档自拟的概括句（「LLM 的用量与其出错代价成反比」）不能标成 spec 原文；归属前先 grep 验证字样在 spec 中是否存在。
+- buglog ID 并发会话占用：写 ID 前先 grep 取现有 max+1（本次 3054-3057 已被并发会话占用，计划中的 3054 作废）。
+- 文档继承源文档的陈旧数字时（SKILL.md:38「33 份表单」vs 实物 21 张），引用前须与代码实物对账；技能内文档自身陈旧≠可以照抄。
+
+**Key Learnings:**
+- geo 槽位协议的准确定性：保证是**输出侧封锁**（正文只许 {{SLOT:key}} 占位+脚本注入，SL1/SL2 防漂移防伪造），非「数值物理上不进撰写者上下文」——SKILL.md:116 派发契约把 formula_state.json（含 value/display/unit/source）列为子代理自读输入。
+- geo 表单实数 21 张（19 JSON 族+2 CSV 族：sample_assays/bulk_density），ingest.py forms 按族一文件落盘即此上限。
+- consistency.py 白名单 WHITELIST_PATTERNS 实为 14 类；「（1）（2）」全角括号序号靠 SMALL_INT_EXEMPT=12 小整数豁免过关，非白名单正则覆盖；经纬度白名单要求尾随 [NSEW] 方位字母。
+- consistency.py 五路输入：--report/--data-dir/--stage(必选)/--state + --standards(可选) + --output。
+- hooks.ts N11 已修：7aa135200 后两处 submit 路径无条件 subagent_enabled: true（2250/2376）；batch_task 半边仍受 batch_submitter 运行时门控（backend/packages/harness/deerflow/agents/factory.py:356 起）。

@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-08-30T18:27:02.175Z
-> Files: 5 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-01T03:51:26.738Z
+> Files: 13 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -267,8 +267,12 @@
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/7be62368-49b4-47e9-ae38-fc140e3e96c4/workflows/scripts/
 
 
+## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/aba26c25-8951-43f3-b2fd-1e504e0239a2/workflows/scripts/
+
+
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `a5-cleanup-plan.md` (~179 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -302,6 +306,10 @@
 
 ## C:/Users/admin/AppData/Local/Temp/fire_extract_t9/
 
+
+## C:/Users/admin/AppData/Local/Temp/geo_repro/
+
+- `repro_depth_dup.py` — Independent end-to-end repro: does a green full build double chapter_depth rows? (~1491 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/geo_smoke/
 
@@ -755,7 +763,10 @@
 
 ## backend/tests/
 
-- `test_geological_report_v2_scripts.py` — geological-report v2 六脚本测试矩阵（设计决策 5A 全矩阵；T5）。 (~18210 tok)
+- `test_geo_controller_build.py` — 控制器链路压力回归（spec 2026-08-28 §8 e2e-full 压力场景）。 (~4256 tok)
+- `test_geological_report_v2_scripts.py` — geological-report v2 六脚本测试矩阵（设计决策 5A 全矩阵；T5）。 (~20419 tok)
+- `test_zz_adversarial_stale_manifest.py` — ADVERSARIAL VERIFICATION (temporary, not part of the suite) — reviewer claim: (~1497 tok)
+- `test_zz_review_repro_tmp.py` — Temporary review repro — verifies (1) duplicated chapter_depth rows in manifest, (2) stale manifest (~404 tok)
 
 ## backend/tests/e2e/bid/
 
@@ -765,7 +776,6 @@
 
 ## backend/tests/fixtures/geological_report/e2e-full/
 
-- `expected_frozen.json` (~529 tok)
 
 ## backend/tests/fixtures/geological_report/e2e-full/forms/
 
@@ -802,6 +812,7 @@
 
 ## docs/superpowers/specs/
 
+- `2026-08-31-geological-report-tech-design.md` — 固体矿产地质勘查报告写作技能（geological-report）技术方案 (~22765 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -987,6 +998,9 @@
 
 
 ## frontend/src/components/landing/
+
+
+## frontend/src/components/landing/sections/
 
 
 ## frontend/src/components/ui/
@@ -1465,11 +1479,10 @@
 
 ## skills/public/geological-report/
 
-- `SKILL.md` — NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill (~4198 tok)
+- `SKILL.md` — NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill (~4487 tok)
 
 ## skills/public/geological-report/references/
 
-- `formulas.json` (~4631 tok)
 
 ## skills/public/geological-report/references/ore_packs/
 
@@ -1479,7 +1492,11 @@
 
 ## skills/public/geological-report/scripts/
 
-- `progress.py` — geological-report v2 — progress.py：章节进度状态机（步骤4 控制器）。 (~5989 tok)
+- `build_output.py` — geological-report v2 — build_output.py：单次原子组装（步骤6）。 (~11481 tok)
+- `consistency.py` — geological-report v2 — consistency.py：四类合约机器校验（步骤7）。 (~6809 tok)
+- `formula_runner.py` — geological-report v2 — formula_runner.py：冻结计算层（步骤2，门2 的数据面）。 (~9617 tok)
+- `ingest.py` — geological-report v2 — ingest.py：data/ 状态目录的唯一写者（D10）。 (~8710 tok)
+- `progress.py` — geological-report v2 — progress.py：章节进度状态机（步骤4 控制器）。 (~6112 tok)
 
 ## skills/public/local-knowledge-first/
 
