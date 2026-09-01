@@ -12,16 +12,15 @@ from .models import GsbDocument, GsbRedaction, GsbRunHistory, utc_now
 async def find_duplicate_document(db: AsyncSession, file_hash: str, exclude_uri: str | None = None) -> GsbDocument | None:
     """同 hash 不同 storage_uri → 重复（同 uri=原地重传不算）。
 
-    Deviation from plan literal: single ``scalar_one_or_none`` with SQL-side
-    ``raw_uri IS NOT NULL`` + ``limit(1)`` instead of a fetch-all Python loop —
-    same semantics for the realistic single-row case, and it cannot raise
-    MultipleResultsFound if one hash ever lands on two rows.
+    Exclusion pushed into SQL so ``limit(1)`` is applied after filtering —
+    correct even if one hash ever lands on two rows (e.g. newest row is the
+    in-place re-upload, older row is the true duplicate). Deviation from plan
+    literal: single ``scalar_one_or_none`` instead of a fetch-all Python loop.
     """
-    stmt = select(GsbDocument).where(GsbDocument.file_hash == file_hash, GsbDocument.raw_uri.is_not(None)).limit(1)
-    row = (await db.execute(stmt)).scalar_one_or_none()
-    if row is not None and row.raw_uri != exclude_uri:
-        return row
-    return None
+    stmt = select(GsbDocument).where(GsbDocument.file_hash == file_hash, GsbDocument.raw_uri.is_not(None))
+    if exclude_uri is not None:
+        stmt = stmt.where(GsbDocument.raw_uri != exclude_uri)
+    return (await db.execute(stmt.limit(1))).scalar_one_or_none()
 
 
 async def get_document(db: AsyncSession, document_id: str) -> GsbDocument | None:
@@ -33,7 +32,7 @@ async def get_document_by_report_id(db: AsyncSession, report_id: str) -> GsbDocu
 
 
 async def list_documents(db: AsyncSession, stage: str | None = None, mineral: str | None = None, status: str | None = None, skip: int = 0, limit: int = 50) -> list[GsbDocument]:
-    stmt = select(GsbDocument).order_by(GsbDocument.created_at.desc())
+    stmt = select(GsbDocument).order_by(GsbDocument.created_at.desc(), GsbDocument.id.desc())
     if stage:
         stmt = stmt.where(GsbDocument.stage == stage)
     if mineral:
