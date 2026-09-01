@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,7 +36,7 @@ _PERM = Depends(require_permission("geo_samples:access"))
 
 
 @router.get("/documents")
-async def list_documents(stage: str | None = None, mineral: str | None = None, status: str | None = None, skip: int = 0, limit: int = 50, db: AsyncSession = Depends(get_db), _: object = _PERM):
+async def list_documents(stage: str | None = None, mineral: str | None = None, status: str | None = None, skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200), db: AsyncSession = Depends(get_db), _: object = _PERM):
     rows = await crud.list_documents(db, stage=stage, mineral=mineral, status=status, skip=skip, limit=limit)
     return {"items": [schemas.DocumentOut.model_validate(r).model_dump() for r in rows], "skip": skip, "limit": limit}
 
@@ -73,6 +73,8 @@ async def upload_document(
     if await crud.get_document_by_report_id(db, meta.report_id):
         raise HTTPException(409, f"report_id {meta.report_id} 已存在")
     data = await file.read()
+    if not data:
+        raise HTTPException(400, "空文件")
     digest = hashlib.sha256(data).hexdigest()
     dup = await crud.find_duplicate_document(db, digest, exclude_uri=None)
     if dup is not None:
@@ -80,12 +82,10 @@ async def upload_document(
     file_type = "docx" if name.lower().endswith(".docx") else "pdf"
     # storage.put_raw 是阻塞 MinIO 调用——必须 asyncio.to_thread（blocking-IO 门，同 service.py 约定）。
     raw_uri = await asyncio.to_thread(storage.put_raw, meta.report_id, name, data)
+    # 已知 Phase 1 窗口：put_raw 成功而 create_document 失败会留下孤儿 raw 对象（无 DB 行）；接受。
     doc = schemas.DocumentOut.model_validate(
         await crud.create_document(db, report_id=meta.report_id, file_name=name, file_hash=digest, file_type=file_type, stage=meta.stage, mineral=meta.mineral, year=meta.year, region=meta.region, raw_uri=raw_uri)
     )
-    await crud.sweep_stale_runs(db)
-    if await crud.has_running_run(db, doc.id, "parse"):
-        raise HTTPException(409, "该样例已有解析任务在跑")
     run = await crud.create_run(db, doc.id, "parse")
     background.add_task(service.run_parse, db, doc.id, run.id)
     return {"document": doc.model_dump(), "run_id": run.id}
@@ -99,6 +99,8 @@ async def parse_document(document_id: str, background: BackgroundTasks, db: Asyn
     doc = await crud.get_document(db, document_id)
     if doc is None:
         raise HTTPException(404, "样例不存在")
+    if doc.status not in ("uploaded", "failed", "parsed"):
+        raise HTTPException(409, f"当前状态 {doc.status} 不允许重新解析（reviewed 章稿已定稿）")
     await crud.sweep_stale_runs(db)
     if await crud.has_running_run(db, document_id, "parse"):
         raise HTTPException(409, "解析任务已在跑")
@@ -118,6 +120,8 @@ async def redact_document(document_id: str, background: BackgroundTasks, db: Asy
     await crud.sweep_stale_runs(db)
     if await crud.has_running_run(db, document_id, "parse"):
         raise HTTPException(409, "解析任务在跑，work_uri 可能写入中——稍后再脱敏")
+    if await crud.has_running_run(db, document_id, "redact"):
+        raise HTTPException(409, "脱敏任务已在跑")
     run = await crud.create_run(db, document_id, "redact")
     background.add_task(service.run_redact, db, document_id, run.id)
     return {"run_id": run.id}
@@ -134,6 +138,8 @@ async def list_redactions(document_id: str, db: AsyncSession = Depends(get_db), 
 
 @router.post("/documents/{document_id}/review")
 async def review_document(document_id: str, body: schemas.ReviewRequest, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    if await crud.get_document(db, document_id) is None:
+        raise HTTPException(404, "样例不存在")
     try:
         await service.apply_review(db, document_id, body.decision, body.note)
     except ValueError as exc:
