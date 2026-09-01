@@ -37,9 +37,18 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
     from app.extensions.knowledge_factory.models import ExtractionDomain, ExtractionTemplate
     from app.extensions.knowledge_factory.service import DictionaryService, TemplateService
 
-    domain_keywords = arguments.get("domain_keywords", [])
-    industry = arguments.get("industry")
-    report_type = arguments.get("report_type")
+    # bug-3070（页面实测线程 2fdbc99d）：MCP schema 把业务参数包在 arguments 子对象里，
+    # 且 agent 常传中文键（矿种/阶段/报告类型）——入口统一解包与归一化，防静默丢参。
+    if isinstance(arguments.get("arguments"), dict):
+        inner = arguments["arguments"]
+        arguments = {**inner, **{k: v for k, v in arguments.items() if k != "arguments"}}
+    report_type = arguments.get("report_type") or arguments.get("报告类型")
+    industry = arguments.get("industry") or arguments.get("行业")
+    domain_keywords = list(arguments.get("domain_keywords") or [])
+    for alias in ("矿种", "阶段", "领域关键词"):
+        v = arguments.get(alias)
+        if v and v not in domain_keywords:
+            domain_keywords.append(v)
     min_completeness_score = arguments.get("min_completeness_score", 0)
 
     # Guard: empty or missing domain_keywords cannot produce a meaningful match.
@@ -102,11 +111,13 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
         # template's actual domain (e.g. keyword "消防设计" matches domain "消防设计专篇大纲"
         # but the template belongs to "environmental_impact_assessment").
         templates = []
-        for attempt_filters in [
+        attempts = [
             {"domain": domain_filter, "name": name_conditions},  # strict: domain AND name
-            {"domain": rt_code, "name": name_conditions},  # dict-code domain（bug-3068：模板归属字典码域时直查）
+            {"domain": rt_code, "name": name_conditions} if rt_code else None,  # dict-code domain（bug-3068）
+            {"domain": rt_code, "name": None} if rt_code else None,  # bug-3070：字典码域精确即候选——报告类型对上就够了（模板名未必含调用方关键词）；rt_code 缺席时禁用（防退化成全表扫描）
             {"domain": None, "name": name_conditions},  # fallback: name only
-        ]:
+        ]
+        for attempt_filters in [a for a in attempts if a is not None]:
             query_base = select(ExtractionTemplate).where(ExtractionTemplate.status == "published")
             if attempt_filters["domain"]:
                 query_base = query_base.where(ExtractionTemplate.domain == attempt_filters["domain"])
