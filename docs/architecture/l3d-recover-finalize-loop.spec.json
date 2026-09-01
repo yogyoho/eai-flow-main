@@ -1,0 +1,77 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "L3d 恢复·终验·修改回路",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1240, 560]
+  },
+  "lanes": [
+    { "id": "session", "label": "控制器主会话" },
+    { "id": "scripts", "label": "脚本" },
+    { "id": "platform", "label": "平台回调" }
+  ],
+  "mainPath": ["verify", "build", "consistency", "snapshot", "manifest", "present"],
+  "semanticChecks": {
+    "allowedRoots": ["verify", "modify"],
+    "allowedTerminals": ["present", "halt"],
+    "requiredEdges": [
+      { "from": "consistency", "to": "build" },
+      { "from": "modify", "to": "build" },
+      { "from": "build", "to": "halt" },
+      { "from": "consistency", "to": "present" },
+      { "from": "manifest", "to": "present" }
+    ]
+  },
+  "nodes": [
+    { "id": "verify", "lane": "session", "col": 0, "type": "security", "label": "恢复或开新", "sublabel": "snapshot.py show --verify", "tag": "rc=3=被篡改即停 · 续做/新任务", "width": 178 },
+    { "id": "build", "lane": "scripts", "col": 1, "type": "messagebus", "label": "原子组装 · 槽位注入", "sublabel": "build_output.py", "tag": "未知 SLOT FAIL · 覆盖门 v2 · 深度地板", "width": 196 },
+    { "id": "consistency", "lane": "scripts", "col": 2, "type": "security", "label": "22 合约一致性校验", "sublabel": "consistency.py", "tag": "0 过 / 1 FAIL / 2 需人工 / 3 WARN", "width": 186 },
+    { "id": "snapshot", "lane": "scripts", "col": 3, "type": "database", "label": "版本快照落盘", "sublabel": "snapshot.py save", "tag": "project_snapshot.json · 全文件 SHA-256", "width": 188 },
+    { "id": "manifest", "lane": "scripts", "col": 4, "type": "database", "label": "manifest 在场确认", "sublabel": "outputs/delivery_manifest.json", "tag": "在场才可交付 · FAIL 作废旧档", "width": 196 },
+    { "id": "present", "lane": "platform", "col": 5, "type": "frontend", "label": "交付唯一单文件", "sublabel": "present_files", "tag": "BUILD_READY+退出码 原样粘贴", "width": 184 },
+    { "id": "modify", "lane": "session", "col": 5, "type": "backend", "label": "修改回路", "sublabel": "只落 state/chapters/chN.md", "tag": "扩写/补写 · 禁直改 outputs/", "width": 186 },
+    { "id": "halt", "lane": "session", "col": 2, "type": "backend", "label": "停 · 修章节", "sublabel": "rc≠0 → stderr 原样粘贴", "tag": "禁止带病交付", "width": 168 }
+  ],
+  "edges": [
+    { "id": "e_verify_build", "from": "verify", "to": "build", "label": "新任务 / 续做", "variant": "default", "role": "main", "fromSide": "bottom", "toSide": "left" },
+    { "id": "e_build_consistency", "from": "build", "to": "consistency", "variant": "default", "role": "main", "route": "straight" },
+    { "id": "e_consistency_build", "from": "consistency", "to": "build", "label": "FAIL 修章节回环", "variant": "dashed", "role": "error", "fromSide": "bottom", "toSide": "right" },
+    { "id": "e_consistency_snapshot", "from": "consistency", "to": "snapshot", "label": "过", "variant": "emphasis", "role": "main", "fromSide": "right", "toSide": "left" },
+    { "id": "e_snapshot_manifest", "from": "snapshot", "to": "manifest", "variant": "default", "role": "main" },
+    { "id": "e_manifest_present", "from": "manifest", "to": "present", "label": "唯一交付物", "variant": "emphasis", "role": "main", "fromSide": "bottom", "toSide": "bottom" },
+    { "id": "e_modify_build", "from": "modify", "to": "build", "label": "重跑三连", "variant": "default", "role": "return", "route": "up-channel", "channelY": 40, "fromSide": "top", "toSide": "top" },
+    { "id": "e_build_halt", "from": "build", "to": "halt", "label": "rc≠0", "variant": "dashed", "role": "error", "fromSide": "right" },
+    { "id": "e_consistency_present", "from": "consistency", "to": "present", "label": "rc=3 WARN 如实汇报", "variant": "dashed", "role": "branch", "fromSide": "top", "toSide": "top" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "交付铁律",
+      "items": [
+        "绝不手工拼装 outputs/*.md（散文件禁入 outputs/）",
+        "BUILD_READY 整行 + 退出码原样粘贴进回复",
+        "rc≠0 时 stderr 原样粘贴并停下修章节"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "禁改交付物",
+      "items": [
+        "扩写/补写只落 state/chapters/chN.md",
+        "改后重跑 build → consistency → snapshot",
+        "直接编辑 outputs/ 交付物 = 作废"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": ".delivery-contract 勿删",
+      "items": [
+        "删除 = 门失效 = 交付作废",
+        "present_files 前确认 delivery_manifest.json 在场",
+        "只交付 manifest 指名的唯一单文件"
+      ]
+    }
+  ]
+}
