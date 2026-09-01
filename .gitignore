@@ -97,3 +97,6 @@ backend/data/users/
 /开发日志.md
 backend/packages/harness/deerflow/community/serper/__pycache__/
 nul
+
+# archify visual-check QA artifacts (regenerable)
+docs/architecture/*.visual-check.*
