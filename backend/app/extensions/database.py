@@ -1437,7 +1437,7 @@ async def seed_db() -> None:
                         domain,
                     )
 
-                # Apps (14 built-in)
+                # Apps (15 built-in)
                 apps = [
                     {
                         "app_id": "dashboard",
@@ -1651,7 +1651,7 @@ async def seed_db() -> None:
                         app,
                     )
                 await session.commit()
-                logger.info("Seeded app-center: 7 domains + 14 apps")
+                logger.info("Seeded app-center: 7 domains + 15 apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
 
