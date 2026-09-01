@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "L3b 冻结计算与门2",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1240, 580]
+  },
+  "lanes": [
+    { "id": "user", "label": "用户" },
+    { "id": "session", "label": "控制器主会话" },
+    { "id": "scripts", "label": "脚本" }
+  ],
+  "phases": [
+    { "id": "phase_freeze", "label": "冻结计算", "fromCol": 0, "toCol": 2 },
+    { "id": "phase_gate", "label": "门 2 · 确认与放行", "fromCol": 3, "toCol": 5, "variant": "emphasis" }
+  ],
+  "mainPath": ["planner", "runner", "state_write", "gate2", "frozen"],
+  "semanticChecks": {
+    "allowedRoots": ["planner"],
+    "allowedTerminals": ["frozen", "halt_zero"],
+    "requiredEdges": [
+      { "from": "gate2", "to": "confirm" },
+      { "from": "confirm", "to": "frozen" }
+    ]
+  },
+  "nodes": [
+    { "id": "planner", "lane": "scripts", "col": 0, "type": "messagebus", "label": "章节规划", "sublabel": "chapter_planner.py manifest", "tag": "→ chapter_manifest.json", "width": 172 },
+    { "id": "runner", "lane": "scripts", "col": 1, "type": "messagebus", "label": "冻结计算", "sublabel": "formula_runner.py execute", "tag": "Decimal ROUND_HALF_EVEN", "width": 172 },
+    { "id": "state_write", "lane": "scripts", "col": 2, "type": "database", "label": "冻结值入库", "sublabel": "state/formula_state.json", "tag": "唯一写者 · 每槽 source", "width": 170 },
+    { "id": "gate2", "lane": "scripts", "col": 3, "type": "security", "label": "门 2 · 退出码判定", "sublabel": "progress.py run-stage freeze", "tag": "rc=0 / rc=3 / 全 0 空", "width": 184 },
+    { "id": "confirm", "lane": "user", "col": 4, "type": "frontend", "label": "逐条异常确认", "sublabel": "ask_clarification · 只给按冻结值继续", "tag": "免打扰法定例外", "width": 214 },
+    { "id": "halt_zero", "lane": "scripts", "col": 4, "type": "backend", "label": "停 · 结果全 0/空", "sublabel": "anomaly 原样呈现", "tag": "问数据或确认拆分占比", "width": 172 },
+    { "id": "frozen", "lane": "session", "col": 5, "type": "database", "label": "冻结生效 · 进入派发", "sublabel": "门 2 通过", "tag": "→ 派发协议", "width": 180 }
+  ],
+  "edges": [
+    { "id": "e_planner_runner", "from": "planner", "to": "runner", "variant": "default", "role": "main" },
+    { "id": "e_runner_state", "from": "runner", "to": "state_write", "variant": "default", "role": "main" },
+    { "id": "e_state_gate", "from": "state_write", "to": "gate2", "variant": "default", "role": "main" },
+    { "id": "e_gate_frozen", "from": "gate2", "to": "frozen", "label": "rc=0", "variant": "emphasis", "role": "main", "fromSide": "right", "toSide": "left" },
+    { "id": "e_gate_confirm", "from": "gate2", "to": "confirm", "label": "rc=3", "variant": "default", "role": "branch", "fromSide": "top", "toSide": "left" },
+    { "id": "e_confirm_frozen", "from": "confirm", "to": "frozen", "label": "用户确认", "variant": "default", "role": "return", "fromSide": "bottom", "toSide": "top" },
+    { "id": "e_gate_zero", "from": "gate2", "to": "halt_zero", "label": "全 0/空", "variant": "dashed", "role": "error", "fromSide": "bottom", "toSide": "bottom" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "不隐瞒",
+      "items": [
+        "anomalies = 计算完成了但你要知道",
+        "确认门不可静默放行"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "唯一写者",
+      "items": [
+        "formula_state 手改必丢（每槽 source 键）",
+        "build_output 手改检测门直接 FAIL"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "口径",
+      "items": [
+        "Decimal ROUND_HALF_EVEN 自包含",
+        "与 backend FormulaGraph float eval 无关"
+      ]
+    }
+  ]
+}
