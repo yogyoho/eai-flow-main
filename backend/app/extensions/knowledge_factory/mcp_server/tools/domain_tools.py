@@ -17,23 +17,29 @@ def _json_response(data: dict) -> list[TextContent]:
 
 
 async def handle_kf_list_domains(arguments: dict, _run_in_db) -> list[TextContent]:
-    """List available extraction domains, optionally filtered by industry.
+    """List available domains for report generation.
 
-    Returns domain id, name, industry, report_type, and description
-    so the agent can discover what report types are available.
+    bug-3068 枚举统一：industries / report_types 直接读业务字典（business_dictionaries，
+    启用态、sort_order 序）——字典是领域与报告类型的唯一真源；template_domains 保留
+    extraction_domains 分组视图并附模板计数，供 agent 判断哪个域已有可解析模板。
     """
-    from sqlalchemy import select
+    from sqlalchemy import func, select
 
-    from app.extensions.knowledge_factory.models import ExtractionDomain
+    from app.extensions.knowledge_factory.models import ExtractionDomain, ExtractionTemplate
+    from app.extensions.knowledge_factory.service import DictionaryService
 
     industry = arguments.get("industry")
 
     async def _query(db):
-        query = select(ExtractionDomain).order_by(ExtractionDomain.id)
+        industries = await DictionaryService.enabled_items(db, "industry")
+        report_types = await DictionaryService.enabled_items(db, "report_type")
         if industry:
-            query = query.where(ExtractionDomain.industry == industry)
+            industries = [i for i in industries if i.id == industry]
+
+        query = select(ExtractionDomain).order_by(ExtractionDomain.id)
         result = await db.execute(query)
         domains = list(result.scalars().all())
+        counts = dict((row[0], row[1]) for row in (await db.execute(select(ExtractionTemplate.domain, func.count()).group_by(ExtractionTemplate.domain))).all())
 
         items = []
         for d in domains:
@@ -45,9 +51,16 @@ async def handle_kf_list_domains(arguments: dict, _run_in_db) -> list[TextConten
                     "report_type": d.report_type,
                     "description": d.description,
                     "parent_domain": d.parent_domain,
+                    "template_count": counts.get(d.id, 0),
                 }
             )
-        return {"domains": items, "total": len(items)}
+        return {
+            "industries": [{"code": i.id, "label": i.label} for i in industries],
+            "report_types": [{"code": r.id, "label": r.label} for r in report_types],
+            "template_domains": items,
+            "total": len(items),
+            "note": "industries/report_types=业务字典真源（business_dictionaries）；template_domains=模板域分组（附模板数）",
+        }
 
     result = await _run_in_db(_query)
     return _json_response(result)

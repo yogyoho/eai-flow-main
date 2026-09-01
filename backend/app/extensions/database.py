@@ -1409,13 +1409,18 @@ async def seed_db() -> None:
             await session.commit()
 
             # Seed business dictionaries from JSON if table is empty
-            try:
-                from app.extensions.knowledge_factory.service import DictionaryService, DomainService
+            # bug-3068: 两个种子步骤拆开——此前 init_seed_data 抛错会连带跳过 init_default_domains
+            # （模板域↔字典对齐静默不执行，warning 被日志驱动吞掉难察觉）
+            from app.extensions.knowledge_factory.service import DictionaryService, DomainService
 
+            try:
                 await DictionaryService.init_seed_data(session)
-                await DomainService.init_default_domains(session)
             except Exception as e:
                 logger.warning(f"Failed to seed dictionary data: {e}")
+            try:
+                await DomainService.init_default_domains(session)
+            except Exception as e:
+                logger.warning(f"Failed to init template domains (dict alignment): {e}")
 
             # EAI-CUSTOM: built-in layout template seeding removed (2026-08) — 预置模板无用，用户只保留自建模板
 

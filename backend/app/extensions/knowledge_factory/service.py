@@ -64,30 +64,29 @@ class DomainService:
 
     @staticmethod
     async def init_default_domains(db: AsyncSession) -> None:
-        """初始化默认领域（如果不存在）"""
-        defaults = [
-            ExtractionDomain(
-                id="environmental_impact_assessment",
-                name="环境影响评价报告",
-                description="各类建设项目环境影响评价报告书/表",
-                standard_chapters={
-                    "sections": [
-                        {"id": "sec_01", "title": "总则"},
-                        {"id": "sec_02", "title": "建设项目概况"},
-                        {"id": "sec_03", "title": "工程分析"},
-                    ]
-                },
-            ),
-        ]
-        for d in defaults:
-            existing = await DomainService.get_domain(db, d.id)
-            if not existing:
-                db.add(d)
+        """模板域与业务字典对齐（bug-3068）：模板域枚举真源=业务字典 report_type 类目——
+        启用的报告类型逐条确保存在同名模板域（id=字典 code，name=字典 label），抽取/解析
+        产出的模板由此获得与字典一致的归属；不再在代码里硬编码领域清单。
+        历史域（id 与字典 code 不同者，如 environmental_impact_assessment）原样保留不迁移。"""
+        report_types = await DictionaryService.enabled_items(db, "report_type")
+        for rt in report_types:
+            if await DomainService.get_domain(db, rt.id) is None:
+                db.add(
+                    ExtractionDomain(
+                        id=rt.id,
+                        name=rt.label,
+                        description=f"业务字典报告类型「{rt.label}」对应模板域（字典对齐自动创建，bug-3068）",
+                    )
+                )
         await db.commit()
 
     @staticmethod
     async def update_domain(db: AsyncSession, domain: ExtractionDomain, data) -> None:
         update_data = data.model_dump(exclude_unset=True)
+        # bug-3068：report_type/industry 写入校验——取值必须是业务字典在册启用条目（真源=business_dictionaries）
+        for field in ("report_type", "industry"):
+            if field in update_data:
+                await DictionaryService.validate_dict_ref(db, field, update_data[field])
         for key, value in update_data.items():
             if hasattr(domain, key):
                 setattr(domain, key, value)
@@ -133,6 +132,28 @@ class DictionaryService:
     async def get_item(db: AsyncSession, item_id: str) -> BusinessDictionary | None:
         result = await db.execute(select(BusinessDictionary).where(BusinessDictionary.id == item_id))
         return result.scalar_one_or_none()
+
+    @staticmethod
+    async def enabled_items(db: AsyncSession, category: str) -> list[BusinessDictionary]:
+        """启用态字典条目（sort_order 序）。bug-3068：领域(industry)/报告类型(report_type)枚举唯一真源
+        = business_dictionaries——MCP 工具枚举、模板域对齐、写入校验一律走本方法，禁止散表/代码自造枚举。"""
+        result = await db.execute(select(BusinessDictionary).where(BusinessDictionary.category == category, BusinessDictionary.enabled.is_(True)).order_by(BusinessDictionary.sort_order, BusinessDictionary.id))
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def validate_dict_ref(db: AsyncSession, category: str, value: str | None) -> None:
+        """校验取值必须是业务字典在册启用条目（bug-3068）。value 为空放行（可空字段）。"""
+        if not value:
+            return
+        item = await db.get(BusinessDictionary, value)
+        if item is not None and item.category == category and item.enabled:
+            return
+        # 允许直接传 label（中文）——归一到 code 再校验
+        for it in await DictionaryService.enabled_items(db, category):
+            if it.label == value:
+                return
+        valid = [i.id for i in await DictionaryService.enabled_items(db, category)]
+        raise ValueError(f"{category}={value!r} 不在业务字典在册启用值内（合法: {valid}）——枚举真源=business_dictionaries，禁止自造（bug-3068）")
 
     @staticmethod
     async def create_item(db: AsyncSession, data) -> BusinessDictionary:

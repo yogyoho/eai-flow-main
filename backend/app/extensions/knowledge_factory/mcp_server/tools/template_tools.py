@@ -35,7 +35,7 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
     from sqlalchemy import select
 
     from app.extensions.knowledge_factory.models import ExtractionDomain, ExtractionTemplate
-    from app.extensions.knowledge_factory.service import TemplateService
+    from app.extensions.knowledge_factory.service import DictionaryService, TemplateService
 
     domain_keywords = arguments.get("domain_keywords", [])
     industry = arguments.get("industry")
@@ -56,6 +56,14 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
         )
 
     async def _query(db):
+        # bug-3068 枚举统一：report_type/industry 的合法取值真源=业务字典；调用方传 code 或中文 label 均归一化为字典 code
+        dict_rts = await DictionaryService.enabled_items(db, "report_type")
+        dict_inds = await DictionaryService.enabled_items(db, "industry")
+        rt_codes = {r.id for r in dict_rts}
+        ind_codes = {i.id for i in dict_inds}
+        rt_code = report_type if report_type in rt_codes else next((r.id for r in dict_rts if r.label == report_type), None)
+        ind_code = industry if industry in ind_codes else next((i.id for i in dict_inds if i.label == industry), None)
+
         # Step 1: Find matching domains
         result = await db.execute(select(ExtractionDomain).order_by(ExtractionDomain.id))
         domains = list(result.scalars().all())
@@ -65,9 +73,9 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
 
         for d in domains:
             score = 0
-            if report_type and d.report_type == report_type:
+            if rt_code and d.report_type and (d.report_type == rt_code or d.report_type == report_type):
                 score += 3
-            if industry and d.industry == industry:
+            if ind_code and d.industry and (d.industry == ind_code or d.industry == industry):
                 score += 2
             if domain_keywords:
                 d_name_lower = d.name.lower()
@@ -96,6 +104,7 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
         templates = []
         for attempt_filters in [
             {"domain": domain_filter, "name": name_conditions},  # strict: domain AND name
+            {"domain": rt_code, "name": name_conditions},  # dict-code domain（bug-3068：模板归属字典码域时直查）
             {"domain": None, "name": name_conditions},  # fallback: name only
         ]:
             query_base = select(ExtractionTemplate).where(ExtractionTemplate.status == "published")
@@ -127,7 +136,7 @@ async def handle_kf_resolve_template(arguments: dict, _run_in_db) -> list[TextCo
             for kw in domain_keywords:
                 if kw.lower() in name_lower:
                     match_level = max(match_level, 1)
-            if best_domain and report_type and best_domain.report_type == report_type:
+            if best_domain and rt_code and best_domain.report_type and (best_domain.report_type == rt_code or best_domain.report_type == report_type):
                 match_level = max(match_level, 2)
 
             candidates.append((match_level, t.completeness_score, t))
