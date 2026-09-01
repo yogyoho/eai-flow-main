@@ -17,4 +17,5 @@ export const MODULE_LABELS: Record<string, string> = {
   bid_quote: "投标报价分析",
   biz_pipeline: "市场经营分析",
   sales_personnel: "销售人员",
+  geo_samples: "地质样例库",
 };

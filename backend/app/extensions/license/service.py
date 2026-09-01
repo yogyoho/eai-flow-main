@@ -39,6 +39,8 @@ ALL_MODULES = [
     "bid_quote",
     "biz_pipeline",
     "sales_personnel",
+    # EAI-CUSTOM (geo-sample-bank T9): 地质样例库（同步 frontend license/labels.ts 与 tools/license/license_generator.py）
+    "geo_samples",
 ]
 
 

@@ -17,6 +17,8 @@ roles:
     - doc:read
     - doc:upload
     - export:generate
+    # EAI-CUSTOM (geo-sample-bank T9): 地质样例库模块访问点（project_manager 无 #inherit，须显式列出）
+    - geo_samples:access
     - kb:create
     - kb:read
     - kb:upload
@@ -100,6 +102,9 @@ roles:
     - bpp:page:query
     - spq:page:dashboard
     - spq:page:query
+    - gsb:page:documents
+    - gsb:page:review
+    - gsb:page:tasks
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users
@@ -133,6 +138,8 @@ roles:
     # /api/extensions/users/search（require user:read）；overlay 是运行时真相源，
     # base permissions.yaml 改了无效（wholesale-replace，见 bug-1087），必须在此加。
     - user:read
+    # EAI-CUSTOM (geo-sample-bank T9): 地质样例库模块访问点（与 permissions.yaml base 同步）
+    - geo_samples:access
     nav:
     - nav:knowledge
     - nav:contract-price
@@ -140,6 +147,7 @@ roles:
     - nav:bid-quote
     - nav:biz-pipeline
     - nav:sales-personnel
+    - nav:geo-samples
     - nav:output
     - nav:app-center
     - nav:settings
@@ -186,6 +194,9 @@ roles:
     - bpp:page:query
     - spq:page:dashboard
     - spq:page:query
+    - gsb:page:documents
+    - gsb:page:review
+    - gsb:page:tasks
     - output:page:index
     - workflow-admin:page:index
     - admin:page:users

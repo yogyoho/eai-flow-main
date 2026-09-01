@@ -1429,13 +1429,15 @@ async def seed_db() -> None:
                     {"key": "knowledge", "label": "知识管理", "accent": "cyan", "sort": 3, "universal": False},
                     {"key": "procurement", "label": "采购管理", "accent": "amber", "sort": 4, "universal": False},
                     {"key": "marketing", "label": "市场营销", "accent": "emerald", "sort": 5, "universal": False},
+                    # EAI-CUSTOM (geo-sample-bank T9): 地质管理域（地质样例库）accent=teal 在前端 ACCENT_STYLES 已有
+                    {"key": "geology", "label": "地质管理", "accent": "teal", "sort": 6, "universal": False},
                 ]:
                     await session.execute(
                         text("INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal) VALUES (:key, :label, :accent, :sort, :universal) ON CONFLICT DO NOTHING"),
                         domain,
                     )
 
-                # Apps (12 built-in)
+                # Apps (14 built-in)
                 apps = [
                     {
                         "app_id": "dashboard",
@@ -1593,6 +1595,20 @@ async def seed_db() -> None:
                         "sort": 14,
                         "sort_key": "xiaoshourenyuan",
                     },
+                    # EAI-CUSTOM (geo-sample-bank T9): 地质样例库（应用中心 → 地质管理；克隆自 spare-parts 条目）
+                    {
+                        "app_id": "geo-samples",
+                        "name": "地质样例库",
+                        "desc": "地质勘查报告样例库，解析入库、脱敏审核与任务管理",
+                        "icon": "map",
+                        "domain": "geology",
+                        "stage": "process",
+                        "path": "/geo-samples",
+                        "license": "geo_samples",
+                        "admin": False,
+                        "sort": 15,
+                        "sort_key": "dizhiyangliku",
+                    },
                     {
                         "app_id": "admin",
                         "name": "系统管理",
@@ -1635,7 +1651,7 @@ async def seed_db() -> None:
                         app,
                     )
                 await session.commit()
-                logger.info("Seeded app-center: 6 domains + 13 apps")
+                logger.info("Seeded app-center: 7 domains + 14 apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
 

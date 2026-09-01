@@ -35,6 +35,8 @@ ALL_MODULES = [
     "bid_quote",
     "biz_pipeline",
     "sales_personnel",
+    # EAI-CUSTOM (geo-sample-bank T9): 地质样例库（与 app.extensions.license.service.ALL_MODULES 同步）
+    "geo_samples",
 ]
 
 
