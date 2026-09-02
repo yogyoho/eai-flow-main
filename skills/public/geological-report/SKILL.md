@@ -125,7 +125,7 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 禁令：不改 data/、不碰 references/、不跑 build、不派 task
 ```
 
-（组装 prompt 时把契约里的 `<S>` 替换为实际阶段文件名——如 `exploration.json`；占位符不进 prompt）
+（组装 prompt 时把契约里的 `<S>`/`<阶段>` 替换为实际阶段文件名（如 `exploration.json`/`exploration`）；`<矿种>` 替换为归一化矿种名——由 00_project.commodity 归一化，如 `gold`；占位符不进 prompt）
 
 - `subagent_type="general-purpose"`；每轮 **≤3 个并发 task()**（超发被运行时静默丢弃）；总派发 ≤16（config 额度）
 - **batch_task 优先（平台预算规避，bug-3040）**：wave1 多章并行优先一次 `batch_task(title, items, subagent_type="general-purpose")` 整批投递（items = 各章派发契约 prompt，item 间相互独立、幂等）——每 item 独立子代理（独立递归/循环/bash 预算与超时），主会话零章稿上下文；`task()` 作兜底（batch 工具不可用时）。batch 已投章不计 task() 额度；`batch_status(batch_id)` 轮询收章，逐 item 按 4.2 跑门。

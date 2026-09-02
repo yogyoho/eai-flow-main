@@ -30,7 +30,7 @@
 
 ## 动笔前读深度目标（bug-2221 根治）
 
-写每章前读 `references/depth_targets.json` 该章 `median_eff`/`median_table_rows`/`median_paragraphs`，以此为篇幅下限自检；build_output 深度目标门兜底（eff ≥ 样例 median × 0.6 × 覆盖缩放，FAIL exit 1）。深度基线按矿种分文件（`references/depth_targets/<阶段>/<矿种>.json`，由样例库编译生成）；无对应矿种文件时回退 `references/depth_targets.json`。实际目标以单章门报错行内嵌的「样例 median × 系数」数值为准。缺数写 `[待确认]` 不砍段，数据覆盖不足时门自动放宽目标。**深度基准只认技能自带 references/depth_targets.json**——绝不传 `--targets` 换基准、绝不自造/改写 depth_targets 文件、绝不绕过 build_output 直调 assemble（线程 03e18e4a 死循环取证：伪造基准+直调绕门 → 熔断）。门 FAIL 的唯一合法出路=补写正文。
+写每章前读 `references/depth_targets.json` 该章 `median_eff`/`median_table_rows`/`median_paragraphs`，以此为篇幅下限自检；build_output 深度目标门兜底（eff ≥ 样例 median × 0.6 × 覆盖缩放，FAIL exit 1）。深度基线按矿种分文件（`references/depth_targets/<阶段>/<矿种>.json`，由样例库编译生成）；无对应矿种文件时回退 `references/depth_targets.json`。实际目标以单章门报错行内嵌的「样例 median × 系数」数值为准。缺数写 `[待确认]` 不砍段，数据覆盖不足时门自动放宽目标。**深度基准只认技能自带编译产物（`references/depth_targets.json` 或 `depth_targets/<阶段>/<矿种>.json`——后者由管理模块 compile 生成）**——绝不传 `--targets` 换基准、绝不自造/改写 depth_targets 文件、绝不绕过 build_output 直调 assemble（线程 03e18e4a 死循环取证：伪造基准+直调绕门 → 熔断）。门 FAIL 的唯一合法出路=补写正文。
 
 ## 大章分节写作指引（ch6 等最大目标章）
 
