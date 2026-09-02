@@ -83,6 +83,7 @@ export function DocumentsView() {
   const action = useGsbAction();
   const fileRef = useRef<HTMLInputElement>(null);
   const reportIdRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState("");
 
   function onUpload() {
     const file = fileRef.current?.files?.[0];
@@ -100,6 +101,7 @@ export function DocumentsView() {
       onSuccess: () => {
         if (fileRef.current) fileRef.current.value = "";
         if (reportIdRef.current) reportIdRef.current.value = "";
+        setFileName("");
       },
       onError: (e) =>
         alert(`上传失败: ${e instanceof Error ? e.message : String(e)}`),
@@ -153,10 +155,21 @@ export function DocumentsView() {
           />
           <input
             ref={fileRef}
+            id="gsb-upload-file"
             type="file"
             accept=".docx,.pdf"
-            className="text-foreground text-sm"
+            className="hidden"
+            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
           />
+          <label
+            htmlFor="gsb-upload-file"
+            className="border-border bg-muted/40 hover:bg-muted cursor-pointer rounded-md border px-3 py-1.5 text-[13px] text-foreground/80 transition-colors"
+          >
+            选择文件
+          </label>
+          <span className="text-muted-foreground max-w-56 truncate text-[12px]">
+            {fileName || "未选择文件"}
+          </span>
           <button
             type="button"
             onClick={onUpload}
