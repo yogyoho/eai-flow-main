@@ -436,7 +436,8 @@ CANONICAL_TARGETS = Path(__file__).resolve().parent.parent / "references" / "dep
 STANDARDS_PATH = Path(__file__).resolve().parent.parent / "references" / "standards_index.json"
 
 # EAI-CUSTOM (geo-sample-bank Phase 2 T4): commodity 中文自由串 → 样例库基线 slug 归一化。
-# 顺序即优先级：「铜银金」含「铜」→ copper（首命中）；词表外返回 None → 走既有探测链零感知。
+# 最早出现位置=主矿种（约定主矿种写在前）：normalize_mineral 扫描全部 slug×关键词取位置最小者；
+# 负向守卫（「非金属」排除；「金」后接「属」=金属量/贵金属非矿种）与词表外 → None → 走既有探测链零感知。
 MINERAL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
     ("copper", ("铜",)),
     ("coal", ("煤",)),
@@ -447,13 +448,26 @@ MINERAL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
 
 
 def normalize_mineral(commodity: str | None) -> str | None:
-    """中文 commodity → 矿种 slug；空值/词表外 → None（调用方退回既有探测链）。"""
+    """commodity 中文串 → 基线 slug；取最早出现的关键词（主矿种在前约定）。
+
+    「非金属」负向排除；「金」后接「属」（金属量/贵金属）跳过——防误映 gold。
+    """
     if not commodity:
         return None
+    s = commodity.strip()
+    if "非金属" in s:
+        return None
+    best: tuple[int, str] | None = None  # (position, slug)
     for slug, keys in MINERAL_ALIASES:
-        if any(k in commodity for k in keys):
-            return slug
-    return None
+        for k in keys:
+            pos = s.find(k)
+            if pos == -1:
+                continue
+            if k == "金" and pos + 1 < len(s) and s[pos + 1] == "属":
+                continue
+            if best is None or pos < best[0]:
+                best = (pos, slug)
+    return best[1] if best else None
 
 
 def _project_mineral(data_dir: Path | str | None) -> str | None:
@@ -465,7 +479,7 @@ def _project_mineral(data_dir: Path | str | None) -> str | None:
         return None
     try:
         return normalize_mineral(json.loads(p.read_text(encoding="utf-8")).get("commodity"))
-    except (OSError, ValueError):
+    except (OSError, ValueError, AttributeError):
         return None
 
 
@@ -479,6 +493,7 @@ def resolve_targets(args_targets: str | None, stage_path: Path, data_dir: Path |
     EAI-CUSTOM (geo-sample-bank Phase 2 T4)：data_dir 给出且 00_project.json 的 commodity 命中词表时，
     优先取 references/depth_targets/<stage_stem>/<mineral>.json（bank_compile 由管理模块门控生成的
     技能自有资产，早于三级探测、不打非技能基准警告，origin 仍由返回值第二元照记）。
+    mineral 探测优先于 stage 旁扫描——后者落在可写目录可被伪造（bug-3058），前者 gated。
     """
     if args_targets:
         src = Path(args_targets)
@@ -490,6 +505,7 @@ def resolve_targets(args_targets: str | None, stage_path: Path, data_dir: Path |
             if cand.exists():
                 print(f"[build] 深度基准: {cand}（样例库编译产物，来源已记入 delivery_manifest）", file=sys.stderr)
                 return load_targets(cand), cand
+            print(f"[build] 矿种基线缺失: {cand} —— 回退既有探测链（当前基准可能非本矿种）", file=sys.stderr)
         src = None
         for anc in (stage_path.parent, stage_path.parent.parent, stage_path.parent.parent.parent):
             cand = anc / "depth_targets.json"
