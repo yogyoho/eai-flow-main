@@ -568,3 +568,212 @@ def test_bank_compile_slug_and_utf8_guards_skip(tmp_path, capsys):
     idx = json.loads((refs / "samples_bank/bank_index.json").read_text(encoding="utf-8"))
     rids = {e["report_id"] for entries in idx["exploration"].values() for e in entries}
     assert rids == {"rid-ok"}
+
+
+# ---------------------------------------------------------------------------
+# geo_bank_ragflow_acceptance：RAGFlow 分块质量验收 harness（Phase 2 T8）
+# 脚本在仓库根 scripts/、不在 backend 包内——importlib 按文件路径加载（模块级零 app 依赖，
+# RAGFlow 交互经 sys.modules 共享模块 monkeypatch 成 FakeClient，真跑验收由人执行）。
+# ---------------------------------------------------------------------------
+
+_ACC_ENV = "GSB_RAGFLOW_ACCEPTANCE_DATASET_ID"
+# 长正文（>50 字符）：保证父块断言走「标题+50 字符」严格分支而非放宽分支
+_LONG_BODY = "总论正文：矿区位于华北地台南缘，区内地层发育齐全，资源储量估算采用地质块段法，开采方式为地下开采，本节概述供检索召回与深度比对使用。"
+
+
+def _load_acceptance_module():
+    import importlib.util
+
+    script = REPO / "scripts" / "geo_bank_ragflow_acceptance.py"
+    spec = importlib.util.spec_from_file_location("geo_bank_ragflow_acceptance", script)
+    assert spec is not None and spec.loader is not None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class FakeAccClient:
+    """验收 harness 的 FakeClient：记录 wire ops；chunks 由上传时读到的源文派生（mutate 注入缺陷）。
+
+    缺省 chunk 形态 = 单个含整个源片的父块（理想 parent_child 表现）；mutate[name] 可注入
+    变形（表格重复 / 首块缺标记）模拟 RAGFlow 分块缺陷。page_map 模拟既有文档的分页 dataset。
+    """
+
+    init_kwargs: dict = {}
+    pages: list = []
+    ops: list = []
+    store: dict = {}  # file_name -> 上传时读到的源片全文
+    mutate: dict = {}  # file_name -> callable(src) -> list[str]
+    page_map: dict = {}  # page -> {"docs": [...], "total": N}
+
+    def __init__(self, api_key=None, base_url=None):
+        FakeAccClient.init_kwargs = {"api_key": api_key, "base_url": base_url}
+
+    async def list_documents(self, dataset_id, page=1, size=100):
+        FakeAccClient.pages.append((dataset_id, page, size))
+        data = FakeAccClient.page_map.get(page)
+        if data is None:
+            return {"code": 0, "data": {"docs": [], "total": 0}}
+        return {"code": 0, "data": data}
+
+    async def delete_document(self, dataset_id, document_id):
+        FakeAccClient.ops.append(("delete", document_id))
+
+    async def upload_document(self, dataset_id, file_path, file_name=None, **kw):
+        FakeAccClient.store[file_name] = Path(file_path).read_text(encoding="utf-8")
+        FakeAccClient.ops.append(("upload", file_name))
+        return {"data": {"id": f"doc::{file_name}"}}
+
+    async def parse_document(self, dataset_id, document_id):
+        FakeAccClient.ops.append(("parse", document_id))
+
+    async def get_document(self, dataset_id, document_id):
+        FakeAccClient.ops.append(("get_doc", document_id))
+        return {"data": {"id": document_id, "run": "DONE", "progress_msg": ""}}
+
+    async def list_chunks(self, dataset_id, document_id, page=1, size=100):
+        name = document_id.removeprefix("doc::")
+        fn = FakeAccClient.mutate.get(name) or (lambda s: [s])
+        contents = fn(FakeAccClient.store[name])
+        return {"code": 0, "data": {"chunks": [{"content": c} for c in contents], "total": len(contents)}}
+
+    @classmethod
+    def reset(cls):
+        cls.init_kwargs, cls.pages, cls.ops, cls.store, cls.mutate, cls.page_map = {}, [], [], {}, {}, {}
+
+
+def _patch_acc_env(monkeypatch):
+    """env dataset id + 懒 import 位点桩（与 test_compile_ragflow_push_delete_by_name 同款手法）。"""
+    from types import SimpleNamespace
+
+    from app.extensions import config as ext_config_mod
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    FakeAccClient.reset()
+    monkeypatch.setenv(_ACC_ENV, "ds-acc")
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeAccClient)
+    monkeypatch.setattr(ext_config_mod, "get_extensions_config", lambda: SimpleNamespace(ragflow=SimpleNamespace(api_key="k", base_url="http://ragflow:9380", timeout=5)))
+
+
+def _write_acc_slice(root: Path, stage: str, rid: str, mineral: str, ch: str, body: str, table: bool = False, sub: bool = False) -> Path:
+    """写一片（标记行 + ## N 标题 + 正文；可选 ### 子节与 md 表格），返回切片路径。"""
+    d = root / "samples_bank" / stage / "slices" / f"ch{ch}"
+    d.mkdir(parents=True, exist_ok=True)
+    marker = f"【矿种】{mineral}｜【阶段】{stage}｜【report_id】{rid}｜【节号】{ch}"
+    seg = f"## {ch} 第{ch}节标题\n\n{body}\n"
+    if sub:
+        seg += f"\n### {ch}.1 地层\n\n地层小节正文。\n"
+    if table:
+        seg += "\n| 孔号 | 水位 |\n| --- | --- |\n| ZK1 | 12.5 |\n"
+    p = d / f"{rid}__{ch}.md"
+    p.write_text(marker + "\n\n" + seg, encoding="utf-8", newline="\n")
+    return p
+
+
+def test_acceptance_missing_dataset_env_rc2_no_network(monkeypatch, tmp_path, capsys):
+    """缺 GSB_RAGFLOW_ACCEPTANCE_DATASET_ID → rc=2 明确报错，绝不构造 client / 发起任何网络调用。"""
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    mod = _load_acceptance_module()
+    monkeypatch.delenv(_ACC_ENV, raising=False)
+
+    class BoomClient:
+        def __init__(self, *a, **k):
+            raise AssertionError("缺 dataset env 时绝不构造 RAGFlowClient")
+
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", BoomClient)
+
+    rc = mod.main_with_args(["--bank", str(tmp_path)])
+
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert _ACC_ENV in err
+    assert "生产" in err
+
+
+def _make_acc_bank(root: Path) -> list[Path]:
+    """3 片、2 个 stage（跨 stage 混合按路径排序）：ch2 片含子节 + 表格，其余长正文片。"""
+    return [
+        _write_acc_slice(root, "exploration", "rid-gold", "gold", "1", _LONG_BODY),
+        _write_acc_slice(root, "exploration", "rid-gold", "gold", "2", "地质正文：地层、构造与岩浆岩特征描述。", table=True, sub=True),
+        _write_acc_slice(root, "feasibility", "rid-cu", "copper", "3", _LONG_BODY),
+    ]
+
+
+def test_acceptance_happy_path_passes_and_cleans_up(tmp_path, monkeypatch, capsys):
+    """3 片 happy path（FakeClient：分页 list / 同名先删 / upload / parse / 轮询 DONE / 达标 chunks）
+    → rc=0 全 PASS；默认清理把本脚本上传的 3 份文档全部 delete（验收不留痕）。"""
+    mod = _load_acceptance_module()
+    paths = _make_acc_bank(tmp_path)
+    _patch_acc_env(monkeypatch)
+    FakeAccClient.page_map = {
+        1: {"docs": [{"id": "old-a", "name": paths[0].name}, {"id": "old-b", "name": "unrelated__9.md"}], "total": 150},
+        2: {"docs": [{"id": "old-c", "name": "stale2__2.md"}], "total": 150},
+    }
+
+    rc = mod.main_with_args(["--bank", str(tmp_path / "samples_bank")])
+
+    assert rc == 0
+    assert "ACCEPTANCE: 3/3 PASS" in capsys.readouterr().out
+    assert FakeAccClient.init_kwargs == {"api_key": "k", "base_url": "http://ragflow:9380"}
+    assert FakeAccClient.pages == [("ds-acc", 1, 100), ("ds-acc", 2, 100)]  # total-aware 分页两页即停
+    # 每片链路：同名先删（上次验收残留）→ upload → parse → 轮询 DONE（首轮即返回）
+    assert FakeAccClient.ops[:4] == [
+        ("delete", "old-a"),
+        ("upload", paths[0].name),
+        ("parse", f"doc::{paths[0].name}"),
+        ("get_doc", f"doc::{paths[0].name}"),
+    ]
+    assert FakeAccClient.ops.count(("get_doc", f"doc::{paths[0].name}")) == 1
+    assert not any(op == ("delete", "old-b") for op in FakeAccClient.ops)  # 非本脚本上传的残留绝不动
+    assert not any(op == ("delete", "old-c") for op in FakeAccClient.ops)
+    # 默认清理：结尾按 name 删除本脚本上传的全部 3 份文档
+    assert FakeAccClient.ops[-3:] == [("delete", f"doc::{p.name}") for p in paths]
+
+
+def test_acceptance_table_duplication_detected(tmp_path, monkeypatch, capsys):
+    """v0.25.3「md 表格重复」缺陷：chunk 内容令表格行出现 2 倍 → table 项 FAIL、该片 FAIL、rc=1。"""
+    mod = _load_acceptance_module()
+    p = _write_acc_slice(tmp_path, "exploration", "rid-tbl", "gold", "2", "地质正文：地层描述。", table=True, sub=True)
+    _patch_acc_env(monkeypatch)
+    FakeAccClient.mutate[p.name] = lambda s: [s, s]  # 整片内容重复 → 每个表格行计数 2 倍
+
+    rc = mod.main_with_args(["--bank", str(tmp_path / "samples_bank")])
+
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "表格行计数不符" in out and "重复" in out
+    assert "table" in out and "FAIL" in out
+    assert "ACCEPTANCE: 0/1 PASS" in out
+    assert ("delete", f"doc::{p.name}") in FakeAccClient.ops  # FAIL 后默认清理照常执行
+
+
+def test_acceptance_missing_marker_in_first_chunk_fails(tmp_path, monkeypatch, capsys):
+    """首块无标记行 → 节号完整性（marker 项）FAIL、rc=1；其余项不受牵连照常评估。"""
+    mod = _load_acceptance_module()
+    p = _write_acc_slice(tmp_path, "exploration", "rid-nomark", "gold", "1", _LONG_BODY)
+    marker_line = p.read_text(encoding="utf-8").splitlines()[0]
+    _patch_acc_env(monkeypatch)
+    FakeAccClient.mutate[p.name] = lambda s, m=marker_line: [s.replace(m + "\n\n", "", 1)]
+
+    rc = mod.main_with_args(["--bank", str(tmp_path / "samples_bank")])
+
+    assert rc == 1
+    out = capsys.readouterr().out
+    assert "标记行未出现在拼接文本前" in out
+    assert "ACCEPTANCE: 0/1 PASS" in out
+    assert "FAIL 处置序" in out  # 处置序提示随 FAIL 输出
+
+
+def test_acceptance_keep_flag_skips_cleanup(tmp_path, monkeypatch, capsys):
+    """--keep：验收照常跑（全 PASS rc=0）但全程零 delete——上传文档保留供人工复查。"""
+    mod = _load_acceptance_module()
+    p = _write_acc_slice(tmp_path, "exploration", "rid-keep", "gold", "1", _LONG_BODY)
+    _patch_acc_env(monkeypatch)  # page_map 空 → 无既有文档 → 也不触发同名先删
+
+    rc = mod.main_with_args(["--bank", str(tmp_path / "samples_bank"), "--keep"])
+
+    assert rc == 0
+    assert "ACCEPTANCE: 1/1 PASS" in capsys.readouterr().out
+    assert not any(op[0] == "delete" for op in FakeAccClient.ops)
+    assert ("upload", p.name) in FakeAccClient.ops
