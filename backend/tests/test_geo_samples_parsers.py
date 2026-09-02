@@ -227,3 +227,31 @@ def test_parse_document_dispatch(monkeypatch):
 
     md, mode = asyncio.run(parsers.parse_document("scan.pdf", _make_pdf_with_text("短")))
     assert mode == "pdf_ocr" and md == "OCR TEXT"
+
+
+def test_docx_localized_heading_styles():
+    """中文 Word 样式名（标题 1/标题 2）须归一化进标题映射——R1 防线。"""
+    from docx import Document
+
+    from app.extensions.geo_samples.parsers import docx_to_markdown
+
+    doc = Document()
+    doc.add_paragraph("第1章 总论", style="Heading 1")
+    p = doc.add_paragraph("1.1 编制依据")
+    p.style = doc.styles["Heading 2"]
+    buf = io.BytesIO()
+    doc.save(buf)
+    md = docx_to_markdown(buf.getvalue())
+    assert "## 第1章 总论" in md and "### 1.1 编制依据" in md
+
+
+def test_docx_style_alias_map():
+    from app.extensions.geo_samples.parsers import _heading_level
+
+    assert _heading_level("Heading 1") == 1
+    assert _heading_level("Title") == 1
+    assert _heading_level("标题 1") == 1
+    assert _heading_level("标题 2") == 2
+    assert _heading_level("标题 3") == 3
+    assert _heading_level("Heading 4") in (3, 4)
+    assert _heading_level("Normal") is None

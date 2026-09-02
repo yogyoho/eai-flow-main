@@ -30,6 +30,25 @@ def _docx_formula_blocks(paragraph) -> list:  # noqa: ANN001 — docx Element, �
     return paragraph._p.findall(".//" + qn("w:object")) + paragraph._p.findall(".//" + qn("m:oMath"))
 
 
+# 中文/英文 Word 内置样式名归一——中文 authored docx 的样式名是「标题 1」而非
+# "Heading 1"，不归一则整篇降级正文、Phase 2 节号切片将找零节（终审 R1）。
+_STYLE_ALIASES = {"标题 1": "heading 1", "标题 2": "heading 2", "标题 3": "heading 3", "标题 4": "heading 4", "标题 5": "heading 5", "标题": "title"}
+
+
+def _heading_level(style_name: str | None) -> int | None:
+    """样式名 → 标题级（1=##/2=###/3+=####）；非标题返回 None。"""
+    if not style_name:
+        return None
+    s = _STYLE_ALIASES.get(style_name.strip(), style_name.strip()).lower()
+    if s == "title" or s.startswith("heading 1"):
+        return 1
+    if s.startswith("heading 2"):
+        return 2
+    if s.startswith(("heading 3", "heading 4", "heading 5")):
+        return 3
+    return None
+
+
 def docx_to_markdown(data: bytes) -> str:
     import docx
     from docx.table import Table
@@ -41,7 +60,6 @@ def docx_to_markdown(data: bytes) -> str:
     for block in doc.iter_inner_content():  # python-docx>=1.1：按文档顺序交错产出段落/表格
         if isinstance(block, Paragraph):
             text = block.text.strip()
-            style = (block.style.name or "").lower() if block.style is not None else ""
             has_formula = bool(_docx_formula_blocks(block))
             if not text:
                 # OLE/OMML 公式对象：元素存在且无文本 → 占位
@@ -53,11 +71,12 @@ def docx_to_markdown(data: bytes) -> str:
                 # 行内公式（有文本的段落里夹公式对象）：文本保留 + 占位后缀
                 formula_no += 1
                 text = f"{text} [公式:p{formula_no}]"
-            if style.startswith("heading 1") or style == "title":
+            lvl = _heading_level(block.style.name if block.style is not None else None)
+            if lvl == 1:
                 lines.append(f"## {text}")
-            elif style.startswith("heading 2"):
+            elif lvl == 2:
                 lines.append(f"### {text}")
-            elif style.startswith(("heading 3", "heading 4", "heading 5")):
+            elif lvl == 3:
                 lines.append(f"#### {text}")
             else:
                 lines.append(text)
