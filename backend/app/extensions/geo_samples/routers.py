@@ -99,6 +99,8 @@ async def parse_document(document_id: str, background: BackgroundTasks, db: Asyn
     doc = await crud.get_document(db, document_id)
     if doc is None:
         raise HTTPException(404, "样例不存在")
+    if await crud.has_running_run(db, document_id, "redact"):
+        raise HTTPException(409, "脱敏任务在跑——稍后再解析")
     if doc.status not in ("uploaded", "failed", "parsed"):
         raise HTTPException(409, f"当前状态 {doc.status} 不允许重新解析（reviewed 章稿已定稿）")
     await crud.sweep_stale_runs(db)
