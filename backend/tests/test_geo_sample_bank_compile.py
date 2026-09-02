@@ -186,3 +186,103 @@ def test_bank_compile_all_zero_slices_rc1(tmp_path):
     rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
     assert rc == 1
     assert not (refs / "samples_bank/bank_index.json").exists()  # 绝不产空 index
+
+
+def test_bank_compile_duplicate_chapter_skips_report(tmp_path, capsys):
+    """重复章号（## 1 / ## 2.1 / ## 1 → 两个 ch1 片）→ 整份报告跳过；另一报告正常编译。"""
+    refs = tmp_path / "references"
+    refs.mkdir()
+    d = tmp_path / "rid-dup"
+    d.mkdir()
+    (d / "source.md").write_text("## 1 甲\n\n甲正文。\n\n## 2.1 乙\n\n乙正文。\n\n## 1 丙\n\n丙正文。\n", encoding="utf-8")
+    _make_report(tmp_path, "rid-ok", "gold", "exploration")
+    _write_manifest(
+        tmp_path,
+        [
+            {"report_id": "rid-dup", "stage": "exploration", "mineral": "gold", "file_name": "d.docx"},
+            {"report_id": "rid-ok", "stage": "exploration", "mineral": "gold", "file_name": "g.docx"},
+        ],
+    )
+    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    assert rc == 0
+    assert not (refs / "samples_bank/exploration/slices/ch1/rid-dup__1.md").exists()
+    assert not (refs / "samples/exploration/ch1__rid-dup.md").exists()
+    idx = json.loads((refs / "samples_bank/bank_index.json").read_text(encoding="utf-8"))
+    rids = {e["report_id"] for entries in idx["exploration"].values() for e in entries}
+    assert rids == {"rid-ok"}
+    assert "重复章号" in capsys.readouterr().err
+
+
+def test_bank_compile_prune_removes_stale_slices(tmp_path):
+    """--prune：manifest 移除的报告残留切片（bank + SL3 池）被清掉，保留报告与手写样例完好。"""
+    refs = tmp_path / "references"
+    refs.mkdir()
+    hand = refs / "samples/exploration/ch1_sample.md"
+    hand.parent.mkdir(parents=True, exist_ok=True)
+    hand.write_text("手写样例。\n", encoding="utf-8")
+    _make_report(tmp_path, "rid-a", "gold", "exploration")
+    _make_report(tmp_path, "rid-b", "copper", "exploration")
+    _write_manifest(
+        tmp_path,
+        [
+            {"report_id": "rid-a", "stage": "exploration", "mineral": "gold", "file_name": "a.docx"},
+            {"report_id": "rid-b", "stage": "exploration", "mineral": "copper", "file_name": "b.docx"},
+        ],
+    )
+    args = ["--workdir", str(tmp_path), "--references", str(refs)]
+    assert bank_compile.main_with_args(args) == 0
+    assert (refs / "samples_bank/exploration/slices/ch1/rid-b__1.md").exists()
+    assert (refs / "samples/exploration/ch1__rid-b.md").exists()
+    # manifest 移除 rid-b 后带 --prune 重编译：rid-b 残留被清，rid-a 与手写样例完好
+    _write_manifest(tmp_path, [{"report_id": "rid-a", "stage": "exploration", "mineral": "gold", "file_name": "a.docx"}])
+    assert bank_compile.main_with_args(args + ["--prune"]) == 0
+    assert not (refs / "samples_bank/exploration/slices/ch1/rid-b__1.md").exists()
+    assert not (refs / "samples/exploration/ch1__rid-b.md").exists()
+    assert (refs / "samples_bank/exploration/slices/ch1/rid-a__1.md").exists()
+    assert (refs / "samples/exploration/ch1__rid-a.md").exists()
+    assert hand.exists()  # 手写 chN_sample.md 绝不动
+    idx = json.loads((refs / "samples_bank/bank_index.json").read_text(encoding="utf-8"))
+    rids = {e["report_id"] for entries in idx["exploration"].values() for e in entries}
+    assert rids == {"rid-a"}
+
+
+def test_bank_compile_bad_python_skips_group(tmp_path, capsys):
+    """--python 指向不存在解释器 → OSError 被守护：rc=0，切片/索引照常落盘，该组标定跳过 + stderr 警告。"""
+    refs = tmp_path / "references"
+    refs.mkdir()
+    _make_report(tmp_path, "rid-x", "gold", "exploration")
+    _write_manifest(tmp_path, [{"report_id": "rid-x", "stage": "exploration", "mineral": "gold", "file_name": "x.docx"}])
+    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs), "--python", "Z:/no/such/interpreter.exe"])
+    assert rc == 0
+    assert (refs / "samples_bank/bank_index.json").exists()
+    assert not (refs / "depth_targets/exploration/gold.json").exists()  # 该组标定被跳过
+    assert "标定失败" in capsys.readouterr().err
+
+
+def test_bank_compile_slug_and_utf8_guards_skip(tmp_path, capsys):
+    """rid 非 slug / source.md 非 UTF-8 → 条目级 stderr 警告跳过；好报告照常编译。"""
+    refs = tmp_path / "references"
+    refs.mkdir()
+    bad = tmp_path / "RID-BAD"  # 大写 → 非 slug
+    bad.mkdir()
+    (bad / "source.md").write_text("## 1 甲\n\n正文。\n", encoding="utf-8")
+    bin_dir = tmp_path / "rid-bin"
+    bin_dir.mkdir()
+    (bin_dir / "source.md").write_bytes(b"\xff\xfe## 1 \xb2\xe2\n\n")  # UTF-16 BOM 字节 → 非 UTF-8
+    _make_report(tmp_path, "rid-ok", "gold", "exploration")
+    _write_manifest(
+        tmp_path,
+        [
+            {"report_id": "RID-BAD", "stage": "exploration", "mineral": "gold", "file_name": "1.docx"},
+            {"report_id": "rid-bin", "stage": "exploration", "mineral": "gold", "file_name": "2.docx"},
+            {"report_id": "rid-ok", "stage": "exploration", "mineral": "gold", "file_name": "3.docx"},
+        ],
+    )
+    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "非 slug" in err
+    assert "非 UTF-8" in err
+    idx = json.loads((refs / "samples_bank/bank_index.json").read_text(encoding="utf-8"))
+    rids = {e["report_id"] for entries in idx["exploration"].values() for e in entries}
+    assert rids == {"rid-ok"}

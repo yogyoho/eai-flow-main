@@ -13,12 +13,19 @@ EAI-CUSTOM (geo-sample-bank Phase 2 T5)：维护者离线动作脚本，把模�
 
 约束与语义：
   - 纯 stdlib + 子进程调 sibling calibrate.py；无网络；不 import build_output/ingest/consistency。
-  - 维护者动作：输入缺失/全部报告零切片 → 立即失败（绝不产空 bank_index）。
-  - 退出码：0 = 至少一片并完成编译；1 = 输入缺失/manifest 非法/全部报告零切片。
+  - 维护者动作：输入缺失/全部报告零切片或被跳过 → 立即失败（绝不产空 bank_index）。
+  - 退出码：0 = 至少一片并完成编译；1 = 输入缺失/manifest 非法/全部报告零切片或被跳过
+    （source.md 缺失/非 UTF-8/无节号标题/重复章号/rid 非 slug——逐条 stderr 警告）。
   - 幂等：全部产物 sort_keys + newline="\\n" 确定性写——同输入必同字节。
   - 切片规则 SEC_RE = ^#{2,4}\\s+\\d+(?:\\.\\d+)*\\s（MULTILINE）：子节归父片
     （### 2.1 属 ## 2 片），节号首段为片号；片起点=标题行 start，终点=下一不同片
-    标题的 start 或文末，标题行本身保留在片内。
+    标题的 start 或文末，标题行本身保留在片内。节号须与标题文本空格分隔
+    （`## 2 标题`；`## 2.标题` 句点分隔不识别——上游解析器不产此形态，明确不做）。
+  - 同一报告内重复章号（如 ## 1 … ## 2.1 … ## 1 … 切出两个 ch1 片）→ 整份报告跳过，
+    绝不静默覆盖丢数据。
+  - 恢复配方：文档移除/重编译后残留切片会继续进 SL3 指纹池——用 --prune 清理
+    （只删命名合规 `<rid>__<N>.md` / `chN__<rid>.md` 但 rid 已不在当前 manifest 的文件；
+    手写 chN_sample.md 无 __ 分隔、天然不匹配，绝不动）。
 
 用法（模块后端 T7 调用）：
     python -X utf8 bank_compile.py --workdir <语料目录> --references <技能 references 目录>
@@ -40,6 +47,10 @@ ABSOLUTE_FLOOR = 0.4  # 深度门硬下限，标定成功后统一补进基线 d
 
 # 节号标题：##/###/#### + 空白 + 数字节号 + 空白（MULTILINE 逐行锚定行首）
 SEC_RE = re.compile(r"^(#{2,4})\s+(\d+(?:\.\d+)*)\s", re.MULTILINE)
+# 编译产物命名（--prune 据此辨认「本管线产物」：手写 chN_sample.md 无 __ 分隔，天然不匹配）
+SLICE_NAME_RE = re.compile(r"^(?P<rid>.+)__(?P<ch>\d+)\.md$")  # samples_bank: <rid>__<N>.md
+SL3_NAME_RE = re.compile(r"^ch(?P<ch>\d+)__(?P<rid>.+)\.md$")  # samples: chN__<rid>.md
+RID_RE = re.compile(r"[a-z0-9][a-z0-9\-_]*")  # rid slug 守卫（小写字母/数字/-/_）
 
 
 def _json_write(path: Path, doc) -> None:
@@ -89,15 +100,36 @@ def slice_report(text: str) -> list[dict]:
 
 
 def _run_calibrate(python: str, samples_dir: Path, output: Path) -> tuple[int, str]:
-    """子进程调 sibling calibrate.py（脚本目录自动进 sys.path[0]，cwd 无关）。"""
-    proc = subprocess.run(
-        [python, "-X", "utf8", str(CALIBRATE), "--samples-dir", str(samples_dir), "--output", str(output)],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-    )
+    """子进程调 sibling calibrate.py（脚本目录自动进 sys.path[0]，cwd 无关）。
+
+    坏解释器等启动失败（OSError）→ 返回 (-1, 异常文本)，走既有「该组跳过+stderr 警告」路径。
+    """
+    try:
+        proc = subprocess.run(
+            [python, "-X", "utf8", str(CALIBRATE), "--samples-dir", str(samples_dir), "--output", str(output)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError as exc:
+        return -1, str(exc)
     return proc.returncode, (proc.stderr or "").strip()
+
+
+def _prune_stale_slices(refs: Path, keep_rids: set[str]) -> int:
+    """删除命名合规但 rid 已不在当前 manifest 的残留切片（samples_bank + SL3 指纹池）。
+
+    手写 chN_sample.md 无 __ 分隔、不匹配命名正则，绝不动；返回删除文件数。
+    """
+    removed = 0
+    candidates = list(refs.glob("samples_bank/*/slices/*/*.md")) + list(refs.glob("samples/*/*.md"))
+    for p in candidates:
+        m = SLICE_NAME_RE.match(p.name) or SL3_NAME_RE.match(p.name)
+        if m and m.group("rid") not in keep_rids:
+            p.unlink()
+            removed += 1
+    return removed
 
 
 def main_with_args(argv: list[str]) -> int:
@@ -105,6 +137,11 @@ def main_with_args(argv: list[str]) -> int:
     ap.add_argument("--workdir", required=True, help="语料目录：<report_id>/source.md + manifest.json")
     ap.add_argument("--references", required=True, help="技能 references 目录")
     ap.add_argument("--python", default=sys.executable, help="调 calibrate.py 用的解释器（默认当前解释器）")
+    ap.add_argument(
+        "--prune",
+        action="store_true",
+        help="删除 rid 已不在当前 manifest 的残留切片（含 SL3 指纹池）；手写 chN_sample.md 不受影响",
+    )
     args = ap.parse_args(argv)
 
     workdir, refs = Path(args.workdir), Path(args.references)
@@ -123,12 +160,14 @@ def main_with_args(argv: list[str]) -> int:
 
     # 按 report_id 去重（首次出现胜出）——manifest 重复行不产生重复切片/索引条目
     seen: set[str] = set()
+    manifest_rids: set[str] = set()
     reports = []
     for e in entries:
         rid = e.get("report_id") if isinstance(e, dict) else None
         if not rid or rid in seen:
             continue
         seen.add(rid)
+        manifest_rids.add(rid)
         reports.append(e)
 
     index: dict = {}  # stage -> chN -> [节条目]
@@ -138,13 +177,26 @@ def main_with_args(argv: list[str]) -> int:
     for e in reports:
         rid = e["report_id"]
         stage, mineral = e.get("stage") or "", e.get("mineral") or ""
+        if not RID_RE.fullmatch(rid):
+            print(f"[bank_compile] {rid} 非 slug（需 [a-z0-9][a-z0-9-_]*）——跳过", file=sys.stderr)
+            continue
         src = workdir / rid / "source.md"
         if not stage or not mineral or not src.is_file():
             print(f"[bank_compile] {rid} 缺 stage/mineral 或 source.md 不存在——跳过", file=sys.stderr)
             continue
-        slices = slice_report(src.read_text(encoding="utf-8"))
+        try:
+            text = src.read_text(encoding="utf-8")
+        except UnicodeDecodeError as exc:
+            print(f"[bank_compile] {rid} source.md 非 UTF-8（{exc}）——跳过", file=sys.stderr)
+            continue
+        slices = slice_report(text)
         if not slices:
             print(f"[bank_compile] {rid} 零切片（source.md 无节号标题）——跳过", file=sys.stderr)
+            continue
+        chapters = [s["chapter"] for s in slices]
+        dup = sorted({c for c in chapters if chapters.count(c) > 1})
+        if dup:
+            print(f"[bank_compile] {rid} 重复章号 {'/'.join(dup)}——报告跳过（绝不静默覆盖切片）", file=sys.stderr)
             continue
         for s in slices:
             chapter, seg, secs = s["chapter"], s["seg"], s["secs"]
@@ -173,10 +225,13 @@ def main_with_args(argv: list[str]) -> int:
             groups.setdefault((stage, mineral), []).append((chapter, rid, seg))
 
     if total_slices == 0:
-        print("[bank_compile] 全部报告零切片（无节号标题）——拒绝生成空 bank_index", file=sys.stderr)
+        print("[bank_compile] 全部报告零切片或被跳过——拒绝生成空 bank_index", file=sys.stderr)
         return 1
 
     _json_write(refs / "samples_bank" / "bank_index.json", index)
+    if args.prune:
+        pruned = _prune_stale_slices(refs, manifest_rids)
+        print(f"PRUNED: {pruned} stale slice(s)")
     print(f"BANK_COMPILED: {len(reports)} report(s), {total_slices} slice(s), {len(groups)} group(s)")
 
     # 4) per (stage, mineral) 标定：组内切片临时命名 chN_<rid>.md（满足 calibrate FNAME_RE
