@@ -112,3 +112,42 @@ async def test_run_parse_survives_finish_run_failure(monkeypatch):
 
     await service.run_parse(db, "doc-4", run_id="run-4")  # 不得抛出
     assert doc.status == "parsed"
+
+
+@pytest.mark.asyncio
+async def test_run_parse_releases_connection_before_heavy_work(monkeypatch):
+    """OCR 级重活前必须 commit 释放连接、重活后重取文档（R2）。"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.extensions.geo_samples import service
+    from app.extensions.geo_samples.models import GsbDocument
+
+    doc = GsbDocument(report_id="r5", file_name="a.pdf", file_hash="h", file_type="pdf", status="uploaded", raw_uri="s3://geo-samples/raw/r5/a.pdf")
+    events = []
+
+    async def _get(db_, did):
+        events.append("get")
+        return doc
+
+    async def _heavy(*a, **k):
+        events.append("heavy")
+        return "# 报告", "pdf"  # plan 原稿漏了返回值——unpack md, mode 需要真元组，否则任何实现都走 except
+
+    def _get_obj(uri):
+        events.append("getobj")
+        return b"pdf"
+
+    monkeypatch.setattr(service.crud, "get_document", _get)
+    monkeypatch.setattr(service.storage, "get_object", _get_obj)
+    monkeypatch.setattr(service.parsers, "parse_document", _heavy)
+    monkeypatch.setattr(service.storage, "put_work", lambda rid, d: f"s3://geo-samples/work/{rid}/parsed.md")
+    db = MagicMock()
+    db.commit = AsyncMock(side_effect=lambda: events.append("commit"))
+    db.refresh = AsyncMock()
+
+    await service.run_parse(db, "doc-5", run_id="run-5")
+    assert doc.status == "parsed"
+    # 连接释放必须发生在 heavy 之前
+    assert events.index("commit") < events.index("heavy")
+    # 重活后必须重取文档（状态可能已被 sweep/驳回改变）
+    assert events.count("get") >= 2

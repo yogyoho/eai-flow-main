@@ -31,21 +31,29 @@ async def _finish_run(db: AsyncSession, run_id: str, status: str, detail: str | 
 
 
 async def run_parse(db: AsyncSession, document_id: str, run_id: str) -> None:
-    """后台任务：raw → md（work/）。任何异常 → status=failed + run 落账，除 db 会话彻底不可用外不向调用方抛出。"""
+    """后台任务：raw → md（work/）。任何异常 → status=failed + run 落账，除 db 会话彻底不可用外不向调用方抛出。
+    R2 三段式：get → commit 释放连接 → 重活（OCR 最长 1800s）→ 重取文档确认状态未漂移再落 parsed；
+    重活期间 re-parse 端点可能把 doc 置 failed——此时丢弃本次解析结果，不覆盖更新的状态。"""
     doc = await crud.get_document(db, document_id)
     if doc is None:
         await _finish_run(db, run_id, "failed", "document not found")
         return
+    raw_uri, file_name, report_id = doc.raw_uri, doc.file_name, doc.report_id
+    await db.commit()  # R2：释放连接再进重活（OCR 最长 1800s，占池会楔死无关请求）
     try:
-        raw = await asyncio.to_thread(storage.get_object, doc.raw_uri)
-        md, mode = await parsers.parse_document(doc.file_name, raw)
+        raw = await asyncio.to_thread(storage.get_object, raw_uri)
+        md, mode = await parsers.parse_document(file_name, raw)  # 重活（内含 to_thread/OCR）
+        doc = await crud.get_document(db, document_id)  # 重活后重取——状态可能已被 sweep/驳回改判
+        if doc is None or doc.status not in ("uploaded", "failed", "parsed"):
+            await _finish_run(db, run_id, "failed", f"document state changed during parse: {doc.status if doc else 'gone'}")
+            return
         doc.work_uri = await asyncio.to_thread(storage.put_work, doc.report_id, md.encode("utf-8"))
         doc.parse_mode = mode
         doc.status = "parsed"
         await db.commit()
         await _finish_run(db, run_id, "done", f"mode={mode}")
     except Exception as exc:  # noqa: BLE001 —— 后台任务必须吞异常落账
-        log.exception("parse failed for %s (%s)", getattr(doc, "report_id", "?"), document_id)
+        log.exception("parse failed for %s (%s)", report_id, document_id)
         try:
             await db.rollback()
         except Exception:  # noqa: BLE001
