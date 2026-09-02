@@ -20,8 +20,35 @@ def test_storage_key_layout(monkeypatch):
     monkeypatch.setattr(storage, "_client", lambda: MagicMock(put_object=lambda *a, **k: calls.append(k)))
     uri = storage.put_raw("rep1", "报告.docx", b"data")
     assert uri == "s3://geo-samples/raw/rep1/报告.docx"
-    assert calls[0]["bucket"] == "geo-samples"
+    assert calls[0]["bucket_name"] == "geo-samples"
     assert calls[0]["object_name"] == "raw/rep1/报告.docx"
+
+
+def test_storage_put_kwargs_match_real_minio_signature(monkeypatch):
+    """回归（bug-3072）：put_object 关键字必须是 minio SDK 真实形参。
+
+    旧代码传 bucket=（真实形参是 bucket_name），MagicMock 不校验签名所以
+    单测全绿，实跑上传 500（TypeError: unexpected keyword argument 'bucket'）。
+    """
+    import inspect
+
+    from minio import Minio
+
+    from app.extensions.geo_samples import storage
+
+    real_params = set(inspect.signature(Minio.put_object).parameters)
+    assert "bucket_name" in real_params
+    assert "bucket" not in real_params
+
+    calls = []
+    monkeypatch.setattr(storage, "_client", lambda: MagicMock(put_object=lambda *a, **k: calls.append(k)))
+    storage.put_raw("rep1", "a.docx", b"data")
+    storage.put_work("rep1", b"md")
+    storage.put_clean("rep1", b"md")
+    assert len(calls) == 3
+    for call in calls:
+        assert set(call) <= real_params, f"put_object 传了 SDK 不存在的形参: {set(call) - real_params}"
+        assert call["bucket_name"] == "geo-samples"
 
 
 @pytest.mark.asyncio

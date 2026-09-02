@@ -41,7 +41,7 @@ def put_raw(report_id: str, file_name: str, data: bytes) -> str:
     key = f"raw/{report_id}/{file_name}"
     mc = _client()
     _ensure_bucket(mc)
-    mc.put_object(bucket=BUCKET, object_name=key, data=BytesIO(data), length=len(data))
+    mc.put_object(bucket_name=BUCKET, object_name=key, data=BytesIO(data), length=len(data))
     return f"s3://{BUCKET}/{key}"
 
 
@@ -50,7 +50,7 @@ def put_work(report_id: str, data: bytes) -> str:
     key = f"work/{report_id}/parsed.md"
     mc = _client()
     _ensure_bucket(mc)
-    mc.put_object(bucket=BUCKET, object_name=key, data=BytesIO(data), length=len(data))
+    mc.put_object(bucket_name=BUCKET, object_name=key, data=BytesIO(data), length=len(data))
     return f"s3://{BUCKET}/{key}"
 
 
@@ -59,7 +59,7 @@ def put_clean(report_id: str, data: bytes) -> str:
     key = f"clean/{report_id}/source.md"
     mc = _client()
     _ensure_bucket(mc)
-    mc.put_object(bucket=BUCKET, object_name=key, data=BytesIO(data), length=len(data))
+    mc.put_object(bucket_name=BUCKET, object_name=key, data=BytesIO(data), length=len(data))
     return f"s3://{BUCKET}/{key}"
 
 
