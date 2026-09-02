@@ -50,6 +50,7 @@ roles:
     - nav:projects
     - nav:docmgr
     - nav:knowledge
+    - nav:geo-samples
     - nav:output
     - nav:app-center
     - nav:knowledge-factory

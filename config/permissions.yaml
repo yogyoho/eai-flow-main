@@ -380,6 +380,8 @@ roles:
       - nav:projects
       - nav:docmgr
       - nav:knowledge
+      # EAI-CUSTOM (geo-sample-bank T9): 地质样例库导航（与 roles_custom.yaml overlay 同步，bug-1087 wholesale-replace 教训）
+      - nav:geo-samples
       - nav:output
       - nav:app-center
     pages: ["*"]
