@@ -28,6 +28,7 @@ log = logging.getLogger("geo_samples.service")
 _REPO_ROOT = Path(__file__).resolve().parents[4]
 _SKILL_DIR = _REPO_ROOT / "skills" / "public" / "geological-report"
 _COMPILE_TIMEOUT_S = 1800.0  # bank_compile 含逐组 calibrate 子进程，长报告实测分钟级；30 分钟硬顶
+_PUSH_BUDGET_S = 900.0  # RAGFlow 分发预算：与子进程相加 < 60min sweep 线，防长尾拖过互斥造成并发编译写共享 references
 _RAGFLOW_DATASET_ENV = "GSB_RAGFLOW_DATASET_ID"
 
 
@@ -208,13 +209,15 @@ async def push_slices_to_ragflow(refs: Path, dataset_id: str) -> int:
 async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, mineral: str | None = None) -> None:
     """模块级编译后台任务（never-raise 契约同 run_parse）。
 
-    编排链：reviewed 清单（空 → failed 快速返回，不起子进程）→ to_thread 准备工作区
-    （MinIO 下载 clean 到 <rid>/source.md + manifest.json）→ commit 释放连接（R2 同款，子进程
-    最长 30 分钟）→ 子进程 bank_compile（--workdir/--references/--python，cwd=技能目录，1800s
-    wait_for 硬顶超时 kill）→ RAGFlow 切片分发（辅助通道：env 未配置记 skipped；push 异常只
-    记 detail 不回滚编译结论，spec §7 降级链）→ 按 manifest report_id 批量 status=compiled →
-    commit → done。任何异常 → rollback（compile 无 doc 单体，失败不改任何 gsb_documents
-    状态）→ failed 落账。临时工作区 finally 清理。
+    编排链：reviewed 清单（空 → failed 快速返回，不起子进程）→ commit 释放连接（R2 同款，
+    下载/子进程阶段不占池）→ to_thread 准备工作区（MinIO 下载 clean 到 <rid>/source.md +
+    manifest.json）→ 子进程 bank_compile（--workdir/--references/--python，cwd=技能目录，
+    1800s wait_for 硬顶超时 kill）→ RAGFlow 切片分发（辅助通道，900s 预算封顶：env 未配置记
+    skipped；超预算/push 异常只记 detail 不回滚编译结论，spec §7 降级链——子进程+分发相加恒
+    < 60min sweep 线，防长尾拖过互斥造成并发编译写共享 references）→ 按 manifest 批量写回：
+    get_document_fresh 读 DB 真值且仅 reviewed→compiled，漂移者记 detail 跳过 → commit →
+    done。任何异常 → rollback（compile 无 doc 单体，失败不改任何 gsb_documents 状态）→
+    failed 落账。临时工作区 finally 清理。
     """
     wd: Path | None = None
     try:
@@ -222,9 +225,10 @@ async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, m
         if not docs:
             await _finish_run(db, run_id, "failed", "无 reviewed 状态的样例可编译")
             return
+        await db.commit()  # R2：先释放连接再进重活——expire_on_commit=False 下 docs 属性仍可读，下载阶段不再占连接 idle-in-tx
+        rid_to_id = {d.report_id: d.id for d in docs}  # writeback 用 get_document_fresh（按主键查）的换算表
         wd = Path(await asyncio.to_thread(tempfile.mkdtemp, prefix="gsb_compile_"))
         await asyncio.to_thread(_prepare_compile_workspace, docs, wd)
-        await db.commit()  # R2：释放连接再进重活（子进程最长 1800s，占池会楔死无关请求）
         refs = _SKILL_DIR / "references"
         cmd = [
             sys.executable,
@@ -260,15 +264,29 @@ async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, m
             detail += "; ragflow skipped (dataset not configured)"
         else:
             try:
-                pushed = await push_slices_to_ragflow(refs, dataset_id)
+                # 预算封顶（quality Important-1）：子进程 30min + push 15min < 60min sweep 线，
+                # 防长尾 RAGFlow 拖过 sweep 开互斥 → 并发编译写共享 references。超预算与 push
+                # 失败同 containment：编译产物已落盘，run 仍 done，只记 incomplete。
+                pushed = await asyncio.wait_for(push_slices_to_ragflow(refs, dataset_id), timeout=_PUSH_BUDGET_S)
                 detail += f"; ragflow pushed={pushed}"
+            except TimeoutError:
+                log.exception("ragflow push budget exceeded (run %s)", run_id)
+                detail += f"; ragflow push budget exceeded ({int(_PUSH_BUDGET_S)}s)——run done, push incomplete"
             except Exception as exc:  # noqa: BLE001 —— 分发是辅助通道：编译产物已落盘，失败不回滚结论
                 log.exception("ragflow push failed (run %s)", run_id)
                 detail += f"; ragflow push failed: {exc}"
         for entry in manifest:
-            doc = await crud.get_document_by_report_id(db, entry["report_id"])
-            if doc is not None:
+            # 新鲜守卫（quality Minor-3）：get_document_fresh（T2）绕过 identity map 读 DB 真值，
+            # 且仅 reviewed → compiled。30min 在途编译期间他方会话的新状态写入者（未来新增）
+            # 不得被覆盖；漂移者记入 detail 跳过。该 helper 按主键 id 查——用 list_reviewed
+            # 返回行的 report_id→id 映射换算（report_id 全局唯一，等价键）。
+            doc = await crud.get_document_fresh(db, rid_to_id[entry["report_id"]])
+            if doc is None:
+                continue
+            if doc.status == "reviewed":
                 doc.status = "compiled"
+            else:
+                detail += f"; compiled skip (state drifted): {entry['report_id']}"
         await db.commit()
         await _finish_run(db, run_id, "done", detail)
     except Exception as exc:  # noqa: BLE001 —— 后台任务必须吞异常落账

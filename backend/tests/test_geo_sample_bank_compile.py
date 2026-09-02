@@ -262,17 +262,17 @@ def test_bank_compile_bad_python_skips_group(tmp_path, capsys):
 
 
 def _compile_stub_docs():
-    """两份 reviewed 行的桩（SimpleNamespace 即可——编排层只读这几个字段）。"""
+    """两份 reviewed 行的桩（SimpleNamespace 即可——编排层只读这几个字段；id 供 get_document_fresh 主键桩）。"""
     from types import SimpleNamespace
 
     return [
-        SimpleNamespace(report_id="rid-a", stage="exploration", mineral="gold", file_name="a.docx", clean_uri="s3://geo-samples/clean/rid-a/source.md", status="reviewed"),
-        SimpleNamespace(report_id="rid-b", stage="exploration", mineral="gold", file_name="b.docx", clean_uri="s3://geo-samples/clean/rid-b/source.md", status="reviewed"),
+        SimpleNamespace(id="doc-a", report_id="rid-a", stage="exploration", mineral="gold", file_name="a.docx", clean_uri="s3://geo-samples/clean/rid-a/source.md", status="reviewed"),
+        SimpleNamespace(id="doc-b", report_id="rid-b", stage="exploration", mineral="gold", file_name="b.docx", clean_uri="s3://geo-samples/clean/rid-b/source.md", status="reviewed"),
     ]
 
 
 def _patch_compile_happy_path(monkeypatch, tmp_path, docs):
-    """编排层公共桩：reviewed 清单 / MinIO 下载 / 子进程 FakeProc / 无 RAGFlow env。返回 (exec_mock, write_back_rows, FakeProc)。"""
+    """编排层公共桩：reviewed 清单 / MinIO 下载 / 子进程 FakeProc / 无 RAGFlow env / fresh 写回桩。返回 (exec_mock, write_back_rows, FakeProc)。"""
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
 
@@ -285,13 +285,13 @@ def _patch_compile_happy_path(monkeypatch, tmp_path, docs):
     async def _list_reviewed(db, stage=None, mineral=None):
         return list(docs)
 
-    write_back_rows = {d.report_id: SimpleNamespace(report_id=d.report_id, status="reviewed") for d in docs}
+    write_back_rows = {d.id: SimpleNamespace(id=d.id, report_id=d.report_id, status="reviewed") for d in docs}
 
-    async def _by_rid(db, rid):
-        return write_back_rows[rid]
+    async def _fresh(db, did):
+        return write_back_rows[did]
 
     monkeypatch.setattr(service.crud, "list_reviewed", _list_reviewed)
-    monkeypatch.setattr(service.crud, "get_document_by_report_id", _by_rid)
+    monkeypatch.setattr(service.crud, "get_document_fresh", _fresh)
     monkeypatch.setattr(service.crud, "finish_run", AsyncMock())
     monkeypatch.setattr(service.storage, "get_object", lambda uri: b"# x")
     monkeypatch.delenv("GSB_RAGFLOW_DATASET_ID", raising=False)
@@ -373,8 +373,8 @@ async def test_compile_invokes_subprocess_and_marks_compiled(tmp_path, monkeypat
     assert "--workdir" in cmd and any(str(c) == str(tmp_path / "wd") for c in cmd)
     assert "--python" in cmd
     assert FakeProc.kwargs.get("cwd") == str(service._SKILL_DIR)
-    assert rows["rid-a"].status == "compiled"
-    assert rows["rid-b"].status == "compiled"
+    assert rows["doc-a"].status == "compiled"
+    assert rows["doc-b"].status == "compiled"
     service.crud.finish_run.assert_awaited_once()
     status, detail = _finish_call(service.crud.finish_run.await_args)
     assert status == "done"
@@ -424,6 +424,53 @@ async def test_compile_ragflow_push_failure_does_not_fail_run(tmp_path, monkeypa
     status, detail = _finish_call(service.crud.finish_run.await_args)
     assert status == "done"  # 编译产物已落盘，分发失败不回滚结论
     assert "ragflow push failed" in (detail or "")
+
+
+@pytest.mark.asyncio
+async def test_compile_ragflow_push_budget_does_not_fail_run(tmp_path, monkeypatch):
+    """quality Important-1：push 超预算（wait_for 封顶）→ run 仍 done，detail 记 budget exceeded——
+    编排总寿命恒 < 60min sweep 线，防长尾 RAGFlow 拖过互斥造成并发编译写共享 references。"""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    docs = _compile_stub_docs()
+    _exec, _rows, _proc = _patch_compile_happy_path(monkeypatch, tmp_path, docs)
+    monkeypatch.setenv("GSB_RAGFLOW_DATASET_ID", "ds1")
+    monkeypatch.setattr(service, "_PUSH_BUDGET_S", 0.05)
+
+    async def _long_push(refs, dataset_id):
+        await asyncio.sleep(30)
+
+    monkeypatch.setattr(service, "push_slices_to_ragflow", _long_push)
+
+    await service.run_compile(AsyncMock(), "run-budget")
+
+    status, detail = _finish_call(service.crud.finish_run.await_args)
+    assert status == "done"  # 超预算与 push 失败同 containment：编译结论不回滚
+    assert "budget exceeded" in (detail or "")
+    assert "push incomplete" in (detail or "")
+
+
+@pytest.mark.asyncio
+async def test_compile_writeback_skips_drifted_state(tmp_path, monkeypatch):
+    """quality Minor-3：在途编译期间状态漂移（非 reviewed）→ 不被覆盖，detail 记 skip；reviewed 行照常 compiled。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    docs = _compile_stub_docs()
+    _exec, rows, _proc = _patch_compile_happy_path(monkeypatch, tmp_path, docs)
+    rows["doc-b"].status = "redacted"  # 编译期间被重新解析（他方会话写入）
+
+    await service.run_compile(AsyncMock(), "run-drift")
+
+    assert rows["doc-a"].status == "compiled"  # 仍 reviewed → 正常写回
+    assert rows["doc-b"].status == "redacted"  # 漂移者绝不覆盖
+    status, detail = _finish_call(service.crud.finish_run.await_args)
+    assert status == "done"
+    assert "compiled skip (state drifted): rid-b" in (detail or "")
 
 
 @pytest.mark.asyncio
