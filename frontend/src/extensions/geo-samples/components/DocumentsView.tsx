@@ -72,8 +72,8 @@ export function DocumentsView() {
     mineral: "",
     status: "",
   });
-  // 统计头走全量(不随筛选联动);列表走筛选
-  const allQ = useGsbDocuments({});
+  // 统计头走全量(不随筛选联动);limit=200=后端上限,避免默认 50 截断计数(聚合端点 Phase 3 再做);列表走筛选
+  const allQ = useGsbDocuments({ limit: 200 });
   const { data, isLoading } = useGsbDocuments({
     stage: filters.stage || undefined,
     mineral: filters.mineral || undefined,

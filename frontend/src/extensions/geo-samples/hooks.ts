@@ -13,6 +13,7 @@ export function useGsbDocuments(filters: {
   stage?: string;
   mineral?: string;
   status?: string;
+  limit?: number;
 }) {
   return useQuery({
     queryKey: ["gsb-documents", filters],
