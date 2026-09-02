@@ -32,19 +32,33 @@ def _docx_formula_blocks(paragraph) -> list:  # noqa: ANN001 — docx Element, �
 
 # 中文/英文 Word 内置样式名归一——中文 authored docx 的样式名是「标题 1」而非
 # "Heading 1"，不归一则整篇降级正文、Phase 2 节号切片将找零节（终审 R1）。
-_STYLE_ALIASES = {"标题 1": "heading 1", "标题 2": "heading 2", "标题 3": "heading 3", "标题 4": "heading 4", "标题 5": "heading 5", "标题": "title"}
+_STYLE_ALIASES = {
+    "标题 1": "heading 1",
+    "标题 2": "heading 2",
+    "标题 3": "heading 3",
+    "标题 4": "heading 4",
+    "标题 5": "heading 5",
+    "标题 6": "heading 6",
+    "标题 7": "heading 7",
+    "标题 8": "heading 8",
+    "标题 9": "heading 9",
+    "标题": "title",
+}
 
 
 def _heading_level(style_name: str | None) -> int | None:
     """样式名 → 标题级（1=##/2=###/3+=####）；非标题返回 None。"""
     if not style_name:
         return None
-    s = _STYLE_ALIASES.get(style_name.strip(), style_name.strip()).lower()
+    # 空白归一（Minor 2）：strip + 折叠连续/全角/nbsp 空白，防「标题  1」类变体静默降级正文
+    s = " ".join(style_name.split())
+    s = _STYLE_ALIASES.get(s, s).lower()
     if s == "title" or s.startswith("heading 1"):
         return 1
     if s.startswith("heading 2"):
         return 2
-    if s.startswith(("heading 3", "heading 4", "heading 5")):
+    # Heading 6-9 同落 3+ → ####，与深级契约一致；漏掉会被静默降为正文（Minor 3）
+    if s.startswith(("heading 3", "heading 4", "heading 5", "heading 6", "heading 7", "heading 8", "heading 9")):
         return 3
     return None
 

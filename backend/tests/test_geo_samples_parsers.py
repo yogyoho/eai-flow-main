@@ -239,6 +239,10 @@ def test_docx_localized_heading_styles():
     doc.add_paragraph("第1章 总论", style="Heading 1")
     p = doc.add_paragraph("1.1 编制依据")
     p.style = doc.styles["Heading 2"]
+    # 保存前把样式改成真实中文 authored docx 的本地化 w:name 做 round-trip——
+    # 令本测试只在别名表在场时通过，否则整篇降级正文、断言失败。
+    doc.styles["Heading 1"].name = "标题 1"
+    doc.styles["Heading 2"].name = "标题 2"
     buf = io.BytesIO()
     doc.save(buf)
     md = docx_to_markdown(buf.getvalue())
@@ -253,5 +257,27 @@ def test_docx_style_alias_map():
     assert _heading_level("标题 1") == 1
     assert _heading_level("标题 2") == 2
     assert _heading_level("标题 3") == 3
-    assert _heading_level("Heading 4") in (3, 4)
+    assert _heading_level("标题 4") == 3
+    assert _heading_level("标题 5") == 3
+    assert _heading_level("Heading 4") == 3
     assert _heading_level("Normal") is None
+
+
+def test_heading_level_whitespace_variants():
+    """Minor 2：空白变体（双空格/首尾/全角/nbsp）须归一，不静默降级正文。"""
+    from app.extensions.geo_samples.parsers import _heading_level
+
+    assert _heading_level("标题  1") == 1  # 双空格
+    assert _heading_level("  Heading 2  ") == 2  # 首尾空白
+    assert _heading_level("标题　3") == 3  # 全角空格
+    assert _heading_level("Heading 4") == 3  # 不换行空格
+
+
+def test_heading_level_deep_levels():
+    """Minor 3：Heading 6-9 与「3+ 一律 ####」契约一致，不静默降级正文。"""
+    from app.extensions.geo_samples.parsers import _heading_level
+
+    assert _heading_level("Heading 6") == 3
+    assert _heading_level("Heading 9") == 3
+    assert _heading_level("标题 6") == 3
+    assert _heading_level("标题 9") == 3
