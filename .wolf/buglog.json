@@ -23191,5 +23191,376 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3060",
+    "timestamp": "2026-09-01",
+    "error_message": "返修报告全量 build 一致性门 4 FAIL 全查实为门在真实数据上的校准缺陷：① CC3 全误判——check_cc 取值链 standards.get('tier1'/'items') 而实文件顶层键是 standards（14 条 {code,title}）→ 允许集恒空；② SL2/SL3 35 处误报不可溯源——numeric_pool 只试整串转数，data/ 串内嵌数字（文号〔2024〕0088号、同位素年龄 1689±32Ma、历史工作量「钻探15600m」、年份）全部漏池；白名单缺比例尺 1:10000/文号/标准代号 DZ/T 0141/合计聚合标签形；③ XS6 同标签多值 fail 全为误报——label_map 只收集槽位 display，槽位纯化报告里同标签多值=分口径槽位（L8 分矿体/L9 分类别）合法并立；④ GB/T 14848-2017（地下水质量，ch6 合法引用）未入 standards_index。另 ch10 verifier 实抓两处真实缺陷：10.2.1 品位排名与冻结槽位矛盾（L8[I-3]=1.95>L8[I-1]=1.72）、建议（4）问题编号映射错误",
+    "file": "skills/public/geological-report/scripts/consistency.py + references/standards_index.json + 线程 ch10.md",
+    "root_cause": "门校准只在合成夹具（小数值/无文号/无内嵌串）上验证过；真实数据的形态（内嵌数字串/文档号/标准代号/分口径同标签）系统性超出夹具分布",
+    "fix": "① 取值链加 standards 首选（CC1/CC3 两处）；② numeric_pool 字符串分支逐个提取内嵌数字入池 + WHITELIST 加 4 形（比例尺/文号/标准代号/合计标签）；③ XS6 fail→warn（口径复核提示，N27 手写冲突保护由 SL2 承担，测试同步更新）；④ standards_index 补录 GB/T 14848-2017（verified 人工核实）；⑤ ch10 两处修正（品位排名改槽位化表述+删错误映射）后单章门复跑 PASS。重跑 finalize：fail=0，BUILD_READY+MANIFEST_READY，rc=2 拦停 snapshot（CC1 特高品位倍数需人工对照 DZ/T 0214-2020 原文）",
+    "tags": [
+      "geo-skill",
+      "gate-calibration",
+      "real-data",
+      "numeric-pool",
+      "xs6",
+      "cc3",
+      "rework"
+    ],
+    "related_bugs": [
+      "bug-3036",
+      "bug-3059"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3061",
+    "timestamp": "2026-09-01T11:10:00Z",
+    "error_message": "计划稿 redactor 正则在中文语境漏配：test_auto_replaces_cert_and_coords / test_events_record_hash_not_plaintext 对「证号C5300002023000001」「联系电话13812345678」不命中",
+    "file": "backend/app/extensions/geo_samples/redactor.py",
+    "root_cause": "Python re Unicode 模式下 CJK 属 \\w，\\b 在 ASCII token 紧邻汉字处永不成立——exploration_cert(\\bC\\d{10,16}\\b) 与 phone(\\b1[3-9]\\d{9}\\b) 整段漏配；另 uscc 原稿 \\b[0-9A-HJ-NPQRTUWXY]{18}\\b 会误配 18 位连续纯数字",
+    "fix": "边界改 ASCII 环视：cert=(?<![0-9A-Za-z])C\\d{10,16}(?![0-9])；phone=(?<!\\d)1[3-9]\\d{9}(?!\\d)；tel 同步改环视；uscc 加「至少含一字母」前置环视+ASCII 环视；latlon 加 (?<!\\d) 防长数字串截段。地质数值红线测试未动，5 passed",
+    "tags": [
+      "regex",
+      "unicode-word-boundary",
+      "cjk",
+      "redactor",
+      "geo-sample-bank",
+      "tdd"
+    ],
+    "related_bugs": [
+      "bug-2216"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3062",
+    "timestamp": "2026-09-01",
+    "error_message": "ModuleNotFoundError: No module named 'pymupdf4llm' / 'fitz' in backend venv when implementing geo_samples parsers.py",
+    "file": "backend/pyproject.toml",
+    "root_cause": "pymupdf4llm 只是 harness 的可选 extra (deerflow-harness[pymupdf])，file_conversion 优雅降级所以 backend venv 一直没装; 任务上下文误以为 uploads.py 路径已带它",
+    "fix": "uv sync --group dev 仍缺 → 按 fallback 指令把 pymupdf4llm>=0.0.17 加入 backend/pyproject.toml dependencies 并同 commit 提交 uv.lock (pymupdf 1.27.2.3 + pymupdf4llm 1.27.2.3 装入)",
+    "tags": [
+      "pymupdf4llm",
+      "fitz",
+      "pymupdf",
+      "optional-extra",
+      "uv",
+      "geo_samples",
+      "dependency"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3063",
+    "timestamp": "2026-09-01",
+    "error_message": "T5 质量复核 C1: OCR 分支静默丢第 4 页起正文 + tables[].rows 全丢弃",
+    "file": "backend/app/extensions/geo_samples/parsers.py + mcp-server/ocr-service/server.py",
+    "root_cause": "eai-flow-ocr 生产端 ocr_engine._run 以 text_pages=3 门控整页文字 OCR (idx<=text_pages)，server.py POST /ocr 未暴露参数；消费端只取 pages[].text 且完全忽略 pages[].tables",
+    "fix": "server.py 加 text_pages: int = Form(3) 透传 (默认3向后兼容)；parsers 发 data={text_pages:999} + _ocr_page_to_md 把 tables[].rows (Cell dict 取 text) 拍平为管道表跟在页文本后；全空结果 raise ValueError",
+    "tags": [
+      "ocr",
+      "text_pages",
+      "eai-flow-ocr",
+      "tables",
+      "flatten",
+      "geo_samples"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3064",
+    "timestamp": "2026-09-01",
+    "error_message": "git commit 时 code-review-graph 钩子崩溃: UnicodeDecodeError gbk codec / AttributeError NoneType.splitlines (commit 本身成功)",
+    "file": ".git/hooks/ (code-review-graph post-commit)",
+    "root_cause": "Windows 控制台 GBK 代码页下钩子以文本模式读子进程输出，遇到 UTF-8 中文 commit 内容解码失败 → stdout None → splitlines 崩",
+    "fix": "无需修代码——钩子失败发生在 commit 落盘之后不影响提交；根治需钩子侧 errors=replace 或 PYTHONIOENCODING=utf-8",
+    "tags": [
+      "git-hook",
+      "code-review-graph",
+      "gbk",
+      "windows",
+      "encoding"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3065",
+    "timestamp": "2026-09-01",
+    "error_message": "页面验证（线程 2fdbc99d）实抓：ingest 落盘表单的 _meta.schema 写成 references/stages/勘探.json（stage.stage 中文名），而实际 schema 文件是 exploration.json——溯源指针指向不存在的文件",
+    "file": "skills/public/geological-report/scripts/ingest.py",
+    "root_cause": "四处 _stage 取值用了 stage.get('stage')（阶段中文名）而非 schema 文件名——语义错位，仅元数据标签缺陷不影响功能，但误导溯源",
+    "fix": "四处改为 Path(args.stage).stem / Path(stage_path).stem（真实 schema 文件 stem）；TestIngest 10/10 绿，容器双路径同步（3c825e12）",
+    "tags": [
+      "geo-skill",
+      "page-test",
+      "metadata",
+      "traceability"
+    ],
+    "related_bugs": [
+      "bug-3036"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3066",
+    "timestamp": "2026-09-01",
+    "error_message": "plan 的 service 测试（happy_path/redact）未 patch crud.finish_run 且 db=MagicMock → 真 finish_run 里 await db.execute(select(...)) 抛 TypeError: object MagicMock can't be used in 'await' expression（2/3 用例失败）",
+    "file": "backend/app/extensions/geo_samples/service.py",
+    "root_cause": "plan 原文 service 在 try 内裸调 crud.finish_run：run-history 记账层异常会 (a) 把已 commit 的 parsed/redacted 改写成 failed（状态机被污染），(b) except 分支二次 finish_run 抛异常击穿后台任务不抛出契约；测试侧 MagicMock 的 execute 子 mock 非 AsyncMock，await 即 TypeError（cerebrum 既有 AsyncMock 陷阱变体）",
+    "fix": "service.py 加 _finish_run best-effort 包装（try/except + log.exception，run 行停留 running），5 处调用点全部走包装；plan 测试零改动 3/3 通过",
+    "tags": [
+      "geo-samples",
+      "service",
+      "MagicMock",
+      "AsyncMock",
+      "finish_run",
+      "background-task",
+      "state-machine"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3067",
+    "timestamp": "2026-09-01",
+    "error_message": "页面验证取证（线程 2fdbc99d）：开题五步中 kf_list_domains 未提升即调用直接报 deferred 错（无效步）；kf_resolve_template 缺 domain_keywords 被工具拒答（found=false/missing_keywords，连模板库都没查）——「知识工厂未命中」声明结论正确但过程不闭环",
+    "file": "skills/public/geological-report/SKILL.md + knowledge-factory mcp template_tools.py（对照取证）",
+    "root_cause": "① DeferredToolFilterMiddleware 下 deferred 工具未提升即调用必报错（浪费一步）；② kf_resolve_template 硬性要求 domain_keywords（template_tools.py:49 空关键词直接拒答）；③ KF 域库现无矿产地质域（仅环评/消防/煤炭操作规程三域），即便重试也 false——但 agent 未重试，将来 KF 有模板时会误兜底",
+    "fix": "SKILL.md 开题协议补一条：found=false 且 reason=missing_keywords → 按 suggestion 补 domain_keywords（如 ['固体矿产','地质勘查',矿种]）重试 ≤1 次，仍 false 才兜底；SKILL.md 双容器路径同步",
+    "tags": [
+      "geo-skill",
+      "page-test",
+      "kf-template",
+      "tool-protocol",
+      "deferred-tools"
+    ],
+    "related_bugs": [
+      "bug-2231",
+      "bug-3065"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3067",
+    "timestamp": "2026-09-01",
+    "error_message": "质量审查 Important：run_parse/run_redact except 路径裸 `await db.commit()`——原异常可能本身就是 DB 故障（PendingRollbackError/InterfaceError），二次 commit 抛异常会丢失失败落账（doc 停留 uploaded/parsed、run 行卡 running，后续 has_running_run 可能把文档 409 锁死）",
+    "file": "backend/app/extensions/geo_samples/service.py",
+    "root_cause": "except 路径未先 rollback 就 commit：会话处于 pending-rollback 状态时 commit 必然再抛；且 run_redact 的惰性 `from .redactor import redact_text` 是函数体内未守护逃逸边",
+    "fix": "except 路径重构：rollback（守护）→ 置 failed → 守护式 commit（失败仅 log，doc 保持原状态）→ _finish_run 落账 detail 改 f'{type(exc).__name__}: {exc}'；日志带 document_id 便于 psql 取证；redact_text 移模块顶层；docstring「不抛出」改为「除 db 会话彻底不可用外不向调用方抛出」；补 test_run_parse_survives_finish_run_failure 回归（4ff600824）",
+    "tags": [
+      "geo-samples",
+      "service",
+      "except-path",
+      "rollback",
+      "PendingRollbackError",
+      "background-task",
+      "review-hardening"
+    ],
+    "related_bugs": [
+      "bug-3066"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3068",
+    "timestamp": "2026-09-01T20:30:00",
+    "error_message": "post-commit code-review-graph hook crashed during `git commit`: UnicodeDecodeError 'gbk' codec can't decode byte 0x80 (reader thread) → AttributeError NoneType.splitlines in code_review_graph/incremental.py get_changed_files. The commit itself succeeded (b3389cb1b), only the graph auto-update hook died.",
+    "file": "code_review_graph hook (site-packages, not a repo file)",
+    "root_cause": "Hook subprocess reads git output (UTF-8, commit message contains Chinese) with Windows default GBK decoding; knowledge graph was NOT updated for that commit",
+    "fix": "Not fixed (environment/hook issue). Workaround: none needed for the commit; if graph sync matters, rebuild later via build_or_update_graph tool or set PYTHONUTF8=1 for the hook",
+    "tags": [
+      "windows",
+      "gbk",
+      "code-review-graph",
+      "post-commit-hook",
+      "git-commit"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-01T20:30:00"
+  },
+  {
+    "id": "bug-3069",
+    "timestamp": "2026-09-01",
+    "error_message": "页面验证追问取证（线程 2fdbc99d）：KF 两套「域」割裂——业务字典（business_dictionaries：矿产勘查行业+固体矿产地质勘查报告报告类型在册）与模板域（extraction_domains：仅环评/消防/煤炭操作规程）互不相通；kf_list_domains/kf_resolve_template 只读后者，agent 永远看不到字典在册的报告类型；init_default_domains 硬编码领域种子且与 init_seed_data 同 try——后者抛错会连带跳过域对齐（启动静默失效）",
+    "file": "backend/app/extensions/knowledge_factory/{service.py, mcp_server/tools/domain_tools.py, mcp_server/tools/template_tools.py} + backend/app/extensions/database.py",
+    "root_cause": "领域/报告类型枚举无唯一真源：业务字典已为地质报告预留条目但 KF 工具/模板域不读它；域种子硬编码在代码里；种子步骤异常耦合",
+    "fix": "① DictionaryService.enabled_items（启用态字典=枚举唯一真源）+ validate_dict_ref（domain 写入校验，接受 code/label）；② kf_list_domains 改字典驱动（industries/report_types+template_domains 附模板计数）；③ resolve_template 字典感知（report_type/industry 归一化 code/label + 字典码域直查层）；④ init_default_domains 改为字典对齐（启用报告类型逐条建同名模板域，历史域保留，删除硬编码种子）；⑤ database.py 种子两步拆 try。KF 域库实测新增 4 字典码域（含 solid_mineral_geological_report）；smoke：list 字典枚举✓/resolve 语义 no_template_found✓/消防链路无回归✓；test_knowledge_factory_mcp 21/21 两连绿",
+    "tags": [
+      "knowledge-factory",
+      "dictionary-unification",
+      "mcp-tools",
+      "domain-alignment",
+      "page-test"
+    ],
+    "related_bugs": [
+      "bug-3067",
+      "bug-3065"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-01"
+  },
+  {
+    "id": "bug-3070",
+    "timestamp": "2026-09-01T23:40:00+08:00",
+    "error_message": [
+      "清理 extraction_templates 跨域脏数据过程中的三连发现：① 14 模板中 8 个挂在错误域（消防/煤矿操作规程/固体矿产挂在环评域、历史中文 id 域）；② 结构误判教训——root_sections_json 是 {\"sections\":[...]} 对象非数组，据此曾把真实 geo 模板误判空壳并误弃用（已恢复）；③ resolve_template 参数入口双层缺陷——MCP schema 把业务参数包在 arguments 子对象且 agent 传中文键（矿种/阶段/报告类型），handler 只读英文 report_type/industry/domain_keywords → 静默丢参；且 bug-3068 的字典码域层在 rt_code=None 时退化为全表扫描（无 domain 无 name 过滤），全局最高分 published 无关模板胜出"
+    ],
+    "file": "docker/dev-entrypoint.sh",
+    "root_cause": "entrypoint用未锁定的 uv pip install fastmcp 安装Office-Word-MCP依赖; fastmcp 4.0 要求 mcp>=2, 把 uv sync --locked 装好的 mcp 1.28.1 升到 2.1.1 (mcp 2.x 将 McpError 改名 MCPError), 应用启动 import 即崩, 每次重启同步-升级来回拉锯",
+    "fix": [
+      "① 11 行模板 UPDATE 归位字典码域（pg_dump 备份先行）；② 恢复误弃用的 08-29 geo 模板（published+归 solid_mineral_geological_report 域）；③ resolve 入口统一解包 arguments 子对象+中文键归一化（报告类型/行业/矿种/阶段→报告类型/行业/keywords）+ rt 层加 rt_code 守卫（缺席时禁退化全表扫描）。四形态验证：嵌套中文键✓/平铺英文✓/消防回归✓/无keywords守卫✓——固体矿产地质勘查报告在 KF 全链路（字典→域→模板→resolve）打通"
+    ],
+    "tags": [
+      "crash-loop",
+      "mcp",
+      "gateway",
+      "docker",
+      "fastmcp",
+      "502",
+      "office-word-removal",
+      "dependency-conflict"
+    ],
+    "related_bugs": [
+      "bug-1239",
+      "bug-1242"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-01T23:40:00+08:00"
+  },
+  {
+    "id": "bug-3071",
+    "timestamp": "2026-09-02",
+    "error_message": "用户报告：文档空间-我的文档目录树下看不到新生成的报告子文件夹和文档（线程 296611de），怀疑近期 sqlite→postgres 升级引入",
+    "file": "backend/app/extensions/docmgr/service.py (list_personal_outputs)",
+    "root_cause": "用户判断正确——8/29 sqlite→postgres 切换后 threads_meta（data/deerflow.db）停更，list_personal_outputs 的 created_at 排序键全空，12 个线程退化为 thread_id 字典序：新线程 7487c785 排第 7、296611de 排第 10，被埋列表中段（此前 sqlite 时代按创建时间倒序、新文件夹置顶）。同步链路本身完好（实测 present_files→AIDocument→folders 三层落库全对，parent=我的文档）",
+    "fix": "排序回退键改为 outputs 目录 mtime（最近产出时间，与「最近生成在前」直觉一致；sqlite threads_meta 读取保留作兼容）。test_personal_outputs 两处期望同步推正（9/9 绿）。容器实测：docmgr-sync-test 置顶、296611de 第 2",
+    "tags": [
+      "docmgr",
+      "sqlite-postgres-cutover",
+      "sort-regression",
+      "personal-outputs"
+    ],
+    "related_bugs": [
+      "bug-2225",
+      "bug-2231",
+      "bug-2232"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-02"
+  },
+  {
+    "id": "bug-3072",
+    "timestamp": "2026-09-02T01:40:00",
+    "error_message": "TypeError: Minio.put_object() got an unexpected keyword argument 'bucket' — POST /api/extensions/geo-samples/documents/upload 500",
+    "file": "backend/app/extensions/geo_samples/storage.py",
+    "root_cause": "put_raw/put_work/put_clean 均传 bucket=BUCKET，而 minio SDK 真实形参是 bucket_name；单测用 MagicMock 桩掉 put_object（lambda *a,**k 接受任意 kwargs）不校验签名，所以 24 测全绿但实跑上传即 500。T12 容器冒烟从 gateway 日志实抓。",
+    "fix": "三处 put_object 形参改 bucket_name=BUCKET；test_geo_samples_extension 新增 test_storage_put_kwargs_match_real_minio_signature 用 inspect.signature(Minio.put_object) 校验所有 put kwargs ⊆ SDK 真实形参（防同类漏网）；旧断言 bucket→bucket_name。commit 6d8e9c2de",
+    "tags": [
+      "geo-samples",
+      "minio",
+      "sdk-signature",
+      "mock-blindspot",
+      "upload-500"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-02"
+  },
+  {
+    "id": "bug-3073",
+    "timestamp": "2026-09-02",
+    "error_message": "离线产线运行未加固 RAGFlow 镜像:deploy/offline/.env pin plain v0.25.3 覆盖 compose 默认 v0.25.3-fixed",
+    "file": "deploy/offline/.env",
+    "root_cause": "install.sh 以 --project-directory=<deploy dir> 运行 compose,.env 的 RAGFLOW_IMAGE 优先级高于 compose 默认值;而 offline-export.sh 只打包 -fixed tar,F.11(pip PATH)/F.13(tiktoken 离线烘焙)加固只在 -fixed 里",
+    "fix": "升级方案 docs/superpowers/specs/2026-09-02-ragflow-upgrade-v0.27.1.md §7:产线升级前改 .env pin 为 -fixed(v0.27.1-fixed 重推后);generate-config.sh 不写 RAGFLOW_IMAGE 的设计使该 pin 只能手工维护",
+    "tags": [
+      "ragflow",
+      "offline",
+      "deploy",
+      "image-pin",
+      "upgrade"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-02"
+  },
+  {
+    "id": "bug-3074",
+    "timestamp": "2026-09-02",
+    "error_message": "RAGFlow v0.27.1 容器启动后只有 nginx+data_sync 进程,API(9380)无响应,web API server 与 task executor 均未启动",
+    "file": "docker/docker-compose.ragflow.yaml",
+    "root_cause": "v0.27.x entrypoint 用 API_PROXY_SCHEME 环境变量门控 ragflow_server/task_executor 的启动分支(显式 == python/hybrid/go 匹配);上游 docker/.env 自带 API_PROXY_SCHEME=python,而本项目自定义 compose 从 v0.25.3 时代就没有该变量——空值时 nginx 配置有默认(python conf)但进程启动分支全部不进,静默不启动",
+    "fix": "compose ragflow 服务 env 增加 API_PROXY_SCHEME=python;观察 'Attempt to start RAGFlow python server...' 日志行确认进程拉起",
+    "tags": [
+      "ragflow",
+      "v0.27.1",
+      "docker",
+      "API_PROXY_SCHEME",
+      "entrypoint"
+    ],
+    "related_bugs": [
+      "bug-3073"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-02"
+  },
+  {
+    "id": "bug-3075",
+    "timestamp": "2026-09-02",
+    "error_message": "中文 authored docx 样式名为「标题 1」而非 Heading 1，docx_to_markdown 的 style.startswith('heading 1') 匹配不到，整篇标题降级为正文，Phase 2 节号切片将找零节（geo-sample-bank 终审 R1 根因）",
+    "file": "backend/app/extensions/geo_samples/parsers.py",
+    "root_cause": "标题映射只认英文内置样式名；python-docx 读中文 Word 产出 docx 时 style.name 为本地化名（标题 1/标题 2），未被归一化",
+    "fix": "新增 _STYLE_ALIASES（标题 N→heading N、标题→title）+ _heading_level() 归一函数，docx_to_markdown 标题分支改走该函数；附 2 个测试（英文样式名回归线 + alias 映射单测，真实中文 docx 端到端归 T9）",
+    "tags": [
+      "geo-samples",
+      "docx",
+      "heading-style",
+      "localization",
+      "python-docx",
+      "phase2-preflight"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-02"
+  },
+  {
+    "id": "bug-3076",
+    "timestamp": "2026-09-02",
+    "error_message": "终审 R2：run_parse 在 SELECT 之后连接被事务占用，OCR 分支最长 1800s——批量扫描入库榨干 asyncpg 连接池、楔死无关请求；且重活期间 re-parse 可能已把 doc 置 failed，旧实现直接覆盖状态",
+    "file": "backend/app/extensions/geo_samples/service.py",
+    "root_cause": "run_parse 成功路径 get_object/parse_document（内含 to_thread/OCR）全程持有事务未 commit；另外 plan 原稿新测试 _heavy mock 不返回 (md, mode) 元组，任何实现都会 unpack TypeError 走 except（照抄即假失败）",
+    "fix": "三段式：get → await db.commit() 释放连接 → 重活 → crud.get_document 重取并守卫 status in (uploaded/failed/parsed)（漂移则丢弃本次解析结果落 run failed）；except 分支守护式五步原样保留，仅 doc.report_id 引用改局部变量；test_run_parse_releases_connection_before_heavy_work 锁事件序 commit<heavy+重取>=2；commit 6fb8b6e57",
+    "tags": [
+      "geo-samples",
+      "service",
+      "run_parse",
+      "connection-pool",
+      "asyncpg",
+      "transaction",
+      "R2",
+      "re-fetch-guard",
+      "background-task"
+    ],
+    "related_bugs": [
+      "bug-3066",
+      "bug-3067"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-02"
   }
 ]

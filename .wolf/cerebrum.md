@@ -21,6 +21,10 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- (2026-09-01) geo-samples 管理路由（T8, commit b3389cb1b）按 plan 用 require_permission("geo_samples:access")，但该权限点未在 config/permissions.yaml 声明——UnifiedPermissionEngine 只做集合判定不报错 → 非 superadmin 一律 403（fail-closed 静默拒绝）；sibling contract_price/spare_parts 实际全用已声明的 system:access。后续接线任务要么在 permissions.yaml 声明 geo_samples 模块+权限点（照 contract_price 条目样式），要么改用 system:access；admin(=superadmin "*") 登录冒烟可过，测非管理员角色必 403。
+- (2026-09-01, bug-3063) eai-flow-ocr 生产端 ocr_engine text_pages=3 门控整页 OCR（server 默认 Form(3)）——任何要全文语料的消费方必须显式传 text_pages（geo_samples 传 999）；另注意 pages[].tables[].rows 的 cell 是 {text,bbox,confidence} dict 不是裸 str。
+- (2026-09-01, bug-3066) geo-samples service 教训：后台任务的 run-history 记账（crud.finish_run）必须是 best-effort（_finish_run 包装 try/except+log）——记账异常绝不回滚已 commit 的 parsed/redacted 管线结论，也绝不能从 except 分支抛出击穿「后台任务不抛出」契约。plan 写单测时极易只 patch get_document/storage/parsers 而漏 patch finish_run → 真 crud 的 `await db.execute` 撞 MagicMock 直接 TypeError（AsyncMock 陷阱新变体：execute 子 mock 非 AsyncMock）。Task 8 routers 若复用 run 落账，同样走包装。
+- (2026-09-01, bug-3062) pymupdf4llm/fitz 在 backend venv 默认不存在——它只是 harness 可选 extra (deerflow-harness[pymupdf])，file_conversion 对其优雅降级所以从没被装上。任何 app 层代码要硬依赖 pymupdf4llm 时，必须显式写入 backend/pyproject.toml dependencies 并同 commit 带上 uv.lock。
 - (2026-09-01, bug-3059) 凭据生命周期必须覆盖失败路径：门 FAIL 只"不写新凭据"不够——上一轮成功留下的旧凭据（delivery_manifest）会继续放行新字节；FAIL 路径须显式作废既有凭据。同理：豁免通道（via=ingest / --gate PASS）若无合法生产者，它本身就是自证凭据通道，删而非留。
 - (2026-09-01, bug-3059) 同一可变 list 传两次 assemble 会逐次 append（chapter_depth 双份）；重入前 clear()。警告通道要覆盖"一切非技能基准来源"（显式 flag + 静默探测），只盖显式通道=探测通道静默绕过。
 
@@ -298,8 +302,12 @@
 - Windows GBK 宿主机跑含中文断言的 subprocess 测试：父进程 text=True 按 cp936 解码子进程 UTF-8 输出必炸 → 用 `PYTHONUTF8=1` 跑（父子两侧统一 UTF-8）；容器/Linux 无此问题。
 - heredoc（python - <<EOF）在 GBK 控制台传 UTF-8 中文源码会被 cp936 误解码写坏文件——多行中文补丁一律 Write 工具落 .py 文件再执行。
 
+- (2026-09-01) docker/dev-entrypoint.sh 往应用 venv `uv pip install` 任何未锁定依赖都会和 `uv sync --locked` 拉锯:PyPI 上游发新版(如 fastmcp 4.0 要求 mcp>=2)即崩,症状是 gateway 启动 ImportError crash-loop→nginx 全线 502。判定容器 venv 真实版本用 `docker exec ... .venv/bin/python -c "import ..."`(host venv 正常不代表容器正常)。gitlink 子模块若无 .gitmodules 条目,git rm 会报 "could not lookup name",用 `git update-index --force-remove <path>` 删。
+
 ## Do-Not-Repeat
 
+- [2026-09-02] plan 原稿的测试 mock 必须核对真实返回契约再照抄——Phase2 T2 的 _heavy 漏写 `return (md, mode)` 元组，任何实现都会 unpack TypeError 假失败；照抄 snippet 前先脑内跑一遍 mock 的返回值流向。
+- **[2026-09-01] 中文文本正则边界禁用 `\b`（geo_samples redactor）**：Python re Unicode 模式下 CJK 汉字属于 `\w`，`\b` 在「证号C530000…」「电话13812345678」这类 ASCII token 紧邻汉字处永不成立，规则整段漏配。写中文语境的身份证/证号/电话类规则一律用 ASCII 环视（`(?<![0-9A-Za-z])` / `(?<!\d)`…）替代 `\b`；纯数字长串（如 18 位）要加「至少含一字母」前置环视防误配（uscc 案例，bug-3061）。
 - **[2026-08-30] runs 表排序禁用 run_id**：run_id 是 varchar，ORDER BY run_id 是字符串序（ef>9>7），会把最新 run 行搞错——T3 期因此误产出 finding ㉚（已撤回）。查 runs 表一律 ORDER BY updated_at；行身份存疑时用 updated_at 重查。
 - **[2026-08-30] agent 自验不可信（假验证）**：T3 run 14 lead 宣称「0 残留」但实物 27 处——根因是验证了修复前 build 的旧输出。验收 agent 交付必须独立到磁盘/实物验证，不信 agent 报的数量；要求 agent 贴验证命令+完整输出。
 - **[2026-08-30] API 投递长任务必带 on_disconnect=continue**：curl --max-time 抓取窗口断开默认 cancel 杀 run（run_models.py 默认 cancel）。
@@ -1590,3 +1598,39 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - consistency.py 白名单 WHITELIST_PATTERNS 实为 14 类；「（1）（2）」全角括号序号靠 SMALL_INT_EXEMPT=12 小整数豁免过关，非白名单正则覆盖；经纬度白名单要求尾随 [NSEW] 方位字母。
 - consistency.py 五路输入：--report/--data-dir/--stage(必选)/--state + --standards(可选) + --output。
 - hooks.ts N11 已修：7aa135200 后两处 submit 路径无条件 subagent_enabled: true（2250/2376）；batch_task 半边仍受 batch_submitter 运行时门控（backend/packages/harness/deerflow/agents/factory.py:356 起）。
+
+- 权限点没有独立 permission_points 键：v3 注册表从模块页面的 operations 收集权限点（geo_samples:access 声明在 gsb:page:documents.operations）。cpa/csp 端点复用 system:access 而非自有模块点。license 模块键有 3 个同步位：license/service.py ALL_MODULES + frontend license/labels.ts + tools/license/license_generator.py（test_license_modules_sync.py 目前 EAI-skip 但不变式仍在）。
+- (2026-09-01, bug-3069) KF「域」有两张表：business_dictionaries（业务字典，UI 字典 tab + 行业/报告类型枚举真源）≠ extraction_domains（模板域分组）。枚举/校验一律走 DictionaryService.enabled_items(db, category)，模板域由 init_default_domains 启动时与字典 report_type 对齐（id=字典 code）——禁止再在代码里硬编码领域清单或散表自造枚举。
+- (2026-09-01, bug-3069) gateway 日志驱动无输出（docker logs 空）——诊断扩展初始化问题时直接在容器里用 .venv/bin/python + PYTHONPATH=/app/backend 手跑目标函数看真实异常；裸 python 缺依赖、MSYS 会翻译 docker exec 路径参数（MSYS_NO_PATHCONV=1）。
+- (2026-09-01) rstest 定向跑单文件/目录用 `pnpm exec rstest tests/unit/extensions/...` 路径参数；`pnpm test -- <词>` 的 `--` 过滤不生效（全量 ~1505 用例照跑 70s）。geo-samples 前端 T10 落地：authFetch 默认前缀 /api/extensions 且强制 Content-Type: application/json——FormData 上传必须走 authFormFetch（同 contract-price uploadDocument）；模块级 api.ts 只传 `/geo-samples/...` 后缀。
+- (2026-09-02) host 上 `pnpm typecheck` 偶发整批 TS6053（.next/dev/types/** 缺文件）——:3000 dev server 懒生成路由类型，冷启动后立即 typecheck 就撞半成品目录；重跑即绿（geo-samples T10 实测：首跑 exit 2 全是 TS6053，二三跑 exit 0）。判定新代码类型问题先重跑排除此噪音。
+- (2026-09-02)【用户偏好】geo-samples 页面 UI 样式参考投标价格分析模块（bid-quote）：复用 `frontend/src/extensions/bid-quote/components/` 的原语体系（StatCard / SectionCard / ChartCard / FilterBar / DrillDownModal / chartTheme.ts / ui/），风格对齐不另起炉灶。适用于 Task 11 页面搭建。
+- (2026-09-01, bug-3070) KF 模板结构：extraction_templates.root_sections_json = {"sections":[...]}（对象非顶层数组）——SQL 检查 sections 用 root_sections_json->'sections'，别用 \$[*]（会假空）。判定模板"空壳"前先看对结构。
+- (2026-09-01, bug-3070) KF MCP 工具入参双层形态：真实调用是 {"arguments": {中文键...}}（MCP schema 包一层 + agent 中文键）——handler 入口必须解包+中英文键归一化，否则静默丢参；降级层（无 domain 无 name 的兜底查询）必须有前置条件守卫，禁退化成全表扫描。
+
+## [2026-09-02] Key Learnings (geo-samples Task 11 / 前端扩展原语复用)
+
+- **扩展模块原语复用=复制模式,不是跨模块 import**:bid-quote 的 SectionCard/StatCard/FilterBar/ui/table 只被自己的 app/bid-quote/* 路由壳 import,无任何其他扩展跨目录引用;bid-quote 的 ui/table.tsx 本身就是 contract-price table.tsx 的复制("沿用 contract-price 同款 API")。新扩展(如 geo-samples)要复用原语就整文件复制进自己的 components/ 并改本地 import 路径,chartTheme 一并复制保持同值。bid-quote 的 FilterBar 耦合自家 hooks(useProjectOptions/FilterState),只能搬"风格"(TRIGGER/PANEL/useDismiss 手写下拉模式),不能搬文件。
+- **扩展路由 layout 必须包 ShellLayout(@/extensions/shell)**:它提供 QueryClientProvider+AuthProvider+PermissionProvider——usePermission 脱离 PermissionProvider 直接 throw,TanStack hooks 脱离 QueryClientProvider 也 throw。不包 ShellLayout 的简单 nav layout 编译能过、运行必崩。canPage 真实路径=@/core/permissions,签名 canPage(pageId: string)。
+- **eslint import/order 的 alphabetize 按完整路径 case-insensitive 排序**:"components/chartTheme" < "components/FilterBar"(c<f),同前缀目录(components/*)整体排在 hooks/types 之前。写 import 时按路径字符串排,不是按文件名排。
+- **前端 prettier 债是全域既有**(bid-quote 已提交的 FilterBar/layout 也 fail check);新文件应 prettier --write 自保,勿动他人已提交文件。pnpm typecheck 首跑无 TS6053 噪音,直接为准。
+
+- [2026-09-02] MagicMock 桩不校验真实 SDK 签名——geo_samples put_object 传错形参名(bucket vs bucket_name) 24 测全绿但实跑 500。教训: mock 断言里用 inspect.signature(真实方法).parameters 校验 kwargs ⊆ 真形参(bug-3072 回归测试已加)。
+
+## Key Learnings (2026-09-02 — RAGFlow v0.25.3→v0.27.1 升级调研)
+
+- **RAGFlow 自定义 compose 三大升级陷阱**(docker/docker-compose.ragflow.yaml):① `ragflow-data:/ragflow` 具名卷遮蔽镜像代码(卷非空时新镜像跑旧代码)→ 应只挂 /ragflow/logs;② v0.27.1 起 model-provider 建表/迁移只在 `command: [--enable-adminserver, --init-model-provider-tables]` 时运行,无 command = 静默跳过;③ 必须显式设 `SECRET_KEY`(v0.27.0 起缓存进 Redis,Redis 逐出→全站 401)。
+- **RAGFlow v0.27.1 API 要点**(源码级核实):`/v1/llm/list` 已删(Python *_app.py 全移除),替代 `GET /api/v1/models?type=embedding`,模型标识 `<model_name>@<model_provider>`;列表分页参数是 `page_size`(不是 limit/size),上限 100 超限报错;文档解析状态读 `run`(UNSTART/RUNNING/DONE/FAIL)+ `progress_msg`,不是 `status`;检索过滤参数是 `document_ids` 不是 `doc_ids`;`rerank_candidates_count(默认64) ≥ page*page_size` 是硬约束;上传 form 的 parser_id/parser_config 上游从不读。service_conf env 变量名(MYSQL_DBNAME/ES_HOST/MINIO_HOST...)v0.25.3→v0.27.1 零改名;ES 8.11.3 全程不变无需 reindex。
+- **升级调研方法论**:对"版本 X→Y 升级"类问题,直接拉两个 tag 的服务端源码(raw.githubusercontent + git trees API)逐端点对照,比读 release notes/官网文档(SPA 抓不到)可靠得多;官网文档站是 CSR,WebFetch 返回空。
+- 本仓库 dev RAGFlow 活动卷是 `eai-docker_ragflow-*`(连字符);`docker_*`/`eai_ragflow-*`/下划线变体全是历史孤儿卷;`eai-prod_*` 属离线产线严禁清。三个扩展桶(cpa-contracts/geo-samples/spare-parts)默认都在 ragflow-minio 卷上,清卷=清测试数据。
+
+## Key Learnings (2026-09-02 — RAGFlow v0.27.1 部署实战补充)
+- v0.27.x entrypoint 的 API server/task executor 启动被 `API_PROXY_SCHEME` 环境变量门控(显式字符串匹配),空值=静默不启动(nginx 却照常起,极具迷惑性)。诊断手法:`run_with_restart` 每次尝试必打 "Attempt to start <name>...",该行缺失=分支没进,不是进程崩。
+- RAGFlow 登录页是双卡片翻转结构,Playwright 要锁定 `[data-testid="auth-card-active"]` 内的 input/button,否则点中被背面卡片遮挡的提交钮(超时)。注册成功=卡片翻回登录页。
+- v0.27.1 `GET /api/v1/models?type=embedding` 空租户返回裸 `data:[]`,非空才是文档契约的 `data.models[]`——解析要兼容两种形态。
+
+## Key Learnings (2026-09-02 — RAGFlow v0.27.1 冒烟实测)
+- **实测推翻源码审计**:`GET /api/v1/models?type=embedding` live 返回裸列表 `data:[{name, provider_name, model_type:["embedding"], rank}],无 enable 字段;Swagger docstring 宣称的 data.models[] 是错的。教训:SDK 形状必须 live 探测,不能只信源码 docstring。
+- v0.27.1 `GET /datasets/{ds}/documents?id=` 过滤可用但 doc 不属于该 dataset 时返回 code 102 "you don't own the document"(同步法规走 standards 库时别查 legal 库)。
+- law 元数据 PATCH+meta_fields 首次真实落库成功(历史上 PUT 路径从未生效过);上传后自动 PATCH chunk_method 链路验证通过。
+- EAI 网关冒烟路径:POST /api/extensions/auth/login 用 `username` 字段(不是 email);KB 列表键 `knowledge_bases`,文档列表键 `documents`;Windows 下中文 JSON 走 curl -d 会编码坏,用 Python httpx。
