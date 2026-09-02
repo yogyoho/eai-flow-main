@@ -12,12 +12,18 @@ logger = logging.getLogger(__name__)
 
 
 class RAGFlowClient:
-    """RAGFlow API client."""
+    """RAGFlow API client.
 
-    PARSE_STATUS_PENDING = "pending"
-    PARSE_STATUS_PARSING = "parsing"
-    PARSE_STATUS_SUCCESS = "success"
-    PARSE_STATUS_FAILED = "failed"
+    Wire contract verified against infiniflow/ragflow v0.27.1 source
+    (api/apps/restful_apis/*.py). Notable upstream constraints:
+    - list pagination uses ``page``/``page_size`` (max 100; ``limit``/``size``
+      are silently ignored, default page size 30).
+    - document parse state is the ``run`` field (UNSTART/RUNNING/CANCEL/DONE/FAIL);
+      failure text lives in ``progress_msg`` (there is no ``error`` field).
+    - retrieval filters by ``document_ids`` (``doc_ids`` is not a known field).
+    - upload-time form ``parser_id``/``parser_config`` are ignored upstream;
+      per-document chunking is set via PATCH on the document.
+    """
 
     API_PREFIX = "/api/v1"
 
@@ -92,12 +98,16 @@ class RAGFlowClient:
             response.raise_for_status()
             return response.json()
 
-    async def list_datasets(self, page: int = 1, size: int = 100) -> dict:
-        """List all datasets."""
+    async def list_datasets(self, page: int = 1, size: int = 100, name: str | None = None) -> dict:
+        """List datasets (paginated; ``page_size`` is capped at 100 upstream)."""
+        params = {"page": page, "page_size": min(size, 100)}
+        if name:
+            params["name"] = name
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(
                 f"{self.base_url}{self.API_PREFIX}/datasets",
                 headers=self._get_headers(),
+                params=params,
             )
             response.raise_for_status()
             return response.json()
@@ -183,18 +193,50 @@ class RAGFlowClient:
             if isinstance(data_result, list) and data_result:
                 result = {"data": data_result[0]}
             logger.info(f"Uploaded document to RAGFlow dataset {dataset_id}: {file_name} (parser_id={parser_id})")
+
+            # Upstream ignores upload-time parser_id/parser_config form fields, so the
+            # requested chunker is applied via a document PATCH right after upload.
+            if (parser_id or parser_config) and isinstance(result.get("data"), dict) and result["data"].get("id"):
+                await self._apply_document_parser(dataset_id, result["data"]["id"], parser_id, parser_config)
             return result
 
+    async def _apply_document_parser(self, dataset_id: str, document_id: str, parser_id: str | None, parser_config: dict | None) -> None:
+        """PATCH per-document chunk_method/parser_config (upload form fields are not read upstream)."""
+        payload: dict = {}
+        if parser_id:
+            payload["chunk_method"] = parser_id
+        if parser_config:
+            payload["parser_config"] = parser_config
+        if not payload:
+            return
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.patch(
+                    f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents/{document_id}",
+                    headers=self._get_headers(),
+                    json=payload,
+                )
+                response.raise_for_status()
+                result = response.json()
+                if result.get("code") not in (0, None):
+                    raise RuntimeError(result.get("message", "Unknown RAGFlow error"))
+            logger.info(f"Applied chunk_method={parser_id} to RAGFlow document {document_id}")
+        except Exception as e:
+            logger.error(f"Failed to apply parser to RAGFlow document {document_id}: {e}")
+
     async def get_document(self, dataset_id: str, document_id: str) -> dict:
-        """Get document details."""
+        """Get document details (single-document ``id`` filter; upstream rejects unknown ids with code 102)."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.get(
-                f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents",
-                headers=self._get_headers(),
-                params={"page": 1, "limit": 100},
-            )
-            response.raise_for_status()
-            result = response.json()
+            try:
+                response = await client.get(
+                    f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents",
+                    headers=self._get_headers(),
+                    params={"id": document_id},
+                )
+                response.raise_for_status()
+                result = response.json()
+            except httpx.HTTPStatusError:
+                return {"data": {}}
             docs = (result.get("data") or {}).get("docs", [])
             for doc in docs:
                 if doc.get("id") == document_id:
@@ -202,12 +244,12 @@ class RAGFlowClient:
             return {"data": {}}
 
     async def list_documents(self, dataset_id: str, page: int = 1, size: int = 100) -> dict:
-        """List documents in a dataset."""
+        """List documents in a dataset (``page_size`` capped at 100 upstream)."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(
                 f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents",
                 headers=self._get_headers(),
-                params={"page": page, "limit": size},
+                params={"page": page, "page_size": min(size, 100)},
             )
             response.raise_for_status()
             return response.json()
@@ -248,55 +290,15 @@ class RAGFlowClient:
             return result
 
     async def list_chunks(self, dataset_id: str, document_id: str, page: int = 1, size: int = 100) -> dict:
-        """List chunks of a document."""
+        """List chunks of a document (``page_size`` capped at 100 upstream)."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(
                 f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents/{document_id}/chunks",
                 headers=self._get_headers(),
-                params={"page": page, "size": size},
+                params={"page": page, "page_size": min(size, 100)},
             )
             response.raise_for_status()
             return response.json()
-
-    async def get_parsing_status(self, dataset_id: str, document_id: str) -> dict:
-        """Get document parsing status."""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.get(
-                f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents",
-                headers=self._get_headers(),
-                params={"page": 1, "limit": 100},
-            )
-            response.raise_for_status()
-            result = response.json()
-            docs = (result.get("data") or {}).get("docs", [])
-            for doc in docs:
-                if doc.get("id") == document_id:
-                    return {"data": doc}
-            return {"data": {}}
-
-    async def wait_for_parsing_complete(self, dataset_id: str, document_id: str, max_wait_seconds: int = 300, poll_interval: int = 5) -> dict:
-        """Wait for document parsing to complete."""
-        elapsed = 0
-        while elapsed < max_wait_seconds:
-            status_result = await self.get_parsing_status(dataset_id, document_id)
-            data = status_result.get("data", {})
-            parse_status = data.get("status", self.PARSE_STATUS_PENDING)
-
-            if parse_status == self.PARSE_STATUS_SUCCESS:
-                logger.info(f"Document {document_id} parsing completed successfully")
-                return status_result
-            elif parse_status == self.PARSE_STATUS_FAILED:
-                error_msg = data.get("error", "Unknown error")
-                logger.error(f"Document {document_id} parsing failed: {error_msg}")
-                return status_result
-            elif parse_status == self.PARSE_STATUS_PARSING:
-                progress = data.get("progress", 0)
-                logger.debug(f"Document {document_id} parsing progress: {progress}%")
-
-            await asyncio.sleep(poll_interval)
-            elapsed += poll_interval
-
-        raise TimeoutError(f"Document parsing timeout after {max_wait_seconds}s")
 
     async def chat(
         self,
@@ -326,7 +328,7 @@ class RAGFlowClient:
             "vector_similarity_weight": vector_similarity_weight,
         }
         if doc_ids:
-            payload["doc_ids"] = doc_ids
+            payload["document_ids"] = doc_ids
 
         async with httpx.AsyncClient(timeout=self.timeout * 2) as client:
             response = await client.post(
@@ -350,22 +352,11 @@ class RAGFlowClient:
             logger.warning(f"RAGFlow service unavailable: {e}")
             return False
 
-    async def get_dataset_statistics(self, dataset_id: str) -> dict:
-        """Get dataset statistics."""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.get(
-                f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/statistics",
-                headers=self._get_headers(),
-            )
-            response.raise_for_status()
-            return response.json()
-
     async def get_dataset_by_name(self, name: str) -> dict | None:
-        """Get dataset by name."""
+        """Get dataset by name (server-side ``name`` filter; exact match)."""
         try:
-            result = await self.list_datasets()
-            kbs = result.get("data", [])
-            for kb in kbs:
+            result = await self.list_datasets(name=name)
+            for kb in result.get("data", []):
                 if kb.get("name") == name:
                     return kb
             return None
@@ -374,32 +365,42 @@ class RAGFlowClient:
             return None
 
     async def list_available_embedding_models(self) -> list[str]:
-        """List available embedding model identifiers (formatted as <name>@<factory>)."""
+        """List available embedding model identifiers (formatted as <name>@<provider>).
+
+        Uses ``GET /api/v1/models?type=embedding`` — the legacy ``/v1/llm/list``
+        endpoint was removed in RAGFlow v0.27.x. NOTE: the live v0.27.1 wire format
+        is a bare list in ``data`` (fields ``name``/``provider_name``/``model_type``
+        as a LIST), not the ``{"models": [...]}`` shape in the Swagger docstring.
+        """
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
-                    f"{self.base_url}/v1/llm/list",
+                    f"{self.base_url}{self.API_PREFIX}/models",
                     headers=self._get_headers(),
+                    params={"type": "embedding"},
                 )
                 response.raise_for_status()
                 result = response.json()
+                data = result.get("data")
+                items = data.get("models", []) if isinstance(data, dict) else (data or [])
                 models = []
-                for factory_name, factory_models in (result.get("data") or {}).items():
-                    for m in factory_models:
-                        if m.get("model_type") == "embedding" and m.get("available"):
-                            models.append(f"{m['llm_name']}@{factory_name}")
+                for m in items:
+                    types = m.get("model_type") or []
+                    types = types if isinstance(types, list) else [types]
+                    if "embedding" in types and m.get("enable", True):
+                        models.append(f"{m.get('name') or m.get('model_name')}@{m.get('provider_name') or m.get('model_provider')}")
                 return models
         except Exception as e:
             logger.warning(f"Failed to list RAGFlow embedding models: {e}")
             return []
 
     async def update_document_metadata(self, dataset_id: str, document_id: str, metadata: dict) -> dict:
-        """Update document metadata."""
+        """Update document metadata (PATCH; arbitrary keys must ride in ``meta_fields``)."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
-            response = await client.put(
+            response = await client.patch(
                 f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents/{document_id}",
                 headers=self._get_headers(),
-                json=metadata,
+                json={"meta_fields": metadata},
             )
             response.raise_for_status()
             return response.json()

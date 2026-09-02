@@ -354,7 +354,7 @@ class DocumentService:
     }
 
     # Supported file extensions per RAGFlow parser_id
-    # Based on RAGFlow v0.25.3 documentation and actual behavior:
+    # Based on RAGFlow documentation and actual behavior (as of v0.27.1):
     # - manual (report): only pdf, docx
     # - naive: pdf, docx, xlsx, pptx, txt, md, csv, json, html, eml
     # - laws: pdf, docx
@@ -381,9 +381,11 @@ class DocumentService:
 
         parser_config: dict = {}
         if "chunk_token_num" in chunk_config:
-            parser_config["chunk_token_count"] = chunk_config["chunk_token_num"]
+            # upstream ParserConfig key is chunk_token_num (chunk_token_count is rejected with code 101)
+            parser_config["chunk_token_num"] = chunk_config["chunk_token_num"]
         if chunk_config.get("ocr_enabled") or chunk_config.get("preserve_tables"):
-            parser_config["layout_recognize"] = True
+            # upstream expects a strategy string, not a bool
+            parser_config["layout_recognize"] = "DeepDOC"
 
         return parser_id, parser_config if parser_config else None
 
@@ -531,8 +533,10 @@ class DocumentService:
             rf_doc = await rf_client.get_document(kb.ragflow_dataset_id, doc.ragflow_document_id)
             data = rf_doc.get("data", {})
             return {
-                "status": to_doc_status(data.get("status")),
-                "word_count": data.get("word_count", 0),
+                # upstream reports parse state in `run` (UNSTART/RUNNING/CANCEL/DONE/FAIL);
+                # `status` is only a legacy fallback
+                "status": to_doc_status(data.get("run") or data.get("status")),
+                "word_count": data.get("token_count", data.get("word_count", 0)),
                 "chunk_count": data.get("chunk_count", 0),
             }
         except Exception as e:

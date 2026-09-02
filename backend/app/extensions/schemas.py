@@ -484,6 +484,10 @@ def to_doc_status(raw: str | None) -> str:
         "failed": DocumentStatus.FAILED.value,
         "uploading": DocumentStatus.UPLOADING.value,
         "processing": DocumentStatus.PROCESSING.value,
+        # RAGFlow document `run` values (v0.27.x)
+        "unstart": DocumentStatus.PENDING.value,
+        "running": DocumentStatus.PROCESSING.value,
+        "cancel": DocumentStatus.PENDING.value,
     }
     return mapping.get(s, DocumentStatus.PENDING.value)
 

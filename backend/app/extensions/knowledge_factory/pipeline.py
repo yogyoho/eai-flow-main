@@ -52,6 +52,22 @@ class PipelineResult:
     step_summaries: list[dict]  # List of {name, status, duration, detail}
 
 
+async def _fetch_all_chunks(rf, dataset_id: str, document_id: str, page_size: int = 100) -> list[dict]:
+    """Fetch ALL chunks of a document, paginating (upstream caps page_size at 100)."""
+    chunks: list[dict] = []
+    page = 1
+    while True:
+        resp = await rf.list_chunks(dataset_id=dataset_id, document_id=document_id, page=page, size=page_size)
+        data = resp.get("data") or {}
+        batch = data.get("chunks", [])
+        chunks.extend(batch)
+        total = data.get("total")
+        if not batch or (isinstance(total, int) and len(chunks) >= total) or len(batch) < page_size:
+            break
+        page += 1
+    return chunks
+
+
 def _flatten_sections(sections: list[dict]) -> list[dict]:
     """Flatten a nested section tree into a flat list."""
     flat = []
@@ -658,7 +674,7 @@ class ExtractionPipeline:
 
         对于纯文本格式（.md/.txt），当 RAGFlow 返回 0 chunks 时，
         回退为直接读取文件内容并生成人工 chunks。
-        RAGFlow v0.25.3 的 manual chunk_method 仅支持 pdf/docx，
+        RAGFlow（截至 v0.27.1）的 manual chunk_method 仅支持 pdf/docx，
         不支持 .md 文件。
         """
         from sqlalchemy import select
@@ -720,13 +736,7 @@ class ExtractionPipeline:
 
                 logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] 调用 RAGFlow API 获取 chunks: dataset={rf_dataset_id}, doc={rf_doc_id}")
                 rf = RAGFlowClient()
-                chunks_resp = await rf.list_chunks(
-                    dataset_id=rf_dataset_id,
-                    document_id=rf_doc_id,
-                    page=1,
-                    size=1000,
-                )
-                chunks = chunks_resp.get("data", {}).get("chunks", [])
+                chunks = await _fetch_all_chunks(rf, rf_dataset_id, rf_doc_id)
                 logger.info(f"[Task {ctx.get('_task_id', 'unknown')}] RAGFlow 返回 {len(chunks)} 个 chunks for doc {doc_name}")
 
                 total_chunks += len(chunks)
@@ -880,13 +890,7 @@ class ExtractionPipeline:
 
         try:
             rf = RAGFlowClient()
-            chunks_resp = await rf.list_chunks(
-                dataset_id=rf_dataset_id,
-                document_id=rf_doc_id,
-                page=1,
-                size=1000,
-            )
-            chunks = chunks_resp.get("data", {}).get("chunks", [])
+            chunks = await _fetch_all_chunks(rf, rf_dataset_id, rf_doc_id)
             if not chunks:
                 fallback = await self._fallback_read_plain_text(doc, ctx)
                 if fallback:
@@ -907,7 +911,7 @@ class ExtractionPipeline:
     async def _fallback_read_plain_text(self, doc: dict, ctx: dict[str, Any]) -> list[dict]:
         """Fallback: read plain-text file directly when RAGFlow returns 0 chunks.
 
-        RAGFlow v0.25.3's 'manual' chunk_method only supports pdf/docx.
+        RAGFlow's 'manual' chunk_method only supports pdf/docx (as of v0.27.1).
         For .md/.txt files, we read the file content directly and create
         synthetic chunks by splitting on double-newlines (paragraphs).
 

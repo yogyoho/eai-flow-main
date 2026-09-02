@@ -15,9 +15,12 @@
 services:
   # ── RAGFlow (API + Web UI + Task Executor) ─────────────────────────────
   ragflow:
-    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.25.3}
+    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.27.1}
     container_name: eai-flow-ragflow
-    # Default entrypoint (no --disable-* flags): starts nginx + API + task executors
+    # Default entrypoint (no --disable-* flags): starts nginx + API + task executors.
+    # v0.27.x: --init-model-provider-tables is REQUIRED — without it the model-provider
+    # table creation/seed migration is silently skipped (upstream compose sets the same).
+    command: ["--enable-adminserver", "--init-model-provider-tables"]
     environment:
       # Must match service_conf.yaml.template variable names:
       #   MYSQL_DBNAME (NOT MYSQL_DATABASE)
@@ -36,8 +39,17 @@ services:
       - MINIO_HOST=ragflow-minio
       - MINIO_USER=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
+      # v0.27.0 caches SECRET_KEY in Redis; eviction of that key 401s every request.
+      # Must be a fixed value persisted in .env (RAGFLOW_SECRET_KEY).
+      - SECRET_KEY=${RAGFLOW_SECRET_KEY:?set RAGFLOW_SECRET_KEY in .env}
+      # v0.27.x entrypoint gates the API-server/task-executor launches on this var
+      # (upstream docker/.env ships API_PROXY_SCHEME=python). Unset = nothing starts.
+      - API_PROXY_SCHEME=python
     volumes:
-      - ragflow-data:/ragflow
+      # Only mount the logs dir. NEVER mount a named volume at /ragflow itself:
+      # a non-empty named volume shadows the image's application code, so an
+      # image upgrade would silently keep running the old version.
+      - ragflow-logs:/ragflow/logs
     ports:
       - "${RAGFLOW_PORT:-9380}:9380"      # API
       - "${RAGFLOW_WEB_PORT:-9381}:80"    # Web UI (internal nginx)
@@ -63,6 +75,9 @@ services:
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-ragflow123}
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    # v0.27.x official image needs a writable /tmp for its entrypoint (ACL fix, same as upstream)
+    tmpfs:
+      - /tmp:mode=1777,size=512m
     volumes:
       - ragflow-es-data:/usr/share/elasticsearch/data
     ports:
@@ -81,6 +96,13 @@ services:
   ragflow-mysql:
     image: mysql:8.0
     container_name: eai-flow-ragflow-mysql
+    # Flags mirror upstream v0.27.1 docker-compose-base.yml (native auth plugin,
+    # utf8mb4, connection headroom)
+    command:
+      - --max_connections=1000
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-ragflow123}
       - MYSQL_DATABASE=${MYSQL_DATABASE:-ragflow}
@@ -139,7 +161,7 @@ services:
       retries: 5
 
 volumes:
-  ragflow-data:
+  ragflow-logs:
   ragflow-es-data:
   ragflow-mysql-data:
   ragflow-redis-data:
