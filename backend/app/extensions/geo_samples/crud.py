@@ -29,6 +29,17 @@ async def get_document(db: AsyncSession, document_id: str) -> GsbDocument | None
     return (await db.execute(select(GsbDocument).where(GsbDocument.id == document_id))).scalar_one_or_none()
 
 
+async def get_document_fresh(db: AsyncSession, document_id: str) -> GsbDocument | None:
+    """绕过 identity map 重取（populate_existing）——重活后校验漂移必须看到 DB 真值。
+
+    expire_on_commit=False（database.py 会话工厂配置）下，普通 get 命中 identity map
+    时 ORM 不会用行数据覆盖已加载属性——他方会话已提交的改判对本会话不可见（P2-T2
+    quality review 实测复现）。任何「重活后校验最新状态」的读取必须走本函数。
+    """
+    stmt = select(GsbDocument).where(GsbDocument.id == document_id).execution_options(populate_existing=True)
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
 async def get_document_by_report_id(db: AsyncSession, report_id: str) -> GsbDocument | None:
     return (await db.execute(select(GsbDocument).where(GsbDocument.report_id == report_id))).scalar_one_or_none()
 

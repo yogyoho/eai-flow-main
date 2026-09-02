@@ -32,8 +32,11 @@ async def _finish_run(db: AsyncSession, run_id: str, status: str, detail: str | 
 
 async def run_parse(db: AsyncSession, document_id: str, run_id: str) -> None:
     """后台任务：raw → md（work/）。任何异常 → status=failed + run 落账，除 db 会话彻底不可用外不向调用方抛出。
-    R2 三段式：get → commit 释放连接 → 重活（OCR 最长 1800s）→ 重取文档确认状态未漂移再落 parsed；
-    重活期间 re-parse 端点可能把 doc 置 failed——此时丢弃本次解析结果，不覆盖更新的状态。"""
+    R2 三段式：get → commit 释放连接 → 重活（OCR 最长 1800s）→ 重取文档校验漂移再落 parsed。
+    重取用 populate_existing 绕过 identity map（expire_on_commit=False 下普通 get 看不到他方
+    会话已提交的改判）；守卫丢弃非 uploaded/failed/parsed 的漂移态（今日可达路径已被端点级
+    has_running_run 闸门封闭，本守卫防护 Phase 2 新增状态写入者（compiled 等））；doc 消失
+    （理论删除路径）→ failed run。"""
     doc = await crud.get_document(db, document_id)
     if doc is None:
         await _finish_run(db, run_id, "failed", "document not found")
@@ -43,7 +46,7 @@ async def run_parse(db: AsyncSession, document_id: str, run_id: str) -> None:
     try:
         raw = await asyncio.to_thread(storage.get_object, raw_uri)
         md, mode = await parsers.parse_document(file_name, raw)  # 重活（内含 to_thread/OCR）
-        doc = await crud.get_document(db, document_id)  # 重活后重取——状态可能已被 sweep/驳回改判
+        doc = await crud.get_document_fresh(db, document_id)  # 重活后重取——populate_existing 绕过 identity map 才见 DB 真值
         if doc is None or doc.status not in ("uploaded", "failed", "parsed"):
             await _finish_run(db, run_id, "failed", f"document state changed during parse: {doc.status if doc else 'gone'}")
             return
