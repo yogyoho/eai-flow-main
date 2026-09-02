@@ -115,3 +115,74 @@ def test_project_mineral_non_dict_json(tmp_path):
     data_dir.mkdir()
     (data_dir / "00_project.json").write_text("[1,2]", encoding="utf-8")
     assert build_output._project_mineral(data_dir) is None
+
+
+# ---------------------------------------------------------------------------
+# bank_compile：样例库 → 技能衍生物（slices / SL3 指纹池 / bank_index / per 矿种基线）
+# ---------------------------------------------------------------------------
+
+import bank_compile  # noqa: E402
+
+
+def _make_report(workdir: Path, rid: str, mineral: str, stage: str) -> None:
+    """合成一份含 3 节的报告：## 1 / ## 2 / ### 2.1，正文若干行。"""
+    d = workdir / rid
+    d.mkdir(parents=True, exist_ok=True)
+    text = "## 1 总论\n\n总论正文一段。\n\n## 2 地质特征\n\n地质正文。\n\n### 2.1 地层\n\n地层正文含数字 123.45。\n"
+    (d / "source.md").write_text(text, encoding="utf-8")
+
+
+def _write_manifest(workdir: Path, entries: list[dict]) -> None:
+    (workdir / "manifest.json").write_text(json.dumps(entries, ensure_ascii=False), encoding="utf-8")
+
+
+def test_bank_compile_slices_index_and_fingerprints(tmp_path):
+    refs = tmp_path / "references"
+    refs.mkdir()
+    _make_report(tmp_path, "rid-gold", "gold", "exploration")
+    _write_manifest(tmp_path, [{"report_id": "rid-gold", "stage": "exploration", "mineral": "gold", "file_name": "g.docx"}])
+    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    assert rc == 0
+    # 切片落位 + 标记行
+    s1 = refs / "samples_bank/exploration/slices/ch1/rid-gold__1.md"
+    assert s1.exists()
+    body = s1.read_text(encoding="utf-8")
+    assert body.startswith("【矿种】gold｜【阶段】exploration｜【report_id】rid-gold｜【节号】1")
+    assert "## 1 总论" in body
+    # SL3 指纹源副本
+    assert (refs / "samples/exploration/ch1__rid-gold.md").exists()
+    assert (refs / "samples/exploration/ch2__rid-gold.md").exists()  # ### 2.1 归入 ## 2 片
+    # bank_index 结构
+    idx = json.loads((refs / "samples_bank/bank_index.json").read_text(encoding="utf-8"))
+    assert idx["exploration"]["ch1"][0]["report_id"] == "rid-gold"
+    assert idx["exploration"]["ch2"][1]["sec"] == "2.1"
+    # per 矿种基线：median 生成 + absolute_floor 落盘
+    base = json.loads((refs / "depth_targets/exploration/gold.json").read_text(encoding="utf-8"))
+    assert base["absolute_floor"] == 0.4
+    assert base["per_chapter"]["ch1"]["median_eff"] > 0
+
+
+def test_bank_compile_idempotent(tmp_path):
+    refs = tmp_path / "references"
+    refs.mkdir()
+    _make_report(tmp_path, "rid-cu", "copper", "exploration")
+    _write_manifest(tmp_path, [{"report_id": "rid-cu", "stage": "exploration", "mineral": "copper", "file_name": "c.docx"}])
+    args = ["--workdir", str(tmp_path), "--references", str(refs)]
+    assert bank_compile.main_with_args(args) == 0
+    idx1 = (refs / "samples_bank/bank_index.json").read_bytes()
+    base1 = (refs / "depth_targets/exploration/copper.json").read_bytes()
+    assert bank_compile.main_with_args(args) == 0
+    assert (refs / "samples_bank/bank_index.json").read_bytes() == idx1
+    assert (refs / "depth_targets/exploration/copper.json").read_bytes() == base1
+
+
+def test_bank_compile_all_zero_slices_rc1(tmp_path):
+    refs = tmp_path / "references"
+    refs.mkdir()
+    d = tmp_path / "rid-bad"
+    d.mkdir()
+    (d / "source.md").write_text("没有任何节号标题的正文。\n", encoding="utf-8")
+    _write_manifest(tmp_path, [{"report_id": "rid-bad", "stage": "exploration", "mineral": "gold", "file_name": "b.docx"}])
+    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    assert rc == 1
+    assert not (refs / "samples_bank/bank_index.json").exists()  # 绝不产空 index
