@@ -1,5 +1,5 @@
 # EAI-CUSTOM: forked from app.extensions.contract_price.service (geo-sample-bank Phase 1).
-# Phase 1 无 skill 依赖——解析/脱敏全部 in-process async；compile 子进程模式留 Phase 2。
+# Phase 1 无 skill 依赖——解析/脱敏全部 in-process async；compile 子进程模式在 Phase 2 (T7) 落地。
 # ⚡ 调整 1：storage 的阻塞 MinIO 调用一律 asyncio.to_thread（本仓库有 blocking-IO 门，
 #   T3 质量审查指定；parsers 的 CPU 重活已在 parsers.parse_document 内部 to_thread）。
 # ⚡ 调整 3（质量审查 Important）：except 路径先 rollback 再守护式 commit——原异常可能
@@ -9,6 +9,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
+import shutil
+import sys
+import tempfile
+from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +21,14 @@ from . import crud, parsers, storage
 from .redactor import redact_text
 
 log = logging.getLogger("geo_samples.service")
+
+# --- Phase 2 T7：模块级编译（子进程 bank_compile + RAGFlow 切片分发）的常量区 --------------
+# 模板同 contract_price.service：skills 迁移目录必须与盘面一致，否则子进程静默失败（bug-526），
+# 由 test_compile_skill_dir_guard 守护。parents[4]: geo_samples -> extensions -> app -> backend -> repo root。
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_SKILL_DIR = _REPO_ROOT / "skills" / "public" / "geological-report"
+_COMPILE_TIMEOUT_S = 1800.0  # bank_compile 含逐组 calibrate 子进程，长报告实测分钟级；30 分钟硬顶
+_RAGFLOW_DATASET_ENV = "GSB_RAGFLOW_DATASET_ID"
 
 
 # ⚡ 调整 2：finish_run 走 best-effort 包装（Task 7 实测落定）。plan 原文在 try 内裸调
@@ -116,3 +129,158 @@ async def apply_review(db: AsyncSession, document_id: str, decision: str, note: 
     doc.status = "reviewed" if decision == "approve" else "redacted"
     doc.review_note = note
     await db.commit()
+
+
+# --- Phase 2 T7：模块级编译（POST /pipeline/compile 的后台编排） -----------------------------
+
+
+def _prepare_compile_workspace(docs: list, wd: Path) -> list[dict]:
+    """同步体（一律经 asyncio.to_thread 调用）：逐份下载 clean 正文到 <rid>/source.md 并写 manifest.json。
+
+    manifest 条目 {report_id, stage, mineral, file_name}——report_id 已由 UploadMeta slug 约束保证
+    目录名安全（bank_compile 侧另有非 slug 条目级跳过兜底）。返回条目列表供调用方复用。
+    """
+    entries: list[dict] = []
+    for d in docs:
+        body = storage.get_object(d.clean_uri)  # 阻塞 MinIO——只在线程内执行
+        d_dir = wd / d.report_id
+        d_dir.mkdir(parents=True, exist_ok=True)
+        (d_dir / "source.md").write_bytes(body)
+        entries.append({"report_id": d.report_id, "stage": d.stage, "mineral": d.mineral, "file_name": d.file_name})
+    (wd / "manifest.json").write_text(json.dumps(entries, ensure_ascii=False), encoding="utf-8")
+    return entries
+
+
+async def push_slices_to_ragflow(refs: Path, dataset_id: str) -> int:
+    """把编译产物切片幂等分发到 RAGFlow 数据集，返回上传片数。
+
+    幂等契约 = delete-by-name + upload + parse：先分页 list_documents 建 name→id 映射，同名先删
+    再传，避免重编译后旧切片滞留。RAGFlowClient/配置 lazy import——gateway 启动路径零 ragflow 依赖。
+    实测 wire 契约（client.py 实物，非 plan 骨架）：构造 (api_key, base_url) 两参；list_documents
+    分页形参是 size（page_size 上限 100），响应 data 是 {"docs": [...], "total": N}；bank_index
+    条目的切片相对路径键是 "file"（非 plan 骨架写的 "path"，bank_compile.py 实物为准）。
+    同一章多节条目共享同一切片文件 → 按 file 去重，upload/parse 次数=切片文件数。
+    绝不 wait_for_parsing_complete（>100 文档 dataset 轮询恒超时）；解析状态由人工在 RAGFlow 控制台看。
+    """
+    from app.extensions.config import get_extensions_config  # lazy——见 docstring
+    from app.extensions.knowledge import client as ragflow_client_mod  # lazy——见 docstring
+
+    cfg = get_extensions_config().ragflow
+    client = ragflow_client_mod.RAGFlowClient(api_key=cfg.api_key, base_url=cfg.base_url)
+
+    existing: dict[str, str] = {}
+    page = 1
+    while True:
+        resp = await client.list_documents(dataset_id, page=page, size=100)
+        payload = resp.get("data") or {}
+        docs = payload.get("docs", []) if isinstance(payload, dict) else list(payload)
+        if not docs:
+            break
+        existing.update({d["name"]: d["id"] for d in docs})
+        total = payload.get("total") if isinstance(payload, dict) else None
+        if total is None or page * 100 >= int(total):
+            break
+        page += 1
+
+    index = json.loads(await asyncio.to_thread((refs / "samples_bank" / "bank_index.json").read_text, encoding="utf-8"))
+    pushed = 0
+    seen_files: set[str] = set()
+    for chs in index.values():
+        for items in chs.values():
+            for it in items:
+                rel = it.get("file")
+                if not rel or rel in seen_files:
+                    continue
+                seen_files.add(rel)
+                path = refs / rel
+                name = path.name
+                if name in existing:
+                    await client.delete_document(dataset_id, existing[name])
+                up = await client.upload_document(dataset_id, str(path), file_name=name)
+                doc_id = (up.get("data") or {}).get("id")
+                if not doc_id:
+                    raise RuntimeError(f"ragflow upload {name}: response missing document id")
+                await client.parse_document(dataset_id, doc_id)
+                pushed += 1
+    return pushed
+
+
+async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, mineral: str | None = None) -> None:
+    """模块级编译后台任务（never-raise 契约同 run_parse）。
+
+    编排链：reviewed 清单（空 → failed 快速返回，不起子进程）→ to_thread 准备工作区
+    （MinIO 下载 clean 到 <rid>/source.md + manifest.json）→ commit 释放连接（R2 同款，子进程
+    最长 30 分钟）→ 子进程 bank_compile（--workdir/--references/--python，cwd=技能目录，1800s
+    wait_for 硬顶超时 kill）→ RAGFlow 切片分发（辅助通道：env 未配置记 skipped；push 异常只
+    记 detail 不回滚编译结论，spec §7 降级链）→ 按 manifest report_id 批量 status=compiled →
+    commit → done。任何异常 → rollback（compile 无 doc 单体，失败不改任何 gsb_documents
+    状态）→ failed 落账。临时工作区 finally 清理。
+    """
+    wd: Path | None = None
+    try:
+        docs = await crud.list_reviewed(db, stage, mineral)
+        if not docs:
+            await _finish_run(db, run_id, "failed", "无 reviewed 状态的样例可编译")
+            return
+        wd = Path(await asyncio.to_thread(tempfile.mkdtemp, prefix="gsb_compile_"))
+        await asyncio.to_thread(_prepare_compile_workspace, docs, wd)
+        await db.commit()  # R2：释放连接再进重活（子进程最长 1800s，占池会楔死无关请求）
+        refs = _SKILL_DIR / "references"
+        cmd = [
+            sys.executable,
+            "-X",
+            "utf8",
+            str(_SKILL_DIR / "scripts" / "bank_compile.py"),
+            "--workdir",
+            str(wd),
+            "--references",
+            str(refs),
+            "--python",
+            sys.executable,
+        ]
+        try:
+            proc = await asyncio.create_subprocess_exec(*cmd, cwd=str(_SKILL_DIR), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        except (OSError, ValueError) as exc:  # 技能缺失/解释器不可执行（bug-526 同族），守护成 failed run
+            await _finish_run(db, run_id, "failed", f"bank_compile spawn failed: {exc}")
+            return
+        try:
+            _out, err = await asyncio.wait_for(proc.communicate(), timeout=_COMPILE_TIMEOUT_S)
+        except TimeoutError:
+            proc.kill()
+            await proc.wait()  # 收尸防僵尸
+            await _finish_run(db, run_id, "failed", "timeout")
+            return
+        if proc.returncode != 0:
+            await _finish_run(db, run_id, "failed", f"bank_compile rc={proc.returncode}: {err.decode('utf-8', 'replace')[-500:]}")
+            return
+        manifest = json.loads(await asyncio.to_thread((wd / "manifest.json").read_text, encoding="utf-8"))
+        detail = "slices ok"
+        dataset_id = os.environ.get(_RAGFLOW_DATASET_ENV, "").strip()
+        if not dataset_id:
+            detail += "; ragflow skipped (dataset not configured)"
+        else:
+            try:
+                pushed = await push_slices_to_ragflow(refs, dataset_id)
+                detail += f"; ragflow pushed={pushed}"
+            except Exception as exc:  # noqa: BLE001 —— 分发是辅助通道：编译产物已落盘，失败不回滚结论
+                log.exception("ragflow push failed (run %s)", run_id)
+                detail += f"; ragflow push failed: {exc}"
+        for entry in manifest:
+            doc = await crud.get_document_by_report_id(db, entry["report_id"])
+            if doc is not None:
+                doc.status = "compiled"
+        await db.commit()
+        await _finish_run(db, run_id, "done", detail)
+    except Exception as exc:  # noqa: BLE001 —— 后台任务必须吞异常落账
+        log.exception("compile failed (run %s)", run_id)
+        try:
+            await db.rollback()
+        except Exception:  # noqa: BLE001
+            log.exception("rollback failed after compile failure (run %s)", run_id)
+        await _finish_run(db, run_id, "failed", f"{type(exc).__name__}: {exc}")
+    finally:
+        if wd is not None:
+            try:
+                await asyncio.to_thread(shutil.rmtree, wd, True)
+            except Exception:  # noqa: BLE001
+                log.exception("compile workspace cleanup failed (%s)", wd)

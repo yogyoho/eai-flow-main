@@ -4,6 +4,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[2]
 SKILL = REPO / "skills" / "public" / "geological-report"
 sys.path.insert(0, str(SKILL / "scripts"))
@@ -257,6 +259,239 @@ def test_bank_compile_bad_python_skips_group(tmp_path, capsys):
     assert (refs / "samples_bank/bank_index.json").exists()
     assert not (refs / "depth_targets/exploration/gold.json").exists()  # 该组标定被跳过
     assert "标定失败" in capsys.readouterr().err
+
+
+def _compile_stub_docs():
+    """两份 reviewed 行的桩（SimpleNamespace 即可——编排层只读这几个字段）。"""
+    from types import SimpleNamespace
+
+    return [
+        SimpleNamespace(report_id="rid-a", stage="exploration", mineral="gold", file_name="a.docx", clean_uri="s3://geo-samples/clean/rid-a/source.md", status="reviewed"),
+        SimpleNamespace(report_id="rid-b", stage="exploration", mineral="gold", file_name="b.docx", clean_uri="s3://geo-samples/clean/rid-b/source.md", status="reviewed"),
+    ]
+
+
+def _patch_compile_happy_path(monkeypatch, tmp_path, docs):
+    """编排层公共桩：reviewed 清单 / MinIO 下载 / 子进程 FakeProc / 无 RAGFlow env。返回 (exec_mock, write_back_rows, FakeProc)。"""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    wd = tmp_path / "wd"
+    wd.mkdir()
+    monkeypatch.setattr(service.tempfile, "mkdtemp", lambda prefix="": str(wd))
+
+    async def _list_reviewed(db, stage=None, mineral=None):
+        return list(docs)
+
+    write_back_rows = {d.report_id: SimpleNamespace(report_id=d.report_id, status="reviewed") for d in docs}
+
+    async def _by_rid(db, rid):
+        return write_back_rows[rid]
+
+    monkeypatch.setattr(service.crud, "list_reviewed", _list_reviewed)
+    monkeypatch.setattr(service.crud, "get_document_by_report_id", _by_rid)
+    monkeypatch.setattr(service.crud, "finish_run", AsyncMock())
+    monkeypatch.setattr(service.storage, "get_object", lambda uri: b"# x")
+    monkeypatch.delenv("GSB_RAGFLOW_DATASET_ID", raising=False)
+
+    class FakeProc:
+        returncode = 0
+        killed = False
+
+        async def communicate(self):
+            return b"", b""
+
+        def kill(self):
+            FakeProc.killed = True
+
+        async def wait(self):
+            return -9
+
+    async def _fake_exec(*cmd, **kwargs):
+        FakeProc.cmd = list(cmd)
+        FakeProc.kwargs = kwargs
+        return FakeProc()
+
+    exec_mock = AsyncMock(side_effect=_fake_exec)
+    monkeypatch.setattr(service.asyncio, "create_subprocess_exec", exec_mock)
+    return exec_mock, write_back_rows, FakeProc
+
+
+def _finish_call(await_args):
+    """service._finish_run 以 (db, run_id, status, detail) 全位置参数调 crud.finish_run——取出 (status, detail)。"""
+    _args, kwargs = await_args
+    return _args[2], (_args[3] if len(_args) > 3 else kwargs.get("detail"))
+
+
+def test_compile_skill_dir_guard():
+    """bug-526 模板守护：模块侧 _SKILL_DIR 必须指向 geological-report 且 bank_compile.py 实存。"""
+    from app.extensions.geo_samples import service
+
+    assert service._SKILL_DIR.name == "geological-report"
+    assert (service._SKILL_DIR / "scripts" / "bank_compile.py").exists()
+
+
+@pytest.mark.asyncio
+async def test_compile_no_reviewed_fails_fast(monkeypatch):
+    """空 reviewed 清单 → failed「无 reviewed」且绝不起子进程。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    async def _empty(db, stage=None, mineral=None):
+        return []
+
+    monkeypatch.setattr(service.crud, "list_reviewed", _empty)
+    monkeypatch.setattr(service.crud, "finish_run", AsyncMock())
+    exec_mock = AsyncMock()
+    monkeypatch.setattr(service.asyncio, "create_subprocess_exec", exec_mock)
+
+    await service.run_compile(AsyncMock(), "run-empty")
+
+    exec_mock.assert_not_awaited()
+    status, detail = _finish_call(service.crud.finish_run.await_args)
+    assert status == "failed"
+    assert "无 reviewed" in (detail or "")
+
+
+@pytest.mark.asyncio
+async def test_compile_invokes_subprocess_and_marks_compiled(tmp_path, monkeypatch):
+    """happy path：子进程 cmd 含 bank_compile.py/--workdir；两份 reviewed 行批量 status=compiled；run=done。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    docs = _compile_stub_docs()
+    _exec, rows, FakeProc = _patch_compile_happy_path(monkeypatch, tmp_path, docs)
+
+    await service.run_compile(AsyncMock(), "run-c", "exploration", "gold")
+
+    cmd = FakeProc.cmd
+    assert any(str(c).endswith("bank_compile.py") for c in cmd)
+    assert "--workdir" in cmd and any(str(c) == str(tmp_path / "wd") for c in cmd)
+    assert "--python" in cmd
+    assert FakeProc.kwargs.get("cwd") == str(service._SKILL_DIR)
+    assert rows["rid-a"].status == "compiled"
+    assert rows["rid-b"].status == "compiled"
+    service.crud.finish_run.assert_awaited_once()
+    status, detail = _finish_call(service.crud.finish_run.await_args)
+    assert status == "done"
+    assert "slices ok" in (detail or "")
+    assert "ragflow skipped" in (detail or "")  # env 未配置 → 明说跳过而非静默
+
+
+@pytest.mark.asyncio
+async def test_compile_subprocess_timeout_marks_failed(tmp_path, monkeypatch):
+    """超时加固：wait_for 超时 → kill 子进程 + failed「timeout」（recon risk：模板无超时会挂死 run）。"""
+    import asyncio
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    docs = _compile_stub_docs()
+    _exec, _rows, FakeProc = _patch_compile_happy_path(monkeypatch, tmp_path, docs)
+
+    async def _hang(self):
+        await asyncio.sleep(30)
+
+    FakeProc.communicate = _hang  # type: ignore[method-assign]
+    monkeypatch.setattr(service, "_COMPILE_TIMEOUT_S", 0.05)
+
+    await service.run_compile(AsyncMock(), "run-slow")
+
+    assert FakeProc.killed
+    status, detail = _finish_call(service.crud.finish_run.await_args)
+    assert status == "failed"
+    assert "timeout" in (detail or "")
+
+
+@pytest.mark.asyncio
+async def test_compile_ragflow_push_failure_does_not_fail_run(tmp_path, monkeypatch):
+    """RAGFlow 分发是辅助通道（spec §7 降级链）：push 异常 → run 仍 done，detail 记 failed 原因。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    docs = _compile_stub_docs()
+    _exec, _rows, _proc = _patch_compile_happy_path(monkeypatch, tmp_path, docs)
+    monkeypatch.setenv("GSB_RAGFLOW_DATASET_ID", "ds1")
+    monkeypatch.setattr(service, "push_slices_to_ragflow", AsyncMock(side_effect=RuntimeError("ragflow exploded")))
+
+    await service.run_compile(AsyncMock(), "run-rf")
+
+    status, detail = _finish_call(service.crud.finish_run.await_args)
+    assert status == "done"  # 编译产物已落盘，分发失败不回滚结论
+    assert "ragflow push failed" in (detail or "")
+
+
+@pytest.mark.asyncio
+async def test_compile_ragflow_push_delete_by_name(tmp_path, monkeypatch):
+    """push_slices_to_ragflow 直测：分页 list 建 name→id → 同名先 delete → upload → parse（不等解析完成）。"""
+    from types import SimpleNamespace
+
+    from app.extensions import config as ext_config_mod
+    from app.extensions.geo_samples import service
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    refs = tmp_path / "references"
+    slice_dir = refs / "samples_bank" / "exploration" / "slices" / "ch1"
+    slice_dir.mkdir(parents=True)
+    (slice_dir / "a__1.md").write_text("【矿种】gold｜【节号】1\n\n## 1 总论\n", encoding="utf-8")
+    (slice_dir / "b__1.md").write_text("【矿种】gold｜【节号】1\n\n## 1 总论\n", encoding="utf-8")
+    index = {
+        "exploration": {
+            "ch1": [
+                {"report_id": "rid-a", "mineral": "gold", "sec": "1", "title": "总论", "file": "samples_bank/exploration/slices/ch1/a__1.md"},
+                {"report_id": "rid-b", "mineral": "gold", "sec": "1", "title": "总论", "file": "samples_bank/exploration/slices/ch1/b__1.md"},
+            ]
+        }
+    }
+    (refs / "samples_bank" / "bank_index.json").write_text(json.dumps(index, ensure_ascii=False), encoding="utf-8")
+
+    class FakeClient:
+        init_kwargs: dict = {}
+        pages: list = []
+        ops: list = []
+
+        def __init__(self, api_key=None, base_url=None):
+            FakeClient.init_kwargs = {"api_key": api_key, "base_url": base_url}
+
+        async def list_documents(self, dataset_id, page=1, size=100):
+            FakeClient.pages.append((dataset_id, page, size))
+            data = {1: {"docs": [{"id": "old-a", "name": "a__1.md"}], "total": 150}, 2: {"docs": [{"id": "old-b", "name": "b__1.md"}], "total": 150}}.get(page)
+            if data is None:
+                return {"code": 0, "data": {"docs": [], "total": 0}}
+            return {"code": 0, "data": data}
+
+        async def delete_document(self, dataset_id, document_id):
+            FakeClient.ops.append(("delete", document_id))
+
+        async def upload_document(self, dataset_id, file_path, file_name=None, **kw):
+            FakeClient.ops.append(("upload", file_name))
+            return {"data": {"id": f"new-{file_name}"}}
+
+        async def parse_document(self, dataset_id, document_id):
+            FakeClient.ops.append(("parse", document_id))
+
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeClient)
+    monkeypatch.setattr(ext_config_mod, "get_extensions_config", lambda: SimpleNamespace(ragflow=SimpleNamespace(api_key="k", base_url="http://ragflow:9380", timeout=5)))
+
+    pushed = await service.push_slices_to_ragflow(refs, "ds1")
+
+    assert pushed == 2
+    assert FakeClient.pages == [("ds1", 1, 100), ("ds1", 2, 100)]  # total-aware 分页：2 页即停
+    assert FakeClient.init_kwargs == {"api_key": "k", "base_url": "http://ragflow:9380"}
+    # 每片：同名先 delete → upload（盘上路径+file_name）→ parse；两片顺序稳定
+    assert FakeClient.ops == [
+        ("delete", "old-a"),
+        ("upload", "a__1.md"),
+        ("parse", "new-a__1.md"),
+        ("delete", "old-b"),
+        ("upload", "b__1.md"),
+        ("parse", "new-b__1.md"),
+    ]
 
 
 def test_bank_compile_slug_and_utf8_guards_skip(tmp_path, capsys):

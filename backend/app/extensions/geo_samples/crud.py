@@ -56,6 +56,31 @@ async def list_documents(db: AsyncSession, stage: str | None = None, mineral: st
     return list((await db.execute(stmt)).scalars().all())
 
 
+async def list_reviewed(db: AsyncSession, stage: str | None = None, mineral: str | None = None) -> list[GsbDocument]:
+    """reviewed 清单——模块级编译（run_compile）的输入集。
+
+    created_at asc 保证 bank_compile 的 manifest 顺序与编译分组稳定（重编译幂等的排序基础）；
+    stage/mineral 均可空（空=全库 reviewed）。
+    """
+    stmt = select(GsbDocument).where(GsbDocument.status == "reviewed")
+    if stage:
+        stmt = stmt.where(GsbDocument.stage == stage)
+    if mineral:
+        stmt = stmt.where(GsbDocument.mineral == mineral)
+    stmt = stmt.order_by(GsbDocument.created_at.asc(), GsbDocument.id.asc())
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def has_running_compile_run(db: AsyncSession) -> bool:
+    """模块级编译互斥：任意 run_type=compile 且 status=running 的行存在即拒绝新编译。
+
+    limit(1) + scalar_one_or_none 同 has_running_run——陈旧 running 行堆积时不炸 MultipleResultsFound
+    （超龄自愈走 sweep_stale_runs，router 在调用本函数前先 sweep）。
+    """
+    stmt = select(GsbRunHistory).where(GsbRunHistory.run_type == "compile", GsbRunHistory.status == "running").limit(1)
+    return (await db.execute(stmt)).scalar_one_or_none() is not None
+
+
 async def list_redactions(db: AsyncSession, document_id: str) -> list[GsbRedaction]:
     stmt = select(GsbRedaction).where(GsbRedaction.document_id == document_id).order_by(GsbRedaction.start)
     return list((await db.execute(stmt)).scalars().all())

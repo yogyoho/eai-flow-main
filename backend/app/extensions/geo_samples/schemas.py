@@ -55,7 +55,7 @@ class DocumentOut(BaseModel):
 class RunOut(BaseModel):
     id: str
     document_id: str | None
-    run_type: str
+    run_type: str  # parse | redact | compile（compile=模块级编译，document_id 为 None）
     status: str
     detail: str | None
     created_at: datetime

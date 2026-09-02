@@ -27,6 +27,7 @@ import { useGsbRuns } from "@/extensions/geo-samples/hooks";
 const RUN_TYPE_ZH: Record<string, string> = {
   parse: "解析",
   redact: "脱敏",
+  compile: "编译",
 };
 const RUN_STATUS_ZH: Record<string, string> = {
   running: "运行中",
