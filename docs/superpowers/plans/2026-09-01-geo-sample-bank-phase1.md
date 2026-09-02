@@ -1948,6 +1948,7 @@ git status --porcelain   # 确认无遗漏文件
 ## 范围裁剪注记（相对 spec 的显式偏差）
 
 - **预览 PNG 对照延后 Phase 2**：spec §3.2 ReviewView 含「预览 PNG 对照」，其数据源是 eai-flow-ocr 返回的 `preview_png_b64`，存储通道需要改动 `parsers.ocr_pdf_to_markdown` 返回签名并落 MinIO——Phase 1 抽审以「命中清单 + 原文哈希 + 计数摘要」闭环（审「漏脱」的目的已达成），预览对照随 Phase 2 分发一起落地。
+- **批量上传（并发池）缩为单文件上传**：spec §3.2 DocumentsView 含「批量上传+并发池」（contract-price 同款），Phase 1 实现为单文件逐份上传——50 份验收走人工循环可达成；批量并发池随 Phase 2 批量入库一起落（届时一并处理终审 R2 连接占用 / R3 limit=50 计数上限）。
 - **`POST /pipeline/compile` 不在本期**（spec §5 明确 Phase 2），TasksView 只展示 parse/redact 运行。
 
 ## Phase 2 预告（另立计划）
