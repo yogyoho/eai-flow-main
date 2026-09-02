@@ -18,8 +18,8 @@ wait_for_parsing_complete(timeout=120, poll_interval=5) 轮询解析完成 → l
 content 拼接该片全文 → 四项断言（逐片 PASS/FAIL）：
   a) 节号完整性：片首标记行【矿种】…｜【节号】… 出现在拼接文本前 200 字符内（首块含标记）；
   b) 标题未被切散：源片每个 ## N 一级节标题行在拼接文本中出现（子节标题抽查首个）；
-  c) 表格完整性：源片 md 表格行与拼接文本按行文本精确计数一致（源片无表格则跳过）——检出
-     v0.25.3「md 表格重复」缺陷（重复时计数 > 源）；
+  c) 表格完整性：源片 md 表格行与拼接文本按行计数一致（行文本空格归一后精确匹配；源片无
+     表格则跳过）——检出 v0.25.3「md 表格重复」缺陷（重复时计数 > 源）；
   d) 父块返回：任一 chunk content 包含完整 ## N 标题 + 其后 50 字符（parent_child 父块抽查；
      切片本身标题后不足 50 字符时放宽为标题在场）。
 
@@ -75,8 +75,17 @@ def _heading_matches(text: str, pattern: re.Pattern[str]) -> list[tuple[str, int
 
 
 def _table_rows(text: str) -> list[str]:
-    """md 表格行（|…| 形态）逐行全文，strip 归一后供计数（容忍块边界换行差异）。"""
-    return [ln.strip() for ln in text.splitlines() if ln.strip().startswith("|") and ln.strip().endswith("|")]
+    """md 表格行（|…| 形态）逐行空格归一化后供计数。
+
+    RAGFlow 分块常压缩单元格空格（chunk `| ZK1 |12.5|` vs 源 `| ZK1 | 12.5 |`）——先
+    `" ".join(ln.split())` 归一空白串、再收敛管道符两侧空格，两侧同规则计数，避免系统性误报。
+    """
+    rows: list[str] = []
+    for ln in text.splitlines():
+        s = ln.strip()
+        if s.startswith("|") and s.endswith("|"):
+            rows.append(re.sub(r"\s*\|\s*", "|", " ".join(s.split())))
+    return rows
 
 
 def check_slice(src: str, joined: str, contents: list[str]) -> list[tuple[str, str, str]]:

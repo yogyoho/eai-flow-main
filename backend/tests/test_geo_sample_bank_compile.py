@@ -748,6 +748,24 @@ def test_acceptance_table_duplication_detected(tmp_path, monkeypatch, capsys):
     assert ("delete", f"doc::{p.name}") in FakeAccClient.ops  # FAIL 后默认清理照常执行
 
 
+def test_acceptance_table_row_whitespace_compression_still_passes(tmp_path, monkeypatch, capsys):
+    """RAGFlow 分块常压缩单元格空格（chunk `| ZK1 |12.5|` vs 源 `| ZK1 | 12.5 |`）——
+    行文本空格归一后计数一致，表格项仍 PASS，绝不系统性误报表格 FAIL 误导降级路径。"""
+    mod = _load_acceptance_module()
+    # 长正文：父块探针（标题后 50 字符）落在未被压缩的正文内，测试只针对表格计数项
+    p = _write_acc_slice(tmp_path, "exploration", "rid-ws", "gold", "2", _LONG_BODY, table=True)
+    _patch_acc_env(monkeypatch)
+    FakeAccClient.mutate[p.name] = lambda s: ["\n".join(ln.replace(" ", "") if ln.lstrip().startswith("|") else ln for ln in s.splitlines())]  # 仅表格行单元格空格被压掉（RAGFlow 压缩场景；不牵连父块探针）
+
+    rc = mod.main_with_args(["--bank", str(tmp_path / "samples_bank")])
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "ACCEPTANCE: 1/1 PASS" in out
+    assert "表格行计数不符" not in out
+    assert "行表格逐一计数一致" in out
+
+
 def test_acceptance_missing_marker_in_first_chunk_fails(tmp_path, monkeypatch, capsys):
     """首块无标记行 → 节号完整性（marker 项）FAIL、rc=1；其余项不受牵连照常评估。"""
     mod = _load_acceptance_module()
