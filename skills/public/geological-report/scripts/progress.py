@@ -297,7 +297,7 @@ def cmd_gate(args: argparse.Namespace) -> int:
     stage = json.loads(Path(doc["stage_path"]).read_text(encoding="utf-8"))
     import build_output  # 同目录脚本；targets 语义与 build_output CLI 一致（--targets 仅调试）
 
-    targets, _src = build_output.resolve_targets(args.targets, Path(doc["stage_path"]))
+    targets, _src = build_output.resolve_targets(args.targets, Path(doc["stage_path"]), data_dir=Path(doc["data_dir"]))  # EAI-CUSTOM (geo-sample-bank Phase 2 T4)
     passed: list[str] = []
     failed: list[str] = []
     for ch in wanted:

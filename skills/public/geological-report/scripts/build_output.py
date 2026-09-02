@@ -435,17 +435,61 @@ def load_targets(path: Path) -> dict | None:
 CANONICAL_TARGETS = Path(__file__).resolve().parent.parent / "references" / "depth_targets.json"
 STANDARDS_PATH = Path(__file__).resolve().parent.parent / "references" / "standards_index.json"
 
+# EAI-CUSTOM (geo-sample-bank Phase 2 T4): commodity 中文自由串 → 样例库基线 slug 归一化。
+# 顺序即优先级：「铜银金」含「铜」→ copper（首命中）；词表外返回 None → 走既有探测链零感知。
+MINERAL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
+    ("copper", ("铜",)),
+    ("coal", ("煤",)),
+    ("gold", ("金",)),
+    ("iron", ("铁",)),
+    ("lead_zinc", ("铅锌", "铅", "锌")),
+]
 
-def resolve_targets(args_targets: str | None, stage_path: Path) -> tuple[dict | None, Path]:
-    """--targets 显式路径优先（调试通道）；缺省沿 stage 文件向上三级探测，探测不中兜底技能自身基准。返回 (targets, 来源路径)。
+
+def normalize_mineral(commodity: str | None) -> str | None:
+    """中文 commodity → 矿种 slug；空值/词表外 → None（调用方退回既有探测链）。"""
+    if not commodity:
+        return None
+    for slug, keys in MINERAL_ALIASES:
+        if any(k in commodity for k in keys):
+            return slug
+    return None
+
+
+def _project_mineral(data_dir: Path | str | None) -> str | None:
+    """读 <data_dir>/00_project.json 的 commodity 并归一化；目录缺失/损坏/词表外一律 None。"""
+    if data_dir is None:
+        return None
+    p = Path(data_dir) / "00_project.json"
+    if not p.exists():
+        return None
+    try:
+        return normalize_mineral(json.loads(p.read_text(encoding="utf-8")).get("commodity"))
+    except (OSError, ValueError):
+        return None
+
+
+def resolve_targets(args_targets: str | None, stage_path: Path, data_dir: Path | str | None = None) -> tuple[dict | None, Path]:
+    """--targets 显式路径优先（调试通道）；缺省先按矿种查样例库基线目录，再沿 stage 文件向上三级探测，探测不中兜底技能自身基准。返回 (targets, 来源路径)。
 
     页面实测线程 03e18e4a 教训：agent 伪造 coefficient=0.01 的 depth_targets.json 显式传入，L2 目标全变 0——
     非技能基准必须醒目可见且留痕，不可静默生效。复核修复（bug-3058）：警告覆盖一切非技能基准来源
     （显式 --targets 与 stage 旁探测一致——stage 落在可写目录时探测路径同样可被投放伪造基准）。
+
+    EAI-CUSTOM (geo-sample-bank Phase 2 T4)：data_dir 给出且 00_project.json 的 commodity 命中词表时，
+    优先取 references/depth_targets/<stage_stem>/<mineral>.json（bank_compile 由管理模块门控生成的
+    技能自有资产，早于三级探测、不打非技能基准警告，origin 仍由返回值第二元照记）。
     """
     if args_targets:
         src = Path(args_targets)
     else:
+        # EAI-CUSTOM (geo-sample-bank Phase 2 T4)：矿种选基线——早于三级探测，命中即返回（技能自有资产无警告）。
+        mineral = _project_mineral(data_dir)
+        if mineral:
+            cand = CANONICAL_TARGETS.parent / "depth_targets" / stage_path.stem / f"{mineral}.json"
+            if cand.exists():
+                print(f"[build] 深度基准: {cand}（样例库编译产物，来源已记入 delivery_manifest）", file=sys.stderr)
+                return load_targets(cand), cand
         src = None
         for anc in (stage_path.parent, stage_path.parent.parent, stage_path.parent.parent.parent):
             cand = anc / "depth_targets.json"
@@ -715,7 +759,7 @@ def main() -> int:
         return EXIT_ERROR
     try:
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
-        targets, targets_src = resolve_targets(args.targets, Path(args.stage))
+        targets, targets_src = resolve_targets(args.targets, Path(args.stage), data_dir=Path(args.data_dir))  # EAI-CUSTOM (geo-sample-bank Phase 2 T4)
         if args.chapter:
             run_chapter_gate(stage, Path(args.data_dir), Path(args.state_dir), args.chapter, targets)
             return EXIT_OK
