@@ -30,7 +30,7 @@
 
 ## 动笔前读深度目标（bug-2221 根治）
 
-写每章前读 `references/depth_targets.json` 该章 `median_eff`/`median_table_rows`/`median_paragraphs`，以此为篇幅下限自检；build_output 深度目标门兜底（eff ≥ 样例 median × 0.6 × 覆盖缩放，FAIL exit 1）。缺数写 `[待确认]` 不砍段，数据覆盖不足时门自动放宽目标。**深度基准只认技能自带 references/depth_targets.json**——绝不传 `--targets` 换基准、绝不自造/改写 depth_targets 文件、绝不绕过 build_output 直调 assemble（线程 03e18e4a 死循环取证：伪造基准+直调绕门 → 熔断）。门 FAIL 的唯一合法出路=补写正文。
+写每章前读 `references/depth_targets.json` 该章 `median_eff`/`median_table_rows`/`median_paragraphs`，以此为篇幅下限自检；build_output 深度目标门兜底（eff ≥ 样例 median × 0.6 × 覆盖缩放，FAIL exit 1）。深度基线按矿种分文件（`references/depth_targets/<阶段>/<矿种>.json`，由样例库编译生成）；无对应矿种文件时回退 `references/depth_targets.json`。实际目标以单章门报错行内嵌的「样例 median × 系数」数值为准。缺数写 `[待确认]` 不砍段，数据覆盖不足时门自动放宽目标。**深度基准只认技能自带 references/depth_targets.json**——绝不传 `--targets` 换基准、绝不自造/改写 depth_targets 文件、绝不绕过 build_output 直调 assemble（线程 03e18e4a 死循环取证：伪造基准+直调绕门 → 熔断）。门 FAIL 的唯一合法出路=补写正文。
 
 ## 大章分节写作指引（ch6 等最大目标章）
 
@@ -38,4 +38,4 @@
 
 ## 范文与检索（仅范式，禁抄）
 
-动笔前读 `references/samples/exploration/chN_sample.md` 同章范文——只学叙述范式（要素组织成段的方式/专业表述/表格用法），仿写而非摘抄。范文中任何数值/矿名/地名是样例项目的，一律不得进入本项目正文。检索补充（如可用）：harness 工具 `knowledge_search`（本地 RAGFlow，固体矿产报告知识库 / ragflow-laws-standards 等 5 库）；chunk 同样仅限叙述范式，矿名/地名/数值禁入正文，规范引用只从 standards_index 实有编号（ragflow-laws-standards 条文 chunk 仅作人工核实线索，禁直接引条款号）。
+动笔前优先读 `references/samples_bank/bank_index.json` 里同矿种同节号切片（真实同矿种范式）；bank 无该章切片时再读东川 `references/samples/exploration/chN_sample.md` 同章范文——只学叙述范式（要素组织成段的方式/专业表述/表格用法），仿写而非摘抄。范文中任何数值/矿名/地名是样例项目的，一律不得进入本项目正文。检索补充（如可用）：harness 工具 `knowledge_search`（本地 RAGFlow，固体矿产报告知识库 / ragflow-laws-standards 等 5 库）；chunk 同样仅限叙述范式，矿名/地名/数值禁入正文，规范引用只从 standards_index 实有编号（ragflow-laws-standards 条文 chunk 仅作人工核实线索，禁直接引条款号）。

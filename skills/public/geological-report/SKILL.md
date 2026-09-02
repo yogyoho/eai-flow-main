@@ -115,8 +115,9 @@ formula_runner.py  execute   → state/formula_state.json（槽位注册表，�
 自读输入（沙箱路径，不贴全文）：
   /mnt/user-data/workspace/geo-report/state/formula_state.json（槽位词汇表——正文数值只写 {{SLOT:key}}）
   /mnt/skills/public/geological-report/references/chapter_craft.md（写作工艺，必读）
-  /mnt/skills/public/geological-report/references/samples/exploration/chN_sample.md（同章范文）
-  /mnt/skills/public/geological-report/references/depth_targets.json（该章深度目标）
+  /mnt/skills/public/geological-report/references/samples_bank/bank_index.json —— 范文索引：优先取同矿种同节号切片
+  /mnt/skills/public/geological-report/references/samples/exploration/chN_sample.md —— 东川铜矿同章范文（bank 无该章切片时回退）
+  /mnt/skills/public/geological-report/references/depth_targets/<阶段>/<矿种>.json —— 该矿种深度基线（矿种=00_project.commodity 归一化，如 岩金→gold；无对应文件回退 references/depth_targets.json，实际目标以门报错行内嵌数值为准）
   /mnt/skills/public/geological-report/references/stages/<S>.json（该章 sections 要素链——逐要素成段的依据）
   本章切片（title + toc，直接贴）
 输出契约：直写 /mnt/user-data/workspace/geo-report/state/chapters/chN.md（绝对沙箱路径），首行 ## N，缺数标 [待确认]/[数据未提供]
