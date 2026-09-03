@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -28,7 +27,6 @@ TARGETS = SKILL / "references" / "depth_targets.json"
 
 sys.path.insert(0, str(SCRIPTS))
 
-_NUM_RE = re.compile(r"\d+\.\d+(?:\.\d+)?")
 # 薄章句（3 句，每块 ~28 eff 字符）：全部章节压到 L0（<1000）或 L2 之下 → 10 章必各报 1 项
 _THIN = "本段为合成薄章节正文。语句仅为满足三句下限。不承载地质含义。"
 # 扩写段（3 句，~104 eff 字符）：pad 时整段重复
@@ -42,18 +40,39 @@ def _run(*args, expect=(0,)):
 
 
 def _skeleton(stage: dict, ch_id: str, filler: str) -> str:
-    """stage toc 骨架：全部节号落标题、每叶子块 filler（L1/toc 门恒过；eff 由 filler 尺寸决定）。"""
+    """stage toc 骨架：全部节号落真实节标题（build_output._toc_index 同源解析，bug2223 同款）、每叶子块 filler（L1/toc 门恒过；eff 由 filler 尺寸决定）。
+
+    占位「小节」在 bug-3036 标题比对门下必 FAIL（P4-T7 双修：与交付名门同 commit）。
+    """
+    import build_output
+
     ch = stage["chapters"][ch_id]
     n = ch_id[2:]
     md = [f"## {n} {ch.get('title', '')}", "", filler]
-    seen: set[str] = set()
-    for sub in ch.get("toc", []):
-        for no in _NUM_RE.findall(sub):
-            if no in seen:
-                continue
-            seen.add(no)
-            md += [f"{'###' if no.count('.') == 1 else '####'} {no} 小节", "", filler]
+    _nos, _titles = build_output._toc_index(ch.get("toc", []))
+    for no in sorted(_nos, key=lambda s: [int(p) for p in s.split(".")]):
+        md += [f"{'###' if no.count('.') == 1 else '####'} {no} {_titles.get(no, '小节')}".rstrip(), "", filler]
     return "\n".join(md) + "\n"
+
+
+def _contract_block(stage: dict, data: Path) -> str:
+    """一致性合约门（XS3 判定词逐字在场 / XS5 采空区两值在场）口径句——hydro_eng_env 表单直读（P4-T7 第三重连锁门）。
+
+    合成骨架不含真实判定口径 → XS3/XS5 必 FAIL；仅注入补足深度 build（薄 build 保持恰好 10 项深度未过，
+    「一次报齐」锚不被口径项稀释）。纯正文段落无标题——目录覆盖门契约外自创节拦截只看 # 标题。
+    """
+    spec = stage["forms"]["hydro_eng_env"]
+    p = data / spec["file"]
+    hee = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    vs = hee.get("type_verdicts") or {}
+    goaf = hee.get("engineering.goaf") or {}
+    lines: list[str] = []
+    for k in ("hydro_type", "engineering_type", "environment_type", "combined_type"):
+        if vs.get(k):
+            lines += [f"综合判定：{vs[k]}。", ""]
+    if goaf.get("count") is not None:
+        lines += [f"区内采空区共 {goaf.get('count')} 处，总体积 {goaf.get('volume_wm3')} 万立方米。", ""]
+    return "\n".join(lines)
 
 
 @pytest.fixture(scope="module")
@@ -77,8 +96,8 @@ def e2e(tmp_path_factory):
 
     stage = json.loads(STAGE.read_text(encoding="utf-8"))
     frozen = json.loads((state / "formula_state.json").read_text(encoding="utf-8"))
-    project = json.loads((data / "00_project.json").read_text(encoding="utf-8"))
-    deliv = out / f"{project['project_name']}-{project['stage']}-地质勘查报告.md"
+    # 交付名门同源（bug-3036 去重：项目名尾缀已含阶段词不重复拼接——「勘探-勘探」双叠名回归锚）
+    deliv = out / build_output.expected_deliverable_name(stage, data)
 
     # ② 薄章节 build：全 10 章压瘦 → 一次报齐
     for ch_id in stage["chapters"]:
@@ -91,11 +110,15 @@ def e2e(tmp_path_factory):
         errors="replace",
     )
 
-    # ③ 补足深度 build：每章 eff ≥ 目标×1.15 → BUILD_READY
+    # ③ 补足深度 build：每章 eff ≥ 目标×1.15 → BUILD_READY；合约章节（stage forms.chapters）注入 XS3/XS5 口径块
     targets = json.loads(TARGETS.read_text(encoding="utf-8"))
+    contract = _contract_block(stage, data)
+    contract_chs = set(stage["forms"]["hydro_eng_env"].get("chapters", []))
     for ch_id in stage["chapters"]:
         target = targets["per_chapter"][ch_id]["median_eff"] * targets.get("coefficient", 0.6) * 1.15
         md = _skeleton(stage, ch_id, _FAT)
+        if ch_id in contract_chs:
+            md += contract
         while build_output.effective_chars(md) < target:
             md += "\n" + _FAT
         (state / "chapters" / f"{ch_id}.md").write_text(md, encoding="utf-8")
