@@ -152,6 +152,9 @@ class TestConvergeLawKb:
         status, diffs, ds = await _routers._converge_law_kb(rf, "ragflow-laws-standards", ["tag-1"])
         assert status == "updated" and ds == "ds-1" and len(rf.puts) == 1
         assert diffs["chunk_method"] == ["manual", "naive"]
+        # 载荷契约:PUT 收到合并 tag_kb_ids 后的 parser_config,而非裸 seed
+        assert rf.puts[0][1] == "naive"
+        assert rf.puts[0][2]["tag_kb_ids"] == ["tag-1"]
 
     @pytest.mark.asyncio
     async def test_converge_aligned_second_run_no_put(self, monkeypatch):
@@ -173,3 +176,6 @@ class TestConvergeLawKb:
         rf = _FakeRF(existing=False, current={})
         status, _, ds = await _routers._converge_law_kb(rf, "ragflow-laws-standards", ["tag-1"])
         assert status == "created" and ds == "ds-new"
+        # 载荷契约:create 收到合并 tag_kb_ids 后的 parser_config,而非裸 seed
+        assert rf.puts[0][1] == "naive"
+        assert rf.puts[0][2]["tag_kb_ids"] == ["tag-1"]

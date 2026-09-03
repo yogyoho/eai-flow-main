@@ -116,7 +116,7 @@ async def _converge_law_kb(
     rf_client,  # RAGFlowClient 实例(测试传 fake)
     kb_name: str,
     industry_tag_ids: list[str],
-) -> tuple[str, dict, str | None]:
+) -> tuple[str, dict[str, list], str | None]:
     """单库幂等收敛:返回 (状态 aligned|updated|created, diffs, dataset_id)。"""
     seed = _KB_SEED_CONFIG[kb_name]
     parser_config = dict(seed["parser_config"])
@@ -183,14 +183,14 @@ async def init_ragflow_knowledge_bases(
 
     from .service import RAGFLOW_DATASET_GROUPS, RAGFLOW_KB_MAPPING
 
-    # 确定需要初始化的知识库名称（去重）
+    # 确定需要初始化的知识库名称（去重；值已死,仅键参与迭代,集合语义）
     if law_type:
         kb_name = RAGFLOW_KB_MAPPING.get(law_type)
         if not kb_name:
             raise HTTPException(status_code=400, detail=f"未知的法规类型: {law_type}")
-        datasets_to_init = {kb_name: RAGFLOW_DATASET_GROUPS[kb_name]}
+        datasets_to_init = {kb_name}
     else:
-        datasets_to_init = dict(RAGFLOW_DATASET_GROUPS)
+        datasets_to_init = set(RAGFLOW_DATASET_GROUPS)
 
     results = {"created": [], "aligned": [], "updated": [], "diffs": {}, "already_exists": [], "failed": [], "registered": []}
 
@@ -243,9 +243,8 @@ async def list_industries(
         if tag_ds:
             docs = (await rf_client.list_documents(tag_ds["id"])).get("data", {}).get("docs", [])
             for doc in docs:
-                # 翻页读取全部标签块,消除 >100 块时的静默截断
-                page = 1
-                while True:
+                # 翻页读取全部标签块,消除 >100 块时的静默截断;上限 10 页(1000 块)防病态服务端
+                for page in range(1, 11):
                     r = await rf_client.list_chunks(tag_ds["id"], doc["id"], page=page, size=100)
                     data = r.get("data") or {}
                     chunks = data.get("chunks") or []
@@ -254,7 +253,6 @@ async def list_industries(
                     total = data.get("total") or 0
                     if not chunks or page * 100 >= total:
                         break
-                    page += 1
     except Exception as e:
         logger.warning("行业标签集读取失败(回退兜底名单): %s", e)
     return IndustriesResponse(industries=merge_industries(found))
