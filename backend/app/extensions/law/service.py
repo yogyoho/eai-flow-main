@@ -42,17 +42,35 @@ RAGFLOW_KB_MAPPING = {
     "technical": "ragflow-laws-standards",
 }
 
-# 去重后的唯一知识库名称及其对应的分块策略
-RAGFLOW_DATASET_GROUPS = {
-    "ragflow-laws-legal": "laws",
-    "ragflow-laws-standards": "manual",
+_KB_SEED_CONFIG: dict[str, dict] = {
+    # 法律/法规/规章(第X条文体):A/B-4 实测 laws 每条一块+章路径最优;laws 无 chunk_token_num 旋钮
+    "ragflow-laws-legal": {
+        "chunk_method": "laws",
+        "parser_config": {"layout_recognize": "DeepDOC", "auto_keywords": 0, "auto_questions": 0},
+    },
+    # 标准/规范:A/B-1 实测 naive-384 最优(docs/superpowers/specs/2026-09-03-law-kb-seed-and-import-design.md)
+    "ragflow-laws-standards": {
+        "chunk_method": "naive",
+        "parser_config": {
+            "chunk_token_num": 384,
+            "delimiter": "\n。！？；",  # 首字符为真实换行符;API 不做 unicode_escape
+            "layout_recognize": "DeepDOC",
+            "html4excel": True,
+            "auto_keywords": 0,
+            "auto_questions": 0,
+            "enable_children": False,
+            "tag_kb_ids": [],  # init 时解析「行业标签集」后填充(见 routers.init_ragflow_knowledge_bases)
+            "topn_tags": 3,
+        },
+    },
 }
 
-# RAGFlow分块策略映射: law_type -> chunk_method (parser_id)
-# 法律/法规/规章 → laws parser（识别条/款/项结构）
-# 标准/规范 → manual parser（按章/节标题边界分块）
-# parser_config 不在此处设置，由 RAGFlow 使用其默认值
-# (chunk_token_num=512, delimiter="\n!?。；！？", layout_recognize="DeepDOC")
+# 兼容别名:旧引用点(routers/service 循环)继续可用,单一真相源是 _KB_SEED_CONFIG
+RAGFLOW_DATASET_GROUPS = {name: cfg["chunk_method"] for name, cfg in _KB_SEED_CONFIG.items()}
+
+# RAGFlow分块策略映射: law_type -> chunk_method
+# 法律/法规/规章 → laws(第X条结构,A/B-4 实测最优);标准/规范 → naive(A/B-1 实测最优)
+# 分块参数以 _KB_SEED_CONFIG 为单一真相源,随 init-ragflow 幂等收敛到库上
 _LAW_CHUNK_METHOD: dict[str, str] = {
     "law": "laws",
     "regulation": "laws",
@@ -66,8 +84,17 @@ _LAW_CHUNK_METHOD: dict[str, str] = {
 }
 
 
+def build_ragflow_doc_name(industry: str | None, law_number: str | None, title: str, ext: str) -> str:
+    """组装 RAGFlow 文档名:【行业】标准号 标题.ext(行业/标准号可缺省)。"""
+    parts = f"【{industry}】" if industry else ""
+    num = f"{law_number} " if law_number else ""
+    return f"{parts}{num}{title}.{ext}"
+
+
 class LawService:
     """法规管理服务"""
+
+    KB_SEED_CONFIG = _KB_SEED_CONFIG
 
     # ---- 文件解析 ----
 
