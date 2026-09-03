@@ -23,7 +23,9 @@ function lastFormCall(): [string, FormData] {
 
 describe("qs", () => {
   test("skips empty values", () => {
-    expect(qs({ stage: "exploration", status: "", mineral: undefined })).toBe("?stage=exploration");
+    expect(qs({ stage: "exploration", status: "", mineral: undefined })).toBe(
+      "?stage=exploration",
+    );
   });
 
   test("returns empty string for all-empty input", () => {
@@ -35,7 +37,11 @@ describe("qs", () => {
 describe("geoSamplesApi", () => {
   test("listDocuments builds URL with filters", async () => {
     rs.mocked(authFetch).mockResolvedValue({ items: [], skip: 0, limit: 50 });
-    await geoSamplesApi.listDocuments({ stage: "exploration", mineral: "gold", status: "redacted" });
+    await geoSamplesApi.listDocuments({
+      stage: "exploration",
+      mineral: "gold",
+      status: "redacted",
+    });
     const [url] = lastCall();
     expect(url).toContain("/geo-samples/documents");
     expect(url).toContain("mineral=gold");
@@ -48,7 +54,9 @@ describe("geoSamplesApi", () => {
     const [url, opts] = lastCall();
     expect(url).toBe("/geo-samples/documents/d1/review");
     expect(opts.method).toBe("POST");
-    expect(opts.body).toEqual(JSON.stringify({ decision: "approve", note: null }));
+    expect(opts.body).toEqual(
+      JSON.stringify({ decision: "approve", note: null }),
+    );
   });
 
   test("uploadDocument posts FormData via authFormFetch", async () => {
@@ -67,6 +75,18 @@ describe("geoSamplesApi", () => {
     await geoSamplesApi.parse("d1");
     const [url, opts] = lastCall();
     expect(url).toBe("/geo-samples/documents/d1/parse");
+    expect(opts.method).toBe("POST");
+  });
+
+  // suggest-id 端点为 POST ?title=Query(...)：漏 method 会走 GET 405；漏 encodeURIComponent
+  // 会让 &/= 截断查询参数（P3-T7）。
+  test("suggestId POSTs query-encoded title", async () => {
+    rs.mocked(authFetch).mockResolvedValue({ report_id: "gsb-kc-cu-0001" });
+    await geoSamplesApi.suggestId("某铜矿&阶段=勘探");
+    const [url, opts] = lastCall();
+    expect(url).toBe(
+      `/geo-samples/documents/suggest-id?title=${encodeURIComponent("某铜矿&阶段=勘探")}`,
+    );
     expect(opts.method).toBe("POST");
   });
 });
