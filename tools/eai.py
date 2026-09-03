@@ -19,10 +19,12 @@ EAI-CUSTOM (geo-batch-cli, spec 2026-09-03): 新增独立运维工具。
 - 探活 GET /api/v1/auth/me：200=有效 / 401=失效（勿用 /api/permissions/me——无权限用户 403 误判）。
 - gsb 端点（前缀 /api/extensions/geo-samples）：POST /documents/suggest-id?title=<题名>
   （POST 方法 + Query 传参，httpx params 自动 URL 编码 CJK；题名解析在服务端，CLI 不做本地解析）、
-  POST /documents/upload（multipart file + Form report_id/stage/mineral/region，空值不透传走服务端
-  默认；409 detail 含「已存在」=撞号顺延重试，含 file_hash/相同内容=内容重复不重试）、
+  POST /documents/upload（multipart file + Form report_id/stage/mineral/region + defer_parse，空值
+  不透传走服务端默认；409 detail 含「已存在」=撞号顺延重试，含 file_hash/相同内容=内容重复不重试；
+  --defer-parse 时透传 defer_parse=true——服务端 defer：不 create_run、响应省略 run_id，行停
+  uploaded，后续经 parse-batch 端点或单体 /parse 触发）、
   POST /documents/{id}/parse、GET /documents?skip&limit（limit≤200）。
-  注意 upload 端点自身已后台起 parse 并返回其 run_id——CLI 的非 defer parse 调用是幂等兜底，
+  注意非 defer 时 upload 端点自身已后台起 parse 并返回其 run_id——CLI 的单体 parse 调用是幂等兜底，
   409「已在跑」属预期。
 - cpa 端点（前缀 /api/extensions/contract-price）：POST /documents/upload 仅 multipart file 字段
   （409=内容重复计 skipped）；POST /pipeline/run body {"mode":"table","trigger":"manual"}
@@ -222,7 +224,9 @@ def upload_one(sess, file_path: str, row: dict, defer_parse: bool = False) -> di
     """上传单份样例（并发工作函数，httpx Client 线程安全）。
 
     - multipart files={"file": (file_name, fh)} + Form report_id/stage/mineral/region（空值不透传，
-      走服务端默认）；409 detail 含「已存在」且含 report_id → 序号 +1 重试 ≤10 次；
+      走服务端默认）；defer_parse=True 时透传 defer_parse=true——服务端 defer：不 create_run、响应
+      省略 run_id，行停 uploaded，后续经 parse-batch 端点或单体 /parse 触发，且本地不再发幂等
+      parse；409 detail 含「已存在」且含 report_id → 序号 +1 重试 ≤10 次；
       含 file_hash/相同内容 → 内容重复，顺延无意义，计 skipped。
     - 成功后 defer_parse=False 时再 POST /documents/{id}/parse——upload 端点自身已后台起 parse，
       此调用为幂等兜底，409「已在跑」属预期；其余 parse 失败只告警不回滚上传（文档已入库，
@@ -236,6 +240,8 @@ def upload_one(sess, file_path: str, row: dict, defer_parse: bool = False) -> di
             val = str(row.get(key) or "").strip()
             if val:
                 data[key] = val
+        if defer_parse:
+            data["defer_parse"] = "true"
         with open(file_path, "rb") as fh:
             resp = sess.post(f"{GSB_BASE}/documents/upload", files={"file": (file_name, fh)}, data=data)
         if resp.status_code == 409:
@@ -284,7 +290,7 @@ def _gsb_register_args(sp):
     _add_session_args(p_import)
     p_import.add_argument("--csv", required=True, help="scan 产出的清单文件")
     p_import.add_argument("--workers", type=int, default=4, help="并发上传线程数（默认 4）")
-    p_import.add_argument("--defer-parse", action="store_true", help="上传后不触发解析（服务端 upload 仍会自动起 parse）")
+    p_import.add_argument("--defer-parse", action="store_true", help="服务端 defer：上传透传 defer_parse=true，行停 uploaded，后续经 parse-batch 端点或单体 /parse 触发")
     p_import.add_argument("--dir", default=None, help="文件根目录（缺省为清单所在目录——scan 把清单写在扫描根）")
     p_status = sub.add_parser("status", help="文档列表摘要 + 各状态计数")
     _add_session_args(p_status)

@@ -196,6 +196,27 @@ def test_import_409_bumps_sequence(tmp_path):
     assert result2["report_id"] == "gsb-kc-cu-0001" and parse_calls == []  # defer 时不触发 parse
 
 
+def test_upload_one_defer_parse_passthrough(tmp_path):
+    """defer_parse=True → multipart data 含 defer_parse=true 且成功后不调 parse。"""
+    f = tmp_path / "a.docx"
+    f.write_bytes(b"x")
+    posts = []
+
+    class FakeSess:
+        def post(self, path, files=None, data=None, **kw):
+            posts.append((path, data))
+            if path.endswith("/upload"):
+                return httpx.Response(200, json={"document": {"id": "d1", "report_id": data["report_id"]}}, request=httpx.Request("POST", path))
+            return httpx.Response(409, json={"detail": "解析任务已在跑"}, request=httpx.Request("POST", path))
+
+    row = {"file_name": "a.docx", "report_id": "gsb-kc-cu-0001", "stage": "exploration", "mineral": "copper", "region": "", "confidence": "auto"}
+    result = eai.upload_one(FakeSess(), str(f), row, defer_parse=True)
+    assert result["report_id"] == "gsb-kc-cu-0001"
+    up_data = posts[0][1]
+    assert up_data["defer_parse"] == "true"
+    assert len([p for p, _ in posts if p.endswith("/parse")]) == 0  # 不再发幂等 parse
+
+
 def test_cmd_gsb_import_mixed(tmp_path, capsys):
     """cmd 编排（T6 review Important-2）：1 成功 + 1 连接异常 → rc=1、failed CSV 含失败行原内容
     +错误列、state 只含成功 rid（失败行不得进断点，重跑须可重试）。"""
