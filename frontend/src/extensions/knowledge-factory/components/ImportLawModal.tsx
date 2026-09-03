@@ -75,7 +75,12 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const importMutation = useImportLawWithFile();
-  const industries = useLawIndustries().data;
+  const {
+    data: industries,
+    isLoading: industriesLoading,
+    isError: industriesError,
+    refetch: refetchIndustries,
+  } = useLawIndustries();
 
   const handleAddKeyword = () => {
     if (keywordInput.trim() && !formData.keywords.includes(keywordInput.trim())) {
@@ -352,8 +357,24 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                         { value: INDUSTRY_NONE, label: "不标记行业" },
                         ...(industries ?? []).map((it) => ({ value: it, label: it })),
                       ]}
+                      placeholder="请选择行业领域"
                       className="w-full"
                     />
+                    {industriesLoading && (
+                      <p className="mt-1 text-xs text-muted-foreground">行业列表加载中…</p>
+                    )}
+                    {industriesError && (
+                      <p className="mt-1 text-xs text-destructive">
+                        行业列表加载失败
+                        <button
+                          type="button"
+                          className="ml-2 underline"
+                          onClick={() => refetchIndustries()}
+                        >
+                          重试
+                        </button>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
