@@ -169,3 +169,15 @@ async def next_report_id(db: AsyncSession, prefix: str) -> str:
         if tail.isdecimal():  # isdecimal 严格十进制（isdigit 会放过上标数字等 Unicode 陷阱）
             max_seq = max(max_seq, int(tail))
     return f"{prefix}-{max_seq + 1:04d}"
+
+
+async def delete_document(db: AsyncSession, document_id: str) -> None:
+    """删文档行（batch-cli T3）。行不存在静默返回（同 finish_run 风格）。
+
+    审计语义：gsb_redactions / gsb_run_history 故意不建 FK——文档删除后流水保留
+    （document_id 悬空），跑批审计链不随行消失。
+    """
+    doc = await get_document(db, document_id)
+    if doc:
+        await db.delete(doc)
+        await db.commit()

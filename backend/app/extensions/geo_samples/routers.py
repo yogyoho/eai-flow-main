@@ -6,7 +6,8 @@
 Mounted into the Gateway under ``/api/extensions/geo-samples``. Endpoints:
 
   Functional area 1 (documents): GET /documents, GET /documents/{document_id},
-                                 POST /documents/upload, POST /documents/suggest-id
+                                 POST /documents/upload, POST /documents/suggest-id,
+                                 DELETE /documents/{document_id}
   Functional area 2 (pipeline)  : POST /documents/{document_id}/parse,
                                  POST /documents/{document_id}/redact
   Functional area 3 (review)    : GET /documents/{document_id}/redactions,
@@ -112,6 +113,29 @@ async def suggest_id_impl(db: AsyncSession, title: str) -> dict:
 @router.post("/documents/suggest-id")
 async def suggest_id(title: str = Query(...), db: AsyncSession = Depends(get_db), _: object = _PERM):
     return await suggest_id_impl(db, title)
+
+
+@router.delete("/documents/{document_id}")
+async def delete_document(document_id: str, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """删除样例（batch-cli T3, spec 2026-09-03）：MinIO 三前缀对象（raw/work/clean，逐一判 None）
+    best-effort 删除（storage.delete_object_by_uri，阻塞调用走 to_thread）+ 行删除。
+
+    审计语义：gsb_redactions / gsb_run_history 故意不建 FK——文档删除后流水保留
+    （document_id 悬空），跑批审计链不随行消失。compiled 禁删：编译产物已并入技能
+    references（回收机制未设计，spec §5.3）。
+    """
+    doc = await crud.get_document(db, document_id)
+    if doc is None:
+        raise HTTPException(404, "样例不存在")
+    if doc.status == "compiled":
+        raise HTTPException(409, "已编译样例不可删除（编译产物在技能 references 中）")
+    if await crud.has_running_run(db, document_id, "parse") or await crud.has_running_run(db, document_id, "redact"):
+        raise HTTPException(409, "parse/redact 任务在跑——稍后再删除")
+    for uri in (doc.raw_uri, doc.work_uri, doc.clean_uri):
+        if uri:
+            await asyncio.to_thread(storage.delete_object_by_uri, uri)
+    await crud.delete_document(db, document_id)
+    return {"deleted": True, "report_id": doc.report_id}
 
 
 # --- Functional area 2: parse / redact pipeline ------------------------------

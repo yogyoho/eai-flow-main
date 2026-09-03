@@ -910,3 +910,88 @@ async def test_next_report_id_bumps_max(tmp_path):
         assert await crud.next_report_id(db, "gsb-kc-cu") == "gsb-kc-cu-0004"
         assert await crud.next_report_id(db, "gsb-xc") == "gsb-xc-0001"  # 无同行新组从 0001 起
     await engine.dispose()
+
+
+# ---------------------------------------------------------------------------
+# DELETE /documents/{id}（Phase 3 T3，batch-cli）：守卫时序 404→compiled 409→
+# running 409→MinIO 三 uri best-effort 尽删→行删；审计流水（无 FK）保留。
+# ---------------------------------------------------------------------------
+
+
+def _delete_doc(status, raw=None, work=None, clean=None):
+    from app.extensions.geo_samples.models import GsbDocument
+
+    return GsbDocument(id="d1", report_id="r1", file_name="a.docx", file_hash="h", file_type="docx", status=status, parse_mode="docx", raw_uri=raw, work_uri=work, clean_uri=clean)
+
+
+async def _run_delete_route(monkeypatch, doc, running=()):
+    """桩件直调 DELETE 端点实现；返回 (HTTPException|None, 操作流水, 响应|None)。
+
+    流水元素："obj"/uri（MinIO 删除）与 "row"/document_id（行删除）——None uri 必不出现 obj 项。
+    """
+    from unittest.mock import MagicMock
+
+    from app.extensions.geo_samples import routers
+
+    deleted = []
+
+    async def _get(db, did):
+        return doc
+
+    async def _running(db, did, rt):
+        return rt in running
+
+    async def _del_row(db, did):
+        deleted.append(("row", did))
+
+    monkeypatch.setattr(routers.crud, "get_document", _get)
+    monkeypatch.setattr(routers.crud, "has_running_run", _running)
+    monkeypatch.setattr(routers.crud, "delete_document", _del_row)
+    monkeypatch.setattr(routers.storage, "delete_object_by_uri", lambda uri: deleted.append(("obj", uri)))
+    err = result = None
+    try:
+        result = await routers.delete_document("d1", db=MagicMock())
+    except routers.HTTPException as exc:
+        err = exc
+    return err, deleted, result
+
+
+@pytest.mark.asyncio
+async def test_delete_document_missing_404(monkeypatch):
+    """守卫①：文档不存在 → 404，且不触碰任何删除。"""
+    err, deleted, _ = await _run_delete_route(monkeypatch, None)
+    assert err is not None and err.status_code == 404
+    assert deleted == []
+
+
+@pytest.mark.asyncio
+async def test_delete_document_compiled_blocked(monkeypatch):
+    """守卫②：compiled → 409（编译产物在技能 references，回收机制未设计——spec §5.3）。"""
+    err, deleted, _ = await _run_delete_route(monkeypatch, _delete_doc("compiled"))
+    assert err is not None and err.status_code == 409
+    assert deleted == []  # 守卫先于任何删除动作
+
+
+@pytest.mark.asyncio
+async def test_delete_document_running_blocked(monkeypatch):
+    """守卫③：parse 或 redact 任一在跑 → 409（互斥闸门复用 has_running_run，防删到写一半的产物）。"""
+    for rt in ("parse", "redact"):
+        err, deleted, _ = await _run_delete_route(monkeypatch, _delete_doc("parsed"), running={rt})
+        assert err is not None and err.status_code == 409, rt
+        assert deleted == []
+
+
+@pytest.mark.asyncio
+async def test_delete_document_happy_path(monkeypatch):
+    """成功路径：raw/work 两对象尽删（clean=None 跳过）+ 行删；响应含 report_id。"""
+    err, deleted, result = await _run_delete_route(
+        monkeypatch,
+        _delete_doc("parsed", raw="s3://geo-samples/raw/r1/a.docx", work="s3://geo-samples/work/r1/parsed.md"),
+    )
+    assert err is None
+    assert result == {"deleted": True, "report_id": "r1"}
+    assert ("obj", "s3://geo-samples/raw/r1/a.docx") in deleted
+    assert ("obj", "s3://geo-samples/work/r1/parsed.md") in deleted
+    assert ("row", "d1") in deleted
+    assert len([e for e in deleted if e[0] == "obj"]) == 2  # clean_uri=None 被跳过，绝无第三个 obj
+    assert len([e for e in deleted if e[0] == "row"]) == 1

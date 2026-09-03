@@ -85,3 +85,15 @@ def object_exists(uri: str) -> bool:
         return True
     except S3Error:
         return False
+
+
+def delete_object_by_uri(uri: str) -> None:
+    """best-effort 删除：对象已不存在等 S3Error 一律吞掉（对齐 cpa storage 同款语义），
+    uri 非 ``s3://geo-samples/`` 前缀直接忽略（绝不误删他桶对象）。调用方负责 to_thread。"""
+    prefix = f"s3://{BUCKET}/"
+    if not uri.startswith(prefix):
+        return
+    try:
+        _client().remove_object(BUCKET, uri[len(prefix) :])
+    except S3Error:
+        pass
