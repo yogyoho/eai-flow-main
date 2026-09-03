@@ -1,10 +1,10 @@
 """laws-standards/legal 种子配置与 RAGFlow 文档名组装器单测。"""
 
-import pytest
-
-from app.extensions.law.service import LawService, build_ragflow_doc_name
-
-pytestmark = pytest.mark.asyncio
+from app.extensions.law.service import (
+    RAGFLOW_DATASET_GROUPS,
+    LawService,
+    build_ragflow_doc_name,
+)
 
 
 class TestBuildRagflowDocName:
@@ -55,7 +55,5 @@ class TestKbSeedConfig:
         assert "use_parent_child" not in pc  # 非 REST 合法键
 
     def test_legacy_groups_derived_from_seed(self):
-        from app.extensions.law.service import RAGFLOW_DATASET_GROUPS
-
         assert RAGFLOW_DATASET_GROUPS["ragflow-laws-standards"] == "naive"
         assert RAGFLOW_DATASET_GROUPS["ragflow-laws-legal"] == "laws"

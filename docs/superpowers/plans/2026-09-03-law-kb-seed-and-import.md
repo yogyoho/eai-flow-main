@@ -31,11 +31,8 @@
 
 ```python
 """laws-standards/legal 种子配置与 RAGFlow 文档名组装器单测。"""
-import pytest
 
 from app.extensions.law.service import LawService, build_ragflow_doc_name
-
-pytestmark = pytest.mark.asyncio
 
 
 class TestBuildRagflowDocName:
