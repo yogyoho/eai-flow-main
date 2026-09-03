@@ -270,7 +270,7 @@ class TestPartialDelivery:
         (bad / "progress.json").write_text(json.dumps({"chapters": {"ch2": "BLOCKED"}}), encoding="utf-8")
         out = tmp_path / build_output.expected_deliverable_name(json.loads(STAGE.read_text(encoding="utf-8")), ctrl["data"])  # 交付名门先于 allow_partial 分支，须规范名（阶段词去重，bug-3059）
         r = run("build_output.py", "--stage", STAGE, "--data-dir", ctrl["data"], "--state-dir", bad, "--allow-partial", "--output", out, expect=(1,))
-        assert r.stderr.startswith("[build] 错误:")  # 房风诊断行
+        assert "[build] 错误:" in r.stderr  # 房风诊断行（不锁行序：10cefae98 起前置「矿种基线缺失」回退提示行，P4-T6）
         assert "结构损坏" in r.stderr and "手改特征" in r.stderr
         assert "Traceback" not in r.stderr
 
@@ -281,6 +281,6 @@ class TestPartialDelivery:
         (bad / "progress.json").write_text(json.dumps({"chapters": {"ch2": {"status": "BLOCKED"}}, "downgrade_approvals": None}), encoding="utf-8")
         out = tmp_path / build_output.expected_deliverable_name(json.loads(STAGE.read_text(encoding="utf-8")), ctrl["data"])  # 阶段词去重，bug-3059
         r = run("build_output.py", "--stage", STAGE, "--data-dir", ctrl["data"], "--state-dir", bad, "--allow-partial", "--output", out, expect=(1,))
-        assert r.stderr.startswith("[build] 错误:")
+        assert "[build] 错误:" in r.stderr  # 房风诊断行（不锁行序，同上）
         assert "结构损坏" in r.stderr and "手改特征" in r.stderr
         assert "Traceback" not in r.stderr

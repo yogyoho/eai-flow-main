@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import subprocess
 import sys
 import tempfile
@@ -226,28 +225,32 @@ def build_ws(tmp_path_factory):
             "cutoff_date": "2025-12-31",
         },
     )
+    # economics 补 rates：ingest 骨架把全部族文件落成全 null schema（rates=null），
+    # consistency.check_fc FC7 的 eco.get("rates", {}) 对 null 值不回退默认 {} → AttributeError
+    # （P4-T6 前被目录覆盖门挡住从未走到；consistency.py 侧修复不在本任务范围）。
+    ingest.write_form_values(str(STAGE), str(data), "economics", {"rates": {"dilution_rate": 10, "loss_rate": 15}})
     # 合规章节：每块 ≥3 句 + 每章 ≥1000 有效字符（供 Task 4 深度门正例）。
     # 合成内容只验管线不验文学性——SEC 2 句×64字 ×12 重复 = 24句/768字/块，每章 2 块=~1536字（对 1000 阈值留余量），确定性凑量。
     SEC = "本段叙述勘查工作部署与质量情况，内容完整表述规范，满足深度门要求。每次工程布置依据充分且间距合理，资料经检查验收合格可用于估算。"
     SEC *= 12
-    # bug-2225 目录覆盖门：骨架节号直接从 STAGE toc 生成（148 个 N.M/N.M.K），fixture 永远与 stage 对齐
-    _num_re = re.compile(r"\d+\.\d+(?:\.\d+)?")
+    # bug-2225 目录覆盖门：骨架节号+节标题直接从 STAGE toc 生成（148 个 N.M/N.M.K），fixture 永远与 stage 对齐。
+    # 标题解析复用 build_output._toc_index（目录覆盖门同源解析：复合条目「1.5 题（1.5.1 子题 / …」按 / 拆片+（截断）
+    # ——占位「小节」在 bug-3036 标题比对门下必 FAIL（P4-T6）；P4-T7 修 e2e _skeleton 时沿用同一 import 模式。
+    import build_output
+
     _stage_doc = json.loads(STAGE.read_text(encoding="utf-8"))
     for ch_id, ch in _stage_doc["chapters"].items():
         n = ch_id[2:]
         md = [f"## {n} {ch.get('title', '')}", "", SEC]
-        seen: set[str] = set()
-        for sub in ch.get("toc", []):
-            for no in _num_re.findall(sub):
-                if no in seen:
-                    continue
-                seen.add(no)
-                md += [f"{'###' if no.count('.') == 1 else '####'} {no} 小节", "", SEC]
+        _nos, _titles = build_output._toc_index(ch.get("toc", []))
+        for no in sorted(_nos, key=lambda s: [int(p) for p in s.split(".")]):
+            md += [f"{'###' if no.count('.') == 1 else '####'} {no} {_titles.get(no, '小节')}".rstrip(), "", SEC]
         (state / "chapters" / f"{ch_id}.md").write_text("\n".join(md) + "\n", encoding="utf-8")
-    # formula_state：全部槽位带 source（公式产物特征）
+    # formula_state：全部槽位带 source（公式产物特征）。total_ore_wt 须自洽=小计和（CATS TM/KZ/TD，
+    # 只有 TM）——consistency FC1 小计=总计门（P4-T6 前被目录覆盖门挡住从未走到），899≠339.92 必 FAIL。
     fs = {
         "version": 2,
-        "values": {"L9.total_ore_wt": {"value": 899.0, "display": "899.00", "unit": "万吨", "source": "formula:L9"}, "L9.TM_ore_wt": {"value": 339.92, "display": "339.92", "unit": "万吨", "source": "formula:L9"}},
+        "values": {"L9.total_ore_wt": {"value": 339.92, "display": "339.92", "unit": "万吨", "source": "formula:L9"}, "L9.TM_ore_wt": {"value": 339.92, "display": "339.92", "unit": "万吨", "source": "formula:L9"}},
         "anomalies": [],
     }
     (state / "formula_state.json").write_text(json.dumps(fs, ensure_ascii=False), encoding="utf-8")
