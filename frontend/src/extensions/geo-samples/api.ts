@@ -45,7 +45,8 @@ export const geoSamplesApi = {
     authFetch<GsbDocument>(`${API_BASE}/documents/${id}`),
 
   uploadDocument: (form: FormData) =>
-    authFormFetch<{ document: GsbDocument; run_id: string }>(
+    // run_id 可选（batch-cli P4 T1）：服务端 defer_parse=true 时响应省略 run_id 键
+    authFormFetch<{ document: GsbDocument; run_id?: string }>(
       `${API_BASE}/documents/upload`,
       form,
     ),

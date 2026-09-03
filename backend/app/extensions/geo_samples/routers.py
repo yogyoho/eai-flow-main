@@ -63,6 +63,10 @@ async def upload_document(
     mineral: str = Form("copper"),
     year: int | None = Form(None),
     region: str | None = Form(None),
+    # 批量导入闸门（batch-cli P4 T1）：true → 仅落行（status=uploaded），不 create_run、
+    # 不起后台 parse——1000 份扫描件逐份即时入队（单份 OCR 最长 1800s）会击穿网关；
+    # defer 行由 parse-batch 端点（Task 3）受控启动。响应省略 run_id 键（非 null）。
+    defer_parse: bool = Form(False),
     db: AsyncSession = Depends(get_db),
     _: object = _PERM,
 ):
@@ -91,9 +95,14 @@ async def upload_document(
     doc = schemas.DocumentOut.model_validate(
         await crud.create_document(db, report_id=meta.report_id, file_name=name, file_hash=digest, file_type=file_type, stage=meta.stage, mineral=meta.mineral, year=meta.year, region=meta.region, raw_uri=raw_uri)
     )
-    run = await crud.create_run(db, doc.id, "parse")
-    background.add_task(service.run_parse, db, doc.id, run.id)
-    return {"document": doc.model_dump(), "run_id": run.id}
+    run = None
+    if not defer_parse:
+        run = await crud.create_run(db, doc.id, "parse")
+        background.add_task(service.run_parse, db, doc.id, run.id)
+    resp = {"document": doc.model_dump()}
+    if run is not None:
+        resp["run_id"] = run.id
+    return resp
 
 
 async def suggest_id_impl(db: AsyncSession, title: str) -> dict:

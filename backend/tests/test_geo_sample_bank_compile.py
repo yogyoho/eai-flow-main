@@ -1070,3 +1070,107 @@ def test_delete_object_by_uri_s3error_swallowed(monkeypatch, caplog):
 
     client.remove_object.assert_called_once_with("geo-samples", "raw/r1/a.docx")
     assert any("delete_object_by_uri failed" in r.getMessage() for r in caplog.records)
+
+
+# --- upload 端点直测：defer_parse（batch-cli P4 T1, spec 2026-09-04）-----------
+
+
+def _upload_file(name="样例.docx", data=b"docx-bytes"):
+    import io
+
+    from fastapi import UploadFile
+
+    return UploadFile(file=io.BytesIO(data), filename=name)
+
+
+async def _run_upload_route(monkeypatch, defer=None):
+    """桩件直调 POST /documents/upload 端点实现（同 _run_delete_route 直调模式）。
+
+    defer=None → 按签名声明缺省（模拟 FastAPI 解析 Form(False)）；defer=True → defer_parse=True
+    （FastAPI 层的 "true"→bool 解析不在此测）。返回 (HTTPException|None, 响应|None, db,
+    background, create_run, run_parse, create_document 捕获的 kwargs)。
+    """
+    import inspect
+    from datetime import datetime
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    from fastapi import BackgroundTasks
+
+    from app.extensions.geo_samples import routers
+    from app.extensions.geo_samples.models import GsbDocument
+
+    created = {}
+    create_run = AsyncMock(return_value=SimpleNamespace(id="run-1"))
+    run_parse = AsyncMock()
+
+    async def _by_report_id(db, rid):
+        return None
+
+    async def _dup(db, digest, exclude_uri):
+        return None
+
+    async def _create_doc(db, **kw):
+        created.update(kw)
+        # created_at 必须显式给：未 flush 的 ORM 实例 server_default 未生效，DocumentOut 会炸
+        return GsbDocument(id="d1", status="uploaded", created_at=datetime(2026, 9, 4), **kw)
+
+    monkeypatch.setattr(routers.crud, "get_document_by_report_id", _by_report_id)
+    monkeypatch.setattr(routers.crud, "find_duplicate_document", _dup)
+    monkeypatch.setattr(routers.crud, "create_document", _create_doc)
+    monkeypatch.setattr(routers.crud, "create_run", create_run)
+    monkeypatch.setattr(routers.service, "run_parse", run_parse)
+    monkeypatch.setattr(routers.storage, "put_raw", lambda rid, name, data: f"s3://geo-samples/raw/{rid}/{name}")
+
+    db = MagicMock()
+    background = BackgroundTasks()
+    kwargs = dict(file=_upload_file(), report_id="gsb-kc-cu-0001", stage="exploration", mineral="copper", year=None, region=None, db=db)
+    if defer is None:
+        # 直调绕过 FastAPI：缺省时形参绑定的是 Form(False) Dependant 对象（truthy！），非 False。
+        # 此处模拟 FastAPI 的缺省解析（取 Form(...).default），并顺带锁死「声明缺省必须是 False」契约。
+        declared = inspect.signature(routers.upload_document).parameters["defer_parse"].default
+        resolved = getattr(declared, "default", declared)
+        assert resolved is False, f"defer_parse 声明缺省漂移为 {resolved!r}——即改批量导入行为，须回归 Task 3 parse-batch 契约"
+        kwargs["defer_parse"] = resolved
+    else:
+        kwargs["defer_parse"] = defer
+    err = result = None
+    try:
+        result = await routers.upload_document(background=background, **kwargs)
+    except routers.HTTPException as exc:
+        err = exc
+    return err, result, db, background, create_run, run_parse, created
+
+
+@pytest.mark.asyncio
+async def test_upload_defer_parse_skips_run(monkeypatch):
+    """defer_parse=true：落行+raw 上传，但不 create_run、不起后台任务、响应无 run_id 键。"""
+    import hashlib
+
+    err, result, _db, background, create_run, run_parse, created = await _run_upload_route(monkeypatch, defer=True)
+    assert err is None
+    create_run.assert_not_awaited()
+    run_parse.assert_not_awaited()
+    assert background.tasks == []  # add_task 未被调
+    assert "run_id" not in result  # 省略键（非 null）——CLI .get 已容忍
+    assert result["document"]["status"] == "uploaded"
+    assert result["document"]["id"] == "d1"
+    assert created["report_id"] == "gsb-kc-cu-0001"
+    assert created["raw_uri"] == "s3://geo-samples/raw/gsb-kc-cu-0001/样例.docx"
+    assert created["file_hash"] == hashlib.sha256(b"docx-bytes").hexdigest()
+
+
+@pytest.mark.asyncio
+async def test_upload_immediate_parse_regression(monkeypatch):
+    """回归：defer_parse 缺省（false）→ create_run 一次 + 后台任务入队 + 响应含 run_id。"""
+    err, result, db, background, create_run, run_parse, _created = await _run_upload_route(monkeypatch)
+    assert err is None
+    create_run.assert_awaited_once()
+    assert create_run.await_args.args == (db, "d1", "parse")
+    assert len(background.tasks) == 1
+    task = background.tasks[0]
+    assert task.func is run_parse
+    assert task.args == (db, "d1", "run-1")
+    run_parse.assert_not_awaited()  # 端点只入队，不在请求内执行
+    assert result["run_id"] == "run-1"
+    assert result["document"]["status"] == "uploaded"
