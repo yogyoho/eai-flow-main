@@ -1374,3 +1374,205 @@ def test_upload_multipart_defer_true_string(monkeypatch):
     create_run.assert_not_called()
     assert body["document"]["status"] == "uploaded"
     assert body["document"]["id"] == "d1"
+
+
+# ── P5 ledger A（plan 2026-09-04-geo-p5-orepack Task 1）：后端三修 ──────────────────
+
+
+@pytest.mark.asyncio
+async def test_run_redact_discards_result_when_doc_state_drifted(monkeypatch):
+    """P5 ledger A：run_redact 对齐 run_parse R2 三段式——commit 释放连接 → 重活 → fresh 重取。
+    重取见漂移态（非 parsed）→ 丢弃脱敏产物（不写 clean_uri）、doc 状态不被覆盖、run=failed。"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.extensions.geo_samples import service
+    from app.extensions.geo_samples.models import GsbDocument
+
+    doc_initial = GsbDocument(report_id="r9", file_name="a.docx", file_hash="h", file_type="docx", status="parsed", work_uri="s3://geo-samples/work/r9/parsed.md")
+    doc_drifted = GsbDocument(report_id="r9", file_name="a.docx", file_hash="h", file_type="docx", status="reviewed", work_uri="s3://geo-samples/work/r9/parsed.md")
+    events: list[str] = []
+
+    async def _get_first(db_, did):
+        events.append("get")
+        return doc_initial
+
+    async def _get_fresh(db_, did):
+        events.append("fresh")
+        return doc_drifted
+
+    def _get_obj(uri):
+        events.append("getobj")
+        return "证号C5300002023000003".encode()
+
+    async def _finish(db_, rid, status, detail):
+        events.append("finish")
+
+    put_clean = MagicMock()
+    monkeypatch.setattr(service.crud, "get_document", _get_first)
+    monkeypatch.setattr(service.crud, "get_document_fresh", _get_fresh)
+    monkeypatch.setattr(service.crud, "finish_run", _finish)
+    monkeypatch.setattr(service.storage, "get_object", _get_obj)
+    monkeypatch.setattr(service.storage, "put_clean", put_clean)
+    db = MagicMock()
+    db.commit = AsyncMock(side_effect=lambda: events.append("commit"))
+
+    await service.run_redact(db, "doc-9", run_id="run-9")
+
+    # R2 顺序：get → commit 释放连接 → 下载重活 → fresh 重取 → failed 落账
+    assert events == ["get", "commit", "getobj", "fresh", "finish"]
+    assert doc_drifted.status == "reviewed"  # 漂移态不被脱敏结果覆盖
+    assert doc_initial.status == "parsed"
+    put_clean.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_redact_releases_connection_before_heavy_work(monkeypatch):
+    """P5 ledger A：run_redact 重活（下载+规则脱敏）前必须 commit 释放连接（R2 同款），
+    且完成后走 fresh 重取落 redacted——正常路径不被漂移守卫误伤。"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.extensions.geo_samples import service
+    from app.extensions.geo_samples.models import GsbDocument
+
+    doc = GsbDocument(report_id="r10", file_name="a.docx", file_hash="h", file_type="docx", status="parsed", work_uri="s3://geo-samples/work/r10/parsed.md")
+    events: list[str] = []
+
+    async def _get(db_, did):
+        events.append("get")
+        return doc
+
+    async def _get_fresh(db_, did):
+        events.append("fresh")
+        return doc
+
+    def _get_obj(uri):
+        events.append("getobj")
+        return "证号C5300002023000003 正文".encode()
+
+    def _put_clean(rid, data):
+        events.append("putclean")
+        return f"s3://geo-samples/clean/{rid}/source.md"
+
+    monkeypatch.setattr(service.crud, "get_document", _get)
+    monkeypatch.setattr(service.crud, "get_document_fresh", _get_fresh)
+    monkeypatch.setattr(service.storage, "get_object", _get_obj)
+    monkeypatch.setattr(service.storage, "put_clean", _put_clean)
+    monkeypatch.setattr(service.crud, "add_redactions", AsyncMock(side_effect=lambda *a, **k: events.append("redactions")))
+    db = MagicMock()
+    db.commit = AsyncMock(side_effect=lambda: events.append("commit"))
+
+    await service.run_redact(db, "doc-10", run_id="run-10")
+
+    assert doc.status == "redacted"
+    assert doc.clean_uri == "s3://geo-samples/clean/r10/source.md"
+    # 连接释放在下载重活之前；fresh 重取在 put_clean 之前（漂移则不写产物）
+    assert events.index("commit") < events.index("getobj") < events.index("fresh") < events.index("putclean")
+
+
+def test_fc7_null_economics_sub_dicts_guard():
+    """P5 ledger A（rates=null 清偿）：forms.economics 的 rates/concentrate/prices 为显式 null
+    （LLM 抽取可产出 null 子对象）时 check_fc 不抛 AttributeError——rates 按 0 稀释计，
+    E 链输入缺失时 FC7 整体跳过。"""
+    from types import SimpleNamespace
+
+    import consistency as cons
+
+    eco = {"rates": None, "concentrate": None, "prices": None}
+    data = SimpleNamespace(form=lambda name: eco if name == "economics" else {})
+
+    # ① E1/E2 齐：修复前 `eco.get("rates", {}).get(...)` 在 rates=None 时 AttributeError
+    vals = {
+        "E1.C_usable": {"value": "100", "display": "100", "source": "t"},
+        "E2.C_mined": {"value": "100", "display": "100", "source": "t"},
+    }
+    rep = cons.Report()
+    cons.check_fc(rep, {"values": vals}, data)
+    fc7 = [i for i in rep.items if i["contract"] == "FC7"]
+    assert fc7 and fc7[0]["severity"] == "pass" and "E2.C_mined" in fc7[0]["detail"], fc7
+
+    # ② 无 E 链输入：整体跳过，零 FC7 项
+    rep2 = cons.Report()
+    cons.check_fc(rep2, {"values": {}}, data)
+    assert not [i for i in rep2.items if i["contract"] == "FC7"]
+
+
+@pytest.mark.asyncio
+async def test_parse_batch_integrity_error_conflict_409(monkeypatch):
+    """P5 ledger A（TOCTOU 互斥）：行级 has_running_run 过检后、create_run 提交撞
+    uq_gsb_run_running（他方批次在窗口内对同文档先落 running 行）→ IntegrityError →
+    409「该样例解析已在调度」——批次终止、会话回滚复位、不静默入队双 run。"""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    from fastapi import BackgroundTasks
+    from sqlalchemy.exc import IntegrityError
+
+    from app.extensions.geo_samples import routers
+
+    async def _sweep(db, max_age_minutes=60):
+        return 0
+
+    async def _list_uploaded(db, limit):
+        return [SimpleNamespace(id="doc-a")]
+
+    async def _has_running(db, did, rt):
+        return False  # 行级守卫放行——TOCTOU 窗口
+
+    create_run = AsyncMock(side_effect=IntegrityError('duplicate key value violates unique constraint "uq_gsb_run_running"', None, Exception("dup")))
+    monkeypatch.setattr(routers.crud, "sweep_stale_runs", _sweep)
+    monkeypatch.setattr(routers.crud, "list_uploaded", _list_uploaded)
+    monkeypatch.setattr(routers.crud, "has_running_run", _has_running)
+    monkeypatch.setattr(routers.crud, "create_run", create_run)
+
+    db = MagicMock()
+    db.rollback = AsyncMock()
+    background = BackgroundTasks()
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.parse_batch(background=background, limit=5, db=db)
+    assert ei.value.status_code == 409
+    assert "已在调度" in ei.value.detail
+    db.rollback.assert_awaited_once()  # IntegrityError 后事务作废，须复位会话
+    assert background.tasks == []  # 撞互斥行不入队
+
+
+def test_migrate_db_carries_gsb_run_running_index_migration():
+    """P5 ledger A：migrate_db 必须携带 uq_gsb_run_running 部分唯一索引迁移（建索引前先清
+    重复 running 行、保留最新）。migrate_db 全 PG 方言、sqlite 不可整跑 → 源码断言；
+    索引语义另由 test_gsb_run_running_partial_unique_index_semantics 在 sqlite 实测，
+    PG 实跑验证留 T8。"""
+    import inspect
+
+    from app.extensions import database
+
+    src = inspect.getsource(database.migrate_db)
+    assert "uq_gsb_run_running" in src
+    assert "_GSB_RUN_RUNNING_DEDUP_SQL" in src, "建索引前必须先清历史重复 running 行（保留最新）"
+    assert "_GSB_RUN_RUNNING_UQ_DDL" in src
+
+
+def test_gsb_run_running_partial_unique_index_semantics(tmp_path):
+    """P5 ledger A：uq_gsb_run_running 语义实测——sqlite 3.8+ 原生支持 partial index（plan 预估
+    「sqlite 不支持」不成立，Python 3.12 捆绑 sqlite ≥3.40），同库即可锁语义：同文档第二条
+    running parse/redact 拒、done 行/他文档行/NULL document_id 行（compile 型悬空行）放行。
+    DDL 直取 database.py 常量防双份漂移；PG 实跑验证留 T8。"""
+    import sqlite3
+
+    from app.extensions import database
+
+    conn = sqlite3.connect(tmp_path / "gsb_idx.db")
+    conn.isolation_level = None  # autocommit——预期失败的 INSERT 不留悬挂事务
+    conn.execute("CREATE TABLE gsb_run_history (id VARCHAR(36) PRIMARY KEY, document_id VARCHAR(36), run_type VARCHAR(16), status VARCHAR(16), created_at TIMESTAMP)")
+
+    def ins(rid, doc, rt, st):
+        conn.execute("INSERT INTO gsb_run_history (id, document_id, run_type, status) VALUES (?, ?, ?, ?)", (rid, doc, rt, st))
+
+    conn.execute(database._GSB_RUN_RUNNING_UQ_DDL)
+    ins("r1", "d1", "parse", "running")
+    with pytest.raises(sqlite3.IntegrityError):
+        ins("r2", "d1", "parse", "running")  # 同文档同类型双 running → 拒
+    with pytest.raises(sqlite3.IntegrityError):
+        ins("r3", "d1", "redact", "running")  # parse/redact 同域互斥 → 拒
+    ins("r4", "d1", "parse", "done")  # 已完成行不计
+    ins("r5", "d2", "parse", "running")  # 他文档放行
+    ins("r6", None, "parse", "running")  # NULL document_id（compile 型悬空行）彼此不冲突
+    ins("r7", None, "redact", "running")

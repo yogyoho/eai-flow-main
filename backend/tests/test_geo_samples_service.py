@@ -77,6 +77,7 @@ async def test_run_redact_writes_clean_and_summary(monkeypatch):
         return doc
 
     monkeypatch.setattr(service.crud, "get_document", _get)
+    monkeypatch.setattr(service.crud, "get_document_fresh", _get)  # P5 ledger A：R2 重取对齐 run_parse
     monkeypatch.setattr(service.storage, "get_object", lambda uri: "证号C5300002023000003 正文".encode())
     monkeypatch.setattr(service.storage, "put_clean", lambda rid, data: f"s3://geo-samples/clean/{rid}/source.md")
     monkeypatch.setattr(service.crud, "add_redactions", AsyncMock())

@@ -24,6 +24,7 @@ import hashlib
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
@@ -197,6 +198,9 @@ async def parse_batch_impl(db: AsyncSession, limit: int, background: BackgroundT
 
     行级 running-parse 守卫：跳过而非 409（批处理语义）——上批调度仍在跑的行不建重复 run
     （防重叠批次浪费 OCR/重复 run 行）；陈旧行由端点先行的 sweep_stale_runs 自愈后才过本守卫。
+    DB 层互斥（P5 ledger A）：行级守卫是 check-then-insert，两并发批次可同时过检——
+    create_run 提交撞部分唯一索引 uq_gsb_run_running（migrate_db 建）时 IntegrityError →
+    409「该样例解析已在调度」终止批次（真互斥冲突，非可跳过的陈旧行；会话先 rollback 复位）。
     scheduled/ids 只计实际调度的行，skipped_running 计跳过数。
     """
     ids: list[str] = []
@@ -205,7 +209,11 @@ async def parse_batch_impl(db: AsyncSession, limit: int, background: BackgroundT
         if await crud.has_running_run(db, doc.id, "parse"):
             skipped += 1
             continue
-        run = await crud.create_run(db, doc.id, "parse")
+        try:
+            run = await crud.create_run(db, doc.id, "parse")
+        except IntegrityError as exc:
+            await db.rollback()
+            raise HTTPException(409, "该样例解析已在调度") from exc
         background.add_task(service.run_parse, db, doc.id, run.id)
         ids.append(run.id)
     return {"scheduled": len(ids), "ids": ids, "skipped_running": skipped}
@@ -223,6 +231,8 @@ async def parse_batch(background: BackgroundTasks, limit: int = Query(5, ge=1, l
     互斥取舍：对每行不做 409（单体 parse 端点的双向互斥在此弱化）——已有 running parse 的行
     静默跳过（批处理语义，响应 skipped_running 计数），防重叠批次浪费 OCR；行刚 defer 完必无
     在跑任务，网关重启遗留的陈旧 running 行由先行 sweep_stale_runs 自愈（模块惯例）后才过守卫。
+    行级守卫过检后仍可能与他方批次在 check-then-insert 窗口内撞车——部分唯一索引
+    uq_gsb_run_running（P5 ledger A，migrate_db 建）在 DB 层收口：IntegrityError → 409，双保险。
     零行 → {"scheduled": 0, "ids": [], "skipped_running": 0}，不视为错误。
     """
     await crud.sweep_stale_runs(db)

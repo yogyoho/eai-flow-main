@@ -87,14 +87,24 @@ async def run_parse(db: AsyncSession, document_id: str, run_id: str) -> None:
 async def run_redact(db: AsyncSession, document_id: str, run_id: str) -> None:
     """后台任务：work/parsed.md → 规则脱敏 → clean/source.md + 事件流水。
     事件与 doc 状态在同一 commit 原子落库（crud.add_redactions 不自行 commit）；
-    异常 → status=failed + run 落账，除 db 会话彻底不可用外不向调用方抛出。"""
+    异常 → status=failed + run 落账，除 db 会话彻底不可用外不向调用方抛出。
+    R2 三段式（P5 ledger A 对齐 run_parse）：get → commit 释放连接 → 重活（下载+规则
+    脱敏）→ get_document_fresh 重取校验漂移再落 redacted。守卫丢弃非 parsed 漂移态——
+    今日可达路径已被端点级双重闸门封闭，本守卫防护未来的新增状态写入者；doc 消失
+    （理论删除路径）→ failed run。"""
     doc = await crud.get_document(db, document_id)
     if doc is None:
         await _finish_run(db, run_id, "failed", "document not found")
         return
+    work_uri = doc.work_uri
+    await db.commit()  # R2：释放连接再进重活（同 run_parse——占池会楔死无关请求）
     try:
-        text_bytes = await asyncio.to_thread(storage.get_object, doc.work_uri)
+        text_bytes = await asyncio.to_thread(storage.get_object, work_uri)
         clean, events = redact_text(text_bytes.decode("utf-8"))
+        doc = await crud.get_document_fresh(db, document_id)  # 重活后重取——populate_existing 绕过 identity map 才见 DB 真值
+        if doc is None or doc.status != "parsed":
+            await _finish_run(db, run_id, "failed", f"document state changed during redact: {doc.status if doc else 'gone'}")
+            return
         doc.clean_uri = await asyncio.to_thread(storage.put_clean, doc.report_id, clean.encode("utf-8"))
         await crud.add_redactions(db, doc.id, events)
         summary: dict[str, int] = {}

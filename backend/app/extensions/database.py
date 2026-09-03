@@ -196,6 +196,31 @@ async def init_db() -> None:
         await conn.run_sync(Base.metadata.create_all)
 
 
+# EAI-CUSTOM (P5 ledger A, plan 2026-09-04-geo-p5-orepack Task 1): gsb_run_history
+# parse/redact 互斥的部分唯一索引迁移。行级 has_running_run 守卫是 check-then-insert，
+# 两并发批次可同时过检后各落一条 running parse（双 run 重复 OCR）——索引在 DB 层收口。
+# 常量提升到模块级是为了测试可直取 DDL（sqlite 3.8+ 原生支持 partial index，语义可在
+# 测试库实测；PG 实跑验证留 T8）。迁移在 PG 上执行（见 migrate_db 内 gsb_run_history 段）。
+_GSB_RUN_RUNNING_DEDUP_SQL = text("""
+    DELETE FROM gsb_run_history
+     WHERE status = 'running'
+       AND run_type IN ('parse', 'redact')
+       AND document_id IS NOT NULL
+       AND id NOT IN (
+           SELECT keep_id FROM (
+               SELECT id AS keep_id,
+                      ROW_NUMBER() OVER (PARTITION BY document_id ORDER BY created_at DESC, id DESC) AS rn
+                 FROM gsb_run_history
+                WHERE status = 'running'
+                  AND run_type IN ('parse', 'redact')
+                  AND document_id IS NOT NULL
+           ) ranked
+          WHERE rn = 1
+       )
+""")
+_GSB_RUN_RUNNING_UQ_DDL = "CREATE UNIQUE INDEX IF NOT EXISTS uq_gsb_run_running ON gsb_run_history(document_id) WHERE status='running' AND run_type IN ('parse','redact')"
+
+
 async def migrate_db() -> None:
     """Run lightweight column migrations for existing tables."""
     # Ensure engine is initialized first
@@ -1297,6 +1322,15 @@ async def migrate_db() -> None:
         # derived, never stored; the column was never written by any backend code.
         # Idempotent (IF EXISTS) — no-op on fresh DBs created without the column.
         await conn.execute(text("ALTER TABLE report_projects DROP COLUMN IF EXISTS current_stage"))
+
+        # EAI-CUSTOM (P5 ledger A): gsb_run_history parse/redact DB 层互斥——先清历史重复
+        # running 行（同文档保留 created_at 最新一条；NULL document_id 的 compile 型悬空行
+        # 不参与），再建部分唯一索引 uq_gsb_run_running（与行级 has_running_run 守卫构成
+        # 双保险）。IF NOT EXISTS 幂等。表由 geo_samples 模型经 init_db create_all 建表
+        # （gateway 启动序 init_db → migrate_db 保证在场）；to_regclass 守卫防裸库直跑本函数时表缺失。
+        if (await conn.execute(text("SELECT to_regclass('gsb_run_history')"))).scalar() is not None:
+            await conn.execute(_GSB_RUN_RUNNING_DEDUP_SQL)
+            await conn.execute(text(_GSB_RUN_RUNNING_UQ_DDL))
 
 
 # EAI-CUSTOM: 启动时校准 DB roles 作为 yaml registry 的物化镜像

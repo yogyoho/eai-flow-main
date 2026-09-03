@@ -304,14 +304,14 @@ def check_fc(rep: Report, state: dict, data: fr.Data) -> None:
     eco = data.form("economics")
     if eco:
         c_u, c_m = val("E1.C_usable"), val("E2.C_mined")
-        dil = fr.dec(eco.get("rates", {}).get("dilution_rate", 0)) / fr.HUNDRED
+        dil = fr.dec((eco.get("rates") or {}).get("dilution_rate", 0)) / fr.HUNDRED  # P5 ledger A：显式 null 子对象守卫（or {}）
         if c_u is not None and c_m is not None:
             want = c_u * (1 - dil)
             rep.add("FC7", "pass" if abs(want - c_m) <= Decimal("0.01") else "fail", f"E2.C_mined {c_m} vs {want.quantize(Decimal('0.01'))}")
         p_conc = val("E4.price_conc")
         if p_conc is not None:
-            conc = eco.get("concentrate", {})
-            prices = eco.get("prices", {})
+            conc = eco.get("concentrate") or {}  # P5 ledger A：显式 null 子对象守卫（or {}）
+            prices = eco.get("prices") or {}  # P5 ledger A：同款守卫
             want = fr.dec(prices.get("cu_yuan_t", 0)) * fr.dec(conc.get("grade_cu_pct", 0)) / fr.HUNDRED \
                 + (fr.dec(prices.get("ag_yuan_kg", 0)) or fr.dec(prices.get("ag_yuan_per_g", 0)) * fr.THOUSAND) / fr.THOUSAND * fr.dec(conc.get("grade_ag_gpt", 0))
             rep.add("FC7", "pass" if abs(want - p_conc) <= Decimal(1) else "fail", f"E4 {p_conc} vs {want.quantize(Decimal('1'))}")
