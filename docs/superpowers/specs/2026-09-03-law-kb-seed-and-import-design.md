@@ -92,7 +92,7 @@ sync 上传路径的 `upload_name` 改由该函数生成(文件上传与纯文�
 
 ### 2.3 持久化
 
-- `laws` 表新增 `industry VARCHAR(50) NULL`(extensions 建表机制内加列 + 已存在库的启动时 ensure-column);导入/编辑时保存。
+- 复用既有 `LawCreate.sector` 字段("Applicable industry",存 metadata_json.sector,service.py:401/451 读写链路已通)承载行业领域——**零 DDL**;不新增 laws.industry 列(避免与 law_type="industry"(行业标准)语义撞名)。导入/编辑时保存。
 - 写入 RAGFlow `meta_fields.industry`(随现有 update_document_metadata 链路)。
 - 其余表单字段(发布部门/生效日期/关键词/被引用法规)维持 `meta_fields` 现状,不做注入增强(见 Non-goals)。
 
