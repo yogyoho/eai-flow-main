@@ -70,26 +70,54 @@ RAGFLOW_DATASET_GROUPS = {name: cfg["chunk_method"] for name, cfg in _KB_SEED_CO
 
 # RAGFlow分块策略映射: law_type -> chunk_method
 # 法律/法规/规章 → laws(第X条结构,A/B-4 实测最优);标准/规范 → naive(A/B-1 实测最优)
-# 分块参数以 _KB_SEED_CONFIG 为单一真相源,随 init-ragflow 幂等收敛到库上
-_LAW_CHUNK_METHOD: dict[str, str] = {
-    "law": "laws",
-    "regulation": "laws",
-    "rule": "laws",
-    # 2026-09-03: 国家/行业/地方/技术标准类改 naive——manual 对 .txt 抛错且实测对齐差,
-    # naive+384 为 A/B 实测最优(docs/superpowers/specs/2026-09-02-ragflow-upgrade-v0.27.1.md)
-    "national": "naive",
-    "industry": "naive",
-    "local": "naive",
-    "technical": "naive",
-}
+# 2026-09-03: 从 _KB_SEED_CONFIG 派生,单一真相源,消除两映射漂移
+# (历史上标准类 manual 对 .txt 抛错且实测对齐差,naive+384 为 A/B 实测最优)
+_LAW_CHUNK_METHOD: dict[str, str] = {lt: _KB_SEED_CONFIG[kb]["chunk_method"] for lt, kb in RAGFLOW_KB_MAPPING.items()}
+
+# 行业领域兜底名单:tag 标签集的 tag_kwd 在 v0.27.1 REST 响应中可能为空(上游未透出),
+# 此时 industries 端点回退到该名单(与行业标签集 csv 保持一致)
+_DEFAULT_INDUSTRIES = ["地质勘查", "环境评价", "煤炭工业"]
 
 
-def build_ragflow_doc_name(industry: str | None, law_number: str | None, title: str, ext: str) -> str:
-    """组装 RAGFlow 文档名:【行业】标准号 标题.ext(行业/标准号可缺省;ext 接受带点或不带点)。"""
+def build_ragflow_doc_name(industry: str | None, law_number: str | None, title: str, ext: str | None) -> str:
+    """组装 RAGFlow 文档名:【行业】标准号 标题.ext(行业/标准号/ext 可缺省;行业自动 strip)。"""
     ext = (ext or "").lstrip(".")
+    industry = (industry or "").strip() or None
     parts = f"【{industry}】" if industry else ""
     num = f"{law_number} " if law_number else ""
     return f"{parts}{num}{title}{('.' + ext) if ext else ''}"
+
+
+def seed_config_diff(cur: dict, seed: dict) -> dict[str, tuple]:
+    """对比现网知识库配置与种子配置,返回漂移字典 {键路径: (现值, 种子值)};空 dict 表示一致。
+
+    只比较种子中出现的键;现网多余的键(上游默认值/前端写入项)一律忽略。
+    parser_config 逐键比较,键路径形如 "parser_config.chunk_token_num"。
+    """
+    diff: dict[str, tuple] = {}
+    for key, seed_val in seed.items():
+        if key == "parser_config":
+            cur_pc = cur.get("parser_config") or {}
+            if not isinstance(cur_pc, dict):
+                cur_pc = {}
+            for pc_key, pc_seed_val in seed_val.items():
+                cur_val = cur_pc.get(pc_key)
+                if cur_val != pc_seed_val:
+                    diff[f"parser_config.{pc_key}"] = (cur_val, pc_seed_val)
+        else:
+            cur_val = cur.get(key)
+            if cur_val != seed_val:
+                diff[key] = (cur_val, seed_val)
+    return diff
+
+
+def merge_industries(tag_kwd_found: list[str]) -> list[str]:
+    """行业领域 = 标签集实际读到的 ∪ 兜底名单,去重保序。"""
+    out: list[str] = []
+    for it in list(tag_kwd_found) + _DEFAULT_INDUSTRIES:
+        if it and it not in out:
+            out.append(it)
+    return out
 
 
 class LawService:

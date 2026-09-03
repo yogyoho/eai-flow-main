@@ -151,7 +151,10 @@ class RAGFlowInitResponse(BaseModel):
     success: bool = True
     message: str = ""
     created: list[str] = Field(default_factory=list)
-    already_exists: list[str] = Field(default_factory=list)
+    aligned: list[str] = Field(default_factory=list, description="已存在且配置与种子一致")
+    updated: list[str] = Field(default_factory=list, description="已存在但配置漂移,已 PUT 收敛")
+    diffs: dict[str, dict] = Field(default_factory=dict, description="{kb: {键路径: [现值, 种子值]}}")
+    already_exists: list[str] = Field(default_factory=list, description="已废弃,恒为空,兼容旧前端类型")
     failed: list[dict[str, str]] = Field(default_factory=list)
     registered: list[str] = Field(default_factory=list)
 

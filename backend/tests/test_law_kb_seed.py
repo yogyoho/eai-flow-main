@@ -4,6 +4,8 @@ from app.extensions.law.service import (
     RAGFLOW_DATASET_GROUPS,
     LawService,
     build_ragflow_doc_name,
+    merge_industries,
+    seed_config_diff,
 )
 
 
@@ -57,3 +59,44 @@ class TestKbSeedConfig:
     def test_legacy_groups_derived_from_seed(self):
         assert RAGFLOW_DATASET_GROUPS["ragflow-laws-standards"] == "naive"
         assert RAGFLOW_DATASET_GROUPS["ragflow-laws-legal"] == "laws"
+
+
+class TestSeedConfigDiff:
+    SEED = {"chunk_method": "naive", "parser_config": {"chunk_token_num": 384, "layout_recognize": "DeepDOC"}}
+
+    def test_identical(self):
+        cur = {"chunk_method": "naive", "parser_config": {"chunk_token_num": 384, "layout_recognize": "DeepDOC", "auto_keywords": 0}}
+        assert seed_config_diff(cur, self.SEED) == {}
+
+    def test_method_drift(self):
+        diff = seed_config_diff({"chunk_method": "manual", "parser_config": {}}, self.SEED)
+        assert diff["chunk_method"] == ("manual", "naive")
+
+    def test_value_drift(self):
+        diff = seed_config_diff({"chunk_method": "naive", "parser_config": {"chunk_token_num": 512}}, self.SEED)
+        assert diff["parser_config.chunk_token_num"] == (512, 384)
+
+    def test_missing_seed_key(self):
+        diff = seed_config_diff({"chunk_method": "naive", "parser_config": {}}, self.SEED)
+        assert diff["parser_config.layout_recognize"] == (None, "DeepDOC")
+
+    def test_extra_current_keys_ignored(self):
+        cur = {"chunk_method": "naive", "parser_config": {"chunk_token_num": 384, "layout_recognize": "DeepDOC", "some_upstream_default": 1}}
+        assert seed_config_diff(cur, self.SEED) == {}
+
+
+class TestChunkMethodConsistency:
+    def test_law_chunk_method_matches_seed(self):
+        # _LAW_CHUNK_METHOD 改为派生后,此测试钉住两映射不再漂移
+        from app.extensions.law import service
+        for law_type, kb in service.RAGFLOW_KB_MAPPING.items():
+            expected = service._KB_SEED_CONFIG[kb]["chunk_method"]
+            assert service._LAW_CHUNK_METHOD[law_type] == expected, law_type
+
+
+class TestMergeIndustries:
+    def test_union_dedup(self):
+        assert merge_industries(["环境评价", "地质勘查"]) == ["环境评价", "地质勘查", "煤炭工业"]
+
+    def test_empty_falls_back(self):
+        assert merge_industries([]) == ["地质勘查", "环境评价", "煤炭工业"]

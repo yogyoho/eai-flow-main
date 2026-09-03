@@ -24,7 +24,7 @@ from .schemas import (
     RAGFlowInitResponse,
     RAGFlowStatusResponse,
 )
-from .service import LawService
+from .service import LawService, merge_industries
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +140,12 @@ async def init_ragflow_knowledge_bases(
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"RAGFlow连接失败: {str(e)}")
 
-    from .service import RAGFLOW_DATASET_GROUPS, RAGFLOW_KB_MAPPING
+    from .service import (
+        _KB_SEED_CONFIG,
+        RAGFLOW_DATASET_GROUPS,
+        RAGFLOW_KB_MAPPING,
+        seed_config_diff,
+    )
 
     # 确定需要初始化的知识库名称（去重）
     if law_type:
@@ -151,34 +156,80 @@ async def init_ragflow_knowledge_bases(
     else:
         datasets_to_init = dict(RAGFLOW_DATASET_GROUPS)
 
-    results = {"created": [], "already_exists": [], "failed": [], "registered": []}
+    results = {"created": [], "aligned": [], "updated": [], "diffs": {}, "already_exists": [], "failed": [], "registered": []}
+
+    # 行业标签集:存在则绑定到 standards 种子(块级贴标 v0.27.1 实测未生效,绑定无害、上游修复即用)
+    industry_tag_ids: list[str] = []
+    try:
+        tag_ds = await rf_client.get_dataset_by_name("行业标签集")
+        if tag_ds:
+            industry_tag_ids = [tag_ds["id"]]
+    except Exception as e:
+        logger.warning("解析行业标签集失败(忽略): %s", e)
 
     for kb_name, chunk_method in datasets_to_init.items():
         try:
+            seed = _KB_SEED_CONFIG[kb_name]
+            parser_config = dict(seed["parser_config"])
+            if kb_name == "ragflow-laws-standards" and industry_tag_ids:
+                parser_config["tag_kb_ids"] = industry_tag_ids
+
             existing = await rf_client.get_dataset_by_name(kb_name)
             if existing:
-                results["already_exists"].append(kb_name)
                 dataset_id = existing.get("id")
+                cur_data = (await rf_client.get_dataset(dataset_id)).get("data") or {}
+                diff = seed_config_diff(cur_data, {**seed, "parser_config": parser_config})
+                if diff:
+                    await rf_client.update_dataset(
+                        dataset_id,
+                        chunk_method=seed["chunk_method"],
+                        parser_config=parser_config,
+                    )
+                    results["updated"].append(kb_name)
+                    results["diffs"][kb_name] = {k: list(v) for k, v in diff.items()}
+                    logger.info("知识库配置已收敛到种子: %s diff=%s", kb_name, diff)
+                else:
+                    results["aligned"].append(kb_name)
             else:
                 result = await rf_client.create_dataset(
                     name=kb_name,
                     description=f"法规标准库 - {kb_name}",
-                    chunk_method=chunk_method,
+                    chunk_method=seed["chunk_method"],
+                    parser_config=parser_config,
                 )
                 results["created"].append(kb_name)
                 dataset_id = result.get("data", {}).get("id")
-                logger.info(f"创建RAGFlow知识库成功: {kb_name} (chunk_method={chunk_method})")
+                logger.info(f"创建RAGFlow知识库成功: {kb_name} (chunk_method={seed['chunk_method']})")
 
-            # 注册到 knowledge_bases 表
             if dataset_id:
                 registered = await LawService._ensure_kb_registered(db, current_user.id, kb_name, dataset_id, chunk_method)
                 if registered:
                     results["registered"].append(kb_name)
         except Exception as e:
             results["failed"].append({"kb": kb_name, "error": str(e)})
-            logger.error(f"创建RAGFlow知识库失败: {kb_name} - {e}")
+            logger.error(f"初始化RAGFlow知识库失败: {kb_name} - {e}")
 
     return RAGFlowInitResponse(**results)
+
+
+@router.get("/industries")
+async def list_industries():
+    """行业领域候选 = 「行业标签集」标签块的 tag_kwd ∪ 兜底名单。标签集不存在返回兜底名单。"""
+    from app.extensions.knowledge.client import RAGFlowClient
+
+    rf_client = RAGFlowClient()
+    found: list[str] = []
+    try:
+        tag_ds = await rf_client.get_dataset_by_name("行业标签集")
+        if tag_ds:
+            docs = (await rf_client.list_documents(tag_ds["id"])).get("data", {}).get("docs", [])
+            for doc in docs:
+                r = await rf_client.list_chunks(tag_ds["id"], doc["id"], page=1, size=100)
+                for ch in (r.get("data") or {}).get("chunks", []):
+                    found.extend(ch.get("tag_kwd") or [])
+    except Exception as e:
+        logger.warning("行业标签集读取失败(回退兜底名单): %s", e)
+    return {"industries": merge_industries(found)}
 
 
 @router.post("/sync-all")
