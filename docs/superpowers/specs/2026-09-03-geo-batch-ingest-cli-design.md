@@ -64,19 +64,28 @@ python tools/eai.py gsb import --csv gsb_manifest.csv [--workers 4] [--defer-par
 - 结束汇总 + 失败清单 `gsb_import_failed.csv`（修复后可重跑）
 - scan 阶段 CSV 里的 stage/mineral 直接作为表单字段值上传——**csv 校正即最终真值**，不再依赖自动解析
 
-## 4. 统一 CLI 骨架（`tools/eai.py`）
+## 4. 统一 CLI（`tools/eai.py`）——系统级模块运维入口
+
+**定位**：全系统统一的模块运维入口——登录/并发/断点等公共层一次建成，各定制模块以**子命令注册**方式接入批量能力。统筹范围（用户 2026-09-03 定案）：地质样例库批量上传、合同价格分析批量合同上传解析、license 生成、后续定制模块。
 
 ```
 tools/eai.py（argparse subparsers；依赖仅 stdlib + httpx）
 ├─ 公共层：login 会话（nginx:2026 → POST /api/extensions/auth/login username 字段 + CSRF cookie，
 │          存 ~/.eai/session.json 含过期时间；过期自动重登）+ 并发池（httpx 连接池 + worker 信号量）
 │          + 断点 state 读写 + 结束汇总/失败清单
-├─ eai.py gsb scan|import|status|suggest-id   ← 本期实现（geo-samples 既有端点）
-└─ eai.py cpa upload|status                    ← 预留接缝（同框架调 contract-price 端点，本期不实现）
+├─ 子命令（两类）：
+│   【服务端型】需会话，薄调模块既有 REST 端点：
+│     eai.py gsb scan|import|status|suggest-id    ← 本期实现（geo-samples）
+│     eai.py cpa upload|parse|status              ← 本期实现（contract-price 批量上传+解析触发）
+│     eai.py <module> …                           ← 后续模块按同配方注册
+│   【本地工具型】无需会话，同仓库 import 既有工具函数：
+│     eai.py license generate|list                ← 收编 tools/license/license_generator.py（离线签名，私钥所在处运行）
 ```
 
-- **薄客户端纪律**：只调 REST 端点，零 DB/MinIO 耦合；任何模块要批量能力 = 加一个子命令调它既有端点（contract_price 的 `/documents/upload` 即插即用）
-- 放置 `tools/eai.py`（新目录——统一 CLI 是长期系统入口，与 scripts/ 一次性运维脚本分离）
+- **薄客户端纪律**（服务端型）：只调 REST 端点，零 DB/MinIO 耦合；认证/权限/校验/脱敏门全走服务端
+- **两类子命令的分层意义**：公共会话层只服务「服务端型」；「本地工具型」绕过会话层直挂——两类并存验证框架抽象正确
+- **新模块接入配方**（三步）：①模块已有 REST 端点则直接写薄适配；②在 `SUBCOMMANDS` 注册表加一项（名称/帮助/处理函数/是否需会话）；③复用公共并发池与断点 state。目标：新模块批量能力接入 ≤ 一个小文件
+- 放置 `tools/eai.py`（新目录——统一 CLI 是长期系统入口，与 scripts/ 一次性运维脚本分离；license_generator.py 随收编保留原位或迁入 tools/，实现时定）
 - 登录流程按 T9 实证：nginx:2026 入口、`username` 字段、CSRF cookie 处理
 
 ## 5. 后端增量（geo_samples）
@@ -109,8 +118,8 @@ tools/eai.py（argparse subparsers；依赖仅 stdlib + httpx）
 
 ## 7. 分期与边界
 
-- **本期**：suggest-id 端点 + 解析器 + `tools/eai.py` 骨架（login/公共层）+ `gsb scan/import`。
-- **本期不做**：cpa 子命令实现（留接缝）；UI 批量对话框（CLI 覆盖）；count 聚合端点；文档删除端点；扫描件 OCR 批量调度器（--defer-parse 后由管理页逐批触发既有 parse 端点）。
+- **本期**：suggest-id 端点 + 解析器 + `tools/eai.py` 骨架（login/公共层/两类子命令注册表）+ `gsb scan/import` + `cpa upload`（薄适配 contract-price 既有上传/解析端点）+ `license generate`（收编既有生成器）。
+- **本期不做**：UI 批量对话框（CLI 覆盖）；count 聚合端点；扫描件 OCR 批量调度器（--defer-parse 后由管理页逐批触发既有 parse 端点）；后续新模块的子命令（按接入配方随到随接）。
 - **风险**：①题名解析准确率依赖语料——CSV 校正流兜底，规则表随入库量迭代；②1000 份扫描件 OCR 总时长可达天级——defer-parse + 批次调度消化；③登录会话过期中途中断——CLI 自动重登续传。
 
 ## 附录 · 关键锚点
