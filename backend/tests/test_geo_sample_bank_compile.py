@@ -795,3 +795,41 @@ def test_acceptance_keep_flag_skips_cleanup(tmp_path, monkeypatch, capsys):
     assert "ACCEPTANCE: 1/1 PASS" in capsys.readouterr().out
     assert not any(op[0] == "delete" for op in FakeAccClient.ops)
     assert ("upload", p.name) in FakeAccClient.ops
+
+
+# ---------------------------------------------------------------------------
+# title_parser：报告题名解析器（Phase 3 T1，batch-cli）——report_id 自动编码与
+# suggest-id 端点共用的后端纯函数。
+# ---------------------------------------------------------------------------
+
+
+def test_parse_title_full_auto():
+    from app.extensions.geo_samples import title_parser
+
+    r = title_parser.parse_title("云南省昆明市东川区某铜矿铜银金多金属矿勘探报告")
+    assert r["region"] == "云南省昆明市东川区"
+    assert r["mineral"] == "copper"
+    assert r["stage"] == "exploration"
+    assert r["confidence"] == "auto"
+
+
+def test_parse_title_needs_review_variants():
+    from app.extensions.geo_samples import title_parser
+
+    r = title_parser.parse_title("某萤石矿详查报告")  # 词表外矿种
+    assert r["stage"] == "detail" and r["mineral"] is None
+    assert r["confidence"] == "needs-review"
+    r2 = title_parser.parse_title("某岩金矿床地质勘查报告")  # 勘查（泛词）不映射阶段
+    assert r2["mineral"] == "gold" and r2["stage"] is None
+    assert r2["confidence"] == "needs-review"
+    r3 = title_parser.parse_title("无任何规律的文档")
+    assert r3["confidence"] == "needs-review"
+    assert r3["region"] is None and r3["mineral"] is None and r3["stage"] is None
+
+
+def test_parse_title_negatives_and_earliest():
+    from app.extensions.geo_samples import title_parser
+
+    assert title_parser.parse_title("某非金属矿普查报告")["mineral"] is None
+    assert title_parser.parse_title("某铅锌金银多金属勘探报告")["mineral"] == "lead_zinc"  # 铅(0)最早
+    assert title_parser.parse_title("某金银矿勘探报告")["mineral"] == "gold"  # 金(1)唯一命中词表
