@@ -9,7 +9,8 @@ Mounted into the Gateway under ``/api/extensions/geo-samples``. Endpoints:
                                  POST /documents/upload, POST /documents/suggest-id,
                                  DELETE /documents/{document_id}
   Functional area 2 (pipeline)  : POST /documents/{document_id}/parse,
-                                 POST /documents/{document_id}/redact
+                                 POST /documents/{document_id}/redact,
+                                 POST /documents/parse-batch（defer 行受控启动）
   Functional area 3 (review)    : GET /documents/{document_id}/redactions,
                                  POST /documents/{document_id}/review
   Functional area 4 (pipeline)  : POST /pipeline/compile（模块级编译）
@@ -189,6 +190,33 @@ async def redact_document(document_id: str, background: BackgroundTasks, db: Asy
     run = await crud.create_run(db, document_id, "redact")
     background.add_task(service.run_redact, db, document_id, run.id)
     return {"run_id": run.id}
+
+
+async def parse_batch_impl(db: AsyncSession, limit: int, background: BackgroundTasks) -> dict:
+    """list_uploaded → 逐行 create_run + 入队（实现函数与端点分离便于直测，同 suggest_id_impl 模式）。"""
+    ids: list[str] = []
+    for doc in await crud.list_uploaded(db, limit=limit):
+        run = await crud.create_run(db, doc.id, "parse")
+        background.add_task(service.run_parse, db, doc.id, run.id)
+        ids.append(run.id)
+    return {"scheduled": len(ids), "ids": ids}
+
+
+@router.post("/documents/parse-batch")
+async def parse_batch(background: BackgroundTasks, limit: int = Query(5, ge=1, le=20), db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """批量触发 defer 行解析（batch-cli P4 T3，spec 2026-09-04）：把 defer_parse 上传（P4 T1）
+    留下的 status=uploaded 行按 created_at asc 取前 N 行，逐行建 parse run + 后台 run_parse——
+    等价于逐份调 POST /documents/{id}/parse，但一次请求成批。
+
+    并发上限语义：limit 的 Query le=20 即天然并发闸（不另设信号量）——防 defer 批量导入后的
+    OCR 风暴原样搬到触发阶段（单份 OCR 最长 1800s）；1000 行分 50 批手动/脚本触发。
+
+    互斥取舍：对每行不做 has_running_run 409 检查（单体 parse 端点的 parse/redact 双向互斥
+    在此省略）——行刚 defer 完必无在跑任务；网关重启遗留的陈旧 running 行由先行
+    sweep_stale_runs 自愈（模块惯例）。零行 → {"scheduled": 0, "ids": []}，不视为错误。
+    """
+    await crud.sweep_stale_runs(db)
+    return await parse_batch_impl(db, limit=limit, background=background)
 
 
 # --- Functional area 3: review -----------------------------------------------

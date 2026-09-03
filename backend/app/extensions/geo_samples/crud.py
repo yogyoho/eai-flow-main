@@ -83,6 +83,17 @@ async def list_reviewed(db: AsyncSession, stage: str | None = None, mineral: str
     return list((await db.execute(stmt)).scalars().all())
 
 
+async def list_uploaded(db: AsyncSession, limit: int) -> list[GsbDocument]:
+    """status=uploaded 清单（batch-cli P4 T3）——parse-batch 端点的输入集，即 defer_parse
+    上传（P4 T1）留下的待启动行。
+
+    created_at asc：先传先跑（FIFO，同 list_reviewed 排序模式，id asc 为同刻 tiebreaker）；
+    limit 由调用方收紧（端点 Query le=20），crud 层不设上限。
+    """
+    stmt = select(GsbDocument).where(GsbDocument.status == "uploaded").order_by(GsbDocument.created_at.asc(), GsbDocument.id.asc()).limit(limit)
+    return list((await db.execute(stmt)).scalars().all())
+
+
 async def has_running_compile_run(db: AsyncSession) -> bool:
     """模块级编译互斥：任意 run_type=compile 且 status=running 的行存在即拒绝新编译。
 

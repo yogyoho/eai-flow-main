@@ -1174,3 +1174,180 @@ async def test_upload_immediate_parse_regression(monkeypatch):
     run_parse.assert_not_awaited()  # 端点只入队，不在请求内执行
     assert result["run_id"] == "run-1"
     assert result["document"]["status"] == "uploaded"
+
+
+# --- parse-batch 端点 + list_uploaded（batch-cli P4 T3，spec 2026-09-04）-------
+# defer_parse 上传行（status=uploaded、无 run）的受控启动：POST /documents/parse-batch
+# 按 created_at asc 取前 N 行逐行建 parse run + 后台任务；N≤20（Query le）即天然并发闸。
+
+
+@pytest.mark.asyncio
+async def test_list_uploaded_asc_limit(tmp_path):
+    """list_uploaded：仅 status=uploaded 行、created_at asc（先传先跑 FIFO）、limit 截断。"""
+    from datetime import UTC, datetime
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.extensions.geo_samples import crud
+    from app.extensions.geo_samples.models import GsbDocument
+
+    engine = create_async_engine("sqlite+aiosqlite:///" + str(tmp_path / "t.db"))
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as conn:
+        # 定点建表（勿 Base.metadata.create_all——共享 Base 的跨模块 FK 在 DDL 排序时炸，同 test_next_report_id_bumps_max）
+        await conn.run_sync(lambda sync_conn: GsbDocument.__table__.create(sync_conn, checkfirst=True))
+    async with maker() as db:
+        rows = [
+            ("up-early", "r-early", "uploaded", datetime(2026, 9, 1, 12, tzinfo=UTC)),
+            ("parsed-mid", "r-parsed", "parsed", datetime(2026, 9, 1, 13, tzinfo=UTC)),
+            ("up-late", "r-late", "uploaded", datetime(2026, 9, 1, 14, tzinfo=UTC)),
+        ]
+        for rid, rpt, status, created in rows:
+            db.add(GsbDocument(id=rid, report_id=rpt, file_name="a.docx", file_hash="h" + rid, file_type="docx", status=status, raw_uri=f"s3://geo-samples/raw/{rpt}/a.docx", created_at=created))
+        await db.commit()
+        got = await crud.list_uploaded(db, limit=10)
+        assert [r.id for r in got] == ["up-early", "up-late"]  # parsed 行被滤掉，uploaded 升序
+        assert [r.id for r in await crud.list_uploaded(db, limit=1)] == ["up-early"]  # limit 截断取最旧
+    await engine.dispose()
+
+
+def test_parse_batch_limit_query_contract():
+    """并发闸契约锁死：limit=Query(5, ge=1, le=20)——le=20 即天然并发上限（不另设信号量）；
+    漂移即改触发风暴语义（defer 1000 行分 50 批的前提），须回归 Task 3 契约。"""
+    import inspect
+
+    from fastapi import params
+
+    from app.extensions.geo_samples import routers
+
+    q = inspect.signature(routers.parse_batch).parameters["limit"].default
+    assert isinstance(q, params.Query)
+    assert q.default == 5
+    # pydantic v2 形态：约束以 Ge/Le 注解类型挂在 FieldInfo.metadata，非 .ge/.le 属性
+    assert [m.ge for m in q.metadata if hasattr(m, "ge")] == [1]
+    assert [m.le for m in q.metadata if hasattr(m, "le")] == [20]
+
+
+async def _run_parse_batch(monkeypatch, docs):
+    """桩件直调 POST /documents/parse-batch 端点实现（同 _run_delete_route 直调模式）。
+
+    返回 (db, background, create_run, run_parse, sweep 次数, 响应|None, HTTPException|None)。
+    """
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock, MagicMock
+
+    from fastapi import BackgroundTasks
+
+    from app.extensions.geo_samples import routers
+
+    sweeps = []
+
+    async def _sweep(db, max_age_minutes=60):
+        sweeps.append(1)
+        return 0
+
+    async def _list_uploaded(db, limit):
+        return list(docs)
+
+    runs = [SimpleNamespace(id=f"run-{i + 1}") for i in range(len(docs))]
+    create_run = AsyncMock(side_effect=runs)
+    run_parse = AsyncMock()
+
+    monkeypatch.setattr(routers.crud, "sweep_stale_runs", _sweep)
+    monkeypatch.setattr(routers.crud, "list_uploaded", _list_uploaded)
+    monkeypatch.setattr(routers.crud, "create_run", create_run)
+    monkeypatch.setattr(routers.service, "run_parse", run_parse)
+
+    db = MagicMock()
+    background = BackgroundTasks()
+    err = result = None
+    try:
+        result = await routers.parse_batch(background=background, limit=5, db=db)
+    except routers.HTTPException as exc:
+        err = exc
+    return db, background, create_run, run_parse, sweeps, result, err
+
+
+@pytest.mark.asyncio
+async def test_parse_batch_endpoint_schedules(monkeypatch):
+    """两行 uploaded → sweep 先行 + 逐行 create_run("parse") + 后台 run_parse 入队 + scheduled/ids 有序。"""
+    from types import SimpleNamespace
+
+    docs = [SimpleNamespace(id="doc-a"), SimpleNamespace(id="doc-b")]
+    db, background, create_run, run_parse, sweeps, result, err = await _run_parse_batch(monkeypatch, docs)
+    assert err is None
+    assert sum(sweeps) == 1  # 模块自愈惯例：sweep_stale_runs 先行
+    assert create_run.await_count == 2
+    assert [c.args for c in create_run.await_args_list] == [(db, "doc-a", "parse"), (db, "doc-b", "parse")]
+    assert result == {"scheduled": 2, "ids": ["run-1", "run-2"]}
+    assert len(background.tasks) == 2
+    assert all(t.func is run_parse for t in background.tasks)
+    assert [t.args for t in background.tasks] == [(db, "doc-a", "run-1"), (db, "doc-b", "run-2")]
+    run_parse.assert_not_awaited()  # 端点只入队，不在请求内执行
+
+
+@pytest.mark.asyncio
+async def test_parse_batch_zero_rows(monkeypatch):
+    """零 defer 行 → {"scheduled": 0, "ids": []}，不 404、不建 run、不入队。"""
+    _db, background, create_run, _run_parse, _sweeps, result, err = await _run_parse_batch(monkeypatch, [])
+    assert err is None
+    assert result == {"scheduled": 0, "ids": []}
+    create_run.assert_not_awaited()
+    assert background.tasks == []
+
+
+def test_upload_multipart_defer_true_string(monkeypatch):
+    """P4-T1 质量闭环（Important #1）：真 multipart 上传路径（starlette TestClient 最小 app +
+    dependency_overrides 覆盖 get_db/_PERM）下，FastAPI Form bool 把 "true" 解析为 True——
+    defer 行绝不 create_run、响应省略 run_id 键。直调版（_run_upload_route defer=True）只证
+    「布尔已解析后」的行为，此测锁 multipart 层的字符串转换。"""
+    from datetime import datetime
+    from unittest.mock import AsyncMock, MagicMock
+
+    from fastapi import FastAPI
+    from starlette.testclient import TestClient
+
+    from app.extensions.database import get_db
+    from app.extensions.geo_samples import routers
+    from app.extensions.geo_samples.models import GsbDocument
+
+    create_run = AsyncMock()
+
+    async def _by_report_id(db, rid):
+        return None
+
+    async def _dup(db, digest, exclude_uri):
+        return None
+
+    async def _create_doc(db, **kw):
+        # created_at 必须显式给：未 flush 的 ORM 实例 server_default 未生效，DocumentOut 会炸
+        return GsbDocument(id="d1", status="uploaded", created_at=datetime(2026, 9, 4), **kw)
+
+    monkeypatch.setattr(routers.crud, "get_document_by_report_id", _by_report_id)
+    monkeypatch.setattr(routers.crud, "find_duplicate_document", _dup)
+    monkeypatch.setattr(routers.crud, "create_document", _create_doc)
+    monkeypatch.setattr(routers.crud, "create_run", create_run)
+    monkeypatch.setattr(routers.service, "run_parse", AsyncMock())
+    monkeypatch.setattr(routers.storage, "put_raw", lambda rid, name, data: f"s3://geo-samples/raw/{rid}/{name}")
+
+    app = FastAPI()
+    app.include_router(routers.router)
+
+    async def _override_db():
+        yield MagicMock()
+
+    app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[routers._PERM.dependency] = lambda: None  # 权限依赖 pass-through（最小 app 不挂 auth 中间件）
+
+    client = TestClient(app)
+    resp = client.post(
+        "/api/extensions/geo-samples/documents/upload",
+        data={"report_id": "gsb-kc-cu-0009", "defer_parse": "true"},
+        files={"file": ("样例.docx", b"docx-bytes")},
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert "run_id" not in body
+    create_run.assert_not_called()
+    assert body["document"]["status"] == "uploaded"
+    assert body["document"]["id"] == "d1"
