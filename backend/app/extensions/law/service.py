@@ -74,10 +74,6 @@ RAGFLOW_DATASET_GROUPS = {name: cfg["chunk_method"] for name, cfg in _KB_SEED_CO
 # (历史上标准类 manual 对 .txt 抛错且实测对齐差,naive+384 为 A/B 实测最优)
 _LAW_CHUNK_METHOD: dict[str, str] = {lt: _KB_SEED_CONFIG[kb]["chunk_method"] for lt, kb in RAGFLOW_KB_MAPPING.items()}
 
-# 行业领域兜底名单:tag 标签集的 tag_kwd 在 v0.27.1 REST 响应中可能为空(上游未透出),
-# 此时 industries 端点回退到该名单(与行业标签集 csv 保持一致)
-_DEFAULT_INDUSTRIES = ["地质勘查", "环境评价", "煤炭工业"]
-
 
 def build_ragflow_doc_name(industry: str | None, law_number: str | None, title: str, ext: str | None) -> str:
     """组装 RAGFlow 文档名:【行业】标准号 标题.ext(行业/标准号/ext 可缺省;行业自动 strip)。"""
@@ -109,15 +105,6 @@ def seed_config_diff(cur: dict, seed: dict) -> dict[str, tuple]:
             if cur_val != seed_val:
                 diff[key] = (cur_val, seed_val)
     return diff
-
-
-def merge_industries(tag_kwd_found: list[str]) -> list[str]:
-    """行业领域 = 标签集实际读到的 ∪ 兜底名单,去重保序。"""
-    out: list[str] = []
-    for it in list(tag_kwd_found) + _DEFAULT_INDUSTRIES:
-        if it and it not in out:
-            out.append(it)
-    return out
 
 
 class LawService:

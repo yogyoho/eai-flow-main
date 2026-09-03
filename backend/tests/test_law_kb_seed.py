@@ -7,7 +7,6 @@ from app.extensions.law.service import (
     RAGFLOW_DATASET_GROUPS,
     LawService,
     build_ragflow_doc_name,
-    merge_industries,
     seed_config_diff,
 )
 
@@ -103,14 +102,6 @@ class TestChunkMethodConsistency:
         for law_type, kb in service.RAGFLOW_KB_MAPPING.items():
             expected = service._KB_SEED_CONFIG[kb]["chunk_method"]
             assert service._LAW_CHUNK_METHOD[law_type] == expected, law_type
-
-
-class TestMergeIndustries:
-    def test_union_dedup(self):
-        assert merge_industries(["环境评价", "地质勘查"]) == ["环境评价", "地质勘查", "煤炭工业"]
-
-    def test_empty_falls_back(self):
-        assert merge_industries([]) == ["地质勘查", "环境评价", "煤炭工业"]
 
 
 class _FakeRF:

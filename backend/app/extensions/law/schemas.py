@@ -159,12 +159,6 @@ class RAGFlowInitResponse(BaseModel):
     registered: list[str] = Field(default_factory=list)
 
 
-class IndustriesResponse(BaseModel):
-    """行业领域候选列表。"""
-
-    industries: list[str] = Field(default_factory=list)
-
-
 class LawTemplateRelationCreate(BaseModel):
     """Create law-template relation."""
 

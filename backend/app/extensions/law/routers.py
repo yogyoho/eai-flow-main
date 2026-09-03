@@ -14,7 +14,6 @@ from app.extensions.schemas import CurrentUser
 
 from .schemas import (
     FileParseResponse,
-    IndustriesResponse,
     LawCreate,
     LawListResponse,
     LawResponse,
@@ -25,7 +24,7 @@ from .schemas import (
     RAGFlowInitResponse,
     RAGFlowStatusResponse,
 )
-from .service import _KB_SEED_CONFIG, LawService, merge_industries, seed_config_diff
+from .service import _KB_SEED_CONFIG, LawService, seed_config_diff
 
 logger = logging.getLogger(__name__)
 
@@ -227,35 +226,6 @@ async def init_ragflow_knowledge_bases(
             logger.error(f"初始化RAGFlow知识库失败: {kb_name} - {e}")
 
     return RAGFlowInitResponse(**results)
-
-
-@router.get("/industries", response_model=IndustriesResponse)
-async def list_industries(
-    current_user: CurrentUserWithAccess = None,
-):
-    """行业领域候选 = 「行业标签集」标签块的 tag_kwd ∪ 兜底名单。标签集不存在返回兜底名单。"""
-    from app.extensions.knowledge.client import RAGFlowClient
-
-    rf_client = RAGFlowClient()
-    found: list[str] = []
-    try:
-        tag_ds = await rf_client.get_dataset_by_name("行业标签集")
-        if tag_ds:
-            docs = (await rf_client.list_documents(tag_ds["id"])).get("data", {}).get("docs", [])
-            for doc in docs:
-                # 翻页读取全部标签块,消除 >100 块时的静默截断;上限 10 页(1000 块)防病态服务端
-                for page in range(1, 11):
-                    r = await rf_client.list_chunks(tag_ds["id"], doc["id"], page=page, size=100)
-                    data = r.get("data") or {}
-                    chunks = data.get("chunks") or []
-                    for ch in chunks:
-                        found.extend(ch.get("tag_kwd") or [])
-                    total = data.get("total") or 0
-                    if not chunks or page * 100 >= total:
-                        break
-    except Exception as e:
-        logger.warning("行业标签集读取失败(回退兜底名单): %s", e)
-    return IndustriesResponse(industries=merge_industries(found))
 
 
 @router.post("/sync-all")

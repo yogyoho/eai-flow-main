@@ -67,9 +67,9 @@ _KB_SEED_CONFIG = {
 
 init 时按名称解析「行业标签集」dataset:存在 → 其 id 填入 standards 种子的 `tag_kb_ids`;不存在 → 留空 `[]` 并 WARNING 日志(不阻断 init)。已知限制(写入 spec,非阻塞):v0.27.1 实测块级自动贴标(tag_kwd)未生效(0/33,检索层确认),行业标记当前运营层为文档名前缀(见设计 B);上游修复后此绑定即生效。
 
-### 1.4 行业领域下拉数据源(新端点)
+### 1.4 行业领域下拉数据源(2026-09-04 修订:业务字典为单一真相源)
 
-`GET /api/kf/laws/industries`(law/routers.py):从「行业标签集」读全部标签块的 `tag_kwd`/content,返回 `{"industries": ["地质勘查", "环境评价", "煤炭工业", ...]}`。标签集不存在 → 返回空列表(前端显示"暂无行业可选,可留空")。
+前端 `useLawIndustries` 直读**业务字典 tab → 业务领域字典**(`kfApi.listDictItems("industry")`,即 `GET /api/kf/dictionaries/industry`,按 sort_order 排序、过滤 enabled)。**不硬编码**行业名单,不设兜底(字典为空=下拉仅"不标记行业",由业务字典 tab 维护条目)。初版的 `GET /api/kf/laws/industries` 端点、`IndustriesResponse`、`merge_industries`/`_DEFAULT_INDUSTRIES` 硬编码兜底已整体拆除。
 
 ## 2. 设计 B:导入链路行业标记(前后端)
 

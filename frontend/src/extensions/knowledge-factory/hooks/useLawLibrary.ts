@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { kfApi } from "@/extensions/api";
 import { authFetch, authFormFetch } from "@/extensions/api/client";
 import type {
   LawItem,
@@ -301,9 +302,12 @@ export function useLawIndustries() {
   return useQuery({
     queryKey: ["laws", "industries"],
     queryFn: async () => {
-      const url = buildLawLibraryUrl("/kf/laws/industries");
-      const res = await authFetch<{ industries: string[] }>(url, undefined, "");
-      return res.industries ?? [];
+      // 行业领域来源:业务字典 tab → 业务领域字典(category="industry"),非硬编码
+      const res = await kfApi.listDictItems("industry", { limit: 200 });
+      return res.items
+        .filter((it) => it.enabled)
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((it) => it.label);
     },
     staleTime: 5 * 60 * 1000,
   });
