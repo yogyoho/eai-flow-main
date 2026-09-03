@@ -7,6 +7,7 @@ import { FileStack, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { geoSamplesApi } from "@/extensions/geo-samples/api";
 import {
   AMBER,
   BLUE,
@@ -164,6 +165,38 @@ export function DocumentsView() {
             placeholder="report_id（如 2019-qianxi-gold-expl）"
             className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-72 rounded-md border px-2.5 py-1.5 font-mono text-[13px] outline-none"
           />
+          {/* 自动编码（batch-cli T7）：题名取所选文件名去扩展名，无文件退 report_id 框现值；
+              低置信度结果照常回填但提示人工复核 */}
+          <button
+            type="button"
+            onClick={async () => {
+              const file = fileRef.current?.files?.[0];
+              const title = (
+                file?.name ??
+                reportIdRef.current?.value ??
+                ""
+              ).replace(/\.(docx|pdf)$/i, "");
+              if (!title) {
+                alert("先选择文件或输入题名再自动编码");
+                return;
+              }
+              try {
+                const r = await geoSamplesApi.suggestId(title);
+                if (reportIdRef.current)
+                  reportIdRef.current.value = r.report_id;
+                if (r.confidence === "needs-review") {
+                  alert(
+                    `已自动编码（低置信度，建议人工复核）：\n阶段=${r.stage ?? "?"} 矿种=${r.mineral ?? "?"} 地区=${r.region ?? "?"}`,
+                  );
+                }
+              } catch (e) {
+                alertErr(e);
+              }
+            }}
+            className="border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground cursor-pointer rounded-md border px-2.5 py-1.5 text-[13px] transition-colors"
+          >
+            自动
+          </button>
           <input
             ref={fileRef}
             id="gsb-upload-file"

@@ -56,6 +56,20 @@ export const geoSamplesApi = {
       { method: "DELETE" },
     ),
 
+  // 题名 → 结构化 report_id 建议（batch-cli T7, spec 2026-09-03）。后端为 POST
+  // ?title=Query(...)，authFetch 不带 method 默认走 GET → 必须显式 POST（且 CSRF 头仅对
+  // 显式 state-changing method 附加）。
+  suggestId: (title: string) =>
+    authFetch<{
+      report_id: string;
+      stage: string | null;
+      mineral: string | null;
+      region: string | null;
+      confidence: "auto" | "needs-review";
+    }>(`${API_BASE}/documents/suggest-id?title=${encodeURIComponent(title)}`, {
+      method: "POST",
+    }),
+
   // Functional area 2: parse / redact pipeline
   parse: (id: string) =>
     authFetch<{ run_id: string }>(`${API_BASE}/documents/${id}/parse`, {
