@@ -254,6 +254,60 @@ def test_cmd_gsb_import_mixed(tmp_path, capsys):
     assert "error" in failed_csv and "connection refused" in failed_csv  # 原行内容 + 错误列
 
 
+# --- P4 D2/D3: CSV 预检 + scan 容错 -------------------------------------------
+
+
+def test_gsb_import_preflight_rejects_bad_vocab(tmp_path, capsys):
+    """D2 CSV 预检（P4）：词表校验在任何上传调用之前——好行+坏行混合 CSV 也要零上传 rc=1，
+    错误逐行列出（行号+列+值）。"""
+    good = {"file_name": "a.docx", "report_id": "gsb-kc-cu-0001", "stage": "exploration", "mineral": "copper", "region": "", "confidence": "auto"}
+    bad = {"file_name": "b.docx", "report_id": "gsb-kc-cu-0002", "stage": "exploration", "mineral": "uranium", "region": "", "confidence": "auto"}
+    (tmp_path / "a.docx").write_bytes(b"x")
+    (tmp_path / "b.docx").write_bytes(b"y")
+    csv_path = tmp_path / "gsb_manifest.csv"
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["file_name", "report_id", "stage", "mineral", "region", "confidence"])
+        writer.writeheader()
+        writer.writerows([good, bad])
+
+    posts = []
+
+    class Sess:
+        def post(self, path, **kw):
+            posts.append(path)
+            raise AssertionError(f"预检失败后不得有任何网络调用: {path}")
+
+    args = eai.build_parser().parse_args(["gsb", "import", "--csv", str(csv_path), "--dir", str(tmp_path), "--username", "u", "--password", "p"])
+    rc = eai.cmd_gsb_import(Sess(), args)
+    assert rc == 1
+    assert posts == []  # 零上传调用——错一列不传 900 行
+    captured = capsys.readouterr()
+    assert "行 3" in captured.err and "mineral" in captured.err and "uranium" in captured.err  # 行号+列+值
+
+
+def test_gsb_scan_tolerates_suggest_500(tmp_path, capsys):
+    """D3 scan 容错（P4）：suggest 端点 500 → 该文件计 needs-review（词表字段置 None + gsb-auto
+    占位 id），批次不中断，汇总行带 解析异常 K。"""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/suggest-id"):
+            return httpx.Response(500, json={"detail": "boom"}, request=request)
+        raise AssertionError(request.url.path)
+
+    (tmp_path / "某报告.docx").write_bytes(b"x")
+    client = httpx.Client(base_url="http://x", transport=httpx.MockTransport(handler))
+    sess = eai.Session("http://x", client, csrf="")
+    args = eai.build_parser().parse_args(["gsb", "scan", "--dir", str(tmp_path), "--username", "u", "--password", "p"])
+    rc = eai.cmd_gsb_scan(sess, args)
+    assert rc == 0  # 单文件 500 不炸批次
+    captured = capsys.readouterr()
+    assert "解析异常 1" in captured.out
+    assert "needs-review 1" in captured.out
+    assert "警告" in captured.err and "某报告" in captured.err
+    manifest = (tmp_path / "gsb_manifest.csv").read_text(encoding="utf-8-sig")
+    assert "gsb-auto-0001" in manifest and "needs-review" in manifest
+
+
 def test_cmd_cpa_upload_flow(tmp_path, capsys):
     """cmd 编排（T6 review Important-2）：3 文件（成功/409 内容重复/HTTPError）+ --trigger-parse →
     pipeline/run 恰调 1 次、409 计 skipped、异常计失败 rc=1。"""

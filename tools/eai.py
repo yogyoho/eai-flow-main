@@ -311,7 +311,21 @@ def cmd_gsb_scan(sess, args) -> int:
     if not root.is_dir():
         print(f"目录不存在: {root}", file=sys.stderr)
         return 1
-    rows = gsb_scan_rows(root, lambda title: _remote_suggest(sess, title), limit=args.limit, recursive=args.recursive)
+    parse_errors = 0
+
+    def tolerant_suggest(title: str) -> dict:
+        """D3 容错（P4）：单文件 suggest 异常（HTTP 5xx/网络故障均属 httpx.HTTPError）→
+        计 needs-review 行（词表字段置 None + gsb-auto 占位 id，同服务端 needs-review 语义；
+        同批多份占位 id 由 gsb_scan_rows 冲突顺延自愈），stderr 告警后批次继续。"""
+        nonlocal parse_errors
+        try:
+            return _remote_suggest(sess, title)
+        except httpx.HTTPError as exc:
+            parse_errors += 1
+            print(f"警告: 题名解析失败（计 needs-review）: {title}: {exc}", file=sys.stderr)
+            return {"region": None, "mineral": None, "stage": None, "confidence": "needs-review", "report_id": "gsb-auto-0001"}
+
+    rows = gsb_scan_rows(root, tolerant_suggest, limit=args.limit, recursive=args.recursive)
     out = root / "gsb_manifest.csv"
     fields = ["file_name", "report_id", "stage", "mineral", "region", "confidence"]
     with open(out, "w", newline="", encoding="utf-8-sig") as fh:  # utf-8-sig 供 Excel 直开
@@ -321,7 +335,10 @@ def cmd_gsb_scan(sess, args) -> int:
     auto = sum(1 for r in rows if r.get("confidence") == "auto")
     review = sum(1 for r in rows if r.get("confidence") == "needs-review")
     conflicts = sum(1 for r in rows if r.get("_conflict"))
-    print(f"扫描 {len(rows)} | auto {auto} | needs-review {review} | 冲突顺延 {conflicts}")
+    summary = f"扫描 {len(rows)} | auto {auto} | needs-review {review} | 冲突顺延 {conflicts}"
+    if parse_errors:  # D3：仅异常时追加，避免干净批次噪音
+        summary += f" | 解析异常 {parse_errors}"
+    print(summary)
     print(f"清单: {out}")
     return 0
 
@@ -333,6 +350,46 @@ def _import_row(sess, base: Path, row: dict, defer_parse: bool) -> dict:
     return upload_one(sess, str(path), row, defer_parse=defer_parse)
 
 
+# D2 预检词表（P4，CLI 内置同款常量）：与服务端 geo_samples/schemas.py ALLOWED_STAGES/ALLOWED_MINERALS
+# 同源——服务端词表变更须双向同步（此处若漂移，批量会在上传 422 上浪费 round-trips）。
+GSB_STAGES = frozenset({"survey", "detail", "exploration"})
+GSB_MINERALS = frozenset({"copper", "coal", "gold", "iron", "lead_zinc", "other"})
+GSB_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9\-_][a-z0-9\-_]*$")
+
+
+def gsb_preflight(raw: list[dict]) -> tuple[list[dict], list[str]]:
+    """D2 CSV 预检（纯函数，P4）：逐行校验 file_name 非空、report_id slug（正则 + 2-128 位）、
+    stage/mineral 词表（空值合法=走服务端默认），返回 (合法行, 逐行错误文案)。
+
+    错误文案含行号+列+值（行号按 CSV 物理行计，header 为第 1 行——操作员可在 Excel 直接定位）；
+    全空白行静默跳过（保留原跳过语义）。调用方见错必须零上传返回 rc=1。
+    """
+    rows: list[dict] = []
+    errors: list[str] = []
+    for lineno, r in enumerate(raw, start=2):
+        rid = str(r.get("report_id") or "").strip()
+        fname = str(r.get("file_name") or "").strip()
+        stage = str(r.get("stage") or "").strip()
+        mineral = str(r.get("mineral") or "").strip()
+        region = str(r.get("region") or "").strip()
+        if not (rid or fname or stage or mineral or region):
+            continue  # 全空白行
+        problems: list[str] = []
+        if not fname:
+            problems.append("file_name 为空")
+        if not (2 <= len(rid) <= 128 and GSB_SLUG_RE.match(rid)):
+            problems.append(f"report_id 不是合法 slug（2-128 位小写字母/数字/连字符/下划线）: {rid!r}")
+        if stage and stage not in GSB_STAGES:
+            problems.append(f"stage 非法词表: {stage!r}")
+        if mineral and mineral not in GSB_MINERALS:
+            problems.append(f"mineral 非法词表: {mineral!r}")
+        if problems:
+            errors.append(f"行 {lineno}: " + "；".join(problems))
+            continue
+        rows.append({"file_name": fname, "report_id": rid, "stage": stage, "mineral": mineral, "region": region})
+    return rows, errors
+
+
 def cmd_gsb_import(sess, args) -> int:
     csv_path = Path(args.csv)
     if not csv_path.is_file():
@@ -340,21 +397,13 @@ def cmd_gsb_import(sess, args) -> int:
         return 1
     with open(csv_path, encoding="utf-8-sig", newline="") as fh:
         raw = list(csv.DictReader(fh))
-    rows = []
-    for r in raw:
-        rid = (r.get("report_id") or "").strip()
-        fname = (r.get("file_name") or "").strip()
-        if not rid or not fname:
-            continue  # 跳过空行 / 无 report_id 行
-        rows.append(
-            {
-                "file_name": fname,
-                "report_id": rid,
-                "stage": (r.get("stage") or "").strip(),
-                "mineral": (r.get("mineral") or "").strip(),
-                "region": (r.get("region") or "").strip(),
-            }
-        )
+    rows, preflight_errors = gsb_preflight(raw)
+    if preflight_errors:
+        # D2 预检门（P4）：整列 typed 错在 900 round-trips 前发现——零上传调用，修完清单再重跑
+        print(f"预检失败: {len(preflight_errors)} 行有错，未上传任何文件:", file=sys.stderr)
+        for msg in preflight_errors:
+            print(f"  {msg}", file=sys.stderr)
+        return 1
     state = ImportState(csv_path.with_suffix(".state.json"))
     base = Path(args.dir) if args.dir else csv_path.parent  # 缺省锚清单目录——scan 清单就在扫描根
     todo: list[dict] = []
