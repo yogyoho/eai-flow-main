@@ -100,3 +100,8 @@ nul
 
 # archify visual-check QA artifacts (regenerable)
 docs/architecture/*.visual-check.*
+
+# 机器本地 env(2026-09-03 退出版本库:含本机凭证;历史已洗)
+docker/.env
+docker/.env.docker
+.env.docker
