@@ -51,6 +51,7 @@ const STATUS_COLOR: Record<string, string> = {
   redacted: AMBER,
   reviewed: GREEN,
   failed: RED,
+  compiled: BLUE, // 编译终态(成功语义,与 reviewed GREEN 区分)
 };
 const STAGE_LABEL: Record<string, string> = Object.fromEntries(
   STAGE_OPTIONS.map((o) => [o.value, o.label]),
@@ -349,7 +350,7 @@ export function DocumentsView() {
               </TableBody>
             </Table>
           )}
-          {/* 分页行(表格下方):total 来自后端 count,同当前筛选;尾页按 docs.length < pageSize 判定 */}
+          {/* 分页行(表格下方):total 来自后端 count,同当前筛选;尾页按 total 精确判定,docs.length 兜底(翻页占位期间 total 瞬时滞后) */}
           <div className="border-border text-muted-foreground mt-3 flex flex-wrap items-center gap-4 border-t pt-3 text-xs">
             <span>共 {total} 条</span>
             <label className="flex items-center gap-1.5">
@@ -384,7 +385,9 @@ export function DocumentsView() {
               <button
                 type="button"
                 className={PAGE_BTN}
-                disabled={docs.length < pageSize}
+                disabled={
+                  (page + 1) * pageSize >= total || docs.length < pageSize
+                }
                 onClick={() => setPage((p) => p + 1)}
               >
                 下一页

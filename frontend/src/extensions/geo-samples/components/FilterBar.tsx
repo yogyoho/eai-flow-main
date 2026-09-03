@@ -39,6 +39,7 @@ export const STATUS_OPTIONS: GsbOption[] = [
   { value: "redacted", label: "已脱敏" },
   { value: "reviewed", label: "已过审" },
   { value: "failed", label: "失败" },
+  { value: "compiled", label: "已编译" },
 ];
 
 /** 触发按钮/面板统一样式(bid-quote FilterBar 同款,14px)。 */

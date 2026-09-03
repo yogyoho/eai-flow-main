@@ -19,6 +19,7 @@ export function useGsbDocuments(filters: {
   return useQuery({
     queryKey: ["gsb-documents", filters],
     queryFn: () => geoSamplesApi.listDocuments(filters),
+    placeholderData: (prev) => prev, // 翻页/筛选切换保留上一份数据,不闪「加载中…」(TanStack v5)
     refetchInterval: 5000, // 后台 parse/redact 进行中时表格自刷新
   });
 }
