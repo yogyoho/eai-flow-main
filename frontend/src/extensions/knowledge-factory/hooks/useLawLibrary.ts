@@ -210,9 +210,15 @@ export function useSyncAllLaws() {
 }
 
 export interface InitRAGFlowResponse {
+  success: boolean;
+  message: string;
   created: string[];
+  aligned: string[];
+  updated: string[];
+  diffs: Record<string, Record<string, [unknown, unknown]>>;
   already_exists: string[];
-  failed: Array<{ name: string; error: string }>;
+  failed: { kb: string; error: string }[];
+  registered: string[];
 }
 
 export function useInitRAGFlow() {
@@ -288,5 +294,17 @@ export function useLawTemplates(lawId: string | null) {
       return authFetch<{ templates: unknown[]; total: number }>(url, undefined, "");
     },
     enabled: !!lawId,
+  });
+}
+
+export function useLawIndustries() {
+  return useQuery({
+    queryKey: ["laws", "industries"],
+    queryFn: async () => {
+      const url = buildLawLibraryUrl("/kf/laws/industries");
+      const res = await authFetch<{ industries: string[] }>(url, undefined, "");
+      return res.industries ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
   });
 }

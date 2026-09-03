@@ -252,8 +252,11 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                 {initMutation.data.created?.length > 0 && (
                   <span className="font-medium">已创建 {initMutation.data.created.length} 个知识库</span>
                 )}
-                {initMutation.data.already_exists?.length > 0 && (
-                  <span className="text-muted-foreground">，{initMutation.data.already_exists.length} 个已存在</span>
+                {initMutation.data.aligned?.length > 0 && (
+                  <span className="text-muted-foreground">，{initMutation.data.aligned.length} 个配置一致</span>
+                )}
+                {initMutation.data.updated?.length > 0 && (
+                  <span className="text-amber-600">，{initMutation.data.updated.length} 个已收敛到标准配置</span>
                 )}
                 {initMutation.data.failed?.length > 0 && (
                   <span className="text-destructive font-medium">，{initMutation.data.failed.length} 个失败</span>

@@ -18,9 +18,12 @@ import { authFormFetch } from "@/extensions/api/client";
 import type { LawType } from "@/extensions/knowledge-factory/types";
 
 import { LAW_TYPE_OPTIONS, getCategoryByCode } from "../config/lawCategories";
-import { useImportLawWithFile } from "../hooks/useLawLibrary";
+import { useImportLawWithFile, useLawIndustries } from "../hooks/useLawLibrary";
 import { buildLawLibraryUrl } from "../law-library-api";
 import { cn } from "../utils";
+
+// Radix Select 禁止空字符串选项值，「不标记行业」用哨兵值表示，组装提交时映射回 ""
+const INDUSTRY_NONE = "__none__";
 
 interface ImportLawModalProps {
   onClose: () => void;
@@ -33,6 +36,7 @@ interface FormData {
   lawType: LawType;
   department: string;
   effectiveDate: string;
+  industry: string;
   keywords: string[];
   referredLaws: string[];
 }
@@ -56,6 +60,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
     lawType: "technical",
     department: "",
     effectiveDate: "",
+    industry: "",
     keywords: [],
     referredLaws: [],
   });
@@ -70,6 +75,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const importMutation = useImportLawWithFile();
+  const industries = useLawIndustries().data;
 
   const handleAddKeyword = () => {
     if (keywordInput.trim() && !formData.keywords.includes(keywordInput.trim())) {
@@ -185,6 +191,9 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
       formDataFd.append("law_type", formData.lawType);
       formDataFd.append("department", formData.department.trim() || "");
       formDataFd.append("effective_date", formData.effectiveDate || "");
+      if (formData.industry) {
+        formDataFd.append("sector", formData.industry);
+      }
       if (formData.keywords.length) {
         formDataFd.append("keywords", formData.keywords.join(","));
       }
@@ -325,6 +334,26 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                         className="text-sm w-full px-3 py-2 border border-border rounded-lg bg-muted focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
                       />
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm text-muted-foreground mb-1">
+                      行业领域（可选，用作检索前缀）
+                    </label>
+                    <AdminSelect
+                      value={formData.industry || INDUSTRY_NONE}
+                      onChange={(v) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          industry: v === INDUSTRY_NONE ? "" : v,
+                        }))
+                      }
+                      options={[
+                        { value: INDUSTRY_NONE, label: "不标记行业" },
+                        ...(industries ?? []).map((it) => ({ value: it, label: it })),
+                      ]}
+                      className="w-full"
+                    />
                   </div>
                 </div>
               </div>
