@@ -833,3 +833,33 @@ def test_parse_title_negatives_and_earliest():
     assert title_parser.parse_title("某非金属矿普查报告")["mineral"] is None
     assert title_parser.parse_title("某铅锌金银多金属勘探报告")["mineral"] == "lead_zinc"  # 铅(0)最早
     assert title_parser.parse_title("某金银矿勘探报告")["mineral"] == "gold"  # 金(1)唯一命中词表
+
+
+def test_parse_title_region_compound_guard():
+    """区划尾字复合词守卫：矿区/城市（及开发区/景区）的尾字跳过继续向前找。"""
+    from app.extensions.geo_samples import title_parser
+
+    r = title_parser.parse_title("昆明市东川区矿区一号铜矿勘探报告")
+    assert r["region"] == "昆明市东川区"  # 矿区 的 区 被跳过
+    r2 = title_parser.parse_title("杭州市城市地质调查报告")
+    assert r2["region"] == "杭州市"  # 城市 的 市 被跳过（杭州市 的 市 先命中为合法候选）
+
+
+def test_parse_title_region_compound_only_yields_none():
+    """守卫的 continue 语义：唯一候选是复合词（矿区）→ 跳过后无合法候选 → region None（矿种/阶段不受牵连）。"""
+    from app.extensions.geo_samples import title_parser
+
+    r = title_parser.parse_title("矿区一号铜矿勘探报告")
+    assert r["region"] is None
+    assert r["mineral"] == "copper" and r["stage"] == "exploration"
+
+
+def test_parse_title_filename_suffix_order():
+    """扩展名先于「报告」剥离（batch-cli 直喂文件名）：.docx/.pdf 后缀名照常解析为 auto。"""
+    from app.extensions.geo_samples import title_parser
+
+    r = title_parser.parse_title("云南省昆明市东川区某铜矿勘探报告.docx")
+    assert r["region"] == "云南省昆明市东川区"
+    assert r["mineral"] == "copper" and r["stage"] == "exploration" and r["confidence"] == "auto"
+    r2 = title_parser.parse_title("某铅锌矿详查报告.pdf")
+    assert r2["mineral"] == "lead_zinc" and r2["stage"] == "detail" and r2["confidence"] == "auto"
