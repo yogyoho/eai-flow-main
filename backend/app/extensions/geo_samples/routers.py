@@ -127,6 +127,9 @@ async def delete_document(document_id: str, db: AsyncSession = Depends(get_db), 
     doc = await crud.get_document(db, document_id)
     if doc is None:
         raise HTTPException(404, "样例不存在")
+    # 网关重启遗留的超龄 running 行自愈（同 parse/redact/compile 端点惯例）——否则
+    # 陈旧 running 行以误导文案 409 锁删除达 60 分钟。
+    await crud.sweep_stale_runs(db)
     if doc.status == "compiled":
         raise HTTPException(409, "已编译样例不可删除（编译产物在技能 references 中）")
     if await crud.has_running_run(db, document_id, "parse") or await crud.has_running_run(db, document_id, "redact"):

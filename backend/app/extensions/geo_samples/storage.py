@@ -10,6 +10,7 @@ as the ragflow-minio service on eai-flow-net) — same rationale as
 contract_price.
 """
 
+import logging
 import os
 from io import BytesIO
 
@@ -17,6 +18,8 @@ from minio import Minio
 from minio.error import S3Error
 
 BUCKET = "geo-samples"
+
+log = logging.getLogger("geo_samples.storage")
 
 
 def _client() -> Minio:
@@ -88,12 +91,13 @@ def object_exists(uri: str) -> bool:
 
 
 def delete_object_by_uri(uri: str) -> None:
-    """best-effort 删除：对象已不存在等 S3Error 一律吞掉（对齐 cpa storage 同款语义），
-    uri 非 ``s3://geo-samples/`` 前缀直接忽略（绝不误删他桶对象）。调用方负责 to_thread。"""
+    """best-effort 删除：对象已不存在等 S3Error 记 warning 后吞掉不抛（销毁路径失败
+    不零痕迹；对齐 cpa storage 同款 best-effort 语义）。uri 非 ``s3://geo-samples/``
+    前缀直接忽略（绝不误删他桶对象）。调用方负责 to_thread。"""
     prefix = f"s3://{BUCKET}/"
     if not uri.startswith(prefix):
         return
     try:
         _client().remove_object(BUCKET, uri[len(prefix) :])
-    except S3Error:
-        pass
+    except S3Error as exc:
+        log.warning("delete_object_by_uri failed for %s: %s", uri, exc)

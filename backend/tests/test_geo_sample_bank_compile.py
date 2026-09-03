@@ -944,9 +944,13 @@ async def _run_delete_route(monkeypatch, doc, running=()):
     async def _del_row(db, did):
         deleted.append(("row", did))
 
+    async def _sweep(db, max_age_minutes=60):
+        return 0
+
     monkeypatch.setattr(routers.crud, "get_document", _get)
     monkeypatch.setattr(routers.crud, "has_running_run", _running)
     monkeypatch.setattr(routers.crud, "delete_document", _del_row)
+    monkeypatch.setattr(routers.crud, "sweep_stale_runs", _sweep)
     monkeypatch.setattr(routers.storage, "delete_object_by_uri", lambda uri: deleted.append(("obj", uri)))
     err = result = None
     try:
@@ -995,3 +999,38 @@ async def test_delete_document_happy_path(monkeypatch):
     assert ("row", "d1") in deleted
     assert len([e for e in deleted if e[0] == "obj"]) == 2  # clean_uri=None 被跳过，绝无第三个 obj
     assert len([e for e in deleted if e[0] == "row"]) == 1
+
+
+def test_delete_object_by_uri_prefix_mismatch(monkeypatch):
+    """storage 直测：非 geo-samples 前缀 → 直接忽略，绝不触碰 MinIO（防误删他桶对象）。"""
+    from unittest.mock import MagicMock
+
+    from app.extensions.geo_samples import storage
+
+    client = MagicMock()
+    monkeypatch.setattr(storage, "_client", lambda: client)
+
+    storage.delete_object_by_uri("s3://other-bucket/x")
+
+    client.remove_object.assert_not_called()
+
+
+def test_delete_object_by_uri_s3error_swallowed(monkeypatch, caplog):
+    """storage 直测：remove_object 抛 S3Error → 吞掉不上抛 + warning 一条（销毁路径失败不零痕迹）。"""
+    import logging
+    from unittest.mock import MagicMock
+
+    from minio.error import S3Error
+
+    from app.extensions.geo_samples import storage
+
+    client = MagicMock()
+    # minio 7.2.20 实际签名：(response, code, message, resource, request_id, host_id, …)——response 居首
+    client.remove_object.side_effect = S3Error(MagicMock(), "NoSuchKey", "boom", "res", "rid", "hid")
+    monkeypatch.setattr(storage, "_client", lambda: client)
+
+    with caplog.at_level(logging.WARNING, logger="geo_samples.storage"):
+        storage.delete_object_by_uri("s3://geo-samples/raw/r1/a.docx")
+
+    client.remove_object.assert_called_once_with("geo-samples", "raw/r1/a.docx")
+    assert any("delete_object_by_uri failed" in r.getMessage() for r in caplog.records)
