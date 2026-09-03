@@ -57,10 +57,12 @@ _LAW_CHUNK_METHOD: dict[str, str] = {
     "law": "laws",
     "regulation": "laws",
     "rule": "laws",
-    "national": "manual",
-    "industry": "manual",
-    "local": "manual",
-    "technical": "manual",
+    # 2026-09-03: 国家/行业/地方/技术标准类改 naive——manual 对 .txt 抛错且实测对齐差,
+    # naive+384 为 A/B 实测最优(docs/superpowers/specs/2026-09-02-ragflow-upgrade-v0.27.1.md)
+    "national": "naive",
+    "industry": "naive",
+    "local": "naive",
+    "technical": "naive",
 }
 
 
@@ -545,12 +547,13 @@ class LawService:
                 upload_name = f"{law.law_number or law.id}.txt"
 
             if upload_path and law.ragflow_document_id is None:
-                parser_id = LawService.get_chunk_method(law.law_type)
+                # v0.27.1 会采纳上传时的文档级 parser_id(覆盖数据集配置),而 manual 分块器
+                # 对 .txt 直接抛错、laws 对字母前缀附录条款 0% 对齐(2026-09-03 A/B 实测)。
+                # 不再传文档级 parser_id,让文档继承数据集的调优配置(naive 384)。
                 result = await rf_client.upload_document(
                     dataset_id=dataset_id,
                     file_path=upload_path,
                     file_name=upload_name or os.path.basename(upload_path),
-                    parser_id=parser_id,
                 )
                 ragflow_doc_id = result.get("data", {}).get("id")
                 if ragflow_doc_id:

@@ -23562,5 +23562,25 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-09-02"
+  },
+  {
+    "id": "bug-3077",
+    "timestamp": "2026-09-03",
+    "error_message": "law 模块同步纯文本法规到 RAGFlow v0.27.1 解析失败:file type not supported yet(pdf and docx supported)",
+    "file": "backend/app/extensions/law/service.py",
+    "root_cause": "law/service.py 以 <law_number>.txt 命名上传,但 RAGFlow 文档 type 记为 doc(v0.27.1 naive 按 docx 分支处理)→ 解析报错;v0.25.3-fixed 时代未暴露。另 RAGFlow 的 DELETE /api/v1/datasets/{ds}/chunks 带 document_ids 会删文档而非停止解析(误用导致 DZ 文档被删,已恢复)",
+    "fix": "已修复(2026-09-03):①law/service.py sync 上传不再传文档级 parser_id(实测 v0.27.1 会采纳并覆盖数据集配置,manual 分块器对 .txt 抛错、laws 对字母前缀附录条款 0% 对齐);②_LAW_CHUNK_METHOD 标准/技术类(national/industry/local/technical)改 naive;③实测验证:technical 纯文本法规 sync→naive 解析 DONE,测试法规已清理",
+    "tags": [
+      "ragflow",
+      "v0.27.1",
+      "law-sync",
+      "file-type",
+      "delete-chunks-pitfall"
+    ],
+    "related_bugs": [
+      "bug-3074"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-03"
   }
 ]
