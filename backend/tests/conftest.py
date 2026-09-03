@@ -24,9 +24,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 # 会把它吸进 host 测试进程（~190 假失败 + requires_llm 真跑 LLM 挂死）。
 # setdefault 空串即屏蔽（override=False 不覆盖已存在键）；容器内真值由 compose 注入不受影响。
 for _k in (
-    "DEER_FLOW_DEV_MODE", "DEER_FLOW_HOME", "DEER_FLOW_CONFIG_PATH",
-    "DEER_FLOW_EXTENSIONS_CONFIG_PATH", "DEER_FLOW_DOCKER_SOCKET",
-    "DEER_FLOW_REPO_ROOT", "DEER_FLOW_HOST_BASE_DIR", "DEER_FLOW_HOST_SKILLS_PATH",
+    "DEER_FLOW_DEV_MODE",
+    "DEER_FLOW_HOME",
+    "DEER_FLOW_CONFIG_PATH",
+    "DEER_FLOW_EXTENSIONS_CONFIG_PATH",
+    "DEER_FLOW_DOCKER_SOCKET",
+    "DEER_FLOW_REPO_ROOT",
+    "DEER_FLOW_HOST_BASE_DIR",
+    "DEER_FLOW_HOST_SKILLS_PATH",
     "OPENAI_API_KEY",
 ):
     os.environ.setdefault(_k, "")
