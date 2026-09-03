@@ -89,6 +89,7 @@ class TestChunkMethodConsistency:
     def test_law_chunk_method_matches_seed(self):
         # _LAW_CHUNK_METHOD 改为派生后,此测试钉住两映射不再漂移
         from app.extensions.law import service
+
         for law_type, kb in service.RAGFLOW_KB_MAPPING.items():
             expected = service._KB_SEED_CONFIG[kb]["chunk_method"]
             assert service._LAW_CHUNK_METHOD[law_type] == expected, law_type

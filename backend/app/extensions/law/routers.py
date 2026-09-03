@@ -173,6 +173,9 @@ async def init_ragflow_knowledge_bases(
             parser_config = dict(seed["parser_config"])
             if kb_name == "ragflow-laws-standards" and industry_tag_ids:
                 parser_config["tag_kb_ids"] = industry_tag_ids
+            elif kb_name == "ragflow-laws-standards":
+                # 标签集缺失/查询失败时不携带空绑定,diff 跳过该键,避免 PUT 解绑现网绑定
+                parser_config.pop("tag_kb_ids", None)
 
             existing = await rf_client.get_dataset_by_name(kb_name)
             if existing:
@@ -213,7 +216,9 @@ async def init_ragflow_knowledge_bases(
 
 
 @router.get("/industries")
-async def list_industries():
+async def list_industries(
+    current_user: CurrentUserWithAccess = None,
+):
     """行业领域候选 = 「行业标签集」标签块的 tag_kwd ∪ 兜底名单。标签集不存在返回兜底名单。"""
     from app.extensions.knowledge.client import RAGFlowClient
 
