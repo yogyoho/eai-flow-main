@@ -193,13 +193,22 @@ async def redact_document(document_id: str, background: BackgroundTasks, db: Asy
 
 
 async def parse_batch_impl(db: AsyncSession, limit: int, background: BackgroundTasks) -> dict:
-    """list_uploaded → 逐行 create_run + 入队（实现函数与端点分离便于直测，同 suggest_id_impl 模式）。"""
+    """list_uploaded → 逐行 create_run + 入队（实现函数与端点分离便于直测，同 suggest_id_impl 模式）。
+
+    行级 running-parse 守卫：跳过而非 409（批处理语义）——上批调度仍在跑的行不建重复 run
+    （防重叠批次浪费 OCR/重复 run 行）；陈旧行由端点先行的 sweep_stale_runs 自愈后才过本守卫。
+    scheduled/ids 只计实际调度的行，skipped_running 计跳过数。
+    """
     ids: list[str] = []
+    skipped = 0
     for doc in await crud.list_uploaded(db, limit=limit):
+        if await crud.has_running_run(db, doc.id, "parse"):
+            skipped += 1
+            continue
         run = await crud.create_run(db, doc.id, "parse")
         background.add_task(service.run_parse, db, doc.id, run.id)
         ids.append(run.id)
-    return {"scheduled": len(ids), "ids": ids}
+    return {"scheduled": len(ids), "ids": ids, "skipped_running": skipped}
 
 
 @router.post("/documents/parse-batch")
@@ -211,9 +220,10 @@ async def parse_batch(background: BackgroundTasks, limit: int = Query(5, ge=1, l
     并发上限语义：limit 的 Query le=20 即天然并发闸（不另设信号量）——防 defer 批量导入后的
     OCR 风暴原样搬到触发阶段（单份 OCR 最长 1800s）；1000 行分 50 批手动/脚本触发。
 
-    互斥取舍：对每行不做 has_running_run 409 检查（单体 parse 端点的 parse/redact 双向互斥
-    在此省略）——行刚 defer 完必无在跑任务；网关重启遗留的陈旧 running 行由先行
-    sweep_stale_runs 自愈（模块惯例）。零行 → {"scheduled": 0, "ids": []}，不视为错误。
+    互斥取舍：对每行不做 409（单体 parse 端点的双向互斥在此弱化）——已有 running parse 的行
+    静默跳过（批处理语义，响应 skipped_running 计数），防重叠批次浪费 OCR；行刚 defer 完必无
+    在跑任务，网关重启遗留的陈旧 running 行由先行 sweep_stale_runs 自愈（模块惯例）后才过守卫。
+    零行 → {"scheduled": 0, "ids": [], "skipped_running": 0}，不视为错误。
     """
     await crud.sweep_stale_runs(db)
     return await parse_batch_impl(db, limit=limit, background=background)

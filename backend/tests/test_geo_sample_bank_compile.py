@@ -1228,9 +1228,10 @@ def test_parse_batch_limit_query_contract():
     assert [m.le for m in q.metadata if hasattr(m, "le")] == [20]
 
 
-async def _run_parse_batch(monkeypatch, docs):
+async def _run_parse_batch(monkeypatch, docs, running=frozenset()):
     """桩件直调 POST /documents/parse-batch 端点实现（同 _run_delete_route 直调模式）。
 
+    running：视为已有 running parse run 的 document_id 集合（行级守卫的桩输入）。
     返回 (db, background, create_run, run_parse, sweep 次数, 响应|None, HTTPException|None)。
     """
     from types import SimpleNamespace
@@ -1241,6 +1242,7 @@ async def _run_parse_batch(monkeypatch, docs):
     from app.extensions.geo_samples import routers
 
     sweeps = []
+    running_set = set(running)
 
     async def _sweep(db, max_age_minutes=60):
         sweeps.append(1)
@@ -1249,12 +1251,16 @@ async def _run_parse_batch(monkeypatch, docs):
     async def _list_uploaded(db, limit):
         return list(docs)
 
+    async def _has_running(db, did, rt):
+        return did in running_set and rt == "parse"
+
     runs = [SimpleNamespace(id=f"run-{i + 1}") for i in range(len(docs))]
     create_run = AsyncMock(side_effect=runs)
     run_parse = AsyncMock()
 
     monkeypatch.setattr(routers.crud, "sweep_stale_runs", _sweep)
     monkeypatch.setattr(routers.crud, "list_uploaded", _list_uploaded)
+    monkeypatch.setattr(routers.crud, "has_running_run", _has_running)
     monkeypatch.setattr(routers.crud, "create_run", create_run)
     monkeypatch.setattr(routers.service, "run_parse", run_parse)
 
@@ -1279,7 +1285,7 @@ async def test_parse_batch_endpoint_schedules(monkeypatch):
     assert sum(sweeps) == 1  # 模块自愈惯例：sweep_stale_runs 先行
     assert create_run.await_count == 2
     assert [c.args for c in create_run.await_args_list] == [(db, "doc-a", "parse"), (db, "doc-b", "parse")]
-    assert result == {"scheduled": 2, "ids": ["run-1", "run-2"]}
+    assert result == {"scheduled": 2, "ids": ["run-1", "run-2"], "skipped_running": 0}
     assert len(background.tasks) == 2
     assert all(t.func is run_parse for t in background.tasks)
     assert [t.args for t in background.tasks] == [(db, "doc-a", "run-1"), (db, "doc-b", "run-2")]
@@ -1291,9 +1297,26 @@ async def test_parse_batch_zero_rows(monkeypatch):
     """零 defer 行 → {"scheduled": 0, "ids": []}，不 404、不建 run、不入队。"""
     _db, background, create_run, _run_parse, _sweeps, result, err = await _run_parse_batch(monkeypatch, [])
     assert err is None
-    assert result == {"scheduled": 0, "ids": []}
+    assert result == {"scheduled": 0, "ids": [], "skipped_running": 0}
     create_run.assert_not_awaited()
     assert background.tasks == []
+
+
+@pytest.mark.asyncio
+async def test_parse_batch_skips_running_parse(monkeypatch):
+    """行级守卫（P4-T3 quality）：某行已有 running parse（上批调度仍在跑）→ 跳过而非 409
+    （批处理语义）——不建重复 run、不重复 OCR；scheduled/ids 只计实际调度的行，
+    skipped_running 计跳过数（加键不改键，向后兼容）。"""
+    from types import SimpleNamespace
+
+    docs = [SimpleNamespace(id="doc-a"), SimpleNamespace(id="doc-b")]
+    db, background, create_run, run_parse, _sweeps, result, err = await _run_parse_batch(monkeypatch, docs, running={"doc-a"})
+    assert err is None
+    assert create_run.await_count == 1
+    assert create_run.await_args.args == (db, "doc-b", "parse")  # 仅第 2 行被调度
+    assert result == {"scheduled": 1, "ids": ["run-1"], "skipped_running": 1}
+    assert [t.args for t in background.tasks] == [(db, "doc-b", "run-1")]
+    run_parse.assert_not_awaited()
 
 
 def test_upload_multipart_defer_true_string(monkeypatch):
