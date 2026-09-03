@@ -14,6 +14,7 @@ from app.extensions.schemas import CurrentUser
 
 from .schemas import (
     FileParseResponse,
+    IndustriesResponse,
     LawCreate,
     LawListResponse,
     LawResponse,
@@ -24,7 +25,7 @@ from .schemas import (
     RAGFlowInitResponse,
     RAGFlowStatusResponse,
 )
-from .service import LawService, merge_industries
+from .service import _KB_SEED_CONFIG, LawService, merge_industries, seed_config_diff
 
 logger = logging.getLogger(__name__)
 
@@ -111,6 +112,46 @@ async def get_ragflow_status(
     return await LawService.get_ragflow_status(db, owner_id=current_user.id)
 
 
+async def _converge_law_kb(
+    rf_client,  # RAGFlowClient 实例(测试传 fake)
+    kb_name: str,
+    industry_tag_ids: list[str],
+) -> tuple[str, dict, str | None]:
+    """单库幂等收敛:返回 (状态 aligned|updated|created, diffs, dataset_id)。"""
+    seed = _KB_SEED_CONFIG[kb_name]
+    parser_config = dict(seed["parser_config"])
+    if kb_name == "ragflow-laws-standards" and industry_tag_ids:
+        parser_config["tag_kb_ids"] = industry_tag_ids
+    elif kb_name == "ragflow-laws-standards":
+        # 标签集缺失/查询失败时不携带空绑定,diff 跳过该键,避免 PUT 解绑现网绑定
+        parser_config.pop("tag_kb_ids", None)
+
+    existing = await rf_client.get_dataset_by_name(kb_name)
+    if existing:
+        dataset_id = existing.get("id")
+        cur_data = (await rf_client.get_dataset(dataset_id)).get("data") or {}
+        # 不变量:种子顶层键必须只有 chunk_method/parser_config——diff 与 PUT 的键集合才一致;
+        # description 仅创建时设置,有意不参与收敛
+        seed_for_diff = {k: seed[k] for k in ("chunk_method", "parser_config")}
+        diff = seed_config_diff(cur_data, {**seed_for_diff, "parser_config": parser_config})
+        if diff:
+            await rf_client.update_dataset(
+                dataset_id,
+                chunk_method=seed["chunk_method"],
+                parser_config=parser_config,
+            )
+            return "updated", {k: list(v) for k, v in diff.items()}, dataset_id
+        return "aligned", {}, dataset_id
+
+    result = await rf_client.create_dataset(
+        name=kb_name,
+        description=f"法规标准库 - {kb_name}",
+        chunk_method=seed["chunk_method"],
+        parser_config=parser_config,
+    )
+    return "created", {}, result.get("data", {}).get("id")
+
+
 @router.post("/init-ragflow", response_model=RAGFlowInitResponse)
 async def init_ragflow_knowledge_bases(
     law_type: str | None = Query(None, description="指定要初始化的类型，不指定则全部"),
@@ -140,12 +181,7 @@ async def init_ragflow_knowledge_bases(
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"RAGFlow连接失败: {str(e)}")
 
-    from .service import (
-        _KB_SEED_CONFIG,
-        RAGFLOW_DATASET_GROUPS,
-        RAGFLOW_KB_MAPPING,
-        seed_config_diff,
-    )
+    from .service import RAGFLOW_DATASET_GROUPS, RAGFLOW_KB_MAPPING
 
     # 确定需要初始化的知识库名称（去重）
     if law_type:
@@ -167,45 +203,23 @@ async def init_ragflow_knowledge_bases(
     except Exception as e:
         logger.warning("解析行业标签集失败(忽略): %s", e)
 
-    for kb_name, chunk_method in datasets_to_init.items():
+    for kb_name in datasets_to_init:
         try:
             seed = _KB_SEED_CONFIG[kb_name]
-            parser_config = dict(seed["parser_config"])
-            if kb_name == "ragflow-laws-standards" and industry_tag_ids:
-                parser_config["tag_kb_ids"] = industry_tag_ids
-            elif kb_name == "ragflow-laws-standards":
-                # 标签集缺失/查询失败时不携带空绑定,diff 跳过该键,避免 PUT 解绑现网绑定
-                parser_config.pop("tag_kb_ids", None)
-
-            existing = await rf_client.get_dataset_by_name(kb_name)
-            if existing:
-                dataset_id = existing.get("id")
-                cur_data = (await rf_client.get_dataset(dataset_id)).get("data") or {}
-                diff = seed_config_diff(cur_data, {**seed, "parser_config": parser_config})
-                if diff:
-                    await rf_client.update_dataset(
-                        dataset_id,
-                        chunk_method=seed["chunk_method"],
-                        parser_config=parser_config,
-                    )
-                    results["updated"].append(kb_name)
-                    results["diffs"][kb_name] = {k: list(v) for k, v in diff.items()}
-                    logger.info("知识库配置已收敛到种子: %s diff=%s", kb_name, diff)
-                else:
-                    results["aligned"].append(kb_name)
-            else:
-                result = await rf_client.create_dataset(
-                    name=kb_name,
-                    description=f"法规标准库 - {kb_name}",
-                    chunk_method=seed["chunk_method"],
-                    parser_config=parser_config,
-                )
+            status, diffs, dataset_id = await _converge_law_kb(rf_client, kb_name, industry_tag_ids)
+            if status == "created":
                 results["created"].append(kb_name)
-                dataset_id = result.get("data", {}).get("id")
                 logger.info(f"创建RAGFlow知识库成功: {kb_name} (chunk_method={seed['chunk_method']})")
+            elif status == "updated":
+                results["updated"].append(kb_name)
+                results["diffs"][kb_name] = diffs
+                logger.info("知识库配置已收敛到种子: %s diff=%s", kb_name, diffs)
+            else:
+                results["aligned"].append(kb_name)
 
             if dataset_id:
-                registered = await LawService._ensure_kb_registered(db, current_user.id, kb_name, dataset_id, chunk_method)
+                # chunk_method 单一真相源为种子,不再取循环变量(消除双源漂移)
+                registered = await LawService._ensure_kb_registered(db, current_user.id, kb_name, dataset_id, seed["chunk_method"])
                 if registered:
                     results["registered"].append(kb_name)
         except Exception as e:
@@ -215,7 +229,7 @@ async def init_ragflow_knowledge_bases(
     return RAGFlowInitResponse(**results)
 
 
-@router.get("/industries")
+@router.get("/industries", response_model=IndustriesResponse)
 async def list_industries(
     current_user: CurrentUserWithAccess = None,
 ):
@@ -229,12 +243,21 @@ async def list_industries(
         if tag_ds:
             docs = (await rf_client.list_documents(tag_ds["id"])).get("data", {}).get("docs", [])
             for doc in docs:
-                r = await rf_client.list_chunks(tag_ds["id"], doc["id"], page=1, size=100)
-                for ch in (r.get("data") or {}).get("chunks", []):
-                    found.extend(ch.get("tag_kwd") or [])
+                # 翻页读取全部标签块,消除 >100 块时的静默截断
+                page = 1
+                while True:
+                    r = await rf_client.list_chunks(tag_ds["id"], doc["id"], page=page, size=100)
+                    data = r.get("data") or {}
+                    chunks = data.get("chunks") or []
+                    for ch in chunks:
+                        found.extend(ch.get("tag_kwd") or [])
+                    total = data.get("total") or 0
+                    if not chunks or page * 100 >= total:
+                        break
+                    page += 1
     except Exception as e:
         logger.warning("行业标签集读取失败(回退兜底名单): %s", e)
-    return {"industries": merge_industries(found)}
+    return IndustriesResponse(industries=merge_industries(found))
 
 
 @router.post("/sync-all")
@@ -341,6 +364,7 @@ async def import_law_with_file(
     effective_date: str | None = Form(None, description="生效日期"),
     keywords: str | None = Form(None, description="关键词，逗号分隔"),
     referred_laws: str | None = Form(None, description="被引用法规，逗号分隔"),
+    sector: str | None = Form(None, description="行业领域(如 地质勘查/环境评价),用作 RAGFlow 文档名前缀"),
     file: UploadFile | None = Form(None, description="法规文件 PDF/Word/TXT"),
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUserWithAccess = None,
@@ -399,6 +423,7 @@ async def import_law_with_file(
         content=content,
         keywords=kw_list,
         referred_laws=ref_list,
+        sector=sector,
     )
 
     try:

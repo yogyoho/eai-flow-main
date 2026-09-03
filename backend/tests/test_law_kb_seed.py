@@ -1,5 +1,8 @@
 """laws-standards/legal 种子配置与 RAGFlow 文档名组装器单测。"""
 
+import pytest
+
+import app.extensions.law.routers as _routers
 from app.extensions.law.service import (
     RAGFLOW_DATASET_GROUPS,
     LawService,
@@ -31,6 +34,9 @@ class TestBuildRagflowDocName:
 
     def test_empty_ext(self):
         assert build_ragflow_doc_name(None, "GB 1", "标准", "") == "GB 1 标准"
+
+    def test_ext_none(self):
+        assert build_ragflow_doc_name("地质勘查", "DZ 1", "规范", None) == "【地质勘查】DZ 1 规范"
 
 
 class TestKbSeedConfig:
@@ -80,6 +86,10 @@ class TestSeedConfigDiff:
         diff = seed_config_diff({"chunk_method": "naive", "parser_config": {}}, self.SEED)
         assert diff["parser_config.layout_recognize"] == (None, "DeepDOC")
 
+    def test_seed_diff_non_dict_parser_config(self):
+        diff = seed_config_diff({"chunk_method": "naive", "parser_config": "not-a-dict"}, self.SEED)
+        assert diff["parser_config.chunk_token_num"] == (None, 384)
+
     def test_extra_current_keys_ignored(self):
         cur = {"chunk_method": "naive", "parser_config": {"chunk_token_num": 384, "layout_recognize": "DeepDOC", "some_upstream_default": 1}}
         assert seed_config_diff(cur, self.SEED) == {}
@@ -101,3 +111,65 @@ class TestMergeIndustries:
 
     def test_empty_falls_back(self):
         assert merge_industries([]) == ["地质勘查", "环境评价", "煤炭工业"]
+
+
+class _FakeRF:
+    """最小 RAGFlowClient 假件:二段式现网配置,记录 PUT。"""
+
+    def __init__(self, existing, current):
+        self._existing = existing
+        self._current = current
+        self.puts: list[tuple] = []
+
+    async def get_dataset_by_name(self, name):
+        return {"id": "ds-1", "name": name} if self._existing else None
+
+    async def get_dataset(self, dataset_id):
+        return {"data": self._current}
+
+    async def update_dataset(self, dataset_id, chunk_method=None, parser_config=None):
+        self.puts.append((dataset_id, chunk_method, parser_config))
+        return {"code": 0}
+
+    async def create_dataset(self, **kwargs):
+        self.puts.append(("create", kwargs.get("chunk_method"), kwargs.get("parser_config")))
+        return {"code": 0, "data": {"id": "ds-new"}}
+
+
+SEED_FULL = {
+    "chunk_method": "naive",
+    "parser_config": {"chunk_token_num": 384, "delimiter": "\n。！？；", "tag_kb_ids": ["tag-1"], "topn_tags": 3},
+}
+
+
+class TestConvergeLawKb:
+    """_converge_law_kb 单库收敛直测(假 rf_client)。"""
+
+    @pytest.mark.asyncio
+    async def test_converge_drifted_kb_puts_once(self, monkeypatch):
+        monkeypatch.setitem(_routers._KB_SEED_CONFIG, "ragflow-laws-standards", SEED_FULL)
+        rf = _FakeRF(existing=True, current={"chunk_method": "manual", "parser_config": {}})
+        status, diffs, ds = await _routers._converge_law_kb(rf, "ragflow-laws-standards", ["tag-1"])
+        assert status == "updated" and ds == "ds-1" and len(rf.puts) == 1
+        assert diffs["chunk_method"] == ["manual", "naive"]
+
+    @pytest.mark.asyncio
+    async def test_converge_aligned_second_run_no_put(self, monkeypatch):
+        monkeypatch.setitem(_routers._KB_SEED_CONFIG, "ragflow-laws-standards", SEED_FULL)
+        rf = _FakeRF(existing=True, current={"chunk_method": "naive", "parser_config": dict(SEED_FULL["parser_config"])})
+        status, diffs, _ = await _routers._converge_law_kb(rf, "ragflow-laws-standards", ["tag-1"])
+        assert status == "aligned" and not diffs and not rf.puts
+
+    @pytest.mark.asyncio
+    async def test_converge_missing_tag_set_does_not_strip_binding(self, monkeypatch):
+        monkeypatch.setitem(_routers._KB_SEED_CONFIG, "ragflow-laws-standards", SEED_FULL)
+        rf = _FakeRF(existing=True, current={"chunk_method": "naive", "parser_config": dict(SEED_FULL["parser_config"])})
+        status, _, _ = await _routers._converge_law_kb(rf, "ragflow-laws-standards", [])
+        assert status == "aligned" and not rf.puts  # 空 tag 绑定不判漂移、不解绑
+
+    @pytest.mark.asyncio
+    async def test_converge_creates_when_missing(self, monkeypatch):
+        monkeypatch.setitem(_routers._KB_SEED_CONFIG, "ragflow-laws-standards", SEED_FULL)
+        rf = _FakeRF(existing=False, current={})
+        status, _, ds = await _routers._converge_law_kb(rf, "ragflow-laws-standards", ["tag-1"])
+        assert status == "created" and ds == "ds-new"

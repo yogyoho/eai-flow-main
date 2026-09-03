@@ -602,6 +602,9 @@ class LawService:
                 upload_path = temp_upload_path
                 upload_name = f"{law.law_number or law.id}.txt"
 
+            # RAGFlow 文档名:【行业】标准号 标题.ext(行业为空则无前缀;重同步可重建)
+            upload_name = build_ragflow_doc_name(metadata.get("sector"), law.law_number, law.title, os.path.splitext(upload_name or "")[1] or ".txt")
+
             if upload_path and law.ragflow_document_id is None:
                 # v0.27.1 会采纳上传时的文档级 parser_id(覆盖数据集配置),而 manual 分块器
                 # 对 .txt 直接抛错、laws 对字母前缀附录条款 0% 对齐(2026-09-03 A/B 实测)。

@@ -153,10 +153,16 @@ class RAGFlowInitResponse(BaseModel):
     created: list[str] = Field(default_factory=list)
     aligned: list[str] = Field(default_factory=list, description="已存在且配置与种子一致")
     updated: list[str] = Field(default_factory=list, description="已存在但配置漂移,已 PUT 收敛")
-    diffs: dict[str, dict] = Field(default_factory=dict, description="{kb: {键路径: [现值, 种子值]}}")
+    diffs: dict[str, dict[str, list]] = Field(default_factory=dict, description="{kb: {键路径: [现值, 种子值]}}")
     already_exists: list[str] = Field(default_factory=list, description="已废弃,恒为空,兼容旧前端类型")
     failed: list[dict[str, str]] = Field(default_factory=list)
     registered: list[str] = Field(default_factory=list)
+
+
+class IndustriesResponse(BaseModel):
+    """行业领域候选列表。"""
+
+    industries: list[str] = Field(default_factory=list)
 
 
 class LawTemplateRelationCreate(BaseModel):
