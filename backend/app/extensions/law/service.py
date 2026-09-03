@@ -85,10 +85,11 @@ _LAW_CHUNK_METHOD: dict[str, str] = {
 
 
 def build_ragflow_doc_name(industry: str | None, law_number: str | None, title: str, ext: str) -> str:
-    """组装 RAGFlow 文档名:【行业】标准号 标题.ext(行业/标准号可缺省)。"""
+    """组装 RAGFlow 文档名:【行业】标准号 标题.ext(行业/标准号可缺省;ext 接受带点或不带点)。"""
+    ext = (ext or "").lstrip(".")
     parts = f"【{industry}】" if industry else ""
     num = f"{law_number} " if law_number else ""
-    return f"{parts}{num}{title}.{ext}"
+    return f"{parts}{num}{title}{('.' + ext) if ext else ''}"
 
 
 class LawService:

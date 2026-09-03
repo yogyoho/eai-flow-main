@@ -24,6 +24,12 @@ class TestBuildRagflowDocName:
         title = "超" * 300
         assert build_ragflow_doc_name("地质勘查", "DZ 1", title, "pdf").endswith(title + ".pdf")
 
+    def test_dotted_ext_normalized(self):
+        assert build_ragflow_doc_name("环境评价", "HJ 130-2019", "规划环评总纲", ".pdf") == "【环境评价】HJ 130-2019 规划环评总纲.pdf"
+
+    def test_empty_ext(self):
+        assert build_ragflow_doc_name(None, "GB 1", "标准", "") == "GB 1 标准"
+
 
 class TestKbSeedConfig:
     def test_both_kbs_present(self):
