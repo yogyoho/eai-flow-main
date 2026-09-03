@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 # RAGFlow知识库映射 — 按分块策略分为2个逻辑隔离的知识库：
 # - ragflow-laws-legal: 法律/法规/规章 → laws parser（识别条/款/项结构）
-# - ragflow-laws-standards: 各类标准/规范 → manual parser（按章/节标题边界分块）
+# - ragflow-laws-standards: 各类标准/规范 → naive parser（定长 384 分块，参数见 _KB_SEED_CONFIG）
 # 各 law_type 通过元数据（law_type 字段）实现逻辑隔离，无需物理隔离
 RAGFLOW_KB_MAPPING = {
     "law": "ragflow-laws-legal",
