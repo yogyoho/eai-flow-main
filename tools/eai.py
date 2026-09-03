@@ -3,7 +3,8 @@
 
 两类子命令：服务端型（gsb/cpa，需登录会话）与本地工具型（license，免会话）。
 依赖：stdlib + httpx（禁止 import app.*/deerflow.*——部署域隔离，可独立拷贝到运维机执行）。
-凭据不落盘（HTTP 会话 cookie 进程内有效，批量任务须单进程内完成，中断重跑即重登录）。
+凭据不落盘（HTTP 会话 cookie 进程内有效，批量任务须单进程内完成，中断重跑即重登录）；
+注意 --password 会进 shell history，推荐改用 EAI_PASSWORD 环境变量免密传参。
 
 EAI-CUSTOM (geo-batch-cli, spec 2026-09-03): 新增独立运维工具。
 
@@ -21,6 +22,7 @@ EAI-CUSTOM (geo-batch-cli, spec 2026-09-03): 新增独立运维工具。
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from pathlib import Path
 
@@ -54,19 +56,18 @@ class Session:
         return {CSRF_HEADER: self.csrf}
 
     def get(self, path: str, **kw):
-        kw.pop("transport", None)  # transport 仅 Client 构造期生效——吞掉统一签名的测试注入位
         return self.client.get(self._url(path), **kw)
 
     def post(self, path: str, **kw):
-        kw.pop("transport", None)
         headers = dict(kw.pop("headers", None) or {})
-        headers.update(self.headers())  # CSRF 双提交：状态变更方法必带
+        if self.csrf:
+            headers.update(self.headers())  # CSRF 双提交：状态变更方法必带（无 csrf 则不发空头）
         return self.client.post(self._url(path), headers=headers, **kw)
 
     def delete(self, path: str, **kw):
-        kw.pop("transport", None)
         headers = dict(kw.pop("headers", None) or {})
-        headers.update(self.headers())
+        if self.csrf:
+            headers.update(self.headers())
         return self.client.delete(self._url(path), headers=headers, **kw)
 
 
@@ -76,7 +77,7 @@ def login(base_url: str, username: str, password: str, transport: httpx.BaseTran
     resp = client.post(LOGIN_PATH, json={"username": username, "password": password})
     if resp.status_code == 429:
         client.close()
-        raise LoginLocked("登录限流（5 次/5 分钟，IP 共享桶）——稍后再试，请勿连续重试")
+        raise LoginLocked("5 次/5 分钟 IP 共享桶已满——稍后再试，请勿连续重试")
     resp.raise_for_status()
     # Set-Cookie 已自动入 jar；response.cookies 与 client.cookies 双路取值（后者为 httpx 实测兜底）
     csrf = resp.cookies.get("csrf_token") or client.cookies.get("csrf_token")
@@ -109,7 +110,14 @@ def build_parser() -> argparse.ArgumentParser:
         sp = sub.add_parser(name, help=meta["help"])
         if meta["needs_session"]:
             sp.add_argument("--username", required=True, help="工号或邮箱")
-            sp.add_argument("--password", required=True, help="密码（仅进程内会话，不落盘）")
+            # 密码优先 EAI_PASSWORD env（--password 会进 shell history）；env 未设时才强制 --password。
+            # 勿写 required=True + default：argparse 对 required 参数无视 default，env 回退会彻底失效。
+            sp.add_argument(
+                "--password",
+                default=os.environ.get("EAI_PASSWORD"),
+                required="EAI_PASSWORD" not in os.environ,
+                help="密码（仅进程内会话；推荐 EAI_PASSWORD env 免进 shell history）",
+            )
         if hasattr(meta["func"], "register_args"):  # T6 子命令自定义参数入口
             meta["func"].register_args(sp)
     return ap
@@ -119,10 +127,19 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     meta = SUBCOMMANDS[args.command]
     if meta["needs_session"]:
-        sess = login(args.base_url, args.username, args.password)
-        if not probe(sess):
-            print("会话探活失败", file=sys.stderr)
-            return 2
+        # 顶层错误面：限流/认证失败人话报错，不裸 traceback。try 只罩登录+探活——
+        # 子命令自身的 HTTPStatusError（如 409）不得误报成「登录失败」。
+        try:
+            sess = login(args.base_url, args.username, args.password)
+            if not probe(sess):
+                print("会话探活失败", file=sys.stderr)
+                return 2
+        except LoginLocked as e:
+            print(f"登录限流: {e}", file=sys.stderr)
+            return 3
+        except httpx.HTTPStatusError as e:
+            print(f"登录失败: {e.response.status_code}（检查工号/密码）", file=sys.stderr)
+            return 3
         return meta["func"](sess, args)
     return meta["func"](args)
 
