@@ -160,11 +160,12 @@ async def next_report_id(db: AsyncSession, prefix: str) -> str:
     注意：与 upload 的 get_document_by_report_id 409 闸门之间无事务锁——并发上传同组时
     仍可能撞 unique 约束（Phase 1 同款接受窗口）。
     """
+    # prefix 仅含连字符（内部常量表）——LIKE 通配符隐患的 `_` 不会出现在 prefix 里，无需转义。
     stmt = select(GsbDocument.report_id).where(GsbDocument.report_id.like(prefix + "-%"))
     rows = (await db.execute(stmt)).scalars().all()
     max_seq = 0
     for rid in rows:
         tail = rid[len(prefix) + 1 :]
-        if tail.isdigit():
+        if tail.isdecimal():  # isdecimal 严格十进制（isdigit 会放过上标数字等 Unicode 陷阱）
             max_seq = max(max_seq, int(tail))
     return f"{prefix}-{max_seq + 1:04d}"

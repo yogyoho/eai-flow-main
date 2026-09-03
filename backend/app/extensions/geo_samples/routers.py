@@ -99,9 +99,10 @@ async def suggest_id_impl(db: AsyncSession, title: str) -> dict:
     返回纯 dict（题名解析字段 + report_id）；实现函数与端点分离便于直测。
     """
     parsed = title_parser.parse_title(title)
-    if parsed["mineral"] and parsed["stage"]:
-        stage_code = {"survey": "pu", "detail": "xc", "exploration": "kc"}[parsed["stage"]]
-        mineral_code = {"copper": "cu", "coal": "co", "gold": "au", "iron": "fe", "lead_zinc": "pbzn", "other": "ot"}[parsed["mineral"]]
+    # .get() 而非 [...]：未来词表漂移（title_parser 新增 slug 而此表未同步）时落 gsb-auto，不 500。
+    stage_code = {"survey": "pu", "detail": "xc", "exploration": "kc"}.get(parsed["stage"])
+    mineral_code = {"copper": "cu", "coal": "co", "gold": "au", "iron": "fe", "lead_zinc": "pbzn", "other": "ot"}.get(parsed["mineral"])
+    if stage_code and mineral_code:
         report_id = await crud.next_report_id(db, f"gsb-{stage_code}-{mineral_code}")
     else:
         report_id = await crud.next_report_id(db, "gsb-auto")

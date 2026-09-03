@@ -903,7 +903,8 @@ async def test_next_report_id_bumps_max(tmp_path):
         # NoReferencedTableError。照 identity-map 测试只建本表（controller 注明模式同其写法）。
         await conn.run_sync(lambda sync_conn: GsbDocument.__table__.create(sync_conn, checkfirst=True))
     async with maker() as db:
-        for rid in ("gsb-kc-cu-0001", "gsb-kc-cu-0003", "gsb-auto-0001"):
+        # gsb-kc-cu-0007-old：非数字尾段钉死「跳过不计入 max」（crud docstring 声明的行为锁进测试）
+        for rid in ("gsb-kc-cu-0001", "gsb-kc-cu-0003", "gsb-kc-cu-0007-old", "gsb-auto-0001"):
             db.add(GsbDocument(id=rid, report_id=rid, file_name="a.docx", file_hash="h" + rid, file_type="docx", status="uploaded", raw_uri=f"s3://geo-samples/raw/{rid}/a.docx"))
         await db.commit()
         assert await crud.next_report_id(db, "gsb-kc-cu") == "gsb-kc-cu-0004"
