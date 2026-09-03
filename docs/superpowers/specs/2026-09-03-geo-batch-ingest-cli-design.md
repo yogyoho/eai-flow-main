@@ -83,7 +83,17 @@ tools/eai.py（argparse subparsers；依赖仅 stdlib + httpx）
 
 1. `POST /documents/suggest-id`：参数 `title`/`filename` → parse_title + 按 (stage,mineral) 组查重顺延 → `{report_id, stage, mineral, region, confidence}`；权限同 `_PERM`。UI 上传框加「自动」按钮调用（替代手工想 slug）；CLI scan 复用。
 2. 题名解析器（service 层纯函数 + 词表常量）。
-3. 无新表、无迁移。
+3. **`DELETE /documents/{document_id}`**（样例文档库列表删除按钮的后端）：
+   - 守卫：404 不存在；**compiled 状态 409「已编译样例不可删除（编译产物在技能 references 中，先回退状态）」**——V1 不做编译产物回收；其余状态均可删。
+   - 行为：删 gsb_documents 行 + MinIO 三前缀对象（raw/work/clean，get_object 前缀已校验）；**gsb_redactions/gsb_run_history 流水保留**（无 FK 设计本就为审计存活性，document_id 悬空是既定语义）；gated compile 互斥不受影响（compile 只读 reviewed）。
+   - MinIO 删除失败（对象已不存在等）→ 容忍并继续删行（S3Error 逐前缀捕获），detail 不落（无 run 面）；行删除成功即 204。
+4. **GET /documents 响应加 `total`**：同过滤条件 `count(*)`——前端分页需要「共 N 条」（现响应仅 {items,skip,limit} 无法判总页）。
+5. 无新表、无迁移。
+
+### 5.1 前端增量（DocumentsView 列表页）
+
+1. **分页**：`共 {total} 条` + 上一页/下一页（skip 游标）+ 每页条数选择（20/50/100，默认 50）；查询键带页码；统计头仍走 limit=200 全量（互不影响）。
+2. **操作列删除按钮**：灰色文字按钮「删除」→ `window.confirm("确认删除 {report_id}？原始文件与解析/脱敏产物将一并删除，审计流水保留，不可恢复")` → 调 DELETE → invalidate 列表与统计；compiled 行不渲染删除按钮（后端亦 409 双保险）；与既有 解析/脱敏/抽审/重试 按钮并列。
 
 ## 6. 测试与验收
 
@@ -93,6 +103,8 @@ tools/eai.py（argparse subparsers；依赖仅 stdlib + httpx）
 | suggest-id 端点 | 查重顺延（同组已有 gsb-kc-cu-0007 → 建议 0008）/解析失败回退 auto |
 | CLI scan | mock 端点 → CSV 内容与置信度列正确；冲突顺延 |
 | CLI import | mock 端点 → 并发上传/断点跳过/409 顺延重试/失败清单；--defer-parse 传参正确 |
+| DELETE 端点 | 各状态删除行为/compiled 409/MinIO 容错删行/流水保留（document_id 悬空可查） |
+| GET /documents total | 同过滤 count 正确；前端分页组件渲染与翻页状态 |
 | 验收 | 10 份真实文件两阶段走通；CSV 校正后矿种与人工判断一致率记录；1000 份级 dry-run（scan）性能抽测 |
 
 ## 7. 分期与边界
