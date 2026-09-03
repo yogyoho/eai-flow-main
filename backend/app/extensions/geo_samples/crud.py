@@ -151,3 +151,20 @@ async def create_document(db: AsyncSession, report_id: str, file_name: str, file
 async def list_recent_runs(db: AsyncSession, limit: int = 50) -> list[GsbRunHistory]:
     stmt = select(GsbRunHistory).order_by(GsbRunHistory.created_at.desc(), GsbRunHistory.id.desc()).limit(limit)
     return list((await db.execute(stmt)).scalars().all())
+
+
+async def next_report_id(db: AsyncSession, prefix: str) -> str:
+    """同前缀最大序号 +1（4 位零填充）。prefix 形如 gsb-kc-cu / gsb-auto（batch-cli T2 suggest-id）。
+
+    非数字尾段（理论上不应出现）跳过不计入 max，避免一条脏行把整组序号打到 NaN/异常。
+    注意：与 upload 的 get_document_by_report_id 409 闸门之间无事务锁——并发上传同组时
+    仍可能撞 unique 约束（Phase 1 同款接受窗口）。
+    """
+    stmt = select(GsbDocument.report_id).where(GsbDocument.report_id.like(prefix + "-%"))
+    rows = (await db.execute(stmt)).scalars().all()
+    max_seq = 0
+    for rid in rows:
+        tail = rid[len(prefix) + 1 :]
+        if tail.isdigit():
+            max_seq = max(max_seq, int(tail))
+    return f"{prefix}-{max_seq + 1:04d}"

@@ -6,7 +6,7 @@
 Mounted into the Gateway under ``/api/extensions/geo-samples``. Endpoints:
 
   Functional area 1 (documents): GET /documents, GET /documents/{document_id},
-                                 POST /documents/upload
+                                 POST /documents/upload, POST /documents/suggest-id
   Functional area 2 (pipeline)  : POST /documents/{document_id}/parse,
                                  POST /documents/{document_id}/redact
   Functional area 3 (review)    : GET /documents/{document_id}/redactions,
@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 
-from . import crud, schemas, service, storage
+from . import crud, schemas, service, storage, title_parser
 
 router = APIRouter(prefix="/api/extensions/geo-samples", tags=["Geo Sample Bank"])
 _PERM = Depends(require_permission("geo_samples:access"))
@@ -90,6 +90,27 @@ async def upload_document(
     run = await crud.create_run(db, doc.id, "parse")
     background.add_task(service.run_parse, db, doc.id, run.id)
     return {"document": doc.model_dump(), "run_id": run.id}
+
+
+async def suggest_id_impl(db: AsyncSession, title: str) -> dict:
+    """题名 → 结构化 report_id 建议（batch-cli T2）。解析成功（mineral+stage 齐备）→
+    gsb-{stage}-{mineral} 组内顺延；解析失败 → gsb-auto 组顺延（confidence 沿用 parse_title）。
+
+    返回纯 dict（题名解析字段 + report_id）；实现函数与端点分离便于直测。
+    """
+    parsed = title_parser.parse_title(title)
+    if parsed["mineral"] and parsed["stage"]:
+        stage_code = {"survey": "pu", "detail": "xc", "exploration": "kc"}[parsed["stage"]]
+        mineral_code = {"copper": "cu", "coal": "co", "gold": "au", "iron": "fe", "lead_zinc": "pbzn", "other": "ot"}[parsed["mineral"]]
+        report_id = await crud.next_report_id(db, f"gsb-{stage_code}-{mineral_code}")
+    else:
+        report_id = await crud.next_report_id(db, "gsb-auto")
+    return {**parsed, "report_id": report_id}
+
+
+@router.post("/documents/suggest-id")
+async def suggest_id(title: str = Query(...), db: AsyncSession = Depends(get_db), _: object = _PERM):
+    return await suggest_id_impl(db, title)
 
 
 # --- Functional area 2: parse / redact pipeline ------------------------------

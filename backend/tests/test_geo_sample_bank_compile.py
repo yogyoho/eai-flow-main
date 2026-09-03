@@ -863,3 +863,49 @@ def test_parse_title_filename_suffix_order():
     assert r["mineral"] == "copper" and r["stage"] == "exploration" and r["confidence"] == "auto"
     r2 = title_parser.parse_title("某铅锌矿详查报告.pdf")
     assert r2["mineral"] == "lead_zinc" and r2["stage"] == "detail" and r2["confidence"] == "auto"
+
+
+# ---------------------------------------------------------------------------
+# suggest-id 端点（Phase 3 T2，batch-cli）：题名解析 → 结构化 report_id + 同组序号顺延。
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_suggest_id_dedup_bump(monkeypatch):
+    """同组已有 gsb-kc-cu-0007 → 建议 0008；解析失败 → gsb-auto-NNNN。"""
+    from unittest.mock import MagicMock
+
+    from app.extensions.geo_samples import routers
+
+    async def fake_next(db, prefix):
+        return f"{prefix}-0008" if prefix == "gsb-kc-cu" else f"{prefix}-0002"
+
+    monkeypatch.setattr(routers.crud, "next_report_id", fake_next)
+    r1 = await routers.suggest_id_impl(MagicMock(), "云南省昆明市东川区某铜矿勘探报告")
+    assert r1["report_id"] == "gsb-kc-cu-0008" and r1["confidence"] == "auto"
+    r2 = await routers.suggest_id_impl(MagicMock(), "无任何规律的文档")
+    assert r2["report_id"].startswith("gsb-auto-") and r2["confidence"] == "needs-review"
+
+
+@pytest.mark.asyncio
+async def test_next_report_id_bumps_max(tmp_path):
+    """next_report_id 从 LIKE 前缀行取最大序号 +1（真实 SQLite 会话，模式同 identity-map 测试）。"""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.extensions.geo_samples import crud
+    from app.extensions.geo_samples.models import GsbDocument
+
+    engine = create_async_engine("sqlite+aiosqlite:///" + str(tmp_path / "t.db"))
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as conn:
+        # 偏离 plan 字面（Base.metadata.create_all）：共享 Base 里的 report_projects 表
+        # 外键指向本进程未导入的 extraction_templates → create_all 在 DDL 排序时抛
+        # NoReferencedTableError。照 identity-map 测试只建本表（controller 注明模式同其写法）。
+        await conn.run_sync(lambda sync_conn: GsbDocument.__table__.create(sync_conn, checkfirst=True))
+    async with maker() as db:
+        for rid in ("gsb-kc-cu-0001", "gsb-kc-cu-0003", "gsb-auto-0001"):
+            db.add(GsbDocument(id=rid, report_id=rid, file_name="a.docx", file_hash="h" + rid, file_type="docx", status="uploaded", raw_uri=f"s3://geo-samples/raw/{rid}/a.docx"))
+        await db.commit()
+        assert await crud.next_report_id(db, "gsb-kc-cu") == "gsb-kc-cu-0004"
+        assert await crud.next_report_id(db, "gsb-xc") == "gsb-xc-0001"  # 无同行新组从 0001 起
+    await engine.dispose()
