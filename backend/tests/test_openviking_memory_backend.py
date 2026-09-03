@@ -453,6 +453,8 @@ def test_close_shuts_down_per_user_recorders(
         assert bob_recorder.recorder.closed is True
     assert manager._bundles == {}
     assert manager._recorder.closed is True
+
+
 # EAI-CUSTOM (2026-08-30, bug-3019) END
 
 

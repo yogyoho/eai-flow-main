@@ -488,7 +488,7 @@ class AIDocumentService:
                     "_created_at": thread_created.get(tid, ""),
                     # bug-3071：sqlite→postgres 切换后 threads_meta 不再更新（created_at 全空，
                     # 排序退化为 thread_id 字典序、新线程被埋中段）。回退键 = outputs 目录 mtime
-                    #（最近产出时间，与「最近生成在前」直觉一致）。
+                    # （最近产出时间，与「最近生成在前」直觉一致）。
                     "_outputs_mtime": outputs_mtime,
                     "display_name": display_names.get(tid, ""),
                 }

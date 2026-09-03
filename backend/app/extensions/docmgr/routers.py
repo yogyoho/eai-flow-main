@@ -405,9 +405,7 @@ async def export_document_with_layout(
         toc_settings=toc_settings,
         cover_preset=cover_preset,
         cover_values=request.cover_values,
-        image_fetcher=_make_image_fetcher(
-            current_user.id, source_thread_id=str(doc.source_thread_id) if doc.source_thread_id else None
-        ),
+        image_fetcher=_make_image_fetcher(current_user.id, source_thread_id=str(doc.source_thread_id) if doc.source_thread_id else None),
     )
     return Response(
         content=buf.getvalue(),

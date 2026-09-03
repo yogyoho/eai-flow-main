@@ -477,6 +477,7 @@ class OpenVikingMemoryManager(MemoryManager):
                 commit_pending=False,
             ),
         )
+
     # EAI-CUSTOM (2026-08-30, bug-3019) END
 
     # EAI-CUSTOM (2026-08-30, bug-3019) START — per-user identity resolution
@@ -508,9 +509,7 @@ class OpenVikingMemoryManager(MemoryManager):
         mapped_key = self._config.user_api_keys.get(resolved_user)
         if mapped_key is None:
             raise MemoryManagerError(
-                f"OpenViking USER API key is bound to DeerFlow owner_user_id {self._config.owner_user_id!r}, "
-                f"but this request belongs to {resolved_user!r} with no user_keys mapping. "
-                "Refusing to share one credential across users."
+                f"OpenViking USER API key is bound to DeerFlow owner_user_id {self._config.owner_user_id!r}, but this request belongs to {resolved_user!r} with no user_keys mapping. Refusing to share one credential across users."
             )
         with self._bundle_lock:
             bundle = self._bundles.get(resolved_user)
@@ -544,6 +543,7 @@ class OpenVikingMemoryManager(MemoryManager):
             client=recorder.client,
             retriever=retriever,
         )
+
     # EAI-CUSTOM (2026-08-30, bug-3019) END
 
     def _actor_peer_scope(
