@@ -28,14 +28,15 @@ EAI-CUSTOM (geo-batch-cli, spec 2026-09-03): 新增独立运维工具。
   （409=内容重复计 skipped）；POST /pipeline/run body {"mode":"table","trigger":"manual"}
   全局互斥（已有 parse 在跑 → 409），批量只在末尾触发一次。
 - license：tools/license/license_generator.py generate_license(...)——machine_id 缺失时**静默
-  return 不写输出文件**，调用方必须校验输出存在，否则假成功。sys.path 注入只发生在 license
-  子命令函数内，不污染其他子命令。
+  return 不写输出文件**，调用方必须校验输出存在，否则假成功。加载方式为按文件路径直载
+  （importlib.util.spec_from_file_location，带 sys.modules 缓存），**零 sys.path 变更**。
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import json
 import os
 import re
@@ -238,6 +239,8 @@ def upload_one(sess, file_path: str, row: dict, defer_parse: bool = False) -> di
         with open(file_path, "rb") as fh:
             resp = sess.post(f"{GSB_BASE}/documents/upload", files={"file": (file_name, fh)}, data=data)
         if resp.status_code == 409:
+            # 路由侧 409 文案锚点（geo_samples/routers.py）：:79「report_id …已存在」=撞号→顺延；
+            # :86「相同内容的样例已存在（file_hash 命中）」=内容重复→skipped。文案改动须双向同步。
             detail = _detail_of(resp)
             if "已存在" not in detail:
                 raise RuntimeError(f"{rid}: 409 {detail}")
@@ -282,7 +285,7 @@ def _gsb_register_args(sp):
     p_import.add_argument("--csv", required=True, help="scan 产出的清单文件")
     p_import.add_argument("--workers", type=int, default=4, help="并发上传线程数（默认 4）")
     p_import.add_argument("--defer-parse", action="store_true", help="上传后不触发解析（服务端 upload 仍会自动起 parse）")
-    p_import.add_argument("--dir", default=None, help="文件根目录（缺省时清单内相对路径基于当前目录）")
+    p_import.add_argument("--dir", default=None, help="文件根目录（缺省为清单所在目录——scan 把清单写在扫描根）")
     p_status = sub.add_parser("status", help="文档列表摘要 + 各状态计数")
     _add_session_args(p_status)
 
@@ -347,7 +350,7 @@ def cmd_gsb_import(sess, args) -> int:
             }
         )
     state = ImportState(csv_path.with_suffix(".state.json"))
-    base = Path(args.dir) if args.dir else Path.cwd()
+    base = Path(args.dir) if args.dir else csv_path.parent  # 缺省锚清单目录——scan 清单就在扫描根
     todo: list[dict] = []
     skipped = 0
     for row in rows:
@@ -430,7 +433,7 @@ def cmd_cpa_upload(sess, args) -> int:
         try:
             with open(f, "rb") as fh:
                 r = sess.post(f"{CPA_BASE}/documents/upload", files={"file": (f.name, fh)})  # 仅 file 字段
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, OSError) as exc:  # OSError：文件读开失败（权限/被删）同样计失败
             failed += 1
             print(f"失败: {f.name}: {exc}", file=sys.stderr)
             continue
@@ -442,16 +445,22 @@ def cmd_cpa_upload(sess, args) -> int:
             print(f"失败: {f.name}: HTTP {r.status_code} {_detail_of(r)}", file=sys.stderr)
             continue
         uploaded += 1
+    rc = 0 if failed == 0 else 1
     if args.trigger_parse and files:  # 只在末尾触发一次，不逐份
-        r = sess.post(f"{CPA_BASE}/pipeline/run", json={"mode": "table", "trigger": "manual"})
+        try:
+            r = sess.post(f"{CPA_BASE}/pipeline/run", json={"mode": "table", "trigger": "manual"})
+        except (httpx.HTTPError, OSError) as exc:
+            print(f"pipeline 触发异常: {exc}", file=sys.stderr)
+            return 1
         if r.status_code == 409:
             print("已有 parse 在跑（全局互斥）——本次未触发新解析")
         elif r.status_code >= 400:
             print(f"pipeline 触发失败 HTTP {r.status_code}: {_detail_of(r)}", file=sys.stderr)
+            rc = 1
         else:
             print(f"解析管线已触发: run_id={r.json().get('run_id')}")
     print(f"上传 {uploaded} / 跳过 {skipped}（内容重复）/ 失败 {failed}（共 {len(files)} 份）")
-    return 0 if failed == 0 else 1
+    return rc
 
 
 # --- license 子命令组（本地工具，免会话）--------------------------------------
@@ -480,17 +489,27 @@ cmd_license.register_args = _license_register_args
 
 
 def _load_license_generator():
-    """懒加载 tools/license/license_generator——sys.path 注入仅发生在本函数内
-    （只在 license 子命令路径执行，不污染其他子命令/测试的模块环境）。"""
-    lg_dir = Path(__file__).resolve().parent / "license"
-    if str(lg_dir) not in sys.path:
-        sys.path.insert(0, str(lg_dir))
-    try:
-        import license_generator
-    except ImportError as exc:
-        print(f"license_generator 不可用（{exc}）——确认 tools/license/ 存在且依赖（cryptography）已装", file=sys.stderr)
+    """按文件路径直载 tools/license/license_generator（batch-cli T6 review Important-1）：
+    importlib.util.spec_from_file_location + exec_module，**不改 sys.path、不触发 import
+    机器按名搜索**——同进程其他子命令/测试环境不会被 license 目录污染；sys.modules
+    预检兼作缓存（也使测试可用 monkeypatch.setitem(sys.modules, ...) 注入替身）。
+    """
+    if "license_generator" in sys.modules:
+        return sys.modules["license_generator"]
+    lg_file = Path(__file__).resolve().parent / "license" / "license_generator.py"
+    if not lg_file.is_file():
+        print(f"license_generator 不存在: {lg_file}", file=sys.stderr)
         return None
-    return license_generator
+    try:
+        spec = importlib.util.spec_from_file_location("license_generator", lg_file)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[spec.name] = module  # 先注册再 exec——模块内若自引用/子导入可见自身
+        spec.loader.exec_module(module)
+    except Exception as exc:  # ImportError/语法/依赖缺失（如 cryptography）一律人话报错
+        sys.modules.pop("license_generator", None)  # 别留半初始化的坏缓存
+        print(f"license_generator 加载失败（{exc}）——确认 tools/license/ 存在且依赖（cryptography）已装", file=sys.stderr)
+        return None
+    return module
 
 
 def cmd_license_generate(args) -> int:

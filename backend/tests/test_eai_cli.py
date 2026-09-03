@@ -1,5 +1,6 @@
 """统一 CLI（tools/eai.py）单元测试——importlib 加载，httpx.MockTransport/fake 会话假网络。"""
 
+import csv
 import importlib.util
 import sys
 import types
@@ -193,6 +194,78 @@ def test_import_409_bumps_sequence(tmp_path):
     parse_calls.clear()
     result2 = eai.upload_one(FakeSess(bump_first=False), str(f), row, defer_parse=True)  # 首呼即 200
     assert result2["report_id"] == "gsb-kc-cu-0001" and parse_calls == []  # defer 时不触发 parse
+
+
+def test_cmd_gsb_import_mixed(tmp_path, capsys):
+    """cmd 编排（T6 review Important-2）：1 成功 + 1 连接异常 → rc=1、failed CSV 含失败行原内容
+    +错误列、state 只含成功 rid（失败行不得进断点，重跑须可重试）。"""
+    ok_row = {"file_name": "a.docx", "report_id": "gsb-kc-cu-0001", "stage": "exploration", "mineral": "copper", "region": "", "confidence": "auto"}
+    bad_row = {"file_name": "b.docx", "report_id": "gsb-auto-0001", "stage": "", "mineral": "", "region": "", "confidence": "needs-review"}
+
+    class Sess:
+        def post(self, path, files=None, data=None, **kw):
+            req = httpx.Request("POST", "http://x" + path)
+            if path.endswith("/documents/upload"):
+                if data["report_id"] == "gsb-kc-cu-0001":
+                    return httpx.Response(200, json={"document": {"id": "d1", "report_id": data["report_id"]}, "run_id": "r"}, request=req)
+                raise httpx.ConnectError("connection refused")  # 网络故障——单行失败不拖垮整批
+            if path.endswith("/parse"):
+                return httpx.Response(200, json={"run_id": "pr"}, request=req)
+            raise AssertionError(path)
+
+    root = tmp_path
+    (root / "a.docx").write_bytes(b"x")
+    (root / "b.docx").write_bytes(b"y")
+    csv_path = root / "gsb_manifest.csv"
+    with open(csv_path, "w", newline="", encoding="utf-8-sig") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["file_name", "report_id", "stage", "mineral", "region", "confidence"])
+        writer.writeheader()
+        writer.writerows([ok_row, bad_row])
+    args = eai.build_parser().parse_args(["gsb", "import", "--csv", str(csv_path), "--dir", str(root), "--username", "u", "--password", "p"])
+    rc = eai.cmd_gsb_import(Sess(), args)
+    assert rc == 1
+    out = capsys.readouterr().out  # readouterr 消费缓冲——只调一次
+    assert "上传 1 成功" in out and "失败 1" in out
+    state = eai.ImportState(root / "gsb_manifest.state.json")
+    assert state.is_done("gsb-kc-cu-0001") and not state.is_done("gsb-auto-0001")  # state 只含成功 rid
+    failed_csv = (root / "gsb_import_failed.csv").read_text(encoding="utf-8-sig")
+    assert "gsb-auto-0001" in failed_csv and "b.docx" in failed_csv
+    assert "error" in failed_csv and "connection refused" in failed_csv  # 原行内容 + 错误列
+
+
+def test_cmd_cpa_upload_flow(tmp_path, capsys):
+    """cmd 编排（T6 review Important-2）：3 文件（成功/409 内容重复/HTTPError）+ --trigger-parse →
+    pipeline/run 恰调 1 次、409 计 skipped、异常计失败 rc=1。"""
+    calls = []
+
+    class Sess:
+        def post(self, path, files=None, data=None, json=None, **kw):
+            req = httpx.Request("POST", "http://x" + path)
+            calls.append((path, json))
+            if path.endswith("/documents/upload"):
+                name = files["file"][0]
+                if name == "dup.pdf":
+                    return httpx.Response(409, json={"detail": "该合同内容已存在(文件名: x.pdf)"}, request=req)
+                if name == "boom.pdf":
+                    raise httpx.ConnectError("connection reset")
+                return httpx.Response(200, json={"storage_uri": "s3://b/k", "file_name": name, "size": 1}, request=req)
+            if path.endswith("/pipeline/run"):
+                return httpx.Response(200, json={"run_id": "run1", "status": "running", "message": "parse started"}, request=req)
+            raise AssertionError(path)
+
+    root = tmp_path
+    (root / "good.pdf").write_bytes(b"1")
+    (root / "dup.pdf").write_bytes(b"2")
+    (root / "boom.pdf").write_bytes(b"3")
+    args = eai.build_parser().parse_args(["cpa", "upload", "--dir", str(root), "--trigger-parse", "--username", "u", "--password", "p"])
+    rc = eai.cmd_cpa_upload(Sess(), args)
+    assert rc == 1
+    out = capsys.readouterr().out
+    pipeline_calls = [p for p, _ in calls if p.endswith("/pipeline/run")]
+    assert len(pipeline_calls) == 1  # 全局互斥触发只在末尾一次
+    assert calls[-1][1] == {"mode": "table", "trigger": "manual"}  # 触发体契约
+    assert "跳过 1" in out and "失败 1" in out and "上传 1" in out
+    assert "解析管线已触发: run_id=run1" in out
 
 
 def test_license_generate_output_guard(tmp_path, monkeypatch, capsys):
