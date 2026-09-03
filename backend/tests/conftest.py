@@ -7,6 +7,7 @@ issues when unit-testing lightweight config/registry code in isolation.
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,6 +18,18 @@ import pytest
 # Make 'app' and 'deerflow' importable from any working directory
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+
+# EAI-CUSTOM (geo-batch-cli P4): host pytest env 毒化治理——仓库根 .env 是容器部署
+# env 文件（DEER_FLOW_* 全是 /app 容器路径），两条模块级 load_dotenv(override=False)
+# 会把它吸进 host 测试进程（~190 假失败 + requires_llm 真跑 LLM 挂死）。
+# setdefault 空串即屏蔽（override=False 不覆盖已存在键）；容器内真值由 compose 注入不受影响。
+for _k in (
+    "DEER_FLOW_DEV_MODE", "DEER_FLOW_HOME", "DEER_FLOW_CONFIG_PATH",
+    "DEER_FLOW_EXTENSIONS_CONFIG_PATH", "DEER_FLOW_DOCKER_SOCKET",
+    "DEER_FLOW_REPO_ROOT", "DEER_FLOW_HOST_BASE_DIR", "DEER_FLOW_HOST_SKILLS_PATH",
+    "OPENAI_API_KEY",
+):
+    os.environ.setdefault(_k, "")
 
 # Break the circular import chain that exists in production code:
 #   deerflow.subagents.__init__
