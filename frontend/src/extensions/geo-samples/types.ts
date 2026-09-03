@@ -1,6 +1,12 @@
 // EAI-CUSTOM: geo-sample-bank Phase 1 (spec 2026-09-01).
 // Mirrors backend app/extensions/geo_samples/schemas.py DocumentOut/RedactionOut/RunOut.
-export type GsbStatus = "uploaded" | "parsed" | "redacted" | "reviewed" | "failed";
+export type GsbStatus =
+  | "uploaded"
+  | "parsed"
+  | "redacted"
+  | "reviewed"
+  | "failed"
+  | "compiled"; // Phase 2 编译态（service.run_compile 写回；Phase 1 类型镜像漏更，T4 删除按钮守卫首次比对暴露）
 export type GsbStage = "survey" | "detail" | "exploration";
 
 export interface GsbDocument {

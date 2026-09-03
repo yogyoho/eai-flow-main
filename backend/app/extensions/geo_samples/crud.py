@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .models import GsbDocument, GsbRedaction, GsbRunHistory, utc_now
@@ -54,6 +54,18 @@ async def list_documents(db: AsyncSession, stage: str | None = None, mineral: st
         stmt = stmt.where(GsbDocument.status == status)
     stmt = stmt.offset(skip).limit(limit)
     return list((await db.execute(stmt)).scalars().all())
+
+
+async def count_documents(db: AsyncSession, stage: str | None = None, mineral: str | None = None, status: str | None = None) -> int:
+    """list_documents 同三过滤的行计数——列表端点响应 total，前端分页控件消费（batch-cli T4）。"""
+    stmt = select(func.count(GsbDocument.id))
+    if stage:
+        stmt = stmt.where(GsbDocument.stage == stage)
+    if mineral:
+        stmt = stmt.where(GsbDocument.mineral == mineral)
+    if status:
+        stmt = stmt.where(GsbDocument.status == status)
+    return (await db.execute(stmt)).scalar_one()
 
 
 async def list_reviewed(db: AsyncSession, stage: str | None = None, mineral: str | None = None) -> list[GsbDocument]:

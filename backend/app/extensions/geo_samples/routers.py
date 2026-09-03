@@ -40,7 +40,10 @@ _PERM = Depends(require_permission("geo_samples:access"))
 @router.get("/documents")
 async def list_documents(stage: str | None = None, mineral: str | None = None, status: str | None = None, skip: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=200), db: AsyncSession = Depends(get_db), _: object = _PERM):
     rows = await crud.list_documents(db, stage=stage, mineral=mineral, status=status, skip=skip, limit=limit)
-    return {"items": [schemas.DocumentOut.model_validate(r).model_dump() for r in rows], "skip": skip, "limit": limit}
+    # total 与 items 同三过滤（分页总数；batch-cli T4）——前端「下一页」可改用本值，
+    # 但现以 docs.length < pageSize 判尾页（翻页与筛选期间 total 可能瞬时滞后）。
+    total = await crud.count_documents(db, stage=stage, mineral=mineral, status=status)
+    return {"items": [schemas.DocumentOut.model_validate(r).model_dump() for r in rows], "skip": skip, "limit": limit, "total": total}
 
 
 @router.get("/documents/{document_id}")

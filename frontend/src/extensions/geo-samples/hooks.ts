@@ -13,6 +13,7 @@ export function useGsbDocuments(filters: {
   stage?: string;
   mineral?: string;
   status?: string;
+  skip?: number;
   limit?: number;
 }) {
   return useQuery({
@@ -57,7 +58,13 @@ export function useGsbUpload() {
 export function useGsbAction() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: async ({ id, action }: { id: string; action: "parse" | "redact" }) => {
+    mutationFn: async ({
+      id,
+      action,
+    }: {
+      id: string;
+      action: "parse" | "redact";
+    }) => {
       if (action === "parse") return geoSamplesApi.parse(id);
       return geoSamplesApi.redact(id);
     },
@@ -68,8 +75,23 @@ export function useGsbAction() {
 export function useGsbReview() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (args: { id: string; decision: "approve" | "reject"; note: string | null }) =>
-      geoSamplesApi.review(args.id, { decision: args.decision, note: args.note }),
+    mutationFn: (args: {
+      id: string;
+      decision: "approve" | "reject";
+      note: string | null;
+    }) =>
+      geoSamplesApi.review(args.id, {
+        decision: args.decision,
+        note: args.note,
+      }),
+    onSuccess: invalidate,
+  });
+}
+
+export function useGsbDelete() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ id }: { id: string }) => geoSamplesApi.deleteDocument(id),
     onSuccess: invalidate,
   });
 }

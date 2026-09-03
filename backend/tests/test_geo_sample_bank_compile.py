@@ -913,6 +913,42 @@ async def test_next_report_id_bumps_max(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# count_documents（Phase 3 T4，batch-cli）：list_documents 响应 total 的来源，
+# 前端分页控件消费。
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_count_documents_filters(tmp_path):
+    """count_documents 与 list_documents 同三过滤：全量 4、stage=exploration 3、stage+status 组合 2。"""
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from app.extensions.geo_samples import crud
+    from app.extensions.geo_samples.models import GsbDocument
+
+    engine = create_async_engine("sqlite+aiosqlite:///" + str(tmp_path / "t.db"))
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with engine.begin() as conn:
+        # 定点建表（勿 Base.metadata.create_all——共享 Base 的跨模块 FK 在 DDL 排序时炸，同 test_next_report_id_bumps_max）
+        await conn.run_sync(lambda sync_conn: GsbDocument.__table__.create(sync_conn, checkfirst=True))
+    async with maker() as db:
+        rows = [
+            ("a", "exploration", "copper", "reviewed"),
+            ("b", "exploration", "gold", "reviewed"),
+            ("c", "exploration", "copper", "uploaded"),
+            ("d", "survey", "copper", "uploaded"),
+        ]
+        for rid, stage, mineral, status in rows:
+            db.add(GsbDocument(id=rid, report_id=rid, file_name="a.docx", file_hash="h" + rid, file_type="docx", stage=stage, mineral=mineral, status=status, raw_uri=f"s3://geo-samples/raw/{rid}/a.docx"))
+        await db.commit()
+        assert await crud.count_documents(db) == 4
+        assert await crud.count_documents(db, stage="exploration") == 3
+        assert await crud.count_documents(db, stage="exploration", status="reviewed") == 2
+        assert await crud.count_documents(db, mineral="gold") == 1  # 其余两过滤可独立组合
+    await engine.dispose()
+
+
+# ---------------------------------------------------------------------------
 # DELETE /documents/{id}（Phase 3 T3，batch-cli）：守卫时序 404→compiled 409→
 # running 409→MinIO 三 uri best-effort 尽删→行删；审计流水（无 FK）保留。
 # ---------------------------------------------------------------------------

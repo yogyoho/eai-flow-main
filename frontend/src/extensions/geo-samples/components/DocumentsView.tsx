@@ -36,6 +36,7 @@ import {
 } from "@/extensions/geo-samples/components/ui/table";
 import {
   useGsbAction,
+  useGsbDelete,
   useGsbDocuments,
   useGsbUpload,
 } from "@/extensions/geo-samples/hooks";
@@ -61,6 +62,9 @@ const MINERAL_LABEL: Record<string, string> = Object.fromEntries(
 const ACT_BTN =
   "border-border text-foreground hover:border-foreground/40 cursor-pointer rounded border px-2 py-0.5 text-xs transition-colors";
 
+const PAGE_BTN =
+  "border-border text-foreground hover:border-foreground/40 cursor-pointer rounded border px-2 py-0.5 text-xs transition-colors disabled:cursor-default disabled:opacity-40";
+
 /** mutate 失败兜底：TanStack 默认吞 rejection，409「任务已在跑」等后端 detail 不提示会变成死按钮。 */
 const alertErr = (e: unknown) =>
   alert(e instanceof Error ? e.message : String(e));
@@ -72,15 +76,20 @@ export function DocumentsView() {
     mineral: "",
     status: "",
   });
-  // 统计头走全量(不随筛选联动);limit=200=后端上限,避免默认 50 截断计数(聚合端点 Phase 3 再做);列表走筛选
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(50);
+  // 统计头走全量(不随筛选/分页联动);limit=200=后端上限,避免默认 50 截断计数(聚合端点 Phase 3 再做);列表走筛选+分页
   const allQ = useGsbDocuments({ limit: 200 });
   const { data, isLoading } = useGsbDocuments({
     stage: filters.stage || undefined,
     mineral: filters.mineral || undefined,
     status: filters.status || undefined,
+    skip: page * pageSize,
+    limit: pageSize,
   });
   const upload = useGsbUpload();
   const action = useGsbAction();
+  const del = useGsbDelete();
   const fileRef = useRef<HTMLInputElement>(null);
   const reportIdRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
@@ -111,6 +120,7 @@ export function DocumentsView() {
   const all = allQ.data?.items ?? [];
   const countBy = (s: string) => all.filter((d) => d.status === s).length;
   const docs = data?.items ?? [];
+  const total = data?.total ?? 0;
 
   return (
     <div
@@ -163,7 +173,7 @@ export function DocumentsView() {
           />
           <label
             htmlFor="gsb-upload-file"
-            className="border-border bg-muted/40 hover:bg-muted cursor-pointer rounded-md border px-3 py-1.5 text-[13px] text-foreground/80 transition-colors"
+            className="border-border bg-muted/40 hover:bg-muted text-foreground/80 cursor-pointer rounded-md border px-3 py-1.5 text-[13px] transition-colors"
           >
             选择文件
           </label>
@@ -192,7 +202,13 @@ export function DocumentsView() {
         title="样例文档列表"
         sub="解析 → 脱敏 → 抽审 状态流转，5 秒自动刷新"
       >
-        <FilterBar filters={filters} onChange={setFilters} />
+        <FilterBar
+          filters={filters}
+          onChange={(f) => {
+            setFilters(f);
+            setPage(0); // 筛选变更回第 1 页(防越界页)
+          }}
+        />
         <div className="border-border bg-card rounded-xl border p-4">
           {isLoading ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -289,6 +305,33 @@ export function DocumentsView() {
                             重试
                           </button>
                         )}
+                        {d.status !== "compiled" && (
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground cursor-pointer text-xs hover:underline"
+                            onClick={() => {
+                              if (
+                                confirm(
+                                  `确认删除 ${d.report_id}？原始文件与解析/脱敏产物将一并删除，审计流水保留，不可恢复`,
+                                )
+                              ) {
+                                del.mutate(
+                                  { id: d.id },
+                                  {
+                                    onError: alertErr,
+                                    onSuccess: () => {
+                                      // 删完当前页仅剩 0 行且不在第 1 页 → 回退一页(防空白页)
+                                      if (page > 0 && docs.length === 1)
+                                        setPage(page - 1);
+                                    },
+                                  },
+                                );
+                              }
+                            }}
+                          >
+                            删除
+                          </button>
+                        )}
                       </span>
                     </TableCell>
                   </TableRow>
@@ -306,6 +349,48 @@ export function DocumentsView() {
               </TableBody>
             </Table>
           )}
+          {/* 分页行(表格下方):total 来自后端 count,同当前筛选;尾页按 docs.length < pageSize 判定 */}
+          <div className="border-border text-muted-foreground mt-3 flex flex-wrap items-center gap-4 border-t pt-3 text-xs">
+            <span>共 {total} 条</span>
+            <label className="flex items-center gap-1.5">
+              <span>每页</span>
+              <select
+                value={pageSize}
+                aria-label="每页条数"
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(0);
+                }}
+                className="border-border bg-background text-foreground cursor-pointer rounded border px-1.5 py-0.5 outline-none"
+              >
+                {[20, 50, 100].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <span>条</span>
+            </label>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                className={PAGE_BTN}
+                disabled={page === 0}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                上一页
+              </button>
+              <span>第 {page + 1} 页</span>
+              <button
+                type="button"
+                className={PAGE_BTN}
+                disabled={docs.length < pageSize}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                下一页
+              </button>
+            </div>
+          </div>
         </div>
       </SectionCard>
     </div>
