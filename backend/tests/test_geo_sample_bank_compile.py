@@ -2086,3 +2086,110 @@ async def test_compile_pipeline_endpoint_document_scope_guards(monkeypatch):
     fn, args = added[0]
     assert fn is routers.service.run_compile
     assert args[1] == "run-x" and args[2] is None and args[3] is None and args[4] == "doc-solo"
+
+
+# --- 切片库初始化按钮（/pipeline/init-ragflow）+ 分发目标解析链 -------------------
+
+
+def _fake_rf_module(monkeypatch, get_by_name=None, created=None, available=True):
+    """打 ragflow_client_mod.RAGFlowClient 与 extensions config 的公共桩，返回记录器 dict。"""
+    from types import SimpleNamespace
+
+    from app.extensions import knowledge as knowledge_pkg
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    rec: dict = {"calls": []}
+
+    class FakeClient:
+        def __init__(self, api_key=None, base_url=None):
+            rec["init"] = {"api_key": api_key, "base_url": base_url}
+
+        async def is_available(self):
+            return available
+
+        async def get_dataset_by_name(self, name):
+            rec["calls"].append(("by_name", name))
+            return get_by_name
+
+        async def create_dataset(self, **kw):
+            rec["calls"].append(("create", kw.get("name")))
+            return created if created is not None else {"data": {"id": "new-ds"}}
+
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeClient)
+    from app.extensions import config as ext_config_mod
+
+    monkeypatch.setattr(ext_config_mod, "get_extensions_config", lambda: SimpleNamespace(ragflow=SimpleNamespace(api_key="k", base_url="http://r:9380", timeout=5)))
+    return knowledge_pkg
+
+
+@pytest.mark.asyncio
+async def test_resolve_ragflow_dataset_id_chain(monkeypatch):
+    """解析链：env 覆写优先 → env 空按固定名查找 → 同名库缺失回空串（skipped 降级）。"""
+    from app.extensions.geo_samples import service
+
+    _fake_rf_module(monkeypatch, get_by_name={"id": "ds-by-name"})
+    monkeypatch.setenv(service._RAGFLOW_DATASET_ENV, "ds-from-env")
+    assert await service.resolve_ragflow_dataset_id() == "ds-from-env"
+
+    monkeypatch.delenv(service._RAGFLOW_DATASET_ENV, raising=False)
+    assert await service.resolve_ragflow_dataset_id() == "ds-by-name"  # 按钮建的库按名命中
+
+    async def _miss(self, name):
+        return None
+
+    # 同名库缺失 → 空串
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    class _NoDS(ragflow_client_mod.RAGFlowClient):
+        async def get_dataset_by_name(self, name):
+            return None
+
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", _NoDS)
+    assert await service.resolve_ragflow_dataset_id() == ""
+
+
+@pytest.mark.asyncio
+async def test_init_ragflow_dataset_endpoint(monkeypatch):
+    """init 端点：同名库在→aligned；缺失→按种子 create；未配置 RAGFlow→503。"""
+    from types import SimpleNamespace
+    from unittest.mock import MagicMock
+
+    from app.extensions.geo_samples import routers
+
+    # ① aligned：同名库已存在
+    _fake_rf_module(monkeypatch, get_by_name={"id": "ds-existing"})
+    resp = await routers.init_ragflow_dataset(MagicMock())
+    assert resp == {"status": "aligned", "dataset_id": "ds-existing"}
+
+    # ② created：缺失 → create（种子 naive）
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    rec: dict = {}
+
+    class FakeCreate:
+        def __init__(self, api_key=None, base_url=None):
+            pass
+
+        async def is_available(self):
+            return True
+
+        async def get_dataset_by_name(self, name):
+            return None
+
+        async def create_dataset(self, **kw):
+            rec.update(kw)
+            return {"data": {"id": "ds-new"}}
+
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeCreate)
+    resp = await routers.init_ragflow_dataset(MagicMock())
+    assert resp == {"status": "created", "dataset_id": "ds-new"}
+    assert rec["name"] == routers.service.GSB_RAGFLOW_DATASET_NAME
+    assert rec["chunk_method"] == "naive"
+
+    # ③ 503：RAGFlow 未配置（缺 api_key）
+    from app.extensions import config as ext_config_mod
+
+    monkeypatch.setattr(ext_config_mod, "get_extensions_config", lambda: SimpleNamespace(ragflow=SimpleNamespace(api_key="", base_url="x", timeout=5)))
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.init_ragflow_dataset(MagicMock())
+    assert ei.value.status_code == 503

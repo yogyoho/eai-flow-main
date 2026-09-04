@@ -267,6 +267,44 @@ async def review_document(document_id: str, body: schemas.ReviewRequest, db: Asy
 # --- Functional area 4: module-level compile ---------------------------------
 
 
+@router.post("/pipeline/init-ragflow")
+async def init_ragflow_dataset(db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """初始化（幂等收敛）地质样例库 RAGFlow 切片数据集——部署后手动点一次即可让编译分发生效。
+
+    按固定名 GSB_RAGFLOW_DATASET_NAME 查找：缺失 → 按种子（naive）创建；已存在 → aligned。
+    分发解析链（service.resolve_ragflow_dataset_id）= env 覆写 > 本同名库 > skipped，
+    因此按钮建库后无需改 env 即生效；env 仍保留给离线部署做覆写口。
+    """
+    from app.extensions.config import get_extensions_config
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    cfg = get_extensions_config().ragflow
+    if not cfg.api_key:
+        raise HTTPException(503, "RAGFlow 服务未配置（缺 API Key）")
+    client = ragflow_client_mod.RAGFlowClient(api_key=cfg.api_key, base_url=cfg.base_url)
+    try:
+        if not await client.is_available():
+            raise HTTPException(503, "RAGFlow 服务不可用")
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(503, f"RAGFlow 连接失败: {exc}") from exc
+
+    existing = await client.get_dataset_by_name(service.GSB_RAGFLOW_DATASET_NAME)
+    if existing:
+        return {"status": "aligned", "dataset_id": existing.get("id")}
+    result = await client.create_dataset(
+        name=service.GSB_RAGFLOW_DATASET_NAME,
+        description="地质样例库编译切片（bank_compile 分发，EAI-CUSTOM）",
+        chunk_method=service._GSB_DATASET_SEED["chunk_method"],
+        parser_config=dict(service._GSB_DATASET_SEED["parser_config"]),
+    )
+    dataset_id = (result.get("data") or {}).get("id")
+    if not dataset_id:
+        raise HTTPException(502, f"RAGFlow 建库失败: {result}")
+    return {"status": "created", "dataset_id": dataset_id}
+
+
 @router.post("/pipeline/compile")
 async def compile_pipeline(background: BackgroundTasks, stage: str | None = None, mineral: str | None = None, document_id: str | None = Query(None), db: AsyncSession = Depends(get_db), _: object = _PERM):
     """模块级编译：reviewed 全量（可选 stage/mineral 过滤）或单文档域（document_id）→

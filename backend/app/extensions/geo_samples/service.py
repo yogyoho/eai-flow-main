@@ -30,6 +30,10 @@ _SKILL_DIR = _REPO_ROOT / "skills" / "public" / "geological-report"
 _COMPILE_TIMEOUT_S = 1800.0  # bank_compile 含逐组 calibrate 子进程，长报告实测分钟级；30 分钟硬顶
 _PUSH_BUDGET_S = 900.0  # RAGFlow 分发预算：与子进程相加 < 60min sweep 线，防长尾拖过互斥造成并发编译写共享 references
 _RAGFLOW_DATASET_ENV = "GSB_RAGFLOW_DATASET_ID"
+# 切片库固定名：/pipeline/init-ragflow 管理按钮按此幂等收敛（部署后手动点一次即可）；
+# 分发解析链（resolve_ragflow_dataset_id）= env 覆写 > 同名库 > skipped。
+GSB_RAGFLOW_DATASET_NAME = "geo-samples-slices"
+_GSB_DATASET_SEED = {"chunk_method": "naive", "parser_config": {}}
 
 
 # ⚡ 调整 2：finish_run 走 best-effort 包装（Task 7 实测落定）。plan 原文在 try 内裸调
@@ -162,6 +166,25 @@ def _prepare_compile_workspace(docs: list, wd: Path) -> list[dict]:
     return entries
 
 
+async def resolve_ragflow_dataset_id() -> str:
+    """分发目标解析链：env GSB_RAGFLOW_DATASET_ID（部署级覆写）→ 按固定名查找
+    （/pipeline/init-ragflow 按钮创建的库）→ 空串=未配置（调用方走 skipped 降级）。
+
+    按名兜底让「初始化切片库」按钮建库后无需改 env 即生效；env 仍留给离线部署指向
+    各环境自己的 dataset id。
+    """
+    env_id = os.environ.get(_RAGFLOW_DATASET_ENV, "").strip()
+    if env_id:
+        return env_id
+    from app.extensions.config import get_extensions_config  # lazy——同 push
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    cfg = get_extensions_config().ragflow
+    client = ragflow_client_mod.RAGFlowClient(api_key=cfg.api_key, base_url=cfg.base_url)
+    ds = await client.get_dataset_by_name(GSB_RAGFLOW_DATASET_NAME)
+    return (ds or {}).get("id") or ""
+
+
 async def push_slices_to_ragflow(refs: Path, dataset_id: str) -> int:
     """把编译产物切片幂等分发到 RAGFlow 数据集，返回上传片数。
 
@@ -279,9 +302,9 @@ async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, m
             return
         manifest = json.loads(await asyncio.to_thread((wd / "manifest.json").read_text, encoding="utf-8"))
         detail = "slices ok"
-        dataset_id = os.environ.get(_RAGFLOW_DATASET_ENV, "").strip()
+        dataset_id = await resolve_ragflow_dataset_id()
         if not dataset_id:
-            detail += "; ragflow skipped (dataset not configured)"
+            detail += "; ragflow skipped (dataset not configured——可在管理页点「初始化切片库」)"
         else:
             try:
                 # 预算封顶（quality Important-1）：子进程 30min + push 15min < 60min sweep 线，
