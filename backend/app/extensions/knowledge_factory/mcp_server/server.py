@@ -198,6 +198,8 @@ TOOLS = [
             "本地无命中或需要最新官方发布信息时才改用 web_search。"
             "默认检索所有已同步知识库，可用 kb_name 模糊过滤。"
             "返回命中文档块（所属知识库/文档名/相似度/原文内容）。"
+            "可选 filters 按文档元数据收窄范围（行业领域/标准号/关键词/生效日期区间），"
+            "行业领域取值参考业务字典的业务领域（如 环境评价/地质勘查）。"
             "注意：本地知识库文档没有网页 URL，引用时禁止编造链接（如 knowledge-factory.internal 等），"
             "来源只写 知识库名 + 文档名（可加相似度），不带 url 字段。"
             "检索不到时换关键词重试或降低 similarity_threshold。"
@@ -212,6 +214,17 @@ TOOLS = [
                 "kb_name": {
                     "type": "string",
                     "description": "知识库名称模糊过滤；不填 = 检索全部知识库",
+                },
+                "filters": {
+                    "type": "object",
+                    "description": "按文档元数据过滤（可选）：{sector: 行业领域, law_number: 标准号, keywords: [关键词], effective_date_from/to: 生效日期区间}；均为 AND 语义",
+                    "properties": {
+                        "sector": {"type": "string", "description": "行业领域精确匹配"},
+                        "law_number": {"type": "string", "description": "标准号精确匹配"},
+                        "keywords": {"type": "array", "items": {"type": "string"}, "description": "关键词包含匹配"},
+                        "effective_date_from": {"type": "string", "description": "生效日期下限 YYYY-MM-DD"},
+                        "effective_date_to": {"type": "string", "description": "生效日期上限 YYYY-MM-DD"},
+                    },
                 },
                 "top_k": {
                     "type": "integer",
