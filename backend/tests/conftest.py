@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 # env 文件（DEER_FLOW_* 全是 /app 容器路径），两条模块级 load_dotenv(override=False)
 # 会把它吸进 host 测试进程（~190 假失败 + requires_llm 真跑 LLM 挂死）。
 # setdefault 空串即屏蔽（override=False 不覆盖已存在键）；容器内真值由 compose 注入不受影响。
+# 维护契约：新增 DEER_FLOW_*/OPENAI 外键时须同步此清单。
 for _k in (
     "DEER_FLOW_DEV_MODE",
     "DEER_FLOW_HOME",

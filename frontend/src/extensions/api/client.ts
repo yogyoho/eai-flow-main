@@ -108,11 +108,18 @@ export async function authFormFetch<T>(
 
   if (!response.ok) {
     const errJson = await response.json().catch(() => ({}));
-    // EAI note: 保留 `||` 语义——errJson.detail 为 ""（后端返回空 detail 错误体）时仍回退默认消息，`??` 不会
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- deliberate truthy fallback on untyped JSON field
-    const error = new Error(errJson.detail || "Request failed") as Error & {
-      status: number;
-    };
+    // EAI note: 对齐 authFetch 的数组分支——FastAPI 422 的 detail 是 [{loc,msg,...}] 数组形态，
+    // 只按字符串解析会得到 "[object Object]"。仍保留 `||` 语义：detail 为 ""（空 detail 错误体）时回退默认消息。
+    const detailMessages: string[] = Array.isArray(errJson.detail)
+      ? errJson.detail.map((x: { msg?: string }) => x?.msg).filter(Boolean)
+      : [];
+    const message =
+      typeof errJson.detail === "string" && errJson.detail
+        ? errJson.detail
+        : detailMessages.length > 0
+          ? detailMessages.join("; ")
+          : "Request failed";
+    const error = new Error(message) as Error & { status: number };
     error.status = response.status;
     throw error;
   }

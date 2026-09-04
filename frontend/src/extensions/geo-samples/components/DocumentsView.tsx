@@ -418,9 +418,7 @@ export function DocumentsView() {
               <button
                 type="button"
                 className={PAGE_BTN}
-                disabled={
-                  (page + 1) * pageSize >= total || docs.length < pageSize
-                }
+                disabled={(page + 1) * pageSize >= (data?.total ?? docs.length)}
                 onClick={() => setPage((p) => p + 1)}
               >
                 下一页
