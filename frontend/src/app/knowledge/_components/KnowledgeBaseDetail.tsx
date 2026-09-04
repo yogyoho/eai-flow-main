@@ -446,7 +446,7 @@ export function KnowledgeBaseDetail({
                 本库为法规标准系统知识库,不提供直接上传。法规/标准文件请在
                 <Link
                   href="/knowledge-factory?tab=law"
-                  className="text-primary hover:underline"
+                  className="text-primary hover:underline focus-visible:underline"
                 >
                   知识工厂 → 法规标准
                 </Link>
