@@ -7,6 +7,14 @@ import { FileStack, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { geoSamplesApi } from "@/extensions/geo-samples/api";
 import {
   AMBER,
@@ -97,6 +105,11 @@ export function DocumentsView() {
   const fileRef = useRef<HTMLInputElement>(null);
   const reportIdRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
+  // 操作结果确认对话框（替代原生 alert；编译分发 / 初始化切片库共用）
+  const [resultDialog, setResultDialog] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
 
   function onUpload() {
     const file = fileRef.current?.files?.[0];
@@ -132,10 +145,15 @@ export function DocumentsView() {
       { document_id: id },
       {
         onSuccess: (r) =>
-          alert(
-            `编译已入队（run ${r.run_id.slice(0, 8)}…），进度见「运行记录」tab`,
-          ),
-        onError: alertErr,
+          setResultDialog({
+            title: "编译已入队",
+            message: `run ${r.run_id.slice(0, 8)}…，进度见「运行记录」tab`,
+          }),
+        onError: (e) =>
+          setResultDialog({
+            title: "编译触发失败",
+            message: e instanceof Error ? e.message : String(e),
+          }),
       },
     );
   }
@@ -144,13 +162,18 @@ export function DocumentsView() {
   async function onInitRagflow() {
     try {
       const r = await geoSamplesApi.initRagflow();
-      alert(
-        r.status === "created"
-          ? `RAGFlow 切片库已创建（dataset ${r.dataset_id?.slice(0, 8)}…）——编译分发即刻生效`
-          : `RAGFlow 切片库已就绪（aligned，dataset ${r.dataset_id?.slice(0, 8)}…）`,
-      );
+      setResultDialog({
+        title: r.status === "created" ? "切片库已创建" : "切片库已就绪",
+        message:
+          r.status === "created"
+            ? `RAGFlow 数据集 ${r.dataset_id?.slice(0, 8)}… 创建成功——编译分发即刻生效`
+            : `RAGFlow 数据集 ${r.dataset_id?.slice(0, 8)}… 已存在且配置一致（aligned）`,
+      });
     } catch (e) {
-      alertErr(e);
+      setResultDialog({
+        title: "初始化失败",
+        message: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
@@ -483,6 +506,32 @@ export function DocumentsView() {
           </div>
         </div>
       </SectionCard>
+
+      {/* 操作结果确认对话框（编译分发 / 初始化切片库共用；替代原生 alert） */}
+      <Dialog
+        open={resultDialog != null}
+        onOpenChange={(open) => {
+          if (!open) setResultDialog(null);
+        }}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{resultDialog?.title}</DialogTitle>
+            <DialogDescription className="whitespace-pre-line">
+              {resultDialog?.message}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setResultDialog(null)}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer rounded-lg px-4 py-2 text-sm font-medium shadow-sm transition-colors"
+            >
+              确定
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
