@@ -77,4 +77,4 @@ copper / coal / gold / iron / lead_zinc
 
 ## 6. 消费契约
 
-技能侧按 `ore` 字段装载本目录对应 JSON（`references/ore_packs/<commodity 归一化>.json`）；文件缺失时回退 prose 硬编码知识并显式声明（详见 SKILL.md 开题段）。离线生产部署下本目录属编译产物易失路径，备份/恢复见 `deploy/offline/MANUAL-UPGRADE.md`。
+技能侧按 `ore` 字段装载本目录对应 JSON（`references/ore_packs/<commodity 归一化>.json`；归一化 = 00_project.commodity，如 岩金→gold）；文件缺失 = 该矿种尚未孵化，回退 SKILL.md「领域速记」prose 硬编码知识并显式声明（开题首动作与矿种适配段两处锚定）。包内【待核实】节点在 approve 时已生成 standards_index 扩容义务清单（后端 `ore_pack_extract.pending_obligations`），写作消费侧见到【待核实】形态值一律不得写成数值断言。离线生产部署下本目录属编译产物易失路径，备份/恢复见 `deploy/offline/MANUAL-UPGRADE.md`。

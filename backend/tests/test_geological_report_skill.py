@@ -185,6 +185,18 @@ class TestDomainNotes:
     def test_mineral_adaptation(self):
         assert "矿种适配" in self.content and "煤" in self.content and "铜" in self.content
 
+    def test_ore_pack_data_driven_load(self):
+        """P5 T7：矿种适配段数据驱动——须引用 ore_packs 数据包优先 + prose 兜底双通道。"""
+        assert "references/ore_packs/<矿种>.json" in self.content
+        assert "数据包优先" in self.content
+        assert "prose 兜底" in self.content
+
+    def test_ore_pack_opening_load_with_fallback_declaration(self):
+        """P5 T7：开题首动作含矿种知识包装载——无包须向用户声明兜底，禁编造。"""
+        assert "矿种知识包装载" in self.content
+        assert "尚未孵化" in self.content
+        assert "声明" in self.content and "编造" in self.content
+
     def test_standards_references(self):
         assert "DZ/T 0033-2020" in self.content and "GB/T 13908" in self.content
 
