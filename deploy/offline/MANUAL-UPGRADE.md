@@ -536,7 +536,9 @@ docker exec -i prod-eai-flow-postgres-ext psql -v ON_ERROR_STOP=1 -U agentflow d
 
 ## 10. 地质样例库编译产物（references）备份/恢复
 
-地质样例库（geo-samples）的编译产物**不在数据库里**，落盘在 `skills/public/geological-report/references/` 下三个子目录（容器内为 `/app/skills/public/geological-report/references/`；宿主 bind-mount 时即仓库同路径）：
+地质样例库（geo-samples）的编译产物**不在数据库里**，落盘在 `skills/public/geological-report/references/` 下三个子目录。离线部署中 skills 是**只读 bind-mount**（`docker-compose.yaml`：`- ./skills:/app/skills:ro`），即产物持久化在**宿主 `<部署目录>/skills/`**（容器内 `/app/skills/...` 只是它的只读视图）——**镜像替换不丢弃这些产物**。
+
+真正的风险是**升级时 skills 目录被整目录覆盖同步**：若把部署包里的 skills/ 直接替换上去，编译产物会随之被冲掉。所以升级前备份、升级后核对产物在位：
 
 | 子目录 | 内容 |
 |--------|------|
@@ -544,40 +546,28 @@ docker exec -i prod-eai-flow-postgres-ext psql -v ON_ERROR_STOP=1 -U agentflow d
 | `depth_targets/<stage>/` | per 矿种深度基线 `<mineral>.json` |
 | `samples/<stage>/` | SL3 指纹池增量 `chN__<rid>.md` |
 
-离线生产镜像是非 bind-mount 打包的——这些产物写在**容器可写层**，每次升级换镜像即丢弃可写层。**升级前备份、升级后恢复，两步都不能省：**
-
-### 10.1 升级前备份（服务器执行）
+### 10.1 升级前备份（宿主直接执行，无需绕容器）
 
 ```bash
-cd /opt/eai-flow-offline
-BK=/opt/eai-backup-$(date +%Y%m%d-%H%M); mkdir -p "$BK"
-
-# 从现容器可写层打包三个 references 子目录
-docker exec prod-eai-flow-gateway tar czf - -C /app/skills/public/geological-report/references \
-  samples_bank depth_targets samples > "$BK/geo-references.tgz"
-ls -lh "$BK/geo-references.tgz"    # 确认有内容
-
-# dev 环境 references 是 bind-mount（即仓库路径），宿主在仓库根直接打包即可：
-# tar czf geo-references.tgz skills/public/geological-report/references/samples_bank \
-#   skills/public/geological-report/references/depth_targets \
-#   skills/public/geological-report/references/samples
+tar czf geo-references-backup.tgz -C <部署目录>/skills/public/geological-report/references samples_bank depth_targets samples
+ls -lh geo-references-backup.tgz    # 确认有内容；建议挪到部署目录外（同 §2 步骤 6 的备份习惯）
 ```
 
-### 10.2 升级后恢复
+### 10.2 升级后核对/恢复（宿主侧解包回原路径）
 
-解包回**新容器**同路径即可；产物是确定性再生（`bank_index`/基线均 `sort_keys` 幂等写），不恢复、直接在管理页重跑 compile 也能全部再生，只是耗时更长：
+升级后先核对产物在位（`ls <部署目录>/skills/public/geological-report/references/`，三个子目录都在就无需恢复）；被覆盖冲掉时解包回去：
 
 ```bash
-docker exec -i prod-eai-flow-gateway tar xzf - -C /app/skills/public/geological-report/references \
-  < "$BK/geo-references.tgz"
+tar xzf geo-references-backup.tgz -C <部署目录>/skills/public/geological-report/references
 ```
 
-### 10.3 状态回退（产物丢失但状态未跟着降级时）
+产物是确定性再生（`bank_index`/基线均 `sort_keys` 幂等写），dev 环境（rw bind-mount）下重跑管理页 compile 即可全部再生；离线生产 skills 为 ro mount，**容器内 compile 写不进 references，不能当作恢复手段**——恢复一律走备份解包。
 
-编译完成后 `gsb_documents.status='compiled'`，而 compile 只消费 `reviewed` 状态的样例（compiled 的会被跳过）。若产物已丢、状态还停在 `compiled`，先降回 `reviewed` 再重跑：
+### 10.3 状态回退（仅产物真丢失、且无备份可恢复时的兜底）
+
+`gsb_documents.status='compiled'` 的前提是产物在盘：备份恢复后产物与状态一致，**无需任何回退**。仅当产物真丢失（无备份、生产 ro mount 下也无法重跑 compile 再生）时，才把状态降回 `reviewed`——避免样例顶着 `compiled` 却无产物可用；降回后由下一次正常 compile（产物可再生的环境里）收编：
 
 ```bash
 docker exec prod-eai-flow-postgres-ext psql -U agentflow agentflow -c \
   "UPDATE gsb_documents SET status='reviewed' WHERE status='compiled';"
-# 随后在管理页重跑 compile，再生全部产物
 ```
