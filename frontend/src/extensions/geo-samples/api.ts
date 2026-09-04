@@ -9,7 +9,13 @@
 // EAI-CUSTOM: forked from extensions/contract-price/api.ts (geo-sample-bank Phase 1, spec 2026-09-01).
 import { authFetch, authFormFetch } from "@/extensions/api/client";
 
-import type { GsbDocument, GsbRedaction, GsbRun } from "./types";
+import type {
+  GsbDocument,
+  GsbOrePackApproveResult,
+  GsbOrePackDraft,
+  GsbRedaction,
+  GsbRun,
+} from "./types";
 
 const API_BASE = "/geo-samples";
 
@@ -99,4 +105,29 @@ export const geoSamplesApi = {
 
   // Functional area 4: tasks
   listRuns: () => authFetch<{ items: GsbRun[] }>(`${API_BASE}/runs`),
+
+  // Functional area 6: ore_pack incubation（P5 T5 端点）。approve/reject 为 POST + JSON body
+  // （note 可空）；approve 响应附加 written 落盘路径 + standards_index 扩容义务清单。
+  listDrafts: (params?: { mineral?: string; review_status?: string }) =>
+    authFetch<{ items: GsbOrePackDraft[] }>(
+      `${API_BASE}/ore-packs/drafts${qs(params)}`,
+    ),
+
+  extractOrePack: (body: { mineral: string; slice_paths: string[] }) =>
+    authFetch<{ queued: boolean; mineral: string; slices_hash: string }>(
+      `${API_BASE}/ore-packs/extract`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+
+  approveDraft: (id: string, note: string | null) =>
+    authFetch<GsbOrePackApproveResult>(
+      `${API_BASE}/ore-packs/drafts/${id}/approve`,
+      { method: "POST", body: JSON.stringify({ note }) },
+    ),
+
+  rejectDraft: (id: string, note: string | null) =>
+    authFetch<GsbOrePackDraft>(`${API_BASE}/ore-packs/drafts/${id}/reject`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    }),
 };

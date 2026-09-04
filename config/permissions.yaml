@@ -188,6 +188,9 @@ modules:
       - id: "gsb:page:review"
         display_name: "脱敏审核"
         operations: []
+      - id: "gsb:page:drafts"
+        display_name: "矿种包孵化"
+        operations: []
       - id: "gsb:page:tasks"
         display_name: "任务中心"
         operations: []

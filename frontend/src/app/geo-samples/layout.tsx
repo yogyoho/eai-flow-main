@@ -3,7 +3,7 @@
 // EAI-CUSTOM: forked from app/bid-quote/layout.tsx (geo-sample-bank Phase 1).
 // 必须走 ShellLayout —— 它提供 QueryClientProvider/PermissionProvider,
 // usePermission 与视图里的 TanStack hooks 都依赖这些 Provider。
-import { FileStack, History, ShieldCheck } from "lucide-react";
+import { FileStack, History, Package, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -26,6 +26,12 @@ const navItems = [
     label: "脱敏抽审",
     icon: ShieldCheck,
     pageId: "gsb:page:review",
+  },
+  {
+    href: "/geo-samples/drafts",
+    label: "矿种包孵化",
+    icon: Package,
+    pageId: "gsb:page:drafts",
   },
   {
     href: "/geo-samples/tasks",

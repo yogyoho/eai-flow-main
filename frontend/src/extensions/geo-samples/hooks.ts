@@ -40,11 +40,24 @@ export function useGsbRuns() {
   });
 }
 
+// ore_pack 孵化草稿清单（P5 T6）：抽取为后台任务，5 秒轮询让新草稿自动出现。
+export function useGsbDrafts(params?: {
+  mineral?: string;
+  review_status?: string;
+}) {
+  return useQuery({
+    queryKey: ["gsb-ore-pack-drafts", params],
+    queryFn: () => geoSamplesApi.listDrafts(params),
+    refetchInterval: 5000,
+  });
+}
+
 function useInvalidate() {
   const qc = useQueryClient();
   return () => {
     void qc.invalidateQueries({ queryKey: ["gsb-documents"] });
     void qc.invalidateQueries({ queryKey: ["gsb-runs"] });
+    void qc.invalidateQueries({ queryKey: ["gsb-ore-pack-drafts"] });
   };
 }
 
@@ -93,6 +106,26 @@ export function useGsbDelete() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: ({ id }: { id: string }) => geoSamplesApi.deleteDocument(id),
+    onSuccess: invalidate,
+  });
+}
+
+// 草稿审阅（approve/reject 二合一，T6 DraftsView 消费）。
+export function useGsbDraftReview() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      action,
+      note,
+    }: {
+      id: string;
+      action: "approve" | "reject";
+      note: string | null;
+    }) => {
+      if (action === "approve") return geoSamplesApi.approveDraft(id, note);
+      return geoSamplesApi.rejectDraft(id, note);
+    },
     onSuccess: invalidate,
   });
 }

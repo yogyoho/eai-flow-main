@@ -89,4 +89,52 @@ describe("geoSamplesApi", () => {
     );
     expect(opts.method).toBe("POST");
   });
+
+  // ore_pack 孵化（P5 T6）：drafts 清单/抽取触发/approve/reject。
+  test("listDrafts GETs with optional filters", async () => {
+    rs.mocked(authFetch).mockResolvedValue({ items: [] });
+    await geoSamplesApi.listDrafts({ mineral: "gold", review_status: "draft" });
+    const [url] = lastCall();
+    expect(url).toBe(
+      "/geo-samples/ore-packs/drafts?mineral=gold&review_status=draft",
+    );
+    await geoSamplesApi.listDrafts();
+    expect(lastCall()[0]).toBe("/geo-samples/ore-packs/drafts");
+  });
+
+  test("extractOrePack POSTs mineral and slice paths", async () => {
+    rs.mocked(authFetch).mockResolvedValue({
+      queued: true,
+      mineral: "gold",
+      slices_hash: "h",
+    });
+    const body = {
+      mineral: "gold",
+      slice_paths: [
+        "skills/public/geological-report/references/samples_bank/x.md",
+      ],
+    };
+    await geoSamplesApi.extractOrePack(body);
+    const [url, opts] = lastCall();
+    expect(url).toBe("/geo-samples/ore-packs/extract");
+    expect(opts.method).toBe("POST");
+    expect(opts.body).toEqual(JSON.stringify(body));
+  });
+
+  test("approveDraft and rejectDraft POST note", async () => {
+    rs.mocked(authFetch).mockResolvedValue({
+      id: "d1",
+      review_status: "approved",
+    });
+    await geoSamplesApi.approveDraft("d1", "核对无误");
+    const [url, opts] = lastCall();
+    expect(url).toBe("/geo-samples/ore-packs/drafts/d1/approve");
+    expect(opts.method).toBe("POST");
+    expect(opts.body).toEqual(JSON.stringify({ note: "核对无误" }));
+
+    await geoSamplesApi.rejectDraft("d1", null);
+    const [url2, opts2] = lastCall();
+    expect(url2).toBe("/geo-samples/ore-packs/drafts/d1/reject");
+    expect(opts2.body).toEqual(JSON.stringify({ note: null }));
+  });
 });
