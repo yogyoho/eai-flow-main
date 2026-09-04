@@ -137,4 +137,20 @@ describe("geoSamplesApi", () => {
     expect(url2).toBe("/geo-samples/ore-packs/drafts/d1/reject");
     expect(opts2.body).toEqual(JSON.stringify({ note: null }));
   });
+
+  // 模块级编译（POST /pipeline/compile）：必须显式 POST（authFetch 缺省 GET→405）；
+  // stage/mineral 过滤走 qs（空值省略）。
+  test("compile POSTs pipeline with optional filters", async () => {
+    rs.mocked(authFetch).mockResolvedValue({ run_id: "run-c1" });
+    await geoSamplesApi.compile({ stage: "exploration", mineral: "gold" });
+    const [url, opts] = lastCall();
+    expect(url).toBe(
+      "/geo-samples/pipeline/compile?stage=exploration&mineral=gold",
+    );
+    expect(opts.method).toBe("POST");
+
+    await geoSamplesApi.compile();
+    expect(lastCall()[0]).toBe("/geo-samples/pipeline/compile");
+    expect(lastCall()[1].method).toBe("POST");
+  });
 });

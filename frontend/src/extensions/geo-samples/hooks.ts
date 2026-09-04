@@ -110,6 +110,16 @@ export function useGsbDelete() {
   });
 }
 
+// 模块级编译触发（DocumentsView 编译分发按钮）：后台 run，invalidate 让运行记录 5 秒轮询接手。
+export function useGsbCompile() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (params?: { stage?: string; mineral?: string }) =>
+      geoSamplesApi.compile(params),
+    onSuccess: invalidate,
+  });
+}
+
 // 草稿审阅（approve/reject 二合一，T6 DraftsView 消费）。
 export function useGsbDraftReview() {
   const invalidate = useInvalidate();

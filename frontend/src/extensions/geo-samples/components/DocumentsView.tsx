@@ -37,6 +37,7 @@ import {
 } from "@/extensions/geo-samples/components/ui/table";
 import {
   useGsbAction,
+  useGsbCompile,
   useGsbDelete,
   useGsbDocuments,
   useGsbUpload,
@@ -92,6 +93,7 @@ export function DocumentsView() {
   const upload = useGsbUpload();
   const action = useGsbAction();
   const del = useGsbDelete();
+  const compile = useGsbCompile();
   const fileRef = useRef<HTMLInputElement>(null);
   const reportIdRef = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState("");
@@ -117,6 +119,36 @@ export function DocumentsView() {
       onError: (e) =>
         alert(`上传失败: ${e instanceof Error ? e.message : String(e)}`),
     });
+  }
+
+  function onCompile() {
+    const scope = [
+      filters.stage
+        ? (STAGE_LABEL[filters.stage] ?? filters.stage)
+        : "全部阶段",
+      filters.mineral
+        ? (MINERAL_LABEL[filters.mineral] ?? filters.mineral)
+        : "全部矿种",
+    ].join(" / ");
+    if (
+      !confirm(
+        `对 reviewed 样例执行模块级编译（${scope}）？\n切片将写入技能 references 并分发 RAGFlow（后台任务，进度见「运行记录」；已有编译在跑会 409）。`,
+      )
+    )
+      return;
+    compile.mutate(
+      {
+        stage: filters.stage || undefined,
+        mineral: filters.mineral || undefined,
+      },
+      {
+        onSuccess: (r) =>
+          alert(
+            `编译已入队（run ${r.run_id.slice(0, 8)}…），进度见「运行记录」tab`,
+          ),
+        onError: alertErr,
+      },
+    );
   }
 
   const all = allQ.data?.items ?? [];
@@ -236,13 +268,26 @@ export function DocumentsView() {
         title="样例文档列表"
         sub="解析 → 脱敏 → 抽审 状态流转，5 秒自动刷新"
       >
-        <FilterBar
-          filters={filters}
-          onChange={(f) => {
-            setFilters(f);
-            setPage(0); // 筛选变更回第 1 页(防越界页)
-          }}
-        />
+        <div className="flex items-start justify-between gap-3">
+          <FilterBar
+            filters={filters}
+            onChange={(f) => {
+              setFilters(f);
+              setPage(0); // 筛选变更回第 1 页(防越界页)
+            }}
+          />
+          {/* 编译分发（Phase 2）：作用域=当前 stage/mineral 筛选（不选=全库 reviewed） */}
+          <button
+            type="button"
+            onClick={onCompile}
+            disabled={compile.isPending}
+            title="reviewed 清单 → 切片落 references + RAGFlow 分发（后台）"
+            className="shrink-0 cursor-pointer rounded-md border px-3 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-default disabled:opacity-50"
+            style={{ borderColor: BLUE, color: BLUE }}
+          >
+            {compile.isPending ? "入队中…" : "编译分发"}
+          </button>
+        </div>
         <div className="border-border bg-card rounded-xl border p-4">
           {isLoading ? (
             <p className="text-muted-foreground py-8 text-center text-sm">

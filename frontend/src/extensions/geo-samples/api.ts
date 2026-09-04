@@ -106,6 +106,13 @@ export const geoSamplesApi = {
   // Functional area 4: tasks
   listRuns: () => authFetch<{ items: GsbRun[] }>(`${API_BASE}/runs`),
 
+  // 模块级编译（Phase 2）：reviewed 清单（可带 stage/mineral 过滤）→ 子进程 bank_compile
+  // 切片落 references + RAGFlow 分发（后台 run，进度见 /runs）。POST 缺省会走 GET 405，必须显式。
+  compile: (params?: { stage?: string; mineral?: string }) =>
+    authFetch<{ run_id: string }>(`${API_BASE}/pipeline/compile${qs(params)}`, {
+      method: "POST",
+    }),
+
   // Functional area 6: ore_pack incubation（P5 T5 端点）。approve/reject 为 POST + JSON body
   // （note 可空）；approve 响应附加 written 落盘路径 + standards_index 扩容义务清单。
   listDrafts: (params?: { mineral?: string; review_status?: string }) =>
