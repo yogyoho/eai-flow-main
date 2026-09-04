@@ -23582,5 +23582,560 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-09-03"
+  },
+  {
+    "id": "bug-3078",
+    "timestamp": "2026-09-03T11:22:00+08:00",
+    "error_message": "test_parse_title_full_auto 失败：region 得到「云南省」而非「云南省昆明市东川区」（计划自带实现片段与计划自带测试矛盾）",
+    "file": "backend/app/extensions/geo_samples/title_parser.py",
+    "root_cause": "计划文档 Step 3 ?parse_region 在首个区划尾字（省）处即返回前缀，与 Step 1 测试钉死的语义（最深一级区划尾字，2-20 字前缀）不一致；TDD 以测试为?",
+    "fix": "parse_region 改为扫描全部区划尾字取最长合法（2-20 字）前缀（best 保留式），如「云南省昆明市东川区」；docstring 声明最深一级语?",
+    "tags": [
+      "geo-samples",
+      "title-parser",
+      "plan-snippet-bug",
+      "tdd-test-wins"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-03"
+  },
+  {
+    "id": "bug-3079",
+    "timestamp": "2026-09-03T11:45:00+08:00",
+    "error_message": "quality review Important：region 尾字命中复合词（矿区/城市/开发区/景区）→ 截取错误（如「昆明市东川区矿区…」截到矿区）",
+    "file": "backend/app/extensions/geo_samples/title_parser.py",
+    "root_cause": "parse_region 无复合词守卫；另 review 提供的片段用 first-hit return 语义，与已钉测试（最深一级区划「云南省昆明市东川区」）及其自附新用例（「昆明市东川区」）均矛盾——与 bug-3078 同类（片段与测试不一致，测试为准?",
+    "fix": "skip_prev=(???? 守卫并入 deepest-tail-wins 循环（非 first-hit）；removesuffix 改扩展名先于「报告」；?3 测（compound_guard/compound_only_none/filename_suffix_order）→ 33 passed",
+    "tags": [
+      "geo-samples",
+      "title-parser",
+      "region-guard",
+      "quality-review"
+    ],
+    "related_bugs": [
+      "bug-3078"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-03"
+  },
+  {
+    "id": "bug-3080",
+    "timestamp": "2026-09-03",
+    "error_message": "TS2367: types 'GsbStatus' and '\\\"compiled\\\"' have no overlap (DocumentsView 删除按钮 compiled 守卫比对)",
+    "file": "frontend/src/extensions/geo-samples/types.ts",
+    "root_cause": "Phase 1 类型镜像 GsbStatus 未随 Phase 2 后端 compiled 状态同步（service.run_compile 写回 doc.status='compiled'，DocumentOut.status 为裸 str，前端联合类型漏更）",
+    "fix": "GsbStatus 联合类型追加 'compiled'（batch-cli T4 删除按钮守卫首次比对暴露?",
+    "tags": [
+      "geo-samples",
+      "typescript",
+      "stale-type-mirror",
+      "batch-cli-T4"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-03"
+  },
+  {
+    "id": "bug-3081",
+    "timestamp": "2026-09-02T18:30:00",
+    "error_message": "compile 全量失败：库中残?reviewed 行指向已清空?MinIO 对象（smoke-test-001 / 2019-dongchuan-cu-kantan NoSuchKey），_prepare_compile_workspace 单份 S3Error 击穿全量编译",
+    "file": "backend/app/extensions/geo_samples/service.py",
+    "root_cause": "T9 端到端演练实抓：_prepare_compile_workspace 未按行容错，单对象缺失使整个 run failed（fix 提交 2ef46b10f?",
+    "fix": "按行 try/except S3Error ?跳过坏行+run detail 留痕、跳过行保持 reviewed；全部缺失才 finish_run failed 快速失败；?test_compile_skips_missing_clean_object / test_compile_all_clean_missing_fails_fast 两测",
+    "tags": [
+      "geo-samples",
+      "compile",
+      "minio",
+      "fault-isolation"
+    ],
+    "related_bugs": [
+      "bug-3072"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-02T18:30:00"
+  },
+  {
+    "id": "bug-3082",
+    "timestamp": "2026-09-03T13:19:00+08:00",
+    "error_message": "tools/eai.py 首写含占位残留（SESSION_BASE 未定义）?_url ?staticmethod 却引?self.base_url——NameError/AttributeError 必现",
+    "file": "tools/eai.py",
+    "root_cause": "分两次手写文件时首写不完整；_url 误标 @staticmethod 后仍?self 引用",
+    "fix": "整体重写为完整实现；_url 改实例方法用 self.base_url；相对路径拼 base_url、http(s) 绝对 URL 原样透传（httpx ?host 匹配 cookie jar?",
+    "tags": [
+      "cli",
+      "tools",
+      "importlib-test",
+      "self-caught",
+      "batch-cli-T5"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-03T13:19:00+08:00"
+  },
+  {
+    "id": "bug-3083",
+    "timestamp": "2026-09-03T13:35:00+08:00",
+    "error_message": "P3-T5 评审：tools/eai.py main() ?LoginLocked/HTTPStatusError ?traceback 逃逸；--password 只能走命令行（进 shell history/ps?",
+    "file": "tools/eai.py",
+    "root_cause": "骨架期未?CLI 顶层错误面；密码参数未提?env 通道。另：argparse required=True 会无?default——若按建议字面写 required=True+default=EAI_PASSWORD，env 回退完全失效",
+    "fix": "main() try 只罩 login+probe：LoginLocked→rc=3『登录限流』、HTTPStatusError→rc=3『登录失? 状态码』（子命令调用移?try ?409 误报）；--password ?required='EAI_PASSWORD' not in os.environ 的条?required + default=os.environ.get；Session.post/delete csrf 空串不发空头、get/post/delete 不再静默?transport",
+    "tags": [
+      "cli",
+      "error-surface",
+      "secrets",
+      "argparse-required-default-gotcha",
+      "batch-cli-T5"
+    ],
+    "related_bugs": [
+      "bug-3082"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-03T13:35:00+08:00"
+  },
+  {
+    "id": "bug-3084",
+    "timestamp": "2026-09-03T14:02:00+08:00",
+    "error_message": "eai.py gsb scan --dir X --username u --password p ?error: the following arguments are required: --username, --password",
+    "file": "tools/eai.py",
+    "root_cause": "argparse 嵌套 subparsers：父级（gsb）parser 的选项必须出现在子命令?token 之前，而自然调用（计划 T8 实跑示例）把凭据放在 leaf 之后 `gsb scan --dir X --username u`——凭据挂父级?leaf parser 不认识这?flag 直接?required。单测全绿掩盖了它（单测只测纯函数与平铺命令），集成冒烟（parse_args 实际调用序）才暴露?",
+    "fix": "凭据下沉：build_parser 对有 register_args 的嵌套组命令跳过父级凭据挂载；各 leaf 子命令（gsb scan/import/status、cpa upload）经共用 _add_session_args 自行挂载。新?test_group_command_creds_at_leaf 锁定自然调用序?",
+    "tags": [
+      "argparse",
+      "nested-subparsers",
+      "cli",
+      "options-ordering",
+      "batch-cli-T6"
+    ],
+    "related_bugs": [
+      "bug-3082"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-03T14:02:00+08:00"
+  },
+  {
+    "id": "bug-3085",
+    "timestamp": "2026-09-03T19:20:00+08:00",
+    "error_message": "backend make lint 失败: 4 files would be reformatted (docmgr/routers.py, docmgr/service.py, openviking_manager.py, test_openviking_memory_backend.py)",
+    "file": "backend/app/extensions/docmgr/routers.py ?4 文件",
+    "root_cause": "docmgr(3f51a6ca3 08-29/b38080849 09-02)?openviking(e49fa8d08 08-30)旧提交落码时未跑 ruff format——格式债累积到 P3-T8 全量门禁才暴?",
+    "fix": "ruff format 仅此 4 文件(7+/7- 纯格?，pathspec 提交 031dc6f8f；make lint 恢复 All checks passed",
+    "tags": [
+      "lint",
+      "ruff-format",
+      "docmgr",
+      "openviking",
+      "batch-cli-t8"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-03T19:20:00+08:00"
+  },
+  {
+    "id": "bug-3086",
+    "timestamp": "2026-09-03T19:20:00+08:00",
+    "error_message": "frontend pnpm test 3 failed: tests/unit/core/streamdown/latexNormalize.test.ts 期望 \\text{} 内裸 _ ?\\\\_，实际不?",
+    "file": "frontend/tests/unit/core/streamdown/latexNormalize.test.ts",
+    "root_cause": "该测试文件是未跟踪文?并发会话 WIP，git reset --hard 幸存)，断言?latexNormalize.ts(HEAD 08bded652 干净)未实现的行为——实现与测试未一起交?",
+    "fix": "未修(属并发会?WIP 归属，勿?；T8 归因记录?87 测试文件中唯一失败文件，geo-samples api.test.ts 7/7 全过不受影响",
+    "tags": [
+      "frontend",
+      "rstest",
+      "latex",
+      "concurrent-session-wip",
+      "attribution-only"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-03T19:20:00+08:00"
+  },
+  {
+    "id": "bug-3087",
+    "timestamp": "2026-09-03T20:00:00+08:00",
+    "error_message": "backend 全量 199 failed+18 errors（P3-T8 首轮）；复跑子集定性后稳定失败收敛?6F+17E，全?Windows 环境/遗留收集问题",
+    "file": "backend/tests/{wechat_channel,workspace_changes,langgraph_studio_routes,geological_report_e2e_full,uploads_router,editor_mcp_fixes,local_registration_gate,setup_agent_http_e2e_real_server}.py",
+    "root_cause": "双根? ①根 .env(容器env文件,gitignored,mtime09-02)?harness app_config.py:57 import?load_dotenv() 灌入 host pytest 进程——DEER_FLOW_EXTENSIONS_CONFIG_PATH=/app/... 容器路径?config/skills/MCP 解析?~190 测试假失? 顺序越靠后越毒化稳定);?env:51 OPENAI_API_KEY ?requires_llm 测试?host 真跑 LLM——test_client_e2e::test_stream_event_sequence 挂死 pregel tick wait(py-spy 取证)。CI 两样都没有所以绿。五类真?Windows 残余: GBK解码(studio, make test ?PYTHONUTF8=1 可治)/POSIX权限?wechat)/symlink(workspace)/MAX_PATH(uploads)/缺失depth_targets数据+脚本式测?geological_e2e, editor_mcp)",
+    "fix": "未改产品代码。host 门禁正解=完全复刻 CI 语义: make test 处方(-m 'not live' --ignore=tests/blocking_io PYTHONUTF8=1) + 运行前显式设 DEER_FLOW_EXTENSIONS_CONFIG_PATH/CONFIG_PATH/HOME/REPO_ROOT/HOST_BASE_DIR/HOST_SKILLS_PATH ?host 真实路径 + DEV_MODE/DOCKER_SOCKET/OPENAI_API_KEY 置空(load_dotenv override=False 不覆盖已有?。跟进建? 容器专属变量迁出?.env ?docker env 文件, ?harness load_dotenv 显式路径+不进测试进程",
+    "tags": [
+      "windows-env",
+      "gbk",
+      "symlink",
+      "max-path",
+      "posix-perms",
+      "pre-existing-debt",
+      "batch-cli-t8",
+      "attribution"
+    ],
+    "related_bugs": [
+      "bug-3085",
+      "bug-3086"
+    ],
+    "occurrences": 3,
+    "last_seen": "2026-09-03T22:00:00+08:00"
+  },
+  {
+    "id": "bug-3088",
+    "timestamp": "2026-09-04T02:31:46",
+    "error_message": "test_upload_immediate_parse_regression: create_run Expected mock to have been awaited once. Awaited 0 times (direct call without defer_parse kwarg took the defer path)",
+    "file": "backend/tests/test_geo_sample_bank_compile.py",
+    "root_cause": "FastAPI param default `defer_parse: bool = Form(False)` binds to the Form() Dependant object (truthy) when the endpoint function is called directly in tests ?FastAPI normally resolves .default at request time. `not defer_parse` was False, skipping create_run.",
+    "fix": "Test helper _run_upload_route simulates FastAPI default resolution: inspect.signature(...).parameters['defer_parse'].default -> getattr(declared,'default',declared), while asserting the declared default is False (locks the contract).",
+    "tags": [
+      "fastapi",
+      "form-default",
+      "direct-call-test",
+      "geo-samples",
+      "defer_parse"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04T02:31:46"
+  },
+  {
+    "id": "bug-3089",
+    "timestamp": "2026-09-04T12:00:00",
+    "error_message": "test_parse_batch_limit_query_contract: AttributeError 'Query' object has no attribute 'ge' (assert (q.default, q.ge, q.le) == (5, 1, 20))",
+    "file": "backend/tests/test_geo_sample_bank_compile.py",
+    "root_cause": "This FastAPI (pydantic v2) stores numeric constraints on Query()/Form() FieldInfo as annotated types in FieldInfo.metadata ([Ge(ge=1), Le(le=20)]), NOT as .ge/.le attributes (pydantic v1 shape). Signature-default inspection tests must read metadata.",
+    "fix": "Read constraints from q.metadata: [m.ge for m in q.metadata if hasattr(m,'ge')] == [1] and same for le; q.default read directly.",
+    "tags": [
+      "fastapi",
+      "pydantic-v2",
+      "query-constraints",
+      "signature-inspection",
+      "geo-samples"
+    ],
+    "related_bugs": [
+      "bug-3088"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04T12:00:00"
+  },
+  {
+    "id": "bug-3090",
+    "timestamp": "2026-09-04T03:33:59+08:00",
+    "error_message": "host pytest 全量 ~190 假失败（config/skills/MCP 路径类断言? requires_llm 类测试不 skip 反真?LLM 挂死",
+    "file": "backend/tests/conftest.py",
+    "root_cause": "仓库?.env 是容器部?env 文件? ?DEER_FLOW_* 键全?/app 容器路径 + OPENAI_API_KEY 真值），两条模块级 load_dotenv 把它吸进 host 测试进程：主矢量 app/extensions/config.py:10 显式 load_dotenv(repo-root .env, override=False)（实?DEER_FLOW_HOME=/app/backend/.deer-flow）；次矢?harness app_config.py:57 load_dotenv()（cwd=backend ?find_dotenv 命中 backend/.env，该文件?DEER_FLOW_*/OPENAI_API_KEY 键故当前无毒，cwd 变化时可走根 .env）。python-dotenv override=False 语义=不覆?os.environ 已存在键（空串算已存在）。OPENAI_API_KEY 真值使 requires_llm ?skipif 条件失效?",
+    "fix": "backend/tests/conftest.py ?sys.path 插入?18-19）后、任?deerflow/app 导入?sys.modules mock 之前，对 9 个毒化键 os.environ.setdefault(k, \\\"\\\")（单卡点，模块体执行早于 collection；端到端实测：测试内 import app.extensions.config 后毒化键仍为空串）。backend/Makefile test 目标 recipe 追加同等 VAR= 空值前缀双保险（GNU make→sh 前缀赋值传?uv，实测空串正常到达子进程）。容器内不受影响：compose 注入真值时 setdefault 不覆盖?",
+    "tags": [
+      "pytest",
+      "dotenv",
+      "env-poisoning",
+      "host-tests",
+      "conftest",
+      "makefile",
+      "geo-batch-cli"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3091",
+    "timestamp": "2026-09-04",
+    "error_message": "test_geo_progress.py 6 用例仍断言旧契约「手?mark VERIFIED + --gate PASS 即通过」→ 全红（bug-3049 落地?progress.py 一律拒绝，测试未同步）",
+    "file": "backend/tests/test_geo_progress.py",
+    "root_cause": "bug-3049 修复落账时测试文件被并发 git reset 抹除（bug-3049 root_cause 已记首次抹除），progress.py 拒绝行为在库?6 个用例（5 个用 mark VERIFIED ?VERIFIED 前置 + 1 个断言旧逐章 build_output 渲染文案）仍锁旧行为",
+    "fix": "纯测试对齐（progress.py 零改动）：新?gate_pass 进程内替身（monkeypatch build_output.run_chapter_gate=无异常返?+ resolve_targets=空基准，?cmd_gate 同一?PASS 自动转正代码路径）替代全部手?mark VERIFIED；test_gate_command_rendered_with_paths 对齐批量 gate 渲染断言（绝?progress.py 路径+state 路径入命令、stage_path 记账?progress.json）；test_illegal_transition_refused 改经 gate ?VERIFIED 后锁 VERIFIED→BLOCKED 非法；test_verified_requires_gate_pass 更名 test_manual_mark_verified_rejected 并改断言拒绝文案（原断言 --gate PASS 恰好是新文案子串、属巧合绿）?0/20 绿，60948c68e",
+    "tags": [
+      "geo-skill",
+      "progress",
+      "bug-3049",
+      "test-alignment",
+      "gate-only-verified",
+      "concurrent-reset-collateral"
+    ],
+    "related_bugs": [
+      "bug-3049",
+      "bug-3059"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3092",
+    "timestamp": "2026-09-04",
+    "error_message": "目录覆盖?FAIL：编号同但标题不符（bug2223 3F? assert r.stderr.startswith(\\\"[build] 错误:\\\") 失败（controller 2F?",
+    "file": "backend/tests/test_geo_controller_build.py, backend/tests/test_geological_report_bug2223.py",
+    "root_cause": "夹具 vs 门禁硬化漂移：① 10cefae98 ?build_output 前置「矿种基线缺失」stderr 行，错误行退到第二行，startswith 断言失效；② 夹具骨架节标题写占位「小节」，bug-3036 标题比对门必 FAIL。修 bug2223 时连锁暴露两点：ingest 骨架?16_economics.json 落成 rates=null，consistency.check_fc ?eco.get(\\\"rates\\\", {}) ?null 值不回退默认 {} ?AttributeError（源码侧隐患，本任务未修）；手写 formula_state ?total_ore_wt 与小计不自洽 ?FC1 FAIL",
+    "fix": "?断言?in（不锁行序）；② 夹具骨架标题改用 build_output._toc_index（与门同源解析，P4-T7 ?e2e _skeleton 可沿用同款）；③ 夹具?economics rates；④ formula_state total=小计?39.92）。skills 源码零改动，commit a369d5f4d",
+    "tags": [
+      "geo-skill",
+      "fixture-drift",
+      "toc-gate",
+      "consistency",
+      "rates-null-latent-bug"
+    ],
+    "related_bugs": [
+      "bug-2223",
+      "bug-2225",
+      "bug-3036",
+      "bug-3059"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3093",
+    "timestamp": "2026-09-04",
+    "error_message": "test_geological_report_e2e_full 5E: module fixture setup ?build rc=1——交付名?FAIL「勘?勘探」双叠名；修名门后连锁暴露目录覆盖门（占位「{no} 小节」撞 bug-3036 标题比对）与一致性合约门（合成骨架无 XS3 判定?XS5 采空区口径）",
+    "file": "backend/tests/test_geological_report_e2e_full.py",
+    "root_cause": "夹具三处与门硬化（bug-3036 系）脱节：① deliv 朴素 f-string 未复?expected_deliverable_name 去重；② _skeleton 用占位节标题而非 _toc_index 同源解析；③ 合成章节正文不含 type_verdicts 判定词与 goaf 两值（XS3/XS5 逐字在场门）",
+    "fix": "commit 8b5ab245c：① deliv=expected_deliverable_name(stage,data)；② _skeleton 照抄 bug2223 ?build_output._toc_index 渲染真实节标题（'小节' fallback 保留）；?新增 _contract_block ?hydro_eng_env 表单直读口径句注?stage forms.chapters 绑定章节（仅补足深度 build，薄 build 保持恰好 10 项深度未过）? errors? passed；四文件回归 64 passed；skill 源码零改?",
+    "tags": [
+      "geo-skill",
+      "e2e-fixture",
+      "gate-cascade",
+      "bug-3036",
+      "P4-T7",
+      "consistency-gate",
+      "toc-gate"
+    ],
+    "related_bugs": [
+      "bug-3036",
+      "bug-2223",
+      "bug-2225",
+      "bug-2220"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3094",
+    "timestamp": "2026-09-04T05:50:00Z",
+    "error_message": "make lint: 1 file would be reformatted (tests/conftest.py) ?lint gate exit 2",
+    "file": "backend/tests/conftest.py",
+    "root_cause": "P4 env commit fe814f08e committed a multi-element-per-line tuple that ruff format explodes to one-per-line; the P4 session never ran make lint after the edit, so the format debt landed committed",
+    "fix": "uv run ruff format tests/conftest.py (mechanical, no logic change), committed as 0e3180636 on main-dev-fork; make lint now green",
+    "tags": [
+      "lint",
+      "ruff-format",
+      "p4-gate",
+      "test-infra"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04T05:50:00Z"
+  },
+  {
+    "id": "bug-3095",
+    "timestamp": "2026-09-04T07:33:00+08:00",
+    "error_message": "P5台账三缺? parse-batch行级has_running_run为check-then-insert,并发批次可同时过检后各落一条running parse(双run重复OCR); run_redact无R2漂移重查,重活期间doc被改判仍落redacted覆盖他方结论; consistency.py check_fc对forms.economics显式null子对?rates/concentrate/prices)抛AttributeError(ECO.get默认{}不救显式null)",
+    "file": "",
+    "root_cause": "",
+    "fix": "①migrate_db建部分唯一索引uq_gsb_run_running(document_id)WHERE status=running AND run_type IN (parse,redact)(建前DELETE重复running保留最?to_regclass守卫),parse_batch_impl捕IntegrityError→rollback+409,行级守卫保留双保? ②run_redact对齐run_parse R2三段? 提取局部变量→commit释放连接→重活→get_document_fresh重取,非parsed→finish_run failed丢弃产物; ③三处改(eco.get(x) or {})守卫(仅or {}+注释,并发硬化域零其他改动)",
+    "tags": [
+      "geo-samples",
+      "gsb_run_history",
+      "partial-unique-index",
+      "TOCTOU",
+      "run_redact",
+      "R2-drift-guard",
+      "consistency",
+      "rates-null",
+      "P5-ledger-A",
+      "bug-3060-followup"
+    ],
+    "related_bugs": [
+      "bug-3060"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3096",
+    "timestamp": "2026-09-04",
+    "error_message": "authFormFetch 错误提示显示 \\\"[object Object]\\\"——FastAPI 422 校验错误 detail ?[{loc,msg}] 数组形态，原实现只按字符串解析",
+    "file": "frontend/src/extensions/api/client.ts",
+    "root_cause": "authFormFetch 的错误解析没?authFetch 的数?detail 分支；对数组 detail ?`||` 字符串拼接得?[object Object]",
+    "fix": "对齐 authFetch：Array.isArray(detail) ?map x?.msg + filter(Boolean) + join('; ')，字符串分支与空串回退 'Request failed' 语义保留",
+    "tags": [
+      "frontend",
+      "api-client",
+      "422",
+      "fastapi",
+      "error-parsing",
+      "geo-samples"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3097",
+    "timestamp": "2026-09-04",
+    "error_message": "DocumentsView「下一页」disabled ?total 兜底?0（data?.total ?? 0），API ?total 时按钮永久禁?",
+    "file": "frontend/src/extensions/geo-samples/components/DocumentsView.tsx",
+    "root_cause": "total 变量兜底 0 而非 docs.length，且叠加 docs.length<pageSize 冗余守卫",
+    "fix": "disabled 改为 (page+1)*pageSize >= (data?.total ?? docs.length)：total 精确优先、docs.length 兜底（P5 ledger 计划公式?",
+    "tags": [
+      "frontend",
+      "geo-samples",
+      "pagination",
+      "documents-view"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3098",
+    "timestamp": "2026-09-04",
+    "error_message": "backend/test_env.py、backend/test_auth_debug.py 模块?load_dotenv(override=True) 毒化环境源；?pytest 收集即污染（conftest 屏蔽键对 override=True 无效?",
+    "file": "backend/test_env.py",
+    "root_cause": "调试遗留脚本?test_*.py 命名放在 backend/ 根，pytest 裸收集时 import 即执?override=True ?load_dotenv，覆?conftest ?setdefault 屏蔽",
+    "fix": "git rm 两脚本（cat 确认为纯调试遗留：打?env 变量 + 手工 JWT 验证，无独有逻辑）；conftest 中和块注释追加维护契约「新?DEER_FLOW_*/OPENAI 外键时须同步此清单?",
+    "tags": [
+      "backend",
+      "pytest",
+      "env-poisoning",
+      "conftest",
+      "debug-scripts"
+    ],
+    "related_bugs": [
+      "bug-3093"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3099",
+    "timestamp": "2026-09-04",
+    "error_message": "docmgr/collab editor AI toolbar (polish/expand) fails: [ai-chat] LLM error: 401 Authentication Fails (auth header format should be Bearer sk-...); POST /api/collab/ai-chat 500",
+    "file": "frontend/src/app/api/collab/ai-chat/route.ts (deleted); backend/app/extensions/docmgr/collab_ai_chat.py",
+    "root_cause": "1) Legacy Next.js route handler shadowed the gateway endpoint POST /api/collab/ai-chat (mounted app.py:907, CSRF-exempt, reads system settings default_model); the Next handler called the provider directly with COLLAB_AI_API_KEY/DEEPSEEK_API_KEY/ZHIPU_API_KEY env vars that are unset in every environment, producing an empty Bearer header. 2) Latent: gateway endpoint dropped repeated identical stream deltas via emitted_ids set, corrupting streamed text.",
+    "fix": "Deleted the shadowing Next route (traffic now flows via nginx /api/ -> gateway and next.config.js rewrite /api/:path* -> gateway, per pattern 2ebf28cf3); removed the emitted_ids dedup in collab_ai_chat.py; added backend/tests/test_collab_ai_chat.py (3 tests). E2E verified: login -> POST /api/collab/ai-chat streams text-delta and tool frames using settings default_model agnes-2.5-Flash.",
+    "tags": [
+      "collab",
+      "ai-chat",
+      "blocknote",
+      "docmgr",
+      "401",
+      "auth",
+      "nextjs-route-shadow",
+      "sse-streaming",
+      "default_model"
+    ],
+    "related_bugs": [
+      "bug-3020"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3100",
+    "timestamp": "2026-09-04",
+    "error_message": "离线?RAGFlow 三重断裂: deploy/offline/.env RAGFLOW_IMAGE=v0.25.3(plain) 而导出管线只导出 v0.25.3-fixed ?离线安装 compose 找不到镜像回退 registry pull 必败; 且后?knowledge client 已升?v0.27.1 API(分页/llm/list 移除)而离线全?compose/.env/offline-export.sh:130 pin/ragflow-fixed.Dockerfile)仍钉 v0.25.3 ?即使装上也与后端说不上话",
+    "file": "deploy/offline/docker-compose.ragflow.yaml + deploy/offline/.env + scripts/offline-export.sh",
+    "root_cause": "dev ?RAGFlow 2026-09-02 整体升级 v0.27.1(1abe6214d) ?deploy/offline 模板?7-29 后未跟随; .env ?plain tag 与导?fixed tag 长期不一致且 7-30 包已带病出厂; delta 机制只比镜像 digest+hash deploy.conf, compose/模板变更不进 delta",
+    "fix": "✅已实施 2026-09-04（v0.27.1-fixed 镜像已构建验证）: ①deploy/offline/.env RAGFLOW_IMAGE=v0.27.1-fixed + RAGFLOW_SECRET_KEY 固定随机? ②deploy/offline/docker-compose.ragflow.yaml 全量移植 v0.27.1(command flags/SECRET_KEY :?守卫/API_PROXY_SCHEME=python/ES tmpfs/MySQL flags/prod-ragflow-logs:/ragflow/logs 替换 /ragflow 卷陷?; ③ragflow-fixed.Dockerfile FROM v0.27.1(F.11/F.13 已在运行镜像上实测仍成立); ④offline-export.sh pin→v0.27.1-fixed; ⑤generate-config.sh+deploy.conf.example ?RAGFLOW_SECRET_KEY 透传; ⑥文? MANUAL-DEPLOY 步骤9/MANUAL-UPGRADE §2 窗口例外/GUIDE 问题8重写+F.11-F.13 归档标注/README temporal+目录清单",
+    "tags": [
+      "deploy",
+      "offline",
+      "ragflow",
+      "v0.27.1",
+      "image-tag-mismatch",
+      "delta-limitation"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3100",
+    "timestamp": "2026-09-04",
+    "error_message": "Page-level verification: editor AI polish intermittently fails client-side: Error calling LLM {result: {ok:false, error: 'Invalid operation. id must end with $'}, chatStatus: 'ready'}",
+    "file": "backend/app/extensions/docmgr/collab_ai_chat.py",
+    "root_cause": "BlockNote xl-ai runs operations validation in idsSuffixed mode: every operation id sent by the LLM must carry a trailing '$' (client strips it before block lookup). The system prompt inherited from the legacy Next route never taught this convention, so the LLM emitted bare block ids ~50% of runs.",
+    "fix": "System prompt now explicitly requires the trailing '$' on operation ids (collab_ai_chat.py _build_system_prompt) + regression assertion in test_collab_ai_chat.py::test_system_prompt_documents_suffixed_block_ids. 2/2 consecutive UI passes after fix.",
+    "tags": [
+      "blocknote",
+      "xl-ai",
+      "ai-chat",
+      "idsSuffixed",
+      "system-prompt"
+    ],
+    "related_bugs": [
+      "bug-3099"
+    ],
+    "occurrences": 2,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3101",
+    "timestamp": "2026-09-04",
+    "error_message": "e2e 实录：LLM ?ore_pack 草稿两处形态违规——①zone_split_rule ?status 嵌进 boundary_grade 子对象、自身缺 status 键；②bulk_density_practice 自?status 值【未采集】≠【待核实?",
+    "file": "backend/app/extensions/geo_samples/ore_pack_extract.py",
+    "root_cause": "_SYSTEM_PROMPT 对【待核实】形态的描述不够硬：没说 zone_split_rule 自身必须?status 键，也没禁止自?status ?",
+    "fix": "硬化 _SYSTEM_PROMPT：①明确 zone_split_rule 自身（非嵌套子对象）必须?status 键；②status 值唯一合法为【待核实】，缺失/未采集也?{status:【待核实?note:…} 表达。重?gold/coal 均过校验",
+    "tags": [
+      "ore_pack",
+      "llm-extraction",
+      "prompt",
+      "schema-guard",
+      "P5-T8"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3102",
+    "timestamp": "2026-09-04",
+    "error_message": "测试抓到 approve 设计缺口：只重校?draft_json，未?errors 列本体——errors 非空?JSON 恰好过新校验的草稿会被放?",
+    "file": "backend/app/extensions/geo_samples/routers.py",
+    "root_cause": "approve 守卫漏了 plan 字面要求「approve 前置=errors 空」的 errors 列闸",
+    "fix": "approve 双闸：recorded(json.loads(errors))+fresh(当场 validate_ore_pack) 任一非空?409",
+    "tags": [
+      "ore_pack",
+      "approve",
+      "guard",
+      "P5-T5"
+    ],
+    "related_bugs": [
+      "bug-3101"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3103",
+    "timestamp": "2026-09-04",
+    "error_message": "gateway 重启后宿?curl localhost:8001 一?000，误判为楔死；实际容器内 health 200",
+    "file": "docker/docker-compose-dev.yaml",
+    "root_cause": "gateway 从不发布宿主 8001 端口?001/tcp: null）——宿主→gateway 只能?nginx:2026?8001 探活方式本身错误",
+    "fix": "探活改：docker exec 容器?curl 127.0.0.1:8001/health，或宿主?nginx:2026",
+    "tags": [
+      "gateway",
+      "docker",
+      "health-check",
+      "misdiagnosis"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3104",
+    "timestamp": "2026-09-04",
+    "error_message": "Docker平台上浏览器访问系统特别慢（用户报告）",
+    "file": ".wslconfig",
+    "root_cause": "宿主机内存耗尽引发整机换页，与 Docker 内存 16G→24G 调整无关（WSL2 memory 是上限非预留，该调整本身是 bug-1246 的修复）。实证：Docker 全停时宿主机仅剩 11.2G/31.7G —— 一个 host 直跑的 next dev server（PID 20520）泄漏占 5.1G，加上 Claude×4/Chrome/Code 等共占约 20G；Docker VM 起来（容器实际用约 7G）后宿主机只剩 0.8G → 疯狂换页",
+    "fix": "Stop-Process 杀掉泄漏的 host 直跑 next dev（PID 20520），宿主机空闲 0.8G→5.6G；首页 Turbopack 冷编译约 90s 后热请求 505ms，平台恢复正常。访问统一走 localhost:2026。注：修复期间 PS 5.1 ANSI 码页误读 UTF-8 文件曾损坏本 buglog（中文乱码+引号吞噬），已从 git HEAD + GBK 逆向恢复 3078-3103",
+    "tags": [
+      "docker",
+      "wsl2",
+      "memory",
+      "host-paging",
+      "nextjs-dev-leak",
+      "performance"
+    ],
+    "related_bugs": [
+      "bug-1246",
+      "bug-3020"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
   }
 ]
