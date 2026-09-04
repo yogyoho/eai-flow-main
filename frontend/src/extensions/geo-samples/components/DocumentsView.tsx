@@ -121,26 +121,15 @@ export function DocumentsView() {
     });
   }
 
-  function onCompile() {
-    const scope = [
-      filters.stage
-        ? (STAGE_LABEL[filters.stage] ?? filters.stage)
-        : "全部阶段",
-      filters.mineral
-        ? (MINERAL_LABEL[filters.mineral] ?? filters.mineral)
-        : "全部矿种",
-    ].join(" / ");
+  function onCompileRow(reportId: string, id: string) {
     if (
       !confirm(
-        `对 reviewed 样例执行模块级编译（${scope}）？\n切片将写入技能 references 并分发 RAGFlow（后台任务，进度见「运行记录」；已有编译在跑会 409）。`,
+        `编译分发 ${reportId}？\n该样例切片将写入技能 references 并分发 RAGFlow（后台任务，进度见「运行记录」；已有编译在跑会 409）。`,
       )
     )
       return;
     compile.mutate(
-      {
-        stage: filters.stage || undefined,
-        mineral: filters.mineral || undefined,
-      },
+      { document_id: id },
       {
         onSuccess: (r) =>
           alert(
@@ -268,26 +257,13 @@ export function DocumentsView() {
         title="样例文档列表"
         sub="解析 → 脱敏 → 抽审 状态流转，5 秒自动刷新"
       >
-        <div className="flex items-start justify-between gap-3">
-          <FilterBar
-            filters={filters}
-            onChange={(f) => {
-              setFilters(f);
-              setPage(0); // 筛选变更回第 1 页(防越界页)
-            }}
-          />
-          {/* 编译分发（Phase 2）：作用域=当前 stage/mineral 筛选（不选=全库 reviewed） */}
-          <button
-            type="button"
-            onClick={onCompile}
-            disabled={compile.isPending}
-            title="reviewed 清单 → 切片落 references + RAGFlow 分发（后台）"
-            className="shrink-0 cursor-pointer rounded-md border px-3 py-1.5 text-[13px] font-medium transition-colors disabled:cursor-default disabled:opacity-50"
-            style={{ borderColor: BLUE, color: BLUE }}
-          >
-            {compile.isPending ? "入队中…" : "编译分发"}
-          </button>
-        </div>
+        <FilterBar
+          filters={filters}
+          onChange={(f) => {
+            setFilters(f);
+            setPage(0); // 筛选变更回第 1 页(防越界页)
+          }}
+        />
         <div className="border-border bg-card rounded-xl border p-4">
           {isLoading ? (
             <p className="text-muted-foreground py-8 text-center text-sm">
@@ -382,6 +358,19 @@ export function DocumentsView() {
                             }
                           >
                             重试
+                          </button>
+                        )}
+                        {/* 逐行编译分发（reviewed 首编 / compiled 幂等重编译） */}
+                        {(d.status === "reviewed" ||
+                          d.status === "compiled") && (
+                          <button
+                            type="button"
+                            className={ACT_BTN}
+                            style={{ color: BLUE }}
+                            disabled={compile.isPending}
+                            onClick={() => onCompileRow(d.report_id, d.id)}
+                          >
+                            编译
                           </button>
                         )}
                         {d.status !== "compiled" && (

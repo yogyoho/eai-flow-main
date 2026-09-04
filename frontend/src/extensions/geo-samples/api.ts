@@ -106,9 +106,14 @@ export const geoSamplesApi = {
   // Functional area 4: tasks
   listRuns: () => authFetch<{ items: GsbRun[] }>(`${API_BASE}/runs`),
 
-  // 模块级编译（Phase 2）：reviewed 清单（可带 stage/mineral 过滤）→ 子进程 bank_compile
+  // 编译（Phase 2）：无 document_id=模块级 reviewed 清单（可带 stage/mineral 过滤）；
+  // 带 document_id=逐行编译分发（单文档域，reviewed/compiled 可）。→ 子进程 bank_compile
   // 切片落 references + RAGFlow 分发（后台 run，进度见 /runs）。POST 缺省会走 GET 405，必须显式。
-  compile: (params?: { stage?: string; mineral?: string }) =>
+  compile: (params?: {
+    stage?: string;
+    mineral?: string;
+    document_id?: string;
+  }) =>
     authFetch<{ run_id: string }>(`${API_BASE}/pipeline/compile${qs(params)}`, {
       method: "POST",
     }),

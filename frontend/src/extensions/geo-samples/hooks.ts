@@ -110,12 +110,15 @@ export function useGsbDelete() {
   });
 }
 
-// 模块级编译触发（DocumentsView 编译分发按钮）：后台 run，invalidate 让运行记录 5 秒轮询接手。
+// 编译触发（DocumentsView 逐行「编译」按钮）：后台 run，invalidate 让运行记录 5 秒轮询接手。
 export function useGsbCompile() {
   const invalidate = useInvalidate();
   return useMutation({
-    mutationFn: (params?: { stage?: string; mineral?: string }) =>
-      geoSamplesApi.compile(params),
+    mutationFn: (params?: {
+      stage?: string;
+      mineral?: string;
+      document_id?: string;
+    }) => geoSamplesApi.compile(params),
     onSuccess: invalidate,
   });
 }

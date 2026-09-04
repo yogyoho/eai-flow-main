@@ -138,8 +138,8 @@ describe("geoSamplesApi", () => {
     expect(opts2.body).toEqual(JSON.stringify({ note: null }));
   });
 
-  // 模块级编译（POST /pipeline/compile）：必须显式 POST（authFetch 缺省 GET→405）；
-  // stage/mineral 过滤走 qs（空值省略）。
+  // 编译（POST /pipeline/compile）：必须显式 POST（authFetch 缺省 GET→405）；
+  // stage/mineral/document_id 过滤走 qs（空值省略）。
   test("compile POSTs pipeline with optional filters", async () => {
     rs.mocked(authFetch).mockResolvedValue({ run_id: "run-c1" });
     await geoSamplesApi.compile({ stage: "exploration", mineral: "gold" });
@@ -152,5 +152,13 @@ describe("geoSamplesApi", () => {
     await geoSamplesApi.compile();
     expect(lastCall()[0]).toBe("/geo-samples/pipeline/compile");
     expect(lastCall()[1].method).toBe("POST");
+  });
+
+  test("compile with document_id targets single document", async () => {
+    rs.mocked(authFetch).mockResolvedValue({ run_id: "run-c2" });
+    await geoSamplesApi.compile({ document_id: "doc-1" });
+    const [url, opts] = lastCall();
+    expect(url).toBe("/geo-samples/pipeline/compile?document_id=doc-1");
+    expect(opts.method).toBe("POST");
   });
 });
