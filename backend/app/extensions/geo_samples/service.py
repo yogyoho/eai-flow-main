@@ -216,25 +216,35 @@ async def push_slices_to_ragflow(refs: Path, dataset_id: str) -> int:
     return pushed
 
 
-async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, mineral: str | None = None) -> None:
+async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, mineral: str | None = None, document_id: str | None = None) -> None:
     """模块级编译后台任务（never-raise 契约同 run_parse）。
 
-    编排链：reviewed 清单（空 → failed 快速返回，不起子进程）→ commit 释放连接（R2 同款，
-    下载/子进程阶段不占池）→ to_thread 准备工作区（MinIO 下载 clean 到 <rid>/source.md +
-    manifest.json）→ 子进程 bank_compile（--workdir/--references/--python，cwd=技能目录，
-    1800s wait_for 硬顶超时 kill）→ RAGFlow 切片分发（辅助通道，900s 预算封顶：env 未配置记
-    skipped；超预算/push 异常只记 detail 不回滚编译结论，spec §7 降级链——子进程+分发相加恒
-    < 60min sweep 线，防长尾拖过互斥造成并发编译写共享 references）→ 按 manifest 批量写回：
-    get_document_fresh 读 DB 真值且仅 reviewed→compiled，漂移者记 detail 跳过 → commit →
-    done。任何异常 → rollback（compile 无 doc 单体，失败不改任何 gsb_documents 状态）→
-    failed 落账。临时工作区 finally 清理。
+    编排链：reviewed 清单（document_id 给定时改单文档域：fresh 重取且须 reviewed；空 →
+    failed 快速返回，不起子进程）→ commit 释放连接（R2 同款，下载/子进程阶段不占池）→
+    to_thread 准备工作区（MinIO 下载 clean 到 <rid>/source.md + manifest.json）→ 子进程
+    bank_compile（--workdir/--references/--python，cwd=技能目录，1800s wait_for 硬顶超时
+    kill）→ RAGFlow 切片分发（辅助通道，900s 预算封顶：env 未配置记 skipped；超预算/push
+    异常只记 detail 不回滚编译结论，spec §7 降级链——子进程+分发相加恒 < 60min sweep 线，
+    防长尾拖过互斥造成并发编译写共享 references）→ 按 manifest 批量写回：get_document_fresh
+    读 DB 真值且仅 reviewed→compiled，漂移者记 detail 跳过 → commit → done。任何异常 →
+    rollback（compile 无 doc 单体，失败不改任何 gsb_documents 状态）→ failed 落账。
+    临时工作区 finally 清理。
     """
     wd: Path | None = None
     try:
-        docs = await crud.list_reviewed(db, stage, mineral)
-        if not docs:
-            await _finish_run(db, run_id, "failed", "无 reviewed 状态的样例可编译")
-            return
+        if document_id is not None:
+            # 单文档域（逐行编译分发）：fresh 重取防端点→后台间隙状态漂移（run_redact 同款守卫）；
+            # reviewed/compiled 均可（重编译幂等——compiled 行写回阶段本就仅 reviewed→compiled，状态不回退）
+            doc = await crud.get_document_fresh(db, document_id)
+            docs = [doc] if doc is not None and doc.status in ("reviewed", "compiled") else []
+            if not docs:
+                await _finish_run(db, run_id, "failed", "单文档编译：样例不存在或状态已漂移（须 reviewed/compiled）")
+                return
+        else:
+            docs = await crud.list_reviewed(db, stage, mineral)
+            if not docs:
+                await _finish_run(db, run_id, "failed", "无 reviewed 状态的样例可编译")
+                return
         await db.commit()  # R2：先释放连接再进重活——expire_on_commit=False 下 docs 属性仍可读，下载阶段不再占连接 idle-in-tx
         rid_to_id = {d.report_id: d.id for d in docs}  # writeback 用 get_document_fresh（按主键查）的换算表
         wd = Path(await asyncio.to_thread(tempfile.mkdtemp, prefix="gsb_compile_"))

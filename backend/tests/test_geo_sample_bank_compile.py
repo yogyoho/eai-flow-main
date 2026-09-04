@@ -1947,3 +1947,142 @@ async def test_ore_pack_drafts_list_decodes_json_payloads(monkeypatch):
     assert resp["items"][0]["errors"] == []
     assert resp["items"][1]["draft_json"] is None
     assert resp["items"][1]["errors"] == ["抽取失败: x"]
+
+
+# --- 逐行编译分发（document_id 单文档域）---------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_run_compile_single_document_scope(monkeypatch, tmp_path):
+    """document_id 给定：fresh 重取该文档（reviewed）→ 只编译这一份，不走 list_reviewed。"""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    doc = SimpleNamespace(id="doc-solo", report_id="gsb-kc-au-0001", file_hash="h1", status="reviewed", clean_uri="s3://geo-samples/clean/x/source.md")
+    wd = tmp_path / "wd"
+    wd.mkdir()
+
+    calls: list[str] = []
+
+    async def _fresh(db, did):
+        calls.append(f"fresh:{did}")
+        return doc
+
+    async def _list_reviewed(db, stage=None, mineral=None):
+        calls.append("list_reviewed")
+        return []
+
+    prepared = {}
+
+    def _prepare(docs, wd_):
+        prepared["docs"] = list(docs)
+        # 真 _prepare_compile_workspace 会写 manifest.json（写回阶段的读入源）——桩同款落一份
+        (Path(wd_) / "manifest.json").write_text(json.dumps([{"report_id": docs[0].report_id, "slices": []}], ensure_ascii=False), encoding="utf-8")
+
+    async def _finish(db_, rid, status, detail):
+        calls.append(f"finish:{status}")
+
+    monkeypatch.setattr(service.tempfile, "mkdtemp", lambda prefix="": str(wd))
+    monkeypatch.setattr(service.crud, "get_document_fresh", _fresh)
+    monkeypatch.setattr(service.crud, "list_reviewed", _list_reviewed)
+    monkeypatch.setattr(service.crud, "finish_run", AsyncMock(side_effect=_finish))
+    monkeypatch.setattr(service.storage, "get_object", lambda uri: b"# x")
+    monkeypatch.setattr(service, "_prepare_compile_workspace", _prepare)
+    monkeypatch.delenv("GSB_RAGFLOW_DATASET_ID", raising=False)
+
+    class FakeProc:
+        returncode = 0
+
+        async def communicate(self):
+            return b"", b""
+
+    async def _fake_exec(*cmd, **kwargs):
+        return FakeProc()
+
+    monkeypatch.setattr(service.asyncio, "create_subprocess_exec", AsyncMock(side_effect=_fake_exec))
+
+    db = MagicMock()
+    db.commit = AsyncMock()
+    db.rollback = AsyncMock()
+
+    await service.run_compile(db, "run-solo", document_id="doc-solo")
+
+    assert calls[0] == "fresh:doc-solo"  # 单文档域走 fresh 重取
+    assert "list_reviewed" not in calls  # 不走全量清单
+    assert [d.id for d in prepared["docs"]] == ["doc-solo"]
+    assert any(c.startswith("finish:done") for c in calls)
+
+
+@pytest.mark.asyncio
+async def test_run_compile_single_document_drift_fails_fast(monkeypatch):
+    """单文档域漂移守卫：fresh 重取非 reviewed/compiled（或不存在）→ failed 且不起子进程。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import service
+
+    async def _fresh(db, did):
+        return None
+
+    monkeypatch.setattr(service.crud, "get_document_fresh", _fresh)
+    finish = AsyncMock()
+    monkeypatch.setattr(service.crud, "finish_run", finish)
+    exec_mock = AsyncMock()
+    monkeypatch.setattr(service.asyncio, "create_subprocess_exec", exec_mock)
+
+    await service.run_compile(MagicMock(), "run-drift", document_id="gone")
+
+    exec_mock.assert_not_awaited()
+    status, detail = _finish_call(finish.await_args)
+    assert status == "failed"
+    assert "漂移" in (detail or "") and "reviewed" in (detail or "")
+
+
+@pytest.mark.asyncio
+async def test_compile_pipeline_endpoint_document_scope_guards(monkeypatch):
+    """端点守卫：document_id 不存在→404；状态非 reviewed/compiled→409；合法→带 document_id 入队。
+    模块级互斥（409）对单文档域同样生效。"""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import routers
+
+    async def _sweep(db):
+        return 0
+
+    async def _running(db):
+        return False
+
+    solo = SimpleNamespace(id="doc-solo", status="reviewed")
+    uploaded = SimpleNamespace(id="doc-up", status="uploaded")
+
+    async def _get(db, did):
+        return {"doc-solo": solo, "doc-up": uploaded}.get(did)
+
+    monkeypatch.setattr(routers.crud, "sweep_stale_runs", _sweep)
+    monkeypatch.setattr(routers.crud, "has_running_compile_run", _running)
+    monkeypatch.setattr(routers.crud, "get_document", _get)
+    create_run = AsyncMock(return_value=SimpleNamespace(id="run-x"))
+    monkeypatch.setattr(routers.crud, "create_run", create_run)
+    added: list = []
+
+    class BG:
+        def add_task(self, fn, *a):
+            added.append((fn, a))
+
+    # ① 404
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.compile_pipeline(BG(), document_id="missing", db=MagicMock())
+    assert ei.value.status_code == 404
+    # ② 状态闸
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.compile_pipeline(BG(), document_id="doc-up", db=MagicMock())
+    assert ei.value.status_code == 409
+    assert "reviewed" in ei.value.detail
+    # ③ 合法：入队带 document_id，run 行仍模块级（document_id=None）
+    resp = await routers.compile_pipeline(BG(), document_id="doc-solo", db=MagicMock())
+    assert resp == {"run_id": "run-x"}
+    fn, args = added[0]
+    assert fn is routers.service.run_compile
+    assert args[1] == "run-x" and args[2] is None and args[3] is None and args[4] == "doc-solo"

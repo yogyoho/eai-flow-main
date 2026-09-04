@@ -268,19 +268,28 @@ async def review_document(document_id: str, body: schemas.ReviewRequest, db: Asy
 
 
 @router.post("/pipeline/compile")
-async def compile_pipeline(background: BackgroundTasks, stage: str | None = None, mineral: str | None = None, db: AsyncSession = Depends(get_db), _: object = _PERM):
-    """模块级编译：reviewed 全量（可选 stage/mineral 过滤）→ 子进程 bank_compile → RAGFlow 分发。
+async def compile_pipeline(background: BackgroundTasks, stage: str | None = None, mineral: str | None = None, document_id: str | None = Query(None), db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """模块级编译：reviewed 全量（可选 stage/mineral 过滤）或单文档域（document_id）→
+    子进程 bank_compile → RAGFlow 分发。
 
-    互斥：任意 running 的 compile run 存在 → 409（先 sweep 超龄自愈，防网关重启残留行永久锁死）；
-    无 reviewed 样例 → 400。run 行 document_id=None（模块级，无单体文档）。
+    document_id 给定时为逐行编译分发（前端操作列按钮）：该样例须 reviewed/compiled
+    （重编译幂等）；互斥仍为模块级全局（同一时刻仅一个编译 run 写共享 references）。
+    互斥：任意 running 的 compile run 存在 → 409（先 sweep 超龄自愈，防网关重启残留行
+    永久锁死）；无 reviewed 样例 → 400。run 行 document_id=None（模块级，无单体文档）。
     """
     await crud.sweep_stale_runs(db)
     if await crud.has_running_compile_run(db):
         raise HTTPException(409, "编译任务已在跑")
-    if not await crud.list_reviewed(db, stage, mineral):
+    if document_id is not None:
+        doc = await crud.get_document(db, document_id)
+        if doc is None:
+            raise HTTPException(404, "样例不存在")
+        if doc.status not in ("reviewed", "compiled"):
+            raise HTTPException(409, f"仅 reviewed/compiled 样例可编译（当前 {doc.status}）")
+    elif not await crud.list_reviewed(db, stage, mineral):
         raise HTTPException(400, "无 reviewed 状态的样例可编译")
     run = await crud.create_run(db, None, "compile")
-    background.add_task(service.run_compile, db, run.id, stage, mineral)
+    background.add_task(service.run_compile, db, run.id, stage, mineral, document_id)
     return {"run_id": run.id}
 
 
