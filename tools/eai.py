@@ -518,6 +518,65 @@ def cmd_cpa_upload(sess, args) -> int:
     return rc
 
 
+# --- ore-pack 子命令组（P5 T8，服务端型薄适配：抽取/审阅都在服务端跑）-----------
+
+
+# 词表单源（CLI 侧常量，同 gsb_preflight 模式）：与服务端 ore_pack_schema.KNOWN_SLUGS 同步——
+# 5 production slug，other 不孵化（README 契约 §5）。
+ORE_PACK_MINERALS = frozenset({"copper", "coal", "gold", "iron", "lead_zinc"})
+
+
+@register("ore-pack", "矿种包孵化：extract 触发 LLM 抽取草稿 / status 草稿清单")
+def cmd_ore_pack(sess, args):
+    return {"extract": cmd_ore_pack_extract, "status": cmd_ore_pack_status}[args.ore_pack_cmd](sess, args)
+
+
+def _ore_pack_register_args(sp):
+    sub = sp.add_subparsers(dest="ore_pack_cmd", required=True)
+    p_extract = sub.add_parser("extract", help="触发 {mineral} 草稿抽取（服务端后台；草稿落表经 status 查看）")
+    _add_session_args(p_extract)  # 凭据挂 leaf——见 build_parser 内注释
+    p_extract.add_argument("--mineral", required=True, help="矿种 slug（copper/coal/gold/iron/lead_zinc；other 不孵化）")
+    p_extract.add_argument("--slices", nargs="+", required=True, help="切片路径（仓库根相对或绝对，≥1，每片截断 8000 字符）")
+    p_status = sub.add_parser("status", help="草稿清单 + 各审阅状态计数")
+    _add_session_args(p_status)
+    p_status.add_argument("--mineral", default=None, help="按矿种过滤")
+    p_status.add_argument("--review-status", dest="review_status", default=None, help="draft/approved/rejected")
+
+
+cmd_ore_pack.register_args = _ore_pack_register_args
+
+
+def cmd_ore_pack_extract(sess, args) -> int:
+    """词表预检（省 round-trip，同 gsb_preflight 模式）→ POST extract；抽取为服务端后台任务。"""
+    if args.mineral not in ORE_PACK_MINERALS:
+        print(f"mineral 非法: {args.mineral}（须 ∈ {sorted(ORE_PACK_MINERALS)}；other 不孵化）", file=sys.stderr)
+        return 1
+    r = sess.post(f"{GSB_BASE}/ore-packs/extract", json={"mineral": args.mineral, "slice_paths": args.slices})
+    if r.status_code != 200:
+        print(f"触发失败 [{r.status_code}]: {_detail_of(r)}", file=sys.stderr)
+        return 1
+    body = r.json()
+    print(f"已入队 mineral={body['mineral']} slices_hash={str(body.get('slices_hash', ''))[:12]}…——抽取在服务端后台跑，草稿落表后经 ore-pack status 查看")
+    return 0
+
+
+def cmd_ore_pack_status(sess, args) -> int:
+    """GET drafts（可选 mineral/review_status 过滤）→ 逐行摘要 + 状态计数。"""
+    params = {"mineral": args.mineral, "review_status": args.review_status}
+    r = sess.get(f"{GSB_BASE}/ore-packs/drafts", params=params)
+    if r.status_code != 200:
+        print(f"查询失败 [{r.status_code}]: {_detail_of(r)}", file=sys.stderr)
+        return 1
+    items = r.json().get("items", [])
+    counts = Counter(d.get("review_status") for d in items)
+    for d in items:
+        errs = len(d.get("errors") or [])
+        flag = f"错误 {errs}" if errs else ("可过审" if d.get("draft_json") else "失败草稿")
+        print(f"{str(d.get('id'))[:8]}  {d.get('mineral', '?'):<10} {d.get('review_status', '?'):<9} {flag}  {d.get('created_at', '')}")
+    print(f"共 {len(items)} 份草稿 | 待审 {counts.get('draft', 0)} | 过审 {counts.get('approved', 0)} | 驳回 {counts.get('rejected', 0)}")
+    return 0
+
+
 # --- license 子命令组（本地工具，免会话）--------------------------------------
 
 

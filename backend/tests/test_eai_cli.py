@@ -375,3 +375,78 @@ def test_license_generate_output_guard(tmp_path, monkeypatch, capsys):
     forwarded = sys.modules["license_generator"]._calls[0]
     assert forwarded["permanent"] is True and forwarded["all_modules"] is True
     assert forwarded["customer"] == "测试客户" and forwarded["request_file"] == str(req)
+
+
+# --- P5 T8: ore-pack 子命令（服务端型薄适配）-----------------------------------
+
+
+class _OrePackSess:
+    """假会话：记录 path/params/json；extract 200、drafts 200。"""
+
+    def __init__(self, drafts_items=None):
+        self.posts = []
+        self.gets = []
+        self._drafts = drafts_items or []
+
+    def post(self, path, json=None, **kw):
+        self.posts.append((path, json))
+        req = httpx.Request("POST", "http://x" + path)
+        if path.endswith("/ore-packs/extract"):
+            return httpx.Response(200, json={"queued": True, "mineral": json["mineral"], "slices_hash": "ab" * 32}, request=req)
+        raise AssertionError(path)
+
+    def get(self, path, params=None, **kw):
+        self.gets.append((path, params))
+        req = httpx.Request("GET", "http://x" + path)
+        if path.endswith("/ore-packs/drafts"):
+            return httpx.Response(200, json={"items": self._drafts}, request=req)
+        raise AssertionError(path)
+
+
+def _draft(seed, mineral="gold", status="draft", errors=0, has_json=True):
+    return {
+        "id": f"0000000{seed}-aaaa-bbbb-cccc-00000000000{seed}",
+        "mineral": mineral,
+        "slices_hash": "ab" * 32,
+        "draft_json": {"ore": mineral} if has_json else None,
+        "errors": [f"错误{i}" for i in range(errors)],
+        "review_status": status,
+        "review_note": None,
+        "reviewed_at": None,
+        "created_at": "2026-09-04T08:00:00Z",
+    }
+
+
+def test_ore_pack_extract_rejects_unknown_mineral(capsys):
+    """词表单源裁决 CLI 侧同款：5 production slug 外（other/uranium）→ rc=1 且零 HTTP。"""
+    sess = _OrePackSess()
+    args = eai.build_parser().parse_args(["ore-pack", "extract", "--mineral", "uranium", "--slices", "x.md", "--username", "u", "--password", "p"])
+    rc = eai.cmd_ore_pack(sess, args)
+    assert rc == 1
+    assert sess.posts == []
+    assert "不孵化" in capsys.readouterr().err
+
+
+def test_ore_pack_extract_posts_mineral_and_slices(capsys):
+    sess = _OrePackSess()
+    args = eai.build_parser().parse_args(["ore-pack", "extract", "--mineral", "gold", "--slices", "a.md", "b.md", "--username", "u", "--password", "p"])
+    rc = eai.cmd_ore_pack(sess, args)
+    assert rc == 0
+    path, body = sess.posts[0]
+    assert path == f"{eai.GSB_BASE}/ore-packs/extract"
+    assert body == {"mineral": "gold", "slice_paths": ["a.md", "b.md"]}
+    assert "gold" in capsys.readouterr().out
+
+
+def test_ore_pack_status_counts_and_filters(capsys):
+    items = [_draft(1), _draft(2, mineral="coal", errors=2, has_json=True), _draft(3, status="approved")]
+    sess = _OrePackSess(items)
+    args = eai.build_parser().parse_args(["ore-pack", "status", "--mineral", "gold", "--username", "u", "--password", "p"])
+    rc = eai.cmd_ore_pack(sess, args)
+    assert rc == 0
+    path, params = sess.gets[0]
+    assert path == f"{eai.GSB_BASE}/ore-packs/drafts"
+    assert params == {"mineral": "gold", "review_status": None}
+    out = capsys.readouterr().out
+    assert "共 3 份草稿" in out and "待审 2" in out and "过审 1" in out and "驳回 0" in out
+    assert "错误 2" in out  # 校验错误数可见
