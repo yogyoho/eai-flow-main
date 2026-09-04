@@ -533,6 +533,10 @@ class RAGChatRequest(BaseModel):
     top_k: int | None = Field(default=None, ge=1, le=20)
     similarity_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     vector_similarity_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    filters: dict | None = Field(
+        default=None,
+        description="元数据过滤:{sector, law_number, keywords[], effective_date_from/to}(经 metadata_condition 两段式)",
+    )
 
 
 class RAGChatResponse(BaseModel):
@@ -549,12 +553,18 @@ class RAGFederatedSearchRequest(BaseModel):
     query: str = Field(..., min_length=1)
     top_k: int = Field(default=6, ge=1, le=50)
     per_kb_k: int = Field(default=3, ge=1, le=20)
+    filters: dict | None = Field(
+        default=None,
+        description="元数据过滤:{sector, law_number, keywords[], effective_date_from/to}(经 metadata_condition 两段式)",
+    )
 
 
 class RAGFederatedSearchResponse(BaseModel):
     """Federated RAG search response."""
 
     sources: list[dict] = []
+    filters_applied: dict | None = None
+    filters_truncated: bool = False
 
 
 # ============== Common Schemas ==============

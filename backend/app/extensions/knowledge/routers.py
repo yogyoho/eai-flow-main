@@ -17,7 +17,12 @@ from app.extensions.auth.middleware import current_identity, require_permission,
 from app.extensions.config import get_extensions_config
 from app.extensions.database import get_db
 from app.extensions.knowledge.client import RAGFlowClient
-from app.extensions.knowledge.service import DocumentService, KnowledgeBaseService
+from app.extensions.knowledge.service import (
+    DocumentService,
+    KnowledgeBaseService,
+    build_metadata_condition,
+    filter_doc_ids,
+)
 from app.extensions.models import KnowledgeBase, KnowledgeBaseGrant
 from app.extensions.schemas import (
     CurrentUser,
@@ -541,9 +546,30 @@ async def chat_with_knowledge_base(
     try:
         rf_client = RAGFlowClient()
         params = KnowledgeBaseService.resolve_chat_params(request.top_k, request.similarity_threshold, request.vector_similarity_weight, kb.retrieval_config)
+
+        condition = None
+        try:
+            condition = build_metadata_condition(request.filters)
+        except ValueError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+        document_ids: list[str] | None = None
+        filters_truncated = False
+        if condition:
+            document_ids, filters_truncated = await filter_doc_ids(rf_client, kb.ragflow_dataset_id, condition)
+            if not document_ids:
+                return {
+                    "answer": "",
+                    "sources": [],
+                    "filters_applied": condition,
+                    "filters_truncated": False,
+                    "message": "过滤条件下无匹配文档",
+                }
+
         result = await rf_client.chat(
             dataset_id=kb.ragflow_dataset_id,
             query=request.query,
+            document_ids=document_ids,
             **params,
         )
 
@@ -555,8 +581,10 @@ async def chat_with_knowledge_base(
 
         data = result.get("data") or {}
         return {
-            "answer": data.get("answer", ""),
+            "answer": "",
             "sources": data.get("chunks", []),
+            "filters_applied": condition,
+            "filters_truncated": filters_truncated,
         }
     except HTTPException:
         raise
@@ -610,15 +638,43 @@ async def federated_search(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Knowledge base not synced to RAGFlow")
 
     rf_client = RAGFlowClient()
-    tasks = [
-        rf_client.chat(
-            dataset_id=kb.ragflow_dataset_id,
-            query=request.query,
-            top_k=request.per_kb_k,
+
+    condition = None
+    try:
+        condition = build_metadata_condition(request.filters)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    # 两段式:先按元数据条件收敛每库命中的 document_ids(失败库降级为整库检索)
+    filters_truncated = False
+    per_kb_ids: dict = {}
+    if condition:
+        for kb in kb_list:
+            try:
+                ids, trunc = await filter_doc_ids(rf_client, kb.ragflow_dataset_id, condition)
+                per_kb_ids[kb.id] = ids
+                filters_truncated = filters_truncated or trunc
+            except Exception as e:
+                logger.warning(f"metadata 过滤失败,降级整库检索 kb={kb.id}: {e}")
+                per_kb_ids[kb.id] = None
+
+    tasks = []
+    kb_for_task = []
+    for kb in kb_list:
+        ids = per_kb_ids.get(kb.id)
+        if condition and ids is not None and not ids:
+            continue  # 该库零命中,跳过
+        tasks.append(
+            rf_client.chat(
+                dataset_id=kb.ragflow_dataset_id,
+                query=request.query,
+                top_k=request.per_kb_k,
+                document_ids=ids,
+            )
         )
-        for kb in kb_list
-    ]
+        kb_for_task.append(kb)
     results = await asyncio.gather(*tasks, return_exceptions=True)
+    kb_list = kb_for_task
 
     chunks: list[dict] = []
     failures = 0
@@ -638,7 +694,7 @@ async def federated_search(
                 item["_score"] = score
             chunks.append(item)
 
-    if failures == len(results):
+    if results and failures == len(results):
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="RAGFlow search failed")
 
     scored = [c for c in chunks if "_score" in c]
@@ -653,7 +709,11 @@ async def federated_search(
             c.pop("_score", None)
         chunks.sort(key=lambda x: x.get("score", 0), reverse=True)
 
-    return RAGFederatedSearchResponse(sources=chunks[: request.top_k])
+    return RAGFederatedSearchResponse(
+        sources=chunks[: request.top_k],
+        filters_applied=condition,
+        filters_truncated=filters_truncated,
+    )
 
 
 @router.get("/{kb_id}/status")
