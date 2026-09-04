@@ -9,6 +9,7 @@ import {
   Database,
   Edit3,
   FileText,
+  Info,
   Loader2,
   Plus,
   RefreshCw,
@@ -18,6 +19,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import React, {
   useCallback,
   useEffect,
@@ -47,6 +49,7 @@ import { cn } from "@/lib/utils";
 import { ChunkModal } from "./ChunkModal";
 import { CustomSelect } from "./CustomSelect";
 import { DocStatusBadge } from "./DocStatusBadge";
+import { isLawKnowledgeBase } from "./isLawKnowledgeBase";
 import { sortSourcesByScore } from "./sources-sort";
 import { ToastContainer, useToast } from "./toast";
 import { UploadModal, formatFileSize } from "./UploadModal";
@@ -84,6 +87,9 @@ export function KnowledgeBaseDetail({
 
   // EAI-CUSTOM: button-level permission check for upload/delete actions
   const { can, is_admin, identity } = usePermission();
+  // EAI-CUSTOM: 法规标准系统库不提供直接上传,引导去知识工厂导入
+  // (spec docs/superpowers/specs/2026-09-04-law-kb-upload-guidance-design.md)
+  const isLawKb = isLawKnowledgeBase(kb.name);
   const [isFormatted, setIsFormatted] = useState(false);
   const [query, setQuery] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -433,13 +439,29 @@ export function KnowledgeBaseDetail({
             {/* EAI-CUSTOM: truthiness check via .length (not `??`) — description can legitimately be "" (create form defaults to ""), placeholder must still show */}
             {kb.description?.length ? kb.description : "暂无描述"}
           </p>
+          {isLawKb && (
+            <p className="text-muted-foreground mt-2 flex items-start gap-1.5 text-xs">
+              <Info className="text-info mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                本库为法规标准系统知识库,不提供直接上传。法规/标准文件请在
+                <Link
+                  href="/knowledge-factory?tab=law"
+                  className="text-primary hover:underline"
+                >
+                  知识工厂 → 法规标准
+                </Link>
+                中导入——自动登记元数据(标准号/类型/行业等)并同步到本库。
+              </span>
+            </p>
+          )}
         </div>
 
         {/* File List Card */}
         <div className="border-border bg-background flex flex-1 flex-col overflow-hidden rounded-xl border">
           <div className="border-border flex shrink-0 items-center justify-between border-b p-4">
-            {/* EAI-CUSTOM: gate upload button by kb:upload permission */}
-            {can("kb:upload") && (
+            {/* EAI-CUSTOM: gate upload button by kb:upload permission;
+                法规标准系统库不提供直接上传(孤儿文档会绕过 Law 元数据层) */}
+            {can("kb:upload") && !isLawKb && (
               <Button
                 variant="ghost"
                 onClick={() => setShowUpload(true)}
