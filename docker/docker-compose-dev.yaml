@@ -252,6 +252,8 @@ services:
       - DEER_FLOW_HOST_SKILLS_PATH=${DEER_FLOW_ROOT}/skills
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       - RAGFLOW_BASE_URL=http://ragflow:9380
+      # 编译切片分发目标数据集（push_slices_to_ragflow）：未设置=按 spec §7 降级链跳过分发（run detail 记 skipped）
+      - GSB_RAGFLOW_DATASET_ID=${GSB_RAGFLOW_DATASET_ID:-}
       - TEMPORAL_URL=temporal:7233
     env_file:
       - path: ../.env
