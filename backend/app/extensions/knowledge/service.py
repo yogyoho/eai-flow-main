@@ -66,6 +66,35 @@ def build_metadata_condition(filters: dict | None) -> dict | None:
     return {"logic": "and", "conditions": conditions}
 
 
+_FILTER_DOC_CAP = 100  # v0.27 约束:检索 xxx_ids 数组上限 100
+
+
+async def filter_doc_ids(rf_client, dataset_id: str, condition: dict) -> tuple[list[str], bool]:
+    """按 metadata_condition 拉取命中文档 id;>100 截断并标记 truncated(最新优先)。"""
+    ids: list[str] = []
+    page = 1
+    total = 0
+    while page <= 20:  # 20 页 ×100 兜底,防病态 total
+        res = await rf_client.list_documents(
+            dataset_id,
+            page=page,
+            size=100,
+            metadata_condition=condition,
+            orderby="create_time",
+            desc=True,
+        )
+        docs = (res.get("data") or {}).get("docs", [])
+        ids.extend(d.get("id") for d in docs if d.get("id"))
+        total = (res.get("data") or {}).get("total") or total
+        if not docs or len(ids) >= _FILTER_DOC_CAP:
+            break
+        if total and len(ids) >= total:
+            break
+        page += 1
+    truncated = len(ids) >= _FILTER_DOC_CAP and (total == 0 or total > len(ids))
+    return ids[:_FILTER_DOC_CAP], truncated
+
+
 class KnowledgeBaseService:
     """Knowledge base service with RAGFlow integration."""
 
