@@ -531,3 +531,53 @@ docker exec -i prod-eai-flow-postgres-ext psql -v ON_ERROR_STOP=1 -U agentflow d
                                           [9] 验证 (ps/license/冒烟)
                                           [10] 稳定后清快照
 ```
+
+---
+
+## 10. 地质样例库编译产物（references）备份/恢复
+
+地质样例库（geo-samples）的编译产物**不在数据库里**，落盘在 `skills/public/geological-report/references/` 下三个子目录（容器内为 `/app/skills/public/geological-report/references/`；宿主 bind-mount 时即仓库同路径）：
+
+| 子目录 | 内容 |
+|--------|------|
+| `samples_bank/` | 切片库（`<stage>/slices/chN/<rid>__N.md`）+ `bank_index.json` 索引 |
+| `depth_targets/<stage>/` | per 矿种深度基线 `<mineral>.json` |
+| `samples/<stage>/` | SL3 指纹池增量 `chN__<rid>.md` |
+
+离线生产镜像是非 bind-mount 打包的——这些产物写在**容器可写层**，每次升级换镜像即丢弃可写层。**升级前备份、升级后恢复，两步都不能省：**
+
+### 10.1 升级前备份（服务器执行）
+
+```bash
+cd /opt/eai-flow-offline
+BK=/opt/eai-backup-$(date +%Y%m%d-%H%M); mkdir -p "$BK"
+
+# 从现容器可写层打包三个 references 子目录
+docker exec prod-eai-flow-gateway tar czf - -C /app/skills/public/geological-report/references \
+  samples_bank depth_targets samples > "$BK/geo-references.tgz"
+ls -lh "$BK/geo-references.tgz"    # 确认有内容
+
+# dev 环境 references 是 bind-mount（即仓库路径），宿主在仓库根直接打包即可：
+# tar czf geo-references.tgz skills/public/geological-report/references/samples_bank \
+#   skills/public/geological-report/references/depth_targets \
+#   skills/public/geological-report/references/samples
+```
+
+### 10.2 升级后恢复
+
+解包回**新容器**同路径即可；产物是确定性再生（`bank_index`/基线均 `sort_keys` 幂等写），不恢复、直接在管理页重跑 compile 也能全部再生，只是耗时更长：
+
+```bash
+docker exec -i prod-eai-flow-gateway tar xzf - -C /app/skills/public/geological-report/references \
+  < "$BK/geo-references.tgz"
+```
+
+### 10.3 状态回退（产物丢失但状态未跟着降级时）
+
+编译完成后 `gsb_documents.status='compiled'`，而 compile 只消费 `reviewed` 状态的样例（compiled 的会被跳过）。若产物已丢、状态还停在 `compiled`，先降回 `reviewed` 再重跑：
+
+```bash
+docker exec prod-eai-flow-postgres-ext psql -U agentflow agentflow -c \
+  "UPDATE gsb_documents SET status='reviewed' WHERE status='compiled';"
+# 随后在管理页重跑 compile，再生全部产物
+```
