@@ -38,12 +38,19 @@ deploy/offline/
 ├── config.yaml                   # 主配置（已预配置内网 LLM 模板）
 ├── extensions_config.json        # 扩展配置（MCP/技能）
 ├── docker-compose.yaml           # 核心服务 (nginx + frontend + gateway)
-├── docker-compose.extensions.yaml # 扩展服务 (PostgreSQL + Collab)
-├── docker-compose.temporal.yaml  # 工作流引擎（可选）
-├── docker-compose.ragflow.yaml   # RAGFlow 知识库（可选）
+├── docker-compose.extensions.yaml # 扩展服务 (PostgreSQL + Collab + Temporal + CAD + OCR + 知识工厂)
+├── docker-compose.ragflow.yaml   # RAGFlow 知识库栈（RAGFlow + ES + MySQL + Redis + MinIO）
 ├── nginx/
 │   └── nginx.conf                # 生产 nginx 配置
+├── postgres-init/
+│   └── 10-temporal.sh            # postgres 首次初始化时自动创建 temporal 角色与库
 ├── deploy.sh                     # 一键部署脚本
+├── upgrade.sh                    # delta 升级脚本（配合 offline-export.sh --delta）
+├── deploy.conf.example           # 唯一需要手写的配置模板（品牌/LLM）
+├── MANUAL-DEPLOY.md              # 完整部署手册（照抄级步骤）
+├── MANUAL-UPGRADE.md             # 完整升级手册（镜像 delta 流程）
+├── cutover.md                    # 老系统切换手册 + 实测坑记录
+├── brand-assets/                 # 客户品牌资产（logo/favicon，构建期注入前端镜像）
 ├── data/                         # 持久化数据（自动创建）
 ├── logs/                         # 日志（自动创建）
 ├── skills/                       # 技能目录
@@ -116,18 +123,15 @@ models:
 
 ## 部署注意事项
 
-### 首次部署需手动创建 Temporal 用户
+### Temporal 用户
 
-Temporal 需要 PostgreSQL 中存在 `temporal` 用户和数据库。部署后执行：
+temporal 角色由 `postgres-init/10-temporal.sh` 在 postgres **首次初始化（空数据卷）时自动创建**，全新部署无需任何手动操作。
+
+仅当 postgres 数据卷是**残留的非空卷**（脚本不会跑）导致 temporal 角色缺失时，按 `MANUAL-DEPLOY.md` 步骤 14 用同款幂等脚本补建：
 
 ```bash
-docker exec prod-eai-flow-postgres-ext psql -U agentflow -d agentflow -c \
-  "CREATE USER temporal WITH SUPERUSER PASSWORD 'temporal_password';"
-docker exec prod-eai-flow-postgres-ext psql -U agentflow -d agentflow -c \
-  "CREATE DATABASE temporal OWNER temporal;"
-docker exec prod-eai-flow-postgres-ext psql -U agentflow -d agentflow -c \
-  "CREATE DATABASE temporal_visibility OWNER temporal;"
-docker compose -p eai-prod restart temporal
+docker exec prod-eai-flow-postgres-ext sh /docker-entrypoint-initdb.d/10-temporal.sh
+docker restart prod-eai-flow-temporal
 ```
 
 ### 硬编码端口修复记录

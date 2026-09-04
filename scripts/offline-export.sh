@@ -127,7 +127,7 @@ COMPOSE_FILES=(
 if [ "$WITH_RAGFLOW" = true ]; then
     COMPOSE_FILES+=("docker/docker-compose.ragflow.yaml")
     PUBLIC_IMAGES+=(
-        "infiniflow/ragflow:v0.25.3-fixed"
+        "infiniflow/ragflow:v0.27.1-fixed"
         "elasticsearch:8.11.3"
         "mysql:8.0"
         "redis:7-alpine"
@@ -140,21 +140,21 @@ if [ "$WITH_BUSINESS" = true ]; then
     BUILD_SERVICES="${BUILD_SERVICES} procurement-backend procurement-frontend"
 fi
 
-# ── RAGFlow offline hardening: build v0.25.3-fixed (F.11 pip PATH + F.13 tiktoken) ─
+# ── RAGFlow offline hardening: build v0.27.1-fixed (F.11 pip PATH + F.13 tiktoken) ─
 # EAI-CUSTOM: 在 Step 1 的 local-only 检查之前构建 fixed 镜像（基于本地 base 叠加修复），
-# 这样 Step 1 校验 infiniflow/ragflow:v0.25.3-fixed 时它已在本地。
+# 这样 Step 1 校验 infiniflow/ragflow:v0.27.1-fixed 时它已在本地。
 if [ "$WITH_RAGFLOW" = true ]; then
-    if ! docker image inspect infiniflow/ragflow:v0.25.3-fixed &>/dev/null; then
-        info "  Building: infiniflow/ragflow:v0.25.3-fixed (F.11/F.13 hardening)"
-        if ! docker build -t infiniflow/ragflow:v0.25.3-fixed \
+    if ! docker image inspect infiniflow/ragflow:v0.27.1-fixed &>/dev/null; then
+        info "  Building: infiniflow/ragflow:v0.27.1-fixed (F.11/F.13 hardening)"
+        if ! docker build -t infiniflow/ragflow:v0.27.1-fixed \
              -f "${REPO_ROOT}/deploy/offline/ragflow-fixed.Dockerfile" "${REPO_ROOT}/deploy/offline"; then
             err "  ragflow-fixed build failed"
-            err "  Is the base infiniflow/ragflow:v0.25.3 present locally? Run 'make docker-start' first."
+            err "  Is the base infiniflow/ragflow:v0.27.1 present locally? Run 'make docker-start' first."
             exit 1
         fi
-        ok "  Built:    infiniflow/ragflow:v0.25.3-fixed"
+        ok "  Built:    infiniflow/ragflow:v0.27.1-fixed"
     else
-        ok "  Local:    infiniflow/ragflow:v0.25.3-fixed (already built)"
+        ok "  Local:    infiniflow/ragflow:v0.27.1-fixed (already built)"
     fi
 fi
 

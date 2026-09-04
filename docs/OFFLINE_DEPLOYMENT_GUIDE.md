@@ -588,16 +588,19 @@ docker exec prod-eai-flow-frontend grep allowedDevOrigins /app/frontend/next.con
 ```
 如缺失，参考附录 F.14 / F.15 修复。详见 F.14、F.15、F.16（Google Fonts 超时也会阻塞渲染）。
 
-### 问题 8：RAGFlow 反复重启 / 初始化卡住
+### 问题 8：RAGFlow 反复重启 / 初始化卡住 / 全站 401
 
 ```bash
 docker logs prod-eai-flow-ragflow --tail 20
 ```
 
-按报错对号入座（详见附录 F.11–F.13）：
-- `pip: not found` → 镜像缺 PATH，需构建 `v0.25.3-fixed`（F.11）
-- `No module named 'strenum'` → named volume 覆盖镜像内容，删空 volume 重填（F.12）
-- `Failed to resolve 'openaipublic.blob.core.windows.net'` → 容器需代理下载 tiktoken（F.13）
+**v0.27.1（2026-09 起）常见故障对号入座：**
+- 容器启动后**什么都不跑**（无 API/无 task executor）→ compose 缺 `API_PROXY_SCHEME=python`（模板已内置；自制 compose 必须加，上游 docker/.env 同款）
+- 原本正常、重启/升级后**所有请求 401** → `RAGFLOW_SECRET_KEY` 变了或没设：v0.27.x 把 SECRET_KEY 缓存在 Redis，键不一致即全站 401。必须用固定值（.env 的 `RAGFLOW_SECRET_KEY`），且**永不更改**
+- model-provider 相关报错/模型供应商列表为空 → command 缺 `--init-model-provider-tables`（v0.27.x 缺它则建表迁移被静默跳过）
+- MySQL 连接认证失败（全新数据卷）→ compose 缺 `--default-authentication-plugin=mysql_native_password` 等 flags（模板已内置）
+
+**v0.25.3 时代的三类旧故障**（`pip: not found` / `No module named 'strenum'` / tiktoken 下载卡死）已由 `v0.27.1-fixed` 离线镜像（pip PATH + tiktoken 预烘焙）+ 取消 `/ragflow` 整卷挂载（改为只挂 `/ragflow/logs`）根治，见附录 F.11–F.13 的历史记录；若仍命中，说明镜像不是 `-fixed` 版或 compose 还是旧挂载方式。
 
 ### 问题 9：Temporal 端口被占：`Bind for 0.0.0.0:17233 failed`
 
@@ -788,7 +791,7 @@ docker logs prod-eai-flow-gateway 2>&1 | grep -iE 'ragflow|skipping sync|401'
   docker tag postgres:16 postgres:16-alpine
   docker tag redis:7 redis:7-alpine
   docker tag elasticsearch:8.11.0 elasticsearch:8.11.3
-  docker tag infiniflow/ragflow:v0.24.0 infiniflow/ragflow:v0.25.3
+  docker tag infiniflow/ragflow:v0.27.1 infiniflow/ragflow:v0.27.1-fixed
   ```
 - **根治**：`offline-export.sh` 已改为纯本地镜像导出（见 F.19），打包时镜像即 dev 验证过的那批，tag 一致
 
@@ -808,6 +811,8 @@ docker logs prod-eai-flow-gateway 2>&1 | grep -iE 'ragflow|skipping sync|401'
 
 #### F.11 RAGFlow 反复重启：`sh: 1: pip: not found`
 
+> ✅ **现状（2026-09，v0.27.1 起）**：已烘焙进 `ragflow-fixed.Dockerfile`（`infiniflow/ragflow:v0.27.1-fixed`，由 `offline-export.sh` 自动构建导出），全新部署不会遇到。以下为 v0.25.3 时代的手工修复记录。
+
 - **根因**：`infiniflow/ragflow:v0.25.3` 的 entrypoint 调用 `pip`，但 venv 在 `/ragflow/.venv/bin/`，未加入 `PATH`；只有 `pip3` 没有 `pip`
 - **修复**：构建修复版镜像并重新 tag：
   ```dockerfile
@@ -826,6 +831,8 @@ docker logs prod-eai-flow-gateway 2>&1 | grep -iE 'ragflow|skipping sync|401'
 
 #### F.12 RAGFlow 报 `ModuleNotFoundError: No module named 'strenum'`
 
+> ✅ **现状（2026-09，v0.27.1 起）**：已根治——离线 compose 不再把 named volume 挂在 `/ragflow` 本体，改为只挂 `prod-ragflow-logs:/ragflow/logs`（非空 named volume 会遮蔽镜像代码，升级镜像后静默跑旧版本，此坑已从结构上消除）。从旧版升级的部署若存在废弃卷 `eai-prod_prod-ragflow-data`，确认无需回滚后可删除。以下为历史记录。
+
 - **根因**：compose 把 named volume `prod-ragflow-data` 挂载到 `/ragflow`，**首次创建的空 volume 覆盖了镜像内 `/ragflow` 的全部内容**（含 `.venv/site-packages`），导致 `strenum` 等 wheel 自带模块也找不到
 - **修复**：删除空 volume，重启后 Docker 用（已修复的）镜像内容重新填充：
   ```bash
@@ -836,6 +843,8 @@ docker logs prod-eai-flow-gateway 2>&1 | grep -iE 'ragflow|skipping sync|401'
   **注意**：必须先完成 F.11 的镜像修复，否则新 volume 仍会缺 `pip`/`strenum`
 
 #### F.13 RAGFlow 初始化卡住：`Failed to resolve 'openaipublic.blob.core.windows.net'`
+
+> ✅ **现状（2026-09，v0.27.1 起）**：`cl100k_base.tiktoken` 已由 `ragflow-fixed.Dockerfile` 在**开发机构建期预下载并烘焙进 `v0.27.1-fixed` 镜像**（下载失败会让构建硬失败，不会 ship 假离线镜像），全新离线部署无需代理即可完成初始化。compose 里的 `RAGFLOW_HTTP_PROXY` 代理注入保留，仅兜底其他外部资源。以下为历史记录。
 
 - **根因**：RAGFlow 首次启动需要从 Azure 下载 `cl100k_base.tiktoken` 编码文件；内网容器无公网，DNS 解析失败导致初始化循环
 - **修复**：给 RAGFlow 容器注入代理环境变量（代理地址从服务器 `env | grep -i proxy` 获取）：

@@ -55,6 +55,8 @@ LLM_API_KEY="${LLM_API_KEY:-}"
 LLM_MODEL="${LLM_MODEL:-}"
 RAGFLOW_API_KEY="${RAGFLOW_API_KEY:-}"
 RAGFLOW_HTTP_PROXY="${RAGFLOW_HTTP_PROXY:-}"
+# v0.27.x 必需：SECRET_KEY 固定值（Redis 缓存，变更即全站 401）。留空则沿用 shipped .env 值。
+RAGFLOW_SECRET_KEY="${RAGFLOW_SECRET_KEY:-}"
 DB_PASSWORD="${DB_PASSWORD:-agentflow123}"
 
 # ── .env：保留 shipped 完整文件为基底，只定向注入 deploy.conf 推导的键 ──
@@ -78,6 +80,7 @@ if [ -f "$BASE_ENV" ]; then
   set_env_kv DEER_FLOW_TRUSTED_ORIGINS  "$ORIGIN"
   [ -n "$RAGFLOW_API_KEY" ]    && set_env_kv RAGFLOW_API_KEY    "$RAGFLOW_API_KEY"
   [ -n "$RAGFLOW_HTTP_PROXY" ] && set_env_kv RAGFLOW_HTTP_PROXY "$RAGFLOW_HTTP_PROXY"
+  [ -n "$RAGFLOW_SECRET_KEY" ] && set_env_kv RAGFLOW_SECRET_KEY "$RAGFLOW_SECRET_KEY"
   [ -n "$LLM_API_KEY" ]        && set_env_kv INTERNAL_LLM_API_KEY "$LLM_API_KEY"
   # DB 密码仅当 deploy.conf 显式给出非默认值才覆盖（默认 agentflow123 已在 shipped .env）
   if [ -n "${DB_PASSWORD:-}" ] && [ "${DB_PASSWORD}" != "agentflow123" ]; then

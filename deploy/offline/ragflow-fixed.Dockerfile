@@ -1,8 +1,11 @@
-# EAI-CUSTOM: RAGFlow v0.25.3 离线修复镜像
+# EAI-CUSTOM: RAGFlow 离线修复镜像（2026-09-04 随 dev 升级到 v0.27.1，bug-3101）
 #   - F.11: entrypoint 调用 pip，但 venv 未加入 PATH（只有 pip3 没有 pip）
+#     （已在 v0.27.1 运行镜像上实测：/ragflow/.venv/bin 只有 pip3，pip 不在 PATH，前提仍成立）
 #   - F.13: 首次初始化需从 Azure 下载 cl100k_base.tiktoken，内网无公网会失败
 # 构建在有网开发机执行（base 镜像需先 make docker-start 拉取），把修复烘焙进镜像。
-FROM infiniflow/ragflow:v0.25.3
+# 注意：若未来 base 镜像调整了 /ragflow/.venv 布局，下面 tiktoken 预下载一步会
+# 在构建期硬失败（这是有意的——宁可导出失败，不可 ship 假离线镜像）。
+FROM infiniflow/ragflow:v0.27.1
 
 # F.11: 把 venv 加入 PATH 并补 pip 软链（entrypoint 的 `pip` 调用才能解析）
 ENV PATH=/ragflow/.venv/bin:${PATH}

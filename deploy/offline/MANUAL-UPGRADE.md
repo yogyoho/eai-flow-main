@@ -95,7 +95,12 @@ docker image inspect eai-docker-gateway:latest --format '{{.Id}}'
 
 #### 1c. 其他服务（collab / ocr / cad / text-to-cad / cad-viewer）改动
 
-很少改。若改了，按 1a 同理用 dev compose 重建对应服务：
+很少改。若改了，按 1a 同理用 dev compose 重建对应服务。
+
+> 🔴 **2026-09 本次升级窗口例外——以下镜像必须重建，不属于"很少改"：**
+> - **gateway**：新增 `pymupdf4llm` 依赖（geo_samples 解析器硬依赖）+ RAGFlow v0.27.1 客户端适配（bug-3101）
+> - **ocr**：`/ocr` 新增 `text_pages` 参数（geo 全文 OCR 传 999；不重建则旧镜像按 3 页截断）
+> - **ragflow**：不单独重建——已随新版离线包整体换 v0.27.1-fixed（全新数据面，KB 需重新导入）
 
 ```bash
 docker compose -p eai-docker \

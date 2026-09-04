@@ -21,5 +21,8 @@ LLM_MODEL=
 RAGFLOW_API_KEY=
 # RAGFlow 拉取外部资源用的代理（如 http://proxy:port），不需要则留空
 RAGFLOW_HTTP_PROXY=
+# RAGFlow SECRET_KEY（v0.27.x 必需，shipped .env 已带默认值）：仅在明确要换时填写。
+# ⚠️ 必须是固定随机值且一旦部署永不更改——RAGFlow 把它缓存在 Redis，变更即全站 401。
+RAGFLOW_SECRET_KEY=
 # 数据库密码，留空走默认 agentflow123
 DB_PASSWORD=

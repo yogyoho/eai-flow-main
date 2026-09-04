@@ -1,12 +1,24 @@
 # =============================================================================
-# EAI-Flow 生产离线部署 — RAGFlow 知识库服务栈
+# EAI-Flow 生产离线部署 — RAGFlow 知识库服务栈（v0.27.1）
 # =============================================================================
+# EAI-CUSTOM 2026-09-04: 随 dev 升级 RAGFlow v0.25.3 → v0.27.1（bug-3101）。
+# v0.27.x 与 v0.25.3 的关键差异（均来自 dev docker/docker-compose.ragflow.yaml 实测）：
+#   1. command 必须带 --init-model-provider-tables，否则 model-provider 建表被静默跳过
+#   2. SECRET_KEY 必须固定并持久化（RAGFlow 缓存在 Redis，键被逐出后全站 401）
+#   3. API_PROXY_SCHEME=python 是 entrypoint 启动 API/task executor 的门控，不设则什么都不启动
+#   4. ES 镜像需要可写的 /tmp（entrypoint ACL 修复）
+#   5. MySQL 需上游 base compose 同款 flags（utf8mb4 / native auth / 连接数余量）
+# ⚠️ v0.27.1 是全新数据面：旧版数据卷 prod-ragflow-data 已废弃不再挂载（其中含旧
+#    KB 数据，且该卷曾遮蔽镜像代码）。从 v0.25.3 升级 = KB 全量重新导入，旧卷确认
+#    无需回滚后可 `docker volume rm eai-prod_prod-ragflow-data` 清理。
 
 services:
   # ── RAGFlow (API + Web UI + Task Executor) ─────────────────────────────────
   ragflow:
-    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.25.3-fixed}
+    image: ${RAGFLOW_IMAGE:-infiniflow/ragflow:v0.27.1-fixed}
     container_name: prod-eai-flow-ragflow
+    # v0.27.x: --init-model-provider-tables 必需（见文件头注 1）
+    command: ["--enable-adminserver", "--init-model-provider-tables"]
     environment:
       - MYSQL_HOST=ragflow-mysql
       - MYSQL_PORT=3306
@@ -21,7 +33,13 @@ services:
       - MINIO_HOST=ragflow-minio
       - MINIO_USER=${MINIO_ACCESS_KEY:-minioadmin}
       - MINIO_PASSWORD=${MINIO_SECRET_KEY:-minioadmin}
-      # 内网需代理才能下载 tiktoken 等外部资源（首次初始化）。
+      # v0.27.x 把 SECRET_KEY 缓存进 Redis；键被逐出后所有请求 401。
+      # 必须是固定值并持久化在 .env（RAGFLOW_SECRET_KEY），重启/升级一律不得变更。
+      - SECRET_KEY=${RAGFLOW_SECRET_KEY:?set RAGFLOW_SECRET_KEY in .env}
+      # v0.27.x entrypoint 以此变量为门控启动 API server / task executor，不设则不启动。
+      - API_PROXY_SCHEME=python
+      # 内网需代理才能下载 tiktoken 等外部资源（tiktoken cl100k_base 已由
+      # ragflow-fixed.Dockerfile 预烘焙，此处代理仅兜底其他外部资源）。
       # 在 .env 中设置 RAGFLOW_HTTP_PROXY=http://<代理地址>:<端口>；
       # 不需要时留空，下面的 NO_PROXY 保证内部服务不走代理。
       - HTTP_PROXY=${RAGFLOW_HTTP_PROXY:-}
@@ -31,7 +49,9 @@ services:
       - NO_PROXY=localhost,127.0.0.1,.local,ragflow-mysql,ragflow-es,ragflow-redis,ragflow-minio
       - no_proxy=localhost,127.0.0.1,.local,ragflow-mysql,ragflow-es,ragflow-redis,ragflow-minio
     volumes:
-      - prod-ragflow-data:/ragflow
+      # 只挂日志目录。严禁把 named volume 挂在 /ragflow 本体：非空 named volume
+      # 会遮蔽镜像内应用代码，升级镜像后静默跑旧版本（旧版 prod-ragflow-data 即此坑）。
+      - prod-ragflow-logs:/ragflow/logs
     ports:
       - "${RAGFLOW_PORT:-19380}:9380"
       - "${RAGFLOW_WEB_PORT:-19381}:80"
@@ -57,6 +77,9 @@ services:
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD:-ragflow123}
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    # v0.27.x 官方镜像 entrypoint 需要可写的 /tmp（ACL 修复，与上游一致）
+    tmpfs:
+      - /tmp:mode=1777,size=512m
     volumes:
       - prod-ragflow-es-data:/usr/share/elasticsearch/data
     ports:
@@ -75,6 +98,12 @@ services:
   ragflow-mysql:
     image: mysql:8.0
     container_name: prod-eai-flow-ragflow-mysql
+    # flags 与上游 v0.27.1 docker-compose-base.yml 一致（native auth 插件/utf8mb4/连接数余量）
+    command:
+      - --max_connections=1000
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-ragflow123}
       - MYSQL_DATABASE=${MYSQL_DATABASE:-ragflow}
@@ -111,6 +140,8 @@ services:
       retries: 5
 
   # ── MinIO ──────────────────────────────────────────────────────────────────
+  # 注意：此 MinIO 同时是 contract_price / geo_samples / knowledge 对象存储的唯后端，
+  # 不要在裁剪 RAGFlow 栈时把它一并去掉。
   ragflow-minio:
     image: minio/minio:latest
     container_name: prod-eai-flow-ragflow-minio
@@ -133,7 +164,7 @@ services:
       retries: 5
 
 volumes:
-  prod-ragflow-data:
+  prod-ragflow-logs:
   prod-ragflow-es-data:
   prod-ragflow-mysql-data:
   prod-ragflow-redis-data:
