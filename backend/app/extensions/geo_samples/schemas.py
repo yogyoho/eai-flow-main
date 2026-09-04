@@ -62,3 +62,18 @@ class RunOut(BaseModel):
     finished_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+# --- ore_pack 孵化（P5 T5）-----------------------------------------------------
+
+
+class OrePackExtractRequest(BaseModel):
+    """LLM 批量抽取请求。mineral 词表校验在路由做（错误文案含「不孵化」裁决说明）；
+    slice_paths 上限 20（单请求切片预算）。"""
+
+    mineral: str
+    slice_paths: list[str] = Field(min_length=1, max_length=20)
+
+
+class DraftReviewRequest(BaseModel):
+    note: str | None = None

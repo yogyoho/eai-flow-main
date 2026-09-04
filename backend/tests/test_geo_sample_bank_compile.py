@@ -3,6 +3,7 @@
 import json
 import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -1640,3 +1641,309 @@ def test_validate_ore_pack_pending_marker_shape():
     bare_status = {**base, "phase_analysis": {"purpose": "氧化程度分带", "zone_split_rule": {"status": "氧化率>50% 为氧化矿（未核实）"}}}
     errors = validate_ore_pack(bare_status)
     assert any("待核实" in e and "zone_split_rule" in e for e in errors)
+
+
+# ---------------------------------------------------------------------------
+# ore_pack 抽取管线（P5 T5，plan 2026-09-04-geo-p5-orepack）：LLM 全 mock——
+# 抽取落草稿/校验过滤（errors 非空仍落表）/approve 写 repo/错误草稿 approve 409。
+# ---------------------------------------------------------------------------
+
+
+def _gold_pack(**over):
+    """最小过校验的 gold ore_pack（锚点 L11 + zone_split_rule 待核实形态 + 一条义务）。"""
+    doc = {
+        "version": "2.0",
+        "ore": "gold",
+        "generated": "2026-09-04",
+        "basic_analysis_items": ["Au", "Ag"],
+        "phase_analysis": {"purpose": "氧化程度分带", "zone_split_rule": {"status": "【待核实】", "note": "氧化率分带阈值待 standards_index 录入"}},
+        "byproduct_policy": "伴生组分按 formulas L11 估算链评价",
+    }
+    doc.update(over)
+    return doc
+
+
+def _draft_row(over=None, **kw):
+    """SimpleNamespace 草稿行（draft_payload 消费的全部字段）。"""
+    from datetime import datetime
+    from types import SimpleNamespace
+
+    base = {
+        "id": "d1",
+        "mineral": "gold",
+        "slices_hash": "h" * 64,
+        "draft_json": json.dumps(_gold_pack(), ensure_ascii=False),
+        "errors": "[]",
+        "review_status": "draft",
+        "review_note": None,
+        "reviewed_at": None,
+        "created_at": datetime(2026, 9, 4),
+    }
+    base.update(kw)
+    if over:
+        base.update(over)
+    return SimpleNamespace(**base)
+
+
+def _async_return(row):
+    async def _get(db, did):
+        return row
+
+    return _get
+
+
+def test_ore_pack_extract_semaphore_cap():
+    """Semaphore(3) 并发限流（plan T5 要点）——模块级共享槽位。"""
+    from app.extensions.geo_samples import ore_pack_extract
+
+    assert ore_pack_extract._SEM._value == 3
+
+
+def test_load_slices_truncates_and_guards_traversal(tmp_path, monkeypatch):
+    """切片载入：非绝对路径按仓库根拼接、每片截断 SLICE_MAX_CHARS；越界/缺失拒绝（LLM 输入信任边界）。"""
+    from app.extensions.geo_samples import ore_pack_extract
+
+    (tmp_path / "s.md").write_text("x" * (ore_pack_extract.SLICE_MAX_CHARS + 100), encoding="utf-8")
+    monkeypatch.setattr(ore_pack_extract, "_REPO_ROOT", tmp_path)
+
+    texts = ore_pack_extract.load_slices(["s.md"])
+    assert len(texts) == 1 and len(texts[0]) == ore_pack_extract.SLICE_MAX_CHARS
+
+    with pytest.raises(ValueError, match="越界"):
+        ore_pack_extract.load_slices([str(tmp_path.parent / "outside.md")])
+    with pytest.raises(ValueError, match="不存在"):
+        ore_pack_extract.load_slices(["missing.md"])
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_extract_endpoint_rejects_unknown_slug():
+    """词表单源裁决：extract 端点 mineral ∉ 5 production slug → 400（other/uranium 不孵化）。"""
+    from fastapi import BackgroundTasks
+
+    from app.extensions.geo_samples import routers, schemas
+
+    background = BackgroundTasks()
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.extract_ore_pack(schemas.OrePackExtractRequest(mineral="uranium", slice_paths=["x.md"]), background, MagicMock())
+    assert ei.value.status_code == 400
+    assert "不孵化" in ei.value.detail
+    assert background.tasks == []
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_extract_run_lands_valid_draft(monkeypatch):
+    """happy path：LLM mock 返回过校验 JSON → create_draft(errors=[], draft_json=doc)。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import ore_pack_extract
+
+    captured = {}
+
+    async def _create(db, mineral, slices_hash, draft_json, errors):
+        captured.update(mineral=mineral, slices_hash=slices_hash, draft_json=draft_json, errors=errors)
+        return "row"
+
+    monkeypatch.setattr(ore_pack_extract.crud, "create_draft", _create)
+    monkeypatch.setattr(ore_pack_extract, "load_slices", lambda paths: ["切片一" * 100, "切片二"])
+
+    class _Resp:
+        content = "```json\n" + json.dumps(_gold_pack(), ensure_ascii=False) + "\n```"
+
+    class _Model:
+        def invoke(self, messages):
+            assert "gold" in messages[0].content  # 系统提示带矿种
+            assert len(messages) == 2
+            return _Resp()
+
+    ex = ore_pack_extract.OrePackExtractor()
+    ex._model = _Model()
+    monkeypatch.setattr(ore_pack_extract, "OrePackExtractor", lambda model_name=None: ex)
+    monkeypatch.setattr(ore_pack_extract.crud, "get_default_model_name", AsyncMock(return_value=None))
+
+    await ore_pack_extract.run_extract(MagicMock(), "gold", ["p1.md", "p2.md"])
+
+    assert captured["mineral"] == "gold"
+    assert captured["errors"] == []
+    assert captured["draft_json"]["ore"] == "gold"
+    assert len(captured["slices_hash"]) == 64  # sha256 指纹（溯源）
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_extract_llm_failure_lands_failure_draft(monkeypatch):
+    """LLM/解析异常也落草稿行（draft_json=None, errors=["抽取失败: …"]）——后台静默失败
+    会让人审页永远等不到草稿，不得无声吞掉。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import ore_pack_extract
+
+    captured = {}
+
+    async def _create(db, mineral, slices_hash, draft_json, errors):
+        captured.update(mineral=mineral, draft_json=draft_json, errors=errors)
+        return "row"
+
+    monkeypatch.setattr(ore_pack_extract.crud, "create_draft", _create)
+    monkeypatch.setattr(ore_pack_extract, "load_slices", lambda paths: ["t"])
+    monkeypatch.setattr(ore_pack_extract.crud, "get_default_model_name", AsyncMock(return_value=None))
+
+    class _Boom:
+        def extract_sync(self, mineral, texts):
+            raise RuntimeError("LLM 超时")
+
+    monkeypatch.setattr(ore_pack_extract, "OrePackExtractor", lambda model_name=None: _Boom())
+
+    await ore_pack_extract.run_extract(MagicMock(), "gold", ["p.md"])
+
+    assert captured["draft_json"] is None
+    assert captured["errors"] and "抽取失败" in captured["errors"][0] and "LLM 超时" in captured["errors"][0]
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_extract_prose_relic_draft_records_errors(monkeypatch):
+    """validate_ore_pack 不过 → 草稿仍落表但 errors 非空（人审可见，approve 前置=errors==[]）。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import ore_pack_extract
+
+    captured = {}
+
+    async def _create(db, mineral, slices_hash, draft_json, errors):
+        captured.update(draft_json=draft_json, errors=errors)
+        return "row"
+
+    monkeypatch.setattr(ore_pack_extract.crud, "create_draft", _create)
+    monkeypatch.setattr(ore_pack_extract, "load_slices", lambda paths: ["t"])
+    monkeypatch.setattr(ore_pack_extract.crud, "get_default_model_name", AsyncMock(return_value=None))
+
+    bad = _gold_pack()
+    bad["byproduct_policy"] = "伴生组分应单工程单矿体分别评价（无锚点 prose）"  # 抹掉全部锚点
+    bad["phase_analysis"].pop("zone_split_rule")
+
+    class _Resp:
+        content = json.dumps(bad, ensure_ascii=False)
+
+    class _Model:
+        def invoke(self, messages):
+            return _Resp()
+
+    ex = ore_pack_extract.OrePackExtractor()
+    ex._model = _Model()
+    monkeypatch.setattr(ore_pack_extract, "OrePackExtractor", lambda model_name=None: ex)
+
+    await ore_pack_extract.run_extract(MagicMock(), "gold", ["p.md"])
+
+    assert captured["draft_json"] == bad  # 原样落表供人审
+    assert any("锚点" in e for e in captured["errors"])
+    assert any("zone_split_rule" in e for e in captured["errors"])
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_approve_writes_repo_file_and_reports_obligations(monkeypatch, tmp_path):
+    """approve：errors==[] → ore_packs/<mineral>.json 落盘 + approved + standards_index 扩容义务清单。"""
+    from datetime import datetime
+
+    from app.extensions.geo_samples import routers
+
+    row = _draft_row()
+
+    async def _review(db, did, decision, note):
+        row.review_status = decision
+        row.review_note = note
+        row.reviewed_at = datetime(2026, 9, 4, 12)
+        return row
+
+    monkeypatch.setattr(routers.crud, "get_draft", _async_return(row))
+    monkeypatch.setattr(routers.crud, "review_draft", _review)
+    monkeypatch.setattr(routers.ore_pack_extract, "ORE_PACK_DIR", tmp_path)
+
+    resp = await routers.ore_pack_approve("d1", routers.schemas.DraftReviewRequest(note="ok"), MagicMock())
+
+    assert (tmp_path / "gold.json").exists()
+    assert json.loads((tmp_path / "gold.json").read_text(encoding="utf-8"))["ore"] == "gold"
+    assert resp["review_status"] == "approved"
+    assert resp["written"].endswith("gold.json")
+    assert len(resp["standards_index_obligations"]) == 1
+    assert "zone_split_rule" in resp["standards_index_obligations"][0]
+    assert "待 standards_index 录入" in resp["standards_index_obligations"][0]
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_approve_error_draft_409_no_write(monkeypatch):
+    """错误草稿（errors 非空 / draft_json 缺失 / 已审阅 / 不存在）approve → 4xx，repo 零写入。"""
+    from app.extensions.geo_samples import routers
+
+    write = MagicMock()
+    monkeypatch.setattr(routers.ore_pack_extract, "write_ore_pack_file", write)
+
+    # ① errors 非空
+    monkeypatch.setattr(routers.crud, "get_draft", _async_return(_draft_row(over={"errors": json.dumps(["零锚点引用"], ensure_ascii=False)})))
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.ore_pack_approve("d1", None, MagicMock())
+    assert ei.value.status_code == 409
+
+    # ② draft_json 缺失（失败草稿）
+    monkeypatch.setattr(routers.crud, "get_draft", _async_return(_draft_row(over={"draft_json": None})))
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.ore_pack_approve("d1", None, MagicMock())
+    assert ei.value.status_code == 409
+
+    # ③ 已审阅（幂等闸）
+    monkeypatch.setattr(routers.crud, "get_draft", _async_return(_draft_row(over={"review_status": "approved"})))
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.ore_pack_approve("d1", None, MagicMock())
+    assert ei.value.status_code == 409
+
+    # ④ 不存在
+    async def _none(db, did):
+        return None
+
+    monkeypatch.setattr(routers.crud, "get_draft", _none)
+    with pytest.raises(routers.HTTPException) as ei:
+        await routers.ore_pack_approve("missing", None, MagicMock())
+    assert ei.value.status_code == 404
+
+    write.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_reject_marks_rejected(monkeypatch):
+    """reject：置 rejected + note，repo 零写入（T6 DraftsView 的另一分支）。"""
+    from app.extensions.geo_samples import routers
+
+    row = _draft_row()
+
+    async def _review(db, did, decision, note):
+        row.review_status = decision
+        row.review_note = note
+        return row
+
+    write = MagicMock()
+    monkeypatch.setattr(routers.crud, "get_draft", _async_return(row))
+    monkeypatch.setattr(routers.crud, "review_draft", _review)
+    monkeypatch.setattr(routers.ore_pack_extract, "write_ore_pack_file", write)
+
+    resp = await routers.ore_pack_reject("d1", routers.schemas.DraftReviewRequest(note="阈值无出处"), MagicMock())
+
+    assert resp["review_status"] == "rejected"
+    assert resp["review_note"] == "阈值无出处"
+    write.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_ore_pack_drafts_list_decodes_json_payloads(monkeypatch):
+    """GET /ore-packs/drafts：Text 列 JSON 解码（draft_json→对象 / errors→数组）。"""
+    from app.extensions.geo_samples import routers
+
+    rows = [_draft_row(), _draft_row(over={"id": "d2", "draft_json": None, "errors": json.dumps(["抽取失败: x"], ensure_ascii=False), "mineral": "coal"})]
+
+    async def _list(db, mineral=None, review_status=None):
+        assert mineral is None and review_status is None
+        return rows
+
+    monkeypatch.setattr(routers.crud, "list_drafts", _list)
+    resp = await routers.ore_pack_drafts(db=MagicMock())
+
+    assert resp["items"][0]["draft_json"]["ore"] == "gold"
+    assert resp["items"][0]["errors"] == []
+    assert resp["items"][1]["draft_json"] is None
+    assert resp["items"][1]["errors"] == ["抽取失败: x"]

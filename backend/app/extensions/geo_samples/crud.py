@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
+import json
 from datetime import timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import GsbDocument, GsbRedaction, GsbRunHistory, utc_now
+from .models import GsbDocument, GsbOrePackDraft, GsbRedaction, GsbRunHistory, utc_now
 
 
 async def find_duplicate_document(db: AsyncSession, file_hash: str, exclude_uri: str | None = None) -> GsbDocument | None:
@@ -204,3 +205,71 @@ async def delete_document(db: AsyncSession, document_id: str) -> None:
     if doc:
         await db.delete(doc)
         await db.commit()
+
+
+# --- ore_pack 孵化草稿（P5 T5）------------------------------------------------
+
+
+async def get_default_model_name(db: AsyncSession) -> str | None:
+    """DB 默认模型（kf routers 同款解析：系统基本设置 default_model）→ None 时由
+    OrePackExtractor 落到 DEFAULT_MODEL env / config 首模型链。"""
+    from app.extensions.settings.service import SystemConfigService
+
+    system_config = await SystemConfigService.get_all(db)
+    return system_config.get("default_model") or None
+
+
+async def create_draft(db: AsyncSession, mineral: str, slices_hash: str, draft_json: dict | None, errors: list[str]) -> GsbOrePackDraft:
+    """落一行草稿（review_status=draft）。draft_json/errors 编码为 JSON 文本列。"""
+    row = GsbOrePackDraft(
+        mineral=mineral,
+        slices_hash=slices_hash,
+        draft_json=json.dumps(draft_json, ensure_ascii=False) if draft_json is not None else None,
+        errors=json.dumps(errors, ensure_ascii=False),
+        review_status="draft",
+    )
+    db.add(row)
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+async def get_draft(db: AsyncSession, draft_id: str) -> GsbOrePackDraft | None:
+    return (await db.execute(select(GsbOrePackDraft).where(GsbOrePackDraft.id == draft_id))).scalar_one_or_none()
+
+
+async def list_drafts(db: AsyncSession, mineral: str | None = None, review_status: str | None = None) -> list[GsbOrePackDraft]:
+    stmt = select(GsbOrePackDraft).order_by(GsbOrePackDraft.created_at.desc(), GsbOrePackDraft.id.desc())
+    if mineral:
+        stmt = stmt.where(GsbOrePackDraft.mineral == mineral)
+    if review_status:
+        stmt = stmt.where(GsbOrePackDraft.review_status == review_status)
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def review_draft(db: AsyncSession, draft_id: str, decision: str, note: str | None) -> GsbOrePackDraft | None:
+    """人审落账（approve/reject 由路由先做状态与校验守卫，本函数只写状态轴）。"""
+    row = await get_draft(db, draft_id)
+    if row is None:
+        return None
+    row.review_status = decision
+    row.review_note = note
+    row.reviewed_at = utc_now()
+    await db.commit()
+    await db.refresh(row)
+    return row
+
+
+def draft_payload(row: GsbOrePackDraft) -> dict:
+    """行 → API dict：Text JSON 列解码（draft_json→对象 / errors→数组）。"""
+    return {
+        "id": row.id,
+        "mineral": row.mineral,
+        "slices_hash": row.slices_hash,
+        "draft_json": json.loads(row.draft_json) if row.draft_json else None,
+        "errors": json.loads(row.errors) if row.errors else [],
+        "review_status": row.review_status,
+        "review_note": row.review_note,
+        "reviewed_at": row.reviewed_at,
+        "created_at": row.created_at,
+    }

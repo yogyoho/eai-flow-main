@@ -15,12 +15,16 @@ Mounted into the Gateway under ``/api/extensions/geo-samples``. Endpoints:
                                  POST /documents/{document_id}/review
   Functional area 4 (pipeline)  : POST /pipeline/compile（模块级编译）
   Functional area 5 (tasks)     : GET /runs
+  Functional area 6 (ore_pack)  : POST /ore-packs/extract, GET /ore-packs/drafts,
+                                 POST /ore-packs/drafts/{id}/approve,
+                                 POST /ore-packs/drafts/{id}/reject
 """
 
 from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile
 from pydantic import ValidationError
@@ -30,7 +34,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 
-from . import crud, schemas, service, storage, title_parser
+from . import crud, ore_pack_extract, ore_pack_schema, schemas, service, storage, title_parser
 
 router = APIRouter(prefix="/api/extensions/geo-samples", tags=["Geo Sample Bank"])
 _PERM = Depends(require_permission("geo_samples:access"))
@@ -287,3 +291,71 @@ async def compile_pipeline(background: BackgroundTasks, stage: str | None = None
 async def list_runs(db: AsyncSession = Depends(get_db), _: object = _PERM):
     rows = await crud.list_recent_runs(db, limit=50)
     return {"items": [schemas.RunOut.model_validate(r).model_dump() for r in rows]}
+
+
+# --- Functional area 6: ore_pack incubation（P5 T5）---------------------------
+# LLM 批量抽取草稿 → gsb_ore_pack_drafts → 人审（approve 落 repo ore_packs/<mineral>.json）。
+
+
+@router.post("/ore-packs/extract")
+async def extract_ore_pack(body: schemas.OrePackExtractRequest, background: BackgroundTasks, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """触发 {mineral} 矿种草稿抽取（后台）：切片载入（截断 8000 字符/片）→ LLM →
+    validate_ore_pack → 草稿落 gsb_ore_pack_drafts（errors 非空仍落表，人审可见）。
+
+    词表单源裁决：mineral ∉ 5 production slug → 400（other 不孵化）。切片路径须在仓库根内
+    （LLM 输入信任边界）。响应 slices_hash 供前端与落表草稿对账。
+    """
+    if body.mineral not in ore_pack_schema.KNOWN_SLUGS:
+        raise HTTPException(400, f"mineral 非法: {body.mineral}（须 ∈ {sorted(ore_pack_schema.KNOWN_SLUGS)}；other 不孵化）")
+    try:
+        texts = await asyncio.to_thread(ore_pack_extract.load_slices, body.slice_paths)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    background.add_task(ore_pack_extract.run_extract, db, body.mineral, texts)
+    return {"queued": True, "mineral": body.mineral, "slices_hash": ore_pack_extract.slices_hash(texts)}
+
+
+@router.get("/ore-packs/drafts")
+async def ore_pack_drafts(mineral: str | None = None, review_status: str | None = None, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """草稿清单（created desc；draft_json/errors JSON 解码后返回，人审 tab 消费）。"""
+    rows = await crud.list_drafts(db, mineral=mineral, review_status=review_status)
+    return {"items": [crud.draft_payload(r) for r in rows]}
+
+
+async def _get_draft_or_404(db: AsyncSession, draft_id: str):
+    draft = await crud.get_draft(db, draft_id)
+    if draft is None:
+        raise HTTPException(404, "草稿不存在")
+    if draft.review_status != "draft":
+        raise HTTPException(409, f"草稿已审阅（{draft.review_status}）")
+    return draft
+
+
+@router.post("/ore-packs/drafts/{draft_id}/approve")
+async def ore_pack_approve(draft_id: str, body: schemas.DraftReviewRequest | None = None, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """过审 → repo ore_packs/<mineral>.json 落盘（dev bind-mount 直写；离线 caveat 沿
+    MANUAL-UPGRADE.md runbook）→ approved 落账。approve 前置 = errors==[]（落表时与
+    落盘前双重 validate——schema 常量可能自抽取起收紧）。
+
+    响应携带 standards_index 扩容义务清单（全部【待核实】节点）：过审 ≠ 义务完成，
+    阈值仍须人工对照规范原文录入 standards_index（spec §9 Phase 4）。
+    """
+    draft = await _get_draft_or_404(db, draft_id)
+    doc = json.loads(draft.draft_json) if draft.draft_json else None
+    # 双闸：① errors 列（抽取时人审可见的判词，plan：approve 前置=errors 空）；
+    # ② 当场重校验（schema 常量自抽取起收紧时拦下，防坏包落 repo）。
+    recorded = json.loads(draft.errors) if draft.errors else []
+    fresh = ore_pack_schema.validate_ore_pack(doc) if isinstance(doc, dict) else ["草稿无有效 JSON"]
+    if recorded or fresh:
+        raise HTTPException(409, f"草稿校验未过，禁止 approve：{'；'.join(recorded + fresh)}")
+    written = await asyncio.to_thread(ore_pack_extract.write_ore_pack_file, draft.mineral, doc)
+    row = await crud.review_draft(db, draft_id, "approved", body.note if body else None)
+    return {**crud.draft_payload(row), "written": written, "standards_index_obligations": ore_pack_extract.pending_obligations(doc)}
+
+
+@router.post("/ore-packs/drafts/{draft_id}/reject")
+async def ore_pack_reject(draft_id: str, body: schemas.DraftReviewRequest | None = None, db: AsyncSession = Depends(get_db), _: object = _PERM):
+    """驳回草稿（repo 零写入）——T6 DraftsView 的另一审阅分支。"""
+    await _get_draft_or_404(db, draft_id)
+    row = await crud.review_draft(db, draft_id, "rejected", body.note if body else None)
+    return crud.draft_payload(row)

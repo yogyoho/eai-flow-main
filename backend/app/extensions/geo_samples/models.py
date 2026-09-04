@@ -5,6 +5,7 @@
 
 Phase 1 资产层:样例报告文档(gsb_documents)、脱敏事件流水(gsb_redactions
 —— 只落位置与原文 hash,绝不落明文)、解析/脱敏运行历史(gsb_run_history)。
+P5 追加矿种包孵化草稿(gsb_ore_pack_drafts):LLM 抽取 → 人审 → ore_packs/ 落 repo。
 表在 gateway 启动时随其它扩展表经共享 Base 自动创建;给已有表新增列必须走
 database.migrate_db() 的幂等 ALTER(create_all 不会给已存在的表加列)。
 """
@@ -82,3 +83,24 @@ class GsbRunHistory(Base):
     detail: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class GsbOrePackDraft(Base):
+    """ore_pack 孵化草稿（P5 T5）：LLM 抽取 → 人审（draft/approved/rejected）→ ore_packs/ 落 repo。
+
+    draft_json / errors 均为 JSON 文本列（对象/数组）；失败草稿（LLM 异常）draft_json=None、
+    errors=["抽取失败: …"]。approve 前置 = errors==[]（ore_pack_schema.validate_ore_pack 契约）。
+    新表 → gateway 启动 create_all 自建，无需 migrate_db（migrate_db 只管既有表加列）。
+    """
+
+    __tablename__ = "gsb_ore_pack_drafts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid)
+    mineral: Mapped[str] = mapped_column(String(32), index=True)  # ore slug（5 production slug，other 不孵化）
+    slices_hash: Mapped[str] = mapped_column(String(64))  # 抽取输入切片集合 sha256 指纹（溯源）
+    draft_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    errors: Mapped[str | None] = mapped_column(Text, nullable=True)  # validate_ore_pack 错误 JSON 数组（[]=PASS）
+    review_status: Mapped[str] = mapped_column(String(16), default="draft", index=True)  # draft/approved/rejected
+    review_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
