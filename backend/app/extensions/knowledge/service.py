@@ -27,6 +27,44 @@ from .storage import get_storage_provider, is_remote_uri
 
 logger = logging.getLogger(__name__)
 
+_METADATA_FILTER_KEYS = ("sector", "law_number", "keywords", "effective_date_from", "effective_date_to")
+
+
+def build_metadata_condition(filters: dict | None) -> dict | None:
+    """导入表单字段过滤 → RAGFlow metadata_condition。
+
+    - 只接受白名单键(其余抛 ValueError,由路由层转 400)
+    - 空值(空串/空列表/全空白)视为未提供;全部未提供时返回 None(不过滤)
+    - keywords 列表逐项展开为 contains 条件
+    - effective_date_from/to 映射为对 effective_date 的 ≥/≤ 条件
+    """
+    filters = filters or {}
+    unknown = set(filters) - set(_METADATA_FILTER_KEYS)
+    if unknown:
+        raise ValueError(f"unsupported filter key(s): {sorted(unknown)}")
+
+    conditions = []
+    sector = (filters.get("sector") or "").strip()
+    if sector:
+        conditions.append({"name": "sector", "comparison_operator": "is", "value": sector})
+    law_number = (filters.get("law_number") or "").strip()
+    if law_number:
+        conditions.append({"name": "law_number", "comparison_operator": "is", "value": law_number})
+    for kw in filters.get("keywords") or []:
+        kw = (kw or "").strip()
+        if kw:
+            conditions.append({"name": "keywords", "comparison_operator": "contains", "value": kw})
+    date_from = (filters.get("effective_date_from") or "").strip()
+    if date_from:
+        conditions.append({"name": "effective_date", "comparison_operator": "≥", "value": date_from})
+    date_to = (filters.get("effective_date_to") or "").strip()
+    if date_to:
+        conditions.append({"name": "effective_date", "comparison_operator": "≤", "value": date_to})
+
+    if not conditions:
+        return None
+    return {"logic": "and", "conditions": conditions}
+
 
 class KnowledgeBaseService:
     """Knowledge base service with RAGFlow integration."""
