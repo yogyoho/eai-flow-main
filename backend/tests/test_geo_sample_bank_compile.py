@@ -1576,3 +1576,67 @@ def test_gsb_run_running_partial_unique_index_semantics(tmp_path):
     ins("r5", "d2", "parse", "running")  # 他文档放行
     ins("r6", None, "parse", "running")  # NULL document_id（compile 型悬空行）彼此不冲突
     ins("r7", None, "redact", "running")
+
+
+# ---------------------------------------------------------------------------
+# ore_pack schema 锁定（P5 T4，plan 2026-09-04-geo-p5-orepack）：validate_ore_pack
+# 机器可校验器——copper.json 是活实例=契约样例，必须 PASS（以实例校准常量，非反之）。
+# ---------------------------------------------------------------------------
+
+ORE_PACK_DIR = SKILL / "references" / "ore_packs"
+
+
+def test_validate_ore_pack_copper_instance_passes():
+    """copper.json 首实例即契约活样例——必须 PASS（零错误）。"""
+    from app.extensions.geo_samples.ore_pack_schema import validate_ore_pack
+
+    doc = json.loads((ORE_PACK_DIR / "copper.json").read_text(encoding="utf-8"))
+    assert validate_ore_pack(doc) == []
+
+
+def test_validate_ore_pack_rejects_prose_relic():
+    """锚点守卫：零 formulas 编号引用（L11/S1/B1/E3/E4）= v1 prose 复辟，拒绝。"""
+    from app.extensions.geo_samples.ore_pack_schema import validate_ore_pack
+
+    doc = {
+        "version": "2.0",
+        "ore": "gold",
+        "generated": "2026-09-04",
+        "basic_analysis_items": ["Au"],
+        "byproduct_policy": "一些描述",
+    }
+    errors = validate_ore_pack(doc)
+    assert any("锚点" in e or "anchor" in e.lower() for e in errors)
+
+
+def test_validate_ore_pack_rejects_unknown_key_and_bad_slug():
+    """词表守卫（词表单源裁决）：ore ∈ 5 production slug（uranium/other 不孵化）；
+    顶层键白名单外（unknown_key）即拒。"""
+    from app.extensions.geo_samples.ore_pack_schema import validate_ore_pack
+
+    doc = {"version": "2.0", "ore": "uranium", "generated": "x", "unknown_key": 1}
+    errors = validate_ore_pack(doc)
+    assert any("slug" in e.lower() for e in errors)
+    assert any("未知" in e or "unknown" in e.lower() for e in errors)
+
+
+def test_validate_ore_pack_pending_marker_shape():
+    """【待核实】形态守卫：未核实阈值必须 {"status": "【待核实】", ...} 结构形态——
+    zone_split_rule 缺 status、或 status 为裸串（LLM 直接写阈值断言）均拒；
+    裸串叙述里的【待核实】不算形态违规（copper.json reporting_notes 有先例，合法）。"""
+    from app.extensions.geo_samples.ore_pack_schema import validate_ore_pack
+
+    base = {
+        "version": "2.0",
+        "ore": "gold",
+        "generated": "2026-09-04",
+        "byproduct_policy": "伴生估算链锚点 formulas B1",  # 携带锚点，隔离形态守卫
+    }
+    # ① zone_split_rule 缺 status
+    no_status = {**base, "phase_analysis": {"purpose": "氧化程度分带", "zone_split_rule": {"rule": "氧化率>50% 为氧化矿"}}}
+    errors = validate_ore_pack(no_status)
+    assert any("待核实" in e and "zone_split_rule" in e for e in errors)
+    # ② status 为裸串（非【待核实】形态值）
+    bare_status = {**base, "phase_analysis": {"purpose": "氧化程度分带", "zone_split_rule": {"status": "氧化率>50% 为氧化矿（未核实）"}}}
+    errors = validate_ore_pack(bare_status)
+    assert any("待核实" in e and "zone_split_rule" in e for e in errors)
