@@ -211,7 +211,7 @@ async def test_chat_sends_document_ids_filter(install_transport):
         return httpx.Response(200, json={"code": 0, "data": {"total": 0, "chunks": [], "doc_aggs": []}})
 
     captured = install_transport(handler)
-    await RAGFlowClient().chat("ds1", "query", doc_ids=["doc-1", "doc-2"])
+    await RAGFlowClient().chat("ds1", "query", document_ids=["doc-1", "doc-2"])
 
     import json as _json
 
@@ -219,6 +219,25 @@ async def test_chat_sends_document_ids_filter(install_transport):
     assert body["dataset_ids"] == ["ds1"]
     assert body["document_ids"] == ["doc-1", "doc-2"]
     assert "doc_ids" not in body
+
+
+@pytest.mark.asyncio
+async def test_list_documents_passes_metadata_condition(install_transport):
+    def handler(request):
+        params = request.url.params
+        assert "metadata_condition" in params
+        import json as _json
+
+        assert _json.loads(params["metadata_condition"])["conditions"][0]["name"] == "sector"
+        return httpx.Response(200, json={"code": 0, "data": {"total": 0, "docs": []}})
+
+    captured = install_transport(handler)
+    cond = {"logic": "and", "conditions": [{"name": "sector", "comparison_operator": "is", "value": "环境评价"}]}
+    await RAGFlowClient().list_documents("ds1", metadata_condition=cond, orderby="create_time", desc=True)
+
+    params = dict(captured.requests[0].url.params)
+    assert params["page"] == "1" and params["page_size"] == "100"
+    assert params["orderby"] == "create_time" and params["desc"] == "true"
 
 
 def test_to_doc_status_maps_ragflow_run_values():

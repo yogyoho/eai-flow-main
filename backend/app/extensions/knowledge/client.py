@@ -243,13 +243,32 @@ class RAGFlowClient:
                     return {"data": doc}
             return {"data": {}}
 
-    async def list_documents(self, dataset_id: str, page: int = 1, size: int = 100) -> dict:
-        """List documents in a dataset (``page_size`` capped at 100 upstream)."""
+    async def list_documents(
+        self,
+        dataset_id: str,
+        page: int = 1,
+        size: int = 100,
+        metadata_condition: dict | None = None,
+        orderby: str | None = None,
+        desc: bool | None = None,
+    ) -> dict:
+        """List documents in a dataset (``page_size`` capped at 100 upstream).
+
+        metadata_condition: RAGFlow 元数据过滤(v0.27.x 文档列表端点实测生效),
+        结构 {"logic": "and", "conditions": [{"name", "comparison_operator", "value"}]}。
+        """
+        params: dict = {"page": page, "page_size": min(size, 100)}
+        if metadata_condition:
+            params["metadata_condition"] = json.dumps(metadata_condition, ensure_ascii=False)
+        if orderby:
+            params["orderby"] = orderby
+        if desc is not None:
+            params["desc"] = "true" if desc else "false"
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.get(
                 f"{self.base_url}{self.API_PREFIX}/datasets/{dataset_id}/documents",
                 headers=self._get_headers(),
-                params={"page": page, "page_size": min(size, 100)},
+                params=params,
             )
             response.raise_for_status()
             return response.json()
@@ -307,7 +326,7 @@ class RAGFlowClient:
         top_k: int = 5,
         similarity_threshold: float = 0.2,
         vector_similarity_weight: float = 0.3,
-        doc_ids: list[str] | None = None,
+        document_ids: list[str] | None = None,
     ) -> dict:
         """Retrieve chunks from dataset(s) (RAG query).
 
@@ -317,7 +336,7 @@ class RAGFlowClient:
             top_k: Number of top results.
             similarity_threshold: Minimum similarity score.
             vector_similarity_weight: Weight for vector vs keyword matching.
-            doc_ids: Optional list of document IDs to filter results.
+            document_ids: Optional list of document IDs to filter results.
         """
         ids = [dataset_id] if isinstance(dataset_id, str) else dataset_id
         payload = {
@@ -327,8 +346,8 @@ class RAGFlowClient:
             "similarity_threshold": similarity_threshold,
             "vector_similarity_weight": vector_similarity_weight,
         }
-        if doc_ids:
-            payload["document_ids"] = doc_ids
+        if document_ids:
+            payload["document_ids"] = document_ids
 
         async with httpx.AsyncClient(timeout=self.timeout * 2) as client:
             response = await client.post(
