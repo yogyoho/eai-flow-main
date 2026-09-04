@@ -118,6 +118,13 @@ export const geoSamplesApi = {
       method: "POST",
     }),
 
+  // 初始化（幂等收敛）RAGFlow 切片数据集——部署后点一次，编译分发即按名生效（无需配 env）。
+  initRagflow: () =>
+    authFetch<{ status: "created" | "aligned"; dataset_id: string | null }>(
+      `${API_BASE}/pipeline/init-ragflow`,
+      { method: "POST" },
+    ),
+
   // Functional area 6: ore_pack incubation（P5 T5 端点）。approve/reject 为 POST + JSON body
   // （note 可空）；approve 响应附加 written 落盘路径 + standards_index 扩容义务清单。
   listDrafts: (params?: { mineral?: string; review_status?: string }) =>

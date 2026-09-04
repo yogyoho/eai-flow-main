@@ -140,6 +140,20 @@ export function DocumentsView() {
     );
   }
 
+  // 初始化切片库（幂等）：部署后点一次，编译分发按名生效；已存在时提示 aligned。
+  async function onInitRagflow() {
+    try {
+      const r = await geoSamplesApi.initRagflow();
+      alert(
+        r.status === "created"
+          ? `RAGFlow 切片库已创建（dataset ${r.dataset_id?.slice(0, 8)}…）——编译分发即刻生效`
+          : `RAGFlow 切片库已就绪（aligned，dataset ${r.dataset_id?.slice(0, 8)}…）`,
+      );
+    } catch (e) {
+      alertErr(e);
+    }
+  }
+
   const all = allQ.data?.items ?? [];
   const countBy = (s: string) => all.filter((d) => d.status === s).length;
   const docs = data?.items ?? [];
@@ -156,6 +170,14 @@ export function DocumentsView() {
         <h1 className="text-[22px] font-bold" style={{ color: INK }}>
           样例文档库
         </h1>
+        <button
+          type="button"
+          onClick={onInitRagflow}
+          title="创建/对齐 RAGFlow 切片数据集（编译分发的目标库）——部署后点一次即可，幂等"
+          className="border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground ml-auto cursor-pointer rounded-md border px-2.5 py-1 text-xs transition-colors"
+        >
+          初始化切片库
+        </button>
       </div>
 
       {/* 各状态计数(全量) */}
