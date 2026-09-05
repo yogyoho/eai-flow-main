@@ -920,8 +920,11 @@ async def project_laws_as_documents(db: AsyncSession, kb: KnowledgeBase, skip: i
     return [project_law_as_document(law, kb.id) for law in rows], total
 
 
-async def get_law_in_kb(db: AsyncSession, kb: KnowledgeBase, doc_id: uuid.UUID) -> Law | None:
-    """chunks 视图定位:doc_id 为 law.id,且必须属于该 KB 的 dataset。"""
+async def get_law_in_kb(db: AsyncSession, kb: KnowledgeBase, doc_id: str) -> Law | None:
+    """chunks 视图定位:doc_id 为 law.id(Law.id 是 String(36)),且必须属于该 KB 的 dataset。
+
+    调用方负责把路由层的 UUID 转 str(asyncpg 严格绑定下 UUID 绑 varchar 列会抛 operator does not exist)。
+    """
     res = await db.execute(select(Law).where(Law.id == doc_id))
     law = res.scalar_one_or_none()
     if law is None or law.ragflow_dataset_id != kb.ragflow_dataset_id:

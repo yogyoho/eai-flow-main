@@ -113,4 +113,4 @@ async def test_get_law_in_kb_matches_dataset():
     rm3 = MagicMock()
     rm3.scalar_one_or_none.return_value = None
     db.execute.return_value = rm3
-    assert await get_law_in_kb(db, kb, uuid.uuid4()) is None
+    assert await get_law_in_kb(db, kb, str(uuid.uuid4())) is None  # doc_id 为 str,同 Law.id String(36)
