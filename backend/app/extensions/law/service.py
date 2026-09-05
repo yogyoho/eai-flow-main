@@ -863,8 +863,7 @@ class LawService:
 # 法规标准库投影(EAI-CUSTOM, spec 2026-09-05)
 # 法规系统库无 documents 表记录(法规导入只写 laws 表 + 直传 RAGFlow),
 # 知识库详情的文件列表/chunks 视图按 laws 实时投影(只读视图,零迁移)。
-# 实现为模块级函数,经文件末尾的 staticmethod 绑定挂到 LawService 上,
-# 路由/测试统一走 LawService.* 访问。
+# 实现为模块级函数,路由以模块级函数导入使用(见 knowledge/routers.py)。
 # ---------------------------------------------------------------------------
 
 # 法规标准系统库判定前缀 —— 种子名共享前缀(config.py → law.dataset_display_info
@@ -887,7 +886,7 @@ def law_display_name(law: Law) -> str:
     return build_ragflow_doc_name(meta.get("sector"), law.law_number, law.title, None)
 
 
-def project_law_as_document(law: Law, kb_id) -> DocumentResponse:
+def project_law_as_document(law: Law, kb_id: uuid.UUID) -> DocumentResponse:
     """单条 law → DocumentResponse 投影(只读视图,spec 2026-09-05)。"""
     return DocumentResponse(
         id=law.id,
@@ -897,7 +896,7 @@ def project_law_as_document(law: Law, kb_id) -> DocumentResponse:
         file_size=0,
         file_type=None,
         ragflow_document_id=law.ragflow_document_id,
-        status=_LAW_DOC_STATUS.get(law.is_synced or "", "pending"),
+        status=_LAW_DOC_STATUS.get(law.is_synced, "pending"),
         error_message=None,
         created_at=law.created_at,
     )
@@ -910,25 +909,21 @@ async def _law_projection_query(db: AsyncSession, dataset_id: str, skip: int, li
     return rows, total
 
 
-async def project_laws_as_documents(db: AsyncSession, kb, skip: int = 0, limit: int = 100):
+async def project_laws_as_documents(db: AsyncSession, kb: KnowledgeBase, skip: int = 0, limit: int = 100) -> tuple[list[DocumentResponse], int]:
     """法规库文件列表:按 ragflow_dataset_id 投影 laws 表 → (list[DocumentResponse], total)。
 
+    ragflow_dataset_id 在首次同步成功前存的是 KB 名,故投影只含曾成功同步的法规——
+    列表语义即"RAGFlow 库内实际内容",pending/failed 不在其中(设计意图,非遗漏)。
     单一真相源仍是 laws 表,实时计算,零迁移;普通库不走此路径。
     """
     rows, total = await _law_projection_query(db, kb.ragflow_dataset_id, skip, limit)
     return [project_law_as_document(law, kb.id) for law in rows], total
 
 
-async def get_law_in_kb(db: AsyncSession, kb, doc_id) -> Law | None:
+async def get_law_in_kb(db: AsyncSession, kb: KnowledgeBase, doc_id: uuid.UUID) -> Law | None:
     """chunks 视图定位:doc_id 为 law.id,且必须属于该 KB 的 dataset。"""
     res = await db.execute(select(Law).where(Law.id == doc_id))
     law = res.scalar_one_or_none()
     if law is None or law.ragflow_dataset_id != kb.ragflow_dataset_id:
         return None
     return law
-
-
-# 类内绑定:测试与路由经 LawService.project_laws_as_documents / LawService.get_law_in_kb
-# 访问(实现为上方模块级函数,避免类体内前向引用未定义符号)。
-LawService.project_laws_as_documents = staticmethod(project_laws_as_documents)
-LawService.get_law_in_kb = staticmethod(get_law_in_kb)

@@ -12,9 +12,10 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.extensions.law.service import (
-    LawService,
+    get_law_in_kb,
     is_law_kb_name,
     project_law_as_document,
+    project_laws_as_documents,
 )
 
 KB_ID = uuid.uuid4()
@@ -23,7 +24,7 @@ DATASET_ID = "ds-laws-1"
 
 def _law(synced="synced", dataset=DATASET_ID, number="GB 50160-2008", title="石油化工企业设计防火标准", sector="石化"):
     return SimpleNamespace(
-        id=uuid.uuid4(),
+        id=str(uuid.uuid4()),  # 真实 Law.id 是 str
         law_number=number,
         title=title,
         is_synced=synced,
@@ -43,8 +44,9 @@ def test_is_law_kb_name():
 
 
 def test_project_law_as_document_field_mapping():
-    doc = project_law_as_document(_law(), KB_ID)
-    assert str(doc.id)  # uuid
+    law = _law()
+    doc = project_law_as_document(law, KB_ID)
+    assert doc.id == uuid.UUID(law.id)  # 真实 Law.id 为 str,覆盖 Pydantic str→UUID coercion
     assert doc.knowledge_base_id == KB_ID
     assert doc.name == "【石化】GB 50160-2008 石油化工企业设计防火标准"
     assert doc.file_path == ""
@@ -75,12 +77,20 @@ async def test_project_laws_as_documents_query_and_total():
     db.execute.side_effect = [count_rm, rows_rm]
     kb = SimpleNamespace(id=KB_ID, ragflow_dataset_id=DATASET_ID, name="法规标准库 — 标准/规范")
 
-    docs, total = await LawService.project_laws_as_documents(db, kb, skip=0, limit=100)
+    docs, total = await project_laws_as_documents(db, kb, skip=0, limit=100)
 
     assert total == 2
     assert len(docs) == 2
     assert docs[0].ragflow_document_id == "rf-doc-1"
     assert docs[1].status == "pending"
+    # 投影 SQL 必须按 dataset 过滤(count 与分页都带 where,分页另带排序)——
+    # 去掉过滤会跨库泄漏;断言 where 子串(列清单里本就含 ragflow_dataset_id,裸列名没 discriminating power),
+    # 大小写不敏感、不脆断全串
+    count_sql = str(db.execute.await_args_list[0].args[0]).lower()
+    page_sql = str(db.execute.await_args_list[1].args[0]).lower()
+    assert "where laws.ragflow_dataset_id" in count_sql
+    assert "where laws.ragflow_dataset_id" in page_sql
+    assert "order by" in page_sql
 
 
 @pytest.mark.asyncio
@@ -92,15 +102,15 @@ async def test_get_law_in_kb_matches_dataset():
     db.execute.return_value = rm
     kb = SimpleNamespace(id=KB_ID, ragflow_dataset_id=DATASET_ID)
 
-    assert await LawService.get_law_in_kb(db, kb, law.id) is law
+    assert await get_law_in_kb(db, kb, law.id) is law
 
     other = _law(dataset="ds-other")
     rm2 = MagicMock()
     rm2.scalar_one_or_none.return_value = other
     db.execute.return_value = rm2
-    assert await LawService.get_law_in_kb(db, kb, other.id) is None
+    assert await get_law_in_kb(db, kb, other.id) is None
 
     rm3 = MagicMock()
     rm3.scalar_one_or_none.return_value = None
     db.execute.return_value = rm3
-    assert await LawService.get_law_in_kb(db, kb, uuid.uuid4()) is None
+    assert await get_law_in_kb(db, kb, uuid.uuid4()) is None
