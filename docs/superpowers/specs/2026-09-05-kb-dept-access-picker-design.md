@@ -50,7 +50,7 @@ export function DeptAccessPicker({
 
 - `access_type === "dept"` 时,下拉框下方渲染 `<DeptAccessPicker selectedIds={createForm.allowed_depts ?? []} onChange={(ids) => setCreateForm({ ...createForm, allowed_depts: ids })} readOnly={!is_admin} />`
 - 普通用户初始/回退:`allowed_depts = identity.dept_ids`(选 dept 时若空则自动带入)
-- 保存校验:dept 下标签数为 0 → 「确定」禁用 + 面板下一行提示「至少选择一个部门」
+- 保存校验(as-built):dept 下标签数为 0 → 点保存时 toast 报错(「至少选择一个部门」/「你尚未加入任何部门,无法设置部门可见」)并阻止提交
 - 提交:`access_type === "dept"` 时带 `allowed_depts`;否则 `allowed_depts: undefined`
 
 ### 3.3 编辑对话框(KnowledgeBaseDetail)——补齐缺口
@@ -66,6 +66,7 @@ export function DeptAccessPicker({
 - `identity.dept_ids` 与 `Department.id` 同域(extensions 同库),直接映射
 - 编辑入口已有 `kb:update` 权限 gate,无新增权限面
 - 部门被删后的脏 id:标签按 deptApi.list 能映射到的显示,映射不到的显示原始 id(不阻塞保存;可见性过滤对不存在部门天然无效果)
+- **已知取舍(final review 提出,待裁决)**:持有 `kb:update` 的非管理员(部门主管类角色)编辑他人创建的部门可见 KB 时,提交会用自己所在部门覆盖 `allowed_depts`(静默收窄)。后端按 partial-update 契约忠实执行。候选后续:非管理员保存时与既有 allowed_depts 合并 / 禁止非管理员编辑他人 KB 的访问字段 / 明确接受并文档化
 
 ## 4. 明确不做
 
