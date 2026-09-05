@@ -128,3 +128,4 @@ node_modules/
 /zip/
 /tiktoken_cache/
 /.offline-export-history/
+deploy/offline/data/

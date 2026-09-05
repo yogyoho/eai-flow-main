@@ -77,6 +77,11 @@ services:
       # 配置文件（必须预先存在，否则 Docker 会创建同名目录）
       - ./config.yaml:/app/backend/config.yaml:ro
       - ./extensions_config.json:/app/backend/extensions_config.json
+      # EAI-CUSTOM (2026-09-05): 权限注册表必须挂载——gateway 镜像只 COPY backend/，
+      # 容器内没有 /app/config/，缺载 = 空权限注册表 → '*' 超管通配与 is_system 门控
+      # 全部失效，权限路由对所有人 403。文件由 offline-export.sh 从根目录 config/ 打包。
+      - ./config/permissions.yaml:/app/config/permissions.yaml:ro
+      - ./config/roles_custom.yaml:/app/config/roles_custom.yaml:ro
       # 持久化数据
       - ./skills:/app/skills:ro
       - ./data:/app/backend/.deer-flow
@@ -106,6 +111,9 @@ services:
       - TEMPORAL_URL=temporal:7233
       # 合同价格分析技能调用 OCR 服务的地址（见 docker-compose.mcp-cad.yaml `ocr` 服务）
       - OCR_SERVICE_URL=http://ocr:8010
+      # EAI-CUSTOM (2026-09-05): geo 样例库编译切片 → RAGFlow 推送的 dataset id。
+      # 留空=跳过推送（幂等安全）；部署后在 RAGFlow 建 geo-samples-slices 库并回填（见 MANUAL-DEPLOY）。
+      - GSB_RAGFLOW_DATASET_ID=${GSB_RAGFLOW_DATASET_ID:-}
       # 数据库连接（通过 Docker 服务名）
       - KF_DATABASE_URL=postgresql+asyncpg://${POSTGRES_EXT_USER:-agentflow}:${POSTGRES_EXT_PASSWORD:-agentflow123}@postgres-ext:5432/${POSTGRES_EXT_DB:-agentflow}
     env_file:

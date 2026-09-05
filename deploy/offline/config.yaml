@@ -1,16 +1,14 @@
 # =============================================================================
 # EAI-Flow 生产离线部署配置（deploy/offline/config.yaml）
 # =============================================================================
-# 生成方式：以开发环境根目录 config.yaml（v34）为基线整体复制，仅做以下离线定制
-# （2026-09-04，参考 dev v34 重生成）：
+# 生成方式：以开发环境根目录 config.yaml（v40）为基线整体复制，仅做以下离线定制
+# （2026-09-05 重生成；上一版 v34 于 2026-09-04）：
 #   1. 剔除 dev-only 模型 gemma-4（base_url 指向开发内网 LAN 地址，客户环境不可达）
 #   2. models 段后保留「内网 LLM 模板」注释块（完全离线客户取消注释启用）
 #   3. 文件尾追加 offline-only 的 ui 段
 #   4. 本横幅
-# 其余内容（含 10 个 v11 缺失的 section：logging/token_budget/max_recursion_limit/
-# read_before_write/skill_scan/agent_storage/scheduler/mcp_tasks/stream_bridge/
-# authorization，以及 deermem memory 块——其 token_counting: char 为离线必需，
-# 内网无法下载 tiktoken BPE 数据）与 dev 保持一致。
+# 其余内容与 dev 保持一致。memory 使用 deermem + token_counting: char
+# （离线无法下载 tiktoken BPE 数据，char 计数不依赖网络）。
 # ⚠️ 升级 dev config.yaml 后须手动同步本模板并重跑打包（delta 不会携带本文件）。
 # =============================================================================
 
@@ -31,7 +29,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 34
+config_version: 40
 
 # ============================================================================
 # Logging
@@ -91,8 +89,8 @@ token_usage:
 token_budget:
   enabled: false                # Set to true to activate budget enforcement
   max_tokens: 200000            # Total token limit (input + output) per run
-  max_input_tokens: null        # Optional separate input-only limit
-  max_output_tokens: null       # Optional separate output-only limit
+  max_input_tokens:             # Optional separate input-only limit
+  max_output_tokens:            # Optional separate output-only limit
   warn_threshold: 0.8           # Warn at 80% of the budget
   hard_stop_threshold: 1.0      # Force stop at 100% of the budget
 
@@ -139,57 +137,57 @@ max_recursion_limit: 1000
 #                                      # (optional; omit → hits billed at miss price)
 
 models:
-  - name: agnes-2.5-Flash
-    display_name: Agnes-2.5-Flash
-    use: langchain_openai:ChatOpenAI
-    model: agnes-2.5-flash
-    api_key: $AGNES_API_KEY
-    base_url: https://apihub.agnes-ai.com/v1/
-    request_timeout: 600.0
-    max_tokens: 8192
-    temperature: 0.7
+- name: agnes-2.5-Flash
+  display_name: Agnes-2.5-Flash
+  use: langchain_openai:ChatOpenAI
+  model: agnes-2.5-flash
+  api_key: $AGNES_API_KEY
+  base_url: https://apihub.agnes-ai.com/v1/
+  request_timeout: 600.0
+  max_tokens: 8192
+  temperature: 0.7
 
-  - name: glm-4.1v-flash
-    display_name: GLM-4.1v-flash (智谱官方)
-    use: langchain_openai:ChatOpenAI
-    model: glm-4.1v-thinking-flash
-    api_key: $ZHIPU_API_KEY
-    base_url: https://open.bigmodel.cn/api/paas/v4/
-    request_timeout: 300.0
-    max_tokens: 8192
-    temperature: 0.7
+- name: glm-4.1v-flash
+  display_name: GLM-4.1v-flash (智谱官方)
+  use: langchain_openai:ChatOpenAI
+  model: glm-4.1v-thinking-flash
+  api_key: $ZHIPU_API_KEY
+  base_url: https://open.bigmodel.cn/api/paas/v4/
+  request_timeout: 300.0
+  max_tokens: 8192
+  temperature: 0.7
     # EAI-CUSTOM (bug-2189 E2E): glm-4.1v-thinking-flash 是常开思维链模型, 未注册 supports_thinking
     # 会导致请求 thinking_enabled=true 被静默降级(agent.py:749 warning)。
     # 注意: 该免费模型输入超过约 22k token 时输出坍缩(out=2, 端点截断), 不适用于 lead_agent 长上下文任务。
-    supports_thinking: true
-    supports_vision: false
-    when_thinking_enabled:
-      extra_body:
-        thinking:
-          type: enabled
-    when_thinking_disabled:
-      extra_body:
-        thinking:
-          type: disabled
+  supports_thinking: true
+  supports_vision: false
+  when_thinking_enabled:
+    extra_body:
+      thinking:
+        type: enabled
+  when_thinking_disabled:
+    extra_body:
+      thinking:
+        type: disabled
 
-  - name: deepseek-v4-flash
-    display_name: DeepSeek V4 Flash
-    use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
-    model: deepseek-v4-flash
-    api_key: $DEEPSEEK_API_KEY
-    timeout: 60.0
-    max_retries: 1
-    max_tokens: 8192
-    supports_thinking: true
-    supports_vision: false
-    when_thinking_enabled:
-      extra_body:
-        thinking:
-          type: enabled
-    when_thinking_disabled:
-      extra_body:
-        thinking:
-          type: disabled
+- name: deepseek-v4-flash
+  display_name: DeepSeek V4 Flash
+  use: deerflow.models.patched_deepseek:PatchedChatDeepSeek
+  model: deepseek-v4-flash
+  api_key: $DEEPSEEK_API_KEY
+  timeout: 60.0
+  max_retries: 1
+  max_tokens: 8192
+  supports_thinking: true
+  supports_vision: false
+  when_thinking_enabled:
+    extra_body:
+      thinking:
+        type: enabled
+  when_thinking_disabled:
+    extra_body:
+      thinking:
+        type: disabled
   # Example: Volcengine (Doubao) model
   # - name: doubao-seed-1.8
   #   display_name: Doubao-Seed-1.8
@@ -752,12 +750,12 @@ models:
 #   supports_thinking: false
 
 tool_groups:
-  - name: web
-  - name: file:read
-  - name: file:write
-  - name: bash
-  - name: browser
-  - name: knowledge
+- name: web
+- name: file:read
+- name: file:write
+- name: bash
+- name: browser
+- name: knowledge
 
 # ============================================================================
 # Tools Configuration
@@ -766,10 +764,10 @@ tool_groups:
 
 tools:
   # Web search tool (uses DuckDuckGo, no API key required)
-  - name: web_search
-    group: web
-    use: deerflow.community.ddg_search.tools:web_search_tool
-    max_results: 5
+- name: web_search
+  group: web
+  use: deerflow.community.ddg_search.tools:web_search_tool
+  max_results: 5
     # backend: auto          # DDGS backend(s): auto, duckduckgo, brave, wikipedia, etc.
     # region: wt-wt          # wt-wt is normalized for Wikipedia when backend includes auto/all/wikipedia.
     # safesearch: moderate   # on, moderate, off
@@ -1011,17 +1009,17 @@ tools:
   #   # api_key: $EXA_API_KEY
 
   # EAI-CUSTOM: 内网走自托管 browserless 容器（compose 服务名 browserless:3000），不用 Jina（需外网）
-  - name: web_fetch
-    group: web
-    use: deerflow.community.browserless.tools:web_fetch_tool
-    base_url: http://browserless:3000
-    timeout_s: 30
+- name: web_fetch
+  group: web
+  use: deerflow.community.browserless.tools:web_fetch_tool
+  base_url: http://browserless:3000
+  timeout_s: 30
 
   # EAI-CUSTOM: Browserless 截图(自托管,无需Key)
-  - name: web_capture
-    group: web
-    use: deerflow.community.browserless.tools:web_capture_tool
-    base_url: http://browserless:3000
+- name: web_capture
+  group: web
+  use: deerflow.community.browserless.tools:web_capture_tool
+  base_url: http://browserless:3000
 
   # Web fetch tool (uses Jina AI reader)
   # - name: web_fetch
@@ -1072,10 +1070,10 @@ tools:
 
   # Image search tool (uses DuckDuckGo)
   # Use this to find reference images before image generation
-  - name: image_search
-    group: web
-    use: deerflow.community.image_search.tools:image_search_tool
-    max_results: 5
+- name: image_search
+  group: web
+  use: deerflow.community.image_search.tools:image_search_tool
+  max_results: 5
 
   # Image search tool (uses InfoQuest)
   # - name: image_search
@@ -1111,38 +1109,38 @@ tools:
   #   # api_key: $BRAVE_SEARCH_API_KEY  # Optional explicit env-var reference
 
   # File operations tools
-  - name: ls
-    group: file:read
-    use: deerflow.sandbox.tools:ls_tool
+- name: ls
+  group: file:read
+  use: deerflow.sandbox.tools:ls_tool
 
-  - name: read_file
-    group: file:read
-    use: deerflow.sandbox.tools:read_file_tool
+- name: read_file
+  group: file:read
+  use: deerflow.sandbox.tools:read_file_tool
 
-  - name: glob
-    group: file:read
-    use: deerflow.sandbox.tools:glob_tool
-    max_results: 200
+- name: glob
+  group: file:read
+  use: deerflow.sandbox.tools:glob_tool
+  max_results: 200
 
-  - name: grep
-    group: file:read
-    use: deerflow.sandbox.tools:grep_tool
-    max_results: 100
+- name: grep
+  group: file:read
+  use: deerflow.sandbox.tools:grep_tool
+  max_results: 100
 
-  - name: write_file
-    group: file:write
-    use: deerflow.sandbox.tools:write_file_tool
+- name: write_file
+  group: file:write
+  use: deerflow.sandbox.tools:write_file_tool
 
-  - name: str_replace
-    group: file:write
-    use: deerflow.sandbox.tools:str_replace_tool
+- name: str_replace
+  group: file:write
+  use: deerflow.sandbox.tools:str_replace_tool
 
   # Bash execution tool
   # Active only when using an isolated shell sandbox or when
   # sandbox.allow_host_bash: true explicitly opts into host bash.
-  - name: bash
-    group: bash
-    use: deerflow.sandbox.tools:bash_tool
+- name: bash
+  group: bash
+  use: deerflow.sandbox.tools:bash_tool
 
 # ============================================================================
 # Tool Search Configuration (Deferred Tool Loading)
@@ -1187,8 +1185,8 @@ tool_output:
   fallback_tail_chars: 3000
   storage_subdir: ".tool-results"
   exempt_tools:
-    - read_file
-    - read_file_tool
+  - read_file
+  - read_file_tool
   # tool_overrides:
   #   web_search: 8000
   #   bash: 20000
@@ -1215,7 +1213,7 @@ input_polish:
   max_chars: 4000
   # Optional fast model for draft polishing. Leave null to use the default chat model.
   # For best UX, set this to your lowest-latency inexpensive model.
-  model_name: null
+  model_name:
 
 
 # ============================================================================
@@ -1655,9 +1653,9 @@ subagents:
         4. 不编造数据，无法获取的值标注[待补充]
         5. 每步等待用户确认后再进入下一步
       skills:
-        - fire-protection-extract
-        - fire-protection-report-v2
-        - water-drainage-report
+      - fire-protection-extract
+      - fire-protection-report-v2
+      - water-drainage-report
       model: inherit
       max_turns: 30
       timeout_seconds: 1800
@@ -1702,6 +1700,16 @@ subagent_batches:
 # ============================================================================
 # Configure skills directory for specialized agent workflows
 
+  poll_interval_seconds: 1
+  lease_seconds: 120
+  max_items_per_batch: 5000
+  default_max_live_items: 100
+  max_live_items_per_batch: 1000
+  default_max_running_items: 3
+  max_running_items_per_batch: 64
+  max_attempts: 3
+  max_result_chars: 100000
+  result_preview_max_chars: 2000
 skills:
   # Path to skills directory on the host (relative to project root or absolute)
   # Default: skills under the project root
@@ -1748,7 +1756,7 @@ title:
   enabled: true
   max_words: 6
   max_chars: 60
-  model_name: null # null = fast local fallback; set a model name to use LLM title generation
+  model_name:      # null = fast local fallback; set a model name to use LLM title generation
 
 # ============================================================================
 # Summarization Configuration
@@ -1765,15 +1773,15 @@ summarization:
   #   set  = that model generates; if its provider fails, compaction falls back to the
   #          run's own model so a broken summary provider cannot disable compaction.
   # Recommended: Use a lightweight, cost-effective model like "gpt-4o-mini" or similar
-  model_name: null
+  model_name:
 
   # Trigger conditions - at least one required
   # Summarization runs when ANY threshold is met (OR logic)
   # You can specify a single trigger or a list of triggers
   trigger:
     # EAI-CUSTOM: 内网大上下文模型，80000 再触发（原 example 32000）
-    - type: tokens
-      value: 80000
+  - type: tokens
+    value: 80000
     # Uncomment to also trigger when message count reaches 50
     # - type: messages
     #   value: 50
@@ -1838,10 +1846,10 @@ summarization:
   # skill retention is handled by this durable reference channel instead. Set
   # this list to [] to disable durable skill-reference capture.
   skill_file_read_tool_names:
-    - read_file
-    - read
-    - view
-    - cat
+  - read_file
+  - read
+  - view
+  - cat
 
 # ============================================================================
 # Memory Configuration
@@ -1986,7 +1994,7 @@ memory:
     # and draw from a reserved allowance, so high-signal corrections (e.g.
     # "don use pip, use uv") survive even when the budget is tight.
     guaranteed_categories:
-      - correction
+    - correction
     guaranteed_token_budget: 500
     # Staleness review: periodically prune aged facts that may no longer reflect
     # the user current situation. When triggered, the LLM reviews facts older
@@ -2000,7 +2008,7 @@ memory:
     staleness_min_candidates: 3
     staleness_max_removals_per_cycle: 10
     staleness_protected_categories:
-      - correction
+    - correction
     staleness_max_lifetime_multiplier: 20.0   # creation cap = staleness_age_days x multiplier (90 x 20 = 1800d)
     staleness_max_extension_days: 3650        # absolute ceiling on extended expected_valid_days (~10 years)
     # Memory consolidation (opt-in, lossy: source facts are replaced by a
@@ -2042,7 +2050,7 @@ agents_api:
 # Allow the agent to autonomously create and improve skills in skills/custom/.
 skill_evolution:
   enabled: false # Set to true to allow agent-managed writes under skills/custom
-  moderation_model_name: null # Model for LLM-based security scanning (null = use default model)
+  moderation_model_name:      # Model for LLM-based security scanning (null = use default model)
   security_fail_closed: true # Moderation model unavailable: true blocks all writes; false allows non-executable content with a warning (executable is always blocked)
 
 # ============================================================================
@@ -2226,6 +2234,7 @@ database:
 #   backend: memory
 #   max_trace_content: 10240    # Truncation threshold for trace content (db backend, bytes)
 #   track_token_usage: true     # Accumulate token counts to RunRow
+  sqlite_dir: .deer-flow/data
 run_events:
   # EAI-CUSTOM (route-D ops-diagnosis): db 持久化——gateway 重启后事件保留,
   # 供 ops-diagnosis MCP 工具(自然语言诊断)查询。升级注意: 改回 memory 即失持久化。
@@ -2292,6 +2301,8 @@ scheduler:
 #   poll_interval_seconds: 5     # Scan interval and default task retry interval
 #   lease_seconds: 120           # Expired claims become recoverable after this delay
 #   max_concurrent_polls: 8      # Maximum status calls started by one worker per scan
+  queue_timeout_seconds: 3600
+  recursion_limit: 1000
 mcp_tasks:
   enabled: false
   poll_interval_seconds: 5
@@ -2320,6 +2331,11 @@ mcp_tasks:
 # local run and suppresses durable finalization; grace_seconds only delays when
 # a peer may reclaim the expired row.
 
+  max_poll_backoff_seconds: 300
+  input_required_poll_interval_seconds: 60
+  tracking_degraded_after_errors: 3
+  max_result_bytes: 65536
+  result_preview_max_chars: 2000
 run_ownership:
   lease_seconds: 30           # Seconds before a run lease expires if not renewed.
                               # Heartbeat renews every lease_seconds / 3.
@@ -2781,6 +2797,139 @@ authorization:
 #                                         # (install --required opts in)
 #     config:
 #       label: example                    # extension-private values, if any
+subagent_runtime:
+  max_running: 3
+  max_queued: 64
+  admission_policy: queue       # queue or reject when all slots are occupied
+  queue_timeout_seconds: 300
+
+# subagents:
+#   # Default timeout (seconds) for built-in subagents (default: 1800 = 30 min).
+#   # Custom agents use their own timeout_seconds (default 900) unless overridden.
+#   timeout_seconds: 1800
+#   # Optional global max-turn override for all subagents.
+#   # Built-in defaults: general-purpose=150, bash=60. Leave unset to keep them.
+#   # max_turns: 120
+#
+#   # Total number of subagent delegations allowed in one lead-agent run.
+#   # This is a deterministic backstop against repeated planning checkpoints
+#   # launching legal-sized batches forever. The default 6 allows two full
+#   # batches at the default concurrency of 3. Valid config range: 1-50.
+#   # Per-request runtime context can temporarily override this with
+#   # `max_total_subagents`, clamped to the same 1-50 range.
+#   max_total_per_run: 6
+#
+#   # Per-run token ceiling for subagents (#3875 Phase 2). A backstop against a
+#   # subagent that burns tokens on trivial work. At the hard-stop threshold the
+#   # in-flight turn is capped (tool calls stripped, finish_reason forced to
+#   # "stop") so the run completes naturally with a final answer; the result is
+#   # stamped `completed` + `subagent_stop_reason=token_capped` so the lead and
+#   # UI can tell a budget-capped completion from a clean one. The 2,000,000
+#   # default is a generous ceiling — lower it to tighten cost controls. A
+#   # per-agent `token_budget` override (see `agents:` below) wins over this.
+#   # token_budget:
+#   #   enabled: true
+#   #   max_tokens: 2000000
+#   #   warn_threshold: 0.7     # log a warning once this fraction of the budget is spent
+#
+#   # Optional per-agent overrides (applies to both built-in and custom agents)
+#   agents:
+#     general-purpose:
+#       timeout_seconds: 2700  # 45 minutes for very long deep-research tasks
+#       max_turns: 250         # raise above the 150 default for very deep tasks
+#       # token_budget:        # per-agent override of the global token_budget above
+#       #   max_tokens: 3000000  # raise the ceiling for deep-research tasks
+#       # model: qwen3:32b     # Use a specific model (default: inherit from lead agent)
+#       # skills:               # Skill discovery/activation allowlist (default: all enabled)
+#       #   - web-search
+#       #   - data-analysis
+#     bash:
+#       timeout_seconds: 300   # 5 minutes for quick command execution
+#       max_turns: 80
+#       # skills: []            # No discoverable/activatable skills for bash agent
+#
+#   # Custom subagent types: define specialized agents with their own prompts,
+#   # tools, skills, and model configuration. Custom agents are available via
+#   # the `task` tool alongside built-in types (general-purpose, bash).
+#   # custom_agents:
+#   #   analysis:
+#   #     description: "Data analysis specialist for processing datasets and generating insights"
+#   #     system_prompt: |
+#   #       You are a data analysis subagent. Focus on:
+#   #       - Processing and analyzing datasets
+#   #       - Generating visualizations
+#   #       - Providing statistical insights
+#   #     tools:                  # Tool whitelist (null = inherit all)
+#   #       - bash
+#   #       - read_file
+#   #       - write_file
+#   #     skills:                 # Skill discovery/activation allowlist (null = all, [] = none)
+#   #       - data-analysis
+#   #       - visualization
+#   #     model: inherit          # 'inherit' uses parent's model
+#   #     max_turns: 80
+#   #     timeout_seconds: 600
+#
+#   # Model override: by default, subagents inherit the lead agent's model.
+#   # Set `model` to use a different model (e.g., a local Ollama model for cost savings).
+#   # The model name must match a name defined in the `models:` section above.
+
+# Durable native-subagent batches. Disabled by default because enabling it can
+# materially increase model usage and requires database.backend sqlite/postgres.
+# The three limits are intentionally separate:
+# - total: all persisted items in one batch
+# - live: pending work admitted as queued/running at one time
+# - running: items from one batch allowed to hold real execution slots
+verification:
+  receipts_enabled: true
+  # Lead-chain ledger rendering: 'delegation_only' renders only while
+  # processing subagent results (subagent chains always render).
+  receipts_render_mode: "delegation_only"
+  judge_enabled: false
+  judge_model_name:
+
+# ============================================================================
+# ACP Agents Configuration
+# ============================================================================
+# Configure external ACP-compatible agents for the built-in `invoke_acp_agent` tool.
+
+# acp_agents:
+#   mcode:
+#     # MiniMax Code speaks ACP directly; no adapter package is required.
+#     # Install with `npm install --global @minimax-ai/code`, then run `mcode login`.
+#     command: mcode
+#     args: ["acp"]
+#     description: MiniMax Code for implementation, refactoring, debugging, and repository tasks
+#     # auto_approve_permissions: false  # Enable only for trusted tasks that need MCode to edit files or run commands
+#     # timeout_seconds: 1800            # Abort + kill the subprocess if it doesn't respond in time (default: 1800 = 30 min)
+#
+#   claude_code:
+#     # DeerFlow expects an ACP adapter here. The standard `claude` CLI does not
+#     # speak ACP directly. Install `claude-agent-acp` separately or use:
+#     command: npx
+#     args: ["-y", "@zed-industries/claude-agent-acp"]
+#     description: Claude Code for implementation, refactoring, and debugging
+#     model: null
+#     # auto_approve_permissions: false  # Set to true to auto-approve ACP permission requests
+#     # timeout_seconds: 1800            # Abort + kill the subprocess if it doesn't respond in time (default: 1800 = 30 min)
+#     # env:                             # Optional: inject environment variables into the agent subprocess
+#     #   ANTHROPIC_API_KEY: $ANTHROPIC_API_KEY  # $VAR resolves from host environment
+#
+#   codex:
+#     # DeerFlow expects an ACP adapter here. The standard `codex` CLI does not
+#     # speak ACP directly. Install `codex-acp` separately or use:
+#     command: npx
+#     args: ["-y", "@zed-industries/codex-acp"]
+#     description: Codex CLI for repository tasks and code generation
+#     model: null
+#     # auto_approve_permissions: false  # Set to true to auto-approve ACP permission requests
+#     # env:                             # Optional: inject environment variables into the agent subprocess
+#     #   OPENAI_API_KEY: $OPENAI_API_KEY  # $VAR resolves from host environment
+
+# ============================================================================
+# Skills Configuration
+# ============================================================================
+# Configure skills directory for specialized agent workflows
 
 # ============================================================================
 # UI (offline-only)

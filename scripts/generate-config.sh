@@ -8,7 +8,7 @@
 # Usage: generate-config.sh --conf <deploy.conf> --out <dir> --root <abs path> --secret <str> --origin <url>
 set -euo pipefail
 
-CONF=""; OUT="."; ROOT=""; SECRET=""; ORIGIN=""
+CONF=""; OUT=""; ROOT=""; SECRET=""; ORIGIN=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --conf)   CONF="$2"; shift 2;;
@@ -57,6 +57,8 @@ RAGFLOW_API_KEY="${RAGFLOW_API_KEY:-}"
 RAGFLOW_HTTP_PROXY="${RAGFLOW_HTTP_PROXY:-}"
 # v0.27.x 必需：SECRET_KEY 固定值（Redis 缓存，变更即全站 401）。留空则沿用 shipped .env 值。
 RAGFLOW_SECRET_KEY="${RAGFLOW_SECRET_KEY:-}"
+# geo-samples 编译切片 RAGFlow 推送的 dataset id（留空=跳过推送，幂等安全）
+GSB_RAGFLOW_DATASET_ID="${GSB_RAGFLOW_DATASET_ID:-}"
 DB_PASSWORD="${DB_PASSWORD:-agentflow123}"
 
 # ── .env：保留 shipped 完整文件为基底，只定向注入 deploy.conf 推导的键 ──
@@ -81,6 +83,7 @@ if [ -f "$BASE_ENV" ]; then
   [ -n "$RAGFLOW_API_KEY" ]    && set_env_kv RAGFLOW_API_KEY    "$RAGFLOW_API_KEY"
   [ -n "$RAGFLOW_HTTP_PROXY" ] && set_env_kv RAGFLOW_HTTP_PROXY "$RAGFLOW_HTTP_PROXY"
   [ -n "$RAGFLOW_SECRET_KEY" ] && set_env_kv RAGFLOW_SECRET_KEY "$RAGFLOW_SECRET_KEY"
+  [ -n "$GSB_RAGFLOW_DATASET_ID" ] && set_env_kv GSB_RAGFLOW_DATASET_ID "$GSB_RAGFLOW_DATASET_ID"
   [ -n "$LLM_API_KEY" ]        && set_env_kv INTERNAL_LLM_API_KEY "$LLM_API_KEY"
   # DB 密码仅当 deploy.conf 显式给出非默认值才覆盖（默认 agentflow123 已在 shipped .env）
   if [ -n "${DB_PASSWORD:-}" ] && [ "${DB_PASSWORD}" != "agentflow123" ]; then

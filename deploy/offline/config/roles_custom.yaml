@@ -1,0 +1,311 @@
+roles:
+  project_manager:
+    display_name: 项目经理
+    permissions:
+    - ai:start_writing
+    - approval:approve
+    - approval:review
+    - approval:submit
+    - approval:view
+    - chapter:review
+    - chapter:write_any
+    - dashboard:view
+    - department:create
+    - department:delete
+    - department:update
+    - doc:delete
+    - doc:read
+    - doc:upload
+    - export:generate
+    # EAI-CUSTOM (geo-sample-bank T9): 地质样例库模块访问点（project_manager 无 #inherit，须显式列出）
+    - geo_samples:access
+    - kb:create
+    - kb:read
+    - kb:upload
+    - member:add
+    - member:remove
+    - model:read
+    - outline:edit
+    - project:create
+    - project:delete
+    - project:edit
+    - project:read
+    - settings:edit
+    - system:access
+    - workflow:read
+    - chapter:write_own
+    - chapter:review_any
+    - version:rollback
+    # EAI-CUSTOM (bug-1137): 创建项目向导「组建团队」/ AddMemberDialog 搜用户调
+    # /api/extensions/users/search（require user:read）；缺此点 → 403 → 添加不了成员。
+    # overlay 是运行时真相源，须与 permissions.yaml base 同步（bug-1087 wholesale-replace 教训）
+    - user:read
+    - workflow:start
+    - workflow:cancel
+    - workflow:edit
+    - chapter:view_all
+    - ai:stop_writing
+    nav:
+    - nav:writing
+    - nav:projects
+    - nav:docmgr
+    - nav:knowledge
+    - nav:geo-samples
+    - nav:output
+    - nav:app-center
+    - nav:knowledge-factory
+    - nav:dashboard
+    - nav:workflow-admin
+    data_scopes:
+    - project_member
+    - knowledge_dept
+    - knowledge_public
+    - cpa_dept
+    - csp_dept
+    - bqa_dept
+    - bpp_all
+    - spq_all
+    - doc_owner
+    - doc_project_member
+    is_system: false
+    level: 60
+    description: null
+    pages:
+    - writing:page:chat
+    - projects:page:list
+    - docmgr:page:browse
+    - knowledge:page:browse
+    - kf:page:sample
+    - kf:page:extraction
+    - kf:page:template
+    - kf:page:law
+    - kf:page:compliance
+    - kf:page:version
+    - kf:page:quality
+    - kf:page:scrape
+    - kf:page:dict
+    - cpa:page:overview
+    - cpa:page:contracts
+    - cpa:page:items
+    - cpa:page:clusters
+    - cpa:page:tasks
+    - cpa:page:settings
+    - csp:page:overview
+    - csp:page:contracts
+    - csp:page:customers
+    - csp:page:items
+    - csp:page:clusters
+    - csp:page:tasks
+    - csp:page:settings
+    - bqa:page:dashboard
+    - bqa:page:query
+    - bpp:page:dashboard
+    - bpp:page:query
+    - spq:page:dashboard
+    - spq:page:query
+    - gsb:page:documents
+    - gsb:page:review
+    - gsb:page:tasks
+    - output:page:index
+    - workflow-admin:page:index
+    - admin:page:users
+    - admin:page:roles
+    - admin:page:departments
+    - admin:page:app-center
+    - settings:page:general
+    - settings:page:datasource
+    - settings:page:license
+  dept_head:
+    display_name: 部门负责人
+    permissions:
+    - '#inherit:user'
+    - department:create
+    - department:update
+    - department:delete
+    - kb:create
+    - kb:upload
+    - kb:update
+    - kb:delete
+    - doc:upload
+    - doc:delete
+    - project:create
+    - project:read
+    - approval:approve
+    - approval:submit
+    - approval:view
+    - chapter:review
+    - workflow:read
+    # EAI-CUSTOM (bug-1137): 同 project_manager，建项目向导搜成员调
+    # /api/extensions/users/search（require user:read）；overlay 是运行时真相源，
+    # base permissions.yaml 改了无效（wholesale-replace，见 bug-1087），必须在此加。
+    - user:read
+    # EAI-CUSTOM (geo-sample-bank T9): 地质样例库模块访问点（与 permissions.yaml base 同步）
+    - geo_samples:access
+    nav:
+    - nav:knowledge
+    - nav:contract-price
+    - nav:spare-parts
+    - nav:bid-quote
+    - nav:biz-pipeline
+    - nav:sales-personnel
+    - nav:geo-samples
+    - nav:output
+    - nav:app-center
+    - nav:settings
+    - nav:knowledge-factory
+    - nav:writing
+    data_scopes:
+    - project_member
+    - knowledge_dept
+    - knowledge_public
+    - cpa_dept
+    - csp_dept
+    - bqa_dept
+    - bpp_all
+    - spq_all
+    - doc_owner
+    - doc_project_member
+    pages:
+    - dashboard:page:overview
+    - writing:page:chat
+    - projects:page:list
+    - docmgr:page:browse
+    - knowledge:page:browse
+    - kf:page:compliance
+    - kf:page:version
+    - kf:page:quality
+    - kf:page:scrape
+    - kf:page:dict
+    - cpa:page:overview
+    - cpa:page:contracts
+    - cpa:page:items
+    - cpa:page:clusters
+    - cpa:page:tasks
+    - cpa:page:settings
+    - csp:page:overview
+    - csp:page:contracts
+    - csp:page:customers
+    - csp:page:items
+    - csp:page:clusters
+    - csp:page:tasks
+    - csp:page:settings
+    - bqa:page:dashboard
+    - bqa:page:query
+    - bpp:page:dashboard
+    - bpp:page:query
+    - spq:page:dashboard
+    - spq:page:query
+    - gsb:page:documents
+    - gsb:page:review
+    - gsb:page:tasks
+    - output:page:index
+    - workflow-admin:page:index
+    - admin:page:users
+    - admin:page:roles
+    - admin:page:departments
+    - admin:page:app-center
+    - settings:page:general
+    - settings:page:datasource
+    - settings:page:license
+    - kf:page:extraction
+    is_system: false
+    level: 50
+    description: null
+  reviewer:
+    display_name: 审核员
+    permissions:
+    - dashboard:view
+    - kb:read
+    - doc:read
+    - model:read
+    - system:access
+    - chapter:review
+    - approval:review
+    - workflow:read
+    nav:
+    - nav:dashboard
+    - nav:projects
+    - nav:knowledge
+    - nav:app-center
+    - nav:writing
+    - nav:docmgr
+    - nav:knowledge-factory
+    data_scopes:
+    - project_member
+    - knowledge_dept
+    - knowledge_public
+    - doc_owner
+    - doc_project_member
+    pages:
+    - projects:page:list
+    - knowledge:page:browse
+    - dashboard:page:overview
+    is_system: false
+    level: 20
+    description: 负责文档内容审核和批注
+  user:
+    display_name: 普通用户
+    permissions:
+    - dashboard:view
+    - doc:read
+    - kb:read
+    - model:read
+    - system:access
+    - kb:upload
+    nav:
+    - nav:dashboard
+    - nav:knowledge
+    - nav:app-center
+    - nav:writing
+    - nav:projects
+    - nav:docmgr
+    data_scopes:
+    - project_member
+    - doc_owner
+    - knowledge_public
+    - knowledge_owner
+    pages:
+    - knowledge:page:browse
+    - dashboard:page:overview
+    is_system: false
+    level: 1
+    description: null
+  writer:
+    display_name: 撰写人
+    permissions:
+    - ai:start_writing
+    - chapter:review
+    - chapter:write_own
+    - dashboard:view
+    - doc:read
+    - doc:upload
+    - kb:read
+    - model:read
+    - system:access
+    - workflow:read
+    - doc:delete
+    nav:
+    - nav:dashboard
+    - nav:writing
+    - nav:projects
+    - nav:knowledge
+    - nav:app-center
+    - nav:docmgr
+    - nav:output
+    - nav:workflow-admin
+    - nav:knowledge-factory
+    data_scopes:
+    - project_member
+    - knowledge_dept
+    - knowledge_public
+    - doc_owner
+    - doc_project_member
+    pages:
+    - projects:page:list
+    - writing:page:chat
+    - knowledge:page:browse
+    - dashboard:page:overview
+    is_system: false
+    level: 10
+    description: 负责章节内容编写和AI辅助写作
+disabled_roles: []

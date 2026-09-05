@@ -24,5 +24,7 @@ RAGFLOW_HTTP_PROXY=
 # RAGFlow SECRET_KEY（v0.27.x 必需，shipped .env 已带默认值）：仅在明确要换时填写。
 # ⚠️ 必须是固定随机值且一旦部署永不更改——RAGFlow 把它缓存在 Redis，变更即全站 401。
 RAGFLOW_SECRET_KEY=
+# geo 样例库编译切片 → RAGFlow 推送的 dataset id；留空=跳过推送（部署后在 RAGFlow 建库回填）
+GSB_RAGFLOW_DATASET_ID=
 # 数据库密码，留空走默认 agentflow123
 DB_PASSWORD=

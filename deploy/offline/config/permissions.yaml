@@ -1,0 +1,474 @@
+# permissions.yaml — 三级权限模型：导航 → 页面 → 操作
+# 格式版本，用于检测不兼容变更时告警
+version: 3
+
+modules:
+  # ─── 工作台 ───
+  dashboard:
+    display_name: "工作台"
+    nav_id: "nav:dashboard"
+    pages:
+      - id: "dashboard:page:overview"
+        display_name: "工作台概览"
+        operations:
+          - { id: "dashboard:view", display_name: "查看工作台" }
+
+  # ─── 智能写作 ───
+  writing:
+    display_name: "智能写作"
+    nav_id: "nav:writing"
+    pages:
+      - id: "writing:page:chat"
+        display_name: "AI 对话写作"
+        operations:
+          - { id: "model:read", display_name: "使用 AI 模型" }
+
+  # ─── 报告项目 ───
+  projects:
+    display_name: "报告项目"
+    nav_id: "nav:projects"
+    pages:
+      - id: "projects:page:list"
+        display_name: "项目列表"
+        operations:
+          - { id: "project:create", display_name: "创建项目" }
+          - { id: "project:edit", display_name: "编辑项目" }
+          - { id: "project:delete", display_name: "删除项目" }
+          - { id: "project:read", display_name: "查看项目" }
+          - { id: "member:add", display_name: "添加成员" }
+          - { id: "member:remove", display_name: "移除成员" }
+          - { id: "chapter:write_own", display_name: "编写自己的章节" }
+          - { id: "chapter:write_any", display_name: "编写任意章节" }
+          - { id: "chapter:review", display_name: "审核章节" }
+          - { id: "chapter:review_any", display_name: "审核任意章节" }
+          - { id: "approval:submit", display_name: "提交审批" }
+          - { id: "approval:review", display_name: "审批审核" }
+          - { id: "approval:approve", display_name: "批准" }
+          - { id: "approval:view", display_name: "查看审批" }
+          - { id: "ai:start_writing", display_name: "启动 AI 写作" }
+          - { id: "outline:edit", display_name: "编辑大纲" }
+          - { id: "settings:edit", display_name: "编辑项目设置" }
+          - { id: "export:generate", display_name: "生成导出" }
+          - { id: "version:rollback", display_name: "版本回滚" }
+          - { id: "workflow:read", display_name: "查看工作流" }
+          - { id: "workflow:start", display_name: "启动工作流" }
+          - { id: "workflow:cancel", display_name: "取消工作流" }
+          - { id: "workflow:edit", display_name: "编辑工作流" }
+          - { id: "chapter:view_all", display_name: "查看全部章节/来源" }
+          - { id: "ai:stop_writing", display_name: "停止 AI 写作" }
+    data_scopes:
+      - { id: "project_member", display_name: "参与的项目", rule_template: { or: [ { id IN: "$identity.member_projects" }, { created_by: "$identity.user_id" } ] } }
+      - { id: "project_all", display_name: "全部项目", rule_template: {} }
+
+  # ─── 文档空间 ───
+  docmgr:
+    display_name: "文档空间"
+    nav_id: "nav:docmgr"
+    pages:
+      - id: "docmgr:page:browse"
+        display_name: "文档浏览"
+        operations:
+          - { id: "doc:read", display_name: "查看文档" }
+          - { id: "doc:upload", display_name: "上传文档" }
+          - { id: "doc:delete", display_name: "删除文档" }
+    # EAI-CUSTOM (Task 13): docmgr data_scopes — union of doc_owner + doc_project_member
+    # reproduces the prior hand-rolled visibility clause in list_docs exactly:
+    #   (user_id == caller) OR (project_id IN member_projects)
+    # Routing the predicate through the scope engine enables future deny_data_scopes
+    # narrowing on documents without changing the no-deny visibility.
+    data_scopes:
+      - { id: "doc_owner", display_name: "我的文档", rule_template: { user_id: "$identity.user_id" } }
+      - { id: "doc_project_member", display_name: "项目内文档", rule_template: { project_id IN: "$identity.member_projects" } }
+
+  # ─── 知识库 ───
+  knowledge:
+    display_name: "知识库"
+    nav_id: "nav:knowledge"
+    pages:
+      - id: "knowledge:page:browse"
+        display_name: "浏览知识库"
+        operations:
+          - { id: "kb:read", display_name: "查看知识库" }
+          - { id: "kb:create", display_name: "创建知识库" }
+          - { id: "kb:update", display_name: "编辑知识库" }
+          - { id: "kb:delete", display_name: "删除知识库" }
+          - { id: "kb:upload", display_name: "上传文档" }
+    data_scopes:
+      - { id: "knowledge_owner",  display_name: "仅自己的知识库", rule_template: { owner_id: "$identity.user_id" } }
+      - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
+      - { id: "knowledge_dept",   display_name: "本部门的知识库", rule_template: { or: [ { owner_id: "$identity.user_id" }, { and: [ { access_type: "dept" }, { allowed_depts OVERLAP: "$identity.dept_ids" } ] } ] } }
+
+  # ─── 知识工厂（9 个 tab ↔ 9 个 page id）───
+  knowledge_factory:
+    display_name: "知识工厂"
+    nav_id: "nav:knowledge-factory"
+    pages:
+      - id: "kf:page:sample"
+        display_name: "样例管理"
+      - id: "kf:page:extraction"
+        display_name: "模板抽取"
+      - id: "kf:page:template"
+        display_name: "模板编辑"
+      - id: "kf:page:law"
+        display_name: "法规标准"
+      - id: "kf:page:compliance"
+        display_name: "合规规则"
+      - id: "kf:page:version"
+        display_name: "版本管理"
+      - id: "kf:page:quality"
+        display_name: "质量评估"
+      - id: "kf:page:scrape"
+        display_name: "网页爬取"
+      - id: "kf:page:dict"
+        display_name: "业务字典"
+
+  # ─── 合同价格分析（应用中心 → 采购管理）───
+  contract_price:
+    display_name: "合同价格分析"
+    nav_id: "nav:contract-price"
+    pages:
+      - id: "cpa:page:overview"
+        display_name: "总览"
+      - id: "cpa:page:contracts"
+        display_name: "合同解析"
+      - id: "cpa:page:items"
+        display_name: "分项校验"
+        operations: []
+      - id: "cpa:page:clusters"
+        display_name: "分组审核"
+        operations: []
+      - id: "cpa:page:tasks"
+        display_name: "任务中心"
+        operations: []
+      - id: "cpa:page:settings"
+        display_name: "配置"
+        operations: []
+    data_scopes:
+      - { id: "cpa_all", display_name: "全部合同数据", rule_template: {} }
+      - { id: "cpa_dept", display_name: "本部门合同", rule_template: { dept_id IN: "$identity.dept_ids" } }
+
+  # ─── 备品备件价格分析（应用中心 → 采购管理；克隆自 contract_price，加客户维度）───
+  spare_parts:
+    display_name: "备品备件价格分析"
+    nav_id: "nav:spare-parts"
+    pages:
+      - id: "csp:page:overview"
+        display_name: "总览"
+      - id: "csp:page:contracts"
+        display_name: "文档解析"
+      - id: "csp:page:customers"
+        display_name: "客户管理"
+      - id: "csp:page:items"
+        display_name: "分项校验"
+        operations: []
+      - id: "csp:page:clusters"
+        display_name: "分组审核"
+        operations: []
+      - id: "csp:page:tasks"
+        display_name: "任务中心"
+        operations: []
+      - id: "csp:page:settings"
+        display_name: "配置"
+        operations: []
+    data_scopes:
+      - { id: "csp_all", display_name: "全部备件数据", rule_template: {} }
+      - { id: "csp_dept", display_name: "本部门备件", rule_template: { dept_id IN: "$identity.dept_ids" } }
+
+  # ─── 地质样例库（应用中心 → 地质管理；克隆自 contract_price，spec 2026-09-01 geo-sample-bank）───
+  # 注意：本模块路由用模块级权限点 geo_samples:access（区别于 cpa/csp 复用的 system:access），
+  # 该点声明在 gsb:page:documents 的 operations 下（v3：权限点从页面 operations 收集，无独立 permission_points 键）
+  geo_samples:
+    display_name: "地质样例库"
+    nav_id: "nav:geo-samples"
+    pages:
+      - id: "gsb:page:documents"
+        display_name: "样例管理"
+        operations:
+          - { id: "geo_samples:access", display_name: "访问地质样例库" }
+      - id: "gsb:page:review"
+        display_name: "脱敏审核"
+        operations: []
+      - id: "gsb:page:drafts"
+        display_name: "矿种包孵化"
+        operations: []
+      - id: "gsb:page:tasks"
+        display_name: "任务中心"
+        operations: []
+
+  # ─── 投标报价分析（应用中心 → 市场营销；Route B 直调 data_source 只读查询）───
+  bid_quote:
+    display_name: "投标报价分析"
+    nav_id: "nav:bid-quote"
+    pages:
+      - id: "bqa:page:dashboard"
+        display_name: "分析仪表盘"
+      - id: "bqa:page:query"
+        display_name: "数据查询"
+    data_scopes:
+      - { id: "bqa_all", display_name: "全部投标数据", rule_template: {} }
+      - { id: "bqa_dept", display_name: "本部门投标", rule_template: { dept_id IN: "$identity.dept_ids" } }
+
+  biz_pipeline:
+    display_name: "市场经营分析"
+    nav_id: "nav:biz-pipeline"
+    pages:
+      - id: "bpp:page:dashboard"
+        display_name: "经营仪表盘"
+      - id: "bpp:page:query"
+        display_name: "数据查询"
+    data_scopes:
+      - { id: "bpp_all", display_name: "全部经营数据", rule_template: {} }
+
+  sales_personnel:
+    display_name: "销售人员"
+    nav_id: "nav:sales-personnel"
+    pages:
+      - id: "spq:page:dashboard"
+        display_name: "人员仪表盘"
+      - id: "spq:page:query"
+        display_name: "数据查询"
+    data_scopes:
+      - { id: "spq_all", display_name: "全部人员数据", rule_template: {} }
+
+  # ─── Ontology 统一语义层（平台原语；REST admin-gated，语义地图前端页为独立后续计划）───
+  ontology:
+    display_name: "语义地图"
+    nav_id: "nav:ontology"
+    pages:
+      - id: "ontology:page:map"
+        display_name: "语义地图"
+    data_scopes: []
+
+  # ─── 报告输出（应用中心 → 报告输出）───
+  output:
+    display_name: "报告输出"
+    nav_id: "nav:output"
+    pages:
+      - id: "output:page:index"
+        display_name: "报告输出"
+        operations:
+          - { id: "export:generate", display_name: "生成导出" }
+
+  # ─── 流程管理（应用中心 → 流程管理，admin_only）───
+  workflow_admin:
+    display_name: "流程管理"
+    nav_id: "nav:workflow-admin"
+    admin_only: true
+    pages:
+      - id: "workflow-admin:page:index"
+        display_name: "流程管理"
+        operations:
+          - { id: "workflow:read", display_name: "查看工作流" }
+          - { id: "project:advance", display_name: "推进工作流" }
+
+  # ─── 系统管理 ───
+  admin:
+    display_name: "系统管理"
+    nav_id: "nav:admin"
+    pages:
+      - id: "admin:page:users"
+        display_name: "用户管理"
+        operations:
+          - { id: "user:read", display_name: "查看用户" }
+          - { id: "user:create", display_name: "创建用户" }
+          - { id: "user:update", display_name: "编辑用户" }
+          - { id: "user:delete", display_name: "删除用户" }
+      - id: "admin:page:roles"
+        display_name: "角色管理"
+        operations:
+          - { id: "role:read", display_name: "查看角色" }
+          - { id: "role:create", display_name: "创建角色" }
+          - { id: "role:update", display_name: "编辑角色" }
+          - { id: "role:delete", display_name: "删除角色" }
+      - id: "admin:page:departments"
+        display_name: "部门管理"
+        operations:
+          - { id: "department:create", display_name: "创建部门" }
+          - { id: "department:update", display_name: "编辑部门" }
+          - { id: "department:delete", display_name: "删除部门" }
+      - id: "admin:page:app-center"
+        display_name: "应用管理"
+        operations:
+          - { id: "app_center:manage", display_name: "管理应用中心", admin_only: true }
+
+  # ─── 设置 ───
+  settings:
+    display_name: "设置"
+    nav_id: "nav:settings"
+    pages:
+      - id: "settings:page:general"
+        display_name: "基本设置"
+        operations:
+          - { id: "system:access", display_name: "访问系统设置" }
+      - id: "settings:page:datasource"
+        display_name: "数据源"
+        operations: []
+      - id: "settings:page:license"
+        display_name: "许可证"
+        operations:
+          - { id: "license:manage", display_name: "管理许可证", admin_only: true }
+
+  # ─── 应用中心 ───
+  # 前端 Sidebar.tsx 引用 nav:app-center，但 permissions.yaml 漏了此模块 →
+  # superadmin 的 nav:["*"] 展开后不含 nav:app-center → 应用中心不显示
+  app_center:
+    display_name: "应用中心"
+    nav_id: "nav:app-center"
+    pages: []
+
+# ── 角色默认映射 ──
+roles:
+  superadmin:
+    display_name: "超级管理员"
+    is_system: true
+    level: 100
+    nav: ["*"]
+    pages: ["*"]
+    permissions: ["*"]
+
+  dept_head:
+    display_name: "部门负责人"
+    is_system: false
+    level: 50
+    nav:
+      - nav:dashboard
+      - nav:writing
+      - nav:projects
+      - nav:docmgr
+      - nav:knowledge
+      - nav:knowledge-factory
+      - nav:contract-price
+      - nav:spare-parts
+      - nav:geo-samples
+      - nav:output
+      - nav:app-center
+    pages: ["*"]
+    permissions:
+      # EAI-CUSTOM (Task17): 预备授权 dashboard:view —— dashboard/approval/law 路由当前仍强制 system:access，
+      # 此点为将来切换到模块级粒度（dashboard:view 等）做准备，先让持 nav:dashboard 的角色持有该权限，勿删除
+      - dashboard:view
+      - kb:read
+      - kb:create
+      # EAI-CUSTOM: U2 button-level can() gates upload/delete/edit on these; dept_head manages KB content
+      - kb:upload
+      - kb:update
+      - kb:delete
+      - doc:read
+      - doc:upload
+      - project:create
+      - project:read
+      - model:read
+      - system:access
+      - workflow:read
+      - approval:approve
+      - approval:submit
+      - approval:view
+      - chapter:review
+      # EAI-CUSTOM (bug-1137): 同 project_manager，建项目搜用户需 user:read（只读查询，不含增删改用户）
+      - user:read
+      # EAI-CUSTOM (geo-sample-bank T9): 地质样例库模块访问点（与 roles_custom.yaml overlay 同步）
+      - geo_samples:access
+    # EAI-CUSTOM (bug-1135): +knowledge_public — 公开库是部门可见的超集（私有<部门<公开），
+    # 凡持有 knowledge_dept 的角色亦应可见公开库；M1 只补了 user 角色遗漏了继承链。
+    # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
+    data_scopes: ["knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "bqa_dept", "bpp_all", "spq_all", "project_member", "doc_owner", "doc_project_member"]
+
+  project_manager:
+    display_name: "项目经理"
+    is_system: false
+    level: 60
+    nav:
+      - nav:dashboard
+      - nav:writing
+      - nav:projects
+      - nav:docmgr
+      - nav:knowledge
+      # EAI-CUSTOM (geo-sample-bank T9): 地质样例库导航（与 roles_custom.yaml overlay 同步，bug-1087 wholesale-replace 教训）
+      - nav:geo-samples
+      - nav:output
+      - nav:app-center
+    pages: ["*"]
+    permissions:
+      - "#inherit:dept_head"
+      - dashboard:view
+      - project:edit
+      - member:add
+      - member:remove
+      - chapter:write_any
+      - ai:start_writing
+      - outline:edit
+      - settings:edit
+      - export:generate
+      - approval:submit
+      - approval:review
+      # EAI-CUSTOM (bug-1137): 创建项目向导「组建团队」/ AddMemberDialog 搜用户调
+      # /api/extensions/users/search（require user:read）；缺此点 → 403 → 加不了成员
+      - user:read
+    # EAI-CUSTOM (bug-1135): +knowledge_public（同 dept_head，公开库是部门可见超集）
+    # EAI-CUSTOM: +csp_dept — 备品备件价格分析（spare_parts）本部门数据范围（与 overlay 同步，bug-1087）
+    data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "cpa_dept", "csp_dept", "bqa_dept", "bpp_all", "spq_all", "doc_owner", "doc_project_member"]
+
+  writer:
+    display_name: "撰写人"
+    is_system: false
+    level: 10
+    nav: [nav:dashboard, nav:writing, nav:projects, nav:knowledge, nav:app-center]
+    pages: [projects:page:list, writing:page:chat, knowledge:page:browse, dashboard:page:overview]
+    permissions:
+      - dashboard:view
+      - kb:read
+      - doc:read
+      - model:read
+      - system:access
+      - chapter:write_own
+      - chapter:review
+      - ai:start_writing
+      - workflow:read
+    # EAI-CUSTOM (bug-1135): +knowledge_public（公开库是部门可见超集，私有<部门<公开）
+    data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "doc_owner", "doc_project_member"]
+
+  reviewer:
+    display_name: "审核员"
+    is_system: false
+    level: 20
+    nav: [nav:dashboard, nav:projects, nav:knowledge, nav:app-center]
+    pages: [projects:page:list, knowledge:page:browse, dashboard:page:overview]
+    permissions:
+      - dashboard:view
+      - kb:read
+      - doc:read
+      - model:read
+      - system:access
+      - chapter:review
+      - approval:review
+      - workflow:read
+    # EAI-CUSTOM (bug-1135): +knowledge_public（公开库是部门可见超集，私有<部门<公开）
+    data_scopes: ["project_member", "knowledge_dept", "knowledge_public", "doc_owner", "doc_project_member"]
+
+  # 最小可信基线：新自动桥接用户的默认权限（yaml 权威）
+  # registry `user` role now grants only [kb:read, doc:read, model:read, system:access]
+  # vs the old 18-perm _ROLE_DEFAULTS["user"] — this is intentional least-privilege.
+  user:
+    display_name: "普通用户"
+    is_system: false
+    level: 1
+    nav: [nav:dashboard, nav:knowledge, nav:app-center]
+    pages: [knowledge:page:browse, dashboard:page:overview]
+    permissions:
+      - dashboard:view
+      - kb:read
+      - doc:read
+      - model:read
+      - system:access
+    # EAI-CUSTOM (M1): knowledge_owner added so a user can see their OWN private KB
+    # (a freshly created KB defaults to access_type="private"). Without this, the
+    # owner could not list a KB they just created because only knowledge_public was granted.
+    data_scopes: ["knowledge_owner", "knowledge_public", "project_member", "doc_owner", "doc_project_member"]
+
+# ── 项目级角色 → 权限映射（原 role_permissions 表 / DEFAULT_ROLE_PERMISSIONS 常量）──
+project_roles:
+  owner:      [project:edit, project:delete, member:add, member:remove, chapter:write_any, chapter:review_any, ai:start_writing, ai:stop_writing, approval:submit, approval:review, approval:approve, workflow:start, workflow:cancel, settings:edit, export:generate]
+  phase_lead: [chapter:write_any, chapter:review_any, ai:start_writing, approval:submit, member:add, outline:edit]
+  writer:     [chapter:write_own, chapter:confirm]
+  reviewer:   [chapter:review, approval:review]
+  approver:   [approval:approve, approval:view]

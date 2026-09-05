@@ -445,7 +445,28 @@ cp "deploy/offline/config.yaml"          "${OUTPUT_DIR}/config.yaml"
 if [ -f "deploy/offline/extensions_config.json" ]; then
     cp "deploy/offline/extensions_config.json" "${OUTPUT_DIR}/extensions_config.json"
 fi
-cp "deploy/offline/.env"                 "${OUTPUT_DIR}/.env"
+
+# EAI-CUSTOM (2026-09-05): 权限注册表必须随包——gateway 镜像只 COPY backend/，容器内无
+# /app/config/，缺载 = 空权限注册表（'*' 超管通配/is_system 门控全灭，权限路由全员拒绝）。
+# 同时刷新 deploy/offline/config/ 镜像副本，保证仓库布局直跑 deploy.sh 也能挂到文件。
+mkdir -p "${OUTPUT_DIR}/config" "deploy/offline/config"
+cp "config/permissions.yaml"  "${OUTPUT_DIR}/config/permissions.yaml"
+cp "config/roles_custom.yaml" "${OUTPUT_DIR}/config/roles_custom.yaml"
+cp "config/permissions.yaml"  "deploy/offline/config/permissions.yaml"
+cp "config/roles_custom.yaml" "deploy/offline/config/roles_custom.yaml"
+
+# EAI-CUSTOM (2026-09-05): .env 已 gitignore（机器本地，含密钥）——fresh clone 上会缺失，
+# 给出明确引导而非 set -e 下莫家中止。
+if [ -f "deploy/offline/.env" ]; then
+    cp "deploy/offline/.env"             "${OUTPUT_DIR}/.env"
+elif [ -f "deploy/offline/.env.example" ]; then
+    warn "  deploy/offline/.env 不存在（fresh clone）——已用 .env.example 引导，"
+    warn "  记得回填密钥后再出厂：BETTER_AUTH_SECRET / RAGFLOW_SECRET_KEY / INTERNAL_LLM_API_KEY"
+    cp "deploy/offline/.env.example"     "${OUTPUT_DIR}/.env"
+else
+    err "  deploy/offline/.env 缺失且无 .env.example——无法打包 .env"
+    exit 1
+fi
 
 # EAI-CUSTOM: 零编辑部署所需 —— 配置生成器 + 唯一配置源模板拷进包。
 # install.sh 的 setup_config 调用 scripts/generate-config.sh，从 deploy.conf 生成全部配置。

@@ -66,6 +66,76 @@
       "oauth": null,
       "description": "Project chapter read/write tools for report writing agent"
     },
+    "data_sources": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.data_source.mcp"
+      ],
+      "env": {
+        "DATA_SOURCE_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "External data source query tools (read-only) for report writing agent"
+    },
+    "contract-price-analysis": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.contract_price.mcp"
+      ],
+      "env": {
+        "CPA_QUERY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "tool_name_prefix": false,
+      "description": "合同分项价格只读查询工具(货物价格统计/异常/待核验/总览),供对话 agent 直接调用。不触发流水线。"
+    },
+    "spare-parts-analysis": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.spare_parts.mcp"
+      ],
+      "env": {
+        "CSP_QUERY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "tool_name_prefix": false,
+      "description": "备品备件价格只读查询工具(备件单价统计/跨客户比价/异常/客户明细/总览),供对话 agent 直接调用。不触发流水线。"
+    },
+    "ontology": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.ontology.mcp"
+      ],
+      "env": {
+        "ONTOLOGY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Ontology semantic layer: cross-module object/link navigation, search, traverse and aggregate over the market-domain registry (contract_price / spare_parts / bid_quote). Read-only."
+    },
     "knowledge-factory": {
       "enabled": true,
       "type": "http",
@@ -76,10 +146,36 @@
       "url": "http://knowledge-factory:8765/mcp",
       "headers": {},
       "oauth": null,
-      "description": "Knowledge factory template resolution and domain listing tools for report generation (HTTP long-lived standalone process — avoids stdio cold-start race; container defined in docker-compose.extensions.yaml)"
+      "description": "Knowledge factory template resolution and domain listing tools for report generation (HTTP long-lived process — no cold-start race)",
+      "routing": {
+        "mode": "prefer",
+        "priority": 80,
+        "keywords": [
+          "标准",
+          "规范",
+          "法规",
+          "行业标准",
+          "国标",
+          "知识库",
+          "检索",
+          "GB",
+          "GB/T",
+          "DZ",
+          "DZ/T",
+          "HG",
+          "HG/T",
+          "DL",
+          "TB",
+          "报告样例",
+          "历史报告",
+          "项目资料",
+          "合同条款",
+          "地质矿产"
+        ]
+      }
     },
     "word-document-server": {
-      "enabled": true,
+      "enabled": false,
       "type": "stdio",
       "command": "/app/backend/.venv/bin/python",
       "args": [
@@ -105,7 +201,7 @@
       "url": "http://cad:8003/mcp",
       "headers": {},
       "oauth": null,
-      "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container (docker-compose.mcp-cad.yaml `cad` service)."
+      "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container — start via docker/docker-compose.extensions.yaml `cad` service, then set enabled=true."
     },
     "text-to-cad": {
       "enabled": true,
@@ -117,17 +213,92 @@
       "url": "http://text-to-cad:8004/mcp",
       "headers": {},
       "oauth": null,
-      "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container (docker-compose.mcp-cad.yaml `text-to-cad` service)."
+      "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container — start via docker/docker-compose-dev.yaml `text-to-cad` service (port 8004), then set enabled=true."
+    },
+    "ops-diagnosis": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.ops_diagnosis.mcp"
+      ],
+      "env": {},
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Ops diagnosis read-only tools (thread run inventory + run event stream) over the harness runs/run_events tables. TRUST BOUNDARY v1: stdio session carries no caller identity — enabled servers let any agent read any user's thread events. Intranet admin/ops deployments only."
     }
   },
   "skills": {
-    "fire-protection-report": {
+    "fire-protection-extract": {
       "enabled": true
     },
     "fire-protection-report-v2": {
+      "enabled": true
+    },
+    "report-format": {
+      "enabled": true
+    },
+    "report-enrich": {
       "enabled": false
     },
-    "fire-protection-extract": {
+    "report-polish": {
+      "enabled": false
+    },
+    "kf-extract-template": {
+      "enabled": true
+    },
+    "coal-eia-report": {
+      "enabled": true
+    },
+    "coal-mine-tunneling-regulation": {
+      "enabled": true
+    },
+    "cad-modeling": {
+      "enabled": true
+    },
+    "mine-design": {
+      "enabled": true
+    },
+    "chemplant-design": {
+      "enabled": true
+    },
+    "contract-price-analysis": {
+      "enabled": true
+    },
+    "spare-parts-analysis": {
+      "enabled": true
+    },
+    "bid-quote-analysis": {
+      "enabled": true
+    },
+    "plugin-dbd709b2-f795-45a6-8ee5-d4360ca671b7": {
+      "enabled": true
+    },
+    "fire-regulatory-compliance-check": {
+      "enabled": true
+    },
+    "geological-report": {
+      "enabled": true
+    },
+    "markdown-to-docx": {
+      "enabled": true
+    },
+    "skill-design-review": {
+      "enabled": true
+    },
+    "water-drainage-report": {
+      "enabled": true
+    },
+    "coal-mine-report-review": {
+      "enabled": true
+    },
+    "bid-proposal-writing": {
+      "enabled": true
+    },
+    "local-knowledge-first": {
       "enabled": true
     }
   }

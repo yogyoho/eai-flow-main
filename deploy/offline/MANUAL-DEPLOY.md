@@ -202,10 +202,19 @@ grep DEER_FLOW_TRUSTED_ORIGINS .env
 # 内网 LLM key（与 config.yaml 的 intranet-llm 配合）
 grep INTERNAL_LLM_API_KEY .env
 
-# RAGFlow SECRET_KEY（RAGFlow v0.27.x 必需，包内 .env 已带固定值）
+# RAGFLOW_SECRET_KEY（RAGFlow v0.27.x 必需，包内 .env 已带固定值）
 grep RAGFLOW_SECRET_KEY .env
 #   ⚠️ 只核对非空即可，绝不可修改或清空：RAGFlow v0.27.x 把它缓存在 Redis，
 #   变更后所有请求 401。系统整个生命周期（跨重启/升级）必须保持同一个值。
+
+# RAGFlow API Key（部署后回填——法规库种子 + geo 样例库 RAGFlow 推送都靠它）
+grep RAGFLOW_API_KEY .env
+#   部署完成后：浏览器打开 http://<服务器IP>:19381 登录 → 个人设置 → 创建 API Key，
+#   回填 .env 后 docker compose -p eai-prod up -d --force-recreate --no-deps gateway
+
+# geo 样例库 RAGFlow 推送 dataset id（可选；留空=跳过推送，不影响入库主流程）
+grep GSB_RAGFLOW_DATASET_ID .env
+#   需要时在 RAGFlow Web UI 创建 geo-samples-slices 知识库，取其 dataset id 回填（同上重启 gateway）
 ```
 
 **`.env` 自动推导项（一般不用手动改）：**
