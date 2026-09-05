@@ -14,6 +14,12 @@ import { DeptAccessPicker } from "@/app/knowledge/_components/DeptAccessPicker";
 const DEPARTMENTS = [
   { id: "d1", name: "采矿设计院", sort_order: 1 },
   { id: "d2", name: "机电设计院", sort_order: 2 },
+  {
+    id: "d3",
+    name: "机电设计院-电气",
+    sort_order: 3,
+    children: [{ id: "d4", name: "电气一组", sort_order: 4 }],
+  },
 ];
 
 afterEach(cleanup);
@@ -72,5 +78,29 @@ describe("DeptAccessPicker", () => {
 
     expect(await screen.findByText("你尚未加入任何部门")).toBeTruthy();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("子部门: 拍平后可勾选,标签显示名称而非裸 id", async () => {
+    deptState.list.mockResolvedValue({ departments: DEPARTMENTS });
+
+    // 树形响应中的子部门(d4,嵌套在 d3 下)被拍平为可勾选项
+    const onChange = rs.fn();
+    const { unmount } = render(
+      <DeptAccessPicker selectedIds={[]} onChange={onChange} />,
+    );
+    const childCheckbox = await screen.findByRole("checkbox", {
+      name: "电气一组",
+    });
+    fireEvent.click(childCheckbox);
+    expect(onChange).toHaveBeenCalledWith(["d4"]);
+    unmount();
+
+    // 子部门标签显示名称而非裸 UUID
+    render(<DeptAccessPicker selectedIds={["d4"]} onChange={rs.fn()} />);
+    const removeButton = await screen.findByRole("button", {
+      name: "移除 电气一组",
+    });
+    expect(removeButton.closest("span")?.textContent).toContain("电气一组");
+    expect(screen.queryByText("d4")).toBeNull();
   });
 });

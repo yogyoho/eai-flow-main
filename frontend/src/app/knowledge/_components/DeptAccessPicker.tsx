@@ -8,7 +8,16 @@ import React, { useEffect, useState } from "react";
 // 部门列表组件内懒加载 deptApi.list(GET /departments 仅需登录,普通用户可调)。
 import { deptApi } from "@/extensions/api";
 import type { Department } from "@/extensions/types";
-import { cn } from "@/lib/utils";
+
+// EAI-CUSTOM: /departments 返回树形,选择器只关心可勾选的扁平列表
+// (先例: frontend/src/app/admin/users/page.tsx 的 flattenDepts)
+function flattenDepts(depts: Department[]): Department[] {
+  return depts.reduce((acc: Department[], dept) => {
+    acc.push(dept);
+    if (dept.children?.length) acc.push(...flattenDepts(dept.children));
+    return acc;
+  }, []);
+}
 
 export function DeptAccessPicker({
   selectedIds,
@@ -27,10 +36,14 @@ export function DeptAccessPicker({
     deptApi
       .list({ limit: 500 })
       .then((res) => {
-        if (!cancelled) setDepartments(res.departments ?? []);
+        if (!cancelled) setDepartments(flattenDepts(res.departments ?? []));
       })
-      .catch(() => {
-        if (!cancelled) setDepartments([]);
+      .catch((e) => {
+        // 降级为空列表(不新增错误态 UI),但失败要留痕
+        if (!cancelled) {
+          console.error("加载部门列表失败", e);
+          setDepartments([]);
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -83,9 +96,7 @@ export function DeptAccessPicker({
           {selectedIds.map((id) => (
             <span
               key={id}
-              className={cn(
-                "bg-primary/10 text-primary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs",
-              )}
+              className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs"
             >
               {nameOf(id)}
               {!readOnly && (
