@@ -4,6 +4,8 @@
 > Do not edit manually unless correcting an error.
 > Last updated: 2026-07-27
 
+- **AsyncMock 的 await_args_list/await_count 是 per-mock 的,不聚合子 mock 调用 (2026-09-05, 法库投影测试):** `db=AsyncMock()` 后 `await db.execute(stmt)` 的调用记录在 **`db.execute.await_args_list`**(子 mock 自己的),`db.await_args_list` 恒为空、`db.await_count` 恒 0;`db.mock_calls` 才聚合子调用。断言被 await 的 SQL 时必须走 `<child>.await_args_list[i].args[0]` 取语句。另:SQLAlchemy `str(select(...))` 的**列清单本就含所有列名**——断言 where 过滤必须匹配 `"where laws.<col>"` 子串,裸列名匹配没有判别力(去掉 where 仍会过)。
+
 ## User Preferences
 
 <!-- How the user likes things done. Code style, tools, patterns, communication. -->
@@ -1760,3 +1762,54 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - (2026-09-05) 客户端组件顶层 import isomorphic-dompurify 会让路由 SSR 500(jsdom 在 Next 服务端 bundle 里找 default-stylesheet.css ENOENT);Need:懒加载或换 dompurity+客户端守卫。另:在运行中的 dev server 上 rm -rf .next 会造成瞬时坏态(疑似已编译路由持续500),先 restart 再清或清完立即重启。浏览器点 Next Link 不跳=目标路由 RSC 未编译,先 curl 预热。
 
 - (2026-09-05) 本仓库并发会话共分支:裸 `git commit` 会把其他会话留在暂存区的 WIP 一起打包(实测吞了14个文件);必须 pathspec 提交 `git commit -m ... -- <files>`,add 时也只加精确路径。事故已用 soft-reset+pathspec重提恢复。
+
+### Key Learnings
+- (2026-09-05) 标书交付拓扑=两文档：招标一级大纲技术仅占一章→整体投标方案(tender镜像+技术章占位页)+技术卷(自有大纲分册)。切册算法跑两棵树, 技术卷大纲来源=技术要求/评分办法聚类→样例库模板→self_created, 门1 确认。设计稿 Revision 4。
+
+### Do-Not-Repeat (2026-09-05)
+- 单独跑 tests/test_subagent_executor.py 会假失败(TestBashExecutionHarvest 2例): fixture 把父包 deerflow.sandbox 换成 MagicMock, 惰性 `from deerflow.sandbox.overwrite import` 在叶子模块未预加载时 ImportError→兜底None; 先跑任一 sandbox 测试(叶子留sys.modules)即全过。上游全量 make test 字母序不受影响, 勿当回归修
+- tests/conftest.py 的 _executor_mock(sys.modules mock)会让 pytest_runtest_setup 阶段 import deerflow.subagents.executor 拿到 MagicMock——插件插桩时要等 fixture 换回真模块
+- /effort ultracode 下大合并流程实测: git层串行(merge/commit/main-loop), workflow 只 fan-out 解算+对抗复核(每文件 resolve+verify 流水线)——24 agent 2.2M token 全 pass, 复核还抓到 AGENTS.md 冲突区静默吞上游26行的暗雷
+
+### Key Learnings
+- (2026-09-05) 分册重构落点: build_output 渲染重构采用"节点组渲染提取(_render_nodes)+章连续分组(_chapter_groups, 保留招标大纲交错序)+整卷兼容包装(章文本拼接==原单循环字节级)"三步法, 既有580测试只需迁移断言目标(helper聚合册集)不需重写语义。
+- (2026-09-05) 卷尾件(扫描件清单)是双卷行为不是技术卷专属——重构提取公共尾件时按旧代码的volume门槛走, 别凭直觉收窄; test_image_slot_scan_list 抓住该回归=迁移期测试的价值实证。
+### Do-Not-Repeat
+- (2026-09-05) 别在重构时把"仅为技术卷写的测试"当成"行为仅限技术卷"——旧测试锁的是当时fixture的挂接位置, 不是volume门槛语义; 提取公共函数前先读旧行为的volume条件。
+
+### Do-Not-Repeat (2026-09-05 追加)
+- make config-upgrade 会把 config.yaml 重写为纯数据版(注释全剥, EAI 配置 89% 是注释, 133KB→11KB)——diff 体积巨大≠数据丢失! 先做 yaml 深度比对再下结论; 数据已证 100% 无损(唯一有意跳过 memory.backend_config, bug-3017 契约)。注释原文在 git 历史 + .wolf/tmp/config.v34.bak.yaml
+- 大 diff 验证时勿用 head -10 看删除行就下"零丢失"结论(本次险些被注释头骗过两次: 一次误报clobber, 一次误报无丢失)
+- 文本级 YAML 手术(插行保注释)极易产生重复键/错位父块——两次尝试都翻车, 有深度解析校验才可靠; 配置升级走原版工具+数据比对最短可靠
+- config.yaml 注释保真升级的正解: `uv run --with ruamel.yaml python`(零依赖污染)+ YAML(rt).load→逐键add-only合并→dump, 旧注释全保留、新节连 example 注释一起带进来; 顺带折叠文本里的历史嵌套重复键(解析语义不变); 事后必做 safe_load 深度比对=0 差异
+
+### Decision Log
+- (2026-09-05) T3 交付门通用化定案: 解析收口单模块(harness delivery_contract.py, app 三端导入——合法方向), 三处重复 json.loads 消灭; aux_md 字段解决"确认门工件(build 后呈现)被整单拒"的 C2 变体——技能在 manifest 里申报辅助 .md 白名单, agent 无申报权; bug 编号取 take_free(bug-3061 已被并发会话 redactor 占用→bug-3109), EAI-CUSTOM 注记同步改号。
+
+### Key Learnings
+- (2026-09-05) sections.json 是元数据契约不含正文(chunk=source_file/anchor/heading_path/n_paras)——标书原文只活在 uploads/, agent 靠 grep/read 访问; 任何"扫原文"的需求都必须在 ingest parse 时(文本在手的唯一时刻)采集落 state。
+- (2026-09-05) 熔断轮次持久化放 workspace last_build.json(state 不签名不扩登记), 按 flagged 值集 sha256 指纹判"同集连犯"vs"新残留"——geo consistency 两轮规约的确定性等价物。
+
+### 规范勾选下拉框根因 + ask_clarification 多选正解（2026-08-30，bug-3110）
+- ask_clarification 的字段白名单（clarification_middleware FORM_FIELD_TYPES）支持 multi_select/checkbox/date；前端 human-input-card 把 multi_select 渲染成多选 chip（值=数组）、checkbox 是原生布尔。**"勾选XX"类需求=multi_select 字段**，agent 用 select+档位选项即漂移。
+- 防漂移手法与 R11/R12 同根：SKILL 里凡涉及交互 widget，必须钉死逐字 field 模板（name/type/options 生成规则/返回值去向），只写"让用户勾选"必被自由发挥。
+- 无预勾选默认值机制（multi_select 初始空、checkbox 默认 no）；"默认 tier1"用 label 文案（⭐建议集）承载，harness 加 default 属核心改动不做。
+
+### Key Learnings
+- (2026-09-05) 政策文本落点要配负向契约: SKILL_MD_REQUIRED_TOKENS 只能锁"新政策在场", 锁不住"旧指令回流"——STAGE_FILE_FORBIDDEN_TOKENS 表(mode1/2/3 级联指令头/阻塞动作短语)是必要补丁; 废除说明里提及枚举名不算违例, 禁的是指令头与阻塞动作短语。
+
+- (2026-09-05) to_response 类方法读 relationship(kb.owner.username)+裸except兜底=把异步懒加载错误永久吞成 null;ABAC scope 自建查询迁移时容易丢 joinedload。排查 owner_name 类「全是空」先查查询有无 .options(joinedload(...))。
+
+### Key Learnings
+- (2026-09-05) 槽位键/占位符类字符集必须含 CJK——业务键("报价总额")是中文, geo 式 [A-Za-z0-9_-] 字符集会让 token 静默不匹配(不注入不报错直到残留防线兜住); 新正则先想键/值的语言域。
+- (2026-09-05) bash heredoc 里 "\n" 在本环境会落盘成真实换行(Git Bash+工具链转义层)——生成含 \n 字面量的代码一律用 chr(92)+chr(110) 拼接或 Write 工具, 不信 heredoc 转义。
+
+### 页面测试环境三坑（2026-09-05，QA 回归实测）
+- gateway 端口不发布到宿主机：host 直连 localhost:8001 永远 000 是假信号，探活必须走 nginx :2026 或容器内 nginx→gateway。容器内无 netstat，"NOT LISTENING"可能是命令缺失假阴性，用 /proc/net/tcp 看 :1F41。
+- gateway 被并发会话重启后，Windows bind mount 遇 frontend 重编译+多会话 IO 会把启动拖到 ~8 分钟（import 单测 ~60s），零日志期间别急着判死。
+- 前端 dev 日志不在 docker logs（entrypoint 重定向到 /app/logs/frontend.log）；多会话改码=webpack 编译风暴，未编译路由首访 2-5min。重页面（长线程）hydration 在低配负载下可能数分钟不完成——页面级验证优先选轻路由。
+
+### Key Learnings
+- (2026-09-05) 状态机"推导+记录"双源语义: 落盘记录压死推导是经典坑(init 全记 PENDING 则自动升级永不触发)——VERIFIED/BLOCKED 粘滞(记录优先), PENDING/DRAFTED 按产物推导(磁盘记录只当下限); gate 选目标必须用推导态非记录态。
+- (2026-09-05) SKILL.md 速查表行尾不许带 # 注释——命令抽取器把注释当 argv, argparse 必炸; 速查表=唯一合法调用形态+机器可解析契约, 注释语义写进分组指南。
+- (2026-09-05) frontend eslint 规则 @typescript-eslint/prefer-optional-chain 会把 `x && x.length === 0`(x 可空)判 error → 计划片段里的 && 空值守卫落地时须改 `x?.length === 0`(语义等价); prettier 计宽 CJK=2, 中文三元/长串多行写法常被折叠成单行——落地含中文 JSX 后直接 `prettier --write` 再 --check, 别手工猜断行。

@@ -24206,7 +24206,7 @@
     "error_message": "GET /knowledge/[kbId] 500: Error: ENOENT: no such file or directory, open '/app/frontend/.next/browser/default-stylesheet.css'",
     "file": "frontend/src/app/knowledge/_components/ChunkModal.tsx",
     "root_cause": "ChunkModal.tsx:9 顶层 import isomorphic-dompurify -> SSR 拉起 jsdom,jsdom 在 Next 服务端 vendor chunk 里按 bundle 相对路径找 default-stylesheet.css(.next/browser/ 不存在) -> 模块导入即抛,整个路由 SSR 500。在运行中的 dev server 上 rm -rf .next 后必然复现;vendor chunk 重建后自愈。chunk_method=manual 的库 ChunkModal 也会触发。",
-    "fix": "未修(既有隐患,与 2026-09-04 上传收口任务无关,浏览器验证前临时自愈)。候选修法:DOMPurify 改为 effect/事件内懒加载,或换 dompurify+客户端守卫,使 ChunkModal 不在模块顶层引 jsdom。",
+    "fix": "已修(commit 4e27e14aa, 2026-09-05): ChunkModal.tsx 移除顶层 import isomorphic-dompurify,改为 ChunkHtmlBody 的 useEffect 内动态 import()——SSR 模块求值不再拉起 jsdom 链,路由稳定 200;浏览器 E2E 验证 chunks 弹窗正常渲染(74 分片)。曾两次阻塞 /knowledge/[kbId] E2E,自愈假象已澄清。",
     "tags": [
       "ssr",
       "jsdom",
@@ -24218,7 +24218,7 @@
       "knowledge"
     ],
     "related_bugs": [],
-    "occurrences": 1,
+    "occurrences": 2,
     "last_seen": "2026-09-05T00:00:00.000Z"
   },
   {
@@ -24237,5 +24237,176 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-09-05T01:57:59.909Z"
+  },
+  {
+    "id": "bug-3054",
+    "timestamp": "2026-09-05",
+    "error_message": "合并门禁 test_subagent_executor.py::TestBashExecutionHarvest 2 例失败(shell_persistent 得 None 非 True/False)",
+    "file": "backend/tests/test_subagent_executor.py",
+    "root_cause": "非合并回归: fixture _MOCKED_MODULE_NAMES 将父包 deerflow.sandbox 置为 MagicMock; 被测代码惰性 from deerflow.sandbox.overwrite import 时若叶子模块未在 sys.modules, 导入系统因 mock 无 __path__ 失败, 兜底 except 返回 None",
+    "fix": "无需修码: 跑前preload任一真实import该叶子的测试(如 test_sandbox_authorization.py)后 59/59 全过; 已实证 tests/test_sandbox_authorization.py + harvest 组合 59 passed",
+    "tags": [
+      "test-isolation",
+      "import-order",
+      "mock-parent-package",
+      "upstream-sync"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-05"
+  },
+  {
+    "id": "bug-3055",
+    "timestamp": "2026-09-05",
+    "error_message": "make config-upgrade 后 config.yaml 从 136KB 变 11KB, 误判为配置被 clobber 并回滚; 随后手工文本插行保注释又产生重复键/错位",
+    "file": "config.yaml",
+    "root_cause": "(1) yaml.safe_load→dump 往返天然剥离注释, EAI 配置 89% 是注释故体积暴跌, 数据实为 100% 无损; (2) 初次验证用 head -10 看 diff 删除行, 被注释头误导; (3) 文本级 YAML 插行无解析校验必然出错",
+    "fix": "恢复干净 v34 后重跑原版 make config-upgrade, 并以 yaml 深度比对证明数据无损(差异数 0, 唯一有意跳过 memory.backend_config); commit 085d88140 已 push; 注释原文保留在 git 历史与 .wolf/tmp/config.v34.bak.yaml",
+    "tags": [
+      "config-upgrade",
+      "yaml-comments",
+      "false-alarm",
+      "verification-discipline"
+    ],
+    "related_bugs": [
+      "bug-3017"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-05"
+  },
+  {
+    "id": "bug-3109",
+    "timestamp": "2026-09-05T13:50:56+08:00",
+    "error_message": "v4 分册交付被 harness 交付门阻断: present_file_tool 门为 geo 硬编码(单数 deliverable+geo 文案), bid 25 册整单被拒; 反向亦然——bid 线程杂散 .md 无门约束(outputs/ 转向效应无确定性防线)",
+    "file": "backend/packages/harness/deerflow/tools/builtins/delivery_contract.py(present_file_tool.py/sandbox_sync.py/artifacts.py 三端收口)",
+    "root_cause": "geo v2 交付门按 geo 单文件交付形态硬编码在 harness 三处; v4 两文档册集(整体方案/技术卷 N 册+索引+副表)与单名 deliverable 契约不兼容(eng-review C1/C2: 既违反 Constraints 又硬阻断 WP-1 交付)",
+    "fix": "契约通用化(WP-2.3): 新建 harness delivery_contract.py 共享解析器(MANIFEST_CONTRACT_VERSION=1), 三端收口; manifest 契约 = skill/version/deliverables[](册集)+aux_md(确认门工件白名单: 条款清单/补遗diff表), 向后兼容 geo 旧单名 deliverable, 向前兼容未知 version/未知契约显式报错(3A); 整单判定+重试幂等语义保持; bid build_output 写 .delivery-contract 标记+aux_md 激活本线程门(堵 outputs/ 转向效应); EAI-CUSTOM 三重规范注记",
+    "tags": [
+      "harness",
+      "present_files",
+      "delivery-gate",
+      "v4",
+      "bid-proposal",
+      "eai-custom"
+    ],
+    "related_bugs": [
+      "bug-2225",
+      "bug-3059"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-05T13:50:56+08:00"
+  },
+  {
+    "id": "bug-3110",
+    "timestamp": "2026-08-30T21:00:00+08:00",
+    "error_message": "用户反馈：给排水技能让用户勾选引用的标准规范应多选checkbox，实际是单选下拉框（线程 0f4e1f3b）",
+    "file": "skills/public/water-drainage-report/SKILL.md",
+    "root_cause": "agent 自由发挥：把 standards_index.json 的 7 本规范坍缩成一个 type:select 三档单选（全部勾选/仅tier1/自定义勾选）。能力层无缺口——middleware 白名单含 multi_select(clarification_middleware.py L26)、前端 human-input-card 已渲染多选 chip(L148)、工具 docstring 已教 multi_select(clarification_tool.py L59)。缺口纯在 SKILL.md：规范勾选只写'勾选'二字，没钉死 ask_clarification field 模板",
+    "fix": "SKILL.md 步骤1 规范勾选增补逐字 field 模板：type=multi_select + 7 本规范逐本成 option（⭐=tier1_curated）+ 禁止坍缩成 select 档位",
+    "tags": [
+      "water-skill",
+      "ask_clarification",
+      "multi_select",
+      "standards-selection",
+      "skill-contract"
+    ],
+    "related_bugs": [
+      "bug-2191"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-08-30"
+  },
+  {
+    "id": "bug-3111",
+    "timestamp": "2026-09-05T00:00:00.000Z",
+    "error_message": "知识库管理页每个KB卡片左下创建人名全显示「未知」(API 返回 owner_name=null)",
+    "file": "backend/app/extensions/knowledge/routers.py",
+    "root_cause": "M2 权限重构后 list_knowledge_bases 与 _load_kb_scoped 用自建 ABAC scope 查询,丢了原 service 层查询的 joinedload(KnowledgeBase.owner);to_response 里 kb.owner.username 在异步会话下访问未预加载关系抛错,被裸 except 静默兜底为 None。所有 KB、列表+详情全中。",
+    "fix": "commit 020a21890: 两处查询补 .options(joinedload(KnowledgeBase.owner));浏览器实测 8 库 owner_name 全部正确(admin×7/test-procurement×1)。教训:裸 except 兜底 relationship 访问会把 async 懒加载错误永久吞成 null。",
+    "tags": [
+      "knowledge",
+      "owner_name",
+      "joinedload",
+      "sqlalchemy-async",
+      "abac-scope",
+      "regression"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-05T00:00:00.000Z"
+  },
+  {
+    "id": "bug-3112",
+    "timestamp": "2026-09-05",
+    "error_message": "git commit 时 code-review-graph hook 崩溃：UnicodeDecodeError gbk codec can't decode byte 0xa1 → AttributeError NoneType.splitlines（提交本身不受影响）",
+    "file": "code-review-graph/incremental.py (get_changed_files)",
+    "root_cause": "hook 子进程 git 输出含中文（提交信息/路径），Windows 下 subprocess 默认 GBK 解码崩溃，stdout 变 None",
+    "fix": "未修（第三方工具层）；规避=提交照常成功，图增量更新该次跳过（下次触发自动补）。若要根治可设 PYTHONIOENCODING=utf-8 或 hook 内 encoding='utf-8'",
+    "tags": [
+      "code-review-graph",
+      "hook",
+      "gbk",
+      "windows"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-05"
+  },
+  {
+    "id": "bug-3113",
+    "timestamp": "2026-09-05",
+    "error_message": "质量评审:详情页编辑知识库 modal 编辑按钮只 gate 在 can(kb:update),无列表页系统库禁用;接入 allowed_depts 后每次保存都写 access_type/allowed_depts → 有权限者可把只读系统库(法规/地质切片)改成私有/公开或改写 allowed_depts",
+    "file": "frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx",
+    "root_cause": "详情页编辑框缺 isSystemKb(isReadOnlyKnowledgeBase) 防护,且 dept 接入使保存 payload 无条件携带访问控制字段",
+    "fix": "fd0c35406: ①「访问权限」字段+DeptAccessPicker 用 {!isSystemKb && (<>…</>)} 包裹隐藏;②handleEditSave 对 isSystemKb 提前 return,提交体只含 name/description/kb_type(不含 access_type/allowed_depts);③保存按钮 disabled 的 dept-empty 子句加 !isSystemKb 前置。判定 helper=文件既有 const isSystemKb = isReadOnlyKnowledgeBase(kb.name)(该 helper 已涵盖 isLawKnowledgeBase||isGeoSlicesKnowledgeBase)",
+    "tags": [
+      "knowledge",
+      "access-control",
+      "system-kb",
+      "allowed_depts",
+      "read-only",
+      "security"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-05"
+  },
+  {
+    "id": "bug-3114",
+    "timestamp": "2026-09-05",
+    "error_message": "评审裁决:非管理员编辑他人的 KB 时仍可见访问权限字段且保存会写 access_type/allowed_depts——只有 owner/admin 才该有访问权限编辑权",
+    "file": "frontend/src/app/knowledge/page.tsx + frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx",
+    "root_cause": "两个编辑框的访问权限字段只按权限/系统库判定,未按 owner 归属收窄;dept 接入后保存 payload 无条件携带访问控制字段",
+    "fix": "120187823: ①两文件各定义 canEditAccess = is_admin || (editKb|kb).owner_id === identity.user_id(page.tsx L175 editKb?,Detail L130);②字段块 page.tsx L1018 {canEditAccess && (<>…</>)}、Detail L1127 {!isSystemKb && canEditAccess && (<>…</>)};③handleEditSave 守恒提交:page.tsx L299 if(!canEditAccess) 只存 name/description/kb_type 并跳过 dept 校验,Detail L401 if(isSystemKb || !canEditAccess) 同构;④Detail 保存按钮 disabled 的 dept-empty 子句加 canEditAccess(L1210)。创建对话框不动(创建者恒为 owner);自己的库非 admin 仍 readOnly picker",
+    "tags": [
+      "knowledge",
+      "access-control",
+      "owner",
+      "allowed_depts",
+      "security",
+      "review-ruling"
+    ],
+    "related_bugs": [
+      "bug-3113"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-05"
+  },
+  {
+    "id": "bug-3115",
+    "timestamp": "2026-09-05",
+    "error_message": "resolve_ragflow_dataset_id 按名查找在 RAGFlow 不可达时抛异常，会击穿 spec §7 降级链使编译 run 失败（env 未配置路径才该走 skipped）",
+    "file": "backend/app/extensions/geo_samples/service.py",
+    "root_cause": "按名兜底分支无 api_key 守卫、无 try/except——把辅助通道的解析失败升级成了编译失败",
+    "fix": "api_key 空直接返回空串；get_dataset_by_name 包 try/except 记 warning 返回空串（=skipped 降级）",
+    "tags": [
+      "ragflow",
+      "degradation",
+      "geo-samples",
+      "resolve-chain"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-05"
   }
 ]

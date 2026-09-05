@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-09-05T02:18:38.343Z
-> Files: 69 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-05T11:39:31.758Z
+> Files: 105 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -35,7 +35,9 @@
 
 ## ./
 
+- `.gitignore` — Git ignore rules (~669 tok)
 - `.tmp-wolf-json-fix.mjs` — One-off: merge recovered entries 3078-3103 + fresh 3104 into restored buglog.json (~510 tok)
+- `AGENTS.md` — AGENTS.md (~4372 tok)
 - `TODOS.md` — TODOS (~715 tok)
 
 ## .agent/skills/smoke-test/
@@ -73,9 +75,11 @@
 
 ## .github/workflows/
 
+- `backend-unit-tests.yml` — CI: Unit Tests (~1083 tok)
 
 ## .gstack/qa-reports/
 
+- `qa-report-localhost-2026-09-05.md` — QA 回归测试报告 — localhost:2026（bug-3110 修复 + 36c817131 预览回归） (~848 tok)
 
 ## .kiro/settings/
 
@@ -297,7 +301,7 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `bid-tech-response-source-policy.md` (~256 tok)
+- `bid-tech-response-source-policy.md` (~308 tok)
 - `blocknote-xl-ai-ids-suffixed.md` (~230 tok)
 - `gsb-ragflow-dataset-wiring.md` (~293 tok)
 - `MEMORY.md` (~2659 tok)
@@ -305,6 +309,7 @@
 - `offline-prod-deploy-solution.md` (~585 tok)
 - `ps51-utf8-no-bom-corruption.md` (~260 tok)
 - `render-prop-as-component-remount-trap.md` (~262 tok)
+- `upstream-sync-2026-09-05.md` (~442 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -375,6 +380,7 @@
 
 ## backend/.deer-flow/
 
+- `page_verify.py` — T8b 页面数据层验证: 登录→册集 AIDocument 列表→单册内容→工件预览 API→索引卷→合并导出 API (~791 tok)
 
 ## backend/.deer-flow/data/
 
@@ -570,6 +576,7 @@
 
 ## backend/app/channels/
 
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~16004 tok)
 
 ## backend/app/extensions/
 
@@ -603,13 +610,13 @@
 ## backend/app/extensions/geo_samples/
 
 - `ore_pack_extract.py` — ore_pack 批量孵化：LLM 抽草稿 → validate → 草稿表 → 人审 → ore_packs/ 落 repo。 (~1863 tok)
-- `routers.py` — Geo sample bank management API — all functional areas. (~5564 tok)
-- `service.py` — EAI-CUSTOM: forked from app.extensions.contract_price.service (geo-sample-bank Phase 1). (~4820 tok)
+- `routers.py` — Geo sample bank management API — all functional areas. (~6039 tok)
+- `service.py` — EAI-CUSTOM: forked from app.extensions.contract_price.service (geo-sample-bank Phase 1). (~5504 tok)
 
 ## backend/app/extensions/knowledge/
 
 - `client.py` — RAGFlow client for knowledge base integration. (~5383 tok)
-- `routers.py` — Knowledge base routers for extensions module. (~8666 tok)
+- `routers.py` — Knowledge base routers for extensions module. (~9238 tok)
 - `service.py` — Knowledge base and document management service. (~7426 tok)
 
 ## backend/app/extensions/knowledge_factory/
@@ -637,7 +644,7 @@
 
 ## backend/app/extensions/law/
 
-- `service.py` — Business logic for law management. (~10194 tok)
+- `service.py` — Business logic for law management. (~10226 tok)
 
 ## backend/app/extensions/license/
 
@@ -662,6 +669,7 @@
 
 ## backend/app/extensions/output/
 
+- `generator.py` — Markdown → DOCX generator using python-docx with layout template styling. (~19233 tok)
 
 ## backend/app/extensions/project/
 
@@ -701,15 +709,20 @@
 
 ## backend/app/extensions/workspace/
 
+- `sandbox_sync.py` — Collab Workspace — 沙箱→文档同步（workspace 本地实现）。 (~1654 tok)
 
 ## backend/app/extensions/writing/
 
 
 ## backend/app/gateway/
 
+- `app.py` — lifespan (~13007 tok)
+- `services.py` — Run lifecycle service layer. (~23109 tok)
 
 ## backend/app/gateway/routers/
 
+- `artifacts.py` — Pydantic: ArtifactUpdateRequest (~8187 tok)
+- `thread_runs.py` — Runs endpoints — create, stream, wait, cancel. (~20344 tok)
 
 ## backend/app/scheduler/
 
@@ -743,6 +756,7 @@
 
 ## backend/packages/harness/deerflow/agents/middlewares/
 
+- `dynamic_context_middleware.py` — Middleware to inject dynamic context (memory, current date, project context) as a system-reminder. (~9146 tok)
 
 ## backend/packages/harness/deerflow/community/e2b_sandbox/
 
@@ -806,6 +820,8 @@
 
 ## backend/packages/harness/deerflow/tools/builtins/
 
+- `delivery_contract.py` — 交付契约解析(v4 通用化)——present_files / sandbox_sync / artifacts GET 三端共用。 (~1232 tok)
+- `present_file_tool.py` — present_file_tool (~2627 tok)
 
 ## backend/packages/harness/deerflow/utils/
 
@@ -815,13 +831,16 @@
 
 ## backend/tests/
 
+- `test_bid_proposal_scripts.py` — bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~111804 tok)
+- `test_dynamic_context_middleware.py` — Tests for DynamicContextMiddleware. (~15632 tok)
 - `test_eai_cli.py` — 统一 CLI（tools/eai.py）单元测试——importlib 加载，httpx.MockTransport/fake 会话假网络。 (~5630 tok)
-- `test_geo_sample_bank_compile.py` — bank_compile / resolve_targets 矿种选基线单元测试（Phase 2）。 (~25934 tok)
+- `test_geo_sample_bank_compile.py` — bank_compile / resolve_targets 矿种选基线单元测试（Phase 2）。 (~27079 tok)
 - `test_geological_report_skill.py` — geological-report SKILL.md v2 结构测试。 (~3446 tok)
 - `test_kb_metadata_filter.py` — build_metadata_condition(filters→RAGFlow metadata_condition)单测。 (~1198 tok)
 - `test_kf_search_filters.py` — kf_search_knowledge 的 filters 两段式过滤单测(FakeRF 直驱 handler)。 (~1172 tok)
 - `test_knowledge_ragflow_client.py` — Wire-format tests for the extensions RAGFlow HTTP client. (~2866 tok)
-- `test_law_kb_documents_projection.py` — 法规标准库文件列表投影测试(EAI-CUSTOM, spec 2026-09-05)。 (~979 tok)
+- `test_law_kb_documents_projection.py` — 法规标准库文件列表投影测试(EAI-CUSTOM, spec 2026-09-05)。 (~1139 tok)
+- `test_mcp_client_config.py` — Core behavior tests for MCP client server config building. (~2214 tok)
 
 ## backend/tests/e2e/bid/
 
@@ -858,6 +877,7 @@
 ## docker/
 
 - `docker-compose-dev.yaml` — DeerFlow Development Environment (~5867 tok)
+- `docker-compose.yaml` — DeerFlow Production Environment (~2731 tok)
 
 ## docker/nginx/
 
@@ -871,7 +891,7 @@
 
 ## docs/designs/
 
-- `bid-proposal-writing-v4-volume-architecture.md` — Design: bid-proposal-writing v4——大篇幅分册架构 + 地质技能机制移植 + 样例库编造政策 (~3021 tok)
+- `bid-proposal-writing-v4-volume-architecture.md` — Design: bid-proposal-writing v4——大篇幅分册架构 + 地质技能机制移植 + 样例库编造政策 (~4319 tok)
 
 ## docs/diagrams/
 
@@ -882,6 +902,7 @@
 
 - `2026-09-04-law-kb-metadata-filter.md` — 法规标准 KB 对话/检索按表单字段过滤 — 实施计划 (~4933 tok)
 - `2026-09-04-law-kb-upload-guidance.md` — 知识库管理页法规标准库收口为「只读引导」Implementation Plan (~1690 tok)
+- `2026-09-05-kb-dept-access-picker.md` — 知识库对话框部门级访问权限选择 Implementation Plan (~3953 tok)
 - `2026-09-05-law-kb-card-buttons-and-doc-list.md` — 法规库卡片按钮 disabled + laws 投影文件列表(含 chunks)Implementation Plan (~3792 tok)
 
 ## docs/superpowers/reports/
@@ -892,6 +913,7 @@
 - `2026-09-04-law-kb-metadata-filter-design.md` — 法规标准 KB 对话/检索按表单字段过滤 — 设计 (~1073 tok)
 - `2026-09-04-law-kb-upload-guidance-design.md` — 知识库管理页法规标准库收口为「只读引导」— 设计 (~554 tok)
 - `2026-09-05-editor-ai-actions-backlog.md` — 编辑器 AI 快捷操作 Backlog 与右侧 AI 助手定位 (~820 tok)
+- `2026-09-05-kb-dept-access-picker-design.md` — 知识库对话框部门级访问权限选择 — 设计 (~925 tok)
 - `2026-09-05-law-kb-card-buttons-and-doc-list-design.md` — 知识库管理页法规库收口·第二批(卡片按钮 disabled + laws 投影文件列表含 chunks)— 设计 (~997 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
@@ -1018,14 +1040,17 @@
 
 ## frontend/src/app/knowledge/
 
+- `page.tsx` — KB_TYPE_OPTIONS (~12443 tok)
 
 ## frontend/src/app/knowledge/[kbId]/
 
 
 ## frontend/src/app/knowledge/_components/
 
-- `isLawKnowledgeBase.ts` — 法规标准系统库种子名都以此开头(后端 _ensure_kb_registered 用 config.py (~102 tok)
-- `KnowledgeBaseDetail.tsx` — formatDate (~13617 tok)
+- `ChunkModal.tsx` — Heuristic: RAGFlow often stores chunks as HTML fragments (tables, etc.). (~1770 tok)
+- `DeptAccessPicker.tsx` — 部门级访问权限选择器：admin 内联勾选面板+已选标签(×移除)，readOnly 只读标签；懒加载 deptApi.list 并 flattenDepts 拍平树形响应，失败 console.error 降级空列表 (~1017 tok)
+- `isLawKnowledgeBase.ts` — 系统级只读知识库的按名识别（上传/编辑/删除按钮禁用 + 引导横幅）。 (~285 tok)
+- `KnowledgeBaseDetail.tsx` — formatDate (~15124 tok)
 
 ## frontend/src/app/login/
 
@@ -1126,6 +1151,7 @@
 
 ## frontend/src/components/workspace/settings/
 
+- `tool-settings-page.tsx` — ToolSettingsPage — renders modal (~2933 tok)
 
 ## frontend/src/content/en/
 
@@ -1183,6 +1209,7 @@
 
 ## frontend/src/extensions/api/
 
+- `index.ts` — API routes: GET (2 endpoints) (~16132 tok)
 
 ## frontend/src/extensions/app-center/
 
@@ -1397,6 +1424,7 @@
 
 ## frontend/tests/unit/app/knowledge/_components/
 
+- `DeptAccessPicker.dom.test.tsx` — DeptAccessPicker 5 用例 DOM 测试(happy-dom)：admin 勾选/移除标签、readOnly 无勾选面板、空只读提示、子部门拍平可勾选+标签显名；rs.mock @/extensions/api 的 deptApi.list (~952 tok)
 - `isLawKnowledgeBase.test.ts` (~198 tok)
 
 ## frontend/tests/unit/components/landing/
@@ -1470,6 +1498,7 @@
 
 - `generate-config.sh` — generate-config.sh — 读 deploy.conf（唯一可信配置源），生成 config.yaml / .env / extensions_config.json (~1813 tok)
 - `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~9088 tok)
+- `serve.sh` — serve.sh — Unified DeerFlow service launcher (~4083 tok)
 
 ## scripts/tests/
 
@@ -1548,9 +1577,15 @@
 
 ## skills/public/bid-proposal-writing/references/
 
+- `stage4-response-build.md` — 阶段4a+4: 技术响应生成(供源级联) → build 两文档册集渲染(分组执行指南) (~1718 tok)
+- `tech_response_prompt.md` — 技术响应生成 prompt 模板(tech_response_prompt.md) (~921 tok)
 
 ## skills/public/bid-proposal-writing/scripts/
 
+- `booklets.py` — 册规划与索引卷渲染(v4 WP-1): 页数估算/贪心切册/册命名/索引卷——纯函数无 IO。 (~1770 tok)
+- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 交付渲染(无 LLM)。 (~17496 tok)
+- `progress.py` — bid-proposal-writing v4 — progress.py：册/章级进度状态机(阶段4a 控制器)。 (~4607 tok)
+- `responses.py` — responses.py — 投标方案编写技能·阶段4a 技术响应候选的确定性校验 + 合并(无 LLM)。 (~7433 tok)
 
 ## skills/public/bid-quote-analysis/
 
@@ -1639,6 +1674,7 @@
 
 ## skills/public/water-drainage-report/
 
+- `SKILL.md` — 给排水设计专篇技能 (~7736 tok)
 
 ## skills/public/water-drainage-report/references/
 
