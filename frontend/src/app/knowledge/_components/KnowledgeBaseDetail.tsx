@@ -126,6 +126,8 @@ export function KnowledgeBaseDetail({
 
   // ── Data access grants (EAI-CUSTOM Task 8) ──────────────────────────────────
   const canManageGrants = is_admin || kb.owner_id === identity.user_id;
+  // EAI-CUSTOM: 访问权限编辑仅限 admin 或 owner;非 owner 编辑他人库时隐藏字段且保存不动访问控制
+  const canEditAccess = is_admin || kb.owner_id === identity.user_id;
   const [kbGrants, setKbGrants] = useState<KnowledgeBaseGrant[]>([]);
   const [grantUsers, setGrantUsers] = useState<User[]>([]);
   const [grantDepts, setGrantDepts] = useState<Department[]>([]);
@@ -394,9 +396,9 @@ export function KnowledgeBaseDetail({
   const handleEditSave = async () => {
     setEditLoading(true);
     try {
-      // EAI-CUSTOM: 系统级只读库(法规/地质切片)守恒——提交体不含
-      // access_type/allowed_depts,只保存名称/描述/kb_type,防有权限者串改访问控制
-      if (isSystemKb) {
+      // EAI-CUSTOM: 系统级只读库(法规/地质切片)或非 owner/admin 编辑他人库守恒——
+      // 提交体不含 access_type/allowed_depts,只保存名称/描述/kb_type,防串改访问控制
+      if (isSystemKb || !canEditAccess) {
         const updated = await kbApi.update(kb.id, {
           name: editForm.name,
           description: editForm.description,
@@ -1120,8 +1122,9 @@ export function KnowledgeBaseDetail({
                     }))}
                   />
                 </div>
-                {/* EAI-CUSTOM: 系统级只读库(法规/地质切片)不提供访问权限编辑,防串改访问控制 */}
-                {!isSystemKb && (
+                {/* EAI-CUSTOM: 系统级只读库(法规/地质切片)不提供访问权限编辑,防串改访问控制;
+                    非 owner/admin 编辑他人库同样隐藏 */}
+                {!isSystemKb && canEditAccess && (
                   <>
                     <div>
                       <label className="text-foreground mb-1 block text-sm font-medium">
@@ -1204,6 +1207,7 @@ export function KnowledgeBaseDetail({
                     !editForm.name?.trim() ||
                     editLoading ||
                     (!isSystemKb &&
+                      canEditAccess &&
                       (editForm.access_type ?? "private") === "dept" &&
                       (is_admin
                         ? (editForm.allowed_depts ?? [])

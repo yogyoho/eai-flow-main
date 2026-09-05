@@ -171,6 +171,8 @@ function KnowledgeBaseManagement({
   const [editKb, setEditKb] = useState<KnowledgeBase | null>(null);
   const [editForm, setEditForm] = useState<UpdateKnowledgeBaseRequest>({});
   const [editLoading, setEditLoading] = useState(false);
+  // EAI-CUSTOM: 访问权限编辑仅限 admin 或 owner;非 owner 编辑他人库时隐藏字段且保存不动访问控制
+  const canEditAccess = is_admin || editKb?.owner_id === identity.user_id;
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -292,6 +294,21 @@ function KnowledgeBaseManagement({
     if (!editKb) return;
     setEditLoading(true);
     try {
+      // EAI-CUSTOM: 非 owner/admin 编辑他人库——提交体只含 name/description/kb_type,
+      // 不动 access_type/allowed_depts(跳过 dept 校验段)
+      if (!canEditAccess) {
+        const updated = await kbApi.update(editKb.id, {
+          name: editForm.name,
+          description: editForm.description,
+          kb_type: editForm.kb_type,
+        });
+        setKbs((prev) =>
+          prev.map((kb) => (kb.id === editKb.id ? updated : kb)),
+        );
+        setEditKb(null);
+        toast("知识库信息已更新", "success");
+        return;
+      }
       // EAI-CUSTOM: dept 提交 allowed_depts;切回私有/公开显式置 [] 清残留
       const isDept = (editForm.access_type ?? "private") === "dept";
       const allowedDepts = isDept
@@ -997,60 +1014,65 @@ function KnowledgeBaseManagement({
                     className="w-full"
                   />
                 </div>
-                <div>
-                  <label className="text-foreground mb-1 block text-sm font-medium">
-                    访问权限
-                  </label>
-                  <CustomSelect
-                    value={editForm.access_type ?? "private"}
-                    onChange={(v) =>
-                      setEditForm({ ...editForm, access_type: v })
-                    }
-                    options={[
-                      {
-                        value: "private",
-                        label: "私有",
-                        icon: (
-                          <span className="flex h-3.5 w-3.5 items-center text-xs">
-                            🔒
-                          </span>
-                        ),
-                      },
-                      {
-                        value: "public",
-                        label: "公开",
-                        icon: (
-                          <span className="flex h-3.5 w-3.5 items-center justify-center">
-                            🌐
-                          </span>
-                        ),
-                      },
-                      {
-                        value: "dept",
-                        label: "部门可见",
-                        icon: (
-                          <span className="flex h-3.5 w-3.5 items-center justify-center">
-                            🏢
-                          </span>
-                        ),
-                      },
-                    ]}
-                  />
-                </div>
-                {(editForm.access_type ?? "private") === "dept" && (
-                  <div className="mt-2">
-                    <DeptAccessPicker
-                      selectedIds={
-                        is_admin
-                          ? (editForm.allowed_depts ?? [])
-                          : identity.dept_ids
-                      }
-                      onChange={(ids) =>
-                        setEditForm({ ...editForm, allowed_depts: ids })
-                      }
-                      readOnly={!is_admin}
-                    />
-                  </div>
+                {/* EAI-CUSTOM: 非 owner/admin 编辑他人库时不展示访问权限编辑 */}
+                {canEditAccess && (
+                  <>
+                    <div>
+                      <label className="text-foreground mb-1 block text-sm font-medium">
+                        访问权限
+                      </label>
+                      <CustomSelect
+                        value={editForm.access_type ?? "private"}
+                        onChange={(v) =>
+                          setEditForm({ ...editForm, access_type: v })
+                        }
+                        options={[
+                          {
+                            value: "private",
+                            label: "私有",
+                            icon: (
+                              <span className="flex h-3.5 w-3.5 items-center text-xs">
+                                🔒
+                              </span>
+                            ),
+                          },
+                          {
+                            value: "public",
+                            label: "公开",
+                            icon: (
+                              <span className="flex h-3.5 w-3.5 items-center justify-center">
+                                🌐
+                              </span>
+                            ),
+                          },
+                          {
+                            value: "dept",
+                            label: "部门可见",
+                            icon: (
+                              <span className="flex h-3.5 w-3.5 items-center justify-center">
+                                🏢
+                              </span>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                    {(editForm.access_type ?? "private") === "dept" && (
+                      <div className="mt-2">
+                        <DeptAccessPicker
+                          selectedIds={
+                            is_admin
+                              ? (editForm.allowed_depts ?? [])
+                              : identity.dept_ids
+                          }
+                          onChange={(ids) =>
+                            setEditForm({ ...editForm, allowed_depts: ids })
+                          }
+                          readOnly={!is_admin}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
                 <div>
                   <label className="text-foreground mb-1 block text-sm font-medium">
