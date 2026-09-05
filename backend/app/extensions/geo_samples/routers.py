@@ -267,11 +267,51 @@ async def review_document(document_id: str, body: schemas.ReviewRequest, db: Asy
 # --- Functional area 4: module-level compile ---------------------------------
 
 
+async def _ensure_slices_kb_registered(db: AsyncSession, dataset_id: str | None) -> bool:
+    """把切片库注册进 knowledge_bases 表（只读系统库；owner 固定 admin，同法规库
+    LawService._ensure_kb_registered 模式——避免触发者账号软删留下孤儿 owner）。
+
+    按展示名幂等：无行→插入（access_type=public，挂 dataset id）；已有行但缺
+    ragflow_dataset_id→回填（历史手工建库场景）。admin 缺失→False（跳过注册，
+    dataset 本身已建，不让注册失败拖垮初始化）。
+    """
+    from sqlalchemy import select as sa_select
+
+    from app.extensions.models import KnowledgeBase, User
+
+    owner_result = await db.execute(sa_select(User.id).where(User.email == "admin@eai-flow.com"))
+    owner_id = owner_result.scalar_one_or_none()
+    if owner_id is None:
+        return False
+    existing = await db.execute(sa_select(KnowledgeBase).where(KnowledgeBase.name == service.GEO_SLICES_KB_NAME))
+    row = existing.scalar_one_or_none()
+    if row is None:
+        db.add(
+            KnowledgeBase(
+                name=service.GEO_SLICES_KB_NAME,
+                description="地质样例库编译切片：样例过审后由行级「编译」自动写入并分发 RAGFlow（只读，禁手动上传）",
+                owner_id=owner_id,
+                access_type="public",
+                kb_type="ragflow",
+                ragflow_dataset_id=dataset_id,
+                chunk_method="naive",
+                status="active",
+            )
+        )
+        await db.commit()
+        return True
+    if dataset_id and not row.ragflow_dataset_id:
+        row.ragflow_dataset_id = dataset_id
+        await db.commit()
+    return True
+
+
 @router.post("/pipeline/init-ragflow")
 async def init_ragflow_dataset(db: AsyncSession = Depends(get_db), _: object = _PERM):
     """初始化（幂等收敛）地质样例库 RAGFlow 切片数据集——部署后手动点一次即可让编译分发生效。
 
     按固定名 GSB_RAGFLOW_DATASET_NAME 查找：缺失 → 按种子（naive）创建；已存在 → aligned。
+    同步把「固体矿产报告切片库」注册进 knowledge_bases 表（只读系统库，前端按名识别）。
     分发解析链（service.resolve_ragflow_dataset_id）= env 覆写 > 本同名库 > skipped，
     因此按钮建库后无需改 env 即生效；env 仍保留给离线部署做覆写口。
     """
@@ -292,17 +332,21 @@ async def init_ragflow_dataset(db: AsyncSession = Depends(get_db), _: object = _
 
     existing = await client.get_dataset_by_name(service.GSB_RAGFLOW_DATASET_NAME)
     if existing:
-        return {"status": "aligned", "dataset_id": existing.get("id")}
-    result = await client.create_dataset(
-        name=service.GSB_RAGFLOW_DATASET_NAME,
-        description="地质样例库编译切片（bank_compile 分发，EAI-CUSTOM）",
-        chunk_method=service._GSB_DATASET_SEED["chunk_method"],
-        parser_config=dict(service._GSB_DATASET_SEED["parser_config"]),
-    )
-    dataset_id = (result.get("data") or {}).get("id")
+        dataset_id = existing.get("id")
+        status = "aligned"
+    else:
+        result = await client.create_dataset(
+            name=service.GSB_RAGFLOW_DATASET_NAME,
+            description="地质样例库编译切片（bank_compile 分发，EAI-CUSTOM）",
+            chunk_method=service._GSB_DATASET_SEED["chunk_method"],
+            parser_config=dict(service._GSB_DATASET_SEED["parser_config"]),
+        )
+        dataset_id = (result.get("data") or {}).get("id")
+        status = "created"
     if not dataset_id:
-        raise HTTPException(502, f"RAGFlow 建库失败: {result}")
-    return {"status": "created", "dataset_id": dataset_id}
+        raise HTTPException(502, "RAGFlow 建库失败（响应缺 dataset id）")
+    kb_registered = await _ensure_slices_kb_registered(db, dataset_id)
+    return {"status": status, "dataset_id": dataset_id, "kb_registered": kb_registered}
 
 
 @router.post("/pipeline/compile")

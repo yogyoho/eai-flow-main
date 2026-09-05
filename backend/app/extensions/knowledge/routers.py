@@ -92,12 +92,7 @@ async def _load_kb_scoped(db: AsyncSession, kb_id: UUID, scope: FilterRule, iden
     if identity is not None and scope.operator != "allow_all":
         clause = sa_or(clause, kb_grant_visible_clause(identity))
     # EAI-CUSTOM (bug-3109): joinedload owner,同 list 端点(详情响应 owner_name 同理)
-    q = (
-        sa_select(KnowledgeBase)
-        .options(joinedload(KnowledgeBase.owner))
-        .where(KnowledgeBase.id == kb_id)
-        .where(clause)
-    )
+    q = sa_select(KnowledgeBase).options(joinedload(KnowledgeBase.owner)).where(KnowledgeBase.id == kb_id).where(clause)
     return (await db.execute(q)).scalar_one_or_none()
 
 
@@ -452,6 +447,14 @@ async def list_documents(
 
     if is_law_kb_name(kb.name):
         documents, total = await project_laws_as_documents(db, kb, skip=skip, limit=limit)
+        return DocumentListResponse(documents=documents, total=total)
+
+    # EAI-CUSTOM: 地质切片系统库同样无 documents 表记录(切片由 bank_compile 直写 RAGFlow),
+    # 文件列表实时投影 RAGFlow dataset(geo_samples.service.project_slices_as_documents)。
+    from app.extensions.geo_samples.service import is_geo_slices_kb_name, project_slices_as_documents
+
+    if is_geo_slices_kb_name(kb.name):
+        documents, total = await project_slices_as_documents(kb, skip=skip, limit=limit)
         return DocumentListResponse(documents=documents, total=total)
 
     docs, total = await DocumentService.list_docs(db, kb_id, skip=skip, limit=limit)

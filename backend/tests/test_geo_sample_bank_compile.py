@@ -2,6 +2,7 @@
 
 import json
 import sys
+import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -2150,16 +2151,20 @@ async def test_resolve_ragflow_dataset_id_chain(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_init_ragflow_dataset_endpoint(monkeypatch):
-    """init 端点：同名库在→aligned；缺失→按种子 create；未配置 RAGFlow→503。"""
+    """init 端点：同名库在→aligned；缺失→按种子 create；未配置 RAGFlow→503。
+    两路都同步注册 knowledge_bases（kb_registered 透传注册结果）。"""
     from types import SimpleNamespace
-    from unittest.mock import MagicMock
+    from unittest.mock import AsyncMock, MagicMock
 
     from app.extensions.geo_samples import routers
+
+    reg = AsyncMock(return_value=True)
+    monkeypatch.setattr(routers, "_ensure_slices_kb_registered", reg)
 
     # ① aligned：同名库已存在
     _fake_rf_module(monkeypatch, get_by_name={"id": "ds-existing"})
     resp = await routers.init_ragflow_dataset(MagicMock())
-    assert resp == {"status": "aligned", "dataset_id": "ds-existing"}
+    assert resp == {"status": "aligned", "dataset_id": "ds-existing", "kb_registered": True}
 
     # ② created：缺失 → create（种子 naive）
     from app.extensions.knowledge import client as ragflow_client_mod
@@ -2182,7 +2187,7 @@ async def test_init_ragflow_dataset_endpoint(monkeypatch):
 
     monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeCreate)
     resp = await routers.init_ragflow_dataset(MagicMock())
-    assert resp == {"status": "created", "dataset_id": "ds-new"}
+    assert resp == {"status": "created", "dataset_id": "ds-new", "kb_registered": True}
     assert rec["name"] == routers.service.GSB_RAGFLOW_DATASET_NAME
     assert rec["chunk_method"] == "naive"
 
@@ -2193,3 +2198,119 @@ async def test_init_ragflow_dataset_endpoint(monkeypatch):
     with pytest.raises(routers.HTTPException) as ei:
         await routers.init_ragflow_dataset(MagicMock())
     assert ei.value.status_code == 503
+
+
+# --- 切片库注册进系统知识库（knowledge_bases）+ 文件列表投影 ---------------------
+
+
+def test_is_geo_slices_kb_name():
+    """只读识别：精确名匹配（前缀会误伤普通库）。"""
+    from app.extensions.geo_samples.service import GEO_SLICES_KB_NAME, is_geo_slices_kb_name
+
+    assert is_geo_slices_kb_name(GEO_SLICES_KB_NAME)
+    assert not is_geo_slices_kb_name(GEO_SLICES_KB_NAME + "副本")
+    assert not is_geo_slices_kb_name("法规标准库 — 标准/规范")
+    assert not is_geo_slices_kb_name(None)
+
+
+@pytest.mark.asyncio
+async def test_project_slices_as_documents_maps_ragflow_docs(monkeypatch):
+    """投影：RAGFlow docs → DocumentResponse（run 三态映射/epoch ms 建时间/UUID 化 id/total 透传）。"""
+    from types import SimpleNamespace
+
+    from app.extensions.geo_samples import service
+
+    _fake_rf_module(monkeypatch)
+
+    pages: list = []
+
+    class FakeList(service.__dict__ and object):
+        def __init__(self, api_key=None, base_url=None):
+            pass
+
+        async def list_documents(self, dataset_id, page=1, size=50):
+            pages.append((dataset_id, page, size))
+            return {
+                "data": {
+                    "docs": [
+                        {"id": "a" * 32, "name": "rid__1.md", "size": 1024, "run": "DONE", "create_time": 1788534348401},
+                        {"id": "b" * 32, "name": "rid__2.md", "size": 2048, "run": "RUNNING"},
+                        {"id": "c" * 32, "name": "rid__3.md", "size": 0, "run": "FAIL"},
+                    ],
+                    "total": 3,
+                }
+            }
+
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeList)
+
+    kb = SimpleNamespace(id=uuid.UUID("1" * 32), ragflow_dataset_id="d" * 32)
+    items, total = await service.project_slices_as_documents(kb, skip=0, limit=50)
+
+    assert total == 3 and len(items) == 3
+    assert pages == [("d" * 32, 1, 50)]
+    assert [i.status for i in items] == ["success", "pending", "failed"]
+    assert items[0].name == "rid__1.md" and items[0].file_size == 1024
+    assert items[0].id == uuid.UUID("a" * 32)
+    assert items[0].knowledge_base_id == kb.id
+    assert items[0].created_at is not None
+
+
+@pytest.mark.asyncio
+async def test_project_slices_unconfigured_returns_empty(monkeypatch):
+    """未配置 dataset/api_key 或 RAGFlow 不可达 → 空页不抛错（只读视图，不阻断详情页）。"""
+    from types import SimpleNamespace
+
+    from app.extensions.geo_samples import service
+
+    kb_none = SimpleNamespace(id=uuid.UUID("1" * 32), ragflow_dataset_id=None)
+    assert await service.project_slices_as_documents(kb_none) == ([], 0)
+
+    _fake_rf_module(monkeypatch)
+
+    class FakeBoom:
+        def __init__(self, api_key=None, base_url=None):
+            pass
+
+        async def list_documents(self, dataset_id, page=1, size=50):
+            raise RuntimeError("ragflow down")
+
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeBoom)
+    kb = SimpleNamespace(id=uuid.UUID("1" * 32), ragflow_dataset_id="d" * 32)
+    assert await service.project_slices_as_documents(kb) == ([], 0)
+
+
+@pytest.mark.asyncio
+async def test_init_ragflow_registers_slices_kb(monkeypatch):
+    """init 端点把切片库注册进 knowledge_bases：aligned/created 两路都带 dataset_id 调注册。"""
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import routers
+
+    _fake_rf_module(monkeypatch, get_by_name={"id": "ds-aligned"})
+    reg = AsyncMock(return_value=True)
+    monkeypatch.setattr(routers, "_ensure_slices_kb_registered", reg)
+
+    resp = await routers.init_ragflow_dataset(MagicMock())
+    assert resp == {"status": "aligned", "dataset_id": "ds-aligned", "kb_registered": True}
+    assert reg.await_args.args[1] == "ds-aligned"  # (db, dataset_id)
+
+
+@pytest.mark.asyncio
+async def test_ensure_slices_kb_registered_admin_missing_is_graceful(monkeypatch):
+    """admin 缺失 → 注册跳过返回 False（dataset 已建，不让注册失败拖垮初始化）。"""
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from app.extensions.geo_samples import routers
+
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=SimpleNamespace(scalar_one_or_none=lambda: None))
+    db.add = MagicMock()
+    db.commit = AsyncMock()
+
+    assert await routers._ensure_slices_kb_registered(db, "ds-1") is False
+    db.add.assert_not_called()

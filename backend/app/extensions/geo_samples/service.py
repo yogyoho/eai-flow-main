@@ -13,6 +13,8 @@ import os
 import shutil
 import sys
 import tempfile
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +36,61 @@ _RAGFLOW_DATASET_ENV = "GSB_RAGFLOW_DATASET_ID"
 # 分发解析链（resolve_ragflow_dataset_id）= env 覆写 > 同名库 > skipped。
 GSB_RAGFLOW_DATASET_NAME = "geo-samples-slices"
 _GSB_DATASET_SEED = {"chunk_method": "naive", "parser_config": {}}
+# 系统知识库注册（/pipeline/init-ragflow 时同步写入 knowledge_bases 表；前端按名只读识别）
+GEO_SLICES_KB_NAME = "固体矿产报告切片库"
+
+
+def is_geo_slices_kb_name(name: str | None) -> bool:
+    """知识库名是否为地质切片系统库（knowledge 文件列表投影分支 + 前端只读识别，与前端 helper 同源同取舍）。"""
+    return name == GEO_SLICES_KB_NAME
+
+
+# RAGFlow run 态 → 知识库文件列表 DocStatusBadge 三态（success/pending/failed）
+_RUN_STATUS_MAP = {"DONE": "success", "RUNNING": "pending", "UNSTART": "pending", "FAIL": "failed"}
+
+
+async def project_slices_as_documents(kb, skip: int = 0, limit: int = 50) -> tuple[list, int]:
+    """切片库文件列表投影：切片只写 RAGFlow（绕过 knowledge documents 表），文件列表实时列 dataset（只读视图）。
+
+    同法规库投影先例（law.service.project_laws_as_documents，spec 2026-09-05）：知识库详情页
+    不因「documents 表无行」而显示空列表。RAGFlow 不可达/未配置时返回空页不抛错（只读视图，
+    主数据在 RAGFlow 控制台可见）；状态不轮询——列表页自身会刷新。
+    """
+    from app.extensions.config import get_extensions_config
+    from app.extensions.knowledge import client as ragflow_client_mod
+    from app.extensions.schemas import DocumentResponse
+
+    cfg = get_extensions_config().ragflow
+    if not kb.ragflow_dataset_id or not cfg.api_key:
+        return [], 0
+    client = ragflow_client_mod.RAGFlowClient(api_key=cfg.api_key, base_url=cfg.base_url)
+    try:
+        resp = await client.list_documents(kb.ragflow_dataset_id, page=skip // max(limit, 1) + 1, size=limit)
+    except Exception:  # noqa: BLE001 —— 只读投影是展示层，不可达不阻断详情页
+        log.warning("slices kb projection: ragflow list failed (dataset=%s)", kb.ragflow_dataset_id)
+        return [], 0
+    payload = resp.get("data") or {}
+    docs = payload.get("docs", []) if isinstance(payload, dict) else list(payload)
+    total = int(payload.get("total") or 0) if isinstance(payload, dict) else len(docs)
+    items = []
+    for d in docs:
+        created_ms = d.get("create_time")
+        created = datetime.fromtimestamp(created_ms / 1000, UTC) if isinstance(created_ms, (int, float)) and created_ms > 0 else datetime.now(UTC)
+        items.append(
+            DocumentResponse(
+                id=uuid.UUID(str(d.get("id"))),
+                knowledge_base_id=kb.id,
+                name=str(d.get("name") or ""),
+                file_path="",
+                file_size=int(d.get("size") or 0),
+                file_type=None,
+                ragflow_document_id=str(d.get("id")),
+                status=_RUN_STATUS_MAP.get(str(d.get("run") or "").upper(), "pending"),
+                error_message=None,
+                created_at=created,
+            )
+        )
+    return items, total
 
 
 # ⚡ 调整 2：finish_run 走 best-effort 包装（Task 7 实测落定）。plan 原文在 try 内裸调
