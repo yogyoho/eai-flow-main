@@ -139,7 +139,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 bg-black/30" />
         <div className="relative z-10 mt-32">
           <h1 className="text-[56px] font-bold mb-8 tracking-wide text-white">
-            XXXX工程Agent
+            吉林化工工程Agent
           </h1>
           <h2 className="text-3xl font-medium mb-6 text-white">
             企业智能体应用平台

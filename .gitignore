@@ -129,3 +129,6 @@ node_modules/
 /tiktoken_cache/
 /.offline-export-history/
 deploy/offline/data/
+
+# 客户部署配置(机器本地, 含内网 LLM 凭据)
+/deploy.conf

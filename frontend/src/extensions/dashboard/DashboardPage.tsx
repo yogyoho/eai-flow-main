@@ -88,9 +88,9 @@ export function DashboardPage() {
 
       {/* Footer */}
       <footer className="db-text-subtle font-cyber mt-8 border-t border-[var(--db-border-color-muted)] bg-[var(--db-bg-tertiary)] px-6 py-4 text-center text-[10px] leading-relaxed tracking-widest select-none">
-        XXXX工程 · 企业智能体应用平台 v0.5.0
+        吉林化工工程 · 企业智能体应用平台 v0.5.0
         <div className="mt-0.5 text-[9px] text-slate-400">
-          © 2026 XXXX工程有限公司
+          © 2026 吉林化工工程有限公司
         </div>
       </footer>
     </div>
