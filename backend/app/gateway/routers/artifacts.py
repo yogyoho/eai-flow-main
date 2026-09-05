@@ -1,7 +1,6 @@
 import asyncio
 import functools
 import hashlib
-import json
 import logging
 import mimetypes
 import os
@@ -26,6 +25,7 @@ from deerflow.config.paths import make_safe_user_id
 from deerflow.runtime import ConflictError, ThreadOperationKind
 from deerflow.runtime.user_context import get_effective_user_id
 from deerflow.sandbox.sandbox_provider import get_sandbox_provider
+from deerflow.tools.builtins import delivery_contract
 from deerflow.utils.thread_id import ThreadId
 
 logger = logging.getLogger(__name__)
@@ -44,11 +44,12 @@ MAX_EDITABLE_ARTIFACT_BYTES = 2 * 1024 * 1024
 _EDITABLE_OUTPUTS_PREFIX = "mnt/user-data/outputs/"
 _ARTIFACT_EDIT_TEMP_PREFIX = ".artifact-edit-"
 
-# EAI-CUSTOM (bug-2225): 交付契约门 — 契约线程的 outputs/*.md 下载放行凭据 = delivery_manifest.json
-# ingest.py 落 .delivery-contract 标记后，GET 只放行 manifest.deliverable 指名的 .md，
+# EAI-CUSTOM (bug-2225; bug-3061 v4 通用化): 交付契约门 — 契约线程的 outputs/*.md 下载
+# 放行凭据 = delivery_manifest.json（解析收口 harness delivery_contract.resolve_manifest；
+# 放行集 = deliverables[]∪aux_md, 旧单名 deliverable 向后兼容）。
+# ingest/build 落 .delivery-contract 标记后，GET 只放行凭据内 .md，
 # 阻断 agent 手拼 .md 后经下载口流出（present_files 侧同款门见 harness present_file_tool）。
 _DELIVERY_CONTRACT_PATH = "mnt/user-data/outputs/.delivery-contract"
-_DELIVERY_MANIFEST_NAME = "delivery_manifest.json"
 
 
 class ArtifactUpdateRequest(BaseModel):
@@ -298,30 +299,27 @@ def _load_skill_archive_member(actual_skill_path: Path, skill_file_path: str, in
 
 
 def _outputs_delivery_denial(marker_path: Path, request_path: Path) -> HTTPException | None:
-    """Worker-thread body for the bug-2225 delivery-contract gate on ``get_artifact``.
+    """Worker-thread body for the bug-2225/bug-3061 delivery-contract gate on ``get_artifact``.
 
-    契约线程 .md 下载门（bug-2225）。无标记/非 outputs .md → None 放行；
-    有标记无 manifest → 403（管线从未成功交付）；请求名 == manifest.deliverable → None；
-    其余 .md → 403（非管线产物）。manifest 损坏等同无凭据。
+    契约线程 .md 下载门。无标记/非 outputs .md → None 放行；
+    有标记无 manifest/契约损坏/未知契约 → 403（无凭据, bug-3061 不静默放行）；
+    请求名 ∈ manifest deliverables[]∪aux_md（旧单名 deliverable 兼容）→ None；
+    其余 .md → 403（非管线产物）。解析收口 delivery_contract.resolve_manifest。
     """
     if request_path.suffix.lower() != ".md" or not request_path.is_relative_to(marker_path.parent):
         return None
-    not_delivered = HTTPException(
-        status_code=403,
-        detail="报告尚未经管线交付（outputs/ 无 delivery_manifest.json，bug-2225）——请让 agent 通过 build_output.py 产出规范交付物后再下载",
-    )
-    try:
-        manifest = json.loads((marker_path.parent / _DELIVERY_MANIFEST_NAME).read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return not_delivered
-    deliverable = manifest.get("deliverable") if isinstance(manifest, dict) else None
-    if not isinstance(deliverable, str) or not deliverable:
-        return not_delivered
-    if request_path.name == deliverable:
+    status, data = delivery_contract.resolve_manifest(marker_path.parent)
+    if status != delivery_contract.STATUS_OK:
+        return HTTPException(
+            status_code=403,
+            detail="报告尚未经管线交付（outputs/ 无有效 delivery_manifest.json，bug-2225/3061）——请让 agent 通过管线技能 build_output.py 产出规范交付物后再下载",
+        )
+    if request_path.name in data["allowed"]:
         return None
+    allowed_hint = sorted(data["allowed"])
     return HTTPException(
         status_code=403,
-        detail=f"{request_path.name} 不是管线产物（本线程唯一管线交付 .md 为 {deliverable}，bug-2225）",
+        detail=f"{request_path.name} 不是管线产物（本线程管线交付 .md 白名单 deliverables/aux_md={allowed_hint}，bug-3061）——请重跑 build_output.py 生成规范交付物",
     )
 
 

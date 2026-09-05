@@ -302,3 +302,82 @@ def test_docmgr_router_registers_import_layout():
         "/api/extensions/docmgr/import-layout",
         "POST",
     ) in paths, "docmgr import-layout route is missing — 导入排版 button 404s"
+
+
+# ===========================================================================
+# v4 T8: 多册合并导出(整单失败语义 + 册间分页) — bug-3109 WP-1.4
+# ===========================================================================
+
+
+class TestGenerateDocxMerged:
+    """generate_docx_merged: 依序合并+册间分页; 整单失败指认册名; 超限拒绝。"""
+
+    def _render(self, sections, **kwargs):
+        from io import BytesIO
+
+        from app.extensions.output.generator import generate_docx_merged
+
+        buf = BytesIO()
+        generate_docx_merged(sections, buf, **kwargs)
+        return buf.getvalue()
+
+    def test_merged_contains_sections_in_order_with_breaks(self):
+        from docx import Document
+
+        data = self._render([
+            ("整体方案-01-投标函.md", "# 投标函\n\n致:招标人"),
+            ("技术卷-01-总体设计.md", "# 总体设计\n\n分层架构说明。"),
+        ])
+        doc = Document(BytesIO(data))
+        texts = [p.text for p in doc.paragraphs]
+        joined = "\n".join(texts)
+        assert "投标函" in joined and "总体设计" in joined
+        idx_fun = next(i for i, t in enumerate(texts) if "投标函" in t)
+        idx_tech = next(i for i, t in enumerate(texts) if "总体设计" in t)
+        assert idx_fun < idx_tech, "册序=合并序"
+        has_break = any('w:br w:type="page"' in p._element.xml for p in doc.paragraphs)
+        assert has_break, "册间存在真实分页"
+
+    def test_parse_failure_names_the_booklet(self):
+        """整单失败语义: 任一册解析异常 → 错误指认册名, 不产部分文件。"""
+        import pytest
+
+        # 构造解析期异常: 传入不可迭代内容之外的最直接路径 = 预解析钩子
+        # (parse_markdown 对任意 str 都健壮——这里用 monkeypatch 注入解析失败)
+        import app.extensions.output.generator as gen
+
+        original = gen.parse_markdown
+        calls = []
+
+        def fake_parse(md):
+            calls.append(md)
+            if md == "# bad":
+                raise RuntimeError("boom")
+            return original(md)
+
+        gen.parse_markdown = fake_parse
+        try:
+            with pytest.raises(ValueError) as exc_info:
+                gen.generate_docx_merged([("好册.md", "# ok"), ("坏册.md", "# bad")], BytesIO())
+        finally:
+            gen.parse_markdown = original
+        assert "坏册.md" in str(exc_info.value) and "整单导出中止" in str(exc_info.value)
+        assert len(calls) == 2, "预解析逐册归因(坏册之前的册已扫过)"
+
+    def test_oversize_and_count_rejected(self):
+        import pytest
+
+        from app.extensions.output.generator import MAX_MERGE_SECTIONS, MAX_MERGE_TOTAL_CHARS, generate_docx_merged
+
+        with pytest.raises(ValueError, match="超上限"):
+            generate_docx_merged([(f"s{i}.md", "# x") for i in range(MAX_MERGE_SECTIONS + 1)], BytesIO())
+        with pytest.raises(ValueError, match="内存预算"):
+            generate_docx_merged([("huge.md", "字" * (MAX_MERGE_TOTAL_CHARS + 1))], BytesIO())
+
+    def test_empty_sections_rejected(self):
+        import pytest
+
+        from app.extensions.output.generator import generate_docx_merged
+
+        with pytest.raises(ValueError, match="为空"):
+            generate_docx_merged([], BytesIO())

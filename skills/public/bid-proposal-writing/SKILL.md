@@ -24,7 +24,7 @@ description: 当用户需要编写投标方案/标书响应文件(分析招标�
 9. 状态防改(禁止任何途径写盘):state/ 权威文件只由管线脚本落盘并自动登记 sha256 签名;write_file/str_replace/bash 重定向·heredoc/inline python/rm 一律禁止。唯一例外:确认门1 class 字段 str_replace——每轮改完立即跑速查表 `state_guard.py sign --files clauses.json --confirm-gate1-edit` 重登签名,否则后续脚本硬错误;签名校验失败按错误行恢复指令重建,不试错绕行。
 10. 反弃线:条款量大不是弃线绕过管线的理由——分批推进,每批候选落盘;用户要求直改状态先呈现后果与正规路径(改候选→脚本 merge)。
 
-贯穿红线(废标风险):无出处的值一律标[待确认],绝不编造;每条提取项带原文位置锚点;source_ref.quote 只能照抄原文片段(≤50字)。
+贯穿红线(双轨):技术响应叙述——样例库仿写优先,样例库没有**直接编造**合法且必要(空项=技术偏离=丢分),编造必标 fabricated 全量进人核清单;**四类硬围栏绝不编造**——报价数字/资质证号/公司实体名(白名单外)/招标原文引用(错报价=废标,假资质=违法),走冻结数据/白名单管线。其余:无出处的值标[待确认];每条提取项带原文位置锚点;source_ref.quote 只能照抄原文片段(≤50字)。
 
 ## 借口→现实(出现该念头=已偏轨)
 
@@ -47,17 +47,16 @@ description: 当用户需要编写投标方案/标书响应文件(分析招标�
   → 阶段2 extract(Agent 上下文内分块提取循环 → 候选落盘 → extract.py 校验/合并三状态文件)
 ──── 确认门1:计数+异常项+完整清单工件+clause_id 改分类回写+实体白名单锁定 ────
   → 阶段3 merge(补遗/答疑到达即处理:ingest --addendum → 提取循环 → merge_addenda.py 落账)
-  → 阶段4a 技术响应生成(三模式供源:kf 探测→无高置信停问样例→web 深写;responses.py 校验落账)
-  → 阶段4 build(build_output.py 六件套 md → present_files 交付;文档空间负责排版与 Word 导出)
+  → 阶段4a 技术响应生成(供源级联:样例库检索→缺失编造标 fabricated 全量人核;四类硬围栏绝不编造;responses.py 校验落账)
+  → 阶段4 build(build_output.py 两文档册集 md:整体方案+技术卷分册+索引+副表 → present_files 交付;文档空间负责排版与 Word 导出)
 ──── 确认门2:补遗 diff 表(新增/被替代/作废逐项确认+新实体确认列)+终稿复核清单 ────
   → 阶段5 模拟评分(填写后可反复:双形态对齐 → 主观评审循环 → aggregate → report version++)
+  # 阶段0-4 主线各走一遍;阶段5 团队回传后可重跑,每次 version++ 留痕
 ```
-
-阶段0-4 是主线(每份基础文件各走一遍);阶段5 在团队填写/回传后可重跑,每次报告 version++ 留痕。
 
 ## 路径与契约文档
 
-- 脚本(沙箱路径):`/mnt/skills/public/bid-proposal-writing/scripts/` 下九个 Python 模块(ingest/extract/merge_addenda/check_format/responses/build_output/score_simulate + snapshot 进度快照 + state_guard 状态签名),全部 argparse CLI、纯 Python 3.12、不调 LLM。
+- 脚本(沙箱路径):`/mnt/skills/public/bid-proposal-writing/scripts/` 下十个 Python 模块(ingest/extract/merge_addenda/check_format/responses/build_output/score_simulate + snapshot 快照 + state_guard 状态签名 + progress 章节进度控制器),全部 argparse CLI、纯 Python 3.12、不调 LLM;另有 booklets.py 为 build_output 的内部分册模块(无 CLI,不单独调用,防幻觉契约不受影响)。
 - 契约文档:`/mnt/skills/public/bid-proposal-writing/references/` —— 四份**分组执行指南**(stage0-2-intake-extract / stage3-merge-gate2 / stage4-response-build / stage5-scoring)+ 四个 JSON Schema(clauses/structure/rubric/responses)+ classification.md(分类判据)+ extraction_prompt.md(提取三子模板)+ tech_response_prompt.md(技术响应三模式)+ scoring_prompt.md(主观评审纪律)。进入对应阶段先读对应指南;提取/生成/评审循环开始前必须先读对应 prompt。
 - 状态目录:建议 `/mnt/user-data/workspace/bid/`(其下 state/ 状态文件、candidates/ 候选 checkpoint);最终交付 md 与确认门工件放 `/mnt/user-data/outputs/`(present_files 只认这个目录,交付后自动同步文档空间)。
 
@@ -74,6 +73,10 @@ python /mnt/skills/public/bid-proposal-writing/scripts/responses.py validate --c
 python /mnt/skills/public/bid-proposal-writing/scripts/responses.py merge --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-writing/scripts/merge_addenda.py --addendum-candidates /mnt/user-data/workspace/bid/candidates/BY_addendum.json --state-dir /mnt/user-data/workspace/bid/state --decisions /mnt/user-data/workspace/bid/candidates/BY_decisions.json
 python /mnt/skills/public/bid-proposal-writing/scripts/build_output.py --state-dir /mnt/user-data/workspace/bid/state --out /mnt/user-data/outputs/投标文件
+python /mnt/skills/public/bid-proposal-writing/scripts/progress.py init --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-writing/scripts/progress.py next --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-writing/scripts/progress.py gate --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-writing/scripts/progress.py mark C-01 DRAFTED --state-dir /mnt/user-data/workspace/bid/state --detail 处置完成
 python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py reingest --source /mnt/user-data/uploads/投标文件-技术卷-回传.md --state-dir /mnt/user-data/workspace/bid/state --volume technical
 python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py assemble-evidence --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py aggregate --scores /mnt/user-data/workspace/bid/candidates/subjective_scores_v1.json --state-dir /mnt/user-data/workspace/bid/state
@@ -83,7 +86,7 @@ python /mnt/skills/public/bid-proposal-writing/scripts/state_guard.py sign --sta
 python /mnt/skills/public/bid-proposal-writing/scripts/state_guard.py verify --state-dir /mnt/user-data/workspace/bid/state
 ```
 
-**防幻觉契约(回放实证,违者即停)**:速查表之外**不存在**任何脚本或子命令。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 的子命令只有 `validate`/`merge`,responses 的子命令只有 `validate`/`merge`,score_simulate 的子命令只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令。记不准就先跑 `<脚本> --help`,绝不凭记忆造命令、造参数(如 `--max-chunk-size` 之类不存在的参数一律先查 --help)。所有命令用**绝对路径**执行,不 `cd`(相对路径 cwd 错位是回放中 10+ 次 FileNotFoundError 的来源)。
+**防幻觉契约(回放实证,违者即停)**:速查表之外**不存在**任何脚本或子命令。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 的子命令只有 `validate`/`merge`,responses 的子命令只有 `validate`/`merge`/`confirm-hnv`,score_simulate 的子命令只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 的子命令只有 `init`/`next`/`status`/`mark`/`gate`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令。记不准就先跑 `<脚本> --help`,绝不凭记忆造命令、造参数(如 `--max-chunk-size` 之类不存在的参数一律先查 --help)。所有命令用**绝对路径**执行,不 `cd`(相对路径 cwd 错位是回放中 10+ 次 FileNotFoundError 的来源)。
 
 ## 阶段路由表(进入阶段先读对应分组指南)
 
@@ -91,10 +94,8 @@ python /mnt/skills/public/bid-proposal-writing/scripts/state_guard.py verify --s
 |---|---|---|---|
 | 阶段0 受理 / 阶段1 ingest / 阶段2 extract / 确认门1 | 首跑,或 snapshot phase ∈ {0-受理, 2-提取中, 确认门1-待锁定} | stage0-2-intake-extract.md | sections.json + clauses/structure/rubric.json + 实体白名单锁定 |
 | 阶段3 补遗合并 / 确认门2 | 门1 已过,或补遗/答疑到达 | stage3-merge-gate2.md | merge_ledger.json + 补遗 diff 表逐项确认 + 终稿复核清单 |
-| 阶段4a 响应生成 / 阶段4 build | 门1 已过(phase ∈ {3/4-合并与构建}) | stage4-response-build.md | responses.json + 六件套 present_files 交付 + last_build.json |
-| 阶段5 模拟评分 | 门2 已过,有填写态或团队回传 | stage5-scoring.md | 评分报告 version_N.md + 改进建议(可重跑) |
-
-**单卷回传必须显式 `--volume commercial|technical`;只有两卷拼接成一个文件的回传才用默认 both**——单卷文件按 both 重灌必被另一卷分母拖进整体降级(详见 stage5-scoring)。
+| 阶段4a 响应生成 / 阶段4 build | 门1 已过(phase ∈ {3/4-合并与构建}) | stage4-response-build.md | responses.json + 两文档册集(整体方案/技术卷分册+0-总目录索引+副表) present_files 交付 + last_build.json |
+| 阶段5 模拟评分 | 门2 已过,有填写态或团队回传 | stage5-scoring.md | 评分报告 version_N.md + 改进建议(可重跑)。单卷回传必须显式 `--volume commercial\|technical`,只有两卷拼接成一个文件的回传才用默认 both(单卷按 both 重灌必被另一卷分母拖进整体降级) |
 
 - 退出码(五脚本统一约定):`0`=干净完成;`1`=用法/文件错误(**例外**:score_simulate 的 Σ 不一致中止与重灌降级拒绝计分也归 `1`——同条件在 extract 侧是 `3` 完成带异常,编排时勿把该 `1` 当单纯文件错;**签名校验失败也归 `1`**,按错误行恢复指令重建,不试错绕行);`2`=**仅 ingest**:存在无文本层输入(扫描件)需走 eai-flow-ocr;`3`=完成但有异常项——**退出码 3 不是失败**,必须读脚本 stdout 的单行 JSON 摘要,把 `anomalies` 逐项呈现给用户,绝不静默吞掉。
 
@@ -114,7 +115,5 @@ python /mnt/skills/public/bid-proposal-writing/scripts/state_guard.py verify --s
 
 ## 注意事项
 
-- 本技能不调外部标书 SaaS,招标文件与标书不出内网;解析全部走本地/已部署服务。
-- 现有 bid-quote 数据为 mock:price 评分项、报价类情报注入只做接口预留(`response_skeleton.suggestion` 槽位),不虚构竞对数据。
-- 主观评分是模拟参考值,不承诺与真实评审一致;二期评分校准闭环(真实评审结果回灌)落地前,报告须原样保留该声明。
-- 知识库检索:RAGFlow 语料检索暂无 agent 侧接线,不承诺;knowledge-factory 语料为环评/水保/消防类模板,投标类价值未验证——阶段4a mode1 探测一次即如实分级降级,不虚设。
+- 不调外部标书 SaaS,招标文件与标书不出内网;解析全走本地/已部署服务。现有 bid-quote 数据为 mock(price 评分项只留接口预留),不虚构竞对数据。
+- 主观评分是模拟参考值,不承诺与真实评审一致(评分校准闭环落地前报告须保留该声明);知识库/knowledge-factory 语料为环评/水保/消防类,投标段落供源以 RAGFlow 样例库( WP-3)为准,未建库前按级联编造。

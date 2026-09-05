@@ -1537,6 +1537,12 @@ def generate_docx_simple(
                     run.font.color.rgb = RGBColor.from_string(str(c).replace("#", ""))
 
         elif block.kind == "paragraph":
+            # EAI-CUSTOM (bug-3109 v4 WP-1.4): 册间分页标记——generate_docx_merged 以
+            # "<!-- pagebreak -->" 拼接多册, 渲染为真实分页(常规文档含此字面行的概率
+            # 趋零; 唯一合法产此标记的是导出合并层)。仅简单渲染路径生效。
+            if block.text.strip() == "<!-- pagebreak -->":
+                doc.add_page_break()
+                continue
             m_disp = re.fullmatch(r"\$\$([\s\S]+)\$\$", block.text.strip())
             if m_disp:
                 # Display equation on its own paragraph: centered Word-native equation.
@@ -1709,3 +1715,36 @@ def generate_docx_simple(
         _set_update_fields(doc)
 
     doc.save(buf)
+
+
+# ── EAI-CUSTOM (bug-3109 v4 WP-1.4): 多册合并导出 ────────────────────────────
+PAGEBREAK_COMMENT = "<!-- pagebreak -->"
+MAX_MERGE_SECTIONS = 60  # 册数上限(契约: 500-1000 页 ≈ 10-25 册, 取 2 倍裕度)
+MAX_MERGE_TOTAL_CHARS = 4_000_000  # ~400 万字(1000 页 ×4 裕度); 渲染内存≈文本×10 倍经验值
+
+
+def generate_docx_merged(sections: list[tuple[str, str]], buf, **kwargs) -> None:
+    """多册合并导出(v4 分册交付): [(册名, markdown)...] 依序渲染单个 docx, 册间分页。
+
+    整单失败语义(eng-review 定案): 任一册解析失败 → ValueError 上抛且**指认册名**,
+    不落部分文件——调用方转 4xx/5xx 由用户修正后重试; 禁止静默部分导出。
+    渲染期错误(块级, 罕见)无法逐册归因 → 通用错误上抛, 同样整单失败。
+    内存预算: 渲染内存 ≈ 文本量 ×10 倍经验值, 上限 400 万字 → 数百 MB 量级,
+    普通办公机可承受; 超限直接拒绝(设计稿 P2 级验证项, >57 页/份产线从未出现过)。
+    """
+    if not sections:
+        raise ValueError("generate_docx_merged: sections 为空")
+    if len(sections) > MAX_MERGE_SECTIONS:
+        raise ValueError(f"册数 {len(sections)} 超上限 {MAX_MERGE_SECTIONS}")
+    total = sum(len(md) for _, md in sections)
+    if total > MAX_MERGE_TOTAL_CHARS:
+        raise ValueError(f"合并总量 {total} 字超上限 {MAX_MERGE_TOTAL_CHARS}(内存预算保护)")
+    cleaned: list[tuple[str, str]] = []
+    for name, md in sections:
+        try:
+            parse_markdown(md)  # 预解析归因: 解析期错误指认册名
+        except Exception as exc:  # noqa: BLE001  整单失败语义: 任何解析异常都归因到册
+            raise ValueError(f"册『{name}』解析失败, 整单导出中止(未产出任何文件): {exc}") from exc
+        cleaned.append((name, md))
+    joined = ("\n\n" + PAGEBREAK_COMMENT + "\n\n").join(md for _, md in cleaned)
+    generate_docx_simple(joined, buf, **kwargs)

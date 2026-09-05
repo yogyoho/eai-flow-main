@@ -1280,3 +1280,68 @@ async def restore_project_version(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="version not found")
     await db.commit()
     return {"ok": True, "content": result["content"], "thread_id": result["thread_id"], "rel_path": result["rel_path"]}
+
+
+# ── EAI-CUSTOM (bug-3109 v4 WP-1.4): 多册合并导出 ────────────────────────────
+
+
+class MergedExportItem(BaseModel):
+    """单册导出条目(文件名 + markdown 全文)。"""
+
+    filename: str = Field(min_length=1, max_length=200)
+    content: str = ""
+
+
+class MergedExportRequest(BaseModel):
+    """多册合并导出请求(v4 分册交付: 整体方案/技术卷册集依序合并单 docx)。"""
+
+    sections: list[MergedExportItem] = Field(min_length=1)
+    filename: str = "合并导出.docx"
+    format: str = "docx"
+    layout_template: dict | None = None
+    watermark: str | None = None
+    with_toc: bool = True
+    toc_depth: int = 3
+
+
+@router.post("/export-merged")
+async def export_merged(request: MergedExportRequest, current_user: CurrentUser = Depends(require_permission("doc:upload"))):  # EAI-CUSTOM: Add permission check
+    """多册合并导出(v4 WP-1.4): N 册 markdown 依序合并单个 docx, 册间分页。
+
+    整单失败语义: 任一册解析失败 → 400 指认册名(不落部分文件), 修正后重试;
+    禁止静默部分导出。册数/总量超限 → 400(内存预算保护, >57 页/份为产线未知区)。
+    """
+    from urllib.parse import quote
+
+    from fastapi.responses import Response
+
+    if request.format != "docx":
+        raise HTTPException(status_code=400, detail="合并导出仅支持 docx(分册递交场景 md 逐册下载即可)")
+    sections = [(item.filename, item.content or "") for item in request.sections]
+    safe_name = re.sub(r'[\/:*?"<>|]', "_", request.filename.split("/")[-1]) or "合并导出.docx"
+    if not safe_name.endswith(".docx"):
+        safe_name += ".docx"
+    encoded_filename = quote(safe_name)
+
+    from io import BytesIO
+
+    from app.extensions.output.generator import generate_docx_merged
+
+    buf = BytesIO()
+    toc_settings = {"maxDepth": max(1, min(4, request.toc_depth))} if request.with_toc else None
+    try:
+        generate_docx_merged(
+            sections,
+            buf,
+            template_data=request.layout_template,
+            watermark=request.watermark,
+            toc_settings=toc_settings,
+        )
+    except ValueError as exc:
+        # 整单失败(解析失败指认册名/超限)——语义化 400, 用户修正后重试
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"},
+    )

@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 from pathlib import Path
 from typing import Annotated
@@ -11,6 +10,7 @@ from langgraph.types import Command
 
 from deerflow.config.paths import VIRTUAL_PATH_PREFIX, get_paths
 from deerflow.runtime.user_context import resolve_runtime_user_id
+from deerflow.tools.builtins import delivery_contract
 from deerflow.tools.callbacks import fire_present_files_callbacks
 from deerflow.tools.types import Runtime
 
@@ -86,17 +86,21 @@ def _normalize_presented_filepath(
     return f"{OUTPUTS_VIRTUAL_PREFIX}/{relative_path.as_posix()}"
 
 
-# ── START EAI-CUSTOM (bug-2225) 交付契约门 ──────────────────────────────────
-# 背景: geological-report 等管线技能以 build_output.py 产唯一交付 .md（成功后写
+# ── START EAI-CUSTOM (bug-2225; bug-3109 v4 通用化) 交付契约门 ───────────────
+# 背景: geological-report 等管线技能以 build_output.py 产交付 .md（成功后写
 # outputs/delivery_manifest.json 放行凭据）。E2E 实测 agent 可绕过管线手拼 .md 并
-# present 成功（bug-2225）。ingest.py 沿祖先链在 outputs/ 落 .delivery-contract 契约
+# present 成功（bug-2225）。管线脚本沿祖先链在 outputs/ 落 .delivery-contract 契约
 # 标记——有标记的线程，未经管线产出的 .md 一律拒绝（工具层报错→agent 循环内自纠，
 # 零用户交互）。无标记线程零影响（全部放行）。同步层门：app/gateway/routers/artifacts.py
 # （GET 403）与 app/extensions/workspace/sandbox_sync.py（跳过旁路同步）。
-# 升级注意: 上游升级本文件时保留本块；门只读 outputs/ 下两个文件名级判据
-# （.delivery-contract / delivery_manifest.json），不耦合 manifest 内部字段结构。
-DELIVERY_CONTRACT_NAME = ".delivery-contract"
-DELIVERY_MANIFEST_NAME = "delivery_manifest.json"
+# v4 通用化（bug-3109，设计稿 WP-2.3）: bid-proposal-writing 交付物从单文件变册集，
+# 单名契约不可承载——manifest 契约升级为 skill/version/deliverables[]/aux_md，
+# 向后兼容 geo 旧单名 deliverable；解析收口到 delivery_contract.py（三端共用）。
+# 升级注意: 上游升级本文件时保留本块；门判据只经 delivery_contract.resolve_manifest
+# 读取 outputs/ 下两个文件名级判据（.delivery-contract / delivery_manifest.json），
+# 不在此处自行解析 manifest 字段。
+DELIVERY_CONTRACT_NAME = delivery_contract.DELIVERY_CONTRACT_NAME
+DELIVERY_MANIFEST_NAME = delivery_contract.DELIVERY_MANIFEST_NAME
 
 
 def _thread_outputs_dir(runtime: Runtime) -> Path | None:
@@ -112,26 +116,28 @@ def _delivery_gate_error(outputs_dir: Path, normalized_paths: list[str]) -> str 
     - 无 .delivery-contract 标记 → None（非管线线程，全放行）
     - present 清单无 .md → None（只交付图片/JSON 等，不涉报告）
     - 有标记无 delivery_manifest.json → 管线从未成功 build → 拒
-    - manifest 在场但存在 != deliverable 的 .md → 手拼/散文件混入 → 拒
+    - manifest 未知契约/版本过高 → 显式拒（bug-3109, 3A 向前兼容, 不静默放行）
+    - manifest 在场但存在 ∉ deliverables[]∪aux_md 的 .md → 手拼/散文件混入 → 整单拒
     """
-    if not (outputs_dir / DELIVERY_CONTRACT_NAME).exists():
+    if not (outputs_dir / delivery_contract.DELIVERY_CONTRACT_NAME).exists():
         return None
     md_names = [Path(p).name for p in normalized_paths if Path(p).suffix.lower() == ".md"]
     if not md_names:
         return None
-    manifest_path = outputs_dir / DELIVERY_MANIFEST_NAME
-    if not manifest_path.exists():
-        return (
-            "交付门 FAIL（bug-2225）：本线程存在交付契约（.delivery-contract）但 outputs/ 无 delivery_manifest.json——"
-            "报告必须经 skills/public/geological-report/scripts/build_output.py 产出（rc=0 且 stdout 出现 BUILD_READY+MANIFEST_READY），"
-            "禁止手工拼装 .md 交付。请先运行 build_output.py 成功后再 present_files。"
-        )
-    try:
-        deliverable = json.loads(manifest_path.read_text(encoding="utf-8")).get("deliverable", "")
-    except (json.JSONDecodeError, OSError):
-        return "交付门 FAIL（bug-2225）：delivery_manifest.json 损坏无法解析——请重跑 build_output.py 修复后再 present_files。"
-    rogue = sorted({name for name in md_names if name != deliverable})
+    status, data = delivery_contract.resolve_manifest(outputs_dir)
+    if status != delivery_contract.STATUS_OK:
+        return delivery_contract.rebuild_hint(status, data)
+    allowed: set[str] = data["allowed"]
+    skill = data.get("skill")
+    rogue = sorted({name for name in md_names if name not in allowed})
     if rogue:
+        if skill:
+            return (
+                f"交付门 FAIL（bug-3109）：{rogue} 不是 {skill} 管线申报的交付物（deliverables/aux_md 白名单外）——"
+                f"手拼/散 .md 禁止交付（整单拒收）。请把非交付 .md 移出 outputs/ 并重跑 "
+                f"skills/public/{skill}/scripts/build_output.py（rc=0）后再 present_files。"
+            )
+        deliverable = sorted(allowed)[0] if len(allowed) == 1 else ""
         return f"交付门 FAIL（bug-2225）：{rogue} 不是管线交付物（本线程唯一 .md 交付={deliverable!r}）——手拼/散 .md 禁止交付。请把非交付 .md 移出 outputs/ 并重跑 build_output.py（rc=0）后再 present_files。"
     return None
 

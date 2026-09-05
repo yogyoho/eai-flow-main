@@ -61,7 +61,7 @@ RUBRIC_ID_RE = re.compile(r"^R-\d{3}$")
 CHUNK_ID_RE = re.compile(r"^CH-\d{3,}$")
 TABLE_ID_RE = re.compile(r"^T-\d{3,}$")
 
-SCRIPT_MODULE_NAMES = ["ingest", "extract", "merge_addenda", "check_format", "responses", "build_output", "score_simulate", "snapshot", "state_guard"]
+SCRIPT_MODULE_NAMES = ["ingest", "extract", "merge_addenda", "check_format", "responses", "build_output", "score_simulate", "snapshot", "state_guard", "progress"]
 
 
 def load_json(name: str):
@@ -3680,7 +3680,9 @@ def _build_module():
     return importlib.import_module("build_output")
 
 
-BUILD_OUTPUT_FILES = ["商务卷.md", "技术卷.md", "偏离表.md", "覆盖率报表.md", "人核清单.md", "实体lint报告.md"]
+# v4 契约: 静态件(索引+四副表); 册文件动态生成(整体方案-NN-*/技术卷-NN-*),
+# delivery_manifest.json 为交付凭据(不在 written 交付集内, 单独断言)
+BUILD_OUTPUT_FILES = ["0-总目录索引.md", "偏离表.md", "覆盖率报表.md", "人核清单.md", "实体lint报告.md"]
 
 
 def _run_build(state_dir, out_dir):
@@ -3689,6 +3691,24 @@ def _run_build(state_dir, out_dir):
 
 def _out_text(out_dir, name):
     return (Path(out_dir) / name).read_text(encoding="utf-8")
+
+
+def _doc_texts(out_dir, prefix):
+    """v4 分册: 聚合某文档册集(整体方案-*/技术卷-*)文本(按文件名序=册序)。"""
+    return "".join(
+        (Path(out_dir) / f.name).read_text(encoding="utf-8")
+        for f in sorted(Path(out_dir).glob(f"{prefix}-*.md"))
+    )
+
+
+def _overall_text(out_dir):
+    """旧"商务卷.md"语义等价物: 整体方案册集全文(商务章全量+技术章占位页)。"""
+    return _doc_texts(out_dir, "整体方案")
+
+
+def _tech_text(out_dir):
+    """旧"技术卷.md"语义等价物: 技术卷册集全文。"""
+    return _doc_texts(out_dir, "技术卷")
 
 
 def _set_clause(state_dir, clause_id, **fields):
@@ -3761,13 +3781,20 @@ class TestBuildOutputCliContract:
         assert _run_build(state, tmp_path / "out") == 0
         assert _snapshot(state) == before, "状态目录字节级不变(D7)"
         summary = _last_summary_json(capsys)
-        assert sorted(summary["written"]) == sorted(BUILD_OUTPUT_FILES)
+        written = set(summary["written"])
+        assert set(BUILD_OUTPUT_FILES) <= written, "静态件(索引+四副表)必须齐"
+        assert any(n.startswith("整体方案-") for n in written), "整体方案册集缺失"
+        assert any(n.startswith("技术卷-") for n in written), "技术卷册集缺失"
+        assert all(not n.startswith(("商务卷", "技术卷.md")) for n in written), "v3 双卷单文件不得再产出"
 
     def test_six_outputs_no_tmp_residue(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
         out = tmp_path / "out"
         assert _run_build(state, out) == 0
-        assert sorted(p.name for p in out.iterdir()) == sorted(BUILD_OUTPUT_FILES), "恰好六个输出, 无 .tmp 残留"
+        names = sorted(p.name for p in out.iterdir())
+        assert not [n for n in names if n.endswith(".tmp")], "无 .tmp 残留"
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        assert set(names) == set(manifest["deliverables"]) | {"delivery_manifest.json", ".delivery-contract"}, "目录=交付物∪凭据∪契约标记, 无遗留"
 
     def test_rerun_byte_identical(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
@@ -3792,7 +3819,7 @@ class TestBuildOutputMirrorVolumes:
     def test_commercial_heading_tree_complete(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "商务卷.md").splitlines()
+        lines = _overall_text(tmp_path / "out").splitlines()
         for heading in ("# 投标文件格式", "## 一、投标函", "## 二、法定代表人身份证明", "## 三、开标一览表", "## 四、投标文件签章与份数"):
             assert heading in lines, f"商务卷镜像章节树缺 {heading!r}(path 标题链→# 层级, 只镜像不自创)"
 
@@ -3803,7 +3830,8 @@ class TestBuildOutputMirrorVolumes:
         _run_build(state, out)
         receipt = json.loads((tmp_path / "last_build.json").read_text(encoding="utf-8"))
         assert receipt["out_dir"] == str(out)
-        assert set(receipt["files"]) == set(_build_module().OUTPUT_FILES), "回执覆盖全部六件套"
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        assert set(receipt["files"]) == set(manifest["deliverables"]), "回执覆盖全部交付物(v4 册集)"
         import hashlib
 
         for name, digest in receipt["files"].items():
@@ -3813,7 +3841,7 @@ class TestBuildOutputMirrorVolumes:
     def test_technical_heading_tree_complete(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        lines = _tech_text(tmp_path / "out").splitlines()
         for heading in ("# 技术部分", "## 1 技术方案", "## 2 技术参数响应表"):
             assert heading in lines, f"技术卷镜像缺 {heading!r}"
 
@@ -3823,7 +3851,7 @@ class TestBuildOutputMirrorVolumes:
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
         coverage = _out_text(tmp_path / "out", "覆盖率报表.md")
-        commercial = _out_text(tmp_path / "out", "商务卷.md")
+        commercial = _overall_text(tmp_path / "out")
         assert "## 槽位编排表" in coverage, "槽位编排元数据归属覆盖率报表 sidecar"
         for label in ("槽位类型", "格式要求", "填写状态"):
             assert label in coverage, f"槽位编排表缺 {label}"
@@ -3838,7 +3866,7 @@ class TestBuildOutputMirrorVolumes:
         """D2 锚点契约: 条目标题嵌 clause_id(交付物保留不删); superseded 条款不出条目。"""
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        lines = _tech_text(tmp_path / "out").splitlines()
         assert "### 2.1 响应[ZB-C-001]" in lines or "### **2.1 响应[ZB-C-001]**" in lines, "条目标题必须形如 'N.M 响应[<clause_id>]'"
         assert "### 1.1 响应[ZB-C-002]" in lines, "ZB-C-002 挂接 S-007('1 技术方案')→编号 1.1"
         joined = "\n".join(lines)
@@ -3848,7 +3876,7 @@ class TestBuildOutputMirrorVolumes:
         """强制条款条目标题**加粗**(convert.py 不支持高亮, 加粗是唯一强调载体)。"""
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        lines = _tech_text(tmp_path / "out").splitlines()
         assert any(ln.startswith("### **") and "响应[ZB-C-001]" in ln for ln in lines), "mandatory 条款 ZB-C-001 条目标题须加粗"
         assert "### 1.1 响应[ZB-C-002]" in lines, "非强制条款不加粗"
 
@@ -3861,7 +3889,7 @@ class TestBuildOutputMirrorVolumes:
         ]  # noqa: E501
         (state / "responses.json").write_text(json.dumps(responses, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         _run_build(state, tmp_path / "out")
-        text = _out_text(tmp_path / "out", "技术卷.md")
+        text = _tech_text(tmp_path / "out")
         assert "我方设备防护等级满足IP65,控制器采用S7-1500系列PLC。" in text, "response_text 全文入条目体"
         assert "- 防护等级IP65" in text and "- 控制器S7-1500" in text, "points 渲染为要点列表"
         assert "(响应正文待生成或待填写)" in text, "无响应条目(ZB-C-002)骨架回退待填占位"
@@ -3872,7 +3900,7 @@ class TestBuildOutputMirrorVolumes:
         """image 槽汇总扫描件清单(图片不经 md 链路插入, 终稿人工替换占位)。"""
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
-        text = _out_text(tmp_path / "out", "商务卷.md")
+        text = _overall_text(tmp_path / "out")
         assert "扫描件清单" in text
         assert "S-003" in text and "加盖公章的身份证正反面扫描件" in text
 
@@ -3880,8 +3908,8 @@ class TestBuildOutputMirrorVolumes:
         """管道表格无法表达合并单元格/列宽 → 表格槽标[待人工复刻]; 列头骨架仍渲染。"""
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
-        commercial = _out_text(tmp_path / "out", "商务卷.md")
-        technical = _out_text(tmp_path / "out", "技术卷.md")
+        commercial = _overall_text(tmp_path / "out")
+        technical = _tech_text(tmp_path / "out")
         assert "[待人工复刻]" in commercial and "[待人工复刻]" in technical
         assert "| 序号 | 货物名称 | 数量 | 总价(元) |" in commercial, "列头骨架照渲染"
         assert "| 序号 | 招标要求 | 响应情况 | 满足状态 |" in technical
@@ -3897,7 +3925,7 @@ class TestBuildOutputMirrorVolumes:
         summary = _last_summary_json(capsys)
         assert "clause_fk_invalid" in _anomaly_kinds(summary)
         assert "ZB-C-999" in _out_text(tmp_path / "out", "覆盖率报表.md"), "覆盖率报表槽位编排表标注缺失, 不静默"
-        assert "ZB-C-999" not in _out_text(tmp_path / "out", "商务卷.md"), "交付正文不带管线标注"
+        assert "ZB-C-999" not in _overall_text(tmp_path / "out"), "交付正文不带管线标注"
 
 
 class TestBuildOutputDeviationTable:
@@ -3942,7 +3970,7 @@ class TestBuildOutputTemplatePrefill:
         state = _copy_prestate(tmp_path, merged=True)
         self._set_template(state, "S-002", "致:XX大学\n我方经研究决定参加贵方项目投标。")
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "商务卷.md").splitlines()
+        lines = _overall_text(tmp_path / "out").splitlines()
         assert "致:XX大学" in lines and "我方经研究决定参加贵方项目投标。" in lines, "template_text 逐行渲染为纯正文"
         assert "> 致:XX大学" not in lines and "> 我方经研究决定" not in lines, "v2: 不带引用块前缀"
         assert not any("模板原文" in ln and ln.startswith(">") for ln in lines), "v2: 无标记行"
@@ -3952,7 +3980,7 @@ class TestBuildOutputTemplatePrefill:
         state = _copy_prestate(tmp_path, merged=True)
         self._set_template(state, "S-004", "投标报价一览表\n| 序号 | 货物名称 | 数量 | 总价(元) |")
         _run_build(state, tmp_path / "out")
-        text = _out_text(tmp_path / "out", "商务卷.md")
+        text = _overall_text(tmp_path / "out")
         lines = text.splitlines()
         assert "投标报价一览表" in lines, "表格模板标题行照抄(纯正文行)"
         assert "| 序号 | 货物名称 | 数量 | 总价(元) |" in text, "列头骨架照常渲染(待填行不动)"
@@ -3963,7 +3991,7 @@ class TestBuildOutputTemplatePrefill:
         state = _copy_prestate(tmp_path, merged=True)
         self._set_template(state, "S-001", "投标文件装订顺序:投标函→法定代表人身份证明→开标一览表…")
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "商务卷.md").splitlines()
+        lines = _overall_text(tmp_path / "out").splitlines()
         assert "投标文件装订顺序:投标函→法定代表人身份证明→开标一览表…" in lines
         assert "> 投标文件装订顺序" not in lines, "v2: 不带引用块前缀"
 
@@ -3971,12 +3999,12 @@ class TestBuildOutputTemplatePrefill:
         state = _copy_prestate(tmp_path, merged=True)
         self._set_template(state, "S-002", "致:XX大学")
         _run_build(state, tmp_path / "out")
-        with_template = _out_text(tmp_path / "out", "商务卷.md")
+        with_template = _overall_text(tmp_path / "out")
         assert "致:XX大学" in with_template
         # 撤掉模板重跑: 同一槽位不再出现模板正文(null → 空列表, 非残留)
         self._set_template(state, "S-002", None)
         _run_build(state, tmp_path / "out")
-        assert "致:XX大学" not in _out_text(tmp_path / "out", "商务卷.md"), "无模板=无正文段(无标记行残留)"
+        assert "致:XX大学" not in _overall_text(tmp_path / "out"), "无模板=无正文段(无标记行残留)"
 
     def test_empty_template_rejected_exit_1(self, tmp_path, capsys):
         state = _copy_prestate(tmp_path, merged=True)
@@ -4028,7 +4056,7 @@ class TestBuildOutputFixedRowsReplication:
         # S-004 商务卷表格 rows=3、4 列; 2 固定行 → 1 空白待填行
         self._set_fixed_rows(state, "S-004", [["1", "一体化智能讲台", "10", "480000"], ["2", "智慧黑板", "20", ""]])
         _run_build(state, tmp_path / "out")
-        text = _out_text(tmp_path / "out", "商务卷.md")
+        text = _overall_text(tmp_path / "out")
         assert "| 1 | 一体化智能讲台 | 10 | 480000 |" in text, "固定行逐字复刻(反馈2: 表格 1:1)"
         assert "| 2 | 智慧黑板 | 20 |  |" in text, "固定行空串单元格渲染为空"
         assert text.count("| (待填) | (待填) | (待填) | (待填) |") == 1, "rows=3 - 2 固定行 = 1 空白待填行"
@@ -4038,7 +4066,7 @@ class TestBuildOutputFixedRowsReplication:
         # 固定行数 >= rows → 零空白行(max(0, ...) 不产负数)
         self._set_fixed_rows(state, "S-004", [["1", "A", "1", "100"], ["2", "B", "2", "200"], ["3", "C", "3", "300"]])
         _run_build(state, tmp_path / "out")
-        assert "| (待填) | (待填) | (待填) | (待填) |" not in _out_text(tmp_path / "out", "商务卷.md")
+        assert "| (待填) | (待填) | (待填) | (待填) |" not in _overall_text(tmp_path / "out")
 
     def test_summary_fixed_rows_replicated(self, tmp_path, capsys):
         state = _copy_prestate(tmp_path, merged=True)
@@ -4060,7 +4088,7 @@ class TestBuildOutputResponsesRendering:
     def test_missing_responses_skeleton_fallback(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")  # 无 responses.json = 骨架模式回退, 不是错误
-        assert "(响应正文待生成或待填写)" in _out_text(tmp_path / "out", "技术卷.md")
+        assert "(响应正文待生成或待填写)" in _tech_text(tmp_path / "out")
 
     def test_service_category_clause_gets_entry(self, tmp_path):
         """service 条款与 technical 同走条目管线(ENTRY_CATEGORIES 对齐 responses.py 口径)。"""
@@ -4082,7 +4110,7 @@ class TestBuildOutputResponsesRendering:
             },
         )  # noqa: E501
         _run_build(state, tmp_path / "out")
-        assert "响应[ZB-C-010]" in _out_text(tmp_path / "out", "技术卷.md"), "service 活条款无挂接槽 → 卷末兜底节条目(零遗漏)"
+        assert "响应[ZB-C-010]" in _tech_text(tmp_path / "out"), "service 活条款无挂接槽 → 卷末兜底节条目(零遗漏)"
 
     def test_citations_in_checklist_not_in_volume(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
@@ -4100,7 +4128,7 @@ class TestBuildOutputResponsesRendering:
             ],
         )  # noqa: E501
         _run_build(state, tmp_path / "out")
-        tech = _out_text(tmp_path / "out", "技术卷.md")
+        tech = _tech_text(tmp_path / "out")
         checklist = _out_text(tmp_path / "out", "人核清单.md")
         assert "siemens.com" not in tech, "web 引用不进交付正文"
         assert "## 四、生成内容人核" in checklist, "人核清单须有第四节生成内容人核"
@@ -4140,7 +4168,7 @@ class TestBuildOutputSelfCreatedSection:
             },
         )  # noqa: E501
         _run_build(state, tmp_path / "out")
-        text = _out_text(tmp_path / "out", "技术卷.md")
+        text = _tech_text(tmp_path / "out")
         coverage = _out_text(tmp_path / "out", "覆盖率报表.md")
         assert "## 3 技术解决方案(自拟)" in text, "自拟挂接位渲染为章节标题并占号(镜像 group 不占号)"
         assert "### 3.1 响应[ZB-C-020]" in text, "挂接自拟位的条款入其下条目, 不落卷末兜底节"
@@ -4211,7 +4239,7 @@ class TestBuildOutputDeviationSplit:
         """老 structure(无 template_text 键)照常构建, 无模板正文, 计数 0。"""
         state = _copy_prestate(tmp_path, merged=True)
         assert _run_build(state, tmp_path / "out") == 0
-        assert "模板原文" not in _out_text(tmp_path / "out", "商务卷.md"), "v2: 无标记行概念, 无模板=零正文段"
+        assert "模板原文" not in _overall_text(tmp_path / "out"), "v2: 无标记行概念, 无模板=零正文段"
         assert _last_summary_json(capsys)["template_prefill_count"] == 0
 
 
@@ -4402,7 +4430,7 @@ class TestBuildOutputTableSpecValidation:
     def test_rows_string_exit_1(self, tmp_path):
         state = self._with_s004_spec(tmp_path, {"columns": ["序号", "数量"], "rows": "3"})
         assert _run_build(state, tmp_path / "out") == 1, "rows 字符串必须以 BuildOutputError 干净退出(曾未捕获 ValueError 裸 traceback)"
-        assert not (tmp_path / "out" / "商务卷.md").exists(), "失败路径不产出文件"
+        assert not list((tmp_path / "out").glob("整体方案-*.md")), "失败路径不产出文件"
 
     def test_rows_null_exit_1(self, tmp_path):
         state = self._with_s004_spec(tmp_path, {"columns": ["序号"], "rows": None})
@@ -4420,7 +4448,7 @@ class TestBuildOutputTableSpecValidation:
         """F4①: rows 缺省 → 商务卷骨架 1 行 + 人核清单行数列 1(两处口径一致, 不再渲染空/None)。"""
         state = self._with_s004_spec(tmp_path, {"columns": ["序号", "数量"]})
         assert _run_build(state, tmp_path / "out") == 0
-        commercial = _out_text(tmp_path / "out", "商务卷.md")
+        commercial = _overall_text(tmp_path / "out")
         assert commercial.count("| (待填) | (待填) |") == 1, "缺省 rows=1, 骨架恰一行"
         checklist = _out_text(tmp_path / "out", "人核清单.md")
         assert "| 序号/数量 | 1 |" in checklist, "人核清单行数列与商务卷口径一致(1)"
@@ -4436,7 +4464,7 @@ class TestBuildOutputEntryNumbering:
         state = _copy_prestate(tmp_path, merged=True)
         _set_structure_node(state, "S-007", path="技术部分/2 技术方案")  # 与 S-008 同前导数字 2
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        lines = _tech_text(tmp_path / "out").splitlines()
         assert "### 2.1 响应[ZB-C-002]" in lines, "首个认领前导数字 2 的槽保留 2"
         assert "### **3.1 响应[ZB-C-001]**" in lines, "撞号槽顺延取下一个未占用号 3"
         nums = [re.match(r"^### (?:\*\*)?(\d+\.\d+)", ln).group(1) for ln in lines if re.match(r"^### (?:\*\*)?\d+\.\d+ 响应\[", ln)]
@@ -4461,7 +4489,7 @@ class TestBuildOutputEntryNumbering:
         }
         _add_clause(state, orphan_clause)
         _run_build(state, tmp_path / "out")
-        lines = _out_text(tmp_path / "out", "技术卷.md").splitlines()
+        lines = _tech_text(tmp_path / "out").splitlines()
         assert "### 1.1 响应[ZB-C-002]" in lines, "带号槽'1 技术方案'保留 1"
         assert "### **2.1 响应[ZB-C-001]**" in lines, "无数字槽顺延取 2(旧算法回退计数同为 2——孤儿节撞号根源)"
         assert "## 3 其他技术要求响应" in lines, "孤儿节继续顺延取 3(旧算法 max+1=2 与上面撞号); v2 标题中性化"
@@ -4953,9 +4981,11 @@ class TestReingestMatcherHardening:
         _add_structure_node(state, {"node_id": "S-009", "volume": "technical", "path": "技术部分/3 资质扫描件", "slot_type": "image", "required_format": {"desc": "资质证书扫描件", "table_spec": None}, "linked_clause_ids": []})
         out = tmp_path / "out"
         assert _run_build(state, out) == 0
-        tech_md = _out_text(out, "技术卷.md")
+        tech_md = _tech_text(out)
         assert "其他技术要求响应" in tech_md and "扫描件清单" in tech_md, "用例前提: 两处合成标题都已渲染"
-        assert _run_reingest(state, out / "技术卷.md", volume="technical") == 0, "阶段4→5 法定往返零 unmatched_heading"
+        tech_files = sorted(out.glob("技术卷-*.md"))
+        assert len(tech_files) == 1, "fixture 体量=技术卷单册(用例前提)"
+        assert _run_reingest(state, tech_files[0], volume="technical") == 0, "阶段4→5 法定往返零 unmatched_heading"
         summary = _last_summary_json(capsys)
         assert "unmatched_heading" not in _anomaly_kinds(summary)
         assert summary["anomalies"] == []
@@ -5928,6 +5958,90 @@ def _rs_run(command, state, candidates, capsys=None):
     return rc, summary
 
 
+class TestResponsesSourceModes:
+    """v4 5A/12A: source_mode 枚举扩展(+sample|fabricated) + citation 按 mode 分支校验。
+
+    CRITICAL 回归语义: 旧四枚举(kf/uploads/web/self)行为不变——sample/fabricated
+    只增不改; fabricated 必标 needs_human_verify(P4 全量人核)。
+    """
+
+    def test_sample_with_source_doc_validates_and_merges(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        item = _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[
+            {"title": "某平台投标方案样例", "url": None, "source_doc": "样例库/PaaS平台标书", "quote_span": "p42-3", "quote": "满足等级保护三级要求"},
+        ])
+        rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 0 and summary["anomalies"] == [], f"sample+source_doc 合法: {summary}"
+        rc, _ = _rs_run("merge", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 0
+        merged = json.loads((Path(state) / "responses.json").read_text(encoding="utf-8"))
+        assert merged[0]["source_mode"] == "sample"
+        assert merged[0]["citations"][0]["source_doc"] == "样例库/PaaS平台标书"
+
+    def test_sample_without_citations_rejected(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        item = _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[])
+        rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 3 and any(a["kind"] == "citations_missing_for_sample" for a in summary["anomalies"])
+
+    def test_sample_citation_missing_source_doc_rejected(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        item = _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[
+            {"title": "t", "url": None, "source_doc": None, "quote": "q"},
+        ])
+        rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 3 and any(a["kind"] == "citations_source_doc_missing_for_sample" for a in summary["anomalies"])
+
+    def test_fabricated_without_human_verify_rejected(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        item = _rs_item(source_mode="fabricated", evidence_ref=None, needs_human_verify=False)
+        rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 3 and any(a["kind"] == "fabricated_requires_human_verify" for a in summary["anomalies"]), "P4: 编造漏标人核=拒收"
+
+    def test_fabricated_with_human_verify_merges(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        item = _rs_item(source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                        response_text="我方针对该技术条款给出完整实施方案:总体架构分层设计,关键节点冗余部署,配套全生命周期运维保障与响应时限承诺,确保满足招标文件全部实质性要求。")
+        rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 0, summary["anomalies"] if summary else "rc!=0"
+        assert summary["anomalies"] == []
+        rc, _ = _rs_run("merge", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 0
+        merged = json.loads((Path(state) / "responses.json").read_text(encoding="utf-8"))
+        assert merged[0]["needs_human_verify"] is True
+
+    def test_web_citation_missing_url_rejected(self, tmp_path, capsys):
+        state = _rs_state(tmp_path)
+        item = _rs_item(source_mode="web", evidence_ref=None, citations=[
+            {"title": "t", "url": "", "quote": "q"},
+        ])
+        rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
+        assert rc == 3 and any(a["kind"] == "citations_url_missing_for_web" for a in summary["anomalies"])
+
+    def test_legacy_modes_regression_unchanged(self, tmp_path, capsys):
+        """CRITICAL 回归: 旧四枚举行为不变(kf 无 citations 合法, self 无 nhv 合法)。"""
+        state = _rs_state(tmp_path)
+        items = [
+            _rs_item("ZB-C-001"),
+            _rs_item("ZB-C-003", source_mode="self", evidence_ref=None,
+                     response_text="我方针对该技术条款给出完整实施方案:总体架构分层设计,关键节点冗余部署,配套全生命周期运维保障与响应时限承诺,确保满足招标文件全部实质性要求。"),
+        ]
+        rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, items)], capsys)
+        assert rc == 0, summary["anomalies"] if summary else "rc!=0"
+        assert summary["anomalies"] == []
+
+    def test_schema_accepts_new_modes(self, tmp_path):
+        """schema 层: sample/fabricated 通过 Draft202012 校验(url 可空, source_doc 可选)。"""
+        import jsonschema
+        schema = json.loads((Path(REPO_ROOT) / "skills/public/bid-proposal-writing/references/responses.schema.json").read_text(encoding="utf-8"))
+        for item in (
+            _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[{"title": "t", "url": None, "source_doc": "d", "quote_span": "p1", "quote": "q"}]),
+            _rs_item(source_mode="fabricated", evidence_ref=None, needs_human_verify=True),
+            _rs_item(source_mode="web", evidence_ref=None, citations=[{"title": "t", "url": "https://x", "quote": "q"}]),
+        ):
+            jsonschema.Draft202012Validator(schema).validate(item)
+
+
 class TestResponsesCliContract:
     def test_help_ok(self):
         assert _rs_module().main(["--help"]) == 0, "--help 属正常终止, 不得按错误处理"
@@ -6385,6 +6499,11 @@ STAGE_GROUP_FILENAMES = (
 )
 
 # 每份分组指南的内容要件(阶段级深水区——从 SKILL_MD_REQUIRED_TOKENS 下沉至此逐份锁)
+# v4 编造政策负向契约: 旧三模式级联的指令头不得回流(废除说明提及枚举名不算违例)
+STAGE_FILE_FORBIDDEN_TOKENS = {
+    "stage4-response-build.md": ("mode1 知识库(kf)", "mode2 参考样例(uploads)", "mode3 网络搜索(web)", "停下来**请用户上传参考样例"),
+    "tech_response_prompt.md": ("mode1 知识库(kf)", "mode2 参考样例(uploads)", "mode3 网络搜索(web)", "停下来**请用户上传参考样例"),
+}
 STAGE_FILE_REQUIRED_TOKENS = {
     "stage0-2-intake-extract.md": (
         "extraction_prompt.md",
@@ -6437,13 +6556,12 @@ STAGE_FILE_REQUIRED_TOKENS = {
     "stage4-response-build.md": (
         "tech_response_prompt.md",
         "responses.schema.json",
-        "knowledge-factory",
         "source_mode",
-        "ask_clarification",
-        "参考样例",
-        "web_search",
-        "web_fetch",
-        "citations_missing_for_web",
+        "sample",
+        "fabricated",
+        "fabricated_requires_human_verify",
+        "citations_missing_for_sample",
+        "citations_source_doc_missing_for_sample",
         "needs_human_verify=true",
         "anchor_node_id",
         "self_created_path",
@@ -6499,6 +6617,15 @@ class TestSkillStageGroupFiles:
             content = path.read_text(encoding="utf-8")
             missing = [token for token in tokens if token not in content]
             assert not missing, f"{filename} 缺少内容要件: {missing}"
+
+    def test_stage_files_forbidden_tokens(self):
+        """v4 编造政策负向契约: 旧三模式阻塞级联的指令头不得回流(C5 政策文本落点)。"""
+        for filename, tokens in STAGE_FILE_FORBIDDEN_TOKENS.items():
+            path = SKILL_MD_PATH.parent / "references" / filename
+            assert path.is_file(), f"分组执行指南缺失: {path}"
+            content = path.read_text(encoding="utf-8")
+            present = [token for token in tokens if token in content]
+            assert not present, f"{filename} 残留已废除的 mode2/mode3 阻塞级联指令: {present}"
 
     def test_skill_md_line_budget(self):
         """SKILL.md ≤120 行——流程细节/状态文件表/排错表必须留在 references/, 不许长回 363 行旧态。"""
@@ -7008,3 +7135,446 @@ class TestMergeLedgerSignature:
         summary = _last_summary_json(capsys)
         assert summary["ledger_recorded"] is True and summary["skipped"] is False
         assert (state / "merge_ledger.json").is_file() and "merge_ledger.json" in self._signatures(tmp_path), "重建后重新登记"
+
+
+# ===========================================================================
+# booklets.py(v4 WP-1): 页数估算/贪心切册/册命名/索引卷 — 纯函数契约
+# ===========================================================================
+
+
+class TestSlotsAndConfirmHnv:
+    """v4 T6c 槽位注入(围栏域冻结值不过 LLM 之手) + T6d confirm-hnv 人核出口(8A)。"""
+
+    def test_slot_injection_and_zero_residue(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "slots.json").write_text(json.dumps({"报价总额": "128.5 万元(含税)"}, ensure_ascii=False), encoding="utf-8")
+        (state / "responses.json").write_text(
+            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                                 response_text="本包总价 {{SLOT:报价总额}}; 详见报价明细。其余要求全部满足并提供三年质保服务承诺。")], ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        out = tmp_path / "out"
+        rc = _run_build(state, out)
+        assert rc in (0, 3), "注入本身不产生异常"
+        tech = _tech_text(out)
+        assert "128.5 万元(含税)" in tech, "冻结值注入交付册"
+        assert "SLOT:" not in tech, "注入后零残留(宽匹配防线)"
+
+    def test_slot_deformity_normalized(self, tmp_path):
+        """畸形收形(geo bug-3043 移植): {{SLOT:key}单位} 与 {SLOT:key} 都收形成合法态。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "slots.json").write_text(json.dumps({"报价总额": "128.5", "资质证号": "GB-5050-XX"}, ensure_ascii=False), encoding="utf-8")
+        (state / "responses.json").write_text(
+            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                                 response_text="总价 {{SLOT:报价总额}万元(含税)}; 资质编号 {SLOT:资质证号}; 其余满足。附加质保承诺与运维方案说明文字确保实质长度达标。")], ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        out = tmp_path / "out"
+        assert _run_build(state, out) in (0, 3)
+        tech = _tech_text(out)
+        assert "{{SLOT" not in tech and "{SLOT" not in tech, "零残留"
+        assert "128.5万元(含税)" in tech, "少闭括号畸形收形后注入(单位留在槽外)"
+        assert "GB-5050-XX" in tech, "单开括号畸形收形后注入"
+
+    def test_slot_unknown_key_hard_error(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "responses.json").write_text(
+            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                                 response_text="总价 {{SLOT:不存在的键}}; 其余满足要求并附完整实施方案与质保承诺说明文字。")], ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        rc = _run_build(state, tmp_path / "out")
+        assert rc == 1, "未知槽位键=D5 硬错(退出码 1), 绝不静默交付"
+
+    def test_confirm_hnv_flips_and_keeps_trace(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        items = [
+            _rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                     response_text="我方针对该条款给出完整实施方案: 总体架构分层设计, 关键节点冗余部署与全生命周期运维保障承诺。"),
+            _rs_item("ZB-C-003", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                     response_text="我方针对该条款给出完整实施方案: 分阶段交付与验收, 配备专职团队与响应时限承诺保障落地。"),
+        ]
+        (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        rs = _rs_module()
+        rc = rs.main(["confirm-hnv", "--state-dir", str(state), "--confirmed", "ZB-C-001"])
+        assert rc == 0
+        merged = json.loads((state / "responses.json").read_text(encoding="utf-8"))
+        by_id = {r["clause_id"]: r for r in merged}
+        assert by_id["ZB-C-001"]["needs_human_verify"] is False, "已确认条目收编"
+        assert by_id["ZB-C-001"]["source_mode"] == "fabricated", "fabricated 溯源痕迹保留"
+        assert by_id["ZB-C-003"]["needs_human_verify"] is True, "未确认条目保持 nhv(逐条确认, 不一揽子)"
+
+    def test_confirm_hnv_missing_id_anomaly(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        (state / "responses.json").write_text(json.dumps([
+            _rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                     response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。"),
+        ], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        rs = _rs_module()
+        rc = rs.main(["confirm-hnv", "--state-dir", str(state), "--confirmed", "ZB-C-999"])
+        assert rc == 3, "未知 clause_id → 异常退出(不静默)"
+
+
+class TestProgressController:
+    """v4 T6a: 册/章级状态机(next 恰好一步; VERIFIED 唯一通道 bug-3049; 断点续盘)。"""
+
+    @pytest.fixture
+    def pg(self):
+        return pytest.importorskip("progress")
+
+    def _run(self, pg, *argv):
+        return pg.main(list(argv))
+
+    def test_init_and_resume_no_reset(self, tmp_path, pg):
+        state = _copy_prestate(tmp_path, merged=True)
+        assert self._run(pg, "init", "--state-dir", str(state)) == 0
+        doc = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
+        assert doc["plan"] and all(rec["status"] in ("PENDING", "DRAFTED") for rec in doc["chapters"].values())
+        rc = self._run(pg, "init", "--state-dir", str(state))
+        assert rc == 0
+        doc2 = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
+        assert doc2["chapters"] == doc["chapters"], "续跑拒重置(断点无损)"
+
+    def test_next_single_step_generate_then_gate(self, tmp_path, pg, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._run(pg, "init", "--state-dir", str(state))
+        assert self._run(pg, "next", "--state-dir", str(state)) == 0
+        out = capsys.readouterr().out
+        assert "PHASE: GENERATE" in out and "[NEXT] 生成:" in out, "空响应=先派发生成"
+        # 全章响应 merge(直接写 responses.json)→ 章自动 DRAFTED → next 改指批量跑门
+        plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
+        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                          response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
+        (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        assert self._run(pg, "next", "--state-dir", str(state)) == 0
+        out = capsys.readouterr().out
+        assert "[NEXT] 批量跑门" in out, "DRAFTED 收口优先于新派发(geo WAVE1 分支同款)"
+
+    def test_gate_pass_promotes_verified(self, tmp_path, pg):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._run(pg, "init", "--state-dir", str(state))
+        plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
+        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                          response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
+        (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        assert self._run(pg, "gate", "--state-dir", str(state)) == 0
+        doc = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
+        assert all(rec["status"] == "VERIFIED" for rec in doc["chapters"].values()), "PASS 章自动转 VERIFIED(唯一通道)"
+        assert self._run(pg, "next", "--state-dir", str(state)) == 0
+
+    def test_gate_fail_twice_blocks(self, tmp_path, pg):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._run(pg, "init", "--state-dir", str(state))
+        plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
+        first = plan[0]
+        # 手动 DRAFTED(合法) 但响应缺失 → 门 FAIL; 连续 2 轮 → BLOCKED
+        assert self._run(pg, "mark", first["id"], "DRAFTED", "--state-dir", str(state)) == 0
+        assert self._run(pg, "gate", "--state-dir", str(state), "--chapters", first["id"]) == 1
+        assert self._run(pg, "gate", "--state-dir", str(state), "--chapters", first["id"]) == 1
+        doc = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
+        assert doc["chapters"][first["id"]]["status"] == "BLOCKED", "连续 2 轮门 FAIL → BLOCKED"
+        assert self._run(pg, "next", "--state-dir", str(state)) == 0
+
+    def test_mark_verified_rejected_bug3049(self, tmp_path, pg):
+        """反自证凭据(bug-3049 移植): 手动 mark VERIFIED 一律拒绝并指唯一合法通道。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        self._run(pg, "init", "--state-dir", str(state))
+        plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
+        rc = self._run(pg, "mark", plan[0]["id"], "VERIFIED", "--state-dir", str(state))
+        assert rc == 1
+        doc = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
+        assert doc["chapters"][plan[0]["id"]]["status"] == "PENDING", "自证转 VERIFIED 不生效"
+
+    def test_build_phase_and_done(self, tmp_path, pg, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._run(pg, "init", "--state-dir", str(state))
+        plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
+        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
+                          response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
+        (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        self._run(pg, "gate", "--state-dir", str(state))
+        assert self._run(pg, "next", "--state-dir", str(state)) == 0
+        # T7 波间要点包门: 全 VERIFIED 但未确认 → KEY_POINTS(报价汇总/关键承诺/偏离结论)
+        out = capsys.readouterr().out
+        assert "PHASE: KEY_POINTS" in out and "key_points.json" in out
+        assert self._run(pg, "confirm-key-points", "--state-dir", str(state)) == 0
+        # 确认后 → BUILD 相位; 记账后 → DONE
+        assert self._run(pg, "next", "--state-dir", str(state)) == 0
+        capsys.readouterr()
+        assert self._run(pg, "mark-build-done", "--state-dir", str(state)) == 0
+        assert self._run(pg, "next", "--state-dir", str(state)) == 0
+        assert "PHASE: DONE" in capsys.readouterr().out
+
+    def test_unknown_chapter_rejected(self, tmp_path, pg):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._run(pg, "init", "--state-dir", str(state))
+        assert self._run(pg, "mark", "C-99", "DRAFTED", "--state-dir", str(state)) == 1
+
+
+class TestEntityGateV4:
+    """v4 T4 实体门: 册全文扫描 + 硬门熔断(4A) + 候选白名单通道。"""
+
+    ROGUE = "东智残留装备制造有限公司"
+
+    def _inject_rogue_quote(self, state):
+        _set_clause(state, "ZB-C-001", source_ref={"section": "技术要求", "para": 1, "page": None, "quote": f"投标人应满足要求, 参照{self.ROGUE}产品标准执行。"})
+
+    def test_hard_gate_blocks_manifest_first_round(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._inject_rogue_quote(state)
+        out = tmp_path / "out"
+        assert _run_build(state, out) == 3
+        assert not (out / "delivery_manifest.json").exists(), "硬门第 1 轮: 不写交付凭据(9A)"
+        assert not (out / ".delivery-contract").exists(), "凭据缺失态: 契约标记一并撤除"
+        assert (out / "实体lint报告.md").is_file(), "lint 报告仍产出(候选白名单通道载体)"
+
+    def test_escalate_after_two_rounds_same_flagged(self, tmp_path):
+        """同 flagged 集连犯 2 轮 → 转人工(escalated): 凭据放行, 把关移交人核。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        self._inject_rogue_quote(state)
+        out = tmp_path / "out"
+        assert _run_build(state, out) == 3
+        assert not (out / "delivery_manifest.json").exists()
+        assert _run_build(state, out) == 3
+        assert (out / "delivery_manifest.json").is_file(), "第 2 轮同集 → escalated 放行(转人工清单)"
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["skill"] == "bid-proposal-writing"
+        receipt = json.loads((tmp_path / "last_build.json").read_text(encoding="utf-8"))
+        assert receipt["entity_gate"]["escalated"] is True and receipt["entity_gate"]["rounds"] == 2
+
+    def test_round_resets_when_flagged_changes(self, tmp_path):
+        """flagged 集变化 → 轮次重置(回硬门), 防跨残留集累计洗门。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        self._inject_rogue_quote(state)
+        out = tmp_path / "out"
+        _run_build(state, out)  # 轮 1: 残留 A
+        self._inject_rogue_quote(state)
+        _set_clause(state, "ZB-C-003", source_ref={"section": "服务要求", "para": 1, "page": None, "quote": f"运维服务参照{self.ROGUE}二号分公司规范。"})
+        result = _run_build(state, out)
+        assert result == 3
+        assert not (out / "delivery_manifest.json").exists(), "flagged 集变化 → 轮次重置回硬门"
+
+    def test_clean_build_restores_manifest(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        self._inject_rogue_quote(state)
+        out = tmp_path / "out"
+        _run_build(state, out)
+        _set_clause(state, "ZB-C-001", source_ref={"section": "技术要求", "para": 1, "page": None, "quote": "投标人应满足招标文件技术要求。"})
+        assert _run_build(state, out) == 0
+        assert (out / "delivery_manifest.json").is_file(), "处置完成后凭据恢复"
+        receipt = json.loads((tmp_path / "last_build.json").read_text(encoding="utf-8"))
+        assert receipt["entity_gate"]["rounds"] == 0
+
+    def test_booklet_fulltext_scanned(self, tmp_path):
+        """扫描面扩到交付册全文: 编造正文(response_text)里的白名单外实体被揪出。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        rogue_text = (
+            "我方针对该技术条款给出完整实施方案: 总体架构分层设计, 关键节点冗余部署, "
+            f"核心设备可兼容{self.ROGUE}既有平台接口, 配套全生命周期运维保障与响应时限承诺, "
+            "确保满足招标文件全部实质性要求。"
+        )
+        (state / "responses.json").write_text(
+            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text=rogue_text)], ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        out = tmp_path / "out"
+        assert _run_build(state, out) == 3, "编造正文的残留实体必须被册全文扫描揪出"
+        assert not (out / "delivery_manifest.json").exists(), "实体门硬门: 册全文命中同样阻断凭据"
+        lint_md = (out / "实体lint报告.md").read_text(encoding="utf-8")
+        assert "交付册全文" in lint_md and self.ROGUE in lint_md
+
+    def test_candidate_whitelist_channel_in_report(self, tmp_path):
+        """候选白名单通道: lint 报告给出确认入册指引与候选值(4A)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        self._inject_rogue_quote(state)
+        out = tmp_path / "out"
+        _run_build(state, out)
+        lint_md = (out / "实体lint报告.md").read_text(encoding="utf-8")
+        assert "候选白名单(确认后一键入册)" in lint_md
+        assert self.ROGUE in lint_md
+        assert "无需回阶段4a 重写" in lint_md
+
+
+class TestBuildOutputBooklets:
+    """v4 分册集成契约(设计稿测试矩阵): 两文档拓扑/占位页/清场/凭据/超限成册。"""
+
+    def test_tech_placeholder_zero_leak(self, tmp_path):
+        """整体方案技术章=占位页: 指引+分册目录在, 技术正文零内联; 全量在技术卷。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        overall = _overall_text(tmp_path / "out")
+        tech = _tech_text(tmp_path / "out")
+        assert "占位页" in overall and "技术卷分册目录" in overall, "占位页契约元素在"
+        tech_clause_ids = [c["clause_id"] for c in json.loads((Path(state) / "clauses.json").read_text(encoding="utf-8")) if c.get("category") in ("technical", "service")]
+        assert tech_clause_ids, "用例前提: fixture 有技术条款"
+        for cid in tech_clause_ids:
+            assert cid not in overall, f"技术正文(锚点 {cid})不得内联进整体方案"
+            assert cid in tech, f"技术条款 {cid} 必须全量在技术卷"
+
+    def test_index_volume_lists_both_groups(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        index = _out_text(tmp_path / "out", "0-总目录索引.md")
+        assert "整体方案册组" in index and "技术卷册组" in index
+        assert "| 册 | 文件 | 章节范围 | 估算页数 |" in index
+        assert "非 LLM 内容" in index
+
+    def test_manifest_contract(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        _run_build(state, out)
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["skill"] == "bid-proposal-writing"
+        assert manifest["version"] == 1
+        actual = sorted(p.name for p in out.iterdir() if p.name != "delivery_manifest.json" and p.suffix == ".md")
+        assert sorted(manifest["deliverables"]) == actual, "deliverables=全部 md 交付物"
+        assert set(manifest["files"]) == set(manifest["deliverables"])
+        assert "整体方案" in manifest["docs"] and "技术卷" in manifest["docs"]
+
+    def test_sweep_skipped_without_manifest(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _run_build(state, tmp_path / "out")
+        summary = _last_summary_json(capsys)
+        assert any("清场跳过" in w for w in summary["sweep"]), "首轮无旧 manifest=跳过清场(合法态)"
+
+    def test_sweep_removes_stale_deliverable(self, tmp_path):
+        """重切册目录幂等(11A): 旧册文件不在新 deliverables → 被 manifest 清场删除。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        _run_build(state, out)
+        stale = out / "技术卷-99-已废弃章.md"
+        stale.write_text("# 已废弃" + chr(10), encoding="utf-8")
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        manifest["deliverables"] = sorted(manifest["deliverables"] + [stale.name])
+        (out / "delivery_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False), encoding="utf-8")
+        assert _run_build(state, out) == 0
+        assert not stale.exists(), "旧册残留被确定性清场(防自家交付门反控)"
+
+    def test_oversized_chapter_whole_booklet(self, tmp_path, capsys):
+        """2A: 单章超软上限 → 整章成册 + 告警(不在章内硬切)。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        big_text = "模板固定文字原文段落。" * 6000  # ~6600 字→约 8.3 页? 不足; 用 40k 字
+        big_text = "模板固定文字原文段落。" * 5000  # ~55k chars → ~69 页 > 50
+        _set_structure_node(state, "S-001", required_format={"desc": None, "table_spec": None, "template_text": big_text})
+        _run_build(state, tmp_path / "out")
+        summary = _last_summary_json(capsys)
+        warnings = summary["booklets"]["整体方案"]["warnings"] + summary["booklets"]["技术卷"]["warnings"]
+        assert any("单章超软上限" in w for w in warnings), f"超限章必须整章成册告警: {warnings}"
+
+
+class TestBooklets:
+    """切册纯函数契约(docs/designs/bid-proposal-writing-v4-volume-architecture.md 契约表)。
+
+    系数经三份真实中标标书校验(江西师大估 217p vs 实 ~220p); 软上限 50/合并 8
+    为 eng-review 2A 定案; booklet=构建时产物(7A), 本模块纯函数无 IO。
+    """
+
+    @pytest.fixture
+    def bk(self):
+        return pytest.importorskip("booklets")
+
+    def test_estimate_pages_formula(self, bk):
+        # 800 字=1 页; 表格 0.5/张; 图片 0.5/张; 大表超 20 行每行 +0.05
+        assert bk.estimate_pages(chars=800) == 1.0
+        assert bk.estimate_pages(chars=1600, tables=2) == 3.0
+        assert bk.estimate_pages(images=4) == 2.0
+        assert bk.estimate_pages(chars=0, table_rows=30) == 0.5  # (30-20)*0.05
+        assert bk.estimate_pages(chars=400, tables=1, images=1) == 1.5
+
+    def test_estimate_pages_zero(self, bk):
+        assert bk.estimate_pages() == 0.0
+
+    def test_chapter_of(self, bk):
+        assert bk.chapter_of("投标函/签署页") == "投标函"
+        assert bk.chapter_of("第十章 总体技术方案/实施方案") == "第十章 总体技术方案"
+
+    def test_short_name_strips_numbering(self, bk):
+        assert bk.short_name("第十章 总体技术方案") == "总体技术方案"
+        assert bk.short_name("1. 投标函") == "投标函"
+        assert bk.short_name("（一）资格声明") == "资格声明"
+        assert len(bk.short_name("很长的章节名称" * 10)) <= 12
+
+    def test_booklet_filename_contract(self, bk):
+        assert bk.booklet_filename("技术卷", 3, "第2章 设备参数响应") == "技术卷-03-设备参数响应.md"
+        assert bk.booklet_filename("整体方案", 1, "投标函") == "整体方案-01-投标函.md"
+
+    def test_plan_booklets_greedy_boundary(self, bk):
+        chapters = [
+            {"title": "A", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},   # 25.0p
+            {"title": "B", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},   # 25.0p
+            {"title": "C", "chars": 12_000, "tables": 0, "table_rows": 0, "images": 0},   # 15.0p
+        ]
+        booklets, warnings = bk.plan_booklets(chapters)
+        assert not warnings
+        assert [b["chapters"] for b in booklets] == [["A", "B"], ["C"]]
+        assert booklets[0]["pages_est"] == 50.0 and booklets[1]["pages_est"] == 15.0
+
+    def test_plan_booklets_oversized_whole_chapter(self, bk):
+        chapters = [
+            {"title": "小章", "chars": 4_000, "tables": 0, "table_rows": 0, "images": 0},      # 5p
+            {"title": "巨章", "chars": 60_000, "tables": 0, "table_rows": 0, "images": 0},     # 75p > 50
+        ]
+        booklets, warnings = bk.plan_booklets(chapters)
+        assert len(booklets) == 2
+        assert booklets[0]["chapters"] == ["小章"] and booklets[0]["pages_est"] == 5.0
+        assert booklets[1] == {"chapters": ["巨章"], "pages_est": 75.0, "oversized": True}
+        assert any("单章超软上限" in w for w in warnings)
+
+    def test_plan_booklets_oversized_flushes_accumulated(self, bk):
+        chapters = [
+            {"title": "A", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},   # 25p
+            {"title": "巨章", "chars": 60_000, "tables": 0, "table_rows": 0, "images": 0},
+        ]
+        booklets, _ = bk.plan_booklets(chapters)
+        assert booklets[0]["chapters"] == ["A"], "超限章前必须 flush 已累计章(规则 A)"
+        assert booklets[1]["oversized"] is True
+
+    def test_plan_booklets_merge_thin_tail(self, bk):
+        chapters = [
+            {"title": "A", "chars": 38_400, "tables": 0, "table_rows": 0, "images": 0},  # 48p
+            {"title": "B", "chars": 38_400, "tables": 0, "table_rows": 0, "images": 0},  # 48p
+            {"title": "尾", "chars": 2_400, "tables": 0, "table_rows": 0, "images": 0},  # 3p <8
+        ]
+        booklets, warnings = bk.plan_booklets(chapters)
+        assert [b["chapters"] for b in booklets] == [["A"], ["B", "尾"]]
+        assert any("并入前册" in w for w in warnings)
+
+    def test_plan_booklets_single_thin_kept(self, bk):
+        chapters = [{"title": "唯一", "chars": 4_000, "tables": 0, "table_rows": 0, "images": 0}]
+        booklets, warnings = bk.plan_booklets(chapters)
+        assert len(booklets) == 1 and not warnings, "仅一册时薄册保留(薄总比空好)"
+
+    def test_plan_booklets_empty(self, bk):
+        assert bk.plan_booklets([]) == ([], [])
+
+    def test_plan_booklets_order_preserved(self, bk):
+        titles = ["一", "二", "三", "四"]
+        chapters = [{"title": t, "chars": 12_000, "tables": 0, "table_rows": 0, "images": 0} for t in titles]
+        booklets, _ = bk.plan_booklets(chapters)
+        flat = [c for b in booklets for c in b["chapters"]]
+        assert flat == titles, "切册绝不重排(镜像连续, 1:1 复刻纪律前提)"
+
+    def test_assign_filenames(self, bk):
+        booklets = [
+            {"chapters": ["第十章 总体技术方案", "B"], "pages_est": 40.0, "oversized": False},
+            {"chapters": ["实施与验收"], "pages_est": 30.0, "oversized": False},
+        ]
+        assert bk.assign_filenames("技术卷", booklets) == ["技术卷-01-总体技术方案.md", "技术卷-02-实施与验收.md"]
+
+    def test_render_index_groups_and_notes(self, bk):
+        groups = [
+            {"doc": "整体方案", "files": ["整体方案-01-投标函.md"], "booklets": [{"chapters": ["投标函", "资格声明"], "pages_est": 12.3, "oversized": False}]},
+            {"doc": "技术卷", "files": ["技术卷-01-总体设计.md"], "booklets": [{"chapters": ["总体设计"], "pages_est": 55.0, "oversized": True}]},
+        ]
+        md = bk.render_index(groups, extra_notes=["围栏域汇总: 报价槽位见 整体方案-01"])
+        assert "# 总目录索引" in md
+        assert "整体方案册组(1 册)" in md and "技术卷册组(1 册)" in md
+        assert "| 01 | 整体方案-01-投标函.md | 投标函 → 资格声明 | 12.3 |" in md
+        assert "(单章超限整章成册)" in md
+        assert "- 围栏域汇总: 报价槽位见 整体方案-01" in md
+        assert "非 LLM 内容" in md and "md 层不写页码" in md
+
+    def test_total_and_ceil_pages(self, bk):
+        booklets = [{"pages_est": 12.3}, {"pages_est": 30.4}]
+        assert bk.total_pages(booklets) == 42.7
+        assert bk.ceil_pages(booklets) == 43

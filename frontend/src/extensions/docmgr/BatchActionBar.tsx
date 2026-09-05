@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderInput, Star, Trash2, X } from "lucide-react";
+import { FolderInput, Star, Trash2, X , Layers } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,6 +10,9 @@ interface BatchActionBarProps {
   onStar: () => void;
   onDelete: () => void;
   onCancel: () => void;
+  // EAI-CUSTOM (bug-3109 v4 WP-1.4): 多册合并导出(≥2 个勾选; 后端整单失败指认册名)
+  onMergeExport?: () => void;
+  mergeExporting?: boolean;
 }
 
 export default function BatchActionBar({
@@ -18,6 +21,8 @@ export default function BatchActionBar({
   onStar,
   onDelete,
   onCancel,
+  onMergeExport,
+  mergeExporting = false,
 }: BatchActionBarProps) {
   if (selectedCount === 0) return null;
 
@@ -36,6 +41,12 @@ export default function BatchActionBar({
             <Star className="w-4 h-4" />
             收藏
           </Button>
+          {onMergeExport && (
+            <Button variant="outline" size="sm" onClick={onMergeExport} disabled={mergeExporting}>
+              <Layers className="w-4 h-4" />
+              {mergeExporting ? "合并中…" : "合并导出"}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="text-destructive hover:text-destructive" onClick={onDelete}>
             <Trash2 className="w-4 h-4" />
             删除

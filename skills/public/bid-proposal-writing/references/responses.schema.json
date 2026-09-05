@@ -2,10 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/responses.schema.json",
   "title": "Technical response entry (responses.json item)",
-  "description": "技术响应内容条目 responses.json 的节点契约(2026-08-18 v2 反馈3/4)。阶段4a 三模式生成(kf=知识库扩写/仿写、uploads=用户参考样例、web=网络搜索深写、self=Agent 依据条款原文自拟)的产物由 Agent 落候选、responses.py 确定性校验后 upsert 进 responses.json; 按 clause_id 幂等。source_mode 留痕供人核清单分级(web 全标 needs_human_verify)。消费方: build_output.py(条目体正文)/merge 落位(structure linked_clause_ids 或 self_created 节点)。",
+  "description": "技术响应内容条目 responses.json 的节点契约(2026-08-18 v2 反馈3/4)。阶段4a 供源级联(kf=知识库扩写/仿写、uploads=用户参考样例、web=网络搜索深写、self=Agent 依据条款原文自拟、sample=样例库段落仿写(v4 WP-3)、fabricated=样例缺失直接编造(v4 P1 政策: 合法且必要, 全量 needs_human_verify))的产物由 Agent 落候选、responses.py 确定性校验后 upsert 进 responses.json; 按 clause_id 幂等。source_mode 留痕供人核清单分级(web 全标 needs_human_verify)。消费方: build_output.py(条目体正文)/merge 落位(structure linked_clause_ids 或 self_created 节点)。",
   "type": "object",
   "additionalProperties": false,
-  "required": ["clause_id", "response_text", "source_mode"],
+  "required": [
+    "clause_id",
+    "response_text",
+    "source_mode"
+  ],
   "properties": {
     "clause_id": {
       "type": "string",
@@ -19,48 +23,109 @@
     },
     "points": {
       "type": "array",
-      "items": {"type": "string", "minLength": 1},
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
       "description": "响应要点(可选; 渲染为正文前的要点列表, 可空数组)。"
     },
     "evidence_ref": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "证据引用锚(kf: 前缀=知识库模板 id; uploads: 前缀=参考样例文件路径; web 来源用 citations; null=无外部证据)。"
     },
     "source_mode": {
       "type": "string",
-      "enum": ["kf", "uploads", "web", "self"],
-      "description": "供源模式: kf=knowledge-factory MCP | uploads=用户上传参考样例 | web=网络搜索 | self=仅依据条款原文自拟。"
+      "enum": [
+        "kf",
+        "uploads",
+        "web",
+        "self",
+        "sample",
+        "fabricated"
+      ],
+      "description": "供源模式: kf=knowledge-factory MCP | uploads=用户上传参考样例 | web=网络搜索 | self=仅依据条款原文自拟 | sample=投标样例库段落仿写(v4, citation 用 source_doc+quote_span) | fabricated=样例缺失直接编造(v4 P1 政策, 必标 needs_human_verify=true 进人核清单)。citation 形状按 mode 分支校验(responses.py): web→url 必填; sample→source_doc 必填。"
     },
     "citations": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["title", "url", "quote"],
+        "required": [
+          "title",
+          "quote"
+        ],
         "properties": {
-          "title": {"type": "string", "minLength": 1, "description": "来源页标题。"},
-          "url": {"type": "string", "minLength": 1, "description": "来源 URL。"},
-          "quote": {"type": "string", "description": "引用片段(照抄, 供人核清单逐条核实)。"}
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "description": "来源页标题。"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "来源 URL(web 模式必填, validate 强制; sample 模式无 URL 用 source_doc)。"
+          },
+          "quote": {
+            "type": "string",
+            "description": "引用片段(照抄, 供人核清单逐条核实)。"
+          },
+          "source_doc": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "来源文档名(sample 模式必填: RAGFlow/样例库文档标识; validate 强制)。"
+          },
+          "quote_span": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "段落定位(sample 模式可选: 段落号/锚点, 供人核回原文)。"
+          }
         }
       },
-      "description": "web 引用清单(source_mode=web 时必须非空——validate 强制); 不进交付正文, 渲染进人核清单第四节。"
+      "description": "引用清单(citation 形状按 source_mode 分支——web 必须非空且逐条 url; sample 必须非空且逐条 source_doc; 其余模式可空)。不进交付正文, 渲染进人核清单第四节。"
     },
     "placement": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "additionalProperties": false,
       "properties": {
-        "anchor_node_id": {"type": "string", "pattern": "^S-\\d{1,6}$", "description": "挂接到既有结构节点(优先: 招标文件给定的技术章节锚)。"},
-        "self_created_path": {"type": "string", "minLength": 1, "description": "自拟章节标题链(无锚点时; merge 建 origin=self_created 的 group 节点)。"},
-        "after_node_id": {"type": "string", "pattern": "^S-\\d{1,6}$", "description": "自拟节点的插入位(仅与 self_created_path 同用; 缺省追加卷末)。"}
+        "anchor_node_id": {
+          "type": "string",
+          "pattern": "^S-\\d{1,6}$",
+          "description": "挂接到既有结构节点(优先: 招标文件给定的技术章节锚)。"
+        },
+        "self_created_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "自拟章节标题链(无锚点时; merge 建 origin=self_created 的 group 节点)。"
+        },
+        "after_node_id": {
+          "type": "string",
+          "pattern": "^S-\\d{1,6}$",
+          "description": "自拟节点的插入位(仅与 self_created_path 同用; 缺省追加卷末)。"
+        }
       },
       "description": "落位声明: anchor_node_id 与 self_created_path 二选一(语义校验在 responses.py, 非 schema 层)。anchor→幂等追加该节点 linked_clause_ids; self_created→structure 建自拟节点并挂接。null=不落位(仅按 clause_id 关联渲染)。"
     },
     "needs_human_verify": {
       "type": "boolean",
-      "description": "人核标记(web 来源一律 true; kf/uploads 引用亦建议 true)——渲染进人核清单生成内容人核节。"
+      "description": "人核标记(web/sample 来源引用逐条核实; fabricated(编造)一律 true——validate 强制, P4 全量人核)——渲染进人核清单生成内容人核节。"
     },
     "note": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "备注(生成依据/降级原因等, 可空)。"
     }
   }

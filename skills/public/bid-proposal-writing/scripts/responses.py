@@ -219,8 +219,28 @@ def evaluate(state: dict, schema: dict, records: list[tuple[Path, dict]]) -> dic
                     {"kind": "pipeline_metadata_in_text", "file": path.name, "item_id": clause_id, "markers": hit_markers, "message": f"response_text 携带管线元数据标记 {hit_markers}(回放实证曾当正文写进交付物), [待确认]重写后再合并"}
                 )  # noqa: E501
                 continue
-            if raw_item.get("source_mode") == "web" and not raw_item.get("citations"):
-                problems.append({"kind": "citations_missing_for_web", "file": path.name, "item_id": clause_id, "message": "source_mode=web 但 citations 为空——网搜深写必须逐条留引用(人核清单第四节消费), [待确认]不合并"})
+            mode = raw_item.get("source_mode")
+            citations = raw_item.get("citations") or []
+            if mode == "web":
+                if not citations:
+                    problems.append({"kind": "citations_missing_for_web", "file": path.name, "item_id": clause_id, "message": "source_mode=web 但 citations 为空——网搜深写必须逐条留引用(人核清单第四节消费), [待确认]不合并"})
+                    continue
+                bad_idx = [i for i, c in enumerate(citations, 1) if not (c.get("url") or "").strip()]
+                if bad_idx:
+                    problems.append({"kind": "citations_url_missing_for_web", "file": path.name, "item_id": clause_id, "message": f"source_mode=web 第 {bad_idx} 条引用缺 url——web 引用必须带 URL(人核逐条可回访), [待确认]不合并"})
+                    continue
+            elif mode == "sample":
+                # v4(12A): 样例库段落引用无 URL, citation 形状=source_doc(+quote_span)
+                if not citations:
+                    problems.append({"kind": "citations_missing_for_sample", "file": path.name, "item_id": clause_id, "message": "source_mode=sample 但 citations 为空——样例仿写必须留源文档引用(防无溯源编造), [待确认]不合并"})
+                    continue
+                bad_idx = [i for i, c in enumerate(citations, 1) if not (c.get("source_doc") or "").strip()]
+                if bad_idx:
+                    problems.append({"kind": "citations_source_doc_missing_for_sample", "file": path.name, "item_id": clause_id, "message": f"source_mode=sample 第 {bad_idx} 条引用缺 source_doc——样例引用必须带来源文档标识, [待确认]不合并"})
+                    continue
+            if mode == "fabricated" and not raw_item.get("needs_human_verify"):
+                # v4(P4): 编造合法但必须全量进人核清单——漏标即拒收(语义=如实标注降级的重定位)
+                problems.append({"kind": "fabricated_requires_human_verify", "file": path.name, "item_id": clause_id, "message": "source_mode=fabricated 但 needs_human_verify≠true——编造段落必须全量进人核清单(P4 政策), [待确认]不合并"})
                 continue
             # 响应实质 lint(v3/WP-C, bug-2189 语料校准): 薄响应/套话填充 → anomaly 不静默。
             # 有供源留痕(citations/evidence_ref 非空)的短响应豁免长度下限(套话占比仍查)。
@@ -414,6 +434,50 @@ def cmd_merge(args) -> int:
     return EXIT_ANOMALY if report["anomalies"] else EXIT_OK
 
 
+def cmd_confirm_hnv(args) -> int:
+    """confirm-hnv(v4 P4/8A 人核出口): 把用户已确认的编造/仿写条目 nhv true→false。
+
+    人核确认结果的唯一合法落盘点(签名链内收编重签)——铁律9 手写 responses.json
+    依旧禁止。未列出的 nhv 项保持 true(逐条确认, 绝不一揽子放行); source_mode
+    保留原值(fabricated 溯源痕迹不因确认而抹除)。
+    """
+    _verify_state_guard(args.state_dir, "confirm-hnv 前置校验")
+    state_dir = Path(args.state_dir)
+    confirmed_ids = [c.strip() for c in args.confirmed.split(",") if c.strip()]
+    if not confirmed_ids:
+        raise ResponsesError("confirm-hnv: --confirmed 为空——逐条给出已确认的 clause_id(逗号分隔)")
+    responses = load_state(state_dir)["responses"]
+    by_id = {str(r.get("clause_id")): r for r in responses}
+    flipped: list[str] = []
+    already: list[str] = []
+    missing: list[str] = []
+    for cid in confirmed_ids:
+        item = by_id.get(cid)
+        if item is None:
+            missing.append(cid)
+        elif item.get("needs_human_verify"):
+            item["needs_human_verify"] = False
+            flipped.append(cid)
+        else:
+            already.append(cid)
+    remaining = sum(1 for r in responses if r.get("needs_human_verify"))
+    written: list[str] = []
+    if flipped:
+        extract.atomic_write_json(state_dir / RESPONSES_STATE_FILE, responses)
+        written.append(RESPONSES_STATE_FILE)
+        state_guard.sign_state_files(state_dir, sorted(set(written)))
+    summary = {
+        "command": "confirm-hnv",
+        "confirmed": flipped,
+        "already_confirmed": already,
+        "missing": missing,
+        "remaining_hnv": remaining,
+        "written": sorted(set(written)),
+    }
+    print(json.dumps(summary, ensure_ascii=False))
+    return EXIT_ANOMALY if missing else EXIT_OK
+
+
 def _base_summary(command: str, args, report: dict) -> dict:
     return {
         "command": command,
@@ -451,6 +515,10 @@ def main(argv: list[str] | None = None) -> int:
     merge_parser = subparsers.add_parser("merge", help="校验后原子落账 responses.json 并联动落位/状态升级(幂等)")
     _add_common_arguments(merge_parser)
     merge_parser.set_defaults(func=cmd_merge)
+    confirm_parser = subparsers.add_parser("confirm-hnv", help="人核出口(P4/8A): 已确认条目 nhv true→false 收编重签(逐条, 不一揽子)")
+    confirm_parser.add_argument("--state-dir", required=True, help="状态目录(读写 responses.json)")
+    confirm_parser.add_argument("--confirmed", required=True, help="已确认的 clause_id 列表(逗号分隔, 逐条确认)")
+    confirm_parser.set_defaults(func=cmd_confirm_hnv)
 
     try:
         args = parser.parse_args(argv)

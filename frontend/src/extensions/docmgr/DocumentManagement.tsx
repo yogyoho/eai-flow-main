@@ -625,6 +625,40 @@ function DocumentList({
     setSelectedIds(new Set());
   };
 
+  // EAI-CUSTOM (bug-3109 v4 WP-1.4): 多册合并导出——选中文档依序合并单 docx,
+  // 册间分页; 后端整单失败语义(任一册解析失败 → 错误指认册名, 不落部分文件)。
+  const [mergeExporting, setMergeExporting] = useState(false);
+  const handleMergeExport = async () => {
+    if (selectedIds.size < 2) {
+      alert("合并导出请先勾选至少 2 个文档");
+      return;
+    }
+    setMergeExporting(true);
+    try {
+      const sections: { filename: string; content: string }[] = [];
+      for (const id of selectedIds) {
+        const title = docs.find((d) => d.id === id)?.title ?? id;
+        const res = await docmgrApi.export(id, "md");
+        sections.push({ filename: `${title}.md`, content: await res.text() });
+      }
+      const blob = await docmgrApi.exportMerged(sections, {
+        filename: "合并导出.docx",
+        with_toc: true,
+        toc_depth: 3,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "合并导出.docx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "合并导出失败");
+    } finally {
+      setMergeExporting(false);
+    }
+  };
+
   const isFileRefView = activeNav === "file_ref_folder";
 
   // 选中线程后，主体区显示该线程文件（适配为 DocCard 期望的形状）
@@ -1471,6 +1505,8 @@ function DocumentList({
         onStar={handleBatchStar}
         onDelete={handleBatchDelete}
         onCancel={handleBatchCancel}
+        onMergeExport={handleMergeExport}
+        mergeExporting={mergeExporting}
       />
     </div>
   );

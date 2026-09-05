@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
-"""build_output.py — 投标方案编写技能·阶段4 双卷骨架渲染(无 LLM)。
+"""build_output.py — 投标方案编写技能·阶段4 交付渲染(无 LLM)。
 
 规格: docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md
-「阶段4 build」+ D2(重灌锚点载体在渲染时埋定)/D7(派生字段现算不落盘/原子写盘)。
-本脚本只做确定性渲染, 产出六件套 md 即止; **不做 Word 转换**——排版与 .docx
+「阶段4 build」+ D2(重灌锚点载体在渲染时埋定)/D7(派生字段现算不落盘/原子写盘)
++ v4 分册架构(docs/designs/bid-proposal-writing-v4-volume-architecture.md Revision 4)。
+本脚本只做确定性渲染, 产出两文档册集 md 即止; **不做 Word 转换**——排版与 .docx
 导出由用户在文档空间完成(present_files 交付后自动同步)。
 
 用法:
     python build_output.py --state-dir <dir> --out <dir>
 
-输出六件套(--out 目录):
-    商务卷.md / 技术卷.md / 偏离表.md / 覆盖率报表.md / 人核清单.md / 实体lint报告.md
+输出两文档册集(--out 目录, v4 Revision 4 两文档拓扑):
+    整体方案-NN-首章短名.md(商务章全量+技术章占位页, 零技术正文内联)
+    技术卷-NN-首章短名.md(技术章全量, 卷尾件挂末册)
+    0-总目录索引.md(确定性投影, 分册导航/合并导出序)
+    偏离表.md / 覆盖率报表.md / 人核清单.md / 实体lint报告.md(全局副表)
+    delivery_manifest.json(交付凭据: skill/version/deliverables, 清场依据)
 
 职责(设计文档锁定, 不缺不漏不加):
     ① 商务卷 = structure.json 镜像渲染: path 标题链 → # 层级章节树, 层级完整,
@@ -68,6 +73,7 @@ import re
 import sys
 from pathlib import Path
 
+import booklets  # v4 分册: 页数估算/贪心切册/册命名/索引卷(纯函数, 同目录兄弟模块)
 import state_guard
 
 # --- 退出码约定 -----------------------------------------------------------------
@@ -85,7 +91,16 @@ VOLUMES = ("commercial", "technical")
 # 对齐(服务承诺响应同走生成管线; 商务/资格/格式条款走模板镜像管线, 不产条目)。
 ENTRY_CATEGORIES = ("technical", "service")
 
-OUTPUT_FILES = ("商务卷.md", "技术卷.md", "偏离表.md", "覆盖率报表.md", "人核清单.md", "实体lint报告.md")
+# v4 两文档册集(Revision 4): 册文件动态生成(整体方案-NN-*.md / 技术卷-NN-*.md),
+# 静态件 = 索引卷 + 四张副表(全局单份, 跨册聚合); delivery_manifest 为交付凭据
+# (skill/version/deliverables, 通用化契约见 WP-2.3)——清场与白名单新鲜度都依赖它。
+DOC_OVERALL = "整体方案"
+DOC_TECH = "技术卷"
+INDEX_FILE = booklets.INDEX_FILENAME
+SIDECAR_FILES = ("偏离表.md", "覆盖率报表.md", "人核清单.md", "实体lint报告.md")
+MANIFEST_NAME = "delivery_manifest.json"
+MANIFEST_VERSION = 1
+LEGACY_OUTPUT_FILES = ("商务卷.md", "技术卷.md")  # v3 遗留双卷——清场对象(11A 目录幂等)
 
 SLOT_TYPE_LABELS = {"text": "文字槽", "table": "表格槽", "image": "图片槽", "format_check": "格式核验槽", "group": "结构组"}
 CLASS_LABELS = {"mandatory": "强制条款", "scoring": "评分条款", "normal": "普通条款"}
@@ -393,15 +408,8 @@ def _linked_clause_labels(node: dict, clauses_by_id: dict[str, dict]) -> list[st
     return parts
 
 
-def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], responses: list[dict] | None = None) -> tuple[str, list[dict]]:
-    """渲染单卷: 镜像章节树(path 标题链→# 层级) + 交付正文 + 技术卷条目挂接。
-
-    v2 双卷净化(回放实证 2026-08-18 线程 1a80a1d8: 槽位 bullet/引用块标记等管线
-    元数据被当正文写进交付物/转换进 docx): 正文只含交付内容——模板原文纯段落/
-    表格列头+固定行逐字+剩余待填行/image 干净占位/条目 response_text; 槽位编排
-    元数据迁覆盖率报表"槽位编排表" sidecar。纯函数: 返回 (markdown, 本卷异常)——
-    悬挂外键等异常由调用方合并, 不以出参方式变异共享列表(隐藏副作用)。
-    """
+def _volume_ctx(volume: str, structure: list[dict], clauses: list[dict], responses: list[dict] | None) -> dict:
+    """单卷渲染共享上下文(每卷预计算一次, 章分组渲染复用——v4 分册改造)。"""
     responses_by_id = {r["clause_id"]: r for r in (responses or [])}
     clauses_by_id = {c["clause_id"]: c for c in clauses}
     nodes = [n for n in structure if n["volume"] == volume]
@@ -410,7 +418,6 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], re
     claimed: set[int] = set()
     if volume == "technical":
         section_numbers, claimed = _allocate_section_numbers(nodes)
-
     # 活条款 → 首个挂接它的可承载节点(镜像 group 不承载; origin=self_created 自拟
     # 挂接位承载——多处挂接以首处为准渲染, 零遗漏优先)
     linked_map: dict[str, str] = {}
@@ -419,14 +426,37 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], re
             continue
         for cid in node.get("linked_clause_ids") or []:
             linked_map.setdefault(cid, node["node_id"])
+    return {
+        "nodes": nodes,
+        "responses_by_id": responses_by_id,
+        "clauses_by_id": clauses_by_id,
+        "active_tech": active_tech,
+        "section_numbers": section_numbers,
+        "claimed": claimed,
+        "linked_map": linked_map,
+    }
+
+
+def _render_nodes(nodes: list[dict], volume: str, ctx: dict) -> tuple[list[str], list[dict]]:
+    """渲染一组节点(v4 分册改造: 原整卷循环体提取为节点组渲染, 章分组复用)。
+
+    v2 双卷净化纪律不变: 正文只含交付内容(模板原文纯段落/表格列头+固定行逐字+
+    待填行/image 干净占位/条目 response_text), 槽位编排元数据迁覆盖率报表 sidecar。
+    """
+    responses_by_id = ctx["responses_by_id"]
+    clauses_by_id = ctx["clauses_by_id"]
+    active_tech = ctx["active_tech"]
+    section_numbers = ctx["section_numbers"]
+    linked_map = ctx["linked_map"]
+
+    lines: list[str] = []
+    anomalies: list[dict] = []
 
     def _ensure_blank() -> None:
         """块与块之间保证空行分隔(md 解析器对紧跟列表/表格的标题敏感)。"""
         if lines and lines[-1] != "":
             lines.append("")
 
-    anomalies: list[dict] = []
-    lines: list[str] = []
     for node in nodes:
         segments = [s.strip() for s in node["path"].split("/")]
         title = segments[-1]
@@ -487,7 +517,26 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], re
                     _ensure_blank()
                     lines.extend(render_clause_entry(clause, f"{parent_num}.{index}", response=responses_by_id.get(clause["clause_id"])))
 
-    # 技术卷兜底: 未挂接任何槽位的活条款 → 卷末专节渲染(逐条款条目零遗漏);
+    return lines, anomalies
+
+
+def _render_volume_tails(nodes: list[dict], volume: str, ctx: dict, lines: list[str]) -> None:
+    """卷尾件——分册时挂在各文档最后一册末尾。
+
+    孤儿条款兜底节: 仅 technical(活条款条目属技术正文); 扫描件清单: 两卷都渲染
+    (image 槽在商务卷同样存在——回放实证 S-003 身份证扫描件挂商务卷, v4 重构曾
+    误锁 technical-only, 该回归由 test_image_slot_scan_list 抓住)。
+    """
+    claimed = ctx["claimed"]
+    active_tech = ctx["active_tech"]
+    linked_map = ctx["linked_map"]
+    responses_by_id = ctx["responses_by_id"]
+
+    def _ensure_blank() -> None:
+        if lines and lines[-1] != "":
+            lines.append("")
+
+    # 卷末兜底: 未挂接任何槽位的活条款 → 卷末专节渲染(逐条款条目零遗漏);
     # 节号在已占用集合之后顺延, 不与既有编号节撞号; 标题中性化(出处 sidecar 标注)
     if volume == "technical":
         orphans = [c for c in active_tech if c["clause_id"] not in linked_map]
@@ -507,7 +556,217 @@ def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], re
         lines.extend(f"| {n['node_id']} | {_cell(n['path'])} | {_cell((n.get('required_format') or {}).get('desc') or '')} |" for n in image_nodes)
         lines.append("")
 
-    return "\n".join(lines).rstrip() + "\n", anomalies
+
+def _chapter_groups(structure: list[dict], volume: str) -> list[list[dict]]:
+    """镜像序章分组: structure 原序下连续同章键(path 首段)的同卷节点聚为一组。
+
+    连续分组(非全局 groupby)保持招标大纲交错序——整体方案的商务章与技术占位章
+    按招标文件原始顺序渲染(Revision 4 两文档拓扑, 用户域规则)。
+    """
+    nodes = [n for n in structure if n["volume"] == volume]
+    groups: list[list[dict]] = []
+    for node in nodes:
+        key = booklets.chapter_of(node["path"])
+        if not groups or booklets.chapter_of(groups[-1][-1]["path"]) != key:
+            groups.append([node])
+        else:
+            groups[-1].append(node)
+    return groups
+
+
+def render_chapters_md(volume: str, structure: list[dict], clauses: list[dict], responses: list[dict] | None = None) -> tuple[list[dict], list[dict]]:
+    """按章渲染(volume 的章分组, v4 分册基础): 返回 ([{chapter, text}], anomalies)。
+
+    技术卷卷尾件(孤儿节+扫描件清单)挂最后一章; 章文本字节级拼接 == 整卷渲染
+    (render_volume_md 兼容包装依赖此性质)。
+    """
+    ctx = _volume_ctx(volume, structure, clauses, responses)
+    out: list[dict] = []
+    anomalies: list[dict] = []
+    groups = _chapter_groups(structure, volume)
+    for i, group in enumerate(groups):
+        lines, group_anomalies = _render_nodes(group, volume, ctx)
+        if i == len(groups) - 1:
+            _render_volume_tails(group, volume, ctx, lines)
+        anomalies.extend(group_anomalies)
+        out.append({"chapter": booklets.chapter_of(group[0]["path"]), "text": "\n".join(lines).rstrip() + ("\n" if lines else "")})
+    return out, anomalies
+
+
+def render_volume_md(volume: str, structure: list[dict], clauses: list[dict], responses: list[dict] | None = None) -> tuple[str, list[dict]]:
+    """整卷渲染(兼容包装): 章文本顺序拼接 == 原整卷单循环输出(字节级)。"""
+    chapters, anomalies = render_chapters_md(volume, structure, clauses, responses)
+    return "".join(c["text"] for c in chapters), anomalies
+
+
+# ── 槽位注入(v4 T6c, 四类硬围栏域 P2: 报价数字/资质证号/招标原文——数字与证号
+#    经 {{SLOT:key}} 占位由 build_output 从冻结态注入, 不经过 LLM 之手; geo D5
+#    收窄移植, 畸形归一化+未知键硬错为 geo bug-3043 防线) ─────────────────────────
+SLOTS_STATE_FILE = "slots.json"
+# 槽位键含中文(业务键如"报价总额")——字符集 = 字母数字下划线连字符 + CJK
+_SLOT_KEY = r"[A-Za-z0-9_\-一-鿿]+"
+SLOT_TOKEN_RE = re.compile(r"\{\{SLOT:(" + _SLOT_KEY + r")\}\}")
+# 畸形收形(geo bug-3043: 93 处穿透教训)——少一个闭括号且后面跟非}字符: {{SLOT:key}单位}
+SLOT_DEFORM_CLOSE_RE = re.compile(r"\{\{SLOT:(" + _SLOT_KEY + r")\}(?!\})")
+# 单开括号穿透: {SLOT:key}
+SLOT_DEFORM_OPEN_RE = re.compile(r"(?<!\{)\{SLOT:(" + _SLOT_KEY + r")\}")
+
+
+def load_slots(state_dir: Path) -> dict[str, str]:
+    """装载槽位冻结值(state/slots.json, 形态 {"key": "显示值"}; 缺失→空表——
+    槽位与 entities_whitelist 同类: 用户/业务确认数据, Agent 写入不签名)。"""
+    path = state_dir / SLOTS_STATE_FILE
+    if not path.is_file():
+        return {}
+    data = _load_json_file(path, SLOTS_STATE_FILE)
+    if not isinstance(data, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in data.items()):
+        raise BuildOutputError(f"{SLOTS_STATE_FILE} 形态错误: 需为 {{\"key\": \"显示值\"}} 平面字典")
+    return data
+
+
+def normalize_slot_deformities(text: str) -> str:
+    """畸形 SLOT 归一化(注入前): 收形后未知键才能走正常 unknown-key FAIL,
+    畸形形态不得既不注入也不报错地静默穿透进交付物(geo bug-3043)。"""
+    text = SLOT_DEFORM_CLOSE_RE.sub(r"{{SLOT:\1}}", text)
+    text = SLOT_DEFORM_OPEN_RE.sub(r"{{SLOT:\1}}", text)
+    return text
+
+
+def inject_slots(text: str, slots: dict[str, str], source: str) -> str:
+    """槽位注入+宽匹配残留防线: 未知键 → BuildOutputError(D5 硬错, 绝不静默);
+    注入后残留任何 SLOT 形态(理论上不可能)同样硬错——围栏域文本零静默通道。"""
+    working = normalize_slot_deformities(text)
+    unknown = sorted({m.group(1) for m in SLOT_TOKEN_RE.finditer(working) if m.group(1) not in slots})
+    if unknown:
+        raise BuildOutputError(
+            f"{source} 含未知槽位键 {unknown}——请在 state/{SLOTS_STATE_FILE} 补充冻结值(或修正占位键名); "
+            "围栏域数值必须经槽位注入, 不得由 LLM 直写"
+        )
+    working = SLOT_TOKEN_RE.sub(lambda m: slots[m.group(1)], working)
+    if "SLOT:" in working:
+        raise BuildOutputError(f"{source} 槽位注入后仍残留 SLOT 形态——疑似畸形变体未收形, 请检查占位写法(唯一合法形态 {{{{SLOT:key}}}})")
+    return working
+
+
+def _chapter_stats(text: str) -> dict:
+    """章级页数统计量(从渲染文本直接测得, 确定性): 字符/表格数/图片占位/表格行。"""
+    rows = 0
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("|") and not set(s) <= set("|-: "):
+            rows += 1
+    return {
+        "chars": len(text),
+        "tables": text.count("\n| --- |") + text.count("\n| ---"),
+        "images": text.count("[此处插入:"),
+        "table_rows": rows,
+    }
+
+
+def _tech_placeholder_md(title: str, tech_ref: dict | None) -> str:
+    """整体方案技术章占位页(Revision 4, 用户域规则): 逐字章标题 + 技术卷分册目录 +
+    指引——零技术正文内联; 合并导出时按技术卷册组顺序拼装。"""
+    lines = [
+        f"# {title}",
+        "",
+        "> 本章为《技术卷》占位页: 技术标单独成卷交付(招标大纲中技术仅占一章, 其余",
+        "> 为商务部分)。本卷不内联技术正文, 内容见《技术卷》各分册; 合并导出时按",
+        "> 技术卷册组顺序拼装于本章位置。",
+        "",
+    ]
+    if tech_ref and tech_ref["files"]:
+        lines.extend(["技术卷分册目录:", "", "| 册 | 文件 | 章节范围 |", "| --- | --- | --- |"])
+        for i, (filename, booklet) in enumerate(zip(tech_ref["files"], tech_ref["booklets"]), 1):
+            span = " → ".join(booklet["chapters"])
+            lines.append(f"| {i:02d} | {filename} | {span} |")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def render_doc_booklets(doc: str, structure: list[dict], clauses: list[dict], responses: list[dict] | None = None, tech_ref: dict | None = None, slots: dict[str, str] | None = None) -> dict:
+    """两文档册集渲染(v4 Revision 4): 整体方案(商务全量+技术占位) / 技术卷(全量)。
+
+    - 技术卷: technical 章全量渲染(卷尾件挂末册), 切册=booklets.plan_booklets。
+    - 整体方案: structure 原序章分组(招标大纲交错序, 不重排)——commercial 组全量,
+      technical 组渲染占位页(逐字章标题+技术卷分册目录+指引, **零技术正文内联**;
+      卷尾件不进整体方案——孤儿节/扫描件清单属技术正文, 只在技术卷)。
+    - slots(v4 T6c): 围栏域冻结值注入(未知键硬错, 畸形归一化先行)。
+    返回 {"doc", "files", "contents"(文件名→md), "booklets", "warnings", "anomalies"}。
+    """
+    anomalies: list[dict] = []
+    chapters: list[dict] = []
+    if doc == "技术卷":
+        groups, chapter_anomalies = render_chapters_md("technical", structure, clauses, responses)
+        anomalies.extend(chapter_anomalies)
+        chapters = [{"title": g["chapter"], "text": g["text"], **_chapter_stats(g["text"])} for g in groups]
+    elif doc == "整体方案":
+        ctx_comm = _volume_ctx("commercial", structure, clauses, responses)
+        current_key: str | None = None
+        bucket: list[dict] = []
+
+        def _flush_bucket() -> None:
+            nonlocal bucket
+            if not bucket:
+                return
+            volume = bucket[0]["volume"]
+            if volume == "commercial":
+                lines, group_anomalies = _render_nodes(bucket, "commercial", ctx_comm)
+                anomalies.extend(group_anomalies)
+                text = "\n".join(lines).rstrip() + ("\n" if lines else "")
+            else:
+                # 技术章占位(Revision 4): 零正文内联; 卷尾件(孤儿节/扫描件清单)属
+                # 技术正文, 不进整体方案
+                text = _tech_placeholder_md(booklets.chapter_of(bucket[0]["path"]), tech_ref)
+            chapters.append({"title": booklets.chapter_of(bucket[0]["path"]), "text": text, "volume": volume, **_chapter_stats(text)})
+            bucket = []
+
+        for node in structure:
+            key = booklets.chapter_of(node["path"])
+            if key != current_key:
+                _flush_bucket()
+                current_key = key
+            bucket.append(node)
+        _flush_bucket()
+        # 商务卷尾件(扫描件清单)挂最后一个商务章——整体方案里商务 image 槽的清单
+        # 不因分册丢失(v4 重构回归教训: test_image_slot_scan_list)
+        comm_chapters = [c for c in chapters if c.get("volume") == "commercial"]
+        if comm_chapters:
+            tail_lines: list[str] = []
+            _render_volume_tails(ctx_comm["nodes"], "commercial", ctx_comm, tail_lines)
+            if tail_lines:
+                last = comm_chapters[-1]
+                glue = "" if last["text"].endswith("\n\n") else ("\n" if last["text"].endswith("\n") else "\n\n")
+                last["text"] = last["text"] + glue + "\n".join(tail_lines).rstrip() + "\n"
+                last.update(_chapter_stats(last["text"]))
+    else:
+        raise ValueError(f"未知文档: {doc}(合法: 整体方案/技术卷)")
+
+    # 槽位注入(v4 T6c): 畸形归一化 → 未知键硬错 → 注入冻结值; 统计重算(注入改变字数)
+    slot_map = slots or {}
+    for c in chapters:
+        c["text"] = inject_slots(c["text"], slot_map, f"{doc}/{c['title']}")
+        c.update(_chapter_stats(c["text"]))
+
+    booklets_plan, warnings = booklets.plan_booklets(
+        [{"title": c["title"], "chars": c["chars"], "tables": c["tables"], "table_rows": c["table_rows"], "images": c["images"]} for c in chapters]
+    )
+    files = booklets.assign_filenames(doc, booklets_plan)
+    # 册内容 = 章文本顺序拼接(章文本各自以 \n 结尾, 拼接即连续; 不加分隔防破坏字节幂等)
+    contents: dict[str, str] = {}
+    cursor = 0
+    for filename, plan in zip(files, booklets_plan):
+        count = len(plan["chapters"])
+        chunk = chapters[cursor:cursor + count]
+        cursor += count
+        contents[filename] = "".join(c["text"] for c in chunk)
+    return {
+        "doc": doc,
+        "files": files,
+        "contents": contents,
+        "booklets": booklets_plan,
+        "warnings": warnings,
+        "anomalies": anomalies,
+    }
 
 
 # =============================================================================
@@ -672,12 +931,15 @@ def render_checklist_md(structure: list[dict], responses: list[dict] | None = No
     # 生成内容人核(v2 反馈3/4): 阶段4a 三模式生成的响应正文——web 引用逐条核实
     # (引用不进交付正文, 只在此留痕) + needs_human_verify 项供源留痕复核。
     verify_items = [r for r in (responses or []) if r.get("needs_human_verify") or r.get("citations")]
-    lines.extend(["", "## 四、生成内容人核(阶段4a 生成响应: web 引用逐条核实 + 供源留痕复核)", "", "| 条款 | 供源 | 人核标记 | 引用标题 | URL | 引用片段 |", "| --- | --- | --- | --- | --- | --- |"])
+    lines.extend(["", "## 四、生成内容人核(阶段4a 生成响应: 编造/仿写/引用逐条批量确认——P4 政策)", "", "| 条款 | 供源 | 人核标记 | 引用标题 | URL | 引用片段 |", "| --- | --- | --- | --- | --- | --- |"])
     for item in verify_items:
         mark = "需人核" if item.get("needs_human_verify") else "-"
         citations = item.get("citations") or []
         if citations:
-            lines.extend(f"| {item.get('clause_id')} | {item.get('source_mode')} | {mark} | {_cell(c.get('title') or '')} | {_cell(c.get('url') or '')} | {_cell(c.get('quote') or '')} |" for c in citations)
+            def _cite_locator(c: dict) -> str:
+                return (c.get("url") or "") or (("doc:" + c["source_doc"]) + (f"@{c['quote_span']}" if c.get("quote_span") else "")) if c.get("source_doc") else (c.get("url") or "")
+
+            lines.extend(f"| {item.get('clause_id')} | {item.get('source_mode')} | {mark} | {_cell(c.get('title') or '')} | {_cell(_cite_locator(c))} | {_cell(c.get('quote') or '')} |" for c in citations)
         else:
             lines.append(f"| {item.get('clause_id')} | {item.get('source_mode')} | {mark} | - | - | - |")
     if not verify_items:
@@ -752,32 +1014,44 @@ def _candidate_whitelisted(candidate: str, values: set[str]) -> bool:
     return any(candidate == v or normalized == _entity_norm(v) for v in values)
 
 
-def run_entity_lint(clauses: list[dict], whitelist: dict | None) -> tuple[list[dict], dict]:
-    """白名单 diff 全部 evidence_ref 与引用片段。
+def run_entity_lint(
+    clauses: list[dict],
+    whitelist: dict | None,
+    extra_texts: dict[str, str] | None = None,
+) -> tuple[list[dict], dict]:
+    """白名单 diff 全部 evidence_ref、引用片段与交付册全文(v4 T4 扩面)。
 
     hits = 白名单实体值出现次数(按归一化子串计数, 同一字段出现两次计 2);
     flagged = 确定性候选提取中不在白名单的(疑似上一项目残留)→[待核对]+异常。
+    extra_texts(v4): {来源标签: 全文}——交付册全文扫描(编造正文正是白名单外
+    实体的主要藏身处, 引用片段扫描覆盖不到); 标签用文件名, 命中记 field=来源。
     """
     values: set[str] = {e["value"] for e in (whitelist or {}).get("entities", [])}
     norm_values = {value: _entity_norm(value) for value in values}
     hits: dict[str, int] = {}
     flagged: list[dict] = []
+
+    def _scan(field: str, text: str, owner: str) -> None:
+        if not isinstance(text, str) or not text.strip():
+            return
+        normalized_text = _entity_norm(text)
+        for value, norm_value in norm_values.items():
+            count = normalized_text.count(norm_value)
+            if count:
+                hits[value] = hits.get(value, 0) + count
+        for etype, candidate in _extract_entity_candidates(text, values):
+            if _candidate_whitelisted(candidate, values):
+                continue
+            message = f"{owner} {field} 含白名单外实体 {candidate!r}({etype})——疑似上一项目残留, [待核对]"
+            flagged.append({"kind": "entity_unverified", "clause_id": owner, "field": field, "type": etype, "value": candidate, "context": text[:200], "message": message})
+
     for clause in clauses:
         skeleton = clause.get("response_skeleton") or {}
         texts = (("evidence_ref", skeleton.get("evidence_ref")), ("引用片段", (clause.get("source_ref") or {}).get("quote")))
         for field, text in texts:
-            if not isinstance(text, str) or not text.strip():
-                continue
-            normalized_text = _entity_norm(text)
-            for value, norm_value in norm_values.items():
-                count = normalized_text.count(norm_value)
-                if count:
-                    hits[value] = hits.get(value, 0) + count
-            for etype, candidate in _extract_entity_candidates(text, values):
-                if _candidate_whitelisted(candidate, values):
-                    continue
-                message = f"{clause['clause_id']} {field} 含白名单外实体 {candidate!r}({etype})——疑似上一项目残留, [待核对]"
-                flagged.append({"kind": "entity_unverified", "clause_id": clause["clause_id"], "field": field, "type": etype, "value": candidate, "context": text, "message": message})
+            _scan(field, text, clause["clause_id"])
+    for label, text in (extra_texts or {}).items():
+        _scan(f"交付册全文({label})", text, label)
     return flagged, hits
 
 
@@ -811,11 +1085,29 @@ def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict) -> s
         lines.append("(无命中——白名单实体未出现在任何 evidence_ref/引用片段)")
     lines.extend(["", "## [待核对] 白名单外实体(疑似上一项目残留)", ""])
     if flagged:
-        lines.extend(["| 条款 | 字段 | 提取类型 | 提取值 | 上下文 |", "| --- | --- | --- | --- | --- |"])
+        lines.extend(["| 条款/来源 | 字段 | 提取类型 | 提取值 | 上下文 |", "| --- | --- | --- | --- | --- |"])
         lines.extend(f"| {f['clause_id']} | {f['field']} | {f['type']} | {_cell(f['value'])} | {_cell(f['context'])} |" for f in flagged)
     else:
         lines.append("(无——未发现白名单外实体)")
     lines.append("")
+    # 候选白名单通道(eng-review 4A): 确认属本项目合法实体后, 加入 entities_whitelist
+    # (用户确认→Agent 写入, 白名单不签名)重跑 build 放行——不回 stage4a 重写。
+    unique_candidates = sorted({f["value"] for f in flagged if f["type"] == "company"})
+    if unique_candidates:
+        lines.extend([
+            "## 候选白名单(确认后一键入册)",
+            "",
+            "> 以上提取值若属本项目合法实体(招标文件提及/分包方等), 用户确认后加入",
+            "> `state/entities_whitelist.json`(type=company)并重跑 build_output.py 即放行,",
+            "> 无需回阶段4a 重写; 若属上一项目残留, 按上文[待核对]处置(重写响应)。",
+            "",
+            "```json",
+            "  {\"type\": \"company\", \"value\": \"<确认的实体全称>\"}",
+            "```",
+            "",
+            "候选值: " + "、".join(unique_candidates),
+            "",
+        ])
     return "\n".join(lines)
 
 
@@ -824,8 +1116,78 @@ def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict) -> s
 # =============================================================================
 
 
+def _entity_gate_state(state_dir: Path, flagged: list[dict]) -> dict:
+    """实体门熔断状态(eng-review 4A): 轮次按 flagged 值集指纹比对——同集连犯递增,
+    集合变化重置为 1(改对了或换了残留都算新轮起点)。
+
+    rounds<2 → 硬门生效(blocked): 不写交付凭据且作废旧凭据(9A), 回 stage4a 重写
+    或确认候选白名单后重跑; rounds>=2 → 转人工(escalated): 放行凭据, 把关责任移交
+    人核清单/lint 报告——对齐 geo consistency FAIL 两轮处置规约, 防白名单缺项造成
+    确定性死循环。轮次持久化在 workspace last_build.json(entity_gate 键; workspace
+    不在签名登记范围, state/ 只读纪律不受影响)。
+    """
+    signature = None
+    if flagged:
+        sig_source = json.dumps(sorted({f["value"] for f in flagged}), ensure_ascii=False)
+        signature = hashlib.sha256(sig_source.encode("utf-8")).hexdigest()
+    prev: dict = {}
+    receipt_path = state_dir.parent / "last_build.json"
+    if receipt_path.is_file():
+        try:
+            prev = json.loads(receipt_path.read_text(encoding="utf-8")).get("entity_gate") or {}
+        except (json.JSONDecodeError, OSError):
+            prev = {}
+    if not flagged:
+        rounds = 0
+    elif prev.get("flagged_signature") == signature:
+        rounds = int(prev.get("rounds") or 0) + 1
+    else:
+        rounds = 1
+    return {
+        "flagged_signature": signature,
+        "rounds": rounds,
+        "blocked": bool(flagged) and rounds < 2,
+        "escalated": bool(flagged) and rounds >= 2,
+    }
+
+
+def _sweep_stale_outputs(out_dir: Path, new_deliverables: set[str]) -> list[str]:
+    """上一轮交付清场(外部声音 11A, 目录级幂等): 只删旧 manifest 列名文件——
+
+    重切册后册数/文件名全变, 旧册残留在 outputs/ 会触发自家交付门"杂散 .md 整单
+    拒"反控; 清场=按 manifest 确定性删除(脚本清场不违铁律9)。manifest 缺失/不可
+    解析 → 跳过清场(首轮构建合法态), 返回告警行。防御: 只删 out_dir 直属普通文件。
+    """
+    manifest_path = out_dir / MANIFEST_NAME
+    if not manifest_path.is_file():
+        # v3→v4 升级边角: 旧双卷(商务卷/技术卷.md)无 manifest 可依, 但文件名固定
+        # 无歧义——确定性移除, 防其以"杂散 .md"身份触发自家交付门反控(11A 目录幂等)
+        removed_legacy: list[str] = []
+        for legacy in LEGACY_OUTPUT_FILES:
+            target = out_dir / legacy
+            if target.is_file():
+                target.unlink()
+                removed_legacy.append(legacy)
+        note = f"清场跳过: {MANIFEST_NAME} 缺失(首轮构建)"
+        return [note + (f"; 移除 v3 遗留双卷 {', '.join(removed_legacy)}" if removed_legacy else "")]
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return [f"清场跳过: {MANIFEST_NAME} 不可解析——不做遗留文件删除"]
+    deleted: list[str] = []
+    for name in manifest.get("deliverables") or []:
+        if not isinstance(name, str) or name in new_deliverables:
+            continue
+        target = out_dir / name
+        if target.parent == out_dir and target.is_file():
+            target.unlink()
+            deleted.append(name)
+    return [f"清场删除上一轮遗留 {len(deleted)} 文件: {', '.join(sorted(deleted))}"] if deleted else []
+
+
 def run_build(state_dir: Path, out_dir: Path) -> int:
-    """读状态(只读) → 渲染六件套 → 原子写盘 → stdout 单行 JSON 摘要; 返回退出码。"""
+    """读状态(只读) → 两文档册集渲染(v4) → 清场 → 原子写盘 → 交付凭据/构建回执
+    → stdout 单行 JSON 摘要; 返回退出码。"""
     # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状)
     guard_problems = state_guard.verify_state_files(state_dir)
     if guard_problems:
@@ -839,48 +1201,101 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     if whitelist is None:
         anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, lint 按空集 diff(全部候选进[待核对])——确认门1 未锁定白名单或文件被移动"})
 
-    commercial_md, commercial_anomalies = render_volume_md("commercial", structure, clauses, responses)
-    technical_md, technical_anomalies = render_volume_md("technical", structure, clauses, responses)
-    anomalies.extend(commercial_anomalies)
-    anomalies.extend(technical_anomalies)
+    # 两文档册集(v4 Revision 4): 技术卷先渲(整体方案技术占位页需其分册目录)
+    slots = load_slots(state_dir)  # v4 T6c: 围栏域冻结值(缺失=空表, 未知键在注入期硬错)
+    tech_doc = render_doc_booklets(DOC_TECH, structure, clauses, responses, slots=slots)
+    overall_doc = render_doc_booklets(DOC_OVERALL, structure, clauses, responses, tech_ref=tech_doc, slots=slots)
+    anomalies.extend(tech_doc["anomalies"])
+    anomalies.extend(overall_doc["anomalies"])
     dev_rows = deviation_rows(clauses)  # 渲染与摘要共用一份, 不对同一数据计算两次
     deviation_md = render_deviation_md(dev_rows, structure)
     coverage = compute_coverage(clauses)
     coverage_md = render_coverage_md(clauses, coverage, structure)
     checklist_md, checklist_counts = render_checklist_md(structure, responses)
-    flagged, hits = run_entity_lint(clauses, whitelist)
+    # 实体门 v4(T4): 扫描面扩到交付册全文(编造正文=白名单外实体主要藏身处)
+    scan_texts: dict[str, str] = {**overall_doc["contents"], **tech_doc["contents"]}
+    flagged, hits = run_entity_lint(clauses, whitelist, extra_texts=scan_texts)
     anomalies.extend(flagged)
+    entity_gate = _entity_gate_state(state_dir, flagged)
     lint_md = render_lint_md(whitelist, flagged, hits)
 
-    outputs = {
-        "商务卷.md": commercial_md,
-        "技术卷.md": technical_md,
-        "偏离表.md": deviation_md,
-        "覆盖率报表.md": coverage_md,
-        "人核清单.md": checklist_md,
-        "实体lint报告.md": lint_md,
-    }
-    for name in OUTPUT_FILES:
+    index_md = booklets.render_index(
+        [
+            {"doc": DOC_OVERALL, "files": overall_doc["files"], "booklets": overall_doc["booklets"]},
+            {"doc": DOC_TECH, "files": tech_doc["files"], "booklets": tech_doc["booklets"]},
+        ],
+        extra_notes=["槽位编排与围栏域分布见 覆盖率报表.md(槽位编排表); 分册告警见构建摘要 booklets 字段"],
+    )
+    outputs: dict[str, str] = {**overall_doc["contents"], **tech_doc["contents"], INDEX_FILE: index_md}
+    outputs["偏离表.md"] = deviation_md
+    outputs["覆盖率报表.md"] = coverage_md
+    outputs["人核清单.md"] = checklist_md
+    outputs["实体lint报告.md"] = lint_md
+    deliverables = sorted(outputs)
+
+    sweep_warnings = _sweep_stale_outputs(out_dir, set(deliverables))
+    for name in deliverables:
         atomic_write_text(out_dir / name, outputs[name])
 
-    # 构建回执(回放实证 fd49b085: snapshot 靠 workspace/output/ 检测构建状态, 而 v2
-    # 六件套交付在 /mnt/user-data/outputs/——快照永远推不出"已构建", 续作引导失真)。
-    # 回执写在 workspace 层(与 project_snapshot.json 同级, 不动 state/ 权威态、不签名),
-    # 内容确定性(out_dir+六件套 sha256+白名单消费 hash), 重跑字节级幂等。
-    # whitelist_sha256(v3, DEC-5): 白名单不签名(agent-written), 其"最近一次被消费"的
-    # 留痕在此冻结——snapshot 比对当前 hash 即可确定性发现消费后改动(turn7 类违规)。
+    # 交付凭据(v4 WP-2.3 bid 侧): skill/version/deliverables——T3 通用化后由
+    # harness present_file_tool 消费(整单判定)。实体门(9A): blocked → 不写凭据且
+    # 作废旧凭据/标记(交付门 STATUS_MISSING 全禁 .md); escalated → 放行+转人工。
     whitelist_path = state_dir / "entities_whitelist.json"
     whitelist_sha256 = state_guard.sha256_file(whitelist_path) if whitelist_path.is_file() else None
+    files_sha = {name: hashlib.sha256(outputs[name].encode("utf-8")).hexdigest() for name in deliverables}
+    if entity_gate["blocked"]:
+        stale_manifest = out_dir / MANIFEST_NAME
+        if stale_manifest.is_file():
+            stale_manifest.unlink()
+        stale_marker = out_dir / ".delivery-contract"
+        if stale_marker.is_file():
+            stale_marker.unlink()
+        sweep_warnings.append(
+            f"实体门硬门生效(第 {entity_gate['rounds']} 轮): 白名单外实体未处置, 本轮不写交付凭据——"
+            "处置路径: 确认候选白名单入册(见 实体lint报告.md)或回 stage4a 重写响应后重跑"
+        )
+    manifest = {
+        "skill": "bid-proposal-writing",
+        "version": MANIFEST_VERSION,
+        "deliverables": deliverables,
+        # 确认门工件白名单(WP-2.3 aux_md): 门1 条款清单/门2 补遗diff表由 extract/merge
+        # 阶段写 outputs/ 并在门2(build 后)经 present_files 呈现——非管线 build 产物但
+        # 合法呈现, 由本管线在此申报(harness 交付门放行集=deliverables∪aux_md)。
+        "aux_md": ["条款清单.md", "补遗diff表.md"],
+        "files": files_sha,
+        "docs": {
+            DOC_OVERALL: {"booklets": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"])},
+            DOC_TECH: {"booklets": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"])},
+        },
+        "whitelist_sha256": whitelist_sha256,
+    }
+    if not entity_gate["blocked"]:
+        atomic_write_text(out_dir / MANIFEST_NAME, json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+        # 交付契约标记(bug-2225/3109): build 成功即激活本线程交付门——此后非管线 .md
+        # present/下载/同步一律整单拒(清场+凭据保证 deliverables 集合自洽)。
+        atomic_write_text(out_dir / ".delivery-contract", "{}\n")
+
+    # 构建回执(回放实证 fd49b085: snapshot 靠 workspace/last_build.json 检测构建状态)。
+    # 回执写在 workspace 层(与 project_snapshot.json 同级, 不动 state/ 权威态、不签名),
+    # 内容确定性(out_dir+册集 sha256+白名单消费 hash), 重跑字节级幂等。
+    # whitelist_sha256(v3, DEC-5): 白名单不签名(agent-written), 其"最近一次被消费"的
+    # 留痕在此冻结——snapshot 比对当前 hash 即可确定性发现消费后改动(turn7 类违规)。
     receipt = {
         "out_dir": str(out_dir),
-        "files": {name: hashlib.sha256(outputs[name].encode("utf-8")).hexdigest() for name in OUTPUT_FILES},
+        "files": files_sha,
         "whitelist_sha256": whitelist_sha256,
+        "entity_gate": entity_gate,
     }
     atomic_write_text(state_dir.parent / "last_build.json", json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
     responded_ids = {r.get("clause_id") for r in responses}
     summary = {
-        "written": list(OUTPUT_FILES),
+        "written": deliverables,
+        "booklets": {
+            DOC_OVERALL: {"count": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"]), "warnings": overall_doc["warnings"]},
+            DOC_TECH: {"count": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"]), "warnings": tech_doc["warnings"]},
+        },
+        "sweep": sweep_warnings,
         "coverage": coverage,
         "deviation_rows": len(dev_rows),
         "template_prefill_count": sum(1 for n in structure if template_text_of(n) is not None),
@@ -889,6 +1304,7 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
         "self_created_sections": sum(1 for n in structure if n.get("origin") == "self_created"),
         "human_checklist": checklist_counts,
         "lint": {"flagged": len(flagged), "entity_hits": len(hits), "whitelist_missing": whitelist is None},
+        "entity_gate": entity_gate,
         "whitelist_sha256": whitelist_sha256,
         "anomalies": anomalies,
     }
@@ -900,11 +1316,11 @@ def main(argv: list[str] | None = None) -> int:
     """CLI 入口: 返回进程退出码(见模块 docstring 退出码约定)。"""
     parser = argparse.ArgumentParser(
         prog="build_output.py",
-        description="投标方案编写·阶段4 双卷骨架渲染: 商务卷=structure 镜像 / 技术卷=逐条款条目(标题嵌 clause_id, D2) / 偏离表 / 覆盖率报表 / 人核清单 / 实体lint(无 LLM, 不做 Word 转换)",
+        description="投标方案编写·阶段4 交付渲染(v4 两文档册集): 整体方案=structure 镜像(商务全量+技术占位页) / 技术卷=逐条款条目(标题嵌 clause_id, D2) 分册 + 0-总目录索引 + 四张副表 / delivery_manifest(无 LLM, 不做 Word 转换)",
         epilog="示例: python build_output.py --state-dir state --out output",
     )
     parser.add_argument("--state-dir", required=True, help="状态目录(只读: clauses.json / structure.json / entities_whitelist.json; 派生字段现算不落盘)")
-    parser.add_argument("--out", required=True, help="输出目录(六件套 md, 临时文件+os.replace 原子写盘, 重跑字节级幂等)")
+    parser.add_argument("--out", required=True, help="输出目录(两文档册集+索引+副表 md, 临时文件+os.replace 原子写盘, 重跑字节级幂等)")
 
     try:
         args = parser.parse_args(argv)

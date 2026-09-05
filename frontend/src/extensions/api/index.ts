@@ -717,6 +717,38 @@ export const docmgrApi = {
     });
   },
 
+  // EAI-CUSTOM (bug-3109 v4 WP-1.4): 多册合并导出——册间分页; 后端整单失败语义
+  // (任一册解析失败 → 400 detail 指认册名, 不落部分文件)。
+  exportMerged: async (
+    sections: { filename: string; content: string }[],
+    options: {
+      filename?: string;
+      layout_template?: unknown;
+      watermark?: string | null;
+      with_toc?: boolean;
+      toc_depth?: number;
+    } = {},
+  ): Promise<Blob> => {
+    const response = await fetch(`${API_BASE}/docmgr/export-merged`, {
+      method: "POST",
+      credentials: "include",
+      headers: withCsrf({ "Content-Type": "application/json" }, "POST"),
+      body: JSON.stringify({
+        sections,
+        format: "docx",
+        filename: "合并导出.docx",
+        with_toc: true,
+        toc_depth: 3,
+        ...options,
+      }),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(text || `合并导出失败 (${response.status})`);
+    }
+    return response.blob();
+  },
+
   aiEdit: (data: {
     text: string;
     operation: "polish" | "expand" | "condense" | "chat";
