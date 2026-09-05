@@ -78,6 +78,7 @@ async def _load_kb_scoped(db: AsyncSession, kb_id: UUID, scope: FilterRule, iden
     """
     from sqlalchemy import or_ as sa_or
     from sqlalchemy import select as sa_select
+    from sqlalchemy.orm import joinedload
 
     from app.extensions.knowledge.access import kb_grant_visible_clause
 
@@ -90,7 +91,13 @@ async def _load_kb_scoped(db: AsyncSession, kb_id: UUID, scope: FilterRule, iden
     # EAI-CUSTOM: 显式授权为可见性 OR 例外（超管 allow_all 时跳过子查询）
     if identity is not None and scope.operator != "allow_all":
         clause = sa_or(clause, kb_grant_visible_clause(identity))
-    q = sa_select(KnowledgeBase).where(KnowledgeBase.id == kb_id).where(clause)
+    # EAI-CUSTOM (bug-3109): joinedload owner,同 list 端点(详情响应 owner_name 同理)
+    q = (
+        sa_select(KnowledgeBase)
+        .options(joinedload(KnowledgeBase.owner))
+        .where(KnowledgeBase.id == kb_id)
+        .where(clause)
+    )
     return (await db.execute(q)).scalar_one_or_none()
 
 
@@ -122,6 +129,7 @@ async def list_knowledge_bases(
     from sqlalchemy import func
     from sqlalchemy import or_ as sa_or
     from sqlalchemy import select as sa_select
+    from sqlalchemy.orm import joinedload
 
     from app.extensions.knowledge.access import kb_grant_visible_clause
     from app.extensions.models import KnowledgeBase
@@ -135,7 +143,9 @@ async def list_knowledge_bases(
     # EAI-CUSTOM: 显式授权为可见性 OR 例外（超管 allow_all 时跳过子查询）
     if scope.operator != "allow_all":
         scope_clause = sa_or(scope_clause, kb_grant_visible_clause(identity))
-    query = sa_select(KnowledgeBase).where(scope_clause)
+    # EAI-CUSTOM (bug-3109): 必须 joinedload owner —— to_response 读 kb.owner.username,
+    # 异步会话下未预加载的关系访问会抛错并被静默兜底为 None(所有卡片创建人显示"未知")
+    query = sa_select(KnowledgeBase).options(joinedload(KnowledgeBase.owner)).where(scope_clause)
 
     # Count total before pagination
     count_query = sa_select(func.count(KnowledgeBase.id)).where(scope_clause)
