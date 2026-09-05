@@ -6,7 +6,8 @@
     "slot_type": "group",
     "required_format": {
       "desc": "商务卷:严格按招标文件规定的格式逐项提供,不得自创结构",
-      "table_spec": null
+      "table_spec": null,
+      "template_text": null
     },
     "linked_clause_ids": []
   },
@@ -17,7 +18,8 @@
     "slot_type": "text",
     "required_format": {
       "desc": "按给定格式填报投标函并加盖投标人公章",
-      "table_spec": null
+      "table_spec": null,
+      "template_text": null
     },
     "linked_clause_ids": [
       "BY-C-004"
@@ -30,7 +32,8 @@
     "slot_type": "image",
     "required_format": {
       "desc": "加盖公章的身份证正反面扫描件",
-      "table_spec": null
+      "table_spec": null,
+      "template_text": null
     },
     "linked_clause_ids": []
   },
@@ -49,7 +52,8 @@
           "总价(元)"
         ],
         "rows": 3
-      }
+      },
+      "template_text": null
     },
     "linked_clause_ids": [
       "BY-C-004"
@@ -62,7 +66,8 @@
     "slot_type": "format_check",
     "required_format": {
       "desc": "正本壹份副本肆份,全部页面加盖公章——人核项,不做确定性判定",
-      "table_spec": null
+      "table_spec": null,
+      "template_text": null
     },
     "linked_clause_ids": []
   },
@@ -73,7 +78,8 @@
     "slot_type": "group",
     "required_format": {
       "desc": "技术卷:格式章节未规定结构处按技术参数条款清单驱动组织",
-      "table_spec": null
+      "table_spec": null,
+      "template_text": null
     },
     "linked_clause_ids": []
   },
@@ -84,7 +90,8 @@
     "slot_type": "text",
     "required_format": {
       "desc": "技术方案总述,对应评分项'技术方案先进性'",
-      "table_spec": null
+      "table_spec": null,
+      "template_text": null
     },
     "linked_clause_ids": [
       "ZB-C-002"
@@ -105,7 +112,8 @@
           "满足状态"
         ],
         "rows": 4
-      }
+      },
+      "template_text": null
     },
     "linked_clause_ids": [
       "ZB-C-001"

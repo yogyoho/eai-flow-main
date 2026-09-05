@@ -27,10 +27,15 @@ uploads=用户参考样例、web=网络搜索深写; self=仅依据条款原文�
        不可信, 拒绝落账)。
     5. 元数据 lint: response_text 不得携带管线元数据标记(槽位类型/待填提示/
        填写状态/关联条款/满足状态——回放实证这些 bullet 曾被当正文写进交付物)。
-    6. 落位声明: placement 的 anchor_node_id 与 self_created_path 二选一;
+    6. 响应实质 lint(v3, bug-2189 语料校准): 实质正文(剥空白/标点)不足
+       MIN_SUBSTANTIVE_CHARS 且无供源留痕(citations/evidence_ref 均空) →
+       thin_response; 高频套话(BOILERPLATE_PHRASES)命中字符占比超过
+       BOILERPLATE_RATIO_MAX → boilerplate_heavy。有供源留痕的短响应豁免
+       长度下限(套话占比仍查); 常量暴露, 按新语料调阈只改常量。
+    7. 落位声明: placement 的 anchor_node_id 与 self_created_path 二选一;
        引用的 node_id 必须存在于 structure.json; after_node_id 仅与
        self_created_path 同用。
-    7. 跨候选去重: 同一 clause_id 在多个候选文件(或同文件内)重复 → 全部隔离
+    8. 跨候选去重: 同一 clause_id 在多个候选文件(或同文件内)重复 → 全部隔离
        [待确认], 绝不静默取首个。
 
 merge 语义(按 clause_id upsert 幂等):
@@ -71,6 +76,25 @@ RESPONSE_CATEGORIES = ("technical", "service")
 PIPELINE_METADATA_MARKERS = ("槽位类型", "待填提示", "填写状态", "关联条款", "满足状态")
 
 RESPONSE_PIPELINE_DEFAULTS = {"points": [], "citations": [], "needs_human_verify": False}
+
+# 响应实质 lint 阈值(v3/WP-C, bug-2189 回归防线: E2E 实证 25 条 0 引用薄套话直写
+# responses.json 全部落账): 正常长响应全放行, 薄/套话填充标红。常量暴露, 按新语料调阈只改这里。
+MIN_SUBSTANTIVE_CHARS = 50  # 实质正文下限: 剥空白/标点后字符数(CJK/字母/数字计入)
+BOILERPLATE_RATIO_MAX = 0.6  # 高频套话命中字符占比上限
+BOILERPLATE_PHRASES = ("完全满足", "满足要求", "符合招标文件要求", "无偏离", "详见投标文件")
+
+_NON_WORD_RE = re.compile(r"[\W_]+", re.UNICODE)
+
+
+def _substantive_chars(text: str) -> int:
+    """实质正文长度: 剥空白与标点(中英文)后的字符数(CJK/字母/数字计入)。"""
+    return len(_NON_WORD_RE.sub("", text))
+
+
+def _boilerplate_hit_chars(text: str) -> int:
+    """高频套话命中字符数: 各短语出现次数×短语长度求和(跨短语重叠并计, 占比可>1——
+    阈值是召回型防线不追求精确占比, 只会更早超标)。"""
+    return sum(len(phrase) * len(re.findall(re.escape(phrase), text)) for phrase in BOILERPLATE_PHRASES)
 
 
 class ResponsesError(Exception):
@@ -198,6 +222,34 @@ def evaluate(state: dict, schema: dict, records: list[tuple[Path, dict]]) -> dic
             if raw_item.get("source_mode") == "web" and not raw_item.get("citations"):
                 problems.append({"kind": "citations_missing_for_web", "file": path.name, "item_id": clause_id, "message": "source_mode=web 但 citations 为空——网搜深写必须逐条留引用(人核清单第四节消费), [待确认]不合并"})
                 continue
+            # 响应实质 lint(v3/WP-C, bug-2189 语料校准): 薄响应/套话填充 → anomaly 不静默。
+            # 有供源留痕(citations/evidence_ref 非空)的短响应豁免长度下限(套话占比仍查)。
+            substantive = _substantive_chars(text)
+            has_supply_trace = bool(raw_item.get("citations")) or bool((raw_item.get("evidence_ref") or "").strip())
+            if substantive < MIN_SUBSTANTIVE_CHARS and not has_supply_trace:
+                problems.append(
+                    {
+                        "kind": "thin_response",
+                        "file": path.name,
+                        "item_id": clause_id,
+                        "chars": substantive,
+                        "message": f"response_text 实质正文过薄(剥空白/标点后 {substantive} 字 < {MIN_SUBSTANTIVE_CHARS})且无供源留痕(citations/evidence_ref 均空)——疑似空响应占位(bug-2189 形态), [待确认]重写后再合并",
+                    }  # noqa: E501
+                )
+                continue
+            hit_chars = _boilerplate_hit_chars(text)
+            if substantive and hit_chars / substantive > BOILERPLATE_RATIO_MAX:
+                problems.append(
+                    {
+                        "kind": "boilerplate_heavy",
+                        "file": path.name,
+                        "item_id": clause_id,
+                        "hit_chars": hit_chars,
+                        "substantive_chars": substantive,
+                        "message": f"response_text 高频套话占比 {hit_chars}/{substantive}={hit_chars / substantive:.0%} 超过 {BOILERPLATE_RATIO_MAX:.0%}——疑似套话填充(bug-2189 形态; 短语清单见 BOILERPLATE_PHRASES), [待确认]重写后再合并",
+                    }
+                )
+                continue
             placement = raw_item.get("placement")
             if placement is not None:
                 has_anchor = "anchor_node_id" in placement
@@ -320,7 +372,8 @@ def cmd_validate(args) -> int:
 
 def cmd_merge(args) -> int:
     """merge: 校验 + 原子落账(responses/structure/clauses) + 签名登记。"""
-    _verify_state_guard(args.state_dir, "merge 前置校验")
+    # rebuildable: merge 是 responses.json 的生产者, 前签名时代遗留未登记按可重建装载重签收编
+    _verify_state_guard(args.state_dir, "merge 前置校验", rebuildable=("responses.json",))
     schema = load_schema(args.references)
     records = [(Path(p), load_candidate(p)) for p in args.candidates]
     state = load_state(args.state_dir)
@@ -371,9 +424,9 @@ def _base_summary(command: str, args, report: dict) -> dict:
     }
 
 
-def _verify_state_guard(state_dir: str | Path, context: str) -> None:
+def _verify_state_guard(state_dir: str | Path, context: str, *, rebuildable: tuple[str, ...] = ()) -> None:
     """读盘前校验权威状态签名(与 extract/check_format 同款防线)。"""
-    problems = state_guard.verify_state_files(state_dir)
+    problems = state_guard.verify_state_files(state_dir, rebuildable=rebuildable)
     if problems:
         raise ResponsesError(f"{context}: 权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(problems))
 

@@ -634,6 +634,36 @@ def _check_pdf_text_layer(path: Path, pages: list[dict]) -> None:
     raise IngestError(f"{path.name}: 空文档(PDF 无文本/表格/图片)——无可解析内容, 请核查输入文件是否正确")
 
 
+def run_resume(out_dir: Path) -> int:
+    """受控续作模式(回放实证 fd49b085: 用户说"重新执行完整流程", agent 即兴 rm -rf 工作区
+    从零重放, 顺手清掉上一 run 的阶段成果)。本模式是"重跑"的正确入口: 只读校验既有
+    受理记录(签名+事实摘要), 不落任何盘; 状态有问题按签名恢复指令走, 没有问题引导按
+    snapshot 续作——两条路都不经过 rm。"""
+    sections_path = out_dir / "sections.json"
+    if not sections_path.is_file():
+        print(f"[ingest] 错误: {out_dir} 无既有 sections.json——没有受理记录可续作; 请走正常受理流程(--input + --code, 命令见 SKILL.md 速查表)", file=sys.stderr)
+        return EXIT_ERROR
+    problems = state_guard.verify_state_files(out_dir)
+    if problems:
+        print("[ingest] 续作前状态签名校验失败:\n  - " + "\n  - ".join(problems), file=sys.stderr)
+        return EXIT_ERROR
+    sections = load_sections(sections_path)
+    chunk_by_file: Counter = Counter(c.get("source_file", "(未知来源)") for c in sections.get("chunks", []))
+    table_by_file: Counter = Counter(t.get("source_file", "(未知来源)") for t in sections.get("tables", []))
+    files = [{"source_file": name, "chunks": chunk_by_file.get(name, 0), "tables": table_by_file.get(name, 0)} for name in sorted(set(chunk_by_file) | set(table_by_file))]
+    summary = {
+        "mode": "resume",
+        "state_dir": str(out_dir),
+        "files": files,
+        "total_chunks": sum(chunk_by_file.values()),
+        "total_tables": sum(table_by_file.values()),
+        "signature": "ok",
+        "next_step": "既有受理记录有效——严禁 rm 重来; 跑 snapshot.py 看当前阶段并按 next_step 续作(命令见 SKILL.md 速查表)",
+    }
+    print(json.dumps(summary, ensure_ascii=False))
+    return EXIT_OK
+
+
 def main(argv: list[str] | None = None) -> int:
     """CLI 入口: 返回进程退出码(见模块 docstring 退出码约定)。"""
     parser = argparse.ArgumentParser(
@@ -641,10 +671,15 @@ def main(argv: list[str] | None = None) -> int:
         description="投标方案编写·阶段1 纯结构化解析: 招标文件(docx/pdf)→ sections.json(章节切块+锚点+表行数, 无 LLM)",
         epilog="示例: python ingest.py --input uploads/招标文件.docx --code ZB --out state ; 补遗: python ingest.py --input uploads/补遗01.pdf --code BY --out state --addendum",
     )
-    parser.add_argument("--input", nargs="+", required=True, help="基础招标文件路径(可多份: 招标文件/技术规范书/评分办法分卷; .docx/.pdf)")
-    parser.add_argument("--code", required=True, help="文件代号(2-4 位大写字母, 如 ZB/JS/PB; clause_id 复合前缀按此分配)")
+    parser.add_argument("--input", nargs="+", default=None, help="基础招标文件路径(可多份: 招标文件/技术规范书/评分办法分卷; .docx/.pdf; --resume 模式省略)")
+    parser.add_argument("--code", default=None, help="文件代号(2-4 位大写字母, 如 ZB/JS/PB; clause_id 复合前缀按此分配; --resume 模式省略)")
     parser.add_argument("--out", required=True, help="产物目录(写 <out>/sections.json; 既有文件增量合并; 同名重跑未变=保号跳过, 有变=替换旧块并在摘要给出 replaced 信号)")
     parser.add_argument("--addendum", action="store_true", help="本次输入为补遗/答疑文件(增量输入, 隐藏废标项主藏身处)")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="受控续作模式(与 --input/--code/--addendum 互斥): 校验既有 sections.json 签名并输出受理事实摘要, 不落任何盘——'重新执行完整流程'的正确入口, 严禁 rm 重来",
+    )
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
@@ -657,6 +692,12 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ERROR
 
     try:
+        if args.resume:
+            if args.input or args.code or args.addendum:
+                raise IngestError("--resume 是只读续作模式, 与 --input/--code/--addendum 互斥; 新受理请去掉 --resume")
+            return run_resume(Path(args.out))
+        if not args.input or not args.code:
+            raise IngestError("缺少 --input/--code(正常受理必填; 续作既有工作区请用 --resume; 用 --help 查看用法)")
         if not _CODE_RE.match(args.code):
             raise IngestError(f"--code 非法: {args.code!r}(必须 2-4 位大写字母, 如 ZB/JS/PB)")
         files = [Path(p) for p in args.input]
@@ -706,11 +747,25 @@ def main(argv: list[str] | None = None) -> int:
         #   旧 id 清单(编排方据此判"候选裁决已失效, 需重跑阶段2 提取")。
         out_path = Path(args.out) / "sections.json"
         # 读盘前校验既有 sections.json 签名(回放实证 bfa917ce: write_file 直写/rm 后
-        # 下游只报"缺键/结构异常"等远处症状, agent 靠试错烧掉整轮上下文)
-        guard_problems = state_guard.verify_state_files(args.out)
+        # 下游只报"缺键/结构异常"等远处症状, agent 靠试错烧掉整轮上下文)。
+        # 例外(E2E 实证 42afc10f): sections.json "在盘但未登记签名"(agent 手写注入/前签名
+        # 时代遗留)不阻断——ingest 本就是该文件的生产者, 从 --input 确定性重建并重签即天然
+        # 修复, 阻断反而造成"重跑脚本恢复"指令的自我死锁。其余问题(已登记内容被改/被删、
+        # 其他权威文件未登记)仍拒绝, 交编排按恢复指令处置。
+        guard_problems = state_guard.verify_state_files(args.out, rebuildable=("sections.json",))
         if guard_problems:
             raise IngestError("既有 sections.json 签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(guard_problems))
+        rebuilt_unsigned_sections = state_guard.is_unregistered(args.out, "sections.json")
+        # 注意: 未登记≠损坏, 仍照常装载(损坏 JSON 依旧拒绝覆盖、先人工核查, 既有契约)。
+        # 手写内容装载后走指纹分流自然报废: 与 --input 重解析指纹不符 → replaced 摘除重发号。
         sections = load_sections(out_path)
+        if rebuilt_unsigned_sections:
+            # 手写内容只可能属于本批文件名的部分被视为可比对旧块; 本批之外的 source_file
+            # 零出处(多批累积的合法场景必有 .meta.json), 全部摘除——否则手写垃圾块存活
+            # 并被 :825 的重签收编为权威锚点。
+            batch_names = {item["file"].name for item in parsed}
+            sections["chunks"] = [c for c in sections["chunks"] if c.get("source_file") in batch_names]
+            sections["tables"] = [t for t in sections["tables"] if t.get("source_file") in batch_names]
 
         rerun: dict[str, dict] = {}
         for item in parsed:
@@ -770,7 +825,8 @@ def main(argv: list[str] | None = None) -> int:
         # 块级无变更(全部保号且无实际摘除/追加)→ 不写盘: sections.json 字节不变(idempotent
         # rerun); 产物文件尚不存在时仍写空骨架, 保持"运行即落盘"的既有行为
         sections_changed = any((r["old_chunks"] or r["old_tables"]) or (r["new_chunks"] or r["new_tables"]) for r in rerun.values() if r["status"] != "kept")
-        if sections_changed or not out_path.is_file():
+        # unsigned 重建时无条件写盘: 本批零块解析也不能把摘除后的手写残留留在盘上再给它签名
+        if sections_changed or rebuilt_unsigned_sections or not out_path.is_file():
             atomic_write_json(out_path, sections)
         # 权威状态文件落盘后登记防篡改签名(kept 保号重跑不写盘时旧签名仍匹配, 无需重登)
         state_guard.sign_state_files(args.out, ["sections.json"])
@@ -784,7 +840,7 @@ def main(argv: list[str] | None = None) -> int:
             "replaced_files": replaced_reports,
             "files": file_reports,
             "format_sections": [p for item in parsed for p in item["format_paths"]],
-            "anomalies": all_anomalies,
+            "anomalies": all_anomalies + ([{"kind": "unsigned_sections_rebuilt", "note": "既有 sections.json 未登记签名(疑似脚本外手写), 已按本次 --input 指纹分流重核并重签登记"}] if rebuilt_unsigned_sections else []),
         }
         print(json.dumps(summary, ensure_ascii=False))
         return EXIT_ANOMALY if all_anomalies else EXIT_OK

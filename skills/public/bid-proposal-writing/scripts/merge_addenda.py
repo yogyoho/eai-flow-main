@@ -34,7 +34,9 @@
     异常浮出而非重放, 绝不静默吞掉编辑后的候选(否则陈旧内容永久封存且零信号)。
     幂等台账 merge_ledger.json 按候选内容规范化哈希(sha256, 键序无关): 同 hash 重跑
     整体跳过零写入; 存在 pending/异常时不记台账(重跑须能重新浮出, 已落账项幂等重放
-    不产生字节漂移)。
+    不产生字节漂移)。台账与增量清单纳入签名登记(v3, B8): 写盘即签; pending 出清删除
+    同步撤销登记; 手删台账/清单由生产者收编(撤销登记按"无历史/已出清"重跑重建),
+    内容被改(在盘)仍由装载前校验硬拦截。
 
 D3 新实体: 补遗实体 diff entities_whitelist.json → 增量清单 addendum_entities_pending.json
     (累积式: 既有 pending ∪ 本次新增 − 当前白名单; 白名单不经本脚本修改, 确认门2 才写入;
@@ -433,6 +435,7 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
     pending: list[dict] = []
     applied = {"added": [], "superseded": [], "voided": [], "rejected": []}
     written: list[str] = []
+    signed_products: list[str] = []  # 本轮写盘的自有产物(台账/增量清单), 收尾统一登记
     mutated = False
     new_ids_this_run: set[str] = set()  # 本次运行内已落账/重放的 new 条款 id(同候选撞号检测)
 
@@ -717,7 +720,11 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
     # --- 第 8 步: D3 新实体 diff → 增量清单(累积式; 白名单不经本脚本修改) ----------
     # 白名单/既有增量各装载一次, 供 diff 与合并复用(不再二次读盘)。
     new_entities: list[dict] = []
+    whitelist_sha256 = None  # 消费留痕(v3): 记入 stdout 摘要, 供 snapshot 新鲜度比对追溯
     if "entities" in record:
+        whitelist_path = state_dir / STATE_FILES["whitelist"]
+        if whitelist_path.is_file():
+            whitelist_sha256 = state_guard.sha256_file(whitelist_path)
         whitelist = load_whitelist(state_dir)
         if whitelist is None:
             anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, 按空集 diff(全部进增量清单)——确认门1 未锁定白名单或文件被移动, 修复后重跑需重新 diff"})
@@ -740,28 +747,38 @@ def run_merge(state_dir: Path, record: dict, record_path: Path, decisions_entrie
                 if existing_pending != merged_pending:
                     atomic_write_json(pending_path, {"entities": merged_pending})
                     written.append(STATE_FILES["entities_pending"])
+                    signed_products.append(STATE_FILES["entities_pending"])  # 写盘即签(v3/B8), 收尾统一登记
             elif pending_path.is_file():
                 pending_path.unlink()  # 白名单确认后增量清零: 陈旧清单出清, 不留误导
+                state_guard.unsign_state_files(state_dir, [STATE_FILES["entities_pending"]])  # 合法删除同步撤销登记(防"已登记但不存在"误报)
                 written.append(f"del:{STATE_FILES['entities_pending']}")  # 删除亦入摘要(前缀区分写入), 不可见即不透明
 
     # --- 第 9 步: 写盘(仅变更文件) + 台账(干净完成才记, 重跑可跳过) ----------------
     if mutated:
         atomic_write_json(state_dir / STATE_FILES["clauses"], clauses)
         written.append(STATE_FILES["clauses"])
-        # clauses.json 属登记在册的权威状态文件 → 写盘后重登签名(写盘方重签不变量;
-        # 不重签会让 extract/score_simulate 的读盘校验误报"内容被直写")。
-        # 同时收编在盘其余权威文件为本轮基线, 消除部分签名形态(F4 误报源头)
-        state_guard.sign_all_authoritative(state_dir)
 
     clean = not anomalies and not pending
     ledger_recorded = False
     if clean:
         ledger.append({"hash": digest, "addendum_file": addendum_file, "applied_at": datetime.now().isoformat(timespec="seconds"), "applied": applied})
         atomic_write_json(state_dir / STATE_FILES["ledger"], ledger)
+        signed_products.append(STATE_FILES["ledger"])  # 台账写盘即签(v3/B8), 收尾统一登记
         written.append(STATE_FILES["ledger"])
         ledger_recorded = True
 
+    # 签名登记(v3/B8, 写盘方重签不变量): 本轮有状态写盘时, 先收编在盘权威文件为基线
+    # (消除部分签名形态——实体轮不落 clauses 却签了台账/清单时, 同工作区未登记的
+    # structure/rubric 会被下游 F4"在盘未登记"拦截误报), 再登记本轮写盘的自有产物
+    # (台账/增量清单); pending 出清删除已在第 8 步同步撤销登记。
+    if mutated or signed_products:
+        state_guard.sign_all_authoritative(state_dir)
+        if signed_products:
+            state_guard.sign_state_files(state_dir, signed_products)
+
     summary = {"addendum_file": addendum_file, "hash": digest, "skipped": False, "written": written, "ledger_recorded": ledger_recorded, "applied": applied, "pending": pending, "anomalies": anomalies, "new_entities": new_entities}
+    if "entities" in record:
+        summary["whitelist_sha256"] = whitelist_sha256  # 仅实体消费轮携带(留痕; 缺失=None)
     return summary, (EXIT_OK if clean else EXIT_ANOMALY)
 
 
@@ -793,8 +810,14 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         state_dir = Path(args.state_dir)
-        # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状)
-        guard_problems = state_guard.verify_state_files(state_dir)
+        # 自有产物手删收编(v3/B8): 台账缺失=无历史(幂等重放可重建), 增量清单缺失=按已出清
+        # ——先撤销登记再校验, 不让"已登记但不存在"死锁重跑; 在盘内容被改仍由下方校验硬拦截。
+        for name in (STATE_FILES["ledger"], STATE_FILES["entities_pending"]):
+            if not (state_dir / name).is_file():
+                state_guard.unsign_state_files(state_dir, [name])
+        # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状);
+        # rebuildable: merge_addenda 重写 clauses.json——前签名时代遗留未登记按可重建装载重签收编
+        guard_problems = state_guard.verify_state_files(state_dir, rebuildable=("clauses.json",))
         if guard_problems:
             raise MergeAddendaError("权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(guard_problems))
         record_path = Path(args.addendum_candidates)

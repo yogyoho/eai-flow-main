@@ -1708,7 +1708,7 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **编辑器AI工具(润色/扩写)的LLM唯一正路 = gateway POST /api/collab/ai-chat(读系统设置default_model), 不是前端直连provider (2026-09-04, bug-3099):** BlockNote编辑器AI经 `DefaultChatTransport({api:'/api/collab/ai-chat'})` 发请求。gateway侧 `app/extensions/docmgr/collab_ai_chat.py`(app.py:907挂载, csrf_middleware.py `_CSRF_EXEMPT_PATHS` 白名单)从 system_config 表读 default_model → config.yaml 解析 key/base_url → 流式AI-SDK格式。旧Next route(route.ts)曾直连provider并读COLLAB_AI_API_KEY等env(全环境未设→空Bearer→401)——已删, 流量走 nginx `location /api/`→gateway 与 next.config.js rewrite `/api/:path*`→gateway(同 2ebf28cf3 模式)。**铁律: 凡系统设置页可配的模型/凭据, 前端一律经gateway代理, 禁止再建读provider env的Next handler。** SSE翻译层禁止做内容字符串去重(会吞重复token, 见该文件注释)。
 - (2026-09-04) 离线部署真实基线=v20260730-ca9c5163(7-30,7.1GB包);记忆里的6-10 v2.0-m1-rc1-321-g59b703ca 基线已不在 git 对象库(历史重写)不可用。delta 包只含 images/+manifest.json,config_hash 只 hash deploy.conf → compose/config/nginx/upgrade.sh 变更(postgres cutover/RAGFlow v0.27.1)必须全量重打包+模板刷新,delta 交付不了。deploy/offline/.env 与 docker/.env 已 gitignore(8-30 洗历史)→fresh clone 跑 offline-export.sh 会在 :448 中止,打包机需先恢复 .env。
 
-- **BlockNote xl-ai 的工具调用跑在 idsSuffixed 模式: LLM 输出的 operation id 必须带尾部 `$` (2026-09-04, bug-3100):** xl-ai 客户端校验 `id.endsWith('$')` 后剥掉再 getBlock(id)。给 collab ai-chat 这类代理写系统提示词时必须显式要求 id=`<blockId>$`，否则 LLM 一半概率裸 id → 客户端 'Invalid operation. id must end with $' → 表现为 'Error calling LLM' 且 chatStatus 仍是 ready（HTTP 200）。调测此类问题看浏览器 console 的 result.error，不是网络层。
+- **BlockNote xl-ai 的工具调用跑在 idsSuffixed 模式: LLM 输出的 operation id 必须带尾部 `$` (2026-09-04, bug-3101):** xl-ai 客户端校验 `id.endsWith('$')` 后剥掉再 getBlock(id)。给 collab ai-chat 这类代理写系统提示词时必须显式要求 id=`<blockId>$`，否则 LLM 一半概率裸 id → 客户端 'Invalid operation. id must end with $' → 表现为 'Error calling LLM' 且 chatStatus 仍是 ready（HTTP 200）。调测此类问题看浏览器 console 的 result.error，不是网络层。
 
 
 ## [2026-09-04] Key Learnings (geo P5 ore_pack 孵化管线 session)
@@ -1727,3 +1727,36 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **WSL2 `.wslconfig` memory=24GB 是上限非预留**——调大上限不会拖慢任何东西（该值是 bug-1246 OOM 崩溃的修复，勿改回）。整机慢的真因几乎总是宿主机侧内存耗尽换页。诊断顺序：宿主 free 内存（Win32_OperatingSystem.FreePhysicalMemory）→ 宿主泄漏进程（host 直跑 next dev 曾泄漏 5.1G）→ `docker stats`（容器实际用量通常远小于上限）。Docker Desktop 未运行表现为 npipe dockerDesktopLinuxEngine not found。
 - **前端容器冷启动首页 ~90s**：Turbopack 冷编译期间请求 30s 超时会误判为宕机；第二次 68s、第三次热请求 ~500ms。容器重启后先给 2 分钟再下结论。
 - **PS 5.1 `Set-Content`/`Out-File` utf8 带 BOM、ANSI 默认**：给其他工具读的文件（JSON/YAML）用 BOM 会炸解析器；`Add-Content -Encoding utf8` 追加中文实测无损（本次 memory.md 验证），但整文件回写仍禁。
+
+- **`<XyzController prop={() => <Xyz/>}/>` 是隐形 remount 陷阱：prop 被当组件类型渲染 (2026-09-04, bug-3101):** BlockNote `AIMenuController` 内部 `o = e.aiMenu || $; <o/>` —— 传入的内联箭头函数每次父组件重渲染都是新组件类型 → React 整树卸载重建 → 子组件本地 state 清零（症状：AI菜单润色提示词填入 ~240ms 后消失）。修复=useCallback 固定组件身份。**铁律：任何作为组件类型渲染的 render-prop（渲染结果带本地 state）必须 useCallback/useMemo 稳定身份，不能传内联箭头**。排查手法：DOM 节点身份标记（el.__marked）+ 定时采样，240ms 内节点被替换即 remount。
+- (2026-09-04, bug-3105) 本机构建镜像网络事实: 容器内 pip 直连 pypi.org 不可达, uv 可以; ocr/collab 等镜像冷构建必须 UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ (docker/.env:19 有注释行); gateway 的 UV_EXTRAS 由 compose 项目目录(docker/)=docker/.env:26 解析, build 已验证 psycopg/pymupdf4llm 烘焙成功。校验镜像依赖用 .venv/bin/python 而非 --entrypoint python。
+
+- (2026-09-04) 知识库管理页(/knowledge)的法规标准库描述是用户可编辑字段——任何后端收敛刷新都会覆盖管理员手改;引导类文案优先前端渲染。法规系统库种子名共享前缀「法规标准库」(config.py law.dataset_display_info,经 _ensure_kb_registered 注册),前端可用 startsWith 识别。
+
+## Key Learnings (2026-09-04 — 元数据过滤两段式落地)
+- RAGFlow v0.27.1 元数据过滤只在**文档列表端点**生效(`GET /datasets/{id}/documents?metadata_condition=`);`/retrieval` 与 `/datasets/{id}/search` 的 `meta_data_filter` 被**静默忽略**(参数合法但不生效,实测不命中条件照样返回全部块)。检索侧过滤的正解=两段式:先文档过滤收敛 ids → 再 `document_ids` 收敛检索(≤100,v0.27 硬约束)。
+- `metadata_condition` 操作符实测:is/contains(列表字段)/≥/≤/and 组合全部精准;`effective_date` 是 %Y-%m-%d 字符串,字典序=日期序。
+- tag 贴标 LLM 步骤运行但结果 {} 的排查路径:Redis db1 get_llm_cache hex 键 → 缓存值 "{}" = content_tagging 解析后空 → 模型直连复现(正常)→ 边界锁定在 RAGFlow 对该 provider 的响应处理。
+
+- **Tailwind v4 主题 token 是完整颜色值，别再包 hsl()/rgb() (2026-09-04):** `--primary: oklch(0.54 0.26 265.5)` 是完整颜色，写 `hsl(var(--primary))` 会算成 invalid → 回退黑色。直接 `var(--primary)`。
+- **编辑器AI'润色没效果'先查测试素材是否已被润色过 (2026-09-04):** 反复润色后 LLM 合理返回原文——审阅态出现替换/撤销但 diff 为空（只有选中高亮、无删除线/插入标记），替换后文字不变，极易误判为功能 bug。判别法：换真正粗糙的新文本再测。enhancement 候选：gateway 检测 operation 内容≈原文时返回'该段已足够通顺'提示。
+- **BlockNote AI 输入框 spinner 颜色硬编码在 shadcn SuggestionMenuLoader (fill=#e8eaed 近白)：** 用 CSS 覆盖 `.bn-suggestion-menu-loader svg { fill: var(--primary) }`（CSS fill 可覆盖 SVG presentation attribute），写在 eai-overrides.css，勿改 node_modules。
+
+## Addendum 2026-08-30f (投标技术响应编造政策 — 用户域规则)
+
+### User Preferences
+- (2026-08-30f) 投标技术响应生成: 逐项响应完备性 > 内容溯源性。样例库仿写优先, 样例库没有→直接编造(合法且必要, 空项=技术偏离=丢分)。不要把 geo/water 类"绝不编造"铁律移植到投标技术响应; 不要为样例缺失安排 ask_clarification 阻塞或 web_search 兜底——正确级联 = 样例库→编造。
+
+### Do-Not-Repeat
+- (2026-08-30f) 设计/评估投标技能时别套用事实文书(地质/环评/计算书)的零编造前提——标书技术响应是竞争文书, 完备性优先, 编造是特性不是缺陷。
+
+### Decision Log
+- (2026-08-30f) 投标技术响应三项定案(用户拍板): ①编造边界=叙述可编造+四类硬围栏(报价数字/资质证号/实体名/招标原文强制真实); ②样例库底座=RAGFlow 知识库(段落仿写)+kf 结构模板(kf 目前无投标域, 需新建); ③编造段落全量进人核清单(复用 responses.json source_mode/needs_human_verify, 语义重定位为批量确认清单)。
+
+## 用户指令固化 (2026-09-05 — knowledge_search 休眠保留)
+- `knowledge_search`(harness 上游工具 + config.yaml 注释块)= 上游自带功能,**保持原样不删不改**(便于后续上游更新差分);当前休眠,启用只需补 allowlist 新 dataset ID。
+- 法规标准检索的活跃链路 = `kf_search_knowledge`(MCP,knowledge_factory,EAI 层可自由演进,已支持 filters)。两条链路分工:上游原版保对齐,EAI 增强放 extensions 层——用户明确裁决,勿再建议删除上游休眠代码。
+
+- (2026-09-05) 客户端组件顶层 import isomorphic-dompurify 会让路由 SSR 500(jsdom 在 Next 服务端 bundle 里找 default-stylesheet.css ENOENT);Need:懒加载或换 dompurity+客户端守卫。另:在运行中的 dev server 上 rm -rf .next 会造成瞬时坏态(疑似已编译路由持续500),先 restart 再清或清完立即重启。浏览器点 Next Link 不跳=目标路由 RSC 未编译,先 curl 预热。
+
+- (2026-09-05) 本仓库并发会话共分支:裸 `git commit` 会把其他会话留在暂存区的 WIP 一起打包(实测吞了14个文件);必须 pathspec 提交 `git commit -m ... -- <files>`,add 时也只加精确路径。事故已用 soft-reset+pathspec重提恢复。

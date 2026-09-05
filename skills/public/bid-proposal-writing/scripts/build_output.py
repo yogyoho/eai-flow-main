@@ -61,6 +61,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -862,6 +863,21 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     for name in OUTPUT_FILES:
         atomic_write_text(out_dir / name, outputs[name])
 
+    # 构建回执(回放实证 fd49b085: snapshot 靠 workspace/output/ 检测构建状态, 而 v2
+    # 六件套交付在 /mnt/user-data/outputs/——快照永远推不出"已构建", 续作引导失真)。
+    # 回执写在 workspace 层(与 project_snapshot.json 同级, 不动 state/ 权威态、不签名),
+    # 内容确定性(out_dir+六件套 sha256+白名单消费 hash), 重跑字节级幂等。
+    # whitelist_sha256(v3, DEC-5): 白名单不签名(agent-written), 其"最近一次被消费"的
+    # 留痕在此冻结——snapshot 比对当前 hash 即可确定性发现消费后改动(turn7 类违规)。
+    whitelist_path = state_dir / "entities_whitelist.json"
+    whitelist_sha256 = state_guard.sha256_file(whitelist_path) if whitelist_path.is_file() else None
+    receipt = {
+        "out_dir": str(out_dir),
+        "files": {name: hashlib.sha256(outputs[name].encode("utf-8")).hexdigest() for name in OUTPUT_FILES},
+        "whitelist_sha256": whitelist_sha256,
+    }
+    atomic_write_text(state_dir.parent / "last_build.json", json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+
     responded_ids = {r.get("clause_id") for r in responses}
     summary = {
         "written": list(OUTPUT_FILES),
@@ -873,6 +889,7 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
         "self_created_sections": sum(1 for n in structure if n.get("origin") == "self_created"),
         "human_checklist": checklist_counts,
         "lint": {"flagged": len(flagged), "entity_hits": len(hits), "whitelist_missing": whitelist is None},
+        "whitelist_sha256": whitelist_sha256,
         "anomalies": anomalies,
     }
     print(json.dumps(summary, ensure_ascii=False))

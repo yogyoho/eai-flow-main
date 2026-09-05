@@ -1365,6 +1365,51 @@ class TestIngestErrorPaths:
         assert not path.exists(), "OCR 分流场景不得写出 sections.json"
 
 
+class TestIngestResume:
+    """加固(RCA bug-2189): --resume 受控续作——用户要求"重跑"时的非破坏入口,
+    只读核验既有受理(签名+事实摘要), 不落盘、不经过 rm(回放实证 fd49b085)。"""
+
+    def _ingested_state(self, tmp_path):
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 0, "前置: 正常受理成功"
+        return tmp_path / "out"
+
+    def test_resume_empty_dir_exit_1(self, tmp_path, capsys):
+        rc = _ingest_module().main(["--resume", "--out", str(tmp_path / "out")])
+        assert rc == 1
+        assert "无既有 sections.json" in capsys.readouterr().err
+
+    def test_resume_happy_path_summary(self, tmp_path, capsys):
+        out = self._ingested_state(tmp_path)
+        rc = _ingest_module().main(["--resume", "--out", str(out)])
+        assert rc == 0
+        summary = _ingest_summary_json(capsys)
+        assert summary["mode"] == "resume" and summary["signature"] == "ok"
+        assert summary["total_chunks"] > 0 and len(summary["files"]) == 1
+        assert "snapshot.py" in summary["next_step"] and "严禁 rm" in summary["next_step"]
+        assert not (out / "sections.json.bak").exists(), "resume 只读, 不落任何盘"
+
+    def test_resume_mutual_exclusion_exit_1(self, tmp_path, capsys):
+        out = self._ingested_state(tmp_path)
+        rc = _ingest_module().main(["--resume", "--input", str(FIXTURE_DIR / "minimal_tender.docx"), "--code", "ZB", "--out", str(out)])
+        assert rc == 1
+        assert "--resume" in capsys.readouterr().err, "与 --input/--code/--addendum 互斥需点名用法"
+
+    def test_resume_tampered_state_exit_1(self, tmp_path, capsys):
+        out = self._ingested_state(tmp_path)
+        sections = json.loads((out / "sections.json").read_text(encoding="utf-8"))
+        sections["chunks"][0]["heading_path"] = ["手改标题"]
+        (out / "sections.json").write_text(json.dumps(sections, ensure_ascii=False), encoding="utf-8")
+        rc = _ingest_module().main(["--resume", "--out", str(out)])
+        assert rc == 1, "签名不符时续作入口必须硬错误, 不给带病续作留口子"
+        assert "签名校验失败" in capsys.readouterr().err
+
+    def test_missing_input_without_resume_hints_resume(self, tmp_path, capsys):
+        rc = _ingest_module().main(["--out", str(tmp_path / "out")])
+        assert rc == 1
+        assert "--resume" in capsys.readouterr().err, "缺 --input/--code 报错需指引 --resume(续作既有工作区)"
+
+
 class TestIngestUnitHelpers:
     def test_section_id_split(self):
         """章节标识提取: 阿拉伯编号→编号; docx 中文序号标题→全文; PDF 中文序号→序号; 无编号→全文。"""
@@ -1582,6 +1627,54 @@ class TestIngestCorruptSectionsJson:
         p.write_text(json.dumps({"chunks": {}, "tables": []}), encoding="utf-8")
         with pytest.raises(ingest.IngestError):
             ingest.load_sections(p)
+
+
+@pytest.mark.state_guard_strict
+class TestIngestUnsignedSectionsRebuild:
+    """E2E 实证(bug-2189 复测, 线程 42afc10f): agent 手写 sections.json 且从未有
+    .meta.json。守卫收紧后"在盘但未登记"必须点名(state_guard 侧已测), 但 ingest 作为
+    sections.json 的生产者不得自我死锁——应装载→指纹分流→重签, 手写内容自然报废;
+    损坏 JSON 仍拒绝覆盖(先人工核查, TestIngestCorruptSectionsJson 契约不变)。"""
+
+    HANDWRITTEN = {
+        "chunks": [
+            {"chunk_id": "CH-901", "source_file": "手写幻觉源.docx", "anchor": {"section": "幻觉章节"}, "heading_path": ["幻觉章节"], "n_paras": 3},
+            {"chunk_id": "CH-902", "source_file": "minimal_tender.docx", "anchor": {"section": "手写锚点"}, "heading_path": ["手写锚点"], "n_paras": 1},
+        ],
+        "tables": [],
+    }
+
+    def _write_unsigned(self, tmp_path):
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
+        (out_dir / "sections.json").write_text(json.dumps(self.HANDWRITTEN, ensure_ascii=False), encoding="utf-8")
+        return out_dir
+
+    def test_unsigned_rebuilt_not_refused(self, tmp_path, capsys):
+        self._write_unsigned(tmp_path)
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 0, "未登记 sections.json 应由 ingest 重建(生产者自救), 不得拒绝"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        ids = [c["chunk_id"] for c in data["chunks"]]
+        assert "CH-901" not in ids and "CH-902" not in ids, "手写块(含本批同名文件的手写块)必须报废"
+        assert {c["source_file"] for c in data["chunks"]} == {"minimal_tender.docx"}, "本批之外的手写 source_file 零出处, 必须摘除"
+        assert "手写锚点" not in json.dumps(data, ensure_ascii=False), "同名文件的手写块走指纹分流 replaced, 锚点不得存活"
+        assert ids and len(ids) == len(set(ids)) and ids == sorted(ids), "重建后按装载态最大号续发(被替换旧号不复用契约不变)"
+        summary = _ingest_summary_json(capsys)
+        kinds = [a.get("kind") for a in summary.get("anomalies", [])]
+        assert "unsigned_sections_rebuilt" in kinds, f"摘要必须显式留痕 unsigned 重建: {kinds}"
+        meta = json.loads((tmp_path / "out" / ".meta.json").read_text(encoding="utf-8"))
+        assert "sections.json" in meta.get("signatures", {}), "重建后必须重签登记"
+
+    def test_signed_tampered_still_refused(self, tmp_path):
+        """对照: 已登记后被篡改 → ingest 依旧硬拒绝(重建放行只针对未登记文件)。"""
+        rc, path = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc == 0
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["chunks"][0]["anchor"] = {"section": "篡改"}
+        path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        rc2, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])
+        assert rc2 == 1, "已登记内容被改必须拒绝(重跑入口=--resume 只读核验或人工核查)"
 
 
 # ===========================================================================
@@ -3703,6 +3796,20 @@ class TestBuildOutputMirrorVolumes:
         for heading in ("# 投标文件格式", "## 一、投标函", "## 二、法定代表人身份证明", "## 三、开标一览表", "## 四、投标文件签章与份数"):
             assert heading in lines, f"商务卷镜像章节树缺 {heading!r}(path 标题链→# 层级, 只镜像不自创)"
 
+    def test_last_build_receipt(self, tmp_path):
+        """构建回执: build 落盘 <workspace>/last_build.json(六件套 sha256), 供 snapshot 判定构建态。"""
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "outputs" / "投标文件"
+        _run_build(state, out)
+        receipt = json.loads((tmp_path / "last_build.json").read_text(encoding="utf-8"))
+        assert receipt["out_dir"] == str(out)
+        assert set(receipt["files"]) == set(_build_module().OUTPUT_FILES), "回执覆盖全部六件套"
+        import hashlib
+
+        for name, digest in receipt["files"].items():
+            actual = hashlib.sha256(_out_text(out, name).encode("utf-8")).hexdigest()
+            assert digest == actual, f"{name} 回执 sha256 与落盘内容不符"
+
     def test_technical_heading_tree_complete(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
         _run_build(state, tmp_path / "out")
@@ -5729,7 +5836,7 @@ class TestCheckFormatStateGuard:
         import state_guard
 
         state = _cf_state(tmp_path)
-        state_guard.sign_state_files(state, ["sections.json"])
+        state_guard.sign_state_files(state, ["sections.json"])  # 只登记 sections → structure.json 在盘未登记
         rc = _cf_module().main(["--state-dir", str(state), "--sources", str(_cf_write_md(tmp_path))])
         assert rc == 1
 
@@ -6007,6 +6114,41 @@ class TestResponsesMerge:
         assert _rs_run("validate", state, [_rs_candidate(tmp_path, [_rs_item()])])[0] == 1, "responses.json 纳入权威态签名防线"
 
 
+class TestResponsesLint:
+    """响应实质 lint(v3/WP-C, bug-2189 回归防线): 薄响应/套话填充标红不静默, 供源短绿放行。"""
+
+    def test_thin_response_rc3(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(evidence_ref=None, response_text="另一版正文。")])], capsys)
+        assert rc == 3
+        assert "thin_response" in _anomaly_kinds(summary), "实质正文<50字且无供源留痕 → thin_response(bug-2189 形态)"
+        anomaly = next(a for a in summary["anomalies"] if a["kind"] == "thin_response")
+        assert anomaly["item_id"] == "ZB-C-001"
+
+    def test_short_response_with_supply_trace_rc0(self, tmp_path, capsys):
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(response_text="满足。", evidence_ref="uploads:s.pdf")])], capsys)
+        assert rc == 0, "有供源留痕(citations/evidence_ref)的短响应豁免长度下限——供源短绿"
+
+    def test_boilerplate_heavy_rc3(self, tmp_path, capsys):
+        text = "完全满足要求,无偏离。" * 8  # 实质 72 字, 套话命中 88 字(完全满足/满足要求/无偏离 各×8), 占比 ≈122% > 60%; 72≥50 先过薄门槛
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(evidence_ref=None, response_text=text)])], capsys)
+        assert rc == 3
+        assert "boilerplate_heavy" in _anomaly_kinds(summary), "高频套话占比超标 → boilerplate_heavy(bug-2189 形态)"
+
+    def test_bug_2189_25_thin_items_all_flagged(self, tmp_path, capsys):
+        """bug-2189 回归: E2E 实证 25 条 0 引用薄套话直写 responses.json 全部落账——lint 须全量标红。"""
+        clauses = [_sample_clause(clause_id=f"ZB-C-{n:03d}") for n in range(1, 26)]
+        items = [_rs_item(clause_id=f"ZB-C-{n:03d}", evidence_ref=None, response_text="完全满足招标文件要求,无偏离,详见投标文件。") for n in range(1, 26)]
+        rc, summary = _rs_run("validate", _rs_state(tmp_path, clauses=clauses), [_rs_candidate(tmp_path, items)], capsys)
+        assert rc == 3
+        flagged = [a for a in summary["anomalies"] if a["kind"] == "thin_response"]
+        assert len(flagged) == 25, f"25 条 0 引用薄套话须全量标红, 实际 {len(flagged)}"
+
+    def test_normal_long_response_rc0(self, tmp_path, capsys):
+        text = "我方智能控制系统采用模块化架构设计,支持按招标技术参数逐项配置,并提供远程诊断、版本升级与本地化部署能力,项目实施周期与验收标准完全依照合同约定执行。"
+        rc, summary = _rs_run("validate", _rs_state(tmp_path), [_rs_candidate(tmp_path, [_rs_item(evidence_ref=None, response_text=text)])], capsys)
+        assert rc == 0, "正常长响应(实质≥50字、无套话填充)全放行——lint 不误伤正文"
+
+
 class TestCheckFormatSelfCreatedOrigin:
     """responses merge 建的 origin=self_created 节点: check_format 免逐字镜像校验(非镜像产物)。"""
 
@@ -6028,10 +6170,11 @@ SKILL_MD_PATH = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "SKIL
 # SKILL.md 里允许调用的本技能脚本(五管线脚本; markdown-to-docx 的 convert.py 属其他技能不校验)
 _SKILL_SCRIPT_RE = re.compile(r"bid-proposal-writing/scripts/([a-z_]+)\.py")
 
-# 内容要件: 铁律1-7 / 六阶段+两门 / 门1 计数与异常项 / 门2 补遗diff+终稿复核 /
-# 阶段5 双形态+重灌硬化 / 上下文纪律 / 沙箱路径(任务 T8 内容①-⑥逐条落)
+# 内容要件(SKILL.md 常驻层): 铁律10条 / 六阶段+两门路由 / 命令契约 / 快照与上下文纪律 /
+# 分组指南路由(DEC-1: SKILL.md 是 ≤120 行编排总纲, 阶段级深水区要件——门1计数/三模式/
+# 状态文件/评分硬化——下沉到 references/ 四份分组执行指南, 由 STAGE_FILE_REQUIRED_TOKENS 逐份锁)
 SKILL_MD_REQUIRED_TOKENS = (
-    # ① 铁律 1-7(原文照录, 每条取一个不可省略的标识短语)
+    # ① 铁律 1-10(每条取一个不可省略的标识短语)
     "唯一来源",  # 铁律1: 条款数据唯一来源=clauses.json
     "改分类必须改文件",  # 铁律1
     "先跑通 ingest/extract 才允许谈清单",  # 铁律2
@@ -6047,7 +6190,7 @@ SKILL_MD_REQUIRED_TOKENS = (
     "禁止任何途径写盘",  # 铁律9: write_file/str_replace/bash 重定向/inline python/rm 一律禁
     "反弃线",  # 铁律10: 工作量大不是绕过管线直接整篇生成的理由
     "自拟挂接位",  # 铁律3 唯一例外(origin=self_created, 确认门2 人核落位)
-    # ② 六阶段编排 + 两道确认门(含 v2 阶段4a 三模式供源)
+    # ② 六阶段编排 + 两道确认门(细节在四份分组指南, 文件名由 TestSkillStageGroupFiles 锁)
     "阶段0",
     "阶段1",
     "阶段2",
@@ -6057,60 +6200,35 @@ SKILL_MD_REQUIRED_TOKENS = (
     "阶段5",
     "确认门1",
     "确认门2",
-    # ②b 阶段4a 三模式: kf 探测→无高置信 ask_clarification 停问样例→web 深写→self 兜底
-    "tech_response_prompt.md",
-    "source_mode",
+    # ③ 编排常驻概念(跨阶段)
     "ask_clarification",
-    "web_search",
-    "web_fetch",
-    "参考样例",
-    "自拟",
-    "needs_human_verify=true",
-    "anchor_node_id",
-    "self_created_path",
-    # ③ 门1: 计数(N1/N2/N3) + 异常项 + 完整清单落盘 + clause_id 改分类回写 + 实体白名单锁定
-    "N1",
-    "N2",
-    "N3",
-    "判空",  # 未裁决 chunk/table 显式判空
-    "总分不符",  # rubric Σmax_score 与评分办法总分不符
-    "clause_id 改分类",
-    "实体白名单",
-    # ③b v2 格式 1:1 复刻(check_format 确定性防线)与渲染净化
     "check_format.py",
     "responses.py",
     "格式保真",
-    "fixed_rows",
-    "template_prefill_count",
-    "槽位编排表",
-    "生成内容人核",
-    "其他技术要求响应",
-    # ③ 门2: 补遗 diff 表(新增/被替代/作废) + 新实体确认 + 终稿复核清单 + format_check 人工签字
     "新增/被替代/作废",
     "新实体确认",
     "终稿复核",
-    "人工签字",
-    # ④ 阶段5 双形态: 会话内填写态 / 回传 Word 先转换再 reingest --source
-    "会话内填写态",
     "回传",
     "--source",
-    "needs_human_verify",
-    "多命中",  # D6 匹配器硬化
-    "归一化",  # D6
     "version",  # 报告 version++ 留痕
-    # ⑤ 上下文纪律
     "行区间",
     "task()",
     "3 并发",
-    # ⑥ 沙箱路径 + 编排配套(references/转换链路/OCR 受限支持)
+    # ④ 沙箱路径 + 契约文档名(分组指南与 prompt 均在 references/)
     "/mnt/skills/public/bid-proposal-writing/scripts/",
     "/mnt/skills/public/bid-proposal-writing/references/",
     "extraction_prompt.md",
+    "tech_response_prompt.md",
     "scoring_prompt.md",
     "classification.md",
     "present_files",  # 阶段4 六件套 md 交付(present_files→文档空间)
     "文档空间",  # 排版与 Word 导出在文档空间完成, 本技能不产 .docx
     "eai-flow-ocr",  # 阶段0 扫描件分流(V1 受限支持)
+    # ⑤ 加固(RCA bug-2189): 重跑入口 / 重签审计门 / build 回执 / 重跑纪律
+    "--resume",
+    "--confirm-gate1-edit",
+    "last_build.json",
+    "严禁 rm -rf",
 )
 
 
@@ -6245,11 +6363,162 @@ class TestSkillMd:
             if module_name not in value_domain_validators:
                 continue
             dest, validator_name = value_domain_validators[module_name]
-            validator = getattr(importlib.import_module(module_name), validator_name)
             value = getattr(ns, dest)
+            if value is None:
+                continue  # --resume 续作示例省略 --code(正常受理必填校验在 main() 内)
+            validator = getattr(importlib.import_module(module_name), validator_name)
             assert validator.match(value), f"SKILL.md 示例 {module_name} --{dest.replace('_', '-')} {value!r} 不满足脚本值域校验 {validator.pattern}(实测 main() 退出码 1; argv={argv})"
             checked += 1
         assert checked > 0, "SKILL.md 应包含 ingest 的 --code 示例(值域校验对象), 实际未捕获到"
+
+
+# ===========================================================================
+# T8b(DEC-1): SKILL.md ↔ references/ 四份分组执行指南——文件存在性 + 内容要件 +
+# 120 行预算 + 路由双向锁(SKILL.md 点名 / snapshot.py 源码反向引用)
+# ===========================================================================
+
+STAGE_GROUP_FILENAMES = (
+    "stage0-2-intake-extract.md",
+    "stage3-merge-gate2.md",
+    "stage4-response-build.md",
+    "stage5-scoring.md",
+)
+
+# 每份分组指南的内容要件(阶段级深水区——从 SKILL_MD_REQUIRED_TOKENS 下沉至此逐份锁)
+STAGE_FILE_REQUIRED_TOKENS = {
+    "stage0-2-intake-extract.md": (
+        "extraction_prompt.md",
+        "classification.md",
+        "不支持的文件类型",
+        "严禁手写 sections.json",
+        "eai-flow-ocr",
+        "行区间",
+        "全量裁决",
+        "判空",
+        "N1",
+        "N2",
+        "N3",
+        "总分不符",
+        "clause_id 改分类",
+        "实体白名单",
+        "entities_whitelist.json",
+        "--confirm-gate1-edit",
+        "check_format.py",
+        "格式保真",
+        "单次成文",
+        "present_files",
+        "skipped_unchanged",
+        "replaced",
+        "--declared-total",
+    ),
+    "stage3-merge-gate2.md": (
+        "extraction_prompt.md",
+        "classification.md",
+        "三级合并",
+        "anchor_target_mismatch",
+        "--decisions",
+        "from_addendum",
+        "superseded_by",
+        "voided",
+        "merge_ledger.json",
+        "skipped=true",
+        "addendum_entities_pending.json",
+        "whitelist_missing",
+        "clause_fk_invalid",
+        "check_format.py",
+        "补遗diff表",
+        "新实体确认",
+        "entities_whitelist.json",
+        "del:",
+        "人工签字",
+        "终稿复核",
+        "replay_content_mismatch",
+    ),
+    "stage4-response-build.md": (
+        "tech_response_prompt.md",
+        "responses.schema.json",
+        "knowledge-factory",
+        "source_mode",
+        "ask_clarification",
+        "参考样例",
+        "web_search",
+        "web_fetch",
+        "citations_missing_for_web",
+        "needs_human_verify=true",
+        "anchor_node_id",
+        "self_created_path",
+        "clause_not_live",
+        "pipeline_metadata_in_text",
+        "placement_shape",
+        "duplicate_clause_response",
+        "thin_response",
+        "boilerplate_heavy",
+        "fixed_rows",
+        "template_prefill_count",
+        "其他技术要求响应",
+        "槽位编排表",
+        "生成内容人核",
+        "present_files",
+        "文档空间",
+        "last_build.json",
+    ),
+    "stage5-scoring.md": (
+        "scoring_prompt.md",
+        "会话内填写态",
+        "回传",
+        "--volume",
+        "两卷拼接",
+        "默认 both",
+        "needs_human_verify",
+        "多命中",
+        "归一化",
+        "--threshold",
+        "objective",
+        "price",
+        "subjective",
+        "assemble-evidence",
+        "evidence_pack.json",
+        "aggregate",
+        "version_N.md",
+        "模拟参考值",
+        "rubric_id",
+        "Σ",
+    ),
+}
+
+
+class TestSkillStageGroupFiles:
+    """T8b(DEC-1): SKILL.md 是 ≤120 行编排总纲, 阶段深水区细节下沉到 references/
+    四份分组执行指南——锁"总纲→指南"路由闭环: 文件存在 + 内容要件 + SKILL.md 点名 +
+    snapshot.py 源码反向引用, 三处同步失败才允许改名(防路由漂移)。"""
+
+    def test_stage_files_exist_with_required_tokens(self):
+        for filename, tokens in STAGE_FILE_REQUIRED_TOKENS.items():
+            path = SKILL_MD_PATH.parent / "references" / filename
+            assert path.is_file(), f"分组执行指南缺失: {path}(DEC-1 交付物)"
+            content = path.read_text(encoding="utf-8")
+            missing = [token for token in tokens if token not in content]
+            assert not missing, f"{filename} 缺少内容要件: {missing}"
+
+    def test_skill_md_line_budget(self):
+        """SKILL.md ≤120 行——流程细节/状态文件表/排错表必须留在 references/, 不许长回 363 行旧态。"""
+        lines = _skill_md_text().splitlines()
+        assert len(lines) <= 120, f"SKILL.md 超出 120 行预算(实际 {len(lines)} 行)——阶段细节应下沉到 references/ 分组指南"
+
+    def test_skill_md_routes_to_all_stage_files(self):
+        """SKILL.md(路径与契约文档/阶段路由表)必须点名全部四份分组指南, 编排者才知道进哪阶段读哪份。"""
+        content = _skill_md_text()
+        for filename in STAGE_GROUP_FILENAMES:
+            assert filename in content, f"SKILL.md 须点名分组指南 {filename}(阶段路由表)"
+
+    def test_snapshot_source_pins_stage_group_filenames(self):
+        """双向锁: snapshot.py 源码引用全部四个分组指南(各 next_step 提示指向该读的那份)——
+        指南改名时快照提示与 SKILL.md 路由同时失配, 本测试强制三处一起改(DEC-1 契约)。
+        按基名比对(去 .md): snapshot.py next_step 文案锁的是指南基名(如"见 stage0-2-intake-extract")。"""
+        snapshot_src = (SKILL_MD_PATH.parent / "scripts" / "snapshot.py").read_text(encoding="utf-8")
+        for filename in STAGE_GROUP_FILENAMES:
+            base = filename.removesuffix(".md")
+            assert base in snapshot_src, f"snapshot.py 须引用分组指南 {base}(DEC-1: 快照提示与路由同步)"
 
 
 # ===========================================================================
@@ -6261,6 +6530,30 @@ def _state_guard_module():
     import importlib
 
     return importlib.import_module("state_guard")
+
+
+@pytest.fixture(autouse=True)
+def _unsigned_fixture_state_tolerated(request, monkeypatch):
+    """测试便利补丁: 目录无 .meta.json 时回落旧 verify 语义(零登记=零复核)。
+
+    生产语义(bug-2189 复测收紧)是"空登记+在盘权威文件=注入信号"——但本套件的
+    夹具大量直造/就地改写无签名状态(_copy_prestate/_cf_state/_rs_state 及测试体内
+    write_text 后再跑脚本), 属合法管线模拟而非注入。凡目录已有 .meta.json(防篡改
+    测试显式登记后改写)一律走真实严格校验, 不受本补丁影响。
+
+    需要验证"无登记+在盘=拦截"生产语义本身的测试用 @pytest.mark.state_guard_strict
+    跳过本补丁(TestStateGuard/TestIngestUnsignedSectionsRebuild 等)。"""
+    if request.node.get_closest_marker("state_guard_strict"):
+        return
+    sg = _state_guard_module()
+    real_verify = sg.verify_state_files
+
+    def _lenient_when_no_meta(state_dir, *args, **kwargs):
+        if not (Path(state_dir) / sg.META_NAME).is_file():
+            return []
+        return real_verify(state_dir, *args, **kwargs)
+
+    monkeypatch.setattr(sg, "verify_state_files", _lenient_when_no_meta)
 
 
 def _snapshot_module():
@@ -6285,9 +6578,18 @@ class TestStateGuard:
         assert sg.verify_state_files(tmp_path) == []
         assert (tmp_path / ".meta.json").is_file(), "签名登记表应落盘"
 
-    def test_no_meta_backward_compat_passes(self, tmp_path):
-        """既有工作区/fixture 无 .meta.json → 无签名可校验, 放行(守卫只收紧已签名工作区)。"""
-        (tmp_path / "clauses.json").write_text("{}", encoding="utf-8")
+    @pytest.mark.state_guard_strict
+    def test_no_meta_with_authoritative_file_detected(self, tmp_path):
+        """E2E 实证(42afc10f, bug-2189 复测): agent 手写 sections.json 且从未有 .meta.json 时,
+        旧版在 signatures 为空处提前 return [] → "在盘未登记"检查失明, extract validate 只报
+        锚点全隔离的远处症状, agent 反复考古烧尽 recursion 预算。空登记+在盘权威文件=注入信号。"""
+        (tmp_path / "sections.json").write_text("{}", encoding="utf-8")
+        problems = _state_guard_module().verify_state_files(tmp_path)
+        assert problems and "sections.json" in problems[0] and "未登记" in problems[0]
+        assert "恢复方法" in problems[0]
+
+    def test_no_meta_empty_dir_passes(self, tmp_path):
+        """全新空工作区(无任何权威文件) → 放行: 守卫拦的是注入, 不是起步。"""
         assert _state_guard_module().verify_state_files(tmp_path) == []
 
     def test_tampered_content_detected(self, tmp_path, capsys):
@@ -6315,6 +6617,16 @@ class TestStateGuard:
         problems = sg.verify_state_files(tmp_path)
         assert problems and "clauses.json" in problems[0] and "未登记" in problems[0], "在盘未登记的权威文件必须被点名"
         assert "恢复方法" in problems[0]
+
+    @pytest.mark.state_guard_strict
+    def test_problem_lines_name_producing_script(self, tmp_path):
+        """v3 装载角色分流: 恢复指令必须点名产生脚本(不给"重跑产生它的脚本"留泛指让 agent 自己猜)。"""
+        sg = _state_guard_module()
+        (tmp_path / "clauses.json").write_text("[]", encoding="utf-8")
+        (tmp_path / "responses.json").write_text("[]", encoding="utf-8")
+        joined = "\n".join(sg.verify_state_files(tmp_path))
+        assert "extract.py merge" in joined and "responses.py merge" in joined, "问题行必须点名产生脚本"
+        assert "该文件非脚本产出" in joined
 
     def test_aux_files_outside_allowlist_pass(self, tmp_path):
         """entities_whitelist.json 由 agent 按设计写(永不签名)、snapshot.json 非权威装载路径——
@@ -6345,7 +6657,7 @@ class TestStateGuard:
 
     def test_extract_merge_tamper_blocked_then_re_sign_recovers(self, tmp_path, capsys):
         """端到端: merge#1 签名 → 手改 clauses.json → merge#2 硬错误(rc=1, 带恢复指令);
-        state_guard sign 重登(确认门1 class 编辑的获准通道)后 merge#3 恢复正常。"""
+        state_guard sign --confirm-gate1-edit 重登(确认门1 class 编辑的获准通道)后 merge#3 恢复正常。"""
         files = _happy_candidate_files(tmp_path)
         state = tmp_path / "state"
         assert _run_extract("merge", files, declared_total=100, state_dir=state) == 0
@@ -6356,9 +6668,64 @@ class TestStateGuard:
         assert _run_extract("merge", files, declared_total=100, state_dir=state) == 1, "签名不符必须硬错误, 不得带病装载"
         captured = capsys.readouterr()
         assert "签名校验失败" in captured.err and "恢复方法" in captured.err
-        assert _state_guard_module().main(["sign", "--state-dir", str(state), "--files", "clauses.json"]) == 0
+        assert _state_guard_module().main(["sign", "--state-dir", str(state), "--files", "clauses.json"]) == 1, "变更型重签无旗标必须拒绝(防手写后借 sign 洗白)"
+        capsys.readouterr()
+        assert _state_guard_module().main(["sign", "--state-dir", str(state), "--files", "clauses.json", "--confirm-gate1-edit"]) == 0
+        meta = json.loads((state / ".meta.json").read_text(encoding="utf-8"))
+        assert meta["resign_log"][-1]["file"] == "clauses.json", "变更型重签必须记审计 resign_log"
         capsys.readouterr()
         assert _run_extract("merge", files, declared_total=100, state_dir=state) == 0, "重登签名后管线恢复"
+
+    def test_cli_sign_audit_log_idempotent(self, tmp_path, capsys):
+        """sign 收紧(v3): 无旗标拒绝(报通用通道关闭); 旗标+既有签名+内容变更+含 class
+        放行并记 resign_log; 无变更重签按洗白拒绝; 同条目重复拒绝末条去重、字节不变;
+        从未登记文件即使带旗标也拒绝首签(合法首登记只有管线脚本自动签名)。"""
+        sg = self._signed_state(tmp_path)
+        (tmp_path / "clauses.json").write_text('{"a": 2, "items": [{"class": "commercial"}]}', encoding="utf-8")  # 门1 class 回写形态
+        # (a) 无旗标 → 拒绝(通用重签通道已关闭)
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json"]) == 1
+        err1 = capsys.readouterr().err
+        assert "通用重签通道已关闭" in err1 and "--confirm-gate1-edit" in err1
+        # (b)(c) 旗标+既有签名+内容变更+含 class → 放行, 记 resign_log(prev≠new)
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "--confirm-gate1-edit"]) == 0
+        capsys.readouterr()
+        meta1 = (tmp_path / ".meta.json").read_bytes()
+        log = json.loads(meta1)["resign_log"]
+        success = [e for e in log if not e.get("rejected")]
+        assert len(success) == 1 and success[0]["file"] == "clauses.json" and success[0]["prev_sha"] != success[0]["new_sha"]
+        # 同内容重复重签: 已无变更 → 拒绝且记审计
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "--confirm-gate1-edit"]) == 1
+        assert "无变更无需重签" in capsys.readouterr().err
+        # 同因再拒一次: 入账一条新审计
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "--confirm-gate1-edit"]) == 1
+        capsys.readouterr()
+        meta2 = (tmp_path / ".meta.json").read_bytes()
+        assert meta2 != meta1  # 拒绝审计入账, meta 已变
+        # 与末条完全相同的拒绝再发生 → 末条去重, 字节级不变
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "--confirm-gate1-edit"]) == 1
+        capsys.readouterr()
+        assert (tmp_path / ".meta.json").read_bytes() == meta2
+        # 从未登记的新权威文件: 即使带旗标也拒绝(--files 白名单先拦, 首签无通道)
+        (tmp_path / "responses.json").write_text("[]", encoding="utf-8")
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "responses.json", "--confirm-gate1-edit"]) == 1
+        assert "仅允许 clauses.json" in capsys.readouterr().err
+
+    @pytest.mark.state_guard_strict
+    def test_extract_merge_rebuilds_unsigned_legacy_three(self, tmp_path, capsys):
+        """RECOVERY_HINT 承诺"重跑产生该文件的脚本重建(ingest.py/extract.py merge)"——
+        前签名时代遗留的未登记三件套(sections 已签而 clauses/structure/rubric 未签)不得
+        让 merge 自我死锁: rebuildable 通道装载→落盘后重签收编; 消费侧(非生产者)仍拦截。"""
+        rc, _ = _run_ingest(tmp_path, [FIXTURE_DIR / "minimal_tender.docx"])  # sections.json 落盘+签名
+        assert rc == 0
+        state = tmp_path / "out"
+        for name in ("clauses.json", "structure.json", "rubric.json"):
+            (state / name).write_bytes((FIXTURE_DIR / name).read_bytes())  # 前签名时代遗留: 未登记
+        files = _happy_candidate_files(tmp_path)
+        rc = _run_extract("merge", files, declared_total=100, state_dir=state, sections=state / "sections.json")
+        assert rc != 1, "自有产物未登记=可重建, 不得拒绝(rc=1 是拒绝; 补遗锚点异常归 3 属正常裁决信号)"
+        meta = json.loads((state / ".meta.json").read_text(encoding="utf-8"))
+        assert {"clauses.json", "structure.json", "rubric.json"} <= set(meta["signatures"]), "merge 落盘后重签收编"
+        capsys.readouterr()
 
 
 class TestSnapshot:
@@ -6379,7 +6746,7 @@ class TestSnapshot:
         assert summary["phase"] == snap["phase"], "stdout 单行摘要与快照文件同源"
 
     def test_phase_inference_chain(self, tmp_path, capsys):
-        """状态文件存在性推断: 2-提取中→确认门1-待锁定→3/4→4-已构建→5(vN 取最大版)。"""
+        """状态文件存在性推断: 2-提取中→确认门1-待锁定→3/4(responses 分叉)→4-已构建(last_build 回执)→5(vN)。"""
         state = tmp_path / "state"
         state.mkdir()
         (state / "sections.json").write_text('{"chunks": [{"chunk_id": "CH-001"}], "tables": []}', encoding="utf-8")
@@ -6392,11 +6759,18 @@ class TestSnapshot:
         (state / "entities_whitelist.json").write_text("{}", encoding="utf-8")
         _, snap, _ = self._run(tmp_path, capsys)
         assert snap["phase"] == "3/4-合并与构建"
-        out = tmp_path / "output"
-        out.mkdir()
-        (out / "商务卷.md").write_text("x", encoding="utf-8")
+        assert "4a" in snap["next_step"], "responses 未生成时 next_step 指向阶段4a 技术响应"
+        assert snap["state"]["responses"] == 0
+        (state / "responses.json").write_text('[{"clause_id": "ZB-C-001", "response_text": "x"}]', encoding="utf-8")
         _, snap, _ = self._run(tmp_path, capsys)
-        assert snap["phase"] == "4-已构建" and snap["output_files"] == ["商务卷.md"]
+        assert snap["phase"] == "3/4-合并与构建" and snap["state"]["responses"] == 1
+        assert "4a" not in snap["next_step"], "responses 已生成→不再提示 4a"
+        # 构建态由 build 回执 last_build.json 判定(v2 六件套在 /mnt/user-data/outputs/, 不在 workspace/output/)
+        (tmp_path / "last_build.json").write_text(json.dumps({"out_dir": "/mnt/user-data/outputs/投标文件", "files": {"商务卷.md": "a" * 8, "技术卷.md": "b" * 8}}, ensure_ascii=False), encoding="utf-8")
+        _, snap, _ = self._run(tmp_path, capsys)
+        assert snap["phase"] == "4-已构建"
+        assert snap["last_build"]["out_dir"] == "/mnt/user-data/outputs/投标文件"
+        assert snap["last_build"]["files"] == ["商务卷.md", "技术卷.md"]
         reports = state / "评分报告"
         reports.mkdir()
         (reports / "version_1.md").write_text("r1", encoding="utf-8")
@@ -6415,3 +6789,222 @@ class TestSnapshot:
         assert _snapshot_module().main(["--workspace", str(tmp_path), "--code", "无等号"]) == 1
         assert not (tmp_path / "project_snapshot.json").exists(), "用法错误不得半途落盘"
         capsys.readouterr()
+
+
+class TestStateGuardNoGeneralSign:
+    """v3 sign 收紧(B2/bug-2189): CLI sign 五条拒绝路径——通用重签通道已关闭, 唯一获准
+    通道是确认门1 class 回写(旗标+仅 clauses.json+既有登记+内容确有变更+含 class 字段)。"""
+
+    def _registered(self, tmp_path):
+        sg = _state_guard_module()
+        (tmp_path / "clauses.json").write_text('{"a": 1}', encoding="utf-8")
+        sg.sign_state_files(tmp_path, ["clauses.json"])
+        return sg
+
+    def test_reject_no_flag(self, tmp_path, capsys):
+        self._registered(tmp_path)
+        (tmp_path / "clauses.json").write_text('{"a": 2, "items": [{"class": "scoring"}]}', encoding="utf-8")
+        assert _state_guard_module().main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json"]) == 1
+        assert "通用重签通道已关闭" in capsys.readouterr().err
+
+    def test_reject_files_outside_gate1_whitelist(self, tmp_path, capsys):
+        self._registered(tmp_path)
+        (tmp_path / "sections.json").write_text("{}", encoding="utf-8")
+        argv = ["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "sections.json", "--confirm-gate1-edit"]
+        assert _state_guard_module().main(argv) == 1
+        assert "仅允许 clauses.json" in capsys.readouterr().err
+
+    def test_reject_first_sign_even_with_flag(self, tmp_path, capsys):
+        """从未登记过的文件即使带旗标也拒绝首签洗白(合法首登记只有管线脚本自动签名)。"""
+        (tmp_path / "clauses.json").write_text('{"items": [{"class": "scoring"}]}', encoding="utf-8")
+        assert _state_guard_module().main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "--confirm-gate1-edit"]) == 1
+        assert "拒绝首签洗白" in capsys.readouterr().err
+        meta = json.loads((tmp_path / ".meta.json").read_text(encoding="utf-8"))
+        assert meta["resign_log"][-1]["rejected"] is True, "被拒洗白也记 resign_log 审计"
+        assert not meta.get("signatures"), "拒绝首签不得留下登记"
+
+    def test_reject_no_change(self, tmp_path, capsys):
+        self._registered(tmp_path)
+        assert _state_guard_module().main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "--confirm-gate1-edit"]) == 1
+        assert "无变更无需重签" in capsys.readouterr().err
+
+    def test_reject_missing_class_field(self, tmp_path, capsys):
+        sg = self._registered(tmp_path)
+        (tmp_path / "clauses.json").write_text('{"a": 2}', encoding="utf-8")  # 内容变更但无 class 字段
+        assert sg.main(["sign", "--state-dir", str(tmp_path), "--files", "clauses.json", "--confirm-gate1-edit"]) == 1
+        assert "不含 class 字段" in capsys.readouterr().err
+        signatures = json.loads((tmp_path / ".meta.json").read_text(encoding="utf-8"))["signatures"]
+        assert signatures["clauses.json"] != sg.sha256_file(tmp_path / "clauses.json"), "拒绝后登记签名不得更新(改文件必须走管线或获准通道)"
+
+
+class TestLoadTimeRegistry:
+    """v3 装载角色分流(B3, 消费者侧): 消费者(build_output)读未登记注入/被篡改的权威状态
+    文件必须硬错误且错误行点名产生脚本。生产者收编路径已由
+    TestStateGuard.test_extract_merge_rebuilds_unsigned_legacy_three 覆盖。"""
+
+    @pytest.mark.state_guard_strict
+    def test_consumer_build_blocks_unregistered_injection(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path)
+        (state / "responses.json").write_text("[]", encoding="utf-8")  # 脚本外手写注入
+        assert _run_build(state, tmp_path / "out") == 1
+        err = capsys.readouterr().err
+        assert "未登记" in err and "responses.py merge" in err, "消费者硬错误必须点名产生脚本"
+
+    @pytest.mark.state_guard_strict
+    def test_consumer_build_blocks_tampered_clauses(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path)
+        _state_guard_module().sign_all_authoritative(state)
+        clauses = json.loads((state / "clauses.json").read_text(encoding="utf-8"))
+        clauses[0]["requirement"] = "手改后的要求"
+        (state / "clauses.json").write_bytes((json.dumps(clauses, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        assert _run_build(state, tmp_path / "out") == 1
+        err = capsys.readouterr().err
+        assert "签名不符" in err and "extract.py merge" in err
+
+
+class TestWhitelistFreshness:
+    """DEC-2/5/6: 白名单消费留痕(last_build.whitelist_sha256)+snapshot 新鲜度异常。
+    异常只被"重跑消费方脚本"消除——重跑 merge_addenda 仅 stdout 留痕不重写回执(异常仍在),
+    重跑 build_output 回执重写为新 hash(异常消除); 白名单被删不倒退回门1(DEC-8①)。"""
+
+    def _built(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path)
+        (state / "sections.json").write_bytes(b'{"chunks": [], "tables": []}\n')  # snapshot 推断链需要 sections 在盘
+        _run_build(state, tmp_path / "out")
+        capsys.readouterr()
+        receipt = json.loads((tmp_path / "last_build.json").read_text(encoding="utf-8"))
+        return state, receipt
+
+    def _snap(self, tmp_path, capsys):
+        rc = _snapshot_module().main(["--workspace", str(tmp_path)])
+        snap = json.loads((tmp_path / "project_snapshot.json").read_text(encoding="utf-8"))
+        _last_summary_json(capsys)
+        return rc, snap
+
+    def test_receipt_records_whitelist_hash(self, tmp_path, capsys):
+        state, receipt = self._built(tmp_path, capsys)
+        assert receipt["whitelist_sha256"] == _state_guard_module().sha256_file(state / "entities_whitelist.json")
+
+    def test_freshness_anomaly_on_post_build_edit(self, tmp_path, capsys):
+        state, _ = self._built(tmp_path, capsys)
+        whitelist = json.loads((state / "entities_whitelist.json").read_text(encoding="utf-8"))
+        whitelist["entities"].append({"type": "company", "value": "手改混入公司有限公司"})
+        (state / "entities_whitelist.json").write_bytes((json.dumps(whitelist, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        rc, snap = self._snap(tmp_path, capsys)
+        assert rc == 0, "snapshot 验而降级: 新鲜度异常进 problems 节, 不硬错误"
+        assert any("新鲜度" in p and "重跑" in p for p in snap["problems"]), "异常行必须自带恢复指令(重跑消费方脚本)"
+        assert snap["phase"] == "4-已构建", "回执在, 白名单异常降级为 anomaly, 不倒退回确认门1"
+
+    def test_merge_keeps_anomaly_rebuild_clears(self, tmp_path, capsys):
+        state, _ = self._built(tmp_path, capsys)
+        whitelist = json.loads((state / "entities_whitelist.json").read_text(encoding="utf-8"))
+        whitelist["entities"].append({"type": "company", "value": "手改混入公司有限公司"})
+        (state / "entities_whitelist.json").write_bytes((json.dumps(whitelist, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        items = [{"mapping_id": "M-F1", "action": "new", "clause": _addendum_clause("BY-C-005", requirement="质保期延长至36个月")}]
+        assert _run_merge(state, _write_addendum(tmp_path, name="f1.json", items=items, entities=[{"type": "company", "value": "补遗新公司有限公司"}])) == 0
+        summary = _last_summary_json(capsys)
+        assert "whitelist_sha256" in summary, "实体消费轮摘要必须携带白名单消费留痕"
+        _, snap = self._snap(tmp_path, capsys)
+        assert any("新鲜度" in p for p in snap["problems"]), "merge 只 stdout 留痕不重写回执, 消费后篡改异常不得被消掉"
+        _run_build(state, tmp_path / "out")  # 回执重写为当前 hash
+        capsys.readouterr()
+        _, snap = self._snap(tmp_path, capsys)
+        assert not any("新鲜度" in p for p in snap["problems"]), "重跑消费方(build_output)重建留痕后异常消除"
+
+    def test_whitelist_deleted_after_build_no_gate1_regression(self, tmp_path, capsys):
+        state, _ = self._built(tmp_path, capsys)
+        (state / "entities_whitelist.json").unlink()
+        rc, snap = self._snap(tmp_path, capsys)
+        assert rc == 0
+        assert any("现已不存在" in p for p in snap["problems"]), "回执记了消费 hash 而白名单已删 → anomaly 点名"
+        assert snap["phase"] == "4-已构建", "DEC-8①: 回执在, 不因白名单缺失倒退回确认门1"
+
+    def test_legacy_receipt_without_hash_no_anomaly(self, tmp_path, capsys):
+        """旧回执无 whitelist_sha256 字段 → 无从比对, 不误报(兼容升级期)。"""
+        state = _copy_prestate(tmp_path)
+        (state / "sections.json").write_bytes(b'{"chunks": [], "tables": []}\n')
+        (tmp_path / "last_build.json").write_text(json.dumps({"out_dir": "o", "files": {}}, ensure_ascii=False), encoding="utf-8")
+        _, snap = self._snap(tmp_path, capsys)
+        assert snap["problems"] == []
+
+
+class TestSnapshotDegrade:
+    """v3 B4/DEC-8③: snapshot 验而降级——装载校验问题进 problems 节(退出码仍 0),
+    phase/next_step 照常产出; state 残缺时冷启动分支提示先确认原始上传件(重传分支)。"""
+
+    def _snap(self, tmp_path, capsys):
+        rc = _snapshot_module().main(["--workspace", str(tmp_path)])
+        snap = json.loads((tmp_path / "project_snapshot.json").read_text(encoding="utf-8"))
+        _last_summary_json(capsys)
+        return rc, snap
+
+    @pytest.mark.state_guard_strict
+    def test_tampered_state_degrades_into_problems(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path)
+        _state_guard_module().sign_all_authoritative(state)
+        clauses = json.loads((state / "clauses.json").read_text(encoding="utf-8"))
+        clauses[0]["requirement"] = "手改"
+        (state / "clauses.json").write_bytes((json.dumps(clauses, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        rc, snap = self._snap(tmp_path, capsys)
+        assert rc == 0, "snapshot 是冷启动恢复指针, 脏状态硬错误恰好在最需要指引时杀掉指引"
+        joined = "\n".join(snap["problems"])
+        assert "签名不符" in joined and "extract.py merge" in joined, "problems 必须携带带恢复指令的校验问题"
+        assert snap["phase"] == "0-受理(续作中断)", "state 残缺(sections 不在)+管线残迹 → 续作中断分支"
+        assert "重传" in snap["next_step"], "DEC-8③: 恢复指令先要求确认原始上传件, 不在请用户重传"
+
+    def test_clean_workspace_no_problems(self, tmp_path, capsys):
+        rc, snap = self._snap(tmp_path, capsys)
+        assert rc == 0
+        assert snap["problems"] == [], "干净起步工作区 problems 为空"
+
+
+class TestMergeLedgerSignature:
+    """v3 B8: merge_addenda 自有产物(台账/增量清单)纳入签名登记——写盘即签、
+    pending 出清删除同步撤销登记; 手删由生产者收编(撤销登记重跑重建), 在盘内容
+    被改仍硬拦截。"""
+
+    def _signatures(self, tmp_path):
+        meta = json.loads((tmp_path / "state" / ".meta.json").read_text(encoding="utf-8"))
+        return meta.get("signatures") or {}
+
+    def test_ledger_signed_on_clean_merge_and_tamper_blocked(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path)
+        items = [{"mapping_id": "M-B8", "action": "new", "clause": _addendum_clause("BY-C-006")}]
+        assert _run_merge(state, _write_addendum(tmp_path, name="b8.json", items=items)) == 0
+        _last_summary_json(capsys)
+        assert "merge_ledger.json" in self._signatures(tmp_path), "干净合并落账后台账必须已登记签名"
+        ledger = json.loads((state / "merge_ledger.json").read_text(encoding="utf-8"))
+        ledger[0]["addendum_file"] = "被篡改-01.pdf"
+        (state / "merge_ledger.json").write_bytes((json.dumps(ledger, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        assert _run_merge(state, _write_addendum(tmp_path, name="b8b.json", items=[{"mapping_id": "M-B8B", "action": "new", "clause": _addendum_clause("BY-C-009")}])) == 1
+        err = capsys.readouterr().err
+        assert "签名不符" in err and "merge_addenda.py" in err, "台账在盘被改必须硬拦截且点名产生脚本"
+
+    def test_pending_clear_unregisters_signature(self, tmp_path, capsys):
+        sg = _state_guard_module()
+        state = _copy_prestate(tmp_path)
+        entity = {"type": "company", "value": "测试专用实体有限公司"}
+        items = [{"mapping_id": "M-B8E", "action": "new", "clause": _addendum_clause("BY-C-008")}]
+        assert _run_merge(state, _write_addendum(tmp_path, name="e1.json", items=items, entities=[entity])) == 0
+        _last_summary_json(capsys)
+        assert "addendum_entities_pending.json" in self._signatures(tmp_path), "增量清单写盘即签"
+        whitelist = json.loads((state / "entities_whitelist.json").read_text(encoding="utf-8"))
+        whitelist["entities"].append(entity)  # 白名单 agent-written 不签名, 确认门2 语义直接写入
+        (state / "entities_whitelist.json").write_bytes((json.dumps(whitelist, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        assert _run_merge(state, _write_addendum(tmp_path, name="e2.json", items=[], entities=[entity])) == 0
+        summary = _last_summary_json(capsys)
+        assert "del:addendum_entities_pending.json" in summary["written"], "出清删除必须入摘要(不可见即不透明)"
+        assert "addendum_entities_pending.json" not in self._signatures(tmp_path), "合法删除必须同步撤销登记(否则 verify 误报已登记但不存在)"
+        assert sg.verify_state_files(state) == [], "撤销登记后校验无残迹"
+
+    def test_hand_deleted_ledger_self_heals(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path)
+        items = [{"mapping_id": "M-B8H", "action": "new", "clause": _addendum_clause("BY-C-007")}]
+        assert _run_merge(state, _write_addendum(tmp_path, name="h1.json", items=items)) == 0
+        _last_summary_json(capsys)
+        (state / "merge_ledger.json").unlink()  # 脚本外手删
+        candidates = _write_addendum(tmp_path, name="h2.json", items=items)
+        assert _run_merge(state, candidates) == 0, "台账缺失=无历史, 生产者收编后重跑必须自愈而非死锁在校验"
+        summary = _last_summary_json(capsys)
+        assert summary["ledger_recorded"] is True and summary["skipped"] is False
+        assert (state / "merge_ledger.json").is_file() and "merge_ledger.json" in self._signatures(tmp_path), "重建后重新登记"

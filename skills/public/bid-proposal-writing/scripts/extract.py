@@ -629,9 +629,9 @@ def _base_summary(command: str, args, report: dict) -> dict:
     return summary
 
 
-def _verify_state_guard(state_dir: str | Path, context: str) -> None:
+def _verify_state_guard(state_dir: str | Path, context: str, *, rebuildable: tuple[str, ...] = ()) -> None:
     """读盘前校验权威状态签名(回放实证 bfa917ce: write_file 直写/rm 后下游只报远处症状)。"""
-    problems = state_guard.verify_state_files(state_dir)
+    problems = state_guard.verify_state_files(state_dir, rebuildable=rebuildable)
     if problems:
         raise ExtractError(f"{context}: 权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(problems))
 
@@ -651,8 +651,12 @@ def cmd_merge(args) -> int:
 
     Σ 校验基准: --declared-total 优先, 缺省回用既有 rubric.json total_score(evaluate 内统一)。
     """
-    _verify_state_guard(Path(args.sections).parent, "merge 前置校验(sections 所在目录)")
-    _verify_state_guard(args.state_dir, "merge 前置校验(state-dir)")
+    # rebuildable: merge 是 clauses/structure/rubric 的生产者——前签名时代遗留的未登记
+    # 三件套按可重建装载(RECOVERY_HINT 承诺"重跑 extract merge 重建", 拒绝即自我死锁),
+    # 落盘后重签收编; sections(上游产物)与其他文件未登记=注入, 照常拦截。
+    # sections 所在目录常与 state-dir 同一(生产形态), 两处校验同口径。
+    _verify_state_guard(Path(args.sections).parent, "merge 前置校验(sections 所在目录)", rebuildable=tuple(STATE_FILES.values()))
+    _verify_state_guard(args.state_dir, "merge 前置校验(state-dir)", rebuildable=tuple(STATE_FILES.values()))
     sections, schemas, records = _load_inputs(args)
     state = load_state(args.state_dir)
     report = evaluate(sections, schemas, records, args.declared_total, existing=state)

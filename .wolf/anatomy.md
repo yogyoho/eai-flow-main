@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-09-02T12:48:17.059Z
-> Files: 59 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-05T02:18:38.343Z
+> Files: 69 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -35,8 +35,8 @@
 
 ## ./
 
-- `config.yaml` — Configuration for the DeerFlow application (~38029 tok)
-- `extensions_config.json` (~2174 tok)
+- `.tmp-wolf-json-fix.mjs` — One-off: merge recovered entries 3078-3103 + fresh 3104 into restored buglog.json (~510 tok)
+- `TODOS.md` — TODOS (~715 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -131,14 +131,18 @@
 ## .tmp-geol/e2e-illustration/
 
 
+## .tmp-hj-analysis/
+
+
+## .tmp-ragflow-ab-tuning/
+
+- `t5_filter_verify.py` — T5 live verification: KB chat/search filters (sector / date / combined / zero-hit / no-filter). (~781 tok)
+
+## .tmp-ragflow-v0271/
+
+
 ## .tmp-rf-init/
 
-- `apikey.py` — Login to RAGFlow and locate the API key management UI. (~562 tok)
-- `e2e_smoke.py` — E2E smoke: login → create KB → upload → parse → chunks(pagination) → retrieval. (~1331 tok)
-- `explore.py` — Explore RAGFlow home shell: dump links, avatar menu, find profile/API route. (~631 tok)
-- `getkey.py` — Open user settings, switch to the API tab, create an API key, print it. (~809 tok)
-- `recon.py` — Recon: render RAGFlow web UI and dump interactive elements. (~294 tok)
-- `register.py` — Register the first (admin) account on RAGFlow v0.27.1 web UI — scoped to the active auth card. (~464 tok)
 
 ## .worktrees/abac-3level/backend/app/extensions/auth/
 
@@ -280,7 +284,6 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/44b70ab4-d229-4f37-8d51-153093484440/workflows/scripts/
 
-- `ragflow-upgrade-research-wf_0116ee1c-8ec.js` — Exports meta (~3254 tok)
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/7be62368-49b4-47e9-ae38-fc140e3e96c4/workflows/scripts/
 
@@ -288,8 +291,20 @@
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/aba26c25-8951-43f3-b2fd-1e504e0239a2/workflows/scripts/
 
 
+## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/adaa2ec3-0e36-4720-9b19-1ea3020169c1/workflows/scripts/
+
+- `bid-skill-geo-borrow-and-bigdoc-eval-wf_56b63394-5fd.js` — Exports meta (~2268 tok)
+
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `bid-tech-response-source-policy.md` (~256 tok)
+- `blocknote-xl-ai-ids-suffixed.md` (~230 tok)
+- `gsb-ragflow-dataset-wiring.md` (~293 tok)
+- `MEMORY.md` (~2659 tok)
+- `next-route-handlers-shadow-rewrites.md` (~394 tok)
+- `offline-prod-deploy-solution.md` (~585 tok)
+- `ps51-utf8-no-bom-corruption.md` (~260 tok)
+- `render-prop-as-component-remount-trap.md` (~262 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -299,6 +314,7 @@
 
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
 
+- `admin-main-dev-fork-design-20260905-bid-proposal-v4.md` — Design: bid-proposal-writing v4——大篇幅分册架构 + 地质技能机制移植 + 样例库编造政策 (~2405 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
@@ -328,6 +344,9 @@
 
 
 ## C:/Users/admin/AppData/Local/Temp/geo_smoke/
+
+
+## C:/Users/admin/AppData/Local/Temp/p4_defer/
 
 
 ## _workspace_temp/
@@ -554,8 +573,7 @@
 
 ## backend/app/extensions/
 
-- `database.py` — Database connection and session management for extensions module. (~25055 tok)
-- `schemas.py` — Pydantic schemas for extensions module. (~6380 tok)
+- `schemas.py` — Pydantic schemas for extensions module. (~6462 tok)
 
 ## backend/app/extensions/app_center/
 
@@ -577,28 +595,25 @@
 
 ## backend/app/extensions/docmgr/
 
+- `collab_ai_chat.py` — AI chat endpoint for collaborative editor. (~4103 tok)
 
 ## backend/app/extensions/formula_engine/
 
 
 ## backend/app/extensions/geo_samples/
 
-- `__init__.py` — Geo sample bank extension (gsb_ tables). Exports 3 models + management router (Task 8, gateway-mounted at /api/extensions/geo-samples). (~208 tok)
-- `crud.py` — Async CRUD helpers for the gsb_ tables (dedup, listing filters, run history). (~1665 tok)
-- `parsers.py` — EAI-CUSTOM: geo-sample-bank Phase 1 三分支解析（spec 2026-09-01 §3.3）。 (~1780 tok)
-- `routers.py` — Geo sample bank management API — all functional areas. (~2109 tok)
-- `service.py` — EAI-CUSTOM: forked from app.extensions.contract_price.service (geo-sample-bank Phase 1). (~1585 tok)
-- `storage.py` — MinIO storage for the geo sample bank (independent ``geo-samples`` bucket). (~910 tok)
+- `ore_pack_extract.py` — ore_pack 批量孵化：LLM 抽草稿 → validate → 草稿表 → 人审 → ore_packs/ 落 repo。 (~1863 tok)
+- `routers.py` — Geo sample bank management API — all functional areas. (~5564 tok)
+- `service.py` — EAI-CUSTOM: forked from app.extensions.contract_price.service (geo-sample-bank Phase 1). (~4820 tok)
 
 ## backend/app/extensions/knowledge/
 
-- `client.py` — RAGFlow client for knowledge base integration. (~5206 tok)
-- `service.py` — Knowledge base and document management service. (~6686 tok)
+- `client.py` — RAGFlow client for knowledge base integration. (~5383 tok)
+- `routers.py` — Knowledge base routers for extensions module. (~8666 tok)
+- `service.py` — Knowledge base and document management service. (~7426 tok)
 
 ## backend/app/extensions/knowledge_factory/
 
-- `pipeline.py` — Template extraction pipeline - 5-stage pipeline with callback-based progress. (~20337 tok)
-- `service.py` — Business logic for knowledge factory extraction. (~8321 tok)
 
 ## backend/app/extensions/knowledge_factory/data/
 
@@ -614,17 +629,18 @@
 
 ## backend/app/extensions/knowledge_factory/mcp_server/
 
+- `server.py` — Knowledge Factory MCP Server — exposes template, domain, and knowledge tools to DeerFlow lead_agent. (~3282 tok)
 
 ## backend/app/extensions/knowledge_factory/mcp_server/tools/
 
-- `template_tools.py` — Template resolution tools for the Knowledge Factory MCP server. (~4597 tok)
+- `search_tools.py` — kf_search_knowledge — Agent 跨知识库检索（RAGFlow）。 (~1842 tok)
 
 ## backend/app/extensions/law/
 
+- `service.py` — Business logic for law management. (~10194 tok)
 
 ## backend/app/extensions/license/
 
-- `service.py` — License verification and management service. (~4423 tok)
 
 ## backend/app/extensions/models/
 
@@ -691,7 +707,6 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan (~12584 tok)
 
 ## backend/app/gateway/routers/
 
@@ -800,11 +815,13 @@
 
 ## backend/tests/
 
-- `test_geo_samples_extension.py` — Tests for the geo_samples extension (models, redactor, parsers, routes). (~1140 tok)
-- `test_geo_samples_parsers.py` — 三分支解析：docx→md（含 OLE/OMML 占位）、pdf 文字版、扫描判定异常、OCR 契约与统一分发。 (~2403 tok)
-- `test_geo_samples_service.py` — 服务编排：parse→parsed、redact→redacted、异常→failed+run 落账。 (~1692 tok)
-- `test_knowledge_ragflow_client.py` — Wire-format tests for the extensions RAGFlow HTTP client. (~2616 tok)
-- `test_license_modules_sync.py` — License module key sync guard. (~847 tok)
+- `test_eai_cli.py` — 统一 CLI（tools/eai.py）单元测试——importlib 加载，httpx.MockTransport/fake 会话假网络。 (~5630 tok)
+- `test_geo_sample_bank_compile.py` — bank_compile / resolve_targets 矿种选基线单元测试（Phase 2）。 (~25934 tok)
+- `test_geological_report_skill.py` — geological-report SKILL.md v2 结构测试。 (~3446 tok)
+- `test_kb_metadata_filter.py` — build_metadata_condition(filters→RAGFlow metadata_condition)单测。 (~1198 tok)
+- `test_kf_search_filters.py` — kf_search_knowledge 的 filters 两段式过滤单测(FakeRF 直驱 handler)。 (~1172 tok)
+- `test_knowledge_ragflow_client.py` — Wire-format tests for the extensions RAGFlow HTTP client. (~2866 tok)
+- `test_law_kb_documents_projection.py` — 法规标准库文件列表投影测试(EAI-CUSTOM, spec 2026-09-05)。 (~979 tok)
 
 ## backend/tests/e2e/bid/
 
@@ -820,11 +837,17 @@
 
 ## config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~4727 tok)
-- `roles_custom.yaml` (~2054 tok)
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~4750 tok)
 
 ## deploy/offline/
 
+- `config.yaml` — ============================================================================= (~38330 tok)
+- `deploy.conf.example` — EAI-Flow 部署配置（唯一需要手写的文件） (~211 tok)
+- `docker-compose.ragflow.yaml` — ============================================================================= (~1876 tok)
+- `MANUAL-DEPLOY.md` — EAI-Flow 全新部署手册（离线生产环境 · 完整操作步骤） (~3265 tok)
+- `MANUAL-UPGRADE.md` — EAI-Flow 更新手册（离线生产环境 · 完整操作步骤） (~4202 tok)
+- `ragflow-fixed.Dockerfile` — EAI-CUSTOM: RAGFlow 离线修复镜像（2026-09-04 随 dev 升级到 v0.27.1，bug-3100） (~309 tok)
+- `README.md` — Project documentation (~1132 tok)
 
 ## deploy/offline/brand-assets/
 
@@ -834,35 +857,42 @@
 
 ## docker/
 
-- `dev-entrypoint.sh` — '. uvicorn's FileFilter does `Path(pattern).is_dir()` — a literal (~1397 tok)
-- `docker-compose.ragflow.yaml` — RAGFlow Service Stack (~1797 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~5867 tok)
 
 ## docker/nginx/
 
 
 ## docs/
 
+- `OFFLINE_DEPLOYMENT_GUIDE.md` — EAI-Flow 内网离线部署操作手册 (~7451 tok)
 
 ## docs/architecture/
 
-- `l3d-recover-finalize-loop.spec.json` (~1237 tok)
-- `README.md` — Project documentation (~224 tok)
 
 ## docs/designs/
 
+- `bid-proposal-writing-v4-volume-architecture.md` — Design: bid-proposal-writing v4——大篇幅分册架构 + 地质技能机制移植 + 样例库编造政策 (~3021 tok)
+
+## docs/diagrams/
+
+- `contract-price.architecture.json` (~981 tok)
+- `contract-price.workflow.json` (~1178 tok)
 
 ## docs/superpowers/plans/
 
-- `2026-09-01-geo-sample-bank-phase1.md` — Geo Sample Bank — Phase 1（geo_samples 管理模块 MVP）实施计划 (~17535 tok)
-- `2026-09-02-geo-sample-bank-phase2.md` — Geo Sample Bank — Phase 2（编译管线与技能消费对接）实施计划 (~7187 tok)
+- `2026-09-04-law-kb-metadata-filter.md` — 法规标准 KB 对话/检索按表单字段过滤 — 实施计划 (~4933 tok)
+- `2026-09-04-law-kb-upload-guidance.md` — 知识库管理页法规标准库收口为「只读引导」Implementation Plan (~1690 tok)
+- `2026-09-05-law-kb-card-buttons-and-doc-list.md` — 法规库卡片按钮 disabled + laws 投影文件列表(含 chunks)Implementation Plan (~3792 tok)
 
 ## docs/superpowers/reports/
 
 
 ## docs/superpowers/specs/
 
-- `2026-09-02-geo-sample-bank-detailed-design.md` — 地质样例库模块详细设计（geo-sample-bank · as-built） (~4280 tok)
-- `2026-09-02-ragflow-upgrade-v0.27.1.md` — RAGFlow v0.25.3 → v0.27.1 升级方案(开发环境 · 全新部署) (~2433 tok)
+- `2026-09-04-law-kb-metadata-filter-design.md` — 法规标准 KB 对话/检索按表单字段过滤 — 设计 (~1073 tok)
+- `2026-09-04-law-kb-upload-guidance-design.md` — 知识库管理页法规标准库收口为「只读引导」— 设计 (~554 tok)
+- `2026-09-05-editor-ai-actions-backlog.md` — 编辑器 AI 快捷操作 Backlog 与右侧 AI 助手定位 (~820 tok)
+- `2026-09-05-law-kb-card-buttons-and-doc-list-design.md` — 知识库管理页法规库收口·第二批(卡片按钮 disabled + laws 投影文件列表含 chunks)— 设计 (~997 tok)
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -921,7 +951,7 @@
 ## frontend/src/app/admin/users/
 
 
-## frontend/src/app/api/collab/ai-chat/
+## frontend/src/app/api/collab/ai-chat/ [DELETED 2026-09-04 bug-3099]
 
 
 ## frontend/src/app/api/memory/
@@ -971,16 +1001,17 @@
 
 ## frontend/src/app/geo-samples/
 
-- `layout.tsx` — geo-samples 路由壳(forked from app/bid-quote/layout.tsx): ShellLayout 外壳 + canPage 过滤三导航(样例文档库/脱敏抽审/运行记录), pageId=gsb:page:* (~747 tok)
-- `page.tsx` — EAI-CUSTOM: geo-sample-bank Phase 1 — documents 薄壳。 (~64 tok)
+- `layout.tsx` — navItems (~811 tok)
+
+## frontend/src/app/geo-samples/drafts/
+
+- `page.tsx` — EAI-CUSTOM: P5 T6 — drafts 薄壳（矿种包孵化人审 tab）。 (~58 tok)
 
 ## frontend/src/app/geo-samples/review/
 
-- `page.tsx` — EAI-CUSTOM: geo-sample-bank Phase 1 — review 薄壳。 (~59 tok)
 
 ## frontend/src/app/geo-samples/tasks/
 
-- `page.tsx` — EAI-CUSTOM: geo-sample-bank Phase 1 — tasks 薄壳。 (~58 tok)
 
 ## frontend/src/app/knowledge-factory/
 
@@ -993,6 +1024,8 @@
 
 ## frontend/src/app/knowledge/_components/
 
+- `isLawKnowledgeBase.ts` — 法规标准系统库种子名都以此开头(后端 _ensure_kb_registered 用 config.py (~102 tok)
+- `KnowledgeBaseDetail.tsx` — formatDate (~13617 tok)
 
 ## frontend/src/app/login/
 
@@ -1053,6 +1086,7 @@
 
 ## frontend/src/components/
 
+- `theme-provider.tsx` — ThemeProvider (~233 tok)
 
 ## frontend/src/components/ai-elements/
 
@@ -1158,7 +1192,6 @@
 
 ## frontend/src/extensions/app-center/config/
 
-- `icons.ts` — Maps DB-stored icon_name strings to Lucide React components. (~284 tok)
 
 ## frontend/src/extensions/app-center/hooks/
 
@@ -1192,6 +1225,7 @@
 
 ## frontend/src/extensions/collab/
 
+- `BlockNoteEditor.tsx` — Optional list of block IDs to show in the outline panel. (~8073 tok)
 
 ## frontend/src/extensions/collab/__tests__/
 
@@ -1222,6 +1256,7 @@
 
 ## frontend/src/extensions/docmgr/
 
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~8695 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1237,23 +1272,17 @@
 
 ## frontend/src/extensions/geo-samples/
 
-- `api.ts` — API client for the geo-sample-bank management API. (~649 tok)
-- `hooks.ts` — TanStack Query hooks for the geo-sample-bank API. (~579 tok)
-- `types.ts` — EAI-CUSTOM: geo-sample-bank Phase 1 (spec 2026-09-01). (~286 tok)
+- `api.ts` — API client for the geo-sample-bank management API. (~1358 tok)
+- `hooks.ts` — TanStack Query hooks for the geo-sample-bank API. (~1031 tok)
+- `types.ts` — EAI-CUSTOM: geo-sample-bank Phase 1 (spec 2026-09-01). (~490 tok)
 
 ## frontend/src/extensions/geo-samples/components/
 
-- `chartTheme.ts` — geo-samples 共享主题常量 — forked from bid-quote/components/chartTheme.ts (~427 tok)
-- `DocumentsView.tsx` — mutate 失败兜底：TanStack 默认吞 rejection，409「任务已在跑」等后端 detail 不提示会变成死按钮。 (~2863 tok)
-- `FilterBar.tsx` — 样例文档列表筛选状态(空串 = 不过滤)。 (~1769 tok)
-- `ReviewView.tsx` — mutate 失败兜底：TanStack 默认吞 rejection，400「仅 redacted 状态可审」等后端 detail 需可见。 (~2094 tok)
-- `SectionCard.tsx` — 区块序号徽标(①/②/③)。 (~522 tok)
-- `StatCard.tsx` — 注脚行(12px 弱色)。 (~328 tok)
-- `TasksView.tsx` — RUN_TYPE_ZH — renders table (~1012 tok)
+- `DocumentsView.tsx` — mutate 失败兜底：TanStack 默认吞 rejection，409「任务已在跑」等后端 detail 不提示会变成死按钮。 (~5462 tok)
+- `DraftsView.tsx` — STATUS_ZH — renders table (~3196 tok)
 
 ## frontend/src/extensions/geo-samples/components/ui/
 
-- `table.tsx` — Lightweight table primitives(raw HTML)—— geo-samples 模块用。 (~524 tok)
 
 ## frontend/src/extensions/hooks/
 
@@ -1275,7 +1304,6 @@
 
 ## frontend/src/extensions/license/
 
-- `labels.ts` — Canonical license module key → user-facing label. (~185 tok)
 
 ## frontend/src/extensions/output/
 
@@ -1369,6 +1397,7 @@
 
 ## frontend/tests/unit/app/knowledge/_components/
 
+- `isLawKnowledgeBase.test.ts` (~198 tok)
 
 ## frontend/tests/unit/components/landing/
 
@@ -1417,7 +1446,7 @@
 
 ## frontend/tests/unit/extensions/geo-samples/
 
-- `api.test.ts` — EAI-CUSTOM: rs.mock is NOT fully hoisted under rstest — the module import (~794 tok)
+- `api.test.ts` — EAI-CUSTOM: rs.mock is NOT fully hoisted under rstest — the module import (~1725 tok)
 
 ## frontend/tests/unit/extensions/project/
 
@@ -1439,6 +1468,8 @@
 
 ## scripts/
 
+- `generate-config.sh` — generate-config.sh — 读 deploy.conf（唯一可信配置源），生成 config.yaml / .env / extensions_config.json (~1813 tok)
+- `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~9088 tok)
 
 ## scripts/tests/
 
@@ -1568,13 +1599,13 @@
 
 ## skills/public/geological-report/
 
-- `SKILL.md` — NOTE: allowed-tools removed 2026-06-18. Declaring allowed-tools on ANY enabled skill (~4534 tok)
 
 ## skills/public/geological-report/references/
 
 
 ## skills/public/geological-report/references/ore_packs/
 
+- `README.md` — Project documentation (~679 tok)
 
 ## skills/public/geological-report/references/stages/
 
@@ -1615,6 +1646,9 @@
 ## skills/public/water-drainage-report/scripts/
 
 
+## tools/
+
+- `eai.py` — eai.py — 系统统一模块运维 CLI（薄 REST 客户端，spec 2026-09-03）。 (~8448 tok)
+
 ## tools/license/
 
-- `license_generator.py` — Generate signed license files for DeerFlow deployments. (~1361 tok)

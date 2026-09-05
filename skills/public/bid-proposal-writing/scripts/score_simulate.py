@@ -1116,8 +1116,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状,
-        # agent 靠试错烧掉整轮上下文; 一声带恢复指令的硬错误替代"结构异常/缺键")
-        guard_problems = state_guard.verify_state_files(args.state_dir)
+        # agent 靠试错烧掉整轮上下文; 一声带恢复指令的硬错误替代"结构异常/缺键");
+        # reingest 是 clauses.json 的改写方——前签名时代遗留未登记按可重建装载, 其余子命令消费侧全严格
+        guard_problems = state_guard.verify_state_files(args.state_dir, rebuildable=("clauses.json",) if args.command == "reingest" else ())
         if guard_problems:
             raise ScoreSimulateError("权威状态文件签名校验失败(疑似脚本外直写/误删):\n  - " + "\n  - ".join(guard_problems))
         if args.command == "reingest":

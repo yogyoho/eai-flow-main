@@ -24220,5 +24220,22 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-09-05T00:00:00.000Z"
+  },
+  {
+    "id": "bug-3108",
+    "timestamp": "2026-09-05T01:57:59.908Z",
+    "error_message": "ruff E702 Multiple statements on one line (semicolon) x7 + ruff format would-reformat in new test file (make lint failed)",
+    "file": "backend/tests/test_law_kb_documents_projection.py",
+    "root_cause": "计划文档给 verbatim 测试内容用分号单行写法(count_rm = MagicMock(); count_rm.scalar...),与 ruff E702/format 规范冲突",
+    "fix": "把 7 处分号单行拆成独立语句;service.py 附加块跑 ruff format 归一(多行括号折叠单行)",
+    "tags": [
+      "ruff",
+      "E702",
+      "lint",
+      "plan-verbatim-content"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-05T01:57:59.909Z"
   }
 ]

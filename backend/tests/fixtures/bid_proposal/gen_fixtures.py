@@ -221,7 +221,7 @@ STRUCTURE = [
         "volume": "commercial",
         "path": "投标文件格式",
         "slot_type": "group",
-        "required_format": {"desc": "商务卷:严格按招标文件规定的格式逐项提供,不得自创结构", "table_spec": None},
+        "required_format": {"desc": "商务卷:严格按招标文件规定的格式逐项提供,不得自创结构", "table_spec": None, "template_text": None},
         "linked_clause_ids": [],
     },
     {
@@ -229,7 +229,7 @@ STRUCTURE = [
         "volume": "commercial",
         "path": "投标文件格式/一、投标函",
         "slot_type": "text",
-        "required_format": {"desc": "按给定格式填报投标函并加盖投标人公章", "table_spec": None},
+        "required_format": {"desc": "按给定格式填报投标函并加盖投标人公章", "table_spec": None, "template_text": None},
         "linked_clause_ids": ["BY-C-004"],
     },
     {
@@ -237,7 +237,7 @@ STRUCTURE = [
         "volume": "commercial",
         "path": "投标文件格式/二、法定代表人身份证明",
         "slot_type": "image",
-        "required_format": {"desc": "加盖公章的身份证正反面扫描件", "table_spec": None},
+        "required_format": {"desc": "加盖公章的身份证正反面扫描件", "table_spec": None, "template_text": None},
         "linked_clause_ids": [],
     },
     {
@@ -247,6 +247,7 @@ STRUCTURE = [
         "slot_type": "table",
         "required_format": {
             "desc": "按下列列头复刻开标一览表格式",
+            "template_text": None,
             "table_spec": {"columns": ["序号", "货物名称", "数量", "总价(元)"], "rows": 3},
         },
         "linked_clause_ids": ["BY-C-004"],
@@ -256,7 +257,7 @@ STRUCTURE = [
         "volume": "commercial",
         "path": "投标文件格式/四、投标文件签章与份数",
         "slot_type": "format_check",
-        "required_format": {"desc": "正本壹份副本肆份,全部页面加盖公章——人核项,不做确定性判定", "table_spec": None},
+        "required_format": {"desc": "正本壹份副本肆份,全部页面加盖公章——人核项,不做确定性判定", "table_spec": None, "template_text": None},
         "linked_clause_ids": [],
     },
     {
@@ -264,7 +265,7 @@ STRUCTURE = [
         "volume": "technical",
         "path": "技术部分",
         "slot_type": "group",
-        "required_format": {"desc": "技术卷:格式章节未规定结构处按技术参数条款清单驱动组织", "table_spec": None},
+        "required_format": {"desc": "技术卷:格式章节未规定结构处按技术参数条款清单驱动组织", "table_spec": None, "template_text": None},
         "linked_clause_ids": [],
     },
     {
@@ -272,7 +273,7 @@ STRUCTURE = [
         "volume": "technical",
         "path": "技术部分/1 技术方案",
         "slot_type": "text",
-        "required_format": {"desc": "技术方案总述,对应评分项'技术方案先进性'", "table_spec": None},
+        "required_format": {"desc": "技术方案总述,对应评分项'技术方案先进性'", "table_spec": None, "template_text": None},
         "linked_clause_ids": ["ZB-C-002"],
     },
     {
@@ -282,6 +283,7 @@ STRUCTURE = [
         "slot_type": "table",
         "required_format": {
             "desc": "技术参数逐项响应表,条目标题内嵌 clause_id(D2 锚点契约)",
+            "template_text": None,
             "table_spec": {"columns": ["序号", "招标要求", "响应情况", "满足状态"], "rows": 4},
         },
         "linked_clause_ids": ["ZB-C-001"],
