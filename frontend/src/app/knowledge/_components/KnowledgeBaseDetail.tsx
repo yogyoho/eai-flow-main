@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 
 import { ChunkModal } from "./ChunkModal";
 import { CustomSelect } from "./CustomSelect";
+import { DeptAccessPicker } from "./DeptAccessPicker";
 import { DocStatusBadge } from "./DocStatusBadge";
 import {
   isGeoSlicesKnowledgeBase,
@@ -116,6 +117,8 @@ export function KnowledgeBaseDetail({
   const [editForm, setEditForm] = useState<UpdateKnowledgeBaseRequest>({
     name: kb.name,
     description: kb.description ?? "",
+    access_type: kb.access_type,
+    allowed_depts: kb.allowed_depts ?? [],
     kb_type: kb.kb_type ?? "ragflow",
   });
   const [editLoading, setEditLoading] = useState(false);
@@ -267,9 +270,18 @@ export function KnowledgeBaseDetail({
     setEditForm({
       name: kb.name,
       description: kb.description ?? "",
+      access_type: kb.access_type,
+      allowed_depts: kb.allowed_depts ?? [],
       kb_type: kb.kb_type ?? "ragflow",
     });
-  }, [kb.id, kb.name, kb.description, kb.kb_type]);
+  }, [
+    kb.id,
+    kb.name,
+    kb.description,
+    kb.kb_type,
+    kb.access_type,
+    kb.allowed_depts,
+  ]);
 
   // Config tab state
   const [topK, setTopK] = useState(kb.retrieval_config?.top_k ?? 5);
@@ -382,7 +394,25 @@ export function KnowledgeBaseDetail({
   const handleEditSave = async () => {
     setEditLoading(true);
     try {
-      const updated = await kbApi.update(kb.id, editForm);
+      // EAI-CUSTOM: dept 提交 allowed_depts;切回私有/公开显式置 [] 清残留
+      const isDept = (editForm.access_type ?? "private") === "dept";
+      const allowedDepts = isDept
+        ? is_admin
+          ? (editForm.allowed_depts ?? [])
+          : identity.dept_ids
+        : [];
+      if (isDept && allowedDepts.length === 0) {
+        toast(
+          is_admin ? "至少选择一个部门" : "你尚未加入任何部门,无法设置部门可见",
+          "error",
+        );
+        setEditLoading(false);
+        return;
+      }
+      const updated = await kbApi.update(kb.id, {
+        ...editForm,
+        allowed_depts: allowedDepts,
+      });
       onKbUpdated?.(updated);
       toast("知识库信息已更新", "success");
       setShowEditKb(false);
@@ -1079,6 +1109,61 @@ export function KnowledgeBaseDetail({
                 </div>
                 <div>
                   <label className="text-foreground mb-1 block text-sm font-medium">
+                    访问权限
+                  </label>
+                  <CustomSelect
+                    value={editForm.access_type ?? "private"}
+                    onChange={(v) =>
+                      setEditForm({ ...editForm, access_type: v })
+                    }
+                    options={[
+                      {
+                        value: "private",
+                        label: "私有",
+                        icon: (
+                          <span className="flex h-3.5 w-3.5 items-center text-xs">
+                            🔒
+                          </span>
+                        ),
+                      },
+                      {
+                        value: "public",
+                        label: "公开",
+                        icon: (
+                          <span className="flex h-3.5 w-3.5 items-center justify-center">
+                            🌐
+                          </span>
+                        ),
+                      },
+                      {
+                        value: "dept",
+                        label: "部门可见",
+                        icon: (
+                          <span className="flex h-3.5 w-3.5 items-center justify-center">
+                            🏢
+                          </span>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
+                {(editForm.access_type ?? "private") === "dept" && (
+                  <div className="mt-2">
+                    <DeptAccessPicker
+                      selectedIds={
+                        is_admin
+                          ? (editForm.allowed_depts ?? [])
+                          : identity.dept_ids
+                      }
+                      onChange={(ids) =>
+                        setEditForm({ ...editForm, allowed_depts: ids })
+                      }
+                      readOnly={!is_admin}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="text-foreground mb-1 block text-sm font-medium">
                     描述
                   </label>
                   <Textarea
@@ -1097,7 +1182,15 @@ export function KnowledgeBaseDetail({
                 </Button>
                 <Button
                   onClick={handleEditSave}
-                  disabled={!editForm.name?.trim() || editLoading}
+                  disabled={
+                    !editForm.name?.trim() ||
+                    editLoading ||
+                    ((editForm.access_type ?? "private") === "dept" &&
+                      (is_admin
+                        ? (editForm.allowed_depts ?? [])
+                        : identity.dept_ids
+                      ).length === 0)
+                  }
                 >
                   {editLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                   保存

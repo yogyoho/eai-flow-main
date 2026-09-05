@@ -283,6 +283,7 @@ function KnowledgeBaseManagement({
       name: kb.name,
       description: kb.description ?? "",
       access_type: kb.access_type,
+      allowed_depts: kb.allowed_depts ?? [],
       kb_type: kb.kb_type ?? "ragflow",
     });
   };
@@ -291,7 +292,25 @@ function KnowledgeBaseManagement({
     if (!editKb) return;
     setEditLoading(true);
     try {
-      const updated = await kbApi.update(editKb.id, editForm);
+      // EAI-CUSTOM: dept 提交 allowed_depts;切回私有/公开显式置 [] 清残留
+      const isDept = (editForm.access_type ?? "private") === "dept";
+      const allowedDepts = isDept
+        ? is_admin
+          ? (editForm.allowed_depts ?? [])
+          : identity.dept_ids
+        : [];
+      if (isDept && allowedDepts.length === 0) {
+        toast(
+          is_admin ? "至少选择一个部门" : "你尚未加入任何部门,无法设置部门可见",
+          "error",
+        );
+        setEditLoading(false);
+        return;
+      }
+      const updated = await kbApi.update(editKb.id, {
+        ...editForm,
+        allowed_depts: allowedDepts,
+      });
       setKbs((prev) => prev.map((kb) => (kb.id === editKb.id ? updated : kb)));
       setEditKb(null);
       toast("知识库信息已更新", "success");
@@ -1018,6 +1037,21 @@ function KnowledgeBaseManagement({
                     ]}
                   />
                 </div>
+                {(editForm.access_type ?? "private") === "dept" && (
+                  <div className="mt-2">
+                    <DeptAccessPicker
+                      selectedIds={
+                        is_admin
+                          ? (editForm.allowed_depts ?? [])
+                          : identity.dept_ids
+                      }
+                      onChange={(ids) =>
+                        setEditForm({ ...editForm, allowed_depts: ids })
+                      }
+                      readOnly={!is_admin}
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库类型
