@@ -1,9 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import DOMPurify from "isomorphic-dompurify";
 import { Loader2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { kbApi } from "@/extensions/api";
@@ -27,13 +26,36 @@ function looksLikeHtmlFragment(s: string): boolean {
 }
 
 export function ChunkHtmlBody({ raw }: { raw: string }) {
-  const safeHtml = useMemo(() => {
-    if (!raw.trim()) return "";
-    if (!looksLikeHtmlFragment(raw)) return "";
-    return DOMPurify.sanitize(raw, {
-      USE_PROFILES: { html: true },
-      ADD_ATTR: ["colspan", "rowspan", "align", "valign", "width", "height"],
+  // EAI-CUSTOM bug-3107: isomorphic-dompurify 顶层 import 在 SSR 模块求值时拉起 jsdom,
+  // Next 服务端 bundle 内抛 ENOENT(default-stylesheet.css)炸掉整个路由。
+  // ChunkHtmlBody 仅在客户端交互(打开弹窗)后挂载,改为 effect 内动态 import:
+  // SSR 永不求值 jsdom 链,浏览器 bundle 的 jsdom shim 行为不变,依赖零变更。
+  const [safeHtml, setSafeHtml] = useState("");
+  useEffect(() => {
+    if (!raw.trim() || !looksLikeHtmlFragment(raw)) {
+      setSafeHtml("");
+      return;
+    }
+    let cancelled = false;
+    void import("isomorphic-dompurify").then(({ default: DOMPurify }) => {
+      if (cancelled) return;
+      setSafeHtml(
+        DOMPurify.sanitize(raw, {
+          USE_PROFILES: { html: true },
+          ADD_ATTR: [
+            "colspan",
+            "rowspan",
+            "align",
+            "valign",
+            "width",
+            "height",
+          ],
+        }),
+      );
     });
+    return () => {
+      cancelled = true;
+    };
   }, [raw]);
 
   if (!raw.trim()) {
