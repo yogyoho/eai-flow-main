@@ -35,6 +35,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 import { CustomSelect } from "./_components/CustomSelect";
+import { DeptAccessPicker } from "./_components/DeptAccessPicker";
 import {
   isGeoSlicesKnowledgeBase,
   isReadOnlyKnowledgeBase,
@@ -108,7 +109,7 @@ function KnowledgeBaseManagement({
   initialSearch?: string;
 }) {
   // EAI-CUSTOM: button-level permission check
-  const { can } = usePermission();
+  const { can, is_admin, identity } = usePermission();
   const { toasts, show: toast, remove } = useToast();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -198,8 +199,27 @@ function KnowledgeBaseManagement({
 
   const handleCreate = async () => {
     if (!createForm.name.trim()) return;
+    // EAI-CUSTOM: 部门可见时提交 allowed_depts;admin 用勾选,普通用户自动带本部门
+    const resolveAllowedDepts = () => {
+      if ((createForm.access_type ?? "private") !== "dept") return undefined;
+      return is_admin ? (createForm.allowed_depts ?? []) : identity.dept_ids;
+    };
+    const allowedDepts = resolveAllowedDepts();
+    if (
+      (createForm.access_type ?? "private") === "dept" &&
+      allowedDepts?.length === 0
+    ) {
+      toast(
+        is_admin ? "至少选择一个部门" : "你尚未加入任何部门,无法设置部门可见",
+        "error",
+      );
+      return;
+    }
     try {
-      const kb = await kbApi.create(createForm);
+      const kb = await kbApi.create({
+        ...createForm,
+        allowed_depts: allowedDepts,
+      });
       setKbs((prev) => [kb, ...prev]);
       setIsCreateOpen(false);
       setCreateForm({
@@ -668,6 +688,21 @@ function KnowledgeBaseManagement({
                     ]}
                   />
                 </div>
+                {(createForm.access_type ?? "private") === "dept" && (
+                  <div className="mt-2">
+                    <DeptAccessPicker
+                      selectedIds={
+                        is_admin
+                          ? (createForm.allowed_depts ?? [])
+                          : identity.dept_ids
+                      }
+                      onChange={(ids) =>
+                        setCreateForm({ ...createForm, allowed_depts: ids })
+                      }
+                      readOnly={!is_admin}
+                    />
+                  </div>
+                )}
                 <div>
                   <label className="text-foreground mb-1 block text-sm font-medium">
                     知识库类型
