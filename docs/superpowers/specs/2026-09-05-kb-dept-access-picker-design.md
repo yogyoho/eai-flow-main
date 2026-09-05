@@ -14,10 +14,13 @@
 
 | 位置 | 现状 |
 |---|---|
-| 创建对话框(page.tsx) | 有访问权限下拉(私有/公开/部门可见),**无部门选择器**;`allowed_depts` 未提交 |
-| 编辑对话框(KnowledgeBaseDetail) | **连访问权限字段都没有**(仅名称/类型/描述);`editForm` 不含 `access_type`/`allowed_depts` |
+| 创建对话框(page.tsx,~641) | 有访问权限下拉(私有/公开/部门可见),**无部门选择器**;`allowed_depts` 未提交 |
+| 编辑对话框·列表页(page.tsx,~956) | **已有**访问权限下拉(同三项),但 `allowed_depts` 不在 openEdit/editForm 里,未提交 |
+| 编辑对话框·详情页(KnowledgeBaseDetail,~1025) | **连访问权限字段都没有**(仅名称/类型/描述);`editForm` 不含 `access_type`/`allowed_depts` |
 | 后端 | **零改动需求**:`allowed_depts: string[]` 在 Create/Update schema、KB 模型、ABAC 可见性过滤中全部既有;bug-1134 的 owner 部门自动兜底保留 |
 | 数据源 | `usePermission().is_admin`(admin 判定);`identity.dept_ids`(当前用户部门,`/me` 已带);`deptApi.list()`(部门名映射,仅需登录,普通用户可调,grants UI 已用) |
+
+**共三个对话框**(列表页创建/列表页编辑/详情页编辑),全部接入同一 Picker 组件。
 
 ## 3. 设计
 
