@@ -1,7 +1,0 @@
-
-> deer-flow-frontend@0.1.0 typecheck /app/frontend
-> tsc --noEmit
-
-.next/dev/types/validator.ts(530,6): error TS1003: Identifier expected.
-.next/dev/types/validator.ts(530,7): error TS1003: Identifier expected.
- ELIFECYCLE  Command failed with exit code 2.

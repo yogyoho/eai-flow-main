@@ -105,3 +105,17 @@ docs/architecture/*.visual-check.*
 docker/.env
 docker/.env.docker
 .env.docker
+
+# === A5 cleanup (2026-09-05): 垃圾/临时件隔离区 temp/_a5/ — 禁止回流 ===
+node_modules/
+/temp/
+/.zcode/
+/.superpowers/
+/docs/superpowers/
+/.wolf/designqc-captures/
+/.wolf/test-captures/
+/.wolf/verification-screenshots/
+/.wolf/qa-captures/
+/.wolf/e2e-uploads/
+/.wolf/archive/
+/.wolf/tmp/

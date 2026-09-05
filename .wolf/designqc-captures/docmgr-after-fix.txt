@@ -1,3 +1,0 @@
-uid=49_0 RootWebArea "EAIFlow" url="http://localhost:3000/docmgr"
-  uid=49_1 StaticText "加载中..."
-  uid=49_2 alert atomic live="assertive" relevant="additions text"
