@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload
 from app.extensions.config import get_extensions_config
 from app.extensions.knowledge.client import RAGFlowClient
 from app.extensions.models import KnowledgeBase, Law, LawTemplateRelation
+from app.extensions.schemas import DocumentResponse
 
 from .schemas import (
     LawCreate,
@@ -856,3 +857,78 @@ class LawService:
         result = await db.execute(select(Law).options(joinedload(Law.template_relations)).join(LawTemplateRelation, LawTemplateRelation.law_id == Law.id).where(LawTemplateRelation.template_id == template_id))
         laws = list(result.scalars().unique().all())
         return [LawService._law_to_response(law) for law in laws]
+
+
+# ---------------------------------------------------------------------------
+# 法规标准库投影(EAI-CUSTOM, spec 2026-09-05)
+# 法规系统库无 documents 表记录(法规导入只写 laws 表 + 直传 RAGFlow),
+# 知识库详情的文件列表/chunks 视图按 laws 实时投影(只读视图,零迁移)。
+# 实现为模块级函数,经文件末尾的 staticmethod 绑定挂到 LawService 上,
+# 路由/测试统一走 LawService.* 访问。
+# ---------------------------------------------------------------------------
+
+# 法规标准系统库判定前缀 —— 种子名共享前缀(config.py → law.dataset_display_info
+# 经 _ensure_kb_registered 注册);管理员重命名 KB 后识别失效(列表回退为空),
+# 与前端 frontend/src/app/knowledge/_components/isLawKnowledgeBase.ts 同源同取舍。
+LAW_KB_NAME_PREFIX = "法规标准库"
+
+# laws.is_synced → DocumentResponse.status(DocStatusBadge 认识的三态)
+_LAW_DOC_STATUS = {"synced": "success", "failed": "failed"}
+
+
+def is_law_kb_name(name: str | None) -> bool:
+    """知识库名是否为法规标准系统库(用于文件列表/chunks 的 laws 投影分支)。"""
+    return bool(name) and name.startswith(LAW_KB_NAME_PREFIX)
+
+
+def law_display_name(law: Law) -> str:
+    """法规在文件列表中的展示名 —— 与 RAGFlow 文档名同源(无扩展名,展示用途)。"""
+    meta = law.metadata_json or {}
+    return build_ragflow_doc_name(meta.get("sector"), law.law_number, law.title, None)
+
+
+def project_law_as_document(law: Law, kb_id) -> DocumentResponse:
+    """单条 law → DocumentResponse 投影(只读视图,spec 2026-09-05)。"""
+    return DocumentResponse(
+        id=law.id,
+        knowledge_base_id=kb_id,
+        name=law_display_name(law),
+        file_path="",  # 法规不落盘
+        file_size=0,
+        file_type=None,
+        ragflow_document_id=law.ragflow_document_id,
+        status=_LAW_DOC_STATUS.get(law.is_synced or "", "pending"),
+        error_message=None,
+        created_at=law.created_at,
+    )
+
+
+async def _law_projection_query(db: AsyncSession, dataset_id: str, skip: int, limit: int):
+    base = select(Law).where(Law.ragflow_dataset_id == dataset_id)
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar() or 0
+    rows = (await db.execute(base.order_by(Law.created_at.desc()).offset(skip).limit(limit))).scalars().all()
+    return rows, total
+
+
+async def project_laws_as_documents(db: AsyncSession, kb, skip: int = 0, limit: int = 100):
+    """法规库文件列表:按 ragflow_dataset_id 投影 laws 表 → (list[DocumentResponse], total)。
+
+    单一真相源仍是 laws 表,实时计算,零迁移;普通库不走此路径。
+    """
+    rows, total = await _law_projection_query(db, kb.ragflow_dataset_id, skip, limit)
+    return [project_law_as_document(law, kb.id) for law in rows], total
+
+
+async def get_law_in_kb(db: AsyncSession, kb, doc_id) -> Law | None:
+    """chunks 视图定位:doc_id 为 law.id,且必须属于该 KB 的 dataset。"""
+    res = await db.execute(select(Law).where(Law.id == doc_id))
+    law = res.scalar_one_or_none()
+    if law is None or law.ragflow_dataset_id != kb.ragflow_dataset_id:
+        return None
+    return law
+
+
+# 类内绑定:测试与路由经 LawService.project_laws_as_documents / LawService.get_law_in_kb
+# 访问(实现为上方模块级函数,避免类体内前向引用未定义符号)。
+LawService.project_laws_as_documents = staticmethod(project_laws_as_documents)
+LawService.get_law_in_kb = staticmethod(get_law_in_kb)
