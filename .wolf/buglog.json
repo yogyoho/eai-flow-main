@@ -2636,7 +2636,7 @@
     "error_message": "对话页 console: \"Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client\" @ ThemeProvider (src/components/theme-provider.tsx:12)",
     "file": "frontend/src/components/theme-provider.tsx",
     "root_cause": "next-themes v0.4.6 在 ThemeProvider 组件树内渲染内联 <script>(防 FOUC 主题脚本)。Next 16.2.6(commit 0e9dd8f1f)打包的 react-dom 是 19.3.0-canary,新增了此 dev-only 警告(宿主 react-dom 19.2.4 及 production 构建均无此代码);next-themes 上游 issue #387 未修复且包已弃维护",
-    "fix": "产品决策:忽略不修(dev-only、无功能影响)。在 theme-provider.tsx 加注释说明来源,防止未来会话重复排查。若需消除:换 @teispace/next-themes(需 make rebuild-frontend)",
+    "fix": "产品决策:忽略不修(dev-only、无功能影响)。在 theme-provider.tsx 加注释说明来源,防止未来会话重复排查。若需消除:换 @teispace/next-themes(需 make rebuild-frontend) | 2026-09-05: 发现当时承诺的注释不在文件里(疑被并发reset抹掉),已补回 theme-provider.tsx 并引用本bug号。",
     "tags": [
       "frontend",
       "next-themes",
@@ -2646,8 +2646,8 @@
       "known-upstream-issue"
     ],
     "related_bugs": [],
-    "occurrences": 1,
-    "last_seen": "2026-08-06T00:00:00Z"
+    "occurrences": 2,
+    "last_seen": "2026-09-05T00:00:00.000Z"
   },
   {
     "id": "bug-1092",
@@ -24024,7 +24024,7 @@
     "last_seen": "2026-09-04"
   },
   {
-    "id": "bug-3100",
+    "id": "bug-3101",
     "timestamp": "2026-09-04",
     "error_message": "离线?RAGFlow 三重断裂: deploy/offline/.env RAGFLOW_IMAGE=v0.25.3(plain) 而导出管线只导出 v0.25.3-fixed ?离线安装 compose 找不到镜像回退 registry pull 必败; 且后?knowledge client 已升?v0.27.1 API(分页/llm/list 移除)而离线全?compose/.env/offline-export.sh:130 pin/ragflow-fixed.Dockerfile)仍钉 v0.25.3 ?即使装上也与后端说不上话",
     "file": "deploy/offline/docker-compose.ragflow.yaml + deploy/offline/.env + scripts/offline-export.sh",
@@ -24137,5 +24137,88 @@
     ],
     "occurrences": 1,
     "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3101",
+    "timestamp": "2026-09-04",
+    "error_message": "docmgr/collab BlockNote editor: click Edit with AI -> click 润色 -> prompt fills the input then vanishes (~240ms); requires clicking 润色 a second time",
+    "file": "frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx; frontend/src/extensions/collab/BlockNoteEditor.tsx",
+    "root_cause": "AIMenuController renders the `aiMenu` prop AS a component type (`o = e.aiMenu || $; <o/>` in xl-ai bundle). Both editors passed a fresh inline arrow, so every parent re-render (auto-save state ticks, headings rebuild) changed the component type -> React unmounted/remounted the whole AIMenu subtree -> its local promptText state reset to empty. Proven by DOM-node-identity probe: input node replaced at t=240ms after click.",
+    "fix": "Stabilized the component identity with useCallback in both editors (aiMenuPanel). Probe now shows 20/20 samples same-node with prompt retained; E2E: first click fills, Enter -> 200 SSE -> review -> accept OK.",
+    "tags": [
+      "blocknote",
+      "xl-ai",
+      "react-antipattern",
+      "render-prop-as-component",
+      "remount",
+      "aimenu"
+    ],
+    "related_bugs": [
+      "bug-3099",
+      "bug-3100"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3105",
+    "timestamp": "2026-09-04",
+    "error_message": "docker compose build ocr 静默无效果: eai-docker-ocr:latest 停留 7-27(源码 9-01 已加 text_pages);前台重跑 pip install exit code 2 — 构建容器连不上 pypi.org(connect timeout), docker/.env:19 阿里云镜像源被注释; 且 `docker compose build 2>&1 | tail -4` 管道吞掉 compose 非零退出码伪装成功",
+    "file": "docker/docker-compose-dev.yaml (ocr build args PIP_INDEX_URL) + docker/.env",
+    "root_cause": "①PIP_INDEX_URL 默认回退 pypi.org, 本机网络直连不可达; ②pip install 层曾失败→COPY server.py 层永远到不了→镜像停留旧内容, 而管道掩码使失败看起来像成功; ③诊断陷阱: gateway 镜像依赖在 /app/backend/.venv, `--entrypoint python`(系统解释器)测 import psycopg 必假阴性",
+    "fix": "①构建时显式给源: UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/ docker compose ... build ocr(ocr build.args 读 PIP_INDEX_URL=${UV_INDEX_URL:-...}); 长期: 视网络取消 docker/.env:19 注释; ②校验镜像内容用 venv: docker run --rm --entrypoint sh <img> -c 'cd /app/backend && .venv/bin/python -c \"import psycopg\"'; ③构建命令勿用管道 tail 掩码退出码; ④Git Bash 测容器内路径加 MSYS_NO_PATHCONV=1",
+    "tags": [
+      "docker-build",
+      "ocr",
+      "pypi-mirror",
+      "pip-exit-2",
+      "pipe-masking",
+      "venv-diagnostic",
+      "msys-path-conv"
+    ],
+    "related_bugs": [
+      "bug-3101"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-04"
+  },
+  {
+    "id": "bug-3106",
+    "timestamp": "2026-09-04T16:01:49.935Z",
+    "error_message": "pnpm test 3 failures in tests/unit/core/streamdown/latexNormalize.test.ts (untracked WIP file, normalizeLatexForKatex cases)",
+    "file": "frontend/tests/unit/core/streamdown/latexNormalize.test.ts",
+    "root_cause": "Pre-existing in-progress work from a concurrent session: untracked test expects escape-completion behavior that src normalizeLatexForKatex does not yet implement; unrelated to KnowledgeBaseDetail task",
+    "fix": "None taken — out of scope for this task; left for the streamdown session to resolve",
+    "tags": [
+      "rstest",
+      "streamdown",
+      "latex",
+      "pre-existing",
+      "untracked-wip"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-04T16:01:49.936Z"
+  },
+  {
+    "id": "bug-3107",
+    "timestamp": "2026-09-05T00:00:00.000Z",
+    "error_message": "GET /knowledge/[kbId] 500: Error: ENOENT: no such file or directory, open '/app/frontend/.next/browser/default-stylesheet.css'",
+    "file": "frontend/src/app/knowledge/_components/ChunkModal.tsx",
+    "root_cause": "ChunkModal.tsx:9 顶层 import isomorphic-dompurify -> SSR 拉起 jsdom,jsdom 在 Next 服务端 vendor chunk 里按 bundle 相对路径找 default-stylesheet.css(.next/browser/ 不存在) -> 模块导入即抛,整个路由 SSR 500。在运行中的 dev server 上 rm -rf .next 后必然复现;vendor chunk 重建后自愈。chunk_method=manual 的库 ChunkModal 也会触发。",
+    "fix": "未修(既有隐患,与 2026-09-04 上传收口任务无关,浏览器验证前临时自愈)。候选修法:DOMPurify 改为 effect/事件内懒加载,或换 dompurify+客户端守卫,使 ChunkModal 不在模块顶层引 jsdom。",
+    "tags": [
+      "ssr",
+      "jsdom",
+      "isomorphic-dompurify",
+      "next-dev",
+      "500",
+      "chunkmodal",
+      "pre-existing",
+      "knowledge"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-05T00:00:00.000Z"
   }
 ]
