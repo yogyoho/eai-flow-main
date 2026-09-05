@@ -435,6 +435,15 @@ async def list_documents(
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
 
+    # EAI-CUSTOM: 法规标准系统库无 documents 表记录(法规只写 laws 表),
+    # 文件列表实时投影 laws(spec 2026-09-05);投影状态取自 is_synced,无需 RAGFlow 轮询。
+    # 函数级导入规避循环依赖: law.service → knowledge.client → knowledge/__init__ → 本模块。
+    from app.extensions.law.service import is_law_kb_name, project_laws_as_documents
+
+    if is_law_kb_name(kb.name):
+        documents, total = await project_laws_as_documents(db, kb, skip=skip, limit=limit)
+        return DocumentListResponse(documents=documents, total=total)
+
     docs, total = await DocumentService.list_docs(db, kb_id, skip=skip, limit=limit)
 
     processing_docs = [d for d in docs if d.status in ("uploading", "processing") and d.ragflow_document_id]
@@ -497,10 +506,22 @@ async def list_document_chunks(
     kb = await _load_kb_scoped(db, kb_id, scope, identity)
     if kb is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Knowledge base not found")
-    doc = await DocumentService.get_doc_by_id(db, doc_id)
-    if not doc or doc.knowledge_base_id != kb.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-    if not kb.ragflow_dataset_id or not doc.ragflow_document_id:
+    # EAI-CUSTOM: 法规标准系统库 doc_id 为 law.id(Law.id 为 String(36),须 str(doc_id) 绑定,
+    # asyncpg 严格绑定下 UUID 绑 varchar 会抛错),投影到 RAGFlow chunk 查询(spec 2026-09-05)
+    # 函数级导入规避循环依赖: law.service → knowledge.client → knowledge/__init__ → 本模块。
+    from app.extensions.law.service import get_law_in_kb, is_law_kb_name
+
+    if is_law_kb_name(kb.name):
+        law = await get_law_in_kb(db, kb, str(doc_id))
+        if law is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        ragflow_document_id = law.ragflow_document_id
+    else:
+        doc = await DocumentService.get_doc_by_id(db, doc_id)
+        if not doc or doc.knowledge_base_id != kb.id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        ragflow_document_id = doc.ragflow_document_id
+    if not kb.ragflow_dataset_id or not ragflow_document_id:
         return {"total": 0, "chunks": [], "message": "Document not synced to RAGFlow or not yet parsed"}
     config = get_extensions_config()
     if not config.ragflow.api_key:
@@ -509,7 +530,7 @@ async def list_document_chunks(
         rf_client = RAGFlowClient()
         result = await rf_client.list_chunks(
             dataset_id=kb.ragflow_dataset_id,
-            document_id=doc.ragflow_document_id,
+            document_id=ragflow_document_id,
             page=page,
             size=size,
         )
