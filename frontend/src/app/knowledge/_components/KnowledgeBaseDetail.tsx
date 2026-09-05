@@ -394,6 +394,19 @@ export function KnowledgeBaseDetail({
   const handleEditSave = async () => {
     setEditLoading(true);
     try {
+      // EAI-CUSTOM: 系统级只读库(法规/地质切片)守恒——提交体不含
+      // access_type/allowed_depts,只保存名称/描述/kb_type,防有权限者串改访问控制
+      if (isSystemKb) {
+        const updated = await kbApi.update(kb.id, {
+          name: editForm.name,
+          description: editForm.description,
+          kb_type: editForm.kb_type,
+        });
+        onKbUpdated?.(updated);
+        toast("知识库信息已更新", "success");
+        setShowEditKb(false);
+        return;
+      }
       // EAI-CUSTOM: dept 提交 allowed_depts;切回私有/公开显式置 [] 清残留
       const isDept = (editForm.access_type ?? "private") === "dept";
       const allowedDepts = isDept
@@ -1107,60 +1120,65 @@ export function KnowledgeBaseDetail({
                     }))}
                   />
                 </div>
-                <div>
-                  <label className="text-foreground mb-1 block text-sm font-medium">
-                    访问权限
-                  </label>
-                  <CustomSelect
-                    value={editForm.access_type ?? "private"}
-                    onChange={(v) =>
-                      setEditForm({ ...editForm, access_type: v })
-                    }
-                    options={[
-                      {
-                        value: "private",
-                        label: "私有",
-                        icon: (
-                          <span className="flex h-3.5 w-3.5 items-center text-xs">
-                            🔒
-                          </span>
-                        ),
-                      },
-                      {
-                        value: "public",
-                        label: "公开",
-                        icon: (
-                          <span className="flex h-3.5 w-3.5 items-center justify-center">
-                            🌐
-                          </span>
-                        ),
-                      },
-                      {
-                        value: "dept",
-                        label: "部门可见",
-                        icon: (
-                          <span className="flex h-3.5 w-3.5 items-center justify-center">
-                            🏢
-                          </span>
-                        ),
-                      },
-                    ]}
-                  />
-                </div>
-                {(editForm.access_type ?? "private") === "dept" && (
-                  <div className="mt-2">
-                    <DeptAccessPicker
-                      selectedIds={
-                        is_admin
-                          ? (editForm.allowed_depts ?? [])
-                          : identity.dept_ids
-                      }
-                      onChange={(ids) =>
-                        setEditForm({ ...editForm, allowed_depts: ids })
-                      }
-                      readOnly={!is_admin}
-                    />
-                  </div>
+                {/* EAI-CUSTOM: 系统级只读库(法规/地质切片)不提供访问权限编辑,防串改访问控制 */}
+                {!isSystemKb && (
+                  <>
+                    <div>
+                      <label className="text-foreground mb-1 block text-sm font-medium">
+                        访问权限
+                      </label>
+                      <CustomSelect
+                        value={editForm.access_type ?? "private"}
+                        onChange={(v) =>
+                          setEditForm({ ...editForm, access_type: v })
+                        }
+                        options={[
+                          {
+                            value: "private",
+                            label: "私有",
+                            icon: (
+                              <span className="flex h-3.5 w-3.5 items-center text-xs">
+                                🔒
+                              </span>
+                            ),
+                          },
+                          {
+                            value: "public",
+                            label: "公开",
+                            icon: (
+                              <span className="flex h-3.5 w-3.5 items-center justify-center">
+                                🌐
+                              </span>
+                            ),
+                          },
+                          {
+                            value: "dept",
+                            label: "部门可见",
+                            icon: (
+                              <span className="flex h-3.5 w-3.5 items-center justify-center">
+                                🏢
+                              </span>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                    {(editForm.access_type ?? "private") === "dept" && (
+                      <div className="mt-2">
+                        <DeptAccessPicker
+                          selectedIds={
+                            is_admin
+                              ? (editForm.allowed_depts ?? [])
+                              : identity.dept_ids
+                          }
+                          onChange={(ids) =>
+                            setEditForm({ ...editForm, allowed_depts: ids })
+                          }
+                          readOnly={!is_admin}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
                 <div>
                   <label className="text-foreground mb-1 block text-sm font-medium">
@@ -1185,7 +1203,8 @@ export function KnowledgeBaseDetail({
                   disabled={
                     !editForm.name?.trim() ||
                     editLoading ||
-                    ((editForm.access_type ?? "private") === "dept" &&
+                    (!isSystemKb &&
+                      (editForm.access_type ?? "private") === "dept" &&
                       (is_admin
                         ? (editForm.allowed_depts ?? [])
                         : identity.dept_ids
