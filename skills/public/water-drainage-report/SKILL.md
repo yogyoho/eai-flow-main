@@ -170,7 +170,15 @@ python $SCRIPTS/formula_runner.py execute --formulas $FORMULAS \
 
 **分层放开（反馈2）：** 系数/经验类参数缺失时，读 `references/reference_values.json`：命中 → 填入默认值并在参数表「来源」列标 `参考值库（【待核实】）`；未命中 → `ask_clarification`。核心工艺参数缺失一律 `ask_clarification`，**绝不**从参考值库取。
 
-**规范勾选（反馈5）：** 步骤1 同时请用户从 `references/standards_index.json` 勾选本项目适用的规范（默认勾选 3 本 tier1_curated=true 的循环水规范）。选中集写入 `project_snapshot.standards_selected`。
+**规范勾选（反馈5）：** 步骤1 同时请用户从 `references/standards_index.json` 勾选本项目适用的规范（默认建议 3 本 tier1_curated=true 的循环水规范）。选中集写入 `project_snapshot.standards_selected`。
+
+**⛔ 规范勾选表单契约（bug-3110，widget 禁改）：** 规范选择必须是 `type: "multi_select"` 字段（`required: true`，前端渲染为多选 chip，值=数组）——**禁止坍缩成 `select` 单选档位**（"全部勾选/仅勾选tier1/自定义勾选"类二跳选项迫使用户放弃逐本勾选，2026-08-30 线程 0f4e1f3b 实测复发）。字段模板（可并入参数确认表单，也可独立表单，name 固定 `standards_selected`）：
+
+```json
+{"name": "standards_selected", "label": "适用规范（可多选；⭐=已入库限值的tier1建议集）", "type": "multi_select", "required": true, "options": ["GB/T 50746-2012 石油化工循环水场设计规范⭐", "GB 50648-2011 化学工业循环冷却水系统设计规范⭐", "…（其余规范逐本一项，全量取自 standards_index.json）"]}
+```
+
+options 生成规则：逐项 = `standards_index.json` 的每本规范，label = `{code} {title}`、tier1_curated=true 追加 ⭐——**读 JSON 后全量生成**（不增不删不改写；middleware 限制每字段≤24 个选项、每项≤200 字符）。工具返回值为数组，将其中每项的规范 code 部分写入 `project_snapshot.standards_selected`。
 
 ### 步骤2：运行公式计算
 
