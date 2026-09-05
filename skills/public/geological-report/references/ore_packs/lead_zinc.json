@@ -1,0 +1,36 @@
+{
+  "version": "2.0",
+  "ore": "lead_zinc",
+  "generated": "2026-07-10",
+  "basic_analysis_items": [
+    "Pb",
+    "Zn",
+    "Ag",
+    "Cd",
+    "S"
+  ],
+  "phase_analysis": {
+    "zone_split_rule": {
+      "status": "【待核实】",
+      "note": "氧化率分带阈值待对照规范原文核实，物相分析硫化矿/混合矿/氧化矿分带阈值未经标准原文核实，暂按硫化矿氧化率<10%控制"
+    }
+  },
+  "ore_natural_types_anchored": {
+    "types": [
+      "硫化铅锌矿石",
+      "混合铅锌矿石"
+    ]
+  },
+  "byproduct_policy": "伴生银单独圈定矿体估算，按综合回收品味28.6 g/t参与资源量估算（参照 DZ/T 0214-2020 估算链 formulas L11 伴生组分估算）",
+  "bulk_density_practice": {
+    "method": "小体重样按品位品级统计",
+    "value": "3.42 t/m3",
+    "material": "铅锌矿石",
+    "note": "用于储量估算（参照 formulas S1 体重计算）"
+  },
+  "reporting_notes": [
+    "本报告为 geo-sample-bank 端到端演练专用合成数据",
+    "探矿许可证号****为虚构占位，不对应任何真实矿业权"
+  ],
+  "std_ref": "DZ/T 0214-2020"
+}

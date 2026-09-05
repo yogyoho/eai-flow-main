@@ -1,0 +1,284 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "合同价格分析模块架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "docs/diagrams/contract-price-architecture.html",
+    "views": [
+      {
+        "id": "mgmt-path",
+        "label": "管理流水线路径",
+        "focus": [
+          "user",
+          "fe",
+          "gw",
+          "cli",
+          "minio",
+          "ocr",
+          "pg"
+        ],
+        "note": "管理页触发上传、OCR 解析、聚类审核与导出的重计算路径。"
+      },
+      {
+        "id": "chat-path",
+        "label": "对话查询路径",
+        "focus": [
+          "user",
+          "agent",
+          "mcp",
+          "pg"
+        ],
+        "note": "对话技能经 MCP 只读工具直接查已入库价格,不触发流水线。"
+      }
+    ],
+    "viewBox": [
+      1280,
+      700
+    ]
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "管理员 / 业务用户",
+      "sublabel": "浏览器",
+      "pos": [
+        40,
+        330
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "AI 对话 Lead Agent",
+      "sublabel": "技能 contract-price-analysis",
+      "tag": "只读 SKILL.md",
+      "pos": [
+        250,
+        160
+      ],
+      "size": [
+        180,
+        76
+      ]
+    },
+    {
+      "id": "fe",
+      "type": "frontend",
+      "label": "管理页面 /contract-price",
+      "sublabel": "总览 · 文档 · 分项 · 聚类 · 任务",
+      "pos": [
+        250,
+        450
+      ],
+      "size": [
+        190,
+        76
+      ]
+    },
+    {
+      "id": "gw",
+      "type": "backend",
+      "label": "Gateway 扩展 routers/service",
+      "sublabel": "/api/extensions/contract-price",
+      "pos": [
+        520,
+        450
+      ],
+      "size": [
+        190,
+        76
+      ]
+    },
+    {
+      "id": "mcp",
+      "type": "messagebus",
+      "label": "MCP 只读工具 mcp.py",
+      "sublabel": "query_goods_price 等 4 个",
+      "pos": [
+        520,
+        160
+      ],
+      "size": [
+        190,
+        76
+      ]
+    },
+    {
+      "id": "cli",
+      "type": "backend",
+      "label": "流水线 CLI",
+      "sublabel": "扫描 → OCR → 校验 → 聚类",
+      "tag": "技能 scripts/cli.py · 子进程",
+      "pos": [
+        790,
+        450
+      ],
+      "size": [
+        190,
+        76
+      ]
+    },
+    {
+      "id": "pg",
+      "type": "database",
+      "label": "PostgreSQL postgres-ext",
+      "sublabel": "cpa_documents / items / clusters",
+      "pos": [
+        1040,
+        450
+      ],
+      "size": [
+        180,
+        76
+      ]
+    },
+    {
+      "id": "minio",
+      "type": "cloud",
+      "label": "MinIO cpa-contracts",
+      "sublabel": "合同原件 bucket",
+      "pos": [
+        790,
+        600
+      ],
+      "size": [
+        180,
+        68
+      ]
+    },
+    {
+      "id": "ocr",
+      "type": "external",
+      "label": "eai-flow-ocr",
+      "sublabel": "rapid-table :8010",
+      "pos": [
+        790,
+        300
+      ],
+      "size": [
+        180,
+        68
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Gateway 扩展 app/extensions/contract_price",
+      "wraps": [
+        "gw",
+        "mcp"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-fe",
+      "from": "user",
+      "to": "fe",
+      "label": "管理操作",
+      "variant": "emphasis"
+    },
+    {
+      "id": "user-agent",
+      "from": "user",
+      "to": "agent",
+      "label": "对话提问价格"
+    },
+    {
+      "id": "fe-gw",
+      "from": "fe",
+      "to": "gw",
+      "label": "REST API",
+      "variant": "emphasis"
+    },
+    {
+      "id": "agent-mcp",
+      "from": "agent",
+      "to": "mcp",
+      "label": "函数调用",
+      "variant": "emphasis"
+    },
+    {
+      "id": "gw-cli",
+      "from": "gw",
+      "to": "cli",
+      "label": "触发流水线"
+    },
+    {
+      "id": "mcp-pg",
+      "from": "mcp",
+      "to": "pg",
+      "label": "只读 SELECT cpa_*",
+      "variant": "dashed",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [
+        [
+          1130,
+          198
+        ]
+      ],
+      "labelSegment": 0
+    },
+    {
+      "id": "cli-pg",
+      "from": "cli",
+      "to": "pg",
+      "label": "入库"
+    },
+    {
+      "id": "cli-minio",
+      "from": "cli",
+      "to": "minio",
+      "label": "增量扫描 SHA-256",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cli-ocr",
+      "from": "cli",
+      "to": "ocr",
+      "label": "HTTP 表格提取",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "管理路径 (重计算)",
+      "items": [
+        "管理页触发上传、单文档重解析、聚类审核、Excel 导出",
+        "Gateway 以子进程运行技能流水线 CLI",
+        "OCR 结果需人工溯源校验后入库确认"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "对话路径 (只读)",
+      "items": [
+        "SKILL.md 只读不写,拒绝在对话触发 OCR/重跑",
+        "mcp.py 直接 SQL 查 cpa_ 表,不经流水线",
+        "统计仅取 ok/corrected,needs_review 不入均值"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "增量与溯源",
+      "items": [
+        "SHA-256 对比跳过未变文件,改名不重解析",
+        "每条分项带 source_page + source_bbox 溯源坐标",
+        "待核验项在管理页修正后才计入统计"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+# EAI-CUSTOM: OpenViking memory service — dev-stack variant of the upstream
+# docker/docker-compose.openviking.yaml overlay. The dev stack does not use the
+# upstream `deer-flow` network; attach to the shared external eai-flow-net so
+# the gateway can reach http://openviking:1933. The volume keeps the bare name
+# `openviking-data` (compose default would prefix it and lose the ov.conf that
+# was initialized inside the container via `openviking-server init`).
+# Embedding: local Ollama bge-m3 via host.docker.internal (Docker Desktop).
+services:
+  openviking:
+    image: ghcr.io/volcengine/openviking:latest
+    container_name: deer-flow-openviking
+    command: ["--without-bot"]
+    ports:
+      - "${OPENVIKING_PORT:-1933}:1933"
+    volumes:
+      - openviking-data:/app/.openviking
+    networks:
+      eai-flow-net:
+        aliases:
+          - openviking
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:1933/health', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  openviking-data:
+    name: openviking-data
+
+networks:
+  eai-flow-net:
+    external: true
+    name: eai-docker_eai-flow-net

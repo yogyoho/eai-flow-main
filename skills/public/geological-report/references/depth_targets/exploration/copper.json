@@ -1,0 +1,71 @@
+{
+  "absolute_floor": 0.4,
+  "coefficient": 0.6,
+  "missing_table_weight": 8,
+  "per_chapter": {
+    "ch1": {
+      "median_eff": 7037,
+      "median_paragraphs": 48,
+      "median_table_rows": 41
+    },
+    "ch10": {
+      "median_eff": 2331,
+      "median_paragraphs": 29,
+      "median_table_rows": 0
+    },
+    "ch2": {
+      "median_eff": 9168,
+      "median_paragraphs": 100,
+      "median_table_rows": 24
+    },
+    "ch3": {
+      "median_eff": 3211,
+      "median_paragraphs": 32,
+      "median_table_rows": 0
+    },
+    "ch4": {
+      "median_eff": 8910,
+      "median_paragraphs": 118,
+      "median_table_rows": 155
+    },
+    "ch5": {
+      "median_eff": 3488,
+      "median_paragraphs": 74,
+      "median_table_rows": 173
+    },
+    "ch6": {
+      "median_eff": 17118,
+      "median_paragraphs": 182,
+      "median_table_rows": 72
+    },
+    "ch7": {
+      "median_eff": 7712,
+      "median_paragraphs": 112,
+      "median_table_rows": 60
+    },
+    "ch8": {
+      "median_eff": 7781,
+      "median_paragraphs": 131,
+      "median_table_rows": 144
+    },
+    "ch9": {
+      "median_eff": 3748,
+      "median_paragraphs": 48,
+      "median_table_rows": 0
+    }
+  },
+  "per_signal_penalty": 0.05,
+  "samples": [
+    "ch10_gsb-kc-cu-0001.md",
+    "ch1_gsb-kc-cu-0001.md",
+    "ch2_gsb-kc-cu-0001.md",
+    "ch3_gsb-kc-cu-0001.md",
+    "ch4_gsb-kc-cu-0001.md",
+    "ch5_gsb-kc-cu-0001.md",
+    "ch6_gsb-kc-cu-0001.md",
+    "ch7_gsb-kc-cu-0001.md",
+    "ch8_gsb-kc-cu-0001.md",
+    "ch9_gsb-kc-cu-0001.md"
+  ],
+  "scale_floor": 0.25
+}

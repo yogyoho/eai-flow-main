@@ -1,0 +1,284 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "合同价格分析端到端流程",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "docs/diagrams/contract-price-workflow.html"
+  },
+  "lanes": [
+    {
+      "id": "admin",
+      "label": "管理页面 · 用户操作"
+    },
+    {
+      "id": "data",
+      "label": "数据层 MinIO · PostgreSQL"
+    },
+    {
+      "id": "pipeline",
+      "label": "技能流水线 scripts/cli.py"
+    },
+    {
+      "id": "chat",
+      "label": "AI 对话 · 只读查询"
+    }
+  ],
+  "phases": [
+    {
+      "id": "ingest",
+      "label": "① 采集上传",
+      "fromCol": 0,
+      "toCol": 0
+    },
+    {
+      "id": "extract",
+      "label": "② OCR 解析",
+      "fromCol": 1,
+      "toCol": 2
+    },
+    {
+      "id": "persist",
+      "label": "③ 校验入库",
+      "fromCol": 3,
+      "toCol": 3
+    },
+    {
+      "id": "cluster",
+      "label": "④ 聚类审核",
+      "fromCol": 4,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "serve",
+      "label": "⑤ 审核生效",
+      "fromCol": 5,
+      "toCol": 5
+    }
+  ],
+  "groups": [
+    {
+      "id": "pipe_run",
+      "label": "流水线执行 (Gateway 触发)",
+      "lane": "pipeline",
+      "fromCol": 1,
+      "toCol": 4,
+      "variant": "dashed"
+    },
+    {
+      "id": "chat_query",
+      "label": "对话只读查询 (SKILL.md)",
+      "lane": "chat",
+      "fromCol": 1,
+      "toCol": 2,
+      "variant": "dashed"
+    }
+  ],
+  "mainPath": [
+    "upload",
+    "minio",
+    "scan",
+    "ocr",
+    "validate",
+    "db",
+    "cluster",
+    "review",
+    "ready"
+  ],
+  "nodes": [
+    {
+      "id": "upload",
+      "lane": "admin",
+      "col": 0,
+      "type": "external",
+      "label": "上传合同扫描件",
+      "sublabel": "PDF · DOCX",
+      "width": 150
+    },
+    {
+      "id": "review",
+      "lane": "admin",
+      "col": 4,
+      "type": "external",
+      "label": "人工溯源审核",
+      "sublabel": "确认 · 修正 · 合并聚类",
+      "width": 150
+    },
+    {
+      "id": "scan",
+      "lane": "pipeline",
+      "col": 1,
+      "type": "backend",
+      "label": "增量扫描",
+      "sublabel": "SHA-256 未变跳过",
+      "width": 150
+    },
+    {
+      "id": "ocr",
+      "lane": "pipeline",
+      "col": 2,
+      "type": "backend",
+      "label": "OCR 表格提取",
+      "sublabel": "eai-flow-ocr :8010",
+      "width": 150
+    },
+    {
+      "id": "validate",
+      "lane": "pipeline",
+      "col": 3,
+      "type": "security",
+      "label": "表格分类 + 价格校验",
+      "sublabel": "量级异常 → needs_review",
+      "width": 170
+    },
+    {
+      "id": "cluster",
+      "lane": "pipeline",
+      "col": 4,
+      "type": "backend",
+      "label": "自动聚类",
+      "sublabel": "DBSCAN → pending",
+      "width": 150
+    },
+    {
+      "id": "minio",
+      "lane": "data",
+      "col": 0,
+      "type": "cloud",
+      "label": "MinIO cpa-contracts",
+      "sublabel": "合同原件存储",
+      "width": 160
+    },
+    {
+      "id": "db",
+      "lane": "data",
+      "col": 3,
+      "type": "database",
+      "label": "入库 cpa_items",
+      "sublabel": "ok / needs_review",
+      "width": 150
+    },
+    {
+      "id": "ready",
+      "lane": "data",
+      "col": 5,
+      "type": "database",
+      "label": "统计生效",
+      "sublabel": "仅 ok · corrected 计入",
+      "width": 150
+    },
+    {
+      "id": "ask",
+      "lane": "chat",
+      "col": 1,
+      "type": "external",
+      "label": "用户提问价格",
+      "sublabel": "X 的单价 / 均价 / 对比",
+      "width": 150
+    },
+    {
+      "id": "mcp",
+      "lane": "chat",
+      "col": 2,
+      "type": "messagebus",
+      "label": "MCP 只读工具",
+      "sublabel": "query_goods_price 等 4 个",
+      "width": 160
+    }
+  ],
+  "edges": [
+    {
+      "id": "upload-store",
+      "from": "upload",
+      "to": "minio",
+      "label": "存储原件"
+    },
+    {
+      "id": "minio-scan",
+      "from": "minio",
+      "to": "scan",
+      "label": "读取变更文件"
+    },
+    {
+      "id": "scan-ocr",
+      "from": "scan",
+      "to": "ocr",
+      "label": "仅解析新 / 变更文档"
+    },
+    {
+      "id": "ocr-validate",
+      "from": "ocr",
+      "to": "validate",
+      "label": "表格 + 单元格坐标"
+    },
+    {
+      "id": "validate-db",
+      "from": "validate",
+      "to": "db",
+      "label": "入库"
+    },
+    {
+      "id": "db-cluster",
+      "from": "db",
+      "to": "cluster",
+      "label": "全部解析完成后"
+    },
+    {
+      "id": "cluster-review",
+      "from": "cluster",
+      "to": "review",
+      "label": "pending 待审"
+    },
+    {
+      "id": "review-ready",
+      "from": "review",
+      "to": "ready",
+      "label": "confirmed 生效"
+    },
+    {
+      "id": "ask-mcp",
+      "from": "ask",
+      "to": "mcp",
+      "label": "触发技能"
+    },
+    {
+      "id": "mcp-db",
+      "from": "mcp",
+      "to": "db",
+      "label": "只读 SELECT cpa_*",
+      "variant": "dashed",
+      "role": "async"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "触发边界",
+      "items": [
+        "流水线只能从管理页触发,涉及上千份合同的重 IO",
+        "对话技能只读:用户要求重跑时引导至管理页",
+        "对话内不做溯源校验,数字结论由页面核验"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "质量规则",
+      "items": [
+        "needs_review 不入均值 / 中位 / 区间",
+        "回答价格必附样本数与可信度提示",
+        "聚类确认 (confirmed) 后统计才作为最终结论"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "增量与溯源",
+      "items": [
+        "SHA-256 命中即跳过,改名 / 重传不重解析",
+        "每条分项带 source_page + source_bbox 溯源",
+        "续页列漂移与数字粘连由校验阶段标记"
+      ]
+    }
+  ]
+}

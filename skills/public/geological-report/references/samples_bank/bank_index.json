@@ -1,0 +1,1130 @@
+{
+  "exploration": {
+    "ch1": [
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.1",
+        "title": "勘查目的和任务"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.2",
+        "title": "勘查区位置、交通"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.3",
+        "title": "勘查区自然地理、经济状况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.4",
+        "title": "矿业权设置"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.5",
+        "title": "以往工作评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.5.1",
+        "title": "以往工作评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.5.2",
+        "title": "矿山设计、开采和资源利用概况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.6",
+        "title": "本次工作情况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.6.1",
+        "title": "工作情况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch1/gsb-kc-cu-0001__1.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "1.6.2",
+        "title": "取得的主要成果"
+      }
+    ],
+    "ch10": [
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10",
+        "title": "结论"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.1",
+        "title": "矿床勘查和研究程度"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.1.1",
+        "title": "矿床勘查程度"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.1.2",
+        "title": "矿床研究程度"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.2",
+        "title": "矿床成矿规律及远景评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.2.1",
+        "title": "矿床成矿规律"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.2.2",
+        "title": "找矿远景评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.3",
+        "title": "开采技术条件和地质环境问题"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.4",
+        "title": "矿床开采的经济效果"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.5",
+        "title": "地质工作的经验教训和存在问题"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch10/gsb-kc-cu-0001__10.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "10.6",
+        "title": "下步地质勘查及矿床开采的建议"
+      }
+    ],
+    "ch2": [
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2",
+        "title": "区域地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.1",
+        "title": "区域地质特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.1.1",
+        "title": "地层"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.1.2",
+        "title": "构造"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.1.3",
+        "title": "岩浆岩"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.1.4",
+        "title": "变质作用"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.1.5",
+        "title": "地球物理、地球化学特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.2",
+        "title": "区域矿产特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.2.1",
+        "title": "区域矿产分布"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.2.2",
+        "title": "区域控矿因素"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch2/gsb-kc-cu-0001__2.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "2.2.3",
+        "title": "矿床成因及区域成矿模式"
+      }
+    ],
+    "ch3": [
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3",
+        "title": "矿区地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3.1",
+        "title": "地层"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3.2",
+        "title": "构造"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3.3",
+        "title": "岩浆岩"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3.4",
+        "title": "变质作用及围岩蚀变"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3.4.1",
+        "title": "变质作用及变质岩"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3.4.2",
+        "title": "围岩蚀变"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch3/gsb-kc-cu-0001__3.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "3.5",
+        "title": "赋矿层位与矿化特征"
+      }
+    ],
+    "ch4": [
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4",
+        "title": "矿体地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.1",
+        "title": "矿体特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.1.1",
+        "title": "矿体连接对比"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.1.2",
+        "title": "矿体特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.2",
+        "title": "矿石质量"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.2.1",
+        "title": "矿石矿物成分及特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.2.2",
+        "title": "矿石的化学成分"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.2.3",
+        "title": "矿石结构、构造"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.3",
+        "title": "矿石类型和品级"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.3.1",
+        "title": "矿石类型"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.3.2",
+        "title": "矿石品级"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.4",
+        "title": "矿体围岩和夹石"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.5",
+        "title": "矿床成因及找矿标志"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.5.1",
+        "title": "主要控矿因素"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.5.2",
+        "title": "矿床成因及成矿模式"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.5.3",
+        "title": "找矿标志及找矿方向"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch4/gsb-kc-cu-0001__4.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "4.6",
+        "title": "矿床共(伴)生矿产"
+      }
+    ],
+    "ch5": [
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5",
+        "title": "矿石加工技术性能"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.1",
+        "title": "某铜矿铜银金多金属矿矿石加工技术性能试验"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.1.1",
+        "title": "试样的来源及制备"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.1.2",
+        "title": "配矿方案"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.1.3",
+        "title": "原矿基本性质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.1.4",
+        "title": "验证试验"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.1.3",
+        "title": "药剂成本估算"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.2",
+        "title": "某矿山矿石工业利用性能评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch5/gsb-kc-cu-0001__5.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "5.3",
+        "title": "结论"
+      }
+    ],
+    "ch6": [
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6",
+        "title": "矿床开采技术条件"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.1",
+        "title": "工作概况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.1.1",
+        "title": "目的任务"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.1.2",
+        "title": "以往工作情况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.1.3",
+        "title": "矿区探采现状及本次工作情况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.2",
+        "title": "水文地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.2.1",
+        "title": "区域水文地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.2.2",
+        "title": "矿区水文地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.2.3",
+        "title": "矿坑涌水量预测"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.2.4",
+        "title": "矿床水文地质条件变化及现状评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.2.5",
+        "title": "矿山供水水源"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.3",
+        "title": "工程地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.3.1",
+        "title": "工程地质岩组"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.3.2",
+        "title": "断裂构造工程地质特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.3.3",
+        "title": "开拓系统揭露工程地质特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.3.4",
+        "title": "采空区工程地质特征"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.3.5",
+        "title": "不良工程地质问题"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.3.6",
+        "title": "矿区工程地质评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4",
+        "title": "环境地质"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.1",
+        "title": "地震及区域稳定性评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.2",
+        "title": "矿区自然环境和社会环境评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.3",
+        "title": "矿区放射性污染及地温热害评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.4",
+        "title": "矿区不良工程地质现象"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.5",
+        "title": "绿色矿山"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.6",
+        "title": "水环境质量影响预测"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.7",
+        "title": "采矿对环境可能产生的影响及相应的预防措施"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.4.8",
+        "title": "矿区环境地质条件现状评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.5",
+        "title": "开采技术条件小结"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.5.1",
+        "title": "结论"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch6/gsb-kc-cu-0001__6.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "6.5.2",
+        "title": "存在问题及建议"
+      }
+    ],
+    "ch7": [
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7",
+        "title": "勘查工作及其质量评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.1",
+        "title": "勘查方法及工程布置"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.1.1",
+        "title": "以往矿床勘查类型"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.1.2",
+        "title": "本次勘查类型的确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.1.3",
+        "title": "勘查手段选择及工程布置原则"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.1.4",
+        "title": "勘查工程间距确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.2",
+        "title": "勘查工程质量评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.2.1",
+        "title": "坑探"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.2.2",
+        "title": "钻探"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.3",
+        "title": "地形测量、地质勘查工程测量及其质量评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.3.1",
+        "title": "地表地形控制测量"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.3.2",
+        "title": "井下控制测量"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.3.3",
+        "title": "坐标系统转换说明"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.3.4",
+        "title": "本报告采用的坐标系统"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.4",
+        "title": "采样、化验和岩矿鉴定工作及其质量评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.4.1",
+        "title": "样品采集及质量评述"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch7/gsb-kc-cu-0001__7.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "7.4.2",
+        "title": "样品加工化验及其质量评述"
+      }
+    ],
+    "ch8": [
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8",
+        "title": "资源量估算"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.1",
+        "title": "资源量估算的工业指标"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.2",
+        "title": "资源量估算范围、对象"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.3",
+        "title": "资源量估算方法"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.3.1",
+        "title": "方法的选择及其依据"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.3.2",
+        "title": "计算公式"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.4",
+        "title": "资源量估算参数的确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.4.1",
+        "title": "矿体厚度的确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.4.2",
+        "title": "矿体平均品位的确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.4.3",
+        "title": "块段面积的确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.4.4",
+        "title": "矿石体重的确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.4.5",
+        "title": "特高品位的处理"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.4.6",
+        "title": "各类数值单位及数据取舍原则"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.5",
+        "title": "矿体圈定原则"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.5.1",
+        "title": "单工程矿体圈定原则"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.5.2",
+        "title": "矿体连接原则"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.5.3",
+        "title": "矿体推断原则"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.6",
+        "title": "资源量分类"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.6.1",
+        "title": "资源量类型的确定"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.6.2",
+        "title": "尚难利用矿产资源"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.6.3",
+        "title": "块段划分原则"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.7",
+        "title": "资源量估算结果"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.8",
+        "title": "资源量变化情况"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.8.1",
+        "title": "最近报告评审备案资源储量"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.8.2",
+        "title": "本次估算查明矿产资源"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.8.3",
+        "title": "资源量变化及原因分析"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.9",
+        "title": "资源量估算的可靠性"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.10",
+        "title": "伴生矿产的资源估算方法及结果"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch8/gsb-kc-cu-0001__8.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "8.11",
+        "title": "资源量估算中需说明的问题"
+      }
+    ],
+    "ch9": [
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9",
+        "title": "矿床开发经济意义评价"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.1",
+        "title": "市场前景分析"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.2",
+        "title": "矿床开发的内部条件"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.2.1",
+        "title": "矿山资源条件"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.2.2",
+        "title": "矿石加工技术性能"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.3.2",
+        "title": "矿床开采技术条件"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.3",
+        "title": "矿床开发的外部条件"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.3.1",
+        "title": "矿山基础设施条件"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.3.2",
+        "title": "区域经济和社会环境"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.4",
+        "title": "矿山生产条件"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.5",
+        "title": "矿山采选方案"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.6",
+        "title": "评价方法的选择及技术经济指标的选取"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.6.1",
+        "title": "评价方法"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.6.2",
+        "title": "技术经济指标的选取"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.7",
+        "title": "企业经济效益和社会效益、环境保护问题"
+      },
+      {
+        "file": "samples_bank/exploration/slices/ch9/gsb-kc-cu-0001__9.md",
+        "mineral": "copper",
+        "report_id": "gsb-kc-cu-0001",
+        "sec": "9.8",
+        "title": "项目综合评价"
+      }
+    ]
+  }
+}
