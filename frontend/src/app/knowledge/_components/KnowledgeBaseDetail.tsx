@@ -573,8 +573,9 @@ export function KnowledgeBaseDetail({
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          {/* EAI-CUSTOM: gate doc-delete button by kb:delete permission */}
-                          {can("kb:delete") && (
+                          {/* EAI-CUSTOM: gate doc-delete button by kb:delete permission;
+                              法规标准系统库文档为 laws 投影,删除会造成 laws.ragflow_document_id 悬空 */}
+                          {can("kb:delete") && !isLawKb && (
                             <Button
                               variant="ghost"
                               size="icon"

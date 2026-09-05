@@ -35,6 +35,7 @@ import type {
 import { cn } from "@/lib/utils";
 
 import { CustomSelect } from "./_components/CustomSelect";
+import { isLawKnowledgeBase } from "./_components/isLawKnowledgeBase";
 import { ToastContainer, useToast } from "./_components/toast";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -405,6 +406,7 @@ function KnowledgeBaseManagement({
               {filteredKBs.map((kb) => {
                 const kbType = kb.kb_type ?? "ragflow";
                 const isSyncing = syncingIds.has(kb.id);
+                const isLawKb = isLawKnowledgeBase(kb.name);
                 return (
                   <motion.div
                     layout
@@ -499,9 +501,13 @@ function KnowledgeBaseManagement({
                           variant="ghost"
                           size="icon"
                           onClick={(e) => handleSync(kb.id, e)}
-                          disabled={isSyncing}
+                          disabled={isSyncing || isLawKb}
                           className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          title="同步状态"
+                          title={
+                            isLawKb
+                              ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
+                              : "同步状态"
+                          }
                         >
                           <RefreshCw
                             className={cn(
@@ -516,8 +522,13 @@ function KnowledgeBaseManagement({
                             variant="ghost"
                             size="icon"
                             onClick={(e) => openEdit(kb, e)}
+                            disabled={isLawKb}
                             className="text-muted-foreground hover:bg-muted hover:text-foreground"
-                            title="编辑"
+                            title={
+                              isLawKb
+                                ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
+                                : "编辑"
+                            }
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -528,8 +539,13 @@ function KnowledgeBaseManagement({
                             variant="ghost"
                             size="icon"
                             onClick={(e) => handleDelete(kb.id, e)}
+                            disabled={isLawKb}
                             className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            title="删除"
+                            title={
+                              isLawKb
+                                ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
+                                : "删除"
+                            }
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
