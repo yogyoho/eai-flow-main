@@ -606,13 +606,13 @@ export const enUS: Translations = {
 
   // Workspace
   workspace: {
-    officialWebsite: "DeerFlow's official website",
-    githubTooltip: "DeerFlow on GitHub",
+    officialWebsite: "EAIFlow's official website",
+    githubTooltip: "EAIFlow on GitHub",
     settingsAndMore: "Settings and more",
-    visitGithub: "DeerFlow on GitHub",
+    visitGithub: "EAIFlow on GitHub",
     reportIssue: "Report an issue",
     contactUs: "Contact us",
-    about: "About DeerFlow",
+    about: "About EAIFlow",
     logout: "Log out",
     gatewayUnavailable: "Gateway is temporarily unavailable.",
     gatewayUnavailableRetrying: "Retrying in the background…",
@@ -695,13 +695,13 @@ export const enUS: Translations = {
     saveAndConnect: "Save and connect",
     saveChanges: "Save changes",
     descriptions: {
-      telegram: "Telegram direct messages through your DeerFlow bot.",
+      telegram: "Telegram direct messages through your EAIFlow bot.",
       slack: "Slack workspace messages and mentions.",
-      discord: "Discord server messages through your DeerFlow bot.",
-      feishu: "Feishu and Lark messages through your DeerFlow app.",
-      dingtalk: "DingTalk Stream Push messages through your DeerFlow bot.",
-      wechat: "WeChat iLink messages through your DeerFlow bot.",
-      wecom: "WeCom messages through your DeerFlow AI bot.",
+      discord: "Discord server messages through your EAIFlow bot.",
+      feishu: "Feishu and Lark messages through your EAIFlow app.",
+      dingtalk: "DingTalk Stream Push messages through your EAIFlow bot.",
+      wechat: "WeChat iLink messages through your EAIFlow bot.",
+      wecom: "WeCom messages through your EAIFlow AI bot.",
     },
     connectedAs: (name: string) => `Connected as ${name}.`,
   },
@@ -840,7 +840,7 @@ export const enUS: Translations = {
   // Settings
   settings: {
     title: "Settings",
-    description: "Adjust how DeerFlow looks and behaves for you.",
+    description: "Adjust how EAIFlow looks and behaves for you.",
     sections: {
       account: "Account",
       appearance: "Appearance",
@@ -908,7 +908,7 @@ export const enUS: Translations = {
     memory: {
       title: "Memory",
       description:
-        "DeerFlow automatically learns from your conversations in the background. These memories help DeerFlow understand you better and deliver a more personalized experience.",
+        "EAIFlow automatically learns from your conversations in the background. These memories help EAIFlow understand you better and deliver a more personalized experience.",
       empty: "No memory data to display.",
       rawJson: "Raw JSON",
       exportButton: "Export memory",
@@ -1037,11 +1037,11 @@ export const enUS: Translations = {
     // EAI-CUSTOM: WeChat bind settings page copy (E-续 ③ WeChat iLink integration; upstream settings has no wechat block)
     wechat: {
       title: "WeChat",
-      description: "Link your WeChat to exchange messages through the DeerFlow bot.",
+      description: "Link your WeChat to exchange messages through the EAIFlow bot.",
       linkTitle: "Link your WeChat",
-      linkDescription: "Generate a one-time code and send it to the DeerFlow bot on WeChat to link this account.",
+      linkDescription: "Generate a one-time code and send it to the EAIFlow bot on WeChat to link this account.",
       getCode: "Get link code",
-      codeHint: "Send the command above to the DeerFlow bot in WeChat to finish linking.",
+      codeHint: "Send the command above to the EAIFlow bot in WeChat to finish linking.",
       linkFailed: "Failed to generate the link code.",
       addBotHint:
         "How users link: this is a Tencent iLink agent (not a personal WeChat account — it cannot be searched or added as a friend in WeChat). The admin shares the bot's entry (a card or link from the iLink / WeChat agent console) with users; after opening that entry in WeChat to chat with the bot, they send /connect <code> to link their account.",
@@ -1107,7 +1107,7 @@ export const enUS: Translations = {
     channels: {
       title: "Channels",
       description:
-        "Connect IM accounts that can send messages to DeerFlow from outside the browser.",
+        "Connect IM accounts that can send messages to EAIFlow from outside the browser.",
       disabled:
         "Channel connections are not enabled on this server. Ask an administrator to enable channel_connections.",
     },
@@ -1161,12 +1161,12 @@ export const enUS: Translations = {
         connectionStarted: "Connection link opened",
         connectionReady: "Connection is ready. Opening authorization...",
         authStarted:
-          "Authorization page opened. DeerFlow will detect completion automatically.",
+          "Authorization page opened. EAIFlow will detect completion automatically.",
         authorizationStillPending:
-          'Authorization is not complete yet. Finish it in the browser; DeerFlow keeps checking automatically. You can click "I completed authorization" if the page does not update.',
+          'Authorization is not complete yet. Finish it in the browser; EAIFlow keeps checking automatically. You can click "I completed authorization" if the page does not update.',
         permissionTitle: "Authorization scope",
         permissionDescription:
-          "By default, DeerFlow only completes the base sign-in and does not request any business permissions. Select the domains you need here; connected users can re-authorize to add more (scopes accumulate).",
+          "By default, EAIFlow only completes the base sign-in and does not request any business permissions. Select the domains you need here; connected users can re-authorize to add more (scopes accumulate).",
         authDomains: {
           calendar: {
             label: "Calendar",
@@ -1277,10 +1277,10 @@ export const enUS: Translations = {
           "The first connection needs one browser confirmation from Lark. Open the link below and finish the prompt, then return here to continue authorization.",
         openAuthLinkTitle: "Authorize Lark in your browser",
         openAuthLinkDescription:
-          "Open the link below to authorize. DeerFlow keeps checking automatically and will save the connection after approval.",
+          "Open the link below to authorize. EAIFlow keeps checking automatically and will save the connection after approval.",
         waitingAuthTitle: "Waiting for Lark authorization",
         waitingAuthDescription:
-          "Finish authorization in the browser page that just opened. DeerFlow will update this panel automatically; the button below is only a fallback.",
+          "Finish authorization in the browser page that just opened. EAIFlow will update this panel automatically; the button below is only a fallback.",
         openAuthLink: "Open link",
         copyAuthLink: "Copy link",
         completeAuth: "I completed authorization",
@@ -1306,7 +1306,7 @@ export const enUS: Translations = {
           "The current user's authorization was verified with Lark during this connection flow. Reconnect whenever you need to refresh it or add permissions.",
         authNextTitle: "Complete browser authorization next",
         authNextDescription:
-          "Click “Connect Lark”; DeerFlow checks the current status first and opens browser authorization only when disconnected or expired.",
+          "Click “Connect Lark”; EAIFlow checks the current status first and opens browser authorization only when disconnected or expired.",
       },
     },
     skills: {
@@ -1316,7 +1316,7 @@ export const enUS: Translations = {
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:
-        "Put your agent skill folders under the `/skills/custom` folder under the root folder of DeerFlow.",
+        "Put your agent skill folders under the `/skills/custom` folder under the root folder of EAIFlow.",
       emptyButton: "Create Your First Skill",
       adminRequired: "Admin privileges are required to manage agent skills.",
       installAdminRequired:
@@ -1330,12 +1330,12 @@ export const enUS: Translations = {
     notification: {
       title: "Notification",
       description:
-        "DeerFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
+        "EAIFlow only sends a completion notification when the window is not active. This is especially useful for long-running tasks so you can switch to other work and get notified when done.",
       requestPermission: "Request notification permission",
       deniedHint:
         "Notification permission was denied. You can enable it in your browser's site settings to receive completion alerts.",
       testButton: "Send test notification",
-      testTitle: "DeerFlow",
+      testTitle: "EAIFlow",
       testBody: "This is a test notification.",
       notSupported: "Your browser does not support notifications.",
       disableNotification: "Disable notification",
@@ -1349,7 +1349,7 @@ export const enUS: Translations = {
       changePasswordDescription: "Update your account password.",
       ssoPasswordDescription: "Password is managed by your SSO provider.",
       ssoPasswordMessage:
-        "This account signs in with {provider}, so DeerFlow cannot manage or change its password here. Use your SSO provider's account settings instead.",
+        "This account signs in with {provider}, so EAIFlow cannot manage or change its password here. Use your SSO provider's account settings instead.",
       currentPassword: "Current password",
       newPassword: "New password",
       confirmNewPassword: "Confirm new password",
