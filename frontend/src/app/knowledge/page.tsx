@@ -497,58 +497,75 @@ function KnowledgeBaseManagement({
                         {kb.owner_name ?? "未知"}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => handleSync(kb.id, e)}
-                          disabled={isSyncing || isLawKb}
-                          className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                        {/* EAI-CUSTOM: span 是 disabled Button 的命中目标 —— 基类
+                            disabled:pointer-events-none 使 title 失效且点击穿透卡片 */}
+                        <span
                           title={
                             isLawKb
                               ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
                               : "同步状态"
                           }
+                          onClick={(e) => e.stopPropagation()}
                         >
-                          <RefreshCw
-                            className={cn(
-                              "h-4 w-4",
-                              isSyncing && "animate-spin",
-                            )}
-                          />
-                        </Button>
-                        {/* EAI-CUSTOM: gate KB edit button by kb:update permission */}
-                        {can("kb:update") && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={(e) => openEdit(kb, e)}
-                            disabled={isLawKb}
-                            className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                            onClick={(e) => handleSync(kb.id, e)}
+                            disabled={isSyncing || isLawKb}
+                            aria-label="同步状态"
+                            className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                          >
+                            <RefreshCw
+                              className={cn(
+                                "h-4 w-4",
+                                isSyncing && "animate-spin",
+                              )}
+                            />
+                          </Button>
+                        </span>
+                        {/* EAI-CUSTOM: gate KB edit button by kb:update permission */}
+                        {can("kb:update") && (
+                          <span
                             title={
                               isLawKb
                                 ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
                                 : "编辑"
                             }
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => openEdit(kb, e)}
+                              disabled={isLawKb}
+                              aria-label="编辑"
+                              className="text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </span>
                         )}
                         {/* EAI-CUSTOM: gate KB-delete button by kb:delete permission */}
                         {can("kb:delete") && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => handleDelete(kb.id, e)}
-                            disabled={isLawKb}
-                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          <span
                             title={
                               isLawKb
                                 ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
                                 : "删除"
                             }
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => handleDelete(kb.id, e)}
+                              disabled={isLawKb}
+                              aria-label="删除"
+                              className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </span>
                         )}
                       </div>
                     </div>
