@@ -35,7 +35,11 @@ import type {
 import { cn } from "@/lib/utils";
 
 import { CustomSelect } from "./_components/CustomSelect";
-import { isLawKnowledgeBase } from "./_components/isLawKnowledgeBase";
+import {
+  isGeoSlicesKnowledgeBase,
+  isReadOnlyKnowledgeBase,
+  readOnlyKBTitle,
+} from "./_components/isLawKnowledgeBase";
 import { ToastContainer, useToast } from "./_components/toast";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -406,7 +410,9 @@ function KnowledgeBaseManagement({
               {filteredKBs.map((kb) => {
                 const kbType = kb.kb_type ?? "ragflow";
                 const isSyncing = syncingIds.has(kb.id);
-                const isLawKb = isLawKnowledgeBase(kb.name);
+                // EAI-CUSTOM: 地质切片系统库同享只读语义（sync/edit/delete 禁用），提示文案分库
+                const isSystemKb = isReadOnlyKnowledgeBase(kb.name);
+                const systemKbTitle = readOnlyKBTitle(kb.name);
                 return (
                   <motion.div
                     layout
@@ -500,18 +506,14 @@ function KnowledgeBaseManagement({
                         {/* EAI-CUSTOM: span 是 disabled Button 的命中目标 —— 基类
                             disabled:pointer-events-none 使 title 失效且点击穿透卡片 */}
                         <span
-                          title={
-                            isLawKb
-                              ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
-                              : "同步状态"
-                          }
+                          title={isSystemKb ? systemKbTitle : "同步状态"}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={(e) => handleSync(kb.id, e)}
-                            disabled={isSyncing || isLawKb}
+                            disabled={isSyncing || isSystemKb}
                             aria-label="同步状态"
                             className="text-muted-foreground hover:bg-primary/10 hover:text-primary"
                           >
@@ -526,18 +528,14 @@ function KnowledgeBaseManagement({
                         {/* EAI-CUSTOM: gate KB edit button by kb:update permission */}
                         {can("kb:update") && (
                           <span
-                            title={
-                              isLawKb
-                                ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
-                                : "编辑"
-                            }
+                            title={isSystemKb ? systemKbTitle : "编辑"}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={(e) => openEdit(kb, e)}
-                              disabled={isLawKb}
+                              disabled={isSystemKb}
                               aria-label="编辑"
                               className="text-muted-foreground hover:bg-muted hover:text-foreground"
                             >
@@ -548,18 +546,14 @@ function KnowledgeBaseManagement({
                         {/* EAI-CUSTOM: gate KB-delete button by kb:delete permission */}
                         {can("kb:delete") && (
                           <span
-                            title={
-                              isLawKb
-                                ? "法规标准系统库,请在 知识工厂 → 法规标准 中管理"
-                                : "删除"
-                            }
+                            title={isSystemKb ? systemKbTitle : "删除"}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={(e) => handleDelete(kb.id, e)}
-                              disabled={isLawKb}
+                              disabled={isSystemKb}
                               aria-label="删除"
                               className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                             >

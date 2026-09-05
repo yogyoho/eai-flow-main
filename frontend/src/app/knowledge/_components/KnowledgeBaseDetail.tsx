@@ -49,7 +49,11 @@ import { cn } from "@/lib/utils";
 import { ChunkModal } from "./ChunkModal";
 import { CustomSelect } from "./CustomSelect";
 import { DocStatusBadge } from "./DocStatusBadge";
-import { isLawKnowledgeBase } from "./isLawKnowledgeBase";
+import {
+  isGeoSlicesKnowledgeBase,
+  isLawKnowledgeBase,
+  isReadOnlyKnowledgeBase,
+} from "./isLawKnowledgeBase";
 import { sortSourcesByScore } from "./sources-sort";
 import { ToastContainer, useToast } from "./toast";
 import { UploadModal, formatFileSize } from "./UploadModal";
@@ -89,7 +93,9 @@ export function KnowledgeBaseDetail({
   const { can, is_admin, identity } = usePermission();
   // EAI-CUSTOM: 法规标准系统库不提供直接上传,引导去知识工厂导入
   // (spec docs/superpowers/specs/2026-09-04-law-kb-upload-guidance-design.md)
-  const isLawKb = isLawKnowledgeBase(kb.name);
+  const isGeoKb = isGeoSlicesKnowledgeBase(kb.name);
+  const isLawKb = isLawKnowledgeBase(kb.name); // 法规专属横幅/引导（geo 走自己的横幅）
+  const isSystemKb = isReadOnlyKnowledgeBase(kb.name);
   const [isFormatted, setIsFormatted] = useState(false);
   const [query, setQuery] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -454,6 +460,22 @@ export function KnowledgeBaseDetail({
               </span>
             </p>
           )}
+          {isGeoKb && (
+            <p className="text-muted-foreground mt-2 flex items-start gap-1.5 text-xs">
+              <Info className="text-info mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                本库为地质切片系统知识库（只读）。切片由样例过审后在
+                <Link
+                  href="/geo-samples"
+                  className="text-primary hover:underline focus-visible:underline"
+                >
+                  地质样例库
+                </Link>
+                中点击「编译」自动写入并分发
+                RAGFlow——如需新增内容，请上传样例并编译。
+              </span>
+            </p>
+          )}
         </div>
 
         {/* File List Card */}
@@ -461,7 +483,7 @@ export function KnowledgeBaseDetail({
           <div className="border-border flex shrink-0 items-center justify-between border-b p-4">
             {/* EAI-CUSTOM: gate upload button by kb:upload permission;
                 法规标准系统库不提供直接上传(孤儿文档会绕过 Law 元数据层) */}
-            {can("kb:upload") && !isLawKb && (
+            {can("kb:upload") && !isSystemKb && (
               <Button
                 variant="ghost"
                 onClick={() => setShowUpload(true)}
@@ -576,7 +598,7 @@ export function KnowledgeBaseDetail({
                           {/* EAI-CUSTOM: gate doc-delete button by kb:delete permission;
                               法规标准系统库文档为 laws 投影,删除会造成 laws.ragflow_document_id 悬空
                               (后端删除接口对 laws 投影文档本就 404,此处为 UX 层引导) */}
-                          {can("kb:delete") && !isLawKb && (
+                          {can("kb:delete") && !isSystemKb && (
                             <Button
                               variant="ghost"
                               size="icon"
