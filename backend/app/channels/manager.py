@@ -29,6 +29,10 @@ from app.gateway.csrf_middleware import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, gene
 from app.gateway.internal_auth import create_internal_auth_headers
 from deerflow.config.paths import make_safe_user_id
 
+# EAI-CUSTOM: ported from upstream bytedance/main (9146bfa03, #5119) so inbound
+# IM messages get a request trace id even though no ASGI middleware runs for them.
+from deerflow.trace_context import ensure_trace_context
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_LANGGRAPH_URL = "http://localhost:4024"
@@ -816,15 +820,24 @@ class ChannelManager:
             except asyncio.CancelledError:
                 break
 
-            logger.info(
-                "[Manager] received inbound: channel=%s, chat_id=%s, type=%s, text=%r",
-                msg.channel_name,
-                msg.chat_id,
-                msg.msg_type.value,
-                msg.text[:100] if msg.text else "",
-            )
-            task = asyncio.create_task(self._handle_message(msg))
-            task.add_done_callback(self._log_task_error)
+            # EAI-CUSTOM: ported from upstream bytedance/main (9146bfa03, #5119).
+            # Inbound IM messages are a non-HTTP entry point: channels hold
+            # long-lived provider connections, so no ASGI middleware ever runs
+            # for them. Scope one trace id per message here. EAI's slimmed loop
+            # handles each message in its own task, which copies this minted
+            # scope at creation, so the id follows the message's handling and
+            # cannot leak into the next one — same guarantee as upstream, whose
+            # inline worker loop closes the scope per message.
+            with ensure_trace_context():
+                logger.info(
+                    "[Manager] received inbound: channel=%s, chat_id=%s, type=%s, text=%r",
+                    msg.channel_name,
+                    msg.chat_id,
+                    msg.msg_type.value,
+                    msg.text[:100] if msg.text else "",
+                )
+                task = asyncio.create_task(self._handle_message(msg))
+                task.add_done_callback(self._log_task_error)
 
     @staticmethod
     def _log_task_error(task: asyncio.Task) -> None:

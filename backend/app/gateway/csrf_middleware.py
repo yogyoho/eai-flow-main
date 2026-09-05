@@ -21,6 +21,7 @@ from app.gateway.auth.session_cookie_state import (
     SESSION_COOKIE_SECURE_STATE_ATTR,
 )
 from app.gateway.request_path import get_request_route_path
+from deerflow.trace_context import TRACE_ID_HEADER
 
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
@@ -156,7 +157,11 @@ def get_configured_cors_origins() -> set[str]:
 # CORS-safelisted set is visible to JS by default, and the created run's id
 # travels in `Content-Location` — the LangGraph SDK resolves run metadata from
 # it, so withholding it leaves such a client unable to learn its own run id.
-CORS_EXPOSED_HEADERS: tuple[str, ...] = ("Content-Location",)
+# `X-Trace-Id` is listed for the same reason: TraceMiddleware puts it on every
+# response as the correlation id to quote in a bug report, and unexposed it is
+# readable on same-origin nginx deployments but invisible to exactly the
+# split-origin clients that cannot see the Gateway's logs either.
+CORS_EXPOSED_HEADERS: tuple[str, ...] = ("Content-Location", TRACE_ID_HEADER)
 
 
 def _first_header_value(value: str | None) -> str | None:

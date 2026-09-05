@@ -65,6 +65,28 @@ if [ -z "$IN_DOCKER" ]; then
     RAGFLOW_BASE_URL="${RAGFLOW_BASE_URL:-http://localhost:9380}"
 fi
 
+# _pick_python — restored from upstream (bytedance/main fcb1c88e5, env-probe fix).
+# EAI previously dropped it in favor of inline `command -v` chains; it is wired
+# back in below (PYTHON_BIN / DETECT_PYTHON) so the Windows Store-alias fix applies.
+_pick_python() {
+    local candidate
+    for candidate in python3 python py; do
+        # Probe through `env` as well: the frontend is launched as
+        # `env PORT=3000 "$DEERFLOW_PNPM_PYTHON" ...` (FRONTEND_CMD below), and on
+        # Windows/Git Bash the Microsoft Store python aliases under WindowsApps
+        # are skipped by Bash's own PATH lookup yet still resolved (and fail to
+        # exec) inside /usr/bin/env. A bare "$candidate" probe passes while the
+        # real launch dies with: env: 'python3': No such file or directory
+        if command -v "$candidate" >/dev/null 2>&1 \
+            && "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info.major >= 3 else 1)' >/dev/null 2>&1 \
+            && env "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info.major >= 3 else 1)' >/dev/null 2>&1; then
+            printf '%s\n' "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # ── Argument parsing ─────────────────────────────────────────────────────────
 
 DEV_MODE=true
@@ -258,11 +280,7 @@ fi
 if $DEV_MODE; then
     FRONTEND_CMD="pnpm run dev"
 else
-    if command -v python3 >/dev/null 2>&1; then
-        PYTHON_BIN="python3"
-    elif command -v python >/dev/null 2>&1; then
-        PYTHON_BIN="python"
-    else
+    if ! PYTHON_BIN="$(_pick_python)"; then
         echo "Python is required to generate BETTER_AUTH_SECRET."
         exit 1
     fi
@@ -299,15 +317,11 @@ bash "$REPO_ROOT/scripts/config-upgrade.sh"
 
 # ── Install dependencies ────────────────────────────────────────────────────
 
-# Pick a Python for the extras detector. Falls back to plain `python` for
-# Windows/Git Bash where only `python` is on PATH.
-if command -v python3 >/dev/null 2>&1; then
-    DETECT_PYTHON="python3"
-elif command -v python >/dev/null 2>&1; then
-    DETECT_PYTHON="python"
-else
-    DETECT_PYTHON=""
-fi
+# Pick a Python for the extras detector, via the upstream env-probed
+# `_pick_python` (fcb1c88e5): on Windows/Git Bash, `python3` can resolve to the
+# Microsoft Store alias in WindowsApps, which is present on PATH but not
+# executable from Bash — and also fails inside `env`.
+DETECT_PYTHON="$(_pick_python || true)"
 
 # Resolve uv extras (postgres, etc.) from UV_EXTRAS or config.yaml so that
 # `uv sync` does not wipe out optional dependencies on every restart. See

@@ -4,7 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from deerflow_extension_api import EXTENSION_PRINCIPAL_RESOLVER_KEY, ExtensionPrincipal
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.extensions.app_center import router as app_center_router
@@ -47,6 +47,7 @@ from app.gateway.browser_capability import ensure_browser_runtime_available
 from app.gateway.config import get_gateway_config
 from app.gateway.csrf_middleware import CORS_EXPOSED_HEADERS, CSRFMiddleware, get_configured_cors_origins
 from app.gateway.deps import langgraph_runtime
+from app.gateway.health import READINESS_CHECKPOINTER_CONFIG_ATTR, readiness_payload
 from app.gateway.routers import (
     agents,
     artifacts,
@@ -72,6 +73,7 @@ from app.gateway.routers import (
     ui,
     uploads,
 )
+from app.gateway.trace_middleware import TraceMiddleware
 from deerflow.config import app_config as deerflow_app_config
 from deerflow.logging_config import configure_logging
 from deerflow.uploads.manager import cleanup_stale_upload_staging_files
@@ -777,6 +779,11 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             expose_headers=list(CORS_EXPOSED_HEADERS),
         )
 
+    # Request trace correlation: bind one trace id per Gateway HTTP request
+    # and write it to the response start headers. Ungated, so it works without
+    # a config.yaml and needs no restart; logging.enhance.enabled only decides
+    # whether that id is printed into log records.
+    app.add_middleware(TraceMiddleware)
     # Python extensions load once while the Gateway app is constructed. Agent
     # middleware builders consume the same immutable set through the process
     # singleton; app.state exposes it to the Gateway runtime. (Upstream #4780)
@@ -793,10 +800,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # fail-open guard below: a config.yaml that exists but cannot be parsed or
     # validated is a configuration failure, not an extension failure. Reporting
     # it as the latter would silently drop a `required: true` extension instead
-    # of failing the boot. Only an absent config.yaml is tolerated, mirroring
-    # _resolve_trace_enabled_for_app_construction() — create_app() runs at
-    # import time, and lifespan still performs strict config loading before
-    # serving.
+    # of failing the boot. Only an absent config.yaml is tolerated — create_app()
+    # runs at import time, and lifespan still performs strict config loading
+    # before serving.
     try:
         configured_plugins = get_app_config().plugins
     except FileNotFoundError:
@@ -969,6 +975,24 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             Service health status information.
         """
         return {"status": "healthy", "service": "deer-flow-gateway"}
+
+    @app.get("/health/ready", tags=["health"])
+    async def readiness_check(request: Request, response: Response) -> dict[str, str]:
+        """Readiness endpoint: 200 when the persistence backends are reachable.
+
+        Probes the ORM engine behind ``database:`` and the effective LangGraph
+        checkpointer/Store backend (legacy ``checkpointer:`` section, otherwise
+        derived from ``database:``) concurrently beneath one bounded deadline.
+        The checkpointer config comes from the startup snapshot recorded by
+        ``langgraph_runtime`` (never hot-reloaded config), so orchestrators can
+        gate on the gateway actually being ready rather than merely alive.
+        Returns 503 with ``status: degraded`` when either probe fails or the
+        startup backend cannot be resolved.
+        """
+        checkpointer_config = getattr(request.app.state, READINESS_CHECKPOINTER_CONFIG_ATTR, None)
+        status_code, payload = await readiness_payload(checkpointer_config)
+        response.status_code = status_code
+        return payload
 
     # Extension routes are deliberately last: FastAPI/Starlette dispatches in
     # registration order, so every host route (including conditional routes
