@@ -119,3 +119,12 @@ node_modules/
 /.wolf/e2e-uploads/
 /.wolf/archive/
 /.wolf/tmp/
+
+# === 离线部署包/运行时缓存(不入库) ===
+/eai-prod.zip
+/eai-prod.z01
+/eai-prod.z02
+/eai-prod.z03
+/zip/
+/tiktoken_cache/
+/.offline-export-history/

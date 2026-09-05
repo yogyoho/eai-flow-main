@@ -15409,3 +15409,17 @@
 | 15:10 | 产品裁决落地：RAGFlow 分发单元=样例整体(不再按章节预切分)——push_slices_to_ragflow→push_reports_to_ragflow(<rid>.md，分片交给数据集 naive)；resolve 按名查找加 api_key 守卫+异常降级(§7)；现场清理 10 个旧切片文档；整报告 296 chunks DONE | geo_samples/service.py | c00a9e6ed | ~4k |
 | 19:53 | Session end: 3 writes across 2 files (service.py, test_geo_sample_bank_compile.py) | 1 reads | ~28891 tok |
 | 20:08 | Session end: 3 writes across 2 files (service.py, test_geo_sample_bank_compile.py) | 1 reads | ~28891 tok |
+
+| 06:00 | push: 两提交落origin/main-dev-fork(45b03c35a feat v4 T1-T8全实现24文件/0e620b717 docs设计稿+调研+簿记9文件), rev-list 0/0同步确认; 注意: 共享暂存区有另一会话2242文件env-untrack已暂存删除, 我git reset(mixed)清暂存后显式加自己的路径提交——该会话的删除仍在工作树(未丢)但暂存态被清, 需自行重新git add | git | DONE |
+| 20:13 | Session end: 3 writes across 2 files (service.py, test_geo_sample_bank_compile.py) | 1 reads | ~28891 tok |
+
+## Session: 2026-09-05 20:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-05 20:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 20:58 | Edited .gitignore | expanded (+9 lines) | ~39 |
