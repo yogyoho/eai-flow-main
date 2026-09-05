@@ -419,7 +419,7 @@ async def test_compile_ragflow_push_failure_does_not_fail_run(tmp_path, monkeypa
     docs = _compile_stub_docs()
     _exec, _rows, _proc = _patch_compile_happy_path(monkeypatch, tmp_path, docs)
     monkeypatch.setenv("GSB_RAGFLOW_DATASET_ID", "ds1")
-    monkeypatch.setattr(service, "push_slices_to_ragflow", AsyncMock(side_effect=RuntimeError("ragflow exploded")))
+    monkeypatch.setattr(service, "push_reports_to_ragflow", AsyncMock(side_effect=RuntimeError("ragflow exploded")))
 
     await service.run_compile(AsyncMock(), "run-rf")
 
@@ -442,10 +442,10 @@ async def test_compile_ragflow_push_budget_does_not_fail_run(tmp_path, monkeypat
     monkeypatch.setenv("GSB_RAGFLOW_DATASET_ID", "ds1")
     monkeypatch.setattr(service, "_PUSH_BUDGET_S", 0.05)
 
-    async def _long_push(refs, dataset_id):
+    async def _long_push(workdir, dataset_id, report_ids):
         await asyncio.sleep(30)
 
-    monkeypatch.setattr(service, "push_slices_to_ragflow", _long_push)
+    monkeypatch.setattr(service, "push_reports_to_ragflow", _long_push)
 
     await service.run_compile(AsyncMock(), "run-budget")
 
@@ -476,28 +476,20 @@ async def test_compile_writeback_skips_drifted_state(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_compile_ragflow_push_delete_by_name(tmp_path, monkeypatch):
-    """push_slices_to_ragflow 直测：分页 list 建 name→id → 同名先 delete → upload → parse（不等解析完成）。"""
+async def test_compile_ragflow_push_reports_whole_file(tmp_path, monkeypatch):
+    """push_reports_to_ragflow 直测（产品裁决 2026-09-05：分发单元=样例整体）：
+    分页 list 建 name→id → 同名先 delete → upload <rid>.md → parse（不等解析完成）；
+    workdir 缺 source.md 的报告跳过不计数。"""
     from types import SimpleNamespace
 
     from app.extensions import config as ext_config_mod
     from app.extensions.geo_samples import service
     from app.extensions.knowledge import client as ragflow_client_mod
 
-    refs = tmp_path / "references"
-    slice_dir = refs / "samples_bank" / "exploration" / "slices" / "ch1"
-    slice_dir.mkdir(parents=True)
-    (slice_dir / "a__1.md").write_text("【矿种】gold｜【节号】1\n\n## 1 总论\n", encoding="utf-8")
-    (slice_dir / "b__1.md").write_text("【矿种】gold｜【节号】1\n\n## 1 总论\n", encoding="utf-8")
-    index = {
-        "exploration": {
-            "ch1": [
-                {"report_id": "rid-a", "mineral": "gold", "sec": "1", "title": "总论", "file": "samples_bank/exploration/slices/ch1/a__1.md"},
-                {"report_id": "rid-b", "mineral": "gold", "sec": "1", "title": "总论", "file": "samples_bank/exploration/slices/ch1/b__1.md"},
-            ]
-        }
-    }
-    (refs / "samples_bank" / "bank_index.json").write_text(json.dumps(index, ensure_ascii=False), encoding="utf-8")
+    wd = tmp_path / "wd"
+    (wd / "rid-a").mkdir(parents=True)
+    (wd / "rid-a" / "source.md").write_text("## 1 总论\n\n全文A", encoding="utf-8")
+    (wd / "rid-b").mkdir(parents=True)  # 无 source.md（clean 缺失被 workspace 跳过）→ 不分发
 
     class FakeClient:
         init_kwargs: dict = {}
@@ -509,7 +501,7 @@ async def test_compile_ragflow_push_delete_by_name(tmp_path, monkeypatch):
 
         async def list_documents(self, dataset_id, page=1, size=100):
             FakeClient.pages.append((dataset_id, page, size))
-            data = {1: {"docs": [{"id": "old-a", "name": "a__1.md"}], "total": 150}, 2: {"docs": [{"id": "old-b", "name": "b__1.md"}], "total": 150}}.get(page)
+            data = {1: {"docs": [{"id": "old-a", "name": "rid-a.md"}], "total": 150}, 2: {"docs": [], "total": 150}}.get(page)
             if data is None:
                 return {"code": 0, "data": {"docs": [], "total": 0}}
             return {"code": 0, "data": data}
@@ -527,19 +519,16 @@ async def test_compile_ragflow_push_delete_by_name(tmp_path, monkeypatch):
     monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeClient)
     monkeypatch.setattr(ext_config_mod, "get_extensions_config", lambda: SimpleNamespace(ragflow=SimpleNamespace(api_key="k", base_url="http://ragflow:9380", timeout=5)))
 
-    pushed = await service.push_slices_to_ragflow(refs, "ds1")
+    pushed = await service.push_reports_to_ragflow(wd, "ds1", ["rid-a", "rid-b", "rid-c"])
 
-    assert pushed == 2
+    assert pushed == 1  # 只有 rid-a 有全文；rid-b 缺 source.md、rid-c 不在 workdir → 跳过
     assert FakeClient.pages == [("ds1", 1, 100), ("ds1", 2, 100)]  # total-aware 分页：2 页即停
     assert FakeClient.init_kwargs == {"api_key": "k", "base_url": "http://ragflow:9380"}
-    # 每片：同名先 delete → upload（盘上路径+file_name）→ parse；两片顺序稳定
+    # 同名旧版先 delete → upload（盘上路径+file_name=<rid>.md）→ parse
     assert FakeClient.ops == [
         ("delete", "old-a"),
-        ("upload", "a__1.md"),
-        ("parse", "new-a__1.md"),
-        ("delete", "old-b"),
-        ("upload", "b__1.md"),
-        ("parse", "new-b__1.md"),
+        ("upload", "rid-a.md"),
+        ("parse", "new-rid-a.md"),
     ]
 
 
@@ -2314,3 +2303,21 @@ async def test_ensure_slices_kb_registered_admin_missing_is_graceful(monkeypatch
 
     assert await routers._ensure_slices_kb_registered(db, "ds-1") is False
     db.add.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_resolve_ragflow_dataset_id_degrades_on_unreachable(monkeypatch):
+    """§7 降级：RAGFlow 不可达（按名查找抛错）→ 空串走 skipped，绝不让编译 run 失败。"""
+    from app.extensions.geo_samples import service
+    from app.extensions.knowledge import client as ragflow_client_mod
+
+    class FakeDown:
+        def __init__(self, api_key=None, base_url=None):
+            pass
+
+        async def get_dataset_by_name(self, name):
+            raise RuntimeError("ragflow down")
+
+    monkeypatch.delenv(service._RAGFLOW_DATASET_ENV, raising=False)
+    monkeypatch.setattr(ragflow_client_mod, "RAGFlowClient", FakeDown)
+    assert await service.resolve_ragflow_dataset_id() == ""

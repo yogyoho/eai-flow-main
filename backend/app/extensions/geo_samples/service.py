@@ -24,7 +24,7 @@ from .redactor import redact_text
 
 log = logging.getLogger("geo_samples.service")
 
-# --- Phase 2 T7：模块级编译（子进程 bank_compile + RAGFlow 切片分发）的常量区 --------------
+# --- Phase 2 T7：模块级编译（子进程 bank_compile + RAGFlow 样例整体分发）的常量区 --------------
 # 模板同 contract_price.service：skills 迁移目录必须与盘面一致，否则子进程静默失败（bug-526），
 # 由 test_compile_skill_dir_guard 守护。parents[4]: geo_samples -> extensions -> app -> backend -> repo root。
 _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -228,7 +228,8 @@ async def resolve_ragflow_dataset_id() -> str:
     （/pipeline/init-ragflow 按钮创建的库）→ 空串=未配置（调用方走 skipped 降级）。
 
     按名兜底让「初始化切片库」按钮建库后无需改 env 即生效；env 仍留给离线部署指向
-    各环境自己的 dataset id。
+    各环境自己的 dataset id。未配置 RAGFlow / 查找失败一律返回空串——分发是辅助通道
+    （spec §7），解析失败绝不让编译 run 失败。
     """
     env_id = os.environ.get(_RAGFLOW_DATASET_ENV, "").strip()
     if env_id:
@@ -237,24 +238,29 @@ async def resolve_ragflow_dataset_id() -> str:
     from app.extensions.knowledge import client as ragflow_client_mod
 
     cfg = get_extensions_config().ragflow
+    if not cfg.api_key:
+        return ""
     client = ragflow_client_mod.RAGFlowClient(api_key=cfg.api_key, base_url=cfg.base_url)
-    ds = await client.get_dataset_by_name(GSB_RAGFLOW_DATASET_NAME)
+    try:
+        ds = await client.get_dataset_by_name(GSB_RAGFLOW_DATASET_NAME)
+    except Exception as exc:  # noqa: BLE001 —— RAGFlow 不可达 = 走 skipped 降级，不炸编译
+        log.warning("resolve ragflow dataset by name failed (degrade to skip): %s", exc)
+        return ""
     return (ds or {}).get("id") or ""
 
 
-async def push_slices_to_ragflow(refs: Path, dataset_id: str) -> int:
-    """把编译产物切片幂等分发到 RAGFlow 数据集，返回上传片数。
+async def push_reports_to_ragflow(workdir: Path, dataset_id: str, report_ids: list[str]) -> int:
+    """把每份样例的 clean 全文**整体**上传 RAGFlow（命名 <report_id>.md），返回上传份数。
 
-    幂等契约 = delete-by-name + upload + parse：先分页 list_documents 建 name→id 映射，同名先删
-    再传，避免重编译后旧切片滞留。RAGFlowClient/配置 lazy import——gateway 启动路径零 ragflow 依赖。
-    实测 wire 契约（client.py 实物，非 plan 骨架）：构造 (api_key, base_url) 两参；list_documents
-    分页形参是 size（page_size 上限 100），响应 data 是 {"docs": [...], "total": N}；bank_index
-    条目的切片相对路径键是 "file"（非 plan 骨架写的 "path"，bank_compile.py 实物为准）。
-    同一章多节条目共享同一切片文件 → 按 file 去重，upload/parse 次数=切片文件数。
-    绝不 wait_for_parsing_complete（>100 文档 dataset 轮询恒超时）；解析状态由人工在 RAGFlow 控制台看。
+    产品裁决（2026-09-05）：RAGFlow 分发单元=样例整体，分片交给数据集自身解析（naive）——
+    不再按章节预切分入库。章节切分产物（references/samples_bank/）仍落 repo，供范文导航
+    （bank_index）/SL3 指纹/ore_pack 抽取消费，只是不再是 RAGFlow 通道的入库单元。
+    幂等契约同旧切片分发：分页 list_documents 建 name→id 映射，同名先删再传（重编译不滞留
+    旧版），parse 触发服务端分片，绝不 wait_for_parsing_complete（>100 文档轮询恒超时）。
+    workdir = _prepare_compile_workspace 产物（<rid>/source.md 已就位）；缺文件的报告跳过。
     """
-    from app.extensions.config import get_extensions_config  # lazy——见 docstring
-    from app.extensions.knowledge import client as ragflow_client_mod  # lazy——见 docstring
+    from app.extensions.config import get_extensions_config  # lazy——gateway 启动路径零 ragflow 依赖
+    from app.extensions.knowledge import client as ragflow_client_mod
 
     cfg = get_extensions_config().ragflow
     client = ragflow_client_mod.RAGFlowClient(api_key=cfg.api_key, base_url=cfg.base_url)
@@ -273,26 +279,20 @@ async def push_slices_to_ragflow(refs: Path, dataset_id: str) -> int:
             break
         page += 1
 
-    index = json.loads(await asyncio.to_thread((refs / "samples_bank" / "bank_index.json").read_text, encoding="utf-8"))
     pushed = 0
-    seen_files: set[str] = set()
-    for chs in index.values():
-        for items in chs.values():
-            for it in items:
-                rel = it.get("file")
-                if not rel or rel in seen_files:
-                    continue
-                seen_files.add(rel)
-                path = refs / rel
-                name = path.name
-                if name in existing:
-                    await client.delete_document(dataset_id, existing[name])
-                up = await client.upload_document(dataset_id, str(path), file_name=name)
-                doc_id = (up.get("data") or {}).get("id")
-                if not doc_id:
-                    raise RuntimeError(f"ragflow upload {name}: response missing document id")
-                await client.parse_document(dataset_id, doc_id)
-                pushed += 1
+    for rid in report_ids:
+        path = workdir / rid / "source.md"
+        if not path.is_file():
+            continue
+        name = f"{rid}.md"
+        if name in existing:
+            await client.delete_document(dataset_id, existing[name])
+        up = await client.upload_document(dataset_id, str(path), file_name=name)
+        doc_id = (up.get("data") or {}).get("id")
+        if not doc_id:
+            raise RuntimeError(f"ragflow upload {name}: response missing document id")
+        await client.parse_document(dataset_id, doc_id)
+        pushed += 1
     return pushed
 
 
@@ -303,7 +303,7 @@ async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, m
     failed 快速返回，不起子进程）→ commit 释放连接（R2 同款，下载/子进程阶段不占池）→
     to_thread 准备工作区（MinIO 下载 clean 到 <rid>/source.md + manifest.json）→ 子进程
     bank_compile（--workdir/--references/--python，cwd=技能目录，1800s wait_for 硬顶超时
-    kill）→ RAGFlow 切片分发（辅助通道，900s 预算封顶：env 未配置记 skipped；超预算/push
+    kill）→ RAGFlow 样例整体分发（辅助通道，900s 预算封顶：解析链未配置记 skipped；超预算/push
     异常只记 detail 不回滚编译结论，spec §7 降级链——子进程+分发相加恒 < 60min sweep 线，
     防长尾拖过互斥造成并发编译写共享 references）→ 按 manifest 批量写回：get_document_fresh
     读 DB 真值且仅 reviewed→compiled，漂移者记 detail 跳过 → commit → done。任何异常 →
@@ -367,7 +367,7 @@ async def run_compile(db: AsyncSession, run_id: str, stage: str | None = None, m
                 # 预算封顶（quality Important-1）：子进程 30min + push 15min < 60min sweep 线，
                 # 防长尾 RAGFlow 拖过 sweep 开互斥 → 并发编译写共享 references。超预算与 push
                 # 失败同 containment：编译产物已落盘，run 仍 done，只记 incomplete。
-                pushed = await asyncio.wait_for(push_slices_to_ragflow(refs, dataset_id), timeout=_PUSH_BUDGET_S)
+                pushed = await asyncio.wait_for(push_reports_to_ragflow(wd, dataset_id, [d.report_id for d in docs]), timeout=_PUSH_BUDGET_S)
                 detail += f"; ragflow pushed={pushed}"
             except TimeoutError:
                 log.exception("ragflow push budget exceeded (run %s)", run_id)
