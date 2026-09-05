@@ -582,6 +582,21 @@ export const BlockNoteEditor = forwardRef<
     [deleteComment],
   );
 
+  // EAI-CUSTOM (bug-3101): AIMenuController renders the `aiMenu` prop AS a
+  // component type (`<aiMenu />`). An inline arrow gets a fresh identity on
+  // every parent re-render, remounting AIMenu and resetting its local
+  // promptText — the filled quick-action prompt vanished right after click.
+  const aiMenuPanel = useCallback(
+    // `editor` here is AIMenu's callback parameter (shadows the outer binding);
+    // the menu always invokes items with its own editor instance.
+    () => (
+      <AIMenu
+        items={(editor, status) => getCollabAIMenuItems(editor, status)}
+      />
+    ),
+    [],
+  );
+
   const handleCreateVersion = useCallback(
     async (summary?: string, generateAiSummary?: boolean): Promise<void> => {
       const content = editor.blocksToMarkdownLossy();
@@ -700,15 +715,7 @@ export const BlockNoteEditor = forwardRef<
                     </FormattingToolbar>
                   )}
                 />
-                <AIMenuController
-                  aiMenu={() => (
-                    <AIMenu
-                      items={(editor, status) =>
-                        getCollabAIMenuItems(editor, status)
-                      }
-                    />
-                  )}
-                />
+                <AIMenuController aiMenu={aiMenuPanel} />
               </BlockNoteView>
             </EditorErrorBoundary>
 

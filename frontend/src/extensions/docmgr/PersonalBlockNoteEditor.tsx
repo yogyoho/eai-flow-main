@@ -795,6 +795,17 @@ const PersonalBlockNoteEditor = forwardRef<
     [editor],
   );
 
+  // EAI-CUSTOM (bug-3101): AIMenuController renders the `aiMenu` prop AS a
+  // component type (`<aiMenu />`). An inline arrow here gets a fresh identity
+  // on every parent re-render (auto-save state ticks, headings rebuild, …),
+  // which remounts the whole AIMenu subtree and resets its local promptText —
+  // the filled 润色 prompt vanished ~240ms after clicking the menu item.
+  // A referentially stable component keeps AIMenu mounted while its state lives.
+  const aiMenuPanel = useCallback(
+    () => <AIMenu items={getAIMenuItems} />,
+    [getAIMenuItems],
+  );
+
   return (
     <div
       className={className}
@@ -886,9 +897,7 @@ const PersonalBlockNoteEditor = forwardRef<
                 </FormattingToolbar>
               )}
             />
-            <AIMenuController
-              aiMenu={() => <AIMenu items={getAIMenuItems} />}
-            />
+            <AIMenuController aiMenu={aiMenuPanel} />
           </BlockNoteView>
         </div>
       </div>

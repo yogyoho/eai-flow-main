@@ -86,7 +86,7 @@ def _build_system_prompt(has_tools: bool) -> str:
             "You MUST use the applyDocumentOperations tool to modify the document.\n"
             "Rules:\n"
             "- When asked to modify/translate/polish/expand/condense text, call applyDocumentOperations with update operations.\n"
-            "- The `id` field in each operation MUST exactly match the block id from <selected-text>.\n"
+            "- The `id` field in each operation MUST be the block id from <selected-text> followed by a trailing `$` character (e.g. block id `abc123` -> id `abc123$`). Never omit the trailing `$`.\n"
             "- The `block` field MUST be a valid HTML element (e.g. <p>text</p> or <h2>text</h2>).\n"
             "- Do NOT output any explanatory text. Call the tool directly.\n"
             "- Always respond in the same language as the user's input."
@@ -257,7 +257,6 @@ async def collab_ai_chat(request: Request, body: AiChatRequest):
 
     async def event_generator():
         text_id = f"txt-{id(request)}"
-        emitted_ids: set[str] = set()
 
         def _sse(data: dict[str, Any]) -> str:
             return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
@@ -307,14 +306,14 @@ async def collab_ai_chat(request: Request, body: AiChatRequest):
 
                             delta = (parsed.get("choices") or [{}])[0].get("delta") or {}
 
-                            # Text content
-                            if delta.get("content") and delta["content"] not in emitted_ids:
+                            # Text content — every delta must pass through; upstream
+                            # streams legitimately repeat identical short tokens.
+                            if delta.get("content"):
                                 content = delta["content"]
                                 if not text_yielded:
                                     yield _sse({"type": "text-start", "id": text_id})
                                     text_yielded = True
                                 yield _sse({"type": "text-delta", "id": text_id, "delta": content})
-                                emitted_ids.add(content)
 
                             # Tool calls
                             for tc in delta.get("tool_calls") or []:

@@ -62,3 +62,11 @@
   margin-top: 0 !important;
   margin-bottom: 0 !important;
 }
+
+/* ── BlockNote AI input loader (执行中 spinner) ───────────────────────────── */
+/* EAI-CUSTOM (2026-09-04): @blocknote/shadcn SuggestionMenuLoader hardcodes
+   fill="#e8eaed" (near-white) on the progress-activity SVG — invisible on the
+   white combobox input. CSS fill overrides the SVG presentation attribute. */
+.bn-suggestion-menu-loader svg {
+  fill: var(--primary);
+}
