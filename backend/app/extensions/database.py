@@ -1680,11 +1680,13 @@ async def seed_db() -> None:
                         text(
                             "INSERT INTO app_definitions "
                             "(id, app_id, name, description, icon_name, business_domain, stage_tag, "
-                            "path, license_module, admin_only, sort_order, sort_key, is_builtin) "
+                            "path, license_module, admin_only, sort_order, sort_key, is_builtin, is_enabled) "
                             # EAI-CUSTOM: id 列只有 Python ORM default(uuid4)，raw SQL INSERT 拿不到
                             # → 必须显式给 id，否则 NULL 违反 PK → 整个 app-center seed 回滚（domains+apps 全空）
+                            # EAI-CUSTOM (2026-09-06): is_enabled 同理——只有 ORM default，无 server default；
+                            # 全新建库（PG16）上裸 INSERT 缺该列 → NotNullViolation → 应用中心空页面（服务器首装实测）
                             "VALUES (gen_random_uuid(), :app_id, :name, :desc, :icon, :domain, :stage, "
-                            ":path, :license, :admin, :sort, :sort_key, TRUE) "
+                            ":path, :license, :admin, :sort, :sort_key, TRUE, TRUE) "
                             "ON CONFLICT (app_id) DO NOTHING"
                         ),
                         app,
