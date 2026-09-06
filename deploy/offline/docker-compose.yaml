@@ -112,6 +112,9 @@ services:
       - DEER_FLOW_SANDBOX_HOST=host.docker.internal
       # RAGFlow & Temporal 内部服务地址（使用 Docker 服务名而非容器名，避免耦合）
       - RAGFLOW_BASE_URL=http://ragflow:9380
+      # EAI-CUSTOM (2026-09-06): RAGFlow API Key 必须透传——RAGFlowConfig.from_env() 读此变量，
+      # 缺失则知识库/法规库/geo 切片的 RAGFlow 同步全部静默跳过（.env 回填后需 force-recreate gateway）
+      - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
       - TEMPORAL_URL=temporal:7233
       # 合同价格分析技能调用 OCR 服务的地址（见 docker-compose.mcp-cad.yaml `ocr` 服务）
       - OCR_SERVICE_URL=http://ocr:8010
