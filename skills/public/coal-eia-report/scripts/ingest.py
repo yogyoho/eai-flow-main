@@ -145,7 +145,8 @@ def load_stage(stage_path: Path) -> dict:
 # ── 表单族定位：族名 ↔ data/ 文件名（如 industrial ↔ 13_industrial_params.json）──
 
 def family_filename(spec: dict) -> str:
-    return spec["file"]
+    # bug-3208: projection 等派生视图族 file=None(非用户表单)，返回空串由调用方跳过
+    return spec.get("file") or ""
 
 
 def find_family_by_prefix(data_dir: Path, prefix: str) -> tuple[str, str] | None:
@@ -363,6 +364,8 @@ def cmd_forms(args) -> int:
         if only and fam not in only:
             continue
         fname = family_filename(spec)
+        if not fname:  # bug-3208: 派生视图族(file=None)不生成空白表单
+            continue
         target = data_dir / fname
         if target.exists() and not args.force:
             skipped += 1
@@ -565,7 +568,10 @@ def cmd_check(args) -> int:
     for fam, spec in stage.get("forms", {}).items():
         if not spec.get("required", True):
             continue
-        p = data_dir / family_filename(spec)
+        fname = family_filename(spec)
+        if not fname:  # bug-3208: 派生视图族(file=None)不进完备性门
+            continue
+        p = data_dir / fname
         if not p.exists():
             missing_forms.append(f"{fam} ({family_filename(spec)})")
             continue
@@ -592,7 +598,10 @@ def cmd_check(args) -> int:
     # ── bug-3036 质量门（WARN 不阻断门1——完备性先行；下游 build 空槽/残留门兜底强制）────
     quality: list[str] = []
     for fam, spec in stage.get("forms", {}).items():
-        p = data_dir / family_filename(spec)
+        fname = family_filename(spec)
+        if not fname:  # bug-3208: 派生视图族(file=None)不进质量扫描
+            continue
+        p = data_dir / fname
         if not p.exists() or spec.get("format") == "csv" or "columns" in spec:
             continue
         try:
