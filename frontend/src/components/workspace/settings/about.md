@@ -1,8 +1,8 @@
-# 🦌 [About DeerFlow 2.0](https://github.com/bytedance/deer-flow)
+# 🦌 [About EAIFlow](https://github.com/bytedance/deer-flow)
 
 > **From Open Source, Back to Open Source**
 
-**DeerFlow** (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**) is a community-driven SuperAgent harness that researches, codes, and creates.
+**EAIFlow** is an enterprise AI agent platform built on **DeerFlow** (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**), a community-driven SuperAgent harness that researches, codes, and creates.
 With the help of sandboxes, memories, tools and skills, it handles
 different levels of tasks that could take minutes to hours.
 
