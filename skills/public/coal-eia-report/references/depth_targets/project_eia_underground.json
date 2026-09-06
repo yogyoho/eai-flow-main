@@ -1,0 +1,32 @@
+{
+  "stage": "project_eia_underground",
+  "generated": "2026-09-07",
+  "confidence": "absolute_floor_phase1",
+  "source": "唯一实测锚点=月儿湾矿井及选煤厂环评报告书 ch5 地表沉陷预测及影响评价（走查 docs/designs/2026-09-06-coal-eia-v2-yueerwan-ch5-walkthrough.md §1：正文 33,862 字符/287 段/13 表——underground stage 数字密度最高单章）。floor_chars 口径沿 planning_eia.json：实测×0.6 保守折减（对齐深度门 effective_chars 剔除标题/表格行的口径——生成稿表格行不计 eff），ch5=33,862×0.6≈20,300。其余章地板=按样本章权重（guojiatai 目录页距/月儿湾总章量 ~30.9 万字符）与章要素链密度定级的保守经验值（非逐章实测），二期 calibrate 样例校准（designs/coal-eia-report-v2.md 一期/二期范围 3）。",
+  "measured_note": "ch5 实测 33,862（走查 §1 章节地图）为唯一逐章实测锚点；ch6 生态/ch7 地下水在月儿湾/郭家台目录中页距仅次于 ch5（重章：76pp/72pp vs ch5 18pp——页距含图表，字符密度低于沉陷章），floor 按保守折减设定；ch16 总量控制=可选章（1/6 在场）最低。",
+  "measured_source_chars": {
+    "ch5": 33862
+  },
+  "chapters": {
+    "ch0": {"floor_chars": 2500},
+    "ch1": {"floor_chars": 9000},
+    "ch2": {"floor_chars": 15000},
+    "ch3": {"floor_chars": 6000},
+    "ch4": {"floor_chars": 5000},
+    "ch5": {"floor_chars": 20300},
+    "ch6": {"floor_chars": 18000},
+    "ch7": {"floor_chars": 15000},
+    "ch8": {"floor_chars": 6000},
+    "ch9": {"floor_chars": 9000},
+    "ch10": {"floor_chars": 4500},
+    "ch11": {"floor_chars": 5000},
+    "ch12": {"floor_chars": 4000},
+    "ch13": {"floor_chars": 5000},
+    "ch14": {"floor_chars": 2500},
+    "ch15": {"floor_chars": 4000},
+    "ch16": {"floor_chars": 1200},
+    "ch17": {"floor_chars": 4000},
+    "ch18": {"floor_chars": 2500},
+    "ch19": {"floor_chars": 8000}
+  }
+}

@@ -1,0 +1,397 @@
+{
+  "generated": "2026-09-06",
+  "purpose": "per-sample 实体注册表（生成时实体泄漏检测清单，替代旧单文件 references/sample_entities.md）",
+  "schema": "{sample_slug, entities:{projects/mines/orgs/places/sensitive}, generic_terms, aux:{people/doc_numbers/privacy_notes}, notes}",
+  "samples": [
+    {
+      "slug": "baiyinhua2",
+      "file": "sample_entities/baiyinhua2.json",
+      "counts": {
+        "projects": 7,
+        "mines": 0,
+        "orgs": 10,
+        "places": 14,
+        "sensitive": 3
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "baiyinhua3",
+      "file": "sample_entities/baiyinhua3.json",
+      "counts": {
+        "projects": 6,
+        "mines": 3,
+        "orgs": 12,
+        "places": 7,
+        "sensitive": 6
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "balasu",
+      "file": "sample_entities/balasu.json",
+      "counts": {
+        "projects": 9,
+        "mines": 7,
+        "orgs": 13,
+        "places": 15,
+        "sensitive": 8
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "gaotaoyao",
+      "file": "sample_entities/gaotaoyao.json",
+      "counts": {
+        "projects": 13,
+        "mines": 15,
+        "orgs": 14,
+        "places": 19,
+        "sensitive": 4
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 7
+      }
+    },
+    {
+      "slug": "guojiatai",
+      "file": "sample_entities/guojiatai.json",
+      "counts": {
+        "projects": 7,
+        "mines": 5,
+        "orgs": 10,
+        "places": 19,
+        "sensitive": 12
+      },
+      "aux": {
+        "people": 1,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "hegang",
+      "file": "sample_entities/hegang.json",
+      "counts": {
+        "projects": 9,
+        "mines": 15,
+        "orgs": 14,
+        "places": 14,
+        "sensitive": 2
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 2
+      }
+    },
+    {
+      "slug": "hengcheng",
+      "file": "sample_entities/hengcheng.json",
+      "counts": {
+        "projects": 8,
+        "mines": 9,
+        "orgs": 9,
+        "places": 16,
+        "sensitive": 9
+      },
+      "aux": {
+        "people": 1,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "huating",
+      "file": "sample_entities/huating.json",
+      "counts": {
+        "projects": 6,
+        "mines": 15,
+        "orgs": 13,
+        "places": 13,
+        "sensitive": 2
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 4
+      }
+    },
+    {
+      "slug": "huojitu",
+      "file": "sample_entities/huojitu.json",
+      "counts": {
+        "projects": 0,
+        "mines": 21,
+        "orgs": 2,
+        "places": 3,
+        "sensitive": 0
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "jiulongchuan",
+      "file": "sample_entities/jiulongchuan.json",
+      "counts": {
+        "projects": 5,
+        "mines": 3,
+        "orgs": 10,
+        "places": 13,
+        "sensitive": 18
+      },
+      "aux": {
+        "people": 6,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "lingtai",
+      "file": "sample_entities/lingtai.json",
+      "counts": {
+        "projects": 10,
+        "mines": 7,
+        "orgs": 12,
+        "places": 15,
+        "sensitive": 3
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 4
+      }
+    },
+    {
+      "slug": "nalinxili",
+      "file": "sample_entities/nalinxili.json",
+      "counts": {
+        "projects": 6,
+        "mines": 5,
+        "orgs": 13,
+        "places": 10,
+        "sensitive": 10
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "naomaohu2025",
+      "file": "sample_entities/naomaohu2025.json",
+      "counts": {
+        "projects": 5,
+        "mines": 7,
+        "orgs": 15,
+        "places": 16,
+        "sensitive": 12
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 4,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "ningtiaota",
+      "file": "sample_entities/ningtiaota.json",
+      "counts": {
+        "projects": 0,
+        "mines": 6,
+        "orgs": 0,
+        "places": 0,
+        "sensitive": 0
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "santanghu",
+      "file": "sample_entities/santanghu.json",
+      "counts": {
+        "projects": 11,
+        "mines": 6,
+        "orgs": 11,
+        "places": 11,
+        "sensitive": 5
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 2
+      }
+    },
+    {
+      "slug": "sijitun",
+      "file": "sample_entities/sijitun.json",
+      "counts": {
+        "projects": 3,
+        "mines": 0,
+        "orgs": 10,
+        "places": 14,
+        "sensitive": 10
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "weizhou",
+      "file": "sample_entities/weizhou.json",
+      "counts": {
+        "projects": 15,
+        "mines": 14,
+        "orgs": 14,
+        "places": 18,
+        "sensitive": 7
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 1
+      }
+    },
+    {
+      "slug": "wujianfang",
+      "file": "sample_entities/wujianfang.json",
+      "counts": {
+        "projects": 15,
+        "mines": 10,
+        "orgs": 13,
+        "places": 11,
+        "sensitive": 6
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 4
+      }
+    },
+    {
+      "slug": "yakeshi2026",
+      "file": "sample_entities/yakeshi2026.json",
+      "counts": {
+        "projects": 6,
+        "mines": 7,
+        "orgs": 13,
+        "places": 15,
+        "sensitive": 9
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 5,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "yimin",
+      "file": "sample_entities/yimin.json",
+      "counts": {
+        "projects": 7,
+        "mines": 3,
+        "orgs": 14,
+        "places": 9,
+        "sensitive": 5
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "yimin3500",
+      "file": "sample_entities/yimin3500.json",
+      "counts": {
+        "projects": 10,
+        "mines": 6,
+        "orgs": 8,
+        "places": 9,
+        "sensitive": 7
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "yining",
+      "file": "sample_entities/yining.json",
+      "counts": {
+        "projects": 3,
+        "mines": 20,
+        "orgs": 14,
+        "places": 23,
+        "sensitive": 8
+      },
+      "aux": {
+        "people": 0,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "yitai",
+      "file": "sample_entities/yitai.json",
+      "counts": {
+        "projects": 9,
+        "mines": 6,
+        "orgs": 11,
+        "places": 11,
+        "sensitive": 6
+      },
+      "aux": {
+        "people": 3,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    },
+    {
+      "slug": "yueerwan",
+      "file": "sample_entities/yueerwan.json",
+      "counts": {
+        "projects": 12,
+        "mines": 3,
+        "orgs": 13,
+        "places": 15,
+        "sensitive": 11
+      },
+      "aux": {
+        "people": 4,
+        "doc_numbers": 0,
+        "privacy_notes": 0
+      }
+    }
+  ],
+  "skipped": [
+    {
+      "slug": "tarangaole",
+      "reason": "outline 无 entities 节，跳过"
+    }
+  ]
+}

@@ -1,0 +1,442 @@
+{
+  "version": "1.0",
+  "generated": "2026-09-06",
+  "scope": "coal-eia-report v2 环评版标准索引（T4）。数据源：SKILL.md「引用的核心标准」+ references/report_structure.md 附录标准索引表 + 样例 digest 锚点（hengcheng/yakeshi2026）。",
+  "tier_policy": {
+    "framework": "导则/法规类——编号+名称经人工核实（verified=true）后可直接枚举引用；不承载限值",
+    "quality_limit": "环境质量标准——承载限值表；编号可枚举，但任何限值/类别-限值对应在写入正文前必须人工对照标准原文（needs_verification=true）",
+    "emission_limit": "污染物排放/污染控制标准——同 quality_limit",
+    "method_param": "方法/参数类标准——计算参数（如 A 值）取值须人工核实后才能进入计算",
+    "pending": "编号或年份未核实（仅 discovery 线索）——引用时年份留待核实，禁补猜"
+  },
+  "red_line": "限值须人工核实后才可断言；GB/HJ 条款不采信 web_search（memory: websearch-unreliable-for-gb-compliance，6/6 不可引用实证）。规范编号/年份仅允许从本清单枚举（合约 XS3），LLM 禁止凭记忆生成任何标准号、年份、条款号、限值。",
+  "standards": [
+    {
+      "code": "HJ 130-2019",
+      "title": "规划环境影响评价技术导则 总纲",
+      "role": "规划环评通用工作程序/技术要求（结构主纲）",
+      "chapters": "总则；全文程序性要求",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "HJ 463-2009",
+      "title": "规划环境影响评价技术导则 煤炭工业矿区总体规划",
+      "role": "煤炭矿区规划环评行业导则（章节框架/内容要求）",
+      "chapters": "全文（13 章框架主依据）",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill",
+      "note": "与 HJ 464 并录：两者适用对象与现行有效性须人工核实后取舍，禁 LLM 记忆选择（F 体检同向）"
+    },
+    {
+      "code": "HJ 464",
+      "title": "规划环境影响评价技术导则 煤炭矿区总体规划",
+      "role": "煤炭矿区规划环评行业导则（report_structure 附录收录）",
+      "chapters": "全文",
+      "tier": "pending",
+      "needs_verification": false,
+      "verified": false,
+      "origin": "report_structure.md 附录（未带年份）",
+      "note": "近年常引作 HJ 464-2009，须人工核实后补年份；与 HJ 463-2009 的关系同上"
+    },
+    {
+      "code": "HJ 2.1-2016",
+      "title": "环境影响评价技术导则 总纲",
+      "role": "建设项目环评总纲（项目环评 stage 用；规划环评中作方法参照）",
+      "chapters": "总则；预测与评价方法",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill",
+      "note": "report_structure 附录引名作「建设项目环境影响评价技术导则 总纲」，与本名不一致——以人工核实名称为准"
+    },
+    {
+      "code": "HJ 2.2-2018",
+      "title": "环境影响评价技术导则 大气环境",
+      "role": "大气评价等级/范围/预测方法（AERSCREEN 估算模式适用性）",
+      "chapters": "总则(评价等级)；预测与评价(大气)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "HJ 2.3-2018",
+      "title": "环境影响评价技术导则 地表水环境",
+      "role": "地表水评价等级/范围/预测方法",
+      "chapters": "总则(评价等级)；预测与评价(地表水)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "HJ 2.4-2021",
+      "title": "环境影响评价技术导则 声环境",
+      "role": "声评价等级/预测方法（点源+线源衰减）",
+      "chapters": "总则(评价等级)；预测与评价(声)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill",
+      "note": "样例(横城)引 HJ 2.4-2009 旧版——修编报告引旧版常见；生成引用以人工确认的现行版本为准（§5-F 同向）"
+    },
+    {
+      "code": "HJ 610-2016",
+      "title": "环境影响评价技术导则 地下水环境",
+      "role": "地下水评价等级/导水裂隙带影响评价要求",
+      "chapters": "总则(评价等级)；预测与评价(地下水)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill（样例锚点 hengcheng §二 standard_limit）"
+    },
+    {
+      "code": "HJ 19-2022",
+      "title": "环境影响评价技术导则 生态影响",
+      "role": "生态评价等级/调查与预测方法（替代旧 HJ 19-2011，版本人工核实）",
+      "chapters": "总则(评价等级)；现状与预测(生态)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "HJ 964-2018",
+      "title": "环境影响评价技术导则 土壤环境（试行）",
+      "role": "土壤评价等级/碱化盐化评分法适用要求",
+      "chapters": "总则(评价等级)；预测与评价(土壤)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill（样例锚点 hengcheng §二 standard_limit）"
+    },
+    {
+      "code": "HJ 169-2018",
+      "title": "建设项目环境风险评价技术导则",
+      "role": "风险识别/源项分析/后果预测方法（风险→应急呼应义务 EO2 方法源）",
+      "chapters": "环境风险评价(章或节)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "HJ 710",
+      "title": "生物多样性观测技术导则",
+      "role": "生物多样性调查方法（生态现状）",
+      "chapters": "现状调查(生态)",
+      "tier": "pending",
+      "needs_verification": false,
+      "verified": false,
+      "origin": "report_structure.md 附录（未带年份，禁补猜）"
+    },
+    {
+      "code": "HJ 192",
+      "title": "生态环境状况评价技术规范",
+      "role": "生态环境状况指数评价（回顾性/现状）",
+      "chapters": "现状与回顾(生态)",
+      "tier": "pending",
+      "needs_verification": false,
+      "verified": false,
+      "origin": "report_structure.md 附录 + 样例 hengcheng ch4 适用标准（均未带年份）"
+    },
+    {
+      "code": "HJ 446",
+      "title": "清洁生产标准 煤炭采选业",
+      "role": "清洁生产水平评价指标（清洁生产与循环经济章）",
+      "chapters": "清洁生产与循环经济",
+      "tier": "pending",
+      "needs_verification": false,
+      "verified": false,
+      "origin": "report_structure.md 附录（未带年份）；现行版本号须人工核实"
+    },
+    {
+      "code": "GB 3095-2012",
+      "title": "环境空气质量标准",
+      "role": "环境空气功能区类别与浓度限值（capacity:air 目标浓度源）",
+      "chapters": "总则(功能区划/标准)；现状(大气)；承载力(容量)",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB 3838-2002",
+      "title": "地表水环境质量标准",
+      "role": "地表水水域功能分类与水质限值（capacity:water 水质目标源）",
+      "chapters": "总则(功能区划/标准)；现状(地表水)；预测(地表水)",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB/T 14848-2017",
+      "title": "地下水质量标准",
+      "role": "地下水质量类别划分与限值",
+      "chapters": "总则(标准)；现状(地下水)；预测(地下水)",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB 3096-2008",
+      "title": "声环境质量标准",
+      "role": "声环境功能区类别与限值（噪声合约 XS3 三元组锚点）",
+      "chapters": "总则(功能区划/标准)；现状(声)；预测(声)",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill + 样例锚点 hengcheng（anomalies §9：原文 9 处空括号漏排本号）",
+      "note": "横城原文 9 处「《声环境质量标准》（）」空括号漏排——门 1 标准号非空+格式体检的立项实证（走查 §5-F）"
+    },
+    {
+      "code": "GB 15618-2018",
+      "title": "土壤环境质量 农用地土壤污染风险管控标准（试行）",
+      "role": "农用地土壤风险筛选值/管制值",
+      "chapters": "总则(标准)；现状(土壤)",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB 36600-2018",
+      "title": "土壤环境质量 建设用地土壤污染风险管控标准（试行）",
+      "role": "建设用地土壤风险筛选值/管制值（工业场地/固废场址）",
+      "chapters": "总则(标准)；现状(土壤)",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB 18599-2020",
+      "title": "一般工业固体废物贮存和填埋污染控制标准",
+      "role": "矸石/渣场贮存填埋污染控制（固废预测与措施）",
+      "chapters": "预测(固废)；减缓措施(固废)",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB 20426-2006",
+      "title": "煤炭工业污染物排放标准",
+      "role": "煤炭工业锅炉/采选污染物排放限值（行业排放主标准）",
+      "chapters": "总则(排放标准)；预测(大气/地表水)；措施",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "GB 12348-2008",
+      "title": "工业企业厂界环境噪声排放标准",
+      "role": "厂界噪声排放限值（noise 计算限值绑定源）",
+      "chapters": "预测(声)；减缓措施(噪声)；监测计划",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "sample_verbatim（hengcheng §二 standard_limit：GB 12348-2008 3 类）"
+    },
+    {
+      "code": "GB 16297",
+      "title": "大气污染物综合排放标准",
+      "role": "大气污染物综合排放限值（无组织排放监控）",
+      "chapters": "总则(排放标准)；预测(大气)",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "report_structure.md 附录（未带年份）",
+      "note": "常见引作 GB 16297-1996，年份须人工核实后补"
+    },
+    {
+      "code": "GB 8978",
+      "title": "污水综合排放标准",
+      "role": "污水综合排放限值（矿井水/生活污水排放）",
+      "chapters": "总则(排放标准)；预测(地表水)；措施(水)",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "report_structure.md 附录（未带年份）",
+      "note": "年份须人工核实后补（1998 版之说禁凭记忆写入）"
+    },
+    {
+      "code": "GB 18597",
+      "title": "危险废物贮存污染控制标准",
+      "role": "危废暂存污染控制（机修危废/废矿物油）",
+      "chapters": "减缓措施(固废)",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "report_structure.md 附录（未带年份）"
+    },
+    {
+      "code": "GB/T 13201-91",
+      "title": "制定地方大气污染物排放标准的技术方法",
+      "role": "A 值法区域大气环境容量测算参数源（formula:capacity:air）",
+      "chapters": "预测(大气)；承载力(大气容量)",
+      "tier": "method_param",
+      "needs_verification": true,
+      "verified": true,
+      "origin": "sample_verbatim（hengcheng §三 calc_methods：A 值法 GB/T 13201-91）",
+      "note": "A 值分区取值表未录入——进入 capacity:air 冻结计算前须人工核实"
+    },
+    {
+      "code": "《中华人民共和国环境保护法》",
+      "title": "中华人民共和国环境保护法（2014 修订）",
+      "role": "法律依据",
+      "chapters": "总则(编制依据)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "《中华人民共和国环境影响评价法》",
+      "title": "中华人民共和国环境影响评价法（2018 修正）",
+      "role": "法律依据（规划环评直接依据）",
+      "chapters": "总则(编制依据)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "《规划环境影响评价条例》",
+      "title": "规划环境影响评价条例（国务院令第 559 号）",
+      "role": "行政法规依据（跟踪评价义务来源）",
+      "chapters": "总则(编制依据)；环境管理与跟踪评价",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "v1_skill"
+    },
+    {
+      "code": "《建设项目环境保护管理条例》",
+      "title": "建设项目环境保护管理条例",
+      "role": "行政法规依据（项目环评 stage）",
+      "chapters": "总则(编制依据)",
+      "tier": "pending",
+      "needs_verification": false,
+      "verified": false,
+      "origin": "report_structure.md §1.2.2（修订年份待人工核实）"
+    },
+    {
+      "code": "《环境影响评价公众参与办法》",
+      "title": "环境影响评价公众参与办法",
+      "role": "公众参与程序要求（公示次数/问卷方法）",
+      "chapters": "公众参与",
+      "tier": "pending",
+      "needs_verification": false,
+      "verified": false,
+      "origin": "report_structure.md ch12（版本/适用性待人工核实——规划环评公参适用性须确认）"
+    },
+    {
+      "code": "《煤炭矿区总体规划管理暂行规定》",
+      "title": "煤炭矿区总体规划管理暂行规定",
+      "role": "规章依据（修编动态管理条款来源）",
+      "chapters": "总则(编制依据/任务由来)",
+      "tier": "pending",
+      "needs_verification": false,
+      "verified": false,
+      "origin": "report_structure.md §1.1.1/1.2.3",
+      "note": "与下条新规的替代关系须人工核实"
+    },
+    {
+      "code": "《煤炭矿区总体规划管理规定》",
+      "title": "煤炭矿区总体规划管理规定（国家发展改革委令第 29 号）",
+      "role": "规章依据（样例引述 2025-02-01 施行）",
+      "chapters": "总则(编制依据/任务由来)",
+      "tier": "framework",
+      "needs_verification": false,
+      "verified": true,
+      "origin": "sample_verbatim（yakeshi2026 文号/批复类）",
+      "note": "对具体报告的适用版本以人工确认为准"
+    }
+  ],
+  "limit_tables": {
+    "_comment": "限值查找表：全部 needs_verification=true。仅登记样例逐字锚点行；其余档位未录入前，达标判定一律输出「需人工对照」，禁自动断言。补录唯一通道=人工对照标准原文录入。",
+    "gb3096_zone_limits": {
+      "desc": "声环境质量标准 功能区环境噪声限值",
+      "code_ref": "GB 3096-2008",
+      "needs_verification": true,
+      "verified": false,
+      "rows": [
+        {"category": "3 类", "day": 65, "night": 55, "unit": "dB(A)", "origin": "sample_verbatim(hengcheng §二 standard_limit)"}
+      ],
+      "note": "仅 3 类档有样例锚点；0/1/2/4a/4b 类档须人工对照原文录入"
+    },
+    "gb12348_boundary_limits": {
+      "desc": "工业企业厂界环境噪声排放限值",
+      "code_ref": "GB 12348-2008",
+      "needs_verification": true,
+      "verified": false,
+      "rows": [
+        {"category": "3 类", "day": 65, "night": 55, "unit": "dB(A)", "origin": "sample_verbatim(hengcheng §二 standard_limit；walkthrough ch6 6.5 限值绑定)"}
+      ],
+      "note": "仅 3 类档有样例锚点；其余档位人工核实后补"
+    },
+    "gb3095_concentration_limits": {
+      "desc": "环境空气污染物基本项目浓度限值",
+      "code_ref": "GB 3095-2012",
+      "needs_verification": true,
+      "verified": false,
+      "rows": [],
+      "note": "限值表未录入——capacity:air 目标浓度须人工核实录入后冻结"
+    },
+    "gb3838_category_limits": {
+      "desc": "地表水环境质量标准基本项目标准限值（按水域类别）",
+      "code_ref": "GB 3838-2002",
+      "needs_verification": true,
+      "verified": false,
+      "rows": [],
+      "note": "未录入——capacity:water 水质目标须人工核实"
+    },
+    "gbt14848_category_limits": {
+      "desc": "地下水质量分类指标与限值",
+      "code_ref": "GB/T 14848-2017",
+      "needs_verification": true,
+      "verified": false,
+      "rows": [],
+      "note": "未录入"
+    },
+    "gb20426_emission_limits": {
+      "desc": "煤炭工业污染物排放限值（锅炉/采选）",
+      "code_ref": "GB 20426-2006",
+      "needs_verification": true,
+      "verified": false,
+      "rows": [],
+      "note": "未录入"
+    },
+    "gbt13201_a_value": {
+      "desc": "A 值法区域大气环境容量测算参数（总量控制区 A 值）",
+      "code_ref": "GB/T 13201-91",
+      "needs_verification": true,
+      "verified": false,
+      "rows": [],
+      "note": "A 值分区表未录入——formula:capacity:air 冻结前人工核实"
+    }
+  },
+  "gate1_code_checks": {
+    "desc": "门 1 标准号体检（走查 §5-F 立项：横城原文 9 处空括号漏排）——对 standards_confirm 表单与成文引用双侧生效",
+    "allowed_patterns": [
+      "^HJ\\s?\\d+(\\.\\d+)?(-\\d{4})?$",
+      "^GB(/T)?\\s?\\d+(\\.\\d+)?(-\\d{4})?$",
+      "^《[^《》]+》$"
+    ],
+    "rules": [
+      "标准号非空——禁止「（）/()」空括号占位（横城 9 处实证）",
+      "年份为 4 位数字且与 standards[].code 登记一致；未登记年份的 pending 条目引用时留待核实，禁补猜",
+      "引用的标准号必须能在本文件 standards[].code 或法律全称中找到（XS3 联动枚举约束）",
+      "原文笔误升级：样例正文量纲级错误（如「长城全长 27185 千米」应为米）进 tier1 人工核实清单，不自动采信"
+    ]
+  }
+}

@@ -1,436 +1,263 @@
 ---
 name: coal-eia-report
-description: |
-  当用户请求为煤炭矿区项目生成、创建或编写环境影响评价报告书（环评报告）时使用此技能。
-  此技能优先从知识工厂（Knowledge Factory）获取报告模板元数据——通过 MCP 工具 knowledge-factory_kf_resolve_template 
-  智能匹配已抽取和编辑优化的模板，使用模板中的 generation_hint、compliance_rules、content_contract 
-  等元数据驱动高质量报告生成。模板不可用时自动回退到内置参考文档。
-  触发场景：用户提及"环评报告""环境影响评价报告书""煤炭环评""矿区总体规划环评""环境影响报告书"
-  "环评报告书生成""环评编写""环评报告编制"等关键词；
-  或需要在煤炭/矿业项目中编写环境影响评价相关文档时。
-  即使用户没有明确说"生成报告"，只要涉及煤炭项目环境影响评价文档编写，都应使用此技能。
+description: >
+  煤矿环境影响评价报告书编写技能（管线化 v2）。触发匹配（bug-2234 同构）：凡用户要求编写/
+  编制/生成/撰写矿区总体规划环境影响报告书（规划环评）、矿井/露天矿建设项目环境影响报告书
+  （项目环评）、环评报告书、环境影响评价报告、环评章节（如地表沉陷预测/环境承载力分析）——
+  不限矿区/矿井、不限地区、不限新建/改扩建/修编——必须立即加载本技能并严格按其管线执行，
+  不得即兴自创问卷、表单、章集或输出格式。stage 选择：planning_eia=矿区总体规划环评 /
+  project_eia_underground=井工矿建设项目环评（openpit / post_eia 二期立项）。依据 HJ 130、
+  HJ 463、HJ 2.1–2.4 系列；数字永不经过 LLM，正文只写 {{SLOT:key}}/{{TABLE:族}} 由脚本注入。
+license: MIT
+# NOTE: allowed-tools removed 2026-09-06. Declaring allowed-tools on ANY enabled skill
+# makes skills/tool_policy.py treat it as a GLOBAL agent-wide whitelist (union across all
+# enabled skills), stripping every other tool incl. MCP tools (e.g. knowledge-factory_kf_*).
+# That starved the whole agent to 6 built-in tools and broke knowledge-factory-dependent
+# skills (bug-186). Do NOT re-add allowed-tools here until that filter is scoped to the
+# active skill.
 ---
 
-# 煤炭矿区总体规划环评报告编写技能
+# 煤炭环境影响评价报告制作技能 v2
 
-## ⛔ 关键规则
+## 角色
 
-### 关于输出方式
+你是煤矿环境影响评价报告编写专家，精通 HJ 130-2019（规划环评总纲）、HJ 463-2009（煤炭工业矿区总体规划环评）、HJ 2.1–2.4 要素导则系列。
+你不手算、不手写数字——计算由 `formula_runner.py` 冻结，数字由 `build_output.py` 注入；
+你的职责：收集数据、写叙述文字、守住确认门、向用户如实呈现异常。
 
-1. 本技能生成**结构化 Markdown 文本**，通过 project MCP 的 `project_write_chapter` 工具逐章写入项目文档空间，供用户在文档空间中编辑排版后导出 Word。
-2. 不直接生成 .docx 文件——用户会在文档空间中自行编辑和排版，然后通过文档空间的 Word 导出功能获得最终文档。
-3. 不使用 `word-document-server` MCP 工具、`markdown-to-docx` skill 或自写 Python 脚本来生成 Word。
-4. 每章生成后通过 `project_write_chapter` 写入，不将全部章节攒到最后一次性写入。
+## 红线（P1–P5，违反任何一条即停）
 
-### 关于模板获取（⛔ 强制规则 — 违反则报告失败）
+1. **禁联网搜索项目信息**。项目内部数据只允许 `ask_clarification` 向用户要，或从上传文件提取。联网仅限标准规范 discovery，且 `web_search` 结果不可直接引用条款号/限值（仅作线索，人工核实——GB/HJ 限值实测 6/6 不可引用）。
+2. **缺失信息绝不编造/推断/估算/补全**。缺就问用户；用户不给就留 `[待确认]` 槽位并在汇报中列出。**监测数据/岩移参数来源必须枚举 `user_monitoring`/`analog_mine`**（新建项目监测数据多为类比矿，D4）；沉陷参数必带 `param_source` 三值枚举（规范推荐/实测回归/类比矿实测）——缺枚举值视同缺项，禁默认值填充。
+3. **样例/范文只学范式禁抄**。`references/sample_entities/` 注册表内任何实体（项目名/矿井名/企业/地名/敏感目标/文号/产能）禁入本项目正文；范文数值禁抄（本项目数值只经 `{{SLOT:key}}`）。
+4. **历史口径原样保留 + 口径标签绑定**。修编样本原规划/本次规划双口径并存（`*_before`/`*_after` 成对字段），禁混同、禁把旧口径数值改写为新值（牙克石 234.17/232.62 km²、伊敏 144/154 Mt/a 实证）；多口径并存各带标签后才能 exact_match，禁混同引用。
+5. **标准编号/年份/限值只从 `references/standards_index.json` 枚举**，禁凭记忆生成；限值 `needs_verification=true` 条目须人工对照标准原文后才可写成断言，未录入档写「需人工对照」不下结论。
+6. **数字永不经过 LLM**：叙述只写 `{{SLOT:key}}`（冻结计算输出）或 `{{TABLE:族}}`（表单渲染）；开采沉陷软件成果（变形指标/沉陷面积等）走表单转录注入，禁手抄更禁公式硬凑。SL1 合约要求残留=0。
 
-5. **⛔ 必须第一步调用 `knowledge-factory_kf_resolve_template` 获取知识工厂模板元数据。** 这不是可选步骤——在生成任何章节内容之前，你必须先调用此 MCP 工具。调用参数：
-   ```
-   knowledge-factory_kf_resolve_template(
-     domain_keywords=["环评报告", "环境影响评价"],
-     industry="煤炭"
-   )
-   ```
-   如果返回 `found=true`，后续每章的生成**必须基于返回的模板元数据**（generation_hint、content_contract.key_elements、compliance_rules、table_schemas 等），而不是 `references/` 下的静态文档。
-6. **仅当** MCP 工具返回 `found=false` **或调用超时/报错**时，才回退到读取 `references/` 下的 markdown 文件。回退时必须向用户说明："知识工厂模板不可用，使用内置参考文档生成"。
-7. **⛔ 禁止跳过步骤 5 直接用内置参考文档生成。** 如果你发现自己没有调用 `knowledge-factory_kf_resolve_template` 就开始写内容，**立即停止**，返回步骤 5。
-
-### 关于仿写约束
-
-7. **禁止照搬**：不得将参考文档或样例中的原文直接复制到生成内容中。参考文档仅供方法论参考（章节结构、论述逻辑、技术路线），不提供内容素材。
-8. **方法论参考**：从样本中学习的仅是"如何论述某类问题"的方法论，如"大气环境影响评价应先分析污染源、再预测浓度分布、最后评估达标情况"，而非具体的文字表述。
-9. **实体替换**：生成内容中必须使用当前项目的实体信息（矿区名称、井田名称、产能、面积等），绝不能出现样本报告中的原始实体名。
-10. **[待补充] 标注**：对于用户提供信息不足以确定的内容，使用 `[待补充]` 占位符并附注释说明需要补充什么信息。典型场景：具体监测数据、工程设计参数、专项评价结论等。
-11. **实体泄漏检测**：每章写入前必须进行实体泄漏扫描——检查生成内容是否包含 `references/sample_entities.md` 中列出的已知样本实体名（包括项目名称、矿井名称、企业名称、地理位置、敏感目标、行政区划、产能数值、文号等所有类别）。如检测到泄漏，必须替换为当前项目对应实体或 `[待补充]`。
-12. **数值编造禁止**：不得编造具体数值（如污染物浓度、投资金额、占地面积）。缺少数据时使用 `[XX]` 占位符并提示用户补充。
-
-### 关于执行顺序
-
-13. 每轮只生成**一章**，生成后通过 `project_write_chapter` 写入，向用户报告该章摘要后进入下一章。
-14. 使用 `project_list_chapters` 工具查看已生成和待生成章节的进度。
-15. 多章生成时按依赖顺序批量调度：先导性章节（第1-3章概述性内容）→ 分析性章节（第4-8章专题评价）→ 综合性章节（第9-13章总结与措施）。
-
-### 关于工具失败（防止死循环）
-
-16. **工具调用失败不得盲目重试——包括沙箱文件工具。** 任何工具（MCP 或沙箱 `write_file`/`str_replace`/`read_file`）出错或产生不正确结果时，**禁止用同样参数重试**；最多修正后重试一次，**连续 2 次失败必须停止并如实报告**。特别注意沙箱文件编辑序列 `read_file→发现"问题"→str_replace/write_file 修复→read_file 再检查→再修复→...`——这是螺旋式死循环的精确模式，必须在一开始就避免。如果发现已落盘的报告文件内容不对，不要尝试局部 `str_replace` "修补"——**用完整内容 `write_file`（`append=false`）直接覆盖该文件**，也不要用 `read_file` 读回来验证。规则 16 是对附加到规则 4-15 之上的全覆盖防护。
-
----
-
-## 概述
-
-此技能为煤炭矿区总体规划项目生成专业的环境影响评价报告书（环评报告）。优先从知识工厂获取报告模板元数据，利用模板中从样本报告抽取的结构化知识（生成提示、合规规则、内容契约）驱动更精准的报告生成。当知识工厂模板不可用时，自动回退到内置参考文档。
-
-报告涵盖煤炭矿区总体规划环评的全部13章内容，包括概述、环境现状、环境影响预测与评价、环境保护措施、公众参与、环境管理与监测等完整章节。
-
-生成的内容为结构化 Markdown，逐章通过 `project_write_chapter` 写入文档空间供用户后续编辑排版和 Word 导出。
-
-### 两种使用路径
-
-本技能支持两种工作模式，按场景选择：
-
-**项目驱动路径（推荐，适用于 700 页级正式编制）**：在项目管理页面创建写作项目 → 选择环评报告模板 + 工作流模板 → 组建团队 → 启动流程 → AI 在流程中逐章编写初稿（通过 `project_write_chapter` 写入项目文档空间）→ 多人分工编辑和确认 → 组长提交 → 部门负责人审核。此路径提供完整的审批链、版本管理和协作编辑功能，是正式编制环评报告的标准方式。
-
-**独立编写路径（个人快速起草）**：在对话页面直接与 AI 协同 → AI 生成报告。此路径无需项目管理前置，适合单人快速起草初稿、技术论证或方案比选。若新对话中缺少项目上下文（`project_id` 不可得），`project_write_chapter` 等工具不可用——此时 AI 按以下方式执行：
-
-1. 不追问用户"请提供项目 ID"——独立编写路径本身不需要项目。
-2. **每章一个独立文件**（700 页报告无法在一轮内完成，必须分文件）：每章用一次 `write_file`（`append=false`）写入 `/mnt/user-data/outputs/{项目名称}/ch_{N}.md`（如 `ch_01.md`）。
-3. 全部章节写完后，用 `bash cat` 合并为 `{项目名称}环评报告.md`，然后用 `present_files` 展示。
-4. **⛔ 死循环防护 — 严格禁止以下操作（违反即触发 FORCED STOP）：**
-   - ❌ **`append`** — 禁止向已有报告文件追加内容（会制造重复段落）。
-   - ❌ **`str_replace`** — 禁止对已落盘的报告文件做字符串替换来"修补"（会误删相邻内容——正是上一版出错的根因）。
-   - ❌ **`read_file` 读回报告内容后"发现问题"→ 再 `str_replace` 或 `write_file` 修复** — 这是读-修-读-修的螺旋式死循环的起点。写入即信任；只在最终合并后用 `wc -l` 核实行数，**不读入内容**。
-   - ✅ 若某章确实需要重写：直接用 `write_file`（`append=false`）**完整覆盖**该章文件，**不是**用 `str_replace` 局部修补。
-   - ✅ 两轮对话接力时，`ls` 列出已有章节文件即可，不要 `read_file` 读入全部内容来"检查"。
-5. 生成完毕后提示用户"后续如需进项目管理协作编审，可将此文件导入项目"。
-
-无论哪种路径，知识工厂模板（`knowledge-factory_kf_resolve_template`）都是首选数据源，仅在模板不可用时回退到内置参考文档。
-
----
-
-## 报告结构（13章）
-
-标准煤炭矿区总体规划环境影响评价报告书遵循以下结构（来源：模板 `root_sections` 或内置章节定义）：
-
-| 章 | 标题 | 内容类型 |
-|---|------|----------|
-| 1 | 总则 | 评价目的与原则、编制依据、评价标准、评价范围与等级、评价重点 |
-| 2 | 矿区总体规划概述 | 矿区概况、规划方案（井田划分、开采计划、地面布局）、主要规划指标 |
-| 3 | 环境现状调查与评价 | 自然环境、社会经济、环境空气质量、地表水环境、地下水环境、声环境、生态环境、土壤环境 |
-| 4 | 环境影响识别与评价因子筛选 | 影响识别矩阵、评价因子筛选、评价工作等级确定 |
-| 5 | 规划方案环境合理性分析 | 规划目标合理性、布局合理性、规模合理性、时序合理性、与上位规划符合性 |
-| 6 | 环境影响预测与评价 | 大气环境影响、地表水环境影响、地下水环境影响、声环境影响、固体废物环境影响、生态环境影响、土壤环境影响 |
-| 7 | 资源环境承载力分析 | 水资源承载力、土地资源承载力、大气环境承载力、生态承载力综合分析 |
-| 8 | 环境保护措施及其可行性论证 | 大气污染防治措施、水污染防治措施、噪声防治措施、固废处置措施、生态保护与恢复措施、土壤保护措施 |
-| 9 | 环境风险评价 | 风险识别、源项分析、后果预测、风险防范措施、应急预案 |
-| 10 | 公众参与 | 调查方式、调查对象、调查结果统计分析、公众意见采纳情况 |
-| 11 | 环境管理与监测计划 | 环境管理架构、环境监测计划（施工期、运营期、闭矿期）、环境监理 |
-| 12 | 评价结论与建议 | 综合评价结论、规划方案优化建议、主要环境保护措施、遗留问题说明 |
-| 13 | 附录与附件 | 监测数据附表、计算过程附表、公众参与调查表、相关批复文件清单 |
-
----
-
-## 引用的核心标准
-
-- **HJ130-2019** — 规划环境影响评价技术导则 总纲
-- **HJ463-2009** — 规划环境影响评价技术导则 煤炭工业矿区总体规划
-- **HJ2.1-2016** — 环境影响评价技术导则 总纲
-- **HJ2.2-2018** — 环境影响评价技术导则 大气环境
-- **HJ2.3-2018** — 环境影响评价技术导则 地表水环境
-- **HJ610-2016** — 环境影响评价技术导则 地下水环境
-- **HJ2.4-2021** — 环境影响评价技术导则 声环境
-- **HJ19-2022** — 环境影响评价技术导则 生态影响
-- **HJ964-2018** — 环境影响评价技术导则 土壤环境（试行）
-- **HJ169-2018** — 建设项目环境风险评价技术导则
-- **GB3095-2012** — 环境空气质量标准
-- **GB3838-2002** — 地表水环境质量标准
-- **GB/T14848-2017** — 地下水质量标准
-- **GB3096-2008** — 声环境质量标准
-- **GB15618-2018** — 土壤环境质量 农用地土壤污染风险管控标准（试行）
-- **GB36600-2018** — 土壤环境质量 建设用地土壤污染风险管控标准（试行）
-- **GB18599-2020** — 一般工业固体废物贮存和填埋污染控制标准
-- **GB20426-2006** — 煤炭工业污染物排放标准
-- 《中华人民共和国环境保护法》（2014修订）
-- 《中华人民共和国环境影响评价法》（2018修正）
-- 《规划环境影响评价条例》（国务院令第559号）
-
----
-
-## 工作流
-
-### 步骤1：了解需求 + 建立项目实体卡片
-
-当用户请求煤炭矿区总体规划环评报告时，确定以下信息。用户可能不会一次提供全部信息，对于缺失的关键信息应主动追问，对于可从上下文推断的信息直接使用。
-
-**必须确认**（缺少则追问）：
-- 矿区名称和地理位置（省/市/县）
-- 矿区规划产能（万吨/年）
-- 规划井田数量和名称
-- 报告编制目的（新编/修编/变更）
-
-**尽量收集**（缺少时可标注待补充）：
-- 矿区面积、主要含煤地层、可采煤层
-- 现有矿井情况（生产矿井、在建矿井、关闭矿井）
-- 矿区所在区域环境敏感目标（自然保护区、水源地、居民区等）
-- 用户的具体要求或重点关注领域
-- 是否有现有报告、监测数据或专项评价可供参考
-- 编制单位名称
-- 评价工作等级（如有初步判断）
-
-**信息不足时的策略**：
-- 如果用户只给了矿区名，先基于常见煤炭矿区模板生成草稿，在需要具体数据的表格中标注 `[待补充]`
-- 绝不编造具体数值（如污染物浓度、环境容量、投资金额），用占位符 `[XX]` 并提示用户补充
-- 建立项目实体卡片，将已收集信息结构化存储，后续章节生成时统一引用
-
-**项目实体卡片结构**：
-```
-矿区名称：[待补充]
-所在地区：[待补充]
-矿区面积：[待补充] km²
-规划产能：[待补充] 万吨/年
-井田划分：[待补充]
-含煤地层：[待补充]
-可采煤层：[待补充]
-编制单位：[待补充]
-环境敏感目标：[待补充]
-现有矿井情况：[待补充]
-```
-
-### 步骤2：解析报告模板
-
-**首先尝试从知识工厂获取模板元数据。** 调用 MCP 工具：
+## 工作区布局
 
 ```
-knowledge-factory_kf_resolve_template(
-    domain_keywords=["环境影响评价", "环评", "报告书", "矿区", "煤炭", "总体规划"],
-    min_completeness_score=50
-)
+/mnt/user-data/workspace/eia-report/
+  data/     # 表单 JSON/CSV（唯一写者 = ingest.py，绝不手写；族清单见 stage JSON forms，
+            #   planning_eia 33 族）+ .delivery-contract 交付契约标记（ingest 落盘，勿删）
+  state/
+    sections/  # 节稿 = 派发单元：chNN_SNN.md（如 ch6_S03；首行 ### <节号> <节标题>）
+    chapters/  # 章稿（脚本把节稿拼装而成，对子代理只读）：chNN.md
+    mapping.json          # state 节 ↔ 项目章节 UUID 绑定（门1 前章树绑定产出；snapshot 枚举，续跑不重绑）
+    chapter_manifest.json / dependency_manifest.json / formula_state.json
+    progress.json（步骤4 控制器唯一事实源）/ key_points.json / consistency_check.json
+/mnt/user-data/outputs/   # 线程级交付目录（与 eia-report/ 平级，不在 eia-report/ 下）：
+  {项目名}-{阶段}-环境影响报告.md（独立路径交付物）+ project_snapshot.json + delivery_manifest.json
 ```
 
-**成功时**（`found=true`）：
-- 使用返回的 `sections` 作为报告结构（应覆盖13章）
-- 每个章节独立拥有 `generation_hint`、`compliance_rules`、`content_contract`、`example_snippet`
-- 输出提示：`✅ 已从知识工厂获取模板：{template_name} v{version}（完整度: {completeness_score}/100, 匹配级别: {match_level}）`
-- **跳过**步骤中读取内置章节定义的子步骤
+**粒度铁律（D9，700 页约束）**：编辑器叶子 = **节**（≤ ~1.5 万字/叶，一个编辑器文档 ≈ 5–15 页）；单章 5–10 万字必须拆为节级文档派发与交付，组装回章级过门。项目章树由 KF 模板 seed 生成（见「KF 契约」），叶子=节。
 
-**失败时**（`found=false` 或 MCP 调用超时/报错/不可用）：
-- 输出提示：`⚠️ 知识工厂模板不可用（{reason}），使用内置参考文档继续生成`
-- 使用上述"报告结构（13章）"表格作为章节定义
-- 后续步骤使用全局标准列表替代逐章 `compliance_rules`
+脚本调用统一前缀：`python -X utf8 /mnt/skills/public/coal-eia-report/scripts/<脚本> …`
+（容器内路径以 skills 容器挂载为准；下表 `STAGE=references/stages/<stage>.json` 相对技能根）
 
-### 步骤3：加载补充知识
+## 管线（步骤 0–7，两层状态模型：派发/交付=节级，门禁=章级，节无独立门）
 
-**⛔ 前置检查**：确认步骤2已调用 `knowledge-factory_kf_resolve_template` 并获得模板。如果跳过了步骤2，**返回步骤2执行**，不得直接进入步骤3。
+### 步骤 0 · 恢复或开新
 
-无论模板是否获取成功，始终读取以下文件：
-- `references/terminology.md` — 煤炭环评专业术语（含煤地层、采煤方法、环境影响类型、生态评价术语等）
-- `references/sample_entities.md` — 样本实体卡片（用于实体泄漏检测的已知实体名列表）
-- `references/content_guidelines.md` — 各章节编写规范和注意事项（领域背景知识，模板的 generation_hint 不包含完整编写规范）
+有 `outputs/project_snapshot.json` 先 `snapshot.py show --input … --verify`（rc=3=被篡改，停；
+`SNAPSHOT_SCRIPT_DRIFT` 警告行=脚本副本漂移——如实汇报用户，不阻断），读 last_task/changelog 决定续做还是新任务。
+`state/mapping.json` 在场则续跑**不重绑**（重绑=树 UUID 变了，先 `mapping.py check` 再动手）。开新则从步骤 1。
 
-仅在模板不可用时额外读取：
-- `references/report_structure.md` — 13章完整结构模板（作为章节定义回退）
-- `references/compliance_checklist.md` — 各章节合规检查要点（全局标准列表的补充）
-- `references/calc_params_guide.md` — 计算参数取值指南（大气、水、噪声、沉陷等计算所需的参数和标准限值）
+### 步骤 1 · 数据收集 → 门 1
 
-`references/chapter_examples/` 目录中的样例仅供方法论参考（风格、详略、论述逻辑），不自动加载，需要时读取具体样例即可。读取时禁止照搬原文内容。
+1. **开题首动作三件套（bug-2231/3066 页面实测纪律全套移植：开题第一轮一轮做完，不可拆分、不可只说不做）**——按序完成：① **真实调用** KF MCP `kf_resolve_template`（工具全名 `knowledge-factory_kf_resolve_template`，与用户是否已给阶段无关），必须在本回复留下实际工具调用记录——口头声称"已解析 / found=false"而未调用 = 未做（工具不可用或调用失败视同 `found=false`，进 ②；**`found=false` 且 `reason=missing_keywords` 时须按工具 suggestion 补 `domain_keywords`（如 `["环境影响评价","环评","煤炭",<矿区总体规划|建设项目>]`）重试 ≤1 次，仍 false 才兜底**——bug-3066：该工具硬性要求 domain_keywords，缺参时连模板库都不查即返回 false）；② `found=false` 时向用户声明：
+   > 知识工厂未命中模板，本次使用技能内置 `references/` 兜底（stages/<stage>.json 章节清单 + standards_index）。
+   ③ **数据预告必须用户可见**：读 `references/data_expectations.json`（per_chapter 13 章），把按章数据清单（每章所需数据族 + 条目 + source_hint）向用户预告，引导一次备齐；只在内部读了规划用、用户看不到 = 未做（bug-2231 实测踩过两次）；用户明确缺的族照常落 `[待确认]`，缺数不编造。
+   **②声明+③预告的载体 = 首张表单的 `question` 文本开头**——不另发独立消息，独立消息会被"只说不做"跳过。三件齐备前不做其他事。
+2. **stage 选择**：矿区总体规划环评 → `planning_eia`；井工矿建设项目环评 → `project_eia_underground`（stage 文件在编）；露天/后评价 stage 二期立项——stage 文件未立的场景**管线不可跑**（禁拿其他 stage 凑数、禁即兴自创章集），向用户如实声明。
+3. **章树绑定（项目路径专属，D6/D12）**：门 1 前 `project_list_chapters` 拉树导出 JSON → `mapping.py bind --tree tree.json --stage S --output state/mapping.json`（核对=节序+标题一致性，非语义匹配；rc=0 才落盘）。**rc=2 不一致（树过期/被人工改动）→ 升用户确认，禁静默错写、禁带病续跑**；独立路径无项目树，跳过绑定（交付走单文件）。
+4. `ingest.py forms` 生成空白表单（data/ 下按 stage forms schema）。
+5. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（项目→规划方案→敏感目标→标准确认→现状监测→影响识别→预测参数→经济/投资→公众参与）。交互纪律（页面实测铁律，全套）：
+   - **单回合至多一次 `ask_clarification`**——一次只问一个类别，一张表单获答落盘回执后才发下一类；连发除最后一张外全部冻结成死卡。
+   - **用户可见即表单**：`fields` 渲染中文填写表单，`name`=schema 英文键（内部）、`label`=中文名+单位，enum→select / number→number / 长文本→textarea；**单卡片 ≤16 项**，超出分批问；面向用户一律称"数据项"，禁出现「JSON/字段/field」术语。
+   - **批量数据优先引导上传文件**：井田清单/监测点位/敏感目标 >10 条时逐项问答收不齐——主动请用户上传 CSV/Excel 走 `ingest.py file`。**索要上传必须用普通消息收尾，绝不做成 ask_clarification 卡片**（卡片没有文件控件，模态错配 bug-2233）。
+   - **示例值≠数据**：placeholder/说明只示意格式，用户没填的数据项绝不落盘任何值；写完用中文数据项清单回显请用户核对。
+   - **只传用户提交的键**：`--values '<json>'` 只放用户实际填写的键，留空项一律不写；绝不为通过校验合成对象、绝不抄 placeholder 凑数。
+   - **每收完一类立即落盘**：`ingest.py forms --stage S --data-dir D --family <族> --values '<json>'`。绝不只在对话里"记录"，绝不手写 data/（唯一写者=ingest.py）。
+   - **脚本崩溃即停**：管线脚本报错就停下原样呈现，绝不回退 `cat >`/heredoc 手写 data/；`--force` 只许搭配 `--only`/`--family` 限定。
+   - **公式结果为 0/空 = 数据缺失**：与脚本崩溃同级——停，呈现 anomaly，问数据；绝不手改 `state/formula_state.json`（formula_runner 唯一写者，每个槽位带 `source` 键）。
+6. **门 1**：`ingest.py check` → 输出 `GATE1_COMPLETE` 才继续；rc=2 把缺项清单**译成中文数据项清单**呈现用户补齐，不代填。门 1 含**标准号体检**（standards_index.gate1_code_checks：标准号非空——禁「（）」空括号占位（横城 9 处实证）/年份 4 位且在册/引用编号必须在册）与**类比来源强制**（monitoring/subsidence_params 等族 `source`/`param_source` 缺枚举值即缺项）。`GATE1_QUALITY` warn 行不阻断但**写手动笔前逐条消化**。
 
-### 步骤4：按章节生成循环
+### 步骤 2–3 · 冻结计算 → 门 2
 
-此步骤按章节循环执行，每轮生成一章。
-
-**每章生成的微观流程**：
-
-1. **`project_list_chapters`**：查看当前报告的章节进度（已生成/待生成），确认下一章。
-2. **获取章节规格**：
-   - **如果有知识工厂模板**（步骤2返回 `found=true`）：从模板的 `root_sections` 中提取当前章节的 `generation_hint`、`content_contract.key_elements`、`compliance_rules`、`table_schemas`、`figure_requirements`、`sub_section_profile`。**⛔ 必须使用模板元数据，不要回退到 `project_get_chapter_spec` 或内置定义。**
-   - **如果模板不可用**：调用 `project_get_chapter_spec` 获取结构规格。
-3. **加载实体卡片**：从步骤1建立的项目实体卡片中提取当前章节所需的实体信息。
-4. **RAG 搜索**：调用 knowledge REST API，以当前章节关键词为查询，从知识库中检索相关标准和规范条文。查询示例：
-   - 第6章大气影响：`"煤炭开采 大气污染物排放标准 SO2 PM10 预测方法"`
-   - 第6章地下水影响：`"煤炭开采 地下水环境影响 导水裂缝带 预测模型"`
-5. **计算（如需）**：对于需要定量分析的章节（第6章环境影响预测、第7章承载力分析、第9章风险评价），调用 `scripts/calc/` 下的计算脚本进行辅助计算。参见下方"计算工具"章节。
-6. **生成内容**：基于章节规格、实体信息、RAG 检索结果和计算结果，生成结构化 Markdown 文本。严格遵循仿写约束（不照搬、方法论参考、实体替换）。
-7. **实体泄漏检查**：扫描生成内容，确认不包含样本实体名（参见规则11）。如发现泄漏，替换为当前项目实体或 `[待补充]`。
-8. **⛔ 合规性校验（必须调用 `knowledge-factory_kf_check_compliance`）**：将本章生成的 Markdown 全文传入 MCP 工具校验。这不是可选步骤——每章写入前必须调用。**只传 `chapter_content`，不要传 `industry`/`report_type`**：
-   ```
-   knowledge-factory_kf_check_compliance(chapter_content=<本章 Markdown 全文>)
-   ```
-   - 全部 `passed` 或 `total_rules=0`（无匹配规则）→ 进入步骤 9 写入
-   - 存在 `failed`：按 `suggestion` 修正内容，**最多重新校验 1 次**（避免死循环，参照规则 16）
-   - 仍有 `failed` 但可接受：在章节末尾标注"⚠ 合规提示：{rule_name} 待人工复核"后写入
-   - 工具调用失败/超时：不阻塞，回退到 `references/compliance_checklist.md` 静态清单，在章节末尾注明"合规校验暂不可用"
-9. **`project_write_chapter`**：通过 project MCP 的 `project_write_chapter` 工具将（校验通过或标注后的）Markdown 内容写入文档空间。写入参数（EAI-CUSTOM: 与 MCP schema 对齐——工具只接受 `chapter_id`+`content`+可选`status`，须先用 `project_list_chapters` 拿到章节 UUID）：
-   - `chapter_id`：章节 UUID（**先调 `project_list_chapters` 获取，不得用 chapter_number/标题**）
-   - `content`：生成的 Markdown 文本
-   - `status`（可选）：`pending` / `draft` / `reviewing`（缺省 draft；写完提交审阅传 `reviewing`；**不得传 `approved`**，审批走审核环节）
-10. **输出摘要**：向用户报告该章生成完成，包括章节标题、主要内容要点、使用的标准依据、合规校验结果（X条通过/Y条待复核）、标注 `[待补充]` 的位置数量。
-
-**章节生成顺序**（按依赖关系）：
-
-| 批次 | 章节 | 原因 |
-|------|------|------|
-| 第1批 | 第1章（总则）、第2章（规划概述）、第3章（环境现状） | 基础信息，无前置依赖 |
-| 第2批 | 第4章（影响识别）、第5章（合理性分析） | 依赖第2-3章的项目和环境信息 |
-| 第3批 | 第6章（影响预测与评价） | 依赖第4章的评价因子和等级 |
-| 第4批 | 第7章（承载力分析）、第9章（环境风险） | 依赖第6章的影响预测结果 |
-| 第5批 | 第8章（保护措施） | 依赖第6-7章的影响分析结论 |
-| 第6批 | 第10章（公众参与）、第11章（环境管理） | 依赖第8章的措施方案 |
-| 第7批 | 第12章（结论与建议）、第13章（附录） | 汇总全部章节 |
-
-**使用模板时**，每章按以下元数据约束生成：
-
-| 元数据字段 | 作用 |
-|-----------|------|
-| `generation_hint` | 该章的 LLM 生成提示词——描述内容要点、引用标准条款、建议论述结构 |
-| `content_contract.key_elements` | 必须覆盖的要素清单，逐项检查 |
-| `content_contract.min_word_count` | 字数下限约束，防止内容过于简略 |
-| `content_contract.forbidden_phrases` | 禁止出现的用语（如"大约""可能""暂定""估计"） |
-| `content_contract.structure_type` | 输出格式：`narrative_text` / `table` / `mixed` |
-| `compliance_rules` | 该章必须遵循的具体 HJ/GB 规范条款 |
-| `example_snippet` | 样例内容片段，仅供方法论参考（风格、详略、论述逻辑），不得照搬 |
-
-**Markdown 输出格式规范**：
-
-```markdown
-# 第X章 {章节标题}
-
-## X.1 {一级小节标题}
-
-### X.1.1 {二级小节标题}
-
-正文内容...
-
-## X.2 {一级小节标题}
-
-### X.2.1 {二级小节标题}
-
-**表格格式**：
-
-| 序号 | 指标 | 单位 | 数值 | 标准限值 | 达标情况 |
-|------|------|------|------|----------|----------|
-| 1 | SO₂ | mg/m³ | [XX] | 0.15 | [待补充] |
-
-**列表格式**：
-
-1. HJ130-2019 规划环境影响评价技术导则 总纲
-2. HJ463-2009 规划环境影响评价技术导则 煤炭工业矿区总体规划
+```
+progress.py run-stage freeze --state-dir T   # 冻结二连一次 bash：chapter_planner manifest + formula_runner execute
 ```
 
-章与章之间用 `---` 分隔。
+**门 2**：rc=0 干净通过；rc=3 = 有 `anomalies`（口径并存/类比来源/容量为 0 级/缺参降级），**必须逐条呈现用户并获确认**再派章——anomalies 是"计算完成了但你要知道这些事"，不是错误但不可隐瞒。**rc=3 一律发 `ask_clarification` 卡，即使用户此前要求「不再发问」——确认门是免打扰指令的法定例外；用户已预先豁免时，卡中只给「按冻结值继续」单选项，绝不静默放行**。公式结果全 0/空时同样走本门呈现。
+（5 域 Decimal 计算函数：概率积分法多采空区叠加/A 值法/噪声多源叠加/水量平衡/导水裂隙带；值+display+source+口径标签冻结进 formula_state.json，手改=build 门直接 FAIL。）
 
-### 步骤5：三重检查
+### 步骤 4 · 节级派发（两层模型核心，控制器模式）
 
-全部13章生成完毕后，执行三重质量检查：
+主会话是**控制器**：薄上下文，只协调——读进度、分波派节、跑门、记账，**不亲自写节**。节稿写作全部走子代理派发——`batch_task` 优先（波=一章的全部 PENDING 节，items=各节派发契约），`task()` 兜底（单回合 ≤3 并发）。
 
-**检查1：实体泄漏扫描**
-- 对全部章节内容进行关键词扫描，检查是否包含 `references/sample_entities.md` 中列出的已知样本实体名
-- 扫描范围：矿区名、井田名、企业名、地点名、人名
-- 如发现泄漏，标记位置并修正
+**Iron Law（门 FAIL 的唯一合法出路）**
 
-**检查2：compliance_rules 逐章检查**（有模板时）
-- 汇总所有章节的 `compliance_rules`，逐条验证报告内容是否满足
-- 生成合规矩阵表：`| 规范条款 | 要求摘要 | 报告是否覆盖 | 覆盖位置 |`
-- 无模板时使用 `references/compliance_checklist.md` 中的全局检查清单
+```
+门 FAIL 只有两条合法出路：补写节稿、申请用户降档。
+编辑 references/ 或绕过 build_output/gate CLI = 伪造基准，直接违反本技能红线。
+```
 
-**检查3：法规标准 RAG 复查**
-- 对报告中引用的每项标准，调用 knowledge REST API 确认：
-  - 标准编号和名称是否正确
-  - 引用的条款内容是否与标准原文一致
-  - 标准是否为最新有效版本
-- 特别关注 HJ130-2019 和 HJ463-2009 的强制性条款
+**Excuse | Reality**
 
-### 步骤6：质量报告
+| Excuse | Reality |
+|---|---|
+| 「单章 5–10 万字我一次写完」 | 超子代理上下文必薄必崩——节级派发是 D9 硬约束 |
+| 「逐节跑单章门更稳」 | 门禁=章级，节无独立门；`build_output --chapter` 拼章稿即验，`gate` 批量记账 |
+| 「深度不够，我调 depth_targets 基准」 | 基准=合同。唯一合法变更=用户批准 + `approve-downgrade` 留痕 |
+| 「摘要里说这节写完了」 | 只信 state/sections/*.md + progress.json，不信对话记忆 |
 
-向用户输出最终质量报告，包含：
+**4.0 初始化**：`progress.py init --stage S --state-dir T --data-dir D`（**必带 --data-dir**，run-stage 依赖；全 PENDING；已存在=续跑拒重置）。此后每轮动作由 `progress.py next` 决定——它输出**恰好一个**下一步（动作+精确命令+期望 rc），照做，不自创顺序、不跳步。
 
-1. **生成概况**：13章全部完成 / 部分完成（列出未完成章节及原因）
-2. **数据完整性统计**：
-   - 总计 `[待补充]` 标注数量，按章节分布
-   - 总计 `[XX]` 数值占位符数量，按章节分布
-   - 已使用实际数据的章节列表
-3. **模板使用情况**：知识工厂模板名称和版本 / 回退到内置文档
-4. **合规检查结论**：通过/需补充（列出未覆盖的规范条款）
-5. **计算工具使用记录**：调用的计算脚本及输出结果摘要
-6. **建议用户下一步操作**：
-   - 补充哪些章节的待填充数据
-   - 建议进行哪些专项评价（如需要）
-   - 建议哪些章节请领域专家审核
+**4.1 派发契约**（每 PENDING 章按波一次；重派=原 prompt 原文 + 门 stderr 原文，**不重新组装**——防逐次漂移）：
 
----
+```
+角色：第 N 章第 M 节撰写者，只产出这一节
+自读输入（沙箱路径，不贴全文）：
+  state/formula_state.json（槽位词汇表——数值只写 {{SLOT:key}}；表单数据用 {{TABLE:族}} 引出）
+  本章该节切片（直接贴：节 id/title/elements 要素链——逐要素成段的依据）+ 该节 uses 引用的 {{TABLE}}/{{SLOT}} 清单
+  references/depth_targets/<stage>.json（节级深度目标随契约注入；实际目标以门报错行内嵌数值为准）
+  references/sample_entities/_index.json（范文实体禁入清单）
+输出契约：直写 /mnt/user-data/workspace/eia-report/state/sections/chNN_SNN.md（绝对沙箱路径），
+  首行 ### <节号> <节标题>（与 stage 节题语义相符），一节一稿，新增小节用 ####，禁写 #/## 章级标题；
+  缺数标 [待确认]/[数据未提供]，软件成果值走 {{TABLE:族}} 转录禁硬算
+返回：≤8 行摘要（结构 / [待确认] 清单 / 数据缺口 / 本节要点 2-4 条——供要点包蒸馏）
+禁令：不改 data/、不碰 references/、不跑 build、不派 task
+```
 
-## 章节类型与知识库映射
+- 总派发额度 `DISPATCH_BUDGET=120`（`progress.py status` 显示余量；700 页 ≈ 100+ 节）；额度拒 ≠ 亲写许可——剩余节 `mark --sections … BLOCKED --detail "派发额度耗尽"` 转协商。
+- **批量记账（bug-3048）**：节粒度下纯记账一律批量——`progress.py mark --sections ch6_S01,ch6_S02 DRAFTED`（原子，任一未知全批拒），绝不逐节单发。
+- 范文与检索红线（随契约注入）：samples_bank 二期才入库，一期仅 `references/chapter_examples/` 旧样例可作叙述范式参考——范文任何数值/矿名/地名禁入正文；`knowledge_search` 检索同章叙述参考同纪律；规范引用仍只从 standards_index 实有编号。
 
-| 章节类型 | 章节 | 主要知识来源 | RAG 查询关键词 |
-|----------|------|-------------|----------------|
-| 概述/综述型 | 第1、2、12章 | 项目实体卡片 + 标准清单 | `{标准编号} 适用范围` `{矿区名} 概况` |
-| 现状描述型 | 第3章 | 监测数据 + 环境标准 | `{参数名} 标准限值` `{地区名} 环境质量` |
-| 分析评价型 | 第4、5、6、7章 | 导则方法论 + 计算工具 | `{影响类型} 评价方法` `{参数} 预测模型` |
-| 措施方案型 | 第8、9章 | 工程技术标准 + 最佳实践 | `{污染类型} 防治措施` `{风险类型} 应急预案` |
-| 管理程序型 | 第10、11章 | 法规要求 + 监测规范 | `公众参与 调查方法` `环境监测 布点原则` |
-| 附录汇总型 | 第13章 | 前序章节汇总 + 附表模板 | — |
+**4.2 收章跑门（只信产物，不信摘要）**：波内节稿齐 → `progress.py mark chN DRAFTED` → **批量跑门** `progress.py gate --state-dir T`（一次 bash 跑完全部 DRAFTED 章；PASS 章及其全部节自动转 VERIFIED——节 VERIFIED 唯一通道=所属章门 rc=0，**手动 mark VERIFIED 禁用（bug-3049 同构）**；`build_output.py --chapter chN` 仅单章调试用，不记账）。rc=1 → failed 章按 stderr **节级归因清单**重派（原 prompt+stderr，**每章 ≤1 次**）→ 仍 FAIL → `mark chN BLOCKED --gate FAIL --detail "<一句话差距>"`。单章失败不中断全书，继续 next。
 
----
+**4.3 波间要点包（wave1 全收口且无待协商 BLOCKED 时）**：`next` 进入 KEY_POINTS——聚合各节摘要的「本节要点」+ formula_state 冻结关键值（产能规模/W_max/容量/水量平衡/导水裂隙带）写 `state/key_points.json`（`{"chapters":{…},"highlights":{…},"issues":[…]}`），单表单 `ask_clarification` 呈现用户确认 → `progress.py confirm-key-points`——用户答复前不运行 confirm（自 confirm = 伪造确认）。**要点包 = 投影章唯一事实来源**（投影章=stage 最后一个数值章，planning 即 ch13；不重读前文全稿）。**发卡即停**：卡片发出后立即结束本回合/run。
 
-## 模板元数据驱动 vs Markdown 回退对比
+**4.4 wave2（投影章）**：`next` 指引派发投影章（契约同 4.1，输入追加 state/key_points.json）——只依据要点包写投影式结论，禁引入要点包之外的新数字与新结论（EO3 反向断言：结论章新增预测侧不存在的结论=FAIL）→ 批量 gate 同 4.2。
 
-| 约束维度 | 知识工厂模板 | Markdown 回退 |
-|----------|-------------|---------------|
-| generation_hint | 每章精准提示（从样本报告抽取） | 通用段落描述 |
-| compliance_rules | 每章独立 HJ/GB 规范条款 | 全局标准列表 |
-| content_contract.key_elements | 必须覆盖的要素清单 | 无强制要求 |
-| content_contract.min_word_count | 字数下限约束 | 不限制 |
-| content_contract.forbidden_phrases | 禁止用语排除（如"大约""可能""暂定"） | 不禁止 |
-| content_contract.structure_type | 输出格式约束（文本/表格/混合） | 自由选择 |
-| example_snippet | 样例片段参考（仅供方法论） | 无参考 |
-| 模板演进 | 知识工厂编辑模板 → 下次生成即时生效 | 手动编辑 markdown |
+**4.5 协商（存在 BLOCKED 时）**：`next` 进入 NEGOTIATE——差距表（章/实际 eff/章地板/缺口）单表单三选项：① 补数据（回 ingest → run-stage freeze → 相关节 `mark --sections … DRAFTED` 重派）② 批准降档（`progress.py approve-downgrade --chapters … --note "…"`）③ [待确认] 收尾。用户不回表单就停在那，不推进。
 
----
+### 步骤 5–7 · 组装 → 一致性 → 快照 → 交付双通道
 
-## MCP 工具依赖
+```
+progress.py run-stage finalize --state-dir T --outputs-dir /mnt/user-data/outputs --task "<本轮用户指令一句话>"
+# 终验三连一次 bash：build_output（节→章→全书拼装+全门一次报齐）→ consistency → snapshot save
+```
 
-此技能依赖以下 MCP 服务：
+**组装/章门清单（全部硬 FAIL 一次报齐；章门失败输出节级失败清单——修复派发直达最薄节）**：
+- 节稿形状门：首行 `### <节号> <节题>` 且与 stage 节题语义相符；`#/##` 章级标题 FAIL；自创节 FAIL（节由 stage sections 清单约束）
+- **序无关目录覆盖门（章级）**：实际**章**标题覆盖 stage 必备集、不得超集（禁契约外自创章），**序不校验**（要素章序 4 种排布实证）；ABSENT 章/节豁免（回顾/识别互换、可选章缺席记 `status=ABSENT`，门/组装/目录同语义跳过）；节不参与 toc 覆盖
+- **L2 深度门对章断言**：章实有效字符 ≥ `references/depth_targets/<stage>.json` 章地板（缺省默认 30000——一期绝对地板）；堆 `[待确认]` 压低覆盖缩放不能把地板压穿；L0 节级门：每标题块 ≥3 句
+- 槽位门：未知 `{{SLOT:}}`/`{{TABLE:族}}` FAIL；display 空/数组/对象 FAIL；残留扫描（未注入槽位/畸形括号形/脚手架词/合约 ID/`XX` 占位）FAIL
+- 交付名门：`{项目名}-{阶段}-环境影响报告.md` 由脚本从 data/ 直拼，outputs/ 禁其他 .md
+- 已批准降档自动 `--allow-partial`：BLOCKED 章跳 L2 章地板门（其余门在场），stdout `PARTIAL_DELIVERY` + manifest 留痕——交付时如实汇报
 
-1. **knowledge-factory**（优先使用）：
-   - `knowledge-factory_kf_resolve_template` — 智能模板匹配（核心工具）
-   - `knowledge-factory_kf_list_domains` — 列出可用领域（辅助发现）
-   - `knowledge-factory_kf_check_compliance` — 章节合规性校验（每章写入前调用，返回 pass/fail/warn + 修改建议）
+**consistency（四类 geo 合约 + 环评注册表 15 条：XS1–XS12 跨章一致/EO1–EO3 呼应义务）**，退出码：0 全过 / 1 有 FAIL（修节重跑，禁改数据绕过）/ 2 需人工（载荷缺席降级 manual）/ 3 完成带 WARN（汇报用户）；**条件激活**：合约带 applicable_stages + 依赖章按语义标题在场才激活，缺席记 **skip 非 fail**（openpit 无沉陷章/可选章缺席/互换双模式同理）；**表格感知**（环评数字主体在表格，最高 91% 段落在表——候选值扫全部 md 表行）；**口径标签**（异标签在场=口径冲突 FAIL；双口径并存无标签=歧义 FAIL）；**呼应义务**（影响识别→措施 EO1、风险→应急 EO2、预测→结论 EO3：源清单实体逐项在目标章在场断言，反向新增 FAIL）。
 
-2. **project**（文档空间写入）：
-   - `project_write_chapter` — 逐章写入报告内容到项目文档空间
-   - `project_list_chapters` — 查看报告章节进度
+**快照**：`snapshot.py save`（全文件 SHA-256 清单 + mapping 枚举 + 脚本版本指纹）；续跑恢复走 `show --verify`（见步骤 0）。
 
-3. **knowledge REST API**（标准与规范检索）：
-   - 用于 RAG 搜索相关标准和规范条文
-   - 按章节关键词查询，获取标准原文引用
-   - 法规标准版本确认和条款验证
+**交付双通道（起点 = 全书一致性 PASS 之后——章门 VERIFIED 只解锁组装，不触发交付）**：
+- **项目路径**：**交付子代理**分波逐节写入——每波 ≤5–10 节：读 `state/sections/chNN_SNN.md` → `project_write_chapter(chapter_id=state/mapping.json[节id], content=节稿全文, status="draft")`（chapter_id 必须取自 mapping.json，禁用章号/标题）→ `progress.py delivered --sections … --wave N` 回执。**幂等**：write_chapter 全量覆盖语义，`delivered` 布尔+波次支撑断点续交（中断后按 progress.json 里 delivered=false 的节续波）。**交付后所有权与漂移回收**：交付后节对管线只读；任何重生成（含 impacted 回路）前先 `project_read_chapter` 预检，word_count 命中后深比对，diff 非空 → `ask_clarification`（USER_CONFIRM_NEEDED）→ 确认后以**编辑器当前稿拉回写入 state/sections 为新基线**再重冻结重注入（人工编辑保留在基线里，不被覆盖）。
+- **独立路径**：build_output 单文件 `{项目名}-{阶段}-环境影响报告.md` + `present_files` 交付（交付前确认 `outputs/delivery_manifest.json` 在场）。
 
----
+**交付铁律（bug-2225 同构，违反=交付被硬拦）**：
+1. 组装**必须**以 `build_output.py` 收尾——**绝不手工拼装** `outputs/*.md`；对话轮直出的散文件禁入 outputs/ 当交付物。
+2. build 成功后把 **BUILD_READY** 整行 + **MANIFEST_READY** 行 + **退出码** 原样粘贴进回复；rc≠0 把 stderr 原样粘贴并停下修节。
+3. `data/.delivery-contract` 是交付契约标记，**勿删**（删除=门失效=交付作废）。
+4. 交付后任何修改只落 `state/sections/`，重跑 run-stage finalize（禁止直接编辑 outputs/ 交付物、禁止直接编辑编辑器内已交付节后不回基线）。
 
-## 计算工具
+## 平台预算与停车契约（bug-3040/3048 移植加严）
 
-以下 Python 脚本位于 `scripts/calc/` 目录，用于辅助定量分析章节的计算：
+run 级预算硬顶（按 run 计）：recursion_limit 1000 步、LoopDetection 同形循环、bash 60 次。700 页 ≈ 100+ 节派发，**分波+磁盘续跑是默认生存方式而非兜底**。**停车点 = 每 run 合法终点**，到点即收尾汇报并结束 run：
 
-| 脚本 | 用途 | 输入 | 输出 | 适用章节 |
-|------|------|------|------|----------|
-| `calc_noise.py` | 工业噪声传播预测 | 声源功率级、距离、气象条件、屏障参数 | 预测点声级、超标分析 | 第6章（声环境影响） |
-| `calc_subsidence.py` | 采煤地表沉陷预测 | 开采厚度、深度、煤层倾角、覆岩类型 | 最大沉陷量、变形值、影响范围 | 第6章（生态/地表影响）、第8章（保护措施） |
-| `calc_water_balance.py` | 矿区水量平衡计算 | 矿井涌水量、用水量、蒸发量、回用量 | 水量平衡表、缺盈分析 | 第6章（水环境影响）、第7章（水承载力） |
-| `calc_air_screen.py` | AERSCREEN 简化大气估算 | 排放速率、烟囱高度、出口温度、风速 | 最大地面浓度、落地距离 | 第6章（大气环境影响） |
-| `calc_capacity.py` | 环境容量估算 | 环境质量标准、现状浓度、扩散条件 | 允许排放量、削减量 | 第7章（环境承载力） |
+| 停车点 | 动作 |
+|---|---|
+| 门 1 GATE1_COMPLETE / mapping bind rc=2 | 汇报缺失/待确认清单（或树不一致裁决单）后停车 |
+| 门 2 rc=3 / 发任何 ask_clarification 卡 | **发卡即停**——卡在等的回合不做任何其他事 |
+| 每波 batch_task 投递后 | items 后台跑，主 run 只轮询收节 |
+| 波收口（章 VERIFIED/BLOCKED） | `next` 决定：要点包（发卡即停）/ 下一波 / 协商 |
+| 交付波 delivered 回执后 | 汇报波次进度停车，等下一波 |
 
-**计算调用模式**：
+**步数预算意识（bug-3048，bash 60 硬顶）**：主循环单 run bash 目标 **≤25 次**——纯记账一律走批量原语（`mark --sections`/`delivered --sections` 批量、`gate` 一次跑完全部章门、`run-stage freeze/finalize` 合并固定序列、`batch_task` 合并派发），绝不逐节 next/mark 小步记账。被熔断的 run 侧仍报 success——续跑靠磁盘 progress.json 不靠对话记忆：新 run 首动作 `progress.py next` 即恢复现场。
 
-1. **交互式计算**：用户提供参数 → 脚本计算 → 结果直接写入报告
-2. **参数推算**：用户部分参数未知 → 基于矿区类型和规模推算默认参数 → 计算并在结果旁标注参数来源
-3. **敏感性分析**：参数范围给定 → 多组参数计算 → 生成"最不利-最可能-最有利"三组结果
+**修复轮规约（补写/过门循环）**：
+1. **只增补，禁重写**——修复轮禁删已有正文/整节重写；无来源数值 → 主动替换 `[待确认]`。
+2. **大块写入**——整节一次 write_file（append=false 完整覆盖），禁 str_replace 小步 patch 循环。
+3. **一次批跑全章门**——`progress.py gate --state-dir T` 单次 bash 跑完所有 DRAFTED 章门禁（单节调试才用 `build_output --chapter`）。
+4. **缺键→[待确认]**——门 2 冻结后 formula_state 没有的键，正文化 `[待确认]`，**禁补写 formula_state**（绕冻结门）。
 
-**调用注意事项**：
-- 使用 `python scripts/calc/{script_name}.py` 在沙箱中执行
-- 参数不足时使用 `references/calc_params_guide.md` 中的默认值和取值范围
-- 计算结果需在报告中注明计算方法和假设条件
-- 复杂计算（如三维沉陷模型）可标注 `[待专项评价补充]`
+## 修改回路（顺序铁律，bug-2199 + D11 节级反查）
 
----
+改任何参数**必须**先反查后改：
+1. `formula_runner.py impacted --field K --value V …`（值差分 dry-run，零写盘）+ `chapter_planner.py impacted --manifest M --deps state/dependency_manifest.json --slots …/--formulas …`（受影响**节**集合 = owners ∪ consumers——生产节与消费节都须重生成）；
+2. 把值差分+受影响节清单呈现用户确认 → `formula_runner.py update --field K --value V --impacted-file I …`（不带 --impacted-file 或与差分不符 = rc=1 拒绝）；
+3. 受影响节 `mark --sections … DRAFTED` 重派（**已交付节先走漂移回收拉回新基线**），其余节字节不动 → `run-stage finalize` 重跑（changelog 自动追加）。
 
-## 参考文件
+## 命令速查
 
-- `references/terminology.md` — 煤炭环评专业术语词典（补充知识，始终加载）
-- `references/sample_entities.md` — 样本实体卡片（用于实体泄漏检测，始终加载）
-- `references/content_guidelines.md` — 各章节编写规范和注意事项（始终加载，补充领域知识）
-- `references/report_structure.md` — 13章完整结构模板（模板不可用时加载，作为章节定义回退）
-- `references/compliance_checklist.md` — 各章节合规检查要点（模板不可用时加载）
-- `references/calc_params_guide.md` — 计算参数取值指南（涉及计算的章节加载）
-- `references/chapter_examples/` — 报告章节样例目录（仅供方法论参考，禁止照搬原文）
+| 命令 | 作用 | 关键退出码 |
+|---|---|---|
+| `ingest.py forms --stage S --data-dir D [--only F1,F2\|--family F (--values '<json>'\|--rows '<json[]>')] [--force]` | 空白表单生成 / 按族校验写入（澄清值落盘唯一途径） | 0 / 1 校验拒 |
+| `ingest.py file --stage S --data-dir D --input 文件 --family F` | 上传文件解析→CSV 表单（指纹增量 no-op） | 0 / 2 需人工路由（扫描件→OCR 通道）/ 3 异常（空行剔除） |
+| `ingest.py check --stage S --data-dir D` | **门 1** 完备性+标准号体检+类比来源强制 | 0=GATE1_COMPLETE / 2=GATE1_MISSING 缺项清单 |
+| `chapter_planner.py manifest --stage S --output M` | v3 节清单（章带节子表 + 扁平节索引） | 0 |
+| `chapter_planner.py deps --stage S --output D` | 节级依赖清单（consumers/owners 索引 + LINT 孤儿合约/悬空槽位） | 0（LINT_* 行只打印不阻断） |
+| `chapter_planner.py impacted --manifest M [--deps D] (--formulas a,b\|--families x\|--slots k\|--contracts XS1)` | 改参→受影响节集合反查（无 --deps 退化章级） | 0 |
+| `formula_runner.py execute --stage S --data-dir D --state-dir T` | **门 2** 冻结计算 | 0 / 3 anomalies |
+| `formula_runner.py check --stage S --data-dir D --state F [--anchors '<json>']` | 自洽重算+锚点复核 | 0 / 1 fail / 2 warn |
+| `formula_runner.py trace --state F --formulas references/formulas.json` | 逐公式输入/输出/舍入溯源 | 0 |
+| `formula_runner.py impacted --stage S --data-dir D --state F --field K --value V [--manifest M]` | 改参 dry-run 值差分（零写盘，先于 update） | 0 |
+| `formula_runner.py update --stage S --data-dir D --state F --field K --value V --impacted-file I --output F2` | **顺序铁律**改参重算 | 0 / 1 守卫拒 / 3 anomalies |
+| `build_output.py --stage S --data-dir D --state-dir T --chapter chN` | **单章门**（调试）：节稿拼章稿过全门+节级归因；不产交付物/不写 progress | 0=CHAPTER_GATE_PASS（ABSENT 章=SKIP）/ 1 门拦 |
+| `build_output.py --stage S --data-dir D --state-dir T --output R [--allow-partial] [--targets P 仅调试]` | 全书原子组装+槽位注入+全门+consistency 内联（一次报齐；成功写 delivery_manifest） | 0（BUILD_READY+MANIFEST_READY）/ 1 门拦 |
+| `progress.py init --stage S --state-dir T --data-dir D` | 两层状态机初始化（章+节子表全 PENDING；已存在拒重置） | 0 / 1 已存在 |
+| `progress.py next --state-dir T` | **控制器每轮先读**：恰好一个下一步+精确命令+期望 rc | 0 |
+| `progress.py status --state-dir T` | 全章状态+节子表计数+派发额度余量 | 0 |
+| `progress.py mark chN DRAFTED\|BLOCKED\|ABSENT --state-dir T [--gate FAIL] [--detail …]` | 章记账（VERIFIED 手动 mark 已禁用——唯一通道=gate；bug-3049） | 0 / 1 非法转移 |
+| `progress.py mark --sections ch6_S01,ch6_S02 DRAFTED --state-dir T` | **节集批量记账**（原子——任一未知/非法全批拒；bug-3048） | 0 / 1 全批拒 |
+| `progress.py gate --state-dir T [--chapters ch2,ch3]` | **批量单章门（章+节 VERIFIED 唯一通道）**：PASS 章及其全部节自动转 VERIFIED | 0=GATE_BATCH_DONE / 1 有 FAIL（stderr 节级归因） |
+| `progress.py run-stage freeze --state-dir T` | **冻结二连**：chapter_planner manifest → formula_runner execute | 0 / 3 anomalies（同门 2） |
+| `progress.py run-stage finalize --state-dir T --outputs-dir O --task "…"` | **终验三连**：build → consistency → snapshot（已批准降档自动 --allow-partial；交付名从 data/ 直拼） | 0 交付 / 1/2 即停；consistency rc=3 不改总码但有 WARN 行——逐条汇报后再交付 |
+| `progress.py confirm-key-points --state-dir T` | 要点包已经用户单表单确认（解锁投影章） | 0 |
+| `progress.py approve-downgrade --state-dir T --chapters ch3,ch8 --note "…"` | 用户批准降档留痕（--allow-partial 放行凭据） | 0 / 1 未知章 |
+| `progress.py delivered --sections ch1_S01,ch1_S02 --wave N --state-dir T` | 交付子代理按波回执 delivered（仅 VERIFIED 节；幂等） | 0=DELIVERED_BATCH |
+| `consistency.py --report R --data-dir D --stage S --state F --standards IDX --contracts CT --output C` | geo 四类合约 + 环评注册表门（条件激活/表格感知/口径标签/呼应义务） | 0 / 1 fail>0 / 2 manual>0 / 3 warn>0（skip 不计） |
+| `mapping.py bind --tree tree.json --stage S --output state/mapping.json` | **门 1 前章树绑定**（节序+标题一致性核对；不一致不落盘） | 0 / 1 用法·形状 / 2 不一致需人工 |
+| `mapping.py check --mapping M --tree tree.json [--stage S]` | 复核已落绑定（UUID 双射；+stage 全量复核） | 0 / 1 / 2 绑定失效 |
+| `snapshot.py save --task "…" --stage S --data-dir D --state-dir T --mapping M --output P` | 版本快照（SHA-256 清单+mapping 枚举+脚本版本指纹） | 0=SNAPSHOT_READY / 1 |
+| `snapshot.py show --input P --verify` | 恢复/篡改检测+脚本指纹漂移警告（漂移不改 rc） | 0 / 1 / 3=被篡改 |
+| `seed_gen.py gen [--stage S] --output seed.json [--depth-targets DT]` | stage→KF 模板 seed 单向生成（D12：章=level1/节=level2） | 0 / 1 |
+| `seed_gen.py selfcheck --seed seed.json [--backend DIR]` | seed 装载冒烟（平台消费方契约断言） | 0=PASS / 1=FAIL |
 
----
+（`calibrate.py`/`bank_compile.py` 为二期 samples_bank/深度校准维护工具，语料未入库前无运行对象，不在管线命令面。）
 
-## 注意事项
+## KF 契约
 
-- **优先级**：知识工厂模板 > markdown 参考文件。模板获取成功时以模板元数据为准，失败时回退到内置定义和参考文件。
-- **仿写不混用**：模板整体不可用时全部回退 markdown，不出现"第3章用模板、第6章用 markdown"的混合模式。
-- **模板版本感知**：`knowledge-factory_kf_resolve_template` 按 `status='published'` + `completeness_score DESC` 自动获取最新版本，无需手动指定版本号。
-- **标准版本**：始终使用最新有效版本的 HJ/GB 标准。引用前通过 knowledge REST API 确认标准是否现行有效。
-- **数据完整性**：不编造具体数值。缺少数据时用 `[XX]` 或 `[待补充]` 标注，并在质量报告中汇总所有占位符位置。
-- **实体隔离**：严格遵守仿写约束，确保生成内容仅使用当前项目的实体信息。每章写入前执行实体泄漏检测。
-- **计算透明**：调用计算脚本时在报告中注明计算方法、输入参数和假设条件。参数为推算值时需特别标注。
-- **逐章交付**：每章生成后立即通过 `project_write_chapter` 写入并向用户报告摘要，不积攒多章后一次性写入。
-- **专业术语一致性**：术语使用以 `references/terminology.md` 为准，同一概念在报告中使用统一表述。
+- **resolve 优先 + references 兜底**（步骤 1 三件套）：`knowledge-factory_kf_resolve_template` 必须真实调用（domain_keywords 必带，bug-3066）；`found=false` 必须向用户声明兜底后才用 `references/`。工具不可用/超时视同 found=false。
+- **模板 = 派生工件（D12 双源归一）**：stage JSON 是唯一结构真源；项目章树唯一生产者 = 建项目时 KF 模板导入。`seed_gen.py gen` 从 stages/*.json 生成 KF 模板 seed（root_sections_json 树：章=level1、节=level2，content_contract.min_word_count=章地板按节分摊），经 KF 模板导入通道落库——**underground 节级模板从 seed 导入（从无到有），planning 模板可重生成对齐节粒度**。模板与 stage 不一致时以 stage 为准，禁语义匹配承压。
+- **KF 三偏差回写（D3）**：既有 published「煤炭_环评报告_模板」①风险应为第 6 章内小节非独立章 ②缺回顾性评价/清洁生产与循环经济/跟踪评价三个高频章 ③13 章单模板仅适用规划环评——resolve 命中该模板时**结构一律以 stage JSON 校正**（模板 generation_hint/compliance_rules 仅作辅助语境）；偏差数据修订走 KF 版本机制（一期末回写），不改 published 语义供其他消费方。
+
+## 能力边界（写叙述时用）
+
+- **沉陷**：概率积分法主参数（W_max 等）入 freeze；**阶段变形指标（倾斜 i/曲率 K/水平变形 ε/沉陷面积）与动态预计 = 开采沉陷软件黑箱成果**——走表单转录（source=软件+参数表），禁公式硬凑（月儿湾实证 U/W=0.44≠b=0.3）；逐煤层重复采动 flag 驱动派生值，禁手填双值。
+- **生态/土壤**：景观生态指数/侵蚀模数分级/碱化盐化评分等方法学不入 freeze——数值走表单录入+阈值判定合约，判定类计算不得冒充预测类计算。
+- **大气**：`air_screen` 仅覆盖锅炉烟气点源场景；煤炭转储运筛分扬尘为面源，走源强取值+槽位，禁硬套点源模型（判定词所在处必须带计算模式与适用范围声明）；AERMOD/AERSCREEN 等图内方法名须用户提供，禁凭记忆补。
+- **公式 OLE 化不做 OCR**：样例公式复现靠参数人工录入核对（formula_runner 冻结），不靠公式文本提取。
+- **报告输出**：`{项目名}-{阶段}-环境影响报告.md`，UTF-8；目录页码列留空（Word 排版阶段自动填充）；无法生成的图写 `[图表: …]` 描述块（类型/比例尺/内容/数据来源）。
+
+## 参考文件（v2 新体系）
+
+- `references/stages/planning_eia.json` — **唯一结构真源**（13 章章集级收敛；回顾/识别互换与 ch10–12 排布=槽位不锁编号；sections[].uses 结构化引用供 chapter_planner deps 编译）。`project_eia_underground.json` 在编；openpit/post_eia 二期。
+- `references/standards_index.json` — 标准注册表（tier 五档分级 + limit_tables 限值表 + 门 1 标准号体检 gate1_code_checks）。
+- `references/consistency_contracts.json` — 合约注册表（XS1–XS12 + EO1–EO3 + caliber_labels 口径标签 + 条件激活语义）。
+- `references/data_expectations.json` — 按章数据预告（开题三件套③，per_chapter 13 章）。
+- `references/depth_targets/<stage>.json` — 深度基线（章地板 floor_chars；一期绝对地板，二期 calibrate 样例校准）。
+- `references/sample_entities/` — per-sample 实体注册表（_index.json + 25 样例；实体泄漏检测清单，替代旧单文件 md）。
+- `references/formulas.json` — 计算参数/舍入策略注册表（计算体在 formula_runner Decimal 函数内；trace 的 --formulas 入参）。
+
+v1 旧参考（`terminology.md`/`content_guidelines.md`/`compliance_checklist.md`/`sample_entities.md`/`calc_params_guide.md`/`chapter_examples/`）暂留待二期 samples_bank 替代，**不再作为管线输入**；chapter_examples/ 仅可作叙述范式参考（实体/数值禁入正文）。

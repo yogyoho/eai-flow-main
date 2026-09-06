@@ -1,0 +1,3859 @@
+{
+  "version": "2.0",
+  "stage": "规划环评",
+  "stage_id": "planning_eia",
+  "std_ref": "HJ 130-2019《规划环境影响评价技术导则 总纲》、HJ 463-2009《规划环境影响评价技术导则 煤炭工业矿区总体规划》（与 HJ 464 并录——现行有效性取舍人工核实，禁 LLM 记忆选择）",
+  "generated": "2026-09-06",
+  "source": "接口骨架（13 章/77 节 id/title 定稿）+ 横城矿区总体规划（修编）环评报告书 digest（.wolf/tmp/eia-samples/hengcheng-outline.md）+ 走查定稿 docs/designs/2026-09-06-coal-eia-v2-ch6-walkthrough.md（11 表单族字段级清单/D8 十槽位/口径标签）与 2026-09-06-coal-eia-v2-yueerwan-ch5-walkthrough.md（param_source 三值枚举/指针节槽形/能力边界）+ docs/designs/coal-eia-report-v2.md 回填对账定稿与 D11；consistency_contracts（XS1-XS12/EO1-EO3）、data_expectations、standards_index 为合约 id/数据族/标准号唯一来源",
+  "chapter_order_policy": "order_free_with_semantic_match",
+  "order_policy_note": "章序不锁死（回填对账定稿：13 章功能骨架 13/13 收敛但章号级严格一致仅 7/13——回顾/识别互换 2 份+10-12 两型排布+离群 2 份）。toc 校验按章级「无序必备/可选集匹配+章标题语义相符」执行；合约激活按语义标题命中（consistency_contracts.activation_semantics），禁按章号匹配。legacy 离群容忍：五间房 2018 版 15 章 legacy 排布、纳林希里 12 章并回顾——toc 校验按语义集匹配容忍，不得因章数/章序不符误杀。",
+  "numbering_note": "节号/表号一律组装期按实际章序生成（章位置决定整数前缀）；本章内 sections 顺序即节序，正文跨节引用一律用节 id（如 ch6_S03）或语义标题，禁硬编码节号/表号。tables 字段只登记语义表名，表号由组装期编号体检（连续无重号）统一赋予。",
+  "layout_policy": {
+    "variant_swap": "ch4/ch5 互为换位搭档：回顾性评价与影响识别两章语义可互换排布（两章均标 layout.variant_swap=true、order_locked=false）。章语义为「回顾性评价」时 ch4 节集生效；互换为「影响识别」时 ch4 节集整体 ABSENT、回顾数据族 skip 归 ch5（data_expectations.ch4.note），progress 章条目记 ABSENT（门/组装/目录同语义跳过）。",
+    "order_flexible": "ch10/ch11/ch12 三章两型排布（标准 7/对调 4）：可换序、部分样本可并章——按语义标题匹配，缺席记 ABSENT 非 fail。",
+    "absent_semantics": "条件节/条件章缺席一律记 status=ABSENT（stage 条件开关驱动），不计 fail。"
+  },
+  "capability_boundaries": [
+    "生态学/土壤学方法（景观生态指数、生态足迹、遥感解译成果、侵蚀模数分级、碱化盐化评分）不入 formula freeze——数值走表单录入+派生字段+阈值判定合约，判定类计算不得冒充预测类计算（ch6 走查 §5-B）",
+    "air_screen（点源估算）仅覆盖锅炉烟气点源场景；煤炭转储运筛分扬尘为面源，走 reference_values 源强取值+槽位，禁硬套点源模型（ch6 走查 §5-C）",
+    "沉陷动态预计/等值线/逐点变形值为开采沉陷软件黑箱成果——走表单转录（source=软件+参数表），禁单面公式硬凑（yueerwan 走查 §5-B）",
+    "公式 OLE 化不 OCR：计算复现靠参数人工录入核对（formula_runner 冻结），不靠公式文本提取"
+  ],
+  "caliber_note": "口径标签与类比来源标注规则见 references/consistency_contracts.json caliber_labels（revision_before_after 修编双口径/analog_source 类比来源/min_max_pair 多口径并存）；表单族内以 caliber/analog_source_rule 字段落到具体族。",
+  "front_matter": {
+    "mode": "表单渲染（脚本直出，零 LLM）+ 前言（可选，一段组稿）",
+    "preface": {
+      "optional": true,
+      "mode": "任务由来+评价委托简述——转述 project 表单，禁引入表单外实体"
+    },
+    "outer_cover": [
+      "矿区名",
+      "报告题名（矿种组合+阶段+报告）",
+      "编制单位",
+      "年月"
+    ],
+    "signature_page_fixed_order": [
+      "委托单位",
+      "编制单位",
+      "编制单位资质证书号",
+      "项目负责",
+      "编写人员",
+      "审核",
+      "提交日期"
+    ],
+    "toc": {
+      "levels": 3,
+      "page_column": "留空——Word 排版阶段由引用自动填充（D11），Markdown 禁写页码"
+    },
+    "attachment_lists": [
+      "附图目录",
+      "附件目录（规划批复/各矿环评批复与验收/禁采文件/公参材料等用户文档清单——只列名不转录）"
+    ]
+  },
+  "chapters": {
+    "ch1": {
+      "title": "总则",
+      "mode": "条款汇编 + 表单直渲 + 标准确认；难度 2/中（门 1 主战场：标准号非空+格式体检、敏感目标清单完整性登记）",
+      "sample_anchor": "横城 1 总则 11 节同构：1.7 环境功能区划及评价标准（三级 2 节）、1.8 环境保护目标（1.8.1 白芨滩/1.8.2 鸭子荡水库/1.8.3 文物——专目标三级节为清单投影，生成时按登记目标类别归并到本节清单表+逐目标段，不锁三级节号）。已知缺陷禁复制：9 处「《声环境质量标准》（）」空括号漏排 GB 3096-2008（走查 §5-F）。",
+      "key_elements": [
+        "编制依据六分类（任务/法律法规/规章/技术规范/相关规划/技术资料）——法规与标准号仅从 standards_index 枚举，禁凭记忆补写（红线）",
+        "评价标准=标准三元组表（要素-功能区/质量类别-标准号，{{TABLE:standards_confirm}} 逐条人工确认直渲）——门 1 标准号非空+格式体检（gate1_code_checks），限值 needs_verification 档输出「需人工对照」（XS3）",
+        "环境保护目标表（表 1.8-1 同构）=XS2 跨 5 章合约唯一事实源：名称登记全称为 canon，列齐名称/类别/保护等级/位置关系/距离/重叠或影响面积/保护要求",
+        "评价范围/等级逐要素由导则等级判定（methodology 承载）+standards_confirm 范围字段，禁行文自造等级"
+      ],
+      "writing_patterns": [
+        "标准号/文号/坐标逐项人工比对（门 1），禁生成",
+        "条款类小节（目的/原则/程序）固定模板直出，LLM 仅组稿衔接",
+        "保护目标名称以清单登记全称为 canon，简称须与登记变体一致"
+      ],
+      "tables": [
+        "环境功能区划及评价标准表（三元组直渲）",
+        "环境保护目标表（表 1.8-1 同构——sensitive_targets 直渲）",
+        "评价范围与等级一览表（可选）"
+      ],
+      "std_refs": [
+        "HJ 130-2019",
+        "HJ 463-2009",
+        "HJ 464",
+        "《中华人民共和国环境保护法》",
+        "《中华人民共和国环境影响评价法》",
+        "《规划环境影响评价条例》",
+        "《煤炭矿区总体规划管理规定》",
+        "《煤炭矿区总体规划管理暂行规定》",
+        "GB 3095-2012",
+        "GB 3838-2002",
+        "GB/T 14848-2017",
+        "GB 3096-2008",
+        "GB 15618-2018",
+        "GB 36600-2018",
+        "GB 20426-2006",
+        "GB 12348-2008",
+        "GB 16297",
+        "GB 8978",
+        "GB 18599-2020"
+      ],
+      "forms": [
+        "project",
+        "mine_plan",
+        "legal_basis",
+        "standards_confirm",
+        "sensitive_targets",
+        "geography"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS2",
+        "XS3"
+      ],
+      "sections": [
+        {
+          "id": "ch1_S01",
+          "title": "规划背景与任务由来",
+          "elements": [
+            "规划沿革段：写明矿区总体规划的批复机关、文号与历次修编脉络（{{SLOT:project.planning_doc_no}}——批复文号逐字人工比对，门 1 禁生成）。",
+            "矿区概况句：一句话带过规划范围/总规模/井田构成（{{SLOT:mine_plan.minefield_area_km2_after}}、{{SLOT:mine_plan.total_scale_mt_a_after}}，与 ch2_S03 概况节同源 XS1——修编双口径标签保留），细节留给规划方案概况章。",
+            "任务由来段：写明委托单位、委托依据与本次评价任务的提出过程（{{SLOT:legal_basis.task_doc_no}}——委托函/批复文号）。",
+            "收束句：说明本次评价按行业导则确定的任务范围组织，衔接下节编制依据。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.planning_doc_no}}",
+              "{{SLOT:mine_plan.minefield_area_km2_after}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{SLOT:legal_basis.task_doc_no}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:project.planning_doc_no}}",
+            "{{SLOT:legal_basis.task_doc_no}}"
+          ]
+        },
+        {
+          "id": "ch1_S02",
+          "title": "编制依据",
+          "elements": [
+            "六分类依据段：按任务依据、法律法规、规章、技术规范、相关规划、主要技术资料六类分列（{{TABLE:legal_basis}} 直渲）。",
+            "法规纪律：所列法律法规/规章/导则仅从 standards_index 枚举（《环境保护法》《环评法》《规划环境影响评价条例》《煤炭矿区总体规划管理规定》等），pending 条目年份留待核实禁补猜（红线 websearch-unreliable）。",
+            "资质句：写明编制单位与资质证书号（legal_basis.compiler_qualification——人工比对）。",
+            "收束句：技术规范类依据引出评价标准的三元组体系。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:legal_basis}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:legal_basis}}"
+          ]
+        },
+        {
+          "id": "ch1_S03",
+          "title": "评价目的与原则",
+          "elements": [
+            "目的段：从规划环评法定任务导出本次评价目的（协调规划与环境目标、识别主要影响、提出优化调整建议与减缓措施——methodology 承载）。",
+            "原则段：早期介入、一致性、整体性、公众参与等原则条款化表述（固定模板直出）。",
+            "收束句：原则统领后续各章工作组织，过渡到评价范围。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch1_S04",
+          "title": "评价范围",
+          "elements": [
+            "等级判定段：逐要素交代评价等级判定依据与结果（大气 HJ 2.2、地表水 HJ 2.3、声 HJ 2.4、地下水 HJ 610、生态 HJ 19、土壤 HJ 964——标准号从 standards_index 枚举，等级由 methodology 规则判定，禁行文自造）。",
+            "范围表：逐要素评价范围（{{TABLE:standards_confirm}} evaluation_scope 字段直渲），写明范围确定依据（导则要求+规划影响边界）。",
+            "收束句：与评价分区（下节）的空间分工说明。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          }
+        },
+        {
+          "id": "ch1_S05",
+          "title": "评价时段",
+          "elements": [
+            "时段段：写明现状基准年与规划水平年时段划分（{{SLOT:project.evaluation_period}}——横城型：现状基准年 2020、远期 2022 年后至闭矿）。",
+            "口径义务：现状基准年与现状监测时段、回顾数据截止年一致（同源口径，禁两套基准年）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.evaluation_period}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:project.evaluation_period}}"
+          ]
+        },
+        {
+          "id": "ch1_S06",
+          "title": "评价分区",
+          "elements": [
+            "分区段：写明矿区/规划区/评价区三层次空间范围与面积（{{TABLE:geography}} 坐标与面积字段——user_docs 录入，坐标极值禁手算）。",
+            "收束句：评价分区与各要素评价范围（上节）的空间对应关系，过渡到功能区划。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:geography}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch1_S07",
+          "title": "环境功能区划及评价标准",
+          "elements": [
+            "功能区划段：逐要素写明环境功能区类别（大气/地表水/地下水/声功能区或质量类别，{{TABLE:standards_confirm}} function_zone 字段）。",
+            "标准三元组表：前置引入段+表（要素-功能区/质量类别-标准号，{{TABLE:standards_confirm}} 直渲）+后置解读段。",
+            "门 1 义务：标准号非空（禁「（）」空括号占位——横城 9 处实证）+格式体检（standards_index.gate1_code_checks.allowed_patterns）+年份与登记一致（pending 条目禁补猜年份）。",
+            "限值纪律：限值档位引用须查 standards_index.limit_tables，needs_verification=true 未录入档输出「需人工对照」禁自动断言（XS3）。",
+            "版本纪律：同一要素标准号字符串全书唯一（XS3）；样例旧版本并存（HJ 2.4-2009 vs 2021）以人工确认为准，禁 LLM 记忆择版。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:standards_confirm}}"
+          ]
+        },
+        {
+          "id": "ch1_S08",
+          "title": "环境保护目标",
+          "elements": [
+            "清单表：环境保护目标表（表 1.8-1 同构，{{TABLE:sensitive_targets}} 直渲——列：名称/类别/保护等级/与矿区位置关系/距离/重叠或影响面积/保护要求）。",
+            "逐目标分述：自然保护区/水源保护区/文物保护单位/基本农田/公益林/居民点等按清单登记名逐项成段（名称登记全称为 canon，简称须与登记变体一致——XS2）。",
+            "完整性义务：本清单是 XS2 跨 5 章合约（总则/概况/专节/措施/结论）唯一事实源，门 1 校验清单完整性与列齐性；缺失目标不得由行文补造。",
+            "收束句：目标清单统领后续预测与措施的受体保护主线，过渡到评价工作重点。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}"
+          ]
+        },
+        {
+          "id": "ch1_S09",
+          "title": "评价工作重点",
+          "elements": [
+            "重点段：按规划特征列出评价重点（开采沉陷与生态、地下水、敏感目标、资源环境承载力等——methodology+indicators 投影，与后文要素章一一对应）。",
+            "收束句：重点清单即后续要素章的权重声明，过渡到评价方法。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch1_S10",
+          "title": "评价方法",
+          "elements": [
+            "方法清单段：逐要素点名采用的方法（识别矩阵法、概率积分法、A 值法、景观生态学方法、综合评分法、问卷调查与媒体公告法等——methodology 承载，只列名不出现参数值）。",
+            "边界声明句：计算类方法的公式体与冻结输出归属 formula_runner（禁行文复写公式），生态/土壤评分类方法不入 freeze（capability_boundaries）。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch1_S11",
+          "title": "评价工作程序",
+          "elements": [
+            "程序段：按导则工作程序转述（准备—现状调查—识别与指标—预测与评价—承载力—综合论证—措施—公参—结论；零数据条款模板直出）。",
+            "收束句：程序对应本报告章节安排，完成总则收束。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        }
+      ]
+    },
+    "ch2": {
+      "title": "规划方案概况及分析",
+      "mode": "数据填充 + 修编双口径 + 协调性条款分析；难度 3/中（XS1 全局指标主锚点章）",
+      "sample_anchor": "横城 2 章 4 节同构：2.2 原规划实施情况及修编变化（2.2.3 环境保护目标主要变化）、2.3 本次规划方案概况（11 个三级节——生成时按 mine_plan 字段组归并，不锁三级节号）、2.4 协调性分析（4 个三级节含对基地规划的协调）。双口径实证：9.20/6.0 Mt/a、86/58 km²、16.0/4.8 Mt/a（走查 §5-D）。",
+      "key_elements": [
+        "修编双口径贯穿：全局指标字段 *_before/*_after 成对在场（门 1 校验），exact_match 绑口径标签（XS1 revision_before_after）",
+        "井田特征表（mines 直渲）：逐井田名/能力 before→after/面积/开拓方式/可采煤层/建设状态",
+        "环境保护目标变化段：清单 changes 字段驱动，目标名与登记名一致（XS2）",
+        "协调性分析：内部/外部/上位规划逐项对照（compliance_plans 直渲）——问题清单投影综合论证章优化调整建议",
+        "总投资未列记 skip 非 fail（横城实证：报告书未列工程总投资，XS9 conditional 缺席路径）"
+      ],
+      "writing_patterns": [
+        "规模/面积/储量数值全槽位（{{SLOT:mine_plan.*}}），禁生成",
+        "双口径表述必须成对带标签，禁混写单值",
+        "协调性结论逐条对应规划条目，禁无来源论断"
+      ],
+      "tables": [
+        "矿区主要规划指标表（修编前后双口径列）",
+        "井田特征表（mines 直渲）",
+        "地面设施布局表（可选）",
+        "规划方案协调性分析表（可选）"
+      ],
+      "std_refs": [
+        "HJ 130-2019",
+        "《煤炭矿区总体规划管理规定》"
+      ],
+      "forms": [
+        "geography",
+        "mine_plan",
+        "sensitive_targets",
+        "economy",
+        "compliance_plans"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS2",
+        "XS6",
+        "XS9"
+      ],
+      "sections": [
+        {
+          "id": "ch2_S01",
+          "title": "矿区交通与地理位置",
+          "elements": [
+            "地理定位段：行政区划与经纬度范围（{{SLOT:geography.location_text}}——坐标范围 user_docs 录入，禁手算极值）。",
+            "交通段：对外运输通道（铁路专用线/国省道）与运距（{{TABLE:geography}} transport 字段）。",
+            "收束句：区位与外运条件对规划实施的支撑，过渡到修编变化。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:geography}}",
+              "{{SLOT:geography.location_text}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:geography}}",
+            "{{SLOT:geography.location_text}}"
+          ]
+        },
+        {
+          "id": "ch2_S02",
+          "title": "原矿区总体规划实施情况及规划本次修编主要变化情况",
+          "elements": [
+            "实施回顾段：原规划批复口径与实施现状——各矿现状产能相对原规划的变化（{{SLOT:mine_plan.total_scale_mt_a_before}} 与 {{TABLE:mine_plan.mines}} 逐矿 scale_before 槽位；沿革事实 user_docs 转述）。",
+            "修编变化段：本次修编主要变化逐项对照（总规模/矿区面积/选煤厂规模/井田调整——{{SLOT:mine_plan.total_scale_mt_a_after}} 等 after 字段），双口径成对表述带标签（XS1）。",
+            "环境保护目标变化段：本次修编引起的保护目标变化（新增/撤除/保护要求调整——{{TABLE:sensitive_targets}} changes 字段驱动，目标名与登记名一致，XS2）。",
+            "收束句：变化清单即本次评价的针对性声明，过渡到本次规划方案概况。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.total_scale_mt_a_before}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{TABLE:mine_plan.mines}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1",
+              "XS2"
+            ]
+          }
+        },
+        {
+          "id": "ch2_S03",
+          "title": "本次规划方案概况",
+          "elements": [
+            "总体方案段：矿区范围/总规模/井田数/储量/服务年限（{{SLOT:mine_plan.minefield_area_km2_after}}、{{SLOT:mine_plan.total_scale_mt_a_after}}、{{SLOT:mine_plan.mine_count}}、{{SLOT:mine_plan.reserve_geological_mt}}、{{SLOT:mine_plan.reserve_extractable_mt}}、{{SLOT:mine_plan.service_years_a}}——XS1 全局指标主锚点，双口径标签保留）。",
+            "井田特征表：前置引入段+表（{{TABLE:mine_plan.mines}} 直渲——逐井田名/能力 before→after/面积/开拓方式/可采煤层/建设状态）+后置解读段。",
+            "后备区段：后备区处数与面积（{{SLOT:mine_plan.backup_area_km2}}），说明其不在本期评价深度的口径。",
+            "地面设施段：工业场地/铁路专用线/供水电/渣场布局（{{TABLE:mine_plan.facilities}}）。",
+            "技术经济指标段：选煤厂规模与总投资（{{SLOT:mine_plan.washery_mt_a_after}}、{{SLOT:economy.total_investment}}——总投资未列记 skip 非 fail，XS9）。",
+            "位置关系段：井田边界与保护目标的位置/距离关系（{{TABLE:sensitive_targets}} 距离字段——数值 canon，XS6）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:mine_plan.mines}}",
+              "{{TABLE:mine_plan.facilities}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{SLOT:mine_plan.minefield_area_km2_after}}",
+              "{{SLOT:mine_plan.washery_mt_a_after}}",
+              "{{SLOT:mine_plan.mine_count}}",
+              "{{SLOT:mine_plan.reserve_geological_mt}}",
+              "{{SLOT:mine_plan.reserve_extractable_mt}}",
+              "{{SLOT:mine_plan.service_years_a}}",
+              "{{SLOT:mine_plan.backup_area_km2}}",
+              "{{SLOT:economy.total_investment}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1",
+              "XS6",
+              "XS9"
+            ]
+          },
+          "slots": [
+            "{{TABLE:mine_plan.mines}}",
+            "{{TABLE:mine_plan.facilities}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_before}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+            "{{SLOT:mine_plan.minefield_area_km2_after}}",
+            "{{SLOT:mine_plan.washery_mt_a_after}}",
+            "{{SLOT:mine_plan.mine_count}}",
+            "{{SLOT:mine_plan.reserve_geological_mt}}",
+            "{{SLOT:mine_plan.reserve_extractable_mt}}",
+            "{{SLOT:mine_plan.service_years_a}}",
+            "{{SLOT:mine_plan.backup_area_km2}}",
+            "{{SLOT:economy.total_investment}}"
+          ]
+        },
+        {
+          "id": "ch2_S04",
+          "title": "规划方案协调性分析",
+          "elements": [
+            "内部协调性段：规划目标/规模/布局与环境保护要求的内部一致性分析（methodology 条款化，{{TABLE:compliance_plans}} internal_coordination 字段）。",
+            "外部协调性段：上位/同层规划逐项对照（主体功能区/生态红线/基地规划——{{TABLE:compliance_plans}} plans 逐条：规划名/层级/协调性结论/冲突要点）。",
+            "问题与不足段：协调性分析导出的规划问题清单（逐条对应冲突要点——本清单是 ch8_S07 优化调整建议的投影源）。",
+            "收束句：协调性结论收束本章，向区域概况章过渡。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:compliance_plans}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:compliance_plans}}"
+          ]
+        }
+      ]
+    },
+    "ch3": {
+      "title": "区域自然和社会经济概况",
+      "mode": "监测数据表转渲 + 现状评价（类比来源标注强制）+ 背景叙述；难度 3/中",
+      "sample_anchor": "横城 3 章 4 节同构：3.1 自然环境概况（6 个三级节——按 geography 字段组归并）、3.3 环境质量现状（大气/水/声/土壤四要素）、3.4 生态环境现状（9 个三级节——按 eco 字段组归并）。注意：本样例 cost_investment 为区域 GDP 背景值非工程投资。",
+      "key_elements": [
+        "现状监测=「点位/因子/时段—监测结果—标准限值—达标判定」四段式，限值比对走 standards_index.limit_tables，未录入档输出「需人工对照」（XS3）",
+        "监测数据 source 必须枚举 user_monitoring/analog_mine——analog_mine 强制类比矿名+数据年份标注（D4，新建矿区多为类比矿）",
+        "生态环境现状=遥感解译成果录入（三期影像 LUCC/植被/NPP/侵蚀模数），禁 LLM 生成解译结果（能力边界）",
+        "社会经济=区域背景值（行政区划/人口/GDP），与工程投资分口径（economy.total_investment 属 ch2_S03）"
+      ],
+      "writing_patterns": [
+        "监测结果表直渲+逐要素达标判定句（判定词与限值档对应，未核实档「需人工对照」）",
+        "类比来源标注句式：「……（类比××矿 ××年监测数据）」",
+        "生态现状只转录解译成果，不新算景观指数"
+      ],
+      "tables": [
+        "环境质量现状监测结果表（逐要素：点位/因子/时段/结果/标准值/达标）",
+        "土地利用现状构成表（遥感解译）",
+        "植被与土壤侵蚀统计表（可选）"
+      ],
+      "std_refs": [
+        "GB 3095-2012",
+        "GB 3838-2002",
+        "GB/T 14848-2017",
+        "GB 3096-2008",
+        "GB 15618-2018",
+        "GB 36600-2018",
+        "HJ 192",
+        "HJ 710"
+      ],
+      "forms": [
+        "geography",
+        "economy",
+        "monitoring",
+        "standards_confirm",
+        "water",
+        "eco"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3",
+        "XS12"
+      ],
+      "sections": [
+        {
+          "id": "ch3_S01",
+          "title": "自然环境概况",
+          "elements": [
+            "六要素段组：地形地貌/气候气象/水文地质/土壤/植被动物/地震逐项概述（{{TABLE:geography}} 字段组驱动；气象基准年与评价时段一致）。",
+            "水文地质段：区域含水岩组与地下水类型概述（为 ch6_S03 地下水影响评价提供背景，口径同源）。",
+            "收束句：自然环境本底对规划实施的约束概述，过渡到社会经济。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:geography}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch3_S02",
+          "title": "社会经济概况",
+          "elements": [
+            "行政区划与人口段：矿区所在行政区/人口/城镇分布（{{TABLE:economy}} 背景值——user_docs）。",
+            "经济段：区域 GDP 与产业结构（区域背景口径，非工程投资——{{TABLE:economy}}；工程投资属规划方案概况章 XS9 口径）。",
+            "收束句：社会经济受体概况，为 ch6_S09 社会经济影响分析提供基线。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:economy}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:economy}}"
+          ]
+        },
+        {
+          "id": "ch3_S03",
+          "title": "矿区环境质量现状调查与评价",
+          "elements": [
+            "监测总述段：点位布设/因子/监测时段与频次总述（{{TABLE:monitoring}}——评价时段基准年与 ch1_S05 一致）。",
+            "逐要素评价段：大气/地表水/地下水/声/土壤逐要素按「监测结果—标准限值—达标判定」成段（{{TABLE:standards_confirm}} 三元组；限值查 standards_index.limit_tables，未录入档「需人工对照」——XS3）。",
+            "来源纪律：监测数据 source 必须枚举 user_monitoring/analog_mine；analog_mine 强制类比矿名标注（D4）。",
+            "水量口径段：水环境现状涉及的矿井涌水量现状值与 ch6/ch7 同源（{{SLOT:water.mine_inflow}}——XS12，非实测带类比来源标注）。",
+            "收束句：现状达标总体面貌小结，过渡到生态环境现状。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring}}",
+              "{{TABLE:standards_confirm}}",
+              "{{SLOT:water.mine_inflow}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3",
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring}}"
+          ]
+        },
+        {
+          "id": "ch3_S04",
+          "title": "矿区生态环境现状调查与评价",
+          "elements": [
+            "土地利用段：土地利用/覆盖构成（{{TABLE:eco}} land_use——遥感解译成果录入，禁生成；解译影像来源与时相注明）。",
+            "植被与动物段：植被类型/覆盖度/生物量/NPP 与动物资源概述（{{TABLE:eco}}；HJ 710/HJ 192 年份 pending 纪律）。",
+            "侵蚀段：土壤侵蚀模数与强度分级（{{TABLE:eco}} erosion_modulus——成果转录，禁新算）。",
+            "收束句：生态环境本底小结，为 ch4 生态回顾与 ch6_S02 生态影响预测提供基线（口径同源）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:eco}}"
+          ]
+        }
+      ]
+    },
+    "ch4": {
+      "title": "矿区开发环境影响回顾性评价",
+      "mode": "史料/台账转述 + 历年监测趋势 + 调查成果转录；难度 3/中（variant_swap 章——章语义为「影响识别」时本章节集整体 ABSENT，数据族 skip 归 ch5）",
+      "layout": {
+        "variant_swap": true,
+        "order_locked": false,
+        "swap_partner": "ch5",
+        "swap_note": "互换模式下本章语义变为「环境影响识别与评价指标体系」，届时本章 sections 记 ABSENT、按 ch5 语义章节集执行（合约按语义标题激活，与章号无关）。"
+      },
+      "sample_anchor": "横城 4 章 8 节同构：4.1 开发概况回顾（历史/三同时/批复落实）、4.2 污染类回顾（四要素）、4.3 质量回顾（三要素）、4.4 沉陷影响回顾（8 个逐目标调查三级节=敏感目标投影）、4.5 生态回顾（LUCC/NPP/侵蚀三期对比）、4.6 生态恢复措施效果、4.7 总结、4.8 问题及整改。伊宁/三塘湖样本本章为影响识别（互换模式）。",
+      "key_elements": [
+        "回顾=调查/台账/历史监测的转述与转录，禁把预测性计算冒充已发生影响（已采区沉陷=调查实测，非 formula 输出）",
+        "环评批复要求落实清单逐条在场核对（retrospective.approvals_fulfilled——批复文号人工比对）",
+        "沉陷回顾逐目标调查=敏感目标清单投影（目标名与登记名一致，不锁三级节号）",
+        "三期遥感对比（LUCC/NPP/侵蚀）成果录入不生成（能力边界）",
+        "问题清单（4.8）投影减缓措施章与综合论证章（无独立合约，语义呼应）"
+      ],
+      "writing_patterns": [
+        "历史批复文号/验收文号逐字转述（门 1）",
+        "历年监测趋势只描述已测时段，禁外推",
+        "逐目标调查段按清单登记名组织"
+      ],
+      "tables": [
+        "历年环境质量监测趋势表",
+        "污染源及环保设施回顾统计表",
+        "沉陷影响逐目标调查表",
+        "三期遥感解译对比表（LUCC/NPP/侵蚀）"
+      ],
+      "std_refs": [
+        "HJ 192",
+        "GB 3095-2012",
+        "GB 3838-2002",
+        "GB 3096-2008",
+        "GB 20426-2006"
+      ],
+      "forms": [
+        "retrospective",
+        "mine_plan",
+        "monitoring",
+        "sensitive_targets",
+        "eco"
+      ],
+      "formulas": [],
+      "contracts": [],
+      "sections": [
+        {
+          "id": "ch4_S01",
+          "title": "矿区开发概况回顾",
+          "elements": [
+            "开发历史段：矿区开发时间线与各矿建设投产沿革（{{TABLE:retrospective}} development_history + {{TABLE:mine_plan.mines}} status 字段——批复/验收文号逐字转述）。",
+            "三同时段：三同时执行情况逐项交代（{{TABLE:retrospective}} three_simultaneous）。",
+            "批复落实段：环评批复要求及环保备案要求落实清单逐条在场核对（{{TABLE:retrospective}} approvals_fulfilled——落实/未落实状态显式，禁笼统结论）。",
+            "收束句：开发概况回顾小结，过渡到污染类影响回顾。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective}}",
+              "{{TABLE:mine_plan.mines}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective}}"
+          ]
+        },
+        {
+          "id": "ch4_S02",
+          "title": "矿区污染类环境影响回顾性评价",
+          "elements": [
+            "四要素段组：大气/水/固废/噪声污染源、污染物及环保设施逐项回顾（{{TABLE:retrospective}} + {{TABLE:monitoring}} 历史污染源数据）。",
+            "设施效果段：环保设施建设与运行效果（处理规模/运行率/达标情况——{{TABLE:retrospective}} facilities_effect）。",
+            "口径纪律：排放达标判定引 GB 20426-2006 排放口径（标准号枚举）；历史监测数据带时点标注。",
+            "收束句：污染控制现状小结，过渡到环境质量回顾。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective}}",
+              "{{TABLE:monitoring}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch4_S03",
+          "title": "矿区环境质量回顾评价",
+          "elements": [
+            "趋势段组：大气/水/声环境质量历年趋势逐要素评价（{{TABLE:monitoring}} trends——只描述已测时段，禁外推）。",
+            "对比口径：历年趋势评价执行标准与当时版本一致（历史版本如实引述，禁现代化改写）。",
+            "收束句：质量变化总体判断（变化/稳定），过渡到沉陷影响回顾。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch4_S04",
+          "title": "矿区开采沉陷影响回顾性评价",
+          "elements": [
+            "调查总述段：已采区范围与调查组织（{{TABLE:retrospective}} subsidence_survey——调查实测口径，非预测计算，禁引用 formula 冻结值冒充已发生影响）。",
+            "逐目标调查段组：地面建构筑物/公路铁路/输电线路/输水管线/文物古迹/河流水库等逐目标影响调查（目标名与 {{TABLE:sensitive_targets}} 登记名一致——清单投影，不锁三级节号）。",
+            "自然保护区调查段：已采区对保护目标（如保护区）影响的调查结论（{{TABLE:retrospective}}；目标实体与登记名 canon 一致）。",
+            "收束句：已发生沉陷影响小结，为 ch6_S01 预测提供对照基线。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch4_S05",
+          "title": "矿区开发生态环境影响回顾评价",
+          "elements": [
+            "三期对比段组：LUCC 变化/NPP 动态/土壤侵蚀变化逐项转录（{{TABLE:eco}} 三期解译成果——录入不生成，时相与 ch3_S04 一致）。",
+            "归因段：变化与开采活动的关联分析（定性，引 4.1 开发时序佐证）。",
+            "收束句：生态影响回顾小结，过渡到生态恢复措施回顾。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch4_S06",
+          "title": "矿区生态恢复措施、效果、存在问题及经验",
+          "elements": [
+            "措施段：已实施生态恢复措施盘点（{{TABLE:retrospective}} eco_restoration_review）。",
+            "效果与问题段：恢复效果评价与存在问题（逐条显式，禁笼统）。",
+            "经验段：可复用经验提炼（供 ch9_S01 整治措施设计引用，语义呼应）。",
+            "收束句：恢复工作小结，过渡到回顾总结。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch4_S07",
+          "title": "矿区环境影响回顾性评价总结",
+          "elements": [
+            "设施效果汇总段：治理设施建设运行效果总结（投影自 4.2——本章内投影，不新立数字）。",
+            "质量变化汇总段：环境质量变化情况总结（投影自 4.3）。",
+            "收束句：回顾总体结论两句式（成效+差距），过渡到问题与整改。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch4_S08",
+          "title": "矿区开发过程中存在的环境问题及整改措施",
+          "elements": [
+            "问题清单段：现存环境问题逐条列出（{{TABLE:retrospective}} existing_problems——与前文各节论证一一对应，禁新造问题）。",
+            "整改段：后续对策建议逐条与问题呼应（建议条目供减缓措施章语义呼应，禁无来源新措施）。",
+            "收束句：回顾章收束——回顾性评价结论要点纳入波间要点包。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        }
+      ]
+    },
+    "ch5": {
+      "title": "环境影响识别与评价指标体系",
+      "mode": "方法学矩阵 + 指标投影确认；难度 2/中（EO1 呼应义务源清单产出章；variant_swap 章——互换模式下承接回顾数据族语义）",
+      "layout": {
+        "variant_swap": true,
+        "order_locked": false,
+        "swap_partner": "ch4",
+        "swap_note": "互换模式下两章语义对调：本章可能排在前位；EO1 源清单始终随「环境影响识别」语义章走（合约按语义标题激活）。"
+      },
+      "sample_anchor": "横城 5 章 2 节同构：5.1 环境影响识别（因子识别/限制因子/识别矩阵 3 个三级节）、5.2 评价指标体系（环境目标/环境指标 2 个三级节）。",
+      "key_elements": [
+        "识别矩阵=要素×规划活动（影响性质+程度），因子取自各数据族、矩阵内容由方法学承载（impact_identification）",
+        "识别出的主要环境影响要素清单=EO1 呼应义务源清单（逐项在减缓措施章在场断言；负面要素措施禁缺位）",
+        "评价指标体系=环境目标（standards_confirm 投影）+指标值（mine_plan/indicators 投影确认），禁另立数字（XS1）",
+        "评价因子筛选结论=各要素章预测因子的覆盖义务来源（识别→预测→措施呼应链起点）"
+      ],
+      "writing_patterns": [
+        "矩阵表直渲+前置引入段+后置解读段",
+        "因子/要素名全书统一术语（与各要素章标题词一致）",
+        "指标值逐项标注来源（投影/规划值）"
+      ],
+      "tables": [
+        "环境影响识别矩阵表",
+        "矿区发展限制因子表（可选）",
+        "矿区开发环境目标与指标体系表"
+      ],
+      "std_refs": [
+        "HJ 130-2019",
+        "HJ 2.1-2016"
+      ],
+      "forms": [
+        "impact_identification",
+        "indicators",
+        "mine_plan",
+        "standards_confirm"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "EO1"
+      ],
+      "echo_obligations": {
+        "EO1": {
+          "role": "source",
+          "target": "ch9",
+          "note": "本章识别清单（要素名）逐项在减缓措施章在场断言；「负面影响」要素措施禁缺位；措施章出现清单外全新要素=FAIL（章级门）"
+        }
+      },
+      "sections": [
+        {
+          "id": "ch5_S01",
+          "title": "环境影响识别",
+          "elements": [
+            "因子识别段：环境影响因子识别（{{TABLE:impact_identification.factors}}——自然/生态/环境/社会/经济因子分组）。",
+            "限制因子段：矿区发展限制因子分析（水资源/生态承载力/环境敏感约束——{{TABLE:impact_identification.limit_factors}}）。",
+            "识别矩阵表：前置引入段+表（要素×规划活动矩阵，{{TABLE:impact_identification.matrix}} 直渲：影响性质 正/负+程度 强/中/弱）+后置解读段（主要影响要素归纳）。",
+            "EO1 源清单义务：解读段归纳的主要环境影响要素清单即 EO1 呼应义务源——逐项须在减缓措施章有对应措施在场，禁在措施章出现清单外全新要素。",
+            "收束句：识别结论过渡到评价指标体系。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:impact_identification.matrix}}",
+              "{{TABLE:impact_identification.factors}}",
+              "{{TABLE:impact_identification.limit_factors}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "EO1"
+            ]
+          },
+          "slots": [
+            "{{TABLE:impact_identification.matrix}}",
+            "{{TABLE:impact_identification.factors}}",
+            "{{TABLE:impact_identification.limit_factors}}"
+          ]
+        },
+        {
+          "id": "ch5_S02",
+          "title": "评价指标体系",
+          "elements": [
+            "环境目标段：逐要素环境目标（{{TABLE:standards_confirm}} 投影——目标表述与功能区/质量类别一致）。",
+            "指标表：前置引入段+表（资源/环境质量/生态/社会经济指标，{{TABLE:indicators}} 直渲：指标名/单位/指标值/依据）+后置解读段。",
+            "指标值纪律：规模类指标值从 mine_plan 投影（{{SLOT:mine_plan.total_scale_mt_a_after}}——XS1 双口径标签保留），标准类从三元组投影，禁另立数字。",
+            "收束句：指标体系即全书评价标尺，向预测章过渡（各要素预测因子须覆盖本节指标对应的评价因子）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:indicators}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1",
+              "EO1"
+            ]
+          },
+          "slots": [
+            "{{TABLE:indicators}}"
+          ]
+        }
+      ]
+    },
+    "ch6": {
+      "title": "规划实施环境影响预测与评价",
+      "mode": "冻结计算 + 表格直渲 + 方法学叙述；难度 5/高（数字密度最高章——depth_targets 实测 ch6 全书最高；节级派发主战场）",
+      "sample_anchor": "横城 6 章 10 节同构（走查 2026-09-06-coal-eia-v2-ch6-walkthrough.md 全覆盖判定通过）：6.1 沉陷预测（4 三级节）、6.2 生态（7 三级节）、6.3 水（2）、6.4 大气（4）、6.5 声（2）、6.6 固废（4）、6.7 土壤（2）、6.8 敏感目标专节（10 三级节=D8 十槽位）、6.9 社会经济（3）、6.10 风险（3）。风险与碳排放为章内小节非独立章（KF 三偏差①）。数字溯源三源闭环：表单/冻结计算输出/标准限值。",
+      "key_elements": [
+        "沉陷预测=formula:subsidence 冻结（W_max/r/U_max/i_max/K_max/eps_max/沉陷面积），参数源 subsidence_params 且 param_source 三值枚举必填（规范推荐值/实测岩移回归/类比矿实测——门 1 非空）；逐矿最大/最小 W_max 两口径分别带标签（XS4 min_max_pair）",
+        "导水裂隙带/垮落带高度=formula:fracture_zone 冻结（唯一无既有 calc 脚本的纯新写域——横城正文 23 处，回归=样例数值人工回代核对）（XS5）",
+        "锅炉烟气=air_screen 仅点源适用（判定词带模式与适用范围声明——XS7）；扬尘面源走源强取值禁硬套点源模型",
+        "生态/土壤=方法学叙述+表单成果转录（{{TABLE:eco}}/{{TABLE:soil_score}}），不入 formula freeze（能力边界）",
+        "敏感目标专节（6.8 型）=D8 数据驱动小节槽：{{TABLE:protected_area_detail}} 驱动十组槽位，换矿区换数据不换模板；无对应目标整节 ABSENT（XS2/XS4/XS6 汇聚点）",
+        "水环境=涌水量（类比标注）+capacity:water 容量（与承载力章同源）+fracture_zone（XS12/XS5）",
+        "风险清单（6.10）=EO2 呼应义务源（应急逐项覆盖）；各要素结论清单=EO3 投影源（章级门）"
+      ],
+      "writing_patterns": [
+        "预测数值全槽位（冻结输出禁手抄/手填；变形极值/沉陷面积逐矿多口径带标签）",
+        "方法学叙述只述模型与适用条件，公式体不入正文（formula_runner 唯一计算体）",
+        "逐要素达标/影响判定句与标准三元组联动（XS3）",
+        "禁引入横城实体（sample_entities 泄漏检测）"
+      ],
+      "tables": [
+        "地表沉陷预测结果表（逐矿，最大/最小两口径分列）",
+        "保护煤柱留设表",
+        "导水裂隙带/垮落带高度表",
+        "矿井涌水量与水源地参数表",
+        "锅炉烟气预测结果表",
+        "噪声预测结果表（运输线路/工业场地）",
+        "固体废物产生量与处置方式表",
+        "土壤碱化盐化评分表",
+        "敏感目标专节重叠分析表（protected_area_detail 驱动）",
+        "环境风险识别清单表"
+      ],
+      "std_refs": [
+        "HJ 2.2-2018",
+        "HJ 2.3-2018",
+        "HJ 2.4-2021",
+        "HJ 610-2016",
+        "HJ 19-2022",
+        "HJ 964-2018",
+        "HJ 169-2018",
+        "GB 12348-2008",
+        "GB 3096-2008",
+        "GB 20426-2006",
+        "GB 18599-2020",
+        "GB/T 13201-91",
+        "GB 3838-2002",
+        "GB/T 14848-2017"
+      ],
+      "forms": [
+        "subsidence_params",
+        "mine_plan",
+        "pillar_design",
+        "eco",
+        "sensitive_targets",
+        "water",
+        "standards_confirm",
+        "air",
+        "noise",
+        "monitoring",
+        "solid_waste",
+        "soil_score",
+        "protected_area_detail",
+        "economy",
+        "risk"
+      ],
+      "formulas": [
+        "subsidence",
+        "fracture_zone",
+        "capacity:water",
+        "capacity:air",
+        "noise",
+        "air_screen"
+      ],
+      "contracts": [
+        "XS2",
+        "XS3",
+        "XS4",
+        "XS5",
+        "XS6",
+        "XS7",
+        "XS12",
+        "EO2",
+        "EO3"
+      ],
+      "echo_obligations": {
+        "EO2": {
+          "role": "source",
+          "target": "ch9",
+          "note": "6.10 风险物质/设施清单逐项在减缓措施章风险防范与应急内容在场断言（章级门；应急监测另见 ch10_S02）"
+        },
+        "EO3": {
+          "role": "source",
+          "target": "ch13",
+          "note": "本章各要素影响结论清单逐项投影到结论章（波间要点包唯一事实源）；结论章反向新增结论=FAIL（章级门）"
+        }
+      },
+      "sections": [
+        {
+          "id": "ch6_S01",
+          "title": "矿区开采地表沉陷预测",
+          "elements": [
+            "预测方法段：概率积分法模型叙述与适用条件（methodology 承载；公式体在 formula_runner，禁行文复写）。",
+            "参数段：q/b/tanβ/s_offset 逐参数取值与来源（{{TABLE:subsidence_params}}——param_source 三值枚举必填：规范推荐值/实测岩移回归/类比矿实测；外推他矿必须标注类比依据——横城型=马莲台实测回归外推；重复采动 flag 驱动派生值禁手填双值）。",
+            "典型矿井逐算段：逐矿 m/H/alpha 代入与预测结果叙述（{{SLOT:subsidence.W_max}} 等冻结槽位——禁手填；逐矿 W_max 最大/最小两口径分别带标签）。",
+            "保护煤柱段：保护煤柱留设情况（{{TABLE:pillar_design}} 直渲——留设主体/依据；与敏感目标禁采/保护要求口径一致）。",
+            "预测结果表：前置引入段+表（逐矿 W_max/r/变形极值/沉陷面积——冻结输出直渲）+后置解读段。",
+            "影响分析段：沉陷影响范围与程度概述（{{SLOT:subsidence.subsidence_area_km2}}——XS4 冻结值，逐处 exact_match 绑口径；对基本农田/居民点等受体的指向性结论衔接 6.2/6.8）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:subsidence_params}}",
+              "{{TABLE:mine_plan.mines}}",
+              "{{TABLE:pillar_design}}",
+              "{{SLOT:subsidence.W_max}}",
+              "{{SLOT:subsidence.subsidence_area_km2}}",
+              "{{SLOT:subsidence.i_max}}",
+              "{{SLOT:subsidence.eps_max}}"
+            ],
+            "formulas": [
+              "subsidence"
+            ],
+            "contracts": [
+              "XS4"
+            ]
+          },
+          "slots": [
+            "{{TABLE:subsidence_params}}",
+            "{{TABLE:pillar_design}}",
+            "{{SLOT:subsidence.W_max}}",
+            "{{SLOT:subsidence.subsidence_area_km2}}",
+            "{{SLOT:subsidence.i_max}}",
+            "{{SLOT:subsidence.eps_max}}"
+          ]
+        },
+        {
+          "id": "ch6_S02",
+          "title": "生态环境影响评价",
+          "elements": [
+            "土地利用影响段：规划实施对土地利用格局的影响（{{TABLE:eco}} 预测输入——占压/沉陷影响面积与现状构成对比；方法学叙述，能力边界不入 freeze）。",
+            "植物与动物段：对植物资源/动物资源的影响分析（{{TABLE:eco}} 植被/动物字段；HJ 19 方法语境）。",
+            "土壤侵蚀段：开挖与沉陷对土壤侵蚀的影响（侵蚀模数分级对比——成果转录禁新算）。",
+            "公益林段：对国家级公益林的影响（{{TABLE:sensitive_targets}} 公益林行距离 canon；影响面积与 {{TABLE:eco}} public_forest_area 同源）。",
+            "沙化与完整性段：土壤沙化趋势与生态系统完整性影响（景观生态学叙述——{{TABLE:eco}} landscape_indices）。",
+            "收束句：生态影响总体结论条目（纳入 EO3 投影清单），过渡到水环境。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch6_S03",
+          "title": "水环境影响评价",
+          "elements": [
+            "地表水段：规划实施污废水排放对受纳水体的影响（{{TABLE:water}} 受纳水体水文参数；涌水量非实测带类比来源标注——XS12）；水环境容量结论（{{SLOT:capacity:water.capacity}} 冻结——与承载力章同源）。",
+            "地下水段：导水裂隙带/垮落带高度预计（{{SLOT:fracture_zone.collapse_height}}、{{SLOT:fracture_zone.fracture_height}}——formula:fracture_zone 冻结；经验公式与岩性系数取值来源标注 reference_values 待核实纪律，XS5）。",
+            "含水层影响段：沉陷疏排水对含水层/民井泉的影响（{{TABLE:water}}；与 6.1 沉陷预测口径衔接）。",
+            "水源地影响段：对水源保护区/水源地的影响（{{TABLE:water}} sources 字段——可采量/库容/禁采距离 canon；目标名与清单登记名一致）。",
+            "收束句：水环境影响结论条目（纳入 EO3 投影清单；保水采煤指向衔接减缓措施章）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:water}}",
+              "{{SLOT:capacity:water.capacity}}",
+              "{{SLOT:fracture_zone.collapse_height}}",
+              "{{SLOT:fracture_zone.fracture_height}}"
+            ],
+            "formulas": [
+              "fracture_zone",
+              "capacity:water"
+            ],
+            "contracts": [
+              "XS5",
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{TABLE:water}}",
+            "{{SLOT:water.mine_inflow}}",
+            "{{SLOT:fracture_zone.collapse_height}}",
+            "{{SLOT:fracture_zone.fracture_height}}",
+            "{{SLOT:capacity:water.capacity}}"
+          ]
+        },
+        {
+          "id": "ch6_S04",
+          "title": "环境空气影响分析",
+          "elements": [
+            "气象段：区域气象特征（{{TABLE:air}} meteorology——风速/稳定度；与 ch3 自然环境口径同源）。",
+            "污染源段：规划项目大气污染源（锅炉台数/吨位/烟囱四参数 H/D/v/T/污染物浓度/耗煤量——{{TABLE:air}} boilers）。",
+            "锅炉烟气段：点源最大落地浓度与距离（{{SLOT:air_screen.max_ground_conc}}、{{SLOT:air_screen.max_conc_distance}}——air_screen 冻结输出；判定词所在处必须带计算模式与适用范围声明（仅点源适用）——XS7）。",
+            "扬尘段：煤炭转储运和筛分扬尘影响（{{SLOT:air.dust_source_strength}}——reference_values 源强取值待核实；面源，禁硬套点源模型判定——能力边界）。",
+            "容量衔接段：区域大气环境容量结论（{{SLOT:capacity:air.capacity}} 冻结——与承载力章同源；A 值 GB/T 13201-91 待核实纪律）。",
+            "收束句：大气影响结论条目（纳入 EO3 投影清单），过渡到声环境。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:air}}",
+              "{{SLOT:air_screen.max_ground_conc}}",
+              "{{SLOT:air_screen.max_conc_distance}}",
+              "{{SLOT:air.dust_source_strength}}",
+              "{{SLOT:capacity:air.capacity}}"
+            ],
+            "formulas": [
+              "air_screen",
+              "capacity:air"
+            ],
+            "contracts": [
+              "XS7"
+            ]
+          },
+          "slots": [
+            "{{TABLE:air}}",
+            "{{SLOT:air.dust_source_strength}}",
+            "{{SLOT:air_screen.max_ground_conc}}",
+            "{{SLOT:air_screen.max_conc_distance}}",
+            "{{SLOT:capacity:air.capacity}}"
+          ]
+        },
+        {
+          "id": "ch6_S05",
+          "title": "声环境影响评价",
+          "elements": [
+            "运输线路段：线源衰减预测（{{SLOT:noise.line_level}}——formula:noise line 跑冻结输出；运输源强 {{TABLE:noise}}）。",
+            "工业场地段：点源多源叠加预测与达标距离（{{SLOT:noise.point_level}}、{{SLOT:noise.compliance_distance}}）。",
+            "限值绑定段：执行限值与标准三元组一致（{{TABLE:standards_confirm}}——GB 12348-2008/GB 3096-2008 限值档查 limit_tables，未录入档「需人工对照」——XS3；样例锚点 3 类 昼 65/夜 55）。",
+            "背景值纪律：背景值非本区实测必须带类比来源标注（{{TABLE:monitoring}}——D4）。",
+            "收束句：声影响结论条目（纳入 EO3 投影清单），过渡到固废。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:noise}}",
+              "{{SLOT:noise.line_level}}",
+              "{{SLOT:noise.point_level}}",
+              "{{SLOT:noise.compliance_distance}}",
+              "{{TABLE:standards_confirm}}",
+              "{{TABLE:monitoring}}"
+            ],
+            "formulas": [
+              "noise"
+            ],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:noise}}",
+            "{{SLOT:noise.line_level}}",
+            "{{SLOT:noise.point_level}}",
+            "{{SLOT:noise.compliance_distance}}"
+          ]
+        },
+        {
+          "id": "ch6_S06",
+          "title": "固体废物环境影响分析与评价",
+          "elements": [
+            "产生量段：矸石/生活垃圾/水处理污泥产生量估算（{{SLOT:solid_waste.gangue_generation}}——派生值=产率×总规模，禁手填；规模引用 {{SLOT:mine_plan.total_scale_mt_a_after}}）。",
+            "性质段：矸石等固废性质（浸出/组分——{{TABLE:solid_waste}}；GB 18599 贮存填埋控制口径）。",
+            "处置段：处理处置方式与渣场依托（{{TABLE:solid_waste}} disposal_sites——库容/位置；综合利用去向与循环经济章口径一致）。",
+            "影响分析段：处置环节环境影响分析（扬尘/淋滤/生态占压——定性+源强取值）。",
+            "收束句：固废影响结论条目（纳入 EO3 投影清单），过渡到土壤。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:solid_waste}}",
+              "{{SLOT:solid_waste.gangue_generation}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:solid_waste}}",
+            "{{SLOT:solid_waste.gangue_generation}}"
+          ]
+        },
+        {
+          "id": "ch6_S07",
+          "title": "土壤环境影响分析",
+          "elements": [
+            "评分法段：土壤碱化及盐化综合评分法因子逐项（{{TABLE:soil_score}}——HJ 964 方法语境；评分因子成果录入）。",
+            "预测分析段：评分汇总与影响判定（阈值判定规则=合约族，不入 formula freeze；判定阈值 reference_values 待核实）。",
+            "收束句：土壤影响结论条目（纳入 EO3 投影清单），过渡到敏感目标专节。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:soil_score}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:soil_score}}"
+          ]
+        },
+        {
+          "id": "ch6_S08",
+          "title": "对宁夏灵武白芨滩自然保护区的影响评价",
+          "conditional": {
+            "driver": "sensitive_targets + protected_area_detail",
+            "type": "d8_data_driven",
+            "title_rule": "节标题=「对{登记名}的影响评价」，由 sensitive_targets 登记名数据驱动生成（本骨架标题为横城型默认）；一个矿区可存在 1-2 个此类专节（横城 6.8 白芨滩/伊宁 6.11 四爪陆龟/淖毛湖胡杨林型）。",
+            "requires_any_target_category": [
+              "自然保护区",
+              "国家公园",
+              "森林公园",
+              "湿地公园",
+              "地质公园"
+            ],
+            "on_absent": "ABSENT（清单无对应类别目标时本节记 ABSENT——门/组装/目录同语义跳过；清单实体仍在总则/措施/结论三处受 XS2 校验）",
+            "subsection_slots": "节下设 10 组小节槽位（横城型）：保护区概况/功能区划/边界关系/重叠井田/影响方式与面积/沉陷重叠分析/植被动物影响/保护现状/规划协调性/保护对策——全部由 {{TABLE:protected_area_detail}} 驱动，不锁三级节号"
+          },
+          "elements": [
+            "专节定位段：本节为敏感目标专节（D8 数据驱动小节槽）——目标概况与保护区级别/功能区划（{{TABLE:protected_area_detail}} function_zone；目标名与 {{TABLE:sensitive_targets}} 登记全称 canon 一致——XS2）。",
+            "边界与重叠段：矿区边界关系与重叠井田（{{TABLE:protected_area_detail}} boundary_relation/overlap_minefields/overlap_area——重叠面积 canon 禁复算）。",
+            "沉陷重叠分析段：沉陷预测与保护区范围重叠分析（{{SLOT:subsidence.W_max}}、{{SLOT:subsidence.subsidence_area_km2}}——XS4 冻结值多口径带标签）。",
+            "影响方式段：影响方式与程度（边界相接/实验区重叠等——{{TABLE:protected_area_detail}} impact_mode；距离数值 canon——XS6）。",
+            "保护对策段：保护对策与规划协调性（{{TABLE:protected_area_detail}} protection_measures——与清单保护要求字段一致禁升降级表述；对策要点衔接减缓措施章）。",
+            "收束句：专节结论条目（纳入 EO3 投影清单；结论向 ch9/ch13 投影）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:protected_area_detail}}",
+              "{{TABLE:sensitive_targets}}",
+              "{{SLOT:subsidence.W_max}}",
+              "{{SLOT:subsidence.subsidence_area_km2}}"
+            ],
+            "formulas": [
+              "subsidence"
+            ],
+            "contracts": [
+              "XS2",
+              "XS4",
+              "XS6"
+            ]
+          },
+          "slots": [
+            "{{TABLE:protected_area_detail}}"
+          ]
+        },
+        {
+          "id": "ch6_S09",
+          "title": "社会经济环境影响分析",
+          "elements": [
+            "有利影响段：社会经济有利影响（就业/产业链/基础设施带动——{{TABLE:economy}} 定性为主）。",
+            "不利影响段：不利影响（压占/搬迁/交通扰动——与敏感目标清单居民点行口径一致）。",
+            "人群健康段：对人群健康的影响及职业病防治（定性条款化）。",
+            "收束句：社会经济影响结论条目（纳入 EO3 投影清单），过渡到环境风险。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:economy}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch6_S10",
+          "title": "环境风险影响分析",
+          "elements": [
+            "风险识别段：环境风险因素识别（{{TABLE:risk}} substances/facilities——油库/炸药库/矸石山/危废暂存等；HJ 169 方法语境，标准号枚举）。",
+            "生态风险段：规划实施生态风险及防治措施要点（{{TABLE:risk}} eco_risk_sources；防治要点须与减缓措施章呼应禁在此展开完整措施）。",
+            "污染风险段：环境污染风险及防治措施要点（{{TABLE:risk}}；防治要点逐项对应风险源）。",
+            "EO2 源清单义务：本节风险物质/设施清单即 EO2 呼应义务源——逐项须在减缓措施章风险防范与应急内容在场（应急监测安排另见环境管理监测章），漏项=FAIL。",
+            "收束句：风险结论条目（纳入 EO3 投影清单），本章收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:risk}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "EO2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:risk}}"
+          ]
+        }
+      ]
+    },
+    "ch7": {
+      "title": "矿区资源、环境承载力分析",
+      "mode": "容量/平衡冻结计算 + 评价方法学叙述；难度 4/高",
+      "sample_anchor": "横城 7 章 4 节同构：7.1 水资源承载力（5 个三级节含供需平衡）、7.2 生态承载力（弹性度/承载能力/压力度）、7.3 大气容量与承载（A 值法）、7.4 地表水容量与承载。容量与 ch6 同源（capacity:air/capacity:water 跨章同源消费）。",
+      "key_elements": [
+        "供需平衡差额=formula:water_balance 冻结值禁手填；水量平衡表内部自洽（供=需+损/回用链闭合）（XS12）",
+        "大气容量=A 值法（GB/T 13201-91——A 值【待核实】纪律；目标浓度查 GB 3095 limit_tables 未录入档人工对照）；与 ch6_S04 同源槽位",
+        "地表水容量=capacity:water 与 ch6_S03 同源；水质目标类别与三元组一致",
+        "生态承载力=景观生态学方法成果录入（弹性度/压力度）——不入 formula freeze（能力边界）"
+      ],
+      "writing_patterns": [
+        "容量/平衡数值全槽位（冻结输出）",
+        "承载力结论句逐条给出（满足/不满足+依据）",
+        "计算方法叙述只述模型与参数来源"
+      ],
+      "tables": [
+        "矿区用水量与水资源供需平衡表（冻结值直渲）",
+        "大气环境容量测算表",
+        "地表水环境容量测算表",
+        "生态承载力评价结果表（可选）"
+      ],
+      "std_refs": [
+        "GB/T 13201-91",
+        "GB 3095-2012",
+        "GB 3838-2002",
+        "HJ 2.3-2018",
+        "HJ 192"
+      ],
+      "forms": [
+        "water",
+        "air",
+        "eco",
+        "standards_confirm"
+      ],
+      "formulas": [
+        "water_balance",
+        "capacity:air",
+        "capacity:water"
+      ],
+      "contracts": [
+        "XS12"
+      ],
+      "sections": [
+        {
+          "id": "ch7_S01",
+          "title": "矿区水资源承载力分析",
+          "elements": [
+            "区域水资源条件段：区域水资源总量与可利用量（{{TABLE:water}} regional_water——user_docs）。",
+            "水源方案段：矿区水源选择及可供水量（{{TABLE:water}} sources——水源地可采量/库容 canon，XS12；与 ch6_S03 同源）。",
+            "需水量段：矿区用水量预测（生产/生活/生态分项——{{TABLE:water}} demand）。",
+            "供需平衡段：供需平衡分析（{{SLOT:water_balance.supply}}、{{SLOT:water_balance.demand}}、{{SLOT:water_balance.deficit}}——差额为 formula:water_balance 冻结值禁手填；水量平衡表内部自洽）。",
+            "承载力结论段：水资源承载力判定（满足/不满足+依据；结论纳入要点包供综合论证章投影）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:water}}",
+              "{{SLOT:water_balance.supply}}",
+              "{{SLOT:water_balance.demand}}",
+              "{{SLOT:water_balance.deficit}}"
+            ],
+            "formulas": [
+              "water_balance"
+            ],
+            "contracts": [
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{SLOT:water_balance.supply}}",
+            "{{SLOT:water_balance.demand}}",
+            "{{SLOT:water_balance.deficit}}"
+          ]
+        },
+        {
+          "id": "ch7_S02",
+          "title": "矿区生态承载力分析",
+          "elements": [
+            "弹性度段：生态弹性度评价（{{TABLE:eco}} eco_carrying——景观生态学方法成果录入，禁新算）。",
+            "承载能力段：资源承载能力评价（{{TABLE:eco}}）。",
+            "压力度段：承载压力度评价与结论（{{TABLE:eco}}；结论纳入要点包）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch7_S03",
+          "title": "矿区大气环境容量与承载能力分析",
+          "elements": [
+            "容量测算段：A 值法大气环境容量测算（{{SLOT:capacity:air.capacity}} 冻结——输入面积/目标浓度/背景值/A 值，{{TABLE:air}} capacity_inputs；A 值 GB/T 13201-91【待核实】纪律，目标浓度查 GB 3095 limit_tables 未录入档人工对照）。",
+            "承载分析段：容量与规划排放量的对比判定（{{TABLE:air}} 排放量口径与 ch6_S04 污染源一致；结论纳入要点包）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:capacity:air.capacity}}",
+              "{{TABLE:air}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [
+              "capacity:air"
+            ],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch7_S04",
+          "title": "地表水环境容量与承载能力分析",
+          "elements": [
+            "容量段：地表水环境容量测算（{{SLOT:capacity:water.capacity}} 冻结——流量/水质目标/背景/衰减系数；水质目标类别与 {{TABLE:standards_confirm}} 三元组一致）。",
+            "承载分析段：容量与入河污染物的对比判定（结论纳入要点包；与 ch6_S03 同源槽位）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:capacity:water.capacity}}",
+              "{{TABLE:water}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [
+              "capacity:water"
+            ],
+            "contracts": []
+          }
+        }
+      ]
+    },
+    "ch8": {
+      "title": "规划方案综合论证及优化调整建议",
+      "mode": "投影汇编 + 条款判定；难度 3/中（无新数据章——识别清单/承载力结论/协调性问题投影）",
+      "sample_anchor": "横城 8 章 9 节同构：8.1-8.5 五个合理性分析（产业布局/空间布局/产业结构/建设规模/建设时序）、8.6 承载力章内汇总、8.7 优化调整建议（2 个三级节）、8.8 环境准入条件、8.9 环境目标可达性。",
+      "key_elements": [
+        "无新数据章：论证素材=识别清单/承载力结论/协调性问题清单/敏感目标清单投影，每句附来源指针",
+        "规模合理性=规划规模 vs 资源环境承载力双约束（XS1 双口径 + capacity/water_balance 冻结结论）",
+        "优化调整建议逐条对应协调性问题与承载力短板（ch2_S04 问题清单投影），禁无来源新建议",
+        "环境准入条件=负面清单条款化（standard 三元组+指标阈值投影）"
+      ],
+      "writing_patterns": [
+        "每条论证附来源节指针（投影纪律）",
+        "判定词（合理/不合理/优化后合理）逐条显式",
+        "承载力结论引用冻结槽位不重算"
+      ],
+      "tables": [
+        "规划方案综合论证表（逐项合理性判定，可选）",
+        "规划优化调整建议汇总表（可选）",
+        "环境准入条件清单表"
+      ],
+      "std_refs": [
+        "HJ 130-2019",
+        "HJ 463-2009"
+      ],
+      "forms": [
+        "compliance_plans",
+        "sensitive_targets",
+        "mine_plan",
+        "indicators",
+        "standards_confirm"
+      ],
+      "formulas": [
+        "water_balance",
+        "capacity:air",
+        "capacity:water"
+      ],
+      "contracts": [
+        "XS1"
+      ],
+      "sections": [
+        {
+          "id": "ch8_S01",
+          "title": "矿区产业布局和发展方向合理性分析",
+          "elements": [
+            "论证段：产业布局与发展方向合理性（投影自协调性分析 ch2_S04 与识别结论 ch5——每条附来源指针；判定词显式）。",
+            "收束句：结论条目纳入要点包。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:compliance_plans}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch8_S02",
+          "title": "矿区空间布局合理性分析",
+          "elements": [
+            "论证段：空间布局与敏感目标/生态红线的空间关系（{{TABLE:sensitive_targets}} 距离与位置关系 canon——数值逐字一致禁复述变形；禁采区/后备区布局约束一并核对）。",
+            "收束句：空间布局判定词与结论条目。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch8_S03",
+          "title": "矿区产业结构合理性分析",
+          "elements": [
+            "论证段：采选产业结构与循环经济方向合理性（投影自识别清单与循环经济语义——定性条款化；判定词显式）。",
+            "收束句：结论条目。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch8_S04",
+          "title": "矿区建设规模合理性分析",
+          "elements": [
+            "论证段：建设规模与资源量/服务年限匹配（{{SLOT:mine_plan.total_scale_mt_a_after}}、{{SLOT:mine_plan.reserve_extractable_mt}}、{{SLOT:mine_plan.service_years_a}}——XS1 双口径标签保留）。",
+            "约束核对段：规模与环境承载力约束核对（承载力冻结结论引用——禁重算）。",
+            "收束句：规模合理性判定词与结论条目。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{SLOT:mine_plan.reserve_extractable_mt}}",
+              "{{SLOT:mine_plan.service_years_a}}",
+              "{{TABLE:indicators}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          }
+        },
+        {
+          "id": "ch8_S05",
+          "title": "矿区规划项目建设时序合理性分析",
+          "elements": [
+            "论证段：逐井田建设时序与资源/市场/禁采约束的匹配（{{TABLE:mine_plan.mines}} construction_sequence；禁采约束表述与清单保护要求字段一致禁升降级）。",
+            "收束句：时序合理性判定词与结论条目。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:mine_plan.mines}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch8_S06",
+          "title": "矿区资源、环境承载力分析",
+          "elements": [
+            "汇总段：水资源/生态/大气/地表水承载力结论章内汇总（投影自承载力章——{{SLOT:water_balance.deficit}}、{{SLOT:capacity:air.capacity}}、{{SLOT:capacity:water.capacity}} 冻结值引用不重算；每条附来源节指针）。",
+            "收束句：承载力综合判定条目。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:water_balance.deficit}}",
+              "{{SLOT:capacity:air.capacity}}",
+              "{{SLOT:capacity:water.capacity}}"
+            ],
+            "formulas": [
+              "water_balance",
+              "capacity:air",
+              "capacity:water"
+            ],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch8_S07",
+          "title": "矿区总体规划方案的优化调整建议",
+          "elements": [
+            "空间布局优化段：布局类优化调整建议（逐条对应 ch2_S04 协调性问题清单与 8.2 判定——禁无来源新建议）。",
+            "资源环保优化段：节约资源与环境保护类优化建议（逐条对应承载力短板与识别的负面要素——与减缓措施章分工：建议改规划、措施管实施）。",
+            "收束句：建议清单条目化收束（投影结论章）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:compliance_plans}}",
+              "{{TABLE:indicators}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch8_S08",
+          "title": "矿区规划项目环境准入条件",
+          "elements": [
+            "准入清单段：规划项目环境准入条件负面清单（工艺/规模/环保要求/标准执行——{{TABLE:standards_confirm}} 三元组与 {{TABLE:indicators}} 阈值投影，条款化直出）。",
+            "收束句：准入条件与优化调整建议的衔接说明。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}",
+              "{{TABLE:indicators}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch8_S09",
+          "title": "矿区规划实施环境目标可达性分析",
+          "elements": [
+            "可达性段：逐环境目标的可达性分析（{{TABLE:indicators}} 指标值 vs 预测与措施后的可达水平——引用冻结结论不重算；规模指标 {{SLOT:mine_plan.total_scale_mt_a_after}}——XS1）。",
+            "收束句：可达性总判定（本章收束；结论条目纳入要点包）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:indicators}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          }
+        }
+      ]
+    },
+    "ch9": {
+      "title": "规划实施环境影响减缓措施",
+      "mode": "措施条目汇编 + 投影衔接；难度 3/中（EO1/EO2 目标章——源清单实体逐项在场断言在此生效）",
+      "sample_anchor": "横城 9 章 5 节同构：9.1 生态综合整治（6 个三级节含区划/措施/补偿/管理监控）、9.2 大气（集中供热/矿井防治）、9.3 水（地表水/地下水含保水采煤）、9.4 噪声（布局控制/井工防治）、9.5 固废（矸石两型/生活垃圾/危废 4 个三级节）。",
+      "key_elements": [
+        "EO1 目标章：影响识别清单要素逐项有对应措施在场（小节标题或正文断言）；本章禁出现识别清单外全新要素（反向断言 FAIL）；「负面影响」要素措施禁缺位",
+        "EO2 目标章：风险物质/设施清单逐项在风险防范与应急预案要点在场；应急响应与风险类型一一对应",
+        "生态综合整治引用沉陷预测冻结值（整治区划面积口径与 {{SLOT:subsidence.subsidence_area_km2}} 同源——XS4）",
+        "保水采煤与含水层保护引用导水裂隙带高度依据（XS5）；禁采区/保护煤柱处置判定词与清单保护要求一致（XS6）",
+        "环保投资分项汇总：占比为派生值禁手填（XS9——总投未列记 skip）"
+      ],
+      "writing_patterns": [
+        "措施条目化：每条措施=对象要素+措施内容+实施主体+时段",
+        "措施与影响一一对应（识别负面要素逐条覆盖）",
+        "引用冻结值/清单 canon 禁改写"
+      ],
+      "tables": [
+        "生态环境综合整治区划表",
+        "环保投资分项汇总表（占比=派生禁手填）",
+        "风险防范与应急措施要点表（可选）"
+      ],
+      "std_refs": [
+        "HJ 19-2022",
+        "HJ 610-2016",
+        "GB 20426-2006",
+        "GB 8978",
+        "GB 12348-2008",
+        "GB 18599-2020",
+        "GB 18597"
+      ],
+      "forms": [
+        "measures",
+        "eco_restoration",
+        "sensitive_targets",
+        "eco",
+        "air",
+        "water",
+        "noise",
+        "solid_waste",
+        "investment"
+      ],
+      "formulas": [
+        "subsidence",
+        "fracture_zone"
+      ],
+      "contracts": [
+        "XS2",
+        "XS4",
+        "XS5",
+        "XS6",
+        "XS7",
+        "XS8",
+        "XS9",
+        "EO1",
+        "EO2"
+      ],
+      "echo_obligations": {
+        "EO1": {
+          "role": "target",
+          "source": "ch5",
+          "note": "识别清单要素逐项在场断言（章级门）；清单外全新要素措施=FAIL"
+        },
+        "EO2": {
+          "role": "target",
+          "source": "ch6",
+          "note": "风险源清单逐项在风险防范与应急要点在场断言（章级门）；应急监测安排另见环境管理监测章"
+        }
+      },
+      "sections": [
+        {
+          "id": "ch9_S01",
+          "title": "矿区生态环境综合整治措施",
+          "elements": [
+            "区划段：综合整治区划原则/方法/目标及限制要求（{{TABLE:measures}} eco + {{TABLE:eco_restoration}} zoning；区划面积口径引用 {{SLOT:subsidence.subsidence_area_km2}}——XS4 冻结值）。",
+            "措施段：矿区生态环境综合整治措施逐条（对象要素+内容+主体+时段——{{TABLE:measures}}；覆盖识别清单生态类负面要素——EO1 在场）。",
+            "保护目标措施段：敏感目标保护措施逐项（{{TABLE:sensitive_targets}} 保护要求字段逐项在场——处置判定词（禁采/限采/留设保护煤柱/搬迁）与清单一致禁升降级——XS2/XS6；{{TABLE:eco_restoration}} 复垦与植被重建安排）。",
+            "补偿与监控段：生态恢复补偿机制和保障措施、生态环境管理和监控计划（{{TABLE:eco_restoration}} compensation；监控与监测计划章衔接）。",
+            "投资段：本章环保投资分项与汇总（{{SLOT:investment.env_investment_ratio}} 占比=派生值禁手填——XS9；总投资未列记 skip 非 fail）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures}}",
+              "{{TABLE:eco_restoration}}",
+              "{{TABLE:sensitive_targets}}",
+              "{{TABLE:eco}}",
+              "{{SLOT:subsidence.subsidence_area_km2}}",
+              "{{SLOT:investment.env_investment_ratio}}"
+            ],
+            "formulas": [
+              "subsidence"
+            ],
+            "contracts": [
+              "XS2",
+              "XS4",
+              "XS6",
+              "XS9"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measures}}",
+            "{{TABLE:eco_restoration}}",
+            "{{TABLE:investment}}",
+            "{{SLOT:investment.env_investment_ratio}}"
+          ]
+        },
+        {
+          "id": "ch9_S02",
+          "title": "矿区大气污染控制措施",
+          "elements": [
+            "集中供热段：集中供热措施（{{TABLE:measures}} air；替代分散源——总量削减口径说明）。",
+            "矿井防治段：煤矿环境空气污染控制措施逐条（{{TABLE:measures}} + {{TABLE:air}} 源强对应——GB 20426 排放口径；扬尘防治措施与面源边界一致——XS7 判定词同 canon）。",
+            "总量与替代段：总量控制指标要求与替代削减来源（{{TABLE:measures}}——替代来源实体（工程/设施名）逐项在场断言，削减量口径带标签（区域削减/以新带老）——XS8；识别清单大气要素措施在场——EO1）。",
+            "收束句：大气措施小结（与 6.4 影响结论一一对应）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures}}",
+              "{{TABLE:air}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS7",
+              "XS8"
+            ]
+          }
+        },
+        {
+          "id": "ch9_S03",
+          "title": "矿区水环境影响控制措施",
+          "elements": [
+            "地表水段：地表水环境保护措施（{{TABLE:measures}} water——矿井水处理与回用规模与供需平衡口径一致；GB 8978 年份 pending 纪律）。",
+            "地下水段：地下水环境保护措施（保水采煤与含水层保护——依据 {{SLOT:fracture_zone.fracture_height}} 冻结值——XS5；识别清单地下水要素措施在场——EO1）。",
+            "收束句：水措施小结（与 6.3 影响结论一一对应）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures}}",
+              "{{TABLE:water}}",
+              "{{SLOT:fracture_zone.fracture_height}}"
+            ],
+            "formulas": [
+              "fracture_zone"
+            ],
+            "contracts": [
+              "XS5"
+            ]
+          }
+        },
+        {
+          "id": "ch9_S04",
+          "title": "矿区噪声污染控制措施",
+          "elements": [
+            "布局控制段：区域空间布局控制措施（{{TABLE:measures}} noise——布局与敏感目标距离 canon 一致）。",
+            "防治段：井工矿噪声防治措施逐条（{{TABLE:measures}} + {{TABLE:noise}} 源强对应——GB 12348 口径；识别清单声要素措施在场——EO1）。",
+            "收束句：噪声措施小结（与 6.5 影响结论一一对应）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures}}",
+              "{{TABLE:noise}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch9_S05",
+          "title": "固体废物处置与综合利用",
+          "elements": [
+            "矸石处置段：井下掘进矸石与洗选矸石处置措施（{{TABLE:measures}} solid_waste + {{TABLE:solid_waste}} 处置方式——GB 18599 贮存填埋口径；综合利用去向与循环经济章一致）。",
+            "生活垃圾与污泥段：生活垃圾和水处理站有机污泥处置措施（{{TABLE:measures}}）。",
+            "危废段：危险废物处置措施（{{TABLE:measures}}——GB 18597 年份 pending 纪律；危废种类与 {{TABLE:solid_waste}} hazardous 一致；识别清单固废要素措施在场——EO1）。",
+            "收束句：固废措施小结（与 6.6 影响结论一一对应）+本章 EO1/EO2 覆盖自检（识别清单逐要素/风险源逐项核对在场）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures}}",
+              "{{TABLE:solid_waste}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        }
+      ]
+    },
+    "ch10": {
+      "title": "环境管理、监测计划与跟踪评价",
+      "mode": "条款模板 + 监测计划表直渲；难度 2/低（order_flexible 章——两型排布）",
+      "layout": {
+        "order_flexible": true,
+        "note": "三型排布（10-12 章）：可换序、部分样本可并章——按语义标题匹配，缺席记 ABSENT 非 fail"
+      },
+      "sample_anchor": "横城 10 章 4 节同构：10.1 环境管理计划（5 个三级节）、10.2 环境监测计划（4 个三级节含 10.2.4 污染事故应急监测——EO2 目标落点）、10.3 跟踪评价（4 个三级节——条例义务）、10.4 下阶段项目环评重点及简化建议。",
+      "key_elements": [
+        "监测计划表（点位/因子/频次/执行标准）直渲——执行标准与标准三元组一致（XS3）",
+        "应急监测安排覆盖风险源清单全部类型（EO2 目标断言——与减缓措施章风险防范口径一致）",
+        "跟踪评价=《规划环境影响评价条例》法定义务（时段/内容/计划）",
+        "下阶段项目环评重点按逐井田给出（mine_plan 投影）"
+      ],
+      "writing_patterns": [
+        "管理/监测内容条款化直出",
+        "监测点位/因子/频次逐项表列（禁笼统「定期监测」）",
+        "跟踪评价义务引条例原文表述"
+      ],
+      "tables": [
+        "环境监测计划表（点位/因子/频次/执行标准）",
+        "环境管理机构与职责表（可选）"
+      ],
+      "std_refs": [
+        "HJ 130-2019",
+        "《规划环境影响评价条例》",
+        "GB 3096-2008",
+        "GB 12348-2008"
+      ],
+      "forms": [
+        "measures",
+        "monitoring_plan",
+        "standards_confirm",
+        "tracking_plan",
+        "mine_plan"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3",
+        "EO2"
+      ],
+      "sections": [
+        {
+          "id": "ch10_S01",
+          "title": "环境管理计划",
+          "elements": [
+            "管理段组：环境管理基本原则/目标/机构及职责/时段/内容逐项（{{TABLE:measures}} mgmt——条款化直出；管理时段与评价时段一致）。",
+            "收束句：管理计划为监测与跟踪的组织前提，过渡到监测计划。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch10_S02",
+          "title": "环境监测计划",
+          "elements": [
+            "监测计划表：监测目的/机构/内容（{{TABLE:monitoring_plan}} 直渲——施工期/运营期/闭矿期×各要素×点位/因子/频次；执行标准列与 {{TABLE:standards_confirm}} 三元组一致——XS3）。",
+            "应急监测段：污染事故应急监测安排（{{TABLE:monitoring_plan}} emergency_monitoring——覆盖 EO2 风险源清单全部风险类型，与减缓措施章风险防范口径一致——EO2 目标断言）。",
+            "收束句：监测计划过渡到跟踪评价。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring_plan}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3",
+              "EO2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring_plan}}"
+          ]
+        },
+        {
+          "id": "ch10_S03",
+          "title": "跟踪评价",
+          "elements": [
+            "意义段：跟踪评价的意义（《规划环境影响评价条例》义务表述——条款化直出）。",
+            "时段与内容段：跟踪评价时段/内容/计划（{{TABLE:tracking_plan}}——periods/contents/schedule）。",
+            "收束句：跟踪评价与下阶段项目环评的衔接。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:tracking_plan}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:tracking_plan}}"
+          ]
+        },
+        {
+          "id": "ch10_S04",
+          "title": "下阶段项目环评工作重点及简化建议",
+          "elements": [
+            "重点段：下阶段项目环评重点（{{TABLE:mine_plan.mines}} 逐井田投影——已评价内容可简化的依据=本次评价结论，禁超出本次结论承诺简化）。",
+            "简化建议段：简化建议逐条（{{TABLE:tracking_plan}} next_eia_focus——与本次评价深度对应）。",
+            "收束句：本章收束（结论要点纳入要点包）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:mine_plan.mines}}",
+              "{{TABLE:tracking_plan}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        }
+      ]
+    },
+    "ch11": {
+      "title": "矿区清洁生产与循环经济分析",
+      "mode": "对标表单 + 定性分析；难度 2/低（order_flexible 章——两型排布）",
+      "layout": {
+        "order_flexible": true,
+        "note": "三型排布（10-12 章）：可换序、部分样本可并章——按语义标题匹配，缺席记 ABSENT 非 fail"
+      },
+      "sample_anchor": "横城 11 章 2 节同构：11.1 清洁生产分析（清洁生产水平评价指标）、11.2 循环经济分析（发展潜力/发展分析 2 个三级节）。",
+      "key_elements": [
+        "清洁生产对标=指标对标表直渲（HJ 446 现行版本【待核实】纪律；对标基准带类比来源标注）",
+        "循环经济=矸石/矿井水/瓦斯综合利用途径与规模（矸石规模与固废产生量派生值同源）",
+        "综合利用规模数值与减缓措施章固废处置口径一致（同源槽位，禁两套数字）"
+      ],
+      "writing_patterns": [
+        "对标表逐项给出 本矿值/基准值/等级",
+        "综合利用途径定性+规模槽位",
+        "标准版本待核实禁补猜"
+      ],
+      "tables": [
+        "清洁生产水平指标对标表",
+        "循环经济产业链构成表（可选）"
+      ],
+      "std_refs": [
+        "HJ 446"
+      ],
+      "forms": [
+        "cleaner_production",
+        "circular_economy",
+        "solid_waste"
+      ],
+      "formulas": [],
+      "contracts": [],
+      "sections": [
+        {
+          "id": "ch11_S01",
+          "title": "清洁生产分析",
+          "elements": [
+            "对标段：矿区清洁生产水平指标对标（{{TABLE:cleaner_production}} benchmarks 直渲——资源能源利用/污染物产生/废物利用指标：本矿区值/基准值/等级；HJ 446 现行版本待核实；对标基准 analog_source 标注）。",
+            "结论段：清洁生产水平综合判定（等级结论与对标表一致）。",
+            "收束句：过渡到循环经济分析。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:cleaner_production}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:cleaner_production}}"
+          ]
+        },
+        {
+          "id": "ch11_S02",
+          "title": "矿区循环经济分析",
+          "elements": [
+            "综合利用段：矸石/矿井水/瓦斯综合利用途径与规模（{{TABLE:circular_economy}}——矸石规模与 {{SLOT:solid_waste.gangue_generation}} 派生值同源，禁两套数字；矿井水回用与供需平衡口径一致）。",
+            "产业链段：循环经济产业链构成与发展分析（{{TABLE:circular_economy}} industry_chain——定性）。",
+            "收束句：本章收束（结论条目纳入要点包）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:circular_economy}}",
+              "{{SLOT:solid_waste.gangue_generation}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:circular_economy}}"
+          ]
+        }
+      ]
+    },
+    "ch12": {
+      "title": "公众参与",
+      "mode": "公参材料转录 + 数字链自洽 + 脱敏；难度 2/低（order_flexible 章——两型排布）",
+      "layout": {
+        "order_flexible": true,
+        "note": "三型排布（10-12 章）：可换序、部分样本可并章——按语义标题匹配，缺席记 ABSENT 非 fail"
+      },
+      "sample_anchor": "横城 12 章 4 节同构：12.1 公参目的、12.2 第一次公参（形式时间/目的对象/意见处理）、12.3 第二次公参（形式时间/过程方法/公告调查结果/问卷结果）、12.4 调查结论。四季屯教训：个人信息明文禁入（D7 脱敏）。",
+      "key_elements": [
+        "公参数字链自洽：回收≤发放、有效≤回收、意见处理条数前后一致（XS11——逐处 exact_match）",
+        "D7 脱敏：被调查人姓名/电话/身份证禁入正文；人名实体命中 sample_entities 注册表 aux.people 即 FAIL",
+        "公示次数/方式/时间与意见采纳情况逐轮登记（public_participation 直渲）",
+        "《环境影响评价公众参与办法》适用性待人工核实（pending——规划环评公参适用性须确认）"
+      ],
+      "writing_patterns": [
+        "数字全槽位（发放/回收/有效/条目数）",
+        "轮次结构固定（第一次/第二次）",
+        "意见处理分类表述（采纳/部分采纳/未采纳+理由）"
+      ],
+      "tables": [
+        "公众参与调查结果统计表（发放/回收/有效数）",
+        "公众意见处理一览表（可选）"
+      ],
+      "std_refs": [
+        "《环境影响评价公众参与办法》"
+      ],
+      "forms": [
+        "public_participation"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS11"
+      ],
+      "sections": [
+        {
+          "id": "ch12_S01",
+          "title": "公众参与目的",
+          "elements": [
+            "目的段：公众参与的目的与程序依据（条款化直出；《环境影响评价公众参与办法》适用性以人工核实为准，禁凭记忆引版本）。",
+            "收束句：过渡到第一轮公参。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch12_S02",
+          "title": "第一次公众参与",
+          "elements": [
+            "形式与时间段：第一次公示形式/时间/对象（{{TABLE:public_participation}} rounds[0]——公示次数与时间 canon，XS11）。",
+            "意见处理段：公示意见与处理（{{TABLE:public_participation}} opinions——条目数与处理结论一致）。",
+            "收束句：过渡到第二轮公参。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:public_participation}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS11"
+            ]
+          },
+          "slots": [
+            "{{TABLE:public_participation}}"
+          ]
+        },
+        {
+          "id": "ch12_S03",
+          "title": "第二次公众参与",
+          "elements": [
+            "公告段：网站/报纸及张贴公告调查结果与处理意见（{{TABLE:public_participation}} rounds[1]——数字 canon）。",
+            "问卷段：问卷调查结果（发放/回收/有效数——{{TABLE:public_participation}} questionnaires；链自洽 回收≤发放、有效≤回收——XS11）。",
+            "收束句：过渡到调查结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:public_participation}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS11"
+            ]
+          }
+        },
+        {
+          "id": "ch12_S04",
+          "title": "调查结论",
+          "elements": [
+            "结论段：公众意见采纳情况汇总与调查结论（{{TABLE:public_participation}} opinions 采纳分类汇总——条数与前后文一致，XS11；结论条目纳入要点包供结论章投影）。",
+            "脱敏自检：全章被调查人个人信息禁入正文（D7——姓名/电话/身份证零出现）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:public_participation}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS11"
+            ]
+          }
+        }
+      ]
+    },
+    "ch13": {
+      "title": "结论与建议",
+      "mode": "投影章——波间要点包唯一事实源（不重读前文全稿，禁引入要点包之外的新数字与新结论）；难度 2/中（EO3 目标章）",
+      "sample_anchor": "横城 13 章 10 节同构：13.1 规划概况、13.2 协调性结论（2 三级节）、13.3 现状结论（6 要素三级节）、13.4 影响评价结论（10 个三级节与预测章要素逐一对应——EO3 实证）、13.5 承载力结论、13.6 清洁生产循环经济结论、13.7 公参结论、13.8 综合论证结论、13.9 优化调整建议、13.10 综合结论。",
+      "key_elements": [
+        "全部结论=波间要点包投影（每句附来源章节指针）；反向新增结论（预测侧无）=FAIL（EO3）",
+        "要素结论逐项在场：影响评价结论节与预测章要素结论清单一一对应（横城 13.4 十节实证）",
+        "总体判定词逐字一致且方向一致：综合论证结论与综合结论两处（XS10 first-occurrence canon；「不可行」必须与优化调整建议在场绑定）",
+        "冻结值同源：沉陷/裂隙带/水量/容量/规模指标引用冻结槽位（XS1/XS4/XS5/XS7/XS12），修编双口径标签必须保留",
+        "公参数字与保护目标实体在结论处逐字一致（XS11/XS2）"
+      ],
+      "writing_patterns": [
+        "每句附来源章节指针（投影纪律）",
+        "结论条目化：逐要素一句一结论",
+        "禁引入新数字、新实体、新判定"
+      ],
+      "tables": [],
+      "std_refs": [
+        "HJ 130-2019",
+        "HJ 463-2009"
+      ],
+      "forms": [
+        "mine_plan",
+        "compliance_plans",
+        "monitoring",
+        "standards_confirm",
+        "sensitive_targets",
+        "water",
+        "eco",
+        "cleaner_production",
+        "circular_economy",
+        "public_participation",
+        "investment",
+        "indicators",
+        "solid_waste"
+      ],
+      "formulas": [
+        "subsidence",
+        "fracture_zone",
+        "water_balance",
+        "capacity:air",
+        "capacity:water",
+        "air_screen",
+        "noise"
+      ],
+      "contracts": [
+        "XS1",
+        "XS2",
+        "XS4",
+        "XS5",
+        "XS7",
+        "XS8",
+        "XS9",
+        "XS10",
+        "XS11",
+        "XS12",
+        "EO3"
+      ],
+      "echo_obligations": {
+        "EO3": {
+          "role": "target",
+          "source": "ch6",
+          "note": "预测各要素结论逐项投影在场断言（章级门）；结论数值与 XS1/XS4/XS5/XS12 同源冻结值一致；反向新增结论=FAIL"
+        }
+      },
+      "sections": [
+        {
+          "id": "ch13_S01",
+          "title": "规划概况",
+          "elements": [
+            "概况段：规划概况结论（投影自规划方案概况章——{{SLOT:mine_plan.total_scale_mt_a_after}}、{{SLOT:mine_plan.minefield_area_km2_after}}、{{SLOT:mine_plan.mine_count}}——XS1 双口径标签保留，数值逐处一致）。",
+            "收束句：过渡到协调性结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{SLOT:mine_plan.minefield_area_km2_after}}",
+              "{{SLOT:mine_plan.mine_count}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          }
+        },
+        {
+          "id": "ch13_S02",
+          "title": "规划协调性分析结论",
+          "elements": [
+            "结论段：内部/外部协调性结论（投影自协调性分析节——逐条对应，禁新增论断；{{TABLE:compliance_plans}} 结论字段同源）。",
+            "收束句：过渡到现状评价结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:compliance_plans}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch13_S03",
+          "title": "矿区环境质量现状评价结论",
+          "elements": [
+            "逐要素结论段组：大气/地表水/地下水/声/土壤/生态现状结论逐条（投影自现状章——执行标准与 {{TABLE:standards_confirm}} 三元组一致，达标判定词与前文 canon 一致；监测口径 {{TABLE:monitoring}}）。",
+            "收束句：过渡到影响评价结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch13_S04",
+          "title": "矿区规划实施环境影响评价结论",
+          "elements": [
+            "逐要素结论段组：生态/沉陷/地下水/地表水/大气/声/固废/土壤/社会经济/风险十个要素结论逐条（投影自预测章要素结论清单——EO3 逐项在场断言，反向新增=FAIL；每条附来源节指针）。",
+            "冻结值义务：沉陷 {{SLOT:subsidence.W_max}}（XS4 双口径标签保留）、裂隙带 {{SLOT:fracture_zone.fracture_height}}（XS5）、涌水量 {{SLOT:water.mine_inflow}}（XS12）、大气 {{SLOT:air_screen.max_ground_conc}}（XS7 判定词同 canon）、声 {{SLOT:noise.point_level}}、固废 {{SLOT:solid_waste.gangue_generation}}——数值逐处 exact_match 绑口径。",
+            "敏感目标结论段：敏感目标影响结论逐项（{{TABLE:sensitive_targets}} 登记名 canon 在场——XS2；总量控制指标结论带替代削减口径——XS8）。",
+            "收束句：过渡到承载力结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:subsidence.W_max}}",
+              "{{SLOT:fracture_zone.fracture_height}}",
+              "{{SLOT:water.mine_inflow}}",
+              "{{SLOT:air_screen.max_ground_conc}}",
+              "{{SLOT:noise.point_level}}",
+              "{{SLOT:solid_waste.gangue_generation}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [
+              "subsidence",
+              "fracture_zone",
+              "air_screen",
+              "noise"
+            ],
+            "contracts": [
+              "XS2",
+              "XS4",
+              "XS5",
+              "XS7",
+              "XS8",
+              "XS12",
+              "EO3"
+            ]
+          }
+        },
+        {
+          "id": "ch13_S05",
+          "title": "矿区资源、环境承载力分析结论",
+          "elements": [
+            "结论段组：水资源承载力（{{SLOT:water_balance.deficit}}——XS12 冻结值）/生态承载力/大气容量（{{SLOT:capacity:air.capacity}}）/地表水容量（{{SLOT:capacity:water.capacity}}）结论逐条（投影自承载力章——冻结值引用不重算；生态结论 {{TABLE:eco}}）。",
+            "收束句：过渡到清洁生产与循环经济结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:water_balance.deficit}}",
+              "{{SLOT:capacity:air.capacity}}",
+              "{{SLOT:capacity:water.capacity}}",
+              "{{TABLE:eco}}"
+            ],
+            "formulas": [
+              "water_balance",
+              "capacity:air",
+              "capacity:water"
+            ],
+            "contracts": [
+              "XS12"
+            ]
+          }
+        },
+        {
+          "id": "ch13_S06",
+          "title": "清洁生产与矿区循环经济分析结论",
+          "elements": [
+            "结论段：清洁生产水平等级结论与循环经济结论（投影自清洁生产循环经济章——{{TABLE:cleaner_production}}/{{TABLE:circular_economy}} 同源，等级与规模禁改写）。",
+            "收束句：过渡到公参结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:cleaner_production}}",
+              "{{TABLE:circular_economy}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch13_S07",
+          "title": "公众参与结论",
+          "elements": [
+            "结论段：公参调查结论（投影自公众参与章——{{TABLE:public_participation}} 数字链 canon：发放/回收/有效/意见处理条数逐处一致——XS11）。",
+            "收束句：过渡到综合论证结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:public_participation}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS11"
+            ]
+          }
+        },
+        {
+          "id": "ch13_S08",
+          "title": "矿区规划综合论证结论",
+          "elements": [
+            "论证结论段：逐项合理性论证结论汇总（投影自综合论证章——产业布局/空间布局/产业结构/建设规模/建设时序/承载力逐条；规模指标 {{SLOT:mine_plan.total_scale_mt_a_after}}——XS1；环保投资占比 {{SLOT:investment.env_investment_ratio}}——XS9 派生禁手填；指标可达性 {{TABLE:indicators}}）。",
+            "总体判定句：从环境保护角度的总体判定词（XS10 首现 canon——措辞与综合结论节逐字一致；候选措辞集待人工核实录入后为枚举）。",
+            "收束句：过渡到优化调整建议。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{SLOT:investment.env_investment_ratio}}",
+              "{{TABLE:indicators}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS9",
+              "XS10"
+            ]
+          }
+        },
+        {
+          "id": "ch13_S09",
+          "title": "矿区总体规划方案的优化调整建议",
+          "elements": [
+            "建议段：优化调整建议逐条（投影自综合论证章优化调整建议节——{{TABLE:compliance_plans}} 问题清单对应，禁新增建议；{{TABLE:indicators}} 指标依据）。",
+            "收束句：过渡到综合结论。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:compliance_plans}}",
+              "{{TABLE:indicators}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          }
+        },
+        {
+          "id": "ch13_S10",
+          "title": "综合结论",
+          "elements": [
+            "综合判定句：从环境保护角度的总体判定词（XS10——与综合论证结论节判定词逐字一致且方向一致；「不可行」方向判定必须与优化调整建议在场绑定，矛盾=FAIL）。",
+            "要点收束段：规划概况—现状—影响—承载力—公参—论证—建议结论要点两句式收束（全部投影自要点包，禁新数字）。",
+            "收束义务：全报告收束（本章为 wave2 投影章——progress 两波制终章）。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": [
+              "XS10"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "forms": {
+    "project": {
+      "file": "00_project.json",
+      "required": true,
+      "chapters": [
+        "ch1"
+      ],
+      "note": "项目身份族（geo 管线接口兼容：expected_deliverable_name/render_front_matter 直读）——矿区级单一事实源",
+      "fields": [
+        {
+          "name": "mine_area_name",
+          "label": "矿区名称",
+          "type": "string",
+          "required": true,
+          "note": "全局唯一 canon"
+        },
+        {
+          "name": "report_type",
+          "label": "报告类型",
+          "type": "enum:规划环境影响报告书",
+          "required": true
+        },
+        {
+          "name": "stage",
+          "label": "评价类别",
+          "type": "enum:规划环评|项目环评|后评价",
+          "required": true
+        },
+        {
+          "name": "revision_flag",
+          "label": "修编/新建",
+          "type": "bool",
+          "required": true,
+          "note": "驱动修编双口径口径标签（revision_before_after）"
+        },
+        {
+          "name": "commissioning_unit",
+          "label": "委托单位",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "undertaking_unit",
+          "label": "编制单位",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "compiler_qualification",
+          "label": "编制单位资质证书号",
+          "type": "string",
+          "required": false,
+          "note": "门 1 人工比对"
+        },
+        {
+          "name": "planning_doc_no",
+          "label": "规划批复文号",
+          "type": "string",
+          "required": true,
+          "note": "门 1 人工比对，禁生成"
+        },
+        {
+          "name": "evaluation_period",
+          "label": "评价时段",
+          "type": "string",
+          "required": true,
+          "note": "现状基准年+规划水平年（横城型：现状基准年 2020、远期至闭矿）"
+        }
+      ]
+    },
+    "mine_plan": {
+      "file": "01_mine_plan.json",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch2",
+        "ch4",
+        "ch5",
+        "ch6",
+        "ch8",
+        "ch10",
+        "ch13"
+      ],
+      "caliber": {
+        "revision_before_after": "全局规模/面积/选煤厂规模字段必备 *_before/*_after 成对（修编项目门 1 校验成对在场；新建项目仅 *_after，before 留 null 并声明）——XS1 exact_match 绑口径"
+      },
+      "fields": [
+        {
+          "name": "total_scale_mt_a",
+          "label": "规划总规模",
+          "type": "number",
+          "required": true,
+          "unit": "Mt/a",
+          "caliber_field": true
+        },
+        {
+          "name": "total_scale_mt_a_before",
+          "label": "原规划总规模",
+          "type": "number",
+          "required": false,
+          "unit": "Mt/a",
+          "caliber_field": true
+        },
+        {
+          "name": "total_scale_mt_a_after",
+          "label": "本次规划总规模",
+          "type": "number",
+          "required": true,
+          "unit": "Mt/a",
+          "caliber_field": true
+        },
+        {
+          "name": "minefield_area_km2_before",
+          "label": "原矿区面积",
+          "type": "number",
+          "required": false,
+          "unit": "km²",
+          "caliber_field": true
+        },
+        {
+          "name": "minefield_area_km2_after",
+          "label": "本次矿区面积",
+          "type": "number",
+          "required": true,
+          "unit": "km²",
+          "caliber_field": true
+        },
+        {
+          "name": "washery_mt_a_before",
+          "label": "原选煤厂规模",
+          "type": "number",
+          "required": false,
+          "unit": "Mt/a",
+          "caliber_field": true
+        },
+        {
+          "name": "washery_mt_a_after",
+          "label": "本次选煤厂规模",
+          "type": "number",
+          "required": true,
+          "unit": "Mt/a",
+          "caliber_field": true
+        },
+        {
+          "name": "mine_count",
+          "label": "井田数",
+          "type": "int",
+          "required": true,
+          "unit": "座"
+        },
+        {
+          "name": "backup_area_km2",
+          "label": "后备区面积",
+          "type": "number",
+          "required": false,
+          "unit": "km²"
+        },
+        {
+          "name": "backup_count",
+          "label": "后备区处数",
+          "type": "int",
+          "required": false
+        },
+        {
+          "name": "reserve_geological_mt",
+          "label": "地质储量",
+          "type": "number",
+          "required": true,
+          "unit": "Mt"
+        },
+        {
+          "name": "reserve_extractable_mt",
+          "label": "可采储量",
+          "type": "number",
+          "required": true,
+          "unit": "Mt"
+        },
+        {
+          "name": "service_years_a",
+          "label": "服务年限",
+          "type": "number",
+          "required": true,
+          "unit": "a",
+          "note": "含均衡生产年限口径注记"
+        },
+        {
+          "name": "mines",
+          "label": "井田清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "name 井田名",
+            "scale_before 原能力 Mt/a",
+            "scale_after 本次能力 Mt/a",
+            "area_km2 面积",
+            "seam_thickness_m 采厚",
+            "depth_m 埋深",
+            "dip_deg 倾角",
+            "development_method 开拓方式",
+            "coal_seams 可采煤层",
+            "status 建设状态(生产|在建|停建|规划)",
+            "construction_sequence 建设时序"
+          ],
+          "note": "ch2 井田特征表/ch6 沉陷逐算/ch8 时序/ch10 项目环评重点同源"
+        },
+        {
+          "name": "facilities",
+          "label": "地面设施",
+          "type": "array<object>",
+          "required": false,
+          "fields": [
+            "type(工业场地|铁路专用线|供水电|渣场)",
+            "name",
+            "location"
+          ]
+        }
+      ]
+    },
+    "planning_indicators": {
+      "file": "01_mine_plan.json",
+      "required": false,
+      "chapters": [
+        "ch1",
+        "ch2"
+      ],
+      "derived_view": true,
+      "note": "mine_plan 全局字段的投影视图（data_expectations.ch1/ch2 所列 planning_indicators 族名映射至此）——同一事实源，ingest 拒收双写",
+      "fields": []
+    },
+    "pillar_design": {
+      "file": "30_pillar_design.json",
+      "required": false,
+      "chapters": [
+        "ch6"
+      ],
+      "note": "保护煤柱留设（横城 6.1.2 型；yueerwan 走查 §2.4 字段）——煤柱宽度=计算书转录（source=设计/评价），煤柱公式族不入一期 formula freeze",
+      "fields": [
+        {
+          "name": "pillars",
+          "label": "煤柱清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "target 保护目标",
+            "minefield 井田",
+            "coal_seam 煤层",
+            "pillar_width_m 煤柱宽度(区间合法)",
+            "setting_body 留设主体(设计提出|评价提出)",
+            "basis 留设依据"
+          ],
+          "note": "处置判定词与 sensitive_targets 保护要求字段一致（XS6）"
+        }
+      ]
+    },
+    "sensitive_targets": {
+      "file": "02_sensitive_targets.json",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch2",
+        "ch3",
+        "ch4",
+        "ch6",
+        "ch8",
+        "ch9",
+        "ch13"
+      ],
+      "note": "表 1.8-1 同构——XS2 跨 5 章合约唯一事实源 + 泄漏检测反向断言联动 sample_entities",
+      "caliber": {
+        "aspect_projection": "同实体多投影维（区域目标/沉陷目标/风险目标——保护要求列随投影不同；yueerwan 走查 §5-F）；名称登记全称为 canon，简称须与登记变体一致"
+      },
+      "fields": [
+        {
+          "name": "targets",
+          "label": "保护目标清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "name 登记全称(canon)",
+            "category 类别(自然保护区|水源保护区|文物保护单位|基本农田|公益林|居民点|交通设施|水体|其他)",
+            "protection_level 保护等级",
+            "location_relation 与矿区位置关系",
+            "distance 距离(数值+单位)",
+            "overlap_area 重叠或影响面积",
+            "protection_requirement 保护要求(处置判定词 canon：禁采|限采|留设保护煤柱|搬迁|其他)",
+            "aspect 投影维(区域|沉陷|风险)",
+            "changes 修编变化注记(新增|撤除|要求调整|无)"
+          ],
+          "note": "距离数值跨章 exact_match（XS6）；专节数据另见 protected_area_detail"
+        }
+      ]
+    },
+    "standards_confirm": {
+      "file": "03_standards_confirm.json",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch3",
+        "ch6",
+        "ch7",
+        "ch10",
+        "ch13"
+      ],
+      "note": "标准三元组逐条人工确认——XS3 唯一事实源；限值 needs_verification=true 未录入档输出「需人工对照」禁自动断言",
+      "gate1": {
+        "checks": [
+          "标准号非空——禁止「（）/()」空括号占位（横城 9 处空括号漏排 GB 3096-2008 实证，走查 §5-F）",
+          "格式体检——须命中 standards_index.gate1_code_checks.allowed_patterns（HJ/GB(/T)/《法律》三型）",
+          "年份一致——4 位年份与 standards[].code 登记一致；pending 条目引用时留待核实禁补猜",
+          "枚举命中——引用的标准号必须能在 standards_index.standards[].code 或法律全称中找到"
+        ],
+        "on_fail": "门 1 拒绝——人工对照标准原文核实后重录（websearch-unreliable 红线：禁 web_search 采信条款号/限值）"
+      },
+      "fields": [
+        {
+          "name": "triplets",
+          "label": "标准三元组清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "element 环境要素(大气|地表水|地下水|声|土壤|生态)",
+            "function_zone 功能区或质量类别",
+            "standard_code 执行标准号",
+            "limit_note 限值档位注记(如 3 类 昼65/夜55)",
+            "evaluation_scope 评价范围与等级"
+          ]
+        },
+        {
+          "name": "confirmed_at",
+          "label": "人工确认时点",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    "legal_basis": {
+      "file": "04_legal_basis.json",
+      "required": true,
+      "chapters": [
+        "ch1"
+      ],
+      "fields": [
+        {
+          "name": "task_doc_no",
+          "label": "任务依据文号",
+          "type": "string",
+          "required": true,
+          "note": "委托函/规划批复文号——门 1 人工比对"
+        },
+        {
+          "name": "laws",
+          "label": "引用法规清单",
+          "type": "array<string>",
+          "required": true,
+          "note": "仅 standards_index 枚举（《环境保护法》《环评法》《规划环评条例》《煤炭矿区总体规划管理规定》等），pending 年份禁补猜"
+        },
+        {
+          "name": "related_plans",
+          "label": "相关规划清单",
+          "type": "array<string>",
+          "required": false
+        },
+        {
+          "name": "tech_docs",
+          "label": "主要技术资料",
+          "type": "array<string>",
+          "required": false
+        }
+      ]
+    },
+    "compliance_plans": {
+      "file": "05_compliance_plans.json",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch8",
+        "ch13"
+      ],
+      "fields": [
+        {
+          "name": "plans",
+          "label": "上位/同层规划清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "name 规划名",
+            "level 层级(上位|同层|专项)",
+            "coordination_result 协调性结论要点",
+            "conflict_points 冲突要点"
+          ]
+        },
+        {
+          "name": "internal_coordination",
+          "label": "内部协调性结论",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "problems",
+          "label": "规划问题清单",
+          "type": "array<string>",
+          "required": true,
+          "note": "ch8_S07 优化调整建议的投影源"
+        }
+      ]
+    },
+    "geography": {
+      "file": "06_geography.json",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch2",
+        "ch3"
+      ],
+      "fields": [
+        {
+          "name": "location_text",
+          "label": "位置与行政区划",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "coords",
+          "label": "经纬度范围",
+          "type": "object",
+          "required": true,
+          "fields": [
+            "lon_min",
+            "lon_max",
+            "lat_min",
+            "lat_max"
+          ],
+          "note": "user_docs 录入，禁手算极值"
+        },
+        {
+          "name": "topography",
+          "label": "地形地貌",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "climate",
+          "label": "气象要素",
+          "type": "object",
+          "required": true,
+          "fields": [
+            "气温",
+            "降水",
+            "蒸发",
+            "风"
+          ],
+          "note": "基准年与评价时段一致"
+        },
+        {
+          "name": "hydrogeology",
+          "label": "水文地质概况",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "soil_types",
+          "label": "土壤类型",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "seismic_intensity",
+          "label": "地震烈度",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "transport",
+          "label": "交通条件",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "eval_area_km2",
+          "label": "评价区面积",
+          "type": "number",
+          "required": false,
+          "unit": "km²"
+        }
+      ]
+    },
+    "monitoring": {
+      "file": "07_monitoring.json",
+      "required": true,
+      "chapters": [
+        "ch3",
+        "ch4",
+        "ch6"
+      ],
+      "source_enum_rule": "source 必须枚举 user_monitoring|analog_mine（门 1 强制非空）；analog_mine 时 analog_source（类比矿名+数据年份）必填非空——D4 类比来源标注义务（新建矿区多为类比矿）",
+      "fields": [
+        {
+          "name": "items",
+          "label": "现状监测记录",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "element 要素(大气|地表水|地下水|声|土壤)",
+            "point 点位",
+            "factor 因子",
+            "period 时段",
+            "value 结果",
+            "unit 单位",
+            "standard_code 执行标准",
+            "source 来源(user_monitoring|analog_mine)",
+            "analog_source 类比矿名+年份(source=analog_mine 时必填)"
+          ]
+        },
+        {
+          "name": "trends",
+          "label": "历年趋势记录",
+          "type": "array<object>",
+          "required": false,
+          "fields": [
+            "element",
+            "year",
+            "value",
+            "unit",
+            "standard_code"
+          ],
+          "note": "ch4 回顾用；只描述已测时段禁外推"
+        }
+      ]
+    },
+    "eco": {
+      "file": "08_eco.json",
+      "required": true,
+      "chapters": [
+        "ch3",
+        "ch4",
+        "ch6",
+        "ch7",
+        "ch9",
+        "ch13"
+      ],
+      "note": "遥感解译成果=用户文档录入（三期影像 LUCC/植被/NPP/侵蚀/景观指数），禁 LLM 生成——生态方法学不入 formula freeze（能力边界）",
+      "fields": [
+        {
+          "name": "land_use",
+          "label": "土地利用构成",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "type 地类",
+            "area_hm2 面积",
+            "ratio 占比",
+            "phase 时相(现状|三期对比各期)"
+          ]
+        },
+        {
+          "name": "vegetation",
+          "label": "植被资源",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "type 植被类型",
+            "coverage 覆盖度",
+            "biomass 生物量",
+            "npp 净第一性生产力"
+          ]
+        },
+        {
+          "name": "animals",
+          "label": "动物资源",
+          "type": "array<string>",
+          "required": false
+        },
+        {
+          "name": "erosion_modulus",
+          "label": "土壤侵蚀模数",
+          "type": "object",
+          "required": false,
+          "fields": [
+            "modulus 模数",
+            "grade 强度分级"
+          ]
+        },
+        {
+          "name": "landscape_indices",
+          "label": "景观格局指数",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "public_forest_area",
+          "label": "国家级公益林面积",
+          "type": "number",
+          "required": false,
+          "unit": "hm²",
+          "note": "目标行 canon 在 sensitive_targets"
+        },
+        {
+          "name": "eco_carrying",
+          "label": "生态承载力评价输入",
+          "type": "object",
+          "required": false,
+          "fields": [
+            "elasticity 弹性度",
+            "pressure 压力度",
+            "capacity 承载能力"
+          ],
+          "note": "ch7——景观生态学成果录入"
+        }
+      ]
+    },
+    "economy": {
+      "file": "09_economy.json",
+      "required": false,
+      "chapters": [
+        "ch2",
+        "ch3",
+        "ch6"
+      ],
+      "note": "区域背景值与工程投资分口径；总投资未列记 skip 非 fail（横城实证：报告书未列工程总投资估算）",
+      "fields": [
+        {
+          "name": "total_investment",
+          "label": "工程总投资",
+          "type": "number",
+          "required": false,
+          "unit": "万元",
+          "note": "缺省→XS9 记 skip"
+        },
+        {
+          "name": "gdp",
+          "label": "区域 GDP 背景",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "population",
+          "label": "人口",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "fiscal",
+          "label": "产值利税",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "retrospective": {
+      "file": "10_retrospective.json",
+      "required": true,
+      "chapters": [
+        "ch4"
+      ],
+      "conditional": "仅回顾性评价模式激活；互换为影响识别时本族 skip（数据族归 ch5/indicators）",
+      "fields": [
+        {
+          "name": "development_history",
+          "label": "开发历史",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "three_simultaneous",
+          "label": "三同时执行情况",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "approvals_fulfilled",
+          "label": "环评批复要求落实清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "requirement 批复要求",
+            "doc_no 批复文号",
+            "fulfilled 落实状态(已落实|部分落实|未落实)",
+            "evidence 佐证"
+          ]
+        },
+        {
+          "name": "facilities_effect",
+          "label": "环保设施建设运行效果",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "subsidence_survey",
+          "label": "已采区沉陷影响调查",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "target 目标(登记名)",
+            "impact 影响调查结论",
+            "survey_basis 调查依据"
+          ],
+          "note": "调查实测口径——禁引用 formula 冻结值冒充已发生影响"
+        },
+        {
+          "name": "eco_restoration_review",
+          "label": "生态恢复措施与效果回顾",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "existing_problems",
+          "label": "现存环境问题清单",
+          "type": "array<string>",
+          "required": true
+        }
+      ]
+    },
+    "indicators": {
+      "file": "11_indicators.json",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch8",
+        "ch13"
+      ],
+      "note": "评价指标体系——指标值从 mine_plan+standards_confirm 投影后确认，禁另立数字",
+      "fields": [
+        {
+          "name": "goals",
+          "label": "环境目标",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "element 要素",
+            "goal 目标表述"
+          ],
+          "note": "standards_confirm 投影"
+        },
+        {
+          "name": "metrics",
+          "label": "评价指标",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "name 指标名",
+            "category 类别(资源|环境质量|生态|社会经济)",
+            "value 指标值",
+            "unit 单位",
+            "standard_code 依据标准",
+            "source 来源(投影|user_planning)"
+          ]
+        }
+      ]
+    },
+    "impact_identification": {
+      "file": "12_impact_identification.json",
+      "required": true,
+      "chapters": [
+        "ch5"
+      ],
+      "note": "识别清单=EO1 呼应义务源清单；矩阵内容由方法学承载（HJ 130/HJ 2.1 参照），因子取自各数据族",
+      "fields": [
+        {
+          "name": "factors",
+          "label": "影响因子清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "factor 因子",
+            "group 分组(自然|生态|环境|社会|经济)"
+          ]
+        },
+        {
+          "name": "limit_factors",
+          "label": "发展限制因子",
+          "type": "array<string>",
+          "required": true
+        },
+        {
+          "name": "matrix",
+          "label": "影响识别矩阵",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "element 环境要素",
+            "activity 规划活动",
+            "nature 影响性质(正|负)",
+            "degree 程度(强|中|弱)"
+          ],
+          "note": "解读段归纳的主要环境影响要素清单=EO1 源清单"
+        }
+      ]
+    },
+    "subsidence_params": {
+      "file": "13_subsidence_params.json",
+      "required": true,
+      "chapters": [
+        "ch6"
+      ],
+      "analog_source_rule": "param_source=类比矿实测或外推他矿时，analog_source（类比矿名/回归依据）必填非空——横城型=马莲台实测岩移回归外推；月儿湾型=规范推荐值（D4/param_source 三值枚举，门 1 强制非空）",
+      "fields": [
+        {
+          "name": "q",
+          "label": "下沉系数",
+          "type": "number",
+          "required": true,
+          "note": "0.5~1.0 典型域"
+        },
+        {
+          "name": "b",
+          "label": "水平移动系数",
+          "type": "number",
+          "required": true,
+          "note": "0.2~0.4 典型域"
+        },
+        {
+          "name": "tan_beta",
+          "label": "主要影响角正切",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "s_offset",
+          "label": "拐点偏移距",
+          "type": "number",
+          "required": false,
+          "unit": "m",
+          "note": "可默认 0；区间值按口径取值或派生中值+口径标签"
+        },
+        {
+          "name": "param_source",
+          "label": "参数来源",
+          "type": "enum:规范推荐值|实测岩移回归|类比矿实测",
+          "required": true,
+          "param_source_enum": [
+            "规范推荐值",
+            "实测岩移回归",
+            "类比矿实测"
+          ],
+          "note": "门 1 非空——三值必选一"
+        },
+        {
+          "name": "analog_source",
+          "label": "类比依据描述",
+          "type": "string",
+          "required": false,
+          "note": "类比/外推时必填非空"
+        },
+        {
+          "name": "repeat_mining_flag",
+          "label": "重复采动",
+          "type": "bool",
+          "required": false,
+          "note": "逐煤层 flag 驱动派生值（q/tanβ 重复采动取值），禁手填双值"
+        },
+        {
+          "name": "per_mine",
+          "label": "逐矿参数",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "mine 井田名(mine_plan 引用)",
+            "m 采厚",
+            "H 埋深",
+            "alpha 倾角",
+            "repeat_mining 重复采动 flag"
+          ],
+          "note": "formula:subsidence 层间叠加输入"
+        },
+        {
+          "name": "overburden_lithology",
+          "label": "覆岩岩性",
+          "type": "string",
+          "required": false,
+          "note": "取值依据注记，进 source 标签"
+        }
+      ],
+      "outputs_note": "W_max/r/U_max/i_max/K_max/eps_max/沉陷面积=formula:subsidence 冻结输出（槽位禁手抄手填）；逐矿最大/最小 W_max 多口径分别带标签（XS4 min_max_pair）；倾斜/曲率/逐点值/等值线=软件成果走表单转录（能力边界）"
+    },
+    "water": {
+      "file": "14_water.json",
+      "required": true,
+      "chapters": [
+        "ch3",
+        "ch6",
+        "ch7",
+        "ch13"
+      ],
+      "analog_source_rule": "涌水量非实测必带类比来源标注（analog_source）——XS12 caliber",
+      "fields": [
+        {
+          "name": "mine_inflow",
+          "label": "逐矿矿井涌水量",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "mine 井田名",
+            "inflow_m3_d 涌水量",
+            "measured 是否实测",
+            "analog_source 类比来源(非实测必填)"
+          ],
+          "note": "冻结/转录口径 canon——跨章 exact_match（XS12）"
+        },
+        {
+          "name": "sources",
+          "label": "水源地",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "name 水源地(登记名)",
+            "yield 可采量",
+            "storage 库容",
+            "ban_distance 禁采距离"
+          ],
+          "note": "禁采距离与 sensitive_targets 处置判定词一致（XS6）"
+        },
+        {
+          "name": "receiving_water",
+          "label": "受纳水体水文参数",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "regional_water",
+          "label": "区域水资源总量/可利用量",
+          "type": "object",
+          "required": false,
+          "note": "ch7 承载力输入"
+        },
+        {
+          "name": "demand",
+          "label": "需水量预测",
+          "type": "object",
+          "required": false,
+          "fields": [
+            "production 生产",
+            "domestic 生活",
+            "ecological 生态"
+          ],
+          "note": "供需平衡差额=formula:water_balance 冻结禁手填"
+        }
+      ]
+    },
+    "air": {
+      "file": "15_air.json",
+      "required": true,
+      "chapters": [
+        "ch6",
+        "ch7"
+      ],
+      "note": "air_screen 仅锅炉烟气点源适用；扬尘面源走源强取值禁硬套点源模型（能力边界）",
+      "fields": [
+        {
+          "name": "boilers",
+          "label": "锅炉清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "count 台数",
+            "capacity_t_h 吨位",
+            "stack_h 烟囱高度",
+            "stack_d 出口内径",
+            "stack_v 出口流速",
+            "stack_t 烟温",
+            "pollutants 污染物浓度",
+            "coal_use 耗煤量"
+          ]
+        },
+        {
+          "name": "dust_source_strength",
+          "label": "扬尘源强取值",
+          "type": "string",
+          "required": false,
+          "note": "reference_values【待核实】——面源（转储运/筛分）"
+        },
+        {
+          "name": "meteorology",
+          "label": "气象",
+          "type": "object",
+          "required": true,
+          "fields": [
+            "wind_speed 风速",
+            "stability 稳定度"
+          ]
+        },
+        {
+          "name": "capacity_inputs",
+          "label": "容量测算输入",
+          "type": "object",
+          "required": false,
+          "fields": [
+            "area 面积",
+            "target_conc 目标浓度",
+            "background 背景值",
+            "a_value A 值"
+          ],
+          "note": "A 值 GB/T 13201-91【待核实】；目标浓度查 GB 3095 limit_tables 未录入档人工对照"
+        }
+      ]
+    },
+    "noise": {
+      "file": "16_noise.json",
+      "required": true,
+      "chapters": [
+        "ch6"
+      ],
+      "fields": [
+        {
+          "name": "sources",
+          "label": "设备/运输源强",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "source 源",
+            "level 源强",
+            "type 类型(点源|线源)"
+          ]
+        },
+        {
+          "name": "distances",
+          "label": "厂界/敏感目标距离",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "limits",
+          "label": "执行限值",
+          "type": "object",
+          "required": true,
+          "note": "绑 standards_confirm 三元组（GB 12348/GB 3096——限值档查 limit_tables 未录入档人工对照）"
+        },
+        {
+          "name": "background",
+          "label": "背景值",
+          "type": "object",
+          "required": false,
+          "note": "类比来源标注必填（D4）"
+        }
+      ]
+    },
+    "solid_waste": {
+      "file": "17_solid_waste.json",
+      "required": true,
+      "chapters": [
+        "ch6",
+        "ch9",
+        "ch11"
+      ],
+      "fields": [
+        {
+          "name": "gangue_rate",
+          "label": "矸石产率",
+          "type": "number",
+          "required": true
+        },
+        {
+          "name": "gangue_generation",
+          "label": "矸石产生量",
+          "type": "number",
+          "required": true,
+          "derived": "产率×total_scale_mt_a_after——派生值禁手填"
+        },
+        {
+          "name": "disposal_sites",
+          "label": "渣场库容与位置",
+          "type": "array<object>",
+          "required": true
+        },
+        {
+          "name": "hazardous",
+          "label": "危废种类与量",
+          "type": "array<object>",
+          "required": true
+        },
+        {
+          "name": "disposal_method",
+          "label": "处置方式",
+          "type": "array<string>",
+          "required": true,
+          "note": "GB 18599/GB 18597（年份 pending 纪律）口径"
+        }
+      ]
+    },
+    "soil_score": {
+      "file": "18_soil_score.json",
+      "required": true,
+      "chapters": [
+        "ch6"
+      ],
+      "note": "碱化/盐化综合评分法（HJ 964 方法语境）——评分因子成果录入；判定阈值不入 formula freeze（reference_values【待核实】）",
+      "fields": [
+        {
+          "name": "factors",
+          "label": "评分因子",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "factor 因子",
+            "score 评分",
+            "basis 依据"
+          ]
+        },
+        {
+          "name": "total_score",
+          "label": "综合评分",
+          "type": "number",
+          "required": true,
+          "note": "因子合计（转录/简单加和），判定词=规则输出禁手填"
+        }
+      ]
+    },
+    "protected_area_detail": {
+      "file": "19_protected_area_detail.json",
+      "required": false,
+      "chapters": [
+        "ch6"
+      ],
+      "conditional": "D8 数据驱动小节槽（横城 6.8 十子节=十组槽位）——清单存在对应类别目标时必录；无对应目标整族 skip、专节 ABSENT。换矿区换数据不换模板",
+      "fields": [
+        {
+          "name": "sections",
+          "label": "专节槽位组",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "target 目标(登记名 canon)",
+            "overview 保护区概况",
+            "function_zone 功能区划",
+            "boundary_relation 边界关系",
+            "overlap_minefields 重叠井田",
+            "overlap_area 重叠面积",
+            "impact_mode 影响方式",
+            "subsidence_overlap 沉陷重叠分析结论",
+            "ecology_impact 植被动物影响",
+            "protection_status 保护现状",
+            "plan_coordination 规划协调性",
+            "protection_measures 保护对策落实"
+          ],
+          "note": "重叠面积/距离 canon 禁复算；对策与 sensitive_targets 保护要求一致（XS2/XS6）"
+        }
+      ]
+    },
+    "risk": {
+      "file": "20_risk.json",
+      "required": true,
+      "chapters": [
+        "ch6"
+      ],
+      "note": "风险清单=EO2 呼应义务源（应急逐项覆盖——漏项=FAIL）；HJ 169 方法语境",
+      "fields": [
+        {
+          "name": "substances",
+          "label": "风险物质清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "name 物质",
+            "quantity 量",
+            "storage 贮存"
+          ]
+        },
+        {
+          "name": "facilities",
+          "label": "风险设施清单",
+          "type": "array<string>",
+          "required": true,
+          "note": "油库|炸药库|矸石山|危废暂存等"
+        },
+        {
+          "name": "eco_risk_sources",
+          "label": "生态风险源",
+          "type": "array<string>",
+          "required": false
+        }
+      ]
+    },
+    "carbon": {
+      "file": "21_carbon.json",
+      "required": false,
+      "chapters": [
+        "ch6"
+      ],
+      "note": "碳排放为预测章内小节（KF 三偏差同向）；排放因子来源【待核实】纪律",
+      "fields": [
+        {
+          "name": "boundary",
+          "label": "核算边界",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "activity_data",
+          "label": "活动水平数据",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "emission_factor_source",
+          "label": "排放因子来源",
+          "type": "string",
+          "required": true,
+          "note": "standards_index【待核实】——人工核实后才可断言"
+        }
+      ]
+    },
+    "measures": {
+      "file": "22_measures.json",
+      "required": true,
+      "chapters": [
+        "ch9",
+        "ch10"
+      ],
+      "note": "措施条目=对象要素+内容+主体+时段；EO1/EO2 目标侧载体——识别负面要素与风险源逐项覆盖",
+      "fields": [
+        {
+          "name": "eco",
+          "label": "生态综合整治措施",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "zoning 区划",
+            "content 措施",
+            "body 实施主体",
+            "phase 时段"
+          ]
+        },
+        {
+          "name": "air",
+          "label": "大气治理措施",
+          "type": "array<object>",
+          "required": true
+        },
+        {
+          "name": "water",
+          "label": "水治理措施",
+          "type": "array<object>",
+          "required": true,
+          "note": "含保水采煤与含水层保护（依据 fracture_zone 冻结值——XS5）"
+        },
+        {
+          "name": "noise",
+          "label": "噪声防治措施",
+          "type": "array<object>",
+          "required": true
+        },
+        {
+          "name": "solid_waste",
+          "label": "固废处置与综合利用措施",
+          "type": "array<object>",
+          "required": true
+        },
+        {
+          "name": "risk_response",
+          "label": "风险防范与应急预案要点",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "risk_source 风险源(登记名)",
+            "prevention 防范措施",
+            "emergency 应急响应"
+          ],
+          "note": "EO2 目标断言——风险源逐项在场"
+        },
+        {
+          "name": "mgmt",
+          "label": "环境管理机构与内容",
+          "type": "array<object>",
+          "required": false,
+          "note": "ch10 环境管理计划承载"
+        }
+      ]
+    },
+    "investment": {
+      "file": "23_investment.json",
+      "required": false,
+      "chapters": [
+        "ch9",
+        "ch13"
+      ],
+      "fields": [
+        {
+          "name": "items",
+          "label": "环保投资分项",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "item 分项",
+            "amount 金额",
+            "corresponding 对应措施"
+          ]
+        },
+        {
+          "name": "env_investment",
+          "label": "环保投资汇总",
+          "type": "number",
+          "required": true,
+          "unit": "万元"
+        },
+        {
+          "name": "total_investment",
+          "label": "工程总投资",
+          "type": "number",
+          "required": false,
+          "unit": "万元",
+          "note": "未列记 skip 非 fail（横城实证）"
+        },
+        {
+          "name": "investment_ratio",
+          "label": "环保投资占比",
+          "type": "number",
+          "required": false,
+          "derived": "env_investment/total_investment——派生值禁手填（XS9）；总投缺→字段缺记 skip"
+        }
+      ]
+    },
+    "eco_restoration": {
+      "file": "24_eco_restoration.json",
+      "required": false,
+      "chapters": [
+        "ch9"
+      ],
+      "fields": [
+        {
+          "name": "zoning",
+          "label": "整治区划目标与限制要求",
+          "type": "array<object>",
+          "required": true
+        },
+        {
+          "name": "reclamation",
+          "label": "复垦与植被重建安排",
+          "type": "array<object>",
+          "required": true
+        },
+        {
+          "name": "compensation",
+          "label": "生态补偿机制",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    "monitoring_plan": {
+      "file": "25_monitoring_plan.json",
+      "required": true,
+      "chapters": [
+        "ch10"
+      ],
+      "note": "监测计划执行标准与 XS3 三元组一致；应急监测覆盖 EO2 风险源全部类型",
+      "fields": [
+        {
+          "name": "plans",
+          "label": "监测计划",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "phase 期(施工|运营|闭矿)",
+            "element 要素",
+            "point 点位",
+            "factor 因子",
+            "frequency 频次",
+            "standard_code 执行标准"
+          ],
+          "note": "禁笼统「定期监测」——逐项表列"
+        },
+        {
+          "name": "agency_req",
+          "label": "监测机构资质要求",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "emergency_monitoring",
+          "label": "应急监测安排",
+          "type": "string",
+          "required": true,
+          "note": "与 risk 清单风险类型一一对应（EO2）"
+        }
+      ]
+    },
+    "tracking_plan": {
+      "file": "26_tracking_plan.json",
+      "required": true,
+      "chapters": [
+        "ch10"
+      ],
+      "note": "跟踪评价=《规划环境影响评价条例》法定义务",
+      "fields": [
+        {
+          "name": "periods",
+          "label": "跟踪评价时段",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "contents",
+          "label": "跟踪评价内容",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "schedule",
+          "label": "跟踪评价计划",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "next_eia_focus",
+          "label": "下阶段项目环评重点",
+          "type": "array<string>",
+          "required": true
+        }
+      ]
+    },
+    "cleaner_production": {
+      "file": "27_cleaner_production.json",
+      "required": false,
+      "chapters": [
+        "ch11"
+      ],
+      "analog_source_rule": "对标基准非本矿实测时必带类比来源标注（D4）",
+      "fields": [
+        {
+          "name": "benchmarks",
+          "label": "清洁生产指标对标",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "name 指标",
+            "value 本矿区值",
+            "standard 基准值",
+            "grade 等级",
+            "analog_source 类比来源(非本矿基准必填)"
+          ],
+          "note": "HJ 446 现行版本【待核实】禁补猜"
+        }
+      ]
+    },
+    "circular_economy": {
+      "file": "28_circular_economy.json",
+      "required": false,
+      "chapters": [
+        "ch11"
+      ],
+      "fields": [
+        {
+          "name": "gangue_reuse",
+          "label": "矸石综合利用途径与规模",
+          "type": "object",
+          "required": true,
+          "note": "规模与 solid_waste.gangue_generation 同源禁两套数字"
+        },
+        {
+          "name": "mine_water_reuse",
+          "label": "矿井水综合利用",
+          "type": "object",
+          "required": true,
+          "note": "回用规模与供需平衡口径一致"
+        },
+        {
+          "name": "gas_reuse",
+          "label": "瓦斯综合利用",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "industry_chain",
+          "label": "循环经济产业链构成",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    "public_participation": {
+      "file": "29_public_participation.json",
+      "required": true,
+      "chapters": [
+        "ch12"
+      ],
+      "note": "D7 脱敏：被调查人姓名/电话/身份证禁入正文（人名实体命中 sample_entities 注册表 aux.people 即 FAIL）；XS11 数字链自洽",
+      "fields": [
+        {
+          "name": "rounds",
+          "label": "公示轮次",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "round 次序",
+            "form 形式(网站|报纸|张贴)",
+            "time 时间",
+            "objects 对象",
+            "opinion_count 意见条数"
+          ]
+        },
+        {
+          "name": "questionnaires",
+          "label": "问卷统计",
+          "type": "object",
+          "required": true,
+          "fields": [
+            "issued 发放",
+            "collected 回收",
+            "valid 有效"
+          ],
+          "note": "链自洽：回收≤发放、有效≤回收（XS11）"
+        },
+        {
+          "name": "opinions",
+          "label": "意见条目与采纳情况",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "summary 意见摘要(脱敏)",
+            "handling 处理(采纳|部分采纳|未采纳)",
+            "reason 理由"
+          ]
+        },
+        {
+          "name": "symposiums",
+          "label": "座谈会场次",
+          "type": "int",
+          "required": false
+        }
+      ]
+    },
+    "projection": {
+      "file": null,
+      "required": false,
+      "chapters": [
+        "ch8",
+        "ch13"
+      ],
+      "projection": true,
+      "note": "非用户表单——波间要点包（管线生成，ingest 拒收）；ch13 结论唯一事实源（EO3）；每条要点=结论句+数据元组+来源章节指针",
+      "fields": []
+    }
+  }
+}

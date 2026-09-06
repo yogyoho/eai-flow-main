@@ -1,0 +1,204 @@
+{
+  "version": "2.0",
+  "generated": "2026-09-06",
+  "source": "D5 重写定稿（docs/designs/coal-eia-report-v2.md）：calc 5 脚本以 geo formula_runner 架构落 Decimal 计算函数（scripts/formula_runner.py，本文件只承载参数/舍入策略——计算体在 runner 函数内）；槽位 key 与 references/stages/planning_eia.json 的 formulas 声明及 {{SLOT:}} 引用逐一对齐（subsidence/fracture_zone/capacity:water/capacity:air/noise/air_screen/water_balance——不自创键名）；fracture_zone 系数经横城/月儿湾/四季屯样例正文数值人工回代定稿（回归=backend/tests/test_coal_eia_calc_regression.py）",
+  "rounding_policy": {
+    "rule": "四舍六入五逢奇进偶舍 = ROUND_HALF_EVEN（geo 同精度纪律）",
+    "implementation": "decimal.Decimal + quantize(ROUND_HALF_EVEN)，禁用 float round()；超越运算（cos/log10/10^x/exp/√/x^0.89）全 Decimal 原生或 Taylor（prec 50），中间量不落舍入、链式下游复用未舍入值",
+    "precision_by_quantity": {
+      "下沉值/水平移动": "0.01mm",
+      "影响半径/裂隙带/垮落带高度": "0.01m",
+      "倾斜/水平变形": "0.0001mm/m（软件成果转录）",
+      "曲率": "0.000001×10⁻³/m（软件成果转录）",
+      "大气容量": "0.0001 万吨/年（吨/年 2 位）",
+      "水体容量": "0.0001 吨/天（吨/年 2 位）",
+      "水量平衡": "0.01 m³/d，平衡比 0.01",
+      "声级": "0.1 dB(A)",
+      "落地浓度": "0.0001 μg/m³，距离 0.1m"
+    }
+  },
+  "unit_conventions": {
+    "subsidence_W_max": "mm（q 无量纲×采厚 m×cosα×1000）；层间叠加=逐煤层 ΣW_max（概率积分法线性叠加）",
+    "fracture_height": "m，法向高度（缓倾斜自煤层顶面算起）；取套用公式 +dev（最不利/安全口径，与样例回代一致）",
+    "capacity_air": "A 值法原生生万吨/年（A×ΔC×√S），另存吨/年=×10⁴",
+    "water_balance": "m³/d；supply 缺 balance 表时按逐矿涌水量 XS12 口径合成；平衡差正=盈余",
+    "air_screen_emission_rate": "锅炉表给污染物浓度(mg/m³)时 Q(g/s)=C×π/4·d²·v/1000；直给 emission_rate_gs 则直接采用；烟温<200 按℃→K 换算",
+    "gangue_generation": "万t/a = 产率%×总规模 Mt/a（1 Mt=100 万t）"
+  },
+  "capability_boundaries": [
+    "subsidence：仅 W_max（逐煤层级+层间叠加）与 r=H/tanβ 入 freeze——倾斜/曲率/水平移动/水平变形/沉陷面积/逐点值/等值线/动态预计=开采沉陷软件成果走表单转录（subsidence_params.software_results），禁公式硬凑（月儿湾实证 U/W=0.44≠b=0.3；yueerwan 走查 §5-B 拍板）",
+    "fracture_zone：三下规范套用公式限缓倾斜/倾斜（α<54°）、单层一次采全高；厚煤层（M>3.5m）矿大经验公式分支样例 OLE 不可转录未实现——runner 记 anomaly 提示软件/实测复核；近距离煤层群综合开采厚度口径需层间距数据（表单未采集，禁编造）",
+    "air_screen：仅适用锅炉烟气点源（6.4.3 型）；煤炭转储运/筛分扬尘为面源——走 reference_values 源强取值+槽位，禁硬套点源模型（XS7/ch6 走查 §5-C）",
+    "生态/土壤评分类方法（景观生态指数、侵蚀模数分级、碱化盐化评分）不入 formula freeze——数值走表单录入+阈值判定合约（ch6 走查 §5-B）",
+    "公式 OLE 化不 OCR：计算复现靠参数人工录入核对（formula_runner 冻结），不靠公式文本提取"
+  ],
+  "formulas": [
+    {
+      "id": "subsidence",
+      "name": "概率积分法地表沉陷预测（W_max 层间叠加）",
+      "chapter": "ch6_S01/ch9_S01/ch13（XS4 min_max_pair）",
+      "expr": "W_max_i = q_i × m × cosα × 1000；W_max[矿] = Σ_i W_max_i；r = H / tanβ；q_i/tanβ_i 重复采动 flag 驱动派生（q_repeat_mining/tan_beta_repeat_mining）",
+      "inputs": [
+        {"name": "q", "desc": "下沉系数", "unit": "-", "type": "user_input", "source": "subsidence_params（param_source 三值枚举必填）"},
+        {"name": "b", "desc": "水平移动系数", "unit": "-", "type": "user_input"},
+        {"name": "tan_beta", "desc": "主要影响角正切", "unit": "-", "type": "user_input"},
+        {"name": "per_mine[]", "desc": "逐矿逐煤层 m 采厚/H 埋深/alpha 倾角/repeat_mining", "unit": "m/m/度/bool", "type": "user_input"}
+      ],
+      "outputs": [
+        {"name": "subsidence.W_max[{矿}|{煤层}]", "unit": "mm"},
+        {"name": "subsidence.r[{矿}|{煤层}]", "unit": "m"},
+        {"name": "subsidence.W_max[{矿}]", "desc": "层间叠加", "unit": "mm"},
+        {"name": "subsidence.W_max", "desc": "全矿区最大（XS4 max 口径）", "unit": "mm"},
+        {"name": "subsidence.W_max[min]", "desc": "全矿区最小（XS4 min 口径）", "unit": "mm"}
+      ],
+      "precision": "0.01mm / 0.01m",
+      "slots": ["{{SLOT:subsidence.W_max}}", "{{SLOT:subsidence.subsidence_area_km2}}*", "{{SLOT:subsidence.i_max}}*", "{{SLOT:subsidence.eps_max}}*"],
+      "note": "带 * 槽位=软件成果转录（software_results，source=form:subsidence_params），非公式输出——能力边界；月儿湾复现实证：q=0.8/m=3.08/α=35° → W_max=2018.39（表5.3-7 同值）；倾斜/曲率/水平变形硬凑禁（U/W=0.44≠b）；动态预计=软件黑箱",
+      "regression": "calc/calc_subsidence.py 3 组参数同参同果"
+    },
+    {
+      "id": "fracture_zone",
+      "name": "导水裂隙带/垮落带最大高度（《三下规范》套用公式）",
+      "chapter": "ch6_S03/ch9_S03/ch13（XS5）",
+      "expr": "Hf = 100M/(aM+b) ± dev（取+dev 最不利）；Hc = k×M（MT/T1091-2008 附录D 类乘系数上界）。系数表 a/b/dev/k：坚硬 1.2/2.0/8.9/5、中硬 1.6/3.6/5.6/4、软弱 3.1/5.0/4.0/2、极软弱 5.0/8.0/3.0/2（M=累计采厚 m）",
+      "inputs": [
+        {"name": "M", "desc": "累计采厚", "unit": "m", "type": "user_input", "source": "subsidence_params.per_mine.m"},
+        {"name": "lithology", "desc": "覆岩岩性（坚硬/中硬/软弱/极软弱）", "type": "user_input", "source": "per_mine.lithology 或 overburden_lithology"}
+      ],
+      "outputs": [
+        {"name": "fracture_zone.fracture_height[{矿}|{煤层}]", "unit": "m"},
+        {"name": "fracture_zone.collapse_height[{矿}|{煤层}]", "unit": "m"},
+        {"name": "fracture_zone.fracture_height", "desc": "全矿区最大（XS5）", "unit": "m"},
+        {"name": "fracture_zone.collapse_height", "desc": "全矿区最大", "unit": "m"}
+      ],
+      "precision": "0.01m",
+      "slots": ["{{SLOT:fracture_zone.fracture_height}}", "{{SLOT:fracture_zone.collapse_height}}"],
+      "note": "唯一无既有 calc 脚本的纯新写域——回归=样例正文数值人工回代：软弱式 100M/(3.1M+5.0)+4.0 精确复现月儿湾 1煤 M=1.46→19.33、3煤 M=1.69→20.51 与四季屯 6上/6下/7/8/10 煤 24.22/15.22/26.50/19.96/19.16；极软弱式 100M/(5.0M+8.0)+3.0 精确复现四季屯 3煤 M=2.2→14.58；垮落带 2M 复现四季屯表3.2-24（2.2→4.40）。TODO：厚煤层(M>3.5m)矿大经验公式分支样例 OLE 不可转录——anomaly 提示软件/实测复核；适用限 α<54°",
+      "regression": "无原脚本——回代组单列于 test_coal_eia_calc_regression.py::TestFractureZoneBacksubst"
+    },
+    {
+      "id": "capacity:air",
+      "name": "A 值法大气环境容量（GB/T 13201-91）",
+      "chapter": "ch6_S04/ch7_S03/ch8_S06/ch13（跨章同源）",
+      "expr": "Qa = A × max(Cs − Cb, 0) × √S（万吨/年）；吨/年 = Qa×10⁴",
+      "inputs": [
+        {"name": "area", "desc": "评价区面积 S", "unit": "km2", "type": "user_input", "source": "air.capacity_inputs"},
+        {"name": "target_conc", "desc": "目标浓度 Cs（查 GB 3095 limit_tables，未录入档人工对照）", "unit": "ug/m3", "type": "user_input"},
+        {"name": "background", "desc": "背景浓度 Cb", "unit": "ug/m3", "type": "user_input"},
+        {"name": "a_value", "desc": "地区 A 值", "unit": "-", "type": "user_input", "note": "GB/T 13201-91【待核实】纪律——必填不设默认"}
+      ],
+      "outputs": [
+        {"name": "capacity:air.capacity", "unit": "万吨/年"},
+        {"name": "capacity:air.capacity_t_a", "unit": "吨/年"}
+      ],
+      "precision": "0.0001 万吨/年",
+      "slots": ["{{SLOT:capacity:air.capacity}}"],
+      "note": "与承载力章同源消费（ch7/ch8 引用不重算）；负余量截 0 与 calc_capacity.py 口径一致",
+      "regression": "calc/calc_capacity.py air 分支 3 组参数同参同果"
+    },
+    {
+      "id": "capacity:water",
+      "name": "地表水环境容量（一维模型）",
+      "chapter": "ch6_S03/ch7_S04/ch8_S06/ch13（跨章同源）",
+      "expr": "W = 86.4 × Q × max(Cs − Cb, 0) / 1000（吨/天）；k>0 时加自净项 k·Cs·86.4·Q/1000/(1+k)（calc_capacity.py 原口径）；吨/年 = W×365",
+      "inputs": [
+        {"name": "river_flow_m3s", "desc": "受纳水体流量 Q", "unit": "m3/s", "type": "user_input", "source": "water.receiving_water"},
+        {"name": "target_conc_mgL", "desc": "水质目标 Cs", "unit": "mg/L", "type": "user_input"},
+        {"name": "background_conc_mgL", "desc": "背景浓度 Cb", "unit": "mg/L", "type": "user_input"},
+        {"name": "decay_coefficient", "desc": "综合衰减系数 k", "unit": "1/d", "type": "user_input", "note": "缺省 0（原脚本默认）"}
+      ],
+      "outputs": [
+        {"name": "capacity:water.capacity", "unit": "吨/天"},
+        {"name": "capacity:water.capacity_t_y", "unit": "吨/年"},
+        {"name": "capacity:water.dilution_tpd / selfpurify_tpd", "unit": "吨/天"}
+      ],
+      "precision": "0.0001 吨/天",
+      "slots": ["{{SLOT:capacity:water.capacity}}"],
+      "note": "水质目标类别须与 standards_confirm 三元组一致（XS3）",
+      "regression": "calc/calc_capacity.py water 分支 3 组参数同参同果"
+    },
+    {
+      "id": "water_balance",
+      "name": "水量平衡（供/需/回用/排水）",
+      "chapter": "ch7_S01/ch8_S06/ch13（XS12）",
+      "expr": "Σsupply/Σdemand/Σreuse/Σdischarge；deficit = supply − demand（正=盈余）；回用率 = reuse/(demand+reuse)×100；损失 = (supply+reuse) − (demand+discharge)（蒸发/损耗折入）",
+      "inputs": [
+        {"name": "balance.supply/reuse/discharge[]", "desc": "水量平衡表分项 {name, volume_m3d}", "unit": "m3/d", "type": "user_input", "source": "water.balance"},
+        {"name": "demand.production/domestic/ecological", "desc": "需水预测（balance.demand 缺表时合成）", "unit": "m3/d", "type": "user_input"},
+        {"name": "mine_inflow[]", "desc": "逐矿涌水量（balance.supply 缺表时的 supply 口径）", "unit": "m3/d", "type": "user_input", "note": "非实测必带 analog_source（XS12）"}
+      ],
+      "outputs": [
+        {"name": "water_balance.supply / demand / deficit", "unit": "m3/d"},
+        {"name": "water_balance.reuse / reuse_rate / loss / balance_ratio", "unit": "m3/d / % / m3/d / -"}
+      ],
+      "precision": "0.01 m3/d",
+      "slots": ["{{SLOT:water_balance.supply}}", "{{SLOT:water_balance.demand}}", "{{SLOT:water_balance.deficit}}"],
+      "note": "供需平衡差额=formula 冻结值禁手填；水量平衡表内部自洽（供=需+损/回用链闭合）",
+      "regression": "calc/calc_water_balance.py 3 组参数同参同果"
+    },
+    {
+      "id": "noise",
+      "name": "声环境预测（单源衰减+多源能量合成）",
+      "chapter": "ch6_S05/ch13（XS3 限值绑定）",
+      "expr": "点源 Lp = Lw − 20·lg r − 11 − Δatm − Δground；线源 Lp = Lw − 10·lg(r/7.5) − Δ；多源合成 L = 10·lg Σ10^(Li/10)；达标距离=合成曲线二分反解（单调不增）",
+      "inputs": [
+        {"name": "sources[]", "desc": "设备/运输源强 {source, level, type(点源|线源)}", "unit": "dB(A)", "type": "user_input", "source": "noise.sources"},
+        {"name": "distances.point/line", "desc": "评价距离（标量）或预测距离表（列表）——主槽位取最近距离", "unit": "m", "type": "user_input"},
+        {"name": "limits.day/night", "desc": "执行限值（绑 GB 12348/GB 3096 三元组，limit_tables 档）", "unit": "dB(A)", "type": "user_input"},
+        {"name": "background.level", "desc": "背景值（非本区实测必须带类比来源标注——D4）", "unit": "dB(A)", "type": "user_input"}
+      ],
+      "outputs": [
+        {"name": "noise.point_level / noise.line_level", "unit": "dB(A)"},
+        {"name": "noise.{point|line}_level[{距离}m]", "desc": "预测表逐距离", "unit": "dB(A)"},
+        {"name": "noise.compliance_distance[_day/_night]", "unit": "m"}
+      ],
+      "precision": "0.1 dB(A) / 0.1m",
+      "slots": ["{{SLOT:noise.line_level}}", "{{SLOT:noise.point_level}}", "{{SLOT:noise.compliance_distance}}"],
+      "note": "主槽位 noise.compliance_distance=点源组 vs 夜限（无夜限用昼限，GB 12348 厂界最严口径）；全程达标/全程超标不冻结距离槽位、记 anomaly",
+      "regression": "calc/calc_noise.py 3 组参数同参同果（单源衰减+闭式达标距离）"
+    },
+    {
+      "id": "air_screen",
+      "name": "锅炉烟气点源估算（Holland 抬升 + Briggs 城市扩散 + 高斯烟羽轴线）",
+      "chapter": "ch6_S04/ch13（XS7 仅点源适用声明）",
+      "expr": "ΔH=(vs·D/u)(1.5+2.68e-3·ΔT·D/u)；σy=0.32x/√(1+0.0004x)；σz=c·x^0.89（P-G c 值 A~F=0.20/0.12/0.08/0.06/0.03/0.016）；C=Q·10⁶/(π·σy·σz·u)·exp(−Heff²/2σz²)；100~50000m 500 点网格搜索最大落地浓度（与原脚本同一网格）",
+      "inputs": [
+        {"name": "boilers[]", "desc": "锅炉 {stack_h, stack_d, stack_v, stack_t, pollutants{因子:mg/m3} 或 emission_rate_gs, name}", "type": "user_input", "source": "air.boilers"},
+        {"name": "meteorology", "desc": "wind_speed（缺省 3.0）/stability（缺省 D）", "type": "user_input", "source": "air.meteorology"}
+      ],
+      "outputs": [
+        {"name": "air_screen.max_ground_conc[{锅炉}|{因子}]", "unit": "ug/m3"},
+        {"name": "air_screen.max_conc_distance[{锅炉}|{因子}]", "unit": "m"},
+        {"name": "air_screen.max_ground_conc / max_conc_distance", "desc": "全锅炉×污染物最大", "unit": "ug/m3 / m"},
+        {"name": "air_screen.plume_rise[{锅炉}] / effective_height[{锅炉}]", "unit": "m"}
+      ],
+      "precision": "0.0001 ug/m3 / 0.1m / 0.01m",
+      "slots": ["{{SLOT:air_screen.max_ground_conc}}", "{{SLOT:air_screen.max_conc_distance}}"],
+      "note": "仅适用锅炉烟气点源（判定词处必须带计算模式与适用范围声明——XS7）；煤炭转储运/筛分扬尘为面源——走 reference_values 源强取值，禁硬套点源模型（能力边界）；规划环评层次无 AERMOD/ADMS（横城实证），本式为筛选估算",
+      "regression": "calc/calc_air_screen.py 3 组参数同参同果"
+    }
+  ],
+  "derived_slots": [
+    {
+      "slot": "solid_waste.gangue_generation",
+      "expr": "gangue_rate% × total_scale_mt_a_after × 100（万t/a = 产率×总规模，1 Mt=100 万t）",
+      "source": "derived:solid_waste",
+      "chapter": "ch6_S06/ch11_S02",
+      "note": "派生值禁手填；规模引用 {{SLOT:mine_plan.total_scale_mt_a_after}}（XS1 同源）"
+    },
+    {
+      "slot": "investment.env_investment_ratio",
+      "expr": "env_investment / total_investment × 100（%）",
+      "source": "derived:investment",
+      "chapter": "ch9_S01/ch13（XS9）",
+      "note": "工程总投资未列→槽位 skip 记 anomaly 非 fail（横城实证）"
+    },
+    {
+      "slot": "water.mine_inflow",
+      "expr": "转录槽位（非公式）：逐矿 {{SLOT:water.mine_inflow[{矿}]}} + 全矿区合计",
+      "source": "form:14_water(XS12 涌水口径 canon)",
+      "chapter": "ch3_S03/ch6_S03（XS12 跨章 exact_match）",
+      "note": "非实测必须带 analog_source（D4 类比来源标注）"
+    }
+  ]
+}

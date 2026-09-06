@@ -1,0 +1,27 @@
+{
+  "sample_slug": "ningtiaota",
+  "source": ".wolf/tmp/eia-samples/ningtiaota-outline.md",
+  "entities": {
+    "projects": [],
+    "mines": [
+      "大柳塔",
+      "孙家岔",
+      "张家峁",
+      "朱盖塔",
+      "柠条塔",
+      "红柳林"
+    ],
+    "orgs": [],
+    "places": [],
+    "sensitive": []
+  },
+  "generic_terms": [],
+  "aux": {
+    "people": [],
+    "doc_numbers": [],
+    "privacy_notes": []
+  },
+  "notes": [
+    "矿名以 surface 短名登记（outline 记录为词频基准），泄漏检测按子串匹配"
+  ]
+}

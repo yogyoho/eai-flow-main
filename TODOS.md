@@ -1,8 +1,8 @@
 # TODOS
 
-## TODO: snapshot.py 三副本同步维护约定
+## TODO: snapshot.py 多副本同步维护约定（四副本）
 
-- **What:** snapshot.py 现存三份副本（water-drainage / bid-proposal-writing / geological-report）——任一副本修 bug 时必须检查另两副本是否存在同缺陷并同步修复。
+- **What:** snapshot.py 现存四份副本（water-drainage / bid-proposal-writing / geological-report / coal-eia-report，2026-09-06 coal-eia v2 D5 定案扩员）——任一副本修 bug 时必须检查另三副本是否存在同缺陷并同步修复。coal-eia 副本额外携带 mapping.json 枚举与版本指纹/漂移报告（eng-review OV#8），这两个增强若验证有效应反向移植回前三副本。
 - **Why:** 2026-08-20 eng review 3A 决策接受第三份副本（技能=自包含分发单元，兄弟技能不互相 import），代价是修复不自动传播。bug-2198（正典文件名守卫）/bug-2200（show 显式 --input）类缺陷大概率三副本同在。
 - **Pros:** 一条约定防静默漂移，成本近零。
 - **Cons:** TODO 面板多一项；修复 bug 时多一步检查。
@@ -11,7 +11,7 @@
 
 ## TODO: 技能多副本脚本族扩员同步约定（snapshot → progress/calibrate/bank_compile）
 
-- **What:** bid-proposal-writing v4（设计 docs/designs/bid-proposal-writing-v4-volume-architecture.md，eng-review 1A 定案 2026-09-05）照搬 geological-report 的 progress.py / calibrate.py / bank_compile.py 后，多副本脚本族从 1 种（snapshot）扩到 4 种——任一副本修 bug 时除原有 snapshot 三副本外，还必须检查新三种在 water/bid/geo 间的同缺陷。
+- **What:** bid-proposal-writing v4（设计 docs/designs/bid-proposal-writing-v4-volume-architecture.md，eng-review 1A 定案 2026-09-05）照搬 geological-report 的 progress.py / calibrate.py / bank_compile.py 后，多副本脚本族从 1 种（snapshot）扩到 4 种；2026-09-06 coal-eia-report v2（设计 docs/designs/coal-eia-report-v2.md）再引入 progress / consistency / build_output / chapter_planner / formula_runner 的 geo 副本——族扩到 9 种脚本 × 2-4 副本。**coal-eia 版是演进分叉起点而非纯复制**（两层模型改造：progress 节子表+批量记账、build_output 序无关目录门+节级归因、chapter_planner uses+deps 节级反查、consistency 条件激活、formula_runner 5 域 Decimal 重写）——geo↔coal-eia 间禁盲目互抄，geo 侧 bugfix 须人工判断是否适用于分叉版；water/bid/geo 三者间仍为同构同步。
 - **Why:** 副本漂移已实证：snapshot.py geo 196 行 vs bid 190 行（6 行分叉）。geo D7 决策（技能=自包含分发单元，兄弟技能不互 import）使修复不自动传播；副本族每扩一种，同步检查成本线性上涨。
 - **Pros:** 延续自包含分发纪律，无架构改动；一条约定防新副本静默漂移。
 - **Cons:** 修 bug 检查面从 3 副本扩到 4 脚本 × 2-3 副本；未来若再照搬（如深度门变体）需继续扩此条目。
