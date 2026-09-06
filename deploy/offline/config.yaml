@@ -6,7 +6,10 @@
 #   1. 剔除 dev-only 模型 gemma-4（base_url 指向开发内网 LAN 地址，客户环境不可达）
 #   2. models 段后保留「内网 LLM 模板」注释块（完全离线客户取消注释启用）
 #   3. 文件尾追加 offline-only 的 ui 段
-#   4. 本横幅
+#   4. models 列表头部预置 3 个客户内网模型（GPUStack @ 10.180.42.192:83，
+#      2026-09-06 客户提供；首个 gemma-4-31b 即默认模型。api_key 走
+#      $INTERNAL_LLM_API_KEY 环境引用，真实值仅存于 deploy.conf 与包内 .env）
+#   5. 本横幅
 # 其余内容与 dev 保持一致。memory 使用 deermem + token_counting: char
 # （离线无法下载 tiktoken BPE 数据，char 计数不依赖网络）。
 # ⚠️ 升级 dev config.yaml 后须手动同步本模板并重跑打包（delta 不会携带本文件）。
@@ -137,6 +140,42 @@ max_recursion_limit: 1000
 #                                      # (optional; omit → hits billed at miss price)
 
 models:
+# ── 客户内网模型（GPUStack；首个 = 默认模型）─────────────────────────────
+- name: gemma-4-31b
+  display_name: Gemma-4-31B
+  use: langchain_openai:ChatOpenAI
+  model: gemma-4-31b-it
+  api_key: $INTERNAL_LLM_API_KEY
+  base_url: http://10.180.42.192:83/v1
+  request_timeout: 600.0
+  max_retries: 2
+  max_tokens: 16384
+  temperature: 0.7
+  supports_vision: false
+  supports_thinking: true
+  when_thinking_enabled:
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: true
+- name: qwen3-vl-local
+  display_name: Qwen3-VL 30B (Local)
+  use: langchain_openai:ChatOpenAI
+  model: qwen3-vl-30b-a3b-instruct
+  api_key: $INTERNAL_LLM_API_KEY
+  base_url: http://10.180.42.192:83/v1
+  max_tokens: 16384
+  temperature: 0.7
+  supports_vision: true
+- name: qwen3-30b-thinking
+  display_name: Qwen3-30B-Thinking
+  use: langchain_openai:ChatOpenAI
+  model: qwen3-30b-a3b-thinking-2507
+  api_key: $INTERNAL_LLM_API_KEY
+  base_url: http://10.180.42.192:83/v1
+  max_tokens: 8192
+  temperature: 0.7
+  supports_thinking: true
+  supports_vision: true
 - name: agnes-2.5-Flash
   display_name: Agnes-2.5-Flash
   use: langchain_openai:ChatOpenAI
@@ -2341,7 +2380,10 @@ run_ownership:
                               # Heartbeat renews every lease_seconds / 3.
   grace_seconds: 10           # Extra seconds past expiry before reclaiming an orphaned run.
                               # Also the cross-worker clock-skew budget — see note above.
-  heartbeat_enabled: false    # Set to true for GATEWAY_WORKERS > 1
+  # EAI-CUSTOM (2026-09-06, 离线 .env GATEWAY_WORKERS=4): 多 worker 启动门强制要求
+  # heartbeat_enabled=true，否则滚动更新时 Worker B 会把 Worker A 的在跑 run 当孤儿杀掉
+  # （bug-3017 同族门）。单 worker 部署开启亦无害。
+  heartbeat_enabled: true
 
 # ============================================================================
 # Stream Bridge Configuration
