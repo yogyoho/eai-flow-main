@@ -21,10 +21,12 @@
 
 ```bash
 cd /opt/eai-flow-offline
-export COMPOSE="docker compose -p eai-prod \
+export COMPOSE="docker compose -p eai-prod --project-directory . \
   -f docker/docker-compose.yaml \
   -f docker/docker-compose.extensions.yaml \
   -f docker/docker-compose.ragflow.yaml"
+# ⚠️ --project-directory . 必须带：让 compose 从部署根目录解析 .env 插值与 ./data 等相对
+# 挂载（默认会取首个 -f 文件所在目录 docker/，导致 RAGFLOW_SECRET_KEY 等变量全空）。
 ```
 
 > 之后服务器侧命令都写成 `$COMPOSE ps` 这样的短形式。
