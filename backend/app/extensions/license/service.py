@@ -24,7 +24,11 @@ from app.extensions.license.models import License
 logger = logging.getLogger(__name__)
 
 PUBLIC_KEY_PATH = Path(__file__).parent / "public_key.pem"
-DEERFLOW_DIR = Path("backend/.deer-flow")
+# EAI-CUSTOM (2026-09-06): machine_id 必须落在持久化目录。原值 Path("backend/.deer-flow")
+# 是相对路径，而 gateway 进程 cwd=/app/backend → 实际写入 /app/backend/backend/.deer-flow/
+# （容器可写层）→ 每次重建容器 machine_id 随 MAC 变化 → 已签发 license 全部失效。
+# 改为优先读 DEER_FLOW_HOME（离线部署=挂载的 ./data，跨容器重建持久）。
+DEERFLOW_DIR = Path(os.getenv("DEER_FLOW_HOME", "backend/.deer-flow"))
 MACHINE_ID_FILE = DEERFLOW_DIR / "machine_id"
 GRACE_PERIOD_DAYS = int(os.getenv("GRACE_PERIOD_DAYS", "7"))
 DEFAULT_LICENSE_PATH = Path(os.getenv("LICENSE_FILE_PATH", "/etc/deerflow/license.lic"))
