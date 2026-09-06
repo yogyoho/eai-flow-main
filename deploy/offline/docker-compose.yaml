@@ -64,6 +64,10 @@ services:
       - SKIP_ENV_VALIDATION=1
       # RAGFlow Web UI 端口(设置页"访问"按钮跳转用);prod=19381, dev=9381
       - NEXT_PUBLIC_RAGFLOW_WEB_PORT=${RAGFLOW_WEB_PORT:-19381}
+      # MinIO 控制台端口(设置页服务链接用);prod=19101, dev=9001
+      - NEXT_PUBLIC_MINIO_CONSOLE_PORT=${MINIO_CONSOLE_PORT:-19101}
+      # 隐藏遗留服务链接(neo4j/milvus/apiDocs 等生产不存在的服务)
+      - NEXT_PUBLIC_SHOW_LEGACY_SERVICE_LINKS=false
     networks:
       - prod-eai-flow-net
     restart: unless-stopped

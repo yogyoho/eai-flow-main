@@ -237,10 +237,17 @@ if [ -d "$ASSETS_DIR" ]; then
 fi
 
 info "  Building: frontend (prod target, brand=\"${BRAND_NAME_VAL:-EAIFlow}\")"
+# EAI-CUSTOM (2026-09-06): 服务链接端口按离线部署实际端口构建期注入（NEXT_PUBLIC_* 构建期内联，
+# 运行时 env 无效）。端口取 deploy/offline/.env 实配值，缺省 19381/19101。
+OFFLINE_RAGFLOW_WEB_PORT=$(grep -E "^RAGFLOW_WEB_PORT=" deploy/offline/.env 2>/dev/null | head -1 | cut -d= -f2)
+OFFLINE_MINIO_CONSOLE_PORT=$(grep -E "^MINIO_CONSOLE_PORT=" deploy/offline/.env 2>/dev/null | head -1 | cut -d= -f2)
 if ! docker build --target prod --progress=plain \
      --build-arg APP_VERSION="${VERSION}" \
      --build-arg BRAND_NAME="${BRAND_NAME_VAL}" \
      --build-arg BRAND_FOOTER="${BRAND_FOOTER_VAL}" \
+     --build-arg NEXT_PUBLIC_RAGFLOW_WEB_PORT="${OFFLINE_RAGFLOW_WEB_PORT:-19381}" \
+     --build-arg NEXT_PUBLIC_MINIO_CONSOLE_PORT="${OFFLINE_MINIO_CONSOLE_PORT:-19101}" \
+     --build-arg NEXT_PUBLIC_SHOW_LEGACY_SERVICE_LINKS=false \
      -t "${FRONTEND_PROD_IMAGE}" \
      -f frontend/Dockerfile .; then
     err "  Build failed for: frontend (prod)"

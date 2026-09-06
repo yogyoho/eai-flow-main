@@ -482,30 +482,36 @@ export function BasicSettings() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
-            <ServiceLinkCard
-              title={t.settings.basic.services.docCenter}
-              description={t.settings.basic.services.docCenterDesc}
-              href="#"
-            />
-            <ServiceLinkCard
-              title={t.settings.basic.services.neo4j}
-              description={t.settings.basic.services.neo4jDesc}
-              href="http://localhost:7575/"
-            />
-            <ServiceLinkCard
-              title={t.settings.basic.services.apiDocs}
-              description={t.settings.basic.services.apiDocsDesc}
-              href="http://localhost:5050/docs"
-            />
+            {/* EAI-CUSTOM: 遗留服务链接（neo4j/milvus/apiDocs 等部署中不存在）用环境开关隐藏，
+                生产离线包设 NEXT_PUBLIC_SHOW_LEGACY_SERVICE_LINKS=false；dev 缺省 true 保持原样 */}
+            {(process.env.NEXT_PUBLIC_SHOW_LEGACY_SERVICE_LINKS ?? "true") === "true" && (
+              <>
+                <ServiceLinkCard
+                  title={t.settings.basic.services.docCenter}
+                  description={t.settings.basic.services.docCenterDesc}
+                  href="#"
+                />
+                <ServiceLinkCard
+                  title={t.settings.basic.services.neo4j}
+                  description={t.settings.basic.services.neo4jDesc}
+                  href={`http://${hostname}:7575/`}
+                />
+                <ServiceLinkCard
+                  title={t.settings.basic.services.apiDocs}
+                  description={t.settings.basic.services.apiDocsDesc}
+                  href={`http://${hostname}:5050/docs`}
+                />
+                <ServiceLinkCard
+                  title={t.settings.basic.services.milvus}
+                  description={t.settings.basic.services.milvusDesc}
+                  href={`http://${hostname}:9091/webui/`}
+                />
+              </>
+            )}
             <ServiceLinkCard
               title={t.settings.basic.services.minio}
               description={t.settings.basic.services.minioDesc}
-              href="http://localhost:9001"
-            />
-            <ServiceLinkCard
-              title={t.settings.basic.services.milvus}
-              description={t.settings.basic.services.milvusDesc}
-              href="http://localhost:9091/webui/"
+              href={`http://${hostname}:${process.env.NEXT_PUBLIC_MINIO_CONSOLE_PORT ?? "9001"}`}
             />
             <ServiceLinkCard
               title={t.settings.basic.services.ragflow}
