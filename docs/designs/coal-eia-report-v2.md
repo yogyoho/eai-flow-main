@@ -80,7 +80,7 @@ skills/public/coal-eia-report/
     ├── standards_index.json    # 环评版：HJ130/HJ464/HJ2.1-2.4/HJ19/HJ610/HJ169/HJ964/GB3095/3838/
     │                           #   14848/3096/15618/16297/20426/8978/12348/18599…；限值 tier1 人工核实分级
     ├── reference_values.json   # 计算参数实践值（沉陷概率积分参数/容量 A 值/扬尘源强取值…全部【待核实】）
-    ├── consistency_contracts.json  # 产能规模/敏感目标清单(最强,跨4章)/标准三元组/沉陷预测值/导水裂隙带/
+    ├── consistency_contracts.json  # 产能规模/敏感目标清单(最强,跨5章:1.8/2/6.8/9/13,走查§5-E)/标准三元组/沉陷预测值/导水裂隙带/
     │                           #   防护距离判定词/总量指标/环保投资占比/可行性判定词/公众参与数/碳排放/
     │                           #   呼应义务（影响识别→措施、风险→应急、预测→结论：源清单实体逐项在场，D11）
     │                           #   每条合约带 applicable_stages + 条件前置：依赖章按语义标题在场才激活，
@@ -146,11 +146,11 @@ progress.json 章条目带节子表（示例）：
 
 **一期（管线骨架+stage+KF 回写）**
 0. **交付竖切 spike（首周，D12/OV#4）**：1 章 × 3 节走交付子代理 + 编辑器 100 叶加载抽测——用实价数据验证吞吐与叶子粒度性能，定通道形态
-1. scripts 9 件套复制适配 + 两层模型改造点（上表 6 处，含 build_output 节级归因/snapshot 版本指纹）+ 5 域计算函数重写与参数对照回归
+1. scripts 9 件套复制适配 + 两层模型改造点（上表 6 处，含 build_output 节级归因/snapshot 版本指纹）+ 5 域计算函数重写与参数对照回归（fracture_zone 无原 calc 对照，回归=横城正文数值人工回代 2~3 组，走查 §5-A）
 2. **stage→KF seed 单向生成脚本**（D12）：planning_eia/underground 两份节级模板 seed 生成+导入（underground 模板从无到有）
 3. planning_eia.json 深做（15 份 digest 证据 + KF sections 双源交叉；**硬前置：回填对账完成**，OV#6）+ **forms 字段级 schema 全族定义与门 1 完备性语义（含类比来源/缺测容忍判定，OV#3）**；underground.json 中做（同含 forms schema）。**openpit/post_eia stage 文件移二期**（eng-review D1 修订 2026-09-06：各仅 1-2 样本弱证据，管线 stage 无关，后补零代码改动——等回填+.doc 转换证据落定再立，避免弱证据骨架返工）
-4. standards_index/consistency_contracts/data_expectations/sample_entities 环评版（consistency_contracts 含**呼应义务合约族**与 applicable_stages 条件激活，D11）
-5. SKILL.md 重写（红线+管线+停车契约+双通道+粒度分层）
+4. standards_index/consistency_contracts/data_expectations/sample_entities 环评版（consistency_contracts 含**呼应义务合约族**与 applicable_stages 条件激活，D11；sensitive_targets 按「跨 5 章：1.8/2/6.8/9/13」注册，门 1 加标准号非空/格式体检——原文 9 处空括号漏排实证，走查 §5-E/F）
+5. SKILL.md 重写（红线+管线+停车契约+双通道+粒度分层+能力边界两条：生态/土壤方法学不入 formula freeze 走表单+判定合约、air_screen 仅点源场景扬尘不硬套，走查 §5-B/C）
 6. KF 模板三偏差回写修订（数据修正，走 KF 版本机制，放一期末）
 7. report_structure.md 废止与 references 重整（D8）
 8. **测试矩阵 7 文件**（eng-review 发现3，对齐 geo 先例 backend/tests/test_geological_report_*.py，测试与代码同步落地）：skill 结构/v2_scripts 子进程参数化/**calc 参数对照回归(CRITICAL)**/e2e_planning+underground/v2_replay 回放/交付协议
@@ -191,8 +191,27 @@ progress.json 章条目带节子表（示例）：
 
 下一步不是写代码：用横城样例做一次**第 6 章（规划实施环境影响预测与评价）人工走查**——把该章的表单字段、calc 参数（概率积分法岩移参数/导水裂隙带/A 值法/水量平衡）、跨章合约点（敏感目标清单/标准三元组/沉陷预测值/防护距离判定词）列成清单在纸上走一遍，验证管线设计对该章完全覆盖（数字密度最高+敏感目标数据驱动改造点+calc 收编主战场），再开工。次选走查：月儿湾第 5 章（地表沉陷，验证 project stage 的必备章槽位）。
 
+✅ **主走查已完成（2026-09-06）**：`2026-09-06-coal-eia-v2-ch6-walkthrough.md`——覆盖判定**通过**（10 个二级节全归属、数字溯源三源闭环），7 项发现（A–G：fracture_zone 无对照脚本/生态土壤能力边界/扬尘非点源/修编双口径实证/敏感目标跨 5 章/门 1 标准号体检/D8 十槽位确认）与 3 处一期回写已落档（一期第 1/4/5 条）。次选走查（月儿湾第 5 章）仍待做，开工前建议补齐。
+
 ## What I noticed about how you think
 
 - 我把范围收窄到规划环评时，你没有顺着我走，而是甩出样例文件目录："可对煤矿建设环评报告不同场景进行分析，这样会更加全面"——证据反了我的前提，这和"无出处的值不进正文"是同一种求实直觉。
 - 原始需求里你把"知识工厂 - 环评报告样例模版"与两份 docx 并列为参考数据——你把平台资产（KF）当一等数据源，不是事后补丁。
 - 150 页 vs 700 页这个数字你随口就给出——规模差异驱动架构（粒度分层/停车契约加严）而不是事后打补丁，这是踩过坑的人才有的敏感度。
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 0 | — | — |
+| Codex Review | `/codex review` | Independent 2nd opinion | 0 | — | — |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR (2026-09-06) | 4 findings 全折叠（arch 2 / tests 1 / perf 1）+ 一次范围收窄（openpit/post 移二期）；outside voice 8 findings（含 1 P0）全部裁决落档：D12 章树供给单向生成/交付竖切 spike/拉回新基线/硬前置+节级归因+版本指纹 |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | — |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+- **CODEX:** codex CLI 已认证但本机执行 >10 分钟无产出（geo 会话先例复现），按超时路径落 Claude subagent 承担 outside voice
+- **OUTSIDE VOICE (Claude subagent):** 8 findings——P0 章树生产者缺位（MCP 无 create 章 → SC2 项目路径结构性不可达）催生 D12；P1 交付吞吐竖切 spike 与交付后漂移回收（拉回新基线）入 D6；OV#3 forms schema 列支/OV#6 回填硬前置/OV#7 章门节级归因/OV#8 版本指纹全收；`skills/_commons` 构建期复制**不采纳**（不重翻 D5 三次拍板）
+- **CROSS-MODEL:** outside voice 独立发现本评审盲区（章树生产者/交付吞吐/漂移回收）；D11 反图引擎结论与并行头脑风暴线程独立收敛——跨模型同信号
+- **VERDICT:** ENG CLEARED — ready to implement（前置顺序：回填对账完成 → T0 交付竖切 spike → T1–T8）
+
+NO UNRESOLVED DECISIONS
