@@ -390,12 +390,19 @@ export const BlockNoteEditor = forwardRef<
   );
 
   useEffect(() => {
-    const source = initialContent?.trim();
+    // EAI-CUSTOM (bug B13 协同写作链审计): 项目文档路径(DocCollabView)不传
+    // initialContent——守卫只看 initialContent 使服务端 pendingMarkdown 播种
+    // 成为死代码:collab onLoadDocument 忠实设置了标记,客户端从不消费,空
+    // Yjs 反被落库,existing 分支此后永久跳过播种(文档不可逆空白)。
+    // 修复:source 兜底读 _collabMeta.pendingMarkdown。
+    const meta = ydoc.getMap("_collabMeta");
+    const pendingMarkdown = meta.get("pendingMarkdown");
+    const source =
+      initialContent?.trim() ||
+      (typeof pendingMarkdown === "string" ? pendingMarkdown.trim() : "");
     if (!synced || !source || seededDocsRef.current.has(documentId)) return;
 
     // Priority 1: Server signaled pending markdown via Yjs metadata
-    const meta = ydoc.getMap("_collabMeta");
-    const pendingMarkdown = meta.get("pendingMarkdown");
     if (
       pendingMarkdown &&
       typeof pendingMarkdown === "string" &&

@@ -545,6 +545,31 @@ class TemplateUpdate(BaseModel):
     completeness_score: int | None = Field(None, ge=0, le=100)
 
 
+# ============== Template Seed Import (EAI-CUSTOM: coal-eia v2 D12——seed 是 stage JSON 的单向派生工件，给其一等公民导入入口) ==============
+
+
+class TemplateSeedImportRequest(BaseModel):
+    """POST /api/kf/templates/import-seed 请求体。
+
+    seed 传整份 seed JSON（kind=kf_template_seed，由 seed_gen.py 生成）；
+    name/domain 缺省时回退 seed.template 建议值；publish=true 时导入即发布
+    （走 TemplateService.publish_template 的版本快照路径）。
+    """
+
+    seed: dict = Field(..., description="整份 seed JSON（kind=kf_template_seed）")
+    name: str | None = Field(None, min_length=1, max_length=200, description="模板名（缺省取 seed.template.name）")
+    domain: str | None = Field(None, min_length=1, max_length=100, description="领域（缺省取 seed.template.domain）")
+    publish: bool = Field(False, description="true=导入即发布（published），否则落 draft")
+
+
+class TemplateSeedImportResponse(BaseModel):
+    id: UUID
+    name: str
+    status: str
+    sections_count: int = Field(..., description="章节树扁平节点总数（章+节）")
+    storage_note: str = Field(default="", description="落库说明（单写 root_sections_json，未双写 template_sections）")
+
+
 # ============== Compliance Rule ==============
 
 

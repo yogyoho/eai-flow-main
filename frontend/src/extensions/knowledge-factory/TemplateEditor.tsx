@@ -49,6 +49,9 @@ import type { RAGSourceConfig } from "@/extensions/knowledge-factory/types";
 import { RETRIEVAL_STRATEGIES } from "@/extensions/knowledge-factory/types";
 import { cn } from "@/lib/utils";
 
+import ImportSeedTemplateModal, {
+  type ImportSeedResult,
+} from "./components/ImportSeedTemplateModal";
 import { useTemplateList, useTemplateEditor } from "./hooks";
 import { RichMetadataEditor } from "./RichMetadataEditor";
 
@@ -60,6 +63,8 @@ interface TemplateSelectorProps {
   onSelect: (id: string) => void;
   onRefresh: () => void;
   loading: boolean;
+  /** EAI-CUSTOM: D12 seed 导入后新模板的临时高亮 id */
+  highlightId?: string | null;
 }
 
 function TemplateSelector({
@@ -68,6 +73,7 @@ function TemplateSelector({
   onSelect,
   onRefresh,
   loading,
+  highlightId,
 }: TemplateSelectorProps) {
   const [showDropdown, setShowDropdown] = useState(false);
   const selected = templates.find((t) => t.id === selectedId);
@@ -133,6 +139,8 @@ function TemplateSelector({
                     className={cn(
                       "hover:bg-accent border-border w-full border-b px-4 py-3 text-left transition-colors last:border-0",
                       selectedId === template.id && "bg-accent",
+                      highlightId === template.id &&
+                        "bg-primary/10 ring-primary/40 ring-inset",
                     )}
                   >
                     <div className="flex items-center justify-between">
@@ -1285,6 +1293,20 @@ export default function TemplateEditor() {
   const [domains, setDomains] = useState<ExtractionDomain[]>([]);
   const [creating, setCreating] = useState(false);
 
+  // EAI-CUSTOM: coal-eia v2 D12——导入 seed 模板弹窗
+  const [showImportSeedDialog, setShowImportSeedDialog] = useState(false);
+  const [highlightedTemplateId, setHighlightedTemplateId] = useState<
+    string | null
+  >(null);
+  const handleSeedImported = async (result: ImportSeedResult) => {
+    setShowImportSeedDialog(false);
+    await fetchTemplates({ status: "draft,published", limit: 50 });
+    setSelectedTemplateId(result.id);
+    setHighlightedTemplateId(result.id);
+    // 高亮标记数秒后自动消退
+    setTimeout(() => setHighlightedTemplateId(null), 6000);
+  };
+
   // 加载领域列表（用于新建模板）
   useEffect(() => {
     kfApi
@@ -1574,6 +1596,7 @@ export default function TemplateEditor() {
               fetchTemplates({ status: "draft,published", limit: 50 })
             }
             loading={listLoading}
+            highlightId={highlightedTemplateId}
           />
           <button
             onClick={() => setShowCreateDialog(true)}
@@ -1581,6 +1604,14 @@ export default function TemplateEditor() {
           >
             <Plus className="h-4 w-4" />
             新建模板
+          </button>
+          {/* EAI-CUSTOM: coal-eia v2 D12——从 stage seed JSON 导入模板 */}
+          <button
+            onClick={() => setShowImportSeedDialog(true)}
+            className="text-primary bg-primary/10 border-primary/30 hover:bg-primary/20 flex items-center gap-1.5 rounded-lg border border-dashed px-3 py-1.5 text-sm font-medium transition-colors"
+          >
+            <FileJson className="h-4 w-4" />
+            导入 seed 模板
           </button>
           {template?.isDirty && (
             <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-500">
@@ -1690,6 +1721,16 @@ export default function TemplateEditor() {
           templateName={template.name}
           currentVersion={template.version}
           onClose={() => setShowVersionHistory(false)}
+        />
+      )}
+
+      {/* EAI-CUSTOM: coal-eia v2 D12——导入 seed 模板弹窗 */}
+      {showImportSeedDialog && (
+        <ImportSeedTemplateModal
+          onClose={() => setShowImportSeedDialog(false)}
+          onSuccess={(result: ImportSeedResult) => {
+            void handleSeedImported(result);
+          }}
         />
       )}
 

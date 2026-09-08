@@ -469,6 +469,125 @@ class TemplateService:
         )
 
 
+# ============== Template Seed Import Service (EAI-CUSTOM: coal-eia v2 D12) ==============
+
+
+class TemplateNameConflictError(Exception):
+    """同 name 模板已存在（路由映射为 409，detail 携带已存在 id）。"""
+
+    def __init__(self, template_id: UUID, name: str):
+        self.template_id = template_id
+        self.name = name
+        super().__init__(f"同名模板已存在: {name} (id={template_id})")
+
+
+class TemplateSeedImportService:
+    """从 stage seed JSON 导入模板（EAI-CUSTOM，coal-eia v2 D12）。
+
+    seed 是 stage JSON 的单向派生工件（seed_gen.py 产出，kind=kf_template_seed），
+    此前只能 SQL 直插 extraction_templates；本服务给其一等公民入口。
+    校验方式与 seed_gen selfcheck 一致：逐节点用 schemas.TemplateSection pydantic
+    真模型装载（外加 title 非空递归检查）。只写主表 root_sections_json——
+    template_sections 表非编辑器数据源（真源=root_sections_json），不双写。
+    """
+
+    @staticmethod
+    def count_sections(sections: list[dict]) -> int:
+        """章节树扁平节点总数（章 + 节）。"""
+        return len(_flatten_sections_list(sections))
+
+    @staticmethod
+    def validate_seed_sections(sections: object) -> int:
+        """校验 seed 章节树：非空列表 + 逐节点 title 非空 + TemplateSection 可装载。
+
+        返回扁平节点数；不合法抛 ValueError（路由映射 422）。
+        """
+        if not isinstance(sections, list) or not sections:
+            raise ValueError("root_sections_json.sections 必须为非空数组")
+        from pydantic import ValidationError
+
+        def _walk(node: object, depth: int) -> int:
+            if not isinstance(node, dict):
+                raise ValueError(f"章节节点必须是对象（depth={depth}），实际 {type(node).__name__}")
+            title = node.get("title")
+            if not isinstance(title, str) or not title.strip():
+                raise ValueError(f"章节 {node.get('id') or '<无id>'}（第{depth}层）缺非空 title")
+            try:
+                TemplateSection(**node)
+            except ValidationError as e:
+                raise ValueError(f"章节 {node.get('id') or '<无id>'} 不符合 TemplateSection schema: {e}") from e
+            n = 1
+            for child in node.get("children") or []:
+                n += _walk(child, depth + 1)
+            return n
+
+        return sum(_walk(s, 1) for s in sections)
+
+    @staticmethod
+    async def import_seed_template(
+        db: AsyncSession,
+        seed: dict,
+        *,
+        name: str | None = None,
+        domain: str | None = None,
+        publish: bool = False,
+        user_id: UUID | None = None,
+    ) -> ExtractionTemplate:
+        """整份 seed JSON → extraction_templates 一行。
+
+        - status='draft'（publish=true 时经 TemplateService.publish_template → published + 版本快照）
+        - completeness_score 取 seed.metadata.completeness_score（缺省 0）
+        - name/domain 缺省取 seed.template 建议值，请求参数优先
+        - root_sections_json 原样落 jsonb
+        - 同 name 已存在 → TemplateNameConflictError（路由映射 409）
+        """
+        if not isinstance(seed, dict):
+            raise ValueError("seed 必须是 JSON 对象（kind=kf_template_seed）")
+        root_json = seed.get("root_sections_json")
+        sections = root_json.get("sections") if isinstance(root_json, dict) else None
+        sections_count = TemplateSeedImportService.validate_seed_sections(sections)
+
+        tpl_meta = seed.get("template") if isinstance(seed.get("template"), dict) else {}
+        final_name = (name or tpl_meta.get("name") or "").strip()
+        if not final_name:
+            raise ValueError("模板名称缺失：请求未提供 name 且 seed.template.name 为空")
+        final_domain = (domain or tpl_meta.get("domain") or "").strip()
+        if not final_domain:
+            raise ValueError("模板领域缺失：请求未提供 domain 且 seed.template.domain 为空")
+
+        existing = await db.execute(select(ExtractionTemplate).where(ExtractionTemplate.name == final_name))
+        dup = existing.scalar_one_or_none()
+        if dup is not None:
+            raise TemplateNameConflictError(dup.id, final_name)
+
+        metadata = seed.get("metadata") if isinstance(seed.get("metadata"), dict) else {}
+        try:
+            completeness = int(metadata.get("completeness_score") or 0)
+        except (TypeError, ValueError):
+            completeness = 0
+
+        template = ExtractionTemplate(
+            domain=final_domain,
+            name=final_name,
+            version=str(tpl_meta.get("version") or "v1.0"),
+            status="draft",
+            root_sections_json=root_json,
+            completeness_score=max(0, min(completeness, 100)),
+            created_by=user_id,
+        )
+        db.add(template)
+        await db.flush()
+
+        if publish:
+            # 复用既有发布路径：版本快照 + JSON snapshot 文件 + status=published
+            template = await TemplateService.publish_template(db, template, user_id=user_id)
+        else:
+            await db.commit()
+            await db.refresh(template)
+        logger.info("Seed template imported: id=%s name=%s sections=%s status=%s", template.id, template.name, sections_count, template.status)
+        return template
+
+
 # ============== Task Service ==============
 
 

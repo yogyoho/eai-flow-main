@@ -58,6 +58,8 @@ from .schemas import (
     TemplateResult,
     TemplateRollbackRequest,
     TemplateRollbackResponse,
+    TemplateSeedImportRequest,
+    TemplateSeedImportResponse,
     TemplateUpdate,
     TemplateVersionResponse,
     VersionCompareRequest,
@@ -69,6 +71,8 @@ from .service import (
     DomainService,
     QualityService,
     TaskService,
+    TemplateNameConflictError,
+    TemplateSeedImportService,
     TemplateService,
     VersionCompareService,
 )
@@ -807,6 +811,43 @@ async def list_templates(
             )
         )
     return TemplateListResponse(templates=items, total=total)
+
+
+@router.post("/templates/import-seed", response_model=TemplateSeedImportResponse, status_code=status.HTTP_201_CREATED)
+async def import_seed_template(
+    body: TemplateSeedImportRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    current_user: CurrentUser,
+):
+    """从 stage seed JSON 导入模板（EAI-CUSTOM: coal-eia v2 D12）。
+
+    seed 是 seed_gen.py 从 stage JSON 单向派生的模板工件（kind=kf_template_seed），
+    本端点给其一等公民导入入口，替代 SQL 直插：
+    - 校验 root_sections_json.sections 非空且逐节点可装载 schemas.TemplateSection（与 seed_gen selfcheck 同法）
+    - 幂等：同 name 已存在 → 409（detail 带已存在 id）
+    - status=draft（publish=true 时走发布路径 → published + 版本快照）
+    - 仅写主表 root_sections_json（模板详情真源），不双写 template_sections 表
+    """
+    try:
+        template = await TemplateSeedImportService.import_seed_template(
+            db,
+            body.seed,
+            name=body.name,
+            domain=body.domain,
+            publish=body.publish,
+            user_id=current_user.id,
+        )
+    except TemplateNameConflictError as e:
+        raise HTTPException(status_code=409, detail=f"同名模板已存在（id={e.template_id}）：{e.name}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    return TemplateSeedImportResponse(
+        id=template.id,
+        name=template.name,
+        status=template.status,
+        sections_count=TemplateSeedImportService.count_sections((template.root_sections_json or {}).get("sections", [])),
+        storage_note="仅落主表 extraction_templates.root_sections_json（编辑器真源）；template_sections 表未双写",
+    )
 
 
 @router.get("/templates/{template_id}", response_model=TemplateDocument)
