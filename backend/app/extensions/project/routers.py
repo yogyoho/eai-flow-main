@@ -1,6 +1,7 @@
 """FastAPI routers for report project management."""
 
 import logging
+import re
 from typing import Annotated
 from uuid import UUID
 
@@ -528,6 +529,65 @@ async def open_chapter_for_editing(
         return doc_info
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+class SyncBaselineRequest(BaseModel):
+    """EAI-CUSTOM (bug B6): collab 编辑器防抖回写的章节基线内容。"""
+
+    content: str = Field(...)
+
+
+@router.post("/projects/{project_id}/documents/{document_id}/sync-baseline")
+async def sync_document_baseline(
+    project_id: UUID,
+    document_id: UUID,
+    body: SyncBaselineRequest,
+    _member: CurrentUser = Depends(require_project_member()),
+    user: CurrentUserWithAccess = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Sync the collab editor's latest markdown back to the chapter baseline.
+
+    EAI-CUSTOM (bug B6 协同写作链审计): 协同编辑器（Yjs/Hocuspocus）是编辑期真源，
+    但章节基线（project_chapters.content）与文档内容（ai_documents.content）若不同步，
+    统计/导出/MCP 读到的仍是旧稿。前端 5s 防抖调用本端点回写最新 markdown。
+
+    - 校验项目成员（require_project_member，超管旁路）；
+    - 仅接受 title 带 ``[chapter:{uuid}]`` 前缀的章节文档，其余 400；
+    - 文档不属于该项目 → 404；章节不存在 → 404。
+    """
+    from app.extensions.models import AIDocument, ProjectChapter
+
+    doc = await db.get(AIDocument, document_id)
+    if not doc or doc.project_id != project_id:
+        raise HTTPException(status_code=404, detail="Document not found in this project")
+
+    match = re.match(r"^\[chapter:([0-9a-fA-F-]+)\]", doc.title or "")
+    if not match:
+        raise HTTPException(
+            status_code=400,
+            detail="Document is not a chapter document (missing [chapter:] title prefix)",
+        )
+    try:
+        chapter_id = UUID(match.group(1))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Malformed [chapter:] title prefix") from e
+
+    row = await db.execute(
+        select(ProjectChapter).where(
+            ProjectChapter.id == chapter_id,
+            ProjectChapter.project_id == project_id,
+        )
+    )
+    chapter = row.scalar_one_or_none()
+    if not chapter:
+        raise HTTPException(status_code=404, detail="Chapter not found in this project")
+
+    chapter.content = body.content
+    chapter.word_count_current = len(body.content)
+    doc.content = body.content
+    await db.commit()
+    return {"success": True, "chapter_id": str(chapter_id), "word_count": len(body.content)}
 
 
 @router.patch("/projects/{project_id}/chapters/{chapter_id}/status")

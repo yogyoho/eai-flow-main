@@ -1,4 +1,5 @@
 import { authFetch } from "@/extensions/api/client";
+import type { AIDocument } from "@/extensions/types";
 
 import { toCamelCase, toSnakeCase } from "./transforms";
 import type {
@@ -116,14 +117,27 @@ export const projectApi = {
     return { synced: 0 };
   },
 
-  /** Open a chapter's associated document. Returns basic doc info for tab switch. */
-  openChapter: async (projectId: string, chapterId: string): Promise<{ documentId: string; chapterId: string }> => {
+  /** Open a chapter's associated document. Returns the full backend _doc_info
+   *  payload (id/title/content/status/...) plus camelCase documentId/chapterId. */
+  openChapter: async (
+    projectId: string,
+    chapterId: string,
+  ): Promise<
+    Partial<AIDocument> & { documentId: string; chapterId: string | null }
+  > => {
     // EAI-CUSTOM: 后端 /open 是 POST 路由，必须显式 method POST（否则 405 Method Not Allowed）
-    const data = await authFetch<{ document_id: string; chapter_id: string }>(
+    // EAI-CUSTOM (bug B2 协同写作链审计): 之前只回 {documentId, chapterId}，丢了后端
+    // _doc_info 全量字段——EditorTab 读 doc.id ?? doc.document_id 恒 undefined，自动打开失效。
+    // 现在透传全部 snake_case 字段（title/content/status/...）供 sessionStorage 消费。
+    const data = await authFetch<Record<string, unknown>>(
       `${API_BASE}/projects/${projectId}/chapters/${chapterId}/open`,
       { method: "POST" },
     );
-    return { documentId: data.document_id, chapterId: data.chapter_id };
+    return {
+      ...data,
+      documentId: data.document_id as string,
+      chapterId: (data.chapter_id as string | null) ?? null,
+    } as Partial<AIDocument> & { documentId: string; chapterId: string | null };
   },
 
   // ── Members ──
@@ -205,6 +219,23 @@ export const projectApi = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     });
+  },
+
+  /** EAI-CUSTOM (bug B6 协同写作链审计): collab 编辑器防抖回写章节基线。
+   *  仅接受 title 带 [chapter:{uuid}] 前缀的文档；后端同步更新
+   *  project_chapters.content/word_count_current 与 ai_documents.content。 */
+  syncChapterBaseline: async (
+    projectId: string,
+    documentId: string,
+    content: string,
+  ): Promise<void> => {
+    await authFetch(
+      `${API_BASE}/projects/${projectId}/documents/${documentId}/sync-baseline`,
+      {
+        method: "POST",
+        body: JSON.stringify({ content }),
+      },
+    );
   },
 
   // ── Phase Board ──

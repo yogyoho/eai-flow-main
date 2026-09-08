@@ -9,7 +9,7 @@ import time
 import urllib.parse
 from ipaddress import ip_address, ip_network
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, Form, Header, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from starlette.responses import RedirectResponse
@@ -452,6 +452,32 @@ def _local_registration_enabled() -> bool:
         return get_app_config().auth.local.allow_registration
     except FileNotFoundError:
         return True
+
+
+@router.get("/users/{user_id}")
+async def get_gateway_user_for_internal_services(
+    user_id: str,
+    x_internal_auth: str | None = Header(default=None, alias="X-Internal-Auth"),
+):
+    """EAI-CUSTOM (bug-3209/B4): 内部服务 userId 桥端点。
+
+    collab-server 的 canAccessDocument 拿到的是 gateway 会话 JWT sub(核心库用户
+    id),与 extensions ai_documents.user_id 不同命名空间,靠 email 桥接。设计期在
+    auth_middleware._INTERNAL_PATH_PREFIXES 预留了 /api/v1/auth/users/ 豁免前缀,
+    但路由从未实现(collab 侧 fetch 恒 404 → 桥恒 null → 一律 Forbidden 空画布)。
+
+    该前缀被豁免 JWT 校验 = 裸路由会成为未鉴权邮箱枚举端点,故自带内部服务
+    共享密钥校验(X-Internal-Auth = JWT_SECRET,collab 容器经同一 .env 注入)。
+    """
+    secret = os.environ.get("JWT_SECRET") or os.environ.get("JWT_SECRET_KEY") or ""
+    if not secret or not x_internal_auth or not secrets.compare_digest(x_internal_auth, secret):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+
+    provider = get_local_provider()
+    user = await provider.get_user(user_id)
+    if not user or not user.email:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return {"id": str(user.id), "email": user.email}
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

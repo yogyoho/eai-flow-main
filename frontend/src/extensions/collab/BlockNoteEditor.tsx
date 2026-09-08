@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/extensions/hooks/useAuth";
+import { projectApi } from "@/extensions/project/api";
 import { workflowApi } from "@/extensions/workflow/api";
 import { TraceabilityPanel } from "@/extensions/workflow/TraceabilityPanel";
 
@@ -407,9 +408,13 @@ export const BlockNoteEditor = forwardRef<
             editor.document.map((block) => block.id),
             blocks,
           );
+          // EAI-CUSTOM (bug B3 协同写作链审计): 仅在解析出块后才清除标记。
+          // 之前 delete 无条件执行——解析出 0 块（如 markdown 含 BlockNote
+          // 无法解析的结构）时标记被删、Yjs 文档为空，下一次 store 落库即
+          // 生成空 collab_documents 行，文档不可逆空白（毒化）。保留标记
+          // 让下次打开重试播种。
+          meta.delete("pendingMarkdown");
         }
-        // Clear the flag so it doesn't re-seed on subsequent opens
-        meta.delete("pendingMarkdown");
       } catch (error) {
         console.error(
           "[BlockNoteEditor] Failed to seed from server markdown:",
@@ -456,6 +461,39 @@ export const BlockNoteEditor = forwardRef<
       );
     }
   }, [documentId, editor, initialContent, synced, ydoc]);
+
+  // ── EAI-CUSTOM (bug B6 协同写作链审计): 项目文档章节基线防抖回写 ──
+  // Yjs/Hocuspocus 只落 collab 存储；章节基线（project_chapters.content）与
+  // ai_documents.content 停留在开档时刻的旧稿。对项目文档（projectId 存在）在
+  // 本地编辑停顿 5s 后，把当前 markdown 回写后端 sync-baseline（同步章节内容 +
+  // 字数 + 文档内容）。远程协作者的更新不触发（includeUpdatesFromRemote=false），
+  // 每个客户端只回写自己的编辑；失败静默——基线回写是尽力而为，不打扰编辑。
+  useEffect(() => {
+    if (!projectId || !documentId) return;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const disposer = editor.onChange(() => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        timer = null;
+        try {
+          const markdown = editor.blocksToMarkdownLossy();
+          projectApi
+            .syncChapterBaseline(projectId, documentId, markdown)
+            .catch(() => {
+              // 静默失败：基线回写为 best-effort，不打断编辑
+            });
+        } catch {
+          // markdown 导出失败时忽略本次回写
+        }
+      }, 5000);
+    }, false);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      disposer();
+    };
+  }, [editor, projectId, documentId]);
 
   // Track selected block via onSelectionChange
   useEffect(() => {

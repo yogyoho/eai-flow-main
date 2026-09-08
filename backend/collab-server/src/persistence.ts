@@ -146,7 +146,10 @@ export async function canAccessDocument(userId: string, docId: string): Promise<
 async function bridgeGatewayUser(gatewayUserId: string): Promise<string | null> {
   try {
     const gatewayUrl = process.env.GATEWAY_URL || "http://gateway:8001";
+    // bug-3209/B4: 桥端点要求内部服务共享密钥(JWT_SECRET,与 gateway 同源 .env)
+    const internalAuth = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY || "";
     const resp = await fetch(`${gatewayUrl}/api/v1/auth/users/${gatewayUserId}`, {
+      headers: internalAuth ? { "X-Internal-Auth": internalAuth } : {},
       signal: AbortSignal.timeout(3000),
     });
     if (!resp.ok) return null;

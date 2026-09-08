@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 from uuid import UUID
 
@@ -30,6 +31,9 @@ from .schemas import (
 )
 
 # ── Helpers ──
+
+# EAI-CUSTOM (bug B8): ATX 标题行（"# "~"###### "开头）——章节标题行匹配用
+_HEADING_LINE_RE = re.compile(r"^#{1,6}\s+")
 
 
 async def _resolve_username(db: AsyncSession, user_id) -> str:
@@ -519,10 +523,17 @@ async def open_chapter_document(
     doc = result.scalar_one_or_none()
 
     if doc:
+        # EAI-CUSTOM (bug B5 协同写作链审计): P1 命中已有文档先对账再返回——
+        # 该章节若从未被协同编辑器打开过（collab_documents 无行），而章节
+        # content 已被 MCP/workflow 更新，则刷新文档基线，编辑器下次播种
+        # 才能拿到新稿；已有 collab 行说明编辑器已接管（D6 语义），不动。
+        await _reconcile_chapter_doc_baseline(db, doc, chapter)
         return _doc_info(doc, chapter_id=chapter.id)
 
     # Priority 2: a finalized document whose content contains this chapter as a heading.
     # Use broad match — AI may generate headings like "## 1.2 Design Title" or "## A.2 Title".
+    # EAI-CUSTOM (bug B8): ILIKE 仅作 SQL 侧粗筛，命中后必须过标题行正则——
+    # 正文段落里出现章节标题文字不再误绑定。
     stmt2 = (
         select(AIDocument)
         .where(
@@ -530,13 +541,12 @@ async def open_chapter_document(
             AIDocument.status.in_(["final", "active"]),
             AIDocument.content.ilike(f"%{chapter.title}%"),
         )
-        .limit(1)
+        .limit(10)
     )
     result2 = await db.execute(stmt2)
-    doc2 = result2.scalar_one_or_none()
-
-    if doc2:
-        return _doc_info(doc2, chapter_id=chapter.id)
+    for doc2 in result2.scalars().all():
+        if _title_in_headings(doc2.content or "", chapter.title):
+            return _doc_info(doc2, chapter_id=chapter.id)
 
     # Priority 3: a file_ref document whose content contains the chapter title.
     # AI-generated reports have all chapters in a single .md file on disk.
@@ -558,18 +568,23 @@ async def open_chapter_document(
             if file_path.exists():
                 try:
                     text = file_path.read_text(encoding="utf-8")
-                    if chapter.title in text:
+                    # EAI-CUSTOM (bug B8): 全文包含匹配收紧为标题行匹配
+                    if _title_in_headings(text, chapter.title):
                         return _doc_info(doc3, chapter_id=chapter.id)
                 except (OSError, UnicodeDecodeError):
                     pass
 
     # Fallback: create a new AIDocument for this chapter
+    # EAI-CUSTOM (bug B9): 建档补 chapter_id + folder_id（项目根文件夹）——
+    # 此前两列为空，文档游离于文档树与章节关联之外（文档空间不可见/无章节归属）。
     doc = AIDocument(
         id=uuid4(),
         user_id=user_id,
         title=chapter_doc_title,
         content=chapter.content or "",
         folder="project-chapters",
+        folder_id=await _project_root_folder_id(db, project_id, user_id),
+        chapter_id=chapter.id,
         project_id=project_id,
         doc_type="document",
         status="active",
@@ -578,6 +593,53 @@ async def open_chapter_document(
     await db.commit()
     await db.refresh(doc)
     return _doc_info(doc, chapter_id=chapter.id)
+
+
+def _title_in_headings(text: str, title: str) -> bool:
+    """EAI-CUSTOM (bug B8): 标题行匹配——title 仅在 markdown 标题行（``#``~``######``
+    开头）中出现才算命中，正文段落/表格里的同名文字不再误命中。"""
+    for line in text.splitlines():
+        if _HEADING_LINE_RE.match(line) and title in line:
+            return True
+    return False
+
+
+async def _reconcile_chapter_doc_baseline(db: AsyncSession, doc, chapter) -> None:
+    """EAI-CUSTOM (bug B5): open-chapter P1 命中已有文档时的基线对账。
+
+    - collab_documents 无行且 chapter.content 非空且与 doc.content 不一致
+      → 刷新 doc.content = chapter.content（编辑器首次打开播种拿到最新章节稿）；
+    - 有 collab 行 → 编辑器已接管该文档（D6 语义），collab 存储为准，不动。
+    """
+    from app.extensions.docmgr.collab_models import CollabDocument
+
+    has_collab_row = (await db.execute(select(CollabDocument.doc_id).where(CollabDocument.doc_id == doc.id))).scalar_one_or_none()
+    if has_collab_row is not None:
+        return
+    if chapter.content and chapter.content != (doc.content or ""):
+        doc.content = chapter.content
+        await db.commit()
+
+
+async def _project_root_folder_id(db: AsyncSession, project_id, user_id) -> UUID | None:
+    """EAI-CUSTOM (bug B9): 取项目根文件夹 id，缺失时懒创建（尽力而为）。
+
+    ensure_project_root_folders(db, user_id) 只按成员归属补齐缺失根、无返回值，
+    故调用后再按 project_id 查根文件夹行。任何失败都降级为 None——建档不能
+    因文件夹解析失败而中断。
+    """
+    from app.extensions.docmgr.folder_service import FolderService
+    from app.extensions.models import Folder
+
+    try:
+        await FolderService.ensure_project_root_folders(db, user_id)
+        row = await db.execute(select(Folder.id).where(Folder.project_id == project_id, Folder.parent_id.is_(None)).limit(1))
+        return row.scalar_one_or_none()
+    except Exception as exc:  # noqa: BLE001 — 文件夹解析尽力而为，不阻塞章节建档
+        import logging
+
+        logging.getLogger(__name__).warning("project root folder resolve failed for %s: %r", project_id, exc)
+        return None
 
 
 def _doc_info(doc, *, chapter_id=None) -> dict:

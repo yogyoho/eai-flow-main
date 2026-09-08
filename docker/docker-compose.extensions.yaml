@@ -37,6 +37,10 @@ services:
       context: ../backend/collab-server
       dockerfile: Dockerfile
     container_name: eai-flow-collab
+    # EAI-CUSTOM (bug-3209): 发布 8002 到 host——前端 dev 拓扑(:3000/:4000)的
+    # useCollab 直连 ws://localhost:8002(不经 nginx),无映射则协作编辑器永不 synced。
+    ports:
+      - "8002:8002"
     depends_on:
       postgres-ext:
         condition: service_healthy
