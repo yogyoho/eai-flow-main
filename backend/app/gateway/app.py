@@ -12,6 +12,11 @@ from app.extensions.approval import router as approval_router
 from app.extensions.auth.permission_routers import router as permissions_router
 from app.extensions.auth.policy_routers import router as policy_router
 from app.extensions.auth.routers import router as auth_router
+
+# EAI-CUSTOM: bid_materials(投标资料管理,bug-3109)——资质 MinIO 版本库 + 样例台账;
+# 导入包即把 bid_* 表模型注册到 Base.metadata(init_db create_all 建表);
+# router 供管理 API 挂载(/api/extensions/bid-materials/*)。
+from app.extensions.bid_materials import router as bid_materials_router
 from app.extensions.contract_price import router as contract_price_router
 from app.extensions.dashboard.routers import router as dashboard_router
 from app.extensions.data_source.routers import router as data_source_router
@@ -937,6 +942,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Coal EIA report sample bank management API (/api/extensions/eia-samples/*)  [EAI-CUSTOM]
     app.include_router(eia_samples_router)
+
+    # Bid materials management API (/api/extensions/bid-materials/*)  [EAI-CUSTOM bug-3109]
+    app.include_router(bid_materials_router)
 
     # Spare-parts price analysis management API (/api/extensions/spare-parts/*)  [EAI-CUSTOM]
     app.include_router(spare_parts_router)
