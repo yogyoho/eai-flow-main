@@ -8,6 +8,7 @@ import uuid
 
 import pytest
 import pytest_asyncio
+from minio.error import S3Error
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
@@ -194,3 +195,22 @@ class TestStorage:
         assert "q-1/v1.png" not in fake.objects
         # 缺失对象: get_object 抛 NoSuchKey → get_file 收敛为 None(404)——固定缩小后的 except
         assert storage.get_file("q-1", 9, "png") is None
+
+    def test_get_file_reraises_non_missing_s3error(self, monkeypatch):
+        from app.extensions.bid_materials import storage
+
+        class DenyStore(FakeObjectStore):
+            def get_object(self, bucket_name, object_name):
+                raise S3Error(
+                    response=None,
+                    code="AccessDenied",
+                    message="denied",
+                    resource=object_name,
+                    request_id="",
+                    host_id="",
+                )
+
+        monkeypatch.setattr(storage, "_client", lambda: DenyStore())
+        # AccessDenied 不收敛 None → 原样上抛: 缩窄 except 的另一半分支（基础设施故障≠404）
+        with pytest.raises(S3Error):
+            storage.get_file("q-1", 1, "png")
