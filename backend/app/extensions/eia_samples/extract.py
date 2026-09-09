@@ -34,8 +34,12 @@ class ExtractSourceError(Exception):
 
 
 def normalize_cr(text: str) -> str:
-    r"""CRLF / 孤 CR 归一为 \n（txt 转换产物常见混合行尾，先归一再匹配行首正则）。"""
-    return re.sub(r"\r\n?", "\n", text)
+    r"""CRLF / 孤 CR / Word 分页符(\x0c) 归一为 \n（txt 转换产物常见混合行尾，先归一再匹配行首正则）。
+
+    bug-3201：Word 分页 Range 导出的 txt 中，页首开章的标题紧跟上一页尾的 \x0c
+    （"…工作程序\x0c2 建设项目工程分析\r…"），不归一则行首锚定的章号正则永远匹配不到，
+    整棵章节树为空。"""
+    return re.sub(r"\r\n?|\x0c", "\n", text)
 
 
 # ── 中文数字 → int（第X章 连续性体检用） ──

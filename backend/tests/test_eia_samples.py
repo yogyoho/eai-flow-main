@@ -298,6 +298,14 @@ def test_extract_outline_rejects_body_noise_lines():
     assert [(c["no"], c["title"]) for c in chapters] == [("1", "总论"), ("2", "项目概况")]
 
 
+def test_normalize_cr_splits_word_page_break():
+    r"""bug-3201：Word 分页 Range 导出的 txt，页首开章标题黏在上一页尾 \x0c 后——须归一为行分隔。"""
+    text = "图1.7-1 技术工作程序\x0c1 总论\r1.1 项目由来\x0c2 项目概况\r\n2.1 项目组成\n"
+    chapters = extract_outline(text)
+    assert [(c["no"], c["title"]) for c in chapters] == [("1", "总论"), ("2", "项目概况")]
+    assert [s["no"] for s in chapters[0]["sections"]] == ["1.1"]
+
+
 def test_extract_entities_suffix_candidates():
     ents = extract_entities(EIA_MINI_SAMPLE)
     assert ents["mines"] == ["月儿湾矿井"]
