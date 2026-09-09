@@ -134,7 +134,8 @@
             "{{SLOT:mine_plan.total_scale_mt_a_after}}",
             "{{SLOT:mine_plan.minefield_area_km2_after}}",
             "{{SLOT:economy.total_investment}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch0_S02",
@@ -154,7 +155,8 @@
           },
           "slots": [
             "{{TABLE:compliance_plans}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch0_S03",
@@ -186,7 +188,8 @@
           "slots": [
             "{{SLOT:subsidence.W_max}}",
             "{{SLOT:subsidence.subsidence_area_km2}}"
-          ]
+          ],
+          "role": "收束"
         }
       ]
     },
@@ -260,7 +263,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch1_S02",
@@ -277,7 +281,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch1_S03",
@@ -297,7 +302,8 @@
           },
           "slots": [
             "{{TABLE:legal_basis}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch1_S04",
@@ -320,7 +326,8 @@
           },
           "slots": [
             "{{TABLE:standards_confirm}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch1_S05",
@@ -343,7 +350,8 @@
           },
           "slots": [
             "{{SLOT:project.evaluation_period}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch1_S06",
@@ -367,7 +375,8 @@
           "slots": [
             "{{TABLE:impact_identification.matrix}}",
             "{{TABLE:impact_identification.factors}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch1_S07",
@@ -389,7 +398,8 @@
           },
           "slots": [
             "{{TABLE:sensitive_targets}}"
-          ]
+          ],
+          "role": "受体"
         }
       ]
     },
@@ -435,7 +445,10 @@
       ],
       "formulas": [],
       "contracts": [
-        "XS1"
+        "XS1",
+        "XS16",
+        "XS17",
+        "XS18"
       ],
       "sections": [
         {
@@ -473,7 +486,8 @@
             "{{SLOT:economy.total_investment}}",
             "{{SLOT:geography.location_text}}",
             "{{TABLE:mine_plan.mines}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch2_S02",
@@ -493,7 +507,8 @@
           },
           "slots": [
             "{{TABLE:legal_basis}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch2_S03",
@@ -517,7 +532,8 @@
             "{{TABLE:seam_profile}}",
             "{{SLOT:mine_plan.reserve_extractable_mt}}",
             "{{SLOT:mine_plan.service_years_a}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch2_S04",
@@ -537,7 +553,8 @@
           },
           "slots": [
             "{{TABLE:mine_plan.facilities}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch2_S05",
@@ -563,7 +580,8 @@
             "{{TABLE:noise}}",
             "{{TABLE:water}}",
             "{{TABLE:solid_waste}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch2_S06",
@@ -577,7 +595,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch2_S07",
@@ -592,7 +611,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch2_S08",
@@ -618,7 +638,8 @@
           },
           "slots": [
             "{{TABLE:retrospective}}"
-          ]
+          ],
+          "role": "响应"
         }
       ]
     },
@@ -673,7 +694,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch3_S02",
@@ -691,7 +713,8 @@
           },
           "slots": [
             "{{TABLE:compliance_plans}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch3_S03",
@@ -707,7 +730,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch3_S04",
@@ -723,7 +747,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         }
       ]
     },
@@ -768,7 +793,8 @@
           },
           "slots": [
             "{{TABLE:geography}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch4_S02",
@@ -787,7 +813,8 @@
           },
           "slots": [
             "{{TABLE:economy}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch4_S03",
@@ -802,7 +829,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "受体"
         }
       ]
     },
@@ -892,7 +920,8 @@
           },
           "slots": [
             "{{TABLE:subsidence_targets}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch5_S02",
@@ -924,7 +953,8 @@
           "slots": [
             "{{TABLE:pillar_design}}",
             "{{SLOT:fracture_zone.fracture_height}}"
-          ]
+          ],
+          "role": "响应"
         },
         {
           "id": "ch5_S03",
@@ -946,7 +976,8 @@
           },
           "slots": [
             "{{TABLE:backfill}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch5_S04",
@@ -971,7 +1002,8 @@
           "slots": [
             "{{TABLE:subsidence_params}}",
             "{{TABLE:seam_profile}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch5_S05",
@@ -993,7 +1025,8 @@
           },
           "slots": [
             "{{TABLE:mining_stages}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch5_S06",
@@ -1028,7 +1061,8 @@
             "{{SLOT:subsidence.subsidence_area_km2}}",
             "{{SLOT:subsidence.i_max}}",
             "{{SLOT:subsidence.eps_max}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch5_S07",
@@ -1066,7 +1100,8 @@
           "slots": [
             "{{TABLE:per_target_deformation}}",
             "{{TABLE:relocation_plan}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch5_S08",
@@ -1086,7 +1121,8 @@
           },
           "slots": [
             "{{TABLE:monitoring_plan}}"
-          ]
+          ],
+          "role": "响应"
         }
       ]
     },
@@ -1147,7 +1183,8 @@
             "contracts": [
               "XS2"
             ]
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch6_S02",
@@ -1167,7 +1204,8 @@
           },
           "slots": [
             "{{TABLE:eco}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch6_S03",
@@ -1194,7 +1232,8 @@
           },
           "slots": [
             "{{TABLE:retrospective}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch6_S04",
@@ -1210,7 +1249,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch6_S05",
@@ -1233,7 +1273,8 @@
               "XS2",
               "XS4"
             ]
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch6_S06",
@@ -1252,13 +1293,16 @@
             ],
             "formulas": [],
             "contracts": [
-              "XS4"
+              "XS4",
+              "XS17",
+              "XS18"
             ]
           },
           "slots": [
             "{{TABLE:measures}}",
             "{{TABLE:eco_restoration}}"
-          ]
+          ],
+          "role": "响应"
         },
         {
           "id": "ch6_S07",
@@ -1273,7 +1317,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "响应"
         },
         {
           "id": "ch6_S08",
@@ -1286,7 +1331,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "响应"
         }
       ]
     },
@@ -1352,7 +1398,8 @@
             "contracts": [
               "XS3"
             ]
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch7_S02",
@@ -1368,7 +1415,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "受体"
         },
         {
           "id": "ch7_S03",
@@ -1388,7 +1436,8 @@
           },
           "slots": [
             "{{TABLE:water}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch7_S04",
@@ -1410,7 +1459,8 @@
           },
           "slots": [
             "{{TABLE:monitoring}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch7_S05",
@@ -1444,7 +1494,8 @@
             "{{SLOT:fracture_zone.fracture_height}}",
             "{{SLOT:fracture_zone.collapse_height}}",
             "{{SLOT:water.mine_inflow}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch7_S06",
@@ -1469,7 +1520,8 @@
           },
           "slots": [
             "{{TABLE:retrospective}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch7_S07",
@@ -1490,9 +1542,12 @@
             ],
             "contracts": [
               "XS5",
-              "XS6"
+              "XS6",
+              "XS17",
+              "XS18"
             ]
-          }
+          },
+          "role": "响应"
         }
       ]
     },
@@ -1555,7 +1610,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch8_S02",
@@ -1577,7 +1633,8 @@
           },
           "slots": [
             "{{TABLE:monitoring}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch8_S03",
@@ -1593,7 +1650,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch8_S04",
@@ -1622,7 +1680,9 @@
             ],
             "contracts": [
               "XS3",
-              "XS12"
+              "XS12",
+              "XS17",
+              "XS18"
             ]
           },
           "slots": [
@@ -1631,7 +1691,8 @@
             "{{SLOT:water_balance.demand}}",
             "{{SLOT:water_balance.deficit}}",
             "{{SLOT:capacity:water.capacity}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch8_S05",
@@ -1655,7 +1716,8 @@
           },
           "slots": [
             "{{TABLE:retrospective}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch8_S06",
@@ -1672,7 +1734,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "驱动源"
         }
       ]
     },
@@ -1737,7 +1800,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "驱动源"
         },
         {
           "id": "ch9_S02",
@@ -1759,7 +1823,8 @@
           },
           "slots": [
             "{{TABLE:monitoring}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch9_S03",
@@ -1775,7 +1840,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "受体"
         },
         {
           "id": "ch9_S04",
@@ -1790,8 +1856,12 @@
               "{{TABLE:measures}}"
             ],
             "formulas": [],
-            "contracts": []
-          }
+            "contracts": [
+              "XS17",
+              "XS18"
+            ]
+          },
+          "role": "推演"
         },
         {
           "id": "ch9_S05",
@@ -1823,7 +1893,8 @@
             "{{SLOT:air_screen.max_conc_distance}}",
             "{{TABLE:air}}",
             "{{TABLE:measures}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch9_S06",
@@ -1848,7 +1919,8 @@
           },
           "slots": [
             "{{TABLE:retrospective}}"
-          ]
+          ],
+          "role": "响应"
         },
         {
           "id": "ch9_S07",
@@ -1867,7 +1939,8 @@
           },
           "slots": [
             "{{TABLE:carbon}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch9_S08",
@@ -1883,7 +1956,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "驱动源"
         }
       ]
     },
@@ -1937,7 +2011,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch10_S02",
@@ -1959,7 +2034,8 @@
           },
           "slots": [
             "{{TABLE:monitoring}}"
-          ]
+          ],
+          "role": "受体"
         },
         {
           "id": "ch10_S03",
@@ -1975,7 +2051,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch10_S04",
@@ -2000,14 +2077,17 @@
               "noise"
             ],
             "contracts": [
-              "XS3"
+              "XS3",
+              "XS17",
+              "XS18"
             ]
           },
           "slots": [
             "{{SLOT:noise.point_level}}",
             "{{SLOT:noise.line_level}}",
             "{{SLOT:noise.compliance_distance}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch10_S05",
@@ -2020,7 +2100,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "收束"
         }
       ]
     },
@@ -2079,7 +2160,8 @@
             "contracts": [
               "XS2"
             ]
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch11_S02",
@@ -2098,7 +2180,8 @@
             "contracts": [
               "XS3"
             ]
-          }
+          },
+          "role": "受体"
         },
         {
           "id": "ch11_S03",
@@ -2118,7 +2201,8 @@
           },
           "slots": [
             "{{TABLE:soil_score}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch11_S04",
@@ -2134,7 +2218,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "响应"
         }
       ]
     },
@@ -2194,7 +2279,8 @@
             "{{TABLE:solid_waste}}",
             "{{TABLE:backfill}}",
             "{{SLOT:solid_waste.gangue_generation}}"
-          ]
+          ],
+          "role": "驱动源"
         },
         {
           "id": "ch12_S02",
@@ -2210,7 +2296,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch12_S03",
@@ -2227,8 +2314,12 @@
               "{{TABLE:measures}}"
             ],
             "formulas": [],
-            "contracts": []
-          }
+            "contracts": [
+              "XS17",
+              "XS18"
+            ]
+          },
+          "role": "推演"
         }
       ]
     },
@@ -2293,7 +2384,8 @@
             "contracts": [
               "XS2"
             ]
-          }
+          },
+          "role": "受体"
         },
         {
           "id": "ch13_S02",
@@ -2316,7 +2408,8 @@
           },
           "slots": [
             "{{TABLE:risk}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch13_S03",
@@ -2333,7 +2426,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch13_S04",
@@ -2350,9 +2444,12 @@
             ],
             "formulas": [],
             "contracts": [
-              "EO2"
+              "EO2",
+              "XS17",
+              "XS18"
             ]
-          }
+          },
+          "role": "响应"
         },
         {
           "id": "ch13_S05",
@@ -2376,7 +2473,8 @@
           },
           "slots": [
             "{{TABLE:retrospective}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch13_S06",
@@ -2390,7 +2488,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "收束"
         }
       ]
     },
@@ -2453,7 +2552,8 @@
             "contracts": [
               "XS6"
             ]
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch14_S02",
@@ -2470,7 +2570,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         },
         {
           "id": "ch14_S03",
@@ -2483,7 +2584,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "收束"
         }
       ]
     },
@@ -2538,7 +2640,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "响应"
         },
         {
           "id": "ch15_S02",
@@ -2551,7 +2654,8 @@
             "slots": [],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "响应"
         },
         {
           "id": "ch15_S03",
@@ -2575,7 +2679,8 @@
           },
           "slots": [
             "{{TABLE:monitoring_plan}}"
-          ]
+          ],
+          "role": "响应"
         },
         {
           "id": "ch15_S04",
@@ -2592,7 +2697,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "响应"
         },
         {
           "id": "ch15_S05",
@@ -2607,7 +2713,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "响应"
         }
       ]
     },
@@ -2660,9 +2767,11 @@
             ],
             "formulas": [],
             "contracts": [
-              "XS8"
+              "XS8",
+              "XS16"
             ]
-          }
+          },
+          "role": "推演"
         }
       ]
     },
@@ -2718,7 +2827,8 @@
           },
           "slots": [
             "{{TABLE:circular_economy}}"
-          ]
+          ],
+          "role": "响应"
         },
         {
           "id": "ch17_S02",
@@ -2737,7 +2847,8 @@
           },
           "slots": [
             "{{TABLE:cleaner_production}}"
-          ]
+          ],
+          "role": "推演"
         }
       ]
     },
@@ -2794,7 +2905,8 @@
           "slots": [
             "{{TABLE:investment}}",
             "{{SLOT:investment.env_investment_ratio}}"
-          ]
+          ],
+          "role": "推演"
         },
         {
           "id": "ch18_S02",
@@ -2810,7 +2922,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "推演"
         }
       ]
     },
@@ -2892,7 +3005,8 @@
             "contracts": [
               "XS1"
             ]
-          }
+          },
+          "role": "收束"
         },
         {
           "id": "ch19_S02",
@@ -2907,7 +3021,8 @@
             ],
             "formulas": [],
             "contracts": []
-          }
+          },
+          "role": "收束"
         },
         {
           "id": "ch19_S03",
@@ -2945,9 +3060,11 @@
               "XS13",
               "XS14",
               "XS15",
-              "EO3"
+              "EO3",
+              "XS16"
             ]
-          }
+          },
+          "role": "收束"
         },
         {
           "id": "ch19_S04",
@@ -2966,7 +3083,8 @@
             "contracts": [
               "XS10"
             ]
-          }
+          },
+          "role": "收束"
         }
       ]
     }

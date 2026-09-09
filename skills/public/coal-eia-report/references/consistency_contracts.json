@@ -1,11 +1,12 @@
 {
-  "version": "1.0",
-  "generated": "2026-09-06",
-  "source": "docs/designs/coal-eia-report-v2.md（D4/D8/D11、总体架构树 contracts 注释）+ docs/designs/2026-09-06-coal-eia-v2-ch6-walkthrough.md §4 跨章合约点/§5-E/F + 样例 digest 实证（hengcheng/yueerwan/jiulongchuan 等）",
+  "version": "1.1",
+  "generated": "2026-09-09",
+  "source": "docs/designs/coal-eia-report-v2.md（D4/D8/D11、总体架构树 contracts 注释）+ docs/designs/2026-09-06-coal-eia-v2-ch6-walkthrough.md §4 跨章合约点/§5-E/F + 样例 digest 实证（hengcheng/yueerwan/jiulongchuan 等）+ BS5 外部分析借鉴增补（2026-09-09，HJ 2.1/HJ 619 逻辑链框架对照——XS16–XS18 三条）",
   "contract_types": {
     "cross_section": "跨章/节 exact_match 或清单实体在场——值与实体以唯一事实源（表单字段/冻结计算输出/敏感目标清单）为真相源",
     "code_constraint": "判定词/限值类条款判定——判定词全书逐字一致（first-occurrence canon）；限值查 standards_index，未录入（needs_verification=true）→「需人工对照」不下结论",
-    "echo_obligation": "呼应义务合约族（D11）——源章清单实体逐项在目标章在场断言（同 XS 清单在场模式，章级门）；反向断言：目标章出现源清单外实体记 FAIL"
+    "echo_obligation": "呼应义务合约族（D11）——源章清单实体逐项在目标章在场断言（同 XS 清单在场模式，章级门）；反向断言：目标章出现源清单外实体记 FAIL",
+    "source_measure_binding": "源↔措双向存在断言族（BS5 新合约型，XS17/XS18）——污染源清单每源必有对应治理措施（有源必有措）、每条措施 target_source_ref 回指真实源（有措必有源）；机器分派按 echo_obligation 在场断言族执行（双向=正反两条呼应边，合约带 binding 字段定向），缺席 SKIP"
   },
   "caliber_labels": {
     "revision_before_after": "修编双口径：规划指标字段必备 *_before/*_after 标签；exact_match 必须绑口径——横城实证 9.20/6.0 Mt/a、86/58 km²、16.0/4.8 Mt/a 双口径并存（走查 §5-D）",
@@ -13,7 +14,7 @@
     "min_max_pair": "多口径并存（如逐矿 W_max 最大/最小）：各口径分别带标签后 exact_match，禁混同"
   },
   "activation_semantics": "合约激活 = applicable_stages 匹配当前 stage 且 conditional.requires_any_section_semantic 按语义标题命中（标题语义匹配，禁章号匹配——要素章序 4 种排布实证）；未命中/依赖章缺席记 skip 不计 fail（openpit 无沉陷章、可选章「总量控制」缺席、第 4/5 章回顾/识别互换双模式同理）。",
-  "geo_inherited_note": "geo 骨架全局合约（槽位残留 {{SLOT}}=0 检测、正文数值可溯源到 data/ 表单或 traces 公式输出）由管线 consistency 阶段内建沿用，不在本文件重复注册；本文件只注册环评特有 15 条。",
+  "geo_inherited_note": "geo 骨架全局合约（槽位残留 {{SLOT}}=0 检测、正文数值可溯源到 data/ 表单或 traces 公式输出）由管线 consistency 阶段内建沿用，不在本文件重复注册；本文件只注册环评特有合约 21 条（XS1–XS18 + EO1–EO3，含 BS5 增补 XS16–XS18）。",
   "contracts": [
     {
       "id": "XS1",
@@ -270,6 +271,50 @@
       "caliber": [],
       "rule": "户数/人口/迁入地逐处 exact_match（月儿湾实测 61 户 239 人跨 5.3.5.2/概述/18 三处一致）；村庄名与 sensitive_targets 登记名 canon 一致（XS2 联动）；搬迁时间规则（受影响前 1 年）表述全书一致；无搬迁计划时整族 skip 非 fail",
       "evidence": "月儿湾走查 §4 relocation_list 行：表5.3-9 → 5.3.5.2 → 概述（38.4a/45.7a Ⅳ级→搬迁）→ 18（20369）跨 3 处复现"
+    },
+    {
+      "id": "XS16",
+      "type": "code_constraint",
+      "name": "pollutant_three_ledger_identity",
+      "description": "三本账恒等式合约（BS5）：改扩建/核增双轨「三本账」逐污染因子满足 after ≡ before − reduction + new（单位 t/a）——D4 修编双口径标签升格为算术校验",
+      "stages": ["project_eia_underground"],
+      "source": "三本账表单字段（逐因子 *_before/*_after/*_reduction/*_new，SO2/NOx/PM/COD/氨氮…）；数据来源仅认实测/排污许可/批复（HJ 619 口径），禁估算凑数",
+      "anchor": "章标题语义：「项目概况与工程分析」的污染源源强核算节（改扩建「以新带老」三本账表）、「污染物排放总量控制」（接账）、「结论」（排放量结论）",
+      "consumers": ["工程分析·污染源源强核算（三本账表产出）", "污染物排放总量控制分析（接账）", "结论章·污染物排放结论"],
+      "conditional": {"requires_any_section_semantic": ["以新带老", "三本账", "改扩建", "现有工程"], "on_absent": "skip"},
+      "caliber": ["revision_before_after"],
+      "rule": "逐因子算术恒等式 after ≡ before − reduction + new（t/a）——违者 FAIL；before/after/reduction/new 各账数值绑 D4 口径标签且同因子同账跨处 exact_match；reduction 须有明确淘汰改造来源实体（淘汰关停/以新带老工程名逐项在场，XS8 联动），同一削减量禁被两个项目重复抵扣；数据来源非实测/排污许可/批复（HJ 619 口径）=FAIL；新建（非改扩建）项目无三本账→条件激活未命中记 skip",
+      "evidence": "BS5 立项（设计 2026-09-09）：改扩建双轨高频审查缺陷=削减量重复抵扣/账间不平；横城修编双口径（XS1：9.20/6.0 Mt/a）实证双轨语料在场"
+    },
+    {
+      "id": "XS17",
+      "type": "echo_obligation",
+      "binding": "source→measure",
+      "name": "source_to_measure_binding",
+      "description": "源↔措双向存在断言·正向（BS5 新合约型）：污染源清单每个污染源须有对应治理措施在场（有源必有措）——防「措施照搬模板与源强脱节」",
+      "stages": ["project_eia_underground"],
+      "source": "「项目概况与工程分析」污染源源强核算清单（逐源：源编号/源名/源强/治理设施前后排放——工程分析产出，HJ 619 污染源清单口径）",
+      "anchor": "源章标题语义：「污染源源强核算/污染源调查/产排污环节」；目标标题语义：「防治措施/治理措施/保护措施/处置措施/防范措施」（各要素章措施节族）",
+      "consumers": ["各要素章·污染防治措施节（目标——生态整治/地下水保护/地表水治理/大气防治/声防治/固废处置/风险应急）"],
+      "conditional": {"requires_any_section_semantic": ["污染源源强", "污染源调查", "污染源核算", "产排污"], "on_absent": "skip"},
+      "caliber": [],
+      "rule": "源清单实体（源编号/源名）逐项在措施侧在场断言：每个污染源至少一条措施以 measure_ref 回指该源——漏配措施=FAIL（源无措=治理缺位）；无污染源清单（新建极简项目）→条件激活未命中记 skip",
+      "evidence": "BS5 立项（设计 2026-09-09）：『措施照搬模板与源强脱节』高频审查缺陷；EO1（要素级识别→措施链）的源级细化"
+    },
+    {
+      "id": "XS18",
+      "type": "echo_obligation",
+      "binding": "measure→source",
+      "name": "measure_to_source_traceback",
+      "description": "源↔措双向存在断言·反向（BS5 新合约型）：每条治理措施 target_source_ref 须回指污染源清单真实源（有措必有源）——模板措施无源可回指即 FAIL",
+      "stages": ["project_eia_underground"],
+      "source": "各要素章措施节逐条措施的 target_source_ref 字段（措施→源回指）+「项目概况与工程分析」污染源源强清单（回指合法域）",
+      "anchor": "源章标题语义：「防治措施/治理措施/保护措施/处置措施/防范措施」；回指目标语义：「污染源源强核算/污染源调查/产排污环节」（清单为唯一合法回指域）",
+      "consumers": ["工程分析·污染源源强核算（回指目标域）"],
+      "conditional": {"requires_any_section_semantic": ["防治措施", "治理措施", "保护措施", "处置措施", "防范措施"], "on_absent": "skip"},
+      "caliber": [],
+      "rule": "逐条措施 target_source_ref 须命中源清单登记源（编号/名称 canon 一致）——回指落空=FAIL（措施无源=模板照搬）；多措施共源合法（多对一），一措施回指多源须逐源在场；与 XS17 合并构成源↔措双向闭环",
+      "evidence": "BS5 立项（设计 2026-09-09）：反向断言封堵「模板措施」与本项目源强脱节；contract_types.source_measure_binding 族登记（机器分派走 echo_obligation 在场断言族）"
     }
   ]
 }

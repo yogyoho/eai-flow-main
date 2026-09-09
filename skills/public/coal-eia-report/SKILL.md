@@ -157,7 +157,7 @@ progress.py run-stage finalize --state-dir T --outputs-dir /mnt/user-data/output
 - 交付名门：`{项目名}-{阶段}-环境影响报告.md` 由脚本从 data/ 直拼，outputs/ 禁其他 .md
 - 已批准降档自动 `--allow-partial`：BLOCKED 章跳 L2 章地板门（其余门在场），stdout `PARTIAL_DELIVERY` + manifest 留痕——交付时如实汇报
 
-**consistency（四类 geo 合约 + 环评注册表 15 条：XS1–XS12 跨章一致/EO1–EO3 呼应义务）**，退出码：0 全过 / 1 有 FAIL（修节重跑，禁改数据绕过）/ 2 需人工（载荷缺席降级 manual）/ 3 完成带 WARN（汇报用户）；**条件激活**：合约带 applicable_stages + 依赖章按语义标题在场才激活，缺席记 **skip 非 fail**（openpit 无沉陷章/可选章缺席/互换双模式同理）；**表格感知**（环评数字主体在表格，最高 91% 段落在表——候选值扫全部 md 表行）；**口径标签**（异标签在场=口径冲突 FAIL；双口径并存无标签=歧义 FAIL）；**呼应义务**（影响识别→措施 EO1、风险→应急 EO2、预测→结论 EO3：源清单实体逐项在目标章在场断言，反向新增 FAIL）。
+**consistency（四类 geo 合约 + 环评注册表 21 条：XS1–XS18 跨章一致(含 XS16 三本账恒等式/XS17·18 源措双向断言)/EO1–EO3 呼应义务）**，退出码：0 全过 / 1 有 FAIL（修节重跑，禁改数据绕过）/ 2 需人工（载荷缺席降级 manual）/ 3 完成带 WARN（汇报用户）；**条件激活**：合约带 applicable_stages + 依赖章按语义标题在场才激活，缺席记 **skip 非 fail**（openpit 无沉陷章/可选章缺席/互换双模式同理）；**表格感知**（环评数字主体在表格，最高 91% 段落在表——候选值扫全部 md 表行）；**口径标签**（异标签在场=口径冲突 FAIL；双口径并存无标签=歧义 FAIL）；**呼应义务**（影响识别→措施 EO1、风险→应急 EO2、预测→结论 EO3：源清单实体逐项在目标章在场断言，反向新增 FAIL）。
 
 **快照**：`snapshot.py save`（全文件 SHA-256 清单 + mapping 枚举 + 脚本版本指纹）；续跑恢复走 `show --verify`（见步骤 0）。
 
