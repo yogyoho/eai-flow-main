@@ -19,6 +19,11 @@ from app.extensions.bid_materials.models import (
     BidQualificationVersion,
     BidSample,
 )
+from app.extensions.bid_materials.service import (
+    QualificationNotFoundError,
+    QualificationService,
+    SampleService,
+)
 
 
 @pytest_asyncio.fixture()
@@ -214,3 +219,77 @@ class TestStorage:
         # AccessDenied 不收敛 None → 原样上抛: 缩窄 except 的另一半分支（基础设施故障≠404）
         with pytest.raises(S3Error):
             storage.get_file("q-1", 1, "png")
+
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"data" * 10
+JPG = b"\xff\xd8\xff" + b"data" * 10
+
+
+class TestQualificationService:
+    @pytest.mark.asyncio
+    async def test_add_version_magic_rejects_non_image(self, db):
+        svc = QualificationService(db)
+        q = await svc.create(qual_type="CMMI", cert_no="C-1")
+        with pytest.raises(ValueError, match="仅支持"):
+            await svc.add_version(q.id, data=b"not-an-image", file_name="x.txt")
+
+    @pytest.mark.asyncio
+    async def test_unknown_qual_id_raises_not_found(self, db):
+        svc = QualificationService(db)
+        with pytest.raises(QualificationNotFoundError):
+            await svc.add_version(uuid.uuid4(), data=PNG, file_name="a.png")
+
+    @pytest.mark.asyncio
+    async def test_add_version_sha256_dedup_idempotent(self, db, monkeypatch):
+        svc = QualificationService(db)
+        monkeypatch.setattr("app.extensions.bid_materials.storage.put_file", lambda qid, ver, name, data: f"{qid}/v{ver}.png")
+        q = await svc.create(qual_type="CMMI", cert_no="C-1")
+        v1, created1 = await svc.add_version(q.id, data=PNG, file_name="a.png", note="初次")
+        v2, created2 = await svc.add_version(q.id, data=PNG, file_name="a.png")
+        assert created1 is True and created2 is False, "同哈希去重=幂等返回既有版"
+        assert v1.version == v2.version == 1
+        assert q.current_version == 1
+
+    @pytest.mark.asyncio
+    async def test_new_version_bumps_pointer_and_rollback(self, db, monkeypatch):
+        svc = QualificationService(db)
+        q = await svc.create(qual_type="CMMI", cert_no="C-1")
+        monkeypatch.setattr("app.extensions.bid_materials.storage.put_file", lambda qid, ver, name, data: f"{qid}/v{ver}.png")
+        await svc.add_version(q.id, data=PNG, file_name="a.png")
+        await svc.add_version(q.id, data=JPG, file_name="b.jpg", note="换证")
+        assert q.current_version == 2
+        await svc.rollback(q.id, to_version=1)
+        assert q.current_version == 1, "回滚=改指针不删对象"
+
+    @pytest.mark.asyncio
+    async def test_expiring_window(self, db):
+        import datetime as dt
+
+        svc = QualificationService(db)
+        soon = dt.date.today() + dt.timedelta(days=20)
+        far = dt.date.today() + dt.timedelta(days=400)
+        db.add_all(
+            [
+                BidQualification(qual_type="CMMI", cert_no="SOON-1", valid_until=soon, current_version=0),
+                BidQualification(qual_type="CMMI", cert_no="FAR-1", valid_until=far, current_version=0),
+            ]
+        )
+        rows = await svc.expiring(days=90)
+        assert [r.cert_no for r in rows] == ["SOON-1"], "到期窗口只收 90 天内"
+
+    @pytest.mark.asyncio
+    async def test_export_whitelist_shape(self, db):
+        svc = QualificationService(db)
+        db.add(BidQualification(qual_type="营业执照", cert_no="91360100MA001X", issuer="市监局", valid_until=None, current_version=0))
+        rows = await svc.export_whitelist()
+        assert rows and rows[0]["type"] == "company" and rows[0]["cert_no"] == "91360100MA001X"
+
+
+class TestSampleService:
+    @pytest.mark.asyncio
+    async def test_sample_bulk_upsert_idempotent_by_hash(self, db):
+        svc_s = SampleService(db)
+        item = {"title": "江西师大标书", "source_path": "samples_bank/jx.md", "file_hash": "h" * 64, "industry": "信息技术", "project_category": "IT软件平台"}
+        r1 = await svc_s.bulk([item])
+        r2 = await svc_s.bulk([item])
+        assert r1["created"] == 1 and r2["created"] == 0 and r2["skipped"] == 1, "file_hash 幂等"
