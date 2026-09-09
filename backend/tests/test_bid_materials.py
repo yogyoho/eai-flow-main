@@ -330,9 +330,13 @@ class TestSampleService:
     async def test_sample_bulk_upsert_idempotent_by_hash(self, db):
         svc_s = SampleService(db)
         item = {"title": "江西师大标书", "source_path": "samples_bank/jx.md", "file_hash": "h" * 64, "industry": "信息技术", "project_category": "IT软件平台"}
-        r1 = await svc_s.bulk([item])
-        r2 = await svc_s.bulk([item])
+        items = [item]
+        r1 = await svc_s.bulk(items)
+        r2 = await svc_s.bulk(items)
         assert r1["created"] == 1 and r2["created"] == 0 and r2["skipped"] == 1, "file_hash 幂等"
+        # M-5 遗留: bulk 响应恒等式——skipped == total - created（total=len(items)），两轮各自闭合
+        assert r1["skipped"] == len(items) - r1["created"] == 0
+        assert r2["skipped"] == len(items) - r2["created"] == 1
 
     @pytest.mark.asyncio
     async def test_get_returns_row_and_missing_raises(self, db):

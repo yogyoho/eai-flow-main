@@ -206,6 +206,20 @@ modules:
         display_name: "样例台账"
         operations: []
 
+  # ─── 投标资料管理（应用中心；EAI-CUSTOM bug-3109 v4：资质 MinIO 版本库+样例台账。
+  #     后端 /api/extensions/bid-materials/*，沿用 require_permission("system:access")，
+  #     页面可见性由本页键 + 角色 nav/pages 授权控制）───
+  bid_materials:
+    display_name: "投标资料管理"
+    nav_id: "nav:bid-materials"
+    pages:
+      - id: "bid:page:qualifications"
+        display_name: "投标资质管理"
+        operations: []
+      - id: "bid:page:samples"
+        display_name: "技术资料库"
+        operations: []
+
   # ─── 投标报价分析（应用中心 → 市场营销；Route B 直调 data_source 只读查询）───
   bid_quote:
     display_name: "投标报价分析"
@@ -353,6 +367,8 @@ roles:
       - nav:geo-samples
       # EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库导航
       - nav:coal-eia-samples
+      # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航
+      - nav:bid-materials
       - nav:output
       - nav:app-center
     pages: ["*"]
@@ -400,6 +416,8 @@ roles:
       - nav:geo-samples
       # EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库导航（与 overlay 同步）
       - nav:coal-eia-samples
+      # EAI-CUSTOM (bug-3109 v4): 投标资料管理导航（与 overlay 同步）
+      - nav:bid-materials
       - nav:output
       - nav:app-center
     pages: ["*"]

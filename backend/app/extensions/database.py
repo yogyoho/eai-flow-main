@@ -1670,6 +1670,21 @@ async def seed_db() -> None:
                         "sort": 16,
                         "sort_key": "meikuanghuanpingyangliku",
                     },
+                    # EAI-CUSTOM (bug-3109 v4): 投标资料管理（应用中心 → 市场营销；资质 MinIO 版本库+样例台账，
+                    # 端点 /api/extensions/bid-materials/*，permissions 块 bid_materials / nav:bid-materials）
+                    {
+                        "app_id": "bid-materials",
+                        "name": "投标资料管理",
+                        "desc": "投标资质版本库与标书技术资料台账，资质到期预警与样例幂等导入",
+                        "icon": "book-marked",
+                        "domain": "marketing",
+                        "stage": "process",
+                        "path": "/bid-materials",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 17,
+                        "sort_key": "toubiaoziliaoguanli",
+                    },
                     {
                         "app_id": "admin",
                         "name": "系统管理",

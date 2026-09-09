@@ -1,4 +1,5 @@
 import {
+  BookMarked,
   BookOpen,
   Bot,
   ClipboardList,
@@ -22,6 +23,8 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   map: Map,
   bot: Bot,
   "clipboard-list": ClipboardList,
+  // EAI-CUSTOM (bug-3109 v4): 投标资料管理（app_definitions seed icon="book-marked"）
+  "book-marked": BookMarked,
   "folder-check": FolderCheck,
   factory: Factory,
   "book-open": BookOpen,
