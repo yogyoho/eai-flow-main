@@ -144,33 +144,38 @@ class _FakeResp(io.BytesIO):
 
 
 class FakeObjectStore:
-    """内存 Minio 替身: 记录 put, 支持 get/stat/remove。"""
+    """内存 Minio 替身: 记录 put, 支持 get/remove + buckets 集合。"""
 
     def __init__(self):
         self.objects: dict[str, bytes] = {}
+        self.buckets: set[str] = set()  # 初始为空: put_file 会真走一遍 exists=False→make_bucket 路径
 
     def put_object(self, bucket_name, object_name, data, length):
         self.objects[object_name] = data.read()
 
     def get_object(self, bucket_name, object_name):
-        return _FakeResp(self.objects[object_name])
-
-    def stat_object(self, bucket_name, object_name):
         if object_name not in self.objects:
             from minio.error import S3Error
 
-            # minio 7.2.x S3Error 首位参数是 response（无默认值）
-            raise S3Error(response=None, code="NoSuchKey", message="missing", resource=object_name)
-        return True
+            # minio 7.x S3Error 首位参数是 response; request_id/host_id 显式补空串, 跨 7.x 版本稳
+            raise S3Error(
+                response=None,
+                code="NoSuchKey",
+                message="missing",
+                resource=object_name,
+                request_id="",
+                host_id="",
+            )
+        return _FakeResp(self.objects[object_name])
 
     def remove_object(self, bucket_name, object_name):
         self.objects.pop(object_name, None)
 
     def bucket_exists(self, bucket_name):
-        return True
+        return bucket_name in self.buckets
 
     def make_bucket(self, bucket_name):
-        self.objects.setdefault("_bucket", b"")
+        self.buckets.add(bucket_name)
 
 
 class TestStorage:
@@ -179,10 +184,13 @@ class TestStorage:
 
         fake = FakeObjectStore()
         monkeypatch.setattr(storage, "_client", lambda: fake)
-        key = storage.put_file("q-1", 1, "scan.png", b"\x89PNG\r\n\x1a\n" + b"x" * 100)
+        payload = b"\x89PNG\r\n\x1a\n" + b"x" * 100
+        key = storage.put_file("q-1", 1, "scan.png", payload)
         assert key == "q-1/v1.png"
-        data = storage.get_file("q-1", 1, "png")
-        assert data.startswith(b"\x89PNG")
+        assert fake.buckets == {"bid-qualifications"}  # _ensure_bucket 真走了一遍建桶
+        assert storage.get_file("q-1", 1, "png") == payload  # 全等: 捕获截断/编码错误
         storage.delete_file("q-1", 1, "png")
         # best-effort 删除真落了：替身对象表里键已移除
         assert "q-1/v1.png" not in fake.objects
+        # 缺失对象: get_object 抛 NoSuchKey → get_file 收敛为 None(404)——固定缩小后的 except
+        assert storage.get_file("q-1", 9, "png") is None
