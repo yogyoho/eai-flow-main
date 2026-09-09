@@ -117,3 +117,85 @@ class SampleResponse(BaseModel):
 class SampleListResponse(BaseModel):
     samples: list[SampleResponse]
     total: int
+
+
+# ============== Quality（质检面板，EAI-CUSTOM: coal-eia v2 BS3 二期④） ==============
+
+
+class QualityCheckOut(BaseModel):
+    """单项质检结果"""
+
+    check: str
+    result: str  # pass | warn | fail | unknown
+    detail: str
+
+
+class QualityReportResponse(BaseModel):
+    """单样例质检报告（GET /samples/{id}/quality）"""
+
+    sample_id: UUID
+    title: str
+    scenario: str
+    checks: list[QualityCheckOut]
+    score: int  # 0-100
+
+
+class QualitySummaryItem(BaseModel):
+    """聚合条目（按分数升序=最差优先，前 50）"""
+
+    sample_id: UUID
+    title: str
+    scenario: str
+    score: int
+    worst_result: str
+    problems: list[str]  # warn/fail 项的 "check: detail"
+
+
+class QualitySummaryResponse(BaseModel):
+    """全库质检聚合（GET /quality/summary）"""
+
+    total: int
+    by_result: dict[str, int]  # pass/warn/fail/unknown → 计数（全库逐检查项累计）
+    by_scenario: dict[str, dict]  # scenario → {samples, avg_score}
+    items: list[QualitySummaryItem]
+
+
+# ============== Extract（提取流水线，EAI-CUSTOM: coal-eia v2 BS3 二期③） ==============
+
+
+class ExtractSourceKind(StrEnum):
+    """提取源类型——auto 按扩展名（.txt 直读/.docx zip 解析/.doc 拒绝并提示 doc_convert）"""
+
+    TXT = "txt"
+    DOCX = "docx"
+    AUTO = "auto"
+
+
+class ExtractRequest(BaseModel):
+    """提取流水线请求（POST /samples/{id}/extract）"""
+
+    source_kind: ExtractSourceKind = ExtractSourceKind.AUTO
+    save: bool = True  # True 写入 outline_json 并升级 status；False 仅返回预览
+
+
+class OutlineSectionOut(BaseModel):
+    no: str
+    title: str
+
+
+class OutlineChapterOut(BaseModel):
+    no: str
+    title: str
+    sections: list[OutlineSectionOut] = []
+
+
+class ExtractResponse(BaseModel):
+    """提取结果预览（章节树 + 实体候选；save=True 时已入库）"""
+
+    sample_id: UUID
+    title: str
+    source_kind: str  # 实际解析通道（auto 解析后的真实扩展名）
+    source_chars: int
+    chapters: list[OutlineChapterOut]
+    candidates: dict[str, list[str]]
+    saved: bool

@@ -1,4 +1,4 @@
-"""样例库服务层（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP）。
+"""样例库服务层（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP；二期+提取流水线/质检）。
 
 样例 = 已解析环评报告文件的登记记录。台账双轴：scenario（场景）× status（解析状态）；
 file_hash 全局唯一，批量导入按哈希 upsert 幂等（既有台账数据可反复灌入）。
@@ -154,3 +154,21 @@ class SampleService:
     def make_bulk_payload(items: list[dict]) -> SampleBulkImportRequest:
         """从 dict 列表（种子 JSON）构造导入请求——管理脚本与测试共用。"""
         return SampleBulkImportRequest(items=[SampleBulkItem.model_validate(it) for it in items])
+
+    # ── 二期：提取流水线（BS3 ③）──
+
+    @staticmethod
+    async def save_outline(db: AsyncSession, sample: KFSample, outline: dict) -> KFSample:
+        """提取结果写入 outline_json；仅登记状态（filename_only）的成功提取升级为 parsed。"""
+        sample.outline_json = outline
+        if sample.status == SampleStatus.FILENAME_ONLY.value and outline.get("chapters"):
+            sample.status = SampleStatus.PARSED.value
+        await db.commit()
+        await db.refresh(sample)
+        logger.info(
+            "KFSample outline saved: id=%s chapters=%d candidates=%s",
+            sample.id,
+            len(outline.get("chapters") or []),
+            {k: len(v) for k, v in (outline.get("candidates") or {}).items()},
+        )
+        return sample

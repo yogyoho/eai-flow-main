@@ -19,6 +19,11 @@ from app.extensions.dept.routers import router as dept_router
 from app.extensions.docmgr.collab_ai_chat import router as collab_ai_chat_router
 from app.extensions.docmgr.collab_routers import router as collab_router
 from app.extensions.docmgr.routers import router as docmgr_router
+
+# EAI-CUSTOM: eia_samples(煤矿环评报告样例库)——自 knowledge_factory 样例库 tab 迁出的独立扩展;
+# 导入包即把 kf_samples 表模型注册到 Base.metadata(init_db create_all 建表,历史表名沿用);
+# router 供管理 API 挂载(/api/extensions/eia-samples/*)。
+from app.extensions.eia_samples import router as eia_samples_router
 from app.extensions.geo_samples import router as geo_samples_router
 from app.extensions.knowledge import kb_router as knowledge_router
 from app.extensions.knowledge_factory.routers import router as knowledge_factory_router
@@ -929,6 +934,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Geo sample bank management API (/api/extensions/geo-samples/*)  [EAI-CUSTOM]
     app.include_router(geo_samples_router)
+
+    # Coal EIA report sample bank management API (/api/extensions/eia-samples/*)  [EAI-CUSTOM]
+    app.include_router(eia_samples_router)
 
     # Spare-parts price analysis management API (/api/extensions/spare-parts/*)  [EAI-CUSTOM]
     app.include_router(spare_parts_router)

@@ -1,5 +1,7 @@
 # EAI-CUSTOM: 煤矿环评报告样例库 API——自 knowledge_factory/routers.py 样例段原样迁出
 # （2026-09 独立应用化：KF 是通用模块，领域样例库不得混入；端点行为不变，仅换路由前缀归属）。
+# 二期（BS3 ③④）：+ 提取流水线 POST /samples/{id}/extract、质检 GET /samples/{id}/quality、
+# GET /quality/summary。
 """Coal EIA report sample bank management API.
 
 Mounted into the Gateway under ``/api/extensions/eia-samples``. Endpoints:
@@ -11,11 +13,15 @@ Mounted into the Gateway under ``/api/extensions/eia-samples``. Endpoints:
   GET    /samples/{sample_id}      获取单个样例
   PATCH  /samples/{sample_id}      更新单个样例
   DELETE /samples/{sample_id}      删除样例登记
+  POST   /samples/{sample_id}/extract   提取流水线（大纲章节树+实体候选 → outline_json）
+  GET    /samples/{sample_id}/quality   单样例质检报告（六项检查+分数）
+  GET    /quality/summary               全库质检聚合（by_result/by_scenario/最差前50）
 
 鉴权沿用原样例段模式：require_permission("system:access")；应用级页面可见性由
 前端 config/permissions.yaml 页面键（ces:page:samples）+ 角色授权控制。
 """
 
+import asyncio
 from typing import Annotated
 from uuid import UUID
 
@@ -26,7 +32,14 @@ from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser as CurrentUserSchema
 
+from .extract import ExtractSourceError
+from .extract import run_extract as run_extract_pipeline
+from .quality import QualityService
 from .schemas import (
+    ExtractRequest,
+    ExtractResponse,
+    QualityReportResponse,
+    QualitySummaryResponse,
     SampleBatchUpdate,
     SampleBulkImportRequest,
     SampleBulkImportResponse,
@@ -136,3 +149,68 @@ async def delete_sample(
         raise HTTPException(status_code=404, detail="样例不存在")
     await SampleService.delete_sample(db, sample)
     return {"message": "样例已删除"}
+
+
+# ============== Extract pipeline（提取流水线，EAI-CUSTOM: coal-eia v2 BS3 二期③） ==============
+
+
+@router.post("/samples/{sample_id}/extract", response_model=ExtractResponse)
+async def extract_sample(
+    sample_id: UUID,
+    data: ExtractRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """提取流水线：source 定位（.txt 直读/.docx zip 解析/.doc → 400 提示 doc_convert）→
+    章节大纲（双通道正则+目录区跳过）→ 实体候选（后缀词匹配）→ outline_json 入库（save=True）。
+
+    save=False 仅返回预览不入库；源文件缺失/加密/过大均 400 携带 guidance。
+    """
+    sample = await SampleService.get_sample(db, sample_id)
+    if not sample:
+        raise HTTPException(status_code=404, detail="样例不存在")
+    try:
+        # 文件 IO/CPU 解析离线程（zip+ElementTree 与全文正则都可能上百毫秒级）
+        outline = await asyncio.to_thread(run_extract_pipeline, sample.source_path, data.source_kind.value)
+    except ExtractSourceError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    saved = False
+    if data.save:
+        await SampleService.save_outline(db, sample, outline)
+        saved = True
+    return ExtractResponse(
+        sample_id=sample.id,
+        title=sample.title,
+        source_kind=outline["source_kind"],
+        source_chars=outline["source_chars"],
+        chapters=outline["chapters"],
+        candidates=outline["candidates"],
+        saved=saved,
+    )
+
+
+# ============== Quality panel（质检面板，EAI-CUSTOM: coal-eia v2 BS3 二期④） ==============
+
+
+@router.get("/quality/summary", response_model=QualitySummaryResponse)
+async def quality_summary(
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+    items_limit: int = Query(50, ge=1, le=200, description="问题列表条数（按分数升序=最差优先）"),
+):
+    """全库质检聚合：逐检查项结果计数 + 场景均分 + 最差样例问题清单（前 items_limit）"""
+    return await QualityService.summarize(db, items_limit=items_limit)
+
+
+@router.get("/samples/{sample_id}/quality", response_model=QualityReportResponse)
+async def sample_quality(
+    sample_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """单样例质检报告（六项检查：哈希/内容/场景枚举/重复标题/隐私/编号连续性 + 0-100 分）"""
+    sample = await SampleService.get_sample(db, sample_id)
+    if not sample:
+        raise HTTPException(status_code=404, detail="样例不存在")
+    counts = await QualityService.title_counts(db)
+    return QualityService.report_for(sample, counts)
