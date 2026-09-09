@@ -1,6 +1,8 @@
 """bank_compile 样例入库工具：脱敏/切片/深度统计/产物确定性（纯函数契约）。"""
 
 import importlib.util
+import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -202,3 +204,96 @@ def test_redact_title_map_only_auto_skip():
     assert bc.residual_scan(out) != [], "标题残留金额进残留门(不静默泄漏)"
     out2 = bc.redact("## 一、投标函\n", mapping={"投标函": "某函"})
     assert out2 == "## 一、某函\n", "标题行 --map 逐字替换(机构名清洗唯一通道)"
+
+
+# --- Task 3: 深度统计 + 四产物确定性落盘 ---------------------------------------------------------
+
+
+def test_slugify_deterministic_ascii():
+    """sha1(title)[:12] 小写 hex——ASCII 文件系统安全、同题恒同 slug(可读名进 bank_index)。"""
+    s1 = bc.slugify("江西师范大学课堂观测系统")
+    assert s1 == bc.slugify("江西师范大学课堂观测系统")
+    assert re.fullmatch(r"[0-9a-f]{12}", s1)
+    assert bc.slugify("另一项目") != s1
+
+
+def test_percentile_index_semantics():
+    """索引取整取值: idx=len*pct//100 截断钳位到 [0, n-1]; 空表返 0。"""
+    assert bc.percentile([10, 20, 30, 40], 25) == 20
+    assert bc.percentile([10, 20, 30, 40], 50) == 30
+    assert bc.percentile([10, 20, 30, 40], 0) == 10
+    assert bc.percentile([10, 20, 30, 40], 100) == 40
+    assert bc.percentile([7], 25) == 7
+    assert bc.percentile([], 50) == 0
+
+
+def test_compile_bank_redact_before_slice_and_residual_evidence():
+    """T2 评审接线: compile_bank 先 redact 全文再切章——章 title 字段来自 redacted 文本,
+    标题里的机构名不绕过 --map; residual 证据随返回值传出(Task 4 闸门消费)。"""
+    res = bc.compile_bank("## 一、江西师范大学投标函\n\n正文 500 元。\n", title="T", industry="信息技术", category="IT软件平台", mapping={"江西师范大学": "某大学"})
+    assert res["chapters"][0]["title"] == "一、某大学投标函", "章 title 必须来自 redacted 文本"
+    assert "江西师范大学" not in res["redacted"]
+    res2 = bc.compile_bank("## 一、报价 500 万元一览\n\n正文合计 500 万元。\n", title="T", industry="信息技术", category="IT软件平台", mapping={})
+    assert res2["residual"] == ["## 一、报价 500 万元一览"], "标题残留进 residual 证据(不静默泄漏)"
+
+
+def test_compile_bank_depth_targets_m1_exclusion():
+    """深度统计手算钉: M-1 剔 #/| 结构行后取分布, P25/median 为索引取整取值。"""
+    text = "## 一、甲\n\n" + "字" * 30 + "\n\n短段\n\n| 表 | 头 |\n| --- | --- |\n\n## 二、乙\n\n" + "言" * 20 + "\n"
+    res = bc.compile_bank(text, title="T", industry="信息技术", category="IT软件平台", mapping={})
+    # 正文段恰 [30, 2, 20](表行剔除) → sorted [2, 20, 30]; P25: 3*25//100=0→2; median: 3*50//100=1→20
+    dt = res["depth_targets"]
+    assert dt["absolute_floor"] == 2 and dt["global_median"] == 20
+    assert dt["paragraph_count"] == 3 and dt["calibrated_from"] == res["file_hash"]
+    assert len(res["file_hash"]) == 64, "bid_samples 台账 file_hash 恰 64 字符契约"
+    assert res["registration_item"]["scenario"] == "bid_sample"
+    assert res["registration_item"]["source_path"] == f"{res['slug']}/full.md"
+
+
+def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
+    bank_dir = tmp_path / "samples_bank"
+    argv = [
+        "--input",
+        str(tender_md),
+        "--title",
+        "江西师范大学课堂观测系统",
+        "--industry",
+        "信息技术",
+        "--category",
+        "IT软件平台",
+        "--bank-dir",
+        str(bank_dir),
+    ]
+    assert bc.main(argv) == 0
+    slug = bc.slugify("江西师范大学课堂观测系统")
+    slug_dir = bank_dir / slug
+    full = slug_dir / "full.md"
+    assert full.is_file() and "投标函" in full.read_text(encoding="utf-8")
+    chapter_files = sorted((slug_dir / "chapters").glob("ch*.md"))
+    assert len(chapter_files) == 3, "3 章切片逐章落盘"
+    index = json.loads((bank_dir / "bank_index.json").read_text(encoding="utf-8"))
+    assert slug in index and index[slug]["title"] == "江西师范大学课堂观测系统"
+    assert index[slug]["chapters"] and all((slug_dir / c["file"]).is_file() for c in index[slug]["chapters"]), "index 章条目可导航"
+    targets = json.loads((bank_dir / "depth_targets.json").read_text(encoding="utf-8"))
+    assert targets["absolute_floor"] > 0 and targets["global_median"] > 0
+    reg = json.loads((bank_dir / "registration.json").read_text(encoding="utf-8"))
+    assert reg["items"] and reg["items"][0]["scenario"] == "bid_sample"
+    # fixture 无 --map: 表格两位小数金额为已知唯一残留——Task 3 预留期 stderr 告警不拦截(闸门 Task 4 落)
+    captured = capsys.readouterr()
+    assert "残留" in captured.err and len(json.loads((bank_dir / "bank_index.json").read_text(encoding="utf-8"))[slug]["chapters"]) == 3
+    # 确定性: 重跑字节一致(同 slug 不重复登记)
+    before = {p.relative_to(bank_dir).as_posix(): p.read_bytes() for p in bank_dir.rglob("*") if p.is_file()}
+    assert bc.main(argv) == 0
+    after = {p.relative_to(bank_dir).as_posix(): p.read_bytes() for p in bank_dir.rglob("*") if p.is_file()}
+    assert before == after, "重跑字节级幂等"
+    assert len(json.loads((bank_dir / "registration.json").read_text(encoding="utf-8"))["items"]) == 1, "同 slug 重跑不重复登记"
+
+
+def test_main_applies_map_flag(tender_md, tmp_path):
+    """--map JSON 对照经 main 接入 compile_bank(全文先脱敏后切片, 机构名含标题全清)。"""
+    bank_dir = tmp_path / "bank"
+    map_path = tmp_path / "map.json"
+    map_path.write_text(json.dumps({"江西师范大学": "某大学【1】"}), encoding="utf-8")
+    assert bc.main(["--input", str(tender_md), "--title", "T项目", "--bank-dir", str(bank_dir), "--map", str(map_path)]) == 0
+    full = (bank_dir / bc.slugify("T项目") / "full.md").read_text(encoding="utf-8")
+    assert "江西师范大学" not in full and "某大学【1】" in full

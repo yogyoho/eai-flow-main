@@ -1,23 +1,30 @@
 """bank_compile——投标样例入库编译器(v4 WP-2/G1, 离线一键产全部衍生物)。
 
-流程: 装载(标书 md/docx) → 章切片 → 自动脱敏(+--map 显式对照) → 残留扫描(rc=1 不出库)
-→ 深度统计(P25 floor/全库 median) → 四产物(samples_bank 切片+指纹池+bank_index+depth_targets)
-→ registration.json(供 backend/scripts/bid_seed_samples.py 入 BidSample 台账)
-→ 可选 RAGFlow bid_samples 域推送(失败=warnings 不阻塞)。
+流程: 装载(标书 md/docx) → 全文脱敏(--map 显式对照 + 自动模式; 先脱敏后切片——T2 评审接线,
+章 title 取自 redacted 文本, 标题里的机构名不绕过 --map) → 章切片 → 深度统计(M-1 段长分布,
+P25=absolute_floor / median=global_median) → 四产物确定性落盘(slug 目录 full.md+chapters/、
+bank_index.json、depth_targets.json、registration.json——全 sort_keys 无时间戳, 重跑字节一致)
+→ registration.json 供 backend/scripts/bid_seed_samples.py 入 BidSample 台账(file_hash 恰 64 字符)
+→ 可选 RAGFlow bid_samples 域推送(失败=warnings 不阻塞, Task 5 接入)。
+
+残留闸门: compile_bank 返回 residual 证据; 本版(Task 3)仅 stderr 告警不拦截,
+Task 4 起残留非空 → rc=1 零落盘。
 
 stdlib 自包含(技能=自包含分发单元)。离线维护者工具, 不进 SKILL.md 速查表。
 用法:
   python bank_compile.py --input 标书.md --title "江西师范大学课堂观测系统" \
     --industry 信息技术 --category IT软件平台 --bank-dir references/samples_bank \
-    [--map map.json] [--ragflow-push]   (--map/--ragflow-push 于 Task 3/5 接入)
-退出码: 0 干净 / 1 用法或残留扫描命中。
+    [--map map.json] [--ragflow-push]   (--map 已接入; --ragflow-push 于 Task 5 接入)
+退出码: 0 干净 / 1 用法错误(残留命中在 Task 4 闸门落地后亦为 rc=1)。
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -120,7 +127,7 @@ def _docx_to_markdown(path: Path) -> str:
 
 def split_chapters(text: str) -> list[dict]:
     """章切片: H2 为唯一章界连续分段(不重排——1:1 纪律); H3+ 不切。H1 视作文档/篇标题
-    (封面/篇首段), 其下内容不立章——全文仍进 full.md(Task 3), 章切片只收 H2 节,
+    (封面/篇首段), 其下内容不立章——全文仍进 slug 目录 full.md, 章切片只收 H2 节,
     仿标书「一、二、三」节结构。返回 [{title, level, text}], level 恒 2。"""
     lines = text.split("\n")
     chapters: list[dict] = []
@@ -160,7 +167,8 @@ def redact(text: str, mapping: dict[str, str]) -> str:
     """脱敏: --map 显式对照优先(逐字替换, 全行含标题), 再跑自动模式(金额/信用代码/手机号/身份证)。
     标题行(# 开头)只吃 --map、跳过自动正则——# 前缀与标题完整性不动(章结构保真); 机构/人名在标题
     出现时 --map 是唯一清洗通道, 标题里的裸金额类残留交残留门 fail-closed 兜底(I-2, 不静默泄漏)。
-    mapping 键=原文, 值=脱敏占位。切片(split_chapters)在脱敏之前完成, 标题替换不伤章界。"""
+    mapping 键=原文, 值=脱敏占位。调用方(compile_bank)必须先对全文 redact 再 split_chapters
+    (T2 评审接线)——章 title 来自 redacted 标题行, 机构名才不绕过 --map。"""
     out_lines = []
     for line in text.split("\n"):
         for src, dst in mapping.items():
@@ -182,6 +190,72 @@ def residual_scan(text: str) -> list[str]:
     return [ln.strip()[:120] for ln in text.split("\n") if RESIDUAL_RE.search(ln)]
 
 
+def slugify(title: str) -> str:
+    """sha1(title)[:12] 小写 hex——ASCII 确定性目录名(CJK 题名不进文件系统, 可读名进 bank_index)。"""
+    return hashlib.sha1(title.encode("utf-8")).hexdigest()[:12]
+
+
+def percentile(sorted_vals: list[int], pct: int) -> int:
+    """索引取整取值: idx=len*pct//100 截断钳位到 [0, n-1]; 空表返 0。入参须已升序排序。"""
+    if not sorted_vals:
+        return 0
+    return sorted_vals[min(len(sorted_vals) * pct // 100, len(sorted_vals) - 1)]
+
+
+def compile_bank(text: str, *, title: str, industry: str, category: str, mapping: dict[str, str]) -> dict:
+    """纯函数编译(无 IO): 先对全文 redact 再切章(T2 评审接线——章 title 来自 redacted 标题行,
+    机构名不绕过 --map) → M-1 段长分布(剔 #/| 结构行) → depth_targets(P25=absolute_floor/
+    median=global_median, calibrated_from=内容指纹) → registration_item(bid_samples 台账契约,
+    file_hash=sha256(redacted) 恰 64 字符) → residual 证据(闸门 Task 4 消费)。"""
+    redacted = redact(text, mapping)
+    chapters = split_chapters(redacted)
+    lengths = sorted(paragraph_lengths(redacted))
+    file_hash = hashlib.sha256(redacted.encode("utf-8")).hexdigest()
+    slug = slugify(title)
+    return {
+        "slug": slug,
+        "title": title,
+        "redacted": redacted,
+        "chapters": chapters,
+        "file_hash": file_hash,
+        "depth_targets": {
+            "absolute_floor": percentile(lengths, 25),
+            "global_median": percentile(lengths, 50),
+            "paragraph_count": len(lengths),
+            "calibrated_from": file_hash,
+        },
+        "registration_item": {
+            "slug": slug,  # 非台账契约字段(pydantic 未知键忽略), 供 main 幂等去重
+            "title": title,
+            "source_path": f"{slug}/full.md",  # bank 根相对路径(可移植, 不落绝对路径)
+            "file_hash": file_hash,
+            "industry": industry,
+            "project_category": category,
+            "scenario": "bid_sample",
+            "status": "indexed",
+            "notes": f"chapters={len(chapters)}; paragraphs={len(lengths)}",
+        },
+        "residual": residual_scan(redacted),
+    }
+
+
+def _chapter_filename(idx: int, title: str) -> str:
+    """chNN__{短名}.md——序号定序, 短名=题名清洗(路径敌对字符/空白折叠为 _, 截 24 字)确定性派生。"""
+    short = re.sub(r'[\\/:*?"<>|\s]+', "_", title).strip("._")[:24] or "untitled"
+    return f"ch{idx:02d}__{short}.md"
+
+
+def _write_text(path: Path, text: str) -> None:
+    """newline="\n" 强制 LF——Windows/Linux 落盘字节一致(跨机确定性, 不吃 os.linesep 翻译)。"""
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
+def _write_json(path: Path, obj: dict | list) -> None:
+    """sort_keys+indent2+LF 结尾——确定性 JSON 落盘(重跑字节一致)。"""
+    _write_text(path, json.dumps(obj, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="bank_compile.py", description="投标样例入库编译器(离线)")
     ap.add_argument("--input", required=True)
@@ -189,12 +263,79 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--industry", default="信息技术")
     ap.add_argument("--category", default="IT软件平台")
     ap.add_argument("--bank-dir", required=True)
+    ap.add_argument("--map", default=None, help="显式脱敏对照 JSON 文件(键=原文, 值=脱敏占位)")
     args = ap.parse_args(argv)
+
+    mapping: dict[str, str] = {}
+    if args.map:
+        mapping = json.loads(Path(args.map).read_text(encoding="utf-8"))
+
     text = load_text(Path(args.input))
-    chapters = split_chapters(text)  # Task 3 起接入完整流水线
-    if not chapters:  # M-6: 零章=极端形态(如自定义样式 docx 全量丢弃), 提示而非静默
+    result = compile_bank(text, title=args.title, industry=args.industry, category=args.category, mapping=mapping)
+
+    if not result["chapters"]:  # M-6: 零章=极端形态(如自定义样式 docx 全量丢弃), 提示而非静默
         print("警告: 切片 0 章——输入无 H2 章标题(自定义样式 docx 可能全量丢弃), 请核对标题样式", file=sys.stderr)
-    print(json.dumps({"command": "bank_compile", "chapters": len(chapters)}, ensure_ascii=False))
+    # 残留闸门(Task 4)预留期: 证据 stderr 告警不拦截; Task 4 起改为「非空 → rc=1 零落盘」。
+    if result["residual"]:
+        print(f"警告: 残留扫描 {len(result['residual'])} 处命中(残留闸门 Task 4 落地, 当前仅告警):", file=sys.stderr)
+        for ln in result["residual"]:
+            print(f"  · {ln}", file=sys.stderr)
+
+    bank_dir = Path(args.bank_dir)
+    slug = result["slug"]
+    slug_dir = bank_dir / slug
+    chapters_dir = slug_dir / "chapters"
+    if chapters_dir.is_dir():  # 旧切片清场再重写——源文件修订后重编译不留陈旧 chNN
+        shutil.rmtree(chapters_dir)
+    chapters_dir.mkdir(parents=True, exist_ok=True)
+    _write_text(slug_dir / "full.md", result["redacted"] + "\n")
+    chapter_entries = []
+    for i, ch in enumerate(result["chapters"], 1):
+        fname = _chapter_filename(i, ch["title"])
+        _write_text(chapters_dir / fname, ch["text"] + "\n")
+        chapter_entries.append({"file": f"chapters/{fname}", "title": ch["title"]})
+
+    index_path = bank_dir / "bank_index.json"
+    index: dict = {}
+    if index_path.is_file():
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    index[slug] = {
+        "title": args.title,
+        "industry": args.industry,
+        "category": args.category,
+        "file_hash": result["file_hash"],
+        "depth": result["depth_targets"],
+        "chapters": chapter_entries,
+    }
+    _write_json(index_path, index)
+
+    # depth_targets.json=库级深度门基准(键名 absolute_floor/global_median 为 build_output 消费契约, 保持稳定);
+    # per-sample 深度存 bank_index[slug].depth, 单样重编译即重校准。
+    _write_json(bank_dir / "depth_targets.json", result["depth_targets"])
+
+    reg_path = bank_dir / "registration.json"
+    items: list[dict] = []
+    if reg_path.is_file():
+        items = [it for it in json.loads(reg_path.read_text(encoding="utf-8")).get("items", []) if it.get("slug") != slug]
+    items.append(result["registration_item"])
+    items.sort(key=lambda it: it["slug"])
+    _write_json(reg_path, {"items": items})
+
+    dt = result["depth_targets"]
+    print(
+        json.dumps(
+            {
+                "command": "bank_compile",
+                "slug": slug,
+                "chapters": len(result["chapters"]),
+                "paragraphs": dt["paragraph_count"],
+                "absolute_floor": dt["absolute_floor"],
+                "global_median": dt["global_median"],
+                "residual": len(result["residual"]),
+            },
+            ensure_ascii=False,
+        )
+    )
     return EXIT_OK
 
 
