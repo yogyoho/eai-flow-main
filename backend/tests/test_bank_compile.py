@@ -1,6 +1,7 @@
 """bank_compile 样例入库工具：脱敏/切片/深度统计/产物确定性（纯函数契约）。"""
 
 import importlib.util
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,8 @@ def tender_md(tmp_path):
         "统一社会信用代码 91360100MA001AB2CD 为准。联系电话 13800138000。\n\n"
         "## 二、法定代表人身份证明\n\n"
         "身份证号 360102199001011234，姓名张三。\n\n"
+        "### 2.1 三级标题不应切分\n\n"
+        "三级标题并入本章正文，不另立章。\n\n"
         "## 三、开标一览表\n\n"
         "| 序号 | 名称 | 数量 | 单价(元) |\n| --- | --- | --- | --- |\n"
         "| 1 | 课堂观测终端 | 200 | 3,500.00 |\n\n"
@@ -39,15 +42,102 @@ def test_load_text_md(tender_md):
     assert bc.load_text(tender_md).startswith("# 投标文件格式")
 
 
+def test_load_text_md_gbk_fallback(tmp_path, capsys):
+    """M-7：非 UTF-8 md 退回 gb18030 解码 + stderr 提示（真实标书常有 GBK 导出）。"""
+    p = tmp_path / "gbk.md"
+    p.write_bytes("## 一、投标函\n\n报价含税。".encode("gb18030"))
+    assert bc.load_text(p).startswith("## 一、投标函")
+    assert "gb18030" in capsys.readouterr().err
+
+
+def test_load_text_md_undecodable_actionable_error(tmp_path):
+    """M-7：UTF-8/gb18030 双败 → 可操作 ValueError（带处置指引，不裸抛 UnicodeDecodeError）。"""
+    p = tmp_path / "bad.md"
+    p.write_bytes(b"\xff\xfe\x00\x00")  # 0xFF 非 gb18030 合法首字节、亦非 UTF-8
+    with pytest.raises(ValueError, match="UTF-8"):
+        bc.load_text(p)
+
+
 def test_split_chapters_by_h1h2(tender_md):
     text = bc.load_text(tender_md)
     chapters = bc.split_chapters(text)
-    titles = [c["title"] for c in chapters]
-    assert any("投标函" in t for t in titles), "H2 章边界可切"
+    assert len(chapters) == 3, "I-2: H3 不误切恰 3 章, H1 封面不立章"
+    assert [c["level"] for c in chapters] == [2, 2, 2], "I-2: 只收 H2 章"
+    assert "### 2.1 三级标题不应切分" in chapters[1]["text"], "I-2: ### 行并入第二章正文"
+    assert any("投标函" in c["title"] for c in chapters), "H2 章边界可切"
     assert all(c["text"].strip() for c in chapters), "零空章"
+
+
+def test_split_chapters_strips_closing_hashes(tmp_path):
+    """M-4：ATX 闭合 # 序列从章标题剥离。"""
+    p = tmp_path / "atx.md"
+    p.write_text("## 四、售后服务 ##\n\n正文。\n", encoding="utf-8")
+    chapters = bc.split_chapters(p.read_text(encoding="utf-8"))
+    assert [c["title"] for c in chapters] == ["四、售后服务"]
 
 
 def test_paragraph_lengths(tender_md):
     text = bc.load_text(tender_md)
     lens = bc.paragraph_lengths(text)
-    assert all(isinstance(x, int) and x >= 0 for x in lens)
+    # I-1 精确值锁死（M-1 口径: 剔 # 标题行与 | 表格行, fixture 正文恰 4 段）
+    assert len(lens) == 4 and max(lens) == 89 and min(lens) == 16
+    assert lens == [89, 29, 16, 29]
+
+
+def test_main_warns_on_zero_chapters(tmp_path, capsys):
+    """M-6：零章切片 → stderr 警告（自定义样式 docx 全量丢弃的极端形态），rc 仍 0。"""
+    p = tmp_path / "nohead.md"
+    p.write_text("没有任何标题的正文一段。\n", encoding="utf-8")
+    rc = bc.main(["--input", str(p), "--title", "测试项目", "--industry", "信息技术", "--category", "IT软件平台", "--bank-dir", str(tmp_path / "bank")])
+    assert rc == 0
+    assert "0 章" in capsys.readouterr().err
+
+
+# --- M-5：_docx_to_markdown 合成 docx 测试（zipfile+writestr 手法） ----------------
+
+_DOCX_W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+
+def _make_docx(tmp_path, body: str, name="t.docx"):
+    p = tmp_path / name
+    with zipfile.ZipFile(p, "w") as zf:
+        zf.writestr(
+            "word/document.xml",
+            f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="{_DOCX_W_NS}"><w:body>{body}</w:body></w:document>',
+        )
+    return p
+
+
+def _docx_para(style: str | None, text: str) -> str:
+    ppr = f'<w:pPr><w:pStyle w:val="{style}"/></w:pPr>' if style else ""
+    return f"<w:p>{ppr}<w:r><w:t>{text}</w:t></w:r></w:p>"
+
+
+def test_docx_headings_paragraphs(tmp_path):
+    """HeadingN 与纯数字样式 → # 层级；普通段落照抄无前缀；H1 封面不立章。"""
+    body = _docx_para("Heading1", "投标文件格式") + _docx_para("2", "数字样式二级标题") + _docx_para(None, "正文段落照抄。")
+    out = bc._docx_to_markdown(_make_docx(tmp_path, body))
+    assert out.split("\n\n") == ["# 投标文件格式", "## 数字样式二级标题", "正文段落照抄。"]
+    chapters = bc.split_chapters(out)
+    assert [c["title"] for c in chapters] == ["数字样式二级标题"]
+
+
+def test_docx_table_escape_pad_contiguity(tmp_path):
+    """M-2：单元格 | 转义防碎表、内嵌换行折叠空格、短行补齐表头列数、整表行连续。"""
+    body = (
+        _docx_para("Heading2", "三、开标一览表") + "<w:tbl><w:tr><w:tc>" + _docx_para(None, "含|竖线") + "</w:tc><w:tc>" + _docx_para(None, "名称") + "</w:tc></w:tr><w:tr><w:tc>" + _docx_para(None, "多\n行文本") + "</w:tc></w:tr></w:tbl>"
+    )
+    lines = bc._docx_to_markdown(_make_docx(tmp_path, body)).split("\n")
+    idx = [i for i, ln in enumerate(lines) if ln.startswith("|")]
+    assert idx == list(range(idx[0], idx[0] + 3)), "表格行连续不碎"
+    assert lines[idx[0]] == "| 含\\|竖线 | 名称 |", "单元格 | 已转义"
+    assert lines[idx[1]] == "|---|---|"
+    assert lines[idx[2]] == "| 多 行文本 |  |", "短行补齐到表头列数, 内嵌换行折叠空格"
+
+
+def test_docx_no_body_returns_empty(tmp_path):
+    """M-3：document.xml 无 w:body → 空串（is None 显式判定，不 DeprecationWarning 不炸）。"""
+    p = tmp_path / "empty.docx"
+    with zipfile.ZipFile(p, "w") as zf:
+        zf.writestr("word/document.xml", f'<w:document xmlns:w="{_DOCX_W_NS}"></w:document>')
+    assert bc._docx_to_markdown(p) == ""
