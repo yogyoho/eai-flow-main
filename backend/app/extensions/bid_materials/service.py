@@ -186,6 +186,13 @@ class SampleService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
+    async def get(self, sample_id: uuid.UUID) -> BidSample:
+        """单样例详情（不存在 raise SampleNotFoundError → 路由 404; 与 disable 同语义）。"""
+        row = await self.session.get(BidSample, sample_id)
+        if row is None:
+            raise SampleNotFoundError(f"样例不存在: {sample_id}")
+        return row
+
     async def list(self, *, industry: str | None = None, project_category: str | None = None, q: str | None = None, limit: int = 200, offset: int = 0) -> list[BidSample]:
         """台账查询: 过滤全部下推 SQL(industry/project_category 走 ==, 标题走 ilike),
         limit/offset 供路由分页(Task 5 接入)。"""

@@ -33,15 +33,12 @@ class QualificationUpdate(BaseModel):
     disabled: bool | None = None
 
 
-class QualificationVersionResponse(BaseModel):
+class QualificationVersionUploadResponse(BaseModel):
+    """版本上传响应：created=False 表示 sha256 去重命中（幂等返回既有版）。"""
+
+    created: bool
     version: int
     sha256: str
-    file_ext: str
-    file_size: int
-    note: str | None
-    uploaded_at: datetime.datetime
-
-    model_config = {"from_attributes": True}
 
 
 class QualificationResponse(BaseModel):
@@ -55,7 +52,6 @@ class QualificationResponse(BaseModel):
     org_scope: str | None
     disabled: bool
     notes: str | None
-    versions: list[QualificationVersionResponse] = []
 
     model_config = {"from_attributes": True}
 

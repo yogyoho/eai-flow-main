@@ -17,11 +17,11 @@ Mounted into the Gateway under ``/api/extensions/bid-materials``. Endpoints:
   DELETE /samples/{id}                   停用样例（status=disabled 软停, 非物理删除）
 
 鉴权沿用 eia_samples 模式：全部端点 require_permission("system:access")；
-错误映射：QualificationNotFoundError/SampleNotFoundError → 404，ValueError（魔数/白名单字段）→ 400。
+错误映射：QualificationNotFoundError/SampleNotFoundError → 404，ValueError（魔数校验）→ 400。
 """
 
-import uuid
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
 from pydantic import BaseModel
@@ -31,14 +31,14 @@ from app.extensions.auth.middleware import require_permission
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser as CurrentUserSchema
 
-from .models import BidSample
 from .schemas import (
     QualificationCreate,
     QualificationResponse,
-    QualificationVersionResponse,
+    QualificationVersionUploadResponse,
     SampleBulkImportRequest,
     SampleBulkImportResponse,
     SampleResponse,
+    WhitelistEntry,
 )
 from .service import QualificationNotFoundError, QualificationService, SampleNotFoundError, SampleService
 
@@ -85,16 +85,18 @@ async def create_qualification(
     return QualificationResponse.model_validate(q)
 
 
-@router.post("/qualifications/{qual_id}/versions")
+@router.post("/qualifications/{qual_id}/versions", response_model=QualificationVersionUploadResponse)
 async def upload_qualification_version(
-    qual_id: uuid.UUID,
+    qual_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     current_user: CurrentUser,
     file: UploadFile = File(...),
-    note: str | None = Form(None),
+    note: str | None = Form(None, max_length=200),
 ):
     """上传新版本扫描件（multipart）：魔数校验（仅 png/jpg）→ sha256 去重（同哈希幂等返回既有版）
     → MinIO put（service 内部 to_thread）→ 建版本行 + 推进 current_version 指针。"""
+    if (file.size or 0) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="扫描件过大")
     data = await file.read()
     try:
         row, created = await QualificationService(db).add_version(qual_id, data=data, note=note, uploaded_by=current_user.id)
@@ -103,12 +105,12 @@ async def upload_qualification_version(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     await db.commit()
-    return {"created": created, "version": QualificationVersionResponse.model_validate(row)}
+    return QualificationVersionUploadResponse(created=created, version=row.version, sha256=row.sha256)
 
 
 @router.post("/qualifications/{qual_id}/rollback", response_model=QualificationResponse)
 async def rollback_qualification(
-    qual_id: uuid.UUID,
+    qual_id: UUID,
     data: RollbackRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
     _current_user: CurrentUser,
@@ -124,7 +126,7 @@ async def rollback_qualification(
 
 @router.get("/qualifications/{qual_id}/file")
 async def download_qualification_file(
-    qual_id: uuid.UUID,
+    qual_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     _current_user: CurrentUser,
 ):
@@ -154,7 +156,7 @@ async def list_expiring_qualifications(
     return [QualificationResponse.model_validate(q) for q in rows]
 
 
-@router.get("/qualifications/export-whitelist", response_model=list[dict])
+@router.get("/qualifications/export-whitelist", response_model=list[WhitelistEntry])
 async def export_qualification_whitelist(
     db: Annotated[AsyncSession, Depends(get_db)],
     _current_user: CurrentUser,
@@ -195,20 +197,21 @@ async def bulk_import_samples(
 
 @router.get("/samples/{sample_id}", response_model=SampleResponse)
 async def get_sample(
-    sample_id: uuid.UUID,
+    sample_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     _current_user: CurrentUser,
 ):
     """获取单个样例详情"""
-    sample = await db.get(BidSample, sample_id)
-    if sample is None:
-        raise HTTPException(status_code=404, detail="样例不存在")
+    try:
+        sample = await SampleService(db).get(sample_id)
+    except SampleNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     return SampleResponse.model_validate(sample)
 
 
 @router.delete("/samples/{sample_id}")
 async def disable_sample(
-    sample_id: uuid.UUID,
+    sample_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     _current_user: CurrentUser,
 ):

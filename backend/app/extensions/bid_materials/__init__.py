@@ -8,6 +8,5 @@ gateway 启动序 init_db（create_all）建表（同 eia_samples/geo_samples �
 """
 
 from .routers import router  # noqa: F401
-from .routers import router as bid_materials_router  # noqa: F401
 
-__all__ = ["router", "bid_materials_router"]
+__all__ = ["router"]

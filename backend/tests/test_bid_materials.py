@@ -335,6 +335,16 @@ class TestSampleService:
         assert r1["created"] == 1 and r2["created"] == 0 and r2["skipped"] == 1, "file_hash 幂等"
 
     @pytest.mark.asyncio
+    async def test_get_returns_row_and_missing_raises(self, db):
+        """详情走 service.get：命中返行, 缺失 raise SampleNotFoundError(路由 404 同源)。"""
+        svc_s = SampleService(db)
+        await svc_s.bulk([{"title": "t", "source_path": "p", "file_hash": "e" * 64}])
+        row = (await svc_s.list())[0]
+        assert (await svc_s.get(row.id)).id == row.id
+        with pytest.raises(SampleNotFoundError):
+            await svc_s.get(uuid.uuid4())
+
+    @pytest.mark.asyncio
     async def test_disable_sets_status_and_missing_raises(self, db):
         svc_s = SampleService(db)
         await svc_s.bulk([{"title": "t", "source_path": "p", "file_hash": "a" * 64}])
