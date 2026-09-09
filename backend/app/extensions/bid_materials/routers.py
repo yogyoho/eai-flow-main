@@ -4,9 +4,13 @@
 
 Mounted into the Gateway under ``/api/extensions/bid-materials``. Endpoints:
 
-  GET    /qualifications                 列表（include_disabled + limit/offset 分页）
+  GET    /qualifications                 列表（include_disabled/qual_type 过滤 + limit/offset 分页）
   POST   /qualifications                 新建资质（QualificationCreate → 201）
-  POST   /qualifications/{id}/versions   上传新版本（multipart; png/jpg 魔数校验 + sha256 去重幂等）
+  GET    /qualifications/{id}            详情（不存在/停用 → 404）
+  PATCH  /qualifications/{id}            更新元数据（QualificationUpdate → service 白名单; disabled 不开放走 DELETE）
+  DELETE /qualifications/{id}            软删（disabled=true; MinIO 对象保留）
+  POST   /qualifications/{id}/versions   上传新版本（multipart; png/jpg 魔数校验 + sha256 去重幂等 → 201）
+  GET    /qualifications/{id}/versions   版本历史（升序——rollback 前置核对目标版本存在）
   POST   /qualifications/{id}/rollback   回滚当前版指针（目标版本存在性校验, 幽灵版本 → 404）
   GET    /qualifications/{id}/file       代理下发当前版扫描件（MinIO → bytes → Response）
   GET    /qualifications/expiring        到期预警清单（?days=90 窗口）
@@ -34,6 +38,8 @@ from app.extensions.schemas import CurrentUser as CurrentUserSchema
 from .schemas import (
     QualificationCreate,
     QualificationResponse,
+    QualificationUpdate,
+    QualificationVersionResponse,
     QualificationVersionUploadResponse,
     SampleBulkImportRequest,
     SampleBulkImportResponse,
@@ -44,7 +50,10 @@ from .service import QualificationNotFoundError, QualificationService, SampleNot
 
 router = APIRouter(prefix="/api/extensions/bid-materials", tags=["bid-materials"])
 
-CurrentUser = Annotated[CurrentUserSchema, Depends(require_permission("system:access"))]
+# 命名收口：require_permission 工厂每次调用产新闭包，匿名形态（Depends(require_permission(...))）
+# 无法被测试 dependency_overrides 按对象同一性覆盖——命名后路由层测试可覆盖同一函数对象。
+_require_system_access = require_permission("system:access")
+CurrentUser = Annotated[CurrentUserSchema, Depends(_require_system_access)]
 
 
 class RollbackRequest(BaseModel):
@@ -65,11 +74,12 @@ async def list_qualifications(
     db: Annotated[AsyncSession, Depends(get_db)],
     _current_user: CurrentUser,
     include_disabled: bool = Query(False, description="是否含已停用（软删）资质"),
+    qual_type: str | None = Query(None, max_length=50, description="资质类型过滤（== 精确, SQL 下推）"),
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
-    """列出资质台账（默认过滤软删行, SQL 下推）"""
-    rows = await QualificationService(db).list(include_disabled=include_disabled, limit=limit, offset=offset)
+    """列出资质台账（默认过滤软删行, 过滤 SQL 下推）"""
+    rows = await QualificationService(db).list(include_disabled=include_disabled, qual_type=qual_type, limit=limit, offset=offset)
     return [QualificationResponse.model_validate(q) for q in rows]
 
 
@@ -85,7 +95,7 @@ async def create_qualification(
     return QualificationResponse.model_validate(q)
 
 
-@router.post("/qualifications/{qual_id}/versions", response_model=QualificationVersionUploadResponse)
+@router.post("/qualifications/{qual_id}/versions", response_model=QualificationVersionUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_qualification_version(
     qual_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -98,6 +108,9 @@ async def upload_qualification_version(
     if (file.size or 0) > 20 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="扫描件过大")
     data = await file.read()
+    # 二次守卫（终审 M-2）：chunked 传输无 Content-Length 时 file.size=None，首道检查旁路——读后兜底
+    if len(data) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="扫描件过大")
     try:
         row, created = await QualificationService(db).add_version(qual_id, data=data, note=note, uploaded_by=current_user.id)
     except QualificationNotFoundError as e:
@@ -163,6 +176,71 @@ async def export_qualification_whitelist(
 ):
     """entities_whitelist 增量 JSON（公司+证号+有效期; WP-2.4 组织级权威源）"""
     return await QualificationService(db).export_whitelist()
+
+
+# ---- 单段 {qual_id} 路由必须声明在 /expiring 与 /export-whitelist 之后 ----
+# FastAPI 按声明顺序匹配：{qual_id} 若在前会把 "expiring"/"export-whitelist" 吞成路径参数（422）。
+
+
+@router.get("/qualifications/{qual_id}", response_model=QualificationResponse)
+async def get_qualification(
+    qual_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """资质详情（service.get 语义：不存在/已停用 → 404）"""
+    try:
+        q = await QualificationService(db).get(qual_id)
+    except QualificationNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return QualificationResponse.model_validate(q)
+
+
+@router.patch("/qualifications/{qual_id}", response_model=QualificationResponse)
+async def update_qualification(
+    qual_id: UUID,
+    data: QualificationUpdate,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """更新元数据（QualificationUpdate → service 白名单校验：未知键/disabled → 400, 不存在/停用 → 404）"""
+    try:
+        q = await QualificationService(db).update(qual_id, **data.model_dump(exclude_unset=True))
+    except QualificationNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    await db.commit()
+    return QualificationResponse.model_validate(q)
+
+
+@router.delete("/qualifications/{qual_id}")
+async def disable_qualification(
+    qual_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """软删资质（disabled=true; MinIO 对象保留——误删=灾难, 非物理删除）"""
+    try:
+        await QualificationService(db).soft_delete(qual_id)
+    except QualificationNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    await db.commit()
+    return {"disabled": True}
+
+
+@router.get("/qualifications/{qual_id}/versions", response_model=list[QualificationVersionResponse])
+async def list_qualification_versions(
+    qual_id: UUID,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _current_user: CurrentUser,
+):
+    """版本历史（version 升序）——rollback 前先读此表确认目标版本存在（解 to_version 不可发现问题）"""
+    try:
+        rows = await QualificationService(db).versions(qual_id)
+    except QualificationNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return [QualificationVersionResponse.model_validate(v) for v in rows]
 
 
 # ============== Sample APIs（样例台账） ==============

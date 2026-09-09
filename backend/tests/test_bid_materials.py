@@ -3,8 +3,10 @@
 真库语义（sqlite+aiosqlite 内存库 + 真实模型），镜像 test_eia_samples.py 夹具。
 """
 
+import datetime as dt
 import io
 import uuid
+from types import SimpleNamespace
 
 import pytest
 import pytest_asyncio
@@ -373,3 +375,172 @@ class TestSampleService:
         assert len(await svc_s.list(industry="环保", project_category="IT软件平台")) == 1
         assert {r.title for r in await svc_s.list(q="煤矿")} == {"煤矿环评标书", "江西煤矿标书"}
         assert len(await svc_s.list(limit=1, offset=1)) == 1
+
+
+BASE = "/api/extensions/bid-materials"
+
+
+class TestBidMaterialsRoutes:
+    """路由层测试（闭合 spec §6 权限挂载）: 只挂 bid_materials router 的最小 app + dependency_overrides。
+
+    - get_db → 本文件 sqlite 夹具 session（真库语义）；
+    - 权限依赖 → 覆盖 routers._require_system_access（命名收口: require_permission 工厂每次
+      调用产新闭包, 匿名形态无法按对象同一性 override）——放行给 SimpleNamespace 形状用户,
+      拒绝场景 raise HTTPException(403) 镜像真中间件 deny 路径。
+    - 走 httpx ASGITransport（test_data_source_routers.py 先例）而非 TestClient: db 是 async
+      夹具 session, TestClient 的 portal 线程会把 session 拽进另一个事件循环。
+    """
+
+    @pytest_asyncio.fixture()
+    async def client(self, db):
+        from fastapi import FastAPI
+        from httpx import ASGITransport, AsyncClient
+
+        from app.extensions.bid_materials import routers as bid_routers
+        from app.extensions.database import get_db
+
+        app = FastAPI()
+        app.include_router(bid_routers.router)
+
+        async def _fake_db():
+            yield db
+
+        async def _allow():
+            return SimpleNamespace(id=uuid.uuid4())  # 路由只读 current_user.id
+
+        app.dependency_overrides[get_db] = _fake_db
+        app.dependency_overrides[bid_routers._require_system_access] = _allow
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            yield c
+
+    async def _seed_qual(self, db: AsyncSession, cert_no: str = "CMMI-2024-001") -> BidQualification:
+        q = BidQualification(qual_type="CMMI", cert_no=cert_no, issuer="CMMI Institute")
+        db.add(q)
+        await db.flush()
+        return q
+
+    @pytest.mark.asyncio
+    async def test_get_detail_404_when_missing(self, client):
+        resp = await client.get(f"{BASE}/qualifications/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_get_detail_returns_row(self, client, db):
+        q = await self._seed_qual(db)
+        resp = await client.get(f"{BASE}/qualifications/{q.id}")
+        assert resp.status_code == 200
+        assert resp.json()["cert_no"] == "CMMI-2024-001"
+
+    @pytest.mark.asyncio
+    async def test_fixed_paths_not_shadowed_by_qual_id(self, client, db):
+        """路由顺序: 单段 {qual_id} 不得遮蔽 /expiring 与 /export-whitelist（FastAPI 按声明顺序匹配）。"""
+        db.add(BidQualification(qual_type="CMMI", cert_no="EXP-1", valid_until=dt.date.today() + dt.timedelta(days=10)))
+        await db.flush()
+        resp = await client.get(f"{BASE}/qualifications/expiring")
+        assert resp.status_code == 200
+        assert [r["cert_no"] for r in resp.json()] == ["EXP-1"]
+        resp = await client.get(f"{BASE}/qualifications/export-whitelist")
+        assert resp.status_code == 200
+        assert resp.json()[0]["cert_no"] == "EXP-1"
+
+    @pytest.mark.asyncio
+    async def test_patch_updates_cert_no_and_persists(self, client, db):
+        q = await self._seed_qual(db)
+        qual_id = q.id  # expire_all 后过期实例的属性访问会触发同步 lazy load(MissingGreenlet), 先取值
+        resp = await client.patch(f"{BASE}/qualifications/{qual_id}", json={"cert_no": "CMMI-2026-999"})
+        assert resp.status_code == 200
+        assert resp.json()["cert_no"] == "CMMI-2026-999"
+        db.expire_all()  # 丢身份映射缓存, 真读库验证落库
+        assert (await db.get(BidQualification, qual_id)).cert_no == "CMMI-2026-999"
+
+    @pytest.mark.asyncio
+    async def test_patch_missing_qual_404(self, client):
+        resp = await client.patch(f"{BASE}/qualifications/{uuid.uuid4()}", json={"cert_no": "x"})
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_patch_out_of_whitelist_field_400(self, client, db):
+        """disabled 不在 service 白名单（软删走 DELETE 显式路径）→ 400 而非静默放行。"""
+        q = await self._seed_qual(db)
+        resp = await client.patch(f"{BASE}/qualifications/{q.id}", json={"disabled": True})
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_delete_soft_disables_and_hidden(self, client, db):
+        q = await self._seed_qual(db)
+        qual_id, cert_no = q.id, q.cert_no  # expire_all 后过期实例属性访问会同步 lazy load, 先取值
+        resp = await client.delete(f"{BASE}/qualifications/{qual_id}")
+        assert resp.status_code == 200
+        assert resp.json() == {"disabled": True}
+        db.expire_all()
+        assert (await db.get(BidQualification, qual_id)).disabled is True
+        assert (await client.get(f"{BASE}/qualifications/{qual_id}")).status_code == 404, "详情对停用行 404"
+        listing = await client.get(f"{BASE}/qualifications")
+        assert all(r["cert_no"] != cert_no for r in listing.json()), "列表默认滤软删行"
+
+    @pytest.mark.asyncio
+    async def test_delete_missing_qual_404(self, client):
+        resp = await client.delete(f"{BASE}/qualifications/{uuid.uuid4()}")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_versions_listed_ascending(self, client, db, monkeypatch):
+        from app.extensions.bid_materials import storage
+
+        monkeypatch.setattr(storage, "put_file", lambda qid, ver, ext, data: f"{qid}/v{ver}.{ext}")
+        q = await self._seed_qual(db)
+        r1 = await client.post(f"{BASE}/qualifications/{q.id}/versions", files={"file": ("a.png", PNG, "image/png")}, data={"note": "初版"})
+        assert r1.status_code == 201, "版本上传与 POST /qualifications 同一 201 先例"
+        r2 = await client.post(f"{BASE}/qualifications/{q.id}/versions", files={"file": ("b.jpg", JPG, "image/jpeg")})
+        assert r2.status_code == 201
+        assert r2.json()["version"] == 2
+        resp = await client.get(f"{BASE}/qualifications/{q.id}/versions")
+        assert resp.status_code == 200
+        rows = resp.json()
+        assert [v["version"] for v in rows] == [1, 2], "升序"
+        assert [v["file_ext"] for v in rows] == ["png", "jpg"]
+        assert rows[0]["note"] == "初版" and rows[0]["minio_key"].endswith("v1.png")
+
+    @pytest.mark.asyncio
+    async def test_versions_missing_qual_404(self, client):
+        resp = await client.get(f"{BASE}/qualifications/{uuid.uuid4()}/versions")
+        assert resp.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_upload_rejects_non_image_400(self, client, db):
+        q = await self._seed_qual(db)
+        resp = await client.post(f"{BASE}/qualifications/{q.id}/versions", files={"file": ("x.txt", b"not-an-image", "text/plain")})
+        assert resp.status_code == 400
+
+    @pytest.mark.asyncio
+    async def test_list_qualifications_filters_by_qual_type(self, client, db):
+        await self._seed_qual(db, cert_no="CMMI-1")
+        db.add(BidQualification(qual_type="ISO9001", cert_no="ISO-1"))
+        await db.flush()
+        resp = await client.get(f"{BASE}/qualifications", params={"qual_type": "ISO9001"})
+        assert resp.status_code == 200
+        assert [r["cert_no"] for r in resp.json()] == ["ISO-1"]
+
+    @pytest.mark.asyncio
+    async def test_permission_deny_403(self, db):
+        """权限挂载断言: require_permission 依赖覆盖为拒绝 → 403（路由确实挂在权限链上）。"""
+        from fastapi import FastAPI, HTTPException
+        from httpx import ASGITransport, AsyncClient
+
+        from app.extensions.bid_materials import routers as bid_routers
+        from app.extensions.database import get_db
+
+        app = FastAPI()
+        app.include_router(bid_routers.router)
+
+        async def _fake_db():
+            yield db
+
+        async def _deny():
+            raise HTTPException(status_code=403, detail="no permission")
+
+        app.dependency_overrides[get_db] = _fake_db
+        app.dependency_overrides[bid_routers._require_system_access] = _deny
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
+            resp = await c.get(f"{BASE}/qualifications")
+        assert resp.status_code == 403

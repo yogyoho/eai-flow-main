@@ -55,6 +55,13 @@ class QualificationService:
             raise QualificationNotFoundError(f"资质不存在或已停用: {qual_id}")
         return q
 
+    async def get(self, qual_id: uuid.UUID) -> BidQualification:
+        """单资质详情（不存在/已停用 raise → 路由 404）。
+
+        终审 I-1: 详情收口 service 层（路由零 ORM import）——SampleService.get 先例。
+        """
+        return await self._get(qual_id)
+
     async def create(self, *, qual_type: str, cert_no: str, issuer: str | None = None, valid_until: dt.date | None = None, scope: str | None = None, org_scope: str | None = None, notes: str | None = None) -> BidQualification:
         q = BidQualification(qual_type=qual_type, cert_no=cert_no, issuer=issuer, valid_until=valid_until, scope=scope, org_scope=org_scope, notes=notes)
         self.session.add(q)
@@ -82,10 +89,12 @@ class QualificationService:
         q.disabled = True
         await self.session.flush()
 
-    async def list(self, *, include_disabled: bool = False, limit: int = 200, offset: int = 0) -> list[BidQualification]:
+    async def list(self, *, include_disabled: bool = False, qual_type: str | None = None, limit: int = 200, offset: int = 0) -> list[BidQualification]:
         stmt = select(BidQualification)
         if not include_disabled:
             stmt = stmt.where(BidQualification.disabled.is_(False))  # 软删过滤 SQL 下推
+        if qual_type:
+            stmt = stmt.where(BidQualification.qual_type == qual_type)
         stmt = stmt.order_by(BidQualification.updated_at.desc()).limit(limit).offset(offset)
         return list((await self.session.execute(stmt)).scalars().all())
 
@@ -144,6 +153,13 @@ class QualificationService:
         q.current_version = to_version
         await self.session.flush()
         return q
+
+    async def versions(self, qual_id: uuid.UUID) -> list[BidQualificationVersion]:
+        """版本历史（version 升序）。资质不存在/停用 → 404 同源（终审 I-2:
+        rollback 的 to_version 不可发现问题由 GET /qualifications/{id}/versions 解——先读历史再回滚）。"""
+        await self._get(qual_id)
+        stmt = select(BidQualificationVersion).where(BidQualificationVersion.qualification_id == qual_id).order_by(BidQualificationVersion.version)
+        return list((await self.session.execute(stmt)).scalars().all())
 
     async def expiring(self, *, days: int = 90) -> list[BidQualification]:
         deadline = dt.date.today() + dt.timedelta(days=days)

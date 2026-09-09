@@ -41,6 +41,23 @@ class QualificationVersionUploadResponse(BaseModel):
     sha256: str
 
 
+class QualificationVersionResponse(BaseModel):
+    """版本历史行（不可变只追加; GET /qualifications/{id}/versions 升序返回）。"""
+
+    id: uuid.UUID
+    qualification_id: uuid.UUID
+    version: int
+    minio_key: str
+    sha256: str
+    file_ext: str
+    file_size: int
+    note: str | None
+    uploaded_by: uuid.UUID | None
+    uploaded_at: datetime.datetime
+
+    model_config = {"from_attributes": True}
+
+
 class QualificationResponse(BaseModel):
     id: uuid.UUID
     qual_type: str
