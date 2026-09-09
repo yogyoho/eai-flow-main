@@ -1,0 +1,55 @@
+{
+  "stage": "tracking_eia",
+  "generated": "2026-09-09",
+  "confidence": "measured_ratio_n1_phase1",
+  "source": "淖毛湖矿区总体规划（修编）环境影响跟踪评价报告书（2024.11）TOC 章页距实测（naomaohu-tracking-n.txt，529 页/46.3 万字≈875 字/页）：floor_chars = 页距 × 875 × 0.6 保守折减（沿 planning_eia.json 口径），即 页 × ≈525，四舍五入至百位。n=1 单样本实测（LOW-MEDIUM——单样本过拟合标注见 stage confidence_note），二期 calibrate 补样本复核。",
+  "measured_note": "ch4 区域生态环境演变趋势实测最重（160 页——环境质量 86 页+生态演变 68 页+承载力 6 页，多年监测序列+多期遥感解译章）；ch6 后续实施预测次重（130 页——16 节预测+容量总量）；ch5 对比评估 82 页（七要素有效性判定）；ch9/ch10/ch8 最薄（5/4/7 页）。附录 524 页起不计入章地板。节级目标随派发契约注入，本文件只承载章级地板。",
+  "measured_source_pages": {
+    "ch1": 16,
+    "ch2": 15,
+    "ch3": 66,
+    "ch4": 160,
+    "ch5": 82,
+    "ch6": 130,
+    "ch7": 26,
+    "ch8": 7,
+    "ch9": 5,
+    "ch10": 4,
+    "ch11": 12
+  },
+  "chapters": {
+    "ch1": {
+      "floor_chars": 8400
+    },
+    "ch2": {
+      "floor_chars": 7900
+    },
+    "ch3": {
+      "floor_chars": 34600
+    },
+    "ch4": {
+      "floor_chars": 84000
+    },
+    "ch5": {
+      "floor_chars": 43000
+    },
+    "ch6": {
+      "floor_chars": 68200
+    },
+    "ch7": {
+      "floor_chars": 13600
+    },
+    "ch8": {
+      "floor_chars": 3700
+    },
+    "ch9": {
+      "floor_chars": 2600
+    },
+    "ch10": {
+      "floor_chars": 2100
+    },
+    "ch11": {
+      "floor_chars": 6300
+    }
+  }
+}

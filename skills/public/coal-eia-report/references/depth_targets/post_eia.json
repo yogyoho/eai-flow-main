@@ -1,0 +1,79 @@
+{
+  "stage": "post_eia",
+  "generated": "2026-09-09",
+  "confidence": "measured_single_anchor_phase1",
+  "source": "白音华二号露天矿项目环境影响后评价报告书（2026.3）fulltext 逐章字符实测（.wolf/tmp/eia-samples/baiyinhua2-fulltext.txt，正文章界 rfind 定位、去空白字符数）× 0.6 保守折减（沿 planning_eia.json 口径）——二号 29.1 万字符（含表格文本）单锚实测；白音华三号（2021.10）姊妹样本按二号比例对齐未单独实测。一期单锚地板，二期 calibrate 补他矿系样本（同矿系过拟合防线——confidence_note）。",
+  "measured_note": "ch2 项目工程分析实测最高（63,839——含环保措施运行情况+三本账域）、ch5 生态/ch6 地下水次之（62,358/56,632——六段式纵深要素章）；ch4 区域概况最薄（1,643）；ch3 符合性=可选章（三号缺章，floor 按二号实测保留——缺席记 ABSENT）；二号 16 后评价结论 6,845 字符含三线结论投影。节级目标随派发契约注入，本文件只承载章级地板。",
+  "measured_source_chars": {
+    "ch0": 4731,
+    "ch1": 20041,
+    "ch2": 63839,
+    "ch3": 20167,
+    "ch4": 1643,
+    "ch5": 62358,
+    "ch6": 56632,
+    "ch7": 36538,
+    "ch8": 18077,
+    "ch9": 5317,
+    "ch10": 7208,
+    "ch11": 21057,
+    "ch12": 4689,
+    "ch13": 12364,
+    "ch14": 6881,
+    "ch15": 2417,
+    "ch16": 6845
+  },
+  "chapters": {
+    "ch0": {
+      "floor_chars": 2800
+    },
+    "ch1": {
+      "floor_chars": 12000
+    },
+    "ch2": {
+      "floor_chars": 38300
+    },
+    "ch3": {
+      "floor_chars": 12100
+    },
+    "ch4": {
+      "floor_chars": 1000
+    },
+    "ch5": {
+      "floor_chars": 37400
+    },
+    "ch6": {
+      "floor_chars": 34000
+    },
+    "ch7": {
+      "floor_chars": 21900
+    },
+    "ch8": {
+      "floor_chars": 10800
+    },
+    "ch9": {
+      "floor_chars": 3200
+    },
+    "ch10": {
+      "floor_chars": 4300
+    },
+    "ch11": {
+      "floor_chars": 12600
+    },
+    "ch12": {
+      "floor_chars": 2800
+    },
+    "ch13": {
+      "floor_chars": 7400
+    },
+    "ch14": {
+      "floor_chars": 4100
+    },
+    "ch15": {
+      "floor_chars": 1500
+    },
+    "ch16": {
+      "floor_chars": 4100
+    }
+  }
+}

@@ -1,0 +1,2901 @@
+{
+  "version": "2.0",
+  "stage": "环境影响后评价",
+  "stage_id": "post_eia",
+  "std_ref": "《环境影响后评价技术导则》（名称与现行有效性人工核实，禁 LLM 记忆选择——websearch-unreliable 红线）、HJ 2.1-2016（总纲）、HJ 19（生态影响）、HJ 610-2016（地下水）、HJ 2.2、HJ 2.3、HJ 2.4、HJ 964-2018（土壤）、HJ 169-2018（环境风险）、GB 50821-2012《煤炭工业环境保护设计规范》（白音华姊妹样例引用实证）、GB 3838-2002、GB/T 14848-2017、GB 3095-2012、GB 3096-2008、GB 12348-2008、GB 15618-2018、GB 18599-2020——标准号一律从 standards_index 枚举，pending 条目禁补猜年份",
+  "generated": "2026-09-09",
+  "source": "回填对账定稿（docs/designs/coal-eia-report-v2.md「回填对账定稿」post_eia 行：MEDIUM 二期立——独立 stage 成立：白音华二号(18章)/三号(17章) 16 章共核+1 可选符合性章姊妹互证，后评价改名六段式同构；同矿系姊妹，防过拟合标注保留）+ 样例 digest 与结构 JSON（.wolf/tmp/eia-samples/baiyinhua2-outline.md 前言+17 章编号连续、baiyinhua3-outline.md 前言+16 章含 8.4/9.3 跳号与「11.3 实为 12.3」编号笔误实证、baiyinhua2-structure.json、baiyinhua2-fulltext.txt 逐章字符实测供 depth_targets）；consistency_contracts（XS1-XS3/XS6/XS8/XS10/XS12/EO1-EO3 通用条目 + XS16 三本账扩员 + 本 stage 新增 XS19 预测实测对比账）与 data_expectations、standards_index 为合约 id/数据族/标准号唯一来源；形制对标 planning_eia.json / project_eia_underground.json（v2.0 两层模型，D11/D12）",
+  "confidence_note": "MEDIUM（n=2：白音华二号/三号姊妹互证）。防同矿系过拟合标注保留：16 章共核+1 可选符合性章在姊妹样本内收敛，但样本多样性=0（两样本同为露天矿+产能核增型后评价）；其他触发类型（重大变更/事故与灾害后/竣工验收后评价）的节集语义未证——project_kind 枚举留扩展位，对应条件节按 driver 缺席记 ABSENT；六段式（现状→回顾→预测验证→有效性→核增后分析→小结）为两样本同构实证，外推到非核增型时「核增后影响分析」节整节 ABSENT；二期 calibrate 补他矿系样本。后评价语义反转纪律：要素章名「评价」写「后评价」、预测节=原环评预测验证（与规划/项目环评 stage 的「预测与评价」章义相反）——生成与派发契约必须携带本反转标注。",
+  "chapter_order_policy": "order_free_with_semantic_match",
+  "order_policy_note": "章序不锁死（姊妹样本单序，无互换实证，但维持语义匹配制——禁按章号匹配）：二号编号 1..17 连续（符合性=ch3），三号编号 1..16 且无独立符合性章（由 2.7 协调性分析节承载）；toc 校验按「无序必备/可选集匹配+章标题语义相符」执行；合约激活按语义标题命中（consistency_contracts.activation_semantics）。三号 8.4/9.3 跳号与「12.3 编号笔误为 11.3」为编号体检输入，非缺章。",
+  "numbering_note": "节号/表号一律组装期按实际章序生成（章位置决定整数前缀）；本章内 sections 顺序即节序，正文跨节引用一律用节 id（如 ch6_S05）或语义标题，禁硬编码节号/表号。tables 字段只登记语义表名，表号由组装期编号体检（连续无重号）统一赋予。前言章落 ch0 保序（不编号顶层单元参与节级派发与章门，正文编号自 1 总论起——2/2 样本「前言」在场实证）。",
+  "layout_policy": {
+    "optional_chapters": "ch3 符合性分析=可选章（二号在场 ch3；三号缺章、符合性内容由其 ch2「项目建设与有关政策及规划之间的协调性分析」节承载）——缺席 progress 章条目记 ABSENT，门/组装/目录同语义豁免（目录按可选集匹配）。",
+    "conditional_sections": "ch7_S06 本次后评价/产能核增后大气环境影响分析=variant_track 条件节（driver=project_kind，when=产能核增——二号 7.6「本次后评价大气环境影响分析」/三号 6.6「产能核增后大气环境影响分析」双措辞型）；ch2_S06 依托工程=data 开关条件节（二号 2.6 在场/三号缺——依托登记驱动）；其余核增后影响分析内容并入各要素章验证/小结节（三号 8.5/9.4 型）。",
+    "absent_semantics": "条件章/条件节缺席一律记 status=ABSENT（stage 条件开关驱动），不计 fail。"
+  },
+  "capability_boundaries": [
+    "后评价不重跑数值预测模型（三号反向事实实证：AERMOD/CALPUFF/ADMS/MODFLOW/GMS 全文零出现）——预测验证=原环评预测值 vs 实测值对比账转录+偏差判定（{{TABLE:post_verification}}，source 双登记），禁公式复现；本 stage uses.formulas 全域为空是设计事实非缺漏",
+    "实测值仅收三源类：竣工验收监测/例行与在线监测/本次后评价现状监测——measured_source 字段必录（禁引用无法溯源的二手数值）",
+    "措施有效性判定词=code canon（XS20）：「有效/基本有效/需优化调整/未达预期」四档枚举全书逐字一致（首现 canon）；判定非「有效」必须挂 adjustment 整改优化条目（在场断言），禁只判不改",
+    "产能核增后影响分析=简析（现状外推+同类类比），禁冒充导则级预测评价——三号「产能核增后」节实测为解析估算/类比结论级深度",
+    "生态学/土壤学方法（样方/NDVI/生物量/景观指数）与水文地质解析法不入 formula freeze——数值走表单录入+阈值判定，判定类计算不得冒充预测类计算（沿 planning/underground 边界）"
+  ],
+  "caliber_note": "口径标签与类比来源标注规则见 references/consistency_contracts.json caliber_labels。后评价特例三条：①规模双口径=原环评批复规模 vs 核增后规模（{{SLOT:mine_plan.total_scale_mt_a_before}}/{{SLOT:mine_plan.total_scale_mt_a_after}} 绑 revision_before_after，XS1）；②三本账对比（XS16）排放量按 批复量/验收量/现状量 三口径成对登记；③对比账偏差表述三档=「偏差在±X%以内/基本一致/存在显著偏差」（人工判定档，禁自动断言百分比阈值——限值类判定同 needs_verification 纪律）。",
+  "front_matter": {
+    "mode": "表单渲染（脚本直出，零 LLM）+ 前言章（ch0 组稿）",
+    "overview_note": "前言=不编号顶层单元（2/2 样本在场：二号「前 言」/三号「前 言」）——本 stage 落为 ch0 保序（参与节级派发与章门，正文编号自 1 总论起）；前言承载项目沿革+后评价任务由来+工作过程（三号并入「项目由来」节于总论，归并不锁三级节）",
+    "outer_cover": [
+      "项目名",
+      "报告题名（项目名+环境影响后评价报告书）",
+      "编制单位",
+      "年月"
+    ],
+    "signature_page_fixed_order": [
+      "委托单位",
+      "编制单位",
+      "编制单位资质证书号",
+      "项目负责",
+      "编写人员",
+      "审核",
+      "提交日期"
+    ],
+    "toc": {
+      "levels": 3,
+      "page_column": "留空——Word 排版阶段由引用自动填充（D11），Markdown 禁写页码"
+    },
+    "attachment_lists": [
+      "附图目录",
+      "附件目录（委托书/原环评批复与环保验收意见/产能核定与核增批复/矿区规划及规划环评批复/排污许可证/环境应急预案备案文件/历次监测报告/行政处罚文件（如适用）等用户文档清单——只列名不转录）"
+    ]
+  },
+  "forms": {
+    "project": {
+      "file": "00_project.json",
+      "required": true,
+      "chapters": [
+        "ch0",
+        "ch1",
+        "ch2",
+        "ch3",
+        "ch16"
+      ],
+      "note": "项目身份族（geo 管线接口兼容）——project_kind 是后评价触发类型开关（产能核增型=本 stage 双样本实证；其他型条件节按 driver 缺席 ABSENT）",
+      "fields": [
+        {
+          "name": "project_name",
+          "label": "项目名称",
+          "type": "string",
+          "required": true,
+          "note": "全局唯一 canon（含规模后缀按封面逐字）"
+        },
+        {
+          "name": "report_type",
+          "label": "报告类型",
+          "type": "enum:建设项目环境影响后评价报告书",
+          "required": true
+        },
+        {
+          "name": "stage",
+          "label": "评价类别",
+          "type": "enum:后评价",
+          "required": true
+        },
+        {
+          "name": "project_kind",
+          "label": "后评价触发类型",
+          "type": "enum:产能核增|重大变更|其他",
+          "required": true,
+          "note": "触发类型开关：产能核增型激活各要素章「核增后影响分析」条件节（二号/三号双实证）；重大变更/其他型该节族 ABSENT，触发事由在 ch0_S01 专段交代"
+        },
+        {
+          "name": "original_eia_doc_no",
+          "label": "原环评批复文号",
+          "type": "string",
+          "required": true,
+          "note": "门 1 人工比对，禁生成——对比账 predicted_src 的批复出处锚点"
+        },
+        {
+          "name": "acceptance_doc_no",
+          "label": "环保验收意见文号",
+          "type": "string",
+          "required": false,
+          "note": "门 1 人工比对（三号自主验收型登记备案文号）"
+        },
+        {
+          "name": "commissioning_unit",
+          "label": "建设单位（委托单位）",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "undertaking_unit",
+          "label": "编制单位",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "compiler_qualification",
+          "label": "编制单位资质证书号",
+          "type": "string",
+          "required": false,
+          "note": "门 1 人工比对"
+        },
+        {
+          "name": "evaluation_period",
+          "label": "评价时段",
+          "type": "string",
+          "required": true,
+          "note": "现状基准年+回顾时段+后评价预测时段（基准年与本次现状监测时段一致）"
+        }
+      ]
+    },
+    "mine_plan": {
+      "file": "01_mine_plan.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch0",
+        "ch1",
+        "ch2",
+        "ch16"
+      ],
+      "note": "复用 planning_eia.json#forms.mine_plan 字段清单——后评价语境：total_scale_mt_a_before=原环评（批复）规模、total_scale_mt_a_after=核增后规模（二号 500→1500 万吨/年、三号 1400→2000 万吨/年实证，XS1 revision_before_after 双口径）",
+      "fields": []
+    },
+    "openpit_engineering": {
+      "file": "01b_openpit_engineering.json",
+      "reuse": "project_eia_openpit",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch5"
+      ],
+      "note": "复用 project_eia_openpit.json#forms.openpit_engineering 字段清单（采掘场/排土场/疏干/钻爆登记）——本 stage 双样本为露天矿；未来井工矿后评价样本入场时按 project_eia_underground 族扩展（防露天过拟合的扩展位）",
+      "fields": []
+    },
+    "post_verification": {
+      "file": "40_post_verification.json",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch6",
+        "ch7",
+        "ch8",
+        "ch9",
+        "ch10",
+        "ch16"
+      ],
+      "note": "原环评预测值 vs 实测值对比账族（本 stage 新增——XS19 唯一事实源）。二号/三号各要素章「预测验证」节同构实证；同一原环评预测值在回顾节/验证节/结论章复现处逐字一致（禁两套数）",
+      "fields": [
+        {
+          "name": "items",
+          "label": "预测验证对比账",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "element 环境要素",
+            "indicator 评价指标（原环评预测指标 canon）",
+            "predicted_value 原环评预测值",
+            "predicted_source 原环评出处（报告+章节/批复文号——门 1）",
+            "measured_value 实测值",
+            "measured_source 实测来源（验收监测|例行监测|后评价现状监测 三源类枚举+报告编号）",
+            "deviation_judgment 偏差判定",
+            "caliber 口径标签"
+          ],
+          "note": "每要素章逐指标 1 行；deviation_judgment 三档=偏差在±X%以内|基本一致|存在显著偏差（人工判定，禁自动断言）"
+        },
+        {
+          "name": "unverified_indicators",
+          "label": "无法验证指标清单",
+          "type": "array<object>",
+          "required": false,
+          "fields": [
+            "indicator 指标",
+            "reason 原因（原环评未定量预测|实测缺失|口径不可比）"
+          ],
+          "note": "原环评未定量预测或实测缺失的指标——逐项声明「不具验证条件」及原因（禁行文硬凑对比）"
+        }
+      ]
+    },
+    "measure_effectiveness": {
+      "file": "40_measure_effectiveness.json",
+      "reuse": "tracking_eia",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch6",
+        "ch7",
+        "ch8",
+        "ch9",
+        "ch13",
+        "ch14",
+        "ch15",
+        "ch16"
+      ],
+      "note": "复用 tracking_eia.json#forms.measure_effectiveness 字段清单（items[] 判定账+problems[] 整改清单——XS20 唯一事实源；族真源登记于 tracking_eia.json，本 stage 按任务指派跨 stage 复用）——后评价语境节域=「已采取的××污染防治设施有效性评价及改进措施」（二号 7.5/三号 6.5 实证）",
+      "fields": []
+    },
+    "sensitive_targets": {
+      "file": "02_sensitive_targets.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch5",
+        "ch6",
+        "ch13",
+        "ch16"
+      ],
+      "note": "复用 planning_eia.json#forms.sensitive_targets 字段清单与 XS2 纪律——后评价语境 aspect 增「现状变化」域（目标现状与原环评时点对照）",
+      "fields": []
+    },
+    "standards_confirm": {
+      "file": "03_standards_confirm.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch5",
+        "ch6",
+        "ch7",
+        "ch8",
+        "ch9",
+        "ch11",
+        "ch14",
+        "ch16"
+      ],
+      "note": "复用 planning_eia.json#forms.standards_confirm 字段清单与 gate1 体检（XS3）——注意功能区划如遇标准版本更替，新旧版本三元组并存时按人工确认口径登记（禁 LLM 择版）",
+      "fields": []
+    },
+    "legal_basis": {
+      "file": "04_legal_basis.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch2",
+        "ch3"
+      ],
+      "note": "复用 planning_eia.json#forms.legal_basis 字段清单——后评价增录原环评批复/验收意见两类法定依据（task_doc_no 域扩展）",
+      "fields": []
+    },
+    "compliance_plans": {
+      "file": "05_compliance_plans.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch0",
+        "ch3",
+        "ch16"
+      ],
+      "note": "复用 planning_eia.json#forms.compliance_plans 字段清单——增列原环评及验收要求符合性（二号 3.5 节域）",
+      "fields": []
+    },
+    "geography": {
+      "file": "06_geography.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch4"
+      ],
+      "note": "复用 planning_eia.json#forms.geography 字段清单——坐标极值禁手算",
+      "fields": []
+    },
+    "monitoring": {
+      "file": "07_monitoring.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch6",
+        "ch7",
+        "ch8",
+        "ch9",
+        "ch11"
+      ],
+      "note": "复用 planning_eia.json#forms.monitoring 字段清单（items[]/trends[]）——后评价核心域：历年例行监测序列（trends[] 多年序列，与 post_verification.measured_source 三源类同源登记）",
+      "fields": []
+    },
+    "eco": {
+      "file": "08_eco.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch5"
+      ],
+      "note": "复用 planning_eia.json#forms.eco 字段清单——后评价语境增「现状-原环评时点」双时相对照口径",
+      "fields": []
+    },
+    "economy": {
+      "file": "09_economy.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch0",
+        "ch2",
+        "ch4"
+      ],
+      "note": "复用 planning_eia.json#forms.economy 字段清单——投资未列记 skip 非 fail（三号后评价正文投资数值零检出实证）",
+      "fields": []
+    },
+    "retrospective": {
+      "file": "10_retrospective.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch5",
+        "ch6",
+        "ch7",
+        "ch8",
+        "ch10",
+        "ch13",
+        "ch14"
+      ],
+      "note": "复用 planning_eia.json#forms.retrospective 字段清单——后评价本族为必备（非条件）：devlopment_history=建设历程、approvals_fulfilled=原环评及验收要求逐项落实清单、facilities_effect=已建设施运行台账（二号 2.7/三号 2.5 实证）",
+      "fields": []
+    },
+    "water": {
+      "file": "21_water.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch8"
+      ],
+      "note": "复用 planning_eia.json#forms.water 字段清单——mine_inflow=矿坑水/疏干水量实测台账（openpit_engineering.dewatering 同源）；balance=现状供/需/回用/排水平衡表",
+      "fields": []
+    },
+    "air": {
+      "file": "22_air.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch7"
+      ],
+      "note": "复用 planning_eia.json#forms.air 字段清单——后评价为实测台账域（无组织排放监测/锅炉在线数据），不再做源强类比取值",
+      "fields": []
+    },
+    "noise": {
+      "file": "23_noise.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch9",
+        "ch12"
+      ],
+      "note": "复用 planning_eia.json#forms.noise 字段清单——后评价为厂界与敏感点实测台账域",
+      "fields": []
+    },
+    "solid_waste": {
+      "file": "24_solid_waste.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch10",
+        "ch13"
+      ],
+      "note": "复用 planning_eia.json#forms.solid_waste 字段清单——后评价为产生-利用-处置台账域（剥离物/煤矸石/危废逐类）",
+      "fields": []
+    },
+    "soil_score": {
+      "file": "25_soil_score.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch11"
+      ],
+      "note": "复用 planning_eia.json#forms.soil_score 字段清单",
+      "fields": []
+    },
+    "risk": {
+      "file": "26_risk.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch13"
+      ],
+      "note": "复用 planning_eia.json#forms.risk 字段清单——后评价语境=既有风险设施复盘（危废库/加油站/油脂库/水处理设施非正常工况——二号 13.4-13.7 节域）",
+      "fields": []
+    },
+    "carbon": {
+      "file": "27_carbon.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch7"
+      ],
+      "note": "复用 planning_eia.json#forms.carbon 字段清单——二号 7.8 碳排放核算及减排措施节实证",
+      "fields": []
+    },
+    "measures": {
+      "file": "28_measures.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch6",
+        "ch7",
+        "ch8",
+        "ch9",
+        "ch11",
+        "ch13",
+        "ch15",
+        "ch16"
+      ],
+      "note": "复用 planning_eia.json#forms.measures 字段清单——后评价语境=已采取措施清单（有效性判定在 measure_effectiveness，本族只承载措施本身；优化调整后措施回写本族）",
+      "fields": []
+    },
+    "eco_restoration": {
+      "file": "30_eco_restoration.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch5"
+      ],
+      "note": "复用 planning_eia.json#forms.eco_restoration 字段清单——后评价语境=已实施整治工程复盘+后续整治规划",
+      "fields": []
+    },
+    "monitoring_plan": {
+      "file": "31_monitoring_plan.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch11",
+        "ch14"
+      ],
+      "note": "复用 planning_eia.json#forms.monitoring_plan 字段清单——后评价语境=优化调整后监测计划（三号 13.2/二号 14.3 实证）",
+      "fields": []
+    },
+    "projection": {
+      "file": "99_projection.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch0",
+        "ch16"
+      ],
+      "note": "非用户表单——波间要点包（管线生成，ingest 拒收）；ch16 结论唯一事实源（EO3）；前言主要结论预告同源消费",
+      "fields": [],
+      "projection": true
+    }
+  },
+  "chapters": {
+    "ch0": {
+      "title": "前言",
+      "mode": "后评价任务组稿（表单直读+沿革叙述）；难度 2/低（沿革脉络转述 project/retrospective 表单，禁引入表单外事件）",
+      "sample_anchor": "2/2 样本在场：二号「前 言」/三号「前 言」（三号项目由来节并入总论 1.1——归并不锁三级节）；二号沿革链=2005 开工→2009 建成→2010 试生产→2015 验收→2017 核增 500→1500 万吨/年→2019 二期自主验收",
+      "key_elements": [
+        "沿革链=表单转述（original_eia_doc_no/acceptance_doc_no 核增文件逐字人工比对——门 1），禁引入表单外事件实体",
+        "后评价触发事由专段：project_kind=产能核增（三号实证「应通过开展环境影响后评价的方式完善手续」）、重大变更/事故型在此交代（扩展位）",
+        "主要结论预告=波间要点包投影口径（验证总判词 XS19+有效性总判词 XS20——与结论章逐字一致）"
+      ],
+      "writing_patterns": [
+        "数值全槽位（表单/冻结输出），禁手填",
+        "摘要句式：每部分一段，禁展开论证",
+        "判定词与结论章 canon 措辞一致"
+      ],
+      "tables": [],
+      "std_refs": [],
+      "forms": [
+        "project",
+        "mine_plan",
+        "retrospective",
+        "economy",
+        "projection"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS10"
+      ],
+      "sections": [
+        {
+          "id": "ch0_S01",
+          "title": "项目概况与后评价任务由来",
+          "elements": [
+            "概况段：项目名称/触发类型（{{SLOT:project.project_kind}}——产能核增|重大变更|其他）/规模沿革（{{SLOT:mine_plan.total_scale_mt_a_before}}→{{SLOT:mine_plan.total_scale_mt_a_after}}——双口径带标签 XS1）。",
+            "沿革段：建设与验收历程（{{SLOT:retrospective.development_history}}——{{SLOT:project.original_eia_doc_no}}、{{SLOT:project.acceptance_doc_no}} 逐字人工比对）。",
+            "触发事由段：本次后评价的直接触发原因与任务委托（产能核增手续补办/重大变更认定——主管文件文号登记）。",
+            "收束句：任务由来收束，过渡到工作过程。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.project_kind}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_before}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{SLOT:retrospective.development_history}}",
+              "{{SLOT:project.original_eia_doc_no}}",
+              "{{SLOT:project.acceptance_doc_no}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:project.project_kind}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_before}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+            "{{SLOT:retrospective.development_history}}",
+            "{{SLOT:project.original_eia_doc_no}}",
+            "{{SLOT:project.acceptance_doc_no}}"
+          ],
+          "role": "驱动源",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch0_S02",
+          "title": "后评价工作过程与主要结论预告",
+          "elements": [
+            "过程段：委托—资料收集（原环评/验收/历年监测台账）—现状监测—报告编制（{{SLOT:project.evaluation_period}} 时段口径与总论一致）。",
+            "预告段：主要结论预告（各要素验证总判词——{{TABLE:post_verification.items}} 判定档投影；有效性总判词——{{TABLE:measure_effectiveness.items}} 判定词投影；与 ch16 结论逐字一致禁两套措辞）。",
+            "总体判定句：从环境保护角度的总体判定词（XS10——与 ch16_S03 措辞逐字一致）。",
+            "收束句：前言收束，全书正文自总论章起。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.evaluation_period}}",
+              "{{TABLE:post_verification.items}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS10"
+            ]
+          },
+          "slots": [
+            "{{SLOT:project.evaluation_period}}",
+            "{{TABLE:post_verification.items}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS10"
+          ]
+        }
+      ]
+    },
+    "ch1": {
+      "title": "总论",
+      "mode": "条款汇编+表单直渲；难度 2/中（门 1：标准号体检、敏感目标清单、原环评依据登记）",
+      "sample_anchor": "2/2 同构 6-7 节：二号 1.1-1.7（1.1 评价目的及生态文明思想）/三号 1.1-1.7（1.1 项目由来及评价时段）——目的/依据/标准/范围因子/目标/程序六节型",
+      "key_elements": [
+        "编制依据六分类+原环评批复/验收意见两类法定依据（{{TABLE:legal_basis}} 扩展域）——标准号仅从 standards_index 枚举",
+        "评价标准三元组表直渲（{{TABLE:standards_confirm}}）——门 1 标准号非空+格式体检；标准版本更替时新旧并存按人工确认登记",
+        "环境保护目标表=XS2 唯一事实源（名称登记全称为 canon，aspect 增现状变化域）",
+        "评价范围/等级由导则判定承载，禁行文自造"
+      ],
+      "writing_patterns": [
+        "标准号/文号逐项人工比对（门 1）",
+        "条款类小节固定模板直出",
+        "目标名称以清单登记全称为 canon"
+      ],
+      "tables": [
+        "环境功能区划及评价标准表",
+        "环境保护目标表",
+        "评价范围与因子一览表"
+      ],
+      "std_refs": [
+        "HJ 2.1-2016",
+        "GB 3095-2012",
+        "GB 3838-2002",
+        "GB/T 14848-2017",
+        "GB 3096-2008"
+      ],
+      "forms": [
+        "project",
+        "mine_plan",
+        "legal_basis",
+        "standards_confirm",
+        "sensitive_targets",
+        "post_verification"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS2",
+        "XS3"
+      ],
+      "sections": [
+        {
+          "id": "ch1_S01",
+          "title": "评价目的与项目由来",
+          "elements": [
+            "目的段：后评价法定任务（验证原环评预测与措施有效性、提出优化调整建议——methodology 承载）。",
+            "由来段：项目由来与评价时段（三号 1.1 型——{{SLOT:project.evaluation_period}}；新建/改扩建沿革已在 ch0 展开，此处一句带过）。",
+            "收束句：过渡到编制依据。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.evaluation_period}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:project.evaluation_period}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch1_S02",
+          "title": "编制依据",
+          "elements": [
+            "六分类段：任务/法律法规/规章/技术规范/相关规划/技术资料六类（{{TABLE:legal_basis}} 直渲）——增录原环评批复（{{SLOT:project.original_eia_doc_no}}）与验收意见（{{SLOT:project.acceptance_doc_no}}）两类法定依据。",
+            "法规纪律：仅从 standards_index 枚举，pending 条目禁补猜（红线）。",
+            "收束句：引出评价标准三元组体系。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:legal_basis}}",
+              "{{SLOT:project.original_eia_doc_no}}",
+              "{{SLOT:project.acceptance_doc_no}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:legal_basis}}",
+            "{{SLOT:project.original_eia_doc_no}}",
+            "{{SLOT:project.acceptance_doc_no}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch1_S03",
+          "title": "环境功能区划及评价标准",
+          "elements": [
+            "功能区划段：逐要素功能区类别（{{TABLE:standards_confirm}} function_zone 字段）。",
+            "三元组表：要素-功能区/质量类别-标准号直渲（{{TABLE:standards_confirm}}——门 1 标准号非空+格式体检，needs_verification 档输出「需人工对照」XS3）。",
+            "版本纪律：同一要素标准号字符串全书唯一；功能区内执行标准如遇版本更替按人工确认口径登记。",
+            "收束句：标准体系统领验证判定。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:standards_confirm}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch1_S04",
+          "title": "评价范围及评价因子",
+          "elements": [
+            "范围段：逐要素评价范围（{{TABLE:standards_confirm}} evaluation_scope 字段）。",
+            "因子段：验证与评价因子筛选（以原环评预测指标为 canon——与 {{TABLE:post_verification.items}} indicator 域一致，禁另立指标集）。",
+            "收束句：过渡到保护目标。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}",
+              "{{TABLE:post_verification.items}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:standards_confirm}}",
+            "{{TABLE:post_verification.items}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch1_S05",
+          "title": "环境保护目标",
+          "elements": [
+            "清单表：{{TABLE:sensitive_targets}} 直渲（列：名称/类别/保护等级/位置关系/距离/影响途径/现状变化——后评价增现状变化列）。",
+            "逐目标分述：按登记名逐项成段（XS2 纪律）。",
+            "收束句：目标清单统领验证与措施主线。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS2"
+          ]
+        },
+        {
+          "id": "ch1_S06",
+          "title": "工作程序与评价重点",
+          "elements": [
+            "程序段：后评价技术路线（回顾→验证→有效性→优化四步闭环——固定模板直出）。",
+            "重点段：按验证发现动态列评价重点（验证存在显著偏差的要素升重点——methodology 承载）。",
+            "收束句：过渡到项目工程分析。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "推演"
+        }
+      ]
+    },
+    "ch2": {
+      "title": "项目工程分析",
+      "mode": "开发现状复盘组稿；难度 3/中高（原环评口径与现状双轨对照；三本账 XS16 锚点）",
+      "sample_anchor": "二号 2.1-2.8（含 2.2 矿区规划与开发现状/2.6 依托工程/2.7 环保措施及运行情况/2.8 排放总量及三本账）；三号 2.1-2.7（含 2.5 环保措施及运行情况/2.6 排放总量/2.7 政策规划协调性分析）——概况/资源组成/工程分析/措施运行/总量三本账五段骨架+依托工程条件节",
+      "key_elements": [
+        "开发现状=原环评设计口径 vs 现状实测口径双轨（{{SLOT:mine_plan.total_scale_mt_a_after}} 现状/批复双标签 XS1——二号 2.2 矿区规划与开发现状节域）",
+        "环保措施及运行情况=已建设施台账（{{TABLE:retrospective.facilities_effect}}——设施/建成时间/运行状态/处理量，门 1 人工比对）",
+        "污染物排放总量及三本账=XS8+XS16 双合约锚点（批复量/验收量/现状量三口径成对，禁两套数）",
+        "依托工程为 data 开关条件节（二号 2.6 在场/三号缺）"
+      ],
+      "writing_patterns": [
+        "数值全槽位（表单/台账转录），禁手填",
+        "工程构成按主体-配套-环保三段式",
+        "双口径必须成对出现并带标签"
+      ],
+      "tables": [
+        "项目工程组成表",
+        "环保设施建设与运行情况一览表",
+        "污染物排放总量及「三本账」对比表"
+      ],
+      "std_refs": [
+        "GB 20426-2006"
+      ],
+      "forms": [
+        "project",
+        "mine_plan",
+        "openpit_engineering",
+        "legal_basis",
+        "retrospective",
+        "air",
+        "noise",
+        "water",
+        "solid_waste",
+        "compliance_plans",
+        "eco",
+        "economy"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS8",
+        "XS16"
+      ],
+      "sections": [
+        {
+          "id": "ch2_S01",
+          "title": "项目概况与开发现状",
+          "elements": [
+            "概况段：项目名称/触发类型/地点/定员（{{SLOT:project.project_kind}}、{{SLOT:mine_plan.total_scale_mt_a_after}} 双口径 XS1）。",
+            "开发现状段：矿区规划符合性与实际开发现状（二号 2.2 型——实际生产规模/占地/采排现状与原环评设计对照；{{TABLE:openpit_engineering.dump_sites}} 现状台账）。",
+            "收束句：过渡到资源与工程组成。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.project_kind}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{TABLE:openpit_engineering.dump_sites}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:project.project_kind}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+            "{{TABLE:openpit_engineering.dump_sites}}"
+          ],
+          "role": "驱动源",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch2_S02",
+          "title": "资源条件与项目工程组成",
+          "elements": [
+            "资源段：储量与服务年限现状复核（{{SLOT:mine_plan.reserve_extractable_mt}}、{{SLOT:mine_plan.service_years_a}}——核实报告转录）。",
+            "组成段：主体/配套/环保工程构成与现状差异（与原环评对比的变更清单——{{TABLE:mine_plan.facilities}} 现状域）。",
+            "收束句：过渡到工程分析。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.reserve_extractable_mt}}",
+              "{{SLOT:mine_plan.service_years_a}}",
+              "{{TABLE:mine_plan.facilities}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:mine_plan.reserve_extractable_mt}}",
+            "{{SLOT:mine_plan.service_years_a}}",
+            "{{TABLE:mine_plan.facilities}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch2_S03",
+          "title": "工程分析（产排污环节现状）",
+          "elements": [
+            "环节段：采剥/排弃/疏干/储运/供热产排污现状（{{TABLE:openpit_engineering.pits}}、{{SLOT:openpit_engineering.dewatering}} 台账口径）。",
+            "水平衡段：现状供/需/回用/排水（{{TABLE:water.balance}} 现状台账——禁预测口径混写）。",
+            "收束句：过渡到措施运行。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:openpit_engineering.pits}}",
+              "{{SLOT:openpit_engineering.dewatering}}",
+              "{{TABLE:water.balance}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:openpit_engineering.pits}}",
+            "{{SLOT:openpit_engineering.dewatering}}",
+            "{{TABLE:water.balance}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch2_S04",
+          "title": "环保措施及运行情况",
+          "elements": [
+            "设施台账段：已建成环保设施逐项（{{TABLE:retrospective.facilities_effect}}——气/水/固废/噪声/生态/地下水六域，二号 2.7 型）。",
+            "运行效果段：运行负荷/处理效率/达标状况（在线与例行监测口径——{{TABLE:monitoring.trends}} 引用）。",
+            "收束句：措施运行收束，过渡到总量三本账。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective.facilities_effect}}",
+              "{{TABLE:monitoring.trends}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective.facilities_effect}}",
+            "{{TABLE:monitoring.trends}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch2_S05",
+          "title": "污染物排放总量及「三本账」",
+          "elements": [
+            "总量表：现状排放总量逐因子（{{TABLE:air.capacity_inputs}}、{{TABLE:water.sources}} 台账口径——XS8 接账锚点）。",
+            "三本账段：批复量/验收量/现状量三口径对比（XS16——{{TABLE:retrospective.approvals_fulfilled}} 排放许可域；二号 2.8「污染物排放总量及三本账」节名实证）。",
+            "收束句：总量收束，过渡到依托工程（如适用）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:air.capacity_inputs}}",
+              "{{TABLE:water.sources}}",
+              "{{TABLE:retrospective.approvals_fulfilled}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS8",
+              "XS16"
+            ]
+          },
+          "slots": [
+            "{{TABLE:air.capacity_inputs}}",
+            "{{TABLE:water.sources}}",
+            "{{TABLE:retrospective.approvals_fulfilled}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS8",
+            "XS16"
+          ]
+        },
+        {
+          "id": "ch2_S06",
+          "title": "依托工程概况",
+          "elements": [
+            "依托段：依托的铁路/供电/供水/处置设施现状与许可手续（{{SLOT:mine_plan.facilities}} 依托项——二号 2.6 型；无依托登记整节 ABSENT）。",
+            "收束句：依托收束，过渡到符合性分析（如设章）或区域环境概况。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.facilities}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:mine_plan.facilities}}"
+          ],
+          "role": "推演",
+          "conditional": {
+            "driver": "mine_plan.facilities（依托工程登记）",
+            "type": "d8_data_driven",
+            "title_rule": "节标题=「依托工程概况」；依托登记在场才激活（二号实证），三号无依托登记 ABSENT",
+            "on_absent": "ABSENT"
+          }
+        }
+      ]
+    },
+    "ch3": {
+      "title": "项目建设与有关政策及规划之间的符合性分析",
+      "mode": "可选章（复核型组稿）；难度 2/中（对原环评已判定事项做复核表述，禁翻案式重论证）",
+      "sample_anchor": "1/2 在场：二号 ch3（3.1 政策规划符合性/3.2 三线一单/3.3 三区三线/3.4 矿区规划及规划环评/3.5 原环评及验收要求符合性）；三号缺章，符合性内容由其 2.7「项目建设与有关政策及规划之间的协调性分析」节承载——缺席记 ABSENT 非 fail",
+      "key_elements": [
+        "复核口径：原环评已判定符合的事项作维持性表述（结论词与 compliance_plans 结论字段一致），新出现的政策变化才展开分析",
+        "原环评及验收要求符合性=后评价特色节（二号 3.5——批复要求逐条落实状态复核）",
+        "标准号/文号从 legal_basis/standards_index 枚举，禁记忆补写"
+      ],
+      "writing_patterns": [
+        "结论词三值（符合|部分符合|不符合+说明）",
+        "逐条对照四栏式",
+        "禁自造政策名与文号（门 1）"
+      ],
+      "tables": [
+        "相关政策及规划符合性对照表",
+        "原环评及验收要求落实状态复核表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "compliance_plans",
+        "legal_basis",
+        "project",
+        "retrospective"
+      ],
+      "formulas": [],
+      "contracts": [],
+      "optional": true,
+      "conditional": {
+        "driver": "project_kind",
+        "type": "variant_track",
+        "when": "any",
+        "required_when": "any（符合性复核对所有触发类型适用——二号在场实证）",
+        "on_absent": "ABSENT（三号型缺章：符合性内容由「项目工程分析」章协调性分析节承载时整章 ABSENT——目录按可选集匹配豁免，禁双处重复展开）"
+      },
+      "sections": [
+        {
+          "id": "ch3_S01",
+          "title": "与相关政策及规划的符合性分析",
+          "elements": [
+            "复核段：产业政策/相关规划逐项维持性复核（{{TABLE:compliance_plans}} 直渲）。",
+            "收束句：收束过渡。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:compliance_plans}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:compliance_plans}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch3_S02",
+          "title": "与「三线一单」「三区三线」的符合性分析",
+          "elements": [
+            "复核段：管控单元/生态保护红线现状对照（{{TABLE:compliance_plans}} 管控域——红线若有调整以现行划定为准人工比对）。",
+            "收束句：收束过渡。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:compliance_plans}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:compliance_plans}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch3_S03",
+          "title": "与矿区总体规划及规划环评的符合性分析",
+          "elements": [
+            "复核段：规模/境界/开采方式与矿区规划及规划环评审查意见符合性（{{SLOT:mine_plan.total_scale_mt_a_after}} 双口径 XS1——核增手续完备性一并交代）。",
+            "收束句：收束过渡。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:mine_plan.total_scale_mt_a_after}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch3_S04",
+          "title": "与原环评及环保验收要求的符合性分析",
+          "elements": [
+            "复核段：原环评批复要求与验收意见逐条落实状态（{{TABLE:retrospective.approvals_fulfilled}} 直渲——已落实/部分落实/未落实三态；未落实项必须给出原因与整改衔接（→ch15 优化调整））。",
+            "收束句：本章收束，过渡到区域环境概况。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective.approvals_fulfilled}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective.approvals_fulfilled}}"
+          ],
+          "role": "推演"
+        }
+      ]
+    },
+    "ch4": {
+      "title": "区域环境概况",
+      "mode": "背景组稿；难度 1/低（geography/economy 表单直读）",
+      "sample_anchor": "2/2 同构两节：二号 4.1-4.2（自然环境/社会环境）/三号 3.1-3.2",
+      "key_elements": [
+        "区域本底直读，敏感目标不在此展开（归 ch1_S05）",
+        "数据标年份与来源",
+        "两节型排布"
+      ],
+      "writing_patterns": [
+        "区域描述禁引入表单外实体",
+        "数据全部标注年份与来源"
+      ],
+      "tables": [
+        "区域社会经济概况表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "geography",
+        "economy"
+      ],
+      "formulas": [],
+      "contracts": [],
+      "sections": [
+        {
+          "id": "ch4_S01",
+          "title": "自然环境概况",
+          "elements": [
+            "分部段：地形地貌/气候/水文地质/地表水系/植被土壤（{{SLOT:geography.topography}}、{{SLOT:geography.climate}}、{{SLOT:geography.hydrogeology}}——直读）。",
+            "收束句：收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:geography.topography}}",
+              "{{SLOT:geography.climate}}",
+              "{{SLOT:geography.hydrogeology}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:geography.topography}}",
+            "{{SLOT:geography.climate}}",
+            "{{SLOT:geography.hydrogeology}}"
+          ],
+          "role": "受体"
+        },
+        {
+          "id": "ch4_S02",
+          "title": "社会环境概况",
+          "elements": [
+            "分部段：行政区划/人口/经济/居民点分布（{{SLOT:economy.population}}、{{SLOT:economy.gdp}}——直读）。",
+            "收束句：区域概况收束，过渡到生态后评价。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:economy.population}}",
+              "{{SLOT:economy.gdp}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:economy.population}}",
+            "{{SLOT:economy.gdp}}"
+          ],
+          "role": "受体"
+        }
+      ]
+    },
+    "ch5": {
+      "title": "生态环境影响后评价",
+      "mode": "生态核心章（后评价六段式）；难度 4/高（现状双时相+回顾+验证+有效性四段纵深）",
+      "sample_anchor": "二号 5.1-5.6（概述/现状/回顾/预测与评价/整治措施/自查表）；三号 4.1-4.8（概述/现状及区域变化/回顾/预测与评价/整治措施/管理监测/整治补偿费用/小结）——现状及变化/回顾/预测验证/有效性/小结五段骨架",
+      "key_elements": [
+        "现状=现状调查与原环评时点双时相对照（{{TABLE:eco.land_use}} 现状域+变更幅度——遥感解译成果转录禁重算）",
+        "预测与评价节语义反转：原环评有定量生态预测的指标并入验证对比账（{{TABLE:post_verification.items}} element=生态）；无定量预测的作后评价影响分析（定性+类比），并在 unverified_indicators 声明不具验证条件",
+        "整治措施有效性判定走 XS20（判定词四档 canon；非「有效」必挂 adjustment）",
+        "回顾节=已实施整治工程复盘（{{TABLE:retrospective.eco_restoration_review}}）"
+      ],
+      "writing_patterns": [
+        "现状数据逐项标 source 与时相（遥感影像期次）",
+        "影响分析按挖损-压占-疏干-扬尘四途径",
+        "恢复目标与工程量可验收（口径=验收清单）"
+      ],
+      "tables": [
+        "生态环境现状与变化对照表",
+        "生态环境影响回顾一览表",
+        "预测验证对比账（生态域）",
+        "生态整治措施有效性判定表"
+      ],
+      "std_refs": [
+        "HJ 19"
+      ],
+      "forms": [
+        "eco",
+        "sensitive_targets",
+        "retrospective",
+        "post_verification",
+        "measure_effectiveness",
+        "eco_restoration",
+        "openpit_engineering",
+        "standards_confirm"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS2",
+        "XS19",
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch5_S01",
+          "title": "生态环境后评价概述",
+          "elements": [
+            "概述段：评价等级/范围/敏感目标复核（{{TABLE:standards_confirm}} evaluation_scope、{{TABLE:sensitive_targets}} aspect=挖损/压占/疏干——XS2）。",
+            "收束句：总则收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:standards_confirm}}",
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS2"
+          ]
+        },
+        {
+          "id": "ch5_S02",
+          "title": "生态环境现状及区域环境变化",
+          "elements": [
+            "现状段：土地利用/植被/动物/土壤侵蚀现状（{{TABLE:eco.land_use}}、{{TABLE:eco.vegetation}}、{{SLOT:eco.erosion_modulus}}——现状调查转录）。",
+            "变化段：与原环评时点对照的变化幅度与成因（{{TABLE:retrospective.eco_restoration_review}} 变化域——二号 5.2「生态环境现状」/三号 4.2「现状及区域环境变化」节域）。",
+            "收束句：现状收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco.land_use}}",
+              "{{TABLE:eco.vegetation}}",
+              "{{SLOT:eco.erosion_modulus}}",
+              "{{TABLE:retrospective.eco_restoration_review}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:eco.land_use}}",
+            "{{TABLE:eco.vegetation}}",
+            "{{SLOT:eco.erosion_modulus}}",
+            "{{TABLE:retrospective.eco_restoration_review}}"
+          ],
+          "role": "受体"
+        },
+        {
+          "id": "ch5_S03",
+          "title": "生态环境影响回顾",
+          "elements": [
+            "回顾段：开发以来生态影响实际发生情况与已实施整治（{{SLOT:retrospective.development_history}} 生态域、{{TABLE:retrospective.eco_restoration_review}}——二号 5.3 影响回顾节域）。",
+            "收束句：回顾收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:retrospective.development_history}}",
+              "{{TABLE:retrospective.eco_restoration_review}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:retrospective.development_history}}",
+            "{{TABLE:retrospective.eco_restoration_review}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch5_S04",
+          "title": "生态环境影响预测验证与评价",
+          "elements": [
+            "验证段：原环评定量预测指标验证对比（{{TABLE:post_verification.items}} element=生态——XS19；{{SLOT:project.original_eia_doc_no}} 出处锚点）。",
+            "不具验证条件声明段：原环评未定量预测指标逐项声明（{{TABLE:post_verification.unverified_indicators}}——禁硬凑对比）。",
+            "后评价分析段：现状外推+类比的影响分析（定性——禁冒充导则级预测）。",
+            "收束句：验证收束，过渡到有效性评价。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:post_verification.items}}",
+              "{{SLOT:project.original_eia_doc_no}}",
+              "{{TABLE:post_verification.unverified_indicators}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS19"
+            ]
+          },
+          "slots": [
+            "{{TABLE:post_verification.items}}",
+            "{{SLOT:project.original_eia_doc_no}}",
+            "{{TABLE:post_verification.unverified_indicators}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS19"
+          ]
+        },
+        {
+          "id": "ch5_S05",
+          "title": "生态环境整治措施有效性评价与优化调整",
+          "elements": [
+            "有效性段：已实施整治措施逐项判定（{{TABLE:measure_effectiveness.items}} element=生态——XS20 判定词四档 canon；排土场复垦/边坡治理工程实况证据域）。",
+            "整改段：非「有效」判定逐项挂调整措施（{{TABLE:measure_effectiveness.problems}}——禁只判不改）。",
+            "后续段：后续整治规划（{{TABLE:eco_restoration.zoning}}、{{TABLE:eco_restoration.reclamation}}——工程量设计转录）。",
+            "收束句：有效性收束，过渡到小结。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}",
+              "{{TABLE:measure_effectiveness.problems}}",
+              "{{TABLE:eco_restoration.zoning}}",
+              "{{TABLE:eco_restoration.reclamation}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}",
+            "{{TABLE:measure_effectiveness.problems}}",
+            "{{TABLE:eco_restoration.zoning}}",
+            "{{TABLE:eco_restoration.reclamation}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S06",
+          "title": "小结与自查表",
+          "elements": [
+            "小结段：生态后评价结论（验证判词+有效性判词与各节一致——XS19/XS20 复现）。",
+            "自查表段：生态环境影响评价自查表（导则附表直出——二号 5.6 实证）。",
+            "收束句：本章收束，过渡到地下水后评价。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "收束"
+        }
+      ]
+    },
+    "ch6": {
+      "title": "地下水环境影响后评价",
+      "mode": "水文地质复盘组稿；难度 3/中高（水位水质长序列+预测验证主战场之一）",
+      "sample_anchor": "2/2 同构七节：二号 6.1-6.7（概述/地质/水文地质/现状与变化/回顾/预测验证/措施对策）；三号 5.1-5.7 同构——六段式标准样本章",
+      "key_elements": [
+        "现状与变化=水位/水质多年序列（{{TABLE:monitoring.trends}} 地下水域——长观测孔序列转录）",
+        "预测验证=原环评水位/水质预测值 vs 实测（{{TABLE:post_verification.items}} element=地下水——XS19；二号 6.6「地下水环境影响预测验证」节名 canon）",
+        "影响回顾=疏干降落漏斗发展与含水层实际变化（{{SLOT:openpit_engineering.dewatering}} 实测台账）",
+        "措施对策四件套（源头/分区/跟踪监测/应急——{{TABLE:measures.water}}+有效性判定 XS20）"
+      ],
+      "writing_patterns": [
+        "水位/水质数值全槽位（台账转录），禁手填",
+        "预测值出处逐项登记（原环评章节号）",
+        "判定词 canon 一致"
+      ],
+      "tables": [
+        "地下水水位水质多年监测序列表",
+        "地下水环境影响预测验证对比表",
+        "地下水环境保护措施与跟踪监测计划表"
+      ],
+      "std_refs": [
+        "HJ 610-2016",
+        "GB/T 14848-2017"
+      ],
+      "forms": [
+        "water",
+        "openpit_engineering",
+        "monitoring",
+        "standards_confirm",
+        "measures",
+        "retrospective",
+        "sensitive_targets",
+        "post_verification",
+        "measure_effectiveness"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS2",
+        "XS3",
+        "XS12",
+        "XS19",
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch6_S01",
+          "title": "地下水环境影响后评价概述",
+          "elements": [
+            "概述段：等级/范围/保护目标复核（{{TABLE:sensitive_targets}} aspect=疏干——XS2；{{TABLE:standards_confirm}} evaluation_scope）。",
+            "收束句：总则收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}",
+            "{{TABLE:standards_confirm}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS2"
+          ]
+        },
+        {
+          "id": "ch6_S02",
+          "title": "区域及矿田地质与水文地质条件",
+          "elements": [
+            "条件段：含水层结构/参数复盘（勘察与本次调查对照——{{SLOT:geography.hydrogeology}}；条件若与原环评有变，差异专段交代）。",
+            "收束句：条件收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:geography.hydrogeology}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:geography.hydrogeology}}"
+          ],
+          "role": "受体"
+        },
+        {
+          "id": "ch6_S03",
+          "title": "地下水环境质量现状与区域环境变化",
+          "elements": [
+            "监测段：水位/水质现状与多年序列（{{TABLE:monitoring.items}} 地下水域+{{TABLE:monitoring.trends}} 序列——XS3 限值绑定）。",
+            "变化段：与原环评基线对照的变化与成因（降落漏斗/水质演化——二号 6.4 节域）。",
+            "收束句：现状收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.items}}",
+              "{{TABLE:monitoring.trends}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.items}}",
+            "{{TABLE:monitoring.trends}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch6_S04",
+          "title": "地下水环境影响回顾",
+          "elements": [
+            "回顾段：已发生影响的实际核对（{{SLOT:openpit_engineering.dewatering}} 实测、{{TABLE:retrospective.facilities_effect}} 地下水域——二号 6.5 节域）。",
+            "收束句：回顾收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:openpit_engineering.dewatering}}",
+              "{{TABLE:retrospective.facilities_effect}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:openpit_engineering.dewatering}}",
+            "{{TABLE:retrospective.facilities_effect}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch6_S05",
+          "title": "地下水环境影响预测验证",
+          "elements": [
+            "验证段：原环评预测值 vs 实测逐指标对比（{{TABLE:post_verification.items}} element=地下水——XS19；predicted_source=原环评预测章节逐项登记）。",
+            "偏差判定段：偏差三档判定与原因分析（水文地质条件变化/模型边界/开采强度——人工判定）。",
+            "收束句：验证收束，过渡到措施对策。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:post_verification.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS19"
+            ]
+          },
+          "slots": [
+            "{{TABLE:post_verification.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS19"
+          ]
+        },
+        {
+          "id": "ch6_S06",
+          "title": "地下水环境保护措施与对策",
+          "elements": [
+            "有效性段：已采取措施有效性判定（{{TABLE:measure_effectiveness.items}} element=地下水——XS20）。",
+            "对策段：源头控制/分区防控/跟踪监测/应急预案优化（{{TABLE:measures.water}}+{{TABLE:monitoring_plan.plans}} 地下水域——长观孔优化布设）。",
+            "收束句：本章收束，过渡到大气后评价。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}",
+              "{{TABLE:measures.water}}",
+              "{{TABLE:monitoring_plan.plans}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}",
+            "{{TABLE:measures.water}}",
+            "{{TABLE:monitoring_plan.plans}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        }
+      ]
+    },
+    "ch7": {
+      "title": "大气环境影响后评价",
+      "mode": "实测复盘+验证组稿；难度 3/中高（二号 11 节最深要素章：验证+有效性+核增后分析+碳排放全链条）",
+      "sample_anchor": "二号 7.1-7.11（概述/质量现状与变化/回顾/环评预测验证/设施有效性/本次后评价分析/排放量/碳排放/建议/自查表/小结）；三号 6.1-6.7（含 6.6 产能核增后分析）——后评价最深要素章",
+      "key_elements": [
+        "质量现状与变化=例行监测长序列+补充监测（{{TABLE:monitoring.trends}} 大气域——二号 7.2「质量现状与变化情况」节域）",
+        "预测验证=原环评预测浓度 vs 实测（{{TABLE:post_verification.items}} element=大气——二号 7.4「环评大气环境影响预测验证」节名 canon；禁重跑模型）",
+        "设施有效性=无组织排放监测实况判定（{{TABLE:measure_effectiveness.items}} element=大气——二号 7.5 节域 XS20）",
+        "本次后评价/核增后影响分析=条件节（variant_track when=产能核增——二号 7.6/三号 6.6 双措辞型；非核增型 ABSENT）",
+        "排放量核算+碳排放+小结收束（XS8 接账；{{TABLE:carbon.activity_data}} 二号 7.8 型）"
+      ],
+      "writing_patterns": [
+        "实测值全台账口径（禁手填）",
+        "预测值出处逐项登记",
+        "有效性判定词 canon（XS20）"
+      ],
+      "tables": [
+        "环境空气质量变化序列表",
+        "大气环境影响预测验证对比表",
+        "污染防治设施有效性判定表",
+        "大气污染物排放量核算表"
+      ],
+      "std_refs": [
+        "HJ 2.2",
+        "GB 3095-2012",
+        "GB 20426-2006"
+      ],
+      "forms": [
+        "air",
+        "monitoring",
+        "standards_confirm",
+        "carbon",
+        "measures",
+        "retrospective",
+        "post_verification",
+        "measure_effectiveness"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3",
+        "XS8",
+        "XS19",
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch7_S01",
+          "title": "大气环境影响后评价概述",
+          "elements": [
+            "概述段：等级/范围/保护目标复核（{{TABLE:sensitive_targets}} aspect=扬尘——{{TABLE:standards_confirm}} evaluation_scope）。",
+            "收束句：总则收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}",
+            "{{TABLE:standards_confirm}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch7_S02",
+          "title": "大气环境质量现状与变化情况",
+          "elements": [
+            "现状段：例行+补充监测现状（{{TABLE:monitoring.items}} 大气域——XS3 限值绑定）。",
+            "变化段：多年变化趋势与成因（{{TABLE:monitoring.trends}} 大气域——二号 7.2 节域）。",
+            "收束句：现状收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.items}}",
+              "{{TABLE:monitoring.trends}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.items}}",
+            "{{TABLE:monitoring.trends}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch7_S03",
+          "title": "大气环境影响回顾",
+          "elements": [
+            "回顾段：已采取防治措施与排放实况（{{TABLE:retrospective.facilities_effect}} 大气域——二号 7.3 节域）。",
+            "收束句：回顾收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective.facilities_effect}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective.facilities_effect}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch7_S04",
+          "title": "环评大气环境影响预测验证",
+          "elements": [
+            "验证段：原环评预测浓度 vs 实测对比（{{TABLE:post_verification.items}} element=大气——XS19；predicted_source 逐项登记原环评预测章节与模式名）。",
+            "偏差判定段：偏差三档判定与原因（源强变化/除尘效率/气象年差——人工判定）。",
+            "收束句：验证收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:post_verification.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS19"
+            ]
+          },
+          "slots": [
+            "{{TABLE:post_verification.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS19"
+          ]
+        },
+        {
+          "id": "ch7_S05",
+          "title": "已采取的大气污染防治设施有效性评价及改进措施",
+          "elements": [
+            "有效性段：逐设施判定（{{TABLE:measure_effectiveness.items}} element=大气——XS20 四档 canon；无组织排放监控点浓度证据域）。",
+            "改进段：非「有效」判定整改（{{TABLE:measure_effectiveness.problems}} element=大气——二号 7.5「有效性评价及改进措施」节域）。",
+            "收束句：有效性收束，过渡到后评价分析（如适用）。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}",
+              "{{TABLE:measure_effectiveness.problems}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}",
+            "{{TABLE:measure_effectiveness.problems}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch7_S06",
+          "title": "本次后评价（产能核增后）大气环境影响分析",
+          "elements": [
+            "分析段：核增后源强变化的大气影响简析（现状外推+同类类比——二号 7.6「本次后评价大气环境影响分析」/三号 6.6「产能核增后大气环境影响分析」双措辞；禁重跑数值模型、禁冒充导则级预测）。",
+            "收束句：分析收束，过渡到排放核算。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "响应",
+          "conditional": {
+            "driver": "project_kind",
+            "type": "variant_track",
+            "when": "产能核增",
+            "title_rule": "节标题按触发类型取「本次后评价大气环境影响分析」（重大变更型）或「产能核增后大气环境影响分析」（核增型）",
+            "on_absent": "ABSENT（非产能核增/重大变更触发型整节 ABSENT）"
+          }
+        },
+        {
+          "id": "ch7_S07",
+          "title": "排放量核算、碳排放与小结",
+          "elements": [
+            "核算段：大气污染物排放量核算（{{TABLE:air.capacity_inputs}} 台账口径——XS8 接账；二号 7.7「大气污染物排放量」节域）。",
+            "碳排放段：碳排放核算与减排（{{TABLE:carbon.activity_data}}、{{SLOT:carbon.emission_factor_source}}——二号 7.8 四步型；未登记记 ABSENT）。",
+            "小结段：大气后评价小结与自查表（验证判词+有效性判词复现——二号 7.9/7.10/7.11 归并）。",
+            "收束句：本章收束，过渡到地表水后评价。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:air.capacity_inputs}}",
+              "{{TABLE:carbon.activity_data}}",
+              "{{SLOT:carbon.emission_factor_source}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS8"
+            ]
+          },
+          "slots": [
+            "{{TABLE:air.capacity_inputs}}",
+            "{{TABLE:carbon.activity_data}}",
+            "{{SLOT:carbon.emission_factor_source}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS8"
+          ]
+        }
+      ]
+    },
+    "ch8": {
+      "title": "地表水环境影响后评价",
+      "mode": "水污染复盘组稿；难度 2/中（处理设施实效+验证）",
+      "sample_anchor": "二号 8.1-8.7（概述/质量现状/回顾/原环评预测验证/设施有效性/小结/自查表）；三号 7.1-7.6（含 7.3 废水量回顾/7.4 产能释放后分析/7.5 问题及改进）——概述/现状/回顾/验证/有效性/小结骨架",
+      "key_elements": [
+        "现状=受纳水体与排放口实测（{{TABLE:monitoring.items}} 地表水域——XS3 限值绑定）",
+        "回顾=废水量与回用实况（{{TABLE:water.balance}} 现状台账、{{SLOT:openpit_engineering.dewatering}}——三号 7.3 节域）",
+        "验证=原环评水质预测 vs 实测（{{TABLE:post_verification.items}} element=地表水——二号 8.4「原环评地表水环境影响预测验证」节名 canon）",
+        "有效性=处理设施实效判定（{{TABLE:measure_effectiveness.items}} element=地表水——二号 8.5 节域 XS20）"
+      ],
+      "writing_patterns": [
+        "水量水质全台账口径",
+        "验证判定与原因成对",
+        "回用率禁手填（平衡表派生）"
+      ],
+      "tables": [
+        "地表水环境质量现状表",
+        "原环评预测验证对比表（地表水域）",
+        "水处理设施有效性判定表"
+      ],
+      "std_refs": [
+        "HJ 2.3",
+        "GB 3838-2002"
+      ],
+      "forms": [
+        "water",
+        "monitoring",
+        "standards_confirm",
+        "measures",
+        "retrospective",
+        "openpit_engineering",
+        "post_verification",
+        "measure_effectiveness"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3",
+        "XS12",
+        "XS19",
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch8_S01",
+          "title": "地表水环境影响后评价概述",
+          "elements": [
+            "概述段：受纳水体/排放去向/保护目标复核（{{TABLE:standards_confirm}} evaluation_scope——HJ 2.3）。",
+            "收束句：总则收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:standards_confirm}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch8_S02",
+          "title": "地表水环境质量现状",
+          "elements": [
+            "现状段：断面/排放口监测现状与评价（{{TABLE:monitoring.items}} 地表水域——XS3；二号 8.2 节域）。",
+            "收束句：现状收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.items}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch8_S03",
+          "title": "地表水环境影响回顾",
+          "elements": [
+            "回顾段：废水量/回用/排放实况（{{TABLE:water.balance}}、{{TABLE:retrospective.facilities_effect}} 水域——二号 8.3 节域；XS12 水量口径同源）。",
+            "收束句：回顾收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:water.balance}}",
+              "{{TABLE:retrospective.facilities_effect}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{TABLE:water.balance}}",
+            "{{TABLE:retrospective.facilities_effect}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS12"
+          ]
+        },
+        {
+          "id": "ch8_S04",
+          "title": "原环评地表水环境影响预测验证",
+          "elements": [
+            "验证段：预测 vs 实测对比（{{TABLE:post_verification.items}} element=地表水——XS19）。",
+            "偏差判定段：三档判定与原因（回用率提升/处理工艺变更等）。",
+            "收束句：验证收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:post_verification.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS19"
+            ]
+          },
+          "slots": [
+            "{{TABLE:post_verification.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS19"
+          ]
+        },
+        {
+          "id": "ch8_S05",
+          "title": "已采取的水污染防治设施有效性评价及改进措施",
+          "elements": [
+            "有效性段：逐设施判定（{{TABLE:measure_effectiveness.items}} element=地表水——XS20）。",
+            "改进段：问题整改（{{TABLE:measure_effectiveness.problems}} element=地表水——三号 7.5「存在的问题及改进措施」节域）。",
+            "收束句：有效性收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}",
+              "{{TABLE:measure_effectiveness.problems}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}",
+            "{{TABLE:measure_effectiveness.problems}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch8_S06",
+          "title": "地表水环境影响后评价小结",
+          "elements": [
+            "小结段：结论与自查表（二号 8.6/8.7 归并）。",
+            "收束句：本章收束，过渡到声环境后评价。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "收束"
+        }
+      ]
+    },
+    "ch9": {
+      "title": "声环境影响后评价",
+      "mode": "实测复盘组稿；难度 2/中（厂界与敏感点实测达标判定）",
+      "sample_anchor": "二号 9.1-9.6（概述/回顾/设施有效性/原环评预测验证/小结/自查表——注意二号回顾在前验证在后）；三号 8.1-8.7（含 8.5 产能核增后分析、8.4 跳号实证）——概述/现状变化/验证/有效性/小结骨架",
+      "key_elements": [
+        "现状变化=厂界与敏感点多年实测（{{TABLE:monitoring.trends}} 声域——{{TABLE:monitoring.items}} 现状）",
+        "验证=原环评厂界预测值 vs 实测（{{TABLE:post_verification.items}} element=声——二号 9.4 节域 XS19）",
+        "有效性=隔声降噪设施实效（{{TABLE:measure_effectiveness.items}} element=声——二号 9.3 节域 XS20）",
+        "核增后分析并入小结节要素（三号 8.5 型——不单列条件节，样本内 1/2 单列实证弱）"
+      ],
+      "writing_patterns": [
+        "实测值台账口径",
+        "达标判定绑 GB 12348/GB 3096 限值（XS3）",
+        "判定词 canon"
+      ],
+      "tables": [
+        "声环境质量变化序列表",
+        "原环评预测验证对比表（声域）",
+        "噪声防治设施有效性判定表"
+      ],
+      "std_refs": [
+        "HJ 2.4",
+        "GB 12348-2008",
+        "GB 3096-2008"
+      ],
+      "forms": [
+        "noise",
+        "monitoring",
+        "standards_confirm",
+        "measures",
+        "post_verification",
+        "measure_effectiveness",
+        "sensitive_targets"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3",
+        "XS19",
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch9_S01",
+          "title": "声环境影响后评价概述",
+          "elements": [
+            "概述段：评价范围/保护目标复核（{{TABLE:sensitive_targets}} aspect=噪声——{{TABLE:standards_confirm}} evaluation_scope）。",
+            "收束句：总则收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}",
+            "{{TABLE:standards_confirm}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch9_S02",
+          "title": "声环境质量现状与变化情况",
+          "elements": [
+            "现状段：厂界/敏感点实测与达标评价（{{TABLE:monitoring.items}} 声域——XS3；二号 9.2/三号 8.2-8.3 节域）。",
+            "变化段：多年变化与成因（{{TABLE:monitoring.trends}} 声域）。",
+            "收束句：现状收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.items}}",
+              "{{TABLE:monitoring.trends}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.items}}",
+            "{{TABLE:monitoring.trends}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch9_S03",
+          "title": "已采取的声环境污染防治设施有效性评价及改进措施",
+          "elements": [
+            "有效性段：降噪设施逐项判定（{{TABLE:measure_effectiveness.items}} element=声——XS20；二号 9.3 节域）。",
+            "改进段：问题整改（{{TABLE:measure_effectiveness.problems}} element=声）。",
+            "收束句：有效性收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}",
+              "{{TABLE:measure_effectiveness.problems}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}",
+            "{{TABLE:measure_effectiveness.problems}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch9_S04",
+          "title": "原环评声环境影响预测验证",
+          "elements": [
+            "验证段：厂界预测 vs 实测对比（{{TABLE:post_verification.items}} element=声——XS19；二号 9.4 节域）。",
+            "偏差判定段：三档判定与原因。",
+            "收束句：验证收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:post_verification.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS19"
+            ]
+          },
+          "slots": [
+            "{{TABLE:post_verification.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS19"
+          ]
+        },
+        {
+          "id": "ch9_S05",
+          "title": "声环境影响后评价小结",
+          "elements": [
+            "小结段：结论（含核增后影响简析并入——三号 8.5 型）与自查表。",
+            "收束句：本章收束，过渡到固体废物后评价。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "收束"
+        }
+      ]
+    },
+    "ch10": {
+      "title": "固体废物环境影响后评价",
+      "mode": "台账复盘组稿；难度 1/低（产生-利用-处置台账+验证简表）",
+      "sample_anchor": "二号 10.1-10.4（评价内容/回顾/预测验证/小结）；三号 9.1-9.5（评价内容/回顾/产能核定后分析/小结——9.3 无节标题跳号实证）",
+      "key_elements": [
+        "台账域：剥离物/煤矸石/危废产生-利用-处置实况（{{TABLE:solid_waste.disposal_sites}}、{{TABLE:solid_waste.hazardous}} 台账）",
+        "验证=原环评固废影响结论 vs 实况（{{TABLE:post_verification.items}} element=固废——二号 10.3 节域 XS19）",
+        "核增后分析并入验证或小结节（三号 9.4 型——不单列条件节）"
+      ],
+      "writing_patterns": [
+        "台账数值全槽位",
+        "危废联单与资质单位人工比对（门 1）",
+        "验证简表逐项"
+      ],
+      "tables": [
+        "固体废物产生与处置情况一览表",
+        "固废影响预测验证简表"
+      ],
+      "std_refs": [
+        "GB 18599-2020"
+      ],
+      "forms": [
+        "solid_waste",
+        "openpit_engineering",
+        "retrospective",
+        "post_verification",
+        "measure_effectiveness"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS19"
+      ],
+      "sections": [
+        {
+          "id": "ch10_S01",
+          "title": "固体废物环境影响后评价评价内容",
+          "elements": [
+            "内容段：固废类别与现状产生量（{{SLOT:openpit_engineering.stripping_volume}} 台账口径、{{TABLE:solid_waste.hazardous}}——二号 10.1 节域）。",
+            "收束句：内容收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:openpit_engineering.stripping_volume}}",
+              "{{TABLE:solid_waste.hazardous}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:openpit_engineering.stripping_volume}}",
+            "{{TABLE:solid_waste.hazardous}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch10_S02",
+          "title": "固体废物环境影响回顾",
+          "elements": [
+            "回顾段：历年产生-利用-处置实况与设施（{{TABLE:retrospective.facilities_effect}} 固废域——二号 10.2 节域）。",
+            "收束句：回顾收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective.facilities_effect}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective.facilities_effect}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch10_S03",
+          "title": "固体废物环境影响预测验证",
+          "elements": [
+            "验证段：原环评结论 vs 实况对比（{{TABLE:post_verification.items}} element=固废——XS19；含核增后影响简析并入——三号 9.4 型）。",
+            "有效性段：处置措施有效性判定（{{TABLE:measure_effectiveness.items}} element=固废——XS20）。",
+            "收束句：验证收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:post_verification.items}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS19",
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:post_verification.items}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS19",
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch10_S04",
+          "title": "固体废物环境影响后评价小结",
+          "elements": [
+            "小结段：结论（二号 10.4/三号 9.5）。",
+            "收束句：本章收束，过渡到土壤后评价。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "收束"
+        }
+      ]
+    },
+    "ch11": {
+      "title": "土壤环境影响后评价",
+      "mode": "现状+措施组稿；难度 2/中（土壤环境质量现状监测+防治措施实效）",
+      "sample_anchor": "二号 11.1-11.7（概述/等级范围目标/回顾及现状/影响分析/防治措施对策/小结/自查表）；三号 10.1-10.7（同构——注意三号章名未带「后评价」后缀，目录语义匹配按「土壤环境影响」命中）",
+      "key_elements": [
+        "等级范围复核=生态影响型判定维持（{{TABLE:standards_confirm}} evaluation_scope——HJ 964）",
+        "现状=场地监测+区域背景对照（{{TABLE:monitoring.items}} 土壤域——XS3 限值绑定）",
+        "回顾及现状=与原环评基线对照（二号 11.3「土壤环境影响回顾及现状」节域）",
+        "跟踪监测计划归 ch14 统一（{{TABLE:monitoring_plan.plans}} 土壤域——二号 11.5 对策节引用）"
+      ],
+      "writing_patterns": [
+        "监测值逐点标 source",
+        "与生态章占地口径同源",
+        "结论词绑定评价类型"
+      ],
+      "tables": [
+        "土壤环境质量现状监测与评价表",
+        "土壤污染防治措施一览表"
+      ],
+      "std_refs": [
+        "HJ 964-2018",
+        "GB 15618-2018"
+      ],
+      "forms": [
+        "soil_score",
+        "monitoring",
+        "standards_confirm",
+        "sensitive_targets",
+        "measures",
+        "monitoring_plan",
+        "retrospective"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3"
+      ],
+      "sections": [
+        {
+          "id": "ch11_S01",
+          "title": "土壤环境影响后评价概述",
+          "elements": [
+            "概述段：等级/范围/敏感目标复核（{{TABLE:sensitive_targets}} aspect=土壤——{{TABLE:standards_confirm}} evaluation_scope）。",
+            "收束句：总则收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}",
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}",
+            "{{TABLE:standards_confirm}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch11_S02",
+          "title": "土壤环境影响回顾及现状",
+          "elements": [
+            "现状段：场地监测与评价（{{TABLE:monitoring.items}} 土壤域——XS3）。",
+            "回顾段：与原环评基线对照（{{TABLE:retrospective.eco_restoration_review}} 土壤域——二号 11.3 节域；{{SLOT:soil_score.total_score}} 现状评分）。",
+            "收束句：现状收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.items}}",
+              "{{TABLE:retrospective.eco_restoration_review}}",
+              "{{SLOT:soil_score.total_score}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.items}}",
+            "{{TABLE:retrospective.eco_restoration_review}}",
+            "{{SLOT:soil_score.total_score}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch11_S03",
+          "title": "土壤环境影响分析",
+          "elements": [
+            "分析段：现状外推影响分析（挖损压占/扬尘沉降/盐化演化——{{TABLE:eco.land_use}} 占地同源口径）。",
+            "收束句：分析收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco.land_use}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:eco.land_use}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch11_S04",
+          "title": "土壤污染防治措施及对策",
+          "elements": [
+            "措施段：已采取措施实效+后续对策（{{TABLE:measures.eco}} 土壤域+{{TABLE:monitoring_plan.plans}} 土壤跟踪监测——二号 11.5 节域）。",
+            "收束句：措施收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures.eco}}",
+              "{{TABLE:monitoring_plan.plans}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:measures.eco}}",
+            "{{TABLE:monitoring_plan.plans}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch11_S05",
+          "title": "土壤环境影响后评价小结",
+          "elements": [
+            "小结段：结论与自查表（二号 11.6/11.7 归并）。",
+            "收束句：本章收束，过渡到条件章（爆破）或风险后评价（按实际章序）。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "收束"
+        }
+      ]
+    },
+    "ch12": {
+      "title": "爆破环境影响后评价",
+      "mode": "复盘组稿；难度 2/中（爆破实况+影响实测/类比复核）",
+      "sample_anchor": "2/2 在场：二号 ch12（12.1-12.5：源/冲击波/噪声/大气/结论建议）；三号 ch11（11.1-11.4 同构）——2/2 实证为必备章（区别于项目环评 stage 的 data 开关条件章：后评价复盘对象为已投产矿山的爆破实况，钻爆登记缺省仍按实际爆破情况在场，除非矿山全程无爆破作业）",
+      "key_elements": [
+        "爆破源=实况参数复盘（{{SLOT:openpit_engineering.mining_system}} 钻爆域——实际孔网/药量/频次年台账）",
+        "影响分析以实测/投诉记录/类比为主（禁重算振动预测——GB 6722 安全距离复核走表值判据 tier1 人工核实）",
+        "措施与结论段：已采取防控实效+优化建议（判定词 canon）"
+      ],
+      "writing_patterns": [
+        "爆破参数逐项标 source（爆破作业台账）",
+        "安全距离逐保护对象复核（{{TABLE:sensitive_targets}} aspect=爆破）",
+        "结论词与要素章一致"
+      ],
+      "tables": [
+        "爆破作业实况一览表",
+        "爆破影响复核与措施一览表"
+      ],
+      "std_refs": [
+        "GB 6722"
+      ],
+      "forms": [
+        "openpit_engineering",
+        "sensitive_targets",
+        "noise",
+        "air",
+        "measures",
+        "measure_effectiveness"
+      ],
+      "formulas": [],
+      "contracts": [],
+      "sections": [
+        {
+          "id": "ch12_S01",
+          "title": "爆破源分析（实况复盘）",
+          "elements": [
+            "源段：实际爆破工艺/参数/频次（{{SLOT:openpit_engineering.mining_system}} 钻爆域——作业台账转录）。",
+            "收束句：源分析收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:openpit_engineering.mining_system}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:openpit_engineering.mining_system}}"
+          ],
+          "role": "驱动源"
+        },
+        {
+          "id": "ch12_S02",
+          "title": "爆破振动与冲击波环境影响分析",
+          "elements": [
+            "振动段：保护对象安全距离复核与实测/投诉核对（{{TABLE:sensitive_targets}} aspect=爆破——GB 6722 表值判据 tier1 人工核实）。",
+            "收束句：振动收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch12_S03",
+          "title": "爆破噪声与大气环境影响分析",
+          "elements": [
+            "噪声段：爆破噪声实测/类比复核（{{TABLE:monitoring.items}} 声域爆破项——与 ch9 口径一致）。",
+            "大气段：炮烟粉尘影响复核（{{TABLE:monitoring.items}} 大气域爆破时段——与 ch7 口径一致）。",
+            "收束句：噪声大气收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.items}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:monitoring.items}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch12_S04",
+          "title": "爆破环境影响结论及建议",
+          "elements": [
+            "结论段：已采取防控实效判定（{{TABLE:measure_effectiveness.items}} element=爆破——XS20）与优化建议。",
+            "收束句：本章收束，过渡到风险后评价。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS20"
+          ]
+        }
+      ]
+    },
+    "ch13": {
+      "title": "环境风险影响后评价",
+      "mode": "风险设施复盘组稿；难度 2/中（既有设施+预案落实复查）",
+      "sample_anchor": "2/2 同构：二号 13.1-13.9（依据/敏感目标/识别/危废库/加油站/油脂库/水处理非正常/应急预案情况/自查表）；三号 12.1-12.8 同构（含 12.3 编号笔误实证）",
+      "key_elements": [
+        "风险设施=既有设施复盘（{{TABLE:risk.facilities}} 现状域——危废暂存库/加油站/油脂库/矿坑水与生活污水处理设施非正常工况——二号 13.4-13.7 节域）",
+        "风险识别=物质与临界量人工比对（{{TABLE:risk.substances}}——HJ 169 判定走 methodology）",
+        "应急预案「落实情况」=后评价语义（二号 13.8「环境风险应急预案情况」节名——EO2 目标侧在场断言：预案备案/演练/物资实况）"
+      ],
+      "writing_patterns": [
+        "风险物质名称/临界量人工比对（门 1）",
+        "事故情景以实况+台账为主（禁虚构情景）",
+        "应急联动与 ch14 监测衔接"
+      ],
+      "tables": [
+        "环境风险物质及设施现状一览表",
+        "环境风险应急预案落实情况一览表"
+      ],
+      "std_refs": [
+        "HJ 169-2018"
+      ],
+      "forms": [
+        "risk",
+        "sensitive_targets",
+        "measures",
+        "retrospective"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS2",
+        "EO2"
+      ],
+      "sections": [
+        {
+          "id": "ch13_S01",
+          "title": "评价依据与环境敏感目标调查",
+          "elements": [
+            "依据段：评价等级/范围复核（{{TABLE:standards_confirm}} evaluation_scope 风险域——HJ 169）。",
+            "目标段：风险敏感目标现状（{{TABLE:sensitive_targets}} aspect=风险——XS2）。",
+            "收束句：总则收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:standards_confirm}}",
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS2"
+          ]
+        },
+        {
+          "id": "ch13_S02",
+          "title": "环境风险识别",
+          "elements": [
+            "识别段：风险物质与既有设施识别（{{TABLE:risk.substances}}、{{TABLE:risk.facilities}}——临界量人工比对）。",
+            "收束句：识别收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:risk.substances}}",
+              "{{TABLE:risk.facilities}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:risk.substances}}",
+            "{{TABLE:risk.facilities}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch13_S03",
+          "title": "环境风险事故影响分析（既有设施情景）",
+          "elements": [
+            "情景段：危废库/加油站/油脂库泄漏与污水处理设施非正常工况影响复核（{{TABLE:risk.eco_risk_sources}} 现状域——以实况台账+历史事件为主，禁虚构情景）。",
+            "收束句：情景收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:risk.eco_risk_sources}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:risk.eco_risk_sources}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch13_S04",
+          "title": "环境风险应急预案落实情况",
+          "elements": [
+            "落实段：预案备案/演练/应急物资/联动机制实况（{{TABLE:measures.risk_response}} 落实域——EO2 目标侧在场断言；二号 13.8 节域）。",
+            "收束句：落实收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures.risk_response}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "EO2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measures.risk_response}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "EO2"
+          ]
+        },
+        {
+          "id": "ch13_S05",
+          "title": "环境风险后评价结论与自查表",
+          "elements": [
+            "结论段：风险可控性判定与自查表（导则附表直出）。",
+            "收束句：本章收束，过渡到环境管理后评价。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "收束"
+        }
+      ]
+    },
+    "ch14": {
+      "title": "环境管理和环境监测计划",
+      "mode": "管理复盘+计划优化组稿；难度 1/低",
+      "sample_anchor": "二号 14.1-14.3（管理回顾/排放管理要求/管理优化调整）；三号 13.1-13.2（管理回顾/管理优化调整）——回顾+优化两段骨架",
+      "key_elements": [
+        "管理回顾=机构制度与运行记录实况（{{TABLE:retrospective.facilities_effect}} 管理域+{{SLOT:retrospective.three_simultaneous}}）",
+        "优化调整=后续环境管理与监测要求（{{TABLE:monitoring_plan.plans}} 优化后计划——二号 14.3 节域）",
+        "监测限值绑 XS3（执行标准号逐行非空）"
+      ],
+      "writing_patterns": [
+        "监测点位/因子/频次可执行（验收口径）",
+        "执行标准号逐行非空（XS3）",
+        "回顾与优化分段明确"
+      ],
+      "tables": [
+        "环境管理回顾一览表",
+        "后续环境监测计划表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "measures",
+        "monitoring_plan",
+        "standards_confirm",
+        "retrospective"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3"
+      ],
+      "sections": [
+        {
+          "id": "ch14_S01",
+          "title": "环境管理回顾",
+          "elements": [
+            "回顾段：机构/制度/台账运行实况（{{TABLE:retrospective.facilities_effect}} 管理域——二号 14.1 节域）。",
+            "收束句：回顾收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective.facilities_effect}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective.facilities_effect}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch14_S02",
+          "title": "污染物排放管理要求",
+          "elements": [
+            "管理段：排污许可执行/排口规范化/信息公开要求（{{TABLE:measures.mgmt}}——XS8 总量口径衔接）。",
+            "收束句：管理要求收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures.mgmt}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS8"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measures.mgmt}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS8"
+          ]
+        },
+        {
+          "id": "ch14_S03",
+          "title": "环境管理优化调整与后续监测计划",
+          "elements": [
+            "优化段：管理机构与制度优化建议（三号 13.2 节域）。",
+            "计划段：后续环境监测计划（{{TABLE:monitoring_plan.plans}} 优化后——XS3 执行标准绑定；二号 14.3 节域）。",
+            "收束句：本章收束，过渡到措施优化调整章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring_plan.plans}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring_plan.plans}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS3"
+          ]
+        }
+      ]
+    },
+    "ch15": {
+      "title": "环境保护措施优化调整",
+      "mode": "问题归集+优化方案组稿；难度 2/中（全书有效性问题清单在此归集闭环）",
+      "sample_anchor": "2/2 在场：二号 ch15（无二级节正文直排）；三号 ch14（同）——正文直排型样本 2/2，骨架拆 2 节（问题归集/优化方案）组稿，不锁二级节",
+      "key_elements": [
+        "问题归集=各要素章 XS20 非「有效」判定+ch3 未落实项逐条汇总（{{TABLE:measure_effectiveness.problems}} 全域——孤儿问题禁入：清单外全新问题必须回溯要素章补判）",
+        "优化方案=逐问题对应优化措施与实施计划（{{TABLE:measures}} 各域回写——投资衔接在结论前完成）",
+        "本ig章是「验证→有效性→优化」闭环的收口（XS20 源清单↔目标章在场断言双通道）"
+      ],
+      "writing_patterns": [
+        "问题-措施一一对应（禁无主措施）",
+        "实施计划逐条（时限/责任主体登记）",
+        "不新增验证结论（结论归 ch16）"
+      ],
+      "tables": [
+        "环境保护措施问题与优化调整一览表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "measure_effectiveness",
+        "measures",
+        "eco_restoration",
+        "monitoring_plan"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch15_S01",
+          "title": "已采取措施存在问题归集",
+          "elements": [
+            "归集段：各要素章有效性问题+符合性未落实项逐条汇总（{{TABLE:measure_effectiveness.problems}}、{{TABLE:retrospective.approvals_fulfilled}} 未落实域——XS20 源清单）。",
+            "收束句：归集收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.problems}}",
+              "{{TABLE:retrospective.approvals_fulfilled}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.problems}}",
+            "{{TABLE:retrospective.approvals_fulfilled}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch15_S02",
+          "title": "环境保护措施优化调整方案",
+          "elements": [
+            "方案段：逐问题优化措施与实施计划（{{TABLE:measures}} 各域回写——生态/大气/水/声/固废/风险逐域；时限与责任主体登记）。",
+            "收束句：本章收束，过渡到结论章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measures}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        }
+      ]
+    },
+    "ch16": {
+      "title": "后评价结论与建议",
+      "mode": "投影收束组稿；难度 3/中高（验证/有效性/优化三线结论归一；XS10 总体判定 canon）",
+      "sample_anchor": "2/2 同构三节：二号 16.1-16.3（项目工程概况/环境影响回顾及已采取措施的有效性/结论与建议）；三号 15.1-15.3 同构",
+      "key_elements": [
+        "概况段=表单直读（{{SLOT:project.project_kind}}、{{SLOT:mine_plan.total_scale_mt_a_after}} 双口径 XS1）",
+        "回顾与有效性段=逐要素验证判词+有效性判词归一（{{TABLE:post_verification.items}}+{{TABLE:measure_effectiveness.items}} 投影——XS19/XS20 复现禁两套措辞）",
+        "总体判定词=XS10 canon（首现以本章为准，前言预告同措辞）",
+        "建议条款化（每条可执行；优化调整衔接 ch15）"
+      ],
+      "writing_patterns": [
+        "结论数值全槽位（投影/台账），禁手填",
+        "一要素一段禁展开",
+        "判定词 canon 一致（XS10/XS19/XS20）"
+      ],
+      "tables": [
+        "后评价结论汇总表（要素-验证判定-有效性判定）"
+      ],
+      "std_refs": [],
+      "forms": [
+        "project",
+        "mine_plan",
+        "post_verification",
+        "measure_effectiveness",
+        "sensitive_targets",
+        "standards_confirm",
+        "projection"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS2",
+        "XS3",
+        "XS10",
+        "XS12",
+        "XS19",
+        "XS20",
+        "EO2",
+        "EO3"
+      ],
+      "sections": [
+        {
+          "id": "ch16_S01",
+          "title": "项目工程概况回顾",
+          "elements": [
+            "概况段：项目现状与触发事由回顾（{{SLOT:project.project_kind}}、{{SLOT:mine_plan.total_scale_mt_a_after}}——XS1）。",
+            "收束句：概况收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.project_kind}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:project.project_kind}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_after}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch16_S02",
+          "title": "项目环境影响回顾及已采取措施的有效性结论",
+          "elements": [
+            "要素段：生态/地下水/地表水/大气/声/固废/土壤/风险逐要素一段（验证判词 XS19+有效性判词 XS20 逐要素投影——与各章逐字一致；达标口径 XS3、目标保护口径 XS2、水量口径 XS12、应急口径 EO2 复现）。",
+            "收束句：要素结论收束。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": [
+              "XS2",
+              "XS3",
+              "XS12",
+              "XS19",
+              "XS20",
+              "EO2",
+              "EO3"
+            ]
+          },
+          "slots": [],
+          "role": "收束",
+          "contracts": [
+            "XS2",
+            "XS3",
+            "XS12",
+            "XS19",
+            "XS20",
+            "EO2",
+            "EO3"
+          ]
+        },
+        {
+          "id": "ch16_S03",
+          "title": "后评价总体结论与建议",
+          "elements": [
+            "判定句：从环境保护角度的总体判定词（XS10 canon 首现——与 ch0_S02 预告逐字一致）。",
+            "建议段：条款化建议（优化调整项衔接 ch15 方案；后续监测衔接 ch14 计划）。",
+            "收束句：全书收束。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": [
+              "XS10"
+            ]
+          },
+          "slots": [],
+          "role": "收束",
+          "contracts": [
+            "XS10"
+          ]
+        }
+      ]
+    }
+  }
+}

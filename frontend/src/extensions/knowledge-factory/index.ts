@@ -1,6 +1,7 @@
 export { default as KnowledgeFactoryPage } from "./KnowledgeFactoryPage";
 export { default as TabNavigation } from "./TabNavigation";
 export { default as SampleReports } from "./SampleReports";
+export { default as SampleLibrary } from "./SampleLibrary"; // EAI-CUSTOM: 样例库（coal-eia v2 BS3 MVP）
 export { default as TemplateExtraction } from "./TemplateExtraction";
 export { default as ExtractionTaskModal } from "./ExtractionTaskModal";
 export { default as ExtractionResultModal } from "./ExtractionResultModal";

@@ -98,13 +98,15 @@ modules:
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
       - { id: "knowledge_dept",   display_name: "本部门的知识库", rule_template: { or: [ { owner_id: "$identity.user_id" }, { and: [ { access_type: "dept" }, { allowed_depts OVERLAP: "$identity.dept_ids" } ] } ] } }
 
-  # ─── 知识工厂（9 个 tab ↔ 9 个 page id）───
+  # ─── 知识工厂（10 个 tab ↔ 10 个 page id）───
   knowledge_factory:
     display_name: "知识工厂"
     nav_id: "nav:knowledge-factory"
     pages:
       - id: "kf:page:sample"
         display_name: "样例管理"
+      - id: "kf:page:samples" # EAI-CUSTOM: 样例库（coal-eia v2 BS3 MVP）
+        display_name: "样例库"
       - id: "kf:page:extraction"
         display_name: "模板抽取"
       - id: "kf:page:template"

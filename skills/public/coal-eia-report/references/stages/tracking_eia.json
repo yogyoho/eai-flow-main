@@ -1,0 +1,2111 @@
+{
+  "version": "2.0",
+  "stage": "规划环境影响跟踪评价",
+  "stage_id": "tracking_eia",
+  "std_ref": "HJ 130-2019《规划环境影响评价技术导则 总纲》（跟踪评价要求条款——现行有效性人工核实，禁 LLM 记忆选择）、HJ 463-2009《规划环境影响评价技术导则 煤炭工业矿区总体规划》（与 HJ 464 并录——矿区层次跟踪评价适用性人工核实）、HJ 2.2、HJ 2.3、HJ 2.4、HJ 19（生态影响）、HJ 610-2016、HJ 964-2018、HJ 169-2018、GB 3095-2012、GB 3838-2002、GB/T 14848-2017、GB 3096-2008、GB 15618-2018、GB 18599-2020、GB 20426-2006——标准号一律从 standards_index 枚举，pending 条目禁补猜年份",
+  "generated": "2026-09-09",
+  "source": "回填对账定稿（docs/designs/coal-eia-report-v2.md「回填对账定稿」tracking 行：独立 stage 成立 2026-09-09 解禁——淖毛湖跟踪 544MB .doc 经分块 Range 文本提取攻破（529 页/46.3 万字），11 章骨架=总则/概况/规划实施及环境管理落实情况/生态环境演变趋势/对比评估与有效性分析/后续实施预测/措施优化调整/清洁生产跟踪/管理体系跟踪/公众意见/结论，与 planning 13 章骨架差异巨大，证实「回顾+跟踪为主体非修编论证」设计预判；n=1 标 LOW-MEDIUM、单样本过拟合标注保留）+ 全文 TOC 与正文双通道解析（t0spike/naomaohu-tracking-n.txt——环审〔2022〕10 号审查意见/发改能源〔2022〕1855 号批复脉络、现状规模 2700 万 t/a、先期开发六矿点 5000 万 t 实证）；consistency_contracts（XS1-XS3/XS8/XS11/XS12/EO3 通用条目扩员 + 本 stage 新增 XS20 措施有效性验证）与 data_expectations、standards_index 为合约 id/数据族/标准号唯一来源；形制对标 planning_eia.json（同属规划层次，13 章 77 节骨架对照——本 stage 11 章 47 节为跟踪型裁剪）",
+  "confidence_note": "LOW-MEDIUM（n=1 淖毛湖单样本）。单样本过拟合标注保留（回填对账定稿原文）：①11 章骨架整章集跟随本样本——其他矿区跟踪评价如并章/拆章（如演变趋势并入对比评估、清洁生产并入循环经济跟踪）当前无证据裁决，禁以本样本强行二分；②节级颗粒度（ch4 演变趋势 3 节/ch5 对比评估 8 节/ch6 后续预测 10 节）为本样本节集按语义归并的产物，外推即过拟合风险最高处；③「对比评估与有效性分析」章与「后续实施预测」章的先后为本样本序，语义匹配制下允许换序；④矿区混合井露（本样本 6 井田+露天为主）——沉陷预测节对井工矿点适用、露天矿点禁用（capability_boundaries）。二期 calibrate 补样本后逐条复核本标注。",
+  "chapter_order_policy": "order_free_with_semantic_match",
+  "order_policy_note": "章序不锁死（单样本序照录，语义匹配制——禁按章号匹配）：11 章按「总则→概况→实施落实→演变趋势→对比评估→后续预测→措施优化→清洁生产→管理体系→公众→结论」功能序排布；toc 校验按「无序必备集匹配+章标题语义相符」执行；合约激活按语义标题命中（consistency_contracts.activation_semantics）。",
+  "numbering_note": "节号/表号一律组装期按实际章序生成；本章内 sections 顺序即节序，正文跨节引用一律用节 id（如 ch5_S03）或语义标题，禁硬编码节号/表号。tables 字段只登记语义表名，表号由组装期编号体检统一赋予。本 stage 无概述/前言章（单样本事实：任务由来与规划脉络由 ch1_S01「跟踪评价的背景与任务由来」承载——与 planning/underground/openpit/post 的 ch0 结构不同，禁按他 stage 惯例补 ch0）。",
+  "layout_policy": {
+    "single_sample_skeleton": "单样本骨架：无条件章（11/11 必备）、无互换章；ch5_S08 存在问题及整改、ch7 各节为数据在场型内容节（无整节开关）。",
+    "conditional_sections": "ch6_S08 敏感目标专项影响分析=d8_data_driven 条件节（sensitive_targets aspect=后续开发 登记驱动——本样本伊吾胡杨林沙漠公园/淖毛湖镇/线性工程三专节型；无此类登记目标时节 ABSENT）。",
+    "absent_semantics": "条件节缺席记 status=ABSENT（stage 条件开关驱动），不计 fail。"
+  },
+  "capability_boundaries": [
+    "跟踪评价预测章=后续实施情景预测（修编后新/适时开发矿点+已建矿点扩能），禁复演原规划环评预测；原规划环评预测比对属 ch5 对比评估（转录禁重算）",
+    "沉陷预测（formula:subsidence 概率积分法冻结）仅适用后续实施的井工矿点；露天矿点禁用（井露判别沿用回填对账类别化——露天生态挖损走 ch6_S03 生态章口径）",
+    "环境质量变化趋势/生态演变=多年监测序列+遥感解译黑箱成果转录（{{TABLE:monitoring.trends}}/{{TABLE:eco}} source 登记），禁重算趋势；生态承载力/演变为判定类计算，禁冒充预测类计算",
+    "承载力与容量=capacity:water/capacity:air 冻结输出+阈值判定；标准限值 tier1 人工核实（websearch-unreliable 红线）",
+    "air_screen 仅矿区采暖锅炉点源；露天矿扬尘面源走 reference_values 源强+类比来源标注，禁硬套点源模型（planning/openpit 边界沿用）",
+    "跟踪评价结论不替代规划修编审批——ch7_S04 修编建议定位为建议性表述，判定词禁使用「同意/批准」类许可语"
+  ],
+  "caliber_note": "口径标签与类比来源标注规则见 references/consistency_contracts.json caliber_labels。跟踪评价特例三条：①规划双口径=原规划（2012 批复 29.00Mt/a）vs 修编规划（2022 批复 143.00Mt/a）——XS1 绑 revision_before_after，矿区面积/井田数/矿点构成同步双口径；②开发强度三口径=规划量/已实施量/现状量（ch3_S03 对比表逐列带标签）；③现状基准年全书唯一（本样本现状规模 27.00Mt/a 基准——ch1_S01 声明，各章引用禁另立基准）。",
+  "front_matter": {
+    "mode": "表单渲染（脚本直出，零 LLM）——无概述/前言章（单样本事实：任务由来归 ch1_S01）",
+    "outer_cover": [
+      "矿区名",
+      "报告题名（矿区名+总体规划（修编）环境影响跟踪评价报告书）",
+      "编制单位",
+      "年月"
+    ],
+    "signature_page_fixed_order": [
+      "委托单位",
+      "编制单位",
+      "编制单位资质证书号",
+      "项目负责",
+      "编写人员",
+      "审核",
+      "提交日期"
+    ],
+    "toc": {
+      "levels": 3,
+      "page_column": "留空——Word 排版阶段由引用自动填充（D11），Markdown 禁写页码"
+    },
+    "attachment_lists": [
+      "附图目录",
+      "附件目录（矿区总体规划批复/规划环评审查意见/各矿点环评批复与验收/产能核定文件/取水许可/生态恢复治理验收材料/公众参与材料/监测报告等用户文档清单——只列名不转录）"
+    ]
+  },
+  "forms": {
+    "project": {
+      "file": "00_project.json",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch2",
+        "ch3",
+        "ch11"
+      ],
+      "note": "规划跟踪评价身份族（矿区级单一事实源）——plan_doc_no/plan_eia_doc_no 为双口径 XS1 的文号锚点",
+      "fields": [
+        {
+          "name": "plan_name",
+          "label": "规划名称",
+          "type": "string",
+          "required": true,
+          "note": "全局 canon（含修编轮次后缀——如「××矿区总体规划（修编）」）"
+        },
+        {
+          "name": "report_type",
+          "label": "报告类型",
+          "type": "enum:规划环境影响跟踪评价报告书",
+          "required": true
+        },
+        {
+          "name": "stage",
+          "label": "评价类别",
+          "type": "enum:跟踪评价",
+          "required": true
+        },
+        {
+          "name": "plan_doc_no",
+          "label": "规划批复文号",
+          "type": "string",
+          "required": true,
+          "note": "门 1 人工比对，禁生成（修编规划以现行批复为准，原批复文号走 revision 口径备注）"
+        },
+        {
+          "name": "plan_eia_doc_no",
+          "label": "规划环评审查意见文号",
+          "type": "string",
+          "required": true,
+          "note": "门 1 人工比对——跟踪评价的法定对照基准"
+        },
+        {
+          "name": "tracking_scope",
+          "label": "跟踪评价范围",
+          "type": "string",
+          "required": true,
+          "note": "与现行规划范围一致性声明（不一致须说明缘由——门 1）"
+        },
+        {
+          "name": "base_year",
+          "label": "现状基准年",
+          "type": "string",
+          "required": true,
+          "note": "全书唯一基准年声明（禁另立基准——caliber_note ③）"
+        },
+        {
+          "name": "current_scale",
+          "label": "现状生产规模",
+          "type": "string",
+          "required": true,
+          "note": "万 t/a（已建成矿点合计——开发强度三口径的「现状量」锚点）"
+        },
+        {
+          "name": "commissioning_unit",
+          "label": "委托单位",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "undertaking_unit",
+          "label": "编制单位",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "compiler_qualification",
+          "label": "编制单位资质证书号",
+          "type": "string",
+          "required": false,
+          "note": "门 1 人工比对"
+        },
+        {
+          "name": "evaluation_period",
+          "label": "评价时段",
+          "type": "string",
+          "required": true,
+          "note": "回顾时段（原规划批复至今）+后续实施时段（至规划水平年）"
+        }
+      ]
+    },
+    "mine_plan": {
+      "file": "01_mine_plan.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch3",
+        "ch6",
+        "ch7",
+        "ch11"
+      ],
+      "note": "复用 planning_eia.json#forms.mine_plan 字段清单——跟踪评价语境：total_scale_mt_a_before=原规划规模、total_scale_mt_a_after=修编规划规模（29.00→143.00Mt/a 实证，XS1 revision_before_after）；mines[]=规划矿点清单（含实施状态域：已建成|在建|先期开发|适时开发|暂缓——井露属性随矿点登记，驱动 ch6_S02 沉陷公式适用性）",
+      "fields": []
+    },
+    "sensitive_targets": {
+      "file": "02_sensitive_targets.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch6",
+        "ch11"
+      ],
+      "note": "复用 planning_eia.json#forms.sensitive_targets 字段清单与 XS2 纪律——跟踪评价语境 aspect 增「后续开发」域（伊吾胡杨林沙漠公园/淖毛湖镇/线性工程走廊型——驱动 ch6_S08 专节槽）",
+      "fields": []
+    },
+    "standards_confirm": {
+      "file": "03_standards_confirm.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch4",
+        "ch5",
+        "ch6",
+        "ch9",
+        "ch11"
+      ],
+      "note": "复用 planning_eia.json#forms.standards_confirm 字段清单与 gate1 体检（XS3）",
+      "fields": []
+    },
+    "legal_basis": {
+      "file": "04_legal_basis.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch1",
+        "ch3"
+      ],
+      "note": "复用 planning_eia.json#forms.legal_basis 字段清单——增录规划批复与规划环评审查意见两类法定依据",
+      "fields": []
+    },
+    "geography": {
+      "file": "06_geography.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch2",
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.geography 字段清单——坐标极值禁手算",
+      "fields": []
+    },
+    "monitoring": {
+      "file": "07_monitoring.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch4",
+        "ch5",
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.monitoring 字段清单——跟踪评价核心域：trends[]=多年例行监测序列（大气/地表水/地下水/声逐要素，监测年份区间登记——ch4 趋势分析主数据族）",
+      "fields": []
+    },
+    "eco": {
+      "file": "08_eco.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch4",
+        "ch5",
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.eco 字段清单——跟踪评价语境：land_use[]/vegetation[] 多期遥感解译序列（多时相对照），解译成果 source+期次登记禁重算",
+      "fields": []
+    },
+    "economy": {
+      "file": "09_economy.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch2"
+      ],
+      "note": "复用 planning_eia.json#forms.economy 字段清单",
+      "fields": []
+    },
+    "retrospective": {
+      "file": "10_retrospective.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch3",
+        "ch5",
+        "ch9"
+      ],
+      "note": "复用 planning_eia.json#forms.retrospective 字段清单——跟踪评价语境：development_history=规划实施历程、approvals_fulfilled=规划环评审查意见要求逐项落实清单（环审〔2022〕10 号条款对照型）、facilities_effect=已建成矿点环保设施台账",
+      "fields": []
+    },
+    "measure_effectiveness": {
+      "file": "40_measure_effectiveness.json",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch7",
+        "ch11"
+      ],
+      "note": "措施有效性验证族（本 stage 新增——XS20 唯一事实源；post_eia 跨 stage 复用本族）。淖毛湖 ch5 逐要素「对比评估及环保措施有效性分析」节域（5.1-5.7）+5.8 问题整改节域实证",
+      "fields": [
+        {
+          "name": "items",
+          "label": "措施有效性判定账",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "element 环境要素",
+            "measure 措施名（规划环评措施清单 canon）",
+            "implemented 落实状态（已建成|在建|未实施）",
+            "effectiveness 有效性判定（四档枚举）",
+            "evidence 判定依据（监测序列/台账/现场调查——来源必录）",
+            "adjustment 优化调整措施（非「有效」判定必填——在场断言）",
+            "caliber 口径标签"
+          ],
+          "note": "每要素每措施 1 行；effectiveness 四档枚举 canon=有效|基本有效|需优化调整|未达预期（首现措辞全书逐字一致——XS20）"
+        },
+        {
+          "name": "problems",
+          "label": "问题及整改清单",
+          "type": "array<object>",
+          "required": true,
+          "fields": [
+            "problem 问题描述",
+            "element 归属要素",
+            "rectification 整改措施",
+            "deadline 整改时限"
+          ],
+          "note": "淖毛湖 5.8「矿区开发过程中存在的环境问题及整改措施」节域——ch7 优化调整的源清单（禁孤儿问题）"
+        }
+      ]
+    },
+    "subsidence_params": {
+      "file": "12_subsidence_params.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.subsidence_params 字段清单（q/b/tan_beta/param_source/per_mine[]）——仅后续实施井工矿点使用（formula:subsidence 输入；露天矿点禁用），param_source 三值枚举纪律沿用",
+      "fields": []
+    },
+    "water": {
+      "file": "21_water.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch3",
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.water 字段清单——跟踪评价语境：balance=矿区现状供/需/回用/排水台账（承载力量核对账域，XS12）",
+      "fields": []
+    },
+    "air": {
+      "file": "22_air.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.air 字段清单——capacity_inputs=后续实施总量控制域（ch6_S10 容量与总量分析输入）",
+      "fields": []
+    },
+    "noise": {
+      "file": "23_noise.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.noise 字段清单",
+      "fields": []
+    },
+    "solid_waste": {
+      "file": "24_solid_waste.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.solid_waste 字段清单——矿区固废产生-利用-处置台账域",
+      "fields": []
+    },
+    "soil_score": {
+      "file": "25_soil_score.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch5"
+      ],
+      "note": "复用 planning_eia.json#forms.soil_score 字段清单——淖毛湖 5.7 土壤环境质量回顾性评价节域",
+      "fields": []
+    },
+    "risk": {
+      "file": "26_risk.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch6"
+      ],
+      "note": "复用 planning_eia.json#forms.risk 字段清单——跟踪评价语境=后续开发矿点风险源识别域",
+      "fields": []
+    },
+    "measures": {
+      "file": "28_measures.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch5",
+        "ch7"
+      ],
+      "note": "复用 planning_eia.json#forms.measures 字段清单——跟踪评价语境：原规划环评措施清单 canon（有效性判定的 measure 域真源）+优化调整后措施回写域",
+      "fields": []
+    },
+    "eco_restoration": {
+      "file": "30_eco_restoration.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch7"
+      ],
+      "note": "复用 planning_eia.json#forms.eco_restoration 字段清单——砾幕层恢复/排土场风蚀治理域（淖毛湖风蚀监测试验区实证域）",
+      "fields": []
+    },
+    "monitoring_plan": {
+      "file": "31_monitoring_plan.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch9"
+      ],
+      "note": "复用 planning_eia.json#forms.monitoring_plan 字段清单——后续实施跟踪监测要求域",
+      "fields": []
+    },
+    "cleaner_production": {
+      "file": "32_cleaner_production.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch8"
+      ],
+      "note": "复用 planning_eia.json#forms.cleaner_production 字段清单——淖毛湖 8.1「矿区现有生产煤矿清洁生产分析」节域",
+      "fields": []
+    },
+    "circular_economy": {
+      "file": "33_circular_economy.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch8"
+      ],
+      "note": "复用 planning_eia.json#forms.circular_economy 字段清单——淖毛湖 8.2「后续矿区循环经济发展建议」节域",
+      "fields": []
+    },
+    "public_participation": {
+      "file": "34_public_participation.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch10"
+      ],
+      "note": "复用 planning_eia.json#forms.public_participation 字段清单——跟踪评价语境增投诉台账域（opinions[] 含规划实施期间环保投诉处理实况——XS11）",
+      "fields": []
+    },
+    "tracking_plan": {
+      "file": "35_tracking_plan.json",
+      "reuse": "planning_eia",
+      "required": true,
+      "chapters": [
+        "ch9"
+      ],
+      "note": "复用 planning_eia.json#forms.tracking_plan 字段清单（periods/contents/schedule/next_eia_focus[]）——后续跟踪评价安排域（next_eia_focus=下一轮跟踪/规划修编环评关注重点）",
+      "fields": []
+    },
+    "projection": {
+      "file": "99_projection.json",
+      "reuse": "planning_eia",
+      "required": false,
+      "chapters": [
+        "ch11"
+      ],
+      "note": "非用户表单——波间要点包（管线生成，ingest 拒收）；ch11 结论唯一事实源（EO3）",
+      "fields": [],
+      "projection": true
+    }
+  },
+  "chapters": {
+    "ch1": {
+      "title": "总则",
+      "mode": "跟踪评价任务组稿；难度 2/中（规划脉络+双口径声明+门 1 文号比对主战场）",
+      "sample_anchor": "淖毛湖 1.1-1.6（1.1 规划跟踪评价的背景与任务由来/1.2 评价依据/1.3 评价目的/1.4 评价重点及方法/1.5 环境功能区划与评价标准/1.6 环境保护目标）——任务由来在本章承载（无 ch0 前言，单样本事实）",
+      "key_elements": [
+        "任务由来段承载规划脉络三环：原规划批复（发改能源〔2012〕2131 号）→修编规划批复（发改能源〔2022〕1855 号）→修编规划环评审查意见（环审〔2022〕10 号）——文号逐字人工比对（门 1 禁生成）",
+        "双口径总声明：原规划 29.00Mt/a vs 修编规划 143.00Mt/a（{{SLOT:mine_plan.total_scale_mt_a_before}}/{{SLOT:mine_plan.total_scale_mt_a_after}}——XS1 绑 revision_before_after）；现状基准年与现状规模（{{SLOT:project.base_year}}/{{SLOT:project.current_scale}}）全书唯一",
+        "评价标准三元组表直渲（{{TABLE:standards_confirm}}——门 1 标准号体检 XS3）；保护目标清单=XS2 事实源"
+      ],
+      "writing_patterns": [
+        "文号/标准号/坐标逐项人工比对（门 1）",
+        "条款类小节固定模板直出",
+        "禁引入规划清单外矿点实体"
+      ],
+      "tables": [
+        "环境功能区划与评价标准表",
+        "环境保护目标表"
+      ],
+      "std_refs": [
+        "HJ 130-2019",
+        "HJ 463-2009"
+      ],
+      "forms": [
+        "project",
+        "mine_plan",
+        "legal_basis",
+        "standards_confirm",
+        "sensitive_targets"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS2",
+        "XS3"
+      ],
+      "sections": [
+        {
+          "id": "ch1_S01",
+          "title": "规划跟踪评价的背景与任务由来",
+          "elements": [
+            "脉络段：原规划批复→修编规划批复→修编规划环评审查意见三环（{{SLOT:project.plan_doc_no}}、{{SLOT:project.plan_eia_doc_no}}——门 1 逐字比对）。",
+            "双口径段：原规划规模/面积/矿点构成 vs 修编规划（{{SLOT:mine_plan.total_scale_mt_a_before}}→{{SLOT:mine_plan.total_scale_mt_a_after}}、{{SLOT:mine_plan.minefield_area_km2_before}}→{{SLOT:mine_plan.minefield_area_km2_after}}——XS1 双口径带标签）。",
+            "现状段：跟踪评价现状基准与现状规模（{{SLOT:project.base_year}}、{{SLOT:project.current_scale}}——本样本 27.00Mt/a 型）。",
+            "委托段：跟踪评价任务委托（{{SLOT:project.undertaking_unit}} 承担、{{SLOT:project.evaluation_period}} 时段）。",
+            "收束句：任务由来收束，过渡到评价依据。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.plan_doc_no}}",
+              "{{SLOT:project.plan_eia_doc_no}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_before}}",
+              "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+              "{{SLOT:mine_plan.minefield_area_km2_before}}",
+              "{{SLOT:mine_plan.minefield_area_km2_after}}",
+              "{{SLOT:project.base_year}}",
+              "{{SLOT:project.current_scale}}",
+              "{{SLOT:project.undertaking_unit}}",
+              "{{SLOT:project.evaluation_period}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:project.plan_doc_no}}",
+            "{{SLOT:project.plan_eia_doc_no}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_before}}",
+            "{{SLOT:mine_plan.total_scale_mt_a_after}}",
+            "{{SLOT:mine_plan.minefield_area_km2_before}}",
+            "{{SLOT:mine_plan.minefield_area_km2_after}}",
+            "{{SLOT:project.base_year}}",
+            "{{SLOT:project.current_scale}}",
+            "{{SLOT:project.undertaking_unit}}",
+            "{{SLOT:project.evaluation_period}}"
+          ],
+          "role": "驱动源",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch1_S02",
+          "title": "评价依据",
+          "elements": [
+            "六分类段：任务/法律法规/规章/技术规范/相关规划/技术资料（{{TABLE:legal_basis}} 直渲）——增录规划批复与审查意见两类法定依据。",
+            "法规纪律：仅从 standards_index 枚举，pending 条目禁补猜（红线）。",
+            "收束句：引出评价标准。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:legal_basis}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:legal_basis}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch1_S03",
+          "title": "评价目的与评价重点、方法",
+          "elements": [
+            "目的段：跟踪评价法定任务（查规划实施与环境管理落实、评估环境影响与措施有效性、预测后续实施影响、提出优化调整建议——methodology 承载）。",
+            "重点段：以「对比评估+有效性验证+后续预测」为主线（{{TABLE:measure_effectiveness.items}} 判定域预告——与 ch5 对应）。",
+            "收束句：过渡到评价标准。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch1_S04",
+          "title": "环境功能区划与评价标准",
+          "elements": [
+            "功能区划段：逐要素功能区类别（{{TABLE:standards_confirm}} function_zone 字段——戈壁荒漠区划按地方区划登记）。",
+            "三元组表：要素-功能区/质量类别-标准号直渲（{{TABLE:standards_confirm}}——门 1 标准号非空+格式体检 XS3）。",
+            "收束句：标准体系统领趋势评价与后续预测判定。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:standards_confirm}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:standards_confirm}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch1_S05",
+          "title": "环境保护目标",
+          "elements": [
+            "清单表：{{TABLE:sensitive_targets}} 直渲（名称/类别/保护等级/位置关系/距离/影响途径/保护要求——XS2）。",
+            "逐目标分述：按登记名逐项成段（登记全称为 canon）。",
+            "收束句：目标清单统领对比评估与后续预测受体主线，过渡到区域概况。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS2"
+          ]
+        }
+      ]
+    },
+    "ch2": {
+      "title": "区域自然、社会及经济概况",
+      "mode": "背景组稿；难度 1/低（geography/economy 表单直读——全 stage 最薄章）",
+      "sample_anchor": "淖毛湖 2.1-2.3（地理位置与交通/自然环境概况/社会经济概况）",
+      "key_elements": [
+        "区域本底直读，敏感目标不展开（归 ch1_S05）",
+        "气象与水系数据标年份序列与来源",
+        "三节型排布"
+      ],
+      "writing_patterns": [
+        "区域描述禁引入表单外实体",
+        "数据全部标注年份与来源"
+      ],
+      "tables": [
+        "区域社会经济概况表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "geography",
+        "economy"
+      ],
+      "formulas": [],
+      "contracts": [],
+      "sections": [
+        {
+          "id": "ch2_S01",
+          "title": "地理位置与交通",
+          "elements": [
+            "区位段：矿区地理坐标与行政区划/交通条件（{{SLOT:geography.location_text}}、{{SLOT:geography.transport}}——坐标极值禁手算）。",
+            "收束句：收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:geography.location_text}}",
+              "{{SLOT:geography.transport}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:geography.location_text}}",
+            "{{SLOT:geography.transport}}"
+          ],
+          "role": "受体"
+        },
+        {
+          "id": "ch2_S02",
+          "title": "自然环境概况",
+          "elements": [
+            "分部段：地形地貌/气候/水文地质/地表水系/植被土壤（{{SLOT:geography.topography}}、{{SLOT:geography.climate}}、{{SLOT:geography.hydrogeology}}——逐分部直读）。",
+            "收束句：收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:geography.topography}}",
+              "{{SLOT:geography.climate}}",
+              "{{SLOT:geography.hydrogeology}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:geography.topography}}",
+            "{{SLOT:geography.climate}}",
+            "{{SLOT:geography.hydrogeology}}"
+          ],
+          "role": "受体"
+        },
+        {
+          "id": "ch2_S03",
+          "title": "社会经济概况",
+          "elements": [
+            "分部段：行政区划/人口/经济结构/城镇与居民点（{{SLOT:economy.population}}、{{SLOT:economy.gdp}}——直读）。",
+            "收束句：区域概况收束，过渡到规划实施落实情况章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:economy.population}}",
+              "{{SLOT:economy.gdp}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:economy.population}}",
+            "{{SLOT:economy.gdp}}"
+          ],
+          "role": "受体"
+        }
+      ]
+    },
+    "ch3": {
+      "title": "规划实施及环境管理落实情况",
+      "mode": "落实情况复盘组稿；难度 3/中高（双口径开发强度对比=XS1 主锚点；审查意见逐条落实对照）",
+      "sample_anchor": "淖毛湖 3.1-3.4（3.1 规划（修编）背景以及规划内容/3.2 规划实施情况及变化情况/3.3 开发强度对比/3.4 环境管理要求落实情况）——规划内容 24 页+实施对照 42 页实证章",
+      "key_elements": [
+        "规划内容段=修编规划方案转录（矿点构成/规模/时序——{{TABLE:mine_plan.mines}} 实施状态域登记：已建成|在建|先期开发|适时开发|暂缓）",
+        "开发强度对比表=三口径（规划量/已实施量/现状量）逐列带标签（{{SLOT:project.current_scale}} 现状锚点——XS1）",
+        "环境管理落实=规划环评审查意见要求逐条对照（{{TABLE:retrospective.approvals_fulfilled}}——已落实/部分落实/未落实三态；未落实项必须挂原因与整改衔接→ch5_S08/ch7）"
+      ],
+      "writing_patterns": [
+        "矿点状态逐点登记（禁笼统表述）",
+        "三口径数值全槽位（表单/台账），禁手填",
+        "落实状态逐条可追溯（对照条款号）"
+      ],
+      "tables": [
+        "规划矿点构成与实施状态表",
+        "开发强度对比表（规划/已实施/现状）",
+        "规划环评审查意见要求落实情况对照表"
+      ],
+      "std_refs": [
+        "HJ 130-2019"
+      ],
+      "forms": [
+        "project",
+        "mine_plan",
+        "retrospective",
+        "legal_basis"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1"
+      ],
+      "sections": [
+        {
+          "id": "ch3_S01",
+          "title": "规划（修编）背景以及规划内容",
+          "elements": [
+            "背景段：修编缘由与边界调整（原规划→修编规划的调整要点——{{SLOT:mine_plan.minefield_area_km2_after}} 双口径）。",
+            "内容段：修编规划方案（矿点构成/规模/时序——{{TABLE:mine_plan.mines}} 全清单直渲，实施状态域逐点登记）。",
+            "收束句：规划内容收束，过渡到实施情况。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:mine_plan.minefield_area_km2_after}}",
+              "{{TABLE:mine_plan.mines}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:mine_plan.minefield_area_km2_after}}",
+            "{{TABLE:mine_plan.mines}}"
+          ],
+          "role": "驱动源",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch3_S02",
+          "title": "规划实施情况及变化情况",
+          "elements": [
+            "实施段：已建成/在建/先期开发矿点逐一对照（{{TABLE:mine_plan.mines}} 实施状态投影——淖毛湖型：已建成白石湖二号 1400 万 t/a+三号 1300 万 t/a）。",
+            "变化段：与规划方案的偏差及缘由（时序调整/规模变化——禁引入清单外矿点）。",
+            "收束句：过渡到开发强度对比。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:mine_plan.mines}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:mine_plan.mines}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch3_S03",
+          "title": "开发强度对比",
+          "elements": [
+            "对比表：规划量/已实施量/现状量三口径（{{SLOT:project.current_scale}} 现状锚点、{{TABLE:eco.land_use}} 占地对比域——XS1 exact_match 逐列带标签）。",
+            "解读段：开发强度与规划符合性判读（超实施/滞后实施逐项说明）。",
+            "收束句：对比收束，过渡到管理落实。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:project.current_scale}}",
+              "{{TABLE:eco.land_use}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{SLOT:project.current_scale}}",
+            "{{TABLE:eco.land_use}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch3_S04",
+          "title": "环境管理要求落实情况",
+          "elements": [
+            "对照段：规划环评审查意见要求逐条落实状态（{{TABLE:retrospective.approvals_fulfilled}} 直渲——已落实/部分落实/未落实三态；未落实项挂原因并衔接 ch5_S08 问题清单与 ch7 整改）。",
+            "收束句：落实对照收束，过渡到演变趋势章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective.approvals_fulfilled}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective.approvals_fulfilled}}"
+          ],
+          "role": "推演"
+        }
+      ]
+    },
+    "ch4": {
+      "title": "区域生态环境演变趋势",
+      "mode": "长序列趋势组稿；难度 4/高（全 stage 页幅最大章——本样本 160 页：环境质量 86 页+生态 68 页+承载力 6 页）",
+      "sample_anchor": "淖毛湖 4.1-4.3（4.1 环境质量变化趋势分析 86 页/4.2 生态系统结构与功能变化趋势分析 68 页/4.3 生态环境承载力变化 6 页）",
+      "key_elements": [
+        "趋势=多年例行监测序列转录（{{TABLE:monitoring.trends}} 逐要素——监测年份区间/点位/因子登记，禁重算趋势）",
+        "生态演变=多期遥感解译对照（{{TABLE:eco.land_use}}、{{TABLE:eco.vegetation}} 多时相序列——解译期次与 source 登记，本样本砾幕层/风蚀试验区成果为特色域）",
+        "承载力=水资源承载核算（{{TABLE:water.balance}} 现状台账+capacity:water 冻结输出——XS12；承载力结论三档：有承载余量|接近承载上限|超载）"
+      ],
+      "writing_patterns": [
+        "序列数据逐项标 source 与年份区间",
+        "趋势结论与序列一致（禁两套结论）",
+        "承载力阈值判定走合约禁自造阈值"
+      ],
+      "tables": [
+        "环境质量历年监测序列汇总表",
+        "生态系统结构与功能变化对照表",
+        "水资源承载力核算表"
+      ],
+      "std_refs": [
+        "HJ 19",
+        "HJ 610-2016"
+      ],
+      "forms": [
+        "monitoring",
+        "eco",
+        "water",
+        "standards_confirm",
+        "geography"
+      ],
+      "formulas": [
+        "capacity:water"
+      ],
+      "contracts": [
+        "XS12"
+      ],
+      "sections": [
+        {
+          "id": "ch4_S01",
+          "title": "环境质量变化趋势分析",
+          "elements": [
+            "大气段：TSP/PM10/PM2.5 等多年序列与趋势（{{TABLE:monitoring.trends}} 大气域——本样本颗粒物实时监测点序列型；XS3 限值对照）。",
+            "水段：地表水/地下水多年序列与趋势（{{TABLE:monitoring.trends}} 水域——水位动态+水质演化）。",
+            "声段：区域声环境趋势（{{TABLE:monitoring.trends}} 声域——如序列缺失声明不具趋势条件，禁硬凑）。",
+            "收束句：质量趋势收束，过渡到生态演变。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.trends}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.trends}}"
+          ],
+          "role": "受体",
+          "contracts": [
+            "XS3"
+          ]
+        },
+        {
+          "id": "ch4_S02",
+          "title": "生态系统结构与功能变化趋势分析",
+          "elements": [
+            "演变段：土地利用/植被覆盖度/景观格局多期对照（{{TABLE:eco.land_use}}、{{TABLE:eco.vegetation}}、{{SLOT:eco.landscape_indices}}——多期解译成果转录禁重算）。",
+            "成因段：开发活动与气候驱动归因（挖损压占/风蚀/砾幕层破坏——定性归因禁虚构量化贡献）。",
+            "收束句：生态演变收束，过渡到承载力。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco.land_use}}",
+              "{{TABLE:eco.vegetation}}",
+              "{{SLOT:eco.landscape_indices}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:eco.land_use}}",
+            "{{TABLE:eco.vegetation}}",
+            "{{SLOT:eco.landscape_indices}}"
+          ],
+          "role": "受体"
+        },
+        {
+          "id": "ch4_S03",
+          "title": "生态环境承载力变化",
+          "elements": [
+            "水资段：水资源承载力现状与变化（{{TABLE:water.balance}} 现状台账+{{SLOT:capacity:water.capacity}} 型冻结输出——XS12；capacity:water 公式承载）。",
+            "结论段：承载力三档判定（有承载余量|接近上限|超载——与后续预测章 ch6_S09 承载力结论同源禁两套）。",
+            "收束句：本章收束，过渡到对比评估章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:water.balance}}",
+              "{{SLOT:capacity:water.capacity}}"
+            ],
+            "formulas": [
+              "capacity:water"
+            ],
+            "contracts": [
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{TABLE:water.balance}}",
+            "{{SLOT:capacity:water.capacity}}"
+          ],
+          "role": "推演",
+          "formulas": [
+            "capacity:water"
+          ],
+          "contracts": [
+            "XS12"
+          ]
+        }
+      ]
+    },
+    "ch5": {
+      "title": "矿区开发环境影响对比评估与有效性分析",
+      "mode": "对比评估核心章；难度 4/高（逐要素「环评预期 vs 实际」对照+措施有效性判定——XS20 主战场）",
+      "sample_anchor": "淖毛湖 5.1-5.8（5.1 大气/5.2 地表水/5.3 地下水/5.4 声/5.5 固废/5.6 生态/5.7 土壤回顾/5.8 存在问题及整改——七要素逐节「对比评估及环保措施有效性分析」+问题整改收口节）",
+      "key_elements": [
+        "逐要素对比评估三段式：环评阶段预测/要求 vs 实际监测实况 vs 偏差判读（实测走 {{TABLE:monitoring.trends}}/{{TABLE:monitoring.items}}，禁重算预测）",
+        "措施有效性判定走 XS20：{{TABLE:measure_effectiveness.items}} 逐措施四档判定（有效|基本有效|需优化调整|未达预期——首现 canon）；非「有效」判定必须挂 {{TABLE:measure_effectiveness.problems}} 整改条目（在场断言，禁只判不改）",
+        "土壤回顾性评价节（{{TABLE:soil_score}}——淖毛湖 5.7 型；评价类型=生态影响型口径维持）",
+        "问题整改收口节=ch7 优化调整的源清单（{{TABLE:measure_effectiveness.problems}} 全域——ch7 禁出现清单外全新问题）"
+      ],
+      "writing_patterns": [
+        "对比三段式逐要素排布（预期/实际/判读）",
+        "有效性判定词四档 canon 一致",
+        "问题清单逐条归属要素与整改去向"
+      ],
+      "tables": [
+        "逐要素环评要求与实际对照表",
+        "环保措施有效性判定表",
+        "矿区开发环境问题及整改措施清单"
+      ],
+      "std_refs": [
+        "HJ 2.2",
+        "HJ 2.3",
+        "HJ 2.4",
+        "HJ 19",
+        "HJ 964-2018"
+      ],
+      "forms": [
+        "monitoring",
+        "eco",
+        "water",
+        "air",
+        "noise",
+        "solid_waste",
+        "soil_score",
+        "measures",
+        "measure_effectiveness",
+        "retrospective",
+        "standards_confirm",
+        "mine_plan"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3",
+        "XS12",
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch5_S01",
+          "title": "大气环境影响对比评估及环保措施有效性分析",
+          "elements": [
+            "对比段：原规划环评大气预测/要求 vs 实际质量变化（{{TABLE:monitoring.trends}} 大气域对照——XS3 限值绑定）。",
+            "有效性段：大气防治措施逐项判定（{{TABLE:measure_effectiveness.items}} element=大气——XS20 四档；排土场风蚀/砾幕层恢复措施实证域）。",
+            "收束句：大气收束，过渡到地表水。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.trends}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3",
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.trends}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS3",
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S02",
+          "title": "地表水环境影响对比评估及环保措施有效性分析",
+          "elements": [
+            "对比段：原环评地表水要求 vs 水质/水量实况（{{TABLE:monitoring.trends}} 地表水域、{{TABLE:water.balance}} 台账——XS12）。",
+            "有效性段：水污染防治措施逐项判定（{{TABLE:measure_effectiveness.items}} element=地表水——XS20）。",
+            "收束句：地表水收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.trends}}",
+              "{{TABLE:water.balance}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS12",
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.trends}}",
+            "{{TABLE:water.balance}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS12",
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S03",
+          "title": "地下水防治措施有效性分析",
+          "elements": [
+            "对比段：含水层/水位/水质实况 vs 原环评结论（{{TABLE:monitoring.trends}} 地下水域——XS12）。",
+            "有效性段：地下水防治措施逐项判定（{{TABLE:measure_effectiveness.items}} element=地下水——XS20；本样本以疏干防控与跟踪监测实效为主域）。",
+            "收束句：地下水收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.trends}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS12",
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.trends}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS12",
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S04",
+          "title": "声环境影响对比评估及环保措施有效性分析",
+          "elements": [
+            "对比段：声环境实况 vs 原环评结论（{{TABLE:monitoring.trends}} 声域——XS3）。",
+            "有效性段：噪声防治措施逐项判定（{{TABLE:measure_effectiveness.items}} element=声——XS20）。",
+            "收束句：声收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.trends}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3",
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.trends}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS3",
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S05",
+          "title": "固体废物影响调查及环保措施有效性分析",
+          "elements": [
+            "调查段：矿区固废产生-利用-处置实况（{{TABLE:solid_waste.disposal_sites}}、{{TABLE:solid_waste.hazardous}} 台账域）。",
+            "有效性段：固废措施逐项判定（{{TABLE:measure_effectiveness.items}} element=固废——XS20）。",
+            "收束句：固废收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:solid_waste.disposal_sites}}",
+              "{{TABLE:solid_waste.hazardous}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:solid_waste.disposal_sites}}",
+            "{{TABLE:solid_waste.hazardous}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S06",
+          "title": "生态环境影响对比评估及环保措施有效性分析",
+          "elements": [
+            "对比段：生态现状演变 vs 原环评预测/要求（{{TABLE:eco.land_use}} 多期对照、{{TABLE:eco_restoration.zoning}} 治理实况——{{TABLE:monitoring.trends}} 生态域监测）。",
+            "有效性段：生态整治措施逐项判定（{{TABLE:measure_effectiveness.items}} element=生态——XS20；砾幕层恢复/风蚀治理实效为本样本特色证据域）。",
+            "收束句：生态收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco.land_use}}",
+              "{{TABLE:eco_restoration.zoning}}",
+              "{{TABLE:monitoring.trends}}",
+              "{{TABLE:measure_effectiveness.items}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:eco.land_use}}",
+            "{{TABLE:eco_restoration.zoning}}",
+            "{{TABLE:monitoring.trends}}",
+            "{{TABLE:measure_effectiveness.items}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S07",
+          "title": "土壤环境质量回顾性评价",
+          "elements": [
+            "回顾段：土壤环境质量回顾评价（{{TABLE:soil_score.factors}}、{{SLOT:soil_score.total_score}}——XS3 限值绑定；评价类型=生态影响型口径维持）。",
+            "收束句：土壤收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:soil_score.factors}}",
+              "{{SLOT:soil_score.total_score}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3",
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:soil_score.factors}}",
+            "{{SLOT:soil_score.total_score}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS3",
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch5_S08",
+          "title": "矿区开发过程中存在的环境问题及整改措施",
+          "elements": [
+            "问题段：七要素有效性判定中非「有效」项+管理落实未完成项逐条归集（{{TABLE:measure_effectiveness.problems}} 全域——与 ch3_S04 未落实项对账；禁清单外全新问题）。",
+            "整改段：逐问题整改措施与时限（{{TABLE:measure_effectiveness.problems}} rectification/deadline 域——ch7 优化调整的源清单）。",
+            "收束句：问题收口，过渡到后续实施预测章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.problems}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.problems}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS20"
+          ]
+        }
+      ]
+    },
+    "ch6": {
+      "title": "矿区总体规划后续实施环境影响预测与评价",
+      "mode": "后续情景预测组稿；难度 4/高（新情景预测——与 ch5 对比评估的「回顾」语义相对；井露分轨预测）",
+      "sample_anchor": "淖毛湖 6.1-6.16（后续开发方案/沉陷/生态/地下水/地表水/大气/固废/声/土壤/胡杨林沙漠公园/淖毛湖镇/线性工程/风险/水资源承载力/大气容量与总量/地表水容量与总量——16 节按要素归并为 10 节：固废+声并节、土壤并入要素节、两容量并节、敏感目标专节独立）",
+      "key_elements": [
+        "后续方案段=适时开发矿点清单与开发强度（{{TABLE:mine_plan.mines}} 先期/适时/暂缓状态域——XS1 同源禁两套矿点清单）",
+        "沉陷预测仅适用后续井工矿点（{{TABLE:subsidence_params}}+{{SLOT:subsidence.W_max}} 型冻结输出——露天矿点禁用概率积分法）",
+        "敏感目标专节=data 驱动（{{TABLE:sensitive_targets}} aspect=后续开发——本样本伊吾胡杨林沙漠公园/淖毛湖镇/线性工程三专节型）",
+        "容量与总量=capacity:air/capacity:water 冻结输出+总量控制分析（XS8）"
+      ],
+      "writing_patterns": [
+        "预测参数逐项标 source（设计/勘察/规划）",
+        "井露分轨：沉陷公式只挂井工矿点",
+        "预测结论禁替代修编审批表述"
+      ],
+      "tables": [
+        "后续实施开发方案表",
+        "后续实施环境影响预测汇总表",
+        "环境容量与总量控制分析表"
+      ],
+      "std_refs": [
+        "HJ 19",
+        "HJ 610-2016",
+        "HJ 2.2",
+        "HJ 2.3",
+        "HJ 2.4",
+        "HJ 964-2018",
+        "HJ 169-2018"
+      ],
+      "forms": [
+        "mine_plan",
+        "sensitive_targets",
+        "subsidence_params",
+        "eco",
+        "water",
+        "air",
+        "noise",
+        "solid_waste",
+        "risk",
+        "measures",
+        "monitoring",
+        "geography"
+      ],
+      "formulas": [
+        "subsidence",
+        "air_screen",
+        "noise",
+        "capacity:air",
+        "capacity:water"
+      ],
+      "contracts": [
+        "XS1",
+        "XS2",
+        "XS8",
+        "XS12",
+        "EO3"
+      ],
+      "sections": [
+        {
+          "id": "ch6_S01",
+          "title": "规划后续实施开发方案及开发强度",
+          "elements": [
+            "方案段：后续实施矿点构成与时序（{{TABLE:mine_plan.mines}} 先期/适时/暂缓域——{{SLOT:project.plan_doc_no}} 现行规划锚点）。",
+            "强度段：后续开发强度与布局（与 ch3_S03 三口径口径衔接——XS1 同源）。",
+            "收束句：方案收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:mine_plan.mines}}",
+              "{{SLOT:project.plan_doc_no}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{TABLE:mine_plan.mines}}",
+            "{{SLOT:project.plan_doc_no}}"
+          ],
+          "role": "驱动源",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch6_S02",
+          "title": "规划后续开发地表沉陷影响预测与评价",
+          "elements": [
+            "适用段：后续实施井工矿点清单（{{TABLE:mine_plan.mines}} 井工域——露天矿点声明不适用概率积分法）。",
+            "预测段：逐矿点沉陷预计（{{TABLE:subsidence_params}} 参数域 param_source 三值枚举——{{SLOT:subsidence.W_max}}、{{SLOT:subsidence.subsidence_area_km2}} 冻结输出）。",
+            "评价段：沉陷影响范围与受体验核（{{TABLE:sensitive_targets}} 沉陷域对照——XS2）。",
+            "收束句：沉陷收束，过渡到生态。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:mine_plan.mines}}",
+              "{{TABLE:subsidence_params}}",
+              "{{SLOT:subsidence.W_max}}",
+              "{{SLOT:subsidence.subsidence_area_km2}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [
+              "subsidence"
+            ],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:mine_plan.mines}}",
+            "{{TABLE:subsidence_params}}",
+            "{{SLOT:subsidence.W_max}}",
+            "{{SLOT:subsidence.subsidence_area_km2}}",
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "响应",
+          "formulas": [
+            "subsidence"
+          ],
+          "contracts": [
+            "XS2"
+          ]
+        },
+        {
+          "id": "ch6_S03",
+          "title": "规划后续开发生态环境影响评价",
+          "elements": [
+            "预测段：后续挖损压占/风蚀影响预测（{{TABLE:eco.land_use}} 占地口径外推——{{TABLE:mine_plan.mines}} 露天域工程量转录，禁公式硬凑）。",
+            "评价段：生态影响评价与恢复目标衔接（{{TABLE:eco_restoration.zoning}} 治理衔接域）。",
+            "收束句：生态收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco.land_use}}",
+              "{{TABLE:mine_plan.mines}}",
+              "{{TABLE:eco_restoration.zoning}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:eco.land_use}}",
+            "{{TABLE:mine_plan.mines}}",
+            "{{TABLE:eco_restoration.zoning}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch6_S04",
+          "title": "规划后续开发地下水环境影响预测与评价",
+          "elements": [
+            "预测段：后续矿点疏干/涌水量与水位影响（{{TABLE:water.balance}} 后续情景域——勘察参数转录，禁重算勘察成果）。",
+            "评价段：对含水层与水源保护目标影响（{{TABLE:sensitive_targets}} 疏干域——XS2/XS12）。",
+            "收束句：地下水收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:water.balance}}",
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2",
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{TABLE:water.balance}}",
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS2",
+            "XS12"
+          ]
+        },
+        {
+          "id": "ch6_S05",
+          "title": "规划后续开发地表水环境影响预测与评价",
+          "elements": [
+            "预测段：后续废水量与受纳水体影响（{{TABLE:water.balance}} 后续情景——回用优先口径）。",
+            "收束句：地表水收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:water.balance}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{TABLE:water.balance}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS12"
+          ]
+        },
+        {
+          "id": "ch6_S06",
+          "title": "规划后续开发大气环境影响预测与评价",
+          "elements": [
+            "面源段：后续露天矿点扬尘影响（{{TABLE:air.dust_source_strength}} 型类比域——面源口径禁点源公式）。",
+            "点源段：矿区锅炉点源影响（{{SLOT:air_screen.max_ground_conc}} 冻结输出——air_screen 点源边界声明）。",
+            "收束句：大气收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:air.dust_source_strength}}",
+              "{{SLOT:air_screen.max_ground_conc}}"
+            ],
+            "formulas": [
+              "air_screen"
+            ],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:air.dust_source_strength}}",
+            "{{SLOT:air_screen.max_ground_conc}}"
+          ],
+          "role": "响应",
+          "formulas": [
+            "air_screen"
+          ]
+        },
+        {
+          "id": "ch6_S07",
+          "title": "规划后续开发固体废物与声环境影响预测与评价",
+          "elements": [
+            "固废段：后续剥离物/矸石产生与消纳（{{TABLE:solid_waste.disposal_sites}} 后续域）。",
+            "声段：后续矿点噪声影响（{{SLOT:noise.point_level}}/{{SLOT:noise.line_level}} 冻结输出——noise 公式预测域）。",
+            "收束句：固废声收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:solid_waste.disposal_sites}}",
+              "{{SLOT:noise.point_level}}",
+              "{{SLOT:noise.line_level}}"
+            ],
+            "formulas": [
+              "noise"
+            ],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:solid_waste.disposal_sites}}",
+            "{{SLOT:noise.point_level}}",
+            "{{SLOT:noise.line_level}}"
+          ],
+          "role": "响应",
+          "formulas": [
+            "noise"
+          ]
+        },
+        {
+          "id": "ch6_S08",
+          "title": "规划后续开发对重点敏感目标的影响分析",
+          "elements": [
+            "专节段：登记目标逐项专项分析（{{TABLE:sensitive_targets}} aspect=后续开发 逐目标成节——本样本伊吾胡杨林沙漠公园/淖毛湖镇/线性工程三专节型；无此类登记时节 ABSENT）。",
+            "收束句：敏感目标收束，过渡到风险与承载力。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:sensitive_targets}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS2"
+            ]
+          },
+          "slots": [
+            "{{TABLE:sensitive_targets}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS2"
+          ],
+          "conditional": {
+            "driver": "sensitive_targets（aspect=后续开发）",
+            "type": "d8_data_driven",
+            "title_rule": "节标题=「规划后续开发对{登记名}的影响分析」逐目标生成（本骨架标题为淖毛湖型默认归并）",
+            "on_absent": "ABSENT（无 aspect=后续开发 登记目标时整节 ABSENT）"
+          }
+        },
+        {
+          "id": "ch6_S09",
+          "title": "规划后续开发环境风险分析与水资源承载力分析",
+          "elements": [
+            "风险段：后续矿点风险源识别与影响简析（{{TABLE:risk.eco_risk_sources}} 后续域——识别级深度，禁冒充导则级风险评价）。",
+            "承载段：水资源承载力结论（{{SLOT:capacity:water.capacity}} 型冻结输出——与 ch4_S03 判定同源禁两套；XS12）。",
+            "收束句：风险承载收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:risk.eco_risk_sources}}",
+              "{{SLOT:capacity:water.capacity}}"
+            ],
+            "formulas": [
+              "capacity:water"
+            ],
+            "contracts": [
+              "XS12"
+            ]
+          },
+          "slots": [
+            "{{TABLE:risk.eco_risk_sources}}",
+            "{{SLOT:capacity:water.capacity}}"
+          ],
+          "role": "响应",
+          "formulas": [
+            "capacity:water"
+          ],
+          "contracts": [
+            "XS12"
+          ]
+        },
+        {
+          "id": "ch6_S10",
+          "title": "矿区环境容量分析与总量控制",
+          "elements": [
+            "容量段：大气/地表水环境容量核算（{{SLOT:capacity:air.capacity}} 型、{{SLOT:capacity:water.capacity}} 型冻结输出——capacity:air/capacity:water 公式承载）。",
+            "总量段：后续实施总量控制建议（{{TABLE:air.capacity_inputs}} 后续域——XS8 接账口径；结论性表述禁替代审批）。",
+            "收束句：容量总量收束，过渡到措施优化调整章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:capacity:air.capacity}}",
+              "{{SLOT:capacity:water.capacity}}",
+              "{{TABLE:air.capacity_inputs}}"
+            ],
+            "formulas": [
+              "capacity:air",
+              "capacity:water"
+            ],
+            "contracts": [
+              "XS8"
+            ]
+          },
+          "slots": [
+            "{{SLOT:capacity:air.capacity}}",
+            "{{SLOT:capacity:water.capacity}}",
+            "{{TABLE:air.capacity_inputs}}"
+          ],
+          "role": "推演",
+          "formulas": [
+            "capacity:air",
+            "capacity:water"
+          ],
+          "contracts": [
+            "XS8"
+          ]
+        }
+      ]
+    },
+    "ch7": {
+      "title": "后续生态环境保护措施及优化调整建议",
+      "mode": "措施优化组稿；难度 3/中（ch5 问题清单全量响应——XS20 目标侧收口）",
+      "sample_anchor": "淖毛湖 7.1-7.11（生态综合整治 7.1/大气 7.2/水 7.3/声 7.4/固废 7.5/土壤 7.6/线性工程 7.7/优化调整建议 7.8/总规修编建议 7.9/后续煤矿减缓措施 7.10/先期及适时开发项目环境准入 7.11——11 节按要素归并为 4 节）",
+      "key_elements": [
+        "整改响应段：{{TABLE:measure_effectiveness.problems}} 清单逐条响应（ch5_S08 源清单外全新问题=章级门 FAIL——XS20 反向断言）",
+        "措施分域：生态整治（{{TABLE:eco_restoration.zoning}}）+污染控制（{{TABLE:measures}} 各域）+线性工程减缓",
+        "优化调整与环境准入=建议性表述（{{TABLE:tracking_plan.next_eia_focus}} 下一轮跟踪关注域——禁许可类判定词）"
+      ],
+      "writing_patterns": [
+        "问题-措施一一对应（双清单对账）",
+        "措施逐条可执行（时限/责任域登记）",
+        "准入要求逐矿点（禁全矿笼统表述）"
+      ],
+      "tables": [
+        "环境问题整改与措施优化对照表",
+        "后续实施优化调整建议表",
+        "先期及适时开发项目环境准入要求表"
+      ],
+      "std_refs": [
+        "HJ 130-2019",
+        "HJ 19"
+      ],
+      "forms": [
+        "measure_effectiveness",
+        "measures",
+        "eco_restoration",
+        "monitoring_plan",
+        "tracking_plan",
+        "mine_plan"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS20"
+      ],
+      "sections": [
+        {
+          "id": "ch7_S01",
+          "title": "矿区生态环境综合整治措施",
+          "elements": [
+            "整治段：生态整治与土壤保护措施（{{TABLE:eco_restoration.zoning}}、{{TABLE:measures.eco}}——ch5_S06/S07 判定响应域；砾幕层恢复延续域）。",
+            "收束句：生态整治收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:eco_restoration.zoning}}",
+              "{{TABLE:measures.eco}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:eco_restoration.zoning}}",
+            "{{TABLE:measures.eco}}"
+          ],
+          "role": "响应"
+        },
+        {
+          "id": "ch7_S02",
+          "title": "矿区污染控制措施",
+          "elements": [
+            "分域段：大气/地表水/地下水/声/固废污染控制措施（{{TABLE:measures.air}}/{{TABLE:measures.water}}/{{TABLE:measures.noise}}/{{TABLE:measures.solid_waste}}——ch5_S01~S05 判定响应域；{{TABLE:measure_effectiveness.problems}} 对应整改条目逐条在场）。",
+            "收束句：污染控制收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures.air}}",
+              "{{TABLE:measures.water}}",
+              "{{TABLE:measures.noise}}",
+              "{{TABLE:measures.solid_waste}}",
+              "{{TABLE:measure_effectiveness.problems}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measures.air}}",
+            "{{TABLE:measures.water}}",
+            "{{TABLE:measures.noise}}",
+            "{{TABLE:measures.solid_waste}}",
+            "{{TABLE:measure_effectiveness.problems}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS20"
+          ]
+        },
+        {
+          "id": "ch7_S03",
+          "title": "线性工程环境影响减缓措施",
+          "elements": [
+            "减缓段：铁路/道路/管线走廊减缓措施（本样本 7.7 节域——走廊类措施单列）。",
+            "收束句：减缓收束。"
+          ],
+          "uses": {
+            "slots": [],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [],
+          "role": "响应"
+        },
+        {
+          "id": "ch7_S04",
+          "title": "规划后续实施优化调整建议与环境准入",
+          "elements": [
+            "优化段：规模/布局/时序优化调整建议（{{TABLE:tracking_plan.next_eia_focus}} 关注域——建议性表述，禁许可类判定词）。",
+            "准入段：先期及适时开发项目环境准入要求（逐矿点列准入条件——本样本 7.11 节域；修编建议并入本段——7.9 型）。",
+            "收束句：本章收束，过渡到清洁生产跟踪章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:tracking_plan.next_eia_focus}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:tracking_plan.next_eia_focus}}"
+          ],
+          "role": "推演",
+          "contracts": [
+            "XS20"
+          ]
+        }
+      ]
+    },
+    "ch8": {
+      "title": "矿区清洁生产与循环经济跟踪评价",
+      "mode": "跟踪评价组稿；难度 1/低（对标表+建议域）",
+      "sample_anchor": "淖毛湖 8.1-8.2（8.1 矿区现有生产煤矿清洁生产分析/8.2 后续矿区循环经济发展建议）",
+      "key_elements": [
+        "对标=现有生产煤矿逐矿对标（{{TABLE:cleaner_production.benchmarks}}——对标表逐项禁自造基准）",
+        "循环经济建议域=后续矿区层面（{{TABLE:circular_economy}} 矿区级口径）"
+      ],
+      "writing_patterns": [
+        "对标表逐项直渲禁自造基准",
+        "建议性表述"
+      ],
+      "tables": [
+        "清洁生产对标表",
+        "循环经济发展建议一览表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "cleaner_production",
+        "circular_economy"
+      ],
+      "formulas": [],
+      "contracts": [],
+      "sections": [
+        {
+          "id": "ch8_S01",
+          "title": "矿区现有生产煤矿清洁生产分析",
+          "elements": [
+            "对标段：现有生产煤矿清洁生产水平对标（{{TABLE:cleaner_production.benchmarks}} 直渲——逐矿点对标结论）。",
+            "收束句：清洁生产收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:cleaner_production.benchmarks}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:cleaner_production.benchmarks}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch8_S02",
+          "title": "后续矿区循环经济发展建议",
+          "elements": [
+            "建议段：矿区级循环经济产业链建议（{{TABLE:circular_economy.industry_chain}}、{{SLOT:circular_economy.mine_water_reuse}} 矿区回用域）。",
+            "收束句：本章收束，过渡到管理体系跟踪章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:circular_economy.industry_chain}}",
+              "{{SLOT:circular_economy.mine_water_reuse}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:circular_economy.industry_chain}}",
+            "{{SLOT:circular_economy.mine_water_reuse}}"
+          ],
+          "role": "响应"
+        }
+      ]
+    },
+    "ch9": {
+      "title": "矿区环境管理体系跟踪评价",
+      "mode": "管理体系跟踪组稿；难度 1/低",
+      "sample_anchor": "淖毛湖 9.1-9.3（9.1 环境管理体系建设现状/9.2 矿区环境管理机构、制度落实情况/9.3 规划后续实施环境管理与跟踪监测要求）",
+      "key_elements": [
+        "现状=体系与机构台账直读（{{TABLE:retrospective.facilities_effect}} 管理域）",
+        "跟踪监测要求={{TABLE:monitoring_plan.plans}}/{{TABLE:tracking_plan.contents}} 双域（后续监测+下一轮跟踪安排）"
+      ],
+      "writing_patterns": [
+        "现状台账直读",
+        "跟踪要求逐项可执行"
+      ],
+      "tables": [
+        "环境管理体系跟踪一览表",
+        "后续跟踪监测要求表"
+      ],
+      "std_refs": [
+        "HJ 130-2019"
+      ],
+      "forms": [
+        "retrospective",
+        "monitoring_plan",
+        "tracking_plan",
+        "standards_confirm"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS3"
+      ],
+      "sections": [
+        {
+          "id": "ch9_S01",
+          "title": "环境管理体系建设现状",
+          "elements": [
+            "现状段：矿区环境管理体系与机构建设实况（{{SLOT:retrospective.three_simultaneous}} 管理域——台账直读）。",
+            "收束句：现状收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:retrospective.three_simultaneous}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{SLOT:retrospective.three_simultaneous}}"
+          ],
+          "role": "受体"
+        },
+        {
+          "id": "ch9_S02",
+          "title": "矿区环境管理机构与制度落实情况",
+          "elements": [
+            "落实段：机构设置/制度执行/台账记录实况（{{TABLE:retrospective.facilities_effect}} 管理域——与 ch3_S04 落实对照衔接）。",
+            "收束句：落实收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:retrospective.facilities_effect}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:retrospective.facilities_effect}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch9_S03",
+          "title": "规划后续实施环境管理与跟踪监测要求",
+          "elements": [
+            "管理段：后续环境管理要求（{{TABLE:measures.mgmt}} 管理域）。",
+            "监测段：后续跟踪监测计划（{{TABLE:monitoring_plan.plans}}——执行标准绑 {{TABLE:standards_confirm}} XS3）。",
+            "跟踪安排段：下一轮跟踪评价/规划修编环评安排（{{TABLE:tracking_plan.periods}}、{{TABLE:tracking_plan.next_eia_focus}}）。",
+            "收束句：本章收束，过渡到公众意见调查章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measures.mgmt}}",
+              "{{TABLE:monitoring_plan.plans}}",
+              "{{TABLE:standards_confirm}}",
+              "{{TABLE:tracking_plan.periods}}",
+              "{{TABLE:tracking_plan.next_eia_focus}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measures.mgmt}}",
+            "{{TABLE:monitoring_plan.plans}}",
+            "{{TABLE:standards_confirm}}",
+            "{{TABLE:tracking_plan.periods}}",
+            "{{TABLE:tracking_plan.next_eia_focus}}"
+          ],
+          "role": "响应",
+          "contracts": [
+            "XS3"
+          ]
+        }
+      ]
+    },
+    "ch10": {
+      "title": "公众意见调查",
+      "mode": "公参组稿；难度 1/低（公参台账直读+计数 canon XS11）",
+      "sample_anchor": "淖毛湖 10.1-10.3（10.1 公众参与目的/10.2 规划实施期间公众参与调查/10.3 规划实施期间公众环保投诉情况调查）——投诉台账域为跟踪评价特色",
+      "key_elements": [
+        "参与过程与计数=公参台账（{{TABLE:public_participation.rounds}}、{{SLOT:public_participation.questionnaires}}——计数 XS11 全书唯一）",
+        "投诉处理=实施期间投诉台账（{{TABLE:public_participation.opinions}} 含投诉处理实况域——逐条处理状态登记）"
+      ],
+      "writing_patterns": [
+        "公参计数 canon 逐字一致",
+        "投诉逐条处理状态登记"
+      ],
+      "tables": [
+        "公众意见调查汇总表",
+        "公众投诉与处理情况一览表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "public_participation"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS11"
+      ],
+      "sections": [
+        {
+          "id": "ch10_S01",
+          "title": "公众参与目的与实施过程",
+          "elements": [
+            "过程段：跟踪评价公参组织与实施（{{TABLE:public_participation.rounds}} 直渲——对象/方式/时段）。",
+            "收束句：过程收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:public_participation.rounds}}"
+            ],
+            "formulas": [],
+            "contracts": []
+          },
+          "slots": [
+            "{{TABLE:public_participation.rounds}}"
+          ],
+          "role": "推演"
+        },
+        {
+          "id": "ch10_S02",
+          "title": "公众意见与环保投诉调查结论",
+          "elements": [
+            "意见段：意见统计与采纳结论（{{SLOT:public_participation.questionnaires}}、{{TABLE:public_participation.opinions}}——计数 XS11 canon）。",
+            "投诉段：规划实施期间环保投诉与处理实况（{{TABLE:public_participation.opinions}} 投诉域——逐条处理状态）。",
+            "收束句：本章收束，过渡到结论与建议章。"
+          ],
+          "uses": {
+            "slots": [
+              "{{SLOT:public_participation.questionnaires}}",
+              "{{TABLE:public_participation.opinions}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS11"
+            ]
+          },
+          "slots": [
+            "{{SLOT:public_participation.questionnaires}}",
+            "{{TABLE:public_participation.opinions}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS11"
+          ]
+        }
+      ]
+    },
+    "ch11": {
+      "title": "结论与建议",
+      "mode": "投影收束组稿；难度 2/中（五线结论归一：实施落实/质量趋势/后续影响/措施有效性/公参）",
+      "sample_anchor": "淖毛湖 11.1-11.8（11.1 规划实施情况及开发强度/11.2 区域环境质量及变化趋势/11.3 后续开发环境影响评价/11.4 预防和减轻不良环境影响的对策措施/11.5 清洁生产与循环经济分析结论/11.6 公众意见调查结论/11.7 规划后续实施优化调整建议/11.8 总体评价结论——8 节按投影归并为 3 节）",
+      "key_elements": [
+        "实施与强度结论=ch3 投影（{{SLOT:project.current_scale}}/{{TABLE:mine_plan.mines}} 状态域——XS1 复现禁两套数）",
+        "质量趋势与后续影响结论=ch4/ch6 投影（趋势判读+EO3 预测→结论呼应）",
+        "总体判定词=XS10 canon（跟踪评价口径：规划后续实施环境可行总体判定——首现以本章为准，禁许可类表述）"
+      ],
+      "writing_patterns": [
+        "结论数值全槽位（投影），禁手填",
+        "一要素一段禁展开",
+        "判定词 canon 一致（XS10/XS12）"
+      ],
+      "tables": [
+        "跟踪评价结论汇总表"
+      ],
+      "std_refs": [],
+      "forms": [
+        "project",
+        "mine_plan",
+        "measure_effectiveness",
+        "public_participation",
+        "cleaner_production",
+        "projection"
+      ],
+      "formulas": [],
+      "contracts": [
+        "XS1",
+        "XS3",
+        "XS8",
+        "XS10",
+        "XS12",
+        "XS20",
+        "EO3"
+      ],
+      "sections": [
+        {
+          "id": "ch11_S01",
+          "title": "规划实施情况与开发强度结论",
+          "elements": [
+            "实施段：规划实施落实与开发强度结论（{{TABLE:mine_plan.mines}} 状态域+{{SLOT:project.current_scale}}——XS1 复现）。",
+            "收束句：实施结论收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:mine_plan.mines}}",
+              "{{SLOT:project.current_scale}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS1"
+            ]
+          },
+          "slots": [
+            "{{TABLE:mine_plan.mines}}",
+            "{{SLOT:project.current_scale}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS1"
+          ]
+        },
+        {
+          "id": "ch11_S02",
+          "title": "环境质量变化趋势与后续开发环境影响评价结论",
+          "elements": [
+            "趋势段：环境质量与生态演变结论（ch4 投影——{{TABLE:monitoring.trends}} 判读复现）。",
+            "后续段：后续实施环境影响评价结论（ch6 投影——EO3 预测→结论呼应；承载力 XS12 与容量 XS8 结论复现）。",
+            "收束句：影响结论收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:monitoring.trends}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS3",
+              "XS8",
+              "XS12",
+              "EO3"
+            ]
+          },
+          "slots": [
+            "{{TABLE:monitoring.trends}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS3",
+            "XS8",
+            "XS12",
+            "EO3"
+          ]
+        },
+        {
+          "id": "ch11_S03",
+          "title": "措施有效性、公参结论与总体评价结论",
+          "elements": [
+            "有效性段：措施有效性总判词与优化调整要点（{{TABLE:measure_effectiveness.items}} 判定域投影——XS20 复现）。",
+            "公参段：公众意见调查结论（{{SLOT:public_participation.questionnaires}} 计数——XS11 复现）。",
+            "总体判定句：跟踪评价总体判定词（XS10 canon——「规划后续实施从环境保护角度可行」型，与 ch7 建议表述同向；禁许可类措辞）。",
+            "建议段：优化调整与下一轮跟踪建议（{{TABLE:tracking_plan.next_eia_focus}} 投影）。",
+            "收束句：全书收束。"
+          ],
+          "uses": {
+            "slots": [
+              "{{TABLE:measure_effectiveness.items}}",
+              "{{SLOT:public_participation.questionnaires}}",
+              "{{TABLE:tracking_plan.next_eia_focus}}"
+            ],
+            "formulas": [],
+            "contracts": [
+              "XS10",
+              "XS11",
+              "XS20"
+            ]
+          },
+          "slots": [
+            "{{TABLE:measure_effectiveness.items}}",
+            "{{SLOT:public_participation.questionnaires}}",
+            "{{TABLE:tracking_plan.next_eia_focus}}"
+          ],
+          "role": "收束",
+          "contracts": [
+            "XS10",
+            "XS11",
+            "XS20"
+          ]
+        }
+      ]
+    }
+  }
+}

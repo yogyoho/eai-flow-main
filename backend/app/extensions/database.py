@@ -665,6 +665,31 @@ async def migrate_db() -> None:
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_law_template_relations_law ON law_template_relations(law_id)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_law_template_relations_template ON law_template_relations(template_id)"))
 
+        # --- Knowledge Factory: 样例库 kf_samples（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP——
+        #     样例台账 + 入库向导；提取流水线/质检面板留二期）。file_hash 唯一 = 台账去重轴，
+        #     import-bulk 幂等 upsert 依赖此约束 ---
+        await conn.execute(
+            text("""
+            CREATE TABLE IF NOT EXISTS kf_samples (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                title VARCHAR(500) NOT NULL,
+                source_path VARCHAR(1000) NOT NULL,
+                file_hash VARCHAR(64) NOT NULL,
+                scenario VARCHAR(50) NOT NULL DEFAULT 'other',
+                variant VARCHAR(200),
+                status VARCHAR(30) NOT NULL DEFAULT 'filename_only',
+                confidence DOUBLE PRECISION,
+                notes TEXT,
+                created_by UUID REFERENCES users(id),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT uq_kf_samples_file_hash UNIQUE (file_hash)
+            )
+        """)
+        )
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_kf_samples_scenario ON kf_samples(scenario)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_kf_samples_status ON kf_samples(status)"))
+
         # --- AIDocument: doc_type and file reference fields ---
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS doc_type VARCHAR(20) DEFAULT 'document' NOT NULL"))
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS file_ref_path VARCHAR(500)"))

@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { usePermission } from "@/core/permissions";
 import {
   SampleReports,
+  SampleLibrary,
   TemplateExtraction,
   TemplateEditor,
   LawLibrary,
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 // EAI-CUSTOM: 每个 tab 映射到子页面权限点（/api/permissions/me 的 pages），供 canPage 过滤
 const NAV_ITEMS: { id: TabId; label: string; pageId: string }[] = [
   { id: "reports", label: "样例管理", pageId: "kf:page:sample" },
+  { id: "samples", label: "样例库", pageId: "kf:page:samples" }, // EAI-CUSTOM: coal-eia v2 BS3 MVP
   { id: "extraction", label: "模板抽取", pageId: "kf:page:extraction" },
   { id: "editor", label: "模板编辑", pageId: "kf:page:template" },
   { id: "law", label: "法规标准", pageId: "kf:page:law" },
@@ -37,6 +39,7 @@ const NAV_ITEMS: { id: TabId; label: string; pageId: string }[] = [
 
 const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   reports: SampleReports,
+  samples: SampleLibrary,
   extraction: TemplateExtraction,
   editor: TemplateEditor,
   law: LawLibrary,

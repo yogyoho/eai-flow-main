@@ -1,0 +1,297 @@
+{
+  "kind": "kf_samples_seed",
+  "source": "docs/designs/coal-eia-report-v2.md 回填对账定稿（2026-09-06 全证据终审）+ t0spike txt 提取（2026-09-09）",
+  "comment": "25 独立作品（规划 13 + 项目井工 6 + 项目露天 docx 2 + 后评价 2 + 复垦 1 + 跟踪 1）+ 露天 txt 增补 3（吐鲁东/马朗/红沙泉）+ 加密片段 1 = 29 条；幂等键=file_hash（sha256(source_path) 伪哈希）",
+  "items": [
+    {
+      "title": "横城矿区总体规划（修编）环境影响报告书（报批版 2021.1）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/横城矿区总体规划（修编）环评——报告书报批版2021.1.docx",
+      "file_hash": "95e6942fe3def6b5cb17ff0aa02753b254fc2ea9bb8e922f24d4f560f5af5a16",
+      "scenario": "planning_eia",
+      "variant": "修编·报批版（井工 4 井田+3 后备区，含回顾+跟踪章）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "13 章功能骨架深标杆；ch6 人工走查覆盖判定通过（2026-09-06）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "新疆伊宁矿区北区总体规划（修编）环境影响报告书（报批版 2024.1.30）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/1新疆伊宁矿区北区总体规划（修编）环境影响报告书 报批版 2024.1.30.docx",
+      "file_hash": "74dd3af40afdb99853017c08e19b26115a8c453a4e4944b2c971b19fdb26f6c6",
+      "scenario": "planning_eia",
+      "variant": "修编·报批版（井工为主：19 井（矿）田=新建 16+改扩建 1）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "回顾/识别互换离群样本。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "淖毛湖矿区总体规划（修编）环评（2025.11）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/淖毛湖总规（修编）环评2025.11.docx",
+      "file_hash": "1ae69ff86d907884722bedeb861f17f121962e0365c5c822bcc3963f4752c826",
+      "scenario": "planning_eia",
+      "variant": "修编（2022 总规+环评批复后再修编，衔接跟踪评价）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "2025.11 本 vs 报批版同源性留观（删除/退役前必核）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "牙克石-五九煤田矿区总体规划环评（2026）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/文字——牙克石-五九煤田矿区总规环评2026.docx",
+      "file_hash": "3af596abf03325166a894230fe8c56c7a6bdd0469d3da7605f7bfdd29f28eee7",
+      "scenario": "planning_eia",
+      "variant": "修编重新编报（2013 原环评经环审〔2013〕85 号审查）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "双口径样本：原/本次规划规模并存（234.17/232.62 km² 类），口径标签绑定实证。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "伊敏矿区规划环评（最终归档版·蓝白皮）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/5伊敏矿区规划环评（最终归档版）-出版，2套，蓝白皮.docx",
+      "file_hash": "627cbe68cdbf6e6864973a28429a33e428163e5f2d7fef412f2a7352df8ffc8f",
+      "scenario": "planning_eia",
+      "variant": "修编（露天为主：修编后 11 矿=7 露天+4 井工，含整章回顾）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "井露通用骨架证据（露天为主 3 份同骨架）；双口径 144/154 Mt/a 实证。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "韦州矿区总体规划（修编）环评报告书（2022.12.7）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/评审会后修改韦州矿区总体规划（修编）环评报告书 2022.12.7.docx",
+      "file_hash": "a5da8f9d2e805a13c6b8734d52610c1c6b3eac0b49643aa2cae7a861f6f09c84",
+      "scenario": "planning_eia",
+      "variant": "评审会后修改版",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "灵台矿区总体规划（修编）环境影响报告书",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/3灵台矿区总体规划（修编）环境影响报告书 .docx",
+      "file_hash": "3aaca1293687bcee5298f1b04e5820aaa76184465168b8f711c3d34f14a3e7c3",
+      "scenario": "planning_eia",
+      "variant": "修编",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "五间房矿区总体规划环评（报批终稿）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/五间房矿区总体规划环评-报批-终稿.docx",
+      "file_hash": "fdba1378e3de1365ad3d22604224f8998305e68e5eeb804f79bf22ab2bacea1e",
+      "scenario": "planning_eia",
+      "variant": "报批终稿（15 章 legacy 排布）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "2018 版 15 章章号离群样本（槽位制证据）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "纳林希里矿区总体规划环境影响报告书（审查会后修改·补充）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/4纳林希里矿区总体规划环境影响报告书-审查会后修改(补充).docx",
+      "file_hash": "737307e9e9a7398e373046d25303a85f76176d5264ae14d929b173aec30b3fbb",
+      "scenario": "planning_eia",
+      "variant": "审查会后修改（12 章并回顾性评价）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "12 章并回顾章号离群样本。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "华亭矿区总体规划修编环境影响报告书（正式评审会后修改 2024.11）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/华亭矿区总体规划修编环境影响报告书-正式评审会后修改2024.11（加一句话在铁路建成前，采用清洁能源运输车运输）.docx",
+      "file_hash": "95f854342116f830f35ae5ea2f0431c327925324d8db2f0ccb54ede92ccfcbba",
+      "scenario": "planning_eia",
+      "variant": "正式评审会后修改版",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "黑龙江省鹤岗煤炭矿区总体规划（修编）环境影响报告书",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/黑龙江省鹤岗煤炭矿区总体规划（修编）环境影响报告书 .docx",
+      "file_hash": "cfea9cd0f008713ddb6a8ebebf2258e520b7c588042caf7ff30b558e88f35e32",
+      "scenario": "planning_eia",
+      "variant": "修编",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "回填验证全对齐补强样本（planning HIGH n=14 定稿凭据）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "鄂尔多斯市东胜煤田高头窑矿区总体规划修编环境影响报告书（2023.5）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/鄂尔多斯市东胜煤田高头窑矿区总体规划修编环境影响报告书2023.5.docx",
+      "file_hash": "7e8df8b09ee55edd20992784fd6b0e24595d7f362b523f544639096137fd0e3e",
+      "scenario": "planning_eia",
+      "variant": "修编",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "三塘湖矿区规划环评修编（报批版）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/三塘湖矿区规划环评修编（报批版）-0c6e43497902.docx",
+      "file_hash": "38a56d4195cb81d199c03d7e0fb839fae8a7254af2a6fe5076bef56018a2d702",
+      "scenario": "planning_eia",
+      "variant": "修编·报批版",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "回顾/识别互换离群样本之二。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "月儿湾矿井及选煤厂环评报告书（宁夏通达新能源·排版版）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/(WPS)宁夏通达新能源集团有限公司月儿湾矿井及选煤厂环评报告书-排版.docx",
+      "file_hash": "d4798d3e71254fe49b2f13cfb7a2221ba848d7f546beeb00b8a25300f3e7221d",
+      "scenario": "project_eia_underground",
+      "variant": "井工新建 1.80Mt/a（矿井+配套选煤厂）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "九龙川矿井及选煤厂 800 万吨项目环评（2026.2）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/九龙川矿井及选煤厂800万吨项目环评-2026.2.docx",
+      "file_hash": "306299cf2b1e2e79718bc038b4b54af5dec4669d9b4302fb4eaba045fee91e48",
+      "scenario": "project_eia_underground",
+      "variant": "井工新建 8.0Mt/a（报批前公示已完成）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "巴拉素调整建设规模项目环境影响报告书（报批版 2023.4）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/巴拉素调整建设规模项目环境影响报告书（报批版）-2023.4.docx",
+      "file_hash": "ae274364fbf22428c7318d32c4ba2df2fd21e7abfeca9e6c6e35b3cc0b4f05c6",
+      "scenario": "project_eia_underground",
+      "variant": "井工改扩建·保供产能核增 10.0→15.0Mt/a",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "改扩建双轨样本：已采取措施回顾+调整后预测。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "郭家台二号煤矿环评报告（报批稿 5.15）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/郭家台二号煤矿环评报告（报批稿）5.15.docx",
+      "file_hash": "9b9dffe93b95a33e219dca13543dfe7af099f94eecc95b1de212973ed860c4b0",
+      "scenario": "project_eia_underground",
+      "variant": "井工新建 0.90Mt/a（+3.60Mt/a 群矿型选煤厂）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "活鸡兔煤矿改扩建项目环评报告（2023.9）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/活鸡兔煤矿改扩建项目环评报告-2023.9.docx",
+      "file_hash": "9d9f7eeed41d1eac1e32d37a5d6c2679cc1c2b6b56999c01ce5ace0df8a4451f",
+      "scenario": "project_eia_underground",
+      "variant": "井工改扩建",
+      "status": "converted",
+      "confidence": 0.95,
+      "notes": ".doc 经 Word/WPS COM 转换成功（回填证据：.doc 转换通道实证）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "柠条塔矿井及选煤厂改扩建工程环境影响报告书（去颜色版）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/柠条塔矿井及选煤厂改扩建工程环境影响报告书 - 去颜色.docx",
+      "file_hash": "b990cbf055b1570280376ab7864bfef49ab9a799a103b003c544ba88bbfb6e05",
+      "scenario": "project_eia_underground",
+      "variant": "井工改扩建",
+      "status": "converted",
+      "confidence": 0.95,
+      "notes": ".doc 转换成功。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "伊泰煤矿（露天部分）及选煤厂 900 万吨环评（最终修改黑字版 2023.8）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/压缩_5最终修改黑字版 伊泰煤矿（露天部分）及选煤厂900万吨环评2023.8.docx",
+      "file_hash": "5a0f0ee04e62e0620348e232eb50798ed2b399b873f4ec1fcee1463c5a82a4b5",
+      "scenario": "project_eia_openpit",
+      "variant": "露天改扩建·规模调整 4.5→9.0Mt/a（在建未验收）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "分卷命名样本（露天部分）→跨卷合约豁免实证。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "伊敏 3500 万吨环评项目（最终 2024.4.11）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/伊敏3500万吨环评项目---最终2024.4.11.docx",
+      "file_hash": "5ec0ac67b2138abe16ab5e29037010fde677d57d238c8f34fa9b2c96f7cd1902",
+      "scenario": "project_eia_openpit",
+      "variant": "露天 35.0Mt/a",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "吐鲁东露天矿 230 万吨/年新建项目环境影响报告书（肃北德丰 2023.7）",
+      "source_path": "C:/Users/admin/AppData/Local/Temp/t0spike/tuludong.txt",
+      "file_hash": "d5edc4633f89000e5261ddc1d879ce184278651d5cf819af884e74fededab34c",
+      "scenario": "project_eia_openpit",
+      "variant": "露天新建 2.3Mt/a（工程编号 H405009BG）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "t0spike txt 全文提取（中煤科工北京华宇）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "马朗一号煤矿 1000 万吨/年项目环境影响报告书（批复版·伊吾广汇）",
+      "source_path": "C:/Users/admin/AppData/Local/Temp/t0spike/malang.txt",
+      "file_hash": "d23b99259f946a69d5c32dc6af842c1109af9bb7123aeb9dbb0389b18bef63bb",
+      "scenario": "project_eia_openpit",
+      "variant": "露天 10.0Mt/a（淖毛湖矿区）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "报批新建样本（t0spike txt 全文提取）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "红沙泉一号露天煤矿改扩建项目环境影响报告书（报批版·国能新疆）",
+      "source_path": "C:/Users/admin/AppData/Local/Temp/t0spike/hongshaquan.txt",
+      "file_hash": "e366aed7a5ffa263b30f911bf9bcccfbd6a358b5546297688466ee1afabd6060",
+      "scenario": "project_eia_openpit",
+      "variant": "露天改扩建 20.0Mt/a（西黑山矿区）",
+      "status": "parsed",
+      "confidence": 0.95,
+      "notes": "改扩建立项高频证据样本（t0spike txt 全文提取）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "白音华二号露天矿项目环境影响后评价报告书（2026.3）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/白音华二号露天矿项目环境影响后评价报告书-2026.3.docx",
+      "file_hash": "98ad65b866e71b560ab83cf9df56f37aefb863b82f0be2ef48c3f6da6dfd0b2f",
+      "scenario": "post_eia",
+      "variant": "露天矿生产期后评价·500→1500 万吨/年核增验证",
+      "status": "parsed",
+      "confidence": 0.7,
+      "notes": "16 章共核姊妹互证之一；章语义反转（验证而非预测）。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "白音华煤田三号露天矿项目环境影响后评价报告书（2021.10）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/白音华煤田三号露天矿项目环境影响后评价报告书-2021.10.docx",
+      "file_hash": "e02d0a972066a49fa189db871bb6c2583ceb01abcdf1a7c82323ffcb832369ec",
+      "scenario": "post_eia",
+      "variant": "露天矿生产期后评价（与二号姊妹互证）",
+      "status": "parsed",
+      "confidence": 0.7,
+      "notes": "同矿系姊妹——防过拟合标注保留。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "黑龙江省四季屯矿山地质环境保护与土地复垦方案报告书（报批版）",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/3.1黑龙江省四季屯矿山地质环境保护与土地复垦方案报告书（报批版）.docx",
+      "file_hash": "0425e53eb9b4517baf1871cdc02aba87d6291633edd5dadf0bb0c27995d85ec5",
+      "scenario": "reclamation_plan",
+      "variant": "井工新建首编（探矿权转采矿权）",
+      "status": "parsed",
+      "confidence": 0.3,
+      "notes": "回填裁决排除维持：独立技能骨架，不入环评 stage；公众参与章含个人信息明文→切片入库前必须脱敏。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "新疆哈密淖毛湖矿区总体规划（修编）环境影响跟踪评价报告书（2024.11）",
+      "source_path": "C:/Users/admin/AppData/Local/Temp/t0spike/naomaohu-tracking.txt",
+      "file_hash": "651545b3961b6a79000b61a672d6f7a4eb216ff0b33cd8ae337e61a03420f0f8",
+      "scenario": "tracking_eia",
+      "variant": "跟踪评价（11 章骨架，与 planning 13 章差异巨大）",
+      "status": "parsed",
+      "confidence": 0.45,
+      "notes": "544MB .doc 经分块 Range 文本提取攻破（529 页/46.3 万字/56s，绕开 SaveAs2 挂死点）；对比评估与有效性分析/措施优化调整为核心章。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    },
+    {
+      "title": "东胜煤田塔然高勒矿区总体规划（修编）环境质量现状监测（固体废物）.docx",
+      "source_path": "D:/18 辽宁创元/03 项目策划/01 中煤科工/knowledge/样例文件/内蒙古自治区东胜煤田塔然高勒矿区总体规划（修编）环境质量现状监测（固体废物2.docx",
+      "file_hash": "848b384b90dfb263bf80b7b3149c8e3ffaf119e9797fb0327be203e8bf8fb683",
+      "scenario": "other",
+      "variant": "规划环评专项监测片段",
+      "status": "encrypted",
+      "confidence": 0.1,
+      "notes": "UniDocSafe DRM 容器不可读（仅凭文件名推断）——入库向导 magic-byte 预检命中类别。file_hash=sha256(source_path) 伪哈希（台账定稿快照，真源文件不在仓库内）"
+    }
+  ]
+}
