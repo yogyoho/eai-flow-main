@@ -31,6 +31,16 @@ DOCX_HEADING_STYLE_RE = re.compile(r"^[Hh]eading(\d)$")  # M-8: docx 样式→�
 DOCX_NUM_STYLE_RE = re.compile(r"^(\d)$")
 W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
+# 脱敏引擎。边界口径沿用 bug-3061 教训(geo_samples/redactor.py): 中文语境禁 \b——Unicode 模式下
+# CJK 属 \w, \b 在「电话13800138000」这类紧邻汉字处永不成立; 信用代码加「至少含一字母」环视,
+# 防 18 位纯数字(身份证)被信用代码规则误吞。
+AMOUNT_RE = re.compile(r"[￥¥]?\s*\d{1,3}(?:[,，]\d{3})*(?:\.\d+)?\s*(?:万?元)")
+CREDIT_CODE_RE = re.compile(r"(?<![0-9A-Za-z])(?=[0-9A-HJ-NPQRTUWXY]*[A-HJ-NPQRTUWXY])[0-9A-HJ-NPQRTUWXY]{18}(?![0-9A-Za-z])")
+PHONE_RE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
+ID_CARD_RE = re.compile(r"(?<!\d)\d{17}[\dXx](?![0-9Xx])")
+# 残留扫描与自动模式同源: 金额侧覆盖「￥前缀」与「千分位数字+元/万元」两种形态(脱敏漏跑/漏配即抓)。
+RESIDUAL_RE = re.compile(r"[￥¥]\s*\d|万元|\d{1,3}(?:[,，]\d{3})*(?:\.\d+)?\s*万?元|(?<!\d)1[3-9]\d{9}(?!\d)|(?<!\d)\d{17}[\dXx](?![0-9Xx])")
+
 
 def load_text(path: Path) -> str:
     """md 直读(UTF-8 优先, 失败退 gb18030, 双败给可操作报错); docx 走内置极简文本抽取。"""
@@ -127,6 +137,30 @@ def paragraph_lengths(text: str) -> list[int]:
     """非空正文段落长度列表(深度统计输入)。M-1: 剔 # 标题行与 | 表格行/分隔行——
     短结构行会系统性拉低 Task 3 的 P25 absolute_floor。"""
     return [len(p.strip()) for p in text.split("\n") if p.strip() and not p.lstrip().startswith(("#", "|"))]
+
+
+def redact(text: str, mapping: dict[str, str]) -> str:
+    """脱敏: --map 显式对照优先(逐字替换), 再跑自动模式(金额/信用代码/手机号/身份证)。
+    不动标题行(# 开头)——章结构保真。mapping 键=原文, 值=脱敏占位。"""
+    out_lines = []
+    for line in text.split("\n"):
+        if line.lstrip().startswith("#"):
+            out_lines.append(line)
+            continue
+        for src, dst in mapping.items():
+            if src:  # 空键防御: "".replace 语义陷阱, 直接跳过
+                line = line.replace(src, dst)
+        line = AMOUNT_RE.sub("****", line)
+        line = CREDIT_CODE_RE.sub("****", line)
+        line = PHONE_RE.sub("****", line)
+        line = ID_CARD_RE.sub("****", line)
+        out_lines.append(line)
+    return "\n".join(out_lines)
+
+
+def residual_scan(text: str) -> list[str]:
+    """残留扫描(脱敏后质检): 命中即返回证据行(调用方 rc=1 不出库)。"""
+    return [ln.strip()[:120] for ln in text.split("\n") if RESIDUAL_RE.search(ln)]
 
 
 def main(argv: list[str] | None = None) -> int:

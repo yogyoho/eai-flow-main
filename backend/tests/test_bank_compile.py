@@ -141,3 +141,33 @@ def test_docx_no_body_returns_empty(tmp_path):
     with zipfile.ZipFile(p, "w") as zf:
         zf.writestr("word/document.xml", f'<w:document xmlns:w="{_DOCX_W_NS}"></w:document>')
     assert bc._docx_to_markdown(p) == ""
+
+
+# --- 脱敏引擎（--map 显式对照 + 自动模式 + 残留扫描） -------------------------------------------
+
+
+def test_redact_auto_patterns(tender_md):
+    text = bc.load_text(tender_md)
+    redacted = bc.redact(text, mapping={})
+    assert "1,280,000.00" not in redacted and "****" in redacted, "金额脱敏"
+    assert "91360100MA001AB2CD" not in redacted, "信用代码脱敏"
+    assert "13800138000" not in redacted, "手机号脱敏"
+    assert "江西师范大学" in redacted, "无 --map 时机构名保留(不虚构替换)"
+
+
+def test_redact_with_map(tender_md):
+    text = bc.load_text(tender_md)
+    redacted = bc.redact(text, mapping={"江西师范大学": "某大学【1】", "张三": "某人"})
+    assert "江西师范大学" not in redacted and "某大学【1】" in redacted
+    assert "张三" not in redacted and "某人" in redacted
+
+
+def test_residual_scan_hits(tender_md):
+    text = bc.load_text(tender_md)
+    redacted = bc.redact(text, mapping={})
+    hits = bc.residual_scan(redacted)
+    assert hits == [], f"自动脱敏后零残留: {hits}"
+
+
+def test_residual_scan_catches_miss(tender_md):
+    assert bc.residual_scan("报价 9,999,999.99 元") != [], "漏网金额必须被扫描抓到"
