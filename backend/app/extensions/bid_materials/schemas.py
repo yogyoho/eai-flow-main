@@ -1,5 +1,5 @@
 # backend/app/extensions/bid_materials/schemas.py
-"""投标资料管理 Pydantic 契约(形态镜像 eia_samples/schemas.py)。"""
+"""投标资料管理 Pydantic 契约(形态参考 eia_samples/schemas.py)。"""
 
 from __future__ import annotations
 
@@ -15,20 +15,20 @@ QualType = Literal["营业执照", "CMMI", "ISO9001", "ISO27001", "业绩证明"
 class QualificationCreate(BaseModel):
     qual_type: QualType
     cert_no: str = Field(min_length=1, max_length=200)
-    issuer: str | None = None
+    issuer: str | None = Field(default=None, max_length=200)
     valid_until: datetime.date | None = None
-    scope: str | None = None
-    org_scope: str | None = None
+    scope: str | None = Field(default=None, max_length=500)
+    org_scope: str | None = Field(default=None, max_length=100)
     notes: str | None = None
 
 
 class QualificationUpdate(BaseModel):
     qual_type: QualType | None = None
     cert_no: str | None = Field(default=None, min_length=1, max_length=200)
-    issuer: str | None = None
+    issuer: str | None = Field(default=None, max_length=200)
     valid_until: datetime.date | None = None
-    scope: str | None = None
-    org_scope: str | None = None
+    scope: str | None = Field(default=None, max_length=500)
+    org_scope: str | None = Field(default=None, max_length=100)
     notes: str | None = None
     disabled: bool | None = None
 
@@ -40,6 +40,8 @@ class QualificationVersionResponse(BaseModel):
     file_size: int
     note: str | None
     uploaded_at: datetime.datetime
+
+    model_config = {"from_attributes": True}
 
 
 class QualificationResponse(BaseModel):
@@ -55,12 +57,17 @@ class QualificationResponse(BaseModel):
     notes: str | None
     versions: list[QualificationVersionResponse] = []
 
+    model_config = {"from_attributes": True}
+
 
 class WhitelistEntry(BaseModel):
-    """entities_whitelist 增量条目(证号=WP-2.4 组织级权威源)。"""
+    """entities_whitelist 增量条目(证号=WP-2.4 组织级权威源)。
+
+    valid_until 存字符串: entities_whitelist 为 JSON 线格式故存字符串。
+    """
 
     type: Literal["company", "person"]
-    value: str
+    value: str = Field(min_length=1)
     cert_no: str | None = None
     valid_until: str | None = None
 
@@ -71,8 +78,8 @@ class SampleCreate(BaseModel):
     file_hash: str = Field(min_length=64, max_length=64)
     industry: str = Field(default="other", max_length=50)
     project_category: str = Field(default="IT软件平台", max_length=50)
-    scenario: str = "bid_sample"
-    status: str = "indexed"
+    scenario: str = Field(default="bid_sample", max_length=50)  # 值域暂不收枚举，台账自由文本（枚举契约后续统一）
+    status: str = Field(default="indexed", max_length=30)  # 值域暂不收枚举，台账自由文本（枚举契约后续统一）
     notes: str | None = None
 
 
@@ -81,7 +88,13 @@ class SampleBulkItem(SampleCreate):
 
 
 class SampleBulkImportRequest(BaseModel):
-    items: list[SampleBulkItem] = Field(min_length=1)
+    items: list[SampleBulkItem] = Field(min_length=1, max_length=500)
+
+
+class SampleBulkImportResponse(BaseModel):
+    created: int
+    updated: int
+    total: int
 
 
 class SampleResponse(BaseModel):
@@ -94,3 +107,5 @@ class SampleResponse(BaseModel):
     scenario: str
     status: str
     notes: str | None
+
+    model_config = {"from_attributes": True}
