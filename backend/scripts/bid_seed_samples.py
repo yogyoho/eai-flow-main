@@ -11,7 +11,8 @@ init_engine() → get_db_context() → close_db()。
 
 Run（host 或 gateway 容器内）:
     cd backend && PYTHONPATH=. uv run python scripts/bid_seed_samples.py --registration <path>
-    docker exec deer-flow-gateway python /app/backend/scripts/bid_seed_samples.py --registration <path>
+    docker exec deer-flow-gateway /app/backend/.venv/bin/python /app/backend/scripts/bid_seed_samples.py --registration <path>
+    （容器内系统 python 无 fastapi 等依赖，须用 .venv 解释器）
 """
 
 import argparse
