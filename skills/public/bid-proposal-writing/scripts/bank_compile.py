@@ -3,7 +3,8 @@
 流程: 装载(标书 md/docx) → 全文脱敏(--map 显式对照 + 自动模式; 先脱敏后切片——T2 评审接线,
 章 title 取自 redacted 文本, 标题里的机构名不绕过 --map) → 章切片 → 深度统计(M-1 段长分布,
 P25=absolute_floor / median=global_median) → 四产物确定性落盘(slug 目录 full.md+chapters/、
-bank_index.json、depth_targets.json、registration.json——全 sort_keys 无时间戳, 重跑字节一致)
+bank_index.json、depth_targets.json(库级聚合——floor=各册 min、median=各册中位, 与编译顺序无关)、
+registration.json——全 sort_keys 无时间戳, 重跑字节一致)
 → registration.json 供 backend/scripts/bid_seed_samples.py 入 BidSample 台账(file_hash 恰 64 字符)
 → 可选 RAGFlow bid_samples 域推送(失败=warnings 不阻塞, Task 5 接入)。
 
@@ -25,6 +26,7 @@ import hashlib
 import json
 import re
 import shutil
+import statistics
 import sys
 from pathlib import Path
 
@@ -256,6 +258,23 @@ def _write_json(path: Path, obj: dict | list) -> None:
     _write_text(path, json.dumps(obj, ensure_ascii=False, sort_keys=True, indent=2) + "\n")
 
 
+def _load_bank_json(path: Path, default: dict, *, require_items_list: bool = False) -> dict:
+    """M-3: 既有 JSON 产物损坏/形态异常 → stderr 提示后按 default 重置(不裸 traceback,
+    对齐 load_text 可操作报错风格)——产物可由输入全量重建, 重置优于中断。"""
+    if not path.is_file():
+        return dict(default)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise ValueError("顶层非对象")
+        if require_items_list and not isinstance(data.get("items", []), list):
+            raise ValueError("items 非列表")
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+        print(f"警告: {path.name} 损坏或形态异常({exc}), 已重置重建——如需保留请先备份", file=sys.stderr)
+        return dict(default)
+    return data
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="bank_compile.py", description="投标样例入库编译器(离线)")
     ap.add_argument("--input", required=True)
@@ -267,8 +286,13 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     mapping: dict[str, str] = {}
-    if args.map:
-        mapping = json.loads(Path(args.map).read_text(encoding="utf-8"))
+    if args.map:  # M-7: 坏 JSON 包成可操作报错(对齐 load_text 风格), 不裸 traceback
+        try:
+            mapping = json.loads(Path(args.map).read_text(encoding="utf-8"))
+            if not isinstance(mapping, dict):
+                raise ValueError("顶层非对象")
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
+            raise ValueError(f"map 文件 JSON 解析失败: {args.map}({exc}; 须为对象, 键=原文, 值=脱敏占位)") from exc
 
     text = load_text(Path(args.input))
     result = compile_bank(text, title=args.title, industry=args.industry, category=args.category, mapping=mapping)
@@ -285,6 +309,8 @@ def main(argv: list[str] | None = None) -> int:
     slug = result["slug"]
     slug_dir = bank_dir / slug
     chapters_dir = slug_dir / "chapters"
+    if chapters_dir.is_file():  # M-6: 路径被文件占位(异常残留) → unlink 兜底再建目录
+        chapters_dir.unlink()
     if chapters_dir.is_dir():  # 旧切片清场再重写——源文件修订后重编译不留陈旧 chNN
         shutil.rmtree(chapters_dir)
     chapters_dir.mkdir(parents=True, exist_ok=True)
@@ -296,9 +322,10 @@ def main(argv: list[str] | None = None) -> int:
         chapter_entries.append({"file": f"chapters/{fname}", "title": ch["title"]})
 
     index_path = bank_dir / "bank_index.json"
-    index: dict = {}
-    if index_path.is_file():
-        index = json.loads(index_path.read_text(encoding="utf-8"))
+    index = _load_bank_json(index_path, {})
+    prior = index.get(slug)
+    if isinstance(prior, dict) and prior.get("file_hash") and prior["file_hash"] != result["file_hash"]:  # M-2: 同题重编内容漂移可见
+        print(f"警告: slug={slug} 重编译内容漂移: file_hash {str(prior['file_hash'])[:12]}… → {result['file_hash'][:12]}…(旧产物将被覆盖)", file=sys.stderr)
     index[slug] = {
         "title": args.title,
         "industry": args.industry,
@@ -309,28 +336,37 @@ def main(argv: list[str] | None = None) -> int:
     }
     _write_json(index_path, index)
 
-    # depth_targets.json=库级深度门基准(键名 absolute_floor/global_median 为 build_output 消费契约, 保持稳定);
-    # per-sample 深度存 bank_index[slug].depth, 单样重编译即重校准。
-    _write_json(bank_dir / "depth_targets.json", result["depth_targets"])
+    # depth_targets.json=库级深度门基准(I-1 评审修订: 对 bank_index 全册聚合——floor 取 min、
+    # median 取中位, 根除先编 A 再编 B 时的 last-writer-wins; geo calibrate.py 先例即对全样例库取
+    # median)。键名 absolute_floor/global_median 为 build_output 消费契约保持稳定; calibrated_from
+    # 指向触发本次重校准的内容指纹; per-sample 深度仍在 bank_index[slug].depth。
+    depths = [e["depth"] for e in index.values() if isinstance(e, dict) and isinstance(e.get("depth"), dict)]
+    floors = [d["absolute_floor"] for d in depths if isinstance(d.get("absolute_floor"), int)]
+    medians = [d["global_median"] for d in depths if isinstance(d.get("global_median"), int)]
+    bank_targets = {
+        "absolute_floor": min(floors) if floors else result["depth_targets"]["absolute_floor"],
+        "global_median": statistics.median(medians) if medians else result["depth_targets"]["global_median"],
+        "paragraph_count": sum(int(d.get("paragraph_count", 0)) for d in depths),
+        "calibrated_from": result["file_hash"],
+    }
+    _write_json(bank_dir / "depth_targets.json", bank_targets)
 
     reg_path = bank_dir / "registration.json"
-    items: list[dict] = []
-    if reg_path.is_file():
-        items = [it for it in json.loads(reg_path.read_text(encoding="utf-8")).get("items", []) if it.get("slug") != slug]
+    reg = _load_bank_json(reg_path, {"items": []}, require_items_list=True)
+    items = [it for it in reg.get("items", []) if isinstance(it, dict) and it.get("slug") != slug]  # M-4: 旧行缺 slug 不丢
     items.append(result["registration_item"])
-    items.sort(key=lambda it: it["slug"])
+    items.sort(key=lambda it: str(it.get("slug", "")))  # M-4: 缺 slug 空串排首, 不崩
     _write_json(reg_path, {"items": items})
 
-    dt = result["depth_targets"]
     print(
         json.dumps(
             {
                 "command": "bank_compile",
                 "slug": slug,
                 "chapters": len(result["chapters"]),
-                "paragraphs": dt["paragraph_count"],
-                "absolute_floor": dt["absolute_floor"],
-                "global_median": dt["global_median"],
+                "paragraphs": result["depth_targets"]["paragraph_count"],
+                "absolute_floor": bank_targets["absolute_floor"],
+                "global_median": bank_targets["global_median"],
                 "residual": len(result["residual"]),
             },
             ensure_ascii=False,

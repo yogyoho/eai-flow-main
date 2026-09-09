@@ -36,7 +36,7 @@ def tender_md(tmp_path):
         "以上报价含运输安装调试费用合计 700,000.00 元。\n"
     )
     p = tmp_path / "tender.md"
-    p.write_text(md, encoding="utf-8")
+    p.write_text(md, encoding="utf-8", newline="\n")  # LF 落盘——M-5 契约测 writer 不翻译换行, 输入先不带 CRLF
     return p
 
 
@@ -268,19 +268,22 @@ def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
     slug = bc.slugify("江西师范大学课堂观测系统")
     slug_dir = bank_dir / slug
     full = slug_dir / "full.md"
-    assert full.is_file() and "投标函" in full.read_text(encoding="utf-8")
+    full_bytes = full.read_bytes()
+    assert full.is_file() and "投标函" in full_bytes.decode("utf-8")
+    assert b"\r\n" not in full_bytes, "M-5: LF 落盘契约(跨机字节一致, 不吃 os.linesep 翻译)"
     chapter_files = sorted((slug_dir / "chapters").glob("ch*.md"))
     assert len(chapter_files) == 3, "3 章切片逐章落盘"
     index = json.loads((bank_dir / "bank_index.json").read_text(encoding="utf-8"))
     assert slug in index and index[slug]["title"] == "江西师范大学课堂观测系统"
     assert index[slug]["chapters"] and all((slug_dir / c["file"]).is_file() for c in index[slug]["chapters"]), "index 章条目可导航"
     targets = json.loads((bank_dir / "depth_targets.json").read_text(encoding="utf-8"))
-    assert targets["absolute_floor"] > 0 and targets["global_median"] > 0
+    # M-5 精确值钉: fixture 脱敏后段长 sorted [15, 16, 20, 57](掩码缩短原文) → P25=idx1=16, median=idx2=20
+    assert targets["absolute_floor"] == 16 and targets["global_median"] == 20
     reg = json.loads((bank_dir / "registration.json").read_text(encoding="utf-8"))
     assert reg["items"] and reg["items"][0]["scenario"] == "bid_sample"
     # fixture 无 --map: 表格两位小数金额为已知唯一残留——Task 3 预留期 stderr 告警不拦截(闸门 Task 4 落)
     captured = capsys.readouterr()
-    assert "残留" in captured.err and len(json.loads((bank_dir / "bank_index.json").read_text(encoding="utf-8"))[slug]["chapters"]) == 3
+    assert "残留" in captured.err
     # 确定性: 重跑字节一致(同 slug 不重复登记)
     before = {p.relative_to(bank_dir).as_posix(): p.read_bytes() for p in bank_dir.rglob("*") if p.is_file()}
     assert bc.main(argv) == 0
@@ -297,3 +300,75 @@ def test_main_applies_map_flag(tender_md, tmp_path):
     assert bc.main(["--input", str(tender_md), "--title", "T项目", "--bank-dir", str(bank_dir), "--map", str(map_path)]) == 0
     full = (bank_dir / bc.slugify("T项目") / "full.md").read_text(encoding="utf-8")
     assert "江西师范大学" not in full and "某大学【1】" in full
+
+
+def test_depth_targets_bank_level_aggregate(tmp_path):
+    """I-1: depth_targets.json 对 bank_index 全册聚合——floor=各册 min、median=各册中位,
+    名实相符且与编译顺序无关(先 A 后 B 与先 B 后 A 同值, 根除 last-writer-wins)。"""
+    a = tmp_path / "a.md"
+    a.write_text("## 一、甲\n\n" + "字" * 30 + "\n\n短段\n\n" + "言" * 20 + "\n", encoding="utf-8")  # 段[30,2,20]: floor 2/median 20
+    b = tmp_path / "b.md"
+    b.write_text("## 一、乙\n\n" + "深" * 100 + "\n", encoding="utf-8")  # 段[100]: floor 100/median 100
+
+    def argv(src, title, bank):
+        return ["--input", str(src), "--title", title, "--bank-dir", str(bank)]
+
+    bank1, bank2 = tmp_path / "bank1", tmp_path / "bank2"
+    assert bc.main(argv(a, "A项目", bank1)) == 0 and bc.main(argv(b, "B项目", bank1)) == 0
+    assert bc.main(argv(b, "B项目", bank2)) == 0 and bc.main(argv(a, "A项目", bank2)) == 0
+    t1 = json.loads((bank1 / "depth_targets.json").read_text(encoding="utf-8"))
+    t2 = json.loads((bank2 / "depth_targets.json").read_text(encoding="utf-8"))
+    assert t1["absolute_floor"] == 2, "全库 floor=各册 min(后编的高 floor 样本不覆盖)"
+    assert t1["global_median"] == 60, "全库 median=各册中位 statistics.median([20,100])"
+    assert (t2["absolute_floor"], t2["global_median"]) == (t1["absolute_floor"], t1["global_median"]), "聚合与编译顺序无关"
+
+
+def test_main_warns_on_content_drift(tmp_path, capsys):
+    """M-2: 同题(同 slug)重编但内容已变 → file_hash 漂移一行 stderr 警告。"""
+    p = tmp_path / "t.md"
+    p.write_text("## 一、甲\n\n正文A。\n", encoding="utf-8")
+    bank = tmp_path / "bank"
+    assert bc.main(["--input", str(p), "--title", "同题项目", "--bank-dir", str(bank)]) == 0
+    capsys.readouterr()
+    p.write_text("## 一、甲\n\n正文B改版。\n", encoding="utf-8")
+    assert bc.main(["--input", str(p), "--title", "同题项目", "--bank-dir", str(bank)]) == 0
+    assert "漂移" in capsys.readouterr().err, "内容漂移必须可见"
+
+
+def test_main_resets_corrupt_json_products(tmp_path, capsys):
+    """M-3: 既有 JSON 产物损坏/形态异常 → stderr 提示后重置重建(rc 仍 0, 不裸 traceback)。"""
+    p = tmp_path / "t.md"
+    p.write_text("## 一、甲\n\n正文。\n", encoding="utf-8")
+    bank = tmp_path / "bank"
+    bank.mkdir(parents=True)
+    (bank / "bank_index.json").write_text("{corrupt", encoding="utf-8")
+    (bank / "registration.json").write_text(json.dumps({"items": "not-a-list"}), encoding="utf-8")
+    assert bc.main(["--input", str(p), "--title", "T", "--bank-dir", str(bank)]) == 0
+    err = capsys.readouterr().err
+    assert "bank_index.json" in err and "registration.json" in err, "两产物损坏均须提示并重置"
+    reg = json.loads((bank / "registration.json").read_text(encoding="utf-8"))
+    assert isinstance(reg["items"], list) and len(reg["items"]) == 1, "重置后正常重建"
+
+
+def test_registration_legacy_row_without_slug_kept(tmp_path):
+    """M-4: 旧行缺 slug 键 → 排序空串排首不崩, 行保留不丢。"""
+    p = tmp_path / "t.md"
+    p.write_text("## 一、甲\n\n正文。\n", encoding="utf-8")
+    bank = tmp_path / "bank"
+    bank.mkdir(parents=True)
+    (bank / "registration.json").write_text(json.dumps({"items": [{"title": "旧行无slug"}]}), encoding="utf-8")
+    assert bc.main(["--input", str(p), "--title", "T", "--bank-dir", str(bank)]) == 0
+    items = json.loads((bank / "registration.json").read_text(encoding="utf-8"))["items"]
+    assert len(items) == 2, "旧行不丢"
+    assert items[0].get("title") == "旧行无slug", "缺 slug 旧行空串排首"
+    assert items[1]["scenario"] == "bid_sample"
+
+
+def test_main_map_bad_json_actionable(tmp_path):
+    """M-7: --map 坏 JSON → 可操作 ValueError(对齐 load_text 报错风格), 不裸 traceback。"""
+    p = tmp_path / "t.md"
+    p.write_text("## 一、甲\n\n正文。\n", encoding="utf-8")
+    bad = tmp_path / "bad.json"
+    bad.write_text("{oops", encoding="utf-8")
+    with pytest.raises(ValueError, match="map 文件 JSON 解析失败"):
+        bc.main(["--input", str(p), "--title", "T", "--bank-dir", str(tmp_path / "bank"), "--map", str(bad)])
