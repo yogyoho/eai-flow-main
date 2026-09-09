@@ -27,7 +27,9 @@ const mockExistsSync = vi.fn();
 const mockStatSync = vi.fn();
 
 // Import after mocks
-const { loadMarkdownForDoc, hasCollabData, storeDocument } = await import("./persistence.js");
+const { loadMarkdownForDoc, hasCollabData, storeDocument, pruneVersions, MAX_VERSIONS_PER_DOC } = await import(
+  "./persistence.js"
+);
 
 describe("loadMarkdownForDoc", () => {
   beforeEach(() => {
@@ -153,5 +155,37 @@ describe("storeDocument (Yjs round-trip)", () => {
     Y.applyUpdate(restoredDoc, new Uint8Array(storedBuffer));
     const restoredMeta = restoredDoc.getMap("_collabMeta");
     expect(restoredMeta.get("pendingMarkdown")).toBe("# Test Content");
+  });
+});
+
+describe("pruneVersions (bug B11: collab_versions 无限增长)", () => {
+  beforeEach(() => {
+    mockQuery.mockReset();
+  });
+
+  it("issues a DELETE scoped to the doc keeping only the newest N versions", async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 3 });
+
+    const pruned = await pruneVersions("doc-1");
+
+    expect(pruned).toBe(3);
+    expect(mockQuery).toHaveBeenCalledTimes(1);
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain("DELETE FROM collab_versions");
+    expect(params[0]).toBe("doc-1");
+    expect(params[1]).toBe(50); // 默认保留最近 50 条
+  });
+
+  it("honours a custom keep limit", async () => {
+    mockQuery.mockResolvedValueOnce({ rowCount: 0 });
+
+    await pruneVersions("doc-2", 5);
+
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params).toEqual(["doc-2", 5]);
+  });
+
+  it("exports the default retention cap of 50", () => {
+    expect(MAX_VERSIONS_PER_DOC).toBe(50);
   });
 });

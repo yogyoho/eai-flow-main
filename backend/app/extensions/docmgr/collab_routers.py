@@ -214,6 +214,20 @@ async def restore_version(
     snapshot_text = version_meta.get("snapshot_text")
 
     collab_doc = await db.get(CollabDocument, doc_id)
+    # EAI-CUSTOM (bug B12 协同链审计): 旧实现直接 UPDATE collab_documents.yjs_doc
+    # 无前置备份——恢复一旦执行，被覆盖的当前内容不可找回。现在先读出当前态
+    # (须在 commit 前读取，避免 expire 后访问属性)，落一条 Pre-restore backup 版本。
+    current_snapshot = bytes(collab_doc.yjs_doc) if (collab_doc and collab_doc.yjs_doc) else b""
+    if current_snapshot:
+        await VersionService.create_version(
+            db,
+            doc_id,
+            current_user.id,
+            current_snapshot,
+            summary="Pre-restore backup",
+            snapshot_text=doc.content or None,
+        )
+
     if collab_doc:
         collab_doc.yjs_doc = snapshot
         collab_doc.version += 1
@@ -233,7 +247,12 @@ async def restore_version(
         snapshot_text=snapshot_text,
     )
 
-    return VersionRestoreResponse(version=version, message=f"Restored to version {version}")
+    return VersionRestoreResponse(
+        version=version,
+        # EAI-CUSTOM (bug B12): 恢复只覆写服务端 yjs_doc，在线协作者的编辑器仍持有
+        # 旧 Yjs 状态，需要刷新重连才能看到恢复后的内容。
+        message=f"Restored to version {version}; 在线协作者需刷新页面以加载恢复后的内容",
+    )
 
 
 # ─── AI Document-Level Review ────────────────────────────────────────────

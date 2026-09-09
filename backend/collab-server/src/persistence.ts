@@ -68,6 +68,28 @@ export async function getDocumentVersion(docId: string): Promise<number> {
   return result.rows[0]?.version || 0;
 }
 
+// EAI-CUSTOM (bug B11 协同链审计): 周期快照(30min)+断开快照只增不删，
+// collab_versions 无限膨胀(实测 6493 行/单文档 5873)。createVersion 后按
+// doc 裁剪，仅保留每文档最近 MAX_VERSIONS_PER_DOC 条(version 列由
+// createVersion 按 MAX+1 单调递增，可直接按阈值删旧)。
+export const MAX_VERSIONS_PER_DOC = 50;
+
+export async function pruneVersions(
+  docId: string,
+  keep: number = MAX_VERSIONS_PER_DOC,
+): Promise<number> {
+  const result = await pool.query(
+    `DELETE FROM collab_versions
+     WHERE doc_id = $1
+       AND version <= (
+         SELECT COALESCE(MAX(v2.version), 0) - $2
+         FROM collab_versions v2 WHERE v2.doc_id = $1
+       )`,
+    [docId, keep],
+  );
+  return result.rowCount ?? 0;
+}
+
 export async function loadMarkdownForDoc(docId: string): Promise<string | null> {
   const result = await pool.query(
     "SELECT content, doc_type, file_ref_path FROM ai_documents WHERE id = $1",

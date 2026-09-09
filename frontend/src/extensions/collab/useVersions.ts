@@ -9,7 +9,9 @@ import type { CollabVersion, VersionDiffResponse } from "../types";
 export function useVersions(docId: string | null) {
   const [versions, setVersions] = useState<CollabVersion[]>([]);
   const [loading, setLoading] = useState(false);
-  const [diffResult, setDiffResult] = useState<VersionDiffResponse | null>(null);
+  const [diffResult, setDiffResult] = useState<VersionDiffResponse | null>(
+    null,
+  );
   const [diffLoading, setDiffLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -55,7 +57,8 @@ export function useVersions(docId: string | null) {
       try {
         const result = await docmgrApi.restoreVersion(docId, version);
         await load();
-        toast.success("版本已恢复");
+        // EAI-CUSTOM (bug B12 协同链审计): 展示服务端恢复消息，含「在线协作者需刷新」提示
+        toast.success(result?.message || "版本已恢复");
         return result;
       } catch {
         toast.error("恢复版本失败");
@@ -70,7 +73,11 @@ export function useVersions(docId: string | null) {
       if (!docId) return;
       setDiffLoading(true);
       try {
-        const to = toVersion ?? (versions.length > 0 && versions[0]!.version !== fromOrVersion ? versions[0]!.version : fromOrVersion);
+        const to =
+          toVersion ??
+          (versions.length > 0 && versions[0]!.version !== fromOrVersion
+            ? versions[0]!.version
+            : fromOrVersion);
         const result = await docmgrApi.diffVersions(docId, fromOrVersion, to);
         setDiffResult(result);
       } catch {
@@ -82,5 +89,14 @@ export function useVersions(docId: string | null) {
     [docId, versions],
   );
 
-  return { versions, loading, createVersion, restoreVersion, reload: load, diffResult, diffLoading, diffVersions };
+  return {
+    versions,
+    loading,
+    createVersion,
+    restoreVersion,
+    reload: load,
+    diffResult,
+    diffLoading,
+    diffVersions,
+  };
 }

@@ -8,6 +8,7 @@ import {
   getDocumentVersion,
   loadDocument,
   loadMarkdownForDoc,
+  pruneVersions,
   recordUpdate,
   storeDocument,
 } from "./persistence.js";
@@ -22,16 +23,23 @@ const activeDocuments = new Map<
 
 /**
  * Extract readable text from a Yjs document for diff/summary purposes.
- * BlockNote stores content as Y.XmlElement blocks in the "blocks" shared map.
+ *
+ * EAI-CUSTOM (bug B11 协同链审计): 客户端 BlockNote 协同挂载的是
+ * `ydoc.getXmlFragment("document-store")`（BlockNoteEditor.tsx collaboration.fragment），
+ * 旧实现读 `ydoc.getMap("blocks")` 恒为空 Map → snapshot_text 永远为空，
+ * 版本 diff / AI 摘要功能整体不可用。改读 document-store XmlFragment，
+ * 遍历 XmlElement 递归提取可读文本。
  */
-function extractTextFromYDoc(ydoc: Y.Doc): string {
+export function extractTextFromYDoc(ydoc: Y.Doc): string {
   try {
-    const blocks = ydoc.getMap("blocks");
+    const fragment = ydoc.getXmlFragment("document-store");
     const lines: string[] = [];
-    // Iterate over all block entries in the shared map
-    for (const [key, value] of blocks) {
-      if (value instanceof Y.XmlElement) {
-        lines.push(extractXmlText(value));
+    // yjs 13.6 的 XmlFragment/XmlElement 未实现 Symbol.iterator，用公开的 toArray()
+    for (const child of fragment.toArray()) {
+      if (child instanceof Y.XmlElement) {
+        lines.push(extractXmlText(child));
+      } else if (child instanceof Y.XmlText) {
+        lines.push(child.toString());
       }
     }
     return lines.join("\n");
@@ -42,8 +50,7 @@ function extractTextFromYDoc(ydoc: Y.Doc): string {
 
 function extractXmlText(el: Y.XmlElement): string {
   const parts: string[] = [];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  for (const child of (el as any)._children ?? []) {
+  for (const child of el.toArray()) {
     if (child instanceof Y.XmlText) {
       parts.push(child.toString());
     } else if (child instanceof Y.XmlElement) {
@@ -51,6 +58,22 @@ function extractXmlText(el: Y.XmlElement): string {
     }
   }
   return parts.join("");
+}
+
+/**
+ * EAI-CUSTOM (bug B11 协同链审计): 周期/断开快照只增不删，collab_versions 已积累
+ * 6493 行（单文档 5873）。每次 createVersion 后按 doc 裁剪，仅保留最近
+ * MAX_VERSIONS_PER_DOC 条历史。失败不影响保存主流程，仅记日志。
+ */
+async function pruneVersionsSafe(docId: string): Promise<void> {
+  try {
+    const pruned = await pruneVersions(docId);
+    if (pruned > 0) {
+      console.log(`[versions] Pruned ${pruned} old version(s) for doc ${docId}`);
+    }
+  } catch (err) {
+    console.error(`[versions] Prune failed for doc ${docId}:`, err);
+  }
 }
 
 const server = Server.configure({
@@ -119,6 +142,7 @@ const server = Server.configure({
     const state = Y.encodeStateAsUpdate(document);
     const snapshotText = extractTextFromYDoc(document);
     await createVersion(documentName, state, userId, "Auto-save on disconnect", snapshotText);
+    await pruneVersionsSafe(documentName);
 
     if (activeDocuments.has(documentName)) {
       const connections = document.connections;
@@ -145,6 +169,7 @@ async function periodicSnapshot() {
         const snapshotText = extractTextFromYDoc(entry.doc);
         const version = await createVersion(docId, state, entry.lastUserId, "Auto-save (periodic)", snapshotText);
         entry.lastSnapshotVersion = version;
+        await pruneVersionsSafe(docId);
         console.log(`[snapshot] Created version ${version} for doc ${docId}`);
       }
     } catch (err) {
