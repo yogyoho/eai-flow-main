@@ -181,7 +181,7 @@ async def list_samples(
     return [SampleResponse.model_validate(s) for s in rows]
 
 
-@router.post("/samples/bulk", response_model=SampleBulkImportResponse)
+@router.post("/samples/bulk", response_model=SampleBulkImportResponse, status_code=status.HTTP_201_CREATED)
 async def bulk_import_samples(
     payload: SampleBulkImportRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
