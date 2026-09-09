@@ -206,7 +206,7 @@ modules:
         display_name: "样例台账"
         operations: []
 
-  # ─── 投标资料管理（应用中心；EAI-CUSTOM bug-3109 v4：资质 MinIO 版本库+样例台账。
+  # ─── 投标资料管理（应用中心 → 市场营销；EAI-CUSTOM bug-3109 v4：资质 MinIO 版本库+样例台账。
   #     后端 /api/extensions/bid-materials/*，沿用 require_permission("system:access")，
   #     页面可见性由本页键 + 角色 nav/pages 授权控制）───
   bid_materials:

@@ -1466,7 +1466,7 @@ async def seed_db() -> None:
             # Seed app-center domains + apps
             try:
                 # Domains
-                for domain in [
+                domains = [
                     {"key": "universal", "label": "通用工具", "accent": "blue", "sort": 0, "universal": True},
                     {"key": "admin", "label": "系统管理", "accent": "slate", "sort": 1, "universal": True},
                     {"key": "report", "label": "报告编撰", "accent": "violet", "sort": 2, "universal": False},
@@ -1477,13 +1477,14 @@ async def seed_db() -> None:
                     {"key": "geology", "label": "地质管理", "accent": "teal", "sort": 6, "universal": False},
                     # EAI-CUSTOM (2026-09 样例库迁出): 煤矿设计域（煤矿环评报告样例库，自 knowledge_factory 独立成应用）
                     {"key": "mining", "label": "煤矿设计", "accent": "orange", "sort": 7, "universal": False},
-                ]:
+                ]
+                for domain in domains:
                     await session.execute(
                         text("INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal) VALUES (:key, :label, :accent, :sort, :universal) ON CONFLICT DO NOTHING"),
                         domain,
                     )
 
-                # Apps (15 built-in)
+                # Apps (built-in 计数以 len(apps) 为准，勿在此写死——apps 增员日志自动跟齐)
                 apps = [
                     {
                         "app_id": "dashboard",
@@ -1729,7 +1730,7 @@ async def seed_db() -> None:
                         app,
                     )
                 await session.commit()
-                logger.info("Seeded app-center: 8 domains + 16 apps")
+                logger.info(f"Seeded app-center: {len(domains)} domains + {len(apps)} apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
 
