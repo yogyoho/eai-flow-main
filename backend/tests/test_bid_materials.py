@@ -22,6 +22,7 @@ from app.extensions.bid_materials.models import (
 from app.extensions.bid_materials.service import (
     QualificationNotFoundError,
     QualificationService,
+    SampleNotFoundError,
     SampleService,
 )
 
@@ -191,8 +192,10 @@ class TestStorage:
         fake = FakeObjectStore()
         monkeypatch.setattr(storage, "_client", lambda: fake)
         payload = b"\x89PNG\r\n\x1a\n" + b"x" * 100
-        key = storage.put_file("q-1", 1, "scan.png", payload)
+        key = storage.put_file("q-1", 1, "png", payload)
         assert key == "q-1/v1.png"
+        # I-1 防御层: ext 由调用方(魔数嗅探)传入, storage 仍清洗到 [a-z0-9]≤9——脏 ext 不产出越界键
+        assert storage.put_file("q-1", 2, "P N G!.jpeg", b"x") == "q-1/v2.pngjpeg"
         assert fake.buckets == {"bid-qualifications"}  # _ensure_bucket 真走了一遍建桶
         assert storage.get_file("q-1", 1, "png") == payload  # 全等: 捕获截断/编码错误
         storage.delete_file("q-1", 1, "png")
@@ -231,35 +234,61 @@ class TestQualificationService:
         svc = QualificationService(db)
         q = await svc.create(qual_type="CMMI", cert_no="C-1")
         with pytest.raises(ValueError, match="仅支持"):
-            await svc.add_version(q.id, data=b"not-an-image", file_name="x.txt")
+            await svc.add_version(q.id, data=b"not-an-image")
 
     @pytest.mark.asyncio
     async def test_unknown_qual_id_raises_not_found(self, db):
         svc = QualificationService(db)
         with pytest.raises(QualificationNotFoundError):
-            await svc.add_version(uuid.uuid4(), data=PNG, file_name="a.png")
+            await svc.add_version(uuid.uuid4(), data=PNG)
 
     @pytest.mark.asyncio
     async def test_add_version_sha256_dedup_idempotent(self, db, monkeypatch):
         svc = QualificationService(db)
-        monkeypatch.setattr("app.extensions.bid_materials.storage.put_file", lambda qid, ver, name, data: f"{qid}/v{ver}.png")
+        monkeypatch.setattr("app.extensions.bid_materials.storage.put_file", lambda qid, ver, ext, data: f"{qid}/v{ver}.{ext}")
         q = await svc.create(qual_type="CMMI", cert_no="C-1")
-        v1, created1 = await svc.add_version(q.id, data=PNG, file_name="a.png", note="初次")
-        v2, created2 = await svc.add_version(q.id, data=PNG, file_name="a.png")
+        v1, created1 = await svc.add_version(q.id, data=PNG, note="初次")
+        v2, created2 = await svc.add_version(q.id, data=PNG)
         assert created1 is True and created2 is False, "同哈希去重=幂等返回既有版"
         assert v1.version == v2.version == 1
         assert q.current_version == 1
+        # I-1: put 键 ext 与 DB file_ext 同源(均为魔数嗅探结果)——minio_key↔file_ext 一致性钉死
+        assert v1.minio_key == f"{q.id}/v1.{v1.file_ext}"
 
     @pytest.mark.asyncio
     async def test_new_version_bumps_pointer_and_rollback(self, db, monkeypatch):
         svc = QualificationService(db)
         q = await svc.create(qual_type="CMMI", cert_no="C-1")
-        monkeypatch.setattr("app.extensions.bid_materials.storage.put_file", lambda qid, ver, name, data: f"{qid}/v{ver}.png")
-        await svc.add_version(q.id, data=PNG, file_name="a.png")
-        await svc.add_version(q.id, data=JPG, file_name="b.jpg", note="换证")
+        monkeypatch.setattr("app.extensions.bid_materials.storage.put_file", lambda qid, ver, ext, data: f"{qid}/v{ver}.{ext}")
+        await svc.add_version(q.id, data=PNG)
+        v2, _ = await svc.add_version(q.id, data=JPG, note="换证")
         assert q.current_version == 2
+        assert v2.minio_key == f"{q.id}/v2.{v2.file_ext}"
         await svc.rollback(q.id, to_version=1)
         assert q.current_version == 1, "回滚=改指针不删对象"
+
+    @pytest.mark.asyncio
+    async def test_rollback_to_missing_version_raises(self, db):
+        """I-2: 幽灵版本号(0/负数/超界)不许静默改指针——指针悬空=下载永久404。"""
+        svc = QualificationService(db)
+        q = await svc.create(qual_type="CMMI", cert_no="C-1")
+        for ghost in (0, -1, 99):
+            with pytest.raises(QualificationNotFoundError):
+                await svc.rollback(q.id, to_version=ghost)
+        assert q.current_version == 0, "失败的回滚不得动指针"
+
+    @pytest.mark.asyncio
+    async def test_update_whitelist_and_none_semantics(self, db):
+        """M-1: update 白名单——未知键(含拼错/id/created_at) raise 不静默; None=不清空, 清空走显式路径。"""
+        svc = QualificationService(db)
+        q = await svc.create(qual_type="CMMI", cert_no="C-1", issuer="原发证机构")
+        with pytest.raises(ValueError, match="不可更新"):
+            await svc.update(q.id, created_at="2020-01-01")
+        with pytest.raises(ValueError, match="不可更新"):
+            await svc.update(q.id, issuer_new="typo")
+        updated = await svc.update(q.id, issuer=None, notes="补充说明")
+        assert updated.issuer == "原发证机构", "None=不清空"
+        assert updated.notes == "补充说明"
 
     @pytest.mark.asyncio
     async def test_expiring_window(self, db):
@@ -284,6 +313,17 @@ class TestQualificationService:
         rows = await svc.export_whitelist()
         assert rows and rows[0]["type"] == "company" and rows[0]["cert_no"] == "91360100MA001X"
 
+    @pytest.mark.asyncio
+    async def test_list_excludes_disabled_with_paging(self, db):
+        svc = QualificationService(db)
+        await svc.create(qual_type="CMMI", cert_no="LIVE-1")
+        dead = await svc.create(qual_type="CMMI", cert_no="DEAD-1")
+        await svc.soft_delete(dead.id)
+        rows = await svc.list()
+        assert [r.cert_no for r in rows] == ["LIVE-1"], "软删行默认不可见(SQL 下推)"
+        assert len(await svc.list(include_disabled=True)) == 2
+        assert len(await svc.list(limit=1)) == 1
+
 
 class TestSampleService:
     @pytest.mark.asyncio
@@ -293,3 +333,29 @@ class TestSampleService:
         r1 = await svc_s.bulk([item])
         r2 = await svc_s.bulk([item])
         assert r1["created"] == 1 and r2["created"] == 0 and r2["skipped"] == 1, "file_hash 幂等"
+
+    @pytest.mark.asyncio
+    async def test_disable_sets_status_and_missing_raises(self, db):
+        svc_s = SampleService(db)
+        await svc_s.bulk([{"title": "t", "source_path": "p", "file_hash": "a" * 64}])
+        rows = await svc_s.list()
+        await svc_s.disable(rows[0].id)
+        assert rows[0].status == "disabled"
+        with pytest.raises(SampleNotFoundError):
+            await svc_s.disable(uuid.uuid4())
+
+    @pytest.mark.asyncio
+    async def test_list_filters_pushed_down_with_paging(self, db):
+        """M-3: 过滤下推 SQL(==/ilike) + limit/offset 分页(Task 5 路由接入)。"""
+        svc_s = SampleService(db)
+        await svc_s.bulk(
+            [
+                {"title": "江西师大标书", "source_path": "p1", "file_hash": "b" * 64, "industry": "信息技术", "project_category": "IT软件平台"},
+                {"title": "煤矿环评标书", "source_path": "p2", "file_hash": "c" * 64, "industry": "环保", "project_category": "环评"},
+                {"title": "江西煤矿标书", "source_path": "p3", "file_hash": "d" * 64, "industry": "环保", "project_category": "IT软件平台"},
+            ]
+        )
+        assert len(await svc_s.list(industry="环保")) == 2
+        assert len(await svc_s.list(industry="环保", project_category="IT软件平台")) == 1
+        assert {r.title for r in await svc_s.list(q="煤矿")} == {"煤矿环评标书", "江西煤矿标书"}
+        assert len(await svc_s.list(limit=1, offset=1)) == 1

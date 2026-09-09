@@ -40,12 +40,15 @@ def _key(qual_id: str, version: int, ext: str) -> str:
     return f"{qual_id}/v{version}.{ext}"
 
 
-def put_file(qual_id: str, version: int, file_name: str, data: bytes) -> str:
+def put_file(qual_id: str, version: int, ext: str, data: bytes) -> str:
     """存资质扫描件 {qual_id}/v{n}.{ext}; 返回 minio_key。
 
-    ext 在此单点清洗到 [a-z0-9] 且 ≤9 字符（对齐 DB file_ext String(10) 口径）。
+    ext 由调用方传入（= 魔数嗅探结果, 与 DB file_ext 同源）。评审 I-1: 若此处再从
+    file_name 派生 ext, put 键会与 get 重建键漂移（对象落 .dat 而 DB 记 png →
+    current_file 永久 404）, 故三方键源必须统一为嗅探 ext。
+    这里仍单点清洗到 [a-z0-9] 且 ≤9 字符作防御层（对齐 DB file_ext String(10) 口径）。
     """
-    ext = re.sub(r"[^a-z0-9]", "", os.path.splitext(file_name)[1].lstrip(".").lower())[:9] or "bin"
+    ext = re.sub(r"[^a-z0-9]", "", ext.lower())[:9] or "bin"
     key = _key(qual_id, version, ext)
     mc = _client()
     _ensure_bucket(mc)
