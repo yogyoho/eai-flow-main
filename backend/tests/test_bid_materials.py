@@ -3,6 +3,7 @@
 真库语义（sqlite+aiosqlite 内存库 + 真实模型），镜像 test_eia_samples.py 夹具。
 """
 
+import io
 import uuid
 
 import pytest
@@ -132,3 +133,56 @@ async def test_version_unique_per_qualification(db: AsyncSession):
     )
     with pytest.raises(IntegrityError):
         await db.flush()
+
+
+class _FakeResp(io.BytesIO):
+    """BytesIO + release_conn：真实 minio get_object 返回 urllib3 response，
+    storage 层 finally 里会调 close()+release_conn() 两方法，替身须齐备。"""
+
+    def release_conn(self):
+        pass
+
+
+class FakeObjectStore:
+    """内存 Minio 替身: 记录 put, 支持 get/stat/remove。"""
+
+    def __init__(self):
+        self.objects: dict[str, bytes] = {}
+
+    def put_object(self, bucket_name, object_name, data, length):
+        self.objects[object_name] = data.read()
+
+    def get_object(self, bucket_name, object_name):
+        return _FakeResp(self.objects[object_name])
+
+    def stat_object(self, bucket_name, object_name):
+        if object_name not in self.objects:
+            from minio.error import S3Error
+
+            # minio 7.2.x S3Error 首位参数是 response（无默认值）
+            raise S3Error(response=None, code="NoSuchKey", message="missing", resource=object_name)
+        return True
+
+    def remove_object(self, bucket_name, object_name):
+        self.objects.pop(object_name, None)
+
+    def bucket_exists(self, bucket_name):
+        return True
+
+    def make_bucket(self, bucket_name):
+        self.objects.setdefault("_bucket", b"")
+
+
+class TestStorage:
+    def test_put_get_roundtrip_and_delete(self, monkeypatch):
+        from app.extensions.bid_materials import storage
+
+        fake = FakeObjectStore()
+        monkeypatch.setattr(storage, "_client", lambda: fake)
+        key = storage.put_file("q-1", 1, "scan.png", b"\x89PNG\r\n\x1a\n" + b"x" * 100)
+        assert key == "q-1/v1.png"
+        data = storage.get_file("q-1", 1, "png")
+        assert data.startswith(b"\x89PNG")
+        storage.delete_file("q-1", 1, "png")
+        # best-effort 删除真落了：替身对象表里键已移除
+        assert "q-1/v1.png" not in fake.objects
