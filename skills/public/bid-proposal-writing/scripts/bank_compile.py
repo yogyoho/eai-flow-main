@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 EXIT_OK, EXIT_ERROR = 0, 1
+MASK = "****"  # 对齐 geo_samples/redactor.py:9
 
 HEAD1_RE = re.compile(r"^# (?!#)(.+)$")
 HEAD2_RE = re.compile(r"^## (?!#)(.+)$")
@@ -38,8 +39,24 @@ AMOUNT_RE = re.compile(r"[￥¥]?\s*\d{1,3}(?:[,，]\d{3})*(?:\.\d+)?\s*(?:万?�
 CREDIT_CODE_RE = re.compile(r"(?<![0-9A-Za-z])(?=[0-9A-HJ-NPQRTUWXY]*[A-HJ-NPQRTUWXY])[0-9A-HJ-NPQRTUWXY]{18}(?![0-9A-Za-z])")
 PHONE_RE = re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)")
 ID_CARD_RE = re.compile(r"(?<!\d)\d{17}[\dXx](?![0-9Xx])")
-# 残留扫描与自动模式同源: 金额侧覆盖「￥前缀」与「千分位数字+元/万元」两种形态(脱敏漏跑/漏配即抓)。
-RESIDUAL_RE = re.compile(r"[￥¥]\s*\d|万元|\d{1,3}(?:[,，]\d{3})*(?:\.\d+)?\s*万?元|(?<!\d)1[3-9]\d{9}(?!\d)|(?<!\d)\d{17}[\dXx](?![0-9Xx])")
+# M-1: 残留门=组合式——直接引用各规则 pattern 拼接(同源而非同文), 规则修订不再让安全门静默过期。
+# 另含脱敏不覆盖的 fail-closed 分支(只进残留门不进掩码, 命中即 rc=1 交维护者 --map 或人工裁决):
+#   · ￥/¥+数字(无元后缀)——货币符号形态 AMOUNT_RE 摸不到的残余;
+#   · 裸「万元」(M-3: 声明接受误伤面——脱敏后正文不应再有万元字样, 「按万元计」类误报宁多勿漏);
+#   · 两位小数千分位金额(M-2, bug-3236: 表格单价 3,500.00 类无元后缀高频漏网形态)。
+RESIDUAL_RE = re.compile(
+    "|".join(
+        [
+            AMOUNT_RE.pattern,
+            r"[￥¥]\s*\d",
+            "万元",
+            CREDIT_CODE_RE.pattern,
+            PHONE_RE.pattern,
+            ID_CARD_RE.pattern,
+            r"\d{1,3}(?:[,，]\d{3})*\.\d{2}(?!\d)",
+        ]
+    )
+)
 
 
 def load_text(path: Path) -> str:
@@ -140,20 +157,22 @@ def paragraph_lengths(text: str) -> list[int]:
 
 
 def redact(text: str, mapping: dict[str, str]) -> str:
-    """脱敏: --map 显式对照优先(逐字替换), 再跑自动模式(金额/信用代码/手机号/身份证)。
-    不动标题行(# 开头)——章结构保真。mapping 键=原文, 值=脱敏占位。"""
+    """脱敏: --map 显式对照优先(逐字替换, 全行含标题), 再跑自动模式(金额/信用代码/手机号/身份证)。
+    标题行(# 开头)只吃 --map、跳过自动正则——# 前缀与标题完整性不动(章结构保真); 机构/人名在标题
+    出现时 --map 是唯一清洗通道, 标题里的裸金额类残留交残留门 fail-closed 兜底(I-2, 不静默泄漏)。
+    mapping 键=原文, 值=脱敏占位。切片(split_chapters)在脱敏之前完成, 标题替换不伤章界。"""
     out_lines = []
     for line in text.split("\n"):
-        if line.lstrip().startswith("#"):
-            out_lines.append(line)
-            continue
         for src, dst in mapping.items():
             if src:  # 空键防御: "".replace 语义陷阱, 直接跳过
                 line = line.replace(src, dst)
-        line = AMOUNT_RE.sub("****", line)
-        line = CREDIT_CODE_RE.sub("****", line)
-        line = PHONE_RE.sub("****", line)
-        line = ID_CARD_RE.sub("****", line)
+        if line.lstrip().startswith("#"):
+            out_lines.append(line)  # I-2: 标题行只吃 --map, 自动正则跳过
+            continue
+        line = AMOUNT_RE.sub(MASK, line)
+        line = CREDIT_CODE_RE.sub(MASK, line)
+        line = PHONE_RE.sub(MASK, line)
+        line = ID_CARD_RE.sub(MASK, line)
         out_lines.append(line)
     return "\n".join(out_lines)
 

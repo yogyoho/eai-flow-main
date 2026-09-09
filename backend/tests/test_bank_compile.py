@@ -166,8 +166,39 @@ def test_residual_scan_hits(tender_md):
     text = bc.load_text(tender_md)
     redacted = bc.redact(text, mapping={})
     hits = bc.residual_scan(redacted)
-    assert hits == [], f"自动脱敏后零残留: {hits}"
+    # M-2 fail-closed: 表格两位小数金额(3,500.00 无元后缀)AMOUNT_RE 不掩码, 由残留门兜底——
+    # 唯一残留恰为该行, 其余(金额/信用代码/手机/身份证)必须零残留。
+    assert hits == ["| 1 | 课堂观测终端 | 200 | 3,500.00 |"], f"残留应恰为表格金额行: {hits}"
 
 
 def test_residual_scan_catches_miss(tender_md):
     assert bc.residual_scan("报价 9,999,999.99 元") != [], "漏网金额必须被扫描抓到"
+
+
+def test_redact_cjk_adjacency_boundary():
+    """bug-3061 回归钉: 无空格紧邻汉字的边界形态(空格形态下 \b 回退也能过, 探不到雷)。"""
+    r = bc.redact("电话13800138000代码91360100MA001AB2CD号360102199001011234", mapping={})
+    assert "13800138000" not in r and "91360100MA001AB2CD" not in r and "360102199001011234" not in r
+    # M-4: 规则级显式断言——身份证(含 X 尾)不依赖端到端推断
+    assert bc.ID_CARD_RE.search("号360102199001011234"), "身份证规则 CJK 紧邻命中"
+    assert bc.ID_CARD_RE.search("号36010219900101123X"), "身份证 X 尾命中"
+    assert bc.PHONE_RE.search("电话13800138000"), "手机号规则 CJK 紧邻命中"
+    assert bc.CREDIT_CODE_RE.search("代码91360100MA001AB2CD"), "信用代码规则 CJK 紧邻命中"
+
+
+def test_redact_edge_probes():
+    """I-1 顺手钉: 19 位纯数字串不截段误配 + 空 mapping 键跳过("".replace 语义陷阱)。"""
+    assert bc.PHONE_RE.search("1234567890123456789") is None and bc.ID_CARD_RE.search("1234567890123456789") is None
+    assert bc.redact("abc", {"": "X"}) == "abc"
+
+
+def test_redact_title_map_only_auto_skip():
+    """I-2(修法a): 标题行只吃 --map 逐字替换、跳过四条自动正则(# 结构保真);
+    标题里的裸金额不再静默, 由残留门 fail-closed 兜底; 正文行自动模式照常。"""
+    text = "## 五、报价 500 万元一览\n\n正文合计 500 万元。\n"
+    out = bc.redact(text, mapping={})
+    assert out.split("\n")[0] == "## 五、报价 500 万元一览", "标题行自动正则零改动"
+    assert "正文合计****。" in out, "正文行自动脱敏照常(掩码吞掉匹配内空格)"
+    assert bc.residual_scan(out) != [], "标题残留金额进残留门(不静默泄漏)"
+    out2 = bc.redact("## 一、投标函\n", mapping={"投标函": "某函"})
+    assert out2 == "## 一、某函\n", "标题行 --map 逐字替换(机构名清洗唯一通道)"
