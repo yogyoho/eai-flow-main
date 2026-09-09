@@ -1,7 +1,8 @@
 "use client";
 
-// EAI-CUSTOM: 样例库 tab（coal-eia-report v2 BS3 MVP）——样例台账 + 入库向导。
-// 提取流水线 / 质检面板留二期。后端：/api/kf/samples*（knowledge_factory routers）。
+// EAI-CUSTOM: 煤矿环评报告样例库（coal-eia-report v2 BS3 MVP）——样例台账 + 入库向导。
+// 2026-09 自知识工厂样例库 tab 迁出为应用中心独立应用（路由 /coal-eia-samples）。
+// 提取流水线 / 质检面板留二期。后端：/api/extensions/eia-samples*（eia_samples routers）。
 
 import {
   FileStack,

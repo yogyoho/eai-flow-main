@@ -1,7 +1,9 @@
 "use client";
 
-// EAI-CUSTOM: 样例库 API（coal-eia-report v2 BS3 MVP——样例台账 + 入库向导）。
-// 自包含 kfRequest 副本（api/index.ts 的 kfRequest 未导出，勿反向耦合）。
+// EAI-CUSTOM: 煤矿环评报告样例库 API（coal-eia-report v2 BS3 MVP——样例台账 + 入库向导）。
+// 2026-09 自 knowledge-factory 迁出为独立应用（KF 是通用模块，领域样例库不得混入）；
+// 接口前缀同步换为 /api/extensions/eia-samples（后端 app.extensions.eia_samples.routers）。
+// 自包含 fetch 封装（与 KF 的 kfRequest 同款，未导出，勿反向耦合）。
 
 export interface KFSampleRecord {
   id: string;
@@ -76,7 +78,7 @@ export const STATUS_LABELS: Record<string, string> = Object.fromEntries(
   SAMPLE_STATUSES.map((s) => [s.value, s.label]),
 );
 
-const API_BASE = "/api/kf";
+const API_BASE = "/api/extensions/eia-samples";
 
 class ApiError extends Error {
   constructor(

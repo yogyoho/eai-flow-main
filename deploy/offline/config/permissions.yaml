@@ -195,6 +195,17 @@ modules:
         display_name: "任务中心"
         operations: []
 
+  # ─── 煤矿环评报告样例库（应用中心 → 煤矿设计；EAI-CUSTOM 2026-09 自知识工厂 kf:page:samples
+  #     tab 迁出独立成应用：KF 是通用模块，领域样例库不得混入。后端 /api/extensions/eia-samples/*，
+  #     沿用 require_permission("system:access")，页面可见性由本页键 + 角色 nav/pages 授权控制）───
+  coal_eia_samples:
+    display_name: "煤矿环评报告样例库"
+    nav_id: "nav:coal-eia-samples"
+    pages:
+      - id: "ces:page:samples"
+        display_name: "样例台账"
+        operations: []
+
   # ─── 投标报价分析（应用中心 → 市场营销；Route B 直调 data_source 只读查询）───
   bid_quote:
     display_name: "投标报价分析"
@@ -340,6 +351,8 @@ roles:
       - nav:contract-price
       - nav:spare-parts
       - nav:geo-samples
+      # EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库导航
+      - nav:coal-eia-samples
       - nav:output
       - nav:app-center
     pages: ["*"]
@@ -385,6 +398,8 @@ roles:
       - nav:knowledge
       # EAI-CUSTOM (geo-sample-bank T9): 地质样例库导航（与 roles_custom.yaml overlay 同步，bug-1087 wholesale-replace 教训）
       - nav:geo-samples
+      # EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库导航（与 overlay 同步）
+      - nav:coal-eia-samples
       - nav:output
       - nav:app-center
     pages: ["*"]

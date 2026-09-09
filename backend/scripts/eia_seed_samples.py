@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """样例库种子数据灌入（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP）。
 
+EAI-CUSTOM (2026-09 样例库迁出): 原 backend/scripts/kf_seed_samples.py，服务随样例库
+自 knowledge_factory 迁至 app.extensions.eia_samples，脚本随迁改名（kf_samples 表名不变）。
+
 把既有 52 文件台账的 25 独立作品 + 3 份露天 txt 增补 + 1 条加密片段
 （共 29 条，data/kf_samples_seed.json）灌入 kf_samples 表。
 
@@ -21,12 +24,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.extensions.database import close_db, get_db_context, init_engine
-from app.extensions.knowledge_factory.sample_service import SampleService
+from app.extensions.eia_samples.service import SampleService
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
-logger = logging.getLogger("kf-seed-samples")
+logger = logging.getLogger("eia-seed-samples")
 
-SEED_PATH = Path(__file__).resolve().parent.parent / "app" / "extensions" / "knowledge_factory" / "data" / "kf_samples_seed.json"
+SEED_PATH = Path(__file__).resolve().parent.parent / "app" / "extensions" / "eia_samples" / "data" / "kf_samples_seed.json"
 
 
 async def seed() -> dict:

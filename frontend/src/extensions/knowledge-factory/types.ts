@@ -799,7 +799,6 @@ export interface LawTemplateSection {
 
 export type TabId =
   | "reports"
-  | "samples" // EAI-CUSTOM: 样例库（coal-eia v2 BS3 MVP）
   | "extraction"
   | "editor"
   | "law"

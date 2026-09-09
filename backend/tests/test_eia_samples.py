@@ -3,6 +3,8 @@
 真库语义（sqlite+aiosqlite 内存库 + 真实 SampleService），非 AsyncMock——
 upsert 幂等与 scenario 过滤依赖 SQL 行为，mock 无法证明。只建 kf_samples 单表
 （users FK 引用表可缺席：SQLite 默认不强制外键），不触发 init_db/migrate_db。
+EAI-CUSTOM (2026-09 样例库迁出): 服务自 knowledge_factory 迁至 app.extensions.eia_samples，
+本测试随迁改打新模块（原 backend/tests/test_kf_samples.py）。
 """
 
 import json
@@ -15,9 +17,8 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
-from app.extensions.knowledge_factory.models import KFSample
-from app.extensions.knowledge_factory.sample_service import SampleHashConflictError, SampleService
-from app.extensions.knowledge_factory.schemas import (
+from app.extensions.eia_samples.models import KFSample
+from app.extensions.eia_samples.schemas import (
     SampleBatchUpdate,
     SampleBulkImportRequest,
     SampleBulkItem,
@@ -26,8 +27,9 @@ from app.extensions.knowledge_factory.schemas import (
     SampleStatus,
     SampleUpdate,
 )
+from app.extensions.eia_samples.service import SampleHashConflictError, SampleService
 
-SEED_PATH = Path(__file__).resolve().parents[1] / "app" / "extensions" / "knowledge_factory" / "data" / "kf_samples_seed.json"
+SEED_PATH = Path(__file__).resolve().parents[1] / "app" / "extensions" / "eia_samples" / "data" / "kf_samples_seed.json"
 
 
 def _item(**overrides) -> dict:

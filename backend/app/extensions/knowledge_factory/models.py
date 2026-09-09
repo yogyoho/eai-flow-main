@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -235,28 +235,3 @@ ComplianceRule.created_by_user: Mapped[Optional["User"]]  # noqa: F811
 ComplianceRuleLog.rule: Mapped["ComplianceRule"]  # noqa: F811
 ComplianceRuleLog.executed_by_user: Mapped[Optional["User"]]  # noqa: F811
 
-
-class KFSample(Base):
-    """样例库样例台账（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP）。
-
-    已解析环评报告样例文件的登记记录：场景(scenario)×状态(status)双轴台账，
-    file_hash 唯一——同一文件的重复登记（含 import-bulk 重跑）按哈希 upsert 幂等。
-    """
-
-    __tablename__ = "kf_samples"
-
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    title: Mapped[str] = mapped_column(String(500), nullable=False)
-    source_path: Mapped[str] = mapped_column(String(1000), nullable=False)
-    file_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
-    scenario: Mapped[str] = mapped_column(String(50), nullable=False, default="other", index=True)
-    variant: Mapped[str | None] = mapped_column(String(200), nullable=True)
-    status: Mapped[str] = mapped_column(String(30), nullable=False, default="filename_only", index=True)
-    confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
-    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now(), onupdate=func.now(), nullable=False)
-
-    def __repr__(self) -> str:
-        return f"<KFSample(id={self.id}, scenario={self.scenario}, status={self.status}, title={self.title[:30]})>"

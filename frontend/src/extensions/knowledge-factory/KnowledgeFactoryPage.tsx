@@ -5,7 +5,6 @@ import React, { useState } from "react";
 
 import {
   SampleReports,
-  SampleLibrary,
   TemplateExtraction,
   TemplateEditor,
   LawLibrary,
@@ -27,8 +26,6 @@ export default function KnowledgeFactoryPage() {
     switch (activeTab) {
       case "reports":
         return <SampleReports />;
-      case "samples": // EAI-CUSTOM: 样例库（coal-eia v2 BS3 MVP）
-        return <SampleLibrary />;
       case "extraction":
         return <TemplateExtraction />;
       case "editor":

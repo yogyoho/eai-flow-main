@@ -1898,6 +1898,24 @@ export const kfApi = {
       body: JSON.stringify(data),
     }),
 
+  // EAI-CUSTOM: coal-eia v2 D12——从 stage seed JSON 导入模板（seed_gen 产物的一等公民入口）
+  importSeedTemplate: (data: {
+    seed: Record<string, unknown>;
+    name?: string;
+    domain?: string;
+    publish?: boolean;
+  }) =>
+    kfRequest<{
+      id: string;
+      name: string;
+      status: string;
+      sections_count: number;
+      storage_note?: string;
+    }>("/templates/import-seed", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
   getTemplate: (templateId: string) =>
     kfRequest<TemplateDocument>(`/templates/${templateId}`),
 

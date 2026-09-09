@@ -665,30 +665,10 @@ async def migrate_db() -> None:
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_law_template_relations_law ON law_template_relations(law_id)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_law_template_relations_template ON law_template_relations(template_id)"))
 
-        # --- Knowledge Factory: 样例库 kf_samples（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP——
-        #     样例台账 + 入库向导；提取流水线/质检面板留二期）。file_hash 唯一 = 台账去重轴，
-        #     import-bulk 幂等 upsert 依赖此约束 ---
-        await conn.execute(
-            text("""
-            CREATE TABLE IF NOT EXISTS kf_samples (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                title VARCHAR(500) NOT NULL,
-                source_path VARCHAR(1000) NOT NULL,
-                file_hash VARCHAR(64) NOT NULL,
-                scenario VARCHAR(50) NOT NULL DEFAULT 'other',
-                variant VARCHAR(200),
-                status VARCHAR(30) NOT NULL DEFAULT 'filename_only',
-                confidence DOUBLE PRECISION,
-                notes TEXT,
-                created_by UUID REFERENCES users(id),
-                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                CONSTRAINT uq_kf_samples_file_hash UNIQUE (file_hash)
-            )
-        """)
-        )
-        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_kf_samples_scenario ON kf_samples(scenario)"))
-        await conn.execute(text("CREATE INDEX IF NOT EXISTS idx_kf_samples_status ON kf_samples(status)"))
+        # EAI-CUSTOM (2026-09 样例库迁出): kf_samples 建表块已移除——表归新扩展模块
+        # app.extensions.eia_samples（煤矿环评报告样例库），建表由该模块模型经
+        # init_db create_all 承接（gateway 启动序 init_db → migrate_db 保证模型已注册；
+        # 历史库表已存在，create_all 跳过，零数据迁移）。
 
         # --- AIDocument: doc_type and file reference fields ---
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS doc_type VARCHAR(20) DEFAULT 'document' NOT NULL"))
@@ -1495,6 +1475,8 @@ async def seed_db() -> None:
                     {"key": "marketing", "label": "市场营销", "accent": "emerald", "sort": 5, "universal": False},
                     # EAI-CUSTOM (geo-sample-bank T9): 地质管理域（地质样例库）accent=teal 在前端 ACCENT_STYLES 已有
                     {"key": "geology", "label": "地质管理", "accent": "teal", "sort": 6, "universal": False},
+                    # EAI-CUSTOM (2026-09 样例库迁出): 煤矿设计域（煤矿环评报告样例库，自 knowledge_factory 独立成应用）
+                    {"key": "mining", "label": "煤矿设计", "accent": "orange", "sort": 7, "universal": False},
                 ]:
                     await session.execute(
                         text("INSERT INTO app_domains (key, label, accent_color, sort_order, is_universal) VALUES (:key, :label, :accent, :sort, :universal) ON CONFLICT DO NOTHING"),
@@ -1673,6 +1655,21 @@ async def seed_db() -> None:
                         "sort": 15,
                         "sort_key": "dizhiyangliku",
                     },
+                    # EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库（应用中心 → 煤矿设计；
+                    # 自 knowledge_factory kf:page:samples tab 独立成应用，端点迁 /api/extensions/eia-samples）
+                    {
+                        "app_id": "coal-eia-samples",
+                        "name": "煤矿环评报告样例库",
+                        "desc": "煤矿环评报告样例台账，场景×状态双轴归类与批量导入",
+                        "icon": "library-big",
+                        "domain": "mining",
+                        "stage": "process",
+                        "path": "/coal-eia-samples",
+                        "license": "platform",
+                        "admin": False,
+                        "sort": 16,
+                        "sort_key": "meikuanghuanpingyangliku",
+                    },
                     {
                         "app_id": "admin",
                         "name": "系统管理",
@@ -1717,7 +1714,7 @@ async def seed_db() -> None:
                         app,
                     )
                 await session.commit()
-                logger.info("Seeded app-center: 7 domains + 15 apps")
+                logger.info("Seeded app-center: 8 domains + 16 apps")
             except Exception as e:
                 logger.warning(f"Failed to seed app-center data: {e}")
 

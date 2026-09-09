@@ -5,7 +5,6 @@ import {
   Settings,
   Edit3,
   Library,
-  LibraryBig,
   ShieldCheck,
   GitBranch,
   BarChart3,
@@ -28,7 +27,6 @@ interface NavItem {
 // EAI-CUSTOM: 每个 tab 映射到子页面权限点（/api/permissions/me 的 pages），供 canPage 过滤
 const NAV_ITEMS: NavItem[] = [
   { id: "reports", label: "样例管理", icon: FileText, pageId: "kf:page:sample" },
-  { id: "samples", label: "样例库", icon: LibraryBig, pageId: "kf:page:samples" }, // EAI-CUSTOM: coal-eia v2 BS3
   { id: "extraction", label: "模板抽取", icon: Settings, pageId: "kf:page:extraction" },
   { id: "editor", label: "模板编辑", icon: Edit3, pageId: "kf:page:template" },
   { id: "law", label: "法规标准", icon: Library, pageId: "kf:page:law" },
