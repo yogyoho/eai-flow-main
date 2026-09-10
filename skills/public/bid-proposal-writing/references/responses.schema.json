@@ -32,7 +32,7 @@
     "depth_target": {
       "type": "integer",
       "minimum": 0,
-      "description": "深度目标(可选; 第一层样例库检索命中段落实质长——剥空白/标点字符数——的 median 取整, 同章组候选写同一值, 检索指引见 tech_response_prompt.md)。build 深度门逐条以它为基准校响应实质长; 缺省回落库级 absolute_floor(references/depth_targets.json, bank_compile 产物)。"
+      "description": "深度目标(可选; 第一层样例库检索命中段落实质长——剥空白/标点字符数——的 median 取整, 同章组候选写同一值, 检索指引见 tech_response_prompt.md)。build 深度门逐条以它为基准校响应实质长; 缺省回落库级 absolute_floor(references/depth_targets.json, bank_compile 产物)。0 亦不回落 floor(等价不设下限)。"
     },
     "evidence_ref": {
       "type": [

@@ -611,6 +611,11 @@ def _write_bytes(path: Path, obj) -> None:
     path.write_bytes((json.dumps(obj, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
 
 
+def _write_text_raw(path: Path, text: str) -> None:
+    """原样字节落盘(不 JSON 编码)——构造损坏基线文件用。"""
+    path.write_bytes(text.encode("utf-8"))
+
+
 def _depth_state(tmp_path, responses=None):
     """最小可构建状态: 一技术条款挂一技术节点 + 一商务节点(两卷章分组非空)。
 
@@ -689,7 +694,7 @@ class TestBuildDepthGate:
         rc, summary, out = self._build(tmp_path, capsys, [self._response(chars=120, depth_target=100)])
         assert rc == 0, "达标响应零异常"
         assert summary["anomalies"] == []
-        assert summary["depth_gate"] == {"enabled": True, "absolute_floor": 60, "responses_checked": 1, "below_target": 0, "below_floor": 0}
+        assert summary["depth_gate"] == {"enabled": True, "skip_reason": None, "absolute_floor": 60, "responses_checked": 1, "below_target": 0, "below_floor": 0}
         lint = (out / "实体lint报告.md").read_text(encoding="utf-8")
         assert "## 深度门" in lint and "(无——全部响应达到深度基线)" in lint
 
@@ -716,6 +721,8 @@ class TestBuildDepthGate:
         assert rc == 3
         assert _anomaly_kinds(summary) == ["depth_below_floor"], "无 depth_target 落库级 absolute_floor 兜底"
         assert summary["depth_gate"]["below_floor"] == 1
+        anomaly = summary["anomalies"][0]
+        assert "target_discarded" not in anomaly and "无 depth_target" in anomaly["message"], "真缺省才叫'无 depth_target'(对照 T6 评审②弃用留痕分支)"
         lint = (out / "实体lint报告.md").read_text(encoding="utf-8")
         assert "depth_below_floor" in lint
         assert (out / "delivery_manifest.json").is_file(), "floor 异常同样不阻断凭据"
@@ -727,25 +734,37 @@ class TestBuildDepthGate:
     def test_gate_skipped_without_baseline(self, tmp_path, capsys, monkeypatch):
         monkeypatch.setattr(_build_module(), "DEFAULT_DEPTH_TARGETS_PATH", tmp_path / "missing.json")
         rc, summary, out = self._build(tmp_path, capsys, [self._response(chars=30)])
-        assert rc == 0, "基线缺失=门静默跳过(bank 未编译不阻塞), 短响应也不报异常"
+        assert rc == 0, "基线缺失=门跳过(bank 未编译不阻塞), 短响应也不报异常"
         assert summary["depth_gate"]["enabled"] is False and summary["anomalies"] == []
+        assert summary["depth_gate"]["skip_reason"] == "missing", "跳过原因随摘要呈现——门静默失效可诊断(T6 评审①)"
         lint = (out / "实体lint报告.md").read_text(encoding="utf-8")
         assert "深度门" in lint and "跳过" in lint
+        assert "跳过原因: 文件缺失(样例库未编译)" in lint, "跳过原因分句进 lint 报告(T6 评审①)"
 
     def test_gate_skipped_when_baseline_malformed(self, tmp_path, capsys, monkeypatch):
-        """基线在盘但 absolute_floor 非整数 = 形态不符, 与缺失同语义(门跳过不硬错)。"""
+        """基线在盘但形态不可用 = 与缺失同语义(门跳过不硬错); 失效形态可分辨(T6 评审①)。"""
         path = tmp_path / "depth_targets.json"
         _write_bytes(path, {"absolute_floor": "60", "global_median": 200})
         monkeypatch.setattr(_build_module(), "DEFAULT_DEPTH_TARGETS_PATH", path)
         rc, summary, _ = self._build(tmp_path, capsys, [self._response(chars=30)])
         assert rc == 0 and summary["depth_gate"]["enabled"] is False
+        assert summary["depth_gate"]["skip_reason"] == "bad_floor", "absolute_floor 非整数 → bad_floor"
+
+        _write_text_raw(path, "{not-json")  # 损坏 JSON = 另一失效形态
+        rc, summary, _ = self._build(tmp_path, capsys, [self._response(chars=30)])
+        assert rc == 0 and summary["depth_gate"]["enabled"] is False
+        assert summary["depth_gate"]["skip_reason"] == "malformed", "不可解析 → malformed"
 
     def test_item_level_malformed_target_falls_back_to_floor(self, tmp_path, capsys, depth_baseline):
         """responses.json 内 depth_target 非整数(脚本外直写脏数据) → 按"未提供"回落 floor,
-        不硬错不静默丢基准——形态防线在 responses.py, build 侧防御兜底。"""
+        不硬错不静默丢基准; anomaly 带 target_discarded 原值留痕+文案点破"形态不符已弃用"
+        (纠正"无 depth_target"的误导, T6 评审②)。"""
         rc, summary, _ = self._build(tmp_path, capsys, [self._response(chars=30, depth_target="300")])
         assert rc == 3
         assert _anomaly_kinds(summary) == ["depth_below_floor"], "脏 target 回落 floor 判定"
+        anomaly = summary["anomalies"][0]
+        assert anomaly["target_discarded"] == "300", "弃用原值随 anomaly 留痕(T6 评审②)"
+        assert "形态不符已弃用" in anomaly["message"], "文案不再误称'无 depth_target'(T6 评审②)"
 
     def test_substantive_chars_mirrors_responses(self):
         """build_output 复制了 responses.py 的实质长口径(不跨脚本 import)——同步断言兜漂移。"""

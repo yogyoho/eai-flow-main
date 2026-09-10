@@ -1063,7 +1063,7 @@ def run_entity_lint(
     return flagged, hits
 
 
-def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict, depth_anomalies: list[dict] | None = None, depth_targets: dict | None = None) -> str:
+def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict, depth_anomalies: list[dict] | None = None, depth_targets: dict | None = None, depth_skip_reason: str | None = None) -> str:
     """实体 lint 报告(实体节) + 深度门节(Plan2 T6, 与实体节同报告相邻呈现)。"""
     lines = [
         "# 实体一致性 lint 报告",
@@ -1117,7 +1117,7 @@ def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict, dept
             "候选值: " + "、".join(unique_candidates),
             "",
         ])
-    lines.extend(_render_depth_section(depth_anomalies or [], depth_targets))
+    lines.extend(_render_depth_section(depth_anomalies or [], depth_targets, skip_reason=depth_skip_reason))
     return "\n".join(lines)
 
 
@@ -1127,7 +1127,8 @@ def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict, dept
 
 # 基线文件 = bank_compile 样例库编译产物(库级聚合: absolute_floor=各册 P25 min,
 # global_median=各册 median 中位; 键名是本脚本消费契约保持稳定)。相对脚本目录定位,
-# 缺失(样例库未编译) → 深度门整体静默跳过, 不阻塞交付。
+# 缺失(样例库未编译) → 深度门整体跳过不阻塞交付; 跳过原因(skip_reason)进摘要与
+# lint 报告——静默但不失诊(T6 评审①)。
 DEFAULT_DEPTH_TARGETS_PATH = Path(__file__).resolve().parent.parent / "references" / "depth_targets.json"
 # 实质正文口径与 responses.py _substantive_chars 同款(剥空白/标点, CJK/字母/数字计入):
 # 复制常量口径而非跨脚本 import(skills 平铺脚本与第三方包同名劫持 sys.modules 风险),
@@ -1140,39 +1141,45 @@ def _substantive_chars(text: str) -> int:
     return len(_SUBSTANTIVE_STRIP_RE.sub("", text))
 
 
-def load_depth_targets(path: str | Path | None = None) -> dict | None:
-    """装载样例库深度基线(depth_targets.json); 缺失/不可解析/absolute_floor 非整数 → None。
+def load_depth_targets(path: str | Path | None = None) -> tuple[dict | None, str | None]:
+    """装载样例库深度基线(depth_targets.json); 返回 (基线, 跳过原因) 二元组。
 
-    None = 深度门静默跳过——bank 未编译是合法初态, 不得反向阻塞交付; 基线形态防线
-    在产出方 bank_compile(确定性落盘), 消费侧只防御不硬错。
+    成功 → (data, None); 失败 → (None, reason)——reason ∈ "missing"(文件不存在,
+    样例库未编译) | "malformed"(损坏/不可解析) | "bad_floor"(absolute_floor 非整数)。
+    基线不可用 = 深度门跳过——bank 未编译是合法初态, 不得反向阻塞交付; 基线形态防线
+    在产出方 bank_compile(确定性落盘), 消费侧只防御不硬错。reason 不再吞掉: 随
+    summary["depth_gate"]["skip_reason"] 与 lint 报告呈现, 门静默失效可诊断(T6 评审①)。
     """
     target = Path(path) if path is not None else DEFAULT_DEPTH_TARGETS_PATH
     if not target.is_file():
-        return None
+        return None, "missing"
     try:
         data = json.loads(target.read_text(encoding="utf-8-sig"))
     except (json.JSONDecodeError, UnicodeDecodeError, OSError):
-        return None
+        return None, "malformed"
     floor = data.get("absolute_floor") if isinstance(data, dict) else None
     if isinstance(floor, bool) or not isinstance(floor, int):
-        return None
-    return data
+        return None, "bad_floor"
+    return data, None
 
 
-def run_depth_gate(responses: list[dict], targets: dict | None) -> tuple[list[dict], dict]:
+def run_depth_gate(responses: list[dict], targets: dict | None, skip_reason: str | None = None) -> tuple[list[dict], dict]:
     """深度门(Plan2 T6): 逐条响应实质长 vs 响应级 depth_target, 缺省回落库级 absolute_floor。
 
     depth_target(阶段4a 第一层检索命中组段落实质长 median, merge 前 schema 已校 ≥0 整数)
-    在场即以它为唯一基准(floor 不叠加); 非整数/负数按"未提供"回落 floor——形态防线在
-    responses.py, build 侧防御性兜底不硬错。anomalies 只进 lint 报告"深度"节与摘要
-    (质量牵引), 不进实体门/不阻断交付凭据。targets=None → 门整体静默跳过。
+    在场即以它为唯一基准(floor 不叠加); 非整数/负数按"未提供"回落 floor, 且 anomaly 带
+    target_discarded 留痕(原值进报告——"无 depth_target"与"有但形态不符已弃用"两回事,
+    T6 评审②)——形态防线在 responses.py, build 侧防御性兜底不硬错。anomalies 只进
+    lint 报告"深度"节与摘要(质量牵引), 不进实体门/不阻断交付凭据。targets=None →
+    门整体跳过, skip_reason(装载方 load_depth_targets 给出)随摘要呈现可诊断。
     返回 (anomalies, 摘要统计)。
     """
-    summary = {"enabled": False, "absolute_floor": None, "responses_checked": 0, "below_target": 0, "below_floor": 0}
+    summary = {"enabled": False, "skip_reason": skip_reason, "absolute_floor": None, "responses_checked": 0, "below_target": 0, "below_floor": 0}
     if targets is None:
         return [], summary
     floor = targets.get("absolute_floor")
     if isinstance(floor, bool) or not isinstance(floor, int):
+        summary["skip_reason"] = "bad_floor"  # 直调方传脏基线的防御分支: 同样给出可诊断原因
         return [], summary
     summary.update({"enabled": True, "absolute_floor": floor, "responses_checked": len(responses)})
     anomalies: list[dict] = []
@@ -1180,7 +1187,10 @@ def run_depth_gate(responses: list[dict], targets: dict | None) -> tuple[list[di
         clause_id = str(item.get("clause_id") or "(无条款)")
         substantive = _substantive_chars(str(item.get("response_text") or ""))
         raw = item.get("depth_target")
-        target = raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 0 else None
+        if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 0:
+            target, discarded = raw, None
+        else:
+            target, discarded = None, raw  # 在场但形态不符(非整数/负数/布尔) → 弃用留痕; 缺省(None)不留痕
         if target is not None:
             if substantive < target:
                 summary["below_target"] += 1
@@ -1195,25 +1205,37 @@ def run_depth_gate(responses: list[dict], targets: dict | None) -> tuple[list[di
                 )  # noqa: E501
         elif substantive < floor:
             summary["below_floor"] += 1
-            anomalies.append(
-                {
-                    "kind": "depth_below_floor",
-                    "clause_id": clause_id,
-                    "substantive_chars": substantive,
-                    "absolute_floor": floor,
-                    "message": f"条款 {clause_id} 响应实质正文 {substantive} 字低于样例库绝对地板 {floor} 字(P25 段长)——无 depth_target 落库级兜底基线, 建议扩写或回 stage4a 重检索",
-                }
-            )  # noqa: E501
+            anomaly = {
+                "kind": "depth_below_floor",
+                "clause_id": clause_id,
+                "substantive_chars": substantive,
+                "absolute_floor": floor,
+            }
+            if discarded is not None:
+                anomaly["target_discarded"] = discarded
+                anomaly["message"] = f"条款 {clause_id} 响应实质正文 {substantive} 字低于样例库绝对地板 {floor} 字(P25 段长)——depth_target 形态不符已弃用(回落库级兜底基线), 建议扩写或回 stage4a 重检索"
+            else:
+                anomaly["message"] = f"条款 {clause_id} 响应实质正文 {substantive} 字低于样例库绝对地板 {floor} 字(P25 段长)——无 depth_target 落库级兜底基线, 建议扩写或回 stage4a 重检索"
+            anomalies.append(anomaly)  # noqa: E501
     return anomalies, summary
 
 
-def _render_depth_section(depth_anomalies: list[dict], depth_targets: dict | None) -> list[str]:
-    """lint 报告"深度"节(实体节相邻, Plan2 T6): 逐条缺口列示交确认门人核扩写。"""
+def _render_depth_section(depth_anomalies: list[dict], depth_targets: dict | None, skip_reason: str | None = None) -> list[str]:
+    """lint 报告"深度"节(实体节相邻, Plan2 T6): 逐条缺口列示交确认门人核扩写。
+
+    基线不可用时跳过原因分句呈现(T6 评审①)——"未编译/损坏/floor 形态不符"三种
+    失效形态处置路径不同, 混在一句里会让维护者猜。"""
     lines = ["## 深度门(样例库校准基线; 质量牵引非废标风险——不阻断交付凭据)", ""]
     if depth_targets is None:
+        reason_text = {
+            "missing": "文件缺失(样例库未编译)",
+            "malformed": "文件损坏或不可解析",
+            "bad_floor": "absolute_floor 形态不符(非整数)",
+        }.get(skip_reason or "missing", f"未知({skip_reason})")
         lines.extend(
             [
-                "> 基线缺失: references/depth_targets.json 未装载(样例库未编译/形态不符)——深度门本轮静默跳过。",
+                "> 基线缺失: references/depth_targets.json 未装载——深度门本轮跳过。",
+                f"> 跳过原因: {reason_text}。",
                 "> 激活方法: bank_compile.py 编译样例库产出该文件后重跑 build。",
                 "",
                 "(跳过——无基线可比)",
@@ -1336,8 +1358,8 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     # 深度门(Plan2 T6): 样例库校准基线(bank_compile 产 references/depth_targets.json;
     # 缺失=门静默跳过)。anomalies 只汇 lint 报告"深度"节+摘要, 不进实体门/不影响凭据——
     # 深度是质量牵引非废标风险(spec §4.4), 与实体门熔断(_entity_gate_state)完全解耦。
-    depth_targets = load_depth_targets()
-    depth_anomalies, depth_summary = run_depth_gate(responses, depth_targets)
+    depth_targets, depth_skip_reason = load_depth_targets()
+    depth_anomalies, depth_summary = run_depth_gate(responses, depth_targets, skip_reason=depth_skip_reason)
     anomalies.extend(depth_anomalies)
 
     # 两文档册集(v4 Revision 4): 技术卷先渲(整体方案技术占位页需其分册目录)
@@ -1356,7 +1378,7 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     flagged, hits = run_entity_lint(clauses, whitelist, extra_texts=scan_texts)
     anomalies.extend(flagged)
     entity_gate = _entity_gate_state(state_dir, flagged)
-    lint_md = render_lint_md(whitelist, flagged, hits, depth_anomalies=depth_anomalies, depth_targets=depth_targets)
+    lint_md = render_lint_md(whitelist, flagged, hits, depth_anomalies=depth_anomalies, depth_targets=depth_targets, depth_skip_reason=depth_skip_reason)
 
     index_md = booklets.render_index(
         [
