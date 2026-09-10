@@ -3746,8 +3746,13 @@ def _set_structure_node(state_dir, node_id, **fields):
 
 
 def _lint_flagged_values(lint_text):
-    """解析实体lint报告[待核对]表的提取值列(第 4 列)——钉住提取值本身。"""
+    """解析实体lint报告[待核对]表的提取值列(第 4 列)——钉住提取值本身。
+
+    以下一个 "## " 节头截断——报告后继节(候选白名单/深度门等)的表格行不得混入;
+    深度门节在 samples_bank 基线落盘(Task 7)后恒在盘, 无基线行"(无——全部响应…)"
+    曾被当提取值解析出空串。"""
     section = lint_text.split("## [待核对] 白名单外实体(疑似上一项目残留)", 1)[1]
+    section = section.split("\n## ", 1)[0]
     rows = [ln for ln in section.splitlines() if ln.startswith("|") and "---" not in ln and not ln.startswith("| 条款")]
     return [ln.split("|")[4].strip() for ln in rows]
 

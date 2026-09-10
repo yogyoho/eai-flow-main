@@ -1,0 +1,40 @@
+{
+  "ad6a1d369458": {
+    "category": "IT软件平台",
+    "chapters": [
+      {
+        "file": "chapters/ch01__第一章_投标人须知.md",
+        "title": "第一章 投标人须知"
+      },
+      {
+        "file": "chapters/ch02__第二章_项目内容、技术指标.md",
+        "title": "第二章 项目内容、技术指标"
+      },
+      {
+        "file": "chapters/ch03__第三章_合同基本条款.md",
+        "title": "第三章 合同基本条款"
+      },
+      {
+        "file": "chapters/ch04__第四章_评分办法及评分细则.md",
+        "title": "第四章 评分办法及评分细则"
+      },
+      {
+        "file": "chapters/ch05__第五章：合同书.md",
+        "title": "第五章：合同书"
+      },
+      {
+        "file": "chapters/ch06__第六章：附件.md",
+        "title": "第六章：附件"
+      }
+    ],
+    "depth": {
+      "absolute_floor": 429,
+      "calibrated_from": "f484a08763aaa54e0668d63d13c103db4e4fa828a00843ac196acc012f99285d",
+      "global_median": 698,
+      "paragraph_count": 62
+    },
+    "file_hash": "f484a08763aaa54e0668d63d13c103db4e4fa828a00843ac196acc012f99285d",
+    "industry": "信息技术",
+    "title": "江西师范大学课堂观测系统"
+  }
+}
