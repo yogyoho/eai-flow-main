@@ -1,8 +1,10 @@
 """bank_compile 样例入库工具：脱敏/切片/深度统计/产物确定性（纯函数契约）。"""
 
 import importlib.util
+import io
 import json
 import re
+import urllib.error
 import zipfile
 from pathlib import Path
 
@@ -414,22 +416,11 @@ def clean_map(tmp_path):
     return str(map_path)
 
 
-def _push_argv(tender_md, bank, clean_map):
-    return [
-        "--input",
-        str(tender_md),
-        "--title",
-        "测试项目",
-        "--industry",
-        "信息技术",
-        "--category",
-        "IT软件平台",
-        "--bank-dir",
-        str(bank),
-        "--map",
-        clean_map,
-        "--ragflow-push",
-    ]
+def _push_argv(tender_md, bank, clean_map, push=True):
+    argv = ["--input", str(tender_md), "--title", "测试项目", "--industry", "信息技术", "--category", "IT软件平台", "--bank-dir", str(bank), "--map", clean_map]
+    if push:
+        argv.append("--ragflow-push")
+    return argv
 
 
 def test_ragflow_push_called_when_enabled(monkeypatch, tmp_path, tender_md, clean_map):
@@ -439,15 +430,15 @@ def test_ragflow_push_called_when_enabled(monkeypatch, tmp_path, tender_md, clea
     rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
     assert rc == 0
     assert len(calls) == 1 and "投标文件格式" in calls[0][0], "推送的是 redacted 全文"
-    assert calls[0][1]["title"] == "测试项目" and calls[0][1]["dataset_id"] == "ds-123"
-    assert calls[0][1]["industry"] == "信息技术" and calls[0][1]["category"] == "IT软件平台"
+    assert calls[0][1] == {"title": "测试项目"}, "M-1: meta 瘦身恰为 title(env 由 ragflow_push 自读, 不冗余传参)"
 
 
 def test_ragflow_push_skipped_without_env(monkeypatch, tmp_path, tender_md, clean_map, capsys):
-    """无 dataset id=跳过推送不报错(rc 仍 0), 但留一行 stderr 提示让维护者知晓未推送。"""
+    """无 dataset id=ragflow_push 内部自检跳过(M-1 后 main 不再预检)——不触网, rc 仍 0, 留一行 stderr 提示。"""
     monkeypatch.delenv("BID_RAGFLOW_DATASET_ID", raising=False)
+    monkeypatch.delenv("BID_RAGFLOW_API_KEY", raising=False)
     calls: list[tuple] = []
-    monkeypatch.setattr(bc, "ragflow_push", lambda md, meta: calls.append((md, meta)) or True)
+    _install_ragflow_transport(monkeypatch, calls, error=AssertionError("dataset 未配置时不得触网"))
     rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
     assert rc == 0 and calls == [], "无 dataset id=跳过推送不报错"
     assert "BID_RAGFLOW_DATASET_ID" in capsys.readouterr().err
@@ -466,6 +457,146 @@ def test_ragflow_push_failure_does_not_block(monkeypatch, tmp_path, tender_md, c
     assert rc == 0
     assert "RAGFlow 推送失败" in capsys.readouterr().err, "推送失败必须可见(warnings 通道)"
     assert (tmp_path / "bank" / bc.slugify("测试项目") / "full.md").is_file(), "本地衍生物先行落盘, 推送失败不回滚"
+
+
+class _FakeRagflowResponse:
+    """urllib 打桩响应: 上下文管理器 + read()——真 _ragflow_post 的 with/read 协议所需。"""
+
+    def __init__(self, payload):
+        self._raw = json.dumps(payload).encode("utf-8")
+
+    def read(self):
+        return self._raw
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _install_ragflow_transport(monkeypatch, calls, responses=None, error=None):
+    """网络层捕获型打桩(I-2): 打桩 urlopen 传输层记录 (method, url, body) 并按序回放 responses——
+    _ragflow_post/_ragflow_upload/_ragflow_list_doc_ids 全部真码执行(multipart 拼装/data[0] 归一/
+    code≠0 映射均在被测代码内)。error 非空则每次调用抛出该异常。"""
+
+    def fake_urlopen(req, timeout=None):
+        calls.append((req.get_method(), req.full_url, req.data or b""))
+        if error is not None:
+            raise error
+        return _FakeRagflowResponse(responses.pop(0))
+
+    monkeypatch.setattr(bc.urllib.request, "urlopen", fake_urlopen)
+
+
+def test_ragflow_push_real_path_success(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+    """I-2①+M-2: 真实推送成功路径 CI 覆盖——顺序=list→upload→chunks, multipart 拼装
+    (boundary/filename/redacted 正文)/data[0] 归一/chunks body 全断言; 敏感 token
+    (手机号/信用代码/表格残留金额)在推送 payload 缺席。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
+    calls: list[tuple] = []
+    _install_ragflow_transport(
+        monkeypatch,
+        calls,
+        responses=[
+            {"code": 0, "data": {"docs": [], "total": 0}},
+            {"code": 0, "data": [{"id": "doc-1"}]},
+            {"code": 0, "data": {}},
+        ],
+    )
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0
+    assert [m for m, _, _ in calls] == ["GET", "POST", "POST"], "顺序=list 幂等前置→上传→解析触发"
+    assert "/api/v1/datasets/ds-123/documents?" in calls[0][1] and "page=1" in calls[0][1] and "size=100" in calls[0][1], "dataset id 取自 env 进 URL(GET 带 query)"
+    upload_body = calls[1][2]
+    assert calls[1][1].endswith("/api/v1/datasets/ds-123/documents")
+    assert b"----bank_compile_" in upload_body and ('filename="' + bc.slugify("测试项目") + '.md"').encode("utf-8") in upload_body, "multipart 拼装含 boundary+slug 文件名"
+    assert "投标文件格式".encode() in upload_body, "上传的是 redacted 全文"
+    for token in (b"13800138000", b"91360100MA001AB2CD", b"3,500.00"):
+        assert token not in upload_body, f"敏感 token {token!r} 不得进推送 payload(M-2)"
+    assert calls[2][1].endswith("/api/v1/datasets/ds-123/chunks")
+    assert json.loads(calls[2][2]) == {"document_ids": ["doc-1"]}, "chunks body=上传响应 data[0] 归一出的 doc id"
+    assert "RAGFlow 推送成功" in capsys.readouterr().err
+
+
+def test_ragflow_push_repush_deletes_stale_same_name_first(monkeypatch, tmp_path, tender_md, clean_map):
+    """I-1 幂等: 同名词旧版先删再传(geo push_reports_to_ragflow 同款)——同题重编重推不滞留
+    旧版/不堆积副本; 只删同名词, dataset 其余文档不动。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
+    name = bc.slugify("测试项目") + ".md"
+    calls: list[tuple] = []
+    _install_ragflow_transport(
+        monkeypatch,
+        calls,
+        responses=[
+            {"code": 0, "data": {"docs": [{"name": name, "id": "old-1"}, {"name": "另一个样本.md", "id": "keep-9"}], "total": 2}},
+            {"code": 0, "data": {}},
+            {"code": 0, "data": [{"id": "doc-2"}]},
+            {"code": 0, "data": {}},
+        ],
+    )
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0
+    assert [m for m, _, _ in calls] == ["GET", "DELETE", "POST", "POST"], "同名先删再传"
+    assert json.loads(calls[1][2]) == {"ids": ["old-1"]}, "只删同名词旧版(keep-9 不动)"
+    assert json.loads(calls[3][2]) == {"document_ids": ["doc-2"]}, "删除后新传稿获得新 doc id"
+
+
+def test_ragflow_push_code_nonzero_swallowed(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+    """I-2②: 上游 code≠0 → _ragflow_post 真码映射上抛 RuntimeError → ragflow_push 吞成 warning;
+    首步(list)即失败 → 不再上传(恰 1 次调用), rc 仍 0。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
+    calls: list[tuple] = []
+    _install_ragflow_transport(monkeypatch, calls, responses=[{"code": 102, "message": "无权访问该 dataset"}])
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0
+    assert len(calls) == 1, "list 失败即止, 不上传"
+    err = capsys.readouterr().err
+    assert "RAGFlow 推送失败" in err and "无权访问该 dataset" in err, "code≠0 的 message 进告警"
+
+
+def test_ragflow_push_httperror_body_in_warning(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+    """M-3: HTTPError 的状态码+响应体摘要进告警(上游 4xx/5xx 报错可见可处置), rc 仍 0。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
+    calls: list[tuple] = []
+    _install_ragflow_transport(
+        monkeypatch,
+        calls,
+        error=urllib.error.HTTPError("http://ragflow:9380/api/v1/datasets/ds-123/documents", 403, "Forbidden", None, io.BytesIO(b'{"code":109,"message":"dataset-403-detail"}')),
+    )
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0
+    err = capsys.readouterr().err
+    assert "HTTP 403" in err and "dataset-403-detail" in err, "状态码+响应体摘要均进告警"
+
+
+def test_ragflow_push_skips_without_api_key(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+    """M-4a: dataset 已配但 API key 缺失 → 函数内自检跳过(不触网), rc 仍 0。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.delenv("BID_RAGFLOW_API_KEY", raising=False)
+    calls: list[tuple] = []
+    _install_ragflow_transport(monkeypatch, calls, error=AssertionError("key 缺失时不得触网"))
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0 and calls == []
+    assert "BID_RAGFLOW_API_KEY" in capsys.readouterr().err
+
+
+def test_no_flag_has_zero_env_dependency(monkeypatch, tmp_path, tender_md, clean_map):
+    """M-4b: 未传 --ragflow-push 整段短路——env 全配好也零触网零推送, 本地产物照常落盘。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
+
+    def _poison(*a, **kw):
+        raise AssertionError("未传 flag 时不得触网")
+
+    monkeypatch.setattr(bc.urllib.request, "urlopen", _poison)
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map, push=False))
+    assert rc == 0
+    assert (tmp_path / "bank" / bc.slugify("测试项目") / "full.md").is_file()
 
 
 def test_argparse_usage_error_returns_1_not_2(capsys):

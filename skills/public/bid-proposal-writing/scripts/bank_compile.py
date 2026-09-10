@@ -7,8 +7,8 @@ bank_index.json、depth_targets.json(库级聚合——floor=各册 min、median
 registration.json——全 sort_keys 无时间戳, 重跑字节一致)
 → registration.json 供 backend/scripts/bid_seed_samples.py 入 BidSample 台账(file_hash 恰 64 字符)
 → 可选 RAGFlow bid_samples 域推送(--ragflow-push, Task 5): 位于一切本地产物落盘之后——
-  目标/凭证走 BID_RAGFLOW_* env, 上传整体 redacted 全文并触发服务端解析(geo_samples
-  push_reports_to_ragflow 同款两步); 未配置=跳过, 任何失败=warnings——本地衍生物已先行
+  目标/凭证走 BID_RAGFLOW_* env, 同名词旧版先删再传(幂等, geo_samples
+  push_reports_to_ragflow 同款)+解析触发; 未配置=跳过, 任何失败=warnings——本地衍生物已先行
   落盘可用, 推送是辅助通道绝不阻塞出库/改 rc。
 
 残留闸门: compile_bank 返回 residual 证据; 非空 → 全量证据行上 stderr 且 rc=1 零落盘
@@ -33,6 +33,7 @@ import re
 import shutil
 import statistics
 import sys
+import urllib.error
 import urllib.request
 import uuid
 from pathlib import Path
@@ -292,19 +293,44 @@ RAGFLOW_API_KEY_ENV = "BID_RAGFLOW_API_KEY"
 RAGFLOW_API_BASE_DEFAULT = "http://ragflow:9380"
 
 
-def _ragflow_post(base: str, api_key: str, path: str, *, data: bytes, content_type: str) -> dict:
-    """单次 urllib POST(60s 超时); RAGFlow 约定 code=0 成功——非 0 视同失败上抛(调用方统一吞掉记 warning)。"""
+def _ragflow_post(base: str, api_key: str, path: str, *, data: bytes | None = None, content_type: str = "application/json", method: str = "POST") -> dict:
+    """单次 urllib 请求(60s 超时; data=None 无 body, GET 列表复用); RAGFlow 约定 code=0 成功——
+    非 0 视同失败上抛(调用方统一吞掉记 warning)。"""
     req = urllib.request.Request(
         f"{base}{path}",
         data=data,
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": content_type},
-        method="POST",
+        method=method,
     )
     with urllib.request.urlopen(req, timeout=60) as resp:
         payload = json.loads(resp.read().decode("utf-8"))
     if payload.get("code") not in (0, None):
         raise RuntimeError(str(payload.get("message") or payload)[:200])
     return payload
+
+
+def _ragflow_list_doc_ids(base: str, api_key: str, dataset_id: str) -> dict[str, str]:
+    """分页拉 dataset 文档 name→id 映射(GET /datasets/{id}/documents?page=N&size=100,
+    上游 page_size 上限 100, 分页口径同 geo push_reports_to_ragflow 幂等前置)。"""
+    mapping: dict[str, str] = {}
+    page = 1
+    while True:
+        payload = _ragflow_post(base, api_key, f"/api/v1/datasets/{dataset_id}/documents?page={page}&size=100", method="GET")
+        data = payload.get("data")
+        docs = data.get("docs", []) if isinstance(data, dict) else []
+        for d in docs if isinstance(docs, list) else []:
+            if isinstance(d, dict) and d.get("name") and d.get("id"):
+                mapping[str(d["name"])] = str(d["id"])
+        total = data.get("total") if isinstance(data, dict) else None
+        if not docs or not isinstance(total, int) or page * 100 >= total:
+            break
+        page += 1
+    return mapping
+
+
+def _ragflow_delete_docs(base: str, api_key: str, dataset_id: str, doc_ids: list[str]) -> None:
+    """DELETE /datasets/{id}/documents body {"ids": [...]}(批量删除约定, 同 knowledge/client.delete_document 形态)。"""
+    _ragflow_post(base, api_key, f"/api/v1/datasets/{dataset_id}/documents", data=json.dumps({"ids": doc_ids}).encode("utf-8"), method="DELETE")
 
 
 def _ragflow_upload(base: str, api_key: str, dataset_id: str, name: str, content: bytes) -> str:
@@ -316,7 +342,7 @@ def _ragflow_upload(base: str, api_key: str, dataset_id: str, name: str, content
         f"--{boundary}\r\n"
         f'Content-Disposition: form-data; name="file"; filename="{name}"\r\n'
         f"Content-Type: text/markdown\r\n\r\n"
-    ).encode("utf-8") + content + f"\r\n--{boundary}--\r\n".encode("utf-8")
+    ).encode() + content + f"\r\n--{boundary}--\r\n".encode()
     payload = _ragflow_post(base, api_key, f"/api/v1/datasets/{dataset_id}/documents", data=body, content_type=f"multipart/form-data; boundary={boundary}")
     docs = payload.get("data")
     if isinstance(docs, list) and docs:
@@ -328,12 +354,13 @@ def _ragflow_upload(base: str, api_key: str, dataset_id: str, name: str, content
 
 
 def ragflow_push(md: str, meta: dict) -> bool:
-    """redacted 全文整体推送 RAGFlow bid_samples 域(命名 <slug>.md)并触发服务端解析
-    (上传不 parse=样例永不可检索, geo_samples push_reports_to_ragflow 同款两步, 不等待解析完成)。
-    dataset id 缺失 → False+warning(跳过不算失败); API key 缺失/网络失败/上游 code≠0 等
-    任何异常吞掉记 warning 返回 False——绝不阻塞主流程, 不改 rc(spec: 失败=warnings,
-    本地衍生物已先行落盘可用)。meta 仅作调用方记录(title/industry/category/dataset_id),
-    推送目标一律以 env 当前值为准。"""
+    """redacted 全文整体推送 RAGFlow bid_samples 域(命名 <slug>.md), 幂等契约同 geo_samples
+    push_reports_to_ragflow: 分页 list 建 name→id 映射, 同名词旧版先删再传(重推送不留旧版/
+    不堆积副本, 只删同名词不误删他人), 上传后触发服务端解析(上传不 parse=样例永不可检索,
+    不等待解析完成)。dataset id / API key 缺失 → False+warning(跳过不算失败, 不触网);
+    HTTPError 连同响应体摘要(M-3)/其余任何异常一律吞掉记 warning 返回 False——绝不阻塞
+    主流程, 不改 rc(spec: 失败=warnings, 本地衍生物已先行落盘可用)。meta 恰 {"title"}
+    (文件名 slug 派生自它), 推送目标一律以 env 当前值为准。"""
     dataset_id = (os.environ.get(RAGFLOW_DATASET_ENV) or "").strip()
     if not dataset_id:
         print(f"警告: 未配置 {RAGFLOW_DATASET_ENV}——跳过 RAGFlow 推送(本地衍生物已可用)", file=sys.stderr)
@@ -345,9 +372,20 @@ def ragflow_push(md: str, meta: dict) -> bool:
     base = (os.environ.get(RAGFLOW_API_BASE_ENV) or RAGFLOW_API_BASE_DEFAULT).rstrip("/")
     name = f"{slugify(str(meta.get('title') or 'sample'))}.md"
     try:
+        stale_id = _ragflow_list_doc_ids(base, api_key, dataset_id).get(name)
+        if stale_id:  # I-1 幂等: 同名先删再传(geo 同款)——重编重推不滞留旧版
+            _ragflow_delete_docs(base, api_key, dataset_id, [stale_id])
         doc_id = _ragflow_upload(base, api_key, dataset_id, name, md.encode("utf-8"))
-        _ragflow_post(base, api_key, f"/api/v1/datasets/{dataset_id}/chunks", data=json.dumps({"document_ids": [doc_id]}).encode("utf-8"), content_type="application/json")
+        _ragflow_post(base, api_key, f"/api/v1/datasets/{dataset_id}/chunks", data=json.dumps({"document_ids": [doc_id]}).encode("utf-8"))
         return True
+    except urllib.error.HTTPError as exc:  # M-3: HTTP 状态+响应体摘要进告警(上游报错可见可处置)
+        detail = ""
+        try:
+            detail = exc.read().decode("utf-8", "replace")[:200].strip()
+        except Exception:
+            pass
+        print(f"警告: RAGFlow 推送失败(HTTP {exc.code}: {detail or exc.reason})——本地衍生物已可用, 不阻塞出库", file=sys.stderr)
+        return False
     except Exception as exc:  # 推送链路统一降级——RAGFlow 不可达不回滚出库(辅助通道定位)
         print(f"警告: RAGFlow 推送失败({exc})——本地衍生物已可用, 不阻塞出库", file=sys.stderr)
         return False
@@ -448,15 +486,11 @@ def main(argv: list[str] | None = None) -> int:
     items.sort(key=lambda it: str(it.get("slug", "")))  # M-4: 缺 slug 空串排首, 不崩
     _write_json(reg_path, {"items": items})
 
-    # 可选 RAGFlow bid_samples 域推送(Task 5): 位于一切本地产物落盘之后——未配置 dataset id=
-    # 跳过(留一行 stderr 提示), 推送失败=warnings, rc 恒 EXIT_OK(spec: 本地衍生物已可用,
-    # 推送是辅助通道绝不阻塞出库); 未传 --ragflow-push 时整段短路, 零 env 依赖。
-    if args.ragflow_push:
-        dataset_id = (os.environ.get(RAGFLOW_DATASET_ENV) or "").strip()
-        if not dataset_id:
-            print(f"警告: 未配置 {RAGFLOW_DATASET_ENV}——跳过 RAGFlow 推送(本地衍生物已可用)", file=sys.stderr)
-        elif ragflow_push(result["redacted"], {"title": args.title, "industry": args.industry, "category": args.category, "dataset_id": dataset_id}):
-            print(f"RAGFlow 推送成功: dataset={dataset_id}, {slug}.md", file=sys.stderr)
+    # 可选 RAGFlow bid_samples 域推送(Task 5): 位于一切本地产物落盘之后; env 缺失/推送失败由
+    # ragflow_push 内部自检降级为 warnings(main 不预检——M-1, 消除双份警告漂移), rc 恒 EXIT_OK
+    # (spec: 本地衍生物已可用, 推送是辅助通道绝不阻塞出库); 未传 --ragflow-push 整段短路零 env 依赖。
+    if args.ragflow_push and ragflow_push(result["redacted"], {"title": args.title}):
+        print(f"RAGFlow 推送成功: {slug}.md", file=sys.stderr)
 
     print(
         json.dumps(
