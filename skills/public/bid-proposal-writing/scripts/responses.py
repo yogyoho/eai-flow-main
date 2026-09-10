@@ -19,7 +19,10 @@ uploads=用户参考样例、web=网络搜索深写; self=仅依据条款原文�
     1. 状态前置: state_guard 签名复核 + clauses.json/structure.json 必须已存在
        (先跑完 ingest/extract 确认门1 才谈响应生成)。
     2. schema: 逐项对 references/responses.schema.json 校验(复用 extract.py 的
-       stdlib mini JSON Schema 校验器)。
+       stdlib mini JSON Schema 校验器); depth_target(可选)仅校形态(≥0 整数,
+       非整数/负数 → schema_violation 不合并), merge 经 upsert 原样透传落
+       responses.json——build 深度门逐条消费基准(Plan2 T6; 值=阶段4a 第一层
+       检索命中段落实质长 median, 检索指引见 tech_response_prompt.md)。
     3. 条款 FK: clause_id 必须存在于 clauses.json, 且未被 superseded/voided
        (活条款), category ∈ {technical, service}——商务/资格条款不走本通道
        (它们有格式模板镜像管线)。

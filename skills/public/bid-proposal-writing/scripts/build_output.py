@@ -14,7 +14,7 @@
     整体方案-NN-首章短名.md(商务章全量+技术章占位页, 零技术正文内联)
     技术卷-NN-首章短名.md(技术章全量, 卷尾件挂末册)
     0-总目录索引.md(确定性投影, 分册导航/合并导出序)
-    偏离表.md / 覆盖率报表.md / 人核清单.md / 实体lint报告.md(全局副表)
+    偏离表.md / 覆盖率报表.md / 人核清单.md / 实体lint报告.md(全局副表; 实体节+深度门节)
     delivery_manifest.json(交付凭据: skill/version/deliverables, 清场依据)
 
 职责(设计文档锁定, 不缺不漏不加):
@@ -47,6 +47,13 @@
        只做白名单命中统计(按出现次数计, 无法被动发现)——报告显著标注
        "LLM辅助抽取白名单，非确定性"(白名单本身由 LLM 抽取+人工确认, lint 是
        确定性 diff 但覆盖受白名单与模式能力限制)。
+    ⑦ 深度门(Plan2 T6, spec §4.4 质量牵引非凭据阻断): 样例库校准基线(bank_compile 产
+       references/depth_targets.json, 缺失=门静默跳过)逐条响应实质长校准——响应级
+       depth_target(阶段4a 第一层检索命中组段落实质长 median, merge 前已校 ≥0 整数)
+       优先, 缺省落库级 absolute_floor(P25 段长)兜底; 不足 → anomaly
+       depth_below_target/depth_below_floor 汇 lint 报告"深度"节与摘要, 不进实体门
+       不撤交付凭据。实质长口径与 responses.py _substantive_chars 同款(复制常量+
+       同步断言兜漂移)。
     ⑥ 人核清单 = format_check 槽(签字/盖章/份数/页码)全部入清单不进确定性判定
        + [待人工复刻]表格槽(管道表格无法表达合并单元格/列宽——如实声明渲染
        边界, 所有表格槽均标[待人工复刻]并列头骨架照渲染)
@@ -60,7 +67,8 @@
     0 = 干净完成(--help 亦为 0)
     1 = 用法/文件错误(状态文件缺失/不可解析/结构损坏、输出目录不可写; argparse 用法错误统一
         改道 1——2 留给 ingest 的 OCR 分流语义, 防编排方误路由)
-    3 = 完成但有异常项(lint 待核对实体/白名单缺失/悬挂外键, 摘要 anomalies 列出)
+    3 = 完成但有异常项(lint 待核对实体/白名单缺失/悬挂外键/深度基线未达, 摘要 anomalies 列出;
+        深度异常不阻断凭据——质量牵引门)
 """
 
 from __future__ import annotations
@@ -1055,7 +1063,8 @@ def run_entity_lint(
     return flagged, hits
 
 
-def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict) -> str:
+def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict, depth_anomalies: list[dict] | None = None, depth_targets: dict | None = None) -> str:
+    """实体 lint 报告(实体节) + 深度门节(Plan2 T6, 与实体节同报告相邻呈现)。"""
     lines = [
         "# 实体一致性 lint 报告",
         "",
@@ -1108,7 +1117,130 @@ def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict) -> s
             "候选值: " + "、".join(unique_candidates),
             "",
         ])
+    lines.extend(_render_depth_section(depth_anomalies or [], depth_targets))
     return "\n".join(lines)
+
+
+# =============================================================================
+# ⑦ 深度门(Plan2 T6, spec §4.4: 深度是质量牵引非废标风险——非凭据阻断门)
+# =============================================================================
+
+# 基线文件 = bank_compile 样例库编译产物(库级聚合: absolute_floor=各册 P25 min,
+# global_median=各册 median 中位; 键名是本脚本消费契约保持稳定)。相对脚本目录定位,
+# 缺失(样例库未编译) → 深度门整体静默跳过, 不阻塞交付。
+DEFAULT_DEPTH_TARGETS_PATH = Path(__file__).resolve().parent.parent / "references" / "depth_targets.json"
+# 实质正文口径与 responses.py _substantive_chars 同款(剥空白/标点, CJK/字母/数字计入):
+# 复制常量口径而非跨脚本 import(skills 平铺脚本与第三方包同名劫持 sys.modules 风险),
+# test_bid_materials.py 同步断言兜口径漂移——改这里必须同改 responses.py(反之亦然)。
+_SUBSTANTIVE_STRIP_RE = re.compile(r"[\W_]+", re.UNICODE)
+
+
+def _substantive_chars(text: str) -> int:
+    """实质正文长度(与 responses.py _substantive_chars 同款口径, 见上复制纪律)。"""
+    return len(_SUBSTANTIVE_STRIP_RE.sub("", text))
+
+
+def load_depth_targets(path: str | Path | None = None) -> dict | None:
+    """装载样例库深度基线(depth_targets.json); 缺失/不可解析/absolute_floor 非整数 → None。
+
+    None = 深度门静默跳过——bank 未编译是合法初态, 不得反向阻塞交付; 基线形态防线
+    在产出方 bank_compile(确定性落盘), 消费侧只防御不硬错。
+    """
+    target = Path(path) if path is not None else DEFAULT_DEPTH_TARGETS_PATH
+    if not target.is_file():
+        return None
+    try:
+        data = json.loads(target.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+        return None
+    floor = data.get("absolute_floor") if isinstance(data, dict) else None
+    if isinstance(floor, bool) or not isinstance(floor, int):
+        return None
+    return data
+
+
+def run_depth_gate(responses: list[dict], targets: dict | None) -> tuple[list[dict], dict]:
+    """深度门(Plan2 T6): 逐条响应实质长 vs 响应级 depth_target, 缺省回落库级 absolute_floor。
+
+    depth_target(阶段4a 第一层检索命中组段落实质长 median, merge 前 schema 已校 ≥0 整数)
+    在场即以它为唯一基准(floor 不叠加); 非整数/负数按"未提供"回落 floor——形态防线在
+    responses.py, build 侧防御性兜底不硬错。anomalies 只进 lint 报告"深度"节与摘要
+    (质量牵引), 不进实体门/不阻断交付凭据。targets=None → 门整体静默跳过。
+    返回 (anomalies, 摘要统计)。
+    """
+    summary = {"enabled": False, "absolute_floor": None, "responses_checked": 0, "below_target": 0, "below_floor": 0}
+    if targets is None:
+        return [], summary
+    floor = targets.get("absolute_floor")
+    if isinstance(floor, bool) or not isinstance(floor, int):
+        return [], summary
+    summary.update({"enabled": True, "absolute_floor": floor, "responses_checked": len(responses)})
+    anomalies: list[dict] = []
+    for item in responses:
+        clause_id = str(item.get("clause_id") or "(无条款)")
+        substantive = _substantive_chars(str(item.get("response_text") or ""))
+        raw = item.get("depth_target")
+        target = raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 0 else None
+        if target is not None:
+            if substantive < target:
+                summary["below_target"] += 1
+                anomalies.append(
+                    {
+                        "kind": "depth_below_target",
+                        "clause_id": clause_id,
+                        "substantive_chars": substantive,
+                        "depth_target": target,
+                        "message": f"条款 {clause_id} 响应实质正文 {substantive} 字低于检索命中组校准目标 {target} 字(stage4a 命中段落 median)——深度是质量牵引: 扩写实质内容(方案/参数/承诺), 套话与空白不计入实质长",
+                    }
+                )  # noqa: E501
+        elif substantive < floor:
+            summary["below_floor"] += 1
+            anomalies.append(
+                {
+                    "kind": "depth_below_floor",
+                    "clause_id": clause_id,
+                    "substantive_chars": substantive,
+                    "absolute_floor": floor,
+                    "message": f"条款 {clause_id} 响应实质正文 {substantive} 字低于样例库绝对地板 {floor} 字(P25 段长)——无 depth_target 落库级兜底基线, 建议扩写或回 stage4a 重检索",
+                }
+            )  # noqa: E501
+    return anomalies, summary
+
+
+def _render_depth_section(depth_anomalies: list[dict], depth_targets: dict | None) -> list[str]:
+    """lint 报告"深度"节(实体节相邻, Plan2 T6): 逐条缺口列示交确认门人核扩写。"""
+    lines = ["## 深度门(样例库校准基线; 质量牵引非废标风险——不阻断交付凭据)", ""]
+    if depth_targets is None:
+        lines.extend(
+            [
+                "> 基线缺失: references/depth_targets.json 未装载(样例库未编译/形态不符)——深度门本轮静默跳过。",
+                "> 激活方法: bank_compile.py 编译样例库产出该文件后重跑 build。",
+                "",
+                "(跳过——无基线可比)",
+                "",
+            ]
+        )
+        return lines
+    lines.append(f"> 基线: 样例库 absolute_floor={depth_targets.get('absolute_floor')}(bank_compile 库级聚合; global_median={depth_targets.get('global_median')})。")
+    lines.extend(
+        [
+            "> 口径: 实质正文(剥空白/标点, 与 responses.py 同款) vs 响应级 depth_target(阶段4a 检索命中段落 median)/absolute_floor 兜底; 缺口逐条列示交确认门人核扩写。",
+            "",
+            "| 条款 | 异常 | 实质长(字) | 基准(字) | 缺口(字) |",
+            "| --- | --- | --- | --- | --- |",
+        ]
+    )
+    if depth_anomalies:
+        for a in depth_anomalies:
+            if a["kind"] == "depth_below_target":
+                baseline, label = a["depth_target"], "depth_below_target(低于响应目标)"
+            else:
+                baseline, label = a["absolute_floor"], "depth_below_floor(低于库级地板)"
+            lines.append(f"| {_cell(a['clause_id'])} | {label} | {a['substantive_chars']} | {baseline} | {baseline - a['substantive_chars']} |")
+    else:
+        lines.append("| (无——全部响应达到深度基线) | | | | |")
+    lines.append("")
+    return lines
 
 
 # =============================================================================
@@ -1201,6 +1333,13 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     if whitelist is None:
         anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, lint 按空集 diff(全部候选进[待核对])——确认门1 未锁定白名单或文件被移动"})
 
+    # 深度门(Plan2 T6): 样例库校准基线(bank_compile 产 references/depth_targets.json;
+    # 缺失=门静默跳过)。anomalies 只汇 lint 报告"深度"节+摘要, 不进实体门/不影响凭据——
+    # 深度是质量牵引非废标风险(spec §4.4), 与实体门熔断(_entity_gate_state)完全解耦。
+    depth_targets = load_depth_targets()
+    depth_anomalies, depth_summary = run_depth_gate(responses, depth_targets)
+    anomalies.extend(depth_anomalies)
+
     # 两文档册集(v4 Revision 4): 技术卷先渲(整体方案技术占位页需其分册目录)
     slots = load_slots(state_dir)  # v4 T6c: 围栏域冻结值(缺失=空表, 未知键在注入期硬错)
     tech_doc = render_doc_booklets(DOC_TECH, structure, clauses, responses, slots=slots)
@@ -1217,7 +1356,7 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     flagged, hits = run_entity_lint(clauses, whitelist, extra_texts=scan_texts)
     anomalies.extend(flagged)
     entity_gate = _entity_gate_state(state_dir, flagged)
-    lint_md = render_lint_md(whitelist, flagged, hits)
+    lint_md = render_lint_md(whitelist, flagged, hits, depth_anomalies=depth_anomalies, depth_targets=depth_targets)
 
     index_md = booklets.render_index(
         [
@@ -1304,6 +1443,7 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
         "self_created_sections": sum(1 for n in structure if n.get("origin") == "self_created"),
         "human_checklist": checklist_counts,
         "lint": {"flagged": len(flagged), "entity_hits": len(hits), "whitelist_missing": whitelist is None},
+        "depth_gate": depth_summary,
         "entity_gate": entity_gate,
         "whitelist_sha256": whitelist_sha256,
         "anomalies": anomalies,

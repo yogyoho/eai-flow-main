@@ -17,6 +17,8 @@
 **第一层 样例库检索(sample)** — RAGFlow 投标样例知识库(行业/文档类型 filters 圈定):
 - 按章节组批量检索: 每章一次 filters 圈定查询召回 top-K 样例段落, 本地按条款关键词二次匹配到 clause_id(**不逐条款发检索**——500 页档数百条款会打出数百次请求)。
 - 命中 → 参照样例段落**仿写**(贴合本项目条款改写, 不整段照搬): `source_mode="sample"`, `citations` 逐条 `{title, source_doc:"<样例文档标识>", quote_span:"<段落定位>", quote:"<原文片段≤50字>"}`(sample 引用无 URL), `needs_human_verify=true`。
+- **深度目标 depth_target(命中组校准, Plan2 T6)**: 每章组检索命中后, 对命中段落逐段计**实质长**(剥空白/标点后的字符数, CJK/字母/数字计入), 取**中位数并取整**(偶数个命中取中间两值平均后舍尾), 同一章组内全部候选统一写 `"depth_target": <median 整数>`——build 深度门以它逐条校响应实质长, 未写者落样例库 absolute_floor 兜底(references/depth_targets.json)。**未走第一层(直接编造/self)的候选不写 depth_target**——不要拍脑袋估数。
+- **脱敏语料注意**: 样例库切片**在脱敏之后**(bank_compile 先脱敏后切片)——命中段落里的 `****` 是脱敏掩码: 仿写引用片段(quote)避开掩码段; 掩码处的金额/证号/人名一律以本项目真实数据或 `<SLOT:待填>` 占位替换, **绝不照抄掩码形态进正文**。
 - **无命中 / 样例库未建 → 直接进入第二层编造, 不停顿**。旧版"停下来问用户要样例"与"web_search 兜底"两条支路**已废除**(空项=技术偏离=丢分; 完备性优先)。
 
 **第二层 编造(fabricated)** — 样例库无可用内容时的**合法默认**(P1):
@@ -44,6 +46,7 @@
       "clause_id": "<clauses.json 里的条款id, 逐字一致>",
       "response_text": "<响应正文(多段落纯文本; 空行分段); 不含管线元数据标记>",
       "points": ["<要点1>", "<要点2>"],
+      "depth_target": 320,
       "evidence_ref": "kf:<模板id> | uploads:<文件名> | null",
       "source_mode": "kf | uploads | web | self | sample | fabricated",
       "citations": [
@@ -59,7 +62,7 @@
 }
 ```
 
-(citation 形状按 mode 分支校验: web 逐条 **url 必填**; sample 逐条 **source_doc 必填**; 其余模式 `citations` 为 `[]`。`fabricated` 的 `needs_human_verify` **必须为 true**, 漏标直接拒收。anchor 与 self_created 二选一, `after_node_id` 仅与 self_created_path 同用。)
+(citation 形状按 mode 分支校验: web 逐条 **url 必填**; sample 逐条 **source_doc 必填**; 其余模式 `citations` 为 `[]`。`fabricated` 的 `needs_human_verify` **必须为 true**, 漏标直接拒收。anchor 与 self_created 二选一, `after_node_id` 仅与 self_created_path 同用。`depth_target` 仅第一层命中条目写——同章组命中段落实质长 median 取整, 非整数/负数会被 validate 拒收。)
 
 ## 纪律速查(违反即重写, 不带病落账)
 

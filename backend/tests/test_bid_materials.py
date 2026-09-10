@@ -5,7 +5,10 @@
 
 import datetime as dt
 import io
+import json
+import sys
 import uuid
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -544,3 +547,259 @@ class TestBidMaterialsRoutes:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
             resp = await c.get(f"{BASE}/qualifications")
         assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# bid-proposal-writing 深度门(Plan2 Task 6): depth_target 字段贯通 + build 深度门。
+# 技能脚本非本扩展代码——经 conftest._SkillScriptsFinder 同名脚本隔离加载(build_output
+# 三个技能同名), 模块级 SCRIPTS_DIR 是隔离锚, 勿删; 技能模块一律在用例内懒加载。
+# ---------------------------------------------------------------------------
+
+SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "skills" / "public" / "bid-proposal-writing" / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+
+def _responses_module():
+    import responses  # 技能平铺脚本(单名无冲突: responses 仅本技能有, pip responses 未安装)
+
+    return responses
+
+
+def _build_module():
+    import importlib
+
+    return importlib.import_module("build_output")  # 经 finder 解析到本技能 scripts(三技能同名)
+
+
+def _cjk_text(n: int) -> str:
+    """纯 CJK 文本——剥空白/标点后实质长 == len, 深度门输入可精确控制。"""
+    return ("系统采用模块化架构支持远程诊断与全生命周期运维保障" * 100)[:n]
+
+
+def _depth_clause(clause_id="ZB-C-001", **over):
+    clause = {
+        "clause_id": clause_id,
+        "source_file": "招标文件.md",
+        "class": "normal",
+        "category": "technical",
+        "source_ref": {"page": 1, "section": "技术要求", "para": 1, "quote": "系统须支持远程诊断"},
+        "requirement": "系统须支持远程诊断与运维",
+        "response_status": "compliant",
+        "response_skeleton": {"points": [], "evidence_ref": None, "suggestion": None},
+        "from_addendum": False,
+        "superseded_by": None,
+        "voided": False,
+    }
+    clause.update(over)
+    return clause
+
+
+def _depth_node(node_id, path, volume, linked=None):
+    return {
+        "node_id": node_id,
+        "volume": volume,
+        "path": path,
+        "slot_type": "text",
+        "required_format": {"desc": None, "table_spec": None, "template_text": None},
+        "linked_clause_ids": list(linked or []),
+    }
+
+
+def _write_bytes(path: Path, obj) -> None:
+    """write_bytes 强制 LF(对齐 test_bid_proposal_scripts._copy_prestate: Windows write_text 会翻 CRLF)。"""
+    path.write_bytes((json.dumps(obj, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+
+
+def _depth_state(tmp_path, responses=None):
+    """最小可构建状态: 一技术条款挂一技术节点 + 一商务节点(两卷章分组非空)。
+
+    权威件直写后走真签名(state_guard: build/merge 是消费者角色, 读盘前复核签名——
+    直写不签会被"在盘未登记=注入"拦截; 生产语义不 monkeypatch, 登记即过)。
+    """
+    import state_guard
+
+    state = tmp_path / "state"
+    state.mkdir(parents=True, exist_ok=True)
+    structure = [
+        _depth_node("S-001", "第一章 投标函（格式）", "commercial"),
+        _depth_node("S-002", "第三章 技术方案/1 总体方案", "technical", linked=["ZB-C-001"]),
+    ]
+    _write_bytes(state / "clauses.json", [_depth_clause("ZB-C-001")])
+    _write_bytes(state / "structure.json", structure)
+    _write_bytes(state / "entities_whitelist.json", {"locked_at": None, "source": "test", "entities": []})
+    signed = ["clauses.json", "structure.json"]
+    if responses is not None:
+        _write_bytes(state / "responses.json", responses)
+        signed.append("responses.json")
+    state_guard.sign_state_files(state, signed)
+    return state
+
+
+def _depth_candidate(tmp_path, items, name="RESP-depth-001.json"):
+    path = tmp_path / "candidates"
+    path.mkdir(parents=True, exist_ok=True)
+    _write_bytes(path / name, {"kind": "responses", "items": items})
+    return path / name
+
+
+def _write_depth_targets(tmp_path, floor=60, median=200):
+    """bank_compile 产物形态(库级聚合键, bank_compile.py 契约键名稳定)。"""
+    path = tmp_path / "depth_targets.json"
+    _write_bytes(path, {"absolute_floor": floor, "global_median": median, "paragraph_count": 12, "calibrated_from": "a" * 64})
+    return path
+
+
+def _summary(capsys) -> dict:
+    return json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+
+
+def _anomaly_kinds(summary) -> list[str]:
+    return [a["kind"] for a in summary["anomalies"]]
+
+
+class TestBuildDepthGate:
+    """build 深度门三态(Plan2 T6): 有 target 达标/不足; 无 target floor 兜底达标/不足。
+
+    深度=质量牵引非凭据阻断门(spec §4.4): anomaly 汇 lint 报告"深度"节与摘要,
+    delivery_manifest 照写不撤; 基线缺失(references/depth_targets.json 不在盘)=门静默跳过。
+    """
+
+    @pytest.fixture()
+    def depth_baseline(self, tmp_path, monkeypatch):
+        """build_output 基线路径 monkeypatch 到 tmp 副本——测试绝不触碰仓库 references/。"""
+        path = _write_depth_targets(tmp_path)
+        monkeypatch.setattr(_build_module(), "DEFAULT_DEPTH_TARGETS_PATH", path)
+        return path
+
+    @staticmethod
+    def _response(clause_id="ZB-C-001", *, chars=80, depth_target=None):
+        item = {"clause_id": clause_id, "response_text": _cjk_text(chars), "source_mode": "sample", "needs_human_verify": True}
+        if depth_target is not None:
+            item["depth_target"] = depth_target
+        return item
+
+    def _build(self, tmp_path, capsys, items):
+        state = _depth_state(tmp_path, items)
+        out = tmp_path / "out"
+        rc = _build_module().main(["--state-dir", str(state), "--out", str(out)])
+        return rc, _summary(capsys), out
+
+    def test_target_met_no_anomaly(self, tmp_path, capsys, depth_baseline):
+        rc, summary, out = self._build(tmp_path, capsys, [self._response(chars=120, depth_target=100)])
+        assert rc == 0, "达标响应零异常"
+        assert summary["anomalies"] == []
+        assert summary["depth_gate"] == {"enabled": True, "absolute_floor": 60, "responses_checked": 1, "below_target": 0, "below_floor": 0}
+        lint = (out / "实体lint报告.md").read_text(encoding="utf-8")
+        assert "## 深度门" in lint and "(无——全部响应达到深度基线)" in lint
+
+    def test_target_precedence_over_floor(self, tmp_path, capsys, depth_baseline):
+        """有 depth_target 即以 target 为唯一基准(floor 不叠加)——命中组校准优先于库级兜底。"""
+        rc, summary, _ = self._build(tmp_path, capsys, [self._response(chars=40, depth_target=30)])
+        assert rc == 0, "实质长 40 < floor 60 但 >= target 30: target 在场 floor 不判"
+        assert summary["anomalies"] == [] and summary["depth_gate"]["below_floor"] == 0
+
+    def test_below_target_anomaly_reported_not_blocking(self, tmp_path, capsys, depth_baseline):
+        rc, summary, out = self._build(tmp_path, capsys, [self._response(chars=80, depth_target=300)])
+        assert rc == 3, "未达 target = anomaly(退出码 3 完成但有异常项)"
+        assert _anomaly_kinds(summary) == ["depth_below_target"]
+        assert summary["depth_gate"]["below_target"] == 1
+        anomaly = summary["anomalies"][0]
+        assert anomaly["clause_id"] == "ZB-C-001" and anomaly["substantive_chars"] == 80 and anomaly["depth_target"] == 300
+        lint = (out / "实体lint报告.md").read_text(encoding="utf-8")
+        assert "depth_below_target" in lint and "300" in lint, "缺口逐条进 lint 报告深度节"
+        assert (out / "delivery_manifest.json").is_file(), "深度门非凭据阻断门: anomaly 在凭据照写"
+        assert (out / ".delivery-contract").is_file()
+
+    def test_floor_fallback_below_floor(self, tmp_path, capsys, depth_baseline):
+        rc, summary, out = self._build(tmp_path, capsys, [self._response(chars=30)])
+        assert rc == 3
+        assert _anomaly_kinds(summary) == ["depth_below_floor"], "无 depth_target 落库级 absolute_floor 兜底"
+        assert summary["depth_gate"]["below_floor"] == 1
+        lint = (out / "实体lint报告.md").read_text(encoding="utf-8")
+        assert "depth_below_floor" in lint
+        assert (out / "delivery_manifest.json").is_file(), "floor 异常同样不阻断凭据"
+
+    def test_floor_fallback_met(self, tmp_path, capsys, depth_baseline):
+        rc, summary, _ = self._build(tmp_path, capsys, [self._response(chars=80)])
+        assert rc == 0 and summary["anomalies"] == [], "无 target 但实质长 >= floor: 兜底达标"
+
+    def test_gate_skipped_without_baseline(self, tmp_path, capsys, monkeypatch):
+        monkeypatch.setattr(_build_module(), "DEFAULT_DEPTH_TARGETS_PATH", tmp_path / "missing.json")
+        rc, summary, out = self._build(tmp_path, capsys, [self._response(chars=30)])
+        assert rc == 0, "基线缺失=门静默跳过(bank 未编译不阻塞), 短响应也不报异常"
+        assert summary["depth_gate"]["enabled"] is False and summary["anomalies"] == []
+        lint = (out / "实体lint报告.md").read_text(encoding="utf-8")
+        assert "深度门" in lint and "跳过" in lint
+
+    def test_gate_skipped_when_baseline_malformed(self, tmp_path, capsys, monkeypatch):
+        """基线在盘但 absolute_floor 非整数 = 形态不符, 与缺失同语义(门跳过不硬错)。"""
+        path = tmp_path / "depth_targets.json"
+        _write_bytes(path, {"absolute_floor": "60", "global_median": 200})
+        monkeypatch.setattr(_build_module(), "DEFAULT_DEPTH_TARGETS_PATH", path)
+        rc, summary, _ = self._build(tmp_path, capsys, [self._response(chars=30)])
+        assert rc == 0 and summary["depth_gate"]["enabled"] is False
+
+    def test_item_level_malformed_target_falls_back_to_floor(self, tmp_path, capsys, depth_baseline):
+        """responses.json 内 depth_target 非整数(脚本外直写脏数据) → 按"未提供"回落 floor,
+        不硬错不静默丢基准——形态防线在 responses.py, build 侧防御兜底。"""
+        rc, summary, _ = self._build(tmp_path, capsys, [self._response(chars=30, depth_target="300")])
+        assert rc == 3
+        assert _anomaly_kinds(summary) == ["depth_below_floor"], "脏 target 回落 floor 判定"
+
+    def test_substantive_chars_mirrors_responses(self):
+        """build_output 复制了 responses.py 的实质长口径(不跨脚本 import)——同步断言兜漂移。"""
+        bo, rs = _build_module(), _responses_module()
+        for sample in ("系统采用模块化架构(支持远程诊断)", " meets ISO 9001_V2.3 要求, 报价****元", "  \n\t ", "ABC123中文,、；！", ""):
+            assert bo._substantive_chars(sample) == rs._substantive_chars(sample), "实质长口径与 responses.py 漂移"
+
+
+class TestResponsesDepthTarget:
+    """depth_target 字段贯通(Plan2 T6): merge 透传落 responses.json; validate 仅校形态
+    (≥0 整数——schema type/minimum, 非整数/负数 → schema_violation 不合并)。"""
+
+    @staticmethod
+    def _valid_item(**over):
+        item = {
+            "clause_id": "ZB-C-001",
+            "response_text": _cjk_text(80),
+            "source_mode": "sample",
+            "citations": [{"title": "样例标书", "url": None, "source_doc": "样例库/PaaS平台标书", "quote_span": "p3-4", "quote": "提供远程诊断平台"}],
+            "needs_human_verify": True,
+        }
+        item.update(over)
+        return item
+
+    def _merge(self, tmp_path, capsys, items):
+        state = _depth_state(tmp_path)
+        cand = _depth_candidate(tmp_path, items)
+        rc = _responses_module().main(["merge", "--candidates", str(cand), "--state-dir", str(state)])
+        return rc, _summary(capsys), state
+
+    def test_merge_passes_depth_target_through(self, tmp_path, capsys):
+        rc, summary, state = self._merge(tmp_path, capsys, [self._valid_item(depth_target=100)])
+        assert rc == 0
+        merged = {r["clause_id"]: r for r in json.loads((state / "responses.json").read_text(encoding="utf-8"))}
+        assert merged["ZB-C-001"]["depth_target"] == 100, "merge 原样透传 depth_target 落 responses.json"
+
+    def test_merge_accepts_zero_target(self, tmp_path, capsys):
+        rc, _, state = self._merge(tmp_path, capsys, [self._valid_item(depth_target=0)])
+        assert rc == 0, "minimum 0: 零目标合法(等价不设下限)"
+        merged = json.loads((state / "responses.json").read_text(encoding="utf-8"))
+        assert merged[0]["depth_target"] == 0
+
+    @pytest.mark.parametrize("bad_target", [-5, "100", 1.5, True])
+    def test_validate_rejects_malformed_depth_target(self, tmp_path, capsys, bad_target):
+        state = _depth_state(tmp_path)
+        cand = _depth_candidate(tmp_path, [self._valid_item(depth_target=bad_target)], name="RESP-bad.json")
+        rc = _responses_module().main(["validate", "--candidates", str(cand), "--state-dir", str(state)])
+        assert rc == 3, "形态不符 = anomaly 不合并"
+        summary = _summary(capsys)
+        assert _anomaly_kinds(summary) == ["schema_violation"]
+        errors = " ".join(summary["anomalies"][0]["errors"])
+        assert "depth_target" in errors, f"错误消息点名 depth_target 字段: {errors}"
+
+    def test_malformed_target_not_merged(self, tmp_path, capsys):
+        rc, _, state = self._merge(tmp_path, capsys, [self._valid_item(depth_target=-1)])
+        assert rc == 3
+        assert not (state / "responses.json").exists(), "带病条目不落账(responses.json 保持缺省空态)"
