@@ -257,11 +257,13 @@ def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
     # 表格两位小数金额(3,500.00)=fixture 已知唯一 fail-closed 残留, --map 显式清洗后闸门才放行
     map_path = tmp_path / "map.json"
     map_path.write_text(json.dumps({"3,500.00": "****"}), encoding="utf-8")
+    # 题名用脱敏形态(T7 评审 I-1: 元数据与正文同门后, 真名题名含 --map 键即被拒出库)
+    title = "某大学【1】课堂观测系统"
     argv = [
         "--input",
         str(tender_md),
         "--title",
-        "江西师范大学课堂观测系统",
+        title,
         "--industry",
         "信息技术",
         "--category",
@@ -272,7 +274,7 @@ def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
         str(map_path),
     ]
     assert bc.main(argv) == 0
-    slug = bc.slugify("江西师范大学课堂观测系统")
+    slug = bc.slugify(title)
     slug_dir = bank_dir / slug
     full = slug_dir / "full.md"
     full_bytes = full.read_bytes()
@@ -281,7 +283,7 @@ def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
     chapter_files = sorted((slug_dir / "chapters").glob("ch*.md"))
     assert len(chapter_files) == 3, "3 章切片逐章落盘"
     index = json.loads((bank_dir / "bank_index.json").read_text(encoding="utf-8"))
-    assert slug in index and index[slug]["title"] == "江西师范大学课堂观测系统"
+    assert slug in index and index[slug]["title"] == title
     assert index[slug]["chapters"] and all((slug_dir / c["file"]).is_file() for c in index[slug]["chapters"]), "index 章条目可导航"
     targets = json.loads((bank_dir / "depth_targets.json").read_text(encoding="utf-8"))
     # M-5 精确值钉: fixture 脱敏后段长 sorted [15, 16, 20, 57](掩码缩短原文) → P25=idx1=16, median=idx2=20
@@ -308,6 +310,52 @@ def test_main_applies_map_flag(tender_md, tmp_path):
     assert bc.main(["--input", str(tender_md), "--title", "T项目", "--bank-dir", str(bank_dir), "--map", str(map_path)]) == 0
     full = (bank_dir / bc.slugify("T项目") / "full.md").read_text(encoding="utf-8")
     assert "江西师范大学" not in full and "某大学【1】" in full
+
+
+def test_metadata_residual_scan_forms():
+    """T7 评审 I-1: 元数据扫描器单元钉——RESIDUAL_RE 形态与 --map 键原文名双通道, 证据带 token。"""
+    mapping = {"江西师范大学": "某大学【1】"}
+    hits = bc.metadata_residual_scan('{"title": "江西师范大学课堂观测系统"}', mapping)
+    assert any("--map 键原文名泄入元数据" in h and "江西师范大学" in h for h in hits), "--map 键通道命中"
+    hits2 = bc.metadata_residual_scan('{"title": "联系13800138000电话"}', {})
+    assert any("形态命中" in h and "13800138000" in h for h in hits2), "RESIDUAL_RE 形态通道命中"
+    assert bc.metadata_residual_scan('{"title": "某大学【1】课堂观测系统"}', mapping) == [], "脱敏题名零命中放行"
+
+
+def test_metadata_title_with_map_key_blocks_output(tender_md, tmp_path, capsys):
+    """T7 评审 I-1(必修): --title 元数据不经正文 redact——题名含 --map 键原文名 → 元数据闸门
+    rc=1 **零落盘**(bank 目录整个不建), 元数据通道与正文同门, 真名不再随分发包入 git。"""
+    map_path = tmp_path / "map.json"
+    # 正文残留(3,500.00)须清洗才能走到元数据闸门; 键含校名=维护者认定的敏感原名
+    map_path.write_text(json.dumps({"江西师范大学": "某大学【1】", "3,500.00": "****"}), encoding="utf-8")
+    rc = bc.main(
+        [
+            "--input", str(tender_md),
+            "--title", "江西师范大学课堂观测系统",  # 真名题名(含 --map 键)
+            "--bank-dir", str(tmp_path / "bank"),
+            "--map", str(map_path),
+        ]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "元数据残留扫描" in err and "--map 键原文名泄入元数据" in err, "证据点明元数据通道与命中键"
+    assert not (tmp_path / "bank").exists(), "零落盘: 元数据命中时 bank 目录不得创建"
+
+
+def test_metadata_title_residual_form_blocks_output(tender_md, tmp_path, clean_map, capsys):
+    """T7 评审 I-1: 题名含残留形态(手机号)同样被元数据闸门拒出库——RESIDUAL_RE 全文扫描。"""
+    rc = bc.main(
+        [
+            "--input", str(tender_md),
+            "--title", "测试项目13800138000",
+            "--bank-dir", str(tmp_path / "bank"),
+            "--map", str(clean_map),
+        ]
+    )
+    assert rc == 1
+    err = capsys.readouterr().err
+    assert "元数据残留扫描" in err and "13800138000" in err, "形态命中证据含原 token"
+    assert not (tmp_path / "bank").exists(), "零落盘"
 
 
 def test_depth_targets_bank_level_aggregate(tmp_path):

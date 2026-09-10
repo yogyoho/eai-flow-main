@@ -766,6 +766,20 @@ class TestBuildDepthGate:
         assert anomaly["target_discarded"] == "300", "弃用原值随 anomaly 留痕(T6 评审②)"
         assert "形态不符已弃用" in anomaly["message"], "文案不再误称'无 depth_target'(T6 评审②)"
 
+    def test_direct_dirty_floor_dict_skips_and_renders_skip(self):
+        """直调防御分支(T7 评审 I-2): 脏 floor dict(非 None) 传给 run_depth_gate 必须判跳过
+        (summary.skip_reason="bad_floor"), 且 _render_depth_section 同态渲染跳过说明——
+        不许把脏 floor 原样渲进"基线"行(摘要说跳过/报告说有基线 = 互斥诊断)。"""
+        bo = _build_module()
+        dirty = {"absolute_floor": "60", "global_median": 200}
+        anoms, summary = bo.run_depth_gate([self._response(chars=30)], dirty)
+        assert anoms == [], "脏 floor 不得产出判异"
+        assert summary["enabled"] is False and summary["skip_reason"] == "bad_floor", "防御分支同样可诊断"
+        assert bo._valid_floor("60") is False and bo._valid_floor(60) is True and bo._valid_floor(True) is False, "模块级单源形态校验"
+        text = "\n".join(bo._render_depth_section(anoms, dirty, skip_reason=summary["skip_reason"]))
+        assert "(跳过——无基线可比)" in text and "absolute_floor 形态不符(非整数)" in text, "skip 态渲染跳过说明"
+        assert "> 基线: " not in text, "脏 floor 值不得渲进基线行"
+
     def test_substantive_chars_mirrors_responses(self):
         """build_output 复制了 responses.py 的实质长口径(不跨脚本 import)——同步断言兜漂移。"""
         bo, rs = _build_module(), _responses_module()

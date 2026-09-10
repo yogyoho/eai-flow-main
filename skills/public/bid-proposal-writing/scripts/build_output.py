@@ -1141,6 +1141,13 @@ def _substantive_chars(text: str) -> int:
     return len(_SUBSTANTIVE_STRIP_RE.sub("", text))
 
 
+def _valid_floor(value) -> bool:
+    """库级 absolute_floor 形态校验(整数且非 bool)——load_depth_targets 与 run_depth_gate
+    两处同判提为模块级单源(与 _substantive_chars 同一防漂移纪律: 两份拷贝的 isinstance
+    组合迟早漂移, 正是镜像锁所防的类别, T7 评审 I-2)。"""
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def load_depth_targets(path: str | Path | None = None) -> tuple[dict | None, str | None]:
     """装载样例库深度基线(depth_targets.json); 返回 (基线, 跳过原因) 二元组。
 
@@ -1158,7 +1165,7 @@ def load_depth_targets(path: str | Path | None = None) -> tuple[dict | None, str
     except (json.JSONDecodeError, UnicodeDecodeError, OSError):
         return None, "malformed"
     floor = data.get("absolute_floor") if isinstance(data, dict) else None
-    if isinstance(floor, bool) or not isinstance(floor, int):
+    if not _valid_floor(floor):
         return None, "bad_floor"
     return data, None
 
@@ -1178,7 +1185,7 @@ def run_depth_gate(responses: list[dict], targets: dict | None, skip_reason: str
     if targets is None:
         return [], summary
     floor = targets.get("absolute_floor")
-    if isinstance(floor, bool) or not isinstance(floor, int):
+    if not _valid_floor(floor):
         summary["skip_reason"] = "bad_floor"  # 直调方传脏基线的防御分支: 同样给出可诊断原因
         return [], summary
     summary.update({"enabled": True, "absolute_floor": floor, "responses_checked": len(responses)})
@@ -1224,9 +1231,11 @@ def _render_depth_section(depth_anomalies: list[dict], depth_targets: dict | Non
     """lint 报告"深度"节(实体节相邻, Plan2 T6): 逐条缺口列示交确认门人核扩写。
 
     基线不可用时跳过原因分句呈现(T6 评审①)——"未编译/损坏/floor 形态不符"三种
-    失效形态处置路径不同, 混在一句里会让维护者猜。"""
+    失效形态处置路径不同, 混在一句里会让维护者猜。守卫含 skip_reason 非空(T7 评审 I-2):
+    直调方传脏基线 dict(非 None)时 run_depth_gate 已判跳过, 报告若仍按非 None 渲"基线"行
+    会把脏 floor 原样当基准呈现——摘要说跳过、报告说有基线, 互斥诊断。"""
     lines = ["## 深度门(样例库校准基线; 质量牵引非废标风险——不阻断交付凭据)", ""]
-    if depth_targets is None:
+    if depth_targets is None or skip_reason is not None:
         reason_text = {
             "missing": "文件缺失(样例库未编译)",
             "malformed": "文件损坏或不可解析",

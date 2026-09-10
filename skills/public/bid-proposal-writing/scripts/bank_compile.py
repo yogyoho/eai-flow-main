@@ -13,10 +13,12 @@ registration.json——全 sort_keys 无时间戳, 重跑字节一致)
 
 残留闸门: compile_bank 返回 residual 证据; 非空 → 全量证据行上 stderr 且 rc=1 零落盘
 (bank_index/depth_targets/registration/切片全不写, 不静默出库——Task 4 闸门已落)。
+元数据同门(I-1 评审): --title 等元数据字段不经正文 redact 管线——bank_index/registration
+组装后在内存序列化预写扫描(RESIDUAL_RE + --map 键原文名), 命中即 rc=1 零落盘。
 
 stdlib 自包含(技能=自包含分发单元)。离线维护者工具, 不进 SKILL.md 速查表。
 用法:
-  python bank_compile.py --input 标书.md --title "江西师范大学课堂观测系统" \
+  python bank_compile.py --input 标书.md --title "某大学【1】课堂观测系统" \
     --industry 信息技术 --category IT软件平台 --bank-dir references/samples_bank \
     [--map map.json] [--ragflow-push]   (--map/--ragflow-push 均已接入)
 退出码: 0 干净 / 1 用法错误(argparse 用法错误已改道 1——2 保留给 ingest 的 OCR 分流,
@@ -198,6 +200,25 @@ def redact(text: str, mapping: dict[str, str]) -> str:
 def residual_scan(text: str) -> list[str]:
     """残留扫描(脱敏后质检): 命中即返回证据行(调用方 rc=1 不出库)。"""
     return [ln.strip()[:120] for ln in text.split("\n") if RESIDUAL_RE.search(ln)]
+
+
+def metadata_residual_scan(text: str, mapping: dict[str, str]) -> list[str]:
+    """元数据残留扫描(I-1 评审: 元数据通道与正文同门, fail-closed)。
+
+    --title 等元数据字段不经正文 redact 管线(脱敏引擎只处理标书正文), 真名机构写进
+    title 会原样随技能分发包(bank_index/registration)入库。对**序列化后的元数据全文**:
+      1) 跑正文同款 RESIDUAL_RE(金额/证号/手机号等形态);
+      2) 逐个检查 --map 键原文名——维护者显式认定的敏感原名, 出现在元数据即命中。
+    证据行带命中 token 与上下文(序列化 JSON 是超长单行, 全行截断会看不见命中点)。
+    """
+    hits: list[str] = []
+    for m in RESIDUAL_RE.finditer(text):
+        hits.append(f"形态命中 {m.group(0)[:40]!r}: …{text[max(0, m.start() - 30): m.end() + 30]}…")
+    for key in mapping:
+        if key and key in text:
+            i = text.index(key)
+            hits.append(f"--map 键原文名泄入元数据 {key[:40]!r}: …{text[max(0, i - 30): i + len(key) + 30]}…")
+    return hits
 
 
 def slugify(title: str) -> str:
@@ -435,20 +456,10 @@ def main(argv: list[str] | None = None) -> int:
 
     bank_dir = Path(args.bank_dir)
     slug = result["slug"]
-    slug_dir = bank_dir / slug
-    chapters_dir = slug_dir / "chapters"
-    if chapters_dir.is_file():  # M-6: 路径被文件占位(异常残留) → unlink 兜底再建目录
-        chapters_dir.unlink()
-    if chapters_dir.is_dir():  # 旧切片清场再重写——源文件修订后重编译不留陈旧 chNN
-        shutil.rmtree(chapters_dir)
-    chapters_dir.mkdir(parents=True, exist_ok=True)
-    _write_text(slug_dir / "full.md", result["redacted"] + "\n")
-    chapter_entries = []
-    for i, ch in enumerate(result["chapters"], 1):
-        fname = _chapter_filename(i, ch["title"])
-        _write_text(chapters_dir / fname, ch["text"] + "\n")
-        chapter_entries.append({"file": f"chapters/{fname}", "title": ch["title"]})
-
+    # 元数据在内存中先行组装(T7 评审 I-1): --title 等元数据字段不经正文 redact 管线,
+    # 组装后序列化预写扫描(与正文同门 fail-closed), 一切落盘动作都排在两道闸门之后。
+    chapter_files = [(_chapter_filename(i, ch["title"]), ch) for i, ch in enumerate(result["chapters"], 1)]
+    chapter_entries = [{"file": f"chapters/{fname}", "title": ch["title"]} for fname, ch in chapter_files]
     index_path = bank_dir / "bank_index.json"
     index = _load_bank_json(index_path, {})
     prior = index.get(slug)
@@ -462,7 +473,6 @@ def main(argv: list[str] | None = None) -> int:
         "depth": result["depth_targets"],
         "chapters": chapter_entries,
     }
-    _write_json(index_path, index)
 
     # depth_targets.json=库级深度门基准(I-1 评审修订: 对 bank_index 全册聚合——floor 取 min、
     # median 取中位, 根除先编 A 再编 B 时的 last-writer-wins; geo calibrate.py 先例即对全样例库取
@@ -477,13 +487,36 @@ def main(argv: list[str] | None = None) -> int:
         "paragraph_count": sum(int(d.get("paragraph_count", 0)) for d in depths),
         "calibrated_from": result["file_hash"],
     }
-    _write_json(bank_dir / "depth_targets.json", bank_targets)
 
     reg_path = bank_dir / "registration.json"
     reg = _load_bank_json(reg_path, {"items": []}, require_items_list=True)
     items = [it for it in reg.get("items", []) if isinstance(it, dict) and it.get("slug") != slug]  # M-4: 旧行缺 slug 不丢
     items.append(result["registration_item"])
     items.sort(key=lambda it: str(it.get("slug", "")))  # M-4: 缺 slug 空串排首, 不崩
+
+    # 元数据残留闸门(T7 评审 I-1): 序列化后的 bank_index/registration 全文跑正文同款
+    # RESIDUAL_RE + --map 键原文名检查, 命中即 rc=1——此时零落盘(含切片/full.md)。
+    meta_text = json.dumps(index, ensure_ascii=False, sort_keys=True) + "\n" + json.dumps({"items": items}, ensure_ascii=False, sort_keys=True)
+    meta_hits = metadata_residual_scan(meta_text, mapping)
+    if meta_hits:
+        print(f"元数据残留扫描 {len(meta_hits)} 处命中——拒绝出库(rc=1, 零落盘): --title 等元数据字段不经正文脱敏, 请改用脱敏后题名或修订对照:", file=sys.stderr)
+        for ln in meta_hits:
+            print(f"  · {ln}", file=sys.stderr)
+        return EXIT_ERROR
+
+    # 两道闸门(正文+元数据)全过后才落盘
+    slug_dir = bank_dir / slug
+    chapters_dir = slug_dir / "chapters"
+    if chapters_dir.is_file():  # M-6: 路径被文件占位(异常残留) → unlink 兜底再建目录
+        chapters_dir.unlink()
+    if chapters_dir.is_dir():  # 旧切片清场再重写——源文件修订后重编译不留陈旧 chNN
+        shutil.rmtree(chapters_dir)
+    chapters_dir.mkdir(parents=True, exist_ok=True)
+    _write_text(slug_dir / "full.md", result["redacted"] + "\n")
+    for fname, ch in chapter_files:
+        _write_text(chapters_dir / fname, ch["text"] + "\n")
+    _write_json(index_path, index)
+    _write_json(bank_dir / "depth_targets.json", bank_targets)
     _write_json(reg_path, {"items": items})
 
     # 可选 RAGFlow bid_samples 域推送(Task 5): 位于一切本地产物落盘之后; env 缺失/推送失败由
