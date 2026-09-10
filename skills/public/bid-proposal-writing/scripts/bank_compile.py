@@ -8,15 +8,15 @@ registration.json——全 sort_keys 无时间戳, 重跑字节一致)
 → registration.json 供 backend/scripts/bid_seed_samples.py 入 BidSample 台账(file_hash 恰 64 字符)
 → 可选 RAGFlow bid_samples 域推送(失败=warnings 不阻塞, Task 5 接入)。
 
-残留闸门: compile_bank 返回 residual 证据; 本版(Task 3)仅 stderr 告警不拦截,
-Task 4 起残留非空 → rc=1 零落盘。
+残留闸门: compile_bank 返回 residual 证据; 非空 → 全量证据行上 stderr 且 rc=1 零落盘
+(bank_index/depth_targets/registration/切片全不写, 不静默出库——Task 4 闸门已落)。
 
 stdlib 自包含(技能=自包含分发单元)。离线维护者工具, 不进 SKILL.md 速查表。
 用法:
   python bank_compile.py --input 标书.md --title "江西师范大学课堂观测系统" \
     --industry 信息技术 --category IT软件平台 --bank-dir references/samples_bank \
     [--map map.json] [--ragflow-push]   (--map 已接入; --ragflow-push 于 Task 5 接入)
-退出码: 0 干净 / 1 用法错误(残留命中在 Task 4 闸门落地后亦为 rc=1)。
+退出码: 0 干净 / 1 用法错误或残留命中(零落盘)。
 """
 
 from __future__ import annotations
@@ -208,7 +208,7 @@ def compile_bank(text: str, *, title: str, industry: str, category: str, mapping
     """纯函数编译(无 IO): 先对全文 redact 再切章(T2 评审接线——章 title 来自 redacted 标题行,
     机构名不绕过 --map) → M-1 段长分布(剔 #/| 结构行) → depth_targets(P25=absolute_floor/
     median=global_median, calibrated_from=内容指纹) → registration_item(bid_samples 台账契约,
-    file_hash=sha256(redacted) 恰 64 字符) → residual 证据(闸门 Task 4 消费)。"""
+    file_hash=sha256(redacted) 恰 64 字符) → residual 证据(main 残留闸门消费: 非空 → rc=1 零落盘)。"""
     redacted = redact(text, mapping)
     chapters = split_chapters(redacted)
     lengths = sorted(paragraph_lengths(redacted))
@@ -299,11 +299,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if not result["chapters"]:  # M-6: 零章=极端形态(如自定义样式 docx 全量丢弃), 提示而非静默
         print("警告: 切片 0 章——输入无 H2 章标题(自定义样式 docx 可能全量丢弃), 请核对标题样式", file=sys.stderr)
-    # 残留闸门(Task 4)预留期: 证据 stderr 告警不拦截; Task 4 起改为「非空 → rc=1 零落盘」。
+    # 残留闸门(Task 4): 脱敏后仍有残留 → 全量证据行上 stderr 后 rc=1, 位于一切落盘之前
+    # (bank_index/depth_targets/registration/切片全不写)——不静默出库, 处置=补 --map 对照或修订源文后重跑。
     if result["residual"]:
-        print(f"警告: 残留扫描 {len(result['residual'])} 处命中(残留闸门 Task 4 落地, 当前仅告警):", file=sys.stderr)
+        print(f"残留扫描 {len(result['residual'])} 处命中——拒绝出库(rc=1, 零落盘), 请补 --map 对照或修订源文后重试:", file=sys.stderr)
         for ln in result["residual"]:
             print(f"  · {ln}", file=sys.stderr)
+        return EXIT_ERROR
 
     bank_dir = Path(args.bank_dir)
     slug = result["slug"]

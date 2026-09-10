@@ -252,6 +252,9 @@ def test_compile_bank_depth_targets_m1_exclusion():
 
 def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
     bank_dir = tmp_path / "samples_bank"
+    # 表格两位小数金额(3,500.00)=fixture 已知唯一 fail-closed 残留, --map 显式清洗后闸门才放行
+    map_path = tmp_path / "map.json"
+    map_path.write_text(json.dumps({"3,500.00": "****"}), encoding="utf-8")
     argv = [
         "--input",
         str(tender_md),
@@ -263,6 +266,8 @@ def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
         "IT软件平台",
         "--bank-dir",
         str(bank_dir),
+        "--map",
+        str(map_path),
     ]
     assert bc.main(argv) == 0
     slug = bc.slugify("江西师范大学课堂观测系统")
@@ -281,9 +286,9 @@ def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
     assert targets["absolute_floor"] == 16 and targets["global_median"] == 20
     reg = json.loads((bank_dir / "registration.json").read_text(encoding="utf-8"))
     assert reg["items"] and reg["items"][0]["scenario"] == "bid_sample"
-    # fixture 无 --map: 表格两位小数金额为已知唯一残留——Task 3 预留期 stderr 告警不拦截(闸门 Task 4 落)
+    # 残留闸门(Task 4): --map 清洗后零残留 → 闸门放行, 全程无残留告警(命中即 rc=1 零落盘, 见闸门用例)
     captured = capsys.readouterr()
-    assert "残留" in captured.err
+    assert "残留" not in captured.err
     # 确定性: 重跑字节一致(同 slug 不重复登记)
     before = {p.relative_to(bank_dir).as_posix(): p.read_bytes() for p in bank_dir.rglob("*") if p.is_file()}
     assert bc.main(argv) == 0
@@ -296,7 +301,8 @@ def test_main_applies_map_flag(tender_md, tmp_path):
     """--map JSON 对照经 main 接入 compile_bank(全文先脱敏后切片, 机构名含标题全清)。"""
     bank_dir = tmp_path / "bank"
     map_path = tmp_path / "map.json"
-    map_path.write_text(json.dumps({"江西师范大学": "某大学【1】"}), encoding="utf-8")
+    # 3,500.00=fixture 表格行已知 fail-closed 残留, 须一并 --map 清洗否则 Task 4 残留闸门 rc=1 零落盘
+    map_path.write_text(json.dumps({"江西师范大学": "某大学【1】", "3,500.00": "****"}), encoding="utf-8")
     assert bc.main(["--input", str(tender_md), "--title", "T项目", "--bank-dir", str(bank_dir), "--map", str(map_path)]) == 0
     full = (bank_dir / bc.slugify("T项目") / "full.md").read_text(encoding="utf-8")
     assert "江西师范大学" not in full and "某大学【1】" in full
@@ -372,3 +378,24 @@ def test_main_map_bad_json_actionable(tmp_path):
     bad.write_text("{oops", encoding="utf-8")
     with pytest.raises(ValueError, match="map 文件 JSON 解析失败"):
         bc.main(["--input", str(p), "--title", "T", "--bank-dir", str(tmp_path / "bank"), "--map", str(bad)])
+
+
+# --- Task 4: 残留闸门(命中 → rc=1 零落盘) --------------------------------------------------------
+
+
+def test_residual_hits_block_output(tmp_path, capsys):
+    """残留扫描命中 → rc=1 且零落盘(不静默出库), 证据行全量上 stderr。
+
+    fixture 注意(Do-Not-Repeat 2026-09-10: plan 测试串先干跑再照抄): 「1,280,000.00 元」会被
+    AMOUNT_RE 正常掩码、不触发残留; 真正漏网的是表格两位小数千分位形态(3,500.00 无元后缀,
+    M-2/bug-3236 fail-closed 分支)——闸门要拦的正是它。
+    """
+    dirty = tmp_path / "dirty.md"
+    dirty.write_text("# 投标函\n\n报价 1,280,000.00 元整，另有单价 3,500.00 漏网。\n", encoding="utf-8")
+    bank = tmp_path / "bank"
+    rc = bc.main(["--input", str(dirty), "--title", "测试项目", "--industry", "信息技术", "--category", "IT软件平台", "--bank-dir", str(bank)])
+    assert rc == 1
+    assert not (bank / "bank_index.json").exists(), "残留命中=零落盘"
+    assert not bank.exists(), "闸门先于一切落盘——bank 目录都不建(depth_targets/registration/切片同理全不写)"
+    err = capsys.readouterr().err
+    assert "残留" in err and "3,500.00" in err, "证据行必须全量呈现(stderr), 供维护者补 --map 或人工处置"
