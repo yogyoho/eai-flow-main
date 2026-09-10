@@ -156,6 +156,62 @@ def find_family_by_prefix(data_dir: Path, prefix: str) -> tuple[str, str] | None
     return None
 
 
+# ── bug-3229 预测链纪律：参数/方法未定案，预测结果不得落盘 ──────────────────
+# 沉陷预测链：12_subsidence_params（param_source 枚举=预测方法/来源定案）+ 13_mining_stages
+# （开采阶段清单）是 14/15/16（预测结果族）的前置输入。页面实测（线程 11680ec0）：agent 在
+# param_source 未定、formula_runner 零调用的状态下直接写 14/15/16 且 _meta.status=filled——
+# LLM 推演数字冒充权威数据，破坏「数字永不经过 LLM」红线。此守卫在 ingest 层拒收。
+
+PREDICTION_RESULT_FAMILIES = {"stage_prediction_results", "subsidence_targets", "per_target_deformation"}
+
+
+def _param_source_allowed(params_spec: dict) -> set[str]:
+    """从 stage schema 的 subsidence_params.param_source 枚举定义取合法值集（不硬编码）。"""
+    for f in params_spec.get("fields", []):
+        if f.get("name") == "param_source" and str(f.get("type", "")).startswith("enum:"):
+            return set(f["type"][5:].split("|"))
+    return set()
+
+
+def prediction_prereq_errors(stage: dict, data_dir: Path, family: str) -> list[str]:
+    """预测结果族写入前置检查：12 号参数来源枚举已定案 + 13 号开采阶段非空。非预测族返回空。"""
+    if family not in PREDICTION_RESULT_FAMILIES:
+        return []
+    errs: list[str] = []
+    params_spec = stage.get("forms", {}).get("subsidence_params")
+    if params_spec:
+        p = data_dir / family_filename(params_spec)
+        doc: dict = {}
+        if p.exists():
+            try:
+                loaded = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    doc = loaded
+            except Exception:
+                errs.append("subsidence_params: JSON 损坏——先修复 12 号表再写预测结果（bug-3229）")
+        allowed = _param_source_allowed(params_spec)
+        src = doc.get("param_source")
+        if not src or (allowed and src not in allowed):
+            errs.append(
+                f"subsidence_params.param_source 未定案（现值 {src!r}，允许 {sorted(allowed)}）"
+                "——预测方法/来源确认前禁止写预测结果（bug-3229）；确认后用 ingest forms --family subsidence_params 补 param_source"
+            )
+    stages_spec = stage.get("forms", {}).get("mining_stages")
+    if stages_spec:
+        p = data_dir / family_filename(stages_spec)
+        doc: dict = {}
+        if p.exists():
+            try:
+                loaded = json.loads(p.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    doc = loaded
+            except Exception:
+                pass
+        if not doc.get("stages"):
+            errs.append("mining_stages.stages 为空——开采阶段未定，沉陷预测无输入（bug-3229）")
+    return errs
+
+
 # ── schema 校验 ─────────────────────────────────────────────────────────────
 
 def coerce_type(field_def: dict, key: str, value) -> tuple[bool, object, str]:
@@ -309,6 +365,12 @@ def cmd_forms(args) -> int:
         spec = families[args.family]
         fname = family_filename(spec)
         target = data_dir / fname
+        # bug-3229: 预测结果族写入前置——参数/方法未定案直接拒收（数字永不经过 LLM）
+        prereq = prediction_prereq_errors(stage, data_dir, args.family)
+        if prereq:
+            for e in prereq:
+                print(f"[ingest] 拒收: {e}", file=sys.stderr)
+            return EXIT_ERROR
         if spec.get("format") == "csv" or "columns" in spec:
             if args.rows is None:
                 print(f"[ingest] 错误: {args.family} 是 CSV 表单，用 --rows '[[行],[行]]'", file=sys.stderr)
@@ -595,6 +657,24 @@ def cmd_check(args) -> int:
             if f.get("required", True) and _get_dotted(doc, f["name"]) in (None, "", []):
                 missing_fields.append(f"{fam}.{f['name']}")
 
+    # ── bug-3229 预测链纪律（blocking）：结果先于参数=LLM 编数通道 ──────────────────
+    # agent 可绕过 ingest 直写 data/ JSON（页面实测），故除写入守卫外，门1 检查必须独立复核：
+    # 任何预测结果族 status=filled 而 12 号 param_source 未定案/13 号开采阶段为空 → 阻断门1。
+    for pred_fam in sorted(PREDICTION_RESULT_FAMILIES):
+        pred_spec = stage.get("forms", {}).get(pred_fam)
+        if not pred_spec:
+            continue
+        pred_p = data_dir / family_filename(pred_spec)
+        if not pred_p.exists():
+            continue
+        try:
+            pred_doc = json.loads(pred_p.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(pred_doc, dict) and pred_doc.get("_meta", {}).get("status") == "filled":
+            for e in prediction_prereq_errors(stage, data_dir, pred_fam):
+                missing_fields.append(f"{pred_fam}: {e}")
+
     # ── bug-3036 质量门（WARN 不阻断门1——完备性先行；下游 build 空槽/残留门兜底强制）────
     quality: list[str] = []
     for fam, spec in stage.get("forms", {}).items():
@@ -682,13 +762,35 @@ def cmd_check(args) -> int:
                 pass
 
     # data/ 外来文件（唯一写者=ingest；证据池 formula_state.json 被写进 data/ 实测）
+    # bug-3229 升级：直写绕过 ingest 的全部守卫（预测链拒收/枚举校验/指纹登记）→ 从 WARN
+    # 升为 blocking——未登记的 data/ 数据文件视同缺失，门1 不过。
     try:
-        registered = set(load_manifest(data_dir).get("files", {}))
+        manifest = load_manifest(data_dir)
+        registered = set(manifest.get("files", {}))
         for p in sorted(data_dir.iterdir()):
             if p.name in registered or p.name.startswith(MANIFEST_NAME):
                 continue
+            if p.name.endswith(".tmp") or p.name.endswith(".lock"):
+                continue
             if p.suffix in {".json", ".csv"}:
-                quality.append(f"data/ 存在未登记文件 {p.name}——data/ 唯一写者=ingest.py，外部产物移至 state/（bug-3036）")
+                missing_fields.append(
+                    f"外来文件 {p.name}: data/ 唯一写者=ingest.py，此文件未经登记（绕过守卫直写，bug-3229/3036）"
+                    "——改用 ingest forms/file 通道重写，或将非表单产物移至 state/"
+                )
+        # bug-3229: 登记名但在登记后被绕过 ingest 改写内容（空白生成登记名字 → 直写覆盖内容）
+        # → sha256 与登记指纹不符，同样视同绕过守卫，blocking。
+        for rel_name, entry in sorted(manifest.get("files", {}).items()):
+            p = data_dir / rel_name
+            if not p.exists() or p.suffix not in {".json", ".csv"}:
+                continue
+            try:
+                if sha256_file(p) != entry.get("sha256"):
+                    missing_fields.append(
+                        f"指纹不符 {rel_name}: 登记后被绕过 ingest 直接改写（bug-3229）"
+                        "——用 ingest forms --family 通道重写该表单以恢复唯一写者链"
+                    )
+            except OSError:
+                continue
     except (OSError, json.JSONDecodeError):
         pass
 
