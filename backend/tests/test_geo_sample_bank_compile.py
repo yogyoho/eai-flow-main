@@ -1,7 +1,7 @@
 """bank_compile / resolve_targets 矿种选基线单元测试（Phase 2）。"""
 
 import json
-import sys
+import os
 import uuid
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -9,10 +9,27 @@ from unittest.mock import MagicMock
 import pytest
 
 REPO = Path(__file__).resolve().parents[2]
-SKILL = REPO / "skills" / "public" / "geological-report"
-sys.path.insert(0, str(SKILL / "scripts"))
+# 同名脚本隔离锚(conftest._SkillScriptsFinder 按 SCRIPTS 定位本技能 scripts/)。
+# 勿 sys.path.insert 本目录: 全局路径污染会让其他技能测试文件的无保护同名导入
+# (如 bid 的 progress/score_simulate)按收集顺序抢到 geo 同名模块(T7 评审实测)——
+# 懒加载经 finder 按 item 锚点解析, 不依赖 sys.path。
+SCRIPTS = REPO / "skills" / "public" / "geological-report" / "scripts"
 
-import build_output  # noqa: E402
+
+def _build_module():
+    """懒加载本技能 build_output——conftest._SkillScriptsFinder(bug-2223) 在用例运行期
+    才按 SCRIPTS 锚点隔离同名脚本(sys.modules 缓存已清); 模块级导入在收集期执行,
+    会抢到别的技能同名模块。"""
+    import importlib
+
+    return importlib.import_module("build_output")
+
+
+def _bank_module():
+    """懒加载本技能 bank_compile(同上; conftest._SKILL_SCRIPT_NAMES 已含 bank_compile)。"""
+    import importlib
+
+    return importlib.import_module("bank_compile")
 
 # 样例库基线形状（照 references/depth_targets.json 契约：load_targets 只硬性要求 per_chapter dict）
 _BASELINE = {
@@ -34,35 +51,35 @@ def _make_stage(tmp_path):
 
 
 def test_normalize_mineral_aliases():
-    assert build_output.normalize_mineral("铜") == "copper"
-    assert build_output.normalize_mineral("铜银金") == "copper"  # 最早位置胜出：铜(0) < 金(2)
-    assert build_output.normalize_mineral("岩金") == "gold"
-    assert build_output.normalize_mineral("煤矿") == "coal"
-    assert build_output.normalize_mineral("铅锌矿") == "lead_zinc"
-    assert build_output.normalize_mineral("铅锌金银") == "lead_zinc"  # 最早位置胜出：铅锌(0) < 金(3)
-    assert build_output.normalize_mineral("金银") == "gold"
-    assert build_output.normalize_mineral("金矿") == "gold"
+    assert _build_module().normalize_mineral("铜") == "copper"
+    assert _build_module().normalize_mineral("铜银金") == "copper"  # 最早位置胜出：铜(0) < 金(2)
+    assert _build_module().normalize_mineral("岩金") == "gold"
+    assert _build_module().normalize_mineral("煤矿") == "coal"
+    assert _build_module().normalize_mineral("铅锌矿") == "lead_zinc"
+    assert _build_module().normalize_mineral("铅锌金银") == "lead_zinc"  # 最早位置胜出：铅锌(0) < 金(3)
+    assert _build_module().normalize_mineral("金银") == "gold"
+    assert _build_module().normalize_mineral("金矿") == "gold"
     # 负向守卫：「非金属」排除；「金」后接「属」的复合词（金属量/贵金属/多金属）不是矿种名
-    assert build_output.normalize_mineral("非金属矿") is None
-    assert build_output.normalize_mineral("多金属") is None
-    assert build_output.normalize_mineral("贵金属") is None
-    assert build_output.normalize_mineral("金属量") is None
-    assert build_output.normalize_mineral("萤石") is None  # 词表外
-    assert build_output.normalize_mineral("") is None
-    assert build_output.normalize_mineral(None) is None
+    assert _build_module().normalize_mineral("非金属矿") is None
+    assert _build_module().normalize_mineral("多金属") is None
+    assert _build_module().normalize_mineral("贵金属") is None
+    assert _build_module().normalize_mineral("金属量") is None
+    assert _build_module().normalize_mineral("萤石") is None  # 词表外
+    assert _build_module().normalize_mineral("") is None
+    assert _build_module().normalize_mineral(None) is None
 
 
 def test_resolve_targets_mineral_dir_precedence(tmp_path, monkeypatch, capsys):
     """样例库基线存在时优先于三级探测与 CANONICAL 兜底；不打非技能基准警告。"""
     stage = _make_stage(tmp_path)
-    monkeypatch.setattr(build_output, "CANONICAL_TARGETS", tmp_path / "depth_targets.json")  # 探测路径自动重定向到 tmp
+    monkeypatch.setattr(_build_module(), "CANONICAL_TARGETS", tmp_path / "depth_targets.json")  # 探测路径自动重定向到 tmp
     mineral_file = tmp_path / "depth_targets" / "exploration" / "gold.json"
     mineral_file.parent.mkdir(parents=True)
     mineral_file.write_text(json.dumps(_BASELINE, ensure_ascii=False, sort_keys=True), encoding="utf-8")
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "00_project.json").write_text(json.dumps({"commodity": "岩金", "stage": "勘探"}), encoding="utf-8")
-    targets, src = build_output.resolve_targets(None, stage, data_dir=data_dir)
+    targets, src = _build_module().resolve_targets(None, stage, data_dir=data_dir)
     assert targets["per_chapter"]["ch1"]["median_eff"] == 900
     assert "gold" in str(src)  # resolve_targets 第二元为 Path
     captured = capsys.readouterr()
@@ -74,14 +91,14 @@ def test_resolve_targets_mineral_beats_stage_adjacent(tmp_path, monkeypatch, cap
     """stage 旁 depth_targets.json 可伪造（bug-3058）——gated 的样例库基线优先于 stage 旁扫描。"""
     stage = _make_stage(tmp_path)
     (stage.parent / "depth_targets.json").write_text(json.dumps({"per_chapter": {"ch1": {"median_eff": 99999}}}), encoding="utf-8")
-    monkeypatch.setattr(build_output, "CANONICAL_TARGETS", tmp_path / "depth_targets.json")
+    monkeypatch.setattr(_build_module(), "CANONICAL_TARGETS", tmp_path / "depth_targets.json")
     mineral_file = tmp_path / "depth_targets" / "exploration" / "gold.json"
     mineral_file.parent.mkdir(parents=True)
     mineral_file.write_text(json.dumps(_BASELINE), encoding="utf-8")
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "00_project.json").write_text(json.dumps({"commodity": "岩金"}), encoding="utf-8")
-    targets, src = build_output.resolve_targets(None, stage, data_dir=data_dir)
+    targets, src = _build_module().resolve_targets(None, stage, data_dir=data_dir)
     assert targets["per_chapter"]["ch1"]["median_eff"] == 900  # mineral 基线胜出，非 stage 旁伪造的 99999
     assert "gold" in str(src)
     captured = capsys.readouterr()
@@ -94,11 +111,11 @@ def test_resolve_targets_missing_baseline_falls_back(tmp_path, monkeypatch, caps
     fake_canonical = tmp_path / "canonical" / "depth_targets.json"  # 可存在的兜底，隔离真实技能目录
     fake_canonical.parent.mkdir(parents=True)
     fake_canonical.write_text(json.dumps({"per_chapter": {"ch1": {"median_eff": 7487}}}), encoding="utf-8")
-    monkeypatch.setattr(build_output, "CANONICAL_TARGETS", fake_canonical)
+    monkeypatch.setattr(_build_module(), "CANONICAL_TARGETS", fake_canonical)
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "00_project.json").write_text(json.dumps({"commodity": "岩金"}), encoding="utf-8")
-    targets, _src = build_output.resolve_targets(None, stage, data_dir=data_dir)
+    targets, _src = _build_module().resolve_targets(None, stage, data_dir=data_dir)
     assert targets is not None  # 兜底（重定向后的 canonical）
     captured = capsys.readouterr()
     assert "矿种基线缺失" in captured.err
@@ -109,7 +126,7 @@ def test_resolve_targets_fallback_unchanged(tmp_path):
     """无矿种/无基线文件时走既有链（data_dir 不存在/词表外），兜底 CANONICAL——向后兼容。"""
     stage = _make_stage(tmp_path)
     data_dir = tmp_path / "data"  # 目录不存在
-    targets, _src = build_output.resolve_targets(None, stage, data_dir=data_dir)
+    targets, _src = _build_module().resolve_targets(None, stage, data_dir=data_dir)
     assert targets is not None  # 兜底 CANONICAL（技能自带铜矿基线）
 
 
@@ -118,14 +135,12 @@ def test_project_mineral_non_dict_json(tmp_path):
     data_dir = tmp_path / "data"
     data_dir.mkdir()
     (data_dir / "00_project.json").write_text("[1,2]", encoding="utf-8")
-    assert build_output._project_mineral(data_dir) is None
+    assert _build_module()._project_mineral(data_dir) is None
 
 
 # ---------------------------------------------------------------------------
 # bank_compile：样例库 → 技能衍生物（slices / SL3 指纹池 / bank_index / per 矿种基线）
 # ---------------------------------------------------------------------------
-
-import bank_compile  # noqa: E402
 
 
 def _make_report(workdir: Path, rid: str, mineral: str, stage: str) -> None:
@@ -145,7 +160,7 @@ def test_bank_compile_slices_index_and_fingerprints(tmp_path):
     refs.mkdir()
     _make_report(tmp_path, "rid-gold", "gold", "exploration")
     _write_manifest(tmp_path, [{"report_id": "rid-gold", "stage": "exploration", "mineral": "gold", "file_name": "g.docx"}])
-    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    rc = _bank_module().main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
     assert rc == 0
     # 切片落位 + 标记行
     s1 = refs / "samples_bank/exploration/slices/ch1/rid-gold__1.md"
@@ -172,10 +187,10 @@ def test_bank_compile_idempotent(tmp_path):
     _make_report(tmp_path, "rid-cu", "copper", "exploration")
     _write_manifest(tmp_path, [{"report_id": "rid-cu", "stage": "exploration", "mineral": "copper", "file_name": "c.docx"}])
     args = ["--workdir", str(tmp_path), "--references", str(refs)]
-    assert bank_compile.main_with_args(args) == 0
+    assert _bank_module().main_with_args(args) == 0
     idx1 = (refs / "samples_bank/bank_index.json").read_bytes()
     base1 = (refs / "depth_targets/exploration/copper.json").read_bytes()
-    assert bank_compile.main_with_args(args) == 0
+    assert _bank_module().main_with_args(args) == 0
     assert (refs / "samples_bank/bank_index.json").read_bytes() == idx1
     assert (refs / "depth_targets/exploration/copper.json").read_bytes() == base1
 
@@ -187,7 +202,7 @@ def test_bank_compile_all_zero_slices_rc1(tmp_path):
     d.mkdir()
     (d / "source.md").write_text("没有任何节号标题的正文。\n", encoding="utf-8")
     _write_manifest(tmp_path, [{"report_id": "rid-bad", "stage": "exploration", "mineral": "gold", "file_name": "b.docx"}])
-    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    rc = _bank_module().main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
     assert rc == 1
     assert not (refs / "samples_bank/bank_index.json").exists()  # 绝不产空 index
 
@@ -207,7 +222,7 @@ def test_bank_compile_duplicate_chapter_skips_report(tmp_path, capsys):
             {"report_id": "rid-ok", "stage": "exploration", "mineral": "gold", "file_name": "g.docx"},
         ],
     )
-    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    rc = _bank_module().main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
     assert rc == 0
     assert not (refs / "samples_bank/exploration/slices/ch1/rid-dup__1.md").exists()
     assert not (refs / "samples/exploration/ch1__rid-dup.md").exists()
@@ -234,12 +249,12 @@ def test_bank_compile_prune_removes_stale_slices(tmp_path):
         ],
     )
     args = ["--workdir", str(tmp_path), "--references", str(refs)]
-    assert bank_compile.main_with_args(args) == 0
+    assert _bank_module().main_with_args(args) == 0
     assert (refs / "samples_bank/exploration/slices/ch1/rid-b__1.md").exists()
     assert (refs / "samples/exploration/ch1__rid-b.md").exists()
     # manifest 移除 rid-b 后带 --prune 重编译：rid-b 残留被清，rid-a 与手写样例完好
     _write_manifest(tmp_path, [{"report_id": "rid-a", "stage": "exploration", "mineral": "gold", "file_name": "a.docx"}])
-    assert bank_compile.main_with_args(args + ["--prune"]) == 0
+    assert _bank_module().main_with_args(args + ["--prune"]) == 0
     assert not (refs / "samples_bank/exploration/slices/ch1/rid-b__1.md").exists()
     assert not (refs / "samples/exploration/ch1__rid-b.md").exists()
     assert (refs / "samples_bank/exploration/slices/ch1/rid-a__1.md").exists()
@@ -256,7 +271,7 @@ def test_bank_compile_bad_python_skips_group(tmp_path, capsys):
     refs.mkdir()
     _make_report(tmp_path, "rid-x", "gold", "exploration")
     _write_manifest(tmp_path, [{"report_id": "rid-x", "stage": "exploration", "mineral": "gold", "file_name": "x.docx"}])
-    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs), "--python", "Z:/no/such/interpreter.exe"])
+    rc = _bank_module().main_with_args(["--workdir", str(tmp_path), "--references", str(refs), "--python", "Z:/no/such/interpreter.exe"])
     assert rc == 0
     assert (refs / "samples_bank/bank_index.json").exists()
     assert not (refs / "depth_targets/exploration/gold.json").exists()  # 该组标定被跳过
@@ -297,6 +312,15 @@ def _patch_compile_happy_path(monkeypatch, tmp_path, docs):
     monkeypatch.setattr(service.crud, "finish_run", AsyncMock())
     monkeypatch.setattr(service.storage, "get_object", lambda uri: b"# x")
     monkeypatch.delenv("GSB_RAGFLOW_DATASET_ID", raising=False)
+    # 单测网络边界(T7 合跑实测): host 测试进程被模块级 load_dotenv 毒入真 RAGFLOW_API_KEY
+    # (conftest 中和块只覆盖 DEER_FLOW_*/OPENAI), 本地 RAGFlow 可达时 resolve 的按名兜底
+    # 查找会命中真库并**真推送**假报告(且随 RAGFlow 启动状态时好时坏=flake)。桩保留 env
+    # 语义(env 配置→env id, 否则空=skipped), 只斩断按名查找的触网尾巴——push 失败/预算
+    # 用例靠 setenv 进 push 分支的路径不受影响。
+    async def _resolve_env_only():
+        return os.environ.get("GSB_RAGFLOW_DATASET_ID", "").strip()
+
+    monkeypatch.setattr(service, "resolve_ragflow_dataset_id", _resolve_env_only)
 
     class FakeProc:
         returncode = 0
@@ -551,7 +575,7 @@ def test_bank_compile_slug_and_utf8_guards_skip(tmp_path, capsys):
             {"report_id": "rid-ok", "stage": "exploration", "mineral": "gold", "file_name": "3.docx"},
         ],
     )
-    rc = bank_compile.main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
+    rc = _bank_module().main_with_args(["--workdir", str(tmp_path), "--references", str(refs)])
     assert rc == 0
     err = capsys.readouterr().err
     assert "非 slug" in err
@@ -1464,9 +1488,15 @@ def test_fc7_null_economics_sub_dicts_guard():
     """P5 ledger A（rates=null 清偿）：forms.economics 的 rates/concentrate/prices 为显式 null
     （LLM 抽取可产出 null 子对象）时 check_fc 不抛 AttributeError——rates 按 0 稀释计，
     E 链输入缺失时 FC7 整体跳过。"""
+    # 按路径显式加载 geo 的 consistency.py——不经 sys.path/finder(consistency 不在
+    # conftest._SKILL_SCRIPT_NAMES 保护名单, 全局裸名导入在混合合跑下解析无保障)。
+    import importlib.util
     from types import SimpleNamespace
 
-    import consistency as cons
+    _spec = importlib.util.spec_from_file_location("geo_consistency", SCRIPTS / "consistency.py")
+    assert _spec is not None and _spec.loader is not None
+    cons = importlib.util.module_from_spec(_spec)
+    _spec.loader.exec_module(cons)
 
     eco = {"rates": None, "concentrate": None, "prices": None}
     data = SimpleNamespace(form=lambda name: eco if name == "economics" else {})
@@ -1574,7 +1604,7 @@ def test_gsb_run_running_partial_unique_index_semantics(tmp_path):
 # 机器可校验器——copper.json 是活实例=契约样例，必须 PASS（以实例校准常量，非反之）。
 # ---------------------------------------------------------------------------
 
-ORE_PACK_DIR = SKILL / "references" / "ore_packs"
+ORE_PACK_DIR = SCRIPTS.parent / "references" / "ore_packs"
 
 
 def test_validate_ore_pack_copper_instance_passes():

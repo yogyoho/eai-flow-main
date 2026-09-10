@@ -1,0 +1,15 @@
+{
+  "items": [
+    {
+      "file_hash": "f484a08763aaa54e0668d63d13c103db4e4fa828a00843ac196acc012f99285d",
+      "industry": "信息技术",
+      "notes": "chapters=6; paragraphs=62",
+      "project_category": "IT软件平台",
+      "scenario": "bid_sample",
+      "slug": "af90b403928e",
+      "source_path": "af90b403928e/full.md",
+      "status": "indexed",
+      "title": "某大学【1】课堂观测系统"
+    }
+  ]
+}

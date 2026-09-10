@@ -209,7 +209,8 @@ def _auto_user_context(request):
 # Multiple skills publish same-named top-level scripts (water-drainage-report
 # and geological-report both have formula_runner.py / chapter_planner.py;
 # bid/water/geological all have snapshot.py; geological-report and
-# bid-proposal-writing both have ingest.py / build_output.py). A module-level
+# bid-proposal-writing both have ingest.py / build_output.py; bid/geological/
+# coal-eia all have bank_compile.py). A module-level
 # or lazily-imported ``formula_runner`` in one test file poisons the
 # process-global sys.modules for every later in-process import in another
 # skill's tests: in a full-suite (alphabetical) run the geological tests fail
@@ -221,7 +222,7 @@ def _auto_user_context(request):
 # fixtures of the item instantiate, so fixtures importing these names are
 # covered too.
 
-_SKILL_SCRIPT_NAMES = ("build_output", "chapter_planner", "ingest", "formula_runner", "snapshot")
+_SKILL_SCRIPT_NAMES = ("build_output", "chapter_planner", "ingest", "formula_runner", "snapshot", "bank_compile")
 _current_skill_scripts: Path | None = None
 
 
