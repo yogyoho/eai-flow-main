@@ -399,3 +399,85 @@ def test_residual_hits_block_output(tmp_path, capsys):
     assert not bank.exists(), "闸门先于一切落盘——bank 目录都不建(depth_targets/registration/切片同理全不写)"
     err = capsys.readouterr().err
     assert "残留" in err and "3,500.00" in err, "证据行必须全量呈现(stderr), 供维护者补 --map 或人工处置"
+
+
+# --- Task 5: 可选 RAGFlow bid_samples 域推送(失败=warnings) + argparse 用法错误改道(T4 评审 Minor-1) --
+
+
+@pytest.fixture
+def clean_map(tmp_path):
+    """fixture 表格两位小数金额(3,500.00)=已知 fail-closed 残留——推送用例须先 --map 清洗,
+    否则残留闸门先行 rc=1 零落盘, 永远走不到闸门之后的推送段(Do-Not-Repeat 2026-09-10:
+    plan 测试串先干跑再照抄——本组用例已按闸门事实补 --map)。"""
+    map_path = tmp_path / "map.json"
+    map_path.write_text(json.dumps({"3,500.00": "****"}), encoding="utf-8")
+    return str(map_path)
+
+
+def _push_argv(tender_md, bank, clean_map):
+    return [
+        "--input",
+        str(tender_md),
+        "--title",
+        "测试项目",
+        "--industry",
+        "信息技术",
+        "--category",
+        "IT软件平台",
+        "--bank-dir",
+        str(bank),
+        "--map",
+        clean_map,
+        "--ragflow-push",
+    ]
+
+
+def test_ragflow_push_called_when_enabled(monkeypatch, tmp_path, tender_md, clean_map):
+    calls: list[tuple] = []
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setattr(bc, "ragflow_push", lambda md, meta: calls.append((md[:50], meta)) or True)
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0
+    assert len(calls) == 1 and "投标文件格式" in calls[0][0], "推送的是 redacted 全文"
+    assert calls[0][1]["title"] == "测试项目" and calls[0][1]["dataset_id"] == "ds-123"
+    assert calls[0][1]["industry"] == "信息技术" and calls[0][1]["category"] == "IT软件平台"
+
+
+def test_ragflow_push_skipped_without_env(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+    """无 dataset id=跳过推送不报错(rc 仍 0), 但留一行 stderr 提示让维护者知晓未推送。"""
+    monkeypatch.delenv("BID_RAGFLOW_DATASET_ID", raising=False)
+    calls: list[tuple] = []
+    monkeypatch.setattr(bc, "ragflow_push", lambda md, meta: calls.append((md, meta)) or True)
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0 and calls == [], "无 dataset id=跳过推送不报错"
+    assert "BID_RAGFLOW_DATASET_ID" in capsys.readouterr().err
+
+
+def test_ragflow_push_failure_does_not_block(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+    """推送链路任何异常吞掉记 warning 返回 False——rc 仍 0, 本地衍生物已先行落盘(spec: 失败=warnings)。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
+
+    def _boom(*a, **kw):
+        raise RuntimeError("ragflow unreachable")
+
+    monkeypatch.setattr(bc, "_ragflow_post", _boom)
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0
+    assert "RAGFlow 推送失败" in capsys.readouterr().err, "推送失败必须可见(warnings 通道)"
+    assert (tmp_path / "bank" / bc.slugify("测试项目") / "full.md").is_file(), "本地衍生物先行落盘, 推送失败不回滚"
+
+
+def test_argparse_usage_error_returns_1_not_2(capsys):
+    """T4 评审 Minor-1: argparse 用法错误改道 rc=1——默认退出码 2 与 docstring「1 用法错误」
+    不符, 且 2 已保留给 ingest 的 OCR 分流(对齐 score_simulate/state_guard 家族惯例)。"""
+    for argv in ([], ["--input", "x.md"], ["--unknown-flag"]):
+        rc = bc.main(argv)
+        assert rc == 1, f"用法错误 {argv!r} 应返回 1, 实际 {rc}"
+    capsys.readouterr()
+
+
+def test_help_returns_0(capsys):
+    """--help 属 argparse 正常终止(code 0), 改道逻辑必须原样放行不按错误处理。"""
+    assert bc.main(["--help"]) == 0
+    capsys.readouterr()

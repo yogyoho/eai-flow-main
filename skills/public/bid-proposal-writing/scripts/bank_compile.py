@@ -6,7 +6,10 @@ P25=absolute_floor / median=global_median) → 四产物确定性落盘(slug 目
 bank_index.json、depth_targets.json(库级聚合——floor=各册 min、median=各册中位, 与编译顺序无关)、
 registration.json——全 sort_keys 无时间戳, 重跑字节一致)
 → registration.json 供 backend/scripts/bid_seed_samples.py 入 BidSample 台账(file_hash 恰 64 字符)
-→ 可选 RAGFlow bid_samples 域推送(失败=warnings 不阻塞, Task 5 接入)。
+→ 可选 RAGFlow bid_samples 域推送(--ragflow-push, Task 5): 位于一切本地产物落盘之后——
+  目标/凭证走 BID_RAGFLOW_* env, 上传整体 redacted 全文并触发服务端解析(geo_samples
+  push_reports_to_ragflow 同款两步); 未配置=跳过, 任何失败=warnings——本地衍生物已先行
+  落盘可用, 推送是辅助通道绝不阻塞出库/改 rc。
 
 残留闸门: compile_bank 返回 residual 证据; 非空 → 全量证据行上 stderr 且 rc=1 零落盘
 (bank_index/depth_targets/registration/切片全不写, 不静默出库——Task 4 闸门已落)。
@@ -15,8 +18,9 @@ stdlib 自包含(技能=自包含分发单元)。离线维护者工具, 不进 S
 用法:
   python bank_compile.py --input 标书.md --title "江西师范大学课堂观测系统" \
     --industry 信息技术 --category IT软件平台 --bank-dir references/samples_bank \
-    [--map map.json] [--ragflow-push]   (--map 已接入; --ragflow-push 于 Task 5 接入)
-退出码: 0 干净 / 1 用法错误或残留命中(零落盘)。
+    [--map map.json] [--ragflow-push]   (--map/--ragflow-push 均已接入)
+退出码: 0 干净 / 1 用法错误(argparse 用法错误已改道 1——2 保留给 ingest 的 OCR 分流,
+  对齐 score_simulate/state_guard 家族惯例)或残留命中(零落盘)。
 """
 
 from __future__ import annotations
@@ -24,10 +28,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import statistics
 import sys
+import urllib.request
+import uuid
 from pathlib import Path
 
 EXIT_OK, EXIT_ERROR = 0, 1
@@ -275,6 +282,77 @@ def _load_bank_json(path: Path, default: dict, *, require_items_list: bool = Fal
     return data
 
 
+# --- RAGFlow bid_samples 域推送(Task 5, 可选辅助通道: 失败=warnings 不阻塞) ------------------------
+# stdlib urllib 自包含(技能=自包含分发单元, 不 import 平台 RAGFlowClient); 端点形态对齐
+# backend/app/extensions/knowledge/client.py(API_PREFIX=/api/v1, Bearer 凭证, code=0 成功)。
+
+RAGFLOW_DATASET_ENV = "BID_RAGFLOW_DATASET_ID"
+RAGFLOW_API_BASE_ENV = "BID_RAGFLOW_API_BASE"
+RAGFLOW_API_KEY_ENV = "BID_RAGFLOW_API_KEY"
+RAGFLOW_API_BASE_DEFAULT = "http://ragflow:9380"
+
+
+def _ragflow_post(base: str, api_key: str, path: str, *, data: bytes, content_type: str) -> dict:
+    """单次 urllib POST(60s 超时); RAGFlow 约定 code=0 成功——非 0 视同失败上抛(调用方统一吞掉记 warning)。"""
+    req = urllib.request.Request(
+        f"{base}{path}",
+        data=data,
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": content_type},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        payload = json.loads(resp.read().decode("utf-8"))
+    if payload.get("code") not in (0, None):
+        raise RuntimeError(str(payload.get("message") or payload)[:200])
+    return payload
+
+
+def _ragflow_upload(base: str, api_key: str, dataset_id: str, name: str, content: bytes) -> str:
+    """multipart 上传 redacted 全文(POST /api/v1/datasets/{id}/documents), 返回 document id。
+    上游 data 为单元素数组(knowledge/client.upload_document 同款归一); 手拼 multipart body
+    (urllib 无 httpx files 语义), boundary 用 uuid4——网络载荷非持久产物, 不受确定性纪律约束。"""
+    boundary = f"----bank_compile_{uuid.uuid4().hex}"
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="{name}"\r\n'
+        f"Content-Type: text/markdown\r\n\r\n"
+    ).encode("utf-8") + content + f"\r\n--{boundary}--\r\n".encode("utf-8")
+    payload = _ragflow_post(base, api_key, f"/api/v1/datasets/{dataset_id}/documents", data=body, content_type=f"multipart/form-data; boundary={boundary}")
+    docs = payload.get("data")
+    if isinstance(docs, list) and docs:
+        docs = docs[0]
+    doc_id = docs.get("id") if isinstance(docs, dict) else None
+    if not doc_id:
+        raise RuntimeError("响应缺 document id")
+    return str(doc_id)
+
+
+def ragflow_push(md: str, meta: dict) -> bool:
+    """redacted 全文整体推送 RAGFlow bid_samples 域(命名 <slug>.md)并触发服务端解析
+    (上传不 parse=样例永不可检索, geo_samples push_reports_to_ragflow 同款两步, 不等待解析完成)。
+    dataset id 缺失 → False+warning(跳过不算失败); API key 缺失/网络失败/上游 code≠0 等
+    任何异常吞掉记 warning 返回 False——绝不阻塞主流程, 不改 rc(spec: 失败=warnings,
+    本地衍生物已先行落盘可用)。meta 仅作调用方记录(title/industry/category/dataset_id),
+    推送目标一律以 env 当前值为准。"""
+    dataset_id = (os.environ.get(RAGFLOW_DATASET_ENV) or "").strip()
+    if not dataset_id:
+        print(f"警告: 未配置 {RAGFLOW_DATASET_ENV}——跳过 RAGFlow 推送(本地衍生物已可用)", file=sys.stderr)
+        return False
+    api_key = (os.environ.get(RAGFLOW_API_KEY_ENV) or "").strip()
+    if not api_key:
+        print(f"警告: 未配置 {RAGFLOW_API_KEY_ENV}——跳过 RAGFlow 推送(本地衍生物已可用)", file=sys.stderr)
+        return False
+    base = (os.environ.get(RAGFLOW_API_BASE_ENV) or RAGFLOW_API_BASE_DEFAULT).rstrip("/")
+    name = f"{slugify(str(meta.get('title') or 'sample'))}.md"
+    try:
+        doc_id = _ragflow_upload(base, api_key, dataset_id, name, md.encode("utf-8"))
+        _ragflow_post(base, api_key, f"/api/v1/datasets/{dataset_id}/chunks", data=json.dumps({"document_ids": [doc_id]}).encode("utf-8"), content_type="application/json")
+        return True
+    except Exception as exc:  # 推送链路统一降级——RAGFlow 不可达不回滚出库(辅助通道定位)
+        print(f"警告: RAGFlow 推送失败({exc})——本地衍生物已可用, 不阻塞出库", file=sys.stderr)
+        return False
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="bank_compile.py", description="投标样例入库编译器(离线)")
     ap.add_argument("--input", required=True)
@@ -283,7 +361,17 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--category", default="IT软件平台")
     ap.add_argument("--bank-dir", required=True)
     ap.add_argument("--map", default=None, help="显式脱敏对照 JSON 文件(键=原文, 值=脱敏占位)")
-    args = ap.parse_args(argv)
+    ap.add_argument("--ragflow-push", action="store_true", help="落盘后推送 redacted 全文到 RAGFlow bid_samples 域(env BID_RAGFLOW_* 配置; 失败=warnings 不阻塞)")
+    try:
+        args = ap.parse_args(argv)
+    except SystemExit as exc:
+        # argparse 用法错误默认 SystemExit(2)——与 docstring「1 用法错误」不符, 且 2 已保留给
+        # ingest 的 OCR 分流(撞号会把 CLI 误用误路由), 统一改道 EXIT_ERROR(T4 评审 Minor-1,
+        # 对齐 score_simulate/state_guard 家族惯例); --help 等正常退出(code 0)原样放行。
+        if not exc.code:
+            return EXIT_OK
+        print(f"[bank_compile] 错误: 命令行参数用法错误(argparse 退出码 {exc.code}); 用法错误归退出码 1, 2 已保留给 ingest 的 OCR 分流(用 --help 查看用法)", file=sys.stderr)
+        return EXIT_ERROR
 
     mapping: dict[str, str] = {}
     if args.map:  # M-7: 坏 JSON 包成可操作报错(对齐 load_text 风格), 不裸 traceback
@@ -359,6 +447,16 @@ def main(argv: list[str] | None = None) -> int:
     items.append(result["registration_item"])
     items.sort(key=lambda it: str(it.get("slug", "")))  # M-4: 缺 slug 空串排首, 不崩
     _write_json(reg_path, {"items": items})
+
+    # 可选 RAGFlow bid_samples 域推送(Task 5): 位于一切本地产物落盘之后——未配置 dataset id=
+    # 跳过(留一行 stderr 提示), 推送失败=warnings, rc 恒 EXIT_OK(spec: 本地衍生物已可用,
+    # 推送是辅助通道绝不阻塞出库); 未传 --ragflow-push 时整段短路, 零 env 依赖。
+    if args.ragflow_push:
+        dataset_id = (os.environ.get(RAGFLOW_DATASET_ENV) or "").strip()
+        if not dataset_id:
+            print(f"警告: 未配置 {RAGFLOW_DATASET_ENV}——跳过 RAGFlow 推送(本地衍生物已可用)", file=sys.stderr)
+        elif ragflow_push(result["redacted"], {"title": args.title, "industry": args.industry, "category": args.category, "dataset_id": dataset_id}):
+            print(f"RAGFlow 推送成功: dataset={dataset_id}, {slug}.md", file=sys.stderr)
 
     print(
         json.dumps(
