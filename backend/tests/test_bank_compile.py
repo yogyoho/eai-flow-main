@@ -330,10 +330,14 @@ def test_metadata_title_with_map_key_blocks_output(tender_md, tmp_path, capsys):
     map_path.write_text(json.dumps({"江西师范大学": "某大学【1】", "3,500.00": "****"}), encoding="utf-8")
     rc = bc.main(
         [
-            "--input", str(tender_md),
-            "--title", "江西师范大学课堂观测系统",  # 真名题名(含 --map 键)
-            "--bank-dir", str(tmp_path / "bank"),
-            "--map", str(map_path),
+            "--input",
+            str(tender_md),
+            "--title",
+            "江西师范大学课堂观测系统",  # 真名题名(含 --map 键)
+            "--bank-dir",
+            str(tmp_path / "bank"),
+            "--map",
+            str(map_path),
         ]
     )
     assert rc == 1
@@ -346,10 +350,14 @@ def test_metadata_title_residual_form_blocks_output(tender_md, tmp_path, clean_m
     """T7 评审 I-1: 题名含残留形态(手机号)同样被元数据闸门拒出库——RESIDUAL_RE 全文扫描。"""
     rc = bc.main(
         [
-            "--input", str(tender_md),
-            "--title", "测试项目13800138000",
-            "--bank-dir", str(tmp_path / "bank"),
-            "--map", str(clean_map),
+            "--input",
+            str(tender_md),
+            "--title",
+            "测试项目13800138000",
+            "--bank-dir",
+            str(tmp_path / "bank"),
+            "--map",
+            str(clean_map),
         ]
     )
     assert rc == 1

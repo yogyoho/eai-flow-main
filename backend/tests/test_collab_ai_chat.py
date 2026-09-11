@@ -17,10 +17,7 @@ from app.extensions.docmgr.collab_ai_chat import AiChatRequest, collab_ai_chat
 
 def _sse_bytes(deltas: list[str]) -> bytes:
     """Encode OpenAI-style content deltas as upstream SSE frames + [DONE]."""
-    frames = [
-        "data: " + json.dumps({"choices": [{"delta": {"content": d}}]}) + "\n\n"
-        for d in deltas
-    ]
+    frames = ["data: " + json.dumps({"choices": [{"delta": {"content": d}}]}) + "\n\n" for d in deltas]
     frames.append("data: [DONE]\n\n")
     return "".join(frames).encode("utf-8")
 
@@ -175,20 +172,14 @@ async def test_tool_call_streamed_as_tool_input_available(monkeypatch: pytest.Mo
         }
     )
     monkeypatch.setattr(mod, "_load_default_model", fake_load_default_model)
-    monkeypatch.setattr(
-        mod, "get_app_config", lambda: SimpleNamespace(get_model_config=lambda name: fake_cfg)
-    )
-    monkeypatch.setattr(
-        mod.httpx, "AsyncClient", lambda *a, **kw: _FakeAsyncClient(_FakeStreamResponse([frame]))
-    )
+    monkeypatch.setattr(mod, "get_app_config", lambda: SimpleNamespace(get_model_config=lambda name: fake_cfg))
+    monkeypatch.setattr(mod.httpx, "AsyncClient", lambda *a, **kw: _FakeAsyncClient(_FakeStreamResponse([frame])))
 
     resp = await collab_ai_chat(
         SimpleNamespace(),
         AiChatRequest(
             messages=[{"role": "user", "content": "润色"}],
-            toolDefinitions={
-                "applyDocumentOperations": {"inputSchema": {"type": "object", "properties": {}}}
-            },
+            toolDefinitions={"applyDocumentOperations": {"inputSchema": {"type": "object", "properties": {}}}},
         ),
     )
     events = _parse_sse(await _collect(resp))

@@ -764,4 +764,3 @@ class ComplianceCheckResponse(BaseModel):
     has_critical_issues: bool
     duration_ms: float
     issues: list[ValidationIssueSchema] = Field(default_factory=list)
-

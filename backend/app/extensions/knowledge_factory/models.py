@@ -234,4 +234,3 @@ ComplianceRule.execution_logs: Mapped[list["ComplianceRuleLog"]]  # noqa: F811
 ComplianceRule.created_by_user: Mapped[Optional["User"]]  # noqa: F811
 ComplianceRuleLog.rule: Mapped["ComplianceRule"]  # noqa: F811
 ComplianceRuleLog.executed_by_user: Mapped[Optional["User"]]  # noqa: F811
-

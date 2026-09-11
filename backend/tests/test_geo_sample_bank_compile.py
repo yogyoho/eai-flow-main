@@ -31,6 +31,7 @@ def _bank_module():
 
     return importlib.import_module("bank_compile")
 
+
 # 样例库基线形状（照 references/depth_targets.json 契约：load_targets 只硬性要求 per_chapter dict）
 _BASELINE = {
     "coefficient": 0.6,
@@ -312,6 +313,7 @@ def _patch_compile_happy_path(monkeypatch, tmp_path, docs):
     monkeypatch.setattr(service.crud, "finish_run", AsyncMock())
     monkeypatch.setattr(service.storage, "get_object", lambda uri: b"# x")
     monkeypatch.delenv("GSB_RAGFLOW_DATASET_ID", raising=False)
+
     # 单测网络边界(T7 合跑实测): host 测试进程被模块级 load_dotenv 毒入真 RAGFLOW_API_KEY
     # (conftest 中和块只覆盖 DEER_FLOW_*/OPENAI), 本地 RAGFlow 可达时 resolve 的按名兜底
     # 查找会命中真库并**真推送**假报告(且随 RAGFlow 启动状态时好时坏=flake)。桩保留 env

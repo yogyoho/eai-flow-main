@@ -25,6 +25,7 @@ v4 分册架构后 bid-proposal-writing 的交付物从单文件变为册集, �
 artifacts router)只准经本模块解析 manifest, 不得自行 json.loads 字段——
 契约演进只改这里一处。
 """
+
 from __future__ import annotations
 
 import json
@@ -86,16 +87,7 @@ def rebuild_hint(status: str, data: dict) -> str:
     skill = data.get("skill")
     build_cmd = f"skills/public/{skill}/scripts/build_output.py" if skill else "管线技能的 build_output.py(geological-report 以 stdout BUILD_READY+MANIFEST_READY 为凭)"
     if status == STATUS_MISSING:
-        return (
-            "交付门 FAIL（bug-2225）：本线程存在交付契约（.delivery-contract）但 outputs/ 无 delivery_manifest.json——"
-            f"交付 .md 必须经 {build_cmd} 产出（rc=0），禁止手工拼装 .md 交付。请先运行 build_output.py 成功后再 present_files。"
-        )
+        return f"交付门 FAIL（bug-2225）：本线程存在交付契约（.delivery-contract）但 outputs/ 无 delivery_manifest.json——交付 .md 必须经 {build_cmd} 产出（rc=0），禁止手工拼装 .md 交付。请先运行 build_output.py 成功后再 present_files。"
     if status == STATUS_TOO_NEW:
-        return (
-            f"交付门 FAIL（bug-3109）：delivery_manifest.json version={data.get('version')} 高于本平台支持的契约版本 "
-            f"{MANIFEST_CONTRACT_VERSION}——请升级平台, 或由 {build_cmd} 重新 build 生成本平台兼容的凭据。"
-        )
-    return (
-        "交付门 FAIL（bug-3109）：delivery_manifest.json 无法解析或缺少 deliverables[]/deliverable 字段（未知契约）——"
-        f"请重跑 {build_cmd} 修复凭据后再 present_files。"
-    )
+        return f"交付门 FAIL（bug-3109）：delivery_manifest.json version={data.get('version')} 高于本平台支持的契约版本 {MANIFEST_CONTRACT_VERSION}——请升级平台, 或由 {build_cmd} 重新 build 生成本平台兼容的凭据。"
+    return f"交付门 FAIL（bug-3109）：delivery_manifest.json 无法解析或缺少 deliverables[]/deliverable 字段（未知契约）——请重跑 {build_cmd} 修复凭据后再 present_files。"

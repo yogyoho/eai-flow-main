@@ -324,10 +324,12 @@ class TestGenerateDocxMerged:
     def test_merged_contains_sections_in_order_with_breaks(self):
         from docx import Document
 
-        data = self._render([
-            ("整体方案-01-投标函.md", "# 投标函\n\n致:招标人"),
-            ("技术卷-01-总体设计.md", "# 总体设计\n\n分层架构说明。"),
-        ])
+        data = self._render(
+            [
+                ("整体方案-01-投标函.md", "# 投标函\n\n致:招标人"),
+                ("技术卷-01-总体设计.md", "# 总体设计\n\n分层架构说明。"),
+            ]
+        )
         doc = Document(BytesIO(data))
         texts = [p.text for p in doc.paragraphs]
         joined = "\n".join(texts)

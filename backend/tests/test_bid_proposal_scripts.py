@@ -3696,10 +3696,7 @@ def _out_text(out_dir, name):
 
 def _doc_texts(out_dir, prefix):
     """v4 分册: 聚合某文档册集(整体方案-*/技术卷-*)文本(按文件名序=册序)。"""
-    return "".join(
-        (Path(out_dir) / f.name).read_text(encoding="utf-8")
-        for f in sorted(Path(out_dir).glob(f"{prefix}-*.md"))
-    )
+    return "".join((Path(out_dir) / f.name).read_text(encoding="utf-8") for f in sorted(Path(out_dir).glob(f"{prefix}-*.md")))
 
 
 def _overall_text(out_dir):
@@ -5973,9 +5970,14 @@ class TestResponsesSourceModes:
 
     def test_sample_with_source_doc_validates_and_merges(self, tmp_path, capsys):
         state = _rs_state(tmp_path)
-        item = _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[
-            {"title": "某平台投标方案样例", "url": None, "source_doc": "样例库/PaaS平台标书", "quote_span": "p42-3", "quote": "满足等级保护三级要求"},
-        ])
+        item = _rs_item(
+            source_mode="sample",
+            evidence_ref=None,
+            needs_human_verify=True,
+            citations=[
+                {"title": "某平台投标方案样例", "url": None, "source_doc": "样例库/PaaS平台标书", "quote_span": "p42-3", "quote": "满足等级保护三级要求"},
+            ],
+        )
         rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
         assert rc == 0 and summary["anomalies"] == [], f"sample+source_doc 合法: {summary}"
         rc, _ = _rs_run("merge", state, [_rs_candidate(tmp_path, [item])], capsys)
@@ -5992,9 +5994,14 @@ class TestResponsesSourceModes:
 
     def test_sample_citation_missing_source_doc_rejected(self, tmp_path, capsys):
         state = _rs_state(tmp_path)
-        item = _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[
-            {"title": "t", "url": None, "source_doc": None, "quote": "q"},
-        ])
+        item = _rs_item(
+            source_mode="sample",
+            evidence_ref=None,
+            needs_human_verify=True,
+            citations=[
+                {"title": "t", "url": None, "source_doc": None, "quote": "q"},
+            ],
+        )
         rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
         assert rc == 3 and any(a["kind"] == "citations_source_doc_missing_for_sample" for a in summary["anomalies"])
 
@@ -6006,8 +6013,9 @@ class TestResponsesSourceModes:
 
     def test_fabricated_with_human_verify_merges(self, tmp_path, capsys):
         state = _rs_state(tmp_path)
-        item = _rs_item(source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                        response_text="我方针对该技术条款给出完整实施方案:总体架构分层设计,关键节点冗余部署,配套全生命周期运维保障与响应时限承诺,确保满足招标文件全部实质性要求。")
+        item = _rs_item(
+            source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="我方针对该技术条款给出完整实施方案:总体架构分层设计,关键节点冗余部署,配套全生命周期运维保障与响应时限承诺,确保满足招标文件全部实质性要求。"
+        )
         rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
         assert rc == 0, summary["anomalies"] if summary else "rc!=0"
         assert summary["anomalies"] == []
@@ -6018,9 +6026,13 @@ class TestResponsesSourceModes:
 
     def test_web_citation_missing_url_rejected(self, tmp_path, capsys):
         state = _rs_state(tmp_path)
-        item = _rs_item(source_mode="web", evidence_ref=None, citations=[
-            {"title": "t", "url": "", "quote": "q"},
-        ])
+        item = _rs_item(
+            source_mode="web",
+            evidence_ref=None,
+            citations=[
+                {"title": "t", "url": "", "quote": "q"},
+            ],
+        )
         rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, [item])], capsys)
         assert rc == 3 and any(a["kind"] == "citations_url_missing_for_web" for a in summary["anomalies"])
 
@@ -6029,8 +6041,7 @@ class TestResponsesSourceModes:
         state = _rs_state(tmp_path)
         items = [
             _rs_item("ZB-C-001"),
-            _rs_item("ZB-C-003", source_mode="self", evidence_ref=None,
-                     response_text="我方针对该技术条款给出完整实施方案:总体架构分层设计,关键节点冗余部署,配套全生命周期运维保障与响应时限承诺,确保满足招标文件全部实质性要求。"),
+            _rs_item("ZB-C-003", source_mode="self", evidence_ref=None, response_text="我方针对该技术条款给出完整实施方案:总体架构分层设计,关键节点冗余部署,配套全生命周期运维保障与响应时限承诺,确保满足招标文件全部实质性要求。"),
         ]
         rc, summary = _rs_run("validate", state, [_rs_candidate(tmp_path, items)], capsys)
         assert rc == 0, summary["anomalies"] if summary else "rc!=0"
@@ -6039,6 +6050,7 @@ class TestResponsesSourceModes:
     def test_schema_accepts_new_modes(self, tmp_path):
         """schema 层: sample/fabricated 通过 Draft202012 校验(url 可空, source_doc 可选)。"""
         import jsonschema
+
         schema = json.loads((Path(REPO_ROOT) / "skills/public/bid-proposal-overall/references/responses.schema.json").read_text(encoding="utf-8"))
         for item in (
             _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[{"title": "t", "url": None, "source_doc": "d", "quote_span": "p1", "quote": "q"}]),
@@ -6510,6 +6522,7 @@ def _stage_guide_path(filename: str) -> Path:
     if filename in B_STAGE_GUIDES:
         return TECH_REFERENCES_DIR / filename
     raise AssertionError(f"未登记的分组指南 {filename}: 请同步 A_STAGE_GUIDES/B_STAGE_GUIDES")
+
 
 # 每份分组指南的内容要件(阶段级深水区——从 SKILL_MD_REQUIRED_TOKENS 下沉至此逐份锁)
 # v4 编造政策负向契约: 旧三模式级联的指令头不得回流(废除说明提及枚举名不算违例)
@@ -7167,8 +7180,10 @@ class TestSlotsAndConfirmHnv:
         state = _copy_prestate(tmp_path, merged=True)
         (state / "slots.json").write_text(json.dumps({"报价总额": "128.5 万元(含税)"}, ensure_ascii=False), encoding="utf-8")
         (state / "responses.json").write_text(
-            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                                 response_text="本包总价 {{SLOT:报价总额}}; 详见报价明细。其余要求全部满足并提供三年质保服务承诺。")], ensure_ascii=False, indent=2) + "\n",
+            json.dumps(
+                [_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="本包总价 {{SLOT:报价总额}}; 详见报价明细。其余要求全部满足并提供三年质保服务承诺。")], ensure_ascii=False, indent=2
+            )
+            + "\n",
             encoding="utf-8",
         )
         out = tmp_path / "out"
@@ -7183,8 +7198,16 @@ class TestSlotsAndConfirmHnv:
         state = _copy_prestate(tmp_path, merged=True)
         (state / "slots.json").write_text(json.dumps({"报价总额": "128.5", "资质证号": "GB-5050-XX"}, ensure_ascii=False), encoding="utf-8")
         (state / "responses.json").write_text(
-            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                                 response_text="总价 {{SLOT:报价总额}万元(含税)}; 资质编号 {SLOT:资质证号}; 其余满足。附加质保承诺与运维方案说明文字确保实质长度达标。")], ensure_ascii=False, indent=2) + "\n",
+            json.dumps(
+                [
+                    _rs_item(
+                        "ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="总价 {{SLOT:报价总额}万元(含税)}; 资质编号 {SLOT:资质证号}; 其余满足。附加质保承诺与运维方案说明文字确保实质长度达标。"
+                    )
+                ],
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
             encoding="utf-8",
         )
         out = tmp_path / "out"
@@ -7197,8 +7220,8 @@ class TestSlotsAndConfirmHnv:
     def test_slot_unknown_key_hard_error(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
         (state / "responses.json").write_text(
-            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                                 response_text="总价 {{SLOT:不存在的键}}; 其余满足要求并附完整实施方案与质保承诺说明文字。")], ensure_ascii=False, indent=2) + "\n",
+            json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="总价 {{SLOT:不存在的键}}; 其余满足要求并附完整实施方案与质保承诺说明文字。")], ensure_ascii=False, indent=2)
+            + "\n",
             encoding="utf-8",
         )
         rc = _run_build(state, tmp_path / "out")
@@ -7207,10 +7230,8 @@ class TestSlotsAndConfirmHnv:
     def test_confirm_hnv_flips_and_keeps_trace(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
         items = [
-            _rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                     response_text="我方针对该条款给出完整实施方案: 总体架构分层设计, 关键节点冗余部署与全生命周期运维保障承诺。"),
-            _rs_item("ZB-C-003", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                     response_text="我方针对该条款给出完整实施方案: 分阶段交付与验收, 配备专职团队与响应时限承诺保障落地。"),
+            _rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="我方针对该条款给出完整实施方案: 总体架构分层设计, 关键节点冗余部署与全生命周期运维保障承诺。"),
+            _rs_item("ZB-C-003", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="我方针对该条款给出完整实施方案: 分阶段交付与验收, 配备专职团队与响应时限承诺保障落地。"),
         ]
         (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         rs = _rs_module()
@@ -7224,10 +7245,17 @@ class TestSlotsAndConfirmHnv:
 
     def test_confirm_hnv_missing_id_anomaly(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
-        (state / "responses.json").write_text(json.dumps([
-            _rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                     response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。"),
-        ], ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        (state / "responses.json").write_text(
+            json.dumps(
+                [
+                    _rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。"),
+                ],
+                ensure_ascii=False,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
         rs = _rs_module()
         rc = rs.main(["confirm-hnv", "--state-dir", str(state), "--confirmed", "ZB-C-999"])
         assert rc == 3, "未知 clause_id → 异常退出(不静默)"
@@ -7261,8 +7289,7 @@ class TestProgressController:
         assert "PHASE: GENERATE" in out and "[NEXT] 生成:" in out, "空响应=先派发生成"
         # 全章响应 merge(直接写 responses.json)→ 章自动 DRAFTED → next 改指批量跑门
         plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
-        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                          response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
+        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
         (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         assert self._run(pg, "next", "--state-dir", str(state)) == 0
         out = capsys.readouterr().out
@@ -7272,8 +7299,7 @@ class TestProgressController:
         state = _copy_prestate(tmp_path, merged=True)
         self._run(pg, "init", "--state-dir", str(state))
         plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
-        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                          response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
+        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
         (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         assert self._run(pg, "gate", "--state-dir", str(state)) == 0
         doc = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))
@@ -7307,8 +7333,7 @@ class TestProgressController:
         state = _copy_prestate(tmp_path, merged=True)
         self._run(pg, "init", "--state-dir", str(state))
         plan = json.loads((tmp_path / "progress.json").read_text(encoding="utf-8"))["plan"]
-        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True,
-                          response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
+        items = [_rs_item(cid, source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text="我方针对该条款给出完整实施方案: 总体架构分层设计与关键节点冗余部署说明文字。") for ch in plan for cid in ch["clause_ids"]]
         (state / "responses.json").write_text(json.dumps(items, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         self._run(pg, "gate", "--state-dir", str(state))
         assert self._run(pg, "next", "--state-dir", str(state)) == 0
@@ -7386,11 +7411,7 @@ class TestEntityGateV4:
     def test_booklet_fulltext_scanned(self, tmp_path):
         """扫描面扩到交付册全文: 编造正文(response_text)里的白名单外实体被揪出。"""
         state = _copy_prestate(tmp_path, merged=True)
-        rogue_text = (
-            "我方针对该技术条款给出完整实施方案: 总体架构分层设计, 关键节点冗余部署, "
-            f"核心设备可兼容{self.ROGUE}既有平台接口, 配套全生命周期运维保障与响应时限承诺, "
-            "确保满足招标文件全部实质性要求。"
-        )
+        rogue_text = f"我方针对该技术条款给出完整实施方案: 总体架构分层设计, 关键节点冗余部署, 核心设备可兼容{self.ROGUE}既有平台接口, 配套全生命周期运维保障与响应时限承诺, 确保满足招标文件全部实质性要求。"
         (state / "responses.json").write_text(
             json.dumps([_rs_item("ZB-C-001", source_mode="fabricated", evidence_ref=None, needs_human_verify=True, response_text=rogue_text)], ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
@@ -7518,9 +7539,9 @@ class TestBooklets:
 
     def test_plan_booklets_greedy_boundary(self, bk):
         chapters = [
-            {"title": "A", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},   # 25.0p
-            {"title": "B", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},   # 25.0p
-            {"title": "C", "chars": 12_000, "tables": 0, "table_rows": 0, "images": 0},   # 15.0p
+            {"title": "A", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},  # 25.0p
+            {"title": "B", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},  # 25.0p
+            {"title": "C", "chars": 12_000, "tables": 0, "table_rows": 0, "images": 0},  # 15.0p
         ]
         booklets, warnings = bk.plan_booklets(chapters)
         assert not warnings
@@ -7529,8 +7550,8 @@ class TestBooklets:
 
     def test_plan_booklets_oversized_whole_chapter(self, bk):
         chapters = [
-            {"title": "小章", "chars": 4_000, "tables": 0, "table_rows": 0, "images": 0},      # 5p
-            {"title": "巨章", "chars": 60_000, "tables": 0, "table_rows": 0, "images": 0},     # 75p > 50
+            {"title": "小章", "chars": 4_000, "tables": 0, "table_rows": 0, "images": 0},  # 5p
+            {"title": "巨章", "chars": 60_000, "tables": 0, "table_rows": 0, "images": 0},  # 75p > 50
         ]
         booklets, warnings = bk.plan_booklets(chapters)
         assert len(booklets) == 2
@@ -7540,7 +7561,7 @@ class TestBooklets:
 
     def test_plan_booklets_oversized_flushes_accumulated(self, bk):
         chapters = [
-            {"title": "A", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},   # 25p
+            {"title": "A", "chars": 20_000, "tables": 0, "table_rows": 0, "images": 0},  # 25p
             {"title": "巨章", "chars": 60_000, "tables": 0, "table_rows": 0, "images": 0},
         ]
         booklets, _ = bk.plan_booklets(chapters)
@@ -7626,9 +7647,7 @@ class TestBuildDocsScope:
         index = _out_text(out, "0-总目录索引.md")
         assert "技术卷册组" in index and "整体方案册组" in index, "索引分区合并: 保留组+新写组"
         manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
-        assert any(n.startswith("技术卷-") for n in manifest["deliverables"]) and any(
-            n.startswith("整体方案-") for n in manifest["deliverables"]
-        ), "deliverables=合并集"
+        assert any(n.startswith("技术卷-") for n in manifest["deliverables"]) and any(n.startswith("整体方案-") for n in manifest["deliverables"]), "deliverables=合并集"
 
     def test_single_scope_preserves_other_scope_files_byte_identical(self, tmp_path):
         state = _copy_prestate(tmp_path, merged=True)
@@ -7652,9 +7671,7 @@ class TestBuildDocsScope:
         (out / "整体方案-09-旧册.md").write_text("stale overall", encoding="utf-8")
         manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
         manifest["deliverables"] = sorted(set(manifest["deliverables"]) | {"技术卷-09-旧册.md", "整体方案-09-旧册.md"})
-        (out / "delivery_manifest.json").write_text(
-            json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        (out / "delivery_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "technical"]) == 0
         assert not (out / "技术卷-09-旧册.md").exists(), "范围内 stale 册删除"
         assert (out / "整体方案-09-旧册.md").exists(), "范围外 stale 册保留(收窄)"

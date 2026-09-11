@@ -568,6 +568,7 @@ class OpenVikingMemoryManager(MemoryManager):
             if self._config.read_failure_policy == "raise":
                 raise MemoryReadError(str(exc)) from exc
             raise
+
     # EAI-CUSTOM (2026-09-11, bug-3019) END
 
     def _actor_peer_scope(

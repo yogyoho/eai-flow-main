@@ -1992,4 +1992,3 @@ async def test_rule(
         ],
         "duration_ms": result.duration_ms,
     }
-
