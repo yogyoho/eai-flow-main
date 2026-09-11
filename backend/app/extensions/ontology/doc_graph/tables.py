@@ -8,7 +8,7 @@ created_at/updated_at + dg_merges 留痕=事务时间。dg_mentions 为证据链
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,7 +18,8 @@ from app.extensions.database import Base
 class DgEntity(Base):
     __tablename__ = "dg_entities"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    # server_default: 裸 SQL 写路径(ingest)不经过 ORM default——create_all 必须把默认值下发到 DB
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     domain: Mapped[str] = mapped_column(String(50), index=True)  # 抽取域: bid / contract / ...
     etype: Mapped[str] = mapped_column(String(50), index=True)  # 实体类型: project / bidder / goods / qualification
     canonical_name: Mapped[str] = mapped_column(String(300))
@@ -37,7 +38,7 @@ class DgEntity(Base):
 class DgRelation(Base):
     __tablename__ = "dg_relations"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     subject_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_entities.id"), index=True)
     predicate: Mapped[str] = mapped_column(String(100), index=True)
     object_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_entities.id"), index=True)
@@ -51,7 +52,7 @@ class DgRelation(Base):
 class DgMention(Base):
     __tablename__ = "dg_mentions"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     entity_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_entities.id"), index=True)
     relation_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_relations.id"), index=True)
     thread_id: Mapped[str] = mapped_column(String(100), default="")
@@ -66,7 +67,7 @@ class DgMention(Base):
 class DgMerge(Base):
     __tablename__ = "dg_merges"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
     candidate_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_entities.id"), index=True)
     canonical_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_entities.id"), index=True)
     method: Mapped[str] = mapped_column(String(30), default="similarity")  # similarity | manual

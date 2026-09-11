@@ -4,14 +4,19 @@ URL 解析与 connectors._ext_url 同语义: env 优先, 回退 extensions confi
 但默认 DatabaseConfig 恒产出 localhost URL（容器外也不为 None）, 仅凭 URL 存在判定 skip 会在
 CI(无库连接拒绝)与表未建环境(ProgrammingError)下直接报错——故以 dg_entities 表存在性探针兜底。
 真库 roundtrip 验证在容器内 E2E（Task 9）。
+冒烟数据用每次运行唯一的 _MARK 命名, 清理 DELETE 全部参数化圈定——失败也不误删他人数据。
 """
 
 import asyncio
 import os
+from uuid import uuid4
 
 import pytest
 
 from app.extensions.ontology.doc_graph.schemas import BidExtraction
+
+_MARK = "smk" + uuid4().hex[:8]  # 每次运行唯一; normalize 后仍小写, LIKE 圈定安全
+_DOC = "doc-ing-" + _MARK  # mention 清理的附加闸门
 
 
 def _resolve_url() -> str | None:
@@ -34,7 +39,7 @@ def _tables_ready(url: str) -> bool:
         from sqlalchemy.ext.asyncio import create_async_engine
         from sqlalchemy.pool import NullPool
 
-        engine = create_async_engine(url, poolclass=NullPool)
+        engine = create_async_engine(url, poolclass=NullPool, connect_args={"timeout": 2})
         try:
             async with engine.connect() as conn:
                 return (await conn.execute(text("SELECT to_regclass('public.dg_entities')"))).scalar() is not None
@@ -54,16 +59,19 @@ _URL = _raw_url if _raw_url and _tables_ready(_raw_url) else None
 
 pytestmark = pytest.mark.skipif(not _URL, reason="extensions 库未就绪(dg_entities 表不可达/未建)——真库验证在容器内 E2E")
 
+_PROJ = f"冒烟项目{_MARK}"
+_BID = f"冒烟供方{_MARK}"
+
 
 def _payload() -> dict:
     return {
         "domain": "bid",
         "thread_id": "t-test",
         "entities": [
-            {"etype": "project", "name": "横城煤矿东翼回风大巷工程", "mention": {"document_id": "doc-ing-1", "quote": "横城煤矿东翼回风大巷工程施工招标"}},
-            {"etype": "bidder", "name": "山西煤机集团", "confidence": 0.9, "mention": {"document_id": "doc-ing-1", "quote": "投标人：山西煤机集团"}},
+            {"etype": "project", "name": _PROJ, "mention": {"document_id": _DOC, "quote": f"{_PROJ}施工招标"}},
+            {"etype": "bidder", "name": _BID, "confidence": 0.9, "mention": {"document_id": _DOC, "quote": f"投标人：{_BID}"}},
         ],
-        "relations": [{"predicate": "bidder_of_project", "subject": "山西煤机集团", "object": "横城煤矿东翼回风大巷工程", "mention": {"document_id": "doc-ing-1", "quote": "山西煤机集团投标横城煤矿项目"}}],
+        "relations": [{"predicate": "bidder_of_project", "subject": _BID, "object": _PROJ, "mention": {"document_id": _DOC, "quote": f"{_BID}投标{_PROJ}"}}],
     }
 
 
@@ -75,46 +83,56 @@ def test_ingest_roundtrip_and_idempotent():
 
     from app.extensions.ontology.doc_graph.ingest import ingest_extraction
 
+    async def _entity_ids(conn):
+        res = await conn.execute(text("SELECT id FROM dg_entities WHERE domain='bid' AND norm_name LIKE '%' || :mark || '%'"), {"mark": _MARK})
+        return {str(r[0]) for r in res}
+
     async def _run():
         p = BidExtraction.model_validate(_payload())
         first = await ingest_extraction(p)
+
+        engine = create_async_engine(_URL, poolclass=NullPool)
+        try:
+            async with engine.connect() as conn:
+                ids_1 = await _entity_ids(conn)
+        finally:
+            await engine.dispose()
+
         again = await ingest_extraction(p)
 
         engine = create_async_engine(_URL, poolclass=NullPool)
         try:
             async with engine.connect() as conn:
-                n_a = (await conn.execute(text("SELECT COUNT(*) FROM dg_entities WHERE domain='bid' AND norm_name LIKE '%横城%'"))).scalar_one()
-                n_b = (await conn.execute(text("SELECT COUNT(*) FROM dg_entities WHERE domain='bid' AND norm_name LIKE '%山西煤机%'"))).scalar_one()
+                ids_2 = await _entity_ids(conn)
+                n_ent = (await conn.execute(text("SELECT COUNT(*) FROM dg_entities WHERE domain='bid' AND norm_name LIKE '%' || :mark || '%'"), {"mark": _MARK})).scalar_one()
         finally:
             await engine.dispose()
-        return first, again, n_a, n_b
+        return first, again, ids_1, ids_2, n_ent
 
-    first, again, n_a, n_b = asyncio.run(_run())
-    assert first["entities_upserted"] == 2 and first["relations"] == 1 and first["mentions"] == 3
-    assert again["entities_upserted"] == 2  # ON CONFLICT 命中，不新建
-    assert again["relations"] == 1
-    assert n_a == 1 and n_b == 1
-
-    # 清理（FK 顺序: mentions → relations → entities; 按本测试的冒烟实体名精确圈定, 不误删他人数据）
     async def _cleanup():
-        from sqlalchemy import text
-        from sqlalchemy.ext.asyncio import create_async_engine
-        from sqlalchemy.pool import NullPool
-
         engine = create_async_engine(_URL, poolclass=NullPool)
         try:
             async with engine.begin() as conn:
-                await conn.execute(text("DELETE FROM dg_mentions WHERE document_id = 'doc-ing-1'"))
+                await conn.execute(text("DELETE FROM dg_mentions WHERE document_id = :doc"), {"doc": _DOC})
                 await conn.execute(
                     text(
                         "DELETE FROM dg_relations WHERE subject_id IN "
-                        "(SELECT id FROM dg_entities WHERE domain='bid' AND (norm_name LIKE '%横城%' OR norm_name LIKE '%山西煤机%')) "
+                        "(SELECT id FROM dg_entities WHERE domain='bid' AND norm_name LIKE '%' || :mark || '%') "
                         "OR object_id IN "
-                        "(SELECT id FROM dg_entities WHERE domain='bid' AND (norm_name LIKE '%横城%' OR norm_name LIKE '%山西煤机%'))"
-                    )
+                        "(SELECT id FROM dg_entities WHERE domain='bid' AND norm_name LIKE '%' || :mark || '%')"
+                    ),
+                    {"mark": _MARK},
                 )
-                await conn.execute(text("DELETE FROM dg_entities WHERE domain='bid' AND (norm_name LIKE '%横城%' OR norm_name LIKE '%山西煤机%')"))
+                await conn.execute(text("DELETE FROM dg_entities WHERE domain='bid' AND norm_name LIKE '%' || :mark || '%'"), {"mark": _MARK})
         finally:
             await engine.dispose()
 
-    asyncio.run(_cleanup())
+    try:
+        first, again, ids_1, ids_2, n_ent = asyncio.run(_run())
+        assert first["entities_upserted"] == 2 and first["relations"] == 1 and first["mentions"] == 3
+        assert again["entities_upserted"] == 2  # ON CONFLICT 命中，不新建
+        assert again["relations"] == 1
+        assert ids_1 and ids_1 == ids_2  # 真幂等信号: id 集合逐次一致, 非仅计数不变
+        assert n_ent == 2
+    finally:
+        asyncio.run(_cleanup())  # 断言失败也要清场（FK 顺序: mentions → relations → entities）

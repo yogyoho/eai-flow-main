@@ -4,6 +4,8 @@ EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-11-ontology-doc-graph-design.m
 写路径只在本子包。连接模式照抄 ontology/connectors.py（NullPool + 显式 URL, 复用其 _ext_url 单一真源）。
 幂等键: uq_dg_entities_natural(domain,etype,norm_name)——同文档重抽/跨文档同名归并同一行。
 低置信(<0.7)实体落 pending_review 不阻塞管线（spec §7）。
+重入库 promote-only: status=pending_review 且新置信≥0.7 才升 active, 永不降级人工清理过的 active/merged;
+confidence 取历史与新值较大者。
 评审备忘落地点: (1) naive datetime 按 Asia/Shanghai(+08:00) 业务时区解释后写 timestamptz;
 (2) norm_name 截断 ≤300 对齐 String(300); (3) attrs 合并用 SQL || 运算, 不在 Python 侧原地改 JSONB。
 """
@@ -50,7 +52,10 @@ async def ingest_extraction(payload: BidExtraction) -> dict[str, Any]:
                             INSERT INTO dg_entities (domain, etype, canonical_name, norm_name, attrs, confidence, status, valid_from, valid_to)
                             VALUES (:domain, :etype, :name, :norm, CAST(:attrs AS jsonb), :conf, :status, :vfrom, :vto)
                             ON CONFLICT (domain, etype, norm_name)
-                              DO UPDATE SET attrs = dg_entities.attrs || EXCLUDED.attrs, updated_at = NOW()
+                              DO UPDATE SET attrs = dg_entities.attrs || EXCLUDED.attrs,
+                                status = CASE WHEN dg_entities.status = 'pending_review' AND EXCLUDED.confidence >= 0.7 THEN 'active' ELSE dg_entities.status END,  -- 0.7 = REVIEW_CONFIDENCE（裸 SQL 内联）
+                                confidence = GREATEST(dg_entities.confidence, EXCLUDED.confidence),
+                                updated_at = NOW()
                             RETURNING id
                             """
                         ),

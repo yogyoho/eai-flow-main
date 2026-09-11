@@ -30,3 +30,11 @@ def test_mention_fk_targets():
     fks = {c.name: sorted(fk.column.table.name for fk in c.foreign_keys) for c in t.columns if c.foreign_keys}
     assert fks["entity_id"] == ["dg_entities"]
     assert fks["relation_id"] == ["dg_relations"]
+
+
+def test_id_columns_server_default():
+    """裸 SQL 写路径(ingest)不经过 ORM default——id 列必须在 DB 侧有 gen_random_uuid() 默认值."""
+    for tname in ("dg_entities", "dg_relations", "dg_mentions", "dg_merges"):
+        col = Base.metadata.tables[tname].columns["id"]
+        sd = str(col.server_default.arg) if col.server_default is not None else ""
+        assert "gen_random_uuid" in sd, f"{tname}.id missing server_default"
