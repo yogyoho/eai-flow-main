@@ -137,6 +137,8 @@ progress.py run-stage freeze --state-dir T   # 冻结二连一次 bash：chapter
 
 **4.2 收章跑门（只信产物，不信摘要）**：波内节稿齐 → `progress.py mark chN DRAFTED` → **批量跑门** `progress.py gate --state-dir T`（一次 bash 跑完全部 DRAFTED 章；PASS 章及其全部节自动转 VERIFIED——节 VERIFIED 唯一通道=所属章门 rc=0，**手动 mark VERIFIED 禁用（bug-3049 同构）**；`build_output.py --chapter chN` 仅单章调试用，不记账）。rc=1 → failed 章按 stderr **节级归因清单**重派（原 prompt+stderr，**每章 ≤1 次**）→ 仍 FAIL → `mark chN BLOCKED --gate FAIL --detail "<一句话差距>"`。单章失败不中断全书，继续 next。
 
+**4.2.1 既有节文件修改纪律（bug-3230）**：修改任何**已存在**的 `state/sections/*.md`（跨 run 修改、波内返工、收口残留清理）——**先 `read_file`（全量或尾段 ranged read）拿到当前版本的读取标记，紧接着紧邻处完成修改；优先 `write_file` 全量重写，少用多处 `str_replace`**。写保护（read-before-write gate, upstream #3857）在未读先改时拦截，且**任何一次写动作都使此前一切读取失效**——被拦后不 read 就重试=拦截循环（实测 1.1M tokens/轮空烧）。控制器/子代理同守此律；子代理返工契约中原样带上该条。
+
 **4.3 波间要点包（wave1 全收口且无待协商 BLOCKED 时）**：`next` 进入 KEY_POINTS——聚合各节摘要的「本节要点」+ formula_state 冻结关键值（产能规模/W_max/容量/水量平衡/导水裂隙带）写 `state/key_points.json`（`{"chapters":{…},"highlights":{…},"issues":[…]}`），单表单 `ask_clarification` 呈现用户确认 → `progress.py confirm-key-points`——用户答复前不运行 confirm（自 confirm = 伪造确认）。**要点包 = 投影章唯一事实来源**（投影章=stage 最后一个数值章，planning 即 ch13；不重读前文全稿）。**发卡即停**：卡片发出后立即结束本回合/run。
 
 **4.4 wave2（投影章）**：`next` 指引派发投影章（契约同 4.1，输入追加 state/key_points.json）——只依据要点包写投影式结论，禁引入要点包之外的新数字与新结论（EO3 反向断言：结论章新增预测侧不存在的结论=FAIL）→ 批量 gate 同 4.2。
