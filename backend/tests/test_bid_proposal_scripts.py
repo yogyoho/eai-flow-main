@@ -6381,7 +6381,7 @@ def _skill_md_script_invocations(text: str) -> list[tuple[str, list[str]]]:
     for block in re.findall(r"```[a-zA-Z]*\n(.*?)```", text, flags=re.DOTALL):
         joined = block.replace("\\\n", " ")  # 反斜杠续行合并为单行(\<LF> → 空格)
         for line in joined.splitlines():
-            line = line.strip()
+            line = re.sub(r"\s+#.*$", "", line.strip())  # 行尾 bash 注释(速查表行内标注)不进 argv
             match = _SKILL_SCRIPT_RE.search(line)
             if not match or not line.startswith("python"):
                 continue
@@ -6580,6 +6580,15 @@ STAGE_FILE_REQUIRED_TOKENS = {
         "终稿复核",
         "replay_content_mismatch",
     ),
+    "build-overall.md": (
+        "--docs overall",
+        "manifest 合并",
+        "cross_scope_stray",
+        "两范围各重跑",
+        "整体方案-",
+        "退出码 3",
+        ".delivery-contract",
+    ),
     "build-technical.md": (
         "tech_response_prompt.md",
         "responses.schema.json",
@@ -6675,6 +6684,7 @@ class TestSkillStageGroupFiles:
         snapshot_src = (SKILL_MD_PATH.parent / "scripts" / "snapshot.py").read_text(encoding="utf-8")
         for base in ("stage0-2-intake-extract", "stage3-merge-gate2", "build-overall", "stage5-scoring", "build-technical"):
             assert base in snapshot_src, f"snapshot.py 须引用分组指南 {base}(DEC-1: 快照提示与路由同步; build-overall 点名于 3/4 阶段 build 指引)"
+        assert "见 build-overall" in snapshot_src, "snapshot.py 须在 next_step 指引串点名 build-overall(防仅 docstring 满足基名检查)"
 
 
 # ===========================================================================

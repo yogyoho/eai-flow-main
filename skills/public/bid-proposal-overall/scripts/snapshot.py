@@ -73,7 +73,7 @@ def _count_state(state_dir: Path) -> dict:
 
 
 def _infer_phase(workspace: Path, state_dir: Path, counts: dict) -> tuple[str, str]:
-    """按状态文件存在性推断阶段与下一步(推断链与 SKILL.md 六阶段对应)。
+    """按状态文件存在性推断阶段与下一步(推断链与 SKILL.md 五阶段(A 线)对应)。
 
     链序(v3, DEC-8①): 构建回执 last_build.json 是"门2 后"的强证据, 判定优先于
     白名单存在性——回执在而 entities_whitelist.json 缺失不倒退回门1(缺失降级为
@@ -104,7 +104,7 @@ def _infer_phase(workspace: Path, state_dir: Path, counts: dict) -> tuple[str, s
     versions = [int(m.group(1)) for p in (state_dir / "评分报告").glob("version_*.md") if (m := _VERSION_RE.match(p.name))]
     if versions:
         return (f"5-评分已完成(v{max(versions)})", "按报告改进建议修订, 或团队新版回传后重跑阶段5(报告 version++; 见 stage5-scoring)")
-    return ("4-已构建", "走确认门2(补遗 diff+终稿复核), 分发双卷; 团队回传后进阶段5(见 bid-technical 的 build-technical / stage5-scoring)")
+    return ("4-已构建", "整体方案册未建时先 build_output.py --docs overall(见 build-overall); 走确认门2(补遗 diff+终稿复核), 分发双卷; 团队回传后进阶段5(见 bid-technical 的 build-technical / stage5-scoring)")
 
 
 def _parse_code(text: str) -> tuple[str, str]:

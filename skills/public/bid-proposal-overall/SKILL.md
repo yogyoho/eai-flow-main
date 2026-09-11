@@ -50,9 +50,9 @@ description: 当用户需要编制投标整体方案(分析招标文件、义务
   → 阶段3 merge(补遗/答疑:ingest --addendum → 提取循环 → merge_addenda.py 落账)
   → 阶段4a 技术响应生成 ——【配对技能 bid-technical 执行,见其 SKILL.md】
   → 阶段4 build(build_output.py --docs overall:整体方案册集+索引卷整体方案节 → present_files;--docs all 全量并重建副表)
-──── 确认门2:补遗 diff 表+终稿复核清单(B 技术卷就绪后一并复核) ────
+──── 确认门2:补遗 diff 表+终稿复核清单(B 技术卷就绪后一并复核; B 未启用时按占位页复核) ────
   → 阶段5 模拟评分(双形态对齐 → 主观评审循环 → aggregate → report version++)
-  # 阶段0-3+5 主线各走一遍;阶段5 团队回传后可重跑,每次 version++ 留痕
+  # 阶段0-3、4 主线各走一遍(4a 由 bid-technical 执行);阶段4/5 可按需重跑,每次 version++ 留痕
 ```
 ## 路径与契约文档
 
@@ -69,8 +69,8 @@ python /mnt/skills/public/bid-proposal-overall/scripts/ingest.py --resume --out 
 python /mnt/skills/public/bid-proposal-overall/scripts/extract.py validate --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json /mnt/user-data/workspace/bid/candidates/T-001.rubric.json --sections /mnt/user-data/workspace/bid/state/sections.json --declared-total 100
 python /mnt/skills/public/bid-proposal-overall/scripts/extract.py merge --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json --sections /mnt/user-data/workspace/bid/state/sections.json --state-dir /mnt/user-data/workspace/bid/state --declared-total 100
 python /mnt/skills/public/bid-proposal-overall/scripts/check_format.py --state-dir /mnt/user-data/workspace/bid/state --sources /mnt/user-data/uploads/招标文件.md
-python /mnt/skills/public/bid-proposal-overall/scripts/responses.py validate --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-overall/scripts/responses.py merge --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/responses.py validate --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state # (阶段4a, bid-technical 执行)
+python /mnt/skills/public/bid-proposal-overall/scripts/responses.py merge --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state # (阶段4a, bid-technical 执行)
 python /mnt/skills/public/bid-proposal-overall/scripts/merge_addenda.py --addendum-candidates /mnt/user-data/workspace/bid/candidates/BY_addendum.json --state-dir /mnt/user-data/workspace/bid/state --decisions /mnt/user-data/workspace/bid/candidates/BY_decisions.json
 python /mnt/skills/public/bid-proposal-overall/scripts/build_output.py --state-dir /mnt/user-data/workspace/bid/state --out /mnt/user-data/outputs/投标文件 --docs overall
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py init --state-dir /mnt/user-data/workspace/bid/state
@@ -86,7 +86,7 @@ python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py sign --sta
 python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py verify --state-dir /mnt/user-data/workspace/bid/state
 ```
 
-**防幻觉契约(回放实证,违者即停)**:A/B 两份速查表之外**不存在**任何脚本或子命令(bid-technical 的离线工具 bank_compile.py 不进速查表)。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 子命令只有 `validate`/`merge`,responses 只有 `validate`/`merge`/`confirm-hnv`,score_simulate 只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 只有 `init`/`next`/`status`/`mark`/`gate`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令(build_output 只有 `--docs` 旗标)。记不准就先跑 `<脚本> --help`。所有命令用**绝对路径**执行,不 `cd`。
+**防幻觉契约(回放实证,违者即停)**:A/B 两份速查表之外**不存在**任何脚本或子命令(bid-technical 的离线工具 bank_compile.py 不进速查表)。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 子命令只有 `validate`/`merge`,responses 只有 `validate`/`merge`/`confirm-hnv`,score_simulate 只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 只有 `init`/`next`/`status`/`mark`/`gate`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令(build_output 无子命令,新增 --docs 范围旗标)。记不准就先跑 `<脚本> --help`。所有命令用**绝对路径**执行,不 `cd`。
 
 ## 阶段路由表(进入阶段先读对应分组指南)
 
