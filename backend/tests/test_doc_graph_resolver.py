@@ -34,3 +34,32 @@ def test_decide_mid_similarity_review():
 def test_decide_low_similarity_none():
     d = decide_merge("太原重工", "横城煤矿")
     assert d.action == "none"
+
+
+def test_normalize_none():
+    assert normalize_name(None) == ""
+
+
+def test_normalize_idempotent():
+    x = "　山西 煤机　ＧＲＯＵＰ  ｃｏｒｐ "
+    assert normalize_name(normalize_name(x)) == normalize_name(x)
+
+
+def test_normalize_whitespace_only():
+    assert normalize_name("   ") == ""
+
+
+def test_block_key_empty_name_hash_bucket():
+    assert block_key("d", "e", "")[2] == "#"
+
+
+def test_decide_plus_one_char_trap_not_auto_merge():
+    # 评审发现的旧 0.97 fuzzy 带陷阱: 19 字名+1 冗余字 ratio≈0.974 会被静默 auto_merge;
+    # 加固后 auto=精确相等, 此对必须落 review。
+    d = decide_merge("中国中车集团株洲电力机车研究所有限公司", "中国中车集团株洲电力机车研究所有限公司厂")
+    assert d.action == "review"
+
+
+def test_decide_empty_vs_empty_none():
+    d = decide_merge("", "")
+    assert d.action == "none" and d.similarity == 0.0
