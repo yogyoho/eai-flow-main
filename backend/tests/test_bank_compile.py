@@ -240,13 +240,16 @@ def test_compile_bank_redact_before_slice_and_residual_evidence():
 
 
 def test_compile_bank_depth_targets_m1_exclusion():
-    """深度统计手算钉: M-1 剔 #/| 结构行后取分布, P25/median 为索引取整取值。"""
-    text = "## 一、甲\n\n" + "字" * 30 + "\n\n短段\n\n| 表 | 头 |\n| --- | --- |\n\n## 二、乙\n\n" + "言" * 20 + "\n"
+    """深度统计手算钉: M-1 剔 #/| 结构行后取分布, P25/median 为索引取整取值。
+    (Plan 4 Task 2 起统计口径=技术章——章题须命中白名单, 故标题用 技术方案/技术响应;
+    段长池与断言值与全册口径时代完全一致。)"""
+    text = "## 一、技术方案\n\n" + "字" * 30 + "\n\n短段\n\n| 表 | 头 |\n| --- | --- |\n\n## 二、技术响应\n\n" + "言" * 20 + "\n"
     res = bc.compile_bank(text, title="T", industry="信息技术", category="IT软件平台", mapping={})
-    # 正文段恰 [30, 2, 20](表行剔除) → sorted [2, 20, 30]; P25: 3*25//100=0→2; median: 3*50//100=1→20
+    # 技术章=全部 2 章; 正文段恰 [30, 2, 20](表行剔除) → sorted [2, 20, 30]; P25: 3*25//100=0→2; median: 3*50//100=1→20
     dt = res["depth_targets"]
     assert dt["absolute_floor"] == 2 and dt["global_median"] == 20
     assert dt["paragraph_count"] == 3 and dt["calibrated_from"] == res["file_hash"]
+    assert dt["scope"] == "technical_chapters", "深度统计口径=技术章(Plan 4 Task 2)"
     assert len(res["file_hash"]) == 64, "bid_samples 台账 file_hash 恰 64 字符契约"
     assert res["registration_item"]["scenario"] == "bid_sample"
     assert res["registration_item"]["source_path"] == f"{res['slug']}/full.md"
@@ -286,8 +289,12 @@ def test_compile_outputs_full_pipeline(tender_md, tmp_path, capsys):
     assert slug in index and index[slug]["title"] == title
     assert index[slug]["chapters"] and all((slug_dir / c["file"]).is_file() for c in index[slug]["chapters"]), "index 章条目可导航"
     targets = json.loads((bank_dir / "depth_targets.json").read_text(encoding="utf-8"))
-    # M-5 精确值钉: fixture 脱敏后段长 sorted [15, 16, 20, 57](掩码缩短原文) → P25=idx1=16, median=idx2=20
-    assert targets["absolute_floor"] == 16 and targets["global_median"] == 20
+    # Plan 4 Task 2 口径: fixture 全商务章(投标函/身份证明/开标一览表)→技术集空 → percentile
+    # 空表 fallback floor=median=0(fail-closed 不回退全册统计; 技术章口径正值路径见 mixed_tender_md
+    # 用例)。旧全册精确值钉(段长 sorted [15,16,20,57]→16/20)随口径技术化退役, M-1 剔行/percentile
+    # 语义仍由 test_compile_bank_depth_targets_m1_exclusion 锁死; registration notes 仍全册口径。
+    assert targets["absolute_floor"] == 0 and targets["global_median"] == 0
+    assert targets["scope"] == "technical_chapters"
     reg = json.loads((bank_dir / "registration.json").read_text(encoding="utf-8"))
     assert reg["items"] and reg["items"][0]["scenario"] == "bid_sample"
     # 残留闸门(Task 4): --map 清洗后零残留 → 闸门放行, 全程无残留告警(命中即 rc=1 零落盘, 见闸门用例)
@@ -320,6 +327,19 @@ def test_metadata_residual_scan_forms():
     hits2 = bc.metadata_residual_scan('{"title": "联系13800138000电话"}', {})
     assert any("形态命中" in h and "13800138000" in h for h in hits2), "RESIDUAL_RE 形态通道命中"
     assert bc.metadata_residual_scan('{"title": "某大学【1】课堂观测系统"}', mapping) == [], "脱敏题名零命中放行"
+
+
+def test_metadata_scan_ignores_hash_hex_false_positive():
+    """摘要/slug hex 假阳性免疫钉: sha256 file_hash 与 12-hex slug 里的偶发手机号形态数人体串
+    (实测混合标书 fixture 摘要含 '18156555939' 致闸门误拒, ~10%/册)不得触发元数据闸门;
+    真 token 仍命中。"""
+    digest = "a" * 26 + "18156555939" + "b" * 27  # 恰 64 hex, 内嵌 11 位连号数人体串
+    assert len(digest) == 64
+    slug = "18156555939a"  # slug 同样内嵌数人体串
+    meta = f'{{"{slug}": {{"file_hash": "{digest}", "calibrated_from": "{digest}", "source_path": "{slug}/full.md"}}}}'
+    assert bc.metadata_residual_scan(meta, {}) == [], "摘要/slug hex 偶发形态串零命中"
+    hits = bc.metadata_residual_scan(f'{{"title": "联系13800138000电话", "file_hash": "{digest}"}}', {})
+    assert any("13800138000" in h for h in hits), "真 token 仍命中(免疫只剥 hex 整串)"
 
 
 def test_metadata_title_with_map_key_blocks_output(tender_md, tmp_path, capsys):
@@ -368,11 +388,12 @@ def test_metadata_title_residual_form_blocks_output(tender_md, tmp_path, clean_m
 
 def test_depth_targets_bank_level_aggregate(tmp_path):
     """I-1: depth_targets.json 对 bank_index 全册聚合——floor=各册 min、median=各册中位,
-    名实相符且与编译顺序无关(先 A 后 B 与先 B 后 A 同值, 根除 last-writer-wins)。"""
+    名实相符且与编译顺序无关(先 A 后 B 与先 B 后 A 同值, 根除 last-writer-wins)。
+    (章题用技术章白名单词——Plan 4 Task 2 起统计口径=技术章。)"""
     a = tmp_path / "a.md"
-    a.write_text("## 一、甲\n\n" + "字" * 30 + "\n\n短段\n\n" + "言" * 20 + "\n", encoding="utf-8")  # 段[30,2,20]: floor 2/median 20
+    a.write_text("## 一、技术方案\n\n" + "字" * 30 + "\n\n短段\n\n" + "言" * 20 + "\n", encoding="utf-8")  # 段[30,2,20]: floor 2/median 20
     b = tmp_path / "b.md"
-    b.write_text("## 一、乙\n\n" + "深" * 100 + "\n", encoding="utf-8")  # 段[100]: floor 100/median 100
+    b.write_text("## 一、技术响应\n\n" + "深" * 100 + "\n", encoding="utf-8")  # 段[100]: floor 100/median 100
 
     def argv(src, title, bank):
         return ["--input", str(src), "--title", title, "--bank-dir", str(bank)]
@@ -384,6 +405,7 @@ def test_depth_targets_bank_level_aggregate(tmp_path):
     t2 = json.loads((bank2 / "depth_targets.json").read_text(encoding="utf-8"))
     assert t1["absolute_floor"] == 2, "全库 floor=各册 min(后编的高 floor 样本不覆盖)"
     assert t1["global_median"] == 60, "全库 median=各册中位 statistics.median([20,100])"
+    assert t1["scope"] == "technical_chapters", "库级基准口径标记(Plan 4 Task 2)"
     assert (t2["absolute_floor"], t2["global_median"]) == (t1["absolute_floor"], t1["global_median"]), "聚合与编译顺序无关"
 
 
@@ -479,28 +501,28 @@ def _push_argv(tender_md, bank, clean_map, push=True):
     return argv
 
 
-def test_ragflow_push_called_when_enabled(monkeypatch, tmp_path, tender_md, clean_map):
+def test_ragflow_push_called_when_enabled(monkeypatch, tmp_path, mixed_tender_md, clean_map):
     calls: list[tuple] = []
     monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
     monkeypatch.setattr(bc, "ragflow_push", lambda md, meta: calls.append((md[:50], meta)) or True)
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0
-    assert len(calls) == 1 and "投标文件格式" in calls[0][0], "推送的是 redacted 全文"
+    assert len(calls) == 1 and "技术标" in calls[0][0], "推送的是技术章拼接文(Plan 4 Task 2, 不再是 redacted 全册)"
     assert calls[0][1] == {"title": "测试项目"}, "M-1: meta 瘦身恰为 title(env 由 ragflow_push 自读, 不冗余传参)"
 
 
-def test_ragflow_push_skipped_without_env(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+def test_ragflow_push_skipped_without_env(monkeypatch, tmp_path, mixed_tender_md, clean_map, capsys):
     """无 dataset id=ragflow_push 内部自检跳过(M-1 后 main 不再预检)——不触网, rc 仍 0, 留一行 stderr 提示。"""
     monkeypatch.delenv("BID_RAGFLOW_DATASET_ID", raising=False)
     monkeypatch.delenv("BID_RAGFLOW_API_KEY", raising=False)
     calls: list[tuple] = []
     _install_ragflow_transport(monkeypatch, calls, error=AssertionError("dataset 未配置时不得触网"))
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0 and calls == [], "无 dataset id=跳过推送不报错"
     assert "BID_RAGFLOW_DATASET_ID" in capsys.readouterr().err
 
 
-def test_ragflow_push_failure_does_not_block(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+def test_ragflow_push_failure_does_not_block(monkeypatch, tmp_path, mixed_tender_md, clean_map, capsys):
     """推送链路任何异常吞掉记 warning 返回 False——rc 仍 0, 本地衍生物已先行落盘(spec: 失败=warnings)。"""
     monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
     monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
@@ -509,7 +531,7 @@ def test_ragflow_push_failure_does_not_block(monkeypatch, tmp_path, tender_md, c
         raise RuntimeError("ragflow unreachable")
 
     monkeypatch.setattr(bc, "_ragflow_post", _boom)
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0
     assert "RAGFlow 推送失败" in capsys.readouterr().err, "推送失败必须可见(warnings 通道)"
     assert (tmp_path / "bank" / bc.slugify("测试项目") / "full.md").is_file(), "本地衍生物先行落盘, 推送失败不回滚"
@@ -545,7 +567,7 @@ def _install_ragflow_transport(monkeypatch, calls, responses=None, error=None):
     monkeypatch.setattr(bc.urllib.request, "urlopen", fake_urlopen)
 
 
-def test_ragflow_push_real_path_success(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+def test_ragflow_push_real_path_success(monkeypatch, tmp_path, mixed_tender_md, clean_map, capsys):
     """I-2①+M-2: 真实推送成功路径 CI 覆盖——顺序=list→upload→chunks, multipart 拼装
     (boundary/filename/redacted 正文)/data[0] 归一/chunks body 全断言; 敏感 token
     (手机号/信用代码/表格残留金额)在推送 payload 缺席。"""
@@ -561,22 +583,23 @@ def test_ragflow_push_real_path_success(monkeypatch, tmp_path, tender_md, clean_
             {"code": 0, "data": {}},
         ],
     )
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0
     assert [m for m, _, _ in calls] == ["GET", "POST", "POST"], "顺序=list 幂等前置→上传→解析触发"
     assert "/api/v1/datasets/ds-123/documents?" in calls[0][1] and "page=1" in calls[0][1] and "size=100" in calls[0][1], "dataset id 取自 env 进 URL(GET 带 query)"
     upload_body = calls[1][2]
     assert calls[1][1].endswith("/api/v1/datasets/ds-123/documents")
     assert b"----bank_compile_" in upload_body and ('filename="' + bc.slugify("测试项目") + '.md"').encode("utf-8") in upload_body, "multipart 拼装含 boundary+slug 文件名"
-    assert "投标文件格式".encode() in upload_body, "上传的是 redacted 全文"
-    for token in (b"13800138000", b"91360100MA001AB2CD", b"3,500.00"):
+    assert "4.1 项目总体理解".encode() in upload_body and "技术响应逐项偏离说明".encode() in upload_body, "上传的是技术章拼接文(Plan 4 Task 2)"
+    assert "开标一览表".encode() not in upload_body and "投标函".encode() not in upload_body, "商务章不进推送 payload(检索语料只收技术章)"
+    for token in (b"13800138000", b"91360100MA001AB2CD", b"3,500.00", b"360102199001011234"):
         assert token not in upload_body, f"敏感 token {token!r} 不得进推送 payload(M-2)"
     assert calls[2][1].endswith("/api/v1/datasets/ds-123/chunks")
     assert json.loads(calls[2][2]) == {"document_ids": ["doc-1"]}, "chunks body=上传响应 data[0] 归一出的 doc id"
     assert "RAGFlow 推送成功" in capsys.readouterr().err
 
 
-def test_ragflow_push_repush_deletes_stale_same_name_first(monkeypatch, tmp_path, tender_md, clean_map):
+def test_ragflow_push_repush_deletes_stale_same_name_first(monkeypatch, tmp_path, mixed_tender_md, clean_map):
     """I-1 幂等: 同名词旧版先删再传(geo push_reports_to_ragflow 同款)——同题重编重推不滞留
     旧版/不堆积副本; 只删同名词, dataset 其余文档不动。"""
     monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
@@ -593,28 +616,28 @@ def test_ragflow_push_repush_deletes_stale_same_name_first(monkeypatch, tmp_path
             {"code": 0, "data": {}},
         ],
     )
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0
     assert [m for m, _, _ in calls] == ["GET", "DELETE", "POST", "POST"], "同名先删再传"
     assert json.loads(calls[1][2]) == {"ids": ["old-1"]}, "只删同名词旧版(keep-9 不动)"
     assert json.loads(calls[3][2]) == {"document_ids": ["doc-2"]}, "删除后新传稿获得新 doc id"
 
 
-def test_ragflow_push_code_nonzero_swallowed(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+def test_ragflow_push_code_nonzero_swallowed(monkeypatch, tmp_path, mixed_tender_md, clean_map, capsys):
     """I-2②: 上游 code≠0 → _ragflow_post 真码映射上抛 RuntimeError → ragflow_push 吞成 warning;
     首步(list)即失败 → 不再上传(恰 1 次调用), rc 仍 0。"""
     monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
     monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
     calls: list[tuple] = []
     _install_ragflow_transport(monkeypatch, calls, responses=[{"code": 102, "message": "无权访问该 dataset"}])
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0
     assert len(calls) == 1, "list 失败即止, 不上传"
     err = capsys.readouterr().err
     assert "RAGFlow 推送失败" in err and "无权访问该 dataset" in err, "code≠0 的 message 进告警"
 
 
-def test_ragflow_push_httperror_body_in_warning(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+def test_ragflow_push_httperror_body_in_warning(monkeypatch, tmp_path, mixed_tender_md, clean_map, capsys):
     """M-3: HTTPError 的状态码+响应体摘要进告警(上游 4xx/5xx 报错可见可处置), rc 仍 0。"""
     monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
     monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
@@ -624,24 +647,24 @@ def test_ragflow_push_httperror_body_in_warning(monkeypatch, tmp_path, tender_md
         calls,
         error=urllib.error.HTTPError("http://ragflow:9380/api/v1/datasets/ds-123/documents", 403, "Forbidden", None, io.BytesIO(b'{"code":109,"message":"dataset-403-detail"}')),
     )
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0
     err = capsys.readouterr().err
     assert "HTTP 403" in err and "dataset-403-detail" in err, "状态码+响应体摘要均进告警"
 
 
-def test_ragflow_push_skips_without_api_key(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+def test_ragflow_push_skips_without_api_key(monkeypatch, tmp_path, mixed_tender_md, clean_map, capsys):
     """M-4a: dataset 已配但 API key 缺失 → 函数内自检跳过(不触网), rc 仍 0。"""
     monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
     monkeypatch.delenv("BID_RAGFLOW_API_KEY", raising=False)
     calls: list[tuple] = []
     _install_ragflow_transport(monkeypatch, calls, error=AssertionError("key 缺失时不得触网"))
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map))
     assert rc == 0 and calls == []
     assert "BID_RAGFLOW_API_KEY" in capsys.readouterr().err
 
 
-def test_no_flag_has_zero_env_dependency(monkeypatch, tmp_path, tender_md, clean_map):
+def test_no_flag_has_zero_env_dependency(monkeypatch, tmp_path, mixed_tender_md, clean_map):
     """M-4b: 未传 --ragflow-push 整段短路——env 全配好也零触网零推送, 本地产物照常落盘。"""
     monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
     monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
@@ -650,7 +673,7 @@ def test_no_flag_has_zero_env_dependency(monkeypatch, tmp_path, tender_md, clean
         raise AssertionError("未传 flag 时不得触网")
 
     monkeypatch.setattr(bc.urllib.request, "urlopen", _poison)
-    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map, push=False))
+    rc = bc.main(_push_argv(mixed_tender_md, tmp_path / "bank", clean_map, push=False))
     assert rc == 0
     assert (tmp_path / "bank" / bc.slugify("测试项目") / "full.md").is_file()
 
@@ -668,3 +691,101 @@ def test_help_returns_0(capsys):
     """--help 属 argparse 正常终止(code 0), 改道逻辑必须原样放行不按错误处理。"""
     assert bc.main(["--help"]) == 0
     capsys.readouterr()
+
+
+# --- Plan 4 Task 2: 技术章检索域(用户定案 2026-09-11)——RAGFlow 只推技术章 + 深度统计技术化 --------
+
+
+@pytest.fixture
+def mixed_tender_md(tmp_path):
+    """含商务章+技术章的混合标书。「四、技术标」为 H2 章, 其下 4.1/4.2 为 H3——本仓 split_chapters
+    只切 H2、H3 并入所在章正文(plan 原文按 H1/H2 双层切片模型所写, 已干跑修正, 见用例注)。"""
+    md = (
+        "# 投标文件格式\n\n"
+        "## 一、投标函\n\n"
+        "致：江西师范大学。我方愿以总金额 1,280,000.00 元（含税）承接本项目。\n\n"
+        "## 二、法定代表人身份证明\n\n"
+        "身份证号 360102199001011234，姓名张三。\n\n"
+        "## 三、开标一览表\n\n"
+        "| 序号 | 名称 | 数量 | 单价(元) |\n| --- | --- | --- | --- |\n"
+        "| 1 | 课堂观测终端 | 200 | 3,500.00 |\n\n"
+        "## 四、技术标\n\n"
+        "### 4.1 项目总体理解\n\n"
+        "本项目采用课堂观测终端阵列与边缘网关协同架构，实现课堂教学行为的"
+        "常态化采集与结构化分析，总体技术路线分为感知层、传输层、平台层三层设计。\n\n"
+        "### 4.2 技术响应逐项偏离说明\n\n"
+        "针对招标技术要求第 3.2 条课堂行为识别准确率不低于 95% 的要求，我方方案"
+        "通过双模型级联推理与课堂场景专用微调数据集达成，实测基准集准确率 96.8%，"
+        "并附第三方检测报告编号与复测方法说明。\n"
+    )
+    p = tmp_path / "mixed_tender.md"
+    p.write_text(md, encoding="utf-8", newline="\n")  # M-5: LF 落盘, 同 tender_md 口径
+    return p
+
+
+def test_tech_chapters_selected_by_title(mixed_tender_md):
+    """技术章筛选: 「四、技术标」章命中白名单入选; 商务章(投标函/身份证明/开标一览表)不入选。
+    (plan 原文断言 len==2 系按「技术标 H1 下 4.1/4.2 两个 H2 章」模型所写; 本仓 split_chapters
+    恒产 level=2、H3 不立章——4.1/4.2 并入「四、技术标」正文, 实际入选恰 1 章。)"""
+    text = bc.load_text(mixed_tender_md)
+    chapters = bc.split_chapters(text)
+    assert [c["level"] for c in chapters] == [2, 2, 2, 2], "切片器口径钉: 只切 H2、level 恒 2"
+    tech, titles = bc.select_tech_chapters(chapters)
+    assert len(tech) == 1, "四、技术标恰 1 章入选(4.1/4.2 为 H3 并入其正文)"
+    assert titles == ["四、技术标"]
+    assert "4.1 项目总体理解" in tech[0] and "4.2 技术响应逐项偏离说明" in tech[0], "H3 内容随章继承"
+    assert not any("投标函" in t or "开标一览" in t or "身份证明" in t for t in titles)
+
+
+def test_tech_whitelist_matches_real_corpus_titles():
+    """真实语料词表钉: 江西师大册技术章题为「第二章 项目内容、技术指标」——技术指标须命中。
+    (「技术指标」与「技术标」无子串关系; plan 词表缺此项会让真实册技术集为空 → 推送 fail-closed 跳过。)"""
+    tech, titles = bc.select_tech_chapters([{"title": "第二章 项目内容、技术指标", "level": 2, "text": "正文"}])
+    assert titles == ["第二章 项目内容、技术指标"]
+    tech2, titles2 = bc.select_tech_chapters([{"title": "一、投标函", "level": 2, "text": "a"}, {"title": "二、评分办法及评分细则", "level": 2, "text": "b"}])
+    assert tech2 == [] and titles2 == [], "商务/评分章不入选"
+
+
+def test_tech_scope_h1_inheritance_synthetic():
+    """H1 范围继承(纯函数钉, plan 3a 语义): level=1 章命中 TECH_SCOPE_H1_RE → 其下 level=2 章
+    全部继承, 直到下一个 H1 为止。当前 split_chapters 恒产 level=2(H1=篇标题不立章), 此分支是
+    切片器未来扩展的潜伏守卫——现阶段实际选择=纯标题白名单。"""
+    chapters = [
+        {"title": "商务部分", "level": 1, "text": "x"},
+        {"title": "一、投标函", "level": 2, "text": "a"},
+        {"title": "技术部分", "level": 1, "text": "y"},
+        {"title": "二、项目概况", "level": 2, "text": "b"},
+        {"title": "三、售后服务承诺", "level": 2, "text": "c"},
+        {"title": "商务部分2", "level": 1, "text": "z"},
+        {"title": "四、报价说明", "level": 2, "text": "d"},
+    ]
+    tech, titles = bc.select_tech_chapters(chapters)
+    assert titles == ["技术部分", "二、项目概况", "三、售后服务承诺"], "H1 命中→其下 H2 全继承, 止于下一个 H1"
+
+
+def test_stats_and_push_scope_tech_only(mixed_tender_md):
+    """深度统计口径=技术章; 全册统计路径不得再被商务短段落污染。"""
+    text = bc.load_text(mixed_tender_md)
+    tech, _ = bc.select_tech_chapters(bc.split_chapters(text))
+    tech_lens = sorted(bc.paragraph_lengths("\n\n".join(tech)))
+    all_lens = sorted(bc.paragraph_lengths(text))
+    assert bc.percentile(tech_lens, 25) >= bc.percentile(all_lens, 25) or len(tech_lens) < len(all_lens), "口径分离可观察"
+
+
+def test_push_skipped_fail_closed_when_no_tech_chapter(monkeypatch, tmp_path, tender_md, clean_map, capsys):
+    """全商务标书(技术集空) → 推送跳过(fail-closed, 绝不回退推全册): summary 增
+    ragflow_skip_reason=no_tech_chapter, stderr 列出全部章标题供维护者修词表/--map; 零触网。"""
+    monkeypatch.setenv("BID_RAGFLOW_DATASET_ID", "ds-123")
+    monkeypatch.setenv("BID_RAGFLOW_API_KEY", "k-test")
+
+    def _poison(*a, **kw):
+        raise AssertionError("技术集为空时不得触网(不回退推全册)")
+
+    monkeypatch.setattr(bc.urllib.request, "urlopen", _poison)
+    rc = bc.main(_push_argv(tender_md, tmp_path / "bank", clean_map))
+    assert rc == 0
+    captured = capsys.readouterr()
+    assert "no_tech_chapter" in captured.out, "summary 增 ragflow_skip_reason=no_tech_chapter"
+    err = captured.err
+    assert "投标函" in err and "开标一览" in err, "stderr 列出全部章标题(供修词表/--map)"
+    assert "RAGFlow 推送成功" not in err, "空技术集绝不推送"

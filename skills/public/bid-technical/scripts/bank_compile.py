@@ -1,15 +1,19 @@
 """bank_compile——投标样例入库编译器(v4 WP-2/G1, 离线一键产全部衍生物)。
 
 流程: 装载(标书 md/docx) → 全文脱敏(--map 显式对照 + 自动模式; 先脱敏后切片——T2 评审接线,
-章 title 取自 redacted 文本, 标题里的机构名不绕过 --map) → 章切片 → 深度统计(M-1 段长分布,
-P25=absolute_floor / median=global_median) → 四产物确定性落盘(slug 目录 full.md+chapters/、
-bank_index.json、depth_targets.json(库级聚合——floor=各册 min、median=各册中位, 与编译顺序无关)、
+章 title 取自 redacted 文本, 标题里的机构名不绕过 --map) → 章切片 → 技术章筛选(select_tech_chapters,
+Plan 4 Task 2 用户定案 2026-09-11「检索语料只收技术章」) → 深度统计(**口径=技术章拼接文**的
+M-1 段长分布, P25=absolute_floor / median=global_median; 切片/登记保持全册 1:1 不变) →
+四产物确定性落盘(slug 目录 full.md+chapters/、bank_index.json、
+depth_targets.json(库级聚合——floor=各册 min、median=各册中位, 与编译顺序无关; scope=technical_chapters)、
 registration.json——全 sort_keys 无时间戳, 重跑字节一致)
 → registration.json 供 backend/scripts/bid_seed_samples.py 入 BidSample 台账(file_hash 恰 64 字符)
-→ 可选 RAGFlow bid_samples 域推送(--ragflow-push, Task 5): 位于一切本地产物落盘之后——
+→ 可选 RAGFlow bid_samples 域推送(--ragflow-push, Task 5 + Plan 4 Task 2): 只推技术章拼接文
+  (文档名不变——同名先删再传幂等自动替换旧全册文档), 位于一切本地产物落盘之后——
   目标/凭证走 BID_RAGFLOW_* env, 同名词旧版先删再传(幂等, geo_samples
   push_reports_to_ragflow 同款)+解析触发; 未配置=跳过, 任何失败=warnings——本地衍生物已先行
-  落盘可用, 推送是辅助通道绝不阻塞出库/改 rc。
+  落盘可用, 推送是辅助通道绝不阻塞出库/改 rc; 技术集为空 → fail-closed 跳过绝不回退推全册
+  (summary 增 ragflow_skip_reason=no_tech_chapter, stderr 列全章标题供修词表/--map)。
 
 残留闸门: compile_bank 返回 residual 证据; 非空 → 全量证据行上 stderr 且 rc=1 零落盘
 (bank_index/depth_targets/registration/切片全不写, 不静默出库——Task 4 闸门已落)。
@@ -169,6 +173,32 @@ def split_chapters(text: str) -> list[dict]:
     return chapters
 
 
+# 技术章筛选词表(Plan 4 Task 2, 用户定案 2026-09-11「检索语料只收技术章」): 样例库是技术响应
+# 供源(Skill B stage-4a 检索/定长只取技术条款), 商务章(投标函/资质/报价/授权/开标一览表…)进
+# RAGFlow 语料=检索噪声、进深度统计=污染 P25 基线。真实语料钉: 江西师大册技术章题为
+# 「第二章 项目内容、技术指标」——「技术指标」与「技术标」无子串关系, 必须显式入表
+# (缺项会让真实册技术集为空 → 推送 fail-closed 跳过, 见 test_tech_whitelist_matches_real_corpus_titles)。
+TECH_TITLE_RE = re.compile("技术标|技术部分|技术方案|技术响应|技术要求|技术指标|实施方案|服务方案|技术服务|项目实施|技术文件|总体理解|偏离说明")
+TECH_SCOPE_H1_RE = re.compile("技术标|技术部分|技术文件|技术方案")  # H1 命中→其下 H2 全部继承
+
+
+def select_tech_chapters(chapters: list[dict]) -> tuple[list[str], list[str]]:
+    """技术章筛选(用户定案 2026-09-11): 标题关键词白名单+H1 范围继承。
+    返回 (技术章文本列表, 技术章标题列表); 空集=合法态(调用方 fail-closed 告警)。
+    注: 当前 split_chapters 只切 H2、level 恒 2(H1=篇标题不立章), H1 继承分支是切片器
+    未来扩展的潜伏守卫——现阶段实际选择=纯标题白名单(词表维护点=TECH_TITLE_RE)。"""
+    tech: list[str] = []
+    titles: list[str] = []
+    inherited = False
+    for c in chapters:
+        if c["level"] == 1:
+            inherited = bool(TECH_SCOPE_H1_RE.search(c["title"]))
+        if inherited or TECH_TITLE_RE.search(c["title"]):
+            tech.append(c["text"])
+            titles.append(c["title"])
+    return tech, titles
+
+
 def paragraph_lengths(text: str) -> list[int]:
     """非空正文段落长度列表(深度统计输入)。M-1: 剔 # 标题行与 | 表格行/分隔行——
     短结构行会系统性拉低 Task 3 的 P25 absolute_floor。"""
@@ -202,18 +232,28 @@ def residual_scan(text: str) -> list[str]:
     return [ln.strip()[:120] for ln in text.split("\n") if RESIDUAL_RE.search(ln)]
 
 
+# 序列化元数据的哈希假阳性免疫: 元数据全文含 sha256 file_hash/calibrated_from 摘要与 12-hex
+# slug——纯 hex 串可偶然拼出手机号形态(实证: 某样例摘要含 '18156555939' 数字体串, ~10%/册概率
+# 致元数据闸门误拒 rc=1 零落盘)。形态扫描前剥除「整串引号包裹的 64-hex 摘要值 / 12-hex slug 值 /
+# slug/full.md 路径」三类 token(真实残留 token 都嵌在含中文的长串里, 不会被整串匹配误伤);
+# --map 键原文名检查仍跑原文(键=真名, 与摘要无关)。
+_META_HEX_VALUE_RE = re.compile(r'"[0-9a-f]{64}"|"[0-9a-f]{12}/full\.md"|"[0-9a-f]{12}"')
+
+
 def metadata_residual_scan(text: str, mapping: dict[str, str]) -> list[str]:
     """元数据残留扫描(I-1 评审: 元数据通道与正文同门, fail-closed)。
 
     --title 等元数据字段不经正文 redact 管线(脱敏引擎只处理标书正文), 真名机构写进
     title 会原样随技能分发包(bank_index/registration)入库。对**序列化后的元数据全文**:
-      1) 跑正文同款 RESIDUAL_RE(金额/证号/手机号等形态);
-      2) 逐个检查 --map 键原文名——维护者显式认定的敏感原名, 出现在元数据即命中。
+      1) 剥除哈希/slug 类 hex token(_META_HEX_VALUE_RE, 防摘要偶发数人体串假阳性)后
+         跑正文同款 RESIDUAL_RE(金额/证号/手机号等形态);
+      2) 逐个检查 --map 键原文名(原文)——维护者显式认定的敏感原名, 出现在元数据即命中。
     证据行带命中 token 与上下文(序列化 JSON 是超长单行, 全行截断会看不见命中点)。
     """
     hits: list[str] = []
-    for m in RESIDUAL_RE.finditer(text):
-        hits.append(f"形态命中 {m.group(0)[:40]!r}: …{text[max(0, m.start() - 30): m.end() + 30]}…")
+    form_text = _META_HEX_VALUE_RE.sub('""', text)
+    for m in RESIDUAL_RE.finditer(form_text):
+        hits.append(f"形态命中 {m.group(0)[:40]!r}: …{form_text[max(0, m.start() - 30): m.end() + 30]}…")
     for key in mapping:
         if key and key in text:
             i = text.index(key)
@@ -235,12 +275,18 @@ def percentile(sorted_vals: list[int], pct: int) -> int:
 
 def compile_bank(text: str, *, title: str, industry: str, category: str, mapping: dict[str, str]) -> dict:
     """纯函数编译(无 IO): 先对全文 redact 再切章(T2 评审接线——章 title 来自 redacted 标题行,
-    机构名不绕过 --map) → M-1 段长分布(剔 #/| 结构行) → depth_targets(P25=absolute_floor/
-    median=global_median, calibrated_from=内容指纹) → registration_item(bid_samples 台账契约,
-    file_hash=sha256(redacted) 恰 64 字符) → residual 证据(main 残留闸门消费: 非空 → rc=1 零落盘)。"""
+    机构名不绕过 --map) → 技术章筛选(select_tech_chapters, Plan 4 Task 2 用户定案) → M-1 段长
+    分布(**口径=技术章拼接文**, 剔 #/| 结构行; 空技术集 → percentile 空表返 0 的 fallback, 不回退
+    全册统计) → depth_targets(P25=absolute_floor/median=global_median, scope=technical_chapters,
+    calibrated_from=内容指纹) → registration_item(bid_samples 台账契约, file_hash=sha256(redacted)
+    恰 64 字符, notes 保持**全册**段数口径——切片/登记全册 1:1 纪律不变) → residual 证据(main
+    残留闸门消费: 非空 → rc=1 零落盘)。tech_text/tech_titles 供 main 的 RAGFlow 推送范围(只推技术章)。"""
     redacted = redact(text, mapping)
     chapters = split_chapters(redacted)
-    lengths = sorted(paragraph_lengths(redacted))
+    tech_texts, tech_titles = select_tech_chapters(chapters)
+    tech_text = "\n\n".join(tech_texts)
+    lengths = sorted(paragraph_lengths(tech_text))  # 深度统计口径=技术章(Plan 4 Task 2)
+    book_paragraphs = len(paragraph_lengths(redacted))  # 全册段数: registration notes 专用(1:1 纪律)
     file_hash = hashlib.sha256(redacted.encode("utf-8")).hexdigest()
     slug = slugify(title)
     return {
@@ -249,10 +295,13 @@ def compile_bank(text: str, *, title: str, industry: str, category: str, mapping
         "redacted": redacted,
         "chapters": chapters,
         "file_hash": file_hash,
+        "tech_text": tech_text,
+        "tech_titles": tech_titles,
         "depth_targets": {
             "absolute_floor": percentile(lengths, 25),
             "global_median": percentile(lengths, 50),
             "paragraph_count": len(lengths),
+            "scope": "technical_chapters",
             "calibrated_from": file_hash,
         },
         "registration_item": {
@@ -264,7 +313,7 @@ def compile_bank(text: str, *, title: str, industry: str, category: str, mapping
             "project_category": category,
             "scenario": "bid_sample",
             "status": "indexed",
-            "notes": f"chapters={len(chapters)}; paragraphs={len(lengths)}",
+            "notes": f"chapters={len(chapters)}; paragraphs={book_paragraphs}",
         },
         "residual": residual_scan(redacted),
     }
@@ -375,7 +424,8 @@ def _ragflow_upload(base: str, api_key: str, dataset_id: str, name: str, content
 
 
 def ragflow_push(md: str, meta: dict) -> bool:
-    """redacted 全文整体推送 RAGFlow bid_samples 域(命名 <slug>.md), 幂等契约同 geo_samples
+    """redacted 技术章拼接文推送 RAGFlow bid_samples 域(命名 <slug>.md, Plan 4 Task 2: 只推
+    技术章——文档名不变, 同名先删再传幂等语义自动替换旧全册文档), 幂等契约同 geo_samples
     push_reports_to_ragflow: 分页 list 建 name→id 映射, 同名词旧版先删再传(重推送不留旧版/
     不堆积副本, 只删同名词不误删他人), 上传后触发服务端解析(上传不 parse=样例永不可检索,
     不等待解析完成)。dataset id / API key 缺失 → False+warning(跳过不算失败, 不触网);
@@ -420,7 +470,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--category", default="IT软件平台")
     ap.add_argument("--bank-dir", required=True)
     ap.add_argument("--map", default=None, help="显式脱敏对照 JSON 文件(键=原文, 值=脱敏占位)")
-    ap.add_argument("--ragflow-push", action="store_true", help="落盘后推送 redacted 全文到 RAGFlow bid_samples 域(env BID_RAGFLOW_* 配置; 失败=warnings 不阻塞)")
+    ap.add_argument("--ragflow-push", action="store_true", help="落盘后推送 redacted 技术章拼接文到 RAGFlow bid_samples 域(env BID_RAGFLOW_* 配置; 失败=warnings 不阻塞; 技术集为空=跳过 no_tech_chapter 绝不回退推全册)")
     try:
         args = ap.parse_args(argv)
     except SystemExit as exc:
@@ -478,6 +528,8 @@ def main(argv: list[str] | None = None) -> int:
     # median 取中位, 根除先编 A 再编 B 时的 last-writer-wins; geo calibrate.py 先例即对全样例库取
     # median)。键名 absolute_floor/global_median 为 build_output 消费契约保持稳定; calibrated_from
     # 指向触发本次重校准的内容指纹; per-sample 深度仍在 bank_index[slug].depth。
+    # scope=technical_chapters(Plan 4 Task 2): 聚合的每册 depth 已是技术章口径, 库级基准同口径
+    # (消费方 load_depth_targets 只读 absolute_floor/global_median, 新增键无害)。
     depths = [e["depth"] for e in index.values() if isinstance(e, dict) and isinstance(e.get("depth"), dict)]
     floors = [d["absolute_floor"] for d in depths if isinstance(d.get("absolute_floor"), int)]
     medians = [d["global_median"] for d in depths if isinstance(d.get("global_median"), int)]
@@ -485,6 +537,7 @@ def main(argv: list[str] | None = None) -> int:
         "absolute_floor": min(floors) if floors else result["depth_targets"]["absolute_floor"],
         "global_median": statistics.median(medians) if medians else result["depth_targets"]["global_median"],
         "paragraph_count": sum(int(d.get("paragraph_count", 0)) for d in depths),
+        "scope": "technical_chapters",
         "calibrated_from": result["file_hash"],
     }
 
@@ -519,26 +572,35 @@ def main(argv: list[str] | None = None) -> int:
     _write_json(bank_dir / "depth_targets.json", bank_targets)
     _write_json(reg_path, {"items": items})
 
-    # 可选 RAGFlow bid_samples 域推送(Task 5): 位于一切本地产物落盘之后; env 缺失/推送失败由
-    # ragflow_push 内部自检降级为 warnings(main 不预检——M-1, 消除双份警告漂移), rc 恒 EXIT_OK
-    # (spec: 本地衍生物已可用, 推送是辅助通道绝不阻塞出库); 未传 --ragflow-push 整段短路零 env 依赖。
-    if args.ragflow_push and ragflow_push(result["redacted"], {"title": args.title}):
-        print(f"RAGFlow 推送成功: {slug}.md", file=sys.stderr)
+    # 可选 RAGFlow bid_samples 域推送(Task 5 + Plan 4 Task 2 技术章检索域): 推送文本=技术章拼接文
+    # (商务章=检索噪声不进语料; 文档名不变——同名先删再传幂等语义自动替换旧全册文档); 技术集为空 →
+    # fail-closed 跳过推送**绝不回退推全册**, summary 增 ragflow_skip_reason=no_tech_chapter 且
+    # stderr 列出全部章标题(供维护者修词表 TECH_TITLE_RE 或 --map)。位于一切本地产物落盘之后;
+    # env 缺失/推送失败由 ragflow_push 内部自检降级为 warnings(main 不预检——M-1, 消除双份警告漂移),
+    # rc 恒 EXIT_OK(spec: 本地衍生物已可用, 推送是辅助通道绝不阻塞出库); 未传 --ragflow-push 整段短路。
+    summary = {
+        "command": "bank_compile",
+        "slug": slug,
+        "chapters": len(result["chapters"]),
+        "paragraphs": result["depth_targets"]["paragraph_count"],
+        "absolute_floor": bank_targets["absolute_floor"],
+        "global_median": bank_targets["global_median"],
+        "residual": len(result["residual"]),
+    }
+    if args.ragflow_push:
+        if result["tech_text"]:
+            if ragflow_push(result["tech_text"], {"title": args.title}):
+                print(f"RAGFlow 推送成功: {slug}.md", file=sys.stderr)
+        else:
+            print(
+                "警告: 技术章筛选为空——RAGFlow 推送跳过(no_tech_chapter, fail-closed 不回退推全册)。全部章标题如下, 请核对标题词表(TECH_TITLE_RE)或 --map:",
+                file=sys.stderr,
+            )
+            for ch in result["chapters"]:
+                print(f"  · {ch['title']}", file=sys.stderr)
+            summary["ragflow_skip_reason"] = "no_tech_chapter"
 
-    print(
-        json.dumps(
-            {
-                "command": "bank_compile",
-                "slug": slug,
-                "chapters": len(result["chapters"]),
-                "paragraphs": result["depth_targets"]["paragraph_count"],
-                "absolute_floor": bank_targets["absolute_floor"],
-                "global_median": bank_targets["global_median"],
-                "residual": len(result["residual"]),
-            },
-            ensure_ascii=False,
-        )
-    )
+    print(json.dumps(summary, ensure_ascii=False))
     return EXIT_OK
 
 
