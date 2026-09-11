@@ -628,10 +628,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # 可选 RAGFlow bid_samples 域推送(Task 5 + Plan 4 Task 2 技术章检索域): 推送文本=技术章拼接文
     # (商务章=检索噪声不进语料; 文档名不变——同名先删再传幂等语义自动替换旧全册文档); 技术集为空 →
-    # fail-closed 跳过推送**绝不回退推全册**, summary 增 ragflow_skip_reason=no_tech_chapter 且
+    # fail-closed 跳过推送**绝不回退推全册**, summary 增 tech_scope_empty=no_tech_chapter 且
     # stderr 列出全部章标题(供维护者修词表 TECH_TITLE_RE 或 --map)。位于一切本地产物落盘之后;
     # env 缺失/推送失败由 ragflow_push 内部自检降级为 warnings(main 不预检——M-1, 消除双份警告漂移),
-    # rc 恒 EXIT_OK(spec: 本地衍生物已可用, 推送是辅助通道绝不阻塞出库); 未传 --ragflow-push 整段短路。
+    # rc 恒 EXIT_OK(spec: 本地衍生物已可用, 推送是辅助通道绝不阻塞出库); 空技术集告警不随 --ragflow-push 短路(恒告警)。
     summary = {
         "command": "bank_compile",
         "slug": slug,
