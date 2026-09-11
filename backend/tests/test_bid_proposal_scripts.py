@@ -6670,10 +6670,11 @@ class TestSkillStageGroupFiles:
     def test_snapshot_source_pins_stage_group_filenames(self):
         """双向锁: snapshot.py 源码引用全部分组指南基名(next_step 提示指向该读的那份; B 卷
         build-technical 以 bid-technical 指路)——指南改名时快照提示与 SKILL.md 路由同时失配,
-        本测试强制三处一起改(DEC-1 契约)。"""
+        本测试强制三处一起改(DEC-1 契约; Plan3 Task3 后 5 基名, 含 A 自有 build-overall——
+        3/4 阶段 build 指引不得只指 stage3-merge-gate2, 那份指南零 build_output 内容)。"""
         snapshot_src = (SKILL_MD_PATH.parent / "scripts" / "snapshot.py").read_text(encoding="utf-8")
-        for base in ("stage0-2-intake-extract", "stage3-merge-gate2", "stage5-scoring", "build-technical"):
-            assert base in snapshot_src, f"snapshot.py 须引用分组指南 {base}(DEC-1: 快照提示与路由同步; B 卷指南随 bid-technical 迁移)"
+        for base in ("stage0-2-intake-extract", "stage3-merge-gate2", "build-overall", "stage5-scoring", "build-technical"):
+            assert base in snapshot_src, f"snapshot.py 须引用分组指南 {base}(DEC-1: 快照提示与路由同步; build-overall 点名于 3/4 阶段 build 指引)"
 
 
 # ===========================================================================
