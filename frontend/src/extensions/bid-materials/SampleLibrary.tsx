@@ -3,7 +3,8 @@
 // EAI-CUSTOM (Plan 4): 标书样例台账 tab——镜像 eia-samples SampleLibrary library-tab; eia 域专用提取/质检面板不复刻(spec §2.3 samples 端点族)。样例库=技术供源库(用户定案 2026-09-11): 检索语料/深度统计只取技术章(bank_compile 侧已实现), 本台账管理全册登记与溯源。
 // 具名导出 SampleLibrary——BidMaterials.tsx(tab 壳)以 { SampleLibrary } 具名导入, 勿改 default。
 // 契约事实(Plan 4 Task 1 实读): samples.list 仅 industry/project_category/q/limit/offset(无 status/scenario 过滤,
-// 裸数组响应无 total——多取 1 条探测 hasMore); 无单条 POST, 登记走 importBulk([{...}]); file_hash 后端硬校验 64 位十六进制。
+// 裸数组响应无 total——多取 1 条探测 hasMore); 无单条 POST, 登记走 importBulk([{...}]);
+// file_hash 后端硬校验 64 位长度（十六进制字符集为前端校验）。
 
 import {
   Ban,
@@ -89,7 +90,8 @@ const BULK_REQUIRED_FIELDS: (keyof BidSampleUpsertInput)[] = [
 ];
 
 // 解析 bulk 粘贴文本——接受 registration.json 全文（{items:[…]}）/ 裸数组 […] / 单对象 {…} 三种形态，
-// 逐条校验必填字段与 file_hash 形态，返回首个错误的条目序号
+// 逐条校验必填字段与 file_hash 形态（校验即归一：file_hash trim+小写回写，与登记对话框同口径去重），
+// 返回首个错误的条目序号
 function parseBulkItems(text: string): {
   items?: BidSampleUpsertInput[];
   error?: string;
@@ -120,6 +122,7 @@ function parseBulkItems(text: string): {
   if (raw.length === 0) {
     return { error: "解析结果为空：需要至少一条样例记录" };
   }
+  const items: BidSampleUpsertInput[] = [];
   for (let i = 0; i < raw.length; i++) {
     const item = raw[i];
     if (item === null || typeof item !== "object" || Array.isArray(item)) {
@@ -132,11 +135,18 @@ function parseBulkItems(text: string): {
         return { error: `第 ${i + 1} 条缺少必填字段 ${field}` };
       }
     }
-    if (!FILE_HASH_RE.test(String(rec.file_hash).trim().toLowerCase())) {
+    // 归一化后回写（trim+小写）——导入负载与登记对话框同形态，file_hash 去重口径一致
+    const fileHash = String(rec.file_hash).trim().toLowerCase();
+    if (!FILE_HASH_RE.test(fileHash)) {
       return { error: `第 ${i + 1} 条 file_hash 非 64 位十六进制（SHA-256）` };
     }
+    // 字段已逐条校验为非空 string，双重断言安全；除 file_hash 归一外原样透传（含额外键，与原行为一致）
+    items.push({
+      ...(rec as unknown as BidSampleUpsertInput),
+      file_hash: fileHash,
+    });
   }
-  return { items: raw as BidSampleUpsertInput[] };
+  return { items };
 }
 
 export function SampleLibrary() {
