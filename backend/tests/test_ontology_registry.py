@@ -19,21 +19,21 @@ REGISTRY_DIR = Path(__file__).parent.parent / "app" / "extensions" / "ontology" 
 
 
 def test_load_real_registry():
-    """① 加载真实注册表：11 对象 / 12 链接（8 FK + 4 跨模块 stub）。"""
+    """① 加载真实注册表：14 对象 / 16 链接（12 FK + 4 跨模块 stub）。"""
     reg = load_registry(REGISTRY_DIR)
-    assert len(reg.object_types) == 11, sorted(reg.object_types)
-    assert len(reg.link_types) == 12, sorted(reg.link_types)
+    assert len(reg.object_types) == 14, sorted(reg.object_types)
+    assert len(reg.link_types) == 16, sorted(reg.link_types)
 
     fk = [lt for lt in reg.link_types.values() if lt.join.type == "foreign_key"]
     cross = [lt for lt in reg.link_types.values() if lt.cross_module]
-    assert len(fk) == 8
+    assert len(fk) == 12
     assert len(cross) == 4
     # D3: 全部跨模块链接 stub 上线（召回预测量结论）
     assert all(lt.enabled is False for lt in cross)
     assert all(lt.note for lt in cross), "stub 链接必须带 note 记录实测原因"
     # 域分布
     domains = {obj.domain for obj in reg.object_types.values()}
-    assert domains == {"contract_price", "spare_parts", "bid_quote"}
+    assert domains == {"contract_price", "spare_parts", "bid_quote", "doc_graph"}
     # hidden 列不参与过滤/搜索
     ds = reg.object_types["data_source"]
     conn = next(p for p in ds.properties if p.name == "connection_config")

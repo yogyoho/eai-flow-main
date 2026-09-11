@@ -8,3 +8,4 @@ files:
   - file: spare_parts.yaml
   - file: bid_quote.yaml
   - file: cross_module.yaml
+  - file: doc_graph.yaml

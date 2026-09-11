@@ -40,3 +40,14 @@ def test_market_table_rule_flags_unregistered():
 
     errs = check_market_tables_registered(FakeReg())
     assert any("cpa_documents" in e for e in errs)
+
+
+def test_doc_graph_tables_registered():
+    """doc_graph 域上线即登记（同 PR 规则）: 对外 dg_* 表全部登记; dg_merges 内部审计表白名单豁免。"""
+    import app.extensions.ontology.doc_graph.tables  # noqa: F401
+    from app.extensions.ontology.registry import load_registry
+
+    reg = load_registry()
+    registered = {o.access.table for o in reg.object_types.values() if o.access.path == "postgres_ext" and o.access.table}
+    assert {"dg_entities", "dg_relations", "dg_mentions"} <= registered
+    assert "dg_merges" not in registered  # 内部审计表, 白名单豁免不登记

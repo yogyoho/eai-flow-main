@@ -1,0 +1,120 @@
+# 文档图谱域（doc_graph 构建侧产物——非结构化文档抽取的实体/关系/证据）
+# 设计: docs/superpowers/specs/2026-09-11-ontology-doc-graph-design.md
+# 表模型: backend/app/extensions/ontology/doc_graph/tables.py（逐列核对）
+object_types:
+  - api_name: graph_entity
+    display_name: 图谱实体
+    description: 从非结构化文档抽取的实体（项目/投标人/货物/资质, etype 区分）
+    domain: doc_graph
+    icon: 🧩
+    access:
+      path: postgres_ext
+      table: dg_entities
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: domain, api_name: domain, type: string, description: 抽取域, filterable: true }
+      - { name: etype, api_name: etype, type: string, description: 实体类型, filterable: true, enum: [project, bidder, goods, qualification] }
+      - { name: canonical_name, api_name: canonicalName, type: string, description: 规范名, searchable: true }
+      - { name: norm_name, api_name: normName, type: string, description: 归一化名 }
+      - { name: attrs, api_name: attrs, type: json, description: 属性 }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: status, api_name: status, type: string, description: 状态, filterable: true, enum: [active, pending_review, merged] }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+
+  - api_name: graph_relation
+    display_name: 图谱关系
+    description: 实体间关系行（predicate 区分：投标方/供货/资质/中标）
+    domain: doc_graph
+    icon: 🔗
+    access:
+      path: postgres_ext
+      table: dg_relations
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: subject_id, api_name: subjectId, type: uuid, description: 主体实体, indexed: true, filterable: true }
+      - { name: predicate, api_name: predicate, type: string, description: 谓词, filterable: true, enum: [bidder_of_project, bidder_supplies_goods, bidder_holds_qualification, project_won_by_bidder] }
+      - { name: object_id, api_name: objectId, type: uuid, description: 客体实体, indexed: true, filterable: true }
+      - { name: attrs, api_name: attrs, type: json, description: 属性 }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+
+  - api_name: graph_mention
+    display_name: 图谱证据
+    description: mention 级证据链（文档+原文引用, 永不删）——实体/关系的溯源依据
+    domain: doc_graph
+    icon: 📎
+    access:
+      path: postgres_ext
+      table: dg_mentions
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: entity_id, api_name: entityId, type: uuid, description: 指向实体, indexed: true, filterable: true }
+      - { name: relation_id, api_name: relationId, type: uuid, description: 指向关系, indexed: true, filterable: true }
+      - { name: thread_id, api_name: threadId, type: string, description: 来源会话 }
+      - { name: document_id, api_name: documentId, type: string, description: 来源文档, filterable: true }
+      - { name: doc_span, api_name: docSpan, type: json, description: 文档内定位 }
+      - { name: quote, api_name: quote, type: string, description: 原文引用 }
+      - { name: extracted_by, api_name: extractedBy, type: string, description: 抽取者 }
+      - { name: extracted_at, api_name: extractedAt, type: datetime, description: 抽取时间 }
+      - { name: error, api_name: error, type: string, description: 抽取错误(可重投) }
+
+link_types:
+  - api_name: relation_subject
+    display_name: 关系主体
+    source: graph_relation
+    target: graph_entity
+    cardinality: N:1
+    reverse: entity_as_subject
+    join:
+      type: foreign_key
+      source_column: subject_id
+      target_column: id
+
+  - api_name: relation_object
+    display_name: 关系客体
+    source: graph_relation
+    target: graph_entity
+    cardinality: N:1
+    reverse: entity_as_object
+    join:
+      type: foreign_key
+      source_column: object_id
+      target_column: id
+
+  - api_name: mention_of_entity
+    display_name: 证据指向实体
+    source: graph_mention
+    target: graph_entity
+    cardinality: N:1
+    reverse: entity_has_mentions
+    join:
+      type: foreign_key
+      source_column: entity_id
+      target_column: id
+
+  - api_name: mention_of_relation
+    display_name: 证据指向关系
+    source: graph_mention
+    target: graph_relation
+    cardinality: N:1
+    reverse: relation_has_mentions
+    join:
+      type: foreign_key
+      source_column: relation_id
+      target_column: id

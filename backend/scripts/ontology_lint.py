@@ -23,8 +23,8 @@ from app.extensions.ontology.registry import load_registry
 SENSITIVE_KEYWORDS = re.compile(r"cred|secret|password|passwd|connection|salary|id_card|phone|身份证|薪酬|工资|token|api_key|private", re.I)
 
 # D14: lint 范围 = 市场域四模块表前缀；白名单 = 显式豁免（run_history 二期登记）。
-SCOPE_TABLE_PREFIXES = ("cpa_", "csp_")
-WHITELIST_TABLES = {"cpa_run_history", "csp_run_history"}
+SCOPE_TABLE_PREFIXES = ("cpa_", "csp_", "dg_")
+WHITELIST_TABLES = {"cpa_run_history", "csp_run_history", "dg_merges"}
 
 
 def check_market_tables_registered(reg) -> list[str]:
@@ -35,6 +35,7 @@ def check_market_tables_registered(reg) -> list[str]:
     errors: list[str] = []
     try:
         import app.extensions.contract_price.models  # noqa: F401
+        import app.extensions.ontology.doc_graph.tables  # noqa: F401 — dg_* 表注册进 Base.metadata
         import app.extensions.spare_parts.models  # noqa: F401
         from app.extensions.database import Base
 
@@ -85,6 +86,7 @@ def check_physical_column_diff(reg) -> tuple[list[str], list[str]]:
     try:
         import app.extensions.contract_price.models  # noqa: F401 — populate Base.metadata
         import app.extensions.models  # noqa: F401 — data_sources / data_source_datasets
+        import app.extensions.ontology.doc_graph.tables  # noqa: F401 — dg_* 表注册进 Base.metadata
         import app.extensions.spare_parts.models  # noqa: F401
         from app.extensions.database import Base
 
