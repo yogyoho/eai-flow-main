@@ -1,4 +1,6 @@
-"""doc_graph 抽取 schema 测试——extra=forbid fail-closed 与交叉引用校验."""
+"""doc_graph 抽取 schema 测试——extra=forbid fail-closed 与交叉引用/谓词角色校验."""
+
+import copy
 
 import pytest
 from pydantic import ValidationError
@@ -15,7 +17,7 @@ _MIN_ENT = {
 def _payload(**over):
     base = {
         "domain": "bid",
-        "entities": [dict(_MIN_ENT), {"etype": "bidder", "name": "山西煤机集团", "confidence": 0.9, "mention": {"document_id": "doc-001"}}],
+        "entities": [copy.deepcopy(_MIN_ENT), {"etype": "bidder", "name": "山西煤机集团", "confidence": 0.9, "mention": {"document_id": "doc-001"}}],
         "relations": [{"predicate": "bidder_of_project", "subject": "山西煤机集团", "object": "横城煤矿东翼回风大巷工程", "mention": {"document_id": "doc-001"}}],
     }
     base.update(over)
@@ -56,3 +58,37 @@ def test_relation_refers_undeclared_entity_rejected():
 def test_empty_entities_rejected():
     with pytest.raises(ValidationError):
         BidExtraction.model_validate(_payload(entities=[]))
+
+
+@pytest.mark.parametrize("level", ["mention", "entity", "relation", "extraction"])
+def test_nested_extra_field_rejected(level):
+    p = _payload()
+    if level == "mention":
+        p["entities"][0]["mention"]["unknown_field"] = 1
+    elif level == "entity":
+        p["entities"][0]["unknown_field"] = 1
+    elif level == "relation":
+        p["relations"][0]["unknown_field"] = 1
+    else:
+        p["unknown_field"] = 1
+    with pytest.raises(ValidationError):
+        BidExtraction.model_validate(p)
+
+
+def test_quote_over_2000_rejected():
+    bad = _payload()
+    bad["entities"][0]["mention"]["quote"] = "字" * 2001
+    with pytest.raises(ValidationError):
+        BidExtraction.model_validate(bad)
+
+
+def test_predicate_etype_inversion_rejected():
+    bad = _payload()
+    bad["relations"][0]["predicate"] = "project_won_by_bidder"  # 期望 (project, bidder)，实际 (bidder, project)
+    with pytest.raises(ValidationError):
+        BidExtraction.model_validate(bad)
+
+
+def test_empty_relations_valid():
+    p = BidExtraction.model_validate(_payload(relations=[]))
+    assert p.relations == []

@@ -46,6 +46,14 @@ class RelationPayload(BaseModel):
     mention: MentionPayload
 
 
+_PREDICATE_ROLES: dict[str, tuple[str, str]] = {
+    "bidder_of_project": ("bidder", "project"),
+    "bidder_supplies_goods": ("bidder", "goods"),
+    "bidder_holds_qualification": ("bidder", "qualification"),
+    "project_won_by_bidder": ("project", "bidder"),
+}
+
+
 class BidExtraction(BaseModel):
     """投标域抽取结果（首域）。"""
 
@@ -60,7 +68,14 @@ class BidExtraction(BaseModel):
     @model_validator(mode="after")
     def _check_relation_refs(self):
         names = {e.name for e in self.entities}
-        for r in self.relations:
-            if r.subject not in names or r.object not in names:
-                raise ValueError(f"relation 引用未声明实体: {r.subject!r} -> {r.object!r}")
+        name_to_etype = {e.name: e.etype for e in self.entities}
+        for i, r in enumerate(self.relations):
+            for side in ("subject", "object"):
+                ref = getattr(r, side)
+                if ref not in names:
+                    raise ValueError(f"relations[{i}].{side} 引用未声明实体: {ref!r} (已声明: {sorted(names)})")
+            roles = _PREDICATE_ROLES[r.predicate]
+            subj, obj = name_to_etype[r.subject], name_to_etype[r.object]
+            if (subj, obj) != roles:
+                raise ValueError(f"relations[{i}] {r.predicate} 要求 (subject_etype, object_etype)={roles}, 实际 ({subj}, {obj})")
         return self
