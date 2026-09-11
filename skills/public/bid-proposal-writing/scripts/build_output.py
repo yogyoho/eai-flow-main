@@ -8,7 +8,9 @@
 导出由用户在文档空间完成(present_files 交付后自动同步)。
 
 用法:
-    python build_output.py --state-dir <dir> --out <dir>
+    python build_output.py --state-dir <dir> --out <dir> [--docs overall|technical|all]
+    --docs 范围语义(spec §3.2): 单范围只渲/写本范围册集, 副表归属 all 专责重建;
+    索引卷分区重写(未建组节保留既有文本), manifest 按 deliverables/files 合并, 清场收窄。
 
 输出两文档册集(--out 目录, v4 Revision 4 两文档拓扑):
     整体方案-NN-首章短名.md(商务章全量+技术章占位页, 零技术正文内联)
@@ -109,6 +111,13 @@ SIDECAR_FILES = ("偏离表.md", "覆盖率报表.md", "人核清单.md", "实�
 MANIFEST_NAME = "delivery_manifest.json"
 MANIFEST_VERSION = 1
 LEGACY_OUTPUT_FILES = ("商务卷.md", "技术卷.md")  # v3 遗留双卷——清场对象(11A 目录幂等)
+
+# --- --docs 构建范围(spec §3.2): 两技能共享 outputs/ 的合并契约 ------------------
+# A(bid-proposal-overall) build --docs overall / B(bid-technical) build --docs technical;
+# 单范围: 范围外册/副表不重写不触碰, 索引卷分区重写, manifest 合并, 清场收窄。
+DOCS_CHOICES = ("overall", "technical", "all")
+_SCOPE_PREFIXES = {"overall": ("整体方案-",), "technical": ("技术卷-",), "all": ("整体方案-", "技术卷-")}
+MANIFEST_SKILL = "bid-proposal-writing"  # 交付契约属主(Plan3 Task2 改 bid-proposal-overall)
 
 SLOT_TYPE_LABELS = {"text": "文字槽", "table": "表格槽", "image": "图片槽", "format_check": "格式核验槽", "group": "结构组"}
 CLASS_LABELS = {"mandatory": "强制条款", "scoring": "评分条款", "normal": "普通条款"}
@@ -1314,33 +1323,46 @@ def _entity_gate_state(state_dir: Path, flagged: list[dict]) -> dict:
     }
 
 
-def _sweep_stale_outputs(out_dir: Path, new_deliverables: set[str]) -> list[str]:
-    """上一轮交付清场(外部声音 11A, 目录级幂等): 只删旧 manifest 列名文件——
+def _in_stale_scope(name: str, docs: str) -> bool:
+    """清场收窄(spec §3.2): 单范围只删本范围册前缀的 stale; all 全清。
+    索引卷两个单范围都重写, 永不 stale。"""
+    if name == INDEX_FILE:
+        return False
+    if docs == "all":
+        return True
+    return name.startswith(_SCOPE_PREFIXES[docs])
 
-    重切册后册数/文件名全变, 旧册残留在 outputs/ 会触发自家交付门"杂散 .md 整单
-    拒"反控; 清场=按 manifest 确定性删除(脚本清场不违铁律9)。manifest 缺失/不可
-    解析 → 跳过清场(首轮构建合法态), 返回告警行。防御: 只删 out_dir 直属普通文件。
+
+def _split_index_group(index_md: str, doc: str) -> str | None:
+    """从索引卷文本切出 '{doc}册组' 节(含节头行, 至下一 '## ' 前缀或文末); 无 → None。"""
+    lines = index_md.split("\n")
+    start = next((i for i, ln in enumerate(lines) if ln.startswith(f"## {doc}册组")), None)
+    if start is None:
+        return None
+    end = next((j for j in range(start + 1, len(lines)) if lines[j].startswith("## ")), len(lines))
+    return "\n".join(lines[start:end]).strip("\n")
+
+
+def _sweep_stale_outputs(out_dir: Path, stale_names: set[str], docs: str) -> list[str]:
+    """上一轮交付清场(11A, --docs 收窄版): 只删调用方判定的 stale 名单
+    (旧 manifest 列名 − 合并集, 已过范围过滤)。manifest 缺失 → 跳过清场
+    (首轮构建合法态; all 范围附带确定性移除 v3 遗留双卷)。防御: 只删 out_dir 直属普通文件。
     """
     manifest_path = out_dir / MANIFEST_NAME
     if not manifest_path.is_file():
-        # v3→v4 升级边角: 旧双卷(商务卷/技术卷.md)无 manifest 可依, 但文件名固定
-        # 无歧义——确定性移除, 防其以"杂散 .md"身份触发自家交付门反控(11A 目录幂等)
+        # v3→v4 升级边角: 旧双卷(商务卷/技术卷.md)无 manifest 可依——all 范围确定性移除,
+        # 防其以"杂散 .md"身份触发自家交付门反控(单范围不碰: 清场收窄)
         removed_legacy: list[str] = []
-        for legacy in LEGACY_OUTPUT_FILES:
-            target = out_dir / legacy
-            if target.is_file():
-                target.unlink()
-                removed_legacy.append(legacy)
+        if docs == "all":
+            for legacy in LEGACY_OUTPUT_FILES:
+                target = out_dir / legacy
+                if target.is_file():
+                    target.unlink()
+                    removed_legacy.append(legacy)
         note = f"清场跳过: {MANIFEST_NAME} 缺失(首轮构建)"
         return [note + (f"; 移除 v3 遗留双卷 {', '.join(removed_legacy)}" if removed_legacy else "")]
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return [f"清场跳过: {MANIFEST_NAME} 不可解析——不做遗留文件删除"]
     deleted: list[str] = []
-    for name in manifest.get("deliverables") or []:
-        if not isinstance(name, str) or name in new_deliverables:
-            continue
+    for name in sorted(stale_names):
         target = out_dir / name
         if target.parent == out_dir and target.is_file():
             target.unlink()
@@ -1348,9 +1370,9 @@ def _sweep_stale_outputs(out_dir: Path, new_deliverables: set[str]) -> list[str]
     return [f"清场删除上一轮遗留 {len(deleted)} 文件: {', '.join(sorted(deleted))}"] if deleted else []
 
 
-def run_build(state_dir: Path, out_dir: Path) -> int:
-    """读状态(只读) → 两文档册集渲染(v4) → 清场 → 原子写盘 → 交付凭据/构建回执
-    → stdout 单行 JSON 摘要; 返回退出码。"""
+def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
+    """读状态(只读) → --docs 范围册集渲染(v4+spec §3.2) → 清场收窄 → 原子写盘
+    → 交付凭据(manifest 合并语义) → stdout 单行 JSON 摘要; 返回退出码。"""
     # 读盘前校验权威状态签名(回放实证 bfa917ce: 脚本外直写/rm 后下游只报远处症状)
     guard_problems = state_guard.verify_state_files(state_dir)
     if guard_problems:
@@ -1371,48 +1393,103 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     depth_anomalies, depth_summary = run_depth_gate(responses, depth_targets, skip_reason=depth_skip_reason)
     anomalies.extend(depth_anomalies)
 
-    # 两文档册集(v4 Revision 4): 技术卷先渲(整体方案技术占位页需其分册目录)
-    slots = load_slots(state_dir)  # v4 T6c: 围栏域冻结值(缺失=空表, 未知键在注入期硬错)
-    tech_doc = render_doc_booklets(DOC_TECH, structure, clauses, responses, slots=slots)
-    overall_doc = render_doc_booklets(DOC_OVERALL, structure, clauses, responses, tech_ref=tech_doc, slots=slots)
-    anomalies.extend(tech_doc["anomalies"])
-    anomalies.extend(overall_doc["anomalies"])
-    dev_rows = deviation_rows(clauses)  # 渲染与摘要共用一份, 不对同一数据计算两次
+    # --docs 范围渲染: technical 不渲 overall; overall 渲 technical 仅为占位页分册目录
+    # (tech_ref——以当前 state 投影, technical 文件不落盘); all 两组全渲。
+    slots = load_slots(state_dir)
+    overall_doc: dict | None = None
+    tech_doc: dict | None = None
+    if docs in ("all", "technical"):
+        tech_doc = render_doc_booklets(DOC_TECH, structure, clauses, responses, slots=slots)
+        anomalies.extend(tech_doc["anomalies"])
+    if docs in ("all", "overall"):
+        overall_doc = render_doc_booklets(DOC_OVERALL, structure, clauses, responses, tech_ref=tech_doc, slots=slots)
+        anomalies.extend(overall_doc["anomalies"])
+    dev_rows = deviation_rows(clauses)  # 副表数据恒全量计算(摘要消费); 是否落盘由范围决定
     deviation_md = render_deviation_md(dev_rows, structure)
     coverage = compute_coverage(clauses)
     coverage_md = render_coverage_md(clauses, coverage, structure)
     checklist_md, checklist_counts = render_checklist_md(structure, responses)
-    # 实体门 v4(T4): 扫描面扩到交付册全文(编造正文=白名单外实体主要藏身处)
-    scan_texts: dict[str, str] = {**overall_doc["contents"], **tech_doc["contents"]}
+    scan_texts: dict[str, str] = {}
+    if overall_doc is not None:
+        scan_texts.update(overall_doc["contents"])
+    if tech_doc is not None:
+        scan_texts.update(tech_doc["contents"])
     flagged, hits = run_entity_lint(clauses, whitelist, extra_texts=scan_texts)
     anomalies.extend(flagged)
     entity_gate = _entity_gate_state(state_dir, flagged)
     lint_md = render_lint_md(whitelist, flagged, hits, depth_anomalies=depth_anomalies, depth_targets=depth_targets, depth_skip_reason=depth_skip_reason)
 
+    # 索引卷分区重写(spec §3.2): 重建组 fresh 渲染; 未重建组以盘上既有索引同节原样保留
+    # (含旧节头/计数——与盘上未动文件一致); 盘上无既有索引/该节缺席 → 该节整体略去。
+    existing_index_path = out_dir / INDEX_FILE
+    existing_index = existing_index_path.read_text(encoding="utf-8") if existing_index_path.is_file() else ""
+    index_groups: list[dict] = []
+    if overall_doc is not None:
+        index_groups.append({"doc": DOC_OVERALL, "files": overall_doc["files"], "booklets": overall_doc["booklets"]})
+    else:
+        sec = _split_index_group(existing_index, DOC_OVERALL)
+        if sec is not None:
+            index_groups.append({"doc": DOC_OVERALL, "section": sec})
+    if docs != "overall" and tech_doc is not None:
+        index_groups.append({"doc": DOC_TECH, "files": tech_doc["files"], "booklets": tech_doc["booklets"]})
+    else:
+        sec = _split_index_group(existing_index, DOC_TECH)
+        if sec is not None:
+            index_groups.append({"doc": DOC_TECH, "section": sec})
     index_md = booklets.render_index(
-        [
-            {"doc": DOC_OVERALL, "files": overall_doc["files"], "booklets": overall_doc["booklets"]},
-            {"doc": DOC_TECH, "files": tech_doc["files"], "booklets": tech_doc["booklets"]},
-        ],
+        index_groups,
         extra_notes=["槽位编排与围栏域分布见 覆盖率报表.md(槽位编排表); 分册告警见构建摘要 booklets 字段"],
     )
-    outputs: dict[str, str] = {**overall_doc["contents"], **tech_doc["contents"], INDEX_FILE: index_md}
-    outputs["偏离表.md"] = deviation_md
-    outputs["覆盖率报表.md"] = coverage_md
-    outputs["人核清单.md"] = checklist_md
-    outputs["实体lint报告.md"] = lint_md
-    deliverables = sorted(outputs)
 
-    sweep_warnings = _sweep_stale_outputs(out_dir, set(deliverables))
-    for name in deliverables:
+    outputs: dict[str, str] = {}
+    if overall_doc is not None:
+        outputs.update(overall_doc["contents"])
+    if docs != "overall" and tech_doc is not None:
+        outputs.update(tech_doc["contents"])
+    outputs[INDEX_FILE] = index_md
+    if docs == "all":
+        # 副表跨两卷聚合(spec §3.2) → all 专责重建; 单范围保留盘上既有副表不触碰
+        outputs.update({"偏离表.md": deviation_md, "覆盖率报表.md": coverage_md, "人核清单.md": checklist_md, "实体lint报告.md": lint_md})
+    written_names = set(outputs)
+
+    # manifest 合并语义(spec §3.2): 读既有 manifest → 范围内条目更新、范围外保留。
+    manifest_parse_warning: str | None = None
+    manifest_path = out_dir / MANIFEST_NAME
+    old_manifest: dict | None = None
+    if manifest_path.is_file():
+        try:
+            parsed = json.loads(manifest_path.read_text(encoding="utf-8"))
+            old_manifest = parsed if isinstance(parsed, dict) else None
+        except (json.JSONDecodeError, UnicodeDecodeError, OSError):
+            old_manifest = None
+        if old_manifest is None:
+            manifest_parse_warning = f"清场跳过: {MANIFEST_NAME} 不可解析——不做遗留文件删除"
+    old_deliverables = [n for n in (old_manifest or {}).get("deliverables", []) if isinstance(n, str)]
+    stale_names = {n for n in old_deliverables if n not in written_names and _in_stale_scope(n, docs)}
+    merged_deliverables = sorted((set(old_deliverables) - stale_names) | written_names)
+    old_files = (old_manifest or {}).get("files", {})
+    old_files = old_files if isinstance(old_files, dict) else {}
+    files_sha = {
+        **{n: old_files[n] for n in merged_deliverables if n not in written_names and n in old_files},
+        **{name: hashlib.sha256(outputs[name].encode("utf-8")).hexdigest() for name in written_names},
+    }
+    old_docs_stats = (old_manifest or {}).get("docs", {})
+    docs_stats: dict = dict(old_docs_stats) if isinstance(old_docs_stats, dict) else {}
+    if overall_doc is not None:
+        docs_stats[DOC_OVERALL] = {"booklets": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"])}
+    if docs in ("all", "technical"):
+        docs_stats[DOC_TECH] = {"booklets": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"])}
+
+    sweep_warnings = _sweep_stale_outputs(out_dir, stale_names, docs)
+    if manifest_parse_warning:
+        sweep_warnings.append(manifest_parse_warning)
+    for name in sorted(written_names):
         atomic_write_text(out_dir / name, outputs[name])
 
-    # 交付凭据(v4 WP-2.3 bid 侧): skill/version/deliverables——T3 通用化后由
-    # harness present_file_tool 消费(整单判定)。实体门(9A): blocked → 不写凭据且
-    # 作废旧凭据/标记(交付门 STATUS_MISSING 全禁 .md); escalated → 放行+转人工。
+    # 交付凭据(v4 WP-2.3 bid 侧): skill/version/deliverables——合并集; 实体门 blocked →
+    # 不写凭据且作废旧凭据/标记(交付门 STATUS_MISSING 全禁 .md)。
     whitelist_path = state_dir / "entities_whitelist.json"
     whitelist_sha256 = state_guard.sha256_file(whitelist_path) if whitelist_path.is_file() else None
-    files_sha = {name: hashlib.sha256(outputs[name].encode("utf-8")).hexdigest() for name in deliverables}
     if entity_gate["blocked"]:
         stale_manifest = out_dir / MANIFEST_NAME
         if stale_manifest.is_file():
@@ -1425,31 +1502,26 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
             "处置路径: 确认候选白名单入册(见 实体lint报告.md)或回 stage4a 重写响应后重跑"
         )
     manifest = {
-        "skill": "bid-proposal-writing",
+        "skill": MANIFEST_SKILL,
         "version": MANIFEST_VERSION,
-        "deliverables": deliverables,
+        "deliverables": merged_deliverables,
         # 确认门工件白名单(WP-2.3 aux_md): 门1 条款清单/门2 补遗diff表由 extract/merge
         # 阶段写 outputs/ 并在门2(build 后)经 present_files 呈现——非管线 build 产物但
         # 合法呈现, 由本管线在此申报(harness 交付门放行集=deliverables∪aux_md)。
         "aux_md": ["条款清单.md", "补遗diff表.md"],
         "files": files_sha,
-        "docs": {
-            DOC_OVERALL: {"booklets": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"])},
-            DOC_TECH: {"booklets": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"])},
-        },
+        "docs": docs_stats,
         "whitelist_sha256": whitelist_sha256,
     }
     if not entity_gate["blocked"]:
         atomic_write_text(out_dir / MANIFEST_NAME, json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
-        # 交付契约标记(bug-2225/3109): build 成功即激活本线程交付门——此后非管线 .md
-        # present/下载/同步一律整单拒(清场+凭据保证 deliverables 集合自洽)。
+        # 交付契约标记(bug-2225/3109): build 成功即激活本线程交付门——任一 --docs 范围
+        # 成功即激活/更新(契约线程级, 不受范围影响)。
         atomic_write_text(out_dir / ".delivery-contract", "{}\n")
 
     # 构建回执(回放实证 fd49b085: snapshot 靠 workspace/last_build.json 检测构建状态)。
     # 回执写在 workspace 层(与 project_snapshot.json 同级, 不动 state/ 权威态、不签名),
     # 内容确定性(out_dir+册集 sha256+白名单消费 hash), 重跑字节级幂等。
-    # whitelist_sha256(v3, DEC-5): 白名单不签名(agent-written), 其"最近一次被消费"的
-    # 留痕在此冻结——snapshot 比对当前 hash 即可确定性发现消费后改动(turn7 类违规)。
     receipt = {
         "out_dir": str(out_dir),
         "files": files_sha,
@@ -1459,12 +1531,15 @@ def run_build(state_dir: Path, out_dir: Path) -> int:
     atomic_write_text(state_dir.parent / "last_build.json", json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
 
     responded_ids = {r.get("clause_id") for r in responses}
+    summary_booklets: dict = {}
+    if overall_doc is not None:
+        summary_booklets[DOC_OVERALL] = {"count": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"]), "warnings": overall_doc["warnings"]}
+    if docs in ("all", "technical"):
+        summary_booklets[DOC_TECH] = {"count": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"]), "warnings": tech_doc["warnings"]}
     summary = {
-        "written": deliverables,
-        "booklets": {
-            DOC_OVERALL: {"count": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"]), "warnings": overall_doc["warnings"]},
-            DOC_TECH: {"count": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"]), "warnings": tech_doc["warnings"]},
-        },
+        "docs": docs,
+        "written": sorted(written_names),
+        "booklets": summary_booklets,
         "sweep": sweep_warnings,
         "coverage": coverage,
         "deviation_rows": len(dev_rows),
@@ -1492,6 +1567,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--state-dir", required=True, help="状态目录(只读: clauses.json / structure.json / entities_whitelist.json; 派生字段现算不落盘)")
     parser.add_argument("--out", required=True, help="输出目录(两文档册集+索引+副表 md, 临时文件+os.replace 原子写盘, 重跑字节级幂等)")
+    parser.add_argument("--docs", choices=DOCS_CHOICES, default="all", help="构建范围(spec §3.2): overall=整体方案组 / technical=技术卷组 / all=两组+副表(默认, 兼容既有调用)")
 
     try:
         args = parser.parse_args(argv)
@@ -1504,7 +1580,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ERROR
 
     try:
-        return run_build(Path(args.state_dir), Path(args.out))
+        return run_build(Path(args.state_dir), Path(args.out), args.docs)
     except BuildOutputError as exc:
         print(f"[build_output] 错误: {exc}", file=sys.stderr)
         return EXIT_ERROR

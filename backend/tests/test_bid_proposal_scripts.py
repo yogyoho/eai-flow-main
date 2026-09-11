@@ -7583,3 +7583,84 @@ class TestBooklets:
         booklets = [{"pages_est": 12.3}, {"pages_est": 30.4}]
         assert bk.total_pages(booklets) == 42.7
         assert bk.ceil_pages(booklets) == 43
+
+
+class TestBuildDocsScope:
+    """--docs 三态契约(spec §3.2): manifest 合并/清场收窄/索引分区/副表归属 all。"""
+
+    SIDECARS = ("偏离表.md", "覆盖率报表.md", "人核清单.md", "实体lint报告.md")
+
+    def test_docs_overall_only_writes_overall_and_index(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        assert _build_module().main(["--state-dir", str(state), "--out", str(out), "--docs", "overall"]) == 0
+        names = {p.name for p in out.iterdir()}
+        assert any(n.startswith("整体方案-") for n in names), "本范围册集必须产出"
+        assert not any(n.startswith("技术卷-") for n in names), "范围外册集不得产出"
+        assert not any(n in self.SIDECARS for n in names), "副表归属 all 范围专责重建"
+        index = _out_text(out, "0-总目录索引.md")
+        assert "整体方案册组" in index and "技术卷册组" not in index, "未建册组节整体略去"
+
+    def test_docs_technical_then_overall_merges(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        mod = _build_module()
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "technical"]) == 0
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "overall"]) == 0
+        names = {p.name for p in out.iterdir()}
+        assert any(n.startswith("技术卷-") for n in names) and any(n.startswith("整体方案-") for n in names), "两范围册集并存"
+        assert not any(n in self.SIDECARS for n in names), "副表仍未重建(两次都是单范围)"
+        index = _out_text(out, "0-总目录索引.md")
+        assert "技术卷册组" in index and "整体方案册组" in index, "索引分区合并: 保留组+新写组"
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        assert any(n.startswith("技术卷-") for n in manifest["deliverables"]) and any(
+            n.startswith("整体方案-") for n in manifest["deliverables"]
+        ), "deliverables=合并集"
+
+    def test_single_scope_preserves_other_scope_files_byte_identical(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        mod = _build_module()
+        assert mod.main(["--state-dir", str(state), "--out", str(out)]) == 0  # all 基线
+        before = _snapshot(out)
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "technical"]) == 0
+        overall_before = {n: b for n, b in before.items() if n.startswith("整体方案-")}
+        overall_after = {p.name: p.read_bytes() for p in out.rglob("*") if p.is_file() and p.name.startswith("整体方案-")}
+        assert overall_after == overall_before, "范围外册文件字节不动"
+        for n in self.SIDECARS:
+            assert (out / n).read_bytes() == before[n], "副表归属 all, 单范围 build 不触碰"
+
+    def test_technical_scope_sweep_narrowing(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        mod = _build_module()
+        assert mod.main(["--state-dir", str(state), "--out", str(out)]) == 0
+        (out / "技术卷-09-旧册.md").write_text("stale tech", encoding="utf-8")
+        (out / "整体方案-09-旧册.md").write_text("stale overall", encoding="utf-8")
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        manifest["deliverables"] = sorted(set(manifest["deliverables"]) | {"技术卷-09-旧册.md", "整体方案-09-旧册.md"})
+        (out / "delivery_manifest.json").write_text(
+            json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "technical"]) == 0
+        assert not (out / "技术卷-09-旧册.md").exists(), "范围内 stale 册删除"
+        assert (out / "整体方案-09-旧册.md").exists(), "范围外 stale 册保留(收窄)"
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "all"]) == 0
+        assert not (out / "整体方案-09-旧册.md").exists(), "all 范围全清"
+
+    def test_manifest_out_of_scope_files_sha_preserved(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        mod = _build_module()
+        assert mod.main(["--state-dir", str(state), "--out", str(out)]) == 0
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        tech_sha = {n: s for n, s in manifest["files"].items() if n.startswith("技术卷-")}
+        assert tech_sha, "前置: all 基线 manifest 须含技术卷册 sha"
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "overall"]) == 0
+        manifest2 = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        assert {n: s for n, s in manifest2["files"].items() if n.startswith("技术卷-")} == tech_sha, "范围外 files sha 原样保留"
+
+    def test_docs_invalid_value_exit_1(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        rc = _build_module().main(["--state-dir", str(state), "--out", str(tmp_path / "out"), "--docs", "bogus"])
+        assert rc == 1, "argparse choices 拒绝→统一改道 1(2 保留给 ingest OCR 分流)"

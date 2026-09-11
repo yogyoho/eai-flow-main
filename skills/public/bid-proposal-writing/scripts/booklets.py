@@ -146,6 +146,11 @@ def render_index(groups: list[dict], extra_notes: list[str] | None = None) -> st
         "",
     ]
     for group in groups:
+        if group.get("section") is not None:
+            # 单范围 build(--docs): 未重建册组节以既有索引文本原样嵌入(含旧节头/计数)
+            lines.append(group["section"])
+            lines.append("")
+            continue
         lines.append(f"## {group['doc']}册组({len(group['booklets'])} 册)")
         lines.append("")
         lines.append("| 册 | 文件 | 章节范围 | 估算页数 |")
