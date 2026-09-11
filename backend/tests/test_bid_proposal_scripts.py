@@ -6615,6 +6615,7 @@ STAGE_FILE_REQUIRED_TOKENS = {
         "present_files",
         "文档空间",
         "last_build.json",
+        "--docs technical",  # Plan3 T4: B 真实范围收口——build-technical 只渲技术卷册组, 不再是两文档册集
     ),
     "stage5-scoring.md": (
         "scoring_prompt.md",
