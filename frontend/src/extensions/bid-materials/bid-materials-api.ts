@@ -2,7 +2,7 @@
 
 // EAI-CUSTOM (Plan 4, spec 2026-09-06 §2.3): 投标资料管理 API——资质版本库(MinIO 代理)+标书样例台账。
 // 镜像 eia-samples/sample-library-api.ts 的自包含 fetch+CSRF 模式(extensions 路由 cookie+CSRF 契约同款);
-// 自包含 fetch 封装, 未导出, 勿反向耦合。资质文件下发走 <a href> 直链(cookie 认证随行, GET 免 CSRF)。
+// 自包含 fetch 封装, 未导出, 勿反向耦合。资质文件下发走 <a href> 直链(cookie 认证随行, GET 免 CSRF); fileUrl 支持 ?version=n 按版本(缺省当前版)。
 // 契约以 backend/app/extensions/bid_materials/{routers,schemas}.py 实读为准(Plan 4 Task 1 核验), 差异点:
 //   - rollback 请求体键为 to_version(RollbackRequest), 非 version;
 //   - 资质软删响应为 {disabled:true}(非 message); 样例停用响应为 {message};
@@ -269,7 +269,9 @@ export const bidMaterialsApi = {
         body: JSON.stringify({ to_version: toVersion }), // 后端 RollbackRequest 键名 to_version
       }),
 
-    fileUrl: (id: string) => `${API_BASE}/qualifications/${id}/file`, // 仅当前版(后端无 version 参数)
+    // ?version=n 按版本下发(后端 b45f97185 补齐 spec §2.3); 缺省=当前版语义不变
+    fileUrl: (id: string, version?: number) =>
+      `${API_BASE}/qualifications/${id}/file${version ? `?version=${version}` : ""}`,
   },
   samples: {
     list: (params: BidSampleListParams = {}) =>

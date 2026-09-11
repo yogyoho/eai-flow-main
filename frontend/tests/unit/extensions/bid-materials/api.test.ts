@@ -98,10 +98,13 @@ describe("bidMaterialsApi.qualifications", () => {
     expect(init.body).toBe(JSON.stringify({ to_version: 1 }));
   });
 
-  test("fileUrl is a plain GET link (cookie auth, no fetch, current version only)", () => {
+  test("fileUrl is a plain GET link (cookie auth, no fetch); ?version= per-version (b45f97185)", () => {
     stubFetch();
     expect(bidMaterialsApi.qualifications.fileUrl("q1")).toBe(
       "/api/extensions/bid-materials/qualifications/q1/file",
+    );
+    expect(bidMaterialsApi.qualifications.fileUrl("q1", 3)).toBe(
+      "/api/extensions/bid-materials/qualifications/q1/file?version=3",
     );
     expect(fetchMock.calls.length).toBe(0);
   });

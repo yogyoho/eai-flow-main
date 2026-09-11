@@ -5,7 +5,7 @@
 // qualifications.list 仅 qual_type/include_disabled/limit/offset——无 search 入参, 不渲染搜索框;
 // 到期过滤走 expiring(90)(端点仅 days 入参, 类型过滤在其结果上前端补做); 已停用行经 include_disabled 保显(muted+badge);
 // rollback 请求体键 to_version; 上传 multipart note ≤200, created=false=sha256 去重命中(幂等返回既有版);
-// fileUrl 仅服当前版(后端无 ?version= 参数)——「预览/下载」只挂当前版行; PATCH 不得携带 disabled(400), 软删走 DELETE。
+// fileUrl 支持 ?version=n 按版本下发(后端 b45f97185 补齐)——每行均可预览/下载, 非当前版另有回滚; PATCH 不得携带 disabled(400), 软删走 DELETE。
 
 import {
   Ban,
@@ -806,20 +806,24 @@ function VersionsDialog({
                             {formatDateTime(v.uploaded_at)}
                           </td>
                           <td className="px-3 py-2 text-right">
-                            {isCurrent ? (
-                              <Button asChild variant="outline" size="sm">
-                                <a
-                                  href={bidMaterialsApi.qualifications.fileUrl(
-                                    qualificationId,
-                                  )}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  title="预览/下载当前版（cookie 认证随行）"
-                                >
-                                  预览/下载
-                                </a>
-                              </Button>
-                            ) : (
+                            <Button asChild variant="outline" size="sm">
+                              <a
+                                href={bidMaterialsApi.qualifications.fileUrl(
+                                  qualificationId,
+                                  v.version,
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                title={
+                                  isCurrent
+                                    ? "预览/下载当前版（cookie 认证随行）"
+                                    : "预览/下载该历史版本（?version= 按版本下发）"
+                                }
+                              >
+                                预览/下载
+                              </a>
+                            </Button>
+                            {!isCurrent && (
                               <Button
                                 variant="outline"
                                 size="sm"
