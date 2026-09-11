@@ -7759,3 +7759,59 @@ class TestBuildDocsScope:
         assert _build_module().main(["--state-dir", str(state), "--out", str(out), "--docs", "overall"]) == 0
         manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
         assert set(manifest["docs"]) == {"整体方案"}, "首轮单范围: docs 统计只记本范围(技术卷未落盘不记)"
+
+
+# ===========================================================================
+# Skill 拆分契约(spec §6): bid-proposal-overall / bid-technical 两 SKILL.md
+# ——路由表/速查表/行数预算各自独立; B pair-install(消费 A scripts, 不可独立分发)
+# ===========================================================================
+BID_OVERALL_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-overall"
+BID_TECHNICAL_DIR = REPO_ROOT / "skills" / "public" / "bid-technical"
+_QUICKREF_SCRIPT_RE = re.compile(r"/mnt/skills/public/(bid-proposal-overall|bid-technical)/scripts/([a-z_]+)\.py")
+
+
+class TestTwoSkillSplitContract:
+    def _skill_md(self, skill_dir):
+        path = skill_dir / "SKILL.md"
+        assert path.is_file(), f"{path} 缺失"
+        return path.read_text(encoding="utf-8")
+
+    def test_frontmatter_names_match_dirs(self):
+        for skill_dir, name in ((BID_OVERALL_DIR, "bid-proposal-overall"), (BID_TECHNICAL_DIR, "bid-technical")):
+            assert re.search(rf"^name:\s*{name}\s*$", self._skill_md(skill_dir), re.MULTILINE), f"{skill_dir.name} frontmatter name 必须为 {name}"
+
+    def test_technical_is_orchestration_only(self):
+        """spec §3.1: B 纯编排技能, scripts/ 只允许 bank_compile(离线维护者工具)。"""
+        scripts = sorted(p.name for p in (BID_TECHNICAL_DIR / "scripts").glob("*.py"))
+        assert scripts == ["bank_compile.py"], f"bid-technical/scripts 只允许 bank_compile.py, 实际 {scripts}"
+
+    def test_technical_quickref_targets_pair_scripts(self):
+        """pair-install 契约: B 速查表管线命令全部指向 A 脚本绝对路径; bank_compile 不进速查表。"""
+        commands = [ln.strip() for ln in self._skill_md(BID_TECHNICAL_DIR).splitlines() if ln.strip().startswith("python /mnt/skills/")]
+        assert commands, "B 速查表不得为空"
+        for cmd in commands:
+            assert "/mnt/skills/public/bid-proposal-overall/scripts/" in cmd, f"B 管线命令必须指向 A 脚本: {cmd}"
+            assert "bank_compile" not in cmd, "bank_compile 是离线维护者工具, 不进 Agent 速查表"
+
+    def test_quickref_scripts_exist_on_disk(self):
+        """两份速查表点名的脚本文件必须真实存在(防幻觉命令)。"""
+        for skill_dir in (BID_OVERALL_DIR, BID_TECHNICAL_DIR):
+            for m in _QUICKREF_SCRIPT_RE.finditer(self._skill_md(skill_dir)):
+                target = REPO_ROOT / "skills" / "public" / m.group(1) / "scripts" / f"{m.group(2)}.py"
+                assert target.is_file(), f"{skill_dir.name} 速查表点名不存在的脚本: {target}"
+
+    def test_build_docs_flag_in_both_quickrefs(self):
+        for skill_dir, flag in ((BID_OVERALL_DIR, "--docs overall"), (BID_TECHNICAL_DIR, "--docs technical")):
+            assert flag in self._skill_md(skill_dir), f"{skill_dir.name} 速查表 build 命令须带 {flag}"
+
+    def test_referenced_reference_files_exist(self):
+        """SKILL.md 以 references/ 前缀点名的文件在对应技能内真实存在(路由不悬空)。"""
+        for skill_dir in (BID_OVERALL_DIR, BID_TECHNICAL_DIR):
+            for ref in set(re.findall(r"references/([A-Za-z0-9_\-]+\.(?:md|json))", self._skill_md(skill_dir))):
+                assert (skill_dir / "references" / ref).is_file(), f"{skill_dir.name} 点名 references/{ref} 不存在"
+
+    def test_line_budgets_independent(self):
+        """行数预算各自独立(spec §6): 两份 SKILL.md 各 ≤120 行。"""
+        for skill_dir in (BID_OVERALL_DIR, BID_TECHNICAL_DIR):
+            n = len(self._skill_md(skill_dir).splitlines())
+            assert n <= 120, f"{skill_dir.name}/SKILL.md 超预算: {n} > 120"
