@@ -295,7 +295,10 @@
     "coal-mine-report-review": {
       "enabled": true
     },
-    "bid-proposal-writing": {
+    "bid-proposal-overall": {
+      "enabled": true
+    },
+    "bid-technical": {
       "enabled": true
     },
     "local-knowledge-first": {

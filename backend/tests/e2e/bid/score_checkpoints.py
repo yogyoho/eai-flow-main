@@ -1,4 +1,4 @@
-"""bid-proposal-writing E2E 检查点评分器(bug-2189 转正版; host 侧 stdlib-only, 不进 pytest 默认收集)。
+"""bid-proposal-overall E2E 检查点评分器(bug-2189 转正版; host 侧 stdlib-only, 不进 pytest 默认收集)。
 
 用法(在 driver 跑完后对日志目录打分):
     python backend/tests/e2e/bid/score_checkpoints.py                # 默认 backend/.deer-flow/e2e_bid/
@@ -35,7 +35,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]  # backend/
 REPO_ROOT = REPO.parent
-SCRIPTS = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "scripts"
+SCRIPTS = REPO_ROOT / "skills" / "public" / "bid-proposal-overall" / "scripts"
 DEFAULT_LOGS = REPO / ".deer-flow" / "e2e_bid"
 DEFAULT_USERS = REPO / ".deer-flow" / "users"
 
@@ -288,7 +288,7 @@ def score_cp6(state_dir: Path | None) -> dict:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="bid-proposal-writing E2E 检查点评分(CP1-CP6; 验收=违规轮次0/特征实例0/签名问题0)")
+    ap = argparse.ArgumentParser(description="bid-proposal-overall E2E 检查点评分(CP1-CP6; 验收=违规轮次0/特征实例0/签名问题0)")
     ap.add_argument("--logs", type=Path, default=DEFAULT_LOGS, help="driver 日志目录")
     ap.add_argument("--tid", default=None, help="线程 id(默认从 e2e_progress.log 自动解析)")
     ap.add_argument("--users-root", type=Path, default=DEFAULT_USERS, help="用户线程根目录")

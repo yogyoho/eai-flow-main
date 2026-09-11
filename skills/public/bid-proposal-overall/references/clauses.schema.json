@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/clauses.schema.json",
+  "$id": "https://eai-flow.local/skills/public/bid-proposal-overall/references/clauses.schema.json",
   "title": "Bid obligation clause (clauses.json item)",
   "description": "投标义务清单 clauses.json 的单条条款契约(逐字对齐设计文档 2026-08-16『详细设计』字段表)。该 JSON 是持久产物:跨会话续作、二期资产库/生成/评分预测都消费它;Word 只是它的投影视图。消费方:extract.py / merge_addenda.py / build_output.py / score_simulate.py。",
   "type": "object",

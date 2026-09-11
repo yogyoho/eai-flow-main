@@ -117,7 +117,7 @@ LEGACY_OUTPUT_FILES = ("商务卷.md", "技术卷.md")  # v3 遗留双卷——�
 # 单范围: 范围外册/副表不重写不触碰, 索引卷分区重写, manifest 合并, 清场收窄。
 DOCS_CHOICES = ("overall", "technical", "all")
 _SCOPE_PREFIXES = {"overall": (f"{DOC_OVERALL}-",), "technical": (f"{DOC_TECH}-",), "all": (f"{DOC_OVERALL}-", f"{DOC_TECH}-")}
-MANIFEST_SKILL = "bid-proposal-writing"  # 交付契约属主(Plan3 Task2 改 bid-proposal-overall)
+MANIFEST_SKILL = "bid-proposal-overall"  # 交付契约属主=A(canonical scripts 所在); B build 更新同一 manifest 不翻转此字段
 
 SLOT_TYPE_LABELS = {"text": "文字槽", "table": "表格槽", "image": "图片槽", "format_check": "格式核验槽", "group": "结构组"}
 CLASS_LABELS = {"mandatory": "强制条款", "scoring": "评分条款", "normal": "普通条款"}
@@ -1135,10 +1135,11 @@ def render_lint_md(whitelist: dict | None, flagged: list[dict], hits: dict, dept
 # =============================================================================
 
 # 基线文件 = bank_compile 样例库编译产物(库级聚合: absolute_floor=各册 P25 min,
-# global_median=各册 median 中位; 键名是本脚本消费契约保持稳定)。相对脚本目录定位,
+# global_median=各册 median 中位; 键名是本脚本消费契约保持稳定)。样例库基线在 B
+# (bid-technical/references/, pair-install 软读: 缺失=深度门跳过, 不构成硬反向依赖),
 # 缺失(样例库未编译) → 深度门整体跳过不阻塞交付; 跳过原因(skip_reason)进摘要与
 # lint 报告——静默但不失诊(T6 评审①)。
-DEFAULT_DEPTH_TARGETS_PATH = Path(__file__).resolve().parent.parent / "references" / "depth_targets.json"
+DEFAULT_DEPTH_TARGETS_PATH = Path(__file__).resolve().parents[2] / "bid-technical" / "references" / "depth_targets.json"
 # 实质正文口径与 responses.py _substantive_chars 同款(剥空白/标点, CJK/字母/数字计入):
 # 复制常量口径而非跨脚本 import(skills 平铺脚本与第三方包同名劫持 sys.modules 风险),
 # test_bid_materials.py 同步断言兜口径漂移——改这里必须同改 responses.py(反之亦然)。

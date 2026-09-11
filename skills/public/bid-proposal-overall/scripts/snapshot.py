@@ -78,8 +78,8 @@ def _infer_phase(workspace: Path, state_dir: Path, counts: dict) -> tuple[str, s
     链序(v3, DEC-8①): 构建回执 last_build.json 是"门2 后"的强证据, 判定优先于
     白名单存在性——回执在而 entities_whitelist.json 缺失不倒退回门1(缺失降级为
     problems 节 anomaly), 否则"回执后白名单被删"会把已构建工作区拉回重复跑门。
-    next_step 统一点名 4 分组 stage 文件(DEC-1: stage0-2-intake-extract /
-    stage3-merge-gate2 / stage4-response-build / stage5-scoring)。"""
+    next_step 统一点名分组 stage 文件(DEC-1: A references/ 的 stage0-2-intake-extract /
+    stage3-merge-gate2 / stage5-scoring + B bid-technical 的 build-technical)。"""
     if not (state_dir / "sections.json").is_file():
         # 冷启动残迹分支(DEC-8③): workspace 有管线痕迹但 sections.json 不在 = 续作中断,
         # 重建 ingest 需要原始上传件——提示先确认原件, 不在请用户重传。
@@ -98,13 +98,13 @@ def _infer_phase(workspace: Path, state_dir: Path, counts: dict) -> tuple[str, s
         if not counts["entities_locked"]:
             return ("确认门1-待锁定", "向用户呈现计数+异常项, 逐条改分类, 实体白名单确认后写 entities_whitelist.json(见 stage0-2-intake-extract)")
         if counts["responses"] == 0:
-            return ("3/4-合并与构建", "先阶段4a 技术响应生成(三模式供源→responses.py merge); 补遗到达先走阶段3; 完成后 build_output.py 六件套(见 stage3-merge-gate2 / stage4-response-build)")
-        return ("3/4-合并与构建", "补遗到达走阶段3(ingest --addendum→提取→merge_addenda); 无补遗直接 build_output.py 六件套(见 stage3-merge-gate2 / stage4-response-build)")
+            return ("3/4-合并与构建", "先阶段4a 技术响应生成(bid-technical 技能: tech_response_prompt→responses.py merge); 补遗到达先走阶段3; 完成后 build_output.py(见 stage3-merge-gate2 / bid-technical 的 build-technical)")
+        return ("3/4-合并与构建", "补遗到达走阶段3(ingest --addendum→提取→merge_addenda); 无补遗直接 build_output.py(见 stage3-merge-gate2 / bid-technical 的 build-technical)")
     # 门2 后基线: 回执在, 白名单 hash 一致性区分"可续作"与"白名单被改需重跑消费方"
     versions = [int(m.group(1)) for p in (state_dir / "评分报告").glob("version_*.md") if (m := _VERSION_RE.match(p.name))]
     if versions:
         return (f"5-评分已完成(v{max(versions)})", "按报告改进建议修订, 或团队新版回传后重跑阶段5(报告 version++; 见 stage5-scoring)")
-    return ("4-已构建", "走确认门2(补遗 diff+终稿复核), 分发双卷; 团队回传后进阶段5(见 stage4-response-build / stage5-scoring)")
+    return ("4-已构建", "走确认门2(补遗 diff+终稿复核), 分发双卷; 团队回传后进阶段5(见 bid-technical 的 build-technical / stage5-scoring)")
 
 
 def _parse_code(text: str) -> tuple[str, str]:

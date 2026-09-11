@@ -1,4 +1,4 @@
-"""bid-proposal-writing E2E 压测驱动(bug-2189 转正版; host 侧 stdlib-only, 不进 pytest 默认收集)。
+"""bid-proposal-overall E2E 压测驱动(bug-2189 转正版; host 侧 stdlib-only, 不进 pytest 默认收集)。
 
 用法(独立入口, 不依赖 pytest/CI; 需要活网关 http://localhost:2026):
     python backend/tests/e2e/bid/e2e_bid_driver.py                     # 全新线程+默认 fixture(minimal_tender.docx)
@@ -61,7 +61,7 @@ REPO = Path(__file__).resolve().parents[3]  # backend/
 DEFAULT_UPLOAD = REPO / "tests" / "fixtures" / "bid_proposal" / "minimal_tender.docx"
 DEFAULT_OUT = REPO / ".deer-flow" / "e2e_bid"
 
-T1 = "请使用 bid-proposal-writing 技能处理我上传的招标文件(严格按 SKILL.md 六阶段流程生成投标方案: 技术响应三模式供源, 不做 Word 转换)。"
+T1 = "请使用 bid-proposal-overall 技能处理我上传的招标文件(严格按 SKILL.md 六阶段流程生成投标方案: 整体方案)。技术卷部分使用 bid-technical 技能(技术响应三模式供源), 不做 Word 转换。"
 
 RECURSION_RETRY_MSG = "上一轮因递归预算耗尽被中断, 状态已保留。请从中断处继续执行当前阶段, 不要重做已完成的步骤。"
 CANCEL_RETRY_MSG = "上一轮流连接中断被取消, 状态已保留。请从中断处继续执行当前阶段, 不要重做已完成的步骤。"
@@ -514,7 +514,7 @@ def create_thread():
 
 def main(argv=None):
     global OUT, BASE_URL, MODEL, UPLOAD
-    ap = argparse.ArgumentParser(description="bid-proposal-writing E2E 压测驱动(独立入口, 需活网关; 评分用 score_checkpoints.py)")
+    ap = argparse.ArgumentParser(description="bid-proposal-overall E2E 压测驱动(独立入口, 需活网关; 评分用 score_checkpoints.py)")
     ap.add_argument("--base", default=BASE, help=f"网关入口(默认 {BASE})")
     ap.add_argument("--upload", type=Path, default=DEFAULT_UPLOAD, help=f"上传输入件(默认 fixture {DEFAULT_UPLOAD.name}; agnes 基线重放用真实招标 PDF)")
     ap.add_argument("--model", default="agnes-2.5-Flash", help="模型名(config.context.model_name)")

@@ -550,12 +550,12 @@ class TestBidMaterialsRoutes:
 
 
 # ---------------------------------------------------------------------------
-# bid-proposal-writing 深度门(Plan2 Task 6): depth_target 字段贯通 + build 深度门。
+# bid-proposal-overall 深度门(Plan2 Task 6): depth_target 字段贯通 + build 深度门。
 # 技能脚本非本扩展代码——经 conftest._SkillScriptsFinder 同名脚本隔离加载(build_output
 # 三个技能同名), 模块级 SCRIPTS_DIR 是隔离锚, 勿删; 技能模块一律在用例内懒加载。
 # ---------------------------------------------------------------------------
 
-SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "skills" / "public" / "bid-proposal-writing" / "scripts"
+SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "skills" / "public" / "bid-proposal-overall" / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 

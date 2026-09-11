@@ -1,9 +1,9 @@
 ---
-name: bid-proposal-writing
+name: bid-proposal-overall
 description: 当用户需要编写投标方案/标书响应文件(分析招标文件、编写商务/技术标、响应技术参数、偏离表、按评分标准模拟打分)时使用此技能。该技能把招标文件(含答疑/补遗)转化为带原文锚点的机器可核对义务清单,产出商务/技术双卷逐项响应骨架与偏离表,并对成稿按评分办法逐项模拟评分、给出改进建议。
 ---
 
-# 投标方案编写技能(bid-proposal-writing)
+# 投标方案编写技能(bid-proposal-overall)
 
 本文件=编排总纲+唯一合法命令来源;各阶段流程细节、状态文件表、排错表在 references/ 的**四份分组执行指南**里,进入对应阶段先读对应那份(见阶段路由表)。
 
@@ -56,34 +56,34 @@ description: 当用户需要编写投标方案/标书响应文件(分析招标�
 
 ## 路径与契约文档
 
-- 脚本(沙箱路径):`/mnt/skills/public/bid-proposal-writing/scripts/` 下十个 Python 模块(ingest/extract/merge_addenda/check_format/responses/build_output/score_simulate + snapshot 快照 + state_guard 状态签名 + progress 章节进度控制器),全部 argparse CLI、纯 Python 3.12、不调 LLM;另有 booklets.py 为 build_output 的内部分册模块(无 CLI,不单独调用,防幻觉契约不受影响)。
-- 契约文档:`/mnt/skills/public/bid-proposal-writing/references/` —— 四份**分组执行指南**(stage0-2-intake-extract / stage3-merge-gate2 / stage4-response-build / stage5-scoring)+ 四个 JSON Schema(clauses/structure/rubric/responses)+ classification.md(分类判据)+ extraction_prompt.md(提取三子模板)+ tech_response_prompt.md(技术响应三模式)+ scoring_prompt.md(主观评审纪律)。进入对应阶段先读对应指南;提取/生成/评审循环开始前必须先读对应 prompt。
+- 脚本(沙箱路径):`/mnt/skills/public/bid-proposal-overall/scripts/` 下十个 Python 模块(ingest/extract/merge_addenda/check_format/responses/build_output/score_simulate + snapshot 快照 + state_guard 状态签名 + progress 章节进度控制器),全部 argparse CLI、纯 Python 3.12、不调 LLM;另有 booklets.py 为 build_output 的内部分册模块(无 CLI,不单独调用,防幻觉契约不受影响)。
+- 契约文档:`/mnt/skills/public/bid-proposal-overall/references/` —— 四份**分组执行指南**(stage0-2-intake-extract / stage3-merge-gate2 / stage4-response-build / stage5-scoring)+ 四个 JSON Schema(clauses/structure/rubric/responses)+ classification.md(分类判据)+ extraction_prompt.md(提取三子模板)+ tech_response_prompt.md(技术响应三模式)+ scoring_prompt.md(主观评审纪律)。进入对应阶段先读对应指南;提取/生成/评审循环开始前必须先读对应 prompt。
 - 状态目录:建议 `/mnt/user-data/workspace/bid/`(其下 state/ 状态文件、candidates/ 候选 checkpoint);最终交付 md 与确认门工件放 `/mnt/user-data/outputs/`(present_files 只认这个目录,交付后自动同步文档空间)。
 
 ### 命令速查表(唯一合法调用形态——逐字照抄,换路径只换路径)
 
 ```bash
-python /mnt/skills/public/bid-proposal-writing/scripts/ingest.py --input /mnt/user-data/uploads/招标文件.docx --code ZB --out /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/ingest.py --input /mnt/user-data/uploads/补遗01.docx --code BY --addendum --out /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/ingest.py --resume --out /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/extract.py validate --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json /mnt/user-data/workspace/bid/candidates/T-001.rubric.json --sections /mnt/user-data/workspace/bid/state/sections.json --declared-total 100
-python /mnt/skills/public/bid-proposal-writing/scripts/extract.py merge --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json --sections /mnt/user-data/workspace/bid/state/sections.json --state-dir /mnt/user-data/workspace/bid/state --declared-total 100
-python /mnt/skills/public/bid-proposal-writing/scripts/check_format.py --state-dir /mnt/user-data/workspace/bid/state --sources /mnt/user-data/uploads/招标文件.md
-python /mnt/skills/public/bid-proposal-writing/scripts/responses.py validate --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/responses.py merge --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/merge_addenda.py --addendum-candidates /mnt/user-data/workspace/bid/candidates/BY_addendum.json --state-dir /mnt/user-data/workspace/bid/state --decisions /mnt/user-data/workspace/bid/candidates/BY_decisions.json
-python /mnt/skills/public/bid-proposal-writing/scripts/build_output.py --state-dir /mnt/user-data/workspace/bid/state --out /mnt/user-data/outputs/投标文件
-python /mnt/skills/public/bid-proposal-writing/scripts/progress.py init --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/progress.py next --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/progress.py gate --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/progress.py mark C-01 DRAFTED --state-dir /mnt/user-data/workspace/bid/state --detail 处置完成
-python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py reingest --source /mnt/user-data/uploads/投标文件-技术卷-回传.md --state-dir /mnt/user-data/workspace/bid/state --volume technical
-python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py assemble-evidence --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py aggregate --scores /mnt/user-data/workspace/bid/candidates/subjective_scores_v1.json --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/score_simulate.py report --state-dir /mnt/user-data/workspace/bid/state
-python /mnt/skills/public/bid-proposal-writing/scripts/snapshot.py --workspace /mnt/user-data/workspace/bid --project 项目名称 --code ZB=招标文件
-python /mnt/skills/public/bid-proposal-writing/scripts/state_guard.py sign --state-dir /mnt/user-data/workspace/bid/state --files clauses.json --confirm-gate1-edit
-python /mnt/skills/public/bid-proposal-writing/scripts/state_guard.py verify --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/ingest.py --input /mnt/user-data/uploads/招标文件.docx --code ZB --out /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/ingest.py --input /mnt/user-data/uploads/补遗01.docx --code BY --addendum --out /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/ingest.py --resume --out /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/extract.py validate --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json /mnt/user-data/workspace/bid/candidates/T-001.rubric.json --sections /mnt/user-data/workspace/bid/state/sections.json --declared-total 100
+python /mnt/skills/public/bid-proposal-overall/scripts/extract.py merge --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json --sections /mnt/user-data/workspace/bid/state/sections.json --state-dir /mnt/user-data/workspace/bid/state --declared-total 100
+python /mnt/skills/public/bid-proposal-overall/scripts/check_format.py --state-dir /mnt/user-data/workspace/bid/state --sources /mnt/user-data/uploads/招标文件.md
+python /mnt/skills/public/bid-proposal-overall/scripts/responses.py validate --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/responses.py merge --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/merge_addenda.py --addendum-candidates /mnt/user-data/workspace/bid/candidates/BY_addendum.json --state-dir /mnt/user-data/workspace/bid/state --decisions /mnt/user-data/workspace/bid/candidates/BY_decisions.json
+python /mnt/skills/public/bid-proposal-overall/scripts/build_output.py --state-dir /mnt/user-data/workspace/bid/state --out /mnt/user-data/outputs/投标文件
+python /mnt/skills/public/bid-proposal-overall/scripts/progress.py init --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/progress.py next --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/progress.py gate --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/progress.py mark C-01 DRAFTED --state-dir /mnt/user-data/workspace/bid/state --detail 处置完成
+python /mnt/skills/public/bid-proposal-overall/scripts/score_simulate.py reingest --source /mnt/user-data/uploads/投标文件-技术卷-回传.md --state-dir /mnt/user-data/workspace/bid/state --volume technical
+python /mnt/skills/public/bid-proposal-overall/scripts/score_simulate.py assemble-evidence --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/score_simulate.py aggregate --scores /mnt/user-data/workspace/bid/candidates/subjective_scores_v1.json --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/score_simulate.py report --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/snapshot.py --workspace /mnt/user-data/workspace/bid --project 项目名称 --code ZB=招标文件
+python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py sign --state-dir /mnt/user-data/workspace/bid/state --files clauses.json --confirm-gate1-edit
+python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py verify --state-dir /mnt/user-data/workspace/bid/state
 ```
 
 **防幻觉契约(回放实证,违者即停)**:速查表之外**不存在**任何脚本或子命令。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 的子命令只有 `validate`/`merge`,responses 的子命令只有 `validate`/`merge`/`confirm-hnv`,score_simulate 的子命令只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 的子命令只有 `init`/`next`/`status`/`mark`/`gate`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令。记不准就先跑 `<脚本> --help`,绝不凭记忆造命令、造参数(如 `--max-chunk-size` 之类不存在的参数一律先查 --help)。所有命令用**绝对路径**执行,不 `cd`(相对路径 cwd 错位是回放中 10+ 次 FileNotFoundError 的来源)。

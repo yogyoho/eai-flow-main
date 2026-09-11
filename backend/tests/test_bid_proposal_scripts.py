@@ -1,4 +1,4 @@
-"""bid-proposal-writing 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。
+"""bid-proposal-overall 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。
 
 规格: docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md
 
@@ -28,7 +28,7 @@ from jsonschema import Draft202012Validator
 
 # --- 路径 -------------------------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "scripts"
+SCRIPTS_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-overall" / "scripts"
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "bid_proposal"
 
 # 五个技能脚本落地后按顶级模块导入(沙箱脚本=纯 stdlib 平铺模块, 非包)。
@@ -480,7 +480,8 @@ class TestGenFixtures:
 # 字段名/枚举与设计文档「详细设计」字段表逐字对齐, 复用上文 fixture 常量做精确集合比较;
 # structure schema 额外声明派生字段 fill_status(值域供内存态/渲染态校验, 候选/落盘不含, D7)。
 
-REFERENCES_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "references"
+REFERENCES_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-overall" / "references"
+TECH_REFERENCES_DIR = REPO_ROOT / "skills" / "public" / "bid-technical" / "references"
 SCHEMA_FILES = ("clauses.schema.json", "structure.schema.json", "rubric.schema.json", "responses.schema.json")
 DOC_FILES = ("classification.md", "extraction_prompt.md", "scoring_prompt.md")
 DRAFT_2020_12 = "https://json-schema.org/draft/2020-12/schema"
@@ -6038,7 +6039,7 @@ class TestResponsesSourceModes:
     def test_schema_accepts_new_modes(self, tmp_path):
         """schema 层: sample/fabricated 通过 Draft202012 校验(url 可空, source_doc 可选)。"""
         import jsonschema
-        schema = json.loads((Path(REPO_ROOT) / "skills/public/bid-proposal-writing/references/responses.schema.json").read_text(encoding="utf-8"))
+        schema = json.loads((Path(REPO_ROOT) / "skills/public/bid-proposal-overall/references/responses.schema.json").read_text(encoding="utf-8"))
         for item in (
             _rs_item(source_mode="sample", evidence_ref=None, needs_human_verify=True, citations=[{"title": "t", "url": None, "source_doc": "d", "quote_span": "p1", "quote": "q"}]),
             _rs_item(source_mode="fabricated", evidence_ref=None, needs_human_verify=True),
@@ -6284,10 +6285,10 @@ class TestCheckFormatSelfCreatedOrigin:
 # T8: SKILL.md — Agent 编排总纲(frontmatter 对齐先例 + 内容要件 + 命令-CLI 一致性)
 # ===========================================================================
 
-SKILL_MD_PATH = REPO_ROOT / "skills" / "public" / "bid-proposal-writing" / "SKILL.md"
+SKILL_MD_PATH = REPO_ROOT / "skills" / "public" / "bid-proposal-overall" / "SKILL.md"
 
 # SKILL.md 里允许调用的本技能脚本(五管线脚本; markdown-to-docx 的 convert.py 属其他技能不校验)
-_SKILL_SCRIPT_RE = re.compile(r"bid-proposal-writing/scripts/([a-z_]+)\.py")
+_SKILL_SCRIPT_RE = re.compile(r"bid-proposal-overall/scripts/([a-z_]+)\.py")
 
 # 内容要件(SKILL.md 常驻层): 铁律10条 / 六阶段+两门路由 / 命令契约 / 快照与上下文纪律 /
 # 分组指南路由(DEC-1: SKILL.md 是 ≤120 行编排总纲, 阶段级深水区要件——门1计数/三模式/
@@ -6333,9 +6334,9 @@ SKILL_MD_REQUIRED_TOKENS = (
     "行区间",
     "task()",
     "3 并发",
-    # ④ 沙箱路径 + 契约文档名(分组指南与 prompt 均在 references/)
-    "/mnt/skills/public/bid-proposal-writing/scripts/",
-    "/mnt/skills/public/bid-proposal-writing/references/",
+    # ④ 沙箱路径 + 契约文档名(分组指南与 prompt 均在 references/; 技术卷指南/prompt 在 bid-technical)
+    "/mnt/skills/public/bid-proposal-overall/scripts/",
+    "/mnt/skills/public/bid-proposal-overall/references/",
     "extraction_prompt.md",
     "tech_response_prompt.md",
     "scoring_prompt.md",
@@ -6360,7 +6361,7 @@ def _skill_md_text() -> str:
 def _skill_md_script_invocations(text: str) -> list[tuple[str, list[str]]]:
     """提取 ```bash 代码块中五脚本调用 → [(模块名, argv), ...]。
 
-    处理反斜杠续行; 只认 bid-proposal-writing/scripts/<name>.py 形态的调用
+    处理反斜杠续行; 只认 bid-proposal-overall/scripts/<name>.py 形态的调用
     (grep/read_file 等编排指令、markdown-to-docx 的 convert.py 不在提取范围)。
     """
     invocations: list[tuple[str, list[str]]] = []
@@ -6386,7 +6387,7 @@ class TestSkillMd:
         assert text.startswith("---\n"), "SKILL.md 必须以 YAML frontmatter 开头(先例: markdown-to-docx/SKILL.md)"
         end = text.index("\n---", 3)
         frontmatter = text[3:end]
-        assert re.search(r"^name:\s*bid-proposal-writing\s*$", frontmatter, re.MULTILINE), "frontmatter 必须声明 name: bid-proposal-writing"
+        assert re.search(r"^name:\s*bid-proposal-overall\s*$", frontmatter, re.MULTILINE), "frontmatter 必须声明 name: bid-proposal-overall"
         description = re.search(r"^description:\s*(\S.*)$", frontmatter, re.MULTILINE)
         assert description, "frontmatter 必须声明非空 description(触发词说明)"
         assert len(description.group(1)) >= 30, "description 应为完整触发说明(先例风格), 不是短语"
@@ -6401,8 +6402,8 @@ class TestSkillMd:
         """所有五脚本调用必须走沙箱路径 /mnt/skills/public/...(同 markdown-to-docx 先例)。"""
         content = _skill_md_text()
         assert _skill_md_script_invocations(content), "SKILL.md 必须包含五脚本的实际调用命令(不能只描述不示例)"
-        for line in re.findall(r"^.*bid-proposal-writing/scripts/[a-z_]+\.py.*$", content, re.MULTILINE):
-            assert line.lstrip().startswith("python /mnt/skills/public/bid-proposal-writing/scripts/"), f"脚本调用必须用沙箱绝对路径: {line.strip()}"
+        for line in re.findall(r"^.*bid-proposal-overall/scripts/[a-z_]+\.py.*$", content, re.MULTILINE):
+            assert line.lstrip().startswith("python /mnt/skills/public/bid-proposal-overall/scripts/"), f"脚本调用必须用沙箱绝对路径: {line.strip()}"
 
     def _capture_documented_namespaces(self, monkeypatch):
         """对 SKILL.md 全部脚本命令跑 main(), 完整 argparse 解析后哨兵截停, 返回 [(module_name, argv, namespace)]。
@@ -6492,21 +6493,26 @@ class TestSkillMd:
 
 
 # ===========================================================================
-# T8b(DEC-1): SKILL.md ↔ references/ 四份分组执行指南——文件存在性 + 内容要件 +
+# T8b(DEC-1): SKILL.md ↔ 分组执行指南——文件存在性 + 内容要件 +
 # 120 行预算 + 路由双向锁(SKILL.md 点名 / snapshot.py 源码反向引用)
+# (Plan3 Task2 重组: A=bid-proposal-overall references/ 三份 + B=bid-technical 两份,
+#  原 stage4-response-build.md 改名 build-technical.md 随 bid-technical 迁移)
 # ===========================================================================
 
-STAGE_GROUP_FILENAMES = (
-    "stage0-2-intake-extract.md",
-    "stage3-merge-gate2.md",
-    "stage4-response-build.md",
-    "stage5-scoring.md",
-)
+A_STAGE_GUIDES = ("stage0-2-intake-extract.md", "stage3-merge-gate2.md", "stage5-scoring.md")  # A references/
+B_STAGE_GUIDES = ("build-technical.md", "tech_response_prompt.md")  # B TECH_REFERENCES_DIR/(原 stage4 指南改名 build-technical + tech_response_prompt 随 B 迁移)
+
+
+def _stage_guide_path(filename: str) -> Path:
+    """分组指南落位: A_STAGE_GUIDES → A REFERENCES_DIR, 其余(B_STAGE_GUIDES) → B TECH_REFERENCES_DIR。"""
+    if filename in A_STAGE_GUIDES:
+        return REFERENCES_DIR / filename
+    return TECH_REFERENCES_DIR / filename
 
 # 每份分组指南的内容要件(阶段级深水区——从 SKILL_MD_REQUIRED_TOKENS 下沉至此逐份锁)
 # v4 编造政策负向契约: 旧三模式级联的指令头不得回流(废除说明提及枚举名不算违例)
 STAGE_FILE_FORBIDDEN_TOKENS = {
-    "stage4-response-build.md": ("mode1 知识库(kf)", "mode2 参考样例(uploads)", "mode3 网络搜索(web)", "停下来**请用户上传参考样例"),
+    "build-technical.md": ("mode1 知识库(kf)", "mode2 参考样例(uploads)", "mode3 网络搜索(web)", "停下来**请用户上传参考样例"),
     "tech_response_prompt.md": ("mode1 知识库(kf)", "mode2 参考样例(uploads)", "mode3 网络搜索(web)", "停下来**请用户上传参考样例"),
 }
 STAGE_FILE_REQUIRED_TOKENS = {
@@ -6558,7 +6564,7 @@ STAGE_FILE_REQUIRED_TOKENS = {
         "终稿复核",
         "replay_content_mismatch",
     ),
-    "stage4-response-build.md": (
+    "build-technical.md": (
         "tech_response_prompt.md",
         "responses.schema.json",
         "source_mode",
@@ -6611,14 +6617,15 @@ STAGE_FILE_REQUIRED_TOKENS = {
 
 
 class TestSkillStageGroupFiles:
-    """T8b(DEC-1): SKILL.md 是 ≤120 行编排总纲, 阶段深水区细节下沉到 references/
-    四份分组执行指南——锁"总纲→指南"路由闭环: 文件存在 + 内容要件 + SKILL.md 点名 +
+    """T8b(DEC-1): SKILL.md 是 ≤120 行编排总纲, 阶段深水区细节下沉到分组执行指南
+    (A=bid-proposal-overall references/ 三份 + B=bid-technical/references/ 两份)——
+    锁"总纲→指南"路由闭环: 文件存在 + 内容要件 + SKILL.md 点名 +
     snapshot.py 源码反向引用, 三处同步失败才允许改名(防路由漂移)。"""
 
     def test_stage_files_exist_with_required_tokens(self):
         for filename, tokens in STAGE_FILE_REQUIRED_TOKENS.items():
-            path = SKILL_MD_PATH.parent / "references" / filename
-            assert path.is_file(), f"分组执行指南缺失: {path}(DEC-1 交付物)"
+            path = _stage_guide_path(filename)
+            assert path.is_file(), f"分组执行指南缺失: {path}(DEC-1 交付物; A=bid-proposal-overall/references, B=bid-technical/references)"
             content = path.read_text(encoding="utf-8")
             missing = [token for token in tokens if token not in content]
             assert not missing, f"{filename} 缺少内容要件: {missing}"
@@ -6626,8 +6633,8 @@ class TestSkillStageGroupFiles:
     def test_stage_files_forbidden_tokens(self):
         """v4 编造政策负向契约: 旧三模式阻塞级联的指令头不得回流(C5 政策文本落点)。"""
         for filename, tokens in STAGE_FILE_FORBIDDEN_TOKENS.items():
-            path = SKILL_MD_PATH.parent / "references" / filename
-            assert path.is_file(), f"分组执行指南缺失: {path}"
+            path = _stage_guide_path(filename)
+            assert path.is_file(), f"分组执行指南缺失: {path}(B 卷指南落位 bid-technical/references/)"
             content = path.read_text(encoding="utf-8")
             present = [token for token in tokens if token in content]
             assert not present, f"{filename} 残留已废除的 mode2/mode3 阻塞级联指令: {present}"
@@ -6638,19 +6645,22 @@ class TestSkillStageGroupFiles:
         assert len(lines) <= 120, f"SKILL.md 超出 120 行预算(实际 {len(lines)} 行)——阶段细节应下沉到 references/ 分组指南"
 
     def test_skill_md_routes_to_all_stage_files(self):
-        """SKILL.md(路径与契约文档/阶段路由表)必须点名全部四份分组指南, 编排者才知道进哪阶段读哪份。"""
+        """SKILL.md(路径与契约文档/阶段路由表)必须点名全部分组指南, 编排者才知道进哪阶段读哪份。
+        B 卷指南(SKILL.md 侧)在 Task 3 重写 SKILL.md 前仍以旧名 stage4-response-build.md 点名、
+        tech_response_prompt.md 在契约文档行点名——本任务只锁文本现状, 内容改道归 Task 3。"""
         content = _skill_md_text()
-        for filename in STAGE_GROUP_FILENAMES:
+        for filename in A_STAGE_GUIDES:
             assert filename in content, f"SKILL.md 须点名分组指南 {filename}(阶段路由表)"
+        assert "stage4-response-build.md" in content, "SKILL.md 阶段路由表仍须点名技术卷指南(Task 3 改写前保持旧名 stage4-response-build.md)"
+        assert "tech_response_prompt.md" in content, "SKILL.md 须点名 tech_response_prompt.md(契约文档行)"
 
     def test_snapshot_source_pins_stage_group_filenames(self):
-        """双向锁: snapshot.py 源码引用全部四个分组指南(各 next_step 提示指向该读的那份)——
-        指南改名时快照提示与 SKILL.md 路由同时失配, 本测试强制三处一起改(DEC-1 契约)。
-        按基名比对(去 .md): snapshot.py next_step 文案锁的是指南基名(如"见 stage0-2-intake-extract")。"""
+        """双向锁: snapshot.py 源码引用全部分组指南基名(next_step 提示指向该读的那份; B 卷
+        build-technical 以 bid-technical 指路)——指南改名时快照提示与 SKILL.md 路由同时失配,
+        本测试强制三处一起改(DEC-1 契约)。"""
         snapshot_src = (SKILL_MD_PATH.parent / "scripts" / "snapshot.py").read_text(encoding="utf-8")
-        for filename in STAGE_GROUP_FILENAMES:
-            base = filename.removesuffix(".md")
-            assert base in snapshot_src, f"snapshot.py 须引用分组指南 {base}(DEC-1: 快照提示与路由同步)"
+        for base in ("stage0-2-intake-extract", "stage3-merge-gate2", "stage5-scoring", "build-technical"):
+            assert base in snapshot_src, f"snapshot.py 须引用分组指南 {base}(DEC-1: 快照提示与路由同步; B 卷指南随 bid-technical 迁移)"
 
 
 # ===========================================================================
@@ -7343,7 +7353,7 @@ class TestEntityGateV4:
         assert _run_build(state, out) == 3
         assert (out / "delivery_manifest.json").is_file(), "第 2 轮同集 → escalated 放行(转人工清单)"
         manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
-        assert manifest["skill"] == "bid-proposal-writing"
+        assert manifest["skill"] == "bid-proposal-overall"
         receipt = json.loads((tmp_path / "last_build.json").read_text(encoding="utf-8"))
         assert receipt["entity_gate"]["escalated"] is True and receipt["entity_gate"]["rounds"] == 2
 
@@ -7429,7 +7439,7 @@ class TestBuildOutputBooklets:
         out = tmp_path / "out"
         _run_build(state, out)
         manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
-        assert manifest["skill"] == "bid-proposal-writing"
+        assert manifest["skill"] == "bid-proposal-overall"
         assert manifest["version"] == 1
         actual = sorted(p.name for p in out.iterdir() if p.name != "delivery_manifest.json" and p.suffix == ".md")
         assert sorted(manifest["deliverables"]) == actual, "deliverables=全部 md 交付物"

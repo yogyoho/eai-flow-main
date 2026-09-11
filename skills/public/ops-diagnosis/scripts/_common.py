@@ -27,7 +27,7 @@ FAILURE_PATTERNS: list[tuple[str, re.Pattern]] = [
 
 # Explicitly NOT failures (see references/failure-signatures.md):
 #   bare "Exit Code: 1"/"Exit Code: 2" — grep no-match / probing is normal work
-#   "Exit Code: 3"                     — bid-proposal-writing: completed-with-anomalies
+#   "Exit Code: 3"                     — bid-proposal-overall: completed-with-anomalies
 #   "appears to be a binary file"      — informational notice
 NOT_FAILURE_PATTERNS = [
     re.compile(r"appears to be a binary file"),

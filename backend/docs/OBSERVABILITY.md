@@ -320,7 +320,7 @@ Nginx 将 `/api/langgraph/*` 重写为 Gateway 的 LangGraph 兼容运行时，w
 
 EAI-CUSTOM（route-D，2026-08-19）：把"回放分析一次 agent 执行"从手工 curl+脚本变成**一句自然语言指令**。对 agent（或 iLink/渠道 bot）说：
 
-> 分析线程 `<thread_id>` 的执行情况 / 刚才那次任务为什么烧了这么多 token / 检查 bid-proposal-writing 有没有违反契约
+> 分析线程 `<thread_id>` 的执行情况 / 刚才那次任务为什么烧了这么多 token / 检查 bid-proposal-overall 有没有违反契约
 
 Agent 激活 `ops-diagnosis` 技能后走固定流水线：**MCP 取数 → 脚本统计 → 契约对照 → 证据化报告**（数字全部来自脚本产物，每个问题带 `(run8, seq)` 事件证据）。
 

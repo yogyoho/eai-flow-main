@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bid-proposal-writing 技能测试 fixture 生成器（设计 D4 测试计划，任务 T1）。
+"""bid-proposal-overall 技能测试 fixture 生成器（设计 D4 测试计划，任务 T1）。
 
 规格: docs/superpowers/specs/2026-08-16-bid-proposal-writing-skill-design.md
 
@@ -462,7 +462,7 @@ def _write_json(out_dir: Path, name: str, data) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Regenerate bid-proposal-writing test fixtures (deterministic)")
+    parser = argparse.ArgumentParser(description="Regenerate bid-proposal-overall test fixtures (deterministic)")
     parser.add_argument("--out", default=str(FIXTURE_DIR), help="output directory (default: alongside this script)")
     args = parser.parse_args()
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/responses.schema.json",
+  "$id": "https://eai-flow.local/skills/public/bid-proposal-overall/references/responses.schema.json",
   "title": "Technical response entry (responses.json item)",
   "description": "技术响应内容条目 responses.json 的节点契约(2026-08-18 v2 反馈3/4)。阶段4a 供源级联(kf=知识库扩写/仿写、uploads=用户参考样例、web=网络搜索深写、self=Agent 依据条款原文自拟、sample=样例库段落仿写(v4 WP-3)、fabricated=样例缺失直接编造(v4 P1 政策: 合法且必要, 全量 needs_human_verify))的产物由 Agent 落候选、responses.py 确定性校验后 upsert 进 responses.json; 按 clause_id 幂等。source_mode 留痕供人核清单分级(web 全标 needs_human_verify)。消费方: build_output.py(条目体正文)/merge 落位(structure linked_clause_ids 或 self_created 节点)。",
   "type": "object",

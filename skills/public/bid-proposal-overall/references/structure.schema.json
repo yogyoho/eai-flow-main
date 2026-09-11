@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/structure.schema.json",
+  "$id": "https://eai-flow.local/skills/public/bid-proposal-overall/references/structure.schema.json",
   "title": "Bid document structure node (structure.json node)",
   "description": "投标文件结构镜像 structure.json 的节点契约(逐字对齐设计文档 2026-08-16『详细设计』字段表)。『结构即合规』:章节顺序/表格格式/图片位置全部来自招标文件,skill 只镜像+打槽位,不自创任何结构;格式章节若同时规定技术部结构,技术卷同样入镜像(commercial|technical 两卷)。消费方:build_output.py / score_simulate.py(商务卷重灌锚点=标题链 path)。",
   "type": "object",

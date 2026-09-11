@@ -24,7 +24,7 @@
 | 形态 | 原因 |
 |---|---|
 | 裸 `Exit Code: 1` / `Exit Code: 2` | grep 无匹配、探测性 `ls xxx 2>/dev/null` 是正常工作流信息 |
-| `Exit Code: 3` | bid-proposal-writing 契约：rc=3 = "完成但有异常"（ingest.py 写出 sections.json 后返回 3），**成功语义** |
+| `Exit Code: 3` | bid-proposal-overall 契约：rc=3 = "完成但有异常"（ingest.py 写出 sections.json 后返回 3），**成功语义** |
 | `appears to be a binary file` | 提示性文本，非错误 |
 
 ## 已知盲区

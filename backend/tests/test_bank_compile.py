@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "skills" / "public" / "bid-proposal-writing" / "scripts"
+SCRIPTS_DIR = Path(__file__).resolve().parents[2] / "skills" / "public" / "bid-technical" / "scripts"
 
 # importlib 按路径加载且模块名唯一（不占 sys.modules['bank_compile']）——geological-report
 # 技能 scripts/ 下有同名 bank_compile.py（test_geo_sample_bank_compile.py 裸名 `import bank_compile`），

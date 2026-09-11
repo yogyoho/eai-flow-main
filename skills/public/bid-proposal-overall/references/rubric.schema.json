@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://eai-flow.local/skills/public/bid-proposal-writing/references/rubric.schema.json",
+  "$id": "https://eai-flow.local/skills/public/bid-proposal-overall/references/rubric.schema.json",
   "title": "Scoring rubric item (rubric.json item)",
   "description": "评分标尺 rubric.json 单项契约(逐字对齐设计文档 2026-08-16『详细设计』字段表)。由阶段2 子模板③的 LLM 循环从评分细则表抽取;score_simulate.py 校验 Σmax_score 与评分办法声称总分一致,不一致→评分报告异常项并中止(extract.py 已在阶段2 前置拦截,此处为纵深复检)。消费方:extract.py / score_simulate.py。",
   "type": "object",

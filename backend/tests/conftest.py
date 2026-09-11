@@ -209,7 +209,7 @@ def _auto_user_context(request):
 # Multiple skills publish same-named top-level scripts (water-drainage-report
 # and geological-report both have formula_runner.py / chapter_planner.py;
 # bid/water/geological all have snapshot.py; geological-report and
-# bid-proposal-writing both have ingest.py / build_output.py; bid/geological/
+# bid-proposal-overall both have ingest.py / build_output.py; bid/geological/
 # coal-eia all have bank_compile.py). A module-level
 # or lazily-imported ``formula_runner`` in one test file poisons the
 # process-global sys.modules for every later in-process import in another

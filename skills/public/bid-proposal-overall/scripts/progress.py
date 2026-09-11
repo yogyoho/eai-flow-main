@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""bid-proposal-writing v4 — progress.py：册/章级进度状态机(阶段4a 控制器)。
+"""bid-proposal-overall v4 — progress.py：册/章级进度状态机(阶段4a 控制器)。
 
 移植自 geological-report progress.py(eng-review 1A: 照搬+TODOS 多副本债扩条目;
 bid 子集=init/next/status/mark/gate, geo 的 run-stage/要点包/降档协商属 T7/WP-2.2)。

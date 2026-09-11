@@ -18,7 +18,7 @@ Agent 做什么:
 Agent 调脚本(**每个文件代号一次调用**, 共用同一 `--out` 增量合并):
 
 ```bash
-python /mnt/skills/public/bid-proposal-writing/scripts/ingest.py \
+python /mnt/skills/public/bid-proposal-overall/scripts/ingest.py \
   --input /mnt/user-data/uploads/招标文件.docx \
   --code ZB \
   --out /mnt/user-data/workspace/bid/state
@@ -44,7 +44,7 @@ Agent 检查点:退出码 0→进阶段2;3→摘要 anomalies 里的表行数不
 **确定性校验与合并**(extract.py:锚点必须存在于 sections.json/枚举合法/跨块去重/Σmax_score=评分办法总分/chunk_id·table_id 全量有裁决, 未裁决→`[待确认]`):
 
 ```bash
-python /mnt/skills/public/bid-proposal-writing/scripts/extract.py validate \
+python /mnt/skills/public/bid-proposal-overall/scripts/extract.py validate \
   --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json /mnt/user-data/workspace/bid/candidates/T-001.rubric.json \
   --sections /mnt/user-data/workspace/bid/state/sections.json \
   --declared-total 100
@@ -53,7 +53,7 @@ python /mnt/skills/public/bid-proposal-writing/scripts/extract.py validate \
 校验干净(或用户确认异常项处置)后原子合并进状态目录(按 id upsert 幂等;Σ 不一致整体中止):
 
 ```bash
-python /mnt/skills/public/bid-proposal-writing/scripts/extract.py merge \
+python /mnt/skills/public/bid-proposal-overall/scripts/extract.py merge \
   --candidates /mnt/user-data/workspace/bid/candidates/CH-001.clauses.json \
   --sections /mnt/user-data/workspace/bid/state/sections.json \
   --state-dir /mnt/user-data/workspace/bid/state
@@ -64,7 +64,7 @@ python /mnt/skills/public/bid-proposal-writing/scripts/extract.py merge \
 **格式保真校验(merge 后、确认门1 前必跑;补遗落账后与 build 前各再跑一次)**——格式 1:1 复刻的确定性防线(回放实证:标题被 LLM 归一化剥掉编号/（格式）后缀、模板固定文字没抄进 template_text、格式章节骨架漏节点, 全部静默漏过):
 
 ```bash
-python /mnt/skills/public/bid-proposal-writing/scripts/check_format.py \
+python /mnt/skills/public/bid-proposal-overall/scripts/check_format.py \
   --state-dir /mnt/user-data/workspace/bid/state \
   --sources /mnt/user-data/uploads/招标文件.md
 ```
