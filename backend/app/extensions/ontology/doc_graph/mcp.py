@@ -26,7 +26,7 @@ _TOOLS_SPEC = [
                 "domain": {"type": "string", "enum": ["bid"]},
                 "extracted_by": {"type": "string"},
                 "thread_id": {"type": "string"},
-                "entities": {"type": "array", "items": {"type": "object"}},
+                "entities": {"type": "array", "minItems": 1, "items": {"type": "object"}},
                 "relations": {"type": "array", "items": {"type": "object"}},
             },
             "required": ["domain", "entities"],
@@ -35,7 +35,7 @@ _TOOLS_SPEC = [
     (
         "list_pending_review",
         "列出低置信度待复核实体（status=pending_review），可请用户确认后用 merge_entities 合并。",
-        {"type": "object", "properties": {"etype": {"type": "string"}, "limit": {"type": "integer"}}, "required": []},
+        {"type": "object", "properties": {"etype": {"type": "string", "description": "实体类型: project/bidder/goods/qualification"}, "limit": {"type": "integer"}}, "required": []},
     ),
     (
         "merge_entities",
@@ -45,8 +45,8 @@ _TOOLS_SPEC = [
             "properties": {
                 "candidate_id": {"type": "string"},
                 "canonical_id": {"type": "string"},
-                "method": {"type": "string"},
-                "confidence": {"type": "number"},
+                "method": {"type": "string", "description": "合并依据: similarity | manual"},
+                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
             },
             "required": ["candidate_id", "canonical_id"],
         },
@@ -95,7 +95,7 @@ async def _list_pending_review(a: dict) -> list[TextContent]:
         async with engine.connect() as conn:
             res = await conn.execute(
                 text("SELECT id, domain, etype, canonical_name, confidence FROM dg_entities WHERE status = 'pending_review' AND (:etype IS NULL OR etype = :etype) ORDER BY confidence ASC LIMIT :lim"),
-                {"etype": a.get("etype"), "lim": min(int(a.get("limit", 50)), 200)},
+                {"etype": a.get("etype"), "lim": max(1, min(int(a.get("limit", 50)), 200))},
             )
             rows = [dict(r) for r in res.mappings().all()]
     finally:
@@ -113,10 +113,12 @@ async def _merge_entities(a: dict) -> list[TextContent]:
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     try:
         async with engine.begin() as conn:
-            await conn.execute(
+            res = await conn.execute(
                 text("UPDATE dg_entities SET status = 'merged', updated_at = NOW() WHERE id = CAST(:cid AS uuid)"),
                 {"cid": a["candidate_id"]},
             )
+            if res.rowcount == 0:
+                return _ok({"success": False, "message": f"candidate {a['candidate_id']} 不存在"})
             row = (
                 await conn.execute(
                     text("INSERT INTO dg_merges (candidate_id, canonical_id, method, confidence) VALUES (CAST(:cid AS uuid), CAST(:kid AS uuid), :method, :conf) RETURNING id"),

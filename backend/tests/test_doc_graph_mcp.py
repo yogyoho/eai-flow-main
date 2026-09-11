@@ -19,3 +19,9 @@ def test_handlers_cover_tools():
 def test_unknown_tool_returns_text_error():
     out = asyncio.run(call_tool("nope", {}))
     assert isinstance(out[0], TextContent) and "Unknown tool" in out[0].text
+
+
+def test_ingest_validation_error_is_structured():
+    out = asyncio.run(call_tool("ingest_extraction", {"domain": "bid", "entities": [], "extra": 1}))
+    assert isinstance(out[0], TextContent)
+    assert "schema 校验失败" in out[0].text and '"success": false' in out[0].text
