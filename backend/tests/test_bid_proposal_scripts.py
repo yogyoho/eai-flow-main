@@ -6504,10 +6504,12 @@ B_STAGE_GUIDES = ("build-technical.md", "tech_response_prompt.md")  # B TECH_REF
 
 
 def _stage_guide_path(filename: str) -> Path:
-    """分组指南落位: A_STAGE_GUIDES → A REFERENCES_DIR, 其余(B_STAGE_GUIDES) → B TECH_REFERENCES_DIR。"""
+    """分组指南落位: A_STAGE_GUIDES → A REFERENCES_DIR, B_STAGE_GUIDES → B TECH_REFERENCES_DIR。"""
     if filename in A_STAGE_GUIDES:
         return REFERENCES_DIR / filename
-    return TECH_REFERENCES_DIR / filename
+    if filename in B_STAGE_GUIDES:
+        return TECH_REFERENCES_DIR / filename
+    raise AssertionError(f"未登记的分组指南 {filename}: 请同步 A_STAGE_GUIDES/B_STAGE_GUIDES")
 
 # 每份分组指南的内容要件(阶段级深水区——从 SKILL_MD_REQUIRED_TOKENS 下沉至此逐份锁)
 # v4 编造政策负向契约: 旧三模式级联的指令头不得回流(废除说明提及枚举名不算违例)
@@ -6646,12 +6648,13 @@ class TestSkillStageGroupFiles:
 
     def test_skill_md_routes_to_all_stage_files(self):
         """SKILL.md(路径与契约文档/阶段路由表)必须点名全部分组指南, 编排者才知道进哪阶段读哪份。
-        B 卷指南(SKILL.md 侧)在 Task 3 重写 SKILL.md 前仍以旧名 stage4-response-build.md 点名、
-        tech_response_prompt.md 在契约文档行点名——本任务只锁文本现状, 内容改道归 Task 3。"""
+        B 卷指南现以旧名 stage4-response-build.md 点名(过渡锁: SKILL.md 改写点名
+        build-technical.md 后须同步更新本断言 — Plan3 Task 3); tech_response_prompt.md
+        在契约文档行点名。"""
         content = _skill_md_text()
         for filename in A_STAGE_GUIDES:
             assert filename in content, f"SKILL.md 须点名分组指南 {filename}(阶段路由表)"
-        assert "stage4-response-build.md" in content, "SKILL.md 阶段路由表仍须点名技术卷指南(Task 3 改写前保持旧名 stage4-response-build.md)"
+        assert "stage4-response-build.md" in content, "SKILL.md 阶段路由表过渡锁: 现点名旧名 stage4-response-build.md; SKILL.md 改写点名 build-technical.md 后须同步更新本断言(Plan3 Task 3)"
         assert "tech_response_prompt.md" in content, "SKILL.md 须点名 tech_response_prompt.md(契约文档行)"
 
     def test_snapshot_source_pins_stage_group_filenames(self):

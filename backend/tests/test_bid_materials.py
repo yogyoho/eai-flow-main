@@ -667,7 +667,7 @@ class TestBuildDepthGate:
     """build 深度门三态(Plan2 T6): 有 target 达标/不足; 无 target floor 兜底达标/不足。
 
     深度=质量牵引非凭据阻断门(spec §4.4): anomaly 汇 lint 报告"深度"节与摘要,
-    delivery_manifest 照写不撤; 基线缺失(references/depth_targets.json 不在盘)=门静默跳过。
+    delivery_manifest 照写不撤; 基线缺失(bid-technical/references/depth_targets.json 不在盘)=门静默跳过。
     """
 
     @pytest.fixture()

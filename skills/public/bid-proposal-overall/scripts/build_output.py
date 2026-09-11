@@ -50,7 +50,8 @@
        "LLM辅助抽取白名单，非确定性"(白名单本身由 LLM 抽取+人工确认, lint 是
        确定性 diff 但覆盖受白名单与模式能力限制)。
     ⑦ 深度门(Plan2 T6, spec §4.4 质量牵引非凭据阻断): 样例库校准基线(bank_compile 产
-       references/depth_targets.json, 缺失=门静默跳过)逐条响应实质长校准——响应级
+       bid-technical/references/depth_targets.json——样例库基线在 B, pair-install 软读,
+       缺失=门静默跳过)逐条响应实质长校准——响应级
        depth_target(阶段4a 第一层检索命中组段落实质长 median, merge 前已校 ≥0 整数)
        优先, 缺省落库级 absolute_floor(P25 段长)兜底; 不足 → anomaly
        depth_below_target/depth_below_floor 汇 lint 报告"深度"节与摘要, 不进实体门
@@ -1253,7 +1254,7 @@ def _render_depth_section(depth_anomalies: list[dict], depth_targets: dict | Non
         }.get(skip_reason or "missing", f"未知({skip_reason})")
         lines.extend(
             [
-                "> 基线缺失: references/depth_targets.json 未装载——深度门本轮跳过。",
+                "> 基线缺失: bid-technical/references/depth_targets.json 未装载——深度门本轮跳过。",
                 f"> 跳过原因: {reason_text}。",
                 "> 激活方法: bank_compile.py 编译样例库产出该文件后重跑 build。",
                 "",
@@ -1394,8 +1395,8 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     if whitelist is None:
         anomalies.append({"kind": "whitelist_missing", "message": "entities_whitelist.json 缺失, lint 按空集 diff(全部候选进[待核对])——确认门1 未锁定白名单或文件被移动"})
 
-    # 深度门(Plan2 T6): 样例库校准基线(bank_compile 产 references/depth_targets.json;
-    # 缺失=门静默跳过)。anomalies 只汇 lint 报告"深度"节+摘要, 不进实体门/不影响凭据——
+    # 深度门(Plan2 T6): 样例库校准基线(bank_compile 产 bid-technical/references/depth_targets.json;
+    # A pair-install 软读; 缺失=门静默跳过)。anomalies 只汇 lint 报告"深度"节+摘要, 不进实体门/不影响凭据——
     # 深度是质量牵引非废标风险(spec §4.4), 与实体门熔断(_entity_gate_state)完全解耦。
     depth_targets, depth_skip_reason = load_depth_targets()
     depth_anomalies, depth_summary = run_depth_gate(responses, depth_targets, skip_reason=depth_skip_reason)
