@@ -499,6 +499,7 @@ def get_run_context(request: Request) -> RunContext:
     captured in :func:`langgraph_runtime` so callers never see a store bound
     to one backend paired with a config pointing at another.
     """
+    scheduled_task_service = getattr(request.app.state, "scheduled_task_service", None)
     return RunContext(
         checkpointer=get_checkpointer(request),
         store=get_store(request),
@@ -508,6 +509,12 @@ def get_run_context(request: Request) -> RunContext:
         mcp_task_repo=getattr(request.app.state, "mcp_task_repo", None),
         app_config=get_config(),
         checkpoint_channel_mode=getattr(request.app.state, "checkpoint_channel_mode", "full"),
+        # 上游接线恢复(#5265 之后的 RunContext 契约): 定时任务 run 终态记账
+        # (scheduler.service.handle_run_completion)此前在 EAI 从未被调用,
+        # task_run 状态永远停在非终态。
+        on_run_completed=(
+            scheduled_task_service.handle_run_completion if scheduled_task_service is not None else None
+        ),
     )
 
 
