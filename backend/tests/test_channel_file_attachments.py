@@ -120,7 +120,7 @@ class TestResolveAttachments:
         mock_paths.resolve_virtual_path.return_value = test_file
         mock_paths.sandbox_outputs_dir.return_value = outputs_dir
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments(thread_id, ["/mnt/user-data/outputs/report.pdf"])
 
         assert len(result) == 1
@@ -143,7 +143,7 @@ class TestResolveAttachments:
         mock_paths.resolve_virtual_path.return_value = img
         mock_paths.sandbox_outputs_dir.return_value = outputs_dir
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments(thread_id, ["/mnt/user-data/outputs/chart.png"])
 
         assert len(result) == 1
@@ -161,7 +161,7 @@ class TestResolveAttachments:
         mock_paths.resolve_virtual_path.return_value = outputs_dir / "nonexistent.txt"
         mock_paths.sandbox_outputs_dir.return_value = outputs_dir
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments("t1", ["/mnt/user-data/outputs/nonexistent.txt"])
 
         assert result == []
@@ -173,7 +173,7 @@ class TestResolveAttachments:
         mock_paths = MagicMock()
         mock_paths.resolve_virtual_path.side_effect = ValueError("bad path")
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments("t1", ["/invalid/path"])
 
         assert result == []
@@ -184,7 +184,7 @@ class TestResolveAttachments:
 
         mock_paths = MagicMock()
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments("t1", ["/mnt/user-data/uploads/secret.pdf"])
 
         assert result == []
@@ -196,7 +196,7 @@ class TestResolveAttachments:
 
         mock_paths = MagicMock()
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments("t1", ["/mnt/user-data/workspace/config.py"])
 
         assert result == []
@@ -218,8 +218,34 @@ class TestResolveAttachments:
         mock_paths.resolve_virtual_path.return_value = escaped_file
         mock_paths.sandbox_outputs_dir.return_value = outputs_dir
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments(thread_id, ["/mnt/user-data/outputs/../uploads/stolen.txt"])
+
+        assert result == []
+
+    def test_rejects_symlink_planted_in_outputs(self, tmp_path):
+        """A symlink inside outputs/ pointing at a sibling upload is skipped.
+
+        Uses the real ``Paths`` layout so the shared outputs-confinement helper
+        (also used by the artifact editor) is exercised end to end.
+        """
+        from app.channels.manager import _resolve_attachments
+        from deerflow.config.paths import Paths
+
+        paths = Paths(tmp_path)
+        outputs_dir = paths.sandbox_outputs_dir("t1", user_id="owner-1")
+        uploads_dir = paths.sandbox_uploads_dir("t1", user_id="owner-1")
+        outputs_dir.mkdir(parents=True)
+        uploads_dir.mkdir(parents=True)
+        victim = uploads_dir / "secret.pdf"
+        victim.write_bytes(b"%PDF-1.4 secret")
+        try:
+            (outputs_dir / "report.pdf").symlink_to(victim)
+        except OSError:
+            pytest.skip("symlinks are unavailable on this platform")
+
+        with patch("app.gateway.path_utils.get_paths", return_value=paths):
+            result = _resolve_attachments("t1", ["/mnt/user-data/outputs/report.pdf"], user_id="owner-1")
 
         assert result == []
 
@@ -243,7 +269,7 @@ class TestResolveAttachments:
 
         mock_paths.resolve_virtual_path.side_effect = resolve_side_effect
 
-        with patch("deerflow.config.paths.get_paths", return_value=mock_paths):
+        with patch("app.gateway.path_utils.get_paths", return_value=mock_paths):
             result = _resolve_attachments(
                 thread_id,
                 ["/mnt/user-data/outputs/data.csv", "/mnt/user-data/outputs/missing.txt"],

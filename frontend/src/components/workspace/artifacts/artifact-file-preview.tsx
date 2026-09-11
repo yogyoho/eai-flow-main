@@ -1,10 +1,12 @@
 "use client";
 
 import { DownloadIcon } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
+  getTabularDelimiter,
   appendHtmlPreviewBaseHref,
   appendHtmlPreviewScrollRestoration,
   createHtmlPreviewScrollKey,
@@ -120,6 +122,12 @@ export function ArtifactDownloadFallback({
   );
 }
 
+const ArtifactTablePreview = dynamic(() =>
+  import("./artifact-table-preview").then(
+    (module) => module.ArtifactTablePreview,
+  ),
+);
+
 export function ArtifactFilePreview({
   content,
   language,
@@ -127,6 +135,8 @@ export function ArtifactFilePreview({
   url,
   threadId,
   isMock,
+  truncated = false,
+  active = true,
 }: {
   content: string;
   language: string;
@@ -134,6 +144,8 @@ export function ArtifactFilePreview({
   url?: string;
   threadId?: string;
   isMock?: boolean;
+  truncated?: boolean;
+  active?: boolean;
 }) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const scrollPositionRef = useRef({ x: 0, y: 0 });
@@ -222,6 +234,18 @@ export function ArtifactFilePreview({
     };
   }, [content, language, scrollKey, url]);
 
+  const delimiter = getTabularDelimiter(language);
+  if (delimiter !== null) {
+    return (
+      <ArtifactTablePreview
+        content={content}
+        delimiter={delimiter}
+        truncated={truncated}
+        identity={scrollKey}
+        active={active}
+      />
+    );
+  }
   if (language === "markdown") {
     return (
       <div className="size-full overflow-auto px-4 py-3">

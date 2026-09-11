@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from fastapi import HTTPException
 from langgraph_sdk.errors import ConflictError
 
 from app.channels.commands import KNOWN_CHANNEL_COMMANDS
@@ -27,7 +28,17 @@ from app.channels.run_policy import CHANNEL_RUN_POLICY, ChannelRunPolicy
 from app.channels.store import ChannelStore
 from app.gateway.csrf_middleware import CSRF_COOKIE_NAME, CSRF_HEADER_NAME, generate_csrf_token
 from app.gateway.internal_auth import create_internal_auth_headers
+
+# upstream 8e86729aa (#5321): the outputs-confinement rule for IM attachment
+# delivery is shared with the artifact editor via app.gateway.path_utils so the
+# two copies cannot drift.
+from app.gateway.path_utils import resolve_outputs_confined_path
+
+# upstream e3df6ea4a (#5168): the /agent command lists and pins per-user
+# custom agents for a channel conversation.
+from deerflow.config.agents_config import list_custom_agents, load_agent_config
 from deerflow.config.paths import make_safe_user_id
+from deerflow.runtime.user_context import get_effective_user_id
 
 # EAI-CUSTOM: ported from upstream bytedance/main (9146bfa03, #5119) so inbound
 # IM messages get a request trace id even though no ASGI middleware runs for them.
@@ -44,6 +55,11 @@ DEFAULT_CHANNEL_MAX_CONCURRENCY = 5
 DEFAULT_CHANNEL_SHUTDOWN_GRACE_PERIOD_SECONDS = 3.0
 DEFAULT_ASSISTANT_ID = "lead_agent"
 CUSTOM_AGENT_NAME_PATTERN = re.compile(r"^[A-Za-z0-9-]+$")
+# upstream e3df6ea4a (#5168): durable per-thread agent selection metadata.
+CHANNEL_AGENT_METADATA_KEY = "channel_agent_name"
+THREAD_AGENT_METADATA_KEY = "agent_name"
+MAX_CHANNEL_AGENT_LIST_ITEMS = 50
+MAX_CHANNEL_AGENT_DESCRIPTION_CHARS = 120
 
 DEFAULT_RUN_CONFIG: dict[str, Any] = {"recursion_limit": 100}
 DEFAULT_RUN_CONTEXT: dict[str, Any] = {
@@ -161,6 +177,37 @@ def _normalize_custom_agent_name(raw_value: str) -> str:
     if not CUSTOM_AGENT_NAME_PATTERN.fullmatch(normalized):
         raise InvalidChannelSessionConfigError(f"Invalid channel session assistant_id {raw_value!r}. Use 'lead_agent' or a custom agent name containing only letters, digits, and hyphens.")
     return normalized
+
+
+def _apply_explicit_agent_choice(
+    run_config: dict[str, Any],
+    run_context: dict[str, Any],
+    agent_name: str | None,
+) -> None:
+    """Pin or clear an explicit channel agent in every runtime carrier.
+
+    Gateway accepts ``agent_name`` from the request's top-level context and
+    from either RunnableConfig container. Its compatibility merge preserves
+    existing values with ``setdefault``, so an explicit ``/agent use`` choice
+    must normalize all three carriers before the request crosses that boundary.
+    ``None`` represents an explicit reset to the default lead agent.
+    """
+    carriers = [run_context]
+    for section in ("configurable", "context"):
+        value = run_config.get(section)
+        if isinstance(value, Mapping):
+            # Session layers own their nested dictionaries. Copy before changing
+            # one so selecting an agent for a conversation cannot mutate the
+            # manager's reusable channel configuration.
+            copied = dict(value)
+            run_config[section] = copied
+            carriers.append(copied)
+
+    for carrier in carriers:
+        if agent_name is None:
+            carrier.pop("agent_name", None)
+        else:
+            carrier["agent_name"] = agent_name
 
 
 def _extract_response_text(result: dict | list) -> str:
@@ -416,10 +463,7 @@ def _format_artifact_text(artifacts: list[str]) -> str:
     return "Created Files: 📎 " + "、".join(filenames)
 
 
-_OUTPUTS_VIRTUAL_PREFIX = "/mnt/user-data/outputs/"
-
-
-def _resolve_attachments(thread_id: str, artifacts: list[str]) -> list[ResolvedAttachment]:
+def _resolve_attachments(thread_id: str, artifacts: list[str], *, user_id: str | None = None) -> list[ResolvedAttachment]:
     """Resolve virtual artifact paths to host filesystem paths with metadata.
 
     Only paths under ``/mnt/user-data/outputs/`` are accepted; any other
@@ -429,25 +473,19 @@ def _resolve_attachments(thread_id: str, artifacts: list[str]) -> list[ResolvedA
     Skips artifacts that cannot be resolved (missing files, invalid paths)
     and logs warnings for them.
     """
-    from deerflow.config.paths import get_paths
-
     attachments: list[ResolvedAttachment] = []
-    paths = get_paths()
-    outputs_dir = paths.sandbox_outputs_dir(thread_id).resolve()
+    effective_user_id = user_id or get_effective_user_id()
     for virtual_path in artifacts:
-        # Security: only allow files from the agent outputs directory
-        if not virtual_path.startswith(_OUTPUTS_VIRTUAL_PREFIX):
-            logger.warning("[Manager] rejected non-outputs artifact path: %s", virtual_path)
+        # Security: only files under the agent outputs directory may leave the
+        # thread. The shared helper rejects sibling ``uploads/``/``workspace/``
+        # paths both lexically (``..``) and after symlink resolution, so this
+        # rule cannot drift from the artifact editor's.
+        try:
+            actual = resolve_outputs_confined_path(thread_id, virtual_path, user_id=effective_user_id)
+        except HTTPException as exc:
+            logger.warning("[Manager] rejected artifact path outside outputs: %s (%s)", virtual_path, exc.detail)
             continue
         try:
-            actual = paths.resolve_virtual_path(thread_id, virtual_path)
-            # Verify the resolved path is actually under the outputs directory
-            # (guards against path-traversal even after prefix check)
-            try:
-                actual.resolve().relative_to(outputs_dir)
-            except ValueError:
-                logger.warning("[Manager] artifact path escapes outputs dir: %s -> %s", virtual_path, actual)
-                continue
             if not actual.is_file():
                 logger.warning("[Manager] artifact not found on disk: %s -> %s", virtual_path, actual)
                 continue
@@ -678,6 +716,12 @@ class ChannelManager:
         # set, _get_client returns it directly; production leaves this None and
         # uses the per-owner cache.
         self._client: Any = None
+        # upstream e3df6ea4a (#5168): explicit /agent selections are pinned to
+        # the newly-created thread. Cache the durable thread metadata so the
+        # hot path does not GET the same thread before every turn; None
+        # distinguishes a checked default thread from a thread that has not
+        # been inspected yet.
+        self._thread_agent_names: dict[str, str | None] = {}
         # CSRF double-submit token for internal SDK calls (header == cookie).
         self._csrf_token = generate_csrf_token()
         self._semaphore: asyncio.Semaphore | None = None
@@ -704,7 +748,21 @@ class ChannelManager:
     def _resolve_run_params(self, msg: InboundMessage, thread_id: str) -> tuple[str, dict[str, Any], dict[str, Any]]:
         channel_layer, user_layer = self._resolve_session_layer(msg)
 
-        assistant_id = user_layer.get("assistant_id") or channel_layer.get("assistant_id") or self._default_session.get("assistant_id") or self._assistant_id
+        # Per-message agent override (upstream e3df6ea4a, #5168 — e.g. webhook
+        # fan-out: multiple agents may bind the same repo, each gets its own
+        # inbound message with its own agent_name in metadata). Honors the same
+        # shape as channel/user session config: the bare agent name routes
+        # through the lead_agent + agent_name context pattern below.
+        message_assistant_id: str | None = None
+        msg_metadata = msg.metadata if isinstance(msg.metadata, dict) else {}
+        meta_assistant_id = msg_metadata.get("assistant_id") or msg_metadata.get("agent_name")
+        if isinstance(meta_assistant_id, str) and meta_assistant_id.strip():
+            message_assistant_id = meta_assistant_id
+
+        # Agent pinned to this thread by a previous "/agent use" (durable
+        # thread metadata, cached in memory by _load_thread_agent).
+        thread_assistant_id = self._thread_agent_names.get(thread_id)
+        assistant_id = message_assistant_id or thread_assistant_id or user_layer.get("assistant_id") or channel_layer.get("assistant_id") or self._default_session.get("assistant_id") or self._assistant_id
         if not isinstance(assistant_id, str) or not assistant_id.strip():
             assistant_id = self._assistant_id
 
@@ -734,12 +792,23 @@ class ChannelManager:
             {"thread_id": thread_id},
         )
 
+        explicit_agent_choice = message_assistant_id is not None or thread_assistant_id is not None
         # Custom agents are implemented as lead_agent + agent_name context.
         # Keep backward compatibility for channel configs that set
         # assistant_id: <custom-agent-name> by routing through lead_agent.
         if assistant_id != DEFAULT_ASSISTANT_ID:
-            run_context.setdefault("agent_name", _normalize_custom_agent_name(assistant_id))
+            normalized_agent_name = _normalize_custom_agent_name(assistant_id)
+            if explicit_agent_choice:
+                _apply_explicit_agent_choice(run_config, run_context, normalized_agent_name)
+            else:
+                run_context.setdefault("agent_name", normalized_agent_name)
             assistant_id = DEFAULT_ASSISTANT_ID
+        elif explicit_agent_choice:
+            # An explicit lead_agent selection is also a real pin: discard a
+            # configured agent in every Gateway-supported carrier so
+            # /agent use lead_agent cannot claim to reset the conversation
+            # while silently routing elsewhere.
+            _apply_explicit_agent_choice(run_config, run_context, None)
 
         return assistant_id, run_config, run_context
 
@@ -934,7 +1003,40 @@ class ChannelManager:
             user_id=msg.user_id,
         )
 
-    async def _create_thread(self, client, msg: InboundMessage) -> str:
+    def _remember_thread_agent(self, thread_id: str, agent_name: str | None) -> None:
+        if len(self._thread_agent_names) > 4096:
+            self._thread_agent_names.clear()
+        self._thread_agent_names[thread_id] = agent_name
+
+    async def _load_thread_agent(self, client, msg: InboundMessage, thread_id: str, *, thread: Any | None = None) -> str | None:
+        """Load an explicit channel agent selection from durable thread metadata.
+
+        Same signature and cache-first behaviour as upstream e3df6ea4a (#5168).
+        EAI differences: owner routing flows through EAI's per-owner client
+        (see ``_get_client``), so no per-request owner headers are attached to
+        the GET; and ``thread`` may carry the body already fetched by
+        ``_handle_chat``'s stale-mapping validation so the hot path does not
+        GET the same thread twice.
+        """
+        if thread_id in self._thread_agent_names:
+            return self._thread_agent_names[thread_id]
+        if thread is None:
+            thread = await client.threads.get(thread_id)
+        metadata = thread.get("metadata") if isinstance(thread, Mapping) else None
+        raw_agent_name = metadata.get(CHANNEL_AGENT_METADATA_KEY) if isinstance(metadata, Mapping) else None
+        agent_name: str | None = None
+        if isinstance(raw_agent_name, str) and raw_agent_name.strip():
+            if raw_agent_name.strip().lower() == DEFAULT_ASSISTANT_ID:
+                agent_name = DEFAULT_ASSISTANT_ID
+            else:
+                try:
+                    agent_name = _normalize_custom_agent_name(raw_agent_name)
+                except InvalidChannelSessionConfigError as exc:
+                    raise InvalidChannelSessionConfigError("This conversation has an invalid stored agent selection. Use /agent use <name> to start a valid conversation.") from exc
+        self._remember_thread_agent(thread_id, agent_name)
+        return agent_name
+
+    async def _create_thread(self, client, msg: InboundMessage, *, agent_name: str | None = None) -> str:
         """Create a new thread on the LangGraph Server and store the mapping."""
         # EAI-CUSTOM (upstream-sync 2026-08-26): graft of upstream's preferred
         # deterministic thread id — GitHub webhook channels pin (repo, PR/issue
@@ -942,10 +1044,21 @@ class ChannelManager:
         # with ConflictError race recovery (two deliveries for the same issue
         # within ms). Owner routing differs from upstream: EAI resolves the
         # owner into the client (see _get_client), so there is no per-request
-        # owner header here.
+        # owner header here. upstream e3df6ea4a (#5168) added the agent_name
+        # kwarg: pin the selected agent to the new thread's durable metadata.
+        metadata = _thread_channel_metadata(msg)
+        if agent_name is not None:
+            metadata[CHANNEL_AGENT_METADATA_KEY] = agent_name
+            if agent_name != DEFAULT_ASSISTANT_ID:
+                # Web thread search returns metadata but no run context.
+                # Persist the canonical key consumed by ``pathOfThread`` so
+                # opening this IM conversation in the browser keeps the same
+                # custom agent. The lead agent deliberately has no canonical
+                # key: it uses the ordinary chat route.
+                metadata[THREAD_AGENT_METADATA_KEY] = agent_name
         meta = msg.metadata if isinstance(msg.metadata, dict) else {}
         preferred_thread_id = meta.get("preferred_thread_id")
-        create_kwargs: dict[str, Any] = {"metadata": _thread_channel_metadata(msg)}
+        create_kwargs: dict[str, Any] = {"metadata": metadata}
         if isinstance(preferred_thread_id, str) and preferred_thread_id:
             create_kwargs["thread_id"] = preferred_thread_id
         try:
@@ -968,9 +1081,11 @@ class ChannelManager:
                 raise
             logger.info("[Manager] threads.create raced on preferred_thread_id=%s; reusing the deterministic id", preferred_thread_id)
             await self._store_thread_id(msg, preferred_thread_id)
+            self._remember_thread_agent(preferred_thread_id, agent_name)
             return preferred_thread_id
         thread_id = thread["thread_id"]
         await self._store_thread_id(msg, thread_id)
+        self._remember_thread_agent(thread_id, agent_name)
         logger.info("[Manager] new thread created on LangGraph Server: thread_id=%s for chat_id=%s topic_id=%s", thread_id, msg.chat_id, msg.topic_id)
         return thread_id
 
@@ -1017,7 +1132,7 @@ class ChannelManager:
             # session). Validate it still exists; drop the mapping so a fresh
             # thread is created below instead of failing the run with a 404.
             try:
-                await client.threads.get(thread_id)
+                thread = await client.threads.get(thread_id)
             except Exception as exc:
                 resp = getattr(exc, "response", None)
                 if resp is not None and resp.status_code == 404:
@@ -1025,6 +1140,13 @@ class ChannelManager:
                     thread_id = None
                 else:
                     raise
+            else:
+                # upstream e3df6ea4a (#5168): restore an explicit /agent
+                # selection from the thread's durable metadata into the
+                # in-memory cache before _resolve_run_params reads it. The
+                # body fetched above for stale-mapping validation is reused
+                # so no second GET is issued.
+                await self._load_thread_agent(client, msg, thread_id, thread=thread)
 
         # No existing thread found — create a new one
         if thread_id is None:
@@ -1267,6 +1389,8 @@ class ChannelManager:
             reply = await self._fetch_gateway("/api/models", "models")
         elif command == "memory":
             reply = await self._fetch_gateway("/api/memory", "memory")
+        elif command == "agent":
+            reply = await self._handle_agent_command(msg, parts[1] if len(parts) > 1 else "")
         elif command == "help":
             reply = (
                 "Available commands:\n"
@@ -1275,6 +1399,8 @@ class ChannelManager:
                 "/status — Show current thread info\n"
                 "/models — List available models\n"
                 "/memory — Show memory status\n"
+                "/agent list — List your Custom Agents\n"
+                "/agent use <name> — Start a new conversation with an agent\n"
                 "/help — Show this help"
             )
         else:
@@ -1290,6 +1416,60 @@ class ChannelManager:
             metadata=_slim_metadata(msg.metadata),
         )
         await self.bus.publish_outbound(outbound)
+
+    async def _handle_agent_command(self, msg: InboundMessage, args: str) -> str:
+        """List owner-scoped agents or pin one to a fresh conversation.
+
+        EAI adaptation of upstream e3df6ea4a (#5168): agent identity and the
+        SDK client go through EAI's per-owner routing
+        (``_resolve_owner_user_id`` / ``_get_client``) instead of upstream's
+        ``_channel_storage_user_id`` helper and header-less client.
+        """
+        parts = args.split()
+        if len(parts) == 1 and parts[0].lower() == "list":
+            user_id = self._resolve_owner_user_id(msg)
+            try:
+                agents = await asyncio.to_thread(list_custom_agents, user_id=user_id)
+            except Exception:
+                logger.exception("Failed to list custom agents for channel command")
+                return "Failed to list agents."
+
+            rows = ["• lead_agent — Default agent"]
+            sorted_agents = sorted(agents, key=lambda agent: agent.name)
+            for agent in sorted_agents[:MAX_CHANNEL_AGENT_LIST_ITEMS]:
+                description = " ".join((agent.description or "").split())[:MAX_CHANNEL_AGENT_DESCRIPTION_CHARS]
+                rows.append(f"• {agent.name} — {description}" if description else f"• {agent.name}")
+            if len(sorted_agents) > MAX_CHANNEL_AGENT_LIST_ITEMS:
+                rows.append(f"… and {len(sorted_agents) - MAX_CHANNEL_AGENT_LIST_ITEMS} more")
+            return "Available agents:\n" + "\n".join(rows)
+
+        if len(parts) == 2 and parts[0].lower() == "use":
+            raw_name = parts[1]
+            if raw_name.lower() == DEFAULT_ASSISTANT_ID:
+                agent_name = DEFAULT_ASSISTANT_ID
+                display_name = DEFAULT_ASSISTANT_ID
+            else:
+                try:
+                    agent_name = _normalize_custom_agent_name(raw_name)
+                except InvalidChannelSessionConfigError:
+                    return "Invalid agent name. Use letters, digits, and hyphens only."
+                try:
+                    await asyncio.to_thread(
+                        load_agent_config,
+                        agent_name,
+                        user_id=self._resolve_owner_user_id(msg),
+                    )
+                except FileNotFoundError:
+                    return f"Agent '{agent_name}' was not found. Use /agent list to see available agents."
+                except Exception:
+                    logger.exception("Failed to load custom agent for channel command")
+                    return f"Failed to select agent '{agent_name}'."
+                display_name = agent_name
+
+            await self._create_thread(self._get_client(self._resolve_owner_user_id(msg)), msg, agent_name=agent_name)
+            return f"Agent '{display_name}' selected. New conversation started."
+
+        return "Usage: /agent list or /agent use <name>"
 
     async def _fetch_gateway(self, path: str, kind: str) -> str:
         """Fetch data from the Gateway API for command responses."""
