@@ -1,0 +1,84 @@
+{
+  "slug": "consulting",
+  "类别": "咨询服务类",
+  "aliases": [
+    "全过程工程咨询方案",
+    "造价咨询标书",
+    "咨询服务工作大纲",
+    "技术建议书",
+    "Technical Proposal"
+  ],
+  "chapters": [
+    {
+      "no": 1,
+      "title": "项目理解与项目整体服务设想及策划",
+      "notes": null
+    },
+    {
+      "no": 2,
+      "title": "项目重点难点分析及对策",
+      "notes": null
+    },
+    {
+      "no": 3,
+      "title": "人员队伍建设与项目团队配置（项目负责人、各专业咨询人员、资信与类似业绩）",
+      "notes": null
+    },
+    {
+      "no": 4,
+      "title": "与相关单位的配合协调方案",
+      "notes": null
+    },
+    {
+      "no": 5,
+      "title": "项目管理制度（内部管理、成果三级审核）",
+      "notes": null
+    },
+    {
+      "no": 6,
+      "title": "决策阶段咨询服务方案（投资决策/可行性研究）",
+      "notes": null
+    },
+    {
+      "no": 7,
+      "title": "设计阶段咨询服务方案",
+      "notes": null
+    },
+    {
+      "no": 8,
+      "title": "招标阶段咨询服务方案",
+      "notes": null
+    },
+    {
+      "no": 9,
+      "title": "施工阶段咨询服务方案（过程造价控制、变更与支付审核）",
+      "notes": null
+    },
+    {
+      "no": 10,
+      "title": "竣工阶段咨询服务方案（结算审核、竣工决算）",
+      "notes": null
+    },
+    {
+      "no": 11,
+      "title": "进度管理方案",
+      "notes": null
+    },
+    {
+      "no": 12,
+      "title": "质量管理与技术（成果）管理方案",
+      "notes": null
+    },
+    {
+      "no": 13,
+      "title": "风险管理方案与应急预案",
+      "notes": null
+    },
+    {
+      "no": 14,
+      "title": "合理化建议、项目档案管理与服务承诺",
+      "notes": null
+    }
+  ],
+  "source": "咨询服务类投标技术建议书/服务方案，别名：全过程工程咨询方案、造价咨询标书、咨询服务工作大纲（Technical Proposal）（confidence 7/10）"
+}
