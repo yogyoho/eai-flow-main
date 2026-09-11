@@ -17,10 +17,10 @@ describe("core copy loading", () => {
     // EAI-CUSTOM: upstream asserts a `buzz` channel EAI does not ship; the
     // closest EAI channel is wechat (iLink integration).
     expect(english.channels.descriptions.wechat).toBe(
-      "WeChat iLink messages through your DeerFlow bot.",
+      "WeChat iLink messages through your EAIFlow bot.",
     );
     expect(chinese.channels.descriptions.wechat).toBe(
-      "通过 DeerFlow Bot 接收微信 iLink 消息。",
+      "通过 EAIFlow Bot 接收微信 iLink 消息。",
     );
   });
 });
