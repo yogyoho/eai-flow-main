@@ -7664,3 +7664,57 @@ class TestBuildDocsScope:
         state = _copy_prestate(tmp_path, merged=True)
         rc = _build_module().main(["--state-dir", str(state), "--out", str(tmp_path / "out"), "--docs", "bogus"])
         assert rc == 1, "argparse choices 拒绝→统一改道 1(2 保留给 ingest OCR 分流)"
+
+    def test_docs_overall_placeholder_keeps_tech_booklet_directory(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        assert _build_module().main(["--state-dir", str(state), "--out", str(out), "--docs", "overall"]) == 0
+        assert "技术卷分册目录" in _doc_texts(out, "整体方案"), "占位页须保留技术卷分册目录(tech_ref 恒渲, 不随落盘范围收窄)"
+
+    def test_cross_scope_stray_anomaly_after_credential_loss(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        _set_clause(state, "ZB-C-001", source_ref={"section": "技术要求", "para": 1, "page": None, "quote": "投标人应满足要求, 参照东智残留装备制造有限公司产品标准执行。"})
+        out = tmp_path / "out"
+        mod = _build_module()
+        assert mod.main(["--state-dir", str(state), "--out", str(out)]) == 3  # 实体门 blocked: 凭据+契约标记被清除, 册文件照常落盘
+        assert not (out / "delivery_manifest.json").exists() and not (out / ".delivery-contract").exists()
+        overall_booklet = next(p for p in sorted(out.glob("整体方案-*.md")))
+        rc = mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "technical"])
+        assert rc == 3, "跨范围 stray 必须走异常通道(exit 3)"
+        summary = _last_summary_json(capsys)
+        strays = [a for a in summary["anomalies"] if a.get("kind") == "cross_scope_stray"]
+        assert strays, "凭据丢失后单范围 rebuild 须检出另一范围册文件未并入凭据"
+        assert "整体方案-" in strays[0]["message"], "异常消息须点名 stray 册文件"
+        assert overall_booklet.exists(), "范围外册文件不被本轮触碰(只告警不代删不代写)"
+        assert (out / "delivery_manifest.json").is_file(), "窄凭据已重建; 恢复=两范围各重跑一次合并"
+
+    def test_corrupt_manifest_skips_sweep_keeps_files(self, tmp_path, capsys):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        mod = _build_module()
+        assert mod.main(["--state-dir", str(state), "--out", str(out)]) == 0
+        before = {p.name for p in out.iterdir()}
+        (out / "delivery_manifest.json").write_text("{not json", encoding="utf-8")
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "overall"]) == 0
+        summary = _last_summary_json(capsys)
+        assert any("清场跳过: delivery_manifest.json 不可解析——不做遗留文件删除" in w for w in summary["sweep"]), "不可解析 manifest 须有专项告警"
+        assert {p.name for p in out.iterdir()} == before, "不可解析 manifest: 不做遗留文件删除(零误删)"
+
+    def test_legacy_v3_narrowing_then_all_clears(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        out.mkdir()
+        (out / "商务卷.md").write_text("legacy v3", encoding="utf-8")
+        (out / "技术卷.md").write_text("legacy v3", encoding="utf-8")
+        mod = _build_module()
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "technical"]) == 0
+        assert (out / "商务卷.md").exists() and (out / "技术卷.md").exists(), "单范围清场收窄: v3 遗留双卷不碰"
+        assert mod.main(["--state-dir", str(state), "--out", str(out), "--docs", "all"]) == 0
+        assert not (out / "商务卷.md").exists() and not (out / "技术卷.md").exists(), "all 范围确定性移除 v3 遗留双卷(不依赖 manifest 在场与否)"
+
+    def test_first_single_scope_manifest_docs_keys(self, tmp_path):
+        state = _copy_prestate(tmp_path, merged=True)
+        out = tmp_path / "out"
+        assert _build_module().main(["--state-dir", str(state), "--out", str(out), "--docs", "overall"]) == 0
+        manifest = json.loads((out / "delivery_manifest.json").read_text(encoding="utf-8"))
+        assert set(manifest["docs"]) == {"整体方案"}, "首轮单范围: docs 统计只记本范围(技术卷未落盘不记)"

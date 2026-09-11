@@ -116,7 +116,7 @@ LEGACY_OUTPUT_FILES = ("商务卷.md", "技术卷.md")  # v3 遗留双卷——�
 # A(bid-proposal-overall) build --docs overall / B(bid-technical) build --docs technical;
 # 单范围: 范围外册/副表不重写不触碰, 索引卷分区重写, manifest 合并, 清场收窄。
 DOCS_CHOICES = ("overall", "technical", "all")
-_SCOPE_PREFIXES = {"overall": ("整体方案-",), "technical": ("技术卷-",), "all": ("整体方案-", "技术卷-")}
+_SCOPE_PREFIXES = {"overall": (f"{DOC_OVERALL}-",), "technical": (f"{DOC_TECH}-",), "all": (f"{DOC_OVERALL}-", f"{DOC_TECH}-")}
 MANIFEST_SKILL = "bid-proposal-writing"  # 交付契约属主(Plan3 Task2 改 bid-proposal-overall)
 
 SLOT_TYPE_LABELS = {"text": "文字槽", "table": "表格槽", "image": "图片槽", "format_check": "格式核验槽", "group": "结构组"}
@@ -1346,20 +1346,22 @@ def _split_index_group(index_md: str, doc: str) -> str | None:
 def _sweep_stale_outputs(out_dir: Path, stale_names: set[str], docs: str) -> list[str]:
     """上一轮交付清场(11A, --docs 收窄版): 只删调用方判定的 stale 名单
     (旧 manifest 列名 − 合并集, 已过范围过滤)。manifest 缺失 → 跳过清场
-    (首轮构建合法态; all 范围附带确定性移除 v3 遗留双卷)。防御: 只删 out_dir 直属普通文件。
+    (首轮构建或凭据丢失); all 范围附带确定性移除 v3 遗留双卷(不依赖 manifest
+    在场与否)。防御: 只删 out_dir 直属普通文件。
     """
+    # v3→v4 升级边角: 旧双卷(商务卷/技术卷.md)文件名固定无歧义——all 范围确定性移除,
+    # 防其以"杂散 .md"身份触发自家交付门反控(单范围不碰: 清场收窄)。不依赖 manifest
+    # 在场与否: 首轮单范围 build 会补建 manifest, 收窄语义不得因 manifest 出现而漂移。
+    removed_legacy: list[str] = []
+    if docs == "all":
+        for legacy in LEGACY_OUTPUT_FILES:
+            target = out_dir / legacy
+            if target.is_file():
+                target.unlink()
+                removed_legacy.append(legacy)
     manifest_path = out_dir / MANIFEST_NAME
     if not manifest_path.is_file():
-        # v3→v4 升级边角: 旧双卷(商务卷/技术卷.md)无 manifest 可依——all 范围确定性移除,
-        # 防其以"杂散 .md"身份触发自家交付门反控(单范围不碰: 清场收窄)
-        removed_legacy: list[str] = []
-        if docs == "all":
-            for legacy in LEGACY_OUTPUT_FILES:
-                target = out_dir / legacy
-                if target.is_file():
-                    target.unlink()
-                    removed_legacy.append(legacy)
-        note = f"清场跳过: {MANIFEST_NAME} 缺失(首轮构建)"
+        note = f"清场跳过: {MANIFEST_NAME} 缺失(首轮构建或凭据丢失)"
         return [note + (f"; 移除 v3 遗留双卷 {', '.join(removed_legacy)}" if removed_legacy else "")]
     deleted: list[str] = []
     for name in sorted(stale_names):
@@ -1367,7 +1369,12 @@ def _sweep_stale_outputs(out_dir: Path, stale_names: set[str], docs: str) -> lis
         if target.parent == out_dir and target.is_file():
             target.unlink()
             deleted.append(name)
-    return [f"清场删除上一轮遗留 {len(deleted)} 文件: {', '.join(sorted(deleted))}"] if deleted else []
+    notes: list[str] = []
+    if deleted:
+        notes.append(f"清场删除上一轮遗留 {len(deleted)} 文件: {', '.join(sorted(deleted))}")
+    if removed_legacy:
+        notes.append(f"移除 v3 遗留双卷 {', '.join(removed_legacy)}")
+    return notes
 
 
 def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
@@ -1393,14 +1400,12 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     depth_anomalies, depth_summary = run_depth_gate(responses, depth_targets, skip_reason=depth_skip_reason)
     anomalies.extend(depth_anomalies)
 
-    # --docs 范围渲染: technical 不渲 overall; overall 渲 technical 仅为占位页分册目录
-    # (tech_ref——以当前 state 投影, technical 文件不落盘); all 两组全渲。
-    slots = load_slots(state_dir)
+    # 技术卷恒渲(占位页 tech_ref 分册目录 + 实体门扫描面都依赖); 是否落盘由下方
+    # docs != "overall" 守卫决定——渲染≠写盘, 单范围绝不重写范围外册文件。
+    slots = load_slots(state_dir)  # v4 T6c: 围栏域冻结值(缺失=空表, 未知键在注入期硬错)
+    tech_doc = render_doc_booklets(DOC_TECH, structure, clauses, responses, slots=slots)
+    anomalies.extend(tech_doc["anomalies"])
     overall_doc: dict | None = None
-    tech_doc: dict | None = None
-    if docs in ("all", "technical"):
-        tech_doc = render_doc_booklets(DOC_TECH, structure, clauses, responses, slots=slots)
-        anomalies.extend(tech_doc["anomalies"])
     if docs in ("all", "overall"):
         overall_doc = render_doc_booklets(DOC_OVERALL, structure, clauses, responses, tech_ref=tech_doc, slots=slots)
         anomalies.extend(overall_doc["anomalies"])
@@ -1412,6 +1417,8 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     scan_texts: dict[str, str] = {}
     if overall_doc is not None:
         scan_texts.update(overall_doc["contents"])
+    # 技术卷恒渲 → --docs overall 也扫技术卷文本(有意为之): 实体门扫描面与落盘范围
+    # 解耦, 恢复改动前全目录口径——编造正文的藏身处不因 build 范围收窄而漏扫。
     if tech_doc is not None:
         scan_texts.update(tech_doc["contents"])
     flagged, hits = run_entity_lint(clauses, whitelist, extra_texts=scan_texts)
@@ -1430,7 +1437,7 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
         sec = _split_index_group(existing_index, DOC_OVERALL)
         if sec is not None:
             index_groups.append({"doc": DOC_OVERALL, "section": sec})
-    if docs != "overall" and tech_doc is not None:
+    if docs != "overall" and tech_doc is not None:  # WRITE 守卫(技术卷恒渲, 此处只决定索引组是否重建), 勿"简化"为 tech_doc is not None
         index_groups.append({"doc": DOC_TECH, "files": tech_doc["files"], "booklets": tech_doc["booklets"]})
     else:
         sec = _split_index_group(existing_index, DOC_TECH)
@@ -1444,7 +1451,7 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     outputs: dict[str, str] = {}
     if overall_doc is not None:
         outputs.update(overall_doc["contents"])
-    if docs != "overall" and tech_doc is not None:
+    if docs != "overall" and tech_doc is not None:  # WRITE 守卫(非渲染守卫): 技术卷恒渲, 此处只决定册文件是否落盘, 勿"简化"为 tech_doc is not None
         outputs.update(tech_doc["contents"])
     outputs[INDEX_FILE] = index_md
     if docs == "all":
@@ -1455,8 +1462,9 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     # manifest 合并语义(spec §3.2): 读既有 manifest → 范围内条目更新、范围外保留。
     manifest_parse_warning: str | None = None
     manifest_path = out_dir / MANIFEST_NAME
+    had_manifest = manifest_path.is_file()
     old_manifest: dict | None = None
-    if manifest_path.is_file():
+    if had_manifest:
         try:
             parsed = json.loads(manifest_path.read_text(encoding="utf-8"))
             old_manifest = parsed if isinstance(parsed, dict) else None
@@ -1467,6 +1475,24 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     old_deliverables = [n for n in (old_manifest or {}).get("deliverables", []) if isinstance(n, str)]
     stale_names = {n for n in old_deliverables if n not in written_names and _in_stale_scope(n, docs)}
     merged_deliverables = sorted((set(old_deliverables) - stale_names) | written_names)
+    # 跨范围 stray 告警(评审 Important-2): 凭据被实体门 blocked 清除/外部删除后, 单范围
+    # rebuild 会照"首轮"语义写出窄凭据——另一范围盘上册文件沦为杂散 .md, 交付门(11A)
+    # 整单拒且无提示。渲染属主在另一范围, 本轮不代写不代删, 只发异常指恢复路径(两范围
+    # 各重跑一次 build 即合并凭据)。manifest 在场(可解析/不可解析)时不触发: 不可解析
+    # 已另有专项告警, 不双报。
+    if docs != "all" and not had_manifest and out_dir.is_dir():
+        other_prefix = (_SCOPE_PREFIXES["technical"] if docs == "overall" else _SCOPE_PREFIXES["overall"])[0]
+        strays = sorted(
+            p.name
+            for p in out_dir.glob("*.md")
+            if p.parent == out_dir and p.is_file() and p.name.startswith(other_prefix) and p.name not in merged_deliverables
+        )
+        if strays:
+            shown = ", ".join(strays[:5]) + (f" 等{len(strays)}个" if len(strays) > 5 else "")
+            anomalies.append({
+                "kind": "cross_scope_stray",
+                "message": f"盘上存在 {len(strays)} 个范围外册文件未并入交付凭据(疑似凭据丢失/被 blocked 清除): {shown}——恢复=两范围各重跑一次 build 合并凭据",
+            })
     old_files = (old_manifest or {}).get("files", {})
     old_files = old_files if isinstance(old_files, dict) else {}
     files_sha = {
@@ -1477,7 +1503,7 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     docs_stats: dict = dict(old_docs_stats) if isinstance(old_docs_stats, dict) else {}
     if overall_doc is not None:
         docs_stats[DOC_OVERALL] = {"booklets": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"])}
-    if docs in ("all", "technical"):
+    if docs in ("all", "technical"):  # STATS 守卫(技术卷恒渲, 此处只决定凭据 docs 统计是否记技术卷), 勿"简化"为 tech_doc is not None
         docs_stats[DOC_TECH] = {"booklets": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"])}
 
     sweep_warnings = _sweep_stale_outputs(out_dir, stale_names, docs)
@@ -1534,7 +1560,7 @@ def run_build(state_dir: Path, out_dir: Path, docs: str = "all") -> int:
     summary_booklets: dict = {}
     if overall_doc is not None:
         summary_booklets[DOC_OVERALL] = {"count": len(overall_doc["files"]), "pages_est": booklets.total_pages(overall_doc["booklets"]), "warnings": overall_doc["warnings"]}
-    if docs in ("all", "technical"):
+    if docs in ("all", "technical"):  # STATS 守卫(同 docs_stats: 摘要 booklets 只报本轮写盘/凭据范围), 勿"简化"为 tech_doc is not None
         summary_booklets[DOC_TECH] = {"count": len(tech_doc["files"]), "pages_est": booklets.total_pages(tech_doc["booklets"]), "warnings": tech_doc["warnings"]}
     summary = {
         "docs": docs,
