@@ -136,6 +136,23 @@
       "oauth": null,
       "description": "Ontology semantic layer: cross-module object/link navigation, search, traverse and aggregate over the market-domain registry (contract_price / spare_parts / bid_quote). Read-only."
     },
+    "doc-graph": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": [
+        "-m",
+        "app.extensions.ontology.doc_graph.mcp"
+      ],
+      "env": {
+        "ONTOLOGY_DB_URL": "postgresql+asyncpg://agentflow:agentflow123@postgres-ext:5432/agentflow"
+      },
+      "cwd": "/app/backend",
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Document graph builder: ingest LLM-extracted bid entities/relations/mentions, review and merge entities. Write-side complement to the read-only ontology server (doc_graph domain)."
+    },
     "knowledge-factory": {
       "enabled": true,
       "type": "http",
