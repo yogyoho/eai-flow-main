@@ -29,7 +29,7 @@ async def test_describe_compact_under_token_budget():
     """紧凑默认 <2k token；full 显式更大且含属性明细。"""
     out = await ontomcp._describe({})
     payload = json.loads(out[0].text)
-    assert payload["success"] and payload["object_type_count"] == 11 and payload["link_type_count"] == 12
+    assert payload["success"] and payload["object_type_count"] == 14 and payload["link_type_count"] == 16
     assert "fingerprint" in payload and "registry_version" in payload
     compact_chars = len(out[0].text)
     full = await ontomcp._describe({"full": True})

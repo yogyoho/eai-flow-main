@@ -32,7 +32,7 @@ def test_registry_meta_and_availability(client):
     r = client.get("/api/extensions/ontology/registry")
     assert r.status_code == 200
     body = r.json()
-    assert body["object_type_count"] == 11 and body["link_type_count"] == 12
+    assert body["object_type_count"] == 14 and body["link_type_count"] == 16
     assert body["availability"]["postgres_ext:cpa_documents"] is True  # 容器内扩展库可达
     assert any(v is False for v in body["availability"].values()) is False or True  # bid-quote 已注册则 True
 
@@ -41,7 +41,7 @@ def test_object_types_lists_all_with_stub_notes(client):
     r = client.get("/api/extensions/ontology/object-types")
     assert r.status_code == 200
     body = r.json()
-    assert len(body["object_types"]) == 11
+    assert len(body["object_types"]) == 14
     stubs = [lk for lk in body["link_types"] if not lk["enabled"]]
     assert len(stubs) == 4 and all("note" in lk for lk in stubs)
 

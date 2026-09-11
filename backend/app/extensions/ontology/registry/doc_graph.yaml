@@ -42,7 +42,7 @@ object_types:
     properties:
       - { name: id, api_name: id, type: uuid, description: 主键 }
       - { name: subject_id, api_name: subjectId, type: uuid, description: 主体实体, indexed: true, filterable: true }
-      - { name: predicate, api_name: predicate, type: string, description: 谓词, filterable: true, enum: [bidder_of_project, bidder_supplies_goods, bidder_holds_qualification, project_won_by_bidder] }
+      - { name: predicate, api_name: predicate, type: string, description: 谓词, indexed: true, filterable: true, enum: [bidder_of_project, bidder_supplies_goods, bidder_holds_qualification, project_won_by_bidder] }
       - { name: object_id, api_name: objectId, type: uuid, description: 客体实体, indexed: true, filterable: true }
       - { name: attrs, api_name: attrs, type: json, description: 属性 }
       - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
@@ -66,7 +66,7 @@ object_types:
       - { name: id, api_name: id, type: uuid, description: 主键 }
       - { name: entity_id, api_name: entityId, type: uuid, description: 指向实体, indexed: true, filterable: true }
       - { name: relation_id, api_name: relationId, type: uuid, description: 指向关系, indexed: true, filterable: true }
-      - { name: thread_id, api_name: threadId, type: string, description: 来源会话 }
+      - { name: thread_id, api_name: threadId, type: string, description: 来源会话, filterable: true }
       - { name: document_id, api_name: documentId, type: string, description: 来源文档, filterable: true }
       - { name: doc_span, api_name: docSpan, type: json, description: 文档内定位 }
       - { name: quote, api_name: quote, type: string, description: 原文引用 }

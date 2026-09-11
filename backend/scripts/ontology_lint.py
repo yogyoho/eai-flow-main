@@ -22,15 +22,16 @@ from app.extensions.ontology.registry import load_registry
 
 SENSITIVE_KEYWORDS = re.compile(r"cred|secret|password|passwd|connection|salary|id_card|phone|身份证|薪酬|工资|token|api_key|private", re.I)
 
-# D14: lint 范围 = 市场域四模块表前缀；白名单 = 显式豁免（run_history 二期登记）。
+# D14: lint 范围 = 市场域 + doc_graph 表前缀；白名单 = 显式豁免
+# （cpa/csp_run_history: 二期登记; dg_merges: 内部审计表, 永不对外暴露）。
 SCOPE_TABLE_PREFIXES = ("cpa_", "csp_", "dg_")
 WHITELIST_TABLES = {"cpa_run_history", "csp_run_history", "dg_merges"}
 
 
 def check_market_tables_registered(reg) -> list[str]:
-    """同 PR 规则（D14）：市场域新模块新建表须在同一 PR 登记 ontology 注册表。
+    """同 PR 规则（D14）：SCOPE 前缀域（市场域四模块 + doc_graph）新模块新建表须在同一 PR 登记 ontology 注册表。
 
-    仅对白名单外的市场域表生效——存量表未登记会报错，逼新表上线即登记。
+    仅对白名单外的 SCOPE 表生效——存量表未登记会报错，逼新表上线即登记。
     """
     errors: list[str] = []
     try:
