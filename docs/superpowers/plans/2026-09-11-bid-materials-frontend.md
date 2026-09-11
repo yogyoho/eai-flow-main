@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 落地应用中心「投标资料管理」前端——`/bid-materials` 路由 + 扩展组件（资质版本库 tab + 标书样例库 tab），消费 Plan 1 已就位的 `/api/extensions/bid-materials/*` 全部端点。
+**Goal:** 落地应用中心「投标资料管理」前端——`/bid-materials` 路由 + 扩展组件（资质版本库 tab + 标书样例库 tab），消费 Plan 1 已就位的 `/api/extensions/bid-materials/*` 端点；并按用户定案（2026-09-11「检索语料只收技术章」）改造 bank_compile——**RAGFlow 只推技术章、深度统计只算技术章**（商务部分对响应仿写无价值，进语料=噪声）。
 
-**Architecture:** 镜像 `coal-eia-samples` 双层形态——`app/bid-materials/page.tsx` 薄壳（ShellLayout+Suspense）+ `extensions/bid-materials/` 自包含扩展（api 层 + 双 tab 组件）。api 层复刻 `eia-samples/sample-library-api.ts` 的自包含 fetch+CSRF 模式（与 extensions 路由的 cookie+CSRF 契约同款）；资质文件下发用 `<a href>` 直链（cookie 认证随行，GET 免 CSRF）。纯前端零后端改动。
+**Architecture:** 镜像 `coal-eia-samples` 双层形态——`app/bid-materials/page.tsx` 薄壳（ShellLayout+Suspense）+ `extensions/bid-materials/` 自包含扩展（api 层 + 双 tab 组件）。api 层复刻 `eia-samples/sample-library-api.ts` 的自包含 fetch+CSRF 模式（与 extensions 路由的 cookie+CSRF 契约同款）；资质文件下发用 `<a href>` 直链（cookie 认证随行，GET 免 CSRF）。前端之外唯一改动=bank_compile（skill B 离线工具）的技术章筛选。
 
 **Tech Stack:** Next.js 16 App Router、React 19、Shadcn ui 组件（Dialog/Table/Badge 等，与 eia-samples 同款）、Rstest（node 环境测 api 层）。
 
@@ -357,7 +357,113 @@ git commit -m "feat(bid-materials): 前端 api 层(资质版本库+样例台账,
 
 ---
 
-### Task 2: 路由薄壳 + 扩展骨架（双 tab 壳）
+### Task 2: bank_compile 技术章检索域（RAGFlow 只推技术章 + 深度统计技术化）
+
+**用户定案（2026-09-11）：** 样例文件只有技术部分有供源价值；商务部分（投标函/资质/报价/授权等）进 RAGFlow=检索噪声，进深度统计=污染 P25 基线。切片/bank_index 保持全册 1:1 不变（纪律），变的只有**推送范围与统计口径**。
+
+**Files:**
+- Modify: `skills/public/bid-technical/scripts/bank_compile.py`
+- Test: `backend/tests/test_bank_compile.py`（追加）
+- 数据: `skills/public/bid-technical/references/depth_targets.json`（重跑真实语料后自然更新）
+
+- [ ] **Step 1: 写失败测试**（追加到 test_bank_compile.py；fixture 复用既有 tender_md，另造含技术章的 fixture）
+
+```python
+@pytest.fixture
+def mixed_tender_md(tmp_path):
+    md = (
+        "# 投标文件格式\n\n"
+        "## 一、投标函\n\n"
+        "致：江西师范大学。我方愿以总金额 1,280,000.00 元（含税）承接本项目。\n\n"
+        "## 二、法定代表人身份证明\n\n"
+        "身份证号 360102199001011234，姓名张三。\n\n"
+        "## 三、开标一览表\n\n"
+        "| 序号 | 名称 | 数量 | 单价(元) |\n| --- | --- | --- | --- |\n"
+        "| 1 | 课堂观测终端 | 200 | 3,500.00 |\n\n"
+        "## 四、技术标\n\n"
+        "### 4.1 项目总体理解\n\n"
+        "本项目采用课堂观测终端阵列与边缘网关协同架构，实现课堂教学行为的"
+        "常态化采集与结构化分析，总体技术路线分为感知层、传输层、平台层三层设计。\n\n"
+        "### 4.2 技术响应逐项偏离说明\n\n"
+        "针对招标技术要求第 3.2 条课堂行为识别准确率不低于 95% 的要求，我方方案"
+        "通过双模型级联推理与课堂场景专用微调数据集达成，实测基准集准确率 96.8%，"
+        "并附第三方检测报告编号与复测方法说明。\n"
+    )
+    p = tmp_path / "mixed_tender.md"
+    p.write_text(md, encoding="utf-8")
+    return p
+
+
+def test_tech_chapters_selected_by_title(mixed_tender_md):
+    """技术章筛选: H1'技术标'命中→其下全部 H2 继承; 商务章(投标函/身份证明/开标一览表)不入选。"""
+    text = bc.load_text(mixed_tender_md)
+    chapters = bc.split_chapters(text)
+    tech, titles = bc.select_tech_chapters(chapters)
+    assert len(tech) == 2, "技术标 H1 下 4.1/4.2 两个 H2 章"
+    assert all("技术" in t or "理解" in t or "响应" in t for t in titles), f"{titles}"
+    assert not any("投标函" in t or "开标一览" in t for t in titles)
+
+
+def test_stats_and_push_scope_tech_only(mixed_tender_md, tmp_path):
+    """深度统计口径=技术章; 全册统计路径不得再被商务短段落污染。"""
+    text = bc.load_text(mixed_tender_md)
+    tech, _ = bc.select_tech_chapters(bc.split_chapters(text))
+    tech_lens = sorted(bc.paragraph_lengths("\n\n".join(tech)))
+    all_lens = sorted(bc.paragraph_lengths(text))
+    assert bc.percentile(tech_lens, 25) >= bc.percentile(all_lens, 25) or len(tech_lens) < len(all_lens), "口径分离可观察"
+```
+
+（执行注：第二个断言写成对"两口径可分离"的观察性钉即可——真正的硬契约是 `compile_bank`/`main` 的 depth 统计输入换成了 tech-only 文本，实现后可加一条「构造全商务文本→floor 统计基于空技术集时落入 fallback」的负向用例，见 Step 3 的 fallback 契约。）
+
+- [ ] **Step 2: 跑测试确认失败**
+
+Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bank_compile.py -k tech -v`
+Expected: FAIL（`no attribute select_tech_chapters`）
+
+- [ ] **Step 3: 实现**（先读 bank_compile.py 现实现，按以下契约改）
+
+3a. 技术章筛选（新纯函数）：
+
+```python
+TECH_TITLE_RE = re.compile(r"技术标|技术部分|技术方案|技术响应|技术要求|实施方案|服务方案|技术服务|项目实施|技术文件|总体理解|偏离说明")
+TECH_SCOPE_H1_RE = re.compile(r"技术标|技术部分|技术文件|技术方案")  # H1 命中→其下 H2 全部继承
+
+
+def select_tech_chapters(chapters: list[dict]) -> tuple[list[str], list[str]]:
+    """技术章筛选(用户定案 2026-09-11): 标题关键词白名单+H1 范围继承。
+    返回 (技术章文本列表, 技术章标题列表); 空集=合法态(调用方 fallback 告警)。"""
+    tech: list[str] = []
+    titles: list[str] = []
+    inherited = False
+    for c in chapters:
+        if c["level"] == 1:
+            inherited = bool(TECH_SCOPE_H1_RE.search(c["title"]))
+        if inherited or TECH_TITLE_RE.search(c["title"]):
+            tech.append(c["text"])
+            titles.append(c["title"])
+    return tech, titles
+```
+
+3b. **推送范围**：`main` 的 RAGFlow 推送段——推送文本从脱敏全册换成 `"\n\n".join(tech_texts)`（文档名不变——`29f0178ed` 的同名先删再传幂等语义自动替换旧全册文档）；`tech_texts` 为空 → **跳过推送** + summary 增 `"ragflow_skip_reason": "no_tech_chapter"` + stderr/告警行列出全部章标题（供维护者修 --map 或分类词表），**绝不回退推全册**（fail-closed，语料干净优先）。
+3c. **统计口径**：深度统计（`paragraph_lengths` → P25 floor / 全库 median）与数值指纹池的输入换成技术章拼接文本；`depth_targets.json` 增 `"scope": "technical_chapters"` 字段（消费方 build_output 的 `load_depth_targets` 只读 absolute_floor/median，新增键无害——无需改 build）；bank_index/samples_bank 切片**保持全册 1:1 不动**。
+3d. **确定性**：筛选/拼接/统计全部确定性，重跑字节一致契约不破（既有 `test_compile_outputs_full_pipeline` 的字节幂等用例是回归钉——若它因 depth_targets 新增 `scope` 键字节变化而红，属预期破坏，更新该用例期望即可）。
+
+- [ ] **Step 4: 全绿 + 真实语料重推**
+
+Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_bank_compile.py -v`（全绿）
+
+真实语料重推（重生成 depth_targets + RAGFlow 技术章版）：对 Plan 2 T7 的三份标书源（`D:\14 九次方存档\` 下江西师大/东北大学/中石油转出 md）各跑一次 `bank_compile --ragflow-push`；若源文件不在本机 → 跳过并注明"重推待源文件在位"（depth_targets.json 以可得的语料重算，至少江西师大一份）。
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add skills/public/bid-technical/scripts/bank_compile.py backend/tests/test_bank_compile.py skills/public/bid-technical/references/depth_targets.json
+git commit -m "feat(bid-materials): bank_compile 技术章检索域——RAGFlow 只推技术章+深度统计技术化(用户定案 2026-09-11)"
+```
+
+---
+
+### Task 3: 路由薄壳 + 扩展骨架（双 tab 壳）
 
 **Files:**
 - Create: `frontend/src/app/bid-materials/page.tsx`
@@ -403,7 +509,7 @@ export { default as BidMaterials } from "./BidMaterials";
 export * from "./bid-materials-api";
 ```
 
-- [ ] **Step 3: BidMaterials.tsx**（tab 壳；两个子组件 Task 3/4 落地前先用占位空态保编译——占位仅 `text-muted-foreground` 文案，不带任何假数据）
+- [ ] **Step 3: BidMaterials.tsx**（tab 壳；两个子组件 Task 4/5 落地前先用占位空态保编译——占位仅 `text-muted-foreground` 文案，不带任何假数据）
 
 ```tsx
 "use client";
@@ -441,7 +547,7 @@ export default function BidMaterials() {
 }
 ```
 
-- [ ] **Step 4: 骨架占位组件保编译**（QualificationLibrary.tsx / SampleLibrary.tsx 先建空壳 `export function X() { return <div className="p-4 text-sm text-muted-foreground">加载中（Task N 落地）</div>; }`，Task 3/4 替换全文）
+- [ ] **Step 4: 骨架占位组件保编译**（QualificationLibrary.tsx / SampleLibrary.tsx 先建空壳 `export function X() { return <div className="p-4 text-sm text-muted-foreground">加载中（Task N 落地）</div>; }`，Task 4/5 替换全文）
 
 - [ ] **Step 5: 门禁 + Commit**
 
@@ -453,20 +559,21 @@ git commit -m "feat(bid-materials): /bid-materials 路由薄壳+双 tab 骨架"
 
 ---
 
-### Task 3: 样例库 tab（镜像 SampleLibrary library-tab）
+### Task 4: 样例库 tab（镜像 SampleLibrary library-tab；技术供源框架）
 
 **Files:**
-- Modify: `frontend/src/extensions/bid-materials/SampleLibrary.tsx`（Task 2 占位全文替换）
+- Modify: `frontend/src/extensions/bid-materials/SampleLibrary.tsx`（Task 3 占位全文替换）
 
 - [ ] **Step 1: 复制改造**——以 `frontend/src/extensions/eia-samples/SampleLibrary.tsx` 为基底复制到本目录，按下表逐项改造（先读源文件全文再动手）：
 
 | 改造点 | 动作 |
 |---|---|
-| 文件头注释 | 换为 `// EAI-CUSTOM (Plan 4): 标书样例台账 tab——镜像 eia-samples SampleLibrary library-tab; eia 域专用提取/质检面板不复刻(spec §2.3 samples 端点族)。` |
+| 文件头注释 | 换为 `// EAI-CUSTOM (Plan 4): 标书样例台账 tab——镜像 eia-samples SampleLibrary library-tab; eia 域专用提取/质检面板不复刻(spec §2.3 samples 端点族)。样例库=技术供源库(用户定案 2026-09-11): 检索语料/深度统计只取技术章(bank_compile 侧已实现), 本台账管理全册登记与溯源。` |
+| 页面文案 | tab 区头/空态文案按「技术供源库」框架表述（如副标题注明：检索语料仅含技术章，商务章不入库推送） |
 | import | `KFSampleRecord/KFSampleUpsertInput/...` → 从 `./bid-materials-api` 导入 `BidSampleRecord/BidSampleUpsertInput/SAMPLE_SCENARIOS/SAMPLE_STATUSES/bidMaterialsApi` |
 | 场景/状态过滤枚举 | eia 场景 7 项 → `SAMPLE_SCENARIOS`（1 项）+ 新增 **行业 industry** 与 **项目类别 project_category** 两个自由文本过滤输入（backend 支持透传）替换原 scenario 七选一的位置 |
 | 列表加载/刷新/分页逻辑 | `sampleLibraryApi.list` → `bidMaterialsApi.samples.list`（注意响应形态裸数组 vs 包裹——按 Task 1 实读对齐）；eia 的 `variant/confidence` 列删除 |
-| 表格列 | 标题/行业/项目类别/场景/状态/file_hash 前 8 位/入库时间；行操作=停用（confirm 后 `samples.disable`）+详情（notes 展开） |
+| 表格列 | 标题/行业/项目类别/场景/状态/file_hash 前 8 位（BidSample 响应无时间戳字段——不渲染时间列）；行操作=停用（confirm 后 `samples.disable`）+详情（notes/source_path 展开） |
 | CreateSampleDialog | 字段换成 title/source_path/file_hash/industry/project_category/scenario(默认 bid_sample)/status(默认 indexed)/notes；file_hash 留空时前端置 `""` 由后端约束 |
 | BulkImportDialog | 文本域粘贴 **registration.json 的 items 数组或单对象**（两种形态都 parse，提示文案注明「bank_compile 产 registration.json 直接粘贴」）；POST `samples.importBulk`；结果 `{created, updated, total}` 呈现 |
 | 删除 | extractTarget/qualityRefreshKey/ExtractDialog/QualityPanel 及其 tab 全部删除（eia 专属） |
@@ -482,10 +589,10 @@ git commit -m "feat(bid-materials): 样例库 tab(镜像 eia SampleLibrary: 过�
 
 ---
 
-### Task 4: 资质库 tab（列表/到期预警/登记/版本历史/回滚/停用）
+### Task 5: 资质库 tab（列表/到期预警/登记/版本历史/回滚/停用）
 
 **Files:**
-- Modify: `frontend/src/extensions/bid-materials/QualificationLibrary.tsx`（Task 2 占位全文替换；版本对话框内聚在同文件）
+- Modify: `frontend/src/extensions/bid-materials/QualificationLibrary.tsx`（Task 3 占位全文替换；版本对话框内聚在同文件）
 
 - [ ] **Step 1: 实现**（形态镜像 SampleLibrary 的 list+filter+Dialog 模式；全文按以下规格编写）
 
@@ -510,7 +617,7 @@ git commit -m "feat(bid-materials): 资质库 tab(到期预警/登记/版本历�
 
 ---
 
-### Task 5: 全量门禁 + 运行时核验 + 推送
+### Task 6: 全量门禁 + 运行时核验 + 推送
 
 - [ ] **Step 1**: `cd frontend && pnpm lint && pnpm typecheck && pnpm test`（全绿；e2e 不跑——纯新增路由无行为变更）
 - [ ] **Step 2**: `docker compose -p eai-docker restart frontend`，等 30s 后 `curl -s -o /dev/null -w "%{http_code}" http://localhost:2026/bid-materials` → 200/307（登录重定向）均算通过；容器日志无编译错误（`docker compose -p eai-docker logs frontend --tail 50`）
