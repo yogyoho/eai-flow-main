@@ -24,7 +24,7 @@
    - 常见异常与含义: `clause_not_live`(条款已被补遗替代/作废——应对新条款生成响应)、`clause_category_out_of_scope`(商务/资格/格式条款不走本通道)、`citations_missing_for_web`/`citations_url_missing_for_web`(web 供源必须逐条留引用+URL)、`citations_missing_for_sample`/`citations_source_doc_missing_for_sample`(sample 供源必须逐条留源文档引用)、`fabricated_requires_human_verify`(编造漏标人核——P4 强制)、`pipeline_metadata_in_text`(响应正文携带"槽位类型/待填提示"等管线 bullet——重写后再合并)、`placement_shape`/`placement_node_missing`(落位形态/锚点不在 structure.json)、`duplicate_clause_response`(同 clause_id 多条候选——保留唯一最新版)、`thin_response`/`boilerplate_heavy`(实质正文过薄且无供源留痕/高频套话占比超标——疑似空响应或套话填充, 重写后再合并; **fabricated 长正文不受影响**)。
 2. merge(命令照抄速查表): 幂等 upsert responses.json+placement 联动 structure 落位+clauses response_status 只升不降(unassigned→draft)+写盘后自动重签。
 
-本阶段完成后跑一次 snapshot.py 更新快照, 再进 B4 build。
+本阶段完成后跑一次 snapshot.py 更新快照, 再进 B3 章门(见下)。
 
 ## 两波编排与停车点(T7——300-1000 页标书的多轮预算纪律)
 
@@ -63,7 +63,7 @@ build_output.py(命令照抄速查表)以 `--docs technical` 产出**技术卷�
 3. `0-总目录索引.md`: 确定性投影的册清单(整体方案册组/技术卷册组), 分册导航与合并导出顺序以此为准; `--docs technical` 只重建索引卷技术卷节, 整体方案节原样保留(分区重写, 合并语义详见 A 的 build-overall.md)。
 4. `偏离表.md`: 仅强制+偏离项, **按招标模板拆两张**(technical 条款入技术偏离表, 其余入商务偏离表)。**(--docs all 重建, 由 A 发起)**
 5. `覆盖率报表.md`: 清单总数/已响应/待确认/未分配+**槽位编排表 sidecar**(自册集正文净化迁出的槽位元数据归属地, 含悬挂外键标注)。**(--docs all 重建, 由 A 发起)**
-6. `人核清单.md`: format_check 项(签字/盖章/份数/页码)全部人核; 模板原文比对项(照抄非确定性, 终稿前逐字比对招标文件); **生成内容人核**节(阶段B2 编造/仿写/引用逐条批量确认——P4)。**(--docs all 重建, 由 A 发起)**
+6. `人核清单.md`: format_check 项(签字/盖章/份数/页码)全部人核; 模板原文比对项(照抄非确定性, 终稿前逐字比对招标文件); **生成内容人核**节(阶段B2 编造/仿写/引用逐条批量确认——P4)。**(--docs all 重建, 由 A 发起; 单范围不重建副表——B 的 P4 以 B2 候选 needs_human_verify 全量呈现与本轮 build stdout 摘要 anomalies 为事实源, 需正式人核清单回 A 发起 --docs all)**
 7. `实体lint报告.md`: 实体白名单 diff 引用片段+**交付册全文**, 白名单外残留→标[待核对]并触发实体门(硬门: 未处置前无交付凭据; 连续 2 轮同残留→转人工清单); 报告含**候选白名单**节(确认入册即放行); lint 标注"LLM 辅助", 不称确定性。**(--docs all 重建, 由 A 发起)**
 
 交付(本技能止于 md, **不产 .docx**): 用 `present_files` 把**技术卷册组+索引卷技术卷节**(`--docs technical`; manifest 合并语义: 范围外册/副表不触碰, 索引未重建节原样保留——详见 A 的 build-overall.md)一次性交付(build 已直接写出 `/mnt/user-data/outputs/投标文件/`, 交付后自动同步到文档空间); **Word 导出与排版由用户在文档空间完成**——Agent 不调任何转换脚本、不用 python-docx 后处理(回放实证 2026-08-18 线程 1a80a1d8: 转换链路把管线元数据当正文写进 docx)。渲染边界如实向用户声明: 管道表格无法表达合并单元格/列宽→此类表格槽标[待人工复刻]并入人核清单; 图片占位以扫描件清单交付(image 槽汇总), 终稿由用户在文档空间排版时插入; format_check 项全部人核, 不进确定性判定。技术响应正文供源已前移到阶段B2(供源级联), build 只渲染 responses.json 权威态。**实体门硬门生效时 present 会被拒(无凭据)——按 lint 报告处置后重跑 build 再交付**。
@@ -84,7 +84,7 @@ build 完成: workspace 写构建回执 `last_build.json`(阶段判定强证据,
 
 | 症状 | 处置 |
 |---|---|
-| present 被拒"交付门 FAIL...无 delivery_manifest.json" | 实体门硬门生效——按 实体lint报告.md 处置(候选白名单确认入册, 或回 B2 重写含残留实体的响应)后**重跑 build** 再 present; 严禁手拼 .md 绕门 |
+| present 被拒"交付门 FAIL...无 delivery_manifest.json" | 实体门硬门生效——按 实体lint报告.md 处置(候选白名单确认入册, 或回 B2 重写含残留实体的响应)后**重跑 build** 再 present; 严禁手拼 .md 绕门。单范围不重建副表——处置以本轮 build stdout 摘要 anomalies 为事实源; 需正式 lint/人核报告回 A 发起 --docs all |
 | `citations_missing_for_web` / `citations_url_missing_for_web` | 补齐 `{title,url,quote}` 引用; 该支路已废除——新响应改走 sample/fabricated |
 | `citations_missing_for_sample` / `citations_source_doc_missing_for_sample` | sample 引用必须带 source_doc(样例文档标识+段落定位); 无样例可引就该条改走 fabricated |
 | `fabricated_requires_human_verify` | 编造条目补 `needs_human_verify: true`(P4 全量人核)重跑 validate |
@@ -95,4 +95,4 @@ build 完成: workspace 写构建回执 `last_build.json`(阶段判定强证据,
 | check_format anomalies 非空 | 回 A 的阶段2 修提取(标题不逐字/模板原文缺失/固定行未复刻/骨架漏节点), 修完重跑 check_format 再 build |
 | 用户要求直接给 docx | 如实告知: 本技能止于 md, Word 导出在文档空间完成(实证 1a80a1d8: Agent 转换把管线元数据写进 docx) |
 | 整体方案册/副表在本技能 build 后"未变" | 收窄语义不是故障——副表只在 A 的 --docs all 重建; 需刷新请回 A 发起 --docs all |
-| 实体门 blocked/escalated 恢复语义同 A | 连续 2 轮同集残留起转 escalated 放行凭据(把关移交人核清单/lint 报告)——勿凭凭据在场判定已恢复; 恢复合并凭据=两范围各重跑一次 build |
+| 实体门 blocked/escalated 恢复语义同 A | 连续 2 轮同集残留起转 escalated 放行凭据(把关移交人核清单/lint 报告)——勿凭凭据在场判定已恢复; 恢复合并凭据=两范围各重跑一次 build。单范围不重建副表——处置以本轮 build stdout 摘要 anomalies 为事实源; 需正式 lint/人核报告回 A 发起 --docs all |

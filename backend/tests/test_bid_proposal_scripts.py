@@ -6616,6 +6616,8 @@ STAGE_FILE_REQUIRED_TOKENS = {
         "文档空间",
         "last_build.json",
         "--docs technical",  # Plan3 T4: B 真实范围收口——build-technical 只渲技术卷册组, 不再是两文档册集
+        "confirm-key-points",  # T4 评审①: 波间要点包门令牌——progress 必经子命令, 防速查表遗漏后契约悬空
+        "两范围各重跑一次",  # T4 评审②: 实体门恢复语义锁——凭据恢复=两范围各重跑一次 build
     ),
     "stage5-scoring.md": (
         "scoring_prompt.md",

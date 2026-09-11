@@ -46,7 +46,10 @@ python /mnt/skills/public/bid-proposal-overall/scripts/progress.py init --state-
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py next --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py gate --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py mark C-01 DRAFTED --state-dir /mnt/user-data/workspace/bid/state --detail 处置完成
+python /mnt/skills/public/bid-proposal-overall/scripts/progress.py confirm-key-points --state-dir /mnt/user-data/workspace/bid/state
+python /mnt/skills/public/bid-proposal-overall/scripts/check_format.py --state-dir /mnt/user-data/workspace/bid/state --sources /mnt/user-data/uploads/招标文件.md
 python /mnt/skills/public/bid-proposal-overall/scripts/build_output.py --state-dir /mnt/user-data/workspace/bid/state --out /mnt/user-data/outputs/投标文件 --docs technical
+python /mnt/skills/public/bid-proposal-overall/scripts/progress.py mark-build-done --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/snapshot.py --workspace /mnt/user-data/workspace/bid --project 项目名称 --code ZB=招标文件
 python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py verify --state-dir /mnt/user-data/workspace/bid/state
 ```

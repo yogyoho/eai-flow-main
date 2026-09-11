@@ -86,7 +86,7 @@ python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py sign --sta
 python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py verify --state-dir /mnt/user-data/workspace/bid/state
 ```
 
-**防幻觉契约(回放实证,违者即停)**:A/B 两份速查表之外**不存在**任何脚本或子命令(bid-technical 的离线工具 bank_compile.py 不进速查表)。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 子命令只有 `validate`/`merge`,responses 只有 `validate`/`merge`/`confirm-hnv`,score_simulate 只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 只有 `init`/`next`/`status`/`mark`/`gate`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令(build_output 无子命令,新增 --docs 范围旗标)。记不准就先跑 `<脚本> --help`。所有命令用**绝对路径**执行,不 `cd`。
+**防幻觉契约(回放实证,违者即停)**:A/B 两份速查表之外**不存在**任何脚本或子命令(bid-technical 的离线工具 bank_compile.py 不进速查表)。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 子命令只有 `validate`/`merge`,responses 只有 `validate`/`merge`/`confirm-hnv`,score_simulate 只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 只有 `init`/`next`/`status`/`mark`/`gate`/`confirm-key-points`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令(build_output 无子命令,新增 --docs 范围旗标)。记不准就先跑 `<脚本> --help`。所有命令用**绝对路径**执行,不 `cd`。
 
 ## 阶段路由表(进入阶段先读对应分组指南)
 
