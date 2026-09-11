@@ -10,11 +10,16 @@ import {
 // 直接 stub globalThis.fetch（geo-samples 的 authFetch mock 模式不适用）。
 // 断言对齐 backend/app/extensions/bid_materials/routers.py 实读契约（Plan 4 Task 1 核验）：
 // rollback 体键 to_version；列表过滤仅后端实有参数（samples 搜索键名 q）；文件下发仅当前版。
-// csrf cookie 在 node 环境缺失（document undefined）→ withCsrf 静默跳过，写方法断言只查
-// method/body/URL；CSRF 头存在性由 withCsrf ≤10 行的直观性兜底（dom 语义，不在此断言）。
+// node 环境默认无 document → withCsrf 静默跳过，写方法断言默认只查 method/body/URL；
+// CSRF 头存在性由显式注入 document.cookie 的专测覆盖（restore 见 afterEach）。
 const fetchMock: { calls: Array<[string, RequestInit]> } = { calls: [] };
 
 const originalFetch = globalThis.fetch;
+
+// node 环境无 document；CSRF 专测临时注入 { cookie } 形态（getCsrfToken 只读 document.cookie）。
+type DocumentLike = { cookie: string };
+const globalScope = globalThis as unknown as { document?: DocumentLike };
+const originalDocument = globalScope.document;
 
 function stubFetch(status = 200, body: unknown = {}) {
   fetchMock.calls = [];
@@ -29,6 +34,7 @@ function stubFetch(status = 200, body: unknown = {}) {
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  globalScope.document = originalDocument;
 });
 
 function lastCall(): [string, RequestInit] {
@@ -153,6 +159,32 @@ describe("error mapping", () => {
     await expect(
       bidMaterialsApi.qualifications.create({ qual_type: "ISO9001", cert_no: "y" }),
     ).rejects.toThrow("证号已存在");
+  });
+
+  test("fastapi detail array joins msg fields (422 literal validation)", async () => {
+    stubFetch(422, {
+      detail: [{ msg: "Input should be 营业执照" }, { msg: "unexpected" }],
+    });
+    await expect(
+      bidMaterialsApi.qualifications.create({ qual_type: "ISO9001", cert_no: "y" }),
+    ).rejects.toThrow("Input should be 营业执照; unexpected");
+  });
+});
+
+describe("csrf header injection", () => {
+  test("mutating calls send X-CSRF-Token from csrf_token cookie (json + multipart)", async () => {
+    globalScope.document = { cookie: "csrf_token=t0ken" };
+    stubFetch(200, { id: "q1", current_version: 1 });
+    await bidMaterialsApi.qualifications.rollback("q1", 1);
+    const [, init] = lastCall();
+    expect((init.headers as Record<string, string>)["X-CSRF-Token"]).toBe("t0ken");
+
+    const file = new File([new Uint8Array([1, 2, 3])], "cert.png", { type: "image/png" });
+    await bidMaterialsApi.qualifications.uploadVersion("q1", file);
+    const [, uploadInit] = lastCall();
+    const uploadHeaders = uploadInit.headers as Record<string, string>;
+    expect(uploadHeaders["X-CSRF-Token"]).toBe("t0ken");
+    expect(uploadHeaders["Content-Type"]).toBeUndefined();
   });
 });
 

@@ -10,7 +10,8 @@
 //     samples: industry/project_category/q/limit/offset(标题模糊搜索键名是 q; 无 status 过滤);
 //   - 文件下发仅当前版(GET /qualifications/{id}/file 无 version 参数, 版本级下发待后端扩展);
 //   - 样例无单条 POST 端点——登记一律走 /samples/bulk 幂等导入(file_hash upsert);
-//   - 资质类型为后端 QualType Literal 闭集(schemas.py), 预设逐一对齐——自由文本会被 422。
+//   - 资质类型为后端 QualType Literal 闭集(schemas.py), 预设逐一对齐——自由文本会被 422;
+//   - export-whitelist 端点刻意不封装(WP-2.4 消费方是后端工具链; UI 若需直链下载即可)。
 
 export interface QualificationRecord {
   id: string;
@@ -254,10 +255,10 @@ export const bidMaterialsApi = {
       const form = new FormData();
       form.append("file", file);
       if (note) form.append("note", note); // 后端 multipart 键名 note(max_length=200)
-      const headers = withCsrf({}, "POST"); // 不设 Content-Type——浏览器自带 multipart boundary
+      // 不设 Content-Type——浏览器自带 multipart boundary; CSRF 由 bidRequest 单一咽喉点统一注入
       return bidRequest<QualificationVersionUploadResult>(`/qualifications/${id}/versions`, {
         method: "POST",
-        headers,
+        headers: {},
         body: form,
       });
     },
