@@ -6,8 +6,9 @@ created_at/updated_at + dg_merges 留痕=事务时间。dg_mentions 为证据链
 """
 
 import uuid
+from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Numeric, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -25,10 +26,10 @@ class DgEntity(Base):
     attrs: Mapped[dict | None] = mapped_column(JSONB)
     confidence: Mapped[float] = mapped_column(Numeric(4, 3), default=1.0)
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | pending_review | merged
-    valid_from: Mapped[str | None] = mapped_column(DateTime(timezone=True))
-    valid_to: Mapped[str | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     __table_args__ = (Index("uq_dg_entities_natural", "domain", "etype", "norm_name", unique=True),)
 
@@ -42,9 +43,9 @@ class DgRelation(Base):
     object_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_entities.id"), index=True)
     attrs: Mapped[dict | None] = mapped_column(JSONB)
     confidence: Mapped[float] = mapped_column(Numeric(4, 3), default=1.0)
-    valid_from: Mapped[str | None] = mapped_column(DateTime(timezone=True))
-    valid_to: Mapped[str | None] = mapped_column(DateTime(timezone=True))
-    created_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    valid_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    valid_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class DgMention(Base):
@@ -58,7 +59,7 @@ class DgMention(Base):
     doc_span: Mapped[dict | None] = mapped_column(JSONB)  # {page?, quote_start?, quote_end?}
     quote: Mapped[str | None] = mapped_column(Text)
     extracted_by: Mapped[str] = mapped_column(String(100), default="llm")
-    extracted_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
     error: Mapped[str | None] = mapped_column(Text)  # 抽取失败留痕（可重投）
 
 
@@ -70,4 +71,6 @@ class DgMerge(Base):
     canonical_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("dg_entities.id"), index=True)
     method: Mapped[str] = mapped_column(String(30), default="similarity")  # similarity | manual
     confidence: Mapped[float] = mapped_column(Numeric(4, 3), default=1.0)
-    merged_at: Mapped[str | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (CheckConstraint("candidate_id != canonical_id", name="ck_dg_merges_no_self_merge"),)

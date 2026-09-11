@@ -10,8 +10,9 @@ def test_four_tables_registered():
 
 
 def test_entity_natural_key_unique_index():
-    idx = {i.name for i in Base.metadata.tables["dg_entities"].indexes}
-    assert "uq_dg_entities_natural" in idx
+    idx = next(i for i in Base.metadata.tables["dg_entities"].indexes if i.name == "uq_dg_entities_natural")
+    assert idx.unique
+    assert {c.name for c in idx.columns} == {"domain", "etype", "norm_name"}
 
 
 def test_entity_columns():
@@ -22,3 +23,10 @@ def test_entity_columns():
 def test_mention_columns():
     cols = {c.name for c in Base.metadata.tables["dg_mentions"].columns}
     assert {"id", "entity_id", "relation_id", "thread_id", "document_id", "doc_span", "quote", "extracted_by", "extracted_at", "error"} <= cols
+
+
+def test_mention_fk_targets():
+    t = Base.metadata.tables["dg_mentions"]
+    fks = {c.name: sorted(fk.column.table.name for fk in c.foreign_keys) for c in t.columns if c.foreign_keys}
+    assert fks["entity_id"] == ["dg_entities"]
+    assert fks["relation_id"] == ["dg_relations"]
