@@ -509,6 +509,70 @@ class TestBidMaterialsRoutes:
         resp = await client.get(f"{BASE}/qualifications/{uuid.uuid4()}/versions")
         assert resp.status_code == 404
 
+    @staticmethod
+    def _fake_object_store(monkeypatch) -> dict[str, bytes]:
+        """下载测试替身: put/get 全内存键值（真 MinIO 不可达）——镜像 test_versions_listed_ascending
+        的 storage 模块属性 monkeypatch 模式; service 经 asyncio.to_thread(storage.get_file, ...)
+        调用, 属性运行期解析, 替换生效。"""
+        from app.extensions.bid_materials import storage
+
+        store: dict[str, bytes] = {}
+
+        def _put(qid, ver, ext, data):
+            key = f"{qid}/v{ver}.{ext}"
+            store[key] = data
+            return key
+
+        def _get(qid, ver, ext):
+            return store.get(f"{qid}/v{ver}.{ext}")
+
+        monkeypatch.setattr(storage, "put_file", _put)
+        monkeypatch.setattr(storage, "get_file", _get)
+        return store
+
+    async def _seed_two_versions(self, client, db):
+        """上传两版(内容不同: v1=png, v2=jpg) → 当前版已推进到 v2。"""
+        q = await self._seed_qual(db)
+        r1 = await client.post(f"{BASE}/qualifications/{q.id}/versions", files={"file": ("a.png", PNG, "image/png")})
+        assert r1.status_code == 201 and r1.json()["version"] == 1
+        r2 = await client.post(f"{BASE}/qualifications/{q.id}/versions", files={"file": ("b.jpg", JPG, "image/jpeg")})
+        assert r2.status_code == 201 and r2.json()["version"] == 2, "前置: 当前版已推进到 v2"
+        return q
+
+    @pytest.mark.asyncio
+    async def test_file_download_serves_current_version_by_default(self, client, db, monkeypatch):
+        """GET /file 缺省=当前版（spec §2.3「默认当前版」）——?version= 落地后原语义不得漂移。"""
+        self._fake_object_store(monkeypatch)
+        q = await self._seed_two_versions(client, db)
+        resp = await client.get(f"{BASE}/qualifications/{q.id}/file")
+        assert resp.status_code == 200
+        assert resp.content == JPG, "缺省下发当前版(v2)字节"
+        assert resp.headers["content-type"] == "image/jpeg"
+
+    @pytest.mark.asyncio
+    async def test_file_download_per_version(self, client, db, monkeypatch):
+        """spec §2.3 ?version=n 按版本下发（前端 Plan 4 版本行预览）: 当前已 v2, ?version=1 取回首版字节。"""
+        self._fake_object_store(monkeypatch)
+        q = await self._seed_two_versions(client, db)
+        resp = await client.get(f"{BASE}/qualifications/{q.id}/file", params={"version": 1})
+        assert resp.status_code == 200
+        assert resp.content == PNG, "指定 v1 → 首版字节(非当前版)"
+        assert resp.headers["content-type"] == "image/png"
+
+    @pytest.mark.asyncio
+    async def test_file_download_unknown_version_404(self, client, db, monkeypatch):
+        """幽灵版本号 → 404「指定版本不存在: v{n}」（与 rollback 幽灵版本同语义; 0/负数不 422 也走存在性校验）。"""
+        self._fake_object_store(monkeypatch)
+        q = await self._seed_two_versions(client, db)
+        resp = await client.get(f"{BASE}/qualifications/{q.id}/file", params={"version": 99})
+        assert resp.status_code == 404
+        assert resp.json()["detail"] == "指定版本不存在: v99"
+        resp0 = await client.get(f"{BASE}/qualifications/{q.id}/file", params={"version": 0})
+        assert resp0.status_code == 404
+        # 资质不存在 + version 参数 → 同 _get 同源 404（不因带版本绕过存在性校验）
+        resp_missing = await client.get(f"{BASE}/qualifications/{uuid.uuid4()}/file", params={"version": 1})
+        assert resp_missing.status_code == 404
+
     @pytest.mark.asyncio
     async def test_upload_rejects_non_image_400(self, client, db):
         q = await self._seed_qual(db)

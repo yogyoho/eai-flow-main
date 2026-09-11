@@ -57,7 +57,7 @@ def put_file(qual_id: str, version: int, ext: str, data: bytes) -> str:
 
 
 def get_file(qual_id: str, version: int, ext: str) -> bytes | None:
-    """读当前版对象; 仅缺失(NoSuchKey)→None(调用方 404), 其余 S3Error fail-fast 上抛。"""
+    """读指定版本对象（键含版本号, 当前版/历史版下发共用）; 仅缺失(NoSuchKey)→None(调用方 404), 其余 S3Error fail-fast 上抛。"""
     key = _key(qual_id, version, ext)
     try:
         resp = _client().get_object(BUCKET, key)

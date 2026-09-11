@@ -179,21 +179,43 @@ class QualificationService:
         rows = await self.list()
         return [{"type": "company", "value": q.issuer or q.qual_type, "cert_no": q.cert_no, "valid_until": q.valid_until.isoformat() if q.valid_until else None} for q in rows]
 
+    async def _version_row(self, qual_id: uuid.UUID, version: int) -> BidQualificationVersion | None:
+        """版本行单点查询 (qualification_id, version)——current_file/version_file 共用（防御分支单源）。"""
+        stmt = select(BidQualificationVersion).where(
+            BidQualificationVersion.qualification_id == qual_id,
+            BidQualificationVersion.version == version,
+        )
+        return (await self.session.execute(stmt)).scalars().first()
+
+    async def _read_object(self, qual_id: uuid.UUID, version: int, ext: str) -> tuple[bytes, str] | None:
+        """对象读取单点（to_thread + NoSuchKey→None 收敛）——current_file/version_file 共用。"""
+        data = await asyncio.to_thread(storage.get_file, str(qual_id), version, ext)
+        if data is None:
+            return None
+        return data, ext
+
     async def current_file(self, qual_id: uuid.UUID) -> tuple[bytes, str] | None:
         q = await self._get(qual_id)
         if q.current_version < 1:
             return None
-        stmt = select(BidQualificationVersion).where(
-            BidQualificationVersion.qualification_id == qual_id,
-            BidQualificationVersion.version == q.current_version,
-        )
-        row = (await self.session.execute(stmt)).scalars().first()
+        row = await self._version_row(qual_id, q.current_version)
         if row is None:
             return None
-        data = await asyncio.to_thread(storage.get_file, str(qual_id), row.version, row.file_ext)
-        if data is None:
-            return None
-        return data, row.file_ext
+        return await self._read_object(qual_id, row.version, row.file_ext)
+
+    async def version_file(self, qual_id: uuid.UUID, version: int) -> tuple[bytes, str] | None:
+        """按版本号下发扫描件（spec §2.3 GET /qualifications/{id}/file?version=n 承诺补齐,
+        前端 Plan 4 版本行预览）。
+
+        版本行不存在 → QualificationNotFoundError（路由 404, 与 rollback 幽灵版本同语义——
+        指针校验不适用, 直接查版本行存在性）; 对象缺失(NoSuchKey)收敛 None 由路由 404;
+        资质不存在/停用 → _get 同源 404。
+        """
+        await self._get(qual_id)
+        row = await self._version_row(qual_id, version)
+        if row is None:
+            raise QualificationNotFoundError(f"指定版本不存在: v{version}")
+        return await self._read_object(qual_id, row.version, row.file_ext)
 
 
 class SampleService:

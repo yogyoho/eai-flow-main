@@ -12,7 +12,7 @@ Mounted into the Gateway under ``/api/extensions/bid-materials``. Endpoints:
   POST   /qualifications/{id}/versions   上传新版本（multipart; png/jpg 魔数校验 + sha256 去重幂等 → 201）
   GET    /qualifications/{id}/versions   版本历史（升序——rollback 前置核对目标版本存在）
   POST   /qualifications/{id}/rollback   回滚当前版指针（目标版本存在性校验, 幽灵版本 → 404）
-  GET    /qualifications/{id}/file       代理下发当前版扫描件（MinIO → bytes → Response）
+  GET    /qualifications/{id}/file       代理下发扫描件（?version=n 按版本; 缺省当前版——spec §2.3）
   GET    /qualifications/expiring        到期预警清单（?days=90 窗口）
   GET    /qualifications/export-whitelist  entities_whitelist 增量 JSON（WP-2.4 组织级权威源）
   GET    /samples                        样例台账列表（industry/project_category/q 过滤 SQL 下推 + 分页）
@@ -142,14 +142,22 @@ async def download_qualification_file(
     qual_id: UUID,
     db: Annotated[AsyncSession, Depends(get_db)],
     _current_user: CurrentUser,
+    version: int | None = Query(None, description="指定历史版本号（spec §2.3）; 缺省=当前版语义不变"),
 ):
-    """代理下发当前版扫描件（MinIO 读取; 无版本或对象缺失 → 404）"""
+    """代理下发资质扫描件（MinIO 读取; 版本行/对象缺失 → 404）。
+    spec §2.3 ?version=n: 按版本行 (qualification_id, version) 查对象下发——幽灵版本号
+    （0/负数/超界, 不设 ge 约束）→ 404「指定版本不存在: v{n}」（与 rollback 同语义,
+    靠存在性校验而非 422）; 缺省走 current_file 保持原语义。"""
     try:
-        result = await QualificationService(db).current_file(qual_id)
+        if version is None:
+            result = await QualificationService(db).current_file(qual_id)
+        else:
+            result = await QualificationService(db).version_file(qual_id, version)
     except QualificationNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     if result is None:
-        raise HTTPException(status_code=404, detail="当前版本文件不存在")
+        # 版本行缺失已在 service raise（「指定版本不存在」）; 走到这里的 None 只剩对象缺失(NoSuchKey)
+        raise HTTPException(status_code=404, detail="当前版本文件不存在" if version is None else f"版本文件不存在: v{version}")
     data, ext = result
     return Response(
         content=data,
