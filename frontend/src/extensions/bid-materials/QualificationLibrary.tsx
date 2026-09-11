@@ -356,7 +356,8 @@ export function QualificationLibrary() {
   );
 }
 
-// 单行——已停用行整行 muted+「已停用」badge；停用按钮对已停用行隐藏（后端无恢复端点，误停需另走数据修复）
+// 单行——已停用行整行 muted+「已停用」badge；操作入口整体隐藏（后端 service._get() 对停用记录一律
+// 404，版本历史/编辑/停用点击必败；仅保留行展示供追溯；无恢复端点，误停需另走数据修复）
 function QualificationRow({
   qual,
   onVersions,
@@ -418,34 +419,37 @@ function QualificationRow({
       </td>
       <td className="px-4 py-3 text-right">
         <div className="flex items-center justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-primary"
-            title="版本历史（上传新版本/回滚/预览下载）"
-            onClick={onVersions}
-          >
-            <History className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-primary"
-            title="编辑元数据（类型/证号/机构/有效期等）"
-            onClick={onEdit}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          {/* 已停用行整体隐藏操作入口——后端对停用记录一律 404，版本历史/编辑/停用点击必败 */}
           {!disabled && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground hover:text-red-600"
-              title="停用资质（软删）"
-              onClick={onDisable}
-            >
-              <Ban className="h-4 w-4" />
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-primary"
+                title="版本历史（上传新版本/回滚/预览下载）"
+                onClick={onVersions}
+              >
+                <History className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-primary"
+                title="编辑元数据（类型/证号/机构/有效期等）"
+                onClick={onEdit}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-red-600"
+                title="停用资质（软删）"
+                onClick={onDisable}
+              >
+                <Ban className="h-4 w-4" />
+              </Button>
+            </>
           )}
         </div>
       </td>
