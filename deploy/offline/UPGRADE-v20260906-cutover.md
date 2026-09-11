@@ -137,3 +137,5 @@ docker volume rm eai-prod_prod-ragflow-data eai-prod_prod-ragflow-{es,mysql,redi
 # 旧目录 /opt/eai-flow-offline 确认无误后再删
 # 红线不变：绝不 docker volume prune / docker compose down -v
 ```
+
+技能目录改名(bid-proposal-writing→bid-proposal-overall)+新增 bid-technical=离线模板变更，delta 镜像不可覆盖，下次离线交付须全量重打包。
