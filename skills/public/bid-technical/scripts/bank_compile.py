@@ -12,8 +12,9 @@ registration.json——全 sort_keys 无时间戳, 重跑字节一致)
   (文档名不变——同名先删再传幂等自动替换旧全册文档), 位于一切本地产物落盘之后——
   目标/凭证走 BID_RAGFLOW_* env, 同名词旧版先删再传(幂等, geo_samples
   push_reports_to_ragflow 同款)+解析触发; 未配置=跳过, 任何失败=warnings——本地衍生物已先行
-  落盘可用, 推送是辅助通道绝不阻塞出库/改 rc; 技术集为空 → fail-closed 跳过绝不回退推全册
-  (summary 增 ragflow_skip_reason=no_tech_chapter, stderr 列全章标题供修词表/--map)。
+  落盘可用, 推送是辅助通道绝不阻塞出库/改 rc; 技术集为空 → fail-closed 跳过绝不回退推全册,
+  同名陈旧 <slug>.md 仍 list+delete 清理不上传(评审 Important-2); 空技术集告警恒 fire 与旗标
+  无关(评审 Important-1a: summary 增 tech_scope_empty=no_tech_chapter, stderr 列全章标题供修词表/--map)。
 
 残留闸门: compile_bank 返回 residual 证据; 非空 → 全量证据行上 stderr 且 rc=1 零落盘
 (bank_index/depth_targets/registration/切片全不写, 不静默出库——Task 4 闸门已落)。
@@ -178,7 +179,9 @@ def split_chapters(text: str) -> list[dict]:
 # RAGFlow 语料=检索噪声、进深度统计=污染 P25 基线。真实语料钉: 江西师大册技术章题为
 # 「第二章 项目内容、技术指标」——「技术指标」与「技术标」无子串关系, 必须显式入表
 # (缺项会让真实册技术集为空 → 推送 fail-closed 跳过, 见 test_tech_whitelist_matches_real_corpus_titles)。
-TECH_TITLE_RE = re.compile("技术标|技术部分|技术方案|技术响应|技术要求|技术指标|实施方案|服务方案|技术服务|项目实施|技术文件|总体理解|偏离说明")
+# 词表收窄点(评审 Minor-3): 技术偏离 而非 偏离说明——商务偏离说明表不再误入。已知误收面
+# (良性多收, 宁多勿漏, bank_index 即审计轨迹): 商务技术要求响应表(含 技术要求)/项目实施进度计划(含 项目实施)。
+TECH_TITLE_RE = re.compile("技术标|技术部分|技术方案|技术响应|技术要求|技术指标|实施方案|服务方案|技术服务|项目实施|技术文件|总体理解|技术偏离")
 TECH_SCOPE_H1_RE = re.compile("技术标|技术部分|技术文件|技术方案")  # H1 命中→其下 H2 全部继承
 
 
@@ -423,6 +426,55 @@ def _ragflow_upload(base: str, api_key: str, dataset_id: str, name: str, content
     return str(doc_id)
 
 
+def _ragflow_env(action: str) -> tuple[str, str, str] | None:
+    """推送/清理共享 env 自检(dataset id → api key → base): 缺失项 stderr 一行警告后返 None
+    (调用方跳过, 不触网); base 缺省 http://ragflow:9380(容器内名), 宿主直跑用 BID_RAGFLOW_API_BASE 覆盖。"""
+    dataset_id = (os.environ.get(RAGFLOW_DATASET_ENV) or "").strip()
+    if not dataset_id:
+        print(f"警告: 未配置 {RAGFLOW_DATASET_ENV}——跳过 RAGFlow {action}(本地衍生物已可用)", file=sys.stderr)
+        return None
+    api_key = (os.environ.get(RAGFLOW_API_KEY_ENV) or "").strip()
+    if not api_key:
+        print(f"警告: 未配置 {RAGFLOW_API_KEY_ENV}——跳过 RAGFlow {action}(本地衍生物已可用)", file=sys.stderr)
+        return None
+    return dataset_id, api_key, (os.environ.get(RAGFLOW_API_BASE_ENV) or RAGFLOW_API_BASE_DEFAULT).rstrip("/")
+
+
+def ragflow_env_configured() -> bool:
+    """env 是否足以触达 RAGFlow(只读不打印): 供 main 决定「同名文档可能陈旧」提示行——
+    实际触达仍由 push/purge 各自的自检裁决, main 不预检纪律不破(此处结果只影响提示文案)。"""
+    return bool((os.environ.get(RAGFLOW_DATASET_ENV) or "").strip()) and bool((os.environ.get(RAGFLOW_API_KEY_ENV) or "").strip())
+
+
+def ragflow_purge_stale(meta: dict) -> bool:
+    """同名陈旧文档清理(Plan 4 评审 Important-2): 技术集为空的重编不再上传, 但同名 <slug>.md
+    旧全册文档仍须删除——语料干净优先。list 幂等前置 + 同名词 delete, 不上传不触发解析;
+    无同名文档=无事可做返 False。dataset id / API key 缺失 → False+warning(不触网);
+    HTTPError 连同响应体摘要(M-3)/其余任何异常一律吞掉记 warning 返回 False(辅助通道, 绝不改 rc)。"""
+    env = _ragflow_env("清理")
+    if env is None:
+        return False
+    dataset_id, api_key, base = env
+    name = f"{slugify(str(meta.get('title') or 'sample'))}.md"
+    try:
+        stale_id = _ragflow_list_doc_ids(base, api_key, dataset_id).get(name)
+        if not stale_id:
+            return False  # 无同名陈旧文档, 无事可做
+        _ragflow_delete_docs(base, api_key, dataset_id, [stale_id])
+        return True
+    except urllib.error.HTTPError as exc:  # M-3: HTTP 状态+响应体摘要进告警
+        detail = ""
+        try:
+            detail = exc.read().decode("utf-8", "replace")[:200].strip()
+        except Exception:
+            pass
+        print(f"警告: RAGFlow 陈旧文档清理失败(HTTP {exc.code}: {detail or exc.reason})", file=sys.stderr)
+        return False
+    except Exception as exc:
+        print(f"警告: RAGFlow 陈旧文档清理失败({exc})", file=sys.stderr)
+        return False
+
+
 def ragflow_push(md: str, meta: dict) -> bool:
     """redacted 技术章拼接文推送 RAGFlow bid_samples 域(命名 <slug>.md, Plan 4 Task 2: 只推
     技术章——文档名不变, 同名先删再传幂等语义自动替换旧全册文档), 幂等契约同 geo_samples
@@ -432,15 +484,10 @@ def ragflow_push(md: str, meta: dict) -> bool:
     HTTPError 连同响应体摘要(M-3)/其余任何异常一律吞掉记 warning 返回 False——绝不阻塞
     主流程, 不改 rc(spec: 失败=warnings, 本地衍生物已先行落盘可用)。meta 恰 {"title"}
     (文件名 slug 派生自它), 推送目标一律以 env 当前值为准。"""
-    dataset_id = (os.environ.get(RAGFLOW_DATASET_ENV) or "").strip()
-    if not dataset_id:
-        print(f"警告: 未配置 {RAGFLOW_DATASET_ENV}——跳过 RAGFlow 推送(本地衍生物已可用)", file=sys.stderr)
+    env = _ragflow_env("推送")
+    if env is None:
         return False
-    api_key = (os.environ.get(RAGFLOW_API_KEY_ENV) or "").strip()
-    if not api_key:
-        print(f"警告: 未配置 {RAGFLOW_API_KEY_ENV}——跳过 RAGFlow 推送(本地衍生物已可用)", file=sys.stderr)
-        return False
-    base = (os.environ.get(RAGFLOW_API_BASE_ENV) or RAGFLOW_API_BASE_DEFAULT).rstrip("/")
+    dataset_id, api_key, base = env
     name = f"{slugify(str(meta.get('title') or 'sample'))}.md"
     try:
         stale_id = _ragflow_list_doc_ids(base, api_key, dataset_id).get(name)
@@ -530,16 +577,23 @@ def main(argv: list[str] | None = None) -> int:
     # 指向触发本次重校准的内容指纹; per-sample 深度仍在 bank_index[slug].depth。
     # scope=technical_chapters(Plan 4 Task 2): 聚合的每册 depth 已是技术章口径, 库级基准同口径
     # (消费方 load_depth_targets 只读 absolute_floor/global_median, 新增键无害)。
+    # 段池为空的册不参与库级校准(评审 Important-1b): paragraph_count==0(无技术章)样本的
+    # floor=0 若进 min 聚合会把全库 floor 拉平到 0, 深度门(substantive < floor)静默失效——
+    # 排除计数 excluded_empty_tech 写进 depth_targets.json(N>0 时)与 summary, 维护者可见。
     depths = [e["depth"] for e in index.values() if isinstance(e, dict) and isinstance(e.get("depth"), dict)]
-    floors = [d["absolute_floor"] for d in depths if isinstance(d.get("absolute_floor"), int)]
-    medians = [d["global_median"] for d in depths if isinstance(d.get("global_median"), int)]
+    usable = [d for d in depths if int(d.get("paragraph_count", 0)) > 0]
+    excluded_empty = len(depths) - len(usable)
+    floors = [d["absolute_floor"] for d in usable if isinstance(d.get("absolute_floor"), int)]
+    medians = [d["global_median"] for d in usable if isinstance(d.get("global_median"), int)]
     bank_targets = {
         "absolute_floor": min(floors) if floors else result["depth_targets"]["absolute_floor"],
         "global_median": statistics.median(medians) if medians else result["depth_targets"]["global_median"],
-        "paragraph_count": sum(int(d.get("paragraph_count", 0)) for d in depths),
+        "paragraph_count": sum(int(d.get("paragraph_count", 0)) for d in usable),
         "scope": "technical_chapters",
         "calibrated_from": result["file_hash"],
     }
+    if excluded_empty:
+        bank_targets["excluded_empty_tech"] = excluded_empty
 
     reg_path = bank_dir / "registration.json"
     reg = _load_bank_json(reg_path, {"items": []}, require_items_list=True)
@@ -587,18 +641,31 @@ def main(argv: list[str] | None = None) -> int:
         "global_median": bank_targets["global_median"],
         "residual": len(result["residual"]),
     }
+    if excluded_empty:
+        summary["excluded_empty_tech"] = excluded_empty
+    # 空技术集告警(评审 Important-1a: 与 --ragflow-push 无关——空技术集同样让深度统计失去
+    # 校准输入, 维护者必须始终可见; 0 章极端形态由既有「切片 0 章」警告覆盖, 不在此重复)。
+    tech_empty = bool(result["chapters"]) and not result["tech_text"]
+    purged = False
     if args.ragflow_push:
         if result["tech_text"]:
             if ragflow_push(result["tech_text"], {"title": args.title}):
                 print(f"RAGFlow 推送成功: {slug}.md", file=sys.stderr)
         else:
-            print(
-                "警告: 技术章筛选为空——RAGFlow 推送跳过(no_tech_chapter, fail-closed 不回退推全册)。全部章标题如下, 请核对标题词表(TECH_TITLE_RE)或 --map:",
-                file=sys.stderr,
-            )
-            for ch in result["chapters"]:
-                print(f"  · {ch['title']}", file=sys.stderr)
-            summary["ragflow_skip_reason"] = "no_tech_chapter"
+            # 评审 Important-2: 技术集为空不上传, 但同名 <slug>.md 陈旧全册文档仍须清理(语料干净优先)
+            purged = ragflow_purge_stale({"title": args.title})
+            if purged:
+                print(f"RAGFlow 陈旧同名文档已删除: {slug}.md(技术集为空, 仅清理不上传)", file=sys.stderr)
+    if tech_empty:
+        print(
+            "警告: 技术章筛选为空——深度统计无校准输入(floor/median 回落 0, 不入库级聚合), RAGFlow 不推送(no_tech_chapter, fail-closed 不回退推全册)。全部章标题如下, 请核对标题词表(TECH_TITLE_RE)或 --map:",
+            file=sys.stderr,
+        )
+        for ch in result["chapters"]:
+            print(f"  · {ch['title']}", file=sys.stderr)
+        summary["tech_scope_empty"] = "no_tech_chapter"
+        if not purged and (not args.ragflow_push or not ragflow_env_configured()):
+            print(f"  · 注意: RAGFlow 中同名文档 {slug}.md 可能为陈旧全册版, 本次未清理", file=sys.stderr)
 
     print(json.dumps(summary, ensure_ascii=False))
     return EXIT_OK
