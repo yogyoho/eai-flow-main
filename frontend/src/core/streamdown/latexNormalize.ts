@@ -2,6 +2,8 @@
 // metrics"），且 \text{...^N...} 里脱字符会报错变红。把 \text{...} 尾部的上标/度数 unicode
 // 移到 \text{} 外面作 ^{...}，KaTeX 才能正确渲染成上标。数学模式下的 ²³¹ KaTeX 已自动处理。
 // 已知 ceiling：仅处理 \text{...} 末尾连续的上标/度数；文本中间的 ²³¹ 仍是字面字符（罕见）。
+// EAI-CUSTOM (bug-2222): docmgr 导入吃掉 \_ 后 \text{} 内裸 _ 会让 KaTeX text-mode 报错，
+// 这里兜底补转义（已转义 \_ 不动）；\text{} 外的数学下标（Q_w、K_{ZF}）不受影响。
 
 const SUP_MAP: Record<string, string> = {
   "⁰": "0",
@@ -46,6 +48,8 @@ export function normalizeLatexForKatex(input: string): string {
         changed = true;
       }
     }
+    // bug-2222: 裸 _ → \_（lookbehind 跳过已转义 \_；连续 __ 逐个都补）
+    cleaned = cleaned.replace(/(?<!\\)_/g, "\\_");
     return `\\text{${cleaned}}${tail}`;
   });
 }
