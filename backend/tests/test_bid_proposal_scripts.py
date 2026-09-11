@@ -6350,7 +6350,7 @@ SKILL_MD_REQUIRED_TOKENS = (
     "/mnt/skills/public/bid-proposal-overall/scripts/",
     "/mnt/skills/public/bid-proposal-overall/references/",
     "extraction_prompt.md",
-    "tech_response_prompt.md",
+    "build-overall.md",
     "scoring_prompt.md",
     "classification.md",
     "present_files",  # 阶段4 六件套 md 交付(present_files→文档空间)
@@ -6360,6 +6360,7 @@ SKILL_MD_REQUIRED_TOKENS = (
     "--resume",
     "--confirm-gate1-edit",
     "last_build.json",
+    "--docs overall",  # Plan3: A build 范围旗标(速查表 build_output 行尾 --docs overall; 副表归 --docs all 重建)
     "严禁 rm -rf",
 )
 
@@ -6511,7 +6512,7 @@ class TestSkillMd:
 #  原 stage4-response-build.md 改名 build-technical.md 随 bid-technical 迁移)
 # ===========================================================================
 
-A_STAGE_GUIDES = ("stage0-2-intake-extract.md", "stage3-merge-gate2.md", "stage5-scoring.md")  # A references/
+A_STAGE_GUIDES = ("stage0-2-intake-extract.md", "stage3-merge-gate2.md", "build-overall.md", "stage5-scoring.md")  # A references/(Plan3 Task3: stage4 拆分——技术卷 4a 让渡 bid-technical, A 自有 build-overall)
 B_STAGE_GUIDES = ("build-technical.md", "tech_response_prompt.md")  # B TECH_REFERENCES_DIR/(原 stage4 指南改名 build-technical + tech_response_prompt 随 B 迁移)
 
 
@@ -6661,14 +6662,10 @@ class TestSkillStageGroupFiles:
 
     def test_skill_md_routes_to_all_stage_files(self):
         """SKILL.md(路径与契约文档/阶段路由表)必须点名全部分组指南, 编排者才知道进哪阶段读哪份。
-        B 卷指南现以旧名 stage4-response-build.md 点名(过渡锁: SKILL.md 改写点名
-        build-technical.md 后须同步更新本断言 — Plan3 Task 3); tech_response_prompt.md
-        在契约文档行点名。"""
+        A 点名自有 4 指南 + 技术卷 4a 让渡交叉引用(B 的两指南与技能名)。"""
         content = _skill_md_text()
-        for filename in A_STAGE_GUIDES:
-            assert filename in content, f"SKILL.md 须点名分组指南 {filename}(阶段路由表)"
-        assert "stage4-response-build.md" in content, "SKILL.md 阶段路由表过渡锁: 现点名旧名 stage4-response-build.md; SKILL.md 改写点名 build-technical.md 后须同步更新本断言(Plan3 Task 3)"
-        assert "tech_response_prompt.md" in content, "SKILL.md 须点名 tech_response_prompt.md(契约文档行)"
+        for filename in (*A_STAGE_GUIDES, *B_STAGE_GUIDES, "bid-technical"):
+            assert filename in content, f"SKILL.md 须点名分组指南/让渡交叉引用 {filename}(阶段路由表/分工)"
 
     def test_snapshot_source_pins_stage_group_filenames(self):
         """双向锁: snapshot.py 源码引用全部分组指南基名(next_step 提示指向该读的那份; B 卷

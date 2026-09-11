@@ -1,15 +1,16 @@
 ---
 name: bid-proposal-overall
-description: 当用户需要编写投标方案/标书响应文件(分析招标文件、编写商务/技术标、响应技术参数、偏离表、按评分标准模拟打分)时使用此技能。该技能把招标文件(含答疑/补遗)转化为带原文锚点的机器可核对义务清单,产出商务/技术双卷逐项响应骨架与偏离表,并对成稿按评分办法逐项模拟评分、给出改进建议。
+description: 当用户需要编制投标整体方案(分析招标文件、义务清单、商务全量响应骨架、补遗合并、整体方案册集 build、模拟评分)时使用此技能。把招标文件(含答疑/补遗)转化为带原文锚点的机器可核对义务清单,产出整体方案册集(商务全量+技术占位页)与偏离表,并按评分办法模拟评分。技术卷逐条款响应编制在配对技能 bid-technical。
 ---
 
-# 投标方案编写技能(bid-proposal-overall)
+# 投标整体方案技能(bid-proposal-overall, 原 bid-proposal-writing 商务主线)
 
-本文件=编排总纲+唯一合法命令来源;各阶段流程细节、状态文件表、排错表在 references/ 的**四份分组执行指南**里,进入对应阶段先读对应那份(见阶段路由表)。
+本文件=编排总纲+唯一合法命令来源;各阶段流程细节、状态文件表、排错表在 references/ 的**分组执行指南**里,进入对应阶段先读对应那份(见阶段路由表)。
 
-## 概述与分工
+## 概述与分工(配对技能 pair-install)
 
-把**招标文件**变成**机器可核对的义务清单**(逐条分类/锚定原文),产出商务/技术双卷响应骨架与偏离表,终稿前按评分办法模拟打分。分工:脚本=确定性工作(九模块全不调 LLM);Agent=编排+上下文内 LLM 循环(可审计、每步候选落盘);两道人工确认门(清单锁定/补遗+终稿复核),Agent 不替用户做废标级决定。
+把**招标文件**变成**机器可核对的义务清单**(逐条分类/锚定原文),产出整体方案册集(商务全量+技术占位页)与偏离表,终稿前按评分办法模拟打分。分工:脚本=确定性工作(全部管线脚本不调 LLM);Agent=编排+上下文内 LLM 循环(可审计、每步候选落盘);两道人工确认门(清单锁定/补遗+终稿复核),Agent 不替用户做废标级决定。
+**配对技能 bid-technical(B)**:技术卷编制(技术条款逐条响应:样例检索/编造+深度目标、progress 章门、build --docs technical)。B 消费本技能的 scripts/ 与 workspace/state(同一项目权威态,clauses/structure/responses 同源),两技能 outputs/ 同目录,合并语义见 build-overall.md。B 未跑时技术章渲染占位页(合法态)。
 
 ## 铁律(违反任何一条立即停下)
 
@@ -39,25 +40,24 @@ description: 当用户需要编写投标方案/标书响应文件(分析招标�
 
 红旗即停:heredoc/`<<` 落盘、inline python 写文件、对 state/ 用 write_file·str_replace·rm、"重新生成/从头再来/跳过这步"、凭记忆造脚本名或参数——任一出现立即停下,回速查表与排错表。
 
-## 管线总览:六阶段 + 两道确认门
+## 管线总览:五阶段(A 线) + 两道确认门
 
 ```
 阶段0 输入受理(分流:docx/pdf/扫描件;补遗标记)
-  → 阶段1 ingest(纯结构化 → sections.json,发 chunk/table id)
-  → 阶段2 extract(Agent 上下文内分块提取循环 → 候选落盘 → extract.py 校验/合并三状态文件)
+  → 阶段1 ingest(纯结构化 → sections.json)
+  → 阶段2 extract(分块提取循环 → 候选落盘 → extract.py 校验/合并)
 ──── 确认门1:计数+异常项+完整清单工件+clause_id 改分类回写+实体白名单锁定 ────
-  → 阶段3 merge(补遗/答疑到达即处理:ingest --addendum → 提取循环 → merge_addenda.py 落账)
-  → 阶段4a 技术响应生成(供源级联:样例库检索→缺失编造标 fabricated 全量人核;四类硬围栏绝不编造;responses.py 校验落账)
-  → 阶段4 build(build_output.py 两文档册集 md:整体方案+技术卷分册+索引+副表 → present_files 交付;文档空间负责排版与 Word 导出)
-──── 确认门2:补遗 diff 表(新增/被替代/作废逐项确认+新实体确认列)+终稿复核清单 ────
-  → 阶段5 模拟评分(填写后可反复:双形态对齐 → 主观评审循环 → aggregate → report version++)
-  # 阶段0-4 主线各走一遍;阶段5 团队回传后可重跑,每次 version++ 留痕
+  → 阶段3 merge(补遗/答疑:ingest --addendum → 提取循环 → merge_addenda.py 落账)
+  → 阶段4a 技术响应生成 ——【配对技能 bid-technical 执行,见其 SKILL.md】
+  → 阶段4 build(build_output.py --docs overall:整体方案册集+索引卷整体方案节 → present_files;--docs all 全量并重建副表)
+──── 确认门2:补遗 diff 表+终稿复核清单(B 技术卷就绪后一并复核) ────
+  → 阶段5 模拟评分(双形态对齐 → 主观评审循环 → aggregate → report version++)
+  # 阶段0-3+5 主线各走一遍;阶段5 团队回传后可重跑,每次 version++ 留痕
 ```
-
 ## 路径与契约文档
 
-- 脚本(沙箱路径):`/mnt/skills/public/bid-proposal-overall/scripts/` 下十个 Python 模块(ingest/extract/merge_addenda/check_format/responses/build_output/score_simulate + snapshot 快照 + state_guard 状态签名 + progress 章节进度控制器),全部 argparse CLI、纯 Python 3.12、不调 LLM;另有 booklets.py 为 build_output 的内部分册模块(无 CLI,不单独调用,防幻觉契约不受影响)。
-- 契约文档:`/mnt/skills/public/bid-proposal-overall/references/` —— 四份**分组执行指南**(stage0-2-intake-extract / stage3-merge-gate2 / stage4-response-build / stage5-scoring)+ 四个 JSON Schema(clauses/structure/rubric/responses)+ classification.md(分类判据)+ extraction_prompt.md(提取三子模板)+ tech_response_prompt.md(技术响应三模式)+ scoring_prompt.md(主观评审纪律)。进入对应阶段先读对应指南;提取/生成/评审循环开始前必须先读对应 prompt。
+- 脚本(沙箱路径):`/mnt/skills/public/bid-proposal-overall/scripts/` 下十个 Python 模块(ingest/extract/merge_addenda/check_format/responses/build_output/score_simulate + snapshot + state_guard + progress),全部 argparse CLI、纯 Python 3.12、不调 LLM;booklets.py 为 build_output 内部分册模块(无 CLI)。**全量脚本 canonical 在本技能**,bid-technical 经绝对路径调用。
+- 契约文档:`/mnt/skills/public/bid-proposal-overall/references/` —— 四份分组执行指南(stage0-2-intake-extract / stage3-merge-gate2 / build-overall / stage5-scoring)+ 四个 JSON Schema(clauses/structure/rubric/responses)+ classification.md + extraction_prompt.md + scoring_prompt.md。技术卷指南(tech_response_prompt / build-technical)在配对技能 bid-technical/references/。
 - 状态目录:建议 `/mnt/user-data/workspace/bid/`(其下 state/ 状态文件、candidates/ 候选 checkpoint);最终交付 md 与确认门工件放 `/mnt/user-data/outputs/`(present_files 只认这个目录,交付后自动同步文档空间)。
 
 ### 命令速查表(唯一合法调用形态——逐字照抄,换路径只换路径)
@@ -72,7 +72,7 @@ python /mnt/skills/public/bid-proposal-overall/scripts/check_format.py --state-d
 python /mnt/skills/public/bid-proposal-overall/scripts/responses.py validate --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/responses.py merge --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/merge_addenda.py --addendum-candidates /mnt/user-data/workspace/bid/candidates/BY_addendum.json --state-dir /mnt/user-data/workspace/bid/state --decisions /mnt/user-data/workspace/bid/candidates/BY_decisions.json
-python /mnt/skills/public/bid-proposal-overall/scripts/build_output.py --state-dir /mnt/user-data/workspace/bid/state --out /mnt/user-data/outputs/投标文件
+python /mnt/skills/public/bid-proposal-overall/scripts/build_output.py --state-dir /mnt/user-data/workspace/bid/state --out /mnt/user-data/outputs/投标文件 --docs overall
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py init --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py next --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py gate --state-dir /mnt/user-data/workspace/bid/state
@@ -86,34 +86,35 @@ python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py sign --sta
 python /mnt/skills/public/bid-proposal-overall/scripts/state_guard.py verify --state-dir /mnt/user-data/workspace/bid/state
 ```
 
-**防幻觉契约(回放实证,违者即停)**:速查表之外**不存在**任何脚本或子命令。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 的子命令只有 `validate`/`merge`,responses 的子命令只有 `validate`/`merge`/`confirm-hnv`,score_simulate 的子命令只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 的子命令只有 `init`/`next`/`status`/`mark`/`gate`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令。记不准就先跑 `<脚本> --help`,绝不凭记忆造命令、造参数(如 `--max-chunk-size` 之类不存在的参数一律先查 --help)。所有命令用**绝对路径**执行,不 `cd`(相对路径 cwd 错位是回放中 10+ 次 FileNotFoundError 的来源)。
+**防幻觉契约(回放实证,违者即停)**:A/B 两份速查表之外**不存在**任何脚本或子命令(bid-technical 的离线工具 bank_compile.py 不进速查表)。特别地:`extract_clauses.py`、`check.py`、`trace.py` 之类文件名**不存在**;extract 子命令只有 `validate`/`merge`,responses 只有 `validate`/`merge`/`confirm-hnv`,score_simulate 只有 `reingest`/`assemble-evidence`/`aggregate`/`report`,progress 只有 `init`/`next`/`status`/`mark`/`gate`/`mark-build-done`,ingest/merge_addenda/check_format/build_output/snapshot/state_guard 无子命令(build_output 只有 `--docs` 旗标)。记不准就先跑 `<脚本> --help`。所有命令用**绝对路径**执行,不 `cd`。
 
 ## 阶段路由表(进入阶段先读对应分组指南)
 
 | 阶段 | 入口条件 | 必读指南(references/) | 产出·完成判据 |
 |---|---|---|---|
 | 阶段0 受理 / 阶段1 ingest / 阶段2 extract / 确认门1 | 首跑,或 snapshot phase ∈ {0-受理, 2-提取中, 确认门1-待锁定} | stage0-2-intake-extract.md | sections.json + clauses/structure/rubric.json + 实体白名单锁定 |
-| 阶段3 补遗合并 / 确认门2 | 门1 已过,或补遗/答疑到达 | stage3-merge-gate2.md | merge_ledger.json + 补遗 diff 表逐项确认 + 终稿复核清单 |
-| 阶段4a 响应生成 / 阶段4 build | 门1 已过(phase ∈ {3/4-合并与构建}) | stage4-response-build.md | responses.json + 两文档册集(整体方案/技术卷分册+0-总目录索引+副表) present_files 交付 + last_build.json |
+| 阶段3 补遗合并 / 确认门2 | 门1 已过,或补遗/答疑到达 | stage3-merge-gate2.md | merge_ledger.json + 补遗 diff 表(新增/被替代/作废+新实体确认)逐项确认 + 终稿复核清单 |
+| 阶段4a 技术响应生成 / 技术卷 build | 门1 已过 | 【配对技能 bid-technical:其 SKILL.md + build-technical.md(tech_response_prompt.md 供源级联详篇)】 | responses.json + 技术卷册集(--docs technical) |
+| 阶段4 build(整体方案) | 门1 已过(技术卷可后补) | build-overall.md | 整体方案册集(--docs overall)+ 索引卷整体方案节 + last_build.json;副表归 --docs all 重建 |
 | 阶段5 模拟评分 | 门2 已过,有填写态或团队回传 | stage5-scoring.md | 评分报告 version_N.md + 改进建议(可重跑)。单卷回传必须显式 `--volume commercial\|technical`,只有两卷拼接成一个文件的回传才用默认 both(单卷按 both 重灌必被另一卷分母拖进整体降级) |
 
 - 退出码(五脚本统一约定):`0`=干净完成;`1`=用法/文件错误(**例外**:score_simulate 的 Σ 不一致中止与重灌降级拒绝计分也归 `1`——同条件在 extract 侧是 `3` 完成带异常,编排时勿把该 `1` 当单纯文件错;**签名校验失败也归 `1`**,按错误行恢复指令重建,不试错绕行);`2`=**仅 ingest**:存在无文本层输入(扫描件)需走 eai-flow-ocr;`3`=完成但有异常项——**退出码 3 不是失败**,必须读脚本 stdout 的单行 JSON 摘要,把 `anomalies` 逐项呈现给用户,绝不静默吞掉。
-
+- `--docs` 范围语义(spec §3.2):`overall`=只重写整体方案册组+索引卷整体方案节;`all`=两组+副表全量;`technical` 属 bid-technical。单范围不触碰范围外册/副表,manifest 合并(deliverables/files/docs 范围外条目保留),清场收窄。
 ## 快照与上下文纪律
 
 - 每阶段动作后跑一次速查表 snapshot.py 命令;新 run 冷启动只读 `project_snapshot.json` + 当前阶段对应那一份 references 文件,不重读全部 schema/二进制原件(实证:重读全套把上下文 0.9M→1.67M tokens)。
 - 用户要求"重新执行/重跑完整流程"时:先跑速查表 `ingest.py --resume`(只读核验),按 snapshot 续作;**严禁 rm -rf 工作区/state 从零重放**,确需清空先 ask_clarification 征得用户明确确认。ask_clarification 等待期间不落盘任何 state 改动。
 - 读原文一律 read_file **行区间**读 uploads 转出的 .md,严禁读 .docx/.pdf 二进制;候选即刻落盘,上下文只留计数与异常摘要;超长分批,task() 子代理注意 3 并发上限;脚本 stdout 单行 JSON 是阶段事实唯一口径,异常逐项呈现绝不静默。
-
 ## 排错一级索引(症状→对应指南的排错表,不试错绕行)
 
 - 通用(路径/参数/签名校验失败/退出码 2、3/熔断/present_files 拒绝)与格式保真异常(check_format.py):stage0-2-intake-extract.md 排错表
 - 补遗落账(pending 待裁决/锚点 mismatch/悬挂外键/台账 skipped):stage3-merge-gate2.md 排错表
-- 响应校验(citations 缺失/thin/boilerplate/placement)/渲染异常:stage4-response-build.md 排错表
+- 响应校验(citations 缺失/thin/boilerplate/placement)/技术卷渲染异常:bid-technical 的 build-technical.md 排错表
+- build --docs 合并语义/清场收窄/副表归属/凭据丢失恢复:build-overall.md 排错表
 - 评分(整体降级/多命中/Σ 不一致/未重灌矛盾):stage5-scoring.md 排错表
 - 记不准命令/参数:防幻觉契约 + `<脚本> --help`,绝不凭记忆造
-
 ## 注意事项
 
 - 不调外部标书 SaaS,招标文件与标书不出内网;解析全走本地/已部署服务。现有 bid-quote 数据为 mock(price 评分项只留接口预留),不虚构竞对数据。
 - 主观评分是模拟参考值,不承诺与真实评审一致(评分校准闭环落地前报告须保留该声明);知识库/knowledge-factory 语料为环评/水保/消防类,投标段落供源以 RAGFlow 样例库( WP-3)为准,未建库前按级联编造。
+- 与 bid-technical 为 pair-install(B 消费本技能 scripts 与 state,不可独立分发);本技能 build 用 `--docs overall` 只动整体方案组,技术卷册由 B 维护;副表跨两卷聚合,`--docs all` 重建是唯一合法入口,重建前确认 B 响应已 merge。
