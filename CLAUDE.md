@@ -38,7 +38,7 @@ docker compose -p eai-docker up -d            # Start all services
 
 ### Container Names
 - `deer-flow-gateway` — FastAPI backend (port 8001)
-- `deer-flow-frontend` — Next.js frontend (port 4000)
+- `deer-flow-frontend` — Next.js frontend (container listens on port 3000, `next dev --webpack`; EAI-CUSTOM bug-3306 勘误: 旧文档写 4000)
 - `deer-flow-nginx` — Reverse proxy (port 2026, the unified entry point)
 - `deer-flow-collab` — Hocuspocus collab-server (port 8002)
 - `eai-docker-postgres-ext-1` — PostgreSQL for extensions module
@@ -80,7 +80,7 @@ PYTHONPATH=. uv run pytest tests/test_<feature>.py -v
 
 ```bash
 pnpm install      # Install deps
-pnpm dev          # Dev server with Turbopack (port 4000)
+pnpm dev          # Dev server via scripts/dev.mjs (webpack default; container :3000, host usually :3000)
 pnpm build        # Production build (requires BETTER_AUTH_SECRET)
 pnpm test         # Vitest unit tests
 pnpm test:e2e     # Playwright E2E tests
@@ -109,7 +109,7 @@ make docker-logs    # View logs
 Browser -> Nginx (port 2026)
   |-> /api/langgraph/* -> Gateway embedded LangGraph runtime (port 8001), rewritten to /api/*
   |-> /api/*           -> Gateway FastAPI (port 8001)
-  |-> /*               -> Next.js frontend (port 4000)
+  |-> /*               -> Next.js frontend (port 3000)
 ```
 
 The agent runtime runs embedded in Gateway via `RunManager` + `run_agent()` + `StreamBridge`. Nginx exposes it at `/api/langgraph/*` and rewrites to Gateway's native `/api/*` routers.
