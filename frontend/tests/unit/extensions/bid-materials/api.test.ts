@@ -52,7 +52,9 @@ describe("bidMaterialsApi.qualifications", () => {
       limit: 50,
     });
     const [url] = lastCall();
-    expect(url.startsWith("/api/extensions/bid-materials/qualifications?")).toBe(true);
+    expect(
+      url.startsWith("/api/extensions/bid-materials/qualifications?"),
+    ).toBe(true);
     expect(url).toContain("qual_type=CMMI");
     expect(url).toContain("include_disabled=true");
     expect(url).toContain("limit=50");
@@ -62,24 +64,35 @@ describe("bidMaterialsApi.qualifications", () => {
     stubFetch(200, []);
     await bidMaterialsApi.qualifications.expiring(30);
     const [url] = lastCall();
-    expect(url).toBe("/api/extensions/bid-materials/qualifications/expiring?days=30");
+    expect(url).toBe(
+      "/api/extensions/bid-materials/qualifications/expiring?days=30",
+    );
   });
 
   test("create POSTs json body with csrf attempt", async () => {
     stubFetch(201, { id: "q1" });
-    await bidMaterialsApi.qualifications.create({ qual_type: "ISO9001", cert_no: "00123" });
+    await bidMaterialsApi.qualifications.create({
+      qual_type: "ISO9001",
+      cert_no: "00123",
+    });
     const [url, init] = lastCall();
     expect(url).toBe("/api/extensions/bid-materials/qualifications");
     expect(init.method).toBe("POST");
-    expect(init.body).toBe(JSON.stringify({ qual_type: "ISO9001", cert_no: "00123" }));
+    expect(init.body).toBe(
+      JSON.stringify({ qual_type: "ISO9001", cert_no: "00123" }),
+    );
   });
 
   test("uploadVersion posts FormData(file+note) without json content-type", async () => {
     stubFetch(201, { created: true, version: 2, sha256: "ab" });
-    const file = new File([new Uint8Array([1, 2, 3])], "cert.png", { type: "image/png" });
+    const file = new File([new Uint8Array([1, 2, 3])], "cert.png", {
+      type: "image/png",
+    });
     await bidMaterialsApi.qualifications.uploadVersion("q1", file, "年审换证");
     const [url, init] = lastCall();
-    expect(url).toBe("/api/extensions/bid-materials/qualifications/q1/versions");
+    expect(url).toBe(
+      "/api/extensions/bid-materials/qualifications/q1/versions",
+    );
     expect(init.method).toBe("POST");
     const form = init.body as FormData;
     expect(form).toBeInstanceOf(FormData);
@@ -93,7 +106,9 @@ describe("bidMaterialsApi.qualifications", () => {
     stubFetch(200, { id: "q1", current_version: 1 });
     await bidMaterialsApi.qualifications.rollback("q1", 1);
     const [url, init] = lastCall();
-    expect(url).toBe("/api/extensions/bid-materials/qualifications/q1/rollback");
+    expect(url).toBe(
+      "/api/extensions/bid-materials/qualifications/q1/rollback",
+    );
     expect(init.method).toBe("POST");
     expect(init.body).toBe(JSON.stringify({ to_version: 1 }));
   });
@@ -151,16 +166,75 @@ describe("bidMaterialsApi.samples", () => {
   });
 });
 
+describe("bidMaterialsApi.outline", () => {
+  // 大纲候选走核心网关线程 artifacts 通道(非 extensions 命名空间): 虚拟路径以 /mnt/user-data
+  // 开头 → URL 必须以 /artifacts//mnt 双斜杠起头(路由捕获 {path:path} 契约, 单斜杠 404)。
+  const CANDIDATES_URL =
+    "/api/threads/t-1/artifacts//mnt/user-data/workspace/bid/candidates/tech_outline.candidates.json";
+
+  const payload = {
+    source_pack: "it-full",
+    confirmed: true,
+    chapters: [
+      { no: 1, title: "项目总体理解", clause_ids: ["ZB-T-002"], notes: null },
+    ],
+    managed_node_ids: ["node-1"],
+  };
+
+  test("candidates hits artifacts channel with double-slash virtual path, GET, no CSRF even with csrf cookie", async () => {
+    globalScope.document = { cookie: "csrf_token=t0ken" }; // GET 免 CSRF: 注入 cookie 也不得带头
+    stubFetch(200, payload);
+    await bidMaterialsApi.outline.candidates("t-1");
+    const [url, init] = lastCall();
+    expect(url).toBe(CANDIDATES_URL);
+    expect(init.method).toBeUndefined(); // bidRequest 不设 method → fetch 默认 GET
+    expect(
+      (init.headers as Record<string, string>)["X-CSRF-Token"],
+    ).toBeUndefined();
+    expect(init.credentials).toBe("include");
+  });
+
+  test("404 (thread never produced candidates) resolves to null", async () => {
+    stubFetch(404, {
+      detail:
+        "Artifact not found: /mnt/user-data/workspace/bid/candidates/tech_outline.candidates.json",
+    });
+    const result = await bidMaterialsApi.outline.candidates("t-none");
+    expect(result).toBeNull();
+  });
+
+  test("200 resolves to parsed candidates object", async () => {
+    stubFetch(200, payload);
+    const result = await bidMaterialsApi.outline.candidates("t-1");
+    expect(result).toEqual(payload);
+  });
+
+  test("non-404 errors (403 not-owner) rethrow with ApiError status intact", async () => {
+    stubFetch(403, { detail: "Forbidden" });
+    let err: unknown = null;
+    try {
+      await bidMaterialsApi.outline.candidates("t-other");
+    } catch (e) {
+      err = e;
+    }
+    expect((err as { status?: number } | null)?.status).toBe(403);
+  });
+});
+
 describe("error mapping", () => {
   test("non-json error surfaces response text", async () => {
-    globalThis.fetch = (async () => new Response("boom", { status: 500 })) as typeof fetch;
+    globalThis.fetch = (async () =>
+      new Response("boom", { status: 500 })) as typeof fetch;
     await expect(bidMaterialsApi.samples.disable("s1")).rejects.toThrow("boom");
   });
 
   test("fastapi detail string is surfaced", async () => {
     stubFetch(400, { detail: "证号已存在" });
     await expect(
-      bidMaterialsApi.qualifications.create({ qual_type: "ISO9001", cert_no: "y" }),
+      bidMaterialsApi.qualifications.create({
+        qual_type: "ISO9001",
+        cert_no: "y",
+      }),
     ).rejects.toThrow("证号已存在");
   });
 
@@ -169,7 +243,10 @@ describe("error mapping", () => {
       detail: [{ msg: "Input should be 营业执照" }, { msg: "unexpected" }],
     });
     await expect(
-      bidMaterialsApi.qualifications.create({ qual_type: "ISO9001", cert_no: "y" }),
+      bidMaterialsApi.qualifications.create({
+        qual_type: "ISO9001",
+        cert_no: "y",
+      }),
     ).rejects.toThrow("Input should be 营业执照; unexpected");
   });
 });
@@ -180,9 +257,13 @@ describe("csrf header injection", () => {
     stubFetch(200, { id: "q1", current_version: 1 });
     await bidMaterialsApi.qualifications.rollback("q1", 1);
     const [, init] = lastCall();
-    expect((init.headers as Record<string, string>)["X-CSRF-Token"]).toBe("t0ken");
+    expect((init.headers as Record<string, string>)["X-CSRF-Token"]).toBe(
+      "t0ken",
+    );
 
-    const file = new File([new Uint8Array([1, 2, 3])], "cert.png", { type: "image/png" });
+    const file = new File([new Uint8Array([1, 2, 3])], "cert.png", {
+      type: "image/png",
+    });
     await bidMaterialsApi.qualifications.uploadVersion("q1", file);
     const [, uploadInit] = lastCall();
     const uploadHeaders = uploadInit.headers as Record<string, string>;

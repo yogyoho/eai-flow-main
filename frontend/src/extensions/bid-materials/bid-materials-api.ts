@@ -12,6 +12,9 @@
 //   - 样例无单条 POST 端点——登记一律走 /samples/bulk 幂等导入(file_hash upsert);
 //   - 资质类型为后端 QualType Literal 闭集(schemas.py), 预设逐一对齐——自由文本会被 422;
 //   - export-whitelist 端点刻意不封装(WP-2.4 消费方是后端工具链; UI 若需直链下载即可)。
+// 大纲候选(只读回看)不在 extensions 命名空间——走核心网关线程 artifacts 通道
+// /api/threads/{tid}/artifacts/... , 经同一 bidRequest 咽喉点(绝对 /api/ 路径直通不拼 API_BASE,
+// GET 免 CSRF); 404(线程未走大纲自拟流程)归一为 null, 由调用方区分于真错误。
 
 export interface QualificationRecord {
   id: string;
@@ -125,7 +128,7 @@ export const SAMPLE_STATUSES: { value: string; label: string }[] = [
 
 const API_BASE = "/api/extensions/bid-materials";
 
-class ApiError extends Error {
+export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
@@ -159,12 +162,16 @@ async function bidRequest<T>(
   // 浏览器自动生成的 multipart boundary, 后端解析不到 file 字段。
   const isForm = options.body instanceof FormData;
   const headers = withCsrf(
-    isForm ? { ...options.headers } : { "Content-Type": "application/json", ...options.headers },
+    isForm
+      ? { ...options.headers }
+      : { "Content-Type": "application/json", ...options.headers },
     options.method,
   );
+  // 核心 /api/ 开头的绝对路径直通(线程 artifacts 通道在核心网关命名空间)——其余拼 extensions API_BASE
+  const url = path.startsWith("/api/") ? path : `${API_BASE}${path}`;
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    response = await fetch(url, {
       ...options,
       headers,
       credentials: "include",
@@ -215,7 +222,8 @@ function buildQuery(params: {
   if (params.qual_type) query.set("qual_type", params.qual_type);
   if (params.include_disabled) query.set("include_disabled", "true");
   if (params.industry) query.set("industry", params.industry);
-  if (params.project_category) query.set("project_category", params.project_category);
+  if (params.project_category)
+    query.set("project_category", params.project_category);
   if (params.q) query.set("q", params.q);
   if (params.limit) query.set("limit", String(params.limit));
   if (params.offset) query.set("offset", String(params.offset));
@@ -223,13 +231,40 @@ function buildQuery(params: {
   return s ? `?${s}` : "";
 }
 
+// ============== 大纲候选（只读回看） ==============
+
+// 候选章节——对齐 candidates/tech_outline.candidates.json（outline_merge.py validate 契约:
+// no 为非布尔 int; title 非空串; clause_ids 非空字符串数组; notes 可空）
+export interface OutlineChapter {
+  no: number;
+  title: string;
+  clause_ids: string[];
+  notes: string | null;
+}
+
+// 大纲候选文件本体——B1 大纲自拟产物（B2 消费其章锚点）; source_pack 为 null = 无骨架包自由拟
+export interface OutlineCandidatesPayload {
+  source_pack: string | null;
+  confirmed: boolean;
+  chapters: OutlineChapter[];
+  managed_node_ids: string[];
+}
+
+// 候选文件 artifacts 虚拟路径——双斜杠契约: 网关 artifacts 路由捕获 {path:path} 且要求虚拟路径
+// 以 /mnt/user-data 开头, 故 URL 以 /artifacts//mnt 起头（nginx 保留双斜杠, live 验证 200）。
+// 勿"修复"成单斜杠——单斜杠会被并入路由段, 404。
+const OUTLINE_CANDIDATES_VPATH =
+  "/mnt/user-data/workspace/bid/candidates/tech_outline.candidates.json";
+
 export const bidMaterialsApi = {
   qualifications: {
     list: (params: QualificationListParams = {}) =>
       bidRequest<QualificationRecord[]>(`/qualifications${buildQuery(params)}`),
 
     expiring: (days = 90) =>
-      bidRequest<QualificationRecord[]>(`/qualifications/expiring?days=${days}`),
+      bidRequest<QualificationRecord[]>(
+        `/qualifications/expiring?days=${days}`,
+      ),
 
     create: (data: QualificationUpsertInput) =>
       bidRequest<QualificationRecord>("/qualifications", {
@@ -237,7 +272,8 @@ export const bidMaterialsApi = {
         body: JSON.stringify(data),
       }),
 
-    get: (id: string) => bidRequest<QualificationRecord>(`/qualifications/${id}`),
+    get: (id: string) =>
+      bidRequest<QualificationRecord>(`/qualifications/${id}`),
 
     update: (id: string, data: Partial<QualificationUpsertInput>) =>
       bidRequest<QualificationRecord>(`/qualifications/${id}`, {
@@ -246,21 +282,28 @@ export const bidMaterialsApi = {
       }),
 
     disable: (id: string) =>
-      bidRequest<{ disabled: boolean }>(`/qualifications/${id}`, { method: "DELETE" }),
+      bidRequest<{ disabled: boolean }>(`/qualifications/${id}`, {
+        method: "DELETE",
+      }),
 
     versions: (id: string) =>
-      bidRequest<QualificationVersionRecord[]>(`/qualifications/${id}/versions`),
+      bidRequest<QualificationVersionRecord[]>(
+        `/qualifications/${id}/versions`,
+      ),
 
     uploadVersion: (id: string, file: File, note?: string) => {
       const form = new FormData();
       form.append("file", file);
       if (note) form.append("note", note); // 后端 multipart 键名 note(max_length=200)
       // 不设 Content-Type——浏览器自带 multipart boundary; CSRF 由 bidRequest 单一咽喉点统一注入
-      return bidRequest<QualificationVersionUploadResult>(`/qualifications/${id}/versions`, {
-        method: "POST",
-        headers: {},
-        body: form,
-      });
+      return bidRequest<QualificationVersionUploadResult>(
+        `/qualifications/${id}/versions`,
+        {
+          method: "POST",
+          headers: {},
+          body: form,
+        },
+      );
     },
 
     rollback: (id: string, toVersion: number) =>
@@ -287,5 +330,21 @@ export const bidMaterialsApi = {
 
     disable: (id: string) =>
       bidRequest<{ message: string }>(`/samples/${id}`, { method: "DELETE" }),
+  },
+  outline: {
+    // 只读回看线程的大纲候选; 404 = 线程未产候选（未走大纲自拟流程, 含零条款跳过分支）→ null,
+    // 其余错误（含 403 非本线程 owner）原样上抛由调用方分型提示
+    candidates: async (
+      threadId: string,
+    ): Promise<OutlineCandidatesPayload | null> => {
+      try {
+        return await bidRequest<OutlineCandidatesPayload>(
+          `/api/threads/${encodeURIComponent(threadId)}/artifacts/${OUTLINE_CANDIDATES_VPATH}`,
+        );
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }
+    },
   },
 };
