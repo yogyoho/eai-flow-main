@@ -65,7 +65,7 @@ v1 大纲自拟只产出人读候选文档（candidates/tech_outline.candidates.
 | 候选 JSON 损坏/字段缺失 | exit 1 指明字段 |
 | clause_ids 校验失败 | exit 1 逐条列出 kind（四种） |
 | mirror 节点被候选波及 | 不可能（只新增 self_created；校验 ④ 拒绝抢挂） |
-| state_guard 重签失败 | exit 1，structure.json 不落盘（先写临时+校验+原子替换+签名的既有管线顺序） |
+| state_guard 重签失败 | **回滚**：重写旧 structure.json 字节并对旧内容重签（恢复原签名态）→ exit 1——structure.json 字节不变可测试；重建入口=重跑 outline_merge |
 | 全部章 clause_ids 为空 | exit 1（空大纲无意义，拒绝） |
 
 ## 7. 测试矩阵
