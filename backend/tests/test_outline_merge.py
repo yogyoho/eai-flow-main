@@ -175,6 +175,17 @@ class TestCandidateValidation:
         p.write_text("{not json", encoding="utf-8")
         assert _run_merge(state, p) == 1
 
+    def test_duplicate_clause_across_chapters_rejected(self, tmp_path, capsys):
+        dup = [
+            {"no": 1, "title": "章甲", "clause_ids": ["ZB-T-002"], "notes": None},
+            {"no": 2, "title": "章乙", "clause_ids": ["ZB-T-002"], "notes": None},
+        ]
+        state = _make_state(tmp_path, MIRROR_STRUCTURE, MIRROR_CLAUSES)
+        cand = _write_candidate(tmp_path, _candidate(dup))
+        assert _run_merge(state, cand) == 1, "两章抢同一条款 → duplicate_clause 拒绝(双锚定=响应双渲染)"
+        assert "duplicate_clause" in capsys.readouterr().err
+        assert json.loads((state / "structure.json").read_text(encoding="utf-8")) == MIRROR_STRUCTURE, "拒绝零落盘"
+
 
 class TestMergeSemantics:
     def _assert_signed(self, state):
@@ -283,6 +294,7 @@ class TestMergeSemantics:
         old_bytes = (state / "structure.json").read_bytes()
         assert _run_merge(state, cand) == 1
         assert (state / "structure.json").read_bytes() == old_bytes, "重签失败回滚——structure.json 字节不变"
+        assert state_guard.verify_state_files(state) == [], "回滚后签名恢复(对旧内容重签)"
 
     def test_candidates_writeback_failure_reports_recovery(self, tmp_path, monkeypatch, capsys):
         """候选回写失败(structure 已更新+签名)→ exit 1, stderr 携带真实恢复路径(新 managed ids)——
@@ -304,3 +316,18 @@ class TestMergeSemantics:
         out = json.loads((state / "structure.json").read_text(encoding="utf-8"))
         assert any(n["node_id"] == "S-003" for n in out), "structure.json 已更新(半完成态如实可见)"
         assert state_guard.verify_state_files(state) == [], "structure.json 已签名"
+
+    def test_two_chapters_get_sequential_node_ids(self, tmp_path):
+        chapters = [
+            {"no": 1, "title": "项目总体理解", "clause_ids": ["ZB-T-002"], "notes": None},
+            {"no": 2, "title": "网络方案", "clause_ids": ["ZB-T-003"], "notes": None},
+        ]
+        clauses = MIRROR_CLAUSES + [_clause("ZB-T-003")]
+        state = _make_state(tmp_path, MIRROR_STRUCTURE, clauses)
+        cand = _write_candidate(tmp_path, _candidate(chapters))
+        assert _run_merge(state, cand) == 0
+        out = json.loads((state / "structure.json").read_text(encoding="utf-8"))
+        new_ids = [n["node_id"] for n in out if n.get("origin") == "self_created"]
+        assert new_ids == ["S-003", "S-004"], "逐章顺序取号——build_outline_nodes 漏掉 +nodes 会双 S-003"
+        updated = json.loads((tmp_path / "tech_outline.candidates.json").read_text(encoding="utf-8"))
+        assert updated["managed_node_ids"] == ["S-003", "S-004"], "回写候选含全部新节点 id"

@@ -14,10 +14,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
 import build_output
+import extract
 import state_guard
 
 EXIT_OK = 0
@@ -53,6 +55,7 @@ def validate_candidates(cand: dict, clauses: list[dict], structure: list[dict]) 
     mirror_anchored = {cid for n in structure if isinstance(n, dict) and n.get("origin") != "self_created" for cid in (n.get("linked_clause_ids") or [])}
 
     seen_chapter_titles: set[str] = set()
+    claimed_clauses: dict[str, str] = {}
     normalized: list[dict] = []
     for idx, ch in enumerate(chapters):
         if not isinstance(ch, dict):
@@ -83,7 +86,10 @@ def validate_candidates(cand: dict, clauses: list[dict], structure: list[dict]) 
                 problems.append(f"chapters[{idx}]「{title}」← {cid}: not_live({c.get('status', c.get('lifecycle', '?'))})")
             elif cid in mirror_anchored:
                 problems.append(f"chapters[{idx}]「{title}」← {cid}: mirror_anchored(已由镜像节点挂接)")
+            elif cid in claimed_clauses:
+                problems.append(f"chapters[{idx}]「{title}」← {cid}: duplicate_clause——条款已被章「{claimed_clauses[cid]}」挂接(双锚定=响应双渲染)")
             else:
+                claimed_clauses[cid] = title
                 clean_cids.append(cid)
         if clean_cids:
             normalized.append({"no": no, "title": title, "clause_ids": clean_cids, "notes": ch.get("notes")})
@@ -97,15 +103,28 @@ def _is_live(clause: dict) -> bool:
     return build_output._is_active(clause)
 
 
-def _atomic_write_bytes(path: Path, data: bytes) -> None:
-    """同目录临时文件 + os.replace 原子落盘(防半写)。"""
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, path)
+def _restore_structure_bytes(path: Path, data: bytes) -> None:
+    """回滚专用字节复原写(家族规范: 点前缀+pid 临时名 .{name}.tmp{pid}, try/finally unlink)。
+
+    仅用于重签失败后恢复旧字节——常规数据写走 extract.atomic_write_json(序列化同源)。
+    复原再失败属双故障: 如实报「保留新未签名内容」, 不谎报已回滚。
+    """
+    tmp = path.with_name(f".{path.name}.tmp{os.getpid()}")
+    try:
+        tmp.write_bytes(data)
+        os.replace(tmp, path)
+    except OSError as exc:
+        raise OutlineMergeError("rollback also failed——structure.json 保留新未签名内容, 恢复=重跑 outline_merge") from exc
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def _next_node_id(structure: list[dict]) -> str:
-    used = {int(n["node_id"].split("-")[1]) for n in structure if isinstance(n, dict) and isinstance(n.get("node_id"), str) and "-" in n.get("node_id", "")}
+    """分配下一个 S-NNN(最低空位——计划规定, 替换式重建下幂等重跑取号稳定)。
+
+    正则守卫同 responses._next_node_id(外来带横线 id 如 MIR-3.2 跳过不计, 不炸 int());
+    取号策略有意分叉: 彼处 max+1, 此处最低空位。"""
+    used = {int(m.group(1)) for n in structure if isinstance(n, dict) and (m := re.match(r"^S-(\d+)$", str(n.get("node_id", ""))))}
     i = 1
     while i in used:
         i += 1
@@ -198,21 +217,24 @@ def main(argv: list[str] | None = None) -> int:
         managed_ids = {m for m in raw_managed if isinstance(m, str)} if isinstance(raw_managed, list) else set()
         check_structure = [n for n in structure if not (isinstance(n, dict) and n.get("node_id") in managed_ids)]
         normalized = validate_candidates(cand, clauses, check_structure)
-        old_managed = raw_managed or []
+        old_managed = [] if raw_managed is None else raw_managed  # falsy 非 None(0/""/false)照实入 validate_managed 闸
         new_structure, managed = merge(structure, normalized, old_managed, cand.get("source_pack"))
 
-        # 原子写 structure.json → 重签; 重签失败回滚旧字节并对旧内容重签(恢复原签名态) → exit 1
+        # 原子写 structure.json(家族规范写盘) → 重签; 重签失败回滚旧字节并对旧内容重签(恢复原签名态) → exit 1
         structure_path = state_dir / "structure.json"
         old_bytes = structure_path.read_bytes()
-        _atomic_write_bytes(structure_path, (json.dumps(new_structure, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        try:
+            extract.atomic_write_json(structure_path, new_structure)
+        except extract.ExtractError as exc:
+            raise OutlineMergeError(f"structure.json 写盘失败({exc})——未落盘零变更, 重建入口=重跑 outline_merge") from exc
         try:
             state_guard.sign_state_files(state_dir, ["structure.json"])
         except Exception as exc:
-            _atomic_write_bytes(structure_path, old_bytes)  # 先保字节
+            _restore_structure_bytes(structure_path, old_bytes)  # 复原失败 → 双故障 OutlineMergeError(如实文案)
             try:
                 state_guard.sign_state_files(state_dir, ["structure.json"])  # 对旧内容重签, 恢复原签名态
             except Exception:
-                pass  # 连回滚重签都失败仍保字节——verify 侧会以签名不符拦住, 不静默放行
+                pass  # 字节已复原; 重签再失败交由 verify 侧签名不符拦截, 不静默放行
             raise OutlineMergeError(f"structure.json 重签失败({exc})——已回滚, structure.json 未变更, 重建入口=重跑 outline_merge") from exc
 
         # 摘要口径: 活技术条款 − 任意节点(含 self_created/兜底)已挂接者
@@ -222,11 +244,11 @@ def main(argv: list[str] | None = None) -> int:
         # 回写候选 managed_node_ids(候选在 Agent 可写区, 非签名五元组; 失败不谎报成功)
         cand["managed_node_ids"] = managed
         try:
-            _atomic_write_bytes(cand_path, (json.dumps(cand, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
-        except OSError as exc:
+            extract.atomic_write_json(cand_path, cand)
+        except extract.ExtractError as exc:
             # 重跑会被 self_created_path_conflict 拒死(managed 列表缺新节点 id, 预剔除不生效)——
-            # 恢复提示必须携带真实出口: 手动把候选 managed_node_ids 回填为本轮新 managed 后再重跑。
-            raise OutlineMergeError(f"候选回写失败({exc})——structure.json 已更新+签名; 恢复=把候选文件 managed_node_ids 手动设为 {managed} 后重跑 outline_merge") from exc
+            # 恢复提示必须携带真实出口: 手动把候选 managed_node_ids 回填为本轮新 managed(json 可直接粘贴)后再重跑。
+            raise OutlineMergeError(f"候选回写失败({exc})——structure.json 已更新+签名; 恢复=把候选文件 managed_node_ids 手动设为 {json.dumps(managed)} 后重跑 outline_merge") from exc
 
         print(
             json.dumps(
