@@ -1258,6 +1258,16 @@ function dispatchBehaviorAction(
   }
 }
 
+// EAI-CUSTOM (ontology-ui T4 container E2E): stable empty defaults. Inline `= []`
+// default parameters allocate a fresh array identity on every render, which made
+// the interactionState memo recompute each render and re-ran the analytics
+// effect — whose setAnalyticsSnapshot always stores a fresh object
+// (generatedAt: Date.now()), closing an infinite update loop
+// ("Maximum update depth exceeded" → blank canvas).
+const EMPTY_ACTIVE_PATH: string[] = [];
+const EMPTY_ACTIVE_PATH_EDGE_IDS: string[] = [];
+const EMPTY_PLUGIN_OVERLAYS: ReactNode[] = [];
+
 export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
   function GraphCanvas(
     {
@@ -1271,8 +1281,8 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       selectedNodeId,
       focusedNodeId,
       selectedEdgeId,
-      activePath = [],
-      activePathEdgeIds = [],
+      activePath = EMPTY_ACTIVE_PATH,
+      activePathEdgeIds = EMPTY_ACTIVE_PATH_EDGE_IDS,
       distanceVisualState,
       effectsState,
       temporalState,
@@ -1281,7 +1291,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
       viewMode,
       className,
       showFitViewButton = true,
-      pluginOverlays = [],
+      pluginOverlays = EMPTY_PLUGIN_OVERLAYS,
       onSceneRuntimeChange,
       onInteractionStateChange,
       onCameraStateChange,
@@ -2526,6 +2536,11 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
             order: displayGraphRef.current.order,
             size: displayGraphRef.current.size,
           });
+          // EAI-CUSTOM (ontology-ui T4 container E2E): the initial camera fit ran
+          // at seed positions before FA2 spread the nodes, so after auto-settle the
+          // graph sat outside the viewport (blank canvas until manual Fit View).
+          // Re-fit once to the settled layout bounds so nodes are visible.
+          fitDisplayGraphInView();
         }, FULL_GRAPH_LAYOUT_SETTLE_MS);
       }
 
@@ -2585,7 +2600,7 @@ export const GraphCanvas = forwardRef<GraphCanvasHandle, GraphCanvasProps>(
         }
         fa2Ref.current?.stop();
       };
-    }, [displayGraph, displayMeta.layoutMode, graphVersion, isLayoutRunning, viewMode]);
+    }, [displayGraph, displayMeta.layoutMode, fitDisplayGraphInView, graphVersion, isLayoutRunning, viewMode]);
 
     useEffect(() => {
       return () => {
