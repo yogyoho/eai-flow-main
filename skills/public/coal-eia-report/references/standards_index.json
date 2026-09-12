@@ -360,6 +360,286 @@
       "verified": true,
       "origin": "sample_verbatim（yakeshi2026 文号/批复类）",
       "note": "对具体报告的适用版本以人工确认为准"
+    },
+    {
+      "code": "GB 13271-2014",
+      "title": "锅炉大气污染物排放标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 16297-1996",
+      "title": "大气污染物综合排放标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 16889-2023",
+      "title": "生活垃圾填埋场污染控制标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 18218-2018",
+      "title": "危险化学品重大危险源辨识",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "framework",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 18597-2001",
+      "title": "危险废物贮存污染控制标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 18597-2023",
+      "title": "危险废物贮存污染控制标准（2023 修订）",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 50016-2014",
+      "title": "建筑设计防火规范",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "framework",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 50183-2004",
+      "title": "石油天然气工程设计防火规范",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "framework",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 50215-2015",
+      "title": "煤炭工业矿井设计规范",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "framework",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 5749-2006",
+      "title": "生活饮用水卫生标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 8978-1996",
+      "title": "污水综合排放标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "emission_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB/T 17766-2020",
+      "title": "固体矿产资源储量分类",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "framework",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB/T 19923-2005",
+      "title": "城市污水再生利用 工业用水水质",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB/T 21010-2017",
+      "title": "土地利用现状分类",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "framework",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB/T 50433-2018",
+      "title": "生产建设项目水土保持技术标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "framework",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "HJ 164-2020",
+      "title": "地下水环境监测技术规范",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "method_param",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "HJ 192-2016",
+      "title": "生态环境状况评价技术规范",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "method_param",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "HJ 194-2017",
+      "title": "环境空气质量手工监测技术规范",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "method_param",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "HJ 446-2008",
+      "title": "清洁生产标准 煤炭采选业",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "method_param",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "HJ/T 166-2004",
+      "title": "土壤环境监测技术规范",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "method_param",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "TD/T 1036-2013",
+      "title": "土地复垦质量控制标准",
+      "role": "波次测试引用补录（正文已引用，注册溯源）",
+      "chapters": "按引用章",
+      "tier": "quality_limit",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 12719-2021",
+      "title": "（名称待人工核实）",
+      "role": "正文引用待核实——tier=pending 禁补猜",
+      "chapters": "按引用章",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 50359-2016",
+      "title": "（名称待人工核实）",
+      "role": "正文引用待核实——tier=pending 禁补猜",
+      "chapters": "按引用章",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 50507-2010",
+      "title": "（名称待人工核实）",
+      "role": "正文引用待核实——tier=pending 禁补猜",
+      "chapters": "按引用章",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 50812-2013",
+      "title": "（名称待人工核实）",
+      "role": "正文引用待核实——tier=pending 禁补猜",
+      "chapters": "按引用章",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "GB 50829-2013",
+      "title": "（名称待人工核实）",
+      "role": "正文引用待核实——tier=pending 禁补猜",
+      "chapters": "按引用章",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "MT/T 1080-2008",
+      "title": "（名称待人工核实）",
+      "role": "正文引用待核实——tier=pending 禁补猜",
+      "chapters": "按引用章",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
+    },
+    {
+      "code": "TD/T 1075-2013",
+      "title": "（名称待人工核实）",
+      "role": "正文引用待核实——tier=pending 禁补猜",
+      "chapters": "按引用章",
+      "tier": "pending",
+      "needs_verification": true,
+      "verified": false,
+      "origin": "wave-test-20260912"
     }
   ],
   "limit_tables": {
@@ -370,7 +650,13 @@
       "needs_verification": true,
       "verified": false,
       "rows": [
-        {"category": "3 类", "day": 65, "night": 55, "unit": "dB(A)", "origin": "sample_verbatim(hengcheng §二 standard_limit)"}
+        {
+          "category": "3 类",
+          "day": 65,
+          "night": 55,
+          "unit": "dB(A)",
+          "origin": "sample_verbatim(hengcheng §二 standard_limit)"
+        }
       ],
       "note": "仅 3 类档有样例锚点；0/1/2/4a/4b 类档须人工对照原文录入"
     },
@@ -380,7 +666,13 @@
       "needs_verification": true,
       "verified": false,
       "rows": [
-        {"category": "3 类", "day": 65, "night": 55, "unit": "dB(A)", "origin": "sample_verbatim(hengcheng §二 standard_limit；walkthrough ch6 6.5 限值绑定)"}
+        {
+          "category": "3 类",
+          "day": 65,
+          "night": 55,
+          "unit": "dB(A)",
+          "origin": "sample_verbatim(hengcheng §二 standard_limit；walkthrough ch6 6.5 限值绑定)"
+        }
       ],
       "note": "仅 3 类档有样例锚点；其余档位人工核实后补"
     },

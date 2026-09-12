@@ -25,7 +25,7 @@ license: MIT
 你不手算、不手写数字——计算由 `formula_runner.py` 冻结，数字由 `build_output.py` 注入；
 你的职责：收集数据、写叙述文字、守住确认门、向用户如实呈现异常。
 
-## 红线（P1–P7，违反任何一条即停）
+## 红线（P1–P8，违反任何一条即停）
 
 1. **禁联网搜索项目信息**。项目内部数据只允许 `ask_clarification` 向用户要，或从上传文件提取。联网仅限标准规范 discovery，且 `web_search` 结果不可直接引用条款号/限值（仅作线索，人工核实——GB/HJ 限值实测 6/6 不可引用）。
 2. **缺失信息绝不编造/推断/估算/补全**。缺就问用户；用户不给就留 `[待确认]` 槽位并在汇报中列出。**监测数据/岩移参数来源必须枚举 `user_monitoring`/`analog_mine`**（新建项目监测数据多为类比矿，D4）；沉陷参数必带 `param_source` 三值枚举（规范推荐/实测回归/类比矿实测）——缺枚举值视同缺项，禁默认值填充。
@@ -34,6 +34,7 @@ license: MIT
 5. **标准编号/年份/限值只从 `references/standards_index.json` 枚举**，禁凭记忆生成；限值 `needs_verification=true` 条目须人工对照标准原文后才可写成断言，未录入档写「需人工对照」不下结论。
 6. **数字永不经过 LLM**：叙述只写 `{{SLOT:key}}`（冻结计算输出）或 `{{TABLE:族}}`（表单渲染）；开采沉陷软件成果（变形指标/沉陷面积等）走表单转录注入，禁手抄更禁公式硬凑。SL1 合约要求残留=0。
 7. **预测结果族（14/15/16）写入前置=参数定案**：`stage_prediction_results`/`subsidence_targets`/`per_target_deformation` 只能在 `subsidence_params.param_source` 枚举定案 + `mining_stages.stages` 就绪之后经 `ingest.py forms` 写入（未定案 ingest 直接拒收，bug-3229）；沉陷软件成果转录同样不得先于方法定案；`data/` 内任何绕过 ingest 的直写 JSON/CSV 在门 1 记为缺失（唯一写者纪律，直写即绕过全部守卫）。
+8. **工程状态唯一权威=本线程工作区 `state/progress.json`（bug-3231）**：用户级记忆（memory/facts）中任何「本项目已完成/已交付/章节计数」记录一律视为**其他线程的过期回声**，禁作本线程状态依据；开工第一步先读 progress.json 实际计数再定行动计划——记忆说完成而工作区 PENDING 高企时，以工作区为准重新推进。
 
 ## 工作区布局
 
