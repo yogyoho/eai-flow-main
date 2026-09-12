@@ -36,6 +36,15 @@ stall_step 以"工具窗口无新工具名"为无进展信号: 连续 STALL_N �
 (两条出路: 继续执行 / present_files 收口); 升级后仍无进展 -> 停机。不设链内
 present_files 直判完成——它是中段门工件信号, 完成判定只归 COMPLETION_RECAP
 (对抗评审 wgu46e22u blocker)。
+
+bug-3313 (2026-09-12, clean5 残余两则):
+- 表单门回填: ask_clarification fields 表单(clean5 turn1 实录: 输出格式/技术卷处理等
+  3 required 字段)无 ANSWERS 专行命中时, 旧兜底"确认, 请继续。"不给任何具体方向 ->
+  agent 自行其是(无人选"仅Markdown", 后续绕开 build_output 册集管线手拼 14 个 docx)。
+  现按渲染字段行逐项回填第一选项; 专行命中仍优先(表单只填空档)。
+- STALL_TERMINATE_MSG 收口出口加完成物门槛: clean5 turn5 实录——阶段4 build_output
+  未跑的 agent 拿"若确已全部完成: 请 present_files"提前收口并被 COMPLETION_RECAP 放行。
+  present_files 出路现锁在"六阶段(含阶段4 build)确已完成且 outputs/ 已有 build 产物"。
 """
 
 import argparse
@@ -94,8 +103,11 @@ PREMATURE = "<<PREMATURE_STOP>>"
 # 中性续作指令: 不确认任何门、不预设任何阶段状态, 只要求继续。
 PREMATURE_CONTINUE_MSG = "请从上一步中断处继续执行当前阶段, 不要重做已完成的步骤。若当前阶段已完成, 请按 SKILL.md 流程进入下一阶段; 若在等待用户确认, 请用 ask_clarification 明确列出待确认项。"
 # bug-3037 停滞升级指令: 门轮空转(复述状态+门措辞, 无新工具进展)达到阈值后投一次,
-# 给模型两条正经出路(收口交付 或 列明阻塞), 打断"复述->罐头确认->复述"循环。
-STALL_TERMINATE_MSG = "若管线尚未完成: 请继续执行当前阶段, 不要等待确认; 若确已全部完成: 请调用 present_files 交付成果并结束回复。不要再复述已报送过的状态或确认请求。"
+# 打断"复述->罐头确认->复述"循环。bug-3313 收口出口加完成物门槛(clean5 turn5 实录:
+# 阶段4 build_output 未跑的 agent 拿旧文案"若确已全部完成: 请 present_files"提前收口
+# 并被 COMPLETION_RECAP 放行)——present_files 出路锁在"六阶段(含阶段4 build 册集)确已
+# 完成且 outputs/ 已有 build 产物"上; build 未跑不得宣告完成, 只能继续当前阶段。
+STALL_TERMINATE_MSG = "若 SKILL.md 六阶段(含阶段4 build_output 册集构建)确已全部完成且 outputs/ 已有 build 产物: 请 present_files 收口并结束。若阶段4 build 尚未运行: 不得宣告完成, 继续执行当前阶段。不要再复述已报送过的状态或确认请求。"
 # 交付回执标记(bug-3308 从 COMPLETION_RECAP 分支提取共用): COMPLETION_RECAP 完成判定
 # 与 stall 停滞判定共用的 "delivery evidence" 口径——交付证据只认终文里的标记文本;
 # present_files 工具调用本身不是证据(门1/门2 工件也经 present_files 呈现, 见 stall_step)。
@@ -186,16 +198,54 @@ def upload(tid):
         log(f"upload: {r.status} {r.read().decode('utf-8')[:200]}")
 
 
+# bug-3313 表单字段行渲染契约(packages/harness/deerflow/agents/middlewares/
+# clarification_middleware.py 渲染 + clean4 turn3/clean5 turn1 真门文本实证):
+#   "  N. 标签" [+ " (required)"] [+ " — options: a / b ..."] [+" (multiple allowed)"]。
+# 只认带 (required) 或 — options: 标记的行——普通散文编号列表(无标记)不是表单字段。
+FORM_FIELD_RE = re.compile(r"^\s*\d+\.\s+(?P<label>.+?)\s*(?P<req>\(required\))?(?:\s*—\s*options:\s*(?P<opts>.*?))?(?:\s*\(multiple allowed\))?\s*$")
+# 渲染端上限 16 字段/选项 200 字(clarification_tool docstring); 回填答案保持紧凑。
+FORM_ANSWER_MAX_FIELDS = 12
+FORM_ANSWER_CLIP = 80
+
+
+def _clip(text, n=FORM_ANSWER_CLIP):
+    return text if len(text) <= n else text[: n - 1] + "…"
+
+
+def _form_answer(question):
+    """bug-3313 表单门回填: 无专行命中的 fields 表单 -> 逐项回填第一选项, 给 agent
+    具体方向(clean5 turn1 旧兜底"确认, 请继续。"让 agent 自行其是: 无人选"仅Markdown",
+    后续绕开 build_output 册集管线手拼 14 个 docx)。required 无选项字段 = 确认型
+    checkbox, 答"全部确认"; 无可解析字段行返回 None(回落兜底行)。"""
+    items = []
+    for line in question.splitlines():
+        m = FORM_FIELD_RE.match(line)
+        if not m or not (m.group("req") or m.group("opts")):
+            continue
+        label = _clip(m.group("label").strip())
+        opts = m.group("opts")
+        # 第一选项 = 首个 " / " 前的选项串((multiple allowed) 尾缀已由正则剥离)
+        value = _clip(opts.strip().split(" / ")[0].strip()) if opts else "全部确认"
+        items.append(f"{label}={value}")
+        if len(items) >= FORM_ANSWER_MAX_FIELDS:
+            break
+    if not items:
+        return None
+    return "逐项确认如下: " + "; ".join(items) + "; 请按此继续。"
+
+
 def pick_answer(question):
-    """确认门自动应答(bug-3308 门签名门控): 兜底行之外的专行需问题文本带
-    ask_clarification 门签名(GATE_SIGNATURES)才可匹配; SOFT_GATE 门措辞纯文本与
-    普通散文一律回落兜底行("确认, 请继续。")。"""
+    """确认门自动应答(bug-3308 门签名门控 + bug-3313 表单回填): 兜底行之外的专行需
+    问题文本带 ask_clarification 门签名(GATE_SIGNATURES)才可匹配; SOFT_GATE 门措辞
+    纯文本与普通散文一律回落兜底行("确认, 请继续。")。带签名但无专行命中且文本含
+    ask_clarification 渲染的表单字段行时, 逐项回填第一选项(bug-3313; 专行命中仍
+    优先——表单只填空档); 无字段行才回落兜底行。"""
     if not any(sig in question for sig in GATE_SIGNATURES):
         return ANSWERS[-1][1]
     for key, ans in ANSWERS[:-1]:
         if key in question:
             return ans
-    return ANSWERS[-1][1]
+    return _form_answer(question) or ANSWERS[-1][1]
 
 
 STALL_N = 3  # bug-3037: 连续 N 个"无新工具进展"的门轮触发停滞处置
@@ -209,8 +259,9 @@ def stall_step(count, escalated, seen, tools, prev_tools, last_ai=""):
     bug-3308: present_files 是唯一例外——裸 present_files(或其复读)不算进展, 只有
     当轮终文带交付标记(DELIVERY_MARKERS, 与 COMPLETION_RECAP 同表)时才视为交付证据
     =进展; 门1/门2 工件也经 present_files 呈现, 工具调用本身是中性信号。
-    连续 STALL_N 轮无新进展: 未升级过 -> escalate(投一次 STALL_TERMINATE_MSG, 给
-    模型两条正经出路: 继续执行 或 present_files 收口); 升级后仍无进展 -> abort 停机。
+    连续 STALL_N 轮无新进展: 未升级过 -> escalate(投一次 STALL_TERMINATE_MSG;
+    bug-3313: present_files 收口出路以阶段4 build 完成物为门槛, build 未跑只能继续);
+    升级后仍无进展 -> abort 停机。
     不设"链内 present_files 直判完成": 本 skill 的确认门1/2 工件(条款清单/补遗diff表)
     也经 present_files 呈现, 链内出现过≠终稿已交付——完成判定只归 turn() 的
     COMPLETION_RECAP(当轮 markers+present_files)。证据直判会把门1 后任意 3 连无进展
@@ -541,7 +592,7 @@ def main(argv=None):
     ap.add_argument("--resume", default=None, help="续作模式: 既有线程 id(跳过建线程+上传)")
     ap.add_argument("--resume-start", type=int, default=2, help="续作起始轮号(默认 2)")
     ap.add_argument("--resume-msg", default=None, help="续作首条指令(默认通用 continue)")
-    ap.add_argument("--answers", type=Path, default=None, help="确认门应答表 JSON([[关键词, 回答],...]; 默认内置 ANSWERS; 专行需问句含门签名((required)/options:) 否则回落末行)")
+    ap.add_argument("--answers", type=Path, default=None, help="确认门应答表 JSON([[关键词, 回答],...]; 默认内置 ANSWERS; 专行需问句含门签名((required)/options:) 否则按表单字段行逐项回填(bug-3313), 无字段行回落末行)")
     ap.add_argument("--max-turns", type=int, default=40, help="轮数上限")
     args = ap.parse_args(argv)
     BASE_URL, MODEL, UPLOAD, OUT = args.base, args.model, args.upload, args.out
