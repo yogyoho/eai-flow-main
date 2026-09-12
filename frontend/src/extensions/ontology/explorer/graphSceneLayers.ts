@@ -1,6 +1,6 @@
 // Vendored from semantica-agi/semantica@7057387775ecdf74c14e38d0067fd8e1267eaaf8 explorer/src/workspaces/GraphWorkspace/graphSceneLayers.ts (MIT)
 // @ts-nocheck
-// EAI: @ts-nocheck exemption (plan Task2 Step2.8) — upstream Vite tsconfig lacks noUncheckedIndexedAccess; 54 strictness-delta errors are index-access guards only. Tighten in a later task.
+// EAI: @ts-nocheck exemption (plan Task2 Step2.8) — upstream Vite tsconfig lacks noUncheckedIndexedAccess; 28 strictness-delta errors (combined with graphSceneState.ts: 54) are index-access guards only. Tighten in a later task.
 import type Graph from "graphology";
 import Sigma from "sigma";
 

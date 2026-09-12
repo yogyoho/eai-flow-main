@@ -29,11 +29,13 @@ Internal import paths were rewritten to the flat local layout
 (`../../store/graphStore` → `./graphStore`, `../../../store/graphStore` → `../graphStore`,
 `../workspaces/GraphWorkspace/graphTheme` → `./graphTheme`, `./edgePairKeys.js` → `./edgePairKeys`).
 
-## Dependencies (copied verbatim from upstream `explorer/package.json`)
+## Dependencies (ranges from upstream `explorer/package.json`)
 
-`sigma@^3.0.2`, `@sigma/edge-curve@^3.1.0`, `graphology@^0.26.0`,
+`sigma@^3.0.3`, `@sigma/edge-curve@^3.1.0`, `graphology@^0.26.0`,
 `graphology-communities-louvain@^2.0.2`, `graphology-layout-forceatlas2@^0.10.1`,
-`graphology-metrics@^2.4.0`, `graphology-shortest-path@^2.1.0`.
+`graphology-metrics@^2.4.2`, `graphology-shortest-path@^2.1.0`.
+
+注：sigma/graphology-metrics 取 semver 兼容的较新 range（`^3.0.3`/`^2.4.2`，均为上游 range `^3.0.2`/`^2.4.0` 的子集，pnpm 安装时落到当时最新匹配版），其余照抄上游。
 (`@sigma/node-border` not vendored — nothing in the closure imports it.
 `@tanstack/react-query`, `react` already present in this repo.)
 
