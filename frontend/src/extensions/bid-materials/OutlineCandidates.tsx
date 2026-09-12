@@ -88,7 +88,8 @@ export function OutlineCandidates() {
             className="w-72 font-mono text-xs"
             onChange={(e) => setThreadId(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && threadId.trim())
+              // 与 Button 同闸: loading 中忽略 Enter, 防二次在途请求竞态覆盖结果
+              if (e.key === "Enter" && !loading && threadId.trim())
                 void fetchCandidates(threadId);
             }}
           />
@@ -140,13 +141,13 @@ export function OutlineCandidates() {
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">受管节点</span>
               <span className="text-foreground font-medium tabular-nums">
-                {payload.managed_node_ids.length}
+                {(payload.managed_node_ids ?? []).length}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">章节</span>
               <span className="text-foreground font-medium tabular-nums">
-                {payload.chapters.length}
+                {(payload.chapters ?? []).length}
               </span>
             </div>
             <span
@@ -168,9 +169,10 @@ export function OutlineCandidates() {
                 </tr>
               </thead>
               <tbody>
-                {payload.chapters.map((ch) => (
+                {(payload.chapters ?? []).map((ch, idx) => (
                   <tr
-                    key={ch.no}
+                    // no 唯一性非契约保证——缺号/重复号时退回索引兜底
+                    key={ch.no ?? idx}
                     className="border-border hover:bg-muted/30 border-b transition-colors last:border-b-0"
                   >
                     <td className="text-foreground px-4 py-3 font-medium tabular-nums">
@@ -196,7 +198,7 @@ export function OutlineCandidates() {
                     </td>
                   </tr>
                 ))}
-                {payload.chapters.length === 0 && (
+                {(payload.chapters ?? []).length === 0 && (
                   <tr>
                     <td
                       colSpan={4}

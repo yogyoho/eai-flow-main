@@ -167,8 +167,9 @@ describe("bidMaterialsApi.samples", () => {
 });
 
 describe("bidMaterialsApi.outline", () => {
-  // 大纲候选走核心网关线程 artifacts 通道(非 extensions 命名空间): 虚拟路径以 /mnt/user-data
-  // 开头 → URL 必须以 /artifacts//mnt 双斜杠起头(路由捕获 {path:path} 契约, 单斜杠 404)。
+  // 大纲候选走核心网关线程 artifacts 通道(非 extensions 命名空间): 虚拟路径 /mnt/user-data/...
+  // 单/双斜杠均可解析(resolver lstrip 前导斜杠; resolveArtifactURL 生产走单斜杠)——
+  // 此处钉死双斜杠形态 /artifacts//mnt(live 实测 200), 换形态须与 bid-materials-api 注释一起改。
   const CANDIDATES_URL =
     "/api/threads/t-1/artifacts//mnt/user-data/workspace/bid/candidates/tech_outline.candidates.json";
 

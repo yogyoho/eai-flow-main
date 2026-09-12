@@ -250,9 +250,11 @@ export interface OutlineCandidatesPayload {
   managed_node_ids: string[];
 }
 
-// 候选文件 artifacts 虚拟路径——双斜杠契约: 网关 artifacts 路由捕获 {path:path} 且要求虚拟路径
-// 以 /mnt/user-data 开头, 故 URL 以 /artifacts//mnt 起头（nginx 保留双斜杠, live 验证 200）。
-// 勿"修复"成单斜杠——单斜杠会被并入路由段, 404。
+// 候选文件 artifacts 虚拟路径——URL 采用 /artifacts//mnt 双斜杠形态。勘误: 网关 artifacts
+// resolver 对捕获的 {path:path} 会 lstrip 前导斜杠（deerflow config paths.py:463
+// virtual_path.lstrip("/")）, 单/双斜杠两种形态均可解析; 生产侧同族 helper
+// resolveArtifactURL（core/artifacts/utils.ts:96）就下发单斜杠形态。本处双斜杠形态由
+// live 实测 + api.test.ts 的 URL 精确断言钉死——要与该测试一起改, 勿单方面换形态。
 const OUTLINE_CANDIDATES_VPATH =
   "/mnt/user-data/workspace/bid/candidates/tech_outline.candidates.json";
 
