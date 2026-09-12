@@ -16,8 +16,9 @@ export default tseslint.config(
       "src/components/ui/**",
       "src/components/ai-elements/**",
       // EAI-CUSTOM(2026-09-12, plan ontology-ui Task2): vendored Semantica Explorer core
-      // (pinned SHA, see explorer/README.md) — kept byte-faithful to upstream except the
-      // recorded adaptations; exempted from repo lint like the other generated/vendor dirs.
+      // (pinned SHA, see explorer/README.md) — kept faithful to upstream except the
+      // recorded adaptations (incl. the fetch-seam options in useLoadGraph.ts);
+      // exempted from repo lint like the other generated/vendor dirs.
       "src/extensions/ontology/explorer/**",
       "*.js",
     ],

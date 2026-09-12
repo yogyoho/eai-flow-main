@@ -16,6 +16,7 @@ import {
   fetchObjectTypes,
   fetchRegistryMeta,
 } from "../api/ontology-graph-api";
+import { toExplorerEdge, toExplorerNode } from "../explorerDataSource";
 
 const fetchMock: { calls: Array<[string, RequestInit]> } = { calls: [] };
 const originalFetch = globalThis.fetch;
@@ -80,6 +81,15 @@ describe("ontology-graph-api URL assembly", () => {
 });
 
 describe("ontology-graph-api response normalization", () => {
+  test("500 with detail string propagates through fetchNodes", async () => {
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ detail: "未授权" }), {
+        status: 500,
+        headers: { "content-type": "application/json" },
+      })) as typeof fetch;
+    await expect(fetchNodes()).rejects.toThrow("未授权");
+  });
+
   test("empty/missing page fields normalize to empty arrays + null cursor", async () => {
     stubFetch(200, {});
     const nodesPage = await fetchNodes();
@@ -106,6 +116,42 @@ describe("ontology-graph-api response normalization", () => {
     expect(page.nodes).toHaveLength(1);
     expect(page.nodes[0]?.id).toBe("bid:B-1");
     expect(page.next_cursor).toBe("eyJ0eXBlX2lkeCI6MX0=");
+  });
+});
+
+describe("explorer shape mapping (quality-review Fix 1)", () => {
+  test("node content ← label; full ApiNode required fields present", () => {
+    const mapped = toExplorerNode({
+      id: "bid:B-1",
+      type: "bid",
+      label: "横城煤矿项目",
+      properties: { bidId: "B-1" },
+    });
+    expect(mapped).toEqual({
+      id: "bid:B-1",
+      type: "bid",
+      content: "横城煤矿项目",
+      properties: { bidId: "B-1" },
+    });
+  });
+
+  test("edge id deterministic `${source}->${target}#${type}`, familyId=type, weight=1", () => {
+    const input = {
+      source: "bid:B-1",
+      target: "quote:Q-9",
+      type: "bid_quote",
+      label: "报价",
+    };
+    const mapped = toExplorerEdge(input);
+    expect(mapped.id).toBe("bid:B-1->quote:Q-9#bid_quote");
+    expect(mapped.familyId).toBe("bid_quote");
+    expect(mapped.weight).toBe(1);
+    expect(mapped.properties).toEqual({ label: "报价" });
+    // 幂等：同输入同 id（跨页 dedup 安全）；不同 type 的平行边 id 相异
+    expect(toExplorerEdge(input).id).toBe(mapped.id);
+    expect(toExplorerEdge({ ...input, type: "bid_win" }).id).not.toBe(
+      mapped.id,
+    );
   });
 });
 

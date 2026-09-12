@@ -469,14 +469,31 @@ function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+// EAI-CUSTOM: 数据源接缝——默认实现 = 上游 vendored fetchers（行为不变）；
+// 页面层可注入本系统 /graph/* 取数器（见 ../../explorerDataSource.ts 与 README adaptations #5）。
+export type ExplorerFetchNodes = (
+  signal: AbortSignal,
+  onProgress?: (progress: GraphLoadProgress) => void,
+) => Promise<ApiNode[]>;
+
+export type ExplorerFetchEdges = (
+  signal: AbortSignal,
+  nodeIds: Set<string>,
+  nodeProgress: { loaded: number; total: number | null },
+  onProgress?: (progress: GraphLoadProgress) => void,
+) => Promise<ApiEdge[]>;
+
 interface UseLoadGraphOptions {
   enabled?: boolean;
   onGraphReady?: (summary: GraphLoadSummary) => void;
   onProgress?: (progress: GraphLoadProgress) => void;
+  // EAI-CUSTOM: 注入式取数接缝（缺省 = 上游 /api/graph/* vendored 实现）
+  fetchNodes?: ExplorerFetchNodes;
+  fetchEdges?: ExplorerFetchEdges;
 }
 
 export function useLoadGraph(options: UseLoadGraphOptions = {}) {
-  const { enabled = true, onGraphReady, onProgress } = options;
+  const { enabled = true, onGraphReady, onProgress, fetchNodes = fetchAllNodes, fetchEdges = fetchAllEdges } = options;
 
   return useQuery<GraphLoadSummary>({
     queryKey: ["graph", "full-load"],
@@ -495,9 +512,10 @@ export function useLoadGraph(options: UseLoadGraphOptions = {}) {
         message: "Preparing graph session",
       }));
 
-      const fetchedNodes = await fetchAllNodes(signal, onProgress);
+      // EAI-CUSTOM: 经接缝取数（默认仍为上游 fetchers）
+      const fetchedNodes = await fetchNodes(signal, onProgress);
       const nodeIds = new Set(fetchedNodes.map((node) => node.id));
-      const fetchedEdges = await fetchAllEdges(
+      const fetchedEdges = await fetchEdges(
         signal,
         nodeIds,
         { loaded: fetchedNodes.length, total: fetchedNodes.length },

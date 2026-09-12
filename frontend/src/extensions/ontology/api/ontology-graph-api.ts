@@ -71,20 +71,32 @@ const NODES_LIMIT = 500;
 const EDGES_LIMIT = 1000;
 
 function withCursor(url: string, cursor?: string | null): string {
-  return cursor ? `${url}&cursor=${encodeURIComponent(cursor)}` : url;
+  if (!cursor) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}cursor=${encodeURIComponent(cursor)}`;
 }
 
 /** 分页拉取全部 enabled 对象类型实例的统一节点投影。 */
-export async function fetchNodes(cursor?: string | null): Promise<NodesPage> {
+export async function fetchNodes(
+  cursor?: string | null,
+  options?: { signal?: AbortSignal },
+): Promise<NodesPage> {
   const url = withCursor(`${BASE}/graph/nodes?limit=${NODES_LIMIT}`, cursor);
-  const res = await authFetch<Partial<NodesPage>>(url);
+  const res = await authFetch<Partial<NodesPage>>(url, {
+    signal: options?.signal,
+  });
   return { nodes: res.nodes ?? [], next_cursor: res.next_cursor ?? null };
 }
 
 /** 分页拉取全部 enabled 链接实例的统一边投影（stub 链接不产生边）。 */
-export async function fetchEdges(cursor?: string | null): Promise<EdgesPage> {
+export async function fetchEdges(
+  cursor?: string | null,
+  options?: { signal?: AbortSignal },
+): Promise<EdgesPage> {
   const url = withCursor(`${BASE}/graph/edges?limit=${EDGES_LIMIT}`, cursor);
-  const res = await authFetch<Partial<EdgesPage>>(url);
+  const res = await authFetch<Partial<EdgesPage>>(url, {
+    signal: options?.signal,
+  });
   return { edges: res.edges ?? [], next_cursor: res.next_cursor ?? null };
 }
 

@@ -54,6 +54,13 @@ keys such as `valid_from` / `valid_until` / `temporalRange` and the
 unaffected. Files touched by this vocabulary: `GraphCanvas.tsx`, `useLoadGraph.ts`,
 `types.ts`, `scene.ts`, `graphTheme.ts`, `graphSceneLayers.ts`, `graphSceneState.ts`.
 
+Known rewiring point: the vendored `fetchAllNodes` / `fetchAllEdges` in
+`useLoadGraph.ts` still contain the upstream `/api/graph/nodes` | `/api/graph/edges`
+URLs (raw `fetch`, Explorer wire contract). They are dead code in this system —
+the page mounts the graph via the injected seam (adaptation #5) and never takes
+the upstream defaults. Do not "simplify" by hardcoding system URLs into the
+vendored fetchers; the seam is the only sanctioned data-source switch.
+
 ## Vendoring adaptations (recorded per Step 2.8)
 
 1. `edgePairKeys.js` + `.d.ts` merged into `edgePairKeys.ts` (upstream ships a JS
@@ -69,6 +76,16 @@ unaffected. Files touched by this vocabulary: `GraphCanvas.tsx`, `useLoadGraph.t
    - `graphSceneState.ts` (26 strictness-delta errors)
    All are index-access-possibly-undefined complaints from the same config delta —
    no type-level semantic conflicts.
+5. Fetch seam in `useLoadGraph.ts` (quality-review Fix 1): `UseLoadGraphOptions`
+   gained optional `fetchNodes` / `fetchEdges` (types `ExplorerFetchNodes` /
+   `ExplorerFetchEdges`, defaulting to the vendored upstream fetchers so upstream
+   behavior is unchanged when absent). The system page injects
+   `../../explorerDataSource.ts::makeExplorerFetchers()`, which pages this
+   system's `/api/extensions/ontology/graph/*` endpoints and maps the T1 wire
+   shape onto Explorer's `ApiNode`/`ApiEdge` (`explorer/types.ts:275-294`):
+   node `content` ← T1 `label`; edge `id` ← `${source}->${target}#${type}`
+   (deterministic, dedup-safe across pages), `familyId` ← `type`, `weight` ← 1,
+   `properties` ← `{ label }`.
 
 ## Not vendored (out of Task 2 scope)
 
