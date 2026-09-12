@@ -86,6 +86,18 @@ vendored fetchers; the seam is the only sanctioned data-source switch.
    node `content` ← T1 `label`; edge `id` ← `${source}->${target}#${type}`
    (deterministic, dedup-safe across pages), `familyId` ← `type`, `weight` ← 1,
    `properties` ← `{ label }`.
+6. `GraphCanvas.tsx` render-loop + fit fixes (container E2E, commit `cf41895ae`):
+   - Inline `= []` default parameters (`activePath` / `activePathEdgeIds` /
+     `pluginOverlays`) allocate a fresh array identity on every render, which
+     recomputed the `interactionState` memo each render, re-ran the analytics
+     effect, and re-rendered again via `setAnalyticsSnapshot` (whose snapshot
+     carries `generatedAt: Date.now()` and is therefore always a new object) —
+     an infinite update loop ("Maximum update depth exceeded", blank canvas).
+     The defaults are now module-level `EMPTY_*` constants with stable identity.
+   - The full-graph FA2 auto-settle timeout now calls `fitDisplayGraphInView()`
+     once after stopping the layout: the initial camera fit ran at seed
+     positions before FA2 spread the nodes, so the settled graph sat outside
+     the viewport (blank canvas until manual Fit View).
 
 ## Not vendored (out of Task 2 scope)
 
