@@ -45,7 +45,11 @@ const config = {
     proxyClientMaxBodySize: "100mb",
   },
   // 允许局域网其他设备 + ngrok 隧道访问 dev server（HMR/WebSocket 跨域）
-  allowedDevOrigins: ["192.168.2.35", "*.ngrok-free.dev"],
+  // EAI-CUSTOM (bug-3254): 必须含 127.0.0.1 —— Next dev origin 门只隐式放行 localhost,
+  // 用 http://127.0.0.1:2026/:3000 访问时 /_next 数据/HMR 被拒 → 页面只渲染 SSR shell
+  // 永不 hydration(登录/全站交互全死,且无任何 console 报错)。nginx :2026 转发的 Host
+  // 也是 127.0.0.1,故此修复同时治愈统一入口。
+  allowedDevOrigins: ["127.0.0.1", "192.168.2.35", "*.ngrok-free.dev"],
   async rewrites() {
     const rewrites = [];
     const gatewayURL = getInternalServiceURL(
