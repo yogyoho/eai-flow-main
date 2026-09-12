@@ -6362,6 +6362,7 @@ SKILL_MD_REQUIRED_TOKENS = (
     "last_build.json",
     "--docs overall",  # Plan3: A build 范围旗标(速查表 build_output 行尾 --docs overall; 副表归 --docs all 重建)
     "严禁 rm -rf",
+    "outline_merge",  # T4: 大纲 merge 管线命令常驻(防幻觉枚举+铁律9 门1 后唯一获准 structure 修改通道; 裸名)
 )
 
 
@@ -7768,6 +7769,12 @@ class TestBuildDocsScope:
 BID_OVERALL_DIR = REPO_ROOT / "skills" / "public" / "bid-proposal-overall"
 BID_TECHNICAL_DIR = REPO_ROOT / "skills" / "public" / "bid-technical"
 _QUICKREF_SCRIPT_RE = re.compile(r"/mnt/skills/public/(bid-proposal-overall|bid-technical)/scripts/([a-z_]+)\.py")
+# B SKILL.md 内容要件(防删改, 对齐 A 侧 SKILL_MD_REQUIRED_TOKENS 机制): B1 v2 结构化大纲契约措辞常驻——
+# 文案被删/改丢时测试红(T4)
+B_SKILL_MD_REQUIRED_TOKENS = (
+    "outline_merge",  # B1 v2 大纲落账命令(铁律1 唯一获准 structure 直写通道)
+    "--confirm-outline",  # 确认硬闸旗标(对话确认后才可落账 structure)
+)
 
 
 class TestTwoSkillSplitContract:
@@ -7784,6 +7791,12 @@ class TestTwoSkillSplitContract:
         """spec §3.1: B 纯编排技能, scripts/ 只允许 bank_compile(离线维护者工具)。"""
         scripts = sorted(p.name for p in (BID_TECHNICAL_DIR / "scripts").glob("*.py"))
         assert scripts == ["bank_compile.py"], f"bid-technical/scripts 只允许 bank_compile.py, 实际 {scripts}"
+
+    def test_technical_required_content_tokens(self):
+        """B SKILL.md 内容要件逐条在册(防文案被删/改丢; 机制对齐 A 侧 test_required_content_tokens)。"""
+        content = self._skill_md(BID_TECHNICAL_DIR)
+        missing = [token for token in B_SKILL_MD_REQUIRED_TOKENS if token not in content]
+        assert not missing, f"bid-technical/SKILL.md 缺少内容要件: {missing}"
 
     def test_technical_quickref_targets_pair_scripts(self):
         """pair-install 契约: B 速查表管线命令全部指向 A 脚本绝对路径; bank_compile 不进速查表。"""

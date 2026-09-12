@@ -13,7 +13,7 @@ description: 当用户需要编制投标技术卷(技术条款逐条响应、样
 
 ## 铁律(继承 A 全部铁律——state 防改/失败熔断/反弃线/快照纪律同 A, 附加三条)
 
-1. state/ 权威文件只由 A 的管线脚本写盘并签名; B 不新增任何直写途径, 签名校验失败按错误行恢复, 不试错绕行。
+1. state/ 权威文件只由 A 的管线脚本写盘并签名; B 不新增任何直写途径, 签名校验失败按错误行恢复；唯一获准的 structure 直写通道=outline_merge --confirm-outline(重签自动), 不试错绕行。
 2. 响应完备性>溯源性(双轨): 样例库仿写优先→样例库没有**直接编造**合法且必要(标 `fabricated` 全量进人核); **四类硬围栏绝不编造**(报价数字/资质证号/公司实体名(白名单外)/招标原文引用)。
 3. `depth_target` 只在样例命中组写(命中段实质长 median 取整), 编造/self 候选不写——不拍脑袋估数; 未写者落库级 absolute_floor 兜底。
 
@@ -26,7 +26,7 @@ description: 当用户需要编制投标技术卷(技术条款逐条响应、样
 - 输入: A 的 extract 活条款(`category ∈ {technical, service}`)+评分办法条款+`references/tech_outline_packs/` 骨架(16 类登记见其 README; pack 未填充的类别按评分办法关键词自行拟章组)。
 - 按评分项关键词把条款聚到骨架类别(确定性关键词匹配起步, 聚类质量进人核)。
 - 产出: `candidates/tech_outline.candidates.md`(章组→clause_id 组映射+骨架偏差说明), 对话呈现**确认后**才作为响应推进的组织视图。
-- **v1 边界**: 技术卷章结构仍以 structure.json 技术章为准渲染; 大纲自拟当前只组织响应推进次序与章组检索批, 不直写 structure.json(结构化大纲→structure 扩写为后续计划)。
+- **v2 结构化(确认后)**: `outline_merge.py --state-dir … --candidates candidates/tech_outline.candidates.json --confirm-outline` 把确认后大纲落成 structure.json 自拟章树(origin=self_created, 只接管无镜像锚点的条款; mirror 章零触碰; 重签自动)。候选 JSON 双形态由 B1 生成(B2 消费其章锚点); 重跑=精准替换(managed_node_ids, 外加锚点的旧 managed 节点会被拒绝删除)。**顺序纪律: 大纲 merge 前不跑 responses merge; responses merge 之后重跑大纲 merge 的, 必须再重跑一次 responses merge**(大纲章替换会使 responses 挂接失效); 无大纲场景 responses 兜底路径不变。
 
 ### B2 供源级联响应生成
 开始前**先读全篇** `references/tech_response_prompt.md` + `references/build-technical.md`。级联(逐条款按序, 不跳步): 第一层样例库检索(按章组批量, RAGFlow filters; 命中→仿写+写 `depth_target`+`needs_human_verify=true`)→无命中**直接编造**(合法默认, 标 `fabricated`)→self 重组。候选 JSON 即刻落盘 `candidates/`, 逐批跑 A 速查表 `responses.py validate` + `merge`。脱敏语料的 `****` 是掩码: 引用片段避开掩码段, 绝不照抄掩码形态进正文。
@@ -40,6 +40,7 @@ A 速查表 `build_output.py … --docs technical`: 只重写技术卷册组+索
 ## 命令速查表(B 常用子集——脚本 canonical 在 A, 绝对路径照抄)
 
 ```bash
+python /mnt/skills/public/bid-proposal-overall/scripts/outline_merge.py --state-dir /mnt/user-data/workspace/bid/state --candidates /mnt/user-data/workspace/bid/candidates/tech_outline.candidates.json --confirm-outline
 python /mnt/skills/public/bid-proposal-overall/scripts/responses.py validate --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/responses.py merge --candidates /mnt/user-data/workspace/bid/candidates/RESP-tech-001.json --state-dir /mnt/user-data/workspace/bid/state
 python /mnt/skills/public/bid-proposal-overall/scripts/progress.py init --state-dir /mnt/user-data/workspace/bid/state
