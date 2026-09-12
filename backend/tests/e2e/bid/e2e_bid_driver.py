@@ -67,7 +67,14 @@ RECURSION_RETRY_MSG = "上一轮因递归预算耗尽被中断, 状态已保留�
 CANCEL_RETRY_MSG = "上一轮流连接中断被取消, 状态已保留。请从中断处继续执行当前阶段, 不要重做已完成的步骤。"
 TOOL_LIMIT_CONTINUE_MSG = "上一轮因单工具调用次数上限被截断, 状态已保留。请从中断处继续执行当前阶段, 不要重做已完成的步骤。提示: 对成批的同构操作(如逐个验证候选文件)请用一次 bash 循环批量完成, 减少单工具调用次数。"
 
-# 确认门自动应答表(问题文本含关键词即答; 最后一项兜底)。--answers JSON 可整体替换。
+# ask_clarification 渲染签名(bug-3308): 平台把 ask_clarification 的问题渲染为含
+# "(required)"/"options:" 的选项列表(clean4 turn3 真门文本实证); SOFT_GATE 纯文本门
+# 措辞与普通散文不含这些标记。
+GATE_SIGNATURES = ("(required)", "options:")
+# 确认门自动应答表(--answers JSON 可整体替换; 最后一项=兜底行)。
+# bug-3308 门签名门控: 兜底行之外的专行只在问题文本带 GATE_SIGNATURES 时才可匹配——
+# 正文提及关键词不是门(实录误匹配: turn1 策略菜单"补遗完善"、turn7 交付清单文件名
+# "补遗diff表.md"), 不带签名一律回落兜底行。
 # 行序即匹配优先级(bug-3032): 确认门2 逐字模板含"新实体确认列", 实体 必须排在
 # 补遗/终稿 之后, 否则门2 被答成门1 的白名单锁定(实测 4 连空转诱导 str_replace)。
 ANSWERS = [
@@ -89,6 +96,10 @@ PREMATURE_CONTINUE_MSG = "请从上一步中断处继续执行当前阶段, 不�
 # bug-3037 停滞升级指令: 门轮空转(复述状态+门措辞, 无新工具进展)达到阈值后投一次,
 # 给模型两条正经出路(收口交付 或 列明阻塞), 打断"复述->罐头确认->复述"循环。
 STALL_TERMINATE_MSG = "若管线尚未完成: 请继续执行当前阶段, 不要等待确认; 若确已全部完成: 请调用 present_files 交付成果并结束回复。不要再复述已报送过的状态或确认请求。"
+# 交付回执标记(bug-3308 从 COMPLETION_RECAP 分支提取共用): COMPLETION_RECAP 完成判定
+# 与 stall 停滞判定共用的 "delivery evidence" 口径——交付证据只认终文里的标记文本;
+# present_files 工具调用本身不是证据(门1/门2 工件也经 present_files 呈现, 见 stall_step)。
+DELIVERY_MARKERS = ("全流程完成", "六件套", "已交付", "交付完成", "评分报告")
 # 供应商级失败(402/超时等被归一化为助手文本)特征——不再续推死 key(bug-3032)。
 TERMINAL_AI_ERR_RE = re.compile(r"LLM request failed|Error code: 4\d\d")
 
@@ -176,7 +187,12 @@ def upload(tid):
 
 
 def pick_answer(question):
-    for key, ans in ANSWERS:
+    """确认门自动应答(bug-3308 门签名门控): 兜底行之外的专行需问题文本带
+    ask_clarification 门签名(GATE_SIGNATURES)才可匹配; SOFT_GATE 门措辞纯文本与
+    普通散文一律回落兜底行("确认, 请继续。")。"""
+    if not any(sig in question for sig in GATE_SIGNATURES):
+        return ANSWERS[-1][1]
+    for key, ans in ANSWERS[:-1]:
         if key in question:
             return ans
     return ANSWERS[-1][1]
@@ -185,11 +201,14 @@ def pick_answer(question):
 STALL_N = 3  # bug-3037: 连续 N 个"无新工具进展"的门轮触发停滞处置
 
 
-def stall_step(count, escalated, seen, tools, prev_tools):
+def stall_step(count, escalated, seen, tools, prev_tools, last_ai=""):
     """bug-3037 门轮空转停滞判定(纯函数, 便于单测)。
 
     SOFT_GATE/SOFT_CLARIFICATION 自动应答路径每轮调用一次。工具窗口 = 本轮∪上轮
     工具名集合; 窗口内出现链内(seen)未见过的工具名 = 有新进展, 计数清零, 否则 +1。
+    bug-3308: present_files 是唯一例外——裸 present_files(或其复读)不算进展, 只有
+    当轮终文带交付标记(DELIVERY_MARKERS, 与 COMPLETION_RECAP 同表)时才视为交付证据
+    =进展; 门1/门2 工件也经 present_files 呈现, 工具调用本身是中性信号。
     连续 STALL_N 轮无新进展: 未升级过 -> escalate(投一次 STALL_TERMINATE_MSG, 给
     模型两条正经出路: 继续执行 或 present_files 收口); 升级后仍无进展 -> abort 停机。
     不设"链内 present_files 直判完成": 本 skill 的确认门1/2 工件(条款清单/补遗diff表)
@@ -201,10 +220,12 @@ def stall_step(count, escalated, seen, tools, prev_tools):
     window = set(tools) | set(prev_tools)
     new = window - seen
     seen = seen | window
-    if new:
-        count = 0
-    else:
-        count += 1
+    # bug-3308: 交付证据 = 终文标记(DELIVERY_MARKERS), 不是 present_files 调用本身——
+    # 无标记的 bash+present_files 复读 = 无进展, 照常累计停滞。
+    progress = bool(new - {"present_files"}) or (
+        "present_files" in new and any(_m in last_ai for _m in DELIVERY_MARKERS)
+    )
+    count = 0 if progress else count + 1
     if count < STALL_N:
         return count, escalated, seen, "answer"
     if not escalated:
@@ -480,7 +501,7 @@ def turn(tid, n, message, with_files=False, prev_forced=0):
                     log(f"turn{n} SOFT_GATE: '{_k}' in final text without ask_clarification")
                     st.interrupt_q = last_ai or "gate"
                     break
-        elif any(_m in last_ai for _m in ("全流程完成", "六件套", "已交付", "交付完成", "评分报告")) and "present_files" in compact:
+        elif any(_m in last_ai for _m in DELIVERY_MARKERS) and "present_files" in compact:
             # completion recap — only with delivery tool evidence: files reach the
             # user solely via present_files, so markers inside a mid-pipeline stage
             # report ("阶段2-4完成报告" ending at 确认门2) must not end the run.
@@ -560,7 +581,9 @@ def main(argv=None):
     premature_nudges = 0
     last_premature_ai = None
     # bug-3037 门轮空转停滞状态(仅 SOFT_GATE/SOFT_CLARIFICATION 应答路径推进;
-    # premature/forced 轮打断链, escalated 每跑至多一次)
+    # premature 轮只清计数(seen 保留, bug-3308——清 seen 会让 bash/present_files 复活成
+    # "新工具", 与 SOFT_GATE 交替时 stall 判定永远到不了 abort); forced 轮全清打断链;
+    # escalated 每跑至多一次)
     stall_count = 0
     stall_escalated = False
     stall_seen = set()
@@ -599,17 +622,19 @@ def main(argv=None):
                 log(f"turn{n} premature-stop nudge budget exhausted ({premature_nudges}/5) -> stop")
                 break
             premature_nudges += 1
-            stall_count, stall_seen = 0, set()
+            # bug-3308: 只清计数不清 seen(见上方停滞状态注释)
+            stall_count = 0
             ans = PREMATURE_CONTINUE_MSG
         else:
-            # bug-3037: 门/澄清自动应答前的空转停滞判定
-            stall_count, stall_escalated, stall_seen, action = stall_step(stall_count, stall_escalated, stall_seen, tools, prev_tools)
+            # bug-3037: 门/澄清自动应答前的空转停滞判定(bug-3308: 传入 ai, 交付证据
+            # 只认终文标记, 裸 present_files 不算)
+            stall_count, stall_escalated, stall_seen, action = stall_step(stall_count, stall_escalated, stall_seen, tools, prev_tools, ai)
             if action == "abort":
-                log(f"turn{n} STALL_ABORT: gate stall persists after escalation without delivery evidence -> stop")
+                log(f"turn{n} STALL_ABORT: gate stall persists after escalation (repeated present_files without new tools is not delivery evidence) -> stop")
                 break
             if action == "escalate":
                 ans = STALL_TERMINATE_MSG
-                log(f"turn{n} STALL_ESCALATE: {STALL_N} gate turns, no new tool progress, no delivery evidence -> terminal instruction")
+                log(f"turn{n} STALL_ESCALATE: {STALL_N} gate turns, no new tool progress (bare present_files is not evidence) -> terminal instruction")
             else:
                 ans = pick_answer(q)
         log(f"turn{n} answering with: {ans[:120]}")
