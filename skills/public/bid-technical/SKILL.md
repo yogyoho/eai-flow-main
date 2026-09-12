@@ -23,7 +23,7 @@ description: 当用户需要编制投标技术卷(技术条款逐条响应、样
 跑 A 速查表 snapshot.py 读 `phase`; 确认 clauses/structure/whitelist 在位。
 
 ### B1 技术卷大纲自拟(v1 对话协议, 无 UI)
-- 输入: A 的 extract 活条款(`category ∈ {technical, service}`)+评分办法条款+`references/tech_outline_packs/` 骨架(16 类登记见其 README; pack 未填充的类别按评分办法关键词自行拟章组)。
+- 输入: A 的 extract 活条款(`category ∈ {technical, service}`)+评分办法条款+`references/tech_outline_packs/` 骨架(16 类登记见其 README; pack 未填充的类别按评分办法关键词自行拟章组); 评标办法无 technical/service 活条款(最低评标价法常见)→跳过大纲自拟(B1 不产候选/不调 outline_merge), 技术卷交付占位页+零条款说明, 走 B4 build。
 - 按评分项关键词把条款聚到骨架类别(确定性关键词匹配起步, 聚类质量进人核)。
 - 产出: `candidates/tech_outline.candidates.md`(章组→clause_id 组映射+骨架偏差说明), 对话呈现**确认后**才作为响应推进的组织视图。
 - **v2 结构化(确认后)**: `outline_merge.py --state-dir … --candidates candidates/tech_outline.candidates.json --confirm-outline` 把确认后大纲落成 structure.json 自拟章树(origin=self_created, 只接管无镜像锚点的条款; mirror 章零触碰; 重签自动)。候选 JSON 双形态由 B1 生成(B2 消费其章锚点); 重跑=精准替换(managed_node_ids, 外加锚点的旧 managed 节点会被拒绝删除)。**顺序纪律: 大纲 merge 前不跑 responses merge; responses merge 之后重跑大纲 merge 的, 必须再重跑一次 responses merge**(大纲章替换会使 responses 挂接失效); 无大纲场景 responses 兜底路径不变。
