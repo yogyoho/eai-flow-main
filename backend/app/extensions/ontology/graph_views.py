@@ -184,12 +184,14 @@ async def _same_connector_link_rows(engine: Any, lt: Any, src_obj: Any, tgt_obj:
 async def _cross_connector_link_rows(reg: Any, engine: Any, lt: Any, src_obj: Any, tgt_obj: Any, capacity: int, offset: int) -> list[dict[str, Any]]:
     """跨 connector 回退: 逐源实例 engine.get_links（单 pk 调用域即配对域，配对天然正确）。
 
+    返回契约与同 connector SQL 路径一致: post-offset 行（前 offset 条跳过不返回），
+    至多 capacity 条——edges_page 据此切片并判尽，两条路径可互换。
     注意: 每次响应从源类型头重扫，O(源实例数) 次查询——当前注册表所有 enabled 链接均为同 connector
     （cross_module 链接全部 enabled:false stub，进不到这里），此路径仅为未来启用预留，正确性优先。
     """
     if not src_obj.enabled:  # 源类型停用时 list_objects 会显式拒绝 → 直接不产出该链接的边（节点层同样不可见）
         return []
-    target = offset + capacity  # 需物化的边数上界（前 offset 条为已发出，重取后由 edges_page 切片）
+    target = offset + capacity  # 需物化的边数上界 = 已发出的 offset 条 + 本次 capacity+1 探针的量
     out: list[dict[str, Any]] = []
     keyset: str | None = None
     while len(out) < target:
@@ -203,11 +205,11 @@ async def _cross_connector_link_rows(reg: Any, engine: Any, lt: Any, src_obj: An
             for far in links["data"]:
                 out.append({"__src_pk": row[pk_name], "__tgt_pk": far.get(tgt_obj.pk.api_name)})
                 if len(out) >= target:
-                    return out
+                    return out[offset:]  # bug-3316: 必须 post-offset 返回，否则翻页永远重发头部边
         keyset = page.get("next_cursor")
         if not keyset:
             break
-    return out
+    return out[offset:]
 
 
 # ---------- SQL 拼接小工具（与引擎同级语义的本地副本，避免触引擎私有方法） ----------

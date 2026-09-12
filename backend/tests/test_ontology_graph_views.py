@@ -225,3 +225,79 @@ async def test_edges_page_excludes_stub_links():
     assert types <= enabled_names and not (types & stub_names)
     for e in p1["edges"]:
         assert set(e.keys()) == {"source", "target", "type", "label"}
+
+
+# ---------- 跨 connector 回退路径（当前注册表无此类 enabled 链接，回归钉住 offset 契约 bug-3316） ----------
+
+
+class FakeCrossEngine:
+    """same() 恒 False → 强制走 _cross_connector_link_rows；list_objects keyset 枚举源表，get_links 每源实例产 1 条边。"""
+
+    def __init__(self, source_rows: list[dict]):
+        self.source_rows = source_rows
+        self.fetch_calls = 0
+        self._resolver = self._Res(self)
+
+    class _Res:
+        def __init__(self, outer):
+            self.outer = outer
+
+        async def fetch(self, access, sql, params=None):
+            self.outer.fetch_calls += 1
+            return []
+
+        def same(self, a, b):
+            return False
+
+    async def list_objects(self, object_type, filters=None, q=None, limit=50, cursor=None, order=None, desc=False):
+        start = int(cursor) if cursor else 0
+        data = self.source_rows[start : start + limit]
+        return {"data": data, "next_cursor": str(start + limit) if start + limit < len(self.source_rows) else None, "object_type": object_type}
+
+    async def get_links(self, object_type, pk, link_type, limit=200):
+        return {"data": [{"id": f"t{pk}"}], "link_type": link_type, "from": {"object_type": object_type, "pk": pk}}
+
+
+def _cross_reg() -> SimpleNamespace:
+    """source=data_source / target=postgres_ext（异 connector），单条 FK 链接。"""
+    src = ObjectType(
+        api_name="xsrc",
+        display_name="xsrc",
+        description="跨 connector 测试源",
+        domain="test",
+        access=AccessConfig(path="data_source", source_id="dsx", table_name="xsrc_t"),
+        pk=PKConfig(column="id", api_name="id", type="string"),
+        properties=[PropertySchema(name="id", api_name="id", type="string")],
+    )
+    tgt = ObjectType(
+        api_name="xtgt",
+        display_name="xtgt",
+        description="跨 connector 测试目标",
+        domain="test",
+        access=AccessConfig(path="postgres_ext", table="xtgt_t"),
+        pk=PKConfig(column="id", api_name="id", type="string"),
+        properties=[PropertySchema(name="id", api_name="id", type="string")],
+    )
+    lt = _edge_link("lx", "xsrc", "xtgt", type="foreign_key", source_column="tid", target_column="id")
+    return SimpleNamespace(object_types={"xsrc": src, "xtgt": tgt}, link_types={"lx": lt})
+
+
+@pytest.mark.asyncio
+async def test_edges_page_cross_connector_offset_contract():
+    """回归钉（bug-3316, 规格审查发现）: 5 条跨 connector 边、limit=2 → 翻页取尽，
+    无重复无遗漏、链接推进、末页 next_cursor=None。修复前每页重发头部 2 条边死循环。"""
+    reg = _cross_reg()
+    eng = FakeCrossEngine([{"id": f"s{i}"} for i in range(5)])
+    seen: list[str] = []
+    cursor, pages = None, 0
+    while True:
+        page = await graph_views.edges_page(reg, eng, cursor, 2)
+        seen.extend(e["source"] for e in page["edges"])
+        pages += 1
+        assert pages < 10  # 防失控（修复前此循环永不终止）
+        if page["next_cursor"] is None:
+            break
+        cursor = page["next_cursor"]
+    assert pages == 3  # 5 条 / 每页 2 → 3 页
+    assert seen == [f"xsrc:s{i}" for i in range(5)]  # 有序、不重、不漏、链接推进至取尽
+    assert eng.fetch_calls == 0  # 跨 connector 回退绝不走专用 SQL 通道
