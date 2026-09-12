@@ -27,9 +27,12 @@ import json
 from typing import Any
 
 # 跨 connector 回退路径的逐实例 fan-out 上限（engine.get_links 内部同样受 MAX_LIMIT=200 钳制）
+# TODO(语义地图v2): fan-out>=200 时按 traverse CHUNK 惯例 raise，防静默丢边
 _CROSS_FANOUT = 200
 # 跨 connector 回退路径枚举源实例的 keyset 步长（engine.list_objects 单次 ≤200 行钳制）
 _CROSS_SOURCE_PAGE = 200
+# 对外游标 offset 上限: 防敌意游标触发无界 SQL OFFSET 行走（edges 每链接一次全表 OFFSET 扫描）
+_MAX_OFFSET = 10_000_000
 
 
 # ---------- 游标编解码（nodes/edges 共用; type_idx 语义由调用方解释） ----------
@@ -41,7 +44,7 @@ def encode_cursor(type_idx: int, offset: int) -> str:
 
 
 def decode_cursor(cursor: str | None) -> dict[str, int] | None:
-    """游标 → {"type_idx", "offset"}；None/空 → 从头开始；损坏/形状非法/负值 → None（fail 明示，不猜）。"""
+    """游标 → {"type_idx", "offset"}；None/空 → 从头开始；损坏/形状非法/负值/offset 超上限 → None（fail 明示，不猜）。"""
     if not cursor:
         return {"type_idx": 0, "offset": 0}
     try:
@@ -50,7 +53,7 @@ def decode_cursor(cursor: str | None) -> dict[str, int] | None:
         if not isinstance(d, dict):
             return None
         type_idx, offset = int(d["type_idx"]), int(d["offset"])
-        if type_idx < 0 or offset < 0:
+        if type_idx < 0 or offset < 0 or offset > _MAX_OFFSET:  # 巨型 offset = 敌意游标，按垃圾处理
             return None
         return {"type_idx": type_idx, "offset": offset}
     except Exception:

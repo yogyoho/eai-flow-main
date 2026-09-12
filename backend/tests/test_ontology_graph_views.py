@@ -301,3 +301,16 @@ async def test_edges_page_cross_connector_offset_contract():
     assert pages == 3  # 5 条 / 每页 2 → 3 页
     assert seen == [f"xsrc:s{i}" for i in range(5)]  # 有序、不重、不漏、链接推进至取尽
     assert eng.fetch_calls == 0  # 跨 connector 回退绝不走专用 SQL 通道
+
+
+@pytest.mark.asyncio
+async def test_cursor_huge_offset_rejected():
+    """硬化回归: 巨型 offset = 敌意游标 → decode None（按垃圾处理，翻页从头开始，绝不产生无界 SQL OFFSET）。"""
+    assert graph_views.decode_cursor(graph_views.encode_cursor(0, graph_views._MAX_OFFSET)) is not None  # 上限内合法
+    assert graph_views.decode_cursor(graph_views.encode_cursor(0, graph_views._MAX_OFFSET + 1)) is None
+    assert graph_views.decode_cursor(graph_views.encode_cursor(0, 10**12)) is None
+    # 端到端: 超限游标被当从头开始（与 fresh 结果一致，不会把 offset 拼进 SQL OFFSET）
+    reg, eng, _resolver = _edges_reg_fk_only()
+    r1 = await graph_views.edges_page(reg, eng, graph_views.encode_cursor(0, 10**12), 2)
+    r2 = await graph_views.edges_page(reg, eng, None, 2)
+    assert r1 == r2  # 超限游标 ≡ fresh 起点
