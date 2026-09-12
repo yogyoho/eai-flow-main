@@ -222,9 +222,7 @@ def stall_step(count, escalated, seen, tools, prev_tools, last_ai=""):
     seen = seen | window
     # bug-3308: 交付证据 = 终文标记(DELIVERY_MARKERS), 不是 present_files 调用本身——
     # 无标记的 bash+present_files 复读 = 无进展, 照常累计停滞。
-    progress = bool(new - {"present_files"}) or (
-        "present_files" in new and any(_m in last_ai for _m in DELIVERY_MARKERS)
-    )
+    progress = bool(new - {"present_files"}) or ("present_files" in new and any(_m in last_ai for _m in DELIVERY_MARKERS))
     count = 0 if progress else count + 1
     if count < STALL_N:
         return count, escalated, seen, "answer"
@@ -543,7 +541,7 @@ def main(argv=None):
     ap.add_argument("--resume", default=None, help="续作模式: 既有线程 id(跳过建线程+上传)")
     ap.add_argument("--resume-start", type=int, default=2, help="续作起始轮号(默认 2)")
     ap.add_argument("--resume-msg", default=None, help="续作首条指令(默认通用 continue)")
-    ap.add_argument("--answers", type=Path, default=None, help="确认门应答表 JSON([[关键词, 回答],...]; 默认内置 ANSWERS)")
+    ap.add_argument("--answers", type=Path, default=None, help="确认门应答表 JSON([[关键词, 回答],...]; 默认内置 ANSWERS; 专行需问句含门签名((required)/options:) 否则回落末行)")
     ap.add_argument("--max-turns", type=int, default=40, help="轮数上限")
     args = ap.parse_args(argv)
     BASE_URL, MODEL, UPLOAD, OUT = args.base, args.model, args.upload, args.out

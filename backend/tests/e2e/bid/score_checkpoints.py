@@ -209,9 +209,9 @@ PIPELINE_SCRIPT_PAT = re.compile(r"scripts/[a-z_]+\.py")  # quickref 家族: 任
 CP6B_PROBLEM_FMT = "cp6b: turn{N} 手写 .meta.json(签名溯源失败——该轮无管线脚本调用)"
 
 # bash 内 .meta.json 的写/删语义(只读不计数——铁律9 禁写不禁读同款; 锚=文件名本身,
-# 兼容字面量路径; heredoc 单列是因为 heredoc 写必然伴随 > 或 tee, 宽松的 "<<邻近 meta"
-# 会把只读 heredoc 巡检翻成违规)。raw args 是 JSON 文本, 换行是字面 \n 两字符——
-# 变量名左界不能用 \b(上一行结尾的 n 会吞掉词边界)。
+# 兼容字面量路径; heredoc 写必然伴随 > 或 tee, 已由下面两个模式覆盖, 不单列 "<<邻近
+# meta" 正则——只读 heredoc 注释提及 meta 即误报)。raw args 是 JSON 文本, 换行是字面
+# \n 两字符——变量名左界不能用 \b(上一行结尾的 n 会吞掉词边界)。
 META_WRITE_BASH = [
     re.compile(r"open\([^)]*\.meta\.json[^)]*['\"](?:w|a|x)[+b]?"),  # 字面量路径 + 写模式
     re.compile(r"json\.dump\((?!s)[^)]*\.meta\.json"),  # dumps 排除(打印/序列化不是写盘)
@@ -219,7 +219,6 @@ META_WRITE_BASH = [
     re.compile(r"\.meta\.json['\"]?\)\s*\.write_text"),  # Path('.../.meta.json').write_text
     re.compile(r"(?:>>?)\s*\S*\.meta\.json"),  # > / >> 重定向落 meta(< 输入重定向=读, 不匹配)
     re.compile(r"\btee\b[^;&|]*\.meta\.json"),
-    re.compile(r"\.meta\.json[^;&|]{0,20}<<"),  # heredoc 供数给以 meta 为目标的命令(窄窗口防跨行误配)
     re.compile(r"(?:os\.remove|os\.unlink)\s*\(\s*f?['\"][^'\"]*\.meta\.json"),
     re.compile(r"\.meta\.json['\"]?\)\s*\.unlink\("),  # Path('.../.meta.json').unlink()
 ]
@@ -244,11 +243,7 @@ def cp6b_meta_write(name: str, args: str) -> bool:
         if any(p.search(args) for p in META_WRITE_BASH):
             return True
         # 变量间接写: var 先被赋成 .meta.json 字面量, 再以写模式打开(clean4 turn2 手签实锤形态)
-        return any(
-            re.search(rf"{v}\s*=\s*f?['\"][^'\"]*\.meta\.json['\"]", args)
-            or re.search(rf"{v}\s*=\s*os\.path\.join\([^)]*\.meta\.json", args)
-            for v in META_VAR_OPEN_W.findall(args)
-        )
+        return any(re.search(rf"{v}\s*=\s*f?['\"][^'\"]*\.meta\.json['\"]", args) or re.search(rf"{v}\s*=\s*os\.path\.join\([^)]*\.meta\.json", args) for v in META_VAR_OPEN_W.findall(args))
     return False
 
 

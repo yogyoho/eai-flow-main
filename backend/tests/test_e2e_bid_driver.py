@@ -7,8 +7,8 @@ sys.path.insert(0, str(Path(__file__).parent / "e2e" / "bid"))
 import e2e_bid_driver as drv  # noqa: E402
 
 
-def step(count=0, escalated=False, seen=None, tools=(), prev_tools=()):
-    return drv.stall_step(count, escalated, seen or set(), list(tools), list(prev_tools))
+def step(count=0, escalated=False, seen=None, tools=(), prev_tools=(), last_ai=""):
+    return drv.stall_step(count, escalated, seen or set(), list(tools), list(prev_tools), last_ai)
 
 
 class TestStallStep:
@@ -52,8 +52,16 @@ class TestStallStep:
         assert escalated is True
 
     def test_escalation_answer_with_new_tools_recovers(self):
-        # 终结指令后模型恢复执行(present_files 收口 或 继续执行) -> 新工具名计数清零, 回到自动应答
+        # bug-3308 新契约: 终结指令后裸 present_files 复读(终文无交付标记)不算进展——
+        # 停滞计数照常累计; 未达 STALL_N 仍回自动应答, 升级态保持(再空转则 abort)
         count, escalated, seen, action = step(count=0, escalated=True, seen={"bash"}, tools=["present_files", "bash"], prev_tools=[])
+        assert (count, action) == (1, "answer")
+        assert escalated is True
+        assert "present_files" in seen
+
+    def test_present_files_with_delivery_marker_is_progress(self):
+        # 终文带交付标记(DELIVERY_MARKERS)的 present_files 收口 = 交付证据 = 进展, 计数保持 0
+        count, _, seen, action = step(count=2, escalated=True, seen={"bash"}, tools=["present_files"], prev_tools=[], last_ai="投标文件六件套已交付")
         assert (count, action) == (0, "answer")
         assert "present_files" in seen
 
