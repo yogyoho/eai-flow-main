@@ -109,3 +109,23 @@ export async function fetchRegistryMeta(): Promise<RegistryMeta> {
 export async function fetchObjectTypes(): Promise<RegistrySchema> {
   return authFetch<RegistrySchema>(`${BASE}/object-types`);
 }
+
+/** get_links 响应：data = 对侧行的 visible 属性投影（含 pk 字段）。 */
+export interface ObjectLinksPage {
+  data: Record<string, unknown>[];
+  link_type: string;
+  from: { object_type: string; pk: unknown };
+}
+
+/** 单对象沿一个链接类型取对侧行（DetailPanel 关联链接区按需拉取）。 */
+export async function fetchObjectLinks(
+  apiName: string,
+  pk: string,
+  linkType: string,
+  options?: { signal?: AbortSignal },
+): Promise<ObjectLinksPage> {
+  return authFetch<ObjectLinksPage>(
+    `${BASE}/objects/${encodeURIComponent(apiName)}/${encodeURIComponent(pk)}/links/${encodeURIComponent(linkType)}`,
+    { signal: options?.signal },
+  );
+}

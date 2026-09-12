@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Blocks,
   KanbanSquare,
+  Network,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -90,6 +91,14 @@ const allNavItems: NavItem[] = [
     icon: Factory,
     licenseModule: "platform",
     navId: "nav:knowledge-factory",
+  },
+  // EAI-CUSTOM: 本体语义地图（plan 2026-09-12 ontology-ui Task 3 Step 3.1）
+  {
+    href: "/ontology",
+    label: "语义地图",
+    icon: Network,
+    licenseModule: "platform",
+    navId: "nav:ontology",
   },
   {
     href: "/knowledge",
