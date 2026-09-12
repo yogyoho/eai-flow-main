@@ -1,24 +1,34 @@
 #!/usr/bin/env python3
 """text-to-cad MCP Server — standalone container.
 
-Phase 1: backed by the vendored text-to-cad engine (cadpy + step/inspect CLIs,
-MIT). Two tools:
+Backed by the vendored text-to-cad engine (cadpy + step/inspect/snapshot/dxf
+CLIs, MIT). Five tools:
 
-- create_step(source, output_path, also_glb): write a build123d generator
-  (def gen_step()) and run the vendored `step` CLI → STEP (+ topology-rich GLB
-  when also_glb). The GLB carries the occurrence/face/edge topology that
-  inspect_step's selector refs (#o1.2.f1) resolve against.
+- create_step(source, output_path, also_glb, also_stl): write a build123d
+  generator (def gen_step()) and run the vendored `step` CLI → STEP (+
+  topology-rich GLB when also_glb, + STL mesh when also_stl). The GLB carries
+  the occurrence/face/edge topology that inspect_step's selector refs
+  (#o1.2.f1) resolve against.
 - inspect_step(step_path, subcommand, selectors, facts, detail): run the
   vendored `inspect` CLI (refs/measure/align/frame) on a STEP produced by
   create_step.
+- snapshot_step(step_path, output_path, ...): render a STEP to PNG via the
+  vendored `snapshot` CLI (Playwright + headless Chromium) for the agent's
+  visual self-check.
+- create_dxf(source, output_path): write a build123d generator (def gen_dxf())
+  and run the vendored `dxf` CLI → 2D DXF drawing. (Generic mechanical DXF;
+  domain-specific 2D engineering drawings live on the separate `cad` EDP
+  server via cad_compose_drawing.)
+- check_printability(mesh_path, process): run the vendored dfam_tool (trimesh
+  ray-cast) → watertightness / wall thickness / overhang facts vs DfAM limits.
 
 Engine contract: cadpy requires RELATIVE output paths and a workspace CWD, so
-both tools resolve the agent's /mnt/user-data virtual path to a physical
+the tools resolve the agent's /mnt/user-data virtual path to a physical
 thread dir, use it as the workdir, and pass relative names to the CLIs.
 
 Heavy CAD deps (build123d + cadquery-ocp-novtk + cadpy) stay isolated here;
-the gateway image is untouched. snapshot (Playwright+Chromium), step-parts,
-and assemble are later phases.
+the gateway image is untouched. Runs inside the merged cad-suite image
+alongside the cad (EDP :8003) and cad-viewer (:4178) services.
 """
 from __future__ import annotations
 
@@ -44,9 +54,15 @@ mcp = FastMCP(
 # Vendored text-to-cad engine (MIT), installed under /app/cad-skill.
 _STEP_CLI = "/app/cad-skill/step"
 _INSPECT_CLI = "/app/cad-skill/inspect"
+_SNAPSHOT_CLI = "/app/cad-skill/snapshot"
+_DXF_CLI = "/app/cad-skill/dxf"
+_DFAM_CLI = "/app/dfam/dfam_tool.py"
 _STEPPARTS_CLI = "/app/step-parts/download_step_part.py"
 _STEP_TIMEOUT = 300  # complex parts / assemblies can take a while
 _INSPECT_TIMEOUT = 120
+_SNAPSHOT_TIMEOUT = 360  # CLI default 300s + first-call OCP GLB regeneration & browser startup
+_DXF_TIMEOUT = 180
+_DFAM_TIMEOUT = 180
 _STEPPARTS_TIMEOUT = 120
 # cad-viewer base URL (the agent hands this to the user's browser). Override via
 # CAD_VIEWER_URL if served behind a different host/nginx path.
@@ -102,8 +118,22 @@ def _err(error: str, **extra) -> str:
     return json.dumps(payload, ensure_ascii=False)
 
 
+_PIN_HINT = (
+    "先 write_file('/mnt/user-data/.cad_thread_pin','1') 钉定当前线程,再重试。"
+    "原因:此工具跨线程共享、看不见 thread_id,不钉定→文件落错线程→下载404。"
+)
+
+
+def _ensure_thread_pin() -> str | None:
+    """Return an error payload if no thread pin exists, else None (bug-324)."""
+    root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
+    if not any(root.glob("users/*/threads/*/user-data/**/.cad_thread_pin")):
+        return _err("no_thread_pin", hint=_PIN_HINT)
+    return None
+
+
 @mcp.tool()
-def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
+def create_step(source: str, output_path: str, also_glb: bool = False, also_stl: bool = False) -> str:
     """**PREREQUISITE — do this FIRST, every call:** ``write_file('/mnt/user-data/.cad_thread_pin', '1')``.
     This tool runs in a container shared across threads and CANNOT see your
     ``thread_id``; without the pin, your STEP/GLB land in the wrong thread and the
@@ -137,9 +167,11 @@ def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
             written next to it as <name>.py (same basename, upstream convention).
         also_glb: If True, also emit <name>.glb (topology-rich; needed before
             inspect_step refs, and for the browser viewer).
+        also_stl: If True, also emit <name>.stl (plain triangle mesh; the input
+            format for ``check_printability`` and 3D-print slicers).
 
     Returns:
-        JSON ``{status:"ok", step, glb?, public_glb?, viewer_url?}`` on success.
+        JSON ``{status:"ok", step, glb?, public_glb?, viewer_url?, stl?}`` on success.
         When ``also_glb=True``, includes ``viewer_url`` — a clickable CAD Viewer
         3D preview link (e.g. ``http://127.0.0.1:4178/?dir=/data&file=public/<name>.glb``).
         **You MUST surface this ``viewer_url`` to the user in your final reply** (as a
@@ -149,9 +181,9 @@ def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
     """
     # Force thread pin (bug-324): this container can't see thread_id; without a
     # pin the fallback glob writes to the wrong thread → download 404.
-    root = Path(os.getenv("CAD_DATA_ROOT", _DEFAULT_DATA_ROOT))
-    if not any(root.glob("users/*/threads/*/user-data/**/.cad_thread_pin")):
-        return _err("no_thread_pin", hint="先 write_file('/mnt/user-data/.cad_thread_pin','1') 钉定当前线程,再重试 create_step。原因:此工具跨线程共享、看不见 thread_id,不钉定→文件落错线程→下载404。")
+    pin_err = _ensure_thread_pin()
+    if pin_err:
+        return pin_err
     out = _resolve_output_path(output_path)
     if out is None:
         return _err("resolve_failed", output_path=output_path)
@@ -167,6 +199,8 @@ def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
     cmd = ["python", _STEP_CLI, gen_py.name, "-o", out.name]
     if also_glb:
         cmd += ["--glb", f"{base}.glb"]
+    if also_stl:
+        cmd += ["--stl", f"{base}.stl"]
     try:
         proc = subprocess.run(cmd, cwd=workdir, capture_output=True, text=True, timeout=_STEP_TIMEOUT)
     except subprocess.TimeoutExpired:
@@ -197,6 +231,11 @@ def create_step(source: str, output_path: str, also_glb: bool = False) -> str:
                 info["public_glb_error"] = repr(exc)
         else:
             info["glb_error"] = "engine did not produce the GLB"
+    if also_stl:
+        if (workdir / f"{base}.stl").exists():
+            info["stl"] = output_path[: -len(out.suffix)] + ".stl"
+        else:
+            info["stl_error"] = "engine did not produce the STL"
     return json.dumps(info, ensure_ascii=False, default=str)
 
 
@@ -319,6 +358,185 @@ def search_step_parts(query: str = "", limit: int = 8, download_id: str | None =
     body = proc.stdout.strip()
     if not body:
         return _err("empty", detail="no results (API unreachable or no matches)")
+    return body
+
+
+@mcp.tool()
+def snapshot_step(step_path: str, output_path: str, camera: str = "iso", width: int | None = None, height: int | None = None) -> str:
+    """**PREREQUISITE — same as create_step:** the ``.cad_thread_pin`` must exist (write it once per thread).
+
+    Render a STEP to a PNG snapshot so you can visually self-check your own CAD
+    output (agent-side eyes — deterministic ``inspect_step`` cannot see shape
+    pathology like an open shell rendered wrong). The browser viewer_url stays
+    the human's interactive preview; this PNG is yours.
+
+    Runs the vendored ``snapshot`` CLI (Playwright + headless Chromium, fully
+    offline render). Output filename gets a UTC timestamp appended — use the
+    returned ``snapshot`` path, not the path you passed.
+
+    Args:
+        step_path: STEP to render (must be a real .step; GLB is rejected) —
+            absolute or /mnt/user-data/outputs/<name>.step virtual path.
+        output_path: PNG destination (.png) — virtual path convention as above.
+        camera: view preset, e.g. "iso" (default) / "front" / "top" / "iso-opposite".
+        width: render width in px (default engine-chosen).
+        height: render height in px.
+
+    Returns:
+        JSON ``{status:"ok", snapshot, step}`` where ``snapshot`` is the actual
+        timestamped PNG path, or ``{status:"error", error, detail?}``
+        (no_thread_pin / resolve_failed / bad_suffix / render_failed).
+    """
+    pin_err = _ensure_thread_pin()
+    if pin_err:
+        return pin_err
+    src = _resolve_output_path(step_path)
+    png = _resolve_output_path(output_path)
+    if src is None or png is None:
+        return _err("resolve_failed", step_path=step_path, output_path=output_path)
+    if src.suffix.lower() not in (".step", ".stp"):
+        return _err("bad_suffix", step_path=step_path, hint="snapshot renders a .step/.stp input")
+    if png.suffix.lower() != ".png":
+        return _err("bad_suffix", output_path=output_path, hint="output_path must end in .png")
+    workdir = src.parent
+    png.parent.mkdir(parents=True, exist_ok=True)
+    cmd = ["python", _SNAPSHOT_CLI, "--input", src.name, "--output", png.name,
+           "--mode", "view", "--camera", camera]
+    if width:
+        cmd += ["--width", str(width)]
+    if height:
+        cmd += ["--height", str(height)]
+    try:
+        proc = subprocess.run(cmd, cwd=workdir, capture_output=True, text=True, timeout=_SNAPSHOT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return _err("render_failed", detail=f"snapshot CLI timed out after {_SNAPSHOT_TIMEOUT}s")
+    if proc.returncode != 0:
+        return _err("render_failed", detail=(proc.stderr or proc.stdout or "").strip()[-800:])
+    # The CLI appends a UTC timestamp to the output stem; report the real file.
+    produced = sorted(workdir.glob(f"{png.stem}_*.png"), key=lambda p: p.stat().st_mtime)
+    if not produced:
+        produced = [png] if png.exists() else []
+    if not produced:
+        return _err("render_failed", detail="snapshot CLI reported success but no PNG found")
+    # Report as the agent's virtual path so present_files/download resolve.
+    rest = produced[-1].relative_to(_thread_user_data_root(workdir))
+    return json.dumps({"status": "ok", "snapshot": f"/mnt/user-data/{rest}", "step": step_path},
+                      ensure_ascii=False)
+
+
+def _thread_user_data_root(physical: Path) -> Path:
+    """Walk a physical thread path up to its user-data/ root (pin convention)."""
+    ud = physical
+    while ud.name != "user-data" and ud != ud.parent:
+        ud = ud.parent
+    return ud
+
+
+@mcp.tool()
+def create_dxf(source: str, output_path: str) -> str:
+    """**PREREQUISITE — same as create_step:** the ``.cad_thread_pin`` must exist (write it once per thread).
+
+    Generate a 2D DXF drawing via the text-to-cad engine. Your source MUST
+    define ``def gen_dxf():`` returning an **ezdxf Document** (NOT build123d
+    geometry — Sketch/BuildSketch objects are not valid here). Use for generic
+    mechanical flat patterns and plate outlines. For domain-specific 2D
+    ENGINEERING drawings (mine / chemical-plant layouts with title blocks),
+    do NOT use this — call ``cad_compose_drawing`` on the ``cad`` server
+    instead.
+
+    Source template (ezdxf is pre-importable in the container)::
+
+        import ezdxf
+
+        def gen_dxf():
+            doc = ezdxf.new("R2010")
+            doc.units = ezdxf.units.MM
+            msp = doc.modelspace()
+            msp.add_lwpolyline([(0, 0), (60, 0), (60, 40), (0, 40)], close=True)
+            return doc
+
+    Args:
+        source: Python defining ``gen_dxf()`` returning an ezdxf Document —
+            pass the source STRING itself, never a file path.
+        output_path: .dxf destination — absolute or /mnt/user-data/outputs/<name>.dxf
+            virtual path. The generator is written next to it as <name>.py.
+
+    Returns:
+        JSON ``{status:"ok", dxf}`` or ``{status:"error", error, detail?}``
+        (no_thread_pin / resolve_failed / bad_suffix / run_failed).
+    """
+    pin_err = _ensure_thread_pin()
+    if pin_err:
+        return pin_err
+    # Trust-boundary guard (E2E T6): agents sometimes pass a PATH here instead
+    # of the source string — a path is one line ending in .py and would be
+    # written out as a garbage "generator". Fail fast with the fix in the hint.
+    if source.strip().endswith(".py") and "\n" not in source.strip():
+        return _err("bad_args", hint="source 参数传 gen_dxf() 源码字符串本身,不是文件路径——把完整 Python 源码内联传入。")
+    out = _resolve_output_path(output_path)
+    if out is None:
+        return _err("resolve_failed", output_path=output_path)
+    if out.suffix.lower() != ".dxf":
+        return _err("bad_suffix", output_path=output_path, hint="output_path must end in .dxf")
+    workdir = out.parent
+    workdir.mkdir(parents=True, exist_ok=True)
+    gen_py = workdir / f"{out.stem}.py"
+    gen_py.write_text(source, encoding="utf-8")
+    # cadpy requires RELATIVE paths + workspace CWD (same contract as step).
+    cmd = ["python", _DXF_CLI, gen_py.name, "-o", out.name]
+    try:
+        proc = subprocess.run(cmd, cwd=workdir, capture_output=True, text=True, timeout=_DXF_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return _err("run_failed", detail=f"dxf CLI timed out after {_DXF_TIMEOUT}s")
+    if proc.returncode != 0:
+        return _err("run_failed", detail=(proc.stderr or proc.stdout or "").strip()[-800:])
+    if not out.exists():
+        return _err("run_failed", detail="dxf CLI reported success but no DXF found")
+    return json.dumps({"status": "ok", "dxf": output_path}, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_printability(mesh_path: str, angle_limit: float | None = None) -> str:
+    """**PREREQUISITE — same as create_step:** the ``.cad_thread_pin`` must exist (write it once per thread).
+
+    DfAM printability facts for a mesh: watertightness, per-body wall thickness
+    (ray cast), overhang/support area with angle histogram, and support-volume
+    estimate. Fact-only output — compare the numbers against your process's
+    limits yourself (FDM/SLS/SLA/PBF/MJF) and report honestly (hole diameters /
+    positive features / bridges are NOT measured; the tool never passes/fails).
+
+    Typical flow: ``create_step(..., also_stl=True)`` first, then pass the
+    returned ``stl`` path here.
+
+    Args:
+        mesh_path: STL file — absolute or /mnt/user-data/outputs/<name>.stl.
+        angle_limit: overhang threshold in degrees (default 45).
+
+    Returns:
+        The dfam tool's JSON facts, or ``{status:"error", error, detail?}``.
+    """
+    pin_err = _ensure_thread_pin()
+    if pin_err:
+        return pin_err
+    mesh = _resolve_output_path(mesh_path)
+    if mesh is None:
+        return _err("resolve_failed", mesh_path=mesh_path)
+    if not mesh.exists():
+        return _err("not_found", mesh_path=mesh_path)
+    if mesh.suffix.lower() != ".stl":
+        return _err("bad_suffix", mesh_path=mesh_path, hint="STL is the only supported input here")
+    cmd = ["python", _DFAM_CLI, "measure", mesh.name]
+    if angle_limit is not None:
+        cmd += ["--angle-limit", str(angle_limit)]
+    try:
+        proc = subprocess.run(cmd, cwd=mesh.parent, capture_output=True, text=True, timeout=_DFAM_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return _err("run_failed", detail=f"dfam tool timed out after {_DFAM_TIMEOUT}s")
+    if proc.returncode != 0:
+        return _err("run_failed", detail=(proc.stderr or proc.stdout or "").strip()[-800:])
+    body = proc.stdout.strip()
+    if not body:
+        return _err("empty", detail="dfam tool produced no output")
     return body
 
 

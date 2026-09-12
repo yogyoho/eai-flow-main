@@ -43,7 +43,11 @@ license: MIT
 
 3. **导出 STEP + GLB**。**先钉定当前线程**(text-to-cad 容器跨线程共享、看不见 thread_id;不钉定会把文件写到错误的线程目录 → 下载 404):
    ```
-   write_file("/mnt/user-data/.cad_thread_pin", "cad")   # sandbox 解析到当前线程的 user-data/
+   write_file("/mnt/user-data/.cad_thread_pin", "1")   # sandbox 解析到当前线程的 user-data/
+   ```
+   若 write_file 返回 `Permission denied`(沙箱可能拒写隐藏文件),**立即用 bash 兜底,不要跳过**:
+   ```bash
+   echo 1 > /mnt/user-data/.cad_thread_pin
    ```
    然后调用(**默认 `also_glb=True`** —— GLB 是 inspect refs 与浏览器预览的基础):
    ```
@@ -69,8 +73,13 @@ license: MIT
    - 需测两点距离/对齐 → `subcommand="measure"`/`"align"` + selectors(`["#o1.2","#o2.1"]`)。
    - 偏离预期 → 修正源码最小改动段 → 重跑 create_step + inspect。
    - 这一步不可省略,是确定性验证手段。
+   - ⚠️ **refs 通过 ≠ 实体有效**:`refs --facts` 的 `ok` 只覆盖 ref 解析与计数——**开放壳、反转法向的坏实体同样能通过**(体积/包围盒也只反映坏几何的实际值)。实体有效性要在建模源码里自证:`gen_step()` 返回前加
+     ```python
+     assert shape.is_valid, "invalid solid: open shell or inverted normal"  # is_valid 是属性,别加括号!
+     ```
+     (build123d 内建 `Shape.is_valid` **属性**;写成 `shape.is_valid()` 会 `TypeError: 'bool' object is not callable` → run_failed)。装配则对每个成员 solid 断言。
 
-5. **交付**。用 `present_files` 展示 STEP(+GLB)给用户下载。**并在回复里给出 3D 查看链接**:
+5. **交付**。用 `present_files` 展示 STEP(+GLB)给用户下载。**终止纪律(实测教训)**:create_step 成功 + inspect 自检通过后,**立即停止工具调用、直接写最终回复**——最多再补一轮 inspect,严禁反复 inspect/present_files/ls 确认(会烧尽 100 步运行预算,run 以 recursion limit 报错,最终回复整体丢失)。**并在回复里给出 3D 查看链接**:
    `create_step(also_glb=True)` 返回的 `viewer_url`(形如 `http://127.0.0.1:4178/?dir=/data&file=public/<名>.glb`)——
    用户点击即在 cad-viewer 里旋转查看 3D(无需下载,打开新标签页)。最终回复包含:
    文件路径、**`viewer_url` 查看链接**(加粗,让用户易点)、inspect 事实(体积/包围盒)、跑过的检查、关键假设、未执行的验证(见限制)。
@@ -100,6 +109,8 @@ build123d 0.10+ 的 API 与常见 Python CAD 库不同。以下是被证实会�
 | `diameter=...` | `Hole(radius)` | **Hole 用半径不是直径**。Φ8 通孔 = `Hole(4)`,不是 `Hole(diameter=4)` |
 | `output_path` 以 `.dxf` 结尾 | 必须以 `.step` 或 `.stp` 结尾 | `create_step` 拒绝 `.dxf` 后缀,返回 `bad_suffix` 错误 |
 | 忘记 `from build123d import *` | **源码第一行必须是** `from build123d import *` | 否则 `BuildPart`/`Box`/`Hole` 全部 NameError |
+| `shape.is_valid()` | `shape.is_valid` | **is_valid 是属性不是方法**,调用形式抛 `TypeError: 'bool' object is not callable` → run_failed |
+| `Compound.assemble([...])` | `Compound(label="asm", children=[a, b])` | **build123d 没有 `Compound.assemble`**(AttributeError)。装配 = 带标签 `Compound`,成员先设 `.label`,用 `children=` 列表组装 |
 
 ### ✅ 常用 API 速查(build123d 0.10+)
 
@@ -194,8 +205,9 @@ inspect_step(step_path="/mnt/user-data/outputs/block.step", subcommand="refs", f
 本 skill 由 text-to-cad 适配,**已集成**:STEP/STL/GLB 生成(`create_step`,单零件 + 装配)、
 inspect(`inspect_step`:refs/measure/align/frame)、标准件查询(`search_step_parts`:step.parts 库)。
 
-- `snapshot`(PNG/GIF 渲染审查):**CUT** —— 活页预览(`/cad-design` 的 model-viewer)覆盖人的视觉校验,inspect 覆盖 agent 确定性自检;snapshot 仅对自主无人生成有价值,当前人在回路冗余。
+- `snapshot`(PNG 渲染审查):**已集成** —— `text-to-cad_snapshot_step(step_path, output_path='<名>.png', camera='iso')` 用无头 Chromium 把 STEP 渲染成 PNG,**你自己看**(确定性 inspect 看不见的形状病理,渲染图能看见)。同一前置 pin;返回的 `snapshot` 路径带时间戳,以返回值为准。简单零件渲 1 张 iso;装配/多孔/壳体渲多角度。渲染通过后立即交付,勿反复渲染(烧尽步数预算)。
 - `diff`(两 STEP 对比):inspect 暂未暴露 diff 子命令 → 用 inspect refs 事实分别比对。
-- `cad-viewer`(浏览器 3D 预览):Phase 2 已上线 —— `/cad-design` 页用 model-viewer 显示 GLB(create_step `also_glb=True` 产出)。
+- `validate`/`interfere`(实体有效性/装配干涉检查):上游 v0.5 新增,**未集成** —— 容器引擎为 0.3.6 vendored 版,无此子命令 → 用源码内 `shape.is_valid` 属性断言(见步骤 4)+ refs 事实比对替代。
+- `cad-viewer`(浏览器 3D 预览):已上线 —— `create_step(also_glb=True)` 返回的 `viewer_url` 直接在浏览器打开 3D(model-viewer 渲染 GLB)。
 - 装配:**已集成** —— create_step 支持;gen_step 返回带标签 `Compound` 或 `cadpy.assembly.AssemblyHelper` 语义 mate,`step` 自动按装配输出(R5 PASS,实测出 33KB 装配 STEP + GLB)。
 - step-parts:**已集成** —— `search_step_parts` 查 step.parts 库(16847+ 件)+ 下载 STEP,可 import 进装配源。需网络。

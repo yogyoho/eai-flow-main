@@ -218,7 +218,7 @@
       "url": "http://cad:8003/mcp",
       "headers": {},
       "oauth": null,
-      "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container — start via docker/docker-compose.extensions.yaml `cad` service, then set enabled=true."
+      "description": "CAD Comprehension / EDP MCP (merged cad-suite image): analyze_cad DXF parse + rasterize, cad_compose_drawing 2D engineering drawings with domain packs (mine/chem). Part of the `cad-suite` container (alias `cad` -> :8003); see docker-compose-dev.yaml cad-suite service."
     },
     "text-to-cad": {
       "enabled": true,
@@ -230,7 +230,7 @@
       "url": "http://text-to-cad:8004/mcp",
       "headers": {},
       "oauth": null,
-      "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container — start via docker/docker-compose-dev.yaml `text-to-cad` service (port 8004), then set enabled=true."
+      "description": "text-to-cad MCP (merged cad-suite image): build123d STEP/STL/DXF generation (create_step gen_step contract, +also_glb/also_stl), inspect_step refs/measure/align/frame, snapshot_step PNG renders, search_step_parts catalog, check_printability DfAM facts. Service `cad-suite` in docker-compose-dev.yaml (supervises text-to-cad :8004 + cad :8003 + viewer :4178; aliases keep these URLs stable)."
     },
     "ops-diagnosis": {
       "enabled": true,
@@ -320,6 +320,36 @@
     },
     "local-knowledge-first": {
       "enabled": true
+    },
+    "cad-dxf": {
+      "enabled": true
+    },
+    "cad-urdf": {
+      "enabled": true
+    },
+    "srdf": {
+      "enabled": true
+    },
+    "sdf": {
+      "enabled": true
+    },
+    "implicit-cad": {
+      "enabled": true
+    },
+    "sendcutsend": {
+      "enabled": true
+    },
+    "dfam-check": {
+      "enabled": true
+    },
+    "step-parts": {
+      "enabled": true
+    },
+    "gcode": {
+      "enabled": false
+    },
+    "bambu-labs": {
+      "enabled": false
     }
   }
 }

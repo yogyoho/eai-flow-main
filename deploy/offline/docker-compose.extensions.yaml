@@ -108,52 +108,33 @@ services:
       - prod-eai-flow-net
     restart: unless-stopped
     
-  # ── CAD Comprehension MCP (ezdxf) ─────────────────────────────────────────
-  # 服务名必须保持 cad/text-to-cad/ocr —— 与 extensions_config.json 的 MCP url
-  # (http://cad:8003/mcp, http://text-to-cad:8004/mcp) 和 gateway 环境变量
-  # OCR_SERVICE_URL=http://ocr:8010 对齐（Docker DNS 按服务名解析）。
-  # cad / text-to-cad / cad-viewer 共享 ./data（容器内 /data）。
-  cad:
-    image: eai-flow-cad:latest
-    container_name: prod-eai-flow-cad
+  # ── CAD Suite (merged: text-to-cad + cad/EDP + cad-viewer) ────────────────
+  # 2026-09-11 三容器合并为一:一个镜像跑 text-to-cad MCP(:8004)+ cad/EDP MCP
+  # (:8003)+ cad-viewer(:4178),离线只交付一个 eai-flow-cad-suite:latest。
+  # 服务名/别名必须保持 cad/text-to-cad/ocr —— 与 extensions_config.json 的
+  # MCP url (http://cad:8003/mcp, http://text-to-cad:8004/mcp) 和 gateway
+  # 环境变量 OCR_SERVICE_URL=http://ocr:8010 对齐（Docker DNS 按服务名/别名解析）。
+  # 离线环境共享 ./data（容器内 /data）。
+  cad-suite:
+    image: eai-flow-cad-suite:latest
+    container_name: prod-eai-flow-cad-suite
     environment:
       - MCP_TRANSPORT=streamable-http
       - MCP_HOST=0.0.0.0
-      - MCP_PORT=8003
-      - CAD_DATA_ROOT=/data
-    volumes:
-      - ./data:/data:rw
-    networks:
-      - prod-eai-flow-net
-    restart: unless-stopped
-
-  # ── text-to-cad MCP (build123d + OCP) ─────────────────────────────────────
-  text-to-cad:
-    image: eai-flow-text-to-cad:latest
-    container_name: prod-eai-flow-text-to-cad
-    environment:
-      - MCP_TRANSPORT=streamable-http
-      - MCP_HOST=0.0.0.0
+      # 默认(text-to-cad)端口;supervisor 对 cad-mcp 覆盖为 8003。
       - MCP_PORT=8004
       - CAD_DATA_ROOT=/data
     volumes:
       - ./data:/data:rw
-    networks:
-      - prod-eai-flow-net
-    restart: unless-stopped
-
-  # ── CAD Viewer (Node, pre-built three.js UI) ──────────────────────────────
-  # 用户浏览器直接访问 :4178 查看 STEP/GLB/STL。专用生产服务器用默认 4178；
-  # 与开发环境 (eai-docker) 同机共存则改为 14178 避免冲突。
-  cad-viewer:
-    image: eai-flow-cad-viewer:latest
-    container_name: prod-eai-flow-cad-viewer
-    volumes:
-      - ./data:/data:rw
     ports:
+      # cad-viewer:用户浏览器直接访问 :4178 查看 STEP/GLB/STL。专用生产服务器
+      # 用默认 4178;与开发环境 (eai-docker) 同机共存则改为 14178 避免冲突。
       - "${CAD_VIEWER_PORT:-4178}:4178"
     networks:
-      - prod-eai-flow-net
+      prod-eai-flow-net:
+        aliases:
+          - text-to-cad
+          - cad
     restart: unless-stopped
 
   # ── Browserless（无头 Chrome，供 web_fetch/web_capture 渲染 JS 网页）──────

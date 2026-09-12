@@ -1,7 +1,9 @@
 build123d>=0.10
-mcp>=1.2
+# pin <2: mcp 2.x renamed FastMCP -> MCPServer (server.py imports FastMCP)
+mcp>=1.2,<2
 trimesh>=4.0
 # Vendored text-to-cad engine (MIT) — editable install of cadpy (assembly/ref/analysis)
 --editable ./cad-skill/packages/cadpy
-# ponytail: deferred to snapshot phase — snapshot renders via Playwright+Chromium
-# playwright>=1.40
+playwright>=1.40
+# dfam_check ray-cast wall thickness (rtree wheel bundles libspatialindex; no apt needed)
+rtree>=1.3

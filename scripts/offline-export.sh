@@ -115,7 +115,7 @@ PUBLIC_IMAGES=(
 # EAI-CUSTOM: `frontend` is intentionally excluded here — the dev compose pins
 # build target=dev, which would produce a dev image. The frontend prod image is
 # built directly with `--target prod` in Step 2 below.
-BUILD_SERVICES="gateway collab cad text-to-cad ocr cad-viewer"
+BUILD_SERVICES="gateway collab cad-suite ocr"
 
 # Compose files for building (in order)
 COMPOSE_FILES=(
@@ -272,10 +272,8 @@ declare -A SERVICE_TAG_MAP=(
     ["eai-docker-collab:latest"]="eai-flow-collab:latest"
     ["eai-docker-procurement-backend:latest"]="eai-flow-procurement-backend:latest"
     ["eai-docker-procurement-frontend:latest"]="eai-flow-procurement-frontend:latest"
-    ["eai-docker-cad:latest"]="eai-flow-cad:latest"
-    ["eai-docker-text-to-cad:latest"]="eai-flow-text-to-cad:latest"
+    ["eai-docker-cad-suite:latest"]="eai-flow-cad-suite:latest"
     ["eai-docker-ocr:latest"]="eai-flow-ocr:latest"
-    ["eai-docker-cad-viewer:latest"]="eai-flow-cad-viewer:latest"
 )
 
 for COMPOSE_IMG in "${!SERVICE_TAG_MAP[@]}"; do

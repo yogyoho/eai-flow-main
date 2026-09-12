@@ -1,0 +1,6 @@
+# Upstream shipped `--editable ./scripts/packages/cadpy_metadata`.
+# EAI: DO NOT pip-install this. The launcher (scripts/urdf/cli.py) self-inserts
+# scripts/packages/ and cadpy_metadata/src into sys.path, and cadpy_metadata
+# declares dependencies=[] — pure stdlib, zero runtime install needed.
+# Sandbox pip installs do not persist (image-baked deps); leaving this file as
+# a comment keeps the upstream layout recognizable without a live dependency.

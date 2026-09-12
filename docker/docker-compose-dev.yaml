@@ -265,67 +265,46 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
-  # ── CAD Comprehension MCP Server ───────────────────────────────────────
-  # Standalone container: ezdxf-based DXF parse + rasterize, exposed to the
-  # gateway as MCP server `cad` (streamable-http, port 8003). Keeps heavy CAD
-  # deps (matplotlib/ezdxf, and ODA later) out of the gateway image so gateway
-  # startup stays fast. Phase 1: DXF only.
+  # ── CAD Suite (merged: text-to-cad + cad/EDP + cad-viewer) ────────────
+  # ONE container for all CAD capability (user decision 2026-09-11): three
+  # supervised services in a single image — text-to-cad MCP :8004 (build123d
+  # STEP/STL/DXF + inspect + snapshot + parts catalog + DfAM facts), cad/EDP
+  # MCP :8003 (2D engineering drawings, domain packs), cad-viewer :4178
+  # (browser 3D). One rebuild for everything CAD; shared OCP/cadpy/ezdxf
+  # layers instead of three copies.
   #
-  # Comes up with `make docker-start` (this compose file). Then flip
-  # extensions_config.json mcpServers.cad.enabled=true and restart gateway.
-  cad:
+  # Network aliases `text-to-cad` and `cad` keep extensions_config.json MCP
+  # URLs (http://text-to-cad:8004/mcp, http://cad:8003/mcp) working unchanged.
+  # Rollback: the three per-service definitions live in git history
+  # (pre-2026-09-11) — revert this block and rebuild.
+  cad-suite:
     build:
-      context: ../mcp-server/cad-mcp
-      dockerfile: Dockerfile
+      context: ../mcp-server
+      dockerfile: cad-suite/Dockerfile
       args:
         # Reuse the backend's pip index mirror if set (restricted networks).
+        # OCP wheels are large — a mirror matters more here than anywhere.
         PIP_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
-    container_name: eai-flow-cad
+    container_name: eai-flow-cad-suite
     environment:
       - MCP_TRANSPORT=streamable-http
       - MCP_HOST=0.0.0.0
-      - MCP_PORT=8003
-      - CAD_DATA_ROOT=/data
-    volumes:
-      # Same host data dir the gateway bind-mounts via ../backend/:/app/backend/.
-      # analyze_cad resolves agent virtual paths (/mnt/user-data/<rest>) by
-      # glob-searching /data/users/*/threads/*/user-data/<rest>. See mcp-server/cad-mcp/README.md.
-      - ../backend/.deer-flow:/data:rw
-    networks:
-      - eai-flow-net
-    restart: unless-stopped
-
-  # ── text-to-cad MCP Server ─────────────────────────────────────────────
-  # Standalone container: build123d STEP/STL generation from agent-supplied
-  # source, exposed to the gateway as MCP server `text-to-cad`
-  # (streamable-http, port 8004). Keeps heavy CAD deps (build123d + OCP
-  # native libs, ~400MB+) out of the gateway image so gateway startup stays
-  # fast. Phase 1: STEP/STL only. See mcp-server/text-to-cad-mcp/README.md.
-  #
-  # Comes up with `make docker-start` (this compose file). Then
-  # extensions_config.json mcpServers.text-to-cad.enabled is already true;
-  # just restart gateway to pick up the tool.
-  text-to-cad:
-    build:
-      context: ../mcp-server/text-to-cad-mcp
-      dockerfile: Dockerfile
-      args:
-        # Reuse the backend's pip index mirror if set (restricted networks).
-        # OCP wheels are large — a mirror matters more here than for cad-mcp.
-        PIP_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
-    container_name: eai-flow-text-to-cad
-    environment:
-      - MCP_TRANSPORT=streamable-http
-      - MCP_HOST=0.0.0.0
+      # Default (text-to-cad) port; the supervisor overrides 8003 for cad-mcp.
       - MCP_PORT=8004
       - CAD_DATA_ROOT=/data
     volumes:
-      # Same host data dir as cad-mcp: shares the gateway's user-data so
-      # virtual paths /mnt/user-data/outputs/<name>.step resolve to the right
-      # thread dir. See mcp-server/text-to-cad-mcp/README.md (Path contract).
+      # Same host data dir the gateway bind-mounts via ../backend/:/app/backend/.
+      # All three services resolve agent virtual paths (/mnt/user-data/<rest>)
+      # against /data/users/*/threads/*/user-data/. See mcp-server/cad-suite/.
       - ../backend/.deer-flow:/data:rw
+    ports:
+      # cad-viewer only — the two MCP servers stay internal-network-only.
+      - "4178:4178"
     networks:
-      - eai-flow-net
+      eai-flow-net:
+        aliases:
+          - text-to-cad
+          - cad
     restart: unless-stopped
 
   # ── eai-flow-ocr (contract price OCR service) ──────────────────────────
@@ -361,21 +340,7 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
-  # ── CAD Viewer (text-to-cad's own 3D viewer) ───────────────────────────
-  # Node-only bundled server (no npm install) serving pre-built dist UI.
-  # Views STEP/GLB/STL from /data (shared user-data). Port 4178 → host 4178.
-  cad-viewer:
-    build:
-      context: ../mcp-server/cad-viewer
-      dockerfile: Dockerfile
-    container_name: eai-flow-cad-viewer
-    volumes:
-      - ../backend/.deer-flow:/data:rw
-    ports:
-      - "4178:4178"
-    networks:
-      - eai-flow-net
-    restart: unless-stopped
+  # cad-viewer merged into cad-suite above (2026-09-11).
 
   # ── Knowledge Factory MCP Server (HTTP) ──────────────────────────────────
   # Converts the knowledge-factory MCP server from stdio to a persistent HTTP

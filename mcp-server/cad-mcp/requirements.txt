@@ -1,5 +1,5 @@
 ezdxf>=1.4
 matplotlib>=3.8
-mcp>=1.2
+mcp>=1.2,<2  # pin <2: mcp 2.x renamed FastMCP -> MCPServer
 # ponytail: phase-2 additions, not needed yet
 # shapely>=2.0  # geometry/compliance math (egress distance, compartment area)
