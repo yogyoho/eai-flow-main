@@ -23,6 +23,7 @@ import { graph } from "@/extensions/ontology/explorer/graphStore";
 import type {
   GraphDisplayMeta,
   GraphEffectsState,
+  GraphLoadPhase,
   GraphLoadProgress,
   GraphLoadSummary,
 } from "@/extensions/ontology/explorer/types";
@@ -55,6 +56,28 @@ const EFFECTS_STATE: GraphEffectsState = {
   effectQuality: "bounded",
 };
 
+// vendored 进度 phase → 中文短句（评审 minor：加载态保持中文；未知 phase 回退原值）
+const PHASE_LABELS: Partial<Record<GraphLoadPhase, string>> = {
+  bootstrapping: "准备会话",
+  fetching_nodes: "加载节点",
+  fetching_edges: "加载边",
+  computing_styling: "计算样式",
+  hydrating_scene: "写入渲染场景",
+  stabilizing_layout: "稳定布局中",
+  ready: "就绪",
+};
+
+function formatProgress(progress: GraphLoadProgress): string {
+  const label = PHASE_LABELS[progress.phase] ?? progress.phase;
+  if (progress.phase === "fetching_nodes") {
+    return `加载节点 ${progress.nodesLoaded.toLocaleString()}…`;
+  }
+  if (progress.phase === "fetching_edges") {
+    return `加载边 ${progress.edgesLoaded.toLocaleString()}…`;
+  }
+  return `${label}…`;
+}
+
 export interface OntologyGraphCanvasProps {
   selectedNodeId: string;
   onSelectNode: (nodeId: string) => void;
@@ -86,7 +109,7 @@ export function OntologyGraphCanvas({
   const loadQuery = useLoadGraph({
     fetchNodes: fetchers.fetchNodes,
     fetchEdges: fetchers.fetchEdges,
-    onProgress: (progress: GraphLoadProgress) => setProgressMessage(progress.message),
+    onProgress: (progress: GraphLoadProgress) => setProgressMessage(formatProgress(progress)),
   });
 
   useEffect(() => {

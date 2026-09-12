@@ -45,21 +45,24 @@ const OntologyGraphCanvas = dynamic<OntologyGraphCanvasProps>(
 const SEARCH_MATCH_LIMIT = 8;
 type PanelTab = "detail" | "registry";
 
-/** 已加载图节点中按 label 子串检索（大小写不敏感），返回 [id, label] 候选。 */
+/** 已加载图节点中按 label 子串检索（大小写不敏感）；前缀命中排前，截取前 8 条。 */
 function searchGraphNodes(query: string): Array<{ id: string; label: string }> {
   const q = query.trim().toLowerCase();
   if (!q) {
     return [];
   }
-  const matches: Array<{ id: string; label: string }> = [];
+  const matches: Array<{ id: string; label: string; prefixHit: boolean }> = [];
   graph.forEachNode((nodeId, attributes) => {
     const label = String((attributes as NodeAttributes).label ?? "");
-    if (label.toLowerCase().includes(q)) {
-      matches.push({ id: nodeId, label });
+    const lower = label.toLowerCase();
+    if (lower.includes(q)) {
+      matches.push({ id: nodeId, label, prefixHit: lower.startsWith(q) });
     }
-    return matches.length < SEARCH_MATCH_LIMIT;
+    return true;
   });
-  return matches;
+  // 稳定排序保住图内原序；前缀命中优先（评审 minor：exact/prefix first）
+  matches.sort((left, right) => Number(right.prefixHit) - Number(left.prefixHit));
+  return matches.slice(0, SEARCH_MATCH_LIMIT).map(({ id, label }) => ({ id, label }));
 }
 
 function OntologyWorkspace() {
@@ -96,7 +99,14 @@ function OntologyWorkspace() {
 
   const handlePickMatch = (nodeId: string) => {
     handleSelectNode(nodeId);
+    setSearchQuery(""); // 选中后收起候选下拉（评审 minor：下拉保持常开）
     canvasHandleRef.current?.focusNode(nodeId);
+  };
+
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Escape") {
+      setSearchQuery("");
+    }
   };
 
   const fingerprint = meta?.fingerprint ? meta.fingerprint.slice(0, 8) : "—";
@@ -114,7 +124,9 @@ function OntologyWorkspace() {
             type="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
+            onKeyDown={handleSearchKeyDown}
             placeholder="检索实体名…"
+            aria-label="检索实体"
             autoComplete="off"
             className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus:border-primary h-8 w-full rounded-lg border px-8 text-xs outline-none"
           />

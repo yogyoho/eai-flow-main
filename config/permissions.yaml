@@ -255,7 +255,7 @@ modules:
     data_scopes:
       - { id: "spq_all", display_name: "全部人员数据", rule_template: {} }
 
-  # ─── Ontology 统一语义层（平台原语；REST admin-gated，语义地图前端页为独立后续计划）───
+  # ─── Ontology 统一语义层（平台原语；REST admin-gated，语义地图页面已落地(2026-09-12)；v1 面向 superadmin(system:access 门禁)，角色级 nav/page 发放待 API 权限点扩展后配置）───
   ontology:
     display_name: "语义地图"
     nav_id: "nav:ontology"

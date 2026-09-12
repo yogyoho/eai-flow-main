@@ -91,7 +91,7 @@ function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
           {String(linksQuery.error)}
         </div>
       ) : null}
-      {!linksQuery.isError && rows.map((row) => {
+      {!linksQuery.isError && rows.map((row, index) => {
         const pkText = pkToString(row[opposite.pk]);
         const oppositeId = `${opposite.name}:${pkText}`;
         const label = (
@@ -101,7 +101,7 @@ function LinkTypeRows({ apiName, pk, linkType, opposite }: LinkTypeRowsProps) {
         ) || pkText || "?";
         return (
           <div
-            key={oppositeId}
+            key={`${oppositeId}-${index}`}
             className="border-border text-foreground mt-1 flex items-center gap-1.5 rounded-md border px-2 py-1.5 text-[11.5px]"
           >
             <span className="truncate" title={label}>
@@ -131,7 +131,7 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
       <div className="text-muted-foreground px-3 py-10 text-center text-xs leading-loose">
         点击图中节点查看
         <br />
-        属性、关联链接与证据链
+        属性与关联链接
       </div>
     );
   }
