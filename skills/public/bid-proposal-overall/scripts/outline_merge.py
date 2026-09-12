@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -96,6 +97,75 @@ def _is_live(clause: dict) -> bool:
     return build_output._is_active(clause)
 
 
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """同目录临时文件 + os.replace 原子落盘(防半写)。"""
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_bytes(data)
+    os.replace(tmp, path)
+
+
+def _next_node_id(structure: list[dict]) -> str:
+    used = {int(n["node_id"].split("-")[1]) for n in structure if isinstance(n, dict) and isinstance(n.get("node_id"), str) and "-" in n.get("node_id", "")}
+    i = 1
+    while i in used:
+        i += 1
+    return f"S-{i:03d}"
+
+
+def build_outline_nodes(normalized: list[dict], structure: list[dict], source_pack: str | None) -> list[dict]:
+    """大纲章 → self_created group 节点(单段 path `{no:02d} {title}`, 前导数字供领号)。"""
+    source = f"pack:{source_pack}" if source_pack else "自由拟"
+    nodes = []
+    for ch in normalized:
+        nodes.append(
+            {
+                "node_id": _next_node_id(structure + nodes),
+                "volume": "technical",
+                "path": f"{ch['no']:02d} {ch['title']}",
+                "slot_type": "group",
+                "required_format": {"desc": f"大纲自拟章(B1 v2; 来源 {source}; 确认后 merge)", "table_spec": None, "template_text": None},
+                "linked_clause_ids": list(ch["clause_ids"]),
+                "origin": "self_created",
+            }
+        )
+    return nodes
+
+
+def validate_managed(old_managed, structure: list[dict], assigned: set[str]) -> None:
+    """managed 集合 fail-closed 校验(第五道闸): 候选文件在 Agent 可写区, 盲删即静默丢章。
+    每个 id 必须存在于 structure 且 origin==self_created; 其 linked_clause_ids ⊆ 本轮大纲
+    分配集合(超出者=外部经 responses merge 追加的锚点——删除即静默丢失, 拒绝并提示先重跑
+    responses merge 或确认弃锚)。"""
+    if not isinstance(old_managed, list):
+        raise OutlineMergeError("managed_node_ids 应为数组")
+    by_id = {n.get("node_id"): n for n in structure if isinstance(n, dict)}
+    problems = []
+    for nid in old_managed:
+        if not isinstance(nid, str):
+            problems.append(f"managed {nid!r}: id 非字符串")
+            continue
+        n = by_id.get(nid)
+        if n is None:
+            problems.append(f"managed {nid}: unknown——不存在于 structure")
+        elif n.get("origin") != "self_created":
+            problems.append(f"managed {nid}: not_self_created——指向 mirror 节点(mirror 零触碰铁律)")
+        else:
+            extra = set(n.get("linked_clause_ids") or []) - assigned
+            if extra:
+                problems.append(f"managed {nid}: external_anchors {sorted(extra)}——节点挂接含 responses merge 外加锚点, 删除即静默丢失; 先重跑 responses merge 或确认弃锚后从 managed 移除该 id")
+    if problems:
+        raise OutlineMergeError("managed 集合校验拒绝:\n  - " + "\n  - ".join(problems))
+
+
+def merge(structure: list[dict], normalized: list[dict], old_managed: list[str], source_pack: str | None) -> tuple[list[dict], list[str]]:
+    """精准替换: 校验 managed → 删旧 managed 节点 → 插新章树(尾部追加) → 返回 (新 structure, 新 managed)。"""
+    validate_managed(old_managed, structure, {cid for ch in normalized for cid in ch["clause_ids"]})
+    old = set(old_managed)
+    kept = [n for n in structure if not (isinstance(n, dict) and n.get("node_id") in old)]
+    nodes = build_outline_nodes(normalized, kept, source_pack)
+    return kept + nodes, [n["node_id"] for n in nodes]
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="outline_merge.py", description="大纲自拟结构化(B1 v2): 确认后大纲 → structure.json self_created 章树")
     parser.add_argument("--state-dir", required=True)
@@ -122,13 +192,55 @@ def main(argv: list[str] | None = None) -> int:
         structure = _load_json(state_dir / "structure.json", "structure.json")
         if not isinstance(structure, list):
             raise OutlineMergeError("structure.json 形态异常(应为 JSON 对象数组), 拒绝")
-        validate_candidates(cand, clauses, structure)
+        # managed 集合预剔除: 这些节点本轮即将被替换, 不参与 self_created_path_conflict 检查
+        # (同候选重跑幂等的前提); 非 list 的 managed 走空过滤, 由 merge 内 validate_managed 拒绝。
+        raw_managed = cand.get("managed_node_ids")
+        managed_ids = {m for m in raw_managed if isinstance(m, str)} if isinstance(raw_managed, list) else set()
+        check_structure = [n for n in structure if not (isinstance(n, dict) and n.get("node_id") in managed_ids)]
+        normalized = validate_candidates(cand, clauses, check_structure)
+        old_managed = raw_managed or []
+        new_structure, managed = merge(structure, normalized, old_managed, cand.get("source_pack"))
+
+        # 原子写 structure.json → 重签; 重签失败回滚旧字节并对旧内容重签(恢复原签名态) → exit 1
+        structure_path = state_dir / "structure.json"
+        old_bytes = structure_path.read_bytes()
+        _atomic_write_bytes(structure_path, (json.dumps(new_structure, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        try:
+            state_guard.sign_state_files(state_dir, ["structure.json"])
+        except Exception as exc:
+            _atomic_write_bytes(structure_path, old_bytes)  # 先保字节
+            try:
+                state_guard.sign_state_files(state_dir, ["structure.json"])  # 对旧内容重签, 恢复原签名态
+            except Exception:
+                pass  # 连回滚重签都失败仍保字节——verify 侧会以签名不符拦住, 不静默放行
+            raise OutlineMergeError(f"structure.json 重签失败({exc})——已回滚, structure.json 未变更, 重建入口=重跑 outline_merge") from exc
+
+        # 摘要口径: 活技术条款 − 任意节点(含 self_created/兜底)已挂接者
+        anchored = {cid for n in new_structure if isinstance(n, dict) for cid in (n.get("linked_clause_ids") or [])}
+        live_tech = {c.get("clause_id") for c in clauses if isinstance(c, dict) and _is_live(c) and c.get("category") in TECH_CATEGORIES}
+
+        # 回写候选 managed_node_ids(候选在 Agent 可写区, 非签名五元组; 失败不谎报成功)
+        cand["managed_node_ids"] = managed
+        try:
+            _atomic_write_bytes(cand_path, (json.dumps(cand, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
+        except OSError as exc:
+            raise OutlineMergeError(f"候选文件回写失败({exc})——structure.json 已更新, 重跑 outline_merge 修复 managed_node_ids") from exc
+
+        print(
+            json.dumps(
+                {
+                    "command": "outline_merge",
+                    "created": len(managed),
+                    "replaced": len(old_managed),
+                    "remaining_unanchored": len(live_tech - anchored),
+                },
+                ensure_ascii=False,
+            )
+        )
+        return EXIT_OK
     except OutlineMergeError as exc:
         print(f"[outline_merge] {exc}", file=sys.stderr)
         return EXIT_ERROR
-    # Task 2 接: 节点生成/精准替换/落盘重签/摘要
-    print(json.dumps({"command": "outline_merge", "mode": "validate_only"}, ensure_ascii=False))
-    return EXIT_OK
 
 
 if __name__ == "__main__":
