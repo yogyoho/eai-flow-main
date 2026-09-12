@@ -7774,6 +7774,7 @@ _QUICKREF_SCRIPT_RE = re.compile(r"/mnt/skills/public/(bid-proposal-overall|bid-
 B_SKILL_MD_REQUIRED_TOKENS = (
     "outline_merge",  # B1 v2 大纲落账命令(铁律1 唯一获准 structure 直写通道)
     "--confirm-outline",  # 确认硬闸旗标(对话确认后才可落账 structure)
+    "必须再重跑一次 responses merge",  # B1 v2 顺序纪律(大纲 merge 替换章树使 responses 挂接失效)
 )
 
 

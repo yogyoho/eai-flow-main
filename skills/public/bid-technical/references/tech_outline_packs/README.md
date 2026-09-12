@@ -29,4 +29,4 @@ docs/designs/bid-tech-outline-packs-research.md。
 
 `<slug>.json`: `{"slug": …, "类别": …, "aliases": […], "chapters": [{"no": 1, "title": …,
 "notes": …}], "source": "调研文档节名"}`——章纲=调研文档对应表逐行; 填充后在本表状态列
-改"已填充"。骨架是**大纲候选素材**, 不直接写盘 state(见 SKILL.md B1 v1 边界)。
+改"已填充"。骨架是**大纲候选素材**, 不直接写盘 state(见 SKILL.md B1 v2 结构化)。
