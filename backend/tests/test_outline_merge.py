@@ -331,3 +331,32 @@ class TestMergeSemantics:
         assert new_ids == ["S-003", "S-004"], "逐章顺序取号——build_outline_nodes 漏掉 +nodes 会双 S-003"
         updated = json.loads((tmp_path / "tech_outline.candidates.json").read_text(encoding="utf-8"))
         assert updated["managed_node_ids"] == ["S-003", "S-004"], "回写候选含全部新节点 id"
+
+
+class TestConsumers:
+    def test_build_renders_outline_chapter(self, tmp_path):
+        """大纲章树落地后, build --docs technical 按大纲章组织渲染。"""
+        import importlib
+
+        state = _make_state(tmp_path, MIRROR_STRUCTURE, MIRROR_CLAUSES)
+        cand = _write_candidate(tmp_path, _candidate(GOOD))
+        assert _run_merge(state, cand) == 0
+        bo = importlib.import_module("build_output")
+        rc = bo.main(["--state-dir", str(state), "--out", str(tmp_path / "out"), "--docs", "technical"])
+        assert rc in (0, 3), "渲染不因大纲章失败(rc=3 允许 lint 异常)"
+        tech_text = "".join((tmp_path / "out" / f.name).read_text(encoding="utf-8") for f in sorted((tmp_path / "out").glob("技术卷-*.md")))
+        assert "项目总体理解" in tech_text, "大纲章标题进技术卷"
+
+    def test_progress_init_counts_outline_chapter(self, tmp_path):
+        import importlib
+
+        state = _make_state(tmp_path, MIRROR_STRUCTURE, MIRROR_CLAUSES)
+        cand = _write_candidate(tmp_path, _candidate(GOOD))
+        assert _run_merge(state, cand) == 0
+        pg = importlib.import_module("progress")
+        rc = pg.main(["init", "--state-dir", str(state)])
+        assert rc == 0
+        # progress.json 写在 workspace 根(= state_dir.parent, 与 last_build.json 同级)——非 state/ 内
+        prog = json.loads((state.parent / "progress.json").read_text(encoding="utf-8"))
+        chapters = json.dumps(prog, ensure_ascii=False)
+        assert "项目总体理解" in chapters, "章门计划纳入大纲章"
