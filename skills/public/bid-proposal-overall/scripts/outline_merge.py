@@ -224,7 +224,9 @@ def main(argv: list[str] | None = None) -> int:
         try:
             _atomic_write_bytes(cand_path, (json.dumps(cand, ensure_ascii=False, indent=2) + "\n").encode("utf-8"))
         except OSError as exc:
-            raise OutlineMergeError(f"候选文件回写失败({exc})——structure.json 已更新, 重跑 outline_merge 修复 managed_node_ids") from exc
+            # 重跑会被 self_created_path_conflict 拒死(managed 列表缺新节点 id, 预剔除不生效)——
+            # 恢复提示必须携带真实出口: 手动把候选 managed_node_ids 回填为本轮新 managed 后再重跑。
+            raise OutlineMergeError(f"候选回写失败({exc})——structure.json 已更新+签名; 恢复=把候选文件 managed_node_ids 手动设为 {managed} 后重跑 outline_merge") from exc
 
         print(
             json.dumps(

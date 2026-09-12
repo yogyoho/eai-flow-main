@@ -283,3 +283,24 @@ class TestMergeSemantics:
         old_bytes = (state / "structure.json").read_bytes()
         assert _run_merge(state, cand) == 1
         assert (state / "structure.json").read_bytes() == old_bytes, "重签失败回滚——structure.json 字节不变"
+
+    def test_candidates_writeback_failure_reports_recovery(self, tmp_path, monkeypatch, capsys):
+        """候选回写失败(structure 已更新+签名)→ exit 1, stderr 携带真实恢复路径(新 managed ids)——
+        重跑会被 self_created_path_conflict 拒死, 恢复提示不得指向死路。"""
+        state = _make_state(tmp_path, MIRROR_STRUCTURE, MIRROR_CLAUSES)
+        cand = _write_candidate(tmp_path, _candidate(GOOD))
+        real_replace = outline_merge.os.replace
+
+        def flaky_replace(src, dst):
+            if str(dst).endswith("tech_outline.candidates.json"):
+                raise OSError("模拟候选回写通道故障")
+            return real_replace(src, dst)
+
+        monkeypatch.setattr(outline_merge.os, "replace", flaky_replace)
+        assert _run_merge(state, cand) == 1
+        err = capsys.readouterr().err
+        assert "S-003" in err, "恢复提示必须携带新 managed 节点 id(重跑路径已死, 手动回填是唯一出口)"
+        assert "managed_node_ids" in err
+        out = json.loads((state / "structure.json").read_text(encoding="utf-8"))
+        assert any(n["node_id"] == "S-003" for n in out), "structure.json 已更新(半完成态如实可见)"
+        assert state_guard.verify_state_files(state) == [], "structure.json 已签名"
