@@ -25,3 +25,14 @@ def test_ingest_validation_error_is_structured():
     out = asyncio.run(call_tool("ingest_extraction", {"domain": "bid", "entities": [], "extra": 1}))
     assert isinstance(out[0], TextContent)
     assert "schema 校验失败" in out[0].text and '"success": false' in out[0].text
+
+
+def test_list_pending_review_sql_asyncpg_safe():
+    """asyncpg 不能推断裸 :etype 的类型(AmbiguousParameterError)——必须 CAST(:etype AS text)。"""
+    import inspect
+
+    from app.extensions.ontology.doc_graph import mcp
+
+    src = inspect.getsource(mcp._list_pending_review)
+    assert "CAST(:etype AS text)" in src
+    assert ":etype IS NULL" not in src

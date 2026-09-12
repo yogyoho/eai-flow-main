@@ -94,7 +94,7 @@ async def _list_pending_review(a: dict) -> list[TextContent]:
     try:
         async with engine.connect() as conn:
             res = await conn.execute(
-                text("SELECT id, domain, etype, canonical_name, confidence FROM dg_entities WHERE status = 'pending_review' AND (:etype IS NULL OR etype = :etype) ORDER BY confidence ASC LIMIT :lim"),
+                text("SELECT id, domain, etype, canonical_name, confidence FROM dg_entities WHERE status = 'pending_review' AND (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text)) ORDER BY confidence ASC LIMIT :lim"),
                 {"etype": a.get("etype"), "lim": max(1, min(int(a.get("limit", 50)), 200))},
             )
             rows = [dict(r) for r in res.mappings().all()]
