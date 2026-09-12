@@ -22,6 +22,13 @@
   ——由 CP6 签名 + WP-B 白名单新鲜度检查(管线侧)确定性兜底, 非本脚本职责。
 - CP6 签名全 MATCH: 直接复用管线侧 state_guard.verify_state_files——已登记被改/被删 +
   在盘未登记(权威文件直写注入)全部落问题清单; 问题非空=FAIL。
+  CP6b 签名溯源(bug-3307③): .meta.json 文件名本身是高信号锚——合法流程只有管线脚本
+  (经 state_guard 内部)会写它。SSE 里出现 meta 写/删(write_file/str_replace/edit_file
+  的 path 直写; bash 重定向/tee/heredoc/inline-python open 'w'·'a'·'x'/json.dump/
+  write_text/os.remove·unlink, 字面量或"变量=字面量后 open(var,'w')"邻近匹配)而该命令
+  未调用管线脚本(scripts/*.py)→ 计违规并入 cp6_problems。只读不计数(禁写不禁读同款)。
+  归因粒度=命令级: clean4 实测手签轮同轮穿插真实管线调用(progress/outline_merge 等),
+  轮级豁免会把手签一并放过; 手签动作必须落在管线脚本自己的命令里才可溯源。
 
 VERDICT 行对照 RED 基线(bug-2189 实录, agnes-2.5-Flash, 线程 bbd447d7, 8 轮):
 违规轮次=3(turn2/7/8) / 特征实例=5+(turn8 独占 4 次)。复跑达标线: 全 0。
@@ -195,6 +202,79 @@ def score_cp5(logs: Path) -> tuple[int, int, list[str]]:
     return violating_turns, total, detail
 
 
+# ---- CP6b: 签名溯源(bug-3307③) ----
+
+
+PIPELINE_SCRIPT_PAT = re.compile(r"scripts/[a-z_]+\.py")  # quickref 家族: 任何管线脚本都可能经 state_guard 内部签名
+CP6B_PROBLEM_FMT = "cp6b: turn{N} 手写 .meta.json(签名溯源失败——该轮无管线脚本调用)"
+
+# bash 内 .meta.json 的写/删语义(只读不计数——铁律9 禁写不禁读同款; 锚=文件名本身,
+# 兼容字面量路径; heredoc 单列是因为 heredoc 写必然伴随 > 或 tee, 宽松的 "<<邻近 meta"
+# 会把只读 heredoc 巡检翻成违规)。raw args 是 JSON 文本, 换行是字面 \n 两字符——
+# 变量名左界不能用 \b(上一行结尾的 n 会吞掉词边界)。
+META_WRITE_BASH = [
+    re.compile(r"open\([^)]*\.meta\.json[^)]*['\"](?:w|a|x)[+b]?"),  # 字面量路径 + 写模式
+    re.compile(r"json\.dump\((?!s)[^)]*\.meta\.json"),  # dumps 排除(打印/序列化不是写盘)
+    re.compile(r"write_text\([^)]*\.meta\.json"),
+    re.compile(r"\.meta\.json['\"]?\)\s*\.write_text"),  # Path('.../.meta.json').write_text
+    re.compile(r"(?:>>?)\s*\S*\.meta\.json"),  # > / >> 重定向落 meta(< 输入重定向=读, 不匹配)
+    re.compile(r"\btee\b[^;&|]*\.meta\.json"),
+    re.compile(r"\.meta\.json[^;&|]{0,20}<<"),  # heredoc 供数给以 meta 为目标的命令(窄窗口防跨行误配)
+    re.compile(r"(?:os\.remove|os\.unlink)\s*\(\s*f?['\"][^'\"]*\.meta\.json"),
+    re.compile(r"\.meta\.json['\"]?\)\s*\.unlink\("),  # Path('.../.meta.json').unlink()
+]
+META_VAR_OPEN_W = re.compile(r"open\(\s*([A-Za-z_]\w*)\s*,\s*['\"](?:w|a|x)[+b]?")  # open(var, 'w') 形
+
+
+def cp6b_meta_write(name: str, args: str) -> bool:
+    """单次工具调用是否构成对 .meta.json 的写/删(尚未考虑归因豁免的半判定)。"""
+    if ".meta.json" not in args:
+        return False
+    if name in ("write_file", "str_replace", "edit_file"):
+        # path 字段锚定(bug-3032 同款): 交付物正文合法引用 meta 路径, 不扫全文
+        try:
+            obj = json.loads(args)
+        except Exception:
+            return True  # 保守宁误报不漏报(CP5 unparsed-args 同款)
+        if isinstance(obj, dict):
+            path = str(obj.get("path") or obj.get("file_path") or "")
+            return path.endswith(".meta.json")
+        return True
+    if name == "bash":
+        if any(p.search(args) for p in META_WRITE_BASH):
+            return True
+        # 变量间接写: var 先被赋成 .meta.json 字面量, 再以写模式打开(clean4 turn2 手签实锤形态)
+        return any(
+            re.search(rf"{v}\s*=\s*f?['\"][^'\"]*\.meta\.json['\"]", args)
+            or re.search(rf"{v}\s*=\s*os\.path\.join\([^)]*\.meta\.json", args)
+            for v in META_VAR_OPEN_W.findall(args)
+        )
+    return False
+
+
+def score_cp6b(logs: Path) -> list[str]:
+    """写 .meta.json 的命令必须可归因到管线脚本(同一 bash 命令含 scripts/*.py——脚本
+    可经 state_guard 内部签名), 否则该轮计违规; 工具直写(write_file/str_replace 的
+    path=.meta.json)永远无归因。返回问题列表, 由 main 并入 cp6_problems。
+
+    归因粒度=命令级而非轮级: clean4 实测(bug-3307③)手签轮(turn2/turn4)同轮穿插真实
+    管线调用(progress/outline_merge 等), 轮级豁免会把手签一并放过——合法签名的写入
+    动作发生在管线脚本自己的命令里。
+    """
+    problems: list[str] = []
+    for sse in turn_files(logs):
+        m = re.search(r"e2e_turn(\d+)\.sse$", sse.name)
+        label = m.group(1) if m else sse.name
+        for name, args in tool_calls_in_sse(sse):
+            if not cp6b_meta_write(name, args):
+                continue
+            if name == "bash" and PIPELINE_SCRIPT_PAT.search(args):
+                continue  # 归因豁免: 写入动作所在的命令本身在调管线脚本
+            problems.append(CP6B_PROBLEM_FMT.format(N=label))
+            break
+    return problems
+
+
 # ---- CP1-CP4: observational scoring ----
 
 
@@ -308,6 +388,7 @@ def main(argv=None) -> int:
     r3 = score_cp3(state_dir)
     r6 = score_cp6(state_dir)
     vturns, vinst, detail = score_cp5(args.logs)
+    cp6b_problems = score_cp6b(args.logs)
 
     for k, v in r1.items():
         print(f"{k}: {v}")
@@ -317,10 +398,14 @@ def main(argv=None) -> int:
         print(f"{k}: {v}")
     for line in detail:
         print(line)
+    for line in cp6b_problems:
+        print(line)
 
     cp1_ok = r1.get("cp1_present_files_calls", 0) >= 1 and r1.get("cp1_docx_files") == [] and len(r1.get("cp1_six_keys_covered", [])) >= 6
     cp2_ok = r1.get("cp2_format_title_count", 0) > 0 and not r1.get("cp2_pollution")
     cp6_problems = r6.get("cp6_problems")
+    if cp6_problems is not None:
+        cp6_problems = list(cp6_problems) + cp6b_problems  # CP6b 并入同一问题清单, 判定口径不变
     cp6_ok = cp6_problems == []
     # 完整性门(bug-3032, 复审 #10): 截断 run(首签后未交付)在 CP5/CP6 双零下也假
     # PASS——verify_state_files 只报"已登记被改/被删", 从未创建的权威文件不可见;
