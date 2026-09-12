@@ -16,6 +16,8 @@ from fastapi.testclient import TestClient
 
 import app.extensions.auth.middleware as authm
 import app.extensions.ontology.routers as ont_routers
+from app.extensions.ontology.connectors import ConnectorError
+from app.extensions.ontology.registry import load_registry
 
 
 @pytest.fixture()
@@ -84,3 +86,33 @@ def test_error_mapping_unknown_and_stub(client):
     assert r.status_code == 400 and "LinkDisabledError" in r.json()["detail"]
     r2 = client.post("/api/extensions/ontology/aggregate", json={"object_type": "contract_item"})
     assert r2.status_code == 422
+
+
+# EAI-CUSTOM(2026-09-12, plan Task1): 语义地图图投影端点集成——DB-gated（host 无 docker 网络即 skip，容器内真库验证）。
+# 注意 host 失败签名有两种: ConnectorError（fetch 内连接失败包装）与裸 OSError/gaierror
+# （data_source 路径 _source_config 的 URL 解析段未被包装，connectors.py 既有缺口）——两者都视为环境不可达。
+
+
+def test_graph_nodes_projection(client):
+    try:
+        resp = client.get("/api/extensions/ontology/graph/nodes?limit=500")
+    except (ConnectorError, OSError):
+        pytest.skip("扩展库/数据源不可达（host 环境跳过, 容器内验证）")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert set(body.keys()) >= {"nodes", "next_cursor"}
+    for n in body["nodes"]:
+        assert set(n.keys()) == {"id", "type", "label", "properties"}
+        assert n["id"].startswith(n["type"] + ":")
+
+
+def test_graph_edges_projection_excludes_stub(client):
+    try:
+        resp = client.get("/api/extensions/ontology/graph/edges?limit=2000")
+    except (ConnectorError, OSError):
+        pytest.skip("扩展库/数据源不可达（host 环境跳过, 容器内验证）")
+    assert resp.status_code == 200
+    body = resp.json()
+    stub_names = {lt.api_name for lt in load_registry().link_types.values() if not lt.enabled}
+    for e in body["edges"]:
+        assert e["type"] not in stub_names

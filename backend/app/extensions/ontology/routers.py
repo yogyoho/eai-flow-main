@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from app.extensions.auth.middleware import require_permission
 from app.extensions.ontology.connectors import OntologyConnectors
 from app.extensions.ontology.engine import Engine, OntologyError
+from app.extensions.ontology.graph_views import edges_page, nodes_page
 from app.extensions.ontology.registry import get_registry, get_registry_store
 from app.extensions.schemas import CurrentUser
 
@@ -126,3 +127,32 @@ async def aggregate(
         raise _http_error(e) from e
     except KeyError as e:
         raise HTTPException(status_code=422, detail=f"缺少必填字段: {e}") from e
+
+
+# EAI-CUSTOM(2026-09-12, plan Task1): 语义地图图投影端点（Semantica Explorer 方言，投影逻辑在 graph_views.py）
+
+
+@router.get("/graph/nodes")
+async def graph_nodes(
+    limit: int = 500,
+    cursor: str | None = None,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """语义地图统一节点投影（全部 enabled 对象类型，Explorer 方言）。"""
+    try:
+        return await nodes_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 2000)))
+    except OntologyError as e:
+        raise _http_error(e) from e
+
+
+@router.get("/graph/edges")
+async def graph_edges(
+    limit: int = 1000,
+    cursor: str | None = None,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """语义地图统一边投影（全部 enabled 链接；stub 不产生边）。"""
+    try:
+        return await edges_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 5000)))
+    except OntologyError as e:
+        raise _http_error(e) from e
