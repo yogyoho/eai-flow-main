@@ -23,6 +23,7 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- **[2026-09-10] backend tests 引 skills/*/*/scripts 下脚本且多技能存在同名模块时, 禁用 sys.path+裸名 import**：geological-report 与 bid-proposal-writing 都有 bank_compile.py, 两个测试文件裸名 `import bank_compile` 会按收集顺序互抢 sys.modules 缓存, 全量跑必挂一边（单文件绿≠全量绿）。正解=importlib.util.spec_from_file_location 用唯一模块名按路径加载（先例: test_geo_sample_bank_compile.py 的 acceptance loader），不污染 sys.modules/path。同日教训叠加: plan 测试 snippet 的 parents[1] 实为 backend 非 repo root（repo-root 相对路径要 parents[2]）、main() 的 argv 形参必须显式传给 ap.parse_args(argv) 否则直调 main([...]) 读到 pytest 的 sys.argv。
 - (2026-09-01) geo-samples 管理路由（T8, commit b3389cb1b）按 plan 用 require_permission("geo_samples:access")，但该权限点未在 config/permissions.yaml 声明——UnifiedPermissionEngine 只做集合判定不报错 → 非 superadmin 一律 403（fail-closed 静默拒绝）；sibling contract_price/spare_parts 实际全用已声明的 system:access。后续接线任务要么在 permissions.yaml 声明 geo_samples 模块+权限点（照 contract_price 条目样式），要么改用 system:access；admin(=superadmin "*") 登录冒烟可过，测非管理员角色必 403。
 - (2026-09-01, bug-3063) eai-flow-ocr 生产端 ocr_engine text_pages=3 门控整页 OCR（server 默认 Form(3)）——任何要全文语料的消费方必须显式传 text_pages（geo_samples 传 999）；另注意 pages[].tables[].rows 的 cell 是 {text,bbox,confidence} dict 不是裸 str。
 - (2026-09-01, bug-3066) geo-samples service 教训：后台任务的 run-history 记账（crud.finish_run）必须是 best-effort（_finish_run 包装 try/except+log）——记账异常绝不回滚已 commit 的 parsed/redacted 管线结论，也绝不能从 except 分支抛出击穿「后台任务不抛出」契约。plan 写单测时极易只 patch get_document/storage/parsers 而漏 patch finish_run → 真 crud 的 `await db.execute` 撞 MagicMock 直接 TypeError（AsyncMock 陷阱新变体：execute 子 mock 非 AsyncMock）。Task 8 routers 若复用 run 落账，同样走包装。
@@ -306,8 +307,17 @@
 
 - (2026-09-01) docker/dev-entrypoint.sh 往应用 venv `uv pip install` 任何未锁定依赖都会和 `uv sync --locked` 拉锯:PyPI 上游发新版(如 fastmcp 4.0 要求 mcp>=2)即崩,症状是 gateway 启动 ImportError crash-loop→nginx 全线 502。判定容器 venv 真实版本用 `docker exec ... .venv/bin/python -c "import ..."`(host venv 正常不代表容器正常)。gitlink 子模块若无 .gitmodules 条目,git rm 会报 "could not lookup name",用 `git update-index --force-remove <path>` 删。
 
+
+- **markitdown 对部分中文 PDF 产出退化单行文本 (2026-09-10, bank_compile T7 真实语料验收):** 江西师大招标 PDF(68页) 经 markitdown 转出 41082 字符**单行无换行无标题**——直接切片得 0 章+段长分布退化为单点(floor=median=全长, 深度基线被毒化)。判据: 转出后先验行数/标题数。可靠结构信号是页断 \x0c+页码(re.sub(r'\x0c\d{1,3}\s*','
+'))与「第N章…(整行短)」题式——行文交叉引用(第二章"技术指标"，如有…)嵌长段内不会被 ^…$ 短行匹配误升格。预处理属维护侧临时步骤, 不进技能。
+- **仓库级技能产物落盘会"激活"技能脚本测试的隐式依赖 (2026-09-10, T7 回归):** references/depth_targets.json 此前不存在=build_output 深度门静默跳过, 测试在此前提下写; 基线一落盘, 门带表格行进 lint 报告, 按全文表格解析的测试 helper(_lint_flagged_values)立刻多吃一行空串值。教训: 技能脚本测试 helper 解析报告必须按节头(
+## )截断自锁, 不依赖"后继节不存在"; 新增仓库级产物=变更了所有读该目录测试的运行环境。
+- **Windows GBK 控制台 code-review-graph post-commit hook 对中文 commit message 崩溃 (2026-09-10):** hook 读 git 子进程输出未显式 UTF-8 → UnicodeDecodeError(线程内, 不影响提交本身); bug-3241 记录。中文 commit 照写, 忽略该噪音(或平台侧修 hook 编码)。
+
 ## Do-Not-Repeat
 
+- [2026-09-10] bank_compile T4 又见「plan 自带测试串先干跑」实例: plan 的残留闸门用例 fixture「报价 1,280,000.00 元整」被 AMOUNT_RE 正常掩码 → residual 恒空, 闸门实现后测试也永远过不了(rc 恒 0);真漏网形态只有 fail-closed 分支(两位小数千分位 3,500.00 无元后缀/￥裸数字/裸万元)——写闸门类用例先对redact+residual_scan 干跑确认非空证据再落笔。
+- [2026-09-10] plan 原稿的**正则**也要对 plan 自带的测试串干跑再照抄——bank_compile T2 的 RESIDUAL_RE 对其自家 miss 用例「报价 9,999,999.99 元」零命中（无￥无万元非手机非身份证），照抄必挂自家测试；残留扫描正则要与脱敏正则同源覆盖（bug-3234）。fixture 用空格环抱数字时 `\b` 侥幸能过——别被绿测骗了，中文语境照样用 bug-3061 环视形态。
 - [2026-09-02] plan 原稿的测试 mock 必须核对真实返回契约再照抄——Phase2 T2 的 _heavy 漏写 `return (md, mode)` 元组，任何实现都会 unpack TypeError 假失败；照抄 snippet 前先脑内跑一遍 mock 的返回值流向。
 - **[2026-09-01] 中文文本正则边界禁用 `\b`（geo_samples redactor）**：Python re Unicode 模式下 CJK 汉字属于 `\w`，`\b` 在「证号C530000…」「电话13812345678」这类 ASCII token 紧邻汉字处永不成立，规则整段漏配。写中文语境的身份证/证号/电话类规则一律用 ASCII 环视（`(?<![0-9A-Za-z])` / `(?<!\d)`…）替代 `\b`；纯数字长串（如 18 位）要加「至少含一字母」前置环视防误配（uscc 案例，bug-3061）。
 - **[2026-08-30] runs 表排序禁用 run_id**：run_id 是 varchar，ORDER BY run_id 是字符串序（ef>9>7），会把最新 run 行搞错——T3 期因此误产出 finding ㉚（已撤回）。查 runs 表一律 ORDER BY updated_at；行身份存疑时用 updated_at 重查。
@@ -1813,3 +1823,168 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - (2026-09-05) 状态机"推导+记录"双源语义: 落盘记录压死推导是经典坑(init 全记 PENDING 则自动升级永不触发)——VERIFIED/BLOCKED 粘滞(记录优先), PENDING/DRAFTED 按产物推导(磁盘记录只当下限); gate 选目标必须用推导态非记录态。
 - (2026-09-05) SKILL.md 速查表行尾不许带 # 注释——命令抽取器把注释当 argv, argparse 必炸; 速查表=唯一合法调用形态+机器可解析契约, 注释语义写进分组指南。
 - (2026-09-05) frontend eslint 规则 @typescript-eslint/prefer-optional-chain 会把 `x && x.length === 0`(x 可空)判 error → 计划片段里的 && 空值守卫落地时须改 `x?.length === 0`(语义等价); prettier 计宽 CJK=2, 中文三元/长串多行写法常被折叠成单行——落地含中文 JSX 后直接 `prettier --write` 再 --check, 别手工猜断行。
+- (2026-09-05, bug-3116) 离线部署「文件随包」审计法: 凡代码从 <root>/xxx 加载的文件(如 config/permissions.yaml), dev 靠 repo bind-mount 天然可用、离线包必然缺失——离线缺口不能只看 compose 服务面, 要按「运行时读哪些路径」反查打包清单。offline-export 的 cp 不受 gitignore 影响, 但 tracked 残留(deploy/offline/data 运行时库)反向污染 git。
+
+- [2026-09-06] 样例文件库个别docx实为UniDocSafe(www.leagsoft.com)加密容器(伪装.docx扩展名,非zip非OLE2,熵7.96)——任何docx解析前必须先查magic bytes(PK/OLE2头),加密件直接打回;同目录51文件仅1个中招。
+
+## Session 2026-09-06 · coal-eia-report v2 设计会话补充
+
+**Key Learnings**
+- 环评语料库(D:\18 辽宁创元\...\knowledge\样例文件\,52文件≈26独立作品)结构结论:规划环评13章收敛(章名级);项目环评概述+17~19章(井工沉陷专章/露天爆破章);要素章序4种排布→stage必须"必备+可选槽位"不锁编号;复垦方案9章与环评零交集。
+- 700页报告三层粒度定式:节派发(子代理)/章门禁(拼装后单章门,节VERIFIED由章门rc=0回写)/节交付(编辑器叶子≤1.5万字);ProjectChapter树原生支持(parent_id/level),无需后端改动。
+- write_chapter是MCP工具,content流经调用者→大报告交付必须走"交付子代理"(每波≤5-10节),控制器零章稿上下文;MCP工具面无删除,只能覆盖→幂等+delivered断点+DELIVERED后read_chapter比对保护人工编辑。
+- geo formula_runner是Decimal领域硬编码非声明式引擎;"calc脚本收编进formulas.json"实际=按geo架构重写计算函数+参数对照回归。
+- 环评docx解析教训:样式普遍不可靠(须样式+编号正则+序号连续性双通道)/目录区跳过/页码粘连/公式OLE化(复算靠参数录入)/数字主体在表格(91%段落)/UniDocSafe加密→magic-byte预检/公众参与隐私明文→脱敏。
+
+**Decision Log**
+- D1-D10 见 docs/designs/coal-eia-report-v2.md(APPROVED 2026-09-06):4-stage矩阵+分期交付+交付双通道+粒度分层;复垦方案排除(未来独立技能);KF模板三偏差回写修订。
+
+## [2026-09-06] Key Learnings (coal-eia-report v2 T1 切片 session)
+
+- coal-eia v2 两层状态机落地约定: 章条目带 sections 子表(id=chNN_SNN,title,status,dispatches,delivered); 节 VERIFIED 唯一通道=所属章 progress.py gate PASS 自动回写(章/节两级手动 mark VERIFIED 均拒,bug-3049 同构); ABSENT=stage 条件开关驱动(章级联节,开关回翻只走 PENDING,禁 ABSENT→DRAFTED); 节粒度记账一律批量(mark --sections 原子批量/delivered --wave,bug-3048 单 run bash≤25)。
+- geo gate 隐性前提: run_chapter_gate 先读 formula_state.json 后查章稿,冻结层缺失时 OSError 逃出 ValueError-only except → coal 副本已补 except OSError 按章 FAIL 处理(buglog bug-1)。
+- snapshot OV#8 版本指纹手法: save 时对本技能 scripts/*.py(排除 _ 前缀临时件)存 sha256 前16位入 script_fingerprints; show --verify 比对漂移只出 DRIFT 警告行 rc 不变——模拟漂移测试=改快照副本内指纹值,不动真脚本。
+- stage JSON 接口契约: planning_eia.json 章内 sections[{id:chNN_SNN,title,elements,forms,formulas,contracts}]; progress.py init 校验 id 形状+章前缀一致+章内唯一; 横城 13 章 TOC=77 节(ch4 8节/ch6 10节/ch13 10节)。
+
+## [2026-09-07] Key Learnings (coal-eia underground stage 编写 session)
+
+- coal-eia stage 章集编号隐含约束三条（写新 stage 必守）：①`_chapter_heading` 对数字 id 渲染 `ch_id[2:]` 前缀→不编号章（概述）只能用 ch0 保序 compromise+numbering_note 声明前缀剥离待办；非数字 id 排序尾（chapter_order else 99）不可作首章。②chapter_planner `projection_chapter`=最大数字章→结论章必须持有最大章号（underground 结论=ch19、总量控制插 ch16、损益 ch18）。③附录/非派发单元不能是带 sections 的章（SECTION_ID_RE=ch\d+_S\d+ 硬契约）→建模为 front_matter.attachment_lists+appendix_policy。
+- chapter_planner deps lint 规则：every uses.slots token（含 {{TABLE:族}}）必须在某节 "slots" 声明（悬空）；章级 contracts 声明零 uses 消费=孤儿（ XS11 项目环评无公参章→全程不声明即无孤儿）。LINT_CLEAN 才算 manifest 闭环。
+- build_output render_family 对未注册 {{TABLE:族}} 硬 FAIL（bug-3036）→stage 引用的每个 TABLE 族必须 forms 在册；formula_runner 只 emit 公式/派生/转录槽（37 处 emit），表单标量（如 mine_plan.total_scale_mt_a_after）无 emit loop——planning_eia 的 {{SLOT:表单标量}} 是潜在 unknown-key 缺口，underground 沿同形制已声明为遗留。
+- 新建矿类比标注双标签形态：param_source=规范推荐值+类比踏勘 analog_source（月儿湾实证：矿区生产矿井均无有效岩移观测成果）——非横城式单源实测回归。
+
+## [2026-09-09] Key Learnings (协同链审计 B11/B12 session)
+
+- collab-server 的 `package-lock.json` 唯一消费方是 node:22-alpine Dockerfile(npm ci)；host Windows npm 生成的 lock 缺 linux 侧 optional-deps 条目(如 @emnapi/*)且版本解析不同 → 构建必炸。改 lock 一律在容器内: `MSYS_NO_PATHCONV=1 docker run --rm -v <dir>:/app -w /app node:22-alpine npm install --package-lock-only`。
+- compose 里 collab service 只有 `build:` 无 `image:` → 实际镜像名是 `eai-docker-collab`；手工 `docker build -t eai-flow-collab:latest` 不会被部署采用。重建部署用 `docker compose -p eai-docker -f docker/*.yaml... up -d --build collab`；重建同 tag 后不带 --force-recreate 时 compose 可能显示 Running 不换容器。
+- yjs 13.6 的 XmlFragment/XmlElement 未实现 Symbol.iterator(`for..of`/`[...f]` 会 TypeError)，用公开 `toArray()`/`forEach()`；`el._children` 是私有 API 不可依赖。
+- gateway 容器在该 dev 栈不发布 8001 到 host(ports 只列 2024/8001 内部)，host curl localhost:8001 恒 000 是正常现象；验活走容器内 python urllib 或经 nginx :2026(/api/health 401=活着)。
+- AsyncMock 的 `db.add` 会产生未 await 协程告警，测试里给 `db.add = lambda v: None` 覆盖为同步。
+
+## Key Learnings (2026-09-09 样例库tab)
+
+- 知识工厂加新 tab 须同步 6 处：types.ts TabId 联合、TabNavigation NAV_ITEMS、KnowledgeFactoryPage switch、index.ts export、src/app/knowledge-factory/page.tsx（NAV_ITEMS + TAB_COMPONENTS——Record<TabId,...> 缺键 tsc 即红 TS2741）、config/permissions.yaml 页面权限点（缺则 canPage 过滤后永远不可见）。deploy/offline/config/permissions.yaml 为离线模板副本，改 yaml 时记得两处同步。
+- extensions 后端新表走 database.py migrate_db() 的 CREATE TABLE IF NOT EXISTS 块（无需 alembic）；host 打 dev extensions 库走 localhost:5432（eai-flow-postgres-ext 已发布端口，agentflow/agentflow123/agentflow，EXTENSIONS_DB_HOST=localhost）。
+- kf 新表只用简单列类型（UUID/String/Float/Text）即可让 sqlite+aiosqlite 单表 create 测试可行——避免 ARRAY/JSONB 才能不 mock 真库。
+
+## Key Learnings (2026-09-09 — bid_materials models FK users 坑)
+
+- **【Do-Not-Repeat】模型列加 `ForeignKey("users.id")` 后，测试进程若未 import 注册 users 模型的模块，`create_all` 即抛 `NoReferencedTableError`——"SQLite 不强制外键所以测试可缺席 users 表"只对约束执行成立，对 DDL 编译期的 FK 表解析不成立。** 修法：测试文件顶部 `import app.extensions.models  # noqa: F401`（extensions users 表定义处，import 即注册全扩展模型进共享 Base.metadata），`create_all(tables=[...])` 仍只建本扩展表。判定口诀：裸列（无 FK）随便缺席；带 FK 字符串引用的表必须先注册进 metadata 才能编译 DDL。见 commit 3b9e0c934。
+- **验证 UNIQUE 约束真进 DDL 的手法**：`CreateTable(Model.__table__).compile(dialect=sqlite.dialect())` 后断言 `CONSTRAINT <name> UNIQUE (col1, col2)`——比只信 pytest.raises(IntegrityError) 更直接（后者同时受 PK/NOT NULL/其它约束干扰时难定位）。
+
+## Key Learnings + Do-Not-Repeat (2026-09-09 — eia-samples 提取续跑/bug-3228)
+
+**Key Learnings:**
+- Word COM 分页 Range 导出的 txt 有三类结构分隔符：孤立 `\r`=段落、`\x0c`=分页符、`\x07`=表格单元格尾。`normalize_cr` 现归一 `\r` 与 `\x0c`（bug-3228）；凡"页首开章"的标题必黏在前页尾 `\x0c` 后。
+- eia_samples 台账 `source_path` 必须是**容器可见**路径：bind-mount 约定 `/app/backend/.deer-flow/samples/`（宿主 `backend/.deer-flow/samples/`）；宿主 D:/ 临时路径一律 400 源文件不存在。.doc 走 Word COM doc2txt 转 txt 再入库；.docx 直接拷入即可（管线 zip+ElementTree 原生支持，段落边界完好）。
+- 批量 API 操作的正解：容器内 python + httpx 直连 `http://gateway:8001`，登录后取 `csrf_token` cookie 作 `X-CSRF-Token` header。生成 shell curl 脚本（中文文件名+嵌套 JSON 引号）必炸。
+- `docker exec sh -c "<以 / 开头的命令>"` 会被 Git Bash MSYS 转译成 Windows 路径（报 `C:/Program: not found`）；参数以 `exec ` 或 `ENV=` 开头可绕开。
+- gateway 改 bind-mount 的代码后 uvicorn --reload **不保证**生效（本次实测未加载）——显式 `docker compose -p eai-docker restart gateway`。
+- PS5.1 `Invoke-RestMethod` 解无 charset 的 UTF-8 JSON 中文必 mojibake（ID/ASCII 字段可用）；中文 JSON 一律 bash+curl 落盘 + 容器 python 解析。
+- 样例库质检面板的 unknown 是"诚实缺数据"标记（未提取/不可读），fail=0 不代表无问题；跳号（如红沙泉缺 12 章"12爆破器材"黏连无空格）如实上报 warn 是设计行为。
+
+**Do-Not-Repeat:**
+- 勿再生成 shell 批处理脚本内嵌中文 JSON——用容器内 python 批量。
+- 勿假设 uvicorn --reload 已加载 bind-mount 代码变更——restart 后用 API 行为验证。
+
+## Key Learnings + Do-Not-Repeat (2026-09-09 — 对话页新线程页面验证 / :3000)
+
+**Key Learnings:**
+- chrome-devtools-mcp 的 `fill` 对对话页 composer 不触发 React onChange：DOM value 已设但 state 为空，Submit 清空即返、**零网络请求零报错**（假提交）。正解=click 聚焦+`type_text` 真实键盘输入，提交前用"优化输入按钮是否激活"验证 state。
+- :3000（host pnpm dev）验证判据：`/api/langgraph/*` rewrite 链（→:2026→gateway）正常时 API 秒回 401/200；页面 SSR 挂起多为 dev 首编或前端容器问题，与 gateway 无关。
+- 新线程验证黄金链路：`POST /api/langgraph/threads` → `POST /threads/{id}/runs/stream` → URL 切到 /workspace/chats/{id} → 侧栏出标题。性能面板 `performance.getEntriesByType('resource')` 可在页面内直接取证。
+- dev Fast Refresh 重建窗口会吞 in-flight 提交（React 树 remount、composer 重置），也会让代理层对 in-flight POST 吐 500（未达 gateway 应用层、gateway.log 无记录）——遇到先查时间相关性再定性为产品 bug。
+
+**Do-Not-Repeat:**
+- 勿用 wait_for 匹配宽泛词（"技能"会命中侧栏历史标题）造成假阳性完成判断。
+- 勿把 dev 代理层瞬时 500 直接记为应用 bug——先看 gateway.log 有无该请求。
+
+## Key Learnings (2026-09-10 — qa-only 全站扫站)
+
+- **路由预热的真相**：curl 带 SSR 会话只编译 Next.js **server 束**；浏览器首访才编译 **client 束**（每路由 20-70s，docmgr 最重 60-120s）。browse/chrome 首访超时≠页面坏，等一次即好。
+- **gstack browse 短板**：导航 >30s 即 daemon 自重启并丢 cookie（401 连锁假象）→ 慢容器场景用 chrome-devtools MCP 替代，报告里注记即可。
+- 前端容器（Turbopack dev）编译风暴期（CPU 170-350%/RSS 10GB）会让 warm 路由复访也超时、chunk pending 分钟级；无 OOM 无重启，风暴过自愈。判据：docker stats + /app/logs/frontend.log 的 `○ Compiling /x ... GET /x 200 in Ns`。
+- scheduled-tasks 时区预览水合不匹配（bug-3229 待修）：SSR=UTC vs CSR=本地时区，`ScheduledTaskScheduleInput` 的 schedule-preview 直接用本地时区所致。
+
+## Key Learnings (2026-09-10 — bid 深度门 Task6)
+
+- **同名技能脚本测试纪律**: 多技能同名平铺脚本(build_output/ingest/snapshot/formula_runner/chapter_planner 各2-3份)靠 backend/tests/conftest.py 的 `_SkillScriptsFinder` 按测试**模块级** `SCRIPTS`/`SCRIPTS_DIR` 常量隔离——新技能脚本测试必须: ①模块级定义 SCRIPTS_DIR ②用例内懒加载(importlib) ③绝不模块顶层 import 同名脚本(会拿错技能的模块)。消费者角色脚本(build/validate)直写 state 文件后用 state_guard.sign_state_files 真签名过闸, 勿 monkeypatch 守卫。
+- build_output(bid) 深度门消费契约: references/depth_targets.json 键 absolute_floor/global_median(bank_compile 库级聚合, 键名稳定); 基线缺失/形态不符=门静默跳过; depth anomaly 只进 lint 报告"深度"节+rc3, 不进实体门不撤 delivery_manifest。
+
+## Key Learnings (2026-09-10 — coal-eia 管线守卫加固 bug-3229)
+
+- **数据守卫必须双端设防**：写入端（ingest forms 拒收）+ 校验端（check 门 blocking）。只堵写入端挡不住 agent 的 python 直写（实测 35 文件直写绕过）；唯一写者纪律（D10）的可靠执行器是 manifest sha256 指纹比对——登记后被直写覆盖必现指纹不符。
+- **预测链（12参数→13阶段→14/15/16结果）的次序不变量**：param_source 枚举定案是预测族写入的前置；枚举集合动态取自 stage schema（enum: 前缀），勿硬编码中文枚举。
+- **表单族语义分层**：预测结果族 14 在设计里允许"外部软件转录"手工录入——守卫要拦的是"先于方法定案的结果"，不是手填本身。改守卫前先读 stage schema 的 field note（如 W_max_mm note='与 formula 输出核对!'）。
+- gateway 容器内技能真实路径是 **/app/skills**（/mnt/skills 是 agent 沙箱视图）；宿主 skills/ bind-mount 实时生效（grep 即验证）。
+- ruff 对 skills/ 不在仓库 lint 范围（backend/ruff.toml 只盖 backend/），既有 lineage 代码的 UP031/F821 属遗留债务勿顺手改（扩大 diff）。
+
+## Key Learnings (2026-09-10 — archify 图表作者ing)
+
+- **archify workflow v2 布局雷区**: ①同列相邻泳道的反向垂直边对带标签必 infeasible——rc 语义挪进卡片/节点 sublabel，回边留 role=error 无标签; ②rank 间隙宽≈最大边标签掩码+8，肥标签直接撑宽 viewBox; ③节点加宽反而可压碎 desktop-readability（viewBox 变宽→scale 变小→sublabel 投影<6px），1300-1400 是 4 视口的宽带上限; ④竖向溢出的解法=砍泳道数+拉宽画幅（deliver 并入 gates 泳道列内 yOffset±34 堆叠合法）; ⑤跨泳道对角线交叉优先改节点列位消解，route preset(via/outside-right) 是最后手段且常触发显式交叉。
+
+## Key Learnings (2026-09-11 — coal-eia 管线 E2E 全程实战)
+
+- **管线全链路验证通过**：门1(ingest守卫)→冻结计算(formula_runner,数字带 source=formula:xxx 标签)→门2→章树绑定(chapter_manifest/dependencies/seed)→节级派发(sections/*.md)→快照(project_snapshot.json+tree.json)。20章97节全量≈25-30轮×1.2M tokens,量级须先向用户报价再开跑。
+- **数据问询形态随轮次自适应**：同管线既可能发 HTML 表单卡（需要我方填字段），也可能发 prose 问询表（需要我方逐条文字回复）——两种都要会接。
+- **写保护拦截循环**（新发现,bug-3230 候选）：agent 对已存在节文件反复 str_replace 而不先 read_file,被沙箱写保护连续拦截仍不换模式,一轮空烧 ~1.1M tokens。补救指令须显式给出「read_file 全文→write_file 全量重写」操作序列。根因疑为跨 run 的文件读取缓存失效+agent 未把错误指引纳入计划。
+- **progress 计数流转滞后于落盘**：节文件写完 ≠ VERIFIED,VERIFIED 需一致性校验后由 agent 显式更新;跨轮清点时以文件实体+残留扫描为准,计数差值留给下一波收口对账。
+- **长文本投递**:chrome-devtools type_text 超 ~300 字会丢段（实测 800 字只剩尾段 217 字）,正解=evaluate_script+execCommand('insertText') 整段原子替换（React onChange 正常触发）。
+
+### Do-Not-Repeat (2026-09-11)
+- pre-commit 钩子 code-review-graph 在 GBK 控制台遇中文 commit message 必崩(UnicodeDecodeError→get_changed_files NoneType), 但 commit 本身成功——是噪音不是失败, 勿当成 commit 失败重试
+- git add <目录> 会扫进并发会话的 WIP 文件(这次误扫 backend/app/extensions/database.py)——大合并后一律显式 pathspec add, add 目录前后必须 git diff --cached --name-only 复核
+- 前端镜像重建正解: docker compose -p eai-docker -f docker/docker-compose-dev.yaml build frontend + up -d frontend(运行中的完整 -f 清单以容器 label com.docker.compose.project.config_files 为准)
+
+- **[2026-09-11] bid-materials A/B 配对技能 SKILL.md 契约分家(Plan3 T3):** A(bid-proposal-overall)路由表锁 4 份自有指南(stage0-2-intake-extract/stage3-merge-gate2/build-overall/stage5-scoring)+让渡交叉引用(B 的 build-technical.md/tech_response_prompt.md 与技能名 bid-technical);速查表 21 条 build_output 行尾加 --docs overall;测试 SKILL_MD_REQUIRED_TOKENS 同步换 token。教训: 任务模板给的 SKILL.md 全文按原样拼装 125 行,超 120 行预算——压缩手法=管线块换行合并+段落软换行合并+删后半 5 处标题前空行(内容零丢失);路由表 stage3 行必须保留"新增/被替代/作废+新实体确认"字样(SKILL_MD_REQUIRED_TOKENS 锁定,模板文本漏了)。
+
+## Key Learnings (2026-09-11 — Plan3 bid 技能拆分收尾 session)
+- Windows 宿主全量 pytest 会被 tests/test_acceptance_checks.py 收集期 os.geteuid() AttributeError 楔死整个 suite(上游 L659 skipif 无 nt 守卫); 绕行= --continue-on-collection-errors; 见 buglog bug-3244。
+- postgres 扩展容器实际名= eai-flow-postgres-ext(CLAUDE.md 仍写 eai-docker-postgres-ext-1, 已过时); docker ps 按 eai-flow-* 找。
+- bid_samples 真库表常态为空: Plan2 种子验证后"测试行已清理"; canonical 台账= skills/public/bid-technical/references/registration.json(bank 相对路径 af90b403928e/full.md), DB 行由 backend/scripts/bid_seed_samples.py 幂等播种。
+- skills/ 下 .py 用 backend/ cwd 跑 ruff format 会误报想 reformat(ruff cwd 回落 backend/ruff.toml line-length 240 想合并手动换行); make lint 只扫 backend/, skills/ 脚本漂移属存量(与拆分前字节一致), 勿在收尾追逐。
+
+## Key Learnings (2026-09-11 — coal-eia 管线滚动生产 / REST 直投配方)
+
+- **REST 直投 run 配方（定型）**：POST /api/langgraph/threads/{tid}/runs，body={assistant_id:'lead-agent', input.messages[{type:'human',content:[{type:'text',text}]}], stream_mode:['values'], on_disconnect:'continue', config:{recursion_limit:3000}}；CSRF+cookie。**assistant_id 会被映射为 agent_name 触发每用户目录查找**——须先建 users/<uid>/agents/lead-agent/config.yaml（镜像 __default__），否则 FileNotFoundError 秒死；multitask_strategy 不支持（422）。
+- **error=null 大轮之谜部分破案**：巨轮（ch2 28min）error 收尾疑 GraphRecursionError（recursion_limit=1000 被巨量工具步打穿）——REST 投递时提到 3000 可防；另 AI 终答完整时 error 也可能是收尾链异常，内容无损。
+- **巨量日志页面的页面通道报废**：对话页 DOM 随消息数膨胀，innerText 读取即 CDP 超时——对话线程的状态获取全走 API（runs/messages/events 端点）+ 磁盘（progress.json/sections/）。evaluate_script 只做无 innerText 的 DOM 操作（如 composer 投递）。
+- **僵尸 run 处置链（定型）**：cancel 409(worker 失联) → 重启 gateway 无效(持久 RunStore 水合复活) → 终极手段=deerflow 库 `UPDATE runs SET status='error'`。
+- **节状态机含 ABSENT**：不适用节（如新建轨的回顾性评价节）规格化缺席是合法形态，但门会拒绝 .absent 占位文件逼真派发——ABSENT 须走 progress.py mark 正式登记。
+- **深度门计数口径**：门检=中文字+英文词（严格），非"全部非空白字符"——委派扩写量时按严格口径报数，留 10% 余量。
+- 全套失败归因口径(2026-09-11 实测, 两跑计数一致 120F/14958P/2225S/7E): 55=缺 langgraph-checkpoint-postgres extra(uv sync --all-packages --extra postgres 可解); blocking_io/* 12=先在勿 Win 跑; 余=Win 平台语义(路径分隔符断言/geteuid 收集崩/WinError 193 执行 POSIX 脚本/5434 未监听/lark-cli 未装/studio dev-server 夹具); "全绿+9 skip"基线只在 Linux/extras 完备环境成立。bid 面(test_bid_proposal_scripts+test_bank_compile)690 用例隔离全过, 失败清单 0 个 bid 文件。
+
+## User Preferences (2026-09-11 追加)
+- 投标样例库=技术供源库：样例文件里只有**技术部分**有处理价值，商务部分(投标函/资质/报价/授权)对响应仿写没有价值——不进 RAGFlow 检索语料；深度基线段长统计同样只取技术章(用户定案"检索语料只收技术章")。涉及 bank_compile 推送/统计口径与 bid-materials 前端文案框架。
+
+## Key Learnings 补遗 (2026-09-11 — coal-eia 全书生成实战数据)
+
+- **全量生成实测**：20 章 97 节 ≈ 28 个 run 轮次 ≈ 40M+ tokens ≈ 数小时墙钟。单章 1-5M（首写足量可省扩写迭代轮）；小记账轮 100-300K。
+- **大轮 error=null 定案**：巨轮步数打穿 recursion_limit=1000 → GraphRecursionError（内容已完成、run 记 error）。REST 投递 config.recursion_limit=3000 后未再复现。
+- **生成完成 ≠ 交付完成**：节稿带 {{SLOT/{{TABLE 占位（实测 1058 处 [待确认]+槽位）是设计状态——数值注入（formula_runner/build_output）与一致性校验是独立下一阶段。
+- **滚动推进的最小操作对**：REST POST runs（配方见上）+ runs API 轮询监控；收敛后 progress.json 磁盘核验；正常轮 error/success 都可能，以磁盘状态为判据。
+
+## Do-Not-Repeat
+
+- 2026-09-11 (bug-3245) bank_compile 元数据闸门扫序列化 JSON 会吃 sha256 摘要里的偶发手机号形态 hex 串(~10%/册)——凡扫「含哈希/指纹的序列化产物」必先剥 hex 整串 token 再跑形态正则。
+- 2026-09-11 git-bash 写文件: python 内 '/tmp/x' 落当前盘根(D:	mp), 命令行参数 /tmp/x 被 MSYS 转成 Windows temp——两端路径必须同用显式盘符路径。
+- 2026-09-11 Edit replace_all 的 old_string(如 '_push_argv(tender_md,') 会命中 def 形参行与自己刚加的新用例——replace_all 前先数命中点, 定义行/自加代码要用带上下文的唯一锚点。
+
+## User Preferences (2026-09-11 — ontology 扩展会话)
+
+- **本体相关新模块一律放本体模块目录下**（如 `backend/app/extensions/ontology/doc_graph/` 子包），不做平级独立目录——便于未来 AI 检索/查询/修改代码时一个入口找全本体语义层资产（用户原话："模块如果属于本体模块，就移动本体模块目录下"）。表前缀等物理隔离仍可用（dg_* 表），逻辑归属以目录为准。
+
+- [2026-09-12] **nginx upstream stale-IP**: nginx 仅在配置加载时解析一次 upstream 域名;容器组重启后 gateway 换 IP 即全站 connection refused(容器 running 掩盖问题,gateway 本身 healthy)。处置=`docker exec deer-flow-nginx nginx -s reload`。长效=gateway 固定 IP 或 nginx `resolver 127.0.0.11 valid=10s`+variable upstream。与 bug-3019(进程楔死)不同根因,先从 nginx 容器内 wget health 再定位。
+
+## Key Learnings 补遗 (2026-09-12 — coal-eia 新线程滚动生产)
+
+- **stage_path 投影陷阱（重要）**：progress.json 记录的 stage_path 是 init 时的 **skills_view 会话级投影路径**（/app/backend/.deer-flow/skills_view/...）——gateway 重启后投影消失,所有 progress.py gate/build_output 全量组装报 FileNotFoundError。修复：手术改 progress.json 的 stage_path → /app/skills/public/... 真实 bind-mount 路径（仅改此字段不触手改特征门）。
+- **跨线程记忆污染（bug-3231）**：MemoryMiddleware 把线程 A 的工程进度存为用户级 deermem 事实,线程 B agent 启动注入后当真（"项目已完成"）拒绝工作。修复=删 users/<uid>/agents/lead-agent/facts/ 下毒事实；根治=工程执行类技能在线程投递指令中显式声明「progress.json 为唯一状态权威」。
+- **counter 口径差**：自写 Counter 走全树计数（含节+章节点）,progress.py gate 只看章级——"DRAFTED 18 但 gate 说没有 DRAFTED 章"=18 是节级+历史章级混合,非矛盾。
+- [2026-09-12] 「plan 自带测试串先干跑」再次生效(outline_merge T2): plan 的 sign 回滚用例 monkeypatch 注册在 _make_state 之后, 但 flaky 计数把首签算作 call 1——照抄则正确实现也永远红(merge 重签实为 call 1, `==2` 永不触发); 干跑调用序后发现, 把 setattr 挪到 _make_state 前即与注释的 call 编号(首签放行/重签炸/call 3 放行)严丝合缝, 断言零改动。同类: 幂等重跑要求 validate_candidates 的 self_created_path_conflict 检查先剔除 managed 节点(同 path 节点尚在盘上), plan 文字没写这步, 不补则 test_idempotent_rerun 必红。
+
+## Key Learnings (2026-09-12 — outline_merge 执行会话)
+- **pytest monkeypatch 顺序坑**: `monkeypatch.setattr` 必须注册在"会调用被补丁函数的 fixture 调用"之前——计划文档逐字给的测试(monkeypatch 在 _make_state 之后)不可满足, 首签绕过 flaky 计数导致永红; 执行时先干跑测试串再落盘。
+- **bid-technical SKILL.md 原无 token 锁定机制**: 计划假设"既有 B 侧 token 机制处"不存在; 已按 A 列表模式新建 `B_SKILL_MD_REQUIRED_TOKENS` + `test_technical_required_content_tokens`(位于 TestTwoSkillSplitContract)。后续给 B 加契约锁直接往该元组追加。
+- **outline_merge 遗留加固项**: responses 顺序纪律(大纲 merge 前/后重跑规则)是协议级约束(SKILL.md 加粗+token 钉), 脚本不自我强制; 后续可加 `already_anchored` 拒绝种类(候选条款已被非 managed self_created 节点挂接时拒绝)。
+- 双段审查闭环收益实测: 质量审查抓到 CI format 红线/畸形输入静默通过/裸 traceback 逃逸 3 类计划盲区; spec 审查抓到计划文本自身不可满足的测试与虚假恢复提示。

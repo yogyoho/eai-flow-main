@@ -24408,5 +24408,1388 @@
     "related_bugs": [],
     "occurrences": 1,
     "last_seen": "2026-09-05"
+  },
+  {
+    "id": "bug-3116",
+    "timestamp": "2026-09-05",
+    "error_message": "离线包权限注册表缺口: config/permissions.yaml + roles_custom.yaml 既不随 offline-export.sh 打包、也不挂载进 gateway 容器(镜像只 COPY backend/, 无 /app/config/) → 离线 gateway 以空权限注册表启动: '*' 超管通配(engine.py:203)与 is_system 门控(middleware.py:230/321)全部失效, 权限路由对所有人 403",
+    "file": "scripts/offline-export.sh + deploy/offline/docker-compose.yaml",
+    "root_cause": "权限 YAML 由根目录 config/ 加载(registry.py 解析 <root>/config/), dev 因 repo bind-mount 天然可用; 离线包只拷 config.yaml/extensions_config.json 两个文件, 无人发现 config/ 目录从不出厂",
+    "fix": "✅已实施 2026-09-05: ①offline-export.sh Step4 打包 config/permissions.yaml+roles_custom.yaml 并同步刷新 deploy/offline/config/ 镜像副本; ②离线 compose gateway 挂载两文件到 /app/config/:ro; ③同批修复: 离线 config v34→v40 / extensions_config 8→13 servers 全量收编(skills 修正 fire-protection-report-v2) / nginx 补 /api/skills/install/upload 101M 块 / GSB_RAGFLOW_DATASET_ID 进离线 compose+.env / .env.example 引导 fresh clone / deploy/offline/data 运行时残留出库",
+    "tags": [
+      "deploy",
+      "offline",
+      "permissions",
+      "empty-registry",
+      "superadmin",
+      "config-v40",
+      "extensions-config"
+    ],
+    "related_bugs": [
+      "bug-3101",
+      "bug-3105"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-05"
+  },
+  {
+    "id": "bug-3117",
+    "timestamp": "2026-09-06",
+    "error_message": "generate-config.sh OUT 默认 '.'(CWD): 无 --out 调用时把 .env/config.yaml/extensions_config.json 直接生成进仓库根, 覆写 root .env 5 键(BETTER_AUTH_SECRET/DEER_FLOW_ROOT/DEER_FLOW_TRUSTED_ORIGINS/RAGFLOW_SECRET_KEY 被改写+GSB 残留注入); 另发现 deploy/offline/config/roles_custom.yaml 镜像与源均为 CRLF 行尾(autocrlf=true 时代 checkout 残留, 目标服务器是 Ubuntu)",
+    "file": "scripts/generate-config.sh + config/roles_custom.yaml",
+    "root_cause": "OUT='' 未强制必填; .gitattributes eol=lf 策略生效前的陈旧 checkout 未随策略重写",
+    "fix": "✅已实施: ①OUT 默认收紧为必填(install.sh 两处调用均显式传 --out 不受影响); ②roles_custom.yaml 源+镜像字节级归一化 LF(与 HEAD blob 一致, diff 空); ③root .env 五键恢复: BETTER_AUTH_SECRET/RAGFLOW_SECRET_KEY 经容器/docker/.env 管道直写(不落转录), DEER_FLOW_ROOT=D:/eai/eai-flow-main 双源确认, TRUSTED_ORIGINS 重构为 localhost:3000,2026 待用户确认, GSB 残留删除",
+    "tags": [
+      "generate-config",
+      "dangerous-default",
+      "crlf",
+      "ubuntu",
+      "env-restore",
+      "incident-self-inflicted"
+    ],
+    "related_bugs": [
+      "bug-3116"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-06"
+  },
+  {
+    "id": "bug-3118",
+    "timestamp": "2026-09-06",
+    "error_message": "生产首装应用中心空页面: seed_db 的 app-center 裸 SQL INSERT 缺 is_enabled 列, 该列 NOT NULL 且只有 ORM default 无 server default → PG16 全新建库上 NotNullViolation → 整块 seed(7域+15应用)随事务回滚; app.py 把 extensions 初始化异常整体吞成 warning 所以启动看似正常",
+    "file": "backend/app/extensions/database.py",
+    "root_cause": "dev 的 app_definitions 表建于老 schema(带默认值)从不暴露; 全新库由当前模型 create_all 建表, is_enabled 无 server_default; 裸 SQL 绕过 ORM default",
+    "fix": "✅代码已修(INSERT 补 is_enabled,TRUE); 服务器即时解法: ALTER TABLE app_definitions ALTER COLUMN is_enabled SET DEFAULT TRUE 后手动重跑 seed_db",
+    "tags": [
+      "app-center",
+      "seed",
+      "not-null",
+      "raw-sql",
+      "fresh-db",
+      "silent-failure"
+    ],
+    "related_bugs": [
+      "bug-3068"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-06"
+  },
+  {
+    "id": "bug-3119",
+    "timestamp": "2026-09-06",
+    "error_message": "AttributeError: '_io.TextIOWrapper' object has no attribute 'getvalue' (inspect1.py)",
+    "file": ".wolf/tmp/eia-samples/inspect1.py",
+    "root_cause": "草稿残留行调用了 open() 文件对象的 getvalue()(该方法是 StringIO 专属),写入文本时崩溃",
+    "fix": "删除残留的条件调试行;文件对象没有 getvalue,需要缓冲区时应改用 io.StringIO",
+    "tags": [
+      "python",
+      "io",
+      "TextIOWrapper",
+      "getvalue"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-06"
+  },
+  {
+    "id": "bug-3120",
+    "timestamp": "2026-09-06",
+    "error_message": "生产给排水计算书技能: 报告末尾出现 'Error: str_replace blocked — ...already exists and you have not read its current version' 文字",
+    "file": "backend/packages/harness/deerflow/agents/middlewares/read_before_write_middleware.py",
+    "root_cause": "上游 #3857 先读后写闸门按设计拦截(连续写入间未重读); 模型被拦后未按提示重读重试, 而是把报错文本当内容追加进报告——内网模型工具循环纪律弱于 dev 默认模型所致, 非生产特有缺陷",
+    "fix": "处置: 删除报告尾部错误段/让模型重读重试; 不建议关 read_before_write 开关(会放开重复追加旧缺陷); 偶发可接受, 频发再考虑模型更换或技能提示词强化",
+    "tags": [
+      "read-before-write",
+      "middleware",
+      "water-skill",
+      "model-behavior",
+      "production"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-06"
+  },
+  {
+    "id": "bug-3201",
+    "timestamp": "2026-09-06T16:58:00",
+    "error_message": "post-commit code-review-graph hook traceback: UnicodeDecodeError gbk codec / AttributeError NoneType.splitlines in get_changed_files",
+    "file": "code_review_graph/incremental.py (repo hook)",
+    "root_cause": "Windows GBK 控制台下钩子用默认编码解码含非 ASCII 的 git 输出/提交信息，reader 线程解码失败致 stdout=None",
+    "fix": "未修（平台层工具，非本仓库代码）——规避：图增量更新该轮跳过，下次钩子成功时自动补齐；commit 本身不受影响",
+    "tags": [
+      "code-review-graph",
+      "hook",
+      "gbk",
+      "windows",
+      "encoding"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-06"
+  },
+  {
+    "id": "bug-1",
+    "timestamp": "2026-09-06",
+    "error_message": "coal-eia T1 冒烟: progress.py gate 批量门在 formula_state.json 缺失时 OSError 裸逃逸（stderr 无 CHAPTER_GATE_FAIL 行）",
+    "file": "skills/public/coal-eia-report/scripts/progress.py",
+    "root_cause": "geo 原版 cmd_gate 只 except ValueError；build_output.run_chapter_gate 先 load_state_and_check（读 formula_state.json，FileNotFoundError 属 OSError）后查章稿。geo 流程中步骤2 恒先于步骤4 故未暴露；coal 两层模型 T1 干跑门（无冻结层）即触发",
+    "fix": "cmd_gate 补 except OSError 分支——文件级错误按该章 CHAPTER_GATE_FAIL 处理（rc=1 语义不变，批量不整批砸掉）",
+    "tags": [
+      "coal-eia-report",
+      "progress",
+      "gate",
+      "oserror",
+      "t1"
+    ],
+    "related_bugs": [
+      "bug-3040",
+      "bug-3048",
+      "bug-3049"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-06"
+  },
+  {
+    "id": "bug-3200",
+    "timestamp": "2026-09-06T21:42:52+08:00",
+    "error_message": "python -c 内嵌 /d/... POSIX 路径在 Windows 原生 python 下解析为 <盘>:\\d\\... → FileNotFoundError（同参数经 MSYS 转换的子进程反而成功）",
+    "file": ".wolf/tmp (会话临时验证脚本)",
+    "root_cause": "Git Bash 只对裸参数做 MSYS→Windows 路径转换；python -c 代码串内与 Path()/open() 内的 /d/ 形路径不被转换，按当前盘根解析",
+    "fix": "验证脚本一律用 D:/eai/... 或反斜杠 Windows 路径（或相对路径）；会话内已全部改用 Windows 形路径",
+    "tags": [
+      "windows",
+      "msys",
+      "path",
+      "git-bash"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-06T21:42:52+08:00"
+  },
+  {
+    "id": "bug-3202",
+    "timestamp": "2026-09-06",
+    "error_message": "章稿缓存写盘失败 [Errno 2] No such file or directory: state/chapters/ch1.md.tmp",
+    "file": "skills/public/coal-eia-report/scripts/build_output.py",
+    "root_cause": "两层模型改造后 build_chapter 原子写 state/chapters/chNN.md 前未确保目录存在——新任务 state/ 只有 sections/，chapters/ 首次落盘即 ENOENT，progress gate 批量全 FAIL",
+    "fix": "build_chapter 写盘前 (state_dir/'chapters').mkdir(parents=True, exist_ok=True)",
+    "tags": [
+      "coal-eia-v2",
+      "build_output",
+      "两层模型",
+      "atomic_write",
+      "mkdir"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-06"
+  },
+  {
+    "id": "bug-3208",
+    "timestamp": "2026-09-07",
+    "error_message": "ingest.py forms（全量空白生成路径）/ingest.py check（质量扫描路径）TypeError: unsupported operand type(s) for /: 'WindowsPath' and 'NoneType'",
+    "file": "skills/public/coal-eia-report/scripts/ingest.py",
+    "root_cause": "planning_eia.json forms.projection 是投影章定义族、file 字段=null（非数据表单）；blank 生成循环与 check 质量扫描循环对全部族直调 family_filename(spec)=spec['file'] 无 None 守卫（cmd_check 的 required 循环有 required=False 跳过，质量扫描循环没有）",
+    "fix": "未修（T7 测试会话约束=不改 scripts/）。测试侧规避：e2e 用 --only 列出有 file 的 32 族生成空白；门1 check 以去掉无 file 元数据族的 stage 副本走同一代码路径（backend/tests/test_coal_eia_report_e2e_planning.py）。正修=blank/check 两循环加 spec.get('file') 守卫 continue",
+    "tags": [
+      "coal-eia-report",
+      "ingest",
+      "planning_eia",
+      "projection",
+      "gate1",
+      "e2e-discovered"
+    ],
+    "related_bugs": [],
+    "occurrences": 2,
+    "last_seen": "2026-09-07"
+  },
+  {
+    "id": "bug-3209",
+    "timestamp": "2026-09-08T10:50:00Z",
+    "error_message": "协作编辑器打开项目章节文档空画布;collab-server Forbidden/不可达",
+    "file": "docker/nginx/nginx.conf; docker/docker-compose.extensions.yaml; backend/collab-server/src/persistence.ts; backend/app/gateway/routers/auth.py",
+    "root_cause": "三重断链:①2026-08-01上游同步459dd7870吞掉dev nginx的/api/collab WS代理块(离线模板仍在)→WS落gateway catch-all 401;②collab容器8002未发布host→:3000拓扑直连失败;③gateway从未实现/api/v1/auth/users/{id}桥端点(auth_middleware预留豁免前缀)→collab canAccessDocument邮箱桥恒404→Forbidden",
+    "fix": "①从deploy/offline/nginx.conf:215回植WS块至两个dev nginx模板+restart nginx;②compose extensions给collab加ports 8002:8002;③gateway新增GET /users/{user_id}(X-Internal-Auth=JWT_SECRET共享密钥校验)+collab persistence.ts bridgeGatewayUser带密钥头(容器内node热补丁,镜像重建待npm install edgesOut修复)。实测onConnect Connected+collab_documents播种成功",
+    "tags": [
+      "collab",
+      "nginx",
+      "websocket",
+      "upstream-sync-regression",
+      "EAI-CUSTOM"
+    ],
+    "related_bugs": [
+      "bug-3201"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3210",
+    "timestamp": "2026-09-08T10:55:00Z",
+    "error_message": "collab-server镜像docker build失败: npm install Cannot read properties of null (reading 'edgesOut')",
+    "file": "backend/collab-server/Dockerfile",
+    "root_cause": "node:22-alpine内置npm在容器内解析依赖时arborist崩溃(疑似lockfile缺省+registry网络抖动组合);镜像停在三个月前版本,期间collab-server源码修复均未生效",
+    "fix": "临时方案:容器内node热补丁dist/persistence.js(X-Internal-Auth头);债务:修复npm install(Dockerfile加--no-audit/--fetch-retries或补package-lock.json+npm ci)后重建镜像,消化B11/B12等collab-server TS改动",
+    "tags": [
+      "collab",
+      "docker",
+      "npm",
+      "build-debt"
+    ],
+    "related_bugs": [
+      "bug-3209"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3211",
+    "timestamp": "2026-09-08",
+    "error_message": "协同编辑器播种effect无条件删pendingMarkdown标记,解析0块时空Yjs落库毒化文档",
+    "file": "frontend/src/extensions/collab/BlockNoteEditor.tsx",
+    "root_cause": "meta.delete('pendingMarkdown')在blocks.length>0守卫之外,0块解析也清标记→空Yjs状态被onStoreDocument落成collab_documents行→后续打开不再播种",
+    "fix": "delete移入blocks.length>0分支;解析失败保留标记供下次打开重试",
+    "tags": [
+      "collab",
+      "blocknote",
+      "seeding",
+      "data-loss"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3212",
+    "timestamp": "2026-09-08",
+    "error_message": "openChapter只回{documentId,chapterId},EditorTab读doc.id恒undefined自动打开失效",
+    "file": "frontend/src/extensions/project/api.ts",
+    "root_cause": "前端契约丢后端_doc_info全量字段(id/title/content/...)",
+    "fix": "透传...data并补documentId/chapterId,类型Partial<AIDocument>&{documentId,chapterId}",
+    "tags": [
+      "project",
+      "api",
+      "contract"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3213",
+    "timestamp": "2026-09-08",
+    "error_message": "open-chapter P1命中旧文档直接return,MCP写入的新章节稿到不了编辑器",
+    "file": "backend/app/extensions/project/service.py",
+    "root_cause": "P1按title命中已有文档无对账;collab_documents无行(编辑器从未接管)时ai_documents.content基线停留在旧稿",
+    "fix": "return前_reconcile_chapter_doc_baseline:无colla行且chapter.content≠doc.content时刷新基线;有行(D6编辑器接管)不动",
+    "tags": [
+      "project",
+      "collab",
+      "baseline"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3214",
+    "timestamp": "2026-09-08",
+    "error_message": "fallback建档缺chapter_id/folder_id,章节文档游离于文档树与章节关联之外",
+    "file": "backend/app/extensions/project/service.py",
+    "root_cause": "AIDocument构造漏chapter_id与folder_id",
+    "fix": "补chapter_id=chapter.id;_project_root_folder_id先ensure_project_root_folders再查项目根folder行,失败降级None",
+    "tags": [
+      "project",
+      "docmgr",
+      "folders"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3215",
+    "timestamp": "2026-09-08",
+    "error_message": "P2 ilike %title% 与 P3 全文包含把正文提及标题的文档误绑为章节文档",
+    "file": "backend/app/extensions/project/service.py",
+    "root_cause": "匹配粒度全文级而非标题行级",
+    "fix": "_title_in_headings按^#{1,6}\\s标题行匹配;P2取回后正则过滤,P3读文件后行级正则",
+    "tags": [
+      "project",
+      "matching"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3216",
+    "timestamp": "2026-09-08",
+    "error_message": "协同编辑器编辑不回写章节基线,统计/导出/MCP读到旧稿",
+    "file": "backend/app/extensions/project/routers.py",
+    "root_cause": "Yjs只落collab存储,project_chapters.content/word_count_current与ai_documents.content无同步通道",
+    "fix": "新增POST /projects/{pid}/documents/{did}/sync-baseline([chapter:]前缀校验/400/404/成员403);前端BlockNoteEditor对项目文档5s防抖回写",
+    "tags": [
+      "project",
+      "collab",
+      "sync-baseline"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3217",
+    "timestamp": "2026-09-08",
+    "error_message": "断连期间编辑内容不会保存但用户无强提示",
+    "file": "frontend/src/extensions/collab/OnlineUsers.tsx",
+    "root_cause": "仅角落'未连接'小字,无持久断连警示",
+    "fix": "connected=false持续>3s渲染编辑器顶部离线横幅'协作服务未连接,内容不会保存',恢复自动消失",
+    "tags": [
+      "collab",
+      "ux"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-08"
+  },
+  {
+    "id": "bug-3218",
+    "timestamp": "2026-09-09T08:45:00+08:00",
+    "error_message": "协同链审计 B11: collab-server extractTextFromYDoc 读 ydoc.getMap(\"blocks\")，而客户端 BlockNote 挂载 getXmlFragment(\"document-store\")，snapshot_text 恒空，版本 diff/AI 摘要不可用；周期快照(30min)无清理，collab_versions 膨胀(实测 7719 行/19 文档)",
+    "file": "backend/collab-server/src/index.ts",
+    "root_cause": "共享类型名错配(blocks map vs document-store XmlFragment)+快照只增不删",
+    "fix": "extractTextFromYDoc 改读 getXmlFragment(\"document-store\") 并用公开 toArray() 遍历(yjs 13.6 无 Symbol.iterator，_children 为私有 API)；persistence.ts 新增 pruneVersions(每 doc 保最近 50 条,按 version 阈值 DELETE)；onDisconnect/periodicSnapshot 在 createVersion 后调用；vitest 新增 9 用例",
+    "tags": [
+      "collab",
+      "yjs",
+      "blocknote",
+      "snapshot_text",
+      "version-pruning"
+    ],
+    "related_bugs": [
+      "bug-3219",
+      "bug-3220"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-09T08:45:00+08:00"
+  },
+  {
+    "id": "bug-3219",
+    "timestamp": "2026-09-09T08:45:00+08:00",
+    "error_message": "协同链审计 B12: docmgr restore 直接 UPDATE collab_documents.yjs_doc 无前置备份，恢复后被覆盖内容不可找回；响应无在线协作者刷新提示",
+    "file": "backend/app/extensions/docmgr/collab_routers.py",
+    "root_cause": "恢复路径只写不备；Yjs 覆写后在线协作者编辑器仍持旧文档状态",
+    "fix": "restore 前先读当前 yjs_doc(须在 commit 前读，避免 expire 后访问属性)落 Pre-restore backup 版本；响应 message 附「在线协作者需刷新页面以加载恢复后的内容」；前端 useVersions toast 展示服务端 message；pytest 新增 2 用例",
+    "tags": [
+      "docmgr",
+      "restore",
+      "pre-backup",
+      "collab"
+    ],
+    "related_bugs": [
+      "bug-3218"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-09T08:45:00+08:00"
+  },
+  {
+    "id": "bug-3220",
+    "timestamp": "2026-09-09T08:45:00+08:00",
+    "error_message": "docker build backend/collab-server 失败(npm ci EUSAGE): lockfile 缺 @emnapi/core、@emnapi/runtime 条目且 wasi-threads@1.2.1 不满足 ^1.2.3；host(Windows npm 11)与容器(linux npm 10)对 optional deps 解析不一致",
+    "file": "backend/collab-server/package-lock.json",
+    "root_cause": "lockfile 由 host Windows npm 生成，linux 侧条目缺失；该 lockfile 唯一消费方是 node:22-alpine 镜像构建",
+    "fix": "在 node:22-alpine 容器内 npm install --package-lock-only 重新生成(仅 +5 @emnapi 条目，host npm ci 仍验证通过)；此后该 lockfile 变更一律在容器内生成",
+    "tags": [
+      "docker",
+      "npm-ci",
+      "lockfile",
+      "collab",
+      "cross-platform"
+    ],
+    "related_bugs": [
+      "bug-3210",
+      "bug-3218"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-09T08:45:00+08:00"
+  },
+  {
+    "id": "bug-3221",
+    "timestamp": "2026-09-09",
+    "error_message": "kf样例库新tab接入: types.ts TabId加'samples'后 tsc TS2741 Record<TabId,ComponentType>缺samples键报错(app/knowledge-factory/page.tsx); 另SampleLibrary首版ESLint prefer-nullish/未用图标import 2错",
+    "file": "frontend/src/app/knowledge-factory/page.tsx + src/extensions/knowledge-factory/{SampleLibrary.tsx,TabNavigation.tsx}",
+    "root_cause": "TabId是字面量联合,page.tsx用Record<TabId,...>全键强制——加tab须同步6处: types.ts/TabNavigation/KnowledgeFactoryPage/index.ts/app路由页/permissions.yaml",
+    "fix": "补TAB_COMPONENTS.samples+NAV_ITEMS(kf:page:samples); nullish改三目; 删未用FolderOpen import",
+    "tags": [
+      "knowledge-factory",
+      "sample-library",
+      "TabId",
+      "record-exhaustiveness",
+      "permissions-yaml"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3222",
+    "timestamp": "2026-09-09",
+    "error_message": "cn_to_int('十三') 返回 3（应为 13），test_cn_to_int_supports_mixed_forms 失败",
+    "file": "backend/app/extensions/eia_samples/extract.py",
+    "root_cause": "中文数字解析用单变量 current：'十' 置 current=10 后，紧随的数字字符直接覆盖而非累加（'十三'=3）",
+    "fix": "改 total/digit 双累加器算法：数字挂起 digit，十/百/千落位即乘权入 total，返回 total+digit（'一百零三'=103、'二十三'=23 均验过）",
+    "tags": [
+      "eia-samples",
+      "extract",
+      "chinese-numeral",
+      "unit-test-caught"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3223",
+    "error_message": "extract_outline 漏掉 '2 项目概况'/'1.1 项目由来' 章节且目录行 '4 环境影响预测与评价 4' 被误当正文章节",
+    "file": "backend/app/extensions/eia_samples/extract.py",
+    "root_cause": "量词首字黑名单含 项/人/年/月/日 等字，恰是真 EIA 章节标题高频首字；且 _TOC_LINE 只识别 tab/3空格/点导引线页码，单空格尾页码的目录条目漏判入树后破坏章号递增判定",
+    "fix": "黑名单缩到真量词字 '个台套名次吨米亩户批'；新增 _HEAD_START 锚定 + 单空格尾页码（\\s\\d+$）的 _toc_like 补充规则——凡标题样式行以页码数字结尾皆目录条目",
+    "tags": [
+      "eia-samples",
+      "extract",
+      "outline-extraction",
+      "toc-heuristic",
+      "false-positive"
+    ],
+    "related_bugs": [
+      "bug-3222"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3224",
+    "timestamp": "2026-09-09",
+    "error_message": "code-review-graph post-commit hook crash: UnicodeDecodeError 'gbk' codec can't decode byte 0x80 + AttributeError 'NoneType' has no 'splitlines' in get_changed_files",
+    "file": ".git hooks (code_review_graph.cli get_changed_files, system Python 3.14)",
+    "root_cause": "钩子 subprocess reader 线程按系统 ANSI(GBK) 码页解码 git stdout；中文提交消息是 UTF-8 字节流 → 解码失败 → stdout=None → splitlines(None) 崩。Windows 默认码页环境下该钩子遇任何含非 ASCII 的 git 输出都会触发。",
+    "fix": "commit 本体已成功（SHA a4d0d2a2a，git log 复核），钩子失败非阻塞，本次不修代码。若后续要修：给钩子环境设 PYTHONUTF8=1（或 PYTHONIOENCODING=utf-8），或钩子内 subprocess 用 encoding='utf-8', errors='replace'。",
+    "tags": [
+      "hook",
+      "code-review-graph",
+      "gbk",
+      "encoding",
+      "windows",
+      "post-commit"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3225",
+    "timestamp": "2026-09-09",
+    "error_message": "TestStorage test failed: AttributeError ._FakeResp object has no attribute release_conn (storage.get_file finally calls resp.close()+resp.release_conn(), plan-verbatim fake returned plain io.BytesIO)",
+    "file": "backend/tests/test_bid_materials.py",
+    "root_cause": "两个计划代码段的潜在错配: (1) minio get_object 返回 urllib3 response 有 close+release_conn 两方法, io.BytesIO 只有 close——storage 层按 geo_samples fork 惯例无条件调 release_conn, 替身须以 BytesIO 子类补齐; (2) minio 7.2.20 S3Error 首位参数是 response 无默认值, 计划给的 S3Error(code=,message=,resource=) 会 TypeError。另: _FakeResp 初版只写 docstring 忘了方法体, 被测试当场抓获。",
+    "fix": "测试侧最小修补(生产 storage.py 保持与计划/fork 一致): _FakeResp(io.BytesIO) 加 release_conn() no-op; stat_object 的 S3Error 加 response=None; 模块头补 import io; 末尾追加 assert 键已从替身 objects 移除使 best-effort delete 有真断言。",
+    "tags": [
+      "minio",
+      "test-double",
+      "BytesIO",
+      "release_conn",
+      "S3Error",
+      "bid_materials",
+      "storage"
+    ],
+    "related_bugs": [
+      "bug-3224"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3226",
+    "timestamp": "2026-09-09",
+    "error_message": "质量评审 NEEDS_FIXES: storage.get_file 把所有 S3Error 吞成 None=404(AccessDenied/NoSuchBucket 被伪装成文件缺失); 测试替身 stat_object 是死方法且其 S3Error 构造 TypeError",
+    "file": "backend/app/extensions/bid_materials/storage.py",
+    "root_cause": "(1) fork 改写时背离 geo 源语义: geo get_object 是 fail-fast, 只有删除 best-effort; except S3Error 一刀切 return None 把基础设施故障也当 404。(2) minio 7.2.20 S3Error 必填 response/request_id/host_id 三个位置参数(inspect 打印的 Optional[str] 是类型注解不是默认值——曾误读), 死代码掩盖了 TypeError。",
+    "fix": "get_file 缩窄: exc.code != NoSuchKey 则 raise, 仅缺失收敛 None; 替身 get_object 补缺失分支真抛 S3Error(response=None, code, message, resource, request_id=\"\", host_id=\"\") 并加断言 get_file(missing) is None; 删 stat_object; _key() 单点去 3 处重复; put_file ext 清洗 [a-z0-9][:9] or bin 对齐 DB String(10); 往返断言改全等; 假桶改 buckets: set 并断言建桶路径。提交 74b461f99。",
+    "tags": [
+      "bid_materials",
+      "storage",
+      "S3Error",
+      "error-handling",
+      "best-effort",
+      "review-fixes",
+      "minio"
+    ],
+    "related_bugs": [
+      "bug-3225",
+      "bug-3224"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3227",
+    "timestamp": "2026-09-09",
+    "error_message": "git commit 后 code-review-graph hook 崩溃: UnicodeDecodeError gbk codec (subprocess readerthread), AttributeError NoneType splitlines",
+    "file": ".git/hooks (code-review-graph incremental update)",
+    "root_cause": "Windows 下 hook 用默认 GBK 解码含中文/UTF-8 的 git 输出失败, result.stdout 为 None; 纯工具链噪音, commit 本身成功",
+    "fix": "无需修 commit; 校验方式改为直接看 git log -1 --format=%H 与 git show --stat 输出",
+    "tags": [
+      "windows",
+      "gbk",
+      "code-review-graph",
+      "git-hook",
+      "encoding"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3228",
+    "timestamp": "2026-09-09T23:05:00",
+    "error_message": "红沙泉 extract 返回 0 章(章节树空);上会话误记为空响应/疑并发重启干扰",
+    "file": "backend/app/extensions/eia_samples/extract.py",
+    "root_cause": "双层:①Word 分页 Range 导出的 txt 用孤立 \r 作行尾+\f 作分页符,恰在页首开章的标题(红沙泉 1/2/3/11/12/14/15 章)紧跟上一页尾的 \f,normalize_cr 只归一 \r 不认 \f → 行首锚定章号正则全不匹配 → 0 章;②台账 source_path 指宿主机临时路径(t0spike),容器不可见 → 400 源文件不存在(这才是最初空响应直接原因)",
+    "fix": "normalize_cr 改 \r\n?|\f + 回归测试;source_path 批量改指 bind-mount /app/backend/.deer-flow/samples/;25 个 docx 拷入+容器内 python 批量 PATCH+extract。红沙泉 0→16 章/马朗 11→17/淖毛湖 9→11/吐鲁东 17 齐;24 docx 全提取;质检 174 项=162 pass/10 warn/0 fail/2 unknown(加密件诚实降分)",
+    "tags": [
+      "eia-samples",
+      "extract",
+      "normalize_cr",
+      "x0c",
+      "word-page-break",
+      "source-path",
+      "commit-bb3f5ba43"
+    ],
+    "related_bugs": [
+      "bug-3201"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-09"
+  },
+  {
+    "id": "bug-3229",
+    "timestamp": "2026-09-10T00:47:47",
+    "error_message": "post-commit hook (code-review-graph) crashed: UnicodeDecodeError 'gbk' codec in subprocess _readerthread -> AttributeError 'NoneType' has no splitlines (get_changed_files result.stdout=None)",
+    "file": ".git/hooks/post-commit (code-review-graph CLI incremental update)",
+    "root_cause": "hook 子进程读 git 输出含 UTF-8 中文（提交信息/文件名），Windows GBK 默认解码失败 -> stdout=None；仅钩子侧工具崩溃，git commit 本体不受影响",
+    "fix": "已修(commit d3f1eff68):①ingest forms 写预测结果族(stage_prediction_results/subsidence_targets/per_target_deformation)前强制校验 12 号 param_source 枚举(动态取自 schema)+13 号 mining_stages.stages 非空,未定案拒收;②check 门 blocking 化:预测链结果先于参数+未登记直写文件+登记后 sha256 指纹不符(登记后被直写覆盖)均记 GATE1_MISSING;③SKILL.md 红线新增 P7;④回归测试 7 用例(tests/test_ingest_bug3229.py)全绿;真实现场复验:拒收生效+22 个指纹不符文件全部拦截",
+    "tags": [
+      "hook",
+      "gbk",
+      "encoding",
+      "code-review-graph",
+      "windows"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3230",
+    "timestamp": "2026-09-10T00:47:47",
+    "error_message": "ruff check 对显式传入的 .yaml 文件报 invalid-syntax（按 Python 解析），且从 backend/ 目录用 backend/ 前缀路径报 E902 路径不存在",
+    "file": "config/permissions.yaml",
+    "root_cause": "ruff 对显式文件路径参数不做扩展名过滤（目录才会按 .py 过滤）；E902 是 cwd 相对路径写错（backend/ 下不需要 backend/ 前缀）",
+    "fix": "ruff 只喂 Python 文件；yaml 合法性用 python -c yaml.safe_load 校验（本会话两份 permissions.yaml 均验证通过）；【残余】Wave2 扩写轮复发(ch1_S07 三连拦后自愈完成写入)——prompt 层纪律(4.2.1)+显式指令降低频率但未根除；疑 agent 用 bash cat 替代 read_file(不产标记)的习惯所致；根除需子代理派发(每节新上下文)或上游层改动",
+    "tags": [
+      "ruff",
+      "yaml",
+      "lint",
+      "path"
+    ],
+    "related_bugs": [],
+    "occurrences": 3,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3231",
+    "timestamp": "2026-09-10T01:25:00+08:00",
+    "error_message": "bid_seed_samples.py 把 registration.json 裸 dict 直灌 BidSample(**item)，绕过 SampleBulkItem Pydantic 契约（先例 make_bulk_payload 未复用）",
+    "file": "backend/scripts/bid_seed_samples.py",
+    "root_cause": "种子脚本是全仓唯一未过 schema 校验的入库通道：未知/改名键（如 note vs notes）在 SQLAlchemy 深处抛 TypeError，hash 长度错到 PG flush 才炸，缺 items 键裸 KeyError——全部 fail-safe（get_db_context 回滚）但 fail-opaque",
+    "fix": "commit 0881b2ecd： SampleBulkImportRequest.model_validate 先行校验（file_hash 恰 64/1-500 条上限/未知键忽略/actionable 报错 items.N.field）；另修正 commit 归因注释（get_db_context 而非 eia 先例）+ stdout 对齐 SampleBulkImportResponse 三元组（updated/total）+ command 键改 script",
+    "tags": [
+      "bid_materials",
+      "seed-script",
+      "pydantic-validation",
+      "fail-fast",
+      "code-review"
+    ],
+    "related_bugs": [
+      "bug-3109"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T01:25:00+08:00"
+  },
+  {
+    "id": "bug-3122",
+    "timestamp": "2026-09-10T01:40:00+08:00",
+    "error_message": "sqlalchemy.exc.MissingGreenlet: greenlet_spawn has not been called (TestBidMaterialsRoutes::test_patch_updates_cert_no_and_persists / test_delete_soft_disables_and_hidden)",
+    "file": "backend/tests/test_bid_materials.py",
+    "root_cause": "db.expire_all() 使 ORM 实例过期后, 测试仍同步访问 q.id/q.cert_no —— 过期实例的属性 __get__ 触发同步 lazy load, 在 asyncio 上下文外发 SQL 即 MissingGreenlet",
+    "fix": "expire_all() 之前先把 qual_id/cert_no 取到局部变量, 之后一律 await db.get(Model, qual_id) 真读库; 过期实例上不做任何同步属性访问",
+    "tags": [
+      "sqlalchemy",
+      "asyncio",
+      "missing-greenlet",
+      "expire_all",
+      "test_bid_materials"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T01:40:00+08:00"
+  },
+  {
+    "id": "bug-3232",
+    "timestamp": "2026-09-10T06:05:00+08:00",
+    "error_message": "git commit 时 code-review-graph hook 线程崩溃: UnicodeDecodeError 'gbk' codec can't decode byte 0x80 (subprocess _readerthread) 随后 AttributeError 'NoneType' has no splitlines",
+    "file": "(环境级) code-review-graph pre/post-commit hook, 非仓库代码",
+    "root_cause": "Windows 默认 GBK 编码下 hook 用 subprocess 读 git 输出(含 UTF-8 中文路径字节)按 GBK 解码炸读取线程, result.stdout 变 None; 提交本身成功, 仅 hook 增量分析报告丢失",
+    "fix": "无需仓库侧修复(外部工具问题); 判断提交结果一律以 git log -1 为准, 忽略该 hook traceback 噪音",
+    "tags": [
+      "code-review-graph",
+      "hook",
+      "gbk",
+      "windows",
+      "encoding",
+      "git-commit"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T06:05:00+08:00"
+  },
+  {
+    "id": "bug-3233",
+    "timestamp": "2026-09-10T06:30:00+08:00",
+    "error_message": "评审 NEEDS_FIXES: test_paragraph_lengths 永真断言(len 恒非负+空列表 all() 恒真)+fixture 无 ### 行致「H3 不误切」零覆盖; 附带 M-1 段长把 # /| 结构行计入会拉低 P25 floor, M-2 docx 表格行被 \n\n join 碎表",
+    "file": "backend/tests/test_bank_compile.py + skills/public/bid-proposal-writing/scripts/bank_compile.py",
+    "root_cause": "TDD 骨架期测试只验证形状不验证精确值; 切片/统计口径未与深度统计用途(P25 floor)对齐; docx 表格逐行 append 遇外层空行 join 即碎",
+    "fix": "I-1 段长锁精确值 [89,29,16,29]; I-2 fixture 加 ### 2.1 行+断言 3 章/level 全 2/H3 并入正文; split_chapters 改 H2 唯一章界(H1=文档标题不立章); paragraph_lengths 剔 #/| 行; docx 单元格 | 转义+换行折叠+短行补列+整表单块; body is None 判定; 闭合 # 剥离; 零章 stderr 警告; md 装载 gb18030 回退+双败可操作报错; 样式正则模块级预编译",
+    "tags": [
+      "bank_compile",
+      "bid-proposal-writing",
+      "code-review",
+      "tautological-assertion",
+      "h3-boundary",
+      "p25-floor",
+      "docx-table"
+    ],
+    "related_bugs": [
+      "bug-3232"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T06:30:00+08:00"
+  },
+  {
+    "id": "bug-3234",
+    "timestamp": "2026-09-10T06:50:00+08:00",
+    "error_message": "bank_compile Task 2 计划稿自带正则与其自带测试相抵触: RESIDUAL_RE([￥¥]\\s*\\d|万元|\\b1[3-9]\\d{9}\\b|\\b\\d{17}[\\dXx]\\b) 对 miss 用例「报价 9,999,999.99 元」零命中→test_residual_scan_catches_miss 必挂; 另四处规则用 \\b, 撞 bug-3061 已知雷(中文语境 \\b 不成立+18位纯数字被 uscc 误吞)",
+    "file": "skills/public/bid-proposal-writing/scripts/bank_compile.py",
+    "root_cause": "照抄 plan snippet 前未把 plan 的正则对 plan 的测试串干跑一遍: 9,999,999.99 元 无￥无万元非手机非身份证, 字面 RESIDUAL_RE 返回[]; \\b 版本在 fixture(空格环抱)侥幸通过但真实标书「电话13800138000」整段漏配",
+    "fix": "CREDIT_CODE/PHONE/ID_CARD/RESIDUAL 四正则全部改用 bug-3061 验证过的 ASCII 环视形态(uscc 加至少含一字母前置环视); RESIDUAL_RE 增补千分位金额分支 \\d{1,3}(?:[,，]\\d{3})*(?:\\.\\d+)?\\s*万?元 与 AMOUNT_RE 同源(漏跑即抓); 测试零改动, 14 passed + 边界探针(无空格紧邻汉字/19位不截段/X尾/空mapping键/标题行保真)全绿",
+    "tags": [
+      "bank_compile",
+      "bid-proposal-writing",
+      "plan-snippet-dry-run",
+      "unicode-word-boundary",
+      "cjk",
+      "residual-scan"
+    ],
+    "related_bugs": [
+      "bug-3061",
+      "bug-3233"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T06:50:00+08:00"
+  },
+  {
+    "id": "bug-3235",
+    "timestamp": "2026-09-10T06:50:00+08:00",
+    "error_message": "git commit 成功后 code-review-graph 钩子抛 UnicodeDecodeError: 'gbk' codec can't decode byte 0x80 (reader thread) + AttributeError 'NoneType' has no attribute 'splitlines'",
+    "file": "code-review-graph post-commit hook (Python 3.14 全局安装)",
+    "root_cause": "钩子用 subprocess 读 git 输出(含中文 commit message UTF-8 字节), Windows 下默认 GBK 解码崩溃→get_changed_files 拿到 stdout=None; 属钩子自身环境缺陷, 不影响 commit 落库",
+    "fix": "无需修复 commit 流程——看 SHA+git show 确认已落库即可; 根治需钩子侧 encoding='utf-8' 或 errors='replace', 非本仓库代码",
+    "tags": [
+      "code-review-graph",
+      "hook",
+      "gbk-decode",
+      "windows",
+      "git-commit"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T06:50:00+08:00"
+  },
+  {
+    "id": "bug-3236",
+    "timestamp": "2026-09-10T07:10:00+08:00",
+    "error_message": "质量评审 M-2: 表格两位小数千分位金额(如管道表单价列 3,500.00, 无元后缀)双盲——AMOUNT_RE 要求「元/万元」后缀不掩码, 初版 RESIDUAL_RE 也无该分支, 残留门对高频形态静默放行",
+    "file": "skills/public/bid-proposal-writing/scripts/bank_compile.py",
+    "root_cause": "金额类规则只认「数字+元后缀」形态; 标书表格单价/百分比列的裸两位小数千分位数字是高频形态, 掩码与残留门两头都漏",
+    "fix": "RESIDUAL_RE 增补分支 \\d{1,3}(?:[,，]\\d{3})*\\.\\d{2}(?!\\d)——只进残留门不进掩码(fail-closed: 命中 rc=1 交维护者 --map 显式映射或人工裁决); test_residual_scan_hits 契约同步改为残留恰含该表格行; 顺带 RESIDUAL_RE 改组合式引用各规则 pattern(同源非同文)+MASK 常量+裸万元分支注释声明误伤面; 同轮评审 I-1 补 CJK 紧邻/19位不截段/空键回归钉, I-2 标题行改只吃 --map 跳过自动正则(泄漏通道闭合, 标题裸金额交残留门)",
+    "tags": [
+      "bank_compile",
+      "bid-proposal-writing",
+      "residual-scan",
+      "fail-closed",
+      "table-amount",
+      "thousand-separator",
+      "code-review"
+    ],
+    "related_bugs": [
+      "bug-3234",
+      "bug-3061"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T07:10:00+08:00"
+  },
+  {
+    "id": "bug-3237",
+    "timestamp": "2026-09-10T08:11:36+08:00",
+    "error_message": "git commit 时 code-review-graph post-commit hook 抛 UnicodeDecodeError('gbk' codec can't decode byte 0x80)+AttributeError(NoneType.splitlines), 提交信息含中文",
+    "file": ".git/hooks (code_review_graph cli.py get_changed_files)",
+    "root_cause": "Windows GBK 控制台下 hook 子进程按默认编码读 git stdout, 未显式 UTF-8; commit 本体在 hook 之前已落地, hook 异常不影响提交结果",
+    "fix": "仓库代码无需修改——commit 后跑 git show HEAD --stat 核对落地即视为成功(本次 HEAD=cd6a06915 两文件齐全); 根治须改 hook 进程 encoding, 平台层超出任务范围未做",
+    "tags": [
+      "code-review-graph",
+      "hook",
+      "gbk",
+      "windows",
+      "git-commit",
+      "cosmetic"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10T08:11:36+08:00"
+  },
+  {
+    "id": "bug-3238",
+    "timestamp": "2026-09-10",
+    "error_message": "bank_compile.py argparse 用法错误实测退出码 2, 与 docstring「退出码: 1 用法错误」不符",
+    "file": "skills/public/bid-proposal-writing/scripts/bank_compile.py",
+    "root_cause": "argparse 默认 SystemExit(2) 直接逃逸出 main; 退出码 2 与 ingest 的 OCR 分流撞号, 会把 CLI 误用误路由进 OCR 路径 (T4 质量评审 Minor-1)",
+    "fix": "parse_args 包 try/except SystemExit: code 0 (--help) 放行 EXIT_OK, 非 0 打印 [bank_compile] 用法错误行后 return EXIT_ERROR(1)——对齐 score_simulate/state_guard 家族惯例; test_argparse_usage_error_returns_1_not_2 + test_help_returns_0 钉死",
+    "tags": [
+      "bank_compile",
+      "argparse",
+      "exit-code",
+      "bid-materials",
+      "minor-1"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3229",
+    "timestamp": "2026-09-10T09:35:00",
+    "error_message": "coal-eia-report 管线数据收口阶段:LLM 自行推演沉陷预测数字(W_max 500-1500mm/五期序列/下沉系数0.75/角量75°80°)写入 12/14/15/16 数据文件并标 status=filled,无 param_source 枚举,formula_runner/calc 零调用,预测方法(三量法vs概率积分法)尚未经用户确认",
+    "file": "skills/public/coal-eia-report/scripts/ingest.py + progress 控制器(疑似)——根因在 agent 数据摄取自主权缺少硬约束",
+    "root_cause": "数据摄取阶段 agent 可直接写预测族数据文件:ingest.py 不校验预测族(family=subsidence_*/stage_prediction_results)必须由 formula_runner 产出;progress 控制器把 _meta.status=filled 视为可信;红线(数字不经LLM)仅约束正文组装,未约束数据文件摄取环节",
+    "fix": "未修。建议:①ingest.py 对预测族强制校验来源字段(无 calc 产物指纹则拒收/降级 status=placeholder);②SKILL.md 数据收口节显式禁止 agent 预填预测族;③consistency.py 校验 14 号文件数字与 calc 运行记录一致性",
+    "tags": [
+      "coal-eia-report",
+      "bug-3054-class",
+      "红线违规",
+      "数据摄取",
+      "formula_runner",
+      "E2E实测发现"
+    ],
+    "related_bugs": [
+      "bug-3054",
+      "bug-3055",
+      "bug-3056",
+      "bug-3057"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3239",
+    "timestamp": "2026-09-10",
+    "error_message": "评审 I-1: bank_compile ragflow_push 重推送不幂等——同题重编后 RAGFlow 侧滞留旧版/堆积副本",
+    "file": "skills/public/bid-proposal-writing/scripts/bank_compile.py",
+    "root_cause": "首版只做 upload, 同名上传 RAGFlow 不覆盖(geo service.py:258 先例明确); 次推堆积副本且旧版永不被替换",
+    "fix": "stdlib 补 _ragflow_list_doc_ids(分页 GET name→id)+_ragflow_delete_docs(DELETE body {ids}); ragflow_push 上传前同名先删再传(只删同名词); 有状态 fake server 三连推冒烟=dataset 恒恰 1 份",
+    "tags": [
+      "bank_compile",
+      "ragflow",
+      "idempotency",
+      "bid-materials",
+      "review-i1"
+    ],
+    "related_bugs": [
+      "bug-3238"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3240",
+    "timestamp": "2026-09-10",
+    "error_message": "Task7 全量回归 2 failed: test_bid_proposal_scripts 两个用例 _lint_flagged_values 解析出额外空串值(基线落盘后)",
+    "file": "backend/tests/test_bid_proposal_scripts.py",
+    "root_cause": "references/depth_targets.json 落盘(Task7 接线)激活 build_output 深度门, lint 报告新增深度门节带表格行; _lint_flagged_values 以 [待核对] 节头 split 后未对下个 ## 节头截断, 深度门表行(无——全部响应达到深度基线)被当提取值解析出空串",
+    "fix": "helper 对下一个 \"\n## \" 再截一次, 只解析 [待核对] 节自身表格——对基线在场/缺省两态都稳",
+    "tags": [
+      "bid-materials",
+      "build_output",
+      "depth_gate",
+      "test-helper",
+      "section-parsing"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3241",
+    "timestamp": "2026-09-10",
+    "error_message": "git commit 后 code-review-graph hook 线程崩溃: UnicodeDecodeError gbk codec + AttributeError NoneType splitlines(中文 commit message)",
+    "file": ".git/hooks/post-commit(code-review-graph cli)",
+    "root_cause": "Windows GBK 控制台下 hook 以默认编码读 git 子进程输出(含 UTF-8 中文 commit 摘要), 解码炸线; stdout 变 None 后 cli get_changed_files 再炸——hook 噪音, 提交本身成功不受影响",
+    "fix": "无需处置(提交已落); 根治需 hook 侧显式 encoding=utf-8/errors=replace 读子进程输出——平台工具层, 记录备查",
+    "tags": [
+      "windows",
+      "gbk",
+      "hook",
+      "code-review-graph",
+      "encoding"
+    ],
+    "related_bugs": [],
+    "occurrences": 2,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3242",
+    "timestamp": "2026-09-10",
+    "error_message": "geo test_compile_invokes_subprocess_and_marks_compiled 断言 ragflow skipped 实得 pushed=2——单测把 2 个假报告真推送进 dev RAGFlow geo-samples-slices 库(且随 RAGFlow 启动状态时好时坏)",
+    "file": "backend/tests/test_geo_sample_bank_compile.py",
+    "root_cause": "app/extensions/config.py 模块级 load_dotenv(override=False) 把 backend/.env 真 RAGFLOW_API_KEY 毒入 host 测试进程(conftest 中和块只覆盖 DEER_FLOW_*/OPENAI); geo service.resolve_ragflow_dataset_id env 未配置时回落按名查找, 本地 RAGFlow(localhost:9380)可达即命中真库→push_reports_to_ragflow 真上传。flake 双因素: env 毒化(恒在)+RAGFlow 启动完成(时变)",
+    "fix": "_patch_compile_happy_path 补 env-only resolve 桩(monkeypatch resolve_ragflow_dataset_id 为读 env 的纯函数, 斩断按名查找触网尾巴)——push 失败/预算用例靠 setenv 进分支不受影响; 顺带根除同文件 sys.path.insert 全局污染(SKILL→SCRIPTS 锚+懒加载+consistency 按路径加载)",
+    "tags": [
+      "geo-samples",
+      "ragflow",
+      "test-isolation",
+      "network-boundary",
+      "load_dotenv",
+      "flake"
+    ],
+    "related_bugs": [
+      "bug-3240"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3243",
+    "timestamp": "2026-09-10",
+    "error_message": "normalize.py(T7 验证工具链, 不进 git)已知名缺陷 M1/M2: 页断 \f+页码 正则误食真段落起首 1-3 位数字(如 \"99 年\"); 章题升格 ^第N章…$ 无词界防护, 未来语料若出现短行形交叉引用会被误升格为 H2",
+    "file": ".deer-flow/bank_t7/normalize.py(验证侧临时工具)",
+    "root_cause": "单行退化 PDF 的结构还原是启发式; 页码与正文起首数字在字符层面不可分, 未加语义护栏",
+    "fix": "待后续(本批不动): M1 改为只在 \f 后 1-3 位数字+双空格/已知页码序列时剥除, 或记录页码序列做一致性校验; M2 升格前校验章题词表(投标人须知/评标办法/合同…); 读基线文件时统一 utf-8-sig 防 BOM 首行毒化",
+    "tags": [
+      "markitdown",
+      "pdf",
+      "normalize",
+      "heuristic",
+      "deferred"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3230",
+    "timestamp": "2026-09-10",
+    "error_message": "visual-check: workflow HTML overflowed 1440x900 viewport (scrollHeight 1470/900, 1603/1000)",
+    "file": "docs/designs/coal-eia-report-workflow.json",
+    "root_cause": "4 泳道纵向堆叠 + 994x876 高瘦 viewBox，面板单独占满视口后 header/cards 再溢出；同时 viewBox 过窄使 scale 偏小",
+    "fix": "砍 ship 泳道（deliver 并入 gates 泳道 c5 与 finalize yOffset±34 堆叠）+ 缩短 c4-c5 间隙肥标签（BLOCKED 协商→BLOCKED、投影章 gate PASS→gate PASS）+ 节点宽 132，viewBox 降至 ~1224 宽，4 视口全过",
+    "tags": [
+      "archify",
+      "workflow-v2",
+      "viewport-overflow",
+      "desktop-readability"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-10"
+  },
+  {
+    "id": "bug-3230",
+    "timestamp": "2026-09-11T08:20:00",
+    "error_message": "章节波次收口轮:agent 对已存在 sections/*.md(ch1_S03/04/06/07)反复 str_replace 而不先 read_file,被 read-before-write gate 连续拦截 4+ 次仍不换模式,一轮空烧 ~1.1M tokens 未完成收口",
+    "file": "skills/public/coal-eia-report/SKILL.md(修复层);backend/packages/harness/deerflow/agents/middlewares/read_before_write_middleware.py(守卫实现,语义无缺陷,上游 #3857)",
+    "root_cause": "读取标记存 state[messages](sha256+posixpath 归一):任何写动作使此前一切读取失效;跨 run 后创建文件时的写不产生标记→先读后改是唯一通过路径。agent 在 1.2M 长上下文中不遵循守卫恢复指引(Call read_file then retry),被拦后换下一个文件继续盲改",
+    "fix": "已修(commit 1c18f20d7):SKILL.md 新增 4.2.1 既有节文件修改纪律——先 read_file(全量或 ranged)拿当前版本读取标记→紧邻处修改,优先 write_file 全量重写;控制器/子代理返工契约同守。行为修复依据:round10 显式 read→write 指令下 agent 一次通过完成收口",
+    "tags": [
+      "coal-eia-report",
+      "写保护",
+      "read-before-write",
+      "agent行为",
+      "SKILL纪律",
+      "issue-3857"
+    ],
+    "related_bugs": [
+      "bug-3229",
+      "bug-3049"
+    ],
+    "occurrences": 2,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3056",
+    "timestamp": "2026-09-11",
+    "error_message": "pre-commit code-review-graph 钩子在 GBK 控制台崩溃: UnicodeDecodeError(gbk codec) → get_changed_files 'NoneType' has no attribute splitlines",
+    "file": ".git/hooks/pre-commit (code-review-graph CLI)",
+    "root_cause": "钩子用 subprocess 捕获 git 输出, Windows GBK 默认编码解不了 UTF-8 中文 commit message/文件路径, reader 线程炸掉后 stdout=None",
+    "fix": "非致命: 钩子异常不阻断 commit(实测 698428c97/8cdce9168/b91c8bef9 均成功落库)。治本可给钩子设 PYTHONIOENCODING=utf-8 或 PYTHONUTF8=1, 待办",
+    "tags": [
+      "pre-commit",
+      "gbk",
+      "code-review-graph",
+      "windows"
+    ],
+    "related_bugs": [],
+    "occurrences": 3,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3057",
+    "timestamp": "2026-09-11",
+    "error_message": "latexNormalize.test.ts 3 个 TDD 红测: \text{} 内裸 _ 未补 \\_(KaTeX text-mode 渲染报错, bug-2222 兜底缺失)",
+    "file": "frontend/src/core/streamdown/latexNormalize.ts",
+    "root_cause": "并发会话提交了测试(5e7fd3cc1)但源码未实现对应行为(\text{} 内裸下划线转义缺失)",
+    "fix": "4cbf56171: replace(/(?<!\\)_/g, '\\_') 在 \text{} 尾部搬移之后执行, lookbehind 跳过已转义 \\_; 6/6 全绿",
+    "tags": [
+      "latex",
+      "katex",
+      "tdd-red",
+      "bug-2222"
+    ],
+    "related_bugs": [
+      "bug-2222"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3058",
+    "timestamp": "2026-09-11",
+    "error_message": "定时任务 run 终态永不回写: get_run_context 未接 on_run_completed → scheduler.handle_run_completion 在 EAI 生产路径从不触发",
+    "file": "backend/app/gateway/deps.py",
+    "root_cause": "EAI 早前 graft scheduler 时 RunContext 少传上游 on_run_completed 回调(与 drain 套件删减无关, 属漏接非有意)",
+    "fix": "900bc3b05: get_run_context 补 on_run_completed=app.state.scheduled_task_service.handle_run_completion(服务存在时); worker 侧自带 Exception 非致命护栏; scheduler+worker 测试 299 passed",
+    "tags": [
+      "scheduler",
+      "run-lifecycle",
+      "upstream-alignment",
+      "wiring-gap"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3059",
+    "timestamp": "2026-09-11",
+    "error_message": "前端换镜像 up -d 重建容器后 nginx:2026 全部超时(容器内 3000 正常)",
+    "file": "docker/nginx",
+    "root_cause": "up -d 换镜像=容器重建=新 IP; nginx 启动时解析 upstream 主机名并永久缓存, 旧 IP 失联; 此前 restart 不换 IP 故未暴露",
+    "fix": "重启 nginx 容器即恢复(2026 = 200); 教训: 前端镜像重建/容器重建后必须连带重启 nginx",
+    "tags": [
+      "nginx",
+      "dns-cache",
+      "docker-recreate"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3244",
+    "timestamp": "2026-09-11",
+    "error_message": "Windows 宿主全量 pytest 收集即中断: AttributeError: module 'os' has no attribute 'geteuid' (tests/test_acceptance_checks.py)",
+    "file": "backend/tests/test_acceptance_checks.py",
+    "root_cause": "上游 RFC#4651 acceptance-checks 测试 L659 skipif 直接调 os.geteuid() 无 os.name=='nt' 守卫, 装饰器参数收集期即求值, Windows 无此 API → 整个 suite 无法收集; 先在(2026-09-01 a06a6fed7 随上游同步进来), 与 bid 技能拆分无关",
+    "fix": "全量回归用 pytest --continue-on-collection-errors 绕行跑完其余全部用例; 不在 Windows 宿主修上游 POSIX 测试(CI Linux 正常); 如需本机可跑可仿上游 9ce6fdcb2 'skip POSIX mode-bit assertions on Windows' 手法",
+    "tags": [
+      "windows",
+      "pytest-collection",
+      "geteuid",
+      "upstream",
+      "pre-existing"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3245",
+    "timestamp": "2026-09-11",
+    "error_message": "bank_compile 元数据残留闸门误拒: 形态命中 18156555939 (10 个推送/编译用例 rc=1 零落盘, Plan 4 Task 2 mixed fixture 实证)",
+    "file": "skills/public/bid-technical/scripts/bank_compile.py",
+    "root_cause": "metadata_residual_scan 对序列化元数据全文跑 RESIDUAL_RE, 而 bank_index/registration 内嵌 sha256 file_hash/calibrated_from 摘要与 12-hex slug——纯 hex 串可偶然拼出手机号形态数人体串(~10%/册概率), 假阳性触发 fail-closed 拒出库",
+    "fix": "扫描前剥除整串引号包裹的 hex token(_META_HEX_VALUE_RE: 64-hex 摘要值 / 12-hex slug 值 / slug/full.md 路径)再跑形态扫描; --map 键原文名检查仍跑原文; test_metadata_scan_ignores_hash_hex_false_positive 回归钉",
+    "tags": [
+      "bank_compile",
+      "metadata-gate",
+      "false-positive",
+      "hex-digest",
+      "plan4-task2"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3246",
+    "timestamp": "2026-09-11",
+    "error_message": "git commit 后 code-review-graph post-commit hook 崩溃: UnicodeDecodeError 'gbk' codec can't decode byte 0x80 (subprocess _readerthread) + AttributeError 'NoneType' has no splitlines —— commit 本身成功落地",
+    "file": "(env hook, 无代码改动) code-review-graph cli.py get_changed_files",
+    "root_cause": "code-review-graph 的 post-commit 钩子用 subprocess.run 读 git diff 输出, Windows 下 Python 子进程管道默认按 GBK 解码; 中文 UTF-8 commit message(0x80 高字节)使 _readerthread 解码崩溃 stdout=None, 连锁 AttributeError",
+    "fix": "无需修 commit 流程——hook 失败不影响提交落地(git 输出 '[branch sha]' 行已确认成功); 属环境噪声, 用 git log/git show 复核提交结果即可",
+    "tags": [
+      "code-review-graph",
+      "post-commit-hook",
+      "gbk",
+      "windows",
+      "environment-noise"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3247",
+    "timestamp": "2026-09-11T22:25:05",
+    "error_message": "ruff I001 Import block is un-sorted (tests/test_doc_graph_tables.py) — plan 原稿 import 行 DgEntity, DgMerge, DgMention, DgRelation 非 isort 序",
+    "file": "backend/tests/test_doc_graph_tables.py",
+    "root_cause": "plan snippet 的 from-import 名称顺序照抄, 未经 ruff I001(isort) 校验; DgMerge 应排在 DgMention 之后(Me-n < Me-r 按字符序)",
+    "fix": "uv run ruff check --fix 自动排序为 DgEntity, DgMention, DgMerge, DgRelation; 提交前对 plan 提供的代码先跑 ruff check",
+    "tags": [
+      "ruff",
+      "I001",
+      "isort",
+      "plan-snippet",
+      "lint"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3248",
+    "timestamp": "2026-09-11T22:39:14",
+    "error_message": "AttributeError: 'ForeignKey' object has no attribute 'target_table' (test_mention_fk_targets)",
+    "file": "backend/tests/test_doc_graph_tables.py",
+    "root_cause": "评审方给的测试 snippet 用了不存在的 API: SQLAlchemy 2.0.49 的 ForeignKey 无 target_table 属性; 正确访问是 fk.column.table.name(或 fk.target_fullname)",
+    "fix": "先用 python 探针确认 fk.column.table.name 可用且返回 dg_entities, 再照实替换 snippet 中的 target_table 访问",
+    "tags": [
+      "sqlalchemy",
+      "ForeignKey",
+      "snippet-api-mismatch",
+      "probe-first",
+      "doc-graph"
+    ],
+    "related_bugs": [
+      "bug-3247"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3249",
+    "timestamp": "2026-09-11",
+    "error_message": "git commit 后 code-review-graph hook 抛 UnicodeDecodeError: gbk codec can't decode byte 0x80 (cli.py get_changed_files stdout=None)",
+    "file": "code_review_graph/cli.py (site-packages, 非 repo 代码)",
+    "root_cause": "Windows 下 hook 子线程用 GBK 默认编码读取含中文的 git 输出导致解码失败, stdout 为 None 后再 .splitlines() 抛 AttributeError",
+    "fix": "无需修 repo 代码; hook 报错不影响 commit 本身落地。规避: 设 PYTHONUTF8=1 或等上游修编码处理",
+    "tags": [
+      "code-review-graph",
+      "windows-gbk",
+      "hook",
+      "commit"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3250",
+    "timestamp": "2026-09-11",
+    "error_message": "create_step run_failed: TypeError 'bool' object is not callable -> agent edit-loop -> LangGraph recursion limit 100, run died (E2E T1)",
+    "file": "skills/public/cad-modeling/SKILL.md",
+    "root_cause": "SKILL.md 教了 shape.is_valid() 调用形式,但 build123d 0.10/0.11 的 Shape.is_valid 是 property(bool),调用形式抛 TypeError;agent 依纪律写错 API 后反复 str_replace 修,烧尽 100 步递归上限",
+    "fix": "SKILL.md 步骤4 示例改为属性形式 assert shape.is_valid(注释明示别加括号+后果);诚实标注区同步;容器内 build123d 0.11.0 实证 property 形式",
+    "tags": [
+      "text-to-cad",
+      "build123d",
+      "is_valid",
+      "property",
+      "recursion-limit",
+      "skill-authored-bug"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3251",
+    "timestamp": "2026-09-11",
+    "error_message": "create_step run_failed: AttributeError type object Compound has no attribute assemble (E2E T2 装配)",
+    "file": "skills/public/cad-modeling/SKILL.md",
+    "root_cause": "模型臆造 build123d API Compound.assemble();0.11 无此方法,装配正确形态是带标签 Compound(label=,children=[..]),SKILL.md 陷阱表未覆盖该臆造模式",
+    "fix": "陷阱表加两行:is_valid 属性形式 + Compound.assemble→Compound(label=,children=) 正确形态",
+    "tags": [
+      "text-to-cad",
+      "build123d",
+      "compound",
+      "assembly",
+      "hallucinated-api"
+    ],
+    "related_bugs": [
+      "bug-3250"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3252",
+    "timestamp": "2026-09-11",
+    "error_message": "write_file /mnt/user-data/.cad_thread_pin -> Permission denied;随后 create_step 无 pin 可依,fallback glob 把文件 materialize 到上一个线程目录(跨线程渗透,E2E T2)",
+    "file": "skills/public/cad-modeling/SKILL.md",
+    "root_cause": "沙箱 write_file 对该路径返回 Permission denied(工具层权限),SKILL.md 只教了 write_file 一条路且 pin 内容写 cad(实际约定是 1);pin 缺失时 server.py fallback glob 选中旧线程",
+    "fix": "SKILL.md pin 内容改 1 并加 bash echo 兜底路径(server.py 的 pin 机制 bug-324 未动,harness 权限未动)",
+    "tags": [
+      "text-to-cad",
+      "thread-pin",
+      "bug-324",
+      "sandbox-permission",
+      "cross-thread-bleed"
+    ],
+    "related_bugs": [
+      "bug-324"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3253",
+    "timestamp": "2026-09-11",
+    "error_message": "run 以 Recursion limit of 100 reached 报错,最终回复丢失(E2E T1 两轮复现);agent 在 create_step 成功+inspect 通过后循环 inspect/present_files/ls 烧尽步数预算",
+    "file": "skills/public/cad-modeling/SKILL.md",
+    "root_cause": "agnes-2.5-flash 缺乏终止纪律,交付阶段反复确认;CAD 工作流工具步数多,100 步递归上限对 flash 级模型不宽容(LoopDetection 中间件未拦住此形态)",
+    "fix": "SKILL.md 交付步骤加终止纪律:成功+自检过=立即停工具写最终回复,最多补一轮 inspect;修正后 T1 8/8 PASS",
+    "tags": [
+      "text-to-cad",
+      "recursion-limit",
+      "termination",
+      "agnes-flash",
+      "loop"
+    ],
+    "related_bugs": [
+      "bug-3250",
+      "bug-3251",
+      "bug-3252"
+    ],
+    "occurrences": 2,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3300",
+    "timestamp": "2026-09-11",
+    "error_message": "OpenWolf auto-detect hook silently stopped writing auto-detected buglog entries (no entries since 2026-08-29)",
+    "file": ".wolf/hooks/post-write.js",
+    "root_cause": "post-write.js reads bugLog.bugs (object with bugs key) but buglog.json is a bare top-level array -> .bugs is undefined -> autoDetectBugFix throws, swallowed silently by hook error handling",
+    "fix": "not yet fixed; parse as array (Array.isArray check for both shapes). Discovered during self-improving-agent analysis workflow verification",
+    "tags": [
+      "openwolf",
+      "hook",
+      "silent-failure",
+      "schema-mismatch"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-11"
+  },
+  {
+    "id": "bug-3301",
+    "timestamp": "2026-09-12",
+    "error_message": "cad-suite 容器三服务全崩: ModuleNotFoundError No module named mcp.server.fastmcp (mcp 2.x)",
+    "file": "mcp-server/text-to-cad-mcp/requirements.txt",
+    "root_cause": "requirements 写 mcp>=1.2 无上界;fresh build 解析到刚发布的 mcp 2.x(FastMCP 更名 MCPServer)。旧镜像数月前构建时拿的是 1.x 所以从没炸过——任何重建都会踩",
+    "fix": "text-to-cad-mcp 与 cad-mcp 两处 requirements 均 pin mcp>=1.2,<2;cad-suite supervisor 按设计整体退出(docker restart 策略兜底)",
+    "tags": [
+      "mcp",
+      "fastmcp",
+      "dependency-drift",
+      "pin",
+      "cad-suite"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
+  },
+  {
+    "id": "bug-3231",
+    "timestamp": "2026-09-12T09:00:00",
+    "error_message": "新线程(39f590cc) ch6 波 success 零产出:agent 读用户级 deermem 记忆(旧线程9dd35089写入的「项目已完成,20章全VERIFIED,163派发」事实)后拒做本线程 ch6,引旧线程数字当本线程状态",
+    "file": "deerflow/agents/memory(事实存储 users/<uid>/agents/lead-agent/facts/);coal-eia-report SKILL.md(状态权威规则缺失)",
+    "root_cause": "MemoryMiddleware 跨线程注入工作状态类事实:线程 A 的工程进度被记忆中间件存为用户级事实,线程 B 的 agent 启动时被注入并当真——工作状态类事实不具备跨线程有效性,但记忆系统无线程作用域区分",
+    "fix": "①删除 4 个毒事实(06/46/f3/a4,备份 .wolf/tmp/deermem-facts-backup-20260912);②SKILL.md 补状态权威规则(progress.json 为唯一工程状态权威,记忆中的项目完成记录视为过期);③投递指令显式声明线程状态。预防:工程类技能应禁用/降权 MemoryMiddleware 或在 SKILL.md 开头声明状态来源",
+    "tags": [
+      "deermem",
+      "cross-thread-memory-pollution",
+      "memory-middleware",
+      "coal-eia-report",
+      "多线程并发"
+    ],
+    "related_bugs": [
+      "bug-3230"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
+  },
+  {
+    "id": "bug-3232",
+    "timestamp": "2026-09-12",
+    "error_message": "git commit 时 code-review-graph pre-commit hook 崩溃: UnicodeDecodeError 'gbk' codec can't decode byte 0x80 (position 1051) -> get_changed_files result.stdout 为 None -> AttributeError 'NoneType' object has no attribute 'splitlines'",
+    "file": "C:/Python314/Lib/site-packages/code_review_graph/incremental.py (get_changed_files)",
+    "root_cause": "code-review-graph hook 在 Windows 上 subprocess 捕获 git 输出未指定 encoding(默认 GBK), 含中文 commit subject 的字节流解码失败, reader 线程崩掉后 stdout 为 None; hook 崩溃未阻断 commit(git 正常完成), 但该次增量图谱更新失败",
+    "fix": "本次提交本身成功无需处理; 根治需给 code_review_graph 的 subprocess 调用加 encoding='utf-8', errors='replace'(或 PYTHONUTF8=1), 属全局工具层待办",
+    "tags": [
+      "code-review-graph",
+      "pre-commit-hook",
+      "gbk",
+      "windows-encoding",
+      "subprocess"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
+  },
+  {
+    "id": "bug-3233",
+    "timestamp": "2026-09-12T10:35:00+08:00",
+    "error_message": "nginx connect() failed (111: Connection refused) while connecting to upstream http://172.18.0.16:8001",
+    "file": "docker/docker-compose-dev.yaml (nginx upstream resolution)",
+    "root_cause": "容器组整体重启后 gateway 容器 IP 从 172.18.0.16 变为 172.18.0.17;nginx 仅在配置加载时解析一次 upstream 域名,持续连旧 IP;container 状态 running 掩盖了问题(gateway 本身 healthy)",
+    "fix": "docker exec deer-flow-nginx nginx -s reload 强制重新解析 DNS;长效方案=gateway 固定容器 IP 或 nginx resolver 127.0.0.11 valid=10s + variable upstream",
+    "tags": [
+      "nginx",
+      "docker-restart",
+      "stale-dns",
+      "connection-refused",
+      "upstream-ip",
+      "gateway"
+    ],
+    "related_bugs": [
+      "bug-3019"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-12T10:35:00+08:00"
+  },
+  {
+    "id": "bug-3302",
+    "timestamp": "2026-09-12",
+    "error_message": "create_dxf: with Sketch() -> TypeError Sketch does not support context manager protocol; agent 把文件路径当 source 传(bad_args 拦截生效)",
+    "file": "mcp-server/text-to-cad-mcp/server.py + skills/public/cad-dxf/SKILL.md",
+    "root_cause": "EAI 作者(我)把 gen_dxf 契约写错成 build123d——实际契约是返回 ezdxf Document(最小复现当时恰好用 ezdxf 所以没暴露);技能描述同样误导",
+    "fix": "server.py create_dxf docstring 改 ezdxf 契约+内联模板;SKILL.md description/用途/陷阱表全改 ezdxf;另加 source 传路径的 bad_args 护栏(T6 首错实证有效)",
+    "tags": [
+      "text-to-cad",
+      "ezdxf",
+      "gen_dxf",
+      "contract-doc-bug",
+      "authored-bug"
+    ],
+    "related_bugs": [
+      "bug-3250"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
+  },
+  {
+    "id": "bug-3303",
+    "timestamp": "2026-09-12",
+    "error_message": "asyncpg.exceptions.AmbiguousParameterError: could not determine data type of parameter $1 — doc_graph MCP _list_pending_review 每次调用必炸(含默认无参调用,正是 SKILL.md step4 教 agent 的调用)",
+    "file": "backend/app/extensions/ontology/doc_graph/mcp.py",
+    "root_cause": "asyncpg 无法推断裸绑定参数类型——:etype 同一参数双用途(`:etype IS NULL` 布尔上下文 + `etype = :etype` 比较), PG 无法定型; host 侧测试全为纯逻辑/mock, 无真 asyncpg 执行路径, 三层评审均漏; 全功能评审时容器内对真库复现",
+    "fix": "SQL 改 (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text)) 显式定型(评审者容器内两调用形态验证均过); test_doc_graph_mcp.py 加源码级回归钉 test_list_pending_review_sql_asyncpg_safe 钉住 CAST 形态(真库路径由容器 E2E 兜底)",
+    "tags": [
+      "asyncpg",
+      "mcp",
+      "doc-graph"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
+  },
+  {
+    "id": "bug-3304",
+    "timestamp": "2026-09-12",
+    "error_message": "outline_merge 候选回写失败提示指向死路: '重跑 outline_merge 修复 managed_node_ids'——spec 评审实验确认重跑必被 self_created_path_conflict 拒死(候选 managed 列表缺本轮新节点 id, 预剔除不生效), exit 1 循环",
+    "file": "skills/public/bid-proposal-overall/scripts/outline_merge.py",
+    "root_cause": "错误恢复提示凭直觉写'重跑即可', 未对重跑路径干跑: structure.json 已含本轮新自创章(同 path), 候选 managed_node_ids 仍是旧列表, managed 预剔除只剔除列表内 id → 新节点仍参与 self_created_path_conflict 检查 → 重跑必然被拒",
+    "fix": "恢复提示改为携带真实出口: 恢复=把候选文件 managed_node_ids 手动设为本轮新 managed id 列表后再重跑; 加契约测试 test_candidates_writeback_failure_reports_recovery(monkeypatch os.replace 定点炸候选回写/structure 写入放行)钉死 stderr 必含新节点 id(S-003)+managed_node_ids",
+    "tags": [
+      "outline_merge",
+      "bid-materials",
+      "error-message",
+      "recovery-path",
+      "fail-closed"
+    ],
+    "related_bugs": [],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
+  },
+  {
+    "id": "bug-3305",
+    "timestamp": "2026-09-12",
+    "error_message": "outline_merge 两处裸异常逃逸 main()(质量评审发现): ①外来带横线节点 id(如 MIR-3.2, LLM 抽取原始 id 可达)令 _next_node_id 的 int(split) 抛裸 ValueError traceback; ②重签失败后回滚复原写本身 OSError 时, 裸 OSError 逃逸且文案谎报'已回滚'",
+    "file": "skills/public/bid-proposal-overall/scripts/outline_merge.py",
+    "root_cause": "①取号用 split+int 解析自家 S-NNN 约定, 对结构内非约定 id 无守卫(load_structure 只要求非空 str); ②数据写用自家 _atomic_write_bytes 而非家族 extract.atomic_write_json(该函数本就 OSError→ExtractError), 回滚路径无独立异常契约",
+    "fix": "①_next_node_id 改 responses.py:341 同款 re.match(^S-(\\d+)$) 守卫跳过不匹配 id(取号保持最低空位, 注释注明与彼处 max+1 有意分叉); ②两处数据写改用 extract.atomic_write_json(序列化逐字节同源, ExtractError 在调用点转 OutlineMergeError); 回滚专用 _restore_structure_bytes(点前缀+pid 临时名+try/finally unlink, OSError→OutlineMergeError 'rollback also failed' 真实文案); 顺带 falsy 非 None managed 照实入应数组闸+跨章 duplicate_clause 拒绝+两章顺序取号测试",
+    "tags": [
+      "outline_merge",
+      "bid-materials",
+      "escape-path",
+      "atomic-write",
+      "fail-closed",
+      "quality-review"
+    ],
+    "related_bugs": [
+      "bug-3304"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
+  },
+  {
+    "id": "bug-3306",
+    "timestamp": "2026-09-12",
+    "error_message": ":2026/:3000-127.0.0.1 全站页面 SSR 正常但 React 永不 hydration(登录按钮原生提交/workspace 冻结在加载中,0 console 报错,0 pageerror)",
+    "file": "frontend/next.config.js",
+    "root_cause": "Next 16 dev origin 保护:allowedDevOrigins 只隐式放行 localhost;经 127.0.0.1 访问时 /_next 数据与 HMR 被拒→flight 可达但客户端永不 mount。AGENTS.md 已文档化此症状但配置漏配 127.0.0.1",
+    "fix": "allowedDevOrigins 加 127.0.0.1(EAI-CUSTOM 注释含 bug 号);localhost 访问不受影响(用户日常路径故未早发现)",
+    "tags": [
+      "next-dev",
+      "allowedDevOrigins",
+      "hydration",
+      "origin-gate",
+      "frontend"
+    ],
+    "related_bugs": [
+      "bug-309"
+    ],
+    "occurrences": 1,
+    "last_seen": "2026-09-12"
   }
 ]
