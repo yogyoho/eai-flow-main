@@ -2039,7 +2039,7 @@ agents_api:
 # ============================================================================
 # Allow the agent to autonomously create and improve skills in skills/custom/.
 skill_evolution:
-  enabled: false # Set to true to allow agent-managed writes under skills/custom
+  enabled: true # Set to true to allow agent-managed writes under skills/custom [EAI-CUSTOM] self-improving P0 prerequisite (design: docs/designs/self-improving-loop-port.md) — ledger = per-user custom skill maintained via skill_manage
   moderation_model_name:      # Model for LLM-based security scanning (null = use default model)
   security_fail_closed: true # Moderation model unavailable: true blocks all writes; false allows non-executable content with a warning (executable is always blocked)
 

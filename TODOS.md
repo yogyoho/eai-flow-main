@@ -1,5 +1,14 @@
 # TODOS
 
+## TODO: self-improving 自进化循环 P2 升级路径（三条件触发项）
+
+- **What:** P1（extensions/learnings）验收且价值验证后可做的三项升级：① 独立 poller 容器做实时 sweep（替代 lazy catch-up，参照 dcs_qa cron-poll 模式）；② 人工 triage UI（届时才需 gateway app.py 一行 include_router + /api/extensions/learnings 路由）；③ 零触碰约束解除后（如上游大版本重排后），把 pending 计数注入系统提示（prompt.py，OV5 的 C 选项，约束内最优解的升级路径）。
+- **Why:** 三项都有明确前置条件，现在做是过早优化；但约束/条件变化时（上游大版本、P1 数据证明价值）需要有人记得这条升级路径存在。
+- **Pros:** 升级路径不失忆；每项独立小批次互不阻塞。
+- **Cons:** TODO 面板多一条；前置条件判断需要人。
+- **Context:** 设计文档 docs/designs/self-improving-loop-port.md P2 章节 + 2026-09-12 eng-review OV5/OV6 决议 + 2026-09-13 D16 决议（不提前建管理页，触发条件驱动）。**triage 页四条扳机（任一命中即开工，最小范围=列表/过滤(pattern_key,status)/resolve/dismiss/晋升确认/CSV导出 + 权限分层[用户看自己、管理员看全部]，~3-4人日）：①错误晋升事故——用户溯源 agent 异常行为到某条晋升规则，需逐条否决界面；②pending 积压超出 agent 自 triage 能力；③企业客户合规审计要求（学习数据含客户环境错误摘录，数据安全法场景，需审计/导出/删除权）；④多租户运营需要跨用户健康度视图（dismissed-ratio/捕获量）。另两项触发：lazy sweep 延迟被实测抱怨（poller）；harness 零触碰约束解除（系统提示注入，OV5-C）。**
+- **Depends on / blocked by:** P1 落地 + Success Criteria (P1) 全绿。
+
 ## TODO: snapshot.py 多副本同步维护约定（四副本）
 
 - **What:** snapshot.py 现存四份副本（water-drainage / bid-proposal-writing / geological-report / coal-eia-report，2026-09-06 coal-eia v2 D5 定案扩员）——任一副本修 bug 时必须检查另三副本是否存在同缺陷并同步修复。coal-eia 副本额外携带 mapping.json 枚举与版本指纹/漂移报告（eng-review OV#8），这两个增强若验证有效应反向移植回前三副本。

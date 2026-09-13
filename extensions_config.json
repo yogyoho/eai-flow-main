@@ -249,6 +249,9 @@
     }
   },
   "skills": {
+    "self-improving": {
+      "enabled": true
+    },
     "fire-protection-extract": {
       "enabled": true
     },
