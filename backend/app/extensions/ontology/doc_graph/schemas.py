@@ -8,6 +8,7 @@ EntityPayload/RelationPayload 的 etype/predicate 放宽为全枚举 Literal（�
 """
 
 from datetime import datetime
+from types import MappingProxyType
 from typing import ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -62,20 +63,24 @@ class RelationPayload(BaseModel):
     mention: MentionPayload
 
 
-# --- bid 域表（4 谓词角色）---
-_PREDICATE_ROLES: dict[str, tuple[str, str]] = {
-    "bidder_of_project": ("bidder", "project"),
-    "bidder_supplies_goods": ("bidder", "goods"),
-    "bidder_holds_qualification": ("bidder", "qualification"),
-    "project_won_by_bidder": ("project", "bidder"),
-}
+# --- bid 域表（4 谓词角色; MappingProxyType 只读——converter 侧不得改表）---
+_PREDICATE_ROLES: MappingProxyType[str, tuple[str, str]] = MappingProxyType(
+    {
+        "bidder_of_project": ("bidder", "project"),
+        "bidder_supplies_goods": ("bidder", "goods"),
+        "bidder_holds_qualification": ("bidder", "qualification"),
+        "project_won_by_bidder": ("project", "bidder"),
+    }
+)
 
 # --- eia 域表（3 谓词全为 org→project 角色）---
-_EIA_PREDICATE_ROLES: dict[str, tuple[str, str]] = {
-    "org_compiles_project": ("org", "project"),
-    "org_commissions_project": ("org", "project"),
-    "org_develops_project": ("org", "project"),
-}
+_EIA_PREDICATE_ROLES: MappingProxyType[str, tuple[str, str]] = MappingProxyType(
+    {
+        "org_compiles_project": ("org", "project"),
+        "org_commissions_project": ("org", "project"),
+        "org_develops_project": ("org", "project"),
+    }
+)
 
 
 class ExtractionPayload(BaseModel):
@@ -86,6 +91,7 @@ class ExtractionPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    domain: str  # 域标识（基类契约, ingest 通用取值依赖）; Literal 收窄由子类覆盖
     extracted_by: str = Field(default="llm", max_length=100)
     thread_id: str = Field(default="", max_length=100)
     entities: list[EntityPayload] = Field(min_length=1)
@@ -93,7 +99,7 @@ class ExtractionPayload(BaseModel):
 
     domain_etypes: ClassVar[frozenset[str]] = frozenset()
     domain_predicates: ClassVar[frozenset[str]] = frozenset()
-    predicate_roles: ClassVar[dict[str, tuple[str, str]]] = {}
+    predicate_roles: ClassVar[MappingProxyType[str, tuple[str, str]]] = MappingProxyType({})
 
     @model_validator(mode="after")
     def _check_domain_and_refs(self):
@@ -124,7 +130,7 @@ class BidExtraction(ExtractionPayload):
 
     domain_etypes: ClassVar[frozenset[str]] = frozenset({"project", "bidder", "goods", "qualification"})
     domain_predicates: ClassVar[frozenset[str]] = frozenset(_PREDICATE_ROLES)
-    predicate_roles: ClassVar[dict[str, tuple[str, str]]] = _PREDICATE_ROLES
+    predicate_roles: ClassVar[MappingProxyType[str, tuple[str, str]]] = _PREDICATE_ROLES
 
 
 class EiaExtraction(ExtractionPayload):
@@ -134,4 +140,4 @@ class EiaExtraction(ExtractionPayload):
 
     domain_etypes: ClassVar[frozenset[str]] = frozenset({"project", "mine", "org", "place", "sensitive_point"})
     domain_predicates: ClassVar[frozenset[str]] = frozenset(_EIA_PREDICATE_ROLES)
-    predicate_roles: ClassVar[dict[str, tuple[str, str]]] = _EIA_PREDICATE_ROLES
+    predicate_roles: ClassVar[MappingProxyType[str, tuple[str, str]]] = _EIA_PREDICATE_ROLES

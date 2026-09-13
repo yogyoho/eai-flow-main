@@ -1,11 +1,15 @@
 """doc_graph 抽取 schema 测试——extra=forbid fail-closed 与交叉引用/谓词角色校验."""
 
 import copy
+import inspect
+from typing import get_args
 
 import pytest
 from pydantic import ValidationError
 
-from app.extensions.ontology.doc_graph.schemas import BidExtraction
+from app.extensions.ontology.doc_graph import schemas
+from app.extensions.ontology.doc_graph.ingest import ingest_extraction
+from app.extensions.ontology.doc_graph.schemas import BidExtraction, EiaExtraction, ExtractionPayload
 
 _MIN_ENT = {
     "etype": "project",
@@ -116,18 +120,11 @@ def _eia_payload(**over):
 
 
 def test_eia_valid_roundtrip():
-    from app.extensions.ontology.doc_graph.schemas import EiaExtraction
-
     p = EiaExtraction.model_validate(_eia_payload())
     assert p.domain == "eia" and len(p.entities) == 5
 
 
 def test_eia_unknown_etype_rejected():
-    import pytest
-    from pydantic import ValidationError
-
-    from app.extensions.ontology.doc_graph.schemas import EiaExtraction
-
     bad = _eia_payload()
     bad["entities"][0]["etype"] = "bidder"  # bid 域枚举不可混入 eia
     with pytest.raises(ValidationError):
@@ -135,11 +132,6 @@ def test_eia_unknown_etype_rejected():
 
 
 def test_eia_role_mismatch_rejected():
-    import pytest
-    from pydantic import ValidationError
-
-    from app.extensions.ontology.doc_graph.schemas import EiaExtraction
-
     bad = _eia_payload()
     bad["relations"][0]["subject"] = "横城煤矿"
     bad["relations"][0]["object"] = "横城矿区总体规划（修编）环评"  # mine→project 不满足 org→project 角色
@@ -148,12 +140,35 @@ def test_eia_role_mismatch_rejected():
 
 
 def test_ingest_accepts_eia_payload_type():
-    """ingest_extraction 签名放宽后应引用两域共同基类。"""
-    import inspect
-
-    from app.extensions.ontology.doc_graph.ingest import ingest_extraction
-    from app.extensions.ontology.doc_graph.schemas import EiaExtraction, ExtractionPayload
-
+    """ingest_extraction 签名放宽后应引用两域共同基类（from __future__ annotations 下注解为裸名字符串）。"""
     sig = inspect.signature(ingest_extraction)
-    assert "ExtractionPayload" in str(sig.parameters["payload"].annotation)
+    assert sig.parameters["payload"].annotation == "ExtractionPayload"
     assert issubclass(BidExtraction, ExtractionPayload) and issubclass(EiaExtraction, ExtractionPayload)  # 通用化前提: 两域模型均为基类子类
+
+
+def test_base_payload_direct_instantiation_rejected():
+    """基类直接实例化必须 fail-closed（域表空集）——域收紧不可经基类绕过。"""
+    with pytest.raises(ValidationError):
+        ExtractionPayload.model_validate(_payload())
+
+
+@pytest.mark.parametrize(
+    ("model", "payload", "foreign_pred"),
+    [
+        (BidExtraction, _payload(), "org_compiles_project"),
+        (EiaExtraction, _eia_payload(), "bidder_of_project"),
+    ],
+    ids=["bid-rejects-eia-pred", "eia-rejects-bid-pred"],
+)
+def test_foreign_domain_predicate_rejected(model, payload, foreign_pred):
+    """跨域谓词双向拒收——域谓词集把共享 payload 的全枚举 Literal 收紧回本域。"""
+    bad = copy.deepcopy(payload)
+    bad["relations"][0]["predicate"] = foreign_pred
+    with pytest.raises(ValidationError):
+        model.model_validate(bad)
+
+
+def test_literal_and_domain_tables_consistent():
+    """全枚举 Literal 必须恰等于两域域表并集——防域表键 typo 产生静默死条目。"""
+    assert set(get_args(schemas._ETYPE)) == BidExtraction.domain_etypes | EiaExtraction.domain_etypes
+    assert set(get_args(schemas._PREDICATE)) == BidExtraction.domain_predicates | EiaExtraction.domain_predicates
