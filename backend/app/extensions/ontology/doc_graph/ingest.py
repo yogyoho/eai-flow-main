@@ -22,7 +22,7 @@ from sqlalchemy.pool import NullPool
 
 from app.extensions.ontology.connectors import _ext_url
 from app.extensions.ontology.doc_graph.resolver import normalize_name
-from app.extensions.ontology.doc_graph.schemas import BidExtraction
+from app.extensions.ontology.doc_graph.schemas import ExtractionPayload
 
 REVIEW_CONFIDENCE = 0.7
 _CST = timezone(timedelta(hours=8))  # 业务时区 Asia/Shanghai
@@ -35,8 +35,8 @@ def _tz_aware(d: datetime | None) -> datetime | None:
     return d.replace(tzinfo=_CST)
 
 
-async def ingest_extraction(payload: BidExtraction) -> dict[str, Any]:
-    """校验通过的抽取结果入库。返回计数供 MCP 工具向 agent 汇报。"""
+async def ingest_extraction(payload: ExtractionPayload) -> dict[str, Any]:
+    """校验通过的抽取结果入库（任意域 *Extraction 子类, 函数体按基类字段通用取值）。返回计数供 MCP 工具向 agent 汇报。"""
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     entity_ids: dict[str, Any] = {}  # payload 内 name → entity id（DB 返回 uuid.UUID, 注解用 Any）
     counts: dict[str, Any] = {"entities_upserted": 0, "relations": 0, "mentions": 0}
