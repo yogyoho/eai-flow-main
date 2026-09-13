@@ -4,7 +4,7 @@
 铁律（spec 2026-08-20-geological-report-v2-design.md §data/ 状态布局）：
   data/ 只允许两条写入路径，全部经过本脚本：
     1. forms 子命令 —— 空白表单生成（gate 前的收集面）+ 校验写入（agent 收集到的值）
-    2. file 子命令  —— 解析上传文件（xlsx/csv/docx/pdf → 表单/CSV 行）
+    2. file 子命令  —— 解析上传文件（xlsx/csv/docx → 表单/CSV 行）
   章节生成器与其余脚本对 data/ 只读。agent 绝不手写 data/ JSON。
 
 职责：
@@ -365,7 +365,7 @@ def _read_csv_rows(src: Path) -> list[list[str]]:
         with open(src, encoding="utf-8-sig", newline="") as f:
             return list(csv.reader(f))
     except UnicodeDecodeError:
-        print(f"FILE_DECODE_WARNING: {src.name} 非 UTF-8——已按 GB18030 解码（Windows Excel 导出默认编码）", file=sys.stderr)
+        print(f"[ingest] 警告: {src.name} 非 UTF-8——已按 GB18030 解码（FILE_DECODE_WARNING；Windows Excel 导出默认编码）", file=sys.stderr)
     with open(src, encoding="gb18030", newline="") as f:
         return list(csv.reader(f))
 
@@ -513,11 +513,32 @@ def cmd_file(args) -> int:
 
 # ── 子命令: check（门1 前置完备性）─────────────────────────────────────────
 
+def _num(v) -> float | None:
+    """QC 专用宽松数值解析：int/float→float；数字字符串→float；解析不出→None。
+
+    表单值经 agent/CSV 手写通道，字符串 "3.4" 常见（T5 评审 I1）——数值比较前
+    必须收敛到 float，禁裸 `(v or 0) > x`（字符串值会 TypeError 炸掉 cmd_check）。
+    bool 是 int 子类但语义非数值，排除。
+    """
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    if isinstance(v, str):
+        try:
+            return float(v.strip())
+        except ValueError:
+            return None
+    return None
+
+
 def _tunneling_qc(quality: list[str], stage: dict, data_dir: Path) -> None:
     """掘进域专项质量警告（全部 warn 不阻断——阈值未过 tier1 核实前只提示）。
 
     计划稿为 rep.add/data.form 形态；本脚本 check 为内联 quality 收集器，
     按计划注记等价改写：warn 追加进 GATE1_QUALITY 块。
+    数值一律经 _num 收敛（T5 评审 I1/M1）；缺失≠不足≠脏值三分——
+    缺失归门1完备性（QC 不越权），脏值（在场但解析不出）单独出 warn。
     """
     def _form(fam: str):
         spec = stage.get("forms", {}).get(fam)
@@ -532,23 +553,45 @@ def _tunneling_qc(quality: list[str], stage: dict, data_dir: Path) -> None:
             return None
         return doc if isinstance(doc, dict) else None
 
+    def _filled(v) -> bool:
+        """在场判定：非 None 且非空白串（空白串视同未填）。"""
+        return v is not None and (not isinstance(v, str) or v.strip() != "")
+
     geo = _form("geology")
     sup = _form("support")
     vent = _form("ventilation")
     if geo:
-        if geo.get("gas_emission_daily") is not None and geo.get("khg") is None:
-            quality.append("QC_GAS: geology.gas_emission_daily 已填但 khg（涌出不均衡系数）缺失——风量计算 Q1 需要它")
-        if (geo.get("gas_emission_daily") or 0) > 0 and geo.get("gas_emission_monthly") is None:
-            quality.append("QC_GAS: 日最大涌出量在场而月平均缺失——C6 双口径需成对（3.4/2.45 实证）")
+        gas = geo.get("gas_emission_daily")
+        if _filled(gas):
+            if geo.get("khg") is None:
+                quality.append("QC_GAS: geology.gas_emission_daily 已填但 khg（涌出不均衡系数）缺失——风量计算 Q1 需要它")
+            gas_n = _num(gas)
+            if gas_n is None:
+                quality.append(f"QC_GAS: geology.gas_emission_daily={gas!r} 解析不出数值——C6 双口径与 Q1 无法取数，请更正为数字")
+            elif gas_n > 0 and geo.get("gas_emission_monthly") is None:
+                quality.append("QC_GAS: 日最大涌出量在场而月平均缺失——C6 双口径需成对（3.4/2.45 实证）")
     for spec in ((sup or {}).get("bolt_specs") or []):
-        if isinstance(spec, dict) and spec.get("部位") == "顶板":
-            try:
-                if float(spec.get("长度_m") or 0) < 1.8:
-                    quality.append("QC_BOLT: 顶板锚杆长度 <1.8m（审查红线 R4，若确有依据请注明支护设计出处）")
-            except (TypeError, ValueError):
-                pass
-    if vent and (vent.get("diesel_power_total_kw") or 0) > 0 and not vent.get("fan_model"):
-        quality.append("QC_VENT: 登记了柴油机车功率但未填局部通风机型号——F2 选型对照缺失")
+        if not isinstance(spec, dict):
+            continue
+        # 键名双拼写兼容（T5 评审 I2）：schema 声明键为「部位(顶板/帮部)」（T3 字节锁
+        # 不改 schema），agent/人工填数常写短键「部位」——两源都认，防 R4 红线被
+        # 键名拼写静默绕过。
+        pos = spec.get("部位") or spec.get("部位(顶板/帮部)")
+        if pos != "顶板":
+            continue
+        raw = spec.get("长度_m")
+        length = _num(raw)
+        if _filled(raw) and length is None:
+            quality.append(f"QC_BOLT: 顶板锚杆 长度_m={raw!r} 解析不出数值——R4 红线无法核验，请更正为数字（m）")
+        elif length is not None and length < 1.8:
+            quality.append("QC_BOLT: 顶板锚杆长度 <1.8m（审查红线 R4，若确有依据请注明支护设计出处）")
+    if vent:
+        diesel_raw = vent.get("diesel_power_total_kw")
+        diesel = _num(diesel_raw)
+        if _filled(diesel_raw) and diesel is None:
+            quality.append(f"QC_VENT: ventilation.diesel_power_total_kw={diesel_raw!r} 解析不出数值——Q3 选型对照无法取数，请更正为数字（kW）")
+        elif diesel is not None and diesel > 0 and not vent.get("fan_model"):
+            quality.append("QC_VENT: 登记了柴油机车功率但未填局部通风机型号——F2 选型对照缺失")
 
 
 def cmd_check(args) -> int:
