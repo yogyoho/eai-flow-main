@@ -60,8 +60,9 @@ const QUAL_TYPE_LABELS: Record<string, string> = Object.fromEntries(
   QUAL_TYPE_PRESETS.map((t) => [t.value, t.label]),
 );
 
+// Radix Select 禁止空串 value（运行时 throw 炸整树）——"全部"用哨兵值 "all"，消费处按 !== "all" 归零
 const QUAL_TYPE_FILTER_OPTIONS = [
-  { value: "", label: "全部类型" },
+  { value: "all", label: "全部类型" },
   ...QUAL_TYPE_PRESETS,
 ];
 
@@ -112,7 +113,7 @@ export function QualificationLibrary() {
   const [quals, setQuals] = useState<QualificationRecord[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);
-  const [qualTypeFilter, setQualTypeFilter] = useState("");
+  const [qualTypeFilter, setQualTypeFilter] = useState("all");
   const [expiringOnly, setExpiringOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -130,14 +131,14 @@ export function QualificationLibrary() {
             await bidMaterialsApi.qualifications.expiring(EXPIRING_DAYS);
           setHasMore(false);
           setQuals(
-            qualTypeFilter
+            qualTypeFilter !== "all"
               ? result.filter((r) => r.qual_type === qualTypeFilter)
               : result,
           );
         } else {
           // 裸数组响应无 total：limit 多取 1 条探测 hasMore，展示时截断回 PAGE_SIZE
           const result = await bidMaterialsApi.qualifications.list({
-            qual_type: qualTypeFilter || undefined,
+            qual_type: qualTypeFilter === "all" ? undefined : qualTypeFilter,
             include_disabled: true, // 已停用行保显（muted+badge），可追溯
             limit: PAGE_SIZE + 1,
             offset: (targetPage - 1) * PAGE_SIZE,
