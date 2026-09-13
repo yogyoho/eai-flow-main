@@ -63,7 +63,7 @@ def test_outline_header_parse_relations():
 
 
 def test_outline_relations_shape():
-    parsed = {"compiles": ["机构甲"], "commissions": ["机构乙"], "develops": ["机构丙", "机构丁"]}
+    parsed = {"compiles": ["机构甲"], "commissions": ["机构乙"], "develops": ["机构丙", "机构丁"], "document_id": "eia-sample:s1"}
     orgs, relations = _mod._outline_relations(parsed, "项目A")
     preds = sorted(r["predicate"] for r in relations)
     # 计划样例期望列表误排（commissions < compiles 按字典序）; 此处以真实 sorted 序为准
@@ -74,8 +74,23 @@ def test_outline_relations_shape():
 
 def test_outline_org_deduped_across_roles():
     """同一 org 挂多角色 → 一实体多边."""
-    orgs, relations = _mod._outline_relations({"compiles": ["机构甲"], "commissions": ["机构甲"], "develops": []}, "项目A")
+    orgs, relations = _mod._outline_relations({"compiles": ["机构甲"], "commissions": ["机构甲"], "develops": [], "document_id": "eia-sample:s1"}, "项目A")
     assert len(orgs) == 1 and len(relations) == 2
+
+
+def test_outline_header_real_corpus_formats():
+    """真实语料格式（评审 Fix1）: 同义词/非粗体/表格行/org_hint=值/嵌套括号标签/复合标签拒析."""
+    text = (
+        "**委托方**: 牙克石市发展和改革委员会(2024-09-30 委托函)。**编制单位**: 中煤科工集团北京华宇工程有限公司。**矿区主体**: 内蒙古牙克石五九煤炭(集团)有限责任公司。\n"
+        "| 编制单位 | 中煤科工集团沈阳设计研究院有限公司(封面: 总经理李常文) |\n"
+        "编制单位(委托方:鄂尔多斯市能源局): 中煤科工集团北京华宇工程有限公司(工程编号 ZH0120BG)\n"
+        "- **org_hint**: 编制单位 = 中煤科工集团北京华宇工程有限公司（附录 1 委托函实证）；委托方 = 甘肃省发展和改革委员会（2022.4）；原规划批复 = 发改能源〔2020〕381 号\n"
+        "| 原环评/后评价编制单位 | 中煤科工集团北京华宇工程有限公司 |\n"
+    )
+    parsed = _parse_outline_header(text)
+    assert parsed["compiles"] == ["中煤科工集团北京华宇工程有限公司", "中煤科工集团沈阳设计研究院有限公司"]
+    assert parsed["commissions"] == ["牙克石市发展和改革委员会", "甘肃省发展和改革委员会"]  # =值/嵌套括号标签均命中; 原规划批复= 尾串不混入
+    assert parsed["develops"] == ["内蒙古牙克石五九煤炭有限责任公司"]  # 名称内 (集团) 随注记被剥——已知有损, 评审接受
 
 
 def test_project_name_must_be_declared():
@@ -88,7 +103,7 @@ def test_payload_passes_eia_schema():
     from app.extensions.ontology.doc_graph.schemas import EiaExtraction
 
     payload = _build_payload(_sample(), "s1", "项目A")
-    orgs, relations = _mod._outline_relations({"compiles": ["机构甲"], "commissions": [], "develops": []}, "项目A")
+    orgs, relations = _mod._outline_relations({"compiles": ["机构甲"], "commissions": [], "develops": [], "document_id": "eia-sample:s1"}, "项目A")
     payload["entities"] += orgs
     payload["relations"] += relations
     p = EiaExtraction.model_validate(payload)  # 全管线 fail-closed 过

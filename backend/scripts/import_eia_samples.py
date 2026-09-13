@@ -7,13 +7,21 @@ EiaExtraction payload, 经 ingest_extraction 入库（dg_entities/dg_mentions/dg
 隐私硬排除: generic_terms / aux.people / aux.doc_numbers 三桶永不入库——_build_payload 只读
 entities 下 5 个实体桶（projects/mines/orgs/places/sensitive）, 测试钉死（tests/test_import_eia_samples.py）。
 
-大纲关系: 若 {outlines-dir}/{slug}-outline.md 存在且含 `- **编制单位**/**委托单位**/**开发主体**:` 结构化
-头部行, 解析后合成 org_compiles/org_commissions/org_develops_project 关系边（subject=org 实体,
-object=entities.projects[0]）。projects 为空的样例只导实体, 不产关系边（报告计数）。
+大纲关系: 若 {outlines-dir}/{slug}-outline.md 存在, 解析其头部结构化行合成 org_compiles/org_commissions/
+org_develops_project 关系边（subject=org 实体, object=entities.projects[0]）。识别格式: `- **编制单位**: X`、
+非粗体 `- 编制单位: X`、表格行 `| 编制单位 | X |`、`标签 = 值`（org_hint 行）, 同义词 委托单位/委托方→commissions、
+开发主体/矿区主体→develops; 复合标签（如 原环评/后评价编制单位）不解析并计入 skip 报告。
+projects 为空的样例只导实体, 不产关系边（报告计数）。
 
 Run:
     cd backend && PYTHONPATH=. uv run python scripts/import_eia_samples.py --dry-run   # 统计, 不触库
     cd backend && PYTHONPATH=. uv run python scripts/import_eia_samples.py             # 真入库（需 extensions 库 dg_* 表）
+
+容器内运行（gateway 无 .wolf 挂载, 默认 --outlines-dir 不可达）: 先把大纲 digest 拷进可达路径再显式传参, 如
+    docker cp .wolf/tmp/eia-samples deer-flow-gateway:/tmp/eia-samples
+    docker exec deer-flow-gateway python /app/backend/scripts/import_eia_samples.py --outlines-dir /tmp/eia-samples
+（Task 4 runbook 亦可先拷到 /app/skills/public/coal-eia-report/references/outline_digests/ 再指 --outlines-dir;
+默认值不改——host 主场景优先。）
 """
 
 from __future__ import annotations
@@ -37,12 +45,13 @@ _REPO = Path(__file__).resolve().parents[2]
 # 桶 → etype（顺序即实体产出顺序; 隐私三桶 generic_terms/aux 不在此表 = 结构性排除）
 _BUCKET_ETYPE = {"projects": "project", "mines": "mine", "orgs": "org", "places": "place", "sensitive": "sensitive_point"}
 
-# 大纲头部标签 → 谓词角色; dict 顺序决定关系边产出顺序（compiles → commissions → develops）
+# 大纲头部标签（含同义词）→ 谓词角色; dict 顺序决定关系边产出顺序（compiles → commissions → develops）
 _FIELD_PREDICATE = {"compiles": "org_compiles_project", "commissions": "org_commissions_project", "develops": "org_develops_project"}
-_HEADER_FIELDS = {"编制单位": "compiles", "委托单位": "commissions", "开发主体": "develops"}
-_LABEL_RE = re.compile(r"\*\*(编制单位|委托单位|开发主体)\*\*\s*[:：]\s*")
+_HEADER_FIELDS = {"编制单位": "compiles", "委托单位": "commissions", "委托方": "commissions", "开发主体": "develops", "矿区主体": "develops"}
+# 粗体可选; 负向后行断言排除复合标签（如 原环评/后评价编制单位——语义指原环评非本文档, 计入 skip 报告）;
+# 分隔符 : ： =（org_hint 行） |（表格行）
+_LABEL_RE = re.compile(r"(?<![一-鿿A-Za-z0-9])\*{0,2}(编制单位|委托单位|委托方|开发主体|矿区主体)\*{0,2}\s*[:：=|]\s*")
 _BRACKET_RE = re.compile(r"[（(][^（）()]*[)）]")
-_DEFAULT_OUTLINE_DOC_ID = "eia-sample:outline"
 _EXTRACTED_BY = "eia-sample-import"
 
 
@@ -73,16 +82,19 @@ def _build_payload(entities_json: dict, slug: str, project_name: str | None) -> 
 def _parse_outline_header(text: str) -> dict:
     """解析 digest 头部结构化行 → {"compiles": [...], "commissions": [...], "develops": [...]}（纯函数）.
 
-    支持 `- **编制单位**: X（注记）；**委托单位**: Y`（同行多字段）与 `- **开发主体**: A、B`（顿号多值）。
-    值剥全/半角括号注记与尾部句读; 只认 **粗体标签+冒号** 形式, 正文普通提及不误匹配。
+    识别格式（评审 Fix1 扩宽）: 粗体/非粗体标签行 `- **编制单位**: X（注记）；**委托单位**: Y`、
+    表格行 `| 编制单位 | X |`、`标签 = 值`（org_hint 行）; 同义词 委托单位/委托方、开发主体/矿区主体。
+    解析前先整行剥全/半角括号注记——既清值内注记, 也处理 `编制单位(委托方:...): X` 嵌套并防
+    `（编制单位，x4）` 假标签; 值以 ；;。 为字段终止符, 顿号多值。
     """
     parsed: dict[str, list[str]] = {key: [] for key in _FIELD_PREDICATE}
     for line in text.splitlines():
+        line = _BRACKET_RE.sub("", line)
         labels = list(_LABEL_RE.finditer(line))
         for i, m in enumerate(labels):
             end = labels[i + 1].start() if i + 1 < len(labels) else len(line)
-            value = _BRACKET_RE.sub("", line[m.end() : end]).rstrip(" \t。．，,；;")
-            parsed[_HEADER_FIELDS[m.group(1)]].extend(p.strip() for p in value.split("、") if p.strip())
+            segment = re.split(r"[；;。]", line[m.end() : end], 1)[0].replace("|", " ")
+            parsed[_HEADER_FIELDS[m.group(1)]].extend(p.strip().lstrip("=:： \t") for p in segment.split("、") if p.strip())
     return {key: list(dict.fromkeys(vals)) for key, vals in parsed.items()}
 
 
@@ -91,9 +103,9 @@ def _outline_relations(parsed: dict, project_name: str) -> tuple[list[dict], lis
 
     compiles→org_compiles_project / commissions→org_commissions_project / develops→org_develops_project;
     subject=org 实体名, object=project_name。org 跨角色去重（同名一实体可挂多边）。
-    document_id 取 parsed["document_id"]（主流程注入 f"eia-sample:{slug}"）, 缺省回退 _DEFAULT_OUTLINE_DOC_ID。
+    document_id 直取 parsed["document_id"]（主流程注入 f"eia-sample:{slug}"）, 缺键 KeyError=fail-closed。
     """
-    document_id = parsed.get("document_id") or _DEFAULT_OUTLINE_DOC_ID
+    document_id = parsed["document_id"]
     orgs: list[dict] = []
     relations: list[dict] = []
     seen: set[str] = set()
@@ -120,7 +132,10 @@ def _entity_files(entities_dir: Path, slug_filter: str | None) -> list[Path]:
 def _process(path: Path, args: argparse.Namespace, outlines_usable: bool) -> dict:
     """单样例: 读 JSON → _build_payload → 大纲关系合成 → fail-closed 校验 → (非 dry-run) 入库."""
     slug = path.stem
-    data = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        raise SystemExit(f"ERROR: [{slug}] 样例 JSON 读取/解析失败: {e}") from e
     buckets = data.get("entities", {})
     projects = [str(p).strip() for p in buckets.get("projects") or [] if str(p).strip()]
     project_name = projects[0] if projects else None  # project_name 策略: entities.projects[0]
@@ -140,7 +155,7 @@ def _process(path: Path, args: argparse.Namespace, outlines_usable: bool) -> dic
                 outline_status = "no-match"
             else:
                 orgs, relations = _outline_relations(parsed, project_name)
-                existing = {e["name"] for e in payload["entities"]}
+                existing = {e["name"] for e in payload["entities"] if e["etype"] == "org"}  # 去重限定 org 桶, 防跨 etype 撞名绑错边
                 added = [o for o in orgs if o["name"] not in existing]
                 payload["entities"].extend(added)
                 payload["relations"].extend(relations)
@@ -160,8 +175,11 @@ def _process(path: Path, args: argparse.Namespace, outlines_usable: bool) -> dic
 
 
 def main() -> None:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # Windows 控制台/管道打印中文名不炸
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")  # Windows 控制台/管道打印中文名不炸
+        except (AttributeError, ValueError, OSError):
+            pass
     parser = argparse.ArgumentParser(description="EIA 样例实体注册表 → doc_graph eia 域导入")
     parser.add_argument("--entities-dir", type=Path, default=_REPO / "skills" / "public" / "coal-eia-report" / "references" / "sample_entities")
     parser.add_argument("--outlines-dir", type=Path, default=_REPO / ".wolf" / "tmp" / "eia-samples")
