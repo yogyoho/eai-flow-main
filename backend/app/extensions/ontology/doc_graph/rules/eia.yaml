@@ -10,7 +10,7 @@ rules:
       - "org_develops_project(?ORG, ?PROJ)"
       - "mine(?MINE)"
     derive: "org_involved_in(?ORG, ?MINE)"
-    note: "演示规则：开发主体参与其项目下矿井（验证底座，非业务定案）"
+    note: "演示规则：笛卡尔积派生（无 join 变量——词汇表暂无 mine↔project 谓词）；规模提示：3 边×191 矿 ≈573 派生，逼近 1000 上限（验证底座，非业务定案）"
   - name: demo_project_compile_chain
     enabled: true
     domain: eia

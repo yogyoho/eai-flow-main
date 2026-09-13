@@ -75,7 +75,7 @@ class RulesManifest(BaseModel):
 
     schema_version: int
     rules_version: int = 1  # 内存单调递增起点；实际版本由加载器维护
-    hot_reload: bool = True
+    hot_reload: bool = True  # declarative-only（镜像 registry.Manifest 同款死字段）——RuleStore 无条件指纹热重载, false 不会关闭
     files: list[RuleFileEntry] = Field(min_length=1)
 
 

@@ -1,7 +1,7 @@
 """Ontology 注册表加载器（YAML → 类型化注册表）.
 
 - fail-closed：任何文件解析/校验/交叉引用失败 → 抛 RegistryError（带文件名+行号），
-  绝不半加载（热重载失败保留旧版本继续服务）。
+  绝不半加载（热重载失败保留旧版本并抛错，由调用方决定）。
 - 逐文件 SHA-256 内容指纹（mtime 在挂载环境不可靠，同 config.yaml 签名模式）；
   指纹变化 → 全量重解析 → 原子替换 → registry_version 递增。
 - D4 双进程一致性：gateway 与 MCP 进程各自逐调用 check_reload()（同指纹输入 → 同版本输出）。

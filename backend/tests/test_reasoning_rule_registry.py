@@ -129,7 +129,7 @@ def test_hot_reload_version_bump(tmp_path: Path):
 
 
 def test_failed_reload_keeps_old_snapshot(tmp_path: Path):
-    """⑦ 修改失败（坏 YAML）→ 保留旧快照继续服务；修复后恢复重载且版本递增。"""
+    """⑦ 修改失败（坏 YAML）→ 保留旧快照继续服务；还原/修复后恢复且 last_error 被清。"""
     reg = _make_reg(tmp_path)
     d = _write_rules_dir(tmp_path)
     store = RuleStore(d, reg_provider=lambda: reg)
@@ -141,10 +141,60 @@ def test_failed_reload_keeps_old_snapshot(tmp_path: Path):
     assert r2.rules_version == r1.rules_version
     assert store.last_error is not None and "eia.yaml" in store.last_error
 
+    # 字节级还原 → 指纹与 r1 相同 → 短路返回同一快照, 陈旧 last_error 被清除
+    (d / "eia.yaml").write_text(GOOD_YAML, encoding="utf-8")
+    assert store.get() is r1
+    assert store.last_error is None
+
+    # 内容变化的修复 → 触发重载且版本递增
     (d / "eia.yaml").write_text(GOOD_YAML + "\n# 修复后重载\n", encoding="utf-8")
     r3 = store.get()
     assert r3 is not r1
     assert r3.rules_version == r1.rules_version + 1
+    assert store.last_error is None
+
+
+def test_registry_version_change_triggers_revalidation(tmp_path: Path):
+    """⑫ registry 版本变化触发规则重校验（规则文件指纹未变）:
+
+    (a) 版本 bump → 短路失效, 规则重校验出新快照/版本+1;
+    (b) 新枚举收缩致规则失效 → 保留旧快照 + last_error 置位;
+    (c) 恢复有效 registry → 重载成功 + last_error 清除。
+    """
+    reg = _make_reg(tmp_path)
+    d = _write_rules_dir(tmp_path)
+    state = {"reg": reg}
+    store = RuleStore(d, reg_provider=lambda: state["reg"])
+    r1 = store.get()
+    assert store.get() is r1, "短路基线：磁盘与 registry 版本均未变"
+
+    # (a) registry 热重载（版本递增）→ 规则文件未变也重校验
+    reg.registry_version += 1
+    r2 = store.get()
+    assert r2 is not r1
+    assert r2.rules_version == r1.rules_version + 1
+    assert r2.source_registry_version == reg.registry_version
+    assert store.last_error is None
+
+    # (b) 枚举收缩（etype 去 mine → demo 规则失效）→ 保留旧快照 + last_error 置位
+    shrunk_dir = tmp_path / "registry_shrunk"
+    shutil.copytree(REGISTRY_DIR, shrunk_dir)
+    f = shrunk_dir / "doc_graph.yaml"
+    f.write_text(f.read_text(encoding="utf-8").replace("qualification, mine, org", "qualification, org"), encoding="utf-8")
+    reg_shrunk = load_registry(shrunk_dir)
+    reg_shrunk.registry_version = reg.registry_version + 1  # 模拟 registry store 已重载该变更
+    state["reg"] = reg_shrunk
+    r3 = store.get()
+    assert r3 is r2, "规则对新枚举失效 → 保留旧快照继续服务"
+    assert r3.rules_version == r2.rules_version
+    assert store.last_error is not None and "mine" in store.last_error
+
+    # (c) 恢复有效 registry（版本再递增）→ 重载成功 + last_error 清除
+    reg.registry_version += 1
+    state["reg"] = reg
+    r4 = store.get()
+    assert r4 is not r2
+    assert r4.rules_version == r2.rules_version + 1
     assert store.last_error is None
 
 
