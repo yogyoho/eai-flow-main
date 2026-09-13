@@ -153,6 +153,17 @@ def test_stale_rules_observability(monkeypatch, stub_store):
     assert "eia.yaml" in out["stale_rules_error"]
 
 
+def test_no_rules_hint_names_known_domains(stub_store):
+    """零注册规则短路（不查库）: rules_loaded=0 + hint 命名已知域, 防止空结果被误读为无数据。"""
+    stub_store([_rule("eia_on", "eia")])
+
+    out = asyncio.run(evaluate_rules("bid"))
+
+    assert out["rules_loaded"] == 0 and out["derived_facts"] == []
+    assert "bid" in out["hint"] and "eia" in out["hint"]
+    assert "无注册规则" in out["hint"]
+
+
 def test_real_repo_rules_end_to_end_on_host(monkeypatch):
     """真仓规则单例（rules/eia.yaml 两条演示规则）+ 打桩事实 → host 全链路前向链:
     笛卡尔积规则对 1 边 × 2 矿派生 2 条 org_involved_in, 单模式规则不误触。"""
@@ -179,17 +190,21 @@ def test_real_repo_rules_end_to_end_on_host(monkeypatch):
 # --- MCP evaluate_rules 工具（handler 分发层, 不启动 stdio）---------------------------
 
 
-def test_mcp_evaluate_rules_success(monkeypatch):
+def test_mcp_evaluate_rules_success_and_no_rules_dir_passthrough(monkeypatch):
+    """评审加固: rules_dir 不进 MCP 面——schema 无该属性, agent 硬塞也不透传（防规则注入通道）。"""
     from app.extensions.ontology.doc_graph import mcp as mcp_mod
 
+    spec = next(t for t in mcp_mod.TOOLS if t.name == "evaluate_rules")
+    assert "rules_dir" not in spec.inputSchema.get("properties", {})
+
     async def _fake(domain, rules_dir=None):
-        assert domain == "eia" and rules_dir is None
+        assert rules_dir is None, "agent 提供的 rules_dir 不得透传到 Python API"
         return {"derived_facts": [], "activations": [], "stats": {}, "rules_loaded": 2, "stale_rules": False, "stale_rules_error": None, "truncated": False}
 
     from app.extensions.ontology.doc_graph.reasoning import evaluate as eval_mod
 
     monkeypatch.setattr(eval_mod, "evaluate_rules", _fake)
-    out = asyncio.run(mcp_mod.call_tool("evaluate_rules", {"domain": "eia"}))
+    out = asyncio.run(mcp_mod.call_tool("evaluate_rules", {"domain": "eia", "rules_dir": "/tmp/evil-rules"}))
     assert '"success": true' in out[0].text and '"rules_loaded": 2' in out[0].text
 
 

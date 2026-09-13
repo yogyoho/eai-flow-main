@@ -63,12 +63,11 @@ _TOOLS_SPEC = [
         "evaluate_rules",
         "在真库图数据上跑注册规则的前向链推理（现算现返，零落库）。domain 选择事实域（eia=环评样例）。"
         "返回派生事实、每条规则的触发轨迹（哪些源事实触发了哪条规则）与统计；"
-        "max_derived_reached/max_rule_fires_reached=true 表示到达推理工作预算（不必然截断）。",
+        "max_derived_reached/max_rule_fires_reached/max_iterations_reached=true 表示到达推理工作预算（不必然截断）。",
         {
             "type": "object",
             "properties": {
                 "domain": {"type": "string", "description": "事实域: eia=环评样例（bid 暂无注册规则时零注册）"},
-                "rules_dir": {"type": "string", "description": "可选: 规则目录覆盖（默认 doc_graph/rules）"},
             },
             "required": ["domain"],
         },
@@ -135,7 +134,10 @@ async def _evaluate_rules(a: dict) -> list[TextContent]:
     from app.extensions.ontology.doc_graph.reasoning.facade import RuleSyntaxError
 
     try:
-        res = await evaluate_rules(a["domain"], rules_dir=a.get("rules_dir"))
+        # 评审加固: MCP 面不透传 rules_dir——参数只在 Python API 层（测试/内部）可用。
+        # 暴露给 agent = 规则注入通道（对抗文档→构造规则→误导性派生事实以"规则结论"名义呈现）
+        # + 路径存在性/错误信息 oracle; schema 已删该属性, handler 也不再转发（双层封死）。
+        res = await evaluate_rules(a["domain"])
     except RuleSyntaxError as e:  # 窄捕获优先: 规则注册校验失败 → 明确文案（不误吞无关 ValueError）
         return _ok({"success": False, "error": f"规则语法错误: {e}"})
     except ValueError as e:  # 其余值错误（防御面）→ 走通用 _err 结构化

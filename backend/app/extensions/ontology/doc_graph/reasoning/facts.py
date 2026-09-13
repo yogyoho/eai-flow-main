@@ -8,6 +8,12 @@ EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-de
   "有效关系"语义 = 双端实体均 active 且置信度达标（merged/pending_review 实体隐去后,
   挂在其上的边自然不可达）; 关系行自身 confidence 不设门槛（Task 3 方案定案, 写侧
   谓词角色校验已兜底, 需要收紧时在两处 WHERE 各加一行即可）。
+- 同名歧义决策（评审加固）: uq_dg_entities_natural=(domain, etype, norm_name) 允许跨 etype
+  同名实体; 事实空间按 canonical_name 作 symbol → 跨 etype 同名会发生类型事实合并 +
+  关系 JOIN 歧义。本层语义决策 = **同名即同义**（对推理而言, 同名实体语义合并可接受）;
+  如需精确区分, 后续收紧点 = symbol 加 etype 限定（如 ``name/etype``）。
+- 双时间决策（评审加固）: valid_from/valid_to（业务有效期）当前不过滤——EIA 导入源恒 NULL,
+  加过滤等于无操作; 有效期语义启用为后续收紧点（读侧按 NOW() 截尾即可）。
 - MIN_CONFIDENCE 与 ingest.REVIEW_CONFIDENCE 同值不同源: 前者是推理可信子图的读侧阈值,
   后者是写侧复核阈值, 各自独立演进互不耦合。
 """

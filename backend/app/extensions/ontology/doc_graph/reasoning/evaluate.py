@@ -34,13 +34,29 @@ async def evaluate_rules(domain: str, rules_dir: str | None = None) -> dict:
     返回 {"derived_facts", "activations", "stats", "rules_loaded", "stale_rules",
           "stale_rules_error", "truncated"}; truncated=true 表示到达推理工作预算
     （max_*_reached 任一置位, 不必然截断, 语义见 facade.run() docstring）。
-    rules_dir 覆盖默认规则目录（冷 RuleStore 实例, 不入进程单例缓存）。
+    域内零注册规则时额外带 hint（命名已知域, 防止 agent 把空结果误读为"无数据"）。
+    rules_dir 覆盖默认规则目录（冷 RuleStore 实例, 不入进程单例缓存; 仅 Python API/
+    测试可用——MCP 面不透传, 见 mcp._evaluate_rules 评审加固注）。
     """
     store = rule_registry.get_rules_store() if rules_dir is None else rule_registry.RuleStore(Path(rules_dir))
     snapshot = store.get()
     # enabled 过滤在注册表层（snapshot.enabled_rules）, 域过滤在编排层——facade 不感知 domain
     rules = [r for r in snapshot.enabled_rules if r.domain == domain]
     stale_error = store.last_error
+
+    if not rules:
+        # 零规则短路: 不查库（零派生已定）, hint 命名已知域（同包私有表, 单一真源在 rule_registry）
+        known = ", ".join(sorted(rule_registry._DOMAIN_EXTRACTIONS))
+        return {
+            "derived_facts": [],
+            "activations": [],
+            "stats": dict(_EMPTY_STATS),
+            "rules_loaded": 0,
+            "stale_rules": stale_error is not None,
+            "stale_rules_error": stale_error,
+            "truncated": False,
+            "hint": f"已知域: {known}——'{domain}' 域当前无注册规则",
+        }
 
     facts = await load_facts(domain)
     if not facts:
