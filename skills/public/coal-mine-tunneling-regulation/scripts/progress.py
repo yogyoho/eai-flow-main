@@ -13,10 +13,10 @@ spec 2026-08-28 控制器化改造：主 agent 薄上下文只协调——每轮
   PENDING  --额度耗尽--> BLOCKED
 VERIFIED 只能来自 `gate` 真跑单章门 rc=0 的自动回写（手动 mark VERIFIED 已禁用，bug-3049）——只信产物，不信子代理摘要。
 
-相位推导（derive_phase，单一事实）：
-  wave1 有 PENDING/DRAFTED → WAVE1（单章 BLOCKED 不拖停全书）
-  存在未批准 BLOCKED → NEGOTIATE（先协商再定要点包范围）
-  要点包未确认 → KEY_POINTS；ch10 未收口 → WAVE2；否则 FINAL。
+相位推导（derive_phase，单一事实，N 波）：
+  波表来自 stage.generation_waves（J2；无该键则全章一波）逐波扫描：
+  波内有未批准 BLOCKED → NEGOTIATE；波内有 PENDING/DRAFTED → WAVEi；全部 VERIFIED → FINAL。
+  （KEY_POINTS 相位与 confirm-key-points 子命令已删除——J3 无要点包停靠）
 
 退出码：0 成功 / 1 用法错误、非法状态转移、重复 init、未知章节、批量门有 FAIL。
 
@@ -42,10 +42,11 @@ EXIT_OK, EXIT_ERROR = 0, 1
 # 缺文件时省略该旗标 → CC1/CC3 降为 manual，rc=2 由调用方按门拦语义处理）。
 STANDARDS_INDEX = Path(__file__).resolve().parent.parent / "references" / "standards_index.json"
 
-# 派发额度 = config.yaml subagents.max_total_per_run（本计划 Task 5 提额到 16；clamp [1,50]）。
-# progress.py 不读 harness 配置（技能脚本自包含），按 16 做预算展示与耗尽判定。
-# 注意：脚本内预算只做展示与 WAVE1 路由提示；硬执行在 harness SubagentLimitMiddleware（WAVE2 ch10 重派不检额度属预期）。
-DISPATCH_BUDGET = 16
+# 派发额度 = config.yaml subagents.max_total_per_run（本计划提额到 20；clamp [1,50]）。
+# 9 章 + 每章重派 ≤1 = 18 > 16 会提前触发额度耗尽 BLOCKED，故 16 → 20。
+# progress.py 不读 harness 配置（技能脚本自包含），按 20 做预算展示。
+# 注意：脚本内预算只做展示；硬执行在 harness SubagentLimitMiddleware。
+DISPATCH_BUDGET = 20
 
 TRANSITIONS: dict[str, set[str]] = {
     "PENDING": {"DRAFTED", "VERIFIED", "BLOCKED"},  # PENDING→BLOCKED = 派发额度耗尽；PENDING→VERIFIED = gate 真跑门 PASS 自动补记（手动 mark VERIFIED 已禁用，bug-3049）
@@ -56,7 +57,12 @@ TRANSITIONS: dict[str, set[str]] = {
 
 
 def chapter_order(chs: dict) -> list[str]:
-    return sorted(chs, key=lambda x: int(x[2:]) if x[2:].isdigit() else 99)
+    bad = sorted(c for c in chs if not c[2:].isdigit())
+    if bad:
+        # 尾章兜底 99 会被静默当最后一章——非数值章 id 显式报错（stage chapters 键须 chN 数值命名）
+        print(f"[progress] 非数值章 id {bad}——stage chapters 键须 chN 数值命名（尾章兜底 99 排序已废，显式报错）", file=sys.stderr)
+        raise SystemExit(EXIT_ERROR)
+    return sorted(chs, key=lambda x: int(x[2:]))
 
 
 def load(state_dir: Path) -> dict:
@@ -83,118 +89,66 @@ def approved_set(doc: dict) -> set[str]:
     return out
 
 
-def derive_phase(doc: dict) -> str:
-    chs = doc["chapters"]
-    order = chapter_order(chs)
-    wave1 = order[:-1]
-    wave2 = [order[-1]] if order else []
-    unapproved = {c for c, s in chs.items() if s["status"] == "BLOCKED"} - approved_set(doc)
-    if any(chs[c]["status"] in ("PENDING", "DRAFTED") for c in wave1):
-        return "WAVE1"
-    if unapproved:
-        return "NEGOTIATE"
-    if not doc.get("key_points_confirmed"):
-        return "KEY_POINTS"
-    if any(chs[c]["status"] in ("PENDING", "DRAFTED") for c in wave2):
-        return "WAVE2"
+def _ch_num(ch: str) -> int:
+    return int(ch[2:]) if ch[2:].isdigit() else 99
+
+
+def _waves(doc) -> list:
+    """波表来自 stage.generation_waves（J2）；无该键则全章一波。"""
+    stage = json.loads(Path(doc["stage_path"]).read_text(encoding="utf-8"))
+    gw = stage.get("generation_waves") or {}
+    waves = [list(gw[k]) for k in sorted(gw) if gw.get(k)]
+    if not waves:
+        waves = [sorted(doc["chapters"], key=_ch_num)]
+    return waves
+
+
+def _negotiate_action(doc) -> dict:
+    # = geo next_action 的 NEGOTIATE 分支（L142-152）原逻辑改返回 dict
+    blocked = [c for c, e in doc["chapters"].items() if e["status"] == "BLOCKED"]
+    approved = approved_set(doc)
+    todo = [c for c in blocked if c not in approved]
+    return {"phase": "NEGOTIATE", "action": "NEGOTIATE",
+            "command": f"协商三选项：补数据重派 {todo} / approve-downgrade --chapters {','.join(todo)} --note ... / [待确认] 收尾",
+            "expect_rc": "用户裁决后按选项执行"}
+
+
+def _finalize_action(doc) -> dict:
+    # = geo next_action 的 FINAL 分支（L178-197）原逻辑改返回 dict
+    return {"phase": "FINAL", "action": "FINALIZE",
+            "command": f"progress.py run-stage finalize --state-dir {doc['state_dir']} --outputs-dir /mnt/user-data/outputs --task \"掘进作业规程终验\"",
+            "expect_rc": "BUILD_READY / consistency rc1 停 rc2 呈现 rc3 可交付"}
+
+
+def derive_phase(doc) -> str:
+    approved = approved_set(doc)  # geo L79-83 原函数
+    for i, wave in enumerate(_waves(doc), 1):
+        sts = [doc["chapters"][c]["status"] for c in wave if c in doc["chapters"]]
+        if any(s == "BLOCKED" for s in sts) and not (approved & set(wave)):
+            return "NEGOTIATE"
+        if any(s in ("PENDING", "DRAFTED") for s in sts):
+            return f"WAVE{i}"
     return "FINAL"
 
 
-def _self_cmd(*extra: str) -> str:
-    return "python -X utf8 " + str(Path(__file__).resolve()) + " " + " ".join(extra)
-
-
-def next_action(doc: dict, state_dir: Path) -> str:
+def next_action(doc) -> dict:
     phase = derive_phase(doc)
-    chs = doc["chapters"]
-    order = chapter_order(chs)
-    wave1 = order[:-1]
-    last = order[-1] if order else None
-    sd = str(state_dir)
-    lines = [f"PHASE: {phase}"]
-
-    if phase == "WAVE1":
-        drafted = [c for c in wave1 if chs[c]["status"] == "DRAFTED"]  # 先收口已起草的（批量一次跑完）
-        if drafted:
-            lines += [
-                f"[NEXT] 批量跑门: {', '.join(drafted)}（DRAFTED——只信产物，不信子代理摘要；一次 bash 全部跑完，PASS 章自动转 VERIFIED）",
-                f"命令: {_self_cmd('gate', '--state-dir', sd)}",
-                "期望 rc: 0（GATE_BATCH_DONE passed=N failed=0，PASS 章已由 gate 真跑单章门自动转 VERIFIED）",
-                '        1 → failed 章按 stderr 原文重派（原 prompt + stderr，每章 ≤1 次）；重派仍 FAIL → mark BLOCKED --gate FAIL --detail "<一句话差距>"',
-            ]
-            return "\n".join(lines)
-        pending = [c for c in wave1 if chs[c]["status"] == "PENDING"]
-        if doc.get("total_dispatches", 0) >= DISPATCH_BUDGET:
-            lines += [
-                f"[NEXT] 额度耗尽: 总派发 {doc.get('total_dispatches', 0)}/{DISPATCH_BUDGET}，剩余 PENDING {pending}",
-                f'动作: 逐章 progress.py mark <chN> BLOCKED --state-dir {sd} --detail "派发额度耗尽" → 进协商（或请用户新会话续跑，progress 无损）',
-            ]
-            return "\n".join(lines)
-        c = pending[0]
-        lines += [
-            f"[NEXT] 派发: {c}（PENDING，wave1 独立章）",
-            f'动作: 按 SKILL.md 步骤4 派发契约组装 prompt，task(subagent_type="general-purpose") 派子代理直写 state/chapters/{c}.md',
-            "约束: 每轮 ≤3 个并发 task()（超发被运行时静默丢弃）；子代理只回 ≤10 行摘要（含本章要点 3-5 条）",
-            f"派发后记账: progress.py mark {c} DRAFTED --state-dir {sd}（收章后跑单章门，见 DRAFTED 分支）",
-        ]
-        return "\n".join(lines)
-
+    doc["phase"] = phase
     if phase == "NEGOTIATE":
-        un = sorted({c for c, s in chs.items() if s["status"] == "BLOCKED"} - approved_set(doc))
-        lines += [
-            f"[NEXT] 协商: 未批准 BLOCKED: {', '.join(un)}",
-            "动作: 组差距表（章/实际 eff/目标/缺口——取各章 gate_detail 与单章门 stderr）单表单 ask_clarification 三选项:",
-            "  ① 补数据（回 ingest → formula_runner → 相关章 mark DRAFTED 重派）",
-            f'  ② 批准降档（progress.py approve-downgrade --state-dir {sd} --chapters {",".join(un)} --note "<用户批准依据>"）',
-            "  ③ [待确认] 收尾（缺数信号放宽覆盖缩放，重写即可能达标）",
-            "期望: 用户答复后才推进（单回合至多一次 ask_clarification；挂起即停，不推进）",
-        ]
-        return "\n".join(lines)
-
-    if phase == "KEY_POINTS":
-        lines += [
-            "[NEXT] 要点包: wave1 已收口，蒸馏 state/key_points.json",
-            "动作: 聚合各子代理摘要的「本章要点 3-5 条」+ formula_state 关键值（L9 总量/分类量、L10 对比、E 链经济指标）",
-            '      写 state/key_points.json: {"chapters":{"ch1":[...],...},"highlights":{...},"issues":[...]}',
-            f"      单表单 ask_clarification 呈现用户确认 → progress.py confirm-key-points --state-dir {sd}",
-            "要点包 = ch10 唯一事实来源（不重读 9 章全文）",
-        ]
-        return "\n".join(lines)
-
-    if phase == "WAVE2":
-        if chs[last]["status"] == "DRAFTED":
-            lines += [
-                f"[NEXT] 跑门: {last}（DRAFTED，wave2 结论章——同款批量 gate 命令）",
-                f"命令: {_self_cmd('gate', '--state-dir', sd)}",
-                "期望 rc: 同 WAVE1 批量跑门分支（PASS→VERIFIED / FAIL→重派 ≤1 次→BLOCKED）",
-            ]
-            return "\n".join(lines)
-        lines += [
-            f"[NEXT] 派发: {last}（PENDING，wave2 结论章）",
-            "动作: 派发契约同 wave1，输入追加 state/key_points.json——只依据要点包写投影式结论，不引入 wave1 之外的新数字",
-        ]
-        return "\n".join(lines)
-
-    # FINAL
-    blocked = sorted(c for c, s in chs.items() if s["status"] == "BLOCKED")
-    gate_cmd = _self_cmd("run-stage", "finalize", "--state-dir", sd, "--outputs-dir", '"<OUTPUTS>"', "--task", '"<本轮用户指令一句话>"')
-    if blocked:
-        lines += [
-            f"[NEXT] 终验（分级交付）: 已批准降档 {blocked}",
-            f"命令: {gate_cmd}",
-            "说明: 已批准降档自动加 --allow-partial（stdout PARTIAL_DELIVERY 行明示 N 章降档；manifest.partial 逐章留痕）——交付时向用户汇报降档章节与差距",
-            "期望 rc: 0 → stdout 含 BUILD_READY/MANIFEST_READY（整行+退出码原样粘贴进回复）→ present_files",
-            "        consistency rc=3（WARN/MANUAL 透传）→ 逐条汇报用户后交付；rc=1/2 → stderr 原样呈现，修章重跑",
-        ]
-        return "\n".join(lines)
-    lines += [
-        "[NEXT] 终验: 全部章节 VERIFIED",
-        f"命令: {gate_cmd}",
-        "说明: run-stage finalize 一次 bash 完成 build_output → consistency.py → snapshot.py save（交付名由脚本从 data/ 拼，stdout 原样透传）",
-        "期望 rc: 0 → stdout 含 BUILD_READY/MANIFEST_READY（整行+退出码原样粘贴进回复）→ present_files",
-        "        consistency rc=3（WARN/MANUAL 透传）→ 逐条汇报用户后交付；rc=1/2 → stderr 原样呈现，修章重跑",
-    ]
-    return "\n".join(lines)
+        return _negotiate_action(doc)
+    if phase == "FINAL":
+        return _finalize_action(doc)
+    i = int(phase[4:])
+    wave = _waves(doc)[i - 1]
+    pending = [c for c in wave if doc["chapters"][c]["status"] == "PENDING"]
+    drafted = [c for c in wave if doc["chapters"][c]["status"] == "DRAFTED"]
+    if drafted:
+        return {"phase": phase, "action": "GATE",
+                "command": f"progress.py gate --state-dir {doc['state_dir']}",
+                "expect_rc": "0=本波全部过门转VERIFIED / 1=有FAIL（stderr 逐章差距，重派 ≤1 次）"}
+    return {"phase": phase, "action": "DISPATCH",
+            "command": f"batch_task(items={json.dumps(pending)}, 每项=该章派发契约) → 收章逐章 mark chN DRAFTED",
+            "expect_rc": f"波{phase} {len(pending)} 章投递；投递后停车轮询"}
 
 
 def cmd_init(args: argparse.Namespace) -> int:
@@ -210,7 +164,6 @@ def cmd_init(args: argparse.Namespace) -> int:
         "phase": "WAVE1",
         "total_dispatches": 0,
         "chapters": {c: {"status": "PENDING", "dispatches": 0, "last_gate": None, "gate_detail": "", "blocked_reason": None} for c in chapter_order(stage.get("chapters", {}))},
-        "key_points_confirmed": False,
         "downgrade_approvals": [],
     }
     state_dir.mkdir(parents=True, exist_ok=True)
@@ -222,13 +175,18 @@ def cmd_init(args: argparse.Namespace) -> int:
 
 def cmd_next(args: argparse.Namespace) -> int:
     doc = load(Path(args.state_dir))
-    print(next_action(doc, Path(args.state_dir)))
+    doc["state_dir"] = args.state_dir  # next_action 命令串需要（不落盘，仅本轮渲染）
+    a = next_action(doc)
+    print(f"PHASE={a['phase']}")
+    print(f"[NEXT] {a['action']}")
+    print(f"命令: {a['command']}")
+    print(f"期望 rc: {a['expect_rc']}")
     return EXIT_OK
 
 
 def cmd_status(args: argparse.Namespace) -> int:
     doc = load(Path(args.state_dir))
-    print(f"phase={derive_phase(doc)} 总派发={doc.get('total_dispatches', 0)}/{DISPATCH_BUDGET} 要点包确认={doc.get('key_points_confirmed', False)}")
+    print(f"phase={derive_phase(doc)} 总派发={doc.get('total_dispatches', 0)}/{DISPATCH_BUDGET}")
     for c in chapter_order(doc["chapters"]):
         s = doc["chapters"][c]
         extra = f" reason={s['blocked_reason']}" if s.get("blocked_reason") else ""
@@ -396,16 +354,6 @@ def cmd_run_stage(args: argparse.Namespace) -> int:
     )
 
 
-def cmd_confirm(args: argparse.Namespace) -> int:
-    state_dir = Path(args.state_dir)
-    doc = load(state_dir)
-    doc["key_points_confirmed"] = True
-    doc["phase"] = derive_phase(doc)
-    save(state_dir, doc)
-    print(f"KEY_POINTS_CONFIRMED（phase={doc['phase']}）")
-    return EXIT_OK
-
-
 def cmd_approve(args: argparse.Namespace) -> int:
     state_dir = Path(args.state_dir)
     doc = load(state_dir)
@@ -421,13 +369,13 @@ def cmd_approve(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def main() -> int:
+def main(argv=None) -> int:
     p = argparse.ArgumentParser(description="geological-report v2 — 章节进度状态机（步骤4 控制器）")
     sub = p.add_subparsers(dest="cmd", required=True)
     sp = sub.add_parser("init", help="按 stage 章节清单初始化 progress.json（全 PENDING；已存在=续跑拒重置）")
     sp.add_argument("--stage", required=True)
     sp.add_argument("--state-dir", required=True)
-    sp.add_argument("--data-dir", help="记录数据目录（next 渲染精确命令用；缺省输出 <DATA> 占位）")
+    sp.add_argument("--data-dir", required=True, help="记录数据目录（gate/run-stage 依赖——eia L117 教训，init 必带）")
     sp.set_defaults(fn=cmd_init)
     sp = sub.add_parser("next", help="控制器每轮先读：恰好一个下一步动作 + 精确命令 + 期望 rc")
     sp.add_argument("--state-dir", required=True)
@@ -454,15 +402,12 @@ def main() -> int:
     sp.add_argument("--task", default="地质勘查报告终验", help="snapshot last_task 一句话摘要")
     sp.add_argument("--allow-partial", action="store_true", help="强制分级交付（已批准降档时自动启用，无需显式传）")
     sp.set_defaults(fn=cmd_run_stage)
-    sp = sub.add_parser("confirm-key-points", help="要点包已经用户单表单确认（解锁 ch10）")
-    sp.add_argument("--state-dir", required=True)
-    sp.set_defaults(fn=cmd_confirm)
     sp = sub.add_parser("approve-downgrade", help="记录用户批准的降档（--allow-partial 放行凭据）")
     sp.add_argument("--state-dir", required=True)
     sp.add_argument("--chapters", required=True, help="逗号分隔，如 ch3,ch8")
     sp.add_argument("--note", default="")
     sp.set_defaults(fn=cmd_approve)
-    args = p.parse_args()
+    args = p.parse_args(argv)
     try:
         return args.fn(args)
     except (json.JSONDecodeError, KeyError, TypeError, OSError) as e:
