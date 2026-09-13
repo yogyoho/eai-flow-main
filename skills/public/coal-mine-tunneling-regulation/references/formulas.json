@@ -49,7 +49,7 @@
      "regression": "902.236/10 → 91；C5 合约对 ch4 管线敷设表风筒数量做**下限 sanity**（数量 ≥ N 才过，冗余备节 warn——样例 120 节对应不同设计长度，exact 语义与 n=1 矛盾，对抗评审 P1 裁定）"},
     {"id": "F4", "name": "通风阻力（线性近似，J12）", "chapter": "ch5", "expr": "h ≈ R × L × Q²（R=百米风阻系数 N·s²/m⁸，L=供风距离，Q=风量 m³/s）",
      "inputs": [{"name": "R", "type": "lookup_table", "source": "reference_values.json#ventilation", "note": "风阻系数【待核实】"}, {"name": "Ld", "type": "user_input", "source_form": "05_ventilation.json", "field": "air_supply_distance_m"}, {"name": "Q0", "type": "formula_output", "source": "Q0"}],
-     "outputs": [{"name": "F4.drag_head", "unit": "Pa"}], "precision": "1 Pa", "slots": ["{{SLOT:F4.drag_head}}"],
+     "outputs": [{"name": "F4.drag_head", "unit": "Pa"}], "precision": "0.1 Pa", "slots": ["{{SLOT:F4.drag_head}}"],
      "needs_verification": true, "note": "spec D5 项（J12）：R 未核实前恒记 anomaly，仅作局扇风压对照参考值，不参与任何门断言"}
   ],
   "derived_slots": []

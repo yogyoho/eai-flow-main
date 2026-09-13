@@ -73,3 +73,37 @@ def test_impacted_update_order_law(tmp_path):
     imp = json.load(open(tmp_path / "impacted.json", encoding="utf-8"))
     assert "Q1.need_by_gas" in imp["changes"]
     assert "ch5" in imp["affected_chapters"]
+
+def test_missing_air_supply_distance_records_anomaly(tmp_path):
+    # 质量评审 I1：F2/F4 缺参不得静默跳过——「缺输入必记 anomaly」纪律（rc=0 唯一可达路径堵漏）
+    data = _fill(tmp_path)
+    vent_path = Path(data) / "05_ventilation.json"
+    vent = json.loads(vent_path.read_text(encoding="utf-8"))
+    vent.pop("air_supply_distance_m", None)
+    vent_path.write_text(json.dumps(vent, ensure_ascii=False), encoding="utf-8")
+    state = str(tmp_path / "formula_state.json")
+    rc, out = run_cli(formula_runner.main, ["execute", "--stage", STAGE, "--data-dir", data, "--output", state])
+    assert rc == 3, out
+    st = json.load(open(state, encoding="utf-8"))
+    joined = " ".join(st["anomalies"])
+    assert "F2 缺 duct_leak_rate_per100m/air_supply_distance_m" in joined
+    assert "F4 缺 air_supply_distance_m" in joined
+    assert "F2.fan_need" not in st["values"] and "F4.drag_head" not in st["values"]
+
+def test_nonpositive_section_skips_block(tmp_path):
+    # 质量评审 I2：断面非正数=源数据错误——Q4/F1/F2/F4 整块跳过，禁冻结零值槽位
+    data = _fill(tmp_path)
+    road_path = Path(data) / "01_roadway.json"
+    road = json.loads(road_path.read_text(encoding="utf-8"))
+    road["drive_section_m2"] = 0
+    road_path.write_text(json.dumps(road, ensure_ascii=False), encoding="utf-8")
+    state = str(tmp_path / "formula_state.json")
+    rc, out = run_cli(formula_runner.main, ["execute", "--stage", STAGE, "--data-dir", data, "--output", state])
+    assert rc == 3, out
+    st = json.load(open(state, encoding="utf-8"))
+    assert any("非正数" in a and "检查源数据" in a for a in st["anomalies"])
+    v = st["values"]
+    assert not any(k.startswith("Q4.") for k in v)
+    assert "F1.duct_gap_m" not in v and "F2.fan_need" not in v and "F4.drag_head" not in v
+    assert v["Q1.need_by_gas"]["value"] == 472.60 and v["Q0.need_final"]["basis"] == "Q1"  # 不依赖断面的链照常
+    assert v["F3.duct_count"]["value"] == 91

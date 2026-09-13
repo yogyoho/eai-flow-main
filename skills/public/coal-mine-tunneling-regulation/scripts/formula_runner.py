@@ -149,8 +149,12 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         emit("Q0.need_final", q0, 2, "m³/min", "formula:Q0", {"basis": "+".join(basis)})
 
     s = road.get("drive_section_m2")
+    s_err = False  # 断面非正数=源数据错误——质量评审 I2：Q4/F1/F2/F4 整块跳过（风量域计算全无意义）
     if s in (None, ""):
         anomalies.append("Q4/F1 缺掘进断面（roadway.drive_section_m2）——风速验算与风筒距离跳过")
+    elif float(s) <= 0:
+        s_err = True
+        anomalies.append(f"Q4/F1 掘进断面非正数（roadway.drive_section_m2={s}）——检查源数据")
     else:
         s = float(s)
         emit("Q4.v_min_q", 60.0 * 0.25 * s, 2, "m³/min", "formula:Q4", {"inputs": {"S": s, "v": 0.25}})
@@ -165,11 +169,14 @@ def compute(data: Data) -> tuple[dict, list[str]]:
                                  f"[{values['Q4.v_min_q']['value']}, {values['Q4.v_max_q']['value']}]（R2 带 0.25~8 m/s）——需协商调断面或分风")
 
     i, ld = vent.get("duct_leak_rate_per100m"), vent.get("air_supply_distance_m")
-    if "Q0.need_final" in values and i not in (None, "") and ld not in (None, ""):
+    if not s_err and "Q0.need_final" in values and i not in (None, "") and ld not in (None, ""):
         qf = values["Q0.need_final"]["value"] * (1.0 + (float(i) / 100.0) * (float(ld) / 100.0))
         emit("F2.fan_need", qf, 2, "m³/min", "formula:F2",
              {"inputs": {"i": float(i), "Ld": float(ld)}, "note": "线性近似待核实"})
         anomalies.append("F2 漏风折算采用线性近似【待核实】——与连乘式的差异未过 tier1")
+    elif not s_err and "Q0.need_final" in values:
+        # 质量评审 I1：缺参不得静默跳过（rc=0 唯一可达路径堵漏）——Q0 缺失不重复记（Q0 自身已有）
+        anomalies.append("F2 缺 duct_leak_rate_per100m/air_supply_distance_m（ventilation.*）——漏风折算跳过")
 
     length, seg = road.get("design_length_m"), vent.get("duct_section_length_m")
     if length not in (None, "") and seg not in (None, "") and float(seg) > 0:
@@ -178,12 +185,14 @@ def compute(data: Data) -> tuple[dict, list[str]]:
         anomalies.append("F3 缺设计长度或每节长度——风筒节数跳过（C5 无法对账 ch4 管线表）")
 
     # F4 通风阻力（J12：spec D5 项，风阻系数待核实 → 恒记 anomaly，仅参考值）
-    if "Q0.need_final" in values and ld not in (None, ""):
+    if not s_err and "Q0.need_final" in values and ld not in (None, ""):
         r_coef = 0.01  # 【待核实】占位系数 N·s²/m⁸——核实前结果仅参考
         q_m3s = values["Q0.need_final"]["value"] / 60.0
         emit("F4.drag_head", r_coef * float(ld) * q_m3s * q_m3s, 1, "Pa", "formula:F4",
              {"inputs": {"R": r_coef, "Ld": float(ld)}, "note": "R 待核实"})
         anomalies.append("F4 通风阻力风阻系数 R【待人工核实】——结果仅作参考值，禁写入正文当设计依据")
+    elif not s_err and "Q0.need_final" in values:
+        anomalies.append("F4 缺 air_supply_distance_m——通风阻力跳过")
 
     return values, anomalies
 
