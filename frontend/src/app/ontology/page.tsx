@@ -20,9 +20,11 @@ import dynamic from "next/dynamic";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { usePermission } from "@/core/permissions";
-import { authFetch } from "@/extensions/api/client";
 import { INK_3, PAGE_BG } from "@/extensions/bid-quote/components/chartTheme";
-import { fetchRegistryMeta } from "@/extensions/ontology/api/ontology-graph-api";
+import {
+  fetchPendingReviewCount,
+  fetchRegistryMeta,
+} from "@/extensions/ontology/api/ontology-graph-api";
 import { DetailPanel } from "@/extensions/ontology/components/DetailPanel";
 import type { OntologyGraphCanvasProps } from "@/extensions/ontology/components/OntologyGraphCanvas";
 import { OverviewPanel } from "@/extensions/ontology/components/OverviewPanel";
@@ -67,20 +69,6 @@ const PAGE_VIEWS: Array<[PageView, string]> = [
 ];
 
 const EMPTY_SNAPSHOT: GraphSnapshot = { nodes: [], edges: [] };
-
-// 后端 service.list_pending_review 的 limit 钳制值（doc_graph/service.py）
-const PENDING_REVIEW_LIMIT = 200;
-
-/** 待复核实体计数（doc-graph resolution REST；403 等失败由 query error → null → "—"）。 */
-async function fetchPendingReviewCount(): Promise<number> {
-  const res = await authFetch<{ count?: number; entities?: unknown[] }>(
-    `/doc-graph/resolution/pending?limit=${PENDING_REVIEW_LIMIT}`,
-  );
-  if (typeof res.count === "number") {
-    return res.count;
-  }
-  return Array.isArray(res.entities) ? res.entities.length : 0;
-}
 
 /** 已加载图节点中按 label 子串检索（大小写不敏感）；前缀命中排前，截取前 8 条。 */
 function searchGraphNodes(query: string): Array<{ id: string; label: string }> {

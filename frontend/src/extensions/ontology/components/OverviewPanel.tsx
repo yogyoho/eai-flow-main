@@ -34,9 +34,10 @@ import {
   truncateLabel,
 } from "@/extensions/bid-quote/components/chartTheme";
 import { StatCard } from "@/extensions/bid-quote/components/StatCard";
-import type {
-  GraphEdge,
-  GraphNode,
+import {
+  PENDING_REVIEW_LIMIT,
+  type GraphEdge,
+  type GraphNode,
 } from "@/extensions/ontology/api/ontology-graph-api";
 import {
   communitySizes,
@@ -46,8 +47,6 @@ import {
 
 const HUB_TOP_N = 10;
 const HUB_LABEL_MAX = 12;
-// 后端 service.list_pending_review 的 limit 钳制值（doc_graph/service.py）
-const PENDING_REVIEW_LIMIT = 200;
 
 function shortLabel(label: string): string {
   return label.length > HUB_LABEL_MAX

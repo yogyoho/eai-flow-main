@@ -64,6 +64,14 @@ describe("degreeTop", () => {
     expect(degreeTop([], [])).toEqual([]);
     expect(degreeTop(NODES, [])).toEqual([]);
   });
+
+  test("悬空边（端点不在节点集）不抛且不计度", () => {
+    const dangling = [{ source: "n1", target: "ghost" }];
+    expect(() => degreeTop(NODES, dangling)).not.toThrow();
+    const top = degreeTop(NODES, dangling);
+    expect(top).toEqual([{ label: "alpha", degree: 1 }]);
+    expect(top.some((entry) => entry.label === "ghost")).toBe(false);
+  });
 });
 
 describe("communitySizes", () => {
@@ -84,5 +92,33 @@ describe("communitySizes", () => {
 
   test("空输入返回空数组（不抛）", () => {
     expect(communitySizes([], [])).toEqual([]);
+  });
+
+  test("悬空边不抛且社区并集仍覆盖全节点", () => {
+    const dangling = [{ source: "n1", target: "ghost" }];
+    expect(() => communitySizes(NODES, dangling)).not.toThrow();
+    const union = new Set(
+      communitySizes(NODES, dangling).flatMap((entry) => entry.labels),
+    );
+    expect(union.size).toBe(NODES.length);
+  });
+
+  test("同对多类型边（mergeEdge 去重路径）不抛且社区计算正常", () => {
+    const parallelEdges = [
+      { source: "n1", target: "n3" },
+      { source: "n3", target: "n1" }, // 同对反向
+      { source: "n1", target: "n3" }, // 同对完全重复
+    ];
+    expect(() => communitySizes(NODES, parallelEdges)).not.toThrow();
+    const communities = communitySizes(NODES, parallelEdges);
+    expect(communities.length).toBeGreaterThanOrEqual(1);
+    const union = new Set(communities.flatMap((entry) => entry.labels));
+    expect(union.size).toBe(NODES.length);
+  });
+
+  test("Louvain 固定种子：同一图两次调用分区与编号一致", () => {
+    const first = communitySizes(NODES, EDGES);
+    const second = communitySizes(NODES, EDGES);
+    expect(first).toEqual(second);
   });
 });

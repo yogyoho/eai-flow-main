@@ -75,9 +75,28 @@ export function degreeTop(
 }
 
 /**
+ * 固定种子 RNG（mulberry32，8 行内联免加依赖）：louvain 默认 randomWalk 走
+ * Math.random，同一图两次运行可能得到不同分区与不同社区编号——canvas 图例与
+ * 概览图各自独立跑 communityAssignments，图例 "#3 · 120" 与概览 "#3" 会描述
+ * 不同节点组。固定种子 → 同图同分区同编号（跨视图/跨开关一致）。
+ */
+const LOUVAIN_SEED = 0x5eed;
+
+function mulberry32(seed: number): () => number {
+  return () => {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * Louvain 社区分配：nodeId → community id。空图/异常 → 空 Map，绝不抛。
  * 构造 undirected 单图投影（节点全量先 addNode 保孤点入社；mergeEdge 对同对
- * 多边去重——addEdge 在非 multi 图上遇重复对会抛）。
+ * 多边去重——addEdge 在非 multi 图上遇重复对会抛）；悬空边（端点不在节点集）
+ * 跳过。rng 固定种子保证确定性（见 mulberry32 注）。
  */
 export function communityAssignments(
   nodes: { id: string }[],
@@ -98,7 +117,7 @@ export function communityAssignments(
         projection.mergeEdge(edge.source, edge.target);
       }
     }
-    const mapping = louvain(projection);
+    const mapping = louvain(projection, { rng: mulberry32(LOUVAIN_SEED) });
     projection.forEachNode((nodeId) => {
       const community = mapping[nodeId];
       if (community !== undefined) {
