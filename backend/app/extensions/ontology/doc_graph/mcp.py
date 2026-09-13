@@ -1,10 +1,12 @@
-"""doc_graph 写 MCP Server——4 工具，ontology 只读 server 的构建侧补充.
+"""doc_graph 写+计算 MCP Server——5 工具，ontology 只读 server 的构建侧补充.
 
 EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-11-ontology-doc-graph-design.md §3.1 补全。
 - ingest_extraction: LLM 抽取 JSON → fail-closed 校验 → 入库（幂等）
 - list_pending_review: 低置信待复核实体
 - merge_entities / unmerge: 消解合并与撤销（dg_merges 留痕）
-查询走只读 ontology server 的 graph_* 对象——本 server 只写。
+- evaluate_rules: 真库事实 + 注册规则 → 前向链推理（现算现返, 零落库;
+  reasoning/ 子包, 见 docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-design.md）
+查询走只读 ontology server 的 graph_* 对象——写路径与规则计算在本 server。
 EAI-CUSTOM: 审核 SQL 已抽至 service.py（REST/MCP 共用，见 2026-09-13-ontology-semantic-map-v2-design.md §4）——本文件只保留 MCP 参数解析与 _ok/_err 包装。
 """
 
@@ -56,6 +58,20 @@ _TOOLS_SPEC = [
         "unmerge",
         "撤销一次合并（删留痕行，candidate 置回 active）。",
         {"type": "object", "properties": {"merge_id": {"type": "string"}}, "required": ["merge_id"]},
+    ),
+    (
+        "evaluate_rules",
+        "在真库图数据上跑注册规则的前向链推理（现算现返，零落库）。domain 选择事实域（eia=环评样例）。"
+        "返回派生事实、每条规则的触发轨迹（哪些源事实触发了哪条规则）与统计；"
+        "max_derived_reached/max_rule_fires_reached=true 表示到达推理工作预算（不必然截断）。",
+        {
+            "type": "object",
+            "properties": {
+                "domain": {"type": "string", "description": "事实域: eia=环评样例（bid 暂无注册规则时零注册）"},
+                "rules_dir": {"type": "string", "description": "可选: 规则目录覆盖（默认 doc_graph/rules）"},
+            },
+            "required": ["domain"],
+        },
     ),
 ]
 
@@ -114,11 +130,25 @@ async def _unmerge(a: dict) -> list[TextContent]:
     return _ok({"success": True, **res})
 
 
+async def _evaluate_rules(a: dict) -> list[TextContent]:
+    from app.extensions.ontology.doc_graph.reasoning.evaluate import evaluate_rules
+    from app.extensions.ontology.doc_graph.reasoning.facade import RuleSyntaxError
+
+    try:
+        res = await evaluate_rules(a["domain"], rules_dir=a.get("rules_dir"))
+    except RuleSyntaxError as e:  # 窄捕获优先: 规则注册校验失败 → 明确文案（不误吞无关 ValueError）
+        return _ok({"success": False, "error": f"规则语法错误: {e}"})
+    except ValueError as e:  # 其余值错误（防御面）→ 走通用 _err 结构化
+        return _err(e)
+    return _ok({"success": True, **res})
+
+
 _HANDLERS = {
     "ingest_extraction": _ingest_extraction,
     "list_pending_review": _list_pending_review,
     "merge_entities": _merge_entities,
     "unmerge": _unmerge,
+    "evaluate_rules": _evaluate_rules,
 }
 
 server = Server("doc-graph")

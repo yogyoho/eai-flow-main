@@ -7,9 +7,9 @@ from mcp.types import TextContent
 from app.extensions.ontology.doc_graph.mcp import _HANDLERS, TOOLS, call_tool
 
 
-def test_four_tools_registered():
+def test_five_tools_registered():
     names = {t.name for t in TOOLS}
-    assert names == {"ingest_extraction", "list_pending_review", "merge_entities", "unmerge"}
+    assert names == {"ingest_extraction", "list_pending_review", "merge_entities", "unmerge", "evaluate_rules"}
 
 
 def test_handlers_cover_tools():
