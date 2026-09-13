@@ -14,12 +14,35 @@
  * - 画布配色沿用 vendored GRAPH_THEME（标签 chip 自带深色底、节点为中饱和语义色，
  *   明暗两套页面底色上都可读）；页面底色走 bg-background 语义令牌，themeAdapter
  *   接缝保留给后续画布级主题注入。
+ * - colorByCommunity 开关（semantic-map v2 Task 3）：开启时算 Louvain 社区并把
+ *   节点 color/baseColor 系列属性改写为 chartTheme 家族色轮转色，关闭时原位恢复。
+ *   挂点 = sigma 节点 reducer 每次全量 refresh 都读实时节点属性（getSemanticNodeColor
+ *   ← baseColor || color），故改属性后 handle.requestRender()（scheduleRefresh）即可
+ *   重着色——零 vendored 改动，不动 graphVersion（避免 setGraph + 相机重置）。
  */
 import { Loader2, RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { GraphCanvas, type GraphCanvasHandle } from "@/extensions/ontology/explorer/GraphCanvas";
-import { graph } from "@/extensions/ontology/explorer/graphStore";
+import {
+  AMBER,
+  BLUE,
+  COMPETITOR,
+  GREEN,
+  INK_2,
+  RED,
+} from "@/extensions/bid-quote/components/chartTheme";
+import {
+  GraphCanvas,
+  type GraphCanvasHandle,
+} from "@/extensions/ontology/explorer/GraphCanvas";
+import {
+  graph,
+  type NodeAttributes,
+} from "@/extensions/ontology/explorer/graphStore";
+import {
+  GRAPH_THEME,
+  withAlpha,
+} from "@/extensions/ontology/explorer/graphTheme";
 import type {
   GraphDisplayMeta,
   GraphEffectsState,
@@ -29,7 +52,19 @@ import type {
 } from "@/extensions/ontology/explorer/types";
 import { useLoadGraph } from "@/extensions/ontology/explorer/useLoadGraph";
 import { makeExplorerFetchers } from "@/extensions/ontology/explorerDataSource";
+import { readGraphSnapshot } from "@/extensions/ontology/graphSnapshot";
+import { communityAssignments } from "@/extensions/ontology/stats";
 import { cn } from "@/lib/utils";
+
+// 社区着色家族色轮转（chartTheme 常量派生，非字面量）；按社区规模降序分配
+const COMMUNITY_NODE_PALETTE = [BLUE, GREEN, AMBER, RED, COMPETITOR, INK_2];
+const COMMUNITY_LEGEND_LIMIT = 8;
+
+interface CommunityLegendItem {
+  community: number;
+  size: number;
+  color: string;
+}
 
 const DISPLAY_META: GraphDisplayMeta = {
   layoutMode: "base",
@@ -83,6 +118,8 @@ export interface OntologyGraphCanvasProps {
   onSelectNode: (nodeId: string) => void;
   onReady?: (handle: GraphCanvasHandle | null) => void;
   onSummary?: (summary: GraphLoadSummary | null) => void;
+  /** 开启后按 Louvain 社区给节点着色（chartTheme 家族色轮转），关闭恢复语义色。 */
+  colorByCommunity?: boolean;
   className?: string;
 }
 
@@ -91,6 +128,7 @@ export function OntologyGraphCanvas({
   onSelectNode,
   onReady,
   onSummary,
+  colorByCommunity = false,
   className,
 }: OntologyGraphCanvasProps) {
   const fetchers = useMemo(() => makeExplorerFetchers(), []);
@@ -109,7 +147,8 @@ export function OntologyGraphCanvas({
   const loadQuery = useLoadGraph({
     fetchNodes: fetchers.fetchNodes,
     fetchEdges: fetchers.fetchEdges,
-    onProgress: (progress: GraphLoadProgress) => setProgressMessage(formatProgress(progress)),
+    onProgress: (progress: GraphLoadProgress) =>
+      setProgressMessage(formatProgress(progress)),
   });
 
   useEffect(() => {
@@ -131,8 +170,97 @@ export function OntologyGraphCanvas({
     void loadQuery.refetch();
   };
 
+  // ── 社区着色（semantic-map v2 Task 3）────────────────────────────
+  // 开：改写节点 color/baseColor 系列为社区色（原值存恢复表），requestRender 重着色；
+  // 关/图重载：恢复表原位回写。store 是共享单例，恢复表保证语义色可逆。
+  const colorRestoreRef = useRef<Map<string, Partial<NodeAttributes>> | null>(
+    null,
+  );
+  const [communityLegend, setCommunityLegend] = useState<CommunityLegendItem[]>(
+    [],
+  );
+
+  useEffect(() => {
+    if (!loadQuery.data) {
+      return;
+    }
+    if (!colorByCommunity) {
+      const restore = colorRestoreRef.current;
+      if (!restore) {
+        return;
+      }
+      restore.forEach((previous, nodeId) => {
+        if (graph.hasNode(nodeId)) {
+          graph.mergeNodeAttributes(nodeId, previous);
+        }
+      });
+      colorRestoreRef.current = null;
+      setCommunityLegend([]);
+      canvasRef.current?.requestRender();
+      return;
+    }
+    // 开启（或开启状态下图重载——store 已被 clearGraph 清空重建，旧恢复表作废）
+    const { nodes, edges } = readGraphSnapshot();
+    const assignments = communityAssignments(nodes, edges);
+    if (assignments.size === 0) {
+      return;
+    }
+    const sizeByCommunity = new Map<number, number>();
+    assignments.forEach((community) => {
+      sizeByCommunity.set(community, (sizeByCommunity.get(community) ?? 0) + 1);
+    });
+    const ranked = [...sizeByCommunity.entries()].sort(
+      (left, right) => right[1] - left[1] || left[0] - right[0],
+    );
+    const colorByCommunityId = new Map<number, string>();
+    ranked.forEach(([community], index) => {
+      // EAI: fallback satisfies noUncheckedIndexedAccess — index is total (modulo palette.length)
+      colorByCommunityId.set(
+        community,
+        COMMUNITY_NODE_PALETTE[index % COMMUNITY_NODE_PALETTE.length] ?? BLUE,
+      );
+    });
+    const restore = new Map<string, Partial<NodeAttributes>>();
+    graph.forEachNode((nodeId) => {
+      const attrs = graph.getNodeAttributes(nodeId) as NodeAttributes;
+      restore.set(nodeId, {
+        color: attrs.color,
+        baseColor: attrs.baseColor,
+        mutedColor: attrs.mutedColor,
+        glowColor: attrs.glowColor,
+        strokeColor: attrs.strokeColor,
+        borderColor: attrs.borderColor,
+      });
+      const color =
+        colorByCommunityId.get(assignments.get(nodeId) ?? -1) ??
+        attrs.baseColor ??
+        "";
+      graph.mergeNodeAttributes(nodeId, {
+        color,
+        baseColor: color,
+        mutedColor: withAlpha(color, GRAPH_THEME.nodes.mutedAlpha),
+        glowColor: withAlpha(color, 0.24),
+        strokeColor: color,
+        borderColor: color,
+      });
+      return true;
+    });
+    colorRestoreRef.current = restore;
+    setCommunityLegend(
+      ranked.slice(0, COMMUNITY_LEGEND_LIMIT).map(([community, size]) => ({
+        community,
+        size,
+        color: colorByCommunityId.get(community) ?? BLUE,
+      })),
+    );
+    canvasRef.current?.requestRender();
+  }, [colorByCommunity, loadQuery.data]);
+
   return (
-    <div className={cn("relative h-full w-full", className)} data-testid="ontology-graph-canvas">
+    <div
+      className={cn("relative h-full w-full", className)}
+      data-testid="ontology-graph-canvas"
+    >
       <GraphCanvas
         ref={canvasRef}
         graphVersion={graphVersion}
@@ -170,6 +298,28 @@ export function OntologyGraphCanvas({
               </>
             )}
           </div>
+        </div>
+      ) : null}
+      {communityLegend.length > 0 ? (
+        <div
+          className="absolute bottom-3 left-3 z-10 flex max-w-[70%] flex-wrap items-center gap-1.5"
+          data-testid="community-legend"
+        >
+          {communityLegend.map((item) => (
+            <span
+              key={item.community}
+              title={`社区 #${item.community} · ${item.size} 实体`}
+              className="bg-background/80 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] backdrop-blur-sm"
+            >
+              <span
+                className="h-2 w-2 shrink-0 rounded-[3px]"
+                style={{ background: item.color }}
+              />
+              <span className="text-muted-foreground tabular-nums">
+                #{item.community} · {item.size}
+              </span>
+            </span>
+          ))}
         </div>
       ) : null}
     </div>
