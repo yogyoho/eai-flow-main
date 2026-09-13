@@ -27,7 +27,7 @@
 | J4 | 门1 档案检查 | 档案族 = 普通表单族（`family:"profile"`，file `00_profile.json`）；`profile.py load` 经 `ingest.write_form_values` 落盘 → 门1 完备性**零新代码**自动覆盖 | ingest check 逐族判 required 字段既有机制直接复用 |
 | J5 | 合约数据源 | consistency 合约 `source` 语法扩两类：`data:<族>.<字段>`（JSON 表单）与 `data:<CSV族>:<列名>`（CSV 整列）；eia 只有 `formula:` 前缀 | C1/C3/C8/C12 的值源是表单而非公式；C12 档案 echo 同理 |
 | J6 | KF resolve 修复 | 调用参数改 `report_type="operating_procedures_report"`、`industry="煤炭挖掘"`、`domain_keywords` 增 `"操作规程"`；并发布 DB 中 3218 抽取 draft 模板 756b65d7（完整度 86）为 published | 现行参数三重不匹配恒 found=False（侦察实证：report_type 不在 business_dictionaries/industry≠字典 label/keywords 零 ILIKE 命中）；Task 1 需用户确认后执行 DB UPDATE |
-| J7 | 深度口径 | `depth_targets/tunneling.json` floor_chars = 3218 实测章 effective_chars × **1.2**（D10），confidence 记 `measured_single_anchor_n1_x1.2`；与 eia 0.6 折减方向相反是**有意为之**并在 source 字段说明 | spec D10 拍板；n=1 上浮防样本偏小；构建时逐章试算防超子代理产能 |
+| J7 | 深度口径 | `depth_targets/tunneling.json` floor_chars = 3218 实测章 effective_chars × **1.2**（D10），confidence 记 `measured_single_anchor_n1_x1.2`；与 eia 0.6 折减方向相反是**有意为之**并在 source 字段说明；「可承载」断言=**逐章语义**（单章地板 <25000 字≈子代理产能上限；T4 实测最大 ch8=19522 ✓——总量断言无意义因 9 章各由独立子代理生成，T4 实测裁决） | spec D10 拍板；n=1 上浮防样本偏小 |
 | J8 | C10 定性 | C10（传感器断电值）标 `code_constraint` 型 → 一律记 manual（eia :671 语义），tier1 人工核实 AQ 1029 前不作自动断言 | 审查技能无此数值（侦察 R1–R12 实证）；D8 强制条款不放宽 |
 | J9 | 审查技能边界 | `skills/custom/coal-mine-report-review` 本期**不修改**（含其 allowed-tools 声明）；E2E 验收 = 程序化比对阈值表，**不真实激活**审查技能 | 激活态工具剥离会打断 present_files（侦察 risk）；阈值数值已内联进本项目 JSON |
 | J10 | 深度门单源化 | build_output 的深度目标公式三处复制（validate_depth_target/_depth_row/run_chapter_gate，注释自标「三处同式须同步改」）移植时**收敛为单一函数** `depth_target()`；深度基准文件**保持 geo 形状** `{coefficient, absolute_floor, per_chapter:{chN:{median_eff,…}}}`（`median_eff = ceil(实测eff×1.2)`），不改 eia floor_chars 门 | 侦察 risk：漏改一处即门与 manifest 口径分叉；对抗评审 P1：geo load_targets 只认 per_chapter/median_eff，eia floor_chars 形状装进 geo 门=恒 0 哑火 |
@@ -532,7 +532,10 @@ for fam, spec in st['forms'].items():
     req = {f['name'] for f in spec['fields'] if f.get('required', True)}
     seed = set(d['form_seed'].get(fam, {}))
     assert req <= seed, f'{fam} 种子缺 required 字段: {req - seed}'
-assert 1.2*tot < 60000, '×1.2 后总量必须可承载（J7 试算门）'
+# J7 可承载=逐章语义（T4 实测裁决：9 章各由独立子代理生成，总量无意义；单章地板须装进子代理产能 ~2万字）
+floors = {k: int(v['eff_chars'] * 1.2) for k, v in d['chapters'].items() if k.startswith('ch')}
+assert max(floors.values()) < 25000, f'单章 ×1.2 地板超子代理产能: {max(floors.items(), key=lambda x: x[1])}'
+print('total eff:', tot, 'per-chapter max floor:', max(floors.values()))
 print('FIXTURE_OK')"
 ```
 
@@ -1826,7 +1829,7 @@ dest.parent.mkdir(parents=True, exist_ok=True)
 dest.write_text(json.dumps(out, ensure_ascii=False, indent=1) + '\n', encoding='utf-8')
 tot = sum(v['median_eff'] for v in out['per_chapter'].values())
 print('DEPTH_OK chapters=', len(out['per_chapter']), 'total_floor=', tot)
-assert tot < 80000, '×1.2 后总地板超产能红线——回 J7 复核'
+assert max(v['median_eff'] for v in out['per_chapter'].values()) < 25000, '单章地板超子代理产能——回 J7 复核（逐章语义，T4 裁决）'
 "
 # 期望: DEPTH_OK chapters= 9 total_floor= <80000
 ```
