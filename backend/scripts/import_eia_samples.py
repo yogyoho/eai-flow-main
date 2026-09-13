@@ -2,7 +2,9 @@
 """EIA 样例实体注册表 → doc_graph eia 域批量导入（EAI-CUSTOM: doc-graph 计划 Task 3）.
 
 把 skills/public/coal-eia-report/references/sample_entities/{slug}.json 实体注册表转换为
-EiaExtraction payload, 经 ingest_extraction 入库（dg_entities/dg_mentions/dg_relations, 幂等 upsert）。
+EiaExtraction payload, 经 ingest_extraction 入库（dg_entities/dg_mentions/dg_relations）。
+幂等性: ingest 仅对实体幂等 upsert（uq_dg_entities_natural）, mentions/relations 是盲 INSERT——
+本脚本以 document_id 重入守卫补齐（_already_ingested, 命中即跳过该样例; --force 显式绕过重导, 会再翻倍）。
 
 隐私硬排除: generic_terms / aux.people / aux.doc_numbers 三桶永不入库——_build_payload 只读
 entities 下 5 个实体桶（projects/mines/orgs/places/sensitive）, 测试钉死（tests/test_import_eia_samples.py）。
@@ -129,6 +131,31 @@ def _entity_files(entities_dir: Path, slug_filter: str | None) -> list[Path]:
     return files
 
 
+def _already_ingested(document_id: str) -> bool:
+    """重入守卫: 该 document_id 在 dg_mentions 已有任一 mention 视为该样例已导入.
+
+    EAI-CUSTOM: ingest_extraction 对 mentions/relations 盲 INSERT（仅实体幂等）, 批量脚本重跑
+    会整样例翻倍; 以 document_id 判重使重跑零副作用（同 crash 中断后的补跑也只补缺失样例）。
+    连接模式照抄 ingest_extraction（NullPool + _ext_url 单一真源）, 延迟 import 保持 dry-run 零 DB 依赖。
+    """
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    from app.extensions.ontology.connectors import _ext_url
+
+    async def _query() -> bool:
+        engine = create_async_engine(_ext_url(), poolclass=NullPool)
+        try:
+            async with engine.begin() as conn:
+                row = (await conn.execute(text("SELECT 1 FROM dg_mentions WHERE document_id = :doc LIMIT 1"), {"doc": document_id})).first()
+                return row is not None
+        finally:
+            await engine.dispose()
+
+    return bool(asyncio.run(_query()))
+
+
 def _process(path: Path, args: argparse.Namespace, outlines_usable: bool) -> dict:
     """单样例: 读 JSON → _build_payload → 大纲关系合成 → fail-closed 校验 → (非 dry-run) 入库."""
     slug = path.stem
@@ -167,11 +194,19 @@ def _process(path: Path, args: argparse.Namespace, outlines_usable: bool) -> dic
         raise SystemExit(f"ERROR: [{slug}] EiaExtraction 校验失败（fail-closed, 不静默跳过）: {e}") from e
 
     ingested = None
+    skipped_existing = False
     if not args.dry_run:
-        from app.extensions.ontology.doc_graph.ingest import ingest_extraction  # 延迟导入: dry-run 路径绝不 import ingest（host 无库可跑）
+        if getattr(args, "force", False):
+            from app.extensions.ontology.doc_graph.ingest import ingest_extraction  # 延迟导入: dry-run 路径绝不 import ingest（host 无库可跑）
 
-        ingested = asyncio.run(ingest_extraction(model))
-    return {"slug": slug, "model": model, "outline": outline_status, "has_project": project_name is not None, "ingested": ingested}
+            ingested = asyncio.run(ingest_extraction(model))
+        elif _already_ingested(f"eia-sample:{slug}"):
+            skipped_existing = True  # 重入守卫: 该样例已导入过, 跳过防 mentions/relations 翻倍
+        else:
+            from app.extensions.ontology.doc_graph.ingest import ingest_extraction  # 延迟导入: dry-run 路径绝不 import ingest（host 无库可跑）
+
+            ingested = asyncio.run(ingest_extraction(model))
+    return {"slug": slug, "model": model, "outline": outline_status, "has_project": project_name is not None, "ingested": ingested, "skipped_existing": skipped_existing}
 
 
 def main() -> None:
@@ -186,6 +221,7 @@ def main() -> None:
     parser.add_argument("--skip-outlines", action="store_true", help="跳过大纲头部关系, 仅导实体桶")
     parser.add_argument("--slug", default=None, help="只处理指定 slug")
     parser.add_argument("--dry-run", action="store_true", help="只打印统计, 不入库（不 import ingest）")
+    parser.add_argument("--force", action="store_true", help="绕过已导入守卫强制重导（mentions/relations 会翻倍, 仅故意重导时用）")
     args = parser.parse_args()
 
     if not args.entities_dir.is_dir():
@@ -199,6 +235,7 @@ def main() -> None:
     total_ing: dict[str, int] = Counter()
     no_project: list[str] = []
     n_outline_applied = 0
+    n_skipped = 0
     files = _entity_files(args.entities_dir, args.slug)
     for path in files:
         r = _process(path, args, outlines_usable)
@@ -214,10 +251,13 @@ def main() -> None:
         if r["ingested"]:
             line += f" ingested(ent={r['ingested']['entities_upserted']}, rel={r['ingested']['relations']}, mentions={r['ingested']['mentions']})"
             total_ing.update(r["ingested"])
+        elif r["skipped_existing"]:
+            line += " ingested=skipped(existing)"
+            n_skipped += 1
         print(line)
 
     print("====")
-    mode = "dry-run: 未触库" if args.dry_run else f"ingested: entities={total_ing['entities_upserted']} relations={total_ing['relations']} mentions={total_ing['mentions']}"
+    mode = "dry-run: 未触库" if args.dry_run else f"ingested: entities={total_ing['entities_upserted']} relations={total_ing['relations']} mentions={total_ing['mentions']} skipped(existing)={n_skipped}"
     print(f"samples={len(files)} entities={total_ent} relations={total_rel} outline-applied={n_outline_applied} entities-only={len(no_project)} {mode}")
     if no_project:
         print(f"entities-only（无 project, 跳过关系边）: {', '.join(no_project)}")
