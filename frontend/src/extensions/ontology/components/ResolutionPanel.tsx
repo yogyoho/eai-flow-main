@@ -160,7 +160,7 @@ export function ResolutionPanel({
     mutationFn: (mergeId: string) => unmergeEntities(mergeId),
     onSuccess: () => {
       setUndoable(null);
-      setNotice({ kind: "info", text: "已撤销合并，实体已还原待复核" });
+      setNotice({ kind: "info", text: "已撤销合并，实体已还原为正式实体" });
       void queryClient.invalidateQueries({
         queryKey: ["ontology"],
       });
