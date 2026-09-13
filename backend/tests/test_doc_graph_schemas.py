@@ -2,9 +2,11 @@
 
 import copy
 import inspect
+from pathlib import Path
 from typing import get_args
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from app.extensions.ontology.doc_graph import schemas
@@ -172,3 +174,15 @@ def test_literal_and_domain_tables_consistent():
     """全枚举 Literal 必须恰等于两域域表并集——防域表键 typo 产生静默死条目。"""
     assert set(get_args(schemas._ETYPE)) == BidExtraction.domain_etypes | EiaExtraction.domain_etypes
     assert set(get_args(schemas._PREDICATE)) == BidExtraction.domain_predicates | EiaExtraction.domain_predicates
+
+
+def test_registry_yaml_enums_superset_of_schemas_literals():
+    """registry doc_graph.yaml 枚举必须 ⊇ schemas 全枚举 Literal——防 yaml 增益而 schemas 未跟的静默死规则。"""
+    yaml_path = Path(__file__).resolve().parents[1] / "app" / "extensions" / "ontology" / "registry" / "doc_graph.yaml"
+    doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
+    props = {p["name"]: p for ot in doc["object_types"] for p in ot["properties"]}
+    yaml_etypes = set(props["etype"]["enum"])
+    yaml_preds = set(props["predicate"]["enum"])
+    assert set(get_args(schemas._ETYPE)) <= yaml_etypes
+    assert set(get_args(schemas._PREDICATE)) <= yaml_preds
+    assert "org_involved_in" in yaml_preds  # 推理派生谓词（不落库, 仅事实空间）
