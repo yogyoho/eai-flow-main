@@ -5,6 +5,7 @@ EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-11-ontology-doc-graph-design.m
 - list_pending_review: 低置信待复核实体
 - merge_entities / unmerge: 消解合并与撤销（dg_merges 留痕）
 查询走只读 ontology server 的 graph_* 对象——本 server 只写。
+EAI-CUSTOM: 审核 SQL 已抽至 service.py（REST/MCP 共用，见 2026-09-13-ontology-semantic-map-v2-design.md §4）——本文件只保留 MCP 参数解析与 _ok/_err 包装。
 """
 
 from __future__ import annotations
@@ -84,77 +85,33 @@ async def _ingest_extraction(a: dict) -> list[TextContent]:
 
 
 async def _list_pending_review(a: dict) -> list[TextContent]:
-    from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.pool import NullPool
+    from app.extensions.ontology.doc_graph.service import list_pending_review
 
-    from app.extensions.ontology.connectors import _ext_url
-
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
-    try:
-        async with engine.connect() as conn:
-            res = await conn.execute(
-                text("SELECT id, domain, etype, canonical_name, confidence FROM dg_entities WHERE status = 'pending_review' AND (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text)) ORDER BY confidence ASC LIMIT :lim"),
-                {"etype": a.get("etype"), "lim": max(1, min(int(a.get("limit", 50)), 200))},
-            )
-            rows = [dict(r) for r in res.mappings().all()]
-    finally:
-        await engine.dispose()
-    return _ok({"success": True, "count": len(rows), "entities": rows})
+    res = await list_pending_review(etype=a.get("etype"), limit=int(a.get("limit", 50)))
+    return _ok({"success": True, **res})
 
 
 async def _merge_entities(a: dict) -> list[TextContent]:
-    from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.pool import NullPool
+    from app.extensions.ontology.doc_graph.service import merge_entities
 
-    from app.extensions.ontology.connectors import _ext_url
-
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    candidate_id = a["candidate_id"]
+    canonical_id = a["canonical_id"]
     try:
-        async with engine.begin() as conn:
-            res = await conn.execute(
-                text("UPDATE dg_entities SET status = 'merged', updated_at = NOW() WHERE id = CAST(:cid AS uuid)"),
-                {"cid": a["candidate_id"]},
-            )
-            if res.rowcount == 0:
-                return _ok({"success": False, "message": f"candidate {a['candidate_id']} 不存在"})
-            row = (
-                await conn.execute(
-                    text("INSERT INTO dg_merges (candidate_id, canonical_id, method, confidence) VALUES (CAST(:cid AS uuid), CAST(:kid AS uuid), :method, :conf) RETURNING id"),
-                    {"cid": a["candidate_id"], "kid": a["canonical_id"], "method": a.get("method", "manual"), "conf": a.get("confidence", 1.0)},
-                )
-            ).first()
-    finally:
-        await engine.dispose()
-    return _ok({"success": True, "merge_id": str(row.id)})
+        res = await merge_entities(candidate_id, canonical_id, method=a.get("method", "manual"), confidence=a.get("confidence", 1.0))
+    except KeyError as e:  # 资源不存在 → 结构化消息（现行为; IntegrityError 自合并 CHECK 不接, 上抛走 _err）
+        return _ok({"success": False, "message": e.args[0]})
+    return _ok({"success": True, **res})
 
 
 async def _unmerge(a: dict) -> list[TextContent]:
-    from sqlalchemy import text
-    from sqlalchemy.ext.asyncio import create_async_engine
-    from sqlalchemy.pool import NullPool
+    from app.extensions.ontology.doc_graph.service import unmerge
 
-    from app.extensions.ontology.connectors import _ext_url
-
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    merge_id = a["merge_id"]
     try:
-        async with engine.begin() as conn:
-            row = (
-                await conn.execute(
-                    text("DELETE FROM dg_merges WHERE id = CAST(:mid AS uuid) RETURNING candidate_id"),
-                    {"mid": a["merge_id"]},
-                )
-            ).first()
-            if row is None:
-                return _ok({"success": False, "message": f"merge {a['merge_id']} 不存在"})
-            await conn.execute(
-                text("UPDATE dg_entities SET status = 'active', updated_at = NOW() WHERE id = :cid"),
-                {"cid": row.candidate_id},
-            )
-    finally:
-        await engine.dispose()
-    return _ok({"success": True, "restored_candidate_id": str(row.candidate_id)})
+        res = await unmerge(merge_id)
+    except KeyError as e:  # 资源不存在 → 结构化消息（现行为）
+        return _ok({"success": False, "message": e.args[0]})
+    return _ok({"success": True, **res})
 
 
 _HANDLERS = {

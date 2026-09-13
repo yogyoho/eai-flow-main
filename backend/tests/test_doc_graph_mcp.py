@@ -28,11 +28,14 @@ def test_ingest_validation_error_is_structured():
 
 
 def test_list_pending_review_sql_asyncpg_safe():
-    """asyncpg 不能推断裸 :etype 的类型(AmbiguousParameterError)——必须 CAST(:etype AS text)。"""
+    """asyncpg 不能推断裸 :etype 的类型(AmbiguousParameterError)——必须 CAST(:etype AS text)。
+
+    EAI-CUSTOM: SQL 已抽至 service.py(REST/MCP 共用), 检查对象随之迁移, 契约不变。
+    """
     import inspect
 
-    from app.extensions.ontology.doc_graph import mcp
+    from app.extensions.ontology.doc_graph import service
 
-    src = inspect.getsource(mcp._list_pending_review)
+    src = inspect.getsource(service.list_pending_review)
     assert "CAST(:etype AS text)" in src
     assert ":etype IS NULL" not in src
