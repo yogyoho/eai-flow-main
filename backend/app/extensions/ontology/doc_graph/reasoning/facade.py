@@ -44,6 +44,13 @@ _FACT_SHAPE = re.compile(r"^\s*([^()\s]+)\s*\((.*)\)\s*$")
 Triple = tuple[str, str, str]
 
 
+class RuleSyntaxError(ValueError):
+    """add_rule 注册校验失败（畸形模式/arity 越界/非 ?var 变元/重复规则名）.
+
+    Task 3 MCP 层窄捕获用: 只拦规则注册校验失败, 不误吞无关 ValueError。
+    """
+
+
 def _substitute_variables(template: str, bindings: dict[str, str]) -> str:
     """Token 级 ``?var`` 替换; 未绑定占位符原样保留（上游 reasoner 同语义）."""
     if not bindings:
@@ -87,13 +94,13 @@ def _compile_pattern(pattern: str) -> _Pattern:
     """
     parsed = _parse_shape(pattern)
     if parsed is None:
-        raise ValueError(f'malformed rule pattern {pattern!r}: expected "pred(?A, ?B)"')
+        raise RuleSyntaxError(f'malformed rule pattern {pattern!r}: expected "pred(?A, ?B)"')
     predicate, args = parsed
     if len(args) not in (1, 2):
-        raise ValueError(f"rule pattern {pattern!r}: arity must be 1 or 2, got {len(args)}")
+        raise RuleSyntaxError(f"rule pattern {pattern!r}: arity must be 1 or 2, got {len(args)}")
     bad = [a for a in args if not a.startswith("?")]
     if bad:
-        raise ValueError(f"rule pattern {pattern!r}: variables must start with '?', got {bad}")
+        raise RuleSyntaxError(f"rule pattern {pattern!r}: variables must start with '?', got {bad}")
     return _Pattern(predicate=predicate, variables=[a[1:] for a in args])
 
 
@@ -122,19 +129,21 @@ class RuleFacade:
     def add_rule(self, name: str, when_patterns: list[str], derive: str) -> None:
         """注册规则: when 模式全满足 → derive 结论模板派生新事实.
 
-        结论模板 arity 限 1/2（三元组空间）; 变元须 ``?`` 开头。开关过滤在
-        注册表层（Task 2）, 此处不做。
+        结论模板 arity 限 1/2（三元组空间）; 变元须 ``?`` 开头。校验失败抛
+        RuleSyntaxError。开关过滤在注册表层（Task 2）, 此处不做。
         """
+        if any(e.name == str(name) for e in self._rules):
+            raise RuleSyntaxError(f"duplicate rule name {name!r}")
         compiled = [_compile_pattern(p) for p in when_patterns]
         derived_shape = _parse_shape(derive)
         if derived_shape is None:
-            raise ValueError(f'malformed rule conclusion {derive!r}: expected "pred(?A, ?B)"')
+            raise RuleSyntaxError(f'malformed rule conclusion {derive!r}: expected "pred(?A, ?B)"')
         d_pred, d_args = derived_shape
         if len(d_args) not in (1, 2):
-            raise ValueError(f"rule conclusion {derive!r}: arity must be 1 or 2, got {len(d_args)}")
+            raise RuleSyntaxError(f"rule conclusion {derive!r}: arity must be 1 or 2, got {len(d_args)}")
         bad = [a for a in d_args if not (a.startswith("?") or _VAR_TOKEN.fullmatch(a))]
         if bad:
-            raise ValueError(f"rule conclusion {derive!r}: arguments must be '?vars', got {bad}")
+            raise RuleSyntaxError(f"rule conclusion {derive!r}: arguments must be '?vars', got {bad}")
         self._rules.append(_RuleEntry(name=str(name), when=list(when_patterns), derive=derive))
         self._patterns.append(compiled)
 
@@ -166,7 +175,9 @@ class RuleFacade:
         """前向链至不动点（或上限）。返回派生事实 + 触发轨迹 + 统计.
 
         run() 不改写 facade 的注册状态（事实/规则保持原样）, 可重复调用。
-        stats: iterations / facts_total / rule_fires + 三个达限旗标。
+        stats: iterations / facts_total / rule_fires + 三个达限旗标。旗标语义:
+        ``max_*_reached=True`` 表示到达工作预算（消费满）, 不必然表示结果被截断——
+        恰好用满预算且无剩余派生也会置位（保守方向, 上游消费者按需甄别）。
         """
         arity_by_pred: dict[str, set[int]] = {}
         for patterns in self._patterns:

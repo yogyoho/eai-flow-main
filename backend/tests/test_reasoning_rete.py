@@ -4,7 +4,18 @@ EAI-CUSTOM: plan docs/superpowers/plans/2026-09-13-ontology-reasoning-rules.md T
 facade 语义契约的失败测试先行（TDD）; 实现在 doc_graph/reasoning/facade.py。
 """
 
-from app.extensions.ontology.doc_graph.reasoning.facade import MAX_DERIVED, MAX_ITERATIONS, RuleFacade
+import inspect
+
+import pytest
+
+from app.extensions.ontology.doc_graph.reasoning import facade
+from app.extensions.ontology.doc_graph.reasoning.facade import (
+    MAX_DERIVED,
+    MAX_ITERATIONS,
+    MAX_RULE_FIRES,
+    RuleFacade,
+    RuleSyntaxError,
+)
 
 
 def _f(f: RuleFacade) -> None:
@@ -62,8 +73,6 @@ def test_chained_rules_feed_forward():
 
 def test_max_rule_fires_cap_stops_run():
     """上限真实生效: 触发数达 MAX_RULE_FIRES 即停, stats 标注, 不抛异常。"""
-    from app.extensions.ontology.doc_graph.reasoning.facade import MAX_RULE_FIRES
-
     f = RuleFacade()
     for i in range(1100):
         f.add_fact(f"e{i}", "p", f"v{i}")
@@ -75,10 +84,33 @@ def test_max_rule_fires_cap_stops_run():
     assert out["stats"]["iterations"] <= MAX_ITERATIONS
 
 
+def test_fail_closed_malformed_pattern():
+    """fail-closed 钉: 无括号的畸形模式在注册期拒绝（Task 3 MCP 错误映射依赖）。"""
+    with pytest.raises(RuleSyntaxError):
+        RuleFacade().add_rule("bad", ["no_parens_here"], "foo(?X)")
+
+
+def test_fail_closed_arity_three():
+    """fail-closed 钉: arity 3 模式注册期拒绝。"""
+    with pytest.raises(RuleSyntaxError):
+        RuleFacade().add_rule("bad", ["p(?X, ?Y, ?Z)"], "foo(?X)")
+
+
+def test_fail_closed_non_var_conclusion():
+    """fail-closed 钉: 结论含非 ?var 变元注册期拒绝。"""
+    with pytest.raises(RuleSyntaxError):
+        RuleFacade().add_rule("bad", ["p(?X)"], "foo(const)")
+
+
+def test_duplicate_rule_name_rejected():
+    """重复规则名注册期拒绝（防激活溯源塌缩到同名规则）。"""
+    f = RuleFacade()
+    f.add_rule("r1", ["p(?X)"], "q(?X)")
+    with pytest.raises(RuleSyntaxError):
+        f.add_rule("r1", ["p(?X)"], "q(?X)")
+    assert len(f._rules) == 1  # 拒绝后注册状态不变
+
+
 def test_disabled_via_yaml_not_here():
     """facade 不管 enabled——注册表层过滤（Task 2）。"""
-    import inspect
-
-    from app.extensions.ontology.doc_graph.reasoning import facade
-
     assert "enabled" not in inspect.getsource(facade.RuleFacade.add_rule)

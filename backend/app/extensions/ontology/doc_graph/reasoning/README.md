@@ -55,6 +55,13 @@ Additive-only edits (upstream code untouched):
 - The whole file (upstream code included) is ruff-formatted to this repo's
   240-column style (upstream ships 88-column formatting), so line layout
   differs from upstream while semantics are unchanged.
+- License kept alongside the code: `LICENSE-SEMANTICA-MIT` in this directory is
+  the upstream repo `LICENSE` verbatim at the pinned SHA (explorer/ precedent in
+  `frontend/src/extensions/ontology/explorer/`).
+- Facade layer (`facade.py`, EAI-CUSTOM): registration validation raises the
+  dedicated `RuleSyntaxError(ValueError)` so the Task 3 MCP layer can narrow-
+  catch rule-registration failures without swallowing unrelated `ValueError`s;
+  duplicate rule names are rejected to keep activation provenance unambiguous.
 
 ## Facade semantics (`facade.py`, EAI-CUSTOM)
 
@@ -101,7 +108,9 @@ hardcoded caps (~60 lines of glue, no reinvented matcher).
 
 ## Tests
 
-`backend/tests/test_reasoning_rete.py` — 7 cases: single-pattern derive,
+`backend/tests/test_reasoning_rete.py` — 11 cases: single-pattern derive,
 two-pattern join, no-match, self-feed fixpoint, chained forward feeding,
-MAX_RULE_FIRES cap really stopping the run, and the source-level check that
-enable/disable filtering stays out of the facade.
+MAX_RULE_FIRES cap really stopping the run, three fail-closed registration
+pins (malformed pattern / arity 3 / non-`?var` conclusion), duplicate rule
+name rejection, and the source-level check that enable/disable filtering
+stays out of the facade.
