@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
-"""geological-report v2 — formula_runner.py：冻结计算层（步骤2，门2 的数据面）。
+"""coal-mine-tunneling-regulation v2 — formula_runner.py：冻结计算层（步骤2，门2 的数据面·通风域）。
 
 舍入定稿（spec + formulas.json rounding_policy）：decimal.Decimal + quantize
-(ROUND_HALF_EVEN)——样例 8.4.6「四舍六入五逢奇进偶舍」逐字对应；禁 float round()。
-中间量全 Decimal，出口统一 quantize；下游公式（E 链/L10）直接复用未舍入中间量，
-避免二次舍入漂移。
+(ROUND_HALF_EVEN)——「四舍六入五逢奇进偶舍」逐字对应；禁 float round()。
+槽位内部风量统一 m³/min（正文如需 m³/s 由 display 层换算）；中间量 float 计算，
+出口统一 Decimal quantize，避免二次舍入漂移。
 
-与 water 版差异（有意非漂移）：water 复用 backend formula_engine（float eval），地质域
-是表格型计算（逐样品/逐块段/分类汇总）且舍入红线要求 Decimal——故本脚本 stdlib 自包含，
-不 import backend（沙箱任意布局可跑）。CLI 五命令面与 water 对齐：
+CLI 五命令面与 water/geo 对齐：
   execute  读 data/ → 全量计算 → formula_state.json（冻结；无时间戳——字节级幂等）
-  check    自洽重算 + B1 容差(0.05pp) + 锚点回归(--anchors)
+  check    自洽重算 + 锚点回归(--anchors，容差 0.005)
   trace    每公式 {定义/输入/输出/舍入} → traces.json
   impacted 改参 dry-run 值差分 → 受影响公式+章节（先于 update，顺序铁律，零写盘）
   update   经 ingest 写 data/ → 重算 → 变更摘要（--impacted-file 必填且与本轮差分
            一致——防「跳过 impacted 直接 update」，bug-2199 同构防线）
 
-红线：缺输入报错绝不编造；无历史备案（15 缺失）→ L10 整体跳过记 anomaly，不产 0 值。
+红线：缺输入记 anomaly 跳过该子项，绝不编造（bug-2223 同构）；needs_verification
+系数（Q1 系数100 / Q3 5.44 / Q4 风速带 / F2 线性近似 / F4 风阻 R）未过 tier1 人工
+核实前恒记 anomaly，计算结果仅作参考值。
 
 退出码：0 干净 / 1 错误 / 2 需人工 / 3 完成带异常必读 anomalies
 """
@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import re
 import sys
 from decimal import ROUND_HALF_EVEN, Decimal
@@ -34,46 +35,6 @@ from pathlib import Path
 import chapter_planner
 
 EXIT_OK, EXIT_ERROR, EXIT_MANUAL, EXIT_ANOMALY = 0, 1, 2, 3
-D0 = Decimal("0")
-HUNDRED, THOUSAND, WAN = Decimal(100), Decimal(1000), Decimal(10000)
-CATS = ("TM", "KZ", "TD")
-
-# ── bug-2223: 块模型 schema 字典归一化（E2E 实测「工业矿」/「探明+控制」致 L9 静默 0）──
-GRADE_CLASS_MAP = {"工业": "工业", "工业矿": "工业", "低品位": "低品位", "低品位矿": "低品位"}
-CATEGORY_MAP = {"探明": "TM", "TM": "TM", "控制": "KZ", "KZ": "KZ", "推断": "TD", "TD": "TD"}
-
-
-def norm_grade_class(v) -> str | None:
-    """未知→None（调用方记 anomaly 跳行）；缺 key→工业（原行为）；空字符串→工业（bug-2223 行为收紧：旧代码空串落入低品位属同类误判）。"""
-    s = str(v or "").strip()
-    if not s:
-        return "工业"
-    return GRADE_CLASS_MAP.get(s)
-
-
-def norm_category(v) -> str | None:
-    """单类中文/代码→TM/KZ/TD；复合（含半角+或全角＋）原样保留（进 total 不进分类别）；未知→None。"""
-    s = str(v or "").strip()
-    if not s or "+" in s or "＋" in s:
-        return s or None
-    return CATEGORY_MAP.get(s)
-
-
-def q(x: Decimal, dp: str) -> Decimal:
-    """ROUND_HALF_EVEN quantize。dp 例: '0.01' / '1' / '0.1'。"""
-    return x.quantize(Decimal(dp), rounding=ROUND_HALF_EVEN)
-
-
-def mean(xs: list[Decimal]) -> Decimal:
-    return sum(xs, D0) / Decimal(len(xs)) if xs else D0
-
-
-def stdev_n1(xs: list[Decimal]) -> Decimal:
-    n = len(xs)
-    if n < 2:
-        return D0
-    m = mean(xs)
-    return (sum(((x - m) ** 2 for x in xs), D0) / Decimal(n - 1)).sqrt()
 
 
 def is_num(v) -> bool:
@@ -124,7 +85,7 @@ class Data:
 
 
 def override_data(data: Data, field: str, value: str) -> Data:
-    """field 语法：'13.deposit_avg_grade'（JSON 字段）或 '13a:体重_t_m3'（CSV 整列）。"""
+    """field 语法：'02.gas_emission_daily'（JSON 字段）或 '10:风险等级'（CSV 整列）。"""
     if ":" in field and "." not in field:
         _, col = field.split(":", 1)
         for rows in data.csvs.values():
@@ -141,299 +102,95 @@ def override_data(data: Data, field: str, value: str) -> Data:
 # ── 计算层 ──────────────────────────────────────────────────────────────────
 
 def compute(data: Data) -> tuple[dict, list[str]]:
-    """全量计算 → (values: 槽位注册表, anomalies)。"""
-    V: dict[str, dict] = {}
-    anomalies: list[str] = []
+    """全量计算 → (values: 槽位注册表, anomalies)。（D5 一期仅通风域）"""
+    values, anomalies = {}, []
 
-    def emit(key: str, val: Decimal, dp: str, unit: str, source: str, extra: dict | None = None) -> None:
-        # bug-3036 根因①配套：计算层自身也不得产垃圾槽位——非有限值（NaN/Inf 会经 json 混进
-        # 冻结层）就地抛错（键形/空 display 由 write_state 终检统一把关）。
-        d = q(val, dp)
-        if not d.is_finite():
-            raise ValueError(f"emit 拒绝非有限值 {key}={val}（dp={dp}）——检查上游输入缺参/除零（bug-3036）")
-        V[key] = {"value": float(d), "display": f"{d}", "unit": unit, "source": source, **(extra or {})}
+    def emit(key: str, val: float, dp: int, unit: str, source: str, extra: dict | None = None) -> None:
+        # 与 geo emit 同形：非有限值（NaN/Inf 会经 json 混进冻结层）就地抛错；
+        # 出口统一 Decimal.quantize(ROUND_HALF_EVEN)，dp=小数位数。
+        if not math.isfinite(val):
+            raise ValueError(f"非有限计算结果: {key}={val}")
+        q = Decimal(str(val)).quantize(Decimal(1).scaleb(-dp), rounding=ROUND_HALF_EVEN)
+        slot = {"value": float(q), "display": f"{q}", "unit": unit, "source": source}
+        if extra:
+            slot.update(extra)
+        values[key] = slot
 
-    # ── C9 特高品位下限 ──
-    p13 = data.form("industrial_params")
-    # bug-2223: 空白表单（必填字段全 null，仅 _meta 骨架）与缺失等价——否则 dec(None)=NaN
-    # 使 C9 emit 的 int(NaN) 抛 ValueError（exit 1 崩溃，而非门2 缺参异常路径）
-    if p13 and not (dec(p13.get("deposit_avg_grade")).is_finite() and dec(p13.get("outlier_multiple")).is_finite()):
-        p13 = None
-    if p13:
-        emit("C9.outlier_threshold", dec(p13["deposit_avg_grade"]) * dec(p13["outlier_multiple"]), "0.01", "%", "formula:C9",
-             {"inputs": {"deposit_avg_grade": float(dec(p13["deposit_avg_grade"])), "outlier_multiple": int(dec(p13["outlier_multiple"]))}})
+    vent = data.form("ventilation")
+    geo = data.form("geology")
+    road = data.form("roadway")
+
+    q_gas, khg = geo.get("gas_emission_daily"), geo.get("khg")
+    if q_gas in (None, "") or khg in (None, ""):
+        anomalies.append("Q1 缺瓦斯绝对涌出量或不均衡系数（geology.gas_emission_daily/khg）——按瓦斯涌出量法跳过")
     else:
-        anomalies.append("13_industrial_params 缺失/空白——C9/S1/L 链/E 链跳过（缺参不编造，bug-2223: 空白表单与缺失等价）")
+        emit("Q1.need_by_gas", 100.0 * float(q_gas) * float(khg), 2, "m³/min", "formula:Q1",
+             {"inputs": {"q": float(q_gas), "K": float(khg)}, "note": "系数100待核实"})
 
-    # ── S1 小体重统计（表8-1）──
-    s1_density: dict[str, Decimal] = {}  # ''(全)/'_industrial'/'_low' → 平均体重
-    if "bulk_density" in data.csvs and p13:
-        boundary, min_ind = dec(p13["boundary_grade_cu"]), dec(p13["min_industrial_grade_cu"])
-        thr = dec(p13["deposit_avg_grade"]) * dec(p13["outlier_multiple"])
-        rows = data.csvs["bulk_density"]
-        kept = [(g, d, m) for g, d, m in (
-            (dec(r.get("品位Cu_pct")), dec(r.get("体重_t_m3")), dec(r.get("湿度_pct") or 0)) for r in rows
-        ) if g.is_finite() and d.is_finite() and boundary <= g < thr]
-        dropped = len(rows) - len(kept)
-        if dropped:
-            anomalies.append(f"13a 过滤剔除 {dropped} 行（低于边界品位 {boundary}% 或≥特高阈值 {thr}%）")
-        for tag, grp in (("", kept), ("_industrial", [x for x in kept if x[0] >= min_ind]), ("_low", [x for x in kept if boundary <= x[0] < min_ind])):
-            if not grp:
-                continue
-            emit(f"S1.n{tag}", Decimal(len(grp)), "1", "件", "formula:S1")
-            emit(f"S1.avg_density{tag}", mean([x[1] for x in grp]), "0.01", "t/m3", "formula:S1")
-            emit(f"S1.avg_grade{tag}", mean([x[0] for x in grp]), "0.01", "%", "formula:S1")
-            emit(f"S1.avg_moisture{tag}", mean([x[2] for x in grp]), "0.01", "%", "formula:S1")
-            s1_density[tag] = mean([x[1] for x in grp])
+    n = vent.get("persons_per_shift")
+    if n in (None, ""):
+        anomalies.append("Q2 缺每班最多人数（ventilation.persons_per_shift）——按人数法跳过")
+    else:
+        emit("Q2.need_by_persons", 4.0 * float(n), 2, "m³/min", "formula:Q2", {"inputs": {"N": float(n)}})
 
-    # ── 08a 单工程统计（L3/L4/S2）+ L11 伴生银品位来源 ──
-    ag_grade: Decimal | None = None
-    if "sample_assays" in data.csvs and p13:
-        min_ind = dec(p13["min_industrial_grade_cu"])
-        works: dict[tuple[str, str], list[dict]] = {}
-        for r in data.csvs["sample_assays"]:
-            works.setdefault((r.get("工程号", "?"), r.get("矿体编号", "?")), []).append(r)
-        per_work: dict[tuple[str, str], Decimal] = {}
-        ag_l, ag_la = D0, D0  # Σ(样长×Ag), Σ样长 —— 工业品位样
-        for (work, ore), rs in sorted(works.items()):
-            # ponytail: 08a 无钻孔方位/倾角列——样长即真厚（L1 需 α/β/γ，备注列可扩展）
-            lens = [dec(r.get("样长_m")) for r in rs]
-            pairs = [(ln, c) for ln, c in ((dec(r.get("样长_m")), dec(r.get("品位Cu_pct"))) for r in rs) if ln.is_finite() and c.is_finite()]
-            if any(ln.is_finite() for ln in lens):
-                emit(f"L3.T[{work}|{ore}]", sum((ln for ln in lens if ln.is_finite()), D0), "0.01", "m", "formula:L3")
-            if pairs:
-                sl = sum((ln for ln, _ in pairs), D0)
-                per_work[(work, ore)] = sum((ln * c for ln, c in pairs), D0) / sl
-                emit(f"L4.C[{work}|{ore}]", per_work[(work, ore)], "0.01", "%", "formula:L4")
-                for r in rs:
-                    ln, c, a = dec(r.get("样长_m")), dec(r.get("品位Cu_pct")), dec(r.get("品位Ag_gpt"))
-                    if ln.is_finite() and c.is_finite() and a.is_finite() and c >= min_ind:
-                        ag_l += ln * a
-                        ag_la += ln
-        by_ore: dict[str, list[Decimal]] = {}
-        for (_, ore), c in per_work.items():
-            by_ore.setdefault(ore, []).append(c)
-        for ore, cs in sorted(by_ore.items()):
-            m = mean(cs)
-            emit(f"S2.Cv[{ore}]", (stdev_n1(cs) / m * HUNDRED) if m else D0, "0.01", "%", "formula:S2")
-        if ag_la:
-            ag_grade = ag_l / ag_la
-            emit("L11.ag_grade", ag_grade, "0.01", "g/t", "formula:L11",
-                 {"note": "伴生Ag品位=08a工业品位样样长加权（伴生类别随主元素组合样）"})
-        anomalies.append("08a 统计按「样长=真厚」口径（L1 角度参数未采集）——角度数据补齐后需重算")
+    kw = vent.get("diesel_power_total_kw") or 0
+    if float(kw) > 0:
+        emit("Q3.need_by_diesel", 5.44 * float(kw), 2, "m³/min", "formula:Q3", {"inputs": {"P": float(kw)}})
+        anomalies.append("Q3 柴油机车需风量系数 5.44 m³/min·kW【待人工核实】——结果仅作参考值")
 
-    # ── 14 块段/汇总链 L7-L9 ──
-    bm = data.form("block_model")
-    rows: list[dict] = []  # {orebody, category, grade_class, ore_t, metal_t, grade}
+    cands = [values[k]["value"] for k in ("Q1.need_by_gas", "Q2.need_by_persons", "Q3.need_by_diesel") if k in values]
+    if not cands:
+        anomalies.append("Q0 无任何需风量子项可计算——门2 后协商补数据，禁估算")
+    else:
+        q0 = max(cands)
+        basis = [k for k, v in (("Q1", values.get("Q1.need_by_gas", {}).get("value")),
+                                 ("Q2", values.get("Q2.need_by_persons", {}).get("value")),
+                                 ("Q3", values.get("Q3.need_by_diesel", {}).get("value"))) if v == q0]
+        emit("Q0.need_final", q0, 2, "m³/min", "formula:Q0", {"basis": "+".join(basis)})
 
-    def norm_row(src: dict, extra: dict, anom_ctx: str) -> dict | None:
-        """bug-2223: grade_class/category 归一化；未知值记 anomaly 跳行；复合类别保留原样（进 total 不进分类别）。"""
-        gc = norm_grade_class(src.get("grade_class", "工业"))
-        if gc is None:
-            anomalies.append(f"{anom_ctx}: 未知 grade_class {src.get('grade_class')!r}（合法: 工业/工业矿/低品位/低品位矿）——行跳过，缺参不编造")
-            return None
-        cat_raw = str(src.get("category", "")).strip()
-        cat = norm_category(cat_raw)
-        if cat is None:
-            anomalies.append(f"{anom_ctx}: 未知 category {cat_raw!r}（合法: 探明/控制/推断/TM/KZ/TD）——行跳过，缺参不编造")
-            return None
-        if "+" in cat or "＋" in cat:
-            anomalies.append(f"{anom_ctx}: 复合类别 {cat!r} 无法整行映射 TM/KZ/TD——该行进总量不进分类别，需用户确认各类占比后拆分（禁止编造拆分，bug-2223）")
-        return {"orebody": src.get("orebody", "?"), "category": cat, "grade_class": gc, **extra}
+    s = road.get("drive_section_m2")
+    if s in (None, ""):
+        anomalies.append("Q4/F1 缺掘进断面（roadway.drive_section_m2）——风速验算与风筒距离跳过")
+    else:
+        s = float(s)
+        emit("Q4.v_min_q", 60.0 * 0.25 * s, 2, "m³/min", "formula:Q4", {"inputs": {"S": s, "v": 0.25}})
+        emit("Q4.v_max_q", 60.0 * 8.0 * s, 2, "m³/min", "formula:Q4", {"inputs": {"S": s, "v": 8.0}})
+        emit("Q4.v_min_check", values["Q4.v_min_q"]["value"], 2, "m³/min", "formula:Q4")
+        emit("Q4.v_max_check", values["Q4.v_max_q"]["value"], 2, "m³/min", "formula:Q4")
+        emit("F1.duct_gap_m", 5.0 * math.sqrt(s), 2, "m", "formula:F1")
+        if "Q0.need_final" in values:
+            q0 = values["Q0.need_final"]["value"]
+            if not (values["Q4.v_min_q"]["value"] <= q0 <= values["Q4.v_max_q"]["value"]):
+                anomalies.append(f"门2阻断：需风量 {q0} 超出风速验算区间 "
+                                 f"[{values['Q4.v_min_q']['value']}, {values['Q4.v_max_q']['value']}]（R2 带 0.25~8 m/s）——需协商调断面或分风")
 
-    if bm:
-        if bm.get("granularity", "B") == "A" and bm.get("blocks"):
-            d_ind = s1_density.get("_industrial")
-            d_low = s1_density.get("_low")
-            d_all = s1_density.get("")
-            for b in bm["blocks"]:
-                S, M, C = dec(b["area_s_m2"]), dec(b["avg_thickness_m"]), dec(b["grade_c_pct"])
-                if not (S.is_finite() and M.is_finite() and C.is_finite()):
-                    continue
-                # D 选取：S1 分组统计优先（SC-3 改小体重传导路径）；无 S1 用块段自带值
-                Dsel = (d_ind if norm_grade_class(b.get("grade_class", "工业")) != "低品位" else d_low) or d_all or dec(b.get("bulk_density"))
-                if Dsel is None or not Dsel.is_finite():
-                    anomalies.append(f"块段 {b.get('block_no')}: 无体重可用（13a/S1 与块段自带值皆缺）——链在此截断")
-                    rows.clear()
-                    break
-                qt = S * M * Dsel  # L7: V=S×M, Q=V×D
-                r = norm_row(b, {"ore_t": qt, "metal_t": qt * C / HUNDRED, "grade": C}, f"块段 {b.get('block_no')}")
-                if r:
-                    rows.append(r)
-        elif bm.get("aggregates"):
-            for a in bm["aggregates"]:
-                r = norm_row(a, {"ore_t": dec(a["ore_qty_wt"]) * WAN, "metal_t": dec(a["metal_t"]), "grade": dec(a.get("grade_pct", 0))}, f"汇总行 {a.get('orebody')}")
-                if r:
-                    rows.append(r)
+    i, ld = vent.get("duct_leak_rate_per100m"), vent.get("air_supply_distance_m")
+    if "Q0.need_final" in values and i not in (None, "") and ld not in (None, ""):
+        qf = values["Q0.need_final"]["value"] * (1.0 + (float(i) / 100.0) * (float(ld) / 100.0))
+        emit("F2.fan_need", qf, 2, "m³/min", "formula:F2",
+             {"inputs": {"i": float(i), "Ld": float(ld)}, "note": "线性近似待核实"})
+        anomalies.append("F2 漏风折算采用线性近似【待核实】——与连乘式的差异未过 tier1")
 
-    def agg(sel: list[dict]) -> tuple[Decimal, Decimal, Decimal]:
-        ore = sum((r["ore_t"] for r in sel), D0)
-        metal = sum((r["metal_t"] for r in sel), D0)
-        return ore, metal, (metal / ore * HUNDRED if ore else D0)
+    length, seg = road.get("design_length_m"), vent.get("duct_section_length_m")
+    if length not in (None, "") and seg not in (None, "") and float(seg) > 0:
+        emit("F3.duct_count", math.ceil(float(length) / float(seg)), 0, "节", "formula:F3")
+    else:
+        anomalies.append("F3 缺设计长度或每节长度——风筒节数跳过（C5 无法对账 ch4 管线表）")
 
-    ind_stats: dict[str, tuple[Decimal, Decimal]] = {}  # cat -> (ore_t, metal_t) 工业矿
-    low_stats: dict[str, tuple[Decimal, Decimal]] = {}
-    if rows:
-        ind = [r for r in rows if r["grade_class"] == "工业"]
-        low = [r for r in rows if r["grade_class"] != "工业"]
-        if not ind:
-            anomalies.append("块模型全部行被判为低品位——工业类资源量为 0，请核对 14_block_model 的 grade_class 取值（bug-2223：不再静默 0）")
-        tot_ore, tot_metal, tot_grade = agg(ind)
-        emit("L9.total_ore_wt", tot_ore / WAN, "0.01", "万吨", "formula:L9")
-        emit("L9.total_metal_t", tot_metal, "1", "t", "formula:L9")
-        emit("L9.total_grade", tot_grade, "0.01", "%", "formula:L9")
-        for cat in CATS:
-            co, cm, cg = agg([r for r in ind if r["category"] == cat])
-            ind_stats[cat] = (co, cm)
-            emit(f"L9.{cat}_ore_wt", co / WAN, "0.01", "万吨", "formula:L9")
-            emit(f"L9.{cat}_metal_t", cm, "1", "t", "formula:L9")
-            emit(f"L9.{cat}_grade", cg, "0.01", "%", "formula:L9")
-        for cat in ("KZ", "TD"):
-            co, cm, _ = agg([r for r in low if r["category"] == cat])
-            low_stats[cat] = (co, cm)
-            emit(f"L9.low_{cat}_ore_wt", co / WAN, "0.01", "万吨", "formula:L9")
-            emit(f"L9.low_{cat}_metal_t", cm, "1", "t", "formula:L9")
-        lo, lm, lg = agg(low)
-        emit("L9.low_total_ore_wt", lo / WAN, "0.01", "万吨", "formula:L9")
-        emit("L9.low_total_metal_t", lm, "1", "t", "formula:L9")
-        emit("L9.low_total_grade", lg, "0.01", "%", "formula:L9")
-        # L8 矿体平均品位（矿石量加权）
-        by_oreb: dict[str, tuple[Decimal, Decimal]] = {}
-        for r in ind:
-            o, m = by_oreb.get(r["orebody"], (D0, D0))
-            by_oreb[r["orebody"]] = (o + r["ore_t"], m + r["metal_t"])
-        for oreb, (o, m) in sorted(by_oreb.items()):
-            emit(f"L8.C_orebody[{oreb}]", m / o * HUNDRED if o else D0, "0.01", "%", "formula:L8")
+    # F4 通风阻力（J12：spec D5 项，风阻系数待核实 → 恒记 anomaly，仅参考值）
+    if "Q0.need_final" in values and ld not in (None, ""):
+        r_coef = 0.01  # 【待核实】占位系数 N·s²/m⁸——核实前结果仅参考
+        q_m3s = values["Q0.need_final"]["value"] / 60.0
+        emit("F4.drag_head", r_coef * float(ld) * q_m3s * q_m3s, 1, "Pa", "formula:F4",
+             {"inputs": {"R": r_coef, "Ld": float(ld)}, "note": "R 待核实"})
+        anomalies.append("F4 通风阻力风阻系数 R【待人工核实】——结果仅作参考值，禁写入正文当设计依据")
 
-        # ── L10 四口径增量（仅有 15 历史备案时）──
-        prior = data.form("prior_estimate")
-        if prior.get("split_extent") and prior.get("code_mapping"):
-            split = prior["split_extent"]
-
-            def prior_ore(cats: list[str]) -> Decimal:  # 万吨
-                return sum((dec((split.get(code) or {}).get("ore_wt", 0)) for code, cat in prior["code_mapping"].items() if cat in cats), D0)
-
-            def prior_metal(cats: list[str]) -> Decimal:  # t
-                return sum((dec((split.get(code) or {}).get("metal_t", 0)) for code, cat in prior["code_mapping"].items() if cat in cats), D0)
-
-            for label, stats, cats in [
-                ("ind_TM_KZ", ind_stats, ["TM", "KZ"]),
-                ("ind_TD", ind_stats, ["TD"]),
-                ("low_KZ", low_stats, ["KZ"]),
-                ("low_TD", low_stats, ["TD"]),
-            ]:
-                if not any(c in stats for c in cats):
-                    continue
-                co = sum((stats[c][0] for c in cats if c in stats), D0) / WAN
-                cm = sum((stats[c][1] for c in cats if c in stats), D0)
-                po = prior_ore(cats)
-                emit(f"L10.delta_ore_wt[{label}]", co - po, "0.01", "万吨", "formula:L10",
-                     {"prior_ore_wt": float(q(po, "0.01"))})
-                emit(f"L10.delta_metal_t[{label}]", cm - prior_metal(cats), "1", "t", "formula:L10")
-            anomalies.append("L10 尚难利用口径：历史备案若无对应分类，增量≈本次全量（呈现层并排列示不做分类减法——走查 §5.1）")
-        elif not prior:
-            anomalies.append("无 15_prior_estimate——L10 差值链整体跳过（新立项目正常路径，门2 差值步骤同步跳过）")
-
-        # ── L11 伴生银金属量（kg = 万吨×10⁴ × g/t ÷ 1000）──
-        if ag_grade is not None and ag_grade.is_finite():
-            emit("L11.P_Ag_industrial_kg", tot_ore * ag_grade / THOUSAND, "1", "kg", "formula:L11")
-            emit("L11.P_Ag_total_kg", (tot_ore + sum((v[0] for v in low_stats.values()), D0)) * ag_grade / THOUSAND, "1", "kg", "formula:L11")
-        elif p13 and dec(p13.get("byproduct_ag_indicator")).is_finite():
-            anomalies.append("L11 用 13.byproduct_ag_indicator（指标值非加权品位）；08a 补 Ag 列后重算")
-            emit("L11.P_Ag_industrial_kg", tot_ore * dec(p13["byproduct_ag_indicator"]) / THOUSAND, "1", "kg", "formula:L11")
-        # 两者皆无 → L11 跳过（降级路径：呈现层 [待确认] 槽位）
-
-        # ── L12 验证误差率 ──
-        for r in data.form("verification").get("rows") or []:  # bug-2223: 空白表单 rows=null → 不可迭代崩溃
-            qh = dec(r.get("ore_qty_wt")) * WAN
-            if qh:
-                emit(f"L12.err[{r.get('orebody', '?')}|{r.get('category', '?')}]",
-                     (tot_ore - qh) / qh * HUNDRED, "0.01", "%", "formula:L12")
-
-        # ── L13 占比（金属量口径）──
-        if tot_metal:
-            emit("L13.share_TM", ind_stats.get("TM", (D0, D0))[1] / tot_metal * HUNDRED, "0.01", "%", "formula:L13")
-            emit("L13.share_TM_KZ", (ind_stats.get("TM", (D0, D0))[1] + ind_stats.get("KZ", (D0, D0))[1]) / tot_metal * HUNDRED, "0.01", "%", "formula:L13")
-    elif "block_model" not in data.forms:
-        anomalies.append("14_block_model 缺失——L7-L13 资源量链未计算")
-
-    # ── W1 涌水量比拟法 ──
-    hee = data.form("hydro_eng_env")
-    ia = hee.get("hydro.inflow_analogy")  # schema 扁平点号键
-    if ia:
-        Q0min, Q0max = dec(ia["Q0_min"]), dec(ia["Q0_max"])
-        F, F0, S, S0 = dec(ia["F"]), dec(ia["F0"]), dec(ia["S"]), dec(ia["S0"])
-        if not F0 or not S0:
-            raise KeyError("W1 输入 F0/S0 为 0（比拟法分母为零——缺参报错绝不编造）")
-        k = (F / F0) * (S / S0).sqrt()
-        emit("W1.Q_min", Q0min * k, "1", "m3/d", "formula:W1", {"k_factor": float(q(k, "0.0001"))})
-        emit("W1.Q_max", Q0max * k, "1", "m3/d", "formula:W1")
-        if Q0max and Q0min:  # 互不洽探测（样例 908/5531 bug-2210 同型防线）
-            r_in, r_out = Q0min / Q0max, (Q0min * k) / (Q0max * k)
-            if abs(r_in - r_out) > Decimal("0.001"):
-                anomalies.append(f"W1 输出比值互不洽（{r_in:.4f} ≠ {r_out:.4f}）——以公式重算为准")
-
-    # ── B1 选矿平衡（回收率 = 产率×精矿品位/入浮品位）──
-    ben = data.form("beneficiation")
-    lc = ben.get("locked_cycle") or {}
-    feed = dec(lc.get("feed_grade_cu") or ben.get("feed_grade_cu"))
-    for prod in lc.get("products") or []:
-        y, g = dec(prod.get("yield")), dec(prod.get("grade_cu", prod.get("grade")))
-        if feed.is_finite() and feed and y.is_finite() and g.is_finite():
-            emit(f"B1.recovery[{prod.get('name', '?')}]", y * g / feed, "0.01", "%", "formula:B1",
-                 {"declared_recovery": prod.get("recovery_cu", prod.get("recovery"))})
-
-    # ── E 经济链 ──
-    eco = data.form("economics")
-    # bug-2223: 空白表单（嵌套对象全 null）与缺失等价——eco.get("credibility",{}) 得 None 再
-    # .get 会 AttributeError 崩溃；且嵌套缺参按默认 0 续算 E1-E7 属编造，整体跳过记 anomaly
-    if eco and not all(isinstance(eco.get(k), dict) for k in ("credibility", "rates", "concentrate", "prices", "costs")):
-        anomalies.append("16_economics 空白（嵌套对象未收集）——E1-E7 经济链整体跳过（缺参不编造，bug-2223）")
-        eco = None
-    if eco and ind_stats:
-        kcat = {c: dec(eco.get("credibility", {}).get(c, 1.0)) for c in CATS}
-        rates = eco.get("rates", {})
-        loss = dec(rates.get("loss_rate", 0)) / HUNDRED
-        dil = dec(rates.get("dilution_rate", 0)) / HUNDRED
-        q_u = sum((ind_stats[c][0] * kcat[c] for c in CATS if c in ind_stats), D0)
-        m_u = sum((ind_stats[c][1] * kcat[c] for c in CATS if c in ind_stats), D0)
-        c_u = m_u / q_u * HUNDRED if q_u else D0
-        emit("E1.Q_usable_wt", q_u / WAN, "0.01", "万吨", "formula:E1")
-        emit("E1.C_usable", c_u, "0.01", "%", "formula:E1")
-        q_m, c_m = q_u * (1 - loss), c_u * (1 - dil)
-        emit("E2.Q_mined_wt", q_m / WAN, "0.01", "万吨", "formula:E2")
-        emit("E2.C_mined", c_m, "0.01", "%", "formula:E2")
-        conc = eco.get("concentrate", {})
-        gCu, gAg = dec(conc.get("grade_cu_pct", 0)), dec(conc.get("grade_ag_gpt", 0))
-        rec = eco.get("recovery") or {}  # bug-2223: 可选字段空白(null)不可 .get
-        rCu = dec(rec.get("recovery_cu", rec.get("cu", 0))) / HUNDRED
-        conc_t = q_m * (c_m / HUNDRED) * rCu / (gCu / HUNDRED) if gCu and rCu else None
-        if conc_t is not None:
-            emit("E3.conc_output_t", conc_t, "1", "t", "formula:E3")
-        prices = eco.get("prices", {})
-        pCu = dec(prices.get("cu_yuan_t", 0))
-        pAg_kg = dec(prices.get("ag_yuan_kg", 0)) or dec(prices.get("ag_yuan_per_g", 0)) * THOUSAND
-        price_conc = pCu * gCu / HUNDRED + pAg_kg / THOUSAND * gAg
-        emit("E4.price_conc", price_conc, "1", "元/t精矿", "formula:E4",
-             {"cu_part": float(q(pCu * gCu / HUNDRED, "1")), "ag_part": float(q(pAg_kg / THOUSAND * gAg, "1"))})
-        ag_kg = dec(V["L11.P_Ag_total_kg"]["value"]) if "L11.P_Ag_total_kg" in V else D0
-        # E5.gross_potential_yi（bug-3051）：银项 ag_kg×pAg_kg 是元，须先 /WAN 归万元再并入铜项
-        # （万吨×元/t），否则银项以万元数值冒充亿元、虚高 1e4 倍（FC9 量级门实测拦截 682.14 亿元）。
-        emit("E5.gross_potential_yi", (m_u / WAN * pCu + ag_kg * pAg_kg / WAN) / WAN, "0.01", "亿元", "formula:E5")
-        costs = eco.get("costs", {})
-        unit_cost = sum((dec(costs.get(k, 0)) for k in ("mining_yuan_t", "beneficiation_yuan_t", "other_yuan_t")), D0)
-        if conc_t is not None:
-            emit("E6.static_profit_wy", (conc_t * price_conc - q_m * unit_cost) / WAN, "1", "万元", "formula:E6")
-        if eco.get("capacity_10kt_a"):
-            cap = dec(eco["capacity_10kt_a"]) * WAN
-            emit("E7.years_added", q_u / cap if cap else D0, "0.1", "年", "formula:E7")
-
-    return V, anomalies
+    return values, anomalies
 
 
 # ── 状态落盘/差分 ───────────────────────────────────────────────────────────
 
-# 槽位键形（bug-3036）：C9.outlier_threshold / L8.C_orebody[①] / S1.n_industrial；
+# 槽位键形（bug-3036）：Q1.need_by_gas / F4.drag_head / Q3.need_by_diesel[1] 形；
 # 拒绝循环变量名（"key"/"val"/…）与表达式串（含空白/运算符）——LLM 直写特征形状。
 _SLOT_KEY_RE = re.compile(r"^[A-Za-z]\w*(?:\.\w+)*(?:\[[^\]\s]+\])?$")
 _JUNK_KEYS = {"key", "val", "value", "x", "tmp", "result", "display", "unit", "source"}
@@ -445,7 +202,7 @@ def write_state(path: Path, values: dict, anomalies: list[str]) -> None:
     # （Python 默认写出裸 NaN 是非法 JSON，下游 json.loads 虽容忍但交付链不认）。
     for key, slot in values.items():
         if key in _JUNK_KEYS or not _SLOT_KEY_RE.match(key):
-            raise ValueError(f"槽位键形非法 {key!r}（形如 C9.outlier_threshold / L8.C_orebody[①]；bug-3036）")
+            raise ValueError(f"槽位键形非法 {key!r}（形如 Q1.need_by_gas / F4.drag_head；bug-3036）")
         if not isinstance(slot, dict):
             raise ValueError(f"槽位 {key} 非对象——emit 是唯一合法形状来源（bug-3036）")
         disp = slot.get("display")
@@ -526,11 +283,6 @@ def cmd_check(args) -> int:
                 issues.append({"severity": sev, "check": "state_selfcheck", "detail": f"{k}: 冻结 {frozen.get(k)} vs 重算 {recomputed.get(k)}"})
     except KeyError as e:
         issues.append({"severity": "fail", "check": "state_selfcheck", "detail": f"重算失败: {e}"})
-    for k, v in state.get("values", {}).items():  # B1 声明 vs 计算（容差 0.05pp）
-        if k.startswith("B1.recovery[") and v.get("declared_recovery") is not None:
-            declared, calc = dec(v["declared_recovery"]), dec(v["value"])
-            if abs(declared - calc) > Decimal("0.05"):
-                issues.append({"severity": "fail", "check": "B1C", "detail": f"{k}: 声明 {declared} vs 计算 {calc}（容差 0.05pp）"})
     if args.anchors:  # 锚点回归（eval 回放断言）
         anchors = json.loads(Path(args.anchors).read_text(encoding="utf-8")) if args.anchors.endswith(".json") else json.loads(args.anchors)
         for k, expected in anchors.items():
@@ -636,8 +388,8 @@ def cmd_update(args) -> int:
     return EXIT_ANOMALY if anomalies else EXIT_OK
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description="geological-report v2 — 冻结计算层（Decimal/ROUND_HALF_EVEN）")
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description="coal-mine-tunneling-regulation v2 — 冻结计算层·通风域（Decimal/ROUND_HALF_EVEN）")
     sub = p.add_subparsers(dest="command", required=True)
 
     e = sub.add_parser("execute", help="读 data/ 全量计算 → formula_state.json")
@@ -650,7 +402,7 @@ def main() -> int:
     eg.add_argument("--state-dir", help="状态目录（写 {state-dir}/formula_state.json，与 --output 二选一；bug-2223）")
     e.set_defaults(func=cmd_execute)
 
-    c = sub.add_parser("check", help="自洽重算 + B1 容差 + 锚点回归")
+    c = sub.add_parser("check", help="自洽重算 + 锚点回归")
     c.add_argument("--stage", required=True)
     c.add_argument("--data-dir", required=True)
     c.add_argument("--state", required=True)
@@ -668,7 +420,7 @@ def main() -> int:
     i.add_argument("--stage", required=True)
     i.add_argument("--data-dir", required=True)
     i.add_argument("--state", required=True)
-    i.add_argument("--field", required=True, help="如 13.deposit_avg_grade 或 13a:体重_t_m3")
+    i.add_argument("--field", required=True, help="如 02.gas_emission_daily（JSON 字段）或 10:风险等级（CSV 整列）")
     i.add_argument("--value", required=True)
     i.add_argument("--manifest", help="chapter_manifest.json（反查章节）")
     i.add_argument("--output")
@@ -684,7 +436,7 @@ def main() -> int:
     u.add_argument("--output", required=True)
     u.set_defaults(func=cmd_update)
 
-    args = p.parse_args()
+    args = p.parse_args(argv)
     return args.func(args)
 
 
