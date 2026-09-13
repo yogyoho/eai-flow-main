@@ -114,13 +114,7 @@ export const PENDING_REVIEW_LIMIT = 200;
  * 由调用方按 query error 处理。
  */
 export async function fetchPendingReviewCount(): Promise<number> {
-  const res = await authFetch<{ count?: number; entities?: unknown[] }>(
-    `/doc-graph/resolution/pending?limit=${PENDING_REVIEW_LIMIT}`,
-  );
-  if (typeof res.count === "number") {
-    return res.count;
-  }
-  return Array.isArray(res.entities) ? res.entities.length : 0;
+  return (await fetchPending()).count;
 }
 
 /** 对象/链接类型清单（含 stub 链接的 enabled:false + note）——Registry 面板用。 */
@@ -146,4 +140,105 @@ export async function fetchObjectLinks(
     `${BASE}/objects/${encodeURIComponent(apiName)}/${encodeURIComponent(pk)}/links/${encodeURIComponent(linkType)}`,
     { signal: options?.signal },
   );
+}
+
+// ── doc-graph 实体消解 REST（EAI-CUSTOM, semantic-map v2 Task 4）──────────
+// 后端契约: backend/app/extensions/ontology/doc_graph/routers.py。
+// 错误语义（UI 接住，前端不重复校验）: ResourceNotFound→404；重复合并/自合并→409；
+// 请求体越界→422。authFetch 抛出的 Error 带 status 字段、message = detail 文案。
+
+/** status=pending_review 实体行（置信度升序，后端排好）。 */
+export interface ResolutionEntity {
+  id: string;
+  domain: string;
+  etype: string;
+  canonical_name: string;
+  confidence: number;
+}
+
+/** 同 etype 相近实体建议行（similarity ≥ 阈值，降序 Top-N）。 */
+export interface ResolutionSuggestion {
+  id: string;
+  canonical_name: string;
+  etype: string;
+  /** 0~1 相似度（后端 round 4 位）。 */
+  similarity: number;
+  /** auto_merge = 精确同名可直并；review = 需人工判断。 */
+  action: "auto_merge" | "review";
+}
+
+export interface MergeResult {
+  merge_id: string;
+  candidate_id: string;
+  canonical_id: string;
+}
+
+export interface UnmergeResult {
+  restored_candidate_id: string;
+}
+
+export interface PendingPage {
+  entities: ResolutionEntity[];
+  count: number;
+}
+
+export interface SuggestionsResult {
+  entity: { id: string; canonical_name: string; etype: string };
+  suggestions: ResolutionSuggestion[];
+}
+
+const RESOLUTION_BASE = "/doc-graph/resolution";
+
+/** 待复核实体列表（置信度升序；count = 钳制后行数，达 PENDING_REVIEW_LIMIT 只说明"≥200"）。 */
+export async function fetchPending(
+  etype?: string | null,
+): Promise<PendingPage> {
+  const url = etype
+    ? `${RESOLUTION_BASE}/pending?limit=${PENDING_REVIEW_LIMIT}&etype=${encodeURIComponent(etype)}`
+    : `${RESOLUTION_BASE}/pending?limit=${PENDING_REVIEW_LIMIT}`;
+  const res = await authFetch<Partial<PendingPage>>(url);
+  return {
+    entities: res.entities ?? [],
+    count:
+      typeof res.count === "number"
+        ? res.count
+        : Array.isArray(res.entities)
+          ? res.entities.length
+          : 0,
+  };
+}
+
+/** 目标实体 + 同 etype 相近实体合并建议（Top-N，默认 5；目标不存在→404）。 */
+export async function fetchSuggestions(
+  entityId: string,
+  top = 5,
+): Promise<SuggestionsResult> {
+  return authFetch<SuggestionsResult>(
+    `${RESOLUTION_BASE}/suggestions?entity_id=${encodeURIComponent(entityId)}&top=${top}`,
+  );
+}
+
+/** candidate 并入 canonical（manual 合并 + 留痕，可 unmerge 撤销；重复合并/自合并→409）。 */
+export async function mergeEntities(
+  candidateId: string,
+  canonicalId: string,
+  confidence?: number,
+): Promise<MergeResult> {
+  return authFetch<MergeResult>(`${RESOLUTION_BASE}/merge`, {
+    method: "POST",
+    body: JSON.stringify({
+      candidate_id: candidateId,
+      canonical_id: canonicalId,
+      method: "manual",
+      confidence: confidence ?? 1.0,
+    }),
+  });
+}
+
+/** 撤销一次合并（删留痕行，candidate 还原 active；merge 不存在→404）。 */
+export async function unmergeEntities(mergeId: string): Promise<UnmergeResult> {
+  return authFetch<UnmergeResult>(`${RESOLUTION_BASE}/unmerge`, {
+    method: "POST",
+    body: JSON.stringify({ merge_id: mergeId }),
+  });
 }

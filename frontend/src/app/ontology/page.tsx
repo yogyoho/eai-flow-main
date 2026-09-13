@@ -12,7 +12,9 @@
  * graphSceneState，v1 不做）。样式全部 Tailwind + globals.css 语义令牌。
  * 概览/实体消解 tab 为 bid-quote 式浅色定版（不随暗色，chartTheme 常量上色）；
  * 概览图数据从 graphStore 单例快照（readGraphSnapshot，缓存已由 useLoadGraph 去重
- * 加载，独立再拉一份是浪费），待复核实体数走 doc-graph resolution REST。
+ * 加载，独立再拉一份是浪费），待复核实体数走 doc-graph resolution REST；
+ * 消解 tab = ResolutionPanel（v2 Task 4），merge/unmerge 成功后 useReloadGraph
+ * 全量失效重载，地图节点状态与已合并计数随之刷新。
  */
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Search } from "lucide-react";
@@ -20,7 +22,6 @@ import dynamic from "next/dynamic";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { usePermission } from "@/core/permissions";
-import { INK_3, PAGE_BG } from "@/extensions/bid-quote/components/chartTheme";
 import {
   fetchPendingReviewCount,
   fetchRegistryMeta,
@@ -29,12 +30,14 @@ import { DetailPanel } from "@/extensions/ontology/components/DetailPanel";
 import type { OntologyGraphCanvasProps } from "@/extensions/ontology/components/OntologyGraphCanvas";
 import { OverviewPanel } from "@/extensions/ontology/components/OverviewPanel";
 import { RegistryPanel } from "@/extensions/ontology/components/RegistryPanel";
+import { ResolutionPanel } from "@/extensions/ontology/components/ResolutionPanel";
 import type { GraphCanvasHandle } from "@/extensions/ontology/explorer/GraphCanvas";
 import {
   graph,
   type NodeAttributes,
 } from "@/extensions/ontology/explorer/graphStore";
 import type { GraphLoadSummary } from "@/extensions/ontology/explorer/types";
+import { useReloadGraph } from "@/extensions/ontology/explorer/useLoadGraph";
 import {
   readGraphSnapshot,
   type GraphSnapshot,
@@ -123,6 +126,25 @@ function OntologyWorkspace() {
     () => (summary ? readGraphSnapshot() : EMPTY_SNAPSHOT),
     [summary],
   );
+
+  // 已合并实体计数：图快照中 graph_entity 节点 properties.status === "merged"
+  // （doc_graph.yaml 注册表把 dg_entities 投影为 graph_entity，status 是可见属性）；
+  // merge/unmerge 后经 reloadGraph 全量重载 → summary 更新 → 此计数随之刷新
+  const mergedCount = useMemo(() => {
+    if (!summary) {
+      return null;
+    }
+    return graphData.nodes.filter(
+      (node) => node.type === "graph_entity" && node.properties?.status === "merged",
+    ).length;
+  }, [graphData, summary]);
+
+  // 消解 merge/unmerge 成功 → 图全量查询失效重载（vendored 层暴露的 useReloadGraph，
+  // 最短路径：无需在画布层新开 refetch props），地图节点状态与"已合并数"卡同步
+  const reloadGraph = useReloadGraph();
+  const handleRefreshGraph = useCallback(() => {
+    void reloadGraph();
+  }, [reloadGraph]);
 
   const handleGoResolution = useCallback(() => setView("resolution"), []);
 
@@ -316,16 +338,13 @@ function OntologyWorkspace() {
         </div>
       ) : null}
 
-      {/* 实体消解视图：本批次占位 */}
+      {/* 实体消解视图（浅色定版：pending 列表 + 相似建议 + 合并/撤销） */}
       {view === "resolution" ? (
-        <div
-          className="flex min-h-0 flex-1 items-center justify-center"
-          data-testid="ontology-resolution"
-          style={{ background: PAGE_BG }}
-        >
-          <p className="text-sm" style={{ color: INK_3 }}>
-            实体消解审核——下一批次
-          </p>
+        <div className="min-h-0 flex-1" data-testid="ontology-resolution">
+          <ResolutionPanel
+            mergedCount={mergedCount}
+            onRefreshGraph={handleRefreshGraph}
+          />
         </div>
       ) : null}
 
