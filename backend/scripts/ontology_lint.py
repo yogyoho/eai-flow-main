@@ -8,6 +8,8 @@ Checks (mother-spec §2.2 / expansion-plan §2.2):
      (hard error — a typo here means broken SQL at query time). Physical columns
      not declared are only a warning (unmodeled = unexposed, e.g. created_at).
   4. describe coverage: non-empty descriptions, properties, link participation.
+  5. reasoning rules (EAI-CUSTOM, 2026-09-13 reasoning design §4): rule YAML
+     parseable + every when/derive predicate/etype ⊆ registry enum (fail-closed).
 
 Column-diff imports the extension model modules explicitly — Base.metadata is
 only populated by modules that have actually been imported.
@@ -57,6 +59,22 @@ def check_data_source_access(reg) -> list[str]:
     for o in reg.object_types.values():
         if o.access.path == "data_source" and not (o.access.source_id and o.access.table_name):
             errors.append(f"{o.api_name}: data_source access 缺 source_id/table_name")
+    return errors
+
+
+def check_reasoning_rules(reg) -> list[str]:
+    """推理规则（EAI-CUSTOM, reasoning 设计 §4）: doc_graph/rules YAML 可解析 + when/derive 谓词/etype ⊆ registry 枚举。
+
+    复用 main() 已加载的 reg（与 lint 其余检查同源）; 加载失败（坏 YAML/未注册谓词/
+    重复规则名等）→ 硬错误。示例规则自身必须过此检查（仓库 rules/eia.yaml）。
+    """
+    errors: list[str] = []
+    try:
+        from app.extensions.ontology.doc_graph.reasoning.rule_registry import RULES_DIR, load_rules
+
+        load_rules(RULES_DIR, reg=reg)
+    except Exception as exc:  # noqa: BLE001
+        errors.append(f"reasoning-rules check failed: {exc}")
     return errors
 
 
@@ -140,6 +158,7 @@ def main() -> int:
     errors += check_coverage(reg)
     errors += check_market_tables_registered(reg)
     errors += check_data_source_access(reg)
+    errors += check_reasoning_rules(reg)
     for w in warnings:
         print(f"ontology-lint WARN: {w}", file=sys.stderr)
     if errors:
