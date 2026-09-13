@@ -1,0 +1,145 @@
+{
+ "source": "3218运输顺槽掘进作业规程.docx",
+ "desensitized": true,
+ "algorithm": "effective_chars 剔空行/标题行/表格行/装饰符",
+ "chapters": {
+  "front": {
+   "eff_chars": 919,
+   "tables": 2
+  },
+  "ch1": {
+   "eff_chars": 729,
+   "tables": 0
+  },
+  "ch2": {
+   "eff_chars": 1341,
+   "tables": 3
+  },
+  "ch3": {
+   "eff_chars": 14926,
+   "tables": 5
+  },
+  "ch4": {
+   "eff_chars": 1709,
+   "tables": 2
+  },
+  "ch5": {
+   "eff_chars": 12604,
+   "tables": 7
+  },
+  "ch6": {
+   "eff_chars": 705,
+   "tables": 2
+  },
+  "ch7": {
+   "eff_chars": 847,
+   "tables": 1
+  },
+  "ch8": {
+   "eff_chars": 16268,
+   "tables": 0
+  },
+  "ch9": {
+   "eff_chars": 6960,
+   "tables": 0
+  }
+ },
+ "form_seed": {
+  "roadway": {
+   "roadway_name": "N3218运输顺槽",
+   "design_length_m": 902.236,
+   "drive_section_m2": 18.0,
+   "net_section_m2": 15.0,
+   "net_width_mm": 5000,
+   "drive_width_mm": 5000,
+   "section_shape": "矩形",
+   "roadway_use": "运煤、通风、行人、管线敷设，服务N3218工作面",
+   "working_face_no": "N3218",
+   "reg_no": "掘ZJED-N3218YSSC/01号",
+   "azimuth": "195°21′07″",
+   "start_end_date": "2024-11～2025-10",
+   "adjacent_relation": "西邻3202采空区（留设煤柱），东邻N3218回风顺槽，北接四条集中大巷，南至井田边界（+690水平二采区）",
+   "net_height_mm": 3500,
+   "drive_height_mm": 3600
+  },
+  "geology": {
+   "gas_emission_daily": 3.4,
+   "gas_emission_monthly": 2.45,
+   "khg": 1.39,
+   "normal_inflow_m3h": 6.0,
+   "max_inflow_m3h": 12.0,
+   "seam_thickness_m": 5.48,
+   "seam_dip_deg": 3,
+   "ground_elevation": "+1076～+1154m",
+   "face_elevation": "+532～+590m",
+   "strata": "3#煤，二叠系下统山西组下部，埋深560-635m；老顶中砂岩15.93m/直接顶泥岩1.09m/直接底泥岩8.85m/老底细砂岩",
+   "structure_desc": "单斜构造，倾角2-10°；邻巷揭露里程531—589m薄煤带，其余隐伏构造待探明",
+   "hydro_verdict": "水文地质条件中等；主受顶板砂岩裂隙水局部淋水（正常0.5m³/h、最大1m³/h）；底板+532m以上不带压，无奥灰水威胁"
+  },
+  "ventilation": {
+   "vent_method": "压入式",
+   "air_duct_diameter_m": 1.0,
+   "duct_section_length_m": 10,
+   "persons_per_shift": 12,
+   "diesel_power_total_kw": 0,
+   "air_supply_distance_m": 950,
+   "duct_leak_rate_per100m": 10,
+   "fan_model": "FBDYNo7.5/2×55kW对旋局部通风机×2（一用一备）"
+  },
+  "equipment": {
+   "roadheader_model": "EBZ160",
+   "drill_car_model": "CMM2-15",
+   "conveyor_model": "DSJ80/25/160带式输送机+DZQ-80/30/11桥式转载机",
+   "equip_list": "EBZ160掘进机、CMM2-15液压锚杆钻车、MQT130顶锚杆钻机×3、MQS-50帮锚杆钻机×3",
+   "pipeline_list": "风筒Φ1000mm×10m/节；供风/供水/防尘管Φ76×3.5mm；排水管Φ108×6mm（巷帮吊挂）",
+   "roof_monitoring_equip": "LBY-3顶板离层仪×23、MC-500(A)锚索测力计×10、LDZ-300/100锚杆拉拔计×2、KJ21顶板动态预警系统"
+  },
+  "support": {
+   "temp_support_method": "液压锚杆钻车临时支护（优先），故障或不满足时用前探梁临时支护",
+   "bolt_specs": "MSGLW-500/22×2400（Φ22×2400mm左旋无纵筋螺纹钢），顶板每排6根@900×1000mm，帮每排4根@1000×1000mm",
+   "cable_specs": "SKP22-1/1860-4300顶板每排5根@1100×1000mm；SKP22-1/1860-7300开口补强/帮部",
+   "mesh_spec": "顶板钢筋网Φ6.5mm网孔60×60mm（2.7m×1.2m）；帮部8#铁丝金属网网孔50×50mm",
+   "anchor_agent": "MSCKb2335（超快速）+MSZ2360（中速）树脂锚固剂，钻头Φ30mm",
+   "special_measures": "顶板破碎时300×460×6mm钢护板+补打锚索；特殊地段29U型钢棚复合支护排距900mm",
+   "quality_tolerances": "毛宽5000/净宽4800mm偏差0~100；毛高3600/净高3500mm偏差-50~200；间排距±100mm；预紧扭矩≥400N·m；离层预警50mm/临界100mm"
+  },
+  "systems": {
+   "compressed_air": "地面4台SA400W-8-C螺杆空压机（二用二备，67m³/min，0.8MPa）；井下Φ76×3.5mm钢管，每50m三通QJ25",
+   "power_supply": "KBSGZY2-T-1250/6移动变电站1250kVA供电，低压1140V；局扇双风机双电源KBSGZY-315/6/1140×2+QBZ4-2×120自动切换",
+   "water_supply_drainage": "静压给水：地面2×800m³消防水池，主管Φ159×6mm、分支Φ76×3.5mm；排水管Φ108×6mm；净化水幕+引水沟200×100mm",
+   "transport_desc": "EBZ160装煤→DZQ-80/30/11转载机→DSJ80/25/160带式输送机→集中主运巷→主井煤仓→主斜井皮带；人员经行人斜井架空乘人装置换防爆胶轮车",
+   "signal_desc": "通信信号电缆与电力电缆分挂井巷两侧，信号电缆MHYV-1×4×7/0.52沿非行人侧最上层吊挂",
+   "firefighting_desc": "自动隔爆装置+净化水幕/转载喷雾；配电点配消防桶/锹/斧/钩+0.5m³沙箱+8kg干粉×2+5kg CO₂×1；工作面8kg干粉×2+5kg CO₂×2"
+  },
+  "profile": {
+   "mine_name": "某矿",
+   "group_name": "某集团",
+   "reg_no_format": "掘ZJED-2026N3218YSSC/01号",
+   "team_name": "综掘某队",
+   "shift_system": "三八制",
+   "gas_grade": "低瓦斯",
+   "hydro_type": "中等",
+   "spontaneous_tendency": "自燃",
+   "coal_dust_explosion": "有爆炸性",
+   "development_mode": "立井单水平上下山开拓",
+   "ventilation_mode": "机械抽出式",
+   "supply_voltage": "1140V",
+   "monitoring_system": "KJ90X",
+   "audit_units": [
+    "地测科",
+    "通风科",
+    "机电科",
+    "安监站",
+    "调度中心"
+   ],
+   "archive_date": "2026-09-13",
+   "self_rescue_model": "ZYJ-M6",
+   "self_rescue_count": 3,
+   "self_rescue_distance_m": "25～40",
+   "escape_route_fire": "工作面→N3218运输顺槽→轨道大巷→副井底",
+   "escape_route_water": "工作面→N3218运输顺槽→胶带大巷→副井底",
+   "escape_route_roof": "就近避难硐室或压风自救点",
+   "avoidance_systems": "监测监控/人员定位/紧急避险/压风自救/供水施救/通信联络"
+  }
+ }
+}
