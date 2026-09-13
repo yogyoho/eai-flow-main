@@ -35,6 +35,10 @@ from app.extensions.knowledge_factory.routers import router as knowledge_factory
 from app.extensions.law import router as law_router
 from app.extensions.license.routers import router as license_router
 
+# EAI-CUSTOM: ontology doc_graph(实体消解, 2026-09-13 v2 Task2)——写侧审核 REST(pending/suggestions/
+# merge/unmerge), admin-gated(system:access);SQL/连接在 doc_graph/service.py, router 零 SQL。
+from app.extensions.ontology.doc_graph.routers import router as doc_graph_router
+
 # EAI-CUSTOM: ontology(统一语义层)——纯只读投影(registry YAML + 通用引擎),无自有表;
 # router 供语义地图/管理查询(/api/extensions/ontology/*), admin-gated(system:access)。
 from app.extensions.ontology.routers import router as ontology_router
@@ -954,6 +958,9 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # Ontology semantic layer read API (/api/extensions/ontology/*)  [EAI-CUSTOM]
     app.include_router(ontology_router)
+
+    # Entity resolution review API (/api/extensions/doc-graph/*)  [EAI-CUSTOM 2026-09-13 v2 Task2]
+    app.include_router(doc_graph_router)
 
     # Settings API is mounted at /api/extensions
     app.include_router(settings_router)
