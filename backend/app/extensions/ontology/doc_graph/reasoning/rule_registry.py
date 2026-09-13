@@ -1,10 +1,14 @@
 """推理规则注册表——YAML 规则的 fail-closed 加载 + SHA 指纹热重载.
 
-EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-design.md §3/§4。
+EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-design.md §3/§4/§5。
 镜像 ontology/registry.py 模式（pydantic + manifest + 指纹热重载 + 失败保旧快照）。
-规则引用的 predicate/etype 必须 ⊆ registry doc_graph.yaml 枚举（fail-closed）：
-- 关系谓词 = graph_relation.predicate enum；类型谓词 = graph_entity.etype enum
-  （类型事实形如 ``mine(?M)``）；派生谓词（org_involved_in）也须入枚举——派生事实要能被查询。
+规则引用的 predicate/etype 有两层 fail-closed 校验：
+- 存在性: ⊆ registry doc_graph.yaml 枚举（关系谓词 = graph_relation.predicate enum;
+  类型谓词 = graph_entity.etype enum, 形如 ``mine(?M)``）；派生谓词（org_involved_in）
+  也须入枚举——派生事实要能被查询。
+- 域归属: ⊆ rule.domain 的域谓词/域 etype 集（跨域拒绝, spec §5）。单一真源 =
+  schemas.py 的 *Extraction ClassVar（与抽取侧 _check_domain_and_refs 同源强制）;
+  派生谓词无抽取角色, 由 DERIVED_PREDICATE_DOMAIN 归入宿主域。
 - 模式解析复用 facade._compile_pattern / RuleSyntaxError（单一真源，避免两处语法漂移）。
 
 与 registry.RegistryStore 的一处有意偏差: 热重载失败且已有旧快照时**返回旧快照继续服务**
@@ -24,6 +28,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.extensions.ontology.doc_graph.reasoning.facade import RuleSyntaxError, _compile_pattern
+from app.extensions.ontology.doc_graph.schemas import BidExtraction, EiaExtraction, ExtractionPayload
 from app.extensions.ontology.registry import Registry, get_registry, load_registry
 
 RULES_DIR = Path(__file__).parent.parent / "rules"
@@ -33,6 +38,19 @@ logger = logging.getLogger(__name__)
 
 class RulesError(Exception):
     """规则注册表加载失败（fail-closed）。"""
+
+
+# 域 → 抽取模型: 域谓词/etype 单一真源 = schemas.py 的 *Extraction ClassVar
+# （domain_predicates/domain_etypes, 与抽取侧同源, schemas 改动自动跟随）;
+# 新域 = schemas 加 *Extraction 子类 + 此处登记一行。
+_DOMAIN_EXTRACTIONS: dict[str, type[ExtractionPayload]] = {
+    "bid": BidExtraction,
+    "eia": EiaExtraction,
+}
+
+# 派生谓词无抽取角色, 不入 schemas 角色表（写侧抽取契约不受影响）——在此归入宿主域,
+# 使派生事实可被同域规则引用/派生（org_involved_in 由 eia 域规则派生与消费）。
+DERIVED_PREDICATE_DOMAIN: dict[str, str] = {"org_involved_in": "eia"}
 
 
 class RuleModel(BaseModel):
@@ -123,10 +141,25 @@ def _registry_vocab(reg: Registry) -> tuple[set[str], set[str]]:
     return set(pred_enum), set(etype_enum)
 
 
-def _check_rule(file_name: str, rule: RuleModel, vocab: tuple[set[str], set[str]]) -> None:
-    """规则 when/derive 的谓词 ⊆ registry 枚举（fail-closed，带文件名+规则名定位）。"""
-    predicates, etypes = vocab
-    allowed = predicates | etypes  # when/derive 谓词可以是关系谓词或类型谓词（etype）
+def _domain_vocab(rule: RuleModel) -> tuple[set[str], set[str]]:
+    """规则所属域的 (谓词集, etype集); 未知域 fail-closed 拒绝（不静默放行）。"""
+    cls = _DOMAIN_EXTRACTIONS.get(rule.domain)
+    if cls is None:
+        raise RulesError(f"规则 {rule.name}: domain '{rule.domain}' 未注册（已知域: {sorted(_DOMAIN_EXTRACTIONS)}）")
+    derived = {p for p, d in DERIVED_PREDICATE_DOMAIN.items() if d == rule.domain}
+    return set(cls.domain_predicates) | derived, set(cls.domain_etypes)
+
+
+def _check_rule(file_name: str, rule: RuleModel, reg_vocab: tuple[set[str], set[str]]) -> None:
+    """规则 when/derive 谓词的两层校验（fail-closed，带文件名+规则名定位）：
+
+    1. 存在性 ⊆ registry doc_graph.yaml 枚举（关系谓词/etype 全集）;
+    2. 域归属 ⊆ rule.domain 域谓词/域 etype 集（跨域拒绝, spec §5——与抽取侧按域强制同源）。
+    """
+    reg_predicates, reg_etypes = reg_vocab
+    known = reg_predicates | reg_etypes
+    d_predicates, d_etypes = _domain_vocab(rule)
+    allowed = d_predicates | d_etypes
 
     def _pred_of(pattern: str) -> str:
         try:
@@ -134,13 +167,15 @@ def _check_rule(file_name: str, rule: RuleModel, vocab: tuple[set[str], set[str]
         except RuleSyntaxError as e:
             raise RulesError(f"{file_name}: 规则 {rule.name}: {e}") from e
 
-    for pattern in rule.when:
-        pred = _pred_of(pattern)
+    def _check_pred(side: str, pred: str) -> None:
+        if pred not in known:
+            raise RulesError(f"{file_name}: 规则 {rule.name}: {side}谓词 '{pred}' 未注册（graph_relation.predicate / graph_entity.etype 枚举外）")
         if pred not in allowed:
-            raise RulesError(f"{file_name}: 规则 {rule.name}: when 谓词 '{pred}' 未注册（graph_relation.predicate / graph_entity.etype 枚举外）")
-    d_pred = _pred_of(rule.derive)
-    if d_pred not in allowed:
-        raise RulesError(f"{file_name}: 规则 {rule.name}: derive 谓词 '{d_pred}' 未注册（graph_relation.predicate / graph_entity.etype 枚举外）")
+            raise RulesError(f"{file_name}: 规则 {rule.name}: {side}谓词 '{pred}' 不属于域 '{rule.domain}'（跨域, 域内允许: {sorted(allowed)}）")
+
+    for pattern in rule.when:
+        _check_pred("when", _pred_of(pattern))
+    _check_pred("derive", _pred_of(rule.derive))
 
 
 def load_rules(rules_dir: Path = RULES_DIR, reg: Registry | None = None) -> RulesSnapshot:

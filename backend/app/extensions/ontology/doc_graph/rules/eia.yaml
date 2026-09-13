@@ -1,6 +1,7 @@
 # EIA 域示例规则（验证推理底座——非业务定案）
 # 设计: docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-design.md §4
-# 约束: when/derive 引用的谓词/etype 必须 ⊆ registry doc_graph.yaml 枚举（load_rules fail-closed 拒绝）
+# 约束: when/derive 引用的谓词/etype 必须 ⊆ registry doc_graph.yaml 枚举且归属本域
+# （load_rules 两层 fail-closed——存在性 + 域归属, 跨域谓词拒绝）
 rules:
   - name: demo_org_involved_in_mine
     enabled: true

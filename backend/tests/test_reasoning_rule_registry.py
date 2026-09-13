@@ -175,6 +175,73 @@ def test_duplicate_rule_name_rejected(tmp_path: Path):
         load_rules(d, reg=reg)
 
 
+def test_cross_domain_predicate_rejected_in_when(tmp_path: Path):
+    """⑧ 跨域谓词（spec §5）: eia 规则 when 混入 bid 域谓词 bidder_of_project → 拒绝；derive 混入亦拒。"""
+    reg = _make_reg(tmp_path)
+    bad = GOOD_YAML.replace("org_develops_project(?ORG, ?PROJ)", "bidder_of_project(?ORG, ?PROJ)")
+    d = _write_rules_dir(tmp_path, eia_text=bad)
+    with pytest.raises(RulesError, match="bidder_of_project"):
+        load_rules(d, reg=reg)
+
+    bad2 = GOOD_YAML.replace('derive: "org_involved_in(?ORG, ?MINE)"', 'derive: "bidder_supplies_goods(?ORG, ?MINE)"')
+    d2 = _write_rules_dir(tmp_path, eia_text=bad2)
+    with pytest.raises(RulesError, match="bidder_supplies_goods"):
+        load_rules(d2, reg=reg)
+
+
+def test_bid_domain_rule_clean_loads_and_cross_rejected(tmp_path: Path):
+    """⑨ bid 域规则同走 load_rules 校验路径: 干净 bid 规则可加载; 混入 eia 谓词 org_develops_project → 拒绝。"""
+    reg = _make_reg(tmp_path)
+    clean = textwrap.dedent("""\
+        rules:
+          - name: bid_self_demo
+            domain: bid
+            when:
+              - "bidder_of_project(?BIDDER, ?PROJ)"
+            derive: "bidder_of_project(?BIDDER, ?PROJ)"
+        """)
+    d0 = _write_rules_dir(tmp_path, eia_text=clean)
+    snap = load_rules(d0, reg=reg)
+    assert [r.name for r in snap.rules] == ["bid_self_demo"]
+
+    dirty = textwrap.dedent("""\
+        rules:
+          - name: bid_cross_demo
+            domain: bid
+            when:
+              - "org_develops_project(?BIDDER, ?PROJ)"
+            derive: "bidder_of_project(?BIDDER, ?PROJ)"
+        """)
+    d1 = _write_rules_dir(tmp_path, eia_text=dirty)
+    with pytest.raises(RulesError, match="org_develops_project"):
+        load_rules(d1, reg=reg)
+
+
+def test_cross_domain_etype_rejected(tmp_path: Path):
+    """⑩ 跨域 etype: eia 规则 when 出现 bid 域 etype bidder（类型谓词）→ 拒绝。"""
+    reg = _make_reg(tmp_path)
+    bad = textwrap.dedent("""\
+        rules:
+          - name: eia_cross_etype
+            domain: eia
+            when:
+              - "bidder(?B)"
+            derive: "org_involved_in(?B, ?B)"
+        """)
+    d = _write_rules_dir(tmp_path, eia_text=bad)
+    with pytest.raises(RulesError, match=r"bidder' 不属于域 'eia'"):
+        load_rules(d, reg=reg)
+
+
+def test_unknown_domain_rejected(tmp_path: Path):
+    """⑪ 未知域: domain 不在已知域表 → 拒绝（fail-closed, 不静默放行）。"""
+    reg = _make_reg(tmp_path)
+    bad = GOOD_YAML.replace("domain: eia", "domain: ghost_domain")
+    d = _write_rules_dir(tmp_path, eia_text=bad)
+    with pytest.raises(RulesError, match="ghost_domain"):
+        load_rules(d, reg=reg)
+
+
 def test_real_repo_rules_load():
     """附加：仓库自带示例规则（rules/eia.yaml）对真枚举可加载——lint check_reasoning_rules 同源回归锚。"""
     reg = load_registry(REGISTRY_DIR)
