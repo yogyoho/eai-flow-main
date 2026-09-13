@@ -13,6 +13,7 @@ import { afterEach, describe, expect, test } from "@rstest/core";
 
 import {
   fetchPending,
+  fetchSuggestions,
   mergeEntities,
   PENDING_REVIEW_LIMIT,
   unmergeEntities,
@@ -100,6 +101,51 @@ describe("doc-graph resolution API wire contract", () => {
     expect(error).toBeInstanceOf(Error);
     expect(error.status).toBe(404);
     expect(error.message).toBe("canonical xxx 不存在");
+  });
+
+  test("fetchSuggestions hits /resolution/suggestions with entity_id + top passthrough (default top=5)", async () => {
+    stubFetch(200, {
+      entity: { id: "e-1", canonical_name: "横城煤矿", etype: "project" },
+      suggestions: [
+        {
+          id: "s-1",
+          canonical_name: "横城煤矿项目",
+          etype: "project",
+          norm_name: "横城煤矿项目",
+          similarity: 0.9615,
+          action: "auto_merge",
+        },
+      ],
+    });
+    const result = await fetchSuggestions("e-1", 5);
+    let [url] = lastCall();
+    expect(url).toBe(
+      "/api/extensions/doc-graph/resolution/suggestions?entity_id=e-1&top=5",
+    );
+    expect(result.entity.canonical_name).toBe("横城煤矿");
+    expect(result.suggestions[0]?.action).toBe("auto_merge");
+
+    // top 缺省 → 5（后端 Query 默认同值）
+    await fetchSuggestions("e-1");
+    [url] = lastCall();
+    expect(url).toBe(
+      "/api/extensions/doc-graph/resolution/suggestions?entity_id=e-1&top=5",
+    );
+
+    // entity_id 值走 encodeURIComponent（面板展开任意行 id 都要合法拼 URL）
+    await fetchSuggestions("e 1", 3);
+    expect(lastCall()[0]).toBe(
+      "/api/extensions/doc-graph/resolution/suggestions?entity_id=e%201&top=3",
+    );
+  });
+
+  test("fetchSuggestions 404 detail passthrough (vanished entity → panel auto-refetch contract)", async () => {
+    stubFetch(404, { detail: "entity e-9 不存在" });
+    const error = (await fetchSuggestions("e-9").catch(
+      (caught: unknown) => caught,
+    )) as Error & { status?: number };
+    expect(error.status).toBe(404);
+    expect(error.message).toBe("entity e-9 不存在");
   });
 
   test("unmergeEntities POSTs {merge_id} to /resolution/unmerge and returns restored id", async () => {

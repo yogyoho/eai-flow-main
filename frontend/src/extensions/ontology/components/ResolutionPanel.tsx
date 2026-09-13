@@ -11,7 +11,9 @@
  * - pending 列表（置信度升序）→ 点选行展开 Top5 相似建议 → 每条"合并到此"；
  * - 合并成功 → 刷新列表 + 行内"已合并，可撤销"横幅（撤销调 unmerge 再刷新）；
  * - merge/unmerge 成功后调 onRefreshGraph（页面 invalidate ["graph","full-load"]
- *   全量图查询——useReloadGraph 已由 vendored 层暴露，地图与"已合并数"卡随之更新）。
+ *   全量图查询——useReloadGraph 已由 vendored 层暴露，地图与"已合并数"卡随之更新）；
+ *   query 失效用 ["ontology"] 前缀——概览 KPI 的 ["ontology","pending-review-count"]
+ *   同前缀联动（评审 Fix 1：仅 ["ontology","resolution"] 会让概览 30s 内显示旧值）。
  * 错误接住（后端 routers.py 契约，前端不重复校验）：404 → 提示 + 自动刷新列表；
  * 409 → detail 文案直出；422 → "请求参数越界"。
  */
@@ -104,6 +106,8 @@ export function ResolutionPanel({
   const pendingQuery = useQuery({
     queryKey: ["ontology", "resolution", "pending"],
     queryFn: () => fetchPending(),
+    // 硬失败直接出错误+重试按钮（评审 Fix 2：默认 3× backoff 会转圈 10-15s）
+    retry: false,
   });
 
   const suggestionsQuery = useQuery({
@@ -120,7 +124,7 @@ export function ResolutionPanel({
       setExpandedId(null);
       setNotice({ kind: "info", text: "该记录已不存在，列表已刷新" });
       void queryClient.invalidateQueries({
-        queryKey: ["ontology", "resolution"],
+        queryKey: ["ontology"],
       });
     }
   }, [suggestionsQuery.error, queryClient]);
@@ -137,7 +141,7 @@ export function ResolutionPanel({
         canonicalName: vars.canonicalName,
       });
       void queryClient.invalidateQueries({
-        queryKey: ["ontology", "resolution"],
+        queryKey: ["ontology"],
       });
       onRefreshGraph?.();
     },
@@ -145,7 +149,7 @@ export function ResolutionPanel({
       const apiError = error as ApiError;
       if (apiError.status === 404) {
         void queryClient.invalidateQueries({
-          queryKey: ["ontology", "resolution"],
+          queryKey: ["ontology"],
         });
       }
       setNotice({ kind: "error", text: resolutionErrorText(apiError) });
@@ -158,7 +162,7 @@ export function ResolutionPanel({
       setUndoable(null);
       setNotice({ kind: "info", text: "已撤销合并，实体已还原待复核" });
       void queryClient.invalidateQueries({
-        queryKey: ["ontology", "resolution"],
+        queryKey: ["ontology"],
       });
       onRefreshGraph?.();
     },
@@ -167,7 +171,7 @@ export function ResolutionPanel({
       if (apiError.status === 404) {
         setUndoable(null);
         void queryClient.invalidateQueries({
-          queryKey: ["ontology", "resolution"],
+          queryKey: ["ontology"],
         });
       }
       setNotice({ kind: "error", text: resolutionErrorText(apiError) });
