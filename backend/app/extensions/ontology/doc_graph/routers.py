@@ -10,10 +10,10 @@ MergeConflict / IntegrityError→409; 其余 OntologyError/ValueError→400; 其
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
 from app.extensions.auth.middleware import require_permission
@@ -26,12 +26,12 @@ router = APIRouter(prefix="/api/extensions/doc-graph", tags=["doc-graph"])
 
 
 class MergeBody(BaseModel):
-    """POST /resolution/merge 请求体。"""
+    """POST /resolution/merge 请求体（边界对齐表约束: confidence→Numeric(4,3), method→String(30) 枚举; 越界 pydantic 422 而非 500）。"""
 
     candidate_id: str
     canonical_id: str
-    method: str = "manual"
-    confidence: float = 1.0
+    method: Literal["similarity", "manual"] = "manual"
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
 
 
 class UnmergeBody(BaseModel):
@@ -41,12 +41,14 @@ class UnmergeBody(BaseModel):
 
 
 def _uuid_or_404(value: str, label: str) -> str:
-    """malformed uuid → 404（无法标识任何资源; 否则 asyncpg CAST(:x AS uuid) DataError 变 500）。"""
+    """malformed uuid → 404（无法标识任何资源; 否则 asyncpg CAST(:x AS uuid) DataError 变 500）。
+
+    返回 canonical 形式（str(uuid.UUID)）——uuid.UUID 也接受 {…}/urn:uuid: 等拼写, Postgres CAST 会拒。
+    """
     try:
-        uuid.UUID(value)
+        return str(uuid.UUID(value))
     except (ValueError, TypeError, AttributeError) as e:
         raise HTTPException(status_code=404, detail=f"{label} 不存在") from e
-    return value
 
 
 def _resolution_http_error(e: Exception) -> HTTPException:

@@ -111,6 +111,18 @@ def test_unknown_ids_404(client):
     assert r3.status_code == 404  # candidate 不存在（UPDATE rowcount=0; 未到 INSERT 故自合并 CHECK 不触发）
     r4 = _call(client.get, "/api/extensions/doc-graph/resolution/suggestions", params={"entity_id": "not-a-uuid"})
     assert r4.status_code == 404
+    r5 = _call(client.get, "/api/extensions/doc-graph/resolution/suggestions", params={"entity_id": f"urn:uuid:{missing}"})
+    # uuid.UUID 接受 urn:uuid:/{} 等拼写但 Postgres CAST 会拒——_uuid_or_404 必须规范化后再查（404 而非 500）
+    assert r5.status_code == 404 and r5.json()["detail"] == f"entity {missing} 不存在"
+
+
+def test_merge_body_validation_422(client):
+    """Fix3: confidence 超 [0,1] / method 非枚举 → pydantic 422（防 Numeric(4,3)/String(30) 越界 500; 校验先于 handler, 不触库）。"""
+    missing = "00000000-0000-0000-0000-0000000000ab"
+    r1 = _call(client.post, "/api/extensions/doc-graph/resolution/merge", json={"candidate_id": missing, "canonical_id": missing, "confidence": 1.5})
+    assert r1.status_code == 422
+    r2 = _call(client.post, "/api/extensions/doc-graph/resolution/merge", json={"candidate_id": missing, "canonical_id": missing, "method": "telepathy"})
+    assert r2.status_code == 422
 
 
 def test_resolution_full_flow(client):
@@ -184,6 +196,11 @@ def test_resolution_full_flow(client):
         sug = {s["id"]: s for s in body["suggestions"]}
         assert id_a not in sug, "self 圈除由 SQL id != 目标 承担, 目标自身不得出现在建议里"
         assert id_b in sug and sug[id_b]["similarity"] >= 0.92 and sug[id_b]["action"] == "review"
+
+        # 3.5 评审加固: candidate 存在 + canonical 不存在 → 404（canonical 先验, 候选不得被翻转为 merged）
+        r = _call(client.post, "/api/extensions/doc-graph/resolution/merge", json={"candidate_id": id_a, "canonical_id": "00000000-0000-0000-0000-0000000000ff"})
+        assert r.status_code == 404 and "canonical" in r.json()["detail"]
+        assert id_a in {e["id"] for e in _call(client.get, "/api/extensions/doc-graph/resolution/pending", params={"etype": "project"}).json()["entities"]}, "canonical 404 后候选必须原样保留 pending"
 
         # 4. merge → 200 + 回显三字段; pending 减一（B 出列, A 仍在）
         r = _call(client.post, "/api/extensions/doc-graph/resolution/merge", json={"candidate_id": id_b, "canonical_id": id_a})
