@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """矿井档案层（spec D3 文件契约）。
 
-档案文件 = stages/tunneling.json forms.profile 族的 values 字典（15 扁平字段，
+档案文件 = stages/tunneling.json forms.profile 族的 values 字典（22 扁平字段（含 J11 refuge 七字段），
 不发明第二套 schema——validate 复用 ingest.validate_values 单一真源）。
 跨运行协议：首跑建档（mine_forms 逐族 ask_clarification）→ load 落 data/00_profile.json
 → 档案 md 随交付 present_files 进 docmgr；后续线程用户带档案文件进线程 → load → 门1 自动覆盖。
@@ -33,11 +33,17 @@ GROUPS = [
 def _stage_fields(stage_path: str) -> dict:
     """返回 forms.profile 完整族 spec（ingest.validate_values 吃 {'fields':[...]} 字典而非裸 list——对抗评审 P0）。"""
     stage = json.loads(Path(stage_path).read_text(encoding="utf-8"))
-    return stage["forms"]["profile"]
+    try:
+        return stage["forms"]["profile"]
+    except KeyError:
+        raise ValueError(f"阶段 schema {stage_path} 缺 forms.profile 族（档案层只服务 profile 族）") from None  # M3
 
 
 def _read_archive(path: str) -> dict:
-    return json.loads(Path(path).read_text(encoding="utf-8"))
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(data, dict):  # I2 形状守卫：数组/标量档案直接可读报错，防 len()/get() 深处 TypeError
+        raise ValueError("档案必须是 JSON 对象(dict)，收到 " + type(data).__name__)
+    return data
 
 
 def cmd_validate(args) -> int:
@@ -90,7 +96,7 @@ def main(argv=None) -> int:
     args = p.parse_args(argv)
     try:
         return {"validate": cmd_validate, "summary": cmd_summary, "load": cmd_load}[args.cmd](args)
-    except (OSError, json.JSONDecodeError) as exc:
+    except (OSError, ValueError, KeyError) as exc:  # I2/M3：ValueError 含 JSONDecodeError（其子类）
         print(f"PROFILE_ERROR: {exc}")
         return EXIT_ERROR
 

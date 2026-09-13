@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import ingest  # conftest.py 已注入 scripts/ 到 sys.path
+from conftest import run_cli  # T6 质量评审 M2：套件级 stdout 捕获辅助
 
 ROOT = Path(__file__).resolve().parents[1]
 STAGE = str(ROOT / "references" / "stages" / "tunneling.json")
@@ -26,11 +27,7 @@ def env(tmp_path):
     return STAGE, str(tmp_path / "data")
 
 def run(argv):
-    import io, contextlib
-    buf = io.StringIO()
-    with contextlib.redirect_stdout(buf):
-        rc = ingest.main(argv)
-    return rc, buf.getvalue()
+    return run_cli(ingest.main, argv)
 
 def test_forms_generates_all_12_families(tmp_path):
     stage, data = env(tmp_path)
