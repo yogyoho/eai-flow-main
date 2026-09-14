@@ -17280,3 +17280,898 @@
 | 14:41 | Session end: 51 writes across 17 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204514 tok |
 | 14:43 | Session end: 51 writes across 17 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204514 tok |
 | 14:46 | Session end: 51 writes across 17 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204514 tok |
+| 14:47 | Edited docs/superpowers/plans/2026-09-11-ontology-doc-graph.md | 1→3 lines | ~81 |
+| 14:49 | Session end: 52 writes across 17 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204601 tok |
+| 14:54 | Session end: 52 writes across 17 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204601 tok |
+| 05:45 | 页面验证终局:bug-3306 修 allowedDevOrigins 后 U1-U8 全过(viewer渲染/DXF/PNG/可行性/持久化/交互);报告v2健康分88 | qa-report v2 | 完成 | ~120k |
+| 14:56 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/text-to-cad-integration.md | 1→3 lines | ~196 |
+| 14:57 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 14:58 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:03 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:07 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:08 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:10 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:15 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:17 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:17 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:19 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:20 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:20 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:23 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:25 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:27 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 18:00 | 新线程39f590cc全书生成+组装完成:20章97节全VERIFIED(112+5ABSENT零PENDING),滚动波次ch6→ch19全过章门;build_output全书组装落盘(507KB/严格口径149029字/24章标题95节标题/[待确认]1300/{{残留0});一致性合约门拦2项=CC3规范引用28个未入库+SL2数值337处不可溯源(真实编辑工作,交付前必修);产物在outputs/新疆某新建井工煤矿建设项目-项目环评-环境影响报告.md | thread 39f590cc | 组装完成 | ~15k |
+| 15:33 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:33 | Session end: 53 writes across 18 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~204811 tok |
+| 15:40 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/e2e-clean4-verdict.md | — | ~267 |
+| 15:40 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | modified FAIL() | ~68 |
+| 15:40 | Session end: 55 writes across 19 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~205170 tok |
+| 06:00 | push 087ad15d9:allowedDevOrigins+127.0.0.1 修复(bug-3306),origin 同步 0/0 | frontend/next.config.js | 已推送 | ~1k |
+| 15:55 | Session end: 55 writes across 19 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~205170 tok |
+| 16:16 | Session end: 55 writes across 19 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~205170 tok |
+| 16:17 | Session end: 55 writes across 19 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~205170 tok |
+| 16:17 | Session end: 55 writes across 19 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 40 reads | ~205170 tok |
+| 16:25 | Edited skills/public/coal-eia-report/scripts/consistency.py | 1→2 lines | ~50 |
+| 16:25 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | expanded (+7 lines) | ~142 |
+| 16:25 | Session end: 57 writes across 21 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 42 reads | ~208340 tok |
+| 06:10 | 剩余待办全结:HMR=bug-3306同根已愈(101实测)/recursion=UI已发1000非产品问题/CLAUDE.md端口勘误已推;QA报告v3 DONE | CLAUDE.md+qa-report | 全结案 | ~2k |
+| 16:25 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | modified pick_answer() | ~107 |
+| 16:26 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | 3→7 lines | ~132 |
+| 16:26 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | modified stall_step() | ~400 |
+| 16:26 | Session end: 60 writes across 21 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 42 reads | ~208979 tok |
+| 16:26 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | "全流程完成" → "present_files" | ~26 |
+| 16:26 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | 2→4 lines | ~65 |
+| 16:26 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | 12→14 lines | ~244 |
+| 16:27 | Session end: 63 writes across 21 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 42 reads | ~209314 tok |
+| 16:28 | bug-3308 修复: e2e_bid_driver ANSWERS 门签名门控+STALL 交付证据只认文本标记 | backend/tests/e2e/bid/e2e_bid_driver.py | commit b0c8c17d5, clean4 实数据验证 9 项 PASS | ~35k |
+| 16:29 | Session end: 63 writes across 21 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 42 reads | ~209314 tok |
+| 16:30 | Edited skills/public/bid-technical/SKILL.md | inline fix | ~65 |
+| 16:30 | Edited backend/tests/test_bid_proposal_scripts.py | 2→3 lines | ~50 |
+| 16:32 | Session end: 65 writes across 21 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 43 reads | ~213439 tok |
+| 16:48 | Edited backend/tests/e2e/bid/score_checkpoints.py | expanded (+7 lines) | ~155 |
+| 16:48 | Edited backend/tests/e2e/bid/score_checkpoints.py | modified cp6b_meta_write() | ~905 |
+| 16:48 | Edited backend/tests/e2e/bid/score_checkpoints.py | 2→3 lines | ~35 |
+| 16:48 | Edited backend/tests/e2e/bid/score_checkpoints.py | 2→4 lines | ~27 |
+| 16:48 | Edited backend/tests/e2e/bid/score_checkpoints.py | 2→4 lines | ~54 |
+| 16:55 | bug-3307③ CP6b 签名溯源落地: score_checkpoints.py 新增 CP6b(meta 写命令级归因, 无 scripts/*.py 同命令调用即违规并入 cp6_problems); clean4 fire turn2+turn4, clean3 fire turn2+turn9, 均实证手签; ruff+py_compile clean | backend/tests/e2e/bid/score_checkpoints.py | commit 779cfe63d | ~9k |
+| 16:54 | Session end: 70 writes across 22 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 43 reads | ~214615 tok |
+| 21:30 | SL2溯源清理:白名单加标准代号模式(337→130);agent清理轮编辑了节稿(书510KB)但SL2未清零;检查点固化于playbook(SL2最后一段收尾指令模板);线程39f590cc停车:全书组装落盘507-510KB,SL2剩130处待逐值溯源 | thread 39f590cc | 检查点 | ~8k |
+| 16:59 | Session end: 70 writes across 22 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 43 reads | ~216963 tok |
+| 17:09 | Session end: 70 writes across 22 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~216963 tok |
+| 17:11 | Edited backend/tests/test_e2e_bid_driver.py | modified step() | ~52 |
+| 17:11 | Edited backend/tests/test_e2e_bid_driver.py | modified test_escalation_answer_with_new_tools_recovers() | ~230 |
+| 17:11 | Edited backend/tests/e2e/bid/score_checkpoints.py | 15→14 lines | ~240 |
+| 17:11 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | inline fix | ~42 |
+| 15:0x | e2e 终审收口: stall 新契约测试更新(helper 透传 last_ai+伴生用例)/ruff format 回归清理两脚本/删 META_WRITE_BASH[6] heredoc 误报正则(重放逐字节不变)/--answers help 补门签名前置 | backend/tests/e2e/bid/e2e_bid_driver.py, score_checkpoints.py, tests/test_e2e_bid_driver.py | 688 tests pass, 提交 221f07b51 | ~35000 |
+| 17:16 | Created backend/.deer-flow/e2e_bid_agnes_clean5_launch.py | — | ~128 |
+| 17:17 | Session end: 75 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217655 tok |
+| 17:17 | Session end: 75 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217655 tok |
+| 17:33 | Session end: 75 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217655 tok |
+| 17:37 | Session end: 75 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217655 tok |
+| 17:39 | Session end: 75 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217655 tok |
+| 17:40 | Session end: 75 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217655 tok |
+| 17:42 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/e2e-clean4-verdict.md | inline fix | ~29 |
+| 17:42 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/e2e-clean4-verdict.md | "零技术条款跳过自拟路" → "python backend/tests/e2e/" | ~135 |
+| 17:43 | Session end: 77 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217831 tok |
+| 17:56 | Session end: 77 writes across 24 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 44 reads | ~217831 tok |
+| 17:59 | Created docs/superpowers/specs/2026-09-12-ontology-eia-graph-import-design.md | — | ~894 |
+| 18:00 | Edited docs/superpowers/specs/2026-09-12-ontology-eia-graph-import-design.md | inline fix | ~26 |
+| 18:00 | Session end: 79 writes across 25 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~219883 tok |
+| 18:02 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | modified 3313() | ~148 |
+| 18:03 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | removed 11 lines | ~14 |
+| 18:03 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | modified 3313() | ~141 |
+| 18:03 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | 3→6 lines | ~132 |
+| 18:03 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | modified _clip() | ~578 |
+| 18:03 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | 2→3 lines | ~44 |
+| 18:03 | Edited backend/tests/e2e/bid/e2e_bid_driver.py | inline fix | ~50 |
+| 18:04 | Edited backend/tests/test_e2e_bid_driver.py | 1→2 lines | ~32 |
+| 18:04 | Edited backend/tests/test_e2e_bid_driver.py | modified test_stall_n_boundary_answer_below_threshold() | ~459 |
+| 18:06 | Session end: 88 writes across 25 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221481 tok |
+| 18:09 | Session end: 88 writes across 25 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221481 tok |
+| 18:13 | Created backend/.deer-flow/e2e_bid_agnes_clean6_launch.py | — | ~127 |
+| 18:14 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:14 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:14 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:19 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:20 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:22 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:26 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:31 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:43 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:53 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:55 | Session end: 89 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221608 tok |
+| 18:59 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/e2e-clean4-verdict.md | inline fix | ~34 |
+| 18:59 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/e2e-clean4-verdict.md | inline fix | ~167 |
+| 18:59 | Session end: 91 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221823 tok |
+| 19:31 | Session end: 91 writes across 26 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 45 reads | ~221823 tok |
+| 19:39 | 本体UI查证:我方零UI(幽灵授权nav:ontology可点亮,6REST已挂但缺traverse端点,admin-gated);Semantica Explorer=Vite SPA(React19+graphology+Sigma,16视图,MIT可复用,模式可抄文件勿搬——单文件100KB+);报告交用户 | 无 | 完成 | ~210k |
+| 19:39 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontology-platforms-semantica-ontoflow.md | 1→3 lines | ~186 |
+| 19:39 | Session end: 92 writes across 27 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 60 reads | ~222022 tok |
+| 20:34 | Created docs/CAD-操作手册.md | — | ~2084 |
+| 06:35 | 编写 docs/CAD-操作手册.md:能力总览/入口/五步工作流/提示词库9场景/FAQ/运维/诚实限制 | docs/ | 完成 | ~4.5k |
+| 20:35 | Session end: 93 writes across 28 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 60 reads | ~224254 tok |
+| 20:36 | Session end: 93 writes across 28 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 60 reads | ~224254 tok |
+| 20:37 | Session end: 93 writes across 28 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 72 reads | ~224254 tok |
+| 20:43 | Created docs/superpowers/specs/2026-09-12-ontology-semantic-map-ui-design.md | — | ~1051 |
+| 20:43 | Edited docs/superpowers/specs/2026-09-12-ontology-semantic-map-ui-design.md | 2→2 lines | ~37 |
+| 20:43 | Session end: 95 writes across 29 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 78 reads | ~225419 tok |
+| 20:43 | Session end: 95 writes across 29 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 78 reads | ~225419 tok |
+| 20:44 | Session end: 95 writes across 29 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 78 reads | ~225419 tok |
+| 20:47 | Edited frontend/src/extensions/bid-materials/bid-materials-api.ts | 1→4 lines | ~73 |
+| 20:47 | Edited frontend/src/extensions/bid-materials/bid-materials-api.ts | inline fix | ~11 |
+| 20:47 | Edited frontend/src/extensions/bid-materials/bid-materials-api.ts | 3→5 lines | ~61 |
+| 20:48 | Edited frontend/src/extensions/bid-materials/bid-materials-api.ts | expanded (+25 lines) | ~241 |
+| 20:48 | Edited frontend/src/extensions/bid-materials/bid-materials-api.ts | added error handling | ~178 |
+| 20:48 | Created frontend/src/extensions/bid-materials/OutlineCandidates.tsx | — | ~2177 |
+| 20:48 | Edited frontend/src/extensions/bid-materials/BidMaterials.tsx | added 1 import(s) | ~111 |
+| 20:48 | Edited frontend/src/extensions/bid-materials/BidMaterials.tsx | 3→4 lines | ~45 |
+| 20:48 | Edited frontend/src/extensions/bid-materials/BidMaterials.tsx | 10→14 lines | ~167 |
+| 20:49 | Edited frontend/tests/unit/extensions/bid-materials/api.test.ts | added error handling | ~572 |
+| 12:50 | bid-materials 大纲候选只读 tab(api+组件+三tab壳+4契约测试) | frontend/src/extensions/bid-materials/{OutlineCandidates.tsx,bid-materials-api.ts,BidMaterials.tsx} tests/unit/extensions/bid-materials/api.test.ts | 19/19 pass+eslint 0+typecheck 0 delta(4 pre-existing .next stale) | ~9k |
+| 20:55 | Session end: 105 writes across 33 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 79 reads | ~229055 tok |
+| 20:56 | Session end: 105 writes across 33 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 79 reads | ~229055 tok |
+| 21:03 | Review commit 1d0a3e4f5 (bid-materials outline tab): tests 19/19 pass, eslint+prettier clean, tsc errors all stale .next generated types; verdict Ready | frontend/src/extensions/bid-materials/* | OK | ~35k |
+| 21:04 | Session end: 105 writes across 33 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 79 reads | ~231940 tok |
+| 21:04 | Session end: 105 writes across 33 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 79 reads | ~231940 tok |
+| 21:05 | Edited frontend/src/extensions/bid-materials/bid-materials-api.ts | 4→6 lines | ~102 |
+| 21:05 | Edited frontend/src/extensions/bid-materials/OutlineCandidates.tsx | 4→5 lines | ~65 |
+| 21:05 | Edited frontend/src/extensions/bid-materials/OutlineCandidates.tsx | added nullish coalescing | ~44 |
+| 21:05 | Edited frontend/src/extensions/bid-materials/OutlineCandidates.tsx | added nullish coalescing | ~42 |
+| 21:05 | Edited frontend/src/extensions/bid-materials/OutlineCandidates.tsx | added nullish coalescing | ~92 |
+| 21:05 | Edited frontend/src/extensions/bid-materials/OutlineCandidates.tsx | added nullish coalescing | ~17 |
+| 21:05 | Edited frontend/tests/unit/extensions/bid-materials/api.test.ts | 2→3 lines | ~62 |
+| 21:08 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/outline-candidates-frontend.md | — | ~235 |
+| 21:08 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/MEMORY.md | modified FAIL() | ~64 |
+| 21:09 | Session end: 114 writes across 34 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 80 reads | ~237942 tok |
+| 21:10 | Session end: 114 writes across 34 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 80 reads | ~237942 tok |
+| 21:29 | Session end: 114 writes across 34 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 80 reads | ~237942 tok |
+| 21:29 | Edited docs/superpowers/specs/2026-09-12-ontology-semantic-map-ui-design.md | 1→2 lines | ~83 |
+| 21:33 | Created docs/superpowers/plans/2026-09-12-ontology-semantic-map-ui.md | — | ~5373 |
+| 21:33 | 语义地图UI计划定稿(5任务):后端2图投影端点(Explorer方言)+vendor闭包+页面壳+镜像重建;决策:检索走客户端过滤砍/search端点;EIA spec待审 | docs/superpowers/plans/2026-09-12-ontology-semantic-map-ui.md | 已写盘待选执行 | ~9k |
+| 21:34 | Session end: 116 writes across 35 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 80 reads | ~243787 tok |
+| 21:45 | Session end: 116 writes across 35 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 80 reads | ~243787 tok |
+| 21:46 | Session end: 116 writes across 35 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 80 reads | ~243787 tok |
+| 21:59 | Created backend/tests/test_ontology_graph_views.py | — | ~2718 |
+| 22:00 | Edited backend/tests/test_ontology_graph_views.py | added 1 import(s) | ~232 |
+| 22:00 | Edited backend/tests/test_ontology_graph_views.py | added 1 import(s) | ~29 |
+| 22:00 | Edited backend/tests/test_ontology_graph_views.py | 5→3 lines | ~45 |
+| 22:01 | Created backend/app/extensions/ontology/graph_views.py | — | ~2855 |
+| 22:02 | Edited backend/app/extensions/ontology/routers.py | added 1 import(s) | ~61 |
+| 22:02 | Edited backend/app/extensions/ontology/routers.py | modified aggregate() | ~409 |
+| 22:02 | Edited backend/tests/test_ontology_rest.py | added 2 import(s) | ~64 |
+| 22:03 | Edited backend/tests/test_ontology_rest.py | modified test_error_mapping_unknown_and_stub() | ~419 |
+| 22:03 | Session end: 125 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 85 reads | ~255656 tok |
+| 22:07 | Edited backend/tests/test_ontology_rest.py | modified test_graph_nodes_projection() | ~131 |
+| 22:08 | Edited backend/tests/test_ontology_rest.py | modified test_graph_edges_projection_excludes_stub() | ~66 |
+| 22:10 | Session end: 127 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 85 reads | ~255853 tok |
+| 22:40 | ontology-ui Task1: 新建 graph_views.py(游标编解码/nodes_page/edges_page) + routers 2 端点 + 测试 13 例 | graph_views.py, routers.py, test_ontology_graph_views.py, test_ontology_rest.py | 11+2 passed/2 skip(host gated), commit a67849cb2 | ~92000 tok |
+| 22:15 | Session end: 127 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 85 reads | ~255853 tok |
+| 22:17 | Session end: 127 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 85 reads | ~255853 tok |
+| 22:24 | Session end: 127 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 85 reads | ~255853 tok |
+| 22:24 | review commit a67849cb2 ontology graph_views vs Task1 spec: compliant; latent bug found in _cross_connector_link_rows offset contract (graph_views.py:186-215, dup/runaway, dead path today) | backend/app/extensions/ontology/graph_views.py | verdict issued to controller | ~40k |
+| 22:25 | Session end: 127 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 85 reads | ~255853 tok |
+| 22:27 | Edited backend/app/extensions/ontology/graph_views.py | modified _cross_connector_link_rows() | ~408 |
+| 22:27 | Edited backend/tests/test_ontology_graph_views.py | modified test_edges_page_excludes_stub_links() | ~1113 |
+| 23:15 | ontology-ui Task1 规格审查修复: cross-connector 边投影 offset 契约(return out[offset:]) + 回归钉(5边limit2, 修复前验证确实失败) | graph_views.py, test_ontology_graph_views.py | 12 passed, ruff clean, commit 57ca85a54 | ~15000 tok |
+| 22:30 | Session end: 129 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 86 reads | ~260229 tok |
+| 22:00 | 7c175bbe全书生成推进:98节全落盘+首行归一化(98文件契约式);章门实测ch14✅3427/ch17✅5822/ch19✅8708均过;**遗留=目录覆盖门判ch1-14缺席(映射机制待查,首行归一未解)+2瘦块+4槽位键**;组装被拦至排查后;检查点交接playbook终版 | thread 7c175bbe | 检查点交接 | ~10k |
+| 22:31 | Session end: 129 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 86 reads | ~260229 tok |
+| 22:32 | Session end: 129 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 86 reads | ~260229 tok |
+| 22:44 | Session end: 129 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 87 reads | ~261906 tok |
+| 22:45 | Edited backend/app/extensions/ontology/graph_views.py | modified TODO() | ~98 |
+| 22:45 | Edited backend/app/extensions/ontology/graph_views.py | modified decode_cursor() | ~190 |
+| 22:45 | Edited backend/tests/test_ontology_graph_views.py | modified test_cursor_huge_offset_rejected() | ~310 |
+| 22:45 | Edited backend/tests/test_ontology_graph_views.py | modified test_cursor_huge_offset_rejected() | ~212 |
+| 23:30 | ontology-ui Task1 质量审查硬化: decode_cursor offset 上限 _MAX_OFFSET=1e7(敌意游标→None≡fresh) + 跨路径 fan-out TODO 注 + 回归钉 | graph_views.py, test_ontology_graph_views.py | 13 passed, ruff clean, commit 9f5db9cca | ~8000 tok |
+| 22:48 | Session end: 133 writes across 39 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 87 reads | ~262716 tok |
+| 22:59 | Created frontend/src/extensions/ontology/explorer/edgePairKeys.ts | — | ~140 |
+| 23:02 | Edited frontend/src/extensions/ontology/explorer/GraphCanvas.tsx | CSS: EAI | ~84 |
+| 23:02 | Edited frontend/src/extensions/ontology/explorer/useLoadGraph.ts | added nullish coalescing | ~84 |
+| 23:02 | Edited frontend/src/extensions/ontology/explorer/graphAnalytics.ts | added nullish coalescing | ~79 |
+| 23:02 | Edited frontend/src/extensions/ontology/explorer/smallGraphLayout.ts | added nullish coalescing | ~67 |
+| 23:02 | Edited frontend/src/extensions/ontology/explorer/smallGraphLayout.ts | modified if() | ~70 |
+| 23:07 | Created frontend/src/extensions/ontology/api/ontology-graph-api.ts | — | ~799 |
+| 23:07 | Created frontend/src/extensions/ontology/themeAdapter.ts | — | ~657 |
+| 23:08 | Created frontend/src/extensions/ontology/__tests__/api-adapter.test.ts | — | ~1391 |
+| 23:08 | Created frontend/tests/unit/extensions/ontology/api-adapter.test.ts | — | ~74 |
+| 23:09 | Created frontend/src/extensions/ontology/explorer/README.md | — | ~1157 |
+| 23:20 | Edited frontend/src/extensions/ontology/themeAdapter.ts | modified if() | ~49 |
+| 23:20 | Edited frontend/eslint.config.js | modified CUSTOM() | ~115 |
+| 23:4x | ontology-ui Task2 完成: vendor 24文件(SHA 70573877)+适配层+themeAdapter+8测试, commit 1fb6eeccb | frontend/src/extensions/ontology/, eslint.config.js, .prettierignore, package.json | typecheck绿/test 1716绿/lint仅剩2条HEAD既有债 | ~60k |
+| 23:28 | Session end: 146 writes across 48 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 92 reads | ~267646 tok |
+| 23:41 | Session end: 146 writes across 48 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 92 reads | ~267646 tok |
+| 23:42 | Edited frontend/src/extensions/ontology/explorer/README.md | 5→7 lines | ~108 |
+| 23:44 | Session end: 147 writes across 48 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 92 reads | ~267761 tok |
+| 23:49 | Edited TODOS.md | expanded (+9 lines) | ~189 |
+| 23:50 | Edited docs/designs/self-improving-loop-port.md | expanded (+14 lines) | ~566 |
+| 23:50 | Edited docs/designs/self-improving-loop-port.md | 20→20 lines | ~270 |
+| 22:30 | 技能加固提交 2f7c354db(P8+白名单+注册表62条);docker cp 误落 backend/{06,46,a4,f3} 已清;交接手册终版含新会话启动清单;会话收官,新会话按手册续推映射修复+组装出终稿 | 2f7c354db | 收官 | ~8k |
+| 23:51 | Edited docs/designs/self-improving-loop-port.md | 21→23 lines | ~289 |
+| 23:51 | Session end: 151 writes across 50 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 99 reads | ~299217 tok |
+| 23:51 | Edited docs/designs/self-improving-loop-port.md | 26→28 lines | ~432 |
+| 23:51 | Edited docs/designs/self-improving-loop-port.md | 8→12 lines | ~241 |
+| 23:52 | Edited docs/designs/self-improving-loop-port.md | expanded (+16 lines) | ~281 |
+| 23:52 | Edited docs/designs/self-improving-loop-port.md | 5→5 lines | ~179 |
+| 23:53 | Edited docs/designs/self-improving-loop-port.md | 1→2 lines | ~83 |
+| 23:53 | Edited docs/designs/self-improving-loop-port.md | 9→10 lines | ~235 |
+| 23:53 | Edited docs/designs/self-improving-loop-port.md | 7→7 lines | ~86 |
+| 23:54 | Edited docs/designs/self-improving-loop-port.md | expanded (+16 lines) | ~337 |
+| 12:10 | plan-eng-review 自进化移植设计:15决议全folded(D9-D15),bug-3300已修+冒烟,TODOS+P2条目,设计文档含GSTACK REVIEW REPORT=ENG CLEARED | docs/designs/self-improving-loop-port.md, .wolf/hooks/post-write.js, TODOS.md | done | ~30k |
+| 23:56 | Session end: 159 writes across 50 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 99 reads | ~301223 tok |
+| 00:03 | Session end: 159 writes across 50 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 99 reads | ~301223 tok |
+| 00:06 | Edited frontend/src/extensions/ontology/explorer/useLoadGraph.ts | modified useLoadGraph() | ~279 |
+| 00:06 | Edited frontend/src/extensions/ontology/explorer/useLoadGraph.ts | 3→4 lines | ~64 |
+| 00:06 | Edited frontend/src/extensions/ontology/api/ontology-graph-api.ts | added optional chaining | ~289 |
+| 00:07 | Created frontend/src/extensions/ontology/explorerDataSource.ts | — | ~1214 |
+| 00:08 | Edited frontend/src/extensions/ontology/explorerDataSource.ts | 11→10 lines | ~95 |
+| 00:08 | Edited frontend/src/extensions/ontology/explorerDataSource.ts | 1→4 lines | ~31 |
+| 00:09 | Edited frontend/src/extensions/ontology/themeAdapter.ts | added 2 condition(s) | ~489 |
+| 00:09 | Edited frontend/src/extensions/ontology/themeAdapter.ts | 2→4 lines | ~69 |
+| 00:09 | Edited frontend/src/extensions/ontology/__tests__/api-adapter.test.ts | added 1 import(s) | ~72 |
+| 00:09 | Edited frontend/src/extensions/ontology/__tests__/api-adapter.test.ts | expanded (+9 lines) | ~140 |
+| 00:09 | Edited frontend/src/extensions/ontology/__tests__/api-adapter.test.ts | 2→1 lines | ~16 |
+| 00:09 | Edited frontend/src/extensions/ontology/__tests__/api-adapter.test.ts | modified mapped_to_edge_input() | ~390 |
+| 00:10 | Edited frontend/src/extensions/ontology/__tests__/api-adapter.test.ts | 24→19 lines | ~203 |
+| 00:10 | Edited frontend/src/extensions/ontology/explorer/README.md | modified exemption() | ~268 |
+| 00:10 | Edited frontend/src/extensions/ontology/explorer/README.md | modified deliberately() | ~249 |
+| 00:10 | Edited frontend/eslint.config.js | modified CUSTOM() | ~94 |
+| 00:11 | Edited docs/superpowers/plans/2026-09-12-ontology-semantic-map-ui.md | 1→2 lines | ~192 |
+| 00:11 | Edited docs/superpowers/plans/2026-09-12-ontology-semantic-map-ui.md | inline fix | ~45 |
+| 00:12 | Edited frontend/src/extensions/ontology/explorerDataSource.ts | added 1 import(s) | ~135 |
+| 00:1x | ontology-ui quality-review修复: useLoadGraph注入式取数接缝+explorerDataSource形状映射(content←label/id=src->tgt#type/familyId=type/weight=1)+themeAdapter oklch探针, commit af047dc8d | explorer/useLoadGraph.ts, explorerDataSource.ts, themeAdapter.ts, api, tests, README | typecheck绿/test1719绿/lint仅剩HEAD既有债2条 | ~40k |
+| 00:18 | Session end: 178 writes across 51 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 103 reads | ~314042 tok |
+| 00:26 | Session end: 178 writes across 51 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 103 reads | ~314042 tok |
+| 00:34 | Edited frontend/src/extensions/ontology/api/ontology-graph-api.ts | added optional chaining | ~227 |
+| 00:35 | Created frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | — | ~1519 |
+| 00:35 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | 4→1 lines | ~28 |
+| 00:35 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | removed 8 lines | ~10 |
+| 00:36 | Created frontend/src/extensions/ontology/components/RegistryPanel.tsx | — | ~971 |
+| 00:36 | Created frontend/src/extensions/ontology/components/DetailPanel.tsx | — | ~2030 |
+| 00:37 | Edited frontend/src/extensions/ontology/components/DetailPanel.tsx | 15→14 lines | ~175 |
+| 00:38 | Created frontend/src/app/ontology/page.tsx | — | ~2498 |
+| 00:38 | Edited frontend/src/app/ontology/page.tsx | 16→15 lines | ~262 |
+| 00:38 | Edited frontend/src/app/ontology/page.tsx | useMemo() → trim() | ~42 |
+| 00:39 | Edited frontend/src/extensions/shell/Sidebar.tsx | 14→15 lines | ~57 |
+| 00:39 | Edited frontend/src/extensions/shell/Sidebar.tsx | CSS: EAI-CUSTOM | ~135 |
+| 00:45 | Edited frontend/src/extensions/ontology/components/DetailPanel.tsx | added nullish coalescing | ~193 |
+| 00:45 | Edited frontend/src/extensions/ontology/components/DetailPanel.tsx | 6→8 lines | ~95 |
+| 00:45 | Edited frontend/src/extensions/ontology/components/RegistryPanel.tsx | added nullish coalescing | ~48 |
+| 00:55 | ontology-ui T3 语义地图页面壳落地: app/ontology/page.tsx + components/{OntologyGraphCanvas,RegistryPanel,DetailPanel} + api/fetchObjectLinks + Sidebar nav项; typecheck/test/lint 绿(仅既有2债); 冒烟受阻=前端容器镜像无sigma/graphology(T2依赖未重建镜像)+host dev无gateway端口, 留T4容器轮 | frontend/src/app/ontology/ frontend/src/extensions/ontology/ Sidebar.tsx | commit 0ce75f202 | ~9k |
+| 00:58 | Session end: 193 writes across 56 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 111 reads | ~324701 tok |
+| 01:06 | Session end: 193 writes across 56 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 114 reads | ~332881 tok |
+| 01:20 | Session end: 193 writes across 56 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 115 reads | ~333033 tok |
+| 01:21 | Edited config/permissions.yaml | inline fix | ~39 |
+| 01:21 | Edited deploy/offline/config/permissions.yaml | inline fix | ~39 |
+| 01:22 | Edited frontend/src/app/ontology/page.tsx | CSS: prefixHit, prefixHit | ~233 |
+| 01:22 | Edited frontend/src/app/ontology/page.tsx | CSS: event | ~97 |
+| 01:22 | Edited frontend/src/app/ontology/page.tsx | 8→10 lines | ~134 |
+| 01:22 | Edited frontend/src/app/ontology/page.tsx | 2→2 lines | ~39 |
+| 01:22 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | 8→9 lines | ~93 |
+| 01:22 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | added nullish coalescing | ~207 |
+| 01:22 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | inline fix | ~27 |
+| 01:22 | Edited frontend/src/extensions/ontology/components/DetailPanel.tsx | 11→11 lines | ~118 |
+| 01:23 | Edited frontend/src/extensions/ontology/components/DetailPanel.tsx | 5→5 lines | ~44 |
+| 01:15 | ontology-ui T3 评审收尾: permissions.yaml×2 v1超管口径注释+检索a11y(aria-label/Escape/pick即清空+前缀优先排序)+加载phase中文化+DetailPanel key防碰撞+空态文案去掉证据链承诺; plan doc补T4冒烟注记(gitignored未提交) | config/permissions.yaml deploy/offline/config/permissions.yaml frontend ontology 4文件 | commit 6297351b0 | ~3k |
+| 01:28 | Session end: 204 writes across 57 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 116 reads | ~334103 tok |
+| 02:14 | Edited frontend/src/extensions/ontology/explorer/GraphCanvas.tsx | modified GraphCanvas() | ~340 |
+| 02:21 | Edited frontend/src/extensions/ontology/explorer/GraphCanvas.tsx | modified CUSTOM() | ~267 |
+| 02:21 | Edited frontend/src/extensions/ontology/explorer/GraphCanvas.tsx | inline fix | ~32 |
+| 02:45 | ontology-ui T4 容器E2E: 重建frontend镜像(sigma/graphology入库), gateway重启修复graph路由404(stale进程), 重置admin口令哈希, 修GraphCanvas无限渲染循环+FA2 settle重定位(commit cf41895ae), 全流程E2E通过+截图 .wolf/tmp/ontology-ui-e2e/ | frontend/src/extensions/ontology/explorer/GraphCanvas.tsx | PASS 1068节点1099边 |
+| 02:43 | Session end: 207 writes across 57 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 118 reads | ~334943 tok |
+| 02:51 | Session end: 207 writes across 57 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 120 reads | ~336403 tok |
+| 02:52 | Created frontend/src/extensions/ontology/explorer/LICENSE-SEMANTICA-MIT | — | ~285 |
+| 02:52 | Edited frontend/src/extensions/ontology/explorer/README.md | modified fixes() | ~304 |
+| 02:52 | Edited docs/superpowers/specs/2026-09-12-ontology-semantic-map-ui-design.md | 2→2 lines | ~35 |
+| 02:55 | ontology-ui 终审收尾: explorer/README adaptations #6(cf41895ae两处偏离)+LICENSE-SEMANTICA-MIT原文落库(commit 50194dbfa);spec §4 /search 行补v1已裁注记(gitignored未入库) | frontend/src/extensions/ontology/explorer/README.md, LICENSE-SEMANTICA-MIT | DONE |
+| 02:54 | 语义地图UI特征集收官:10提交(a67849cb2..50194dbfa)终审Ship=Yes;E2E真库1068节点/1099边+检索定位+Registry stub卡+暗色+未登录负例;修复渲染循环bug-3335;前端镜像已重建 | frontend/src/extensions/ontology + app/ontology | SHIPPED(未push) | ~1.5M |
+| 02:54 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontology-semantic-layer-phase1.md | 1→2 lines | ~137 |
+| 02:54 | Session end: 211 writes across 58 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 120 reads | ~337219 tok |
+| 08:38 | Session end: 211 writes across 58 files (test-cases-text-to-cad-ui-2026-09-12.md, test_outline_merge.py, outline_merge.py, mcp.py, test_doc_graph_mcp.py) | 120 reads | ~337219 tok |
+
+## Session: 2026-09-13 08:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:57 | 诊断+修复 localhost:2026 挂起(wslrelay僵尸进程占IPv6回环,杀PID 7288恢复) | .wolf/buglog.json | localhost:2026 200/0.16s | ~3k |
+| 10:29 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | 4→5 lines | ~50 |
+| 10:29 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | inline fix | ~18 |
+| 10:29 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | 5→5 lines | ~47 |
+| 10:29 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | inline fix | ~22 |
+| 10:30 | Session end: 4 writes across 1 files (QualificationLibrary.tsx) | 3 reads | ~137 tok |
+| 10:35 | Created docs/superpowers/specs/2026-09-13-ontology-semantic-map-v2-design.md | — | ~991 |
+| 10:35 | Edited docs/superpowers/specs/2026-09-13-ontology-semantic-map-v2-design.md | inline fix | ~68 |
+| 10:36 | Session end: 6 writes across 2 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md) | 5 reads | ~1271 tok |
+| 10:39 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/outline-candidates-frontend.md | inline fix | ~143 |
+| 10:40 | Created docs/superpowers/plans/2026-09-13-ontology-semantic-map-v2.md | — | ~3654 |
+| 10:40 | Session end: 8 writes across 4 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md) | 5 reads | ~5339 tok |
+| 10:40 | 语义地图v2计划定稿(5任务):概览tab(StatCard/ChartCard复用+louvain)+消解tab(service抽层+4REST端点含suggestions打分);无镜像重建 | docs/superpowers/plans/2026-09-13-ontology-semantic-map-v2.md | 已写盘待执行 | ~7k |
+| 10:40 | Session end: 8 writes across 4 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md) | 5 reads | ~5339 tok |
+| 11:01 | Session end: 8 writes across 4 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md) | 5 reads | ~5339 tok |
+| 11:04 | Created backend/app/extensions/ontology/doc_graph/service.py | — | ~964 |
+| 11:04 | Edited backend/app/extensions/ontology/doc_graph/mcp.py | 3→4 lines | ~66 |
+| 11:04 | Edited backend/app/extensions/ontology/doc_graph/mcp.py | modified _list_pending_review() | ~330 |
+| 11:05 | Edited backend/tests/test_doc_graph_mcp.py | modified test_list_pending_review_sql_asyncpg_safe() | ~121 |
+| 11:07 | Created backend/_tmp_smoke_service.py | — | ~1124 |
+| 11:07 | Edited backend/_tmp_smoke_service.py | 2→2 lines | ~44 |
+| 11:08 | semantic-map-v2 Task1: doc_graph 审核SQL抽service.py(REST/MCP共用), mcp.py 三handler改调, CAST源测试迁移至service, 5pass+1skip, ruff clean, commit 8a5cb5a74 | backend/app/extensions/ontology/doc_graph/{service.py,mcp.py}, backend/tests/test_doc_graph_mcp.py | DONE | ~28k |
+| 11:10 | Session end: 14 writes across 8 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 9 reads | ~7988 tok |
+| 11:13 | Session end: 14 writes across 8 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 11 reads | ~9492 tok |
+| 11:15 | Session end: 14 writes across 8 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 11 reads | ~9492 tok |
+| 11:20 | Session end: 14 writes across 8 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 14 reads | ~11771 tok |
+| 11:33 | Edited backend/app/extensions/ontology/doc_graph/service.py | modified ResourceNotFound() | ~202 |
+| 11:34 | Edited backend/app/extensions/ontology/doc_graph/service.py | modified merge_entities() | ~301 |
+| 11:34 | Edited backend/app/extensions/ontology/doc_graph/service.py | KeyError() → ResourceNotFound() | ~140 |
+| 11:34 | Edited backend/app/extensions/ontology/doc_graph/service.py | modified score_candidates() | ~726 |
+| 11:34 | Created backend/tests/test_doc_graph_service.py | — | ~1078 |
+| 11:35 | Created backend/app/extensions/ontology/doc_graph/routers.py | — | ~1144 |
+| 11:35 | Edited backend/app/gateway/app.py | 3→7 lines | ~136 |
+| 11:35 | Edited backend/app/gateway/app.py | 2→5 lines | ~75 |
+| 11:36 | Created backend/tests/test_doc_graph_resolution_rest.py | — | ~2820 |
+| 11:38 | Edited backend/app/extensions/ontology/doc_graph/routers.py | 3→6 lines | ~97 |
+| 11:42 | 语义地图v2 Task2: doc_graph实体消解REST化(ResourceNotFound/MergeConflict类型化+score_candidates+suggestions service);REST真库验证在gateway容器内2 passed;计划test_self_excluded与实现矛盾已定契(SQL层圈self) | backend/app/extensions/ontology/doc_graph/{service,routers}.py backend/app/gateway/app.py backend/tests/test_doc_graph_{service,resolution_rest}.py | commit fc120ca14 | ~35k || 11:45 | Session end: 24 writes across 12 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 21 reads | ~19920 tok |
+| 11:48 | Session end: 24 writes across 12 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 21 reads | ~20826 tok |
+| 11:58 | Session end: 24 writes across 12 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 21 reads | ~20826 tok |
+| 11:59 | Edited backend/app/extensions/ontology/doc_graph/service.py | 3→5 lines | ~90 |
+| 11:59 | Edited backend/app/extensions/ontology/doc_graph/service.py | 12→16 lines | ~270 |
+| 11:59 | Edited backend/app/extensions/ontology/doc_graph/service.py | 4→4 lines | ~43 |
+| 11:59 | Edited backend/app/extensions/ontology/doc_graph/service.py | 3→3 lines | ~47 |
+| 11:59 | Edited backend/app/extensions/ontology/doc_graph/routers.py | 6→6 lines | ~53 |
+| 11:59 | Edited backend/app/extensions/ontology/doc_graph/routers.py | modified MergeBody() | ~87 |
+| 12:00 | Edited backend/app/extensions/ontology/doc_graph/routers.py | modified _uuid_or_404() | ~117 |
+| 12:00 | Edited backend/tests/test_doc_graph_resolution_rest.py | modified test_merge_body_validation_422() | ~295 |
+| 12:00 | Edited backend/tests/test_doc_graph_resolution_rest.py | 4→9 lines | ~213 |
+| 12:02 | Task2评审加固: merge先验canonical存在(防FK误分类409)+_uuid_or_404规范化(urn/brace防CAST 500)+MergeBody边界(Literal+confidence 422)+docstring语义注记;容器真库16 passed | doc_graph/{service,routers}.py test_doc_graph_resolution_rest.py | commit 9fdcd676e | ~12k || 12:04 | Session end: 33 writes across 12 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 21 reads | ~22041 tok |
+| 12:18 | Created frontend/src/extensions/ontology/stats.ts | — | ~1178 |
+| 12:18 | Created frontend/tests/unit/extensions/ontology/overview-stats.test.ts | — | ~735 |
+| 12:19 | Created frontend/src/extensions/ontology/graphSnapshot.ts | — | ~366 |
+| 12:20 | Created frontend/src/extensions/ontology/components/OverviewPanel.tsx | — | ~2490 |
+| 12:20 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | expanded (+14 lines) | ~279 |
+| 12:20 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | CSS: community, size, color | ~156 |
+| 12:20 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | modified OntologyGraphCanvas() | ~145 |
+| 12:21 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | added optional chaining | ~826 |
+| 12:21 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | CSS: background | ~514 |
+| 12:21 | Edited frontend/src/app/ontology/page.tsx | expanded (+11 lines) | ~547 |
+| 12:21 | Edited frontend/src/app/ontology/page.tsx | added 1 condition(s) | ~234 |
+| 12:22 | Edited frontend/src/app/ontology/page.tsx | modified OntologyWorkspace() | ~324 |
+| 12:22 | Edited frontend/src/app/ontology/page.tsx | CSS: hover, hover | ~625 |
+| 12:22 | Edited frontend/src/app/ontology/page.tsx | added nullish coalescing | ~239 |
+| 12:23 | Edited frontend/src/app/ontology/page.tsx | inline fix | ~23 |
+| 12:27 | Edited frontend/src/extensions/ontology/components/OntologyGraphCanvas.tsx | 12→12 lines | ~82 |
+| 12:30 | ontology-ui T3: 概览tab(KPI+3图+社区着色开关)落地 commit 1aaac5f64 | frontend/src/extensions/ontology/{stats,graphSnapshot}.tsx,OverviewPanel,page.tsx | typecheck/test/lint绿(仅既有2债) | ~40k |
+| 12:31 | Session end: 49 writes across 18 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 34 reads | ~81902 tok |
+| 12:40 | Session end: 49 writes across 18 files (QualificationLibrary.tsx, 2026-09-13-ontology-semantic-map-v2-design.md, outline-candidates-frontend.md, 2026-09-13-ontology-semantic-map-v2.md, service.py) | 34 reads | ~81902 tok |
+
+## Session: 2026-09-13 12:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 12:53 | Edited frontend/src/extensions/ontology/stats.ts | modified mulberry32() | ~410 |
+| 12:53 | Edited frontend/src/extensions/ontology/api/ontology-graph-api.ts | added 1 condition(s) | ~236 |
+| 12:54 | Edited frontend/src/app/ontology/page.tsx | 4→6 lines | ~70 |
+| 12:54 | Edited frontend/src/app/ontology/page.tsx | removed 17 lines | ~33 |
+| 12:54 | Edited frontend/src/extensions/ontology/components/OverviewPanel.tsx | 14→13 lines | ~78 |
+| 12:54 | Edited frontend/tests/unit/extensions/ontology/overview-stats.test.ts | expanded (+8 lines) | ~133 |
+| 12:54 | Edited frontend/tests/unit/extensions/ontology/overview-stats.test.ts | expanded (+28 lines) | ~320 |
+| 13:00 | ontology-ui T3 评审快修: louvain固定种子mulberry32+pending常量归位api层+守护测试4条 commit 2dd3256a0 | stats.ts,ontology-graph-api.ts,OverviewPanel,page.tsx,overview-stats.test.ts | typecheck/test/lint全绿(仅既有2债) | ~15k |
+| 13:01 | Session end: 7 writes across 5 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 1 reads | ~5230 tok |
+| 13:03 | Session end: 7 writes across 5 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 3 reads | ~5230 tok |
+| 13:07 | Edited frontend/src/extensions/ontology/api/ontology-graph-api.ts | isArray() → fetchPending() | ~85 |
+| 13:07 | Edited frontend/src/extensions/ontology/api/ontology-graph-api.ts | added nullish coalescing | ~919 |
+| 13:10 | Created frontend/src/extensions/ontology/components/ResolutionPanel.tsx | — | ~5045 |
+| 13:10 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | 8→9 lines | ~59 |
+| 13:10 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | CSS: loading, error, data | ~172 |
+| 13:10 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | 13→13 lines | ~164 |
+| 13:10 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | 5→5 lines | ~74 |
+| 13:11 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | added nullish coalescing | ~173 |
+| 13:11 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | inline fix | ~21 |
+| 13:11 | Edited frontend/src/app/ontology/page.tsx | added 1 import(s) | ~263 |
+| 13:11 | Edited frontend/src/app/ontology/page.tsx | added optional chaining | ~271 |
+| 13:11 | Edited frontend/src/app/ontology/page.tsx | 12→9 lines | ~91 |
+| 13:11 | Edited frontend/src/app/ontology/page.tsx | 3→5 lines | ~78 |
+| 13:12 | Created frontend/src/extensions/ontology/__tests__/resolution-api.test.ts | — | ~1119 |
+| 13:12 | Created frontend/tests/unit/extensions/ontology/resolution-api.test.ts | — | ~76 |
+| 13:16 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | inline fix | ~14 |
+| 13:16 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | 14→14 lines | ~69 |
+| 13:16 | Edited frontend/src/app/ontology/page.tsx | 2→2 lines | ~45 |
+| 13:17 | Edited frontend/src/extensions/ontology/__tests__/resolution-api.test.ts | String() → bodyOf() | ~559 |
+| 13:17 | Edited frontend/src/extensions/ontology/__tests__/resolution-api.test.ts | String() → bodyOf() | ~137 |
+| 13:20 | semantic-map v2 Task4: 实体消解tab落地(ResolutionPanel+api 4 fetcher+page接线+4钉测) | frontend/src/extensions/ontology/{api/ontology-graph-api.ts,components/ResolutionPanel.tsx,__tests__/resolution-api.test.ts},frontend/src/app/ontology/page.tsx,frontend/tests/unit/extensions/ontology/resolution-api.test.ts | commit 58393b152; typecheck 0错; pnpm test 1740全pass; 刷新走useReloadGraph | ~60k |
+| 13:24 | Session end: 27 writes across 7 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 19 reads | ~37422 tok |
+| 13:31 | Session end: 27 writes across 7 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 19 reads | ~37422 tok |
+| 13:41 | Session end: 27 writes across 7 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 22 reads | ~39687 tok |
+| 13:41 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | inline fix | ~7 |
+| 13:41 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | 4→6 lines | ~105 |
+| 13:41 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | CSS: retry | ~58 |
+| 13:42 | Edited frontend/src/extensions/ontology/__tests__/resolution-api.test.ts | 6→7 lines | ~40 |
+| 13:42 | Edited frontend/src/extensions/ontology/__tests__/resolution-api.test.ts | added optional chaining | ~477 |
+| 13:50 | Task4评审收尾: invalidate前缀['ontology']联动概览KPI+pending retry:false+suggestions钉测2例 | frontend/src/extensions/ontology/components/ResolutionPanel.tsx,__tests__/resolution-api.test.ts | commit 4bf9adfba; 1742测试全pass(+2); tsc/eslint(ontology树)0错 | ~15k |
+| 13:48 | Session end: 32 writes across 7 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 23 reads | ~40374 tok |
+| 14:25 | semantic-map v2 Task5 验证收尾: restart gateway→4条 resolution 路由确认; E2E 三tab冒烟(概览KPI/recharts×3+暗壳浅版定版、社区着色开关、消解 merge/unmerge 真实闭环 0.9286 兜底对); 后端回归 26 passed/3 skipped(host 既有基线); 冒烟数据清场(mention-link圈定+name-pattern双验证,4实体4mention归零) | backend/app/extensions/ontology/doc_graph/, frontend/src/extensions/ontology/, .wolf/tmp/ontology-v2-e2e/×7png | DONE; 发现2处 plan 预期与实现语义不符(SequenceMatcher 0.75<0.92 / unmerge 固定active), 记 bug-4952; 零代码改动零 commit | ~45k |
+| 14:15 | Session end: 32 writes across 7 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 25 reads | ~42420 tok |
+| 14:23 | Session end: 32 writes across 7 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 29 reads | ~46290 tok |
+| 14:23 | Edited frontend/src/extensions/ontology/components/ResolutionPanel.tsx | inline fix | ~18 |
+| 14:24 | Edited docs/superpowers/specs/2026-09-13-ontology-semantic-map-v2-design.md | inline fix | ~15 |
+| 14:24 | Edited docs/superpowers/specs/2026-09-13-ontology-semantic-map-v2-design.md | 6→7 lines | ~141 |
+| 14:24 | Edited docs/superpowers/specs/2026-09-13-ontology-semantic-map-v2-design.md | inline fix | ~36 |
+| 14:10 | Task4终审: 撤销toast文案对齐还原active语义+spec三修订(pending行created_at注/path正名/§5组件验证口径) | frontend/src/extensions/ontology/components/ResolutionPanel.tsx,docs spec(gitignored) | commit 66dd39fd0; tsc 0错; 1742全pass | ~8k |
+| 14:27 | 语义地图v2收官:8提交(8a5cb5a74..66dd39fd0)终审Ship=Yes+文案修正落地;概览(bid-quote风格+Louvain种子化)+消解REST(service抽层+4端点+suggestions打分);E2E真实闭环pending→merge→unmerge通过;无镜像重建 | ontology/doc_graph + frontend ontology | SHIPPED(未push) | ~1.2M |
+| 14:27 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontology-semantic-layer-phase1.md | 1→2 lines | ~171 |
+| 14:27 | Session end: 37 writes across 9 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 29 reads | ~46696 tok |
+| 17:56 | Created docs/superpowers/plans/2026-09-13-ontology-eia-graph-import.md | — | ~2862 |
+| 17:56 | EIA导入计划定稿(5任务):EiaExtraction+ingest基类通用化+registry枚举+converter(隐私硬排除)+容器对账 | docs/superpowers/plans/2026-09-13-ontology-eia-graph-import.md | 已写盘待执行 | ~6k |
+| 17:56 | Session end: 38 writes across 10 files (stats.ts, ontology-graph-api.ts, page.tsx, OverviewPanel.tsx, overview-stats.test.ts) | 29 reads | ~49762 tok |
+
+## Session: 2026-09-13 18:09
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-13 18:10
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:10 | Created docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md | — | ~2679 |
+| 18:12 | 掘进规程技能v2设计spec落地(commit 19d44a60f): 档案层文件契约+9件套移植+12合约+章级派发 | docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md | brainstorming两节APPROVED,待用户终审spec | ~60k |
+| 18:13 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/coal-tunneling-regulation-v2-design.md | — | ~264 |
+| 18:13 | Session end: 2 writes across 2 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md) | 0 reads | ~3152 tok |
+| 18:13 | Session end: 2 writes across 2 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md) | 2 reads | ~3152 tok |
+| 18:15 | Edited backend/tests/test_doc_graph_schemas.py | modified test_empty_relations_valid() | ~686 |
+| 18:16 | Edited docs/designs/self-improving-loop-port.md | 1→2 lines | ~150 |
+| 18:17 | Edited docs/designs/self-improving-loop-port.md | expanded (+9 lines) | ~193 |
+| 18:17 | Edited TODOS.md | inline fix | ~126 |
+| 09:35 | D16决议:自进化不建独立管理页,可见性=现有技能页(可看/可停/可删)+agent问答+响应尾注;enableSkill=紧急停止;P2 triage页四扳机写死TODOS | 设计文档D16节+TODOS.md | done | ~6k |
+| 18:17 | Session end: 6 writes across 5 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 3 reads | ~4339 tok |
+| 18:18 | Created backend/app/extensions/ontology/doc_graph/schemas.py | — | ~1458 |
+| 18:18 | Edited backend/app/extensions/ontology/doc_graph/ingest.py | inline fix | ~21 |
+| 18:18 | Edited backend/app/extensions/ontology/doc_graph/ingest.py | modified ingest_extraction() | ~44 |
+| 18:19 | Edited backend/tests/test_doc_graph_schemas.py | modified test_eia_unknown_etype_rejected() | ~366 |
+| 10:22 | doc_graph EiaExtraction 域 schema + ingest 基类通用化 (Task 1), 22 pass/4 env-skip, commit f1649056b; code-review-graph post-commit hook GBK crash (buglog 已记) | backend/app/extensions/ontology/doc_graph/{schemas,ingest}.py, backend/tests/test_doc_graph_schemas.py | done | ~30k |
+| 18:23 | Session end: 10 writes across 7 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 3 reads | ~6228 tok |
+| 18:27 | Review commit f1649056b (EiaExtraction schema) vs EIA plan Task1 spec — verdict compliant; probes: cross-domain reject OK, base fail-closed OK, 17+5 passed, ruff clean; spec miscount resolution skips 3 not 2 | backend/app/extensions/ontology/doc_graph/schemas.py,ingest.py,backend/tests/test_doc_graph_schemas.py | spec-compliant | ~28k |
+| 18:28 | Session end: 10 writes across 7 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 3 reads | ~9534 tok |
+| 18:34 | Session end: 10 writes across 7 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 4 reads | ~12496 tok |
+| 18:35 | Edited backend/app/extensions/ontology/doc_graph/schemas.py | added 1 import(s) | ~49 |
+| 18:35 | Edited backend/app/extensions/ontology/doc_graph/schemas.py | 14→18 lines | ~193 |
+| 18:35 | Edited backend/app/extensions/ontology/doc_graph/schemas.py | 10→11 lines | ~153 |
+| 18:35 | Edited backend/app/extensions/ontology/doc_graph/schemas.py | 5→5 lines | ~86 |
+| 18:36 | Edited backend/app/extensions/ontology/doc_graph/schemas.py | 5→5 lines | ~90 |
+| 18:36 | Edited backend/tests/test_doc_graph_schemas.py | added 4 import(s) | ~96 |
+| 18:36 | Edited backend/tests/test_doc_graph_schemas.py | modified test_eia_valid_roundtrip() | ~595 |
+| 10:41 | doc_graph 评审加固: 谓词域门双向钉+基类直接实例化fail-closed钉+基类domain:str字段+role表MappingProxyType+Literal域表一致性测试 (26 pass) | backend/app/extensions/ontology/doc_graph/schemas.py, backend/tests/test_doc_graph_schemas.py | done, commit 95e26264c | ~15k |
+| 18:38 | Session end: 17 writes across 7 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 4 reads | ~13758 tok |
+| 18:40 | Session end: 17 writes across 7 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 4 reads | ~13758 tok |
+| 18:41 | Edited backend/app/extensions/ontology/registry/doc_graph.yaml | inline fix | ~50 |
+| 18:41 | Edited backend/app/extensions/ontology/registry/doc_graph.yaml | inline fix | ~81 |
+| 23:50 | Task2 doc_graph.yaml枚举扩展: etype+4(mine/org/place/sensitive_point)+predicate+3(org_compiles/commissions/develops_project)=schemas全枚举; lint OK 14/16; pytest 40 passed; 零测试同步点 | backend/app/extensions/ontology/registry/doc_graph.yaml | commit fe7bc2294 | ~8k |
+| 18:45 | Session end: 19 writes across 8 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 5 reads | ~14200 tok |
+| 18:53 | Created backend/tests/test_import_eia_samples.py | — | ~1084 |
+| 18:54 | Created backend/scripts/import_eia_samples.py | — | ~2884 |
+| 18:55 | Edited backend/tests/test_import_eia_samples.py | 1→2 lines | ~53 |
+| 18:56 | Edited backend/scripts/import_eia_samples.py | 2→3 lines | ~51 |
+| 19:10 | Task3 done: EIA样例导入converter+8测试(隐私硬排除钉死), dry-run 24样例1117实体6关系边, commit 1967d10b4 | backend/scripts/import_eia_samples.py, backend/tests/test_import_eia_samples.py | pass | ~9k tok |
+| 19:00 | Session end: 23 writes across 10 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 10 reads | ~18272 tok |
+| 19:01 | Created backend/scripts/_probe_review_tmp.py | — | ~1428 |
+| 19:02 | Edited backend/scripts/_probe_review_tmp.py | inline fix | ~54 |
+| 19:04 | Session end: 25 writes across 11 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 12 reads | ~23756 tok |
+| 19:11 | review 1967d10b4 eia样例导入converter: 8 tests pass/ruff clean/dry-run 24样本3outline匹配(10文件带标签但格式变体)/.wolf未挂载容器Task4注意 | scripts/import_eia_samples.py | done | ~35k |
+| 19:13 | Session end: 25 writes across 11 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 12 reads | ~23756 tok |
+| 19:17 | Edited backend/scripts/import_eia_samples.py | expanded (+8 lines) | ~275 |
+| 19:18 | Edited backend/scripts/import_eia_samples.py | 7→8 lines | ~172 |
+| 19:18 | Edited backend/scripts/import_eia_samples.py | modified _parse_outline_header() | ~409 |
+| 19:18 | Edited backend/scripts/import_eia_samples.py | 2→5 lines | ~61 |
+| 19:18 | Edited backend/scripts/import_eia_samples.py | 3→3 lines | ~61 |
+| 19:18 | Edited backend/scripts/import_eia_samples.py | hasattr() → except() | ~63 |
+| 19:18 | Edited backend/tests/test_import_eia_samples.py | modified test_outline_relations_shape() | ~62 |
+| 19:19 | Edited backend/tests/test_import_eia_samples.py | modified test_outline_org_deduped_across_roles() | ~312 |
+| 19:19 | Edited backend/tests/test_import_eia_samples.py | 2→2 lines | ~56 |
+| 19:40 | Task3 评审加固: 解析器扩宽(同义词/非粗体/表格行/=值)+容器说明+minor③-⑥, dry-run outline-applied 3→9 relations 6→15 | backend/scripts/import_eia_samples.py, backend/tests/test_import_eia_samples.py | 30 tests pass | ~6k tok |
+| 19:23 | Session end: 34 writes across 11 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 12 reads | ~25227 tok |
+| 19:27 | close-out 390019d27 评审加固: 9 tests pass/ruff clean/dry-run 24/1116/15/9/2 确认; lookbehind+表格行边界探针A-J全过; ghost实体已除(yakeshi2026 51→50); minors ③④⑤⑥全落地 | scripts/import_eia_samples.py | Task3 approved | ~20k |
+| 19:29 | Session end: 34 writes across 11 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 12 reads | ~25227 tok |
+| 19:43 | Edited backend/scripts/import_eia_samples.py | 1→3 lines | ~70 |
+| 19:43 | Edited backend/scripts/import_eia_samples.py | modified _already_ingested() | ~314 |
+| 19:43 | Edited backend/scripts/import_eia_samples.py | modified getattr() | ~234 |
+| 19:43 | Edited backend/scripts/import_eia_samples.py | 1→2 lines | ~58 |
+| 19:44 | Edited backend/scripts/import_eia_samples.py | 3→5 lines | ~87 |
+| 19:44 | Edited backend/scripts/import_eia_samples.py | 3→4 lines | ~34 |
+| 19:44 | Edited backend/scripts/import_eia_samples.py | 2→3 lines | ~32 |
+| 19:44 | Edited backend/scripts/import_eia_samples.py | 2→2 lines | ~101 |
+| 20:15 | Task4 容器真导入: registry枚举验证(etype 8值+org_compiles_project在graph_relation.predicate枚举,计划脚本误查link_types) | gateway容器 | PASS | ~2k |
+| 20:15 | 29大纲tar流进容器/tmp/eia-samples; dry-run对账24/1116/15/9/2全中 | deer-flow-gateway | PASS | ~1k |
+| 20:20 | 真导入暴露幂等bug(bug-3353): relations/mentions盲INSERT翻倍;脚本加_already_ingested守卫+--force,DELETE重复后重导,终态1041/15/1131重跑不变 | backend/scripts/import_eia_samples.py | FIXED | ~6k |
+| 20:22 | 读侧冒烟: 横城4hits+mention_of_entity=1链路活; registry端点401=admin-gated生效; 单测30 passed | ontology engine | PASS | ~1.5k |
+| 20:00 | Session end: 42 writes across 11 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 12 reads | ~26443 tok |
+| 20:51 | EIA导入特征集收官:6提交(f1649056b..ee83da4d3)终审Ship=Yes;EiaExtraction第二域schema+registry枚举+converter(隐私结构排除+解析器扩宽9/24)+容器真库导入1041实体/15关系(幂等实证bug-3353修);隐私DB扫描独立核验通过 | ontology/doc_graph + scripts | SHIPPED(未push) | ~1.5M |
+| 20:51 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontology-semantic-layer-phase1.md | 1→2 lines | ~194 |
+| 20:51 | Edited docs/superpowers/plans/2026-09-13-ontology-eia-graph-import.md | 1→3 lines | ~130 |
+| 20:51 | Session end: 44 writes across 13 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 15 reads | ~27591 tok |
+| 20:58 | Session end: 44 writes across 13 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 15 reads | ~27591 tok |
+| 21:54 | Created skills/public/self-improving/SKILL.md | — | ~1051 |
+| 21:54 | Created skills/public/self-improving/references/pattern-keys.md | — | ~565 |
+| 21:55 | Created docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-design.md | — | ~670 |
+| 21:56 | Created docs/superpowers/plans/2026-09-13-ontology-reasoning-rules.md | — | ~2023 |
+| 21:57 | 推理规则底座计划定稿(4任务):Rete vendor+facade+YAML规则注册表(fail-closed)+evaluate_rules MCP(现算现返);EIA真数据已就位 | docs/superpowers/plans/2026-09-13-ontology-reasoning-rules.md | 已写盘待执行 | ~5k |
+| 21:58 | Session end: 48 writes across 17 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 28 reads | ~34717 tok |
+| 21:59 | Created skills/public/self-improving/scripts/eval_p0.py | — | ~2046 |
+| 21:59 | Edited skills/public/self-improving/scripts/eval_p0.py | added 1 import(s) | ~41 |
+| 21:59 | Edited skills/public/self-improving/scripts/eval_p0.py | modified scenario_error_and_fold() | ~66 |
+| 21:59 | Edited skills/public/self-improving/scripts/eval_p0.py | 3→2 lines | ~11 |
+| 22:00 | Edited skills/public/self-improving/scripts/eval_p0.py | modified _csrf_token() | ~212 |
+| 22:01 | Edited skills/public/self-improving/scripts/eval_p0.py | modified _csrf_token() | ~44 |
+| 22:02 | Edited skills/public/self-improving/scripts/eval_p0.py | modified run_task() | ~419 |
+| 22:10 | Created backend/tests/test_reasoning_rete.py | — | ~862 |
+| 22:12 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rete_engine.py | expanded (+6 lines) | ~138 |
+| 22:13 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rete_engine.py | modified get_logger() | ~1086 |
+| 22:14 | Created backend/app/extensions/ontology/doc_graph/reasoning/facade.py | — | ~2570 |
+| 22:14 | Created backend/app/extensions/ontology/doc_graph/reasoning/__init__.py | — | ~141 |
+| 22:14 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rete_engine.py | 15→16 lines | ~123 |
+| 22:15 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rete_engine.py | reduced (-6 lines) | ~96 |
+| 22:16 | Created backend/app/extensions/ontology/doc_graph/reasoning/README.md | — | ~1547 |
+| 22:17 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rete_engine.py | upstream() → spellings() | ~142 |
+| 22:17 | Edited backend/tests/test_reasoning_rete.py | 3→3 lines | ~51 |
+| 22:17 | Edited backend/tests/test_reasoning_rete.py | 2→1 lines | ~30 |
+| 22:17 | Edited backend/tests/test_reasoning_rete.py | inline fix | ~24 |
+| 22:17 | Edited backend/app/extensions/ontology/doc_graph/reasoning/README.md | modified edits() | ~142 |
+| 22:19 | Edited config.yaml | 2→2 lines | ~72 |
+| 22:19 | Edited skills/public/self-improving/SKILL.md | 9→12 lines | ~122 |
+| 19:0x | reasoning Task1 完成: vendor rete_engine(SHA 7057387,3处import剥离)+facade前向链(上限硬编码,7测试), commit 7d1ca51ba | backend/app/extensions/ontology/doc_graph/reasoning/, backend/tests/test_reasoning_rete.py | pytest 7绿/回归47绿/ruff+format净 | ~35k |
+| 22:22 | Session end: 70 writes across 24 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 89 reads | ~48364 tok |
+| 22:5x | review commit 7d1ca51ba (Rete vendor+facade) vs 推理Task1 spec: AST-diff vs upstream@7057387 全对齐(3 strips+Callable+logger swap 仅此), 7/7 tests+ruff+26 regression+对抗探针全过, 结论 spec compliant | backend/app/extensions/ontology/doc_graph/reasoning/, backend/tests/test_reasoning_rete.py | PASS | ~45k |
+| 22:28 | Session end: 70 writes across 24 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 89 reads | ~48364 tok |
+| 22:39 | Session end: 70 writes across 24 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 89 reads | ~48364 tok |
+| 22:39 | Created docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | — | ~1979 |
+| 22:40 | Edited backend/app/extensions/ontology/doc_graph/reasoning/facade.py | modified RuleSyntaxError() | ~52 |
+| 22:40 | Edited backend/app/extensions/ontology/doc_graph/reasoning/facade.py | ValueError() → RuleSyntaxError() | ~136 |
+| 22:41 | Edited backend/app/extensions/ontology/doc_graph/reasoning/facade.py | modified add_rule() | ~325 |
+| 22:41 | Edited skills/public/self-improving/SKILL.md | 4→4 lines | ~84 |
+| 22:41 | Edited skills/public/self-improving/scripts/eval_p0.py | baseline() → stable() | ~161 |
+| 22:41 | Edited backend/app/extensions/ontology/doc_graph/reasoning/facade.py | 5→7 lines | ~79 |
+| 22:41 | Edited skills/public/self-improving/scripts/eval_p0.py | modified scenario_error_and_fold() | ~187 |
+| 22:41 | Edited skills/public/self-improving/scripts/eval_p0.py | 6→6 lines | ~83 |
+| 22:41 | Edited backend/tests/test_reasoning_rete.py | expanded (+11 lines) | ~126 |
+| 22:42 | Edited backend/tests/test_reasoning_rete.py | modified test_max_rule_fires_cap_stops_run() | ~433 |
+| 22:42 | Edited backend/app/extensions/ontology/doc_graph/reasoning/README.md | modified layer() | ~194 |
+| 22:42 | Edited backend/app/extensions/ontology/doc_graph/reasoning/README.md | 4→6 lines | ~106 |
+| 19:4x | reasoning Task1 评审加固落地: fail-closed测试钉x3+重复名守卫+RuleSyntaxError+LICENSE落库, commit 983f39150 | doc_graph/reasoning/, test_reasoning_rete.py | pytest 11绿/ruff净 | ~10k |
+| 22:44 | Session end: 83 writes across 25 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 91 reads | ~55912 tok |
+| 22:47 | Session end: 83 writes across 25 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 91 reads | ~55912 tok |
+| 22:50 | Edited skills/public/self-improving/scripts/eval_p0.py | modified settle_baseline() | ~151 |
+| 22:50 | Edited skills/public/self-improving/scripts/eval_p0.py | read_ledger() → settle_baseline() | ~35 |
+| 22:50 | Edited skills/public/self-improving/scripts/eval_p0.py | read_ledger() → settle_baseline() | ~44 |
+| 22:50 | Edited skills/public/self-improving/scripts/eval_p0.py | 2→2 lines | ~45 |
+| 22:55 | Created backend/tests/test_reasoning_rule_registry.py | — | ~1844 |
+| 22:55 | Edited backend/tests/test_reasoning_rule_registry.py | added 1 import(s) | ~41 |
+| 22:56 | Session end: 89 writes across 26 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 98 reads | ~60603 tok |
+| 22:56 | Created backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | — | ~2489 |
+| 22:56 | Created backend/app/extensions/ontology/doc_graph/rules/manifest.yaml | — | ~62 |
+| 22:56 | Created backend/app/extensions/ontology/doc_graph/rules/eia.yaml | — | ~181 |
+| 22:56 | Edited backend/app/extensions/ontology/registry/doc_graph.yaml | 1→3 lines | ~128 |
+| 22:57 | Edited backend/scripts/ontology_lint.py | modified rules() | ~136 |
+| 22:57 | Edited backend/scripts/ontology_lint.py | modified check_data_source_access() | ~267 |
+| 22:57 | Edited backend/scripts/ontology_lint.py | 2→3 lines | ~39 |
+| 22:58 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | 2→3 lines | ~75 |
+| 22:58 | Edited backend/tests/test_reasoning_rule_registry.py | 5→5 lines | ~60 |
+| 23:00 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | 2→2 lines | ~52 |
+| 23:00 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | modified __init__() | ~86 |
+| 23:02 | Edited skills/public/self-improving/SKILL.md | expanded (+7 lines) | ~190 |
+| 23:02 | Edited skills/public/self-improving/SKILL.md | 3→3 lines | ~48 |
+| 23:02 | Edited skills/public/self-improving/scripts/eval_p0.py | modified scenario_error_and_fold() | ~188 |
+| 23:02 | Task2 推理规则注册表: rule_registry.py(fail-closed+SHA热重载+失败保旧快照)+rules/示例2条+lint check_reasoning_rules+org_involved_in入枚举; 21+5测全pass, lint OK, ruff clean | backend/app/extensions/ontology/doc_graph/{reasoning/rule_registry.py,rules/},backend/scripts/ontology_lint.py,backend/tests/test_reasoning_rule_registry.py,registry/doc_graph.yaml | commit f88404e01 | ~52k |
+| 23:04 | Session end: 103 writes across 30 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 98 reads | ~64621 tok |
+| 23:10 | Edited skills/public/self-improving/SKILL.md | 5→6 lines | ~101 |
+| 23:10 | Edited skills/public/self-improving/scripts/eval_p0.py | 6→5 lines | ~63 |
+| 23:10 | Session end: 105 writes across 30 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 102 reads | ~69242 tok |
+| 23:13 | Edited backend/tests/test_reasoning_rule_registry.py | modified test_cross_domain_predicate_rejected_in_when() | ~733 |
+| 23:14 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | 27→32 lines | ~386 |
+| 23:14 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | modified RulesError() | ~148 |
+| 23:14 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | modified _domain_vocab() | ~467 |
+| 23:14 | Edited backend/app/extensions/ontology/doc_graph/rules/eia.yaml | 1→2 lines | ~33 |
+| 23:15 | Edited backend/tests/test_reasoning_rule_registry.py | "bidder 不属于域 " → "bidder" | ~19 |
+| 23:16 | Task2评审修复: 规则跨域谓词/etype fail-closed(域归属=schemas *Extraction ClassVar单一真源+DERIVED_PREDICATE_DOMAIN); +4测(when/derive跨域/bid域路径/etype跨域/未知域)30 pass | rule_registry.py,test_reasoning_rule_registry.py,rules/eia.yaml | commit 1d980e598 | ~18k |
+| 23:17 | Session end: 111 writes across 30 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 102 reads | ~71028 tok |
+| 23:18 | Edited skills/public/self-improving/SKILL.md | expanded (+18 lines) | ~278 |
+| 23:18 | Edited skills/public/self-improving/SKILL.md | inline fix | ~40 |
+| 23:20 | Session end: 113 writes across 30 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 102 reads | ~71368 tok |
+| 16:40 | P0自进化skill上线:SKILL.md+pattern-keys+eval_p0.py;config开skill_evolution;eval 5轮迭代修复(工具契约/折叠重开/先记录后深究/逐字模板)最终3/3 PASS | skills/public/self-improving/ | done | ~45k |
+| 23:25 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/self-improving-agent-analysis.md | 1→3 lines | ~369 |
+| 23:25 | Session end: 114 writes across 31 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 104 reads | ~74806 tok |
+| 23:31 | Session end: 114 writes across 31 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 104 reads | ~74806 tok |
+| 23:33 | Edited backend/tests/test_reasoning_rule_registry.py | modified test_failed_reload_keeps_old_snapshot() | ~744 |
+| 23:34 | Edited backend/app/extensions/ontology/doc_graph/reasoning/rule_registry.py | 3→3 lines | ~52 |
+| 23:34 | Edited backend/app/extensions/ontology/doc_graph/rules/eia.yaml | 2→2 lines | ~42 |
+| 23:34 | Edited backend/app/extensions/ontology/registry.py | 2→2 lines | ~26 |
+| 23:35 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified main() | ~350 |
+| 23:35 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 4→5 lines | ~75 |
+| 23:35 | Task2质量评审4修复: registry版本触发测试钉⑫+短路last_error清除钉+hot_reload声明化注释+演示规则笛卡尔积诚实注记+registry.py docstring勘误 | rule_registry.py,rules/eia.yaml,registry.py,test_reasoning_rule_registry.py | commit 683b54692 | ~16k |
+| 23:35 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | added 2 import(s) | ~117 |
+| 23:35 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~63 |
+| 23:35 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | expanded (+7 lines) | ~250 |
+| 23:35 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | removed 11 lines | ~42 |
+| 23:36 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 8→8 lines | ~190 |
+| 23:36 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | "管线敷设：{{TABLE:equipment}} " → "管线敷设：{{TABLE:equipment}} " | ~30 |
+| 23:36 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified items() | ~156 |
+| 23:37 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~93 |
+| 23:37 | Session end: 128 writes across 32 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 104 reads | ~77133 tok |
+| 23:37 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | "通风：方式 {{SLOT:ventilation." → "通风：方式 {{SLOT:ventilation." | ~97 |
+| 23:37 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified env() | ~482 |
+| 23:38 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 1→2 lines | ~100 |
+| 23:39 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified effective_chars() | ~1423 |
+| 23:39 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified _stage_fields() | ~67 |
+| 23:39 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 3→4 lines | ~62 |
+| 23:39 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified cmd_load() | ~135 |
+| 23:39 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified cmd_validate() | ~87 |
+| 23:40 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 6→10 lines | ~343 |
+| 23:40 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified in() | ~217 |
+| 23:40 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~71 |
+| 23:41 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | added 1 import(s) | ~1261 |
+| 23:41 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~33 |
+| 23:42 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified _ch_num() | ~837 |
+| 23:42 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified main() | ~91 |
+| 23:43 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified _init() | ~827 |
+| 23:43 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified main() | ~382 |
+| 23:44 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified resolve_source() | ~634 |
+| 23:44 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | removed 54 lines | ~21 |
+| 23:45 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified resolve_source() | ~597 |
+| 23:45 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 1→2 lines | ~76 |
+| 23:45 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | expanded (+6 lines) | ~140 |
+| 23:45 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~68 |
+| 23:45 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 1→2 lines | ~36 |
+| 23:45 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 1→2 lines | ~56 |
+| 23:46 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 5→6 lines | ~171 |
+| 23:46 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 1→2 lines | ~88 |
+| 23:46 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 3→4 lines | ~99 |
+| 23:46 | Created backend/app/extensions/ontology/doc_graph/reasoning/facts.py | — | ~660 |
+| 23:46 | Created backend/app/extensions/ontology/doc_graph/reasoning/evaluate.py | — | ~759 |
+| 23:47 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified _setup() | ~1234 |
+| 23:47 | Edited backend/app/extensions/ontology/doc_graph/mcp.py | 9→11 lines | ~176 |
+| 23:47 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 7→7 lines | ~52 |
+| 23:47 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified main() | ~69 |
+| 23:47 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified _stage_env() | ~331 |
+| 23:47 | Edited backend/app/extensions/ontology/doc_graph/mcp.py | expanded (+14 lines) | ~208 |
+| 23:48 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 14→10 lines | ~78 |
+| 23:48 | Edited backend/app/extensions/ontology/doc_graph/mcp.py | modified _unmerge() | ~324 |
+| 23:48 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified _run() | ~74 |
+| 23:48 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~81 |
+| 23:48 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 13→9 lines | ~63 |
+| 23:48 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 23→25 lines | ~386 |
+| 23:49 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~95 |
+| 23:49 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~115 |
+| 23:49 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~94 |
+| 23:49 | Created backend/tests/test_reasoning_evaluate.py | — | ~3778 |
+| 23:49 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 14→16 lines | ~326 |
+| 23:49 | Edited backend/tests/test_reasoning_evaluate.py | 2→1 lines | ~30 |
+| 23:50 | Edited backend/tests/test_doc_graph_mcp.py | test_four_tools_registered() → test_five_tools_registered() | ~52 |
+| 23:50 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~18 |
+| 23:50 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified feat() | ~43 |
+| 23:51 | 掘进规程v2实施计划落地(2023行,15任务)+对抗评审工作流(5视角53findings全修):13侦察agent+5评审agent两次fan-out | docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 计划就绪待执行方式选择 | ~380k |
+| 23:51 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/coal-tunneling-regulation-v2-design.md | 1→3 lines | ~202 |
+| 23:52 | Task3: facts.py(dg_*装载)+evaluate.py(编排)+MCP evaluate_rules工具落地; 37 pass/1 skip(host无库); ruff clean | reasoning/facts.py,evaluate.py,mcp.py,test_reasoning_evaluate.py | commit c7e636b87 | ~9k |
+| 23:55 | Session end: 180 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 108 reads | ~100009 tok |
+| 23:58 | Session end: 180 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 111 reads | ~105593 tok |
+| 00:07 | review c7e636b87 facts/evaluate/MCP evaluate_rules: 37pass+1skip ruff clean; findings=MCP rules_dir 暴露(Important)+跨etype同名歧义未文档+valid_to忽略 | backend/app/extensions/ontology/doc_graph/{mcp.py,reasoning/facts.py,reasoning/evaluate.py} | done | ~30k |
+| 00:10 | Session end: 180 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 111 reads | ~105593 tok |
+| 00:12 | Edited backend/app/extensions/ontology/doc_graph/mcp.py | 15→14 lines | ~136 |
+| 00:12 | Edited backend/app/extensions/ontology/doc_graph/mcp.py | 3→6 lines | ~92 |
+| 00:12 | Edited backend/app/extensions/ontology/doc_graph/reasoning/facts.py | expanded (+6 lines) | ~194 |
+| 00:12 | Edited backend/app/extensions/ontology/doc_graph/reasoning/evaluate.py | expanded (+16 lines) | ~356 |
+| 00:13 | Edited backend/tests/test_reasoning_evaluate.py | modified test_mcp_evaluate_rules_success_and_no_rules_dir_passthrough() | ~277 |
+| 00:13 | Edited backend/tests/test_reasoning_evaluate.py | modified test_stale_rules_observability() | ~257 |
+| 00:15 | Task3评审加固: MCP层删rules_dir(schema+handler双层)+同名即同义/双时间NULL决策文档化+零规则hint短路; 38 pass/1 skip; ruff clean | mcp.py,facts.py,evaluate.py,test_reasoning_evaluate.py | commit 1fc75dc7f | ~5k |
+| 00:17 | Session end: 186 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 111 reads | ~107083 tok |
+| 00:26 | Edited docs/superpowers/plans/2026-09-13-ontology-reasoning-rules.md | expanded (+7 lines) | ~399 |
+| 00:27 | Session end: 187 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 111 reads | ~115413 tok |
+| 00:27 | Task4 推理规则收尾: gateway restart 后容器验证 5 MCP 工具(含 evaluate_rules)+2 规则; evaluate_rules('eia') 真库 1056 facts(1041实体+15关系)→494 派生, fires=500 触达 MAX_RULE_FIRES→truncated=true, stale=false; compile_chain 默认序被笛卡尔规则预算饥饿派生0(单独求值 8/8 正常, 记 bug-2188 非缺陷); 回归 81 passed/4 skip 基线+lint-ontology OK; 特征路径零残留, Task4 零 commit; plan 文档打 SHIPPED 横幅 | backend/app/extensions/ontology/doc_graph/reasoning/ + docs/superpowers/plans/2026-09-13-ontology-reasoning-rules.md + .wolf/buglog.json | DONE | ~45k |
+| 09:20 | P0提交push:db561ff51(8文件813插入,main-dev-fork,push一次成功,0/0同步);工作区仍留bug-3300修复+P1未开工 | origin | done | ~2k |
+| 00:29 | Session end: 187 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 111 reads | ~115413 tok |
+| 00:31 | Session end: 187 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 111 reads | ~115413 tok |
+| 00:32 | Session end: 187 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 111 reads | ~115413 tok |
+| 00:33 | Session end: 187 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 112 reads | ~115437 tok |
+| 00:34 | Session end: 187 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 112 reads | ~115437 tok |
+| 00:43 | Edited backend/tests/test_doc_graph_schemas.py | modified test_literal_and_domain_tables_consistent() | ~301 |
+| 00:44 | Edited backend/tests/test_doc_graph_schemas.py | added 2 import(s) | ~31 |
+| 00:45 | Edited backend/tests/test_doc_graph_schemas.py | inline fix | ~33 |
+| 00:46 | Edited backend/tests/test_doc_graph_schemas.py | modified test_registry_yaml_enums_superset_of_schemas_literals() | ~78 |
+| 00:48 | Edited docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-design.md | 2→2 lines | ~56 |
+| 00:48 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontology-semantic-layer-phase1.md | 1→2 lines | ~202 |
+| 00:49 | Session end: 193 writes across 37 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 112 reads | ~116561 tok |
+| 02:52 | Created docs/superpowers/specs/2026-09-13-gate1-source-routing-design.md | — | ~807 |
+| 02:53 | Session end: 194 writes across 38 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 112 reads | ~147782 tok |
+| 02:57 | Created skills/public/coal-mine-tunneling-regulation/references/stages/tunneling.json | — | ~5825 |
+| 02:58 | Session end: 195 writes across 39 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 112 reads | ~153607 tok |
+| 03:02 | Created backend/app/extensions/learnings/models.py | — | ~1019 |
+| 03:03 | Created backend/app/extensions/learnings/patterns.py | — | ~1166 |
+| 03:03 | T3 落地: stages/tunneling.json 逐字写入(校验 STAGE_OK: 9 章/12 族/waves 3 一次通过) + report_structure.md 退役文本替换 | skills/public/coal-mine-tunneling-regulation/references/{stages/tunneling.json,report_structure.md} | commit 0bd7c973f | ~22000 |
+| 03:03 | Created backend/app/extensions/learnings/service.py | — | ~2520 |
+| 03:04 | Created backend/app/extensions/learnings/sweeper.py | — | ~2217 |
+| 03:04 | Edited backend/app/extensions/learnings/sweeper.py | inline fix | ~14 |
+| 03:04 | Edited backend/app/extensions/learnings/sweeper.py | modified catchup_thread() | ~18 |
+| 03:05 | Created backend/app/extensions/learnings/mcp.py | — | ~2334 |
+| 03:05 | Created backend/app/extensions/learnings/__init__.py | — | ~101 |
+| 03:06 | Created backend/app/extensions/learnings/scripts/import_ledger.py | — | ~1655 |
+| 03:06 | Created backend/tests/test_learnings_patterns.py | — | ~660 |
+| 03:07 | Created backend/tests/test_learnings_sweeper.py | — | ~1688 |
+| 03:07 | Edited backend/tests/test_learnings_sweeper.py | modified _make_fake_run() | ~62 |
+| 03:07 | Created backend/tests/test_learnings_mcp.py | — | ~722 |
+| 03:08 | Created backend/tests/test_learnings_service.py | — | ~575 |
+| 03:08 | Created backend/tests/test_learnings_importer.py | — | ~573 |
+| 03:08 | Created backend/tests/test_learnings_service.py | — | ~1161 |
+| 03:10 | Edited backend/app/extensions/learnings/scripts/import_ledger.py | modified parse_ledger() | ~173 |
+| 03:10 | Edited backend/tests/test_learnings_patterns.py | modified test_redaction_covers_all_seven_rule_classes() | ~301 |
+| 03:10 | Edited backend/tests/test_learnings_importer.py | modified test_format_drift_returns_empty() | ~58 |
+| 03:11 | Edited backend/app/extensions/learnings/patterns.py | 9→10 lines | ~187 |
+| 03:12 | Edited backend/tests/test_learnings_patterns.py | modified test_redaction_covers_all_seven_rule_classes() | ~251 |
+| 03:13 | Created skills/public/coal-mine-tunneling-regulation/tests/fixtures/build_fixture.py | — | ~1197 |
+| 03:13 | Edited backend/app/extensions/learnings/patterns.py | "\bsk-[A-Za-z0-9]{16,}" → "\bsk-[A-Za-z0-9\-]{16,}" | ~18 |
+| 03:15 | Edited skills/public/coal-mine-tunneling-regulation/tests/fixtures/build_fixture.py | modified CUSTOM() | ~221 |
+| 03:16 | Edited backend/tests/test_learnings_service.py | modified test_status_machine_rejects_illegal_transition() | ~281 |
+| 03:24 | Edited skills/public/coal-mine-tunneling-regulation/tests/fixtures/build_fixture.py | modified CUSTOM() | ~1287 |
+| 03:24 | Edited backend/tests/test_learnings_service.py | 5→5 lines | ~73 |
+| 03:26 | Created skills/public/coal-mine-tunneling-regulation/tests/fixtures/README.md | — | ~419 |
+| 03:26 | Edited backend/app/extensions/learnings/sweeper.py | added 1 import(s) | ~83 |
+| 03:27 | Edited backend/app/extensions/learnings/sweeper.py | 2→3 lines | ~77 |
+| 03:27 | T4 3218脱敏fixture落地: build_fixture.py+sample3218_digest.json(10章,57008 eff)+README; 互锁PASS(12族required全覆盖, 补32种子字段); x1.2总量门实测68410>60000上报J7 | skills/public/coal-mine-tunneling-regulation/tests/fixtures/* | DONE_WITH_CONCERNS, commit 8f4af81d7 | ~52k |
+| 03:30 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | modified items() | ~232 |
+| 03:30 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | 4→4 lines | ~66 |
+| 03:30 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~81 |
+| 03:32 | Edited backend/app/extensions/learnings/mcp.py | modified isfile() | ~141 |
+| 03:35 | Created skills/public/coal-mine-tunneling-regulation/tests/conftest.py | — | ~57 |
+| 03:35 | Created skills/public/coal-mine-tunneling-regulation/tests/test_ingest_forms.py | — | ~968 |
+| 03:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | removed 29 lines | ~12 |
+| 03:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | modified family_filename() | ~41 |
+| 03:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | 7→4 lines | ~51 |
+| 03:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | 8→11 lines | ~158 |
+| 03:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | removed 21 lines | ~12 |
+| 03:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | modified cmd_file() | ~353 |
+| 03:38 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | modified _read_csv_rows() | ~191 |
+| 03:38 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | 6→6 lines | ~65 |
+| 03:38 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | "\d\s*XX|XX\s*\d|XX(?:万吨|亿" → "\d\s*XX|XX\s*\d|XX(?:万吨|亿" | ~28 |
+| 03:38 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | removed 47 lines | ~62 |
+| 03:39 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | added 1 condition(s) | ~483 |
+| 03:39 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | 8→5 lines | ~68 |
+| 03:39 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | 11→11 lines | ~115 |
+| 03:39 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | inline fix | ~22 |
+| 01:30 | P1 extensions/learnings 上线:7文件+4测试(容器29/29)+4工具;真机验证身份绑定/fail-closed/sweep捕获/receipts幂等/agent真调stats;修4个部署问题(PYTHONPATH/import路径/user_id=AUTO/env白名单) | backend/app/extensions/learnings/ | done | ~60k |
+| 03:40 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/self-improving-agent-analysis.md | 1→3 lines | ~233 |
+| 03:40 | Session end: 246 writes across 52 files (2026-09-13-coal-mine-tunneling-regulation-v2-design.md, coal-tunneling-regulation-v2-design.md, test_doc_graph_schemas.py, self-improving-loop-port.md, TODOS.md) | 115 reads | ~184160 tok |
+| 04:02 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | modified _num() | ~910 |
+| 04:02 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | inline fix | ~15 |
+| 04:02 | Edited skills/public/coal-mine-tunneling-regulation/scripts/ingest.py | 2→2 lines | ~44 |
+| 04:02 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_ingest_forms.py | test_gate1_complete_after_seed_fill() → test_gate1_partial_fill_still_blocked() | ~37 |
+| 04:02 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_ingest_forms.py | modified test_gate1_complete_all_families_filled() | ~711 |
+| 04:04 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_ingest_forms.py | modified _schema_shaped() | ~181 |
+| 04:04 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_ingest_forms.py | modified items() | ~76 |
+| 04:12 | v2执行进度 T1-T5 ✅(KF发布/T2复制1490a050d/T3 stage 0bd7c973f/T4 fixture 8f4af81d7/T5 ingest 12c650664+修复5ae6cb65f, 8测试全绿) | skills/public/coal-mine-tunneling-regulation/ | 两阶段评审循环跑通;J7逐章语义裁决0775ed756 | ~200k |
+| 04:16 | Created skills/public/coal-mine-tunneling-regulation/tests/test_profile.py | — | ~567 |
+| 04:17 | Created skills/public/coal-mine-tunneling-regulation/scripts/profile.py | — | ~1082 |
+| 04:18 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_profile.py | modified _write() | ~470 |
+| 04:18 | Edited skills/public/coal-mine-tunneling-regulation/scripts/profile.py | modified cmd_validate() | ~98 |
+| 04:18 | Edited skills/public/coal-mine-tunneling-regulation/scripts/profile.py | modified cmd_load() | ~150 |
+| 04:30 | Created skills/public/coal-mine-tunneling-regulation/tests/conftest.py | — | ~154 |
+| 04:30 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_ingest_forms.py | added 1 import(s) | ~32 |
+| 04:30 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_ingest_forms.py | modified run() | ~15 |
+| 04:31 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_profile.py | modified _write() | ~661 |
+| 04:31 | Edited skills/public/coal-mine-tunneling-regulation/scripts/profile.py | 2→2 lines | ~40 |
+| 04:31 | Edited skills/public/coal-mine-tunneling-regulation/scripts/profile.py | modified _stage_fields() | ~191 |
+| 04:31 | Edited skills/public/coal-mine-tunneling-regulation/scripts/profile.py | 3→3 lines | ~46 |
+| 04:43 | Created skills/public/coal-mine-tunneling-regulation/references/formulas.json | — | ~1584 |
+| 04:43 | Created skills/public/coal-mine-tunneling-regulation/tests/test_formula_ventilation.py | — | ~1350 |
+| 04:45 | Created skills/public/coal-mine-tunneling-regulation/scripts/formula_runner.py | — | ~5684 |
+| 04:45 | Edited skills/public/coal-mine-tunneling-regulation/scripts/formula_runner.py | 2→2 lines | ~36 |
+| 05:04 | 评审e2cd75ccf通风域formula_runner:3测试pass;4重要发现(F2/F4缺Ld静默跳过无anomaly且为唯一rc=0路径/S≤0无守卫/reference_values.json缺失但被3处引用/F3 impacted反查漏ch4+幻影ch10) | skills/public/coal-mine-tunneling-regulation/{scripts,references,tests} | NEEDS_FIXES | ~30k |
+| 05:05 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~42 |
+| 05:05 | Edited docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md | inline fix | ~50 |
+| 05:09 | Edited skills/public/coal-mine-tunneling-regulation/scripts/formula_runner.py | modified in() | ~99 |
+| 05:10 | Edited skills/public/coal-mine-tunneling-regulation/scripts/formula_runner.py | modified in() | ~197 |
+| 05:10 | Edited skills/public/coal-mine-tunneling-regulation/scripts/formula_runner.py | modified in() | ~166 |
+| 05:10 | Edited skills/public/coal-mine-tunneling-regulation/references/formulas.json | 1 → 0.1 | ~34 |
+| 05:10 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_formula_ventilation.py | modified test_missing_air_supply_distance_records_anomaly() | ~574 |
+| 05:15 | 复审cf1ef4721(I1/F2F4缺参anomaly+I2断面守卫+F4精度0.1Pa):18passed实跑确认;探针R2-R6全部符合;扩展s_err门控F2/F4裁决=可接受(门2必停+S不变性自愈+测试锁定),注释理据欠准确;结论APPROVED(遗留ref_values.json/F3接线两项Important须跟踪) | skills/public/coal-mine-tunneling-regulation | APPROVED | ~25k |
+| 05:16 | v2执行 T6 ✅(07c331be7+094471ab3, 13绿) T7 ✅(e2cd75ccf+cf1ef4721+8cdb75783, 18绿); 两轮质量评审均抓到真问题(validate_values返回清单非异常/F2F4静默跳过/F3反查断链) | skills/public/coal-mine-tunneling-regulation/ | T8-T15 待做; T15 backlog: geo残留清扫+QC参数化用例+anomaly结构化+R4缺失盲区warn+comment理据修正 | ~250k |
+| 05:19 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | reduced (-10 lines) | ~114 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | removed 1 lines | ~10 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | 5→5 lines | ~56 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | modified sorted() | ~144 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | 19→20 lines | ~271 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | "反查受影响章节 id（去重保序）。ch10/com" → "反查受影响章节 id（去重保序）。complian" | ~17 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | "geological-report v2 — 章节" → "coal-mine-tunneling-regul" | ~26 |
+| 05:20 | Created skills/public/coal-mine-tunneling-regulation/tests/test_chapter_planner.py | — | ~513 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_chapter_planner.py | modified _build_manifest() | ~195 |
+| 05:20 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_chapter_planner.py | modified test_impacted_f3_hits_ch4_not_ch10() | ~26 |
+| 05:21 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | inline fix | ~14 |
+| 05:21 | Edited skills/public/coal-mine-tunneling-regulation/scripts/chapter_planner.py | inline fix | ~9 |
+| 05:35 | Created skills/public/coal-mine-tunneling-regulation/tests/test_progress_gate.py | — | ~859 |
+| 05:35 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | 4→4 lines | ~60 |
+| 05:35 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | 4→5 lines | ~72 |
+| 05:36 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | modified chapter_order() | ~107 |
+| 05:36 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | modified _ch_num() | ~733 |
+| 05:36 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | 4→3 lines | ~62 |
+| 05:36 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | modified cmd_next() | ~149 |
+| 05:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | removed 11 lines | ~14 |
+| 05:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | modified main() | ~129 |
+| 05:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | 10→7 lines | ~101 |
+| 05:38 | Edited skills/public/coal-mine-tunneling-regulation/scripts/progress.py | modified main() | ~33 |
+| 10:00 | T9 progress.py 多波重写(delta a-f)+test_progress_gate.py 4 用例 | scripts/progress.py tests/test_progress_gate.py | red 4F(TypeError 零参main)→25 passed | ~12k |
+| 05:47 | v2执行 T8 ✅(c712d4744) T9 ✅(44ba7933f) 均 SPEC+APPROVED; 套件25绿; backlog+=next_action成员守卫/≤3并发文本T14补回 | skills/public/coal-mine-tunneling-regulation/ | T10-T15 待做 | ~120k |
+| 06:54 | Created skills/public/coal-mine-tunneling-regulation/references/consistency_contracts.json | — | ~2249 |
+| 06:54 | Created skills/public/coal-mine-tunneling-regulation/tests/test_contracts.py | — | ~1288 |
+| 09:34 | Edited skills/public/coal-mine-tunneling-regulation/scripts/consistency.py | modified counts() | ~46 |
+| 09:35 | Edited skills/public/coal-mine-tunneling-regulation/scripts/consistency.py | reduced (-14 lines) | ~63 |
+| 09:36 | Edited skills/public/coal-mine-tunneling-regulation/scripts/consistency.py | 4→2 lines | ~24 |
+| 09:40 | Edited skills/public/coal-mine-tunneling-regulation/scripts/consistency.py | 15→12 lines | ~245 |
+| 09:42 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_contracts.py | modified _report() | ~196 |
+| 09:42 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_contracts.py | 3→6 lines | ~128 |
+| 09:44 | Edited skills/public/coal-mine-tunneling-regulation/scripts/consistency.py | modified in() | ~65 |
+| 09:45 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_contracts.py | modified enumerate() | ~122 |
+| 10:12 | Edited skills/public/coal-mine-tunneling-regulation/scripts/consistency.py | modified items() | ~125 |
+| 10:13 | T10 ✅ 控制器执行(两实现者+一评审者遭watchdog截断): 7ec30057a+自审修复commit; 28绿+C6/C4探针验证; subagent watchdog环境问题记录(4次截断) | skills/public/coal-mine-tunneling-regulation/scripts/consistency.py | T11-T15 待做 | ~180k |
+
+## Session: 2026-09-14 10:27
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:32 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified expected_deliverable_name() | ~189 |
+| 10:32 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified render_front_matter() | ~612 |
+| 10:33 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | reduced (-15 lines) | ~57 |
+| 10:33 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified render_compliance_appendix() | ~421 |
+| 10:35 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 6→3 lines | ~24 |
+| 10:35 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified _norm_title() | ~198 |
+| 10:35 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified _sem_match() | ~436 |
+| 10:35 | Session end: 7 writes across 1 files (build_output.py) | 1 reads | ~3357 tok |
+| 10:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified depth_target() | ~477 |
+| 10:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified _depth_row() | ~165 |
+| 10:37 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified compile() | ~198 |
+| 10:38 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | removed 49 lines | ~57 |
+| 10:38 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 2→3 lines | ~96 |
+| 10:39 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified resolve_targets() | ~51 |
+| 10:40 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified resolve() | ~198 |
+| 10:41 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 2→3 lines | ~74 |
+| 10:41 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 1→2 lines | ~53 |
+| 10:41 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 2→3 lines | ~62 |
+| 10:41 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 10→12 lines | ~162 |
+| 10:42 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | max() → depth_target() | ~155 |
+| 10:43 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | modified main() | ~41 |
+| 10:43 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 5→5 lines | ~126 |
+| 10:43 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | "[build] 交付名门 FAIL: 输出 {ou" → "[build] 交付名门 FAIL: 输出 {ou" | ~44 |
+| 10:43 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | inline fix | ~31 |
+| 10:43 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 7→8 lines | ~108 |
+| 10:44 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | inline fix | ~29 |
+| 10:44 | Created skills/public/coal-mine-tunneling-regulation/tests/test_build_output.py | — | ~846 |
+| 10:45 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_build_output.py | modified items() | ~109 |
+| 10:47 | Edited skills/public/coal-mine-tunneling-regulation/tests/test_progress_gate.py | modified test_gate_auto_verifies() | ~134 |
+| 10:49 | 诊断+修复宿主机Docker启动失败:WSL2 VM僵死(vmmem不可杀,wsl.exe全挂),杀wslservice解死锁→vmmem随之消失→重启Docker Desktop;gateway冷启动5min;全链路2026恢复 | Windows host / Docker Desktop | 16容器全部Up,/ 200,/api 401(鉴权正常) | ~8k |
+| 10:49 | Edited skills/public/coal-mine-tunneling-regulation/scripts/build_output.py | 27→28 lines | ~451 |
+| 10:51 | T11 build_output 掘进适配落地: 交付名/前置区/目录覆盖门(eia port)/深度门单源化/删矿种通道/main(argv)/contracts 接线; 30 passed; commit 884842f7f | skills/public/coal-mine-tunneling-regulation/{scripts/build_output.py,tests/test_build_output.py,tests/test_progress_gate.py} | DONE | ~90k |
+| 10:54 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/wsl2-vm-wedge-recovery.md | — | ~215 |
+| 10:55 | Session end: 30 writes across 4 files (build_output.py, test_build_output.py, test_progress_gate.py, wsl2-vm-wedge-recovery.md) | 5 reads | ~53061 tok |
+| 11:12 | Created skills/public/coal-mine-tunneling-regulation/tests/test_snapshot.py | — | ~562 |
+| 11:16 | Created skills/public/coal-mine-tunneling-regulation/references/standards_index.json | — | ~1220 |
+| 11:17 | Created skills/public/coal-mine-tunneling-regulation/references/reference_values.json | — | ~359 |
+| 11:17 | Created skills/public/coal-mine-tunneling-regulation/references/data_expectations.json | — | ~985 |
+| 11:19 | Created skills/public/coal-mine-tunneling-regulation/SKILL.md | — | ~2164 |
+| 11:21 | :3000/:2026故障三连甄别:wslrelay残留占[::1]:2026+gateway/frontend冷启动编译;全链路最终全绿 | host ports | /login 200,/ 200,/api 401 | ~6k |
+| 11:22 | Created skills/public/coal-mine-tunneling-regulation/tests/README.md | — | ~174 |
+| 11:22 | Session end: 36 writes across 10 files (build_output.py, test_build_output.py, test_progress_gate.py, wsl2-vm-wedge-recovery.md, test_snapshot.py) | 9 reads | ~58845 tok |
+| 11:24 | v2执行 T11-T15 全部 ✅(884842f7/ce92e2c1e/3e2e39f45/04fe57f9e/T15收尾): 33测试全绿; 交付物32文件齐全; 合约引用闭合; E2E真实线程验收留待用户 | skills/public/coal-mine-tunneling-regulation/ | v2管线化代码全部落地 | ~150k |
+| 11:25 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/coal-tunneling-regulation-v2-design.md | inline fix | ~171 |
+| 11:26 | Session end: 37 writes across 11 files (build_output.py, test_build_output.py, test_progress_gate.py, wsl2-vm-wedge-recovery.md, test_snapshot.py) | 9 reads | ~59028 tok |
+
+## Session: 2026-09-14 17:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-14 17:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-14 18:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-14 18:54
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:17 | E2E真实线程验收(线程314f000d): 技能触发✓/建档单卡✓/档案落盘✓/12族表单+门1质量warn全开火✓; 深层生成循环2次GraphRecursionError根因=bash内联大JSON引号炸裂→ingest加--values-file修复(8148e3f35)+SKILL纪律行; 全流程完整跑通留待长会话 | .wolf/tmp/e2e/ | E2E前半验证通过,根因修复已落地 | ~120k |
