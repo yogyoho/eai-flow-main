@@ -487,10 +487,20 @@ def _contract_exact_match(rep: Report, c: dict, chapters: list[tuple[str, str]],
     """
     cid = c.get("id", "?")
     consumers = c.get("consumers") or []
-    entries, missing = resolve_source(c.get("source", ""), data, state_values)
+    expr = str(c.get("source", ""))
+    entries, missing = resolve_source(expr, data, state_values)
     if missing:
         rep.add(cid, "skip", f"source 成分缺失 {missing[:3]}——取值不到记 skip（on_absent 同语义）")
         return
+    # 口径标签接线（T10 自审修复：resolve_source 不知 labels，标量成分 1:1 时按字段名回填）
+    labels_map = c.get("labels") or {}
+    if labels_map:
+        parts = [x.strip() for x in expr.split("+") if x.strip()]
+        if len(parts) == len(entries):
+            for part, ent in zip(parts, entries):
+                if part.startswith("data:"):
+                    field = part[5:].partition(".")[2].partition(":")[0]
+                    ent["label"] = str(labels_map.get(field, ""))
     entries = [e for e in entries if e["value"]]
     if not entries:
         rep.add(cid, "skip", "source 解析为空值集——skip")
@@ -593,9 +603,15 @@ def _eval_guardrails(rep: Report, c: dict, data: "fr.Data") -> None:
             if not isinstance(it, dict):
                 continue
             if skey:
-                got = it.get(skey) or it.get(f"{skey}({sval})")
-                if got is not None and str(got) != sval:
-                    continue
+                got = it.get(skey)
+                if got is None:
+                    # schema 双拼写：键名是「部位(顶板/帮部)」整串，值才是部位——按前缀找
+                    for k, v in it.items():
+                        if k.startswith(skey + "("):
+                            got = v
+                            break
+                if got is None or str(got) != sval:
+                    continue  # 归属不了 scope 或非本 scope 的行——不评估（防串行误报）
             try:
                 v = float(it.get(leaf))
             except (TypeError, ValueError):
