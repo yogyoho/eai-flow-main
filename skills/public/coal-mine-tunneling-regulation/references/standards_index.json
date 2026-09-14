@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "generated": "2026-09-13",
+  "scope": "掘进作业规程编制引用的法规标准与限值。web_search 不可靠教训：限值/条款号仅 discovery，人工对照原文后才可 verified=true",
+  "tier_policy": {"framework": "结构主纲——程序性引用，无需限值核实", "quality_limit": "工程质量/技术限值——须人工对照原文", "emission_limit": "浓度/速度限值——须人工对照原文", "method_param": "方法/参数类——须人工对照原文", "pending": "未完成人工核实"},
+  "red_line": "标准编号与年份只从本文件枚举，禁 LLM 记忆补写；limit_tables 全表 needs_verification=true，verified 唯一翻转通道=人工对照标准原文",
+  "standards": [
+    {"code": "《煤矿安全规程》", "title": "煤矿安全规程（2022 年版）", "role": "总纲：通风/瓦斯/防尘/防治水/机电/运输/应急全部条款的最高依据", "chapters": "全文", "tier": "framework", "needs_verification": false, "verified": true, "origin": "v1_skill"},
+    {"code": "GB/T 35056-2018", "title": "煤矿巷道锚杆支护技术规范", "role": "支护设计/材料/施工/质量（ch3）", "chapters": "ch3/ch8", "tier": "quality_limit", "needs_verification": true, "verified": false, "origin": "v1_skill"},
+    {"code": "AQ 1029-2019", "title": "煤矿安全监控系统及检测仪器使用管理规范", "role": "传感器布设/报警断电复电值（ch5/ch9，C10 对照源）", "chapters": "ch5/ch9", "tier": "emission_limit", "needs_verification": true, "verified": false, "origin": "v1_skill"},
+    {"code": "AQ 1020-2006", "title": "煤矿井下粉尘综合防治技术规范", "role": "综合防尘五件套（ch5）", "chapters": "ch5/ch8", "tier": "method_param", "needs_verification": true, "verified": false, "origin": "v1_skill"},
+    {"code": "《煤矿防治水细则》", "title": "煤矿防治水细则", "role": "水文地质/探放水/『有掘必探先探后掘』（ch2/ch8）", "chapters": "ch2/ch8/ch9", "tier": "framework", "needs_verification": false, "verified": true, "origin": "v1_skill"},
+    {"code": "《煤矿地质工作细则》", "title": "煤矿地质工作细则", "role": "地质说明书/构造/水文地质（ch2）", "chapters": "ch2", "tier": "framework", "needs_verification": false, "verified": true, "origin": "v1_skill"},
+    {"code": "《防治煤与瓦斯突出细则》", "title": "防治煤与瓦斯突出细则", "role": "突出危险区掘进（ch5，gas_grade=煤与瓦斯突出 时条件激活）", "chapters": "ch5", "tier": "method_param", "needs_verification": true, "verified": false, "origin": "v1_skill"},
+    {"code": "《煤矿安全生产标准化管理体系基本要求及评分方法》", "title": "煤矿安全生产标准化管理体系基本要求及评分方法（试行）", "role": "工程质量/文明生产标准化（ch3/ch6）", "chapters": "ch3/ch6", "tier": "quality_limit", "needs_verification": true, "verified": false, "origin": "v1_skill"}
+  ],
+  "limit_tables": {
+    "review_skill_support_redlines": {"desc": "支护红线（来源=coal-mine-report-review 审查技能 L31-38，无条款号——人工对照 GB/T 35056 后才可 verified）", "code_ref": "GB/T 35056-2018", "needs_verification": true, "verified": false,
+      "rows": [
+        {"category": "锚杆长度(顶板)", "value": ">=1.8m", "origin": "review_skill L32"},
+        {"category": "锚杆长度(帮部)", "value": ">=1.6m", "origin": "review_skill L32"},
+        {"category": "锚杆间排距", "value": "<=1.0m×1.0m", "origin": "review_skill L33"},
+        {"category": "锚索长度", "value": ">=6.3m(依顶板岩性)", "origin": "review_skill L34"},
+        {"category": "初喷厚度", "value": ">=50mm", "origin": "review_skill L35"},
+        {"category": "喷射混凝土总厚", "value": ">=120mm", "origin": "review_skill L35"}
+      ], "note": "供 C4 护栏（warn 档）消费"},
+    "review_skill_air_redlines": {"desc": "风量/风速红线（审查技能 L18/L37）", "code_ref": "《煤矿安全规程》", "needs_verification": true, "verified": false,
+      "rows": [
+        {"category": "风量裕度", "value": "风量计算值>=设计需风量×1.2", "origin": "review_skill L18"},
+        {"category": "掘进巷道风速", "value": "0.25~8 m/s", "origin": "review_skill L18,L37"},
+        {"category": "回风巷道风速", "value": "0.15~4 m/s", "origin": "review_skill L37"}
+      ], "note": "风速档位未按煤巷/半煤岩巷/岩巷细分——人工核实后按档位拆行"},
+    "review_skill_dust_redlines": {"desc": "粉尘浓度红线（审查技能 L38）", "code_ref": "《煤矿安全规程》", "needs_verification": true, "verified": false,
+      "rows": [
+        {"category": "呼尘", "value": "<=10mg/m³", "origin": "review_skill L38"},
+        {"category": "总尘(游离SiO₂>10%)", "value": "<=4mg/m³", "origin": "review_skill L38"}
+      ], "note": "未按游离 SiO₂ 分档细分"},
+    "aq1029_methane_cutoffs": {"desc": "甲烷传感器报警/断电/复电值（C10 对照源；审查技能无此数值）", "code_ref": "AQ 1029-2019", "needs_verification": true, "verified": false,
+      "rows": [], "note": "样例锚点 T1: 报警>=1.0%/断电>=1.5%/复电<1.0%（T695）——人工对照 AQ 1029 原文录入全部档位后才可消费，此前 C10 恒 manual"}
+  },
+  "gate1_code_checks": {"desc": "正文标准编号引用合法性体检（gate1 质量警告）",
+    "allowed_patterns": ["^《[^《》]+》$", "^GB(/T)?\\s?\\d+(\\.\\d+)?(-\\d{4})?$", "^AQ\\s?\\d+(-\\d{4})?$", "^MT/\\s?T?\\s?\\d+"],
+    "rules": ["编号必须在本文件 standards[] 枚举内（含年份变体）", "未登记编号→警告提示补充登记，禁直接写入正文"]}
+}

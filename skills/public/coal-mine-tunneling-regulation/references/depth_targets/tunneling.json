@@ -1,0 +1,56 @@
+{
+ "coefficient": 1.0,
+ "absolute_floor": 1.0,
+ "stage": "tunneling",
+ "generated": "2026-09-13",
+ "confidence": "measured_single_anchor_n1_x1.2",
+ "source": "3218 样例逐章 effective_chars（fixture digest）× 1.2 上浮（spec D10/J7；与 eia 0.6 折减方向相反系有意——n=1 防样本偏小）。geo 形状 per_chapter.median_eff（J10：geo 深度门只认 median_eff）",
+ "measured_note": "n=1 单样本，二期样例 ≥5 份后用 calibrate 重新标定",
+ "per_chapter": {
+  "ch1": {
+   "median_eff": 875,
+   "median_table_rows": 0,
+   "median_paragraphs": 10
+  },
+  "ch2": {
+   "median_eff": 1610,
+   "median_table_rows": 3,
+   "median_paragraphs": 10
+  },
+  "ch3": {
+   "median_eff": 17912,
+   "median_table_rows": 5,
+   "median_paragraphs": 10
+  },
+  "ch4": {
+   "median_eff": 2051,
+   "median_table_rows": 2,
+   "median_paragraphs": 10
+  },
+  "ch5": {
+   "median_eff": 15125,
+   "median_table_rows": 7,
+   "median_paragraphs": 10
+  },
+  "ch6": {
+   "median_eff": 846,
+   "median_table_rows": 2,
+   "median_paragraphs": 10
+  },
+  "ch7": {
+   "median_eff": 1017,
+   "median_table_rows": 1,
+   "median_paragraphs": 10
+  },
+  "ch8": {
+   "median_eff": 19522,
+   "median_table_rows": 0,
+   "median_paragraphs": 10
+  },
+  "ch9": {
+   "median_eff": 8352,
+   "median_table_rows": 0,
+   "median_paragraphs": 10
+  }
+ }
+}

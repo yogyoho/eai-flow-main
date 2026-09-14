@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "generated": "2026-09-13",
+  "policy": "全部参考值待人工核实；确认前公式计算恒记 anomaly（formula_runner 契约）。来源枚举：sample_verbatim(3218 样例原文)/v1_skill(现行提示词技能)/handbook(手册，未核实)。用户确认后值写回 data/ 表单，不回写本文件",
+  "ventilation": {"std_ref": "《煤矿安全规程》+矿井通风手册", "general": {"status": "待人工核实", "indicators": [
+    {"name": "风量公式系数（按瓦斯涌出量）", "value": "100", "origin": "v1_skill", "consumes": "Q1"},
+    {"name": "每人需风量", "value": "4 m³/min", "origin": "v1_skill", "consumes": "Q2"},
+    {"name": "柴油机车每 kW 需风量", "value": "5.44 m³/min·kW", "origin": "v1_skill", "consumes": "Q3"},
+    {"name": "掘进巷道风速带", "value": "0.25~8 m/s（煤巷档未分档）", "origin": "review_skill", "consumes": "Q4"},
+    {"name": "风筒距迎头", "value": "L=5√S", "origin": "sample_verbatim", "consumes": "F1"},
+    {"name": "百米漏风率上限（样例口径）", "value": "10%", "origin": "sample_verbatim", "consumes": "F2"},
+    {"name": "漏风折算公式", "value": "线性近似 Q0×(1+i×Ld/10000)", "origin": "v1_skill", "consumes": "F2"},
+    {"name": "风阻系数 R（占位 0.01 N·s²/m⁸）", "value": "待人工核实", "origin": "handbook", "consumes": "F4"}
+  ], "note": "核实通道=人工对照《煤矿安全规程》通风章节与矿通风能力核定报告；核实后在 standards_index.limit_tables 翻 verified 并同步 formulas.json note"}},
+  "hard_rules": ["缺参数不得以本文件任何值顶替——reference_values 是【待核实】清单不是数据源（bug-2223/geo 同构红线）"]
+}
