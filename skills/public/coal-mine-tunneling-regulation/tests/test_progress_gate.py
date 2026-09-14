@@ -53,8 +53,11 @@ def test_mark_verified_rejected_bug3049(tmp_path):
 
 def test_gate_auto_verifies(tmp_path):
     state, targets = _init(tmp_path)
+    # T11 delta d：目录覆盖门换 eia validate_toc_chapters（章题语义相符）——假章题「chN 测试章」
+    # 判契约外自创，须用 stage 真章题（本测试本意是 bug-3049 门自动回写，非目录门语义）
+    titles = json.load(open(ROOT / "references" / "stages" / "tunneling.json", encoding="utf-8"))["chapters"]
     for c in ["ch1", "ch2", "ch3"]:
-        (Path(state) / "chapters" / f"{c}.md").write_text(f"## {c} 测试章\n\n{FILLER}\n", encoding="utf-8")
+        (Path(state) / "chapters" / f"{c}.md").write_text(f"## {titles[c]['title']}\n\n{FILLER}\n", encoding="utf-8")
         rc, _ = run_cli(progress.main, ["mark", c, "DRAFTED", "--state-dir", state])
         assert rc == 0
     rc, out = run_cli(progress.main, ["gate", "--state-dir", state, "--targets", targets])

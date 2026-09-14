@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""geological-report v2 — build_output.py：单次原子组装（步骤6）。
+"""coal-mine-tunneling-regulation v2 — build_output.py：掘进作业规程单次原子组装（步骤6，T11 掘进适配）。
 
-组装序：前置部分（外封面/签署页/目录/附图附表目录——表单直出零 LLM，页码列留空 D11）
-→ ch1..ch9（wave1 产物）→ ch10（wave2 投影章）→ 合规性附录（consistency_check 渲染）。
+组装序：前置部分（外封面 outer_cover 占位直填/会审页两表/目录占位——表单直出零 LLM，页码列留空）
+→ ch1..ch9（generation_waves 产物）→ 合规性附录（consistency_check 渲染 + 附图清单[需附图] + 规程贯彻记录页）。
 
 注入协议（D5/1A）：
   {{SLOT:key}}  → formula_state.values[key].display（数字永不经过 LLM；未知 key=FAIL）
@@ -10,19 +10,20 @@
 原子写：tmp + os.replace（bid-proposal 先例）；内容不变跳过写盘保 mtime（SC-4 字节不变）；
 全文无时间戳（幂等）。成功后写 outputs/delivery_manifest.json（交付清单，确定性幂等——present_files/下载门的放行凭据，bug-2225）。
 
-注入后残留扫描（槽位标记/模板脚手架词/合约 ID/裸数字数组/XX 占位，bug-3036）、TABLE 未知表单族（bug-3036 旧软兜底
-「（未知表单族 …）」静默进终稿——现硬 FAIL）、槽位 display 空/非标量（bug-3036 空 display 静默渲染）、目录覆盖门 v2
-双向校验（toc 节号未落标题 + 契约外自创节 + 编号同标题不符，bug-3036）、consistency.py 25 合约门（fail>0 阻断，
-报告落盘但 manifest 不写=不可交付；bug-3036 此前在盘零调用）、formula_state 数值槽 source=manual 无 via=ingest 溯源
-（bug-3036 根因①LLM 直写特征）。
+注入后残留扫描（槽位标记/脚手架词/裸数字数组/XX 占位，bug-3036/3027/3228 骨架保留）、TABLE 未知表单族（旧软兜底
+「（未知表单族 …）」静默进终稿——现硬 FAIL）、槽位 display 空/非标量（bug-3036 空 display 静默渲染）、目录覆盖门
+（T11 delta d port eia validate_toc_chapters：章题语义相符+必备集全覆盖+禁契约外自创，序不校验）、consistency.py
+C1-C12 注册表合约门（fail>0 阻断，报告落盘但 manifest 不写=不可交付）、formula_state 数值槽 source=manual 无
+via=ingest 溯源（bug-3036 根因①LLM 直写特征）。
 
 退出码：0 成功 / 1 未知槽位 key、缺失章节文件、数据缺参、formula_state 数值槽缺 source（手改特征，bug-2223）、
 章节深度不足（每节 <3 句或每章 <1000 有效字符，bug-2223；有子节的父节豁免 3 句门——正文在子节，防「补句进子节、
-错误却报父节」修不动假象，页面实测线程 03e18e4a）、输出文件名 ≠ {项目名}-{阶段}-地质勘查报告.md 或 outputs/ 含
-管线外散文件（交付名门，bug-2223）、toc 节号缺失（目录覆盖门，bug-2225）、章节有效字符 < 样例中位 ×0.6×覆盖缩放
-（深度目标门 L2；基准只认技能 references/depth_targets.json——--targets 是调试通道，非技能基准 stderr 高声警告并
-记入 delivery_manifest；技能基准缺失才回退地板门；目标含绝对地板 median×absolute_floor——覆盖缩放（[待确认] 越多
-目标越低）不可把目标压穿地板，bug-3036「堆占位符把越改越薄洗成 PASS」；逐章深度/缩放/地板全量写入 delivery_manifest）。
+错误却报父节」修不动假象，页面实测线程 03e18e4a）、输出文件名 ≠ {mine_name}{roadway_name}掘进作业规程.md 或
+outputs/ 含管线外散文件（交付名门，bug-2223）、必备章缺席/契约外自创章（目录覆盖门，T11 delta d）、章节有效字符 <
+样例中位 ×coefficient×覆盖缩放（深度目标门 L2，公式单源 depth_target()——J10；基准只认技能
+references/depth_targets/tunneling.json——--targets 是调试通道，非技能基准 stderr 高声警告并记入 delivery_manifest
+（bug-3058 语义）；技能基准缺失才回退地板门；目标含绝对地板 median×absolute_floor——覆盖缩放（[待确认] 越多目标越低）
+不可把目标压穿地板，bug-3036「堆占位符把越改越薄洗成 PASS」；逐章深度/缩放/地板全量写入 delivery_manifest）。
 
 失败一次报齐（不 fail-fast 逐章打回——那会把一轮扩写切成 N 轮 build 循环，60 次工具熔断的燃料，页面实测线程 03e18e4a）。
 """
@@ -53,54 +54,68 @@ def sha256_file(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-# ── 交付名门（bug-2223②：规范文件名唯一来源 = 00_project 表单直读）────────────
+# ── 交付名门（bug-2223②：规范文件名唯一来源 = 00_profile+01_roadway 表单直读）────
 
 
 def expected_deliverable_name(stage: dict, data_dir: Path) -> str:
-    """{项目名}-{阶段}-地质勘查报告.md（00_project 直读；缺参不编造，回退字段名提示）。
-
-    bug-3036 P2：项目名尾缀已含阶段词（「…某铜矿勘探」+ 阶段「勘探」）不再重复拼接——旧逻辑产出
-    「勘探-勘探-地质勘查报告」双叠名。
-    """
-    spec = stage.get("forms", {}).get("project", {})
-    p = data_dir / spec["file"]
-    proj = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
-    name = proj.get("project_name") or "未命名项目"
-    st = proj.get("stage") or stage.get("stage", "")
-    if st and name.endswith(st):
-        return f"{name}-地质勘查报告.md"
-    return f"{name}-{st}-地质勘查报告.md" if st else f"{name}-地质勘查报告.md"
+    """{mine_name}{roadway_name}掘进作业规程.md（T11 delta a：00_profile+01_roadway 直拼；
+    缺参不编造，回退「未命名矿井/未命名巷道」占位提示）。"""
+    prof_p = data_dir / stage["forms"]["profile"]["file"]
+    road_p = data_dir / stage["forms"]["roadway"]["file"]
+    prof = json.loads(prof_p.read_text(encoding="utf-8")) if prof_p.exists() else {}
+    road = json.loads(road_p.read_text(encoding="utf-8")) if road_p.exists() else {}
+    mine = prof.get("mine_name") or "未命名矿井"
+    name = road.get("roadway_name") or "未命名巷道"
+    return f"{mine}{name}掘进作业规程.md"
 
 
 # ── 前置部分（表单直出）────────────────────────────────────────────────────
 
 
 def render_front_matter(stage: dict, data_dir: Path) -> str:
+    """前置部分（T11 delta b）：外封面（front_matter.outer_cover 五行占位符直填）
+    + 会审页（signature_page_fixed_order 两表：会审纪要表/审批栏，签字栏留空待签）+ 目录占位。"""
     fm = stage.get("front_matter", {})
-    proj = json.loads((data_dir / stage["forms"]["project"]["file"]).read_text(encoding="utf-8")) if (data_dir / stage["forms"]["project"]["file"]).exists() else {}
-    ten = json.loads((data_dir / stage["forms"]["tenement"]["file"]).read_text(encoding="utf-8")) if (data_dir / stage["forms"]["tenement"]["file"]).exists() else {}
-    sig_src = {**proj, **ten}
-    lines: list[str] = []
-    lines.append("# 前置部分")
-    lines.append("")
-    lines.append("## 外封面")
-    lines.append("")
-    cover_map = {
-        "矿区名": proj.get("project_name", ""),
-        "报告题名（矿种组合+阶段+报告）": (f"{proj.get('commodity', '')}{proj.get('stage', '') or stage.get('stage', '')}报告" if proj.get("commodity") else ""),
-        "编制单位": proj.get("undertaking_unit", ""),
-        "年月": "",
-    }
+    prof_p = data_dir / stage["forms"]["profile"]["file"]
+    road_p = data_dir / stage["forms"]["roadway"]["file"]
+    prof = json.loads(prof_p.read_text(encoding="utf-8")) if prof_p.exists() else {}
+    road = json.loads(road_p.read_text(encoding="utf-8")) if road_p.exists() else {}
+
+    def _sub(m: "re.Match[str]") -> str:
+        # outer_cover 占位符：{矿名}/{巷道名} 短名 + {族.字段[ 按 …样式]} 点号路径（如 编号取 roadway.reg_no，
+        # 缺 reg_no 回退 profile.reg_no_format 样式值——封面只如实转写，禁编造）
+        key = m.group(1).split(" 按 ")[0].strip()
+        if key == "矿名":
+            return str(prof.get("mine_name") or "")
+        if key == "巷道名":
+            return str(road.get("roadway_name") or "")
+        fam, _, field = key.partition(".")
+        doc = prof if fam == "profile" else (road if fam == "roadway" else {})
+        val = doc.get(field, "")
+        return str(val) if val not in (None, "") else ""
+
+    lines: list[str] = ["# 前置部分", "", "## 外封面", ""]
     for item in fm.get("outer_cover", []):
-        lines.append(f"**{item}**：{cover_map.get(item, '') or '　'}")
+        lines.append(re.sub(r"\{([^{}]+)\}", _sub, item) or "　")
         lines.append("")
     lines.append("## 签署页")
     lines.append("")
     for label in fm.get("signature_page_fixed_order", []):
-        # 签署值可选自 data（如已填）；未填留空线待签
-        val = sig_src.get(label) or ""
-        lines.append(f"{label}：{val if val else '＿＿＿＿＿＿'}")
-        lines.append("")
+        if "会审" in label:
+            # 会审纪要表：单位名单取 profile.audit_units，签字/日期留空待签
+            lines.append("### 作业规程会审纪要表")
+            lines.append("")
+            units = prof.get("audit_units") or []
+            rows = [[str(u), "　", "　", "　"] for u in units] or [["　", "　", "　", "　"]] * 3
+            lines.append(_md_table(["会审单位", "职务", "签字", "日期"], rows))
+            lines.append("")
+        elif "审批" in label:
+            # 审批栏空表（施工单位负责人/审批单位/审批人员/审批意见/审批日期——留空待签）
+            lines.append("### 审批栏")
+            lines.append("")
+            roles = ("施工单位负责人", "审批单位", "审批人员", "审批意见", "审批日期")
+            lines.append(_md_table(["审批项目", "签字/意见", "日期"], [[r, "　", "　"] for r in roles]))
+            lines.append("")
     lines.append("## 目录")
     lines.append("")
     lines.append("<!-- 页码列留空：Word 排版阶段由引用自动填充（设计决策 D11），Markdown 禁写页码 -->")
@@ -111,23 +126,8 @@ def render_front_matter(stage: dict, data_dir: Path) -> str:
         for sub in ch.get("toc", []):
             lines.append(f"  - {sub}")
     lines.append("")
-    # 附图附表目录（17_figures_tables）
-    ft = json.loads((data_dir / stage["forms"]["figures_tables"]["file"]).read_text(encoding="utf-8")) if (data_dir / stage["forms"]["figures_tables"]["file"]).exists() else {}
-    lines.append("## 附图附表目录")
-    lines.append("")
-    for label, key in (("附图", "figures"), ("附表", "tables")):
-        items = ft.get(key) or []
-        lines.append(f"### {label}目录（{len(items)}）")
-        lines.append("")
-        if items:
-            lines.append("| 序号 | 编号 | 名称 | 比例尺/说明 |")
-            lines.append("|---|---|---|---|")
-            for i, it in enumerate(items, 1):
-                if isinstance(it, dict):
-                    lines.append(f"| {i} | {it.get('no', '')} | {it.get('title', '')} | {it.get('scale', it.get('note', ''))} |")
-                else:
-                    lines.append(f"| {i} |  | {it} |  |")
-        lines.append("")
+    # T11 delta b：geo 附图附表目录块退役（figures_tables 表单不在掘进 stage 注册）——
+    # 附图清单/贯彻记录页移至合规性附录（render_compliance_appendix，front_matter.attachment_lists 驱动）
     return "\n".join(lines)
 
 
@@ -208,7 +208,7 @@ def render_family(fam: str, stage: dict, data_dir: Path) -> str:
 # ── 合规性附录 ──────────────────────────────────────────────────────────────
 
 
-def render_compliance_appendix(consistency: dict | None, state: dict, state_path: Path) -> str:
+def render_compliance_appendix(stage: dict, consistency: dict | None, state: dict, state_path: Path) -> str:
     lines = ["## 合规性附录（脚本自动生成）", ""]
     lines.append(f"- 数值冻结层：formula_state.json（SHA-256 `{sha256_file(state_path)}`，槽位 {len(state.get('values', {}))} 个）")
     for a in state.get("anomalies", []):
@@ -224,7 +224,18 @@ def render_compliance_appendix(consistency: dict | None, state: dict, state_path
         else:
             lines.append("全部合约通过。")
         lines.append("")
-    lines.append("<!-- 历史分类编码（332/333、B+C+D、111b/122b）按原样保留，禁现代化改写（红线 P4） -->")
+    # T11 delta c：附图清单（全部 [需附图] 占位，清单文本从 front_matter.attachment_lists 读）
+    # + 规程贯彻记录页固定模板（贯彻人/贯彻日期/学习人数/考试结果留空待填）——geo 历史分类编码注释退役
+    lines.append("### 附图清单（全部 [需附图] 占位）")
+    lines.append("")
+    for item in stage.get("front_matter", {}).get("attachment_lists", []):
+        lines.append(f"- {item}")
+    lines.append("")
+    lines.append("### 规程贯彻记录页")
+    lines.append("")
+    lines.append(_md_table(["贯彻人", "贯彻日期", "学习人数", "考试结果"],
+                           [["　", "　", "　", "　"], ["　", "　", "　", "　"]]))
+    lines.append("")
     return "\n".join(lines)
 
 
@@ -281,95 +292,82 @@ def validate_depth(ch_id: str, text: str) -> None:
         raise ValueError(f"{ch_id}.md 有效字符 {eff} <1000——章节单薄（bug-2223），参照 references/samples/exploration/{ch_id}_sample.md 范文扩写")
 
 
-# ── 目录覆盖门（bug-2225：E2E 实测 toc 覆盖仅 54.7%——bug-2223 遗留项收口）────
+# ── 目录覆盖门（T11 delta d：eia validate_toc_chapters port——序无关章题语义相符，geo 节号盲检退役）────
 
-NUM_RE = re.compile(r"\d+\.\d+(?:\.\d+)?")
-HEADING_NO_RE = re.compile(r"^#{2,4}\s+(\d+(?:\.\d+)+)")
-_TOC_PIECE_RE = re.compile(r"^(\d+(?:\.\d+)*)\s*")
 _TITLE_NORM_RE = re.compile(r"[\s　\-—–·。，,、;；:：!！?？()（）\[\]【】\"'“”‘’/*／]+")
 
 
 def _norm_title(s: str) -> str:
-    """标题规范化：去空白/标点（全半角）/装饰符后小写——防全半角顿号差异误伤。"""
-    return _TITLE_NORM_RE.sub("", s).lower()
+    """标题规范化：去空白/标点（全半角）/装饰符后小写；再剥行首编号与尾部章/节通名（eia port）。"""
+    t = _TITLE_NORM_RE.sub("", str(s)).lower()
+    t = re.sub(r"^\d+(?:\.\d+)*", "", t)  # 行首编号（12.2 第二次公众参与 → 第二次公众参与）
+    if len(t) > 2 and t[-1] in "章节":
+        t = t[:-1]
+    return t
 
 
-def _toc_index(toc: list[str]) -> tuple[set[str], dict[str, str]]:
-    """toc 条目 →（全部节号, 节号→规范标题）。复合条目「1.5 标题（1.5.1 子题 / 1.5.2 子题）」按 / 拆片解析。"""
-    nos: set[str] = set()
-    titles: dict[str, str] = {}
-    for sub in toc or []:
-        nos.update(NUM_RE.findall(sub))
-        for piece in re.split(r"[/／]", sub):
-            m = _TOC_PIECE_RE.match(piece.strip())
-            if m:
-                # 复合条目首片「1.5 以往工作评述（1.5.1 …」须在（处截断——否则子题文本混入
-                # 父题规范串，正确的父标题反而判不符（bug-3036 v2 自伤修复）
-                t = _norm_title(piece.strip()[m.end():].split("（", 1)[0].split("(", 1)[0])
-                if t:
-                    titles.setdefault(m.group(1), t)
-    return nos, titles
+def chapter_order(chs: dict) -> list[str]:
+    """章 id 数值序（ch2 < ch10；eia port 原样）。"""
+    return sorted(chs, key=lambda x: int(x[2:]) if x[2:].isdigit() else 99)
 
 
-def validate_toc(ch_id: str, text: str, toc: list[str]) -> dict:
-    """目录覆盖门 v2（bug-3036：旧版纯编号盲检——同名异节/错题/契约外自创节全放行）。
+def _chapter_title(raw: str) -> str:
+    """章节文件实际章题 = 首个非空行 `## 标题` 的标题文本（validate_chapter 已保证形状，异常回退空串）。"""
+    first = next((ln for ln in raw.splitlines() if ln.strip()), "")
+    return first[3:].strip() if first.startswith("## ") else ""
 
-    三向校验：① toc 全部节号（复合条目拆出的子节号也算）必须出现在章节 ##/###/#### 标题（旧有）；
-    ② 标题节号不得超出 toc——契约外自创节/并节残留拦截；③ 编号相同则标题必须相符
-    （规范化后双向包含即视为相符，防后缀展开误伤）。
 
-    num_re 与 backend/tests/test_geological_report_v2_scripts.py::TestStageSections 同源。
-    返回 {"toc_entries": 节号数, "toc_covered": 已落标题数}（供 delivery_manifest.json）。
-    """
-    toc_nos, toc_titles = _toc_index(toc)
-    heading_nos: set[str] = set()
-    heading_titles: dict[str, str] = {}
-    for ln in text.splitlines():
-        m = HEADING_NO_RE.match(ln.strip())
-        if m:
-            no = m.group(1)
-            heading_nos.add(no)
-            t = _norm_title(ln.strip()[m.end():])
-            if t:
-                heading_titles.setdefault(no, t)
-    missing = sorted(toc_nos - heading_nos)
-    extra = sorted(heading_nos - toc_nos)
-    mismatched = [
-        f"{no}: 目录「{toc_titles.get(no, '(缺)')}」≠ 标题「{heading_titles.get(no, '(空)')}」"
-        for no in sorted(toc_nos & heading_nos)
-        if no in toc_titles
-        and no in heading_titles
-        and toc_titles[no] != heading_titles[no]
-        and toc_titles[no] not in heading_titles[no]
-        and heading_titles[no] not in toc_titles[no]
+def _sem_match(a: str, b: str) -> bool:
+    """语义标题匹配：规范化后相等或双向包含（序/编号不校验——eia port 原样）。"""
+    na, nb = _norm_title(a), _norm_title(b)
+    if not na or not nb:
+        return False
+    return na == nb or na in nb or nb in na
+
+
+def validate_toc_chapters(stage: dict, actual: list[tuple[str, str]], absent_ch: set[str] | None = None) -> list[str]:
+    """序无关目录覆盖门（T11 delta d，eia port）：stage 章集映射——实际**章**标题覆盖必备集、
+    不得超集（禁契约外自创/并章）、序不校验；absent_ch 豁免集（--chapter 单章门传其余章 id）。
+    章条目 `optional:true` 记可选章（掘进 stage 现无）。返回错误行清单（空 = PASS）。"""
+    absent = absent_ch or set()
+    stage_chs = [
+        (ch_id, stage["chapters"][ch_id].get("title", ch_id), bool(stage["chapters"][ch_id].get("optional")))
+        for ch_id in chapter_order(stage.get("chapters", {}))
     ]
-    if missing or extra or mismatched:
-        parts = [f"toc 节号未落标题 {missing}"] if missing else []
-        if extra:
-            parts.append(f"契约外节号 {extra}（禁自创/并节——stage toc 是唯一骨架契约，bug-3036）")
-        if mismatched:
-            parts.append("编号同但标题不符: " + "; ".join(mismatched[:6]))
-        raise ValueError(
-            f"{ch_id}.md 目录覆盖门 FAIL：{'；'.join(parts)}"
-            f"（骨架全覆盖——动笔前读 STAGE 该章 toc 逐节展开，复合条目子节号须 #### 标题，bug-2221/2225/3036）"
+    errors: list[str] = []
+    matched: set[str] = set()
+    for ch_id, title in actual:
+        hits = [cid for cid, t, _o in stage_chs if _sem_match(title, t)]
+        if not hits:
+            errors.append(f"章 {ch_id}: 契约外自创章「{title[:24]}」（不得超集——stage 章集是唯一目录契约，禁自创/并章）")
+            continue
+        dup = [h for h in hits if h in matched]
+        if dup:
+            errors.append(f"章 {ch_id}: 章题「{title[:20]}」与已匹配章重复覆盖同一契约章 {dup}")
+        matched.update(hits)
+    missing = [f"{cid}「{t}」" for cid, t, opt in stage_chs if not opt and cid not in matched and cid not in absent]
+    if missing:
+        errors.append(
+            "目录覆盖门 FAIL：必备章缺席 " + ", ".join(missing)
+            + "（必备集须全覆盖、序无关；可选章/条件开关章缺席 = ABSENT 豁免合法）"
         )
-    return {"toc_entries": len(toc_nos), "toc_covered": len(toc_nos & heading_nos)}
+    return errors
 
 
 # ── 注入后残留扫描门（bug-3036：模板脚手架/槽位标记/合约内部词汇泄漏进交付稿）──────
 # 只扫注入后的章节正文——合规性附录由 build_output 脚本渲染（含合约 ID 表），不适用本门。
 RESIDUE_RE = re.compile(
     r"\{\{(?:SLOT|TABLE|FORM):[^{}]*\}\}"           # 未注入槽位标记（FORM 族 bug-3027：27 处 {{FORM:…}} 直通终稿）
-    r"|\{+S(?:LOT|FORM):[^{}]*\}+"                  # 畸形槽位（N19 单开括号/错配收形；bug-3027/3036）
+    r"|\{+S(?:LOT|FORM):[^{}]*\}+"                  # 畸形槽位（N19 单开括号/错配收形；bug-3027/3036/3228）
     r"|（未知表单族"                                 # 旧软兜底字符串残留
-    r"|exact_match|type_verdicts|ROUND_HALF_EVEN"   # 公式/校验层内部词汇
-    r"|要点包|台账数据句|质量结论模板句|规范引用句"        # 提示词脚手架词
-    r"|LLM自算|禁止LLM"
-    r"|[（(](?:XS|FC|CC|NR|SL)\d"                   # 合约 ID 内联引用
+    r"|LLM自算|禁止LLM"                              # 提示词脚手架词
     r"|\[\d+(?:\s*[,，]\s*\d+)+\]"                  # 裸数字数组（表格粘贴痕迹）
     r"|%%"
-    r"|(?<![A-Za-z0-9])XX(?![A-Za-z0-9])"           # XX 占位（规范形是 [待确认]）
+    r"|(?<![A-Za-z0-9])XX(?![A-Za-z0-9])"           # XX 占位（规范形是 [待确认]/[待补充]）
 )
+# T11 delta h：geo 词条退役——exact_match/type_verdicts/ROUND_HALF_EVEN（公式校验层内部词汇）、
+# 要点包/台账数据句/质量结论模板句/规范引用句（geo 提示词脚手架）、[（(](?:XS|FC|CC|NR|SL)\d
+# （geo 合约 ID 内联引用；掘进合约 C1-C12 只在合规性附录汇总，不进正文扫描词表）。骨架全保留。
 
 
 def validate_residue(ch_id: str, text: str) -> None:
@@ -390,30 +388,39 @@ def coverage_scale(text: str, targets: dict) -> float:
     return max(targets.get("scale_floor", 0.25), 1 - targets.get("per_signal_penalty", 0.05) * signals)
 
 
+def depth_target(targets: dict | None, ch_id: str, text: str) -> tuple[float, float | None, str]:
+    """深度目标单源（T11 delta e / J10）：目标公式 max(median × coefficient × coverage_scale, median × absolute_floor)
+    唯一出处——validate_depth_target / _depth_row / run_chapter_gate PASS 行三处调用
+    （geo 三处复制注释自标「须同步改」的口径分叉隐患根治）。返回 (target_eff, ratio, status)；
+    status ∈ PASS / THIN / UNBASELINED（targets 未覆盖该章）。"""
+    tg = targets or {}
+    ch = tg.get("per_chapter", {}).get(ch_id)
+    if not ch:
+        return 0.0, None, "UNBASELINED"
+    scale = coverage_scale(text, tg)
+    median = ch.get("median_eff", 0)
+    target = max(median * tg.get("coefficient", 0.6) * scale, median * tg.get("absolute_floor", 0.4))
+    eff = effective_chars(text)
+    ratio = round(eff / target, 2) if target > 0 else None
+    return target, ratio, ("PASS" if eff >= target else "THIN")
+
+
 def validate_depth_target(ch_id: str, text: str, targets: dict) -> None:
-    """L2 深度目标门：inject 后文本 eff ≥ max(样例 median × coefficient × 覆盖缩放, 样例 median × absolute_floor)。
+    """L2 深度目标门：inject 后文本 eff ≥ depth_target()（目标公式单源，J10）。
 
     bug-3036：绝对地板防「堆 [待确认] 压低覆盖缩放把越改越薄洗成 PASS」——缩放再低目标也不得穿地板。
     """
-    ch = targets.get("per_chapter", {}).get(ch_id)
-    if not ch:
+    target, _ratio, status = depth_target(targets, ch_id, text)
+    if status == "UNBASELINED":
         return  # targets 未覆盖该章 → 不拦（样例库不全时不误伤）
-    coeff = targets.get("coefficient", 0.6)
-    floor = targets.get("absolute_floor", 0.4)
-    scale = coverage_scale(text, targets)
-    median = ch.get("median_eff", 0)
-    # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——max(median × coefficient × coverage_scale, median × absolute_floor)）
-    target_eff = max(median * coeff * scale, median * floor)
     eff = effective_chars(text)
-    if eff < target_eff:
-        floor_binding = median * floor > median * coeff * scale
+    if eff < target:
+        ch = targets.get("per_chapter", {}).get(ch_id, {})
         raise ValueError(
-            f"{ch_id}.md 深度目标门 FAIL：eff {eff} < 目标 {target_eff:.0f}"
-            f"（样例 median {median} × {coeff} × 覆盖缩放 {scale:.2f}"
-            + ("，绝对地板 {ff} 生效——[待确认] 堆叠不再降目标".format(ff=floor) if floor_binding else "")
-            + f"）——逐要素成段扩写（缺数写 [待确认] 不砍段）；"
-            f"表后五步解读（陈述→规律识别→成因解释→规范对比→勘查意义）；"
-            f"范式参照 references/samples/exploration/{ch_id}_sample.md"
+            f"{ch_id}.md 深度目标门 FAIL：eff {eff} < 目标 {target:.0f}"
+            f"（样例 median {ch.get('median_eff', 0)} × {targets.get('coefficient', 0.6)} × 覆盖缩放 {coverage_scale(text, targets):.2f}，"
+            f"绝对地板 {targets.get('absolute_floor', 0.4)}——[待确认] 堆叠不再降目标）"
+            f"——逐要素成段扩写（缺数写 [待确认] 不砍段）后重跑"
         )
 
 
@@ -432,92 +439,25 @@ def load_targets(path: Path) -> dict | None:
         return None
 
 
-CANONICAL_TARGETS = Path(__file__).resolve().parent.parent / "references" / "depth_targets.json"
+CANONICAL_TARGETS = Path(__file__).resolve().parent.parent / "references" / "depth_targets" / "tunneling.json"
 STANDARDS_PATH = Path(__file__).resolve().parent.parent / "references" / "standards_index.json"
+CONTRACTS_PATH = Path(__file__).resolve().parent.parent / "references" / "consistency_contracts.json"  # T11 delta g：C1-C12 注册表
 
-# EAI-CUSTOM (geo-sample-bank Phase 2 T4): commodity 中文自由串 → 样例库基线 slug 归一化。
-# 最早出现位置=主矿种（约定主矿种写在前）：normalize_mineral 扫描全部 slug×关键词取位置最小者；
-# 负向守卫（「非金属」排除；「金」后接「属」=金属量/贵金属非矿种）与词表外 → None → 走既有探测链零感知。
-MINERAL_ALIASES: list[tuple[str, tuple[str, ...]]] = [
-    ("copper", ("铜",)),
-    ("coal", ("煤",)),
-    ("gold", ("金",)),
-    ("iron", ("铁",)),
-    ("lead_zinc", ("铅锌", "铅", "锌")),
-]
-
-
-def normalize_mineral(commodity: str | None) -> str | None:
-    """commodity 中文串 → 基线 slug；取最早出现的关键词（主矿种在前约定）。
-
-    「非金属」负向排除；「金」后接「属」（金属量/贵金属）跳过——防误映 gold。
-    """
-    if not commodity:
-        return None
-    s = commodity.strip()
-    if "非金属" in s:
-        return None
-    best: tuple[int, str] | None = None  # (position, slug)
-    for slug, keys in MINERAL_ALIASES:
-        for k in keys:
-            pos = s.find(k)
-            if pos == -1:
-                continue
-            if k == "金" and pos + 1 < len(s) and s[pos + 1] == "属":
-                continue
-            if best is None or pos < best[0]:
-                best = (pos, slug)
-    return best[1] if best else None
-
-
-def _project_mineral(data_dir: Path | str | None) -> str | None:
-    """读 <data_dir>/00_project.json 的 commodity 并归一化；目录缺失/损坏/词表外一律 None。"""
-    if data_dir is None:
-        return None
-    p = Path(data_dir) / "00_project.json"
-    if not p.exists():
-        return None
-    try:
-        return normalize_mineral(json.loads(p.read_text(encoding="utf-8")).get("commodity"))
-    except (OSError, ValueError, AttributeError):
-        return None
+# T11 delta f：geo 矿种通道退役（MINERAL_ALIASES / normalize_mineral / _project_mineral）——
+# 掘进基准单一（references/depth_targets/tunneling.json），无矿种分流；bug-3058 非技能基准
+# 高声警告 + manifest 溯源语义在 resolve_targets 原样保留。
 
 
 def resolve_targets(args_targets: str | None, stage_path: Path, data_dir: Path | str | None = None) -> tuple[dict | None, Path]:
-    """--targets 显式路径优先（调试通道）；缺省先按矿种查样例库基线目录，再沿 stage 文件向上三级探测，探测不中兜底技能自身基准。返回 (targets, 来源路径)。
+    """--targets 显式路径优先（调试通道）；缺省技能基准 references/depth_targets/tunneling.json。返回 (targets, 来源路径)。
 
-    页面实测线程 03e18e4a 教训：agent 伪造 coefficient=0.01 的 depth_targets.json 显式传入，L2 目标全变 0——
-    非技能基准必须醒目可见且留痕，不可静默生效。复核修复（bug-3058）：警告覆盖一切非技能基准来源
-    （显式 --targets 与 stage 旁探测一致——stage 落在可写目录时探测路径同样可被投放伪造基准）。
-
-    EAI-CUSTOM (geo-sample-bank Phase 2 T4)：data_dir 给出且 00_project.json 的 commodity 命中词表时，
-    优先取 references/depth_targets/<stage_stem>/<mineral>.json（bank_compile 由管理模块门控生成的
-    技能自有资产，早于三级探测、不打非技能基准警告，origin 仍由返回值第二元照记）。
-    mineral 探测优先于 stage 旁扫描——后者落在可写目录可被伪造（bug-3058），前者 gated。
+    bug-3058 语义保留（T11 delta f）：非技能基准（显式 --targets）必须高声警告且来源记入
+    delivery_manifest——正式交付绝不换基准绕深度门。geo 矿种通道与 stage 旁三级探测退役
+    （掘进基准单一）；data_dir/stage_path 参数保留（progress.py 调用方签名兼容）。
     """
-    if args_targets:
-        src = Path(args_targets)
-    else:
-        # EAI-CUSTOM (geo-sample-bank Phase 2 T4)：矿种选基线——早于三级探测，命中即返回（技能自有资产无警告）。
-        mineral = _project_mineral(data_dir)
-        if mineral:
-            cand = CANONICAL_TARGETS.parent / "depth_targets" / stage_path.stem / f"{mineral}.json"
-            if cand.exists():
-                print(f"[build] 深度基准: {cand}（样例库编译产物，来源已记入 delivery_manifest）", file=sys.stderr)
-                return load_targets(cand), cand
-            print(f"[build] 矿种基线缺失: {cand} —— 回退既有探测链（当前基准可能非本矿种）", file=sys.stderr)
-        src = None
-        for anc in (stage_path.parent, stage_path.parent.parent, stage_path.parent.parent.parent):
-            cand = anc / "depth_targets.json"
-            if cand.exists():
-                src = cand
-                break
-        if src is None:
-            print(f"[build] stage 附近未探测到 depth_targets.json——兜底技能自身基准 {CANONICAL_TARGETS}", file=sys.stderr)
-            src = CANONICAL_TARGETS
-    if src.resolve() != CANONICAL_TARGETS and src.exists():
-        origin = "显式 --targets" if args_targets else "stage 旁探测"
-        print(f"[build] 警告: 深度基准 {src}（sha256 {sha256_file(src)[:12]}…，来源: {origin}）≠ 技能基准 references/depth_targets.json——调试基准仅限调试通道，正式交付绝不换基准绕深度门；本次基准来源已记入 delivery_manifest.json", file=sys.stderr)
+    src = Path(args_targets) if args_targets else CANONICAL_TARGETS
+    if args_targets and src.exists() and src.resolve() != CANONICAL_TARGETS.resolve():
+        print(f"[build] 警告: 深度基准 {src}（sha256 {sha256_file(src)[:12]}…，来源: 显式 --targets）≠ 技能基准 references/depth_targets/tunneling.json——调试基准仅限调试通道，正式交付绝不换基准绕深度门；本次基准来源已记入 delivery_manifest.json", file=sys.stderr)
     return load_targets(src), src
 
 
@@ -612,6 +552,7 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
     slot_errors: set[str] = set()
     inject = make_inject(stage, data_dir, state, unknown_keys, slot_errors)  # 重构：注入闭包提取
     toc_stats: dict[str, dict] = {}
+    actual: list[tuple[str, str]] = []  # T11 delta d：章文件实际首题收集——目录覆盖门（序无关语义相符）输入
     depth_rows = depth_rows if depth_rows is not None else (partial["chapter_depth"] if partial is not None else [])  # bug-3036：全量 build 也留痕
 
     parts = [render_front_matter(stage, data_dir)]
@@ -628,7 +569,8 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
             # 六步门序列与 run_chapter_gate 须同步改（新增校验两处同加）
             validate_chapter(ch_id, raw)
             validate_depth(ch_id, raw)
-            toc_stats[ch_id] = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
+            actual.append((ch_id, _chapter_title(raw)))
+            toc_stats[ch_id] = {"title": stage["chapters"][ch_id].get("title", ch_id), "effective_chars": effective_chars(raw)}
             injected = inject(raw).rstrip() + "\n"
             validate_residue(ch_id, injected)
             if targets is not None and not (skip_l2 and ch_id in skip_l2):  # skip_l2：--allow-partial 批准集（Task 3）
@@ -638,7 +580,8 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
             errors.append(str(e))
             continue
         parts.append(injected)
-    parts.append(render_compliance_appendix(consistency, state, state_path))
+    errors.extend(validate_toc_chapters(stage, actual))  # T11 delta d：序无关目录覆盖门（必备集全覆盖+禁契约外自创+章题语义相符）
+    parts.append(render_compliance_appendix(stage, consistency, state, state_path))
     if unknown_keys:
         errors.append(f"未知槽位 key（不在 formula_state.values，FAIL 阻断）: {sorted(unknown_keys)}")
     if slot_errors:
@@ -673,25 +616,22 @@ def approved_chapters(progress: dict) -> set[str]:
 
 
 def _depth_row(ch_id: str, injected: str, targets: dict | None, downgraded: bool) -> dict:
-    """交付清单逐章深度行（全量 build 也写入 manifest——缩放/地板/达标比全留痕可查，bug-3036）。"""
+    """交付清单逐章深度行（全量 build 也写入 manifest——缩放/地板/达标比全留痕可查，bug-3036）。
+    目标/达标比单源 depth_target()（J10）。"""
     eff = effective_chars(injected)
-    tg = targets or {}
-    ch = tg.get("per_chapter", {}).get(ch_id)
-    scale = coverage_scale(injected, tg)
-    # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——max(median × coefficient × coverage_scale, median × absolute_floor)）
-    target_eff = max(ch.get("median_eff", 0) * tg.get("coefficient", 0.6) * scale, ch.get("median_eff", 0) * tg.get("absolute_floor", 0.4)) if ch else 0
+    target, ratio, _status = depth_target(targets, ch_id, injected)
     return {
         "chapter": ch_id,
         "effective_chars": eff,
-        "target": int(round(target_eff)),
-        "coverage_scale": round(scale, 2),
-        "ratio": round(eff / target_eff, 2) if target_eff > 0 else None,
+        "target": int(round(target)),
+        "coverage_scale": round(coverage_scale(injected, targets or {}), 2),
+        "ratio": ratio,
         "status": "DOWNGRADED" if downgraded else "VERIFIED",
     }
 
 
 def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, targets: dict | None) -> None:
-    """--chapter 单章全门（spec §5.2①）：validate_chapter + validate_depth + validate_toc + inject
+    """--chapter 单章全门（spec §5.2①）：validate_chapter + validate_depth + validate_toc_chapters + inject
     + validate_depth_target，一次报齐该章全部问题（同 assemble 章内块格式）。
 
     不产交付物（交付名门/散文件门不适用）、不写 progress.json（唯一写者=progress.py）。
@@ -712,13 +652,15 @@ def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, t
         raise ValueError(f"章节产物缺失: {cf}（子代理未完成或未派发——先按 progress.py next 指引派发/重派该章）")
     raw = cf.read_text(encoding="utf-8")
     errors: list[str] = []
-    toc: dict = {}
     injected = ""
     try:
         # 六步门序列与 assemble 循环体须同步改（新增校验两处同加）
         validate_chapter(ch_id, raw)
         validate_depth(ch_id, raw)
-        toc = validate_toc(ch_id, raw, stage["chapters"][ch_id].get("toc", []))
+        # T11 delta d：单章门只断言本章——其余必备章以 absent_ch 豁免（禁自创/重复覆盖/章题语义相符仍全生效）
+        toc_errors = validate_toc_chapters(stage, [(ch_id, _chapter_title(raw))], absent_ch=set(stage.get("chapters", {})) - {ch_id})
+        if toc_errors:
+            raise ValueError(f"{ch_id}.md 目录覆盖门 FAIL：{'；'.join(toc_errors)}")
         injected = inject(raw).rstrip() + "\n"
         validate_residue(ch_id, injected)
         if targets is not None:
@@ -731,14 +673,12 @@ def run_chapter_gate(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, t
         errors.append(f"槽位 display 非法（空/非标量，bug-3036）:\n  " + "\n  ".join(sorted(slot_errors)))
     if errors:
         raise ValueError(f"{ch_id} 单章门 FAIL（{len(errors)} 项，一次报齐——补写该章正文后重跑）:\n" + "\n".join(errors))
-    ch = (targets or {}).get("per_chapter", {}).get(ch_id)
-    if ch:
-        scale = coverage_scale(injected, targets)
-        # 目标公式三处同式须同步改（validate_depth_target / _depth_row / run_chapter_gate PASS 行——max(median × coefficient × coverage_scale, median × absolute_floor)）
-        t = max(ch.get("median_eff", 0) * targets.get("coefficient", 0.6) * scale, ch.get("median_eff", 0) * targets.get("absolute_floor", 0.4))
-        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)} ≥ 目标 {t:.0f}（样例 median {ch.get('median_eff')} × {targets.get('coefficient', 0.6)} × 覆盖缩放 {scale:.2f}，地板 {targets.get('absolute_floor', 0.4)}）")
+    t, _ratio, status = depth_target(targets, ch_id, injected)  # J10：目标公式单源第三调用点
+    if status != "UNBASELINED":
+        ch = targets.get("per_chapter", {}).get(ch_id, {})
+        print(f"CHAPTER_GATE_PASS: {ch_id} 章题语义相符 eff {effective_chars(injected)} ≥ 目标 {t:.0f}（样例 median {ch.get('median_eff', 0)} × {targets.get('coefficient', 0.6)} × 覆盖缩放 {coverage_scale(injected, targets):.2f}，地板 {targets.get('absolute_floor', 0.4)}）")
     else:
-        print(f"CHAPTER_GATE_PASS: {ch_id} toc {toc['toc_covered']}/{toc['toc_entries']} eff {effective_chars(injected)}（L2 基准未覆盖该章，地板门通过）")
+        print(f"CHAPTER_GATE_PASS: {ch_id} 章题语义相符 eff {effective_chars(injected)}（L2 基准未覆盖该章，地板门通过）")
 
 
 def atomic_write(path: Path, content: str) -> bool:
@@ -757,16 +697,16 @@ def atomic_write(path: Path, content: str) -> bool:
     return True
 
 
-def main() -> int:
-    p = argparse.ArgumentParser(description="geological-report v2 — 单次原子组装")
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description="coal-mine-tunneling-regulation v2 — 掘进作业规程单次原子组装")
     p.add_argument("--stage", required=True)
     p.add_argument("--data-dir", required=True)
     p.add_argument("--state-dir", required=True, help="state/（chapters/ + formula_state.json + consistency_check.json）")
-    p.add_argument("--targets", help="depth_targets.json 路径；缺省探测 stage 同目录/../ ../../")
+    p.add_argument("--targets", help="depth_targets.json 路径（调试通道）；缺省技能基准 references/depth_targets/tunneling.json")
     p.add_argument("--chapter", help="单章门模式：只验证该章（ch_id 如 ch3），不产交付物/不写 progress.json")
     p.add_argument("--allow-partial", action="store_true", help="分级交付：progress.json 已批准的 BLOCKED 章跳过 L2 深度目标门（L0/L1/toc/槽位门仍在场），manifest 留痕")
     p.add_argument("--output", help="交付物输出路径（--chapter 模式不需要）")
-    args = p.parse_args()
+    args = p.parse_args(argv)
     if args.chapter and (args.output or args.allow_partial):
         print("[build] --chapter 与 --output/--allow-partial 互斥（单章门不产交付物）", file=sys.stderr)
         return EXIT_ERROR
@@ -775,7 +715,7 @@ def main() -> int:
         return EXIT_ERROR
     try:
         stage = json.loads(Path(args.stage).read_text(encoding="utf-8"))
-        targets, targets_src = resolve_targets(args.targets, Path(args.stage), data_dir=Path(args.data_dir))  # EAI-CUSTOM (geo-sample-bank Phase 2 T4)
+        targets, targets_src = resolve_targets(args.targets, Path(args.stage), data_dir=Path(args.data_dir))
         if args.chapter:
             run_chapter_gate(stage, Path(args.data_dir), Path(args.state_dir), args.chapter, targets)
             return EXIT_OK
@@ -783,7 +723,7 @@ def main() -> int:
         out_path = Path(args.output)
         expected = expected_deliverable_name(stage, Path(args.data_dir))
         if out_path.name != expected:
-            print(f"[build] 交付名门 FAIL: 输出 {out_path.name!r} ≠ 规范名 {expected!r}（{{项目名}}-{{阶段}}-地质勘查报告.md，bug-2220/2223）", file=sys.stderr)
+            print(f"[build] 交付名门 FAIL: 输出 {out_path.name!r} ≠ 规范名 {expected!r}（{{mine_name}}{{roadway_name}}掘进作业规程.md，bug-2220/2223）", file=sys.stderr)
             return EXIT_ERROR
         stray = sorted(p.name for p in out_path.parent.glob("*.md") if p.name != out_path.name)
         if stray:
@@ -832,6 +772,7 @@ def main() -> int:
             Path(args.stage),
             Path(args.state_dir) / "formula_state.json",
             STANDARDS_PATH if STANDARDS_PATH.exists() else None,
+            CONTRACTS_PATH if CONTRACTS_PATH.exists() else None,  # T11 delta g：C1-C12 注册表门接入（本技能 consistency 注册表驱动）
         )
         c_path.write_text(json.dumps(c_result, ensure_ascii=False, indent=2), encoding="utf-8")
         c_fails = [i for i in c_result["items"] if i["severity"] == "fail"]
