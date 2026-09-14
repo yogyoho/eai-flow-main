@@ -77,6 +77,7 @@ license: MIT
 5. 填值：CSV/Excel 走 `ingest.py file`（自动乱序列匹配）；叙述性字段从上传文件提取或 `ask_clarification` 逐类收集（项目→规划方案→敏感目标→标准确认→现状监测→影响识别→预测参数→经济/投资→公众参与）。交互纪律（页面实测铁律，全套）：
    - **单回合至多一次 `ask_clarification`**——一次只问一个类别，一张表单获答落盘回执后才发下一类；连发除最后一张外全部冻结成死卡。
    - **用户可见即表单**：`fields` 渲染中文填写表单，`name`=schema 英文键（内部）、`label`=中文名+单位，enum→select / number→number / 长文本→textarea；**单卡片 ≤16 项**，超出分批问；面向用户一律称"数据项"，禁出现「JSON/字段/field」术语。
+   - **字段构造反模式禁令（bug-3233）**：`label`/`placeholder` 必须纯中文文本（禁塞 JSON/字典/对象字符串）；`type=number` 字段禁建成 select-options 形态（{label,value} 字典即违规，渲染即成「JSON 当标签」）；`label` 与 `placeholder` 禁同文重复。
    - **批量数据优先引导上传文件**：井田清单/监测点位/敏感目标 >10 条时逐项问答收不齐——主动请用户上传 CSV/Excel 走 `ingest.py file`。**索要上传必须用普通消息收尾，绝不做成 ask_clarification 卡片**（卡片没有文件控件，模态错配 bug-2233）。
    - **示例值≠数据**：placeholder/说明只示意格式，用户没填的数据项绝不落盘任何值；写完用中文数据项清单回显请用户核对。
    - **只传用户提交的键**：`--values '<json>'` 只放用户实际填写的键，留空项一律不写；绝不为通过校验合成对象、绝不抄 placeholder 凑数。
