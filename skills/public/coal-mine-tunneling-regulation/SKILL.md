@@ -108,6 +108,7 @@ profile.py validate --input <档案.json> [--stage references/stages/tunneling.j
 profile.py summary --input <档案.json>
 profile.py load --input <档案.json> --data-dir data/
 ingest.py forms --stage S --data-dir data/ [--family F (--values '<json>'|--rows '<json[]>')] [--only 族1,族2] [--force]
+ingest.py forms --stage S --data-dir data/ --family F --values-file <path>   # ⚠ 多字段 JSON 一律用文件形态（write_file 写到 workspace 再传入）——bash 内联大段中文 JSON 的引号转义会烧光递归预算（E2E run 5520c429 实证）
 ingest.py file --stage S --data-dir data/ --input <xlsx|csv|docx> --family <CSV族>
 ingest.py check --stage S --data-dir data/
 chapter_planner.py manifest --stage S --output state/chapter_manifest.json

@@ -255,6 +255,29 @@ def cmd_forms(args) -> int:
 
     # bug-2217: --values/--rows 传了但为空串（典型: --values "$(cat 不存在的文件)" 静默展开）
     # 此前落入空白生成路径——配 --force 直接把 data/ 全部表单重置为空白，已收集数据全丢（页面实测）。
+    # E2E 实测（run 5520c429）：bash 内联大段中文 JSON 引号反复炸裂烧光递归预算——文件形态绕开转义
+    if getattr(args, "values_file", None):
+        if args.values is not None:
+            print("[ingest] 错误: --values 与 --values-file 互斥", file=sys.stderr)
+            return EXIT_ERROR
+        vf = Path(args.values_file)
+        if not vf.is_absolute():
+            vf = data_dir / vf
+        if not vf.exists():
+            print(f"[ingest] 错误: --values-file 不存在: {vf}", file=sys.stderr)
+            return EXIT_ERROR
+        args.values = vf.read_text(encoding="utf-8")
+    if getattr(args, "rows_file", None):
+        if args.rows is not None:
+            print("[ingest] 错误: --rows 与 --rows-file 互斥", file=sys.stderr)
+            return EXIT_ERROR
+        rf = Path(args.rows_file)
+        if not rf.is_absolute():
+            rf = data_dir / rf
+        if not rf.exists():
+            print(f"[ingest] 错误: --rows-file 不存在: {rf}", file=sys.stderr)
+            return EXIT_ERROR
+        args.rows = rf.read_text(encoding="utf-8")
     if args.values is not None and not args.values.strip():
         print("[ingest] 错误: --values 是空字符串（常见于 $(cat 文件不存在) 静默展开为空）。请检查取值命令后重传完整 JSON。", file=sys.stderr)
         return EXIT_ERROR
@@ -725,7 +748,9 @@ def main(argv: list[str] | None = None) -> int:
     f.add_argument("--only", help="逗号分隔表单族名（只生成这些）")
     f.add_argument("--force", action="store_true", help="覆盖已存在表单（危险：重置为空白；必须搭配 --only/--family 限定范围）")
     f.add_argument("--family", help="目标表单族（--values/--rows 写入模式必填）")
-    f.add_argument("--values", help="JSON 对象字符串（JSON 表单）")
+    f.add_argument("--values", help="JSON 对象字符串（JSON 表单）；大段数据建议改用 --values-file")
+    f.add_argument("--values-file", dest="values_file", default=None, help="JSON 对象文件路径（--values 的文件形态，绕开 shell 引号转义；E2E 实测新增）")
+    f.add_argument("--rows-file", dest="rows_file", default=None, help="JSON 行数组文件路径（--rows 的文件形态）")
     f.add_argument("--rows", help="JSON 行数组字符串（CSV 表单）")
     f.set_defaults(func=cmd_forms)
 
