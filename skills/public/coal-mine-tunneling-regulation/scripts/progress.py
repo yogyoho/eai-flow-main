@@ -41,6 +41,7 @@ EXIT_OK, EXIT_ERROR = 0, 1
 # finalize 的 consistency --standards 默认 = 技能规范索引（CC3 规范编号枚举门的真源；
 # 缺文件时省略该旗标 → CC1/CC3 降为 manual，rc=2 由调用方按门拦语义处理）。
 STANDARDS_INDEX = Path(__file__).resolve().parent.parent / "references" / "standards_index.json"
+CONTRACTS_INDEX = Path(__file__).resolve().parent.parent / "references" / "consistency_contracts.json"
 
 # 派发额度 = config.yaml subagents.max_total_per_run（本计划提额到 20；clamp [1,50]）。
 # 9 章 + 每章重派 ≤1 = 18 > 16 会提前触发额度耗尽 BLOCKED，故 16 → 20。
@@ -327,6 +328,9 @@ def cmd_run_stage(args: argparse.Namespace) -> int:
     cons_args = ["--report", str(_body if _body.exists() else report), "--data-dir", data, "--stage", stage, "--state", str(state_dir / "formula_state.json"), "--output", str(state_dir / "consistency_check.json")]
     if STANDARDS_INDEX.exists():
         cons_args += ["--standards", str(STANDARDS_INDEX)]
+    # T11 评审 Issue-5：注册表门接线——finalize 重跑不传 --contracts 会用无 C1-C12 行的弱结果覆盖
+    if CONTRACTS_INDEX.exists():
+        cons_args += ["--contracts", str(CONTRACTS_INDEX)]
     rc = _run_py("consistency.py", *cons_args)
     if rc in (1, 2):
         return rc

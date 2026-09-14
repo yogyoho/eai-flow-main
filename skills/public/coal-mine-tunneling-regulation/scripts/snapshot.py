@@ -15,7 +15,7 @@ water 版改造（差异有意非漂移，见 TODOS.md 三副本同步约定）�
     --state-manifest /mnt/user-data/workspace/data/state_manifest.json \
     --formula-state /mnt/user-data/workspace/state/formula_state.json \
     --manifest /mnt/user-data/workspace/state/chapter_manifest.json \
-    --report /mnt/user-data/outputs/勘探报告.md \
+    --report /mnt/user-data/outputs/某矿N3218运输顺槽掘进作业规程.md \
     --diff '{"13a:体重_t_m3":{"old":"2.85","new":"2.90"}}' \
     --affected '{"formulas":["L7","L9"],"chapters":["ch1","ch4","ch8","ch9","ch10","compliance_appendix"]}' \
     --output /mnt/user-data/workspace/project_snapshot.json
@@ -163,13 +163,13 @@ def cmd_show(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="geological-report v2 — project_snapshot.json 读写")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("save", help="读旧快照→version++→追加 changelog→写回（带 hash 清单）")
     s.add_argument("--task", required=True, help="本轮用户指令一句话摘要（写入 last_task）")
-    s.add_argument("--stage", default=None, help="勘探/详查/普查")
+    s.add_argument("--stage", default=None, help="掘进作业规程（tunneling）——单 stage 技能，留空即可")
     s.add_argument("--data-dir", default=None, help="data/ 目录（hash 清单范围）")
     s.add_argument("--state-dir", default=None, help="state/ 目录（hash 清单范围）")
     s.add_argument("--state-manifest", default=None, help="data/state_manifest.json 路径")
@@ -188,7 +188,7 @@ def main() -> int:
     sh.add_argument("--verify", action="store_true", help="复算 file_hashes（mismatch → exit 3）")
     sh.set_defaults(func=cmd_show)
 
-    args = p.parse_args()
+    args = p.parse_args(argv)
     return args.func(args)
 
 
