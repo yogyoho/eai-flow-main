@@ -78,7 +78,11 @@ license: MIT
    - **单回合至多一次 `ask_clarification`**——一次只问一个类别，一张表单获答落盘回执后才发下一类；连发除最后一张外全部冻结成死卡。
    - **用户可见即表单**：`fields` 渲染中文填写表单，`name`=schema 英文键（内部）、`label`=中文名+单位，enum→select / number→number / 长文本→textarea；**单卡片 ≤16 项**，超出分批问；面向用户一律称"数据项"，禁出现「JSON/字段/field」术语。
    - **字段构造反模式禁令（bug-3233）**：`label`/`placeholder` 必须纯中文文本（禁塞 JSON/字典/对象字符串）；`type=number` 字段禁建成 select-options 形态（{label,value} 字典即违规，渲染即成「JSON 当标签」）；`label` 与 `placeholder` 禁同文重复。
-   - **批量数据优先引导上传文件**：井田清单/监测点位/敏感目标 >10 条时逐项问答收不齐——主动请用户上传 CSV/Excel 走 `ingest.py file`。**索要上传必须用普通消息收尾，绝不做成 ask_clarification 卡片**（卡片没有文件控件，模态错配 bug-2233）。
+   - **数组族批量收集三步协议（bug-3234）**：array<object> 族（targets/seams/plans/stages/rows 等）禁要求用户填 JSON——
+     ① agent 从 stage schema 子字段中文 label 生成 CSV 模板（UTF-8 **with BOM**，含 1 行示例）经 present_files 呈现下载；
+     ② 用户 Excel 填写后对话发回（uploads 通道）；
+     ③ agent 取上传文件行构造数组 → `ingest.py forms --family F --values` 落盘 → FORM_WRITTEN 回执含行数。
+     解析容错：列缺失/空行回执指明问题行引导修正。≤5 行小数组可改逐项卡；索要上传用普通消息收尾禁做卡（bug-2233）。
    - **示例值≠数据**：placeholder/说明只示意格式，用户没填的数据项绝不落盘任何值；写完用中文数据项清单回显请用户核对。
    - **只传用户提交的键**：`--values '<json>'` 只放用户实际填写的键，留空项一律不写；绝不为通过校验合成对象、绝不抄 placeholder 凑数。
    - **每收完一类立即落盘**：`ingest.py forms --stage S --data-dir D --family <族> --values '<json>'`。绝不只在对话里"记录"，绝不手写 data/（唯一写者=ingest.py）。
