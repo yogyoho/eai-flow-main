@@ -542,6 +542,61 @@ def make_inject(stage: dict, data_dir: Path, state: dict, unknown_keys: set[str]
     return inject
 
 
+
+
+# -- 标题归一化（E2E 实测：子代理风格不一致——组装时统一为样例四级制）--
+
+_CN = "一二三四五六七八九十"
+
+def _cn_num(n):
+    if n <= 10:
+        return _CN[n - 1]
+    if n < 20:
+        return "十" + (_CN[n - 11] if n > 10 else "")
+    return str(n)
+
+_STRIP_PATTERNS = [
+    re.compile(r"^(?:第[一二三四五六七八九十百]+[章节]\s*)"),
+    re.compile(r"^(?:[一二三四五六七八九十]+、\s*)"),
+    re.compile(r"^(?:（[一二三四五六七八九十]+）\s*)"),
+    re.compile(r"^(?:ch\d+\s+)"),
+    re.compile(r"^(?:\d+(?:\.\d+)*\s+)"),
+]
+
+def _strip_heading_num(text):
+    result = text.strip()
+    for pat in _STRIP_PATTERNS:
+        result = pat.sub("", result).strip()
+    return result
+
+def normalize_headings(text, ch_num):
+    """归一化章内标题为样例四级制：第X章 -> 第X节 -> 一、 -> （一）。"""
+    cn_ch = _cn_num(ch_num)
+    sec = 0
+    sub = 0
+    lines = []
+    for line in text.split("\n"):
+        if line.startswith("##### "):
+            title = _strip_heading_num(line[6:])
+            lines.append("##### （" + _cn_num(sub) + "）" + title)
+        elif line.startswith("#### "):
+            sub += 1
+            title = _strip_heading_num(line[5:])
+            lines.append("#### " + _cn_num(sub) + "、" + title)
+        elif line.startswith("### "):
+            sec += 1
+            sub = 0
+            title = _strip_heading_num(line[4:])
+            lines.append("### 第" + _cn_num(sec) + "节 " + title)
+        elif line.startswith("## "):
+            sec = 0
+            sub = 0
+            title = _strip_heading_num(line[3:])
+            lines.append("## 第" + cn_ch + "章 " + title)
+        else:
+            lines.append(line)
+    return "\n".join(lines)
+
 def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None = None, skip_l2: set[str] | None = None, partial: dict | None = None, depth_rows: list | None = None) -> tuple[str, dict[str, dict]]:
     if targets is None:
         # 防绕：直调 assemble（targets=None）也吃技能真基准——页面实测线程 03e18e4a 直调跳过 L2 ~10 次
@@ -579,6 +634,8 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
         except ValueError as e:
             errors.append(str(e))
             continue
+        ch_num = int(ch_id[2:]) if ch_id[2:].isdigit() else 99
+        injected = normalize_headings(injected, ch_num)
         parts.append(injected)
     errors.extend(validate_toc_chapters(stage, actual))  # T11 delta d：序无关目录覆盖门（必备集全覆盖+禁契约外自创+章题语义相符）
     parts.append(render_compliance_appendix(stage, consistency, state, state_path))
