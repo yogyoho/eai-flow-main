@@ -569,7 +569,7 @@ def _strip_heading_num(text):
         result = pat.sub("", result).strip()
     return result
 
-def normalize_headings(text, ch_num):
+def normalize_headings(text, ch_num, sections=None):
     """归一化章内标题为样例四级制：第X章 -> 第X节 -> 一、 -> （一）。"""
     cn_ch = _cn_num(ch_num)
     sec = 0
@@ -584,10 +584,19 @@ def normalize_headings(text, ch_num):
             title = _strip_heading_num(line[5:])
             lines.append("#### " + _cn_num(sub) + "、" + title)
         elif line.startswith("### "):
-            sec += 1
             sub = 0
-            title = _strip_heading_num(line[4:])
-            lines.append("### 第" + _cn_num(sec) + "节 " + title)
+            if sections:
+                if sec < len(sections):
+                    sec += 1
+                    lines.append("### 第" + _cn_num(sec) + "节 " + sections[sec - 1])
+                else:
+                    # 多余 ### 折叠为 #### 级，归入最后一个规定节
+                    title = _strip_heading_num(line[4:])
+                    lines.append("#### " + title)
+            else:
+                sec += 1
+                title = _strip_heading_num(line[4:])
+                lines.append("### 第" + _cn_num(sec) + "节 " + title)
         elif line.startswith("## "):
             sec = 0
             sub = 0
@@ -635,7 +644,8 @@ def assemble(stage: dict, data_dir: Path, state_dir: Path, targets: dict | None 
             errors.append(str(e))
             continue
         ch_num = int(ch_id[2:]) if ch_id[2:].isdigit() else 99
-        injected = normalize_headings(injected, ch_num)
+        sections = stage.get("chapters", {}).get(ch_id, {}).get("sections")
+        injected = normalize_headings(injected, ch_num, sections)
         parts.append(injected)
     errors.extend(validate_toc_chapters(stage, actual))  # T11 delta d：序无关目录覆盖门（必备集全覆盖+禁契约外自创+章题语义相符）
     parts.append(render_compliance_appendix(stage, consistency, state, state_path))

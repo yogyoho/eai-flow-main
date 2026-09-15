@@ -61,9 +61,9 @@
    "mode": "身份信息与编制依据（表单直出为主）；难度 1/低",
    "sample_anchor": "3218 样例第一章：概述（巷道名称及用途/位置及相邻关系/预计开竣工时间）+ 依据（工作面设计说明书及批准时间/地质说明书及批准时间/矿压观测资料/开工通知单/其它依据）",
    "key_elements": [
-    "巷道名称/用途/位置/相邻关系逐项转写 {{SLOT:roadway.roadway_name}} 等，禁另立叫法（C2 巷道名称全称 exact 的源点）",
-    "设计工程量：设计长度 {{SLOT:roadway.design_length_m}} 与 ch6 技术经济指标表同源（C3）",
-    "规程编号 {{SLOT:profile.reg_no_format}} 与封面/会审页一致（C11）",
+    "巷道名称/用途/位置/相邻关系逐项转写 按 data/roadway 转写 roadway_name 真值 等，禁另立叫法（C2 巷道名称全称 exact 的源点）",
+    "设计工程量：设计长度 按 data/roadway 转写 design_length_m 真值 与 ch6 技术经济指标表同源（C3）",
+    "规程编号 按 data/profile 转写 reg_no_format 真值 与封面/会审页一致（C11）",
     "编制依据逐条列出：工作面设计说明书、地质说明书（均带批准时间）、矿压观测资料、开工通知单、法规标准清单（从 standards_index 枚举）",
     "收束句：本章为全文身份事实源，后续章引用名称/编号/长度禁改写"
    ],
@@ -85,6 +85,10 @@
     "C3",
     "C11",
     "C12"
+   ],
+   "sections": [
+    "概述",
+    "依据"
    ]
   },
   "ch2": {
@@ -93,10 +97,10 @@
    "sample_anchor": "3218 样例第二章四节：地面相对位置及邻近采区开采情况（T125 水平/采区/标高表）/煤（岩）层赋存特征（T131 煤层指标+T133 顶底板岩性表）/地质构造/水文地质",
    "key_elements": [
     "地面相对位置表：{{TABLE:geology}} 水平/采区/地面标高/工作面标高/邻近采区开采情况",
-    "煤层赋存：厚度 {{SLOT:geology.seam_thickness_m}}/倾角/单轴抗压强度",
+    "煤层赋存：厚度 按 data/geology 转写 seam_thickness_m 真值/倾角/单轴抗压强度",
     "顶底板岩性表：{{TABLE:geology}}（老顶/直接顶/伪顶/直接底/基本底 × 岩性/厚度/抗压强度/特征）",
-    "瓦斯及其它：绝对涌出量（日最大 {{SLOT:geology.gas_emission_daily}}/月平均 {{SLOT:geology.gas_emission_monthly}}——双口径必须带口径标签，C6）；煤尘爆炸性/自燃倾向性取自矿井档案（C12 源点）",
-    "地质构造描述 {{SLOT:geology.structure_desc}}",
+    "瓦斯及其它：绝对涌出量（日最大 按 data/geology 转写 gas_emission_daily 真值/月平均 按 data/geology 转写 gas_emission_monthly 真值——双口径必须带口径标签，C6）；煤尘爆炸性/自燃倾向性取自矿井档案（C12 源点）",
+    "地质构造描述 按 data/geology 转写 structure_desc 真值",
     "水文地质：涌水量（正常/最大）、水文地质类型（档案值）、「有掘必探，先探后掘」原则必须原文在场（D8 强制条款）"
    ],
    "writing_patterns": [
@@ -122,6 +126,12 @@
     "C6",
     "C7",
     "C12"
+   ],
+   "sections": [
+    "地面相对位置及邻近采区开采情况",
+    "煤（岩）层赋存特征",
+    "地质构造",
+    "水文地质"
    ]
   },
   "ch3": {
@@ -129,8 +139,8 @@
    "mode": "支护技术核心章（参数表直出，禁计算）；难度 3/中",
    "sample_anchor": "3218 样例第三章四节：巷道布置/支护设计（断面 5.0×3.6m 掘进 18m²、T242/T244 质量偏差表、T300 支护设备表）/支护工艺/矿压观测（T330 观测项目表+T396 离层仪表）",
    "key_elements": [
-    "巷道布置：开口点/方位/拐弯抹角/与邻巷关系，长度 {{SLOT:roadway.design_length_m}}（C3 触点）",
-    "巷道断面：形状 {{SLOT:roadway.section_shape}}、净宽 {{SLOT:roadway.net_width_mm}}mm、掘进断面 {{SLOT:roadway.drive_section_m2}}m² 与净断面 {{SLOT:roadway.net_section_m2}}m²——三处同源禁另立（C1 源点；R10 断面≥设计×1.05 护栏）",
+    "巷道布置：开口点/方位/拐弯抹角/与邻巷关系，长度 按 data/roadway 转写 design_length_m 真值（C3 触点）",
+    "巷道断面：形状 按 data/roadway 转写 section_shape 真值、净宽 按 data/roadway 转写 net_width_mm 真值mm、掘进断面 按 data/roadway 转写 drive_section_m2 真值m² 与净断面 按 data/roadway 转写 net_section_m2 真值m²——三处同源禁另立（C1 源点；R10 断面≥设计×1.05 护栏）",
     "支护设计表：{{TABLE:support}} 锚杆（顶板/帮部分列：型号/直径/长度/间排距/锚固方式/预紧力）、锚索（长度≥6.3m 依顶板岩性——R7）、锚固剂型号、网/钢带规格",
     "支护工艺：临时支护（初撑/初喷≥50mm——R8）→ 永久支护 → 质量要求（总喷厚≥120mm——R9 条件在场）",
     "工程质量允许偏差表：{{TABLE:support}}（T242 项目/设计尺寸/允许偏差逐行）",
@@ -162,6 +172,12 @@
     "C1",
     "C3",
     "C4"
+   ],
+   "sections": [
+    "巷道布置及施工方法",
+    "支护设计",
+    "支护工艺",
+    "矿压观测"
    ]
   },
   "ch4": {
@@ -169,7 +185,7 @@
    "mode": "工法与设备；难度 2/低",
    "sample_anchor": "3218 样例第四章四节：施工方法（综掘 EBZ160）/掘进作业（循环进尺）/装载与运输（T426 设备表）/管线敷设（T437 风筒 Φ1000×120节）",
    "key_elements": [
-    "施工方法：综掘/炮掘声明，掘进机 {{SLOT:equipment.roadheader_model}}（C8 设备措施匹配源点）",
+    "施工方法：综掘/炮掘声明，掘进机 按 data/equipment 转写 roadheader_model 真值（C8 设备措施匹配源点）",
     "掘进作业：循环进尺/工序安排（割煤→装运→支护）",
     "装载与运输：{{TABLE:equipment}} 设备名称/型号/数量/安装位置/固定方式/运输距离",
     "管线敷设：{{TABLE:equipment}} 风筒/水管/电缆的规格型号/单位/数量/铺设方式/位置——风筒数量写 {{SLOT:F3.duct_count}} 节（冻结值，禁手算；C5 触点）",
@@ -197,6 +213,12 @@
     "C1",
     "C5",
     "C8"
+   ],
+   "sections": [
+    "施工方法",
+    "掘进作业",
+    "装载与运输",
+    "管线敷设"
    ]
   },
   "ch5": {
@@ -204,8 +226,8 @@
    "mode": "九节最大章（通风计算经 formula_runner 冻结）；难度 3/中",
    "sample_anchor": "3218 样例第五章九节：通风（风量计算+局扇选型+通风阻力，T458/T460 瓦斯涌出量表）/压风/瓦斯防治/综合防尘（T605/614/627 设施表）/防灭火/安全监控（T695/T697 传感器表）/供电/给排水/运输（掘进机/胶带机选型+信号）",
    "key_elements": [
-    "通风：方式 {{SLOT:ventilation.vent_method}}、风量计算四法全部引用冻结值——按瓦斯涌出量 {{SLOT:Q1.need_by_gas}}/按人数 {{SLOT:Q2.need_by_persons}}/按柴油机车 {{SLOT:Q3.need_by_diesel}}、需风量 {{SLOT:Q0.need_final}}、风速验算 {{SLOT:Q4.v_min_check}}-{{SLOT:Q4.v_max_check}}（0.25-8 m/s——R2 红线）、风筒距迎头 {{SLOT:F1.duct_gap_m}}（L=5√S）、局扇选型 {{SLOT:F2.fan_need}}、通风阻力 {{SLOT:F4.drag_head}}（待核实参考值——J12）",
-    "压风/供电/给排水：{{SLOT:systems.compressed_air}}/{{SLOT:systems.power_supply}}/{{SLOT:systems.water_supply_drainage}}",
+    "通风：方式 按 data/ventilation 转写 vent_method 真值、风量计算四法全部引用冻结值——按瓦斯涌出量 {{SLOT:Q1.need_by_gas}}/按人数 {{SLOT:Q2.need_by_persons}}/按柴油机车 {{SLOT:Q3.need_by_diesel}}、需风量 {{SLOT:Q0.need_final}}、风速验算 {{SLOT:Q4.v_min_check}}-{{SLOT:Q4.v_max_check}}（0.25-8 m/s——R2 红线）、风筒距迎头 {{SLOT:F1.duct_gap_m}}（L=5√S）、局扇选型 {{SLOT:F2.fan_need}}、通风阻力 {{SLOT:F4.drag_head}}（待核实参考值——J12）",
+    "压风/供电/给排水：按 data/systems 转写 compressed_air 真值/按 data/systems 转写 power_supply 真值/按 data/systems 转写 water_supply_drainage 真值",
     "瓦斯防治：检查制度/甲烷电闭锁/风电闭锁/断电浓度条款（引《煤矿安全规程》条款号）",
     "综合防尘：{{TABLE:dust_facilities}} 五件套（湿式钻眼/爆破喷雾/装岩洒水/冲洗岩帮/风流净化）",
     "安全监控：{{TABLE:sensor_cutoffs}} 传感器种类/数量/安装位置/报警值/断电值/复电值/断电范围/悬挂位置（数值与 AQ 1029 对照——C10 manual 待核实）",
@@ -254,6 +276,17 @@
     "C7",
     "C8",
     "C10"
+   ],
+   "sections": [
+    "通风",
+    "压风",
+    "瓦斯防治",
+    "综合防尘",
+    "防灭火",
+    "安全监控",
+    "供电",
+    "给、排水",
+    "运输"
    ]
   },
   "ch6": {
@@ -264,7 +297,7 @@
     "劳动组织表：{{TABLE:labor_crew}}（工种/0点班/8点班/16点班/合计/备注）",
     "限员管理：巷口限员牌板+每班限员数（与 ch9 自救装置数量同源——C9）",
     "作业循环：循环图表文字描述（班循环进尺/循环数）",
-    "主要技术经济指标表：{{TABLE:econ_indicators}}——施工长度 {{SLOT:roadway.design_length_m}} m 必须与 ch1 同源（C3）、日进尺/月进尺/工效/材料消耗"
+    "主要技术经济指标表：{{TABLE:econ_indicators}}——施工长度 按 data/roadway 转写 design_length_m 真值 m 必须与 ch1 同源（C3）、日进尺/月进尺/工效/材料消耗"
    ],
    "writing_patterns": [
     "两表三节，禁散文重复表内数值"
@@ -287,6 +320,11 @@
    "contracts": [
     "C3",
     "C9"
+   ],
+   "sections": [
+    "劳动组织",
+    "作业循环",
+    "主要技术经济指标"
    ]
   },
   "ch7": {
@@ -294,7 +332,7 @@
    "mode": "风险清单直出章（双重预防机制新增独立章，指南 8 章框架没有）；难度 2/低",
    "sample_anchor": "3218 样例第七章两节：主要危害因素分析（冒顶片帮/水灾/瓦斯爆炸/物体打击/机械伤害/运输/火灾/其他八类）/安全风险辨识管控清单（T842 序号/风险类型/风险描述/风险等级/管控措施/责任人）",
    "key_elements": [
-    "主要危害因素分析：八类逐条（冒顶片帮/水灾/瓦斯爆炸/物体打击/机械伤害/运输/火灾/其他），结合本巷道 {{SLOT:geology.structure_desc}} 与档案灾害参数（C12 触点）",
+    "主要危害因素分析：八类逐条（冒顶片帮/水灾/瓦斯爆炸/物体打击/机械伤害/运输/火灾/其他），结合本巷道 按 data/geology 转写 structure_desc 真值 与档案灾害参数（C12 触点）",
     "风险辨识管控清单：{{TABLE:risk_register}}（T842 六列逐行）",
     "重大风险管控措施须与 ch8 安全技术措施呼应（出现清单外措施=审查 FAIL）"
    ],
@@ -316,6 +354,10 @@
    "formulas": [],
    "contracts": [
     "C12"
+   ],
+   "sections": [
+    "主要危害因素分析",
+    "安全风险辨识管控清单"
    ]
   },
   "ch8": {
@@ -327,7 +369,7 @@
     "一通三防：局部通风机管理（一机一巷/风电闭锁）/防尘五件套复述/防火管理",
     "防治水：有掘必探先探后掘（强制条款带《煤矿防治水细则》条款号）/透水征兆撤人",
     "机电：停送电制度/失爆管理/保护试验",
-    "运输：五组设备措施——掘进机/液压锚杆钻车 {{SLOT:equipment.drill_car_model}}/胶带输送机/顺槽车 {{SLOT:equipment.vehicle_model}}/装卸，与 ch4/ch5 设备表逐字一致（C8）",
+    "运输：五组设备措施——掘进机/液压锚杆钻车 按 data/equipment 转写 drill_car_model 真值/胶带输送机/顺槽车 按 data/equipment 转写 vehicle_model 真值/装卸，与 ch4/ch5 设备表逐字一致（C8）",
     "其它：一般规定+煤质管理"
    ],
    "writing_patterns": [
@@ -350,6 +392,14 @@
    "contracts": [
     "C4",
     "C8"
+   ],
+   "sections": [
+    "顶板",
+    "一通三防",
+    "防治水",
+    "机电",
+    "运输",
+    "其它"
    ]
   },
   "ch9": {
@@ -357,10 +407,10 @@
    "mode": "四节应急章；难度 2/低",
    "sample_anchor": "3218 样例第九章四节：灾害预防（瓦斯/火灾/水灾/冒顶片帮/应急医疗物资五组）/安全避险系统（压风供水自救装置 ZYJ-M6 25-40m 3个/通信三系统/人员定位）/职业病防治（粉尘/热害/噪声/有害气体）/避灾路线（牌板管理+火灾/水灾/顶板三路线）",
    "key_elements": [
-    "灾害预防：瓦斯/火灾/水灾/冒顶片帮四组措施——涌水量引用 {{SLOT:geology.max_inflow_m3h}}（C7 触点）",
-    "安全避险系统：压风供水自救装置 {{SLOT:profile.self_rescue_model}} × {{SLOT:profile.self_rescue_count}} 个、距迎头 {{SLOT:profile.self_rescue_distance_m}} m（与 ch6 限员人数匹配——C9）；通信（有线/无线/广播）/人员定位",
+    "灾害预防：瓦斯/火灾/水灾/冒顶片帮四组措施——涌水量引用 按 data/geology 转写 max_inflow_m3h 真值（C7 触点）",
+    "安全避险系统：压风供水自救装置 按 data/profile 转写 self_rescue_model 真值 × 按 data/profile 转写 self_rescue_count 真值 个、距迎头 按 data/profile 转写 self_rescue_distance_m 真值 m（与 ch6 限员人数匹配——C9）；通信（有线/无线/广播）/人员定位",
     "职业病防治：粉尘/热害（26℃/30℃ 阈值）/噪声/有害气体监测频次（引《煤矿安全规程》条款号）",
-    "避灾路线：火灾/水灾/顶板三条 {{SLOT:profile.escape_route_fire}} 等（档案值，C12）+牌板管理（每 100m/交叉口）"
+    "避灾路线：火灾/水灾/顶板三条 按 data/profile 转写 escape_route_fire 真值 等（档案值，C12）+牌板管理（每 100m/交叉口）"
    ],
    "writing_patterns": [
     "四节固定序：灾害预防/安全避险系统/职业病防治/避灾路线",
@@ -384,6 +434,12 @@
     "C9",
     "C10",
     "C12"
+   ],
+   "sections": [
+    "灾害预防",
+    "安全避险系统",
+    "职业病防治",
+    "避灾路线"
    ]
   }
  },
