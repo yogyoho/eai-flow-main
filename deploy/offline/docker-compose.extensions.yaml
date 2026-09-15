@@ -124,6 +124,8 @@ services:
       # 默认(text-to-cad)端口;supervisor 对 cad-mcp 覆盖为 8003。
       - MCP_PORT=8004
       - CAD_DATA_ROOT=/data
+      # EAI-CUSTOM (2026-09-15): 预览链接的浏览器可达地址（缺省 127.0.0.1:4178 用户点不开）
+      - CAD_VIEWER_URL=${CAD_VIEWER_URL:-http://localhost:4178}
     volumes:
       - ./data:/data:rw
     ports:

@@ -14,7 +14,9 @@
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; cd "$SCRIPT_DIR"
 P=eai-prod
-COMPOSE=(-f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml -f docker/docker-compose.ragflow.yaml)
+# EAI-CUSTOM (2026-09-15): --project-directory . 必须带——让 compose 从部署根目录解析 .env
+# 插值与 ./data 等相对挂载（默认取首个 -f 文件所在目录 docker/，会全错）。
+COMPOSE=(--project-directory . -f docker/docker-compose.yaml -f docker/docker-compose.extensions.yaml -f docker/docker-compose.ragflow.yaml)
 DELTA_DIR="${1:-delta}"
 
 G='\033[0;32m'; Y='\033[1;33m'; R='\033[0;31m'; N='\033[0m'

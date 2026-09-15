@@ -793,7 +793,7 @@ export const enUS: Translations = {
 
   // Page titles (document title)
   pages: {
-    appName: "DeerFlow",
+    appName: "EAIFlow",
     chats: "Chats",
     newChat: "New chat",
     untitled: "Untitled",

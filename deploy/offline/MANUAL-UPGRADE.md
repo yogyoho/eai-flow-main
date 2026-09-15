@@ -31,8 +31,8 @@ export COMPOSE="docker compose -p eai-prod --project-directory . \
 > 之后本手册服务器侧命令都写成 `$COMPOSE restart gateway` 这样的短形式。
 
 **关键容器/镜像名：**
-- 容器：`prod-eai-flow-gateway` / `prod-eai-flow-frontend` / `prod-eai-flow-nginx` / `prod-eai-flow-postgres-ext` / `prod-eai-flow-collab` / `prod-eai-flow-temporal`
-- 镜像：`deer-flow-gateway:latest` / `deer-flow-frontend:latest` / `eai-flow-collab:latest` / `eai-flow-ocr:latest` / `eai-flow-cad:latest` / `eai-flow-text-to-cad:latest` / `eai-flow-cad-viewer:latest`
+- 容器：`prod-eai-flow-gateway` / `prod-eai-flow-frontend` / `prod-eai-flow-nginx` / `prod-eai-flow-postgres-ext` / `prod-eai-flow-collab` / `prod-eai-flow-temporal` / `prod-eai-flow-cad-suite`
+- 镜像：`deer-flow-gateway:latest` / `deer-flow-frontend:latest` / `eai-flow-collab:latest` / `eai-flow-ocr:latest` / `eai-flow-cad-suite:latest`（2026-09-11 起 cad/text-to-cad/cad-viewer 三容器合并为 cad-suite 单容器，网络别名保持 MCP URL 不变）
 
 ---
 
