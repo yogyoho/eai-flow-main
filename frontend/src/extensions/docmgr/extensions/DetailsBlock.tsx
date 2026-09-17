@@ -45,22 +45,9 @@ export const DetailsBlock = createReactBlockSpec(
             }}
             contentEditable={false}
           >
-            <svg
-              className={`details-block-chevron${collapsed ? " is-collapsed" : ""}`}
-              viewBox="0 0 16 16"
-              width="12"
-              height="12"
-              aria-hidden="true"
-            >
-              <path
-                d="M6 4l4 4-4 4"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <span className={`details-block-marker${collapsed ? " is-collapsed" : ""}`} aria-hidden="true">
+              {collapsed ? "▸" : "▾"}
+            </span>
           </span>
           <div
             ref={contentRef}

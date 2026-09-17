@@ -71,52 +71,56 @@
   fill: var(--primary);
 }
 
-/* ── BlockNote detailsBlock（<details> 折叠块，EAI-CUSTOM 计算书） ───────── */
+/* ── BlockNote detailsBlock（<details> 折叠块，EAI-CUSTOM 计算书） ─────────
+   视觉对齐工件区：工件区 details/summary 无任何自定义样式 = 浏览器原生外观
+   （disclosure 三角、无框无底色、普通字重），编辑器内保持一致。 */
 .details-block-wrapper {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 2px;
   width: 100%;
-  padding: 6px 10px;
-  background: hsl(var(--muted) / 0.4);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.details-block-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 20px;
-  height: 20px;
-  margin-top: 2px;
-  border-radius: 4px;
-  cursor: pointer;
-  color: hsl(var(--muted-foreground));
-}
-.details-block-toggle:hover {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
-}
-.details-block-chevron {
-  transition: transform 0.15s ease;
-}
-.details-block-chevron.is-collapsed {
-  transform: rotate(0deg);
-}
-.details-block-chevron:not(.is-collapsed) {
-  transform: rotate(90deg);
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
 }
 .details-block-summary-text {
   flex: 1;
-  font-weight: 500;
+}
+.details-block-toggle {
+  display: inline;
+  cursor: pointer;
+  color: inherit;
+  background: none;
+  border: none;
+}
+.details-block-marker {
+  display: inline-block;
+  margin-right: 2px;
+  font-size: 0.9em;
+  color: hsl(var(--foreground));
+}
+
+.details-block-summary-text::before {
+  content: "";
 }
 /* 折叠态：隐藏 detailsBlock 的子块容器。
-   自定义块视图包在 .bn-react-node-view-renderer 里（直接子级），子块在
+   自定义块视图包在 .react-renderer.node-detailsBlock 里，子块在
    .bn-block-group / .bn-block-outer；限定 renderer 内避免误伤嵌套 details。 */
-.bn-block:has(> .bn-react-node-view-renderer [data-details-collapsed="true"])
+.bn-block:has(> .react-renderer [data-details-collapsed="true"])
   > .bn-block-group,
-.bn-block:has(> .bn-react-node-view-renderer [data-details-collapsed="true"])
+.bn-block:has(> .react-renderer [data-details-collapsed="true"])
   > .bn-block-outer {
   display: none;
+}
+/* 对齐工件区原生 details：子块无缩进（BlockNote 默认 margin-left 24px） */
+.bn-block:has(> .react-renderer [data-details-collapsed])
+  > .bn-block-group {
+  margin-left: 0;
+}
+/* 去掉嵌套组子块的引导线伪元素（.bn-block-group .bn-block-group > .bn-block-outer::before） */
+.bn-block:has(> .react-renderer [data-details-collapsed])
+  > .bn-block-group
+  > .bn-block-outer::before {
+  content: none;
 }
