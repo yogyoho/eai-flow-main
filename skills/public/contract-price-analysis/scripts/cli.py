@@ -392,7 +392,13 @@ async def _persist_one_doc(doc: dict, items: list[dict], run_id: str | None = No
                 existing.parse_status = doc.get("parse_status", "parsed")
                 existing.confirm_status = "pending"
                 existing.parse_meta = doc.get("parse_meta")
-                existing.preview_prefix = doc.get("preview_prefix")
+                # preview_prefix 只在真有新前缀时覆写: OCR 缓存命中路径 from_cache 的
+                # page_preview_b64 恒为空串 → preview loop 不产出前缀,若无条件覆写会把
+                # 首解析落好的 MinIO 预览抹成 None → 溯源接口 404。内容变更必然走
+                # miss 路径并带全新前缀,故不存在旧前缀被冻结的 stale 风险。
+                # 固有缺口: 缓存命中后新命中的规则页无预览 PNG,溯源需 --re-ocr 或全量重解析补齐。
+                if doc.get("preview_prefix"):
+                    existing.preview_prefix = doc["preview_prefix"]
                 existing.parsed_at = now
                 if doc.get("project_name"):
                     existing.project_name = doc["project_name"]
@@ -527,19 +533,24 @@ async def _process_one_doc(
                 "processing": sorted(state["processing"]), "phase": "parse",
             })
         try:
-            # MinIO get is a sync blocking call — offload so concurrent docs
-            # don't stall the event loop during download.
-            file_bytes = await asyncio.to_thread(store.get, key)
             cache_key = f"ocr/{ch['hash']}.json"  # 内容寻址:同内容同键,免失效
             cached = None if re_ocr else await asyncio.to_thread(store.get_ocr_cache, cache_key)
             if cached is not None:
                 tables, page_texts = from_cache(cached)
                 logger.info("Cache hit %s: %d tables (skip OCR)", cache_key, len(tables))
             else:
+                # MinIO get is a sync blocking call — offload so concurrent docs
+                # don't stall the event loop during download.
+                # Task 8 元数据末页兜底需 file_bytes 时必须在此分支惰性获取(命中路径无此变量)
+                file_bytes = await asyncio.to_thread(store.get, key)
                 tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
-                await asyncio.to_thread(
-                    store.put_ocr_cache, cache_key, to_cache(tables, page_texts)
-                )
+                # 缓存写入是机会性的: MinIO 写失败绝不能让已成功提取的文档被标 failed。
+                try:
+                    await asyncio.to_thread(
+                        store.put_ocr_cache, cache_key, to_cache(tables, page_texts)
+                    )
+                except Exception as exc:
+                    logger.warning("OCR cache write failed %s: %s", cache_key, exc)
             items, meta = _extract_from_tables(tables, doc_uri, seeds)
             project_name, project_location, contract_no, supplier, sign_date = extract_project_fields(page_texts)
             # Persist preview PNGs for every page that has extracted items, so

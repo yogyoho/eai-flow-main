@@ -19,11 +19,23 @@ def test_cache_roundtrip_preserves_tables_and_texts():
     page_texts = {1: "合同封面", 2: "含税总价"}
     data = json.loads(json.dumps(to_cache(tables, page_texts)))  # JSON 严进严出
     t2, p2 = from_cache(data)
-    assert [(t.page_no, t.table_idx, t.rows, t.mean_confidence) for t in t2] == [
-        (t.page_no, t.table_idx, t.rows, t.mean_confidence) for t in tables
+    assert [(t.page_no, t.table_idx, t.rows, t.mean_confidence, t.bbox, t.cell_bboxes) for t in t2] == [
+        (t.page_no, t.table_idx, t.rows, t.mean_confidence, t.bbox, t.cell_bboxes) for t in tables
     ]
     assert p2 == page_texts
     assert all(t.page_preview_b64 == "" for t in t2)  # preview 不入缓存(单独存PNG)
+
+
+def test_get_ocr_cache_rejects_non_dict_json(monkeypatch):
+    """合法 JSON 但非 dict(如 "[1,2]")→ None:否则 from_cache 崩溃 → 文档误标 failed,
+    而非静默回退全量 OCR。不实例化 ContractStore(构造函数连 MinIO),只测方法本体。"""
+    from scripts.storage import ContractStore
+
+    class FakeRaw:
+        def get(self, key):
+            return b"[1,2]"
+
+    assert ContractStore.get_ocr_cache(FakeRaw(), "ocr/x.json") is None
 
 
 def test_process_one_doc_cache_hit_skips_ocr(monkeypatch):

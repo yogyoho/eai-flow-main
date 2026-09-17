@@ -56,9 +56,11 @@ class ContractStore:
         return f"s3://{self._bucket}/{key}"
 
     def get_ocr_cache(self, key: str) -> dict | None:
-        """OCR 结构化缓存;缺失/损坏返回 None(回退全量 OCR,绝不因缓存挂掉)。"""
+        """OCR 结构化缓存;缺失/损坏/合法JSON但非dict 一律返回 None(回退全量 OCR,
+        绝不因缓存挂掉)。"""
         try:
-            return json.loads(self.get(key))
+            data = json.loads(self.get(key))
+            return data if isinstance(data, dict) else None
         except Exception:
             return None
 
