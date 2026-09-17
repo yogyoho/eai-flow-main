@@ -122,3 +122,17 @@ def test_unit_price_reverse_calc_from_total():
     assert items[0]["unit_price"] is not None
     assert abs(items[0]["unit_price"] - 989.75 / 824.79) < 0.01
     assert items[0]["price_reason"] == "合价/工程量反算"
+
+
+def test_generic_goods_price_label_without_seed_still_recorded():
+    """I-0: 泛型词表判 goods_price(品名+单价)但无 seed 确认 → 必须进 unmatched_tables,
+    不得 parsed+0提取静默零(设计 §9.6)。"""
+    tables = [_tbl([
+        ["序号", "品名", "规格", "单价"],
+        ["1", "DN100阀门", "PN16", "350.00"],
+    ])]
+    items, meta = _extract_from_tables(tables, "s3://b/k.pdf", SEEDS)
+    assert items == []
+    assert meta["skipped"] == {"goods_price": 1}
+    assert len(meta["unmatched_tables"]) == 1
+    assert meta["unmatched_tables"][0]["header"] == ["序号", "品名", "规格", "单价"]

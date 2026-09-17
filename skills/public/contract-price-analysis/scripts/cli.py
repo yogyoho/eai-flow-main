@@ -381,8 +381,8 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             ttype, sroles, sroles_x, sheader_rows = classify(rows, None, table.cell_bboxes)
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
             active = None  # 断链:不匹配的表后不继承
-            if ttype == "unclassified" and col_count >= 4:
-                # 候选数据表但无 seed 确认 → 记详情供 UI 建规则(设计 §1.2)
+            if ttype in ("unclassified", "goods_price") and col_count >= 4:
+                # 候选数据表但无 seed 确认 → 记详情供 UI 建规则(设计 §1.2/§9.6);泛型标签判为 goods_price 的无 seed 表同样必须可见(否则 parsed+0提取静默零)
                 header, _hr = _collapse_header(rows)
                 title = ""
                 for r in rows[:3]:
