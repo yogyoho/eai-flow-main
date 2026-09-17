@@ -115,7 +115,9 @@ PUBLIC_IMAGES=(
 # EAI-CUSTOM: `frontend` is intentionally excluded here — the dev compose pins
 # build target=dev, which would produce a dev image. The frontend prod image is
 # built directly with `--target prod` in Step 2 below.
-BUILD_SERVICES="gateway collab cad-suite ocr"
+# EAI-CUSTOM (S1 Task 3): ontostudio-backend 在 dev compose 带 profiles=["ontostudio"]，
+# 显式点名构建会自动激活其 profile，无需 --profile。
+BUILD_SERVICES="gateway collab cad-suite ocr ontostudio-backend"
 
 # Compose files for building (in order)
 COMPOSE_FILES=(
@@ -274,6 +276,7 @@ declare -A SERVICE_TAG_MAP=(
     ["eai-docker-procurement-frontend:latest"]="eai-flow-procurement-frontend:latest"
     ["eai-docker-cad-suite:latest"]="eai-flow-cad-suite:latest"
     ["eai-docker-ocr:latest"]="eai-flow-ocr:latest"
+    ["eai-docker-ontostudio-backend:latest"]="eai-flow-ontostudio-backend:latest"
 )
 
 for COMPOSE_IMG in "${!SERVICE_TAG_MAP[@]}"; do

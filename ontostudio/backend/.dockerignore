@@ -1,0 +1,17 @@
+# 构建上下文瘦身 + 防 Windows .venv 二进制混入 Linux 镜像
+.venv
+venv/
+
+# Python 缓存/构建产物
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+
+# 测试与工具缓存（pytest 标记 integration 的用例由仓库测试通道跑，不进镜像）
+tests/
+.pytest_cache/
+.ruff_cache/
+
+# 开发辅助脚本（ontology_lint.py 等本地工具，app/ 不依赖）
+scripts/

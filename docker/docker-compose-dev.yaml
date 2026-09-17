@@ -400,6 +400,56 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
+  # ── OntoStudio Backend（ontology 语义层 + doc_graph 消解，独立 FastAPI :8005）──
+  # EAI-CUSTOM (S1 Task 3): 自 gateway app/extensions 迁出（设计
+  # docs/superpowers/specs/2026-09-17-ontostudio-standalone-design.md）。
+  # API 经 nginx /api/ontostudio/ 代理（同源 access_token cookie 鉴权）；MCP
+  # streamable-http 双端点 (/mcp/ontology、/mcp/doc-graph) 由 harness extensions_config
+  # http 条目容器直连（不经 nginx）。profiles=["ontostudio"]: 按需安装——显式点名
+  # `docker compose ... up -d ontostudio-backend` 自动激活 profile，不随全量 up 起飞。
+  ontostudio-backend:
+    build:
+      context: ../ontostudio/backend
+      dockerfile: Dockerfile
+      args:
+        UV_IMAGE: ${UV_IMAGE:-ghcr.io/astral-sh/uv:0.11.1}
+        UV_INDEX_URL: ${UV_INDEX_URL:-https://pypi.org/simple}
+    container_name: ontostudio-backend
+    profiles:
+      - ontostudio
+    ports:
+      - "8005:8005"
+    environment:
+      # extensions DB（与 knowledge-factory 同库；字段名照 ontostudio app/config.py
+      # DatabaseConfig.from_env 的 EXTENSIONS_DB_* 读取）
+      - EXTENSIONS_DB_HOST=postgres-ext
+      - EXTENSIONS_DB_PORT=5432
+      - EXTENSIONS_DB_USER=${POSTGRES_EXT_USER:-agentflow}
+      - EXTENSIONS_DB_PASSWORD=${POSTGRES_EXT_PASSWORD:-agentflow123}
+      - EXTENSIONS_DB_NAME=${POSTGRES_EXT_DB:-agentflow}
+      # JWT 与 gateway 同源（app/auth.py: ONTOSTUDIO_JWT_SECRET → 回退 AUTH_JWT_SECRET；
+      # 均未设置 503 fail-closed）。插值缺省空串防 compose warning；env_file 注入的
+      # AUTH_JWT_SECRET 由代码侧兜底识别。
+      - ONTOSTUDIO_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      # MCP 传输层共享 token（app/auth.py: 未设置=对内网匿名开放+启动告警；设置即自动
+      # 收紧，值须与 gateway extensions_config ontostudio 条目 headers 一致——S2 接线时
+      # 对齐。.env 手工追加: ONTOSTUDIO_INTERNAL_AUTH_TOKEN=<openssl rand -hex 32>）
+      - ONTOSTUDIO_INTERNAL_AUTH_TOKEN=${ONTOSTUDIO_INTERNAL_AUTH_TOKEN:-}
+      - ONTOSTUDIO_CORS_ORIGINS=${ONTOSTUDIO_CORS_ORIGINS:-http://localhost:2026,http://localhost:3010}
+    env_file:
+      - path: ../.env
+        required: false
+    # slim 镜像无 curl → python urllib 探活
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 volumes:
   # Persist .venv across container restarts so dependencies installed during
   # image build are not shadowed by the host backend/ directory mount.

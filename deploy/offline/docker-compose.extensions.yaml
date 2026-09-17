@@ -75,6 +75,49 @@ services:
       - prod-eai-flow-net
     restart: unless-stopped
 
+  # ── OntoStudio Backend（本体建模独立服务 :8005，S1 Task 3）─────────────────
+  # 镜像离线交付：offline-export.sh 的 BUILD_SERVICES 已含 ontostudio-backend（build 后
+  # re-tag 为 eai-flow-ontostudio-backend）。API 经 nginx /api/ontostudio/ 代理（同源
+  # cookie 鉴权）；MCP streamable-http 双端点由 gateway extensions_config http 条目容器
+  # 直连。profiles=["ontostudio"]: 按需安装——
+  #   docker compose -p eai-prod -f <四文件> --profile ontostudio up -d ontostudio-backend
+  ontostudio-backend:
+    image: eai-flow-ontostudio-backend:${IMAGE_TAG:-latest}
+    container_name: prod-eai-flow-ontostudio-backend
+    profiles:
+      - ontostudio
+    depends_on:
+      postgres-ext:
+        condition: service_healthy
+    ports:
+      # 与开发环境 (eai-docker) 同机共存则 .env 里改 ONTOSTUDIO_PORT=18005 避免冲突
+      - "${ONTOSTUDIO_PORT:-8005}:8005"
+    environment:
+      # extensions DB（字段名照 ontostudio app/config.py DatabaseConfig.from_env 读取）
+      - EXTENSIONS_DB_HOST=postgres-ext
+      - EXTENSIONS_DB_PORT=5432
+      - EXTENSIONS_DB_USER=${POSTGRES_EXT_USER:-agentflow}
+      - EXTENSIONS_DB_PASSWORD=${POSTGRES_EXT_PASSWORD:-agentflow123}
+      - EXTENSIONS_DB_NAME=${POSTGRES_EXT_DB:-agentflow}
+      # JWT 与 gateway 同源（.env 的 AUTH_JWT_SECRET；两侧均未设置则 503 fail-closed）
+      - ONTOSTUDIO_JWT_SECRET=${AUTH_JWT_SECRET:-}
+      # MCP 传输层共享 token（未设置=内网匿名开放；.env 追加 ONTOSTUDIO_INTERNAL_AUTH_TOKEN
+      # 后自动收紧，须与 gateway extensions_config ontostudio 条目 headers 同值）
+      - ONTOSTUDIO_INTERNAL_AUTH_TOKEN=${ONTOSTUDIO_INTERNAL_AUTH_TOKEN:-}
+      - ONTOSTUDIO_CORS_ORIGINS=${ONTOSTUDIO_CORS_ORIGINS:-http://localhost:${PORT:-4026}}
+    env_file:
+      - .env
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
+    # slim 镜像无 curl → python urllib 探活
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
   # ── Temporal 工作流引擎 ────────────────────────────────────────────────────
   # 不使用工作流模块可整段注释掉。首次部署若 postgres 数据卷非空，需手动补建
   # temporal 角色（见 MANUAL-DEPLOY 步骤 14 / cutover.md 坑4）。
