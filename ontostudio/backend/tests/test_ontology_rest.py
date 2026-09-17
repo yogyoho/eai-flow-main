@@ -1,8 +1,8 @@
 """T6 集成测试：REST 6 端点（HTTP 级，真扩展库）.
 
 计划: docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md T6（D16）
-Auth: 独立服务 Task 1 无鉴权直通（占位 app.auth.require_permission 恒放行；Task 2 落地
-JWT 验签后此处装置需随鉴权适配），聚焦语义层契约。
+Auth: S1 Task 2 实装 JWT 验签（app/auth.py）——client 装置带 superadmin 测试 token
+（conftest.auth_headers），聚焦语义层契约；鉴权负路径在 tests/test_main.py。
 EAI-CUSTOM(2026-09-17 迁出独立): 原版打桩 gateway authm.require_permission + reload routers
 构造最小 app; 独立服务无 gateway auth → 直接用 app.main 全量装配。
 """
@@ -18,9 +18,9 @@ from app.ontology.registry import load_registry
 
 
 @pytest.fixture()
-def client():
-    """独立服务 app.main 装配（无鉴权直通——见模块 docstring）。"""
-    return TestClient(ontostudio_app)
+def client(auth_headers):
+    """独立服务 app.main 全量装配（带 superadmin 测试 token——见模块 docstring）。"""
+    return TestClient(ontostudio_app, headers=auth_headers)
 
 
 def test_registry_meta_and_availability(client):

@@ -115,7 +115,6 @@ jobs:
           DEDUPE_TEST_POSTGRES_URL: ${{ env.TEST_POSTGRES_URI }}
         run: make test-shard SPLITS=4 GROUP=${{ matrix.shard }}
 
-      # EAI-CUSTOM: ontology registry lint — PK immutability + hidden sensitive fields + column diff
-      - name: Ontology registry lint
-        working-directory: backend
-        run: make lint-ontology
+      # EAI-CUSTOM(2026-09-18 OntoStudio S1 Task 2): "Ontology registry lint" 步骤已删除——
+      # ontology 域随 S1 Task 1 迁出独立服务（ontostudio/backend/scripts/ontology_lint.py），
+      # backend Makefile lint-ontology target 不复存在；该域 CI 职责由 ontostudio 侧后续自建。

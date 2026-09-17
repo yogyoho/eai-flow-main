@@ -1,8 +1,9 @@
 """doc_graph 消解 REST 集成测试——需 extensions 库且 dg_* 表已建; 否则自动 skip.
 
 EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-13-ontology-semantic-map-v2-design.md §4。
-Client 装置: 独立服务无 gateway auth（Task 1 无鉴权直通）→ 直接用 app.main 全量装配
-（原版 require_permission 打桩 → reload routers 手法随 gateway auth 依赖一并退役）;
+Client 装置: 直接用 app.main 全量装配; S1 Task 2 起 REST 受 JWT 保护——带 superadmin
+测试 token（conftest.auth_headers；原版 require_permission 打桩 → reload routers 手法
+随 gateway auth 依赖一并退役）;
 DB 就绪探针照 test_doc_graph_ingest.py（host 无库即全 skip, 真库验证在容器内）。
 冒烟数据用每次运行唯一的 _MARK 命名, 清理 DELETE 全部参数化圈定——失败也不误删他人数据。
 """
@@ -80,9 +81,9 @@ def _payload() -> dict:
 
 
 @pytest.fixture()
-def client():
-    """独立服务 app.main 全量装配（无鉴权直通——见模块 docstring）。"""
-    return TestClient(ontostudio_app)
+def client(auth_headers):
+    """独立服务 app.main 全量装配（带 superadmin 测试 token——见模块 docstring）。"""
+    return TestClient(ontostudio_app, headers=auth_headers)
 
 
 def _call(fn, *args, **kwargs):
