@@ -56,6 +56,11 @@ import { toast } from "sonner";
 
 import { useI18n } from "@/core/i18n/hooks";
 
+import { DetailsBlock } from "./extensions/DetailsBlock";
+import {
+  buildBlocksWithDetails,
+  serializeWithDetails,
+} from "./utils/detailsMarkdown";
 import { replaceTextInContent } from "./utils/docEditorUtils";
 import { uploadDocImage, uploadUserDocImage } from "./utils/docImage";
 import {
@@ -345,7 +350,11 @@ const PersonalBlockNoteEditor = forwardRef<
   const schema = useMemo(
     () =>
       BlockNoteSchema.create({
-        blockSpecs: { ...defaultBlockSpecs, ...mathBlockSpecs },
+        blockSpecs: {
+          ...defaultBlockSpecs,
+          ...mathBlockSpecs,
+          detailsBlock: DetailsBlock, // EAI-CUSTOM (计算书): <details> 折叠块
+        },
         inlineContentSpecs: {
           ...defaultInlineContentSpecs,
           ...latexInlineContentSpecs,
@@ -398,7 +407,13 @@ const PersonalBlockNoteEditor = forwardRef<
   useEffect(() => {
     if (seeded || !editor) return;
     if (initialContent?.trim()) {
-      const parsed = editor.tryParseMarkdownToBlocks(initialContent.trim());
+      // EAI-CUSTOM (计算书): 先切分 <details> 折叠块为 detailsBlock 节点（子树递归），
+      // 再做 $...$/$$...$$ 数学转换（children 递归覆盖 detailsBlock 子树）。
+      const parsed = buildBlocksWithDetails(initialContent.trim(), (s) =>
+        editor.tryParseMarkdownToBlocks(s) as unknown as Parameters<
+          typeof transformMathInBlocks
+        >[0],
+      );
       const blocks = transformMathInBlocks(
         parsed as unknown as Parameters<typeof transformMathInBlocks>[0],
       );
@@ -515,10 +530,12 @@ const PersonalBlockNoteEditor = forwardRef<
                 typeof prepareBlocksForMarkdownExport
               >[0],
             );
-            md = editor.blocksToMarkdownLossy(
-              blocksForExport as unknown as Parameters<
-                typeof editor.blocksToMarkdownLossy
-              >[0],
+            md = serializeWithDetails(blocksForExport, (bs) =>
+              editor.blocksToMarkdownLossy(
+                bs as unknown as Parameters<
+                  typeof editor.blocksToMarkdownLossy
+                >[0],
+              ),
             );
           } catch (e) {
             console.warn(

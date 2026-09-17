@@ -70,3 +70,53 @@
 .bn-suggestion-menu-loader svg {
   fill: var(--primary);
 }
+
+/* ── BlockNote detailsBlock（<details> 折叠块，EAI-CUSTOM 计算书） ───────── */
+.details-block-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  background: hsl(var(--muted) / 0.4);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.details-block-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: hsl(var(--muted-foreground));
+}
+.details-block-toggle:hover {
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+.details-block-chevron {
+  transition: transform 0.15s ease;
+}
+.details-block-chevron.is-collapsed {
+  transform: rotate(0deg);
+}
+.details-block-chevron:not(.is-collapsed) {
+  transform: rotate(90deg);
+}
+.details-block-summary-text {
+  flex: 1;
+  font-weight: 500;
+}
+/* 折叠态：隐藏 detailsBlock 的子块容器。
+   自定义块视图包在 .bn-react-node-view-renderer 里（直接子级），子块在
+   .bn-block-group / .bn-block-outer；限定 renderer 内避免误伤嵌套 details。 */
+.bn-block:has(> .bn-react-node-view-renderer [data-details-collapsed="true"])
+  > .bn-block-group,
+.bn-block:has(> .bn-react-node-view-renderer [data-details-collapsed="true"])
+  > .bn-block-outer {
+  display: none;
+}
