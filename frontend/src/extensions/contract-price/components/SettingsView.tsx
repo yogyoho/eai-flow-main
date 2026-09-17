@@ -31,6 +31,7 @@ export function SettingsView() {
         scheduled_enabled: data.scheduled_enabled,
         schedule_cron: data.schedule_cron,
         price_table_keywords: data.price_table_keywords ?? [],
+        table_seeds: data.table_seeds ?? [], // EAI-CUSTOM bug-3306勘误: CpaConfig新增table_seeds必填字段,表单构造补齐(容错旧网关未返回)
       });
     }
   }, [data]);

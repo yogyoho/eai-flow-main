@@ -105,6 +105,24 @@ export interface CpaDashboard {
   recent_runs: CpaRun[];
 }
 
+/** Seed 定位规则(与后端 ConfigOut.table_seeds 同构;锚点=归一化子串)。 */
+export interface TableSeed {
+  id: string;
+  display_name: string;
+  title_keywords: string[];
+  columns: {
+    name: string[];
+    spec: string[];
+    qty: string[];
+    unit: string[];
+    price_unit: string[];
+    price_total: string[];
+    price_untaxed: string[];
+  };
+  exclude?: Record<string, string[]>;
+  source?: string | null;
+}
+
 export interface CpaConfig {
   parse_mode: string;
   cluster_eps: number;
@@ -112,6 +130,17 @@ export interface CpaConfig {
   scheduled_enabled: boolean;
   schedule_cron: string | null;
   price_table_keywords: string[];
+  table_seeds: TableSeed[];
+}
+
+/** 未匹配表详情(来自 parse_meta.unmatched_tables)。 */
+export interface UnmatchedTable {
+  page: number;
+  table_idx: number;
+  title: string;
+  header: string[];
+  col_count: number;
+  row_count: number;
 }
 
 export interface Page<T> {
