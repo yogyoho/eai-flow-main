@@ -8,8 +8,13 @@ GET 的预期拒绝形态: stateless streamable-http 对无 ``Accept: text/event
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import json
+import uuid
 from collections.abc import Callable
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -73,6 +78,42 @@ def test_cookie_channel_accepted(make_token: Callable[..., str]):
 def test_wrong_secret_token_rejected(make_token: Callable[..., str]):
     token = make_token(secret="some-other-secret-that-is-long-enough-32b")
     client = TestClient(ontostudio_app, headers={"Authorization": f"Bearer {token}"})
+    assert client.get("/api/extensions/ontology/object-types").status_code == 401
+
+
+# ── alg 混淆/篡改回归钉（评审 Fix 4）────────────────────────────────────
+
+
+def _b64url(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
+
+
+def _forged_payload() -> dict:
+    return {"sub": str(uuid.uuid4()), "username": "attacker", "exp": int(datetime.now(UTC).timestamp()) + 3600}
+
+
+def test_alg_none_token_rejected():
+    header = _b64url(json.dumps({"alg": "none", "typ": "JWT"}, separators=(",", ":")).encode())
+    payload = _b64url(json.dumps(_forged_payload(), separators=(",", ":")).encode())
+    token = f"{header}.{payload}."
+    client = TestClient(ontostudio_app, headers={"Authorization": f"Bearer {token}"})
+    assert client.get("/api/extensions/ontology/object-types").status_code == 401
+
+
+def test_rs256_header_with_hs256_signature_rejected(jwt_test_secret: str):
+    # 经典 alg 混淆: header 声称 RS256, 签名实为 HS256(secret)——algorithms=["HS256"] allowlist 必拒
+    signing_input = f"{_b64url(json.dumps({'alg': 'RS256', 'typ': 'JWT'}, separators=(',', ':')).encode())}.{_b64url(json.dumps(_forged_payload(), separators=(',', ':')).encode())}"
+    sig = hmac.new(jwt_test_secret.encode(), signing_input.encode(), hashlib.sha256).digest()
+    token = f"{signing_input}.{_b64url(sig)}"
+    client = TestClient(ontostudio_app, headers={"Authorization": f"Bearer {token}"})
+    assert client.get("/api/extensions/ontology/object-types").status_code == 401
+
+
+def test_tampered_payload_rejected(make_token: Callable[..., str]):
+    header_b64, _, sig_b64 = make_token().split(".")
+    payload = _forged_payload()  # 换掉 sub/claims 但保留原签名
+    forged = f"{header_b64}.{_b64url(json.dumps(payload, separators=(',', ':')).encode())}.{sig_b64}"
+    client = TestClient(ontostudio_app, headers={"Authorization": f"Bearer {forged}"})
     assert client.get("/api/extensions/ontology/object-types").status_code == 401
 
 

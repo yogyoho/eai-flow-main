@@ -30,6 +30,7 @@ EAI-CUSTOM: ontology 包自 backend/app/extensions/ 迁出独立
 from __future__ import annotations
 
 import hmac
+import logging
 import os
 import uuid
 
@@ -38,11 +39,16 @@ from fastapi import HTTPException, Request, status
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from pydantic import BaseModel, ConfigDict
 
+logger = logging.getLogger(__name__)
+
 # gateway upstream 的 access_token cookie 名（backend/app/gateway/deps.py:590 同源）
 ACCESS_TOKEN_COOKIE = "access_token"
 
 # v1 superadmin-only 口径：角色/权限 claim 命中其一即视为 system:access 通过
 _ADMIN_ROLE_CODES = {"superadmin", "admin"}
+
+# HS256 对称密钥最低字节数（RFC 7518 §3.2 建议 ≥32 字节；防弱 secret 被 PyJWT 静默接受）
+_MIN_SECRET_LEN = 32
 
 
 class CurrentUser(BaseModel):
@@ -64,13 +70,18 @@ class CurrentUser(BaseModel):
 def _jwt_secret() -> str:
     """Resolve the shared JWT secret（ONTOSTUDIO_JWT_SECRET → gateway 同名 AUTH_JWT_SECRET）.
 
-    fail-closed: 均未配置时抛 503——服务端配置缺失，不猜 secret。
+    fail-closed: 未配置或强度不足（<32 字节, 评审 Fix 3）均抛 503——服务端配置问题，不猜 secret。
     """
     secret = os.getenv("ONTOSTUDIO_JWT_SECRET", "") or os.getenv("AUTH_JWT_SECRET", "")
     if not secret:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="JWT auth not configured: set ONTOSTUDIO_JWT_SECRET (or gateway-same AUTH_JWT_SECRET)",
+        )
+    if len(secret) < _MIN_SECRET_LEN:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f'JWT secret too weak: {len(secret)} bytes < {_MIN_SECRET_LEN}; generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"`',
         )
     return secret
 
@@ -155,13 +166,19 @@ def _authenticate(request: Request) -> tuple[CurrentUser, list[str]]:
     """Authenticate a request → (user, normalized roles). 401 on missing/invalid token."""
     token = _extract_token(request)
     if not token:
+        logger.warning("auth deny: %s %s — no token (评审 Fix 5 审计)", request.method, request.url.path)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    claims = decode_access_token(token)
-    return claims_to_user(claims), _claims_roles(claims)
+    try:
+        claims = decode_access_token(token)
+        user = claims_to_user(claims)
+    except HTTPException as exc:
+        logger.warning("auth deny: %s %s — %s", request.method, request.url.path, exc.detail)
+        raise
+    return user, _claims_roles(claims)
 
 
 async def get_current_user(request: Request) -> CurrentUser:
@@ -180,6 +197,14 @@ def require_permission(permission: str):
     async def _check(request: Request) -> CurrentUser:
         user, roles = _authenticate(request)
         if not (_ADMIN_ROLE_CODES & set(roles)):
+            logger.warning(
+                "authz deny: %s %s — user=%s roles=%s lacks '%s'",
+                request.method,
+                request.url.path,
+                user.id,
+                roles or "none",
+                permission,
+            )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Permission denied: {permission}",
@@ -189,24 +214,35 @@ def require_permission(permission: str):
     return _check
 
 
+_MCP_OPEN_MODE_WARNED = False
+
+
 def mcp_request_authorized(headers: dict[bytes, bytes]) -> bool:
     """MCP streamable-http 传输层鉴权（ASGI guard 用，scope headers 键为小写 bytes）.
 
     - env ``ONTOSTUDIO_INTERNAL_AUTH_TOKEN`` 未设置 → 放行（内网开发态；Task 3 容器化时
-      compose 两侧注入同一共享 token 后自动收紧）。
-    - 设置后：``X-Internal-Auth`` 精确匹配（常量时间比较）**或** 合法 Bearer JWT（验签通过）
+      compose 两侧注入同一共享 token 后自动收紧），首次放行打一次性 warning 防临时态永久化。
+    - 设置后：``X-Internal-Auth`` 精确匹配（**按字节**常量时间比较——str 版 compare_digest
+      遇非 ASCII 抛 TypeError 会变未认证 500，评审 Fix 1）**或** 合法 Bearer JWT（验签通过）
       二者其一即放行；否则 401 由 guard 回给 harness。
     """
+    global _MCP_OPEN_MODE_WARNED
     expected = os.getenv("ONTOSTUDIO_INTERNAL_AUTH_TOKEN", "")
     if not expected:
+        if not _MCP_OPEN_MODE_WARNED:
+            _MCP_OPEN_MODE_WARNED = True
+            logger.warning("MCP 传输层未配置 ONTOSTUDIO_INTERNAL_AUTH_TOKEN——当前对内网匿名开放；Task 3 compose 需 gateway(extensions_config headers) 与 ontostudio 两侧注入同一 token 后自动收紧")
         return True
 
-    internal = headers.get(b"x-internal-auth", b"").decode("latin-1")
-    if internal and hmac.compare_digest(internal, expected):
+    internal = headers.get(b"x-internal-auth")
+    if internal and hmac.compare_digest(internal, expected.encode("utf-8")):
         return True
 
     authorization = headers.get(b"authorization", b"").decode("latin-1")
     if authorization.lower().startswith("bearer "):
+        # 显式决策（评审 Fix 6）: MCP Bearer 通道只验签、**不做角色判定**——agent 通道是服务间
+        # 信任（调用方 = gateway harness, 非终端用户身份），工具级权限由 server 内部契约约束。
+        # 后续若引入终端用户直连 MCP，再在此叠加 require_permission 语义——勿当遗漏"修复"。
         try:
             decode_access_token(authorization[7:].strip())
             return True

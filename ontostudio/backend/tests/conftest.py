@@ -54,6 +54,12 @@ def make_test_token(
 
 
 @pytest.fixture()
+def jwt_test_secret() -> str:
+    """测试共享 secret 原文（伪造 header/签名的负路径测试用）。"""
+    return TEST_JWT_SECRET
+
+
+@pytest.fixture()
 def make_token() -> Callable[..., str]:
     """Token factory fixture（可自定义 roles/secret/exp 与任意额外 claims）。"""
     return make_test_token
