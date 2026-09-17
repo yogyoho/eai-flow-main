@@ -96,10 +96,17 @@
 }
 .details-block-marker {
   display: inline-block;
-  margin-right: 3px;
-  font-size: 1.2em;
-  line-height: 1;
-  color: hsl(var(--foreground));
+  vertical-align: -2px;
+  width: 0;
+  height: 0;
+  margin: 0 8px 0 2px;
+  border-top: 5.5px solid transparent;
+  border-bottom: 5.5px solid transparent;
+  border-left: 8px solid var(--foreground);
+  transition: transform 0.15s ease;
+}
+.details-block-marker:not(.is-collapsed) {
+  transform: rotate(90deg);
 }
 
 .details-block-summary-text::before {
