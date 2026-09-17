@@ -87,6 +87,42 @@ def _load_seeds() -> list[dict]:
     return normalize_seeds(DEFAULT_TABLE_SEEDS)
 
 
+async def _extract_project_fields_with_fallback(
+    file_bytes: bytes | None,
+    key: str,
+    ocr_url: str,
+    front_texts: dict,
+    store: ContractStore | None = None,
+) -> tuple:
+    """元数据提取 + 末页兜底(设计 §3): 前3页正则 miss 乙方/签订日期时,
+    补 OCR 末2页重试(签字页常在末尾,补充协议尤甚;仅 miss 触发,成本有界)。
+
+    file_bytes 允许为 None(OCR 缓存命中路径不持有原文件): 仅当兜底真的需要
+    发起时才经 store 惰性下载;两者皆无或下载失败则放弃兜底,维持前页结果。"""
+    fields = extract_project_fields(front_texts)
+    if fields[3] and fields[4]:  # supplier, sign_date 都有 → 不兜底
+        return fields
+    fb = file_bytes
+    if fb is None and store is not None:
+        try:
+            fb = await asyncio.to_thread(store.get, key)
+        except Exception as exc:
+            logger.warning("metadata tail-OCR fetch failed: %s", exc)
+            return fields
+    if fb is None:
+        return fields
+    try:
+        _, tail_texts = await parse_document(fb, key, ocr_url, last_pages=2)
+    except Exception as exc:
+        logger.warning("metadata tail-OCR failed: %s", exc)
+        return fields
+    merged = dict(front_texts)
+    merged.update(tail_texts)
+    retry = extract_project_fields(merged)
+    # 逐字段择优: 前页已取到的保留,缺的用末页补
+    return tuple(f or r for f, r in zip(fields, retry))
+
+
 def _size_from_quick_fp(quick_fp: str | None) -> int | None:
     """Pull the cached byte-size out of a quick_fp string ('{key}|{size}').
 
@@ -535,6 +571,7 @@ async def _process_one_doc(
         try:
             cache_key = f"ocr/{ch['hash']}.json"  # 内容寻址:同内容同键,免失效
             cached = None if re_ocr else await asyncio.to_thread(store.get_ocr_cache, cache_key)
+            file_bytes = None  # 命中路径无原文件;兜底需要时才经 store 惰性下载
             if cached is not None:
                 tables, page_texts = from_cache(cached)
                 logger.info("Cache hit %s: %d tables (skip OCR)", cache_key, len(tables))
@@ -552,7 +589,13 @@ async def _process_one_doc(
                 except Exception as exc:
                     logger.warning("OCR cache write failed %s: %s", cache_key, exc)
             items, meta = _extract_from_tables(tables, doc_uri, seeds)
-            project_name, project_location, contract_no, supplier, sign_date = extract_project_fields(page_texts)
+            # 元数据提取 + 末页兜底: 命中路径 file_bytes=None,兜底真的需要发起时
+            # 才经 store 惰性下载原 PDF(Task 6 命中路径无 file_bytes 不变量)。
+            project_name, project_location, contract_no, supplier, sign_date = (
+                await _extract_project_fields_with_fallback(
+                    file_bytes, key, cfg.ocr_service_url, page_texts, store=store
+                )
+            )
             # Persist preview PNGs for every page that has extracted items, so
             # the traceback UI can overlay bboxes. Derived directly from items'
             # source_page — guarantees every item's page has a preview. (The old
@@ -569,6 +612,10 @@ async def _process_one_doc(
                     preview_prefix = store.put_preview(doc_id, t.page_no, base64.b64decode(t.page_preview_b64))
                 elif t.page_no in goods_pages and preview_prefix and t.page_preview_b64:
                     store.put_preview(ch["hash"][:8], t.page_no, base64.b64decode(t.page_preview_b64))
+            # 缓存命中路径: 预览 PNG 在首解析已按内容哈希落 MinIO,确定性重建指针
+            # (修首次落库失败后纯命中重解析的 preview_prefix=None 窗口;新匹配页仍需 --re-ocr 补预览)
+            if cached is not None and not preview_prefix:
+                preview_prefix = f"previews/{ch['hash'][:8]}/"
             doc_dict = {
                 "storage_uri": doc_uri,
                 "file_name": key,

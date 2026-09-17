@@ -143,8 +143,25 @@ class OcrEngine:
         self._table: RapidTable | None = None
 
     # --- public ---------------------------------------------------------
-    def ocr_pdf_bytes(self, pdf_bytes: bytes, dpi: int = 200, text_pages: int = 3) -> OcrResponse:
-        return self._run(convert_from_bytes(pdf_bytes, dpi=dpi), text_pages=text_pages)
+    def ocr_pdf_bytes(self, pdf_bytes: bytes, dpi: int = 200, text_pages: int = 3, last_pages: int = 0) -> OcrResponse:
+        # last_pages>0 → 只栅格化末 N 页(元数据末页兜底);页号用 page_offset 保持
+        # 绝对编号,合并回 page_texts 时与前面的页码不冲突。pdfinfo 失败或总页数
+        # ≤ last_pages 时退回全量栅格化(行为不变)。
+        pages = None
+        page_offset = 0
+        if last_pages > 0:
+            from pdf2image import pdfinfo_from_bytes
+
+            try:
+                total = int(pdfinfo_from_bytes(pdf_bytes)["Pages"])
+            except Exception:
+                total = 0
+            if total > last_pages:
+                pages = convert_from_bytes(pdf_bytes, dpi=dpi, first_page=total - last_pages + 1, last_page=total)
+                page_offset = total - len(pages)
+        if pages is None:
+            pages = convert_from_bytes(pdf_bytes, dpi=dpi)
+        return self._run(pages, text_pages=text_pages, page_offset=page_offset)
 
     def ocr_pdf_path(self, path: str, dpi: int = 200, text_pages: int = 3) -> OcrResponse:
         return self._run(convert_from_path(path, dpi=dpi), text_pages=text_pages)
@@ -156,11 +173,11 @@ class OcrEngine:
             self._table = RapidTable()
             self._ocr = RapidOCR()
 
-    def _run(self, pages: list[Image.Image], text_pages: int = 3) -> OcrResponse:
+    def _run(self, pages: list[Image.Image], text_pages: int = 3, page_offset: int = 0) -> OcrResponse:
         self._ensure()
         started = time.monotonic()
         out = [
-            self._page(idx, img, with_text=idx <= text_pages)
+            self._page(idx + page_offset, img, with_text=idx <= text_pages)
             for idx, img in enumerate(pages, start=1)
         ]
         return OcrResponse(

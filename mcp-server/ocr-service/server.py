@@ -41,8 +41,13 @@ def health() -> dict:
 
 
 @app.post("/ocr", response_model=OcrResponse)
-async def ocr(file: UploadFile = File(...), text_pages: int = Form(3)) -> OcrResponse:
+async def ocr(
+    file: UploadFile = File(...),
+    text_pages: int = Form(3),
+    last_pages: int = Form(0),
+) -> OcrResponse:
     """text_pages: 前多少页做整页文字 OCR（默认 3，沿用 contract_price 行为）。
+    last_pages: >0 时只 OCR 末 N 页(合同元数据末页兜底;签字页常在末尾,补充协议尤甚)。
     EAI-CUSTOM: geo-sample-bank 需全文语料，POST data 里传 text_pages=999 即全页。"""
     name = (file.filename or "").lower()
     if not name.endswith(".pdf"):
@@ -51,7 +56,7 @@ async def ocr(file: UploadFile = File(...), text_pages: int = Form(3)) -> OcrRes
     if not data:
         raise HTTPException(status_code=400, detail="empty upload")
     try:
-        return _get_engine().ocr_pdf_bytes(data, text_pages=text_pages)
+        return _get_engine().ocr_pdf_bytes(data, text_pages=text_pages, last_pages=last_pages)
     except Exception as exc:  # surface reason, never silent
         logger.exception("OCR failed for %s", file.filename)
         raise HTTPException(status_code=500, detail=f"ocr failed: {exc!r}") from exc
