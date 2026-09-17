@@ -121,10 +121,10 @@
   > .bn-block-outer {
   display: none;
 }
-/* 对齐工件区原生 details：子块无缩进（BlockNote 默认 margin-left 24px） */
+/* 展开态：子块向右缩进（用户要求；取 BlockNote 标准嵌套缩进 24px） */
 .bn-block:has(> .react-renderer [data-details-collapsed])
   > .bn-block-group {
-  margin-left: 0;
+  margin-left: 24px;
 }
 /* 去掉嵌套组子块的引导线伪元素（.bn-block-group .bn-block-group > .bn-block-outer::before） */
 .bn-block:has(> .react-renderer [data-details-collapsed])
