@@ -468,3 +468,64 @@ def match_seed(rows: list, seeds: list[dict]) -> tuple[dict, dict, int] | None:
     if best is None:
         return None
     return best[3], best[4], header_rows
+
+
+def _is_category_row(cells: dict) -> bool:
+    """分类行判别: 名称非空 且 数量/单位/价格列全空(设计 §2)。
+    价格漏读行通常带数量/单位,不会误判;今天此类行反正被跳过,零损失。"""
+    if not (cells.get("name") or "").strip():
+        return False
+    return not any(
+        (cells.get(k) or "").strip()
+        for k in ("qty", "unit", "price_unit", "price_total", "price_untaxed")
+    )
+
+
+def extract_items_seed(
+    rows: list,
+    seed: dict,
+    roles: dict,
+    header_rows: int,
+    cell_bboxes: list | None = None,
+    roles_x: dict | None = None,
+) -> list:
+    """Seed 路径行提取: 按 seed 角色取单元格 + 分类行上下文传播。
+
+    对齐方式与 extract_items 相同: bbox-x 可用则按 x-band(抗漂移),否则按列号。
+    产出 raw item: {name, spec, qty_raw, unit, price_unit_raw, price_total_raw,
+    price_untaxed_raw, category, row_idx}。分类行(名称非空+数值列全空)不产 item,
+    其名称作为后续 item 的 category,直到下一个分类行。"""
+    use_x = bool(roles_x) and "name" in roles_x and _bboxes_usable(rows, cell_bboxes)
+    skip = {"序号", "合计", "小计", "总计"}
+    items: list = []
+    current_category: str | None = None
+
+    for ri in range(header_rows, len(rows)):
+        row = rows[ri]
+        if use_x:
+            bbox_row = cell_bboxes[ri] if ri < len(cell_bboxes) else []
+            cells = _row_cells_by_x(row, bbox_row, roles_x)
+        else:
+            cells = {}
+            for role, ci in roles.items():
+                cells[role] = (row[ci].strip() if ci is not None and ci < len(row) else "")
+        name = (cells.get("name") or "").strip()
+        if not name or name in skip:
+            continue
+        if _is_category_row(cells):
+            current_category = name
+            continue
+        items.append(
+            {
+                "name": name,
+                "spec": (cells.get("spec") or "").strip() or None,
+                "qty_raw": cells.get("qty") or None,
+                "unit": (cells.get("unit") or "").strip() or None,
+                "price_unit_raw": cells.get("price_unit") or "",
+                "price_total_raw": cells.get("price_total") or "",
+                "price_untaxed_raw": cells.get("price_untaxed") or "",
+                "category": current_category,
+                "row_idx": ri,
+            }
+        )
+    return items
