@@ -2,7 +2,7 @@
 
 backend/app/extensions/contract_price/seed_defaults.py 的默认注入与本文件保持同步
 (同 models.py 的双份镜像约定)。锚点为归一化子串——归一化规则见
-table_classifier._norm_header(去内部空白/去（）括注/全角转半角)(Task 2 新增)。
+table_classifier._norm_header(去内部空白/去（）括注/全角转半角)。
 v1 锚点草案,以 7 样例验收运行实测为准(设计文档 §5)。
 """
 

@@ -377,3 +377,93 @@ def looks_like_continuation(rows: list, roles: dict, goods_col_count: int, cell_
     if any(t in name_val for t in ROLE_TOKENS["name"]):
         return False  # header repeat, not continuation data
     return True
+
+
+# ── seed 定位规则匹配 (v3, 严格 seed-only; 设计 §2) ──────────────────────────
+
+_ROLE_ORDER = ["name", "spec", "qty", "unit", "price_unit", "price_total", "price_untaxed"]
+
+
+def _norm_header(s: str) -> str:
+    """归一化表头单元格: 去全部空白、去（）()括注(公式后缀如 5=2+3)、全角转半角、小写。
+
+    实测噪声: '5.综合单 价（5=2+3）'、'含 税 单 价'、'含税单 价（元 /t)' —
+    归一化后锚点子串匹配才能命中。"""
+    if not s:
+        return ""
+    out = []
+    depth = 0
+    for ch in s:
+        if ch in "（(":
+            depth += 1
+            continue
+        if ch in "）)":
+            depth = max(0, depth - 1)
+            continue
+        if depth:
+            continue
+        if ch.isspace():
+            continue
+        # 全角转半角(0xFF01-0xFF5E → 0x21-0x7E)
+        out.append(chr(ord(ch) - 0xFEE0) if 0xFF01 <= ord(ch) <= 0xFF5E else ch.lower())
+    return "".join(out)
+
+
+def _title_text(rows: list, limit: int = 4) -> str:
+    """前若干行的归一化联合文本(标题/表名关键词在这里找)。"""
+    blob = " ".join((c or "") for r in rows[:limit] for c in r)
+    return _norm_header(blob)
+
+
+def _match_one_seed(rows: list, seed: dict, header_rows: int, header: list) -> tuple[dict, dict] | None:
+    """单 seed 列锚定: 角色→第一个锚点命中的未占用列(exclude 守卫)。
+    返回 (roles, score_detail) 或 None(确认条件不满足)。"""
+    norm_cols = [_norm_header(h) for h in header]
+    excl = seed.get("exclude") or {}
+    roles: dict = {}
+    for role in _ROLE_ORDER:
+        anchors = [_norm_header(t) for t in (seed["columns"].get(role) or []) if t]
+        if not anchors:
+            continue
+        banned = [_norm_header(t) for t in (excl.get(role) or [])]
+        for ci, h in enumerate(norm_cols):
+            if ci in roles.values() or not h:
+                continue
+            if any(b and b in h for b in banned):
+                continue
+            if any(a in h for a in anchors):
+                roles[role] = ci
+                break
+    if "name" not in roles or not ("price_unit" in roles or "price_total" in roles):
+        return None
+    return roles, {"roles_n": len(roles)}
+
+
+def match_seed(rows: list, seeds: list[dict]) -> tuple[dict, dict, int] | None:
+    """严格 seed-only 主路径: 逐 seed 锚定,确认条件=name+任一价格角色;
+    多候选: 标题关键词命中优先,其次锚定角色数多者;全并列时锚点更少(规则更专)者优。
+    返回 (seed, roles{role: col_idx}, header_rows) 或 None(无 seed 确认)。"""
+    if not rows or not seeds:
+        return None
+    header, header_rows = _collapse_header(rows)
+    if not header:
+        return None
+    title = _title_text(rows)
+    best: tuple[int, int, int, dict, dict] | None = None  # (title_hit, roles_n, -anchors_n, seed, roles)
+    for seed in seeds:
+        got = _match_one_seed(rows, seed, header_rows, header)
+        if got is None:
+            continue
+        roles, detail = got
+        hit = any(_norm_header(kw) and _norm_header(kw) in title for kw in seed.get("title_keywords") or [])
+        # 全并列消歧(标题/角色数都平): 锚点总数少 = 规则更专,应胜出 —
+        # 如签字版表 gc-qzb(7 锚) 与通用 gcl-qd(12 锚) 同锚 7 角色且都无标题命中,
+        # 专的 gc-qzb 必须赢。取 -anchors_n 使其与列表顺序无关(seed_defaults 镜像
+        # 库/用户在配置 tab 重排都不改变行为)。
+        anchors_n = sum(len(v or []) for v in (seed.get("columns") or {}).values())
+        key = (1 if hit else 0, detail["roles_n"], -anchors_n)
+        if best is None or key > best[0:3]:
+            best = (key[0], key[1], key[2], seed, roles)
+    if best is None:
+        return None
+    return best[3], best[4], header_rows
