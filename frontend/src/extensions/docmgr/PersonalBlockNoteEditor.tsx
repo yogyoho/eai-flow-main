@@ -382,29 +382,65 @@ const PersonalBlockNoteEditor = forwardRef<
   });
 
   // EAI-CUSTOM (计算书): detailsBlock 子树禁用拖拽。
-  // BlockNote 0.51 对自定义块子树的 dragstart 序列化会在 PM 剪贴板解析时抛
-  // RangeError: "Content hole not allowed in a leaf node spec"（子项无法拖出）。
-  // 用户已确认子项不需要拖拽——捕获阶段直接取消这类 dragstart。
+  // BlockNote 0.51 对自定义块子树的拖拽序列化会在 PM 内抛
+  // RangeError: "Content hole not allowed in a leaf node spec"，甚至拖崩渲染器。
+  // 双保险：
+  // ① hover details 子树时隐藏侧边菜单拖拽柄（拖拽无从发起）；
+  // ② document 捕获阶段 dragstart 守卫兜底（拖拽柄浮层不在 editor DOM 内）。
   useEffect(() => {
-    const dom = editor.domElement as HTMLElement | undefined;
-    if (!dom) return;
-    const guard = (e: DragEvent) => {
-      let node: HTMLElement | null = e.target as HTMLElement;
-      while (node && node !== dom) {
+    const insideDetails = (el: Element | null): boolean => {
+      let node: HTMLElement | null = el as HTMLElement | null;
+      while (node && node !== document.body) {
         if (
           node.querySelector?.(
             ":scope > .react-renderer .details-block-wrapper",
           )
         ) {
-          e.preventDefault();
-          e.stopPropagation();
-          return;
+          return true;
         }
         node = node.parentElement;
       }
+      return false;
     };
-    dom.addEventListener("dragstart", guard, true);
-    return () => dom.removeEventListener("dragstart", guard, true);
+    // ① 指针悬停 details 子树时隐藏拖拽柄；悬停普通块时恢复
+    const onMove = (e: MouseEvent) => {
+      const hidden = insideDetails(e.target as HTMLElement);
+      document
+        .querySelectorAll<HTMLElement>('[data-test="dragHandle"]')
+        .forEach((h) => {
+          h.style.visibility = hidden ? "hidden" : "";
+        });
+    };
+    document.addEventListener("mousemove", onMove, true);
+    // ② dragstart 守卫兜底
+    const guard = (e: DragEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (insideDetails(target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      if (target.closest?.('[data-test="dragHandle"]')) {
+        const r = target.getBoundingClientRect();
+        const cy = r.top + r.height / 2;
+        for (const w of document.querySelectorAll(".details-block-wrapper")) {
+          const host = w.closest(".bn-block");
+          if (!host) continue;
+          const hr = host.getBoundingClientRect();
+          if (cy >= hr.top - 8 && cy <= hr.bottom + 8) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+        }
+      }
+    };
+    document.addEventListener("dragstart", guard, true);
+    return () => {
+      document.removeEventListener("mousemove", onMove, true);
+      document.removeEventListener("dragstart", guard, true);
+    };
   }, [editor]);
 
   // 数学公式块转换逻辑已抽到 utils/mathBlocks.ts（EAI-CUSTOM，含标题内联公式修复 $V_s$）。
