@@ -1,0 +1,149 @@
+# 备件价格分析域（csp_ 表，零迁移直读）
+# 物理列与 app/extensions/spare_parts/models.py 逐列核对
+object_types:
+  - api_name: customer
+    display_name: 客户
+    description: 备件采购方主数据（规范名 + 别名映射），跨客户比价维度
+    domain: spare_parts
+    icon: 🏢
+    access:
+      path: postgres_ext
+      table: csp_customers
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: canonical_name, api_name: canonicalName, type: string, description: 规范客户名, searchable: true }
+      - { name: aliases, api_name: aliases, type: json, description: 别名列表 }
+      - { name: source, api_name: source, type: string, description: 来源(master/imported/ocr), filterable: true }
+      - { name: status, api_name: status, type: string, description: 状态(active/pending/merged), filterable: true, enum: [active, pending, merged] }
+      - { name: merged_into, api_name: mergedInto, type: uuid, description: 合并去向客户 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间, filterable: true }
+      - { name: updated_at, api_name: updatedAt, type: datetime, description: 更新时间 }
+
+  - api_name: spare_part_document
+    display_name: 备件合同文档
+    description: 备件采购合同扫描件（bucket=csp-parts）
+    domain: spare_parts
+    icon: 📄
+    access:
+      path: postgres_ext
+      table: csp_documents
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: file_name, api_name: fileName, type: string, description: 原始文件名, searchable: true }
+      - { name: file_hash, api_name: fileHash, type: string, description: SHA-256 内容哈希, indexed: true }
+      - { name: contract_no, api_name: contractNo, type: string, description: 合同编号, filterable: true, searchable: true }
+      - { name: supplier, api_name: supplier, type: string, description: 供方/卖方, filterable: true, searchable: true }
+      - { name: customer_id, api_name: customerId, type: uuid, description: 需方客户, indexed: true, filterable: true }
+      - { name: customer_name, api_name: customerName, type: string, description: 需方名称(OCR 原文冗余), searchable: true }
+      - { name: project_name, api_name: projectName, type: string, description: 项目名称, filterable: true, searchable: true }
+      - { name: project_location, api_name: projectLocation, type: string, description: 项目所在地, searchable: true }
+      - { name: sign_date, api_name: signDate, type: date, description: 签订日期, filterable: true, format: date }
+      - { name: parse_status, api_name: parseStatus, type: string, description: 解析状态, filterable: true, enum: [pending, parsed, failed, needs_review] }
+      - { name: confirm_status, api_name: confirmStatus, type: string, description: 确认状态, filterable: true, enum: [pending, confirmed, skipped, clustered] }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 入库时间, filterable: true }
+
+  - api_name: spare_part_item
+    display_name: 备件明细
+    description: 备件合同明细行，备件比价分析的原子单位
+    domain: spare_parts
+    icon: 🔧
+    access:
+      path: postgres_ext
+      table: csp_items
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: document_id, api_name: documentId, type: uuid, description: 所属文档, indexed: true, filterable: true }
+      - { name: part_name, api_name: partName, type: string, description: "备件名(脏, 经聚类归一)", searchable: true }
+      - { name: spec, api_name: spec, type: string, description: 规格/型号, searchable: true }
+      - { name: quantity, api_name: quantity, type: number, description: 数量, filterable: true }
+      - { name: unit, api_name: unit, type: string, description: 单位 }
+      - { name: unit_price, api_name: unitPrice, type: number, description: 含税单价, filterable: true, format: currency }
+      - { name: price_untaxed, api_name: priceUntaxed, type: number, description: 不含税单价, format: currency }
+      - { name: customer_id, api_name: customerId, type: uuid, description: 需方客户(文档继承), indexed: true, filterable: true }
+      - { name: customer_name, api_name: customerName, type: string, description: 需方名称(冗余) }
+      - { name: cluster_id, api_name: clusterId, type: uuid, description: 备件聚类, indexed: true, filterable: true }
+      - { name: source_contract_no, api_name: sourceContractNo, type: string, description: 来源合同编号, filterable: true }
+      - { name: is_outlier, api_name: isOutlier, type: boolean, description: 是否离群价, filterable: true }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度 }
+      - { name: validation_status, api_name: validationStatus, type: string, description: 校验状态, filterable: true }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 入库时间, filterable: true }
+
+  - api_name: part_cluster
+    display_name: 备件聚类
+    description: 备件名聚类（同 cluster = 同一备件），跨客户比价键
+    domain: spare_parts
+    icon: 🏷️
+    access:
+      path: postgres_ext
+      table: csp_clusters
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: category, api_name: category, type: string, description: 类目, filterable: true }
+      - { name: representative_name, api_name: representativeName, type: string, description: 聚类代表名, searchable: true }
+      - { name: status, api_name: status, type: string, description: 状态(pending/confirmed), filterable: true }
+      - { name: item_count, api_name: itemCount, type: integer, description: 成员行数, filterable: true }
+      - { name: version, api_name: version, type: integer, description: 聚类版本 }
+      - { name: confirmed_by, api_name: confirmedBy, type: string, description: 确认人 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+      - { name: updated_at, api_name: updatedAt, type: datetime, description: 更新时间 }
+
+link_types:
+  - api_name: spare_part_item_in_document
+    display_name: 明细所属备件合同
+    source: spare_part_item
+    target: spare_part_document
+    cardinality: N:1
+    reverse: document_has_spare_items
+    join:
+      type: foreign_key
+      source_column: document_id
+      target_column: id
+
+  - api_name: spare_part_item_in_cluster
+    display_name: 明细所属备件聚类
+    source: spare_part_item
+    target: part_cluster
+    cardinality: N:1
+    reverse: part_cluster_has_items
+    join:
+      type: foreign_key
+      source_column: cluster_id
+      target_column: id
+
+  - api_name: spare_part_item_of_customer
+    display_name: 明细所属客户
+    source: spare_part_item
+    target: customer
+    cardinality: N:1
+    reverse: customer_has_spare_items
+    join:
+      type: foreign_key
+      source_column: customer_id
+      target_column: id
+
+  - api_name: spare_part_document_of_customer
+    display_name: 备件合同所属客户
+    source: spare_part_document
+    target: customer
+    cardinality: N:1
+    reverse: customer_has_spare_documents
+    join:
+      type: foreign_key
+      source_column: customer_id
+      target_column: id

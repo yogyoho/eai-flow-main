@@ -1,0 +1,118 @@
+# 投标报价域（mock_market 库 mock_bid/mock_bid_item 经 data_source 连接）
+# 物理列与 backend/scripts/seed_mock_market.py DDL 及 extensions/models DataSource* 逐列核对
+object_types:
+  - api_name: data_source
+    display_name: 数据源
+    description: 已接入的结构化数据源（连接配置不透出）
+    domain: bid_quote
+    icon: 🔌
+    access:
+      path: postgres_ext
+      table: data_sources
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: name, api_name: name, type: string, description: 数据源名称, searchable: true }
+      - { name: description, api_name: description, type: string, description: 描述 }
+      - { name: type, api_name: type, type: string, description: 类型(database/api/file/gis), filterable: true, enum: [database, api, file, gis] }
+      - { name: connection_config, api_name: connectionConfig, type: json, description: 连接配置（服务端强制永不透出）, hidden: true }
+      - { name: auth_type, api_name: authType, type: string, description: 认证类型, filterable: true }
+      - { name: sync_mode, api_name: syncMode, type: string, description: 同步模式, filterable: true }
+      - { name: status, api_name: status, type: string, description: 连接状态, filterable: true, enum: [connected, error, disconnected, testing] }
+      - { name: last_sync_at, api_name: lastSyncAt, type: datetime, description: 最近同步时间, filterable: true }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+
+  - api_name: dataset
+    display_name: 数据集
+    description: 数据源下的可查询表
+    domain: bid_quote
+    icon: 🗂️
+    access:
+      path: postgres_ext
+      table: data_source_datasets
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: source_id, api_name: sourceId, type: uuid, description: 所属数据源, indexed: true, filterable: true }
+      - { name: table_name, api_name: tableName, type: string, description: 物理表名, filterable: true }
+      - { name: label, api_name: label, type: string, description: 显示名, searchable: true }
+      - { name: description, api_name: description, type: string, description: 描述 }
+      - { name: key_columns, api_name: keyColumns, type: json, description: 键列 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+
+  - api_name: bid
+    display_name: 投标记录
+    description: 投标项目级记录（中标/未中标 + 中标金额）
+    domain: bid_quote
+    icon: 🎯
+    access:
+      path: data_source
+      source_id: bid-quote
+      table_name: mock_bid
+    pk:
+      column: bid_id
+      api_name: bidId
+      type: string
+    properties:
+      - { name: bid_id, api_name: bidId, type: string, description: 投标编号 }
+      - { name: project_name, api_name: projectName, type: string, description: 项目名称, filterable: true, searchable: true }
+      - { name: project_location, api_name: projectLocation, type: string, description: 项目所在地, searchable: true }
+      - { name: bid_date, api_name: bidDate, type: date, description: 投标日期, filterable: true, format: date }
+      - { name: bidder_role, api_name: bidderRole, type: string, description: 投标角色, filterable: true }
+      - { name: bidder_name, api_name: bidderName, type: string, description: 投标主体名称, searchable: true }
+      - { name: won, api_name: won, type: boolean, description: 是否中标, filterable: true }
+      - { name: winning_price, api_name: winningPrice, type: number, description: 中标金额, filterable: true, format: currency }
+
+  - api_name: bid_item
+    display_name: 投标明细
+    description: 投标货物行项（自产/外协金额拆分）
+    domain: bid_quote
+    icon: 🧾
+    access:
+      path: data_source
+      source_id: bid-quote
+      table_name: mock_bid_item
+    pk:
+      column: id
+      api_name: id
+      type: integer
+    properties:
+      - { name: id, api_name: id, type: integer, description: 主键 }
+      - { name: bid_id, api_name: bidId, type: string, description: 所属投标, indexed: true, filterable: true }
+      - { name: goods_name, api_name: goodsName, type: string, description: 货物名称, searchable: true }
+      - { name: spec, api_name: spec, type: string, description: 规格型号, searchable: true }
+      - { name: quantity, api_name: quantity, type: number, description: 数量, filterable: true }
+      - { name: unit, api_name: unit, type: string, description: 单位 }
+      - { name: unit_price, api_name: unitPrice, type: number, description: 单价, filterable: true, format: currency }
+      - { name: self_amount, api_name: selfAmount, type: number, description: 自产金额, format: currency }
+      - { name: outsourced_amount, api_name: outsourcedAmount, type: number, description: 外协金额, format: currency }
+      - { name: total_amount, api_name: totalAmount, type: number, description: 合计金额, filterable: true, format: currency }
+
+link_types:
+  - api_name: bid_item_in_bid
+    display_name: 明细所属投标
+    source: bid_item
+    target: bid
+    cardinality: N:1
+    reverse: bid_has_items
+    join:
+      type: foreign_key
+      source_column: bid_id
+      target_column: bid_id
+
+  - api_name: dataset_of_data_source
+    display_name: 数据集所属数据源
+    source: dataset
+    target: data_source
+    cardinality: N:1
+    reverse: data_source_has_datasets
+    join:
+      type: foreign_key
+      source_column: source_id
+      target_column: id

@@ -1,0 +1,20 @@
+# EIA 域示例规则（验证推理底座——非业务定案）
+# 设计: docs/superpowers/specs/2026-09-13-ontology-reasoning-rules-design.md §4
+# 约束: when/derive 引用的谓词/etype 必须 ⊆ registry doc_graph.yaml 枚举且归属本域
+# （load_rules 两层 fail-closed——存在性 + 域归属, 跨域谓词拒绝）
+rules:
+  - name: demo_org_involved_in_mine
+    enabled: true
+    domain: eia
+    when:
+      - "org_develops_project(?ORG, ?PROJ)"
+      - "mine(?MINE)"
+    derive: "org_involved_in(?ORG, ?MINE)"
+    note: "演示规则：笛卡尔积派生（无 join 变量——词汇表暂无 mine↔project 谓词）；规模提示：3 边×191 矿 ≈573 派生，逼近 1000 上限（验证底座，非业务定案）"
+  - name: demo_project_compile_chain
+    enabled: true
+    domain: eia
+    when:
+      - "org_compiles_project(?ORG, ?PROJ)"
+    derive: "org_involved_in(?ORG, ?PROJ)"
+    note: "演示规则：编制单位参与项目（非业务定案）"

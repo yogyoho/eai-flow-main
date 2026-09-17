@@ -57,9 +57,8 @@ lint:
 	uv run ruff check .
 	uv run ruff format --check .
 
-# EAI-CUSTOM: ontology registry lint (§2.2 checklist) — run from backend/, no `cd backend`
-lint-ontology:
-	PYTHONPATH=. uv run python scripts/ontology_lint.py
+# EAI-CUSTOM(2026-09-17 OntoStudio S1): lint-ontology target 已随 ontology 域迁出——
+# 脚本现居 ontostudio/backend/scripts/ontology_lint.py（独立服务自管 lint 职责）。
 
 format:
 	uv run ruff check . --fix && uv run ruff format .

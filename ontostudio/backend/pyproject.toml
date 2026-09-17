@@ -1,0 +1,34 @@
+[project]
+name = "ontostudio-backend"
+version = "0.1.0"
+description = "OntoStudio 本体建模系统独立后端——ontology 统一语义层 + doc_graph 实体消解（自 deer-flow gateway 迁出）"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.34.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.30.0",
+    "pydantic>=2.13.0",
+    "pyyaml>=6.0.0",
+    # official MCP SDK（版本照 backend uv.lock 1.28.1; <2 上界钉住——mcp 2.x 移除了低层
+    # Server.list_tools 装饰器 API, 已实测破裂）。MCP 传输 stdio→SSE 随 S1 Task 2 切换。
+    "mcp>=1.28.1,<2",
+    "python-multipart>=0.0.31",
+    "httpx>=0.28.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.14.11",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that require an external service (e.g. extensions PostgreSQL); skipped when unavailable",
+]
+
+[tool.uv]
+index-url = "https://pypi.org/simple"
+default-groups = ["dev"]
