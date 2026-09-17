@@ -30,6 +30,7 @@ export interface CpaItem {
   id: string;
   document_id: string;
   goods_name: string;
+  category: string | null;
   spec_model: string | null;
   tech_params: Record<string, string> | null;
   quantity: number | null;
@@ -81,7 +82,13 @@ export interface CpaRun {
   excel_path: string | null;
   error: string | null;
   scope: Record<string, unknown> | null;
-  progress: { total: number; done: number; failed: number; phase?: string; processing?: string[] } | null;
+  progress: {
+    total: number;
+    done: number;
+    failed: number;
+    phase?: string;
+    processing?: string[];
+  } | null;
   started_at: string;
   finished_at: string | null;
 }

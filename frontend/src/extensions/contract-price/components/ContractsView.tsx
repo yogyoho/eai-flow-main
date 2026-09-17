@@ -396,6 +396,9 @@ export function ContractsView() {
   const [notice, setNotice] = useState<string | null>(null);
   const [showClusterConfirm, setShowClusterConfirm] = useState(false);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
+  // 已保存规则的未匹配表键(文件名:页:表序);PUT 成功才标记,抽屉的
+  // "已保存规则"标记与重解析门槛都由此驱动(单一事实源)。
+  const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
 
   /** Batch upload: push each file to the cpa-contracts bucket sequentially,
    * track per-file progress, then trigger a parse run (upload implies parse). */
@@ -440,8 +443,9 @@ export function ContractsView() {
   const pendingCount = docs.filter((d) => d.parse_status === "pending").length;
 
   /** 未匹配表抽屉"保存规则": upsert 进 config.table_seeds。
-   * config GET 会注入后端内置规则,这里拿到的即全量列表,按 id 覆盖或追加。 */
-  const createSeedFromDrawer = (seed: SeedDraft) => {
+   * config GET 会注入后端内置规则,这里拿到的即全量列表,按 id 覆盖或追加。
+   * PUT 成功后才把表键记入 savedKeys(标记滞后于真实写入,避免假"已保存")。 */
+  const createSeedFromDrawer = (seed: SeedDraft, key: string) => {
     if (!configData) {
       alert("配置尚未加载,请稍后重试");
       return;
@@ -454,10 +458,12 @@ export function ContractsView() {
         : [...seeds, seed],
     };
     updateConfig.mutate(next, {
-      onSuccess: () =>
+      onSuccess: () => {
+        setSavedKeys((prev) => new Set(prev).add(key));
         setNotice(
           `已保存规则「${seed.display_name}」。回到抽屉点「重解析本文档」应用(读 OCR 缓存,秒级)。`,
-        ),
+        );
+      },
       onError: (e) =>
         alert(`规则保存失败:${e instanceof Error ? e.message : e}`),
     });
@@ -796,8 +802,10 @@ export function ContractsView() {
         open={unmatchedDoc !== null}
         fileName={unmatchedDoc?.name ?? ""}
         tables={unmatchedDoc?.tables ?? []}
+        savedKeys={savedKeys}
         onClose={() => setUnmatchedDoc(null)}
         onCreateSeed={createSeedFromDrawer}
+        saving={updateConfig.isPending}
         onReparse={() => {
           if (!unmatchedDoc) return;
           reparse.mutate(unmatchedDoc.id, {

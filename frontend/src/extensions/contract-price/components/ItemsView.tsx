@@ -186,6 +186,7 @@ export function ItemsView() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [contractFilter, setContractFilter] = useState<string>("all");
   const [runFilter, setRunFilter] = useState<string>("all"); // "all" | run_id
+  const [categoryFilter, setCategoryFilter] = useState<string>("all"); // "all" | 分类(当前页内过滤)
 
   const { data, isLoading, isFetching, refetch } = useItems({
     goods_name: applied || undefined,
@@ -204,10 +205,24 @@ export function ItemsView() {
   const deleteItemsByRun = useDeleteItemsByRun();
   const batchValidateItems = useBatchValidateItems();
 
-  const items = data?.items ?? [];
+  // 分类筛选在当前页内做客户端过滤(分类列是行上下文,服务端筛选 YAGNI)。
+  const items = (data?.items ?? []).filter(
+    (it) => categoryFilter === "all" || it.category === categoryFilter,
+  );
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const runs: CpaRun[] = useMemo(() => runsData?.items ?? [], [runsData]);
+  const categoryOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (data?.items ?? [])
+            .map((i) => i.category)
+            .filter(Boolean) as string[],
+        ),
+      ).sort(),
+    [data],
+  );
 
   const runMap = useMemo(
     () => new Map(runs.map((r) => [r.id, r] as const)),
@@ -383,6 +398,26 @@ export function ItemsView() {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={categoryFilter}
+              onValueChange={(v) => {
+                setCategoryFilter(v);
+                setPage(0);
+                setSelected(new Set());
+              }}
+            >
+              <SelectTrigger className="h-9 w-[160px]">
+                <SelectValue placeholder="全部分类" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部分类</SelectItem>
+                {categoryOptions.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <div className="ml-auto flex items-center gap-2">
               {runDeleteOpen ? (
                 <div className="flex items-center gap-1">
@@ -541,6 +576,7 @@ export function ItemsView() {
                       </TableHead>
                       <TableHead>货物名称</TableHead>
                       <TableHead className="whitespace-nowrap">规格</TableHead>
+                      <TableHead className="whitespace-nowrap">分类</TableHead>
                       <TableHead>来源合同</TableHead>
                       <TableHead className="whitespace-nowrap">
                         来源任务
@@ -625,6 +661,9 @@ export function ItemsView() {
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {item.spec_model ?? "—"}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.category ?? "—"}
                           </TableCell>
                           <TableCell className="text-muted-foreground">
                             {item.source_contract_no ?? "—"}
@@ -786,7 +825,7 @@ export function ItemsView() {
                         </TableRow>
                         {expanded.has(item.id) && (
                           <TableRow className="bg-muted/30 hover:bg-muted/30">
-                            <TableCell colSpan={8} className="py-3">
+                            <TableCell colSpan={9} className="py-3">
                               <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-xs sm:grid-cols-3 lg:grid-cols-4">
                                 <DetailField
                                   label="工程量"
@@ -827,6 +866,10 @@ export function ItemsView() {
                                       ? `第 ${item.source_page} 页`
                                       : "—"
                                   }
+                                />
+                                <DetailField
+                                  label="分类"
+                                  value={item.category ?? "—"}
                                 />
                                 <DetailField
                                   label="技术参数"
