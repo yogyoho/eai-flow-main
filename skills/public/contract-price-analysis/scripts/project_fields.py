@@ -27,8 +27,9 @@ _LOC_LABELS = [
 ]
 _CONTRACT_LABELS = ["合同编号", "合同号"]
 # Supplier = the performing party (乙方/分包方/承包方...). 甲方 is the buyer (总包),
-# NOT the supplier whose prices we analyze, so it's excluded.
-_SUPPLIER_LABELS = ["分包方", "乙方", "承包方", "承包人", "分包人", "施工单位", "供方", "供应商"]
+# NOT the supplier whose prices we analyze, so it's excluded. 卖方 = seller in
+# 买方/卖方 补充协议 form (买方 is the buyer — not added).
+_SUPPLIER_LABELS = ["分包方", "乙方", "承包方", "承包人", "分包人", "施工单位", "供方", "供应商", "卖方"]
 _DATE_LABELS = [
     "合同签订日期", "签订日期", "签署日期", "签订时间", "签署时间", "签定日期", "合同签定日期",
 ]
@@ -171,6 +172,8 @@ if __name__ == "__main__":  # ponytail self-check: regex must catch common forms
         ({"1": "无标签封面文本"}, (None, None, None, None, None)),
         # supplier = seal fragment '（盖章）' (OCR split '（盖'+'章）') → rejected (None)
         ({"1": "乙方\n（盖章）"}, (None, None, None, None, None)),
+        # 买方/卖方 form (补充协议): 卖方=seller=supplier; 买方 must NOT match
+        ({"1": "买方：某总承包公司\n卖方：某钢铁贸易有限公司"}, (None, None, None, "某钢铁贸易有限公司", None)),
     ]
     for pt, want in cases:
         got = extract_project_fields(pt)

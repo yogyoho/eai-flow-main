@@ -8,13 +8,14 @@ import scripts.cli as cli
 def test_fallback_triggers_only_on_miss(monkeypatch):
     async def fake_parse(file_bytes, filename, url, last_pages=0):
         assert last_pages == 2, "miss 时应请求末2页"
-        return [], {99: "乙方：末页建筑公司\n签订日期 2025年6月18日"}
+        return [], {99: "乙方：末页建筑公司\n签订日期 2025年6月18日"}, []
 
     monkeypatch.setattr(cli, "parse_document", fake_parse)
     got = asyncio.run(cli._extract_project_fields_with_fallback(
         b"%PDF", "a.pdf", "http://x",
         front_texts={1: "项目名称：某工程"},  # 前页无乙方/日期
     ))
+    assert got[0] == "某工程"         # 前页字段在合并择优后必须保留
     assert got[3] == "末页建筑公司"   # supplier
     assert got[4] == "2025-06-18"     # sign_date
 
@@ -29,3 +30,19 @@ def test_no_fallback_when_front_pages_hit(monkeypatch):
         front_texts={1: "项目名称：某工程\n乙方：甲公司\n签订日期：2025-06-18"},
     ))
     assert got[3] == "甲公司"
+
+
+def test_tail_ocr_failure_returns_front_fields_gracefully(monkeypatch):
+    """末页兜底 OCR 崩溃 → 只警告,前页字段原样返回,不抛异常。"""
+    async def boom_parse(*a, **k):
+        raise RuntimeError("ocr service down")
+
+    monkeypatch.setattr(cli, "parse_document", boom_parse)
+    got = asyncio.run(cli._extract_project_fields_with_fallback(
+        b"%PDF", "a.pdf", "http://x",
+        front_texts={1: "项目名称：某工程\n工程地点：桂北市"},
+    ))
+    assert got[0] == "某工程"
+    assert got[1] == "桂北市"
+    assert got[3] is None  # supplier miss,但不得异常
+    assert got[4] is None

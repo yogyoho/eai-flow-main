@@ -36,11 +36,14 @@ class TableExtract:
 
 
 async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str, last_pages: int = 0) -> tuple:
-    """Call eai-flow-ocr POST /ocr, return (list[TableExtract], page_texts).
+    """Call eai-flow-ocr POST /ocr, return (list[TableExtract], page_texts, orientation_fixed).
 
     page_texts is {page_no: full_page_text} for the first few pages only (the OCR
     service gates full-page text to the cover/front pages). Used downstream to
     regex-extract project-level fields (name/location) that never appear in tables.
+
+    orientation_fixed 是被 OCR 服务页级方向归一化纠偏的页号列表(1-based;parse_meta
+    透传,溯源时可提示该页预览/坐标来自纠偏后图像)。
 
     last_pages > 0 时仅 OCR 末 N 页(元数据兜底用;Task 8 前服务端忽略该字段)。
 
@@ -76,6 +79,7 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str,
 
     tables: list[TableExtract] = []
     page_texts: dict[int, str] = {}
+    orientation_fixed: list[int] = list(data.get("orientation_fixed_pages", []) or [])
     for page in data.get("pages", []):
         preview = page.get("preview_png_b64", "")
         page_no = page.get("page_no", 0)
@@ -106,14 +110,15 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str,
                     mean_confidence=float(t.get("mean_confidence", 0.0)),
                 )
             )
-    return tables, page_texts
+    return tables, page_texts, orientation_fixed
 
 
-def to_cache(tables: list[TableExtract], page_texts: dict[int, str]) -> dict:
+def to_cache(tables: list[TableExtract], page_texts: dict[int, str], orientation_fixed=()) -> dict:
     """OCR 结构化结果的缓存形态(剔 preview b64——预览 PNG 本就单独存 MinIO)。"""
     return {
         "v": 1,
         "page_texts": {str(k): v for k, v in page_texts.items()},
+        "orientation_fixed_pages": list(orientation_fixed),
         "tables": [
             {
                 "page_no": t.page_no,
@@ -129,8 +134,9 @@ def to_cache(tables: list[TableExtract], page_texts: dict[int, str]) -> dict:
 
 
 def from_cache(data: dict) -> tuple:
-    """缓存 → (tables, page_texts)。preview 恒为空串(缓存命中重解析时预览
-    PNG 在首解析已落 MinIO,preview_prefix 不变)。"""
+    """缓存 → (tables, page_texts, orientation_fixed)。preview 恒为空串(缓存命中
+    重解析时预览 PNG 在首解析已落 MinIO,preview_prefix 不变)。旧缓存无
+    orientation_fixed_pages 键 → 空列表(与无纠偏等价)。"""
     tables = [
         TableExtract(
             page_no=t["page_no"],
@@ -144,4 +150,4 @@ def from_cache(data: dict) -> tuple:
         for t in data.get("tables", [])
     ]
     page_texts = {int(k): v for k, v in (data.get("page_texts") or {}).items()}
-    return tables, page_texts
+    return tables, page_texts, list(data.get("orientation_fixed_pages", []) or [])

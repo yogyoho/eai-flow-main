@@ -176,15 +176,20 @@ class OcrEngine:
     def _run(self, pages: list[Image.Image], text_pages: int = 3, page_offset: int = 0) -> OcrResponse:
         self._ensure()
         started = time.monotonic()
-        out = [
-            self._page(idx + page_offset, img, with_text=idx <= text_pages)
-            for idx, img in enumerate(pages, start=1)
-        ]
+        out = []
+        fixed: list[int] = []  # 被纠偏页(1-based绝对页号,透传到 parse_meta)
+        for i, img in enumerate(pages, start=1):
+            # 注意: with_text 按窗口内相对序号门控——last_pages > text_pages 时尾窗文字仅前 text_pages 页有,last_pages 仅用于元数据兜底(≤2),如扩大需改为绝对页号门控
+            pg = self._page(i + page_offset, img, with_text=i <= text_pages)
+            if pg.orientation is not None:
+                fixed.append(pg.page_no)
+            out.append(pg)
         return OcrResponse(
             pages=out,
             elapsed_ms=int((time.monotonic() - started) * 1000),
             engine="pdf2image+rapid-layout+rapid-table+rapidocr-onnxruntime",
             table_count=sum(len(p.tables) for p in out),
+            orientation_fixed_pages=fixed,
         )
 
     def _page(self, page_no: int, pil_img: Image.Image, with_text: bool = False) -> PageResult:
@@ -204,6 +209,31 @@ class OcrEngine:
                 t = self._table_region(arr, box, w, h)
                 if t is not None:
                     tables.append(t)
+        if not tables:
+            # 0表页方向试探(bug-1760645): 横版扫成竖版的页 layout 检测不到表格 →
+            # 静默 0 表。±90° 各跑一次 layout,转出 table 区即以纠偏方向整页重做
+            # (表/bbox/预览/文字全部来自纠偏后图像,保证溯源对齐)。
+            rotated = self._try_rotations(arr)
+            if rotated is not None:
+                tables_r, img_r, orient = rotated
+                arr2 = np.array(img_r.convert("RGB"))
+                h2, w2 = arr2.shape[:2]
+                text = ""
+                if with_text:
+                    try:
+                        res, _ = self._ocr(arr2)
+                        text = "\n".join(str(r[1]) for r in res) if res else ""
+                    except Exception:
+                        text = ""
+                return PageResult(
+                    page_no=page_no,
+                    page_width=w2,
+                    page_height=h2,
+                    tables=tables_r,
+                    preview_png_b64=_png_b64(img_r),
+                    text=text,
+                    orientation=orient,
+                )
         # ponytail: full-page text OCR only for the first few pages — the
         # cover/first pages carry project name/location labels that table
         # crops never see. Gated (idx<=text_pages) because full-page OCR on
@@ -225,6 +255,38 @@ class OcrEngine:
             preview_png_b64=_png_b64(pil_img),
             text=text,
         )
+
+    def _try_rotations(self, arr: np.ndarray):
+        """0表页的方向试探(设计 §3): ±90° 各跑一次 layout,只有转出 table 区域的
+        方向才继续 table+OCR;两方向都出区域时取 (表数, 平均置信度) 高者。
+        成本: 触发页 +2 次 layout(廉价模型);正常竖版页 layout 不出 table 区即止。
+        返回 (tables, 纠偏后PIL图, 方向) 或 None。"""
+        best = None
+        for orient, angle in (("cw90", -90), ("ccw90", 90)):
+            img_r = Image.fromarray(arr).rotate(angle, expand=True)
+            arr_r = np.array(img_r.convert("RGB"))
+            h, w = arr_r.shape[:2]
+            try:
+                lout = self._layout(arr_r)
+            except Exception:
+                continue
+            tables: list[Table] = []
+            if lout is not None:
+                cns = list(getattr(lout, "class_names", []) or [])
+                for box, cn in zip(lout.boxes, cns):
+                    if "table" not in str(cn).lower():
+                        continue
+                    t = self._table_region(arr_r, box, w, h)
+                    if t is not None:
+                        tables.append(t)
+            if not tables:
+                continue
+            score = (len(tables), float(np.mean([t.mean_confidence for t in tables])))
+            if best is None or score > best[0]:
+                best = (score, tables, img_r, orient)
+        if best is None:
+            return None
+        return best[1], best[2], best[3]
 
     def _table_region(self, arr: np.ndarray, box, w: int, h: int) -> Table | None:
         x1, y1, x2, y2 = (int(v) for v in box)

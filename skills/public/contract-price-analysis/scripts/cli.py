@@ -112,7 +112,7 @@ async def _extract_project_fields_with_fallback(
     if fb is None:
         return fields
     try:
-        _, tail_texts = await parse_document(fb, key, ocr_url, last_pages=2)
+        _, tail_texts, _ = await parse_document(fb, key, ocr_url, last_pages=2)
     except Exception as exc:
         logger.warning("metadata tail-OCR failed: %s", exc)
         return fields
@@ -573,22 +573,24 @@ async def _process_one_doc(
             cached = None if re_ocr else await asyncio.to_thread(store.get_ocr_cache, cache_key)
             file_bytes = None  # 命中路径无原文件;兜底需要时才经 store 惰性下载
             if cached is not None:
-                tables, page_texts = from_cache(cached)
+                tables, page_texts, orient_fixed = from_cache(cached)
                 logger.info("Cache hit %s: %d tables (skip OCR)", cache_key, len(tables))
             else:
                 # MinIO get is a sync blocking call — offload so concurrent docs
                 # don't stall the event loop during download.
                 # Task 8 元数据末页兜底需 file_bytes 时必须在此分支惰性获取(命中路径无此变量)
                 file_bytes = await asyncio.to_thread(store.get, key)
-                tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
+                tables, page_texts, orient_fixed = await parse_document(file_bytes, key, cfg.ocr_service_url)
                 # 缓存写入是机会性的: MinIO 写失败绝不能让已成功提取的文档被标 failed。
                 try:
                     await asyncio.to_thread(
-                        store.put_ocr_cache, cache_key, to_cache(tables, page_texts)
+                        store.put_ocr_cache, cache_key, to_cache(tables, page_texts, orient_fixed)
                     )
                 except Exception as exc:
                     logger.warning("OCR cache write failed %s: %s", cache_key, exc)
             items, meta = _extract_from_tables(tables, doc_uri, seeds)
+            # 方向归一化页号透传(设计 §3): 溯源提示这些页的预览/坐标来自纠偏后图像。
+            meta["orientation_fixed_pages"] = orient_fixed or []
             # 元数据提取 + 末页兜底: 命中路径 file_bytes=None,兜底真的需要发起时
             # 才经 store 惰性下载原 PDF(Task 6 命中路径无 file_bytes 不变量)。
             project_name, project_location, contract_no, supplier, sign_date = (

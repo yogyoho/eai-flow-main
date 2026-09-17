@@ -29,6 +29,7 @@ class PageResult(BaseModel):
     tables: list[Table]
     preview_png_b64: str = ""  # page render; == traceback preview asset
     text: str = ""  # full-page OCR text (first N pages only); project fields source
+    orientation: str | None = None  # None|"cw90"|"ccw90" 该页OCR所用方向(纠偏后)
 
 
 class OcrResponse(BaseModel):
@@ -36,3 +37,4 @@ class OcrResponse(BaseModel):
     elapsed_ms: int
     engine: str
     table_count: int
+    orientation_fixed_pages: list[int] = []  # 被纠偏的页号(1-based,parse_meta透传)
