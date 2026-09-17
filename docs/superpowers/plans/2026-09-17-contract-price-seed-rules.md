@@ -55,7 +55,7 @@ OCR 缓存 key = "ocr/{sha256_hex}.json"（内容寻址,免失效）
 - Modify: `backend/app/extensions/contract_price/crud.py:726-731`（load_config 注入默认）
 - Create: `backend/tests/test_contract_price_seed_config.py`
 
-- [ ] **Step 1: 写失败测试（seed 库结构与归一化）**
+- [x] **Step 1: 写失败测试（seed 库结构与归一化）**
 
 `skills/public/contract-price-analysis/tests/test_seed_library.py`:
 
@@ -92,12 +92,12 @@ def test_price_unit_exclude_guards_untaxed():
     assert "不含税" in gcl.get("exclude", {}).get("price_unit", [])
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_seed_library.py -v`
 Expected: FAIL `ModuleNotFoundError: No module named 'scripts.seed_library'`
 
-- [ ] **Step 3: 实现 seed_library.py**
+- [x] **Step 3: 实现 seed_library.py**
 
 ```python
 """内置 seed 定位规则库(源真相)。
@@ -252,12 +252,12 @@ def normalize_seeds(raw: object) -> list[dict]:
     return out
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_seed_library.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: 后端 ConfigOut 加 table_seeds + load_config 注入默认**
+- [x] **Step 5: 后端 ConfigOut 加 table_seeds + load_config 注入默认**
 
 `backend/app/extensions/contract_price/schemas.py` 的 `ConfigOut`（L108-123）末尾加一个字段:
 
@@ -302,7 +302,7 @@ def load_config() -> ConfigOut:
 
 同文件新建 `backend/app/extensions/contract_price/seed_defaults.py`（内容 = `scripts/seed_library.py` 的 `DEFAULT_TABLE_SEEDS` 列表原样复制，文件头注释写明「与 skills/public/contract-price-analysis/scripts/seed_library.py 保持同步（双份镜像约定，同 models.py）」）。`save_config` 不动（`model_dump()` 自动带上新字段）。
 
-- [ ] **Step 6: 后端配置往返测试**
+- [x] **Step 6: 后端配置往返测试**
 
 `backend/tests/test_contract_price_seed_config.py`:
 
@@ -343,7 +343,7 @@ def test_load_config_injects_default_seeds_when_empty(tmp_path, monkeypatch):
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_contract_price_seed_config.py -v`
 Expected: 2 passed
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add skills/public/contract-price-analysis/scripts/seed_library.py skills/public/contract-price-analysis/tests/test_seed_library.py backend/app/extensions/contract_price/schemas.py backend/app/extensions/contract_price/crud.py backend/app/extensions/contract_price/seed_defaults.py backend/tests/test_contract_price_seed_config.py
@@ -358,7 +358,7 @@ git commit -m "feat(cpa): seed定位规则库——6条内置规则+normalize+�
 - Modify: `skills/public/contract-price-analysis/scripts/table_classifier.py`（文件尾追加新函数）
 - Create: `skills/public/contract-price-analysis/tests/test_seed_match.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `skills/public/contract-price-analysis/tests/test_seed_match.py`:
 
@@ -439,12 +439,12 @@ def test_match_seed_title_disambiguation():
     assert roles["spec"] == 1         # 材质列作规格
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_seed_match.py -v`
 Expected: FAIL `ImportError: cannot import name '_norm_header'`
 
-- [ ] **Step 3: 实现（追加到 table_classifier.py 文件尾）**
+- [x] **Step 3: 实现（追加到 table_classifier.py 文件尾）**
 
 ```python
 # ── seed 定位规则匹配 (v3, 严格 seed-only; 设计 §2) ──────────────────────────
@@ -532,12 +532,12 @@ def match_seed(rows: list, seeds: list[dict]) -> tuple[dict, dict, int] | None:
     return best[2], best[3], header_rows
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_seed_match.py tests/test_table_classifier.py -v`
 Expected: 新 6 个 passed；既有 classifier 测试不回归（passed）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/public/contract-price-analysis/scripts/table_classifier.py skills/public/contract-price-analysis/tests/test_seed_match.py
@@ -552,7 +552,7 @@ git commit -m "feat(cpa): match_seed严格主路径——归一化子串锚点+e
 - Modify: `skills/public/contract-price-analysis/scripts/table_classifier.py`（追加）
 - Create: `skills/public/contract-price-analysis/tests/test_seed_extract.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `skills/public/contract-price-analysis/tests/test_seed_extract.py`:
 
@@ -603,12 +603,12 @@ def test_prices_mapped_to_seed_roles():
     assert items[0]["qty_raw"] == "824.79"
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_seed_extract.py -v`
 Expected: FAIL `ImportError: cannot import name 'extract_items_seed'`
 
-- [ ] **Step 3: 实现（追加到 table_classifier.py）**
+- [x] **Step 3: 实现（追加到 table_classifier.py）**
 
 ```python
 def _is_category_row(cells: dict) -> bool:
@@ -629,6 +629,7 @@ def extract_items_seed(
     header_rows: int,
     cell_bboxes: list | None = None,
     roles_x: dict | None = None,
+    initial_category: str | None = None,
 ) -> list:
     """Seed 路径行提取: 按 seed 角色取单元格 + 分类行上下文传播。
 
@@ -639,7 +640,9 @@ def extract_items_seed(
     use_x = bool(roles_x) and "name" in roles_x and _bboxes_usable(rows, cell_bboxes)
     skip = {"序号", "合计", "小计", "总计"}
     items: list = []
-    current_category: str | None = None
+    # 跨页续传: 管线循环把上一表尾部分类传进来(设计§2 修订I2——表头重复页/续表页
+    # 每页都会新开一次调用,不传则分类退化为页内局部)
+    current_category: str | None = initial_category
 
     for ri in range(header_rows, len(rows)):
         row = rows[ri]
@@ -674,12 +677,12 @@ def extract_items_seed(
     return items
 ```
 
-- [ ] **Step 4: 跑测试确认通过**
+- [x] **Step 4: 跑测试确认通过**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_seed_extract.py -v`
 Expected: 3 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/public/contract-price-analysis/scripts/table_classifier.py skills/public/contract-price-analysis/tests/test_seed_extract.py
@@ -694,7 +697,7 @@ git commit -m "feat(cpa): extract_items_seed——seed角色取值+分类行识�
 - Modify: `skills/public/contract-price-analysis/scripts/cli.py`（`_load_seeds` 新增 L64 区；`_extract_from_tables` L296 起整体重写；`_process_one_doc` L644-748 签名与状态逻辑）
 - Create: `skills/public/contract-price-analysis/tests/test_extract_strict.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `skills/public/contract-price-analysis/tests/test_extract_strict.py`:
 
@@ -760,6 +763,39 @@ def test_continuation_inherits_seed_roles():
     assert items[1]["unit_price"] == 9.00
 
 
+def test_category_threads_across_pages():
+    """跨页分类续传(修订I2): 表1尾部是屋面分类,续表页首行(下一分类行之前)的
+    item 必须继承 屋面;新分类行出现后切换。"""
+    t1 = _tbl([
+        ["序号", "项目名称", "单位", "工程量", "不含税单价", "含税单价", "含税合价"],
+        ["12", "现浇构件钢筋", "t", "63.55", "1131.55", "1205.84", "76631.13"],
+        ["", "屋面", "", "", "", "", ""],
+    ], page_no=4)
+    t2 = _tbl([                                        # 续表: 无表头,屋面分类延续
+        ["14", "雨棚面砂浆防水", "m2", "30.70", "18.35", "20.00", "614.00"],
+        ["15", "涂膜防水屋面", "m2", "305.78", "57.14", "60.30", "18438.51"],
+    ], page_no=5)
+    items, meta = _extract_from_tables([t1, t2], "s3://b/k.pdf", SEEDS)
+    assert meta["continuation_tables"] == 1
+    assert [it["category"] for it in items] == ["屋面", "屋面"]
+
+
+def test_category_threads_across_header_repeat_pages():
+    """表头重复页(每页都 match_seed 命中)分类不丢: 页2 新分类行前继承页1尾部。"""
+    t1 = _tbl([
+        ["序号", "项目名称", "单位", "工程量", "不含税单价", "含税单价", "含税合价"],
+        ["", "屋面", "", "", "", "", ""],
+        ["14", "雨棚面砂浆防水", "m2", "30.70", "18.35", "20.00", "614.00"],
+    ], page_no=2)
+    t2 = _tbl([                                        # 表头重复的页3
+        ["序号", "项目名称", "单位", "工程量", "不含税单价", "含税单价", "含税合价"],
+        ["16", "屋面保温板", "m2", "790.80", "98.90", "106.57", "84274.66"],
+    ], page_no=3)
+    items, meta = _extract_from_tables([t1, t2], "s3://b/k.pdf", SEEDS)
+    assert meta["goods_tables"] == 2
+    assert items[-1]["category"] == "屋面"
+
+
 def test_unit_price_reverse_calc_from_total():
     """含税单价缺失时 合价÷工程量 反算(seed price_total 列)。"""
     tables = [_tbl([
@@ -772,12 +808,12 @@ def test_unit_price_reverse_calc_from_total():
     assert items[0]["price_reason"] == "合价/工程量反算"
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_extract_strict.py -v`
 Expected: FAIL（`_extract_from_tables` 第三个位置参数还是 keywords，行为不符）
 
-- [ ] **Step 3: 重写 `_extract_from_tables` + 新增 `_load_seeds`**
+- [x] **Step 3: 重写 `_extract_from_tables` + 新增 `_load_seeds`**
 
 `cli.py` L64-82 的 `_load_price_keywords` 之后新增（旧函数保留不删，测试可能引用）:
 
@@ -832,7 +868,14 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
         "unmatched_tables": [],
         "matched_seeds": {},
     }
-    active = None  # (seed, roles, roles_x, col_count) 续表继承上下文
+    active = None  # (seed, roles, roles_x, col_count, category_tail) 续表继承上下文
+
+    def _category_tail(raw_items: list, fallback: str | None) -> str | None:
+        """本表尾部生效的分类(逆序找最后一个非 None),供跨页/跨表续传。"""
+        for it in reversed(raw_items):
+            if it.get("category") is not None:
+                return it["category"]
+        return fallback
     for table in tables:
         rows = table.rows or []
         col_count = max((len(r) for r in rows), default=0)
@@ -844,6 +887,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 rows, active[1], active[3], table.cell_bboxes, active[2]
             )
         )
+        cat_in = active[4] if active is not None else None  # 上一表尾部分类
         if hit is not None:
             seed, roles, header_rows = hit
             meta["goods_tables"] += 1
@@ -851,12 +895,15 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             roles_x = None
             if _bboxes_usable(rows, table.cell_bboxes):
                 roles_x = _roles_x_from_data(rows, table.cell_bboxes, roles, header_rows)
-            raw = extract_items_seed(rows, seed, roles, header_rows, table.cell_bboxes, roles_x)
-            active = (seed, roles, roles_x, col_count)
+            # 表头重复页: 每页都会 match_seed 命中——initial_category 必须跨表续传,
+            # 否则多页清单的分类退化为页内局部(修订I2)
+            raw = extract_items_seed(rows, seed, roles, header_rows, table.cell_bboxes, roles_x, initial_category=cat_in)
+            active = (seed, roles, roles_x, col_count, _category_tail(raw, cat_in))
         elif is_cont:
-            seed, roles, roles_x, _ = active
+            seed, roles, roles_x, _, cat_in = active
             meta["continuation_tables"] += 1
-            raw = extract_items_seed(rows, seed, roles, 0, table.cell_bboxes, roles_x)
+            raw = extract_items_seed(rows, seed, roles, 0, table.cell_bboxes, roles_x, initial_category=cat_in)
+            active = (seed, roles, roles_x, col_count, _category_tail(raw, cat_in))
         else:
             ttype, sroles, sroles_x, sheader_rows = classify(rows, None, table.cell_bboxes)
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
@@ -932,7 +979,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
 
 > 注意: `_collapse_header` 直接 import 到文件头（与既有 `from scripts.table_classifier import ...` 行合并，加 `_collapse_header`、`_bboxes_usable`、`_norm_header`、`_roles_x_from_data`），上面函数体内的 `__import__` 写法改为直接用已 import 的名字。`_PURE_NUM`/`_PURE_NUM_BRACKET`/`_cell_bbox`/`_extract_tech_params` 为 cli 既有私有助手，保持原位。
 
-- [ ] **Step 4: `_process_one_doc`/`run_parse` 换 seeds + parse_status 三态**
+- [x] **Step 4: `_process_one_doc`/`run_parse` 换 seeds + parse_status 三态**
 
 `run_parse`（L767）: `keywords = _load_price_keywords()` → `seeds = _load_seeds()`；`_process_one_doc(ch, store, cfg, keywords, ...)` → `... seeds ...`；`_extract_from_tables(tables, doc_uri, keywords)` → `(tables, doc_uri, seeds)`。
 
@@ -954,12 +1001,12 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 ),
 ```
 
-- [ ] **Step 5: 跑全部技能测试确认通过/无回归**
+- [x] **Step 5: 跑全部技能测试确认通过/无回归**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/ -v`
 Expected: 全部 passed（test_cli.py 若断言旧 keywords 行为,按新 seeds 语义修断言——断言意图不变,输入换 seed）
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add skills/public/contract-price-analysis/scripts/cli.py skills/public/contract-price-analysis/tests/test_extract_strict.py
@@ -979,7 +1026,7 @@ git commit -m "feat(cpa): 严格seed-only管线——unmatched_tables详情+matc
 - Modify: `skills/public/contract-price-analysis/scripts/excel_generator.py:61-84`（分项明细加分类列）
 - Create: `skills/public/contract-price-analysis/tests/test_category_pipeline.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `skills/public/contract-price-analysis/tests/test_category_pipeline.py`:
 
@@ -1012,12 +1059,12 @@ def test_cluster_sample_appends_category():
     assert _cluster_sample_text("钢筋", {}) == "钢筋"
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_category_pipeline.py -v`
 Expected: FAIL
 
-- [ ] **Step 3: 实现各处**
+- [x] **Step 3: 实现各处**
 
 `scripts/models.py` CpaItem（L94 `spec_model` 之后）加:
 
@@ -1096,17 +1143,17 @@ def _cluster_sample_text(goods_name: str, tech_params: dict | None) -> str:
             ws.write(row, 8, "是" if is_outlier else "", outlier_fmt if is_outlier else text_fmt)
 ```
 
-- [ ] **Step 4: 存量库一次性迁移（runbook,幂等可重复执行）**
+- [x] **Step 4: 存量库一次性迁移（runbook,幂等可重复执行）**
 
 Run: `docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "ALTER TABLE cpa_items ADD COLUMN IF NOT EXISTS category VARCHAR(300);"`
 Expected: `ALTER TABLE`
 
-- [ ] **Step 5: 跑测试 + excel 测试确认通过**
+- [x] **Step 5: 跑测试 + excel 测试确认通过**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_category_pipeline.py tests/test_excel_generator.py -v`
 Expected: 全部 passed（excel 既有断言若锁定列数,更新为新 9 列）
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add skills/public/contract-price-analysis/scripts/models.py skills/public/contract-price-analysis/scripts/db.py skills/public/contract-price-analysis/scripts/cli.py skills/public/contract-price-analysis/scripts/excel_generator.py backend/app/extensions/contract_price/models.py backend/app/extensions/contract_price/schemas.py skills/public/contract-price-analysis/tests/test_category_pipeline.py
@@ -1123,7 +1170,7 @@ git commit -m "feat(cpa): category落库全链——双模型+幂等ALTER+聚类
 - Modify: `skills/public/contract-price-analysis/scripts/cli.py`（`_process_one_doc` 缓存读写;`run_parse`+`main`+`--re-ocr`）
 - Create: `skills/public/contract-price-analysis/tests/test_ocr_cache.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `skills/public/contract-price-analysis/tests/test_ocr_cache.py`:
 
@@ -1205,12 +1252,12 @@ def test_process_one_doc_cache_hit_skips_ocr(monkeypatch):
     assert calls["ocr"] == 2
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_ocr_cache.py -v`
 Expected: FAIL `ImportError: cannot import name 'to_cache'` / `AttributeError: ... re_ocr`
 
-- [ ] **Step 3: 实现 document_parser 序列化**
+- [x] **Step 3: 实现 document_parser 序列化**
 
 `document_parser.py` 追加:
 
@@ -1255,7 +1302,7 @@ def from_cache(data: dict) -> tuple:
 
 `parse_document` 签名扩一个参数（Task 8 用,一次改完）: `async def parse_document(file_bytes, filename, ocr_service_url, last_pages: int = 0)`，POST form 加 `data={"last_pages": last_pages} if last_pages else None`（httpx: `client.post(url, files=..., data=...)`）。
 
-- [ ] **Step 4: 实现 storage 缓存方法**
+- [x] **Step 4: 实现 storage 缓存方法**
 
 `storage.py` `ContractStore` 追加:
 
@@ -1274,7 +1321,7 @@ def from_cache(data: dict) -> tuple:
 
 文件头 import 区加 `import json`。
 
-- [ ] **Step 5: cli 接缓存 + re_ocr 参数**
+- [x] **Step 5: cli 接缓存 + re_ocr 参数**
 
 `_process_one_doc` 签名（L644）改为 `..., total_docs: int, re_ocr: bool = False)`；OCR 调用块（L673-674）替换为:
 
@@ -1296,12 +1343,12 @@ def from_cache(data: dict) -> tuple:
 `run_parse` 签名（L751）`run_parse(trigger="manual", run_id=None, force_key=None, re_ocr=False)`；gather 行（L796）各任务传 `re_ocr=re_ocr`。
 `main()`（L1005-1018）: `parser.add_argument("--re-ocr", action="store_true", help="reparse 时强制重 OCR(默认读 MinIO OCR 缓存)")`；parse 分支 `asyncio.run(run_parse(trigger=..., run_id=..., force_key=..., re_ocr=args.re_ocr))`。
 
-- [ ] **Step 6: 跑测试确认通过**
+- [x] **Step 6: 跑测试确认通过**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_ocr_cache.py tests/test_extract_strict.py -v`
 Expected: 全部 passed
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add skills/public/contract-price-analysis/scripts/document_parser.py skills/public/contract-price-analysis/scripts/storage.py skills/public/contract-price-analysis/scripts/cli.py skills/public/contract-price-analysis/tests/test_ocr_cache.py
@@ -1317,7 +1364,7 @@ git commit -m "feat(cpa): OCR结构化缓存(内容寻址ocr/{sha}.json)+--re-oc
 - Modify: `backend/app/extensions/contract_price/service.py:30-59`（run_pipeline_subprocess 透传）
 - Create: `backend/tests/test_contract_price_reparse_reocr.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `backend/tests/test_contract_price_reparse_reocr.py`:
 
@@ -1340,12 +1387,12 @@ def test_service_builds_reocr_flag():
 
 （端点级联调放到 Task 17 验收;此处锁服务层契约。）
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_contract_price_reparse_reocr.py -v`
 Expected: FAIL
 
-- [ ] **Step 3: 实现**
+- [x] **Step 3: 实现**
 
 `service.py` 签名（L30-37）加 `re_ocr: bool = False`；cmd 构造（L58-59）后加:
 
@@ -1380,12 +1427,12 @@ background 行（L213）改为:
     background.add_task(service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key, re_ocr)
 ```
 
-- [ ] **Step 4: 跑测试 + 后端不回归**
+- [x] **Step 4: 跑测试 + 后端不回归**
 
 Run: `cd backend && PYTHONPATH=. uv run pytest tests/test_contract_price_reparse_reocr.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add backend/app/extensions/contract_price/routers.py backend/app/extensions/contract_price/service.py backend/tests/test_contract_price_reparse_reocr.py
@@ -1402,7 +1449,7 @@ git commit -m "feat(cpa): reparse端点re_ocr参数透传子进程--re-ocr"
 - Modify: `skills/public/contract-price-analysis/scripts/cli.py`（`_process_one_doc` miss 时补 OCR 末页重试）
 - Create: `skills/public/contract-price-analysis/tests/test_metadata_fallback.py`
 
-- [ ] **Step 1: 写失败测试**
+- [x] **Step 1: 写失败测试**
 
 `skills/public/contract-price-analysis/tests/test_metadata_fallback.py`:
 
@@ -1442,12 +1489,12 @@ def test_no_fallback_when_front_pages_hit(monkeypatch):
     assert got[3] == "甲公司"
 ```
 
-- [ ] **Step 2: 跑测试确认失败**
+- [x] **Step 2: 跑测试确认失败**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_metadata_fallback.py -v`
 Expected: FAIL `AttributeError: ... _extract_project_fields_with_fallback`
 
-- [ ] **Step 3: ocr-service 支持 last_pages**
+- [x] **Step 3: ocr-service 支持 last_pages**
 
 `server.py` `/ocr` 签名与调用（L44-57）:
 
@@ -1497,7 +1544,7 @@ async def ocr(
 
 `_run` 签名加 `page_offset: int = 0`，`self._page(idx + page_offset, img, ...)`（页号保持全文绝对页码）。
 
-- [ ] **Step 4: cli 兜底函数 + 接线**
+- [x] **Step 4: cli 兜底函数 + 接线**
 
 `cli.py` 新增（`extract_project_fields` import 行旁）:
 
@@ -1530,12 +1577,12 @@ async def _extract_project_fields_with_fallback(
             )
 ```
 
-- [ ] **Step 5: 跑测试确认通过**
+- [x] **Step 5: 跑测试确认通过**
 
 Run: `cd skills/public/contract-price-analysis && python -m pytest tests/test_metadata_fallback.py tests/test_ocr_cache.py -v`
 Expected: 全部 passed
 
-- [ ] **Step 6: 重建 ocr 容器 + 冒烟**
+- [x] **Step 6: 重建 ocr 容器 + 冒烟**
 
 ```bash
 # 按仓库 compose 叠加重建(记忆: up -d 必须带全 -f)
@@ -1545,7 +1592,7 @@ curl -s http://localhost:8010/health
 
 Expected: `{"status":"ok","service":"eai-flow-ocr"}`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add mcp-server/ocr-service/server.py mcp-server/ocr-service/ocr_engine.py skills/public/contract-price-analysis/scripts/cli.py skills/public/contract-price-analysis/tests/test_metadata_fallback.py
@@ -1561,13 +1608,13 @@ git commit -m "feat(cpa): 元数据末页兜底——ocr-service last_pages区�
 **Files:**
 - Modify: `mcp-server/ocr-service/schemas.py`（OcrResponse/PageResult 加字段）
 - Modify: `mcp-server/ocr-service/ocr_engine.py`（`_run`/`_page` 方向试探）
-- Create: `mcp-server/ocr-service/test_rotation.py`（容器内可跑的实证脚本 → 转正式单测）
+- ~~Create: `mcp-server/ocr-service/test_rotation.py`~~ (已裁撤:旋转实证由会话探针+bug-1760645落地数据承载,引擎级回归由137页table_count==91基准守护)
 
-- [ ] **Step 1: 实证先行（容器内跑通再写引擎代码）**
+- [x] **Step 1: 实证先行（容器内跑通再写引擎代码）**
 
 本计划 Task 前已实测（会话内 2026-09-17）: 补充协议 p2 顺时针 90° 后 `tables=1 rows=13`、逆时针数字垃圾。把 `.wolf/tmp/cpa-samples/rot_test2.py` 的断言固化为测试: 将该样例 PDF 拷入容器跑 `rot_test2.py`,确认 CW tables>=1 且表头含 "物资名称"。（验收时用 `docker cp` + `docker exec`,不过 CI——ONNX 模型 + 真实扫描件属环境级测试,记录到 Task 17 runbook 手动执行。）
 
-- [ ] **Step 2: schemas 加字段**
+- [x] **Step 2: schemas 加字段**
 
 `mcp-server/ocr-service/schemas.py` 的 `OcrResponse` 类体加一行、`PageResult` 加一行:
 
@@ -1585,7 +1632,7 @@ class OcrResponse(BaseModel):
 
 （字段名按 schemas.py 既有样式对齐——pydantic BaseModel 追加带默认值字段是安全的。）
 
-- [ ] **Step 3: 引擎方向试探**
+- [x] **Step 3: 引擎方向试探**
 
 `ocr_engine.py` `_run`（L159-171）与 `_page`（L173-210）改造:
 
@@ -1596,7 +1643,7 @@ class OcrResponse(BaseModel):
         out = []
         fixed: list[int] = []
         for i, img in enumerate(pages, start=1):
-            pg = self._page(i + page_offset, img, with_text=i + page_offset <= text_pages)
+            pg = self._page(i + page_offset, img, with_text=i <= text_pages)  # 窗口相对门控(绝对门控会掐死Task8尾页兜底)
             if pg.orientation is not None:
                 fixed.append(pg.page_no)
             out.append(pg)
@@ -1668,7 +1715,7 @@ class OcrResponse(BaseModel):
         return best[2], best[3], best[4]
 ```
 
-- [ ] **Step 4: cli 透传 orientation_fixed_pages**
+- [x] **Step 4: cli 透传 orientation_fixed_pages**
 
 `parse_document` 改为返回三元组 `(tables, page_texts, orientation_fixed_pages)`（HTTP 路径取 `data.get("orientation_fixed_pages", [])`;缓存路径由 to_cache 携带）:
 
@@ -1700,7 +1747,7 @@ class OcrResponse(BaseModel):
 
 同步更新 Task 6/8 测试的解包（`fake_parse` 返回三元组;`from_cache` 断言三元组）。
 
-- [ ] **Step 5: 重建容器 + 成本基准**
+- [x] **Step 5: 重建容器 + 成本基准**
 
 ```bash
 docker compose -p eai-docker -f docker/docker-compose.base.yaml -f docker/docker-compose.dev.yaml up -d --build ocr
@@ -1710,7 +1757,7 @@ time curl -s -X POST http://localhost:8010/ocr -F "file=@temp/房建工程（桂
 
 记录耗时对比 Task 17 汇总表；补充协议样例复跑确认 p2/p3 出表（`orientation_fixed_pages == [2, 3]`）。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add mcp-server/ocr-service/schemas.py mcp-server/ocr-service/ocr_engine.py skills/public/contract-price-analysis/scripts/document_parser.py skills/public/contract-price-analysis/scripts/cli.py
@@ -1727,7 +1774,7 @@ git commit -m "feat(ocr): 页级方向归一化——0表页±90°试探取优+o
 - Modify: `frontend/src/extensions/contract-price/types.ts`（TableSeed/CpaConfig）
 - Create: `frontend/src/extensions/contract-price/components/SeedEditorDrawer.tsx`
 
-- [ ] **Step 1: 类型**
+- [x] **Step 1: 类型**
 
 `types.ts` 的 `CpaConfig`（L108-115）替换为:
 
@@ -1771,7 +1818,7 @@ export interface UnmatchedTable {
 }
 ```
 
-- [ ] **Step 2: SeedEditorDrawer 完整组件**
+- [x] **Step 2: SeedEditorDrawer 完整组件**
 
 `frontend/src/extensions/contract-price/components/SeedEditorDrawer.tsx`（新文件）:
 
@@ -1946,12 +1993,12 @@ export function SeedEditorDrawer({ open, seed, headerCells, saving, onClose, onS
 }
 ```
 
-- [ ] **Step 3: typecheck**
+- [x] **Step 3: typecheck**
 
 Run: `cd frontend && pnpm typecheck`
 Expected: 无新错误（该组件尚无人引用,允许未使用导出）
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/extensions/contract-price/types.ts frontend/src/extensions/contract-price/components/SeedEditorDrawer.tsx
@@ -1966,7 +2013,7 @@ git commit -m "feat(cpa-ui): TableSeed类型+SeedEditorDrawer(7角色锚点编�
 - Create: `frontend/src/extensions/contract-price/components/SeedRulesCard.tsx`
 - Modify: `frontend/src/extensions/contract-price/components/SettingsView.tsx`（整文件重写）
 
-- [ ] **Step 1: SeedRulesCard 完整组件**
+- [x] **Step 1: SeedRulesCard 完整组件**
 
 ```tsx
 "use client";
@@ -2065,7 +2112,7 @@ export function SeedRulesCard({ seeds, onChange, saving }: Props) {
 }
 ```
 
-- [ ] **Step 2: SettingsView 重写（整文件替换）**
+- [x] **Step 2: SettingsView 重写（整文件替换）**
 
 ```tsx
 "use client";
@@ -2186,14 +2233,14 @@ export function SettingsView() {
 }
 ```
 
-- [ ] **Step 3: typecheck + lint + 冒烟**
+- [x] **Step 3: typecheck + lint + 冒烟**
 
 Run: `cd frontend && pnpm typecheck && pnpm lint`
 Expected: 无新错误（`parse_mode` 仍留在 CpaConfig 类型——后端字段还在,仅 UI 不再暴露）
 
 浏览器冒烟（dev 已在 :3000）: 打开 `http://localhost:3000/contract-price/settings`，确认 6 条内置 seed 卡片可见、新建/编辑抽屉可开、dirty 提示出现、保存后消失。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/extensions/contract-price/components/SeedRulesCard.tsx frontend/src/extensions/contract-price/components/SettingsView.tsx
@@ -2211,7 +2258,7 @@ git commit -m "feat(cpa-ui): 配置tab重建——SeedRulesCard+命中统计+移
 - Modify: `frontend/src/extensions/contract-price/components/ContractsView.tsx`（docStage L51-67、状态单元格 L631-633、reparse 按钮 L636-660 传 re_ocr=false）
 - Modify: `frontend/src/extensions/contract-price/hooks.ts`（useReparseDocument 带 re_ocr）
 
-- [ ] **Step 1: UnmatchedTablesDrawer 完整组件**
+- [x] **Step 1: UnmatchedTablesDrawer 完整组件**
 
 ```tsx
 "use client";
@@ -2307,7 +2354,7 @@ export function UnmatchedTablesDrawer({ open, fileName, tables, onClose, onCreat
 }
 ```
 
-- [ ] **Step 2: ContractsView 集成（三处精确编辑）**
+- [x] **Step 2: ContractsView 集成（三处精确编辑）**
 
 (a) docStage（L51-67）在 `已解析` 返回前插入两个新状态:
 
@@ -2408,12 +2455,12 @@ const { data } = await api.post(`/documents/${id}/reparse?re_ocr=false`);
 
 （默认 false=走缓存;UI 的行内"重新解析"按钮 title 文案同步改为「重新解析(读OCR缓存,秒级)」。）
 
-- [ ] **Step 3: typecheck + 冒烟**
+- [x] **Step 3: typecheck + 冒烟**
 
 Run: `cd frontend && pnpm typecheck`
 浏览器: 上传一份测试 PDF（或对着现有桂北文档人工把某条 seed 改名）→ 解析 → 观察徽章/抽屉闭环。
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx frontend/src/extensions/contract-price/components/ContractsView.tsx frontend/src/extensions/contract-price/hooks.ts
@@ -2427,14 +2474,14 @@ git commit -m "feat(cpa-ui): 合同解析tab——待人工核验/无价格表�
 **Files:**
 - Modify: `frontend/src/extensions/contract-price/components/ItemsView.tsx`（表头 L542-552、行体、展开区、筛选区）
 
-- [ ] **Step 1: 表头加分类列（L543 规格列后）**
+- [x] **Step 1: 表头加分类列（L543 规格列后）**
 
 ```tsx
                       <TableHead className="whitespace-nowrap">规格</TableHead>
                       <TableHead className="whitespace-nowrap">分类</TableHead>
 ```
 
-- [ ] **Step 2: 行体加分类单元格（规格单元格后,同样式: 无值显示 —）**
+- [x] **Step 2: 行体加分类单元格（规格单元格后,同样式: 无值显示 —）**
 
 规格 `<td>` 之后插入:
 
@@ -2444,13 +2491,13 @@ git commit -m "feat(cpa-ui): 合同解析tab——待人工核验/无价格表�
                                   </td>
 ```
 
-- [ ] **Step 3: 展开区加分类行（DetailField 列表内,规格后）**
+- [x] **Step 3: 展开区加分类行（DetailField 列表内,规格后）**
 
 ```tsx
                         <DetailField label="分类" value={item.category} />
 ```
 
-- [ ] **Step 4: 筛选下拉（全部合同/全部任务旁）加分类筛选**
+- [x] **Step 4: 筛选下拉（全部合同/全部任务旁）加分类筛选**
 
 筛选 state 区（L186-191 附近）加:
 
@@ -2487,11 +2534,11 @@ git commit -m "feat(cpa-ui): 合同解析tab——待人工核验/无价格表�
 
 `types.ts` 的 `CpaItem` 加 `category: string | null;`。
 
-- [ ] **Step 5: typecheck + 冒烟**
+- [x] **Step 5: typecheck + 冒烟**
 
 Run: `cd frontend && pnpm typecheck && pnpm lint`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add frontend/src/extensions/contract-price/components/ItemsView.tsx frontend/src/extensions/contract-price/types.ts
@@ -2507,7 +2554,7 @@ git commit -m "feat(cpa-ui): 分项校验tab——分类列+分类筛选+展开�
 **Files:**
 - Create: `.wolf/tmp/cpa-acceptance-runbook.md`（执行记录,不提交）
 
-- [ ] **Step 1: 容器代码生效**
+- [x] **Step 1: 容器代码生效**
 
 ```bash
 # skill/后端代码改动 → gateway 内子进程跑管线,重启 gateway + 确认 skill 挂载
@@ -2516,12 +2563,12 @@ docker exec deer-flow-gateway python -c "import sys; sys.path.insert(0, '/app/sk
 ```
 Expected: `6`
 
-- [ ] **Step 2: 7 样例上传 + 解析（UI 或 CLI）**
+- [x] **Step 2: 7 样例上传 + 解析（UI 或 CLI）**
 
 UI: 合同解析 tab → 上传 `D:\18 辽宁创元\03 项目策划\中交北京三公司\合同样例\` 全部 7 份 → 开始解析。
 CLI 备选: `docker exec deer-flow-gateway python -m scripts.cli --phase upload --dir <容器内样例目录>`（文件需在容器内;UI 路径优先）。
 
-- [ ] **Step 3: 逐份核对（psql）**
+- [x] **Step 3: 逐份核对（psql）**
 
 ```bash
 docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "
@@ -2533,7 +2580,7 @@ FROM cpa_documents ORDER BY created_at DESC LIMIT 10;"
 ```
 Expected: ≥6 份 parsed 且 matched_seeds 非空;纯条款文档 no_tables;补充协议 parsed（方向纠偏生效,`parse_meta->'orientation_fixed_pages'` 含 2,3）。未匹配表全部出现在 unmatched 且不产 items（验收标准 6）。
 
-- [ ] **Step 4: 桂北回归**
+- [x] **Step 4: 桂北回归**
 
 ```bash
 # UI: 合同解析 tab → 桂北文档行 → 重新解析(缓存路径) → 计时
@@ -2541,7 +2588,7 @@ docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "SELECT coun
 ```
 Expected: ≈450 行（±5%）;抽查 3 个已知货物单价与改前一致。重解析耗时 <60s（缓存命中;对照全量 OCR 约 3-4 分钟）——验收标准 2/4。
 
-- [ ] **Step 5: 分类分簇抽查**
+- [x] **Step 5: 分类分簇抽查**
 
 ```bash
 docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "
@@ -2550,11 +2597,11 @@ WHERE goods_name LIKE '%钢筋%' GROUP BY goods_name, category ORDER BY goods_na
 ```
 Expected: 同名货物不同 category 分行存在——验收标准 3。
 
-- [ ] **Step 6: 溯源对齐抽查**
+- [x] **Step 6: 溯源对齐抽查**
 
 分项校验 tab → 任一 item → 溯源:纠偏页(补充协议)与普通页各抽一,bbox 红框落在正确单元格——验收标准 5。
 
-- [ ] **Step 7: 收尾提交**
+- [x] **Step 7: 收尾提交**
 
 ```bash
 cat >> skills/public/contract-price-analysis/README.md << 'EOF'

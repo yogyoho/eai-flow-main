@@ -88,3 +88,11 @@ PYTHONPATH=. python -m pytest tests/ -v
 | 流水线 | `POST /pipeline/run`、`GET /pipeline/runs/{id}/status` |
 
 部署:修改扩展后重启 gateway(`docker compose -p eai-docker restart gateway`),`cpa_` 表随共享 Base 在启动时自动创建。
+
+## v3: Seed 定位规则(2026-09-17)
+- 表格识别 = 严格 seed-only: `config.json → table_seeds`,内置 7 条(见 `scripts/seed_library.py`,与 backend seed_defaults.py 镜像同步)
+- 未匹配表零提取,记 `parse_meta.unmatched_tables`(goods_price 标签的无 seed 表同样可见);文档状态 no_tables/needs_review 语义见设计文档 §1.2
+- OCR 结构化结果按内容哈希缓存(`ocr/{sha256}.json`),重解析默认秒级;强制重 OCR: reparse `?re_ocr=true` / CLI `--re-ocr`
+- 同名货物按分类(分类行上下文)分簇;跨页/表头重复页分类续传
+- 旋转页自动纠偏(ocr-service 页级 ±90° 试探,`orientation_fixed_pages` 入 parse_meta);元数据末页兜底(last_pages=2)
+- 列对齐三层防线: bbox-x 语义带(空单元格不定义/两段式认领)→ 逐行 x/index 回退 → 表级算术重推(单价×工程量≈合价,`price_rediscovery` 入 parse_meta)
