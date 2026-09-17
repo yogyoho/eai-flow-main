@@ -381,6 +381,32 @@ const PersonalBlockNoteEditor = forwardRef<
     extensions: [AIExtension({ transport: aiTransport }), highlightExtension],
   });
 
+  // EAI-CUSTOM (计算书): detailsBlock 子树禁用拖拽。
+  // BlockNote 0.51 对自定义块子树的 dragstart 序列化会在 PM 剪贴板解析时抛
+  // RangeError: "Content hole not allowed in a leaf node spec"（子项无法拖出）。
+  // 用户已确认子项不需要拖拽——捕获阶段直接取消这类 dragstart。
+  useEffect(() => {
+    const dom = editor.domElement as HTMLElement | undefined;
+    if (!dom) return;
+    const guard = (e: DragEvent) => {
+      let node: HTMLElement | null = e.target as HTMLElement;
+      while (node && node !== dom) {
+        if (
+          node.querySelector?.(
+            ":scope > .react-renderer .details-block-wrapper",
+          )
+        ) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        node = node.parentElement;
+      }
+    };
+    dom.addEventListener("dragstart", guard, true);
+    return () => dom.removeEventListener("dragstart", guard, true);
+  }, [editor]);
+
   // 数学公式块转换逻辑已抽到 utils/mathBlocks.ts（EAI-CUSTOM，含标题内联公式修复 $V_s$）。
   // TEXT_BLOCK_TYPES / convertInlineMathInContent / prepareBlocksForMarkdownExport / transformMathInBlocks 来自该模块。
 
