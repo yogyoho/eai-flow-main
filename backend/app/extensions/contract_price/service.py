@@ -34,6 +34,7 @@ async def run_pipeline_subprocess(
     trigger: str = "manual",
     phase: str = "parse",
     force_key: str | None = None,
+    re_ocr: bool = False,
 ) -> None:
     """Run the skill CLI as a subprocess and record the outcome.
 
@@ -43,6 +44,8 @@ async def run_pipeline_subprocess(
 
     ``force_key``: re-parse a single MinIO object key (single-document reparse),
     bypassing the SHA-256 hash cache. doc_id is preserved via storage_uri upsert.
+
+    ``re_ocr``: re_ocr=True 强制重 OCR(绕过 MinIO OCR 缓存);默认读缓存仅重跑分类+提取。
     """
     cmd = [
         sys.executable,  # same interpreter (venv) as the gateway process
@@ -57,6 +60,8 @@ async def run_pipeline_subprocess(
     ]
     if force_key:
         cmd += ["--force-key", force_key]
+    if re_ocr:
+        cmd += ["--re-ocr"]
     env = dict(os.environ)
     env["PYTHONPATH"] = str(_SKILL_DIR) + os.pathsep + env.get("PYTHONPATH", "")
 

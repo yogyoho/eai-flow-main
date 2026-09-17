@@ -185,6 +185,7 @@ async def get_preview(
 async def reparse_document(
     doc_id: UUID,
     background: BackgroundTasks,
+    re_ocr: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
@@ -194,6 +195,8 @@ async def reparse_document(
     off a parse run scoped to that one object. The pipeline upserts by
     storage_uri, so the existing cpa_documents row is updated in place and its
     items are replaced (doc_id unchanged).
+
+    re_ocr=true 强制重 OCR;默认读 OCR 缓存仅重跑分类+提取(秒级)。
     """
     await crud.cleanup_stale_runs(db)
     if await crud.has_running_run(db, "parse"):
@@ -210,9 +213,9 @@ async def reparse_document(
         db,
         trigger_type="manual",
         status="running",
-        scope={"mode": "table", "phase": "parse", "started_by": current_user.username, "reparse": key},
+        scope={"mode": "table", "phase": "parse", "started_by": current_user.username, "reparse": key, "re_ocr": re_ocr},
     )
-    background.add_task(service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key)
+    background.add_task(service.run_pipeline_subprocess, db, run.id, "table", "manual", "parse", key, re_ocr)
     return PipelineRunResponse(run_id=run.id, status="running", message=f"reparse started: {key}")
 
 
