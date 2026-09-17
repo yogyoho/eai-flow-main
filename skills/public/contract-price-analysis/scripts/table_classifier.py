@@ -96,17 +96,27 @@ def _roles_x_from_data(rows, cell_bboxes, roles, header_rows, scan=8):
     the index path (_map_roles over the collapsed header — proven correct); x is
     only used to recover cells on drifted continuation pages. Reading the column
     x from data cells (which have clean, positionally-accurate bboxes) is far
-    more reliable. Takes the median x over up to ``scan`` data rows for stability.
+    more reliable.
 
-    Returns {role: median_x} or None when no role has any usable data cell."""
+    band = 该角色语义数据格 x 的中位数——只统计有真实文本的数据格,空单元格
+    不定义列带(bug-3400 二阶段: p94 实测 price_total 种子列数据行大多为空串,
+    空格参与中位数会把带钉在空列上);某角色在扫描窗口内没有任何非空数据格时,
+    该角色整体从结果省略(无语义带,迫使上层回退列号路径而非用空格位置冒充)。
+    Takes the median x over up to ``scan`` data rows for stability.
+
+    Returns {role: median_x} (仅含窗口内有非空数据格的角色) or None when no
+    role has any usable data cell."""
     if not cell_bboxes or not roles:
         return None
     xs: dict = {role: [] for role in roles}
     for ri in range(header_rows, min(header_rows + scan, len(rows))):
+        text_row = rows[ri] if ri < len(rows) else []
         bbox_row = cell_bboxes[ri] if ri < len(cell_bboxes) else []
         for role, ci in roles.items():
             if ci is None or ci >= len(bbox_row):
                 continue
+            if ci >= len(text_row) or not (text_row[ci] or "").strip():
+                continue  # 空单元格不定义列带
             xc = _x_center(bbox_row[ci])
             if xc is not None:
                 xs[role].append(xc)
@@ -121,6 +131,12 @@ def _roles_x_from_data(rows, cell_bboxes, roles, header_rows, scan=8):
 def _row_cells_by_x(text_row, bbox_row, roles_x, tol=0.06):
     """Map a data row's cells to roles by x-proximity (drift-proof).
 
+    两段式认领(bug-3400 二阶段): pass1 只允许非空文本格按距离贪心认领角色;
+    pass2 仍未认领的角色才可被空格认领(同样的 tol 与一格一角色约束)。
+    空格映射到角色本来就产出空值,让稍远一点的非空格优先是纯信息升级
+    (p94 实测: price_total 带内空格 dist 0.004 抢占,真合价 dist 0.053 被挡);
+    某角色该行真无值时仍由 pass2 落空/缺席,不发明值。``tol`` 保持 0.06 不放宽。
+
     Each role → the cell whose x-center is nearest its x-band; resolved greedily
     by smallest distance so two roles can't claim one cell. Roles with no cell
     within ``tol`` (page-normalized) are left absent. Returns {role: cell_text}."""
@@ -128,20 +144,24 @@ def _row_cells_by_x(text_row, bbox_row, roles_x, tol=0.06):
     cells = [(_x_center(bboxes[ci]) if ci < len(bboxes) else None, txt) for ci, txt in enumerate(text_row)]
     pairs = []
     for role, rx in roles_x.items():
-        for ci, (xc, _) in enumerate(cells):
+        for ci, (xc, txt) in enumerate(cells):
             if xc is None:
                 continue
-            pairs.append((abs(xc - rx), role, ci))
+            pairs.append((abs(xc - rx), role, ci, bool((txt or "").strip())))
     pairs.sort(key=lambda p: p[0])
     used_cells: set = set()
     out: dict = {}
-    for dist, role, ci in pairs:
-        if role in out or ci in used_cells:
-            continue
-        if dist > tol:
-            continue
-        out[role] = cells[ci][1]
-        used_cells.add(ci)
+    # pass1: 非空格优先;pass2: 剩余角色允许空格补位(共用 used_cells,一格一角色)
+    for pass_nonempty_only in (True, False):
+        for dist, role, ci, _nonempty in pairs:
+            if role in out or ci in used_cells:
+                continue
+            if dist > tol:
+                continue
+            if pass_nonempty_only and not _nonempty:
+                continue
+            out[role] = cells[ci][1]
+            used_cells.add(ci)
     return out
 
 

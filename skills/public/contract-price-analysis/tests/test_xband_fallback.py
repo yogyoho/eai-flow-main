@@ -14,7 +14,12 @@ from types import SimpleNamespace
 
 from scripts.cli import _extract_from_tables
 from scripts.seed_library import DEFAULT_TABLE_SEEDS
-from scripts.table_classifier import _roles_x_from_data, extract_items_seed, match_seed
+from scripts.table_classifier import (
+    _roles_x_from_data,
+    _row_cells_by_x,
+    extract_items_seed,
+    match_seed,
+)
 
 SEEDS = DEFAULT_TABLE_SEEDS
 SEED = next(s for s in SEEDS if s["id"] == "gcl-qd")
@@ -238,3 +243,68 @@ def test_totals_leak_end_to_end():
     )
     items, _meta = _extract_from_tables([t1, t2], "s3://b/guibei.pdf", SEEDS)
     assert not any(it["goods_name"] in ("合计", "小计", "总计", "511.00") for it in items)
+
+
+# ── 5) bug-3400 二阶段: 列带语义化 ──────────────────────────────────────────
+# 取证(.wolf/tmp/cpa-acceptance-runbook.md §9.2 复验): p94 表种子 price_total 列
+# (idx9)数据行大多为空串——空格参与中位数把带钉在空列上;真含税合价在 idx10。
+# row16 实弹: idx9 空格 dist 0.004 抢占 price_total 带, '83531.88'(idx10, dist 0.053)
+# 被挡在门外 → 行 price-less 丢弃(多孔砖墙/平整场地同类)。
+
+
+def test_roles_x_omits_role_with_only_empty_cells():
+    """空单元格不定义列带: 某角色扫描窗口内数据格全空 → 该角色从 roles_x 省略
+    (迫使上层回退列号路径,而非用空格位置冒充语义带)。"""
+    rows = [
+        ["1", "货物A", "", "", "", "", "", "", "", "", ""],
+        ["2", "货物B", "", "", "", "", "", "", "", "", ""],
+    ]
+    bboxes = [_clean_bbox_row(), _clean_bbox_row()]
+    roles = {"name": 1, "qty": 3, "price_total": 9}
+    roles_x = _roles_x_from_data(rows, bboxes, roles, header_rows=0)
+    assert roles_x is not None
+    assert "name" in roles_x
+    assert "qty" not in roles_x and "price_total" not in roles_x
+
+
+def test_two_pass_prefers_nonempty_cell_in_band():
+    """两段式认领: 角色带内最近格是空格(dist 0.004)但有非空格(dist 0.055<tol)
+    → 取非空值(旧实现被空格抢占产出空值——纯信息损失)。"""
+    row = ["", "", "", "", "", "", "", "", "83531.88", ""]
+    bboxes = [
+        _bb(0.05), _bb(0.10), _bb(0.20), _bb(0.30), _bb(0.40),
+        _bb(0.50), _bb(0.60), _bb(0.64), _bb(0.6714), _bb(0.7224),
+    ]
+    cells = _row_cells_by_x(row, bboxes, {"price_total": 0.7264})
+    assert cells["price_total"] == "83531.88"
+
+
+def test_role_with_only_empty_cell_in_band_stays_empty():
+    """带内只有空格 → 角色仍空(pass2 认领空格,不发明值)。"""
+    row = ["", "", "", "", "", "", "", "", "", "", ""]
+    cells = _row_cells_by_x(row, _clean_bbox_row(), {"name": COL_X[1], "qty": COL_X[3], "price_total": COL_X[9]})
+    assert cells.get("name", "") == ""
+    assert cells.get("qty", "") == ""
+    assert cells.get("price_total", "") == ""
+
+
+def test_p94_row_price_reaches_real_total_via_two_pass():
+    """实弹 p94 row16(桂北 OCR 缓存): 空格 idx9(dist 0.004)曾抢占 price_total 带,
+    真合价 '83531.88'(idx10, dist 0.053<tol)被挡 → 两段式后非空优先取真值,
+    反算可得旧基线单价 1314.37(83531.88/63.553)。"""
+    row = [
+        "12", "现浇构件钢筋", "t", "63.553", "1205.84", "76634.75",
+        "9%", "", "6897.131314.37", "", "83531.88",
+    ]
+    bboxes = [
+        [0.1491, 0.7011, 0.1988, 0.7444], [0.2079, 0.7017, 0.3106, 0.7415],
+        [0.2928, 0.7030, 0.3533, 0.7424], [0.3536, 0.7034, 0.4056, 0.7431],
+        [0.4116, 0.7021, 0.4853, 0.7418], [0.4776, 0.7016, 0.5611, 0.7409],
+        [0.5591, 0.7017, 0.6192, 0.7407], [0.6042, 0.7030, 0.6575, 0.7419],
+        [0.6413, 0.7036, 0.6980, 0.7420], [0.6898, 0.7034, 0.7547, 0.7424],
+        [0.7318, 0.7052, 0.8267, 0.7455],
+    ]
+    cells = _row_cells_by_x(row, bboxes, {"name": 0.26416, "qty": 0.38110, "price_total": 0.72642})
+    assert cells["name"] == "现浇构件钢筋"
+    assert cells["qty"] == "63.553"
+    assert cells["price_total"] == "83531.88"  # 非空优先: idx10(dist 0.053) 胜 idx9 空格(dist 0.004)
