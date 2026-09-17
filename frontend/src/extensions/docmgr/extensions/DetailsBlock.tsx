@@ -10,7 +10,7 @@ export const DetailsBlock = createReactBlockSpec(
     type: "detailsBlock",
     content: "inline",
     propSchema: {
-      collapsed: { default: false, values: [false, true] },
+      collapsed: { default: true, values: [false, true] },
     },
   },
   {

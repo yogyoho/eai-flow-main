@@ -95,7 +95,8 @@ export function buildBlocksWithDetails(
       : [];
     result.push({
       type: DETAILS_BLOCK_TYPE,
-      props: { collapsed: false },
+      // 对齐工件区语义：<details> 不带 open 属性 = 默认收起
+      props: { collapsed: true },
       content: summaryContent,
       children: seg.inner ? buildBlocksWithDetails(seg.inner, parse) : [],
     });

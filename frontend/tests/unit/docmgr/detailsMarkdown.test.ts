@@ -52,7 +52,7 @@ test("buildBlocksWithDetails: 生成 detailsBlock 节点（summary/children/嵌�
   expect(blocks[0]!.type).toBe("paragraph");
   const details = blocks[1]!;
   expect(details.type).toBe("detailsBlock");
-  expect(details.props!.collapsed).toBe(false);
+  expect(details.props!.collapsed).toBe(true); // <details> 默认收起（对齐工件区）
   expect(details.content).toEqual([
     { type: "text", text: "计算过程", styles: {} },
   ]);

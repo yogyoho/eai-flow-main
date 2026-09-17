@@ -96,8 +96,9 @@
 }
 .details-block-marker {
   display: inline-block;
-  margin-right: 2px;
-  font-size: 0.9em;
+  margin-right: 3px;
+  font-size: 1.2em;
+  line-height: 1;
   color: hsl(var(--foreground));
 }
 
