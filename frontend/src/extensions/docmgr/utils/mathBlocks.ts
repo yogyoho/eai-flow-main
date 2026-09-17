@@ -13,6 +13,7 @@ export const TEXT_BLOCK_TYPES = new Set([
   "numberedListItem",
   "checkListItem",
   "heading",
+  "blockQuote", // EAI-CUSTOM: 引用块内联公式（计算书常以引用块包公式说明）
 ]);
 
 // 只有 paragraph 类块才允许被整段 $$...$$ 替换成独立 equation 块。
@@ -100,7 +101,9 @@ export function convertInlineMathInContent(content: InlineNode[]): {
 export function prepareBlocksForMarkdownExport(
   blocks: BlockNode[],
 ): BlockNode[] {
-  return blocks.map((block: BlockNode) => {
+  // EAI-CUSTOM (计算书bug): 导出同样要递归子块——嵌套列表项里的 latex 节点
+  // 不回写成 $...$ 的话，blocksToMarkdownLossy 会静默丢弃，保存即丢公式。
+  const converted = blocks.map((block: BlockNode) => {
     // equation block → paragraph with $$latex$$
     if (block.type === "equation") {
       const latex: string = block.props?.latex ?? "";
@@ -160,6 +163,11 @@ export function prepareBlocksForMarkdownExport(
     }
     return block;
   });
+  return converted.map((b) =>
+    b.children && b.children.length > 0
+      ? { ...b, children: prepareBlocksForMarkdownExport(b.children) }
+      : b,
+  );
 }
 
 // ── 加载转换 ─────────────────────────────────────────────────────────
@@ -302,5 +310,11 @@ export function transformMathInBlocks(blocks: BlockNode[]): BlockNode[] {
     merged.push(block);
     i++;
   }
-  return merged;
+  // EAI-CUSTOM (计算书bug): 递归子块——嵌套列表项（无编号分项）里的 $...$ 同样要转换，
+  // 否则「* 计算过程」下的 * 公式：$Q_e...$ 子项保持字面文本不渲染。
+  return merged.map((b) =>
+    b.children && b.children.length > 0
+      ? { ...b, children: transformMathInBlocks(b.children) }
+      : b,
+  );
 }

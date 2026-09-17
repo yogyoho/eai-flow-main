@@ -189,3 +189,124 @@ test("convertInlineMathInContent: 无公式 → changed=false 原样返回", () 
   expect(changed).toBe(false);
   expect(content).toEqual(nodes); // 内容不变(返回新数组但节点为原引用,不改原对象)
 });
+
+// ── Bug 回归: 嵌套列表子项（无编号分项）里的 $...$ 不渲染 ─────────────────
+// 场景: 计算书「* 计算过程」下嵌套 * 公式：$Q_e...$ 等子项，transformMathInBlocks
+// 只遍历顶层块、不递归 children，子项里的公式保持字面 $...$ 文本。
+test("transformMathInBlocks: 嵌套列表子项内联公式 → latex 节点", () => {
+  const blocks = [
+    {
+      id: "li1",
+      type: "bulletListItem",
+      content: [{ type: "text", text: "计算过程", styles: {} }],
+      children: [
+        {
+          id: "li1-1",
+          type: "bulletListItem",
+          content: [
+            { type: "text", text: "公式：$Q_{e} = Q \times K_{ZF}$", styles: {} },
+          ],
+        },
+        {
+          id: "li1-2",
+          type: "bulletListItem",
+          content: [
+            {
+              type: "text",
+              text: "取值：$K_{ZF}$ = 0.001461 1/℃（蒸发损失系数）",
+              styles: {},
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  const result = transformMathInBlocks(blocks);
+  const children = result[0]!.children!;
+  expect(children[0]!.content).toEqual([
+    { type: "text", text: "公式：", styles: {} },
+    { type: "latex", props: { latex: "Q_{e} = Q \times K_{ZF}", displayMode: false } },
+  ]);
+  expect(children[1]!.content).toEqual([
+    { type: "text", text: "取值：", styles: {} },
+    { type: "latex", props: { latex: "K_{ZF}", displayMode: false } },
+    { type: "text", text: " = 0.001461 1/℃（蒸发损失系数）", styles: {} },
+  ]);
+});
+
+test("transformMathInBlocks: 更深层嵌套（二级子项）同样转换", () => {
+  const blocks = [
+    {
+      id: "li1",
+      type: "bulletListItem",
+      content: [{ type: "text", text: "计算过程", styles: {} }],
+      children: [
+        {
+          id: "li1-1",
+          type: "bulletListItem",
+          content: [{ type: "text", text: "上层", styles: {} }],
+          children: [
+            {
+              id: "li1-1-1",
+              type: "bulletListItem",
+              content: [{ type: "text", text: "代入：$18000 \times 8$", styles: {} }],
+            },
+          ],
+        },
+      ],
+    },
+  ];
+  const result = transformMathInBlocks(blocks);
+  const deep =
+    result[0]!.children![0]!.children![0]!;
+  expect(deep.content).toEqual([
+    { type: "text", text: "代入：", styles: {} },
+    { type: "latex", props: { latex: "18000 \times 8", displayMode: false } },
+  ]);
+});
+
+// ── Bug 回归: 导出时嵌套子项里的 latex 节点要回写成 $...$，否则保存丢公式 ──
+test("prepareBlocksForMarkdownExport: 嵌套子项 latex → $...$ 文本", () => {
+  const blocks = [
+    {
+      id: "li1",
+      type: "bulletListItem",
+      content: [{ type: "text", text: "公式：", styles: {} }],
+      children: [
+        {
+          id: "li1-1",
+          type: "bulletListItem",
+          content: [
+            { type: "latex", props: { latex: "Q_{e}", displayMode: false } },
+            { type: "text", text: " = Q x K", styles: {} },
+          ],
+        },
+      ],
+    },
+  ];
+  const result = prepareBlocksForMarkdownExport(blocks);
+  expect(result[0]!.children![0]!.content).toEqual([
+    { type: "text", text: "$Q_{e}$", styles: {} },
+    { type: "text", text: " = Q x K", styles: {} },
+  ]);
+});
+
+// ── 引用块内联公式 ────────────────────────────────────────────────────────
+test("transformMathInBlocks: blockQuote 内 $...$ → latex 节点（结构保留）", () => {
+  const blocks = [
+    {
+      id: "q1",
+      type: "blockQuote",
+      content: [
+        { type: "text", text: "依据 GB/T 50746，$K_{ZF}$ 按表 3.3.3 取值", styles: {} },
+      ],
+    },
+  ];
+  const result = transformMathInBlocks(blocks);
+  expect(result[0]!.type).toBe("blockQuote");
+  expect(result[0]!.content).toEqual([
+    { type: "text", text: "依据 GB/T 50746，", styles: {} },
+    { type: "latex", props: { latex: "K_{ZF}", displayMode: false } },
+    { type: "text", text: " 按表 3.3.3 取值", styles: {} },
+  ]);
+});
