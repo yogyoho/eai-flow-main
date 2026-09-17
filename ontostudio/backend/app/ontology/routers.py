@@ -13,7 +13,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 # EAI-CUSTOM(2026-09-17 迁出独立): 原 gateway 依赖 app.extensions.auth.middleware /
-# app.extensions.schemas → 本地占位 app.auth（Task 2 落地 JWT 验签前无鉴权直通）。
+# app.extensions.schemas → 本地 app.auth（S1 Task 2 已实装 HS256 JWT 验签, v1 superadmin-only）。
 from app.auth import CurrentUser, require_permission
 from app.ontology.connectors import OntologyConnectors
 from app.ontology.engine import Engine, OntologyError
