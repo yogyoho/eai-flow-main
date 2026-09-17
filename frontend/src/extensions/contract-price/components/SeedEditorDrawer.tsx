@@ -34,8 +34,16 @@ export function emptySeed(): SeedDraft {
     id: "",
     display_name: "",
     title_keywords: [],
-    columns: { name: [], spec: [], qty: [], unit: [], price_unit: [], price_total: [], price_untaxed: [] },
-    exclude: { price_unit: ["不含税"] },
+    columns: {
+      name: [],
+      spec: [],
+      qty: [],
+      unit: [],
+      price_unit: [],
+      price_total: [],
+      price_untaxed: [],
+    },
+    exclude: { price_unit: ["不含税"], price_total: ["不含税"] },
     source: null,
   };
 }
@@ -58,7 +66,11 @@ export function draftFromHeader(headerCells: string[], title = ""): SeedDraft {
   for (const { key } of SEED_ROLES) {
     for (const token of DRAFT_TOKENS[key] ?? []) {
       const ci = headerCells.findIndex(
-        (h, i) => !used.has(i) && h && h.includes(token) && !(key === "price_unit" && h.includes("不含税")),
+        (h, i) =>
+          !used.has(i) &&
+          h &&
+          h.includes(token) &&
+          !(key === "price_unit" && h.includes("不含税")),
       );
       if (ci >= 0) {
         const cell = headerCells[ci];
@@ -82,16 +94,28 @@ interface Props {
   onSave: (seed: SeedDraft) => void;
 }
 
-export function SeedEditorDrawer({ open, seed, headerCells, saving, onClose, onSave }: Props) {
+export function SeedEditorDrawer({
+  open,
+  seed,
+  headerCells,
+  saving,
+  onClose,
+  onSave,
+}: Props) {
   const [draft, setDraft] = useState<SeedDraft | null>(seed);
 
-  useEffect(() => setDraft(seed), [seed]);
+  useEffect(() => {
+    if (open) setDraft(seed);
+  }, [open, seed]);
 
   const candidates = useMemo(
     () =>
-      Array.from(new Set([...(headerCells ?? []), ...(draft ? Object.values(draft.columns).flat() : [])])).filter(
-        Boolean,
-      ),
+      Array.from(
+        new Set([
+          ...(headerCells ?? []),
+          ...(draft ? Object.values(draft.columns).flat() : []),
+        ]),
+      ).filter(Boolean),
     [headerCells, draft],
   );
   if (!open || !draft) return null;
@@ -112,16 +136,22 @@ export function SeedEditorDrawer({ open, seed, headerCells, saving, onClose, onS
     draft.id.trim() &&
     draft.display_name.trim() &&
     draft.columns.name.length > 0 &&
-    (draft.columns.price_unit.length > 0 || draft.columns.price_total.length > 0);
+    (draft.columns.price_unit.length > 0 ||
+      draft.columns.price_total.length > 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex justify-end bg-black/40"
+      onClick={onClose}
+    >
       <div
-        className="h-full w-[520px] max-w-[92vw] overflow-y-auto border-l bg-background p-6"
+        className="bg-background h-full w-[520px] max-w-[92vw] overflow-y-auto border-l p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">{seed?.id ? "编辑定位规则" : "新建定位规则"}</h2>
+          <h2 className="text-lg font-bold">
+            {seed?.id ? "编辑定位规则" : "新建定位规则"}
+          </h2>
           <Button size="icon" variant="ghost" onClick={onClose}>
             <X className="h-4 w-4" />
           </Button>
@@ -131,7 +161,12 @@ export function SeedEditorDrawer({ open, seed, headerCells, saving, onClose, onS
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-sm font-medium">规则 ID *</label>
-              <Input value={draft.id} disabled={!!seed?.id} placeholder="如 gcl-qd" onChange={(e) => set({ id: e.target.value })} />
+              <Input
+                value={draft.id}
+                disabled={!!seed?.id}
+                placeholder="如 gcl-qd"
+                onChange={(e) => set({ id: e.target.value })}
+              />
             </div>
             <div className="space-y-1">
               <label className="text-sm font-medium">规则名称 *</label>
@@ -144,22 +179,34 @@ export function SeedEditorDrawer({ open, seed, headerCells, saving, onClose, onS
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium">表名关键词（逗号分隔,仅用于多规则消歧）</label>
+            <label className="text-sm font-medium">
+              表名关键词（逗号分隔,仅用于多规则消歧）
+            </label>
             <Input
               value={draft.title_keywords.join("，")}
               placeholder="工程量清单，清单计价"
               onChange={(e) =>
-                set({ title_keywords: e.target.value.split(/[,，\n]/).map((s) => s.trim()).filter(Boolean) })
+                set({
+                  title_keywords: e.target.value
+                    .split(/[,，\n]/)
+                    .map((s) => s.trim())
+                    .filter(Boolean),
+                })
               }
             />
           </div>
 
           <div className="rounded-lg border p-3">
-            <div className="mb-2 text-sm font-medium">列锚点（子串匹配;多个用逗号分隔）</div>
+            <div className="mb-2 text-sm font-medium">
+              列锚点（子串匹配;多个用逗号分隔）
+            </div>
             <div className="space-y-2">
               {SEED_ROLES.map(({ key, label, required }) => (
-                <div key={key} className="grid grid-cols-[110px_1fr] items-center gap-2">
-                  <label className="text-xs text-muted-foreground">
+                <div
+                  key={key}
+                  className="grid grid-cols-[110px_1fr] items-center gap-2"
+                >
+                  <label className="text-muted-foreground text-xs">
                     {label}
                     {required ? " *" : ""}
                   </label>
@@ -189,7 +236,7 @@ export function SeedEditorDrawer({ open, seed, headerCells, saving, onClose, onS
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="text-muted-foreground mt-2 text-xs">
               锚点按归一化子串匹配（忽略空格/（…）括注/全半角）。「不含税」列自动排除出含税单价。
             </p>
           </div>
@@ -202,7 +249,11 @@ export function SeedEditorDrawer({ open, seed, headerCells, saving, onClose, onS
           <Button variant="ghost" onClick={onClose}>
             取消
           </Button>
-          {!valid && <span className="text-xs text-muted-foreground">需规则ID、名称、货物名称列、至少一个价格列</span>}
+          {!valid && (
+            <span className="text-muted-foreground text-xs">
+              需规则ID、名称、货物名称列、至少一个价格列
+            </span>
+          )}
         </div>
       </div>
     </div>

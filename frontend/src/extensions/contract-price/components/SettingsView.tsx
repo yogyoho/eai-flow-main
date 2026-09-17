@@ -1,146 +1,112 @@
 "use client";
 
+/** 配置页 v3: seed 规则库(主) + 定时任务 + 聚类高级参数(折叠)。
+ *  移除: 解析模式(v2 已废弃单一 OCR 路径)与货物表名关键字(被 seed 库取代)。
+ *  dirty 跟踪 + 保存 clamp + toast 自动消隐。 */
+
 import { PackageSearch, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
+import { SeedRulesCard } from "@/extensions/contract-price/components/SeedRulesCard";
 import { useConfig, useUpdateConfig } from "@/extensions/contract-price/hooks";
 import type { CpaConfig } from "@/extensions/contract-price/types";
+
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, v));
 
 export function SettingsView() {
   const { data, isLoading } = useConfig();
   const updateConfig = useUpdateConfig();
   const [form, setForm] = useState<CpaConfig | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
-    if (data) {
-      setForm({
-        parse_mode: data.parse_mode,
-        cluster_eps: data.cluster_eps,
-        cluster_min_samples: data.cluster_min_samples,
-        scheduled_enabled: data.scheduled_enabled,
-        schedule_cron: data.schedule_cron,
-        price_table_keywords: data.price_table_keywords ?? [],
-        table_seeds: data.table_seeds ?? [], // EAI-CUSTOM bug-3306勘误: CpaConfig新增table_seeds必填字段,表单构造补齐(容错旧网关未返回)
-      });
-    }
-  }, [data]);
+    if (data && !form)
+      setForm({ ...data, table_seeds: data.table_seeds ?? [] });
+  }, [data, form]);
 
   if (isLoading || !form) {
     return (
       <div className="p-8">
-        <PageHeader title="配置" description="分组参数与定时任务设置" icon={<PackageSearch className="w-4 h-4" />} />
+        <PageHeader
+          title="配置"
+          description="表格定位规则与解析参数"
+          icon={<PackageSearch className="h-4 w-4" />}
+        />
         <Card className="mt-6">
           <CardContent className="p-6">
-            <div className="h-40 animate-pulse rounded bg-muted" />
+            <div className="bg-muted h-40 animate-pulse rounded" />
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const set = <K extends keyof CpaConfig>(key: K, value: CpaConfig[K]) =>
+  const set = <K extends keyof CpaConfig>(key: K, value: CpaConfig[K]) => {
     setForm((f) => (f ? { ...f, [key]: value } : f));
+    setDirty(true);
+  };
+
+  const save = () => {
+    if (!form) return;
+    updateConfig.mutate(
+      {
+        ...form,
+        cluster_eps: clamp(Number(form.cluster_eps) || 0.6, 0.1, 1.0),
+        cluster_min_samples: clamp(
+          Math.round(Number(form.cluster_min_samples) || 2),
+          1,
+          10,
+        ),
+      },
+      { onSuccess: () => setDirty(false) },
+    );
+  };
 
   return (
     <div className="space-y-6 p-8">
-      <PageHeader title="配置" description="聚类参数与定时任务设置（修改后下次分析生效）" />
+      <PageHeader
+        title="配置"
+        description="表格定位规则与解析参数（修改后下次解析生效）"
+        icon={<PackageSearch className="h-4 w-4" />}
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>解析与聚类</CardTitle>
-          <CardDescription>
-            解析模式决定合同分项的提取方式；聚类 eps 越小，归并越严格。
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">解析模式</label>
-            <Select value={form.parse_mode} onValueChange={(v) => set("parse_mode", v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="table">表格</SelectItem>
-                <SelectItem value="list">清单列表</SelectItem>
-                <SelectItem value="mixed">混合（表格优先）</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">聚类 eps（相似度距离阈值）</label>
-            <Input
-              type="number"
-              step="0.05"
-              min="0.1"
-              max="1.0"
-              value={form.cluster_eps}
-              onChange={(e) => set("cluster_eps", Number(e.target.value))}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">最小成簇样本数</label>
-            <Input
-              type="number"
-              min="1"
-              max="10"
-              value={form.cluster_min_samples}
-              onChange={(e) => set("cluster_min_samples", Number(e.target.value))}
-            />
-          </div>
-
-          <div className="space-y-1.5 sm:col-span-2">
-            <label className="text-sm font-medium text-foreground">货物表名关键字</label>
-            <textarea
-              className="flex min-h-[88px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={form.price_table_keywords.join("\n")}
-              placeholder={"每行一个，如：\n工程量清单\n设备清单\n报价单"}
-              onChange={(e) =>
-                set(
-                  "price_table_keywords",
-                  e.target.value
-                    .split(/[\n,，]/)
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                )
-              }
-            />
-            <p className="text-xs text-muted-foreground">
-              表首含任一关键字的表强判定为货物表（即使列头无明确单价）。不同合同表名不同，按项目定制。下次分析生效。
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <SeedRulesCard
+        seeds={form.table_seeds}
+        onChange={(s) => set("table_seeds", s)}
+        saving={updateConfig.isPending}
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>定时任务</CardTitle>
-          <CardDescription>启用后按 cron 表达式自动增量分析。</CardDescription>
+          <CardDescription>启用后按 cron 表达式自动增量解析。</CardDescription>
         </CardHeader>
         <CardContent className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex items-center gap-2 text-sm text-foreground">
+          <label className="text-foreground flex items-center gap-2 text-sm">
             <input
               type="checkbox"
+              className="accent-primary"
               checked={form.scheduled_enabled}
               onChange={(e) => set("scheduled_enabled", e.target.checked)}
-              className="accent-primary"
             />
-            启用定时分析
+            启用定时解析
           </label>
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">Cron 表达式</label>
+            <label className="text-foreground text-sm font-medium">
+              Cron 表达式
+            </label>
             <Input
               value={form.schedule_cron ?? ""}
               placeholder="例如：0 2 * * *（每天 02:00）"
@@ -150,17 +116,55 @@ export function SettingsView() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader
+          className="cursor-pointer select-none"
+          onClick={() => setShowAdvanced((v) => !v)}
+        >
+          <CardTitle className="text-base">高级：聚类参数</CardTitle>
+          <CardDescription>eps 越小归并越严格;一般无需调整。</CardDescription>
+        </CardHeader>
+        {showAdvanced && (
+          <CardContent className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-foreground text-sm font-medium">
+                聚类 eps（0.1–1.0）
+              </label>
+              <Input
+                type="number"
+                step="0.05"
+                value={form.cluster_eps}
+                onChange={(e) => set("cluster_eps", Number(e.target.value))}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-foreground text-sm font-medium">
+                最小成簇样本数（1–10）
+              </label>
+              <Input
+                type="number"
+                value={form.cluster_min_samples}
+                onChange={(e) =>
+                  set("cluster_min_samples", Number(e.target.value))
+                }
+              />
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       <div className="flex items-center gap-3">
-        <Button onClick={() => updateConfig.mutate(form)} disabled={updateConfig.isPending}>
+        <Button onClick={save} disabled={updateConfig.isPending || !dirty}>
           <Save className="h-4 w-4" />
           {updateConfig.isPending ? "保存中…" : "保存配置"}
         </Button>
-        {updateConfig.isSuccess ? (
-          <span className="text-sm text-success">已保存</span>
-        ) : null}
+        {dirty && <span className="text-sm text-amber-600">有未保存修改</span>}
+        {updateConfig.isSuccess && !dirty && (
+          <span className="text-success text-sm">已保存</span>
+        )}
         {updateConfig.isError ? (
-          <span className="text-sm text-destructive">
-            保存失败：{(updateConfig.error).message}
+          <span className="text-destructive text-sm">
+            保存失败：{updateConfig.error.message}
           </span>
         ) : null}
       </div>
