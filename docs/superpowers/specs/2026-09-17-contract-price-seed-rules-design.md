@@ -121,6 +121,7 @@ match_seed(rows, seeds) → (seed, roles{角色:列号}, header_rows) | None
 - **OCR 缓存**:首次解析把 OcrResponse(去 preview_png_b64,preview PNG 本就单独存 MinIO)写 `ocr/{doc_id}.json`;文档重传(内容变更)时失效删除;缓存缺失自动回退全量 OCR
 - **方向归一化(ocr-service `ocr_engine.py`)**:页级触发——某页 0 表 + 有文本信号 → ±90° 试探重 OCR → 取表头得分/置信度高者;纠偏后的页面图像作为该页基准(bbox/preview PNG/页尺寸全部随之,溯源对齐);触发要保守,成本上限在实施时以 137 页样例基准验证(目标:正常文档总耗时增幅 <10%);parse_meta 记 `orientation_fixed_pages`
 - reparse 端点加 `?re_ocr=true|false`(默认 false)
+- **合同元数据(项目名称/供应商乙方/签订日期)提取时机 = 解析时**(现状 `project_fields.py` 搭前 3 页整页 OCR 便车,零额外成本;UI 已有手填兜底)。本设计补一个缺口:**末页兜底**——前 3 页正则 miss(乙方/签订日期为 None)时补 OCR 最后 1-2 页重试(签字页常在末尾,补充协议尤甚;仅 miss 触发,成本有界)。OCR 缓存落地后,未来改标签词表从缓存重导出字段是秒级,该时机不锁死改进
 
 ---
 
@@ -179,6 +180,7 @@ match_seed(rows, seeds) → (seed, roles{角色:列号}, header_rows) | None
 | `backend/.../contract_price/schemas.py` | 改:ConfigOut/Update + table_seeds;DocumentOut.parse_meta 透传新键 |
 | `backend/.../contract_price/routers.py` | 改:reparse +re_ocr 参数 |
 | `mcp-server/ocr-service/ocr_engine.py` | 改:页级方向归一化 + orientation_fixed_pages |
+| `skills/.../scripts/project_fields.py` | 改:末页兜底(miss 时补 OCR 最后 1-2 页重试) |
 | `frontend/.../contract-price/components/SettingsView.tsx` | 改:SeedRulesCard + 移除死控件 + dirty/clamp + 视觉对齐 |
 | `frontend/.../contract-price/components/SeedEditorDrawer.tsx` | **新增**(与合同解析 tab 共用) |
 | `frontend/.../contract-price/components/ContractsView.tsx` | 改:新状态徽章 + 未匹配表抽屉入口 + 命中规则名 |
@@ -190,7 +192,7 @@ match_seed(rows, seeds) → (seed, roles{角色:列号}, header_rows) | None
 
 ## 8. 实施阶段
 
-1. **P1 后端管线**:seed schema+seed_library+match_seed+分类行+严格模式+unmatched_tables+OCR 缓存(含单测,样例 JSON 回放)
+1. **P1 后端管线**:seed schema+seed_library+match_seed+分类行+严格模式+unmatched_tables+OCR 缓存+元数据末页兜底(含单测,样例 JSON 回放)
 2. **P2 OCR 方向归一化**:ocr_engine 页级试探(137 页样例成本基准)
 3. **P3 前端配置 tab**:SeedRulesCard + SeedEditorDrawer + 死控件移除/dirty/clamp
 4. **P4 前端合同解析+分项校验**:新徽章 + UnmatchedTablesDrawer 闭环 + 分类列
@@ -211,3 +213,4 @@ match_seed(rows, seeds) → (seed, roles{角色:列号}, header_rows) | None
 1. 方向归一化触发器的成本精确调优(0 表页全部试探 vs 廉价方向签名预筛)——P2 以 137 页样例基准定
 2. seed 列锚点在同一表头歧义(如两列都含"单价")时的消歧细则(声明顺序 vs 右优先)——P1 实测样例后定,默认声明顺序
 3. 补充协议调价表的"调整后数量"是否入 qty(影响反算)——P5 验收时以提取结果定
+4. 乙方/签订日期的 LLM 兜底识别(正则+末页兜底仍 miss 时)——默认不做,验收后按 miss 率定
