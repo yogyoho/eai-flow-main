@@ -86,6 +86,11 @@ services:
     container_name: prod-eai-flow-ontostudio-backend
     profiles:
       - ontostudio
+    # Network alias `ontostudio`: extensions_config.json 的 MCP URL 主机名
+    # (http://ontostudio:8005/mcp/*) 依赖此 DNS 别名——照 dev compose 的
+    # text-to-cad/cad 先例（无 alias = DNS NXDOMAIN, MCP 通道全断）。
+    # Rollback: 删除 aliases 块并同时把 extensions_config.json 两端点
+    # enabled 翻 false（离线默认关,见 .env ONTOSTUDIO_PROFILE 说明）。
     depends_on:
       postgres-ext:
         condition: service_healthy
@@ -108,7 +113,9 @@ services:
     env_file:
       - .env
     networks:
-      - prod-eai-flow-net
+      prod-eai-flow-net:
+        aliases:
+          - ontostudio
     restart: unless-stopped
     # slim 镜像无 curl → python urllib 探活
     healthcheck:
