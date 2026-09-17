@@ -14,6 +14,7 @@ import asyncio
 import base64
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -195,6 +196,181 @@ def _extract_tech_params(goods_name: str) -> dict:
     return params
 
 
+_NUM_CLEAN_RE = re.compile(r"^\d+(?:\.\d+)?$")
+
+
+def _clean_cell_num(text: str):
+    """轻量干净数值探测: 去千分位逗号后全串是单个数字才返回 float。
+    空格/无分隔粘连锁、'9%'、文本一律 None(它们不做 unit/total 候选值)。"""
+    t = (text or "").strip().replace(",", "")
+    if not t or not _NUM_CLEAN_RE.fullmatch(t):
+        return None
+    return float(t)
+
+
+def _qty_text_ok(text: str) -> bool:
+    """量文本可信度(bug-3400 终轮守卫): 首个数字之前含字母/汉字的格('m2'、't 1.776')
+    不作工程量——parse_qty 的「取首数」契约会把单位文本里的 2 当成数量,经反算污染单价
+    (实测 1.31/2=0.66)。'100m2'(数字在前)与干净数/空格粘连锁仍接受。"""
+    t = (text or "").strip()
+    m = re.search(r"\d", t)
+    if not m:
+        return False
+    return not re.search(r"[A-Za-z一-鿿]", t[: m.start()])
+
+
+def _raw_price_usable(r: dict) -> bool:
+    """finalize 可用性镜像(失败行判据,与下方 finalize 判定保持同步):
+    单价/不含税任一可校验,或 合价可校验且工程量>0 可反算。"""
+    if validate_price(r.get("price_unit_raw") or "")[0] is not None:
+        return True
+    if validate_price(r.get("price_untaxed_raw") or "")[0] is not None:
+        return True
+    total = validate_price(r.get("price_total_raw") or "")[0]
+    if total and _qty_text_ok(r.get("qty_raw") or ""):
+        q = parse_qty(r.get("qty_raw") or "")
+        if q and q > 0:
+            return True
+    return False
+
+
+def _rediscover_price_cols(table_rows, roles, header_rows, failing_row_idxs):
+    """表级算术价列重推(bug-3400 终轮;重建旧 _rediscover_taxed_price_col 的类,Task5 曾删):
+    表内 ≥2 行价格双失败时,扫全部有序列对 (unit=ui,total=tj),找「单价×工程量≈合价(±2%)」
+    一致行最多的对。列资格: 干净数值率 ≥60%(粘连锁/税率/文本列出局);量取种子 qty 列,
+    其余列按 parse_qty(粘连取首数,如 '824.79 1.20'→824.79)兜底。
+    门槛(定案): 一致 ≥3 且 ≥50% 失败行;失败行恰为 2 时改要求 ≥60% 数据行。
+    量级守卫: 合价 ≥ 单价 需 ≥80% 双解析行。并列取 total 更靠右、再 unit 更靠右。
+    返回 (unit_col, total_col, qty_col) 或 None;调用方记 meta["price_rediscovery"]。"""
+    data = table_rows[header_rows:]
+    n = len(data)
+    if n < 3 or len(failing_row_idxs) < 2:
+        return None
+    max_cols = max((len(r) for r in data), default=0)
+    if max_cols == 0 or max_cols > 32:
+        return None
+    clean: dict = {}
+    qvals: list = []
+    for di, row in enumerate(data):
+        qrow: list = []
+        for ci in range(max_cols):
+            cell = row[ci] if ci < len(row) else ""
+            qrow.append(parse_qty(cell or ""))
+        qvals.append(qrow)
+    for ci in range(max_cols):
+        vals = {}
+        for di, row in enumerate(data):
+            v = _clean_cell_num(row[ci] if ci < len(row) else "")
+            if v is not None:
+                vals[di] = v
+        if len(vals) >= 0.6 * n:
+            clean[ci] = vals
+    if len(clean) < 2:
+        return None
+    cols = sorted(clean)
+    qty_role_col = roles.get("qty") if roles else None
+    failing_dis = {ri - header_rows for ri in failing_row_idxs}
+
+    def _qty_hit(di, row, ui, tj):
+        """该行 (unit=ui, total=tj) 是否 ±2% 一致;命中返回所用量列,否则 None。"""
+        vu = clean[ui].get(di)
+        vt = clean[tj].get(di)
+        if vu is None or vt is None or vt <= 0 or vu <= 0:
+            return None
+        cand = []
+        if qty_role_col is not None and qty_role_col != ui and qty_role_col != tj:
+            cand.append(qty_role_col)
+        cand.extend(c for c in cols if c != ui and c != tj and c != qty_role_col)
+        for qc in cand:
+            q = qvals[di][qc] if qc < len(qvals[di]) else None
+            if q and q > 0 and abs(vu * q - vt) <= 0.02 * vt:
+                return qc
+        return None
+
+    best = None  # (consistent, failing_hit, total_col, unit_col, qty_col)
+    for ui in cols:
+        for tj in cols:
+            if ui == tj:
+                continue
+            consistent = 0
+            failing_hit = 0
+            qty_hits: dict = {}
+            for di, row in enumerate(data):
+                qc = _qty_hit(di, row, ui, tj)
+                if qc is None:
+                    continue
+                consistent += 1
+                if di in failing_dis:
+                    failing_hit += 1
+                qty_hits[qc] = qty_hits.get(qc, 0) + 1
+            if len(failing_row_idxs) < 3:
+                ok = consistent >= max(3, math.ceil(0.6 * n))
+            else:
+                ok = consistent >= 3 and failing_hit >= math.ceil(0.5 * len(failing_row_idxs))
+            if not ok:
+                continue
+            # 量级守卫: total ≥ unit 于 ≥80% 双解析行
+            both = [(clean[ui][di], clean[tj][di]) for di in clean[ui] if di in clean[tj]]
+            if both and sum(1 for vu, vt in both if vt >= vu) < 0.8 * len(both):
+                continue
+            qty_col = sorted(qty_hits.items(), key=lambda kv: (-kv[1], kv[0] != qty_role_col, kv[0]))[0][0]
+            key = (consistent, failing_hit, tj, ui)
+            if best is None or key > best[:4]:
+                best = (consistent, failing_hit, tj, ui, qty_col)
+    if best is None:
+        return None
+    return best[3], best[2], best[4]
+
+
+def _rediscover_row_price(row, learned):
+    """失败行按学到的 (unit,total,qty) 列直接取价: 单价 validate(含空格粘连拆分);
+    单价无效但 合价有效且 量>0 → 合价/量 反算。产出仍走 validate_price,
+    失败返回 (None, '') 照旧丢弃——不强行注值。"""
+    ui, ti, qi = learned
+    unit_p, _, _ = validate_price(row[ui] if ui < len(row) else "")
+    if unit_p is not None:
+        return unit_p, "算术重推"
+    total, _, _ = validate_price(row[ti] if ti < len(row) else "")
+    q = parse_qty(row[qi] if qi < len(row) else "")
+    if total and q and q > 0:
+        return round(total / q, 2), "算术重推: 合价/工程量反算"
+    return None, ""
+
+
+def _lone_row_price(row, qty_col=None):
+    """健康表单失败行回退(bug-3400 终轮 tol 边缘伴随,无表级状态,每行一次):
+    行内干净数值对 (a,b),b≥a>0,以行内可解析量(种子 qty 列值优先,其余格
+    parse_qty 左→右兜底)试 a×量≈b(±2%)→ 单价=a。失败返回 (None, '')。"""
+    nums = []
+    for ci, cell in enumerate(row):
+        v = _clean_cell_num(cell)
+        if v is not None:
+            nums.append((ci, v))
+    q0 = None
+    if qty_col is not None and 0 <= qty_col < len(row):
+        q0 = parse_qty(row[qty_col] or "")
+    if q0 and q0 > 0:
+        for ai, a in nums:
+            for bi, b in nums:
+                if ai == bi or a <= 0 or b < a:
+                    continue
+                if abs(a * q0 - b) <= 0.02 * b:
+                    return a, "算术重推(单行)"
+    for ai, a in nums:
+        for bi, b in nums:
+            if ai == bi or a <= 0 or b < a:
+                continue
+            for qi, cell in enumerate(row):
+                if qi in (ai, bi):
+                    continue
+                if not _qty_text_ok(cell or ""):
+                    continue
+                q = parse_qty(cell or "")
+                if q and q > 0 and abs(a * q - b) <= 0.02 * b:
+                    return a, "算术重推(单行)"
+    return None, ""
+
+
 def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = None) -> tuple:
     """严格 seed-only 版分类提取(设计 §2/§3)。
 
@@ -279,6 +455,30 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
 
         # 价格校验/finalize(seed 角色: price_unit_raw→unit_price, price_untaxed_raw→
         # price_untaxed)。Outlier detection stays at cluster level (_build_groups_db)。
+        # bug-3400 终轮: 表级算术价列重推。触发=表内 ≥2 行价格双失败(健康表零触发);
+        # 学到 (unit,total,qty) 列后失败行按学到的列直接取价;单失败行走单行回退。
+        failing = [r for r in raw if not _raw_price_usable(r)]
+        learned = None
+        failing_set: set = set()
+        lone_idx = None
+        if len(failing) >= 2:
+            failing_set = {r["row_idx"] for r in failing}
+            learned = _rediscover_price_cols(
+                table.rows, roles, header_rows, [r["row_idx"] for r in failing]
+            )
+            if learned is not None:
+                meta.setdefault("price_rediscovery", []).append(
+                    {
+                        "unit_col": learned[0],
+                        "total_col": learned[1],
+                        "qty_col": learned[2],
+                        "rows": len(failing),
+                        "page": table.page_no,
+                        "table_idx": table.table_idx,
+                    }
+                )
+        elif len(failing) == 1:
+            lone_idx = failing[0]["row_idx"]
         for r in raw:
             # Ragged-row fix: if the extracted name is pure-numeric (序号, because
             # a spurious leading empty cell shifted THIS row), find the real name
@@ -301,10 +501,23 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             # 单价 = 合价 ÷ 工程量)。错列不可能通过反算,零误注风险。
             if unit_p is None and r.get("price_total_raw"):
                 total, _, _ = validate_price(r["price_total_raw"])
-                q = parse_qty(r["qty_raw"] or "")
+                q = parse_qty(r["qty_raw"] or "") if _qty_text_ok(r.get("qty_raw") or "") else None
                 if total and q and q > 0:
                     unit_p = round(total / q, 2)
                     vstatus_u, reason_u = "ok", "合价/工程量反算"
+            # bug-3400 终轮: 既有反算仍失败的行 → 学到的列直接取价 / 单行回退。
+            # 产出同样经过 validate_price,失败照旧(不强行注值)。
+            if unit_p is None and untaxed is None:
+                if learned is not None and r["row_idx"] in failing_set:
+                    row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
+                    unit_p, reason_r = _rediscover_row_price(row_cells, learned)
+                    if unit_p is not None:
+                        vstatus_u, reason_u = "ok", reason_r
+                elif learned is None and lone_idx is not None and r["row_idx"] == lone_idx:
+                    row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
+                    unit_p, reason_r = _lone_row_price(row_cells, qty_col=roles.get("qty"))
+                    if unit_p is not None:
+                        vstatus_u, reason_u = "ok", reason_r
             # Skip price-less rows: no usable price (both empty) → useless for
             # price analysis. Don't store them as needs_review noise.
             if unit_p is None and untaxed is None:
@@ -316,7 +529,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                     "spec_model": r["spec"],
                     "tech_params": _extract_tech_params(r["name"]),
                     "category": r.get("category"),
-                    "quantity": parse_qty(r["qty_raw"] or ""),
+                    "quantity": parse_qty(r["qty_raw"] or "") if _qty_text_ok(r.get("qty_raw") or "") else None,
                     "unit": r["unit"],
                     "unit_price": unit_p,  # 含税单价(统计)
                     "price_untaxed": untaxed,  # 不含税单价(审计)
