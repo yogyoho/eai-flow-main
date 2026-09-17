@@ -15,6 +15,8 @@ often the wrong (不含税) one. price remains as a fallback for single-column t
 
 import re
 
+from scripts.price_validator import parse_qty, validate_price
+
 # Recognised Chinese header tokens -> role. Order in this dict = match priority
 # (price_taxed wins over price_untaxed wins over price when a header matches
 # several — "含税合价" must NOT collapse to generic "合价").
@@ -484,22 +486,65 @@ def _is_category_row(cells: dict) -> bool:
 _SEED_SKIP = {"序号", "合计", "小计", "总计"}
 
 
+def _is_totals_row(cells: dict) -> bool:
+    """合计行守卫(bug-3400): x-band 可能把「合计」标签格落到非名称列,名称格捡到
+    数字垃圾、再被 cli 烂行改名救成「合计」→ 泄漏 item。任一映射格命中跳过集
+    即整行跳过(此前只查名称格)。"""
+    return any((v or "").strip() in _SEED_SKIP for v in cells.values())
+
+
+def _seed_use_x(rows, cell_bboxes, roles_x) -> bool:
+    """x-band 取值前提(单源): roles_x 带名称带,且本表 bboxes 可用。"""
+    return bool(roles_x) and "name" in roles_x and _bboxes_usable(rows, cell_bboxes)
+
+
+def _cells_by_index(row: list, roles: dict) -> dict:
+    """按 seed 列号取格(无 bbox 路径与逐行回退共用,判别单源)。"""
+    cells = {}
+    for role, ci in roles.items():
+        cells[role] = (row[ci].strip() if ci is not None and ci < len(row) else "")
+    return cells
+
+
+def _row_price_usable(cells: dict) -> bool:
+    """该行映射格能否产出可用价格——镜像 cli._extract_from_tables 的 finalize
+    判定(单价/不含税任一可校验,或 合价可校验且工程量>0 可反算)。
+    finalize 改判定时必须同步这里(bug-3400 回退触发条件依赖它)。"""
+    if validate_price(cells.get("price_unit") or "")[0] is not None:
+        return True
+    if validate_price(cells.get("price_untaxed") or "")[0] is not None:
+        return True
+    total = validate_price(cells.get("price_total") or "")[0]
+    if total:
+        q = parse_qty(cells.get("qty") or "")
+        if q and q > 0:
+            return True
+    return False
+
+
+def _has_price_signal(cells: dict) -> bool:
+    """轻量探针(bug-3400): 映射格的 工程/价格格是否含任何数字。
+    真正的 price-less 行(分类行/说明行,价格工程量格全无数字)不得触发回退——
+    列号重映射会把错位数字格捡进价格角色,把分类行变成垃圾 item。"""
+    return any(
+        re.search(r"\d", cells.get(k) or "")
+        for k in ("qty", "price_unit", "price_total", "price_untaxed")
+    )
+
+
 def _iter_seed_cells(
     rows: list, roles: dict, header_rows: int, cell_bboxes: list | None = None, roles_x: dict | None = None
 ):
     """行→角色 cell 映射迭代器(extract_items_seed / seed_category_tail 共用,判别单源)。
     x-band 可用按 x 对齐(抗漂移),否则按列号。yield (row_idx, cells)。"""
-    use_x = bool(roles_x) and "name" in roles_x and _bboxes_usable(rows, cell_bboxes)
+    use_x = _seed_use_x(rows, cell_bboxes, roles_x)
     for ri in range(header_rows, len(rows)):
         row = rows[ri]
         if use_x:
             bbox_row = cell_bboxes[ri] if ri < len(cell_bboxes) else []
             yield ri, _row_cells_by_x(row, bbox_row, roles_x)
         else:
-            cells = {}
-            for role, ci in roles.items():
-                cells[role] = (row[ci].strip() if ci is not None and ci < len(row) else "")
-            yield ri, cells
+            yield ri, _cells_by_index(row, roles)
 
 
 def extract_items_seed(
@@ -518,17 +563,38 @@ def extract_items_seed(
     price_untaxed_raw, category, row_idx}。分类行(名称非空+数值列全空)不产 item,
     其名称作为后续 item 的 category,直到下一个分类行。
     initial_category: 跨页续传入口——管线循环把上一表尾部分类传进来(设计§2 修订I2:
-    表头重复页/续表页每页都会新开一次调用,不传则分类退化为页内局部)。"""
+    表头重复页/续表页每页都会新开一次调用,不传则分类退化为页内局部)。
+    bug-3400: x-band 路径下单行无可用价格且有数字信号时,给 seed 列号映射对该行的
+    一次重映射机会(逐行回退,全局 x-band 行为不变)——见循环内注释。"""
     items: list = []
+    use_x = _seed_use_x(rows, cell_bboxes, roles_x)
     current_category: str | None = initial_category
 
     for ri, cells in _iter_seed_cells(rows, roles, header_rows, cell_bboxes, roles_x):
         name = (cells.get("name") or "").strip()
         if not name or name in _SEED_SKIP:
             continue
+        if _is_totals_row(cells):
+            continue
         if _is_category_row(cells):
             current_category = name
             continue
+        if use_x and not _row_price_usable(cells) and _has_price_signal(cells):
+            # bug-3400 逐行 x→index 回退: x-band 对大多数行是对的(修复过真实漂移),
+            # 但个别行会把价格格映射到粘连/错位格(p115 实弹: price_total 捡到
+            # '68. 911346. 15' 粘连串,validate+反算双失败 → 行被当 price-less 丢弃),
+            # 而同一行按 seed 列号映射 price_total='834.61' → 反算 1346.15=旧基线。
+            # 触发条件(三者同时): x 路径该行无可用价格 + 行内有价格/工程量数字信号
+            # (分类/说明行不触发) + 列号重映射确实可用(只升级不降级)。
+            ix_cells = _cells_by_index(rows[ri] if ri < len(rows) else [], roles)
+            if _row_price_usable(ix_cells):
+                cells = ix_cells
+                name = (cells.get("name") or "").strip()
+                if not name or name in _SEED_SKIP or _is_totals_row(cells):
+                    continue
+                if _is_category_row(cells):
+                    current_category = name
+                    continue
         items.append(
             {
                 "name": name,

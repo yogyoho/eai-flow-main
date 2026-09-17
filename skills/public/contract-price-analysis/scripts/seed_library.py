@@ -107,6 +107,22 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
         "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:钢筋补充协议-需盖章11",
     },
+    {
+        "id": "ssly-sm",
+        "display_name": "采购物资说明(砂石料)",
+        "title_keywords": ["采购物资", "砂石料"],
+        "columns": {
+            "name": ["品名"],
+            "spec": ["规格型号"],
+            "qty": ["数量"],
+            "unit": ["单位"],
+            "price_unit": ["含税落地单价", "落地单价"],
+            "price_total": ["落地合价"],
+            "price_untaxed": [],
+        },
+        "exclude": {"price_unit": ["不含税"]},
+        "source": "样例:024-2019砂石料备案存档扫描件",
+    },
 ]
 
 
