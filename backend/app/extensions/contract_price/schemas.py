@@ -38,6 +38,7 @@ class ItemOut(ORMBase):
     id: UUID
     document_id: UUID
     goods_name: str
+    category: str | None = None
     spec_model: str | None = None
     tech_params: dict | None = None
     quantity: float | None = None

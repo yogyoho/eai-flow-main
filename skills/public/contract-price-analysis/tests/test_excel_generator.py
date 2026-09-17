@@ -60,8 +60,8 @@ def test_items_sheet_marks_outlier(tmp_path):
     path = generate_excel(_sample_groups(), str(out))
     wb = openpyxl.load_workbook(path)
     ws = wb["分项明细"]
-    # Row 3 (second item) is the outlier; column 8 = 是否异常
-    assert ws.cell(3, 8).value == "是"
+    # Row 3 (second item) is the outlier; column 9 = 是否异常 (分类列插入后右移一列)
+    assert ws.cell(3, 9).value == "是"
 
 
 def test_empty_groups_does_not_crash(tmp_path):

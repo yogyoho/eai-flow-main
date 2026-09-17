@@ -24,7 +24,7 @@ from scripts.config import get_config
 from scripts.document_parser import parse_document
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
-from scripts.price_validator import parse_qty, split_glued, validate_price
+from scripts.price_validator import parse_qty, validate_price
 from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
@@ -40,9 +40,6 @@ from scripts.table_classifier import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-_DEFAULT_PRICE_KEYWORDS = ["工程量清单", "分部分项", "单价措施", "设备清单", "报价", "暂列"]
 
 
 async def _update_run_progress(run_id: str | None, progress: dict) -> None:
@@ -70,31 +67,9 @@ async def _update_run_progress(run_id: str | None, progress: dict) -> None:
         logger.debug("progress update skipped: %s", exc)
 
 
-def _load_price_keywords() -> list[str]:
-    """Load project-configured price-table keywords.
-
-    Reads the management API's config.json (written by SettingsView →
-    ConfigOut) so the UI-edited keyword list actually reaches classification.
-    Falls back to defaults if the file is missing/unreadable (e.g. running the
-    skill standalone outside the gateway container).
-    """
-    path = os.environ.get(
-        "CPA_CONFIG_JSON",
-        "/app/backend/app/extensions/contract_price/config.json",
-    )
-    try:
-        with open(path, encoding="utf-8") as f:
-            kw = json.load(f).get("price_table_keywords")
-        if isinstance(kw, list) and kw:
-            return [str(k) for k in kw if k]
-    except Exception:
-        pass
-    return list(_DEFAULT_PRICE_KEYWORDS)
-
-
 def _load_seeds() -> list[dict]:
     """Load seed 定位规则(config.json 的 table_seeds;空则注入内置库)。
-    与 _load_price_keywords 同一配置文件/同一 CPA_CONFIG_JSON 通道。"""
+    与 price_table_keywords 同一配置文件/同一 CPA_CONFIG_JSON 通道。"""
     from scripts.seed_library import DEFAULT_TABLE_SEEDS, normalize_seeds
 
     path = os.environ.get(
@@ -165,146 +140,8 @@ def _cell_bbox(table, row_idx: int, col_idx: int) -> list:
     return [0, 0, 0, 0]
 
 
-def _rediscover_taxed_price_col(rows: list, qty_col: int | None) -> int | None:
-    """For a continuation page whose inherited 含税单价 column shifted to empty,
-    rediscover it by arithmetic: 含税单价 × 工程量 ≈ 含税合价.
-
-    The page-level column index inherited from the header page can be off by one
-    on continuation pages (colspan-expansion count differs). 合价 = rightmost
-    mostly-numeric column (standard 工程量清单 layout); 含税单价 = the numeric
-    column where 单价 × qty ≈ 合价 for most data rows. Returns the 单价 column
-    index, or None if no confident match (caller leaves it needs_review).
-
-    SAFE: a wrong column won't satisfy the per-row 单价×qty≈合价 cross-check, so
-    this can't silently inject bad prices — a miss just stays needs_review.
-    """
-    n = len(rows)
-    if n < 2 or qty_col is None:
-        return None
-    maxcol = max((len(r) for r in rows), default=0)
-
-    def num(cell) -> float | None:
-        v = split_glued(cell or "")
-        return v[0] if len(v) == 1 else None  # only clean single numbers
-
-    def mostly_numeric(c: int) -> bool:
-        if c >= maxcol:
-            return False
-        cnt = sum(1 for r in rows if c < len(r) and num(r[c]) is not None)
-        return cnt >= max(2, n * 0.4)
-
-    numeric_cols = [c for c in range(maxcol) if mostly_numeric(c) and c != qty_col]
-    if len(numeric_cols) < 2:
-        return None
-    hejia_col = numeric_cols[-1]  # rightmost numeric = 含税合价
-    best, best_frac = None, 0.0
-    for c in numeric_cols:
-        if c == hejia_col:
-            continue
-        match = tot = 0
-        for r in rows:
-            d = num(r[c]) if c < len(r) else None
-            q = num(r[qty_col]) if qty_col < len(r) else None
-            h = num(r[hejia_col]) if hejia_col < len(r) else None
-            if d and q and h and q > 0:
-                tot += 1
-                if abs(d * q - h) <= max(h * 0.05, 0.5):
-                    match += 1
-        frac = match / tot if tot else 0
-        if frac > best_frac:
-            best, best_frac = c, frac
-    return best if best_frac >= 0.5 else None
-
-
-def _is_hejia_magnitude(rows: list, pt_col: int | None, untaxed_col: int | None) -> bool:
-    """True if the pt column's values are 合价-magnitude — i.e. the inherited
-    含税单价 column actually points at 含税合价 (large) not 含税单价 (small).
-
-    含税单价 ≈ 不含税单价 × 1.09 (<2×), so a real 单价 column is under 2× the
-    不含税单价 column. A 合价 column = 单价 × 工程量, which for typical qty>2 is
-    well over 2×. Used as a fallback when the 含税单价 is glued/missing and the
-    arithmetic cross-check can't find a clean 单价 — prevents 合价 being silently
-    used as unit_price. Low-qty items (合价≈单价) slip through (minor error).
-    """
-    if pt_col is None or untaxed_col is None:
-        return False
-
-    def col_med(c: int) -> float | None:
-        vals = []
-        for r in rows:
-            if c < len(r):
-                nums = split_glued(r[c] or "")
-                if len(nums) == 1:
-                    vals.append(nums[0])
-        if len(vals) < 2:
-            return None
-        vals.sort()
-        return vals[len(vals) // 2]
-
-    pt_med = col_med(pt_col)
-    ux_med = col_med(untaxed_col)
-    return pt_med is not None and ux_med is not None and ux_med > 0 and pt_med > 2 * ux_med
-
-
-def _find_hejia_col(rows: list, qty_col: int | None) -> int | None:
-    """Rightmost mostly-numeric column = 含税合价 (工程量清单 layout: 合价 is the
-    last column). Used to recover 含税单价 = 合价/工程量 when the 单价 cell is
-    empty/abnormally-glued. Excludes qty. None if no confident numeric col."""
-    n = len(rows)
-    if n < 2:
-        return None
-    maxcol = max((len(r) for r in rows), default=0)
-    for c in range(maxcol - 1, -1, -1):  # rightmost first
-        if c == qty_col:
-            continue
-        cnt = sum(1 for r in rows if c < len(r) and len(split_glued(r[c] or "")) == 1)
-        if cnt >= max(2, n * 0.4):
-            return c
-    return None
-
-
-def _row_single_num(rows: list, row_idx: int, col: int) -> float | None:
-    """Single clean number from rows[row_idx][col], else None."""
-    try:
-        nums = split_glued(rows[row_idx][col] or "")
-        return nums[0] if len(nums) == 1 else None
-    except (IndexError, TypeError):
-        return None
-
-
 _PURE_NUM = re.compile(r"^\d+(?:\.\d+)?$")
 _PURE_NUM_BRACKET = re.compile(r"^[【(]?\d+(?:\.\d+)?[】)]?$")  # tolerate 【20】/（19)
-
-
-def _rediscover_name_col(rows: list, inherited: int | None) -> int | None:
-    """Continuation pages can shift the name column: the inherited name index
-    may land on 序号 (pure-numeric, e.g. col1='3') instead of 项目名称 (text,
-    e.g. col2). If the inherited column is mostly pure-numeric (序号), shift
-    right to the first mostly-text column (the real name). Returns the name
-    column index.
-    """
-    if inherited is None:
-        return None
-    n = len(rows)
-    if n < 2:
-        return inherited
-
-    def pure_num_frac(c: int) -> float:
-        cnt = sum(
-            1
-            for r in rows
-            if c < len(r) and (_PURE_NUM.match((r[c] or "").strip()) or _PURE_NUM_BRACKET.match((r[c] or "").strip()))
-        )
-        return cnt / n
-
-    if pure_num_frac(inherited) < 0.4:
-        return inherited  # inherited is text (项目名称) → correct
-    # inherited is 序号 (numeric) → first mostly-text col to its right
-    maxcol = max((len(r) for r in rows), default=0)
-    for c in range(inherited + 1, maxcol):
-        if pure_num_frac(c) < 0.4:
-            return c
-    return inherited
 
 
 _DN_RE = re.compile(r"DN\s*(\d+(?:\.\d+)?)", re.IGNORECASE)
@@ -352,6 +189,8 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             and active is not None
             and looks_like_continuation(rows, active[1], active[3], table.cell_bboxes, active[2])
         )
+        # 设计已知取舍: 跨 seed 续传优先防 OCR 噪声翻seed——上一表尾部分类可能
+        # 泄入后续不同 seed 的表(跨 seed bleed 为已接受 trade-off,不加同 seed 守卫)。
         cat_in = active[4] if active is not None else None  # 上一表尾部分类
         if hit is not None:
             seed, roles, header_rows = hit
@@ -457,6 +296,12 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             )
         meta["rows_extracted"] += len(raw)
     return items, meta
+
+
+def _cluster_sample_text(goods_name: str, tech_params: dict | None) -> str:
+    """聚类样本文本 = 名称 + 分类(同名货物不同分类必须分簇,设计 §1.3)。"""
+    cat = ((tech_params or {}).get("category") if isinstance(tech_params, dict) else None) or ""
+    return f"{goods_name} {cat}".strip()
 
 
 def _build_groups_db(result, db_items: list) -> list:
@@ -566,6 +411,7 @@ async def _persist_one_doc(doc: dict, items: list[dict], run_id: str | None = No
                     "document_id": existing.id,
                     "goods_name": it["goods_name"],
                     "spec_model": it.get("spec_model"),
+                    "category": it.get("category"),
                     "tech_params": it.get("tech_params"),
                     "quantity": it.get("quantity"),
                     "unit": it.get("unit"),
@@ -863,22 +709,28 @@ async def run_cluster(trigger: str = "manual") -> int:
                     .where(CpaDocument.parse_status.in_(["parsed", "needs_review"]))
                 )
             ).scalars().all()
-            db_items = [
-                {
-                    "id": r.id,
-                    "goods_name": r.goods_name,
-                    "tech_params": r.tech_params or {},
-                    # Numeric(18,2) loads as decimal.Decimal; cast to float so
-                    # compute_stats / outlier math (float-based) don't hit
-                    # "float * Decimal" TypeErrors.
-                    "unit_price": float(r.unit_price) if r.unit_price is not None else None,
-                    "validation_status": r.validation_status,
-                }
-                for r in rows
-            ]
+            db_items = []
+            for r in rows:
+                # category 同时进 tech_params(聚类样本文本可见)与顶层键(Excel 读取)。
+                tp = dict(r.tech_params or {})
+                if r.category and "category" not in tp:
+                    tp["category"] = r.category
+                db_items.append(
+                    {
+                        "id": r.id,
+                        "goods_name": r.goods_name,
+                        "tech_params": tp,
+                        "category": r.category,
+                        # Numeric(18,2) loads as decimal.Decimal; cast to float so
+                        # compute_stats / outlier math (float-based) don't hit
+                        # "float * Decimal" TypeErrors.
+                        "unit_price": float(r.unit_price) if r.unit_price is not None else None,
+                        "validation_status": r.validation_status,
+                    }
+                )
         logger.info("Cluster phase: %d items from parsed docs", len(db_items))
         if db_items:
-            samples = [(it["goods_name"], it["tech_params"]) for it in db_items]
+            samples = [(_cluster_sample_text(it["goods_name"], it["tech_params"]), it["tech_params"]) for it in db_items]
             result = cluster_items(samples)
             groups = _build_groups_db(result, db_items)
     except Exception as exc:

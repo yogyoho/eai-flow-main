@@ -2,7 +2,7 @@
 
 Workbook layout:
   1. 汇总总表     — one row per cluster: category, name, count, mean/max/min/median/std, outlier count
-  2. 分项明细     — every line item: name, spec, params, price, source contract, date, supplier
+  2. 分项明细     — every line item: name, spec, category, params, price, source contract, date, supplier
   3. 图表-价格分布 — bar chart of mean price per cluster
   4. 图表-价格趋势 — line chart of mean price per cluster (placeholder for time series)
   5. 图表-供应商对比 — bar chart of mean price per supplier
@@ -59,7 +59,7 @@ def _write_summary(workbook, groups, header_fmt, money_fmt, text_fmt):
 
 def _write_items(workbook, groups, header_fmt, money_fmt, text_fmt, outlier_fmt):
     ws = workbook.add_worksheet("分项明细")
-    headers = ["货物名称", "规格型号", "技术参数", "单价", "来源合同", "签订日期", "供应商", "是否异常"]
+    headers = ["货物名称", "规格型号", "分类", "技术参数", "单价", "来源合同", "签订日期", "供应商", "是否异常"]
     for c, h in enumerate(headers):
         ws.write(0, c, h, header_fmt)
     row = 1
@@ -68,17 +68,18 @@ def _write_items(workbook, groups, header_fmt, money_fmt, text_fmt, outlier_fmt)
             is_outlier = bool(it.get("is_outlier"))
             ws.write(row, 0, it.get("goods_name", ""), text_fmt)
             ws.write(row, 1, it.get("spec_model", ""), text_fmt)
-            ws.write(row, 2, _stringify_params(it.get("tech_params")), text_fmt)
+            ws.write(row, 2, it.get("category") or "", text_fmt)
+            ws.write(row, 3, _stringify_params(it.get("tech_params")), text_fmt)
             _price = it.get("unit_price")
             if _price is None:
                 # needs_review item (glued/implausible) — no number until a human confirms
-                ws.write(row, 3, "待核验", text_fmt)
+                ws.write(row, 4, "待核验", text_fmt)
             else:
-                ws.write_number(row, 3, _price, money_fmt)
-            ws.write(row, 4, it.get("source_contract_no", ""), text_fmt)
-            ws.write(row, 5, it.get("sign_date", ""), text_fmt)
-            ws.write(row, 6, it.get("supplier", ""), text_fmt)
-            ws.write(row, 7, "是" if is_outlier else "", outlier_fmt if is_outlier else text_fmt)
+                ws.write_number(row, 4, _price, money_fmt)
+            ws.write(row, 5, it.get("source_contract_no", ""), text_fmt)
+            ws.write(row, 6, it.get("sign_date", ""), text_fmt)
+            ws.write(row, 7, it.get("supplier", ""), text_fmt)
+            ws.write(row, 8, "是" if is_outlier else "", outlier_fmt if is_outlier else text_fmt)
             row += 1
     ws.freeze_panes(1, 0)
 

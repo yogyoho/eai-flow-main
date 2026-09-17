@@ -13,15 +13,7 @@ def test_fit_transform_returns_vector():
     assert vec.shape[0] > 0
 
 
-def test_different_params_produce_different_vectors():
-    v = Vectorizer()
-    v.fit([
-        ("高压开关柜", {"电压": "10kV"}),
-        ("高压开关柜", {"电压": "35kV"}),
-    ])
-    a = v.transform("高压开关柜", {"电压": "10kV"})
-    b = v.transform("高压开关柜", {"电压": "35kV"})
-    assert not np.allclose(a, b)
+# v2 移除参数差分(见 vectorizer.py docstring): DN one-hot 承担区分职责
 
 
 def test_different_writings_of_same_goods_are_close():

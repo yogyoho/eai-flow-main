@@ -92,6 +92,7 @@ class CpaItem(Base):
     )
     goods_name: Mapped[str] = mapped_column(String(300))
     spec_model: Mapped[Optional[str]] = mapped_column(String(300))
+    category: Mapped[Optional[str]] = mapped_column(String(300))  # 分类行上下文((一)建筑工程/屋面…)
     tech_params: Mapped[Optional[dict]] = mapped_column(JSONB)
     quantity: Mapped[Optional[float]] = mapped_column(Numeric(18, 3))
     unit: Mapped[Optional[str]] = mapped_column(String(50))

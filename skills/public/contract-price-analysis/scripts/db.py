@@ -16,8 +16,15 @@ async_session = async_sessionmaker(_engine, class_=AsyncSession, expire_on_commi
 
 
 async def init_schema() -> None:
-    """Create cpa_ tables if they do not exist (idempotent)."""
+    """Create cpa_ tables if they do not exist (idempotent), then patch columns
+    create_all can't add to pre-existing tables (SQLAlchemy create_all never ALTERs)."""
+    from sqlalchemy import text
+
     from scripts.models import Base
 
     async with _engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # create_all 不改既有表: category 是 v3 新增列,老库需显式补(幂等)。
+        await conn.execute(
+            text("ALTER TABLE cpa_items ADD COLUMN IF NOT EXISTS category VARCHAR(300)")
+        )

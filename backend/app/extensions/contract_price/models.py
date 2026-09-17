@@ -78,6 +78,7 @@ class CpaItem(Base):
     document_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("cpa_documents.id"), nullable=False)
     goods_name: Mapped[str] = mapped_column(String(300))
     spec_model: Mapped[str | None] = mapped_column(String(300))
+    category: Mapped[str | None] = mapped_column(String(300))  # 分类行上下文((一)建筑工程/屋面…)
     tech_params: Mapped[dict | None] = mapped_column(JSONB)
     quantity: Mapped[float | None] = mapped_column(Numeric(18, 3))
     unit: Mapped[str | None] = mapped_column(String(50))
