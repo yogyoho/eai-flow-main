@@ -481,6 +481,27 @@ def _is_category_row(cells: dict) -> bool:
     )
 
 
+_SEED_SKIP = {"序号", "合计", "小计", "总计"}
+
+
+def _iter_seed_cells(
+    rows: list, roles: dict, header_rows: int, cell_bboxes: list | None = None, roles_x: dict | None = None
+):
+    """行→角色 cell 映射迭代器(extract_items_seed / seed_category_tail 共用,判别单源)。
+    x-band 可用按 x 对齐(抗漂移),否则按列号。yield (row_idx, cells)。"""
+    use_x = bool(roles_x) and "name" in roles_x and _bboxes_usable(rows, cell_bboxes)
+    for ri in range(header_rows, len(rows)):
+        row = rows[ri]
+        if use_x:
+            bbox_row = cell_bboxes[ri] if ri < len(cell_bboxes) else []
+            yield ri, _row_cells_by_x(row, bbox_row, roles_x)
+        else:
+            cells = {}
+            for role, ci in roles.items():
+                cells[role] = (row[ci].strip() if ci is not None and ci < len(row) else "")
+            yield ri, cells
+
+
 def extract_items_seed(
     rows: list,
     seed: dict,
@@ -488,29 +509,22 @@ def extract_items_seed(
     header_rows: int,
     cell_bboxes: list | None = None,
     roles_x: dict | None = None,
+    initial_category: str | None = None,
 ) -> list:
     """Seed 路径行提取: 按 seed 角色取单元格 + 分类行上下文传播。
 
     对齐方式与 extract_items 相同: bbox-x 可用则按 x-band(抗漂移),否则按列号。
     产出 raw item: {name, spec, qty_raw, unit, price_unit_raw, price_total_raw,
     price_untaxed_raw, category, row_idx}。分类行(名称非空+数值列全空)不产 item,
-    其名称作为后续 item 的 category,直到下一个分类行。"""
-    use_x = bool(roles_x) and "name" in roles_x and _bboxes_usable(rows, cell_bboxes)
-    skip = {"序号", "合计", "小计", "总计"}
+    其名称作为后续 item 的 category,直到下一个分类行。
+    initial_category: 跨页续传入口——管线循环把上一表尾部分类传进来(设计§2 修订I2:
+    表头重复页/续表页每页都会新开一次调用,不传则分类退化为页内局部)。"""
     items: list = []
-    current_category: str | None = None
+    current_category: str | None = initial_category
 
-    for ri in range(header_rows, len(rows)):
-        row = rows[ri]
-        if use_x:
-            bbox_row = cell_bboxes[ri] if ri < len(cell_bboxes) else []
-            cells = _row_cells_by_x(row, bbox_row, roles_x)
-        else:
-            cells = {}
-            for role, ci in roles.items():
-                cells[role] = (row[ci].strip() if ci is not None and ci < len(row) else "")
+    for ri, cells in _iter_seed_cells(rows, roles, header_rows, cell_bboxes, roles_x):
         name = (cells.get("name") or "").strip()
-        if not name or name in skip:
+        if not name or name in _SEED_SKIP:
             continue
         if _is_category_row(cells):
             current_category = name
@@ -529,3 +543,25 @@ def extract_items_seed(
             }
         )
     return items
+
+
+def seed_category_tail(
+    rows: list,
+    roles: dict,
+    header_rows: int,
+    cell_bboxes: list | None = None,
+    roles_x: dict | None = None,
+    initial_category: str | None = None,
+) -> str | None:
+    """表内行扫的终态分类(含表尾悬挂分类行),供管线跨表/跨页续传(修订I2)。
+
+    extract_items_seed 的返回值看不到表尾悬挂的分类行(分类行不产 item)——
+    「页尾分类行 + 下页首数据行」的桂北式多页清单必须用它取尾态,否则续表
+    首页的分类丢失。与 extract_items_seed 共用 _iter_seed_cells/_is_category_row,
+    判别逻辑单源,不会漂移。"""
+    current = initial_category
+    for _ri, cells in _iter_seed_cells(rows, roles, header_rows, cell_bboxes, roles_x):
+        name = (cells.get("name") or "").strip()
+        if name and name not in _SEED_SKIP and _is_category_row(cells):
+            current = name
+    return current

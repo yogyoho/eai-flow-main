@@ -28,7 +28,16 @@ from scripts.price_validator import parse_qty, split_glued, validate_price
 from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
-from scripts.table_classifier import _roles_x_from_data, classify, extract_items, looks_like_continuation
+from scripts.table_classifier import (
+    _bboxes_usable,
+    _collapse_header,
+    _roles_x_from_data,
+    classify,
+    extract_items_seed,
+    looks_like_continuation,
+    match_seed,
+    seed_category_tail,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +90,26 @@ def _load_price_keywords() -> list[str]:
     except Exception:
         pass
     return list(_DEFAULT_PRICE_KEYWORDS)
+
+
+def _load_seeds() -> list[dict]:
+    """Load seed 定位规则(config.json 的 table_seeds;空则注入内置库)。
+    与 _load_price_keywords 同一配置文件/同一 CPA_CONFIG_JSON 通道。"""
+    from scripts.seed_library import DEFAULT_TABLE_SEEDS, normalize_seeds
+
+    path = os.environ.get(
+        "CPA_CONFIG_JSON",
+        "/app/backend/app/extensions/contract_price/config.json",
+    )
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f).get("table_seeds")
+        seeds = normalize_seeds(raw)
+        if seeds:
+            return seeds
+    except Exception:
+        pass
+    return normalize_seeds(DEFAULT_TABLE_SEEDS)
 
 
 def _size_from_quick_fp(quick_fp: str | None) -> int | None:
@@ -293,20 +322,16 @@ def _extract_tech_params(goods_name: str) -> dict:
     return params
 
 
-def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None = None) -> tuple:
-    """Classify each table; from goods/price tables build item dicts.
+def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = None) -> tuple:
+    """严格 seed-only 版分类提取(设计 §2/§3)。
 
-    Returns (items, parse_meta). Items carry traceability (page/bbox/row) +
-    validation_status. Non-goods tables are counted in parse_meta, never
-    silently dropped.
-
-    Cross-page continuation: the layout detector splits one logical table
-    across PDF pages; only the first page repeats the header, so continuation
-    pages classify as 'unclassified'. We propagate the last goods table's
-    column roles to a headerless unclassified table that looks like its
-    continuation (same column count, data-like first row) and extract it with
-    header_rows=0.
-    """
+    逐表: match_seed 确认 → extract_items_seed(含分类行传播) → 价格校验/反算。
+    未匹配表: 零提取;形似数据表(≥4列)记 unmatched_tables 供 UI 建规则。
+    续表: 无表头且形似上一命中表 → 继承其 seed/roles(x-band 抗漂移)。
+    分类跨页续传: 表头重复页/续表页通过 initial_category 继承上一表尾部分类
+    (多页清单的分类不能退化为页内局部——修订I2);尾态由 seed_category_tail
+    对表行重放得出(表尾悬挂的分类行不产 item,extract 结果里看不到)。
+    meta 新键: unmatched_tables[] / matched_seeds{}。"""
     items: list[dict] = []
     meta: dict = {
         "tables_found": len(tables),
@@ -314,78 +339,71 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
         "continuation_tables": 0,
         "rows_extracted": 0,
         "skipped": {},
+        "unmatched_tables": [],
+        "matched_seeds": {},
     }
-    active_roles: dict | None = None  # index roles propagated to continuation pages
-    active_roles_x: dict | None = None  # x-bands propagated to continuation pages (drift-proof)
-    active_col_count = 0
+    active = None  # (seed, roles, roles_x, col_count, category_tail) 续表继承上下文
     for table in tables:
-        ttype, roles, roles_x, header_rows = classify(table.rows, keywords, table.cell_bboxes)
-        col_count = max((len(r) for r in table.rows), default=0)
-        is_continuation = (
-            ttype == "unclassified"
-            and active_roles is not None
-            and looks_like_continuation(
-                table.rows, active_roles, active_col_count, table.cell_bboxes, active_roles_x
-            )
+        rows = table.rows or []
+        col_count = max((len(r) for r in rows), default=0)
+        hit = match_seed(rows, seeds) if seeds else None
+        is_cont = (
+            hit is None
+            and active is not None
+            and looks_like_continuation(rows, active[1], active[3], table.cell_bboxes, active[2])
         )
-        hejia_col: int | None = None  # 含税合价 col (rightmost numeric) for 反算
-        qty_col: int | None = None
-
-        if ttype == "goods_price":
+        cat_in = active[4] if active is not None else None  # 上一表尾部分类
+        if hit is not None:
+            seed, roles, header_rows = hit
             meta["goods_tables"] += 1
-            qty_col = roles.get("qty")
-            hejia_col = _find_hejia_col(table.rows, qty_col)
-            # The 含税 header is a MERGED cell (colspan over 单价+合价) that
-            # rapid-table fragments, so the 含税单价 leaf label is often lost and
-            # _map_roles grabs 含税合价 instead. Override price_taxed via the
-            # bulletproof arithmetic relation 含税单价×工程量≈含税合价
-            # (data-driven, header-independent). Same trick the continuation
-            # branch uses; applied here so the corrected x is inherited downstream.
-            new_pt = _rediscover_taxed_price_col(table.rows, qty_col)
-            if new_pt is not None and new_pt != roles.get("price_taxed"):
-                roles["price_taxed"] = new_pt
-                if roles_x is not None:
-                    roles_x = dict(roles_x)
-                    fixed = _roles_x_from_data(
-                        table.rows, table.cell_bboxes, {"price_taxed": new_pt}, header_rows
-                    )
-                    if fixed and "price_taxed" in fixed:
-                        roles_x["price_taxed"] = fixed["price_taxed"]
-            active_roles = roles
-            active_roles_x = roles_x
-            active_col_count = col_count
-            # Goods (header) page: INDEX alignment over the (now corrected) roles.
-            raw = extract_items(table.rows, roles, header_rows)
-        elif is_continuation:
+            meta["matched_seeds"][seed["display_name"]] = meta["matched_seeds"].get(seed["display_name"], 0) + 1
+            roles_x = None
+            if _bboxes_usable(rows, table.cell_bboxes):
+                roles_x = _roles_x_from_data(rows, table.cell_bboxes, roles, header_rows)
+            # 表头重复页: 每页都会 match_seed 命中——initial_category 必须跨表续传,
+            # 否则多页清单的分类退化为页内局部(修订I2)
+            raw = extract_items_seed(rows, seed, roles, header_rows, table.cell_bboxes, roles_x, initial_category=cat_in)
+            name_col = roles.get("name", 0)
+            active = (
+                seed,
+                roles,
+                roles_x,
+                col_count,
+                seed_category_tail(rows, roles, header_rows, table.cell_bboxes, roles_x, cat_in),
+            )
+        elif is_cont:
+            seed, roles, roles_x, _, cat_in = active
             meta["continuation_tables"] += 1
-            cont_roles = dict(active_roles)
-            # The inherited 含税单价 column index can be wrong on continuation
-            # pages: off-by-one shift (→ empty col) OR pointing at 含税合价
-            # (→ large 合价 values misread as 单价). ALWAYS re-derive via the
-            # arithmetic cross-check 含税单价×工程量≈含税合价; if no clean 单价 is
-            # found AND the inherited column is 合价-magnitude (>2× 不含税单价),
-            # the true 含税单价 is glued/missing → drop it (needs_review), don't
-            # let 合价 masquerade as unit_price.
-            new_pt = _rediscover_taxed_price_col(table.rows, active_roles.get("qty"))
-            if new_pt is not None:
-                cont_roles["price_taxed"] = new_pt
-            elif _is_hejia_magnitude(
-                table.rows, active_roles.get("price_taxed"), active_roles.get("price_untaxed")
-            ):
-                cont_roles["price_taxed"] = None
-            cont_roles_x = active_roles_x or roles_x
-            qty_col = active_roles.get("qty")
-            hejia_col = _find_hejia_col(table.rows, qty_col)
-            raw = extract_items(table.rows, cont_roles, 0, table.cell_bboxes, cont_roles_x)
+            raw = extract_items_seed(rows, seed, roles, 0, table.cell_bboxes, roles_x, initial_category=cat_in)
+            name_col = roles.get("name", 0)
+            active = (seed, roles, roles_x, col_count, seed_category_tail(rows, roles, 0, table.cell_bboxes, roles_x, cat_in))
         else:
+            ttype, sroles, sroles_x, sheader_rows = classify(rows, None, table.cell_bboxes)
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
-            if ttype == "unclassified":
-                active_roles = None  # break the propagation chain
-                active_roles_x = None
+            active = None  # 断链:不匹配的表后不继承
+            if ttype == "unclassified" and col_count >= 4:
+                # 候选数据表但无 seed 确认 → 记详情供 UI 建规则(设计 §1.2)
+                header, _hr = _collapse_header(rows)
+                title = ""
+                for r in rows[:3]:
+                    non_empty = [c for c in r if (c or "").strip()]
+                    if len(non_empty) == 1:
+                        title = non_empty[0].strip()
+                        break
+                meta["unmatched_tables"].append(
+                    {
+                        "page": table.page_no,
+                        "table_idx": table.table_idx,
+                        "title": title,
+                        "header": [(c or "").strip() for c in header if (c or "").strip()],
+                        "col_count": col_count,
+                        "row_count": len(rows),
+                    }
+                )
             continue
 
-        # price validation: glued/magnitude only. Outlier detection moved to
-        # cluster level (_build_groups_db → compute_stats, same-goods peers).
+        # 价格校验/finalize(seed 角色: price_unit_raw→unit_price, price_untaxed_raw→
+        # price_untaxed)。Outlier detection stays at cluster level (_build_groups_db)。
         for r in raw:
             # Ragged-row fix: if the extracted name is pure-numeric (序号, because
             # a spurious leading empty cell shifted THIS row), find the real name
@@ -394,53 +412,47 @@ def _extract_from_tables(tables: list, doc_uri: str, keywords: list[str] | None 
             nm = (r["name"] or "").strip()
             if _PURE_NUM.match(nm) or _PURE_NUM_BRACKET.match(nm):
                 row = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
-                for cell in row:
-                    c = (cell or "").strip()
+                for cell_txt in row:
+                    c = (cell_txt or "").strip()
                     if c and not _PURE_NUM.match(c) and not _PURE_NUM_BRACKET.match(c):
                         r["name"] = c
                         break
-            taxed, vstatus_t, reason_t = validate_price(r["price_taxed_raw"])
-            # Only validate untaxed if a value exists. Contracts without a
-            # 不含税单价 column produce price_untaxed_raw="" → validate_price
-            # would return needs_review("无数字") → every item flagged even
-            # though the 含税 price is correct. Skip when no untaxed value.
+            unit_p, vstatus_u, reason_u = validate_price(r["price_unit_raw"])
             if r.get("price_untaxed_raw"):
-                untaxed, vstatus_u, reason_u = validate_price(r["price_untaxed_raw"])
+                untaxed, vstatus_n, reason_n = validate_price(r["price_untaxed_raw"])
             else:
-                untaxed, vstatus_u, reason_u = None, "ok", ""
-            # RECOVERY: 含税单价 missing/abnormal — the 含税单价 cell is empty OR
-            # an unsplittable glue ('9697.45556.99' = 税金+含税单价, no space,
-            # clearly not a normal number). Recover via the definitional relation
-            # 含税单价 = 含税合价 ÷ 工程量 (合价 = rightmost numeric col).
-            if taxed is None and hejia_col is not None and qty_col is not None:
-                h = _row_single_num(table.rows, r["row_idx"], hejia_col)
-                q = parse_qty(r["qty_raw"])
-                if h and q and q > 0:
-                    taxed = round(h / q, 2)
-                    vstatus_t, reason_t = "ok", "合价/工程量反算"
-            # Skip price-less rows: no usable price (both taxed & untaxed empty)
-            # → useless for price analysis. Covers work-content tables (no price
-            # column) and OCR-miss rows. Don't store them as needs_review noise.
-            if taxed is None and untaxed is None:
+                untaxed, vstatus_n, reason_n = None, "ok", ""
+            # 反算: 单价缺失/异常 → 合价÷工程量(seed 显式 price_total 列,定义关系
+            # 单价 = 合价 ÷ 工程量)。错列不可能通过反算,零误注风险。
+            if unit_p is None and r.get("price_total_raw"):
+                total, _, _ = validate_price(r["price_total_raw"])
+                q = parse_qty(r["qty_raw"] or "")
+                if total and q and q > 0:
+                    unit_p = round(total / q, 2)
+                    vstatus_u, reason_u = "ok", "合价/工程量反算"
+            # Skip price-less rows: no usable price (both empty) → useless for
+            # price analysis. Don't store them as needs_review noise.
+            if unit_p is None and untaxed is None:
                 continue
-            vstatus = "needs_review" if "needs_review" in (vstatus_t, vstatus_u) else "ok"
+            vstatus = "needs_review" if "needs_review" in (vstatus_u, vstatus_n) else "ok"
             items.append(
                 {
                     "goods_name": r["name"],
                     "spec_model": r["spec"],
                     "tech_params": _extract_tech_params(r["name"]),
-                    "quantity": parse_qty(r["qty_raw"]),
+                    "category": r.get("category"),
+                    "quantity": parse_qty(r["qty_raw"] or ""),
                     "unit": r["unit"],
-                    "unit_price": taxed,  # 含税单价(统计)
+                    "unit_price": unit_p,  # 含税单价(统计)
                     "price_untaxed": untaxed,  # 不含税单价(审计)
                     "source_doc_uri": doc_uri,
                     "source_page": table.page_no,
-                    "source_bbox": _cell_bbox(table, r["row_idx"], roles.get("name", 0) if ttype == "goods_price" else active_roles.get("name", 0)),
+                    "source_bbox": _cell_bbox(table, r["row_idx"], name_col),
                     "source_table_idx": table.table_idx,
                     "source_row_idx": r["row_idx"],
                     "confidence": table.mean_confidence,
                     "validation_status": vstatus,
-                    "price_reason": reason_t or reason_u,
+                    "price_reason": reason_u or reason_n,
                 }
             )
         meta["rows_extracted"] += len(raw)
@@ -645,7 +657,7 @@ async def _process_one_doc(
     ch: dict,
     store: ContractStore,
     cfg,
-    keywords: list[str],
+    seeds: list[dict],
     sem: asyncio.Semaphore,
     state: dict,
     run_id: str | None,
@@ -672,7 +684,7 @@ async def _process_one_doc(
             # don't stall the event loop during download.
             file_bytes = await asyncio.to_thread(store.get, key)
             tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
-            items, meta = _extract_from_tables(tables, doc_uri, keywords)
+            items, meta = _extract_from_tables(tables, doc_uri, seeds)
             project_name, project_location, contract_no, supplier, sign_date = extract_project_fields(page_texts)
             # Persist preview PNGs for every page that has extracted items, so
             # the traceback UI can overlay bboxes. Derived directly from items'
@@ -697,13 +709,19 @@ async def _process_one_doc(
                 "type": os.path.splitext(key)[1].lstrip(".").lower() or "pdf",
                 "quick_fp": f"{key}|{ch['size']}",
                 "parse_mode": "ocr",
-                # needs_review when nothing was extracted OR both project
-                # fields are missing (regex couldn't anchor front-page labels
-                # → human fills them via the management UI).
-                "parse_status": "needs_review"
-                if (not (items or meta["tables_found"]))
-                or (not project_name and not project_location)
-                else "parsed",
+                # 严格 seed-only 三态(设计 §1.2): 0表=no_tables(不算失败);
+                # 有表全未命中/首页字段缺失=needs_review;否则 parsed。
+                "parse_status": (
+                    "no_tables"
+                    if not meta["tables_found"]
+                    else (
+                        "needs_review"
+                        if (not meta["goods_tables"] and meta["unmatched_tables"])
+                        or (not (items or meta["tables_found"]))
+                        or (not project_name and not project_location)
+                        else "parsed"
+                    )
+                ),
                 "parse_meta": meta,
                 "page_count": max((t.page_no for t in tables), default=None),
                 "preview_prefix": preview_prefix,
@@ -764,7 +782,7 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None, force_ke
     """
     started = time.monotonic()
     cfg = get_config()
-    keywords = _load_price_keywords()
+    seeds = _load_seeds()
 
     try:
         from scripts.db import init_schema
@@ -793,7 +811,7 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None, force_ke
     sem = asyncio.Semaphore(concurrency)
     try:
         await asyncio.gather(
-            *(_process_one_doc(ch, store, cfg, keywords, sem, state, run_id, total_docs) for ch in changed)
+            *(_process_one_doc(ch, store, cfg, seeds, sem, state, run_id, total_docs) for ch in changed)
         )
     except Exception as exc:
         error = repr(exc)
