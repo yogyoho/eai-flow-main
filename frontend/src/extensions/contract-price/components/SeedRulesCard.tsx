@@ -123,7 +123,7 @@ export function SeedRulesCard({ seeds, onChange, saving }: Props) {
         })}
         {seeds.length === 0 && (
           <p className="text-muted-foreground py-6 text-center text-sm">
-            暂无规则——解析将无法提取任何表格,请新建或保留内置库。
+            暂无规则——解析将无法提取任何表格。保存后系统会自动恢复内置规则库。
           </p>
         )}
       </CardContent>

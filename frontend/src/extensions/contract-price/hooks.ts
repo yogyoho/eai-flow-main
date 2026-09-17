@@ -253,7 +253,9 @@ export function useUploadDocument() {
 export function useReparseDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => contractPriceApi.reparseDocument(id),
+    // re_ocr=false 显式声明走 OCR 缓存路径(秒级)。省略参数等效,但绝不能
+    // 传空值——`?re_ocr=` 会被 FastAPI 拒以 422。
+    mutationFn: (id: string) => contractPriceApi.reparseDocument(id, false),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["cpa"] });
     },

@@ -38,13 +38,18 @@ import {
 } from "@/components/ui/popover";
 import { contractPriceApi } from "@/extensions/contract-price/api";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
+import type { SeedDraft } from "@/extensions/contract-price/components/SeedEditorDrawer";
+import { UnmatchedTablesDrawer } from "@/extensions/contract-price/components/UnmatchedTablesDrawer";
 import {
+  useConfig,
   useDocuments,
   useReparseDocument,
   useRunCluster,
   useRunPipeline,
+  useUpdateConfig,
   useUpdateDocument,
 } from "@/extensions/contract-price/hooks";
+import type { UnmatchedTable } from "@/extensions/contract-price/types";
 
 /** Unified doc lifecycle stage. No confirm gate — parsed docs go straight to
  * "已解析", then cluster run advances to "已分组". */
@@ -61,6 +66,10 @@ function docStage(doc: { parse_status: string; confirm_status: string }): {
     return { label: "已上传", tone: "text-muted-foreground", pending: false };
   if (doc.parse_status === "parsing")
     return { label: "解析中", tone: "text-primary", pending: false };
+  if (doc.parse_status === "no_tables")
+    return { label: "无价格表", tone: "text-muted-foreground", pending: false };
+  if (doc.parse_status === "needs_review")
+    return { label: "待人工核验", tone: "text-amber-600", pending: false };
   return { label: "已解析", tone: "text-emerald-600", pending: false };
 }
 
@@ -372,6 +381,13 @@ export function ContractsView() {
   const runCluster = useRunCluster();
   const runPipeline = useRunPipeline();
   const reparse = useReparseDocument();
+  const { data: configData } = useConfig();
+  const updateConfig = useUpdateConfig();
+  const [unmatchedDoc, setUnmatchedDoc] = useState<{
+    id: string;
+    name: string;
+    tables: UnmatchedTable[];
+  } | null>(null);
   const [batch, setBatch] = useState<{
     total: number;
     done: number;
@@ -422,6 +438,30 @@ export function ContractsView() {
 
   const docs = data?.items ?? [];
   const pendingCount = docs.filter((d) => d.parse_status === "pending").length;
+
+  /** 未匹配表抽屉"保存规则": upsert 进 config.table_seeds。
+   * config GET 会注入后端内置规则,这里拿到的即全量列表,按 id 覆盖或追加。 */
+  const createSeedFromDrawer = (seed: SeedDraft) => {
+    if (!configData) {
+      alert("配置尚未加载,请稍后重试");
+      return;
+    }
+    const seeds = configData.table_seeds ?? [];
+    const next = {
+      ...configData,
+      table_seeds: seeds.some((s) => s.id === seed.id)
+        ? seeds.map((s) => (s.id === seed.id ? seed : s))
+        : [...seeds, seed],
+    };
+    updateConfig.mutate(next, {
+      onSuccess: () =>
+        setNotice(
+          `已保存规则「${seed.display_name}」。回到抽屉点「重解析本文档」应用(读 OCR 缓存,秒级)。`,
+        ),
+      onError: (e) =>
+        alert(`规则保存失败:${e instanceof Error ? e.message : e}`),
+    });
+  };
 
   return (
     <div className="space-y-6 p-8">
@@ -560,7 +600,10 @@ export function ContractsView() {
                   tables_found?: number;
                   goods_tables?: number;
                   rows_extracted?: number;
+                  unmatched_tables?: UnmatchedTable[];
+                  matched_seeds?: Record<string, number>;
                 } | null;
+                const unmatched = meta?.unmatched_tables ?? [];
                 const stage = docStage(doc);
                 return (
                   <tr
@@ -582,6 +625,13 @@ export function ContractsView() {
                           {meta
                             ? `${meta.goods_tables ?? 0}货/${meta.tables_found ?? 0}表/${meta.rows_extracted ?? 0}行`
                             : "—"}
+                          {meta?.matched_seeds &&
+                            Object.keys(meta.matched_seeds).length > 0 && (
+                              <>
+                                <span className="mx-1 opacity-40">·</span>
+                                {Object.keys(meta.matched_seeds).join("/")}
+                              </>
+                            )}
                           <span className="mx-1 opacity-40">·</span>
                           {formatDate(doc.parsed_at)}
                         </div>
@@ -630,7 +680,23 @@ export function ContractsView() {
                       />
                     </td>
                     <td className="px-6 py-4">
-                      <span className={stage.tone}>{stage.label}</span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={stage.tone}>{stage.label}</span>
+                        {unmatched.length > 0 && (
+                          <button
+                            className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600 hover:bg-amber-500/10"
+                            onClick={() =>
+                              setUnmatchedDoc({
+                                id: doc.id,
+                                name: doc.file_name,
+                                tables: unmatched,
+                              })
+                            }
+                          >
+                            ⚠ {unmatched.length} 张表未识别
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-0.5">
@@ -638,12 +704,12 @@ export function ContractsView() {
                           size="icon"
                           variant="ghost"
                           className="text-blue-600 hover:text-blue-600"
-                          title="重新解析(重新 OCR,约几分钟)"
+                          title="重新解析(读 OCR 缓存,秒级)"
                           disabled={reparse.isPending}
                           onClick={() => {
                             if (
                               !confirm(
-                                `重新解析 ${doc.file_name}?\n会重新 OCR(约几分钟),完成后状态回到 parsed/needs_review。`,
+                                `重新解析 ${doc.file_name}?(读取 OCR 缓存,通常秒级)`,
                               )
                             )
                               return;
@@ -724,6 +790,28 @@ export function ContractsView() {
         onUpload={(files, autoParse) => {
           void handleFiles(files, autoParse);
         }}
+      />
+
+      <UnmatchedTablesDrawer
+        open={unmatchedDoc !== null}
+        fileName={unmatchedDoc?.name ?? ""}
+        tables={unmatchedDoc?.tables ?? []}
+        onClose={() => setUnmatchedDoc(null)}
+        onCreateSeed={createSeedFromDrawer}
+        onReparse={() => {
+          if (!unmatchedDoc) return;
+          reparse.mutate(unmatchedDoc.id, {
+            onSuccess: () => {
+              setNotice("已启动重解析(读 OCR 缓存,秒级)。刷新后查看提取结果。");
+              setUnmatchedDoc(null);
+            },
+            onError: (e) =>
+              alert(
+                `重解析启动失败:${e instanceof Error ? e.message : e}\n(可能已有解析任务在跑,去「任务」页确认)`,
+              ),
+          });
+        }}
+        reparsePending={reparse.isPending}
       />
     </div>
   );

@@ -60,18 +60,23 @@ export function SettingsView() {
 
   const save = () => {
     if (!form) return;
-    updateConfig.mutate(
-      {
-        ...form,
-        cluster_eps: clamp(Number(form.cluster_eps) || 0.6, 0.1, 1.0),
-        cluster_min_samples: clamp(
-          Math.round(Number(form.cluster_min_samples) || 2),
-          1,
-          10,
-        ),
-      },
-      { onSuccess: () => setDirty(false) },
-    );
+    const clamped = {
+      ...form,
+      cluster_eps: clamp(Number(form.cluster_eps) || 0.6, 0.1, 1.0),
+      cluster_min_samples: clamp(
+        Math.round(Number(form.cluster_min_samples) || 2),
+        1,
+        10,
+      ),
+    };
+    setForm(clamped); // 表单立即反映 clamp 后的值
+    updateConfig.mutate(clamped, { onSuccess: () => setDirty(false) });
+  };
+
+  const discard = () => {
+    if (!data) return;
+    setForm({ ...data, table_seeds: data.table_seeds ?? [] });
+    setDirty(false);
   };
 
   return (
@@ -158,6 +163,15 @@ export function SettingsView() {
           <Save className="h-4 w-4" />
           {updateConfig.isPending ? "保存中…" : "保存配置"}
         </Button>
+        {dirty && (
+          <Button
+            variant="ghost"
+            disabled={updateConfig.isPending}
+            onClick={discard}
+          >
+            放弃修改
+          </Button>
+        )}
         {dirty && <span className="text-sm text-amber-600">有未保存修改</span>}
         {updateConfig.isSuccess && !dirty && (
           <span className="text-success text-sm">已保存</span>

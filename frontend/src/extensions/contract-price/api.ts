@@ -28,7 +28,7 @@ const FULL_BASE = "/api/extensions/contract-price";
 
 /** Build a query string, skipping empty/null/undefined values. */
 export function qs(
-  params?: Record<string, string | number | boolean | null | undefined>
+  params?: Record<string, string | number | boolean | null | undefined>,
 ): string {
   const sp = new URLSearchParams();
   for (const [k, v] of Object.entries(params ?? {})) {
@@ -43,8 +43,15 @@ export const contractPriceApi = {
   dashboard: () => authFetch<CpaDashboard>(`${API_BASE}/dashboard`),
 
   // Cross-contract goods analysis
-  goodsAnalysis: (params: { name?: string; cluster_id?: string; skip?: number; limit?: number }) =>
-    authFetch<Record<string, unknown>>(`${API_BASE}/contract-price-analysis${qs(params)}`),
+  goodsAnalysis: (params: {
+    name?: string;
+    cluster_id?: string;
+    skip?: number;
+    limit?: number;
+  }) =>
+    authFetch<Record<string, unknown>>(
+      `${API_BASE}/contract-price-analysis${qs(params)}`,
+    ),
 
   // Functional area 1: documents
   listDocuments: (params?: {
@@ -57,16 +64,26 @@ export const contractPriceApi = {
   deleteDocument: (id: string) =>
     authFetch<void>(`${API_BASE}/documents/${id}`, { method: "DELETE" }),
 
-  reparseDocument: (id: string) =>
-    authFetch<{ run_id: string; status: string; message?: string }>(`${API_BASE}/documents/${id}/reparse`, {
-      method: "POST",
-    }),
+  // reOcr=false 走 OCR 缓存(秒级);true 强制重 OCR。必须始终带值——
+  // 空值 `?re_ocr=` 会被 FastAPI 拒以 422。
+  reparseDocument: (id: string, reOcr = false) =>
+    authFetch<{ run_id: string; status: string; message?: string }>(
+      `${API_BASE}/documents/${id}/reparse?re_ocr=${reOcr}`,
+      { method: "POST" },
+    ),
 
   updateDocument: (
     id: string,
     body: Partial<
-      Pick<CpaDocument, "project_name" | "project_location" | "contract_no" | "supplier" | "sign_date">
-    >
+      Pick<
+        CpaDocument,
+        | "project_name"
+        | "project_location"
+        | "contract_no"
+        | "supplier"
+        | "sign_date"
+      >
+    >,
   ) =>
     authFetch<CpaDocument>(`${API_BASE}/documents/${id}`, {
       method: "PATCH",
@@ -80,10 +97,13 @@ export const contractPriceApi = {
     }),
 
   confirmAllDocuments: (confirm_status: "confirmed" | "skipped") =>
-    authFetch<{ updated: number; confirm_status: string }>(`${API_BASE}/documents/confirm-all`, {
-      method: "POST",
-      body: JSON.stringify({ confirm_status }),
-    }),
+    authFetch<{ updated: number; confirm_status: string }>(
+      `${API_BASE}/documents/confirm-all`,
+      {
+        method: "POST",
+        body: JSON.stringify({ confirm_status }),
+      },
+    ),
 
   runCluster: (mode = "table", trigger = "manual") =>
     authFetch<PipelineRunResponse>(`${API_BASE}/cluster/run`, {
@@ -109,41 +129,66 @@ export const contractPriceApi = {
     limit?: number;
   }) => authFetch<Page<CpaCluster>>(`${API_BASE}/clusters${qs(params)}`),
 
-  getCluster: (id: string) => authFetch<CpaClusterDetail>(`${API_BASE}/clusters/${id}`),
+  getCluster: (id: string) =>
+    authFetch<CpaClusterDetail>(`${API_BASE}/clusters/${id}`),
 
-  confirmCluster: (id: string, body?: { confirmed_by?: string; expected_version?: number }) =>
-    authFetch<{ status: string; version: number }>(`${API_BASE}/clusters/${id}/confirm`, {
-      method: "POST",
-      body: JSON.stringify(body ?? {}),
-    }),
+  confirmCluster: (
+    id: string,
+    body?: { confirmed_by?: string; expected_version?: number },
+  ) =>
+    authFetch<{ status: string; version: number }>(
+      `${API_BASE}/clusters/${id}/confirm`,
+      {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+      },
+    ),
 
   rejectCluster: (id: string, body?: { expected_version?: number }) =>
-    authFetch<{ status: string; version: number }>(`${API_BASE}/clusters/${id}/reject`, {
-      method: "POST",
-      body: JSON.stringify(body ?? {}),
-    }),
+    authFetch<{ status: string; version: number }>(
+      `${API_BASE}/clusters/${id}/reject`,
+      {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+      },
+    ),
 
-  updateCluster: (id: string, body: { category?: string; representative_name?: string }) =>
+  updateCluster: (
+    id: string,
+    body: { category?: string; representative_name?: string },
+  ) =>
     authFetch<CpaCluster>(`${API_BASE}/clusters/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
 
-  mergeClusters: (cluster_ids: string[], representative_name: string, category?: string) =>
-    authFetch<{ cluster_id: string; item_count: number }>(`${API_BASE}/clusters/merge`, {
-      method: "POST",
-      body: JSON.stringify({ cluster_ids, representative_name, category }),
-    }),
+  mergeClusters: (
+    cluster_ids: string[],
+    representative_name: string,
+    category?: string,
+  ) =>
+    authFetch<{ cluster_id: string; item_count: number }>(
+      `${API_BASE}/clusters/merge`,
+      {
+        method: "POST",
+        body: JSON.stringify({ cluster_ids, representative_name, category }),
+      },
+    ),
 
   moveItem: (item_id: string, target_cluster_id: string) =>
-    authFetch<{ item_id: string; cluster_id: string }>(`${API_BASE}/items/${item_id}/move`, {
-      method: "POST",
-      body: JSON.stringify({ target_cluster_id }),
-    }),
+    authFetch<{ item_id: string; cluster_id: string }>(
+      `${API_BASE}/items/${item_id}/move`,
+      {
+        method: "POST",
+        body: JSON.stringify({ target_cluster_id }),
+      },
+    ),
 
   // Functional area 3: items
   listItemContracts: () =>
-    authFetch<{ source_contract_no: string; count: number }[]>(`${API_BASE}/items/contracts`),
+    authFetch<{ source_contract_no: string; count: number }[]>(
+      `${API_BASE}/items/contracts`,
+    ),
 
   listItems: (params?: {
     goods_name?: string;
@@ -164,7 +209,7 @@ export const contractPriceApi = {
       spec_model?: string;
       validation_status?: string;
       note?: string;
-    }
+    },
   ) =>
     authFetch<CpaItem>(`${API_BASE}/items/${id}`, {
       method: "PATCH",
@@ -187,14 +232,22 @@ export const contractPriceApi = {
     }),
 
   deleteItemsByRun: (runId: string) =>
-    authFetch<{ deleted: number }>(`${API_BASE}/items/by-run/${runId}`, { method: "DELETE" }),
+    authFetch<{ deleted: number }>(`${API_BASE}/items/by-run/${runId}`, {
+      method: "DELETE",
+    }),
 
   // Functional area 4: runs
-  listRuns: (params?: { run_status?: string; has_items?: boolean; skip?: number; limit?: number }) =>
-    authFetch<Page<CpaRun>>(`${API_BASE}/runs${qs(params)}`),
+  listRuns: (params?: {
+    run_status?: string;
+    has_items?: boolean;
+    skip?: number;
+    limit?: number;
+  }) => authFetch<Page<CpaRun>>(`${API_BASE}/runs${qs(params)}`),
 
   deleteRun: (runId: string) =>
-    authFetch<{ deleted: number }>(`${API_BASE}/runs/${runId}`, { method: "DELETE" }),
+    authFetch<{ deleted: number }>(`${API_BASE}/runs/${runId}`, {
+      method: "DELETE",
+    }),
 
   // Functional area 5: config
   getConfig: () => authFetch<CpaConfig>(`${API_BASE}/config`),
