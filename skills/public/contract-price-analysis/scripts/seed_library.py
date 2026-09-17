@@ -2,13 +2,13 @@
 
 backend/app/extensions/contract_price/seed_defaults.py 的默认注入与本文件保持同步
 (同 models.py 的双份镜像约定)。锚点为归一化子串——归一化规则见
-table_classifier._norm_header(去内部空白/去（）括注/全角转半角)。
+table_classifier._norm_header(去内部空白/去（）括注/全角转半角)(Task 2 新增)。
 v1 锚点草案,以 7 样例验收运行实测为准(设计文档 §5)。
 """
 
 from __future__ import annotations
 
-_GCL_EXCLUDE = {"price_unit": ["不含税"]}
+_UNTAXED_EXCLUDE = {"price_unit": ["不含税"]}
 
 DEFAULT_TABLE_SEEDS: list[dict] = [
     {
@@ -24,7 +24,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["含税合价"],
             "price_untaxed": ["不含税单价"],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:房建工程（桂北数据中心）",
     },
     {
@@ -56,7 +56,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["含税总价"],
             "price_untaxed": ["不含税单价"],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:上浦项目-钢筋采购合同",
     },
     {
@@ -72,7 +72,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["含税总价"],
             "price_untaxed": ["不含税单价"],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:木饰面、石材物资采购合同",
     },
     {
@@ -104,46 +104,54 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["调整后合价", "总金额", "含税总价"],
             "price_untaxed": [],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:钢筋补充协议-需盖章11",
     },
 ]
 
 
+def _str_list(v: object) -> list[str]:
+    """列表字段类型守卫: 非 list → [];list 内只留标量(str/int/float),字符串化去空白。
+    挡住 UI 保存的任意 JSON(如 "price_unit": 3 或 "name": "品名")变成崩溃或逐字符垃圾锚点。"""
+    if not isinstance(v, list):
+        return []
+    return [str(t).strip() for t in v if isinstance(t, (str, int, float)) and str(t).strip()]
+
+
 def normalize_seeds(raw: object) -> list[dict]:
     """清洗外部输入的 seed 列表: 丢非 dict/缺 id/不满足确认条件最低要求的条目,
-    补全缺失键。UI 保存的任意 JSON 都不会让管线拿到坏 seed。"""
+    补全缺失键,重复 id 保留第一条。UI 保存的任意 JSON 都不会让管线拿到坏 seed。"""
     if not isinstance(raw, list):
         return []
     out: list[dict] = []
+    seen: set[str] = set()
     for s in raw:
         if not isinstance(s, dict):
             continue
+        sid = str(s.get("id") or "").strip()
         cols = s.get("columns") if isinstance(s.get("columns"), dict) else {}
-        name = [str(t) for t in cols.get("name") or [] if str(t).strip()]
-        price_unit = [str(t) for t in cols.get("price_unit") or [] if str(t).strip()]
-        price_total = [str(t) for t in cols.get("price_total") or [] if str(t).strip()]
-        if not str(s.get("id") or "").strip() or not name or not (price_unit or price_total):
+        name = _str_list(cols.get("name"))
+        price_unit = _str_list(cols.get("price_unit"))
+        price_total = _str_list(cols.get("price_total"))
+        if not sid or not name or not (price_unit or price_total) or sid in seen:
             continue
+        seen.add(sid)
+        excl = s.get("exclude") if isinstance(s.get("exclude"), dict) else {}
         out.append(
             {
-                "id": str(s["id"]).strip(),
-                "display_name": str(s.get("display_name") or s["id"]).strip(),
-                "title_keywords": [str(t) for t in s.get("title_keywords") or [] if str(t).strip()],
+                "id": sid,
+                "display_name": str(s.get("display_name") or sid).strip(),
+                "title_keywords": _str_list(s.get("title_keywords")),
                 "columns": {
                     "name": name,
-                    "spec": [str(t) for t in cols.get("spec") or [] if str(t).strip()],
-                    "qty": [str(t) for t in cols.get("qty") or [] if str(t).strip()],
-                    "unit": [str(t) for t in cols.get("unit") or [] if str(t).strip()],
+                    "spec": _str_list(cols.get("spec")),
+                    "qty": _str_list(cols.get("qty")),
+                    "unit": _str_list(cols.get("unit")),
                     "price_unit": price_unit,
                     "price_total": price_total,
-                    "price_untaxed": [str(t) for t in cols.get("price_untaxed") or [] if str(t).strip()],
+                    "price_untaxed": _str_list(cols.get("price_untaxed")),
                 },
-                "exclude": {
-                    str(k): [str(t) for t in v if str(t).strip()]
-                    for k, v in (s.get("exclude") or {}).items()
-                    if isinstance(v, list)
-                },
+                "exclude": {str(k): _str_list(v) for k, v in excl.items()},
                 "source": str(s["source"]) if s.get("source") else None,
             }
         )

@@ -19,12 +19,23 @@ def test_normalize_seeds_drops_invalid_and_fills_defaults():
         {"id": "", "display_name": "bad"},
         "not-a-dict",
         {"id": "nocost", "display_name": "y", "columns": {"name": ["品名"]}},
+        # 敌意输入: 非 list 列锚点 + 非 dict exclude —— 必须被丢弃而非崩溃
+        {"id": "h", "display_name": "x", "columns": {"name": ["品名"], "price_unit": "单价"}, "exclude": "不含税"},
+        # 重复 id: keep-first
+        {"id": "ok", "display_name": "dup", "columns": {"name": ["品名"], "price_unit": ["单价"]}},
     ]
     out = normalize_seeds(raw)
     assert [s["id"] for s in out] == ["ok"]
+    # 存活条目全形: 7 列角色齐备/exclude 缺省 {} /source 缺省 None
+    assert sorted(out[0]["columns"].keys()) == ["name", "price_total", "price_unit", "price_untaxed", "qty", "spec", "unit"]
+    assert out[0]["exclude"] == {}
+    assert out[0]["source"] is None
 
 
 def test_price_unit_exclude_guards_untaxed():
-    """含税单价 seed 必须排除 不含税 列(子串陷阱)。"""
-    gcl = next(s for s in DEFAULT_TABLE_SEEDS if s["id"] == "gcl-qd")
-    assert "不含税" in gcl.get("exclude", {}).get("price_unit", [])
+    """含税单价 seed 必须排除 不含税 列(子串陷阱)——遍历全部 seed。"""
+    for s in DEFAULT_TABLE_SEEDS:
+        if any("含税" in t for t in s["columns"]["price_unit"]):
+            assert "不含税" in s.get("exclude", {}).get("price_unit", []), (
+                f"{s['id']} 含税单价未排除 不含税 列"
+            )

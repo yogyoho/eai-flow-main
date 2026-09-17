@@ -5,6 +5,7 @@ dependency) and returns ORM objects or primitives. Query construction is
 separated from the routers so it can be unit-tested with a mocked session.
 """
 
+import copy
 import json
 import os
 from datetime import UTC
@@ -733,7 +734,7 @@ def load_config() -> ConfigOut:
     if not cfg.table_seeds:
         from app.extensions.contract_price.seed_defaults import DEFAULT_TABLE_SEEDS
 
-        cfg.table_seeds = [dict(s) for s in DEFAULT_TABLE_SEEDS]  # UI 首次打开即见内置规则库;浅拷贝防跨请求共享可变引用
+        cfg.table_seeds = copy.deepcopy(DEFAULT_TABLE_SEEDS)  # UI 首次打开即见内置规则库;深拷贝防止嵌套 columns/exclude 与模块常量共享引用
     return cfg
 
 

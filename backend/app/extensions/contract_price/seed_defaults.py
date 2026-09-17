@@ -1,6 +1,6 @@
 """内置 seed 库(与 skills/public/contract-price-analysis/scripts/seed_library.py 保持同步——双份镜像约定,同 models.py)。"""
 
-_GCL_EXCLUDE = {"price_unit": ["不含税"]}
+_UNTAXED_EXCLUDE = {"price_unit": ["不含税"]}
 
 DEFAULT_TABLE_SEEDS: list[dict] = [
     {
@@ -16,7 +16,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["含税合价"],
             "price_untaxed": ["不含税单价"],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:房建工程（桂北数据中心）",
     },
     {
@@ -48,7 +48,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["含税总价"],
             "price_untaxed": ["不含税单价"],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:上浦项目-钢筋采购合同",
     },
     {
@@ -64,7 +64,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["含税总价"],
             "price_untaxed": ["不含税单价"],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:木饰面、石材物资采购合同",
     },
     {
@@ -96,7 +96,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
             "price_total": ["调整后合价", "总金额", "含税总价"],
             "price_untaxed": [],
         },
-        "exclude": _GCL_EXCLUDE,
+        "exclude": _UNTAXED_EXCLUDE,
         "source": "样例:钢筋补充协议-需盖章11",
     },
 ]

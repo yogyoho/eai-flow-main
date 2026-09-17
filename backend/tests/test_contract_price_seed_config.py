@@ -18,6 +18,9 @@ def test_config_roundtrip_keeps_table_seeds(tmp_path, monkeypatch):
     assert got.table_seeds[0]["id"] == "t1"
     saved = save_config(got)
     assert saved.table_seeds[0]["id"] == "t1"
+    # 真持久化校验: 落盘后重新 load 仍能读回(而非仅返回入参对象)
+    reloaded = load_config()
+    assert reloaded.table_seeds[0]["id"] == "t1"
 
 
 def test_load_config_injects_default_seeds_when_empty(tmp_path, monkeypatch):
