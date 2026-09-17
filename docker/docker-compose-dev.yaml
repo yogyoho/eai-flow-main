@@ -447,7 +447,12 @@ services:
       retries: 6
       start_period: 15s
     networks:
-      - eai-flow-net
+      eai-flow-net:
+        # S1 Task 4 修复: extensions_config.json MCP URL 主机名是 `ontostudio`,
+        # 但服务/容器名均为 ontostudio-backend——无 alias 时 DNS 解析失败, harness
+        # http 通道连接不上。照 cad-suite 惯例加 alias 保持 URL 稳定。
+        aliases:
+          - ontostudio
     restart: unless-stopped
 
 volumes:
