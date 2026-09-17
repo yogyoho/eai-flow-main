@@ -727,8 +727,14 @@ def load_config() -> ConfigOut:
     path = _config_path()
     if os.path.exists(path):
         with open(path, encoding="utf-8") as f:
-            return ConfigOut(**json.load(f))
-    return ConfigOut()
+            cfg = ConfigOut(**json.load(f))
+    else:
+        cfg = ConfigOut()
+    if not cfg.table_seeds:
+        from app.extensions.contract_price.seed_defaults import DEFAULT_TABLE_SEEDS
+
+        cfg.table_seeds = [dict(s) for s in DEFAULT_TABLE_SEEDS]  # UI 首次打开即见内置规则库;浅拷贝防跨请求共享可变引用
+    return cfg
 
 
 def save_config(cfg: ConfigOut) -> ConfigOut:

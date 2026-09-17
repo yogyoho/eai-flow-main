@@ -121,6 +121,10 @@ class ConfigOut(BaseModel):
         "报价",
         "暂列",
     ]
+    # v3: seed 定位规则库(设计 docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md)。
+    # 结构: [{id, display_name, title_keywords, columns{name,spec,qty,unit,price_unit,
+    # price_total,price_untaxed}, exclude?, source?}] — 与技能 scripts/seed_library.py 保持同构。
+    table_seeds: list[dict] = []
 
 
 class ConfigUpdate(ConfigOut):
