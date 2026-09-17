@@ -21,7 +21,7 @@ from typing import Any, Optional
 
 from scripts.clustering.engine import cluster_items
 from scripts.config import get_config
-from scripts.document_parser import parse_document
+from scripts.document_parser import from_cache, parse_document, to_cache
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
 from scripts.price_validator import parse_qty, validate_price
@@ -508,6 +508,7 @@ async def _process_one_doc(
     state: dict,
     run_id: str | None,
     total_docs: int,
+    re_ocr: bool = False,
 ) -> None:
     """Parse one changed contract under the concurrency semaphore.
 
@@ -529,7 +530,16 @@ async def _process_one_doc(
             # MinIO get is a sync blocking call — offload so concurrent docs
             # don't stall the event loop during download.
             file_bytes = await asyncio.to_thread(store.get, key)
-            tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
+            cache_key = f"ocr/{ch['hash']}.json"  # 内容寻址:同内容同键,免失效
+            cached = None if re_ocr else await asyncio.to_thread(store.get_ocr_cache, cache_key)
+            if cached is not None:
+                tables, page_texts = from_cache(cached)
+                logger.info("Cache hit %s: %d tables (skip OCR)", cache_key, len(tables))
+            else:
+                tables, page_texts = await parse_document(file_bytes, key, cfg.ocr_service_url)
+                await asyncio.to_thread(
+                    store.put_ocr_cache, cache_key, to_cache(tables, page_texts)
+                )
             items, meta = _extract_from_tables(tables, doc_uri, seeds)
             project_name, project_location, contract_no, supplier, sign_date = extract_project_fields(page_texts)
             # Persist preview PNGs for every page that has extracted items, so
@@ -612,13 +622,16 @@ async def _process_one_doc(
             )
 
 
-async def run_parse(trigger: str = "manual", run_id: str | None = None, force_key: str | None = None) -> int:
+async def run_parse(
+    trigger: str = "manual", run_id: str | None = None, force_key: str | None = None, re_ocr: bool = False
+) -> int:
     """Phase 1: scan → OCR → classify → validate → persist docs + items.
 
     No clustering (that is run_cluster, after the user confirms/skips). Returns
     the number of documents processed. ``run_id`` enables live progress polling.
     ``force_key``: re-parse a single MinIO object by key, bypassing the hash
     cache (single-document reparse; preserves doc_id via storage_uri upsert).
+    ``re_ocr``: 强制重 OCR(默认读 ocr/{sha256}.json 内容寻址缓存,秒级重解析)。
 
     Documents are parsed CONCURRENTLY (asyncio.Semaphore) so the OCR service's
     worker pool (OCR_WORKERS) stays fed — each doc's OCR call is an async HTTP
@@ -657,7 +670,7 @@ async def run_parse(trigger: str = "manual", run_id: str | None = None, force_ke
     sem = asyncio.Semaphore(concurrency)
     try:
         await asyncio.gather(
-            *(_process_one_doc(ch, store, cfg, seeds, sem, state, run_id, total_docs) for ch in changed)
+            *(_process_one_doc(ch, store, cfg, seeds, sem, state, run_id, total_docs, re_ocr=re_ocr) for ch in changed)
         )
     except Exception as exc:
         error = repr(exc)
@@ -876,6 +889,7 @@ def main():
     parser.add_argument("--trigger", choices=["manual", "scheduled"], default="manual")
     parser.add_argument("--run-id", default=None, help="cpa_run_history id for live progress polling")
     parser.add_argument("--force-key", default=None, help="re-parse a single MinIO object key (single-doc reparse, bypasses hash cache)")
+    parser.add_argument("--re-ocr", action="store_true", help="reparse 时强制重 OCR(默认读 MinIO OCR 缓存)")
     parser.add_argument("--dir", default=None, help="directory of .pdf/.docx to batch-upload (phase=upload)")
     args = parser.parse_args()
     if args.phase == "upload":
@@ -884,7 +898,7 @@ def main():
         n = asyncio.run(run_upload(args.dir))
         print(f"Done. Uploaded {n} file(s).")
     elif args.phase == "parse":
-        n = asyncio.run(run_parse(trigger=args.trigger, run_id=args.run_id, force_key=args.force_key))
+        n = asyncio.run(run_parse(trigger=args.trigger, run_id=args.run_id, force_key=args.force_key, re_ocr=args.re_ocr))
         print(f"Done. Parsed {n} document(s).")
     else:
         n = asyncio.run(run_cluster(trigger=args.trigger))

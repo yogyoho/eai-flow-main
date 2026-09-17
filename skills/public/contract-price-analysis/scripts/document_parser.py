@@ -35,12 +35,14 @@ class TableExtract:
     extra: dict = field(default_factory=dict)
 
 
-async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str) -> tuple:
+async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str, last_pages: int = 0) -> tuple:
     """Call eai-flow-ocr POST /ocr, return (list[TableExtract], page_texts).
 
     page_texts is {page_no: full_page_text} for the first few pages only (the OCR
     service gates full-page text to the cover/front pages). Used downstream to
     regex-extract project-level fields (name/location) that never appear in tables.
+
+    last_pages > 0 时仅 OCR 末 N 页(元数据兜底用;Task 8 前服务端忽略该字段)。
 
     Large PDFs take minutes (per-page layout+table+ocr), so the timeout is long.
     """
@@ -55,6 +57,7 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str)
                 resp = await client.post(
                     url,
                     files={"file": (filename, file_bytes, "application/octet-stream")},
+                    data={"last_pages": last_pages} if last_pages else None,
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -103,4 +106,42 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str)
                     mean_confidence=float(t.get("mean_confidence", 0.0)),
                 )
             )
+    return tables, page_texts
+
+
+def to_cache(tables: list[TableExtract], page_texts: dict[int, str]) -> dict:
+    """OCR 结构化结果的缓存形态(剔 preview b64——预览 PNG 本就单独存 MinIO)。"""
+    return {
+        "v": 1,
+        "page_texts": {str(k): v for k, v in page_texts.items()},
+        "tables": [
+            {
+                "page_no": t.page_no,
+                "table_idx": t.table_idx,
+                "bbox": t.bbox,
+                "rows": t.rows,
+                "cell_bboxes": t.cell_bboxes,
+                "mean_confidence": t.mean_confidence,
+            }
+            for t in tables
+        ],
+    }
+
+
+def from_cache(data: dict) -> tuple:
+    """缓存 → (tables, page_texts)。preview 恒为空串(缓存命中重解析时预览
+    PNG 在首解析已落 MinIO,preview_prefix 不变)。"""
+    tables = [
+        TableExtract(
+            page_no=t["page_no"],
+            table_idx=t["table_idx"],
+            bbox=t.get("bbox", [0, 0, 0, 0]),
+            rows=t.get("rows", []),
+            cell_bboxes=t.get("cell_bboxes", []),
+            page_preview_b64="",
+            mean_confidence=float(t.get("mean_confidence", 0.0)),
+        )
+        for t in data.get("tables", [])
+    ]
+    page_texts = {int(k): v for k, v in (data.get("page_texts") or {}).items()}
     return tables, page_texts

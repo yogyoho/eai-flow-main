@@ -7,6 +7,7 @@ with knowledge storage. Also holds per-page OCR preview PNGs for traceback.
 """
 
 import hashlib
+import json
 from io import BytesIO
 
 from minio import Minio
@@ -53,6 +54,17 @@ class ContractStore:
     def put_file(self, key: str, local_path: str, content_type: str | None = None) -> str:
         self._client.fput_object(self._bucket, key, local_path, content_type=content_type)
         return f"s3://{self._bucket}/{key}"
+
+    def get_ocr_cache(self, key: str) -> dict | None:
+        """OCR 结构化缓存;缺失/损坏返回 None(回退全量 OCR,绝不因缓存挂掉)。"""
+        try:
+            return json.loads(self.get(key))
+        except Exception:
+            return None
+
+    def put_ocr_cache(self, key: str, obj: dict) -> None:
+        self.put_bytes(key, json.dumps(obj, ensure_ascii=False).encode("utf-8"),
+                       content_type="application/json")
 
     def put_preview(self, doc_id: str, page_no: int, png_bytes: bytes) -> str:
         key = f"previews/{doc_id}/page-{page_no}.png"
