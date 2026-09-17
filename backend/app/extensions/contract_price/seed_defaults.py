@@ -1,6 +1,6 @@
 """内置 seed 库(与 skills/public/contract-price-analysis/scripts/seed_library.py 保持同步——双份镜像约定,同 models.py)。"""
 
-_UNTAXED_EXCLUDE = {"price_unit": ["不含税"]}
+_UNTAXED_EXCLUDE = {"price_unit": ["不含税"], "price_total": ["不含税"]}
 
 DEFAULT_TABLE_SEEDS: list[dict] = [
     {

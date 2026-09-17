@@ -72,3 +72,30 @@ def test_match_seed_title_disambiguation():
     seed, roles, _ = match_seed(rows, SEEDS)
     assert seed["id"] == "sp-gj"
     assert roles["spec"] == 1         # 材质列作规格
+
+
+def test_match_seed_price_total_untaxed_trap():
+    """不含税合价 包含 含税合价 子串——price_total 的 exclude 必须拦住(money bug)。"""
+    rows = [
+        ["序号", "项目名称", "单位", "工程量", "不含税单价", "含税单价", "不含税合价", "含税合价"],
+        ["1", "平整场地", "m2", "824.79", "1.07", "1.20", "824.79", "989.75"],
+    ]
+    seed, roles, _ = match_seed(rows, SEEDS)
+    assert seed["id"] == "gcl-qd"
+    assert roles["price_total"] == 7   # 含税合价, 不是 不含税合价(6)
+    assert roles["price_unit"] == 5
+
+
+def test_match_seed_tiebreak_order_independent():
+    """全并列消歧(标题/角色数都平)与 seed 列表顺序无关: 正序/倒序都得专的 gc-qzb。"""
+    rows = [
+        ["品名", "规格型号", "厂家/ 品牌", "单位", "数量", "税率", "网价", "其他 固定 单价", "含税 单价", "不含税 单价", "含税合价"],
+        ["热轧光圆钢筋", "HPB300 6mm", "威钢", "t", "4.755", "13%", "4370", "390", "4760", "4214.16", "22633.80"],
+    ]
+    assert match_seed(rows, SEEDS)[0]["id"] == "gc-qzb"
+    assert match_seed(rows, list(reversed(SEEDS)))[0]["id"] == "gc-qzb"
+
+
+def test_norm_header_unit_suffix_and_fullwidth_latin():
+    assert _norm_header("含税单价（元/t）") == "含税单价"
+    assert _norm_header("ＤＯ") == "do"

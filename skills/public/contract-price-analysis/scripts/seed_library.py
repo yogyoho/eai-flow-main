@@ -8,7 +8,7 @@ v1 锚点草案,以 7 样例验收运行实测为准(设计文档 §5)。
 
 from __future__ import annotations
 
-_UNTAXED_EXCLUDE = {"price_unit": ["不含税"]}
+_UNTAXED_EXCLUDE = {"price_unit": ["不含税"], "price_total": ["不含税"]}
 
 DEFAULT_TABLE_SEEDS: list[dict] = [
     {
@@ -64,7 +64,7 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
         "display_name": "木饰面石材物资清单",
         "title_keywords": ["木饰面", "石材", "物资"],
         "columns": {
-            "name": ["物资名称", "材质", "品名"],
+            "name": ["物资名称", "材质", "品名"],  # "材质" 必须保留——真实木饰面表的名称列表头即"材质/规格"(名称列在规格列前的布局假设见设计§2)
             "spec": ["规格", "材质规格"],
             "qty": ["暂定数量", "数量"],
             "unit": ["计量单位", "单位"],

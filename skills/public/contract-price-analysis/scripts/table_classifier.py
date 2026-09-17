@@ -404,8 +404,8 @@ def _norm_header(s: str) -> str:
             continue
         if ch.isspace():
             continue
-        # 全角转半角(0xFF01-0xFF5E → 0x21-0x7E)
-        out.append(chr(ord(ch) - 0xFEE0) if 0xFF01 <= ord(ch) <= 0xFF5E else ch.lower())
+        # 全角转半角(0xFF01-0xFF5E → 0x21-0x7E),半角结果再小写(全角拉丁/数字一并归一)
+        out.append(chr(ord(ch) - 0xFEE0).lower() if 0xFF01 <= ord(ch) <= 0xFF5E else ch.lower())
     return "".join(out)
 
 
@@ -415,14 +415,15 @@ def _title_text(rows: list, limit: int = 4) -> str:
     return _norm_header(blob)
 
 
-def _match_one_seed(rows: list, seed: dict, header_rows: int, header: list) -> tuple[dict, dict] | None:
+def _match_one_seed(rows: list, seed: dict, header: list) -> tuple[dict, dict] | None:
     """单 seed 列锚定: 角色→第一个锚点命中的未占用列(exclude 守卫)。
     返回 (roles, score_detail) 或 None(确认条件不满足)。"""
     norm_cols = [_norm_header(h) for h in header]
     excl = seed.get("exclude") or {}
     roles: dict = {}
     for role in _ROLE_ORDER:
-        anchors = [_norm_header(t) for t in (seed["columns"].get(role) or []) if t]
+        # 归一化后过滤空锚点(如"（）"归一化为"")——空串是任何列的子串,会误占列
+        anchors = [a for a in (_norm_header(t) for t in (seed["columns"].get(role) or [])) if a]
         if not anchors:
             continue
         banned = [_norm_header(t) for t in (excl.get(role) or [])]
@@ -451,7 +452,7 @@ def match_seed(rows: list, seeds: list[dict]) -> tuple[dict, dict, int] | None:
     title = _title_text(rows)
     best: tuple[int, int, int, dict, dict] | None = None  # (title_hit, roles_n, -anchors_n, seed, roles)
     for seed in seeds:
-        got = _match_one_seed(rows, seed, header_rows, header)
+        got = _match_one_seed(rows, seed, header)
         if got is None:
             continue
         roles, detail = got
