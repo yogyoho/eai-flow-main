@@ -370,6 +370,41 @@ def test_row_arith_price_basic():
     assert _row_arith_price([], "") == (None, "")
 
 
+def test_taxed_unit_oracle_shared_factor():
+    """统一含税仲裁律单元钉: 含税单价=含税合价÷数量;数量=stored(参与三元组)
+    或 两最大 t 不同因子三元组的共享因子;q<1 行以虚拟因子参与(t≠q,u≠q 守卫)。
+    用户实测: 配电箱r0 3.00(数量当单价)→1241.51;AL.K1→452.35;回归 6/6。"""
+    from scripts.cli import _taxed_unit_oracle
+
+    # q 参与路径
+    assert _taxed_unit_oracle(R94_EXC, 496.19)[0] == 7.63
+    assert _taxed_unit_oracle(R94_FILL, 406.09)[0] == 9.81
+    assert _taxed_unit_oracle(R112_A, 630.79)[0] == 9.37
+    assert _taxed_unit_oracle(R112_B, 177.81)[0] == 89.38
+    # q<1 虚拟因子路径(0.62 t 钢筋)
+    assert _taxed_unit_oracle(R113, 617.22)[0] == 89.38
+    assert _taxed_unit_oracle(
+        ["59", "现浇构件钢筋", "t", "0.62", "1235.00", "765.70", "9%", "", "68. 911346. 15", "765.70", "834.61"],
+        0.62,
+    )[0] == 1346.15
+    # 共享因子路径(q 空): 配电箱r0 → 1241.51(共享因子 3);AL.K1 → 452.35(共享 2)
+    u0, q0 = _taxed_unit_oracle(
+        ["", "3", "配电箱SPF01", "台", "3", "1139.00", "3417.00", "9%", "307.531241.51", "", "3724.53"], None
+    )
+    assert (u0, q0) == (1241.51, 3.0)
+    u3, q3 = _taxed_unit_oracle(
+        ["6", "", "配电箱AL.K1", "台", "2", "415.00", "830.00", "9%", "74.70", "452.35", "904.70"], None
+    )
+    assert (u3, q3) == (452.35, 2.0)
+    # 撕裂数量行: '1. 62' 合并 → 共享因子 1.62 → 104.64
+    assert _taxed_unit_oracle(
+        ["36", "镜面玻璃≤1.0", "m2", "1. 62", "96.00", "155.52", "%6", "14.00", "104.64", "169.52"], 1.0
+    )[0] == 104.64
+    # 无自洽结构 / 退化自证(t==q / u==q)→ 保守 None
+    assert _taxed_unit_oracle(["1", "货物A", "m2", "10.00", "33.30", "999.00", "9%", "", "", "", ""], 10.0) == (None, None)
+    assert _taxed_unit_oracle(["3", "货物C", "m2", "30.00", "11.10", "888.00", "9%", "", "", "", ""], 30.0) == (None, None)
+
+
 def test_row_triple_scan_recovers_user_reported_rows():
     """用户实测回归(端到端): p94 混合布局页(行内列换位,表级学不出一致列 →
     learned None)走行内三元组兜底 7.63/9.81/1.31;p112 类规整页 ≥2 失败 →
@@ -397,6 +432,52 @@ def test_row_triple_scan_recovers_user_reported_rows():
     assert len(ov) == 1 and ov[0]["page"] == 112
     assert ov[0]["seed_unit_col"] is None and ov[0]["seed_total_col"] == 8
     assert ov[0]["learned_unit_col"] == 8 and ov[0]["learned_total_col"] == 9 and ov[0]["learned_qty_col"] == 3
+
+
+def test_row_arbitration_taxed_upgrade_pages():
+    """第六层全行含税仲裁(用户 sweep 实测三页,行 verbatim): 碎表头谎报含税列
+    (price_unit=不含税单价列)使直取成功但取到不含税/数量值——仲裁对所有行
+    覆盖: 管内穿线 2.30→2.51、镜面玻璃 96.00→104.64、配电箱 3.00(数量当单价)
+    →1241.51。回归: 基础开挖 7.63/回填方 9.81/平整场地 1.31 不受影响。"""
+    from scripts.cli import _taxed_unit_oracle
+
+    header = ["序号", "项目名称", "单位", "工程量", "含税单价", "含税合价", "税率", "税金", "税额", "含税合计", "备注"]
+    title = ["工程量清单计价表"] + [""] * 10
+    t105 = _tbl(
+        [
+            title, header,
+            ["26", "管内穿线铜芯导线", "m", "562.97", "2.30", "1294.83", "9%", "116.53", "2.51", "1411.37"],
+            ["27", "管内穿线铜芯导线", "m", "1473.34", "2.20", "3241.35", "9%", "291.72", "2.40", "3533.07"],
+        ],
+        None, page_no=105,
+    )
+    t96 = _tbl(
+        [
+            title, header,
+            ["36", "镜面玻璃≤1.0", "m2", "1. 62", "96.00", "155.52", "%6", "14.00", "104.64", "169.52"],
+        ],
+        None, page_no=96,
+    )
+    t104 = _tbl(
+        [
+            title, header,
+            ["", "3", "配电箱SPF01", "台", "3", "1139.00", "3417.00", "9%", "307.531241.51", "", "3724.53"],
+        ],
+        None, page_no=104,
+    )
+    items, meta = _extract_from_tables([t105, t96, t104], "s3://b/sweep.pdf", SEEDS)
+    assert all(it["validation_status"] == "ok" for it in items)
+    by = {(it["goods_name"], it["source_page"]): it for it in items}
+    wires = sorted(it["unit_price"] for it in items if it["goods_name"] == "管内穿线铜芯导线")
+    assert wires == [2.4, 2.51]
+    assert by[("镜面玻璃≤1.0", 96)]["unit_price"] == 104.64
+    assert by[("配电箱SPF01", 104)]["unit_price"] == 1241.51
+    assert all("行内算术含税" in (it["price_reason"] or "") for it in items)
+    # AL.K1(行错位 name 在 col2,index 路径取不到 → 以 oracle 直验 verbatim 行)
+    u3, q3 = _taxed_unit_oracle(
+        ["6", "", "配电箱AL.K1", "台", "2", "415.00", "830.00", "9%", "74.70", "452.35", "904.70"], None
+    )
+    assert (u3, q3) == (452.35, 2.0)
 
 
 def test_untaxed_direct_take_upgraded_to_taxed():

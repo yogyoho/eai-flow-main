@@ -350,17 +350,22 @@ def _rediscover_row_price(row, learned):
 
 def _row_num_cands(row):
     """行内数值候选(单价/合价/量共用): 每格 re.findall 拆全部数字(空格胶格格
-    '824.79 1.20' 产出双候选),≥_MIN_PLAUSIBLE_UNIT 过滤。尾部孤立'.'的分片
-    ('68. 911346. 15'→'68.'/'911346.')是 OCR 粘连撕裂的碎片,非真数值,丢弃。"""
+    '824.79 1.20' 产出双候选),≥_MIN_PLAUSIBLE_UNIT 过滤。撕裂小数合并: 以
+    '.'/'，'/','结尾的分片是 OCR 断号('1. 62'='1.'+'62'),与后续分片拼回真值;
+    无后续的尾随撕裂片与拼后仍非法的串('68. 911346. 15'→'68.911346.15')丢弃。"""
     cand = []
     for ci, cell in enumerate(row):
+        buf = ""
         for m in re.findall(r"\d[\d,，.]*", cell or ""):
-            if m.endswith("."):
+            buf += m
+            if m.endswith((".", "，", ",")):
                 continue
             try:
-                v = float(m.replace(",", "").replace("，", ""))
+                v = float(buf.replace(",", "").replace("，", ""))
             except ValueError:
+                buf = ""
                 continue
+            buf = ""
             if v >= _MIN_PLAUSIBLE_UNIT:
                 cand.append((ci, v))
     return cand
@@ -405,6 +410,75 @@ def _row_arith_price(row, qty_raw):
         return None, ""
     best = max(triples, key=lambda x: x[2])
     return min(best[0], best[1]), "行内算术"
+
+
+def _taxed_unit_oracle(cells, stored_qty):
+    """统一含税仲裁律(bug-3400 第六层): 含税单价 = 含税合价 ÷ 数量。
+    数量 = stored_qty(当其参与任一行内自洽三元组,即可信)
+         否则 = 两个最大 t 不同因子三元组的共享因子(因子交集恰一元素;
+                平整场地 1078.83{1.31,824.79}×989.75{1.20,824.79}→824.79;
+                配电箱r0 3417{1139,3}×9{3,3}→3)。
+    t_taxed = 行内候选金额中 (t_ref, ×1.25] 窗口的最大值(t_ref=max 三元 t;
+              窗口空 → t_ref 自身)。窗口=税率界限,防撕裂碎片/暂列金额冒充。
+    返回 (u_tax, qty_used) 或 (None, None)——无法唯一确定时保守不给 oracle。"""
+    cand = _row_num_cands(cells)
+    if len(cand) < 3:
+        return None, None
+    triples = []
+    for ui, u in cand:
+        for qi, q in cand:
+            if qi == ui:
+                continue
+            for ti, t in cand:
+                if ti in (ui, qi) or t <= 0:
+                    continue
+                if abs(u * q - t) <= 0.02 * t:
+                    triples.append((u, q, t))
+    # 数量<1 的行(0.62 t 钢筋/1.62 m² 镜面)其量被 ≥1.0 候选过滤排除——stored
+    # 数量以「虚拟因子」参与: 候选对 (u,t) 满足 u×stored≈t 即视为可信量。
+    # 守卫: t≠stored(t==q ⇒ u≡1,序号列退化)且 u≠stored(数量格自乘自证)。
+    virt = []
+    if stored_qty is not None and stored_qty > 0:
+        virt = [
+            (u, stored_qty, t)
+            for ui, u in cand
+            for ti, t in cand
+            if ti != ui
+            and t > 0
+            and abs(t - stored_qty) > 1e-6
+            and abs(u - stored_qty) > 1e-6
+            and abs(u * stored_qty - t) <= 0.02 * t
+        ]
+    if not triples and not virt:
+        return None, None
+    pool = triples + virt
+    t_ref = max(t for _, _, t in pool)
+    t_taxed = max((v for _, v in cand if t_ref * 1.001 < v <= t_ref * 1.25), default=t_ref)
+    if stored_qty is not None and stored_qty > 0:
+        if virt or any(abs(q - stored_qty) < 1e-6 for _, q, _ in triples):
+            u_tax = round(t_taxed / stored_qty, 2)
+            if u_tax >= _MIN_PLAUSIBLE_UNIT:
+                return u_tax, stored_qty
+            return None, None
+    sorted_tr = sorted(triples, key=lambda x: -x[2])
+    f1 = {sorted_tr[0][0], sorted_tr[0][1]}
+    shareds = set()
+    for tr in sorted_tr[1:]:
+        f2 = {tr[0], tr[1]}
+        if f2 == f1:
+            continue
+        inter = f1 & f2
+        if len(inter) == 1:
+            shareds.add(next(iter(inter)))
+    if len(shareds) != 1:
+        return None, None
+    shared = next(iter(shareds))
+    if shared <= 0:
+        return None, None
+    u_tax = round(t_taxed / shared, 2)
+    if u_tax < _MIN_PLAUSIBLE_UNIT:
+        return None, None
+    return u_tax, shared
 
 
 def _lone_row_price(row, qty_col=None):
@@ -604,6 +678,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                     "table_idx": table.table_idx,
                 }
             )
+        tbl_start = len(items)  # 第六层全行仲裁范围(本表 items)
         for r in raw:
             # Ragged-row fix: if the extracted name is pure-numeric (序号, because
             # a spurious leading empty cell shifted THIS row), find the real name
@@ -618,14 +693,6 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                         r["name"] = c
                         break
             unit_p, vstatus_u, reason_u = validate_price(r["price_unit_raw"])
-            if reason_u.startswith("粘连拆分"):
-                # bug-3400 第七层补: 空格粘连「取末位」只是位置约定(左数量+右不含税
-                # 单价,或 左税金+右含税单价)。行内算术能自洽判别真含税结构时以算术
-                # 为准(实测 平整场地 '824.79 1.20' 取末位 1.20=不含税,算术=1.31 含税)。
-                row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
-                arith_p, arith_r = _row_arith_price(row_cells, r.get("qty_raw") or "")
-                if arith_p is not None:
-                    unit_p, vstatus_u, reason_u = arith_p, "ok", arith_r
             if r.get("price_untaxed_raw"):
                 untaxed, vstatus_n, reason_n = validate_price(r["price_untaxed_raw"])
             else:
@@ -647,19 +714,12 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                         logger.debug(
                             "reverse-calc implausible %.4f (%s/%s) rejected", cand, total, q
                         )
-            # bug-3400 第七层: failing 行(种子映射判不可用,整行不被信任)以行内
-            # 算术为准——自洽三数互证 + max-t=含税合价。覆盖/学到的列是表级多数
-            # 投票,碎表头时可能整对落在不含税列(实测 p94 学到不含税对,干净的单价
-            # 直取把不含税写进含税统计字段,系统性低估 9%);行内算术找不到自洽结构
-            # 时才退学到的列/单行回退。
-            if learned is not None and r["row_idx"] in failing_set:
-                row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
-                arith_p, arith_r = _row_arith_price(row_cells, r.get("qty_raw") or "")
-                if arith_p is not None:
-                    unit_p, vstatus_u, reason_u = arith_p, "ok", arith_r
-            # bug-3400 终轮+第四层: 含税单价缺失的行 → 学到的列直接取价 / 单行回退。
+            # bug-3400 第六层: 含税单价缺失的行 → 学到的列直接取价 / 单行回退。
             # (untaxed 是否有效不影响——untaxed 仅审计,含税单价才是统计主字段。)
             # 产出同样经过 validate_price,失败照旧(不强行注值)。
+            # 原 第五/七/八 层(行内三元组/含税窗口)已上移为循环后的全行统一仲裁
+            # (_taxed_unit_oracle,共享因子律)——对本表所有行(含直取成功行)运行,
+            # 见下方「第六层(全行含税仲裁)」块。
             if unit_p is None:
                 row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
                 if learned is not None and r["row_idx"] in failing_set:
@@ -670,43 +730,13 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                     unit_p, reason_r = _lone_row_price(row_cells, qty_col=roles.get("qty"))
                     if unit_p is not None:
                         vstatus_u, reason_u = "ok", reason_r
-            # bug-3400 第八层: 行内最大金额=含税合价(健康表映射合价即行最大 → 零触发)。
-            # 已取到的 unit_p 与映射合价自洽(单价×量≈合价,±2%)但行内存在更大金额
-            # (增幅=税率,守卫 ≤25%)时: 映射对是不含税对,含税单价格不可达(无分隔
-            # 粘连/缺印),以 tmax/q 反算之。实测: 现浇构件钢筋 1235.00→1346.15、
-            # 多孔砖墙 82.00 类不含税直取 → 89.38(桂北 p112/p115)。
-            if unit_p is not None:
-                q8 = parse_qty(r["qty_raw"] or "") if _qty_text_ok(r.get("qty_raw") or "") else None
-                t_mapped = validate_price(r.get("price_total_raw") or "")[0] if r.get("price_total_raw") else None
-                if q8 and q8 > 0 and t_mapped and 0.98 * t_mapped <= unit_p * q8 <= 1.02 * t_mapped:
-                    # 含税合价窗口 (t_mapped, ×1.25]: 数量<1 的行单价>合价属正常,
-                    # 全局最大金额会选到单价自身/撕裂碎片,必须限定增幅窗口
-                    tmax = max(
-                        (
-                            v
-                            for _, v in _row_num_cands(
-                                table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
-                            )
-                            if t_mapped * 1.001 < v <= t_mapped * 1.25
-                        ),
-                        default=None,
-                    )
-                    if tmax is not None:
-                        rev = round(tmax / q8, 2)
-                        if rev >= _MIN_PLAUSIBLE_UNIT and rev > unit_p:
-                            unit_p, vstatus_u, reason_u = rev, "ok", "含税合价反算(行内最大金额)"
-            # bug-3400 第五层(最后): 行内算术三元组——不依赖表级学习,行内自洽
-            # (单价×工程量≈合价)即取;量纲守卫已内置(u≥1.0)。seed 锚点兜底后
-            # 绝大多数行走不到这里。
-            if unit_p is None:
-                row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
-                unit_p, reason_r = _row_arith_price(row_cells, r.get("qty_raw") or "")
-                if unit_p is not None:
-                    vstatus_u, reason_u = "ok", reason_r
-            # Skip price-less rows: no usable price (both empty) → useless for
-            # price analysis. Don't store them as needs_review noise.
-            if unit_p is None and untaxed is None:
-                continue
+            # 量纲守卫(与反算守卫同源,第四层): 任何来源的单价 <1.0 元在工程
+            # 材料/设备域近乎不存在——视作不可用,行走第六层仲裁/表尾过滤,
+            # 保证全文档零 <1.0 微型单价。
+            if unit_p is not None and unit_p < _MIN_PLAUSIBLE_UNIT:
+                unit_p, vstatus_u, reason_u = None, "ok", ""
+            # 价格缺失行不再在此处跳过: 第六层全行仲裁在循环后运行,可能从行内
+            # 算术恢复出含税单价;表尾统一过滤仍双空的行(等价旧的 price-less skip)。
             vstatus = "needs_review" if "needs_review" in (vstatus_u, vstatus_n) else "ok"
             items.append(
                 {
@@ -729,6 +759,40 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 }
             )
         meta["rows_extracted"] += len(raw)
+        # bug-3400 第六层(全行含税仲裁,统一律): 含税单价 = 含税合价 ÷ 数量。
+        # 数量 = stored quantity(参与任一行内自洽三元组即可信),否则 = 两个最大
+        # t 不同因子三元组的共享因子;t_taxed = (t_ref, ×1.25] 窗口最大金额。
+        # 对本表每一行运行(含直取成功行): oracle 有效且与 stored 超容差 → 覆盖
+        # (不含税→含税 / 数量被当单价 / 错列碎片,全部一次纠正);oracle 无效 →
+        # 退回旧行内三元组语义(仅升级方向);两者皆无 → 保留 stored。
+        for it in items[tbl_start:]:
+            cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+            u_tax, qty_used = _taxed_unit_oracle(cells, it.get("quantity"))
+            new_p = u_tax
+            if new_p is None:
+                new_p, _ = _row_arith_price(cells, str(it["quantity"]) if it.get("quantity") else "")
+            if new_p is None:
+                continue
+            cur = it.get("unit_price")
+            if cur is not None:
+                if abs(cur - new_p) <= max(0.011, 0.02 * max(cur, new_p)):
+                    continue
+                if u_tax is None:
+                    # 旧行内三元组语义(max-t 小因子)无统一律背书 → 仅升级方向,保守
+                    if not (cur < new_p <= cur * 1.25 or cur < _MIN_PLAUSIBLE_UNIT):
+                        continue
+                # 统一律为等式仲裁(含税单价=含税合价÷数量): oracle 有效且超容差
+                # 即覆盖——不含税当含税 / 数量当单价 / 错列碎片一次纠正。
+            it["unit_price"] = new_p
+            it["validation_status"] = "ok"
+            it["price_reason"] = "行内算术含税"
+        # 价格缺失行统一过滤(等价旧 price-less skip,但发生在第六层仲裁之后):
+        # 仲裁后仍无含税单价且无不含税审计价的行,对价格分析无价值,不入库。
+        items[tbl_start:] = [
+            it
+            for it in items[tbl_start:]
+            if it.get("unit_price") is not None or it.get("price_untaxed") is not None
+        ]
     return items, meta
 
 
