@@ -15,6 +15,9 @@ dependencies = [
     "mcp>=1.28.1,<2",
     "python-multipart>=0.0.31",
     "httpx>=0.28.0",
+    # kernel P1（spec 2026-09-18）：图原生内核；owlrl（P3）/ pyshacl（P4）随分期再加
+    "rdflib>=7.1.0",
+    "pyoxigraph>=0.5.0,<0.7",
 ]
 
 [dependency-groups]
@@ -25,6 +28,7 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 markers = [
     "integration: tests that require an external service (e.g. extensions PostgreSQL); skipped when unavailable",
 ]

@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from app.ontology.schemas import DomainFile, LinkType, Manifest, ObjectType
+from app.ontology.schemas import DomainFile, FormalSection, LinkType, Manifest, ObjectType
 
 REGISTRY_DIR = Path(__file__).parent / "registry"
 
@@ -35,12 +35,17 @@ class Registry:
         link_types: dict[str, LinkType],
         file_fingerprints: dict[str, str],
         registry_version: int,
+        namespaces_by_domain: dict[str, dict[str, str]] | None = None,
+        formal_by_domain: dict[str, FormalSection] | None = None,
     ) -> None:
         self.manifest = manifest
         self.object_types = object_types
         self.link_types = link_types
         self.file_fingerprints = file_fingerprints
         self.registry_version = registry_version
+        # registry v2（kernel P1, EAI-CUSTOM）：文件级 formal 段透传（缺省空 = 纯业务词表）
+        self.namespaces_by_domain = namespaces_by_domain or {}
+        self.formal_by_domain = formal_by_domain or {}
 
 
 def _read_fingerprint(path: Path) -> str:
@@ -107,6 +112,8 @@ def load_registry(registry_dir: Path = REGISTRY_DIR) -> Registry:
     objects: dict[str, ObjectType] = {}
     links: dict[str, LinkType] = {}
     fingerprints: dict[str, str] = {}
+    namespaces_by_domain: dict[str, dict[str, str]] = {}
+    formal_by_domain: dict[str, FormalSection] = {}
     file_names = [mf.file for mf in manifest.files]
     pending = set()  # 先收集全部声明的 api_name（跨文件前向引用）
     parsed: list[tuple[str, DomainFile]] = []
@@ -129,6 +136,10 @@ def load_registry(registry_dir: Path = REGISTRY_DIR) -> Registry:
             if hidden_leak:
                 raise RegistryError(f"{name}: 对象 {obj.api_name} 的 hidden 属性 {hidden_leak} 不能同时 filterable/searchable")
             objects[obj.api_name] = obj
+            if domain.namespaces:
+                namespaces_by_domain.setdefault(obj.domain, domain.namespaces)
+            if domain.formal:
+                formal_by_domain.setdefault(obj.domain, domain.formal)
         for lt in domain.link_types:
             if lt.api_name in links:
                 raise RegistryError(f"{name}: 链接类型 '{lt.api_name}' 重复注册")
@@ -138,7 +149,15 @@ def load_registry(registry_dir: Path = REGISTRY_DIR) -> Registry:
 
     if not objects:
         raise RegistryError("注册表为空：未声明任何对象类型")
-    return Registry(manifest, objects, links, fingerprints, registry_version=manifest.registry_version)
+    return Registry(
+        manifest,
+        objects,
+        links,
+        fingerprints,
+        registry_version=manifest.registry_version,
+        namespaces_by_domain=namespaces_by_domain,
+        formal_by_domain=formal_by_domain,
+    )
 
 
 class RegistryStore:

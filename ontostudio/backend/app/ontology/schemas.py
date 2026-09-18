@@ -46,6 +46,23 @@ class PKConfig(BaseModel):
     immutable: bool = True
 
 
+class ETypeClass(BaseModel):
+    """etype → OWL 类映射（国标附录 A 类元数据子集）。
+
+    YAML 键用 camelCase（subClassOf/equivalentClass/hasKey，与设计稿一致），
+    python 侧 snake_case 双向兼容（populate_by_name）。
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    class_name: str | None = Field(default=None, alias="class")  # 缺省 = etype PascalCase
+    sub_class_of: list[str] = Field(default_factory=list, alias="subClassOf")
+    equivalent_class: list[str] = Field(default_factory=list, alias="equivalentClass")
+    has_key: list[str] = Field(default_factory=list, alias="hasKey")
+    label: str | None = None  # 中文标签；缺省用 etype 原名
+    definition: str | None = None
+
+
 class ObjectType(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -61,6 +78,7 @@ class ObjectType(BaseModel):
     pk: PKConfig
     properties: list[PropertySchema] = Field(min_length=1)
     run_source: str | None = None  # 溯源提示钩子（如 cpa_run_history）
+    etype_classes: dict[str, ETypeClass] | None = None  # registry v2：etype → OWL 类（kernel P1）
 
     def visible_properties(self, include_hidden: bool = False) -> list[PropertySchema]:
         return [p for p in self.properties if include_hidden or not p.hidden]
@@ -115,6 +133,32 @@ class Manifest(BaseModel):
     files: list[ManifestFile] = Field(min_length=1)
 
 
+class PropertyChainAxiom(BaseModel):
+    """owl:propertyChainAxiom 声明（环评逻辑链等派生路径）。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    derived: str  # 派生谓词（如 org_in_ecosystem_of）
+    chain: list[str] = Field(min_length=2)  # 链上谓词序列
+
+
+class InversePair(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    pair: list[str] = Field(min_length=2, max_length=2)
+
+
+class FormalSection(BaseModel):
+    """registry v2 formal 段：全局公理（owl:Class/ObjectProperty 层，非实例层）。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    property_chains: list[PropertyChainAxiom] = Field(default_factory=list)
+    transitive: list[str] = Field(default_factory=list)
+    inverse: list[InversePair] = Field(default_factory=list)
+    disjoint: list[str] = Field(default_factory=list)  # 互斥类名序列（一条声明一组）
+
+
 class DomainFile(BaseModel):
     """单个域 YAML 文件根模型。"""
 
@@ -122,3 +166,6 @@ class DomainFile(BaseModel):
 
     object_types: list[ObjectType] = []
     link_types: list[LinkType] = []
+    # ---- registry v2 formal 段（kernel P1, EAI-CUSTOM）：全部可选，缺省 = 纯业务词表 ----
+    namespaces: dict[str, str] | None = None  # 前缀 → 命名空间 IRI（国标 §9.2 每域一空间）
+    formal: FormalSection | None = None  # OWL 2 RL 公理声明
