@@ -1,0 +1,40 @@
+{
+  "name": "ontostudio-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "OntoStudio standalone frontend (Vite) — S2 Task 1. Dependency versions mirror the main system frontend/package.json (single source of truth).",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@sigma/edge-curve": "^3.1.0",
+    "@tanstack/react-query": "^5.90.17",
+    "clsx": "^2.1.1",
+    "graphology": "^0.26.0",
+    "graphology-communities-louvain": "^2.0.2",
+    "graphology-layout-forceatlas2": "^0.10.1",
+    "graphology-metrics": "^2.4.2",
+    "graphology-shortest-path": "^2.1.0",
+    "lucide-react": "^0.562.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.8.1",
+    "sigma": "^3.0.3",
+    "tailwind-merge": "^3.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.15",
+    "@types/node": "^20.14.10",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tailwindcss": "^4.0.15",
+    "typescript": "^5.8.2",
+    "vite": "^6.0.0"
+  },
+  "packageManager": "pnpm@10.26.2"
+}

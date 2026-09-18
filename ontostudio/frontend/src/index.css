@@ -1,0 +1,90 @@
+/*
+ * OntoStudio standalone frontend global styles (S2 Task 1, EAI-CUSTOM).
+ *
+ * Tailwind 4 + 主系统 globals.css 的语义令牌子集（本体页面实际用到的：
+ * background/foreground/card/border/muted/muted-foreground/primary/
+ * primary-foreground/accent/accent-foreground + .dark 块）。色值内联自
+ * frontend/src/styles/globals.css（Yuxi warm gray 体系），此处自持不随主系统。
+ * 概览/消解 tab 为 bid-quote 浅色定版（chartTheme 常量自带色值，不受令牌影响）。
+ */
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans:
+    ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-border: var(--border);
+}
+
+:root {
+  --radius: 0.625rem;
+
+  --background: #ffffff;
+  --foreground: #151616; /* gray-1000 */
+  --card: #ffffff;
+  --card-foreground: #151616;
+
+  /* Primary: #0746ff 系 */
+  --primary: oklch(0.54 0.26 265.5);
+  --primary-foreground: #ffffff;
+
+  --muted: #f5f7f7; /* gray-50 */
+  --muted-foreground: #697070; /* gray-600 */
+  --accent: #f5f7f7;
+  --accent-foreground: #1e1f1f; /* gray-900 */
+  --border: #e4e6e6; /* gray-200 */
+}
+
+.dark {
+  --background: #0f0f0f;
+  --foreground: #eff2f2;
+  --card: #1a1b1b;
+  --card-foreground: #eff2f2;
+
+  --primary: oklch(0.62 0.24 265.5);
+  --primary-foreground: #ffffff;
+
+  --muted: #1e1f1f;
+  --muted-foreground: #979999;
+  --accent: #232424;
+  --accent-foreground: #eff2f2;
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  /* shadcn 约定：border 默认色接令牌（带 fallback，防令牌未解析期 currentColor 塌缩出黑边） */
+  * {
+    border-color: var(--border, rgba(130, 130, 130, 0.25));
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
