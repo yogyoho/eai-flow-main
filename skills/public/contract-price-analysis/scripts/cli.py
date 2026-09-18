@@ -412,19 +412,23 @@ def _row_arith_price(row, qty_raw):
     return min(best[0], best[1]), "行内算术"
 
 
-def _taxed_unit_oracle(cells, stored_qty):
+def _taxed_unit_oracle(cells, stored_qty, qty_col=None):
     """统一含税仲裁律(bug-3400 第六层): 含税单价 = 含税合价 ÷ 数量。
-    数量 = stored_qty(当其参与任一行内自洽三元组,即可信)
+    数量 = stored_qty(当其参与任一行内自洽三元组,即可信;若 stored 仅作为
+    某三元组的 q 因子出现、从不作为 u——「数量被当单价」签名,同样按数量算)
          否则 = 两个最大 t 不同因子三元组的共享因子(因子交集恰一元素;
                 平整场地 1078.83{1.31,824.79}×989.75{1.20,824.79}→824.79;
-                配电箱r0 3417{1139,3}×9{3,3}→3)。
-    t_taxed = 行内候选金额中 (t_ref, ×1.25] 窗口的最大值(t_ref=max 三元 t;
-              窗口空 → t_ref 自身)。窗口=税率界限,防撕裂碎片/暂列金额冒充。
+                配电箱r0 3417{1139,3}×9{3,3}→3)
+         否则 = 单三元组 + qty_col 列位语义(因子格正落种子工程量列 → 该因子为量;
+                现浇构件钢筋 1188×1.776=2109.89,c3=量列 → 2299.78/1.776=1294.92)。
+    t_taxed = 行内候选金额中 (t_ref, ×1.14] 窗口的最大值(t_ref=max 三元 t;
+              窗口空 → t_ref 自身)。窗口=增值税界限(6/9/13% + 舍入噪声),
+              防撕裂碎片/暂列金额/序号列(如 序号84 ∈ 73.44×1.25 窗口)冒充含税合价。
     返回 (u_tax, qty_used) 或 (None, None)——无法唯一确定时保守不给 oracle。"""
     cand = _row_num_cands(cells)
     if len(cand) < 3:
         return None, None
-    triples = []
+    triples = []  # (u, q, t, uc, qc)
     for ui, u in cand:
         for qi, q in cand:
             if qi == ui:
@@ -433,7 +437,7 @@ def _taxed_unit_oracle(cells, stored_qty):
                 if ti in (ui, qi) or t <= 0:
                     continue
                 if abs(u * q - t) <= 0.02 * t:
-                    triples.append((u, q, t))
+                    triples.append((u, q, t, ui, qi))
     # 数量<1 的行(0.62 t 钢筋/1.62 m² 镜面)其量被 ≥1.0 候选过滤排除——stored
     # 数量以「虚拟因子」参与: 候选对 (u,t) 满足 u×stored≈t 即视为可信量。
     # 守卫: t≠stored(t==q ⇒ u≡1,序号列退化)且 u≠stored(数量格自乘自证)。
@@ -452,14 +456,15 @@ def _taxed_unit_oracle(cells, stored_qty):
     if not triples and not virt:
         return None, None
     pool = triples + virt
-    t_ref = max(t for _, _, t in pool)
-    t_taxed = max((v for _, v in cand if t_ref * 1.001 < v <= t_ref * 1.25), default=t_ref)
+    t_ref = max(t for _, _, t, *_ in pool)
+    t_taxed = max((v for _, v in cand if t_ref * 1.001 < v <= t_ref * 1.14), default=t_ref)
     if stored_qty is not None and stored_qty > 0:
-        if virt or any(abs(q - stored_qty) < 1e-6 for _, q, _ in triples):
+        if virt or any(abs(q - stored_qty) < 1e-6 for _, q, _, _, _ in triples):
             u_tax = round(t_taxed / stored_qty, 2)
             if u_tax >= _MIN_PLAUSIBLE_UNIT:
                 return u_tax, stored_qty
             return None, None
+    # 共享因子路径
     sorted_tr = sorted(triples, key=lambda x: -x[2])
     f1 = {sorted_tr[0][0], sorted_tr[0][1]}
     shareds = set()
@@ -470,15 +475,34 @@ def _taxed_unit_oracle(cells, stored_qty):
         inter = f1 & f2
         if len(inter) == 1:
             shareds.add(next(iter(inter)))
-    if len(shareds) != 1:
-        return None, None
-    shared = next(iter(shareds))
-    if shared <= 0:
-        return None, None
-    u_tax = round(t_taxed / shared, 2)
-    if u_tax < _MIN_PLAUSIBLE_UNIT:
-        return None, None
-    return u_tax, shared
+    if len(shareds) == 1:
+        shared = next(iter(shareds))
+        if shared > 0:
+            u_tax = round(t_taxed / shared, 2)
+            if u_tax >= _MIN_PLAUSIBLE_UNIT:
+                return u_tax, shared
+            return None, None
+    # 单三元组 + qty_col 列位语义: 因子格正落种子工程量列 → 该因子为量
+    # (化粪池: 名格'1'(YJBH-1-II)会造出 1.0×1455.2 竞争三元组,真量在 c3 量列)。
+    # 量由列位唯一确定才可反算;方向未知 → 返回 None 交旧语义(max-t 小因子)。
+    if qty_col is not None and triples:
+        best_t = max(t for _, _, t, _, _ in triples)
+        best_group = [tr for tr in triples if abs(tr[2] - best_t) <= 1e-9]
+        qty_u = None
+        for tr in best_group:
+            u1, q1, _, uc1, qc1 = tr
+            if qc1 == qty_col and uc1 != qty_col:
+                qty_u = q1
+                break
+            if uc1 == qty_col and qc1 != qty_col:
+                qty_u = u1
+                break
+        if qty_u and qty_u > 0:
+            u_tax = round(t_taxed / qty_u, 2)
+            if u_tax >= _MIN_PLAUSIBLE_UNIT:
+                return u_tax, qty_u
+            return None, None
+    return None, None
 
 
 def _lone_row_price(row, qty_col=None):
@@ -693,6 +717,13 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                         r["name"] = c
                         break
             unit_p, vstatus_u, reason_u = validate_price(r["price_unit_raw"])
+            if unit_p is not None and r.get("price_unit_raw"):
+                # 单价格首数字前含字母/汉字('m3'、't 1.776')是单位/单位+数量文本,
+                # 不是价格——与 _qty_text_ok 同源的对称守卫(实测 混凝土 'm3'→3.00)。
+                _pu = r["price_unit_raw"].strip()
+                _m = re.search(r"\d", _pu)
+                if _m and re.search(r"[A-Za-z一-鿿]", _pu[: _m.start()]):
+                    unit_p, vstatus_u, reason_u = None, "ok", ""
             if r.get("price_untaxed_raw"):
                 untaxed, vstatus_n, reason_n = validate_price(r["price_untaxed_raw"])
             else:
@@ -767,7 +798,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
         # 退回旧行内三元组语义(仅升级方向);两者皆无 → 保留 stored。
         for it in items[tbl_start:]:
             cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            u_tax, qty_used = _taxed_unit_oracle(cells, it.get("quantity"))
+            u_tax, qty_used = _taxed_unit_oracle(cells, it.get("quantity"), qty_col=roles.get("qty"))
             new_p = u_tax
             if new_p is None:
                 new_p, _ = _row_arith_price(cells, str(it["quantity"]) if it.get("quantity") else "")
