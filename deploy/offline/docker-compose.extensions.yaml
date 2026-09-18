@@ -109,6 +109,9 @@ services:
       # MCP 传输层共享 token（未设置=内网匿名开放；.env 追加 ONTOSTUDIO_INTERNAL_AUTH_TOKEN
       # 后自动收紧，须与 gateway extensions_config ontostudio 条目 headers 同值）
       - ONTOSTUDIO_INTERNAL_AUTH_TOKEN=${ONTOSTUDIO_INTERNAL_AUTH_TOKEN:-}
+      # v2 授权委托（app/auth.py）：gateway cookie 无角色 claims，携带原样 Cookie 反查
+      # gateway /api/permissions/me 判 system:access；默认 compose 网络服务名 gateway
+      - ONTOSTUDIO_GATEWAY_URL=${ONTOSTUDIO_GATEWAY_URL:-http://gateway:8001}
       - ONTOSTUDIO_CORS_ORIGINS=${ONTOSTUDIO_CORS_ORIGINS:-http://localhost:${PORT:-4026}}
     env_file:
       - .env
@@ -124,6 +127,31 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  # ── OntoStudio Frontend（独立 Vite SPA 静态托管 :3010，S2 Task 3）─────────
+  # 镜像离线交付：offline-export.sh 的 BUILD_SERVICES 已含 ontostudio-frontend（build 后
+  # re-tag 为 eai-flow-ontostudio-frontend）。页面经 nginx /ontostudio/ 代理（前缀
+  # 透传，产物 base=/ontostudio/ 同前缀，SPA 深链容器侧 try_files 回退）；不暴露
+  # 宿主端口。profiles=["ontostudio"] 同 backend——
+  #   docker compose -p eai-prod -f <四文件> --profile ontostudio up -d ontostudio-frontend
+  ontostudio-frontend:
+    image: eai-flow-ontostudio-frontend:${IMAGE_TAG:-latest}
+    container_name: prod-eai-flow-ontostudio-frontend
+    profiles:
+      - ontostudio
+    # API 依赖 ontostudio-backend（经 nginx /api/ontostudio/ 转发，容器间无直连），
+    # 不加 depends_on；两服务同 profile 一起起。
+    healthcheck:
+      # nginx:alpine 自带 busybox wget；127.0.0.1 而非 localhost（容器内 localhost 先
+      # 解析 ::1，nginx 默认只绑 IPv4 → Connection refused 恒 unhealthy）
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3010/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - prod-eai-flow-net
+    restart: unless-stopped
 
   # ── Temporal 工作流引擎 ────────────────────────────────────────────────────
   # 不使用工作流模块可整段注释掉。首次部署若 postgres 数据卷非空，需手动补建

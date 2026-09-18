@@ -1,0 +1,8 @@
+# OntoStudio frontend build context exclusions (S2 Task 3, EAI-CUSTOM).
+# node_modules 是宿主 Windows 二进制（与镜像内 Linux 不兼容），dist 是本地构建
+# 产物——两者都严禁进镜像（依赖由镜像内 pnpm install 重装，dist 由镜像内构建）。
+node_modules/
+dist/
+.gitignore
+*.local
+.DS_Store

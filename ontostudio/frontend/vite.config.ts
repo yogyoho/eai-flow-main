@@ -24,6 +24,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
+  // S2 Task 3（EAI-CUSTOM）：子路径部署——主 nginx :2026 把 /ontostudio/* 透传到
+  // 前端容器 :3010，产物资产引用须带前缀（默认 base:"/" 产出 /assets/* 会 404）。
+  // 构建期定死（方案 a，最简）：base 对 dev server 同样生效 → 本地开发地址变为
+  // http://localhost:3010/ontostudio/；下方 server.proxy 的 /api/* 代理不受 base
+  // 影响（按原始请求路径匹配）。API_BASE 为常量 "/api/ontostudio/api/extensions"
+  // （lib/api.ts），同为相对路径，经 nginx 同源携带 cookie，无需改动。
+  base: "/ontostudio/",
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),

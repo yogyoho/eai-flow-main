@@ -151,3 +151,121 @@ def test_mcp_unsupported_method_405():
     with TestClient(ontostudio_app) as client:
         r = client.put("/mcp/ontology")
         assert r.status_code == 405
+
+
+# ── v2 授权委托（S2 Task 3, EAI-CUSTOM）───────────────────────────────────────
+# gateway upstream cookie 无角色 claims（claims 快路径必 miss）→ 携带原样 Cookie 反查
+# gateway /api/permissions/me（UnifiedPermissionEngine）。is_admin / permissions 含目标点
+# 即放行；TTL 缓存；gateway 不可达/非 200 fail-closed 403。
+
+import httpx  # noqa: E402
+
+import app.auth as ontostudio_auth  # noqa: E402  (与上方 app.main 同层, 置于用例区便于就近阅读)
+
+
+class _FakeResponse:
+    def __init__(self, status_code: int, payload: object):
+        self.status_code = status_code
+        self._payload = payload
+
+    def json(self) -> object:
+        return self._payload
+
+
+class _FakeAsyncClient:
+    """httpx.AsyncClient 替身：类属性 _behavior 下发给每次 get()；calls 记录调用轨迹."""
+
+    behavior: tuple[int, object] | Exception = (200, {})
+    calls: list[tuple[str, dict | None]] = []
+
+    def __init__(self, **_kwargs: object):
+        pass
+
+    async def __aenter__(self) -> _FakeAsyncClient:
+        return self
+
+    async def __aexit__(self, *exc: object) -> bool:
+        return False
+
+    async def get(self, url: str, headers: dict | None = None) -> _FakeResponse:
+        type(self).calls.append((url, headers))
+        behavior = type(self).behavior
+        if isinstance(behavior, Exception):
+            raise behavior
+        return _FakeResponse(*behavior)
+
+
+def _install_fake_gateway(monkeypatch, behavior: tuple[int, object] | Exception) -> None:
+    monkeypatch.setattr(ontostudio_auth.httpx, "AsyncClient", _FakeAsyncClient)
+    _FakeAsyncClient.behavior = behavior
+    _FakeAsyncClient.calls = []
+    ontostudio_auth._authz_cache.clear()
+    monkeypatch.setenv("ONTOSTUDIO_GATEWAY_URL", "http://gateway-test:9999")
+
+
+def test_delegated_admin_cookie_allowed(monkeypatch, make_token: Callable[..., str]):
+    _install_fake_gateway(monkeypatch, (200, {"is_admin": True, "permissions": []}))
+    client = TestClient(ontostudio_app)
+    client.cookies.set("access_token", make_token(roles=()))
+    r = client.get("/api/extensions/ontology/object-types")
+    assert r.status_code == 200
+    # 委托确实发生：原样 Cookie 透传 + env 覆盖的 gateway 基址生效
+    assert len(_FakeAsyncClient.calls) == 1
+    url, headers = _FakeAsyncClient.calls[0]
+    assert url.startswith("http://gateway-test:9999/api/permissions/me")
+    assert "access_token=" in (headers or {}).get("Cookie", "")
+
+
+def test_delegated_permission_member_allowed(monkeypatch, make_token: Callable[..., str]):
+    _install_fake_gateway(monkeypatch, (200, {"is_admin": False, "permissions": ["kb:read", "system:access"]}))
+    client = TestClient(ontostudio_app)
+    client.cookies.set("access_token", make_token(roles=()))
+    r = client.get("/api/extensions/ontology/object-types")
+    assert r.status_code == 200
+
+
+def test_delegated_denied_without_permission(monkeypatch, make_token: Callable[..., str]):
+    _install_fake_gateway(monkeypatch, (200, {"is_admin": False, "permissions": ["kb:read"]}))
+    client = TestClient(ontostudio_app)
+    client.cookies.set("access_token", make_token(roles=()))
+    r = client.get("/api/extensions/ontology/object-types")
+    assert r.status_code == 403
+    assert "system:access" in r.json()["detail"]
+
+
+def test_delegated_failclosed_on_gateway_unreachable(monkeypatch, make_token: Callable[..., str]):
+    _install_fake_gateway(monkeypatch, httpx.ConnectError("connection refused"))
+    client = TestClient(ontostudio_app)
+    client.cookies.set("access_token", make_token(roles=()))
+    r = client.get("/api/extensions/ontology/object-types")
+    assert r.status_code == 403
+
+
+def test_delegated_failclosed_on_gateway_401(monkeypatch, make_token: Callable[..., str]):
+    _install_fake_gateway(monkeypatch, (401, {"detail": "Not authenticated"}))
+    client = TestClient(ontostudio_app)
+    client.cookies.set("access_token", make_token(roles=()))
+    r = client.get("/api/extensions/ontology/object-types")
+    assert r.status_code == 403
+
+
+def test_delegated_result_cached_within_ttl(monkeypatch, make_token: Callable[..., str]):
+    _install_fake_gateway(monkeypatch, (200, {"is_admin": True, "permissions": []}))
+    client = TestClient(ontostudio_app)
+    client.cookies.set("access_token", make_token(roles=()))
+    assert client.get("/api/extensions/ontology/object-types").status_code == 200
+    assert client.get("/api/extensions/ontology/object-types").status_code == 200
+    # 第二次命中 TTL 缓存：gateway 只被反查一次
+    assert len(_FakeAsyncClient.calls) == 1
+
+
+def test_bearer_without_roles_and_no_cookie_denied_without_delegation(
+    monkeypatch, make_token: Callable[..., str]
+):
+    # Bearer 通道无角色 claims 且无 Cookie 可透传 → 不打 gateway 直接 403（fail-closed 零网络）
+    _install_fake_gateway(monkeypatch, (200, {"is_admin": True}))
+    token = make_token(roles=())
+    client = TestClient(ontostudio_app, headers={"Authorization": f"Bearer {token}"})
+    r = client.get("/api/extensions/ontology/object-types")
+    assert r.status_code == 403
+    assert _FakeAsyncClient.calls == []

@@ -117,7 +117,9 @@ PUBLIC_IMAGES=(
 # built directly with `--target prod` in Step 2 below.
 # EAI-CUSTOM (S1 Task 3): ontostudio-backend 在 dev compose 带 profiles=["ontostudio"]，
 # 显式点名构建会自动激活其 profile，无需 --profile。
-BUILD_SERVICES="gateway collab cad-suite ocr ontostudio-backend"
+# EAI-CUSTOM (S2 Task 3): ontostudio-frontend 同 profile（两阶段镜像 node build →
+# nginx 托管 dist，ontostudio/frontend/Dockerfile）。
+BUILD_SERVICES="gateway collab cad-suite ocr ontostudio-backend ontostudio-frontend"
 
 # Compose files for building (in order)
 COMPOSE_FILES=(
@@ -277,6 +279,7 @@ declare -A SERVICE_TAG_MAP=(
     ["eai-docker-cad-suite:latest"]="eai-flow-cad-suite:latest"
     ["eai-docker-ocr:latest"]="eai-flow-ocr:latest"
     ["eai-docker-ontostudio-backend:latest"]="eai-flow-ontostudio-backend:latest"
+    ["eai-docker-ontostudio-frontend:latest"]="eai-flow-ontostudio-frontend:latest"
 )
 
 for COMPOSE_IMG in "${!SERVICE_TAG_MAP[@]}"; do

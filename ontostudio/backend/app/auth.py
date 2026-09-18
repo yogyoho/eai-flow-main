@@ -20,9 +20,12 @@ EAI-CUSTOM: ontology 包自 backend/app/extensions/ 迁出独立
   同源路由下浏览器 cookie 自然携带，D1）。
 - claims → CurrentUser: 尽量取 claims，缺省回填（gateway upstream token 只有 sub——
   username/email 等 v1 回填占位值；S2 前端直连如需真实资料再扩 token claims 或 DB bridge）。
-- require_permission(perm) 签名保留（路由依赖声明零改动）；**v1 superadmin-only 口径**：
+- require_permission(perm) 签名保留（路由依赖声明零改动）；**v1 claims 口径 + v2 授权委托**：
   token claims 的 roles(list)/role(str)/permissions(list) 含 ``superadmin`` 或 ``admin``
-  即放行（gateway upstream token 无角色 claims → 一律 403，属预期收紧，S2 接 RBAC 时再放宽）。
+  即放行；gateway upstream cookie 无角色 claims（v1 下浏览器全 403）→ v2（S2 Task 3）携带
+  原样 Cookie 反查 gateway ``/api/permissions/me``（UnifiedPermissionEngine 单一真相源，
+  is_admin / permissions 含目标点即放行，TTL 缓存，fail-closed），env ``ONTOSTUDIO_GATEWAY_URL``
+  覆盖 gateway 基址（默认 http://gateway:8001 容器网络服务名）。
 - ``status`` 字段已补（T1 评审指出的 CurrentUser 缺失项），默认 "active"。
 - MCP 传输层鉴权见 :func:`mcp_request_authorized`（X-Internal-Auth 共享头 或 合法 Bearer JWT）。
 """
@@ -32,8 +35,10 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+import time
 import uuid
 
+import httpx
 import jwt
 from fastapi import HTTPException, Request, status
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
@@ -191,14 +196,23 @@ def require_permission(permission: str):
     """依赖工厂（签名与 gateway app.extensions.auth.middleware.require_permission 一致）.
 
     v1 superadmin-only 口径：claims 角色命中 superadmin/admin 即放行（所有 permission 点
-    同口径——路由现仅用 system:access）；其余 403。S2 再接 UnifiedPermissionEngine 细粒度 RBAC。
+    同口径——路由现仅用 system:access）。
+
+    v2（S2 Task 3, EAI-CUSTOM）：gateway upstream 签发的 cookie 无角色 claims（v1 下一律
+    403，语义地图对浏览器全灭）。改为**授权委托**：携带原样 Cookie 调 gateway
+    ``GET /api/permissions/me``（UnifiedPermissionEngine 单一真相源），``is_admin`` 或
+    permissions 含目标点即放行；结果按用户 TTL 缓存。gateway 不可达一律 403 fail-closed。
+    claims 自带角色的 token（extensions 式/未来 token 内嵌 RBAC）仍走 v1 快路径，零委托。
     """
 
     async def _check(request: Request) -> CurrentUser:
         user, roles = _authenticate(request)
-        if not (_ADMIN_ROLE_CODES & set(roles)):
+        if _ADMIN_ROLE_CODES & set(roles):
+            return user
+        allowed = await _gateway_authorizes(request, user, permission)
+        if not allowed:
             logger.warning(
-                "authz deny: %s %s — user=%s roles=%s lacks '%s'",
+                "authz deny: %s %s — user=%s roles=%s lacks '%s' (gateway delegation)",
                 request.method,
                 request.url.path,
                 user.id,
@@ -212,6 +226,60 @@ def require_permission(permission: str):
         return user
 
     return _check
+
+
+# ── v2 授权委托：gateway UnifiedPermissionEngine（单一真相源）─────────────────
+# EAI-CUSTOM (S2 Task 3): gateway cookie 通道无角色 claims → 携带原样 Cookie 反查
+# gateway /api/permissions/me 判定。缓存 user_id → (allowed, expires_monotonic)；
+# TTL 内角色变更延迟生效（30s，可容忍——权限非高频变更面）。进程内缓存即可：单实例
+# 部署，且授权判断失败方向恒为 fail-closed。
+_AUTHZ_DELEGATE_TTL_SECONDS = 30.0
+_authz_cache: dict[uuid.UUID, tuple[bool, float]] = {}
+
+
+def _gateway_base_url() -> str:
+    """gateway 基址：容器网络默认服务名；宿主直跑 dev 时 env 覆盖（如 http://localhost:2026）."""
+    return os.getenv("ONTOSTUDIO_GATEWAY_URL", "") or "http://gateway:8001"
+
+
+async def _gateway_authorizes(request: Request, user: CurrentUser, permission: str) -> bool:
+    """问 gateway 权限引擎：is_admin 或 permissions 含 permission 即放行.
+
+    fail-closed：无 Cookie / gateway 不可达 / 非 200（含 401/403）/ 响应异常 → False。
+    200 且判定成功/失败均写缓存（TTL 内同用户免重复反查）。
+    """
+    cached = _authz_cache.get(user.id)
+    if cached is not None:
+        allowed, expires_at = cached
+        if time.monotonic() < expires_at:
+            return allowed
+        _authz_cache.pop(user.id, None)
+
+    cookie_header = request.headers.get("cookie", "")
+    if not cookie_header:
+        return False
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{_gateway_base_url()}/api/permissions/me",
+                headers={"Cookie": cookie_header},
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("authz delegate: gateway /api/permissions/me unreachable — %s", exc)
+        return False
+    if resp.status_code != 200:
+        logger.warning(
+            "authz delegate: gateway /api/permissions/me -> %d (fail-closed)", resp.status_code
+        )
+        return False
+    try:
+        data = resp.json()
+    except ValueError:
+        return False
+    allowed = bool(data.get("is_admin")) or permission in (data.get("permissions") or [])
+    _authz_cache[user.id] = (allowed, time.monotonic() + _AUTHZ_DELEGATE_TTL_SECONDS)
+    return allowed
 
 
 _MCP_OPEN_MODE_WARNED = False
