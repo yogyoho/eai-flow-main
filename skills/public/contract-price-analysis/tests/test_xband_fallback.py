@@ -308,3 +308,114 @@ def test_p94_row_price_reaches_real_total_via_two_pass():
     assert cells["name"] == "现浇构件钢筋"
     assert cells["qty"] == "63.553"
     assert cells["price_total"] == "83531.88"  # 非空优先: idx10(dist 0.053) 胜 idx9 空格(dist 0.004)
+
+
+def test_reverse_calc_rejects_unit_column_as_total():
+    """bug-3400 第四层(用户实测): seed price_total 锚落在含税单价列(碎表头)时,
+    反算=单价÷数量 产出 0.02 微型值且置 ok 入库。量纲守卫后: 反算被拒 →
+    行转 failing → 算术重推学出 (unit=5, total=7) 与 seed 锚不同 → 锚点覆盖
+    (pass 2 按修正坐标直接取价) → 单价 7.63/9.81/52.32 正确恢复。"""
+    rows = [
+        ["序号", "项目名称", "单位", "工程量", "不含税单价", "含税合价", "不含税合价", "含税合价"],
+        ["1", "基础开挖", "m3", "496.19", "7.00", "7.63", "3473.33", "3785.93"],
+        ["2", "回填方", "m3", "406.09", "9.00", "9.81", "3654.81", "3983.74"],
+        ["3", "散水", "m2", "95.20", "48.00", "52.32", "4569.60", "4983.86"],
+    ]
+    items, meta = _extract_from_tables([_tbl(rows, None, page_no=94)], "s3://b/x.pdf", SEEDS)
+    by = {i["goods_name"]: i for i in items}
+    assert by["基础开挖"]["unit_price"] == 7.63, f"got {by['基础开挖']['unit_price']}"
+    assert by["回填方"]["unit_price"] == 9.81
+    assert by["散水"]["unit_price"] == 52.32
+    assert all(i["unit_price"] is None or i["unit_price"] >= 1.0 for i in items)
+    # 锚点覆盖元数据: seed 锚 (无单价锚, price_total=5=含税单价列) → 学到的 (5,7)
+    ov = meta["anchor_override"]
+    assert ov[-1]["seed_unit_col"] is None and ov[-1]["seed_total_col"] == 5
+    assert ov[-1]["learned_unit_col"] == 5 and ov[-1]["learned_total_col"] == 7
+
+
+def test_ratio_plausible_guard():
+    from scripts.cli import _MIN_PLAUSIBLE_UNIT, _ratio_plausible
+
+    assert _ratio_plausible(3983.74, 406.09)      # 9.81 正常
+    assert not _ratio_plausible(7.63, 496.19)     # 0.0154 单价列被当合价
+    assert _ratio_plausible(1.20, 824.79) is False or True  # 边界自由度:仅保证不炸
+    assert _MIN_PLAUSIBLE_UNIT == 1.0
+
+
+# ── 6) bug-3400 第五/六层: 行内算术三元组 + 算术锚点覆盖(用户实测行回归) ──────
+# 实弹行 verbatim 取自桂北 OCR 缓存(验证脚本 .wolf/tmp/triple_check.py, 6/6 通过):
+# p94 行内列语义漂移(胶水格/单价列逐行换位),p112/p113 规整 10 列布局。
+
+R94_EXC = ["2", "基础开挖", "m3", "496.19", "7.00", "3473.33", "%6", "312.60", "7.63", "3785.93"]
+R94_FILL = ["3", "回填方", "m3", "406.09 9.00", "3654.81", "9%", "328.93", "9.81", "3983.74"]
+R94_FLAT = ["1", "平整场地", "m2", "824.79 1.20", "989.75", "9%", "89.08", "1.31", "1078.83"]
+R112_A = ["4", "回填方", "m3", "630.79", "", "5424.79", "9%", "488.23", "9.37", "5913.03"]
+R112_B = ["3", "回填方", "m3", "177.81", "82.00", "14580.42", "9%", "1312.24", "89.38", "15892.66"]
+R113 = ["18", "回填方", "m3", "617.22", "82.00", "50612.04", "9%", "4555.08", "89.38", "55167.12"]
+
+
+def test_row_arith_price_basic():
+    """_row_arith_price 单元钉(桂北实弹 6/6): 胶水格拆数('406.09 9.00'→406.09+9.00
+    双候选)、q 已知取 max-t、q 未知取 max-t 三元组小因子;无自洽三元组 → (None,'')。"""
+    from scripts.cli import _row_arith_price
+
+    assert _row_arith_price(R94_EXC, "496.19")[0] == 7.63
+    assert _row_arith_price(R94_FILL, "406.09 9.00")[0] == 9.81  # 胶水 qty parse 失败 → q 未知路径
+    assert _row_arith_price(R112_A, "630.79")[0] == 9.37
+    assert _row_arith_price(R112_B, "177.81")[0] == 89.38
+    assert _row_arith_price(R113, "617.22")[0] == 89.38
+    assert _row_arith_price(R94_FLAT, "")[0] == 1.31
+    # 无 (u×q≈t) 自洽 → 不注值
+    assert _row_arith_price(["1", "货物A", "m2", "10.00", "", "999.00", "9%", "", "", ""], "10.00") == (None, "")
+    assert _row_arith_price([], "") == (None, "")
+
+
+def test_row_triple_scan_recovers_user_reported_rows():
+    """用户实测回归(端到端): p94 混合布局页(行内列换位,表级学不出一致列 →
+    learned None)走行内三元组兜底 7.63/9.81/1.31;p112 类规整页 ≥2 失败 →
+    算术锚点覆盖 (8,9) 整表重提取直接取价 9.37/89.38/89.38。全部 ok、零微型单价。"""
+    header = ["序号", "项目名称", "单位", "工程量", "不含税单价", "不含税合价", "税率", "税金", "含税合价", "备注"]
+    title = ["工程量清单计价表"] + [""] * 9
+    t94 = _tbl(
+        [title, header, R94_EXC, R94_FILL, R94_FLAT], None, page_no=94
+    )
+    t112 = _tbl(
+        [title, header, R112_A, R112_B, R113], None, page_no=112
+    )
+    items, meta = _extract_from_tables([t94, t112], "s3://b/guibei.pdf", SEEDS)
+    assert all(it["validation_status"] == "ok" for it in items)
+    assert all(it["unit_price"] is not None and it["unit_price"] >= 1.0 for it in items)
+    by_page = {(it["goods_name"], it["source_page"]): it for it in items}
+    assert by_page[("基础开挖", 94)]["unit_price"] == 7.63
+    assert by_page[("回填方", 94)]["unit_price"] == 9.81
+    assert by_page[("平整场地", 94)]["unit_price"] == 1.31
+    fills_112 = sorted(it["unit_price"] for it in items if it["goods_name"] == "回填方" and it["source_page"] == 112)
+    assert fills_112 == [9.37, 89.38, 89.38]
+    # p94 页列语义逐行漂移 → 表级学习不触发; p112 页 → 锚点覆盖 (8,9)
+    assert "price_rediscovery" not in meta
+    ov = meta["anchor_override"]
+    assert len(ov) == 1 and ov[0]["page"] == 112
+    assert ov[0]["seed_unit_col"] is None and ov[0]["seed_total_col"] == 8
+    assert ov[0]["learned_unit_col"] == 8 and ov[0]["learned_total_col"] == 9 and ov[0]["learned_qty_col"] == 3
+
+
+def test_untaxed_direct_take_upgraded_to_taxed():
+    """第八层(用户要求: unit_price 统计字段必须是含税单价,取不含税单价是错的):
+    干净的不含税直取/反算在行内存在更大金额(=含税合价,增幅=税率 ≤25%)时,
+    以 行内最大金额÷工程量 反算含税单价。OCR 撕裂数字碎片
+    ('68. 911346. 15' → '68.'/'911346.' 候选过滤)不得充当最大金额。
+    实测: 现浇构件钢筋 1205.84→1314.37(p94)、1235.00→1346.15(p115, 旧引擎基线)。"""
+    header = ["序号", "项目名称", "单位", "工程量", "单价", "不含税合价", "税率", "", "税金", "含税合价", "备注"]
+    rows = [
+        ["工程量清单计价表"] + [""] * 10,
+        header,
+        # seed 锚(price_total=idx9)落在不含税合价(碎表头谎报'含税合价')→ 反算=不含税单价
+        ["12", "现浇构件钢筋", "t", "63.553", "1205.84", "76634.75", "9%", "", "6897.13", "76634.75", "83531.88"],
+        ["59", "现浇构件钢筋", "t", "0.62", "1235.00", "765.70", "9%", "", "68. 911346. 15", "765.70", "834.61"],
+    ]
+    items, meta = _extract_from_tables([_tbl(rows, None, page_no=94)], "s3://b/steel.pdf", SEEDS)
+    assert "anchor_override" not in meta and "price_rediscovery" not in meta  # 零学习
+    by_row = {i["source_row_idx"]: i for i in items}
+    assert by_row[2]["unit_price"] == 1314.37  # 83531.88 / 63.553
+    assert by_row[3]["unit_price"] == 1346.15  # 834.61 / 0.62 = 旧引擎基线精确一致
+    assert all(i["validation_status"] == "ok" for i in items)

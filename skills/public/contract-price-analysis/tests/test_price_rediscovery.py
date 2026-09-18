@@ -46,22 +46,29 @@ def _by_name(items):
 
 
 def test_stage1_learns_untaxed_pair_and_recovers_failing_rows():
-    """≥2 失败行 → 学到 (unit=不含税单价, total=不含税合价, qty=工程量);
-    失败行按学到的列直接取价(粘连单价格经 validate 粘连拆分取末位)。"""
+    """≥2 失败行 → 学到 (unit=不含税单价, total=不含税合价, qty=工程量);学到的列
+    与 seed 锚不同 → 算术锚点覆盖: 整表按修正坐标重提取。第七层语义: failing 行
+    行内算术(三元组+max-t=含税合价)优先于学到的列直接取价——统计主字段是含税
+    单价,行内锚对合价之上有更大金额(=含税合价)时反算之,不取不含税列
+    (oracle: .wolf/tmp/cpa-acceptance-runbook.md §9.2: 多孔砖墙 556.99、
+    现浇构件钢筋 1314.37、平整场地 1.31)。"""
     items, meta = _extract_from_tables([_tbl(P94_ROWS)], "s3://b/guibei.pdf", SEEDS)
     got = _by_name(items)
     assert meta["goods_tables"] == 1
-    # 学习元数据(additive key)
-    learn = meta["price_rediscovery"]
-    assert learn[-1]["unit_col"] == 4 and learn[-1]["total_col"] == 5 and learn[-1]["qty_col"] == 3
-    # 平整场地: 单价格 '824.79 1.20' 空格粘连 → validate 取末位 1.20(验收门 1.31/1.20 之一)
-    assert got["平整场地"]["unit_price"] == 1.20
-    # 多孔砖墙/现浇构件钢筋: 学到的列单价直接有效
-    assert got["多孔砖墙"]["unit_price"] == 511.00
-    assert got["现浇构件钢筋"]["unit_price"] == 1205.84
-    # 干净行同样经学到的列恢复(它们在种子列下同样 price-less)
-    assert got["挖沟槽土方"]["unit_price"] == 45.00
-    assert got["灰土垫层"]["unit_price"] == 130.00
+    # 覆盖元数据(additive key): seed 锚 (无单价锚, price_total=9) → 学到的 (4,5,3)
+    assert "price_rediscovery" not in meta  # 键迁移: 覆盖发生时不记行级重推
+    ov = meta["anchor_override"]
+    assert ov[-1]["seed_unit_col"] is None and ov[-1]["seed_total_col"] == 9
+    assert ov[-1]["learned_unit_col"] == 4 and ov[-1]["learned_total_col"] == 5 and ov[-1]["learned_qty_col"] == 3
+    # 平整场地: 工程量空(q 未知) → 行内 max-t 三元组小因子 = 含税单价 1.31(oracle)
+    assert got["平整场地"]["unit_price"] == 1.31
+    # 多孔砖墙/现浇构件钢筋: 含税单价格是无分隔粘连格 → 锚对(不含税对)之上
+    # 以行内最大金额(含税合价)反算 = 旧引擎基线精确一致(oracle)
+    assert got["多孔砖墙"]["unit_price"] == 556.99
+    assert got["现浇构件钢筋"]["unit_price"] == 1314.37
+    # 干净行同样经行内算术恢复(锚对之上含税合价反算)
+    assert got["挖沟槽土方"]["unit_price"] == 49.04
+    assert got["灰土垫层"]["unit_price"] == 141.70
     # 数量保持种子列语义(idx3),row5 工程量空 → None(契约不变)
     assert got["平整场地"]["quantity"] is None
     assert got["多孔砖墙"]["quantity"] == 210.86
@@ -77,8 +84,11 @@ def test_healthy_table_never_learns():
     items, meta = _extract_from_tables([_tbl(rows)], "s3://b/ok.pdf", SEEDS)
     assert len(items) == 7
     assert "price_rediscovery" not in meta
+    assert "anchor_override" not in meta  # 健康表零学习/零覆盖(第八层行内升级不算学习)
     got = _by_name(items)
-    assert got["多孔砖墙"]["unit_price"] == 511.0  # 种子路径原样: 合价/工程量反算 = 511.00
+    # 合价/工程量反算 = 不含税 511.00,第八层行内最大金额(含税合价 117446.91,
+    # 增幅 9%)反算升级为含税单价 556.99(= §9.2 oracle,零学习发生)
+    assert got["多孔砖墙"]["unit_price"] == 556.99
 
 
 def test_no_consistent_pair_returns_none_rows_stay_dropped():
@@ -135,7 +145,7 @@ def test_qty_text_plausibility():
 
 def test_unit_text_as_qty_never_feeds_reverse_calc():
     """qty 被单位文本占用('m2')时: 不得经 parse_qty('m2')=2 反算(1.31/2=0.66);
-    行保持失败 → 进入学习/恢复轨道,按学到的列取真单价 1.20。"""
+    行保持失败 → 行内算术(q 未知,max-t 小因子)取含税单价 1.31,非 0.66。"""
     from scripts.cli import _raw_price_usable
 
     raw = {"price_unit_raw": "", "price_untaxed_raw": "", "price_total_raw": "1.31", "qty_raw": "m2"}
@@ -153,7 +163,7 @@ def test_unit_text_as_qty_never_feeds_reverse_calc():
     ]
     items, meta = _extract_from_tables([_tbl(rows)], "s3://b/m2.pdf", SEEDS)
     got = _by_name(items)
-    assert got["平整场地"]["unit_price"] == 1.20  # 学到的列单价(粘连拆分),非 1.31/2=0.66
+    assert got["平整场地"]["unit_price"] == 1.31  # 行内 max-t 小因子,非 1.31/2=0.66
     assert got["平整场地"]["quantity"] is None  # 'm2' 不得成为工程量
-    assert got["多孔砖墙"]["unit_price"] == 511.00
-    assert meta["price_rediscovery"][-1]["unit_col"] == 4
+    assert got["多孔砖墙"]["unit_price"] == 556.99  # 含税合价/工程量反算(oracle)
+    assert meta["anchor_override"][-1]["learned_unit_col"] == 4  # 覆盖后行级兜底,键随覆盖迁移
