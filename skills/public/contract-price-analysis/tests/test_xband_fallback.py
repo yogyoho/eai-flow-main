@@ -455,6 +455,35 @@ def test_row_triple_scan_recovers_user_reported_rows():
     assert ov[0]["learned_unit_col"] == 8 and ov[0]["learned_total_col"] == 9 and ov[0]["learned_qty_col"] == 3
 
 
+def test_arithmetic_glue_split_seventh_layer():
+    """第七层(算术锚定胶水拆分): 无空格双点胶水格(税金+含税单价 粘连)整 token
+    float 失败被丢——按分割点枚举 (a,b),a≈某金额×税率 且 b×某候选≈某金额
+    (双关系同时成立)才收;LED灯 无胶水,但伪三元组(序号12×税金64.8≈含税合价)
+    霸占 max-t → 共享因子路径逐 primary 迭代修复。"""
+    from scripts.cli import _row_num_cands, _taxed_unit_oracle
+
+    # SPF02: '127.441543.44' = 税金127.44(=1416×9%) + 含税单价1543.44(=1543.44×1)
+    spf02 = ["4", "配电箱 SPF02", "台", "", "1", "1416.00", "1416.00", "9%", "127.441543.44", "", "1543.44"]
+    cands = _row_num_cands(spf02)
+    vals = [v for _, v in cands]
+    assert 127.44 in vals and 1543.44 in vals
+    # 伪分裂 (127.441543, 4) 被双关系拒绝(b=4 仅自证于序号格)
+    assert 127.441543 not in vals
+    assert _taxed_unit_oracle(spf02, None, qty_col=1)[0] == 1543.44
+    # ALE: '195.662369.66' = 195.66(=2174×9%) + 2369.66
+    ale = ["7", "配电箱ALE", "台", "", "1", "2174.00", "2174.00", "9%", "195.662369.66", "", "2369.66"]
+    assert _taxed_unit_oracle(ale, None, qty_col=1)[0] == 2369.66
+    # 储水式: '187.301134.23' = 187.30(=2081.16×9%) + 1134.23(×2=2268.46)
+    ss = ["23", "", "接储水式电热水 器", "台", "2", "1040.58", "2081.16", "9%", "187.301134.23", "", "2268.46"]
+    u, q = _taxed_unit_oracle(ss, None, qty_col=1)
+    assert (u, q) == (1134.23, 2.0)
+    # LED灯(无胶水): 伪三元组 12×64.8≈784.8(序号×税金) 霸占 max-t →
+    # 共享因子逐 primary 迭代: 真对 (98.1, 8, 784.8) 共享 8 → 784.8/8=98.10
+    led = ["12", "", "LED灯", "套", "8", "90.00", "720.00", "9%", "64.80", "98.10", "784.80"]
+    u9, q9 = _taxed_unit_oracle(led, None, qty_col=1)
+    assert (u9, q9) == (98.10, 8.0)
+
+
 def test_row_arbitration_taxed_upgrade_pages():
     """第六层全行含税仲裁(用户 sweep 实测三页,行 verbatim): 碎表头谎报含税列
     (price_unit=不含税单价列)使直取成功但取到不含税/数量值——仲裁对所有行

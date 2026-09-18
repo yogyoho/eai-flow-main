@@ -352,8 +352,13 @@ def _row_num_cands(row):
     """行内数值候选(单价/合价/量共用): 每格 re.findall 拆全部数字(空格胶格格
     '824.79 1.20' 产出双候选),≥_MIN_PLAUSIBLE_UNIT 过滤。撕裂小数合并: 以
     '.'/'，'/','结尾的分片是 OCR 断号('1. 62'='1.'+'62'),与后续分片拼回真值;
-    无后续的尾随撕裂片与拼后仍非法的串('68. 911346. 15'→'68.911346.15')丢弃。"""
+    无后续的尾随撕裂片与拼后仍非法的串('68. 911346. 15'→'68.911346.15')丢弃。
+    第七层(算术锚定胶水拆分): 无空格双点粘连格(税金+含税单价,'127.441543.44'
+    =127.44+1543.44)整 token 不可解析——枚举分割点 (a,b),要求 a≈某金额×税率
+    (税率取行内 % 格,无则试 6/9/13%)且 b×某候选≈某金额(含税单价×数量),
+    双关系同时成立才收(单关系会产生大量伪分裂);并列取 b 最大。"""
     cand = []
+    fused = []  # (ci, token): float 失败的粘连 token
     for ci, cell in enumerate(row):
         buf = ""
         for m in re.findall(r"\d[\d,，.]*", cell or ""):
@@ -363,11 +368,58 @@ def _row_num_cands(row):
             try:
                 v = float(buf.replace(",", "").replace("，", ""))
             except ValueError:
+                if "." in buf:
+                    fused.append((ci, buf))
                 buf = ""
                 continue
             buf = ""
             if v >= _MIN_PLAUSIBLE_UNIT:
                 cand.append((ci, v))
+        if buf and "." in buf:
+            fused.append((ci, buf))
+        buf = ""
+    # 第七层: 算术锚定胶水拆分——a=税金(≈金额×税率), b=含税单价(×数量≈金额)
+    if fused and cand:
+        amounts = [v for _, v in cand]
+        rates = [
+            float(mm.group(1)) / 100.0
+            for cell in row
+            for mm in [re.search(r"(\d+(?:\.\d+)?)\s*%", cell or "")]
+            if mm
+        ]
+        if not rates:
+            rates = [0.06, 0.09, 0.13]
+        for ci, tok in fused:
+            if tok.count(".") < 2:
+                continue
+            best = None
+            for i in range(1, len(tok)):
+                a_s, b_s = tok[:i], tok[i:]
+                if not a_s or not b_s or a_s.endswith(".") or b_s.endswith("."):
+                    continue
+                try:
+                    a = float(a_s.replace(",", "").replace("，", ""))
+                    b = float(b_s.replace(",", "").replace("，", ""))
+                except ValueError:
+                    continue
+                if a < _MIN_PLAUSIBLE_UNIT or b < _MIN_PLAUSIBLE_UNIT:
+                    continue
+                r1 = any(abs(a - amount * rate) <= 0.02 * amount for amount in amounts for rate in rates)
+                if not r1:
+                    continue
+                r2 = any(
+                    ti != qi and abs(b * q - amount) <= 0.02 * amount
+                    for qi, q in cand
+                    for ti, amount in cand
+                    if ti != qi
+                )
+                if not r2:
+                    continue
+                if best is None or b > best[1]:
+                    best = (a, b)
+            if best:
+                cand.append((ci, best[0]))
+                cand.append((ci, best[1]))
     return cand
 
 
@@ -464,24 +516,32 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None):
             if u_tax >= _MIN_PLAUSIBLE_UNIT:
                 return u_tax, stored_qty
             return None, None
-    # 共享因子路径
+    # 共享因子路径(鲁棒): 逐 primary(按 t 降序)找「因子交集恰一元素」的伙伴。
+    # 伪三元组(序号×税金≈含税合价,LED灯 12×64.8≈784.8)可能霸占 max-t 且无
+    # 伙伴——旧实现 primary 唯一故整体放弃;现首个成功 primary 定数量,
+    # 伪 primary 无伙伴自然跳过,后续真 primary 接管。
     sorted_tr = sorted(triples, key=lambda x: -x[2])
-    f1 = {sorted_tr[0][0], sorted_tr[0][1]}
-    shareds = set()
-    for tr in sorted_tr[1:]:
-        f2 = {tr[0], tr[1]}
-        if f2 == f1:
-            continue
-        inter = f1 & f2
-        if len(inter) == 1:
-            shareds.add(next(iter(inter)))
-    if len(shareds) == 1:
-        shared = next(iter(shareds))
-        if shared > 0:
+    for tr in sorted_tr:
+        f1 = {tr[0], tr[1]}
+        for tr2 in sorted_tr:
+            f2 = {tr2[0], tr2[1]}
+            if f2 == f1:
+                continue
+            inter = f1 & f2
+            if len(inter) != 1:
+                continue
+            shared = next(iter(inter))
+            if shared <= 0:
+                continue
             u_tax = round(t_taxed / shared, 2)
+            # 含税单价 ≥ 不含税单价(primary 的另一因子): 共享因子是「单位因子」
+            # (p106 序号46×col9碎片8.5 伪网)而非数量时,u_tax 反小于 u_a → 拒绝
+            others = [x for x in f1 if abs(x - shared) > 1e-9]
+            if others and u_tax < others[0] * 0.98:
+                break
             if u_tax >= _MIN_PLAUSIBLE_UNIT:
                 return u_tax, shared
-            return None, None
+            break
     # 单三元组 + qty_col 列位语义: 因子格正落种子工程量列 → 该因子为量
     # (化粪池: 名格'1'(YJBH-1-II)会造出 1.0×1455.2 竞争三元组,真量在 c3 量列)。
     # 量由列位唯一确定才可反算;方向未知 → 返回 None 交旧语义(max-t 小因子)。
