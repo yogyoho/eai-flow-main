@@ -92,13 +92,16 @@ const allNavItems: NavItem[] = [
     licenseModule: "platform",
     navId: "nav:knowledge-factory",
   },
-  // EAI-CUSTOM: 本体语义地图（plan 2026-09-12 ontology-ui Task 3 Step 3.1）
+  // EAI-CUSTOM: 本体语义地图（plan 2026-09-12 ontology-ui Task 3 Step 3.1；
+  // S2 Task 2 摘除主系统内嵌页面，入口切独立 Vite 前端 /ontostudio/ 新标签打开。
+  // 过渡期：T3 nginx 路由落地前 dev 下 404——已知中间态）
   {
-    href: "/ontology",
+    href: "/ontostudio/",
     label: "语义地图",
     icon: Network,
     licenseModule: "platform",
     navId: "nav:ontology",
+    newTab: true,
   },
   {
     href: "/knowledge",
