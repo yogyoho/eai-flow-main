@@ -13,7 +13,7 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, Search } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchPendingReviewCount, fetchRegistryMeta } from "@/api/ontology-graph-api";
 import { DetailPanel } from "@/components/DetailPanel";
@@ -31,7 +31,7 @@ import { readGraphSnapshot, type GraphSnapshot } from "@/graphSnapshot";
 
 const SEARCH_MATCH_LIMIT = 8;
 type PanelTab = "detail" | "registry";
-type PageView = "map" | "overview" | "resolution";
+export type PageView = "map" | "overview" | "resolution";
 
 const PAGE_VIEWS: Array<[PageView, string]> = [
   ["map", "地图"],
@@ -65,14 +65,34 @@ function searchGraphNodes(query: string): Array<{ id: string; label: string }> {
     .map(({ id, label }) => ({ id, label }));
 }
 
-function OntologyWorkspace() {
+function OntologyWorkspace({
+  initialView = "map",
+  onViewChange,
+}: {
+  initialView?: PageView;
+  onViewChange?: (view: PageView) => void;
+}) {
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState<PanelTab>("detail");
   const [summary, setSummary] = useState<GraphLoadSummary | null>(null);
-  const [view, setView] = useState<PageView>("map");
+  const [view, setView] = useState<PageView>(initialView);
   const [colorByCommunity, setColorByCommunity] = useState(false);
   const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
+
+  // 视图切换统一走 changeView：内部状态 + 通知外壳（AppShell 同步侧栏高亮/hash）
+  const changeView = useCallback(
+    (next: PageView) => {
+      setView(next);
+      onViewChange?.(next);
+    },
+    [onViewChange],
+  );
+
+  // 外壳驱动（侧栏/hash 切换）→ 内部视图跟随；组件常驻挂载，这里单向同步
+  useEffect(() => {
+    setView((current) => (current === initialView ? current : initialView));
+  }, [initialView]);
 
   const metaQuery = useQuery({
     queryKey: ["ontology", "registry"],
@@ -114,7 +134,7 @@ function OntologyWorkspace() {
     void reloadGraph();
   }, [reloadGraph]);
 
-  const handleGoResolution = useCallback(() => setView("resolution"), []);
+  const handleGoResolution = useCallback(() => changeView("resolution"), [changeView]);
 
   const handleSelectNode = useCallback((nodeId: string) => {
     setSelectedNodeId(nodeId);
@@ -215,7 +235,7 @@ function OntologyWorkspace() {
               key={value}
               type="button"
               aria-pressed={view === value}
-              onClick={() => setView(value)}
+              onClick={() => changeView(value)}
               className={cn(
                 "rounded-md px-3 py-1 text-xs transition-colors",
                 view === value
@@ -340,7 +360,13 @@ function OntologyWorkspace() {
 }
 
 /** 权限门：加载中 fail-open；加载完成无权限 → 空态 + 前往主系统登录（不自动跳转）。 */
-export function OntologyPage() {
+export function OntologyPage({
+  initialView,
+  onViewChange,
+}: {
+  initialView?: PageView;
+  onViewChange?: (view: PageView) => void;
+} = {}) {
   const { canPage, isLoading: permLoading } = usePermission();
   if (!permLoading && !canPage("ontology:page:map")) {
     return (
@@ -355,5 +381,5 @@ export function OntologyPage() {
       </div>
     );
   }
-  return <OntologyWorkspace />;
+  return <OntologyWorkspace initialView={initialView} onViewChange={onViewChange} />;
 }

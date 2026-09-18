@@ -1,0 +1,949 @@
+<!doctype html>
+<title>OntoStudio 本体工作台</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* ===== shadcn/ui token system · blue primary ===== */
+:root{
+  --background:#ffffff; --foreground:#09090b;
+  --card:#ffffff; --card-foreground:#09090b;
+  --primary:#2563eb; --primary-foreground:#ffffff;
+  --secondary:#f4f4f5; --secondary-foreground:#18181b;
+  --muted:#f4f4f5; --muted-foreground:#71717a;
+  --accent:#f4f4f5; --accent-foreground:#18181b;
+  --border:#e4e4e7; --input:#e4e4e7;
+  --ring:rgba(37,99,235,.35);
+  --destructive:#dc2626; --destructive-fg:#fef2f2;
+  --success:#16a34a; --success-bg:#f0fdf4;
+  --warning:#d97706; --warning-bg:#fffbeb;
+  --sidebar:#fafafa; --sidebar-border:#e4e4e7; --sidebar-accent:#eef2ff;
+  --code-bg:#0f1117; --code-fg:#e4e4e7;
+  --radius:.5rem;
+  --shadow-xs:0 1px 2px rgba(0,0,0,.05);
+  --shadow-md:0 4px 12px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#09090b; --foreground:#fafafa;
+    --card:#101014; --card-foreground:#fafafa;
+    --primary:#3b82f6; --primary-foreground:#ffffff;
+    --secondary:#27272a; --secondary-foreground:#fafafa;
+    --muted:#1c1c21; --muted-foreground:#a1a1aa;
+    --accent:#1c1c21; --accent-foreground:#fafafa;
+    --border:#27272a; --input:#3f3f46;
+    --ring:rgba(59,130,246,.4);
+    --destructive:#ef4444; --destructive-fg:#fef2f2;
+    --success:#4ade80; --success-bg:#0c2015;
+    --warning:#fbbf24; --warning-bg:#231a07;
+    --sidebar:#0d0d11; --sidebar-border:#1f1f24; --sidebar-accent:#15203a;
+    --code-bg:#0a0c10; --code-fg:#d4d4d8;
+    --shadow-xs:0 1px 2px rgba(0,0,0,.5);
+    --shadow-md:0 6px 18px rgba(0,0,0,.5);
+  }
+}
+:root[data-theme="dark"]{
+  --background:#09090b; --foreground:#fafafa;
+  --card:#101014; --card-foreground:#fafafa;
+  --primary:#3b82f6; --primary-foreground:#ffffff;
+  --secondary:#27272a; --secondary-foreground:#fafafa;
+  --muted:#1c1c21; --muted-foreground:#a1a1aa;
+  --accent:#1c1c21; --accent-foreground:#fafafa;
+  --border:#27272a; --input:#3f3f46;
+  --ring:rgba(59,130,246,.4);
+  --destructive:#ef4444; --destructive-fg:#fef2f2;
+  --success:#4ade80; --success-bg:#0c2015;
+  --warning:#fbbf24; --warning-bg:#231a07;
+  --sidebar:#0d0d11; --sidebar-border:#1f1f24; --sidebar-accent:#15203a;
+  --code-bg:#0a0c10; --code-fg:#d4d4d8;
+  --shadow-xs:0 1px 2px rgba(0,0,0,.5);
+  --shadow-md:0 6px 18px rgba(0,0,0,.5);
+}
+/* ===== base ===== */
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--background);color:var(--foreground);
+  font:14px/1.6 Inter,"Noto Sans SC",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid transparent;box-shadow:0 0 0 2px var(--background),0 0 0 4px var(--ring);border-radius:calc(var(--radius) - 2px)}
+[hidden]{display:none!important}
+.mono{font-family:"IBM Plex Mono",monospace}
+.num{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+/* ===== app shell ===== */
+.app{display:flex;height:100%;min-height:0}
+.side{width:232px;flex:none;background:var(--sidebar);border-right:1px solid var(--sidebar-border);
+  display:flex;flex-direction:column;min-height:0}
+.brand{padding:16px;gap:10px;border-bottom:1px solid var(--sidebar-border);display:flex;align-items:center}
+.brand .glyph{width:32px;height:32px;flex:none;border-radius:calc(var(--radius) + 2px);
+  background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;
+  font-weight:700;font-size:13px;font-family:"Noto Sans SC",sans-serif}
+.brand b{font-size:14px;font-weight:600;letter-spacing:-.01em;display:block;line-height:1.25}
+.brand small{display:block;color:var(--muted-foreground);font-size:11px}
+.nav{flex:1;overflow-y:auto;padding:8px}
+.nav .group{margin-top:14px;padding:0 10px 4px;color:var(--muted-foreground);font-size:11px;font-weight:500;letter-spacing:.06em}
+.nav .group:first-child{margin-top:2px}
+.nav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  padding:6px 10px;border-radius:var(--radius);color:var(--muted-foreground);font-size:13.5px;font-weight:500;transition:background .12s,color .12s}
+.nav button .no{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted-foreground);width:17px;flex:none;opacity:.8}
+.nav button:hover{background:var(--accent);color:var(--accent-foreground)}
+.nav button.on{background:var(--sidebar-accent);color:var(--foreground);font-weight:600}
+.nav button.on .no{color:var(--primary)}
+.nav .dot{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--destructive)}
+.side-foot{border-top:1px solid var(--sidebar-border);padding:12px 16px;display:flex;align-items:center;gap:10px}
+.side-foot .ava{width:30px;height:30px;border-radius:50%;background:var(--primary);color:var(--primary-foreground);
+  display:grid;place-items:center;font-weight:600;font-size:12px;flex:none}
+.side-foot .who b{font-size:12.5px;display:block;line-height:1.3}
+.side-foot .who span{font-size:11px;color:var(--muted-foreground)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
+/* topbar */
+.topbar{display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:1px solid var(--border);background:var(--background)}
+.tabs{display:flex;background:var(--muted);border-radius:var(--radius);padding:3px}
+.tabs button{padding:5px 13px;border-radius:calc(var(--radius) - 2px);font-size:12.5px;font-weight:500;color:var(--muted-foreground)}
+.tabs button.on{background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs);font-weight:600}
+.tabs button .mono{font-size:10.5px;opacity:.65;margin-left:5px}
+.search{flex:1;max-width:400px;position:relative}
+.search input{width:100%;height:36px;padding:0 56px 0 32px;border:1px solid var(--input);border-radius:var(--radius);
+  background:var(--background);font-size:13px;box-shadow:var(--shadow-xs)}
+.search input::placeholder{color:var(--muted-foreground)}
+.search::before{content:"";position:absolute;left:10px;top:9px;width:16px;height:16px;border:1.6px solid var(--muted-foreground);border-radius:50%}
+.search::after{content:"";position:absolute;left:22px;top:23px;width:6px;height:1.6px;background:var(--muted-foreground);transform:rotate(45deg)}
+.search kbd{position:absolute;right:8px;top:8px;font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--muted-foreground);
+  border:1px solid var(--border);border-radius:5px;padding:1px 5px;background:var(--muted)}
+.topbar .spacer{flex:1}
+.gb-note{color:var(--muted-foreground);font-size:12px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:9999px;font-size:11.5px;font-weight:500;
+  border:1px solid var(--border);color:var(--foreground);background:transparent;white-space:nowrap}
+.badge .cdot{width:6px;height:6px;border-radius:50%;flex:none}
+.badge.solid{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+.badge.blue{background:color-mix(in srgb,var(--primary) 10%,transparent);border-color:color-mix(in srgb,var(--primary) 25%,transparent);color:var(--primary)}
+.badge.green{background:var(--success-bg);border-color:transparent;color:var(--success)}
+.badge.red{background:color-mix(in srgb,var(--destructive) 10%,transparent);border-color:transparent;color:var(--destructive)}
+.badge.amber{background:var(--warning-bg);border-color:transparent;color:var(--warning)}
+.badge.gray{background:var(--secondary);border-color:transparent;color:var(--secondary-foreground)}
+/* pages */
+.pages{flex:1;overflow-y:auto;min-height:0}
+.page{display:none;padding:24px 26px 64px;animation:pgin .25s ease both}
+.page.on{display:block}
+@keyframes pgin{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.page-head{display:flex;align-items:flex-end;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.page-head h1{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.page-head .clause{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--primary);
+  background:color-mix(in srgb,var(--primary) 8%,transparent);border:1px solid color-mix(in srgb,var(--primary) 20%,transparent);
+  border-radius:6px;padding:2px 8px;margin-bottom:3px}
+.page-head p{color:var(--muted-foreground);font-size:13px;width:100%}
+.page-head .act{margin-left:auto;display:flex;gap:8px}
+/* ===== components ===== */
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:var(--radius);
+  border:1px solid var(--input);background:var(--background);font-size:13px;font-weight:500;
+  box-shadow:var(--shadow-xs);transition:background .12s,border-color .12s,color .12s}
+.btn:hover{background:var(--accent);color:var(--accent-foreground)}
+.btn.pri{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+.btn.pri:hover{background:color-mix(in srgb,var(--primary) 88%,black)}
+.btn.sm{height:28px;padding:0 10px;font-size:12px;border-radius:calc(var(--radius) - 2px)}
+.btn.ghost{border-color:transparent;box-shadow:none}
+.btn.danger{color:var(--destructive)}
+.btn.danger:hover{background:color-mix(in srgb,var(--destructive) 8%,transparent);color:var(--destructive)}
+.btn:disabled{opacity:.5;pointer-events:none}
+.card{background:var(--card);border:1px solid var(--border);border-radius:calc(var(--radius) + 2px);box-shadow:var(--shadow-xs)}
+.card .hd{display:flex;align-items:center;gap:10px;padding:14px 16px}
+.card .hd b{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.card .hd .sub{color:var(--muted-foreground);font-size:12px;font-weight:400}
+.card .hd .right{margin-left:auto}
+.card .bd{padding:16px}
+.card .div{border-top:1px solid var(--border)}
+.grid{display:grid;gap:14px}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px}
+.tile{padding:16px 18px 14px}
+.tile .k{color:var(--muted-foreground);font-size:12.5px;font-weight:500}
+.tile .v{font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1.25;margin-top:2px}
+.tile .m{font-size:12px;color:var(--muted-foreground);margin-top:2px}
+.tile .m b{color:var(--primary);font-weight:600}
+select.input,input.input{height:34px;padding:0 10px;border:1px solid var(--input);border-radius:var(--radius);
+  background:var(--background);font-size:12.5px;box-shadow:var(--shadow-xs)}
+pre{background:var(--code-bg);color:var(--code-fg);border-radius:calc(var(--radius) + 2px);
+  padding:14px 16px;font:12px/1.75 "IBM Plex Mono",monospace;overflow-x:auto}
+pre .cm{color:#7a8577}pre .kw{color:#7cb7ff}pre .st{color:#e5c07b}pre .ir{color:#a5b4fc}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:12.5px}
+.kv dt{color:var(--muted-foreground);white-space:nowrap}
+.kv dd{min-width:0;overflow-wrap:anywhere}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--muted-foreground)}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:6px;vertical-align:-1px}
+.quote{border:1px solid var(--border);border-radius:var(--radius);background:var(--muted);padding:10px 13px;font-size:12.5px}
+.quote .src{display:flex;gap:10px;color:var(--muted-foreground);font-size:10.5px;margin-top:6px;font-family:"IBM Plex Mono",monospace}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:500;color:var(--muted-foreground);font-size:12px;height:38px;
+  padding:0 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid var(--border)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{transition:background .1s}
+tbody tr:hover{background:color-mix(in srgb,var(--muted) 55%,transparent)}
+tbody tr.click{cursor:pointer}
+td .mono{font-size:12px;color:var(--muted-foreground)}
+.tablewrap{overflow-x:auto}
+.pager{display:flex;align-items:center;gap:6px;padding:12px 14px;color:var(--muted-foreground);font-size:12.5px}
+.pager .pg{min-width:28px;height:28px;display:grid;place-items:center;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--background);box-shadow:var(--shadow-xs)}
+.pager .pg.on{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+/* timeline */
+.tl{position:relative;padding-left:20px}
+.tl::before{content:"";position:absolute;left:5px;top:4px;bottom:4px;width:1px;background:var(--border)}
+.tl .ev{position:relative;padding:0 0 15px}
+.tl .ev::before{content:"";position:absolute;left:-19px;top:6px;width:9px;height:9px;border-radius:50%;
+  background:var(--card);border:2px solid var(--primary)}
+.tl .ev.undo::before{border-color:var(--destructive)}
+.tl .ev .t{font-size:11px;color:var(--muted-foreground);font-family:"IBM Plex Mono",monospace}
+#toast{position:fixed;bottom:24px;right:24px;transform:translateY(14px);opacity:0;pointer-events:none;
+  background:var(--card);color:var(--card-foreground);border:1px solid var(--border);padding:11px 16px 11px 13px;
+  border-radius:calc(var(--radius) + 2px);font-size:13px;font-weight:500;transition:.22s;z-index:99;box-shadow:var(--shadow-md);
+  display:flex;align-items:center;gap:9px;max-width:360px}
+#toast::before{content:"✓";width:18px;height:18px;flex:none;border-radius:50%;background:var(--success);
+  color:#fff;font-size:11px;display:grid;place-items:center}
+#toast.show{opacity:1;transform:none}
+/* graph */
+.graph-wrap{display:grid;grid-template-columns:216px 1fr 300px;gap:14px;align-items:stretch}
+.gtool .blk{padding:13px 14px;border-bottom:1px solid var(--border)}
+.gtool .blk:last-child{border:0}
+.gtool h4{font-size:11.5px;color:var(--muted-foreground);font-weight:600;letter-spacing:.04em;margin-bottom:9px}
+.fchip{display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:13px;color:var(--foreground);cursor:pointer}
+.fchip input{accent-color:var(--primary);width:14px;height:14px}
+.fchip i{width:9px;height:9px;border-radius:3px}
+.seg{display:flex;background:var(--muted);border-radius:var(--radius);padding:3px;width:100%}
+.seg button{flex:1;padding:5px 4px;border-radius:calc(var(--radius) - 2px);font-size:12px;font-weight:500;color:var(--muted-foreground)}
+.seg button.on{background:var(--background);color:var(--foreground);box-shadow:var(--shadow-xs);font-weight:600}
+.gstage{position:relative;background:var(--card);border:1px solid var(--border);border-radius:calc(var(--radius) + 2px);overflow:hidden;min-height:520px}
+.gstage svg{display:block;width:100%;height:100%}
+.gstage .hud{position:absolute;left:12px;top:12px;display:flex;gap:8px}
+.inspector{overflow-y:auto}
+.inspector .sec{padding:14px 15px;border-bottom:1px solid var(--border)}
+.inspector .sec:last-child{border:0}
+.inspector h4{font-size:11.5px;color:var(--muted-foreground);font-weight:600;letter-spacing:.04em;margin-bottom:9px}
+.iri{font-family:"IBM Plex Mono",monospace;font-size:11px;background:var(--muted);border:1px solid var(--border);
+  border-radius:6px;padding:4px 8px;display:block;overflow-wrap:anywhere;color:var(--muted-foreground)}
+.c-project{fill:#2563eb}.c-org{fill:#7c3aed}.c-goods{fill:#d97706}.c-qualification{fill:#059669}.c-place{fill:#64748b}
+:root[data-theme="dark"] .c-project,:root:not([data-theme]) .c-project{fill:#3b82f6}
+.edge{stroke:#a1a1aa;stroke-opacity:.5;stroke-width:1.4}
+.edge.inf{stroke:var(--primary);stroke-dasharray:5 4;stroke-opacity:.9}
+.edge.hi,.edge.inf.hi{stroke:var(--primary);stroke-opacity:1;stroke-width:2.2}
+.node circle{stroke:var(--card);stroke-width:2;transition:transform .15s;cursor:pointer}
+.node:hover circle,.node.hi circle{transform:scale(1.25)}
+.node.dim{opacity:.18}
+.node text{font-size:11px;font-weight:500;fill:var(--foreground);paint-order:stroke;stroke:var(--card);stroke-width:3px}
+/* modeler */
+.modeler{display:grid;grid-template-columns:250px 1fr 330px;gap:14px;min-height:540px}
+.tree{list-style:none;padding:8px 6px;font-size:13px}
+.tree ul{list-style:none;padding-left:17px;border-left:1px dashed var(--border);margin-left:9px}
+.tree button{display:flex;align-items:center;gap:7px;width:100%;text-align:left;padding:5px 9px;border-radius:var(--radius);color:var(--muted-foreground)}
+.tree button:hover{background:var(--accent);color:var(--accent-foreground)}
+.tree button.on{background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary);font-weight:600}
+.tree .badge{margin-left:auto;font-size:10px;font-family:"IBM Plex Mono",monospace;color:var(--muted-foreground);
+  border:1px solid var(--border);border-radius:4px;padding:0 4px;background:var(--background)}
+.axiom{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);
+  margin-bottom:8px;background:var(--muted);font-size:12.5px;flex-wrap:wrap}
+.axiom .tag{font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:1px 7px;border-radius:5px;font-weight:600;
+  background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--primary)}
+.axiom code{font-family:"IBM Plex Mono",monospace;font-size:12px}
+.axiom .arrow{color:var(--muted-foreground)}
+/* validation */
+.checks{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.check{border:1px solid var(--border);border-radius:calc(var(--radius) + 2px);background:var(--card);padding:14px;text-align:left}
+.check .ok{width:26px;height:26px;border-radius:50%;background:var(--success-bg);color:var(--success);
+  display:grid;place-items:center;font-size:13px;font-weight:700;margin-bottom:9px}
+.check .no2{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--muted-foreground)}
+.check b{display:block;font-size:13px;margin-top:2px}
+.check span{font-size:11.5px;color:var(--muted-foreground)}
+.viol{display:flex;gap:13px;padding:14px 16px;border:1px solid var(--border);border-radius:calc(var(--radius) + 2px);background:var(--card);margin-bottom:10px}
+.viol .bar{width:4px;border-radius:2px;background:var(--destructive);flex:none}
+.viol.warn .bar{background:var(--warning)}
+.viol h5{font-size:13.5px;font-weight:600;margin-bottom:3px}
+.viol p{font-size:12.5px;color:var(--muted-foreground)}
+.viol .meta{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted-foreground);margin-top:7px;overflow-wrap:anywhere}
+/* resolver */
+.cand{border:1px solid var(--border);border-radius:calc(var(--radius) + 2px);background:var(--card);padding:15px 16px;margin-bottom:12px}
+.cand .pair{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cand .ent{flex:1;min-width:170px;border:1px solid var(--border);border-radius:var(--radius);padding:10px 13px;background:var(--muted)}
+.cand .ent b{font-size:13.5px}
+.cand .ent .mono{display:block;font-size:10.5px;color:var(--muted-foreground);margin-top:2px}
+.cand .sim{text-align:center;flex:none;width:92px}
+.cand .sim .n{font-size:22px;font-weight:700;letter-spacing:-.02em;color:var(--primary)}
+.cand .sim .l{font-size:10.5px;color:var(--muted-foreground)}
+.cand .why{margin:10px 0 0;font-size:12.5px;color:var(--muted-foreground)}
+.cand .ops{display:flex;gap:8px;margin-top:12px}
+/* ingest */
+.drop{border:1.5px dashed var(--border);border-radius:calc(var(--radius) + 2px);background:var(--muted);
+  padding:26px;text-align:center;color:var(--muted-foreground);transition:border-color .15s}
+.drop:hover{border-color:color-mix(in srgb,var(--primary) 45%,transparent)}
+.drop .big{font-size:15px;font-weight:600;color:var(--foreground);margin-bottom:3px}
+.hist{display:flex;align-items:flex-end;gap:6px;height:110px;padding:20px 2px 20px}
+.hist .bar{flex:1;background:var(--primary);border-radius:4px 4px 0 0;opacity:.85;position:relative;min-width:14px}
+.hist .bar:hover{opacity:1}
+.hist .bar span{position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted-foreground);font-family:"IBM Plex Mono",monospace}
+.hist .bar b{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:10px;color:var(--muted-foreground);font-weight:500}
+/* export */
+.fmt{overflow:hidden}
+.fmt .fh{display:flex;align-items:center;gap:9px;padding:12px 15px;border-bottom:1px solid var(--border)}
+.fmt .fh .ext{font-family:"IBM Plex Mono",monospace;font-size:11px;background:var(--primary);color:var(--primary-foreground);border-radius:5px;padding:2px 7px;font-weight:600}
+.fmt pre{border-radius:0;margin:12px}
+.snapshot{display:flex;align-items:center;gap:12px;padding:11px 15px;border-bottom:1px solid var(--border);font-size:12.5px}
+.snapshot:last-child{border:0}
+.snapshot .when{font-family:"IBM Plex Mono",monospace;color:var(--muted-foreground);font-size:11.5px;width:150px;flex:none}
+.snapshot .sz{color:var(--muted-foreground);margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:11.5px}
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;font-size:12px}
+.flow .st{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:8px 13px;box-shadow:var(--shadow-xs)}
+.flow .st b{display:block;font-size:12.5px}
+.flow .st span{color:var(--muted-foreground);font-size:11px}
+.flow .ln{width:26px;height:1px;background:var(--border);flex:none}
+/* responsive */
+@media (max-width:1100px){
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .graph-wrap,.modeler{grid-template-columns:1fr}
+  .gstage{min-height:0;height:420px}
+  .inspector{max-height:420px}
+  .checks{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:760px){
+  .side{display:none}
+  .page{padding:16px 14px 50px}
+  .tiles{grid-template-columns:1fr 1fr}
+  .search,.gb-note{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- sidebar -->
+  <aside class="side">
+    <div class="brand">
+      <span class="glyph">OS</span>
+      <div><b>OntoStudio</b><small>本体建模工作台</small></div>
+    </div>
+    <nav class="nav">
+      <div class="group">总览</div>
+      <button class="on" data-go="dashboard"><span class="no">01</span>工作台总览</button>
+      <div class="group">知识层</div>
+      <button data-go="graph"><span class="no">02</span>图谱浏览</button>
+      <button data-go="entities"><span class="no">03</span>实体库</button>
+      <button data-go="resolve"><span class="no">04</span>消解审核<span class="dot"></span></button>
+      <div class="group">建模层</div>
+      <button data-go="modeler"><span class="no">05</span>本体建模器</button>
+      <button data-go="reasoning"><span class="no">06</span>推理工作台</button>
+      <button data-go="validation"><span class="no">07</span>校验中心</button>
+      <div class="group">管线</div>
+      <button data-go="ingest"><span class="no">08</span>抽取导入</button>
+      <button data-go="export"><span class="no">09</span>导出互操作</button>
+    </nav>
+    <div class="side-foot">
+      <span class="ava">管</span>
+      <div class="who"><b>知识工程组</b><span>admin@eai-flow.com</span></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <div class="tabs" role="tablist">
+        <button class="on">投标域<span class="mono">doc_graph</span></button>
+        <button>环评域<span class="mono">eia</span></button>
+      </div>
+      <div class="search"><input id="gsearch" type="search" placeholder="搜索实体名称、IRI、证据引用…" aria-label="全局搜索"><kbd>⌘K</kbd></div>
+      <div class="spacer"></div>
+      <span class="gb-note">依据 GB/T 48000.3—2026 建模</span>
+      <span class="badge blue">OntoStudio · 独立部署</span>
+    </header>
+
+    <div class="pages">
+    <!-- 01 dashboard -->
+    <section class="page on" id="page-dashboard">
+      <div class="page-head">
+        <span class="clause">01 · 总览</span><h1>工作台总览</h1>
+        <div class="act"><button class="btn">生成快照</button><button class="btn pri">运行推理闭包</button></div>
+        <p>doc_graph 投标域 · 建模面 doc_graph.yaml v2 · 图真源 Oxigraph · 最近物化 2 分钟前</p>
+      </div>
+      <div class="tiles">
+        <div class="card tile"><div class="k">实体</div><div class="v num">1,284</div><div class="m">待审核 <b>36</b> · 已合并 <b>214</b></div></div>
+        <div class="card tile"><div class="k">关系</div><div class="v num">2,157</div><div class="m">派生 <b>486</b>（owlrl + CONSTRUCT）</div></div>
+        <div class="card tile"><div class="k">证据链 mentions</div><div class="v num">1,131</div><div class="m">覆盖 <b>94%</b> 实体 · 永不删除</div></div>
+        <div class="card tile"><div class="k">公理 / 规则</div><div class="v num">23</div><div class="m">属性链 6 · 传递 4 · CONSTRUCT 9</div></div>
+      </div>
+      <div class="grid" style="grid-template-columns:1.35fr 1fr">
+        <div class="card">
+          <div class="hd"><b>建模管线状态</b><span class="sub">抽取 → 校验 → 消解 → 推理 → 导出</span><span class="right badge green"><span class="cdot" style="background:var(--success)"></span>全链路正常</span></div>
+          <div class="bd"><div class="flow">
+            <div class="st"><b>抽取导入</b><span>3 任务运行中</span></div><i class="ln"></i>
+            <div class="st"><b>SHACL 校验</b><span>2 项违规</span></div><i class="ln"></i>
+            <div class="st"><b>消解审核</b><span>36 待审 · 12 候选</span></div><i class="ln"></i>
+            <div class="st"><b>OWL RL 闭包</b><span>18,642 物化</span></div><i class="ln"></i>
+            <div class="st"><b>Turtle 快照</b><span>今日 06:00</span></div>
+          </div></div>
+        </div>
+        <div class="card">
+          <div class="hd"><b>合规与推理</b></div>
+          <div class="bd" style="display:flex;gap:16px;align-items:center">
+            <div style="width:52px;height:52px;flex:none;border-radius:50%;background:var(--success-bg);color:var(--success);display:grid;place-items:center;font-size:24px;font-weight:700">✓</div>
+            <div>
+              <div style="font-size:13.5px;font-weight:600">GB/T 48000.3 符合性 <span class="num">5/5</span> 通过</div>
+              <div class="legend" style="flex-direction:column;gap:4px;margin-top:5px">
+                <span>IRI 命名 · 序列化往返 · SHACL 报告</span><span>附录 A 元数据 · §9 扩展原则</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;margin-top:14px">
+        <div class="card">
+          <div class="hd"><b>知识域</b><span class="right btn sm ghost">新建域</span></div>
+          <div class="tablewrap"><table>
+            <thead><tr><th>域</th><th>命名空间</th><th class="right">实体</th><th class="right">状态</th></tr></thead>
+            <tbody>
+              <tr><td><b>投标域 doc_graph</b></td><td class="mono">…/doc_graph#</td><td class="right num">1,284</td><td class="right"><span class="badge green">现行</span></td></tr>
+              <tr><td><b>环评域 eia</b></td><td class="mono">…/eia#</td><td class="right num">872</td><td class="right"><span class="badge green">现行</span></td></tr>
+              <tr><td><b>供应链域 supply</b></td><td class="mono">—</td><td class="right">—</td><td class="right"><span class="badge gray">规划中</span></td></tr>
+            </tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="hd"><b>最近操作留痕</b><span class="sub">合并审计 · 永不删除</span></div>
+          <div class="bd"><div class="tl">
+            <div class="ev"><div><b>合并</b> 山西煤机集团 ← 山西煤矿机械制造有限公司</div><div class="t">10:32 · 依据 2 条 mention · 操作员 管理员</div></div>
+            <div class="ev undo"><div><b>撤销合并</b> 太原重型机械厂 ← 太重集团（误合并回滚）</div><div class="t">09:47 · 审计 aud-0912</div></div>
+            <div class="ev"><div><b>推理刷新</b> owlrl 闭包 + 9 条 CONSTRUCT 规则</div><div class="t">09:12 · 新增派生 486 三元组</div></div>
+          </div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 02 graph -->
+    <section class="page" id="page-graph">
+      <div class="page-head">
+        <span class="clause">02 · 图谱</span><h1>图谱浏览</h1>
+        <p>断言图为真源 · 虚线为推理物化（owlrl 闭包 + CONSTRUCT 派生）· 点击节点查看证据链</p>
+      </div>
+      <div class="graph-wrap">
+        <div class="card gtool">
+          <div class="blk">
+            <h4>推理层</h4>
+            <div class="seg" id="layer-seg">
+              <button class="on" data-layer="all">断言 + 物化</button>
+              <button data-layer="assert">仅断言</button>
+            </div>
+          </div>
+          <div class="blk">
+            <h4>实体类型过滤</h4>
+            <label class="fchip"><input type="checkbox" checked data-t="project"><i class="c-project"></i>项目 project</label>
+            <label class="fchip"><input type="checkbox" checked data-t="org"><i class="c-org"></i>机构 org</label>
+            <label class="fchip"><input type="checkbox" checked data-t="goods"><i class="c-goods"></i>货物 goods</label>
+            <label class="fchip"><input type="checkbox" checked data-t="qualification"><i class="c-qualification"></i>资质 qualification</label>
+            <label class="fchip"><input type="checkbox" checked data-t="place"><i class="c-place"></i>地点 place</label>
+          </div>
+          <div class="blk">
+            <h4>图例</h4>
+            <div class="legend" style="flex-direction:column;gap:6px">
+              <span><i style="background:#a1a1aa"></i>断言关系</span>
+              <span><i style="height:0;border-top:2px dashed var(--primary);border-radius:0"></i>推理物化</span>
+              <span class="mono" style="font-size:10.5px">节点大小 = 度数</span>
+            </div>
+          </div>
+        </div>
+        <div class="gstage">
+          <div class="hud">
+            <span class="badge blue">横城煤矿项目邻域</span>
+            <span class="badge gray">深度 2</span>
+          </div>
+          <svg viewBox="0 0 760 520" role="img" aria-label="知识图谱">
+            <line class="edge" x1="380" y1="250" x2="215" y2="140"/>
+            <line class="edge" x1="380" y1="250" x2="200" y2="330"/>
+            <line class="edge inf" x1="380" y1="250" x2="560" y2="150"/>
+            <line class="edge" x1="200" y1="330" x2="330" y2="420"/>
+            <line class="edge" x1="380" y1="250" x2="330" y2="420"/>
+            <line class="edge" x1="215" y1="140" x2="95" y2="235"/>
+            <line class="edge inf" x1="95" y1="235" x2="200" y2="330"/>
+            <line class="edge" x1="560" y1="150" x2="665" y2="245"/>
+            <line class="edge" x1="560" y1="150" x2="640" y2="70"/>
+            <line class="edge inf" x1="665" y1="245" x2="590" y2="360"/>
+            <line class="edge" x1="380" y1="250" x2="500" y2="400"/>
+            <line class="edge inf" x1="500" y1="400" x2="590" y2="360"/>
+            <line class="edge" x1="215" y1="140" x2="105" y2="70"/>
+            <g class="node" data-t="project" data-name="横城煤矿项目"><circle class="c-project" cx="380" cy="250" r="26"/><text x="380" y="292" text-anchor="middle">横城煤矿项目</text></g>
+            <g class="node" data-t="org" data-name="山西煤机集团"><circle class="c-org" cx="215" cy="140" r="22"/><text x="215" y="180" text-anchor="middle">山西煤机集团</text></g>
+            <g class="node" data-t="org" data-name="省煤田地质局"><circle class="c-org" cx="105" cy="70" r="15"/><text x="105" y="102" text-anchor="middle">省煤田地质局</text></g>
+            <g class="node" data-t="org" data-name="太原重型机械厂"><circle class="c-org" cx="200" cy="330" r="18"/><text x="200" y="368" text-anchor="middle">太原重型机械厂</text></g>
+            <g class="node" data-t="goods" data-name="矿用刮板输送机"><circle class="c-goods" cx="330" cy="420" r="17"/><text x="330" y="458" text-anchor="middle">矿用刮板输送机</text></g>
+            <g class="node" data-t="qualification" data-name="设备安装一级资质"><circle class="c-qualification" cx="95" cy="235" r="16"/><text x="95" y="271" text-anchor="middle">设备安装一级资质</text></g>
+            <g class="node" data-t="project" data-name="王家岭选煤厂"><circle class="c-project" cx="560" cy="150" r="19"/><text x="560" y="188" text-anchor="middle">王家岭选煤厂</text></g>
+            <g class="node" data-t="place" data-name="桑干河保护区"><circle class="c-place" cx="665" cy="245" r="14"/><text x="665" y="278" text-anchor="middle">桑干河保护区</text></g>
+            <g class="node" data-t="place" data-name="朔州市"><circle class="c-place" cx="640" cy="70" r="13"/><text x="640" y="100" text-anchor="middle">朔州市</text></g>
+            <g class="node" data-t="org" data-name="华阳生态集团"><circle class="c-org" cx="590" cy="360" r="17"/><text x="590" y="396" text-anchor="middle">华阳生态集团</text></g>
+            <g class="node" data-t="qualification" data-name="环保工程资质"><circle class="c-qualification" cx="500" cy="400" r="15"/><text x="500" y="434" text-anchor="middle">环保工程资质</text></g>
+          </svg>
+        </div>
+        <div class="card inspector">
+          <div class="sec">
+            <h4>节点详情</h4>
+            <b style="font-size:15px">横城煤矿项目</b>
+            <div style="margin:7px 0;display:flex;gap:6px"><span class="badge blue">project</span><span class="badge green">active</span></div>
+            <span class="iri">https://ontology.eai-flow.com/doc_graph/id/9c21f7a0-4b8e-4d31</span>
+          </div>
+          <div class="sec">
+            <h4>属性</h4>
+            <dl class="kv">
+              <dt>规范化名</dt><dd class="mono">横城煤矿项目</dd>
+              <dt>置信度</dt><dd class="num">0.96</dd>
+              <dt>有效期</dt><dd class="mono num">2024-03 ~ 至今</dd>
+              <dt>证据数</dt><dd class="num">17 条 mentions</dd>
+            </dl>
+          </div>
+          <div class="sec">
+            <h4>证据链（3 / 17）</h4>
+            <div class="quote" style="margin-bottom:8px">"横城煤矿建设项目由山西煤机集团总承包，配套安装单位须具备煤矿设备安装一级资质。"
+              <div class="src"><span>doc:标书-2024-017</span><span>span:L412-C8</span></div></div>
+            <div class="quote">"本项目位于朔州市桑干河流域饮用水源保护区上游 8 km。"
+              <div class="src"><span>doc:环评报告-横城</span><span>span:L28-C3</span></div></div>
+          </div>
+          <div class="sec">
+            <h4>推理物化（3）</h4>
+            <div class="legend" style="flex-direction:column;gap:5px;font-size:12px">
+              <span class="mono" style="color:var(--primary)">org_in_ecosystem_of（属性链）</span>
+              <span class="mono" style="color:var(--primary)">located_in（传递闭包）</span>
+              <span class="mono" style="color:var(--primary)">Project 子类断言（owlrl）</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 entities -->
+    <section class="page" id="page-entities">
+      <div class="page-head">
+        <span class="clause">03 · 实体</span><h1>实体库</h1>
+        <div class="act"><button class="btn">导出当前视图</button><button class="btn pri">手工录入实体</button></div>
+        <p>点击任意行打开实体抽屉：属性、证据链与合并历史</p>
+      </div>
+      <div class="card">
+        <div class="hd" style="gap:8px;flex-wrap:wrap">
+          <select class="input" aria-label="类型"><option>全部类型</option><option>project</option><option>org</option><option>goods</option><option>qualification</option></select>
+          <select class="input" aria-label="状态"><option>全部状态</option><option>active</option><option>pending_review</option><option>merged</option></select>
+          <select class="input" aria-label="置信度"><option>置信度 ≥ 0.7</option><option>≥ 0.92</option><option>全部</option></select>
+          <span class="right" style="color:var(--muted-foreground);font-size:12.5px">共 1,284 条 · 命中 <b class="num" style="color:var(--primary)">36</b></span>
+        </div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>实体名称</th><th>类型</th><th>规范化名</th><th class="right">置信度</th><th>状态</th><th class="right">证据</th><th>更新时间</th></tr></thead>
+          <tbody id="entity-rows">
+            <tr class="click"><td><b>横城煤矿项目</b></td><td><span class="badge blue">project</span></td><td class="mono">横城煤矿项目</td><td class="right num">0.96</td><td><span class="badge green">active</span></td><td class="right num">17</td><td class="mono">09-18 10:12</td></tr>
+            <tr class="click"><td><b>山西煤机集团</b></td><td><span class="badge gray">org</span></td><td class="mono">山西煤机集团</td><td class="right num">0.94</td><td><span class="badge green">active</span></td><td class="right num">23</td><td class="mono">09-18 10:32</td></tr>
+            <tr class="click"><td><b>山西煤矿机械制造有限公司</b></td><td><span class="badge gray">org</span></td><td class="mono">山西煤机集团</td><td class="right num">0.91</td><td><span class="badge amber">merged</span></td><td class="right num">8</td><td class="mono">09-18 10:32</td></tr>
+            <tr class="click"><td><b>矿用刮板输送机 SGZ-800</b></td><td><span class="badge amber">goods</span></td><td class="mono">矿用刮板输送机</td><td class="right num">0.88</td><td><span class="badge green">active</span></td><td class="right num">11</td><td class="mono">09-17 16:40</td></tr>
+            <tr class="click"><td><b>煤矿设备安装一级资质</b></td><td><span class="badge green">qualification</span></td><td class="mono">煤矿设备安装资质</td><td class="right num">0.93</td><td><span class="badge green">active</span></td><td class="right num">14</td><td class="mono">09-17 16:02</td></tr>
+            <tr class="click"><td><b>桑干河饮用水源保护区</b></td><td><span class="badge gray">place</span></td><td class="mono">桑干河水源保护区</td><td class="right num">0.79</td><td><span class="badge amber">pending_review</span></td><td class="right num">6</td><td class="mono">09-17 14:28</td></tr>
+          </tbody>
+        </table></div>
+        <div class="pager"><span>每页 20 条</span><span class="pg">‹</span><span class="pg on">1</span><span class="pg">2</span><span class="pg">3</span><span class="pg">›</span></div>
+      </div>
+    </section>
+
+    <!-- 04 resolve -->
+    <section class="page" id="page-resolve">
+      <div class="page-head">
+        <span class="clause">04 · 消解</span><h1>消解审核</h1>
+        <p>推理层只产出候选（graph:alignment）· 合并永远由人工确认 · 全程留痕可撤销</p>
+      </div>
+      <div class="grid" style="grid-template-columns:1.5fr 1fr">
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="hd"><b>候选等价对</b><span class="sub">sameAs 候选 · 相似度 0.92 审核带</span>
+              <span class="right badge amber">12 待处理</span></div>
+            <div class="bd">
+              <div class="cand">
+                <div class="pair">
+                  <div class="ent"><b>山西煤机集团</b><span class="mono">dg:id/a1f3…（active · 23 mentions）</span></div>
+                  <div class="sim"><div class="n num">0.94</div><div class="l">norm + 证据重合</div></div>
+                  <div class="ent"><b>山西煤矿机械制造有限公司</b><span class="mono">dg:id/77b2…（active · 8 mentions）</span></div>
+                </div>
+                <p class="why">规范化名一致 · 2 条共同证据引用（标书-2024-017 L412 / 中标公告 L8）· owlrl sameAs 候选</p>
+                <div class="ops">
+                  <button class="btn pri sm" data-merge>确认合并</button>
+                  <button class="btn sm" data-skip="已保留两个独立实体">判定为不同实体</button>
+                  <button class="btn sm" data-skip="已稍后处理">稍后</button>
+                </div>
+              </div>
+              <div class="cand">
+                <div class="pair">
+                  <div class="ent"><b>桑干河饮用水源保护区</b><span class="mono">dg:id/5d0a…（pending · 6 mentions）</span></div>
+                  <div class="sim"><div class="n num">0.92</div><div class="l">名称归一</div></div>
+                  <div class="ent"><b>桑干河水源保护区（朔州段）</b><span class="mono">dg:id/c881…（active · 4 mentions）</span></div>
+                </div>
+                <p class="why">归一化名命中 · 地理范围需人工核对（环评报告-横城 L28 vs 水源地名录）</p>
+                <div class="ops">
+                  <button class="btn pri sm" data-merge>确认合并</button>
+                  <button class="btn sm" data-skip="已保留两个独立实体">判定为不同实体</button>
+                  <button class="btn sm" data-skip="已稍后处理">稍后</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="hd"><b>置信度语义</b></div>
+            <div class="bd legend" style="gap:18px">
+              <span><i style="background:var(--primary)"></i>≥ 0.92 自动进入审核带（可一键合并）</span>
+              <span><i style="background:var(--warning)"></i>0.70 – 0.92 进推理空间但不自动建议</span>
+              <span><i style="background:#a1a1aa"></i>&lt; 0.70 仅存证，不参与推理</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="hd"><b>操作历史</b><span class="sub">可撤销</span></div>
+          <div class="bd"><div class="tl">
+            <div class="ev"><div><b>合并</b> 山西煤矿机械制造有限公司 → 山西煤机集团</div>
+              <div class="t">10:32 · 审计 aud-0917 · 依据 2 mentions</div>
+              <button class="btn sm danger" style="margin-top:7px" data-skip="已撤销该合并">撤销合并</button></div>
+            <div class="ev undo"><div><b>已撤销</b> 太原重型机械厂 ← 太重集团</div><div class="t">09:47 · 审计 aud-0912 · 回滚完成</div></div>
+            <div class="ev"><div><b>判定不同</b> 华阳生态集团 ≠ 华阳新材料集团</div><div class="t">08:55 · 审核员 管理员</div></div>
+          </div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 modeler -->
+    <section class="page" id="page-modeler">
+      <div class="page-head">
+        <span class="clause">05 · 建模</span><h1>本体建模器</h1>
+        <div class="act"><button class="btn">校验建模面</button><button class="btn pri">保存并热重载</button></div>
+        <p>元数据描述项对齐 GB/T 48000.3 附录 A · 公理以 OWL 2 RL 表达 · 保存后 SHA 热重载</p>
+      </div>
+      <div class="modeler">
+        <div class="card" style="overflow-y:auto">
+          <div class="hd"><b>类层次</b><span class="sub">subClassOf</span></div>
+          <ul class="tree">
+            <li><button class="on">Activity 活动<span class="badge">6 子类</span></button>
+              <ul>
+                <li><button>Project 项目</button></li>
+                <li><button>Bid 投标行为</button></li>
+                <li><button>Evaluation 评价活动</button></li>
+              </ul>
+            </li>
+            <li><button>Agent 主体<span class="badge">4 子类</span></button>
+              <ul><li><button>Org 机构</button><ul><li><button>Bidder 投标人</button></li></ul></li><li><button>Person 个人</button></ul></li>
+            <li><button>Resource 资源</button>
+              <ul><li><button>Goods 货物</button></li><li><button>Qualification 资质</button></ul></li>
+            <li><button>Place 地点</button></li>
+            <li><button>Mention 证据<span class="badge">eq</span></button></li>
+          </ul>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px">
+            <div class="hd"><b>Activity 活动</b><span class="badge blue">owl:Class</span>
+              <span class="right badge gray">行为主体：竞标/评价/承包</span></div>
+            <div class="bd">
+              <dl class="kv" style="grid-template-columns:110px 1fr">
+                <dt>标识符 IRI</dt><dd class="mono">https://ontology.eai-flow.com/doc_graph#Activity</dd>
+                <dt>名称 Name</dt><dd class="mono">Activity</dd>
+                <dt>标签 Label</dt><dd>活动</dd>
+                <dt>定义</dt><dd>消耗资源并产生状态变化的业务行为，是项目、投标与评价行为的父类。</dd>
+                <dt>属性集</dt><dd class="mono">name, startTime, endTime, status</dd>
+                <dt>父类</dt><dd>—（根类）</dd>
+                <dt>子类</dt><dd class="mono">Project, Bid, Evaluation</dd>
+                <dt>等价类</dt><dd class="mono">—</dd>
+              </dl>
+            </div>
+          </div>
+          <div class="card">
+            <div class="hd"><b>公理</b><span class="sub">OWL 2 RL · 23 条</span><span class="right btn sm ghost">新增公理</span></div>
+            <div class="bd">
+              <div class="axiom"><span class="tag">propertyChain</span>
+                <code>org_compiles_project → project_owned_by → org_parent_of</code>
+                <span class="arrow">⇒</span><code>org_in_ecosystem_of</code></div>
+              <div class="axiom"><span class="tag">transitive</span><code>part_of</code><span style="color:var(--muted-foreground)">· 传递闭包，用于组织与地理归属</span></div>
+              <div class="axiom"><span class="tag">inverse</span><code>replaces ⇄ isReplacedBy</code></div>
+              <div class="axiom"><span class="tag">disjoint</span><code>NormativeElement, InformativeElement</code></div>
+              <div class="axiom"><span class="tag">hasKey</span><code>Org { norm_name }</code><span style="color:var(--muted-foreground)">· 全局唯一标识</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;min-height:0">
+          <div class="hd"><b>doc_graph.yaml</b><span class="sub">formal 段预览</span></div>
+          <div style="padding:12px;overflow:auto"><pre>@prefix 说明：每域独立命名空间
+<span class="cm"># registry v2 · formal 段</span>
+<span class="kw">namespaces</span>:
+  dg: <span class="st">"https://ontology.eai-flow.com/doc_graph#"</span>
+<span class="kw">object_types</span>:
+  - api_name: graph_entity
+    <span class="kw">etype_classes</span>:
+      project: { <span class="kw">class</span>: Project, <span class="kw">subClassOf</span>: [Activity] }
+      mine:    { <span class="kw">class</span>: Mine,    <span class="kw">subClassOf</span>: [Place] }
+<span class="kw">formal</span>:
+  <span class="kw">property_chains</span>:
+    - { <span class="kw">derived</span>: org_in_ecosystem_of,
+        <span class="kw">chain</span>: [org_compiles_project,
+               project_owned_by, org_parent_of] }
+  <span class="kw">transitive</span>: [part_of]
+  <span class="kw">inverse</span>: [{ <span class="kw">pair</span>: [replaces, isReplacedBy] }]</pre></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 06 reasoning -->
+    <section class="page" id="page-reasoning">
+      <div class="page-head">
+        <span class="clause">06 · 推理</span><h1>推理工作台</h1>
+        <div class="act"><button class="btn">dry 运行规则</button><button class="btn pri">全量重算</button></div>
+        <p>单引擎：owlrl 闭包（graph:entailment）+ SPARQL CONSTRUCT 派生（每规则独立 named graph，named graph 归属即触发轨迹）</p>
+      </div>
+      <div class="tiles" style="grid-template-columns:repeat(3,1fr)">
+        <div class="card tile"><div class="k">entailment 物化</div><div class="v num">18,642</div><div class="m">subclass 12,341 · 链 3,207 · sameAs 89</div></div>
+        <div class="card tile"><div class="k">CONSTRUCT 派生</div><div class="v num">486</div><div class="m">9 条规则 · 上次全量 09:12</div></div>
+        <div class="card tile"><div class="k">闭包耗时</div><div class="v num">1.8<small style="font-size:14px">s</small></div><div class="m">5k 实体预算 &lt; 3s ✓</div></div>
+      </div>
+      <div class="card">
+        <div class="hd"><b>CONSTRUCT 规则</b><span class="sub">替代 Rete · join 型派生</span><span class="right btn sm ghost">新增规则</span></div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>规则</th><th>派生谓词</th><th>named graph</th><th class="right">派生数</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr class="click"><td><b>org_in_ecosystem</b><div style="color:var(--muted-foreground);font-size:11.5px">组织沿承包链归入生态</div></td><td class="mono">org_in_ecosystem_of</td><td class="mono">graph:derived:org_eco</td><td class="right num">214</td><td><span class="badge green">现行</span></td></tr>
+            <tr class="click"><td><b>bidder_qualified</b><div style="color:var(--muted-foreground);font-size:11.5px">投标资格预审（Phase B 试点）</div></td><td class="mono">bidder_qualified_for</td><td class="mono">graph:derived:qualified</td><td class="right num">97</td><td><span class="badge green">现行</span></td></tr>
+            <tr class="click"><td><b>place_containment</b><div style="color:var(--muted-foreground);font-size:11.5px">地理包含传递</div></td><td class="mono">located_in</td><td class="mono">graph:derived:geo</td><td class="right num">132</td><td><span class="badge green">现行</span></td></tr>
+            <tr class="click"><td><b>conflict_of_interest</b><div style="color:var(--muted-foreground);font-size:11.5px">关联关系预警</div></td><td class="mono">related_to</td><td class="mono">graph:derived:coi</td><td class="right num">43</td><td><span class="badge amber">dry-run</span></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="grid" style="grid-template-columns:1.4fr 1fr;margin-top:14px">
+        <div class="card">
+          <div class="hd"><b>规则预览</b><span class="sub">bidder_qualified · Phase B 验收问题 #3</span></div>
+          <div style="padding:12px"><pre><span class="cm"># 投标人具备项目所需全部资质 → bidder_qualified_for</span>
+<span class="kw">CONSTRUCT</span> { ?b a :QualifiedBidder ; :qualifiedFor ?p }
+<span class="kw">WHERE</span> {
+  ?b a :Bidder ; :bidderOf ?p .
+  ?p :requiresQualification ?q .
+  ?b :holdsQualification ?q .
+  <span class="kw">FILTER NOT EXISTS</span> { ?p :requiresQualification ?q2 .
+                      <span class="kw">FILTER NOT EXISTS</span> { ?b :holdsQualification ?q2 } }
+}</pre></div>
+        </div>
+        <div class="card">
+          <div class="hd"><b>验收问题（Competency Questions）</b></div>
+          <div class="bd" style="font-size:13px">
+            <div style="margin-bottom:10px;display:flex;gap:9px;align-items:center"><span class="badge green">图谱可答</span>横城煤矿项目的投标人是谁？</div>
+            <div style="margin-bottom:10px;display:flex;gap:9px;align-items:center"><span class="badge green">图谱可答</span>山西煤机集团持有什么资质？</div>
+            <div style="display:flex;gap:9px;align-items:center"><span class="badge amber">推理可答</span>哪些投标人具备项目所需全部资质？</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 07 validation -->
+    <section class="page" id="page-validation">
+      <div class="page-head">
+        <span class="clause">07 · 校验</span><h1>校验中心</h1>
+        <div class="act"><button class="btn">导出报告 JSON</button><button class="btn pri">重新校验</button></div>
+        <p>SHACL 闭世界校验管写路径 · OWL 开放世界管推理 · 国标符合性套件随构建运行</p>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="hd"><b>GB/T 48000.3—2026 符合性</b><span class="sub">v2026.09.18 · 构建 #412</span>
+          <span class="right badge green">5 / 5 通过</span></div>
+        <div class="bd checks">
+          <div class="check"><div class="ok">✓</div><span class="no2">条款 5.4</span><b>IRI 命名规约</b><span>命名空间 + 本地标识符</span></div>
+          <div class="check"><div class="ok">✓</div><span class="no2">条款 5.3</span><b>序列化往返</b><span>Turtle / JSON-LD 1.1</span></div>
+          <div class="check"><div class="ok">✓</div><span class="no2">条款 5.3</span><b>SHACL 报告</b><span>约束验证结构化输出</span></div>
+          <div class="check"><div class="ok">✓</div><span class="no2">附录 A</span><b>元数据八项</b><span>IRI/Name/Label/Definition…</span></div>
+          <div class="check"><div class="ok">✓</div><span class="no2">条款 9</span><b>扩展原则</b><span>新域新命名空间 · 不改核心</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="hd"><b>SHACL 违规</b><span class="right badge red">2 项待处理</span></div>
+        <div class="bd">
+          <div class="viol">
+            <span class="bar"></span>
+            <div style="flex:1">
+              <h5>约束类型取值越界 <span class="badge red">violation</span></h5>
+              <p>dg:constraintType 取值 "强制" 不在枚举 [强制性, 推荐性] 内 —— 来源：标书-2024-017 第 5.1 条抽取</p>
+              <div class="meta">shape: dg:StandardConstraintShape · focusNode: dg:id/9c21f7a0 · path: dg:constraintType · source: ConstraintTypeIn</div>
+            </div>
+            <button class="btn sm" data-skip="已转入修复队列">去修复</button>
+          </div>
+          <div class="viol warn">
+            <span class="bar"></span>
+            <div style="flex:1">
+              <h5>置信度低于推理门 <span class="badge amber">warning</span></h5>
+              <p>实体「桑干河饮用水源保护区」置信度 0.62 &lt; 0.70，暂不入推理空间；补充证据或人工确认后提升</p>
+              <div class="meta">shape: dg:ReasonableConfidenceShape · focusNode: dg:id/5d0a88 · path: dg:confidence · value: 0.62</div>
+            </div>
+            <button class="btn sm" data-skip="已转入修复队列">去修复</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 08 ingest -->
+    <section class="page" id="page-ingest">
+      <div class="page-head">
+        <span class="clause">08 · 抽取</span><h1>抽取导入</h1>
+        <p>文档 → LLM 类型化抽取 → mentions 证据落图 · 幂等管线（自然键去重）· 低置信度仅存证</p>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1.6fr">
+        <div>
+          <div class="drop" style="margin-bottom:14px">
+            <div class="big">投放待抽取文档</div>
+            支持 PDF / DOCX / MD · 自动识别域与文档类型 · 抽取任务幂等可重投
+            <div style="margin-top:12px"><button class="btn pri">选择文件</button></div>
+          </div>
+          <div class="card">
+            <div class="hd"><b>置信度分布</b><span class="sub">最近 30 天实体</span></div>
+            <div class="bd" style="padding-bottom:30px">
+              <div class="hist">
+                <div class="bar" style="height:14%"><b>38</b><span>&lt;.6</span></div>
+                <div class="bar" style="height:26%"><b>72</b><span>.6+</span></div>
+                <div class="bar" style="height:42%"><b>118</b><span>.7+</span></div>
+                <div class="bar" style="height:58%"><b>161</b><span>.8+</span></div>
+                <div class="bar" style="height:88%"><b>244</b><span>.9+</span></div>
+                <div class="bar" style="height:74%"><b>205</b><span>1.0</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="hd"><b>抽取任务</b><span class="right badge blue">3 运行中</span></div>
+          <div class="tablewrap"><table>
+            <thead><tr><th>文档</th><th>域</th><th>状态</th><th class="right">实体</th><th class="right">关系</th><th class="right">证据</th></tr></thead>
+            <tbody>
+              <tr><td><b>横城煤矿投标文件-2024-017.pdf</b></td><td class="mono">doc_graph</td><td><span class="badge green">完成</span></td><td class="right num">142</td><td class="right num">231</td><td class="right num">318</td></tr>
+              <tr><td><b>环评报告-横城（送审稿）.docx</b></td><td class="mono">eia</td><td><span class="badge amber">抽取中 62%</span></td><td class="right num">87…</td><td class="right num">104…</td><td class="right num">156…</td></tr>
+              <tr><td><b>中标候选人公示-0912.pdf</b></td><td class="mono">doc_graph</td><td><span class="badge amber">抽取中 31%</span></td><td class="right num">22…</td><td class="right num">35…</td><td class="right num">48…</td></tr>
+              <tr><td><b>GB 13223-2011 火电厂大气污染物排放标准.pdf</b></td><td class="mono">eia</td><td><span class="badge gray">排队中</span></td><td class="right">—</td><td class="right">—</td><td class="right">—</td></tr>
+            </tbody>
+          </table></div>
+          <div class="hd div"><b>最新证据链片段</b></div>
+          <div class="bd">
+            <div class="quote" style="margin-bottom:8px">"投标人须同时具备环保工程专业承包一级资质与煤矿设备安装一级资质。"
+              <div class="src"><span>doc:标书-2024-017</span><span>thread:2f8a…</span><span>extracted_by: llm/v3</span></div></div>
+            <div class="quote">"锅炉烟气采用双碱法脱硫后经 45m 烟囱排放，执行 GB 13223-2011 规定限值。"
+              <div class="src"><span>doc:环评报告-横城</span><span>thread:9d11…</span><span>extracted_by: llm/v3</span></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 09 export -->
+    <section class="page" id="page-export">
+      <div class="page-head">
+        <span class="clause">09 · 导出</span><h1>导出互操作</h1>
+        <p>图真源 → 标准序列化 · 每日快照即国标 §5.3 交付物 · IRI 机械可逆可回导</p>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+        <div class="card fmt">
+          <div class="fh"><span class="ext">.ttl</span><b>Turtle</b><span class="badge blue" style="margin-left:auto">推荐</span></div>
+          <pre><span class="cm"># doc_graph 快照 2026-09-18</span>
+@prefix dg: &lt;<span class="ir">https://ontology.eai-flow.com/doc_graph#</span>&gt; .
+dg:id/a1f3c9 a dg:Bidder ;
+  dg:canonicalName <span class="st">"山西煤机集团"</span> ;
+  dg:holdsQualification dg:id/77b2e0 ;
+  dg:bidderOf dg:id/9c21f7 .</pre>
+        </div>
+        <div class="card fmt">
+          <div class="fh"><span class="ext">.jsonld</span><b>JSON-LD 1.1</b><span class="badge gray" style="margin-left:auto">互操作</span></div>
+          <pre>{
+  <span class="st">"@context"</span>: { <span class="st">"dg"</span>: <span class="ir">"…/doc_graph#"</span> },
+  <span class="st">"@id"</span>: <span class="ir">"dg:id/a1f3c9"</span>,
+  <span class="st">"@type"</span>: <span class="ir">"dg:Bidder"</span>,
+  <span class="ir">"dg:canonicalName"</span>: <span class="st">"山西煤机集团"</span>
+}</pre>
+        </div>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div class="card">
+          <div class="hd"><b>命名空间映射</b></div>
+          <div class="tablewrap"><table>
+            <thead><tr><th>前缀</th><th>命名空间</th><th>域</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">dg</td><td class="mono">https://ontology.eai-flow.com/doc_graph#</td><td>投标域</td></tr>
+              <tr><td class="mono">eia</td><td class="mono">https://ontology.eai-flow.com/eia#</td><td>环评域</td></tr>
+              <tr><td class="mono">owl / sh / rdf / rdfs</td><td class="mono">W3C 标准</td><td>—</td></tr>
+            </tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="hd"><b>快照历史</b><span class="sub">每日 06:00 · 可恢复</span></div>
+          <div>
+            <div class="snapshot"><span class="when">2026-09-18 06:00</span><span class="badge green">验讫</span><span class="sz num">4.2 MB · 86,412 triples</span></div>
+            <div class="snapshot"><span class="when">2026-09-17 06:00</span><span class="badge green">验讫</span><span class="sz num">4.1 MB · 84,930 triples</span></div>
+            <div class="snapshot"><span class="when">2026-09-16 06:00</span><span class="badge green">验讫</span><span class="sz num">4.0 MB · 82,101 triples</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var $=function(s,c){return (c||document).querySelector(s)};
+  var $$=function(s,c){return Array.prototype.slice.call((c||document).querySelectorAll(s))};
+
+  function go(name){
+    $$('.page').forEach(function(p){p.classList.toggle('on', p.id==='page-'+name)});
+    $$('.nav button').forEach(function(b){b.classList.toggle('on', b.dataset.go===name)});
+    $('.pages').scrollTop=0;
+    if(location.hash!=='#'+name) history.replaceState(null,'','#'+name);
+  }
+  $$('.nav button').forEach(function(b){ b.addEventListener('click',function(){go(b.dataset.go)}) });
+  var h=(location.hash||'').replace('#','');
+  if(h && $('#page-'+h)) go(h);
+
+  $$('.tabs button').forEach(function(b){
+    b.addEventListener('click',function(){
+      $$('.tabs button').forEach(function(x){x.classList.toggle('on',x===b)});
+      toast('已切换到 '+b.textContent.trim()+'（原型演示）');
+    });
+  });
+
+  var stage=$('.gstage');
+  if(stage){
+    var nodes=$$('.node',stage), edges=$$('.edge',stage), layer='all';
+    function applyLayer(){ edges.forEach(function(e){ e.hidden=(layer==='assert'&&e.classList.contains('inf')) }); }
+    $('#layer-seg').addEventListener('click',function(ev){
+      var b=ev.target.closest('button'); if(!b) return;
+      $$('#layer-seg button').forEach(function(x){x.classList.toggle('on',x===b)});
+      layer=b.dataset.layer; applyLayer();
+    });
+    $$('.fchip input',stage.parentElement).forEach(function(cb){
+      cb.addEventListener('change',function(){
+        var t=cb.dataset.t;
+        nodes.forEach(function(n){ if(n.dataset.t===t) n.hidden=!cb.checked; });
+      });
+    });
+    nodes.forEach(function(n){
+      n.addEventListener('mouseenter',function(){
+        var t=n.dataset.t;
+        nodes.forEach(function(m){ m.classList.toggle('dim', m!==n && m.dataset.t!==t) });
+      });
+      n.addEventListener('mouseleave',function(){ nodes.forEach(function(m){m.classList.remove('dim')}) });
+      n.addEventListener('click',function(){ toast('已选中「'+n.dataset.name+'」— 详情见右侧检查器') });
+    });
+    applyLayer();
+  }
+
+  $$('#entity-rows tr').forEach(function(tr){
+    tr.addEventListener('click',function(){ toast('打开实体抽屉：'+tr.querySelector('b').textContent+'（原型演示）') });
+  });
+
+  $$('[data-merge]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var cand=b.closest('.cand'); cand.style.opacity=.45; cand.style.pointerEvents='none';
+      var badge=cand.querySelector('.badge'); if(badge){badge.className='badge green';badge.textContent='已合并 · 待快照固化';}
+      toast('已合并并写入 MergeAudit · 可在历史中撤销');
+    });
+  });
+  $$('[data-skip]').forEach(function(b){
+    b.addEventListener('click',function(){ toast(b.dataset.skip+'（已留痕）') });
+  });
+
+  var tEl=$('#toast'), tTimer;
+  function toast(msg){
+    tEl.textContent=msg; tEl.classList.add('show');
+    clearTimeout(tTimer); tTimer=setTimeout(function(){tEl.classList.remove('show')},2400);
+  }
+})();
+</script>
+</body>
+</html>

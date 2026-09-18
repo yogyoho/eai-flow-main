@@ -16,6 +16,14 @@
     ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol", "Noto Color Emoji";
 
+  /* 展示衬线（页面标题/大数字）：离线安全栈，不引 webfont（docs/designs/ontostudio-frontend-design.html 青卷版） */
+  --font-display:
+    "Noto Serif SC", "Source Han Serif SC", "Source Han Serif CN",
+    "STZhongsong", "SimSun", serif;
+
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, "Cascadia Mono", "Consolas", monospace;
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -31,41 +39,67 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-border: var(--border);
+  --color-seal: var(--seal);
+  --color-seal-wash: var(--seal-wash);
+  --color-warning: var(--warning);
+  --color-warning-wash: var(--warning-wash);
+  --color-code-bg: var(--code-bg);
+  --color-code-fg: var(--code-fg);
 }
 
+/*
+ * 青卷色板（docs/designs/ontostudio-frontend-design.html）：
+ * 冷调纸底 + 墨色前景 + 玉青主色；seal（朱砂）只用于合规/违规语义。
+ */
 :root {
   --radius: 0.625rem;
 
-  --background: #ffffff;
-  --foreground: #151616; /* gray-1000 */
-  --card: #ffffff;
-  --card-foreground: #151616;
+  --background: #f1f3ec; /* 纸 */
+  --foreground: #20261f; /* 墨 */
+  --card: #fbfbf7; /* 卡面 */
+  --card-foreground: #20261f;
 
-  /* Primary: #0746ff 系 */
-  --primary: oklch(0.54 0.26 265.5);
+  --primary: #2e6e5e; /* 玉青 */
   --primary-foreground: #ffffff;
 
-  --muted: #f5f7f7; /* gray-50 */
-  --muted-foreground: #697070; /* gray-600 */
-  --accent: #f5f7f7;
-  --accent-foreground: #1e1f1f; /* gray-900 */
-  --border: #e4e6e6; /* gray-200 */
+  --muted: #ecefe6;
+  --muted-foreground: #59635a;
+  --accent: #e2ece5; /* 玉青洗 */
+  --accent-foreground: #1f3a31;
+  --border: #d8ddd0;
+
+  --seal: #a63a2a; /* 朱砂：合规/违规专用 */
+  --seal-wash: #f5e4df;
+  --warning: #9a7027;
+  --warning-wash: #f3ead5;
+
+  /* 代码块：双主题恒定深底（青卷版约定） */
+  --code-bg: #22281f;
+  --code-fg: #dde5d5;
 }
 
 .dark {
-  --background: #0f0f0f;
-  --foreground: #eff2f2;
-  --card: #1a1b1b;
-  --card-foreground: #eff2f2;
+  --background: #131a15;
+  --foreground: #e7ebe1;
+  --card: #1a231d;
+  --card-foreground: #e7ebe1;
 
-  --primary: oklch(0.62 0.24 265.5);
-  --primary-foreground: #ffffff;
+  --primary: #63b79e;
+  --primary-foreground: #10241d;
 
-  --muted: #1e1f1f;
-  --muted-foreground: #979999;
-  --accent: #232424;
-  --accent-foreground: #eff2f2;
-  --border: rgba(255, 255, 255, 0.08);
+  --muted: #222c25;
+  --muted-foreground: #9fa99b;
+  --accent: #1e2b24;
+  --accent-foreground: #d7e8de;
+  --border: rgba(255, 255, 255, 0.09);
+
+  --seal: #ce6a54;
+  --seal-wash: #33201b;
+  --warning: #c79a4b;
+  --warning-wash: #2e2718;
+
+  --code-bg: #171d15;
+  --code-fg: #dde5d5;
 }
 
 @layer base {

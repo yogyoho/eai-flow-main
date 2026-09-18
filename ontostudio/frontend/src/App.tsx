@@ -1,13 +1,13 @@
 /**
- * OntoStudio standalone frontend app shell (S2 Task 1, EAI-CUSTOM).
- * 单页挂本体三视图工作台（地图|概览|实体消解），无路由。
+ * OntoStudio standalone frontend app shell (S2 Task 1 → 9-page skeleton, EAI-CUSTOM).
+ * AppShell 侧栏 + hash 路由：知识层三视图（OntologyPage 真实功能）+ 六骨架页。
  */
-import { OntologyPage } from "@/components/OntologyPage";
+import { AppShell } from "@/layout/AppShell";
 
 export function App() {
   return (
     <div className="h-dvh w-full overflow-hidden">
-      <OntologyPage />
+      <AppShell />
     </div>
   );
 }
