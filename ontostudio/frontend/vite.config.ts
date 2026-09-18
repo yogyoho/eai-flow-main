@@ -2,7 +2,9 @@
  * OntoStudio standalone frontend Vite config (S2 Task 1, EAI-CUSTOM).
  *
  * Dev proxy 对齐 S1-T3 nginx 语义：
- * - /api/ontostudio/* → 独立后端 :8005，rewrite 前缀为 /api/extensions/*
+ * - /api/ontostudio/* → 独立后端 :8005，剥掉 location 前缀后余路径原样透传
+ *   （客户端 BASE 已含 /api/extensions，即 /api/ontostudio/api/extensions/ontology/...
+ *   → 后端 /api/extensions/ontology/...；rewrite 再补前缀会产生双重前缀 404）
  *   （独立后端路由挂在 /api/extensions/*，见 ontostudio/backend/app/）。
  * - /api/permissions/* → 主系统 nginx :2026（不 rewrite，cookie 鉴权走主系统）。
  *   localhost 跨端口共享 cookie jar，credentials:"include" 即可带上主系统会话。
@@ -38,7 +40,7 @@ export default defineConfig(({ mode }) => ({
       "/api/ontostudio": {
         target: "http://localhost:8005",
         changeOrigin: true,
-        rewrite: (p: string) => p.replace(/^\/api\/ontostudio/, "/api/extensions"),
+        rewrite: (p: string) => p.replace(/^\/api\/ontostudio/, ""),
       },
       "/api/permissions": {
         target: "http://localhost:2026",
