@@ -348,7 +348,7 @@ def _rediscover_row_price(row, learned):
     return None, ""
 
 
-def _row_num_cands(row):
+def _row_num_cands(row, exclude_idx=None, stored_qty=None):
     """行内数值候选(单价/合价/量共用): 每格 re.findall 拆全部数字(空格胶格格
     '824.79 1.20' 产出双候选),≥_MIN_PLAUSIBLE_UNIT 过滤。撕裂小数合并: 以
     '.'/'，'/','结尾的分片是 OCR 断号('1. 62'='1.'+'62'),与后续分片拼回真值;
@@ -359,14 +359,19 @@ def _row_num_cands(row):
     双关系同时成立才收(单关系会产生大量伪分裂);并列取 b 最大。"""
     cand = []
     fused = []  # (ci, token): float 失败的粘连 token
+    exclude_idx = exclude_idx or set()
     for ci, cell in enumerate(row):
+        if ci in exclude_idx:
+            continue
+        # 连续多点多=: OCR 重复小数点伪影('4827. .00'→'4827..00'),折叠为单点
+        toks = [re.sub(r"\.{2,}", ".", m) for m in re.findall(r"\.?\d[\d,，.]*", cell or "")]
         buf = ""
-        for m in re.findall(r"\d[\d,，.]*", cell or ""):
+        for m in toks:
             buf += m
             if m.endswith((".", "，", ",")):
                 continue
             try:
-                v = float(buf.replace(",", "").replace("，", ""))
+                v = float(re.sub(r"\.{2,}", ".", buf).replace(",", "").replace("，", ""))
             except ValueError:
                 if "." in buf:
                     fused.append((ci, buf))
@@ -378,6 +383,22 @@ def _row_num_cands(row):
         if buf and "." in buf:
             fused.append((ci, buf))
         buf = ""
+        # 空格撕裂金额重组(JZGS 类): '13393 883 .00'→13393883.00——碎片各自入候选
+        # 会被当独立金额污染除法。守卫: 拼接串须含小数点(无点纯拼接 '5337 37 00'
+        # →53373700 是万级伪值),且 总额÷stored数量 ≈ 某候选单价(防 '37752 5239.00'
+        # →3.7亿 的 100 倍伪拼接)。
+        if len(toks) >= 2 and ci not in exclude_idx:
+            joined = "".join(toks).replace(",", "").replace("，", "")
+            if "." in joined:
+                try:
+                    v = float(joined)
+                except ValueError:
+                    v = None
+                if v is not None and v >= _MIN_PLAUSIBLE_UNIT:
+                    if not (stored_qty and stored_qty > 0) or any(
+                        abs(v / stored_qty - u) <= 0.02 * u for _, u in cand if u > 0
+                    ):
+                        cand.append((ci, v))
     # 第七层: 算术锚定胶水拆分——a=税金(≈金额×税率), b=含税单价(×数量≈金额)
     if fused and cand:
         amounts = [v for _, v in cand]
@@ -423,7 +444,7 @@ def _row_num_cands(row):
     return cand
 
 
-def _row_arith_price(row, qty_raw):
+def _row_arith_price(row, qty_raw, exclude_idx=None):
     """行内算术三元组恢复(bug-3400 第五层,不依赖表级列学习):
     在本行数值格里找 (单价×工程量≈合价) 自洽三元组(±2%)。工程量优先取
     qty_raw(种子工程量列/胶水首数);q 未知时取 max-t 三元组的小因子为单价
@@ -433,8 +454,8 @@ def _row_arith_price(row, qty_raw):
     ——含税单价格常是无分隔粘连格('9697.45556.99')拆数不可达,唯有此路可达
     (桂北 oracle: 多孔砖墙 117446.91/210.86=556.99、现浇 83531.88/63.553=1314.37)。
     验证: 桂北实测 6/6(7.63/9.81/9.37/89.38/89.38/1.31)。失败返回 (None,'')。"""
-    cand = _row_num_cands(row)
     q0 = parse_qty(qty_raw) if _qty_text_ok(qty_raw or "") else None
+    cand = _row_num_cands(row, exclude_idx=exclude_idx, stored_qty=q0)
     triples = []
     for ui, u in cand:
         for qi, q in cand:
@@ -464,7 +485,7 @@ def _row_arith_price(row, qty_raw):
     return min(best[0], best[1]), "行内算术"
 
 
-def _taxed_unit_oracle(cells, stored_qty, qty_col=None):
+def _taxed_unit_oracle(cells, stored_qty, qty_col=None, exclude_idx=None):
     """统一含税仲裁律(bug-3400 第六层): 含税单价 = 含税合价 ÷ 数量。
     数量 = stored_qty(当其参与任一行内自洽三元组,即可信;若 stored 仅作为
     某三元组的 q 因子出现、从不作为 u——「数量被当单价」签名,同样按数量算)
@@ -477,7 +498,7 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None):
               窗口空 → t_ref 自身)。窗口=增值税界限(6/9/13% + 舍入噪声),
               防撕裂碎片/暂列金额/序号列(如 序号84 ∈ 73.44×1.25 窗口)冒充含税合价。
     返回 (u_tax, qty_used) 或 (None, None)——无法唯一确定时保守不给 oracle。"""
-    cand = _row_num_cands(cells)
+    cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored_qty)
     if len(cand) < 3:
         return None, None
     triples = []  # (u, q, t, uc, qc)
@@ -505,11 +526,30 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None):
             and abs(u - stored_qty) > 1e-6
             and abs(u * stored_qty - t) <= 0.02 * t
         ]
-    if not triples and not virt:
+    # 加性三元组候选(第七层扩展): 综合单价=网价+运杂费(JZGS)/税金+不含税合价
+    # =含税合价(桂北)。仅 stored 数量可信时枚举(单价 vs 合价的判别需要数量)。
+    additive_z = []
+    if stored_qty is not None and stored_qty > 0 and cand:
+        for ai, x in cand:
+            for bi, y in cand:
+                if bi == ai:
+                    continue
+                for ci2, z in cand:
+                    if ci2 in (ai, bi) or z <= 0:
+                        continue
+                    # z≠stored(加性和恰为数量格自值=退化,货物A 1+9=10 类)
+                    if abs(z - stored_qty) <= 1e-6:
+                        continue
+                    if abs(x + y - z) <= 0.02 * z:
+                        additive_z.append(z)
+    if not triples and not virt and not additive_z:
         return None, None
     pool = triples + virt
-    t_ref = max(t for _, _, t, *_ in pool)
-    t_taxed = max((v for _, v in cand if t_ref * 1.001 < v <= t_ref * 1.14), default=t_ref)
+    if pool:
+        t_ref = max(t for _, _, t, *_ in pool)
+        t_taxed = max((v for _, v in cand if t_ref * 1.001 < v <= t_ref * 1.14), default=t_ref)
+    else:
+        t_ref = t_taxed = None  # 纯加性行(无 × 结构): 仅走加性分支,不用窗口
     if stored_qty is not None and stored_qty > 0:
         if virt or any(abs(q - stored_qty) < 1e-6 for _, q, _, _, _ in triples):
             u_tax = round(t_taxed / stored_qty, 2)
@@ -541,6 +581,19 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None):
                 break
             if u_tax >= _MIN_PLAUSIBLE_UNIT:
                 return u_tax, shared
+            break
+    # 加性三元组消费: m1+m2≈m3 → m3/数量 ≈ 某候选单价 → m3 为合价,除之(桂北
+    # 税金+不含税=含税);否则 m3 本身即单价(JZGS 综合单价=网价+运杂费,乘性结构
+    # 不存在)。仅 stored 数量可信时判别;逐 m3 降序。
+    if additive_z and stored_qty and stored_qty > 0:
+        for z in sorted(set(additive_z), reverse=True):
+            u_div = round(z / stored_qty, 2)
+            if u_div >= _MIN_PLAUSIBLE_UNIT and any(
+                abs(u_div - u) <= 0.02 * u for _, u in cand
+            ):
+                return u_div, stored_qty
+            if z >= _MIN_PLAUSIBLE_UNIT:
+                return z, stored_qty
             break
     # 单三元组 + qty_col 列位语义: 因子格正落种子工程量列 → 该因子为量
     # (化粪池: 名格'1'(YJBH-1-II)会造出 1.0×1455.2 竞争三元组,真量在 c3 量列)。
@@ -856,12 +909,17 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
         # 对本表每一行运行(含直取成功行): oracle 有效且与 stored 超容差 → 覆盖
         # (不含税→含税 / 数量被当单价 / 错列碎片,全部一次纠正);oracle 无效 →
         # 退回旧行内三元组语义(仅升级方向);两者皆无 → 保留 stored。
+        exclude_idx = {
+            roles[k]
+            for k in ("name", "spec", "unit")
+            if roles.get(k) is not None
+        }
         for it in items[tbl_start:]:
             cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            u_tax, qty_used = _taxed_unit_oracle(cells, it.get("quantity"), qty_col=roles.get("qty"))
+            u_tax, qty_used = _taxed_unit_oracle(cells, it.get("quantity"), qty_col=roles.get("qty"), exclude_idx=exclude_idx)
             new_p = u_tax
             if new_p is None:
-                new_p, _ = _row_arith_price(cells, str(it["quantity"]) if it.get("quantity") else "")
+                new_p, _ = _row_arith_price(cells, str(it["quantity"]) if it.get("quantity") else "", exclude_idx=exclude_idx)
             if new_p is None:
                 continue
             cur = it.get("unit_price")

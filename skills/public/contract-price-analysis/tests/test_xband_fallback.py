@@ -422,8 +422,13 @@ def test_taxed_unit_oracle_shared_factor():
         ["84", "桥架内穿双绞线", "", "11.82", "5.70", "67.37", "9%", "6.06", "6.21", "73.44"], 11.82
     )[0] == 6.21
     # 无自洽结构 / 退化自证(t==q / u==q)→ 保守 None
-    assert _taxed_unit_oracle(["1", "货物A", "m2", "10.00", "33.30", "999.00", "9%", "", "", "", ""], 10.0) == (None, None)
-    assert _taxed_unit_oracle(["3", "货物C", "m2", "30.00", "11.10", "888.00", "9%", "", "", "", ""], 30.0) == (None, None)
+    # (排除集与管线一致: name/spec/unit 列剔除——'m2'→2.0、'9%'→9.0 碎片不加权)
+    assert _taxed_unit_oracle(
+        ["1", "货物A", "m2", "10.00", "33.30", "999.00", "9%", "", "", "", ""], 10.0, qty_col=3, exclude_idx={1, 2, 3}
+    ) == (None, None)
+    assert _taxed_unit_oracle(
+        ["3", "货物C", "m2", "30.00", "11.10", "888.00", "9%", "", "", "", ""], 30.0, qty_col=3, exclude_idx={1, 2, 3}
+    ) == (None, None)
 
 
 def test_row_triple_scan_recovers_user_reported_rows():
@@ -482,6 +487,39 @@ def test_arithmetic_glue_split_seventh_layer():
     led = ["12", "", "LED灯", "套", "8", "90.00", "720.00", "9%", "64.80", "98.10", "784.80"]
     u9, q9 = _taxed_unit_oracle(led, None, qty_col=1)
     assert (u9, q9) == (98.10, 8.0)
+
+
+def test_jzgs_space_torn_totals():
+    """JZGS 物资采购合同(钢材)格式: 数量/网价/运杂费/税率/综合单价(=网价+运杂费)/
+    总金额,全表数字带空格撕裂('13393 883 .00'=13,393,383.00)+规格列碎片
+    (HRB400→400)污染。第七层修复: 撕裂金额重组(拼接须含小数点且 总额÷数量≈
+    某候选单价)+ name/spec/unit 列排除。"""
+    from scripts.cli import _taxed_unit_oracle, _row_num_cands
+
+    hdr = ["序号", "品名", "规格型号", "单位", "1.数量", "2.网价", "3.运杂费", "4.税率",
+           "5.综合单 价（5=2+3）", "6.总金额 6=1*5"]
+    r6 = ["5", "盘螺", "HRB 8mm", "吨", "2659 000", "4930. 00", "107. 00", "13%", "5037.00", "13393 883 .00"]
+    p9r2 = ["27", "螺纹钢", "25mm HRB400E", "吨", "787 000", "4690. 00", "107.0 00", "13%", "4797.( 00", "37752 5239.00"]
+    # 撕裂重组候选: '13393'+'883'+'.00' → 13393883.00(含小数点,准入);
+    # '37752'+'5239.00' → 377525239.00(÷数量=479651 无候选单价 → 准入门拒绝)
+    c6 = _row_num_cands(r6, stored_qty=2659.0, exclude_idx={1, 2, 3})
+    assert 13393883.0 in [v for _, v in c6]
+    c2 = _row_num_cands(p9r2, stored_qty=787.0, exclude_idx={1, 2, 3})
+    assert 377525239.0 not in [v for _, v in c2]
+    assert 4797.0 in [v for _, v in c2]
+    # oracle: 总额÷数量 → 综合单价(含税)
+    assert _taxed_unit_oracle(r6, 2659.0, qty_col=4, exclude_idx={1, 2, 3})[0] == 5037.19
+    # 规格列碎片(HRB400→400、22/25)不入候选 → 税率13×数量31≈规格400 的伪参与消失;
+    # 加性三元组(综合单价=网价+运杂费,4760+107=4867 等)兜底 → 真综合单价
+    r9 = ["8", "螺纹钢", "HRB400 12mm", "吨", "31 000", "4760 00", "107. 00", "13%", "4867. 00", "1547 193.00"]
+    c9 = _row_num_cands(r9, exclude_idx={1, 2, 3})
+    assert 400.0 not in [v for _, v in c9]
+    assert _taxed_unit_oracle(r9, 31.0, qty_col=4, exclude_idx={1, 2, 3})[0] == 4867.00
+    r5 = ["4", "盘螺", "HRB4 6mm", "吨", "219 000", "5230. 00", "107.00", "13%", "5337 37 00", "11693 367.00"]
+    assert _taxed_unit_oracle(r5, 219.0, qty_col=4, exclude_idx={1, 2, 3})[0] == 5337.00
+    r23 = ["15", "螺纹钢", "HRB400 14mm", "吨", "933 000", "4720 00", "107. 00", "13%", "4827. 00", "45035 63.00"]
+    u23 = _taxed_unit_oracle(r23, 933.0, qty_col=4, exclude_idx={1, 2, 3})[0]
+    assert u23 is not None and abs(u23 - 4827.0) <= 1  # 4503563/933(总金额碎片微噪)
 
 
 def test_row_arbitration_taxed_upgrade_pages():
