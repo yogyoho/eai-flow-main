@@ -19,7 +19,6 @@ export default tseslint.config(
       // (pinned SHA, see explorer/README.md) — kept faithful to upstream except the
       // recorded adaptations (incl. the fetch-seam options in useLoadGraph.ts);
       // exempted from repo lint like the other generated/vendor dirs.
-      "src/extensions/ontology/explorer/**",
       "*.js",
     ],
   },

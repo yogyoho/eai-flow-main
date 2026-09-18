@@ -3,4 +3,3 @@ pnpm-lock.yaml
 src/content/**/*.mdx
 playwright-report/
 test-results/
-src/extensions/ontology/explorer/**
