@@ -15,7 +15,7 @@ export function PageHeader({
   description,
   actions,
 }: {
-  clause: string;
+  clause?: string;
   icon?: LucideIcon;
   title: string;
   description: string;
@@ -24,9 +24,11 @@ export function PageHeader({
   return (
     <div className="mb-5 flex flex-wrap items-end gap-3">
       {Icon ? <Icon className="text-primary mb-0.5 h-[18px] w-[18px] flex-none" /> : null}
-      <span className="border-primary/25 bg-primary/8 text-primary rounded-md border px-2 py-0.5 font-mono text-[11px]">
-        {clause}
-      </span>
+      {clause ? (
+        <span className="border-primary/25 bg-primary/8 text-primary rounded-md border px-2 py-0.5 font-mono text-[11px]">
+          {clause}
+        </span>
+      ) : null}
       <h1 className="text-foreground text-lg font-semibold tracking-tight">{title}</h1>
       {actions ? <div className="ml-auto flex gap-2">{actions}</div> : null}
       <p className="text-muted-foreground mt-1 w-full text-xs">{description}</p>

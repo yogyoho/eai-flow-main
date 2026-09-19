@@ -46,7 +46,6 @@ export function EntitiesPage() {
   return (
     <div className="p-6">
       <PageHeader
-        clause="03 · 实体"
         icon={ Database }
         title="实体库"
         description="点击任意行打开实体抽屉：属性、证据链与合并历史（骨架：数据面待 kernel P2）"
