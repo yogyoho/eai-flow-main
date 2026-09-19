@@ -48,7 +48,7 @@ export function ValidationPage() {
         }
       />
       {validateQuery.error ? (
-        <div className="border-seal/40 bg-seal-wash text-seal mb-3.5 rounded-lg border px-4 py-3 text-xs">
+        <div className="border-seal/40 bg-destructive/10 text-destructive mb-3.5 rounded-lg border px-4 py-3 text-xs">
           校验服务不可达或未登录：{(validateQuery.error as Error).message}
         </div>
       ) : null}
@@ -69,7 +69,7 @@ export function ValidationPage() {
               className="border-border bg-background rounded-lg border p-3.5"
             >
               <div
-                className={`${check.passed ? "bg-primary/10 text-primary" : "bg-seal-wash text-seal"} mb-2 grid h-7 w-7 place-items-center rounded-full text-sm font-bold`}
+                className={`${check.passed ? "bg-primary/10 text-primary" : "bg-destructive/10 text-destructive"} mb-2 grid h-7 w-7 place-items-center rounded-full text-sm font-bold`}
               >
                 {check.passed ? "✓" : "✕"}
               </div>

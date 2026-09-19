@@ -1,11 +1,10 @@
 /*
- * OntoStudio standalone frontend global styles (S2 Task 1, EAI-CUSTOM).
+ * OntoStudio standalone frontend global styles (EAI-CUSTOM).
  *
- * Tailwind 4 + 主系统 globals.css 的语义令牌子集（本体页面实际用到的：
- * background/foreground/card/border/muted/muted-foreground/primary/
- * primary-foreground/accent/accent-foreground + .dark 块）。色值内联自
- * frontend/src/styles/globals.css（Yuxi warm gray 体系），此处自持不随主系统。
- * 概览/消解 tab 为 bid-quote 浅色定版（chartTheme 常量自带色值，不受令牌影响）。
+ * Tailwind 4 + 主系统 globals.css 的语义令牌子集（本体页面实际用到的）。
+ * 令牌与 frontend/src/styles/globals.css 对齐（Yuxi warm gray 体系 +
+ * Primary #0746ff 系 oklch），色值内联自持不随主系统（2026-09-20 与 EAI 系统
+ * UI 对齐：删除自定义青卷色板/衬线展示字体，恢复主系统侧栏/状态色惯例）。
  */
 @import "tailwindcss";
 
@@ -16,17 +15,13 @@
     ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
     "Segoe UI Symbol", "Noto Color Emoji";
 
-  /* 展示衬线（页面标题/大数字）：离线安全栈，不引 webfont（docs/designs/ontostudio-frontend-design.html 青卷版） */
-  --font-display:
-    "Noto Serif SC", "Source Han Serif SC", "Source Han Serif CN",
-    "STZhongsong", "SimSun", serif;
-
   --font-mono:
-    "IBM Plex Mono", ui-monospace, "Cascadia Mono", "Consolas", monospace;
+    ui-monospace, "SFMono-Regular", "Cascadia Mono", "Consolas", monospace;
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -34,72 +29,96 @@
   --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
   --color-border: var(--border);
-  --color-seal: var(--seal);
-  --color-seal-wash: var(--seal-wash);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
   --color-warning: var(--warning);
-  --color-warning-wash: var(--warning-wash);
+  --color-success: var(--success);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
   --color-code-bg: var(--code-bg);
   --color-code-fg: var(--code-fg);
 }
 
-/*
- * 青卷色板（docs/designs/ontostudio-frontend-design.html）：
- * 冷调纸底 + 墨色前景 + 玉青主色；seal（朱砂）只用于合规/违规语义。
- */
+/* ====== 与主系统 globals.css 对齐的语义令牌（Yuxi warm gray + #0746ff 系）====== */
 :root {
   --radius: 0.625rem;
 
-  --background: #f1f3ec; /* 纸 */
-  --foreground: #20261f; /* 墨 */
-  --card: #fbfbf7; /* 卡面 */
-  --card-foreground: #20261f;
+  --background: #ffffff;
+  --foreground: #151616; /* gray-1000 */
+  --card: #ffffff;
+  --card-foreground: #151616;
 
-  --primary: #2e6e5e; /* 玉青 */
+  /* Primary: #0746ff — UNCHANGED（与主系统一致） */
+  --primary: oklch(0.54 0.26 265.5);
   --primary-foreground: #ffffff;
 
-  --muted: #ecefe6;
-  --muted-foreground: #59635a;
-  --accent: #e2ece5; /* 玉青洗 */
-  --accent-foreground: #1f3a31;
-  --border: #d8ddd0;
+  --secondary: #eff2f2; /* gray-100 */
+  --secondary-foreground: #1e1f1f; /* gray-900 */
+  --muted: #f5f7f7; /* gray-50 */
+  --muted-foreground: #697070; /* gray-600 */
+  --accent: #f9fbfb; /* gray-50 */
+  --accent-foreground: #1e1f1f; /* gray-900 */
+  --destructive: #ff4d4f; /* error-500 */
+  --border: #e4e6e6; /* gray-200 */
+  --input: #d7d9d9; /* gray-300 */
+  --ring: oklch(0.54 0.26 265.5);
 
-  --seal: #a63a2a; /* 朱砂：合规/违规专用 */
-  --seal-wash: #f5e4df;
-  --warning: #9a7027;
-  --warning-wash: #f3ead5;
+  --warning: #faad14; /* warning-500 */
+  --success: #52c41a; /* success-500 */
 
-  /* 代码块：双主题恒定深底（青卷版约定） */
-  --code-bg: #22281f;
-  --code-fg: #dde5d5;
+  --sidebar: #fbfcfc;
+  --sidebar-foreground: #4c4d4d; /* gray-700 */
+  --sidebar-accent: #eff2f2; /* gray-100 */
+  --sidebar-accent-foreground: #1e1f1f; /* gray-900 */
+  --sidebar-border: #e4e6e6; /* gray-200 */
+
+  /* 代码块：浅色下与主系统 code 惯例一致（muted 底/深字） */
+  --code-bg: #f5f7f7;
+  --code-fg: #151616;
 }
 
 .dark {
-  --background: #131a15;
-  --foreground: #e7ebe1;
-  --card: #1a231d;
-  --card-foreground: #e7ebe1;
+  --background: #0f0f0f;
+  --foreground: #eff2f2;
+  --card: #1a1b1b;
+  --card-foreground: #eff2f2;
 
-  --primary: #63b79e;
-  --primary-foreground: #10241d;
+  --primary: oklch(0.62 0.24 265.5);
+  --primary-foreground: #ffffff;
 
-  --muted: #222c25;
-  --muted-foreground: #9fa99b;
-  --accent: #1e2b24;
-  --accent-foreground: #d7e8de;
-  --border: rgba(255, 255, 255, 0.09);
+  --secondary: #232424;
+  --secondary-foreground: #eff2f2;
+  --muted: #1e1f1f;
+  --muted-foreground: #979999;
+  --accent: #232424;
+  --accent-foreground: #eff2f2;
+  --destructive: #ff4d4f;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: oklch(0.62 0.24 265.5);
 
-  --seal: #ce6a54;
-  --seal-wash: #33201b;
-  --warning: #c79a4b;
-  --warning-wash: #2e2718;
+  --warning: #ffc53d; /* warning-500 dark */
+  --success: #73d13d; /* success-500 dark */
 
-  --code-bg: #171d15;
-  --code-fg: #dde5d5;
+  --sidebar: #141515;
+  --sidebar-foreground: #bdbfbf; /* gray-700 dark */
+  --sidebar-accent: #232424;
+  --sidebar-accent-foreground: #eff2f2;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+
+  --code-bg: #1e1f1f;
+  --code-fg: #eff2f2;
 }
 
 @layer base {

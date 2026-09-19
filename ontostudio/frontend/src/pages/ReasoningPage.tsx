@@ -9,10 +9,10 @@ import { runFormalInfer } from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 
 const RULES = [
-  { name: "org_in_ecosystem", desc: "组织沿承包链归入生态", pred: "org_in_ecosystem_of", graph: "graph:derived:org_eco", count: 214, live: true },
-  { name: "bidder_qualified", desc: "投标资格预审（Phase B 试点）", pred: "bidder_qualified_for", graph: "graph:derived:qualified", count: 97, live: true },
-  { name: "place_containment", desc: "地理包含传递", pred: "located_in", graph: "graph:derived:geo", count: 132, live: true },
-  { name: "conflict_of_interest", desc: "关联关系预警", pred: "related_to", graph: "graph:derived:coi", count: 43, live: false },
+  { name: "org_in_ecosystem", desc: "组织沿承包链归入生态（rules.yaml）", pred: "org_in_ecosystem_of", graph: "graph:derived:org_in_ecosystem" },
+  { name: "qualified_bidder", desc: "投标资格预审（Phase B 试点，CQ#3）", pred: "bidder_qualified_for", graph: "graph:derived:qualified_bidder" },
+  { name: "chain_covered_by_monitoring", desc: "环评治理合规链 3 段（eia formal 自动生成）", pred: "covered_by_monitoring", graph: "graph:derived:chain_covered_by_monitoring" },
+  { name: "sameas_propagation", desc: "sameAs 候选等价传播（内置）", pred: "*", graph: "graph:derived:sameas_propagation" },
 ];
 
 const SPARQL = `# 投标人具备项目所需全部资质 → bidder_qualified_for
@@ -61,7 +61,7 @@ export function ReasoningPage() {
       <div className="mb-3.5 grid grid-cols-3 gap-3.5">
         <Panel className="px-4 py-3.5">
           <div className="text-muted-foreground text-xs font-medium">entailment 物化</div>
-          <div className="font-display mt-0.5 text-3xl font-black tracking-tight">
+          <div className="mt-0.5 text-3xl font-black tracking-tight">
             {inferQuery.data ? inferQuery.data.entailment_triples.toLocaleString() : "—"}
           </div>
           <div className="text-muted-foreground mt-0.5 text-xs">
@@ -71,12 +71,12 @@ export function ReasoningPage() {
         </Panel>
         <Panel className="px-4 py-3.5">
           <div className="text-muted-foreground text-xs font-medium">CONSTRUCT 派生</div>
-          <div className="font-display mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
-          <div className="text-muted-foreground mt-0.5 text-xs">9 条规则 · 上次全量 {inferQuery.data ? "刚刚" : "—"}</div>
+          <div className="mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">4 条规则 · 上次全量 {inferQuery.data ? "刚刚" : "—"}</div>
         </Panel>
         <Panel className="px-4 py-3.5">
           <div className="text-muted-foreground text-xs font-medium">闭包耗时</div>
-          <div className="font-display mt-0.5 text-3xl font-black tracking-tight">
+          <div className="mt-0.5 text-3xl font-black tracking-tight">
             {inferQuery.data ? `${inferQuery.data.duration_ms}ms` : "—"}
           </div>
           <div className="text-muted-foreground mt-0.5 text-xs">5k 实体校准门限 ≤ 15s ✓</div>
@@ -110,11 +110,9 @@ export function ReasoningPage() {
                   </td>
                   <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">{rule.pred}</td>
                   <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">{rule.graph}</td>
-                  <td className="px-3.5 py-2.5 text-right tabular-nums">{inferQuery.data?.rule_counts?.[rule.name] ?? rule.count}</td>
+                  <td className="px-3.5 py-2.5 text-right tabular-nums">{inferQuery.data?.rule_counts?.[rule.name] ?? 0}</td>
                   <td className="px-3.5 py-2.5">
-                    <Chip tone={rule.live ? "primary" : "warning"}>
-                      {rule.live ? "现行" : "dry-run"}
-                    </Chip>
+                    <Chip tone="primary">现行</Chip>
                   </td>
                 </tr>
               ))}

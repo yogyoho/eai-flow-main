@@ -22,7 +22,7 @@ export interface InferStats {
 }
 
 export function runFormalInfer(minConfidence = 0.7): Promise<InferStats> {
-  return authFetch<InferStats>(`/formal/infer?min_confidence=${minConfidence}`, {
+  return authFetch<InferStats>(`${BASE}/infer?min_confidence=${minConfidence}`, {
     method: "POST",
   });
 }
@@ -58,7 +58,7 @@ export interface FormalValidateResult {
 }
 
 export function fetchFormalValidate(): Promise<FormalValidateResult> {
-  return authFetch<FormalValidateResult>("/formal/validate");
+  return authFetch<FormalValidateResult>(`${BASE}/validate`);
 }
 
 // ---- export ----

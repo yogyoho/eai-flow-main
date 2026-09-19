@@ -44,8 +44,8 @@ export function Chip({
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-medium whitespace-nowrap",
         tone === "gray" && "border-border text-muted-foreground border",
         tone === "primary" && "bg-primary/10 text-primary",
-        tone === "seal" && "bg-seal-wash text-seal",
-        tone === "warning" && "bg-warning-wash text-warning",
+        tone === "seal" && "bg-destructive/10 text-destructive",
+        tone === "warning" && "bg-warning/15 text-warning",
       )}
     >
       {children}

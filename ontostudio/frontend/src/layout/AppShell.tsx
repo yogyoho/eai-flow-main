@@ -122,11 +122,11 @@ export function AppShell() {
     <div className="bg-background flex h-full min-h-0">
       <aside className="border-border bg-card flex w-56 flex-none flex-col border-r">
         <div className="border-border flex items-center gap-2.5 border-b px-4 py-4">
-          <span className="bg-primary text-primary-foreground font-display grid h-8 w-8 flex-none place-items-center rounded-lg text-[15px] font-black">
+          <span className="bg-primary text-primary-foreground grid h-8 w-8 flex-none place-items-center rounded-lg text-[15px] font-black">
             本
           </span>
           <div>
-            <b className="font-display block text-[15px] leading-tight font-black tracking-wide">
+            <b className="block text-[15px] leading-tight font-black tracking-wide">
               OntoStudio
             </b>
             <small className="text-muted-foreground text-[10.5px] tracking-[0.14em]">
@@ -167,7 +167,7 @@ export function AppShell() {
                   {label}
                   {id === "resolve" && pendingCount > 0 ? (
                     <span
-                      className="bg-seal ml-auto h-1.5 w-1.5 rounded-full"
+                      className="bg-destructive ml-auto h-1.5 w-1.5 rounded-full"
                       title={`${pendingCount} 个实体待复核`}
                     />
                   ) : null}

@@ -26,7 +26,7 @@ const ROWS: Row[] = [
 const STATUS_TONE = {
   active: "text-primary",
   pending_review: "text-warning",
-  merged: "text-seal",
+  merged: "text-destructive",
 } as const;
 
 function FilterSelect({ label }: { label: string }) {
