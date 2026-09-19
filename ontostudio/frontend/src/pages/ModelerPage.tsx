@@ -1,162 +1,248 @@
 /**
- * 05 本体建模器骨架页（EAI-CUSTOM）：类层次树 + 类详情（GB/T 48000.3 附录 A 八项）
- * + 公理列表 + registry formal 段 YAML 预览（静态示例数据）。
- * 真实建模面读写待 kernel P5（registry v2 formal 段落地后接 REST）。
+ * 05 本体建模器（EAI-CUSTOM）——真实数据源：/registry-content 三端点.
+ *
+ * 左栏类层次（subClassOf 树）+ 中栏类详情（附录 A 八项）/公理 + 右栏 YAML 草稿。
+ * 编辑流 = 改 YAML 草稿 → 校验建模面（dry-run lint）→ 保存并热重载（原子写+指纹重载）。
+ * MVP 编辑面 = YAML 文本；表单化公理编辑后续迭代。
  */
+import { useQuery } from "@tanstack/react-query";
 import { DraftingCompass } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
+import {
+  fetchRegistryContent,
+  saveRegistryContent,
+  validateRegistryDraft,
+  type RegistrySummary,
+} from "@/api/registry-api";
+import { Chip, PageHeader, Panel } from "@/pages/shared";
 
-const TREE: Array<[string, string[]?]> = [
-  ["Activity 活动", ["Project 项目", "Bid 投标行为", "Evaluation 评价活动"]],
-  ["Agent 主体", ["Org 机构", "Bidder 投标人", "Person 个人"]],
-  ["Resource 资源", ["Goods 货物", "Qualification 资质"]],
-  ["Place 地点"],
-  ["Mention 证据"],
-];
+interface ClassEntry {
+  name: string;
+  label: string;
+  definition: string;
+  parents: string[];
+  hasKey: string[];
+  etypes: string[];
+}
 
-const AXIOMS: Array<{ tag: string; body: string; note?: string }> = [
-  { tag: "propertyChain", body: "org_compiles_project → project_owned_by → org_parent_of ⇒ org_in_ecosystem_of" },
-  { tag: "transitive", body: "part_of", note: "传递闭包，用于组织与地理归属" },
-  { tag: "inverse", body: "replaces ⇄ isReplacedBy" },
-  { tag: "disjoint", body: "NormativeElement, InformativeElement" },
-  { tag: "hasKey", body: "Org { norm_name }", note: "全局唯一标识" },
-];
+interface ClassRow {
+  domain: string;
+  cls: ClassEntry;
+}
 
-const YAML = `# registry v2 · formal 段
-namespaces:
-  dg: "https://ontology.eai-flow.com/doc_graph#"
-object_types:
-  - api_name: graph_entity
-    etype_classes:
-      project: { class: Project, subClassOf: [Activity] }
-      mine:    { class: Mine,    subClassOf: [Place] }
-formal:
-  property_chains:
-    - { derived: org_in_ecosystem_of,
-        chain: [org_compiles_project,
-               project_owned_by, org_parent_of] }
-  transitive: [part_of]
-  inverse: [{ pair: [replaces, isReplacedBy] }]`;
+function buildFlat(classes: ClassEntry[]): Array<{ entry: ClassEntry; depth: number }> {
+  const byName = new Map(classes.map((c) => [c.name, c]));
+  const children = new Map<string, string[]>();
+  const roots: string[] = [];
+  for (const c of classes) {
+    const realParents = c.parents.filter((p) => byName.has(p));
+    if (realParents.length === 0) {
+      roots.push(c.name);
+    } else {
+      for (const p of realParents) {
+        const list = children.get(p) ?? [];
+        list.push(c.name);
+        children.set(p, list);
+      }
+    }
+  }
+  const out: Array<{ entry: ClassEntry; depth: number }> = [];
+  const seen = new Set<string>();
+  const walk = (name: string, depth: number) => {
+    if (seen.has(name)) return;
+    seen.add(name);
+    const entry = byName.get(name);
+    if (!entry) return;
+    out.push({ entry, depth });
+    for (const child of children.get(name) ?? []) walk(child, depth + 1);
+  };
+  for (const name of roots) walk(name, 0);
+  for (const c of classes) if (!seen.has(c.name)) out.push({ entry: c, depth: 0 });
+  return out;
+}
 
 export function ModelerPage() {
+  const [selectedFile, setSelectedFile] = useState("doc_graph.yaml");
+  const [draft, setDraft] = useState<string | null>(null);
+  const [selectedClass, setSelectedClass] = useState<string | null>(null);
+  const [summaryOverride, setSummaryOverride] = useState<RegistrySummary | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  const filesQuery = useQuery({
+    queryKey: ["registry-files"],
+    queryFn: async () => {
+      const r = await fetch("/api/ontostudio/api/extensions/ontology/registry-content/files", { credentials: "include" });
+      if (!r.ok) return { files: [] as string[] };
+      return (await r.json()) as { files: string[] };
+    },
+    staleTime: 60_000,
+  });
+  const contentQuery = useQuery({
+    queryKey: ["registry-content", selectedFile],
+    queryFn: () => fetchRegistryContent(selectedFile),
+    staleTime: 30_000,
+  });
+  const content = contentQuery.data;
+  const summary = summaryOverride ?? content?.summary ?? null;
+  const text = draft ?? content?.raw ?? "";
+  const isDirty = draft !== null && draft !== (content?.raw ?? "");
+
+  const allClasses = useMemo(() => {
+    if (!summary) return [];
+    const out: ClassRow[] = [];
+    for (const [domain, dom] of Object.entries(summary.domains)) {
+      for (const c of dom.classes) out.push({ domain, cls: c });
+    }
+    return out;
+  }, [summary]);
+  const selected = allClasses.find((c) => c.cls.name === selectedClass)?.cls ?? null;
+
+  const axioms = useMemo(() => {
+    if (!summary) return [];
+    return Object.entries(summary.axioms).flatMap(([domain, a]) => [
+      ...a.property_chains.map((c) => ({ domain, tag: "propertyChain", text: `${c.derived} = ${c.chain.join(" → ")}` })),
+      ...a.transitive.map((t) => ({ domain, tag: "transitive", text: t })),
+      ...a.inverse.map((p) => ({ domain, tag: "inverse", text: p.pair.join(" ⇄ ") })),
+      ...a.disjoint.map((d) => ({ domain, tag: "disjoint", text: d })),
+    ]);
+  }, [summary]);
+
+  const handleValidate = async () => {
+    setSaveMsg(null);
+    const result = await validateRegistryDraft(selectedFile, text);
+    if (result.summary) setSummaryOverride(result.summary);
+    setSaveMsg(result.ok ? "✓ 校验通过" : `✗ 校验失败:\n${result.errors.join("\n")}`);
+  };
+  const handleSave = async () => {
+    setSaveMsg(null);
+    const result = await saveRegistryContent(selectedFile, text);
+    contentQuery.refetch();
+    setSummaryOverride(null);
+    setDraft(null);
+    setSaveMsg(`✓ 已保存 · v${result.registry_version} · ${result.fingerprint}`);
+  };
+
   return (
     <div className="p-6">
       <PageHeader
-        icon={ DraftingCompass }
+        icon={DraftingCompass}
         title="本体建模器"
         description="元数据描述项对齐 GB/T 48000.3 附录 A · 公理以 OWL 2 RL 表达 · 保存后 SHA 热重载"
         actions={
           <>
-            <button className="border-border bg-card hover:bg-accent h-9 rounded-md border px-4 text-sm font-medium shadow-xs">
+            <button
+              className="border-border bg-card hover:bg-accent h-9 rounded-md border px-4 text-sm font-medium shadow-xs"
+              onClick={handleValidate}
+            >
               校验建模面
             </button>
-            <button className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium">
-              保存并热重载
+            <button
+              className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium"
+              onClick={handleSave}
+              disabled={!isDirty}
+            >
+              {isDirty ? "保存草稿" : "保存并热重载"}
             </button>
           </>
         }
       />
-      <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[250px_1fr_330px]">
+      {saveMsg ? (
+        <div
+          className={`${
+            saveMsg.startsWith("✓") ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+          } mb-3.5 rounded-lg border px-4 py-2.5 text-xs font-medium whitespace-pre-wrap`}
+        >
+          {saveMsg}
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[220px_1fr_340px]">
+        {/* 左：类层次 */}
         <Panel title="类层次" subtitle="subClassOf">
           <ul className="p-2 text-[13px]">
-            {TREE.map(([label, children]) => (
-              <li key={label}>
+            {allClasses.map(({ domain, cls }) => (
+              <li key={domain + cls.name}>
                 <button
                   type="button"
-                  className="hover:bg-accent flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left"
+                  className={`${
+                    selectedClass === cls.name
+                      ? "bg-sidebar-accent text-primary font-semibold"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  } flex w-full items-center gap-2 rounded-md px-2.5 py-1 text-left`}
+                  onClick={() => setSelectedClass(cls.name)}
                 >
-                  <span className="text-primary font-mono text-[10px]">▾</span>
-                  {label}
-                  {children ? (
-                    <span className="border-border text-muted-foreground bg-card ml-auto rounded border px-1 font-mono text-[10px]">
-                      {children.length} 子类
-                    </span>
-                  ) : null}
+                  <span className="text-primary/50 font-mono text-[9px]">{domain.slice(0, 4)}</span>
+                  {cls.name}
                 </button>
-                {children ? (
-                  <ul className="border-border/60 ml-4 list-none border-l border-dashed pl-4">
-                    {children.map((child) => (
-                      <li key={child}>
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:bg-accent hover:text-foreground flex w-full items-center rounded-md px-2.5 py-1 text-left"
-                        >
-                          {child}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
               </li>
             ))}
           </ul>
         </Panel>
 
+        {/* 中：类详情 + 公理 */}
         <div className="flex flex-col gap-3.5">
-          <Panel
-            title="Activity 活动"
-            actions={
-              <div className="flex gap-1.5">
-                <Chip tone="primary">owl:Class</Chip>
-                <Chip>行为主体：竞标/评价/承包</Chip>
-              </div>
-            }
-          >
-            <dl className="grid grid-cols-[110px_1fr] gap-y-2 gap-x-4 px-4 py-3.5 text-[12.5px]">
-              {(
-                [
-                  ["标识符 IRI", "…/doc_graph#Activity"],
-                  ["名称 Name", "Activity"],
-                  ["标签 Label", "活动"],
-                  ["定义", "消耗资源并产生状态变化的业务行为，是项目、投标与评价行为的父类。"],
-                  ["属性集", "name, startTime, endTime, status"],
-                  ["父类", "—（根类）"],
-                  ["子类", "Project, Bid, Evaluation"],
-                  ["等价类", "—"],
-                ] as Array<[string, string]>
-              ).map(([key, value]) => (
-                <div key={key} className="contents">
-                  <dt className="text-muted-foreground whitespace-nowrap">{key}</dt>
-                  <dd className="min-w-0 break-words font-mono text-xs">{value}</dd>
+          <Panel title={selected?.name ?? "选择类"} actions={<Chip tone="primary">owl:Class</Chip>}>
+            {selected ? (
+              <div className="space-y-2 p-4 text-xs">
+                <div className="flex gap-4">
+                  <span className="text-muted-foreground w-16 flex-none">IRI</span>
+                  <span className="break-all font-mono">
+                    {(Object.values(summary?.domains ?? {}).find((d) => d.classes.some((x) => x.name === selected?.name))?.namespace ?? "") + selected.name}
+                  </span>
                 </div>
-              ))}
-            </dl>
+                <div className="flex gap-4">
+                  <span className="text-muted-foreground w-16 flex-none">标签</span>
+                  <span>{selected.label}</span>
+                </div>
+                <div className="flex gap-4">
+                  <span className="text-muted-foreground w-16 flex-none">定义</span>
+                  <span>{selected.definition || "—"}</span>
+                </div>
+                <div className="flex gap-4">
+                  <span className="text-muted-foreground w-16 flex-none">父类</span>
+                  <span className="font-mono">{selected.parents.join(", ") || "—"}</span>
+                </div>
+                <div className="flex gap-4">
+                  <span className="text-muted-foreground w-16 flex-none">hasKey</span>
+                  <span className="font-mono">{selected.hasKey.join(", ") || "—"}</span>
+                </div>
+                <div className="flex gap-4">
+                  <span className="text-muted-foreground w-16 flex-none">etype</span>
+                  <span className="font-mono">{selected.etypes.join(", ")}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="text-muted-foreground p-4 text-xs">← 从类层次中选择</div>
+            )}
           </Panel>
-          <Panel
-            title="公理"
-            subtitle="OWL 2 RL · 23 条"
-            actions={<button className="text-primary text-xs font-medium">新增公理</button>}
-          >
+          <Panel title="公理" subtitle="OWL 2 RL" actions={<button className="text-primary text-xs font-medium">新增公理</button>}>
             <div className="flex flex-col gap-2 p-4">
-              {AXIOMS.map((axiom) => (
+              {axioms.map((axiom) => (
                 <div
-                  key={axiom.tag + axiom.body}
-                  className="border-border bg-muted flex flex-wrap items-center gap-2.5 rounded-lg border px-3 py-2 text-[12.5px]"
+                  key={axiom.domain + axiom.tag + axiom.text}
+                  className="border-border bg-muted flex flex-wrap items-center gap-2.5 rounded-lg border px-3 py-2 text-xs"
                 >
-                  <span className="text-primary bg-primary/10 rounded px-1.5 py-px font-mono text-[10.5px] font-semibold">
+                  <span className="bg-primary/10 text-primary rounded px-1.5 py-px font-mono text-[10.5px] font-semibold">
                     {axiom.tag}
                   </span>
-                  <code className="font-mono text-xs">{axiom.body}</code>
-                  {axiom.note ? (
-                    <span className="text-muted-foreground text-xs">· {axiom.note}</span>
-                  ) : null}
+                  <code className="font-mono">{axiom.text}</code>
                 </div>
               ))}
             </div>
           </Panel>
         </div>
 
-        <Panel title="doc_graph.yaml" subtitle="formal 段预览" className="self-start">
-          <div className="p-3">
-            <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
-              <DemoTag className="mb-2 inline-block" />
-              {"\n"}
-              {YAML}
-            </pre>
-          </div>
+        {/* 右：YAML 草稿 */}
+        <Panel title="YAML 草稿" subtitle="formal 段">
+          <textarea
+            className="bg-code text-code-fg h-[480px] w-full resize-y p-3 font-mono text-[11.5px] leading-relaxed outline-none"
+            value={text}
+            onChange={(e) => setDraft(e.target.value)}
+            spellCheck={false}
+          />
         </Panel>
       </div>
     </div>
   );
 }
+

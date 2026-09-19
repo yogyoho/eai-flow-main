@@ -160,11 +160,7 @@ class KernelService:
 
         from app.ontology.kernel.export import to_jsonld, to_turtle
 
-        wanted = (
-            {"graph:schema", "graph:asserted", "graph:entailment"}
-            if graphs == "all"
-            else {"graph:" + graphs}
-        )
+        wanted = {"graph:schema", "graph:asserted", "graph:entailment"} if graphs == "all" else {"graph:" + graphs}
         g = Graph()
         for quad in self.store._store.quads_for_pattern(None, None, None, None):
             if quad.graph_name.value in wanted:
