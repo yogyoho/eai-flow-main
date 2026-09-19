@@ -19,6 +19,7 @@ dependencies = [
     "rdflib>=7.1.0",
     "pyoxigraph>=0.5.0,<0.7",
     "owlrl>=6.0.0",  # P3: OWL 2 RL 闭包（含 RDFS 语义）
+    "pyshacl>=0.26.0",  # P4: SHACL 约束校验（国标 §5.3）
 ]
 
 [dependency-groups]
