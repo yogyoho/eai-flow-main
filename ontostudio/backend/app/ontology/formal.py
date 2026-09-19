@@ -40,6 +40,18 @@ async def formal_infer(
     return {"success": True, **asdict(stats)}
 
 
+@router.post("/load-ontology")
+async def formal_load_ontology(
+    payload: dict,
+    _: CurrentUser = Depends(require_permission("system:access")),
+):
+    """四类目标抽取结果 → kernel 断言图（抽取导入页数据源）。"""
+    try:
+        return {"success": True, **get_kernel().load_ontology(payload)}
+    except KeyError as e:
+        raise HTTPException(status_code=422, detail=f"payload 缺字段: {e}") from e
+
+
 @router.get("/validate")
 async def formal_validate(_: CurrentUser = Depends(require_permission("system:access"))):
     return {"success": True, **get_kernel().validate()}
