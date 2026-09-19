@@ -4,7 +4,7 @@ from scripts.seed_library import DEFAULT_TABLE_SEEDS, normalize_seeds
 
 
 def test_default_library_has_seven_seeds():
-    assert len(DEFAULT_TABLE_SEEDS) == 7
+    assert len(DEFAULT_TABLE_SEEDS) == 8
     for s in DEFAULT_TABLE_SEEDS:
         assert s["id"] and s["display_name"]
         assert s["columns"]["name"], f"{s['id']} 缺 name 锚点"

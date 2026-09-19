@@ -100,6 +100,26 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
         "source": "样例:钢筋补充协议-需盖章11",
     },
     {
+        "id": "bcxy-tz",
+        "display_name": "物资采购调价表(补充协议)",
+        "title_keywords": ["调价", "物资采购", "物资名称"],
+        "columns": {
+            "name": ["物资名称", "品名"],
+            "spec": ["材质规格", "规格"],
+            "unit": ["计量单位", "单位"],
+            "qty": ["调整数量", "调整后数量"],
+            "price_unit": ["综合单价"],
+            "price_total": ["含税总价"],
+            "price_untaxed": [],
+        },
+        "exclude": {
+            "qty": ["原合同", "网价", "联采"],
+            "price_unit": ["不含税", "网价", "调价", "运杂", "服务", "财务"],
+            "price_total": ["不含税", "网价", "联采", "调价"],
+        },
+        "source": "样例:钢筋补充协议-需盖章(价格调整表)",
+    },
+    {
         "id": "ssly-sm",
         "display_name": "采购物资说明(砂石料)",
         "title_keywords": ["采购物资", "砂石料"],
