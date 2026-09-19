@@ -39,7 +39,6 @@ export function IngestPage() {
   return (
     <div className="p-6">
       <PageHeader
-        clause="08 · 抽取"
         icon={ FileInput }
         title="抽取导入"
         description="文档 → LLM 类型化抽取 → mentions 证据落图 · 幂等管线（自然键去重）· 低置信度仅存证"

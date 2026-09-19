@@ -36,7 +36,6 @@ export function ExportPage() {
   return (
     <div className="p-6">
       <PageHeader
-        clause="09 · 导出"
         icon={ FileOutput }
         title="导出互操作"
         description="图真源 → 标准序列化 · 每日快照即国标 §5.3 交付物 · IRI 机械可逆可回导"

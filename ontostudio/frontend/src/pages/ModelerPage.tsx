@@ -43,7 +43,6 @@ export function ModelerPage() {
   return (
     <div className="p-6">
       <PageHeader
-        clause="05 · 建模"
         icon={ DraftingCompass }
         title="本体建模器"
         description="元数据描述项对齐 GB/T 48000.3 附录 A · 公理以 OWL 2 RL 表达 · 保存后 SHA 热重载"

@@ -46,7 +46,6 @@ export function ReasoningPage() {
   return (
     <div className="p-6">
       <PageHeader
-        clause="06 · 推理"
         icon={ BrainCircuit }
         title="推理工作台"
         description="单引擎：owlrl 闭包（graph:entailment）+ SPARQL CONSTRUCT 派生（每规则独立 named graph，named graph 归属即触发轨迹）"

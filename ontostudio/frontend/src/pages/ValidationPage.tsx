@@ -24,7 +24,6 @@ export function ValidationPage() {
   return (
     <div className="p-6">
       <PageHeader
-        clause="07 · 校验"
         icon={ShieldCheck}
         title="校验中心"
         description="SHACL 闭世界校验管写路径 · OWL 开放世界管推理 · 国标符合性套件随构建运行"
