@@ -189,11 +189,13 @@ export function AppShell() {
       </aside>
 
       <main className="min-h-0 min-w-0 flex-1">
-        {/* 知识层三视图常驻挂载：切骨架页时仅隐藏，保 sigma 画布/查询状态 */}
+        {/* 知识层三视图常驻挂载：切骨架页时仅隐藏，保 sigma 画布/查询状态。
+            总览路由 overviewOnly——剥 语义地图头/视图切换 tab/状态条，只留概览内容区 */}
         <div className={cn("h-full min-h-0", knowledgeView ? "" : "hidden")}>
           <OntologyPage
             initialView={knowledgeView ?? "map"}
             onViewChange={(view) => go(VIEW_ROUTE[view])}
+            overviewOnly={route === "dashboard"}
           />
         </div>
         {route === "entities" ? <EntitiesPage /> : null}

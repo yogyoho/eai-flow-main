@@ -68,9 +68,11 @@ function searchGraphNodes(query: string): Array<{ id: string; label: string }> {
 function OntologyWorkspace({
   initialView = "map",
   onViewChange,
+  overviewOnly = false,
 }: {
   initialView?: PageView;
   onViewChange?: (view: PageView) => void;
+  overviewOnly?: boolean;
 }) {
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -173,7 +175,8 @@ function OntologyWorkspace({
 
   return (
     <div className="bg-background flex h-full flex-col">
-      {/* 顶栏 */}
+      {/* 顶栏（overviewOnly 模式隐藏——总览页只留概览内容区） */}
+      {!overviewOnly && (
       <header className="border-border bg-card flex shrink-0 items-center gap-2.5 border-b px-3.5 py-2">
         <h1 className="text-foreground mr-1 text-sm font-semibold tracking-tight whitespace-nowrap">
           语义地图
@@ -221,8 +224,10 @@ function OntologyWorkspace({
           {meta ? <span>· v{meta.registry_version}</span> : null}
         </span>
       </header>
+      )}
 
-      {/* 分段切换：地图 | 概览 | 实体消解（地图 = v1 内容原样；地图视图附社区着色开关） */}
+      {/* 分段切换：地图 | 概览 | 实体消解（overviewOnly 模式隐藏） */}
+      {!overviewOnly && (
       <div className="border-border bg-card flex shrink-0 items-center gap-2 border-b px-3.5 py-1.5">
         <div
           className="border-border bg-muted inline-flex items-center gap-0.5 rounded-lg border p-0.5"
@@ -265,6 +270,7 @@ function OntologyWorkspace({
           </button>
         ) : null}
       </div>
+      )}
 
       {/* 地图视图（v1 主区：图画布 + 右栏；切换 tab 时保持挂载避免画布重载/重排） */}
       <div className={cn("min-h-0 flex-1", view !== "map" && "hidden")}>
@@ -336,7 +342,8 @@ function OntologyWorkspace({
         </div>
       ) : null}
 
-      {/* 状态条 */}
+      {/* 状态条（overviewOnly 模式隐藏） */}
+      {!overviewOnly && (
       <footer className="border-border bg-card text-muted-foreground flex shrink-0 items-center gap-3.5 overflow-x-auto border-t px-3.5 py-1 text-[10.5px] whitespace-nowrap tabular-nums">
         <span>
           registry <b className="font-mono">v{meta?.registry_version ?? "—"}</b>
@@ -355,6 +362,7 @@ function OntologyWorkspace({
             : "— 节点 · — 边"}
         </span>
       </footer>
+      )}
     </div>
   );
 }
@@ -363,10 +371,12 @@ function OntologyWorkspace({
 export function OntologyPage({
   initialView,
   onViewChange,
+  overviewOnly = false,
 }: {
   initialView?: PageView;
   onViewChange?: (view: PageView) => void;
-} = {}) {
+  overviewOnly?: boolean;
+}) {
   const { canPage, isLoading: permLoading } = usePermission();
   if (!permLoading && !canPage("ontology:page:map")) {
     return (
@@ -381,5 +391,11 @@ export function OntologyPage({
       </div>
     );
   }
-  return <OntologyWorkspace initialView={initialView} onViewChange={onViewChange} />;
+  return (
+    <OntologyWorkspace
+      initialView={initialView}
+      onViewChange={onViewChange}
+      overviewOnly={overviewOnly}
+    />
+  );
 }
