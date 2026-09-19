@@ -12,7 +12,7 @@
  * resolution REST；merge/unmerge 成功后 useReloadGraph 全量失效重载。
  */
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, Waypoints } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchPendingReviewCount, fetchRegistryMeta } from "@/api/ontology-graph-api";
@@ -32,12 +32,6 @@ import { readGraphSnapshot, type GraphSnapshot } from "@/graphSnapshot";
 const SEARCH_MATCH_LIMIT = 8;
 type PanelTab = "detail" | "registry";
 export type PageView = "map" | "overview" | "resolution";
-
-const PAGE_VIEWS: Array<[PageView, string]> = [
-  ["map", "地图"],
-  ["overview", "概览"],
-  ["resolution", "实体消解"],
-];
 
 const EMPTY_SNAPSHOT: GraphSnapshot = { nodes: [], edges: [] };
 
@@ -177,8 +171,9 @@ function OntologyWorkspace({
     <div className="bg-background flex h-full flex-col">
       {/* 顶栏（overviewOnly 模式隐藏——总览页只留概览内容区） */}
       {!overviewOnly && (
-      <header className="border-border bg-card flex shrink-0 items-center gap-2.5 border-b px-3.5 py-2">
-        <h1 className="text-foreground mr-1 text-sm font-semibold tracking-tight whitespace-nowrap">
+      <header className="border-border bg-card flex shrink-0 items-center gap-3 border-b px-4 py-3">
+        <Waypoints className="text-primary h-5 w-5 flex-none" />
+        <h1 className="text-foreground text-lg font-semibold tracking-tight whitespace-nowrap">
           语义地图
         </h1>
         <div className="relative w-full max-w-[300px]">
@@ -216,43 +211,6 @@ function OntologyWorkspace({
           ) : null}
         </div>
         <span className="flex-1" />
-        <span
-          className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] whitespace-nowrap tabular-nums"
-          title="registry 指纹（SHA-256 前 8 位）与版本"
-        >
-          <span className="font-mono">{fingerprint}</span>
-          {meta ? <span>· v{meta.registry_version}</span> : null}
-        </span>
-      </header>
-      )}
-
-      {/* 分段切换：地图 | 概览 | 实体消解（overviewOnly 模式隐藏） */}
-      {!overviewOnly && (
-      <div className="border-border bg-card flex shrink-0 items-center gap-2 border-b px-3.5 py-1.5">
-        <div
-          className="border-border bg-muted inline-flex items-center gap-0.5 rounded-lg border p-0.5"
-          role="group"
-          aria-label="语义地图视图切换"
-          data-testid="ontology-view-switch"
-        >
-          {PAGE_VIEWS.map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={view === value}
-              onClick={() => changeView(value)}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs transition-colors",
-                view === value
-                  ? "bg-primary text-primary-foreground font-medium shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <span className="flex-1" />
         {view === "map" ? (
           <button
             type="button"
@@ -269,7 +227,14 @@ function OntologyWorkspace({
             社区着色
           </button>
         ) : null}
-      </div>
+        <span
+          className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] whitespace-nowrap tabular-nums"
+          title="registry 指纹（SHA-256 前 8 位）与版本"
+        >
+          <span className="font-mono">{fingerprint}</span>
+          {meta ? <span>· v{meta.registry_version}</span> : null}
+        </span>
+      </header>
       )}
 
       {/* 地图视图（v1 主区：图画布 + 右栏；切换 tab 时保持挂载避免画布重载/重排） */}
