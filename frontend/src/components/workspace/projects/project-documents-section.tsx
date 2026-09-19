@@ -435,24 +435,28 @@ function ProjectDocumentRow({
     );
   }
   return (
-    <li className="flex items-center gap-3 rounded-md border p-3">
-      {getFileIcon(document.name, "size-5 shrink-0")}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium">{document.name}</span>
-          {provenance && (
-            <Badge variant="secondary" className="shrink-0">
-              {provenance}
-            </Badge>
-          )}
-        </div>
-        <div className="text-muted-foreground text-xs">
-          {formatArtifactBytes(document.size_bytes)}
-          {" · "}
-          {formatTimeAgo(document.updated_at)}
+    // EAI-CUSTOM: 按钮整排下移到信息行下方（上游单行布局在窄面板下 shrink-0
+    // 按钮组会盖住条目文字），flex-wrap 保证极窄时按钮自动换行不再遮挡。
+    <li className="flex flex-col gap-2 rounded-md border p-3">
+      <div className="flex min-w-0 items-center gap-3">
+        {getFileIcon(document.name, "size-5 shrink-0")}
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-sm font-medium">{document.name}</span>
+            {provenance && (
+              <Badge variant="secondary" className="shrink-0">
+                {provenance}
+              </Badge>
+            )}
+          </div>
+          <div className="text-muted-foreground text-xs">
+            {formatArtifactBytes(document.size_bytes)}
+            {" · "}
+            {formatTimeAgo(document.updated_at)}
+          </div>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex flex-wrap items-center gap-1">
         <Button variant="ghost" size="sm" onClick={onPreview}>
           {t.common.preview}
         </Button>
