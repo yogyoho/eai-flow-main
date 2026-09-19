@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-09-12T06:32:13.302Z
-> Files: 223 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-19T16:38:13.771Z
+> Files: 347 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -35,8 +35,10 @@
 
 ## ./
 
-- `extensions_config.example.json` (~642 tok)
-- `extensions_config.json` (~2833 tok)
+- `config.yaml` — Configuration for the DeerFlow application (~40143 tok)
+- `extensions_config.json` (~2864 tok)
+- `Makefile` — DeerFlow - Unified Development Environment (~2858 tok)
+- `TODOS.md` — TODOS (~1338 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -67,7 +69,6 @@
 
 ## .deer-flow/bank_t7/
 
-- `normalize.py` — Task7 验收预处理: markitdown 对本 PDF 产出退化单行文本(无换行/无标题, 41082 字符 1 行), (~310 tok)
 
 ## .github/
 
@@ -77,12 +78,10 @@
 
 ## .github/workflows/
 
+- `backend-unit-tests.yml` — CI: Unit Tests (~1096 tok)
 
 ## .gstack/qa-reports/
 
-- `qa-report-127-0-0-1-2026-09-12.md` — QA 报告 — text-to-cad 对话页 UI 验证(:2026) (~1043 tok)
-- `qa-report-localhost-2026-2026-09-10.md` — QA Report: EAIFlow (deer-flow) (~1486 tok)
-- `test-cases-text-to-cad-ui-2026-09-12.md` — text-to-cad 对话页 UI 验证测试用例(v1) (~285 tok)
 
 ## .kiro/settings/
 
@@ -154,6 +153,9 @@
 
 
 ## .wolf/tmp/eia-samples/ (环评样例解析产物, 2026-09-06)
+
+
+## .wolf/tmp/gzgc-extract/
 
 
 ## .worktrees/abac-3level/backend/app/extensions/auth/
@@ -290,6 +292,7 @@
 
 ## C:/Users/admin/.claude/plans/
 
+- `composed-beaming-chipmunk.md` — Phase A 收口计划——方法论文档审阅 + Gap 审计 + 裁决会 (~441 tok)
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/
 
@@ -308,16 +311,17 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
-- `concurrent-session-git-coop.md` (~325 tok)
-- `eia-samples-extract-ops.md` (~352 tok)
-- `MEMORY.md` (~3035 tok)
-- `nginx-stale-upstream-ip.md` (~212 tok)
-- `ontology-platforms-semantica-ontoflow.md` (~345 tok)
-- `ontology-semantic-layer-phase1.md` (~562 tok)
-- `outline-merge-landed.md` (~245 tok)
-- `self-improving-agent-analysis.md` (~617 tok)
-- `text-to-cad-integration.md` (~1052 tok)
-- `upstream-sync-2026-09-11.md` (~408 tok)
+- `coal-tunneling-regulation-v2-design.md` (~447 tok)
+- `e2e-clean4-verdict.md` (~348 tok)
+- `gbt48000-ontology-standard.md` (~238 tok)
+- `MEMORY.md` (~3095 tok)
+- `ontology-platforms-semantica-ontoflow.md` (~472 tok)
+- `ontology-semantic-layer-phase1.md` (~911 tok)
+- `ontostudio-kernel-p1-landed.md` (~304 tok)
+- `outline-candidates-frontend.md` (~311 tok)
+- `self-improving-agent-analysis.md` (~852 tok)
+- `upstream-sync-2026-09-19.md` (~442 tok)
+- `wsl2-vm-wedge-recovery.md` (~230 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -330,7 +334,6 @@
 
 ## C:/Users/admin/AppData/Local/Temp/
 
-- `probe_consumers.py` — Non-vacuity probe for TestConsumers: pre-merge negative control + post-merge positive evidence. (~1130 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/bidpipe/
 
@@ -346,6 +349,10 @@
 
 ## C:/Users/admin/AppData/Local/Temp/bpv-recheck/
 
+
+## C:/Users/admin/AppData/Local/Temp/claude/
+
+- `buglog-append.cjs` — Declares fs (~316 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/claude/D--eai-eai-flow-main/53c83186-25f5-4d4f-9a35-597b767240a8/
 
@@ -367,9 +374,6 @@
 
 ## C:/Users/admin/AppData/Local/Temp/t0spike/
 
-- `batch2.py` — Batch PATCH source_path + POST extract for D:-path samples (runs inside gateway container). (~574 tok)
-- `doc2txt6.ps1` (~340 tok)
-- `doc2txt7.ps1` (~387 tok)
 
 ## _workspace_temp/
 
@@ -394,12 +398,17 @@
 
 ## backend/
 
-- `bank_t7_diag.py` — 临时诊断插件(T7 评审 geo flake 定位用, 用完即删): 打印 geo 编译测试运行前后的 (~495 tok)
+- `_patch_extract.py` — 临时补丁脚本：向 extract.py 注入四类目标抽取器（用后即删） (~2764 tok)
+- `_patch_extract2.py` — 临时补丁 2b：行级定位修复（用后即删） (~572 tok)
+- `_run_real_extract.py` — 临时：gateway 容器内真实抽取 → 输出 ontology JSON（用后即删） (~240 tok)
+- `_strip_patch.py` — 临时：剥离 extract.py 中损伤的四类目标块（迁移至独立模块 extract_ontology.py） (~268 tok)
+- `_tmp_smoke_service.py` — 临时 smoke——验证 mcp handler ↔ service 接线（成功/KeyError/IntegrityError 路径），跑完即删。 (~1138 tok)
+- `Makefile` (~1114 tok)
+- `pyproject.toml` — LangGraph-based AI agent system with sandbox execution capabilities (~1691 tok)
 
 ## backend/.deer-flow/
 
-- `e2e_bid_agnes_clean4_launch_turn3.py` — agnes E2E clean4 turn3 launcher: A 入口六件套已交付(turn2 COMPLETION_RECAP), resume 走 B 入口 (~230 tok)
-- `e2e_bid_agnes_clean4_launch.py` — agnes E2E clean4 发射器(公平复跑规则: 全新线程+新 out 目录; B1 v2 outline_merge 落地后的首次双入口走查) (~117 tok)
+- `e2e_bid_agnes_clean6_launch.py` — agnes E2E clean6 发射器(公平复跑规则: 全新线程+新 out 目录; (~127 tok)
 
 ## backend/.deer-flow/data/
 
@@ -595,11 +604,11 @@
 
 ## backend/app/channels/
 
-- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~18943 tok)
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~21638 tok)
 
 ## backend/app/extensions/
 
-- `database.py` — Database connection and session management for extensions module. (~26262 tok)
+- `schemas.py` — Pydantic schemas for extensions module. (~6504 tok)
 
 ## backend/app/extensions/app_center/
 
@@ -609,15 +618,15 @@
 
 ## backend/app/extensions/bid_materials/
 
-- `__init__.py` — Bid materials extension: qualification MinIO version bank + sample ledger. (~114 tok)
-- `models.py` — 投标资料管理数据模型: 资质元数据/资质版本(MinIO)/样例台账。 (~1406 tok)
-- `routers.py` — Bid materials management API (qualifications version bank + sample ledger). (~3566 tok)
-- `schemas.py` — 投标资料管理 Pydantic 契约(形态参考 eia_samples/schemas.py; 含 QualificationVersionResponse 版本历史行)。 (~1080 tok)
-- `service.py` — 投标资料管理服务层: 资质版本生命周期/到期预警/白名单导出 + 样例台账。 (~3154 tok)
-- `storage.py` — MinIO storage for bid qualifications (independent ``bid-qualifications`` bucket). (~800 tok)
 
 ## backend/app/extensions/contract_price/
 
+- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~10730 tok)
+- `models.py` — SQLAlchemy ORM models for the contract-price-analysis ``cpa_`` tables. (~1953 tok)
+- `routers.py` — Contract price analysis management API — all functional areas. (~6560 tok)
+- `schemas.py` — Pydantic request/response models for the contract-price-analysis API. (~1759 tok)
+- `seed_defaults.py` — 内置 seed 库(与 skills/public/contract-price-analysis/scripts/seed_library.py 保持同步——双份镜像约定,同 models.py)。 (~1054 tok)
+- `service.py` — Pipeline orchestration service for the management API. (~1578 tok)
 
 ## backend/app/extensions/dashboard/
 
@@ -630,17 +639,10 @@
 
 ## backend/app/extensions/docmgr/
 
-- `collab_routers.py` — Routers for collaborative editing: comments and versions. (~3156 tok)
 
 ## backend/app/extensions/eia_samples/
 
-- `__init__.py` — Coal EIA report sample bank extension (表 kf_samples，沿用历史表名免数据迁移). (~234 tok)
-- `extract.py` — Extraction pipeline for the coal EIA sample bank (phase 2). (~3277 tok)
-- `models.py` — ORM models for the coal EIA report sample bank (EAI-CUSTOM). (~657 tok)
-- `quality.py` — Quality checks for the coal EIA sample bank (phase 2). (~2405 tok)
-- `routers.py` — Coal EIA report sample bank management API. (~2207 tok)
-- `schemas.py` — Pydantic schemas for the coal EIA report sample bank (EAI-CUSTOM). (~1590 tok)
-- `service.py` — 样例库服务层（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP；二期+提取流水线/质检）。 (~1917 tok)
+- `extract_ontology.py` — EAI-CUSTOM: 环评样例 四类目标抽取（kernel P5 对接，2026-09-20 用户需求）—— (~2656 tok)
 
 ## backend/app/extensions/formula_engine/
 
@@ -653,11 +655,6 @@
 
 ## backend/app/extensions/knowledge_factory/
 
-- `models.py` — ORM models for knowledge factory module. (~4181 tok)
-- `routers.py` — FastAPI routers for knowledge factory extraction. (~20665 tok)
-- `sample_service.py` — 样例库服务层（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP）。 (~1707 tok)
-- `schemas.py` — Pydantic schemas for knowledge factory API. (~6294 tok)
-- `service.py` — Business logic for knowledge factory extraction. (~9673 tok)
 
 ## backend/app/extensions/knowledge_factory/data/
 
@@ -680,6 +677,19 @@
 ## backend/app/extensions/law/
 
 
+## backend/app/extensions/learnings/
+
+- `__init__.py` — learnings 扩展 — agent 自进化循环 P1(SQL 化捕获层). (~101 tok)
+- `mcp.py` — learnings MCP stdio server — 4 工具(surface/log_learning/stats/resolve). (~2437 tok)
+- `models.py` — learnings 扩展数据模型 — agent_learnings + learning_sweep_receipts. (~1019 tok)
+- `patterns.py` — learnings 扩展 — pattern-key 匹配器 + 证据洗数据管线(纯逻辑, 零 IO). (~1184 tok)
+- `service.py` — learnings 扩展服务层 — mint-or-fold / 资格计算 / 状态机(REST/MCP 共用). (~2520 tok)
+- `sweeper.py` — learnings 扩展 — lazy catch-up 补扫引擎(run 结束后的机械错误捕获). (~2240 tok)
+
+## backend/app/extensions/learnings/scripts/
+
+- `import_ledger.py` — P0 markdown 账本 -> P1 SQL 一次性导入(D15 硬切换用; 幂等). (~1691 tok)
+
 ## backend/app/extensions/license/
 
 
@@ -688,27 +698,42 @@
 
 ## backend/app/extensions/ontology/
 
-- `__init__.py` — Ontology 统一语义层（市场/分析数据域，只读投影）. (~107 tok)
+- `graph_views.py` — Ontology 语义地图图投影 — 全部 enabled 对象/链接统一为 Semantica Explorer 方言的 nodes/edges. (~2965 tok)
+- `registry.py` — Ontology 注册表加载器（YAML → 类型化注册表）. (~2196 tok)
+- `routers.py` — Ontology 语义层 REST 路由 — 6 核心端点（pytest HTTP 集成测试载体）. (~1677 tok)
 
 ## backend/app/extensions/ontology/connectors/
 
 
 ## backend/app/extensions/ontology/doc_graph/
 
-- `__init__.py` — Ontology doc_graph 子包——文档图谱构建侧（写路径）. (~52 tok)
-- `ingest.py` — doc_graph 入库——mention 先行 → 实体幂等 upsert → 关系落库（单事务）. (~1793 tok)
-- `mcp.py` — doc_graph 写 MCP Server——4 工具，ontology 只读 server 的构建侧补充. (~2051 tok)
-- `resolver.py` — doc_graph 实体消解——纯逻辑（无 DB; DB 侧由 ingest/mcp 调用）. (~607 tok)
-- `schemas.py` — doc_graph 抽取 JSON Schema（skill LLM 结构化输出 → fail-closed 校验）. (~843 tok)
-- `tables.py` — doc_graph 表模型（dg_* 前缀, extensions 库, gateway 启动 create_all 自动建表）. (~1320 tok)
+- `ingest.py` — doc_graph 入库——mention 先行 → 实体幂等 upsert → 关系落库（单事务）. (~1805 tok)
+- `mcp.py` — doc_graph 写+计算 MCP Server——5 工具，ontology 只读 server 的构建侧补充. (~1902 tok)
+- `routers.py` — doc_graph 实体消解 REST 路由——pending / suggestions / merge / unmerge（写侧审核门）. (~1257 tok)
+- `schemas.py` — doc_graph 抽取 JSON Schema（skill LLM 结构化输出 → fail-closed 校验）. (~1542 tok)
+- `service.py` — doc_graph 审核共享服务层——REST 与 MCP 共用的消解 SQL 逻辑. (~2046 tok)
+
+## backend/app/extensions/ontology/doc_graph/reasoning/
+
+- `__init__.py` — doc_graph 推理子包——vendored Rete 引擎 + 规则推理 facade（现算现返）. (~141 tok)
+- `evaluate.py` — 现算现返编排——真库事实 + 注册规则 → 前向链派生事实+触发轨迹. (~937 tok)
+- `facade.py` — 规则推理 facade——三元组事实 + Datalog 式规则 → 前向链派生事实+触发轨迹. (~2652 tok)
+- `facts.py` — 真库事实装载——dg_entities/dg_relations → RuleFacade 三元组事实. (~761 tok)
+- `README.md` — Project documentation (~1662 tok)
+- `rete_engine.py` — Vendored from semantica-agi/semantica@7057387775ecdf74c14e38d0067fd8e1267eaaf8 (~7801 tok)
+- `rule_registry.py` — 推理规则注册表——YAML 规则的 fail-closed 加载 + SHA 指纹热重载. (~2975 tok)
+
+## backend/app/extensions/ontology/doc_graph/rules/
+
+- `eia.yaml` — EIA 域示例规则（验证推理底座——非业务定案） (~207 tok)
+- `manifest.yaml` — 推理规则清单（doc_graph/rules 下规则文件） (~62 tok)
 
 ## backend/app/extensions/ontology/engine/
 
 
 ## backend/app/extensions/ontology/registry/
 
-- `_manifest.yaml` — Ontology 注册表清单（市场/分析数据域 Phase 1a） (~97 tok)
-- `doc_graph.yaml` — 文档图谱域（doc_graph 构建侧产物——非结构化文档抽取的实体/关系/证据） (~1408 tok)
+- `doc_graph.yaml` — 文档图谱域（doc_graph 构建侧产物——非结构化文档抽取的实体/关系/证据） (~1484 tok)
 
 ## backend/app/extensions/ops_diagnosis/
 
@@ -718,8 +743,6 @@
 
 ## backend/app/extensions/project/
 
-- `routers.py` — FastAPI routers for report project management. (~14439 tok)
-- `service.py` — Database-backed service for report project management. (~14595 tok)
 
 ## backend/app/extensions/review/
 
@@ -762,32 +785,26 @@
 
 ## backend/app/gateway/
 
-- `app.py` — lifespan (~13235 tok)
-- `deps.py` — Centralized accessors for singleton objects stored on ``app.state``. (~9131 tok)
-- `services.py` — Run lifecycle service layer. (~23926 tok)
+- `app.py` (~16712 tok)
+- `deps.py` — Centralized accessors for singleton objects stored on ``app.state``. (~9366 tok)
+- `services.py` — Run lifecycle service layer. (~31098 tok)
 
 ## backend/app/gateway/routers/
 
-- `auth.py` — Authentication endpoints. (~13579 tok)
-- `thread_runs.py` — Runs endpoints — create, stream, wait, cancel. (~22438 tok)
+- `artifacts.py` — Pydantic: ArtifactUpdateRequest (~8269 tok)
+- `thread_runs.py` — Runs endpoints — create, stream, wait, cancel. (~23752 tok)
 
 ## backend/app/scheduler/
 
 
 ## backend/collab-server/
 
-- `Dockerfile` — Docker container definition (~106 tok)
 
 ## backend/collab-server/src/
 
-- `index.test.ts` — Build a BlockNote-style document-store fragment: XmlElement blocks with XmlText children. (~2731 tok)
-- `index.ts` — Extract readable text from a Yjs document for diff/summary purposes. (~1778 tok)
-- `persistence.test.ts` — Mock pg — Pool must be a constructable function (~1769 tok)
-- `persistence.ts` — Exports loadDocument, storeDocument, recordUpdate, createVersion + 6 more (~1711 tok)
 
 ## backend/docs/
 
-- `OBSERVABILITY.md` — Agent 执行监控与调试手册 (~3222 tok)
 
 ## backend/packages/harness/
 
@@ -800,17 +817,17 @@
 
 ## backend/packages/harness/deerflow/agents/lead_agent/
 
+- `prompt.py` — class: wait, prime_enabled_skills_cache, warm_enabled_skills_cache, get_cached_enabled_skills + 5 mo (~17603 tok)
 
 ## backend/packages/harness/deerflow/agents/memory/
 
 
 ## backend/packages/harness/deerflow/agents/memory/backends/openviking/
 
-- `openviking_manager.py` — OpenViking memory backend built on the maintained LangChain adapters. (~7778 tok)
 
 ## backend/packages/harness/deerflow/agents/middlewares/
 
-- `dynamic_context_middleware.py` — Middleware to inject dynamic context (memory, current date, project context) as a system-reminder. (~9744 tok)
+- `dynamic_context_middleware.py` — Middleware to inject dynamic context (memory, current date, project context) as a system-reminder. (~12874 tok)
 
 ## backend/packages/harness/deerflow/community/e2b_sandbox/
 
@@ -880,9 +897,9 @@
 
 ## backend/scripts/
 
-- `bid_seed_samples.py` — 投标样例台账种子灌入（EAI-CUSTOM: bug-3109 v4 投标资料管理 样例台账 MVP）。 (~707 tok)
-- `kf_seed_samples.py` — 样例库种子数据灌入（EAI-CUSTOM: coal-eia-report v2 BS3 样例库 MVP）。 (~443 tok)
-- `ontology_lint.py` — Ontology registry lint — §2.2 acceptance checklist, exit 1 on failure. (~1891 tok)
+- `_probe_review_tmp.py` — REVIEW PROBE (temp, delete after): adversarial privacy + schema roundtrip + real header parse. (~1434 tok)
+- `import_eia_samples.py` — EIA 样例实体注册表 → doc_graph eia 域批量导入（EAI-CUSTOM: doc-graph 计划 Task 3; Task4 加 document_id 重入守卫 _already_ingested + --force, bug-3353）. (~3726 tok)
+- `ontology_lint.py` — Ontology registry lint — §2.2 acceptance checklist, exit 1 on failure. (~2111 tok)
 
 ## backend/scripts/bid_seed_samples.py
 
@@ -892,45 +909,38 @@
 
 ## backend/tests/
 
-- `conftest.py` — Test configuration for the backend test suite. (~2830 tok)
-- `test_bank_compile.py` — bank_compile 样例入库工具：脱敏/切片/深度统计/产物确定性（纯函数契约）。 (~11395 tok)
-- `test_bid_materials.py` — 投标资料管理 bid_materials：资质 MinIO 版本库 + 样例台账测试。 (~11241 tok)
-- `test_bid_proposal_scripts.py` — bid-proposal-overall 技能脚本单测(设计文档 D4 测试计划, 任务序列 T1 测试先行)。 (~115980 tok)
-- `test_coal_eia_calc_regression.py` — coal-eia-report v2 T2 CRITICAL 参数对照回归（D5：calc 5 脚本 → Decimal 计算函数重写）。 (~7342 tok)
-- `test_coal_eia_delivery_protocol.py` — coal-eia-report v2 交付协议测试（T7 文件⑦）。 (~3326 tok)
-- `test_coal_eia_report_e2e_planning.py` — coal-eia-report e2e planning_eia 全管线回归（T7 文件④）。 (~6287 tok)
-- `test_coal_eia_report_e2e_underground.py` — coal-eia-report e2e project_eia_underground 回归 + 实体泄漏反测（T7 文件⑤）。 (~3280 tok)
-- `test_coal_eia_report_skill.py` — coal-eia-report SKILL.md v2 结构 + stages/planning_eia.json 接口测试（T7 文件②）。 (~4339 tok)
-- `test_coal_eia_report_v2_replay.py` — coal-eia-report v2 回放测试（T7 文件⑥）。 (~1926 tok)
-- `test_coal_eia_report_v2_scripts.py` — coal-eia-report v2 脚本层子进程参数化测试（T7 文件③）。 (~9530 tok)
-- `test_collab_baseline_sync.py` — 协同写作链审计 B5/B6/B8/B9 修复的回归测试。 (~3217 tok)
-- `test_doc_graph_ingest.py` — doc_graph 入库集成测试——需 extensions 库且 dg_* 表已建; 否则自动 skip. (~1474 tok)
-- `test_doc_graph_mcp.py` — doc_graph MCP server 测试——工具注册与分发（不启动 stdio）. (~350 tok)
-- `test_doc_graph_resolver.py` — doc_graph 消解纯逻辑测试（无 DB）. (~626 tok)
-- `test_doc_graph_schemas.py` — doc_graph 抽取 schema 测试——extra=forbid fail-closed 与交叉引用/谓词角色校验. (~809 tok)
-- `test_doc_graph_tables.py` — doc_graph 表模型元数据测试（无需 DB——只查 Base.metadata）. (~517 tok)
-- `test_docmgr_versions.py` — Tests for personal-doc version history (EAI-CUSTOM C10). (~1920 tok)
-- `test_eia_samples.py` — 样例库 kf_samples CRUD / 批量导入幂等 / 场景过滤测试（EAI-CUSTOM: coal-eia v2 BS3 MVP）。 (~5228 tok)
-- `test_geo_sample_bank_compile.py` — bank_compile / resolve_targets 矿种选基线单元测试（Phase 2）。 (~27708 tok)
-- `test_kf_import_seed.py` — Tests for POST /api/kf/templates/import-seed (EAI-CUSTOM: coal-eia v2 D12). (~3525 tok)
-- `test_kf_samples.py` — 样例库 kf_samples CRUD / 批量导入幂等 / 场景过滤测试（EAI-CUSTOM: coal-eia v2 BS3 MVP）。 (~2097 tok)
-- `test_mcp_client_config.py` — Core behavior tests for MCP client server config building. (~2742 tok)
-- `test_ontology_lint.py` — T7 单测：registry lint 检查器（无 DB，纯模型元数据 + 注册表）. (~608 tok)
-- `test_ontology_mcp.py` — T5 单测：MCP server——7 工具注册 / describe 紧凑预算 / 错误结构化 / 分工话术. (~668 tok)
-- `test_ontology_registry.py` — T2 单测：注册表加载 / 指纹+版本 / 坏 YAML 拒绝（fail-closed）. (~1740 tok)
-- `test_ontology_rest.py` — T6 集成测试：REST 6 端点（HTTP 级，真扩展库）. (~1058 tok)
-- `test_outline_merge.py` — outline_merge 单测: 大纲候选校验(fail-closed)/精准替换/幂等/重签/消费端。 (~5661 tok)
-- `test_pnpm_script.py` — test_runner_prefers_direct_pnpm_and_forwards_arguments, test_runner_uses_corepack_pnpm_from_frontend (~1510 tok)
-- `test_run_manager.py` — Tests for RunManager. (~17975 tok)
+- `test_contract_price_doc_kpi_anchors.py` — v3 规则生态(计划 docs/superpowers/plans/2026-09-19-cpa-table-recognition-three-layer.md Task 9/10): (~4915 tok)
+- `test_contract_price_doc_kpi_anchors.py` — cpa P3 规则生态后端测: docs 列表 KPI 一条 GROUP BY(items_total/items_needs_review) + L4 锚词暂存 merge_suggested_anchors 追加/去重 + _header_word_for_price 反推 + update_item/batch_validate 收割 wiring。 (~450 tok)
+- `test_contract_price_llm_injection.py` — P2 LLM 兜底: run_pipeline_subprocess 从扩展配置读 LLM 三元组注入子进程 (~2397 tok)
+- `test_contract_price_reparse_reocr.py` — reparse 端点把 re_ocr 透传到子进程参数(缓存路径 vs 强制重OCR)。 (~151 tok)
+- `test_contract_price_seed_config.py` — ConfigOut.table_seeds 往返 + load_config 默认注入。 (~415 tok)
+- `test_contract_price_seed_parity.py` — seed 库双份镜像 parity 测试: 技能源真相 ↔ backend 默认注入必须逐字段一致。 (~383 tok)
+- `test_deploy_uv_extras.py` — Regression coverage for production deploy.sh UV_EXTRAS propagation. (~2589 tok)
+- `test_doc_graph_mcp.py` — doc_graph MCP server 测试——工具注册与分发（不启动 stdio）. (~377 tok)
+- `test_doc_graph_resolution_rest.py` — doc_graph 消解 REST 集成测试——需 extensions 库且 dg_* 表已建; 否则自动 skip. (~3177 tok)
+- `test_doc_graph_schemas.py` — doc_graph 抽取 schema 测试——extra=forbid fail-closed 与交叉引用/谓词角色校验. (~1937 tok)
+- `test_doc_graph_service.py` — doc_graph 消解建议打分 + REST 异常映射测试（纯逻辑，无 DB）. (~1078 tok)
+- `test_eia_extract_ontology.py` — 四类目标抽取 golden 测试（extract_ontology, EAI-CUSTOM 2026-09-20）. (~704 tok)
+- `test_gateway_lifespan_shutdown.py` — Regression tests for Gateway lifespan shutdown. (~6571 tok)
+- `test_import_eia_samples.py` — import_eia_samples 转换纯逻辑测试——隐私排除/桶映射/大纲头部解析. (~1364 tok)
+- `test_learnings_importer.py` — learnings importer 测试 — 正典账本格式解析契约(纯函数). (~569 tok)
+- `test_learnings_mcp.py` — learnings MCP server 测试 — 注册/分发/身份绑定(fail-closed), 不启动 stdio. (~722 tok)
+- `test_learnings_patterns.py` — learnings patterns 纯逻辑测试 — 匹配顺序 + 洗数据顺序不变量(eng-review D8/D12). (~720 tok)
+- `test_learnings_service.py` — learnings service 测试 — 资格门槛边界 + 状态机(真库, 未就绪则 skip; 房屋模式). (~1240 tok)
+- `test_learnings_sweeper.py` — learnings sweeper 测试 — 提取纯函数(角色过滤/cap) + 幂等(真库, 未就绪则 skip). (~1659 tok)
+- `test_message_provenance.py` — Neutral message-provenance metadata. (~4790 tok)
+- `test_ontology_graph_views.py` — graph_views 投影纯逻辑测试（游标编解码/节点标签选择/边投影形状）——无 DB. (~3811 tok)
+- `test_ontology_rest.py` — T6 集成测试：REST 6 端点（HTTP 级，真扩展库）. (~1430 tok)
+- `test_personal_outputs.py` — Tests for personal-outputs endpoint and star/share metadata. (~2561 tok)
+- `test_reasoning_evaluate.py` — evaluate 编排测试——host 纯逻辑（monkeypatch facts/store/facade）+ DB-gated 真库冒烟. (~3958 tok)
+- `test_reasoning_rete.py` — Rete facade 前向链语义测试. (~1107 tok)
+- `test_reasoning_rule_registry.py` — 规则注册表 fail-closed 测试（tmp_path 注入目录）. (~3111 tok)
 
 ## backend/tests/e2e/bid/
 
-- `e2e_bid_driver.py` — bid-proposal-overall E2E 压测驱动(bug-2189 转正版; host 侧 stdlib-only, 不进 pytest 默认收集)。 (~7594 tok)
-- `score_checkpoints.py` — bid-proposal-overall E2E 检查点评分器(bug-2189 转正版; host 侧 stdlib-only, 不进 pytest 默认收集)。 (~4005 tok)
 
 ## backend/tests/fixtures/bid_proposal/
 
-- `gen_fixtures.py` — bid-proposal-overall 技能测试 fixture 生成器（设计 D4 测试计划，任务 T1）。 (~4888 tok)
 
 ## backend/tests/fixtures/geological_report/e2e-full/
 
@@ -943,66 +953,86 @@
 
 ## config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~5104 tok)
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~5124 tok)
 
 ## deploy/offline/
 
-- `docker-compose.extensions.yaml` — ============================================================================= (~1760 tok)
-- `extensions_config.json` (~2518 tok)
+- `docker-compose.extensions.yaml` — ============================================================================= (~2824 tok)
 
 ## deploy/offline/brand-assets/
 
 
 ## deploy/offline/config/
 
-- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~5088 tok)
+- `permissions.yaml` — permissions.yaml — 三级权限模型：导航 → 页面 → 操作 (~5109 tok)
 
 ## deploy/offline/nginx/
 
+- `nginx.conf` (~4712 tok)
 
 ## docker/
 
-- `docker-compose-dev.yaml` — DeerFlow Development Environment (~5482 tok)
-- `docker-compose.extensions.yaml` — DeerFlow Extensions Services (~568 tok)
+- `docker-compose-dev.yaml` — DeerFlow Development Environment (~6597 tok)
 
 ## docker/nginx/
 
-- `nginx.conf` (~3714 tok)
-- `nginx.docker.conf` — Nginx configuration for Docker container networking (~2844 tok)
+- `nginx.conf` (~4460 tok)
+- `nginx.docker.conf` — Nginx configuration for Docker container networking (~3074 tok)
 
 ## docs/
 
+- `CAD-操作手册.md` — CAD 功能与技能调用操作手册 (~1953 tok)
 
 ## docs/architecture/
 
 
 ## docs/designs/
 
-- `coal-eia-report-architecture.json` (~1146 tok)
-- `coal-eia-report-v2.md` — Design: coal-eia-report v2 升级设计（多场景环评报告管线化） (~4980 tok)
-- `coal-eia-report-workflow.json` (~1369 tok)
-- `self-improving-loop-port.md` — Design: self-improving 自进化循环移植（零 harness / 零既有代码改动版 capture → dedup → promote → extract） (~2978 tok)
+- `ontostudio-frontend-design-shadcn.html` — OntoStudio 本体工作台 (~16087 tok)
+- `ontostudio-frontend-design.html` — OntoStudio 本体工作台 (~15694 tok)
+- `ontostudio-sidebar-styles.html` — OntoStudio 侧栏风格样张 (~3368 tok)
+- `self-improving-loop-port.md` — Design: self-improving 自进化循环移植（零 harness / 零既有代码改动版 capture → dedup → promote → extract） (~4642 tok)
 
 ## docs/diagrams/
 
 
+## docs/ontology/
+
+- `methodology.md` — 本体方法论与语义层工程——本系统本体模块的设计依据 (~3386 tok)
+- `modeling-lifecycle.md` — 本体建模完整生命周期页面操作流程 (~1318 tok)
+
 ## docs/superpowers/plans/
 
-- `2026-09-06-bank-compile-depth-gate.md` — bank_compile 样例入库 + 深度门 实现计划（Plan 2） (~4759 tok)
-- `2026-09-06-bid-materials-extension.md` — 投标资料管理扩展（bid_materials）实现计划 (~10119 tok)
-- `2026-09-10-bid-skill-split.md` — bid 技能拆分（bid-proposal-overall / bid-technical）实现计划（Plan 3） (~12840 tok)
-- `2026-09-11-bid-materials-frontend.md` — bid-materials 前端页面（投标资料管理：资质库+样例库）实现计划（Plan 4） (~6776 tok)
-- `2026-09-11-ontology-doc-graph.md` — Ontology 文档图谱（doc_graph）Implementation Plan (~12822 tok)
-- `2026-09-12-outline-merge.md` — 大纲自拟结构化（outline_merge）实现计划 (~7628 tok)
+- `2026-09-12-ontology-semantic-map-ui.md` — 本体语义地图页面（Semantica Explorer 高度移植）Implementation Plan (~5189 tok)
+- `2026-09-13-coal-mine-tunneling-regulation-v2.md` — coal-mine-tunneling-regulation v2 管线化实施计划 (~32332 tok)
+- `2026-09-13-ontology-eia-graph-import.md` — Ontology EIA 域图谱导入（Stage A）Implementation Plan (~2949 tok)
+- `2026-09-13-ontology-reasoning-rules.md` — 推理战场（规则底座，现算现返）Implementation Plan (~2205 tok)
+- `2026-09-13-ontology-semantic-map-v2.md` — 语义地图 v2（概览统计 + 实体消解审核）Implementation Plan (~3426 tok)
+- `2026-09-17-contract-price-seed-rules.md` — 合同价格分析 Seed 定位规则 实施计划 (~23383 tok)
+- `2026-09-17-ontostudio-s1-backend.md` — OntoStudio S1（独立后端）Implementation Plan (~1090 tok)
+- `2026-09-17-ontostudio-s2-frontend.md` — OntoStudio S2（独立前端）Implementation Plan (~1064 tok)
+- `2026-09-19-cpa-table-recognition-three-layer.md` — CPA 表格识别三层重构 Implementation Plan (~2436 tok)
+
+## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
+
 
 ## docs/superpowers/reports/
 
 
 ## docs/superpowers/specs/
 
-- `2026-09-06-bid-materials-two-skill-design.md` — Design: 投标资料管理 app + 技能拆分（整体方案/技术卷）+ 样例库与深度门 (~2155 tok)
-- `2026-09-11-ontology-doc-graph-design.md` — Ontology 文档图谱（doc_graph）设计 — 部分借鉴 Semantica (~1271 tok)
-- `2026-09-11-outline-merge-design.md` — Design: 大纲自拟结构化（B1 v1→v2 outline_merge） (~951 tok)
+- `2026-09-12-ontology-semantic-map-ui-design.md` — 本体语义地图页面（Semantica Explorer 高度移植）设计 (~1026 tok)
+- `2026-09-13-coal-mine-tunneling-regulation-v2-design.md` — Design: coal-mine-tunneling-regulation v2 升级设计（掘进作业规程管线化 + 矿井档案层） (~2511 tok)
+- `2026-09-13-gate1-source-routing-design.md` — 门1「来源声明 → 定向收集」交互协议设计 (~757 tok)
+- `2026-09-13-ontology-reasoning-rules-design.md` — 推理战场（规则底座，现算现返）设计 (~645 tok)
+- `2026-09-13-ontology-semantic-map-v2-design.md` — 语义地图 v2（概览统计 + 实体消解审核）设计 (~982 tok)
+- `2026-09-17-contract-price-seed-rules-design.md` — 合同价格分析 — Seed 定位规则 + 提取鲁棒性完善 设计文档 (~2186 tok)
+- `2026-09-17-ontostudio-standalone-design.md` — 本体建模系统独立化（OntoStudio）设计 (~843 tok)
+- `2026-09-18-ontostudio-formal-kernel-design.md` — OntoStudio 形式化内核（图原生重构）设计 (~798 tok)
+- `2026-09-19-cpa-table-recognition-three-layer-design.md` — 合同价格分析 · 表格识别三层重构设计（几何层 + LLM 兜底 + 规则生态） (~1006 tok)
+
+## docs/superpowers/specs/2026-09-13-coal-mine-tunneling-regulation-v2-design.md
+
 
 ## eai-flow-offline-v2.0-m1-rc1-321-g59b703ca-20260610/
 
@@ -1012,7 +1042,7 @@
 
 ## frontend/
 
-- `next.config.js` — Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially useful (~1053 tok)
+- `eslint.config.js` — Declares compat (~854 tok)
 - `package.json` — Node.js package manifest (~1719 tok)
 
 ## frontend/node_modules/.pnpm/prosemirror-model@1.25.6/node_modules/prosemirror-model/dist/
@@ -1080,7 +1110,6 @@
 
 ## frontend/src/app/bid-materials/
 
-- `page.tsx` — BidMaterialsRoute (~206 tok)
 
 ## frontend/src/app/bid-quote/
 
@@ -1096,7 +1125,6 @@
 
 ## frontend/src/app/coal-eia-samples/
 
-- `page.tsx` — CoalEiaSamplesRoute (~201 tok)
 
 ## frontend/src/app/contract-price/
 
@@ -1136,7 +1164,6 @@
 
 ## frontend/src/app/knowledge-factory/
 
-- `page.tsx` — NAV_ITEMS (~1526 tok)
 
 ## frontend/src/app/knowledge/
 
@@ -1149,6 +1176,10 @@
 
 ## frontend/src/app/login/
 
+
+## frontend/src/app/ontology/
+
+- `page.tsx` — 语义地图页面 (EAI-CUSTOM, plan 2026-09-12 ontology-ui Task 3 + semantic-map v2 Task 3). (~4085 tok)
 
 ## frontend/src/app/projects/[id]/scifi/
 
@@ -1182,6 +1213,7 @@
 
 ## frontend/src/app/workspace/
 
+- `workspace-content.tsx` — EAI-CUSTOM: nav-level permission gating for sidebar and settings (~742 tok)
 
 ## frontend/src/app/workspace/agents/[agent_name]/chats/[thread_id]/
 
@@ -1215,7 +1247,6 @@
 
 ## frontend/src/components/landing/
 
-- `header.tsx` — EAI-CUSTOM: EAIFlow branding header — drops upstream MobileNav render and (~1075 tok)
 
 ## frontend/src/components/landing/sections/
 
@@ -1225,31 +1256,39 @@
 
 ## frontend/src/components/workspace/
 
-- `workspace-container.tsx` — LINKABLE_SECTIONS (~1041 tok)
+- `workspace-nav-chat-list.tsx` — WorkspaceNavChatList (~1272 tok)
 
 ## frontend/src/components/workspace/agents/
 
 
 ## frontend/src/components/workspace/artifacts/
 
-- `artifact-file-detail.tsx` — WRITE_FILE_PREVIEW_REFRESH_INTERVAL_MS (~7432 tok)
-- `artifact-file-preview.tsx` — ArtifactPreviewError (~2436 tok)
+
+## frontend/src/components/workspace/capabilities/
+
+- `skill-gallery.tsx` — SkillExportDialog — renders modal (~3867 tok)
 
 ## frontend/src/components/workspace/channels/
 
 
 ## frontend/src/components/workspace/chats/
 
-- `chat-page.tsx` — ChatPage (~7026 tok)
 
 ## frontend/src/components/workspace/citations/
 
 
 ## frontend/src/components/workspace/messages/
 
+- `message-list-item.tsx` — Custom image component that handles artifact URLs (~7124 tok)
+
+## frontend/src/components/workspace/projects/
+
+- `project-documents-section.tsx` — Documents tab (spec §9): the curated shelf (upload + drag-drop, rows with (~9140 tok)
 
 ## frontend/src/components/workspace/settings/
 
+- `settings-dialog.tsx` — SettingsPageLoading — renders modal (~2436 tok)
+- `skill-settings-page.tsx` — SkillSettingsPage (~2414 tok)
 
 ## frontend/src/content/en/
 
@@ -1295,7 +1334,6 @@
 
 ## frontend/src/core/streamdown/
 
-- `latexNormalize.ts` — Normalize LaTeX so KaTeX renders unicode superscripts/degrees that it otherwise can't. (~968 tok)
 
 ## frontend/src/core/threads/
 
@@ -1308,7 +1346,6 @@
 
 ## frontend/src/extensions/api/
 
-- `index.ts` — API routes: GET (2 endpoints) (~16261 tok)
 
 ## frontend/src/extensions/app-center/
 
@@ -1318,7 +1355,6 @@
 
 ## frontend/src/extensions/app-center/config/
 
-- `icons.ts` — Maps DB-stored icon_name strings to Lucide React components. (~355 tok)
 
 ## frontend/src/extensions/app-center/hooks/
 
@@ -1328,11 +1364,10 @@
 
 ## frontend/src/extensions/bid-materials/
 
-- `bid-materials-api.ts` — API routes: GET (1 endpoints) (~2573 tok)
-- `BidMaterials.tsx` — BidMaterials (~343 tok)
-- `index.ts` — EAI-CUSTOM (Plan 4): 投标资料管理——应用中心独立应用（资质版本库+标书样例台账）。 (~56 tok)
-- `QualificationLibrary.tsx` — PAGE_SIZE — renders table (~8448 tok)
-- `SampleLibrary.tsx` — PAGE_SIZE — renders table (~7321 tok)
+- `bid-materials-api.ts` — API routes: GET (1 endpoints) (~3156 tok)
+- `BidMaterials.tsx` — BidMaterials (~422 tok)
+- `OutlineCandidates.tsx` — THREAD_ID_STORAGE_KEY — renders table (~2253 tok)
+- `QualificationLibrary.tsx` — PAGE_SIZE — renders table (~8537 tok)
 
 ## frontend/src/extensions/bid-quote/
 
@@ -1360,18 +1395,24 @@
 
 ## frontend/src/extensions/collab/
 
-- `BlockNoteEditor.tsx` — Optional list of block IDs to show in the outline panel. (~8546 tok)
-- `OnlineUsers.tsx` — OnlineUsers (~485 tok)
-- `useVersions.ts` — Exports useVersions (~744 tok)
 
 ## frontend/src/extensions/collab/__tests__/
 
 
 ## frontend/src/extensions/contract-price/
 
+- `api.ts` — API client for the contract-price-analysis management API. (~2076 tok)
+- `hooks.ts` — TanStack Query hooks for the contract-price-analysis API. (~2648 tok)
+- `types.ts` — TypeScript types for the contract-price-analysis API (v2). (~1298 tok)
 
 ## frontend/src/extensions/contract-price/components/
 
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~8307 tok)
+- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~11231 tok)
+- `SeedEditorDrawer.tsx` — Seed 规则编辑抽屉: 7 角色锚点编辑(候选=OCR 表头单元格 + 自由输入)。 (~2057 tok)
+- `SeedRulesCard.tsx` — Seed 规则卡片列表: 展示/新建/编辑/删除 + 命中统计(parse_meta.matched_seeds 聚合)。 (~1264 tok)
+- `SettingsView.tsx` — 配置页 v3: seed 规则库(主) + 定时任务 + 聚类高级参数(折叠)。 (~1669 tok)
+- `UnmatchedTablesDrawer.tsx` — 未匹配表抽屉: 逐表展示页码/表名/OCR表头 → "生成规则草稿"(打开 SeedEditorDrawer) (~1480 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
@@ -1393,11 +1434,18 @@
 
 ## frontend/src/extensions/docmgr/
 
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~28230 tok)
+- `PersonalBlockNoteEditor.tsx` — Anchor for agent operation targeting — text→block mapping. (~9461 tok)
+- `usePersonalOutputs.ts` — Exports PersonalDocFile, PersonalThreadOutput, usePersonalOutputs (~1453 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
 
 ## frontend/src/extensions/docmgr/extensions/
+
+- `DetailsBlock.tsx` — EAI-CUSTOM (计算书): <details><summary> 折叠块——给排水计算书技能 (~601 tok)
+
+## frontend/src/extensions/docmgr/extensions/DetailsBlock.tsx
 
 
 ## frontend/src/extensions/docmgr/tiptap/
@@ -1405,14 +1453,14 @@
 
 ## frontend/src/extensions/docmgr/utils/
 
+- `detailsMarkdown.ts` — markdown 分段：普通 markdown 文本 或 一个 details 折叠块 (~1174 tok)
+- `mathBlocks.ts` — Block types whose inline content may contain $...$ / $$...$$ math. (~2954 tok)
+
+## frontend/src/extensions/docmgr/utils/detailsMarkdown.ts
+
 
 ## frontend/src/extensions/eia-samples/
 
-- `extract-dialog.tsx` — SOURCE_KIND_OPTIONS — renders modal (~2794 tok)
-- `index.ts` — EAI-CUSTOM: 煤矿环评报告样例库——应用中心独立应用（2026-09 自 knowledge-factory 样例库 tab 迁出）。 (~62 tok)
-- `quality-panel.tsx` — RESULT_BADGE_CLASS (~2474 tok)
-- `sample-library-api.ts` — API routes: GET (1 endpoints) (~2144 tok)
-- `SampleLibrary.tsx` — PAGE_SIZE — renders table (~6189 tok)
 
 ## frontend/src/extensions/geo-samples/
 
@@ -1428,17 +1476,9 @@
 
 ## frontend/src/extensions/knowledge-factory/
 
-- `index.ts` (~348 tok)
-- `KnowledgeFactoryPage.tsx` — KnowledgeFactoryPage (~644 tok)
-- `sample-library-api.ts` — API routes: GET (1 endpoints) (~1518 tok)
-- `SampleLibrary.tsx` — PAGE_SIZE — renders table (~5520 tok)
-- `TabNavigation.tsx` — NAV_ITEMS (~1158 tok)
-- `TemplateEditor.tsx` — EAI-CUSTOM: D12 seed 导入后新模板的临时高亮 id (~20478 tok)
-- `types.ts` — 直接上传的 Word/PDF 文件 ID（优先用 doc_parser 解析） (~6020 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/
 
-- `ImportSeedTemplateModal.tsx` — 递归统计章节树：章数=顶层节点数，节数=叶节点数，总节点数=扁平总数 (~3298 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/scraper/
 
@@ -1452,6 +1492,40 @@
 ## frontend/src/extensions/license/
 
 
+## frontend/src/extensions/ontology/
+
+- `explorerDataSource.ts` — Explorer 取数接缝实现 (EAI-CUSTOM, quality-review Fix 1, plan 2026-09-12 ontology-ui). (~1216 tok)
+- `graphSnapshot.ts` — graphStore 单例 → 纯数组快照 (EAI-CUSTOM, plan semantic-map v2 Task 3). (~366 tok)
+- `stats.ts` — 语义地图概览统计纯函数 (EAI-CUSTOM, plan semantic-map v2 Task 3 Step 3.1). (~1382 tok)
+- `themeAdapter.ts` — 画布主题适配——运行时读 globals.css 变量驱动 Sigma (EAI-CUSTOM, plan 2026-09-12 Task 2 Step 2.6). (~1031 tok)
+
+## frontend/src/extensions/ontology/__tests__/
+
+- `api-adapter.test.ts` — Ontology 语义地图数据适配层契约测试 (EAI-CUSTOM, plan 2026-09-12 Task 2 Step 2.7). (~1818 tok)
+- `resolution-api.test.ts` — doc-graph 实体消解 REST 适配层契约测试 (EAI-CUSTOM, plan semantic-map v2 Task 4 Step 4.4). (~1612 tok)
+
+## frontend/src/extensions/ontology/api/
+
+- `ontology-graph-api.ts` — Ontology 语义地图数据适配层 (EAI-CUSTOM, plan 2026-09-12 Task 2 Step 2.4). (~1952 tok)
+
+## frontend/src/extensions/ontology/components/
+
+- `DetailPanel.tsx` — 详情面板 (EAI-CUSTOM, plan 2026-09-12 ontology-ui Task 3 Step 3.4). (~2106 tok)
+- `OntologyGraphCanvas.tsx` — 语义地图图画布挂载层 (EAI-CUSTOM, plan 2026-09-12 ontology-ui Task 3). (~3041 tok)
+- `OverviewPanel.tsx` — 语义地图概览面板 (EAI-CUSTOM, plan semantic-map v2 Task 3 Step 3.4). (~2809 tok)
+- `RegistryPanel.tsx` — Registry 面板 (EAI-CUSTOM, plan 2026-09-12 ontology-ui Task 3 Step 3.3). (~971 tok)
+- `ResolutionPanel.tsx` — 实体消解面板 (EAI-CUSTOM, plan semantic-map v2 Task 4 Step 4.2). (~5087 tok)
+
+## frontend/src/extensions/ontology/explorer/
+
+- `edgePairKeys.ts` — Vendored from semantica-agi/semantica@7057387775ecdf74c14e38d0067fd8e1267eaaf8 explorer/src/store/ed (~140 tok)
+- `graphAnalytics.ts` — Vendored from semantica-agi/semantica@7057387775ecdf74c14e38d0067fd8e1267eaaf8 explorer/src/workspac (~7605 tok)
+- `GraphCanvas.tsx` — Vendored from semantica-agi/semantica@7057387775ecdf74c14e38d0067fd8e1267eaaf8 explorer/src/workspac (~26280 tok)
+- `LICENSE-SEMANTICA-MIT` (~285 tok)
+- `README.md` — Project documentation (~1638 tok)
+- `smallGraphLayout.ts` — Produce a compact deterministic layout for small graphs. (~1434 tok)
+- `useLoadGraph.ts` — Surface the server's `detail` message (e.g. auth/setup guidance) on non-OK responses. (~7321 tok)
+
 ## frontend/src/extensions/output/
 
 
@@ -1463,7 +1537,6 @@
 
 ## frontend/src/extensions/project/
 
-- `api.ts` — Get project stats (file count, doc size). Falls back to getFiles count. (~2823 tok)
 
 ## frontend/src/extensions/project/components/
 
@@ -1494,6 +1567,7 @@
 
 ## frontend/src/extensions/shell/
 
+- `Sidebar.tsx` — If set, this nav item is hidden when the license module is not authorized (~2497 tok)
 
 ## frontend/src/extensions/spare-parts/
 
@@ -1533,6 +1607,7 @@
 
 ## frontend/src/styles/
 
+- `globals.css` — Styles: 66 rules, 159 vars (~10547 tok)
 
 ## frontend/tests/e2e/
 
@@ -1554,6 +1629,7 @@
 
 ## frontend/tests/unit/components/workspace/
 
+- `lazy-panels.test.ts` — Declares FRONTEND_ROOT (~616 tok)
 
 ## frontend/tests/unit/components/workspace/messages/
 
@@ -1578,13 +1654,14 @@
 
 ## frontend/tests/unit/docmgr/
 
+- `detailsMarkdown.test.ts` — Declares CALC_MD (~1032 tok)
 
 ## frontend/tests/unit/extensions/
 
 
 ## frontend/tests/unit/extensions/bid-materials/
 
-- `api.test.ts` — API routes: GET (2 endpoints) (~2278 tok)
+- `api.test.ts` — API routes: GET (2 endpoints) (~2967 tok)
 
 ## frontend/tests/unit/extensions/bid-quote/
 
@@ -1597,6 +1674,12 @@
 
 ## frontend/tests/unit/extensions/geo-samples/
 
+
+## frontend/tests/unit/extensions/ontology/
+
+- `api-adapter.test.ts` — EAI-CUSTOM: 镜像引入 canonical 测试——rstest 只发现 tests/unit/**（AGENTS.md 约定 (~74 tok)
+- `overview-stats.test.ts` — 语义地图概览统计纯函数测试 (EAI-CUSTOM, plan semantic-map v2 Task 3 Step 3.2). (~1129 tok)
+- `resolution-api.test.ts` — EAI-CUSTOM: 镜像引入 canonical 测试——rstest 只发现 tests/unit/**（AGENTS.md 约定 (~76 tok)
 
 ## frontend/tests/unit/extensions/project/
 
@@ -1615,23 +1698,163 @@
 
 ## mcp-server/cad-suite/
 
-- `Dockerfile` — Docker container definition (~813 tok)
-- `supervisor.py` — CAD Suite supervisor — run the three CAD services inside one container. (~638 tok)
 
 ## mcp-server/ocr-service/
 
+- `Dockerfile` — Docker container definition (~661 tok)
+- `ocr_engine.py` — Scanned-contract OCR engine v2 — rapid-layout + rapid-table (Phase 0). (~4538 tok)
+- `schemas.py` — Request/response models for the eai-flow-ocr service. (~388 tok)
+- `server.py` — eai-flow-ocr — FastAPI service wrapping OcrEngine. (~654 tok)
 
 ## mcp-server/text-to-cad-mcp/
 
-- `requirements.txt` — Python dependencies (~93 tok)
-- `server.py` — /.cad_thread_pin"), (~7464 tok)
 
 ## mcp-server/text-to-cad-mcp/ (2026-09-11 扩容)
 
 
+## ontostudio/backend/
+
+- `_patch_load_ontology.py` — 临时补丁：service.load_ontology + formal 端点（用后即删） (~1568 tok)
+- `.dockerignore` — 构建上下文瘦身 + 防 Windows .venv 二进制混入 Linux 镜像 (~70 tok)
+- `Dockerfile` — Docker container definition (~430 tok)
+- `probe_p4.py` — pyshacl 环境探针（临时）：官方示例是否触发违规。 (~414 tok)
+- `probe_perf.py` — owlrl 性能探针（临时）：axiomatic_triples/datatype_handling 开销对比。 (~319 tok)
+- `pyproject.toml` — OntoStudio 本体建模系统独立后端——ontology 统一语义层 + doc_graph 实体消解（自 deer-flow gateway 迁出） (~281 tok)
+- `ruff.toml` (~55 tok)
+
+## ontostudio/backend/.dockerignore (~20 行)
+
+
+## ontostudio/backend/Dockerfile (~60 行)
+
+
+## ontostudio/backend/app/
+
+- `__init__.py` — OntoStudio 独立后端应用层. (~48 tok)
+- `auth.py` — OntoStudio 鉴权 — HS256 JWT 验签 + v2 授权委托（gateway /api/permissions/me 反查,TTL 缓存,fail-closed;S2-T3）. (~4400 tok)
+- `config.py` — 扩展库连接配置（独立服务本地最小切片）. (~715 tok)
+- `db.py` — SQLAlchemy declarative base（独立服务本地）. (~144 tok)
+- `main.py` — OntoStudio 本体建模系统独立后端. (~1496 tok)
+- `sqlguard.py` — 只读 SQL 守卫 + 连接 URL 构造（独立服务本地单一真源）. (~570 tok)
+
+## ontostudio/backend/app/doc_graph/
+
+- `routers.py` — doc_graph 实体消解 REST 路由——pending / suggestions / merge / unmerge（写侧审核门）. (~1274 tok)
+- `tables.py` — doc_graph 表模型（dg_* 前缀, extensions 库; 过渡期 gateway create_all 建表, Task 3 起本服务接管）. (~1348 tok)
+
+## ontostudio/backend/app/ontology/
+
+- `__init__.py` — Ontology 统一语义层（市场/分析数据域，只读投影）. (~115 tok)
+- `connectors.py` — Ontology 双 connector（postgres_ext 直连 / data_source 托管连接）. (~1225 tok)
+- `formal.py` — 形式化内核 REST 服务面（kernel P5）——/formal/* 四端点. (~596 tok)
+- `registry_content.py` — registry 内容管理端点（建模器 MVP 后端, EAI-CUSTOM 2026-09-20）——读 / 校验 / 原子写+热重载. (~2008 tok)
+- `registry.py` — Ontology 注册表加载器（YAML → 类型化注册表）. (~2424 tok)
+- `routers.py` — Ontology 语义层 REST 路由 — 6 核心端点（pytest HTTP 集成测试载体）. (~1695 tok)
+- `schemas.py` — Ontology 注册表 pydantic 模型（YAML → 类型化声明）. (~1515 tok)
+
+## ontostudio/backend/app/ontology/kernel/
+
+- `__init__.py` — OntoStudio 形式化内核（图原生重构, spec 2026-09-18-ontostudio-formal-kernel-design.md）. (~57 tok)
+- `compile.py` — registry → OWL 本体图编译（kernel P1）. (~1868 tok)
+- `conformance.py` — GB/T 48000.3—2026 符合性套件（kernel P4）——测试即合规证据（spec §5）. (~1436 tok)
+- `export.py` — 标准序列化导出（kernel P1）——国标 GB/T 48000.3 §5.3 原生满足. (~189 tok)
+- `graph_ops.py` — 断言图写路径与运营语义（kernel P2）. (~2883 tok)
+- `infer.py` — OWL 2 RL 闭包推理（kernel P3）——graph:entailment 物化. (~1528 tok)
+- `iri.py` — IRI 策略（国标 GB/T 48000.3 §5.4：IRI = 命名空间 + 本地标识符）. (~544 tok)
+- `loader.py` — SQL → 三元组装载器（kernel P2）——doc_graph 测试数据入图，兼任主系统桥接器. (~1609 tok)
+- `rules.py` — SPARQL CONSTRUCT 派生规则（kernel P3）——Rete 在 OntoStudio 的替代. (~651 tok)
+- `rules.yaml` — OntoStudio kernel CONSTRUCT 派生规则（spec 2026-09-18 §3） (~428 tok)
+- `service.py` — kernel 服务门面（P5）——REST/MCP 统一入口. (~1190 tok)
+- `store.py` — pyoxigraph 嵌入式三元组库封装（kernel P1）——图真源. (~781 tok)
+- `validate.py` — SHACL 约束校验（kernel P4）——写路径闭世界校验 + 结构化报告. (~1656 tok)
+- `vocab.py` — kernel 跨域词汇表（kernel P2）. (~558 tok)
+
+## ontostudio/backend/app/ontology/registry/
+
+- `eia.yaml` — 环评域（eia）——样例报告四类抽取目标的建模载体（kernel P5） (~1768 tok)
+
+## ontostudio/backend/scripts/
+
+- `import_eia_samples.py` — EIA 样例实体注册表 → doc_graph eia 域批量导入（EAI-CUSTOM: doc-graph 计划 Task 3）. (~3735 tok)
+- `ontology_lint.py` — Ontology registry lint — §2.2 acceptance checklist, exit 1 on failure. (~2100 tok)
+
+## ontostudio/backend/tests/
+
+- `conftest.py` — 共享测试装置（S1 Task 2 新增）: JWT 测试 secret + 测试 token 签发工具. (~624 tok)
+- `test_doc_graph_resolution_rest.py` — doc_graph 消解 REST 集成测试——需 extensions 库且 dg_* 表已建; 否则自动 skip. (~3076 tok)
+- `test_doc_graph_tables.py` — doc_graph 表模型元数据测试（无需 DB——只查 Base.metadata）. (~506 tok)
+- `test_eia_four_targets_schema.py` — EiaExtraction 四类目标域表验收（ontostudio doc_graph schema, EAI-CUSTOM 2026-09-20）. (~970 tok)
+- `test_extract_ontology.py` — 四类目标抽取 golden 测试（extract_ontology, EAI-CUSTOM 2026-09-20）. (~719 tok)
+- `test_kernel_p1.py` — kernel P1 golden 测试（spec 2026-09-18 §6 P1）：编译/序列化/IRI/存储. (~2214 tok)
+- `test_kernel_p2.py` — kernel P2 golden 测试：写路径/运营语义（spec §6 P2）. (~2730 tok)
+- `test_kernel_p3.py` — kernel P3 golden 测试：owlrl 闭包 + CONSTRUCT 派生（spec §6 P3 验收）. (~1694 tok)
+- `test_kernel_p4.py` — kernel P4 golden 测试：SHACL 校验 + 国标 GB/T 48000.3 符合性套件（spec §5/§6 P4）. (~1540 tok)
+- `test_kernel_p5.py` — kernel P5 golden 测试：eia 四类抽取目标 demo + formal REST 服务面 + 性能烟囱. (~2302 tok)
+- `test_main.py` — S1-T2 验收 + S2-T3 v2 授权委托 7 测试（FakeAsyncClient: is_admin/permissions/403/不可达/TTL 缓存/零网络）. (~4300 tok)
+- `test_ontology_connectors.py` — T4 单测：双 connector——只读守卫单一真源 / same() 判定 / 断连显式 / LIMIT 共存. (~932 tok)
+- `test_ontology_lint.py` — T7 单测：registry lint 检查器（无 DB，纯模型元数据 + 注册表）. (~754 tok)
+- `test_ontology_rest.py` — T6 集成测试：REST 6 端点（HTTP 级，真扩展库）. (~1383 tok)
+- `test_registry_content.py` — registry 内容管理端点测试（建模器 MVP 后端, EAI-CUSTOM 2026-09-20）. (~900 tok)
+
+## ontostudio/frontend/
+
+- `.dockerignore` — OntoStudio frontend build context exclusions (S2 Task 3, EAI-CUSTOM). (~62 tok)
+- `.gitignore` — Git ignore rules (~11 tok)
+- `Dockerfile` — Docker container definition (~365 tok)
+- `index.html` — OntoStudio · 本体工作台 (~83 tok)
+- `nginx-frontend.conf` — OntoStudio frontend SPA — nginx:alpine 运行时配置（S2 Task 3, EAI-CUSTOM）。 (~246 tok)
+- `package.json` — Node.js package manifest (~366 tok)
+- `tsconfig.json` — TypeScript configuration (~227 tok)
+- `tsconfig.node.json` (~101 tok)
+- `vite.config.ts` — Vite config——base:/ontostudio/（S2-T3 子路径部署,dev 同生效:3010/ontostudio/）+ 双 proxy. (~700 tok)
+
+## ontostudio/frontend/ (S2 Task 1, 2026-09-18)
+
+- `src/components/` — OntologyPage(page.tsx 适配:去 ShellLayout/next-dynamic)+5 面板组件+bid-quote 4 风格组件(复制件带头注释) (~4500 tok)
+- `src/explorer/` — vendored Semantica 24 代码文件+LICENSE+README，字节级零改动（diff 验证）；`process.env.NODE_ENV`×3 由 vite define 承接 (~15000 tok)
+- `src/lib/{api,permissions,utils}.ts` — 独立 authFetch(BASE=/api/ontostudio/api/extensions,CSRF+detail 错误语义对齐主 client.ts)；本地 usePermission(GET /api/permissions/me,fail-open,401→无权限空态不跳转)；cn() (~600 tok)
+
+## ontostudio/frontend/src/
+
+- `App.tsx` — OntoStudio standalone frontend app shell (S2 Task 1 → 9-page skeleton, EAI-CUSTOM). (~93 tok)
+- `index.css` — Styles: 5 rules, 82 vars (~1179 tok)
+- `main.tsx` — OntoStudio standalone frontend entry (S2 Task 1, EAI-CUSTOM). (~212 tok)
+- `vite-env.d.ts` — / <reference types="vite/client" /> (~90 tok)
+
+## ontostudio/frontend/src/api/
+
+- `formal-api.ts` — 形式化内核 /formal/* 数据适配层（kernel P5 服务面, EAI-CUSTOM）. (~758 tok)
+- `registry-api.ts` — registry 内容管理适配层（建模器页数据源, EAI-CUSTOM）. (~533 tok)
+
+## ontostudio/frontend/src/components/
+
+- `OntologyCanvas.tsx` — 本体建模器 关系图画布（React Flow, EAI-CUSTOM 2026-09-20）. (~1486 tok)
+- `OntologyPage.tsx` — 语义地图页面 (EAI-CUSTOM, plan 2026-09-12 ontology-ui Task 3 + semantic-map v2 Task 3). (~3800 tok)
+
+## ontostudio/frontend/src/layout/
+
+- `AppShell.tsx` — OntoStudio 应用外壳（EAI-CUSTOM）：侧栏导航 + hash 路由（零新依赖）。 (~2140 tok)
+
+## ontostudio/frontend/src/lib/
+
+- `api.ts` — OntoStudio 独立前端 API Client (S2 Task 1, EAI-CUSTOM). (~808 tok)
+- `permissions.ts` — 本地权限门 (S2 Task 1, EAI-CUSTOM). (~679 tok)
+- `utils.ts` — cn() — 从主系统 frontend/src/lib/utils.ts 提取（S2 Task 1）。 (~81 tok)
+
+## ontostudio/frontend/src/pages/
+
+- `EntitiesPage.tsx` — 03 实体库骨架页（EAI-CUSTOM）：过滤条 + 实体表 + 分页（静态示例数据）。 (~1522 tok)
+- `ExportPage.tsx` — 09 导出互操作（EAI-CUSTOM）——真实数据源：GET /ontology/formal/export。 (~1726 tok)
+- `IngestPage.tsx` — 08 抽取导入骨架页（EAI-CUSTOM）：投放区 + 置信度直方图 + 抽取任务表 + 证据链引文（静态示例）。 (~1582 tok)
+- `ModelerPage.tsx` — 05 本体建模器（EAI-CUSTOM）——真实数据 + 结构化 CRUD. (~2058 tok)
+- `ModelerPage2.tsx` — 05 本体建模器（EAI-CUSTOM）——真实数据 + 结构化 CRUD. (~2053 tok)
+- `ReasoningPage.tsx` — 06 推理工作台骨架页（EAI-CUSTOM）：闭包统计 + CONSTRUCT 规则表 + SPARQL 预览 (~1856 tok)
+- `shared.tsx` — 骨架页共用件（EAI-CUSTOM）：页头（菜单图标 + 条款号 + 标题 + 描述 + 动作区）与基础芯片。 (~828 tok)
+- `ValidationPage.tsx` — 07 校验中心（EAI-CUSTOM）——真实数据源：GET /ontology/formal/validate。 (~1480 tok)
+
 ## scripts/
 
-- `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~9482 tok)
+- `offline-export.sh` — offline-export.sh - Export DeerFlow as a self-contained offline deployment package (~9602 tok)
 
 ## scripts/tests/
 
@@ -1710,113 +1933,117 @@
 
 ## skills/public/bambu-labs/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~1811 tok)
 
 ## skills/public/bid-proposal-overall/
 
-- `SKILL.md` — 投标整体方案技能(bid-proposal-overall, 原 bid-proposal-writing 商务主线) (~2699 tok)
 
 ## skills/public/bid-proposal-overall/references/
 
-- `build-overall.md` — 阶段4: 整体方案册集 build(--docs overall)分组执行指南 (~472 tok)
-- `responses.schema.json` (~1348 tok)
-- `stage0-2-intake-extract.md` — 阶段0-2: 输入受理 → ingest → extract → 确认门1(分组执行指南) (~1867 tok)
 
 ## skills/public/bid-proposal-overall/scripts/
 
-- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 交付渲染(无 LLM)。 (~21481 tok)
-- `outline_merge.py` — outline_merge——大纲自拟结构化(B1 v2, spec 2026-09-11-outline-merge-design)。 (~3622 tok)
-- `progress.py` — bid-proposal-overall v4 — progress.py：册/章级进度状态机(阶段4a 控制器)。 (~4922 tok)
-- `snapshot.py` — 投标方案编写技能·进度快照(project_snapshot.json 确定性落盘, 无 LLM)。 (~2493 tok)
 
 ## skills/public/bid-proposal-writing/
 
 
 ## skills/public/bid-proposal-writing/references/
 
-- `responses.schema.json` (~1336 tok)
-- `tech_response_prompt.md` — 技术响应生成 prompt 模板(tech_response_prompt.md) (~1056 tok)
 
 ## skills/public/bid-proposal-writing/scripts/
 
-- `bank_compile.py` — bank_compile——投标样例入库编译器(v4 WP-2/G1, 离线一键产全部衍生物)。 (~6920 tok)
-- `booklets.py` — 册规划与索引卷渲染(v4 WP-1): 页数估算/贪心切册/册命名/索引卷——纯函数无 IO。 (~1826 tok)
-- `build_output.py` — build_output.py — 投标方案编写技能·阶段4 交付渲染(无 LLM)。 (~21426 tok)
-- `responses.py` — responses.py — 投标方案编写技能·阶段4a 技术响应候选的确定性校验 + 合并(无 LLM)。 (~7492 tok)
 
 ## skills/public/bid-quote-analysis/
 
 
 ## skills/public/bid-technical/
 
-- `SKILL.md` — 投标技术卷技能(bid-technical, 纯编排——脚本 canonical 在 bid-proposal-overall) (~1310 tok)
 
 ## skills/public/bid-technical/references/
 
-- `build-technical.md` — 阶段B: 技术卷编制指南(供源级联响应生成 → progress 章门 → build --docs technical) (~2006 tok)
 
 ## skills/public/bid-technical/references/tech_outline_packs/
 
-- `README.md` — Project documentation (~293 tok)
 
 ## skills/public/bid-technical/scripts/
 
-- `bank_compile.py` — bank_compile——投标样例入库编译器(v4 WP-2/G1, 离线一键产全部衍生物)。 (~8786 tok)
 
 ## skills/public/cad-dxf/
 
-- `SKILL.md` — 注意:不要添加 allowed-tools。任何 enabled skill 声明 allowed-tools 会触发 (~862 tok)
 
 ## skills/public/cad-modeling/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2339 tok)
 
 ## skills/public/cad-urdf/
 
-- `requirements.txt` — Python dependencies (~113 tok)
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2365 tok)
 
 ## skills/public/coal-eia-report/
 
-- `SKILL.md` — NOTE: allowed-tools removed 2026-09-06. Declaring allowed-tools on ANY enabled skill (~5266 tok)
 
 ## skills/public/coal-eia-report/references/
 
-- `consistency_contracts.json` (~5704 tok)
-- `formulas.json` (~3508 tok)
 
 ## skills/public/coal-eia-report/references/ (T4 四件套, 2026-09-06)
 
 
 ## skills/public/coal-eia-report/references/depth_targets/
 
-- `project_eia_underground.json` — 深度基线：ch5 实测锚点 33,862 字符（月儿湾走查）×0.6 折减=20,300，其余 19 章保守经验地板，二期 calibrate 校准。 (~421 tok)
 
 ## skills/public/coal-eia-report/references/stages/
 
-- `post_eia.json` — coal-eia v2 二期 stage（MEDIUM n=2 姊妹互证，防同矿系过拟合标注保留）：前言 ch0+17 章 16 共核+可选符合性 ch3；后评价语义反转（章名「后评价」/预测节=原环评预测验证）+核增后分析条件节；76 节；表单 25 族（新增 post_verification 原环评预测vs实测对比账族=XS19 真源，measure_effectiveness 跨 stage reuse tracking）；formula-free（后评价不重跑数值模型实证）；depth_targets=白音华二号 fulltext 逐章字符实测×0.6；四验证全过（PASS 503 assertions）。 (~28000 tok)
-- `project_eia_openpit.json` — coal-eia v2 二期 stage（HIGH n=5）：概述 ch0+19 章（生态@5 居首 5/5、0 沉陷；爆破 ch12=data 开关条件章 2/5；选址 ch14=新建必备）85 节；表单 28 族（新增 openpit_engineering 露天采剥族，余 reuse planning）；depth_targets=3 样本 TOC 章页距实测×843 字/页×0.6；四验证全过（init rc=0/deps LINT_CLEAN/seed selfcheck PASS 562 assertions）。 (~26000 tok)
-- `project_eia_underground.json` — coal-eia v2 第二 stage 定稿：概述+4 前置章+13 要素章（沉陷@5 八节按走查逐节落）+选址（新建必备/改扩建 ABSENT）+总量控制（可选）+结论@19（投影章）；97 节；表单 34 族（新增 9+扩展 4，其余标 reuse）；改扩建双轨开关 variant_switch=project_kind；四验证全过（init rc=0/manifest+deps LINT_CLEAN/seed selfcheck PASS 629 assertions）。 (~35884 tok)
-- `tracking_eia.json` — coal-eia v2 二期 stage（LOW-MEDIUM n=1 淖毛湖，单样本过拟合标注保留）：11 章跟踪型骨架（无 ch0；实施落实/演变趋势/对比评估有效性/后续预测/措施优化/清洁生产/管理体系/公众/结论）47 节；表单 26 族（新增 measure_effectiveness 措施有效性验证族=XS20 真源）；沉陷公式仅后续井工矿点+capacity 双容量冻结；depth_targets=淖毛湖 TOC 章页距实测×875 字/页×0.6；四验证全过（PASS 316 assertions）。 (~22000 tok)
 
 ## skills/public/coal-eia-report/scripts/
 
-- `_smoke_t1b.py` — _smoke_t1b.py — coal-eia-report v2 T1 第二切片冒烟测试（临时，可删）。 (~6731 tok)
-- `build_output.py` — coal-eia-report v2 — build_output.py：单次原子组装（步骤5–7）+ 章门（两层模型）。 (~12093 tok)
-- `chapter_planner.py` — coal-eia-report v2 — chapter_planner.py：节清单 manifest（v3 章带节子表+扁平节索引）+ deps 节级依赖清单编译（owners/consumers 反向索引+孤儿合约/悬空槽位 lint）+ impacted 节级反查。 (~5100 tok)
-- `consistency.py` — coal-eia-report v2 — consistency.py：四类合约机器校验（步骤7）+ 环评合约注册表门（T1b）。 (~9921 tok)
-- `formula_runner.py` — coal-eia-report v2（T2 重写） — formula_runner.py：冻结计算层（步骤2，门2 的数据面）。 (~15976 tok)
-- `ingest.py` — coal-eia-report v2 (T1 副本——geo 逻辑原样，见 docs/designs/coal-eia-report-v2.md 两层模型改造点清单) — ingest.py：data (~10144 tok)
-- `mapping.py` — coal-eia-report v2 — mapping.py：门 1 前章树核对（D6 章树绑定协议 × D12 双源归一）。 (~2508 tok)
-- `progress.py` — coal-eia-report v2 — progress.py：两层状态机（章级门禁 × 节级派发，步骤4 控制器）。 (~9217 tok)
-- `seed_gen.py` — coal-eia-report v2 — seed_gen.py：stage JSON → KF 模板 seed 单向生成（D12 章树供给）。 (~4369 tok)
+- `build_output.py` — coal-eia-report v2 — build_output.py：单次原子组装（步骤5–7）+ 章门（两层模型）。 (~12202 tok)
 
 ## skills/public/coal-eia-report/scripts/ (v2 T1 切片, 2026-09-06)
 
 
 ## skills/public/coal-eia-report/scripts/tests/
 
-- `test_ingest_bug3229.py` — bug-3229 回归测试：预测链纪律（参数未定案，预测结果不得落盘）。 (~1888 tok)
+
+## skills/public/coal-mine-tunneling-regulation/
+
+- `SKILL.md` — NOTE: 不要在此声明 allowed-tools。cerebrum bug-186：技能声明 allowed-tools 会以声明集∪4 框架内建 (~2029 tok)
+
+## skills/public/coal-mine-tunneling-regulation/references/
+
+- `consistency_contracts.json` (~2249 tok)
+- `data_expectations.json` (~985 tok)
+- `formulas.json` (~1584 tok)
+- `reference_values.json` (~359 tok)
+- `standards_index.json` (~1220 tok)
+
+## skills/public/coal-mine-tunneling-regulation/references/stages/
+
+- `tunneling.json` (~5825 tok)
+
+## skills/public/coal-mine-tunneling-regulation/scripts/
+
+- `build_output.py` — coal-mine-tunneling-regulation v2 — build_output.py：掘进作业规程单次原子组装（步骤6，T11 掘进适配）。 (~11684 tok)
+- `chapter_planner.py` — coal-mine-tunneling-regulation v2 — chapter_planner.py：章节清单 + 「改参 → 受影响章节」反查中枢。 (~1644 tok)
+- `consistency.py` — geological-report v2 — consistency.py：四类合约机器校验（步骤7）。 (~8958 tok)
+- `formula_runner.py` — coal-mine-tunneling-regulation v2 — formula_runner.py：冻结计算层（步骤2，门2 的数据面·通风域）。 (~5844 tok)
+- `ingest.py` — geological-report v2 — ingest.py：data/ 状态目录的唯一写者（D10）。 (~8370 tok)
+- `profile.py` — 矿井档案层（spec D3 文件契约）。 (~1200 tok)
+- `progress.py` — geological-report v2 — progress.py：章节进度状态机（步骤4 控制器）。 (~5377 tok)
+
+## skills/public/coal-mine-tunneling-regulation/tests/
+
+- `conftest.py` — 测试套件共享脚手架：把技能 scripts/ 注入 sys.path（沿 test_ingest_bug3229 L20-23 先例）。 (~154 tok)
+- `README.md` — Project documentation (~163 tok)
+- `test_build_output.py` — 组装与交付门测试（单文档 tmp_path，无容器依赖）。 (~860 tok)
+- `test_chapter_planner.py` — chapter_planner 冒烟回归（T8）：manifest 章集/无 ch10 残留、F3 反查命中 ch4、空 stage 守卫。 (~513 tok)
+- `test_contracts.py` — 一致性合约注册表测试（C2 名exact / C10 manual / C12 档案漂移 fail+skip 语义 / 条件激活）。 (~1420 tok)
+- `test_formula_ventilation.py` — 通风域冻结计算数值回归（样例实证值锚定）。 (~1877 tok)
+- `test_ingest_forms.py` — ingest 门1/表单写入契约测试（掘进 12 族 + profile 档案族）。 (~1790 tok)
+- `test_profile.py` — profile.py 矿井档案契约测试（D3 文件契约）。 (~752 tok)
+- `test_progress_gate.py` — 章状态机多波相位 + bug-3049 门自动回写测试。 (~931 tok)
+- `test_snapshot.py` — snapshot 快照往返 + 篡改检测 + 正典名守卫。 (~562 tok)
+
+## skills/public/coal-mine-tunneling-regulation/tests/fixtures/
+
+- `build_fixture.py` — 3218 样例 → 脱敏 fixture（一次性构建工具，host 运行；源文件不入库）。 (~2079 tok)
+- `README.md` — Project documentation (~393 tok)
 
 ## skills/public/context-discipline/
 
@@ -1826,20 +2053,48 @@
 
 ## skills/public/contract-price-analysis/scripts/
 
+- `cli.py` — End-to-end pipeline (v2: MinIO + eai-flow-ocr). (~29382 tok)
+- `db.py` — Async DB engine + session factory for cpa_ tables. (~330 tok)
+- `document_parser.py` — Parse a contract file via the eai-flow-ocr HTTP service -> TableExtract list. (~2051 tok)
+- `excel_generator.py` — Generate a 6-sheet Excel report with charts via xlsxwriter. (~2137 tok)
+- `geometry_rebuild.py` — 几何网格重建: 表区域行级 token → rows/cell_bboxes(spec §2.2,计划 Task 3)。 (~1964 tok)
+- `llm_fallback.py` — P2 LLM 列语义兜底(spec 2026-09-19 §3,计划 Task 6)。 (~2378 tok)
+- `models.py` — SQLAlchemy ORM for cpa_ tables (v2: MinIO-backed documents). (~2126 tok)
+- `project_fields.py` — Extract project-level fields (name, location) from OCR'd first-page text. (~1906 tok)
+- `seed_library.py` — 内置 seed 定位规则库(源真相)。 (~1686 tok)
+- `storage.py` — MinIO object storage for contract files (independent bucket). (~837 tok)
+- `table_classifier.py` — Classify extracted tables and map column roles. (~7589 tok)
 
 ## skills/public/contract-price-analysis/scripts/clustering/
 
 
 ## skills/public/contract-price-analysis/tests/
 
+- `test_category_pipeline.py` — category 全链: 模型列存在 + init_schema 幂等 ALTER + 聚类样本拼分类 + 落库kwarg。 (~534 tok)
+- `test_config.py` — test_get_config_reads_env, test_get_config_defaults (~138 tok)
+- `test_excel_generator.py` — Tests for the Excel generator (6 sheets + charts). (~692 tok)
+- `test_extract_strict.py` — 严格 seed-only 管线: 命中提取/未匹配零提取+记录/续表继承/跨页分类续传/反算。 (~1591 tok)
+- `test_geometry_rebuild.py` — P1 几何层: rebuild_grid 聚类四场景 + 胶合病征 + 缓存 tokens 容错 + (~2417 tok)
+- `test_llm_fallback.py` — P2 LLM 兜底: annotate_roles 列语义标注 + try_llm_fallback 验收门 + (~3209 tok)
+- `test_metadata_fallback.py` — 末页兜底: 前3页字段 miss → 补 OCR 最后2页 → 合并 page_texts 重试。 (~468 tok)
+- `test_ocr_cache.py` — OCR 缓存序列化往返 + 缓存命中跳过 OCR 调用。 (~898 tok)
+- `test_orientation_passthrough.py` — orientation_fixed_pages 透传链: HTTP JSON→3元组→缓存→parse_meta。 (~1286 tok)
+- `test_price_rediscovery.py` — bug-3400 终轮: 表级算术价列重推(单价×工程量≈合价 ±2%)+ 单失败行回退。 (~2134 tok)
+- `test_seed_anchor_fallback.py` — 碎表头实弹形状端到端测试(用户实测 0.02 案例,桂北 p94 两行折叠表头)。 (~905 tok)
+- `test_seed_extract.py` — extract_items_seed: 角色取值 + 分类行识别/传播。桂北实表结构合成回放。 (~1057 tok)
+- `test_seed_library.py` — seed 库结构契约: 7 条内置规则,每条满足 seed 确认条件的最低字段。 (~490 tok)
+- `test_seed_match.py` — match_seed: 归一化子串锚点/exclude 守卫/确认条件/多候选消歧。合成表格,无 OCR。 (~1026 tok)
+- `test_tax_upgrade_exactness.py` — bug-3401 第十层含税升级收口回归: ±2% 宽窗口改写正确含税单价(桂北 7 行, 硬门失守)。 (~780 tok)
+- `test_tax_upgrade_exactness.py` — bug-3401 第十层含税升级收口回归: 精确闭合判据(±2% 宽窗口曾改写桂北正确含税单价, bad_rate 0.0175); 设计目标 412.50→449.63 保持。 (~800 tok)
+- `test_tiaojia_adjustment.py` — bug-3400 第十二层: 调价表(bcxy-tz)左右双半区仲裁修复 — JZGS 钢筋补充协议实弹 fixture。 (~9821 tok)
+- `test_vectorizer.py` — Tests for the text+param vectorizer. (~320 tok)
+- `test_xband_fallback.py` — bug-3400: 种子路径逐行 x→index 回退 + 合计行守卫。 (~7731 tok)
 
 ## skills/public/dfam-check/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2091 tok)
 
 ## skills/public/doc-graph-extract/
 
-- `SKILL.md` — doc-graph 文档图谱抽取 (~511 tok)
 
 ## skills/public/fire-protection-extract/
 
@@ -1867,11 +2122,9 @@
 
 ## skills/public/gcode/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2549 tok)
 
 ## skills/public/gcode/references/
 
-- `cura-generic-example.json` (~1151 tok)
 
 ## skills/public/geological-report/
 
@@ -1890,30 +2143,36 @@
 
 ## skills/public/implicit-cad/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2378 tok)
 
 ## skills/public/local-knowledge-first/
 
 
 ## skills/public/ops-diagnosis/
 
-- `SKILL.md` — Ops 诊断技能(ops-diagnosis) (~741 tok)
 
 ## skills/public/ops-diagnosis/references/
 
-- `failure-signatures.md` — 失败签名清单（单一参考源） (~415 tok)
 
 ## skills/public/ops-diagnosis/scripts/
 
-- `_common.py` — Shared loaders for ops-diagnosis crunch scripts. Pure stdlib, no LLM calls. (~1510 tok)
 
 ## skills/public/sdf/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2107 tok)
+
+## skills/public/self-improving/
+
+- `SKILL.md` — Self-Improving Loop(自进化循环) (~1416 tok)
+
+## skills/public/self-improving/references/
+
+- `pattern-keys.md` — Pattern-Key 分类法(area.symptom) (~529 tok)
+
+## skills/public/self-improving/scripts/
+
+- `eval_p0.py` — P0 eval: 3-scenario behavioral test for the self-improving loop skill. (~2681 tok)
 
 ## skills/public/sendcutsend/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2646 tok)
 
 ## skills/public/spare-parts-analysis/
 
@@ -1926,16 +2185,12 @@
 
 ## skills/public/srdf/
 
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2206 tok)
 
 ## skills/public/step-parts/
 
-- `LICENSE` (~285 tok)
-- `SKILL.md` — NOTE: 不写 allowed-tools。任一启用 skill 声明 allowed-tools 会触发 tool_policy.py 全局白名单 (~2338 tok)
 
 ## skills/public/step-parts/references/
 
-- `step-parts-api.md` — step.parts API Reference (~969 tok)
 
 ## skills/public/task-notes/
 
@@ -1954,11 +2209,21 @@
 
 ## tools/license/
 
-- `2026-09-11-ontology-doc-graph-design.md` — Design: Ontology 文档图谱 doc_graph(部分借鉴 Semantica 定案;ontology/doc_graph 子包+dg_ 4表+投标域先行+图库具名升级路径) (~2300 tok)
-- `2026-09-11-ontology-doc-graph.md` — Plan: Ontology 文档图谱实施(9任务: dg_4表/抽取schema/消解/入库/写MCP/yaml登记+lint/config注册/技能/E2E冒烟) (~9000 tok)
 
 ## 已删除
 
 
 ## 部署面
 
+- `2026-09-12-ontology-eia-graph-import-design.md` — Design: EIA域图谱导入(两阶段,待审) (~1800 tok)
+- `2026-09-12-ontology-semantic-map-ui-design.md` — Design: 语义地图UI(Explorer高度移植,已确认原型) (~2000 tok)
+- `2026-09-12-ontology-semantic-map-ui.md` — Plan: 语义地图页实施(5任务:图投影端点/Explorer vendor+适配/页面壳/镜像重建E2E/收尾) (~8000 tok)
+- `2026-09-13-ontology-eia-graph-import.md` — Plan: EIA图谱导入Stage A(5任务:EiaExtraction schema+registry枚举+converter脚本+容器对账+收尾) (~4500 tok)
+- `2026-09-13-ontology-reasoning-rules-design.md` — Design: 推理战场(通用底座C+现算现返A+最小vendor,已确认) (~1500 tok)
+- `2026-09-13-ontology-reasoning-rules.md` — Plan: 推理规则底座(4任务:Rete vendor+facade/YAML规则注册表+lint/事实装载+evaluate_rules MCP/容器冒烟) (~3800 tok)
+- `2026-09-13-ontology-semantic-map-v2-design.md` — Design: 概览+消解审核(bid-quote风格定版,待审→已确认) (~1900 tok)
+- `2026-09-13-ontology-semantic-map-v2.md` — Plan: 语义地图v2(5任务:service抽层/4端点+打分/概览tab bid-quote风/消解tab/容器冒烟) (~5500 tok)
+- `2026-09-17-ontostudio-s1-backend.md` — Plan: S1独立后端(包迁出+鉴权+MCP SSE+容器+测试迁移) (~2800 tok)
+- `2026-09-17-ontostudio-s2-frontend.md` — Plan: S2独立前端(Vite骨架+代码迁移+主系统摘除+容器E2E) (~2200 tok)
+- `2026-09-17-ontostudio-standalone-design.md` — Design: 本体建模系统独立化(边界表/D1-D3决策/S1-S4分期) (~1600 tok)
+- `test_progress_gate.py` — 章状态机多波相位+bug-3049 门自动回写测试（T9）：PHASE=WAVEi 等号格式、波推进、mark VERIFIED 硬拒、gate 真跑 VERIFIED 回写。 (~900 tok)

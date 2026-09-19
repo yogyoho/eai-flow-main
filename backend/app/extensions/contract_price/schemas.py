@@ -32,6 +32,10 @@ class DocumentOut(ORMBase):
     preview_prefix: str | None = None
     parsed_at: datetime | None = None
     created_at: datetime
+    # v3 规则生态(设计 docs/superpowers/specs/2026-09-19-cpa-table-recognition-three-layer-design.md §4):
+    # 每文档分项 KPI——由 crud.list_documents 的一条 GROUP BY 聚合附带填充,非 ORM 列。
+    items_total: int = 0
+    items_needs_review: int = 0
 
 
 class ItemOut(ORMBase):
@@ -126,6 +130,22 @@ class ConfigOut(BaseModel):
     # 结构: [{id, display_name, title_keywords, columns{name,spec,qty,unit,price_unit,
     # price_total,price_untaxed}, exclude?, source?}] — 与技能 scripts/seed_library.py 保持同构。
     table_seeds: list[dict] = []
+    # EAI-CUSTOM P2 LLM 兜底(spec docs/superpowers/specs/2026-09-19-cpa-table-recognition-three-layer-design.md
+    # §3): OpenAI 兼容端点三元组,service 注入子进程 argv;任一缺失/空 = LLM 层关闭
+    # (缺省不传,管线行为零变化)。llm_key 支持 "$ENV_VAR" 形式(解析见 service),
+    # 避免明文 key 落库;GET/PUT 往返经 model_dump 持久化。
+    llm_base_url: str | None = None
+    llm_key: str | None = None
+    llm_model: str | None = None
+
+
+# EAI-CUSTOM (review fix 2026-09-20): llm_key 为 write-only 字段——GET /config 的
+# 响应用此掩码占位回显,明文/``$ENV`` 真值绝不出 API(system:access 权限点被基础
+# user 角色持有,见 deploy/offline/config/permissions.yaml)。PUT 收到掩码原样
+# 回传时视为"未修改",还原为已存真值( crud.resolve_llm_key_mask );新明文 key
+# 或新的 $ENV 形式仍可直接写入。落盘(config.json)与子进程注入(service.
+# _resolve_llm_args)始终使用真值,不受掩码影响。
+LLM_KEY_MASK = "********"
 
 
 class ConfigUpdate(ConfigOut):

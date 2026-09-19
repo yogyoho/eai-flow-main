@@ -24,6 +24,9 @@ export interface CpaDocument {
   preview_prefix: string | null;
   parsed_at: string | null;
   created_at: string;
+  /** 分项 KPI(后端 docs 列表一条 GROUP BY 聚合附带;NR 率徽章用) */
+  items_total: number;
+  items_needs_review: number;
 }
 
 export interface CpaItem {

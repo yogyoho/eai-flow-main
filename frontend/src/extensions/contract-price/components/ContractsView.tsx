@@ -688,6 +688,14 @@ export function ContractsView() {
                     <td className="px-6 py-4">
                       <div className="flex flex-col items-start gap-1">
                         <span className={stage.tone}>{stage.label}</span>
+                        {doc.items_needs_review > 0 && (
+                          <span
+                            className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600"
+                            title="validation_status=needs_review 的分项行数 / 分项总行数"
+                          >
+                            ⚠ {doc.items_needs_review}/{doc.items_total} 待核验
+                          </span>
+                        )}
                         {unmatched.length > 0 && (
                           <button
                             className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600 hover:bg-amber-500/10"

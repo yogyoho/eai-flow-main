@@ -20,6 +20,10 @@ class Table(BaseModel):
     row_count: int
     col_count: int
     mean_confidence: float = 0.0
+    # P1 几何层(spec 2026-09-19 §2.1): per-crop 行级 OCR token 透出。
+    # [{text, box:[x1,y1,x2,y2](页绝对像素,crop 原点偏移), score}];下游
+    # document_parser 按页宽高归一化 0~1 后随 OCR 缓存 v2 落盘。
+    tokens: list = []
 
 
 class PageResult(BaseModel):

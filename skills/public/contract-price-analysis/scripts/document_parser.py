@@ -33,6 +33,32 @@ class TableExtract:
     page_preview_b64: str
     mean_confidence: float = 0.0
     extra: dict = field(default_factory=dict)
+    tokens: list = field(default_factory=list)  # 行级 OCR token(页归一化0~1,与 cell_bboxes 同规格;P1 几何层)
+
+
+def _norm_tokens(raw_tokens, page_w, page_h) -> list:
+    """OCR 服务 tokens(页绝对像素) → 页归一化 0~1(与 cell_bboxes 同规格;
+    P1 几何层缓存 v2)。旧服务无 tokens / 缺页宽高 → 空列表(几何层自然放弃)。"""
+    if not raw_tokens or not (page_w and page_h):
+        return []
+    out = []
+    for tok in raw_tokens:
+        b = (tok or {}).get("box") or []
+        if len(b) < 4:
+            continue
+        out.append(
+            {
+                "text": str((tok or {}).get("text", "")),
+                "box": [
+                    float(b[0]) / page_w,
+                    float(b[1]) / page_h,
+                    float(b[2]) / page_w,
+                    float(b[3]) / page_h,
+                ],
+                "score": float((tok or {}).get("score", 0.0)),
+            }
+        )
+    return out
 
 
 async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str, last_pages: int = 0) -> tuple:
@@ -99,6 +125,7 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str,
                 ]
                 for row in raw_rows
             ]
+            tokens = _norm_tokens(t.get("tokens"), page.get("page_width"), page.get("page_height"))
             tables.append(
                 TableExtract(
                     page_no=page_no,
@@ -108,6 +135,7 @@ async def parse_document(file_bytes: bytes, filename: str, ocr_service_url: str,
                     cell_bboxes=rows_bbox,
                     page_preview_b64=preview,
                     mean_confidence=float(t.get("mean_confidence", 0.0)),
+                    tokens=tokens,
                 )
             )
     return tables, page_texts, orientation_fixed
@@ -127,6 +155,7 @@ def to_cache(tables: list[TableExtract], page_texts: dict[int, str], orientation
                 "rows": t.rows,
                 "cell_bboxes": t.cell_bboxes,
                 "mean_confidence": t.mean_confidence,
+                "tokens": list(getattr(t, "tokens", None) or []),
             }
             for t in tables
         ],
@@ -146,6 +175,7 @@ def from_cache(data: dict) -> tuple:
             cell_bboxes=t.get("cell_bboxes", []),
             page_preview_b64="",
             mean_confidence=float(t.get("mean_confidence", 0.0)),
+            tokens=t.get("tokens", []) or [],
         )
         for t in data.get("tables", [])
     ]

@@ -18175,3 +18175,1325 @@
 | Time | Action | File(s) | Outcome | ~Tokens |
 |------|--------|---------|---------|--------|
 | 19:17 | E2E真实线程验收(线程314f000d): 技能触发✓/建档单卡✓/档案落盘✓/12族表单+门1质量warn全开火✓; 深层生成循环2次GraphRecursionError根因=bash内联大JSON引号炸裂→ingest加--values-file修复(8148e3f35)+SKILL纪律行; 全流程完整跑通留待长会话 | .wolf/tmp/e2e/ | E2E前半验证通过,根因修复已落地 | ~120k |
+
+## Session: 2026-09-14 20:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-14 20:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:40 | 王坡页面实测bug-3233修复:字段卡label渲染JSON字典+同文重复(agent把number字段建成select-options形态);SKILL.md步骤1交互纪律补字段构造反模式禁令(commit);渲染器加固为前端待办 | SKILL.md | FIXED | ~8k |
+| 21:24 | 深层E2E wave1 实战: ch1/ch2 CHAPTER_GATE_PASS(ch1 eff1526≥875, ch2 eff1626≥1610), ch3 需扩写(6028/17912); 全门链live验证(L0深度/残留/未知槽位/深度目标/目录语义); 关键发现=stage契约数据字段误用SLOT(已修26处)+agent自创槽位词汇(重生成解决)+curl直发run必须config.configurable.subagent_enabled=true否则task/batch不绑 | 线程314f000d | wave1 2/3, ch3扩写+wave2/3+finalize 待续 | ~200k |
+| 21:24 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/coal-tunneling-regulation-v2-design.md | inline fix | ~70 |
+| 21:25 | Session end: 1 writes across 1 files (coal-tunneling-regulation-v2-design.md) | 1 reads | ~75 tok |
+
+## Session: 2026-09-14 22:00
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 22:19 | docmgr我的文档空白取证: next_skip被response_model剥离(usePersonalOutputs游标回退threads.length, 首窗全空窗游标卡0, skip=0返回threads:0/total:47实测) | schemas.py:763 usePersonalOutputs.ts:46 | diagnosed | ~40k |
+| ~21:40 | 17-agent workflow 查证「我的文档子文件不显示」= 代码bug非数据: personal-outputs 首窗20空线程+next_skip被response_model剥离+前端游标卡0; 根因bug-4954已入buglog, 修复待用户批准 | backend/app/extensions/schemas.py + usePersonalOutputs.ts | 根因闭环0争议 | ~2.0M |
+| 23:10 | Edited backend/app/extensions/schemas.py | modified PersonalOutputsResponse() | ~79 |
+| 23:10 | Edited frontend/src/extensions/docmgr/usePersonalOutputs.ts | modified CUSTOM() | ~340 |
+| 23:11 | Edited frontend/src/extensions/docmgr/usePersonalOutputs.ts | modified CUSTOM() | ~54 |
+| 23:11 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | modified CUSTOM() | ~180 |
+| 23:11 | Edited backend/tests/test_personal_outputs.py | modified test_response_model_serializes_next_skip() | ~192 |
+| 23:11 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| ~22:20 | bug-4954 修复落地(三处代码+契约回归测试): schemas补next_skip/usePersonalOutputs游标强停/DocumentManagement移除空守卫; 10 passed+tsc clean | schemas.py+usePersonalOutputs.ts+DocumentManagement.tsx+test_personal_outputs.py | 等run e227e0b9结束重启gateway | ~30k |
+| 23:17 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| 10:15 | bug-3234修复(e4e12e952):数组族批量收集三步协议入SKILL.md——模板CSV生成(present_files)/Excel填写上传/ingest.py行解析落盘;禁用户填JSON;≤5行可逐项卡;王坡实测驱动 | SKILL.md | FIXED | ~6k |
+| 23:18 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| 23:36 | E2E深层生成全链路闭环: 9/9章CHAPTER_GATE_PASS→finalize CONSISTENCY fail=0(manual=1 C10, warn=3, skip=12)→delivery_manifest写入→某矿3218运输顺槽掘进作业规程.md产出; J7从×1.2修订为×0.7; SL2白名单掘进域扩展; 全管线(触发→建档→门1→门2→3波→gate→finalize→交付)机制验证完毕 | 线程314f000d | E2E闭环 | ~180k |
+| 23:37 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| 09-15 00:20 | bug-4954 部署完成: 等待中的run实为09-12僵尸记录(gateway 09-14已重启,task随旧进程消亡)→安全restart; 实测 next_skip=20 在响应中+首页有真实线程 | gateway容器 | 修复闭环,浏览器刷新即恢复 | ~5k |
+| 00:20 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| 07:17 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| 08:18 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| 08:34 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+| 09:36 | Session end: 5 writes across 4 files (schemas.py, usePersonalOutputs.ts, DocumentManagement.tsx, test_personal_outputs.py) | 17 reads | ~845 tok |
+
+## Session: 2026-09-15 09:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-15 09:44
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 09:57 | Edited skills/public/coal-eia-report/scripts/build_output.py | 3→1 lines | ~11 |
+| 10:00 | Edited skills/public/coal-eia-report/scripts/build_output.py | "### {_n}.{_m.group(1)} {_" → "### {_n}.{int(_m.group(1)" | ~20 |
+| 10:02 | Session end: 2 writes across 1 files (build_output.py) | 13 reads | ~31 tok |
+| 10:07 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 10:09 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 10:15 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 10:17 | CAD合并后离线重部署全量梳理(10-agent workflow, 248-commit窗口): cad-suite三合一(3109f9bf0)模板/导出脚本已跟进; 4 blocker=品牌未决(吉林vs北京华宇未提交)/CAD_VIEWER_URL缺失/离线extensions_config陈旧+learnings半落地/镜像全面过期(gateway落后144提交); skill改名bid-proposal-overall+新bid-technical; upgrade.sh缺--project-directory; 4迁移自动跑; 全量重打包已论证必要 | deploy/offline/*, scripts/offline-export.sh | 报告已出, 待用户拍板品牌+learnings | ~1160k |
+| 10:18 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 10:24 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 10:32 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 10:38 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 11:35 | 新离线包出厂: eai-flow-offline-v0.5.1-1768-g5a22114a7-20260915.tar.gz(7.0G, 13镜像含cad-suite, 无旧cad三件套); 品牌=北京华宇工程(deploy.conf/前端/brand-assets已对齐); i18n tabappName DeerFlow→EAIFlow; uv.lock钉aliyun(5a22114a7, uv sync --locked与索引一致性教训); CAD_VIEWER_URL补齐; 待办=模型映射(gemma已从GPUStack删除, 包内默认模型仍指gemma会404) | zip1/新包 | 待服务器部署验证 | ~1500k本轮 |
+| 11:36 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 11:39 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+| 09:22 | Session end: 2 writes across 1 files (build_output.py) | 16 reads | ~31 tok |
+
+## Session: 2026-09-16 09:22
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:42 | SSO集成咨询:确认已有EAI OIDC门面sso.py,给出config.yaml对接方案 | .wolf/memory.md | ok | ~3k |
+
+## Session: 2026-09-16 15:06
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-16 15:07
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-17 15:47
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-17 15:49
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 10:40 | 用户新PowerShell窗口claude命令NotFound - npm全局bin垫片丢失(更新中断残留.claude-xxx临时文件),手工重建claude/claude.cmd/claude.ps1三垫片,验证2.1.274 OK | C:/Users/admin/AppData/Roaming/npm | fixed |
+
+## Session: 2026-09-17 16:03
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 16:31 | Edited docker/nginx/nginx.conf | modified CUSTOM() | ~307 |
+| 16:32 | Edited docker/nginx/nginx.docker.conf | modified CUSTOM() | ~307 |
+| 16:33 | Edited docker/nginx/nginx.docker.conf | 2→2 lines | ~22 |
+| 11:20 | bug-1760644: 编辑器AI复发=nginx /api/collab前缀(bug-3209 WS回植)劫持ai-chat到collab:8002; 加精确匹配location回gateway(SSE关缓冲),两conf各按惯例修;页面review PASS | docker/nginx/*.conf | fixed+verified |
+| 16:39 | Session end: 3 writes across 2 files (nginx.conf, nginx.docker.conf) | 0 reads | ~681 tok |
+| 17:50 | cpa模块完善brainstorm:7份样例OCR全量分析(5-6种表格版式,含税落地单价/综合单价(5=2+3)/网价/材质列等新列名通用token不覆盖);用户定方向=seed定位规则(配置tab管理+解析失败可手动补规则重解析)+严格seed-only | .wolf/tmp/cpa-samples/*.json | 格式证据齐 | ~30k |
+| 18:07 | Session end: 3 writes across 2 files (nginx.conf, nginx.docker.conf) | 4 reads | ~681 tok |
+| 17:55 | 补充协议旋转页实验:p2/p3横版扫成竖版→0表静默;CW90重OCR=表+表头正确(序号/物资名称/材质规格/综合单价),CCW=数字垃圾;判别器可行(±90°试探+表头得分);页级现象非整份(其它4页正常) | .wolf/tmp/cpa-samples/rot_test2.py | 自动纠偏可行性证实 | ~8k |
+| 19:04 | Session end: 3 writes across 2 files (nginx.conf, nginx.docker.conf) | 4 reads | ~681 tok |
+| 19:17 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | modified CUSTOM() | ~83 |
+| 19:17 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | modified prepareBlocksForMarkdownExport() | ~72 |
+| 19:17 | Edited frontend/src/extensions/docmgr/utils/mathBlocks.ts | 3→8 lines | ~52 |
+| 19:22 | Session end: 6 writes across 3 files (nginx.conf, nginx.docker.conf, mathBlocks.ts) | 6 reads | ~888 tok |
+| 12:10 | bug-1760648: 计算书嵌套列表子项公式不渲染 - mathBlocks两函数只遍历顶层不递归children;出口递归修复+3单测+页面验证(katexTotal=5,无$残留) | frontend/src/extensions/docmgr/utils/mathBlocks.ts | fixed+verified |
+| 19:29 | Session end: 6 writes across 3 files (nginx.conf, nginx.docker.conf, mathBlocks.ts) | 6 reads | ~888 tok |
+| 19:32 | Session end: 6 writes across 3 files (nginx.conf, nginx.docker.conf, mathBlocks.ts) | 6 reads | ~888 tok |
+| 13:05 | 渲染完备性对比: 工件区(streamdown+rawHTML+mermaid) vs BlockNote(✓数学全块型/blockQuote已补, ✗details折叠/mermaid); 给排水技能render_calc_blocks特意生成<details>折叠块; 路线A展开兜底/B自研detailsBlock已入backlog§6 | docs/superpowers/specs/2026-09-05-editor-ai-actions-backlog.md | doc-written |
+| 19:41 | Session end: 6 writes across 3 files (nginx.conf, nginx.docker.conf, mathBlocks.ts) | 6 reads | ~888 tok |
+| 18:20 | cpa三tab UI评审(截图实证:3000端口daemon已有登录态):设置tab最弱(死控件parse_mode/无dirty/关键字文本域将被seed库取代/无命中可观测性);contracts需加needs_review+no_tables徽章和未匹配表抽屉入口;items加分类列 | browser session-1789632222128 | 并入设计§4 | ~6k |
+| 19:49 | Session end: 6 writes across 3 files (nginx.conf, nginx.docker.conf, mathBlocks.ts) | 9 reads | ~888 tok |
+| 19:51 | Created docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md | — | ~2227 |
+| 19:52 | Edited docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md | inline fix | ~30 |
+| 18:35 | cpa seed设计文档落地+自审修正(§6部分匹配文档状态歧义) | docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md | 待用户评审 | ~5k |
+| 18:40 | spec提交e1d27b7e8(gitignore强加,循14份先例);code-review-graph post-commit钩子GBK解码崩(不影响提交,buglog已记) | .wolf/buglog.json | 环境怪癖记录 | ~2k |
+| 19:53 | Session end: 8 writes across 4 files (nginx.conf, nginx.docker.conf, mathBlocks.ts, 2026-09-17-contract-price-seed-rules-design.md) | 9 reads | ~3306 tok |
+| 19:56 | Edited docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md | 1→2 lines | ~73 |
+| 19:56 | Edited docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md | 1→2 lines | ~28 |
+| 19:57 | Edited docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md | 1→2 lines | ~42 |
+| 19:57 | Edited docs/superpowers/specs/2026-09-17-contract-price-seed-rules-design.md | 2→2 lines | ~42 |
+| 18:50 | 用户问签订日期/供应商提取时机→答:解析时已提取(project_fields.py)即最优;spec补末页兜底+LLM兜底开放问题 | spec §3/§7/§8/§10 | 已提交 | ~3k |
+| 19:57 | Session end: 12 writes across 4 files (nginx.conf, nginx.docker.conf, mathBlocks.ts, 2026-09-17-contract-price-seed-rules-design.md) | 10 reads | ~3504 tok |
+| 20:01 | Created frontend/src/extensions/docmgr/utils/detailsMarkdown.ts | — | ~926 |
+| 20:02 | Created frontend/tests/unit/docmgr/detailsMarkdown.test.ts | — | ~1032 |
+| 20:04 | Edited frontend/src/extensions/docmgr/utils/detailsMarkdown.ts | added optional chaining | ~465 |
+| 20:06 | Created frontend/src/extensions/docmgr/extensions/DetailsBlock.tsx | — | ~690 |
+| 20:06 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | CSS: detailsBlock | ~57 |
+| 20:06 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | modified CUSTOM() | ~142 |
+| 20:06 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 5→7 lines | ~74 |
+| 20:07 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 2→7 lines | ~82 |
+| 20:08 | Created frontend/src/extensions/docmgr/extensions/DetailsBlock.tsx | — | ~638 |
+| 20:09 | Edited frontend/src/extensions/docmgr/extensions/DetailsBlock.tsx | 2→1 lines | ~16 |
+| 20:09 | Edited frontend/src/extensions/docmgr/extensions/DetailsBlock.tsx | 8→8 lines | ~81 |
+| 20:09 | Edited frontend/src/extensions/docmgr/extensions/DetailsBlock.tsx | 5→5 lines | ~41 |
+| 20:13 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | 7→7 lines | ~82 |
+| 20:14 | Created docs/superpowers/plans/2026-09-17-contract-price-seed-rules.md | — | ~24821 |
+| 20:14 | Edited docs/superpowers/plans/2026-09-17-contract-price-seed-rules.md | expanded (+20 lines) | ~332 |
+| 19:30 | 实施计划落地14任务(全码+接口契约+TDD): seed库/match_seed/extract_items_seed/严格管线/category全链/OCR缓存/re_ocr/末页兜底/方向归一化/三tabUI/验收runbook | docs/superpowers/plans/2026-09-17-contract-price-seed-rules.md | 已提交待执行 | ~35k |
+| 20:16 | Session end: 27 writes across 9 files (nginx.conf, nginx.docker.conf, mathBlocks.ts, 2026-09-17-contract-price-seed-rules-design.md, detailsMarkdown.ts) | 19 reads | ~34780 tok |
+| 20:20 | Session end: 27 writes across 9 files (nginx.conf, nginx.docker.conf, mathBlocks.ts, 2026-09-17-contract-price-seed-rules-design.md, detailsMarkdown.ts) | 19 reads | ~34780 tok |
+| 20:21 | Created skills/public/contract-price-analysis/tests/test_seed_library.py | — | ~306 |
+| 20:22 | Created skills/public/contract-price-analysis/scripts/seed_library.py | — | ~1452 |
+| 20:23 | Edited backend/app/extensions/contract_price/schemas.py | 8→12 lines | ~127 |
+| 20:23 | Created backend/app/extensions/contract_price/seed_defaults.py | — | ~874 |
+| 20:23 | Edited backend/app/extensions/contract_price/crud.py | modified load_config() | ~126 |
+| 20:23 | Created backend/tests/test_contract_price_seed_config.py | — | ~323 |
+| 20:24 | Edited backend/tests/test_contract_price_seed_config.py | 2→1 lines | ~21 |
+| 20:28 | Session end: 34 writes across 15 files (nginx.conf, nginx.docker.conf, mathBlocks.ts, 2026-09-17-contract-price-seed-rules-design.md, detailsMarkdown.ts) | 23 reads | ~38009 tok |
+
+## Session: 2026-09-17 20:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-17 20:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:30 | B方案落地: detailsBlock自研折叠块(DetailsBlock.tsx+detailsMarkdown.ts+PersonalBN接线+CSS) 导入切分/导出回写/折叠CSS三修; 6单测+E2E(2块渲染/折叠0泄漏/katex6/往返完整)全过; 提交654c9a824已推送 | frontend/src/extensions/docmgr/ | done+pushed |
+| 20:47 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | inline fix | ~18 |
+| 20:47 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | inline fix | ~5 |
+| 20:48 | Session end: 2 writes across 1 files (seed_library.py) | 5 reads | ~10013 tok |
+| 20:48 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | modified _str_list() | ~557 |
+| 20:48 | Edited backend/app/extensions/contract_price/seed_defaults.py | inline fix | ~5 |
+| 20:48 | Edited backend/app/extensions/contract_price/crud.py | added 1 import(s) | ~10 |
+| 20:48 | Edited backend/app/extensions/contract_price/crud.py | dict() → deepcopy() | ~69 |
+| 20:48 | Created skills/public/contract-price-analysis/tests/test_seed_library.py | — | ~490 |
+| 20:48 | Edited backend/tests/test_contract_price_seed_config.py | 4→7 lines | ~75 |
+| 20:49 | Created backend/tests/test_contract_price_seed_parity.py | — | ~383 |
+| 20:50 | Edited skills/public/contract-price-analysis/tests/test_seed_library.py | inline fix | ~36 |
+| 20:53 | Session end: 10 writes across 6 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 5 reads | ~11638 tok |
+| 20:20 | T1完成(83f55fb6d+58fd05dd6,规格✅质量✅含3修复:normalize守卫/deepcopy/parity测试);发现并发会话提交654c9a824混入 | plan T1全勾 | T2派发中 | ~4k |
+| 20:59 | Session end: 10 writes across 6 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 6 reads | ~12021 tok |
+| 21:04 | Created skills/public/contract-price-analysis/tests/test_seed_match.py | — | ~723 |
+| 21:05 | Session end: 11 writes across 7 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 10 reads | ~37610 tok |
+| 21:05 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _norm_header() | ~956 |
+| 21:05 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | inline fix | ~14 |
+| 21:07 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified match_seed() | ~379 |
+| 21:09 | Task2 match_seed 落地: TDD 6新测,计划代码全并列消歧缺第三级(签字版表 gcl-qd 与 gc-qzb 同锚7角色无标题命中,严格>留首seed)→加 -anchors_n 专化消歧键(顺序无关);commit ac08d69c6 | table_classifier.py seed_library.py test_seed_match.py | 10 passed | ~30k |
+| 21:11 | Session end: 14 writes across 8 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 10 reads | ~38959 tok |
+| 21:12 | Session end: 14 writes across 8 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 10 reads | ~38959 tok |
+| 21:16 | Task2 review: match_seed pure-append verified, 13/13 pass, tie-break order-independent, spec compliant | skills/.../table_classifier.py,tests/test_seed_match.py | PASS | ~30k |
+| 21:18 | Session end: 14 writes across 8 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 11 reads | ~45457 tok |
+| 16:20 | detailsBlock样式对齐工件区原生details外观: 去卡片底色边框/disclosure三角字符(▸▾)/标记摘要同行flex/去嵌套引导线伪元素/去子块缩进; 放大截图验证一致; d6f08b5a7已推送 | DetailsBlock.tsx, eai-overrides.css | done+pushed |
+| 21:21 | Session end: 14 writes across 8 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 13 reads | ~45454 tok |
+| 21:26 | Session end: 14 writes across 8 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 13 reads | ~45454 tok |
+| 21:26 | Created docs/ontology/methodology.md | — | ~2951 |
+| 21:27 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | inline fix | ~19 |
+| 21:27 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | inline fix | ~28 |
+| 21:27 | Edited backend/app/extensions/contract_price/seed_defaults.py | inline fix | ~19 |
+| 21:27 | Created C:/Users/admin/.claude/plans/composed-beaming-chipmunk.md | — | ~470 |
+| 21:27 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | 2→2 lines | ~46 |
+| 21:28 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _match_one_seed() | ~134 |
+| 21:28 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | inline fix | ~14 |
+| 21:28 | Edited skills/public/contract-price-analysis/tests/test_seed_match.py | modified test_match_seed_title_disambiguation() | ~407 |
+| 21:29 | Session end: 23 writes across 10 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 14 reads | ~52554 tok |
+| 21:29 | Task2质量复审fix: 双镜像_UNTAXED_EXCLUDE补price_total不含税陷阱+空锚点守卫+全角拉丁小写+去header_rows死参+3新测(陷阱/正倒序pin/归一化) | seed_library.py seed_defaults.py table_classifier.py test_seed_match.py | 16+1 passed | ~15k |
+| 21:30 | Session end: 23 writes across 10 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 39 reads | ~78212 tok |
+| 20:50 | T2完成(ac08d69c6+0ad6c9466,规格✅质量✅): match_seed+平局决胜(顺序无关)+price_total不含税陷阱封堵(双镜像)+全角小写+9测试;计划bug已入buglog(bug-1760659) | plan T2全勾 | T3派发 | ~3k |
+| 21:35 | Session end: 23 writes across 10 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 48 reads | ~102663 tok |
+| 21:36 | Created skills/public/contract-price-analysis/tests/test_seed_extract.py | — | ~438 |
+| 21:36 | Session end: 24 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 53 reads | ~110302 tok |
+| 21:36 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _is_category_row() | ~639 |
+| 21:38 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 53 reads | ~110941 tok |
+| 18:05 | Task3 extract_items_seed 落地: 分类行判别+角色取值+category传播, 12测试全绿, 纯append 61行 | table_classifier.py, test_seed_extract.py | 3e19a5664 | ~6k |
+| 21:39 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 53 reads | ~110941 tok |
+| 21:40 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 53 reads | ~110941 tok |
+| 17:00 | detailsBlock 标记放大1.2em实心色+默认收起(collapsed=true,对齐<details>语义); 缩放截图验证; 已提交推送 | DetailsBlock.tsx, detailsMarkdown.ts, eai-overrides.css | done+pushed |
+| 21:42 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 53 reads | ~111556 tok |
+| 21:47 | review: Task3 extract_items_seed spec verification (diff pure-append, 19/19 tests pass, x-band probe PASS in .wolf/tmp) | skills/public/contract-price-analysis/scripts/table_classifier.py, tests/test_seed_extract.py | spec compliant | ~8k |
+| 21:48 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 53 reads | ~111556 tok |
+| 21:53 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 55 reads | ~111994 tok |
+| 21:53 | code review Task3 extract_items_seed (0ad6c9466..3e19a5664): 16 tests pass; findings=x-path seed path zero committed coverage(recommend test before Task4), category resets per-call/Task4 plan lacks cross-page threading(fix in T4 via initial_category), dead seed param, minor test gaps | skills/public/contract-price-analysis/scripts/table_classifier.py, tests/test_seed_extract.py | review reported, approve w/ followups | ~18k |
+| 21:56 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 55 reads | ~111994 tok |
+| 21:57 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 55 reads | ~111994 tok |
+| 21:58 | Session end: 25 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 55 reads | ~111994 tok |
+| 22:02 | Edited skills/public/contract-price-analysis/tests/test_seed_extract.py | 6→6 lines | ~76 |
+| 22:02 | Edited skills/public/contract-price-analysis/tests/test_seed_extract.py | modified test_prices_mapped_to_seed_roles() | ~687 |
+| 18:20 | Task3 追加: x-band路径测试(漂移行bbox按语义列+中位数吸收错位), 4+16全绿 | test_seed_extract.py | 0800fa6d1 | ~4k |
+| 21:15 | T3完成(3e19a5664+0800fa6d1,规格✅质量✅): extract_items_seed+分类行传播+xband覆盖;I2跨页分类丢失→计划Task4块已修订(initial_category续传,双分支) | plan T3全勾 | T4派发 | ~3k |
+| 22:07 | Session end: 27 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 55 reads | ~112757 tok |
+| 22:08 | Session end: 27 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 58 reads | ~112757 tok |
+| 17:30 | detailsBlock 标记终版: CSS边框三角(8×11实心,展开rotate90°)+默认收起true; ▶字符在Windows回退蓝色emoji的坑; hsl包oklch token二次踩坑 cerebrum已有; 放大对比与原生一致; 1bf78bc67..最新已推送 | DetailsBlock.tsx, eai-overrides.css | done+pushed |
+| 22:20 | Session end: 27 writes across 11 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 58 reads | ~112757 tok |
+| 22:23 | Created skills/public/contract-price-analysis/tests/test_extract_strict.py | — | ~1436 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _iter_seed_cells() | ~509 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified seed_category_tail() | ~241 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+9 lines) | ~61 |
+| 22:24 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _load_seeds() | ~190 |
+| 22:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 2 condition(s) | ~1908 |
+| 22:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _process_one_doc() | ~37 |
+| 22:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~20 |
+| 22:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+6 lines) | ~171 |
+| 22:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | _load_price_keywords() → _load_seeds() | ~23 |
+| 22:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~30 |
+| 22:32 | Session end: 38 writes across 13 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 58 reads | ~117383 tok |
+| 22:37 | Session end: 38 writes across 13 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 59 reads | ~118819 tok |
+| 22:39 | Task4 cpa strict-pipeline review: 38 pass/1 skip, probes P1/P2/P3 pass, spec+D1-D4 verified, one spec-level edge noted (keyword-goods_price seed-miss -> parsed w/ 0 items, per design doc) | skills/public/contract-price-analysis/scripts/cli.py,table_classifier.py,test_extract_strict.py,.wolf/tmp/probe_task4_strict.py | PASS | ~30k |
+| 18:00 | detailsBlock 折叠标记上对齐(vertical-align -2px→1px),缩放截图确认 | eai-overrides.css | done+pushed |
+| 22:41 | Session end: 38 writes across 13 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 59 reads | ~118819 tok |
+| 22:41 | Session end: 38 writes across 13 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 59 reads | ~118819 tok |
+| 22:44 | Created docs/superpowers/specs/2026-09-17-ontostudio-standalone-design.md | — | ~899 |
+| 22:45 | Created docs/superpowers/plans/2026-09-17-ontostudio-s1-backend.md | — | ~1162 |
+| 22:45 | OntoStudio独立化spec+S1计划定稿:D1网关代理JWT/D2 MCP SSE/D3新标签页;S1=包迁出+import重写+鉴权+容器+测试迁移;S2-S4后续各立计划 | docs/superpowers/{specs,plans}/2026-09-17-ontostudio-* | 已写盘,T1待派 | ~5k |
+| 22:47 | Session end: 40 writes across 15 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 60 reads | ~121391 tok |
+| 18:40 | detailsBlock 展开态子块右缩进 24px(用户要求); 缩进截图验证 | eai-overrides.css | done+pushed |
+| 22:52 | Session end: 40 writes across 15 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 65 reads | ~124754 tok |
+| 22:59 | Edited skills/public/contract-price-analysis/tests/test_extract_strict.py | modified test_generic_goods_price_label_without_seed_still_recorded() | ~221 |
+| 22:59 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | added optional chaining | ~314 |
+| 22:59 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→3 lines | ~67 |
+| 23:00 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | removed 27 lines | ~8 |
+| 23:01 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | added optional chaining | ~271 |
+| 23:01 | Created ontostudio/backend/pyproject.toml | — | ~227 |
+| 23:01 | Created ontostudio/backend/ruff.toml | — | ~55 |
+| 23:01 | Created ontostudio/backend/app/__init__.py | — | ~48 |
+| 23:01 | Created ontostudio/backend/app/main.py | — | ~248 |
+| 23:01 | Session end: 49 writes across 20 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 68 reads | ~138518 tok |
+| 23:01 | Created ontostudio/backend/app/auth.py | — | ~369 |
+| 23:01 | Created ontostudio/backend/app/db.py | — | ~144 |
+| 23:02 | Created ontostudio/backend/app/config.py | — | ~715 |
+| 23:02 | Created ontostudio/backend/app/sqlguard.py | — | ~570 |
+| 21:55 | T4完成(62ce54416+fc33ae054,规格✅质量✅): 严格管线改写+seed_category_tail跨页分类续传(修计划_category_tail盲区)+I-0泛型goods_price可见性封堵+删死test_cli | plan T4全勾 | T5派发 | ~4k |
+| 23:05 | Session end: 53 writes across 24 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 68 reads | ~140316 tok |
+| 23:12 | Created skills/public/contract-price-analysis/tests/test_category_pipeline.py | — | ~534 |
+| 23:12 | Edited skills/public/contract-price-analysis/scripts/models.py | 3→4 lines | ~79 |
+| 23:13 | Edited backend/app/extensions/contract_price/models.py | 3→4 lines | ~76 |
+| 23:13 | Edited skills/public/contract-price-analysis/scripts/db.py | modified init_schema() | ~158 |
+| 23:13 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~18 |
+| 23:13 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _update_run_progress() | ~33 |
+| 23:13 | Edited skills/public/contract-price-analysis/scripts/cli.py | removed 25 lines | ~43 |
+| 23:14 | Edited skills/public/contract-price-analysis/scripts/cli.py | removed 154 lines | ~147 |
+| 23:14 | Edited skills/public/contract-price-analysis/scripts/cli.py | 1→3 lines | ~55 |
+| 23:14 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _cluster_sample_text() | ~92 |
+| 23:14 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→4 lines | ~62 |
+| 23:14 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+6 lines) | ~328 |
+| 23:15 | Edited backend/app/extensions/contract_price/schemas.py | modified ItemOut() | ~52 |
+| 23:15 | Edited skills/public/contract-price-analysis/scripts/excel_generator.py | modified _write_items() | ~373 |
+| 23:15 | Edited skills/public/contract-price-analysis/tests/test_excel_generator.py | modified test_items_sheet_marks_outlier() | ~85 |
+| 23:15 | Created skills/public/contract-price-analysis/tests/test_config.py | — | ~138 |
+| 23:15 | Edited skills/public/contract-price-analysis/tests/test_vectorizer.py | modified test_different_writings_of_same_goods_are_close() | ~33 |
+| 23:18 | Edited skills/public/contract-price-analysis/scripts/excel_generator.py | inline fix | ~29 |
+| 23:23 | Session end: 71 writes across 31 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 77 reads | ~155083 tok |
+| 19:30 | bug-1760672: detailsBlock 子项拖拽抛 Content hole RangeError - 用户确认子项免拖拽, 编辑器DOM捕获dragstart守卫拦截; 手动鼠标拖拽验证无RangeError; 2ca618341已推送 | PersonalBlockNoteEditor.tsx | done+pushed |
+| 23:25 | Session end: 71 writes across 31 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 77 reads | ~155083 tok |
+| 23:34 | Session end: 71 writes across 31 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 77 reads | ~155083 tok |
+| 23:34 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | added 3 condition(s) | ~461 |
+| 23:36 | Edited ontostudio/backend/app/ontology/routers.py | modified CUSTOM() | ~124 |
+| 23:36 | Edited ontostudio/backend/app/doc_graph/routers.py | modified CUSTOM() | ~98 |
+| 23:36 | Edited ontostudio/backend/app/ontology/connectors.py | 6→7 lines | ~111 |
+| 23:36 | Edited ontostudio/backend/app/ontology/connectors.py | 3→3 lines | ~44 |
+| 23:36 | Edited ontostudio/backend/app/doc_graph/tables.py | inline fix | ~24 |
+| 23:36 | Edited ontostudio/backend/app/doc_graph/tables.py | modified CUSTOM() | ~36 |
+| 23:36 | Edited ontostudio/backend/app/ontology/__init__.py | 3→4 lines | ~62 |
+| 23:36 | Edited ontostudio/backend/scripts/ontology_lint.py | modified CUSTOM() | ~118 |
+| 23:37 | Edited ontostudio/backend/scripts/ontology_lint.py | modified CUSTOM() | ~113 |
+| 23:37 | Edited ontostudio/backend/scripts/import_eia_samples.py | 10→10 lines | ~186 |
+| 23:37 | Edited ontostudio/backend/scripts/import_eia_samples.py | modified CUSTOM() | ~41 |
+| 23:38 | Edited ontostudio/backend/tests/test_ontology_rest.py | modified client() | ~202 |
+| 23:38 | Edited ontostudio/backend/tests/test_doc_graph_resolution_rest.py | 25→22 lines | ~210 |
+| 23:38 | Edited ontostudio/backend/tests/test_doc_graph_resolution_rest.py | modified client() | ~35 |
+| 23:38 | Edited ontostudio/backend/tests/test_doc_graph_tables.py | 2→2 lines | ~32 |
+| 23:38 | Edited ontostudio/backend/tests/test_ontology_connectors.py | modified _access() | ~190 |
+| 23:39 | Edited ontostudio/backend/tests/test_ontology_lint.py | modified test_all_checks_pass_on_real_registry() | ~139 |
+| 23:39 | Edited ontostudio/backend/tests/test_ontology_lint.py | modified test_market_table_rule_flags_unregistered() | ~237 |
+| 23:39 | Edited ontostudio/backend/tests/test_ontology_lint.py | modified test_doc_graph_tables_registered() | ~69 |
+| 23:40 | Session end: 91 writes across 41 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 89 reads | ~168059 tok |
+| 23:43 | Edited ontostudio/backend/pyproject.toml | 2→3 lines | ~45 |
+| 23:47 | Edited backend/app/gateway/app.py | modified CUSTOM() | ~102 |
+| 23:47 | Edited backend/app/gateway/app.py | reduced (-6 lines) | ~54 |
+| 23:47 | Edited backend/Makefile | lint() → CUSTOM() | ~71 |
+| 22:20 | T5完成(2a829dcb8,规格✅质量✅Approve): category双模型+幂等ALTER(活库已应用)+聚类拼分类+Excel分类列+7死助手删+陈旧测试修复;代表名带分类后缀为信息增益(接受) | plan T5全勾 | T6派发 | ~3k |
+| 23:51 | Session end: 95 writes across 43 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 91 reads | ~181718 tok |
+| 23:53 | Created skills/public/contract-price-analysis/tests/test_ocr_cache.py | — | ~759 |
+| 23:54 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | modified parse_document() | ~167 |
+| 23:54 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | 4→5 lines | ~72 |
+| 23:54 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | modified to_cache() | ~357 |
+| 23:54 | Edited skills/public/contract-price-analysis/scripts/storage.py | added 1 import(s) | ~14 |
+| 23:54 | Edited skills/public/contract-price-analysis/scripts/storage.py | modified put_file() | ~183 |
+| 23:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~21 |
+| 23:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _process_one_doc() | ~65 |
+| 23:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+9 lines) | ~228 |
+| 23:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified run_parse() | ~168 |
+| 23:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→3 lines | ~46 |
+| 23:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | 1→2 lines | ~68 |
+| 23:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~35 |
+| 23:57 | Session end: 108 writes across 46 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 94 reads | ~182524 tok |
+| 23:59 | Task6 OCR缓存落地: to_cache/from_cache+last_pages透传+storage get/put_ocr_cache+cli缓存块/re_ocr全链+test_ocr_cache.py(2pass) | skills/public/contract-price-analysis/{scripts/document_parser.py,scripts/storage.py,scripts/cli.py,tests/test_ocr_cache.py} | commit 0af47b16e(仅4文件,并发会话staged renames未受扰),14+41测试全绿 | ~28k |
+| 00:01 | Session end: 108 writes across 46 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 94 reads | ~182524 tok |
+| 00:03 | Edited frontend/src/extensions/docmgr/PersonalBlockNoteEditor.tsx | CSS: el | ~599 |
+| 20:30 | 拖拽RangeError复发修正: 守卫挂editor.domElement收不到浮层柄dragstart且拖动中渲染器崩溃无法由preventDefault避免; 改双保险=hover details子树隐藏拖拽柄+document dragstart守卫兜底; 悬停子项柄hidden/普通块visible验证 | PersonalBlockNoteEditor.tsx | done+pushed |
+| 00:14 | Session end: 109 writes across 46 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 99 reads | ~183131 tok |
+| 00:17 | Session end: 109 writes across 46 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 99 reads | ~183131 tok |
+| 00:18 | Edited skills/public/contract-price-analysis/tests/test_ocr_cache.py | modified test_cache_roundtrip_preserves_tables_and_texts() | ~270 |
+| 00:19 | Edited skills/public/contract-price-analysis/scripts/storage.py | modified get_ocr_cache() | ~87 |
+| 00:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | 13→18 lines | ~314 |
+| 00:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~191 |
+| 00:21 | Session end: 113 writes across 46 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 99 reads | ~183993 tok |
+| 00:23 | Task6评审三修(I-A命中免下载/I-B缓存写失败不fail/#3 preview_prefix命中路径防抹)+2折入(bbox断言/非dict守卫TDD) | cpa cli.py+storage.py+test_ocr_cache.py | commit baf48e023(仅3文件),16+40测试全绿 | ~15k |
+| 00:24 | Session end: 113 writes across 46 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 99 reads | ~183993 tok |
+| 23:30 | T6完成(0af47b16e+baf48e023,规格✅质量✅): OCR内容寻址缓存+--re-ocr;三修(命中免下载/写失败不fail/preview_prefix守卫) | plan T6全勾 | T7派发 | ~3k |
+| 00:28 | Session end: 113 writes across 46 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 106 reads | ~186338 tok |
+| 00:29 | Created backend/tests/test_contract_price_reparse_reocr.py | — | ~151 |
+| 00:29 | Edited backend/app/extensions/contract_price/service.py | 12→15 lines | ~172 |
+| 00:29 | Edited backend/app/extensions/contract_price/service.py | 2→4 lines | ~30 |
+| 00:30 | Edited backend/app/extensions/contract_price/routers.py | modified reparse_document() | ~194 |
+| 00:30 | Edited backend/app/extensions/contract_price/routers.py | 3→3 lines | ~68 |
+| 00:31 | Task7 cpa reparse re_ocr 透传(TDD:2测试先FAIL后PASS,4/4含seed_config) | contract_price/{service,routers}.py + test_contract_price_reparse_reocr.py | landed 70522fe13 | ~8k |
+| 00:32 | Session end: 118 writes across 48 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 108 reads | ~186953 tok |
+| 00:33 | Session end: 118 writes across 48 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 108 reads | ~186953 tok |
+| 00:34 | Session end: 118 writes across 48 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 108 reads | ~186953 tok |
+| 00:37 | review Task7 reparse re_ocr (70522fe13): Pass1 spec-compliant, Pass2 approve; 2 tests pass; FastAPI bool 422 on empty val | backend/app/extensions/contract_price/{service,routers}.py | pass | ~8k |
+| 23:55 | T7完成(70522fe13,双阶段✅): reparse re_ocr透传;FastAPI空bool=422坑记录给T12前端 | plan T7全勾 | T8派发 | ~2k |
+| 00:39 | Session end: 118 writes across 48 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 108 reads | ~186953 tok |
+| 00:43 | Created skills/public/contract-price-analysis/tests/test_metadata_fallback.py | — | ~296 |
+| 00:43 | Edited mcp-server/ocr-service/server.py | modified ocr() | ~215 |
+| 00:43 | Edited mcp-server/ocr-service/ocr_engine.py | modified ocr_pdf_bytes() | ~260 |
+| 00:43 | Edited mcp-server/ocr-service/ocr_engine.py | modified _run() | ~91 |
+| 00:43 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _extract_project_fields_with_fallback() | ~320 |
+| 00:43 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+10 lines) | ~166 |
+| 00:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 10→11 lines | ~201 |
+| 00:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 12→8 lines | ~128 |
+| 00:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→7 lines | ~134 |
+| 00:48 | Edited mcp-server/ocr-service/Dockerfile | 9→11 lines | ~224 |
+| 00:48 | Edited mcp-server/ocr-service/Dockerfile | 2→2 lines | ~41 |
+| 00:51 | Session end: 129 writes across 52 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 111 reads | ~189460 tok |
+| 00:55 | Session end: 129 writes across 52 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 113 reads | ~195964 tok |
+| 01:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _extract_project_fields_with_fallback() | ~234 |
+| 01:04 | Task8 合同元数据末页兜底落地: ocr last_pages区间(绝对页号)+cli miss补OCR末2页+缓存命中preview_prefix重建; 13测试pass, 容器重建health OK, probe [3,4] | mcp-server/ocr-service/server.py, ocr_engine.py, Dockerfile, skills/.../cli.py, tests/test_metadata_fallback.py | commits fd78605e5 + 44bd2b5e3 | ~45k || 01:06 | Session end: 130 writes across 52 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 118 reads | ~196198 tok |
+| 01:09 | Created ontostudio/backend/app/auth.py | — | ~2304 |
+| 01:10 | Created ontostudio/backend/app/main.py | — | ~1266 |
+| 01:11 | Created ontostudio/backend/app/main.py | — | ~1496 |
+| 01:12 | Created ontostudio/backend/tests/conftest.py | — | ~567 |
+| 01:13 | Created ontostudio/backend/tests/test_main.py | — | ~1318 |
+| 01:13 | Task8 review: 2-pass review of fd78605e5(last_pages末页兜底)+44bd2b5e3(apt aliyun) — PASS1 spec-compliant, PASS2 approve | mcp-server/ocr-service/{server,ocr_engine}.py, cli.py, tests | 13 tests pass, /health ok, 容器已含新代码+aliyun源 | ~45k |
+| 01:13 | Edited ontostudio/backend/tests/test_main.py | 8→8 lines | ~59 |
+| 01:13 | Edited ontostudio/backend/tests/test_main.py | modified test_protected_endpoint_401_with_expired_token() | ~121 |
+| 01:13 | Edited ontostudio/backend/tests/test_main.py | 8→8 lines | ~55 |
+| 01:13 | Edited ontostudio/backend/tests/test_main.py | modified test_protected_endpoint_401_with_expired_token() | ~94 |
+| 01:13 | Edited ontostudio/backend/tests/test_ontology_rest.py | modified client() | ~226 |
+| 01:14 | Edited ontostudio/backend/tests/test_doc_graph_resolution_rest.py | 8→9 lines | ~126 |
+| 01:14 | Edited ontostudio/backend/tests/test_doc_graph_resolution_rest.py | modified client() | ~49 |
+| 00:20 | T8完成(fd78605e5+44bd2b5e3,双阶段✅): last_pages区间+末页兜底+preview_prefix确定性重建;apt镜像403→aliyun(bug-3307);活容器实测[3,4] | plan T8全勾 | T9派发 | ~3k |
+| 01:14 | Edited .github/workflows/backend-unit-tests.yml | modified CUSTOM() | ~108 |
+| 01:14 | Edited extensions_config.json | reduced (-10 lines) | ~311 |
+| 01:15 | Session end: 144 writes across 56 files (seed_library.py, seed_defaults.py, crud.py, test_seed_library.py, test_contract_price_seed_config.py) | 121 reads | ~209915 tok |
+| 01:17 | Edited ontostudio/backend/tests/test_main.py | make_test_token() → make_token() | ~220 |
+| 01:18 | Edited ontostudio/backend/tests/conftest.py | "ontostudio-test-secret" → "ontostudio-test-secret-01" | ~35 |
+| 01:18 | Edited ontostudio/backend/tests/test_main.py | modified test_wrong_secret_token_rejected() | ~90 |
+| 01:19 | Edited mcp-server/ocr-service/schemas.py | modified PageResult() | ~156 |
+| 01:19 | Edited mcp-server/ocr-service/ocr_engine.py | modified _run() | ~260 |
+| 01:19 | Edited mcp-server/ocr-service/ocr_engine.py | modified zip() | ~405 |
+| 01:20 | Edited mcp-server/ocr-service/ocr_engine.py | modified _try_rotations() | ~413 |
+| 01:20 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | modified parse_document() | ~200 |
+| 01:20 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | 2→3 lines | ~46 |
+| 01:20 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | modified to_cache() | ~105 |
+| 01:20 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | modified from_cache() | ~219 |
+| 01:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~23 |
+| 01:21 | Edited skills/public/contract-price-analysis/scripts/cli.py | 17→19 lines | ~333 |
+| 01:21 | Created skills/public/contract-price-analysis/tests/test_orientation_passthrough.py | — | ~1533 |
+| 01:22 | Created skills/public/contract-price-analysis/tests/test_orientation_passthrough.py | — | ~1286 |
+| 01:22 | Edited skills/public/contract-price-analysis/scripts/project_fields.py | 3→4 lines | ~80 |
+| 01:22 | Edited skills/public/contract-price-analysis/scripts/project_fields.py | modified form() | ~84 |
+| 01:22 | Edited skills/public/contract-price-analysis/tests/test_metadata_fallback.py | 7→8 lines | ~104 |
+| 01:22 | Edited skills/public/contract-price-analysis/tests/test_metadata_fallback.py | modified test_tail_ocr_failure_returns_front_fields_gracefully() | ~256 |
+| 01:23 | Edited skills/public/contract-price-analysis/tests/test_metadata_fallback.py | modified fake_parse() | ~49 |
+| 01:23 | Edited skills/public/contract-price-analysis/tests/test_metadata_fallback.py | modified boom_parse() | ~59 |
+| 01:23 | Edited skills/public/contract-price-analysis/tests/test_ocr_cache.py | modified test_cache_roundtrip_preserves_tables_and_texts() | ~173 |
+| 01:23 | Edited skills/public/contract-price-analysis/tests/test_ocr_cache.py | modified fake_parse() | ~34 |
+
+## Session: 2026-09-17 01:23
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:40 | OntoStudio S1 Task2: JWT鉴权实装+MCP streamable-http双端点+CORS收紧+config切http+CI悬空lint步骤删;ontostudio 161 passed+3 skipped;backend基线2个既有collect错误与本任务无关 | ontostudio/backend/app/{auth,main}.py, tests/{conftest,test_main}.py, extensions_config.json(x2), .github/workflows/backend-unit-tests.yml | DONE | ~45k |
+
+## Session: 2026-09-17 01:24
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 01:30 | Edited skills/public/contract-price-analysis/tests/test_metadata_fallback.py | modified test_tail_ocr_failure_returns_front_fields_gracefully() | ~43 |
+| 01:33 | Edited ontostudio/backend/app/ontology/routers.py | modified CUSTOM() | ~47 |
+| 01:33 | Edited ontostudio/backend/app/doc_graph/routers.py | modified CUSTOM() | ~47 |
+| 01:35 | Session end: 3 writes across 2 files (test_metadata_fallback.py, routers.py) | 3 reads | ~4407 tok |
+| 01:40 | cpa Task 9: OCR页级方向归一化落地(_try_rotations ±90试探+orientation_fixed_pages全链透传+卖方label+graceful兜底测试),23+64测试绿,补充协议探针fixed=[2,3] p2/p3 cw90出表 | mcp-server/ocr-service/{ocr_engine,schemas}.py skills/public/contract-price-analysis/{scripts/{document_parser,cli,project_fields}.py tests/test_orientation_passthrough.py} | baseline 899s/91表;回归探针跑批中 | ~6000 |
+| 01:56 | cpa Task 9 收尾: 回归探针 91表/137页 fixed=[] engine 776s→706s(-9.1%),提交 e1c0f151d(8文件,不push),buglog bug-1760645 更新为已落地 | .wolf/{buglog,cerebrum,memory}.md + commit e1c0f151d | 任务完成 | ~1500 |
+| 01:55 | Session end: 3 writes across 2 files (test_metadata_fallback.py, routers.py) | 4 reads | ~4407 tok |
+| 01:58 | Session end: 3 writes across 2 files (test_metadata_fallback.py, routers.py) | 8 reads | ~30926 tok |
+| 02:05 | Session end: 3 writes across 2 files (test_metadata_fallback.py, routers.py) | 10 reads | ~44528 tok |
+| 02:05 | Task9 review fd78605e5..e1c0f151 两遍审查: 7项spec全过(绝对门偏差判定正确), 32 tests pass, /health ok, ocr容器已含新代码 | ocr_engine.py,schemas.py,document_parser.py,cli.py,project_fields.py | PASS-approve | ~45k |
+| 00:55 | T9完成(e1c0f151,双阶段✅Approve): 页级方向归一化+全链透传;补充协议p2/p3自动纠偏出表,137页回归91表/0误纠/耗时-9%;with_text窗口门控偏差验证为正确 | plan T9全勾+M1/M2修订 | T10派发(前端阶段) | ~4k |
+| 02:08 | Session end: 3 writes across 2 files (test_metadata_fallback.py, routers.py) | 11 reads | ~44528 tok |
+| 02:09 | Edited frontend/src/extensions/contract-price/types.ts | expanded (+29 lines) | ~237 |
+| 02:10 | Edited frontend/src/extensions/contract-price/components/SettingsView.tsx | CSS: table_seeds | ~51 |
+| 02:11 | Created frontend/src/extensions/contract-price/components/SeedEditorDrawer.tsx | — | ~2025 |
+| 02:20 | Reviewed commit 563a47494 (ontostudio JWT auth + MCP streamable-http): 161 tests pass, ruff green, configs valid; found compare_digest non-ASCII 500 bug + MCP guard open-by-default | ontostudio/backend/app/auth.py, app/main.py | done | ~90k |
+| 02:12 | Edited frontend/src/extensions/contract-price/components/SeedEditorDrawer.tsx | added 1 condition(s) | ~50 |
+| 02:30 | Task10 done: TableSeed/UnmatchedTable types + SeedEditorDrawer + SettingsView table_seeds fix; commit 2b2f89e74 | frontend/src/extensions/contract-price/{types.ts,components/SeedEditorDrawer.tsx,components/SettingsView.tsx} | typecheck+eslint clean | ~15k |
+| 02:16 | Session end: 7 writes across 5 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 12 reads | ~46891 tok |
+| 02:18 | Session end: 7 writes across 5 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 12 reads | ~48145 tok |
+| 02:19 | Edited ontostudio/backend/app/auth.py | expanded (+6 lines) | ~174 |
+| 02:19 | Edited ontostudio/backend/app/auth.py | modified _jwt_secret() | ~237 |
+| 02:19 | Edited ontostudio/backend/app/auth.py | modified _authenticate() | ~221 |
+| 02:19 | Edited ontostudio/backend/app/auth.py | modified _check() | ~169 |
+| 02:19 | Edited ontostudio/backend/app/auth.py | modified mcp_request_authorized() | ~448 |
+| 02:20 | Edited ontostudio/backend/tests/conftest.py | modified jwt_test_secret() | ~80 |
+| 02:20 | Edited ontostudio/backend/tests/test_main.py | modified test_wrong_secret_token_rejected() | ~622 |
+| 02:20 | Edited ontostudio/backend/tests/test_main.py | added 5 import(s) | ~78 |
+| 01:20 | T10完成(2b2f89e74,双阶段✅): TableSeed/UnmatchedTable类型+SeedEditorDrawer(7角色/草稿建议);两抛光项折入T11(effect键加固+price_total exclude) | plan T10全勾 | T11派发 | ~2k |
+| 02:23 | Session end: 15 writes across 8 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 12 reads | ~50174 tok |
+| 02:24 | Session end: 15 writes across 8 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 12 reads | ~50174 tok |
+| 02:35 | Verified fix 1fff146ff: compare_digest bytes fix confirmed via original non-ASCII repro, 164 tests pass, ruff green, no secret/token in logs | ontostudio/backend/app/auth.py | Task 2 verdict: mergeable | ~15k |
+| 02:26 | Session end: 15 writes across 8 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 17 reads | ~53965 tok |
+| 02:29 | Edited frontend/src/extensions/contract-price/components/SeedEditorDrawer.tsx | added 1 condition(s) | ~20 |
+| 02:29 | Edited frontend/src/extensions/contract-price/components/SeedEditorDrawer.tsx | inline fix | ~17 |
+| 02:29 | Created frontend/src/extensions/contract-price/components/SeedRulesCard.tsx | — | ~1130 |
+| 02:29 | Created frontend/src/extensions/contract-price/components/SettingsView.tsx | — | ~1412 |
+| 02:32 | Created ontostudio/backend/Dockerfile | — | ~422 |
+| 02:32 | Created ontostudio/backend/.dockerignore | — | ~70 |
+| 02:33 | Edited docker/docker-compose-dev.yaml | modified CUSTOM() | ~671 |
+| 02:33 | Edited docker/nginx/nginx.conf | expanded (+21 lines) | ~327 |
+| 02:33 | Edited deploy/offline/docker-compose.extensions.yaml | expanded (+43 lines) | ~573 |
+| 02:32 | Task11 配置tab重建: 新建SeedRulesCard(命中统计=parse_meta.matched_seeds聚合)+SettingsView v3重写(移除解析模式/货物表名关键字死控件, 加dirty跟踪+保存clamp+高级折叠)+SeedEditorDrawer两处fold-in(effect键open+seed/emptySeed exclude加price_total parity) | frontend/src/extensions/contract-price/components/SeedRulesCard.tsx,SettingsView.tsx,SeedEditorDrawer.tsx | commit 7c59d9d55; typecheck+eslint+prettier全clean; 适配: verbatimModuleSyntax要求SeedDraft用inline type import | ~9k |
+| 02:33 | Edited deploy/offline/nginx/nginx.conf | expanded (+22 lines) | ~294 |
+| 02:33 | Edited scripts/offline-export.sh | modified CUSTOM() | ~124 |
+| 02:33 | Edited scripts/offline-export.sh | 3→4 lines | ~54 |
+| 02:35 | Session end: 27 writes across 15 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 30 reads | ~68958 tok |
+| 02:36 | Edited ontostudio/backend/Dockerfile | 4→6 lines | ~71 |
+| 02:43 | Task11 review: SeedRulesCard+SettingsView v3 (2b2f89e74..7c59d9d55) pass1 spec-compliant; round-trip trace: parse_mode/keywords safe, table_seeds=[] silently restored by crud.load_config+cli _load_seeds (acceptable, UX gap) | contract-price components x3 | approve, no blocker | ~45k |
+| 02:45 | ontostudio S1 Task3 容器化: Dockerfile+.dockerignore+dev/offline compose 服务+双 nginx /api/ontostudio/ 路由+offline-export 镜像接线 | ontostudio/backend/{Dockerfile,.dockerignore}, docker/docker-compose-dev.yaml, deploy/offline/{docker-compose.extensions.yaml,nginx/nginx.conf}, docker/nginx/nginx.conf, scripts/offline-export.sh | 已完成: commit 2ca1cb048; 镜像 379MB(aliyun mirror 修复 pypi 直连挂死); 容器 healthy; :8005+经nginx :2026/api/ontostudio/ 双通道 health 200/401/docs 200 全过 | ~15k |
+| 01:50 | T11完成(7c59d9d55,双阶段✅): SeedRulesCard+SettingsView v3(死控件移除/dirty/clamp/命中统计);round-trip trace干净;3个UX跟进项折入T12 | plan T11全勾 | T12派发 | ~3k |
+| 02:47 | Session end: 28 writes across 15 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 31 reads | ~69034 tok |
+| 02:50 | Session end: 28 writes across 15 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 34 reads | ~69842 tok |
+| 02:53 | Created frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx | — | ~1432 |
+| 02:53 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | added 2 condition(s) | ~116 |
+| 02:54 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | 9→14 lines | ~169 |
+| 02:54 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | expanded (+7 lines) | ~86 |
+| 02:54 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | added 1 condition(s) | ~238 |
+| 02:54 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | added optional chaining | ~121 |
+| 02:54 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | added optional chaining | ~194 |
+| 02:54 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | expanded (+16 lines) | ~276 |
+| 02:55 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | 9→9 lines | ~114 |
+| 02:55 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | added optional chaining | ~296 |
+| 02:55 | Edited frontend/src/extensions/contract-price/hooks.ts | modified useReparseDocument() | ~75 |
+| 02:55 | Edited frontend/src/extensions/contract-price/api.ts | 4→7 lines | ~87 |
+| 02:55 | Edited frontend/src/extensions/contract-price/components/SettingsView.tsx | added nullish coalescing | ~155 |
+| 02:55 | Edited frontend/src/extensions/contract-price/components/SettingsView.tsx | expanded (+9 lines) | ~132 |
+| 02:56 | Edited frontend/src/extensions/contract-price/components/SeedRulesCard.tsx | inline fix | ~14 |
+| 02:56 | Session end: 43 writes across 19 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 35 reads | ~73347 tok |
+| 02:57 | Edited frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx | modified UnmatchedTablesDrawer() | ~42 |
+| 03:02 | Session end: 44 writes across 19 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 36 reads | ~82901 tok |
+| 03:02 | Session end: 44 writes across 19 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 37 reads | ~82901 tok |
+| 03:10 | Task12 review: ContractsView unmatched-tables loop (e92994a3c) 2-pass review; typecheck/eslint/prettier all clean; verdict approve | frontend/src/extensions/contract-price/* | OK | ~45k |
+| 03:11 | Edited docker/docker-compose-dev.yaml | 11→16 lines | ~152 |
+| 02:20 | T12完成(e92994a3c,双阶段✅): 未匹配表抽屉闭环+新状态徽章+savedKeys门控修正+api reOcr参数;M1/M2折入T13 | plan T12全勾 | T13派发 | ~3k |
+| 03:12 | Session end: 45 writes across 19 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 37 reads | ~89433 tok |
+| 03:14 | Edited frontend/src/extensions/contract-price/types.ts | 3→4 lines | ~29 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 2→3 lines | ~70 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | expanded (+10 lines) | ~150 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | expanded (+20 lines) | ~328 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 3→4 lines | ~73 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 6→9 lines | ~142 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 2→2 lines | ~42 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | added nullish coalescing | ~174 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx | 4→6 lines | ~81 |
+| 03:14 | Edited frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx | CSS: savedKeys | ~252 |
+| 03:15 | Edited frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx | 11→11 lines | ~88 |
+| 03:15 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | 3→6 lines | ~98 |
+| 03:15 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | CSS: key | ~242 |
+| 03:15 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | 6→8 lines | ~90 |
+| 21:05 | Task4 E2E: TestClient 冒烟 4+3 端点全 200(health/registry 14/object-types 14/pending 0/graph nodes+edges 真数据);nginx 全链 JWT 200/401/403 三态正确 | ontostudio-backend | PASS | ~6k |
+| 21:10 | Task4 发现并修复: extensions_config MCP URL 主机名 ontostudio 无 DNS(服务名 ontostudio-backend)→compose 加 aliases[ontostudio] f1054b8a1;harness http 通道实测 ontology 7+doc-graph 5 工具,describe_ontology+evaluate_rules(eia 1550事实/494派生)真调通过 | docker/docker-compose-dev.yaml | FIXED | ~8k |
+| 21:15 | Task4 测试: ontostudio 164 passed+3 skipped(=T2 基线);backend 全量回归跑中(--continue-on-collection-errors,因上游 test_acceptance_checks 的 os.geteuid Windows 收集错+build_output 同名模块污染,均与本任务无关) | - | RUNNING | ~2k |
+| 03:21 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 37 reads | ~91292 tok |
+| 03:23 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 39 reads | ~112261 tok |
+| 21:40 | Task4 收尾: backend 全量回归被系统内存压力终止(未复现基线计数,非命令失败)→定向回归 harness_boundary/gateway_wiring/extensions_config 16P/60S + import 残留 grep 0 兜底;plan 打 SHIPPED 横幅(S1 链 325bb8e47→f1054b8a1+7 冒烟证据);bug-3307 已录 | docs/superpowers/plans/2026-09-17-ontostudio-s1-backend.md | DONE | ~4k |
+| 03:28 | Task13 review: cpa 分项分类列+savedKeys提升 (e92994a3c..70fd7b01e) 双pass审查 | frontend/src/extensions/contract-price/{types.ts,components/ItemsView.tsx,components/UnmatchedTablesDrawer.tsx,components/ContractsView.tsx} | PASS both; typecheck/eslint/prettier clean; 2 Minor UX quirks | ~40k |
+| 03:28 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 39 reads | ~112261 tok |
+| 02:50 | T13完成(70fd7b01e,双阶段✅): ItemsView分类列+筛选+展开区+savedKeys提升;13代码任务全毕 | plan T13全勾 | 终审+冒烟 | ~2k |
+| 2026-09-18 final-review | OntoStudio S1 终审:T3(2ca1cb048)+T4(f1054b8a1)通过;发现 offline compose 缺 ontostudio alias 而 offline extensions_config enabled:true 指向该主机名(dev 同款 bug 未镜像);ontostudio 164 passed/3 skipped+ruff clean+backend 零残留+双 compose config OK | ontostudio/backend, docker/, deploy/offline/ | S1 可签发,offline alias 建议 S2 或随手修 | ~40k |
+| 03:05 | 三tab浏览器冒烟通过(:3000,daemon重登录): 配置tab 6 seed卡+编辑抽屉7角色预填;合同解析旧数据兼容;分项校验分类列+全部分类筛选上线(旧行"—"预期) | browser session-1789632222128 | 冒烟✅ | ~2k |
+| 03:38 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 59 reads | ~130192 tok |
+| 03:41 | OntoStudio S1收官:终审Ship=Yes(6提交325bb8e47..2ca1cb048+alias修复f1054b8a1+2a2e1f98b);离线alias缺口一行修复;S2前端独立/S3功能收口/S4离线包待后续计划 | ontostudio/backend + deploy/offline | S1 SHIPPED(未push) | 审计~700k |
+| 03:41 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 59 reads | ~130192 tok |
+| 03:45 | cpa seed-rules final cross-cutting review: data-flow trace+§9 readiness+tests (skill 64p/1s, backend cpa 18p/1s, fe typecheck clean) | skills/public/contract-price-analysis, backend contract_price, ocr-service, fe contract-price | verdict READY (2 minor watch items) | ~90k |
+| 03:47 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 59 reads | ~130192 tok |
+| 04:08 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 64 reads | ~130192 tok |
+| 04:10 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 64 reads | ~130192 tok |
+| 04:35 | Task14 cpa seed-rules P5 实弹验收: 6 样例上传+批量解析 419s, 桂北重解析 run1 769s(全 OCR)+run2 9s(缓存命中), §9.2 FAIL(roles_x 粘连格丢行 bug-3400)其余 PASS | .wolf/tmp/cpa-acceptance-runbook.md | BLOCKED 报告 | ~45k |
+| 04:25 | Session end: 59 writes across 20 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 65 reads | ~130192 tok |
+| 04:47 | Created skills/public/contract-price-analysis/tests/test_xband_fallback.py | — | ~2311 |
+| 04:48 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_x_path_kept_when_price_usable() | ~435 |
+| 04:48 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | added 1 import(s) | ~21 |
+| 04:49 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _is_category_row() | ~726 |
+| 04:49 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _iter_seed_cells() | ~379 |
+| 04:49 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | 3→6 lines | ~77 |
+| 04:49 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_p115_row_x_path_reproduces_production_glue() | ~142 |
+| 04:50 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | expanded (+16 lines) | ~158 |
+| 04:50 | Edited backend/app/extensions/contract_price/seed_defaults.py | expanded (+16 lines) | ~158 |
+| 04:50 | Edited skills/public/contract-price-analysis/tests/test_seed_library.py | test_default_library_has_six_seeds() → test_default_library_has_seven_seeds() | ~59 |
+| 05:05 | bug-3400 fix live re-verify: 桂北 263→320 items, 现浇构件钢筋1346.15恢复; 砂石料0→4 items(ssly-sm seed命中); 补充协议合计泄漏消失; §9.2仍BLOCKED(平整场地/多孔砖墙p94类不可达) | table_classifier.py, seed_library.py, seed_defaults.py, test_xband_fallback.py | 39测试绿+parity绿 | ~9k |
+| 03:50 | P5验收:6/7过(缓存重解析9s/85x,分类分簇跨7分类,旋转[2,3],零静默);§9.2 FAIL=bug-3400(新OCR网格x带错配);一阶段修复bab763b02(逐行x/index回退+合计守卫+砂石料seed)→263/320items钢筋1346.15复现;二阶段授权:列带语义化(空cell不定义band+两段式认领) | runbook .wolf/tmp | 修复中 | ~4k |
+| 04:59 | Session end: 69 writes across 25 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 70 reads | ~138179 tok |
+| 05:03 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | added 1 import(s) | ~44 |
+| 05:03 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 4→8 lines | ~64 |
+| 05:04 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _roles_x_from_data() | ~543 |
+| 05:04 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _row_cells_by_x() | ~431 |
+| 05:25 | bug-3400二阶段(授权列带语义化): roles_x非空中位+两段式认领; 桂北320→360 items,现浇构件钢筋1314.37+1346.15双恢复,p119/p133归位unmatched,6合同零退化; 360<380→revert-consideration报告(建议KEEP); commit 26d2a41a9 | table_classifier.py, test_xband_fallback.py | 78 passed/1 skipped | ~8k |
+| 04:30 | 二阶段26d2a41a9落地:列带语义化→桂北360items(钢筋双价复现,6合同零回归,2非价格表正确重归类);剩余52行两类定界;用户拍板再授权一轮=表级算术重推(单价×工程量≈合价)+单行回退,硬门槛430/零回归 | .wolf/tmp/cpa-acceptance-runbook.md | 终轮修复中 | ~3k |
+| 07:26 | Session end: 73 writes across 25 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 71 reads | ~141879 tok |
+| 07:34 | Created skills/public/contract-price-analysis/tests/test_price_rediscovery.py | — | ~1426 |
+| 07:38 | Edited skills/public/contract-price-analysis/tests/test_price_rediscovery.py | 5→5 lines | ~71 |
+| 07:38 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 1 import(s) | ~20 |
+| 07:38 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _clean_cell_num() | ~1766 |
+| 07:39 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified len() | ~39 |
+| 07:39 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+24 lines) | ~344 |
+| 07:39 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~373 |
+| 07:41 | Edited skills/public/contract-price-analysis/tests/test_price_rediscovery.py | 1→3 lines | ~60 |
+| 07:47 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _qty_text_ok() | ~255 |
+| 07:47 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~108 |
+| 07:47 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~32 |
+| 07:47 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~95 |
+| 05:55 | bug-3400终轮(cli-only算术重推+量文本守卫): 桂北392 items(基线+2.1%), 价格抽查4/4基线值精确(1.31/556.99/1314.37+1346.15), 6合同零回归, 85测试绿; 392<430目标线→STOP交裁决; rows 412仍带外-8.4% | cli.py, test_price_rediscovery.py | 85 passed/1 skipped | ~10k |
+| 05:10 | P5收官:stage-3(81cafdf9e)后桂北392/384=+2.1%带内,4/4价格精确复现,7/7验收全过;旋转页溯源闭环实测(p2/p3 PNG 200);README+计划全勾提交 | 全案完成 | 汇报 | ~4k |
+| 07:59 | Session end: 85 writes across 27 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 71 reads | ~146468 tok |
+| 05:40 | 用户报告:7合同元数据(项目名称/所在地/供应商/签订日期)大部分错误;DB实况+JZGS溯源探针完成:表单栅格线性化→split-line下一行捕获相邻标签(合同名称→"合同编号",乙方→"联系电话")+f or r保错+所在地缺签订地点标签+签订日期手写不可达;Workflow并行取证其余6份 | .wolf/tmp/meta_probe.py | 取证中 | ~4k |
+| 09:35 | Session end: 85 writes across 27 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 71 reads | ~146468 tok |
+| 09:40 | Created docs/superpowers/plans/2026-09-17-ontostudio-s2-frontend.md | — | ~1135 |
+| 09:40 | cpa meta取证: 上浦钢筋合同(5b39470d..) probe-30 — replay与stored一致,项目名称/供应商正确,地点/签订日期=NULL确属可提取文本缺失 | .wolf/tmp/probe-30.json | ok | ~3k |
+| 09:41 | OntoStudio S2计划定稿(前端独立):Vite骨架+迁移复制+API同源切换+主系统摘除+入口切换;S3功能收口另立 | docs/superpowers/plans/2026-09-17-ontostudio-s2-frontend.md | 已写盘,T1待派 | ~3k |
+| 09:42 | Session end: 86 writes across 28 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 71 reads | ~150119 tok |
+| 09:43 | CPA取证#19 木饰面石材合同: 项目名称跨行截断+卖方(或简称)后缀污染+签订日期空白;廉政页供应商、推销毒化兜底重试 | .wolf/tmp/probe-19.json | 取证完成 | ~6k |
+| 09:48 | Created ontostudio/frontend/package.json | — | ~366 |
+| 09:48 | Created ontostudio/frontend/vite.config.ts | — | ~413 |
+| 09:48 | Created ontostudio/frontend/tsconfig.json | — | ~227 |
+| 09:48 | Created ontostudio/frontend/tsconfig.node.json | — | ~101 |
+| 09:49 | Created ontostudio/frontend/index.html | — | ~83 |
+| 09:49 | Created ontostudio/frontend/src/index.css | — | ~663 |
+| 09:49 | Created ontostudio/frontend/src/main.tsx | — | ~212 |
+| 09:49 | Created ontostudio/frontend/src/App.tsx | — | ~85 |
+| 09:49 | Created ontostudio/frontend/src/lib/utils.ts | — | ~81 |
+| 09:49 | Created ontostudio/frontend/src/lib/api.ts | — | ~808 |
+| 09:50 | Created ontostudio/frontend/src/lib/permissions.ts | — | ~679 |
+| 09:50 | Edited ontostudio/frontend/src/lib/permissions.ts | added 1 import(s) | ~24 |
+| 09:50 | Edited ontostudio/frontend/src/lib/permissions.ts | 5→3 lines | ~15 |
+| 06:30 | 元数据根因分析完成(7合同全取证):RC1表单栅格失配/RC2跨行截断/RC3简称括注/RC4标签缺口/RC5手写边界+单一候选无fallthrough+f-or-r保错+桂北对照系falsy-skip幸存;buglog已记,修复设计6条已交用户 | bug-1760xxx | 报告交付 | ~5k |
+| 09:56 | Created ontostudio/frontend/src/components/OntologyPage.tsx | — | ~3834 |
+| 09:56 | Created ontostudio/frontend/.gitignore | — | ~11 |
+| 09:56 | Session end: 101 writes across 40 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 93 reads | ~180741 tok |
+| 09:56 | Created ontostudio/frontend/src/vite-env.d.ts | — | ~90 |
+| 10:15 | S2-T1 Vite骨架落地:ontostudio/frontend 独立pnpm app(vite6+tw4+react19),explorer 26文件字节级零改动,import改本地,typecheck 0错,build dist 1.05MB,dev :3010 200+双proxy通,headless渲染权限空态;发现:8005 system:access门拒gateway会话JWT(无role claims)留T3 | ontostudio/frontend/ | DONE | ~60k |
+| 10:10 | Session end: 102 writes across 41 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 97 reads | ~181895 tok |
+| 10:12 | Session end: 102 writes across 41 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 101 reads | ~184161 tok |
+| 10:26 | Session end: 102 writes across 41 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 106 reads | ~188833 tok |
+| 10:26 | Edited ontostudio/frontend/vite.config.ts | 2→4 lines | ~67 |
+| 10:26 | Edited ontostudio/frontend/vite.config.ts | inline fix | ~20 |
+| 10:29 | Created C:/Users/admin/AppData/Local/Temp/claude/buglog-append.cjs | — | ~316 |
+| 10:45 | S2-T1 spec-review P0修复: dev proxy rewrite 改剥前缀(原双重/api/extensions致开发态全API 404,bug-3408);探针:client真实路径registry/pending均401(路由存在需鉴权),headless登录态渲染出完整三视图壳+graph加载403(system:access=T3已知缺口);typecheck 0错;commit ce9c2d502 | ontostudio/frontend/vite.config.ts | FIXED | ~15k |
+| 10:31 | Session end: 105 writes across 42 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 107 reads | ~189259 tok |
+| 10:34 | Session end: 105 writes across 42 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 107 reads | ~189294 tok |
+| 10:47 | Session end: 105 writes across 42 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 112 reads | ~192119 tok |
+| 10:50 | Edited frontend/src/extensions/shell/Sidebar.tsx | CSS: newTab | ~91 |
+| 10:50 | Edited frontend/package.json | 3→2 lines | ~26 |
+| 10:51 | Edited frontend/package.json | removed 7 lines | ~16 |
+| 10:51 | Edited frontend/package.json | 3→2 lines | ~14 |
+| 11:06 | S2-T2 ontostudio主系统摘除: 删app/ontology+extensions/ontology+镜像测试42文件,Sidebar切/ontostudio/+newTab,删graphology/sigma系7依赖,recharts保留;typecheck/test/build绿,lint仅2既有债务,commit e788dc1d8(pathspec) | frontend/src/app/ontology frontend/src/extensions/ontology frontend/src/extensions/shell/Sidebar.tsx frontend/package.json frontend/pnpm-lock.yaml frontend/tests/unit/extensions/ontology | OK | ~9k |
+| 11:10 | Session end: 109 writes across 43 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 112 reads | ~192266 tok |
+| 11:18 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _raw_price_usable() | ~164 |
+| 11:18 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~240 |
+| 11:18 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _ratio_plausible() | ~158 |
+| 11:25 | Created skills/public/contract-price-analysis/tests/debug_rediscover.py | — | ~363 |
+| 11:27 | Edited skills/public/contract-price-analysis/scripts/cli.py | 13→14 lines | ~269 |
+| 11:27 | Edited skills/public/contract-price-analysis/scripts/cli.py | 1→4 lines | ~61 |
+| 11:29 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _raw_price_usable() | ~80 |
+| 11:32 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _raw_price_usable() | ~157 |
+| 11:36 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→3 lines | ~49 |
+| 11:38 | Edited skills/public/contract-price-analysis/scripts/cli.py | 0.5 → 1.0 | ~8 |
+| 11:49 | Session end: 119 writes across 44 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 112 reads | ~193826 tok |
+| 11:50 | Session end: 119 writes across 44 files (test_metadata_fallback.py, routers.py, types.ts, SettingsView.tsx, SeedEditorDrawer.tsx) | 113 reads | ~198587 tok |
+| 11:55 | Created ontostudio/frontend/.dockerignore | — | ~62 |
+| 11:55 | Created ontostudio/frontend/Dockerfile | — | ~365 |
+| 11:56 | Created ontostudio/frontend/nginx-frontend.conf | — | ~246 |
+| 11:56 | Edited ontostudio/frontend/vite.config.ts | expanded (+7 lines) | ~137 |
+| 11:56 | Edited docker/docker-compose-dev.yaml | expanded (+27 lines) | ~375 |
+| 11:57 | Edited docker/nginx/nginx.conf | expanded (+17 lines) | ~512 |
+| 11:58 | Edited deploy/offline/nginx/nginx.conf | expanded (+16 lines) | ~493 |
+| 11:58 | Edited deploy/offline/docker-compose.extensions.yaml | expanded (+24 lines) | ~376 |
+| 11:58 | Edited scripts/offline-export.sh | modified CUSTOM() | ~89 |
+| 11:58 | Edited scripts/offline-export.sh | 1→2 lines | ~44 |
+| 11:59 | Edited frontend/src/extensions/shell/Sidebar.tsx | CSS: ontostudio-frontend | ~73 |
+
+## Session: 2026-09-18 18:31
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-18 18:32
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 18:49 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_arith_price() | ~383 |
+| 18:50 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+8 lines) | ~302 |
+| 18:50 | Created skills/public/contract-price-analysis/tests/test_seed_anchor_fallback.py | — | ~474 |
+
+## Session: 2026-09-18 18:51
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-18 18:52
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 19:05 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | inline fix | ~10 |
+| 19:05 | Edited backend/app/extensions/contract_price/seed_defaults.py | inline fix | ~10 |
+| 19:06 | Edited ontostudio/backend/app/auth.py | not() → _gateway_authorizes() | ~378 |
+| 19:06 | Edited ontostudio/backend/app/auth.py | modified _gateway_base_url() | ~590 |
+| 19:07 | Edited ontostudio/backend/app/auth.py | added 2 import(s) | ~81 |
+| 19:07 | Edited ontostudio/backend/app/auth.py | 18→14 lines | ~106 |
+| 19:07 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _bboxes_usable() | ~755 |
+| 19:07 | Edited ontostudio/backend/app/auth.py | 3→6 lines | ~126 |
+| 19:07 | Edited docker/docker-compose-dev.yaml | 4→8 lines | ~163 |
+| 19:07 | Edited skills/public/contract-price-analysis/scripts/cli.py | 9→11 lines | ~122 |
+| 19:07 | Edited deploy/offline/docker-compose.extensions.yaml | 3→6 lines | ~127 |
+| 19:07 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→5 lines | ~67 |
+| 19:08 | Edited skills/public/contract-price-analysis/tests/test_price_rediscovery.py | modified test_stage1_learns_untaxed_pair_and_recovers_failing_rows() | ~224 |
+| 19:08 | Edited skills/public/contract-price-analysis/tests/test_price_rediscovery.py | 6→6 lines | ~105 |
+| 19:10 | Edited ontostudio/backend/tests/test_main.py | added 1 import(s) | ~31 |
+| 19:13 | Edited docker/docker-compose-dev.yaml | 2→4 lines | ~68 |
+| 19:13 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_reverse_calc_rejects_unit_column_as_total() | ~352 |
+| 19:13 | Edited deploy/offline/docker-compose.extensions.yaml | 3→4 lines | ~70 |
+| 19:15 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_ratio_plausible_guard() | ~962 |
+| 19:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _lone_row_price() | ~436 |
+| 19:21 | Created skills/public/contract-price-analysis/tests/test_seed_anchor_fallback.py | — | ~407 |
+| 12:40 | S2-T3 ontostudio前端容器化: 两阶段Dockerfile(node22+pnpm10.26.2→nginx:alpine dist)+nginx-frontend.conf(SPA alias+try_files+:3010)+vite base=/ontostudio/;dev compose+ontostudio-frontend(profile,不暴露host口)+nginx /ontostudio/真location(request-time var防静态upstream启动失败);offline extensions.yaml+offline nginx+offline-export.sh同步;v2授权委托落地(auth.py _gateway_authorizes反查gateway /api/permissions/me修v1 cookie全403);healthcheck须127.0.0.1(localhost→::1坑);E2E全过(3240节点/2009边+检索/详情/社区着色/概览KPI/消解列表/权限负例) | ontostudio/frontend/* docker/* deploy/offline/* ontostudio/backend/app/auth.py | OK | ~28k |
+| 19:36 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_arith_price() | ~499 |
+| 19:36 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+7 lines) | ~388 |
+| 19:37 | Edited skills/public/contract-price-analysis/tests/test_price_rediscovery.py | modified test_stage1_learns_untaxed_pair_and_recovers_failing_rows() | ~405 |
+| 19:37 | Edited skills/public/contract-price-analysis/tests/test_price_rediscovery.py | modified test_unit_text_as_qty_never_feeds_reverse_calc() | ~394 |
+| 19:39 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified startswith() | ~171 |
+| 19:43 | Edited skills/public/contract-price-analysis/scripts/cli.py | 21→23 lines | ~412 |
+| 19:45 | Session end: 27 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 13 reads | ~38613 tok |
+| 19:48 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_num_cands() | ~324 |
+| 19:48 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+14 lines) | ~499 |
+| 19:49 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~29 |
+| 19:50 | Edited skills/public/contract-price-analysis/tests/test_price_rediscovery.py | 5→8 lines | ~112 |
+| 19:52 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | removed 27 lines | ~16 |
+| 19:53 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_row_triple_scan_recovers_user_reported_rows() | ~772 |
+| 19:55 | Edited skills/public/contract-price-analysis/scripts/cli.py | 11→13 lines | ~163 |
+| 19:56 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+11 lines) | ~328 |
+| 19:56 | 语义地图v2全系列签发:推理规则底座4任务落地+终审Ship=Yes(含ef67132f尾修评审);v2消解/推理/概览全部生产可用;文档级follow-up(spec§3全局预算+枚举钉测)已落地 | 推理7c+语义地图v2 | SHIPPED(未push) | 终审~300k |
+| 19:57 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 15 reads | ~44573 tok |
+| 20:15 | bug-3401 终局: 碎表头错锚致不含税单价写入含税统计字段(用户实测 0.02/7.00 类)——七层算术恢复栈(行内三元组+锚点覆盖+含税合价窗口反算)+裸'含税'锚回退 | cli.py, seed_library.py, seed_defaults.py, 4 test files | 活体门 7/7=含税基线, 零micro, 401 items, 91 tests green | ~180k |
+| 20:04 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46292 tok |
+| 07:45 | bug-3400终局(791bc7f27): 用户实测0.02案四层修复全绿,活库:基础开挖7.63/回填方9.81/多孔砖墙556.99/平整场地1.31/钢筋1314.37+1346.15精确复现,微型单价清零,items 401,91测试过;终态=seed直接取+算术验证列覆盖(anchor_override)+反算量纲守卫+行内三元组;DB现仅1份文档(6份已被清),6合同回归以91测试套件守护;遗留p112r4量纲怪值1.78挂账 | 全案完成 | 汇报用户 | ~4k |
+| 20:08 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46292 tok |
+| 20:08 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46292 tok |
+| 20:11 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46292 tok |
+| 20:31 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46292 tok |
+| 20:40 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46292 tok |
+| 20:47 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46860 tok |
+| 20:55 | Session end: 35 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~46860 tok |
+| 20:57 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~206 |
+| 20:57 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _taxed_unit_oracle() | ~566 |
+| 20:58 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified match() | ~321 |
+| 20:58 | Edited skills/public/contract-price-analysis/scripts/cli.py | reduced (-40 lines) | ~344 |
+| 20:59 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified not() | ~431 |
+| 21:00 | Session end: 40 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~48728 tok |
+| 21:00 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+11 lines) | ~363 |
+| 21:04 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→4 lines | ~51 |
+| 21:04 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→2 lines | ~31 |
+| 21:04 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+7 lines) | ~115 |
+| 21:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | 10→11 lines | ~125 |
+| 21:10 | Edited skills/public/contract-price-analysis/scripts/cli.py | 11→15 lines | ~152 |
+| 21:11 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_row_arith_price_basic() | ~696 |
+| 21:12 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_row_arbitration_taxed_upgrade_pages() | ~540 |
+| 21:12 | Session end: 48 writes across 10 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 16 reads | ~50801 tok |
+| 21:13 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 4→5 lines | ~86 |
+| 21:16 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified not() | ~176 |
+| 21:22 | Edited skills/public/contract-price-analysis/scripts/cli.py | 7→12 lines | ~213 |
+| 21:25 | Edited docs/ontology/methodology.md | expanded (+40 lines) | ~501 |
+| 21:25 | OntoFlow文章对照分析补进methodology.md §6.4:设计态五缺口(G1 Action框架/G2快照/G3多智能体/G4-G5已覆盖)+三完善项(I1幂等/I2 CQ/I3快照)+合并Phase B执行顺序8步 | docs/ontology/methodology.md | 已更新 | ~2k |
+| 22:30 | bug-3400第六层: 用户sweep发现直取合法但落在不含税列/数量列(管内穿线2.30/镜面玻璃96/配电箱3)——统一仲裁律(含税=含税合价÷数量,共享因子定数量)+全行仲裁;审计v2 OK 77.8%→96.2% bad→0;commit 86418cc6d | cli.py, test_xband_fallback.py, audit_all.py | 93 tests green, 399 items, 零micro | ~160k |
+| 08:20 | bug-3400第六层收官(86418cc6d): 共享因子含税仲裁(u=含税合价÷数量,数量=不含税/含税三元组共享因子)全行统一,审计v2全量驱动:bad_rate 16.7%→0%(OK 312→384/96.2%,UNTAXED 49→0,WRONG 17→0),用户三例1241.51/2.51/104.64全中,93测试过;遗留15行NO_ORACLE(无自洽结构,建议集群级needs_review);未push | cli.py+tests | 收官 | ~3k |
+| 21:29 | Session end: 52 writes across 11 files (seed_library.py, seed_defaults.py, auth.py, cli.py, docker-compose-dev.yaml) | 18 reads | ~54965 tok |
+
+## Session: 2026-09-18 21:35
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 21:42 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 1 condition(s) | ~955 |
+| 21:42 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→3 lines | ~69 |
+| 21:43 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~154 |
+| 21:43 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/gbt48000-ontology-standard.md | — | ~222 |
+| 14:xx | GB/T 48000.3-2026 本体国标对照分析(47页PDF提取+doc_graph.yaml核对) | docs/ontology/methodology.md, .wolf/tmp/gbt48000.txt | 形式化层0%但通用条款高度同构;6.2目录=未来标准知识域骨架 | ~15k |
+| 21:44 | Session end: 4 writes across 2 files (cli.py, gbt48000-ontology-standard.md) | 3 reads | ~4592 tok |
+| 21:45 | Edited skills/public/contract-price-analysis/scripts/cli.py | 7→6 lines | ~85 |
+| 21:46 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | expanded (+20 lines) | ~412 |
+| 21:50 | Edited docs/ontology/methodology.md | inline fix | ~42 |
+| 21:50 | Edited docs/ontology/methodology.md | inline fix | ~45 |
+| 21:50 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+12 lines) | ~261 |
+| 21:50 | Edited docs/ontology/methodology.md | expanded (+6 lines) | ~224 |
+| 21:50 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→2 lines | ~26 |
+| 21:50 | Edited docs/ontology/methodology.md | inline fix | ~39 |
+| 21:53 | Edited skills/public/contract-price-analysis/scripts/cli.py | 22→21 lines | ~236 |
+| 21:53 | Session end: 13 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 3 reads | ~5986 tok |
+| 21:54 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 4→5 lines | ~60 |
+| 23:10 | bug-3400六层补强: 用户二轮抽样5行(1.78/3/7.11/3/1)——qty_col列位定数量方向+税率窗口×1.25→×1.14+单价格字母前缀守卫('m3'≠价格);审计终值 OK 96.5% bad 0.0%;commit 5ff062402 | cli.py, test_xband_fallback.py, audit_all.py | 93 tests green, 398 items, 零micro | ~120k |
+| 22:00 | Session end: 14 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 3 reads | ~6046 tok |
+| 22:18 | Session end: 14 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 3 reads | ~6046 tok |
+| 22:19 | Session end: 14 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 3 reads | ~6046 tok |
+| 22:24 | Session end: 14 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 3 reads | ~6046 tok |
+| 22:27 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_arithmetic_glue_split_seventh_layer() | ~451 |
+| 22:28 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~785 |
+| 22:30 | Edited skills/public/contract-price-analysis/scripts/cli.py | 18→21 lines | ~211 |
+| 22:31 | Session end: 17 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 4 reads | ~25669 tok |
+| 22:36 | Edited skills/public/contract-price-analysis/scripts/cli.py | 17→22 lines | ~225 |
+| 22:36 | Edited skills/public/contract-price-analysis/scripts/cli.py | 6→6 lines | ~86 |
+| 23:55 | bug-3400第七层: 用户追问NO_ORACLE可解行——无空格双点胶水格(税金+含税单价)算术锚定拆分(a≈金额×税率+b×数量≈金额双关系)+共享因子逐primary鲁棒迭代;储水式1134.23/SPF02 1543.44/ALE 2369.66/LED灯98.10全修复;审计OK 98.5% bad 0.0%;commit 649ec28b9 | cli.py, test_xband_fallback.py, audit_all.py | 94 tests green, 399 items, 零micro | ~130k |
+| 08:50 | bug-3400第七层(649ec28b9): 算术锚定胶水拆分(税金率+量积双关系锁分割点)+鲁棒共享因子主元(伪三元组序号×税金劫持max-t被治)+含税≥不含税防护;活库:储水式1134.23/SPF02 1543.44/ALE 2369.66/LED灯98.10全中,审计OK 393/399(98.5%) bad=0,NO_ORACLE 22→6,94测试过;未push | cli.py+tests | 第七层收官 | ~3k |
+| 22:43 | Session end: 19 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 4 reads | ~25980 tok |
+| 22:44 | Session end: 19 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 4 reads | ~25980 tok |
+| 22:51 | Session end: 19 writes across 4 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md) | 4 reads | ~25980 tok |
+| 23:13 | Created docs/designs/ontostudio-frontend-design.html | — | ~15694 |
+| 16:xx | OntoStudio全站前端设计稿落地(9页,青卷系,B-1图原生架构对应UI);Artifact发布不可用(AUTH_TOKEN会话)改本地交付 | docs/designs/ontostudio-frontend-design.html | done | ~40k |
+| 23:14 | Session end: 20 writes across 5 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 4 reads | ~42795 tok |
+| 23:15 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~385 |
+| 23:15 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~12 |
+| 23:15 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~22 |
+| 23:15 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→4 lines | ~41 |
+| 23:16 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~16 |
+| 23:16 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→2 lines | ~36 |
+| 23:16 | Edited skills/public/contract-price-analysis/scripts/cli.py | 6→11 lines | ~169 |
+| 23:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~17 |
+| 23:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | 12→16 lines | ~221 |
+| 23:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→4 lines | ~48 |
+| 23:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→2 lines | ~40 |
+| 23:22 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~41 |
+| 23:24 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | modified test_jzgs_space_torn_totals() | ~442 |
+| 23:28 | Created docs/designs/ontostudio-frontend-design-shadcn.html | — | ~16087 |
+| 17:xx | shadcn风格重制版设计稿(蓝主色,shadcn token/Badge/Table/Tabs,九页同构) | docs/designs/ontostudio-frontend-design-shadcn.html | done | ~40k |
+| 23:28 | Session end: 34 writes across 6 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 4 reads | ~61521 tok |
+| 23:29 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+24 lines) | ~308 |
+| 23:30 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 5→10 lines | ~228 |
+| 23:32 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 2→3 lines | ~76 |
+| 23:38 | Edited ontostudio/frontend/src/index.css | expanded (+25 lines) | ~635 |
+| 23:38 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 2→2 lines | ~28 |
+| 23:38 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | added optional chaining | ~226 |
+| 23:38 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | inline fix | ~25 |
+| 23:38 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | inline fix | ~14 |
+| 23:38 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | CSS: view | ~229 |
+| 23:38 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→3 lines | ~24 |
+| 23:39 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+15 lines) | ~228 |
+| 23:39 | Edited skills/public/contract-price-analysis/scripts/cli.py | reduced (-11 lines) | ~161 |
+| 23:39 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | CSS: current | ~104 |
+| 23:39 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | inline fix | ~22 |
+| 23:39 | Edited skills/public/contract-price-analysis/scripts/cli.py | 6→9 lines | ~109 |
+| 23:40 | Created ontostudio/frontend/src/pages/shared.tsx | — | ~769 |
+| 23:40 | Created ontostudio/frontend/src/pages/EntitiesPage.tsx | — | ~1522 |
+| 23:41 | Created ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~1771 |
+| 23:41 | Edited ontostudio/frontend/src/index.css | CSS: --color-code-bg, --color-code-fg | ~63 |
+| 23:41 | Edited ontostudio/frontend/src/index.css | CSS: --code-bg, --code-fg | ~52 |
+| 23:41 | Edited ontostudio/frontend/src/index.css | CSS: --code-bg, --code-fg | ~40 |
+| 23:42 | Created ontostudio/frontend/src/pages/ReasoningPage.tsx | — | ~1519 |
+| 23:42 | Created ontostudio/frontend/src/pages/ValidationPage.tsx | — | ~1151 |
+| 23:43 | Created ontostudio/frontend/src/pages/IngestPage.tsx | — | ~1582 |
+| 23:43 | Created ontostudio/frontend/src/pages/ExportPage.tsx | — | ~1409 |
+| 23:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→8 lines | ~103 |
+| 23:44 | Session end: 60 writes across 15 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 7 reads | ~79132 tok |
+| 23:44 | Created ontostudio/frontend/src/layout/AppShell.tsx | — | ~1953 |
+| 23:44 | Created ontostudio/frontend/src/App.tsx | — | ~93 |
+| 23:48 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 3→8 lines | ~127 |
+| 23:51 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~69 |
+| 18:xx | ontostudio前端九页骨架落地:AppShell(hash路由零依赖)+6骨架页+OntologyPage加initialView/onViewChange+index.css换青卷色板;typecheck+build绿;截图验证校验中心/建模器/权限门;dev:3010 | ontostudio/frontend/src/* | done | ~60k |
+| 23:53 | Session end: 64 writes across 17 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 12 reads | ~82074 tok |
+| 23:54 | Edited skills/public/contract-price-analysis/scripts/cli.py | 8→8 lines | ~94 |
+| 00:04 | Created docs/superpowers/specs/2026-09-18-ontostudio-formal-kernel-design.md | — | ~852 |
+| 00:04 | Edited ontostudio/backend/app/ontology/schemas.py | modified DomainFile() | ~535 |
+| 00:05 | Edited ontostudio/backend/app/ontology/schemas.py | modified ETypeClass() | ~528 |
+| 00:05 | Edited ontostudio/backend/app/ontology/schemas.py | removed 18 lines | ~11 |
+| 00:05 | Edited ontostudio/backend/app/ontology/schemas.py | modified ETypeClass() | ~337 |
+| 00:40 | bug-3400第八层(JZGS泛化): 新格式物资采购合同(钢材)全表空格撕裂数字+规格列碎片污染——撕裂金额重组(含点拼接+除数量准入门)+name/spec/unit列排除+加性单价定律(综合=网价+运杂费);JZGS 18→27 items 8错值全修;桂北锚值保持;commit c5aa432a7 | cli.py, test_xband_fallback.py, audit_all.py | 95 tests green, 零micro | ~140k |
+| 00:05 | Created ontostudio/backend/app/ontology/kernel/__init__.py | — | ~57 |
+| 00:05 | Created ontostudio/backend/app/ontology/kernel/iri.py | — | ~544 |
+| 00:06 | Created ontostudio/backend/app/ontology/kernel/compile.py | — | ~2397 |
+| 00:06 | Edited ontostudio/backend/app/ontology/registry.py | modified __init__() | ~233 |
+| 00:06 | Edited ontostudio/backend/app/ontology/registry.py | 3→5 lines | ~61 |
+| 00:07 | Edited ontostudio/backend/app/ontology/registry.py | expanded (+12 lines) | ~259 |
+| 00:07 | Edited ontostudio/backend/app/ontology/kernel/compile.py | modified collect_vocabularies() | ~168 |
+| 00:07 | Edited ontostudio/backend/app/ontology/kernel/compile.py | modified values() | ~409 |
+| 00:07 | Edited ontostudio/backend/app/ontology/kernel/compile.py | removed 48 lines | ~80 |
+| 00:07 | Edited ontostudio/backend/app/ontology/kernel/compile.py | predicate_iri() → _predicate_iri() | ~298 |
+| 09:19 | bug-3400第八层(c5aa432a7): JZGS 8错值全修+12行整行恢复(18→27items,盘螺5337/螺纹钢4767-4927带);新通用机制=撕裂金额重组(带小数点门防百倍伪拼接)+name/spec/unit列排除(HRB400→400不再入候选)+多点折叠;桂北零回归(98.25% OK);95测试过;未push | JZGS泛化验证 | 第八层收官 | ~3k |
+| 00:08 | Created ontostudio/backend/app/ontology/kernel/store.py | — | ~819 |
+| 00:08 | Created ontostudio/backend/app/ontology/kernel/export.py | — | ~189 |
+| 00:09 | Edited ontostudio/backend/pyproject.toml | 3→6 lines | ~46 |
+| 00:09 | Session end: 83 writes across 26 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 12 reads | ~90055 tok |
+| 00:09 | Created ontostudio/backend/tests/test_kernel_p1.py | — | ~2164 |
+| 00:11 | Edited ontostudio/backend/pyproject.toml | 4→5 lines | ~46 |
+| 00:14 | Edited ontostudio/backend/app/ontology/kernel/compile.py | added 1 import(s) | ~36 |
+| 00:14 | Edited ontostudio/backend/app/ontology/kernel/compile.py | reduced (-6 lines) | ~104 |
+| 00:14 | Edited ontostudio/backend/app/ontology/kernel/compile.py | CompileError() → Collection() | ~112 |
+| 00:14 | Edited ontostudio/backend/app/ontology/kernel/store.py | modified close() | ~30 |
+| 00:14 | Edited ontostudio/backend/tests/test_kernel_p1.py | modified test_compile_real_registry_jsonld() | ~89 |
+| 00:15 | Edited ontostudio/backend/app/ontology/kernel/store.py | modified load_turtle() | ~167 |
+| 00:16 | Edited ontostudio/backend/app/ontology/kernel/store.py | modified query() | ~120 |
+| 00:17 | Edited ontostudio/backend/app/ontology/kernel/store.py | 2→2 lines | ~38 |
+| 00:17 | Edited ontostudio/backend/tests/test_kernel_p1.py | 9→8 lines | ~123 |
+| 00:18 | Edited ontostudio/backend/app/ontology/registry.py | inline fix | ~26 |
+| 00:18 | Edited ontostudio/backend/app/ontology/registry.py | inline fix | ~19 |
+| 00:18 | Edited ontostudio/backend/app/ontology/registry.py | inline fix | ~15 |
+| 20:xx | kernel P1 落地推送 4a7ca5463:schemas v2 formal段+kernel四模块+14 golden;pyoxigraph 0.5 API三坑(to_graph/close无/variables带?)+rdflib Collection修RDF list | ontostudio/backend | done,pushed | ~50k |
+| 00:23 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/ontostudio-kernel-p1-landed.md | — | ~294 |
+| 00:23 | Session end: 98 writes across 28 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 13 reads | ~94296 tok |
+| 07:43 | Session end: 98 writes across 28 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 13 reads | ~94296 tok |
+| 07:46 | Session end: 98 writes across 28 files (cli.py, gbt48000-ontology-standard.md, test_xband_fallback.py, methodology.md, ontostudio-frontend-design.html) | 13 reads | ~94296 tok |
+| 07:52 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_triples() | ~378 |
+| 07:52 | Edited skills/public/contract-price-analysis/scripts/cli.py | reduced (-9 lines) | ~30 |
+| 07:53 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→4 lines | ~78 |
+| 07:54 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→4 lines | ~55 |
+| 07:54 | Edited skills/public/contract-price-analysis/scripts/cli.py | 15→15 lines | ~279 |
+| 07:54 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→7 lines | ~94 |
+| 07:54 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+27 lines) | ~478 |
+
+## Session: 2026-09-18 07:55
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+
+## Session: 2026-09-18 07:56
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 07:57 | Created ontostudio/backend/app/ontology/kernel/vocab.py | — | ~558 |
+| 07:57 | Created ontostudio/backend/app/ontology/kernel/graph_ops.py | — | ~2845 |
+| 07:58 | Created ontostudio/backend/app/ontology/kernel/loader.py | — | ~1691 |
+| 07:58 | Edited ontostudio/backend/app/ontology/kernel/loader.py | 8→8 lines | ~79 |
+| 07:58 | Edited ontostudio/backend/app/ontology/kernel/loader.py | 24→23 lines | ~266 |
+| 07:58 | Edited ontostudio/backend/app/ontology/kernel/loader.py | 2→2 lines | ~52 |
+| 07:58 | Edited ontostudio/backend/app/ontology/kernel/loader.py | modified _as_float() | ~57 |
+| 07:59 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | expanded (+6 lines) | ~128 |
+| 07:59 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 2→3 lines | ~61 |
+| 07:59 | Created ontostudio/backend/tests/test_kernel_p2.py | — | ~2598 |
+| 07:59 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 3→4 lines | ~76 |
+| 08:00 | Edited ontostudio/backend/app/ontology/kernel/graph_ops.py | modified isinstance() | ~362 |
+| 08:00 | Edited ontostudio/backend/tests/test_kernel_p2.py | modified test_loader_against_real_doc_graph() | ~303 |
+| 08:01 | Edited ontostudio/backend/app/ontology/kernel/graph_ops.py | 5→5 lines | ~37 |
+| 08:02 | Edited ontostudio/backend/app/ontology/kernel/graph_ops.py | modified find_by_natural_key() | ~67 |
+| 08:02 | Edited skills/public/contract-price-analysis/tests/test_seed_anchor_fallback.py | modified test_confidence_tiering_nine_cases() | ~524 |
+| 08:04 | Edited ontostudio/backend/app/ontology/kernel/graph_ops.py | modified _select() | ~68 |
+| 08:04 | Created ontostudio/backend/app/ontology/kernel/graph_ops.py | — | ~2868 |
+| 08:05 | Edited ontostudio/backend/app/ontology/kernel/graph_ops.py | 3→6 lines | ~52 |
+| 08:05 | Edited skills/public/contract-price-analysis/tests/test_seed_anchor_fallback.py | 14→14 lines | ~195 |
+| 21:xx | kernel P2 落地推送 f5efcb5e1:写路径+运营语义+装载器;坑=named graph查询须GRAPH子句+f-string花括号SPARQL改_select()构造器 | ontostudio/backend | done,pushed | ~45k |
+| 08:08 | Session end: 20 writes across 6 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 1 reads | ~13294 tok |
+| 08:09 | Session end: 20 writes across 6 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 1 reads | ~13294 tok |
+| 08:10 | Edited skills/public/contract-price-analysis/tests/test_seed_anchor_fallback.py | 22→22 lines | ~273 |
+| 08:17 | Edited skills/public/contract-price-analysis/tests/test_seed_anchor_fallback.py | 10→9 lines | ~138 |
+| 08:21 | Edited backend/app/gateway/deps.py | reduced (-11 lines) | ~80 |
+| 08:21 | Edited backend/app/gateway/deps.py | modified 5265() | ~288 |
+| 08:22 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified max() | ~131 |
+| 08:22 | Edited backend/app/gateway/deps.py | removed 126 lines | ~5 |
+| 08:22 | Edited frontend/src/components/workspace/capabilities/skill-gallery.tsx | CSS: EAI-CUSTOM | ~263 |
+| 08:22 | Created frontend/src/components/workspace/settings/settings-dialog.tsx | — | ~2436 |
+| 08:23 | Edited backend/app/channels/manager.py | 4→1 lines | ~10 |
+| 08:23 | Edited backend/app/channels/manager.py | reduced (-6 lines) | ~18 |
+| 08:23 | Edited backend/app/channels/manager.py | 2→3 lines | ~31 |
+| 08:23 | Edited backend/app/channels/manager.py | modified isinstance() | ~266 |
+| 08:23 | Edited backend/app/channels/manager.py | removed 14 lines | ~36 |
+| 08:23 | Edited backend/app/channels/manager.py | removed 60 lines | ~52 |
+| 08:24 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_triples() | ~258 |
+| 08:25 | Edited backend/app/gateway/services.py | 13→8 lines | ~94 |
+| 08:25 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~362 |
+| 08:25 | Edited backend/app/gateway/routers/thread_runs.py | 16→14 lines | ~147 |
+| 08:25 | Edited backend/app/gateway/services.py | added 1 condition(s) | ~600 |
+| 08:25 | Edited backend/app/gateway/services.py | 9→5 lines | ~106 |
+| 08:25 | Edited backend/app/gateway/routers/artifacts.py | 5→2 lines | ~43 |
+| 08:25 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~201 |
+| 08:26 | Edited backend/app/gateway/routers/thread_runs.py | modified CUSTOM() | ~210 |
+| 08:26 | Edited backend/app/gateway/routers/thread_runs.py | modified _is_middleware_message_row() | ~146 |
+| 08:26 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_triples() | ~132 |
+| 08:26 | Edited backend/app/gateway/routers/thread_runs.py | reduced (-7 lines) | ~389 |
+| 08:26 | Created frontend/src/components/workspace/settings/skill-settings-page.tsx | — | ~2414 |
+| 08:26 | Edited frontend/src/components/workspace/capabilities/skill-gallery.tsx | removed 15 lines | ~52 |
+| 08:26 | Edited backend/app/gateway/routers/thread_runs.py | reduced (-45 lines) | ~288 |
+| 08:26 | Edited backend/app/gateway/services.py | modified CUSTOM() | ~381 |
+| 08:27 | Edited backend/app/gateway/services.py | removed 69 lines | ~48 |
+| 08:27 | Edited backend/app/gateway/services.py | removed 77 lines | ~31 |
+| 08:28 | Edited backend/packages/harness/deerflow/agents/lead_agent/prompt.py | reduced (-6 lines) | ~135 |
+| 08:28 | Edited backend/pyproject.toml | 5→1 lines | ~5 |
+| 08:29 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | modified _build_full_reminder() | ~273 |
+| 08:29 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | 7→2 lines | ~83 |
+| 08:30 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | 12→7 lines | ~124 |
+| 08:30 | Edited Makefile | 5→1 lines | ~124 |
+| 08:30 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | 2→3 lines | ~57 |
+| 08:30 | Edited backend/packages/harness/deerflow/agents/middlewares/dynamic_context_middleware.py | 2→5 lines | ~96 |
+| 08:30 | Edited backend/tests/test_deploy_uv_extras.py | added 1 condition(s) | ~264 |
+| 08:30 | Edited backend/tests/test_message_provenance.py | modified CUSTOM() | ~138 |
+| 08:31 | Edited backend/tests/test_gateway_lifespan_shutdown.py | modified _stub_extensions_db() | ~914 |
+| 08:32 | Created frontend/src/components/workspace/workspace-nav-chat-list.tsx | — | ~1272 |
+| 08:32 | Edited frontend/src/components/workspace/messages/message-list-item.tsx | 6→3 lines | ~56 |
+| 08:33 | Edited frontend/tests/unit/components/workspace/lazy-panels.test.ts | 7→6 lines | ~111 |
+| 08:33 | Edited frontend/tests/unit/components/workspace/lazy-panels.test.ts | 5→6 lines | ~98 |
+| 08:33 | Created frontend/src/app/workspace/workspace-content.tsx | — | ~742 |
+| 08:34 | Edited frontend/src/styles/globals.css | CSS: 4921 | ~343 |
+| 08:34 | Edited frontend/src/styles/globals.css | 2→1 lines | ~14 |
+| 08:34 | Edited frontend/src/styles/globals.css | modified is() | ~139 |
+| 08:38 | Session end: 70 writes across 27 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 26 reads | ~71410 tok |
+| 08:44 | Session end: 70 writes across 27 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 27 reads | ~98828 tok |
+| 08:45 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~457 |
+| 08:47 | Session end: 71 writes across 27 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 27 reads | ~99285 tok |
+| 08:51 | Edited skills/public/contract-price-analysis/tests/test_seed_anchor_fallback.py | 2→2 lines | ~41 |
+| 08:58 | Edited backend/app/gateway/app.py | 4→3 lines | ~47 |
+| 08:59 | Edited backend/app/gateway/app.py | modified temporal_lifespan() | ~35 |
+| 09:00 | merge-resolve app.py: upstream v34bbeb180 base + ported EAI blocks (imports/ext-db/docmgr-callback/temporal-wrapper/incl-routers/branding); py_compile+ruff clean, 11/11 EAI-CUSTOM markers | backend/app/gateway/app.py | OK | ~9k |
+| 09:05 | Session end: 74 writes across 28 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 29 reads | ~113137 tok |
+| 09:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~379 |
+| 01:20 | bug-3400第九层定案A: 算术自洽确认的仲裁行洗白为已校验(NR 361→1);price_reason 细分(量纲/无佐证/粘连洗白);commit ef0042fb3;JZGS 泛化 26/27 ok | cli.py, test_xband_fallback.py, test_seed_anchor_fallback.py | 96 tests green | ~90k |
+| 09:35 | 待校验语义定案A(用户拍板,ef0042fb3): 算术自洽确认的仲裁行→已校验(price_reason留痕);桂北400行=ok399/NR1(蹲式大便器无自洽结构保守),JZGS=ok26/NR1;用户历史错行全部ok且值正确;96测试过;bug-3400九层全案完成,均未push | cli.py+tests | 全案收官 | ~3k |
+| 09:11 | Session end: 75 writes across 28 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~133560 tok |
+| ~ | 上游163-commit merge(34bbeb180 v2.1.0-rc0, 96552dafa pushed): 44-agent解23冲突+app.py倒转基底移植; 门禁720+2147绿(temporal吞异常已修); 5迁移+config v46+前端镜像重建 | 全仓 | rev-list 0/0 | ~60k |
+| 09:24 | Created C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/upstream-sync-2026-09-19.md | — | ~441 |
+| 09:24 | Session end: 76 writes across 29 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134033 tok |
+| 09:42 | Session end: 76 writes across 29 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134033 tok |
+| 09:56 | Session end: 76 writes across 29 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134033 tok |
+| ~ | 设置对话框移除 appearance/about 两 tab(c9b3af55a pushed): 默认tab改account, deep-link白名单收窄, 4文件 | settings-dialog等 | typecheck绿 | ~4k |
+| 10:07 | Session end: 76 writes across 29 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134033 tok |
+| 10:10 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 13→14 lines | ~200 |
+| 10:11 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 2→3 lines | ~12 |
+| 10:12 | Session end: 78 writes across 30 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134245 tok |
+| 22:xx | 本体页面功能性测试(API级):登录链路/registry/graph/objects/pending/merge-unmerge闭环/suggestions全通;实体库默认空=doc_graph域0行(1041全eia);编码乱码=GBK终端假象(字节级裁定api==db);浏览器端到端待dev server恢复 | ontostudio | done | ~30k |
+| 10:20 | Session end: 78 writes across 30 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134245 tok |
+| 10:24 | Session end: 78 writes across 30 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134245 tok |
+| 10:31 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | "溯源确认正确后标记为已校验(价格进入统计)" → "溯源确认正确后采纳此价格(进入统计)" | ~18 |
+| 10:31 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 2→2 lines | ~24 |
+| 10:33 | Session end: 80 writes across 30 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134287 tok |
+| 10:34 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 16→16 lines | ~242 |
+| 10:35 | Session end: 81 writes across 30 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134529 tok |
+| 10:38 | Session end: 81 writes across 30 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134529 tok |
+| 10:40 | Session end: 81 writes across 30 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~134529 tok |
+| 10:40 | Created ontostudio/backend/app/ontology/kernel/infer.py | — | ~1525 |
+| 10:40 | Created ontostudio/backend/app/ontology/kernel/infer.py | — | ~1392 |
+| 10:41 | Edited ontostudio/backend/app/ontology/kernel/infer.py | Graph() → set() | ~263 |
+| 10:41 | Created ontostudio/backend/app/ontology/kernel/rules.py | — | ~659 |
+| 10:41 | Created ontostudio/backend/app/ontology/kernel/rules.yaml | — | ~346 |
+| 10:42 | Created ontostudio/backend/tests/test_kernel_p3.py | — | ~1654 |
+| 10:42 | Session end: 87 writes across 34 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~140368 tok |
+| 10:43 | Edited ontostudio/backend/app/ontology/kernel/compile.py | 2→3 lines | ~54 |
+| 10:43 | Edited ontostudio/backend/tests/test_kernel_p1.py | 2→2 lines | ~34 |
+| 10:43 | Edited ontostudio/backend/app/ontology/kernel/compile.py | 1→2 lines | ~42 |
+| 10:44 | Edited ontostudio/backend/app/ontology/kernel/infer.py | modified isinstance() | ~126 |
+| 10:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~780 |
+| 10:46 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→5 lines | ~93 |
+| 10:46 | Edited ontostudio/backend/app/ontology/kernel/infer.py | modified _triple_to_quad() | ~176 |
+| 10:46 | Edited ontostudio/backend/app/ontology/kernel/infer.py | modified refresh_schema() | ~77 |
+| 10:46 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→5 lines | ~74 |
+| 10:46 | Edited ontostudio/backend/tests/test_kernel_p3.py | modified _has() | ~82 |
+| 10:46 | Edited ontostudio/backend/tests/test_kernel_p3.py | inline fix | ~28 |
+| 10:47 | Edited ontostudio/backend/app/ontology/kernel/infer.py | modified isinstance() | ~99 |
+| 10:47 | Edited ontostudio/backend/app/ontology/kernel/rules.py | 11→11 lines | ~95 |
+| 10:50 | Edited ontostudio/backend/tests/test_kernel_p3.py | modified test_scenario2_property_chain_and_transitive() | ~268 |
+| 10:50 | Edited ontostudio/backend/app/ontology/kernel/infer.py | modified low_confidence_entities() | ~142 |
+| 10:51 | Edited ontostudio/backend/tests/test_kernel_p3.py | 2→2 lines | ~37 |
+| 10:52 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified max() | ~408 |
+| 23:xx | kernel P3 落地推送 4a5ee7a39:owlrl闭包+CONSTRUCT规则,三场景全绿;四坑=双#IRI非法/langString+lang互斥/schema图名硬编码进entailment/字符串数字FILTER需xsd:double转型 | ontostudio/backend | done,pushed | ~40k |
+| 10:53 | Session end: 104 writes across 36 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~142905 tok |
+| 11:00 | Edited skills/public/contract-price-analysis/tests/test_xband_fallback.py | 3→3 lines | ~45 |
+| 01:45 | bug-3400第十层: 蹲式大便器 412.50(不含税当含税,直取合法全守卫放行=仲裁盲区)——含税升级校验(行内 t≈单价×1.09 → unit=t 直接取)+_row_confirmed 含税系数佐证;449.63 ok;桂北 400 全 ok;commit 4a2467bc1 | cli.py, test_xband_fallback.py | 97 tests green | ~100k |
+| 10:05 | bug-3400第十层(4a2467bc1): 直取不含税的含税升级校验——对所有含unit_p行,行内存在 t≈unit×(1+税率) 且 t 非已映射合价 → unit=t(q>1时÷q);蹲式大便器412.50→449.63 ok,桂北400行全ok/0micro,锚点全保持,审计bad=0,97测试过;未push | cli.py | 第十层收官 | ~2k |
+| 11:05 | Session end: 105 writes across 36 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~142950 tok |
+| 11:25 | Session end: 105 writes across 36 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~142950 tok |
+| 11:51 | Created ontostudio/backend/app/ontology/kernel/validate.py | — | ~1860 |
+| 11:52 | Created ontostudio/backend/app/ontology/kernel/validate.py | — | ~1625 |
+| 11:52 | Created ontostudio/backend/app/ontology/kernel/conformance.py | — | ~1614 |
+| 11:53 | Created ontostudio/backend/app/ontology/kernel/conformance.py | — | ~1436 |
+| 11:53 | Created ontostudio/backend/tests/test_kernel_p4.py | — | ~1472 |
+| 11:54 | Edited ontostudio/backend/tests/test_kernel_p4.py | modified test_conformance_c5_detects_namespace_conflict() | ~246 |
+| 11:54 | Edited ontostudio/backend/app/ontology/kernel/validate.py | modified _status_shape() | ~111 |
+| 11:54 | Edited ontostudio/backend/app/ontology/kernel/validate.py | 3→4 lines | ~51 |
+| 11:54 | Edited ontostudio/backend/app/ontology/kernel/validate.py | 3→4 lines | ~56 |
+| 11:54 | Edited frontend/src/components/workspace/projects/project-documents-section.tsx | CSS: EAI-CUSTOM | ~272 |
+| 11:55 | Session end: 115 writes across 40 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~151693 tok |
+| 11:55 | Edited ontostudio/backend/tests/test_kernel_p4.py | 3→3 lines | ~55 |
+| ~ | 项目文档架条目按钮下移修复(d544b200c pushed): 单行flex改两行(信息行+按钮行flex-wrap), 窄面板不再遮字 | project-documents-section.tsx | typecheck+eslint绿 | ~4k |
+| 11:56 | Session end: 116 writes across 40 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~151748 tok |
+| 11:57 | Created ontostudio/backend/probe_p4.py | — | ~404 |
+| 11:58 | Edited ontostudio/backend/probe_p4.py | 6→7 lines | ~73 |
+| 11:59 | Edited ontostudio/backend/app/ontology/kernel/validate.py | 6→6 lines | ~66 |
+| 12:00 | Session end: 119 writes across 41 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~152291 tok |
+| 00:xx | kernel P4 落地推送 da953a841:pyshacl校验+国标五项套件;坑=pyshacl 0.40 参数名 shacl_graph,shapes_graph 被静默吞掉形状为空也 conforms(bug-3405) | ontostudio/backend | done,pushed | ~35k |
+| 12:01 | Session end: 119 writes across 41 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~152291 tok |
+| 10:30 | JZGS价格调整表BLOCKED(独立任务): 20+列双行合并表头,单格多值('3466 84605.06'=网价+合价)+乘性/加性两套自洽并存→行内无法唯一裁决;真值已取证(盘圆39.79吨×3616=143880.64,综合3466);修复需1.新seed(综合单价/调整后锚,配置页可建)2.bbox字级格拆分(独立任务);主链六~十层已全部提交(HEAD 4a2467bc1),桂北400ok/JZGS 27行部分错值待此任务 | .wolf/tmp/tiaojia_rows.json | BLOCKED转用户决策 | ~4k |
+| 12:04 | Session end: 119 writes across 41 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~152291 tok |
+| 12:22 | Session end: 119 writes across 41 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~152291 tok |
+| 12:23 | Created ontostudio/backend/app/ontology/kernel/service.py | — | ~1190 |
+| 12:24 | Created ontostudio/backend/app/ontology/registry/eia.yaml | — | ~867 |
+| 12:26 | Created ontostudio/backend/app/ontology/formal.py | — | ~582 |
+| 12:32 | Session end: 122 writes across 44 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~154930 tok |
+| 12:34 | Created ontostudio/backend/tests/test_kernel_p5.py | — | ~1866 |
+| 12:35 | Created ontostudio/backend/app/ontology/registry/eia.yaml | — | ~1768 |
+| 12:36 | Created ontostudio/backend/tests/test_kernel_p5.py | — | ~2302 |
+| 10:00 | 调价表收口: 离线锚定实验证实seed能锁表头列(qty=idx13调整后数量/unit=idx18综合单价/total=idx20)但数据格逐行漂移(综合单价@c14/c19/c13)+一格多值→定长列索引原理性不可用,需bbox字级拆分(独立任务,差异证据=tiaojia_rows.json);对照表已交付;L9改动在工作区未提交(cli.py+2测试) | .wolf/tmp/tiaojia_rows.json | 移交新会话 | ~3k |
+| 12:37 | Session end: 125 writes across 45 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~160866 tok |
+| 12:41 | Created ontostudio/backend/probe_perf.py | — | ~319 |
+| 12:41 | Session end: 126 writes across 46 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~161185 tok |
+| 12:41 | Session end: 126 writes across 46 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~161185 tok |
+| 12:44 | Created ontostudio/backend/app/ontology/kernel/rules.yaml | — | ~428 |
+| 12:45 | Edited ontostudio/backend/app/ontology/formal.py | 6→7 lines | ~95 |
+| 12:47 | Edited ontostudio/backend/tests/test_kernel_p1.py | modified raises() | ~32 |
+| 01:xx | kernel P5 落地推送 30443728f:formal四端点+eia四类抽取建模(响应中期需求)+逻辑链demo+性能校准(owlrl字面量剔除28s→6s);全量210 passed | ontostudio/backend | done,pushed | ~45k |
+| 12:50 | Session end: 129 writes across 46 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~161740 tok |
+| 12:50 | Session end: 129 writes across 46 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~161740 tok |
+| 12:51 | Session end: 129 writes across 46 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 30 reads | ~161740 tok |
+| 12:56 | Created ontostudio/frontend/src/api/formal-api.ts | — | ~758 |
+| 12:58 | Created ontostudio/frontend/src/pages/ValidationPage.tsx | — | ~1480 |
+| 12:58 | Created ontostudio/frontend/src/pages/ExportPage.tsx | — | ~1726 |
+| 12:59 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | inline fix | ~25 |
+| 13:00 | Edited ontostudio/frontend/src/pages/ReasoningPage.tsx | 7→5 lines | ~62 |
+| 13:05 | Edited ontostudio/backend/tests/test_kernel_p2.py | modified _probe() | ~111 |
+| 02:xx | 容器重建(backend+frontend新镜像healthy)+前端三页接formal真数据+load asyncpg三修(f1c93a715/d0e83331c已推送);线上全管线:load 1041实体→infer 3335→3825物化2.3s→validate五项全过→export 200 | ontostudio | done,pushed | ~50k |
+| 13:18 | Session end: 135 writes across 50 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 33 reads | ~173269 tok |
+| 13:32 | Created ontostudio/frontend/src/index.css | — | ~1179 |
+| 13:32 | Session end: 136 writes across 51 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 33 reads | ~174448 tok |
+| 13:32 | Session end: 136 writes across 51 files (vocab.py, graph_ops.py, loader.py, test_xband_fallback.py, test_kernel_p2.py) | 33 reads | ~174448 tok |
+
+## Session: 2026-09-19 13:41
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 03:xx | UI 对齐 EAI 主系统(恢复 Yuxi 暖灰+#0746ff 蓝/删青卷衬线朱砂/侧栏 sidebar-accent 惯例)+formal-api 路径 404 修复(e250dff6d 已推送);浏览器端到端:校验中心五项 5/5+推理台 3825 物化真数据 | ontostudio/frontend | done,pushed | ~40k |
+| 13:50 | v1/v2含税单价设计对比分析(坐标直读仍为主路径,除法是校验仲裁层非替代) | table_classifier.py, cpa_cli_v1.py | 已答复 | ~3k |
+| 17:00 | Edited ontostudio/frontend/src/layout/AppShell.tsx | "border-border bg-card fle" → "border-sidebar-border bg-" | ~28 |
+| 17:00 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 2→2 lines | ~58 |
+| 17:02 | Session end: 2 writes across 1 files (AppShell.tsx) | 6 reads | ~7675 tok |
+| 03:xx | UI 细粒度对齐 EAI:标题 text-lg/按钮 h-9 px-4 text-sm/下拉 h-9 rounded-md/表格 muted 表头+divide-y/侧栏 sidebar-accent active(3ab324ef7 本地;github 443 连不通待推) | ontostudio/frontend | done,push-pending | ~25k |
+| 17:07 | Session end: 2 writes across 1 files (AppShell.tsx) | 7 reads | ~7675 tok |
+| 17:15 | 调价表全行取证2: 11行数字地图+bbox+page_texts恢复, 全行u×q=t Decimal精确闭合, 结果.wolf/tmp/tiaojia_forensic2.json | .wolf/tmp/tiaojia_forensic2*.py, tiaojia_forensic2.json | OK ~28k |
+| 17:33 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | modified OntologyWorkspace() | ~56 |
+| 17:33 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | modified OntologyPage() | ~243 |
+| 17:33 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 4→5 lines | ~71 |
+| 17:33 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 4→6 lines | ~59 |
+| 17:34 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 22→24 lines | ~230 |
+| 17:34 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 7→9 lines | ~114 |
+| 17:36 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 6→7 lines | ~39 |
+| 04:xx | 总览页剥离语义地图头/tab/状态条,只留语义地图概览内容区(overviewOnly 模式,graph/resolve chrome 保留);7b1f9e02d 本地;github 443 仍不通,2 commit 待推 | ontostudio/frontend | done,push-pending-2 | ~15k |
+| 17:42 | Session end: 9 writes across 2 files (AppShell.tsx, OntologyPage.tsx) | 11 reads | ~34900 tok |
+| 17:44 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 6→7 lines | ~104 |
+| 17:45 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | reduced (-29 lines) | ~306 |
+| 17:46 | Edited ontostudio/frontend/src/components/OntologyPage.tsx | 5→4 lines | ~24 |
+| 04:xx | 图谱浏览页改造:社区着色上移标题栏/删视图切换tab层/标题 Waypoints 图标+text-lg(1aa8f1d8f 已推送,积压 3 commit 一并推平);浏览器验证画布满屏 | ontostudio/frontend | done,pushed | ~12k |
+| 17:51 | Session end: 12 writes across 2 files (AppShell.tsx, OntologyPage.tsx) | 13 reads | ~35053 tok |
+| 05:xx | 侧栏菜单项字号 14px(text-sm)上线(1094b65dc 本地;github 443 flaky 待推) | ontostudio/frontend | done,push-pending | ~5k |
+| 18:00 | Session end: 12 writes across 2 files (AppShell.tsx, OntologyPage.tsx) | 13 reads | ~35053 tok |
+| 18:03 | Created docs/designs/ontostudio-sidebar-styles.html | — | ~3368 |
+| 18:05 | Session end: 13 writes across 3 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html) | 14 reads | ~38662 tok |
+| 18:07 | Edited ontostudio/frontend/src/layout/AppShell.tsx | expanded (+12 lines) | ~111 |
+| 18:07 | Edited ontostudio/frontend/src/layout/AppShell.tsx | expanded (+13 lines) | ~103 |
+| 18:08 | Edited ontostudio/frontend/src/layout/AppShell.tsx | 32→31 lines | ~396 |
+| 18:08 | Edited skills/public/contract-price-analysis/scripts/cli.py | 10→12 lines | ~71 |
+| 18:09 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _ratio_plausible() | ~1483 |
+| 18:09 | Edited skills/public/contract-price-analysis/scripts/cli.py | 18→18 lines | ~197 |
+| 18:10 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_num_cands() | ~284 |
+| 18:10 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_confirmed() | ~171 |
+| 18:10 | Edited skills/public/contract-price-analysis/scripts/cli.py | 12→16 lines | ~172 |
+| 18:10 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→8 lines | ~95 |
+| 18:11 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _row_arith_price() | ~220 |
+| 18:11 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _taxed_unit_oracle() | ~304 |
+| 05:xx | 侧栏菜单项语义图标(lucide 九枚替换序号列)+行距 py-2/分组 mt-4;f25a626c5 已推送 | ontostudio/frontend | done,pushed | ~8k |
+| 18:12 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _bboxes_usable() | ~189 |
+| 18:12 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+9 lines) | ~274 |
+| 18:12 | Session end: 27 writes across 4 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py) | 15 reads | ~42732 tok |
+| 18:12 | Edited skills/public/contract-price-analysis/scripts/cli.py | 8→9 lines | ~92 |
+| 18:12 | Edited skills/public/contract-price-analysis/scripts/cli.py | 1→5 lines | ~72 |
+| 18:13 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 1 condition(s) | ~436 |
+| 18:13 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified len() | ~1027 |
+| 18:14 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified not() | ~176 |
+| 18:14 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified len() | ~183 |
+| 18:15 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→10 lines | ~141 |
+| 18:15 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified len() | ~269 |
+| 18:16 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→3 lines | ~62 |
+| 18:17 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified _find() | ~224 |
+| 18:17 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | 15→15 lines | ~239 |
+| 18:17 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified items() | ~329 |
+| 18:18 | Session end: 39 writes across 5 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 15 reads | ~45982 tok |
+| 18:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~341 |
+| 18:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~47 |
+| 18:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~76 |
+| 18:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→3 lines | ~45 |
+| 18:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified pop() | ~335 |
+| 18:21 | Edited ontostudio/frontend/src/pages/shared.tsx | CSS: icon | ~497 |
+| 18:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~36 |
+| 18:26 | Edited skills/public/contract-price-analysis/scripts/cli.py | 15→18 lines | ~201 |
+| 18:26 | Edited skills/public/contract-price-analysis/scripts/cli.py | 7→7 lines | ~59 |
+| 18:26 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified len() | ~818 |
+| 18:27 | Session end: 49 writes across 6 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 17 reads | ~50728 tok |
+| 18:29 | Edited skills/public/contract-price-analysis/scripts/cli.py | removed 22 lines | ~50 |
+| 18:29 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+15 lines) | ~353 |
+| 18:31 | Edited skills/public/contract-price-analysis/scripts/cli.py | 10→13 lines | ~154 |
+| 18:31 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~345 |
+| 18:32 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | inline fix | ~24 |
+| 18:32 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified in() | ~245 |
+| 06:xx | 每页标题对齐菜单图标+文字(PageHeader icon槽位+OntologyPage动态头+总览改工作台总览),副标题统一12px,Chip seal→danger(2a550dceb 已推送);浏览器验证 dashboard | ontostudio/frontend | done,pushed | ~12k |
+| 18:33 | Session end: 55 writes across 6 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 19 reads | ~55641 tok |
+| 18:45 | bug-3400第十二层: 调价表(bcxy-tz)双半区仲裁修复 L1-L4 落地, 11行真值 9精确+2物理缺失flag; 全套101 passed | cli.py+test_tiaojia_adjustment.py | done | ~40k |
+| 19:05 | bug-3400 L12 端到端验证: 钢筋11行 9精确+2物理不可恢复(p2r6 needs_review/p2r8 q=NULL); 桂北审计 bad_rate=0.0175 破门, bisect 定罪第十层 4a2467bc1 含税升级无位置守卫, L11/L12 继承; 宿主 101 passed | cli.py, cpa_items | GATE_FAIL | ~90k |
+| 06:xx | 实体库页头去 '03·实体' chip(PageHeader clause 可选);418d087a0 本地;github 443 持续不通待推 | ontostudio/frontend | done,push-pending | ~4k |
+| 19:21 | Session end: 55 writes across 6 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 20 reads | ~63807 tok |
+| 19:23 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _page_num_tokens() | ~869 |
+| 19:24 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _extract_from_tables() | ~38 |
+| 19:24 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+6 lines) | ~191 |
+| 07:xx | 五页页头条款号 chip 全部移除(建模器/推理台/校验中心/抽取/导出),页头统一图标+标题形态;22d99df1f 已推送 | ontostudio/frontend | done,pushed | ~4k |
+| 19:24 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~444 |
+| 19:24 | Session end: 59 writes across 6 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 20 reads | ~65349 tok |
+| 19:24 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified get() | ~354 |
+| 19:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | 7→12 lines | ~182 |
+| 19:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | 7→7 lines | ~79 |
+| 19:25 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~27 |
+| 19:26 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified _extract() | ~64 |
+| 19:26 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | 13→13 lines | ~200 |
+| 19:27 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified test_adjustment_table_truth_11_rows() | ~40 |
+| 19:27 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified test_no_fake_unit_from_left_half() | ~67 |
+| 19:27 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified join() | ~203 |
+| 19:27 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified test_fee_fragment_not_ok_price() | ~388 |
+| 19:28 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | expanded (+7 lines) | ~107 |
+| 19:28 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified test_no_page_texts_degrades_safely() | ~275 |
+| 19:29 | Created skills/public/contract-price-analysis/tests/test_tax_upgrade_exactness.py | — | ~780 |
+| 07:xx | 全局滚动条对齐主系统(6px/透明轨道/8%黑thumb/dark白8%);页头 items-center+侧栏14px 一并推平(ca9a7f08a, 0/0) | ontostudio/frontend | done,pushed | ~5k |
+| 19:34 | Session end: 72 writes across 7 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 21 reads | ~68725 tok |
+| 19:45 | L13 修复落地: L10 含税升级精确闭合收口(桂北 audit bad_rate 0.0175→0.0, 7 WRONG 还原, 设计目标 449.63 保持) + 第十三层页文本×表格格 join(钢筋 11/11 行 DB 全对, p2r6 378.3×3496 / p2r8 239.64×3445 全 ok) | skills/public/contract-price-analysis/scripts/cli.py + tests/test_tiaojia_adjustment.py + tests/test_tax_upgrade_exactness.py | host 104 passed 1 skipped; 容器复审 双文档全过 | ~4k |
+| 19:46 | Created backend/_patch_extract.py | — | ~2764 |
+| 19:48 | Created backend/_patch_extract2.py | — | ~552 |
+| 19:49 | Created backend/_patch_extract2.py | — | ~572 |
+| 19:50 | E2E verify bug-3400 round: cache-hit reparse(钢筋补充协议, real run row b169bece), 11/11 cpa_items match truth (p2r6 378.3/3496 recovered, p3r1 u=3316 & p3r2 504.55/3436 adjudicated exact vs printed 合价+totals closure 2764.59/9501826.12); 桂北 audit bad_rate=0.0; host suite 104 passed/1 skipped; gotcha: bare --run-id UUID4 = FK fail = silent no-op persist | .wolf/tmp/e2e_*.py, logs/e2e_tmp/ | PASS | ~40k |
+| 19:51 | Created backend/_strip_patch.py | — | ~268 |
+| 19:52 | Created backend/app/extensions/eia_samples/extract_ontology.py | — | ~2656 |
+| 19:56 | Created ontostudio/backend/tests/test_extract_ontology.py | — | ~719 |
+| 19:58 | Created backend/tests/test_eia_extract_ontology.py | — | ~704 |
+| 20:07 | Created ontostudio/backend/tests/test_eia_four_targets_schema.py | — | ~970 |
+| 08:xx | 环评抽取对接四类目标(8de078da1 已推送):extract_ontology.py 确定性抽取器(章节/治理链+影响链/阈值+条款/佐证)+EiaExtraction 域表扩容(+12etype/+12谓词角色);7 golden+域表验收全绿;两后端 211/35 passed | backend+ontostudio | done,pushed | ~35k |
+| 20:17 | Session end: 80 writes across 14 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 30 reads | ~92130 tok |
+| 20:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→6 lines | ~85 |
+| 20:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+9 lines) | ~165 |
+| 20:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→7 lines | ~101 |
+| 20:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+7 lines) | ~143 |
+| 20:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified pop() | ~139 |
+| 20:22 | Edited skills/public/contract-price-analysis/tests/test_tiaojia_adjustment.py | modified test_no_page_texts_degrades_safely() | ~1069 |
+| 21:10 | bug-3400 评审 major 修复: 调价表无 cell_bboxes 时仲裁降级守卫——L6/L10 改写行+L9 分层首位强制 needs_review(_adj_degraded), L13 缺量门补 adj_floor; 新增 2 个 cell_bboxes=None fixture | cli.py, test_tiaojia_adjustment.py, .wolf/cerebrum.md, .wolf/buglog.json | host 106 passed/1 skipped; 桂北 400 行 replay BAD_RATE 0/400; JZGS 带 bbox 真值 11 行不变 | ~60k |
+| 20:37 | Created ontostudio/backend/_patch_load_ontology.py | — | ~1568 |
+| 20:40 | 复验bug-3409评审修复: 容器内run_parse(force_key=钢筋补充协议)重解析刷新DB, 11行全对真值(p3r1 u=3316=801311.4/241.65、p3r2 504.55/3436 OCR算术核实), 桂北400行audit bad_rate=0(393 OK/7 NO_ORACLE), host pytest 106 passed+1 skipped(含2个新no_bboxes degraded fixtures) | .wolf/tmp/verif_reparse.py, cpa_items | ALL GATES PASS | ~35k |
+| 20:39 | Created backend/_run_real_extract.py | — | ~240 |
+| 20:42 | JZGS调价表修复workflow收官(9代理): 半区锚定仲裁+撕裂重组,11/11行全对,桂北回归0坏,提交8084755ef(bug-3409降级守卫) | cli.py, test_tiaojia_adjustment.py | done | ~1450k |
+| 20:42 | Session end: 88 writes across 16 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 31 reads | ~96046 tok |
+| 20:44 | Session end: 88 writes across 16 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 31 reads | ~96046 tok |
+| 20:56 | Session end: 88 writes across 16 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 33 reads | ~100316 tok |
+| 08:xx | load-ontology 端点+export 图名映射修复落地(c53240701 本地待推,github 443 抖动);线上全链路已验证:月儿湾真实抽取 460 实体/205 关系→infer 1857 物化→covered_by_standard 9 条真实逻辑链物化 ✓ | ontostudio/backend | done,push-pending-1 | ~15k |
+| 20:57 | Session end: 88 writes across 16 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 33 reads | ~100316 tok |
+| 21:00 | Created docs/superpowers/specs/2026-09-19-cpa-table-recognition-three-layer-design.md | — | ~1073 |
+| 21:01 | Session end: 89 writes across 17 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 33 reads | ~101465 tok |
+| 21:03 | Created docs/ontology/modeling-lifecycle.md | — | ~1406 |
+| 09:xx | 生命周期操作流程文档落地 f464b953f(本地待推,github 持续不通,累计 3 commit 排队):方法论九阶段×九页对照+验收门+角色分工 | docs/ontology | done | ~10k |
+| 21:05 | Session end: 90 writes across 18 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 33 reads | ~102971 tok |
+| 21:07 | Created docs/superpowers/plans/2026-09-19-cpa-table-recognition-three-layer.md | — | ~2382 |
+| 21:10 | 三层重构实施workflow派发(wf_ba826ea3): P1几何→P2 LLM→P3生态串行+双镜头评审,计划73e24563f后 | plan/spec | running | ~0 |
+| 21:10 | Session end: 91 writes across 19 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 36 reads | ~109094 tok |
+| 21:12 | Session end: 91 writes across 19 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 36 reads | ~109094 tok |
+| 21:18 | Created ontostudio/backend/app/ontology/registry_content.py | — | ~2008 |
+| 21:22 | Created ontostudio/backend/tests/test_registry_content.py | — | ~898 |
+| 21:24 | Edited ontostudio/backend/tests/test_registry_content.py | modified test_validate_bad_draft_fails_closed() | ~84 |
+| 21:27 | Created ontostudio/frontend/src/api/registry-api.ts | — | ~533 |
+| 21:29 | Created ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~2903 |
+| 21:31 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 import(s) | ~105 |
+| 21:32 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~0 |
+| 21:34 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 2→1 lines | ~17 |
+| 21:35 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | reduced (-9 lines) | ~776 |
+| 10:xx | 建模器接真数据(102741837 已推送):registry_content 三端点+前端 ModelerPage 真实数据类树/详情/公理/YAML+load-ontology 端点+EiaExtraction 域表扩容;双后端 211/35 passed | ontostudio | done,pushed | ~30k |
+| 21:37 | Created skills/public/contract-price-analysis/tests/test_geometry_rebuild.py | — | ~2413 |
+| 21:38 | Session end: 101 writes across 24 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 38 reads | ~122624 tok |
+| 21:38 | Created skills/public/contract-price-analysis/scripts/geometry_rebuild.py | — | ~1532 |
+| 21:40 | Edited skills/public/contract-price-analysis/scripts/geometry_rebuild.py | expanded (+11 lines) | ~328 |
+| 21:40 | Edited skills/public/contract-price-analysis/tests/test_geometry_rebuild.py | 6→6 lines | ~78 |
+| 21:43 | Edited skills/public/contract-price-analysis/scripts/geometry_rebuild.py | 7→9 lines | ~121 |
+| 21:43 | Edited skills/public/contract-price-analysis/scripts/geometry_rebuild.py | modified zip() | ~216 |
+| 21:46 | Edited skills/public/contract-price-analysis/scripts/geometry_rebuild.py | added 1 condition(s) | ~741 |
+| 21:47 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | 10→11 lines | ~142 |
+| 21:47 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | modified _norm_tokens() | ~252 |
+| 21:47 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | 18→20 lines | ~224 |
+| 21:47 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | 11→12 lines | ~114 |
+| 21:47 | Edited skills/public/contract-price-analysis/scripts/document_parser.py | 12→13 lines | ~126 |
+| 21:52 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 1 import(s) | ~44 |
+| 21:52 | Edited skills/public/contract-price-analysis/scripts/cli.py | 1→4 lines | ~73 |
+| 21:52 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+8 lines) | ~130 |
+| 21:53 | Edited mcp-server/ocr-service/schemas.py | modified Table() | ~109 |
+| 21:53 | Edited mcp-server/ocr-service/ocr_engine.py | modified _parse_html_rows() | ~195 |
+| 21:54 | Edited mcp-server/ocr-service/ocr_engine.py | expanded (+7 lines) | ~161 |
+| 21:54 | Edited mcp-server/ocr-service/ocr_engine.py | 8→9 lines | ~104 |
+| 21:54 | Session end: 119 writes across 28 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 38 reads | ~127314 tok |
+| 22:01 | Session end: 119 writes across 28 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 38 reads | ~127314 tok |
+| 22:10 | Session: P1 几何层 Task1-4 落地——ocr tokens 透出(195/94 实测)+缓存v2+geometry_rebuild+cli 病征触发两版比对;117 passed/1 skipped;调价表 11/11 真值复核通过(geometry 活体下) | cli.py, geometry_rebuild.py, document_parser.py, ocr_engine.py, schemas.py, test_geometry_rebuild.py | done | ~96000 tok |
+| 22:05 | Created ontostudio/frontend/src/components/OntologyCanvas.tsx | — | ~1480 |
+| 22:07 | Edited ontostudio/frontend/src/components/OntologyCanvas.tsx | "dots" → "var(--border, #e4e6e6)" | ~30 |
+| 22:12 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 import(s) | ~34 |
+| 22:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added 1 import(s) | ~99 |
+| 22:13 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 1→2 lines | ~38 |
+| 22:14 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | CSS: hover | ~218 |
+| 22:14 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | expanded (+8 lines) | ~167 |
+| 22:15 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | added optional chaining | ~274 |
+| 22:16 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 2→1 lines | ~18 |
+| 22:20 | Session end: 128 writes across 29 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 41 reads | ~133767 tok |
+| 22:25 | Session end: 128 writes across 29 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 41 reads | ~133767 tok |
+| 22:33 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | 8→10 lines | ~70 |
+| 22:15 | T5 check1+4A: tiaojia缓存tokens 195/94在位(页归一化),桂北旧缓存0token;旧缓存重解析桂北400行17业务列比特一致 | t5_cache_tokens/t5_snap/t5_diff | PASS | ~15k |
+| 22:33 | T5 验收全过: 调价表11/11真值全ok(本轮重解析复现);桂北re-OCR实测18min后audit bad_rate=0(393OK+7NO_ORACLE);tokens路径(91表全有token)重解析400行比特一致;bug-3413(PYTHONPATH)入buglog+cerebrum | cli.py, audit_all.py, t5_* | 4/4 PASS | ~28k |
+| 10:xx | 建模器关系图画布上线(b40abca50 已推送):React Flow subClassOf 层次自动布局+交互画布,截图验证渲染 | ontostudio/frontend | done,pushed | ~8k |
+| 22:46 | Session end: 129 writes across 29 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 53 reads | ~140491 tok |
+| 22:59 | Created skills/public/contract-price-analysis/tests/test_llm_fallback.py | — | ~3076 |
+| 23:01 | Created skills/public/contract-price-analysis/scripts/llm_fallback.py | — | ~2378 |
+| 23:01 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 1 import(s) | ~48 |
+| 23:01 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _build_llm_cfg() | ~708 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _extract_from_tables() | ~1418 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _process_one_doc() | ~74 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~32 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified run_parse() | ~53 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | 1→6 lines | ~63 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+12 lines) | ~286 |
+| 23:04 | Created ontostudio/frontend/src/pages/ModelerPage.tsx | — | ~2492 |
+| 23:06 | Created ontostudio/frontend/src/pages/ModelerPage2.tsx | — | ~2053 |
+| 23:07 | Edited skills/public/contract-price-analysis/tests/test_llm_fallback.py | modified test_try_llm_fallback_gate_rejects_low_ok_rate() | ~171 |
+| 23:07 | Edited skills/public/contract-price-analysis/tests/test_llm_fallback.py | modified test_cli_unmatched_llm_rejected_keeps_unmatched_entry() | ~184 |
+| 23:08 | Edited skills/public/contract-price-analysis/tests/test_llm_fallback.py | 12→12 lines | ~128 |
+| 23:09 | Edited skills/public/contract-price-analysis/tests/test_llm_fallback.py | 13→13 lines | ~149 |
+| 23:09 | Edited skills/public/contract-price-analysis/tests/test_llm_fallback.py | modified test_cli_matched_nr_gt_50_adopted_via_llm() | ~394 |
+| 23:10 | Edited backend/app/extensions/contract_price/schemas.py | expanded (+7 lines) | ~195 |
+| 23:10 | Edited backend/app/extensions/contract_price/service.py | modified _resolve_llm_args() | ~306 |
+| 23:10 | Edited backend/app/extensions/contract_price/service.py | 5→8 lines | ~80 |
+| 23:11 | Created backend/tests/test_contract_price_llm_injection.py | — | ~926 |
+| 23:11 | Edited ontostudio/frontend/src/pages/ModelerPage.tsx | inline fix | ~19 |
+| 23:15 | Edited backend/tests/test_contract_price_seed_config.py | 3→8 lines | ~113 |
+| 11:xx | 建模器 CRUD 全量落地(ec5cbb7bc 已推送):registry-content 三端点+load-ontology+js-yaml 双向 YAML;双后端全量测试绿 | ontostudio | done,pushed | ~25k |
+| 23:17 | Session end: 152 writes across 35 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 53 reads | ~157177 tok |
+| 22:40 | P2 LLM 兜底 Task6-7 TDD 落地: llm_fallback.py(annotate_roles 首个JSON对象解析+role枚举门/try_llm_fallback 走 _matched_table_pass 同管线+ok率≥0.90 采纳门+重试≤1)+cli wiring(unmatched 候选表与 matched NR>0.50 表触发,llm_cfg=None 缺省零变化,parse_meta.llm_roles 留痕,采纳表移出 unmatched)+service._resolve_llm_args(config.json 三元组 $ENV 解析→--llm-* argv,缺省不传)+ConfigOut 三字段;技能套件 131p/1s,backend contract_price 组 24p/1s;另修 pre-existing 过期断言(seed 6→8 对齐常量);坑:qty↔price 列互换因乘法对称必自闭合成 ok,门拒绝 fixture 须用不可恢复映射(非数值列+无替代闭包) | skills/public/contract-price-analysis/{scripts/llm_fallback.py,scripts/cli.py,tests/test_llm_fallback.py}+backend contract_price/{service,schemas}+tests | done | ~95000 |
+| 23:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _merge_llm_meta() | ~252 |
+| 23:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | expanded (+7 lines) | ~128 |
+| 23:24 | Session end: 154 writes across 35 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 56 reads | ~180940 tok |
+| 23:28 | Session end: 154 writes across 35 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 61 reads | ~201818 tok |
+| 23:36 | Edited backend/app/extensions/contract_price/schemas.py | modified ItemOut() | ~120 |
+| 23:36 | Edited backend/app/extensions/contract_price/crud.py | inline fix | ~21 |
+| 23:36 | Edited backend/app/extensions/contract_price/crud.py | modified list_documents() | ~419 |
+| 23:40 | Edited backend/app/extensions/contract_price/crud.py | 19→23 lines | ~165 |
+| 23:40 | Edited backend/app/extensions/contract_price/crud.py | modified update_item() | ~358 |
+| 23:40 | Edited backend/app/extensions/contract_price/crud.py | modified batch_validate_items() | ~1447 |
+| 23:41 | Edited backend/app/extensions/contract_price/crud.py | modified range() | ~76 |
+| 23:42 | Created backend/tests/test_contract_price_doc_kpi_anchors.py | — | ~3925 |
+| 23:44 | Edited backend/app/extensions/contract_price/crud.py | modified str() | ~79 |
+| 23:45 | Edited backend/tests/test_contract_price_doc_kpi_anchors.py | modified test_document_out_serializes_kpi_fields() | ~140 |
+| 23:45 | Edited backend/tests/test_contract_price_doc_kpi_anchors.py | modified test_update_item_correction_dedups_on_repeat() | ~87 |
+| 23:45 | Edited backend/tests/test_contract_price_doc_kpi_anchors.py | 4→4 lines | ~68 |
+| 23:45 | Edited backend/tests/test_contract_price_doc_kpi_anchors.py | 4→4 lines | ~62 |
+| 23:45 | Edited frontend/src/extensions/contract-price/types.ts | 7→10 lines | ~83 |
+| 23:46 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | expanded (+8 lines) | ~416 |
+| 23:53 | Edited docs/superpowers/plans/2026-09-19-cpa-table-recognition-three-layer.md | 15→18 lines | ~448 |
+| 22:47 | cpa P3(Task 8-10)规则生态落地: Task8=既有抽屉闭环核对零增量(e92994a3c/70fd7b01e已含); Task9=crud.list_documents一条GROUP BY附items_total/items_needs_review+DocumentOut两字段+ContractsView黄色NR徽章+psql干跑验证(桂北400/0); Task10=crud.update_item/batch_validate挂_harvest_price_anchor读OCR缓存反推价格列表头词→parse_meta.suggested_anchors(去重仅暂存)+merge_suggested_anchors纯函数+新测12例 | backend/app/extensions/contract_price/{crud,schemas}.py backend/tests/test_contract_price_doc_kpi_anchors.py frontend/src/extensions/contract-price/{types.ts,components/ContractsView.tsx} | host测37passed+技能131passed+typecheck绿 | ~28k |
+| 00:21 | Edited backend/app/extensions/contract_price/crud.py | added 1 import(s) | ~18 |
+| 00:21 | Edited backend/app/extensions/contract_price/crud.py | modified _load_ocr_tables() | ~317 |
+| 00:21 | Edited backend/app/extensions/contract_price/crud.py | modified in() | ~146 |
+| 00:21 | Edited backend/app/extensions/contract_price/crud.py | modified items() | ~68 |
+| 00:22 | Edited backend/app/extensions/contract_price/schemas.py | modified CUSTOM() | ~214 |
+| 00:22 | Edited backend/app/extensions/contract_price/crud.py | modified _config_path() | ~282 |
+| 00:22 | Edited backend/app/extensions/contract_price/crud.py | 7→7 lines | ~55 |
+| 00:22 | Edited backend/app/extensions/contract_price/routers.py | modified get_config() | ~204 |
+| 00:23 | Edited backend/tests/test_contract_price_doc_kpi_anchors.py | modified test_orm_base_picks_up_unmapped_kpi_attrs() | ~1187 |
+| 00:24 | Edited backend/tests/test_contract_price_llm_injection.py | modified test_llm_fields_survive_config_roundtrip() | ~1290 |
+| 00:25 | Edited backend/tests/test_contract_price_doc_kpi_anchors.py | modified fake_get() | ~303 |
+| 00:25 | Edited backend/tests/test_contract_price_llm_injection.py | 4→5 lines | ~70 |
+| 00:31 | code-review修复: cpa crud 收割 OCR 缓存读经 asyncio.to_thread 卸载出事件循环(update_item/batch_validate)+行为回归测试 | backend/app/extensions/contract_price/crud.py, backend/tests/test_contract_price_doc_kpi_anchors.py | 45 passed 1 skipped | ~6k |
+| 00:31 | code-review修复: llm_key write-only 掩码(GET 回 LLM_KEY_MASK, PUT 掩码还原真值, $ENV/明文仍可写)+端到端往返测试 | backend/app/extensions/contract_price/schemas.py, crud.py, routers.py, backend/tests/test_contract_price_llm_injection.py | 29 tests green; 技能套件131 passed; pnpm typecheck clean | ~5k |
+| 00:38 | Edited backend/tests/test_contract_price_llm_injection.py | modified test_put_response_masked_no_readback() | ~380 |
+| 00:38 | Edited backend/app/extensions/contract_price/routers.py | modified CUSTOM() | ~88 |
+| 00:45 | 复验: 全部门禁重跑全绿(backend 47p/1skip既有, 技能131p/1skip, pnpm typecheck, ruff, 桂北 bad_rate=0.0, 调价表11/11) + 修 bug-3422(PUT 响应边界漏接掩码会回吐 llm_key 真值, 持 system:access 可 PUT 掩码读回明文) | backend/app/extensions/contract_price/routers.py, backend/tests/test_contract_price_llm_injection.py, .wolf/buglog.json | 全部门禁绿 | ~4k |

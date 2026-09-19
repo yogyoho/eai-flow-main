@@ -22,7 +22,9 @@ from typing import Any, Optional
 
 from scripts.clustering.engine import cluster_items
 from scripts.config import get_config
-from scripts.document_parser import from_cache, parse_document, to_cache
+from scripts.document_parser import TableExtract, from_cache, parse_document, to_cache
+from scripts.geometry_rebuild import has_glue_symptom, rebuild_grid
+from scripts.llm_fallback import try_llm_fallback
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
 from scripts.price_validator import parse_qty, validate_price
@@ -974,8 +976,730 @@ def _lone_row_price(row, qty_col=None):
     return a, "算术重推(单行)"
 
 
+# ── P1 几何层: 病征阈值 + 两版比对度量(spec §2.3/§2.4,计划 Task 4) ──────────
+_GEOMETRY_NR_TRIGGER = 0.30      # P-2: seed 锚定后该表仲裁 NR 率 >0.30
+_GEOMETRY_X_MISMATCH = 0.30      # P-3: 锚列 x-band 失配率 >0.30
+_GEOMETRY_MIN_ROWS_RATIO = 0.7   # 重建行数 < 原表×0.7 → 放弃重建(spec §2.4)
+
+# ── P2 LLM 兜底: 触发阈值(spec §3,计划 Task 7) ─────────────────────────────
+_LLM_NR_TRIGGER = 0.50           # matched 表 NR 率 >0.50(几何层不可用/未救回)→ LLM 兜底
+
+
+def _build_llm_cfg(base_url, key, model):
+    """--llm-* 三元组 → llm_cfg dict;缺省/任一缺失 → None = LLM 层关闭
+    (零行为变化)。"""
+    if not (base_url and key and model):
+        return None
+    return {"base_url": base_url, "api_key": key, "model": model}
+
+
+def _merge_llm_meta(meta, table, got, trigger, prev_rows=0, replace=False):
+    """try_llm_fallback 采纳结果的 meta 并入(计数修正 + parse_meta.llm_roles 留痕)。
+
+    items 并入由调用方按路径处理(matched=切片替换,unmatched=追加)。
+    ``replace=True``(matched 路径): 原命中表计数已在 meta——goods_tables/
+    matched_seeds 不动,rows_extracted 记差额(以替换前切片条目数 ``prev_rows``
+    为基准,几何层已替换过时基准随之更新),且本表旧 anchor_override/
+    price_rediscovery 条目随条目替换作废(与 _geometry_probe 同纪律)。"""
+    llm_meta = got[2]
+    probe = llm_meta.get("probe") or {}
+    if replace:
+        meta["rows_extracted"] = meta.get("rows_extracted", 0) + probe.get("rows_extracted", 0) - prev_rows
+        for key in ("anchor_override", "price_rediscovery"):
+            meta[key] = [
+                e
+                for e in (meta.get(key) or [])
+                if not (e.get("page") == table.page_no and e.get("table_idx") == table.table_idx)
+            ]
+    else:
+        meta["rows_extracted"] = meta.get("rows_extracted", 0) + probe.get("rows_extracted", 0)
+        meta["goods_tables"] = meta.get("goods_tables", 0) + probe.get("goods_tables", 0)
+        for k, v in (probe.get("matched_seeds") or {}).items():
+            meta["matched_seeds"][k] = meta["matched_seeds"].get(k, 0) + v
+    for key in ("anchor_override", "price_rediscovery"):
+        for e in probe.get(key) or []:
+            meta.setdefault(key, []).append(e)
+    meta.setdefault("llm_roles", []).append(
+        {
+            "page": table.page_no,
+            "table_idx": table.table_idx,
+            "roles": {str(ci): role for ci, role in (llm_meta.get("llm_roles") or {}).items()},
+            "trigger": trigger,
+        }
+    )
+    logger.info(
+        "llm fallback adopted p%s t%s trigger=%s roles=%s",
+        table.page_no,
+        table.table_idx,
+        trigger,
+        llm_meta.get("llm_roles"),
+    )
+
+
+def _table_ok_rate(items):
+    """两版比对度量(spec §2.4): items 中 ok(含已仲裁 ok)行占比;空 → 0.0。"""
+    if not items:
+        return 0.0
+    ok = sum(1 for it in items if it.get("validation_status") == "ok")
+    return ok / len(items)
+
+
+def _anchor_x_mismatch_rate(rows, cell_bboxes, roles, roles_x, header_rows, scan=8):
+    """P-3 病征: 锚列(roles∩roles_x 有带角色)数据格 x-center 落带外
+    (tol=0.06,与 _row_cells_by_x 同容差)占锚列有值格的比例。网格错位/胶合
+    残留的双峰分布会推高此值。无锚带或无可比格 → 0.0(无病征)。"""
+    if not roles_x or not cell_bboxes:
+        return 0.0
+    total = mismatch = 0
+    for ri in range(header_rows, min(header_rows + scan, len(rows))):
+        text_row = rows[ri] if ri < len(rows) else []
+        bbox_row = cell_bboxes[ri] if ri < len(cell_bboxes) else []
+        for role, band_x in roles_x.items():
+            ci = roles.get(role)
+            if ci is None or ci >= len(bbox_row) or ci >= len(text_row):
+                continue
+            if not (text_row[ci] or "").strip():
+                continue
+            xc = _x_center(bbox_row[ci])
+            if xc is None:
+                continue
+            total += 1
+            if abs(xc - band_x) > 0.06:
+                mismatch += 1
+    return mismatch / total if total else 0.0
+
+
+def _matched_table_pass(table, doc_uri, hit, active_in, cat_in, page_texts, items, meta):
+    """单表命中/续表全流程(几何层两版比对共用——原 _extract_from_tables 表循环体
+    原样抽取,重建版与原版各跑同一管线,保证比对语义一致)。
+    hit=(seed, roles, header_rows) 走命中分支;None 走续表继承(active_in 必非 None)。
+    items 追加本表条目,meta 原地累加。返回 (tbl_start, active, info);
+    info: {"rows_extracted": 本表 raw 行数, "header_rows": 命中表头行数}
+    (几何层病征 P-3 与两版比对 meta 修复所需)。"""
+    rows = table.rows or []
+    col_count = max((len(r) for r in rows), default=0)
+    header_rows = 0  # 续表语义(每行都是数据);命中分支由 hit 覆盖
+    if hit is not None:
+        seed, roles, header_rows = hit
+        meta["goods_tables"] += 1
+        meta["matched_seeds"][seed["display_name"]] = meta["matched_seeds"].get(seed["display_name"], 0) + 1
+        roles_x = None
+        if _bboxes_usable(rows, table.cell_bboxes):
+            roles_x = _roles_x_from_data(rows, table.cell_bboxes, roles, header_rows)
+        # 第十二层(调价表): 调整种子 + 锚带可用 → 右半区地板 + 表头费用列带
+        adj = _is_adjustment_seed(seed)
+        adj_fee_xs = _fee_column_xs(rows[:header_rows], table.cell_bboxes, seed) if adj else []
+        adj_floor = _adjust_half_floor(roles_x) if adj else None
+        # 表头重复页: 每页都会 match_seed 命中——initial_category 必须跨表续传,
+        # 否则多页清单的分类退化为页内局部(修订I2)
+        raw = extract_items_seed(rows, seed, roles, header_rows, table.cell_bboxes, roles_x, initial_category=cat_in)
+        name_col = roles.get("name", 0)
+        active = (
+            seed,
+            roles,
+            roles_x,
+            col_count,
+            seed_category_tail(rows, roles, header_rows, table.cell_bboxes, roles_x, cat_in),
+            (adj, adj_fee_xs, adj_floor),
+        )
+    else:
+        seed, roles, roles_x, _, cat_in = active_in[0], active_in[1], active_in[2], active_in[3], active_in[4]
+        adj, adj_fee_xs, adj_floor = active_in[5] if len(active_in) > 5 else (False, [], None)
+        meta["continuation_tables"] += 1
+        raw = extract_items_seed(rows, seed, roles, 0, table.cell_bboxes, roles_x, initial_category=cat_in)
+        name_col = roles.get("name", 0)
+        active = (
+            seed,
+            roles,
+            roles_x,
+            col_count,
+            seed_category_tail(rows, roles, 0, table.cell_bboxes, roles_x, cat_in),
+            (adj, adj_fee_xs, adj_floor),
+        )
+    # 价格校验/finalize(seed 角色: price_unit_raw→unit_price, price_untaxed_raw→
+    # price_untaxed)。Outlier detection stays at cluster level (_build_groups_db)。
+    # bug-3400 终轮: 表级算术价列重推。触发=表内 ≥2 行价格双失败(健康表零触发);
+    # 学到 (unit,total,qty) 列后失败行按学到的列直接取价;单失败行走单行回退。
+    # bug-3400 第四层: 失败=含税单价不可自得(unit 无效,且 total+qty 反算不过
+    # 量纲守卫——错锚单价列÷数量=微型值不算可自愈,须走算术重推学习列)。
+    # 第十三层(bug-3401): 页文本数值 token(仅调价表消费; 非调价表零开销)。
+    pt_nums = (
+        _page_num_tokens(page_texts.get(table.page_no))
+        if adj and isinstance(page_texts, dict)
+        else set()
+    )
+    failing = [r for r in raw if not _raw_price_usable(r)]
+    learned = None
+    failing_set: set = set()
+    lone_idx = None
+    if len(failing) >= 2:
+        failing_set = {r["row_idx"] for r in failing}
+        learned = _rediscover_price_cols(
+            table.rows, roles, header_rows, [r["row_idx"] for r in failing]
+        )
+    elif len(failing) == 1:
+        lone_idx = failing[0]["row_idx"]
+    # bug-3400 第六层: 算术锚点覆盖(坐标定位直接取)。≥2 行价格双失败且表级
+    # 算术重推出的 (单价,合价) 列与 seed 锚不同 → 判定表头碎片导致 seed 锚
+    # 错位(桂北 p94: 碎'含税'占位使锚落到单价列,反算产出 0.02 类微型值)。
+    # 以行间算术(单价×工程量≈合价 ±2%)验证过的列覆盖 seed 单价/合价/量列,
+    # 整表按修正坐标重提取(pass 2)——信任算术验证的坐标而非碎表头文字。
+    # 仍失败的行走下方行级恢复 + 行内三元组兜底,语义不变。
+    if learned is not None and (
+        learned[0] != roles.get("price_unit") or learned[1] != roles.get("price_total")
+    ):
+        seed_unit_col = roles.get("price_unit")
+        seed_total_col = roles.get("price_total")
+        roles = {
+            **roles,
+            "price_unit": learned[0],
+            "price_total": learned[1],
+            "qty": learned[2],
+        }
+        roles_x = None
+        if _bboxes_usable(rows, table.cell_bboxes):
+            roles_x = _roles_x_from_data(rows, table.cell_bboxes, roles, header_rows)
+        raw = extract_items_seed(
+            rows, seed, roles, header_rows, table.cell_bboxes, roles_x, initial_category=cat_in
+        )
+        meta.setdefault("anchor_override", []).append(
+            {
+                "seed_unit_col": seed_unit_col,
+                "seed_total_col": seed_total_col,
+                "learned_unit_col": learned[0],
+                "learned_total_col": learned[1],
+                "learned_qty_col": learned[2],
+                "rows": len(failing),
+                "page": table.page_no,
+                "table_idx": table.table_idx,
+            }
+        )
+        # active 继承修正后的映射(后续续表不再沿用错锚坐标)
+        active = (
+            seed,
+            roles,
+            roles_x,
+            col_count,
+            seed_category_tail(rows, roles, header_rows, table.cell_bboxes, roles_x, cat_in),
+            (adj, adj_fee_xs, adj_floor),
+        )
+    elif learned is not None:
+        # 学到的列与 seed 锚一致 → 表头无碎裂,仅行级恢复照旧(seed 列下个别行
+        # 粘连/缺值),记录重推元数据(既有键,语义不变)。
+        meta.setdefault("price_rediscovery", []).append(
+            {
+                "unit_col": learned[0],
+                "total_col": learned[1],
+                "qty_col": learned[2],
+                "rows": len(failing),
+                "page": table.page_no,
+                "table_idx": table.table_idx,
+            }
+        )
+    tbl_start = len(items)  # 第六层全行仲裁范围(本表 items)
+    for r in raw:
+        # Ragged-row fix: if the extracted name is pure-numeric (序号, because
+        # a spurious leading empty cell shifted THIS row), find the real name
+        # = the first text cell in the row. Per-row because column-level
+        # heuristics fail on ragged pages (some rows shifted, others not).
+        nm = (r["name"] or "").strip()
+        if _PURE_NUM.match(nm) or _PURE_NUM_BRACKET.match(nm):
+            row = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
+            for cell_txt in row:
+                c = (cell_txt or "").strip()
+                if c and not _PURE_NUM.match(c) and not _PURE_NUM_BRACKET.match(c):
+                    r["name"] = c
+                    break
+        unit_p, vstatus_u, reason_u = validate_price(r["price_unit_raw"])
+        if unit_p is not None and r.get("price_unit_raw"):
+            # 单价格首数字前含字母/汉字('m3'、't 1.776')是单位/单位+数量文本,
+            # 不是价格——与 _qty_text_ok 同源的对称守卫(实测 混凝土 'm3'→3.00)。
+            _pu = r["price_unit_raw"].strip()
+            _m = re.search(r"\d", _pu)
+            if _m and re.search(r"[A-Za-z一-鿿]", _pu[: _m.start()]):
+                unit_p, vstatus_u, reason_u = None, "ok", ""
+        # 第十二层(调价表)费用碎片守卫: 直取单价格的全部同行同值格都落在表头
+        # 费用列带(运杂/财务/服务/联采/网价,种子 exclude 词表声明)上 → 该值是
+        # 费用碎片(53.00 元/吨类),不是综合单价——排除(p2r6: 综合单价格空,
+        # '53'碎片格距 u 带 0.02 抢占)。量纲守卫(≥1.0)挡不住 53>1,唯列上下文可辨。
+        if adj and unit_p is not None and adj_fee_xs and r.get("price_unit_raw"):
+            _pu_txt = r["price_unit_raw"].strip()
+            _bbox_row0 = table.cell_bboxes[r["row_idx"]] if table.cell_bboxes and r["row_idx"] < len(table.cell_bboxes) else []
+            _same_xs = [
+                _x_center(_bbox_row0[ci])
+                for ci, c in enumerate(table.rows[r["row_idx"]] or [])
+                if (c or "").strip() == _pu_txt and ci < len(_bbox_row0)
+            ]
+            _same_xs = [x for x in _same_xs if x is not None]
+            if _same_xs and all(
+                any(abs(x - fx) <= _ADJUST_FEE_TOL for fx in adj_fee_xs) for x in _same_xs
+            ):
+                unit_p, vstatus_u, reason_u = None, "ok", ""
+        _dval, _dvalid = unit_p, unit_p is not None  # 第九层: 直取值留档(仲裁改写检测)
+        src = "direct" if unit_p is not None else None
+        if r.get("price_untaxed_raw"):
+            untaxed, vstatus_n, reason_n = validate_price(r["price_untaxed_raw"])
+        else:
+            untaxed, vstatus_n, reason_n = None, "ok", ""
+        # 反算: 单价缺失/异常 → 合价÷工程量(seed 显式 price_total 列,定义关系
+        # 单价 = 合价 ÷ 工程量)。错列不可能通过反算,零误注风险。
+        _adj_torn_q = False
+        if unit_p is None and r.get("price_total_raw"):
+            total, _, _ = validate_price(r["price_total_raw"])
+            q = parse_qty(r["qty_raw"] or "") if _qty_text_ok(r.get("qty_raw") or "") else None
+            if total and q and q > 0:
+                cand = round(total / q, 2)
+                # bug-3400 第四层量纲守卫: price_total 锚可能因碎表头落在单价列
+                # (桂北 p94 '含税'碎片),反算=单价÷数量产出 0.01~0.5 微型值。
+                # 低于绝对下限 → 拒绝,行转 failing 走算术重推/学习列恢复。
+                if cand >= _MIN_PLAUSIBLE_UNIT:
+                    unit_p = cand
+                    vstatus_u, reason_u = "ok", "合价/工程量反算"
+                    src = "reverse"
+                    # 第十二层(调价表): 数量文本尾断号('378.', 小数物理缺失)时
+                    # 反算单价低位不可信(378 vs 真值378.3 → 3498.77 vs 3496),
+                    # 且后续任何行内闭合都复用同一撕裂量、无法独立佐证——保留值
+                    # 但标记转待核验(layer9 强制, 不吃粘连洗白)。
+                    _adj_torn_q = adj and bool(_TORN_TAIL_RE.search(r.get("qty_raw") or ""))
+                    logger.debug(
+                        "reverse-calc implausible %.4f (%s/%s) rejected", cand, total, q
+                    )
+        # bug-3400 第六层: 含税单价缺失的行 → 学到的列直接取价 / 单行回退。
+        # (untaxed 是否有效不影响——untaxed 仅审计,含税单价才是统计主字段。)
+        # 产出同样经过 validate_price,失败照旧(不强行注值)。
+        # 原 第五/七/八 层(行内三元组/含税窗口)已上移为循环后的全行统一仲裁
+        # (_taxed_unit_oracle,共享因子律)——对本表所有行(含直取成功行)运行,
+        # 见下方「第六层(全行含税仲裁)」块。
+        if unit_p is None:
+            row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
+            if learned is not None and r["row_idx"] in failing_set:
+                unit_p, reason_r = _rediscover_row_price(row_cells, learned)
+                if unit_p is not None:
+                    vstatus_u, reason_u, src = "ok", reason_r, "learned"
+            elif learned is None and lone_idx is not None and r["row_idx"] == lone_idx:
+                unit_p, reason_r = _lone_row_price(row_cells, qty_col=roles.get("qty"))
+                if unit_p is not None:
+                    vstatus_u, reason_u, src = "ok", reason_r, "row_arith"
+        # 量纲守卫(与反算守卫同源,第四层): 任何来源的单价 <1.0 元在工程
+        # 材料/设备域近乎不存在——视作不可用,行走第六层仲裁/表尾过滤,
+        # 保证全文档零 <1.0 微型单价。
+        if unit_p is not None and unit_p < _MIN_PLAUSIBLE_UNIT:
+            unit_p, vstatus_u, reason_u, src = None, "ok", "", None
+        # 价格缺失行不再在此处跳过: 第六层全行仲裁在循环后运行,可能从行内
+        # 算术恢复出含税单价;表尾统一过滤仍双空的行(等价旧的 price-less skip)。
+        vstatus = "needs_review" if "needs_review" in (vstatus_u, vstatus_n) else "ok"
+        items.append(
+            {
+                "goods_name": r["name"],
+                "spec_model": r["spec"],
+                "tech_params": _extract_tech_params(r["name"]),
+                "category": r.get("category"),
+                "quantity": (
+                    parse_qty(_rejoin_torn_qty(r["qty_raw"]) if adj else r["qty_raw"] or "")
+                    if _qty_text_ok(r.get("qty_raw") or "")
+                    else None
+                ),
+                "unit": r["unit"],
+                "unit_price": unit_p,  # 含税单价(统计)
+                "price_untaxed": untaxed,  # 不含税单价(审计)
+                "source_doc_uri": doc_uri,
+                "source_page": table.page_no,
+                "source_bbox": _cell_bbox(table, r["row_idx"], name_col),
+                "source_table_idx": table.table_idx,
+                "source_row_idx": r["row_idx"],
+                "confidence": table.mean_confidence,
+                "validation_status": vstatus,
+                "price_reason": reason_u or reason_n,
+                "_adj_torn_q": _adj_torn_q,
+                "_src": src,
+                "_dval": _dval,
+                "_dvalid": _dvalid,
+                "_nr0": vstatus == "needs_review",
+            }
+        )
+    meta["rows_extracted"] += len(raw)
+    # bug-3400 第六层(全行含税仲裁,统一律): 含税单价 = 含税合价 ÷ 数量。
+    # 数量 = stored quantity(参与任一行内自洽三元组即可信),否则 = 两个最大
+    # t 不同因子三元组的共享因子;t_taxed = (t_ref, ×1.25] 窗口最大金额。
+    # 对本表每一行运行(含直取成功行): oracle 有效且与 stored 超容差 → 覆盖
+    # (不含税→含税 / 数量被当单价 / 错列碎片,全部一次纠正);oracle 无效 →
+    # 退回旧行内三元组语义(仅升级方向);两者皆无 → 保留 stored。
+    exclude_idx = {
+        roles[k]
+        for k in ("name", "spec", "unit")
+        if roles.get(k) is not None
+    }
+    for it in items[tbl_start:]:
+        cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+        bbox_row = None
+        if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+            bbox_row = table.cell_bboxes[it["source_row_idx"]]
+        _cands = None
+        if adj:
+            _cands = _row_num_cands(
+                cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+            )
+            # 第十二层(调价表)跨格撕裂数量重组: '39.44 229.'+'03 3440'→229.03
+            # (p2r7: '03'碎片被 parse 成 3.000 即 DB 错值);精确闭合守卫见 helper。
+            if it.get("quantity"):
+                _q_join = _join_torn_qty(cells, roles.get("qty"), it.get("quantity"), _cands)
+                if _q_join is not None:
+                    it["quantity"] = _q_join
+                    _cands = _row_num_cands(
+                        cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+                    )
+            # 第十三层(调价表)撕裂数量页文本补全: '378.'→378.3(p2r6, 小数物理
+            # 缺失于表 cells)。判据=精确闭合+页文本双字面(撕裂前缀+u 俱在)。
+            # 补全后 u=t/q 重反算(旧值由撕裂量推出不可信), 撕裂待核验标记解除
+            # (双字面闭合即独立佐证, 不再自证循环)。
+            if pt_nums and it.get("quantity"):
+                _torn_fix = _recover_torn_qty_page_text(cells, _cands, it.get("quantity"), pt_nums)
+                if _torn_fix is not None:
+                    _q_new, _t_anchor = _torn_fix
+                    _q_old = it["quantity"]
+                    it["quantity"] = _q_new
+                    it["_adj_torn_q"] = False
+                    _up = it.get("unit_price")
+                    if _up is None or abs(_up * _q_old - _t_anchor) <= _TORN_QTY_JOIN_TOL * _t_anchor:
+                        it["unit_price"] = round(_t_anchor / _q_new, 2)
+                        it["price_reason"] = "合价/工程量反算(页文本量补全)"
+                    _cands = _row_num_cands(
+                        cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+                    )
+        u_tax, qty_used = _taxed_unit_oracle(
+            cells,
+            it.get("quantity"),
+            qty_col=roles.get("qty"),
+            exclude_idx=exclude_idx,
+            bbox_row=bbox_row,
+            x_floor=adj_floor,
+            stored_close_tol=_TORN_QTY_JOIN_TOL if adj else 0.02,
+        )
+        new_p = u_tax
+        if new_p is None:
+            new_p, _ = _row_arith_price(
+                cells,
+                str(it["quantity"]) if it.get("quantity") else "",
+                exclude_idx=exclude_idx,
+                bbox_row=bbox_row,
+                x_floor=adj_floor,
+            )
+        if new_p is None:
+            continue
+        # 第十二层(调价表)数量槽恢复: stored 无精确闭合而某数量带候选与最终
+        # 单价精确闭合于锚定含税总价(p3r2: 伪q=3380=原单价窜入, 真q=504.55)
+        # → 数量改写。放在单价仲裁后: 恢复判据用仲裁后最终单价。
+        if adj and _cands and it.get("quantity") and (
+            qty_used is None or abs(qty_used - it["quantity"]) <= 1e-9
+        ):
+            _cur0 = it.get("unit_price")
+            _final_p = new_p
+            if _cur0 is not None and abs(_cur0 - new_p) <= max(0.011, 0.02 * max(_cur0, new_p)):
+                _final_p = _cur0
+            _q_fix = _recover_qty_from_anchor(
+                _cands,
+                bbox_row,
+                it.get("quantity"),
+                roles_x.get("qty") if roles_x else None,
+                roles_x.get("price_total") if roles_x else None,
+                _final_p,
+            )
+            if _q_fix is not None:
+                it["quantity"] = _q_fix
+            # 第十二层(调价表)伪数量清洗: 数量仍无精确闭合、且值在左半区(原合同)
+            # 单元格中重复出现 → 数量槽装的是左半区窜入值(原单价), 置空(p2r8:
+            # 3410=左半区原单价 c5; 真值 239.64 仅存页文本, 行内不可恢复)。
+            if it.get("quantity") and not any(
+                abs(u * it["quantity"] - t) <= _TORN_QTY_JOIN_TOL * t
+                for _, u in _cands
+                for _, t in _cands
+                if t > 0 and u > 0
+            ):
+                _left_vals = set()
+                for ci, cell in enumerate(cells):
+                    if ci in exclude_idx:
+                        continue
+                    bx = _x_center(bbox_row[ci]) if bbox_row and ci < len(bbox_row) else None
+                    if bx is None or bx >= adj_floor:
+                        continue
+                    for mm in re.findall(r"\.?\d[\d,，.]*", cell or ""):
+                        try:
+                            _left_vals.add(round(float(mm.replace(",", "").replace("，", "")), 6))
+                        except ValueError:
+                            pass
+                if round(it["quantity"], 6) in _left_vals:
+                    it["quantity"] = None
+        cur = it.get("unit_price")
+        if cur is not None:
+            if abs(cur - new_p) <= max(0.011, 0.02 * max(cur, new_p)):
+                continue
+            if u_tax is None:
+                # 旧行内三元组语义(max-t 小因子)无统一律背书 → 仅升级方向,保守
+                if not (cur < new_p <= cur * 1.25 or cur < _MIN_PLAUSIBLE_UNIT):
+                    continue
+            # 统一律为等式仲裁(含税单价=含税合价÷数量): oracle 有效且超容差
+            # 即覆盖——不含税当含税 / 数量当单价 / 错列碎片一次纠正。
+        it["unit_price"] = new_p
+        if adj and adj_floor is None:
+            # 降级守卫(评审 major): 调价表无 cell_bboxes → 右半区锚带缺失,
+            # 候选未裁左半区, ×1.14 窗口可捕获左半区原合价(3559.22 伪签名)
+            # 且第九层佐证可被左半区自洽伪三元组满足——仲裁改写无几何背书,
+            # 强制待核验并打标(第九层洗白由 _adj_degraded 拦截), 不盖 ok。
+            it["validation_status"] = "needs_review"
+            it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
+            it["_adj_degraded"] = True
+        else:
+            it["validation_status"] = "ok"
+            it["price_reason"] = "行内算术含税"
+    # 第十三层(调价表)缺量页文本恢复: 仲裁后单价已定而数量为空(p2r8: 真量
+    # 239.64 仅存页文本, 表 cells 全缺; 伪量 3410 已被左半区窜入清洗置空)
+    # → 以 u 反推 q_d=t/u(右半区合价候选), 2 位小数整洁+页文本字面+唯一 →
+    # 补量。放在单价仲裁后: 反推判据用仲裁后最终单价。
+    # 降级守卫(评审 major 同根因): 门必须看 adj_floor——无锚带时候选未裁
+    # 左半区, 反推 q 的几何语义(右半区合价带)不存在, 不得注量。
+    if adj and adj_floor is not None and pt_nums:
+        for it in items[tbl_start:]:
+            if it.get("quantity") or not it.get("unit_price"):
+                continue
+            _cells_b = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+            _bbox_b = None
+            if adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+                _bbox_b = table.cell_bboxes[it["source_row_idx"]]
+            _cands_b = _row_num_cands(
+                _cells_b,
+                exclude_idx=exclude_idx,
+                stored_qty=None,
+                bbox_row=_bbox_b,
+                x_floor=adj_floor,
+            )
+            _q_fix = _recover_missing_qty_page_text(it["unit_price"], _cands_b, pt_nums)
+            if _q_fix is not None:
+                it["quantity"] = _q_fix
+    # 价格缺失行统一过滤(等价旧 price-less skip,但发生在第六层仲裁之后):
+    # 仲裁后仍无含税单价且无不含税审计价的行,对价格分析无价值,不入库。
+    items[tbl_start:] = [
+        it
+        for it in items[tbl_start:]
+        if it.get("unit_price") is not None or it.get("price_untaxed") is not None
+    ]
+    # bug-3400 第十层: 直取不含税单价的含税升级校验(仲裁盲区收口)。
+    # 碎表头把单价锚落到不含税单价列时,直取值=不含税单价(蹲式大便器 412.50
+    # 类):合法、量纲合理、全部守卫放行——但同行的 含税单价 格 ≈ 直取值×(1+税率)。
+    # 升级: t ≈ unit_p×(1+rate) (rate 取行内 % 格,兜底 6/9/13) 且 t > unit_p
+    # → unit_p = t(含税单价直接取)。真含税单价行无 t=单价×1.09 格 → 不触发;
+    # 小额项(x)相对总额(z)<2% 的加性吞并、伪拼接碎片均不构成该关系。
+    # bug-3401 收口: 闭合判据收紧为精确(≤max(0.011, 1e-5·t), 覆盖 2 位小数
+    # 打印舍入)——真含税升级是打印级恒等式(449.63=412.50×1.09 精确到分)。
+    # 原 ±2% 窗口把行内无关金额误判为 t(桂北 p96r0: 145.25 落
+    # 129.38×1.13±2% → 正确单价被改写为 145.25/13.6=10.68), 400 行回归
+    # bad_rate 0→0.0175, 硬门失守。
+    for it in items[tbl_start:]:
+        cur = it.get("unit_price")
+        if cur is None or cur < _MIN_PLAUSIBLE_UNIT:
+            continue
+        cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+        bbox_row = None
+        if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+            bbox_row = table.cell_bboxes[it["source_row_idx"]]
+        cand = _row_num_cands(
+            cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+        )
+        rates = [
+            float(mm.group(1)) / 100.0
+            for c in cells
+            for mm in [re.search(r"(\d+(?:\.\d+)?)\s*%", c or "")]
+            if mm
+        ]
+        if not rates:
+            rates = [0.06, 0.09, 0.13]
+        tgt = None
+        for _, t in cand:
+            if t <= cur:
+                continue
+            if any(abs(t - cur * (1 + r)) <= max(0.011, 1e-5 * t) for r in rates):
+                if tgt is None or t < tgt:
+                    tgt = t
+        if tgt is not None:
+            q = it.get("quantity")
+            upgraded = round(tgt / q, 2) if q and q >= 1.01 else tgt
+            # 量纲守卫(与第四层同源): 升级结果 <1.0 说明 (t,cur) 对是费用碎片
+            # 自身的税率巧合(53×1.09≈58.16), 非含税升级——拒绝降级注值。
+            if upgraded < _MIN_PLAUSIBLE_UNIT:
+                continue
+            it["unit_price"] = upgraded
+            if adj and adj_floor is None:
+                # 降级守卫(评审 major): 升级判据 t 同样可捕获左半区金额(无
+                # 锚带裁剪)——改写行强制待核验, 不盖 ok。
+                it["validation_status"] = "needs_review"
+                it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
+                it["_adj_degraded"] = True
+            else:
+                it["validation_status"] = "ok"
+                it["price_reason"] = "含税升级(直取不含税单价×(1+税率))"
+    # bug-3400 第九层(P1+P2+P3 已批;用户定案 A 放宽): 置信分层——「已校验」
+    # 须直取+行内自洽双确认。P1 洗白: 既有 in-loop needs_review(粘连格位置
+    # 约定)遇「行内算术确认」时洗白为 ok——自洽算术佐证的置信度高于粘连
+    # 位置约定;仅「无佐证」入待核验队列。P2: 量纲阈值 <5 → <1.0(与第四层
+    # 量纲守卫一致)。P3: price_reason 细分(量纲边界/无佐证/粘连洗白)。
+    # A 放宽: 算术自洽确认的仲裁行(直取值被行内算术替换)→ ok 洗白,
+    # price_reason 保留"行内算术含税"痕迹(不再入 needs_review)。
+    for it in items[tbl_start:]:
+        cur = it.get("unit_price")
+        if cur is None:
+            continue  # untaxed-only 行不进分层(维持现状)
+        cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+        bbox_row = None
+        if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+            bbox_row = table.cell_bboxes[it["source_row_idx"]]
+        confirmed = _row_confirmed(
+            cells,
+            str(it["quantity"]) if it.get("quantity") else "",
+            cur,
+            exclude_idx=exclude_idx,
+            bbox_row=bbox_row,
+            x_floor=adj_floor,
+            # 调价表: 综合单价=调整后网价+费用调价(53/3406≈1.6%)是真实结构,
+            # 2% 加数下限误杀佐证(p3r0)→ 放宽到 1.2%(序号类伪加数仍 <0.3% 被挡)
+            additive_min_ratio=_ADJUST_FEE_TOL if adj else 0.02,
+        )
+        kind = None
+        if not confirmed:
+            kind = "无佐证"  # 行内无自洽结构
+        elif cur < _MIN_PLAUSIBLE_UNIT:
+            kind = "量纲边界"
+        if it.pop("_adj_degraded", False):
+            # 降级守卫(评审 major): 无坐标带仲裁改写行不吃任何洗白——
+            # 左半区自洽伪三元组可满足 _row_confirmed/粘连洗白(佐证失义)。
+            it["validation_status"] = "needs_review"
+            it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
+        elif it.pop("_adj_torn_q", False):
+            # 第十二层(调价表): 量撕裂反算价无法独立佐证(行内一切闭合复用同一
+            # 撕裂量, 自证循环)——强制待核验, 不吃粘连洗白(p2r6: 3498.77=t÷378)。
+            it["validation_status"] = "needs_review"
+            it["price_reason"] = "待核验: 量撕裂反算"
+        elif kind:
+            it["validation_status"] = "needs_review"
+            it["price_reason"] = "待核验: " + kind
+        elif it.get("_nr0"):
+            it["validation_status"] = "ok"
+            it["price_reason"] = "粘连洗白(行内自洽确认)"
+        it.pop("_src", None)
+        it.pop("_dval", None)
+        it.pop("_dvalid", None)
+        it.pop("_nr0", None)
+    return tbl_start, active, {"rows_extracted": len(raw), "header_rows": header_rows}
+
+def _geometry_probe(table, doc_uri, active, cat_in, page_texts, items, meta, tbl_start, seeds, info):
+    """P1 几何层病征触发 + 两版比对(spec §2.3/§2.4,计划 Task 4)。
+
+    病征(任一): P-1 胶合格(has_glue_symptom)/ P-2 该表仲裁 NR 率>0.30 /
+    P-3 锚列 x-band 失配率>0.30。tokens 可用(新 OCR 或 --re-ocr 后)才探测;
+    重建网格走 _matched_table_pass 同一管线,行级 ok 率严格更高才采纳
+    (平手取原版,保守);采纳时本表条目替换为重建版、active 换用重建版上下文、
+    meta.geometry_rebuilt=True(表级明细记 geometry_rebuilt_tables)。
+    放弃重建: 无 tokens / 列数<3 / 重建行数 < 原表×0.7 / 重建版 match_seed 不中。
+    任何异常 → try/except 退回原表(spec §6);旧缓存/无 tokens 表零行为。"""
+    try:
+        rows = table.rows or []
+        tokens = list(getattr(table, "tokens", None) or [])
+        if not tokens or not rows or not seeds:
+            return active
+        tbl_items = items[tbl_start:]
+        p1 = has_glue_symptom(rows)
+        p2 = bool(tbl_items) and (1.0 - _table_ok_rate(tbl_items)) > _GEOMETRY_NR_TRIGGER
+        roles = active[1] if active else None
+        roles_x = active[2] if active else None
+        p3 = (
+            bool(roles_x)
+            and bool(getattr(table, "cell_bboxes", None))
+            and _anchor_x_mismatch_rate(
+                rows, table.cell_bboxes, roles or {}, roles_x, info.get("header_rows", 0)
+            )
+            > _GEOMETRY_X_MISMATCH
+        )
+        if not (p1 or p2 or p3):
+            return active
+        rebuilt_rows, rebuilt_cbbs = rebuild_grid(tokens)
+        if rebuilt_rows is None or len(rebuilt_rows) < _GEOMETRY_MIN_ROWS_RATIO * len(rows):
+            return active
+        hit_r = match_seed(rebuilt_rows, seeds)
+        if hit_r is None:
+            return active
+        shadow = TableExtract(
+            page_no=table.page_no,
+            table_idx=table.table_idx,
+            bbox=getattr(table, "bbox", [0, 0, 0, 0]) or [0, 0, 0, 0],
+            rows=rebuilt_rows,
+            cell_bboxes=rebuilt_cbbs or [],
+            page_preview_b64=getattr(table, "page_preview_b64", "") or "",
+            mean_confidence=getattr(table, "mean_confidence", 0.0) or 0.0,
+        )
+        probe_items: list = []
+        probe_meta: dict = {
+            "tables_found": 0,
+            "goods_tables": 0,
+            "continuation_tables": 0,
+            "rows_extracted": 0,
+            "skipped": {},
+            "unmatched_tables": [],
+            "matched_seeds": {},
+        }
+        _, probe_active, probe_info = _matched_table_pass(
+            shadow, doc_uri, hit_r, None, cat_in, page_texts, probe_items, probe_meta
+        )
+        orig_rate = _table_ok_rate(items[tbl_start:])
+        probe_rate = _table_ok_rate(probe_items)
+        if probe_rate <= orig_rate:
+            return active  # 平手/更差 → 原版(保守,spec §2.4)
+        # 重建版胜出: 本表条目替换 + meta 修复(rows_extracted 差额;本表重推条目换重建版)
+        for key in ("anchor_override", "price_rediscovery"):
+            if key in meta:
+                meta[key] = [
+                    e
+                    for e in meta[key]
+                    if not (e.get("page") == table.page_no and e.get("table_idx") == table.table_idx)
+                ]
+            for e in probe_meta.get(key) or []:
+                meta.setdefault(key, []).append(e)
+        meta["rows_extracted"] = (
+            meta.get("rows_extracted", 0)
+            - info.get("rows_extracted", 0)
+            + probe_info.get("rows_extracted", 0)
+        )
+        items[tbl_start:] = probe_items
+        meta["geometry_rebuilt"] = True
+        meta.setdefault("geometry_rebuilt_tables", []).append(
+            {
+                "page": table.page_no,
+                "table_idx": table.table_idx,
+                "symptoms": [s for s, on in (("P1", p1), ("P2", p2), ("P3", p3)) if on],
+                "ok_rate": round(probe_rate, 4),
+                "orig_ok_rate": round(orig_rate, 4),
+            }
+        )
+        logger.info(
+            "geometry rebuild adopted p%s t%s (ok_rate %.2f -> %.2f)",
+            table.page_no,
+            table.table_idx,
+            orig_rate,
+            probe_rate,
+        )
+        return probe_active
+    except Exception as exc:
+        logger.warning(
+            "geometry rebuild skipped p%s t%s: %s",
+            getattr(table, "page_no", "?"),
+            getattr(table, "table_idx", "?"),
+            exc,
+        )
+        return active
+
 def _extract_from_tables(
-    tables: list, doc_uri: str, seeds: list[dict] | None = None, page_texts: dict | None = None
+    tables: list,
+    doc_uri: str,
+    seeds: list[dict] | None = None,
+    page_texts: dict | None = None,
+    llm_cfg: dict | None = None,
 ) -> tuple:
     """严格 seed-only 版分类提取(设计 §2/§3)。
 
@@ -985,7 +1709,15 @@ def _extract_from_tables(
     分类跨页续传: 表头重复页/续表页通过 initial_category 继承上一表尾部分类
     (多页清单的分类不能退化为页内局部——修订I2);尾态由 seed_category_tail
     对表行重放得出(表尾悬挂的分类行不产 item,extract 结果里看不到)。
-    meta 新键: unmatched_tables[] / matched_seeds{}。"""
+    meta 新键: unmatched_tables[] / matched_seeds{};P1 几何层(spec §2.3/§2.4):
+    病征表(P-1 胶合/P-2 NR>0.30/P-3 锚列 x 失配>0.30)且 tokens 可用时,
+    token 聚类重建网格走同一管线,ok 率严格更高才采纳 → geometry_rebuilt=True
+    + geometry_rebuilt_tables[](表级 page/table_idx/病征/两版 ok 率)。
+    P2 LLM 兜底(spec §3): llm_cfg 非 None 时,unmatched 候选表或 matched 表
+    NR>0.50(几何层不可用/未救回同到此门)→ try_llm_fallback 列语义标注走
+    同一确定性提取管线,行级 ok 率 ≥0.90 才采纳 → 采纳表正常落库、从
+    unmatched_tables 移除,parse_meta.llm_roles 留痕;llm_cfg=None(缺省)=
+    层关闭,行为零变化。"""
     items: list[dict] = []
     meta: dict = {
         "tables_found": len(tables),
@@ -1009,539 +1741,73 @@ def _extract_from_tables(
         # 设计已知取舍: 跨 seed 续传优先防 OCR 噪声翻seed——上一表尾部分类可能
         # 泄入后续不同 seed 的表(跨 seed bleed 为已接受 trade-off,不加同 seed 守卫)。
         cat_in = active[4] if active is not None else None  # 上一表尾部分类
-        if hit is not None:
-            seed, roles, header_rows = hit
-            meta["goods_tables"] += 1
-            meta["matched_seeds"][seed["display_name"]] = meta["matched_seeds"].get(seed["display_name"], 0) + 1
-            roles_x = None
-            if _bboxes_usable(rows, table.cell_bboxes):
-                roles_x = _roles_x_from_data(rows, table.cell_bboxes, roles, header_rows)
-            # 第十二层(调价表): 调整种子 + 锚带可用 → 右半区地板 + 表头费用列带
-            adj = _is_adjustment_seed(seed)
-            adj_fee_xs = _fee_column_xs(rows[:header_rows], table.cell_bboxes, seed) if adj else []
-            adj_floor = _adjust_half_floor(roles_x) if adj else None
-            # 表头重复页: 每页都会 match_seed 命中——initial_category 必须跨表续传,
-            # 否则多页清单的分类退化为页内局部(修订I2)
-            raw = extract_items_seed(rows, seed, roles, header_rows, table.cell_bboxes, roles_x, initial_category=cat_in)
-            name_col = roles.get("name", 0)
-            active = (
-                seed,
-                roles,
-                roles_x,
-                col_count,
-                seed_category_tail(rows, roles, header_rows, table.cell_bboxes, roles_x, cat_in),
-                (adj, adj_fee_xs, adj_floor),
+        if hit is not None or is_cont:
+            tbl_start, active, info = _matched_table_pass(
+                table, doc_uri, hit, active, cat_in, page_texts, items, meta
             )
-        elif is_cont:
-            seed, roles, roles_x, _, cat_in = active[0], active[1], active[2], active[3], active[4]
-            adj, adj_fee_xs, adj_floor = active[5] if len(active) > 5 else (False, [], None)
-            meta["continuation_tables"] += 1
-            raw = extract_items_seed(rows, seed, roles, 0, table.cell_bboxes, roles_x, initial_category=cat_in)
-            name_col = roles.get("name", 0)
-            active = (
-                seed,
-                roles,
-                roles_x,
-                col_count,
-                seed_category_tail(rows, roles, 0, table.cell_bboxes, roles_x, cat_in),
-                (adj, adj_fee_xs, adj_floor),
+            # P1 几何层(spec §2.3/§2.4): 病征触发 → token 聚类重建 → 两版比对,
+            # 行级 ok 率严格更高才采纳(平手取原版);无 tokens 表零行为。
+            active = _geometry_probe(
+                table, doc_uri, active, cat_in, page_texts, items, meta, tbl_start, seeds, info
             )
+            # P2 LLM 兜底(spec §3): matched 表 NR>0.50——几何层不可用(无 tokens)
+            # 或重建未救回同到此门;续表(无表头)标注无输入,跳过。
+            if llm_cfg and hit is not None:
+                nr_rate = 1.0 - _table_ok_rate(items[tbl_start:])
+                if nr_rate > _LLM_NR_TRIGGER:
+                    got = try_llm_fallback(
+                        table, seeds, doc_uri, llm_cfg, page_texts=page_texts, cat_in=cat_in
+                    )
+                    if got[0] is not None:
+                        _merge_llm_meta(
+                            meta,
+                            table,
+                            got,
+                            "matched_nr",
+                            prev_rows=len(items[tbl_start:]),
+                            replace=True,
+                        )
+                        items[tbl_start:] = got[0]
+                        active = got[1]
         else:
             ttype, sroles, sroles_x, sheader_rows = classify(rows, None, table.cell_bboxes)
-            meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
-            active = None  # 断链:不匹配的表后不继承
-            if ttype in ("unclassified", "goods_price") and col_count >= 4:
-                # 候选数据表但无 seed 确认 → 记详情供 UI 建规则(设计 §1.2/§9.6);泛型标签判为 goods_price 的无 seed 表同样必须可见(否则 parsed+0提取静默零)
-                header, _hr = _collapse_header(rows)
-                title = ""
-                for r in rows[:3]:
-                    non_empty = [c for c in r if (c or "").strip()]
-                    if len(non_empty) == 1:
-                        title = non_empty[0].strip()
-                        break
-                meta["unmatched_tables"].append(
-                    {
-                        "page": table.page_no,
-                        "table_idx": table.table_idx,
-                        "title": title,
-                        "header": [(c or "").strip() for c in header if (c or "").strip()],
-                        "col_count": col_count,
-                        "row_count": len(rows),
-                    }
+            candidate = ttype in ("unclassified", "goods_price") and col_count >= 4
+            adopted = False
+            if llm_cfg and candidate:
+                # P2 LLM 兜底(spec §3): strict seed-only unmatched 表 → 列语义
+                # 标注走同一确定性提取管线,验收门 ≥0.90 才采纳。
+                got = try_llm_fallback(
+                    table, seeds, doc_uri, llm_cfg, page_texts=page_texts, cat_in=cat_in
                 )
+                if got[0] is not None:
+                    items.extend(got[0])
+                    _merge_llm_meta(meta, table, got, "unmatched")
+                    active = got[1]  # 采纳表后续表继承 LLM 角色上下文
+                    adopted = True
+            if not adopted:
+                meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
+                active = None  # 断链:不匹配的表后不继承
+                if candidate:
+                    # 候选数据表但无 seed 确认 → 记详情供 UI 建规则(设计 §1.2/§9.6);泛型标签判为 goods_price 的无 seed 表同样必须可见(否则 parsed+0提取静默零)
+                    header, _hr = _collapse_header(rows)
+                    title = ""
+                    for r in rows[:3]:
+                        non_empty = [c for c in r if (c or "").strip()]
+                        if len(non_empty) == 1:
+                            title = non_empty[0].strip()
+                            break
+                    meta["unmatched_tables"].append(
+                        {
+                            "page": table.page_no,
+                            "table_idx": table.table_idx,
+                            "title": title,
+                            "header": [(c or "").strip() for c in header if (c or "").strip()],
+                            "col_count": col_count,
+                            "row_count": len(rows),
+                        }
+                    )
             continue
 
-        # 价格校验/finalize(seed 角色: price_unit_raw→unit_price, price_untaxed_raw→
-        # price_untaxed)。Outlier detection stays at cluster level (_build_groups_db)。
-        # bug-3400 终轮: 表级算术价列重推。触发=表内 ≥2 行价格双失败(健康表零触发);
-        # 学到 (unit,total,qty) 列后失败行按学到的列直接取价;单失败行走单行回退。
-        # bug-3400 第四层: 失败=含税单价不可自得(unit 无效,且 total+qty 反算不过
-        # 量纲守卫——错锚单价列÷数量=微型值不算可自愈,须走算术重推学习列)。
-        # 第十三层(bug-3401): 页文本数值 token(仅调价表消费; 非调价表零开销)。
-        pt_nums = (
-            _page_num_tokens(page_texts.get(table.page_no))
-            if adj and isinstance(page_texts, dict)
-            else set()
-        )
-        failing = [r for r in raw if not _raw_price_usable(r)]
-        learned = None
-        failing_set: set = set()
-        lone_idx = None
-        if len(failing) >= 2:
-            failing_set = {r["row_idx"] for r in failing}
-            learned = _rediscover_price_cols(
-                table.rows, roles, header_rows, [r["row_idx"] for r in failing]
-            )
-        elif len(failing) == 1:
-            lone_idx = failing[0]["row_idx"]
-        # bug-3400 第六层: 算术锚点覆盖(坐标定位直接取)。≥2 行价格双失败且表级
-        # 算术重推出的 (单价,合价) 列与 seed 锚不同 → 判定表头碎片导致 seed 锚
-        # 错位(桂北 p94: 碎'含税'占位使锚落到单价列,反算产出 0.02 类微型值)。
-        # 以行间算术(单价×工程量≈合价 ±2%)验证过的列覆盖 seed 单价/合价/量列,
-        # 整表按修正坐标重提取(pass 2)——信任算术验证的坐标而非碎表头文字。
-        # 仍失败的行走下方行级恢复 + 行内三元组兜底,语义不变。
-        if learned is not None and (
-            learned[0] != roles.get("price_unit") or learned[1] != roles.get("price_total")
-        ):
-            seed_unit_col = roles.get("price_unit")
-            seed_total_col = roles.get("price_total")
-            roles = {
-                **roles,
-                "price_unit": learned[0],
-                "price_total": learned[1],
-                "qty": learned[2],
-            }
-            roles_x = None
-            if _bboxes_usable(rows, table.cell_bboxes):
-                roles_x = _roles_x_from_data(rows, table.cell_bboxes, roles, header_rows)
-            raw = extract_items_seed(
-                rows, seed, roles, header_rows, table.cell_bboxes, roles_x, initial_category=cat_in
-            )
-            meta.setdefault("anchor_override", []).append(
-                {
-                    "seed_unit_col": seed_unit_col,
-                    "seed_total_col": seed_total_col,
-                    "learned_unit_col": learned[0],
-                    "learned_total_col": learned[1],
-                    "learned_qty_col": learned[2],
-                    "rows": len(failing),
-                    "page": table.page_no,
-                    "table_idx": table.table_idx,
-                }
-            )
-            # active 继承修正后的映射(后续续表不再沿用错锚坐标)
-            active = (
-                seed,
-                roles,
-                roles_x,
-                col_count,
-                seed_category_tail(rows, roles, header_rows, table.cell_bboxes, roles_x, cat_in),
-                (adj, adj_fee_xs, adj_floor),
-            )
-        elif learned is not None:
-            # 学到的列与 seed 锚一致 → 表头无碎裂,仅行级恢复照旧(seed 列下个别行
-            # 粘连/缺值),记录重推元数据(既有键,语义不变)。
-            meta.setdefault("price_rediscovery", []).append(
-                {
-                    "unit_col": learned[0],
-                    "total_col": learned[1],
-                    "qty_col": learned[2],
-                    "rows": len(failing),
-                    "page": table.page_no,
-                    "table_idx": table.table_idx,
-                }
-            )
-        tbl_start = len(items)  # 第六层全行仲裁范围(本表 items)
-        for r in raw:
-            # Ragged-row fix: if the extracted name is pure-numeric (序号, because
-            # a spurious leading empty cell shifted THIS row), find the real name
-            # = the first text cell in the row. Per-row because column-level
-            # heuristics fail on ragged pages (some rows shifted, others not).
-            nm = (r["name"] or "").strip()
-            if _PURE_NUM.match(nm) or _PURE_NUM_BRACKET.match(nm):
-                row = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
-                for cell_txt in row:
-                    c = (cell_txt or "").strip()
-                    if c and not _PURE_NUM.match(c) and not _PURE_NUM_BRACKET.match(c):
-                        r["name"] = c
-                        break
-            unit_p, vstatus_u, reason_u = validate_price(r["price_unit_raw"])
-            if unit_p is not None and r.get("price_unit_raw"):
-                # 单价格首数字前含字母/汉字('m3'、't 1.776')是单位/单位+数量文本,
-                # 不是价格——与 _qty_text_ok 同源的对称守卫(实测 混凝土 'm3'→3.00)。
-                _pu = r["price_unit_raw"].strip()
-                _m = re.search(r"\d", _pu)
-                if _m and re.search(r"[A-Za-z一-鿿]", _pu[: _m.start()]):
-                    unit_p, vstatus_u, reason_u = None, "ok", ""
-            # 第十二层(调价表)费用碎片守卫: 直取单价格的全部同行同值格都落在表头
-            # 费用列带(运杂/财务/服务/联采/网价,种子 exclude 词表声明)上 → 该值是
-            # 费用碎片(53.00 元/吨类),不是综合单价——排除(p2r6: 综合单价格空,
-            # '53'碎片格距 u 带 0.02 抢占)。量纲守卫(≥1.0)挡不住 53>1,唯列上下文可辨。
-            if adj and unit_p is not None and adj_fee_xs and r.get("price_unit_raw"):
-                _pu_txt = r["price_unit_raw"].strip()
-                _bbox_row0 = table.cell_bboxes[r["row_idx"]] if table.cell_bboxes and r["row_idx"] < len(table.cell_bboxes) else []
-                _same_xs = [
-                    _x_center(_bbox_row0[ci])
-                    for ci, c in enumerate(table.rows[r["row_idx"]] or [])
-                    if (c or "").strip() == _pu_txt and ci < len(_bbox_row0)
-                ]
-                _same_xs = [x for x in _same_xs if x is not None]
-                if _same_xs and all(
-                    any(abs(x - fx) <= _ADJUST_FEE_TOL for fx in adj_fee_xs) for x in _same_xs
-                ):
-                    unit_p, vstatus_u, reason_u = None, "ok", ""
-            _dval, _dvalid = unit_p, unit_p is not None  # 第九层: 直取值留档(仲裁改写检测)
-            src = "direct" if unit_p is not None else None
-            if r.get("price_untaxed_raw"):
-                untaxed, vstatus_n, reason_n = validate_price(r["price_untaxed_raw"])
-            else:
-                untaxed, vstatus_n, reason_n = None, "ok", ""
-            # 反算: 单价缺失/异常 → 合价÷工程量(seed 显式 price_total 列,定义关系
-            # 单价 = 合价 ÷ 工程量)。错列不可能通过反算,零误注风险。
-            _adj_torn_q = False
-            if unit_p is None and r.get("price_total_raw"):
-                total, _, _ = validate_price(r["price_total_raw"])
-                q = parse_qty(r["qty_raw"] or "") if _qty_text_ok(r.get("qty_raw") or "") else None
-                if total and q and q > 0:
-                    cand = round(total / q, 2)
-                    # bug-3400 第四层量纲守卫: price_total 锚可能因碎表头落在单价列
-                    # (桂北 p94 '含税'碎片),反算=单价÷数量产出 0.01~0.5 微型值。
-                    # 低于绝对下限 → 拒绝,行转 failing 走算术重推/学习列恢复。
-                    if cand >= _MIN_PLAUSIBLE_UNIT:
-                        unit_p = cand
-                        vstatus_u, reason_u = "ok", "合价/工程量反算"
-                        src = "reverse"
-                        # 第十二层(调价表): 数量文本尾断号('378.', 小数物理缺失)时
-                        # 反算单价低位不可信(378 vs 真值378.3 → 3498.77 vs 3496),
-                        # 且后续任何行内闭合都复用同一撕裂量、无法独立佐证——保留值
-                        # 但标记转待核验(layer9 强制, 不吃粘连洗白)。
-                        _adj_torn_q = adj and bool(_TORN_TAIL_RE.search(r.get("qty_raw") or ""))
-                        logger.debug(
-                            "reverse-calc implausible %.4f (%s/%s) rejected", cand, total, q
-                        )
-            # bug-3400 第六层: 含税单价缺失的行 → 学到的列直接取价 / 单行回退。
-            # (untaxed 是否有效不影响——untaxed 仅审计,含税单价才是统计主字段。)
-            # 产出同样经过 validate_price,失败照旧(不强行注值)。
-            # 原 第五/七/八 层(行内三元组/含税窗口)已上移为循环后的全行统一仲裁
-            # (_taxed_unit_oracle,共享因子律)——对本表所有行(含直取成功行)运行,
-            # 见下方「第六层(全行含税仲裁)」块。
-            if unit_p is None:
-                row_cells = table.rows[r["row_idx"]] if r["row_idx"] < len(table.rows) else []
-                if learned is not None and r["row_idx"] in failing_set:
-                    unit_p, reason_r = _rediscover_row_price(row_cells, learned)
-                    if unit_p is not None:
-                        vstatus_u, reason_u, src = "ok", reason_r, "learned"
-                elif learned is None and lone_idx is not None and r["row_idx"] == lone_idx:
-                    unit_p, reason_r = _lone_row_price(row_cells, qty_col=roles.get("qty"))
-                    if unit_p is not None:
-                        vstatus_u, reason_u, src = "ok", reason_r, "row_arith"
-            # 量纲守卫(与反算守卫同源,第四层): 任何来源的单价 <1.0 元在工程
-            # 材料/设备域近乎不存在——视作不可用,行走第六层仲裁/表尾过滤,
-            # 保证全文档零 <1.0 微型单价。
-            if unit_p is not None and unit_p < _MIN_PLAUSIBLE_UNIT:
-                unit_p, vstatus_u, reason_u, src = None, "ok", "", None
-            # 价格缺失行不再在此处跳过: 第六层全行仲裁在循环后运行,可能从行内
-            # 算术恢复出含税单价;表尾统一过滤仍双空的行(等价旧的 price-less skip)。
-            vstatus = "needs_review" if "needs_review" in (vstatus_u, vstatus_n) else "ok"
-            items.append(
-                {
-                    "goods_name": r["name"],
-                    "spec_model": r["spec"],
-                    "tech_params": _extract_tech_params(r["name"]),
-                    "category": r.get("category"),
-                    "quantity": (
-                        parse_qty(_rejoin_torn_qty(r["qty_raw"]) if adj else r["qty_raw"] or "")
-                        if _qty_text_ok(r.get("qty_raw") or "")
-                        else None
-                    ),
-                    "unit": r["unit"],
-                    "unit_price": unit_p,  # 含税单价(统计)
-                    "price_untaxed": untaxed,  # 不含税单价(审计)
-                    "source_doc_uri": doc_uri,
-                    "source_page": table.page_no,
-                    "source_bbox": _cell_bbox(table, r["row_idx"], name_col),
-                    "source_table_idx": table.table_idx,
-                    "source_row_idx": r["row_idx"],
-                    "confidence": table.mean_confidence,
-                    "validation_status": vstatus,
-                    "price_reason": reason_u or reason_n,
-                    "_adj_torn_q": _adj_torn_q,
-                    "_src": src,
-                    "_dval": _dval,
-                    "_dvalid": _dvalid,
-                    "_nr0": vstatus == "needs_review",
-                }
-            )
-        meta["rows_extracted"] += len(raw)
-        # bug-3400 第六层(全行含税仲裁,统一律): 含税单价 = 含税合价 ÷ 数量。
-        # 数量 = stored quantity(参与任一行内自洽三元组即可信),否则 = 两个最大
-        # t 不同因子三元组的共享因子;t_taxed = (t_ref, ×1.25] 窗口最大金额。
-        # 对本表每一行运行(含直取成功行): oracle 有效且与 stored 超容差 → 覆盖
-        # (不含税→含税 / 数量被当单价 / 错列碎片,全部一次纠正);oracle 无效 →
-        # 退回旧行内三元组语义(仅升级方向);两者皆无 → 保留 stored。
-        exclude_idx = {
-            roles[k]
-            for k in ("name", "spec", "unit")
-            if roles.get(k) is not None
-        }
-        for it in items[tbl_start:]:
-            cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            bbox_row = None
-            if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
-                bbox_row = table.cell_bboxes[it["source_row_idx"]]
-            _cands = None
-            if adj:
-                _cands = _row_num_cands(
-                    cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
-                )
-                # 第十二层(调价表)跨格撕裂数量重组: '39.44 229.'+'03 3440'→229.03
-                # (p2r7: '03'碎片被 parse 成 3.000 即 DB 错值);精确闭合守卫见 helper。
-                if it.get("quantity"):
-                    _q_join = _join_torn_qty(cells, roles.get("qty"), it.get("quantity"), _cands)
-                    if _q_join is not None:
-                        it["quantity"] = _q_join
-                        _cands = _row_num_cands(
-                            cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
-                        )
-                # 第十三层(调价表)撕裂数量页文本补全: '378.'→378.3(p2r6, 小数物理
-                # 缺失于表 cells)。判据=精确闭合+页文本双字面(撕裂前缀+u 俱在)。
-                # 补全后 u=t/q 重反算(旧值由撕裂量推出不可信), 撕裂待核验标记解除
-                # (双字面闭合即独立佐证, 不再自证循环)。
-                if pt_nums and it.get("quantity"):
-                    _torn_fix = _recover_torn_qty_page_text(cells, _cands, it.get("quantity"), pt_nums)
-                    if _torn_fix is not None:
-                        _q_new, _t_anchor = _torn_fix
-                        _q_old = it["quantity"]
-                        it["quantity"] = _q_new
-                        it["_adj_torn_q"] = False
-                        _up = it.get("unit_price")
-                        if _up is None or abs(_up * _q_old - _t_anchor) <= _TORN_QTY_JOIN_TOL * _t_anchor:
-                            it["unit_price"] = round(_t_anchor / _q_new, 2)
-                            it["price_reason"] = "合价/工程量反算(页文本量补全)"
-                        _cands = _row_num_cands(
-                            cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
-                        )
-            u_tax, qty_used = _taxed_unit_oracle(
-                cells,
-                it.get("quantity"),
-                qty_col=roles.get("qty"),
-                exclude_idx=exclude_idx,
-                bbox_row=bbox_row,
-                x_floor=adj_floor,
-                stored_close_tol=_TORN_QTY_JOIN_TOL if adj else 0.02,
-            )
-            new_p = u_tax
-            if new_p is None:
-                new_p, _ = _row_arith_price(
-                    cells,
-                    str(it["quantity"]) if it.get("quantity") else "",
-                    exclude_idx=exclude_idx,
-                    bbox_row=bbox_row,
-                    x_floor=adj_floor,
-                )
-            if new_p is None:
-                continue
-            # 第十二层(调价表)数量槽恢复: stored 无精确闭合而某数量带候选与最终
-            # 单价精确闭合于锚定含税总价(p3r2: 伪q=3380=原单价窜入, 真q=504.55)
-            # → 数量改写。放在单价仲裁后: 恢复判据用仲裁后最终单价。
-            if adj and _cands and it.get("quantity") and (
-                qty_used is None or abs(qty_used - it["quantity"]) <= 1e-9
-            ):
-                _cur0 = it.get("unit_price")
-                _final_p = new_p
-                if _cur0 is not None and abs(_cur0 - new_p) <= max(0.011, 0.02 * max(_cur0, new_p)):
-                    _final_p = _cur0
-                _q_fix = _recover_qty_from_anchor(
-                    _cands,
-                    bbox_row,
-                    it.get("quantity"),
-                    roles_x.get("qty") if roles_x else None,
-                    roles_x.get("price_total") if roles_x else None,
-                    _final_p,
-                )
-                if _q_fix is not None:
-                    it["quantity"] = _q_fix
-                # 第十二层(调价表)伪数量清洗: 数量仍无精确闭合、且值在左半区(原合同)
-                # 单元格中重复出现 → 数量槽装的是左半区窜入值(原单价), 置空(p2r8:
-                # 3410=左半区原单价 c5; 真值 239.64 仅存页文本, 行内不可恢复)。
-                if it.get("quantity") and not any(
-                    abs(u * it["quantity"] - t) <= _TORN_QTY_JOIN_TOL * t
-                    for _, u in _cands
-                    for _, t in _cands
-                    if t > 0 and u > 0
-                ):
-                    _left_vals = set()
-                    for ci, cell in enumerate(cells):
-                        if ci in exclude_idx:
-                            continue
-                        bx = _x_center(bbox_row[ci]) if bbox_row and ci < len(bbox_row) else None
-                        if bx is None or bx >= adj_floor:
-                            continue
-                        for mm in re.findall(r"\.?\d[\d,，.]*", cell or ""):
-                            try:
-                                _left_vals.add(round(float(mm.replace(",", "").replace("，", "")), 6))
-                            except ValueError:
-                                pass
-                    if round(it["quantity"], 6) in _left_vals:
-                        it["quantity"] = None
-            cur = it.get("unit_price")
-            if cur is not None:
-                if abs(cur - new_p) <= max(0.011, 0.02 * max(cur, new_p)):
-                    continue
-                if u_tax is None:
-                    # 旧行内三元组语义(max-t 小因子)无统一律背书 → 仅升级方向,保守
-                    if not (cur < new_p <= cur * 1.25 or cur < _MIN_PLAUSIBLE_UNIT):
-                        continue
-                # 统一律为等式仲裁(含税单价=含税合价÷数量): oracle 有效且超容差
-                # 即覆盖——不含税当含税 / 数量当单价 / 错列碎片一次纠正。
-            it["unit_price"] = new_p
-            if adj and adj_floor is None:
-                # 降级守卫(评审 major): 调价表无 cell_bboxes → 右半区锚带缺失,
-                # 候选未裁左半区, ×1.14 窗口可捕获左半区原合价(3559.22 伪签名)
-                # 且第九层佐证可被左半区自洽伪三元组满足——仲裁改写无几何背书,
-                # 强制待核验并打标(第九层洗白由 _adj_degraded 拦截), 不盖 ok。
-                it["validation_status"] = "needs_review"
-                it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
-                it["_adj_degraded"] = True
-            else:
-                it["validation_status"] = "ok"
-                it["price_reason"] = "行内算术含税"
-        # 第十三层(调价表)缺量页文本恢复: 仲裁后单价已定而数量为空(p2r8: 真量
-        # 239.64 仅存页文本, 表 cells 全缺; 伪量 3410 已被左半区窜入清洗置空)
-        # → 以 u 反推 q_d=t/u(右半区合价候选), 2 位小数整洁+页文本字面+唯一 →
-        # 补量。放在单价仲裁后: 反推判据用仲裁后最终单价。
-        # 降级守卫(评审 major 同根因): 门必须看 adj_floor——无锚带时候选未裁
-        # 左半区, 反推 q 的几何语义(右半区合价带)不存在, 不得注量。
-        if adj and adj_floor is not None and pt_nums:
-            for it in items[tbl_start:]:
-                if it.get("quantity") or not it.get("unit_price"):
-                    continue
-                _cells_b = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-                _bbox_b = None
-                if adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
-                    _bbox_b = table.cell_bboxes[it["source_row_idx"]]
-                _cands_b = _row_num_cands(
-                    _cells_b,
-                    exclude_idx=exclude_idx,
-                    stored_qty=None,
-                    bbox_row=_bbox_b,
-                    x_floor=adj_floor,
-                )
-                _q_fix = _recover_missing_qty_page_text(it["unit_price"], _cands_b, pt_nums)
-                if _q_fix is not None:
-                    it["quantity"] = _q_fix
-        # 价格缺失行统一过滤(等价旧 price-less skip,但发生在第六层仲裁之后):
-        # 仲裁后仍无含税单价且无不含税审计价的行,对价格分析无价值,不入库。
-        items[tbl_start:] = [
-            it
-            for it in items[tbl_start:]
-            if it.get("unit_price") is not None or it.get("price_untaxed") is not None
-        ]
-        # bug-3400 第十层: 直取不含税单价的含税升级校验(仲裁盲区收口)。
-        # 碎表头把单价锚落到不含税单价列时,直取值=不含税单价(蹲式大便器 412.50
-        # 类):合法、量纲合理、全部守卫放行——但同行的 含税单价 格 ≈ 直取值×(1+税率)。
-        # 升级: t ≈ unit_p×(1+rate) (rate 取行内 % 格,兜底 6/9/13) 且 t > unit_p
-        # → unit_p = t(含税单价直接取)。真含税单价行无 t=单价×1.09 格 → 不触发;
-        # 小额项(x)相对总额(z)<2% 的加性吞并、伪拼接碎片均不构成该关系。
-        # bug-3401 收口: 闭合判据收紧为精确(≤max(0.011, 1e-5·t), 覆盖 2 位小数
-        # 打印舍入)——真含税升级是打印级恒等式(449.63=412.50×1.09 精确到分)。
-        # 原 ±2% 窗口把行内无关金额误判为 t(桂北 p96r0: 145.25 落
-        # 129.38×1.13±2% → 正确单价被改写为 145.25/13.6=10.68), 400 行回归
-        # bad_rate 0→0.0175, 硬门失守。
-        for it in items[tbl_start:]:
-            cur = it.get("unit_price")
-            if cur is None or cur < _MIN_PLAUSIBLE_UNIT:
-                continue
-            cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            bbox_row = None
-            if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
-                bbox_row = table.cell_bboxes[it["source_row_idx"]]
-            cand = _row_num_cands(
-                cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
-            )
-            rates = [
-                float(mm.group(1)) / 100.0
-                for c in cells
-                for mm in [re.search(r"(\d+(?:\.\d+)?)\s*%", c or "")]
-                if mm
-            ]
-            if not rates:
-                rates = [0.06, 0.09, 0.13]
-            tgt = None
-            for _, t in cand:
-                if t <= cur:
-                    continue
-                if any(abs(t - cur * (1 + r)) <= max(0.011, 1e-5 * t) for r in rates):
-                    if tgt is None or t < tgt:
-                        tgt = t
-            if tgt is not None:
-                q = it.get("quantity")
-                upgraded = round(tgt / q, 2) if q and q >= 1.01 else tgt
-                # 量纲守卫(与第四层同源): 升级结果 <1.0 说明 (t,cur) 对是费用碎片
-                # 自身的税率巧合(53×1.09≈58.16), 非含税升级——拒绝降级注值。
-                if upgraded < _MIN_PLAUSIBLE_UNIT:
-                    continue
-                it["unit_price"] = upgraded
-                if adj and adj_floor is None:
-                    # 降级守卫(评审 major): 升级判据 t 同样可捕获左半区金额(无
-                    # 锚带裁剪)——改写行强制待核验, 不盖 ok。
-                    it["validation_status"] = "needs_review"
-                    it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
-                    it["_adj_degraded"] = True
-                else:
-                    it["validation_status"] = "ok"
-                    it["price_reason"] = "含税升级(直取不含税单价×(1+税率))"
-        # bug-3400 第九层(P1+P2+P3 已批;用户定案 A 放宽): 置信分层——「已校验」
-        # 须直取+行内自洽双确认。P1 洗白: 既有 in-loop needs_review(粘连格位置
-        # 约定)遇「行内算术确认」时洗白为 ok——自洽算术佐证的置信度高于粘连
-        # 位置约定;仅「无佐证」入待核验队列。P2: 量纲阈值 <5 → <1.0(与第四层
-        # 量纲守卫一致)。P3: price_reason 细分(量纲边界/无佐证/粘连洗白)。
-        # A 放宽: 算术自洽确认的仲裁行(直取值被行内算术替换)→ ok 洗白,
-        # price_reason 保留"行内算术含税"痕迹(不再入 needs_review)。
-        for it in items[tbl_start:]:
-            cur = it.get("unit_price")
-            if cur is None:
-                continue  # untaxed-only 行不进分层(维持现状)
-            cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            bbox_row = None
-            if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
-                bbox_row = table.cell_bboxes[it["source_row_idx"]]
-            confirmed = _row_confirmed(
-                cells,
-                str(it["quantity"]) if it.get("quantity") else "",
-                cur,
-                exclude_idx=exclude_idx,
-                bbox_row=bbox_row,
-                x_floor=adj_floor,
-                # 调价表: 综合单价=调整后网价+费用调价(53/3406≈1.6%)是真实结构,
-                # 2% 加数下限误杀佐证(p3r0)→ 放宽到 1.2%(序号类伪加数仍 <0.3% 被挡)
-                additive_min_ratio=_ADJUST_FEE_TOL if adj else 0.02,
-            )
-            kind = None
-            if not confirmed:
-                kind = "无佐证"  # 行内无自洽结构
-            elif cur < _MIN_PLAUSIBLE_UNIT:
-                kind = "量纲边界"
-            if it.pop("_adj_degraded", False):
-                # 降级守卫(评审 major): 无坐标带仲裁改写行不吃任何洗白——
-                # 左半区自洽伪三元组可满足 _row_confirmed/粘连洗白(佐证失义)。
-                it["validation_status"] = "needs_review"
-                it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
-            elif it.pop("_adj_torn_q", False):
-                # 第十二层(调价表): 量撕裂反算价无法独立佐证(行内一切闭合复用同一
-                # 撕裂量, 自证循环)——强制待核验, 不吃粘连洗白(p2r6: 3498.77=t÷378)。
-                it["validation_status"] = "needs_review"
-                it["price_reason"] = "待核验: 量撕裂反算"
-            elif kind:
-                it["validation_status"] = "needs_review"
-                it["price_reason"] = "待核验: " + kind
-            elif it.get("_nr0"):
-                it["validation_status"] = "ok"
-                it["price_reason"] = "粘连洗白(行内自洽确认)"
-            it.pop("_src", None)
-            it.pop("_dval", None)
-            it.pop("_dvalid", None)
-            it.pop("_nr0", None)
     return items, meta
 
 
@@ -1762,6 +2028,7 @@ async def _process_one_doc(
     run_id: str | None,
     total_docs: int,
     re_ocr: bool = False,
+    llm_cfg: dict | None = None,
 ) -> None:
     """Parse one changed contract under the concurrency semaphore.
 
@@ -1799,7 +2066,7 @@ async def _process_one_doc(
                     )
                 except Exception as exc:
                     logger.warning("OCR cache write failed %s: %s", cache_key, exc)
-            items, meta = _extract_from_tables(tables, doc_uri, seeds, page_texts=page_texts)
+            items, meta = _extract_from_tables(tables, doc_uri, seeds, page_texts=page_texts, llm_cfg=llm_cfg)
             # 方向归一化页号透传(设计 §3): 溯源提示这些页的预览/坐标来自纠偏后图像。
             meta["orientation_fixed_pages"] = orient_fixed or []
             # 元数据提取 + 末页兜底: 命中路径 file_bytes=None,兜底真的需要发起时
@@ -1894,7 +2161,11 @@ async def _process_one_doc(
 
 
 async def run_parse(
-    trigger: str = "manual", run_id: str | None = None, force_key: str | None = None, re_ocr: bool = False
+    trigger: str = "manual",
+    run_id: str | None = None,
+    force_key: str | None = None,
+    re_ocr: bool = False,
+    llm_cfg: dict | None = None,
 ) -> int:
     """Phase 1: scan → OCR → classify → validate → persist docs + items.
 
@@ -1941,7 +2212,12 @@ async def run_parse(
     sem = asyncio.Semaphore(concurrency)
     try:
         await asyncio.gather(
-            *(_process_one_doc(ch, store, cfg, seeds, sem, state, run_id, total_docs, re_ocr=re_ocr) for ch in changed)
+            *(
+                _process_one_doc(
+                    ch, store, cfg, seeds, sem, state, run_id, total_docs, re_ocr=re_ocr, llm_cfg=llm_cfg
+                )
+                for ch in changed
+            )
         )
     except Exception as exc:
         error = repr(exc)
@@ -2162,6 +2438,10 @@ def main():
     parser.add_argument("--force-key", default=None, help="re-parse a single MinIO object key (single-doc reparse, bypasses hash cache)")
     parser.add_argument("--re-ocr", action="store_true", help="reparse 时强制重 OCR(默认读 MinIO OCR 缓存)")
     parser.add_argument("--dir", default=None, help="directory of .pdf/.docx to batch-upload (phase=upload)")
+    # P2 LLM 兜底(spec §3): 三元组齐备才开启;缺省 None = 层关闭(零行为变化)。
+    parser.add_argument("--llm-base-url", default=None, help="LLM 兜底 OpenAI 兼容 base_url(缺省=层关闭)")
+    parser.add_argument("--llm-key", default=None, help="LLM 兜底 API key")
+    parser.add_argument("--llm-model", default=None, help="LLM 兜底模型名")
     args = parser.parse_args()
     if args.phase == "upload":
         if not args.dir:
@@ -2169,7 +2449,15 @@ def main():
         n = asyncio.run(run_upload(args.dir))
         print(f"Done. Uploaded {n} file(s).")
     elif args.phase == "parse":
-        n = asyncio.run(run_parse(trigger=args.trigger, run_id=args.run_id, force_key=args.force_key, re_ocr=args.re_ocr))
+        n = asyncio.run(
+            run_parse(
+                trigger=args.trigger,
+                run_id=args.run_id,
+                force_key=args.force_key,
+                re_ocr=args.re_ocr,
+                llm_cfg=_build_llm_cfg(args.llm_base_url, args.llm_key, args.llm_model),
+            )
+        )
         print(f"Done. Parsed {n} document(s).")
     else:
         n = asyncio.run(run_cluster(trigger=args.trigger))

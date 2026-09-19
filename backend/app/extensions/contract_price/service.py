@@ -26,6 +26,38 @@ _REPO_ROOT = Path(__file__).resolve().parents[4]  # backend/app/extensions/contr
 # silently (bug-526). Guarded by test_skill_dir_exists in the backend suite.
 _SKILL_DIR = _REPO_ROOT / "skills" / "public" / "contract-price-analysis"
 
+# EAI-CUSTOM P2 LLM 兜底(spec 2026-09-19 §3): 扩展配置(gateway 配置 API 同一
+# config.json)中的 LLM 三元组 → 子进程 --llm-* argv。任一缺失/空 → 不传
+# (LLM 层关闭,管线行为零变化);key 支持 "$ENV_VAR" 形式,运行时解析。
+_LLM_FLAG_MAP = (
+    ("llm_base_url", "--llm-base-url"),
+    ("llm_key", "--llm-key"),
+    ("llm_model", "--llm-model"),
+)
+
+
+def _resolve_llm_args() -> list[str]:
+    """Read the LLM triple from the extension config and build --llm-* argv flags.
+
+    缺省(config 无三元组/读取失败/任一要素为空或 $ENV 未解析)→ [] 不传——
+    层关闭,子进程行为与未引入本机制前完全一致。"""
+    try:
+        cfg = crud.load_config()
+    except Exception:  # noqa: BLE001 — 配置不可读时绝不阻塞管线触发
+        return []
+    vals: list[tuple[str, str]] = []
+    for field_name, flag in _LLM_FLAG_MAP:
+        v = str(getattr(cfg, field_name, None) or "").strip()
+        if v.startswith("$"):
+            v = os.environ.get(v[1:], "").strip()
+        if not v:
+            return []
+        vals.append((flag, v))
+    out: list[str] = []
+    for flag, v in vals:
+        out += [flag, v]
+    return out
+
 
 async def run_pipeline_subprocess(
     session: AsyncSession,
@@ -62,6 +94,9 @@ async def run_pipeline_subprocess(
         cmd += ["--force-key", force_key]
     if re_ocr:
         cmd += ["--re-ocr"]
+    # P2 LLM 兜底(spec §3): gateway 配置了三元组才注入;超时 30s 与验收门
+    # 0.90 由技能侧 llm_fallback 默认值保证,不可达 → 整表 needs_review 不阻塞。
+    cmd += _resolve_llm_args()
     env = dict(os.environ)
     env["PYTHONPATH"] = str(_SKILL_DIR) + os.pathsep + env.get("PYTHONPATH", "")
 

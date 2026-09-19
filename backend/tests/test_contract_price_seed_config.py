@@ -30,4 +30,9 @@ def test_load_config_injects_default_seeds_when_empty(tmp_path, monkeypatch):
 
     monkeypatch.setattr(crud, "_config_path", lambda: str(cfg_path))
     got = load_config()
-    assert len(got.table_seeds) == 6
+    # EAI-CUSTOM: 断言对齐内置库常量而非硬编码计数——seed 库扩容(bug-3400 期
+    # 6→8)曾让本测试静默过期;对常量断言后扩容不再破坏测试。
+    from app.extensions.contract_price.seed_defaults import DEFAULT_TABLE_SEEDS
+
+    assert len(got.table_seeds) == len(DEFAULT_TABLE_SEEDS)
+    assert got.table_seeds[0]["id"] == DEFAULT_TABLE_SEEDS[0]["id"]

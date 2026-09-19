@@ -30584,6 +30584,378 @@
       ],
       "occurrences": 1,
       "last_seen": "2026-09-19T21:05:00+08:00"
+    },
+    {
+      "id": "bug-1789781066",
+      "timestamp": "2026-09-19T13:43:24.911Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/geometry_rebuild.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→9 lines (3 removed) | Also: # ── 列带: 全部 token x 区间覆盖合并(gap ≤ eps=带宽 视为同列漂移,非列间; col_iv: list[list[float]] = []",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-19T13:43:31.176Z"
+    },
+    {
+      "id": "bug-3410",
+      "timestamp": "2026-09-19",
+      "error_message": "KeyError: 'goods_tables' in _geometry_probe probe pass (cli.py geometry rebuild wiring)",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "probe 重跑 _matched_table_pass 时传入空 dict 作 shadow meta,而命中分支 meta[\"goods_tables\"] += 1 需要既有计数骨架",
+      "fix": "probe_meta 初始化为与主 meta 同构的计数骨架(tables_found/goods_tables/continuation_tables/rows_extracted/skipped/unmatched_tables/matched_seeds)",
+      "tags": [
+        "cpa",
+        "geometry",
+        "task4"
+      ],
+      "related_bugs": [
+        "bug-3400"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-19"
+    },
+    {
+      "id": "bug-3411",
+      "timestamp": "2026-09-19",
+      "error_message": "rebuild_grid 场景3失败: colspan 宽 token 与同带真实单列值并成 824.79含税小计;场景1失败: 全局区间覆盖合并被宽 token 桥接融列(7列变6列)",
+      "file": "skills/public/contract-price-analysis/scripts/geometry_rebuild.py",
+      "root_cause": "两层缺陷: (a)列带用全局 token x 区间覆盖合并——横跨多列的宽 token 把两列融成一列; (b)断点取间隙中点——不同行 token 宽度差让同一分隔的中点漂移出 >带宽 的两个假列",
+      "fix": "改 spec §2.2.2 本义: 行带内相邻 token 大间隙记为断点区间(非中点),重叠区间合并(容差=带宽)后取中点切分 x 轴;高 token 参与所在带断点检测(纯 colspan 覆盖列才可分);colspan 落格让位真实单列值、占首个空带",
+      "tags": [
+        "cpa",
+        "geometry",
+        "tdd"
+      ],
+      "related_bugs": [
+        "bug-3400"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-19"
+    },
+    {
+      "id": "bug-3412",
+      "timestamp": "2026-09-19",
+      "error_message": "续表分支(len(failing)>=2 时)引用未定义 header_rows → NameError → 整文档误标 failed(潜在,重构中发现)",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "_extract_from_tables 表循环中 header_rows 仅在 hit 分支赋值,续表分支走到表级价列重推时未定义",
+      "fix": "随 _matched_table_pass 抽取时在函数头 header_rows = 0 初始化(续表语义即每行都是数据,与 extract_items_seed 传 0 一致)",
+      "tags": [
+        "cpa",
+        "latent-bug",
+        "refactor"
+      ],
+      "related_bugs": [
+        "bug-3400"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-19"
+    },
+    {
+      "id": "bug-1789781067",
+      "timestamp": "2026-09-19T14:07:24.307Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/frontend/src/components/OntologyCanvas.tsx",
+      "root_cause": "Had \"dots\"",
+      "fix": "Changed to \"var(--border, #e4e6e6)\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T14:07:24.307Z"
+    },
+    {
+      "id": "bug-1789781068",
+      "timestamp": "2026-09-19T14:14:04.935Z",
+      "error_message": "Type error",
+      "file": "ontostudio/frontend/src/pages/ModelerPage.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T14:14:04.935Z"
+    },
+    {
+      "id": "bug-1789781069",
+      "timestamp": "2026-09-19T14:15:27.185Z",
+      "error_message": "Null/undefined access in ",
+      "file": "ontostudio/frontend/src/pages/ModelerPage.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T14:15:27.185Z"
+    },
+    {
+      "id": "bug-3413",
+      "timestamp": "2026-09-19T14:33:00.000Z",
+      "error_message": "ModuleNotFoundError: No module named 'scripts' running contract-price-analysis scripts/cli.py via docker exec in deer-flow-gateway",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "cli.py uses absolute 'from scripts.xxx' imports; invoking scripts/cli.py standalone without PYTHONPATH at the skill root fails at the first import (gateway container has no cpa package on sys.path)",
+      "fix": "Run with PYTHONPATH=/app/skills/public/contract-price-analysis from the skill root (audit_all.py avoids it via sys.path.insert). Single-doc reparse: docker exec deer-flow-gateway sh -c 'cd /app/skills/public/contract-price-analysis && PYTHONPATH=/app/skills/public/contract-price-analysis /app/backend/.venv/bin/python scripts/cli.py --phase parse --force-key <MinIO key> [--re-ocr]'",
+      "tags": [
+        "cpa",
+        "docker-exec",
+        "pythonpath",
+        "invocation"
+      ],
+      "related_bugs": [
+        "bug-3400"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T14:33:00.000Z"
+    },
+    {
+      "id": "bug-1789781070",
+      "timestamp": "2026-09-19T15:02:27.502Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 73→108 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T15:02:27.503Z"
+    },
+    {
+      "id": "bug-1789781071",
+      "timestamp": "2026-09-19T15:07:52.643Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/tests/test_llm_fallback.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 10→15 lines (3 removed) | Also: \"\"\"门拒绝(错映射)→ 整表维持 unmatched 现状,无 llm_roles 留痕。\"\"\"; items, meta = _extract_from_tables([_tbl(_ROWS_UNM",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-19T15:07:58.258Z"
+    },
+    {
+      "id": "bug-3400-p2-stale-seedcount",
+      "timestamp": "2026-09-19T23:18:17",
+      "error_message": "backend test_contract_price_seed_config.py::test_load_config_injects_default_seeds_when_empty 断言 6 条 seed,实际内置库已扩到 8 条 → 固有失败(与 P2 LLM 改动无关,stash 验证 pre-existing)",
+      "file": "backend/tests/test_contract_price_seed_config.py",
+      "root_cause": "测试硬编码 DEFAULT_TABLE_SEEDS 计数(6),bug-3400 期 seed 库扩容(6→8)后从未同步;硬编码计数断言对库扩容脆弱",
+      "fix": "断言改为对齐 len(DEFAULT_TABLE_SEEDS) 常量 + 首条 id 抽查,库扩容不再破坏测试",
+      "tags": [
+        "contract_price",
+        "stale-test",
+        "seed-defaults",
+        "test-drift"
+      ],
+      "related_bugs": [
+        "bug-3400"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T23:18:17"
+    },
+    {
+      "id": "bug-1789781072",
+      "timestamp": "2026-09-19T15:53:09.201Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-19-cpa-table-recognition-three-layer.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 15→18 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T15:53:09.201Z"
+    },
+    {
+      "id": "bug-cpa-anchor-merge-list-str",
+      "timestamp": "2026-09-19T15:54:22.018+00:00",
+      "error_message": "merge_suggested_anchors 对损坏的 suggested_anchors 存量(词表为字符串)执行 list(v) 会按字符炸裂成单字符列表",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "list(\"not-a-list\") 逐字符迭代——JSONB 手工编辑/半截写入可产生非 list 词表,合并时把脏形状放大而不是重建",
+      "fix": "isinstance(v, list) 守卫:非 list 词表重建为 [] 再合并;新增单测 test_merge_suggested_anchors_tolerates_corrupt_store_and_blanks 锁行为(上线前被测试抓住,未进生产)",
+      "tags": [
+        "cpa",
+        "suggested_anchors",
+        "jsonb",
+        "defensive",
+        "unit-test"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T15:54:22.018+00:00"
+    },
+    {
+      "id": "bug-personal-outputs-nextskip-preexisting-red",
+      "timestamp": "2026-09-19T15:54:22.018+00:00",
+      "error_message": "backend tests/test_personal_outputs.py::test_next_skip_advances_by_scanned_count_past_empty_threads 断言 page1 threads==[tid-1] 实得 [tid-3](host .venv 运行)",
+      "file": "backend/tests/test_personal_outputs.py",
+      "root_cause": "docmgr/bug-4954 工作流的在途改动(工作区含未提交的 PersonalOutputsResponse.next_skip 契约测试+frontend docmgr 修改);与 cpa P3(Task 8-10)改动零导入交集(contract_price crud/schemas 未被 docmgr 引用),属并发会话工作区的既有红",
+      "fix": "未修——归属 bug-4954 工作流处理;cpa 相关后端测试 37 passed 全绿不受影响",
+      "tags": [
+        "docmgr",
+        "personal-outputs",
+        "pre-existing-red",
+        "concurrent-session"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T15:54:22.018+00:00"
+    },
+    {
+      "id": "bug-1789781073",
+      "timestamp": "2026-09-19T16:21:38.017Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T16:21:38.017Z"
+    },
+    {
+      "id": "bug-1789781074",
+      "timestamp": "2026-09-19T16:22:50.852Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T16:22:50.852Z"
+    },
+    {
+      "id": "bug-1789781075",
+      "timestamp": "2026-09-19T16:23:21.430Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_contract_price_doc_kpi_anchors.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T16:23:21.430Z"
+    },
+    {
+      "id": "bug-1789781076",
+      "timestamp": "2026-09-19T16:25:29.974Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_contract_price_llm_injection.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T16:25:29.974Z"
+    },
+    {
+      "id": "bug-3420",
+      "timestamp": "2026-09-20",
+      "error_message": "code review major: cpa crud L4 anchor harvest runs blocking MinIO read + full OCR-cache json.loads on the asyncio event loop (update_item/batch_validate_items reached from PATCH /items and batch-validate); stalls gateway loop that also serves streaming agent runs",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "_harvest_price_anchor called sync storage.get_object (blocking minio SDK network read) + json.loads of the whole v2 cache (tokens included, multi-MB on 137-page docs) directly inside async crud functions on the loop; tests mocked storage so the blocking-io gate could not see it",
+      "fix": "split blocking segment into _load_ocr_tables(file_hash); made _harvest_price_anchor async and offloaded the read+parse via asyncio.to_thread; both callers await it; added behavioral regression tests asserting the cache read executes on a worker thread (threading.get_ident differs from loop thread) plus a static to_thread source anchor",
+      "tags": [
+        "contract-price",
+        "blocking-io",
+        "asyncio",
+        "minio",
+        "event-loop",
+        "harvest",
+        "code-review-fix"
+      ],
+      "related_bugs": [
+        "bug-1917"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-3421",
+      "timestamp": "2026-09-20",
+      "error_message": "code review major: ConfigOut.llm_key returned in plaintext by GET /api/extensions/contract-price/config while the system:access permission point is held by the base user role (permissions.yaml), leaking the LLM API key to any logged-in user",
+      "file": "backend/app/extensions/contract_price/schemas.py",
+      "root_cause": "llm_key declared as a plain read-write field on ConfigOut and echoed verbatim by GET /config (response_model=ConfigOut); masking existed nowhere on the response boundary",
+      "fix": "write-only echo: added LLM_KEY_MASK sentinel (\"********\") in schemas.py; crud.mask_llm_key masks any set llm_key in the GET response (None stays None so unset is distinguishable); crud.resolve_llm_key_mask restores stored truth when the mask is PUT back (round-trip safe, incl. frontend whole-body spread PUT); new plaintext/$ENV keys still write directly; config.json on disk and service._resolve_llm_args subprocess injection keep using the truth",
+      "tags": [
+        "contract-price",
+        "llm-key",
+        "secret-exposure",
+        "write-only",
+        "masking",
+        "code-review-fix"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-1789781077",
+      "timestamp": "2026-09-19T16:38:13.801Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Was returning: crud.save_config(crud.resolve_llm_key_mask(body))",
+      "fix": "Now returns: crud.mask_llm_key(crud.save_config(crud.resolve_ll",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-19T16:38:13.801Z"
+    },
+    {
+      "id": "bug-3422",
+      "timestamp": "2026-09-20",
+      "error_message": "PUT /api/extensions/contract-price/config 响应体回吐 llm_key 明文: 掩码回传路径 resolve 还原真值后未再过掩码, 持 system:access 的客户端 PUT 掩码即可读回存储真值(绕过 GET 掩码, write-only 被打穿)",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "update_config 返回 save_config(resolve_llm_key_mask(body)) 原样对象, FastAPI response_model=ConfigOut 序列化含真值 llm_key; 掩码只接在 GET 响应边界, PUT 响应边界漏接(复验阶段发现, bug-3421 修复的残留缺口)",
+      "fix": "update_config 返回改为 crud.mask_llm_key(crud.save_config(crud.resolve_llm_key_mask(body))); 新增 test_put_response_masked_no_readback(掩码回传走 PUT 路径后产物无真值) + test_config_routers_wire_mask_on_both_directions(源码锚: GET/PUT 均过 mask_llm_key)",
+      "tags": ["contract-price", "llm-key", "secret-exposure", "write-only", "put-response", "verification-fix"],
+      "related_bugs": ["bug-3421"],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
     }
   ]
 }

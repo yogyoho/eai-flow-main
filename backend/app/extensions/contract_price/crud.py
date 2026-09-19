@@ -5,23 +5,28 @@ dependency) and returns ORM objects or primitives. Query construction is
 separated from the routers so it can be unit-tested with a mocked session.
 """
 
+import asyncio
 import copy
 import json
+import logging
 import os
 from datetime import UTC
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import delete, exists, func, select, text, update
+from sqlalchemy import case, delete, exists, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.contract_price import storage
 from app.extensions.contract_price.models import (
     CpaCluster,
     CpaDocument,
     CpaItem,
     CpaRunHistory,
 )
-from app.extensions.contract_price.schemas import ConfigOut
+from app.extensions.contract_price.schemas import LLM_KEY_MASK, ConfigOut
+
+logger = logging.getLogger(__name__)
 
 _CONFIG_PATH = os.path.join(os.path.dirname(__file__), "config.json")
 
@@ -44,7 +49,24 @@ async def list_documents(
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaDocument.created_at.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
-    return list(result.scalars().all()), int(total)
+    docs = list(result.scalars().all())
+    # v3 规则生态 KPI(设计 2026-09-19-cpa-table-recognition-three-layer §4):
+    # 每文档分项总数/待核验数——只对本页文档做一条 GROUP BY 聚合(零 N+1),
+    # 以非映射属性挂在 ORM 实例上,由 DocumentOut(from_attributes) 序列化。
+    if docs:
+        stats_rows = await session.execute(
+            select(
+                CpaItem.document_id,
+                func.count(),
+                func.sum(case((CpaItem.validation_status == "needs_review", 1), else_=0)),
+            )
+            .where(CpaItem.document_id.in_([d.id for d in docs]))
+            .group_by(CpaItem.document_id)
+        )
+        stats = {row[0]: (int(row[1]), int(row[2] or 0)) for row in stats_rows.all()}
+        for d in docs:
+            d.items_total, d.items_needs_review = stats.get(d.id, (0, 0))
+    return docs, int(total)
 
 
 async def delete_document(session: AsyncSession, doc_id: UUID) -> bool:
@@ -346,6 +368,17 @@ async def update_item(session: AsyncSession, item_id: UUID, fields: dict[str, An
         item.edit_note = fields["note"]
     if fields.get("run_id") is not None:
         item.run_id = fields["run_id"]
+    # v3 规则生态 L4 锚词暂存(设计 2026-09-19-cpa-table-recognition-three-layer §4):
+    # 人工修正(改价)/采纳(validation_status=ok)都是对该行价格的人工确认,反推
+    # 价格列当前表头词追加进 parse_meta.suggested_anchors。仅暂存不自动生效。
+    if fields.get("unit_price") is not None or fields.get("validation_status") in ("ok", "corrected"):
+        confirmed = fields["unit_price"] if fields.get("unit_price") is not None else item.unit_price
+        try:
+            doc = await session.get(CpaDocument, item.document_id)
+            if doc is not None:
+                await _harvest_price_anchor(doc, [(item, confirmed)])
+        except Exception:
+            logger.warning("suggested_anchors harvest failed for item %s", item_id, exc_info=True)
     await session.commit()
     return item
 
@@ -375,8 +408,136 @@ async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int
 async def batch_validate_items(session: AsyncSession, item_ids: list[UUID], validation_status: str = "ok") -> int:
     """Batch update validation_status (ok/corrected) for selected items."""
     result = await session.execute(update(CpaItem).where(CpaItem.id.in_(item_ids)).values(validation_status=validation_status))
+    if validation_status in ("ok", "corrected"):
+        # v3 规则生态 L4 锚词暂存(设计 §4): 批量采纳同样是人工确认,按文档分组
+        # 收割表头词(每文档只读一次 OCR 缓存);单文档失败不影响其余/落库本身。
+        try:
+            rows = await session.execute(select(CpaItem).where(CpaItem.id.in_(item_ids), CpaItem.unit_price.is_not(None), CpaItem.source_page.is_not(None)))
+            by_doc: dict[UUID, list[CpaItem]] = {}
+            for it in rows.scalars().all():
+                by_doc.setdefault(it.document_id, []).append(it)
+            for doc_id, items in by_doc.items():
+                doc = await session.get(CpaDocument, doc_id)
+                if doc is not None:
+                    await _harvest_price_anchor(doc, [(it, it.unit_price) for it in items])
+        except Exception:
+            logger.warning("suggested_anchors batch harvest failed", exc_info=True)
     await session.commit()
     return result.rowcount or 0
+
+
+# --- L4 锚词暂存(suggested_anchors, 设计 2026-09-19 three-layer §4) ---------
+# 人工修正/采纳落库时,反推该列当前表头词追加进 cpa_documents.parse_meta.
+# suggested_anchors(dict: role → [words],去重)。"核一次强一次"——仅暂存,
+# 绝不自动生效: seed 管线只读 config.table_seeds,这里的词须经人工审查后
+# 才能手工并入规则库。
+
+
+def merge_suggested_anchors(parse_meta: dict | None, additions: dict[str, Any]) -> dict:
+    """把人工核验反推的 role→表头词 追加进 parse_meta.suggested_anchors(去重保序)。
+
+    返回新 dict(原入参不被原地改)——重新赋值才能让 SQLAlchemy JSONB 列判脏。
+    additions: {role: str | [str, ...]};空串/空白词丢弃。"""
+    meta = dict(parse_meta) if isinstance(parse_meta, dict) else {}
+    stored = meta.get("suggested_anchors")
+    anchors: dict[str, list[str]] = {str(k): list(v) if isinstance(v, list) else [] for k, v in stored.items()} if isinstance(stored, dict) else {}
+    for role, words in (additions or {}).items():
+        if not role:
+            continue
+        bucket = anchors.setdefault(str(role), [])
+        word_list = [words] if isinstance(words, str) else list(words or [])
+        for w in word_list:
+            w = str(w).strip()
+            if w and w not in bucket:
+                bucket.append(w)
+    meta["suggested_anchors"] = anchors
+    return meta
+
+
+def _cell_to_float(txt: Any) -> float | None:
+    """宽松数值解析(千分位逗号/空白/¥/元 后缀);非数值返回 None。"""
+    t = str(txt or "").strip()
+    for ch in (",", "，", " ", "¥", "￥", "元"):
+        t = t.replace(ch, "")
+    if not t:
+        return None
+    try:
+        return float(t)
+    except ValueError:
+        return None
+
+
+def _header_word_for_price(rows: list, row_idx: int | None, price: float) -> str | None:
+    """反推价格列的当前表头词(设计 §4 L4): 数据行 rows[row_idx] 中找数值≈price
+    的列,再自该行向上找该列第一个非空且非数值的单元格文本(内层表头)。
+    人工手填的价格不在源行内(无法反推)/缺溯源 → None(不暂存)。"""
+    if row_idx is None or not rows or not (0 <= row_idx < len(rows)) or price is None:
+        return None
+    row = rows[row_idx]
+    for ci, cell in enumerate(row):
+        v = _cell_to_float(cell)
+        if v is None or abs(v - float(price)) > max(0.005, abs(float(price)) * 0.001):
+            continue
+        for r in range(row_idx - 1, -1, -1):
+            above = rows[r] if r < len(rows) else []
+            txt = str(above[ci]).strip() if ci < len(above) else ""
+            if txt and _cell_to_float(txt) is None:
+                return txt
+        return None
+    return None
+
+
+def _load_ocr_tables(file_hash: str) -> list:
+    """读单文档 OCR 缓存并解析出 tables(阻塞段,仅供 _harvest_price_anchor 使用)。
+
+    EAI-CUSTOM (review fix 2026-09-20): storage.get_object 是阻塞的 MinIO 网络
+    read,json.loads 整份缓存(v2 含 tokens,百页文档达数 MB)同为重 CPU——
+    两者都不得跑在 gateway 事件循环上:本函数只被 async _harvest_price_anchor
+    经 ``asyncio.to_thread`` 调用(与 bug-1917/#3084 的 blocking-io 纪律同型),
+    否则每次人工修正/采纳点击(PATCH /items、批量采纳)都可能卡 loop 数百 ms,
+    连带阻塞同 loop 上的流式 agent run。"""
+    raw = storage.get_object(f"ocr/{file_hash}.json")
+    return (json.loads(raw) or {}).get("tables") or []
+
+
+async def _harvest_price_anchor(doc: CpaDocument, items_prices: list[tuple[CpaItem, Any]]) -> bool:
+    """对单文档收割价格列锚词: 一次读该文档 OCR 缓存(ocr/{file_hash}.json),
+    逐 (item, 人工确认价) 反推表头词并合并进 doc.parse_meta.suggested_anchors。
+    缓存读取(阻塞 MinIO read + 大 JSON 解析)经 asyncio.to_thread 卸载出事件
+    循环;缓存缺失/损坏/溯源缺失/价格不在行内 → 跳过该项;任何异常由调用方兜底
+    (锚词暂存绝不让核验请求失败)。返回是否改写了 parse_meta。"""
+    if not items_prices:
+        return False
+    try:
+        tables = await asyncio.to_thread(_load_ocr_tables, doc.file_hash)
+    except Exception:
+        return False
+    merged: dict | None = None
+    changed = False
+    for item, price in items_prices:
+        if price is None or item.source_page is None:
+            continue
+        table = next(
+            (t for t in tables if t.get("page_no") == item.source_page and (item.source_table_idx or 0) == (t.get("table_idx") or 0)),
+            None,
+        )
+        if not table:
+            continue
+        try:
+            word = _header_word_for_price(table.get("rows") or [], item.source_row_idx, float(price))
+        except Exception:
+            continue
+        if not word:
+            continue
+        if merged is None:
+            merged = merge_suggested_anchors(doc.parse_meta, {})
+        bucket = merged["suggested_anchors"].setdefault("price_unit", [])
+        if word not in bucket:
+            bucket.append(word)
+            changed = True
+    if changed and merged is not None:
+        doc.parse_meta = merged  # 整体重赋值 → JSONB 判脏
+    return changed
 
 
 async def delete_items_by_run(session: AsyncSession, run_id: UUID) -> int:
@@ -748,3 +909,30 @@ def save_config(cfg: ConfigOut) -> ConfigOut:
 
 def _config_path() -> str:
     return os.path.abspath(_CONFIG_PATH)
+
+
+def mask_llm_key(cfg: ConfigOut) -> ConfigOut:
+    """GET /config 响应边界: 把 llm_key 真值替换为掩码占位(write-only 回显)。
+
+    EAI-CUSTOM (review fix 2026-09-20): system:access 权限点被基础 user 角色
+    持有,明文 key 不得经 GET 原样返回。未配置(None/空串)保持原样,前端可据
+    此区分"未配置"与"已配置"。仅改响应副本,load_config() 底层真值不受影响
+    (service._resolve_llm_args 仍读真值注入子进程)。"""
+    if cfg.llm_key:
+        return cfg.model_copy(update={"llm_key": LLM_KEY_MASK})
+    return cfg
+
+
+def resolve_llm_key_mask(cfg: ConfigOut) -> ConfigOut:
+    """PUT /config 入参边界: 掩码占位原样回传 = "key 未修改",还原为已存真值。
+
+    防止前端把 GET 拿到的掩码在 PUT 往返中覆盖真值。新明文 key / 新 $ENV 形式
+    (不等于掩码)直接落盘。已存 key 不可读(配置损坏)时置 None(等效清除,
+    LLM 层 fail-closed 关闭),绝不把掩码字面量落盘。"""
+    if cfg.llm_key != LLM_KEY_MASK:
+        return cfg
+    try:
+        stored = load_config().llm_key
+    except Exception:  # noqa: BLE001 — 配置不可读时掩码还原降级为清除,不阻塞保存
+        stored = None
+    return cfg.model_copy(update={"llm_key": stored})

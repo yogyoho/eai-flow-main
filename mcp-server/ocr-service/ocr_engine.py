@@ -134,6 +134,21 @@ def _parse_html_rows(html: str) -> list[list[str]]:
     return p.rows
 
 
+def _offset_box(box, ox: float, oy: float) -> list[float]:
+    """Crop-relative OCR point box → page-absolute PIXEL [x1,y1,x2,y2].
+
+    Same offset arithmetic the cell_bboxes path uses (crop origin + point
+    min/max); P1 geometry-layer token channel (spec 2026-09-19 §2.1) reuses it
+    so tokens and cells share one coordinate frame."""
+    pts = np.asarray(box, dtype=float).reshape(-1, 2)
+    return [
+        float(ox + pts[:, 0].min()),
+        float(oy + pts[:, 1].min()),
+        float(ox + pts[:, 0].max()),
+        float(oy + pts[:, 1].max()),
+    ]
+
+
 class OcrEngine:
     def __init__(self) -> None:
         # All three load ONNX models on first use (~2-4s total); lazy so /health
@@ -302,6 +317,13 @@ class OcrEngine:
         boxes = np.array([r[0] for r in res])
         texts = tuple(r[1] for r in res)
         scores = tuple(float(r[2]) for r in res)
+        # P1 几何层(spec §2.1): 行级 token 透出——PP-Structure 表识别前本就运行
+        # 行级 OCR,这里只做收割,近零运行时增量。box 与 cell_bboxes 同一裁剪偏移
+        # 算术(页绝对像素),下游 parse_document 归一化 0~1 后随表入缓存 v2。
+        tokens = [
+            {"text": str(txt), "box": _offset_box(box, x1, y1), "score": float(sc)}
+            for box, txt, sc in zip(boxes, texts, scores)
+        ]
         try:
             tout = self._table([crop], ocr_results=[(boxes, texts, scores)])
         except Exception:
@@ -357,6 +379,7 @@ class OcrEngine:
             row_count=len(rows),
             col_count=max((len(r) for r in rows), default=0),
             mean_confidence=float(np.mean([c.confidence for c in allc])) if allc else 0.0,
+            tokens=tokens,
         )
 
 

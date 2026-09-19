@@ -453,7 +453,9 @@ async def delete_run(
 
 @router.get("/config", response_model=ConfigOut)
 async def get_config(_: CurrentUser = Depends(require_permission("system:access"))):  # EAI-CUSTOM: Add permission check
-    return crud.load_config()
+    # EAI-CUSTOM (review fix 2026-09-20): llm_key write-only——GET 只回掩码占位,
+    # 明文真值不出 API(system:access 被基础 user 角色持有)。
+    return crud.mask_llm_key(crud.load_config())
 
 
 @router.put("/config", response_model=ConfigOut)
@@ -461,7 +463,11 @@ async def update_config(
     body: ConfigUpdate,
     _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
-    return crud.save_config(body)
+    # EAI-CUSTOM (review fix 2026-09-20): GET 的掩码占位被原样 PUT 回传时视为
+    # "llm_key 未修改",还原已存真值落盘,新 key 仍可直接写入。
+    # EAI-CUSTOM (复验 fix 2026-09-20): 响应同样过掩码——否则持 system:access 的
+    # 客户端 PUT 回掩码即可从响应体读回明文真值,write-only 语义被 PUT 打穿。
+    return crud.mask_llm_key(crud.save_config(crud.resolve_llm_key_mask(body)))
 
 
 # --- Functional area 6: dashboard ------------------------------------------

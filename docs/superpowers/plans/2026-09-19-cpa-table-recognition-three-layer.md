@@ -181,17 +181,20 @@ def try_llm_fallback(table, seeds, doc_uri, llm_cfg):
 ### Task 8: unmatched 抽屉"生成 seed 草稿"
 
 **Files:** Modify: `frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx`、`SeedRulesCard.tsx`
-- [ ] unmatched 表行加「生成 seed 草稿」按钮 → 用该表表头调既有 `draftFromHeader` → 打开 SeedEditorDrawer 预填 → 人工确认走既有保存 API。测：`pnpm typecheck` + 手动冒烟。
+- [x] unmatched 表行加「生成 seed 草稿」按钮 → 用该表表头调既有 `draftFromHeader` → 打开 SeedEditorDrawer 预填 → 人工确认走既有保存 API。测：`pnpm typecheck` + 手动冒烟。
+  （落地注 2026-09-19: 该闭环已随 2026-09-17 计划 Task 12 提前落地（e92994a3c 抽屉闭环 + 70fd7b01e savedKeys 提升/saving 透传），本次核对组件现状确认状态流完整——`tableKey`=`文件名:页:表序`，PUT /config 成功后才标记"已保存规则"并解除重解析门槛——零增量代码，typecheck 复验通过。）
 
 ### Task 9: NR 率 KPI 徽章
 
 **Files:** Modify: `backend/app/extensions/contract_price/routers.py`（docs 列表聚合 needs_review 数）、`ContractsView.tsx`
-- [ ] docs 列表响应加 `items_total`/`items_needs_review`（一条 GROUP BY 聚合查询）；ContractsView 文档卡徽章显示 `needs_review/total`（>0 黄色）。测：`pnpm typecheck` + 容器 restart gateway 后 curl 冒烟。
+- [x] docs 列表响应加 `items_total`/`items_needs_review`（一条 GROUP BY 聚合查询）；ContractsView 文档卡徽章显示 `needs_review/total`（>0 黄色）。测：`pnpm typecheck` + 容器 restart gateway 后 curl 冒烟。
+  （落地注 2026-09-19: 聚合落在 `crud.list_documents`（routers 零改动）——对本页文档一条 GROUP BY + `sum(CASE WHEN needs_review)`，以非映射 ORM 属性挂载、`DocumentOut(from_attributes)` 序列化；空页不发聚合。curl 冒烟因「不 restart gateway」硬约束未执行，改用 psql 对真实库干跑同一聚合验证语义（桂北 400/0、JZGS 27/1、补充协议 11/0）；restart 后生效由主会话统一处理。）
 
 ### Task 10: L4 锚词暂存
 
 **Files:** Modify: `skills/public/contract-price-analysis/scripts/db.py`/cli 修正路径（或既有条目修正端点）
-- [ ] 人工修正/采纳落库时，将该列当前表头词追加 `cpa_documents.parse_meta.suggested_anchors`（dict: role → [words]，去重，仅暂存不自动生效）。测：host 单测断言追加+去重。
+- [x] 人工修正/采纳落库时，将该列当前表头词追加 `cpa_documents.parse_meta.suggested_anchors`（dict: role → [words]，去重，仅暂存不自动生效）。测：host 单测断言追加+去重。
+  （落地注 2026-09-19: 落点=既有条目修正端点 `PATCH /items/{id}` → `crud.update_item`（ItemsView 修正/采纳都走它）+ `crud.batch_validate_items`（批量采纳）。反推=读 `ocr/{file_hash}.json` 缓存找 (page,table) 表内 ≈确认价的列，向上跳过数值行取该列内层表头词；手填价不在行内/缺溯源/缓存缺失 → 静默跳过，核验动作永不因暂存失败而失败。seed 管线只读 config.table_seeds，暂存词绝不自动生效。测试 `backend/tests/test_contract_price_doc_kpi_anchors.py` 12 例。）
 - [ ] 主会话 commit（P3 完）。
 
 ---
