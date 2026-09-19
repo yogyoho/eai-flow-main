@@ -9,3 +9,4 @@ files:
   - file: bid_quote.yaml
   - file: cross_module.yaml
   - file: doc_graph.yaml
+  - file: eia.yaml

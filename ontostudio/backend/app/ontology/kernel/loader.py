@@ -23,6 +23,7 @@ class LoaderStats:
     relations: int = 0
     mentions: int = 0
     deduped_entities: int = 0  # 自然键命中复用（未新建）
+    skipped_entities: list[str] = field(default_factory=list)  # 域/etype 无词表映射
     skipped_relations: list[str] = field(default_factory=list)  # 端点缺失等
     skipped_mentions: list[str] = field(default_factory=list)
 
@@ -48,16 +49,27 @@ def load_doc_graph_rows(
     entity_rows: list[dict],
     relation_rows: list[dict],
     mention_rows: list[dict],
-    domain: str = "doc_graph",
+    domain: str | None = "doc_graph",
 ) -> LoaderStats:
-    """dg_entities/dg_relations/dg_mentions 行 → 断言图（自然键幂等，可重复执行）。"""
-    vocab: DomainVocabulary = collect_vocabularies(registry)[domain]
-    classes = etype_class_map(registry, domain)
-    scheme = vocab.scheme
+    """dg_entities/dg_relations/dg_mentions 行 → 断言图（自然键幂等，可重复执行）。
+
+    domain 为缺省域（行无 domain 字段时用）；行自带 domain 时按行解析——
+    支持混合域装载（如 doc_graph + eia 并存于 dg_* 表）。
+    """
+    vocabs = collect_vocabularies(registry)
     stats = LoaderStats()
+
+    def _resolve(row: dict) -> tuple[DomainVocabulary | None, dict[str, str]]:
+        d = row.get("domain") or domain
+        vocab = vocabs.get(d)
+        return vocab, (etype_class_map(registry, d) if vocab else {})
 
     iri_of: dict[str, str] = {}
     for row in entity_rows:
+        vocab, classes = _resolve(row)
+        if vocab is None or row["etype"] not in classes:
+            stats.skipped_entities.append(str(row.get("id")))
+            continue
         norm = row.get("norm_name") or row.get("canonical_name") or ""
         existed = find_by_natural_key(store, row["etype"], norm) is not None
         iri = upsert_entity(
@@ -86,6 +98,7 @@ def load_doc_graph_rows(
         if subject is None or obj is None:
             stats.skipped_relations.append(str(row.get("id")))
             continue
+        vocab, _ = _resolve(row)
         add_relation(
             store,
             vocab,
@@ -101,10 +114,15 @@ def load_doc_graph_rows(
 
     for row in mention_rows:
         entity_iri = iri_of.get(str(row.get("entity_id")))
-        relation_node = f"{scheme.namespace}rel/{row['relation_id']}" if row.get("relation_id") else None
+        rel_domain_vocab = None
+        if row.get("relation_id"):
+            src_row = next((r for r in relation_rows if str(r.get("id")) == str(row["relation_id"])), None)
+            rel_domain_vocab = _resolve(src_row)[0] if src_row else None
+        relation_node = f"{rel_domain_vocab.scheme.namespace}rel/{row['relation_id']}" if rel_domain_vocab else None
         if entity_iri is None and relation_node is None:
             stats.skipped_mentions.append(str(row.get("id")))
             continue
+        vocab = rel_domain_vocab or _resolve(row)[0] or next(iter(vocabs.values()))
         add_mention(
             store,
             vocab,

@@ -164,12 +164,14 @@ def test_formal_axioms(mini_graph):
 
 
 def test_formal_unknown_predicate_fails_closed(tmp_path: Path):
-    bad = MINI_YAML.replace("chain: [part_of, owned_by]", "chain: [part_of, nonexistent_pred]")
+    # formal 段引用的谓词会自动入词表（P5），fail-closed 守卫改由类引用触发：
+    # disjoint 引用未声明类 → CompileError
+    bad = MINI_YAML.replace("disjoint: [Project, Org]", "disjoint: [Project, GhostClass]")
     (tmp_path / "_manifest.yaml").write_text("schema_version: 1\nfiles:\n  - file: mini.yaml\n", encoding="utf-8")
     (tmp_path / "mini.yaml").write_text(bad, encoding="utf-8")
     from app.ontology.kernel.compile import CompileError
 
-    with pytest.raises(CompileError, match="nonexistent_pred"):
+    with pytest.raises(CompileError, match="GhostClass"):
         compile_schema_graph(load_registry(tmp_path))
 
 

@@ -80,6 +80,11 @@ _TOOLS_SPEC = [
             "required": ["object_type", "group_by"],
         },
     ),
+    (
+        "ontology_reason",
+        "运行形式化推理：schema 重编→OWL 2 RL 闭包(graph:entailment)→CONSTRUCT 派生(graph:derived:*)。返回输入/物化三元组数与各规则派生计数（置信度门默认 0.7）。",
+        {"type": "object", "properties": {"min_confidence": {"type": "number"}}, "required": []},
+    ),
 ]
 
 TOOLS = [Tool(name=n, description=d, inputSchema=s) for n, d, s in _TOOLS_SPEC]
@@ -158,6 +163,23 @@ async def _traverse(a: dict) -> list[TextContent]:
     return _ok({"success": True, **out})
 
 
+async def _ontology_reason(a: dict) -> list[TextContent]:
+    from app.ontology.kernel.service import get_kernel
+
+    stats = get_kernel().refresh(min_confidence=a.get("min_confidence", 0.7))
+    return _ok(
+        {
+            "success": True,
+            "input_triples": stats.input_triples,
+            "entailment_triples": stats.entailment_triples,
+            "filtered_low_confidence": stats.filtered_low_confidence,
+            "rule_counts": stats.rule_counts,
+            "duration_ms": stats.duration_ms,
+            "errors": stats.errors,
+        }
+    )
+
+
 async def _aggregate(a: dict) -> list[TextContent]:
     out = await _get_engine().aggregate(a["object_type"], a["group_by"], metric=a.get("metric", "count"), metric_column=a.get("metric_column"), filters=a.get("filters"), limit=a.get("limit", 100))
     return _ok({"success": True, **out})
@@ -181,6 +203,7 @@ async def call_tool(name: str, arguments: dict):
         "get_links": _get_links,
         "traverse": _traverse,
         "aggregate": _aggregate,
+        "ontology_reason": _ontology_reason,
     }
     handler = handlers.get(name)
     if handler is None:

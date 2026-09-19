@@ -63,16 +63,29 @@ def collect_vocabularies(registry: Registry) -> dict[str, DomainVocabulary]:
             domains[ot.domain] = vocab
 
         etype_prop = next((p for p in ot.properties if p.name == "etype" and p.enum), None)
-        if etype_prop is None:
-            continue
-        for etype in etype_prop.enum:
-            mapping = (ot.etype_classes or {}).get(etype)
-            vocab.class_names.add(mapping.class_name if mapping and mapping.class_name else etype_to_class_name(etype))
+        if etype_prop is not None:
+            for etype in etype_prop.enum:
+                mapping = (ot.etype_classes or {}).get(etype)
+                vocab.class_names.add(mapping.class_name if mapping and mapping.class_name else etype_to_class_name(etype))
 
-        # 谓词：同对象类型上 name=predicate 的枚举属性（doc_graph 惯例）
+        # 谓词：name=predicate 的枚举属性（关系类型对象上，如 doc_graph 的 graph_relation——
+        # 注意关系对象无 etype 属性，不能因此跳过谓词收集）
         pred_prop = next((p for p in ot.properties if p.name == "predicate" and p.enum), None)
         if pred_prop is not None:
             vocab.predicates.update(pred_prop.enum)
+
+    # formal 段引用的谓词（派生/传递/逆）自动入词表——派生谓词是推理产物，
+    # 不应要求出现在抽取枚举里
+    for domain, formal in registry.formal_by_domain.items():
+        if domain not in domains:
+            continue
+        vocab = domains[domain]
+        for axiom in formal.property_chains:
+            vocab.predicates.add(axiom.derived)
+            vocab.predicates.update(axiom.chain)
+        vocab.predicates.update(formal.transitive)
+        for pair in formal.inverse:
+            vocab.predicates.update(pair.pair)
     return domains
 
 

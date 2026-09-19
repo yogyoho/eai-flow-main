@@ -28,6 +28,7 @@ from app import auth
 from app.doc_graph.mcp import server as doc_graph_mcp_server
 from app.doc_graph.routers import router as doc_graph_router
 from app.ontology.mcp import server as ontology_mcp_server
+from app.ontology.formal import router as formal_router
 from app.ontology.routers import router as ontology_router
 
 _DEFAULT_CORS_ORIGINS = "http://localhost:2026,http://localhost:3010"
@@ -100,6 +101,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="OntoStudio 本体建模系统", version="0.1.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=_cors_origins(), allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
     app.include_router(ontology_router)
+    app.include_router(formal_router)
     app.include_router(doc_graph_router)
 
     # MCP streamable-http 双端点（Route 精确匹配; harness 条目 url 即此路径, 无尾斜杠）

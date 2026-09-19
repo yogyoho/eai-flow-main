@@ -37,6 +37,7 @@ class InferStats:
     filtered_low_confidence: int = 0
     entailment_triples: int = 0
     duration_ms: int = 0
+    rule_counts: dict = field(default_factory=dict)
     errors: list[str] = field(default_factory=list)
 
 
@@ -86,6 +87,10 @@ def build_inference_graph(store: OxStore, *, min_confidence: float = 0.7) -> tup
     for quad in store._store.quads_for_pattern(None, None, None, None):
         graph_name = quad.graph_name.value
         if graph_name not in REASONING_GRAPHS:
+            continue
+        # 字面量不入推理空间：分类/链/传递全在 IRI 结构上，字面量（标签/数值）只会
+        # 拖慢 owlrl（实测 5k 场景 ~2x）；SHACL 校验路径仍读完整断言图
+        if isinstance(quad.object, OxLiteral):
             continue
         if graph_name == ASSERTED_GRAPH and low:
             subject_iri = quad.subject.value if isinstance(quad.subject, NamedNode) else None

@@ -12,10 +12,10 @@ import pytest
 
 from app.ontology import mcp as ontomcp
 
-EXPECTED_TOOLS = {"describe_ontology", "list_objects", "get_object", "search_objects", "get_links", "traverse", "aggregate"}
+EXPECTED_TOOLS = {"describe_ontology", "list_objects", "get_object", "search_objects", "get_links", "traverse", "aggregate", "ontology_reason"}
 
 
-def test_seven_tools_registered_with_division_wording():
+def test_registered_tools_with_division_wording():
     names = {t.name for t in ontomcp.TOOLS}
     assert names == EXPECTED_TOOLS
     # D5 分工话术: describe 提到 deprecated 单模块工具, 避免 agent 选错
@@ -29,7 +29,7 @@ async def test_describe_compact_under_token_budget():
     """紧凑默认 <2k token；full 显式更大且含属性明细。"""
     out = await ontomcp._describe({})
     payload = json.loads(out[0].text)
-    assert payload["success"] and payload["object_type_count"] == 14 and payload["link_type_count"] == 16
+    assert payload["success"] and payload["object_type_count"] == 16 and payload["link_type_count"] == 16
     assert "fingerprint" in payload and "registry_version" in payload
     compact_chars = len(out[0].text)
     full = await ontomcp._describe({"full": True})

@@ -15,7 +15,8 @@ from pathlib import Path
 import yaml
 from pyoxigraph import NamedNode, Quad
 
-from app.ontology.kernel.store import OxStore
+from app.ontology.kernel.compile import collect_vocabularies
+from app.ontology.kernel.store import ASSERTED_GRAPH, OxStore
 
 RULES_DIR = Path(__file__).parent
 DEFAULT_RULES_PATH = RULES_DIR / "rules.yaml"
@@ -69,3 +70,24 @@ def run_rule(store: OxStore, rule: DeriveRule) -> int:
 def run_all_rules(store: OxStore, rules: list[DeriveRule]) -> dict[str, int]:
     """按序全量重算。失败 fail-closed：单规则异常 → 该图保持空并抛出（调用方决定降级）。"""
     return {rule.name: run_rule(store, rule) for rule in rules}
+
+
+def builtin_chain_rules(registry) -> list[DeriveRule]:  # noqa: ANN001 - Registry
+    """formal 段 >2 段属性链 → 属性路径 CONSTRUCT 规则（owlrl prp-spo2 只保证 2 段；
+    环评逻辑链 3 段及以上走规则机制，仍落独立 derived 图）。"""
+    vocabs = collect_vocabularies(registry)
+    rules: list[DeriveRule] = []
+    for domain, formal in registry.formal_by_domain.items():
+        vocab = vocabs[domain]
+        for axiom in formal.property_chains:
+            if len(axiom.chain) <= 2:
+                continue
+            path = "/".join(f"<{vocab.predicate_ref(step)}>" for step in axiom.chain)
+            derived = str(vocab.predicate_ref(axiom.derived))
+            rules.append(
+                DeriveRule(
+                    name=f"chain_{axiom.derived}",
+                    construct="CONSTRUCT { ?a <" + derived + "> ?c } WHERE { GRAPH <" + ASSERTED_GRAPH + "> { ?a " + path + " ?c } }",
+                )
+            )
+    return rules

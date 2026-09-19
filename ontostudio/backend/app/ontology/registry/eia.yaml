@@ -1,0 +1,92 @@
+# 环评域（eia）——样例报告四类抽取目标的建模载体（kernel P5）
+# 设计: docs/superpowers/specs/2026-09-18-ontostudio-formal-kernel-design.md §6 P5
+#       + 用户 2026-09-20 需求四条:
+#   ① 报告章节结构      → Report/Chapter/Section + has_chapter/has_subsection/part_of(传递)
+#   ② 上下文逻辑链条    → 治理合规链(污染源→措施→标准→监测) + 影响链(源→污染物→敏感点)
+#                         + propertyChain 公理(owlrl 2段 + 路径规则≥3段)
+#   ③ 标准阈值/法规条款 → StandardThreshold(约束逻辑: max/min/thresholdRange/unit,
+#                         对齐 GB/T 48000.3 附录C.10) + RegulationClause(法规具体条款)
+#   ④ 业务节点佐证需求   → EvidenceRequirement(type=parameter|formula|table|figure|flowchart)
+#                         + EvidenceArtifact(实际佐证载体), 节点—requires_evidence→需求
+# 实体行同驻 dg_* 表（domain='eia'，1041 行既有测试数据）
+namespaces:
+  eia: "https://ontology.eai-flow.com/eia#"
+object_types:
+  - api_name: eia_entity
+    display_name: 环评实体
+    description: 环评报告抽取实体（章节结构/业务逻辑节点/阈值约束/法规条款/佐证）
+    domain: eia
+    icon: 🌿
+    access:
+      path: postgres_ext
+      table: dg_entities
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: domain, api_name: domain, type: string, description: 抽取域, filterable: true }
+      - { name: etype, api_name: etype, type: string, description: 实体类型, filterable: true, enum: [report, chapter, section, section_element, constraint_logic, project, pollution_source, pollutant, treatment_measure, emission_standard, monitoring, sensitive_point, standard_threshold, regulation_clause, evidence_requirement, evidence_artifact, org, place, mine, activity, standard, logic_node] }
+      - { name: canonical_name, api_name: canonicalName, type: string, description: 规范名, searchable: true }
+      - { name: norm_name, api_name: normName, type: string, description: 归一化名 }
+      - { name: attrs, api_name: attrs, type: json, description: 属性（阈值数值/单位/条款号/佐证类型等摊平存放） }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: status, api_name: status, type: string, description: 状态, filterable: true, enum: [active, pending_review, merged] }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+    etype_classes:
+      report: { class: Report, label: 环评报告, definition: 环境影响评价报告书/报告表整体 }
+      chapter: { class: Chapter, subClassOf: [SectionElement], label: 章节, definition: 报告章节（如 大气环境影响评价） }
+      section: { class: Section, subClassOf: [SectionElement], label: 小节, definition: 章下小节（如 4.2 治理措施可行性） }
+      project: { class: Project, subClassOf: [LogicNode], label: 环评项目, definition: 开展环境影响评价的建设项目 }
+      pollution_source: { class: PollutionSource, subClassOf: [LogicNode], label: 污染源, definition: 产生污染物排放的工艺环节或设施（如锅炉烟气） }
+      pollutant: { class: Pollutant, subClassOf: [LogicNode], label: 污染物, definition: 污染源排放的污染物因子（如 SO2） }
+      treatment_measure: { class: TreatmentMeasure, subClassOf: [LogicNode], label: 治理措施, definition: 对污染物进行治理的工程措施（如双碱法脱硫） }
+      emission_standard: { class: EmissionStandard, subClassOf: [LogicNode], label: 排放标准, definition: 污染物排放执行的标准（如 GB 13223-2011） }
+      monitoring: { class: Monitoring, subClassOf: [LogicNode], label: 监测要求, definition: 对排放口或环境质量的监测安排 }
+      sensitive_point: { class: SensitivePoint, subClassOf: [LogicNode], label: 敏感点, definition: 环境敏感保护目标（如桑干河水源保护区） }
+      standard_threshold: { class: StandardThreshold, subClassOf: [ConstraintLogic], label: 标准阈值, definition: 标准规定的具体限值（max/min/阈值范围/单位，附录C.10 约束逻辑对齐） }
+      regulation_clause: { class: RegulationClause, subClassOf: [ConstraintLogic], label: 法规条款, definition: 法律法规的具体条款（条文号+义务内容） }
+      evidence_requirement: { class: EvidenceRequirement, label: 佐证需求, definition: 业务逻辑节点需要的佐证类型（数值参数/公式/数据表格/图片/流程图） }
+      evidence_artifact: { class: EvidenceArtifact, label: 佐证载体, definition: 实际承载佐证的产物（计算书/附表/附图/流程图） }
+      logic_node: { class: LogicNode, label: 逻辑节点, definition: 环评业务逻辑链节点类根 }
+      constraint_logic: { class: ConstraintLogic, label: 约束逻辑, definition: 阈值/条款类约束实体类根 }
+      section_element: { class: SectionElement, label: 章节元素, definition: 章/小节类根 }
+      activity: { class: Activity, label: 活动, definition: 环评域活动类根 }
+      standard: { class: Standard, label: 标准, definition: 环评域标准类根 }
+  - api_name: eia_relation
+    display_name: 环评关系
+    description: 环评域实体间关系（章节结构/逻辑链/阈值/佐证谓词）
+    domain: eia
+    icon: 🔗
+    access:
+      path: postgres_ext
+      table: dg_relations
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: subject_id, api_name: subjectId, type: uuid, description: 主体实体, indexed: true, filterable: true }
+      - { name: predicate, api_name: predicate, type: string, description: 谓词, indexed: true, filterable: true, enum: [has_chapter, has_subsection, part_of, precedes, pollutes, emitted_as, treated_by, governed_by, monitored_by, threatens, impact_to, specifies_threshold, complies_with, cites_clause, regulated_by, requires_evidence, evidenced_by, located_in] }
+      - { name: object_id, api_name: objectId, type: uuid, description: 客体实体, indexed: true, filterable: true }
+      - { name: attrs, api_name: attrs, type: json, description: 属性 }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+
+formal:
+  transitive: [part_of]
+  property_chains:
+    # ② 上下文逻辑链条（治理合规链）
+    # 2 段：owlrl prp-spo2 直接物化——污染源 治理后 执行某排放标准
+    - { derived: covered_by_standard, chain: [treated_by, governed_by] }
+    # 3 段：路径 CONSTRUCT 规则（builtin_chain_rules 自动生成）——
+    # 污染源→措施→标准→监测 ⇒ 污染源被监测体系覆盖（报告内在逻辑链）
+    - { derived: covered_by_monitoring, chain: [treated_by, governed_by, monitored_by] }
+    # 2 段：影响链——污染源 排放 污染物，污染物 威胁 敏感点 ⇒ 污染源 impact_to 敏感点
+    - { derived: impact_to, chain: [emitted_as, threatens] }
