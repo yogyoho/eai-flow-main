@@ -44,7 +44,7 @@ export function CommandPalette() {
 
   const handleOpenSettings = useCallback(() => {
     setOpen(false);
-    openSettings("appearance");
+    openSettings("account");
   }, [openSettings]);
 
   const handleShowShortcuts = useCallback(() => {

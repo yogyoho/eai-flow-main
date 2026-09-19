@@ -11,12 +11,10 @@ import {
 
 const SETTINGS_SECTIONS = new Set<SettingsSection>([
   "account",
-  "appearance",
   "channels",
   "memory",
   "subagents",
   "notification",
-  "about",
 ]);
 
 function asSettingsSection(value: string | null): SettingsSection | null {

@@ -13,7 +13,7 @@ type SettingsDialogState = {
 
 const listeners = new Set<Listener>();
 
-let state: SettingsDialogState = { open: false, section: "appearance" };
+let state: SettingsDialogState = { open: false, section: "account" };
 
 function emitChange() {
   for (const listener of listeners) {
@@ -42,7 +42,7 @@ export function getSettingsDialogSnapshot(): SettingsDialogState {
 
 const SERVER_SNAPSHOT: SettingsDialogState = {
   open: false,
-  section: "appearance",
+  section: "account",
 };
 
 function getServerSnapshot(): SettingsDialogState {

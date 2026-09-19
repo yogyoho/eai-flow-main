@@ -4,9 +4,7 @@ import {
   BellIcon,
   BrainIcon,
   CableIcon,
-  InfoIcon,
   MessageCircleIcon,
-  PaletteIcon,
   SparklesIcon,
   UsersRoundIcon,
   UserIcon,
@@ -39,13 +37,6 @@ const AccountSettingsPage = dynamic(
   () =>
     import("./account-settings-page").then(
       (module) => module.AccountSettingsPage,
-    ),
-  { loading: SettingsPageLoading },
-);
-const AppearanceSettingsPage = dynamic(
-  () =>
-    import("./appearance-settings-page").then(
-      (module) => module.AppearanceSettingsPage,
     ),
   { loading: SettingsPageLoading },
 );
@@ -90,11 +81,6 @@ const SubagentSettingsPage = dynamic(
 // About section back then. Upstream #5468 restored About as a first-class
 // settings section and this fused dialog adopts it, so the dynamic import is
 // live code again (previously dead code here).
-const AboutSettingsPage = dynamic(
-  () =>
-    import("./about-settings-page").then((module) => module.AboutSettingsPage),
-  { loading: SettingsPageLoading },
-);
 // EAI-CUSTOM: WeChat channel settings page
 const WechatSettingsPage = dynamic(
   () =>
@@ -124,7 +110,7 @@ type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
 };
 
 export function SettingsDialog(props: SettingsDialogProps) {
-  const { defaultSection = "appearance", ...dialogProps } = props;
+  const { defaultSection = "account", ...dialogProps } = props;
   const { t } = useI18n();
   const [activeSection, setActiveSection] =
     useState<SettingsSection>(defaultSection);
@@ -143,11 +129,6 @@ export function SettingsDialog(props: SettingsDialogProps) {
         id: "account",
         label: t.settings.sections.account,
         icon: UserIcon,
-      },
-      {
-        id: "appearance",
-        label: t.settings.sections.appearance,
-        icon: PaletteIcon,
       },
       {
         id: "wechat", // EAI-CUSTOM
@@ -184,16 +165,9 @@ export function SettingsDialog(props: SettingsDialogProps) {
         label: t.capabilities.skills,
         icon: SparklesIcon,
       },
-      {
-        id: "about",
-        label: t.settings.sections.about,
-        icon: InfoIcon,
-      },
     ],
     [
       t.settings.sections.account,
-      t.settings.sections.about,
-      t.settings.sections.appearance,
       t.settings.sections.channels,
       t.settings.sections.memory,
       t.settings.sections.subagents,
@@ -244,7 +218,6 @@ export function SettingsDialog(props: SettingsDialogProps) {
           <ScrollArea className="h-full min-h-0 rounded-lg border">
             <div className="space-y-8 p-6">
               {activeSection === "account" && <AccountSettingsPage />}
-              {activeSection === "appearance" && <AppearanceSettingsPage />}
               {activeSection === "wechat" && <WechatSettingsPage />}
               {activeSection === "memory" && <MemorySettingsPage />}
               {activeSection === "subagents" && <SubagentSettingsPage />}
@@ -255,7 +228,6 @@ export function SettingsDialog(props: SettingsDialogProps) {
               )}
               {activeSection === "notification" && <NotificationSettingsPage />}
               {activeSection === "channels" && <ChannelsSettingsPage />}
-              {activeSection === "about" && <AboutSettingsPage />}
             </div>
           </ScrollArea>
         </div>
