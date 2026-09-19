@@ -15,7 +15,7 @@
 # ============================================================================
 # Bump this number when the config schema changes.
 # Run `make config-upgrade` to merge new fields into your local config.yaml.
-config_version: 40
+config_version: 46
 
 # ============================================================================
 # Logging
@@ -1187,6 +1187,9 @@ tool_output:
 # Configure whether the agent automatically generates follow-up question
 # suggestions at the end of each response.
 
+  elide_superseded_writes: true
+  superseded_write_min_chars: 2000
+  keep_recent_writes: 1
 suggestions:
   enabled: true
   max_suggestions: 3
@@ -1289,6 +1292,8 @@ read_before_write:
 # content_filter, Anthropic refusal, and Gemini SAFETY/BLOCKLIST/
 # PROHIBITED_CONTENT/SPII/RECITATION.
 
+  elide_blocked_payloads: true
+  elide_min_chars: 2000
 safety_finish_reason:
   enabled: true
   # Leave `detectors` unset to use the built-in detector set. Set to a
@@ -2877,6 +2882,53 @@ verification:
   receipts_render_mode: "delegation_only"
   judge_enabled: false
   judge_model_name:
+recursion_limit: 100
+knowledge_base:
+  enabled: false
+  # Custom-agent chat only. Keeps the selector hidden unless the effective
+  # knowledge_search provider is the bundled RAGFlow tool.
+  scope_selection_enabled: false
+
+# ============================================================================
+# Tool Groups Configuration
+# ============================================================================
+# Define groups of tools for organization and access control
+
+projects:
+  # Hard UTF-8 byte cap for project instructions (range: 256-262144). Multi-
+  # byte characters count as their UTF-8 byte length, not as characters.
+  instructions_max_bytes: 8192
+  # Maximum shelf entries rendered into the <documents> index per run
+  # (range: 1-500).
+  shelf_index_max_entries: 50
+  # UTF-8 byte cap for the rendered <documents> index, counting IDs, escaped
+  # names, wrappers, separators and the overflow note (range: 512-65536).
+  # Usually binds before the entry cap for CJK document names.
+  shelf_index_max_bytes: 4096
+  # Days a trashed project document stays recoverable before the retention
+  # sweep may purge it permanently (range: 1-3650).
+  trash_retention_days: 30
+
+# ============================================================================
+# Provider Safety Termination Configuration
+# ============================================================================
+# Intercept AIMessages where the provider stopped generation for safety reasons
+# (e.g. OpenAI finish_reason='content_filter', Anthropic stop_reason='refusal',
+# Gemini finish_reason='SAFETY') while still returning tool_calls. The
+# tool_calls in such responses are typically truncated/unreliable and must
+# not be executed. See issue #3028 for the full failure mode.
+#
+# Detectors are loaded by class path via reflection (same pattern as
+# guardrails / models / tools). The built-in set covers OpenAI-compatible
+# content_filter, Anthropic refusal, and Gemini SAFETY/BLOCKLIST/
+# PROHIBITED_CONTENT/SPII/RECITATION.
+
+task_continuity:
+  enabled: false
+  max_batches: 32
+  max_records_per_batch: 256
+  max_record_chars: 16000
+
 
 # ============================================================================
 # ACP Agents Configuration
