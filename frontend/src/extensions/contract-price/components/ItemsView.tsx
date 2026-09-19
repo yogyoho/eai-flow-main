@@ -10,8 +10,8 @@ import {
   PackageSearch,
   RefreshCw,
   Search,
+  SquarePen,
   Trash2,
-  Wrench,
 } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 
@@ -759,7 +759,7 @@ export function ItemsView() {
                                     setNameInput(item.goods_name ?? "");
                                   }}
                                 >
-                                  <Wrench className="h-4 w-4" />
+                                  <SquarePen className="h-4 w-4 text-muted-foreground" />
                                 </Button>
                                 {item.validation_status === "needs_review" && (
                                   <Button
