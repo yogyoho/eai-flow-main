@@ -987,29 +987,30 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             for it in items[tbl_start:]
             if it.get("unit_price") is not None or it.get("price_untaxed") is not None
         ]
-        # bug-3400 第九层: 置信分层恢复——「已校验」须直取+行内自洽双确认,
-        # 不确定的一律入待核验队列(needs_review;前端「仅看待核验」过滤即看)。
-        # 分层规则: ①行内无自洽佐证 → 待核;②量纲边界(<5 元) → 待核;
-        # ③直取值曾被仲裁/恢复改写(值冲突史) → 待核;④既有 needs_review 判定保留。
-        # 恢复行(学习列/行内算术/仲裁)只要行内自洽佐证即挣得已校验——除 ③ 外。
+        # bug-3400 第九层(P1+P2+P3 已批;用户定案 A 放宽): 置信分层——「已校验」
+        # 须直取+行内自洽双确认。P1 洗白: 既有 in-loop needs_review(粘连格位置
+        # 约定)遇「行内算术确认」时洗白为 ok——自洽算术佐证的置信度高于粘连
+        # 位置约定;仅「无佐证」入待核验队列。P2: 量纲阈值 <5 → <1.0(与第四层
+        # 量纲守卫一致)。P3: price_reason 细分(量纲边界/无佐证/粘连洗白)。
+        # A 放宽: 算术自洽确认的仲裁行(直取值被行内算术替换)→ ok 洗白,
+        # price_reason 保留"行内算术含税"痕迹(不再入 needs_review)。
         for it in items[tbl_start:]:
             cur = it.get("unit_price")
             if cur is None:
                 continue  # untaxed-only 行不进分层(维持现状)
-            src = it.get("_src") or "direct"
-            dval = it.get("_dval")
-            if it.get("_dvalid") and dval is not None and abs(cur - dval) > max(0.011, 0.02 * max(cur, dval)):
-                src = "arbitration"  # 直取曾有合法值被算术改写(值冲突史)
             cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
             confirmed = _row_confirmed(cells, str(it["quantity"]) if it.get("quantity") else "", cur, exclude_idx=exclude_idx)
-            needs_flag = bool(it.get("_nr0"))
-            if cur < 5:
-                needs_flag = True  # 量纲边界
+            kind = None
             if not confirmed:
-                needs_flag = True  # 无行内自洽佐证(直取或恢复均同)
-            elif src == "arbitration":
-                needs_flag = True  # 直取值被算术改写(值冲突史)
-            it["validation_status"] = "needs_review" if needs_flag else "ok"
+                kind = "无佐证"  # 行内无自洽结构
+            elif cur < _MIN_PLAUSIBLE_UNIT:
+                kind = "量纲边界"
+            if kind:
+                it["validation_status"] = "needs_review"
+                it["price_reason"] = "待核验: " + kind
+            elif it.get("_nr0"):
+                it["validation_status"] = "ok"
+                it["price_reason"] = "粘连洗白(行内自洽确认)"
             it.pop("_src", None)
             it.pop("_dval", None)
             it.pop("_dvalid", None)

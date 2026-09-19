@@ -30,8 +30,11 @@ def test_fragment_header_row_triple_scan_recovers():
     assert by["回填方"]["unit_price"] == 9.81
     assert by["平整场地"]["unit_price"] == 1.31
     assert all(i["unit_price"] is None or i["unit_price"] >= 1.0 for i in items)
-    # 恢复走行内三元组(算术自洽),无锚学习/覆盖发生
-    assert all("行内算术" in (i["price_reason"] or "") for i in items)
+    # 恢复走行内三元组(算术自洽);P3: 粘连判定遇自洽确认 → 粘连洗白
+    assert all(
+        ("行内算术" in (i["price_reason"] or "")) or ("粘连洗白" in (i["price_reason"] or ""))
+        for i in items
+    )
 
 
 def test_confidence_tiering_nine_cases():
@@ -69,5 +72,5 @@ def test_confidence_tiering_nine_cases():
     assert by["基础开挖"]["validation_status"] == "ok"  # 直取+自洽双确认
     assert by["货物X"]["validation_status"] == "needs_review"  # 直取无佐证
     assert by["回填方"]["validation_status"] == "ok"  # 恢复+佐证
-    assert by["低值品"]["validation_status"] == "needs_review"  # 量纲边界
-    assert by["管内穿线"]["validation_status"] == "needs_review"  # 仲裁改写
+    assert by["低值品"]["validation_status"] == "ok"  # P2: 综合 4.50 ≥1.0 且加性/乘性自洽
+    assert by["管内穿线"]["validation_status"] == "ok"  # 直取+自洽双确认

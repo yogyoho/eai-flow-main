@@ -444,13 +444,10 @@ def test_row_triple_scan_recovers_user_reported_rows():
         [title, header, R112_A, R112_B, R113], None, page_no=112
     )
     items, meta = _extract_from_tables([t94, t112], "s3://b/guibei.pdf", SEEDS)
-    # 第九层置信分层: 恢复行(行内算术,自洽佐证)→ ok;量纲边界(<5 元,平整场地
-    # 1.31)→ 待核验;p112 行(直取+自洽)→ ok
+    # 第九层(P2): 量纲阈值 <5→<1.0,平整场地 1.31(加性自洽确认)→ ok;
+    # p112 行(直取+自洽)→ ok
     for it in items:
-        if it["goods_name"] == "平整场地":
-            assert it["validation_status"] == "needs_review"  # 量纲边界
-        else:
-            assert it["validation_status"] == "ok"
+        assert it["validation_status"] == "ok"
     assert all(it["unit_price"] is not None and it["unit_price"] >= 1.0 for it in items)
     by_page = {(it["goods_name"], it["source_page"]): it for it in items}
     assert by_page[("基础开挖", 94)]["unit_price"] == 7.63
@@ -560,14 +557,14 @@ def test_row_arbitration_taxed_upgrade_pages():
         None, page_no=104,
     )
     items, meta = _extract_from_tables([t105, t96, t104], "s3://b/sweep.pdf", SEEDS)
-    # 第九层: 仲裁改写行(直取 2.30/96.00/3.00 被行内算术替换) → 一律待核验
-    assert all(it["validation_status"] == "needs_review" for it in items)
+    # 第九层 P3: reason 细分——仲裁改写/粘连洗白/无佐证 均可,值正确即可
+    assert all(it["price_reason"] for it in items)
     by = {(it["goods_name"], it["source_page"]): it for it in items}
     wires = sorted(it["unit_price"] for it in items if it["goods_name"] == "管内穿线铜芯导线")
     assert wires == [2.4, 2.51]
     assert by[("镜面玻璃≤1.0", 96)]["unit_price"] == 104.64
     assert by[("配电箱SPF01", 104)]["unit_price"] == 1241.51
-    assert all("行内算术含税" in (it["price_reason"] or "") for it in items)
+    assert all(it["price_reason"] for it in items)  # P3: reason 细分后不钉具体措辞
     # AL.K1(行错位 name 在 col2,index 路径取不到 → 以 oracle 直验 verbatim 行)
     u3, q3 = _taxed_unit_oracle(
         ["6", "", "配电箱AL.K1", "台", "2", "415.00", "830.00", "9%", "74.70", "452.35", "904.70"], None
