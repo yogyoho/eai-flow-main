@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  Wrench,
 } from "lucide-react";
 import { Fragment, useMemo, useState } from "react";
 
@@ -747,8 +748,9 @@ export function ItemsView() {
                             ) : (
                               <div className="flex items-center justify-end gap-1">
                                 <Button
-                                  size="sm"
+                                  size="icon"
                                   variant="ghost"
+                                  title="修正"
                                   onClick={() => {
                                     setEditingId(item.id);
                                     setPriceInput(
@@ -757,7 +759,7 @@ export function ItemsView() {
                                     setNameInput(item.goods_name ?? "");
                                   }}
                                 >
-                                  修正
+                                  <Wrench className="h-4 w-4" />
                                 </Button>
                                 {item.validation_status === "needs_review" && (
                                   <Button
