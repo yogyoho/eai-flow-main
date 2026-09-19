@@ -3,6 +3,8 @@
  * Turtle（all 图）/ JSON-LD（schema 图）预览 + 下载；命名空间表静态；
  * 快照列表为占位（快照调度属后续部署面，见 spec §4）。
  */
+import { FileOutput } from "lucide-react";
+
 import { useQuery } from "@tanstack/react-query";
 
 import {
@@ -35,6 +37,7 @@ export function ExportPage() {
     <div className="p-6">
       <PageHeader
         clause="09 · 导出"
+        icon={ FileOutput }
         title="导出互操作"
         description="图真源 → 标准序列化 · 每日快照即国标 §5.3 交付物 · IRI 机械可逆可回导"
       />

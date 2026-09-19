@@ -3,6 +3,8 @@
  * + Competency Questions 验收单（静态示例数据）。
  * 真实数据面待 kernel P3（owlrl 闭包 + named graph 派生）。
  */
+import { BrainCircuit } from "lucide-react";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { runFormalInfer } from "@/api/formal-api";
@@ -45,6 +47,7 @@ export function ReasoningPage() {
     <div className="p-6">
       <PageHeader
         clause="06 · 推理"
+        icon={ BrainCircuit }
         title="推理工作台"
         description="单引擎：owlrl 闭包（graph:entailment）+ SPARQL CONSTRUCT 派生（每规则独立 named graph，named graph 归属即触发轨迹）"
         actions={

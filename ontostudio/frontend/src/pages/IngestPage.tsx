@@ -2,6 +2,8 @@
  * 08 抽取导入骨架页（EAI-CUSTOM）：投放区 + 置信度直方图 + 抽取任务表 + 证据链引文（静态示例）。
  * 真实数据面待 kernel P2（ingest 管线级幂等 + mentions API）。
  */
+import { FileInput } from "lucide-react";
+
 import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
 
 const HISTO: Array<{ count: number; bucket: string }> = [
@@ -38,6 +40,7 @@ export function IngestPage() {
     <div className="p-6">
       <PageHeader
         clause="08 · 抽取"
+        icon={ FileInput }
         title="抽取导入"
         description="文档 → LLM 类型化抽取 → mentions 证据落图 · 幂等管线（自然键去重）· 低置信度仅存证"
       />

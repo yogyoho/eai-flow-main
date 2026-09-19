@@ -2,14 +2,14 @@
 "use client";
 
 /**
- * 语义地图概览面板 (EAI-CUSTOM, plan semantic-map v2 Task 3 Step 3.4).
+ * 工作台总览面板 (EAI-CUSTOM, plan semantic-map v2 Task 3 Step 3.4).
  *
  * bid-quote 仪表盘风格（浅色定版——PAGE_BG 区块底 + 白卡，不随暗色主题，
  * 对照 bid-quote DashboardView 先例，原型即验收标准）。统计全部来自传入的
  * 图快照（stats.ts 纯函数），本组件不做取数；待复核实体计数由页面查询后
  * 以 pendingCount 传入（null → 显示 "—"）。
  */
-import { Network } from "lucide-react";
+import { LayoutDashboard, Network } from "lucide-react";
 import { useMemo } from "react";
 import {
   Bar,
@@ -122,9 +122,9 @@ export function OverviewPanel({
       >
         {/* 页头 */}
         <div className="flex items-center gap-3">
-          <Network className="h-5 w-5" style={{ color: BLUE }} />
-          <h1 className="text-[22px] font-bold" style={{ color: INK }}>
-            语义地图概览
+          <LayoutDashboard className="h-5 w-5" style={{ color: BLUE }} />
+          <h1 className="text-lg font-semibold" style={{ color: INK }}>
+            工作台总览
           </h1>
         </div>
 

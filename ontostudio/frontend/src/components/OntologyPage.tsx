@@ -12,7 +12,7 @@
  * resolution REST；merge/unmerge 成功后 useReloadGraph 全量失效重载。
  */
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Search, Waypoints } from "lucide-react";
+import { GitMerge, Loader2, Network, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchPendingReviewCount, fetchRegistryMeta } from "@/api/ontology-graph-api";
@@ -172,9 +172,13 @@ function OntologyWorkspace({
       {/* 顶栏（overviewOnly 模式隐藏——总览页只留概览内容区） */}
       {!overviewOnly && (
       <header className="border-border bg-card flex shrink-0 items-center gap-3 border-b px-4 py-3">
-        <Waypoints className="text-primary h-5 w-5 flex-none" />
+        {view === "resolution" ? (
+          <GitMerge className="text-primary h-5 w-5 flex-none" />
+        ) : (
+          <Network className="text-primary h-5 w-5 flex-none" />
+        )}
         <h1 className="text-foreground text-lg font-semibold tracking-tight whitespace-nowrap">
-          语义地图
+          {view === "resolution" ? "消解审核" : "图谱浏览"}
         </h1>
         <div className="relative w-full max-w-[300px]">
           <Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2" />

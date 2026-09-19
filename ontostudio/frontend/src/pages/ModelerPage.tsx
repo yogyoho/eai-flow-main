@@ -3,6 +3,8 @@
  * + 公理列表 + registry formal 段 YAML 预览（静态示例数据）。
  * 真实建模面读写待 kernel P5（registry v2 formal 段落地后接 REST）。
  */
+import { DraftingCompass } from "lucide-react";
+
 import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
 
 const TREE: Array<[string, string[]?]> = [
@@ -42,6 +44,7 @@ export function ModelerPage() {
     <div className="p-6">
       <PageHeader
         clause="05 · 建模"
+        icon={ DraftingCompass }
         title="本体建模器"
         description="元数据描述项对齐 GB/T 48000.3 附录 A · 公理以 OWL 2 RL 表达 · 保存后 SHA 热重载"
         actions={

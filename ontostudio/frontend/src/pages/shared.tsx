@@ -1,41 +1,45 @@
 /**
- * 骨架页共用件（EAI-CUSTOM）：页头（条款号 + 衬线标题 + 描述 + 动作区）与基础芯片。
- * 视觉对照 docs/designs/ontostudio-frontend-design.html（青卷版）。
+ * 骨架页共用件（EAI-CUSTOM）：页头（菜单图标 + 条款号 + 标题 + 描述 + 动作区）与基础芯片。
+ * 令牌与组件惯例对齐 EAI 主系统（globals.css Yuxi 暖灰 + #0746ff 蓝）。
  */
+import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-/** 页头：左侧条款号 chip + 衬线大标题，下方一行描述；右侧动作区。 */
+/** 页头：菜单项图标 + 条款号 chip + 标题，下方一行描述（12px）；右侧动作区。 */
 export function PageHeader({
   clause,
+  icon: Icon,
   title,
   description,
   actions,
 }: {
   clause: string;
+  icon?: LucideIcon;
   title: string;
   description: string;
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end gap-4">
+    <div className="mb-5 flex flex-wrap items-end gap-3">
+      {Icon ? <Icon className="text-primary mb-0.5 h-[18px] w-[18px] flex-none" /> : null}
       <span className="border-primary/25 bg-primary/8 text-primary rounded-md border px-2 py-0.5 font-mono text-[11px]">
         {clause}
       </span>
-      <h1 className="font-display text-2xl font-black tracking-wide">{title}</h1>
+      <h1 className="text-foreground text-lg font-semibold tracking-tight">{title}</h1>
       {actions ? <div className="ml-auto flex gap-2">{actions}</div> : null}
-      <p className="text-muted-foreground mt-1 w-full text-sm">{description}</p>
+      <p className="text-muted-foreground mt-1 w-full text-xs">{description}</p>
     </div>
   );
 }
 
-/** 状态芯片：语义色走 seal/warning/primary（青卷约定：朱砂只用于合规语义）。 */
+/** 状态芯片：语义色走 destructive/warning/primary（对齐主系统状态色惯例）。 */
 export function Chip({
   tone = "gray",
   children,
 }: {
-  tone?: "gray" | "primary" | "seal" | "warning";
+  tone?: "gray" | "primary" | "danger" | "warning";
   children: ReactNode;
 }) {
   return (
@@ -44,7 +48,7 @@ export function Chip({
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11.5px] font-medium whitespace-nowrap",
         tone === "gray" && "border-border text-muted-foreground border",
         tone === "primary" && "bg-primary/10 text-primary",
-        tone === "seal" && "bg-destructive/10 text-destructive",
+        tone === "danger" && "bg-destructive/10 text-destructive",
         tone === "warning" && "bg-warning/15 text-warning",
       )}
     >

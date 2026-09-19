@@ -5,6 +5,8 @@
  */
 import { useQuery } from "@tanstack/react-query";
 
+import { ShieldCheck } from "lucide-react";
+
 import { fetchFormalValidate, type ShaclViolation } from "@/api/formal-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
 
@@ -23,6 +25,7 @@ export function ValidationPage() {
     <div className="p-6">
       <PageHeader
         clause="07 · 校验"
+        icon={ShieldCheck}
         title="校验中心"
         description="SHACL 闭世界校验管写路径 · OWL 开放世界管推理 · 国标符合性套件随构建运行"
         actions={
@@ -48,7 +51,7 @@ export function ValidationPage() {
         }
       />
       {validateQuery.error ? (
-        <div className="border-seal/40 bg-destructive/10 text-destructive mb-3.5 rounded-lg border px-4 py-3 text-xs">
+        <div className="border-destructive/40 bg-destructive/10 text-destructive mb-3.5 rounded-lg border px-4 py-3 text-xs">
           校验服务不可达或未登录：{(validateQuery.error as Error).message}
         </div>
       ) : null}
@@ -57,7 +60,7 @@ export function ValidationPage() {
         title="GB/T 48000.3—2026 符合性"
         subtitle={data ? `${conformance.length} 项检查 · ${data.shacl.duration_ms}ms` : undefined}
         actions={
-          <Chip tone={passedCount === conformance.length && conformance.length > 0 ? "primary" : "seal"}>
+          <Chip tone={passedCount === conformance.length && conformance.length > 0 ? "primary" : "danger"}>
             {data ? `${passedCount} / ${conformance.length} 通过` : "加载中…"}
           </Chip>
         }
@@ -85,7 +88,7 @@ export function ValidationPage() {
       <Panel
         title="SHACL 违规"
         actions={
-          <Chip tone={violations.length > 0 ? "seal" : "primary"}>
+          <Chip tone={violations.length > 0 ? "danger" : "primary"}>
             {data ? `${violations.length} 项待处理` : "…"}
           </Chip>
         }
@@ -109,11 +112,11 @@ function ViolationCard({ violation }: { violation: ShaclViolation }) {
   const isWarning = (violation.severity ?? "").endsWith("Warning");
   return (
     <div className="border-border bg-card flex gap-3 rounded-lg border p-3.5">
-      <span className={`w-1 flex-none rounded-sm ${isWarning ? "bg-warning" : "bg-seal"}`} />
+      <span className={`w-1 flex-none rounded-sm ${isWarning ? "bg-warning" : "bg-destructive"}`} />
       <div className="min-w-0 flex-1">
         <h5 className="flex items-center gap-2 text-[13.5px] font-semibold">
           {violation.message ?? "约束违规"}
-          <Chip tone={isWarning ? "warning" : "seal"}>
+          <Chip tone={isWarning ? "warning" : "danger"}>
             {isWarning ? "warning" : "violation"}
           </Chip>
         </h5>

@@ -2,6 +2,8 @@
  * 03 实体库骨架页（EAI-CUSTOM）：过滤条 + 实体表 + 分页（静态示例数据）。
  * 设计稿 docs/designs/ontostudio-frontend-design.html；真实数据面待 kernel P2（实体查询 API）。
  */
+import { Database } from "lucide-react";
+
 import { DemoTag, PageHeader, Panel } from "@/pages/shared";
 
 type Row = {
@@ -45,6 +47,7 @@ export function EntitiesPage() {
     <div className="p-6">
       <PageHeader
         clause="03 · 实体"
+        icon={ Database }
         title="实体库"
         description="点击任意行打开实体抽屉：属性、证据链与合并历史（骨架：数据面待 kernel P2）"
         actions={
