@@ -148,7 +148,7 @@ export function AppShell() {
                   onClick={() => go(id)}
                   aria-current={route === id ? "page" : undefined}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium transition-colors",
+                    "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm font-medium transition-colors",
                     route === id
                       ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                       : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
