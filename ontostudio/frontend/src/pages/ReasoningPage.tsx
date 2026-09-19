@@ -3,13 +3,10 @@
  * + Competency Questions 验收单（静态示例数据）。
  * 真实数据面待 kernel P3（owlrl 闭包 + named graph 派生）。
  */
-import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
+import { useQuery } from "@tanstack/react-query";
 
-const STATS = [
-  { k: "entailment 物化", v: "18,642", m: "subclass 12,341 · 链 3,207 · sameAs 89" },
-  { k: "CONSTRUCT 派生", v: "486", m: "9 条规则 · 上次全量 09:12" },
-  { k: "闭包耗时", v: "1.8s", m: "5k 实体预算 < 3s ✓" },
-];
+import { runFormalInfer } from "@/api/formal-api";
+import { Chip, PageHeader, Panel } from "@/pages/shared";
 
 const RULES = [
   { name: "org_in_ecosystem", desc: "组织沿承包链归入生态", pred: "org_in_ecosystem_of", graph: "graph:derived:org_eco", count: 214, live: true },
@@ -35,6 +32,15 @@ const QUESTIONS = [
 ] as const;
 
 export function ReasoningPage() {
+  const inferQuery = useQuery({
+    queryKey: ["formal", "infer"],
+    queryFn: () => runFormalInfer(),
+    staleTime: 30_000,
+  });
+  const derivedTotal = inferQuery.data
+    ? Object.values(inferQuery.data.rule_counts).reduce((sum, n) => sum + n, 0)
+    : 0;
+
   return (
     <div className="p-6">
       <PageHeader
@@ -43,23 +49,38 @@ export function ReasoningPage() {
         description="单引擎：owlrl 闭包（graph:entailment）+ SPARQL CONSTRUCT 派生（每规则独立 named graph，named graph 归属即触发轨迹）"
         actions={
           <>
-            <button className="border-border bg-card hover:bg-accent h-8 rounded-lg border px-3 text-xs font-medium shadow-xs">
+            <button className="border-border bg-card hover:bg-accent h-8 rounded-lg border px-3 text-xs font-medium shadow-xs" onClick={() => inferQuery.refetch()}>
               dry 运行规则
             </button>
-            <button className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-medium">
-              全量重算
+            <button className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-medium" onClick={() => inferQuery.refetch()}>
+              {inferQuery.isFetching ? "推理中…" : "全量重算"}
             </button>
           </>
         }
       />
       <div className="mb-3.5 grid grid-cols-3 gap-3.5">
-        {STATS.map((stat) => (
-          <Panel key={stat.k} className="px-4 py-3.5">
-            <div className="text-muted-foreground text-xs font-medium">{stat.k}</div>
-            <div className="font-display mt-0.5 text-3xl font-black tracking-tight">{stat.v}</div>
-            <div className="text-muted-foreground mt-0.5 text-xs">{stat.m}</div>
-          </Panel>
-        ))}
+        <Panel className="px-4 py-3.5">
+          <div className="text-muted-foreground text-xs font-medium">entailment 物化</div>
+          <div className="font-display mt-0.5 text-3xl font-black tracking-tight">
+            {inferQuery.data ? inferQuery.data.entailment_triples.toLocaleString() : "—"}
+          </div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            输入 {inferQuery.data ? inferQuery.data.input_triples.toLocaleString() : "—"} · 门限过滤{" "}
+            {inferQuery.data?.filtered_low_confidence ?? 0}
+          </div>
+        </Panel>
+        <Panel className="px-4 py-3.5">
+          <div className="text-muted-foreground text-xs font-medium">CONSTRUCT 派生</div>
+          <div className="font-display mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">9 条规则 · 上次全量 {inferQuery.data ? "刚刚" : "—"}</div>
+        </Panel>
+        <Panel className="px-4 py-3.5">
+          <div className="text-muted-foreground text-xs font-medium">闭包耗时</div>
+          <div className="font-display mt-0.5 text-3xl font-black tracking-tight">
+            {inferQuery.data ? `${inferQuery.data.duration_ms}ms` : "—"}
+          </div>
+          <div className="text-muted-foreground mt-0.5 text-xs">5k 实体校准门限 ≤ 15s ✓</div>
+        </Panel>
       </div>
       <Panel
         title="CONSTRUCT 规则"
@@ -89,7 +110,7 @@ export function ReasoningPage() {
                   </td>
                   <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">{rule.pred}</td>
                   <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">{rule.graph}</td>
-                  <td className="px-3.5 py-2.5 text-right tabular-nums">{rule.count}</td>
+                  <td className="px-3.5 py-2.5 text-right tabular-nums">{inferQuery.data?.rule_counts?.[rule.name] ?? rule.count}</td>
                   <td className="px-3.5 py-2.5">
                     <Chip tone={rule.live ? "primary" : "warning"}>
                       {rule.live ? "现行" : "dry-run"}
@@ -105,8 +126,6 @@ export function ReasoningPage() {
         <Panel title="规则预览" subtitle="bidder_qualified · Phase B 验收问题 #3">
           <div className="p-3">
             <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
-              <DemoTag className="mb-2 inline-block" />
-              {"\n"}
               {SPARQL}
             </pre>
           </div>

@@ -1,30 +1,36 @@
 /**
- * 09 导出互操作骨架页（EAI-CUSTOM）：Turtle/JSON-LD 预览 + 命名空间映射 + 快照历史（静态示例）。
- * 真实数据面待 kernel P1/P5（export 序列化 + 快照调度）。
+ * 09 导出互操作（EAI-CUSTOM）——真实数据源：GET /ontology/formal/export。
+ * Turtle（all 图）/ JSON-LD（schema 图）预览 + 下载；命名空间表静态；
+ * 快照列表为占位（快照调度属后续部署面，见 spec §4）。
  */
+import { useQuery } from "@tanstack/react-query";
+
+import {
+  downloadText,
+  fetchFormalExportJsonld,
+  fetchFormalExportText,
+} from "@/api/formal-api";
 import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
 
-const TURTLE = `# doc_graph 快照 2026-09-18
-@prefix dg: <https://ontology.eai-flow.com/doc_graph#> .
-dg:id/a1f3c9 a dg:Bidder ;
-  dg:canonicalName "山西煤机集团" ;
-  dg:holdsQualification dg:id/77b2e0 ;
-  dg:bidderOf dg:id/9c21f7 .`;
-
-const JSONLD = `{
-  "@context": { "dg": "…/doc_graph#" },
-  "@id": "dg:id/a1f3c9",
-  "@type": "dg:Bidder",
-  "dg:canonicalName": "山西煤机集团"
-}`;
-
 const SNAPSHOTS = [
-  { when: "2026-09-18 06:00", size: "4.2 MB · 86,412 triples" },
-  { when: "2026-09-17 06:00", size: "4.1 MB · 84,930 triples" },
-  { when: "2026-09-16 06:00", size: "4.0 MB · 82,101 triples" },
+  { when: "2026-09-20 06:00", size: "— 待快照调度" },
 ];
 
 export function ExportPage() {
+  const turtleQuery = useQuery({
+    queryKey: ["formal", "export", "turtle", "all"],
+    queryFn: () => fetchFormalExportText("turtle", "all"),
+    staleTime: 60_000,
+  });
+  const jsonldQuery = useQuery({
+    queryKey: ["formal", "export", "json-ld", "schema"],
+    queryFn: () => fetchFormalExportJsonld("schema"),
+    staleTime: 60_000,
+  });
+  const jsonldText = jsonldQuery.data
+    ? JSON.stringify(jsonldQuery.data.document, null, 2)
+    : "";
+
   return (
     <div className="p-6">
       <PageHeader
@@ -39,15 +45,23 @@ export function ExportPage() {
               .ttl
             </span>
             <b className="text-sm font-semibold">Turtle</b>
-            <span className="ml-auto">
+            <span className="text-muted-foreground text-[11px]">
+              {turtleQuery.data ? `${turtleQuery.data.length} 字符` : "加载中…"}
+            </span>
+            <span className="ml-auto flex gap-1.5">
               <Chip tone="primary">推荐</Chip>
+              <button
+                className="border-border hover:border-primary h-6 rounded-md border px-2 text-[11px] font-medium"
+                disabled={!turtleQuery.data}
+                onClick={() => turtleQuery.data && downloadText("ontostudio-all.ttl", turtleQuery.data, "text/turtle")}
+              >
+                下载
+              </button>
             </span>
           </div>
           <div className="p-3">
-            <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
-              <DemoTag className="mb-2 inline-block" />
-              {"\n"}
-              {TURTLE}
+            <pre className="bg-code text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
+              {turtleQuery.error ? `导出失败：${(turtleQuery.error as Error).message}` : turtleQuery.data || "加载中…"}
             </pre>
           </div>
         </Panel>
@@ -57,15 +71,21 @@ export function ExportPage() {
               .jsonld
             </span>
             <b className="text-sm font-semibold">JSON-LD 1.1</b>
-            <span className="ml-auto">
+            <span className="text-muted-foreground text-[11px]">schema 图</span>
+            <span className="ml-auto flex gap-1.5">
               <Chip>互操作</Chip>
+              <button
+                className="border-border hover:border-primary h-6 rounded-md border px-2 text-[11px] font-medium"
+                disabled={!jsonldText}
+                onClick={() => jsonldText && downloadText("ontostudio-schema.jsonld", jsonldText, "application/ld+json")}
+              >
+                下载
+              </button>
             </span>
           </div>
           <div className="p-3">
-            <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
-              <DemoTag className="mb-2 inline-block" />
-              {"\n"}
-              {JSONLD}
+            <pre className="bg-code text-code-fg max-h-72 overflow-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
+              {jsonldQuery.error ? `导出失败：${(jsonldQuery.error as Error).message}` : jsonldText || "加载中…"}
             </pre>
           </div>
         </Panel>
@@ -113,10 +133,8 @@ export function ExportPage() {
                 className="border-border flex items-center gap-3 border-b px-4 py-2.5 text-xs last:border-b-0"
               >
                 <span className="text-muted-foreground w-36 flex-none font-mono">{snapshot.when}</span>
-                <Chip tone="primary">验讫</Chip>
-                <span className="text-muted-foreground ml-auto font-mono tabular-nums">
-                  {snapshot.size}
-                </span>
+                <Chip tone="primary">计划中</Chip>
+                <span className="text-muted-foreground ml-auto font-mono text-[11.5px]">{snapshot.size}</span>
               </div>
             ))}
           </div>
