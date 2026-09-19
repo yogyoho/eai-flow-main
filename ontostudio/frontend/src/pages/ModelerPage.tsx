@@ -282,12 +282,14 @@ export function ModelerPage() {
         </Panel>
       </div>
       ) : (
-      <OntologyCanvas
-        classes={graphClasses}
-        edgesData={graphEdges}
-        selectedName={selectedClass}
-        onSelect={setSelectedClass}
-      />
+      <div className="h-[560px]">
+        <OntologyCanvas
+          classes={graphClasses}
+          edgesData={graphEdges}
+          selectedName={selectedClass}
+          onSelect={setSelectedClass}
+        />
+      </div>
       )}
     </div>
   );
