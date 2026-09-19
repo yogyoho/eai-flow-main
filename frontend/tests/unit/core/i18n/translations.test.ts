@@ -22,5 +22,6 @@ describe("core copy loading", () => {
     expect(chinese.channels.descriptions.wechat).toBe(
       "通过 EAIFlow Bot 接收微信 iLink 消息。",
     );
+    expect(chinese.knowledge.scope.title).toBe("知识库范围");
   });
 });

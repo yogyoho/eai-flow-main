@@ -1,6 +1,6 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config config-upgrade check check-agent-guidance install extension-install extension-list extension-enable extension-disable extension-remove setup doctor support-bundle detect-thread-boundaries detect-blocking-io dev dev-daemon start start-daemon nginx stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway docker-logs-redis setup-sandbox rebuild-frontend check-frontend-deps
+.PHONY: help config config-upgrade check check-agent-guidance install extension-install extension-upgrade extension-list extension-enable extension-disable extension-remove setup doctor support-bundle detect-thread-boundaries detect-blocking-io dev dev-daemon start start-daemon nginx stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway docker-logs-redis setup-sandbox rebuild-frontend check-frontend-deps
 
 BASH ?= bash
 # Detect uv path - prefer uv in PATH, fall back to Windows Python Scripts
@@ -33,6 +33,7 @@ help:
 	@echo "  make detect-blocking-io        - Inventory blocking IO that may block the backend event loop"
 	@echo "  make install         - Install all dependencies (frontend + backend + pre-commit hooks)"
 	@echo "  make extension-install SOURCE=... - Install and enable a trusted Python extension"
+	@echo "  make extension-upgrade SOURCE=... - Replace an installed extension and keep its config"
 	@echo "  make extension-list              - List configured Python extensions"
 	@echo "  make extension-enable NAME=...   - Enable an installed extension"
 	@echo "  make extension-disable NAME=...  - Disable an extension without uninstalling it"
@@ -116,6 +117,11 @@ extension-install: export DEER_FLOW_EXTENSION_SOURCE := $(value SOURCE)
 extension-install:
 	$(if $(and $(filter command line,$(origin SOURCE)),$(strip $(value SOURCE))),,$(error usage: make extension-install SOURCE=<package|git-url|dir>))
 	@cd backend && uv run --frozen --no-group extensions deerflow extensions install --source-env __deerflow_extension_source__
+
+extension-upgrade: export DEER_FLOW_EXTENSION_SOURCE := $(value SOURCE)
+extension-upgrade:
+	$(if $(and $(filter command line,$(origin SOURCE)),$(strip $(value SOURCE))),,$(error usage: make extension-upgrade SOURCE=<package|git-url|dir>))
+	@cd backend && uv run --frozen --no-group extensions deerflow extensions upgrade --source-env __deerflow_extension_source__
 
 extension-list:
 	@cd backend && uv run --frozen --no-group extensions deerflow extensions list

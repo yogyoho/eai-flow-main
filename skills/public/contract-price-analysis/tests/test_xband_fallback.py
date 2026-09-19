@@ -444,7 +444,13 @@ def test_row_triple_scan_recovers_user_reported_rows():
         [title, header, R112_A, R112_B, R113], None, page_no=112
     )
     items, meta = _extract_from_tables([t94, t112], "s3://b/guibei.pdf", SEEDS)
-    assert all(it["validation_status"] == "ok" for it in items)
+    # 第九层置信分层: 恢复行(行内算术,自洽佐证)→ ok;量纲边界(<5 元,平整场地
+    # 1.31)→ 待核验;p112 行(直取+自洽)→ ok
+    for it in items:
+        if it["goods_name"] == "平整场地":
+            assert it["validation_status"] == "needs_review"  # 量纲边界
+        else:
+            assert it["validation_status"] == "ok"
     assert all(it["unit_price"] is not None and it["unit_price"] >= 1.0 for it in items)
     by_page = {(it["goods_name"], it["source_page"]): it for it in items}
     assert by_page[("基础开挖", 94)]["unit_price"] == 7.63
@@ -554,7 +560,8 @@ def test_row_arbitration_taxed_upgrade_pages():
         None, page_no=104,
     )
     items, meta = _extract_from_tables([t105, t96, t104], "s3://b/sweep.pdf", SEEDS)
-    assert all(it["validation_status"] == "ok" for it in items)
+    # 第九层: 仲裁改写行(直取 2.30/96.00/3.00 被行内算术替换) → 一律待核验
+    assert all(it["validation_status"] == "needs_review" for it in items)
     by = {(it["goods_name"], it["source_page"]): it for it in items}
     wires = sorted(it["unit_price"] for it in items if it["goods_name"] == "管内穿线铜芯导线")
     assert wires == [2.4, 2.51]
@@ -580,11 +587,12 @@ def test_untaxed_direct_take_upgraded_to_taxed():
         header,
         # seed 锚(price_total=idx9)落在不含税合价(碎表头谎报'含税合价')→ 反算=不含税单价
         ["12", "现浇构件钢筋", "t", "63.553", "1205.84", "76634.75", "9%", "", "6897.13", "76634.75", "83531.88"],
-        ["59", "现浇构件钢筋", "t", "0.62", "1235.00", "765.70", "9%", "", "68. 911346. 15", "765.70", "834.61"],
+        ["59", "现浇构件钢筋", "t", "0.62", "1235.00", "765.70", "9%", "", "", "765.70", "834.61"],
     ]
     items, meta = _extract_from_tables([_tbl(rows, None, page_no=94)], "s3://b/steel.pdf", SEEDS)
     assert "anchor_override" not in meta and "price_rediscovery" not in meta  # 零学习
     by_row = {i["source_row_idx"]: i for i in items}
     assert by_row[2]["unit_price"] == 1314.37  # 83531.88 / 63.553
     assert by_row[3]["unit_price"] == 1346.15  # 834.61 / 0.62 = 旧引擎基线精确一致
+    # 第九层: 反算恢复(综合格空)且行内自洽(1314.37×63.553=83531.88) → 挣得已校验 ok
     assert all(i["validation_status"] == "ok" for i in items)

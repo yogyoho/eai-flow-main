@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from deerflow_extension_api import EXTENSION_PRINCIPAL_RESOLVER_KEY, ExtensionPrincipal
 from fastapi import FastAPI, Request, Response
@@ -63,15 +63,22 @@ from app.gateway.routers import (
     artifacts,
     assistants_compat,
     auth,
+    browser,
     channel_connections,
     channels,
+    console,
     features,
     feedback,
+    github_webhooks,
     input_polish,
+    integrations,
+    knowledge,
     mcp,
     mcp_tasks,
     memory,
     models,
+    project_documents,
+    project_thread_files,
     projects,
     runs,
     scheduled_tasks,
@@ -81,13 +88,17 @@ from app.gateway.routers import (
     suggestions,
     thread_runs,
     threads,
+    trash,
     ui,
     uploads,
+    user_preferences,
 )
 from app.gateway.trace_middleware import TraceMiddleware
 from deerflow.config import app_config as deerflow_app_config
-from deerflow.logging_config import configure_logging
+from deerflow.logging_config import DEFAULT_LOG_DATE_FORMAT, DEFAULT_LOG_FORMAT, configure_logging
+from deerflow.tracing.monocle import setup_monocle_tracing_if_enabled
 from deerflow.uploads.manager import cleanup_stale_upload_staging_files
+from deerflow.utils.file_io import await_drained
 
 AppConfig = deerflow_app_config.AppConfig
 get_app_config = deerflow_app_config.get_app_config
@@ -95,16 +106,19 @@ get_app_config = deerflow_app_config.get_app_config
 # Default logging; lifespan overrides from config.yaml log_level.
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
+    format=DEFAULT_LOG_FORMAT,
+    datefmt=DEFAULT_LOG_DATE_FORMAT,
 )
 
 logger = logging.getLogger(__name__)
 
-# Upper bound (seconds) each lifespan shutdown hook is allowed to run.
-# Bounds worker exit time so uvicorn's reload supervisor does not keep
-# firing signals into a worker that is stuck waiting for shutdown cleanup.
+# Grace budget (seconds) lifespan shutdown hooks get for ordinary completion.
+# Hooks that own uncancellable executor work may spend additional time draining
+# already-started work after cancellation rather than detach it from teardown.
 _SHUTDOWN_HOOK_TIMEOUT_SECONDS = 5.0
+
+# The retrieval index is derived state, so shutdown only waits briefly for its
+# startup rebuild. The canonical memory flush keeps its full configured budget.
 _RETRIEVAL_WARM_SHUTDOWN_TIMEOUT_SECONDS = 1.0
 
 
@@ -229,6 +243,114 @@ async def _warm_memory_retrieval(manager) -> None:
         logger.warning("Memory retrieval index rebuild skipped", exc_info=True)
 
 
+async def _shutdown_memory_backend(*, retrieval_warm_finished: bool) -> None:
+    """Resolve, drain, and close memory within the caller's cancellation shield.
+
+    Backend ``close()`` overrides must be quick or internally bounded: unlike
+    ``shutdown_flush``, close has no host timeout and is drained even on cancellation.
+    """
+    manager = None
+    try:
+        app_cfg: AppConfig = await asyncio.to_thread(get_app_config)
+        if app_cfg.memory.enabled:
+            from deerflow.agents.memory import get_memory_manager
+
+            manager = await asyncio.to_thread(get_memory_manager)
+            flush_timeout = app_cfg.memory.shutdown_flush_timeout_seconds
+            completed = await asyncio.to_thread(manager.shutdown_flush, flush_timeout)
+            if completed:
+                logger.info("Memory queue flush completed within %.1fs", flush_timeout)
+            else:
+                logger.warning(
+                    "Memory queue flush did not finish within %.1fs; remaining updates may be lost",
+                    flush_timeout,
+                )
+    except Exception:
+        logger.exception("Failed to flush memory queue on shutdown")
+    finally:
+        close = getattr(manager, "close", None)
+        if callable(close) and retrieval_warm_finished:
+            try:
+                await asyncio.to_thread(close)
+            except Exception:
+                logger.exception("Failed to close memory backend on shutdown")
+
+
+async def _run_startup_trash_sweep(app: FastAPI, startup_config) -> None:
+    """One trash retention sweep at gateway startup (Phase-2 spec §8.3).
+
+    Runs beside the lazy trigger on the trash listing — no daemon, no
+    scheduler (§15.9). Sweeps every user (``user_id=None``) with the
+    configured retention window, including the full reconciliation. A sweep
+    failure is logged and never blocks gateway readiness; on shutdown the
+    lifespan gives it a bounded graceful-completion budget, then cancels an
+    overrun while draining any already-started file reconciliation before
+    teardown continues.
+    """
+    try:
+        from deerflow.config.paths import get_paths
+        from deerflow.config.projects_config import ProjectsConfig
+        from deerflow.projects.trash import run_trash_retention_sweep
+
+        project_document_repo = getattr(app.state, "project_document_repo", None)
+        if project_document_repo is None:
+            return
+        projects_config = getattr(startup_config, "projects", None)
+        retention_days = projects_config.trash_retention_days if projects_config is not None else ProjectsConfig().trash_retention_days
+        sweep_report = await run_trash_retention_sweep(project_document_repo, get_paths(), retention_days=retention_days, user_id=None)
+        if sweep_report.purged or sweep_report.orphans_removed or sweep_report.staging_removed or sweep_report.content_missing:
+            logger.info(
+                "Trash retention sweep: purged=%d failures=%d orphans=%d staging=%d content_missing=%d",
+                sweep_report.purged,
+                sweep_report.purge_failures,
+                sweep_report.orphans_removed,
+                sweep_report.staging_removed,
+                len(sweep_report.content_missing),
+            )
+    except Exception:
+        logger.warning("Trash retention sweep skipped", exc_info=True)
+
+
+async def _shutdown_startup_trash_sweep(app: FastAPI) -> None:
+    """Grace-budgeted shutdown for the background startup sweep (§8.3).
+
+    Waits ``_SHUTDOWN_HOOK_TIMEOUT_SECONDS`` for graceful completion, then
+    cancels an overrun. That budget is not a hard upper bound for this hook:
+    reconciliation runs in executor threads that cannot be safely killed, so
+    cancellation drains any already-started filesystem worker before returning.
+    This keeps the sweep's file ownership intact until the teardown below can
+    safely dispose the document repo and DB engine.
+    """
+    task = getattr(app.state, "startup_trash_sweep_task", None)
+    if task is None or task.done():
+        return
+    try:
+        await asyncio.wait_for(asyncio.shield(task), timeout=_SHUTDOWN_HOOK_TIMEOUT_SECONDS)
+    except TimeoutError:
+        # Cancellation prevents later sweep stages from starting, but an
+        # executor-backed reconciliation that already started drains before
+        # ``CancelledError`` reaches this task. The final await may therefore
+        # exceed the graceful-completion budget; detaching that worker would
+        # reintroduce teardown/file-mutation overlap. A ``cancel()`` that
+        # returns False means the sweep finished inside the window between the
+        # deadline firing and this call — report that as the late finish it is.
+        cancelled = task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+        if cancelled:
+            logger.warning(
+                "Startup trash sweep exceeded %.1fs during shutdown; cancelled and drained before proceeding with worker exit.",
+                _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+            )
+        else:
+            logger.info(
+                "Startup trash sweep finished just after the %.1fs shutdown budget; proceeding with worker exit.",
+                _SHUTDOWN_HOOK_TIMEOUT_SECONDS,
+            )
+    except Exception:
+        logger.exception("Startup trash sweep failed during shutdown")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan handler."""
@@ -269,6 +391,16 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     public_projection_ready = await asyncio.to_thread(ensure_public_skill_projection, app_config=startup_config)
     if public_projection_ready:
         logger.info("Ensured the public skill projection; user projections repair lazily on sandbox acquire")
+
+    # Agent observability (Monocle). Off by default; enabled with
+    # MONOCLE_TRACING. Initialized here at startup — not at import time — so a
+    # plain `import deerflow.agents` never installs a process-global tracer.
+    # Unlike LangSmith/Langfuse, whose validation failures abort the agent run,
+    # a bad Monocle config only logs: the Gateway keeps serving without tracing.
+    try:
+        setup_monocle_tracing_if_enabled()
+    except Exception:  # observability must never break startup
+        logger.exception("Monocle tracing setup failed; continuing without it")
 
     # Rebuild the derived memory retrieval index in the background. Scoped
     # searches remain correct while this runs because DeerMem lazily rebuilds
@@ -318,6 +450,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception:
         logger.warning("tiktoken warm-up skipped", exc_info=True)
 
+    # EAI-CUSTOM: extensions 数据库(app/extensions,独立于核心库)启动即初始化——
+    # init_engine 失败时清状态走请求期懒初始化;成功则 init_db/migrate_db/seed_db 一次完成。
     # Initialize extensions database eagerly when possible, but clear any failed
     # startup state so request-time lazy init starts from a clean engine/session.
     extensions_db_ready = False
@@ -358,6 +492,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     async with langgraph_runtime(app, startup_config):
         logger.info("LangGraph runtime initialised")
 
+        # EAI-CUSTOM: present_files → docmgr 同步回调(present_files 输出自动建档到文档空间)
         # Register present_files → docmgr sync callback.
         # When agent calls present_files to show outputs, auto-create
         # AIDocument records so files appear in 文档空间.
@@ -391,17 +526,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # MCP task drivers + submitter/config snapshot, subagent batches, and
         # the OIDC/channel/scheduler/mcp/batch/browser/memory shutdown order.
         async with temporal_lifespan(app):
-            # Start IM channel service if any channels are configured
-            try:
-                from app.channels.service import start_channel_service
-
-                channel_service = await start_channel_service(
-                    startup_config,
-                    get_stream_bridge=lambda: getattr(app.state, "stream_bridge", None),
-                )
-                logger.info("Channel service started: %s", channel_service.get_status())
-            except Exception:
-                logger.exception("No IM channels configured or channel service failed to start")
+            # Phase-2 trash tier (§8.3): one retention sweep at startup, beside
+            # the lazy trigger on the trash listing — no daemon, no scheduler.
+            # Runs after langgraph_runtime so app.state.project_document_repo is
+            # available. The per-user reconciliation walks every row and file, so
+            # it is scheduled as a background task: gateway readiness never waits
+            # on it, a failure is logged by the task itself, and shutdown gives the
+            # in-flight sweep a bounded graceful budget before cancelling it; any
+            # already-started file worker drains before the runtime is torn down.
+            app.state.startup_trash_sweep_task = asyncio.create_task(_run_startup_trash_sweep(app, startup_config))
 
             try:
                 from app.gateway.services import launch_scheduled_thread_run
@@ -424,6 +557,33 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                         await scheduled_task_service.start()
             except Exception:
                 logger.exception("Failed to initialize scheduled task service")
+                # If an enabled scheduler rejects start(), keep that rejection as a
+                # lifespan failure instead of exposing a half-started service.
+                if startup_config.scheduler.enabled:
+                    raise
+
+            # Start IM channel service only after scheduler recovery succeeds, so a
+            # fail-closed scheduler startup cannot strand channel-owned tasks before
+            # the lifespan reaches its normal shutdown boundary.
+            try:
+                from app.channels.service import start_channel_service
+
+                # Closure over `app` (mirrors ScheduledTaskService's `launch_run`
+                # above) rather than resolving `app.state.stream_bridge` here
+                # directly: `stream_bridge` is a STARTUP_ONLY_FIELDS singleton set
+                # once, above, by `langgraph_runtime(app, startup_config)`, so
+                # either shape is safe by construction — the closure is just the
+                # more defensive/consistent-with-precedent form, and it is what
+                # ChannelManager's follow-up-drain watcher (issue #4121 Slice 2)
+                # uses to reach the same StreamBridge every other run consumer
+                # goes through `get_stream_bridge(request)` for.
+                channel_service = await start_channel_service(
+                    startup_config,
+                    get_stream_bridge=lambda: getattr(app.state, "stream_bridge", None),
+                )
+                logger.info("Channel service started: %s", channel_service.get_status())
+            except Exception:
+                logger.exception("No IM channels configured or channel service failed to start")
 
             from app.gateway.services import launch_mcp_task_notification_run
             from app.mcp_tasks import McpTaskService
@@ -507,6 +667,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
             yield
 
+            await _shutdown_startup_trash_sweep(app)
+
             try:
                 await auth.close_oidc_service()
             except Exception:
@@ -576,11 +738,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.exception("Failed to close browser sessions")
 
-            # Drain the memory update queue's pending buffer before exit (best-effort,
-            # bounded). IM channels are already stopped above, so no new IM updates
-            # arrive during the drain. Without this, anything enqueued since the last
-            # debounce Timer fire is lost on restart / SIGTERM - the queue is pure
-            # in-memory and the Timer is a daemon thread. Upstream #4181.
+            # Drain the memory backend's pending-update buffer before the worker
+            # exits (best-effort, bounded). IM channels and the scheduler are
+            # already stopped above, so no new IM/scheduler updates arrive during
+            # the drain; the LangGraph runtime / in-flight HTTP requests can still
+            # complete memory enqueues in a narrow window, but anything added after
+            # the drain copies the buffer only resets the debounce Timer
+            # (best-effort, same as today).
+            #
+            # No host-level pending/processing guard: ``shutdown_flush``
+            # short-circuits on a truly idle buffer (returns True immediately), so
+            # calling it unconditionally is cheap and keeps the in-flight-worker
+            # race entirely inside the backend (where the buffer lives) -- the host
+            # cannot "forget" that case the way a ``pending_count > 0``-only guard
+            # would (review #6 on the original PR).
+            #
+            # K8s caveat: ``shutdown_flush_timeout_seconds`` must fit inside the
+            # pod's ``terminationGracePeriodSeconds`` (channel stop + browser
+            # session close + the brief retrieval-warm wait + config/backend
+            # resolution + this drain + backend close + buffer),
+            # set on the gateway Helm deployment -- or K8s SIGKILLs the drain
+            # mid-flight and the loss this is fixing is silently re-introduced.
+            # Backend close has no host timeout: overrides must be quick or
+            # internally bounded, since cancellation waits for that worker too.
+            # The retrieval index is derived from canonical memory files, so its
+            # wait is independently capped and never consumes the flush budget.
             retrieval_warm_finished = True
             if retrieval_warm_task is not None and not retrieval_warm_task.done():
                 try:
@@ -595,9 +777,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                     retrieval_warm_finished = False
                     logger.warning("Memory retrieval index rebuild is still running; leaving its connection open during shutdown")
 
-            manager = None
             try:
-                # Memory shutdown runs on a worker thread and can trigger detached
+                # Memory shutdown runs on worker threads and can trigger detached
                 # system-model callbacks. Stop accepting those callbacks before
                 # flushing, while keeping the registered loop alive for awaited
                 # task hooks until langgraph_runtime drains runs and subagents.
@@ -607,30 +788,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             except Exception:
                 logger.debug("Failed to suspend extension system observations (non-fatal)", exc_info=True)
 
-            try:
-                app_cfg = get_app_config()
-                if app_cfg.memory.enabled:
-                    from deerflow.agents.memory import get_memory_manager
-
-                    flush_timeout = app_cfg.memory.shutdown_flush_timeout_seconds
-                    manager = await asyncio.to_thread(get_memory_manager)
-                    completed = await asyncio.to_thread(manager.shutdown_flush, flush_timeout)
-                    if completed:
-                        logger.info("Memory queue flush completed within %.1fs", flush_timeout)
-                    else:
-                        logger.warning(
-                            "Memory queue flush did not finish within %.1fs; remaining updates may be lost",
-                            flush_timeout,
-                        )
-            except Exception:
-                logger.exception("Failed to flush memory queue on shutdown")
-            finally:
-                close = getattr(manager, "close", None)
-                if callable(close) and retrieval_warm_finished:
-                    try:
-                        await asyncio.to_thread(close)
-                    except Exception:
-                        logger.exception("Failed to close memory backend on shutdown")
+            # ``asyncio.to_thread`` cancellation only detaches the awaiter; the
+            # worker keeps running. Treat resolve + flush + close as one owned
+            # shutdown operation so lifespan cancellation cannot close the backend
+            # underneath an in-flight flush or return while either worker is live.
+            await await_drained(
+                _shutdown_memory_backend(
+                    retrieval_warm_finished=retrieval_warm_finished,
+                )
+            )
 
     logger.info("Shutting down API Gateway")
 
@@ -647,6 +813,7 @@ def create_app() -> FastAPI:
     openapi_url = "/openapi.json" if config.enable_docs else None
 
     app = FastAPI(
+        # EAI-CUSTOM: EAIFlow 品牌名
         title="EAIFlow API Gateway",
         description="""
 ## EAIFlow API Gateway
@@ -708,6 +875,10 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
             {
                 "name": "suggestions",
                 "description": "Generate follow-up question suggestions for conversations",
+            },
+            {
+                "name": "input-polish",
+                "description": "Polish composer draft input before sending",
             },
             {
                 "name": "channels",
@@ -778,7 +949,11 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
 
     # CORS: the unified nginx endpoint is same-origin by default. Split-origin
     # browser clients must opt in with this explicit Gateway allowlist so CORS
-    # and CSRF origin checks share the same source of truth.
+    # and CSRF origin checks share the same source of truth. They also need the
+    # run id the Gateway returns in a non-safelisted response header; without
+    # exposing it the SDK never reports a created run, so a new thread keeps its
+    # placeholder route and every action gated on an established thread stays
+    # hidden until the page is reloaded.
     cors_origins = sorted(get_configured_cors_origins())
     if cors_origins:
         app.add_middleware(
@@ -795,9 +970,10 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # a config.yaml and needs no restart; logging.enhance.enabled only decides
     # whether that id is printed into log records.
     app.add_middleware(TraceMiddleware)
+
     # Python extensions load once while the Gateway app is constructed. Agent
     # middleware builders consume the same immutable set through the process
-    # singleton; app.state exposes it to the Gateway runtime. (Upstream #4780)
+    # singleton; app.state exposes it to the Gateway runtime.
     from deerflow.extensions import (
         EMPTY_EXTENSIONS,
         ExtensionLoadError,
@@ -836,8 +1012,12 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Include routers
     # Models API is mounted at /api/models
     app.include_router(models.router)
+
+    # Features API is mounted at /api/features
     app.include_router(features.router)
-    app.include_router(scheduled_tasks.router)
+
+    # Console API (cross-thread observability) is mounted at /api/console
+    app.include_router(console.router)
 
     # MCP API is mounted at /api/mcp
     app.include_router(mcp.router)
@@ -852,8 +1032,17 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Skills API is mounted at /api/skills
     app.include_router(skills.router)
 
+    # First-party integrations API is mounted at /api/integrations
+    app.include_router(integrations.router)
+
+    # Read-only RAGFlow catalog for chat knowledge-scope selection.
+    app.include_router(knowledge.router)
+
     # Artifacts API is mounted at /api/threads/{thread_id}/artifacts
     app.include_router(artifacts.router)
+
+    # Browser API is mounted at /api/threads/{thread_id}/browser
+    app.include_router(browser.router)
 
     # Uploads API is mounted at /api/threads/{thread_id}/uploads
     app.include_router(uploads.router)
@@ -861,10 +1050,19 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Thread cleanup API is mounted at /api/threads/{thread_id}
     app.include_router(threads.router)
 
+    # Scheduled tasks API is mounted at /api/scheduled-tasks
+    app.include_router(scheduled_tasks.router)
+
     # Agents API is mounted at /api/agents
     app.include_router(agents.router)
     # Projects API is mounted at /api/projects
     app.include_router(projects.router)
+    # Project document shelf API is mounted at /api/projects/{id}/documents
+    app.include_router(project_documents.router)
+    # Project conversation-files view is mounted at /api/projects/{id}/thread-files
+    app.include_router(project_thread_files.router)
+    # Trash API is mounted at /api/trash
+    app.include_router(trash.router)
 
     # Deployment-level subagent catalog and admin management.
     app.include_router(subagents.router)
@@ -872,21 +1070,24 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Suggestions API is mounted at /api/threads/{thread_id}/suggestions
     app.include_router(suggestions.router)
 
-    # UI config API is mounted at /api/ui/config (frontend UI behavior toggles)
+    # UI config API is mounted at /api/ui/config (frontend UI behavior toggles)  [EAI-CUSTOM]
     app.include_router(ui.router)
+
+    # Input polishing API is mounted at /api/input-polish
+    app.include_router(input_polish.router)
+
+    # User-facing IM channel connection API is mounted at /api/channels
+    app.include_router(channel_connections.router)
 
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)
-    app.include_router(channel_connections.router)
 
     # Assistants compatibility API (LangGraph Platform stub)
     app.include_router(assistants_compat.router)
 
     # Auth API is mounted at /api/v1/auth
     app.include_router(auth.router)
-
-    # Input polish API is mounted at /api/input-polish
-    app.include_router(input_polish.router)
+    app.include_router(user_preferences.router)
 
     # Feedback API is mounted at /api/threads/{thread_id}/runs/{run_id}/feedback
     app.include_router(feedback.router)
@@ -897,6 +1098,28 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # Stateless Runs API (stream/wait without a pre-existing thread)
     app.include_router(runs.router)
 
+    # GitHub webhooks API is mounted at /api/webhooks/github
+    # Exempt from auth and CSRF middleware (see auth_middleware._PUBLIC_PATH_PREFIXES
+    # and csrf_middleware.should_check_csrf); authenticity is enforced via the
+    # X-Hub-Signature-256 HMAC against GITHUB_WEBHOOK_SECRET.
+    # Including this router transitively imports app.gateway.github, which
+    # registers the GitHub channel's ChannelRunPolicy as an import side-effect.
+    #
+    # Fail-closed: only mount the route when a webhook secret is configured
+    # (or when the explicit DEER_FLOW_ALLOW_UNVERIFIED_GITHUB_WEBHOOKS=1
+    # dev opt-in is set). A misconfigured deployment without a secret cannot
+    # serve forged deliveries because the URL responds 404 — there is no
+    # handler to reach.
+    if github_webhooks.is_route_enabled():
+        app.include_router(github_webhooks.router)
+        logger.info("GitHub webhooks route mounted at /api/webhooks/github")
+    else:
+        logger.warning("GitHub webhooks route NOT mounted: GITHUB_WEBHOOK_SECRET unset and DEER_FLOW_ALLOW_UNVERIFIED_GITHUB_WEBHOOKS not set. /api/webhooks/github will respond 404. Configure either env var to enable the route.")
+
+    # EAI-CUSTOM: EAI 扩展路由统一挂载区(app/extensions/*)——auth/policy/permissions/users/roles/dept/
+    # docmgr(+collab/collab_ai_chat)/knowledge/web_scraper/law/knowledge_factory/contract_price/
+    # geo_samples/eia_samples/bid_materials/spare_parts/settings/project(+workspace)/approval/
+    # data_source/app_center/workflow/timeline/dashboard/output/license。
     # Extension APIs
     # Authentication API is mounted at /api/extensions/auth
     app.include_router(auth_router)
@@ -1014,7 +1237,6 @@ This gateway provides runtime endpoints for agent runs plus custom endpoints for
     # registration order, so every host route (including conditional routes
     # and /health) keeps precedence. Definite shadows are rejected with an
     # attributed diagnostic while unrelated extension routers still mount.
-    # (Upstream #4780)
     from deerflow.extensions.gateway import include_contributed_routers
 
     record_runtime_diagnostics(include_contributed_routers(app, loaded_extensions))

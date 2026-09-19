@@ -2,13 +2,14 @@
 
 import {
   BellIcon,
-  CableIcon,
   BrainIcon,
+  CableIcon,
+  InfoIcon,
   MessageCircleIcon,
+  PaletteIcon,
   SparklesIcon,
   UsersRoundIcon,
   UserIcon,
-  WrenchIcon,
 } from "lucide-react";
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
@@ -24,8 +25,8 @@ import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
 // EAI-CUSTOM: 对齐上游分包纪律 —— 每个 section page 一个懒加载 chunk
-// (上游 9 个，EAI 7 个：无 appearance/about/integrations 懒加载项)。
-// 打开设置只下载当前激活 section 的代码，而不是全部 7 页。
+// (上游 #5468 缩减后 7 个；EAI 追加 skills/wechat 两个扩展懒加载项，共 9 个)。
+// 打开设置只下载当前激活 section 的代码，而不是全部 9 页。
 function SettingsPageLoading() {
   return (
     <p role="status" className="text-muted-foreground py-8 text-center text-sm">
@@ -38,6 +39,13 @@ const AccountSettingsPage = dynamic(
   () =>
     import("./account-settings-page").then(
       (module) => module.AccountSettingsPage,
+    ),
+  { loading: SettingsPageLoading },
+);
+const AppearanceSettingsPage = dynamic(
+  () =>
+    import("./appearance-settings-page").then(
+      (module) => module.AppearanceSettingsPage,
     ),
   { loading: SettingsPageLoading },
 );
@@ -62,16 +70,13 @@ const NotificationSettingsPage = dynamic(
     ),
   { loading: SettingsPageLoading },
 );
+// EAI-CUSTOM: legacy skill/extension management page. Upstream #5468 moved
+// stock skills to the capability center (/workspace/capabilities) and deleted
+// this page; EAI keeps it for the "扩展" (legacy extensions) management tab and
+// mounts it below as a settings section.
 const SkillSettingsPage = dynamic(
   () =>
-    import("./skill-settings-page").then(
-      (module) => module.SkillSettingsPage,
-    ),
-  { loading: SettingsPageLoading },
-);
-const ToolSettingsPage = dynamic(
-  () =>
-    import("./tool-settings-page").then((module) => module.ToolSettingsPage),
+    import("./skill-settings-page").then((module) => module.SkillSettingsPage),
   { loading: SettingsPageLoading },
 );
 const SubagentSettingsPage = dynamic(
@@ -81,9 +86,15 @@ const SubagentSettingsPage = dynamic(
     ),
   { loading: SettingsPageLoading },
 );
-// EAI-CUSTOM (upstream-sync 2026-08-26): upstream's AboutSettingsPage dynamic
-// dropped — EAI's settings nav intentionally has no "about"/"integrations"
-// sections, so the import is dead code here.
+// EAI-CUSTOM (upstream-sync 2026-08-26): EAI's nav intentionally dropped the
+// About section back then. Upstream #5468 restored About as a first-class
+// settings section and this fused dialog adopts it, so the dynamic import is
+// live code again (previously dead code here).
+const AboutSettingsPage = dynamic(
+  () =>
+    import("./about-settings-page").then((module) => module.AboutSettingsPage),
+  { loading: SettingsPageLoading },
+);
 // EAI-CUSTOM: WeChat channel settings page
 const WechatSettingsPage = dynamic(
   () =>
@@ -95,17 +106,17 @@ const WechatSettingsPage = dynamic(
 
 export type SettingsSection =
   | "account"
-  | "wechat"
+  | "wechat" // EAI-CUSTOM: WeChat channel section (wechat-settings-page)
+  | "appearance"
   | "channels"
   | "memory"
-  | "tools"
   | "subagents"
-  | "skills"
+  | "skills" // EAI-CUSTOM: legacy skills/extension management (skill-settings-page)
   | "notification"
-  | "appearance" // EAI-CUSTOM: appearance section (appearance-settings-page)
-  // EAI-CUSTOM: kept in the union so the shared (upstream) settings-dialog-store
-  // test + workspace-settings-deep-link compile against EAI's section list.
   | "about"
+  // EAI-CUSTOM (upstream-sync 2026-08-26): kept in the union so shared
+  // (upstream) code compiling against EAI's section list stays valid; the
+  // integrations page itself moved to the capability center (#5468).
   | "integrations";
 
 type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
@@ -113,7 +124,7 @@ type SettingsDialogProps = React.ComponentProps<typeof Dialog> & {
 };
 
 export function SettingsDialog(props: SettingsDialogProps) {
-  const { defaultSection = "account", ...dialogProps } = props;
+  const { defaultSection = "appearance", ...dialogProps } = props;
   const { t } = useI18n();
   const [activeSection, setActiveSection] =
     useState<SettingsSection>(defaultSection);
@@ -134,7 +145,12 @@ export function SettingsDialog(props: SettingsDialogProps) {
         icon: UserIcon,
       },
       {
-        id: "wechat",
+        id: "appearance",
+        label: t.settings.sections.appearance,
+        icon: PaletteIcon,
+      },
+      {
+        id: "wechat", // EAI-CUSTOM
         label: "微信",
         icon: MessageCircleIcon,
       },
@@ -153,22 +169,36 @@ export function SettingsDialog(props: SettingsDialogProps) {
         label: t.settings.sections.memory,
         icon: BrainIcon,
       },
-      { id: "tools", label: t.settings.sections.tools, icon: WrenchIcon },
       {
         id: "subagents",
         label: t.settings.sections.subagents,
         icon: UsersRoundIcon,
       },
-      { id: "skills", label: t.settings.sections.skills, icon: SparklesIcon },
+      // EAI-CUSTOM: legacy skills/extension entry — upstream #5468 moved stock
+      // skills to /workspace/capabilities, but EAI keeps this settings tab as
+      // the entry to skill-settings-page. The label reuses
+      // t.capabilities.skills because the upstream i18n sync removed
+      // settings.sections.skills.
+      {
+        id: "skills",
+        label: t.capabilities.skills,
+        icon: SparklesIcon,
+      },
+      {
+        id: "about",
+        label: t.settings.sections.about,
+        icon: InfoIcon,
+      },
     ],
     [
       t.settings.sections.account,
+      t.settings.sections.about,
+      t.settings.sections.appearance,
       t.settings.sections.channels,
       t.settings.sections.memory,
-      t.settings.sections.tools,
       t.settings.sections.subagents,
-      t.settings.sections.skills,
       t.settings.sections.notification,
+      t.capabilities.skills,
     ],
   );
   return (
@@ -214,9 +244,9 @@ export function SettingsDialog(props: SettingsDialogProps) {
           <ScrollArea className="h-full min-h-0 rounded-lg border">
             <div className="space-y-8 p-6">
               {activeSection === "account" && <AccountSettingsPage />}
+              {activeSection === "appearance" && <AppearanceSettingsPage />}
               {activeSection === "wechat" && <WechatSettingsPage />}
               {activeSection === "memory" && <MemorySettingsPage />}
-              {activeSection === "tools" && <ToolSettingsPage />}
               {activeSection === "subagents" && <SubagentSettingsPage />}
               {activeSection === "skills" && (
                 <SkillSettingsPage
@@ -225,6 +255,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
               )}
               {activeSection === "notification" && <NotificationSettingsPage />}
               {activeSection === "channels" && <ChannelsSettingsPage />}
+              {activeSection === "about" && <AboutSettingsPage />}
             </div>
           </ScrollArea>
         </div>

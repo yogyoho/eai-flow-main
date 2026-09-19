@@ -192,6 +192,7 @@ class OpenVikingMemoryManager(MemoryManager):
         *,
         agent_name: str | None = None,
         thread_id: str | None = None,
+        query: str | None = None,
     ) -> str:
         if not self._begin_operation():
             return ""
@@ -232,12 +233,14 @@ class OpenVikingMemoryManager(MemoryManager):
         *,
         agent_name: str | None = None,
         thread_id: str | None = None,
+        query: str | None = None,
     ) -> str:
         return await asyncio.to_thread(
             self.get_context,
             user_id,
             agent_name=agent_name,
             thread_id=thread_id,
+            query=query,
         )
 
     def search(

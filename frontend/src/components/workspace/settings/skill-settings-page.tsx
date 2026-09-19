@@ -1,5 +1,18 @@
 "use client";
 
+// EAI-CUSTOM (upstream-sync 2026-09-19, UD resolution vs bytedance/main #5468):
+// Upstream DELETED this file when moving capability management out of Settings
+// into /workspace/capabilities (components/workspace/capabilities/skill-gallery.tsx).
+// EAI keeps it because the "legacy 扩展" tab below is the EAI extensions
+// management surface (upstream has none), and the merged settings-dialog mounts
+// this page as its "skills" section for exactly that purpose. Stock skill
+// management now lives in the Capability Center; this page remains the legacy
+// entry point. Adaptation vs our previous version: upstream's i18n cleanup
+// removed t.settings.skills.title/description, so the section header now uses
+// the surviving t.capabilities.availableSkills/skillHint keys (present in both
+// locales). Zero conflict markers; dynamic import in settings-dialog.tsx stays
+// resolvable (no orphan import).
+
 import { LoaderIcon, SparklesIcon, UploadIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, useMemo, useRef, useState } from "react";
@@ -47,8 +60,8 @@ export function SkillSettingsPage({ onClose }: { onClose?: () => void } = {}) {
     error instanceof SkillRequestError && error.isAdminRequired;
   return (
     <SettingsSection
-      title={t.settings.skills.title}
-      description={t.settings.skills.description}
+      title={t.capabilities.availableSkills}
+      description={t.capabilities.skillHint}
     >
       {isLoading ? (
         <div className="text-muted-foreground text-sm">{t.common.loading}</div>

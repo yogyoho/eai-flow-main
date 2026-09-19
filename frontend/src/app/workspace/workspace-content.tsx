@@ -11,6 +11,7 @@ import { WorkspaceSettingsDeepLink } from "@/components/workspace/workspace-sett
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 // EAI-CUSTOM: nav-level permission gating for sidebar and settings
 import { PermissionProvider } from "@/core/permissions";
+import { UserPreferencesBoundary } from "@/core/settings/user-preferences-boundary";
 
 function parseSidebarOpenCookie(
   value: string | undefined,
@@ -34,21 +35,30 @@ export async function WorkspaceContent({
 
   return (
     <QueryClientProvider>
-      {/* EAI-CUSTOM: PermissionProvider wraps the workspace for nav-level gating */}
-      <PermissionProvider>
-        <SidebarProvider className="h-screen" defaultOpen={initialSidebarOpen}>
-          <WorkspaceSidebar />
-          <SidebarInset className="min-w-0">
-            <GatewayOfflineBanner gatewayUnavailable={gatewayUnavailable} />
-            <ModelLoadErrorBanner gatewayUnavailable={gatewayUnavailable} />
-            {children}
-          </SidebarInset>
-        </SidebarProvider>
-        <CommandPalette />
-        <SettingsDialogHost />
-        <WorkspaceSettingsDeepLink />
-        <Toaster position="bottom-right" richColors closeButton />
-      </PermissionProvider>
+      {/* Upstream #5397: scopes the settings store per account owner and gates
+          the subtree during account switch. PermissionProvider nests inside so
+          per-user permissions refetch when the owner changes. */}
+      <UserPreferencesBoundary>
+        {/* EAI-CUSTOM: PermissionProvider wraps the workspace for nav-level gating */}
+        <PermissionProvider>
+          <SidebarProvider
+            className="h-screen"
+            defaultOpen={initialSidebarOpen}
+          >
+            <WorkspaceSidebar />
+            <SidebarInset className="min-w-0">
+              <GatewayOfflineBanner gatewayUnavailable={gatewayUnavailable} />
+              <ModelLoadErrorBanner gatewayUnavailable={gatewayUnavailable} />
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
+          <CommandPalette />
+          <SettingsDialogHost />
+          <WorkspaceSettingsDeepLink />
+          {/* EAI-CUSTOM: bottom-right rich toaster with close button (upstream: top-center) */}
+          <Toaster position="bottom-right" richColors closeButton />
+        </PermissionProvider>
+      </UserPreferencesBoundary>
     </QueryClientProvider>
   );
 }

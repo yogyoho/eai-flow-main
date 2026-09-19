@@ -32,3 +32,42 @@ def test_fragment_header_row_triple_scan_recovers():
     assert all(i["unit_price"] is None or i["unit_price"] >= 1.0 for i in items)
     # 恢复走行内三元组(算术自洽),无锚学习/覆盖发生
     assert all("行内算术" in (i["price_reason"] or "") for i in items)
+
+
+def test_confidence_tiering_nine_cases():
+    """第九层置信分层: 「已校验」须直取+行内自洽双确认;直取无佐证/量纲边界
+    (<5 元)/仲裁改写 → needs_review(待核验队列,前端「仅看待核验」过滤即看)。"""
+    jzgs_hdr = [
+        "序号", "品名", "规格型号", "单位", "1.数量", "2.网价", "3.运杂费", "4.税率",
+        "5.综合单 价（5=2+3）", "6.总金额 6=1*5",
+    ]
+    jzgs_title = ["物资采购合同（钢材）"] + [""] * 9
+    t1 = _tbl(
+        [
+            jzgs_title, jzgs_hdr,
+            # ① 直取+行内自洽(综合 7.63=网价6.56+运杂费1.07;7.63×496.19=3785.93) → ok
+            ["1", "基础开挖", "HPB300", "m3", "496.19", "6.56", "1.07", "13%", "7.63", "3785.93"],
+            # ② 直取无佐证(总金额 9999.99 ≠ 1234.56×3,行内无自洽) → needs_review
+            ["2", "货物X", "国标", "台", "3", "1234.56", "2345.67", "9%", "1234.56", "9999.99"],
+            # ③ 恢复+佐证(综合单价格空,加性 9.81+0.29=10.10,10.10×406.09=4101.51) → ok
+            ["3", "回填方", "中砂", "m3", "406.09", "9.81", "0.29", "9%", "", "4101.51"],
+            # ④ 量纲边界(综合 4.50 < 5 元) → needs_review
+            ["4", "低值品", "国标", "m2", "100", "4.00", "0.50", "13%", "4.50", "450.00"],
+        ],
+        None, page_no=8,
+    )
+    # ⑤ 仲裁改写(直取 2.30 被行内算术换 2.51,值冲突史) → needs_review
+    t2 = _tbl(
+        [
+            jzgs_title, jzgs_hdr,
+            ["5", "管内穿线", "PVC", "m", "562.97", "2.30", "0.21", "9%", "2.51", "1411.37"],
+        ],
+        None, page_no=105,
+    )
+    items, _meta = _extract_from_tables([t1, t2], "s3://b/tier.pdf", SEEDS)
+    by = {i["goods_name"]: i for i in items}
+    assert by["基础开挖"]["validation_status"] == "ok"  # 直取+自洽双确认
+    assert by["货物X"]["validation_status"] == "needs_review"  # 直取无佐证
+    assert by["回填方"]["validation_status"] == "ok"  # 恢复+佐证
+    assert by["低值品"]["validation_status"] == "needs_review"  # 量纲边界
+    assert by["管内穿线"]["validation_status"] == "needs_review"  # 仲裁改写

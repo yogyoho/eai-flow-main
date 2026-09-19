@@ -613,6 +613,51 @@
     -webkit-text-fill-color: transparent;
     text-fill-color: transparent;
   }
+
+  /* KaTeX rendering polish for chat messages.
+     Keep this narrowly scoped to KaTeX classes so normal Markdown text is not
+     affected. Display equations can be wider than the chat column; horizontal
+     scrolling is safer than wrapping/corrupting matrices, aligned equations, or
+     long PGD/DDPM expressions. */
+  .katex {
+    font-size: 1.02em;
+    line-height: 1.35;
+    text-rendering: auto;
+  }
+
+  .katex-display {
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 0.35rem 0.125rem 0.45rem;
+    margin: 0.85rem 0;
+    text-align: center;
+  }
+
+  .katex-display > .katex {
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    text-align: initial;
+  }
+
+  .katex-display::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .katex-display::-webkit-scrollbar-thumb {
+    background: color-mix(in oklch, var(--muted-foreground) 35%, transparent);
+    border-radius: 999px;
+  }
+
+  /* Upstream #4921: pointer cursor on interactive controls. EAI's own
+     `cursor: pointer !important` rules elsewhere still win where both apply. */
+  :is(button, [role="button"]):not(
+    :disabled,
+    [aria-disabled="true"],
+    [data-disabled="true"]
+  ) {
+    cursor: pointer;
+  }
 }
 
 :root {
@@ -1405,3 +1450,15 @@
 @keyframes cyber-spin-slow { to { transform: rotate(360deg); } }
 .animate-spin-slow { animation: cyber-spin-slow 6s linear infinite; }
 
+@layer utilities {
+  :is(
+    [data-slot="dropdown-menu-item"],
+    [data-slot="dropdown-menu-checkbox-item"],
+    [data-slot="dropdown-menu-radio-item"],
+    [data-slot="dropdown-menu-sub-trigger"],
+    [data-slot="command-item"]
+  ):not(:disabled, [aria-disabled="true"], [data-disabled="true"]) {
+    /* Override this registry rule with an important utility, e.g. cursor-default!. */
+    cursor: pointer;
+  }
+}

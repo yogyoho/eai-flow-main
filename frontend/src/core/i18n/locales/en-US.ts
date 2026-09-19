@@ -17,6 +17,49 @@ export const enUS: Translations = {
     localName: "English",
   },
 
+  capabilities: {
+    integrationSkills: "From plugins",
+    sharedSkills: "Shared skills",
+    title: "Capability Center",
+    description: "Add tools and skills that help DeerFlow work your way.",
+    plugins: "Plugins",
+    skills: "Skills",
+    searchPlugins: "Search plugins by name or purpose",
+    searchSkills: "Search skills by name or purpose",
+    allPlugins: "All plugins",
+    installed: "Installed",
+    enabled: "Enabled",
+    disabled: "Disabled",
+    configure: "Configure",
+    details: "View details",
+    addPlugin: "Add MCP plugin",
+    builtin: "Built-in",
+    community: "Community",
+    custom: "My skills",
+    allSkills: "All skills",
+    availablePlugins: "Available plugins",
+    availableSkills: "Available skills",
+    pluginHint:
+      "Connect your everyday apps so your agent can access information and get work done.",
+    skillHint:
+      "Turn useful methods into skills, ready to use in any conversation.",
+    noResults: "No matches found",
+    larkName: "Lark / Feishu",
+    larkDescription:
+      "Work with documents, messages, calendars, and multidimensional tables in your conversations.",
+    larkTag: "Collaboration",
+    connect: "Connect",
+    notInstalled: "Not installed",
+    mcpDescription: "Let your agent use the tools provided by this plugin.",
+    mcpLabel: "MCP plugin",
+    pluginSettings: "Plugin settings",
+    communityTitle: "Bring a skill from the community",
+    communityDescription:
+      "Import a .skill file to manage and use it under My skills.",
+    skillEnabled: "Enable skill",
+    manage: "Manage",
+  },
+
   // Common
   common: {
     home: "Home",
@@ -31,6 +74,7 @@ export const enUS: Translations = {
     more: "More",
     search: "Search",
     loadMore: "Load more",
+    showingOf: (loaded, total) => `Showing ${loaded} of ${total}`,
     download: "Download",
     thinking: "Thinking",
     artifacts: "Artifacts",
@@ -163,8 +207,25 @@ export const enUS: Translations = {
     downloadFailed: "Failed to download artifact archive.",
   },
 
+  modelPicker: {
+    title: "Choose a model",
+    favorites: "Favorites",
+    otherModels: "Other models",
+    noModels: "No models available",
+    favoriteModel: (displayName, name) => `Favorite ${displayName} (${name})`,
+    sessionOnly: "Favorites are stored for this session only.",
+  },
+
   // Citations
   citations: {
+    viewKnowledgeSource: (title: string) => `View source: ${title}`,
+    sourcePages: (pages: string) => `Pages ${pages}`,
+    retrievedExcerpt:
+      "Evidence captured when this answer was researched. The source document may have changed since retrieval.",
+    excerptTruncated: "This excerpt was shortened to fit the retrieval limit.",
+    sourceUnavailable:
+      "Source evidence is unavailable in the loaded conversation.",
+    knowledgeSourcesSummary: (count: number) => `${count} knowledge sources`,
     sourcesSummary: (count) =>
       `Used ${count} ${count === 1 ? "source" : "sources"}`,
     citeCount: (count) => `${count} ${count === 1 ? "cite" : "cites"}`,
@@ -201,6 +262,15 @@ export const enUS: Translations = {
     createSkillPrompt:
       "We're going to build a new skill step by step with `skill-creator`. To start, what do you want this skill to do?",
     addAttachments: "Add attachments",
+    referenceConversations: "Reference a conversation",
+    referenceConversationsSearch: "Search conversations",
+    referenceConversationsEmpty: "No conversations found",
+    referenceConversationsLimit: (max: number) =>
+      `Up to ${max} conversations per message`,
+    referenceConversationsRemove: (title: string) =>
+      `Remove reference to ${title}`,
+    referencedConversations: "Referenced conversations",
+    removeProjectAttachment: "Remove attached document",
     inputPolish: "Polish input",
     inputPolishing: "Polishing input...",
     inputPolishNoChanges: "This input is already clear.",
@@ -248,7 +318,6 @@ export const enUS: Translations = {
     reasoningEffortHigh: "High",
     reasoningEffortHighDescription:
       "Full-dimensional Logic Deduction + Multi-path Verification + Backward Check",
-    searchModels: "Search models...",
     surpriseMe: "Surprise",
     surpriseMePrompt: "Surprise me",
     followupLoading: "Generating follow-up questions...",
@@ -327,6 +396,8 @@ export const enUS: Translations = {
       },
     ],
     pleaseWaitStreaming: "Please wait for the current response to finish.",
+    stopStreamingUnavailable:
+      "Stopping the running turn is not permitted for your role.",
   },
 
   // Sidebar
@@ -339,6 +410,44 @@ export const enUS: Translations = {
     agents: "Agents",
     scheduledTasks: "Scheduled tasks",
     agentsDisabledTooltip: "Feature not enabled",
+  },
+
+  // Knowledge scope for custom-agent chat
+  knowledge: {
+    scope: {
+      title: "Knowledge scope",
+      description:
+        "Choose which allowed knowledge bases and documents this agent may search.",
+      buttonAll: "Knowledge · All",
+      buttonDisabled: "Knowledge · Off",
+      buttonDatasets: (datasets) =>
+        `Knowledge · ${datasets} ${datasets === 1 ? "base" : "bases"}`,
+      buttonDatasetsAndDocuments: (datasets, documents) =>
+        `Knowledge · ${datasets} ${datasets === 1 ? "base" : "bases"} · ${documents} ${documents === 1 ? "file" : "files"}`,
+      allDatasets: "All allowed knowledge bases",
+      selectedDatasets: "Selected knowledge bases",
+      disabled: "Off",
+      allDocuments: "All searchable files",
+      selectedDocuments: "Selected files",
+      searchDatasets: "Search knowledge bases",
+      searchDocuments: "Search files",
+      selectedCount: (count) => `${count} selected`,
+      files: "Files",
+      notSearchable: "Not searchable",
+      loadFailed:
+        "The catalog could not be loaded. Your current selection is unchanged.",
+      selectionInvalid: "This selection exceeds the supported size limits.",
+      previous: "Previous",
+      next: "Next",
+      agentUnavailable: "This agent does not allow the knowledge tool group.",
+      apply: "Apply",
+      historyAll: "Knowledge: all allowed bases",
+      historyDisabled: "Knowledge: off",
+      historySelected: (datasets, documents) =>
+        documents > 0
+          ? `Knowledge: ${datasets} ${datasets === 1 ? "base" : "bases"}, ${documents} ${documents === 1 ? "file" : "files"}`
+          : `Knowledge: ${datasets} ${datasets === 1 ? "base" : "bases"}`,
+    },
   },
   // Sidebar projects section
   projects: {
@@ -353,7 +462,7 @@ export const enUS: Translations = {
     restore: "Restore",
     deleteProject: "Delete project",
     deleteProjectConfirm:
-      "Deleting this project unlinks its chats. Chats, their history, and their files are not deleted.",
+      "Deleting this project unlinks its chats; chats, their history, and their files are not deleted. Shelf documents move to trash and stay recoverable for the retention window.",
     archived: "Archived",
     empty: "No chats in this project yet.",
     newChat: "New chat",
@@ -372,6 +481,93 @@ export const enUS: Translations = {
     notFound: "Project not found or deleted.",
     projectUnavailable:
       "Couldn't link the chat to the project. Your message was not sent — try again.",
+    documents: "Documents",
+    documentsEmptyTitle: "No documents yet",
+    documentsEmptyHint:
+      "Upload files or save conversation files to build this project's shelf.",
+    instructions: "Instructions",
+    instructionsPlaceholder:
+      "Background, goals, and conventions the agent should always know for this project…",
+    instructionsByteCount: (used, max) => `${used} / ${max} bytes`,
+    instructionsTooLong: (max) =>
+      `Instructions are over the ${max}-byte limit. Shorten them to save.`,
+    instructionsSaved: "Saved",
+    instructionsSaveFailed: "Failed to save instructions",
+    documentsShelf: "Shelf",
+    documentsShelfHint: "Drop files here to add them to the shelf",
+    uploadDocuments: "Upload",
+    uploadingDocuments: "Uploading…",
+    uploadDocumentFailed: "Failed to upload document",
+    documentFromThread: (threadName, kind) => `from ${threadName} · ${kind}`,
+    documentKindUpload: "upload",
+    documentKindOutput: "output",
+    attachToThread: "Attach to chat",
+    attachDialogTitle: "Attach to chat",
+    attachDialogHint: "Choose a chat to attach this document to.",
+    attachNoThreads: "No chats available.",
+    attachFailed: "Failed to attach document",
+    attachedToThread: (name) => `Attached "${name}"`,
+    moveDocumentToTrash: "Move to trash",
+    moveDocumentToTrashTitle: "Move to trash?",
+    moveDocumentToTrashConfirm: (name, days) =>
+      `"${name}" will move to the trash and stay recoverable for ${days} days.`,
+    deleteDocumentFailed: "Failed to move document to trash",
+    contentMissing: "Content missing",
+    previewUnsupported:
+      "This file type can't be previewed in the browser. Download it to view it.",
+    archivedDocumentsBanner:
+      "This project is archived. Documents are read-only — upload, save to project, and trash are unavailable.",
+    conversationFiles: "Conversation files",
+    conversationFilesEmpty: "No files in this project's chats yet.",
+    threadFilesTruncated: (count) =>
+      `Only the first ${count} files of this chat are shown.`,
+    threadFilesBrowseInThread: "Browse all files in the chat",
+    saveToProject: "Save to project",
+    saveToProjectFailed: "Failed to save file to project",
+    savedToProject: (name) => `Saved "${name}" to the shelf`,
+    shelfNameLabel: "Shelf name",
+    viewTrash: "Trash",
+    documentsLoadFailed: "Couldn't load project documents",
+    threadFilesLoadFailed: "Couldn't load conversation files",
+    interimMemoryNotice:
+      "Memory stays global for now: anything discussed in a project may enter your global memory until per-project memory arrives in Phase 3.",
+  },
+
+  trash: {
+    title: "Trash",
+    empty: "Trash is empty.",
+    loadFailed: "Couldn't load trash",
+    retry: "Try again",
+    originProject: (projectName) => `from ${projectName}`,
+    unknownProject: "Unknown project",
+    retentionLeft: (days) =>
+      days <= 0
+        ? "Less than a day left"
+        : days === 1
+          ? "1 day left"
+          : `${days} days left`,
+    restore: "Restore",
+    restoreFailed: "Failed to restore document",
+    restoredToast: (name) => `Restored "${name}"`,
+    restoreMergedToast: (name) =>
+      `"${name}" matched existing shelf content — merged.`,
+    restoreConflict:
+      "This document's content is missing or damaged, so it stays in the trash.",
+    restorePickProjectTitle: "Choose a project",
+    restorePickProjectHint:
+      "The original project is gone or archived. Pick an active project to restore into.",
+    deletePermanently: "Delete permanently",
+    deletePermanentlyTitle: "Delete permanently?",
+    deletePermanentlyConfirm: (name) =>
+      `"${name}" will be permanently deleted. This cannot be undone.`,
+    purgeFailed: "Failed to delete document",
+    emptyTrash: "Empty trash",
+    emptyTrashTitle: "Empty trash?",
+    emptyTrashConfirm: (count) =>
+      count === 1
+        ? "1 document will be permanently deleted. This cannot be undone."
+        : `${count} documents will be permanently deleted. This cannot be undone.`,
+    emptyTrashFailed: "Failed to empty trash",
   },
 
   backgroundTasks: {
@@ -469,6 +665,8 @@ export const enUS: Translations = {
       cron: "Cron expression",
       cronPlaceholder: "0 9 * * *",
       runAt: "Run at",
+      invalidRunAt:
+        "This local time does not exist in the selected timezone. Choose another time.",
       timezone: "Timezone",
       intervalAmount: "Every",
       intervalUnitSeconds: "seconds",
@@ -503,6 +701,11 @@ export const enUS: Translations = {
       reuseNoticeTitle: "Uses this thread's conversation history",
       reuseNoticeDescription:
         "If this thread has an active run at the scheduled time, DeerFlow queues this occurrence and starts it when the thread is available. It fails if the configured queue wait limit is exceeded.",
+    },
+    search: {
+      placeholder: "Search task titles or prompts",
+      clear: "Clear search",
+      noResults: "No tasks match your search and filters.",
     },
     filters: {
       allStatuses: "All statuses",
@@ -564,6 +767,18 @@ export const enUS: Translations = {
       completed: "Completed",
       failed: "Failed",
       cancelled: "Cancelled",
+    },
+    history: {
+      navigation: "Run history pages",
+      newer: "Newer runs",
+      older: "Older runs",
+      latest: "Latest runs",
+      page: "Page {page}",
+      paused:
+        "Automatic refresh is paused on older pages. Return to latest for current runs.",
+      loading: "Loading runs…",
+      loadFailed: "Could not load run history.",
+      retry: "Retry history",
     },
     runTrigger: { scheduled: "scheduled", manual: "manual" },
     runStatus: {
@@ -647,10 +862,15 @@ export const enUS: Translations = {
     agentCreated: "Agent created!",
     startChatting: "Start chatting",
     backToGallery: "Back to Gallery",
-    settings: "Model settings",
-    settingsTitle: "Model settings",
+    settings: "Agent settings",
+    settingsTitle: "Agent settings",
+    settingsDisplayName: "Display name",
+    settingsDisplayNameTooLong:
+      "Display name must be at most 100 Unicode code points.",
+    settingsDisplayNameHint:
+      "Supports Unicode. Leave blank to use the agent identifier",
     settingsDescription:
-      "Choose the default model and generation parameters for this agent. Changes take effect on the next message.",
+      "Choose a display name and model defaults for this agent. Model changes take effect on the next message.",
     settingsModel: "Default model",
     settingsModelDefault: "Use global default",
     settingsTemperature: "Temperature",
@@ -662,7 +882,7 @@ export const enUS: Translations = {
     settingsThinkingOff: "Off",
     settingsReasoningEffort: "Reasoning effort",
     settingsInherit: "Inherit",
-    settingsSaved: "Model settings saved",
+    settingsSaved: "Agent settings saved",
     settingsInvalidTemperature: "Temperature must be between 0 and 2",
     settingsInvalidMaxTokens:
       "Max output tokens must be a positive integer up to 200,000",
@@ -706,6 +926,10 @@ export const enUS: Translations = {
 
   // Chats
   chats: {
+    deleteChat: "Delete chat",
+    deleteConfirm: (title) =>
+      `Delete “${title}”? This will delete the conversation and its files. This action cannot be undone.`,
+    deleteFailed: "Failed to delete chat. Please try again.",
     noActiveChats: "No recent chats",
     activeChats: "Recent chats",
     archivedChats: "Archived",
@@ -801,6 +1025,16 @@ export const enUS: Translations = {
 
   // Tool calls
   toolCalls: {
+    details: "Tool details",
+    toolName: "Tool name",
+    callId: "Call ID",
+    input: "Input",
+    result: "Result",
+    error: "Error",
+    noResult: "No result received",
+    emptyResult: "Empty result",
+    truncated:
+      "Preview truncated; copying includes only the displayed preview.",
     moreSteps: (count: number) => `${count} more step${count === 1 ? "" : "s"}`,
     lessSteps: "Less steps",
     executeCommand: "Execute command",
@@ -930,11 +1164,8 @@ export const enUS: Translations = {
       account: "Account",
       appearance: "Appearance",
       channels: "Channels",
-      integrations: "Integrations",
       memory: "Memory",
-      tools: "Tools",
       subagents: "Subagents",
-      skills: "Skills",
       notification: "Notification",
       about: "About",
       basic: "Basic", // EAI-CUSTOM: basic settings tab label
@@ -1083,8 +1314,6 @@ export const enUS: Translations = {
       languageDescription: "Switch between languages.",
     },
     tools: {
-      title: "Tools",
-      description: "Manage the configuration and enabled status of MCP tools.",
       adminRequired: "Admin privileges are required to manage MCP tools.",
       empty: "No MCP tools configured.",
       addServer: "Add server",
@@ -1395,9 +1624,64 @@ export const enUS: Translations = {
       },
     },
     skills: {
-      title: "Agent Skills",
-      description:
-        "Manage the configuration and enabled status of the agent skills.",
+      exportPrevious: "Previous 50 files",
+      exportNotices: {
+        skill_export_yaml_alias:
+          "YAML aliases are not supported for export. Replace aliases with explicit values in SKILL.md.",
+        skill_export_yaml_complexity:
+          "The YAML declarations are too deeply nested or complex to export.",
+        skill_export_invalid_declaration:
+          "A malformed credential declaration was omitted; inspect SKILL.md.",
+        skill_export_link: "Linked files or directories cannot be exported.",
+        skill_export_unsupported_node:
+          "Only ordinary files and directories are supported; hard links and special files cannot be exported.",
+        skill_export_invalid_path:
+          "This path is not portable or conflicts with another path.",
+        skill_export_nested_skill:
+          "Nested SKILL.md files are not accepted by the installer.",
+        skill_export_executable_binary:
+          "Executable binaries are not accepted by the installer.",
+        skill_export_invalid_frontmatter:
+          "SKILL.md must have valid declarations and its name must match the skill folder.",
+        skill_export_sensitive_filename:
+          "This filename may contain local credentials or repository metadata.",
+        skill_export_platform_declarations:
+          "Configure the declared tools and credentials in the destination environment.",
+      },
+      exportSkill: "Export",
+      exportTitle: "Export skill",
+      exportDescription: "Download the currently saved skill as a .skill file.",
+      exportLoading: "Preparing file list…",
+      exportFiles: "Files",
+      exportDirectories: "Directories",
+      exportSize: "Uncompressed size",
+      exportContents: "Package contents",
+      exportMore: "Next 50 files",
+      exportRequirements: "Declared requirements",
+      exportCompatibility: "Compatibility",
+      exportTools: "Allowed tools",
+      exportSecrets: "Credential names",
+      exportOptional: "optional",
+      exportRequired: "required",
+      exportUndeclared: "Not declared",
+      exportScope:
+        "Includes all files inside this skill. Account settings, conversations and history outside the skill folder are excluded. Configure tools and credentials again on the destination.",
+      exportWarnings: "Check package contents",
+      exportWarningDescription:
+        "These notices are based on filenames and declarations. Secrets written inside package files are included unchanged. This is not a security scan.",
+      exportBlocked: "This package cannot be exported",
+      exportDownload: "Download .skill",
+      exportDownloading: "Preparing download…",
+      exportHandedOff: "File handed to your browser for download.",
+      exportChanged:
+        "The skill changed. Refresh the file list before downloading.",
+      exportRefresh: "Refresh file list",
+      exportFailed: "Could not export this skill. Try again.",
+      exportBusy: "Two exports are active. Try again shortly.",
+      exportTimeout: "Preparing the package timed out. Try again shortly.",
+      exportLimit: "The package exceeds an export limit.",
+      exportNotFound:
+        "This custom skill no longer exists. Refresh the skill list.",
       createSkill: "Create skill",
       emptyTitle: "No agent skill yet",
       emptyDescription:

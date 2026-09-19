@@ -11,11 +11,23 @@ import sys
 from pathlib import Path
 
 import pytest
-
-pytestmark = pytest.mark.skip(reason="upstream deploy scripts diverged in EAI (EAI-CUSTOM skip 2026-08-15)")
-
+from support.shell import find_script_bash
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+# Every test here shells out to sh/bash; on Windows that must be Git Bash —
+# the WSL launcher and Store alias stubs cannot run the repo scripts.
+BASH = find_script_bash()
+# EAI-CUSTOM (skip introduced 2026-08-15; kept through 2026-09 upstream merge):
+# EAI forked scripts/deploy.sh + docker/*.env for the offline-prod pipeline, so
+# these upstream deploy-script tests no longer match EAI's scripts. Keep
+# upstream's Git Bash skipif (unskips automatically once EAI re-baselines its
+# deploy path and removes the unconditional skip below), but the unconditional
+# EAI skip wins at runtime until then.
+pytestmark = [
+    pytest.mark.skipif(BASH is None, reason="repo shell-script tests need Git Bash on Windows"),
+    pytest.mark.skip(reason="upstream deploy scripts diverged in EAI (EAI-CUSTOM skip 2026-08-15)"),
+]
 
 
 def _backend_dockerfile_uv_sync_script() -> str:
@@ -46,7 +58,7 @@ def test_backend_dockerfile_expands_multiple_uv_extras(tmp_path):
     env["UV_EXTRAS"] = "discord,postgres"
 
     subprocess.run(
-        ["sh", "-c", _backend_dockerfile_uv_sync_script()],
+        [BASH, "-c", _backend_dockerfile_uv_sync_script()],
         cwd=workdir,
         env=env,
         check=True,
@@ -86,7 +98,7 @@ def test_backend_dockerfile_rejects_glob_uv_extra(tmp_path):
     env["UV_EXTRAS"] = "postgres,*"
 
     result = subprocess.run(
-        ["sh", "-c", _backend_dockerfile_uv_sync_script()],
+        [BASH, "-c", _backend_dockerfile_uv_sync_script()],
         cwd=workdir,
         env=env,
         check=False,
@@ -126,7 +138,7 @@ def test_deploy_build_auto_detects_postgres_extra_when_other_extras_are_enabled(
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
 
     subprocess.run(
-        ["bash", str(worktree / "scripts" / "deploy.sh"), "build"],
+        [BASH, str(worktree / "scripts" / "deploy.sh"), "build"],
         cwd=worktree,
         env=env,
         check=True,
@@ -172,7 +184,7 @@ def test_deploy_uses_dotenv_without_sourcing_shell_syntax(tmp_path):
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
 
     subprocess.run(
-        ["bash", str(worktree / "scripts" / "deploy.sh"), "build"],
+        [BASH, str(worktree / "scripts" / "deploy.sh"), "build"],
         cwd=worktree,
         env=env,
         check=True,
@@ -184,7 +196,18 @@ def test_deploy_uses_dotenv_without_sourcing_shell_syntax(tmp_path):
     assert capture_extras.read_text(encoding="utf-8") == "discord"
     args = capture_args.read_text(encoding="utf-8").splitlines()
     assert "--env-file" in args
-    assert str(worktree / ".env") in args
+    env_file_arg = args[args.index("--env-file") + 1]
+    # The flag must reference the worktree's .env, but its spelling depends on
+    # the shell that produced it: Git Bash renders host paths in MSYS form
+    # (/tmp/... for %TEMP%, /c/... otherwise). Resolve through that same bash
+    # instead of comparing against this platform's literal path string.
+    assert env_file_arg.replace("\\", "/").endswith("/.env")
+    probe = subprocess.run(
+        [BASH, "-c", 'test -f "$1" && cmp -s "$1" "$2"', "--", env_file_arg, str(worktree / ".env")],
+        check=False,
+        capture_output=True,
+    )
+    assert probe.returncode == 0, f"--env-file target {env_file_arg!r} is not the worktree .env"
 
 
 def test_deploy_build_auto_detects_postgres_extra_with_python_fallback(tmp_path):
@@ -224,7 +247,7 @@ def test_deploy_build_auto_detects_postgres_extra_with_python_fallback(tmp_path)
     env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
 
     subprocess.run(
-        ["bash", str(worktree / "scripts" / "deploy.sh"), "build"],
+        [BASH, str(worktree / "scripts" / "deploy.sh"), "build"],
         cwd=worktree,
         env=env,
         check=True,

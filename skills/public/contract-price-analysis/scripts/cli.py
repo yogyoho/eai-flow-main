@@ -444,6 +444,54 @@ def _row_num_cands(row, exclude_idx=None, stored_qty=None):
     return cand
 
 
+def _row_triples(cand):
+    """行内自洽三元组 (u×q≈t ±2%): 因子格不同、t>0。"""
+    triples = []
+    for ui, u in cand:
+        for qi, q in cand:
+            if qi == ui:
+                continue
+            for ti, t in cand:
+                if ti in (ui, qi) or t <= 0:
+                    continue
+                if abs(u * q - t) <= 0.02 * t:
+                    triples.append((u, q, t))
+    return triples
+
+
+def _row_confirmed(cells, qty_raw, unit_p, exclude_idx=None):
+    """行内自洽佐证(第九层置信分层): unit_p 与行内某自洽三元组的单价因子一致
+    (±max(0.011, 2%·unit_p)) → 「已校验」。加性和(m1+m2≈m3)同为佐证
+    (综合单价=网价+运杂费 / 税金+不含税=含税)。"""
+    if unit_p is None:
+        return False
+    stored = parse_qty(qty_raw) if _qty_text_ok(qty_raw or "") else None
+    cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored)
+    # 列定义定律: 单价×数量=总金额(unit_p×stored ≈ 行内任一金额,含总额)
+    if stored and stored > 0 and any(
+        abs(unit_p * stored - v) <= max(0.011, 0.02 * v) for _, v in cand
+    ):
+        return True
+    for u, _, _ in _row_triples(cand):
+        if abs(unit_p - u) <= max(0.011, 0.02 * unit_p):
+            return True
+    # 加性佐证: 小额加数(运杂费 0.29 类)可 <1.0,加性扫描用低地板候选
+    cand_low = [(ci, v) for ci, v in _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored) if v >= 0.05]
+    for ai, x in cand_low:
+        for bi, y in cand_low:
+            if bi == ai:
+                continue
+            for ci2, z in cand_low:
+                if ci2 in (ai, bi) or z <= 0:
+                    continue
+                # 两加数均 ≥ 2%·z(防 小序号+大金额≈总额 的相对容差吞并)
+                if min(x, y) < 0.02 * z:
+                    continue
+                if abs(x + y - z) <= 0.02 * z and abs(unit_p - z) <= max(0.011, 0.02 * unit_p):
+                    return True
+    return False
+
+
 def _row_arith_price(row, qty_raw, exclude_idx=None):
     """行内算术三元组恢复(bug-3400 第五层,不依赖表级列学习):
     在本行数值格里找 (单价×工程量≈合价) 自洽三元组(±2%)。工程量优先取
@@ -456,16 +504,7 @@ def _row_arith_price(row, qty_raw, exclude_idx=None):
     验证: 桂北实测 6/6(7.63/9.81/9.37/89.38/89.38/1.31)。失败返回 (None,'')。"""
     q0 = parse_qty(qty_raw) if _qty_text_ok(qty_raw or "") else None
     cand = _row_num_cands(row, exclude_idx=exclude_idx, stored_qty=q0)
-    triples = []
-    for ui, u in cand:
-        for qi, q in cand:
-            if qi == ui:
-                continue
-            for ti, t in cand:
-                if ti in (ui, qi) or t <= 0:
-                    continue
-                if abs(u * q - t) <= 0.02 * t:
-                    triples.append((u, q, t))
+    triples = _row_triples(cand)
     if not triples:
         return None, ""
     if q0:
@@ -837,6 +876,8 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 _m = re.search(r"\d", _pu)
                 if _m and re.search(r"[A-Za-z一-鿿]", _pu[: _m.start()]):
                     unit_p, vstatus_u, reason_u = None, "ok", ""
+            _dval, _dvalid = unit_p, unit_p is not None  # 第九层: 直取值留档(仲裁改写检测)
+            src = "direct" if unit_p is not None else None
             if r.get("price_untaxed_raw"):
                 untaxed, vstatus_n, reason_n = validate_price(r["price_untaxed_raw"])
             else:
@@ -854,7 +895,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                     if cand >= _MIN_PLAUSIBLE_UNIT:
                         unit_p = cand
                         vstatus_u, reason_u = "ok", "合价/工程量反算"
-                    else:
+                        src = "reverse"
                         logger.debug(
                             "reverse-calc implausible %.4f (%s/%s) rejected", cand, total, q
                         )
@@ -869,16 +910,16 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 if learned is not None and r["row_idx"] in failing_set:
                     unit_p, reason_r = _rediscover_row_price(row_cells, learned)
                     if unit_p is not None:
-                        vstatus_u, reason_u = "ok", reason_r
+                        vstatus_u, reason_u, src = "ok", reason_r, "learned"
                 elif learned is None and lone_idx is not None and r["row_idx"] == lone_idx:
                     unit_p, reason_r = _lone_row_price(row_cells, qty_col=roles.get("qty"))
                     if unit_p is not None:
-                        vstatus_u, reason_u = "ok", reason_r
+                        vstatus_u, reason_u, src = "ok", reason_r, "row_arith"
             # 量纲守卫(与反算守卫同源,第四层): 任何来源的单价 <1.0 元在工程
             # 材料/设备域近乎不存在——视作不可用,行走第六层仲裁/表尾过滤,
             # 保证全文档零 <1.0 微型单价。
             if unit_p is not None and unit_p < _MIN_PLAUSIBLE_UNIT:
-                unit_p, vstatus_u, reason_u = None, "ok", ""
+                unit_p, vstatus_u, reason_u, src = None, "ok", "", None
             # 价格缺失行不再在此处跳过: 第六层全行仲裁在循环后运行,可能从行内
             # 算术恢复出含税单价;表尾统一过滤仍双空的行(等价旧的 price-less skip)。
             vstatus = "needs_review" if "needs_review" in (vstatus_u, vstatus_n) else "ok"
@@ -900,6 +941,10 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                     "confidence": table.mean_confidence,
                     "validation_status": vstatus,
                     "price_reason": reason_u or reason_n,
+                    "_src": src,
+                    "_dval": _dval,
+                    "_dvalid": _dvalid,
+                    "_nr0": vstatus == "needs_review",
                 }
             )
         meta["rows_extracted"] += len(raw)
@@ -942,6 +987,33 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             for it in items[tbl_start:]
             if it.get("unit_price") is not None or it.get("price_untaxed") is not None
         ]
+        # bug-3400 第九层: 置信分层恢复——「已校验」须直取+行内自洽双确认,
+        # 不确定的一律入待核验队列(needs_review;前端「仅看待核验」过滤即看)。
+        # 分层规则: ①行内无自洽佐证 → 待核;②量纲边界(<5 元) → 待核;
+        # ③直取值曾被仲裁/恢复改写(值冲突史) → 待核;④既有 needs_review 判定保留。
+        # 恢复行(学习列/行内算术/仲裁)只要行内自洽佐证即挣得已校验——除 ③ 外。
+        for it in items[tbl_start:]:
+            cur = it.get("unit_price")
+            if cur is None:
+                continue  # untaxed-only 行不进分层(维持现状)
+            src = it.get("_src") or "direct"
+            dval = it.get("_dval")
+            if it.get("_dvalid") and dval is not None and abs(cur - dval) > max(0.011, 0.02 * max(cur, dval)):
+                src = "arbitration"  # 直取曾有合法值被算术改写(值冲突史)
+            cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+            confirmed = _row_confirmed(cells, str(it["quantity"]) if it.get("quantity") else "", cur, exclude_idx=exclude_idx)
+            needs_flag = bool(it.get("_nr0"))
+            if cur < 5:
+                needs_flag = True  # 量纲边界
+            if not confirmed:
+                needs_flag = True  # 无行内自洽佐证(直取或恢复均同)
+            elif src == "arbitration":
+                needs_flag = True  # 直取值被算术改写(值冲突史)
+            it["validation_status"] = "needs_review" if needs_flag else "ok"
+            it.pop("_src", None)
+            it.pop("_dval", None)
+            it.pop("_dvalid", None)
+            it.pop("_nr0", None)
     return items, meta
 
 
