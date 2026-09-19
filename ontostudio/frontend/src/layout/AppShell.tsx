@@ -7,6 +7,18 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
+import {
+  BrainCircuit,
+  Database,
+  DraftingCompass,
+  FileInput,
+  FileOutput,
+  GitMerge,
+  LayoutDashboard,
+  Network,
+  ShieldCheck,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { fetchPendingReviewCount } from "@/api/ontology-graph-api";
 import { OntologyPage, type PageView } from "@/components/OntologyPage";
@@ -80,6 +92,19 @@ const ROUTE_NO: Record<RouteId, string> = {
 };
 const ROUTE_IDS = Object.keys(ROUTE_NO) as RouteId[];
 
+/** 菜单项语义图标（lucide）：左侧槽位，替换序号列。 */
+const ROUTE_ICON: Record<RouteId, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  graph: Network,
+  entities: Database,
+  resolve: GitMerge,
+  modeler: DraftingCompass,
+  reasoning: BrainCircuit,
+  validation: ShieldCheck,
+  ingest: FileInput,
+  export: FileOutput,
+};
+
 /** hash 路由：解析非法/空 hash 落到 graph（知识层主视图）。 */
 function useHashRoute(): [RouteId, (id: RouteId) => void] {
   const parse = useCallback((): RouteId => {
@@ -138,41 +163,40 @@ export function AppShell() {
         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
           {NAV.map((section) => (
             <div key={section.group}>
-              <div className="text-muted-foreground mt-3.5 px-2.5 pb-1 text-[10.5px] font-medium tracking-[0.1em]">
+              <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
                 {section.group}
               </div>
-              {section.items.map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => go(id)}
-                  aria-current={route === id ? "page" : undefined}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-sm font-medium transition-colors",
-                    route === id
-                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                  )}
-                >
-                  <span
+              {section.items.map(([id, label]) => {
+                const ItemIcon = ROUTE_ICON[id];
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => go(id)}
+                    aria-current={route === id ? "page" : undefined}
                     className={cn(
-                      "w-4 flex-none font-mono text-[10px]",
+                      "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors",
                       route === id
-                        ? "text-primary"
-                        : "text-muted-foreground/80",
+                        ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                     )}
                   >
-                    {ROUTE_NO[id]}
-                  </span>
-                  {label}
-                  {id === "resolve" && pendingCount > 0 ? (
-                    <span
-                      className="bg-destructive ml-auto h-1.5 w-1.5 rounded-full"
-                      title={`${pendingCount} 个实体待复核`}
+                    <ItemIcon
+                      className={cn(
+                        "h-4 w-4 flex-none",
+                        route === id ? "text-primary" : "opacity-70",
+                      )}
                     />
-                  ) : null}
-                </button>
-              ))}
+                    {label}
+                    {id === "resolve" && pendingCount > 0 ? (
+                      <span
+                        className="bg-destructive ml-auto h-1.5 w-1.5 rounded-full"
+                        title={`${pendingCount} 个实体待复核`}
+                      />
+                    ) : null}
+                  </button>
+                );
+              })}
             </div>
           ))}
         </nav>
