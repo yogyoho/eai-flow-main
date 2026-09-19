@@ -112,7 +112,8 @@ def compile_schema_graph(registry: Registry) -> Graph:
             for equivalent in mapping.equivalent_class:
                 graph.add((subject, OWL.equivalentClass, URIRef(equivalent)))
             if mapping.has_key:
-                key_node = URIRef(f"{vocab.scheme.class_iri(class_name)}#hasKey")
+                # 路径形式（类 IRI 已含 #，追加 # 会产生非法双 # IRI——pyoxigraph 严格校验）
+                key_node = URIRef(f"{vocab.scheme.namespace}axiom/hasKey/{class_name}")
                 items = [URIRef(f"{vocab.scheme.namespace}attr/{column}") for column in mapping.has_key]
                 Collection(graph, key_node, items)  # 规范 RDF collection（first/rest 链）
                 graph.add((subject, OWL.hasKey, key_node))
@@ -145,7 +146,8 @@ def _compile_formal(graph: Graph, vocab: DomainVocabulary, formal) -> None:  # n
     for axiom in formal.property_chains:
         derived = vocab.predicate_ref(axiom.derived)
         graph.add((derived, RDF.type, OWL.ObjectProperty))
-        chain_node = URIRef(f"{_predicate_iri(vocab.scheme, axiom.derived)}#chain")
+        # 链表节点用路径形式（谓词 IRI 已含 #，双 # 非法 IRI——pyoxigraph 严格校验）
+        chain_node = URIRef(f"{_predicate_iri(vocab.scheme, axiom.derived)}/chain")
         Collection(graph, chain_node, [vocab.predicate_ref(step) for step in axiom.chain])
         graph.add((derived, OWL.propertyChainAxiom, chain_node))
 

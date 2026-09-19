@@ -129,8 +129,8 @@ def mini_graph(tmp_path: Path):
 def test_formal_subclass_and_key(mini_graph):
     ex = "https://example.org/mini#"
     assert (URIRef(f"{ex}Project"), RDFS.subClassOf, URIRef(f"{ex}Activity")) in mini_graph
-    # hasKey → RDF list（norm_name 单元素）
-    key_node = URIRef(f"{ex}Project#hasKey")
+    # hasKey → RDF list（norm_name 单元素）；键节点用路径形式（类 IRI 已含 #，双 # 非法）
+    key_node = URIRef(f"{ex}axiom/hasKey/Project")
     assert (URIRef(f"{ex}Project"), OWL.hasKey, key_node) in mini_graph
     assert (key_node, RDF.first, URIRef(f"{ex}attr/norm_name")) in mini_graph
     assert (key_node, RDF.rest, RDF.nil) in mini_graph

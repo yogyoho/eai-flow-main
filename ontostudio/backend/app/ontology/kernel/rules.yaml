@@ -1,0 +1,31 @@
+# OntoStudio kernel CONSTRUCT 派生规则（spec 2026-09-18 §3）
+# 每规则结果独立 named graph: graph:derived:<name>；查询自带 PREFIX（自包含）。
+# 可见域 = graph:asserted ∪ graph:alignment；不读 entailment（层间单向无环）。
+# sameas_propagation 为内置规则（rules.py BUILTIN_SAMEAS_PROPAGATION），不在此重复。
+rules:
+  - name: org_in_ecosystem
+    construct: >
+      PREFIX dg: <https://ontology.eai-flow.com/doc_graph#>
+      CONSTRUCT { ?a dg:predicate/org_in_ecosystem_of ?c }
+      WHERE {
+        GRAPH <graph:asserted> {
+          ?a dg:predicate/org_compiles_project ?b .
+          ?b dg:predicate/org_parent_of ?c .
+        }
+      }
+  - name: qualified_bidder
+    # Phase B 验收问题 #3：具备项目所需全部资质的投标人（CQ 驱动，验收对照推理工作台页）
+    construct: >
+      PREFIX dg: <https://ontology.eai-flow.com/doc_graph#>
+      CONSTRUCT { ?b dg:predicate/bidder_qualified_for ?p }
+      WHERE {
+        GRAPH <graph:asserted> {
+          ?b dg:predicate/bidder_of_project ?p .
+          ?p dg:predicate/requires_qualification ?q .
+          ?b dg:predicate/bidder_holds_qualification ?q .
+          FILTER NOT EXISTS {
+            ?p dg:predicate/requires_qualification ?q2 .
+            FILTER NOT EXISTS { ?b dg:predicate/bidder_holds_qualification ?q2 }
+          }
+        }
+      }

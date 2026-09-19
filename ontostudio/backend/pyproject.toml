@@ -18,6 +18,7 @@ dependencies = [
     # kernel P1（spec 2026-09-18）：图原生内核；owlrl（P3）/ pyshacl（P4）随分期再加
     "rdflib>=7.1.0",
     "pyoxigraph>=0.5.0,<0.7",
+    "owlrl>=6.0.0",  # P3: OWL 2 RL 闭包（含 RDFS 语义）
 ]
 
 [dependency-groups]
