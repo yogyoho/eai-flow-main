@@ -22,8 +22,8 @@ export function PageHeader({
   actions?: ReactNode;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end gap-3">
-      {Icon ? <Icon className="text-primary mb-0.5 h-[18px] w-[18px] flex-none" /> : null}
+    <div className="mb-5 flex flex-wrap items-center gap-3">
+      {Icon ? <Icon className="text-primary h-[18px] w-[18px] flex-none" /> : null}
       {clause ? (
         <span className="border-primary/25 bg-primary/8 text-primary rounded-md border px-2 py-0.5 font-mono text-[11px]">
           {clause}
