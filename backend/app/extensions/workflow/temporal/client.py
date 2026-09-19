@@ -53,19 +53,24 @@ async def temporal_lifespan(app: FastAPI):
         _temporal_client = client
         app.state.temporal_client = client
         logger.info("Temporal client connected, worker started on queue '%s'", TEMPORAL_TASK_QUEUE)
-
+    except Exception as e:
+        # bug-3401 修复(上游 #5287 契约对齐): 只有 Temporal **连接/启动阶段**的失败才降级
+        # 为"功能停用"; 包裹体内(lifespan body)的业务异常(如 scheduler 启动失败)必须
+        # 原样穿透 —— 旧写法单块 try 包住 yield, 会把上游 fail-closed 的 lifespan 中止
+        # 吞成正常启动(test_gateway_lifespan_shutdown 抓到)。
+        logger.warning("Temporal server not available (%s). Workflow features disabled.", e)
         yield
+        return
 
+    try:
+        yield
+    finally:
         worker_task.cancel()
         try:
             await worker_task
         except asyncio.CancelledError:
             pass
         _temporal_client = None
-
-    except Exception as e:
-        logger.warning("Temporal server not available (%s). Workflow features disabled.", e)
-        yield
 
 
 def _get_client():
