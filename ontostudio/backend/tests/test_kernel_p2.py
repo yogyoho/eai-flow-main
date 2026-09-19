@@ -204,20 +204,28 @@ def test_loader_against_real_doc_graph(tmp_path: Path):
 
     用真实 registry（doc_graph 域词表），mini 词表无该域。
     """
-    from sqlalchemy import create_engine, text
+    import asyncio
+
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
 
     from app.config import DatabaseConfig
 
-    dsn = DatabaseConfig.from_env().sync_url
+    dsn = DatabaseConfig.from_env().url
+
+    async def _probe() -> None:
+        engine = create_async_engine(dsn)
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        await engine.dispose()
+
     try:
-        engine = create_engine(dsn)
-        with engine.connect() as conn:
-            conn.execute(text("SELECT 1"))
+        asyncio.run(_probe())
     except Exception:  # noqa: BLE001 - DB 不可达即跳过（本地单测常态）
         pytest.skip("extensions PostgreSQL 不可达")
 
     registry = load_registry()  # 真实 registry：doc_graph 域词表
-    entity_rows, relation_rows, mention_rows = read_doc_graph_rows(dsn)
+    entity_rows, relation_rows, mention_rows = asyncio.run(read_doc_graph_rows(dsn))
     assert entity_rows, "doc_graph 测试数据为空？"
     with OxStore(tmp_path / "doc_graph_store") as store:
         stats = load_doc_graph_rows(store, registry, entity_rows=entity_rows, relation_rows=relation_rows, mention_rows=mention_rows)

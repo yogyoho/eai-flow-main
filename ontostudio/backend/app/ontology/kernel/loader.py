@@ -10,8 +10,8 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 
-from app.ontology.kernel.compile import DomainVocabulary, collect_vocabularies
-from app.ontology.kernel.graph_ops import add_mention, add_relation, find_by_natural_key, upsert_entity
+from app.ontology.kernel.compile import CompileError, DomainVocabulary, collect_vocabularies
+from app.ontology.kernel.graph_ops import GraphOpError, add_mention, add_relation, find_by_natural_key, upsert_entity
 from app.ontology.kernel.iri import etype_to_class_name
 from app.ontology.kernel.store import OxStore
 from app.ontology.registry import Registry
@@ -65,6 +65,7 @@ def load_doc_graph_rows(
         return vocab, (etype_class_map(registry, d) if vocab else {})
 
     iri_of: dict[str, str] = {}
+    vocab_of: dict[str, DomainVocabulary] = {}
     for row in entity_rows:
         vocab, classes = _resolve(row)
         if vocab is None or row["etype"] not in classes:
@@ -88,6 +89,7 @@ def load_doc_graph_rows(
             created_at=_as_str(row.get("created_at")),
         )
         iri_of[str(row["id"])] = iri
+        vocab_of[str(row["id"])] = vocab
         stats.entities += 1
         if existed:
             stats.deduped_entities += 1
@@ -98,18 +100,27 @@ def load_doc_graph_rows(
         if subject is None or obj is None:
             stats.skipped_relations.append(str(row.get("id")))
             continue
-        vocab, _ = _resolve(row)
-        add_relation(
-            store,
-            vocab,
-            relation_uuid=row["id"],
-            subject_iri=subject,
-            predicate=row["predicate"],
-            object_iri=obj,
-            confidence=_as_float(row.get("confidence")),
-            valid_from=_as_str(row.get("valid_from")),
-            valid_to=_as_str(row.get("valid_to")),
-        )
+        # 关系行无 domain 列 → 继承主体/客体实体的词表
+        vocab = vocab_of.get(str(row.get("subject_id"))) or vocab_of.get(str(row.get("object_id")))
+        if vocab is None:
+            stats.skipped_relations.append(str(row.get("id")))
+            continue
+        try:
+            add_relation(
+                store,
+                vocab,
+                relation_uuid=row["id"],
+                subject_iri=subject,
+                predicate=row["predicate"],
+                object_iri=obj,
+                confidence=_as_float(row.get("confidence")),
+                valid_from=_as_str(row.get("valid_from")),
+                valid_to=_as_str(row.get("valid_to")),
+            )
+        except (GraphOpError, CompileError):
+            # 批量装载单行弹性：谓词不在该域词表（历史跨域数据）→ 记跳过不中止
+            stats.skipped_relations.append(str(row.get("id")))
+            continue
         stats.relations += 1
 
     for row in mention_rows:
@@ -150,18 +161,21 @@ def _as_str(value: object) -> str | None:
     return str(value) if value is not None else None
 
 
-def read_doc_graph_rows(dsn: str) -> tuple[list[dict], list[dict], list[dict]]:
-    """集成读取：extensions 库 dg_* 三表全量行（sqlalchemy 同步引擎）。
+async def read_doc_graph_rows(dsn: str) -> tuple[list[dict], list[dict], list[dict]]:
+    """集成读取：extensions 库 dg_* 三表全量行（asyncpg 异步引擎，容器零额外依赖）。
 
-    仅 integration 场景调用；行字段与 load_doc_graph_rows 输入一一对应。
+    dsn 须为 asyncpg 形态（postgresql+asyncpg://…，DatabaseConfig.url）。
+    行字段与 load_doc_graph_rows 输入一一对应。
     """
-    from sqlalchemy import create_engine, text
+    from sqlalchemy import text
+    from sqlalchemy.ext.asyncio import create_async_engine
 
-    engine = create_engine(dsn)
-    with engine.connect() as conn:
-        entities = [dict(row._mapping) for row in conn.execute(text("SELECT * FROM dg_entities"))]
-        relations = [dict(row._mapping) for row in conn.execute(text("SELECT * FROM dg_relations"))]
-        mentions = [dict(row._mapping) for row in conn.execute(text("SELECT * FROM dg_mentions"))]
+    engine = create_async_engine(dsn)
+    async with engine.connect() as conn:
+        entities = [dict(row) for row in (await conn.execute(text("SELECT * FROM dg_entities"))).mappings().all()]
+        relations = [dict(row) for row in (await conn.execute(text("SELECT * FROM dg_relations"))).mappings().all()]
+        mentions = [dict(row) for row in (await conn.execute(text("SELECT * FROM dg_mentions"))).mappings().all()]
+    await engine.dispose()
     # attrs/doc_span 为 JSON 字符串列，保持原样传给纯核心（内部 json.loads 兼容 str/dict）
     for row in entities:
         if isinstance(row.get("attrs"), str):

@@ -66,13 +66,13 @@ class KernelService:
             return to_jsonld(g)
         return to_turtle(g)
 
-    def load_from_sql(self, dsn: str | None = None, domain: str | None = None) -> dict:
+    async def load_from_sql(self, dsn: str | None = None, domain: str | None = None) -> dict:
         """SQL 测试数据装载（兼任主系统桥接器）。"""
         from app.config import DatabaseConfig
         from app.ontology.kernel.loader import read_doc_graph_rows
 
-        dsn = dsn or DatabaseConfig.from_env().sync_url
-        entity_rows, relation_rows, mention_rows = read_doc_graph_rows(dsn)
+        dsn = dsn or DatabaseConfig.from_env().url
+        entity_rows, relation_rows, mention_rows = await read_doc_graph_rows(dsn)
         stats = load_doc_graph_rows(
             self.store,
             get_registry(),

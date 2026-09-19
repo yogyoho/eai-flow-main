@@ -26,7 +26,7 @@ async def formal_load(
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     try:
-        return {"success": True, **get_kernel().load_from_sql(domain=domain)}
+        return {"success": True, **await get_kernel().load_from_sql(domain=domain)}
     except Exception as e:  # noqa: BLE001 - DB 不可达等 → 503（数据面未就绪）
         raise HTTPException(status_code=503, detail=f"装载失败: {e}") from e
 

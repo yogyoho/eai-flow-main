@@ -65,6 +65,12 @@ class GraphOpError(Exception):
 # ---- 内部小工具 ----
 
 
+def _sparql_quote(value: str) -> str:
+    """SPARQL 字符串字面量转义（真实数据 norm_name 含引号/换行——bug-3403 家族）。"""
+    escaped = value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t")
+    return f'"{escaped}"'
+
+
 def _select(var: str, pattern: str) -> str:
     """单变量 SELECT，强制限定断言图（pattern 不含花括号）。"""
     return f"SELECT ?{var} WHERE {{ GRAPH <{ASSERTED_GRAPH}> {{ {pattern} }} }}"
@@ -121,7 +127,7 @@ def upsert_entity(
     class_ref = vocab.class_ref(class_name)
     norm = norm_name or canonical_name
     key = natural_key(etype, norm)
-    existing = _find_one(store, _select("e", f'?e <{P_NATURAL_KEY}> "{key}"'), "e")
+    existing = _find_one(store, _select("e", f"?e <{P_NATURAL_KEY}> {_sparql_quote(key)}"), "e")
     iri = existing or vocab.scheme.instance_iri(entity_uuid)
 
     _add(store, iri, RDF_TYPE, str(class_ref))
@@ -154,7 +160,7 @@ def upsert_entity(
 
 
 def find_by_natural_key(store: OxStore, etype: str, norm_name: str) -> str | None:
-    return _find_one(store, _select("e", f'?e <{P_NATURAL_KEY}> "{natural_key(etype, norm_name)}"'), "e")
+    return _find_one(store, _select("e", f"?e <{P_NATURAL_KEY}> {_sparql_quote(natural_key(etype, norm_name))}"), "e")
 
 
 def resolve_canonical(store: OxStore, iri: str) -> str:
