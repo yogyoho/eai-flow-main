@@ -20,6 +20,7 @@
     "graphology-layout-forceatlas2": "^0.10.1",
     "graphology-metrics": "^2.4.2",
     "graphology-shortest-path": "^2.1.0",
+    "js-yaml": "^5.4.2",
     "lucide-react": "^0.562.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.15",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.10",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
