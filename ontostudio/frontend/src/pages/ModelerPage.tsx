@@ -16,6 +16,7 @@ import {
   type RegistrySummary,
 } from "@/api/registry-api";
 import { Chip, PageHeader, Panel } from "@/pages/shared";
+import { OntologyCanvas } from "@/components/OntologyCanvas";
 
 interface ClassEntry {
   name: string;
@@ -68,6 +69,7 @@ export function ModelerPage() {
   const [selectedClass, setSelectedClass] = useState<string | null>(null);
   const [summaryOverride, setSummaryOverride] = useState<RegistrySummary | null>(null);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"edit" | "graph">("edit");
 
   const filesQuery = useQuery({
     queryKey: ["registry-files"],
@@ -114,6 +116,25 @@ export function ModelerPage() {
     if (result.summary) setSummaryOverride(result.summary);
     setSaveMsg(result.ok ? "✓ 校验通过" : `✗ 校验失败:\n${result.errors.join("\n")}`);
   };
+
+  // 关系图数据（从 summary.classes 的 parents 派生 subClassOf 边）
+  const graphClasses = useMemo(() => {
+    if (!summary) return [];
+    return Object.values(summary.domains).flatMap((dom) =>
+      dom.classes.map((c) => ({ name: c.name, label: c.label, definition: c.definition, parents: c.parents })),
+    );
+  }, [summary]);
+  const graphEdges = useMemo(() => {
+    const edges: Array<{ source: string; target: string }> = [];
+    for (const [, dom] of Object.entries(summary?.domains ?? {})) {
+      for (const c of dom.classes) {
+        for (const parent of c.parents) {
+          edges.push({ source: parent, target: c.name });
+        }
+      }
+    }
+    return edges;
+  }, [summary]);
   const handleSave = async () => {
     setSaveMsg(null);
     const result = await saveRegistryContent(selectedFile, text);
@@ -156,6 +177,24 @@ export function ModelerPage() {
           {saveMsg}
         </div>
       ) : null}
+      {/* 视图切换 */}
+      <div className="mb-3.5 flex gap-1 bg-muted rounded-lg p-1 w-fit">
+        {(["edit", "graph"] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
+              viewMode === mode
+                ? "bg-card text-foreground shadow-sm font-semibold"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setViewMode(mode)}
+          >
+            {mode === "edit" ? "编辑视图" : "关系图"}
+          </button>
+        ))}
+      </div>
+      {viewMode === "edit" ? (
       <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[220px_1fr_340px]">
         {/* 左：类层次 */}
         <Panel title="类层次" subtitle="subClassOf">
@@ -242,6 +281,14 @@ export function ModelerPage() {
           />
         </Panel>
       </div>
+      ) : (
+      <OntologyCanvas
+        classes={graphClasses}
+        edgesData={graphEdges}
+        selectedName={selectedClass}
+        onSelect={setSelectedClass}
+      />
+      )}
     </div>
   );
 }
