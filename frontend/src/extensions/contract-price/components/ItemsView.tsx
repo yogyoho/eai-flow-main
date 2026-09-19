@@ -766,7 +766,7 @@ export function ItemsView() {
                                     size="sm"
                                     variant="ghost"
                                     className="text-emerald-600 hover:text-emerald-600"
-                                    title="溯源确认正确后标记为已校验(价格进入统计)"
+                                    title="溯源确认正确后采纳此价格(进入统计)"
                                     onClick={() =>
                                       updateItem.mutateAsync({
                                         id: item.id,
@@ -774,7 +774,7 @@ export function ItemsView() {
                                       })
                                     }
                                   >
-                                    ✓ 已校验
+                                    ✓ 采纳
                                   </Button>
                                 )}
                                 <Button
