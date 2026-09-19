@@ -593,3 +593,23 @@ def test_untaxed_direct_take_upgraded_to_taxed():
     assert by_row[3]["unit_price"] == 1346.15  # 834.61 / 0.62 = 旧引擎基线精确一致
     # 第九层: 反算恢复(综合格空)且行内自洽(1314.37×63.553=83531.88) → 挣得已校验 ok
     assert all(i["validation_status"] == "ok" for i in items)
+
+
+def test_danxi_tax_upgrade_layer10():
+    """第十层(仲裁盲区收口): 碎表头把单价锚落到不含税单价列时,直取=不含税
+    单价 412.50(合法且量纲合理,全部守卫放行)——同行 含税单价 格 449.63
+    ≈ 412.50×1.09(税率 9% 行内自证)→ 含税升级,数量缺失 → t 直接取。"""
+    hdr = ["序号", "项目名称", "", "单位工程量", "不含增值税", "", "", "", "税金合 单价", "含税", ""]
+    hdr2 = ["", "", "", "", "合价 单价", "", "计", "", "", "合价", ""]
+    rows = [
+        ["工程量清单"] + [""] * 10,
+        hdr, hdr2,
+        ["1", "蹲式大便器（低水箱）", "套", "5", "412.50", "2062.50", "9%", "", "185.63", "449.63", "2248.13"],
+    ]
+    items, meta = _extract_from_tables([_tbl(rows, None, page_no=97)], "s3://b/danxi.pdf", SEEDS)
+    assert len(items) == 1
+    it = items[0]
+    assert it["goods_name"] == "蹲式大便器（低水箱）"
+    assert it["unit_price"] == 449.63  # 412.50 × 1.09(行内税率格自证)
+    assert it["validation_status"] == "ok"
+    assert "行内算术含税" in (it["price_reason"] or "")

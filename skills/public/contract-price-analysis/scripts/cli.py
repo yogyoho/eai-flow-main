@@ -489,6 +489,26 @@ def _row_confirmed(cells, qty_raw, unit_p, exclude_idx=None):
                     continue
                 if abs(x + y - z) <= 0.02 * z and abs(unit_p - z) <= max(0.011, 0.02 * unit_p):
                     return True
+    # 含税系数佐证(第十层): 行内存在 (u, t) 对: t ≈ u×(1+税率)(税率取行内 %
+    # 格,兜底 6/9/13)且 unit_p ≈ t → unit_p 为含税单价,税关系自洽
+    # (蹲式大便器: 412.50(不含税)+449.63(含税) 对)。
+    cand_all = [(ci, v) for ci, v in _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored) if v >= 0.05]
+    rates = [
+        float(mm.group(1)) / 100.0
+        for c in cells
+        for mm in [re.search(r"(\d+(?:\.\d+)?)\s*%", c or "")]
+        if mm
+    ]
+    if not rates:
+        rates = [0.06, 0.09, 0.13]
+    for ui, u in cand_all:
+        for ti, t in cand_all:
+            if ti == ui or t <= u:
+                continue
+            if not any(abs(t - u * (1 + r)) <= 0.02 * t for r in rates):
+                continue
+            if abs(unit_p - t) <= max(0.011, 0.02 * unit_p):
+                return True
     return False
 
 
@@ -987,6 +1007,38 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             for it in items[tbl_start:]
             if it.get("unit_price") is not None or it.get("price_untaxed") is not None
         ]
+        # bug-3400 第十层: 直取不含税单价的含税升级校验(仲裁盲区收口)。
+        # 碎表头把单价锚落到不含税单价列时,直取值=不含税单价(蹲式大便器 412.50
+        # 类):合法、量纲合理、全部守卫放行——但同行的 含税单价 格 ≈ 直取值×(1+税率)。
+        # 升级: t ≈ unit_p×(1+rate) (rate 取行内 % 格,兜底 6/9/13) 且 t > unit_p
+        # → unit_p = t(含税单价直接取)。真含税单价行无 t=单价×1.09 格 → 不触发;
+        # 小额项(x)相对总额(z)<2% 的加性吞并、伪拼接碎片均不构成该关系。
+        for it in items[tbl_start:]:
+            cur = it.get("unit_price")
+            if cur is None or cur < _MIN_PLAUSIBLE_UNIT:
+                continue
+            cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+            cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"))
+            rates = [
+                float(mm.group(1)) / 100.0
+                for c in cells
+                for mm in [re.search(r"(\d+(?:\.\d+)?)\s*%", c or "")]
+                if mm
+            ]
+            if not rates:
+                rates = [0.06, 0.09, 0.13]
+            tgt = None
+            for _, t in cand:
+                if t <= cur:
+                    continue
+                if any(abs(t - cur * (1 + r)) <= 0.02 * t for r in rates):
+                    if tgt is None or t < tgt:
+                        tgt = t
+            if tgt is not None:
+                q = it.get("quantity")
+                it["unit_price"] = round(tgt / q, 2) if q and q >= 1.01 else tgt
+                it["validation_status"] = "ok"
+                it["price_reason"] = "含税升级(直取不含税单价×(1+税率))"
         # bug-3400 第九层(P1+P2+P3 已批;用户定案 A 放宽): 置信分层——「已校验」
         # 须直取+行内自洽双确认。P1 洗白: 既有 in-loop needs_review(粘连格位置
         # 约定)遇「行内算术确认」时洗白为 ok——自洽算术佐证的置信度高于粘连
