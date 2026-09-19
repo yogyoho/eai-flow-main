@@ -764,8 +764,7 @@ export function ItemsView() {
                                 {item.validation_status === "needs_review" && (
                                   <Button
                                     size="sm"
-                                    variant="ghost"
-                                    className="text-emerald-600 hover:text-emerald-600"
+                                    variant="outline"
                                     title="溯源确认正确后采纳此价格(进入统计)"
                                     onClick={() =>
                                       updateItem.mutateAsync({
@@ -774,7 +773,8 @@ export function ItemsView() {
                                       })
                                     }
                                   >
-                                    ✓ 采纳
+                                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                                    采纳
                                   </Button>
                                 )}
                                 <Button
