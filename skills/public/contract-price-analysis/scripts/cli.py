@@ -32,7 +32,9 @@ from scripts.storage import ContractStore
 from scripts.table_classifier import (
     _bboxes_usable,
     _collapse_header,
+    _norm_header,
     _roles_x_from_data,
+    _x_center,
     classify,
     extract_items_seed,
     looks_like_continuation,
@@ -231,6 +233,233 @@ def _ratio_plausible(total: float, q: float) -> bool:
     return total / q >= _MIN_PLAUSIBLE_UNIT
 
 
+# ── bug-3400 第十二层: 调价表(bcxy-tz)左右双半区仲裁修复 ─────────────────────
+# 调价表布局: 左半区=原合同(网价/原单价/原合价), 右半区=调整后(调整数量/费用碎片/
+# 综合单价/含税总价), colspan 展开使列位逐行漂移(JZGS 钢筋补充协议实测)。
+# 错值签名: (a) 伪单价=左半区原合价÷数量(×1.14 窗口捕获左半区金额, 767582.42/
+# 215.66=3559.22); (b) 撕裂数量未重组('83. 91'→83.000, '03'→3.000); (c) 服务费
+# 碎片 53.00 被当单价; (d) 伪q=原单价窜入数量槽(3380), 伪u=合价÷伪q(512.91)。
+# 全部修复仅在「种子 qty 锚含『调整』」的调价表生效(bboxes+锚带可用时), 非调价
+# 表路径零行为变化(桂北回归 bad_rate=0 硬门)。降级守卫(评审 major): 调价表无
+# cell_bboxes(roles_x/右半区锚带不可用)时仲裁无几何背书——×1.14 窗口可捕获左半区
+# 原合价(3559.22 伪签名)、第九层佐证可被左半区自洽伪三元组满足——故含税仲裁/
+# 含税升级的「改写行」一律降级 needs_review(_adj_degraded 拦截第九层洗白),
+# L13 缺量恢复同门关闭; 价格值保留供人工核验, 但不以 ok 身份入库。
+
+_ADJUST_FEE_TOL = 0.012  # 直取单价格落表头费用列带的判定距离(页归一化 x)
+_ADJUST_FLOOR_MARGIN = 0.05  # 右半区地板 = 最左锚定带 - margin
+_TORN_QTY_JOIN_TOL = 0.002  # 跨格撕裂数量的精确闭合容差(0.2%)
+
+
+def _is_adjustment_seed(seed: dict | None) -> bool:
+    """调价表判别: 种子 qty 锚含「调整」(调整数量/调整后数量)——左右双半区布局的
+    结构信号。不硬编码 seed id,用户自建同构规则同样生效。"""
+    if not seed:
+        return False
+    cols = seed.get("columns") if isinstance(seed.get("columns"), dict) else {}
+    return any("调整" in _norm_header(a) for a in (cols.get("qty") or []))
+
+
+_TORN_DECIMAL_RE = re.compile(r"(\d)\.\s+(\d)")
+
+
+def _rejoin_torn_qty(text: str) -> str:
+    """格内撕裂小数重组: '83. 91'→'83.91'(OCR 断号把小数部分劈到空格后)。
+    仅量文本通道使用; '41.75 3440'类干净粘连不含 空格紧跟数字的断点, 不受影响。"""
+    return _TORN_DECIMAL_RE.sub(r"\1.\2", text or "")
+
+
+def _fee_column_xs(header_rows: list, header_bboxes: list | None, seed: dict) -> list:
+    """表头费用列 x 带: 归一化表头格命中种子 price_unit exclude 词表(运杂/财务/
+    服务/联采/网价/调价/不含税)的格 x 集合。词表即种子对「非综合单价数值列」的
+    语义声明,是 53.00 类费用碎片的列上下文排除依据。"""
+    banned = [a for a in (_norm_header(t) for t in ((seed.get("exclude") or {}).get("price_unit") or [])) if a]
+    if not banned:
+        return []
+    xs = []
+    for ri, row in enumerate(header_rows or []):
+        bbs = (header_bboxes or [])[ri] if ri < len(header_bboxes or []) else []
+        for ci, cell in enumerate(row):
+            t = _norm_header(cell or "")
+            if not t or ci >= len(bbs) or not any(b in t for b in banned):
+                continue
+            xc = _x_center(bbs[ci])
+            if xc is not None:
+                xs.append(xc)
+    return xs
+
+
+def _adjust_half_floor(roles_x: dict | None) -> float | None:
+    """右半区地板 = 最左价格/数量锚定带 - margin。左半区(原合同)数值格全部被裁出
+    仲裁候选——左半区自身算术自洽(原数量×原单价≈原合价),不裁会以伪三元组形态
+    给 stored 伪数量背书(p2r8: 232.65×3410≈801479.25)。unit 带不参与取 min
+    (调价表 unit 列在计量单位栏,可因行漂移携带错带)。"""
+    if not roles_x:
+        return None
+    xs = [roles_x[r] for r in ("qty", "price_unit", "price_total") if roles_x.get(r) is not None]
+    if not xs:
+        return None
+    return min(xs) - _ADJUST_FLOOR_MARGIN
+
+
+_TORN_TAIL_RE = re.compile(r"(\d+)\.\s*$")
+_TORN_HEAD_RE = re.compile(r"^\s*(\d{1,2})(?!\d)")
+
+
+def _join_torn_qty(row_cells: list, qty_col: int | None, stored: float | None, cands: list) -> float | None:
+    """跨格撕裂数量重组: 前格尾断号 '39.44 229.' + 当格头碎片 '03 3440' → 229.03
+    (p2r7: parse_qty('03 3440')=3.000 即 DB 错值)。三重守卫: stored 恰等于头部碎片
+    值(=错 parse 的碎片本身); 拼后 q 与右半区 (u,t) 候选精确闭合(≤0.2%, 3440×229.03
+    的 1.6% 伪闭合被该容差排除); 数量列存在。失败返回 None 不动原值。"""
+    if qty_col is None or not qty_col or qty_col >= len(row_cells) or not (stored and stored > 0):
+        return None
+    mt = _TORN_TAIL_RE.search(row_cells[qty_col - 1] or "")
+    mh = _TORN_HEAD_RE.match(row_cells[qty_col] or "")
+    if not mt or not mh:
+        return None
+    try:
+        q_join = float(mt.group(1) + "." + mh.group(1))
+    except ValueError:
+        return None
+    if abs(float(mh.group(1)) - stored) > 1e-9:
+        return None
+    for _, u in cands:
+        if u <= 0:
+            continue
+        for _, t in cands:
+            if t > 0 and abs(u * q_join - t) <= _TORN_QTY_JOIN_TOL * t:
+                return q_join
+    return None
+
+
+def _recover_qty_from_anchor(
+    cands: list,
+    bbox_row: list | None,
+    stored: float | None,
+    qty_x: float | None,
+    total_x: float | None,
+    cur_price: float | None,
+) -> float | None:
+    """数量槽错值恢复(p3r2: 伪q=3380=原单价窜入, 真q=504.55 在行内):
+    stored 与行内任何 (u,t) 候选都不闭合(±2%)时, 找与仲裁后单价精确闭合(≤0.2%)、
+    合价格落在锚定含税总价带、自身落在种子数量带的唯一候选 q_alt → 数量改写。
+    唯一性要求使误改写需同时伪造三重几何+算术证据。失败返回 None。"""
+    if not cands or not (stored and stored > 0) or cur_price is None or cur_price <= 0:
+        return None
+    if qty_x is None or total_x is None:
+        return None
+    if any(
+        abs(u * stored - t) <= _TORN_QTY_JOIN_TOL * t
+        for _, u in cands
+        for _, t in cands
+        if t > 0 and u > 0
+    ):
+        return None  # stored 精确自洽(±0.2% 内闭合)→ 信任, 不改写
+    hits = []
+    for qi, q_alt in cands:
+        if q_alt <= 0 or abs(q_alt - stored) <= 1e-9:
+            continue
+        bx = _x_center(bbox_row[qi]) if bbox_row and qi < len(bbox_row) else None
+        if bx is None or abs(bx - qty_x) > 0.06:
+            continue
+        for ti, t in cands:
+            if t <= 0 or ti == qi:
+                continue
+            tx = _x_center(bbox_row[ti]) if bbox_row and ti < len(bbox_row) else None
+            if tx is None or abs(tx - total_x) > 0.06:
+                continue
+            if abs(cur_price * q_alt - t) <= _TORN_QTY_JOIN_TOL * t:
+                hits.append(q_alt)
+    if len(hits) != 1:
+        return None
+    return hits[0]
+
+
+# ── bug-3401 第十三层: 页文本×表格格 join 恢复通道(仅调价表) ─────────────────
+# OCR 页文本层保留了表内撕裂/丢失的全部关键数字(JZGS 实测: p2r6 格 '378.'+u 撕裂,
+# 页文本 '378.3'/'3496' 俱在; p2r8 q=239.64 仅存页文本)。恢复判据=算术精确闭合
+# (t=u×q, ≤1e-6 相对) + 页文本字面存在 双验证——单独任何一者不足为凭: 仅字面
+# 会撞页内无关同值数, 仅算术会以撕裂量自证循环。全部 adj-gated, 非调价表零行为。
+_PAGE_NUM_RE = re.compile(r"\d+(?:\.\d+)?")
+_TORN_TAIL_CELL_RE = re.compile(r"^\s*(\d{1,7})\.\s*$")
+_PAGE_JOIN_TOL = 1e-6  # 页文本 join 的精确闭合容差(相对 t)
+
+
+def _page_num_tokens(pt: str | None) -> set:
+    """页文本数值 token 集(按独立 token 匹配而非子串——'378' 不得命中 '3783')。"""
+    return set(_PAGE_NUM_RE.findall(pt or ""))
+
+
+def _num_token_forms(v: float) -> list:
+    """数值的字面 token 候选形态: 3496.0→['3496.0','3496'], 239.64→['239.64']。
+    浮点除法尾差(3496.0000000000005)由 .2f 形态兜住。"""
+    forms = []
+    for s in (repr(v), f"{v:.2f}", f"{v:.6f}"):
+        if "." in s:
+            s = s.rstrip("0").rstrip(".")
+        if s and s not in forms:
+            forms.append(s)
+    return forms
+
+
+def _recover_torn_qty_page_text(cells: list, cands: list, quantity: float | None, page_nums: set):
+    """撕裂数量页文本补全(p2r6: 格 '378.' 小数物理缺失 → 页文本 '378.3'):
+    找页文本中以撕裂整数部分为前缀(须紧跟小数点, '3783' 不算)的数值 q_pt>stored,
+    使某右半区合价候选 t 满足 u=t/q_pt 精确闭合(≤1e-6·t)且 u 亦为页文本字面值。
+    q 唯一才返回 (q_pt, t_anchor)——撕裂前缀+精确闭合+双字面三重证据合一方可信。"""
+    if not page_nums or not (quantity and quantity > 0) or not cands:
+        return None
+    prefixes = set()
+    for c in cells:
+        m = _TORN_TAIL_CELL_RE.match(c or "")
+        if m:
+            prefixes.add(m.group(1))
+    if len(prefixes) != 1:
+        return None
+    prefix = next(iter(prefixes))
+    hits: set = set()
+    for s in page_nums:
+        if not (s == prefix or s.startswith(prefix + ".")):
+            continue
+        try:
+            q_pt = float(s)
+        except ValueError:
+            continue
+        if not (quantity + 1e-9 < q_pt < 1e7):
+            continue
+        for _, t in cands:
+            if t <= 0:
+                continue
+            u_pt = t / q_pt
+            if abs(u_pt * q_pt - t) > _PAGE_JOIN_TOL * t:
+                continue
+            if any(f in page_nums for f in _num_token_forms(u_pt)):
+                hits.add((round(q_pt, 6), t))
+    if len({q for q, _ in hits}) != 1:
+        return None
+    return next(iter(hits))
+
+
+def _recover_missing_qty_page_text(unit_price: float | None, cands: list, page_nums: set) -> float | None:
+    """数量槽空缺页文本恢复(p2r8: q=239.64 仅存页文本, 表 cells 全缺):
+    以仲裁后单价 u 反推 q_d=t/u(右半区合价候选), 要求 2 位小数整洁(round-trip
+    精确——量纲上工程量为分位值)、>1.01、页文本字面存在。唯一才返回。"""
+    if not page_nums or not (unit_price and unit_price > 0):
+        return None
+    hits: set = set()
+    for _, t in cands:
+        if t <= 0 or abs(t - unit_price) <= 1e-9:
+            continue
+        q_d = t / unit_price
+        if not (1.01 < q_d < 1e7) or abs(q_d - round(q_d, 2)) > 1e-9:
+            continue
+        if any(f in page_nums for f in _num_token_forms(round(q_d, 2))):
+            hits.add(round(q_d, 2))
+    if len(hits) != 1:
+        return None
+    return hits.pop()
+
+
 def _raw_price_usable(r: dict) -> bool:
     """finalize 可用性镜像(bug-3400 第四层语义,与下方 failing 判定保持同步):
     行'可用' = 含税单价可自得。untaxed 有效不算——它产不出含税单价(税率不可知);
@@ -348,7 +577,7 @@ def _rediscover_row_price(row, learned):
     return None, ""
 
 
-def _row_num_cands(row, exclude_idx=None, stored_qty=None):
+def _row_num_cands(row, exclude_idx=None, stored_qty=None, bbox_row=None, x_floor=None):
     """行内数值候选(单价/合价/量共用): 每格 re.findall 拆全部数字(空格胶格格
     '824.79 1.20' 产出双候选),≥_MIN_PLAUSIBLE_UNIT 过滤。撕裂小数合并: 以
     '.'/'，'/','结尾的分片是 OCR 断号('1. 62'='1.'+'62'),与后续分片拼回真值;
@@ -356,13 +585,19 @@ def _row_num_cands(row, exclude_idx=None, stored_qty=None):
     第七层(算术锚定胶水拆分): 无空格双点粘连格(税金+含税单价,'127.441543.44'
     =127.44+1543.44)整 token 不可解析——枚举分割点 (a,b),要求 a≈某金额×税率
     (税率取行内 % 格,无则试 6/9/13%)且 b×某候选≈某金额(含税单价×数量),
-    双关系同时成立才收(单关系会产生大量伪分裂);并列取 b 最大。"""
+    双关系同时成立才收(单关系会产生大量伪分裂);并列取 b 最大。
+    第十二层(调价表): x_floor 给定时, 有真实 bbox 且 x-center 低于地板的格裁出
+    候选(左半区原合同金额不得充当 u/q/t);无 bbox 格无位置证据, 保守保留。"""
     cand = []
     fused = []  # (ci, token): float 失败的粘连 token
     exclude_idx = exclude_idx or set()
     for ci, cell in enumerate(row):
         if ci in exclude_idx:
             continue
+        if x_floor is not None and bbox_row and ci < len(bbox_row):
+            xc = _x_center(bbox_row[ci])
+            if xc is not None and xc < x_floor:
+                continue
         # 连续多点多=: OCR 重复小数点伪影('4827. .00'→'4827..00'),折叠为单点
         toks = [re.sub(r"\.{2,}", ".", m) for m in re.findall(r"\.?\d[\d,，.]*", cell or "")]
         buf = ""
@@ -459,14 +694,16 @@ def _row_triples(cand):
     return triples
 
 
-def _row_confirmed(cells, qty_raw, unit_p, exclude_idx=None):
+def _row_confirmed(cells, qty_raw, unit_p, exclude_idx=None, bbox_row=None, x_floor=None, additive_min_ratio=0.02):
     """行内自洽佐证(第九层置信分层): unit_p 与行内某自洽三元组的单价因子一致
     (±max(0.011, 2%·unit_p)) → 「已校验」。加性和(m1+m2≈m3)同为佐证
-    (综合单价=网价+运杂费 / 税金+不含税=含税)。"""
+    (综合单价=网价+运杂费 / 税金+不含税=含税)。
+    第十二层(调价表): bbox_row/x_floor 裁右半区候选; additive_min_ratio 可放宽
+    (调价表 调价加数≈1.5%·综合单价 是真实费用结构, 2% 下限会误杀 p3r0 佐证)。"""
     if unit_p is None:
         return False
     stored = parse_qty(qty_raw) if _qty_text_ok(qty_raw or "") else None
-    cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored)
+    cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored, bbox_row=bbox_row, x_floor=x_floor)
     # 列定义定律: 单价×数量=总金额(unit_p×stored ≈ 行内任一金额,含总额)
     if stored and stored > 0 and any(
         abs(unit_p * stored - v) <= max(0.011, 0.02 * v) for _, v in cand
@@ -476,7 +713,11 @@ def _row_confirmed(cells, qty_raw, unit_p, exclude_idx=None):
         if abs(unit_p - u) <= max(0.011, 0.02 * unit_p):
             return True
     # 加性佐证: 小额加数(运杂费 0.29 类)可 <1.0,加性扫描用低地板候选
-    cand_low = [(ci, v) for ci, v in _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored) if v >= 0.05]
+    cand_low = [
+        (ci, v)
+        for ci, v in _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored, bbox_row=bbox_row, x_floor=x_floor)
+        if v >= 0.05
+    ]
     for ai, x in cand_low:
         for bi, y in cand_low:
             if bi == ai:
@@ -484,15 +725,19 @@ def _row_confirmed(cells, qty_raw, unit_p, exclude_idx=None):
             for ci2, z in cand_low:
                 if ci2 in (ai, bi) or z <= 0:
                     continue
-                # 两加数均 ≥ 2%·z(防 小序号+大金额≈总额 的相对容差吞并)
-                if min(x, y) < 0.02 * z:
+                # 两加数均 ≥ additive_min_ratio·z(防 小序号+大金额≈总额 的相对容差吞并)
+                if min(x, y) < additive_min_ratio * z:
                     continue
                 if abs(x + y - z) <= 0.02 * z and abs(unit_p - z) <= max(0.011, 0.02 * unit_p):
                     return True
     # 含税系数佐证(第十层): 行内存在 (u, t) 对: t ≈ u×(1+税率)(税率取行内 %
     # 格,兜底 6/9/13)且 unit_p ≈ t → unit_p 为含税单价,税关系自洽
     # (蹲式大便器: 412.50(不含税)+449.63(含税) 对)。
-    cand_all = [(ci, v) for ci, v in _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored) if v >= 0.05]
+    cand_all = [
+        (ci, v)
+        for ci, v in _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored, bbox_row=bbox_row, x_floor=x_floor)
+        if v >= 0.05
+    ]
     rates = [
         float(mm.group(1)) / 100.0
         for c in cells
@@ -512,7 +757,7 @@ def _row_confirmed(cells, qty_raw, unit_p, exclude_idx=None):
     return False
 
 
-def _row_arith_price(row, qty_raw, exclude_idx=None):
+def _row_arith_price(row, qty_raw, exclude_idx=None, bbox_row=None, x_floor=None):
     """行内算术三元组恢复(bug-3400 第五层,不依赖表级列学习):
     在本行数值格里找 (单价×工程量≈合价) 自洽三元组(±2%)。工程量优先取
     qty_raw(种子工程量列/胶水首数);q 未知时取 max-t 三元组的小因子为单价
@@ -521,9 +766,10 @@ def _row_arith_price(row, qty_raw, exclude_idx=None):
     含税合价(锚对的合价是不含税合价,tmax/t_a≈1+税率),tmax/q0 反算含税单价
     ——含税单价格常是无分隔粘连格('9697.45556.99')拆数不可达,唯有此路可达
     (桂北 oracle: 多孔砖墙 117446.91/210.86=556.99、现浇 83531.88/63.553=1314.37)。
-    验证: 桂北实测 6/6(7.63/9.81/9.37/89.38/89.38/1.31)。失败返回 (None,'')。"""
+    验证: 桂北实测 6/6(7.63/9.81/9.37/89.38/89.38/1.31)。失败返回 (None,'')。
+    第十二层(调价表): bbox_row/x_floor 裁右半区候选。"""
     q0 = parse_qty(qty_raw) if _qty_text_ok(qty_raw or "") else None
-    cand = _row_num_cands(row, exclude_idx=exclude_idx, stored_qty=q0)
+    cand = _row_num_cands(row, exclude_idx=exclude_idx, stored_qty=q0, bbox_row=bbox_row, x_floor=x_floor)
     triples = _row_triples(cand)
     if not triples:
         return None, ""
@@ -544,7 +790,7 @@ def _row_arith_price(row, qty_raw, exclude_idx=None):
     return min(best[0], best[1]), "行内算术"
 
 
-def _taxed_unit_oracle(cells, stored_qty, qty_col=None, exclude_idx=None):
+def _taxed_unit_oracle(cells, stored_qty, qty_col=None, exclude_idx=None, bbox_row=None, x_floor=None, stored_close_tol=0.02):
     """统一含税仲裁律(bug-3400 第六层): 含税单价 = 含税合价 ÷ 数量。
     数量 = stored_qty(当其参与任一行内自洽三元组,即可信;若 stored 仅作为
     某三元组的 q 因子出现、从不作为 u——「数量被当单价」签名,同样按数量算)
@@ -556,8 +802,11 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None, exclude_idx=None):
     t_taxed = 行内候选金额中 (t_ref, ×1.14] 窗口的最大值(t_ref=max 三元 t;
               窗口空 → t_ref 自身)。窗口=增值税界限(6/9/13% + 舍入噪声),
               防撕裂碎片/暂列金额/序号列(如 序号84 ∈ 73.44×1.25 窗口)冒充含税合价。
-    返回 (u_tax, qty_used) 或 (None, None)——无法唯一确定时保守不给 oracle。"""
-    cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored_qty)
+    返回 (u_tax, qty_used) 或 (None, None)——无法唯一确定时保守不给 oracle。
+    第十二层(调价表): bbox_row/x_floor 裁右半区候选——左半区原合价(767582.42)
+    不得经 ×1.14 窗口充当 t_taxed(3559.22=767582.42/215.66 伪值根源), 左半区
+    自洽伪三元组(232.65×3410≈801479.25)不得给窜入数量槽的原单价背书。"""
+    cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=stored_qty, bbox_row=bbox_row, x_floor=x_floor)
     if len(cand) < 3:
         return None, None
     triples = []  # (u, q, t, uc, qc)
@@ -568,11 +817,17 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None, exclude_idx=None):
             for ti, t in cand:
                 if ti in (ui, qi) or t <= 0:
                     continue
-                if abs(u * q - t) <= 0.02 * t:
+                # 第十二层(调价表): stored_close_tol 同时收紧候选三元组容差——
+                # 调价表真闭合 Decimal 精确, 2% 会让 (真量当单价)×(伪量) 伪三元组
+                # 给窜入数量槽的原单价背书(p3r2: 504.55×3380 落 t 的 1.6%)。
+                if abs(u * q - t) <= stored_close_tol * t:
                     triples.append((u, q, t, ui, qi))
     # 数量<1 的行(0.62 t 钢筋/1.62 m² 镜面)其量被 ≥1.0 候选过滤排除——stored
     # 数量以「虚拟因子」参与: 候选对 (u,t) 满足 u×stored≈t 即视为可信量。
     # 守卫: t≠stored(t==q ⇒ u≡1,序号列退化)且 u≠stored(数量格自乘自证)。
+    # 第十二层(调价表): stored_close_tol 收紧到 0.2%——调价表闭合一律精确
+    # (Decimal 验证), 2% 容差会让伪数量借真数量当因子自证(p3r2: 504.55×伪q
+    # 3380=1705379 落 t 的 1.6% 内 → 伪 u=512.91)。
     virt = []
     if stored_qty is not None and stored_qty > 0:
         virt = [
@@ -583,7 +838,7 @@ def _taxed_unit_oracle(cells, stored_qty, qty_col=None, exclude_idx=None):
             and t > 0
             and abs(t - stored_qty) > 1e-6
             and abs(u - stored_qty) > 1e-6
-            and abs(u * stored_qty - t) <= 0.02 * t
+            and abs(u * stored_qty - t) <= stored_close_tol * t
         ]
     # 加性三元组候选(第七层扩展): 综合单价=网价+运杂费(JZGS)/税金+不含税合价
     # =含税合价(桂北)。仅 stored 数量可信时枚举(单价 vs 合价的判别需要数量)。
@@ -719,7 +974,9 @@ def _lone_row_price(row, qty_col=None):
     return a, "算术重推(单行)"
 
 
-def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = None) -> tuple:
+def _extract_from_tables(
+    tables: list, doc_uri: str, seeds: list[dict] | None = None, page_texts: dict | None = None
+) -> tuple:
     """严格 seed-only 版分类提取(设计 §2/§3)。
 
     逐表: match_seed 确认 → extract_items_seed(含分类行传播) → 价格校验/反算。
@@ -759,6 +1016,10 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             roles_x = None
             if _bboxes_usable(rows, table.cell_bboxes):
                 roles_x = _roles_x_from_data(rows, table.cell_bboxes, roles, header_rows)
+            # 第十二层(调价表): 调整种子 + 锚带可用 → 右半区地板 + 表头费用列带
+            adj = _is_adjustment_seed(seed)
+            adj_fee_xs = _fee_column_xs(rows[:header_rows], table.cell_bboxes, seed) if adj else []
+            adj_floor = _adjust_half_floor(roles_x) if adj else None
             # 表头重复页: 每页都会 match_seed 命中——initial_category 必须跨表续传,
             # 否则多页清单的分类退化为页内局部(修订I2)
             raw = extract_items_seed(rows, seed, roles, header_rows, table.cell_bboxes, roles_x, initial_category=cat_in)
@@ -769,13 +1030,22 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 roles_x,
                 col_count,
                 seed_category_tail(rows, roles, header_rows, table.cell_bboxes, roles_x, cat_in),
+                (adj, adj_fee_xs, adj_floor),
             )
         elif is_cont:
-            seed, roles, roles_x, _, cat_in = active
+            seed, roles, roles_x, _, cat_in = active[0], active[1], active[2], active[3], active[4]
+            adj, adj_fee_xs, adj_floor = active[5] if len(active) > 5 else (False, [], None)
             meta["continuation_tables"] += 1
             raw = extract_items_seed(rows, seed, roles, 0, table.cell_bboxes, roles_x, initial_category=cat_in)
             name_col = roles.get("name", 0)
-            active = (seed, roles, roles_x, col_count, seed_category_tail(rows, roles, 0, table.cell_bboxes, roles_x, cat_in))
+            active = (
+                seed,
+                roles,
+                roles_x,
+                col_count,
+                seed_category_tail(rows, roles, 0, table.cell_bboxes, roles_x, cat_in),
+                (adj, adj_fee_xs, adj_floor),
+            )
         else:
             ttype, sroles, sroles_x, sheader_rows = classify(rows, None, table.cell_bboxes)
             meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
@@ -807,6 +1077,12 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
         # 学到 (unit,total,qty) 列后失败行按学到的列直接取价;单失败行走单行回退。
         # bug-3400 第四层: 失败=含税单价不可自得(unit 无效,且 total+qty 反算不过
         # 量纲守卫——错锚单价列÷数量=微型值不算可自愈,须走算术重推学习列)。
+        # 第十三层(bug-3401): 页文本数值 token(仅调价表消费; 非调价表零开销)。
+        pt_nums = (
+            _page_num_tokens(page_texts.get(table.page_no))
+            if adj and isinstance(page_texts, dict)
+            else set()
+        )
         failing = [r for r in raw if not _raw_price_usable(r)]
         learned = None
         failing_set: set = set()
@@ -860,6 +1136,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 roles_x,
                 col_count,
                 seed_category_tail(rows, roles, header_rows, table.cell_bboxes, roles_x, cat_in),
+                (adj, adj_fee_xs, adj_floor),
             )
         elif learned is not None:
             # 学到的列与 seed 锚一致 → 表头无碎裂,仅行级恢复照旧(seed 列下个别行
@@ -896,6 +1173,23 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 _m = re.search(r"\d", _pu)
                 if _m and re.search(r"[A-Za-z一-鿿]", _pu[: _m.start()]):
                     unit_p, vstatus_u, reason_u = None, "ok", ""
+            # 第十二层(调价表)费用碎片守卫: 直取单价格的全部同行同值格都落在表头
+            # 费用列带(运杂/财务/服务/联采/网价,种子 exclude 词表声明)上 → 该值是
+            # 费用碎片(53.00 元/吨类),不是综合单价——排除(p2r6: 综合单价格空,
+            # '53'碎片格距 u 带 0.02 抢占)。量纲守卫(≥1.0)挡不住 53>1,唯列上下文可辨。
+            if adj and unit_p is not None and adj_fee_xs and r.get("price_unit_raw"):
+                _pu_txt = r["price_unit_raw"].strip()
+                _bbox_row0 = table.cell_bboxes[r["row_idx"]] if table.cell_bboxes and r["row_idx"] < len(table.cell_bboxes) else []
+                _same_xs = [
+                    _x_center(_bbox_row0[ci])
+                    for ci, c in enumerate(table.rows[r["row_idx"]] or [])
+                    if (c or "").strip() == _pu_txt and ci < len(_bbox_row0)
+                ]
+                _same_xs = [x for x in _same_xs if x is not None]
+                if _same_xs and all(
+                    any(abs(x - fx) <= _ADJUST_FEE_TOL for fx in adj_fee_xs) for x in _same_xs
+                ):
+                    unit_p, vstatus_u, reason_u = None, "ok", ""
             _dval, _dvalid = unit_p, unit_p is not None  # 第九层: 直取值留档(仲裁改写检测)
             src = "direct" if unit_p is not None else None
             if r.get("price_untaxed_raw"):
@@ -904,6 +1198,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 untaxed, vstatus_n, reason_n = None, "ok", ""
             # 反算: 单价缺失/异常 → 合价÷工程量(seed 显式 price_total 列,定义关系
             # 单价 = 合价 ÷ 工程量)。错列不可能通过反算,零误注风险。
+            _adj_torn_q = False
             if unit_p is None and r.get("price_total_raw"):
                 total, _, _ = validate_price(r["price_total_raw"])
                 q = parse_qty(r["qty_raw"] or "") if _qty_text_ok(r.get("qty_raw") or "") else None
@@ -916,6 +1211,11 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                         unit_p = cand
                         vstatus_u, reason_u = "ok", "合价/工程量反算"
                         src = "reverse"
+                        # 第十二层(调价表): 数量文本尾断号('378.', 小数物理缺失)时
+                        # 反算单价低位不可信(378 vs 真值378.3 → 3498.77 vs 3496),
+                        # 且后续任何行内闭合都复用同一撕裂量、无法独立佐证——保留值
+                        # 但标记转待核验(layer9 强制, 不吃粘连洗白)。
+                        _adj_torn_q = adj and bool(_TORN_TAIL_RE.search(r.get("qty_raw") or ""))
                         logger.debug(
                             "reverse-calc implausible %.4f (%s/%s) rejected", cand, total, q
                         )
@@ -949,7 +1249,11 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                     "spec_model": r["spec"],
                     "tech_params": _extract_tech_params(r["name"]),
                     "category": r.get("category"),
-                    "quantity": parse_qty(r["qty_raw"] or "") if _qty_text_ok(r.get("qty_raw") or "") else None,
+                    "quantity": (
+                        parse_qty(_rejoin_torn_qty(r["qty_raw"]) if adj else r["qty_raw"] or "")
+                        if _qty_text_ok(r.get("qty_raw") or "")
+                        else None
+                    ),
                     "unit": r["unit"],
                     "unit_price": unit_p,  # 含税单价(统计)
                     "price_untaxed": untaxed,  # 不含税单价(审计)
@@ -961,6 +1265,7 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                     "confidence": table.mean_confidence,
                     "validation_status": vstatus,
                     "price_reason": reason_u or reason_n,
+                    "_adj_torn_q": _adj_torn_q,
                     "_src": src,
                     "_dval": _dval,
                     "_dvalid": _dvalid,
@@ -981,12 +1286,104 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
         }
         for it in items[tbl_start:]:
             cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            u_tax, qty_used = _taxed_unit_oracle(cells, it.get("quantity"), qty_col=roles.get("qty"), exclude_idx=exclude_idx)
+            bbox_row = None
+            if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+                bbox_row = table.cell_bboxes[it["source_row_idx"]]
+            _cands = None
+            if adj:
+                _cands = _row_num_cands(
+                    cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+                )
+                # 第十二层(调价表)跨格撕裂数量重组: '39.44 229.'+'03 3440'→229.03
+                # (p2r7: '03'碎片被 parse 成 3.000 即 DB 错值);精确闭合守卫见 helper。
+                if it.get("quantity"):
+                    _q_join = _join_torn_qty(cells, roles.get("qty"), it.get("quantity"), _cands)
+                    if _q_join is not None:
+                        it["quantity"] = _q_join
+                        _cands = _row_num_cands(
+                            cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+                        )
+                # 第十三层(调价表)撕裂数量页文本补全: '378.'→378.3(p2r6, 小数物理
+                # 缺失于表 cells)。判据=精确闭合+页文本双字面(撕裂前缀+u 俱在)。
+                # 补全后 u=t/q 重反算(旧值由撕裂量推出不可信), 撕裂待核验标记解除
+                # (双字面闭合即独立佐证, 不再自证循环)。
+                if pt_nums and it.get("quantity"):
+                    _torn_fix = _recover_torn_qty_page_text(cells, _cands, it.get("quantity"), pt_nums)
+                    if _torn_fix is not None:
+                        _q_new, _t_anchor = _torn_fix
+                        _q_old = it["quantity"]
+                        it["quantity"] = _q_new
+                        it["_adj_torn_q"] = False
+                        _up = it.get("unit_price")
+                        if _up is None or abs(_up * _q_old - _t_anchor) <= _TORN_QTY_JOIN_TOL * _t_anchor:
+                            it["unit_price"] = round(_t_anchor / _q_new, 2)
+                            it["price_reason"] = "合价/工程量反算(页文本量补全)"
+                        _cands = _row_num_cands(
+                            cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+                        )
+            u_tax, qty_used = _taxed_unit_oracle(
+                cells,
+                it.get("quantity"),
+                qty_col=roles.get("qty"),
+                exclude_idx=exclude_idx,
+                bbox_row=bbox_row,
+                x_floor=adj_floor,
+                stored_close_tol=_TORN_QTY_JOIN_TOL if adj else 0.02,
+            )
             new_p = u_tax
             if new_p is None:
-                new_p, _ = _row_arith_price(cells, str(it["quantity"]) if it.get("quantity") else "", exclude_idx=exclude_idx)
+                new_p, _ = _row_arith_price(
+                    cells,
+                    str(it["quantity"]) if it.get("quantity") else "",
+                    exclude_idx=exclude_idx,
+                    bbox_row=bbox_row,
+                    x_floor=adj_floor,
+                )
             if new_p is None:
                 continue
+            # 第十二层(调价表)数量槽恢复: stored 无精确闭合而某数量带候选与最终
+            # 单价精确闭合于锚定含税总价(p3r2: 伪q=3380=原单价窜入, 真q=504.55)
+            # → 数量改写。放在单价仲裁后: 恢复判据用仲裁后最终单价。
+            if adj and _cands and it.get("quantity") and (
+                qty_used is None or abs(qty_used - it["quantity"]) <= 1e-9
+            ):
+                _cur0 = it.get("unit_price")
+                _final_p = new_p
+                if _cur0 is not None and abs(_cur0 - new_p) <= max(0.011, 0.02 * max(_cur0, new_p)):
+                    _final_p = _cur0
+                _q_fix = _recover_qty_from_anchor(
+                    _cands,
+                    bbox_row,
+                    it.get("quantity"),
+                    roles_x.get("qty") if roles_x else None,
+                    roles_x.get("price_total") if roles_x else None,
+                    _final_p,
+                )
+                if _q_fix is not None:
+                    it["quantity"] = _q_fix
+                # 第十二层(调价表)伪数量清洗: 数量仍无精确闭合、且值在左半区(原合同)
+                # 单元格中重复出现 → 数量槽装的是左半区窜入值(原单价), 置空(p2r8:
+                # 3410=左半区原单价 c5; 真值 239.64 仅存页文本, 行内不可恢复)。
+                if it.get("quantity") and not any(
+                    abs(u * it["quantity"] - t) <= _TORN_QTY_JOIN_TOL * t
+                    for _, u in _cands
+                    for _, t in _cands
+                    if t > 0 and u > 0
+                ):
+                    _left_vals = set()
+                    for ci, cell in enumerate(cells):
+                        if ci in exclude_idx:
+                            continue
+                        bx = _x_center(bbox_row[ci]) if bbox_row and ci < len(bbox_row) else None
+                        if bx is None or bx >= adj_floor:
+                            continue
+                        for mm in re.findall(r"\.?\d[\d,，.]*", cell or ""):
+                            try:
+                                _left_vals.add(round(float(mm.replace(",", "").replace("，", "")), 6))
+                            except ValueError:
+                                pass
+                    if round(it["quantity"], 6) in _left_vals:
+                        it["quantity"] = None
             cur = it.get("unit_price")
             if cur is not None:
                 if abs(cur - new_p) <= max(0.011, 0.02 * max(cur, new_p)):
@@ -998,8 +1395,41 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
                 # 统一律为等式仲裁(含税单价=含税合价÷数量): oracle 有效且超容差
                 # 即覆盖——不含税当含税 / 数量当单价 / 错列碎片一次纠正。
             it["unit_price"] = new_p
-            it["validation_status"] = "ok"
-            it["price_reason"] = "行内算术含税"
+            if adj and adj_floor is None:
+                # 降级守卫(评审 major): 调价表无 cell_bboxes → 右半区锚带缺失,
+                # 候选未裁左半区, ×1.14 窗口可捕获左半区原合价(3559.22 伪签名)
+                # 且第九层佐证可被左半区自洽伪三元组满足——仲裁改写无几何背书,
+                # 强制待核验并打标(第九层洗白由 _adj_degraded 拦截), 不盖 ok。
+                it["validation_status"] = "needs_review"
+                it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
+                it["_adj_degraded"] = True
+            else:
+                it["validation_status"] = "ok"
+                it["price_reason"] = "行内算术含税"
+        # 第十三层(调价表)缺量页文本恢复: 仲裁后单价已定而数量为空(p2r8: 真量
+        # 239.64 仅存页文本, 表 cells 全缺; 伪量 3410 已被左半区窜入清洗置空)
+        # → 以 u 反推 q_d=t/u(右半区合价候选), 2 位小数整洁+页文本字面+唯一 →
+        # 补量。放在单价仲裁后: 反推判据用仲裁后最终单价。
+        # 降级守卫(评审 major 同根因): 门必须看 adj_floor——无锚带时候选未裁
+        # 左半区, 反推 q 的几何语义(右半区合价带)不存在, 不得注量。
+        if adj and adj_floor is not None and pt_nums:
+            for it in items[tbl_start:]:
+                if it.get("quantity") or not it.get("unit_price"):
+                    continue
+                _cells_b = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
+                _bbox_b = None
+                if adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+                    _bbox_b = table.cell_bboxes[it["source_row_idx"]]
+                _cands_b = _row_num_cands(
+                    _cells_b,
+                    exclude_idx=exclude_idx,
+                    stored_qty=None,
+                    bbox_row=_bbox_b,
+                    x_floor=adj_floor,
+                )
+                _q_fix = _recover_missing_qty_page_text(it["unit_price"], _cands_b, pt_nums)
+                if _q_fix is not None:
+                    it["quantity"] = _q_fix
         # 价格缺失行统一过滤(等价旧 price-less skip,但发生在第六层仲裁之后):
         # 仲裁后仍无含税单价且无不含税审计价的行,对价格分析无价值,不入库。
         items[tbl_start:] = [
@@ -1013,12 +1443,22 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
         # 升级: t ≈ unit_p×(1+rate) (rate 取行内 % 格,兜底 6/9/13) 且 t > unit_p
         # → unit_p = t(含税单价直接取)。真含税单价行无 t=单价×1.09 格 → 不触发;
         # 小额项(x)相对总额(z)<2% 的加性吞并、伪拼接碎片均不构成该关系。
+        # bug-3401 收口: 闭合判据收紧为精确(≤max(0.011, 1e-5·t), 覆盖 2 位小数
+        # 打印舍入)——真含税升级是打印级恒等式(449.63=412.50×1.09 精确到分)。
+        # 原 ±2% 窗口把行内无关金额误判为 t(桂北 p96r0: 145.25 落
+        # 129.38×1.13±2% → 正确单价被改写为 145.25/13.6=10.68), 400 行回归
+        # bad_rate 0→0.0175, 硬门失守。
         for it in items[tbl_start:]:
             cur = it.get("unit_price")
             if cur is None or cur < _MIN_PLAUSIBLE_UNIT:
                 continue
             cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            cand = _row_num_cands(cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"))
+            bbox_row = None
+            if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+                bbox_row = table.cell_bboxes[it["source_row_idx"]]
+            cand = _row_num_cands(
+                cells, exclude_idx=exclude_idx, stored_qty=it.get("quantity"), bbox_row=bbox_row, x_floor=adj_floor
+            )
             rates = [
                 float(mm.group(1)) / 100.0
                 for c in cells
@@ -1031,14 +1471,26 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             for _, t in cand:
                 if t <= cur:
                     continue
-                if any(abs(t - cur * (1 + r)) <= 0.02 * t for r in rates):
+                if any(abs(t - cur * (1 + r)) <= max(0.011, 1e-5 * t) for r in rates):
                     if tgt is None or t < tgt:
                         tgt = t
             if tgt is not None:
                 q = it.get("quantity")
-                it["unit_price"] = round(tgt / q, 2) if q and q >= 1.01 else tgt
-                it["validation_status"] = "ok"
-                it["price_reason"] = "含税升级(直取不含税单价×(1+税率))"
+                upgraded = round(tgt / q, 2) if q and q >= 1.01 else tgt
+                # 量纲守卫(与第四层同源): 升级结果 <1.0 说明 (t,cur) 对是费用碎片
+                # 自身的税率巧合(53×1.09≈58.16), 非含税升级——拒绝降级注值。
+                if upgraded < _MIN_PLAUSIBLE_UNIT:
+                    continue
+                it["unit_price"] = upgraded
+                if adj and adj_floor is None:
+                    # 降级守卫(评审 major): 升级判据 t 同样可捕获左半区金额(无
+                    # 锚带裁剪)——改写行强制待核验, 不盖 ok。
+                    it["validation_status"] = "needs_review"
+                    it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
+                    it["_adj_degraded"] = True
+                else:
+                    it["validation_status"] = "ok"
+                    it["price_reason"] = "含税升级(直取不含税单价×(1+税率))"
         # bug-3400 第九层(P1+P2+P3 已批;用户定案 A 放宽): 置信分层——「已校验」
         # 须直取+行内自洽双确认。P1 洗白: 既有 in-loop needs_review(粘连格位置
         # 约定)遇「行内算术确认」时洗白为 ok——自洽算术佐证的置信度高于粘连
@@ -1051,13 +1503,36 @@ def _extract_from_tables(tables: list, doc_uri: str, seeds: list[dict] | None = 
             if cur is None:
                 continue  # untaxed-only 行不进分层(维持现状)
             cells = table.rows[it["source_row_idx"]] if it["source_row_idx"] < len(table.rows) else []
-            confirmed = _row_confirmed(cells, str(it["quantity"]) if it.get("quantity") else "", cur, exclude_idx=exclude_idx)
+            bbox_row = None
+            if adj and adj_floor is not None and table.cell_bboxes and it["source_row_idx"] < len(table.cell_bboxes):
+                bbox_row = table.cell_bboxes[it["source_row_idx"]]
+            confirmed = _row_confirmed(
+                cells,
+                str(it["quantity"]) if it.get("quantity") else "",
+                cur,
+                exclude_idx=exclude_idx,
+                bbox_row=bbox_row,
+                x_floor=adj_floor,
+                # 调价表: 综合单价=调整后网价+费用调价(53/3406≈1.6%)是真实结构,
+                # 2% 加数下限误杀佐证(p3r0)→ 放宽到 1.2%(序号类伪加数仍 <0.3% 被挡)
+                additive_min_ratio=_ADJUST_FEE_TOL if adj else 0.02,
+            )
             kind = None
             if not confirmed:
                 kind = "无佐证"  # 行内无自洽结构
             elif cur < _MIN_PLAUSIBLE_UNIT:
                 kind = "量纲边界"
-            if kind:
+            if it.pop("_adj_degraded", False):
+                # 降级守卫(评审 major): 无坐标带仲裁改写行不吃任何洗白——
+                # 左半区自洽伪三元组可满足 _row_confirmed/粘连洗白(佐证失义)。
+                it["validation_status"] = "needs_review"
+                it["price_reason"] = "待核验: 调价表无坐标带,仲裁降级"
+            elif it.pop("_adj_torn_q", False):
+                # 第十二层(调价表): 量撕裂反算价无法独立佐证(行内一切闭合复用同一
+                # 撕裂量, 自证循环)——强制待核验, 不吃粘连洗白(p2r6: 3498.77=t÷378)。
+                it["validation_status"] = "needs_review"
+                it["price_reason"] = "待核验: 量撕裂反算"
+            elif kind:
                 it["validation_status"] = "needs_review"
                 it["price_reason"] = "待核验: " + kind
             elif it.get("_nr0"):
@@ -1324,7 +1799,7 @@ async def _process_one_doc(
                     )
                 except Exception as exc:
                     logger.warning("OCR cache write failed %s: %s", cache_key, exc)
-            items, meta = _extract_from_tables(tables, doc_uri, seeds)
+            items, meta = _extract_from_tables(tables, doc_uri, seeds, page_texts=page_texts)
             # 方向归一化页号透传(设计 §3): 溯源提示这些页的预览/坐标来自纠偏后图像。
             meta["orientation_fixed_pages"] = orient_fixed or []
             # 元数据提取 + 末页兜底: 命中路径 file_bytes=None,兜底真的需要发起时

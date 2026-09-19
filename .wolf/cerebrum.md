@@ -23,6 +23,9 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+
+- (2026-09-18) docker build 容器内 egress 与 host 的镜像可达性不同(host 200/容器 403): apt/pip 镜像选型必须从容器内探测(aliyun/ustc/tencent 可用, tsinghua 会 403)。ocr 单服务重建命令: `cd docker && docker compose -p eai-docker -f docker-compose-dev.yaml up -d --build ocr`(ocr 仅定义在 dev overlay, 无需 base)。
+- **[2026-09-17] plan 交接简报≠已落地代码,实现前必须核对真实签名 (cpa Task 4):** Task 3 交接说 extract_items_seed 已带 initial_category,实际 3e19a5664 落地版没有(计划文档 L632 有但代码漏了)——直接照抄 Task 4 代码会 TypeError。另两处: 分类行不产 item,故「表尾悬挂分类行」的尾态在 extract 返回值里看不到,跨页续传必须对表行重放(seed_category_tail,与 extract_items_seed 共用 _iter_seed_cells 保单源);plan 测试有两处计数断言作者手滑(test_category_threads_across_pages 期望 ["屋面","屋面"] 漏计钢筋 item 应为 [None,"屋面","屋面"];test_unmatched_breaks_category_chain 写 len==2 与自身注释矛盾应为 1)——手推 fixture 再写断言,发现不可满足时改断言不改实现语义。附带发现: tests/test_config.py(2例)与 test_vectorizer.py(1例)在 HEAD 就是红的(v1 残留: Config.ragflow_* 已删;vectorizer 参数不区分向量),与 cpa Task 4 无关待清。
 - **[2026-09-13] ontology-ui T3 GraphCanvas 挂载配方**：vendored GraphCanvas 直接吃 explorer/graphStore 单例 graph 作 displayGraph（layoutMode "base"→FA2 跑 store 图），graphReady/graphVersion 由 useLoadGraph 的 query.data 驱动（缓存重挂载也能就绪，别只在 onGraphReady 里置位——queryFn 缓存命中时不再回调）；经 next/dynamic ssr:false 加载时 dynamic 不透传 ref，把手用 onReady 回调传出。画布无需主题注入：GRAPH_THEME 标签 chip 自带深色底、节点中饱和语义色，明暗底都可读。选中=必填 prop onNodeClick（clickSelectionBehavior 二次点击回传 ""），定位=handle.focusNode(id)；scene 无过滤 props，检索走"候选下拉+focusNode 定位"降级（逐节点调透明度要改 92KB 的 graphSceneState，不值）。另：Sidebar 图标是 lucide 组件直挂（无 ICON_MAP）；nav:ontology 与 ontology:page:map 需 policy yaml 发放，admin 走 "*" 通配立即可见。
 - **[2026-09-10] backend tests 引 skills/*/*/scripts 下脚本且多技能存在同名模块时, 禁用 sys.path+裸名 import**：geological-report 与 bid-proposal-writing 都有 bank_compile.py, 两个测试文件裸名 `import bank_compile` 会按收集顺序互抢 sys.modules 缓存, 全量跑必挂一边（单文件绿≠全量绿）。正解=importlib.util.spec_from_file_location 用唯一模块名按路径加载（先例: test_geo_sample_bank_compile.py 的 acceptance loader），不污染 sys.modules/path。同日教训叠加: plan 测试 snippet 的 parents[1] 实为 backend 非 repo root（repo-root 相对路径要 parents[2]）、main() 的 argv 形参必须显式传给 ap.parse_args(argv) 否则直调 main([...]) 读到 pytest 的 sys.argv。
 - (2026-09-01) geo-samples 管理路由（T8, commit b3389cb1b）按 plan 用 require_permission("geo_samples:access")，但该权限点未在 config/permissions.yaml 声明——UnifiedPermissionEngine 只做集合判定不报错 → 非 superadmin 一律 403（fail-closed 静默拒绝）；sibling contract_price/spare_parts 实际全用已声明的 system:access。后续接线任务要么在 permissions.yaml 声明 geo_samples 模块+权限点（照 contract_price 条目样式），要么改用 system:access；admin(=superadmin "*") 登录冒烟可过，测非管理员角色必 403。
@@ -317,7 +320,17 @@
 
 - [2026-09-13] localhost:端口 挂起 ≠ 系统宕机。先 netstat 查 host 侧端口:IPv4/IPv6 可能被不同进程持有(wslrelay.exe 僵尸占 [::1]:N 是 Docker Desktop 顽疾)。容器内 wget 通 = 端口转发层问题,不是服务问题。修复:杀僵尸 wslrelay(Docker 自动重启它)。Git Bash 下 taskkill /PID 会被路径转换毁掉,用 PowerShell。
 
+- [2026-09-14] FastAPI `response_model` 会静默剥离 service 返回值里未声明的字段——「加了返回键但忘了改 Pydantic schema」不报错、不进日志，前端拿到 undefined 只能靠 `??` 回退（bug-4954 四因链之一起）。改 list_* 返回值时必须同步改 schemas.py 的 Response 模型。
+- [2026-09-14] docmgr「我的文档」视图 = `/personal-outputs` 直读文件系统视图（DocumentManagement.tsx L505-507 注释明言取代旧文件夹树），folders/tree 与 /documents API 正常不代表「我的文档」正常；排障先分清用户看的是哪条数据链。分页切片在可见性过滤之前的 service 都有「空候选占页」风险（ToolOutputBudgetMiddleware 会往 outputs/.tool-results/ 写隐藏项使空目录成候选）。
+
 ## Do-Not-Repeat
+- 2026-09-19 cpa 手工重解析必须先建真 cpa_run_history 行再传 --run-id（复刻 routers.reparse_document+crud.create_run）；裸 UUID4 会触发 cpa_items.run_id FK 失败且 _persist_one_doc 把整个事务吞成 'DB unavailable' 静默无写入（CLI 照样 exit 0）。另：gateway 容器只 bind-mount 子目录，/app/.wolf 不存在——容器内探针放 logs/e2e_tmp/ 桥接（对应 host logs/e2e_tmp/），canonical 副本留 .wolf/tmp/。
+
+- [2026-09-20] 前端 API 适配层每个 fetch 都要核对最终 URL=BASE+相对路径（本轮 formal-api 漏拼 /ontology 段→FastAPI 404 Not Found 页面误报'服务不可达'）；验证手段=浏览器 eval fetch 直打同 URL 对照状态码。
+
+- [2026-09-19] Windows GBK 控制台下验证中文 API 数据：管道打印会骗人（GBK 渲染假象/surrogate 假阳性），必须落盘后字节级对照（api bytes vs DB bytes 严格 UTF-8 比对）。本轮 graph/nodes '乱码' 实为终端假象，api==db 字节一致。
+
+- **extensions_config.json 的 http MCP URL 主机名必须有 compose 网络别名兜着 (2026-09-18, bug-3307):** eai-flow-net 的 DNS 只解析 compose 服务名/容器名/network alias。新独立容器服务(ontostudio-backend)的 MCP URL 若起了简短别名(ontostudio), compose 里必须配 `networks: eai-flow-net: aliases: [ontostudio]`——照 cad-suite 的 text-to-cad/cad 惯例。判定: 容器内 `socket.gethostbyname(主机名)`。症状是 harness http 通道 Name resolution failure 而服务 health 全绿。
 
 - [2026-09-10] bank_compile T4 又见「plan 自带测试串先干跑」实例: plan 的残留闸门用例 fixture「报价 1,280,000.00 元整」被 AMOUNT_RE 正常掩码 → residual 恒空, 闸门实现后测试也永远过不了(rc 恒 0);真漏网形态只有 fail-closed 分支(两位小数千分位 3,500.00 无元后缀/￥裸数字/裸万元)——写闸门类用例先对redact+residual_scan 干跑确认非空证据再落笔。
 - [2026-09-10] plan 原稿的**正则**也要对 plan 自带的测试串干跑再照抄——bank_compile T2 的 RESIDUAL_RE 对其自家 miss 用例「报价 9,999,999.99 元」零命中（无￥无万元非手机非身份证），照抄必挂自家测试；残留扫描正则要与脱敏正则同源覆盖（bug-3234）。fixture 用空格环抱数字时 `\b` 侥幸能过——别被绿测骗了，中文语境照样用 bug-3061 环视形态。
@@ -2073,3 +2086,84 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - 沙箱路径守卫拦 /tmp：agent 常识性想暂存 /tmp 会被拒——SKILL 工作流要显式给出 /mnt/user-data 内的合法路径
 - DeerFlow E2E API 通道：登录=POST /api/v1/auth/login/local(表单编码,CSRF豁免,Set-Cookie access_token+csrf_token)→POST /api/threads→POST /api/threads/{id}/runs/stream(input.messages+on_disconnect=continue)；ask_clarification 会 Command(goto=END) 结束当轮 run，多轮=同 thread 新 run
 - 流式 messages 事件是整消息对象(AIMessageChunk delta 按 id 拼接)；run status error+stop_reason None+事件流尾部 GRAPH_RECURSION_ERROR=递归预算耗尽
+
+### Key Learnings (2026-09-14 深层E2E)
+- **curl 直发 runs/stream 必须 body 带 config.configurable.subagent_enabled=true**，否则 task/batch_task 工具不绑定（前端 UI 默认带，API 直发不带）——控制器技能 E2E 的第一坑
+- stages JSON key_elements 的 SLOT 引用只能指向 formula_state 公式槽位；data 表单字段必须写「按 data/族 转写 X 真值」——写手子代理会对 SLOT 标记照抄，数据字段用 SLOT 必产生未知槽位 FAIL
+- 子代理会自创槽位词汇（F0./F3./F4. 前缀）当契约含糊时——契约必须给出精确的可用槽位清单
+- 章门深度句计数的『句』=以。？！结尾；列表项无句号不计——生成提示词要求列表项也要完整句
+- 多轮 E2E 驱动模式：ask_clarification 结束当轮 run → 同 thread 新 run 续；on_disconnect=continue 必须；长 run 用 runs?limit=1 轮询 status
+
+- **URL前缀共用冲突：/api/collab 现有两个所有者 (2026-09-17):** 编辑器AI的 POST /api/collab/ai-chat(gateway) 与 协同写作WS(collab:8002) 共用前缀，bug-3209回植nginx前缀块时把前者劫持。已用 location = /api/collab/ai-chat 精确匹配修复，登记入上游同步回植清单（**上游同步后两个块都要核对**）。判别信号：**API响应格式突变（SSE帧→纯文本/异常应答）=路由被劫持**，先查nginx -T 再查应用代码。两conf网关写法不同：nginx.conf用 set $gateway_upstream 变量，nginx.docker.conf用 upstream gateway 块，改路由时各随其俗。
+
+- **mathBlocks.ts 的转换/导出必须随 BlockNote 块树递归 (2026-09-17):** transformMathInBlocks / prepareBlocksForMarkdownExport 曾只遍历顶层——嵌套列表子项（bulletListItem.children，计算书'计算过程'分项）公式不渲染/保存丢公式。两函数已在出口统一递归 children。**铁律：任何对 BlockNote 块树的遍历处理（转换/导出/统计）都必须递归 children，新写时用 helper 而不是顶层 map。** 验证手法：API 建 doc(content=markdown) → 编辑器打开（加载路径才跑 transform）→ DOM 查 .katex 数量 + innerText 无字面 $。
+
+- **决策: 编辑器 <details> 折叠 = 自研 detailsBlock（2026-09-17，用户拍板B方案）:** DetailsBlock(createReactBlockSpec, content:inline, collapsed prop) + detailsMarkdown.ts 切分/回写。要点：①0.51 createReactBlockSpec 返回工厂需再调用 `()`（math包Equation同款）；②render 非 React 组件不能用 hooks；③contentRef 是回调 ref 直接赋值；④自定义块视图被 .react-renderer.node-<type> 包裹，折叠 CSS 用 `.bn-block:has(> .bn-react-node-view-renderer [data-details-collapsed=true]) > .bn-block-group`；⑤子块容器类名是 .bn-block-group 而非 .bn-block-outer；⑥导入管线=buildBlocksWithDetails(切分)→transformMathInBlocks(数学,递归)。
+
+- **detailsBlock 样式对齐要点 (2026-09-17):** 工件区 details/summary 无自定义CSS=浏览器原生观感（disclosure三角/无框/普通字重）。编辑器版对齐：wrapper flex 行布局（PM contentDOM 是块级会折行，必须 flex 同行）、标记用 ▸/▾ 字符、去子块 margin(24px)与引导线伪元素（.bn-block-group .bn-block-group > .bn-block-outer::before）。自定义块视图实际包裹层是 .react-renderer.node-<type>（不是 .bn-react-node-view-renderer），:has 选择器要按真实层级写。
+
+- **BlockNote 0.51 自定义块子树禁用拖拽（已知上游限制, 2026-09-17):** createReactBlockSpec 块的子项被拖拽时，dragstart 序列化→PM 解析抛 'Content hole not allowed in a leaf node spec'。解法（用户定案）：子项免拖拽，编辑器 DOM 捕获阶段 dragstart 守卫（判定：目标到 editor DOM 之间任一祖先的直接子级 .react-renderer 内含 details-block-wrapper）。升级 BlockNote 后可复测是否可放开。
+
+- **BlockNote 侧边菜单拖拽柄在浮层（不在 editor DOM）——按元素挂 dragstart 守卫收不到 (2026-09-18):** 拖拽柄 `[data-test=dragHandle]` 挂在 .bn-root 浮层。要在拖拽源头拦截必须挂 document 捕获；且对自定义块子树"取消 dragstart"并不能避免拖动进行中的渲染器崩溃——正确做法是 hover 该子树时隐藏柄（visibility）+ dragstart 守卫兜底双保险。
+
+- (2026-09-18) gateway JWT secret 的 env 真名 = `AUTH_JWT_SECRET`（backend/app/gateway/auth/config.py:68, 无则落盘 .jwt_secret 文件）；任务书里猜的 `SECRET_KEY` 不存在。extensions 另有一套 JWT（JWT_SECRET/JWT_SECRET_KEY, claims 带 role/permissions）。ontostudio auth 只接 AUTH_JWT_SECRET 源。
+- (2026-09-18) MCP 官方 SDK `StreamableHTTPSessionManager.run()` 每实例只能调一次——TestClient 多轮 with/uvicorn reload 二次进 lifespan 会 RuntimeError；正解=lifespan 内每次 startup 新建 manager 实例再 bind 给 ASGI guard。
+- (2026-09-18) Starlette `Mount("/x")` 正则= `^/x/(.*)$` 不匹配裸路径 "/x"（307重定向都不给）；MCP 单端点要用 `Route("/mcp/ontology", asgi_instance, methods=[...])`（非函数 endpoint 自动按裸 ASGI 处理）。
+- (2026-09-18) `pyjwt[crypto]` 是 mcp SDK 的硬依赖（METADATA Requires-Dist）——venv 里 `import jwt` 直接可用, 不必往 pyproject 加 pyjwt。
+- (2026-09-18) 并发会话要提交共享 config 文件（extensions_config.json 等）时: `git show HEAD:path` + 只打自己的块替换 + `hash-object -w` + `update-index --cacheinfo` 外科暂存, 别把对方未提交的 learnings 条目一起带上。
+- **[2026-09-18] cpa Task 9 两个小坑:** ① plan 代码快照里 `_run` 的 with_text 门控写成绝对页号(`i+page_offset<=text_pages`)——会静默弄坏 Task 8 末页兜底(last_pages=2 时 page_offset>3 → 尾窗页全无 text);同 plan 自己的注释「窗口内相对序号门控」才是真不变量,实现以注释/既有行为为准,勿照抄快照(cerebrum 2026-09-17「plan≠已落地代码」又一实例)。② Windows host 向 docker 容器拷文件: `MSYS_NO_PATHCONV=1 docker cp` 的源路径必须写 Windows 形式(`D:/xx/yy`),写 `/d/xx` docker.exe 解析成 `D:\d\xx` 报错;且 `docker exec ls /tmp/...` 的容器路径同样会被 MSYS 翻译成本机 Temp 路径——exec 也要加 NO_PATHCONV。
+
+## Key Learnings (2026-09-18 ontostudio S1 Task3)
+- 本机 Docker BuildKit 容器内直连 pypi.org 会无限挂死(18min+, uv cache 0B)——构建 Python 镜像一律传 UV_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/; 诊断: `docker buildx history ls` 看 job 状态
+- `docker compose config` 不带 --profile 会**静默省略**带 profiles 的服务(config 输出里根本没有), 验证 profiled 服务必须 `--profile <name>`
+- compose 显式点名服务(如 `up -d svc` / `build svc`)自动激活其 profiles, 无需 --profile
+- compose 插值(${VAR:-})在 `-f docker/...` 调用下读 docker/.env 而非根 .env; 根 .env 变量要进容器须靠 env_file: ../.env 注入(代码侧再做回退)
+- slim 镜像无 curl, healthcheck 用 `python -c "import urllib.request; urllib.request.urlopen(...)"` 惯例
+- ontostudio backend 路由前缀保留原 gateway 路径 /api/extensions/{ontology,doc-graph}; nginx /api/ontostudio/ = 整服务根(剥前缀), 前端 S2 拼 base 即可
+
+## Do-Not-Repeat (2026-09-18)
+- 写 Dockerfile 时注释说了"先拷依赖清单"却漏写实际 COPY 行——写完 RUN/COPY 链后必须 `docker build` 或至少通读验证一次, 注释≠语句
+- prettier --write 到「此前未 prettier 化」的文件(contract-price/api.ts)会把整文件重排(~125 行 churn)卷进 feature commit——写前先跑 prettier --check 摸底,提交说明/汇报里注明 churn 属纯格式化 (2026-09-18, cpa Task12)
+- **[2026-09-18] Task14 P5 验收实测 (cpa seed-rules):** §9.2 FAIL/BLOCKED——生产 roles_x(bbox x-band 列映射)在新 OCR(rotation 版,带 cell_bboxes)的 BOQ 表上把价格列映射到粘连格(p115 现浇构件钢筋 '68. 911346. 15'),关 roles_x 重放同行='834.61'→反算=旧基线 1346.15 精确一致;388/450 行、263/384 items。§9.1/3/4/5/6/7 PASS(缓存重解析 9s vs 769s=85x;分类 29 类全填,同名 7 分类)。教训: ①给 cpa CLI 传参必须用 /app/backend/.venv/bin/python(裸 python 无 httpx); ②docker cp 源路径用 Windows 形式 D:/..., exec 内路径配 MSYS_NO_PATHCONV=1, host Git Bash /tmp 需 cygpath -w 转; ③验收基线对照要区分"rows_extracted"与 DB items(旧 450/384 两个口径); ④只读取证法: 重放生产 _extract_from_tables 于 OCR 缓存,与 DB 逐行对账,再单变量切换 roles_x 定位根因——不改一行代码即可定案。
+
+## Key Learnings + Do-Not-Repeat (2026-09-18 — bug-3400 cpa roles_x 逐行回退)
+
+- **cpa 实弹 fixture 钉法**: 桂北 OCR 缓存可经容器 `/app/backend/.venv/bin/python` + `ContractStore(get_config()).get_ocr_cache("ocr/{sha256}.json")` + `from_cache` 拉出真实 rows+cell_bboxes——写回归测试前先 dump 实弹行, 别照 runbook 叙事构造(runbook 的 p115 叙事与真实 qty/列布局有出入,真实行 '59','现浇构件钢筋','t','0.62','1235.00','765.70','9%','','68. 911346. 15','834.61')。
+- **roles_x 失败机理两型**: ①粘连格 x 落进价格带抢占(p115 型, 逐行 index 回退可救); ②种子 price_total 列本身锚在空列(3 行合并表头 collapse 后 idx9 空列),真合价在右邻 idx10, x-dist 0.053~0.0609 卡 tol=0.06 边缘,且单价在无分隔粘连格('9697.45556.99')、qty 粘连在 '824.79 1.20'(dist 0.0647)——p94 型双路径皆死, index 回退救不了(只升级不降级门), 需空格不占 band/邻列算术再推导(旧 `_rediscover_taxed_price_col` 同类, Task5 已删勿复活,须 controller 授权)。
+- **回退设计要点**: 触发三条件(该行无可用价格+有数字信号+列号重映射可用)中「只升级不降级」门是防止把 x 拿到的有效格换成列号空串的关键; `_row_price_usable` 是 cli finalize 判定的镜像,两处必须同步。
+- **test_config/test_vectorizer 已不红**: cerebrum 2026-09-17 记录的 v1 残留红已失效, 现全 skill 套件 74 passed/1 skipped。
+
+## Addendum 2026-09-18 (bug-3400 二阶段列带语义化)
+
+- **两段式认领实现要点**: 单一 pair 列表排序后跑两轮(pass1 skip空格/pass2全量),共用 `used_cells` 一格一角色——不要两次独立贪心(pass2 会重认领 pass1 已用格)。空格映射产出空值本无信息,让稍远非空格优先是纯升级;p94 row16 空格 dist0.004 抢占真合价 dist0.053 即实例。
+- **空格不定义带**: `_roles_x_from_data` 全空角色必须整体省略而非给任意带——省略使 `_seed_use_x`/`looks_like_continuation` 落回列号分支(安全);附带发现 p119设备表/p133人员表原被 roles_x 误吞为货物续表,列带语义化后正确归位 unmatched(零静默)。
+- **残余丢行两类已画像**: tol边缘(真值 dist 0.0609/0.0652 卡 0.06)+无分隔粘连单价('9697.45556.99' 认领进带→validate按设计拒)。修复需算术再推导/自适应tol——controller 仍排除待裁, 勿擅自做。
+
+## Addendum 2026-09-18b (bug-3400 终轮算术重推)
+
+- **两段式认领的副作用必须配量文本守卫**: 非空格优先认领会把单位文本('m2')推进空 qty 带, parse_qty('m2')=2 经反算产 1.31/2=0.66 假价——守卫=首数字前含字母/汉字的格不作量(cli._qty_text_ok), 且必须同时堵 反算/quantity 字段/失败判据(_raw_price_usable) 三处。
+- **算术重推排 ordered pairs**: (unit=i,total=j) 有序遍历天然覆盖反向; ±2% 门天然排除含税↔不含税混对(9% 差); 右删 tie-break (consistent,failing_hit,tj,ui) 在多对同过门时把学习推向真含税列——p94 守卫后 (9,10,3) 含税对胜出正因 (4,5) 失败覆盖门变严掉出。学习质量依赖失败集纯度: 量文本守卫先行的学习才干净。
+- **门定案**: 一致≥3 且 ≥50% 失败行; 失败==2 时 ≥60% 数据行; 量级守卫 合价≥单价 ≥80% 双解析行。
+
+- **ontostudio 独立后端 :8005 的 system:access 门 vs 主系统 gateway 会话 JWT 不兼容 (2026-09-18, S2-T1 发现, 待 T3 解决):** ontostudio/backend/app/auth.py 的鉴权从 JWT claims 读 roles/role/role_name/permissions（含 admin/superadmin 才放行 system:access），而主系统 gateway 会话 JWT claims 只有 {sub,exp,iat,ver}（backend/app/gateway/auth/jwt.py:36，无任何 role claim）→ 带主系统 cookie 打 :8005 一律 403 "Permission denied: system:access"。S2-T3 容器轮验证数据加载前必须先定 auth 路径：①:8005 按 sub 查 DB 取角色；②前端走 extensions JWT 登录（/api/extensions/auth/*）；③nginx 注入服务 token。判定：curl 带 cookie 打 /api/extensions/ontology/registry 看 403 文案。
+- **vendored 代码里的 process.env.NODE_ENV 移回 Vite 用 define 承接，不改文件本体 (2026-09-18, S2-T1):** ontostudio explorer/ 是从 Vite 移植进 Next 的（import.meta.env.DEV→process.env.NODE_ENV 改写了 3 处），回流 Vite 时在 vite.config.ts 加 `define: {"process.env.NODE_ENV": JSON.stringify(mode==="production"?"production":"development")}` + src/vite-env.d.ts 里 `declare var process`（tsconfig types 只留 vite/client 不引 @types/node）——类型+运行时都过，vendored 保持字节级零改动。
+- **主系统 login 接口真实路径是 /api/v1/auth/login/local（OAuth2 form 表单），非 JSON body (2026-09-18):** csrf_middleware._AUTH_EXEMPT_PATHS 全是 /api/v1/auth/* 前缀；curl 脚本登录用 `--data-urlencode username/password`（OAuth2PasswordRequestForm），无 Origin 头时豁免跨域检查。permissions 联调通道：POST :2026/api/v1/auth/login/local → cookie jar → 带 cookie 打目标端点。
+- [cpa-ocr-cache-forensics] CPA OCR缓存取证三通道: tables[(pg,0)].cell_bboxes=逐格归一化[x0,y0,x1,y1](空格全0,按row/col join); cells本身无几何; page_texts是撕裂格恢复通道(p2表内'378.'/'239.64'丢失但页文本层有'378.3'/'239.64'); 合计行(Σq=2764.59,Σt=9501826.12)可做全表算术校验锚。左右半区分界x逐行漂移,不可用单一全局x切分,须按表头锚bbox做x-band。
+- [container-wolf-not-mounted] deer-flow-gateway只bind-mount backend/config/skills等子集,.wolf不在内;探针脚本要docker cp到容器/tmp再exec,结果docker cp回host;Git Bash调docker exec必须MSYS_NO_PATHCONV=1(否则/app→C:/Program Files/Git/app)。
+
+### 调价表双半区仲裁律 (2026-09-19, bug-3400第十二层)
+- 调价表(种子qty锚含'调整'=结构信号)左右双半区: 左=原合同(自身算术自洽!), 右=调整后; colspan使列位逐行漂移, 全局x带必错
+- 仲裁修复五律: 右半区地板裁候选(最左锚带-0.05) / 三元组+virt闭合0.2%(Decimal精确律, 2%会让伪量借真量自证) / 费用碎片用种子exclude词表×表头bbox列带排除 / 撕裂数量跨格重组须精确闭合守卫 / 伪q清洗=无精确闭合+值与左半区重复→置空
+- 量撕裂('378.')反算价无法独立佐证(一切闭合复用同一撕裂量)→ 强制needs_review且不吃粘连洗白
+- 测调价表修复必须用真实OCR缓存逐格重建fixture(含cell_bboxes+碎表头4行), 合成header会造出假roles_x带
+- Git Bash docker cp: MSYS_NO_PATHCONV=1时host侧也要用Windows路径(D:/...), /d/...会GetFileAttributesEx失败
+- [2026-09-19] cpa 管线取证/修复双定律: (1) OCR 页文本层(page_texts, dict[page_no]->str, from_cache)保留了表格 cells 撕裂/丢失的全部关键数字——表内物理缺失不等于不可恢复, 页文本×表格格 join(精确闭合 ≤1e-6·t + 页文本双字面 + 唯一性)是安全的恢复通道(bug-3401 L13, p2r6 378.3/3496 与 p2r8 239.64 均由此恢复); (2) 任何『≈某关系』的算术校验层(如含税升级 t≈u×(1+税率))严禁 ±2% 宽窗口+兜底菜单扫全行候选——打印值关系必须用分位级精确闭合(≤max(0.011,1e-5·t)), 宽窗口会把行内无关金额误判为关系成立并改写正确值(桂北 7 行 129.38→10.68, bad_rate 0.0175); (3) 修复层一律 adj-gated(种子 qty 锚含「调整」), 无页文本时安全退化为 L12 行为(fixture 断言); 无 bbox 的退化【不是】旧行为原样保留——仲裁对调价表在无锚带时不安全(见 2026-09-19b 降级守卫), 改写行强制 needs_review。
+
+## Key Learnings + Do-Not-Repeat (2026-09-19b — bug-3400 评审 major: 调价表无 bbox 仲裁降级守卫)
+
+- **『安全退化为旧行为』的声明必须对着「旧行为对这类表本来就是病」的场合重新自检**(评审镜头第 1 问实证): 调价表 adj=True 而 cell_bboxes 缺失时 roles_x=None → adj_floor=None → 候选不裁左半区, ×1.14 窗口捕获左半区原合价(3559.22/4313.46 伪签名)且第九层 `_row_confirmed` 佐证被左半区自洽伪三元组满足(232.65×3410≈801479.25)——仲裁把伪值全盖 `validation_status=ok`, 正是本层要治的 DB 错值签名。探针 `.wolf/tmp/rev_nobbox_probe.py`(cell_bboxes=None 真实 fixture)复现: 6 行伪值/伪量全部 ok。
+- **修法(落在 cli.py)**: ① L6 含税仲裁改写行 + ② L10 含税升级改写行, 凡 `adj and adj_floor is None` 一律 `needs_review` + reason『待核验: 调价表无坐标带,仲裁降级』+ 内部标 `_adj_degraded`; ③ 第九层分层循环首位 pop `_adj_degraded` 强制 needs_review——必须放在 `_nr0` 粘连洗白**之前**, 否则直取期 needs_review 的行会被洗回 ok; ④ L13 缺量恢复门 `adj and pt_nums` 补 `adj_floor is not None`(无锚带时候选未裁左半区, 反推量的几何语义不存在, 不注量)。值保留(人工可核), 只诚实化状态。
+- **Do-Not-Repeat**: 降级路径测试别只测「无页文本」组合——评审指出 `adj+无bbox` 与 `adj+无bbox+有页文本` 组合当时零 fixture; 两个组合现在都有断言(`test_no_bboxes_degraded_arbitration_needs_review` / `test_no_bboxes_with_page_texts_same_guard`)。回归门复核: 桂北 400 行 replay BAD_RATE 0/400(容器 `docker cp` 到 /tmp 跑, .wolf/tmp 不在 bind-mount 内)。
+
+## Addendum 2026-09-19c (复验环境律 — docker exec 路径转换)
+- **Git Bash 会把 `docker exec ... sh -c '/app/...'` 的单引号参数转换成 `C:/Program Files/Git/app/...`(容器内报 `sh: 1: C:/Program: not found`)——docker exec 也必须前置 `MSYS_NO_PATHCONV=1`**, 不只 docker cp。`.wolf/tmp` 并未 bind-mount 进 deer-flow-gateway(任务文本有误): 容器内跑探针 = host 写 `.wolf/tmp/` → `MSYS_NO_PATHCONV=1 docker cp D:\...\script.py deer-flow-gateway:/tmp/` → exec 跑 `/tmp/`。单文档重解析入口: `scripts.cli.run_parse(force_key=MinIO对象key)`(按 file_hash 反查 key 可避开命令行传中文)。
