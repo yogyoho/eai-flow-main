@@ -94,33 +94,33 @@ export function ExportPage() {
         <Panel title="命名空间映射">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-border border-b">
+              <tr className="border-border bg-muted/50 border-b">
                 {["前缀", "命名空间", "域"].map((head) => (
-                  <th key={head} className="text-muted-foreground px-3.5 py-2.5 text-left text-xs font-medium">
+                  <th key={head} className="text-muted-foreground px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
                     {head}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
-              <tr className="border-border/60 border-b">
-                <td className="px-3.5 py-2.5 font-mono text-xs">dg</td>
-                <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs break-all">
+            <tbody className="divide-border divide-y">
+              <tr className="">
+                <td className="px-4 py-3 font-mono text-xs">dg</td>
+                <td className="text-muted-foreground px-4 py-3 font-mono text-xs break-all">
                   https://ontology.eai-flow.com/doc_graph#
                 </td>
-                <td className="px-3.5 py-2.5">投标域</td>
+                <td className="px-4 py-3">投标域</td>
               </tr>
-              <tr className="border-border/60 border-b">
-                <td className="px-3.5 py-2.5 font-mono text-xs">eia</td>
-                <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs break-all">
+              <tr className="">
+                <td className="px-4 py-3 font-mono text-xs">eia</td>
+                <td className="text-muted-foreground px-4 py-3 font-mono text-xs break-all">
                   https://ontology.eai-flow.com/eia#
                 </td>
-                <td className="px-3.5 py-2.5">环评域</td>
+                <td className="px-4 py-3">环评域</td>
               </tr>
               <tr>
-                <td className="px-3.5 py-2.5 font-mono text-xs">owl / sh / rdf</td>
-                <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">W3C 标准</td>
-                <td className="px-3.5 py-2.5">—</td>
+                <td className="px-4 py-3 font-mono text-xs">owl / sh / rdf</td>
+                <td className="text-muted-foreground px-4 py-3 font-mono text-xs">W3C 标准</td>
+                <td className="px-4 py-3">—</td>
               </tr>
             </tbody>
           </table>

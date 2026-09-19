@@ -46,10 +46,10 @@ export function ModelerPage() {
         description="元数据描述项对齐 GB/T 48000.3 附录 A · 公理以 OWL 2 RL 表达 · 保存后 SHA 热重载"
         actions={
           <>
-            <button className="border-border bg-card hover:bg-accent h-8 rounded-lg border px-3 text-xs font-medium shadow-xs">
+            <button className="border-border bg-card hover:bg-accent h-9 rounded-md border px-4 text-sm font-medium shadow-xs">
               校验建模面
             </button>
-            <button className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-medium">
+            <button className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium">
               保存并热重载
             </button>
           </>

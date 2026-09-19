@@ -33,7 +33,7 @@ function FilterSelect({ label }: { label: string }) {
   return (
     <select
       aria-label={label}
-      className="border-input bg-card focus:border-primary h-8 rounded-lg border px-2.5 text-xs shadow-xs outline-none"
+      className="border-input bg-card focus:border-primary h-9 rounded-md border px-3 text-sm shadow-xs outline-none"
     >
       <option>{label}</option>
     </select>
@@ -49,10 +49,10 @@ export function EntitiesPage() {
         description="点击任意行打开实体抽屉：属性、证据链与合并历史（骨架：数据面待 kernel P2）"
         actions={
           <>
-            <button className="border-border bg-card hover:bg-accent h-8 rounded-lg border px-3 text-xs font-medium shadow-xs">
+            <button className="border-border bg-card hover:bg-accent h-9 rounded-md border px-4 text-sm font-medium shadow-xs">
               导出当前视图
             </button>
-            <button className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-medium">
+            <button className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium">
               手工录入实体
             </button>
           </>
@@ -70,12 +70,12 @@ export function EntitiesPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-border border-b">
+              <tr className="border-border bg-muted/50 border-b">
                 {["实体名称", "类型", "规范化名", "置信度", "状态", "证据", "更新时间"].map(
                   (head, index) => (
                     <th
                       key={head}
-                      className={`text-muted-foreground px-3.5 py-2.5 text-xs font-medium whitespace-nowrap ${index >= 3 && index <= 5 ? "text-right" : "text-left"}`}
+                      className={`text-muted-foreground px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${index >= 3 && index <= 5 ? "text-right" : "text-left"}`}
                     >
                       {head}
                     </th>
@@ -83,29 +83,29 @@ export function EntitiesPage() {
                 )}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-border divide-y">
               {ROWS.map((row) => (
                 <tr
                   key={row.name}
-                  className="border-border/60 hover:bg-accent/60 cursor-pointer border-b transition-colors"
+                  className="hover:bg-muted/50 cursor-pointer transition-colors"
                 >
-                  <td className="px-3.5 py-2.5 font-medium">{row.name}</td>
-                  <td className="px-3.5 py-2.5">
+                  <td className="px-4 py-3 font-medium">{row.name}</td>
+                  <td className="px-4 py-3">
                     <span className="border-border text-muted-foreground rounded-full border px-2 py-0.5 text-[11px]">
                       {row.etype}
                     </span>
                   </td>
-                  <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">
+                  <td className="text-muted-foreground px-4 py-3 font-mono text-xs">
                     {row.norm}
                   </td>
-                  <td className="px-3.5 py-2.5 text-right tabular-nums">
+                  <td className="px-4 py-3 text-right tabular-nums">
                     {row.confidence.toFixed(2)}
                   </td>
-                  <td className={`px-3.5 py-2.5 text-xs font-medium ${STATUS_TONE[row.status]}`}>
+                  <td className={`px-4 py-3 text-xs font-medium ${STATUS_TONE[row.status]}`}>
                     {row.status}
                   </td>
-                  <td className="px-3.5 py-2.5 text-right tabular-nums">{row.mentions}</td>
-                  <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">
+                  <td className="px-4 py-3 text-right tabular-nums">{row.mentions}</td>
+                  <td className="text-muted-foreground px-4 py-3 font-mono text-xs">
                     {row.updated}
                   </td>
                 </tr>

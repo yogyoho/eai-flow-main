@@ -48,7 +48,7 @@ export function IngestPage() {
             <div className="text-muted-foreground mt-0.5 text-xs">
               支持 PDF / DOCX / MD · 自动识别域与文档类型 · 幂等可重投
             </div>
-            <button className="bg-primary text-primary-foreground mt-3 h-8 rounded-lg px-3.5 text-xs font-medium">
+            <button className="bg-primary hover:bg-primary/90 text-primary-foreground mt-3 h-9 rounded-md px-4 text-sm font-medium">
               选择文件
             </button>
           </div>
@@ -80,30 +80,30 @@ export function IngestPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="border-border border-b">
+                <tr className="border-border bg-muted/50 border-b">
                   {["文档", "域", "状态", "实体", "关系", "证据"].map((head, index) => (
                     <th
                       key={head}
-                      className={`text-muted-foreground px-3.5 py-2.5 text-xs font-medium whitespace-nowrap ${index >= 3 ? "text-right" : "text-left"}`}
+                      className={`text-muted-foreground px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${index >= 3 ? "text-right" : "text-left"}`}
                     >
                       {head}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-border divide-y">
                 {TASKS.map((task) => (
                   <tr key={task.doc} className="border-border/60 hover:bg-accent/60 border-b">
-                    <td className="px-3.5 py-2.5 font-medium">{task.doc}</td>
-                    <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">{task.domain}</td>
-                    <td className="px-3.5 py-2.5">
+                    <td className="px-4 py-3 font-medium">{task.doc}</td>
+                    <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{task.domain}</td>
+                    <td className="px-4 py-3">
                       <Chip tone={task.status === "完成" ? "primary" : task.status === "排队中" ? "gray" : "warning"}>
                         {task.status}
                       </Chip>
                     </td>
-                    <td className="px-3.5 py-2.5 text-right tabular-nums">{task.e}</td>
-                    <td className="px-3.5 py-2.5 text-right tabular-nums">{task.r}</td>
-                    <td className="px-3.5 py-2.5 text-right tabular-nums">{task.m}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{task.e}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{task.r}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{task.m}</td>
                   </tr>
                 ))}
               </tbody>

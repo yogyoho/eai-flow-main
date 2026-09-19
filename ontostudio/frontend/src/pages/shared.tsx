@@ -25,7 +25,7 @@ export function PageHeader({
       </span>
       <h1 className="font-display text-2xl font-black tracking-wide">{title}</h1>
       {actions ? <div className="ml-auto flex gap-2">{actions}</div> : null}
-      <p className="text-muted-foreground w-full text-[13px]">{description}</p>
+      <p className="text-muted-foreground mt-1 w-full text-sm">{description}</p>
     </div>
   );
 }
@@ -70,7 +70,7 @@ export function Panel({
   return (
     <section
       className={cn(
-        "border-border bg-card rounded-lg border shadow-xs",
+        "border-border bg-card rounded-xl border shadow-sm",
         className,
       )}
     >

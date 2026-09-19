@@ -120,7 +120,7 @@ export function AppShell() {
 
   return (
     <div className="bg-background flex h-full min-h-0">
-      <aside className="border-border bg-card flex w-56 flex-none flex-col border-r">
+      <aside className="border-sidebar-border bg-sidebar flex w-56 flex-none flex-col border-r">
         <div className="border-border flex items-center gap-2.5 border-b px-4 py-4">
           <span className="bg-primary text-primary-foreground grid h-8 w-8 flex-none place-items-center rounded-lg text-[15px] font-black">
             本
@@ -150,15 +150,15 @@ export function AppShell() {
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-[13px] font-medium transition-colors",
                     route === id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                   )}
                 >
                   <span
                     className={cn(
                       "w-4 flex-none font-mono text-[10px]",
                       route === id
-                        ? "text-primary-foreground/70"
+                        ? "text-primary"
                         : "text-muted-foreground/80",
                     )}
                   >

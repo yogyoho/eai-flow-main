@@ -28,7 +28,7 @@ export function ValidationPage() {
         actions={
           <>
             <button
-              className="border-border bg-card hover:bg-accent h-8 rounded-lg border px-3 text-xs font-medium shadow-xs"
+              className="border-border bg-card hover:bg-accent h-9 rounded-md border px-4 text-sm font-medium shadow-xs"
               onClick={() =>
                 downloadReport({
                   shacl: data?.shacl,
@@ -39,7 +39,7 @@ export function ValidationPage() {
               导出报告 JSON
             </button>
             <button
-              className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-medium"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium"
               onClick={() => validateQuery.refetch()}
             >
               {validateQuery.isFetching ? "校验中…" : "重新校验"}

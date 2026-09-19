@@ -49,10 +49,10 @@ export function ReasoningPage() {
         description="单引擎：owlrl 闭包（graph:entailment）+ SPARQL CONSTRUCT 派生（每规则独立 named graph，named graph 归属即触发轨迹）"
         actions={
           <>
-            <button className="border-border bg-card hover:bg-accent h-8 rounded-lg border px-3 text-xs font-medium shadow-xs" onClick={() => inferQuery.refetch()}>
+            <button className="border-border bg-card hover:bg-accent h-9 rounded-md border px-4 text-sm font-medium shadow-xs" onClick={() => inferQuery.refetch()}>
               dry 运行规则
             </button>
-            <button className="bg-primary text-primary-foreground h-8 rounded-lg px-3 text-xs font-medium" onClick={() => inferQuery.refetch()}>
+            <button className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 rounded-md px-4 text-sm font-medium" onClick={() => inferQuery.refetch()}>
               {inferQuery.isFetching ? "推理中…" : "全量重算"}
             </button>
           </>
@@ -90,28 +90,28 @@ export function ReasoningPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="border-border border-b">
+              <tr className="border-border bg-muted/50 border-b">
                 {["规则", "派生谓词", "named graph", "派生数", "状态"].map((head, index) => (
                   <th
                     key={head}
-                    className={`text-muted-foreground px-3.5 py-2.5 text-xs font-medium whitespace-nowrap ${index === 3 ? "text-right" : "text-left"}`}
+                    className={`text-muted-foreground px-4 py-3 text-xs font-semibold uppercase tracking-wider whitespace-nowrap ${index === 3 ? "text-right" : "text-left"}`}
                   >
                     {head}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-border divide-y">
               {RULES.map((rule) => (
-                <tr key={rule.name} className="border-border/60 hover:bg-accent/60 cursor-pointer border-b">
-                  <td className="px-3.5 py-2.5">
+                <tr key={rule.name} className="hover:bg-muted/50 cursor-pointer">
+                  <td className="px-4 py-3">
                     <b className="font-medium">{rule.name}</b>
                     <div className="text-muted-foreground text-[11.5px]">{rule.desc}</div>
                   </td>
-                  <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">{rule.pred}</td>
-                  <td className="text-muted-foreground px-3.5 py-2.5 font-mono text-xs">{rule.graph}</td>
-                  <td className="px-3.5 py-2.5 text-right tabular-nums">{inferQuery.data?.rule_counts?.[rule.name] ?? 0}</td>
-                  <td className="px-3.5 py-2.5">
+                  <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.pred}</td>
+                  <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.graph}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{inferQuery.data?.rule_counts?.[rule.name] ?? 0}</td>
+                  <td className="px-4 py-3">
                     <Chip tone="primary">现行</Chip>
                   </td>
                 </tr>
