@@ -321,6 +321,8 @@ def _read_docx(path: Path) -> str:
 
 # ── 流水线编排 ──
 
+from app.extensions.eia_samples.extract_ontology import extract_ontology  # noqa: E402 (四类目标抽取, 见 extract_ontology.py)
+
 OUTLINE_SCHEMA = "eia-sample-outline/v1"
 
 
@@ -340,6 +342,7 @@ def run_extract(source_path: str, source_kind: str = "auto") -> dict:
         "source_chars": len(text),
         "chapters": extract_outline(text),
         "candidates": extract_entities(text),
+        "ontology": extract_ontology(text),
     }
 
 

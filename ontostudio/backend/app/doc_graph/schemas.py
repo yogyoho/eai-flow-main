@@ -26,7 +26,29 @@ class MentionPayload(BaseModel):
 
 # 全枚举 Literal（bid 4 etype + eia 5 etype, project 共享 → 8; bid 4 谓词 + eia 3 谓词 → 7）。
 # 共享 payload 只约束全集, 域内合法性由 *Extraction 子类校验。
-_ETYPE = Literal["project", "bidder", "goods", "qualification", "mine", "org", "place", "sensitive_point"]
+_ETYPE = Literal[
+    "project",
+    "bidder",
+    "goods",
+    "qualification",
+    "mine",
+    "org",
+    "place",
+    "sensitive_point",
+    # eia 四类目标扩展（kernel P5, 2026-09-20）：①章节 ②逻辑链节点 ③阈值/条款 ④佐证
+    "report",
+    "chapter",
+    "section",
+    "pollution_source",
+    "pollutant",
+    "treatment_measure",
+    "emission_standard",
+    "monitoring",
+    "standard_threshold",
+    "regulation_clause",
+    "evidence_requirement",
+    "evidence_artifact",
+]
 _PREDICATE = Literal[
     "bidder_of_project",
     "bidder_supplies_goods",
@@ -35,6 +57,20 @@ _PREDICATE = Literal[
     "org_compiles_project",
     "org_commissions_project",
     "org_develops_project",
+    # eia 四类目标扩展（治理合规链/影响链/章节/阈值/佐证）
+    "has_chapter",
+    "has_subsection",
+    "part_of",
+    "treated_by",
+    "governed_by",
+    "monitored_by",
+    "emitted_as",
+    "threatens",
+    "impact_to",
+    "specifies_threshold",
+    "cites_clause",
+    "requires_evidence",
+    "evidenced_by",
 ]
 
 
@@ -79,6 +115,20 @@ _EIA_PREDICATE_ROLES: MappingProxyType[str, tuple[str, str]] = MappingProxyType(
         "org_compiles_project": ("org", "project"),
         "org_commissions_project": ("org", "project"),
         "org_develops_project": ("org", "project"),
+        # 四类目标扩展（角色对 = 抽取器输出契约）
+        "has_chapter": ("report", "chapter"),
+        "has_subsection": ("chapter", "section"),
+        "part_of": ("section", "chapter"),
+        "treated_by": ("pollution_source", "treatment_measure"),
+        "governed_by": ("treatment_measure", "emission_standard"),
+        "monitored_by": ("emission_standard", "monitoring"),
+        "emitted_as": ("pollution_source", "pollutant"),
+        "threatens": ("pollutant", "sensitive_point"),
+        "impact_to": ("pollution_source", "sensitive_point"),
+        "specifies_threshold": ("emission_standard", "standard_threshold"),
+        "cites_clause": ("report", "regulation_clause"),
+        "requires_evidence": ("treatment_measure", "evidence_requirement"),
+        "evidenced_by": ("treatment_measure", "evidence_artifact"),
     }
 )
 
@@ -138,6 +188,26 @@ class EiaExtraction(ExtractionPayload):
 
     domain: Literal["eia"]
 
-    domain_etypes: ClassVar[frozenset[str]] = frozenset({"project", "mine", "org", "place", "sensitive_point"})
+    domain_etypes: ClassVar[frozenset[str]] = frozenset(
+        {
+            "project",
+            "mine",
+            "org",
+            "place",
+            "sensitive_point",
+            "report",
+            "chapter",
+            "section",
+            "pollution_source",
+            "pollutant",
+            "treatment_measure",
+            "emission_standard",
+            "monitoring",
+            "standard_threshold",
+            "regulation_clause",
+            "evidence_requirement",
+            "evidence_artifact",
+        }
+    )
     domain_predicates: ClassVar[frozenset[str]] = frozenset(_EIA_PREDICATE_ROLES)
     predicate_roles: ClassVar[MappingProxyType[str, tuple[str, str]]] = _EIA_PREDICATE_ROLES

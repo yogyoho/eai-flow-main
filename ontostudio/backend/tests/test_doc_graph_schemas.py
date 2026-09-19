@@ -177,12 +177,22 @@ def test_literal_and_domain_tables_consistent():
 
 
 def test_registry_yaml_enums_superset_of_schemas_literals():
-    """registry doc_graph.yaml 枚举必须 ⊇ schemas 全枚举 Literal——防 yaml 增益而 schemas 未跟的静默死规则。"""
-    yaml_path = Path(__file__).resolve().parents[1] / "app" / "ontology" / "registry" / "doc_graph.yaml"
-    doc = yaml.safe_load(yaml_path.read_text(encoding="utf-8"))
-    props = {p["name"]: p for ot in doc["object_types"] for p in ot["properties"]}
-    yaml_etypes = set(props["etype"]["enum"])
-    yaml_preds = set(props["predicate"]["enum"])
+    """registry 各域 yaml 枚举并集必须 ⊇ schemas 全枚举 Literal——防 schemas 增益而 yaml 未跟的静默死规则。
+
+    schemas._ETYPE/_PREDICATE 是跨域全集（doc_graph + eia 等），逐域 yaml 只持本域切片；
+    校验基准 = 全部域 yaml 的并集。
+    """
+    registry_dir = Path(__file__).resolve().parents[1] / "app" / "ontology" / "registry"
+    yaml_etypes: set[str] = set()
+    yaml_preds: set[str] = set()
+    for yml in sorted(registry_dir.glob("*.yaml")):
+        doc = yaml.safe_load(yml.read_text(encoding="utf-8")) or {}
+        for ot in doc.get("object_types", []):
+            for prop in ot.get("properties", []):
+                if prop.get("name") == "etype" and prop.get("enum"):
+                    yaml_etypes.update(prop["enum"])
+                if prop.get("name") == "predicate" and prop.get("enum"):
+                    yaml_preds.update(prop["enum"])
     assert set(get_args(schemas._ETYPE)) <= yaml_etypes
     assert set(get_args(schemas._PREDICATE)) <= yaml_preds
     assert "org_involved_in" in yaml_preds  # 推理派生谓词（不落库, 仅事实空间）
