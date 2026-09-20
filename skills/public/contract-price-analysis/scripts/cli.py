@@ -17,6 +17,7 @@ import logging
 import math
 import os
 import re
+import statistics
 import time
 from typing import Any, Optional
 
@@ -1125,7 +1126,8 @@ def _matched_table_pass(table, doc_uri, hit, active_in, cat_in, page_texts, item
             (adj, adj_fee_xs, adj_floor),
         )
     # 价格校验/finalize(seed 角色: price_unit_raw→unit_price, price_untaxed_raw→
-    # price_untaxed)。Outlier detection stays at cluster level (_build_groups_db)。
+    # price_untaxed)。Outlier detection stays at cluster + document-baseline level
+    # (_build_groups_db, F3b 文档基线分层)。
     # bug-3400 终轮: 表级算术价列重推。触发=表内 ≥2 行价格双失败(健康表零触发);
     # 学到 (unit,total,qty) 列后失败行按学到的列直接取价;单失败行走单行回退。
     # bug-3400 第四层: 失败=含税单价不可自得(unit 无效,且 total+qty 反算不过
@@ -1825,13 +1827,37 @@ def _cluster_sample_text(goods_name: str, tech_params: dict | None) -> str:
     return f"{goods_name} {cat}".strip()
 
 
+_DOC_BASELINE_DEVIATION = 0.12  # 文档基线相对簇中位偏离 >= 此值 → 整文档免逐行离群判定
+_DOC_EXEMPT_MIN_SAMPLE = 3  # 文档基线豁免的最低样本数(<3 的文档中位被任单行拖着走,立不住"价位体系")
+_DOC_MIN_SAMPLE = 4  # 文档内 ok/corrected 样本达到此数才用文档自身 IQR 逐行改判
+
+
 def _build_groups_db(result, db_items: list) -> list:
     """Turn clustering output + DB items into cluster group dicts.
 
     Price stats use ONLY ok/corrected items' unit_price; needs_review items
     still cluster by name (grouped with their goods) but their price is
     excluded from min/max/avg. is_outlier is derived from the ok/corrected
-    price distribution.
+    price distribution, with the F3b document-baseline layering:
+
+    - A whole document whose own baseline (ok/corrected price median) deviates
+      >= _DOC_BASELINE_DEVIATION from the cluster median is a different price
+      regime (region/time/brand), not a mis-scrape — all its rows are exempt
+      from per-row flagging and a ``doc_baseline_exempt`` note is appended to
+      stats["baseline_notes"] (persisted inside cpa_clusters.stats JSONB).
+      Exemption needs >= _DOC_EXEMPT_MIN_SAMPLE prices: a 2-row document's
+      median is dragged by any single row, so without the floor its own
+      mis-scrape would buy it a fake "regime" exemption.
+    - Rows of non-exempt documents with >= _DOC_MIN_SAMPLE ok/corrected prices
+      are re-judged against their OWN document's Q3+1.5*IQR fence (keeps the
+      in-contract mis-scrape detection); smaller documents fall back to the
+      cluster fence.
+    - A cluster with < 3 ok/corrected prices can mathematically never report
+      an outlier (IQR collapses to 0) — an ``insufficient_sample`` note is
+      recorded so "no outliers" is not silently mistaken for "checked, clean".
+
+    stats["outlier_count"] is synced to the final per-row judgments (the raw
+    cluster-fence count would contradict the exempted/reflagged rows).
     """
     groups: list[dict] = []
     for label in sorted(l for l in set(result.labels) if l != -1):
@@ -1845,9 +1871,80 @@ def _build_groups_db(result, db_items: list) -> list:
         ]
         stats = compute_stats(prices)
         threshold = stats.get("outlier_threshold")
+        cluster_median = stats.get("median")
+
+        # F3b 文档基线分层: 簇内先按 document 聚合,文档内 ok/corrected 价中位
+        # = 文档基线;偏离簇中位 >= 12% → 整文档是独立价位体系,免逐行判定。
+        by_doc: dict = {}
+        for m in members:
+            by_doc.setdefault(m.get("document_id"), []).append(m)
+        doc_prices: dict = {}
+        doc_fences: dict = {}
+        exempt_docs: set = set()
+        notes: list[dict] = []
+        for doc_id, ms in by_doc.items():
+            dps = [
+                m["unit_price"]
+                for m in ms
+                if m.get("validation_status") in ("ok", "corrected")
+                and m.get("unit_price") is not None
+            ]
+            doc_prices[doc_id] = dps
+            if len(dps) >= _DOC_MIN_SAMPLE:
+                doc_fences[doc_id] = compute_stats(dps).get("outlier_threshold")
+            if not dps or not cluster_median:
+                continue
+            baseline = statistics.median(dps)
+            deviation = abs(baseline - cluster_median) / abs(cluster_median)
+            if deviation >= _DOC_BASELINE_DEVIATION and len(dps) >= _DOC_EXEMPT_MIN_SAMPLE:
+                exempt_docs.add(doc_id)
+                notes.append(
+                    {
+                        "type": "doc_baseline_exempt",
+                        "document_id": str(doc_id) if doc_id is not None else None,
+                        "document_name": next(
+                            (m.get("document_name") for m in ms if m.get("document_name")), None
+                        ),
+                        "baseline": round(baseline, 2),
+                        "cluster_median": cluster_median,
+                        "deviation": round(deviation, 4),
+                        "rows_exempt": len(ms),
+                        "message": (
+                            f"文档基线 {baseline:.2f} 偏离簇中位 {cluster_median:.2f} 达 "
+                            f"{deviation:.0%}(≥12%),整文档视为独立价位体系,免逐行离群判定"
+                        ),
+                    }
+                )
+        if len(prices) < 3:
+            # 反向失效治理: n<3 时 IQR 恒塌缩,fence=max 数学上永不报离群——
+            # 明示"样本不足,未判离群",别让用户把"没判"当成"查过没问题"。
+            notes.append(
+                {
+                    "type": "insufficient_sample",
+                    "count": len(prices),
+                    "message": "簇内 ok/corrected 样本不足(<3),IQR 判定数学上无法报离群,本簇未判离群",
+                }
+            )
+
+        n_outliers = 0
         for m in members:
             p = m.get("unit_price")
-            m["is_outlier"] = bool(threshold is not None and p is not None and p > threshold)
+            if m.get("document_id") in exempt_docs:
+                m["is_outlier"] = False
+            else:
+                doc_threshold = doc_fences.get(m.get("document_id"))
+                if p is not None and doc_threshold is not None:
+                    # 文档内样本足够(_DOC_MIN_SAMPLE) → 相对自身文档基线改判
+                    # (保住"合同内抓错"能力)
+                    m["is_outlier"] = bool(p > doc_threshold)
+                else:
+                    # 样本不足 → 沿用簇判定
+                    m["is_outlier"] = bool(threshold is not None and p is not None and p > threshold)
+            if m["is_outlier"]:
+                n_outliers += 1
+        stats["outlier_count"] = n_outliers
+        if notes:
+            stats["baseline_notes"] = notes
         groups.append(
             {"name": result.representatives[label], "category": "未分类", "stats": stats, "items": members}
         )
@@ -2269,16 +2366,16 @@ async def run_cluster(trigger: str = "manual") -> int:
         async with async_session() as session:
             rows = (
                 await session.execute(
-                    select(CpaItem)
+                    select(CpaItem, CpaDocument.file_name)
                     .join(CpaDocument, CpaItem.document_id == CpaDocument.id)
                     # 无 confirm 门槛:所有「已解析」(parsed/needs_review)文档的货物
                     # 都参与聚类。价格质量由 item 级 validation_status 把关(needs_review
                     # 归组但不计入均值),不再依赖 doc 级 confirm_status 门槛。
                     .where(CpaDocument.parse_status.in_(["parsed", "needs_review"]))
                 )
-            ).scalars().all()
+            ).all()
             db_items = []
-            for r in rows:
+            for r, doc_name in rows:
                 # category 同时进 tech_params(聚类样本文本可见)与顶层键(Excel 读取)。
                 tp = dict(r.tech_params or {})
                 if r.category and "category" not in tp:
@@ -2294,6 +2391,10 @@ async def run_cluster(trigger: str = "manual") -> int:
                         # "float * Decimal" TypeErrors.
                         "unit_price": float(r.unit_price) if r.unit_price is not None else None,
                         "validation_status": r.validation_status,
+                        # F3b 文档基线分层: 逐行需知道所属文档(文档内 ok/corrected
+                        # 价中位=文档基线,偏离簇中位>=12% 整文档免逐行离群判定)。
+                        "document_id": r.document_id,
+                        "document_name": doc_name,
                     }
                 )
         logger.info("Cluster phase: %d items from parsed docs", len(db_items))
