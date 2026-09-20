@@ -52,6 +52,12 @@ class ItemOut(ORMBase):
     cluster_id: UUID | None = None
     source_contract_no: str | None = None
     is_outlier: bool = False
+    # EAI-CUSTOM F3a 离群语义分层: 每行附带簇统计(非 ORM 列,由 crud 查询链路
+    # 一条 JOIN 聚合预取填充,零 N+1;无簇/统计缺失时保持 None)。前端据此把
+    # 「整文档成片离群」降级为琥珀色跨合同基线差异,真散点行保持红色异常。
+    cluster_median: float | None = None  # 簇 stats.median(ok/corrected 单价中位)
+    deviation_pct: float | None = None  # 本行单价相对簇中位的有符号比率(0.12=高12%)
+    cluster_doc_count: int | None = None  # 簇内来源文档数(distinct document_id)
     # v2 traceability + validation
     source_page: int | None = None
     source_bbox: list | None = None

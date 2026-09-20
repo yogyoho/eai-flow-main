@@ -178,11 +178,14 @@ def _collapse_header(rows: list, peek: int = 3) -> tuple:
 
     A no-token row BEFORE any header is treated as a title (skipped), not data
     — so a '设备清单' title above the real header doesn't abort the scan.
-    Returns (merged_header, header_rows) where header_rows is the number of
-    leading rows to skip (titles + headers) before data begins.
-    """
+    Returns (merged_header, header_rows, header_row_idxs):
+      merged_header: 折叠后的单行表头;
+      header_rows: 数据区前的吞掉行数(标题行 + 表头行),extract 用它跳过;
+      header_row_idxs: 被合并进表头的行索引集合——区别于吞掉的标题行。
+        bug-3428 F1a: 标题关键词匹配必须排除这些行('物资名称'类列头不是表名),
+        但标题行(表名所在)不在集合内、仍参与标题匹配。"""
     if not rows:
-        return [], 0
+        return [], 0, []
     all_tokens = [t for tokens in ROLE_TOKENS.values() for t in tokens]
     header_idxs: list[int] = []
     last_consumed = 0
@@ -203,7 +206,7 @@ def _collapse_header(rows: list, peek: int = 3) -> tuple:
         else:
             last_consumed = ri + 1  # leading title row (no token) — skip, consume
     if not header_idxs:
-        return [], last_consumed
+        return [], last_consumed, []
     maxcols = max(len(rows[i]) for i in header_idxs)
     merged = []
     for ci in range(maxcols):
@@ -214,7 +217,7 @@ def _collapse_header(rows: list, peek: int = 3) -> tuple:
                 if v and v not in parts:
                     parts.append(v)
         merged.append(" ".join(parts))
-    return merged, last_consumed
+    return merged, last_consumed, header_idxs
 
 
 def _map_roles(header: list) -> dict:
@@ -260,7 +263,7 @@ def classify(rows: list, keywords: list[str] | None = None, cell_bboxes: list | 
     bar from (name + price) to (name + keyword). payment/acceptance hints
     still win first.
     """
-    header, header_rows = _collapse_header(rows)
+    header, header_rows, _hdr_idxs = _collapse_header(rows)
     roles = _map_roles(header)
     roles_x = _roles_x_from_data(rows, cell_bboxes, roles, header_rows) if _bboxes_usable(rows, cell_bboxes) else None
     hdr_text = " ".join(header)
@@ -431,14 +434,37 @@ def _norm_header(s: str) -> str:
     return "".join(out)
 
 
-def _title_text(rows: list, limit: int = 4) -> str:
-    """前若干行的归一化联合文本(标题/表名关键词在这里找)。"""
-    blob = " ".join((c or "") for r in rows[:limit] for c in r)
+def _title_text(rows: list, limit: int = 4, exclude_rows=None) -> str:
+    """前若干行的归一化联合文本(标题/表名关键词在这里找)。
+
+    exclude_rows: 要排除的行索引集合(表头行,由 _collapse_header 返回)——
+    bug-3428 F1a: '物资名称'类列头格会被 seed 标题关键词('物资')假命中,
+    劫持 seed 选择;标题关键词只应匹配表名,表头行必须从标题文本剔除。
+    吞掉的标题行(表名所在)不在集合内,仍参与匹配。"""
+    skip = set(exclude_rows or ())
+    blob = " ".join(
+        (c or "") for ri, r in enumerate(rows[:limit]) if ri not in skip for c in r
+    )
     return _norm_header(blob)
+
+
+def _first_anchor_col(norm_cols: list, anchors: list, banned: list) -> int | None:
+    """第一个锚点命中的表头列索引(忽略占用;空格跳过、禁用词守卫同主循环)。
+    无命中返回 None。复合表头拆分(bug-3428 F1b)用它探测 spec 锚的落格。"""
+    for ci, h in enumerate(norm_cols):
+        if not h:
+            continue
+        if any(b and b in h for b in banned):
+            continue
+        if any(a in h for a in anchors):
+            return ci
+    return None
 
 
 def _match_one_seed(rows: list, seed: dict, header: list) -> tuple[dict, dict] | None:
     """单 seed 列锚定: 角色→第一个锚点命中的未占用列(exclude 守卫)。
+    复合表头拆分(bug-3428 F1b): name/spec 锚命中同一表头格、且左邻格表头为
+    空串时重绑 name→左邻格, spec→本格(两列共用一个表头格的形态)。
     返回 (roles, score_detail) 或 None(确认条件不满足)。"""
     norm_cols = [_norm_header(h) for h in header]
     excl = seed.get("exclude") or {}
@@ -457,6 +483,26 @@ def _match_one_seed(rows: list, seed: dict, header: list) -> tuple[dict, dict] |
             if any(a in h for a in anchors):
                 roles[role] = ci
                 break
+    # 复合表头拆分(门控缺一不可): (1)spec 锚的第一落格与 name 同格 ci——name
+    # 先占格导致 spec 静默失绑、品名错拿规格文本; (2)左邻格(ci-1)表头为空串——
+    # 真品名列表头空、'材质/规格'类复合词格落右列, 是两列共用表头格的形态指纹。
+    # 重绑 name→ci-1, spec→ci;左邻格已被其他角色占用则不动(防拆错)。
+    # roles_x 由调用方以 roles 为输入重建(_roles_x_from_data), 天然兼容新绑定。
+    if "name" in roles and "spec" not in roles:
+        spec_anchors = [a for a in (_norm_header(t) for t in (seed["columns"].get("spec") or [])) if a]
+        if spec_anchors:
+            spec_ci = _first_anchor_col(
+                norm_cols, spec_anchors, [_norm_header(t) for t in (excl.get("spec") or [])]
+            )
+            ci = roles["name"]
+            if (
+                spec_ci == ci
+                and ci >= 1
+                and norm_cols[ci - 1] == ""
+                and (ci - 1) not in roles.values()
+            ):
+                roles["name"] = ci - 1
+                roles["spec"] = ci
     if "name" not in roles or not ("price_unit" in roles or "price_total" in roles):
         return None
     return roles, {"roles_n": len(roles)}
@@ -468,10 +514,11 @@ def match_seed(rows: list, seeds: list[dict]) -> tuple[dict, dict, int] | None:
     返回 (seed, roles{role: col_idx}, header_rows) 或 None(无 seed 确认)。"""
     if not rows or not seeds:
         return None
-    header, header_rows = _collapse_header(rows)
+    header, header_rows, hdr_idxs = _collapse_header(rows)
     if not header:
         return None
-    title = _title_text(rows)
+    # 标题文本排除表头行(F1a): 列头词('物资名称')不是表名,不得参与标题命中
+    title = _title_text(rows, exclude_rows=hdr_idxs)
     best: tuple[int, int, int, dict, dict] | None = None  # (title_hit, roles_n, -anchors_n, seed, roles)
     for seed in seeds:
         got = _match_one_seed(rows, seed, header)

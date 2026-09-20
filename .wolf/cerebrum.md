@@ -23,6 +23,7 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- **[2026-09-20] cpa 元数据 F2 兜底门配方(bug-3429):** 表格 cell 合同编号兜底(方案A)只在文本路 contract miss 时触发(cli._extract_project_fields_with_fallback 加 tables 参数),门序①整格含 审批编号/招标编号 跳过(招标流水号诱饵)②'项目合同编号'先于'合同编号'搜(子串免重复命中)③同 cell 冒号必需 ④冒号后**整段**(非前导 alnum-run!)过 ^[A-Za-z0-9][A-Za-z0-9\-]{5,}$ 且 dash段>=3——上浦粘连值 '…-011-20 包合同段项目经理部' 是全段含中文才被挡,若只取前导 alnum-run 会误收截断号'…-011-20'。_find split-line 守卫: 候选值行含任何已知标签词(全 label 族+审批/招标诱饵)→拒收(砂石料 '合同名称'→'局审批编号' 误提取);守卫只挂 split-line 分支,same-line 正则不动(5 文档真实缓存回放其余全档零影响)。验证法: /app 是 bind-mount,代码改完直接容器内 python 跑 scripts.project_fields 对 ocr/{hash}.json 缓存回放比 DB 基线即可端到端验收,无需重解析。
 - **cpa 单文档重解析/审计的容器内调用姿势 (2026-09-19, bug-3413):** gateway 容器内跑 contract-price-analysis 脚本必须 PYTHONPATH=/app/skills/public/contract-price-analysis(cli.py 用 from scripts.xxx 绝对导入)。单文档重解析=--force-key <MinIO对象key>(storage_uri 去掉 s3://bucket/ 前缀),--re-ocr 才强制重OCR;桂北137页 re-OCR 实测约18分钟(P1估15)。重解析会 delete+reinsert cpa_items(id/run_id/cluster_id 会变,比特一致性 diff 须排除这三列只比业务值列)。
 
 
@@ -2179,3 +2180,10 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **人工核验回流锚词的落点判别(2026-09-19, cpa Task 10):** ItemsView 的修正(改价)与采纳(✓置ok)都走 `PATCH /items/{id}` → `crud.update_item`,批量采纳走 `batch_validate_items`——L4 锚词暂存挂这两处,不碰 skill 管线。反推表头词=读 `ocr/{file_hash}.json` 缓存按 (page,table_idx) 定位表,数据行内找 ≈确认价的列,向上跳过数值行取该列首个非数值文本(内层表头);任何失败静默跳过,核验请求绝不因暂存挂掉。
 - **并发会话红测试判别(2026-09-19):** 全套件红了不相关文件时,先 grep 被测模块与改动模块的 import 交集——`test_personal_outputs` 红是 docmgr/bug-4954 工作流在途改动,与 contract_price 零交集,不修不阻塞,报告里写明归属即可。
 - [2026-09-20] cpa 扩展 async crud 新增任何 IO 的铁律: 阻塞段(MinIO read/大 JSON 解析)必须拆成独立同步函数并经 asyncio.to_thread 卸载, 测试要 mock storage 以外的真实线程断言(threading.get_ident != loop 线程)才能锁住回归——mock 掉 storage 后 blocking-io 门禁看不到该路径。密钥类字段(llm_key)定式=write-only: GET 回 LLM_KEY_MASK 掩码占位(None 保持 None 区分未配置), PUT 收到掩码原样回传即还原已存真值(前端 SettingsView/ContractsView 是整包 spread 回传, 掩码哨兵天然往返安全), 落盘与子进程注入始终用真值。掩码必须接在**响应**边界两侧(GET+PUT 都过 mask_llm_key)——PUT 只 resolve 不 mask 时, 客户端 PUT 回掩码即可从响应体读回明文真值(bug-3422, 复验发现)。
+
+## Key Learnings + Do-Not-Repeat (2026-09-20 — bug-3428 F1a/F1b 匹配器两修)
+
+- **cpa 表头行 ≠ 标题行**: `_collapse_header` 吞掉的前置行分两类——被合并的表头行(≥2 非空格+含 role token,现随第三返回值 `header_row_idxs` 暴露)与标题/单格 caption 行('工程量清单'整行,被吞但不是表头)。seed 标题关键词匹配(`_title_text`)必须只剔前者: 列头词('物资名称')会被 msm-sc 的'物资'假命中劫持 seed 选择(bug-3428 上浦型); 但标题行若也被剔,真表名关键词丢失。fixture 想钉"标题行仍参与"必须让关键词只出现在标题行、表头/数据行都没有,否则测试无判别力。
+- **复合表头形态指纹**: OCR 把两列共用的表头格('材质/规格')落在右列、真品名列表头为空串时,name 锚先占格导致 spec 静默失绑+品名错拿规格文本。拆分门控必须双条件同时满足(spec 锚第一落格==name 格 AND 左邻表头归一化后为空串),左邻非空(如'类别')绝不拆——合成 fixture 已钉反例。
+- **129 表回放是 cpa 匹配器改动的唯一安全证明**: 改 match_seed 前先跑 `.wolf/tmp/fix/replay_match.py`(容器内, docker cp 到 /tmp; /app 不挂 .wolf)存基线,改后 diff。命中映射含 (seed_id, roles, header_rows) 三元——roles 变了也算变化。固化回归 `tests/test_seed_match_regression.py` + `fixtures/seed_hit_replay.json` 容器内全量跑、宿主机 skip(OCR 缓存不在宿主机)。JSON 固化会把 roles 的 tuple 变 list,比对侧必须同形(`[[r,c] for ...]`)。
+- **容器内 heredoc 跑 python -c 的坑**: f-string 里 `\"` 转义在 sh -c 包装下直接 SyntaxError——多行容器内脚本一律写 .wolf/tmp/fix/ 再 docker cp,别硬塞 heredoc。

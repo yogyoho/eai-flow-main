@@ -163,7 +163,7 @@ def try_llm_fallback(table, seeds, doc_uri, llm_cfg, page_texts=None, cat_in=Non
         rows = list(getattr(table, "rows", None) or [])
         if not rows:
             return None, None, {}
-        header, header_rows = _collapse_header(rows)
+        header, header_rows, _hdr_idxs = _collapse_header(rows)
         if not header:
             return None, None, {}  # 无表头(续表等)——列标注无输入
         roles_idx = annotate_roles(

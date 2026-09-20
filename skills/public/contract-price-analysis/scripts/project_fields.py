@@ -4,7 +4,11 @@ Scanned-contract cover/front pages usually carry a form like
 ``项目名称：XXX`` / ``工程地点：YYY``. The OCR service joins text boxes with
 newlines, so a label and its value may share a line (``项目名称：桂北数据中心``)
 or split across two boxes (``项目名称`` / ``桂北数据中心``). We try same-line
-first, then an exact-label line whose value is the next non-empty line.
+first, then an exact-label line whose value is the next non-empty line (guarded:
+a next line that itself looks like a label is a neighbor label, not a value).
+Contract numbers may additionally live inside a parsed table cell
+(``合同编号：XXX``) invisible to the text layer — ``find_contract_from_tables``
+covers that as the text-path miss fallback (方案A, forensics-verified).
 
 Anything we cannot anchor on returns None — the management UI offers manual
 entry as the fallback (the pipeline marks such docs needs_review elsewhere).
@@ -53,6 +57,18 @@ _DATE_AFTER_LABEL = {
 _CONTRACT_LINE = {
     lbl: re.compile(rf"{lbl}\s*[:：]\s*([A-Za-z0-9\-]+)") for lbl in _CONTRACT_LABELS
 }
+# F2a 表格 cell 兜底(方案A,取证仿真已验证): '项目合同编号' 先于 '合同编号' 搜,
+# 避免子串重复命中;含审批/招标编号字样的格是招标/审批流水号诱饵,整格跳过。
+_TABLE_CONTRACT_LABELS = ["项目合同编号", "合同编号"]
+_TABLE_CONTRACT_BAD = ("审批编号", "招标编号")
+# 全值形态: 字母数字开头,主体仅字母数字+连字符,总长>=6;dash 段数另门(>=3)。
+_CONTRACT_SHAPE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9\-]{5,}$")
+# F2b split-line 守卫: 候选值行本身含任何已知标签词 → 它是相邻标签不是值
+# (砂石料 '合同名称' 下一行 '局审批编号' 被误当项目名)。
+_KNOWN_LABELS = frozenset(
+    set(_NAME_LABELS) | set(_LOC_LABELS) | set(_CONTRACT_LABELS)
+    | set(_SUPPLIER_LABELS) | set(_DATE_LABELS) | set(_TABLE_CONTRACT_BAD)
+)
 
 
 def _clean(v: str | None) -> str | None:
@@ -72,12 +88,16 @@ def _find(text: str, labels: list[str]) -> str | None:
             if val:
                 return val
     # split-line fallback: a line that IS the label (trailing colon ok) → value
-    # is the next non-empty line.
+    # is the next non-empty line — unless that line itself contains a known
+    # label word (F2b: it's a neighboring label, e.g. 砂石料 '局审批编号').
     lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
     labelset = set(labels)
     for i, ln in enumerate(lines):
         if ln.rstrip(":：、 ") in labelset and i + 1 < len(lines):
-            val = _clean(lines[i + 1])
+            cand = lines[i + 1]
+            if any(lbl in cand for lbl in _KNOWN_LABELS):
+                continue
+            val = _clean(cand)
             if val:
                 return val
     return None
@@ -88,6 +108,40 @@ def _find_contract(text: str) -> str | None:
         m = _CONTRACT_LINE[lbl].search(text)
         if m:
             return m.group(1)
+    return None
+
+
+def find_contract_from_tables(tables) -> str | None:
+    """F2a: contract number hiding in a parsed table cell (文本路 miss 时兜底).
+
+    砂石料的编号只在 p10 会签表 cell ('项目合同编号：2GS-…') 里,文本层扫不到。
+    门(按序,方案A): ①整格含 '审批编号'/'招标编号' → 跳过(流水号诱饵);
+    ②'项目合同编号' 先于 '合同编号' 搜(避免子串重复命中);③同 cell 内冒号必需;
+    ④冒号后整段须过 _CONTRACT_SHAPE 且 dash 段数>=3 —— 上浦 p3 OCR 粘连截断值
+    ('…-011-20 包合同段项目经理部')由④挡住。取首个命中。
+
+    tables 是 TableExtract(.rows)或等价 dict({"rows": …});纯只读,不触
+    table_classifier 的 seed 语义。
+    """
+    for t in tables or []:
+        rows = getattr(t, "rows", None)
+        if rows is None and isinstance(t, dict):
+            rows = t.get("rows")
+        for row in rows or []:
+            for cell in row:
+                txt = str(cell)
+                if any(b in txt for b in _TABLE_CONTRACT_BAD):
+                    continue
+                for lbl in _TABLE_CONTRACT_LABELS:
+                    i = txt.find(lbl)
+                    if i < 0:
+                        continue
+                    rest = txt[i + len(lbl):].lstrip()
+                    if not rest.startswith((":", "：")):
+                        continue
+                    val = rest[1:].strip()
+                    if val and _CONTRACT_SHAPE.match(val) and len(val.split("-")) >= 3:
+                        return val
     return None
 
 
@@ -174,8 +228,31 @@ if __name__ == "__main__":  # ponytail self-check: regex must catch common forms
         ({"1": "乙方\n（盖章）"}, (None, None, None, None, None)),
         # 买方/卖方 form (补充协议): 卖方=seller=supplier; 买方 must NOT match
         ({"1": "买方：某总承包公司\n卖方：某钢铁贸易有限公司"}, (None, None, None, "某钢铁贸易有限公司", None)),
+        # F2b: split-line 下一行仍是标签 → 拒收(砂石料 '合同名称'→'局审批编号')
+        ({"1": "合同名称\n局审批编号\n合同编号：HT-2025-001\n乙方：某公司\n签订日期：2025年6月18日"},
+         (None, None, "HT-2025-001", "某公司", "2025-06-18")),
     ]
     for pt, want in cases:
         got = extract_project_fields(pt)
         assert got == want, f"{pt!r} → {got}, want {want}"
+
+    # F2a: 表格 cell 冒号兜底(方案A) — 真实缓存取证结论固化为自检
+    from types import SimpleNamespace
+
+    def _t(rows):
+        return SimpleNamespace(page_no=1, table_idx=0, rows=rows)
+
+    assert find_contract_from_tables(
+        [_t([["项目合同编号：2GS-YCXM-CL-CG-024-2019"]])]  # 砂石料 p10 真实格
+    ) == "2GS-YCXM-CL-CG-024-2019"
+    assert find_contract_from_tables([_t(
+        [["招标文件审批编号：2GS-ZB-2019-038 供方单位全称"],  # 诱饵格先行
+         ["项目合同编号：2GS-YCXM-CL-CG-024-2019"]],
+    )]) == "2GS-YCXM-CL-CG-024-2019"
+    assert find_contract_from_tables(
+        [_t([["项目合同编号：2GS-SPXM-CL-CG-011-20 包合同段项目经理部"]])]  # 上浦粘连
+    ) is None
+    assert find_contract_from_tables([_t([["项目合同编号"]])]) is None  # 无冒号
+    assert find_contract_from_tables([_t([["合同编号：HT-2025"]])]) is None  # dash 段数<3
+    assert find_contract_from_tables(None) is None
     print("ok")

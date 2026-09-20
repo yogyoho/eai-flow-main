@@ -28,7 +28,7 @@ from scripts.llm_fallback import try_llm_fallback
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
 from scripts.price_validator import parse_qty, validate_price
-from scripts.project_fields import extract_project_fields
+from scripts.project_fields import extract_project_fields, find_contract_from_tables
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
 from scripts.table_classifier import (
@@ -98,13 +98,21 @@ async def _extract_project_fields_with_fallback(
     ocr_url: str,
     front_texts: dict,
     store: ContractStore | None = None,
+    tables: list | None = None,
 ) -> tuple:
     """元数据提取 + 末页兜底(设计 §3): 前3页正则 miss 乙方/签订日期时,
     补 OCR 末2页重试(签字页常在末尾,补充协议尤甚;仅 miss 触发,成本有界)。
 
+    F2a 表格 cell 兜底(方案A): 文本路合同编号 miss 时扫已解析 tables 的
+    '合同编号：值' 冒号格(纯内存,只增 miss 档,文本路命中/其余档零影响)。
+
     file_bytes 允许为 None(OCR 缓存命中路径不持有原文件): 仅当兜底真的需要
     发起时才经 store 惰性下载;两者皆无或下载失败则放弃兜底,维持前页结果。"""
     fields = extract_project_fields(front_texts)
+    if fields[2] is None and tables:  # F2a: 文本路合同编号 miss → 表格 cell 兜底
+        contract_no = find_contract_from_tables(tables)
+        if contract_no:
+            fields = fields[:2] + (contract_no,) + fields[3:]
     if fields[3] and fields[4]:  # supplier, sign_date 都有 → 不兜底
         return fields
     fb = file_bytes
@@ -1789,7 +1797,7 @@ def _extract_from_tables(
                 active = None  # 断链:不匹配的表后不继承
                 if candidate:
                     # 候选数据表但无 seed 确认 → 记详情供 UI 建规则(设计 §1.2/§9.6);泛型标签判为 goods_price 的无 seed 表同样必须可见(否则 parsed+0提取静默零)
-                    header, _hr = _collapse_header(rows)
+                    header, _hr, _hdr_idxs = _collapse_header(rows)
                     title = ""
                     for r in rows[:3]:
                         non_empty = [c for c in r if (c or "").strip()]
@@ -2073,7 +2081,7 @@ async def _process_one_doc(
             # 才经 store 惰性下载原 PDF(Task 6 命中路径无 file_bytes 不变量)。
             project_name, project_location, contract_no, supplier, sign_date = (
                 await _extract_project_fields_with_fallback(
-                    file_bytes, key, cfg.ocr_service_url, page_texts, store=store
+                    file_bytes, key, cfg.ocr_service_url, page_texts, store=store, tables=tables
                 )
             )
             # Persist preview PNGs for every page that has extracted items, so

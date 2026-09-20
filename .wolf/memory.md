@@ -19497,3 +19497,84 @@
 | 00:38 | Edited backend/tests/test_contract_price_llm_injection.py | modified test_put_response_masked_no_readback() | ~380 |
 | 00:38 | Edited backend/app/extensions/contract_price/routers.py | modified CUSTOM() | ~88 |
 | 00:45 | 复验: 全部门禁重跑全绿(backend 47p/1skip既有, 技能131p/1skip, pnpm typecheck, ruff, 桂北 bad_rate=0.0, 调价表11/11) + 修 bug-3422(PUT 响应边界漏接掩码会回吐 llm_key 真值, 持 system:access 可 PUT 掩码读回明文) | backend/app/extensions/contract_price/routers.py, backend/tests/test_contract_price_llm_injection.py, .wolf/buglog.json | 全部门禁绿 | ~4k |
+| 00:54 | 三层重构落地提交5a1e5f514(P1几何+P2 LLM+P3生态,8代理,评审3 major已修,复验11/11过) | 全栈 | done | ~1400k |
+| 00:55 | Session end: 184 writes across 40 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 72 reads | ~243585 tok |
+| 06:59 | 4份新合同活体测试workflow派发(wf_55e54feb): 砂石料17MB/木饰面石材/钢材签字版/上浦钢筋, ingest→4并行审计→报告 | w33jb504c | running | ~0 |
+| 06:59 | Session end: 184 writes across 40 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 72 reads | ~243585 tok |
+| 23:05 | test4: 4新合同(砂石料17M扫描/木饰面石材/钢材签字版/上浦钢筋) upload+parse+cluster 全通; 3 parsed+1 needs_review(签字版首页字段缺失,设计内); 58 items; 上浦命中 msm-sc 种子但提取语义正确(螺纹钢); OCR缓存全命中仅47s | cpa_documents/cpa_items | ok | ~30k |
+| 07:3x | test4单文档审计: 砂石料扫描件 4/4行oracle全OK(合计15424000精确闭环+p6表交叉印证), unmatched 5条全诚实记录(p4/p6为价目特征表已记录非漏记) | .wolf/tmp/test4/audit_doc4.py | pass_with_unmatched | ~30k |
+| 07:15 | cpa test4 上浦钢筋单档审计: 8/8行oracle OK(u×q=t精确), unmatched_tables 6条与缓存逐一对上, 4张<4列表按cli.py判据不记=设计内; matched_seed=木饰面石材物资清单(列角色族正确) | .wolf/tmp/test4/audit_shangpu.py | pass_with_unmatched | ~9k |
+| 07:20 | test4 单文档审计 木饰面石材合同(52bce87c): 27行=23 oracle-OK+1真错(r8 存535应258, OCR尾列下移一行)+r7 NULL诚实needs_review; unmatched_tables 诚实(p23信用表记录,p11无价目特征) | .wolf/tmp/test4/audit_msm.py | verdict=fail | ~30k |
+| 07:40 | test4单文档审计:钢材采购合同-签字版(41ddcdd1) 19行oracle+人工cells复核 | .wolf/tmp/test4/audit_doc4.py | FAIL: r18单价75217.39应为5190(oracle循环自证漏检);r3/8/9/10数量截断30.06vs30.068等;unmatched诚实 | ~30k |
+| 07:21 | Session end: 184 writes across 40 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 72 reads | ~243585 tok |
+| 11:27 | Session end: 184 writes across 40 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 72 reads | ~243585 tok |
+| 11:27 | Edited C:/Users/admin/.claude/projects/D--eai-eai-flow-main/aab8d6c8-8830-44d3-99b5-925b730ffb02/workflows/scripts/cpa-ui-issues-forensics-wf_09d52c98-284.js | 2→2 lines | ~16 |
+| 11:28 | Session end: 185 writes across 41 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 73 reads | ~243601 tok |
+| 11:33 | cpa取证B: 上浦6条螺纹钢is_outlier根因=跨文档混簇(2021/2022/2025四合同同簇40行,IQR上须5575,上浦整文档5740-5920全中)+spec_model不进聚类特征;聚类键=name+category(DN one-hot),阈值=Q3+1.5IQR仅上尾;线材n=2簇IQR=0永不报出为独立隐患 | skills/public/contract-price-analysis/scripts/{cli.py,clustering/*,stats.py} + cpa_items/cpa_clusters | RCA完成,未改代码 | ~18k |
+| 11:36 | 取证C:砂石料合同编号未提取根因=审批单表单盒子布局OCR乱序(编号跨2行+标签孤行),text正则同线冒号不中,tail兜底只OCR末2页不达p10会签表;修法=表格cell冒号兜底(p10项目合同编号:全号) | .wolf/tmp/issue/probe_c_contract_no.py,probe_c2_fallback_sim.py,scripts/project_fields.py | verified | ~30k |
+| 11:43 | issue-A取证: 上浦/木饰面spec全空根因(标题假命中选错seed+复合表头), 探针.wolf/tmp/issue/probe_spec_a-d.py, bug-3428 | table_classifier.py | 未修,方案已验证 | ~30k |
+| 11:47 | 4问题取证完成: A匹配器标题含列头+复合表头/B跨年份混簇/C编号在p10表cell缓存未利用 | wciwnt9r1 | done | ~310k |
+| 11:48 | Session end: 185 writes across 41 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 79 reads | ~246561 tok |
+| 12:48 | F1a-F4六项修复workflow派发(wf_e318e49e): 匹配器两修+编号兜底+离群分层+回填验证,用户已确认全部实施 | w0y1irozp | running | ~0 |
+| 12:48 | Session end: 185 writes across 41 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 79 reads | ~246561 tok |
+| 12:55 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified Returns() | ~135 |
+| 12:55 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | 2→2 lines | ~18 |
+| 12:55 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | 2→2 lines | ~24 |
+| 12:56 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified _title_text() | ~133 |
+| 12:56 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | 2→2 lines | ~26 |
+| 12:56 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | 6→7 lines | ~71 |
+| 12:56 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~20 |
+| 12:56 | Edited skills/public/contract-price-analysis/scripts/llm_fallback.py | inline fix | ~18 |
+| 12:58 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | added 1 condition(s) | ~685 |
+| 13:04 | Created skills/public/contract-price-analysis/tests/test_seed_match_regression.py | — | ~1953 |
+| 13:04 | Edited skills/public/contract-price-analysis/tests/test_seed_match_regression.py | inline fix | ~20 |
+| 13:05 | Edited skills/public/contract-price-analysis/tests/test_seed_match_regression.py | modified items() | ~124 |
+| 13:05 | Edited skills/public/contract-price-analysis/tests/test_seed_match_regression.py | 7→8 lines | ~94 |
+| 13:06 | Edited skills/public/contract-price-analysis/tests/test_seed_match_regression.py | modified test_match_seed_title_row_still_counts_after_f1a() | ~126 |
+| 13:20 | F1a 标题排除表头行落地(_collapse_header 三返回+_title_text exclude_rows, 4 调用点同步), 129 表回放仅上浦p5/t0 翻转 msm-sc→sp-gj(spec→c1) | table_classifier.py/cli.py/llm_fallback.py | 128 表零变化 | ~2k |
+| 13:25 | F1b 复合表头拆分落地(_first_anchor_col+双门控重绑), 129 表回放新增木饰面p2/t0 name2→1/spec→2, 其余零变化 | table_classifier.py | 验收达成 | ~1.5k |
+| 13:30 | 新增 test_seed_match_regression.py(7 测试)+fixtures/seed_hit_replay.json, host 套件 137 passed/2 skipped(基线131/1 只增不减), backend cpa 47 passed/1 skipped | tests/ | 全绿 | ~1k |
+| 13:25 | Edited skills/public/contract-price-analysis/scripts/project_fields.py | 6→10 lines | ~170 |
+| 13:25 | Edited skills/public/contract-price-analysis/scripts/project_fields.py | expanded (+12 lines) | ~209 |
+| 13:25 | Edited skills/public/contract-price-analysis/scripts/project_fields.py | modified _find_contract() | ~602 |
+| 13:26 | Edited skills/public/contract-price-analysis/scripts/project_fields.py | modified _t() | ~373 |
+| 13:26 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~24 |
+| 13:26 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _extract_project_fields_with_fallback() | ~247 |
+| 13:26 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→5 lines | ~78 |
+| 13:27 | Created skills/public/contract-price-analysis/tests/test_project_fields_f2.py | — | ~1777 |
+| 13:28 | Edited skills/public/contract-price-analysis/tests/test_project_fields_f2.py | modified test_table_cell_hit_real_shashiao_p10() | ~326 |
+| 13:28 | Edited skills/public/contract-price-analysis/tests/test_project_fields_f2.py | 4→4 lines | ~36 |
+| 13:28 | Edited skills/public/contract-price-analysis/tests/test_project_fields_f2.py | 3→3 lines | ~55 |
+| 13:28 | Edited skills/public/contract-price-analysis/tests/test_project_fields_f2.py | 3→3 lines | ~55 |
+| 13:29 | Edited skills/public/contract-price-analysis/scripts/project_fields.py | 4→4 lines | ~52 |
+| 13:30 | Edited skills/public/contract-price-analysis/tests/test_project_fields_f2.py | modified _t_of() | ~12 |
+| 13:36 | F2 落地: cpa project_fields 表格cell合同编号兜底(方案A四门)+_find split-line标签守卫; bug-3429; 12单测; 全套件149p/2s; 5文档容器回放ALL OK | skills/public/contract-price-analysis/scripts/{project_fields,cli}.py tests/test_project_fields_f2.py | done | ~40k |
+| 13:44 | Edited backend/app/extensions/contract_price/schemas.py | expanded (+6 lines) | ~146 |
+| 13:44 | Edited backend/app/extensions/contract_price/crud.py | modified _attach_cluster_stats() | ~856 |
+| 13:44 | Edited backend/app/extensions/contract_price/crud.py | modified get_cluster_with_items() | ~152 |
+| 13:44 | Edited backend/app/extensions/contract_price/crud.py | expanded (+6 lines) | ~354 |
+| 13:45 | Edited frontend/src/extensions/contract-price/types.ts | 4→9 lines | ~120 |
+| 13:48 | Created frontend/src/extensions/contract-price/outlier-semantics.ts | — | ~1929 |
+| 13:48 | Edited backend/app/extensions/contract_price/crud.py | 3→4 lines | ~64 |
+| 13:49 | Edited frontend/src/extensions/contract-price/outlier-semantics.ts | modified itemToStatRow() | ~193 |
+| 13:49 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | expanded (+6 lines) | ~121 |
+| 13:49 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 4→9 lines | ~150 |
+| 13:49 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | CSS: F3a | ~332 |
+| 13:50 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | expanded (+13 lines) | ~296 |
+| 13:50 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | expanded (+7 lines) | ~226 |
+| 13:50 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | modified toLocaleString() | ~397 |
+| 13:50 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | 5→6 lines | ~51 |
+| 13:51 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | inline fix | ~12 |
+| 13:51 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | expanded (+6 lines) | ~131 |
+| 13:51 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | expanded (+19 lines) | ~315 |
+| 13:51 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | CSS: F3a, documentId | ~179 |
+| 13:52 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | 5→6 lines | ~105 |
+| 13:52 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | expanded (+6 lines) | ~89 |
+| 13:52 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | CSS: detailItems | ~162 |
+| 13:52 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | CSS: F3a | ~560 |
+| 13:52 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | 5→6 lines | ~52 |
+| 13:54 | Created backend/tests/test_contract_price_outlier_stats.py | — | ~2136 |
+| 13:55 | Edited backend/app/extensions/contract_price/crud.py | 12→16 lines | ~230 |
+| 13:56 | Created frontend/tests/unit/extensions/contract-price/outlier-semantics.test.ts | — | ~2869 |
+| 14:00 | F1-F4修复workflow用户暂停(w0y1irozp stopped): F1/F2/F3a三代理完成自验过(改动未提交在工作区), F3b/F4/评审未跑 | wf_e318e49e | paused | — |
+| 14:01 | Session end: 240 writes across 51 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 83 reads | ~269599 tok |

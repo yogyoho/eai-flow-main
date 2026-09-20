@@ -45,6 +45,12 @@ import {
   useRuns,
   useUpdateItem,
 } from "@/extensions/contract-price/hooks";
+import {
+  baselineShiftDocIds,
+  buildBaselineTooltips,
+  itemToStatRow,
+  rowOutlierTier,
+} from "@/extensions/contract-price/outlier-semantics";
 import type { CpaItem, CpaRun } from "@/extensions/contract-price/types";
 import { cn } from "@/lib/utils";
 
@@ -210,6 +216,11 @@ export function ItemsView() {
   const items = (data?.items ?? []).filter(
     (it) => categoryFilter === "all" || it.category === categoryFilter,
   );
+  // EAI-CUSTOM F3a 离群语义分层: 成片文档判定 + 行 id → 降级说明 tooltip。
+  // 用整页行(非分类过滤后)做文档分组,阈值与规则见 outlier-semantics.ts。
+  const statRows = useMemo(() => (data?.items ?? []).map(itemToStatRow), [data]);
+  const baselineDocs = useMemo(() => baselineShiftDocIds(statRows), [statRows]);
+  const baselineTooltips = useMemo(() => buildBaselineTooltips(statRows), [statRows]);
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const runs: CpaRun[] = useMemo(() => runsData?.items ?? [], [runsData]);
@@ -590,13 +601,24 @@ export function ItemsView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map((item) => (
+                    {items.map((item) => {
+                      // EAI-CUSTOM F3a: 行级离群语义——成片文档的离群行降级为
+                      // 琥珀「跨合同基线差异」,真散点行保持红色异常。
+                      const tier = rowOutlierTier(item, baselineDocs);
+                      const tierTip =
+                        tier === "baseline-shift"
+                          ? baselineTooltips.get(item.id)
+                          : undefined;
+                      return (
                       <Fragment key={item.id}>
                         <TableRow
                           className={cn(
                             "transition-colors hover:bg-blue-50 dark:hover:bg-blue-950/30",
-                            item.is_outlier && !selected.has(item.id)
+                            tier === "outlier" && !selected.has(item.id)
                               ? "bg-destructive/10"
+                              : "",
+                            tier === "baseline-shift" && !selected.has(item.id)
+                              ? "bg-amber-500/5"
                               : "",
                             selected.has(item.id)
                               ? "bg-blue-50 dark:bg-blue-950/30"
@@ -651,8 +673,21 @@ export function ItemsView() {
                                   className="h-8 min-w-[140px]"
                                 />
                               ) : item.is_outlier ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <AlertTriangle className="text-destructive h-3.5 w-3.5" />
+                                <span
+                                  className={cn(
+                                    "inline-flex items-center gap-1",
+                                    tier === "baseline-shift" && "cursor-help",
+                                  )}
+                                  title={tierTip}
+                                >
+                                  <AlertTriangle
+                                    className={cn(
+                                      "h-3.5 w-3.5",
+                                      tier === "baseline-shift"
+                                        ? "text-amber-600"
+                                        : "text-destructive",
+                                    )}
+                                  />
                                   {item.goods_name}
                                 </span>
                               ) : (
@@ -703,7 +738,14 @@ export function ItemsView() {
                             ) : item.unit_price == null ? (
                               <span className="text-amber-600">待核验</span>
                             ) : item.is_outlier ? (
-                              <span className="text-destructive">
+                              <span
+                                className={cn(
+                                  tier === "baseline-shift"
+                                    ? "text-amber-600"
+                                    : "text-destructive",
+                                )}
+                                title={tierTip}
+                              >
                                 {item.unit_price.toLocaleString()}
                               </span>
                             ) : (
@@ -870,6 +912,22 @@ export function ItemsView() {
                                   }
                                 />
                                 <DetailField
+                                  label="簇中位价"
+                                  value={
+                                    item.cluster_median != null
+                                      ? item.cluster_median.toLocaleString()
+                                      : "—"
+                                  }
+                                />
+                                <DetailField
+                                  label="相对簇中位偏离"
+                                  value={
+                                    item.deviation_pct != null
+                                      ? `${item.deviation_pct > 0 ? "+" : ""}${(item.deviation_pct * 100).toFixed(1)}%`
+                                      : "—"
+                                  }
+                                />
+                                <DetailField
                                   label="分类"
                                   value={item.category ?? "—"}
                                 />
@@ -883,7 +941,8 @@ export function ItemsView() {
                           </TableRow>
                         )}
                       </Fragment>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

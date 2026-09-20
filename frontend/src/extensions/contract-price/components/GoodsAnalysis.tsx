@@ -13,7 +13,7 @@ import {
   LayoutGrid,
   Table2,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -44,6 +44,12 @@ import {
 import { BoxPlot } from "@/extensions/contract-price/components/BoxPlot";
 import { TracebackDrawer } from "@/extensions/contract-price/components/TracebackDrawer";
 import { useGoodsAnalysis } from "@/extensions/contract-price/hooks";
+import {
+  baselineShiftDocIds,
+  buildBaselineTooltips,
+  rowOutlierTier,
+  type OutlierStatRow,
+} from "@/extensions/contract-price/outlier-semantics";
 import type { CpaCluster } from "@/extensions/contract-price/types";
 
 // ── chart card matching prototype style ──
@@ -250,6 +256,25 @@ function AnalysisResult({
   const total = data.total as number;
   const okCount = data.ok_count as number;
   const nrCount = data.needs_review_count as number;
+
+  // EAI-CUSTOM F3a 离群语义分层: 明细行 → 判定行,成片文档判定 + 降级说明 tooltip。
+  const statRows: OutlierStatRow[] = useMemo(
+    () =>
+      items.map((it) => ({
+        id: it.id as string,
+        documentId: it.document_id as string,
+        isOutlier: it.is_outlier as boolean,
+        unitPrice: (it.unit_price as number | null) ?? null,
+        clusterMedian: (it.cluster_median as number | null) ?? null,
+        deviationPct: (it.deviation_pct as number | null) ?? null,
+        clusterId: (it.cluster_id as string | null) ?? null,
+        contractNo: (it.contract_no as string | null) ?? null,
+        clusterDocCount: (it.cluster_doc_count as number | null) ?? null,
+      })),
+    [items],
+  );
+  const baselineDocs = useMemo(() => baselineShiftDocIds(statRows), [statRows]);
+  const baselineTooltips = useMemo(() => buildBaselineTooltips(statRows), [statRows]);
 
   return (
     <div className="space-y-4">
@@ -517,6 +542,16 @@ function AnalysisResult({
               {items.map((it, i) => {
                 const price = it.unit_price as number | null;
                 const isOutlier = it.is_outlier as boolean;
+                // EAI-CUSTOM F3a: 成片文档的离群行降级为琥珀「跨合同基线差异」,
+                // 真散点行保持红色异常(title 悬挂基线说明)。
+                const tier = rowOutlierTier(
+                  { documentId: it.document_id as string, isOutlier },
+                  baselineDocs,
+                );
+                const tierTip =
+                  tier === "baseline-shift"
+                    ? baselineTooltips.get(it.id as string)
+                    : undefined;
                 return (
                   <tr
                     key={i}
@@ -532,7 +567,8 @@ function AnalysisResult({
                       {it.supplier as string}
                     </td>
                     <td
-                      className={`px-5 py-2.5 text-right font-mono font-semibold ${isOutlier ? "text-rose-500" : "text-primary"}`}
+                      className={`px-5 py-2.5 text-right font-mono font-semibold ${tier === "outlier" ? "text-rose-500" : tier === "baseline-shift" ? "text-amber-600" : "text-primary"}`}
+                      title={tierTip}
                     >
                       {price != null ? `¥${price.toFixed(2)}` : "—"}
                     </td>

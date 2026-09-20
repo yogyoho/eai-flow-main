@@ -30952,10 +30952,191 @@
       "file": "backend/app/extensions/contract_price/routers.py",
       "root_cause": "update_config 返回 save_config(resolve_llm_key_mask(body)) 原样对象, FastAPI response_model=ConfigOut 序列化含真值 llm_key; 掩码只接在 GET 响应边界, PUT 响应边界漏接(复验阶段发现, bug-3421 修复的残留缺口)",
       "fix": "update_config 返回改为 crud.mask_llm_key(crud.save_config(crud.resolve_llm_key_mask(body))); 新增 test_put_response_masked_no_readback(掩码回传走 PUT 路径后产物无真值) + test_config_routers_wire_mask_on_both_directions(源码锚: GET/PUT 均过 mask_llm_key)",
-      "tags": ["contract-price", "llm-key", "secret-exposure", "write-only", "put-response", "verification-fix"],
-      "related_bugs": ["bug-3421"],
+      "tags": [
+        "contract-price",
+        "llm-key",
+        "secret-exposure",
+        "write-only",
+        "put-response",
+        "verification-fix"
+      ],
+      "related_bugs": [
+        "bug-3421"
+      ],
       "occurrences": 1,
       "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-3427",
+      "timestamp": "2026-09-20",
+      "error_message": "cpa parse 木饰面石材合同(hash 52bce87c) r8 水磨石浅色光面 存储含税单价 535, 真值 258: OCR 行7-10 尾列(综合单价/含税总价)整体下移一行, 535/71732.8 实属 r7(134.08*535=71732.8), r8 真值 95978.58=372.01*258; 全表真值合计与小计 8440883.64 分毫不差佐证",
+      "file": "skills/public/contract-price-analysis/scripts (parse/几何层)",
+      "root_cause": "扫描件行高不均, OCR 网格行边界在 出厂价→备注 列区间与品名列错位一行; 行内 cell 直取策略把上一行的综合单价取作本行单价; r7 因自身单元格被搬空存 NULL(needs_review), r8 取到 r7 的 535(needs_review, 未伪 ok)",
+      "fix": "未修(审计发现). 候选: 同表跨行总价守卫(行 t 与行 qty*行 u 不符时降级 needs_review 并尝试相邻行归还), 或几何层行边界用列带聚类而非全局横切",
+      "tags": [
+        "cpa",
+        "ocr-row-shift",
+        "wrong-unit-price",
+        "needs_review",
+        "audit-test4"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-3428",
+      "timestamp": "2026-09-20",
+      "error_message": "上浦8行/木饰面27行 cpa_items.spec_model 全空; 木饰面 goods_name 实为规格文本('20mm'等)",
+      "file": "skills/public/contract-price-analysis/scripts/table_classifier.py (match_seed/_match_one_seed/_collapse_header)",
+      "root_cause": "两条不同机制: (1)上浦——seed选择错: _title_text(rows[:4]) 把列表头'物资名称'也算标题文本, msm-sc 的 title_keyword '物资' 假命中→title_hit(1,6,-13) 压过 sp-gj(0,7,-9), sp-gj 本可绑 spec->c1('材质', 两级表头 r1'规格'被collapse丢弃); (2)木饰面——复合表头: 真表 c1(名,表头空)+c2('材质/规格') 两列共用一个表头格, name锚'材质'绑c2把规格文本当品名, spec锚'规格'因子串也命中c2但已被name占用→spec不绑, 静默落None",
+      "fix": "已修(2026-09-20, F1a+F1b): F1a=_collapse_header 增返表头行索引集合(区别于吞掉的标题行), match_seed 标题文本经 _title_text(exclude_rows=表头行) 剔除列头词, 标题行仍参与; F1b=_match_one_seed 复合表头拆分(name/spec 锚同格命中+左邻表头空串两门控缺一不可→重绑 name→ci-1, spec→ci, 新增 _first_anchor_col 探测 spec 忽略占用的落格)。129 表回放验证: 除上浦p5/t0(msm-sc→sp-gj, spec→c1, 8/8 规格取回)与木饰面p2/t0(name 2→1, spec→2, 真品名/真规格)外其余 127 表命中映射逐一相同; 方案A2(删msm-sc'物资'关键词)已否决(假阳性转移到bcxy-tz)。回归固化 tests/test_seed_match_regression.py + fixtures/seed_hit_replay.json(容器内全量回放, 宿主机 skip)",
+      "tags": [
+        "cpa",
+        "seed-match",
+        "title-false-positive",
+        "compound-header",
+        "spec-empty"
+      ],
+      "related_bugs": [
+        "bug-3427"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-1789781078",
+      "timestamp": "2026-09-20T04:55:03.025Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/table_classifier.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→10 lines (4 removed) | Also: def _title_text(rows: list, limit: int = 4) -> str; \"\"\"前若干行的归一化联合文本(标题/表名关键词在这里找)。\"\"\" | Also: header, header_rows = _collapse_header(rows); title = _title_text(rows)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-20T04:56:29.745Z"
+    },
+    {
+      "id": "bug-1789781079",
+      "timestamp": "2026-09-20T04:55:41.807Z",
+      "error_message": "Wrong return value",
+      "file": "skills/public/contract-price-analysis/scripts/table_classifier.py",
+      "root_cause": "Was returning: [], last_consumed",
+      "fix": "Now returns: [], last_consumed, []",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-20T04:55:59.757Z"
+    },
+    {
+      "id": "bug-1789781080",
+      "timestamp": "2026-09-20T05:25:50.226Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/project_fields.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 18→56 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T05:25:50.226Z"
+    },
+    {
+      "id": "bug-1789781081",
+      "timestamp": "2026-09-20T05:30:16.477Z",
+      "error_message": "Wrong return value",
+      "file": "skills/public/contract-price-analysis/tests/test_project_fields_f2.py",
+      "root_cause": "Was returning: _T(1, [[cell]])",
+      "fix": "Now returns: _T([[cell]])",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T05:30:16.477Z"
+    },
+    {
+      "id": "bug-3429",
+      "timestamp": "2026-09-20",
+      "error_message": "cpa 砂石料(9839d01b) contract_no=NULL(编号只在 p10 会签表 cell '项目合同编号：2GS-YCXM-CL-CG-024-2019',文本层扫不到)且 project_name='局审批编号' 误提取('合同名称'独行下一行是相邻标签);同类诱饵: p2/p10 '审批编号：2GS-ZB-2019-038'(招标流水号)、上浦 p3 OCR 粘连截断值 '项目合同编号：…-011-20 包合同段项目经理部'",
+      "file": "skills/public/contract-price-analysis/scripts/project_fields.py + scripts/cli.py (_extract_project_fields_with_fallback)",
+      "root_cause": "元数据提取只扫 OCR 文本层: RC-F2a 编号在表格 cell 里文本路不可达; RC-F2b _find 的 split-line 兜底('标签独行→取下一非空行')无条件接收下一行,下一行是相邻标签(局审批编号)时被当值",
+      "fix": "已修(2026-09-20, F2a+F2b): F2a=project_fields.find_contract_from_tables(方案A,取证仿真验证) — 文本路 contract miss 时扫已解析 tables 的同 cell 冒号格,门序: ①整格含 审批编号/招标编号 跳过 ②'项目合同编号'先于'合同编号'搜(免子串重复命中) ③冒号必需 ④冒号后整段过 ^[A-Za-z0-9][A-Za-z0-9\\-]{5,}$ 且 dash段>=3(挡上浦粘连截断); cli._extract_project_fields_with_fallback 加 tables 参数并在 miss 档接入(其余档零影响),末页择优保留表格值。F2b=_find split-line 候选行含任何已知标签词→拒收。5 文档容器内端到端回放(.wolf/tmp/fix/probe_f2_final.py): 砂石料 contract=2GS-YCXM-CL-CG-024-2019/name=None,其余 4 文档全档零影响(与 DB 基线一致);单测 tests/test_project_fields_f2.py 12 例,全套件 149 passed/2 skipped,backend test_contract_price* 47 passed/1 skipped",
+      "tags": [
+        "cpa",
+        "metadata",
+        "contract-no",
+        "table-cell-fallback",
+        "split-line-guard",
+        "project_fields"
+      ],
+      "related_bugs": [
+        "bug-1760713",
+        "bug-3428"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-1789781082",
+      "timestamp": "2026-09-20T05:44:59.458Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T05:44:59.458Z"
+    },
+    {
+      "id": "bug-1789781083",
+      "timestamp": "2026-09-20T05:49:57.420Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ItemsView.tsx",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 12→23 lines (2 removed) | Also: <span className=\"inline-flex items-center gap-1\">; <AlertTriangle className=\"text-destructive h-3.5 w",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-20T05:50:13.127Z"
+    },
+    {
+      "id": "bug-1789781084",
+      "timestamp": "2026-09-20T05:52:36.176Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 15→42 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T05:52:36.176Z"
     }
   ]
 }

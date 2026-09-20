@@ -43,6 +43,11 @@ export interface CpaItem {
   cluster_id: string | null;
   source_contract_no: string | null;
   is_outlier: boolean;
+  // EAI-CUSTOM F3a 离群语义分层: 后端一条 JOIN 聚合预取的簇统计(无簇/统计缺失为 null)。
+  // 前端据此把「整文档成片离群」降级为琥珀色跨合同基线差异(outlier-semantics.ts)。
+  cluster_median: number | null; // 簇内 ok/corrected 单价中位
+  deviation_pct: number | null; // 本行单价相对簇中位的有符号比率(0.12=高 12%)
+  cluster_doc_count: number | null; // 簇内来源文档数
   // traceability (page-relative bbox 0~1)
   source_page: number | null;
   source_bbox: number[] | null;

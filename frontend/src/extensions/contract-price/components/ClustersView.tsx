@@ -11,7 +11,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,6 +46,12 @@ import {
   useRejectCluster,
   useUpdateCluster,
 } from "@/extensions/contract-price/hooks";
+import {
+  baselineShiftDocIds,
+  buildBaselineTooltips,
+  itemToStatRow,
+  rowOutlierTier,
+} from "@/extensions/contract-price/outlier-semantics";
 import type { CpaCluster, CpaItem } from "@/extensions/contract-price/types";
 import { cn } from "@/lib/utils";
 
@@ -136,6 +142,12 @@ export function ClustersView() {
   const total = clustersQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const detail = clusterQuery.data;
+
+  // EAI-CUSTOM F3a 离群语义分层: 簇明细内按文档成片判定 + 行 id → 降级说明 tooltip。
+  const detailItems: CpaItem[] = detail?.items ?? [];
+  const statRows = useMemo(() => detailItems.map(itemToStatRow), [detailItems]);
+  const baselineDocs = useMemo(() => baselineShiftDocIds(statRows), [statRows]);
+  const baselineTooltips = useMemo(() => buildBaselineTooltips(statRows), [statRows]);
 
   // clamp page when the tail empties after a batch confirm / reject / merge
   useEffect(() => {
@@ -527,15 +539,42 @@ export function ClustersView() {
                     {detail.items.length === 0 ? (
                       <EmptyRow colSpan={6}>该组暂无明细。</EmptyRow>
                     ) : (
-                      detail.items.map((item) => (
+                      detail.items.map((item) => {
+                        // EAI-CUSTOM F3a: 成片文档的离群行降级为琥珀「跨合同基线
+                        // 差异」,真散点行保持红色异常。
+                        const tier = rowOutlierTier(item, baselineDocs);
+                        const tierTip =
+                          tier === "baseline-shift"
+                            ? baselineTooltips.get(item.id)
+                            : undefined;
+                        return (
                         <TableRow
                           key={item.id}
-                          className={item.is_outlier ? "bg-destructive/10" : ""}
+                          className={
+                            tier === "outlier"
+                              ? "bg-destructive/10"
+                              : tier === "baseline-shift"
+                                ? "bg-amber-500/5"
+                                : ""
+                          }
                         >
                           <TableCell className="font-medium">
                             {item.is_outlier ? (
-                              <span className="inline-flex items-center gap-1">
-                                <AlertTriangle className="text-destructive h-3.5 w-3.5" />
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1",
+                                  tier === "baseline-shift" && "cursor-help",
+                                )}
+                                title={tierTip}
+                              >
+                                <AlertTriangle
+                                  className={cn(
+                                    "h-3.5 w-3.5",
+                                    tier === "baseline-shift"
+                                      ? "text-amber-600"
+                                      : "text-destructive",
+                                  )}
+                                />
                                 {item.goods_name}
                               </span>
                             ) : (
@@ -589,7 +628,8 @@ export function ClustersView() {
                             </div>
                           </TableCell>
                         </TableRow>
-                      ))
+                        );
+                      })
                     )}
                   </TableBody>
                 </Table>

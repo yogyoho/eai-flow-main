@@ -243,6 +243,7 @@ async def get_cluster_with_items(session: AsyncSession, cluster_id: UUID) -> Cpa
         return None
     items = await session.execute(select(CpaItem).where(CpaItem.cluster_id == cluster_id).order_by(CpaItem.unit_price))
     cluster.items = list(items.scalars().all())  # type: ignore[attr-defined]
+    await _attach_cluster_stats(session, cluster.items)  # type: ignore[attr-defined]  # EAI-CUSTOM F3a: 簇明细行同样附带簇统计
     return cluster
 
 
@@ -327,6 +328,45 @@ async def move_item(session: AsyncSession, item_id: UUID, target_cluster_id: UUI
 # --- Items (functional area 3) ---------------------------------------------
 
 
+async def _attach_cluster_stats(session: AsyncSession, items: list[CpaItem]) -> None:
+    """EAI-CUSTOM F3a 离群语义分层: 为一页 items 一次性预取簇统计并挂为非映射属性。
+
+    一条 JOIN 聚合取 {cluster_id: (stats, doc_count)},零 N+1(与 list_documents
+    的 items_total KPI 同型手法);无簇行跳过、空列表直接返回。填充三个 ItemOut
+    非列属性(由 from_attributes 序列化):
+      - cluster_median: 簇 stats.median(管线 compute_stats 落库的 ok/corrected 单价中位)
+      - deviation_pct:  本行单价相对簇中位的有符号比率 (price-median)/median,正=高于;
+                        median 缺失/为 0 或行无价时置 None
+      - cluster_doc_count: 簇内 distinct document_id 数(簇横跨几份合同)
+    任何一条统计缺失只让对应字段为 None,绝不让查询本身失败。
+    """
+    ids = sorted({it.cluster_id for it in items if it.cluster_id is not None}, key=str)
+    if not items or not ids:
+        return
+    rows = await session.execute(
+        select(CpaCluster.id, CpaCluster.stats, func.count(func.distinct(CpaItem.document_id)))
+        .join(CpaItem, CpaItem.cluster_id == CpaCluster.id)
+        .where(CpaCluster.id.in_(ids))
+        .group_by(CpaCluster.id, CpaCluster.stats)
+    )
+    info = {row[0]: (row[1] if isinstance(row[1], dict) else {}, int(row[2] or 0)) for row in rows.all()}
+    for it in items:
+        # 先统一置 None,保证任何行(含无簇行)上三属性都存在,消费方无需 hasattr 探测
+        it.cluster_median = None
+        it.deviation_pct = None
+        it.cluster_doc_count = None
+        if it.cluster_id is None:
+            continue
+        stats, doc_count = info.get(it.cluster_id, ({}, 0))
+        it.cluster_doc_count = doc_count
+        median = stats.get("median")
+        it.cluster_median = float(median) if median is not None else None
+        if it.cluster_median and float(it.cluster_median) != 0 and it.unit_price is not None:
+            it.deviation_pct = (float(it.unit_price) - float(it.cluster_median)) / float(it.cluster_median)
+        else:
+            it.deviation_pct = None
+
+
 async def list_items(
     session: AsyncSession,
     goods_name: str | None = None,
@@ -354,7 +394,9 @@ async def list_items(
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaItem.created_at.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
-    return list(result.scalars().all()), int(total)
+    items = list(result.scalars().all())
+    await _attach_cluster_stats(session, items)  # EAI-CUSTOM F3a: 一条聚合预取簇统计
+    return items, int(total)
 
 
 async def update_item(session: AsyncSession, item_id: UUID, fields: dict[str, Any]) -> CpaItem | None:
@@ -839,10 +881,14 @@ async def goods_analysis(
     # detail table (paginated)
     total = len(items)
     page_items = items[skip : skip + limit]
+    # EAI-CUSTOM F3a 离群语义分层: 明细行同样附带簇统计(name 模糊查询可能横跨
+    # 多簇/无簇,helper 按行各自 cluster_id 预取;仅对本页 ≤limit 行一条聚合)。
+    await _attach_cluster_stats(session, page_items)
     detail = [
         {
             "id": str(it.id),
             "document_id": str(it.document_id),
+            "cluster_id": str(it.cluster_id) if it.cluster_id else None,  # EAI-CUSTOM F3a: 前端同簇基线概览分桶用
             "goods_name": it.goods_name,
             "contract_no": it.source_contract_no or "—",
             "supplier": next((d.supplier for d in docs if d.id == it.document_id), None) or "—",
@@ -852,6 +898,9 @@ async def goods_analysis(
             "unit": it.unit or "—",
             "validation_status": it.validation_status,
             "is_outlier": it.is_outlier,
+            "cluster_median": it.cluster_median,
+            "deviation_pct": it.deviation_pct,
+            "cluster_doc_count": it.cluster_doc_count,
             "source_page": it.source_page,
             "source_bbox": it.source_bbox,
         }
