@@ -156,7 +156,9 @@ def test_replay_129_tables_seed_hit_mapping_frozen():
     """全语料逐表 match_seed 命中映射(seed_id+roles+header_rows)与固化基线逐一相同。
 
     bug-3428 修复的语料级回归基准: 修复只允许改变 上浦p5/t0(msm-sc→sp-gj)
-    与 木饰面p2/t0(name/spec 重绑) 两表,基线即修复后终态。"""
+    与 木饰面p2/t0(name/spec 重绑) 两表,基线即修复后终态。
+    ssxl-cgjh(2026-09-20 深扫表头兜底)只新增 砂石料p4/t0 一处命中(None→新种子),
+    其余 128 表零变化——基线再固化,后续改动必须同样只减不翻。"""
     caches = _load_replay_cache()
     if caches is None:
         pytest.skip("OCR 缓存不可达(容器外宿主机)——129 表回放仅容器内执行")

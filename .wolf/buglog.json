@@ -30972,7 +30972,7 @@
       "error_message": "cpa parse 木饰面石材合同(hash 52bce87c) r8 水磨石浅色光面 存储含税单价 535, 真值 258: OCR 行7-10 尾列(综合单价/含税总价)整体下移一行, 535/71732.8 实属 r7(134.08*535=71732.8), r8 真值 95978.58=372.01*258; 全表真值合计与小计 8440883.64 分毫不差佐证",
       "file": "skills/public/contract-price-analysis/scripts (parse/几何层)",
       "root_cause": "扫描件行高不均, OCR 网格行边界在 出厂价→备注 列区间与品名列错位一行; 行内 cell 直取策略把上一行的综合单价取作本行单价; r7 因自身单元格被搬空存 NULL(needs_review), r8 取到 r7 的 535(needs_review, 未伪 ok)",
-      "fix": "未修(审计发现). 候选: 同表跨行总价守卫(行 t 与行 qty*行 u 不符时降级 needs_review 并尝试相邻行归还), 或几何层行边界用列带聚类而非全局横切",
+      "fix": "已修(2026-09-20 晚, wf 几何层P-4批): _reassign_drift_pairs 行漂移对位恢复层(cli.py, 闭环重推前置)——行 i 的 (综合单价,含税总价) 整对下漂到行 i+1 时, 恢复证据=『下一行的 (u,t) 对能被本行量印刷级闭合』(q_i×u≈t ≤max(0.011,0.2%·t); 错主行 372.01×535≠71732.8 不成立), 病灶判定用行级自洽(本行 u×q 闭合本行总价格=健康零干预, 不依赖中间态 status), 采纳门全有或全无(恢复后 Σ(q×u) 闭合打印合计 ≤0.5% 且严格更近, 败则整链回滚)。活体验证: 木饰面重解析 r7 u=535/r8 u=258 全 ok, Σ(q×u)=8,440,883.64 与印刷小计分毫不差, 其余 25 行零漂移; 桂北 400 行 bad_rate=0, 其余 5 文档零漂移。同批修配套病灶: P-4 病征阈 0.5%→0.2%+候选集+绝对下限100元(漂移差值近抵消使旧阈永不触发=逃检根因), 几何探针影子管线关闭闭环重推(closure_refill=False)+重建版 seed 列位指纹守卫(hit_r[1]!=active[1] 弃用, 挡自洽换列洗白)——详见 bug-3435",
       "tags": [
         "cpa",
         "ocr-row-shift",
@@ -31137,6 +31137,305 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-09-20T05:52:36.176Z"
+    },
+    {
+      "id": "bug-1789781085",
+      "timestamp": "2026-09-20T10:51:50.371Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/tests/test_doc_baseline_outlier.py",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 36→55 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T10:51:50.371Z"
+    },
+    {
+      "id": "bug-3430",
+      "timestamp": "2026-09-20",
+      "error_message": "F3b 整文档基线豁免最初无样本下限: 2 行文档 (4800, 12000) 的基线中位被自身异常行拖到 8400, 偏离簇中位 75% 触发假豁免, 合同内真异常 12000 逃判 (单测 test_small_doc_above_cluster_fence_still_flagged 首跑抓住)",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "文档基线豁免按 spec 字面实现 (偏离>=0.12 即豁免整文档), 但 n=2 文档的中位被任一单行 50% 支配, 异常行自己就能买通豁免; 缺『价位体系立得住』的样本下限",
+      "fix": "加 _DOC_EXEMPT_MIN_SAMPLE=3: 豁免要求文档内 ok/corrected 样本>=3; <3 的文档落回簇/文档内 IQR 判定路径。同批修簇级反向失效: n<3 时 IQR 恒塌缩数学上永不报离群,改为在 cpa_clusters.stats.baseline_notes 写 insufficient_sample 注记",
+      "tags": [
+        "contract-price-analysis",
+        "outlier",
+        "doc-baseline",
+        "f3b",
+        "exemption-floor",
+        "iqr"
+      ],
+      "related_bugs": [
+        "bug-3427",
+        "bug-3428",
+        "bug-3429"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-3431",
+      "timestamp": "2026-09-20T19:20:00+08:00",
+      "error_message": "重解析后 cpa_documents.project_name 残留旧错误值(砂石料 局审批编号): 抽取层 F2b 已诚实返回 None, 但 DB 仍显示旧值",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py (_persist_one_doc)",
+      "root_cause": "持久化层采用 truthy-才覆写策略(if doc.get(project_name): existing.project_name=...): 新抽取为 None 时旧值留存。该策略对部分解析防误清是合理的, 但对 重解析确认字段为空 的场景会把已证伪的旧值冻结",
+      "fix": "已修(2026-09-20, 本批): _persist_one_doc 重解析路径元数据字段改为「键存在」哨兵——for _mf in (project_name/project_location/contract_no/supplier): if _mf in doc: setattr(...), sign_date 同理; 成功解析路径键恒在(None=本轮诚实抽取 → 写 NULL 清已证伪旧值), 失败标记路径无键 → 不触碰(防误清语义保持)。活体验证: 砂石料重解析后 project_name 保持 NULL、contract_no=2GS-YCXM-CL-CG-024-2019 正常写入。回归测试 test_project_fields_f2.py::test_persist_one_doc_field_sentinel_is_key_presence(源码契约断言,挡 truthy-guard 回潮)。 补验(2026-09-20 晚, 子代理): 首次活体重解析被静默回滚——CLI 传全新随机 --run-id 触发 cpa_items.run_id_fkey 违例, 整个 per-doc 事务(含本修复的元数据覆写)被 except 吞成 DB unavailable 警告(详见 bug-3434); 改用已存在 run id 后真验证通过: 砂石料重解析(缓存命中) project_name 保持 NULL、contract_no=2GS-YCXM-CL-CG-024-2019 保持, 其余 6 档元数据零漂移(JZGS project_name 由旧错值 合同编号 升为真值=F2 标签行拒收的覆写语义, 二次重解析幂等)。新增行为三例单测 test_persist_none_clears_stale_value_to_null/_new_value_overwrites_old/_no_extraction_keys_keeps_existing。",
+      "tags": [
+        "cpa",
+        "project_fields",
+        "persistence",
+        "reparse",
+        "truthy-overwrite",
+        "acceptance-2026-09-20"
+      ],
+      "related_bugs": [
+        "bug-3429"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-3432",
+      "timestamp": "2026-09-20",
+      "error_message": "pnpm test 全量红: settings-dialog-store.test 期望默认 section 'appearance' 实际 'account'; lazy-panels.test 期望 settings-dialog 9 个 dynamic() 实际 7 (2163 passed/2 failed)",
+      "file": "frontend/tests/unit/components/workspace/settings/settings-dialog-store.test.ts; frontend/tests/unit/components/workspace/lazy-panels.test.ts",
+      "root_cause": "c9b3af55a 移除 appearance/about 两 tab 并把入口默认改为 account, 但漏改两个 tests/unit 断言(默认 section + dynamic 计数 9→7); 源码与测试均无未提交改动 = HEAD 上既有失败, 与 cpa 三阶段无关",
+      "fix": "仅改测试: 默认 section 断言 appearance→account(+注释), dynamic 计数 9→7(+注释更新 section 清单); 修后全量 2165 passed/0 failed",
+      "tags": [
+        "frontend",
+        "rstest",
+        "settings-dialog",
+        "test-drift",
+        "upstream-port"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-3433",
+      "error_message": "git commit 后 code-review-graph hook 崩: subprocess readerthread UnicodeDecodeError 'gbk' codec can't decode byte 0x80 → AttributeError NoneType.splitlines (incremental.py get_changed_files)",
+      "file": "code_review_graph/incremental.py (site-packages, 非本仓库文件)",
+      "root_cause": "Windows 控制台 GBK 编码下 hook 用默认编码读 git 子进程输出, 遇非 ASCII(中文 commit message)字节解码失败, stdout=None 未兜底; hook 为 advisory, commit 本身成功落地",
+      "fix": "未修(平台层/第三方包): commit 不受影响; 需要 Python 侧 UTF-8 模式(PYTHONUTF8=1)或上游修 readerthread 编码",
+      "tags": [
+        "windows",
+        "gbk",
+        "code-review-graph",
+        "git-hook",
+        "encoding"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-1789781086",
+      "timestamp": "2026-09-20T13:07:02.000Z",
+      "error_message": "Wrong reference: tokens should be P",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Used \"tokens\" instead of \"P\"",
+      "fix": "Changed tokens → P",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T13:07:02.000Z"
+    },
+    {
+      "id": "bug-1789781087",
+      "timestamp": "2026-09-20T13:12:15.595Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/table_classifier.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 29→69 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T13:12:15.595Z"
+    },
+    {
+      "id": "bug-1789781088",
+      "timestamp": "2026-09-20T13:20:37.429Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 10→7 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T13:20:37.429Z"
+    },
+    {
+      "id": "bug-1789781089",
+      "timestamp": "2026-09-20T13:43:28.203Z",
+      "error_message": "Missing await",
+      "file": "skills/public/contract-price-analysis/tests/test_project_fields_f2.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T13:43:28.203Z"
+    },
+    {
+      "id": "bug-3434",
+      "timestamp": "2026-09-20T22:05:00+08:00",
+      "error_message": "容器内 CLI 重解析探针传全新随机 --run-id 时, per-doc persist 整体静默回滚: cpa_items.run_id_fkey 违例(run_history 行要到 phase 结束才由 _persist_parse 插入), 但 _persist_one_doc 的 except 把 ForeignKeyViolationError 吞成 Per-doc persist skipped (DB unavailable) 警告, 文档/条目全部未落库而 CLI 退出码 0",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py (_persist_one_doc run_id 通道)",
+      "root_cause": "cpa_items.run_id → cpa_run_history.id 外键; CLI 探针通道的 run 记录滞后于 per-doc 持久化。生产扩展通道无此问题(routers.py 先 crud.create_run 提交再起子进程), 仅手动 CLI --run-id 随机 uuid 时触发; except Exception 宽吞使 FK 违例与真 DB 不可用不可区分",
+      "fix": "未改代码(生产通道无影响); 处置=探针规程: 容器内重解析验证必须传 cpa_run_history 已存在的 run id(如最近一条), 或先手工 INSERT run 记录。已用存在 run id(79670855-...) 完成全部活体验证",
+      "tags": [
+        "cpa",
+        "cli",
+        "probe-channel",
+        "fk-violation",
+        "silent-rollback",
+        "run-id"
+      ],
+      "related_bugs": [
+        "bug-3431"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-1789781090",
+      "timestamp": "2026-09-20T14:22:41.669Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "15 lines replaced/restructured",
+      "fix": "Rewrote 39→53 lines (15 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T14:22:41.669Z"
+    },
+    {
+      "id": "bug-1789781091",
+      "timestamp": "2026-09-20T14:23:05.206Z",
+      "error_message": "Wrong reference: _GEOMETRY_TOTALS_GAP should be _CLOSURE_REFILL_GAP",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Used \"_GEOMETRY_TOTALS_GAP\" instead of \"_CLOSURE_REFILL_GAP\"",
+      "fix": "Changed _GEOMETRY_TOTALS_GAP → _CLOSURE_REFILL_GAP",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-20T14:23:06.959Z"
+    },
+    {
+      "id": "bug-1789781092",
+      "timestamp": "2026-09-20T14:26:43.924Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/tests/test_geometry_rebuild.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 21→56 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T14:26:43.924Z"
+    },
+    {
+      "id": "bug-1789781093",
+      "timestamp": "2026-09-20T14:44:38.911Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T14:44:38.911Z"
+    },
+    {
+      "id": "bug-1789781094",
+      "timestamp": "2026-09-20T15:06:02.913Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 21→31 lines (4 removed) | Also: (372.01×535=199,025≠71,732.8)。仅触达价格破损行(needs_revie; ok/corrected 行零干预),u 候选取自 price_total 格同行的 price_u",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-20T15:06:16.974Z"
+    },
+    {
+      "id": "bug-3435",
+      "timestamp": "2026-09-20T23:30:00+08:00",
+      "error_message": "几何层 P-4/重建三联病灶(单测+活体双抓): (1)P-4 病征阈 0.5% 对漂移差值近抵消形态永不触发(木饰面 Σ 偏差仅 0.371%); (2)几何探针影子管线跑闭环重推, 列位错乱的重建网格被『全表闭环』门洗成全 ok(影子 ok 率 1.0 假胜); (3)rebuild_grid 在 cellspan 表头+稀疏合计行表上列带塌缩, 重建版 roles 整体左移, 但错列互证照样行级 ok——ok 率比对识不破自洽换列",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py (_GEOMETRY_TOTALS_GAP/_totals_closure_gap/_geometry_probe/_matched_table_pass closure_refill)",
+      "root_cause": "(1)单锚最大值语义对『多候选合计行』(量合计+税额+总计同印)脆弱且阈值一刀切; (2)影子管线与主管线共用 _matched_table_pass 时重推以 Σt 闭合为采纳门, 行级对错被全表抵消掩盖(木饰面 Σt 闭合到 0.043% 但 r8/r9/r13 会被改写); (3)rebuild_grid 断点区间链式合并被稀疏行宽间隙吃掉真列界, ok 率只数行级算术自洽",
+      "fix": "已修(2026-09-20, wf 几何层P-4批): (1)P-4 阈 0.002+候选集语义(_totals_printed_candidates: 没有任何候选在 ±0.2% 内才病征)+绝对下限 100 元(spec 授权自定); (2)影子管线 closure_refill=False(重推与行漂移对位恢复都不参战, 重建版以自身行级算术质量比 ok 率); (3)重建版 seed 列位指纹守卫: match_seed(rebuilt) 的 roles != 原命中 roles → 弃用(语义换列≠同表归位)。回归固化: test_geometry_rebuild.py 8 个 P-4 测试(候选/下限/真表形态恢复/病征命中/采纳门回滚/机制正向/零干预)+tests/fixtures/msm_p2_drift_rows.json 真缓存漂移形态。活体: 木饰面 r7=535/r8=258 Σ 分毫不差, 桂北 bad_rate=0, 6 文档零漂移",
+      "tags": [
+        "cpa",
+        "geometry-p4",
+        "totals-closure",
+        "shadow-pipeline",
+        "rebuild-grid",
+        "roles-fingerprint",
+        "acceptance-2026-09-20"
+      ],
+      "related_bugs": [
+        "bug-3427",
+        "bug-3409"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-20"
+    },
+    {
+      "id": "bug-1789781095",
+      "timestamp": "2026-09-20T15:18:57.305Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 6→4 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-20T15:18:57.305Z"
     }
   ]
 }

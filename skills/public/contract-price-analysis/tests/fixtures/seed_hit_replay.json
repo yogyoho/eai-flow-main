@@ -1,1 +1,403 @@
-{"JZGS钢材": {"p1/t0": null, "p2/t0": null, "p3/t0": null, "p3/t1": null, "p8/t0": ["jzgs-gc", [["name", 1], ["price_total", 9], ["price_unit", 8], ["qty", 4], ["spec", 2], ["unit", 3]], 2], "p9/t0": ["jzgs-gc", [["name", 1], ["price_total", 9], ["price_unit", 8], ["qty", 4], ["spec", 2], ["unit", 3]], 1], "p9/t1": null}, "__total_tables__": 129, "上浦钢筋": {"p1/t0": null, "p1/t1": null, "p1/t2": null, "p17/t0": null, "p2/t0": null, "p3/t0": null, "p3/t1": null, "p3/t2": null, "p5/t0": ["sp-gj", [["name", 0], ["price_total", 9], ["price_unit", 8], ["price_untaxed", 6], ["qty", 3], ["spec", 1], ["unit", 2]], 2], "p5/t1": null, "p6/t0": null}, "木饰面石材": {"p11/t0": null, "p2/t0": ["msm-sc", [["name", 1], ["price_total", 9], ["price_unit", 8], ["price_untaxed", 7], ["qty", 4], ["spec", 2], ["unit", 3]], 1], "p23/t0": null}, "桂北": {"p100/t0": null, "p101/t0": null, "p102/t0": null, "p103/t0": null, "p104/t0": null, "p105/t0": null, "p106/t0": null, "p107/t0": null, "p108/t0": null, "p109/t0": null, "p110/t0": null, "p111/t0": null, "p112/t0": null, "p113/t0": null, "p114/t0": null, "p115/t0": null, "p116/t0": null, "p117/t0": null, "p118/t0": null, "p118/t1": null, "p119/t0": null, "p120/t0": null, "p133/t0": null, "p25/t0": null, "p26/t0": null, "p27/t0": null, "p28/t0": null, "p29/t0": null, "p30/t0": null, "p31/t0": null, "p32/t0": null, "p33/t0": null, "p34/t0": null, "p35/t0": null, "p36/t0": null, "p37/t0": null, "p38/t0": null, "p39/t0": null, "p40/t0": null, "p41/t0": null, "p42/t0": null, "p43/t0": null, "p44/t0": null, "p45/t0": null, "p46/t0": null, "p47/t0": null, "p48/t0": null, "p49/t0": null, "p50/t0": null, "p51/t0": null, "p52/t0": null, "p53/t0": null, "p54/t0": null, "p55/t0": null, "p55/t1": null, "p56/t0": null, "p57/t0": null, "p58/t0": null, "p59/t0": null, "p63/t0": null, "p64/t0": null, "p65/t0": null, "p66/t0": null, "p67/t0": null, "p68/t0": null, "p69/t0": null, "p70/t0": null, "p71/t0": null, "p72/t0": null, "p73/t0": null, "p74/t0": null, "p75/t0": null, "p76/t0": null, "p77/t0": null, "p78/t0": null, "p79/t0": null, "p80/t0": null, "p81/t0": null, "p82/t0": null, "p83/t0": null, "p84/t0": null, "p85/t0": null, "p86/t0": null, "p87/t0": null, "p87/t1": null, "p94/t0": ["gcl-qd", [["name", 1], ["price_total", 9], ["qty", 3]], 3], "p95/t0": null, "p96/t0": null, "p97/t0": null, "p98/t0": null, "p99/t0": null}, "砂石料": {"p1/t0": null, "p1/t1": null, "p10/t0": null, "p10/t1": null, "p10/t2": null, "p13/t0": ["ssly-sm", [["name", 0], ["price_total", 7], ["price_unit", 6], ["qty", 4], ["spec", 1], ["unit", 3]], 1], "p2/t0": null, "p2/t1": null, "p3/t0": null, "p4/t0": null, "p4/t1": null, "p5/t0": null, "p6/t0": null, "p6/t1": null}, "钢材签字版": {"p2/t0": ["gc-qzb", [["name", 0], ["price_total", 10], ["price_unit", 8], ["price_untaxed", 9], ["qty", 4], ["spec", 1], ["unit", 3]], 1]}, "钢筋补充协议": {"p2/t0": ["bcxy-tz", [["name", 1], ["price_total", 20], ["price_unit", 18], ["qty", 13], ["spec", 2], ["unit", 3]], 3], "p3/t0": null}}
+{
+ "__total_tables__": 129,
+ "JZGS钢材": {
+  "p1/t0": null,
+  "p2/t0": null,
+  "p3/t0": null,
+  "p3/t1": null,
+  "p8/t0": [
+   "jzgs-gc",
+   [
+    [
+     "name",
+     1
+    ],
+    [
+     "price_total",
+     9
+    ],
+    [
+     "price_unit",
+     8
+    ],
+    [
+     "qty",
+     4
+    ],
+    [
+     "spec",
+     2
+    ],
+    [
+     "unit",
+     3
+    ]
+   ],
+   2
+  ],
+  "p9/t0": [
+   "jzgs-gc",
+   [
+    [
+     "name",
+     1
+    ],
+    [
+     "price_total",
+     9
+    ],
+    [
+     "price_unit",
+     8
+    ],
+    [
+     "qty",
+     4
+    ],
+    [
+     "spec",
+     2
+    ],
+    [
+     "unit",
+     3
+    ]
+   ],
+   1
+  ],
+  "p9/t1": null
+ },
+ "上浦钢筋": {
+  "p1/t0": null,
+  "p1/t1": null,
+  "p1/t2": null,
+  "p2/t0": null,
+  "p3/t0": null,
+  "p3/t1": null,
+  "p3/t2": null,
+  "p5/t0": [
+   "sp-gj",
+   [
+    [
+     "name",
+     0
+    ],
+    [
+     "price_total",
+     9
+    ],
+    [
+     "price_unit",
+     8
+    ],
+    [
+     "price_untaxed",
+     6
+    ],
+    [
+     "qty",
+     3
+    ],
+    [
+     "spec",
+     1
+    ],
+    [
+     "unit",
+     2
+    ]
+   ],
+   2
+  ],
+  "p5/t1": null,
+  "p6/t0": null,
+  "p17/t0": null
+ },
+ "木饰面石材": {
+  "p2/t0": [
+   "msm-sc",
+   [
+    [
+     "name",
+     1
+    ],
+    [
+     "price_total",
+     9
+    ],
+    [
+     "price_unit",
+     8
+    ],
+    [
+     "price_untaxed",
+     7
+    ],
+    [
+     "qty",
+     4
+    ],
+    [
+     "spec",
+     2
+    ],
+    [
+     "unit",
+     3
+    ]
+   ],
+   1
+  ],
+  "p11/t0": null,
+  "p23/t0": null
+ },
+ "砂石料": {
+  "p1/t0": null,
+  "p1/t1": null,
+  "p2/t0": null,
+  "p2/t1": null,
+  "p3/t0": null,
+  "p4/t0": [
+   "ssxl-cgjh",
+   [
+    [
+     "name",
+     1
+    ],
+    [
+     "price_total",
+     8
+    ],
+    [
+     "price_unit",
+     6
+    ],
+    [
+     "qty",
+     5
+    ],
+    [
+     "unit",
+     3
+    ]
+   ],
+   4
+  ],
+  "p4/t1": null,
+  "p5/t0": null,
+  "p6/t0": null,
+  "p6/t1": null,
+  "p10/t0": null,
+  "p10/t1": null,
+  "p10/t2": null,
+  "p13/t0": [
+   "ssly-sm",
+   [
+    [
+     "name",
+     0
+    ],
+    [
+     "price_total",
+     7
+    ],
+    [
+     "price_unit",
+     6
+    ],
+    [
+     "qty",
+     4
+    ],
+    [
+     "spec",
+     1
+    ],
+    [
+     "unit",
+     3
+    ]
+   ],
+   1
+  ]
+ },
+ "钢材签字版": {
+  "p2/t0": [
+   "gc-qzb",
+   [
+    [
+     "name",
+     0
+    ],
+    [
+     "price_total",
+     10
+    ],
+    [
+     "price_unit",
+     8
+    ],
+    [
+     "price_untaxed",
+     9
+    ],
+    [
+     "qty",
+     4
+    ],
+    [
+     "spec",
+     1
+    ],
+    [
+     "unit",
+     3
+    ]
+   ],
+   1
+  ]
+ },
+ "钢筋补充协议": {
+  "p2/t0": [
+   "bcxy-tz",
+   [
+    [
+     "name",
+     1
+    ],
+    [
+     "price_total",
+     20
+    ],
+    [
+     "price_unit",
+     18
+    ],
+    [
+     "qty",
+     13
+    ],
+    [
+     "spec",
+     2
+    ],
+    [
+     "unit",
+     3
+    ]
+   ],
+   3
+  ],
+  "p3/t0": null
+ },
+ "桂北": {
+  "p25/t0": null,
+  "p26/t0": null,
+  "p27/t0": null,
+  "p28/t0": null,
+  "p29/t0": null,
+  "p30/t0": null,
+  "p31/t0": null,
+  "p32/t0": null,
+  "p33/t0": null,
+  "p34/t0": null,
+  "p35/t0": null,
+  "p36/t0": null,
+  "p37/t0": null,
+  "p38/t0": null,
+  "p39/t0": null,
+  "p40/t0": null,
+  "p41/t0": null,
+  "p42/t0": null,
+  "p43/t0": null,
+  "p44/t0": null,
+  "p45/t0": null,
+  "p46/t0": null,
+  "p47/t0": null,
+  "p48/t0": null,
+  "p49/t0": null,
+  "p50/t0": null,
+  "p51/t0": null,
+  "p52/t0": null,
+  "p53/t0": null,
+  "p54/t0": null,
+  "p55/t0": null,
+  "p55/t1": null,
+  "p56/t0": null,
+  "p57/t0": null,
+  "p58/t0": null,
+  "p59/t0": null,
+  "p63/t0": null,
+  "p64/t0": null,
+  "p65/t0": null,
+  "p66/t0": null,
+  "p67/t0": null,
+  "p68/t0": null,
+  "p69/t0": null,
+  "p70/t0": null,
+  "p71/t0": null,
+  "p72/t0": null,
+  "p73/t0": null,
+  "p74/t0": null,
+  "p75/t0": null,
+  "p76/t0": null,
+  "p77/t0": null,
+  "p78/t0": null,
+  "p79/t0": null,
+  "p80/t0": null,
+  "p81/t0": null,
+  "p82/t0": null,
+  "p83/t0": null,
+  "p84/t0": null,
+  "p85/t0": null,
+  "p86/t0": null,
+  "p87/t0": null,
+  "p87/t1": null,
+  "p94/t0": [
+   "gcl-qd",
+   [
+    [
+     "name",
+     1
+    ],
+    [
+     "price_total",
+     9
+    ],
+    [
+     "qty",
+     3
+    ]
+   ],
+   3
+  ],
+  "p95/t0": null,
+  "p96/t0": null,
+  "p97/t0": null,
+  "p98/t0": null,
+  "p99/t0": null,
+  "p100/t0": null,
+  "p101/t0": null,
+  "p102/t0": null,
+  "p103/t0": null,
+  "p104/t0": null,
+  "p105/t0": null,
+  "p106/t0": null,
+  "p107/t0": null,
+  "p108/t0": null,
+  "p109/t0": null,
+  "p110/t0": null,
+  "p111/t0": null,
+  "p112/t0": null,
+  "p113/t0": null,
+  "p114/t0": null,
+  "p115/t0": null,
+  "p116/t0": null,
+  "p117/t0": null,
+  "p118/t0": null,
+  "p118/t1": null,
+  "p119/t0": null,
+  "p120/t0": null,
+  "p133/t0": null
+ }
+}

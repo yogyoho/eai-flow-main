@@ -511,32 +511,79 @@ def _match_one_seed(rows: list, seed: dict, header: list) -> tuple[dict, dict] |
 def match_seed(rows: list, seeds: list[dict]) -> tuple[dict, dict, int] | None:
     """严格 seed-only 主路径: 逐 seed 锚定,确认条件=name+任一价格角色;
     多候选: 标题关键词命中优先,其次锚定角色数多者;全并列时锚点更少(规则更专)者优。
-    返回 (seed, roles{role: col_idx}, header_rows) 或 None(无 seed 确认)。"""
+    返回 (seed, roles{role: col_idx}, header_rows) 或 None(无 seed 确认)。
+    标准表头折叠(前3行)未命中时走 _match_seed_deep 深扫兜底(同样 seed-only)。"""
     if not rows or not seeds:
         return None
     header, header_rows, hdr_idxs = _collapse_header(rows)
-    if not header:
-        return None
-    # 标题文本排除表头行(F1a): 列头词('物资名称')不是表名,不得参与标题命中
-    title = _title_text(rows, exclude_rows=hdr_idxs)
-    best: tuple[int, int, int, dict, dict] | None = None  # (title_hit, roles_n, -anchors_n, seed, roles)
+    if header:
+        # 标题文本排除表头行(F1a): 列头词('物资名称')不是表名,不得参与标题命中
+        title = _title_text(rows, exclude_rows=hdr_idxs)
+        best: tuple[int, int, int, dict, dict] | None = None  # (title_hit, roles_n, -anchors_n, seed, roles)
+        for seed in seeds:
+            got = _match_one_seed(rows, seed, header)
+            if got is None:
+                continue
+            roles, detail = got
+            hit = any(_norm_header(kw) and _norm_header(kw) in title for kw in seed.get("title_keywords") or [])
+            # 全并列消歧(标题/角色数都平): 锚点总数少 = 规则更专,应胜出 —
+            # 如签字版表 gc-qzb(7 锚) 与通用 gcl-qd(12 锚) 同锚 7 角色且都无标题命中,
+            # 专的 gc-qzb 必须赢。取 -anchors_n 使其与列表顺序无关(seed_defaults 镜像
+            # 库/用户在配置 tab 重排都不改变行为)。
+            anchors_n = sum(len(v or []) for v in (seed.get("columns") or {}).values())
+            key = (1 if hit else 0, detail["roles_n"], -anchors_n)
+            if best is None or key > best[0:3]:
+                best = (key[0], key[1], key[2], seed, roles)
+        if best is not None:
+            return best[3], best[4], header_rows
+    return _match_seed_deep(rows, seeds)
+
+
+_DEEP_HEADER_SCAN = 8  # 深扫窗口(标准表头 peek=3 之外,覆盖审批单式表单)
+
+
+def _match_seed_deep(rows: list, seeds: list[dict]) -> tuple[dict, dict, int] | None:
+    """标准表头折叠未命中时的深扫兜底(ssxl-cgjh;严格 seed-only,零 seed 命中零行为)。
+
+    审批单/表单类文档的真实价格表头不在前 3 行: 上方是表单 label:value 行
+    (上报项目/制表人/联系电话…,甚至含伪表头 token——'完工时间' 的 '时间'),
+    真表头行('计划采购主要物资 | 序号 物资名称 | 数量 | …')被压在 peek 窗口外。
+    逐行(≤_DEEP_HEADER_SCAN)找「≥2 个不同角色的 seed 锚命中 + 其上方行命中
+    该 seed 标题词」的候选行,再由 _match_one_seed(name+价格角色)确认——
+    锚与标题词都来自 seed 自身,通用路径(_collapse_header/classify)零改动。
+    返回 (seed, roles, header_rows=候选行idx+1) 或 None。"""
+    best: tuple[int, int, dict, dict, int] | None = None  # (roles_n, -anchors_n, seed, roles, header_rows)
     for seed in seeds:
-        got = _match_one_seed(rows, seed, header)
-        if got is None:
-            continue
-        roles, detail = got
-        hit = any(_norm_header(kw) and _norm_header(kw) in title for kw in seed.get("title_keywords") or [])
-        # 全并列消歧(标题/角色数都平): 锚点总数少 = 规则更专,应胜出 —
-        # 如签字版表 gc-qzb(7 锚) 与通用 gcl-qd(12 锚) 同锚 7 角色且都无标题命中,
-        # 专的 gc-qzb 必须赢。取 -anchors_n 使其与列表顺序无关(seed_defaults 镜像
-        # 库/用户在配置 tab 重排都不改变行为)。
+        kws = [k for k in (_norm_header(kw) for kw in seed.get("title_keywords") or []) if k]
+        if not kws:
+            continue  # 无标题词的 seed 不进深扫(防陌生表头误配)
+        anchors_by_role = {
+            role: [a for a in (_norm_header(t) for t in (seed["columns"].get(role) or [])) if a]
+            for role in _ROLE_ORDER
+        }
         anchors_n = sum(len(v or []) for v in (seed.get("columns") or {}).values())
-        key = (1 if hit else 0, detail["roles_n"], -anchors_n)
-        if best is None or key > best[0:3]:
-            best = (key[0], key[1], key[2], seed, roles)
+        for ri in range(min(len(rows), _DEEP_HEADER_SCAN)):
+            norm_cells = [_norm_header(c) for c in (rows[ri] or [])]
+            hit_roles = {
+                role
+                for role, anchors in anchors_by_role.items()
+                if anchors and any(any(a in h for a in anchors) for h in norm_cells if h)
+            }
+            if len(hit_roles) < 2:
+                continue
+            title = _title_text(rows[:ri], limit=ri) if ri else ""
+            if not any(kw in title for kw in kws):
+                continue
+            got = _match_one_seed(rows, seed, rows[ri])
+            if got is None:
+                continue
+            roles, detail = got
+            key = (detail["roles_n"], -anchors_n)
+            if best is None or key > best[0:2]:
+                best = (key[0], key[1], seed, roles, ri + 1)
     if best is None:
         return None
-    return best[3], best[4], header_rows
+    return best[2], best[3], best[4]
 
 
 def _is_category_row(cells: dict) -> bool:

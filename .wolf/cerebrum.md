@@ -23,6 +23,7 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- **[2026-09-20] cpa 深扫表头兜底(ssxl-cgjh)+P-4 合计闭环病征/重推落地配方:** ①审批单/表单式文档真价格表头可在 peek=3 之外(砂石料 p4 第 4 行,上方表单行的『完工时间』含伪表头 token『时间』使 _collapse_header 折叠出『制表人…』伪表头)——match_seed 标准折叠未命中时走 _match_seed_deep: rows[:8] 逐行找「≥2 角色锚命中 + 上方行命中标题词」的候选行,_match_one_seed 确认,header_rows=ri+1;锚/标题词全来自 seed,通用路径零改动,无标题词的 seed 不进深扫。②综合单价=物资+运输拆胶('150.00 50.00' 同格/'123.00'+'28.00' 两格)行级仲裁修不齐——_closure_recover_rows 以打印合计为独立锚: t=行内最大金额(合计远大于日期/序号噪声)、q=存储量(>0, u=t/q+量格细噪 Snap)否则行内乘法(u×q≈t,q 先 u 后=格内 token 序即列序)或加法(u=x+y)、采纳门=Σt 与打印合计闭合≤0.5%(全有或全无,调价表 adj 跳过——左半区金额可大于调整后合价,行最大值语义不成立);重推行打 _closure 旗,第九层分层洗白链里保持 ok。验证三板斧: replay_diff(129 表命中映射必须恰一处新增)+guibei_diff(monkeypatch _closure_recover_rows 为 no-op 对比,桂北 400 行必须 IDENTICAL)+活体重解析 DB 对照(p13 旧 4 行零变化+p4 新 8 行真值)。129 表回放 fixture 再固化手法=容器内 regen 脚本全量重算+断言 diff 恰为预期集合后整文件替换。
 - **[2026-09-20] cpa 元数据 F2 兜底门配方(bug-3429):** 表格 cell 合同编号兜底(方案A)只在文本路 contract miss 时触发(cli._extract_project_fields_with_fallback 加 tables 参数),门序①整格含 审批编号/招标编号 跳过(招标流水号诱饵)②'项目合同编号'先于'合同编号'搜(子串免重复命中)③同 cell 冒号必需 ④冒号后**整段**(非前导 alnum-run!)过 ^[A-Za-z0-9][A-Za-z0-9\-]{5,}$ 且 dash段>=3——上浦粘连值 '…-011-20 包合同段项目经理部' 是全段含中文才被挡,若只取前导 alnum-run 会误收截断号'…-011-20'。_find split-line 守卫: 候选值行含任何已知标签词(全 label 族+审批/招标诱饵)→拒收(砂石料 '合同名称'→'局审批编号' 误提取);守卫只挂 split-line 分支,same-line 正则不动(5 文档真实缓存回放其余全档零影响)。验证法: /app 是 bind-mount,代码改完直接容器内 python 跑 scripts.project_fields 对 ocr/{hash}.json 缓存回放比 DB 基线即可端到端验收,无需重解析。
 - **cpa 单文档重解析/审计的容器内调用姿势 (2026-09-19, bug-3413):** gateway 容器内跑 contract-price-analysis 脚本必须 PYTHONPATH=/app/skills/public/contract-price-analysis(cli.py 用 from scripts.xxx 绝对导入)。单文档重解析=--force-key <MinIO对象key>(storage_uri 去掉 s3://bucket/ 前缀),--re-ocr 才强制重OCR;桂北137页 re-OCR 实测约18分钟(P1估15)。重解析会 delete+reinsert cpa_items(id/run_id/cluster_id 会变,比特一致性 diff 须排除这三列只比业务值列)。
 
@@ -2187,3 +2188,47 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - **复合表头形态指纹**: OCR 把两列共用的表头格('材质/规格')落在右列、真品名列表头为空串时,name 锚先占格导致 spec 静默失绑+品名错拿规格文本。拆分门控必须双条件同时满足(spec 锚第一落格==name 格 AND 左邻表头归一化后为空串),左邻非空(如'类别')绝不拆——合成 fixture 已钉反例。
 - **129 表回放是 cpa 匹配器改动的唯一安全证明**: 改 match_seed 前先跑 `.wolf/tmp/fix/replay_match.py`(容器内, docker cp 到 /tmp; /app 不挂 .wolf)存基线,改后 diff。命中映射含 (seed_id, roles, header_rows) 三元——roles 变了也算变化。固化回归 `tests/test_seed_match_regression.py` + `fixtures/seed_hit_replay.json` 容器内全量跑、宿主机 skip(OCR 缓存不在宿主机)。JSON 固化会把 roles 的 tuple 变 list,比对侧必须同形(`[[r,c] for ...]`)。
 - **容器内 heredoc 跑 python -c 的坑**: f-string 里 `\"` 转义在 sh -c 包装下直接 SyntaxError——多行容器内脚本一律写 .wolf/tmp/fix/ 再 docker cp,别硬塞 heredoc。
+
+- [2026-09-20] **前端单测框架是 rstest 不是 vitest**：`package.json` test script = `rstest`。用 `pnpm vitest run <file>` 跑会报 `Rstest API 'describe' is not registered yet, please make sure you are running in a rstest environment`（transform 能过但环境没注册）。正确跑法：`pnpm test <file-pattern>`（rstest 直接收 pattern 过滤，无 `run` 子命令——那是 vitest 习惯）。
+- [2026-09-20] **选择性/pathspec 提交后必须用 `git show --stat <sha>` 对照会话文件清单，防漏 add 新建文件**：F1a/F1b/F2/F3a 三阶段提交 f43e2d261 漏掉了新建的 backend/tests/test_contract_price_outlier_stats.py（只提交了改动的已跟踪文件+前端新测试），测试一直 pass 只因工作树里有 untracked 副本——换机器/CI 即缺文件。补提交 ca87a91df。
+
+- **[2026-09-20] cpa F3b 离群判定文档基线分层配方 (bug-3430):** `_build_groups_db`(cli.py) 三层判定: ①整文档豁免——文档内 ok/corrected 价中位=文档基线,相对簇中位偏离≥0.12 且**样本≥3**(`_DOC_EXEMPT_MIN_SAMPLE`,无下限时 2 行文档的中位被自身异常行拖着走,异常行自己买通豁免逃判——单测首跑就抓到)→ 整文档不逐行标 is_outlier,在 `stats.baseline_notes` 写 `doc_baseline_exempt` 注记(cpa_clusters.stats 本就是 JSONB,**零 schema 迁移**); ②文档内改判——非豁免文档样本≥4(`_DOC_MIN_SAMPLE`)用文档自身 Q3+1.5*IQR fence(保住"合同内抓错"),<4 沿用簇 fence; ③簇 n<3 反向失效——IQR 恒塌缩数学上永不报离群,写 `insufficient_sample` 注记别让"没判"冒充"查过没问题"。`stats.outlier_count` 同步为最终逐行判定数(原簇 fence 口径会与豁免/改判结果自相矛盾);Dashboard 的 outlier_count 是 crud 里 COUNT(is_outlier) 现算的,自动跟随。db_items 需带 document_id/document_id 旁的 file_name(run_cluster 的 select 要从 `select(CpaItem)` 改 `select(CpaItem, CpaDocument.file_name)`,`.scalars().all()` 改 `.all()` 解包)。fixture 手算口径: `_percentile` 线性插值 k=(n-1)p——q3 落点会被高价文档行吸进去抬飞 fence,想验证"旧逻辑误标"必须让对齐文档质量占绝对多数(≥75%)。本阶段不改数据,重跑在 F4。
+
+## Key Learnings + Do-Not-Repeat (2026-09-20 — CPA 三阶段回填+全量验收)
+### Key Learnings
+- cpa `--phase cluster` 每次全量删旧建新簇: 59 旧簇 id 零存活,重建为 60 新簇。"刷新簇 X 的 stats" 实为"同名簇以新 id 重建"——跨轮比对簇必须按 representative_name+成员映射, 不能按 id。
+- `_persist_one_doc` 持久化是 truthy-才覆写(`if doc.get(field): existing.field=...`): 重解析对字段"诚实为 None"时不会清除 DB 旧错误值(bug-3431)。验收"DB 不再显示错值"必须单独核对该缺口, 不能默认抽取层修复=存储层生效。
+- cpa_items 重解析路径先 `DELETE items WHERE document_id` 再重建: is_outlier/cluster_id/run_id 全部重置——重解析会"洗掉"旧离群标记, 这些行的离群结论以重跑 cluster 后为准。
+- psql -A 布尔列渲染为 t/f 而非 true/false; host python subprocess 捕获 docker exec 中文输出会 GBK 解码崩(ThreadUnicodeDecodeError)——落盘文件+Read 工具读取是稳态通道。
+- F3b 文档自身 Q3+1.5*IQR fence 数学验证法: n=20 线性插值 Q1=idx4.75, fence≈5065.75; JZGS HRB500E@5117 被标是规格内数学正确行为(HRB500E 高牌号价差真实), 属"标复核"语义非价格回归。
+### Do-Not-Repeat
+- 验收脚本统计 is_outlier 勿用 `== "true"` 比较 psql -A 输出(是 t/f), 否则得到 0→0 假阴性。
+- docker exec 探针脚本: .wolf/ 未 bind-mount 进容器, 须 docker cp 到容器 /tmp 再跑(与 F 批次手法一致)。
+
+- **前端测试文件必须放 `tests/unit/**`——`src/**/*.test.ts` 在任何 runner 下都不执行 (2026-09-20, Key Learning):** rstest.config.ts 两个 project 与 vitest.config.ts 的 include 都是 `tests/unit/**`,落在 `src/` 下的 `*.test.ts` 是死文件——`pnpm test`(rstest, CI `make test` 跑的就是它)执行 0 条。评审 blocker 曾误报 `src/extensions/contract-price/outlier-semantics.test.ts` 死测试,实况是该文件自始就在 `tests/unit/extensions/contract-price/`(f43e2d261)并正常执行 18 条——**处理评审 finding 前先对当前 tree 核实路径**(finding 可能基于过期快照)。新测试一律 `tests/unit/` 镜像 `src/` 布局,经 `@/` 别名导入。
+
+- **改默认值/删 tab 的 upstream port 必须 grep `tests/unit` 里的过期断言 (2026-09-20, bug-3432, Do-Not-Repeat):** c9b3af55a 把 settings 默认 section appearance→account 并删两个 tab,漏改 `settings-dialog-store.test.ts`(默认 section 断言)与 `lazy-panels.test.ts`(dynamic() 计数 9→7),HEAD 上全量套件 2163 passed/2 failed 挂了多日。**铁律:任何改行为默认值、删枚举/tab/入口的 commit,提交前 `git grep <旧值> frontend/tests/unit` 一遍;CI 全绿才算落地。**
+
+| 20:45 | cpa F4复验: 探针直调 extract_items_seed 会漏 finalize 过滤(合计行"合计不含税 金额（元）"非精确匹配 _SEED_SKIP 不被拦)+字段名是 spec_model 非 spec——活体验收探针必须走 cli._extract_from_tables 真实管线 | .wolf/tmp/fix/accept/f4_reverify.py | F4 全过 | ~8k |
+
+## Do-Not-Repeat + Key Learning (2026-09-20 晚 — bug-3431 活体验证 / CLI --run-id FK 陷阱)
+
+### Do-Not-Repeat
+- **容器内 CLI 重解析探针禁止传全新随机 `--run-id`** (bug-3434): cpa_items.run_id → cpa_run_history 外键, 而该 run 记录要到 phase 结束才由 _persist_parse 插入——随机 uuid 触发 FK 违例, `_persist_one_doc` 的宽 except 把整个 per-doc 事务(含元数据覆写+条目重建)回滚并吞成 "Per-doc persist skipped (DB unavailable)" 警告, CLI 退出码 0。**表现=重解析"成功"但 DB 分毫未动, 极易造成假验证**。正解: 传 cpa_run_history 已存在的 run id(最近一条即可)。生产扩展通道无此问题(routers.py 先 crud.create_run 再起子进程)。
+- 判断"重解析落库了没"别看 CLI 输出(Parsed N tables, M items 照打), 要么 grep "Per-doc persist skipped" 要么直接查 DB 行数/时间戳。
+
+### Key Learnings
+- bug-3431 语义定案: `_persist_one_doc` 元数据字段以「键存在」为哨兵——成功解析路径 doc_dict 键恒在(None=本轮诚实抽取 → 写 NULL 清已证伪旧值), 失败标记路径无键 → 不触碰(防误清)。行为三例单测在 test_project_fields_f2.py(桩 session+桩 declarative ORM, 断言 commits==1 防 except 吞异常假绿)。
+- P-4 合计闭环重推(_closure_recover_rows)采纳门=全有或全无 Σt 闭合打印合计(≤0.5%); 调价表(adj)一律跳过(左半区原合同金额可大于调整后合价, 行最大值语义不成立)。桂北 400 行 bad_rate=0 为其回归硬门。
+
+### Do-Not-Repeat (2026-09-20 晚, 几何层P-4批)
+- **别拿『全表合计闭环』当行级正确性证据**: 行网格漂移的差值会近抵消(木饰面 Σt 闭合到 0.043%), 闭环重推/影子管线在这种形态会以假闭环改写真值行。行级真值证据=『本行量×候选u 精确闭合候选 t』(印刷级恒等式), 全表 Σ 闭合只配当采纳门, 不配当行级证据。
+- **几何探针影子管线永远 closure_refill=False**: 重建版必须以自身行级算术质量比 ok 率; 影子跑恢复层=裁判自己给自己发分(实测影子 ok 率被洗到 1.0 假胜)。
+- **ok 率识不破『自洽换列』**: rebuild_grid 在 cellspan 表头+稀疏合计行表上列带塌缩(断点区间被稀疏行宽间隙链式合并吃掉), roles 整体左移后错列互证照样全 ok。重建版 seed 列位指纹(hit_r[1]!=active[1])必须与原命中一致才许参战比对。
+- **中间态 status 不可当病灶判据**: _matched_table_pass 调用恢复层时点, 行级 status 降级(待核验/无佐证)尚未发生(r8 当时还是 ok)——病灶判定用行级自洽(u×q 闭合本行总价格), 别读 status。
+- **合成 token fixture 用窄框(带内居中, 宽≈min(0.3带宽, 0.006×len))**: 整格宽 token 会以 colspan『占首个空带』语义把列位挤乱, 测出的是 fixture 病不是代码病。
+
+### Key Learnings (2026-09-20 晚)
+- P-4 病征定案: `_GEOMETRY_TOTALS_GAP=0.002`(spec ±0.2%)+`_totals_printed_candidates`(合计行全部正金额=候选, 没有任何候选在容差内才病征——量合计/税额/总计同印不误触发)+`_GEOMETRY_TOTALS_GAP_ABS=100`(绝对下限防小表)。恢复家族门 `_CLOSURE_REFILL_GAP=0.005` 与病征阈刻意分离(砂石料活体语义保持; 收窄会误改写, 见上条)。
+- 行漂移对位恢复(_reassign_drift_pairs, bug-3427 修复): 行 i 破损(缺价/行级不自洽)且下一行 (u,t) 对被本行量印刷级闭合 → 对位; 全有或全无(Σ 闭合+严格更近, 败则整链回滚); corrected 行零干预; 同值不重标保原溯源。活体: 木饰面 27 行全 ok, Σ=8,440,883.64 分毫不差。
+- 多候选合计行(小计行同印 量合计+总计)上『按 price_total 列位找锚』会因合计行自身漂移落空——候选集语义(任一候选闭合即静默)严格更稳。

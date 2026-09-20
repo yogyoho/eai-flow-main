@@ -135,4 +135,20 @@ DEFAULT_TABLE_SEEDS: list[dict] = [
         "exclude": {"price_unit": ["不含税"]},
         "source": "样例:024-2019砂石料备案存档扫描件",
     },
+    {
+        "id": "ssxl-cgjh",
+        "display_name": "计划采购主要物资审批单(砂石料)",
+        "title_keywords": ["拟采购主要物资", "计划采购主要物资"],
+        "columns": {
+            "name": ["物资名称"],
+            "spec": [],
+            "qty": ["数量"],
+            "unit": ["计量单位"],
+            "price_unit": ["物资单价"],
+            "price_total": ["预计总价"],
+            "price_untaxed": [],
+        },
+        "exclude": {"price_unit": ["不含税"]},
+        "source": "样例:024-2019砂石料备案存档扫描件 p4 大宗物资采购审批单",
+    },
 ]

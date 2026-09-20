@@ -19578,3 +19578,84 @@
 | 13:56 | Created frontend/tests/unit/extensions/contract-price/outlier-semantics.test.ts | — | ~2869 |
 | 14:00 | F1-F4修复workflow用户暂停(w0y1irozp stopped): F1/F2/F3a三代理完成自验过(改动未提交在工作区), F3b/F4/评审未跑 | wf_e318e49e | paused | — |
 | 14:01 | Session end: 240 writes across 51 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 83 reads | ~269599 tok |
+| 18:11 | F1a/F1b/F2/F3a三阶段提交f43e2d261(补3处typecheck遗漏),workflow从F3b断点恢复(wagq4i6bx) | 三套件绿 | resumed | ~50k |
+| 18:12 | Session end: 240 writes across 51 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 83 reads | ~269599 tok |
+| 18:20 | 复验F3a三阶段: f43e2d261已提交但漏add后端测试test_contract_price_outlier_stats.py(untracked),补提交ca87a91df(7 passed) | backend/tests/test_contract_price_outlier_stats.py | committed | ~30k |
+| 18:40 | F3a验收复验全绿: skill 149p/2s, backend test_contract_price* 54p/1s, typecheck净, outlier-semantics rstest 18p; gateway重启(唯一running run为9-12孤儿行,8天stale),health恢复, live /items 实测返回cluster_median/deviation_pct/cluster_doc_count(螺纹钢 4797中位/23%偏离/4文档) | gateway | verified | ~40k |
+| 18:43 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 1 import(s) | ~14 |
+| 18:43 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→3 lines | ~56 |
+| 18:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _build_groups_db() | ~1508 |
+| 18:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 29→33 lines | ~484 |
+| 18:45 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified items() | ~176 |
+| 18:45 | Edited skills/public/contract-price-analysis/scripts/cli.py | 6→6 lines | ~88 |
+| 18:46 | Created skills/public/contract-price-analysis/tests/test_doc_baseline_outlier.py | — | ~1981 |
+| 18:47 | Edited skills/public/contract-price-analysis/tests/test_doc_baseline_outlier.py | modified _item() | ~68 |
+| 18:47 | Edited skills/public/contract-price-analysis/tests/test_doc_baseline_outlier.py | 2→2 lines | ~29 |
+| 18:51 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→3 lines | ~56 |
+| 18:51 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→8 lines | ~169 |
+| 18:51 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→3 lines | ~62 |
+| 18:51 | Edited skills/public/contract-price-analysis/tests/test_doc_baseline_outlier.py | modified test_whole_doc_price_regime_exempt_with_note() | ~640 |
+| 18:52 | Edited skills/public/contract-price-analysis/tests/test_doc_baseline_outlier.py | modified test_small_doc_above_cluster_fence_still_flagged() | ~240 |
+| 18:52 | Edited skills/public/contract-price-analysis/tests/test_doc_baseline_outlier.py | modified test_needs_review_rows_excluded_from_doc_baseline() | ~227 |
+| 18:55 | F3b 前置: 推送已完成三阶段(5a1e5f514/f43e2d261/ca87a91df)到 origin/main-dev-fork, ahead 3→0 | git | pushed | ~2k |
+| 18:55 | F3b 离群判定文档基线修正落地: _build_groups_db 文档基线豁免(≥12%偏离+样本≥3下限 bug-3430)+文档内 IQR 改判(样本≥4)+n<3 insufficient_sample 注记; run_cluster 透传 document_id/file_name; stats.baseline_notes 入 JSONB 零迁移 | skills/public/contract-price-analysis/scripts/cli.py, tests/test_doc_baseline_outlier.py | 8 新测全过+套件157p/2s+backend 54p/1s | ~18k |
+| 19:20 | CPA三阶段回填+全量验收: 3文档缓存命中重解析(sp-gj 8/8规格回填/木饰面真品名/砂石料contract_no修复); cluster重跑60簇13旧误标清除+doc_baseline_exempt注记; 498条目零价格回归; 桂北bad_rate=0; API冒烟过; bug-3431记账(truthy覆写致旧project_name冻结,数据已对齐) | .wolf/tmp/fix/accept/*, cpa_*表 | PASS | ~45k |
+| 20:08 | Edited frontend/tests/unit/components/workspace/lazy-panels.test.ts | 6→7 lines | ~122 |
+| 20:09 | Edited frontend/tests/unit/components/workspace/settings/settings-dialog-store.test.ts | 6→7 lines | ~63 |
+| 20:13 | cpa三阶段收尾落库: F3b 文档基线离群分层 cli.py+test_doc_baseline_outlier.py commit b581f8439; 129表回放唯一2diff=F1a/F1b预期(fixture一致) | skills/public/contract-price-analysis/scripts/cli.py, tests/test_doc_baseline_outlier.py | 已提交 | ~4k |
+| 20:13 | 评审major(死测试)证伪: outlier-semantics.test.ts 自始在 tests/unit 且 18 passed; 另修 c9b3af55a 遗留2个过期测试断言(bug-3432), 全量 2165 green | frontend/tests/unit/.../lazy-panels.test.ts, settings-dialog-store.test.ts | 全绿 | ~3k |
+| 20:45 | cpa 三阶段复验轮: b581f8439 核验在库; 双套件绿(157+54); 129表回放=fixture EXACT_MATCH; F4 四项活体 ALL_OK(真实管线); 前端全量 2165 绿+typecheck 净 | .wolf/tmp/fix/accept/f4_reverify.py | 复验通过 | ~10k |
+| 20:31 | F1-F4六项全部完成: F3b提交b581f8439,F4四项活体验收全过(spec8/8+名称净化+编号命中+离群降级),复验11/11,129表回放零漂移 | 全栈 | done | ~820k |
+| 20:31 | Session end: 257 writes across 54 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 87 reads | ~280514 tok |
+| 20:39 | Session end: 257 writes across 54 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 87 reads | ~280514 tok |
+| 20:45 | 待办清理workflow派发(wf_fc17ef60): 砂石料p4种子+bug-3431+P-4合计闭环病征, 串行+双镜头评审 | w0nrrr72v | running | ~0 |
+| 20:45 | Session end: 257 writes across 54 files (AppShell.tsx, OntologyPage.tsx, ontostudio-sidebar-styles.html, cli.py, test_tiaojia_adjustment.py) | 87 reads | ~280514 tok |
+| 21:03 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified in() | ~168 |
+| 21:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→5 lines | ~93 |
+| 21:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _table_ok_rate() | ~391 |
+| 21:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→2 lines | ~27 |
+| 21:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _geometry_probe() | ~437 |
+| 21:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~29 |
+| 21:07 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→3 lines | ~44 |
+| 21:08 | Edited skills/public/contract-price-analysis/tests/test_geometry_rebuild.py | 2→2 lines | ~22 |
+| 21:08 | Edited skills/public/contract-price-analysis/tests/test_project_fields_f2.py | modified in() | ~162 |
+| 21:12 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified match_seed() | ~908 |
+| 21:12 | Edited skills/public/contract-price-analysis/scripts/table_classifier.py | modified any() | ~436 |
+| 21:12 | Edited skills/public/contract-price-analysis/scripts/seed_library.py | expanded (+16 lines) | ~273 |
+| 21:13 | Edited backend/app/extensions/contract_price/seed_defaults.py | expanded (+16 lines) | ~273 |
+| 21:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | added 1 condition(s) | ~1520 |
+| 21:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified max() | ~138 |
+| 21:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | 7→10 lines | ~115 |
+| 21:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified pop() | ~99 |
+| 21:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified pop() | ~68 |
+| 21:20 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified pop() | ~119 |
+| 21:25 | Created skills/public/contract-price-analysis/tests/test_ssxl_cgjh_seed.py | — | ~2021 |
+| 21:26 | Edited skills/public/contract-price-analysis/tests/test_seed_library.py | modified test_default_library_has_seven_seeds() | ~68 |
+| 21:32 | Edited skills/public/contract-price-analysis/tests/test_seed_match_regression.py | modified test_replay_129_tables_seed_hit_mapping_frozen() | ~91 |
+| 13:45 | 待办三件套闭环: ssxl-cgjh 种子(双镜像+match_seed 深扫表头兜底)+bug-3431 修复(键存在哨兵)+P-4 合计闭环病征/_closure_recover_rows | cli.py, table_classifier.py, seed_library.py, seed_defaults.py, test_ssxl_cgjh_seed.py, test_geometry_rebuild.py, test_project_fields_f2.py, seed_hit_replay.json | 168 passed/2 skipped, backend 54/1, 129 回放恰+1(砂石料p4/t0), 桂北 400 行 IDENTICAL, 活体回填 12 行(p4×8 真值 ok+p13×4 零变化), cluster 504 items/62 groups | ~110000 tok |
+| 21:43 | Edited skills/public/contract-price-analysis/tests/test_project_fields_f2.py | modified __init__() | ~1776 |
+| 22:10 | 三待办收官验证: bug-3431 行为三例单测补齐+活体真验证(首探被 FK 回滚, 换存在 run id 后砂石料 project_name NULL 保持/contract_no 保持, 6 档零漂移, JZGS project_name 由 F2 修复升真值且幂等); 129 回放容器内 0 diff; 桂北 bad_rate=0(393 OK/7 NO_ORACLE); bug-3434(FK 陷阱)入账 | test_project_fields_f2.py, buglog.json, cerebrum.md, anatomy.md | host 171 passed/2 skipped, backend 54 passed/1 skipped | ~60k tok |
+| 22:22 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→6 lines | ~116 |
+| 22:22 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _totals_printed_candidates() | ~500 |
+| 22:22 | Edited skills/public/contract-price-analysis/scripts/cli.py | 15→18 lines | ~164 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→2 lines | ~28 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→2 lines | ~27 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/cli.py | 5→8 lines | ~110 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→3 lines | ~46 |
+| 22:23 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~18 |
+| 22:24 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~20 |
+| 22:26 | Edited skills/public/contract-price-analysis/tests/test_geometry_rebuild.py | modified test_totals_closure_gap_helper() | ~635 |
+| 22:30 | Edited skills/public/contract-price-analysis/tests/test_geometry_rebuild.py | added 1 import(s) | ~20 |
+| 22:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | inline fix | ~32 |
+| 22:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→7 lines | ~92 |
+| 22:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→4 lines | ~63 |
+| 22:44 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→6 lines | ~75 |
+| 22:48 | Edited skills/public/contract-price-analysis/tests/test_geometry_rebuild.py | 4→4 lines | ~74 |
+| 22:48 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→8 lines | ~95 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified _reassign_drift_pairs() | ~965 |
+| 23:02 | Edited skills/public/contract-price-analysis/scripts/cli.py | 2→5 lines | ~74 |
+| 23:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | modified enumerate() | ~377 |
+| 23:06 | Edited skills/public/contract-price-analysis/scripts/cli.py | 3→5 lines | ~62 |
+| 23:45 | 几何层P-4批收尾: P-4阈0.2%+候选集+绝对下限; 影子管线closure_refill=False; 重建roles指纹守卫; _reassign_drift_pairs行漂移对位恢复(bug-3427修复r7=535/r8=258); bug-3435记账 | cli.py, test_geometry_rebuild.py, fixtures/msm_p2_drift_rows.json | host 176+2/backend 54+1全绿; 木饰面Σ=8440883.64分毫不差27行全ok; 桂北bad_rate=0; 6文档零漂移; 砂石料12行保持 | ~95k |
+| 23:18 | Edited skills/public/contract-price-analysis/scripts/cli.py | 6→4 lines | ~51 |
+| 23:19 | Edited skills/public/contract-price-analysis/scripts/cli.py | 4→6 lines | ~94 |

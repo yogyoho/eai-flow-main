@@ -988,6 +988,11 @@ def _lone_row_price(row, qty_col=None):
 # ── P1 几何层: 病征阈值 + 两版比对度量(spec §2.3/§2.4,计划 Task 4) ──────────
 _GEOMETRY_NR_TRIGGER = 0.30      # P-2: seed 锚定后该表仲裁 NR 率 >0.30
 _GEOMETRY_X_MISMATCH = 0.30      # P-3: 锚列 x-band 失配率 >0.30
+_GEOMETRY_TOTALS_GAP = 0.002     # P-4: 合计闭环 Σ(q×u) vs 最好候选打印合计 相对偏差 >0.2%(spec)
+_GEOMETRY_TOTALS_GAP_ABS = 100.0  # P-4 绝对下限: |Σ−候选| 低于此不作病征(防小表噪声误触发)
+# 闭环重推闭合门保持 0.5%(砂石料活体验证语义): 行网格漂移的差值可近抵消,
+# 收窄到 0.2% 会让重推在木饰面 r7/r8 形态上以假闭环改写真值行。
+_CLOSURE_REFILL_GAP = 0.005
 _GEOMETRY_MIN_ROWS_RATIO = 0.7   # 重建行数 < 原表×0.7 → 放弃重建(spec §2.4)
 
 # ── P2 LLM 兜底: 触发阈值(spec §3,计划 Task 7) ─────────────────────────────
@@ -1053,6 +1058,281 @@ def _table_ok_rate(items):
     return ok / len(items)
 
 
+_TOTALS_LABEL_RE = re.compile(r"合\s*计|总\s*计|小\s*计|总金额|总金额合计")
+
+
+def _totals_printed_candidates(rows):
+    """表内合计词行的全部可解析正金额(候选印刷合计,升序去重)。
+
+    打印合计是 OCR 无关的独立算术锚。合计行常同印多级小计/量合计/税额
+    (木饰面 p2: 小计行同时印 量合计35421.48 与 总计8440883.64),单取
+    『price_total 列位』会因合计行自身网格漂移落空——候选集语义对齐
+    spec『没有任何候选在容差内』: 闭表只要有候选命中即静默。"""
+    cands: set = set()
+    for row in rows:
+        if not any(_TOTALS_LABEL_RE.search(c or "") for c in row):
+            continue
+        for c in row:
+            for m in re.findall(r"\.?\d[\d,，.]*", c or ""):
+                try:
+                    v = float(m.replace(",", "").replace("，", ""))
+                except ValueError:
+                    continue
+                if v > 0:
+                    cands.add(v)
+    return sorted(cands)
+
+
+def _totals_printed_amount(rows):
+    """重推锚=最大候选(小计多级取最大=总计;砂石料 p4『插入项 49868500元』
+    与木饰面 p2 小计行实测均命中)。无合计行/无可解析金额 → None。"""
+    cands = _totals_printed_candidates(rows)
+    return cands[-1] if cands else None
+
+
+def _totals_closure_gap(rows, tbl_items):
+    """P-4 合计闭环病征: Σ(数量×含税单价) 与最好候选印刷合计的相对偏差。
+
+    行级错位/吞行的网格病灶不必然推高 P-2 的 needs_review 率(算术自洽的
+    错值行照样 ok),但一定破坏全表算术闭环。偏差 = min over 候选
+    |Σ(q×u) − 候选| ÷ 候选(spec: 没有任何候选在 ±0.2% 内即病征)。
+    绝对偏差 < _GEOMETRY_TOTALS_GAP_ABS 的部分和噪声不作病征(防小表误触发)。
+    无合计行/无候选/无可比部分和(全表缺量或缺价) → None(不判病征)。
+    仅作触发器: 采纳仍由两版 ok 率严格更高裁决(平手取原版),误触发零风险。"""
+    got = sum(
+        it["quantity"] * it["unit_price"]
+        for it in tbl_items
+        if it.get("quantity") and it.get("unit_price")
+    )
+    if got <= 0:
+        return None
+    cands = _totals_printed_candidates(rows)
+    if not cands:
+        return None
+    best_rel, best_abs = None, None
+    for cand in cands:
+        rel = abs(got - cand) / cand
+        if best_rel is None or rel < best_rel:
+            best_rel, best_abs = rel, abs(got - cand)
+    if best_abs < _GEOMETRY_TOTALS_GAP_ABS:
+        return None  # 部分和噪声级差异: 防小表误触发(自定绝对下限)
+    return best_rel
+
+
+def _closure_recover_rows(table, items, tbl_start, adj=False):
+    """合计闭环行级重推(P-4 的恢复伴生层,砂石料 p4 审批单实测驱动)。
+
+    网格病产生的行: 总价列错位(真值落在邻列)、量格粘连('217500.0060.00')、
+    综合单价拆两格('123.00'+'28.00')——行级仲裁修不齐,但全表合计闭环恒成立。
+    重推律: t_i = 行内最大金额(合计远大于行内其余数字,日期/序号噪声无干扰);
+    q_i = 存储数量(>0)否则行内乘法/加法结构(u×q≈t;综合单价 u=x+y 加数对);
+    u_i = t_i ÷ q_i。采纳门(全有或全无): Σt_i 与打印合计闭合(≤ _CLOSURE_REFILL_GAP)——
+    行最大值是网格事实,与提取无关,闭合即证 t 选择正确。已与重推值一致的行
+    不动(保留原溯源);重推成功的行 ok + price_reason『合计闭环重推』并打
+    ``_closure`` 标(第九层置信分层不降级)。调价表(adj)跳过: 左半区原合同
+    金额可大于调整后合价,行最大值语义不成立。无合计行/项数<3/已闭环 → 零干预。"""
+    if adj:
+        return
+    rows = table.rows or []
+    printed = _totals_printed_amount(rows)
+    if not printed or printed <= 0:
+        return
+    tbl = items[tbl_start:]
+    if len(tbl) < 3:
+        return
+    got = sum(
+        it["quantity"] * it["unit_price"]
+        for it in tbl
+        if it.get("quantity") and it.get("unit_price")
+    )
+    if got > 0 and abs(got - printed) / printed <= _CLOSURE_REFILL_GAP:
+        return  # 已闭环,零干预
+    # 逐行: t_i = 行内最大金额;推导 (q, u)
+    derived: list = []  # (it, t, q, u) | (it, t, None, None)
+    for it in tbl:
+        row = rows[it["source_row_idx"]] if it["source_row_idx"] < len(rows) else []
+        toks = []
+        for cell in row:
+            for m in re.findall(r"\.?\d[\d,，.]*", cell or ""):
+                try:
+                    v = float(m.replace(",", "").replace("，", ""))
+                except ValueError:
+                    continue
+                if v >= _MIN_PLAUSIBLE_UNIT:
+                    toks.append(v)
+        if not toks:
+            derived.append((it, None, None, None))
+            continue
+        t = max(toks)
+        q = u = None
+        q0 = it.get("quantity")
+        if q0 and q0 > 0:
+            u = round(t / q0, 2)
+            if u >= _MIN_PLAUSIBLE_UNIT:
+                q = q0
+                # 量格粘连细噪(217500.006): u 整后反Snap(t/89=217500.000 精确闭合)
+                q_snap = round(t / u, 3)
+                if abs(q_snap * u - t) <= 1e-6 * t and abs(q_snap - q0) <= 0.01 * max(q_snap, q0):
+                    q = q_snap
+            else:
+                u = None
+        if u is None:
+            # 乘法结构(u×q≈t,q 在 u 之前——格内 token 序=列序): r11 '0 500.000
+            # 5,300.00' → q=500, u=5300。
+            for qi in range(len(toks)):
+                for ui in range(qi + 1, len(toks)):
+                    if abs(toks[ui] * toks[qi] - t) <= 0.02 * t:
+                        q, u = toks[qi], round(toks[ui], 2)
+                        break
+                if u is not None:
+                    break
+        if u is None:
+            # 加法结构(综合单价=物资+运输,拆格/胶格皆可): u=x+y, q 字面格
+            # (r10 '45.00 13.00'+'0 110000.00' → u=58, q=110000)。
+            adds = sorted({round(x + y, 2) for i, x in enumerate(toks) for j, y in enumerate(toks) if i != j})
+            for u_add in adds:
+                if u_add < _MIN_PLAUSIBLE_UNIT:
+                    continue
+                for v in toks:
+                    if v != u_add and abs(u_add * v - t) <= 0.02 * t:
+                        q, u = v, u_add
+                        break
+                if u is not None:
+                    break
+        derived.append((it, t, q, u))
+    # 采纳门(全有或全无): Σt 闭合打印合计(门= _CLOSURE_REFILL_GAP 0.5%,与
+    # P-4 病征阈 0.2% 刻意分离——木饰面 p2 r7/r8 漂移形态上,行网格错位的
+    # 差值近抵消使 Σt 闭合到 0.043%,若重推门收窄到 0.2% 会以假闭环改写
+    # r8/r9/r13 真值;重推只服务砂石料式『真值行整行错位且差值可见』形态)
+    ts = [t for _, t, _, _ in derived if t is not None]
+    if len(ts) < 3 or abs(sum(ts) - printed) / printed > _CLOSURE_REFILL_GAP:
+        return
+    for it, t, q, u in derived:
+        if t is None or u is None or u < _MIN_PLAUSIBLE_UNIT or not q:
+            continue  # 推不出的行保持原状(诚实状态不动)
+        cur, cur_q = it.get("unit_price"), it.get("quantity")
+        if (
+            cur is not None
+            and cur_q
+            and abs(cur - u) <= max(0.011, 0.02 * max(cur, u))
+            and abs(cur_q - q) <= max(0.011, 0.001 * max(cur_q, q))
+        ):
+            continue  # 已一致,保留原溯源
+        it["quantity"] = q
+        it["unit_price"] = u
+        it["validation_status"] = "ok"
+        it["price_reason"] = "合计闭环重推"
+        it["_closure"] = True
+
+
+def _reassign_drift_pairs(table, items, tbl_start, roles=None, adj=False):
+    """行网格漂移对位恢复(P-4 家族,木饰面 p2 r7/r8 链式漂移实测驱动,bug-3427)。
+
+    PP-Structure 行带错位形态: 行 i 的 (综合单价, 含税总价) 整对下漂到行 i+1
+    (r7 双空,r8 载 r7 真值 (535,71732.8),链式到 r10 双值胶合格)。恢复证据
+    与闭环重推(行内最大)不同: 『下一行的 (u,t) 对能被本行量精确闭合』——
+    q_i×u ≈ t(印刷级 ≤max(0.011, 0.2%·t))只对真值行成立,错主行不成立
+    (372.01×535=199,025≠71,732.8)。病灶判定用行级自洽(本行 u×q 闭合本行
+    打印总价格=健康零干预;缺价/不闭合=候选),不依赖中间态 status(调用点
+    降级尚未发生);corrected 人工改判行零干预,u 候选取自 price_total 格
+    同行的 price_unit 格(胶合格自然裂多候选)。采纳门(全有或全无,与闭环
+    重推同纪律): 恢复后
+    Σ(q×u) 闭合打印合计(≤_CLOSURE_REFILL_GAP)且严格更近,失败整链回滚
+    (诚实 needs_review 不动);调价表跳过;无打印合计锚/无种子列位跳过。"""
+    if adj:
+        return
+    rows = table.rows or []
+    if not rows or not roles:
+        return
+    printed = _totals_printed_amount(rows)
+    if not printed or printed <= 0:
+        return
+    tbl = items[tbl_start:]
+    if len(tbl) < 3:
+        return
+    u_col, t_col = roles.get("price_unit"), roles.get("price_total")
+    if u_col is None or t_col is None:
+        return
+
+    def _cell_nums(ri, c):
+        row = rows[ri] if ri < len(rows) else []
+        out = []
+        for m in re.findall(r"\.?\d[\d,，.]*", (row[c] if c < len(row) else "") or ""):
+            try:
+                v = float(m.replace(",", "").replace("，", ""))
+            except ValueError:
+                continue
+            out.append(v)
+        return out
+
+    def _sum_qu():
+        return sum(
+            it["quantity"] * it["unit_price"]
+            for it in tbl
+            if it.get("quantity") and it.get("unit_price")
+        )
+
+    before = _sum_qu()
+    if before <= 0:
+        return
+    assignments = []  # (it, old_u, u)
+    for pos, it in enumerate(tbl):
+        if it.get("validation_status") == "corrected":
+            continue  # 人工改判行零干预
+        q = it.get("quantity")
+        if not q or q <= 0:
+            continue
+        ri_own = it["source_row_idx"]
+        u0 = it.get("unit_price")
+        # 自洽判定(行级,不依赖中间态 status): 本行 u×q 能闭合本行打印总价格
+        # (或缺价格但有价可自证)→ 健康行零干预。中间态 status 此刻尚未降级,
+        # 不能作为病灶依据(木饰面 r7/r8 实测: 调用点 r8 仍是 ok)。
+        own_ts = [t for t in _cell_nums(ri_own, t_col) if t > 0]
+        if u0 is not None and u0 >= _MIN_PLAUSIBLE_UNIT and own_ts and any(
+            abs(q * u0 - t) <= max(0.011, 0.002 * t) for t in own_ts
+        ):
+            continue
+        nxt = tbl[pos + 1] if pos + 1 < len(tbl) else None
+        if nxt is None:
+            continue
+        rj = nxt["source_row_idx"]
+        us = [v for v in _cell_nums(rj, u_col) if v >= _MIN_PLAUSIBLE_UNIT]
+        ts = [v for v in _cell_nums(rj, t_col) if v > 0]
+        best = None
+        for u in us:
+            for t in ts:
+                diff = abs(q * u - t)
+                if diff <= max(0.011, 0.002 * t) and (best is None or diff < best[0]):
+                    best = (diff, u)
+        if best is not None and best[1] != u0:  # 同值不重标(保持原溯源)
+            assignments.append((it, u0, best[1]))
+    if not assignments:
+        return
+    for it, _old, u in assignments:
+        it["unit_price"] = u
+    after = _sum_qu()
+    if not (
+        after > 0
+        and abs(after - printed) / printed <= _CLOSURE_REFILL_GAP
+        and abs(after - printed) < abs(before - printed)
+    ):
+        for it, old, _u in assignments:
+            it["unit_price"] = old  # 整链回滚
+        return
+    for it, _old, u in assignments:
+        it["unit_price"] = u
+        it["validation_status"] = "ok"
+        it["price_reason"] = "行漂移对位恢复"
+        it["_closure"] = True
+    logger.info(
+        "drift pair reassign: %d rows recovered (sum %.2f -> %.2f, printed %.2f)",
+        len(assignments),
+        before,
+        after,
+        printed,
+    )
+
+
 def _anchor_x_mismatch_rate(rows, cell_bboxes, roles, roles_x, header_rows, scan=8):
     """P-3 病征: 锚列(roles∩roles_x 有带角色)数据格 x-center 落带外
     (tol=0.06,与 _row_cells_by_x 同容差)占锚列有值格的比例。网格错位/胶合
@@ -1078,7 +1358,7 @@ def _anchor_x_mismatch_rate(rows, cell_bboxes, roles, roles_x, header_rows, scan
     return mismatch / total if total else 0.0
 
 
-def _matched_table_pass(table, doc_uri, hit, active_in, cat_in, page_texts, items, meta):
+def _matched_table_pass(table, doc_uri, hit, active_in, cat_in, page_texts, items, meta, closure_refill=True):
     """单表命中/续表全流程(几何层两版比对共用——原 _extract_from_tables 表循环体
     原样抽取,重建版与原版各跑同一管线,保证比对语义一致)。
     hit=(seed, roles, header_rows) 走命中分支;None 走续表继承(active_in 必非 None)。
@@ -1485,6 +1765,16 @@ def _matched_table_pass(table, doc_uri, hit, active_in, cat_in, page_texts, item
             _q_fix = _recover_missing_qty_page_text(it["unit_price"], _cands_b, pt_nums)
             if _q_fix is not None:
                 it["quantity"] = _q_fix
+    # 合计闭环行级重推(P-4 伴生,过滤前——被过滤的无价行可能被重推救回):
+    # 打印合计锚存在且提取未闭环时,按 t=行最大金额/q=存储量或行内乘加结构重推。
+    # 几何探针的影子管线关闭此层(closure_refill=False): 重推以全表闭环为采纳门,
+    # 会把列位错乱的重建网格洗成全 ok——影子版必须以自身行级算术质量参战,
+    # 两版比对才不被『闭环≠正确』的假 ok 率买通(木饰面 p2 形态实测)。
+    if closure_refill:
+        # 行漂移对位恢复(木饰面 r7/r8 链式漂移)先于闭环重推: 对位恢复成功后
+        # Σ 闭合,重推自然早退零干预;恢复失败时重推按原语义接管(砂石料形态)。
+        _reassign_drift_pairs(table, items, tbl_start, roles=roles, adj=adj)
+        _closure_recover_rows(table, items, tbl_start, adj=adj)
     # 价格缺失行统一过滤(等价旧 price-less skip,但发生在第六层仲裁之后):
     # 仲裁后仍无含税单价且无不含税审计价的行,对价格分析无价值,不入库。
     items[tbl_start:] = [
@@ -1577,6 +1867,7 @@ def _matched_table_pass(table, doc_uri, hit, active_in, cat_in, page_texts, item
             kind = "无佐证"  # 行内无自洽结构
         elif cur < _MIN_PLAUSIBLE_UNIT:
             kind = "量纲边界"
+        closure_ok = it.pop("_closure", False)
         if it.pop("_adj_degraded", False):
             # 降级守卫(评审 major): 无坐标带仲裁改写行不吃任何洗白——
             # 左半区自洽伪三元组可满足 _row_confirmed/粘连洗白(佐证失义)。
@@ -1587,6 +1878,10 @@ def _matched_table_pass(table, doc_uri, hit, active_in, cat_in, page_texts, item
             # 撕裂量, 自证循环)——强制待核验, 不吃粘连洗白(p2r6: 3498.77=t÷378)。
             it["validation_status"] = "needs_review"
             it["price_reason"] = "待核验: 量撕裂反算"
+        elif closure_ok:
+            # 合计闭环重推行(全表打印合计背书): 独立于行内结构的全表算术佐证,
+            # 置信高于「行内无自洽」的位置约定——保持 ok 与重推 reason 不降级。
+            pass
         elif kind:
             it["validation_status"] = "needs_review"
             it["price_reason"] = "待核验: " + kind
@@ -1603,10 +1898,14 @@ def _geometry_probe(table, doc_uri, active, cat_in, page_texts, items, meta, tbl
     """P1 几何层病征触发 + 两版比对(spec §2.3/§2.4,计划 Task 4)。
 
     病征(任一): P-1 胶合格(has_glue_symptom)/ P-2 该表仲裁 NR 率>0.30 /
-    P-3 锚列 x-band 失配率>0.30。tokens 可用(新 OCR 或 --re-ocr 后)才探测;
-    重建网格走 _matched_table_pass 同一管线,行级 ok 率严格更高才采纳
-    (平手取原版,保守);采纳时本表条目替换为重建版、active 换用重建版上下文、
-    meta.geometry_rebuilt=True(表级明细记 geometry_rebuilt_tables)。
+    P-3 锚列 x-band 失配率>0.30 / P-4 合计闭环偏差>0.2%(Σ(q×u) vs 最好候选
+    打印合计,绝对偏差≥100元;spec ±0.2%+自定绝对下限)。
+    tokens 可用(新 OCR 或 --re-ocr 后)才探测;
+    重建网格走 _matched_table_pass 同一管线(但关闭闭环重推——重推的『全表
+    闭环』门可把列位错乱的重建网格洗成全 ok,影子版必须以自身行级算术质量
+    参战),行级 ok 率严格更高才采纳(平手取原版,保守);采纳时本表条目替换
+    为重建版、active 换用重建版上下文、meta.geometry_rebuilt=True(表级明细记
+    geometry_rebuilt_tables)。
     放弃重建: 无 tokens / 列数<3 / 重建行数 < 原表×0.7 / 重建版 match_seed 不中。
     任何异常 → try/except 退回原表(spec §6);旧缓存/无 tokens 表零行为。"""
     try:
@@ -1627,7 +1926,9 @@ def _geometry_probe(table, doc_uri, active, cat_in, page_texts, items, meta, tbl
             )
             > _GEOMETRY_X_MISMATCH
         )
-        if not (p1 or p2 or p3):
+        _p4_gap = _totals_closure_gap(rows, tbl_items) if tbl_items else None
+        p4 = _p4_gap is not None and _p4_gap > _GEOMETRY_TOTALS_GAP
+        if not (p1 or p2 or p3 or p4):
             return active
         rebuilt_rows, rebuilt_cbbs = rebuild_grid(tokens)
         if rebuilt_rows is None or len(rebuilt_rows) < _GEOMETRY_MIN_ROWS_RATIO * len(rows):
@@ -1635,6 +1936,11 @@ def _geometry_probe(table, doc_uri, active, cat_in, page_texts, items, meta, tbl
         hit_r = match_seed(rebuilt_rows, seeds)
         if hit_r is None:
             return active
+        if active is not None and hit_r[1] != active[1]:
+            return active
+        # 重建版 seed 列位与原命中不一致 = 语义换列(锯齿行/表头打包漂移的
+        # rebuild_grid 塌缩形态),非『同表归位』→ 保守弃用。ok 率比对识不破
+        # 自洽换列(错列互证照样 ok,木饰面 p2 实测),列位指纹是唯一可靠门。
         shadow = TableExtract(
             page_no=table.page_no,
             table_idx=table.table_idx,
@@ -1655,7 +1961,8 @@ def _geometry_probe(table, doc_uri, active, cat_in, page_texts, items, meta, tbl
             "matched_seeds": {},
         }
         _, probe_active, probe_info = _matched_table_pass(
-            shadow, doc_uri, hit_r, None, cat_in, page_texts, probe_items, probe_meta
+            shadow, doc_uri, hit_r, None, cat_in, page_texts, probe_items, probe_meta,
+            closure_refill=False,  # 影子版不带闭环重推: 重建质量须自身行级算术立得住
         )
         orig_rate = _table_ok_rate(items[tbl_start:])
         probe_rate = _table_ok_rate(probe_items)
@@ -1682,7 +1989,7 @@ def _geometry_probe(table, doc_uri, active, cat_in, page_texts, items, meta, tbl
             {
                 "page": table.page_no,
                 "table_idx": table.table_idx,
-                "symptoms": [s for s, on in (("P1", p1), ("P2", p2), ("P3", p3)) if on],
+                "symptoms": [s for s, on in (("P1", p1), ("P2", p2), ("P3", p3), ("P4", p4)) if on],
                 "ok_rate": round(probe_rate, 4),
                 "orig_ok_rate": round(orig_rate, 4),
             }
@@ -1720,7 +2027,8 @@ def _extract_from_tables(
     (多页清单的分类不能退化为页内局部——修订I2);尾态由 seed_category_tail
     对表行重放得出(表尾悬挂的分类行不产 item,extract 结果里看不到)。
     meta 新键: unmatched_tables[] / matched_seeds{};P1 几何层(spec §2.3/§2.4):
-    病征表(P-1 胶合/P-2 NR>0.30/P-3 锚列 x 失配>0.30)且 tokens 可用时,
+    病征表(P-1 胶合/P-2 NR>0.30/P-3 锚列 x 失配>0.30/P-4 合计闭环偏差>0.2%)
+    且 tokens 可用时,
     token 聚类重建网格走同一管线,ok 率严格更高才采纳 → geometry_rebuilt=True
     + geometry_rebuilt_tables[](表级 page/table_idx/病征/两版 ok 率)。
     P2 LLM 兜底(spec §3): llm_cfg 非 None 时,unmatched 候选表或 matched 表
@@ -2018,16 +2326,15 @@ async def _persist_one_doc(doc: dict, items: list[dict], run_id: str | None = No
                 if doc.get("preview_prefix"):
                     existing.preview_prefix = doc["preview_prefix"]
                 existing.parsed_at = now
-                if doc.get("project_name"):
-                    existing.project_name = doc["project_name"]
-                if doc.get("project_location"):
-                    existing.project_location = doc["project_location"]
-                if doc.get("contract_no"):
-                    existing.contract_no = doc["contract_no"]
-                if doc.get("supplier"):
-                    existing.supplier = doc["supplier"]
-                if doc.get("sign_date"):
-                    existing.sign_date = _to_date(doc["sign_date"])
+                # bug-3431: 元数据字段以「键存在」为哨兵——成功解析路径键恒在
+                # (_process_one_doc 每轮都跑 _extract_project_fields_with_fallback,
+                # None = 本轮诚实抽取结果, 须写 NULL 清掉已证伪旧值); 失败标记路径
+                # (except 分支)无这些键 → 不触碰既有字段(防误清语义保持)。
+                for _mf in ("project_name", "project_location", "contract_no", "supplier"):
+                    if _mf in doc:
+                        setattr(existing, _mf, doc.get(_mf))
+                if "sign_date" in doc:
+                    existing.sign_date = _to_date(doc.get("sign_date"))
                 await session.execute(delete(CpaItem).where(CpaItem.document_id == existing.id))
             doc_contract_no = doc.get("contract_no")
             for it in items:

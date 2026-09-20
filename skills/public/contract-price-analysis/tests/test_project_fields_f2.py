@@ -176,3 +176,219 @@ def test_shashiao_full_simulation():
     assert loc is None
     assert supplier == "易全勇"  # 非 F2 范围,行为保持
     assert sign is None
+
+
+# ---------- bug-3431: 重解析 None 必须落库清空(truthy-冻结修复) ----------
+
+
+def test_persist_one_doc_field_sentinel_is_key_presence():
+    """重解析路径元数据字段以键存在为哨兵: 键在(None 也在)→ 写 None 清旧值;
+    失败标记路径无键 → 不触碰。回归 bug-3431(砂石料 project_name 旧值被
+    truthy-guard 冻结)。源码契约断言(无 DB 依赖,同 test_persist_one_doc_writes_category_kwarg)。"""
+    import inspect
+
+    from scripts.cli import _persist_one_doc
+
+    src = inspect.getsource(_persist_one_doc)
+    # 键存在哨兵: 元数据字段统一按 `_mf in doc` 判定,不再 if doc.get(...)(truthy)
+    assert 'for _mf in ("project_name", "project_location", "contract_no", "supplier"):' in src
+    assert "if _mf in doc:" in src
+    assert 'if "sign_date" in doc:' in src
+    assert 'if doc.get("project_name")' not in src, "truthy-guard 回潮(bug-3431 复发)"
+    assert 'if doc.get("contract_no")' not in src
+    assert 'if doc.get("supplier")' not in src
+    assert 'if doc.get("project_location")' not in src
+    assert 'if doc.get("sign_date")' not in src
+
+
+# ── bug-3431 行为三例(桩 session+桩 ORM, 验证持久化语义本身而非源码形状) ─────
+# _persist_one_doc 全身 try/except 吞异常 → 桩必须记 commit 次数, 断言前先证明
+# 真的走到了提交(否则静默跳过会伪装成"字段保持"假绿)。
+
+import pytest  # noqa: E402
+import sqlalchemy as _sa  # noqa: E402
+from sqlalchemy.orm import declarative_base  # noqa: E402
+
+_PStubBase = declarative_base()
+
+
+class _StubCpaDocument(_PStubBase):
+    """可 select/可实例化的轻量替身(纯表达式构造, 不落任何真库)。"""
+
+    __tablename__ = "stub_persist_docs"
+
+    id = _sa.Column(_sa.Integer, primary_key=True)
+    storage_uri = _sa.Column(_sa.Text)
+    file_name = _sa.Column(_sa.Text)
+    file_hash = _sa.Column(_sa.Text)
+    file_type = _sa.Column(_sa.Text)
+    quick_fp = _sa.Column(_sa.Text)
+    parse_mode = _sa.Column(_sa.Text)
+    parse_status = _sa.Column(_sa.Text)
+    confirm_status = _sa.Column(_sa.Text)
+    parse_meta = _sa.Column(_sa.Text)
+    page_count = _sa.Column(_sa.Integer)
+    preview_prefix = _sa.Column(_sa.Text)
+    project_name = _sa.Column(_sa.Text)
+    project_location = _sa.Column(_sa.Text)
+    contract_no = _sa.Column(_sa.Text)
+    supplier = _sa.Column(_sa.Text)
+    sign_date = _sa.Column(_sa.Text)
+    parsed_at = _sa.Column(_sa.Text)
+
+
+class _StubCpaItem(_PStubBase):
+    __tablename__ = "stub_persist_items"
+
+    id = _sa.Column(_sa.Integer, primary_key=True)
+    document_id = _sa.Column(_sa.Integer)
+
+
+class _StubResult:
+    def __init__(self, row):
+        self._row = row
+
+    def scalar_one_or_none(self):
+        return self._row
+
+
+class _StubSession:
+    """select → 预置 existing 行; 其余(add/flush/delete-execute)全 no-op。"""
+
+    def __init__(self, existing):
+        self._existing = existing
+        self.commits = 0
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    async def execute(self, _stmt):
+        return _StubResult(self._existing)
+
+    def add(self, _obj):
+        pass
+
+    async def flush(self):
+        pass
+
+    async def commit(self):
+        self.commits += 1
+
+
+def _persist_doc_dict(**meta):
+    d = {
+        "storage_uri": "contracts/ssxl.pdf",
+        "file_name": "ssxl.pdf",
+        "hash": "a" * 64,
+        "type": "pdf",
+        "parse_status": "parsed",
+        "parse_meta": {},
+    }
+    d.update(meta)
+    return d
+
+
+@pytest.mark.asyncio
+async def test_persist_none_clears_stale_value_to_null(monkeypatch):
+    """例1 旧错值+本轮诚实 None → 清 NULL: 砂石料 project_name='局审批编号'
+    被重解析诚实 None 清掉, contract_no 有值照写(键在即写, 哨兵语义)。"""
+    import scripts.db as db_mod
+    import scripts.models as models_mod
+
+    existing = _StubCpaDocument(
+        project_name="局审批编号", project_location="旧地点", supplier="旧供方",
+        contract_no=None, sign_date=None,
+    )
+    session = _StubSession(existing)
+    monkeypatch.setattr(db_mod, "async_session", lambda: session)
+    monkeypatch.setattr(models_mod, "CpaDocument", _StubCpaDocument)
+    monkeypatch.setattr(models_mod, "CpaItem", _StubCpaItem)
+
+    from scripts.cli import _persist_one_doc
+
+    await _persist_one_doc(
+        _persist_doc_dict(
+            project_name=None, project_location=None, supplier=None,
+            contract_no="2GS-YCXM-CL-CG-024-2019", sign_date=None,
+        ),
+        [],
+    )
+    assert session.commits == 1, "中途异常被 except 吞掉, 持久化未执行"
+    assert existing.project_name is None, "诚实 None 未清掉旧错值(bug-3431 复发)"
+    assert existing.project_location is None
+    assert existing.supplier is None
+    assert existing.sign_date is None
+    assert existing.contract_no == "2GS-YCXM-CL-CG-024-2019"
+
+
+@pytest.mark.asyncio
+async def test_persist_new_value_overwrites_old(monkeypatch):
+    """例2 旧值+新值 → 覆写: supplier/sign_date 均被本轮新抽取值替换。"""
+    import datetime as _dt
+
+    import scripts.db as db_mod
+    import scripts.models as models_mod
+
+    existing = _StubCpaDocument(
+        project_name="旧项目", project_location="旧地点",
+        supplier="旧供方A", contract_no="OLD-001",
+        sign_date=_dt.date(2019, 1, 1),
+    )
+    session = _StubSession(existing)
+    monkeypatch.setattr(db_mod, "async_session", lambda: session)
+    monkeypatch.setattr(models_mod, "CpaDocument", _StubCpaDocument)
+    monkeypatch.setattr(models_mod, "CpaItem", _StubCpaItem)
+
+    from scripts.cli import _persist_one_doc
+
+    await _persist_one_doc(
+        _persist_doc_dict(
+            project_name="新项目", project_location="新地点",
+            supplier="新供方B", contract_no="NEW-002", sign_date="2019-07-25",
+        ),
+        [],
+    )
+    assert session.commits == 1, "中途异常被 except 吞掉, 持久化未执行"
+    assert existing.project_name == "新项目"
+    assert existing.project_location == "新地点"
+    assert existing.supplier == "新供方B"
+    assert existing.contract_no == "NEW-002"
+    assert existing.sign_date == _dt.date(2019, 7, 25)
+
+
+@pytest.mark.asyncio
+async def test_persist_no_extraction_keys_keeps_existing(monkeypatch):
+    """例3 抽取未跑(失败标记路径, doc 无元数据键) → 既有字段分毫不动。
+    防误清语义: except 分支只标 parse_status=failed, 不许把旧值洗成 NULL。"""
+    import datetime as _dt
+
+    import scripts.db as db_mod
+    import scripts.models as models_mod
+
+    existing = _StubCpaDocument(
+        project_name="旧项目", project_location="旧地点",
+        supplier="旧供方", contract_no="OLD-001",
+        sign_date=_dt.date(2019, 1, 1), parse_status="parsed",
+    )
+    session = _StubSession(existing)
+    monkeypatch.setattr(db_mod, "async_session", lambda: session)
+    monkeypatch.setattr(models_mod, "CpaDocument", _StubCpaDocument)
+    monkeypatch.setattr(models_mod, "CpaItem", _StubCpaItem)
+
+    from scripts.cli import _persist_one_doc
+
+    # 失败标记 doc: 与 cli.py except 分支同形——无任何元数据键
+    await _persist_one_doc(
+        _persist_doc_dict(parse_status="failed"),
+        [],
+    )
+    assert session.commits == 1, "中途异常被 except 吞掉, 持久化未执行"
+    assert existing.parse_status == "failed"
+    assert existing.project_name == "旧项目"
+    assert existing.project_location == "旧地点"
+    assert existing.supplier == "旧供方"
+    assert existing.contract_no == "OLD-001"
+    assert existing.sign_date == _dt.date(2019, 1, 1)
