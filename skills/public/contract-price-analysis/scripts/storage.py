@@ -37,6 +37,12 @@ class ContractStore:
     def list_objects(self):
         return list(self._client.list_objects(self._bucket, recursive=True))
 
+    def has_objects(self, prefix: str) -> bool:
+        """前缀下是否存在任意对象(不拉内容)。"""
+        for _ in self._client.list_objects(self._bucket, prefix=prefix, max_keys=1):
+            return True
+        return False
+
     def get(self, key: str) -> bytes:
         resp = self._client.get_object(self._bucket, key)
         try:

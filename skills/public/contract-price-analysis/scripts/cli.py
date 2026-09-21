@@ -29,7 +29,7 @@ from scripts.llm_fallback import try_llm_fallback
 from scripts.document_scanner import scan_changed
 from scripts.excel_generator import generate_excel
 from scripts.price_validator import parse_qty, validate_price
-from scripts.project_fields import extract_project_fields, find_contract_from_tables
+from scripts.project_fields import extract_project_fields
 from scripts.stats import compute_stats
 from scripts.storage import ContractStore
 from scripts.table_classifier import (
@@ -104,16 +104,15 @@ async def _extract_project_fields_with_fallback(
     """元数据提取 + 末页兜底(设计 §3): 前3页正则 miss 乙方/签订日期时,
     补 OCR 末2页重试(签字页常在末尾,补充协议尤甚;仅 miss 触发,成本有界)。
 
-    F2a 表格 cell 兜底(方案A): 文本路合同编号 miss 时扫已解析 tables 的
-    '合同编号：值' 冒号格(纯内存,只增 miss 档,文本路命中/其余档零影响)。
+    表格 cell 兜底(F2a 方案A + 2026-09-21 扩展)在 extract_project_fields
+    内部完成: 合同编号(同格冒号/独立格右邻)、supplier([乙方]/[供方单位]邻格)、
+    project_name([项目名称]/[项目全称]邻格/甲方格)、project_no(同格冒号)
+    均只在各自文本路 miss 时才扫表。
 
     file_bytes 允许为 None(OCR 缓存命中路径不持有原文件): 仅当兜底真的需要
-    发起时才经 store 惰性下载;两者皆无或下载失败则放弃兜底,维持前页结果。"""
-    fields = extract_project_fields(front_texts)
-    if fields[2] is None and tables:  # F2a: 文本路合同编号 miss → 表格 cell 兜底
-        contract_no = find_contract_from_tables(tables)
-        if contract_no:
-            fields = fields[:2] + (contract_no,) + fields[3:]
+    发起时才经 store 惰性下载;两者皆无或下载失败则放弃兜底,维持前页结果。
+    返回六元组 (name, loc, contract_no, supplier, sign_date, project_no)。"""
+    fields = extract_project_fields(front_texts, tables)
     if fields[3] and fields[4]:  # supplier, sign_date 都有 → 不兜底
         return fields
     fb = file_bytes
@@ -132,7 +131,7 @@ async def _extract_project_fields_with_fallback(
         return fields
     merged = dict(front_texts)
     merged.update(tail_texts)
-    retry = extract_project_fields(merged)
+    retry = extract_project_fields(merged, tables)
     # 逐字段择优: 前页已取到的保留,缺的用末页补
     return tuple(f or r for f, r in zip(fields, retry))
 
@@ -2129,10 +2128,17 @@ def _extract_from_tables(
     return items, meta
 
 
-def _cluster_sample_text(goods_name: str, tech_params: dict | None) -> str:
-    """聚类样本文本 = 名称 + 分类(同名货物不同分类必须分簇,设计 §1.3)。"""
-    cat = ((tech_params or {}).get("category") if isinstance(tech_params, dict) else None) or ""
-    return f"{goods_name} {cat}".strip()
+def _cluster_sample_text(goods_name: str, spec_model: str | None, tech_params: dict | None) -> str:
+    """聚类样本文本 = 名称 + 规格型号 + 分类(同名货物不同规格/分类必须分簇,设计 §1.3)。
+
+    spec_model 优先拼入(spec token one-hot 同时从此文本抽取,见 vectorizer.spec_tokens);
+    规格缺失时退化为 名称+分类,行为与 v1 一致。
+    """
+    if not isinstance(tech_params, dict):
+        tech_params = {}
+    spec = (spec_model or "").strip()
+    cat = (tech_params.get("category") or "").strip()
+    return " ".join(p for p in (goods_name, spec, cat) if p)
 
 
 _DOC_BASELINE_DEVIATION = 0.12  # 文档基线相对簇中位偏离 >= 此值 → 整文档免逐行离群判定
@@ -2309,6 +2315,7 @@ async def _persist_one_doc(doc: dict, items: list[dict], run_id: str | None = No
                     contract_no=doc.get("contract_no"),
                     supplier=doc.get("supplier"),
                     sign_date=_to_date(doc.get("sign_date")),
+                    project_no=doc.get("project_no"),
                     parsed_at=now,
                 )
                 session.add(existing)
@@ -2330,7 +2337,7 @@ async def _persist_one_doc(doc: dict, items: list[dict], run_id: str | None = No
                 # (_process_one_doc 每轮都跑 _extract_project_fields_with_fallback,
                 # None = 本轮诚实抽取结果, 须写 NULL 清掉已证伪旧值); 失败标记路径
                 # (except 分支)无这些键 → 不触碰既有字段(防误清语义保持)。
-                for _mf in ("project_name", "project_location", "contract_no", "supplier"):
+                for _mf in ("project_name", "project_location", "contract_no", "supplier", "project_no"):
                     if _mf in doc:
                         setattr(existing, _mf, doc.get(_mf))
                 if "sign_date" in doc:
@@ -2386,9 +2393,28 @@ async def _persist_parse(documents: list, all_items: list, run_record: dict, run
         logger.warning("Run record persist skipped (DB unavailable): %s", exc)
 
 
+# 参与聚类的文档 parse_status 口径 — run_cluster 取数与 _persist_clusters 翻状态
+# 必须共用同一个集合,否则新解析文档(pending)会被聚类但徽章永远停在「已解析」
+# (bug-3432: 72dfffa9ff 恢复时两处口径半还原漂移)。
+_CLUSTER_DOC_STATUSES = ("parsed", "needs_review")
+
+
+async def _flip_clustered_docs(session) -> None:
+    """Successful cluster run: advance clustered docs' confirm_status for the UI badge."""
+    from sqlalchemy import update
+
+    from scripts.models import CpaDocument
+
+    await session.execute(
+        update(CpaDocument)
+        .where(CpaDocument.parse_status.in_(_CLUSTER_DOC_STATUSES))
+        .values(confirm_status="clustered")
+    )
+
+
 async def _persist_clusters(groups: list, run_record: dict) -> None:
     """Phase-2 persist: replace all clusters, reassign item.cluster_id/is_outlier,
-    and mark confirmed/skipped docs as 'clustered'."""
+    and mark parsed docs as 'clustered'."""
     try:
         from sqlalchemy import delete, update
 
@@ -2399,7 +2425,7 @@ async def _persist_clusters(groups: list, run_record: dict) -> None:
             await session.execute(update(CpaItem).values(cluster_id=None, is_outlier=False))
             await session.execute(delete(CpaCluster))
             # only build clusters + advance docs to 'clustered' on a successful
-            # run — a failed run must leave them confirmed/skipped for retry.
+            # run — a failed run must leave them untouched for retry.
             if run_record.get("status") != "failed":
                 for group in groups:
                     cluster = CpaCluster(
@@ -2417,11 +2443,7 @@ async def _persist_clusters(groups: list, run_record: dict) -> None:
                             .where(CpaItem.id == m["id"])
                             .values(cluster_id=cluster.id, is_outlier=bool(m.get("is_outlier")))
                         )
-                await session.execute(
-                    update(CpaDocument)
-                    .where(CpaDocument.confirm_status.in_(["confirmed", "skipped", "clustered"]))
-                    .values(confirm_status="clustered")
-                )
+                await _flip_clustered_docs(session)
             session.add(
                 CpaRunHistory(**{k: v for k, v in run_record.items() if k in CpaRunHistory.__table__.columns})
             )
@@ -2483,7 +2505,7 @@ async def _process_one_doc(
             meta["orientation_fixed_pages"] = orient_fixed or []
             # 元数据提取 + 末页兜底: 命中路径 file_bytes=None,兜底真的需要发起时
             # 才经 store 惰性下载原 PDF(Task 6 命中路径无 file_bytes 不变量)。
-            project_name, project_location, contract_no, supplier, sign_date = (
+            project_name, project_location, contract_no, supplier, sign_date, project_no = (
                 await _extract_project_fields_with_fallback(
                     file_bytes, key, cfg.ocr_service_url, page_texts, store=store, tables=tables
                 )
@@ -2505,9 +2527,13 @@ async def _process_one_doc(
                 elif t.page_no in goods_pages and preview_prefix and t.page_preview_b64:
                     store.put_preview(ch["hash"][:8], t.page_no, base64.b64decode(t.page_preview_b64))
             # 缓存命中路径: 预览 PNG 在首解析已按内容哈希落 MinIO,确定性重建指针
-            # (修首次落库失败后纯命中重解析的 preview_prefix=None 窗口;新匹配页仍需 --re-ocr 补预览)
+            # (修首次落库失败后纯命中重解析的 preview_prefix=None 窗口;新匹配页仍需
+            # --re-ocr 补预览)。先探测再重建: 旧时代首解析(旧预览分类逻辑会漏页)
+            # 可能根本没落过 PNG,悬空指针让溯源显示破图而非明确的「无预览」。
             if cached is not None and not preview_prefix:
-                preview_prefix = f"previews/{ch['hash'][:8]}/"
+                canonical = f"previews/{ch['hash'][:8]}/"
+                if store.has_objects(canonical):
+                    preview_prefix = canonical
             doc_dict = {
                 "storage_uri": doc_uri,
                 "file_name": key,
@@ -2536,6 +2562,7 @@ async def _process_one_doc(
                 "contract_no": contract_no,
                 "supplier": supplier,
                 "sign_date": sign_date,
+                "project_no": project_no,
             }
             # Checkpoint: persist doc + items immediately so a mid-run crash
             # doesn't lose already-parsed contracts.
@@ -2675,10 +2702,10 @@ async def run_cluster(trigger: str = "manual") -> int:
                 await session.execute(
                     select(CpaItem, CpaDocument.file_name)
                     .join(CpaDocument, CpaItem.document_id == CpaDocument.id)
-                    # 无 confirm 门槛:所有「已解析」(parsed/needs_review)文档的货物
-                    # 都参与聚类。价格质量由 item 级 validation_status 把关(needs_review
-                    # 归组但不计入均值),不再依赖 doc 级 confirm_status 门槛。
-                    .where(CpaDocument.parse_status.in_(["parsed", "needs_review"]))
+                    # 无 confirm 门槛:所有「已解析」文档的货物都参与聚类(口径见
+                    # _CLUSTER_DOC_STATUSES)。价格质量由 item 级 validation_status
+                    # 把关(needs_review 归组但不计入均值)。
+                    .where(CpaDocument.parse_status.in_(_CLUSTER_DOC_STATUSES))
                 )
             ).all()
             db_items = []
@@ -2691,6 +2718,7 @@ async def run_cluster(trigger: str = "manual") -> int:
                     {
                         "id": r.id,
                         "goods_name": r.goods_name,
+                        "spec_model": r.spec_model,
                         "tech_params": tp,
                         "category": r.category,
                         # Numeric(18,2) loads as decimal.Decimal; cast to float so
@@ -2706,7 +2734,10 @@ async def run_cluster(trigger: str = "manual") -> int:
                 )
         logger.info("Cluster phase: %d items from parsed docs", len(db_items))
         if db_items:
-            samples = [(_cluster_sample_text(it["goods_name"], it["tech_params"]), it["tech_params"]) for it in db_items]
+            samples = [
+                (_cluster_sample_text(it["goods_name"], it.get("spec_model"), it["tech_params"]), it["tech_params"])
+                for it in db_items
+            ]
             result = cluster_items(samples)
             groups = _build_groups_db(result, db_items)
     except Exception as exc:

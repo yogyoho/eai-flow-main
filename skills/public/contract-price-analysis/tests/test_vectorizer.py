@@ -33,3 +33,24 @@ def test_unknown_param_keys_ignored():
     # "颜色" is not a canonical param field → only "电压" is a numeric dim
     vec = v.transform("设备A", {"电压": "10kV", "颜色": "红"})
     assert vec.shape[0] > 0
+
+
+def test_spec_token_families_and_normalization():
+    from scripts.clustering.vectorizer import spec_tokens
+
+    # 各 token 族 + 归一化(空白/大小写) + CJK 邻接(管A108 无 \b 边界也能抽到)
+    toks = spec_tokens("衬塑钢管及管件 DN 50 PN=1.25MPa")
+    assert toks == ["DN50", "PN=1.25"]
+    assert spec_tokens("无缝管A108") == ["A108"]
+    assert spec_tokens("螺纹钢 φ12") == ["Φ12"]
+    assert spec_tokens("人造石 20mm") == ["20MM"]
+    assert spec_tokens("钢板 Q235B") == ["Q235B"]
+    assert spec_tokens("螺纹钢") == []  # 无规格 → 空,不设门槛
+
+
+def test_spec_token_names_only_within_text():
+    """规格 token 从样本文本(name+spec+category 拼接)整体抽取,与来源无关。"""
+    from scripts.clustering.vectorizer import spec_tokens
+
+    # spec_model 在 cli._cluster_sample_text 里拼在名称后面
+    assert "DN100" in spec_tokens("镀锌钢管 DN100 未分类")

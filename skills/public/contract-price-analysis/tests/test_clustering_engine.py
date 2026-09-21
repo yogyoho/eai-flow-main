@@ -42,3 +42,37 @@ def test_representative_name_populated():
     # Representative is the first member of the cluster.
     rep = next(iter(result.representatives.values()))
     assert rep == "高压开关柜"
+
+
+# --- Step 1 规格 AND 门限 (name 与 spec 都要匹配才算同一商品) --------------
+
+
+def test_same_name_different_spec_separated():
+    """同名不同牌号/规格必须分簇(无缝管 A108 75217 vs A159 5190 污染案例)。"""
+    samples = [
+        ("无缝管 A108", {}),
+        ("无缝管 A108", {}),
+        ("无缝管 A159", {}),
+    ]
+    result = cluster_items(samples, eps=0.6, min_samples=2)
+    assert result.labels[0] == result.labels[1]
+    assert result.labels[0] != result.labels[2]  # A159 独行 → noise
+
+
+def test_same_spec_different_names_not_merged():
+    """规格 one-hot 大权重的老缺陷回归位: 不同商品同规格(444 vs 258)不得合并。"""
+    samples = [("大理石 20mm", {}), ("人造石 20mm", {})]
+    result = cluster_items(samples, eps=0.6, min_samples=2)
+    assert result.labels[0] == -1 and result.labels[1] == -1
+
+
+def test_unspecified_items_not_mixed_into_specified_cluster():
+    """无规格行与有规格行: 未知≠匹配,不混簇;无规格行彼此按名称聚类(407/504 现状)。"""
+    samples = [
+        ("无缝管 A159", {}),
+        ("无缝管", {}),
+        ("无缝管", {}),
+    ]
+    result = cluster_items(samples, eps=0.6, min_samples=2)
+    assert result.labels[1] == result.labels[2]
+    assert result.labels[0] != result.labels[1]
