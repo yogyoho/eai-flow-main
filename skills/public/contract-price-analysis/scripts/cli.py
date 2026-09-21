@@ -2129,16 +2129,17 @@ def _extract_from_tables(
 
 
 def _cluster_sample_text(goods_name: str, spec_model: str | None, tech_params: dict | None) -> str:
-    """聚类样本文本 = 名称 + 规格型号 + 分类(同名货物不同规格/分类必须分簇,设计 §1.3)。
+    """聚类样本文本 = 名称 + 规格型号（分类不再拼入,见 engine 类目门限）。
 
-    spec_model 优先拼入(spec token one-hot 同时从此文本抽取,见 vectorizer.spec_tokens);
-    规格缺失时退化为 名称+分类,行为与 v1 一致。
+    spec_model 优先拼入(spec token 抽取从此文本走,见 vectorizer.spec_extract)。
+    分类(设计 §1.3"同名不同分类必须分簇")改由 engine 的类目 AND 门限独立比较——
+    曾拼进文本导致短货名(如"电源线")被同分类长字符串淹没,不同货物塌成一簇
+    (真机案例: 81 条 mega 簇, 电源线↔监控模块 相似度 0.72 纯靠分类)。
     """
     if not isinstance(tech_params, dict):
         tech_params = {}
     spec = (spec_model or "").strip()
-    cat = (tech_params.get("category") or "").strip()
-    return " ".join(p for p in (goods_name, spec, cat) if p)
+    return " ".join(p for p in (goods_name, spec) if p)
 
 
 _DOC_BASELINE_DEVIATION = 0.12  # 文档基线相对簇中位偏离 >= 此值 → 整文档免逐行离群判定
@@ -2260,7 +2261,9 @@ def _build_groups_db(result, db_items: list) -> list:
         if notes:
             stats["baseline_notes"] = notes
         groups.append(
-            {"name": result.representatives[label], "category": "未分类", "stats": stats, "items": members}
+            # 代表名用纯货物名(不带分类后缀)——样本文本含分类,曾让分组标题
+            # 显示成"管内穿线铜芯导 线 照明安装工程"这类拼串。
+            {"name": members[0]["goods_name"], "category": "未分类", "stats": stats, "items": members}
         )
     return groups
 

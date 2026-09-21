@@ -8,6 +8,7 @@ Pure numpy: pairwise cosine distance matrix + a textbook DBSCAN expansion.
 """
 
 from dataclasses import dataclass
+import re
 
 import numpy as np
 
@@ -41,20 +42,36 @@ def _spec_similarity(a: set[str], b: set[str]) -> float:
     return len(a & b) / len(a | b)
 
 
+def _category_similarity(a: str, b: str) -> float:
+    """类目门限(设计 §1.3"同名不同分类必须分簇")。
+
+    双方有类目: 归一化(去空白,OCR 常拆字)相等=1.0,不同=0.0(硬分离);
+    任一方缺失=1.0 中性(分类抽取噪声大,不惩罚提取缺口)。
+    类目绝不进文本向量——短货名会被同分类长字符串淹没(真机 81 条 mega 簇案例)。
+    """
+    na, nb = re.sub(r"\s+", "", a or ""), re.sub(r"\s+", "", b or "")
+    if not na or not nb:
+        return 1.0
+    return 1.0 if na == nb else 0.0
+
+
 def _pairwise_distance(samples: list[tuple[str, dict]], vec: Vectorizer) -> np.ndarray:
-    """"同一商品" = 名称相似 **且** 规格匹配 → d = max(名称余弦距离, 规格Jaccard距离)。
+    """"同一商品" = 名称相似 **且** 规格匹配 **且** 类目一致
+    → d = max(名称余弦距离, 规格Jaccard距离, 类目距离)。
 
     名称相似度在剥掉规格 token 的纯名称上计算(规格有独立门限,不重复计分);
-    剥完为空的名称回退原文。min(相似度) 的 AND 语义: 同名不同规格与不同名
-    同规格都分不开,只有两者都达标才落进 eps。
+    剥完为空的名称回退原文。min(相似度) 的 AND 语义: 任一维度不达标即分离。
     ponytail: O(n²) 纯 python Jaccard,504 行 <2s,真慢了再换稀疏矩阵。
     """
     n = len(samples)
     name_texts: list[str] = []
     tok_sets: list[set[str]] = []
-    for (name, _), (toks, stripped) in zip(samples, [spec_extract(x[0]) for x in samples]):
+    cats: list[str] = []
+    for (name, params), (toks, stripped) in zip(samples, [spec_extract(x[0]) for x in samples]):
         name_texts.append(stripped or name)  # 剥完为空(名称纯规格)回退原文
         tok_sets.append(set(toks))
+        cat = params.get("category") if isinstance(params, dict) else None
+        cats.append(cat or "")
     samples_text = [(name_texts[i], samples[i][1]) for i in range(n)]
     vec.fit(samples_text)
     text = np.array([vec.transform(name, params) for name, params in samples_text])
@@ -65,7 +82,11 @@ def _pairwise_distance(samples: list[tuple[str, dict]], vec: Vectorizer) -> np.n
             if i == j:
                 dist[i, j] = 0.0
                 continue
-            dist[i, j] = max(text_d[i, j], 1.0 - _spec_similarity(tok_sets[i], tok_sets[j]))
+            dist[i, j] = max(
+                text_d[i, j],
+                1.0 - _spec_similarity(tok_sets[i], tok_sets[j]),
+                1.0 - _category_similarity(cats[i], cats[j]),
+            )
     return dist
 
 
