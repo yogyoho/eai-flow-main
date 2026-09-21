@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   EmptyRow,
   PageHeader,
@@ -107,28 +108,17 @@ export function TasksView() {
         icon={<PackageSearch className="h-4 w-4" />}
         actions={
           <>
-            <div className="flex rounded-md border">
-              {(["all", "running", "completed", "failed"] as const).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setRunStatus(f)}
-                  className={cn(
-                    "px-3 py-1.5 text-xs transition-colors",
-                    runStatus === f
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {f === "all"
-                    ? "全部"
-                    : f === "running"
-                      ? "运行中"
-                      : f === "completed"
-                        ? "完成"
-                        : "失败"}
-                </button>
-              ))}
-            </div>
+            <Tabs
+              value={runStatus}
+              onValueChange={(v) => setRunStatus(v as typeof runStatus)}
+            >
+              <TabsList>
+                <TabsTrigger value="all">全部</TabsTrigger>
+                <TabsTrigger value="running">运行中</TabsTrigger>
+                <TabsTrigger value="completed">完成</TabsTrigger>
+                <TabsTrigger value="failed">失败</TabsTrigger>
+              </TabsList>
+            </Tabs>
             <Button
               variant="outline"
               size="sm"

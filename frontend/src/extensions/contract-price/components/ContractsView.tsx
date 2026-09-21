@@ -6,10 +6,15 @@ import {
   AlertTriangle,
   ArrowRight,
   CalendarIcon,
+  ChevronDown,
+  ChevronLeft,
   ChevronRight,
+  Download,
+  Eye,
   FileSearch,
   FileUp,
   FolderOpen,
+  Inbox,
   Layers,
   PackageSearch,
   RefreshCw,
@@ -18,7 +23,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -36,7 +41,18 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { contractPriceApi } from "@/extensions/contract-price/api";
+import {
+  ContractSourceDialog,
+  type ContractSourceDoc,
+} from "@/extensions/contract-price/components/ContractSourceDialog";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import type { SeedDraft } from "@/extensions/contract-price/components/SeedEditorDrawer";
 import { UnmatchedTablesDrawer } from "@/extensions/contract-price/components/UnmatchedTablesDrawer";
@@ -52,25 +68,54 @@ import {
 import type { UnmatchedTable } from "@/extensions/contract-price/types";
 
 /** Unified doc lifecycle stage. No confirm gate — parsed docs go straight to
- * "已解析", then cluster run advances to "已分组". */
+ * "已解析", then cluster run advances to "已分组". `tone` is a full badge
+ * class set (text/border/bg) for the collapsed-row status chip. */
 function docStage(doc: { parse_status: string; confirm_status: string }): {
   label: string;
   tone: string;
   pending: boolean;
 } {
   if (doc.confirm_status === "clustered")
-    return { label: "已分组", tone: "text-blue-600", pending: false };
+    return {
+      label: "已分组",
+      tone: "text-blue-600 border-blue-500/30 bg-blue-500/5",
+      pending: false,
+    };
   if (doc.parse_status === "failed")
-    return { label: "解析失败", tone: "text-destructive", pending: false };
+    return {
+      label: "解析失败",
+      tone: "text-destructive border-destructive/30 bg-destructive/5",
+      pending: false,
+    };
   if (doc.parse_status === "pending")
-    return { label: "已上传", tone: "text-muted-foreground", pending: false };
+    return {
+      label: "已上传",
+      tone: "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
+      pending: false,
+    };
   if (doc.parse_status === "parsing")
-    return { label: "解析中", tone: "text-primary", pending: false };
+    return {
+      label: "解析中",
+      tone: "text-primary border-primary/30 bg-primary/5",
+      pending: false,
+    };
   if (doc.parse_status === "no_tables")
-    return { label: "无价格表", tone: "text-muted-foreground", pending: false };
+    return {
+      label: "无价格表",
+      tone: "text-muted-foreground border-muted-foreground/30 bg-muted-foreground/5",
+      pending: false,
+    };
   if (doc.parse_status === "needs_review")
-    return { label: "待人工核验", tone: "text-amber-600", pending: false };
-  return { label: "已解析", tone: "text-emerald-600", pending: false };
+    return {
+      label: "待人工核验",
+      tone: "text-amber-600 border-amber-500/30 bg-amber-500/5",
+      pending: false,
+    };
+  return {
+    label: "已解析",
+    tone: "text-emerald-600 border-emerald-500/30 bg-emerald-500/5",
+    pending: false,
+  };
 }
 
 function formatDate(s: string | null): string {
@@ -78,18 +123,26 @@ function formatDate(s: string | null): string {
   return new Date(s).toLocaleString("zh-CN", { hour12: false });
 }
 
-/** Inline borderless input that looks like text until focused; commits on blur.
+/** Labeled field cell for the expanded 合同记录 panel. */
+function DocField({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <span className="text-muted-foreground block text-xs">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/** Bordered full-width input for the 合同记录 panel; commits on blur/Enter.
  * Manual补 fallback for project fields the front-page OCR regex missed. */
 function ProjectFieldInput({
   value,
   placeholder,
   onCommit,
-  width = "w-[170px]",
 }: {
   value: string | null;
   placeholder: string;
   onCommit: (v: string) => void;
-  width?: string;
 }) {
   const [draft, setDraft] = useState(value ?? "");
   useEffect(() => {
@@ -108,7 +161,7 @@ function ProjectFieldInput({
         if (e.key === "Enter") (e.target as HTMLInputElement).blur();
       }}
       placeholder={placeholder}
-      className={`h-8 ${width} hover:border-border focus-visible:border-border border-transparent bg-transparent px-1`}
+      className="bg-background h-8 w-full"
     />
   );
 }
@@ -123,12 +176,17 @@ function UploadDialog({
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onUpload: (files: File[], autoParse: boolean) => void;
+  /** Must resolve with the per-file outcome: failed files stay selected for retry. */
+  onUpload: (
+    files: File[],
+    autoParse: boolean,
+  ) => Promise<{ total: number; failed: File[] }>;
   uploading: boolean;
 }) {
   const [selected, setSelected] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [autoParse, setAutoParse] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const folderRef = useRef<HTMLInputElement>(null);
 
@@ -147,16 +205,36 @@ function UploadDialog({
     });
   };
 
+  /** 开始上传:全部成功 → 清空并自动关闭;有请求级失败 → 保持打开,
+   * 失败文件留在选择列表供重试。上传期间允许手动关闭,进度见页头按钮。 */
+  const startUpload = async () => {
+    if (selected.length === 0 || uploading) return;
+    setUploadError(null);
+    const { failed } = await onUpload(selected, autoParse);
+    if (failed.length === 0) {
+      setSelected([]);
+      setAutoParse(false);
+      onOpenChange(false);
+    } else {
+      const failedKeys = new Set(failed.map((f) => `${f.name}-${f.size}`));
+      setSelected((prev) =>
+        prev.filter((f) => failedKeys.has(`${f.name}-${f.size}`)),
+      );
+      setUploadError(
+        `${failed.length} 个文件上传失败,已保留在选择列表,可直接重试或移除。`,
+      );
+    }
+  };
+
   return (
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!uploading) {
-          onOpenChange(v);
-          if (!v) {
-            setSelected([]);
-            setAutoParse(false);
-          }
+        onOpenChange(v);
+        if (!v) {
+          setSelected([]);
+          setAutoParse(false);
+          setUploadError(null);
         }
       }}
     >
@@ -301,6 +379,10 @@ function UploadDialog({
           </div>
         )}
 
+        {uploadError && (
+          <p className="text-destructive text-sm">{uploadError}</p>
+        )}
+
         <DialogFooter>
           <Button
             variant="outline"
@@ -308,13 +390,12 @@ function UploadDialog({
               setSelected([]);
               onOpenChange(false);
             }}
-            disabled={uploading}
           >
             取消
           </Button>
           <Button
             disabled={selected.length === 0 || uploading}
-            onClick={() => onUpload(selected, autoParse)}
+            onClick={() => void startUpload()}
           >
             <FileUp className="h-4 w-4" />
             {uploading ? "上传中…" : `开始上传 (${selected.length})`}
@@ -325,7 +406,8 @@ function UploadDialog({
   );
 }
 
-/** Styled date picker cell (Shadcn Calendar + Popover, not native input). */
+/** Styled date picker field (Shadcn Calendar + Popover, not native input);
+ * rendered inside the expanded 合同记录 panel. */
 function DateCell({
   value,
   onCommit,
@@ -340,9 +422,9 @@ function DateCell({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="hover:border-border flex h-8 w-[130px] items-center gap-1.5 rounded border-transparent bg-transparent px-1 text-sm tabular-nums"
+          className="border-input hover:bg-accent/50 bg-background flex h-8 w-full items-center justify-start gap-1.5 rounded-md border px-3 text-left text-sm font-normal tabular-nums"
         >
-          <CalendarIcon className="text-muted-foreground h-3.5 w-3.5" />
+          <CalendarIcon className="text-muted-foreground h-3.5 w-3.5 shrink-0" />
           <span
             className={value ? "text-foreground" : "text-muted-foreground/50"}
           >
@@ -388,6 +470,8 @@ export function ContractsView() {
     name: string;
     tables: UnmatchedTable[];
   } | null>(null);
+  // 「合同原文」查看器目标文档(null = 关闭)
+  const [sourceDoc, setSourceDoc] = useState<ContractSourceDoc | null>(null);
   const [batch, setBatch] = useState<{
     total: number;
     done: number;
@@ -399,22 +483,37 @@ export function ContractsView() {
   // 已保存规则的未匹配表键(文件名:页:表序);PUT 成功才标记,抽屉的
   // "已保存规则"标记与重解析门槛都由此驱动(单一事实源)。
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set());
+  // 折叠/展开的合同行(参照 ItemsView 的 Set 模式;默认全部折叠)。
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   /** Batch upload: push each file to the cpa-contracts bucket sequentially,
    * track per-file progress, then trigger a parse run (upload implies parse). */
-  const handleFiles = async (files: FileList | File[], autoParse = false) => {
+  const handleFiles = async (
+    files: FileList | File[],
+    autoParse = false,
+  ): Promise<{ total: number; failed: File[] }> => {
     // Filter to .pdf/.docx (webkitdirectory grabs ALL files in a folder).
     const list = Array.from(files).filter(
       (f) =>
         f.name.toLowerCase().endsWith(".pdf") ||
         f.name.toLowerCase().endsWith(".docx"),
     );
-    if (!list.length) return;
+    if (!list.length) return { total: 0, failed: [] };
     setBatch({ total: list.length, done: 0, failed: 0 });
     // Concurrent upload pool (6 at a time) — sequential is too slow for 100+ files.
     const POOL = 6;
     let done = 0;
     let failed = 0;
+    const failedFiles: File[] = [];
     for (let i = 0; i < list.length; i += POOL) {
       await Promise.allSettled(
         list.slice(i, i + POOL).map(async (f) => {
@@ -422,6 +521,7 @@ export function ContractsView() {
             await contractPriceApi.uploadDocument(f);
           } catch {
             failed += 1;
+            failedFiles.push(f);
           }
           done += 1;
           setBatch({ total: list.length, done, failed });
@@ -432,14 +532,27 @@ export function ContractsView() {
     if (autoParse && failed < list.length) {
       runPipeline.mutate({ trigger: "manual" });
     }
+    if (failed > 0) {
+      // 对话框外的全局失败反馈(页头按钮只有计数,这里补失败说明)
+      setNotice(
+        `上传完成 ${list.length - failed}/${list.length},${failed} 个失败,可重开「上传合同」重试。`,
+      );
+    }
+    return { total: list.length, failed: failedFiles };
   };
 
+  // 列表分页(纯前端接线:后端 Page{total},skip/limit 透传)
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
   const { data, isLoading, isFetching, refetch } = useDocuments({
     keyword: applied || undefined,
-    limit: 50,
+    skip: page * pageSize,
+    limit: pageSize,
   });
 
   const docs = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const pendingCount = docs.filter((d) => d.parse_status === "pending").length;
 
   /** 未匹配表抽屉"保存规则": upsert 进 config.table_seeds。
@@ -538,6 +651,7 @@ export function ContractsView() {
         onSubmit={(e) => {
           e.preventDefault();
           setApplied(keyword);
+          setPage(0);
         }}
       >
         <div className="relative max-w-sm flex-1">
@@ -545,7 +659,7 @@ export function ContractsView() {
           <Input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="搜索合同号 / 供应商"
+            placeholder="搜索文件名 / 合同号 / 供应商"
             className="pl-9"
           />
         </div>
@@ -559,22 +673,7 @@ export function ContractsView() {
           <thead>
             <tr className="border-border bg-muted/50 border-b">
               <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
-                合同
-              </th>
-              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
-                项目名称
-              </th>
-              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
-                项目所在地
-              </th>
-              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
-                供应商
-              </th>
-              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
-                签订日期
-              </th>
-              <th className="text-muted-foreground px-6 py-3 text-xs font-semibold tracking-wider uppercase">
-                状态
+                合同文件
               </th>
               <th className="text-muted-foreground px-6 py-3 text-right text-xs font-semibold tracking-wider uppercase">
                 操作
@@ -585,7 +684,7 @@ export function ContractsView() {
             {isLoading ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={2}
                   className="text-muted-foreground py-12 text-center"
                 >
                   加载中…
@@ -594,10 +693,19 @@ export function ContractsView() {
             ) : docs.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={2}
                   className="text-muted-foreground py-12 text-center"
                 >
-                  暂无合同。点右上「上传合同」或总览页「立即分析」。
+                  <div className="flex flex-col items-center gap-3">
+                    <Inbox
+                      className="h-12 w-12 opacity-30"
+                      strokeWidth={1.5}
+                      aria-hidden
+                    />
+                    <span>
+                      暂无合同。点右上「上传合同」或总览页「立即分析」。
+                    </span>
+                  </div>
                 </td>
               </tr>
             ) : (
@@ -611,160 +719,335 @@ export function ContractsView() {
                 } | null;
                 const unmatched = meta?.unmatched_tables ?? [];
                 const stage = docStage(doc);
+                const isExpanded = expanded.has(doc.id);
                 return (
-                  <tr
-                    key={doc.id}
-                    className="hover:bg-muted/50 group transition-colors"
-                  >
-                    <td className="px-6 py-4">
-                      {/* 折行:文件名(主) + 类型·健康度·解析时间(次,淡小字) */}
-                      <div className="max-w-[340px] min-w-[220px]">
-                        <div
-                          className="truncate font-medium"
-                          title={doc.file_name}
-                        >
-                          {doc.file_name}
-                        </div>
-                        <div className="text-muted-foreground truncate text-xs tabular-nums">
-                          {(doc.file_type ?? "?").toUpperCase()}
-                          <span className="mx-1 opacity-40">·</span>
-                          {meta
-                            ? `${meta.goods_tables ?? 0}货/${meta.tables_found ?? 0}表/${meta.rows_extracted ?? 0}行`
-                            : "—"}
-                          {meta?.matched_seeds &&
-                            Object.keys(meta.matched_seeds).length > 0 && (
-                              <>
-                                <span className="mx-1 opacity-40">·</span>
-                                {Object.keys(meta.matched_seeds).join("/")}
-                              </>
-                            )}
-                          <span className="mx-1 opacity-40">·</span>
-                          {formatDate(doc.parsed_at)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 align-middle">
-                      <ProjectFieldInput
-                        value={doc.project_name}
-                        placeholder="项目名称"
-                        onCommit={(v) =>
-                          update.mutate({
-                            id: doc.id,
-                            body: { project_name: v },
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="px-6 py-4 align-middle">
-                      <ProjectFieldInput
-                        value={doc.project_location}
-                        placeholder="项目所在地"
-                        width="w-[120px]"
-                        onCommit={(v) =>
-                          update.mutate({
-                            id: doc.id,
-                            body: { project_location: v },
-                          })
-                        }
-                      />
-                    </td>
-                    <td className="px-6 py-4 align-middle">
-                      <ProjectFieldInput
-                        value={doc.supplier}
-                        placeholder="供应商"
-                        onCommit={(v) =>
-                          update.mutate({ id: doc.id, body: { supplier: v } })
-                        }
-                      />
-                    </td>
-                    <td className="px-6 py-4 align-middle">
-                      <DateCell
-                        value={doc.sign_date}
-                        onCommit={(v) =>
-                          update.mutate({ id: doc.id, body: { sign_date: v } })
-                        }
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col items-start gap-1">
-                        <span className={stage.tone}>{stage.label}</span>
-                        {doc.items_needs_review > 0 && (
-                          <span
-                            className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600"
-                            title="validation_status=needs_review 的分项行数 / 分项总行数"
-                          >
-                            ⚠ {doc.items_needs_review}/{doc.items_total} 待核验
-                          </span>
-                        )}
-                        {unmatched.length > 0 && (
+                  <Fragment key={doc.id}>
+                    {/* 折叠态:文件名 + 状态徽章 + 关键计数徽章 + 展开箭头 */}
+                    <tr className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
-                            className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600 hover:bg-amber-500/10"
-                            onClick={() =>
-                              setUnmatchedDoc({
-                                id: doc.id,
-                                name: doc.file_name,
-                                tables: unmatched,
-                              })
-                            }
+                            type="button"
+                            aria-expanded={isExpanded}
+                            onClick={() => toggleExpand(doc.id)}
+                            className="text-muted-foreground hover:text-foreground shrink-0"
+                            title={isExpanded ? "收起合同记录" : "展开合同记录"}
                           >
-                            ⚠ {unmatched.length} 张表未识别
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
                           </button>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-0.5">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-blue-600 hover:text-blue-600"
-                          title="重新解析(读 OCR 缓存,秒级)"
-                          disabled={reparse.isPending}
-                          onClick={() => {
-                            if (
-                              !confirm(
-                                `重新解析 ${doc.file_name}?(读取 OCR 缓存,通常秒级)`,
+                          <span
+                            className="max-w-[420px] truncate font-medium"
+                            title={doc.file_name}
+                          >
+                            {doc.file_name}
+                          </span>
+                          <span
+                            className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${stage.tone}`}
+                          >
+                            {stage.label}
+                          </span>
+                          {doc.items_needs_review > 0 && (
+                            <span
+                              className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600"
+                              title="validation_status=needs_review 的分项行数 / 分项总行数"
+                            >
+                              ⚠ {doc.items_needs_review}/{doc.items_total}{" "}
+                              待核验
+                            </span>
+                          )}
+                          {unmatched.length > 0 && (
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600">
+                              ⚠ {unmatched.length} 张表未识别
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-3 text-right">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            title="重新解析(读 OCR 缓存,秒级)"
+                            disabled={reparse.isPending}
+                            onClick={() => {
+                              if (
+                                !confirm(
+                                  `重新解析 ${doc.file_name}?(读取 OCR 缓存,通常秒级)`,
+                                )
                               )
-                            )
-                              return;
-                            reparse.mutate(doc.id, {
-                              onSuccess: () =>
-                                setNotice(
-                                  `已启动「${doc.file_name}」的重新解析,在「任务」页看进度。`,
-                                ),
-                              onError: (e) =>
-                                alert(
-                                  `重解析启动失败:${e instanceof Error ? e.message : e}\n(可能已有解析任务在跑,去「任务」页确认)`,
-                                ),
-                            });
-                          }}
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive"
-                          title="删除合同及其分项"
-                          onClick={async () => {
-                            if (
-                              !confirm(`删除合同 ${doc.file_name} 及其分项？`)
-                            )
-                              return;
-                            await contractPriceApi.deleteDocument(doc.id);
-                            void qc.invalidateQueries({ queryKey: ["cpa"] });
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
+                                return;
+                              reparse.mutate(doc.id, {
+                                onSuccess: () =>
+                                  setNotice(
+                                    `已启动「${doc.file_name}」的重新解析,在「任务」页看进度。`,
+                                  ),
+                                onError: (e) =>
+                                  alert(
+                                    `重解析启动失败:${e instanceof Error ? e.message : e}\n(可能已有解析任务在跑,去「任务」页确认)`,
+                                  ),
+                              });
+                            }}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5 text-blue-600" />
+                            重新解析
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            title="删除合同及其分项"
+                            onClick={async () => {
+                              if (
+                                !confirm(`删除合同 ${doc.file_name} 及其分项？`)
+                              )
+                                return;
+                              await contractPriceApi.deleteDocument(doc.id);
+                              void qc.invalidateQueries({ queryKey: ["cpa"] });
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    {/* 展开态:解析信息(附属数据行) + 合同记录表单 */}
+                    {isExpanded && (
+                      <tr className="bg-muted/30 hover:bg-muted/30">
+                        <td colSpan={2} className="px-6 py-4">
+                          <div className="space-y-5">
+                            <div className="space-y-2">
+                              <span className="text-muted-foreground text-xs font-semibold tracking-wide">
+                                解析信息
+                              </span>
+                              <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums">
+                                <span>
+                                  {(doc.file_type ?? "?").toUpperCase()}
+                                </span>
+                                <span className="opacity-40">·</span>
+                                <span>
+                                  {meta
+                                    ? `${meta.goods_tables ?? 0}货 / ${meta.tables_found ?? 0}表 / ${meta.rows_extracted ?? 0}行`
+                                    : "—"}
+                                </span>
+                                {meta?.matched_seeds &&
+                                  Object.keys(meta.matched_seeds).length >
+                                    0 && (
+                                    <>
+                                      <span className="opacity-40">·</span>
+                                      <span>
+                                        命中{" "}
+                                        {Object.keys(meta.matched_seeds).join(
+                                          "/",
+                                        )}
+                                      </span>
+                                    </>
+                                  )}
+                                <span className="opacity-40">·</span>
+                                <span>
+                                  {stage.label}({doc.parse_status})
+                                </span>
+                                {doc.page_count != null && (
+                                  <>
+                                    <span className="opacity-40">·</span>
+                                    <span>{doc.page_count} 页</span>
+                                  </>
+                                )}
+                                <span className="opacity-40">·</span>
+                                <span>解析于 {formatDate(doc.parsed_at)}</span>
+                              </div>
+                              {doc.error && (
+                                <p className="text-destructive text-xs">
+                                  解析错误:{doc.error}
+                                </p>
+                              )}
+                              {unmatched.length > 0 && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs text-amber-600 hover:text-amber-600"
+                                  onClick={() =>
+                                    setUnmatchedDoc({
+                                      id: doc.id,
+                                      name: doc.file_name,
+                                      tables: unmatched,
+                                    })
+                                  }
+                                >
+                                  <AlertTriangle className="h-3.5 w-3.5" />
+                                  {unmatched.length} 张表未识别 ·
+                                  查看并保存识别规则
+                                </Button>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <span className="text-muted-foreground text-xs font-semibold tracking-wide">
+                                合同记录
+                              </span>
+                              <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-3">
+                                <DocField label="项目名称">
+                                  <ProjectFieldInput
+                                    value={doc.project_name}
+                                    placeholder="项目名称"
+                                    onCommit={(v) =>
+                                      update.mutate({
+                                        id: doc.id,
+                                        body: { project_name: v },
+                                      })
+                                    }
+                                  />
+                                </DocField>
+                                <DocField label="合同编号">
+                                  <ProjectFieldInput
+                                    value={doc.contract_no}
+                                    placeholder="合同编号"
+                                    onCommit={(v) =>
+                                      update.mutate({
+                                        id: doc.id,
+                                        body: { contract_no: v },
+                                      })
+                                    }
+                                  />
+                                </DocField>
+                                <DocField label="供应商">
+                                  <ProjectFieldInput
+                                    value={doc.supplier}
+                                    placeholder="供应商"
+                                    onCommit={(v) =>
+                                      update.mutate({
+                                        id: doc.id,
+                                        body: { supplier: v },
+                                      })
+                                    }
+                                  />
+                                </DocField>
+                                <DocField label="项目所在地">
+                                  <ProjectFieldInput
+                                    value={doc.project_location}
+                                    placeholder="项目所在地"
+                                    onCommit={(v) =>
+                                      update.mutate({
+                                        id: doc.id,
+                                        body: { project_location: v },
+                                      })
+                                    }
+                                  />
+                                </DocField>
+                                <DocField label="签订日期">
+                                  <DateCell
+                                    value={doc.sign_date}
+                                    onCommit={(v) =>
+                                      update.mutate({
+                                        id: doc.id,
+                                        body: { sign_date: v },
+                                      })
+                                    }
+                                  />
+                                </DocField>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <span className="text-muted-foreground text-xs font-semibold tracking-wide">
+                                合同原文
+                              </span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!doc.preview_prefix}
+                                  title={
+                                    doc.preview_prefix
+                                      ? "逐页查看原文预览(←/→ 翻页)"
+                                      : "文档尚未解析,暂无页面预览"
+                                  }
+                                  onClick={() =>
+                                    setSourceDoc({
+                                      id: doc.id,
+                                      file_name: doc.file_name,
+                                      file_type: doc.file_type,
+                                    })
+                                  }
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  查看原文
+                                </Button>
+                                <Button size="sm" variant="outline" asChild>
+                                  <a
+                                    href={contractPriceApi.fileUrl(doc.id)}
+                                    title="下载原始 PDF/DOCX 文件"
+                                  >
+                                    <Download className="h-3.5 w-3.5" />
+                                    下载原件
+                                  </a>
+                                </Button>
+                                {!doc.preview_prefix && (
+                                  <span className="text-muted-foreground text-xs">
+                                    解析完成后可逐页预览原文。
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })
             )}
           </tbody>
         </table>
+
+        {/* 分页(纯前端接线:后端 Page{total} + skip/limit;展开态按 doc id 记忆,翻页不串行) */}
+        <div className="border-border flex items-center justify-between border-t px-6 py-3">
+          <span className="text-muted-foreground text-xs">共 {total} 条</span>
+          <div className="flex items-center gap-3">
+            <Select
+              value={String(pageSize)}
+              onValueChange={(v) => {
+                setPageSize(Number(v));
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="h-7 w-[110px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 20, 50].map((n) => (
+                  <SelectItem key={n} value={String(n)}>
+                    每页 {n} 条
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="outline"
+                disabled={page <= 0}
+                onClick={() => setPage(page - 1)}
+                aria-label="上一页"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-muted-foreground px-1 text-xs tabular-nums">
+                第 {page + 1} / {totalPages} 页
+              </span>
+              <Button
+                size="icon"
+                variant="outline"
+                disabled={page >= totalPages - 1}
+                onClick={() => setPage(page + 1)}
+                aria-label="下一页"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <Dialog open={showClusterConfirm} onOpenChange={setShowClusterConfirm}>
@@ -801,9 +1084,7 @@ export function ContractsView() {
         open={showUploadDialog}
         onOpenChange={setShowUploadDialog}
         uploading={!!batch && batch.done < batch.total}
-        onUpload={(files, autoParse) => {
-          void handleFiles(files, autoParse);
-        }}
+        onUpload={(files, autoParse) => handleFiles(files, autoParse)}
       />
 
       <UnmatchedTablesDrawer
@@ -828,6 +1109,14 @@ export function ContractsView() {
           });
         }}
         reparsePending={reparse.isPending}
+      />
+
+      <ContractSourceDialog
+        doc={sourceDoc}
+        open={sourceDoc !== null}
+        onOpenChange={(v) => {
+          if (!v) setSourceDoc(null);
+        }}
       />
     </div>
   );

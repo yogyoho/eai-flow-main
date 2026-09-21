@@ -695,16 +695,16 @@ export function ItemsView() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground font-mono text-xs">
                             {item.spec_model ?? "—"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground font-mono text-xs">
                             {item.category ?? "—"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground font-mono text-xs">
                             {item.source_contract_no ?? "—"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground whitespace-nowrap">
+                          <TableCell className="text-muted-foreground font-mono text-xs whitespace-nowrap">
                             {(() => {
                               const r = item.run_id
                                 ? (runMap.get(item.run_id) ?? null)

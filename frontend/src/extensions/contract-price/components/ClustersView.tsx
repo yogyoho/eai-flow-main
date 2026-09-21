@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   EmptyRow,
   PageHeader,
@@ -241,75 +242,69 @@ export function ClustersView() {
 
   return (
     <div className="space-y-6 p-8">
-      <PageHeader
-        title="分组审核"
-        description="审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。"
-        icon={<PackageSearch className="h-4 w-4" />}
-        actions={
-          <>
-            <div className="flex rounded-md border">
-              {(["pending", "confirmed", "rejected", "all"] as const).map(
-                (f) => (
-                  <button
-                    key={f}
-                    onClick={() => {
-                      setFilter(f);
-                      setPage(1);
-                      setChecked(new Set());
-                      setBatchMsg(null);
-                    }}
-                    className={cn(
-                      "px-3 py-1.5 text-sm transition-colors",
-                      filter === f
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {f === "pending"
-                      ? "待审核"
-                      : f === "confirmed"
-                        ? "已确认"
-                        : f === "rejected"
-                          ? "已拒绝"
-                          : "全部"}
-                  </button>
-                ),
-              )}
-            </div>
-            {checkedPendingCount > 0 ? (
-              <Button
-                size="sm"
-                onClick={doBatchConfirm}
-                disabled={batchConfirmMutation.isPending}
-              >
-                <Check className="h-4 w-4" />
-                批量确认({checkedPendingCount})
-              </Button>
-            ) : null}
-            {checked.size >= 2 ? (
-              <Button
-                size="sm"
-                onClick={openMerge}
-                disabled={mergeMutation.isPending}
-              >
-                <GitMerge className="h-4 w-4" />
-                合并选中({checked.size})
-              </Button>
-            ) : null}
-            {batchMsg ? (
-              <span className="text-muted-foreground text-xs">{batchMsg}</span>
-            ) : null}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => clustersQuery.refetch()}
-            >
-              <RefreshCw className="h-4 w-4" />
-              刷新
-            </Button>
-          </>
-        }
-      />
+      {/* 标题行：刷新钉在最右，不随长描述换行 */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <PageHeader
+            title="分组审核"
+            description="审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。分组为上次「聚类分析」的结果——删除或修改货物后需重新聚类刷新，此处不提供单独删除。"
+            icon={<PackageSearch className="h-4 w-4" />}
+          />
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="shrink-0"
+          onClick={() => clustersQuery.refetch()}
+        >
+          <RefreshCw className="h-4 w-4" />
+          刷新
+        </Button>
+      </div>
+
+      {/* 控件行：筛选 + 批量操作 */}
+      <div className="flex flex-wrap items-center gap-2">
+        {/* 与对话页-项目页 tabs（ui/tabs）同一组件，样式自动对齐 */}
+        <Tabs
+          value={filter}
+          onValueChange={(v) => {
+            setFilter(v as typeof filter);
+            setPage(1);
+            setChecked(new Set());
+            setBatchMsg(null);
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="pending">待审核</TabsTrigger>
+            <TabsTrigger value="confirmed">已确认</TabsTrigger>
+            <TabsTrigger value="rejected">已拒绝</TabsTrigger>
+            <TabsTrigger value="all">全部</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {checkedPendingCount > 0 ? (
+          <Button
+            size="sm"
+            onClick={doBatchConfirm}
+            disabled={batchConfirmMutation.isPending}
+          >
+            <Check className="h-4 w-4" />
+            批量确认({checkedPendingCount})
+          </Button>
+        ) : null}
+        {checked.size >= 2 ? (
+          <Button
+            size="sm"
+            onClick={openMerge}
+            disabled={mergeMutation.isPending}
+          >
+            <GitMerge className="h-4 w-4" />
+            合并选中({checked.size})
+          </Button>
+        ) : null}
+        {batchMsg ? (
+          <span className="text-muted-foreground text-xs">{batchMsg}</span>
+        ) : null}
+      </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* Left: cluster list with multi-select */}
@@ -592,7 +587,7 @@ export function ClustersView() {
                           <TableCell className="text-right tabular-nums">
                             {item.unit_price?.toLocaleString() ?? "—"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground px-4 py-3 font-mono text-xs">
                             {item.source_contract_no ?? "—"}
                           </TableCell>
                           <TableCell className="text-right">
