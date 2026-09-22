@@ -14,10 +14,20 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
-# 连接超时（秒）。**必须有**：黑洞/丢包地址上 asyncpg 会一直等（本机实测无 timeout = 21.5s，
+# 连接阶段超时（秒）。**必须有**：黑洞/丢包地址上 asyncpg 一直等（本机实测无 timeout = 21.5s，
 # Linux TCP connect 可到 ~2 分钟），而这段窗口里 uvicorn 尚未进入服务状态 → 容器 healthcheck
 # 失败、下游起不来。取 5 而非探针用的 2：探测只需确认可达，生产还要留出正常建表的裕度。
-# 只限连接阶段；命令阶段不限时（DDL 时长本就有界，加 command_timeout 只会引入新的误杀面）。
+#
+# **命令阶段仍无界（残余风险，随 Task 5 落地）**：本参数只界住**握手**。握手成功后 asyncpg 的
+# command_timeout 默认 None，故两条路径仍会无限等：
+#   ① 连上后链路被防火墙/NAT 静默掐断 → 等 TCP 自己发现（Windows keepalive 约 2 小时）——
+#      即上面那个「启动楔死」失效模式的后移版本；
+#   ② CREATE TABLE 需 ACCESS EXCLUSIVE 锁，撞上并发 DDL/长事务会无限排队。
+# 本轮可推迟，但不是因为「DDL 时长本就有界」（那话不成立）：本引擎 NullPool 且在同一次调用里
+# dispose，命令阶段只可能影响这**一次** create_all，而它的失败已被设计成非致命
+# （WARNING + tables_ready=False）→ 误杀代价 ≈ 一条日志，故取舍并非一边倒——留给 Task 5
+# （真正写入/迁移方）连同懒建一起定：可选 connect_args={"command_timeout": 30~60}，或连接级
+# server_settings={"lock_timeout": ..., "statement_timeout": ...}。
 _CONNECT_TIMEOUT_S = 5
 
 

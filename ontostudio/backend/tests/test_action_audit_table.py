@@ -158,11 +158,36 @@ def test_health_defaults_tables_ready_false_without_lifespan():
     assert r.json()["status"] == "ok" and r.json()["service"] == "ontostudio-backend"
 
 
+def test_ensure_tables_bounds_connect_timeout(monkeypatch):
+    """确定性钉住生产引擎确实带连接超时，且值不被悄悄调大。
+
+    为什么需要它：上面那条计时护栏只抓「删掉」或「放大到同一量级以上」（变异实测：删
+    connect_args → 21.0s 红；`_CONNECT_TIMEOUT_S` 5→9 → **9.03s 仍绿**），5→9s 的静默
+    漂移它完全看不见；且它在无路由主机上 connect() 立刻失败 → 空转通过，判别力依赖环境。
+    本条改为捕获传给引擎的实参，与 URL 环境无关。
+    """
+    from app import db
+    from app.ontology import connectors
+
+    captured: dict = {}
+    real = db.create_async_engine
+    monkeypatch.setattr(db, "create_async_engine", lambda url, **kw: (captured.update(kw), real(url, **kw))[1])
+    # 端口 1 必拒 → 立刻抛，不必等黑洞的 5s（本条要验的是实参，不是耗时）
+    monkeypatch.setattr(connectors, "_ext_url", lambda: "postgresql+asyncpg://nobody:nope@127.0.0.1:1/none")
+    with pytest.raises(Exception):
+        asyncio.run(db.ensure_tables())  # 走同一条生产路径
+    assert "connect_args" in captured, "生产引擎丢了连接超时"
+    assert captured["connect_args"].get("timeout", 999) <= 5, captured["connect_args"]
+
+
 def test_ensure_tables_times_out_on_blackhole(monkeypatch):
     """建表不得在黑洞地址上把启动吊死——无 connect_args 时本机实测 21.5s（Linux 可到分钟级）。
 
-    那段窗口里 uvicorn 尚未服务 → healthcheck 失败 → 下游起不来。断言只设上界（10s, 配置值 5s
-    的 2 倍裕度）：环境若无路由会立刻失败, 同样通过——本条要抓的是「超时被删掉/被调大」。
+    那段窗口里 uvicorn 尚未服务 → healthcheck 失败 → 下游起不来。
+    **判别力边界（别高估它）**：只设上界（10s）→ 抓「超时被删掉」或「放大到同一量级以上」；
+    **值的漂移（如 5→9s）由 test_ensure_tables_bounds_connect_timeout 钉**；且无路由主机上
+    connect() 立刻失败会空转通过。本条的价值在证明超时**真的生效**（asyncpg 认这个参数），
+    与上面那条「参数确实被传进去」互补。
     """
     import time
 
