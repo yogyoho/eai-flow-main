@@ -62,7 +62,7 @@
 #### 关三 · 可测性（RED 是真的 RED 吗）
 
 - **解析/收集错误不算 RED**：`IndentationError` / `SyntaxError` / `error during collection` 在 pytest 里同样显示 failed，但那是**假 RED**，不是"守卫被钉住了"。判定为 `INVALID` 而非 RED。
-- **换行符会静默毁掉锚点**：本仓 `schemas.py` / `registry.py` 是 **CRLF**，`scope.py` 与测试文件是 **LF**，同一段多行锚点在不同文件上行为不同。
+- **换行符会静默毁掉锚点，且本仓不统一——逐文件确认，勿假设**：实测 `ontology/schemas.py` 与 `ontology/registry.py` 是 **CRLF**；而 `doc_graph/tables.py`、`ontology/kernel/validate.py`、`ontology/scope.py`、`.yaml` 与测试文件都是 **LF**。**同一段多行锚点在不同文件上行为不同。**（Task 3 的派发把这条说成了"通例"，被实现者实测纠正——这类环境事实一律现场用 `\r` 计数确认，不要从别处外推。）
 
 **假阴性比假阳性危险**：它让人把一个**有保护**的实现判成**没保护**，去"补"一个本就存在的测试，同时把真实盲区留在阴影里。**审查者报"某段代码无测试保护"时，必须说明变异手法与三关证据；任一关不过，结论作废、须重做。**
 
@@ -773,7 +773,9 @@ git commit -m "feat(ontostudio): registry 支持 actions 段 + 交叉引用校�
 - Modify: `ontostudio/backend/app/doc_graph/tables.py`
 - Modify: `ontostudio/backend/app/ontology/kernel/validate.py:58,61`
 - Modify: `ontostudio/backend/app/ontology/registry/doc_graph.yaml`
+- **Modify: `ontostudio/backend/scripts/ontology_lint.py`** ← 计划初稿漏了（见 Step 4c）
 - Test: `ontostudio/backend/tests/test_action_audit_table.py`
+- **Test: `ontostudio/backend/tests/test_ontology_lint.py`** ← 同上
 
 - [ ] **Step 1: 写失败测试**
 
@@ -861,11 +863,25 @@ class DgActionAudit(Base):
     _severity(g, ps, "status 必须是 active/pending_review/merged/rejected 之一")
 ```
 
-`ontostudio/backend/app/ontology/registry/doc_graph.yaml` 中 `graph_entity` 的 `status` 属性 `enum` 追加 `rejected`（该行现为 L25 的 `enum: [active, pending_review, merged]`）；同一对象的 `etype_classes` 块**之后**加一行：
+`ontostudio/backend/app/ontology/registry/doc_graph.yaml` 中 `graph_entity` 的 `status` 属性 `enum` 追加 `rejected`（该行现为 L25 的 `enum: [active, pending_review, merged]`）；`scope_resource: ontology` 加在该 mapping 的**最后一个字段之后**（即 `properties` 列表之后）：
 
 ```yaml
     scope_resource: ontology
 ```
+
+> **⚠️ 计划初稿此处写的是「同一对象的 `etype_classes` 块之后」——那个锚点不存在。** `graph_entity` **没有** `etype_classes` 块（全仓只有 `eia.yaml` 有）。照字面改会**静默不匹配**。以"该 mapping 的最后一个字段之后"为准。
+>
+> **只加 `graph_entity` 一个**，不要顺手加 `graph_relation`——设计 §3 提到两个对象类型，但那是 Task 6 的范围。
+
+### Step 4c: 把新表加入 lint 白名单（**计划初稿漏了这一步**）
+
+> **为什么必须做**：新表以 `dg_` 前缀落进 `scripts/ontology_lint.py` 的 D14 规则「市场域表须在 ontology 注册表登记」的射程，**不加白名单会让 3 条既有测试变红**（`test_all_checks_pass_on_real_registry` / `test_main_exit_zero` / `test_doc_graph_tables_registered`），报 `table dg_action_audit: 市场域表未在 ontology 注册表登记`。
+
+该规则的语义是「**对外**的 `dg_*` 表必须登记；**内部审计表**豁免」——`WHITELIST_TABLES` 现已含 `dg_merges`（注释即「内部审计表, 永不对外暴露」）。`dg_action_audit` 按设计 §1.2 正是审计表：**只写不给读投影**，没有 `ObjectType` 可登记（设计 §4 的 MCP 面只有 `invoke_action` / `review_entity`，无任何审计读工具）。故加入 `WHITELIST_TABLES`。
+
+**不要**改为把该表登记成 object type——那等于把内部审计表开成对外读模型，是一个没人要求过的数据暴露决策。
+
+同时 `tests/test_ontology_lint.py::test_doc_graph_tables_registered` 把豁免集**硬编码**为 `- {"dg_merges"}`，需加上 `dg_action_audit`，并补一条 `assert "dg_action_audit" not in registered` 把「豁免 = 不登记」这个契约显式钉住。**保持显式、不要改成从 `WHITELIST_TABLES` 派生**——派生会让"有人把一个真·对外表塞进白名单"静默通过。
 
 - [ ] **Step 4b: 声明两个动作（**计划初稿漏了这一步**）**
 
