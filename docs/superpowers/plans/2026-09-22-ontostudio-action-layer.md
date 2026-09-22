@@ -1254,6 +1254,14 @@ async def test_scope_sql_is_executable_with_list_params():
     从未被任何测试证明过（`col = ANY($1)` 依赖列类型推出 uuid[]）。
     Task 1 的绿只证明 SQL 文本形态正确，不证明这条通道能跑——故在此显式钉住。
 
+    **⚠️ 并需覆盖空 list**（Task 4 审查前向风险）：`in`/`not_in` 编译为 `= ANY(:pre_0)`
+    且绑定 Python list，而**空 list 是可达的**——网关 `backend/app/extensions/auth/engine.py:52`
+    在模板解析出空 list 时正是产出 `FilterRule(operator="in", value=[])`。
+    `ANY(:[])` 传空 Python list 时 asyncpg 能否推断数组元素类型**未经验证**。
+    修法二选一：显式转型 `= ANY(CAST(:pre_0 AS text[]))`，或空集短路（`in` 空 → `FALSE`、
+    `not_in` 空 → `TRUE`，与 `scope.py` 的语义裁决一致）。**同形态也存在于 Task 1 的 `scope.py`**，
+    两处一并裁决。
+
     **只覆盖 `in`。`overlap`（`col && $1`）是另一条绑定路径，本测试证不了它**——
     `&&` 要求操作数是 array 列，而本体面对的表（cpa_*/csp_*/dg_*）无 array 列，
     构造不出用例。**这不是死代码**：`config/permissions.yaml:99` 有真实模板
