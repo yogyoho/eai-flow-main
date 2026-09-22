@@ -55,10 +55,10 @@ def _status_shape(g: Graph, node_shape: BNode) -> None:
     _p(g, node_shape, "property", ps)
     _p(g, ps, "path", URIRef(P_STATUS))
     head = BNode()
-    Collection(g, head, [Literal(v) for v in ("active", "pending_review", "merged")])
+    Collection(g, head, [Literal(v) for v in ("active", "pending_review", "merged", "rejected")])
     _p(g, ps, "in", head)
     _p(g, ps, "maxCount", Literal(1))
-    _severity(g, ps, "status 必须是 active/pending_review/merged 之一")
+    _severity(g, ps, "status 必须是 active/pending_review/merged/rejected 之一")
 
 
 def _min_count(g: Graph, node_shape: BNode, path: str, count: int, message: str) -> None:

@@ -25,9 +25,10 @@ from app.ontology.registry import load_registry
 SENSITIVE_KEYWORDS = re.compile(r"cred|secret|password|passwd|connection|salary|id_card|phone|身份证|薪酬|工资|token|api_key|private", re.I)
 
 # D14: lint 范围 = 市场域 + doc_graph 表前缀；白名单 = 显式豁免
-# （cpa/csp_run_history: 二期登记; dg_merges: 内部审计表, 永不对外暴露）。
+# （cpa/csp_run_history: 二期登记; dg_merges: 内部审计表, 永不对外暴露;
+#  dg_action_audit: 动作审计表, 同 dg_merges 一类——只写不给读投影, 无 ObjectType 可登记）。
 SCOPE_TABLE_PREFIXES = ("cpa_", "csp_", "dg_")
-WHITELIST_TABLES = {"cpa_run_history", "csp_run_history", "dg_merges"}
+WHITELIST_TABLES = {"cpa_run_history", "csp_run_history", "dg_merges", "dg_action_audit"}
 
 
 def check_market_tables_registered(reg) -> list[str]:

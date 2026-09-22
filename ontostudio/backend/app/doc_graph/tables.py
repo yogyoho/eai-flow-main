@@ -76,3 +76,32 @@ class DgMerge(Base):
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (CheckConstraint("candidate_id != canonical_id", name="ck_dg_merges_no_self_merge"),)
+
+
+class DgActionAudit(Base):
+    """动作审计（设计 §1.2）。业务状态与审计行同事务落库；图上的 MergeAudit 节点
+    降级为本表的投影（属折叠步范围，本表先建）。
+
+    EAI-CUSTOM: 建表沿用既有机制——本模块随 app/ontology/__init__.py 导入注册进
+    Base.metadata，由 gateway 启动时的 create_all 建表。无需迁移脚本。
+    """
+
+    __tablename__ = "dg_action_audit"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, server_default=text("gen_random_uuid()"))
+    action_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    domain: Mapped[str] = mapped_column(String(60), nullable=False)
+    target_table: Mapped[str] = mapped_column(String(120), nullable=False)
+    target_pk: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    actor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    actor_role: Mapped[str | None] = mapped_column(String(120))
+    params: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    before: Mapped[dict | None] = mapped_column(JSONB)
+    after: Mapped[dict | None] = mapped_column(JSONB)
+    source: Mapped[str] = mapped_column(String(10), nullable=False, server_default=text("'api'"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("ix_dg_action_audit_target_created", "target_pk", "created_at"),
+        Index("ix_dg_action_audit_actor_created", "actor_id", "created_at"),
+    )

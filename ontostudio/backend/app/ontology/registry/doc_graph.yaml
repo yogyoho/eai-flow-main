@@ -22,10 +22,13 @@ object_types:
       - { name: norm_name, api_name: normName, type: string, description: 归一化名 }
       - { name: attrs, api_name: attrs, type: json, description: 属性 }
       - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
-      - { name: status, api_name: status, type: string, description: 状态, filterable: true, enum: [active, pending_review, merged] }
+      - { name: status, api_name: status, type: string, description: 状态, filterable: true, enum: [active, pending_review, merged, rejected] }
       - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
       - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
       - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+    # 动作层数据范围（设计 §3）：值取 permissions.yaml 的模块 key。Task 6 前该模块
+    # data_scopes 为空 → 解析为 none_allow（动作一律 404），属预期。
+    scope_resource: ontology
 
   - api_name: graph_relation
     display_name: 图谱关系
@@ -120,3 +123,27 @@ link_types:
       type: foreign_key
       source_column: relation_id
       target_column: id
+
+# 动作层（设计 §1.1）：审核抽取实体。写路径经 executor 单条管线，
+# 业务状态与 dg_action_audit 审计行同事务落库。
+actions:
+  - id: review_entity.confirm
+    display_name: 确认实体
+    description: 将待审抽取实体置为 active，同一事务内记审计
+    domain: doc_graph
+    target: graph_entity
+    required_permissions: [ontology:action:review]
+    preconditions:
+      - { field: status, op: eq, value: pending_review }
+    postconditions:
+      - { field: status, set: active }
+  - id: review_entity.reject
+    display_name: 驳回实体
+    description: 将待审抽取实体置为 rejected，同一事务内记审计
+    domain: doc_graph
+    target: graph_entity
+    required_permissions: [ontology:action:review]
+    preconditions:
+      - { field: status, op: eq, value: pending_review }
+    postconditions:
+      - { field: status, set: rejected }
