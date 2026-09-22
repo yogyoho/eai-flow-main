@@ -155,7 +155,7 @@ def load_registry(registry_dir: Path = REGISTRY_DIR) -> Registry:
             if lt.api_name in links:
                 raise RegistryError(f"{name}: 链接类型 '{lt.api_name}' 重复注册")
             links[lt.api_name] = lt
-        # 动作合并（设计 §1.1）：validate_action_refs 只挡文件内重复，跨文件重复在此兜住
+        # 动作合并（设计 §1.1）：DomainFile._check_refs 只挡文件内重复，跨文件重复在此兜住
         for a in domain.actions:
             if a.id in actions:
                 raise RegistryError(f"{name}: 动作 id 跨域重复: {a.id}")

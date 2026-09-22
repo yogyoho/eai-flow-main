@@ -130,6 +130,19 @@ def test_scope_bindings_must_reference_declared_property():
         DomainFile.model_validate({"object_types": [ot], "actions": []})
 
 
+def test_scope_bindings_valid_binding_accepted():
+    """接受路径也要钉：把校验改成全拒（`if True: raise`）必须变红。
+
+    与 `test_scope_bindings_must_reference_declared_property` 是一对——只测拒绝、不测接受
+    时，校验器被改成"一律拒绝"同样全绿（盲区镜像）。
+    """
+    ot = _ot()
+    ot["scope_resource"] = "ontology"
+    ot["scope_bindings"] = {"user_id": "status"}  # status 是已声明列
+    d = DomainFile.model_validate({"object_types": [ot], "actions": []})
+    assert d.object_types[0].scope_bindings == {"user_id": "status"}
+
+
 # ── Registry 加载路径 ────────────────────────────────────────────────────────
 # 为什么需要这一组：真实 registry 的 YAML 到 Task 3 才会有 actions: 段，所以
 # 全量测试里 RegistryStore 的 `for a in domain.actions:` 循环体一次都不执行——

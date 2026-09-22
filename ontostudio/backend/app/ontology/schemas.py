@@ -239,6 +239,18 @@ class DomainFile(BaseModel):
         `link_types` 允许跨文件前向引用。这是有意收窄：动作与其目标同域同文件（Task 3 的
         `review_entity.*` 与 `graph_entity` 同在 `doc_graph.yaml`），跨域动作还会同时踩到
         下面 M-2 的 domain 一致性校验。
+
+        契约（改动前必读）：本校验器**必须抛 `ValueError`、且必须 `return self`**。
+        - **只抛 `ValueError`**：加载器 `_validate_domain_file` 是单 try，只捕 `ValidationError`，
+          而 pydantic 只把 `ValueError`（及其子类）包装成 `ValidationError`。若这里抛
+          `KeyError` / `TypeError`，pydantic **不包装**它，异常会直接逃逸出
+          `_validate_domain_file`，违反「任何失败 → `RegistryError`」的加载器契约。
+          （当前实现一律先判存在再索引，故无此路径；改动时勿破坏该顺序。）
+        - **必须 `return self`**：pydantic 对 after-validator 返回 `None` **不报错**，只发一条
+          `UserWarning`，并让 `model_validate` **静默返回 `None`**（实测 pydantic 2.13.5：
+          `type(out) is NoneType`；直接构造 `M(x=1)` 仍返回正常实例，故病征只在
+          `model_validate` 这一侧暴露）。若谁删掉 `return self`，症状是「建模返回 None →
+          下游 AttributeError」，而不是一条清楚的校验错误。
         """
         by_api_name = {ot.api_name: ot for ot in self.object_types}
         props = {name: {p.name for p in ot.properties} for name, ot in by_api_name.items()}
