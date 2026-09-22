@@ -2076,6 +2076,13 @@ async def _review_entity(arguments: dict):
 
 `_ok(...)` 是本文件内与既有 `_err(...)` 对称的小助手（`_err` 已存在）：`return [TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))]`。
 
+> **⚠️ 必须加 `default=str`**（Task 5 审查交接的前向风险，勿漏）：
+> ```python
+> json.dumps(payload, ensure_ascii=False, default=str)
+> ```
+> 理由：Task 5 把 `after` 从「`now` 列记 `None`」改成了**用 `RETURNING` 取真值**（审计不能说谎）。于是 `now=True` 的列在返回体里是 **`datetime` 对象**，而 `json.dumps` 无 `default=` 会抛 `TypeError: Object of type datetime is not JSON serializable`。
+> **当前 registry 无 `now=True` 声明，故不可达**——但那是声明，不是约束：`doc_graph.yaml` 是热加载的，谁加一行 `{field: updated_at, now: true}` 就会让 MCP 工具炸。**加 `default=str` 是零成本，别等它可达。**
+
 `run_action_for_mcp` 放在 `actions/executor.py`（**不是** routers.py）——MCP 层不应依赖 REST 层。它需要在该文件顶部补 `from app.ontology.kernel.service import get_kernel`（`_resolve` 同文件已有）：
 
 ```python
