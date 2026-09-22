@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class PropertySchema(BaseModel):
@@ -79,6 +79,11 @@ class ObjectType(BaseModel):
     properties: list[PropertySchema] = Field(min_length=1)
     run_source: str | None = None  # 溯源提示钩子（如 cpa_run_history）
     etype_classes: dict[str, ETypeClass] | None = None  # registry v2：etype → OWL 类（kernel P1）
+    # EAI-CUSTOM (动作层, 设计 §3): 数据范围归属——值取 permissions.yaml 的**模块 key**
+    # （ontology / contract_price / spare_parts / bid_quote…），不是 scope id。
+    scope_resource: str | None = None
+    # 模板字段名 ≠ 本表列名时的覆盖；缺省恒等映射。
+    scope_bindings: dict[str, str] | None = None
 
     def visible_properties(self, include_hidden: bool = False) -> list[PropertySchema]:
         return [p for p in self.properties if include_hidden or not p.hidden]
@@ -159,6 +164,52 @@ class FormalSection(BaseModel):
     disjoint: list[str] = Field(default_factory=list)  # 互斥类名序列（一条声明一组）
 
 
+class Precondition(BaseModel):
+    """动作前置条件：只允许「列 op 字面量」——不做表达式求值。
+
+    EAI-CUSTOM: 设计 §1.1。对标 M2 行为模型的谓词语法，收窄到可静态校验的子集。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str
+    op: Literal["eq", "ne", "in", "not_in", "is_null", "not_null"]
+    value: Any | None = None
+
+
+class StateChange(BaseModel):
+    """动作后置：受影响列的新值。set 与 now 互斥。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str
+    set: Any | None = None
+    now: bool = False
+
+    @model_validator(mode="after")
+    def _exactly_one(self) -> StateChange:
+        if self.now == (self.set is not None):
+            raise ValueError(f"{self.field}: set 与 now 必须二选一（不可同时给出或同时缺省）")
+        return self
+
+
+class ActionSpec(BaseModel):
+    """注册表动作声明（设计 §1.1）。本期只支持 COMMAND。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$")
+    display_name: str
+    description: str
+    domain: str
+    target: str  # ObjectType.api_name
+    behavior_type: Literal["COMMAND"] = "COMMAND"
+    required_permissions: list[str] = Field(min_length=1)
+    preconditions: list[Precondition] = Field(default_factory=list)
+    postconditions: list[StateChange] = Field(min_length=1)
+    version: int = 1
+
+
 class DomainFile(BaseModel):
     """单个域 YAML 文件根模型。"""
 
@@ -169,3 +220,28 @@ class DomainFile(BaseModel):
     # ---- registry v2 formal 段（kernel P1, EAI-CUSTOM）：全部可选，缺省 = 纯业务词表 ----
     namespaces: dict[str, str] | None = None  # 前缀 → 命名空间 IRI（国标 §9.2 每域一空间）
     formal: FormalSection | None = None  # OWL 2 RL 公理声明
+    # ---- 动作层（设计 §1.1, EAI-CUSTOM）：声明式写回；缺省空 = 无动作 ----
+    actions: list[ActionSpec] = []
+
+    def validate_action_refs(self) -> None:
+        """动作声明的交叉引用校验。fail-closed：任一不满足即拒绝加载。"""
+        by_api_name = {ot.api_name: ot for ot in self.object_types}
+        props = {name: {p.name for p in ot.properties} for name, ot in by_api_name.items()}
+
+        seen: set[str] = set()
+        for a in self.actions:
+            if a.id in seen:
+                raise ValueError(f"duplicate action id: {a.id}")
+            seen.add(a.id)
+            if a.target not in by_api_name:
+                raise ValueError(f"unknown action target: {a.target!r} (action {a.id})")
+            declared = props[a.target]
+            for cond in list(a.preconditions) + list(a.postconditions):
+                if cond.field not in declared:
+                    raise ValueError(f"unknown action field: {cond.field!r} on {a.target} (action {a.id})")
+
+        for ot in self.object_types:
+            declared = props[ot.api_name]
+            for template_field, physical in (ot.scope_bindings or {}).items():
+                if physical not in declared:
+                    raise ValueError(f"unknown scope binding: {template_field}->{physical} on {ot.api_name}")

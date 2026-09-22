@@ -16,7 +16,7 @@ from pathlib import Path
 import yaml
 from pydantic import ValidationError
 
-from app.ontology.schemas import DomainFile, FormalSection, LinkType, Manifest, ObjectType
+from app.ontology.schemas import ActionSpec, DomainFile, FormalSection, LinkType, Manifest, ObjectType
 
 REGISTRY_DIR = Path(__file__).parent / "registry"
 
@@ -37,6 +37,7 @@ class Registry:
         registry_version: int,
         namespaces_by_domain: dict[str, dict[str, str]] | None = None,
         formal_by_domain: dict[str, FormalSection] | None = None,
+        actions: dict[str, ActionSpec] | None = None,
     ) -> None:
         self.manifest = manifest
         self.object_types = object_types
@@ -46,6 +47,12 @@ class Registry:
         # registry v2（kernel P1, EAI-CUSTOM）：文件级 formal 段透传（缺省空 = 纯业务词表）
         self.namespaces_by_domain = namespaces_by_domain or {}
         self.formal_by_domain = formal_by_domain or {}
+        # 动作层（设计 §1.1, EAI-CUSTOM）：按 action_id 索引的扁平字典——Registry 不保存
+        # per-domain DomainFile，故动作必须在加载时合并进来，executor 才能按 id 解析。
+        self.actions = actions or {}
+
+    def get_action(self, action_id: str) -> ActionSpec | None:
+        return self.actions.get(action_id)
 
 
 def _read_fingerprint(path: Path) -> str:
@@ -68,10 +75,17 @@ def _parse_yaml(path: Path) -> dict:
 
 def _validate_domain_file(path: Path, data: dict) -> DomainFile:
     try:
-        return DomainFile.model_validate(data)
+        parsed = DomainFile.model_validate(data)
     except ValidationError as e:
         loc0 = ".".join(str(x) for x in (e.errors()[0]["loc"] if e.errors() else []))
         raise RegistryError(f"schema 校验失败: {path.name}: {loc0}: {e.errors()[0]['msg'] if e.errors() else e}") from e
+    # validate_action_refs 抛 ValueError（非 ValidationError），必须单独包一层，否则会绕过
+    # RegistryError 直接漏给调用方，且丢掉"哪个域文件"的定位信息（fail-closed 一致性）。
+    try:
+        parsed.validate_action_refs()
+    except ValueError as e:
+        raise RegistryError(f"动作声明校验失败: {path.name}: {e}") from e
+    return parsed
 
 
 def _check_cross_refs(path: Path, objects: dict[str, ObjectType], links: dict[str, LinkType], pending: set[str]) -> None:
@@ -114,6 +128,7 @@ def load_registry(registry_dir: Path = REGISTRY_DIR) -> Registry:
     fingerprints: dict[str, str] = {}
     namespaces_by_domain: dict[str, dict[str, str]] = {}
     formal_by_domain: dict[str, FormalSection] = {}
+    actions: dict[str, ActionSpec] = {}
     file_names = [mf.file for mf in manifest.files]
     pending = set()  # 先收集全部声明的 api_name（跨文件前向引用）
     parsed: list[tuple[str, DomainFile]] = []
@@ -144,6 +159,11 @@ def load_registry(registry_dir: Path = REGISTRY_DIR) -> Registry:
             if lt.api_name in links:
                 raise RegistryError(f"{name}: 链接类型 '{lt.api_name}' 重复注册")
             links[lt.api_name] = lt
+        # 动作合并（设计 §1.1）：validate_action_refs 只挡文件内重复，跨文件重复在此兜住
+        for a in domain.actions:
+            if a.id in actions:
+                raise RegistryError(f"{name}: 动作 id 跨域重复: {a.id}")
+            actions[a.id] = a
         fingerprints[name] = _read_fingerprint(registry_dir / name)
         _check_cross_refs(registry_dir / name, objects, links, pending - set(objects))
 
@@ -157,6 +177,7 @@ def load_registry(registry_dir: Path = REGISTRY_DIR) -> Registry:
         registry_version=manifest.registry_version,
         namespaces_by_domain=namespaces_by_domain,
         formal_by_domain=formal_by_domain,
+        actions=actions,
     )
 
 
