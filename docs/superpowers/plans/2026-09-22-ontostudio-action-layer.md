@@ -10,7 +10,27 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md`
 
-**工作目录约定**：除非另注，所有命令在 `D:\eai\eai-flow-main\ontostudio\backend` 下执行；gateway 侧改动在 `D:\eai\eai-flow-main\backend` 下执行。测试统一 `PYTHONPATH=. uv run pytest <path> -v`。
+**工作目录约定**：除非另注，所有命令在 `D:\eai\eai-flow-main\ontostudio\backend` 下执行；gateway 侧改动在 `D:\eai\eai-flow-main\backend` 下执行。测试统一 `PYTHONPATH=. uv run pytest <path> -v`（若 `uv run` 在该环境不工作，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest <path> -v`——Task 1/2 实测可用）。
+
+### ⚠️ 每个 Task 的验证清单必须包含 format 检查（Task 1–2 的教训）
+
+**ontostudio 没有 Makefile，所以没有 `make lint` 替你兜底。** 主仓 `make lint` 是**两条**命令：`ruff check .` **加** `ruff format --check .`。只跑前者会漏掉排版问题——Task 2 就漏了一次（新测试文件是全仓唯一未格式化的文件，被规格审查者抓到）。
+
+所以每个 Task 的 Verify 步骤固定为：
+
+```bash
+./.venv/Scripts/python.exe -m ruff check <改动路径>
+./.venv/Scripts/python.exe -m ruff format --check <改动路径>   # ← 别省这一条
+```
+
+若 `format --check` 报要重排，直接 `ruff format <该文件>` 修掉再提交。**只格式化本次改动的文件**，不要顺手格式化别的（`app/auth.py:272` 有一处既有未格式化，不属任何 Task 的范围）。
+
+**本计划的代码块一律不是 format-clean 的**（Task 1–2 已出现 5 例：`-> "StateChange"` 引号触发 UP037、未用 import 触发 F401、import 顺序触发 I001、紧凑 dict 被重排、以及一条陈旧计数）。**实现者请把「跑 format 后重排」视为本任务的常规步骤，而非偏离**——但仍要在报告的偏离清单里如实计入。
+
+### 派发给实现者的通用要求（每个 Task 一致）
+
+- **若计划给的代码过不了计划给的测试或 lint，不要改测试迁就代码、也不要默默改了了事。** 判明是计划错还是测试错，按"哪个符合本任务声明的意图"定，然后在报告里**点名哪一行、为什么、怎么改的**。Task 1–2 共 5 次这样顶回来，每次都值回票价。
+- **偏离清单以「全部偏离」为准，包含 lint/format 驱动的调整。** 只报功能性的偏离会制造"已完全合规"的错觉。
 
 ---
 
