@@ -2127,7 +2127,19 @@ git commit -m "feat(ontostudio): MCP invoke_action + review_entity 具名包装(
 
 ---
 
-## Task 9: lint 扩展 —— scope 绑定校验
+## Task 9: lint 扩展 —— scope 绑定校验 **+ 动作声明的作者笔误**
+
+> **本任务的范围在 Task 4 审查后扩大了一条（务必纳入）**：`ontology_lint.py` 目前对 **precondition 的 `value` 零校验**（已 grep 确认）。结果是"注册表里的作者笔误"要等到 **invoke 时**才被 `sql_write` 的三处守卫拒绝、变成 400——而它是**加载期就能查出来的静态错误**。
+>
+> 典型笔误（都是自然写法，不是构造）：
+> - `{field: status, op: not_in, value: rejected}` —— **漏引号**，YAML 给字符串 → `sql_write` 会拒（Task 4 的 C1），但应当在 lint 阶段就报
+> - `{field: status, op: in, value: []}` —— 空集
+> - `{field: status, op: in, value: 123}` —— 形状错
+> - `{field: status, op: in}` —— 漏 value
+>
+> **要在 lint 里加的检查**：`in`/`not_in` 的 `value` 必须是非空 list/tuple/set；`eq`/`ne` 必须有 value 且非 None（Task 4 的 M1 已把它变成运行期 400，lint 应提前）；`is_null`/`not_null` 不应带 value。
+>
+> 另有一条**够不到**的，记录在案、不在本任务：`in`/`not_in` 的**目标列是否为数组型**仍无校验（registry 只交叉校验字段存在、不校验类型）。要收它需要 schema 层能拿到列的 PG 类型——属另一个议题。
 
 **Files:**
 - Modify: `ontostudio/backend/scripts/ontology_lint.py`
