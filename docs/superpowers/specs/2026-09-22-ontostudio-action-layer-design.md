@@ -72,7 +72,9 @@ class ActionSpec(BaseModel):
     version: int = 1
 ```
 
-`DomainFile` 增 `actions: list[ActionSpec] = []`。`registry.py` 加载时做**交叉引用校验**：`target` 必须解析到本域已声明的 `ObjectType`；`preconditions[].field` 与 `postconditions[].field` 必须是该对象类型的已声明属性；`required_permissions` 非空。任一不满足 → **fail-closed 拒绝加载**（与现有 registry 一致）。
+**实施补充（Task 2 质量审查引入，超出本节三类校验）**：`action.domain` 须与 `target` 所属对象类型的 `domain` 一致。理由是 `domain` 会写进 `dg_action_audit.domain`，而同一行的表名来自 target 对象——两者不一致会产出"domain 与表对不上"的审计行，而审计是这条写路径唯一的追溯凭据。校验位置必须在"target 存在性"检查**之后**（否则 target 不存在时取 `by_api_name[target]` 会 KeyError，掩盖真实的 `unknown action target` 错误）。
+
+`DomainFile` 增 `actions: list[ActionSpec] = []`。**校验以 `@model_validator(mode="after")` 挂载、随 `model_validate` 自动跑**（不采用"须显式调用的公开方法"——本仓既有模式是前者，见 `app/doc_graph/schemas.py:154`；后者无先例且会被本计划后续 Task 的代码绕过）。`registry.py` 加载时做**交叉引用校验**：`target` 必须解析到本域已声明的 `ObjectType`；`preconditions[].field` 与 `postconditions[].field` 必须是该对象类型的已声明属性；`required_permissions` 非空。任一不满足 → **fail-closed 拒绝加载**（与现有 registry 一致）。
 
 ### 1.2 审计表
 
