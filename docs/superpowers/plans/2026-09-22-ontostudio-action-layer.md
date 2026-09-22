@@ -981,8 +981,9 @@ def test_quote_ident_ok():
     assert quote_ident("status") == '"status"'
 
 
-@pytest.mark.parametrize("bad", ['a"; DROP TABLE t --', "a b", "1a", ""])
+@pytest.mark.parametrize("bad", ['a"; DROP TABLE t --', "a b", "1a", "", "abc\n", None, 123])
 def test_quote_ident_rejects(bad):
+    """含 `"abc\\n"`（`$` 锚点容许尾部换行）、None 与非 str —— 白名单是本模块唯一的注入防线。"""
     with pytest.raises(WriteGuardError, match="identifier"):
         quote_ident(bad)
 
@@ -1069,7 +1070,9 @@ class WriteGuardError(ValueError):
 
 
 def quote_ident(name: str) -> str:
-    if not _IDENT.match(name or ""):
+    # fullmatch 而非 match：`$` 锚点容许尾部换行（`_IDENT.match("abc\n")` 通过），
+    # 而白名单是"本模块唯一的注入防线"，锚点必须严格。同 Task 1 的 scope.py::_quote。
+    if not isinstance(name, str) or not _IDENT.fullmatch(name):
         raise WriteGuardError(f"identifier rejected: {name!r}")
     return f'"{name}"'
 
