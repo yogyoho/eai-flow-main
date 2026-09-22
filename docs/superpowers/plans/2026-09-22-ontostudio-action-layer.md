@@ -1013,10 +1013,44 @@ def test_empty_preconditions_is_true():
     assert build_precondition_where([]) == ("TRUE", {})
 
 
+@pytest.mark.parametrize(
+    ("op", "value", "expect_sql", "expect_params"),
+    [
+        ("eq", "a", '"f" = :pre_0', {"pre_0": "a"}),
+        ("ne", "a", '"f" <> :pre_0', {"pre_0": "a"}),
+        ("in", ["a"], '"f" = ANY(:pre_0)', {"pre_0": ["a"]}),
+        ("not_in", ["a"], 'NOT ("f" = ANY(:pre_0))', {"pre_0": ["a"]}),
+        ("is_null", None, '"f" IS NULL', {}),
+        ("not_null", None, '"f" IS NOT NULL', {}),
+    ],
+)
+def test_all_six_operators_render_expected_sql(op, value, expect_sql, expect_params):
+    """6 算子逐个钉住 SQL 文本与绑定形态——not_in 掉 NOT 即 fail-open（守卫放行本不该放的行）。"""
+    assert build_precondition_where([Precondition(field="f", op=op, value=value)]) == (expect_sql, expect_params)
+
+
+def test_preconditions_are_conjoined_with_and():
+    """合取，不是析取——OR 会让复合前置条件"任一成立即放行"，是未授权状态迁移。"""
+    sql, params = build_precondition_where([Precondition(field="status", op="eq", value="pending_review"), Precondition(field="tenant", op="ne", value="x")])
+    assert sql == '"status" = :pre_0 AND "tenant" <> :pre_1'
+    assert params == {"pre_0": "pending_review", "pre_1": "x"}
+
+
+@pytest.mark.parametrize("empty", [None, []])
+def test_in_empty_value_is_false(empty):
+    """空集的「属于」没有行匹配 → 恒假（fail-closed），绝不产出恒真式。"""
+    assert build_precondition_where([Precondition(field="status", op="in", value=empty)]) == ("FALSE", {})
+
+
+@pytest.mark.parametrize("empty", [None, []])
+def test_not_in_empty_value_is_rejected(empty):
+    """「不在空集里」字面等于「全部」——漏填 value 若静默放行，前置条件形同不存在（fail-open）。"""
+    with pytest.raises(WriteGuardError, match="empty value set for not_in"):
+        build_precondition_where([Precondition(field="status", op="not_in", value=empty)])
+
+
 def test_update_set_literal_and_now():
-    sql, params = build_update_set(
-        [StateChange(field="status", set="active"), StateChange(field="updated_at", now=True)]
-    )
+    sql, params = build_update_set([StateChange(field="status", set="active"), StateChange(field="updated_at", now=True)])
     assert sql == '"status" = :set_0, "updated_at" = NOW()'
     assert params == {"set_0": "active"}
 
@@ -1040,7 +1074,7 @@ printf '"""OntoStudio 动作层（设计 §2）。EAI-CUSTOM。"""\n' > ontostud
 
 ```python
 # ontostudio/backend/app/ontology/actions/sql_write.py
-"""动作写路径的 SQL 构造与守卫——**本模块是全库唯一拼写语句的地方**。
+"""动作写路径的 SQL 构造与守卫——**本模块是全库唯一拼接写语句的地方**。
 
 EAI-CUSTOM: 设计 §2。安全约定：
 - 表名与列名只来自解析后的 ActionSpec（registry 声明），**绝不来自调用方 params**；
@@ -1081,7 +1115,15 @@ def quote_ident(name: str) -> str:
 
 
 def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, dict[str, Any]]:
-    """前置条件合取（AND）。空列表 → TRUE。"""
+    """前置条件合取（AND）。空列表 → TRUE。
+
+    **空值集合的语义按算子区分——守卫模块不产出恒真式**（`Precondition.value` 是
+    `Any | None`，漏填即为 None，注册表 YAML 是热加载数据，可达）：
+    - ``in`` 空 → 编译为 ``FALSE``（「不在空集里」没有行匹配，fail-closed）；
+    - ``not_in`` 空 → **拒绝**（「不在空集里」字面等于「全部」，对守卫永远不是想要的：
+      静默放行等于让前置条件形同不存在）；
+    - ``is_null`` / ``not_null`` 不带 value，不受影响。
+    """
     if not preconditions:
         return "TRUE", {}
     parts: list[str] = []
@@ -1095,7 +1137,17 @@ def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, di
             parts.append(tmpl.format(c=col, p=""))
             continue
         key = f"pre_{i}"
-        params[key] = list(cond.value or []) if cond.op in ("in", "not_in") else cond.value
+        if cond.op in ("in", "not_in"):
+            if not cond.value:
+                if cond.op == "not_in":
+                    raise WriteGuardError(f"empty value set for not_in on {cond.field!r}")
+                # 空集的「属于」恒假。追加恒假合取项而非提前 return：后面的前置条件仍要过
+                # 标识符白名单，校验结果不应依赖声明顺序。
+                parts.append("FALSE")
+                continue
+            params[key] = list(cond.value)
+        else:
+            params[key] = cond.value
         parts.append(tmpl.format(c=col, p=f":{key}"))
     return " AND ".join(parts), params
 
@@ -1120,7 +1172,7 @@ def build_update_set(changes: list[StateChange]) -> tuple[str, dict[str, Any]]:
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: `PYTHONPATH=. uv run pytest tests/test_actions_sql_write.py -v`
-Expected: PASS（11 项）
+Expected: PASS（**25 项**——初稿写 11 项是陈旧值：`fullmatch` 预防性修复把拒绝用例从 4 项加到 7 项时没同步计数。后按实现者复审回填三组：6 算子 parametrize（6）、合取断言（1）、**空值集合语义**（`in` 空 → `FALSE` 两条 + `not_in` 空 → 拒绝两条，共 4）。逐条变异已验证：`" AND "`→`" OR "` 只被合取断言抓到；还原 F1 前的 `list(cond.value or [])` 只被那 4 条抓到）
 
 - [ ] **Step 5: 提交**
 

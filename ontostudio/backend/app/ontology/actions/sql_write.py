@@ -39,7 +39,15 @@ def quote_ident(name: str) -> str:
 
 
 def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, dict[str, Any]]:
-    """前置条件合取（AND）。空列表 → TRUE。"""
+    """前置条件合取（AND）。空列表 → TRUE。
+
+    **空值集合的语义按算子区分——守卫模块不产出恒真式**（`Precondition.value` 是
+    `Any | None`，漏填即为 None，注册表 YAML 是热加载数据，可达）：
+    - ``in`` 空 → 编译为 ``FALSE``（「不在空集里」没有行匹配，fail-closed）；
+    - ``not_in`` 空 → **拒绝**（「不在空集里」字面等于「全部」，对守卫永远不是想要的：
+      静默放行等于让前置条件形同不存在）；
+    - ``is_null`` / ``not_null`` 不带 value，不受影响。
+    """
     if not preconditions:
         return "TRUE", {}
     parts: list[str] = []
@@ -53,7 +61,17 @@ def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, di
             parts.append(tmpl.format(c=col, p=""))
             continue
         key = f"pre_{i}"
-        params[key] = list(cond.value or []) if cond.op in ("in", "not_in") else cond.value
+        if cond.op in ("in", "not_in"):
+            if not cond.value:
+                if cond.op == "not_in":
+                    raise WriteGuardError(f"empty value set for not_in on {cond.field!r}")
+                # 空集的「属于」恒假。追加恒假合取项而非提前 return：后面的前置条件仍要过
+                # 标识符白名单，校验结果不应依赖声明顺序。
+                parts.append("FALSE")
+                continue
+            params[key] = list(cond.value)
+        else:
+            params[key] = cond.value
         parts.append(tmpl.format(c=col, p=f":{key}"))
     return " AND ".join(parts), params
 
