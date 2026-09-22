@@ -496,18 +496,40 @@ def _validate_domain_file(path: Path, data: dict) -> DomainFile:
         return self.actions.get(action_id)
 ```
 
-(c) 在 `RegistryStore` 的加载流程里，把各域 `DomainFile.actions` 按 `id` 汇总进 `Registry(...) actions=`。**动作 id 全局唯一**（跨域重复即 `duplicate action id`，由各文件自身的 `validate_action_refs` 挡住文件内重复，跨文件重复在此处汇总时再查一次）：
+(c) 在 `RegistryStore` 的加载函数里汇总动作。**不要新起一遍遍历**——`registry.py:129` 已有第二遍循环 `for name, domain in parsed:`（`parsed: list[tuple[str, DomainFile]]` 在 L119，用 `_validate_domain_file` 产出），把动作合并**并进这个循环**：
 
 ```python
-    merged_actions: dict[str, ActionSpec] = {}
-    for _name, df in parsed:
-        for a in df.actions:
-            if a.id in merged_actions:
-                raise RegistryError(f"动作 id 跨域重复: {a.id}")
-            merged_actions[a.id] = a
+    objects: dict[str, ObjectType] = {}
+    links: dict[str, LinkType] = {}
+    # ...（既有局部变量不动）
+    actions: dict[str, ActionSpec] = {}          # ← 新增
+
+    for name, domain in parsed:
+        # ...（既有 object_types / link_types 处理不动）
+        for a in domain.actions:                  # ← 新增块，放在 link_types 循环之后
+            if a.id in actions:
+                raise RegistryError(f"{name}: 动作 id 跨域重复: {a.id}")
+            actions[a.id] = a
+        fingerprints[name] = _read_fingerprint(registry_dir / name)
+        _check_cross_refs(registry_dir / name, objects, links, pending - set(objects))
 ```
 
-`parsed` 是已有的 `list[tuple[str, DomainFile]]`（L119）——直接复用，不要新起一遍解析。
+**注意**：`validate_action_refs()` 已在 `_validate_domain_file` 内跑过（见上一步），它只挡**文件内**重复；**跨文件**重复由上面这个 `actions` 字典兜住。
+
+(d) 把 L152-160 的 `Registry(...)` 调用补一个关键字参数（其余参数一个字不动）：
+
+```python
+    return Registry(
+        manifest,
+        objects,
+        links,
+        fingerprints,
+        registry_version=manifest.registry_version,
+        namespaces_by_domain=namespaces_by_domain,
+        formal_by_domain=formal_by_domain,
+        actions=actions,
+    )
+```
 
 - [ ] **Step 5: 跑测试确认通过**
 
