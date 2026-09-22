@@ -133,9 +133,23 @@ Expected: FAIL —— `ModuleNotFoundError: No module named 'app.ontology.scope'
 
 - [ ] **Step 3: 实现**
 
+> **⚠️ 下方代码块是初版，已作废。** 两阶段审查修正了 5 处，其中一处是**与网关判定相反的 fail-open**（空 `and`/`not` 曾编译成 `TRUE`，放行全域；网关对同一棵树判 deny）。
+> **权威实现是文件本身**：`ontostudio/backend/app/ontology/scope.py`（33 条测试守着）。修正清单见本 Task 末尾的「审查裁定引入的偏离」表。
+>
+> **不要照抄下面的代码块。** 后续 Task 只依赖这三个**未变更**的接口：
+> ```python
+> class FilterRule:            # 字段：operator / field / value / children
+>     def to_wire(self) -> dict: ...
+>     @classmethod
+>     def from_wire(cls, data: dict) -> "FilterRule": ...
+> class ScopeCompileError(ValueError): ...
+> def rule_to_sql(rule: FilterRule, bindings: dict[str, str] | None = None) -> tuple[str, dict]: ...
+> ```
+> **行为差异须知**：空 `and`/`not` 现在 **raise** 而非返回 `TRUE`；`in`/`not_in` 的裸字符串按单元素集合处理；畸形 wire 一律抛 `ScopeCompileError` 而非 `KeyError`/`TypeError`。
+
 ```python
 # ontostudio/backend/app/ontology/scope.py
-"""数据范围规则树：wire 编解码 + 编译为参数化 SQL WHERE。
+"""数据范围规则树：wire 编解码 + 编译为参数化 SQL WHERE。（初版，见上方警告）
 
 EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md §3。
 FilterRule 的字段形态**对齐** gateway backend/app/extensions/auth/engine.py::FilterRule——
@@ -267,8 +281,9 @@ git commit -m "feat(ontostudio): 数据范围规则树编译(FilterRule → 参�
 |---|---|---|---|
 | `_quote` 的 `bindings` 语义 | `(bindings or {}).get(f, f)` | `bindings is None` → 恒等；否则**未命中即报错** | 计划原文在 `bindings={}` 时静默退回恒等，**通不过计划自己的 `test_unbound_field_raises`**；且那是一个真实 fail-open（registry 漏配 `scope_bindings` → 静默越权读） |
 | 空 `and` / 空 `not` | `TRUE`（放行全域） | **`raise ScopeCompileError`** | 网关参考实现 `engine.py:99-129` 对同一棵树判 **deny**——两侧相反且静默。`allow_all` 有独立算子，空复合式无合法含义，拒绝它不会让任何合法规则回归。空 `or` 保持 `FALSE`（本就同向） |
-| `in` / `not_in` 的 value | `list(node.value or [])` | 先特判 `str` → `[str]`，再 `list(...)` | 裸字符串会被按字符拆（`"abc"`→`['a','b','c']`），`in` 方向是**放宽**。特判不是新增语义，是复刻 `engine.py:52` 的既有语义（非 list 视为单元素集合） |
-| `from_wire` / `_quote` 的输入校验 | 直接索引与 `match` | 缺键/非 str 一律归一为 `ScopeCompileError`；标识符用 `fullmatch` | 原实现下 `KeyError`/`TypeError`/`AttributeError` 会逃出模块声明的错误类型，Task 5 映射错误码时会变 500。`fullmatch` 顺带堵住 `$` 锚点容许尾部换行 |
+| `in` / `not_in` 的 value | `list(node.value or [])` | **仅当 `op in ("in","not_in")` 时**先特判 `str` → `[str]`，再 `list(...)`；标量算子完全不归一 | 裸字符串会被按字符拆（`"abc"`→`['a','b','c']`），`in` 方向是**放宽**。特判不是新增语义，是复刻 `engine.py:52` 的既有语义（非 list 视为单元素集合）。**注意：审查者给的初版修法是无条件特判 `str`，那会把 `eq` 的标量值也包成列表、打破规格原有的 `test_eq_binds_value_not_interpolates`——实现者收窄了范围，是对的。** |
+| `from_wire` / `_quote` 的输入校验 | 直接索引与 `match` | 缺键/非 str/非 dict/`children` 非 list 一律归一为 `ScopeCompileError`；标识符用 `fullmatch` | 原实现下 `KeyError`/`TypeError`/`AttributeError` 会逃出模块声明的错误类型，Task 5 映射错误码时会变 500。`fullmatch` 顺带堵住 `$` 锚点容许尾部换行。`children` 类型校验属实现者自主延伸（同一漏检类，经复审确认不误伤 `children: null` 这一合法形态） |
+| `not` 的多余子节点 | 静默取 `children[0]`，其余丢弃 | `raise`（`not expects exactly one child, got N`） | 安全过滤器上静默丢弃输入不可接受；与 `_quote`「宁可直接失败」的姿态一致 |
 | `ne` / `not_in` 测试 | 无 | 各补 1 条 | 安全相关算子零覆盖，手工探针不是回归护栏 |
 
 **未采纳**：`not_in` 空集守卫（修复位置定在 gateway 解析层，见 spec §9 风险表）；`counter=[0]` 改 `nonlocal`（风格偏好）。
