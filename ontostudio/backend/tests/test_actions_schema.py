@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from app.ontology.schemas import ActionSpec, DomainFile, StateChange
@@ -96,3 +97,54 @@ def test_scope_bindings_must_reference_declared_property():
     d = DomainFile.model_validate({"object_types": [ot], "actions": []})
     with pytest.raises(ValueError, match="unknown scope binding"):
         d.validate_action_refs()
+
+
+# ── Registry 加载路径 ────────────────────────────────────────────────────────
+# 为什么需要这一组：真实 registry 的 YAML 到 Task 3 才会有 actions: 段，所以
+# 全量测试里 RegistryStore 的 `for a in domain.actions:` 循环体一次都不执行——
+# 即本任务声称的「核心」（按 id 索引的动作字典 + 跨文件重复守卫）在提交的测试里
+# 零覆盖。用临时 registry 目录把它钉住，而不是靠一次性脚本。
+
+
+def _write_registry(tmp_path, files: dict[str, str]):
+    """最小 registry 目录：manifest + 各域文件。"""
+    (tmp_path / "_manifest.yaml").write_text(
+        "schema_version: 2\nhot_reload: true\nfiles:\n" + "".join(f"  - file: {n}\n" for n in files),
+        encoding="utf-8",
+    )
+    for name, body in files.items():
+        (tmp_path / name).write_text(body, encoding="utf-8")
+    return tmp_path
+
+
+def test_registry_exposes_actions_by_id(tmp_path):
+    d = _write_registry(tmp_path, {
+        "a.yaml": yaml.safe_dump({"object_types": [_ot()], "actions": [_action()]}, allow_unicode=True),
+    })
+    from app.ontology.registry import RegistryStore
+
+    reg = RegistryStore(registry_dir=d).get()
+    assert reg.get_action("review_entity.confirm").target == "graph_entity"
+    assert reg.get_action("nope.nope") is None
+
+
+def test_cross_file_duplicate_action_id_rejected(tmp_path):
+    """跨文件重复由 RegistryStore 的合并循环兜住（文件内的由 validate_action_refs 兜）。
+
+    两个域各自声明**不同**对象类型（否则会先在对象类型重复注册处报错），
+    但动作 id 相同——必须报「动作 id 跨域重复」。
+    """
+    d = _write_registry(tmp_path, {
+        "a.yaml": yaml.safe_dump({
+            "object_types": [_ot(api_name="graph_entity")],
+            "actions": [_action(id="dup.check", target="graph_entity")],
+        }, allow_unicode=True),
+        "b.yaml": yaml.safe_dump({
+            "object_types": [_ot(api_name="graph_entity2")],
+            "actions": [_action(id="dup.check", target="graph_entity2")],
+        }, allow_unicode=True),
+    })
+    from app.ontology.registry import RegistryError, RegistryStore
+
+    with pytest.raises(RegistryError, match="动作 id 跨域重复"):
+        RegistryStore(registry_dir=d).get()
