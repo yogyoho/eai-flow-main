@@ -972,10 +972,15 @@ git commit -m "feat(ontostudio): dg_action_audit 表 + status 枚举加 rejected
 
 ```python
 # ontostudio/backend/tests/test_actions_sql_write.py
+"""动作写路径的 SQL 构造与守卫。安全要点：标识符走白名单+加引号，值一律绑定。"""
+
 import pytest
 
 from app.ontology.actions.sql_write import (
-    WriteGuardError, build_precondition_where, build_update_set, quote_ident,
+    WriteGuardError,
+    build_precondition_where,
+    build_update_set,
+    quote_ident,
 )
 from app.ontology.schemas import Precondition, StateChange
 
@@ -1049,6 +1054,51 @@ def test_not_in_empty_value_is_rejected(empty):
         build_precondition_where([Precondition(field="status", op="not_in", value=empty)])
 
 
+@pytest.mark.parametrize("op", ["in", "not_in"])
+@pytest.mark.parametrize("bad", ["rejected", 123, {"a": 1}])
+def test_in_not_in_non_sequence_value_rejected(op, bad):
+    """`list("rejected")` 会拆成字符 → 「not_in rejected」放行它声明要拦的那一行（fail-open）；
+    标量则漏出裸 TypeError，不是本模块的错误契约（调用方 catch WriteGuardError 会放过它）。"""
+    with pytest.raises(WriteGuardError, match="must be a list"):
+        build_precondition_where([Precondition(field="status", op=op, value=bad)])
+
+
+def test_identifier_check_is_order_independent():
+    """畸形标识符不因它与空 in 的声明顺序而被漏检。"""
+    with pytest.raises(WriteGuardError, match="identifier"):
+        build_precondition_where([Precondition(field="s", op="in", value=[]), Precondition(field="bad ident", op="eq", value=1)])
+
+
+@pytest.mark.parametrize("op", ["eq", "ne"])
+def test_eq_ne_without_value_rejected(op):
+    """`col = NULL` 恒不成立且 NULL 该写 is_null——静默容忍会让前置条件永不满足、动作永不触发。"""
+    with pytest.raises(WriteGuardError, match="requires a value"):
+        build_precondition_where([Precondition(field="status", op=op)])
+
+
+@pytest.mark.parametrize("falsy", [0, "", False])
+def test_eq_falsy_but_present_value_is_legal(falsy):
+    """0 / "" / False 是合法值——「漏填」的判别必须是 `is None`，不是 falsy。"""
+    sql, params = build_precondition_where([Precondition(field="s", op="eq", value=falsy)])
+    assert sql == '"s" = :pre_0'
+    assert params == {"pre_0": falsy}
+
+
+def test_unknown_operator_rejected_on_unvalidated_construct():
+    """经 pydantic 校验不可达；model_construct（绕过校验的反序列化路径）仍须被守卫拒绝。"""
+    bogus = Precondition.model_construct(field="status", op="bogus", value="x")
+    with pytest.raises(WriteGuardError, match="unknown precondition op"):
+        build_precondition_where([bogus])
+
+
+def test_in_params_do_not_alias_caller_list():
+    """绑定值 copy 自声明——调用方随后改动 list 不应影响已编译的 params。"""
+    src = ["a"]
+    _, params = build_precondition_where([Precondition(field="s", op="in", value=src)])
+    assert params["pre_0"] == ["a"]
+    assert params["pre_0"] is not src
+
+
 def test_update_set_literal_and_now():
     sql, params = build_update_set([StateChange(field="status", set="active"), StateChange(field="updated_at", now=True)])
     assert sql == '"status" = :set_0, "updated_at" = NOW()'
@@ -1074,12 +1124,14 @@ printf '"""OntoStudio 动作层（设计 §2）。EAI-CUSTOM。"""\n' > ontostud
 
 ```python
 # ontostudio/backend/app/ontology/actions/sql_write.py
-"""动作写路径的 SQL 构造与守卫——**本模块是全库唯一拼接写语句的地方**。
+"""动作写路径的 SQL 构造与守卫——**全库唯一的写路径标识符白名单与片段构造处**。
 
 EAI-CUSTOM: 设计 §2。安全约定：
 - 表名与列名只来自解析后的 ActionSpec（registry 声明），**绝不来自调用方 params**；
-- 列名一律过标识符白名单并加引号；
+- 列名/表名一律过标识符白名单（``quote_ident``）并加引号；
 - 值一律命名参数绑定。
+语句骨架（``UPDATE ... SET ... WHERE ...``）由 executor 拼装、表名经 ``quote_ident``——
+「唯一」限定在白名单与片段构造，**不含语句级拼装**。
 读路径的 sqlguard.assert_readonly_select 只放 SELECT，不能复用，故单独成模块。
 """
 
@@ -1115,13 +1167,15 @@ def quote_ident(name: str) -> str:
 
 
 def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, dict[str, Any]]:
-    """前置条件合取（AND）。空列表 → TRUE。
+    """前置条件合取（AND）。空列表 → TRUE（声明方未加前置条件，这是明确语义）。
 
-    **空值集合的语义按算子区分——守卫模块不产出恒真式**（`Precondition.value` 是
-    `Any | None`，漏填即为 None，注册表 YAML 是热加载数据，可达）：
+    **不因「值退化」而产出恒真式**——`Precondition.value` 是 `Any | None` 且 registry 是
+    热加载数据，故漏填与形状错都可达：
+    - ``in`` / ``not_in`` **形状错**（str / 标量 / 映射）→ 拒绝：`list("rejected")` 会拆成
+      字符，让「not_in rejected」放行它声明要拦的那一行（fail-open），标量则漏出裸 TypeError；
     - ``in`` 空 → 编译为 ``FALSE``（「不在空集里」没有行匹配，fail-closed）；
-    - ``not_in`` 空 → **拒绝**（「不在空集里」字面等于「全部」，对守卫永远不是想要的：
-      静默放行等于让前置条件形同不存在）；
+    - ``not_in`` 空 → **拒绝**（「不在空集里」字面等于「全部」，对守卫永远不是想要的）；
+    - ``eq`` / ``ne`` 漏填 → 拒绝（``col = NULL`` 恒不成立，NULL 语义请用 ``is_null``）；
     - ``is_null`` / ``not_null`` 不带 value，不受影响。
     """
     if not preconditions:
@@ -1134,19 +1188,29 @@ def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, di
             raise WriteGuardError(f"unknown precondition op: {cond.op!r}")
         col = quote_ident(cond.field)
         if cond.op in ("is_null", "not_null"):
-            parts.append(tmpl.format(c=col, p=""))
+            # 这两个模板不含 {p}，故不喂占位符（喂了也是被丢弃的幽灵参数）。
+            parts.append(tmpl.format(c=col))
             continue
         key = f"pre_{i}"
         if cond.op in ("in", "not_in"):
+            # 形状守卫（与 F1 同一条 fail-open 线）：str 会被 list() 拆成字符，标量则抛
+            # 裸 TypeError（不是本模块的错误契约，调用方 catch WriteGuardError 会放过它）。
+            # None 不算形状错——它表示漏填，与空序列同走下面的「空值」语义。
+            if cond.value is not None and not isinstance(cond.value, (list, tuple, set)):
+                raise WriteGuardError(f"{cond.op} value must be a list on {cond.field!r}, got {type(cond.value).__name__}")
             if not cond.value:
                 if cond.op == "not_in":
                     raise WriteGuardError(f"empty value set for not_in on {cond.field!r}")
-                # 空集的「属于」恒假。追加恒假合取项而非提前 return：后面的前置条件仍要过
-                # 标识符白名单，校验结果不应依赖声明顺序。
+                # 空集的「属于」恒假。追加恒假合取项而非提前 return：两者都 fail-closed，
+                # 差别只在诊断一致性——提前 return 会让畸形标识符是否被拒取决于声明顺序。
                 parts.append("FALSE")
                 continue
-            params[key] = list(cond.value)
+            params[key] = list(cond.value)  # list() 兼作拷贝：绑定值不与调用方的 list 别名
         else:
+            # eq / ne：必须给出值。`col = NULL` 恒不成立（NULL 该用 is_null），静默容忍会让
+            # 前置条件永不满足、动作永不触发——与 F1/C1 同一类作者笔误。
+            if cond.value is None:
+                raise WriteGuardError(f"{cond.op} requires a value on {cond.field!r}; use is_null / not_null for NULL")
             params[key] = cond.value
         parts.append(tmpl.format(c=col, p=f":{key}"))
     return " AND ".join(parts), params
@@ -1172,7 +1236,7 @@ def build_update_set(changes: list[StateChange]) -> tuple[str, dict[str, Any]]:
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: `PYTHONPATH=. uv run pytest tests/test_actions_sql_write.py -v`
-Expected: PASS（**25 项**——初稿写 11 项是陈旧值：`fullmatch` 预防性修复把拒绝用例从 4 项加到 7 项时没同步计数。后按实现者复审回填三组：6 算子 parametrize（6）、合取断言（1）、**空值集合语义**（`in` 空 → `FALSE` 两条 + `not_in` 空 → 拒绝两条，共 4）。逐条变异已验证：`" AND "`→`" OR "` 只被合取断言抓到；还原 F1 前的 `list(cond.value or [])` 只被那 4 条抓到）
+Expected: PASS（**39 项**——初稿写 11 项是陈旧值：`fullmatch` 预防性修复把拒绝用例从 4 项加到 7 项时没同步计数。三轮复审逐次回填：6 算子 parametrize、合取断言、**空值/形状/漏填**三组拒绝与 falsy 接受路径、顺序无关性、未知算子纵深防御、绑定值拷贝。**每条都经变异买过单**：`" AND "`→`" OR "` 只被合取断言抓到；还原 `or []` 只被空值 4 例抓到；**去掉形状守卫只被那 6 例抓到（其中 2 例报的是裸 `TypeError`，即 I1）**；append-`FALSE` 改提前 return 只被顺序无关性那条抓到）
 
 - [ ] **Step 5: 提交**
 

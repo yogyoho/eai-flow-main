@@ -1,9 +1,11 @@
-"""动作写路径的 SQL 构造与守卫——**本模块是全库唯一拼接写语句的地方**。
+"""动作写路径的 SQL 构造与守卫——**全库唯一的写路径标识符白名单与片段构造处**。
 
 EAI-CUSTOM: 设计 §2。安全约定：
 - 表名与列名只来自解析后的 ActionSpec（registry 声明），**绝不来自调用方 params**；
-- 列名一律过标识符白名单并加引号；
+- 列名/表名一律过标识符白名单（``quote_ident``）并加引号；
 - 值一律命名参数绑定。
+语句骨架（``UPDATE ... SET ... WHERE ...``）由 executor 拼装、表名经 ``quote_ident``——
+「唯一」限定在白名单与片段构造，**不含语句级拼装**。
 读路径的 sqlguard.assert_readonly_select 只放 SELECT，不能复用，故单独成模块。
 """
 
@@ -39,13 +41,15 @@ def quote_ident(name: str) -> str:
 
 
 def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, dict[str, Any]]:
-    """前置条件合取（AND）。空列表 → TRUE。
+    """前置条件合取（AND）。空列表 → TRUE（声明方未加前置条件，这是明确语义）。
 
-    **空值集合的语义按算子区分——守卫模块不产出恒真式**（`Precondition.value` 是
-    `Any | None`，漏填即为 None，注册表 YAML 是热加载数据，可达）：
+    **不因「值退化」而产出恒真式**——`Precondition.value` 是 `Any | None` 且 registry 是
+    热加载数据，故漏填与形状错都可达：
+    - ``in`` / ``not_in`` **形状错**（str / 标量 / 映射）→ 拒绝：`list("rejected")` 会拆成
+      字符，让「not_in rejected」放行它声明要拦的那一行（fail-open），标量则漏出裸 TypeError；
     - ``in`` 空 → 编译为 ``FALSE``（「不在空集里」没有行匹配，fail-closed）；
-    - ``not_in`` 空 → **拒绝**（「不在空集里」字面等于「全部」，对守卫永远不是想要的：
-      静默放行等于让前置条件形同不存在）；
+    - ``not_in`` 空 → **拒绝**（「不在空集里」字面等于「全部」，对守卫永远不是想要的）；
+    - ``eq`` / ``ne`` 漏填 → 拒绝（``col = NULL`` 恒不成立，NULL 语义请用 ``is_null``）；
     - ``is_null`` / ``not_null`` 不带 value，不受影响。
     """
     if not preconditions:
@@ -58,19 +62,29 @@ def build_precondition_where(preconditions: list[Precondition]) -> tuple[str, di
             raise WriteGuardError(f"unknown precondition op: {cond.op!r}")
         col = quote_ident(cond.field)
         if cond.op in ("is_null", "not_null"):
-            parts.append(tmpl.format(c=col, p=""))
+            # 这两个模板不含 {p}，故不喂占位符（喂了也是被丢弃的幽灵参数）。
+            parts.append(tmpl.format(c=col))
             continue
         key = f"pre_{i}"
         if cond.op in ("in", "not_in"):
+            # 形状守卫（与 F1 同一条 fail-open 线）：str 会被 list() 拆成字符，标量则抛
+            # 裸 TypeError（不是本模块的错误契约，调用方 catch WriteGuardError 会放过它）。
+            # None 不算形状错——它表示漏填，与空序列同走下面的「空值」语义。
+            if cond.value is not None and not isinstance(cond.value, (list, tuple, set)):
+                raise WriteGuardError(f"{cond.op} value must be a list on {cond.field!r}, got {type(cond.value).__name__}")
             if not cond.value:
                 if cond.op == "not_in":
                     raise WriteGuardError(f"empty value set for not_in on {cond.field!r}")
-                # 空集的「属于」恒假。追加恒假合取项而非提前 return：后面的前置条件仍要过
-                # 标识符白名单，校验结果不应依赖声明顺序。
+                # 空集的「属于」恒假。追加恒假合取项而非提前 return：两者都 fail-closed，
+                # 差别只在诊断一致性——提前 return 会让畸形标识符是否被拒取决于声明顺序。
                 parts.append("FALSE")
                 continue
-            params[key] = list(cond.value)
+            params[key] = list(cond.value)  # list() 兼作拷贝：绑定值不与调用方的 list 别名
         else:
+            # eq / ne：必须给出值。`col = NULL` 恒不成立（NULL 该用 is_null），静默容忍会让
+            # 前置条件永不满足、动作永不触发——与 F1/C1 同一类作者笔误。
+            if cond.value is None:
+                raise WriteGuardError(f"{cond.op} requires a value on {cond.field!r}; use is_null / not_null for NULL")
             params[key] = cond.value
         parts.append(tmpl.format(c=col, p=f":{key}"))
     return " AND ".join(parts), params

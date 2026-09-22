@@ -80,6 +80,51 @@ def test_not_in_empty_value_is_rejected(empty):
         build_precondition_where([Precondition(field="status", op="not_in", value=empty)])
 
 
+@pytest.mark.parametrize("op", ["in", "not_in"])
+@pytest.mark.parametrize("bad", ["rejected", 123, {"a": 1}])
+def test_in_not_in_non_sequence_value_rejected(op, bad):
+    """`list("rejected")` 会拆成字符 → 「not_in rejected」放行它声明要拦的那一行（fail-open）；
+    标量则漏出裸 TypeError，不是本模块的错误契约（调用方 catch WriteGuardError 会放过它）。"""
+    with pytest.raises(WriteGuardError, match="must be a list"):
+        build_precondition_where([Precondition(field="status", op=op, value=bad)])
+
+
+def test_identifier_check_is_order_independent():
+    """畸形标识符不因它与空 in 的声明顺序而被漏检。"""
+    with pytest.raises(WriteGuardError, match="identifier"):
+        build_precondition_where([Precondition(field="s", op="in", value=[]), Precondition(field="bad ident", op="eq", value=1)])
+
+
+@pytest.mark.parametrize("op", ["eq", "ne"])
+def test_eq_ne_without_value_rejected(op):
+    """`col = NULL` 恒不成立且 NULL 该写 is_null——静默容忍会让前置条件永不满足、动作永不触发。"""
+    with pytest.raises(WriteGuardError, match="requires a value"):
+        build_precondition_where([Precondition(field="status", op=op)])
+
+
+@pytest.mark.parametrize("falsy", [0, "", False])
+def test_eq_falsy_but_present_value_is_legal(falsy):
+    """0 / "" / False 是合法值——「漏填」的判别必须是 `is None`，不是 falsy。"""
+    sql, params = build_precondition_where([Precondition(field="s", op="eq", value=falsy)])
+    assert sql == '"s" = :pre_0'
+    assert params == {"pre_0": falsy}
+
+
+def test_unknown_operator_rejected_on_unvalidated_construct():
+    """经 pydantic 校验不可达；model_construct（绕过校验的反序列化路径）仍须被守卫拒绝。"""
+    bogus = Precondition.model_construct(field="status", op="bogus", value="x")
+    with pytest.raises(WriteGuardError, match="unknown precondition op"):
+        build_precondition_where([bogus])
+
+
+def test_in_params_do_not_alias_caller_list():
+    """绑定值 copy 自声明——调用方随后改动 list 不应影响已编译的 params。"""
+    src = ["a"]
+    _, params = build_precondition_where([Precondition(field="s", op="in", value=src)])
+    assert params["pre_0"] == ["a"]
+    assert params["pre_0"] is not src
+
+
 def test_update_set_literal_and_now():
     sql, params = build_update_set([StateChange(field="status", set="active"), StateChange(field="updated_at", now=True)])
     assert sql == '"status" = :set_0, "updated_at" = NOW()'
