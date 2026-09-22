@@ -19,7 +19,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.routing import Route
@@ -91,14 +91,21 @@ def create_app() -> FastAPI:
     doc_graph_guard = MCPAsgiGuard()
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI):
+    async def lifespan(application: FastAPI):
         # EAI-CUSTOM(Task 3): 本服务接管 dg_* 建表（app/db.py 预告的「Task 3 起本服务接管」）。
         # 降级而非致命：DB 未起时服务仍能提供 registry/kernel 等无库读路径，逐请求的 DB 失败
         # 各自报错；若在此硬失败，启动瞬间的 DB 抖动（或离线部署里 postgres 尚未 healthy）
-        # 会整服务拒起——代价大于收益。建表失败留 WARNING, 不静默。
+        # 会整服务拒起——代价大于收益（对一张只有审计写入方需要的表，这个交换是错的轴）。
+        # 建表结果落到 app.state 并透出到 /health（见 health 端点），不静默。
+        # 已记录的缺口（不是遗漏）：建表只在此处尝试一次——DB 后起时需**重启**才补建，
+        # 懒建/首用重试随 Task 5（真正的写入方）落地。
+        # ponytail: 不在此处加重试/后台轮询——修复点是 Task 5 的写入路径, 现在加就是给一个
+        #          尚无调用方的表写猜测性机制。
         try:
             await ensure_tables()
-        except Exception as exc:  # noqa: BLE001 — 任何失败都不阻断启动, 但必须留痕
+            application.state.tables_ready = True
+        except Exception as exc:  # 建表失败不阻断启动（见上），但必须留痕且可观测
+            application.state.tables_ready = False
             logger.warning("dg_* 建表失败（服务降级启动；DB 恢复后重启即补建）: %s", exc)
         # stateless: 每 HTTP 请求新 transport, 免会话簿记, 容器重启零残留;
         # json_response: 响应为纯 JSON。manager.run() 初始化 TaskGroup, 一次性 → 每次
@@ -123,8 +130,17 @@ def create_app() -> FastAPI:
     app.routes.append(Route("/mcp/doc-graph", doc_graph_guard, methods=["GET", "POST", "DELETE"], name="mcp_doc_graph"))
 
     @app.get("/health")
-    async def health():
-        return {"status": "ok", "service": "ontostudio-backend"}
+    async def health(request: Request):
+        """存活 + 就绪同端点，**状态码恒 200**。
+
+        EAI-CUSTOM(Task 3): `tables_ready` 暴露「启动时 dg_* 建表是否成功」。为什么加它：
+        /health 是 DB 无关的，而两份 compose 的 healthcheck 都打这里 → 建表失败的实例照样
+        报健康，运维看不见（DB 后起、或 dev 拓扑无 postgres-ext depends_on 时是真会发生的竞态）。
+        是否据该字段判不健康属运维决策（影响两份 compose），本任务只把可观测性做出来，
+        不单方面改状态码——故 200 保持不变。
+        无 lifespan 时（如未用 with 的 TestClient）state 无此属性 → 缺省 False。
+        """
+        return {"status": "ok", "service": "ontostudio-backend", "tables_ready": bool(getattr(request.app.state, "tables_ready", False))}
 
     return app
 

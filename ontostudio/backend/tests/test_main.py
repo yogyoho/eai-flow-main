@@ -25,7 +25,10 @@ def test_health_open_without_auth():
     client = TestClient(ontostudio_app)
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok", "service": "ontostudio-backend"}
+    # 逐字段断言（原先断言整个 body 相等）：/health 后续增长字段（如 Task 3 的 tables_ready）
+    # 不该把这条「免鉴权可读」的用例打红——它守的是鉴权豁免与存活语义, 不是 body 的形状。
+    assert r.json()["status"] == "ok"
+    assert r.json()["service"] == "ontostudio-backend"
 
 
 def test_protected_endpoint_401_without_token():

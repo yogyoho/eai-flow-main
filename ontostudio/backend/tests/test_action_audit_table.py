@@ -37,13 +37,6 @@ def test_audit_columns():
     assert _AUDIT_COLUMNS <= cols
 
 
-def test_status_enum_includes_rejected():
-    from pathlib import Path
-
-    src = Path("app/ontology/kernel/validate.py").read_text(encoding="utf-8")
-    assert '"rejected"' in src, "status 枚举未加 rejected——SHACL 会判拒绝后实体违规"
-
-
 def test_registry_status_enum_includes_rejected():
     """行为断言（非整份 YAML grep）：graph_entity 的 status enum 必须含 rejected。
 
@@ -96,14 +89,14 @@ def _db_ready() -> bool:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
             return True
-        except Exception:  # noqa: BLE001
+        except Exception:  # 任何失败（连接/认证/超时）都视为不可达
             return False
         finally:
             await engine.dispose()
 
     try:
         return asyncio.run(_probe())
-    except Exception:  # noqa: BLE001
+    except Exception:  # 事件循环层面的失败同样视为不可达
         return False
 
 
@@ -142,9 +135,46 @@ def test_lifespan_attempts_table_creation(monkeypatch, caplog):
 
     monkeypatch.setattr(connectors, "_ext_url", lambda: "postgresql+asyncpg://nobody:nope@127.0.0.1:1/none")
     with caplog.at_level(logging.WARNING), TestClient(app) as client:
-        assert client.get("/health").status_code == 200  # 降级而非致命
+        health = client.get("/health")
+        assert health.status_code == 200  # 降级而非致命
+        assert health.json()["tables_ready"] is False  # 无表实例必须在 /health 上看得见
 
     assert any("建表失败" in r.getMessage() for r in caplog.records), [r.getMessage() for r in caplog.records]
+
+
+def test_health_defaults_tables_ready_false_without_lifespan():
+    """未进 lifespan → tables_ready 缺省 False，状态码仍 200。
+
+    用 create_app() 新建实例而非模块级单例：单例的 state 会被别的用例的 lifespan 写过
+    （True），读它就成了与用例顺序相关的假断言。
+    默认值取 False 而非 None/缺失：读不到就是「没确认建好」，fail-closed 的读法。
+    """
+    from app.main import create_app
+
+    client = TestClient(create_app())  # 不 with → 不进 lifespan
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json()["tables_ready"] is False
+    assert r.json()["status"] == "ok" and r.json()["service"] == "ontostudio-backend"
+
+
+def test_ensure_tables_times_out_on_blackhole(monkeypatch):
+    """建表不得在黑洞地址上把启动吊死——无 connect_args 时本机实测 21.5s（Linux 可到分钟级）。
+
+    那段窗口里 uvicorn 尚未服务 → healthcheck 失败 → 下游起不来。断言只设上界（10s, 配置值 5s
+    的 2 倍裕度）：环境若无路由会立刻失败, 同样通过——本条要抓的是「超时被删掉/被调大」。
+    """
+    import time
+
+    from app.db import ensure_tables
+    from app.ontology import connectors
+
+    monkeypatch.setattr(connectors, "_ext_url", lambda: "postgresql+asyncpg://nobody:nope@10.255.255.1:5432/none")
+    started = time.perf_counter()
+    with pytest.raises(Exception):  # 黑洞不可达, 必须抛（且必须是超时后抛, 不是吊死）
+        asyncio.run(ensure_tables())
+    elapsed = time.perf_counter() - started
+    assert elapsed < 10.0, f"建表连接没有超时护栏：黑洞地址耗时 {elapsed:.1f}s"
 
 
 @pytest.mark.integration
@@ -160,7 +190,8 @@ def test_lifespan_creates_action_audit_table():
     from app.main import app
 
     with TestClient(app) as client:  # lifespan → app.db.ensure_tables()
-        assert client.get("/health").status_code == 200
+        # 建表成功必须透出到 /health（否则无表实例照样报健康, 运维看不见）
+        assert client.get("/health").json()["tables_ready"] is True
 
     cols = asyncio.run(_audit_columns_in_live_db())
     assert cols, "lifespan 跑完后 dg_action_audit 仍不在活库里——建表路径没接上"

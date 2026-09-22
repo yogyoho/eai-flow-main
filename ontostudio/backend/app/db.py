@@ -14,6 +14,12 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
+# 连接超时（秒）。**必须有**：黑洞/丢包地址上 asyncpg 会一直等（本机实测无 timeout = 21.5s，
+# Linux TCP connect 可到 ~2 分钟），而这段窗口里 uvicorn 尚未进入服务状态 → 容器 healthcheck
+# 失败、下游起不来。取 5 而非探针用的 2：探测只需确认可达，生产还要留出正常建表的裕度。
+# 只限连接阶段；命令阶段不限时（DDL 时长本就有界，加 command_timeout 只会引入新的误杀面）。
+_CONNECT_TIMEOUT_S = 5
+
 
 class Base(DeclarativeBase):
     """SQLAlchemy declarative base."""
@@ -34,12 +40,13 @@ async def ensure_tables() -> None:
     写明：别把本函数当成自动迁移。
 
     引擎照 app/doc_graph/ingest.py 既有模式（create_async_engine + NullPool，URL 取
-    connectors._ext_url 单一真源）。`_ext_url` 用函数内延迟 import——app.ontology.__init__
+    connectors._ext_url 单一真源），另加 `_CONNECT_TIMEOUT_S`（见常量处注释——没有它黑洞地址
+    会把启动吊死到分钟级）。`_ext_url` 用函数内延迟 import——app.ontology.__init__
     会反手 import app.doc_graph.tables（即本模块的 Base），模块级 import 成环。
     """
     from app.ontology.connectors import _ext_url
 
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    engine = create_async_engine(_ext_url(), poolclass=NullPool, connect_args={"timeout": _CONNECT_TIMEOUT_S})
     try:
         async with engine.begin() as conn:
             # create_all 是同步 API，异步引擎下须 run_sync 包一层
