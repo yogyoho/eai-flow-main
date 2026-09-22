@@ -861,16 +861,65 @@ class DgActionAudit(Base):
     _severity(g, ps, "status 必须是 active/pending_review/merged/rejected 之一")
 ```
 
-`ontostudio/backend/app/ontology/registry/doc_graph.yaml` 中 `graph_entity` 的 `status` 属性 `enum` 追加 `rejected`；同一对象的 `etype_classes` 块**之后**加一行：
+`ontostudio/backend/app/ontology/registry/doc_graph.yaml` 中 `graph_entity` 的 `status` 属性 `enum` 追加 `rejected`（该行现为 L25 的 `enum: [active, pending_review, merged]`）；同一对象的 `etype_classes` 块**之后**加一行：
 
 ```yaml
     scope_resource: ontology
 ```
 
+- [ ] **Step 4b: 声明两个动作（**计划初稿漏了这一步**）**
+
+> **为什么在这里**：本计划的文件结构表写着 `doc_graph.yaml` 要"声明 `review_entity.confirm` / `.reject`"，但初稿**没有任何 Task 的步骤包含这段 YAML**。后果是 Task 5/7/8/10 全部依赖 `review_entity.confirm` 存在，而 `_resolve` 会抛 `unknown action` → 那四个 Task 的测试成片失败。**这是 Task 2 派发时"别加 actions 声明，那是 Task 3 的范围"那句话留下的悬空**——Task 3 没接住。在文件的**末尾**（`link_types` 段之后）追加顶层键 `actions:`：
+
+```yaml
+actions:
+  - id: review_entity.confirm
+    display_name: 确认实体
+    description: 将待审抽取实体置为 active，同一事务内记审计
+    domain: doc_graph
+    target: graph_entity
+    required_permissions: [ontology:action:review]
+    preconditions:
+      - { field: status, op: eq, value: pending_review }
+    postconditions:
+      - { field: status, set: active }
+  - id: review_entity.reject
+    display_name: 驳回实体
+    description: 将待审抽取实体置为 rejected，同一事务内记审计
+    domain: doc_graph
+    target: graph_entity
+    required_permissions: [ontology:action:review]
+    preconditions:
+      - { field: status, op: eq, value: pending_review }
+    postconditions:
+      - { field: status, set: rejected }
+```
+
+**三条硬约束**（会被 Task 2 已落地的校验直接拦下）：
+
+1. `domain: doc_graph` **必须与 `graph_entity.domain` 一致**——已核实该对象类型确为 `domain: doc_graph`。不一致会报 `action ... domain ... 与 target 所属域 ... 不一致`（Task 2 的 M-2 校验）。
+2. `target: graph_entity` 必须是**同文件**已声明的 `ObjectType.api_name`（actions 不允许跨文件引用）。
+3. `preconditions`/`postconditions` 的 `field` 必须是该对象类型的**已声明属性名**——这里是 `status`（L25 已声明）。
+
+**并补一条测试**（否则"声明存在"本身没有护栏）：
+
+```python
+def test_real_registry_declares_review_actions():
+    """真实 registry 已声明两个审核动作——Task 5/7/8/10 全靠它们。"""
+    from app.ontology.registry import get_registry
+
+    reg = get_registry()
+    assert reg.get_action("review_entity.confirm") is not None
+    assert reg.get_action("review_entity.reject") is not None
+    assert reg.get_action("review_entity.confirm").target == "graph_entity"
+```
+
+（**注意**：这条测试会让 `Registry.actions` 从空字典变为非空——Task 2 里那两条用临时 registry 目录的测试不受影响，但如果你想给"真实 registry 的 actions 非空"写断言，放在这里。）
+
 - [ ] **Step 5: 跑测试确认通过**
 
-Run: `PYTHONPATH=. uv run pytest tests/test_action_audit_table.py tests/test_kernel_p4.py -v`
-Expected: 全 PASS（P4 是 SHACL 金测试，确认改枚举没打坏既有形状）
+Run: `PYTHONPATH=. uv run pytest tests/test_action_audit_table.py tests/test_kernel_p4.py tests/test_actions_schema.py -v`
+Expected: 全 PASS（P4 是 SHACL 金测试，确认改枚举没打坏既有形状；`test_actions_schema.py` 确认新声明没触发 Task 2 的校验）
 
 - [ ] **Step 6: 提交**
 
