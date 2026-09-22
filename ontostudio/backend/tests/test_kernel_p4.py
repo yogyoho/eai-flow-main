@@ -70,6 +70,32 @@ def test_shacl_bad_status_violation_report(env):
     assert all(v["focusNode"] and v["message"] and v["severity"] and v["source"] for v in report.violations)
 
 
+def test_shacl_rejected_status_conforms(env):
+    """Task 3（动作层设计 §1.3）：rejected 是合法 status——驳回动作的落库值, 必须过 SHACL。
+
+    与 test_shacl_bad_status_violation_report 成对：只钉负路径时，「枚举被改窄（删掉 rejected）」
+    不会有任何测试变红，而 rejected 实体一旦判违规, 驳回后的图重投影就当场自相矛盾。
+    """
+    store, vocab, registry = env
+    upsert_entity(store, vocab, class_name="Project", entity_uuid="66666666-6666-6666-6666-666666666666", etype="project", canonical_name="横城煤矿项目", confidence=0.9, status="rejected")
+    report = run_shacl(store, registry)
+    assert report.conforms, f"rejected 是合法 status: {report.violations[:3]}"
+
+
+def test_shacl_status_message_lists_full_enum(env):
+    """违规提示必须列全枚举（含 rejected）——操作者据此才能改正, 少列即误导。
+
+    钉的是 validate.py 的 `_severity` 文案（负路径那条测试只断言「有违规」, 文案删掉 /rejected
+    照样全绿）。
+    """
+    store, vocab, registry = env
+    upsert_entity(store, vocab, class_name="Project", entity_uuid="77777777-7777-7777-7777-777777777777", etype="project", canonical_name="横渠煤矿项目", confidence=0.9, status="archived")
+    report = run_shacl(store, registry)
+    messages = [v["message"] for v in report.violations if v["path"] and v["path"].endswith("status")]
+    assert messages, "非法 status 必须触发违规"
+    assert all("rejected" in m for m in messages), messages
+
+
 def test_shacl_mention_requires_target(env):
     store, vocab, registry = env
     # graph_ops 层已挡（二选一守卫），此处直写绕过 → SHACL 兜底

@@ -1,4 +1,4 @@
-"""doc_graph 表模型（dg_* 前缀, extensions 库; 过渡期 gateway create_all 建表, Task 3 起本服务接管）.
+"""doc_graph 表模型（dg_* 前缀, extensions 库; 建表由本服务 lifespan 承担: app.db.ensure_tables()）.
 
 EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-11-ontology-doc-graph-design.md §4。
 双时间（借 Semantica BiTemporalFact 设计）: valid_from/valid_to=业务有效期;
@@ -83,7 +83,8 @@ class DgActionAudit(Base):
     降级为本表的投影（属折叠步范围，本表先建）。
 
     EAI-CUSTOM: 建表沿用既有机制——本模块随 app/ontology/__init__.py 导入注册进
-    Base.metadata，由 gateway 启动时的 create_all 建表。无需迁移脚本。
+    Base.metadata，由 app.db.ensure_tables()（本服务 lifespan 启动时）create_all 建表。
+    无需迁移脚本。
     """
 
     __tablename__ = "dg_action_audit"

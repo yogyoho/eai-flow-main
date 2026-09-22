@@ -15,6 +15,7 @@ MCP transport 选型(S1 Task 2 报告项): **streamable-http**（官方 SDK mcp 
 
 from __future__ import annotations
 
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -25,6 +26,7 @@ from starlette.routing import Route
 from starlette.types import Receive, Scope, Send
 
 from app import auth
+from app.db import ensure_tables
 from app.doc_graph.mcp import server as doc_graph_mcp_server
 from app.doc_graph.routers import router as doc_graph_router
 from app.ontology.formal import router as formal_router
@@ -33,6 +35,8 @@ from app.ontology.registry_content import router as registry_content_router
 from app.ontology.routers import router as ontology_router
 
 _DEFAULT_CORS_ORIGINS = "http://localhost:2026,http://localhost:3010"
+
+logger = logging.getLogger(__name__)
 
 
 class MCPAsgiGuard:
@@ -88,6 +92,14 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
+        # EAI-CUSTOM(Task 3): 本服务接管 dg_* 建表（app/db.py 预告的「Task 3 起本服务接管」）。
+        # 降级而非致命：DB 未起时服务仍能提供 registry/kernel 等无库读路径，逐请求的 DB 失败
+        # 各自报错；若在此硬失败，启动瞬间的 DB 抖动（或离线部署里 postgres 尚未 healthy）
+        # 会整服务拒起——代价大于收益。建表失败留 WARNING, 不静默。
+        try:
+            await ensure_tables()
+        except Exception as exc:  # noqa: BLE001 — 任何失败都不阻断启动, 但必须留痕
+            logger.warning("dg_* 建表失败（服务降级启动；DB 恢复后重启即补建）: %s", exc)
         # stateless: 每 HTTP 请求新 transport, 免会话簿记, 容器重启零残留;
         # json_response: 响应为纯 JSON。manager.run() 初始化 TaskGroup, 一次性 → 每次
         # startup 新建实例（缺 run() 则 handle_request 抛 "Task group is not initialized",
