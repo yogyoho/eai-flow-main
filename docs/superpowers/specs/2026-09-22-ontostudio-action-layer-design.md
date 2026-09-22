@@ -86,6 +86,27 @@ class ActionSpec(BaseModel):
 >
 > **已知限制**：`create_all` **只建缺失的表，不做 schema 变更**——列增删改仍需人工迁移。这是本仓既有取向（gateway 同样如此），但必须写明，别让人以为有了自动迁移系统。
 
+### 1.2.1 建表失败的降级契约（Task 3 质量审查裁定，**必读**）
+
+**策略：非致命。** `ensure_tables()` 失败只留 WARNING，不阻断启动。
+
+**为什么不是 fail-closed**：service 的 registry / kernel / MCP 读路径都不需要 DB。fail-closed 会用一个**功能级缺口**（审计写不进去）换**整服务不可用**，是错的轴；且会红掉 6 个进 lifespan 的测试。
+
+**代价（必须知情，这是选择非致命换来的一侧）**：
+
+- `/health` 是 DB 无关的，而两份 compose 的 healthcheck 都打它 → **无表实例报告健康**
+- dev compose **没有 `postgres-ext` 的 `depends_on`**（offline 有）→ 竞态在 dev 是活的
+- `create_all` **只在 lifespan 跑一次**，配 `restart: unless-stopped` 意味着**DB 恢复后不会自动补建，必须重启容器**
+- 每个将来新增 `dg_*` 表的任务都会重掷同一次骰子
+
+**配套要求**：
+
+| 项 | 状态 |
+|---|---|
+| 生产引擎加 `connect_args={"timeout": N}` | Task 3 落地。**没有它 warn-only 给不出保护**——实测黑洞地址下引擎 21.4s 才抛（Linux 可能约 2 分钟），这段窗口 uvicorn 根本不服务，异常路径压根走不到 |
+| `/health` 增加就绪字段（**不改状态码**） | Task 3 落地。把可观测性做出来；是否让 healthcheck 因此判不健康，是影响两份 compose 的运维决策，不由本任务单方面改 |
+| 首次用 DB 时重试 / 懒建 | **Task 5 落地**（它是写入方的建造者）。在此之前 `app/main.py` 有一行注释标明这是**已记录的缺口**，不是遗漏 |
+
 ```
 dg_action_audit
   id            uuid   PK  default gen_random_uuid()

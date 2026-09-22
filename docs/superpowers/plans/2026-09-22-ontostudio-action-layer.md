@@ -778,8 +778,15 @@ git commit -m "feat(ontostudio): registry 支持 actions 段 + 交叉引用校�
 - Modify: `ontostudio/backend/app/ontology/kernel/validate.py:58,61`
 - Modify: `ontostudio/backend/app/ontology/registry/doc_graph.yaml`
 - **Modify: `ontostudio/backend/scripts/ontology_lint.py`** ← 计划初稿漏了（见 Step 4c）
+- **Modify: `ontostudio/backend/app/db.py`** ← 计划初稿漏了（见下方「建表路径」）
+- **Modify: `ontostudio/backend/app/main.py`** ← 同上
 - Test: `ontostudio/backend/tests/test_action_audit_table.py`
 - **Test: `ontostudio/backend/tests/test_ontology_lint.py`** ← 同上
+- **Test: `ontostudio/backend/tests/test_kernel_p4.py`** ← 两条 SHACL 新用例放这里（与既有 `test_shacl_bad_status_violation_report` 同族成对；见 Step 4d）
+
+> **⚠️ 本任务的真实范围比初稿大：初稿只写了「建表声明」，实测该表此前没有任何建表路径。** `dg_*` 模型在 2026-09-17 独立服务搬迁时已从 gateway 的 `Base` 摘到本地 `app.db.Base`，而 gateway **不挂载** `ontostudio/`、其 `Base.metadata` 里 `dg_*` 表为零、ontostudio 全仓 `create_all` 只出现在注释里从未被调用——**现存 4 张 `dg_*` 表是搬迁前建的**。计划与设计文档都逐字采信了那三处已成谎话的注释。
+>
+> **建表路径**：`app/db.py` 新增 `ensure_tables()`（`create_async_engine(_ext_url(), poolclass=NullPool)` + `await conn.run_sync(Base.metadata.create_all)`），由 `app/main.py` 的 lifespan 调用。**降级为非致命**（建表失败只留 WARNING，不阻断启动）——fail-closed 会用一个功能级缺口换整服务不可用，是错的轴。但**必须**配：连接超时（否则黑洞地址下 uvicorn 有 ~21s 不服务）、`/health` 就绪字段、以及设计文档里的降级契约。`create_all` **只建缺失表、不做 schema 变更**，列变更仍需人工迁移。
 
 - [ ] **Step 1: 写失败测试**
 
@@ -826,8 +833,9 @@ class DgActionAudit(Base):
     """动作审计（设计 §1.2）。业务状态与审计行同事务落库；图上的 MergeAudit 节点
     降级为本表的投影（属折叠步范围，本表先建）。
 
-    EAI-CUSTOM: 建表沿用既有机制——本模块随 app/ontology/__init__.py 导入注册进
-    Base.metadata，由 gateway 启动时的 create_all 建表。无需迁移脚本。
+    EAI-CUSTOM: 本模块随 app/ontology/__init__.py 导入注册进 Base.metadata，
+    由 ontostudio 自身 lifespan 的 ensure_tables()（app/db.py）建表。
+    ⚠️ 初稿此处的「由 gateway 启动时的 create_all 建表」是错的——见 app/db.py 的说明。
     """
 
     __tablename__ = "dg_action_audit"
@@ -1430,7 +1438,10 @@ def _json(value: Any) -> str:
 - [ ] **Step 4: 跑测试确认通过**
 
 Run: `PYTHONPATH=. uv run pytest tests/test_actions_executor.py -v`
-Expected: PASS（5 项）。若报 `dg_action_audit` 不存在，说明 gateway 尚未重启建表——先跑 `docker compose -p eai-docker -f docker-compose-dev.yaml restart gateway`。
+Expected: PASS（5 项）。
+
+> **⚠️ 若报 `dg_action_audit` 不存在，不要重启 gateway——那不会建表。** 本计划初稿此处写的是「说明 gateway 尚未重启建表——先跑 restart gateway」，**那个诊断已被 Task 3 审查实测证伪**：`dg_*` 模型在 2026-09-17 独立服务搬迁时已从 gateway 的 `Base` 摘到 ontostudio 本地 `app.db.Base`，**gateway 的 `Base.metadata` 里 `dg_*` 表为零**。
+> **实际建表路径**：ontostudio 自身 lifespan 的 `ensure_tables()`（`app/db.py`）。若表缺失，看 ontostudio 启动日志里的建表 WARNING，并检查 `/health` 的就绪字段（Task 3 质量审查新增）。
 
 - [ ] **Step 5: 提交**
 
@@ -2163,7 +2174,10 @@ Expected: PASS（4 项）
 ```bash
 cd ../../docker
 docker compose -p eai-docker -f docker-compose-dev.yaml restart gateway ontostudio-backend
-# 建表（gateway create_all）+ 内核重载
+# 建表由 ontostudio 自身 lifespan 的 ensure_tables() 负责（app/db.py）；
+# 下面这条只是确认表真的在（修复前 to_regclass 为 null）
+docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "\dt dg_action_audit"
+# 内核重载
 docker exec -w /app ontostudio-backend /app/.venv/bin/python -c "from app.ontology.kernel.service import get_kernel; print(get_kernel().refresh())"
 ```
 Expected: `dg_action_audit` 出现在 `\dt` 列表；refresh 的 `errors=[]`
