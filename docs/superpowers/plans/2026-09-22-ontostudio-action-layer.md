@@ -259,6 +259,22 @@ git add ontostudio/backend/app/ontology/scope.py ontostudio/backend/tests/test_s
 git commit -m "feat(ontostudio): 数据范围规则树编译(FilterRule → 参数化 WHERE)"
 ```
 
+### 审查裁定引入的偏离（2026-09-22，两阶段审查后）
+
+本任务的字面代码块**已被审查裁定修改**，后续读者以实际代码为准：
+
+| 处 | 计划字面 | 实际 | 裁定理由 |
+|---|---|---|---|
+| `_quote` 的 `bindings` 语义 | `(bindings or {}).get(f, f)` | `bindings is None` → 恒等；否则**未命中即报错** | 计划原文在 `bindings={}` 时静默退回恒等，**通不过计划自己的 `test_unbound_field_raises`**；且那是一个真实 fail-open（registry 漏配 `scope_bindings` → 静默越权读） |
+| 空 `and` / 空 `not` | `TRUE`（放行全域） | **`raise ScopeCompileError`** | 网关参考实现 `engine.py:99-129` 对同一棵树判 **deny**——两侧相反且静默。`allow_all` 有独立算子，空复合式无合法含义，拒绝它不会让任何合法规则回归。空 `or` 保持 `FALSE`（本就同向） |
+| `in` / `not_in` 的 value | `list(node.value or [])` | 先特判 `str` → `[str]`，再 `list(...)` | 裸字符串会被按字符拆（`"abc"`→`['a','b','c']`），`in` 方向是**放宽**。特判不是新增语义，是复刻 `engine.py:52` 的既有语义（非 list 视为单元素集合） |
+| `from_wire` / `_quote` 的输入校验 | 直接索引与 `match` | 缺键/非 str 一律归一为 `ScopeCompileError`；标识符用 `fullmatch` | 原实现下 `KeyError`/`TypeError`/`AttributeError` 会逃出模块声明的错误类型，Task 5 映射错误码时会变 500。`fullmatch` 顺带堵住 `$` 锚点容许尾部换行 |
+| `ne` / `not_in` 测试 | 无 | 各补 1 条 | 安全相关算子零覆盖，手工探针不是回归护栏 |
+
+**未采纳**：`not_in` 空集守卫（修复位置定在 gateway 解析层，见 spec §9 风险表）；`counter=[0]` 改 `nonlocal`（风格偏好）。
+
+**本模块的安全属性已被审查者独立实测确认**（非"规格如此"）：SQL 文本中不存在任何调用方值的拼接路径；标识符白名单作用在**映射后的物理列名**上，不是只校验模板字段名。
+
 ---
 
 ## Task 2: registry 支持 `actions:` 段
@@ -947,6 +963,20 @@ async def test_unknown_action_rejected():
             actor_id=uuid.uuid4(), actor_role="admin", source="api",
             scope_rule=FilterRule(operator="allow_all"), project=lambda *a, **k: True,
         )
+
+
+async def test_scope_sql_is_executable_with_list_params():
+    """M-8（Task 1 审查遗留）：`= ANY(:p)` / `&& :p` 传 Python list 给 asyncpg 的
+    类型推断从未被任何测试证明过（`col = ANY($1)` 依赖列类型推出 uuid[]）。
+    Task 1 的绿只证明 SQL 文本形态正确，不证明这条通道能跑——故在此显式钉住。"""
+    pk = await _seed_entity()
+    rule = FilterRule(operator="in", field="id", value=[str(pk)])
+    result = await invoke_action_core(
+        "review_entity.confirm", {}, target_pk=pk,
+        actor_id=uuid.uuid4(), actor_role="admin", source="api",
+        scope_rule=rule, project=lambda *a, **k: True,
+    )
+    assert result["after"] == {"status": "active"}
 
 
 async def test_projection_failure_does_not_rollback():
