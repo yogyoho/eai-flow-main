@@ -75,17 +75,13 @@ def _parse_yaml(path: Path) -> dict:
 
 def _validate_domain_file(path: Path, data: dict) -> DomainFile:
     try:
-        parsed = DomainFile.model_validate(data)
+        return DomainFile.model_validate(data)
     except ValidationError as e:
-        loc0 = ".".join(str(x) for x in (e.errors()[0]["loc"] if e.errors() else []))
-        raise RegistryError(f"schema 校验失败: {path.name}: {loc0}: {e.errors()[0]['msg'] if e.errors() else e}") from e
-    # validate_action_refs 抛 ValueError（非 ValidationError），必须单独包一层，否则会绕过
-    # RegistryError 直接漏给调用方，且丢掉"哪个域文件"的定位信息（fail-closed 一致性）。
-    try:
-        parsed.validate_action_refs()
-    except ValueError as e:
-        raise RegistryError(f"动作声明校验失败: {path.name}: {e}") from e
-    return parsed
+        err = e.errors()[0] if e.errors() else {}
+        loc = ".".join(str(x) for x in err.get("loc", ()))
+        # 根级 model_validator（如 DomainFile._check_refs）的 loc 是空 tuple，拼进去会渲染成
+        # "a.yaml: : Value error, ..."（双冒号），故 loc 缺席时不产出该段。
+        raise RegistryError(f"schema 校验失败: {path.name}: {f'{loc}: ' if loc else ''}{err.get('msg', e)}") from e
 
 
 def _check_cross_refs(path: Path, objects: dict[str, ObjectType], links: dict[str, LinkType], pending: set[str]) -> None:

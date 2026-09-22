@@ -223,8 +223,23 @@ class DomainFile(BaseModel):
     # ---- 动作层（设计 §1.1, EAI-CUSTOM）：声明式写回；缺省空 = 无动作 ----
     actions: list[ActionSpec] = []
 
-    def validate_action_refs(self) -> None:
-        """动作声明的交叉引用校验。fail-closed：任一不满足即拒绝加载。"""
+    @model_validator(mode="after")
+    def _check_refs(self) -> DomainFile:
+        """动作声明的交叉引用校验（构造即校验，fail-closed）。
+
+        EAI-CUSTOM: 设计 §1.1。**模型级**校验而非「公开方法 + 须显式调用」——与本仓既有
+        跨字段校验同一模式（`app/doc_graph/schemas.py` 的 `ExtractionPayload._check_domain_and_refs`），
+        调用方只需 `model_validate`，不存在「忘了调就静默半加载」的路径。
+
+        分工边界（M-1）：本校验器只管**列引用**（`field` / `scope_bindings` 是否指向本文件
+        已声明的列）。`scope_resource` 的**值域**（是否已知模块 key）不在校验，仍在
+        `scripts/ontology_lint.py`（Task 9）——别以为漏了。
+
+        不对称说明（M-4）：`actions[].target` 只接受**同文件**已声明的 ObjectType，而
+        `link_types` 允许跨文件前向引用。这是有意收窄：动作与其目标同域同文件（Task 3 的
+        `review_entity.*` 与 `graph_entity` 同在 `doc_graph.yaml`），跨域动作还会同时踩到
+        下面 M-2 的 domain 一致性校验。
+        """
         by_api_name = {ot.api_name: ot for ot in self.object_types}
         props = {name: {p.name for p in ot.properties} for name, ot in by_api_name.items()}
 
@@ -235,6 +250,11 @@ class DomainFile(BaseModel):
             seen.add(a.id)
             if a.target not in by_api_name:
                 raise ValueError(f"unknown action target: {a.target!r} (action {a.id})")
+            # M-2: action.domain 会写进 dg_action_audit.domain，而同行的表名来自 target 对象。
+            # 两者不一致会产出「domain 与表对不上」的审计行，而审计是这条链路唯一的追溯凭据。
+            target_domain = by_api_name[a.target].domain
+            if a.domain != target_domain:
+                raise ValueError(f"action {a.id}: domain {a.domain!r} 与 target 所属域 {target_domain!r} 不一致")
             declared = props[a.target]
             for cond in list(a.preconditions) + list(a.postconditions):
                 if cond.field not in declared:
@@ -245,3 +265,4 @@ class DomainFile(BaseModel):
             for template_field, physical in (ot.scope_bindings or {}).items():
                 if physical not in declared:
                     raise ValueError(f"unknown scope binding: {template_field}->{physical} on {ot.api_name}")
+        return self

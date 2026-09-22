@@ -47,23 +47,48 @@ def test_valid_domain_parses_with_actions():
     d = DomainFile.model_validate({"object_types": [_ot()], "actions": [_action()]})
     assert d.actions[0].id == "review_entity.confirm"
     assert d.actions[0].behavior_type == "COMMAND"
+    # Task 5 真正要消费的是条件里的值，不是 id/behavior_type 这两个常量——一并钉住
+    assert d.actions[0].preconditions[0].value == "pending_review"
+    assert d.actions[0].postconditions[0].set == "active"
 
 
 def test_unknown_target_rejected():
-    d = DomainFile.model_validate({"object_types": [_ot()], "actions": [_action(target="nope")]})
-    with pytest.raises(ValueError, match="unknown action target"):
-        d.validate_action_refs()
+    with pytest.raises(ValidationError, match="unknown action target"):
+        DomainFile.model_validate({"object_types": [_ot()], "actions": [_action(target="nope")]})
 
 
 def test_unknown_field_rejected():
-    d = DomainFile.model_validate(
-        {
-            "object_types": [_ot()],
-            "actions": [_action(postconditions=[{"field": "nosuch", "set": 1}])],
-        }
-    )
-    with pytest.raises(ValueError, match="unknown action field"):
-        d.validate_action_refs()
+    with pytest.raises(ValidationError, match="unknown action field"):
+        DomainFile.model_validate(
+            {
+                "object_types": [_ot()],
+                "actions": [_action(postconditions=[{"field": "nosuch", "set": 1}])],
+            }
+        )
+
+
+def test_unknown_precondition_field_rejected():
+    """preconditions 与 postconditions 走同一条校验分支，两半都要钉住。"""
+    with pytest.raises(ValidationError, match="unknown action field"):
+        DomainFile.model_validate(
+            {
+                "object_types": [_ot()],
+                "actions": [_action(preconditions=[{"field": "nosuch", "op": "eq", "value": 1}])],
+            }
+        )
+
+
+@pytest.mark.parametrize("bad", ["Review_entity.confirm", "review", "a.b.c", "1review.confirm"])
+def test_action_id_pattern_enforced(bad):
+    """`<family>.<verb>` 两段小写：大写开头 / 无点 / 三段 / 数字开头 均拒绝。"""
+    with pytest.raises(ValidationError):
+        ActionSpec.model_validate(_action(id=bad))
+
+
+def test_action_domain_must_match_target_domain():
+    """M-2（范围外补强）：action.domain 会写进审计行，与 target 所属域不一致即拒绝。"""
+    with pytest.raises(ValidationError, match="与 target 所属域"):
+        DomainFile.model_validate({"object_types": [_ot()], "actions": [_action(domain="WRONG_DOMAIN")]})
 
 
 def test_empty_postconditions_rejected():
@@ -93,18 +118,16 @@ def test_required_permissions_must_not_be_empty():
 
 
 def test_duplicate_action_id_rejected():
-    d = DomainFile.model_validate({"object_types": [_ot()], "actions": [_action(), _action()]})
-    with pytest.raises(ValueError, match="duplicate action id"):
-        d.validate_action_refs()
+    with pytest.raises(ValidationError, match="duplicate action id"):
+        DomainFile.model_validate({"object_types": [_ot()], "actions": [_action(), _action()]})
 
 
 def test_scope_bindings_must_reference_declared_property():
     ot = _ot()
     ot["scope_resource"] = "ontology"
     ot["scope_bindings"] = {"user_id": "nosuch_column"}
-    d = DomainFile.model_validate({"object_types": [ot], "actions": []})
-    with pytest.raises(ValueError, match="unknown scope binding"):
-        d.validate_action_refs()
+    with pytest.raises(ValidationError, match="unknown scope binding"):
+        DomainFile.model_validate({"object_types": [ot], "actions": []})
 
 
 # ── Registry 加载路径 ────────────────────────────────────────────────────────
