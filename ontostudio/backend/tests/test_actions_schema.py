@@ -15,7 +15,10 @@ from app.ontology.schemas import ActionSpec, DomainFile, StateChange
 
 def _ot(api_name="graph_entity", domain="doc_graph"):
     return {
-        "api_name": api_name, "display_name": "实体", "description": "d", "domain": domain,
+        "api_name": api_name,
+        "display_name": "实体",
+        "description": "d",
+        "domain": domain,
         "access": {"path": "postgres_ext", "table": "dg_entities"},
         "pk": {"column": "id", "api_name": "id", "type": "uuid"},
         "properties": [
@@ -27,8 +30,11 @@ def _ot(api_name="graph_entity", domain="doc_graph"):
 
 def _action(**over):
     base = {
-        "id": "review_entity.confirm", "display_name": "确认实体", "description": "d",
-        "domain": "doc_graph", "target": "graph_entity",
+        "id": "review_entity.confirm",
+        "display_name": "确认实体",
+        "description": "d",
+        "domain": "doc_graph",
+        "target": "graph_entity",
         "required_permissions": ["ontology:action:review"],
         "preconditions": [{"field": "status", "op": "eq", "value": "pending_review"}],
         "postconditions": [{"field": "status", "set": "active"}],
@@ -50,10 +56,12 @@ def test_unknown_target_rejected():
 
 
 def test_unknown_field_rejected():
-    d = DomainFile.model_validate({
-        "object_types": [_ot()],
-        "actions": [_action(postconditions=[{"field": "nosuch", "set": 1}])],
-    })
+    d = DomainFile.model_validate(
+        {
+            "object_types": [_ot()],
+            "actions": [_action(postconditions=[{"field": "nosuch", "set": 1}])],
+        }
+    )
     with pytest.raises(ValueError, match="unknown action field"):
         d.validate_action_refs()
 
@@ -118,9 +126,12 @@ def _write_registry(tmp_path, files: dict[str, str]):
 
 
 def test_registry_exposes_actions_by_id(tmp_path):
-    d = _write_registry(tmp_path, {
-        "a.yaml": yaml.safe_dump({"object_types": [_ot()], "actions": [_action()]}, allow_unicode=True),
-    })
+    d = _write_registry(
+        tmp_path,
+        {
+            "a.yaml": yaml.safe_dump({"object_types": [_ot()], "actions": [_action()]}, allow_unicode=True),
+        },
+    )
     from app.ontology.registry import RegistryStore
 
     reg = RegistryStore(registry_dir=d).get()
@@ -134,16 +145,25 @@ def test_cross_file_duplicate_action_id_rejected(tmp_path):
     两个域各自声明**不同**对象类型（否则会先在对象类型重复注册处报错），
     但动作 id 相同——必须报「动作 id 跨域重复」。
     """
-    d = _write_registry(tmp_path, {
-        "a.yaml": yaml.safe_dump({
-            "object_types": [_ot(api_name="graph_entity")],
-            "actions": [_action(id="dup.check", target="graph_entity")],
-        }, allow_unicode=True),
-        "b.yaml": yaml.safe_dump({
-            "object_types": [_ot(api_name="graph_entity2")],
-            "actions": [_action(id="dup.check", target="graph_entity2")],
-        }, allow_unicode=True),
-    })
+    d = _write_registry(
+        tmp_path,
+        {
+            "a.yaml": yaml.safe_dump(
+                {
+                    "object_types": [_ot(api_name="graph_entity")],
+                    "actions": [_action(id="dup.check", target="graph_entity")],
+                },
+                allow_unicode=True,
+            ),
+            "b.yaml": yaml.safe_dump(
+                {
+                    "object_types": [_ot(api_name="graph_entity2")],
+                    "actions": [_action(id="dup.check", target="graph_entity2")],
+                },
+                allow_unicode=True,
+            ),
+        },
+    )
     from app.ontology.registry import RegistryError, RegistryStore
 
     with pytest.raises(RegistryError, match="动作 id 跨域重复"):
