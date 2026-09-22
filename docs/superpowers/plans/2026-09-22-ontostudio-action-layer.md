@@ -981,9 +981,16 @@ async def test_unknown_action_rejected():
 
 
 async def test_scope_sql_is_executable_with_list_params():
-    """M-8（Task 1 审查遗留）：`= ANY(:p)` / `&& :p` 传 Python list 给 asyncpg 的
-    类型推断从未被任何测试证明过（`col = ANY($1)` 依赖列类型推出 uuid[]）。
-    Task 1 的绿只证明 SQL 文本形态正确，不证明这条通道能跑——故在此显式钉住。"""
+    """M-8（Task 1 审查遗留）：`= ANY(:p)` 传 Python list 给 asyncpg 的类型推断
+    从未被任何测试证明过（`col = ANY($1)` 依赖列类型推出 uuid[]）。
+    Task 1 的绿只证明 SQL 文本形态正确，不证明这条通道能跑——故在此显式钉住。
+
+    **只覆盖 `in`。`overlap`（`col && $1`）是另一条绑定路径，本测试证不了它**——
+    `&&` 要求操作数是 array 列，而本体面对的表（cpa_*/csp_*/dg_*）无 array 列，
+    构造不出用例。**这不是死代码**：`config/permissions.yaml:99` 有真实模板
+    `allowed_depts OVERLAP: $identity.dept_ids` 在用。**触发条件**：一旦某对象类型的
+    `scope_bindings` 指向 array 列，必须先补一条 overlap 的集成测试再上线。
+    """
     pk = await _seed_entity()
     rule = FilterRule(operator="in", field="id", value=[str(pk)])
     result = await invoke_action_core(
@@ -1916,6 +1923,11 @@ git commit -m "test(ontostudio): 动作层端到端验收(spec §7)"
 ---
 
 ## 收尾（不属任何单个 Task）
+
+- [ ] **⚠️ 本计划全部测试在 CI 里不会被执行**（Task 1 审查实测发现）：`.github/workflows/backend-unit-tests.yml:118-120` 明写 ontology 域 CI 职责"由 ontostudio 侧后续自建"，而 `.github/workflows/` 下**没有任何 ontostudio workflow**。叠加 `pytestmark = pytest.mark.integration`（需外部 PG，多数环境 skip），实际效果是 **ontostudio 的 33 条单测 + 集成测试都只在人手执行时跑**。这使本计划里所有"回归护栏"的承诺降级为"人手护栏"。**是否补 CI 需单独决策**（新增 workflow 是仓库级改动，不属本计划范围）；但**决策前不要假设这些测试会在 PR 上自动拦住回归**。
+
+- [ ] **`scope.py` 的 docstring 措辞需收窄**（Task 1 复审 Minor）：类 docstring 写"**所有**畸形输入都归一到这里"，被深层嵌套证伪——实测 3000 层 → `RecursionError` 且 `isinstance(e, ScopeCompileError)` 为 `False`。但该路径**经 HTTP 不可达**（`json.loads` 对同深度 payload 先抛 `RecursionError`，请求层比 `from_wire` 先死），故不需代码改动，只需把措辞收窄为"所有**形状**畸形输入"，或注明"深度递归由请求边界兜底"。**要点是别让 Task 5 读到绝对承诺而以为不必兜 `RecursionError`。**
+
 
 - [ ] 全量回归：`cd ontostudio/backend && PYTHONPATH=. uv run pytest tests/ -v` 与 `cd backend && PYTHONPATH=. uv run pytest tests/ -k "auth or permissions" -v`
 - [ ] `ruff check . && ruff format --check .`（ontostudio/backend 与 backend 各跑一次）
