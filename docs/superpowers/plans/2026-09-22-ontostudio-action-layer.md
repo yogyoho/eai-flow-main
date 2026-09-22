@@ -92,6 +92,35 @@
 
 ---
 
+## 📍 当前进度与续跑说明（新会话从这里读起）
+
+**已完成（2026-09-22）**：
+
+| Task | 产物 | 测试 | 提交链 |
+|---|---|---|---|
+| 1 `scope.py` | 数据范围规则树 + 参数化 WHERE 编译 | 33 | `902f0584a` → `eed650f81` → `0d6f4a971` |
+| 2 registry `actions` 段 | `ActionSpec` 等三模型 + `_check_refs` 模型级校验 + `Registry.actions`/`get_action` | 20 | `cae787750` → `7a25ed2bc` → `15c435c32` → `12bb71803` → `e04dcb8af` → `d569b37db` |
+
+**全量基线：`272 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
+
+**下一步：Task 3**。开工前必须知道的三件事（Task 1–2 审查反复确认过）：
+
+1. **本计划所有代码块都不是 format-clean 的**（Task 1–2 已出现 5+ 例）。跑 `ruff format` 是本任务常规步骤，不是偏离；但**仍要在偏离清单里如实计入**。
+2. **`schemas.py` / `registry.py` 是 CRLF，`scope.py` 与 `tests/*.py` 是 LF。** 用脚本改注释时多行锚点会**静默不匹配**——改完必须 `git diff` 确认真改到了，且**别把 CRLF 文件改成 LF**。
+3. **每个 Task 的 Verify 必须跑 `ruff format --check`**，不能只跑 `ruff check`——ontostudio 没有 Makefile，主仓 `make lint` 是两条命令的组成，只搬命令名会漏掉排版。
+
+**Task 3 特有的前置约束（Task 2 的校验会拦你）**：
+
+- 新动作的 `action.domain` **必须与 target 对象类型的 `domain` 一致**（Task 2 的 M-2 校验），否则加载直接报 `domain ... 与 target 所属域 ... 不一致`。
+- `status` 加 `rejected` **必须三处同步**：`kernel/validate.py` 的 `Literal(...)`、同文件的提示文案、以及 `doc_graph.yaml` 里 `status` 属性的 `enum`。**漏一处 SHACL 会当场判违规。**
+- `graph_entity` 要加 `scope_resource: ontology`——但**别忘 `config/permissions.yaml` 的 `ontology` 模块当前是 `data_scopes: []`**（Task 6 才补 `ontology_all`）。Task 3 只加 YAML 声明，**那时 `scope_resource` 会解析为 `none_allow`，属预期**，不是 bug。
+
+**执行方式**：`docs/superpowers/plans/` 本计划 + `superpowers:subagent-driven-development`（每个 Task 派全新实现者 → 规格审查者 → 代码质量审查者 → 修正 → 复审）。**派发提示里必须带上本计划开头的「派发给实现者的通用要求」与「审查方法学：变异检验的合法手法」两节**——Task 1–2 的经验表明这两节直接决定审查能否抓到真问题。
+
+**未纳入本计划**（spec §4 的折叠步）：`merge_entities` / `unmerge` 折叠为动作、删除旧实现。必须**另起计划**，且在本计划全部 Task 绿之后才能开工。
+
+---
+
 ## Task 1: `scope.py` —— FilterRule 与 SQL 编译
 
 **Files:**
