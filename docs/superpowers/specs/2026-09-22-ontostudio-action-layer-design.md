@@ -103,9 +103,22 @@ class ActionSpec(BaseModel):
 
 | 项 | 状态 |
 |---|---|
-| 生产引擎加 `connect_args={"timeout": N}` | Task 3 落地。**没有它 warn-only 给不出保护**——实测黑洞地址下引擎 21.4s 才抛（Linux 可能约 2 分钟），这段窗口 uvicorn 根本不服务，异常路径压根走不到 |
+| 生产引擎加 `connect_args={"timeout": 5}` | Task 3 落地。**没有它 warn-only 给不出保护**——实测黑洞地址下引擎 21.4s 才抛（Linux 可能约 2 分钟），这段窗口 uvicorn 根本不服务，异常路径压根走不到。**护栏的正确表述**：计时型上界测试只抓"超时被删掉/放大到同一量级以上"；`5→9s` 的漂移由一条捕获引擎实参的确定性测试钉住（`test_ensure_tables_bounds_connect_timeout`）。**不要声称上界测试能抓值漂移——经变异证伪** |
 | `/health` 增加就绪字段（**不改状态码**） | Task 3 落地。把可观测性做出来；是否让 healthcheck 因此判不健康，是影响两份 compose 的运维决策，不由本任务单方面改 |
 | 首次用 DB 时重试 / 懒建 | **Task 5 落地**（它是写入方的建造者）。在此之前 `app/main.py` 有一行注释标明这是**已记录的缺口**，不是遗漏 |
+
+### 1.2.2 残余风险：**命令阶段无界**（Task 3 复审订正）
+
+`connect_args={"timeout": 5}` **只界住握手**。TCP 建好之后，asyncpg 命令阶段默认 `command_timeout=None`，**是无界的**。两条真实路径：
+
+1. **连接建立后链路被防火墙/NAT 静默掐断** → 只能等 TCP 自己发现（Windows 默认 keepalive 约 **2 小时**）。**这与原 I2 是同一个"启动楔死"失效模式，只是位置更靠后**——连接阶段超时修不掉它。
+2. **`CREATE TABLE` 需要 ACCESS EXCLUSIVE 锁** → 撞上并发 DDL / 长事务会阻塞等待。
+
+**为什么不阻塞本轮**：已文档化的失效模式在连接阶段（21s→5s 是本轮的真收益），验收点是"启动不被黑洞地址吊死"。
+
+**为什么这个理由必须写准**：Task 3 的初版理由是"DDL 时长本就有界"——**那是错的**，会让人把"命令阶段无界"读成"不存在风险"。同理，"加 command_timeout 只会引入新的误杀面"也比实情弱：引擎是 NullPool 且在同一次调用内 `dispose()`，command_timeout 只影响**这一次** `create_all`，而它的失败已被设计成非致命（WARNING + `tables_ready=False`）——**误杀代价≈一条 WARNING**。
+
+**可选收口**（随 Task 5 落地）：`command_timeout=30~60`，或连接级 `server_settings={'lock_timeout': …, 'statement_timeout': …}`。
 
 ```
 dg_action_audit
