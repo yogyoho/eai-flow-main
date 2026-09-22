@@ -114,7 +114,8 @@ async def invoke_action_core(
     if not table:
         raise ActionError(f"action {action_id} target has no physical table", 500)
 
-    # 三处声明各自编译；异常一律归一为 ActionError（错误契约见模块 docstring）。
+    # 声明编译分两处 try（数据范围规则 / 动作声明），异常一律归一为 ActionError——
+    # 错误契约见模块 docstring 的表。
     try:
         scope_sql, scope_params = rule_to_sql(scope_rule, obj.scope_bindings or None)
     except ScopeCompileError as e:
@@ -122,19 +123,22 @@ async def invoke_action_core(
         # 明文派给 executor 的（"调用方只需捕获本异常映射 4xx"），计划给的代码漏了它。
         raise ActionError(f"数据范围规则无法编译: {e}", 400) from e
 
+    # 表名 / 主键列 / 前置条件 / SET 的**标识符**也都只来自 registry 声明，同样过 sql_write
+    # 的白名单——四处必须一起包：只包后两处的话，`table: dg-entities` 这类笔误会以裸
+    # WriteGuardError 逃出去（自审实测确认）。
     try:
         pre_sql, pre_params = build_precondition_where(action.preconditions)
         set_sql, set_params = build_update_set(action.postconditions)
+        pk_col = quote_ident(obj.pk.column)
+        table_q = quote_ident(table)
+        returning = ", ".join(quote_ident(c.field) for c in action.postconditions)
     except WriteGuardError as e:
         # 5xx：坏的是 registry 里的动作声明（热加载 YAML），与调用方及其 params 无关——
         # 设计 §2 订正写明本设计不存在"参数化前置条件"，params 从不进 SQL 值位置。
         # 归因与 _resolve 既有的两处 registry 缺陷（target unresolved / no physical table）一致。
         raise ActionError(f"动作声明不合法: {action.id}: {e}", 500) from e
 
-    pk_col = quote_ident(obj.pk.column)
-    table_q = quote_ident(table)
     where = f"{pk_col} = :pk AND ({scope_sql})"
-    returning = ", ".join(quote_ident(c.field) for c in action.postconditions)
     params_all = _bind_params(target_pk, ("scope", scope_params), ("precondition", pre_params), ("set", set_params))
 
     engine = create_async_engine(_ext_url(), poolclass=NullPool)

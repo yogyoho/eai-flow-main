@@ -67,7 +67,7 @@ async def _audit_rows(pk: uuid.UUID) -> list[dict]:
     try:
         async with engine.begin() as conn:
             rows = await conn.execute(
-                text("SELECT action_id, before, after, source FROM dg_action_audit WHERE target_pk = :id"),
+                text("SELECT action_id, params, before, after, source FROM dg_action_audit WHERE target_pk = :id"),
                 {"id": pk},
             )
             return [dict(r._mapping) for r in rows]
@@ -234,9 +234,9 @@ class _StubRegistry:
         return self.actions.get(action_id)
 
 
-def _stub_registry(monkeypatch, action: ActionSpec) -> None:
-    obj = get_registry().object_types[action.target]
-    monkeypatch.setattr(executor_module, "get_registry", lambda: _StubRegistry(action, obj))
+def _stub_registry(monkeypatch, action: ActionSpec, obj=None) -> None:
+    target = obj if obj is not None else get_registry().object_types[action.target]
+    monkeypatch.setattr(executor_module, "get_registry", lambda: _StubRegistry(action, target))
 
 
 def _action(**overrides) -> ActionSpec:
@@ -255,10 +255,10 @@ def _action(**overrides) -> ActionSpec:
     return ActionSpec(**base)
 
 
-async def _invoke(action_id="review_entity.confirm", *, pk, scope_rule, project=None):
+async def _invoke(action_id="review_entity.confirm", *, pk, scope_rule, project=None, params=None):
     return await invoke_action_core(
         action_id,
-        {},
+        params if params is not None else {},
         target_pk=pk,
         actor_id=uuid.uuid4(),
         actor_role="admin",
@@ -385,3 +385,39 @@ async def test_param_name_collision_is_rejected(monkeypatch):
     assert e.value.status_code == 500
     assert "pk" in e.value.detail
     assert await _get_status(pk) == "pending_review"
+
+
+async def test_illegal_identifier_in_registry_is_action_error(monkeypatch):
+    """问题①的最后一处同类（自审补）：`quote_ident(obj.access.table)` 与
+    `quote_ident(obj.pk.column)` 引的是 registry 里的标识符，同样只过 `sql_write` 的白名单——
+    表名/主键列名的笔误（`dg-entities`）会抛 `WriteGuardError`，而它同样不能是裸异常。
+    计划给的代码只包了前置条件与 SET 两处，这两处漏在外。
+    """
+    pk = await _seed_entity()
+    real = get_registry().object_types["graph_entity"]
+    bad_changes = [
+        ({"access": real.access.model_copy(update={"table": "bad table"})}, "bad table"),
+        ({"pk": real.pk.model_copy(update={"column": "bad col!"})}, "bad col!"),
+    ]
+    for changes, rejected in bad_changes:
+        _stub_registry(monkeypatch, _action(), real.model_copy(update=changes))
+        with pytest.raises(ActionError) as e:
+            await _invoke(pk=pk, scope_rule=FilterRule(operator="allow_all"))
+        assert e.value.status_code == 500
+        assert rejected in e.value.detail  # detail 里带的是被拒的标识符本身
+
+
+async def test_caller_params_are_recorded_but_never_reach_sql():
+    """设计 §9 的头号风险是「写路径是新的攻击面」，而 `params` 是调用方**唯一**能控制的东西。
+
+    设计 §2 的订正写明：本设计不存在"参数化前置条件"，`params` 只进审计行
+    （`CAST(:params AS jsonb)`），从不进 SQL 值位置。故这里喂一组敌意参数，断言两件事：
+    原样记进审计（它是追溯凭据），且业务结果完全由声明决定——`params` 想改的那列没被改。
+    """
+    pk = await _seed_entity()
+    hostile = {"status": "rejected", "note": "x'); DROP TABLE dg_entities; --"}
+    result = await _invoke(pk=pk, params=hostile, scope_rule=FilterRule(operator="allow_all"))
+
+    assert (await _audit_rows(pk))[0]["params"] == hostile
+    assert result["after"] == {"status": "active"}  # 声明说了算
+    assert await _get_status(pk) == "active"
