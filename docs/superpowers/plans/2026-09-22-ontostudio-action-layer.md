@@ -303,6 +303,13 @@ git commit -m "feat(ontostudio): 数据范围规则树编译(FilterRule → 参�
 
 ```python
 # ontostudio/backend/tests/test_actions_schema.py
+"""动作声明 schema + registry 加载路径。
+
+EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md §1.1。
+"""
+from __future__ import annotations
+
+import yaml
 import pytest
 from pydantic import ValidationError
 
@@ -380,6 +387,16 @@ def test_duplicate_action_id_rejected():
         d.validate_action_refs()
 
 
+def test_neither_set_nor_now_rejected():
+    """互斥是「二选一」而非「至多一个」：两者同时缺省同样拒绝。
+
+    （计划初稿只测了「同时给出」这一半；`self.now == (self.set is not None)`
+    在两者皆缺省时同样为 True，是真分支，必须钉住另一半。）
+    """
+    with pytest.raises(ValidationError, match="set 与 now"):
+        StateChange.model_validate({"field": "status"})
+
+
 def test_scope_bindings_must_reference_declared_property():
     ot = _ot()
     ot["scope_resource"] = "ontology"
@@ -387,6 +404,56 @@ def test_scope_bindings_must_reference_declared_property():
     d = DomainFile.model_validate({"object_types": [ot], "actions": []})
     with pytest.raises(ValueError, match="unknown scope binding"):
         d.validate_action_refs()
+
+
+# ── Registry 加载路径 ────────────────────────────────────────────────────────
+# 为什么需要这一组：真实 registry 的 YAML 到 Task 3 才会有 actions: 段，所以
+# 全量测试里 RegistryStore 的 `for a in domain.actions:` 循环体一次都不执行——
+# 即本任务声称的「核心」（按 id 索引的动作字典 + 跨文件重复守卫）在提交的测试里
+# 零覆盖。用临时 registry 目录把它钉住，而不是靠一次性脚本。
+
+def _write_registry(tmp_path, files: dict[str, str]):
+    """最小 registry 目录：manifest + 各域文件。"""
+    (tmp_path / "_manifest.yaml").write_text(
+        "schema_version: 2\nhot_reload: true\nfiles:\n" + "".join(f"  - file: {n}\n" for n in files),
+        encoding="utf-8",
+    )
+    for name, body in files.items():
+        (tmp_path / name).write_text(body, encoding="utf-8")
+    return tmp_path
+
+
+def test_registry_exposes_actions_by_id(tmp_path):
+    d = _write_registry(tmp_path, {
+        "a.yaml": yaml.safe_dump({"object_types": [_ot()], "actions": [_action()]}, allow_unicode=True),
+    })
+    from app.ontology.registry import RegistryStore
+
+    reg = RegistryStore(registry_dir=d).get()
+    assert reg.get_action("review_entity.confirm").target == "graph_entity"
+    assert reg.get_action("nope.nope") is None
+
+
+def test_cross_file_duplicate_action_id_rejected(tmp_path):
+    """跨文件重复由 RegistryStore 的合并循环兜住（文件内的由 validate_action_refs 兜）。
+
+    两个域各自声明**不同**对象类型（否则会先在对象类型重复注册处报错），
+    但动作 id 相同——必须报「动作 id 跨域重复」。
+    """
+    d = _write_registry(tmp_path, {
+        "a.yaml": yaml.safe_dump({
+            "object_types": [_ot(api_name="graph_entity")],
+            "actions": [_action(id="dup.check", target="graph_entity")],
+        }, allow_unicode=True),
+        "b.yaml": yaml.safe_dump({
+            "object_types": [_ot(api_name="graph_entity2")],
+            "actions": [_action(id="dup.check", target="graph_entity2")],
+        }, allow_unicode=True),
+    })
+    from app.ontology.registry import RegistryError, RegistryStore
+
+    with pytest.raises(RegistryError, match="动作 id 跨域重复"):
+        RegistryStore(registry_dir=d).get()
 ```
 
 - [ ] **Step 2: 跑测试确认失败**
@@ -422,7 +489,7 @@ class StateChange(BaseModel):
     now: bool = False
 
     @model_validator(mode="after")
-    def _exactly_one(self) -> "StateChange":
+    def _exactly_one(self) -> StateChange:  # 不加引号：本文件已有 from __future__ import annotations，引号会触发 ruff UP037
         if self.now == (self.set is not None):
             raise ValueError(f"{self.field}: set 与 now 必须二选一（不可同时给出或同时缺省）")
         return self
@@ -505,7 +572,11 @@ def _validate_domain_file(path: Path, data: dict) -> DomainFile:
     return parsed
 ```
 
-注意两点：`validate_action_refs` 抛的是 `ValueError` 而**不是** `ValidationError`，所以必须单独 try 一次，否则会绕过既有的 `RegistryError` 包装直接漏到调用方；错误信息带上 `path.name` 以便定位是哪个域文件。
+注意三点：
+
+1. `validate_action_refs` 抛的是 `ValueError` 而**不是** `ValidationError`，所以必须单独 try 一次，否则会绕过既有的 `RegistryError` 包装直接漏到调用方；错误信息带上 `path.name` 以便定位是哪个域文件。
+2. (c) 的跨文件守卫与 (a)/(b) 是**两件事**，别只做一半：文件内重复由 `validate_action_refs` 挡，跨文件重复由合并循环挡。两者各有测试（见 Step 1 的 `test_duplicate_action_id_rejected` 与 `test_cross_file_duplicate_action_id_rejected`）。
+3. **约定：`DomainFile` 只允许经 `_validate_domain_file` 解析，不得直接 `DomainFile.model_validate(...)` 后就用。** 因为 `validate_action_refs()` 是**须显式调用**的方法、不在构造时自动跑。当前 `app/` 与 `scripts/` 下只有 `_validate_domain_file` 一个解析点，故无实害；但将来任何新增解析点（例如校验草稿 YAML 的端点）若只 `model_validate` 就会**静默跳过全部交叉引用校验**。Step 1 的 `test_unknown_target_rejected` 正是这种用法的示范——它直接构造 `DomainFile` 只为单独测校验方法。若后续 Task 新增解析点，必须走 `_validate_domain_file`（或届时把校验改成构造后自动跑）。
 
 **同一文件还需让 `Registry` 承载动作**——`Registry` 是合并快照，**不保存 per-domain 的 `DomainFile`**（`__init__` 只有 `object_types` / `link_types` 两个合并字典），所以不能遍历 domain 找动作。照 `object_types` 的样子加一个合并字典：
 
