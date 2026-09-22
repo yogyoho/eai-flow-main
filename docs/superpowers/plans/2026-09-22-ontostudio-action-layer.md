@@ -591,7 +591,7 @@ def _validate_domain_file(path: Path, data: dict) -> DomainFile:
 
 同文件顶部 import 改为 `from app.ontology.schemas import ActionSpec, DomainFile, FormalSection, LinkType, Manifest, ObjectType`。
 
-(b) 追加访问器（与 `get()` 同层，放 `__init__` 之后）：
+(b) 追加访问器（放 `Registry.__init__` 之后。**注意：`get()` 在 `RegistryStore` 上，不在 `Registry` 上**——计划初稿说"与 `get()` 同层"措辞不准，实质指令以本行为准）：
 
 ```python
     def get_action(self, action_id: str) -> ActionSpec | None:
@@ -636,7 +636,7 @@ def _validate_domain_file(path: Path, data: dict) -> DomainFile:
 - [ ] **Step 5: 跑测试确认通过**
 
 Run: `PYTHONPATH=. uv run pytest tests/test_actions_schema.py -v`
-Expected: PASS（9 项）
+Expected: PASS（**12 项**——计划初稿写 9 项，后补 `test_neither_set_nor_now_rejected` 与两条 Registry 加载路径测试，见 Step 1 末尾）
 
 - [ ] **Step 6: 回归既有 registry 测试（确认没打坏加载）**
 
