@@ -113,6 +113,10 @@ services:
       # gateway /api/permissions/me 判 system:access；默认 compose 网络服务名 gateway
       - ONTOSTUDIO_GATEWAY_URL=${ONTOSTUDIO_GATEWAY_URL:-http://gateway:8001}
       - ONTOSTUDIO_CORS_ORIGINS=${ONTOSTUDIO_CORS_ORIGINS:-http://localhost:${PORT:-4026}}
+      # EAI-CUSTOM (P0-3): 内核图持久化（同 dev compose）。未设置 = 内存态，重建容器即归零。
+      - ONTOSTUDIO_KERNEL_PATH=/data/kernel
+    volumes:
+      - prod-ontostudio-kernel:/data
     env_file:
       - .env
     networks:
@@ -238,6 +242,8 @@ services:
 
 volumes:
   prod-postgres-ext-data:
+  # EAI-CUSTOM (P0-3): OntoStudio 内核图（pyoxigraph 目录），重建容器不归零。
+  prod-ontostudio-kernel:
 
 networks:
   prod-eai-flow-net:

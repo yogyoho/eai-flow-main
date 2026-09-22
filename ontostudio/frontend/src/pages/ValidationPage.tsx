@@ -1,6 +1,9 @@
 /**
  * 07 校验中心（EAI-CUSTOM）——真实数据源：GET /ontology/formal/validate。
- * SHACL 报告（violations 五字段）+ 国标 GB/T 48000.3 五项符合性（kernel P4 套件）。
+ * SHACL 报告（violations 五字段）+ 国标 GB/T 48000.3 符合性套件（kernel P4，5 项）。
+ * 口径（P0-5）：本套件只覆盖 §5.3 / §5.4 / 附录 A / 第 9 章，**不是**全文符合性——
+ * §6.2 核心实体类型、§7.3.2 表 1 的 34 条对象属性、§8.2 的 10 条公理规则未纳入分母，
+ * 故标题/副题不得声称"GB/T 48000.3 符合性"。判定口径见 docs/ontology/methodology.md §4.4。
  * seal（朱砂）语义：违规/失败；warning：警示。
  */
 import { useQuery } from "@tanstack/react-query";
@@ -56,7 +59,7 @@ export function ValidationPage() {
       ) : null}
       <Panel
         className="mb-3.5"
-        title="GB/T 48000.3—2026 符合性"
+        title="国标符合性 · 覆盖 5.3 / 5.4 / 附录A / §9"
         subtitle={data ? `${conformance.length} 项检查 · ${data.shacl.duration_ms}ms` : undefined}
         actions={
           <Chip tone={passedCount === conformance.length && conformance.length > 0 ? "primary" : "danger"}>
@@ -83,6 +86,9 @@ export function ValidationPage() {
             </div>
           ))}
         </div>
+        <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-[11.5px]">
+          本套件不覆盖 §6.2 核心实体类型、§7.3.2 表 1 的 34 条对象属性、§8.2 的 10 条公理规则。判定口径见 docs/ontology/methodology.md §4.4。
+        </p>
       </Panel>
       <Panel
         title="SHACL 违规"

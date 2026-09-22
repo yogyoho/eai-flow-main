@@ -116,6 +116,11 @@ services:
       # 缺失则知识库/法规库/geo 切片的 RAGFlow 同步全部静默跳过（.env 回填后需 force-recreate gateway）
       - RAGFLOW_API_KEY=${RAGFLOW_API_KEY:-}
       - TEMPORAL_URL=temporal:7233
+      # EAI-CUSTOM (P0-4): OntoStudio MCP 共享 token——extensions_config.json 两条
+      # ontostudio MCP 的 headers 占位 "$ONTOSTUDIO_INTERNAL_AUTH_TOKEN" 在**本进程**
+      # 解析（harness config/extensions_config.py resolve_env_variables）。放 .env 即
+      # 单一来源：ontostudio-backend 由自身 environment 同名插值取得，gateway 由本行取得。
+      - ONTOSTUDIO_INTERNAL_AUTH_TOKEN=${ONTOSTUDIO_INTERNAL_AUTH_TOKEN:-}
       # 合同价格分析技能调用 OCR 服务的地址（见 docker-compose.mcp-cad.yaml `ocr` 服务）
       - OCR_SERVICE_URL=http://ocr:8010
       # EAI-CUSTOM (2026-09-05): geo 样例库编译切片 → RAGFlow 推送的 dataset id。

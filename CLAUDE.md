@@ -42,6 +42,16 @@ docker compose -p eai-docker up -d            # Start all services
 - `deer-flow-nginx` — Reverse proxy (port 2026, the unified entry point)
 - `deer-flow-collab` — Hocuspocus collab-server (port 8002)
 - `eai-docker-postgres-ext-1` — PostgreSQL for extensions module
+- `ontostudio-backend` / `ontostudio-frontend` — 本体系统（独立服务，`profiles: ["ontostudio"]`，**不随全量 `up -d` 起飞**；显式点名服务名即自动激活 profile）。后端 FastAPI :8005 + 内置 pyoxigraph 图存储，前端 Vite SPA 经 nginx `/ontostudio/` 托管。EAI-CUSTOM
+
+#### OntoStudio 两个环境变量（EAI-CUSTOM，值一律放 **`docker/.env`**）
+
+| 变量 | 作用 | 未设置时 |
+|---|---|---|
+| `ONTOSTUDIO_INTERNAL_AUTH_TOKEN` | MCP 共享头 `X-Internal-Auth`。`extensions_config.json` 两条 ontostudio MCP 用 `"$ONTOSTUDIO_INTERNAL_AUTH_TOKEN"` 占位，在 **gateway 进程**解析；同值经 env 插值给 ontostudio-backend 两侧比对 | 两侧皆空 = MCP 内网匿名开放（`auth.py` 打一次性 warning） |
+| `ONTOSTUDIO_KERNEL_PATH=/data/kernel` | 内核图落盘路径（compose 已固定）。挂命名卷 `ontostudio-kernel` | 不设则走内存态，容器重建即归零，须重跑 `POST /formal/load` |
+
+**坑**：勿只写根 `.env`。ontostudio-backend 的 `environment:` 有同名空插值条目，会**覆盖** `env_file` 注入；只有写 `docker/.env`（compose 插值来源）才能同时喂到两侧。gateway 的 `environment:` 已加同名条目专为承载此值。
 
 ### Key Implications
 - **Code changes require container restart** — the backend/frontend run inside Docker, not locally. After modifying backend Python code, run `docker compose -p eai-docker restart gateway`.

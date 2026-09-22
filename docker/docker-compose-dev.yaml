@@ -255,6 +255,13 @@ services:
       # 编译切片分发目标数据集（push_slices_to_ragflow）：未设置=按 spec §7 降级链跳过分发（run detail 记 skipped）
       - GSB_RAGFLOW_DATASET_ID=${GSB_RAGFLOW_DATASET_ID:-}
       - TEMPORAL_URL=temporal:7233
+      # EAI-CUSTOM (P0-4): OntoStudio MCP 共享 token。extensions_config.json 里两条
+      # ontostudio MCP 的 headers 用 "$ONTOSTUDIO_INTERNAL_AUTH_TOKEN" 占位，在**本进程**
+      # 解析（harness config/extensions_config.py resolve_env_variables）。放 docker/.env
+      # 即单一来源：ontostudio-backend 由自身 environment 同名插值取得，gateway 由本行取得。
+      # 两侧都空 = MCP 内网匿名开放（auth.py 打一次性 warning）；设了才真正收紧。
+      # 注意勿只写根 .env——ontostudio-backend 的 `environment:` 空插值会覆盖 env_file 注入。
+      - ONTOSTUDIO_INTERNAL_AUTH_TOKEN=${ONTOSTUDIO_INTERNAL_AUTH_TOKEN:-}
     env_file:
       - path: ../.env
         required: false
@@ -440,6 +447,14 @@ services:
       # 网络服务名，宿主直跑 dev 时 env 覆盖（如 http://localhost:2026）
       - ONTOSTUDIO_GATEWAY_URL=${ONTOSTUDIO_GATEWAY_URL:-http://gateway:8001}
       - ONTOSTUDIO_CORS_ORIGINS=${ONTOSTUDIO_CORS_ORIGINS:-http://localhost:2026,http://localhost:3010}
+      # EAI-CUSTOM (P0-3): 内核图持久化。未设置时 OxStore 走内存模式
+      # （kernel/service.py:28），容器重建后断言图/蕴含图/派生图全部归零，须重跑
+      # POST /formal/load；且 conformance C2（标着"条款 5.3"）只证进程内往返，
+      # "存储"名实不符。挂命名卷后两侧名实相符。
+      - ONTOSTUDIO_KERNEL_PATH=/data/kernel
+    volumes:
+      # 命名卷而非 bind mount：宿主 Windows / 容器 Linux，且该目录由 pyoxigraph 自管
+      - ontostudio-kernel:/data
     env_file:
       - path: ../.env
         required: false
@@ -496,6 +511,9 @@ volumes:
   # rapid_table's runtime-downloaded table-structure model (slanet-plus.onnx),
   # so OCR container rebuilds don't wipe it (bug-445).
   ocr_rapid_table_models:
+  # EAI-CUSTOM (P0-3): OntoStudio 内核图（pyoxigraph 目录）——schema/asserted/
+  # alignment/entailment 四张命名图 + graph:derived:*。不挂载则每次重建容器归零。
+  ontostudio-kernel:
 
 networks:
   eai-flow-net:  # 改用与业务服务相同的网络名
