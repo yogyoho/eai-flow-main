@@ -163,7 +163,7 @@ def test_registry_exposes_actions_by_id(tmp_path):
 
 
 def test_cross_file_duplicate_action_id_rejected(tmp_path):
-    """跨文件重复由 RegistryStore 的合并循环兜住（文件内的由 validate_action_refs 兜）。
+    """跨文件重复由加载器的合并循环兜住（文件内的由 DomainFile._check_refs 兜）。
 
     两个域各自声明**不同**对象类型（否则会先在对象类型重复注册处报错），
     但动作 id 相同——必须报「动作 id 跨域重复」。
@@ -191,3 +191,29 @@ def test_cross_file_duplicate_action_id_rejected(tmp_path):
 
     with pytest.raises(RegistryError, match="动作 id 跨域重复"):
         RegistryStore(registry_dir=d).get()
+
+
+def test_loader_wraps_action_ref_error_with_filename(tmp_path):
+    """坏动作声明 → RegistryError，且消息带文件名、带 schema 校验失败标识、无双冒号退化。
+
+    这条钉的是 _validate_domain_file 的**消息格式**：动作引用错误由模型级 after-validator
+    抛出，其根级 `loc` 是空 tuple，若照原样拼接会渲染成 `a.yaml: : Value error, ...`。
+    该分支与既有 bogus_field 用例共用代码路径，但没有测试断言过动作错误经此渲染的结果——
+    即「错误包装」本身缺乏护栏：改坏了不会有测试变红。
+    """
+    d = _write_registry(
+        tmp_path,
+        {
+            "a.yaml": yaml.safe_dump(
+                {"object_types": [_ot()], "actions": [_action(target="nope")]},
+                allow_unicode=True,
+            ),
+        },
+    )
+    from app.ontology.registry import RegistryError, load_registry
+
+    with pytest.raises(RegistryError, match="schema 校验失败") as ei:
+        load_registry(d)
+    msg = str(ei.value)
+    assert "a.yaml" in msg, msg  # 定位到具体域文件
+    assert ": :" not in msg, msg  # 根级 loc 为空 tuple 的双冒号退化
