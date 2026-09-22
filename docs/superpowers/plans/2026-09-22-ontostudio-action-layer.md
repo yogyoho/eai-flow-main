@@ -78,7 +78,7 @@
 |---|---|
 | `ontostudio/backend/app/ontology/scope.py`（新建） | `FilterRule` 数据类（wire 编解码）+ `rule_to_sql()` 编译为参数化 WHERE |
 | `ontostudio/backend/app/ontology/actions/__init__.py`（新建） | 包标记 |
-| `ontostudio/backend/app/ontology/actions/sql_write.py`（新建） | 标识符白名单 + 前置条件 WHERE + UPDATE SET 构造。**唯一拼 SQL 的地方** |
+| `ontostudio/backend/app/ontology/actions/sql_write.py`（新建） | **唯一写路径标识符白名单与片段构造处**；前置条件 WHERE + UPDATE SET 构造。**语句骨架由 executor 拼装**（`text(f"UPDATE {table_q} SET {set_sql} WHERE …")`）、表名经 `quote_ident`——「唯一」不含语句级拼装 |
 | `ontostudio/backend/app/ontology/actions/executor.py`（新建） | 执行管线：解析 → 鉴权 → 取范围 → 事务 → 审计 → 重投影 |
 | `ontostudio/backend/app/ontology/schemas.py`（改） | `Precondition` / `StateChange` / `ActionSpec`；`DomainFile.actions`；`ObjectType.scope_resource` / `scope_bindings` |
 | `ontostudio/backend/app/ontology/registry.py`（改） | 加载 `actions:` 段 + 交叉引用校验（target/field 必须已声明） |
