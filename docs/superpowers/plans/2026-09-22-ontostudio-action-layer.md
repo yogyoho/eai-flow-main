@@ -104,8 +104,11 @@
 |---|---|---|---|
 | 1 `scope.py` | 数据范围规则树 + 参数化 WHERE 编译 | 33 | `902f0584a` → `eed650f81` → `0d6f4a971` |
 | 2 registry `actions` 段 | `ActionSpec` 等三模型 + `_check_refs` 模型级校验 + `Registry.actions`/`get_action` | 20 | `cae787750` → `7a25ed2bc` → `15c435c32` → `12bb71803` → `e04dcb8af` → `d569b37db` |
+| 3 审计表 + 声明动作 | `dg_action_audit`；`status` 加 `rejected`；`doc_graph.yaml` 声明两个动作；**并修复一个阻塞级缺陷**（该表此前无任何建表路径） | +9 | `4d8b2a900` → `ed572100a` → `25f5083d9` → `bec0f31ae` |
 
-**全量基线：`272 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
+**全量基线：`284 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`；**系统 Python 3.14 缺 owlrl，必须用仓内 `.venv`**）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
+
+**Task 3 顺带修掉的坑（后续 Task 会受益）**：ontostudio 现在**自己**在 lifespan 里建表（`app/db.py::ensure_tables`）——gateway **不挂载也不建** `dg_*` 表，2026-09-17 独立服务搬迁后的注释曾长期与此不符。`/health` 现在带 `tables_ready` 字段（**状态码恒 200**，是否据此判不健康是待定的运维决策）。**残余风险**：`create_all` 只建缺失表、不做 schema 变更；建表失败只留 WARNING，且**只在启动尝试一次**（DB 后起需重启补建，懒建随 Task 5）。
 
 **下一步：Task 3**。开工前必须知道的三件事（Task 1–2 审查反复确认过）：
 
