@@ -550,8 +550,18 @@ class ActionSpec(BaseModel):
 ```python
     actions: list[ActionSpec] = []
 
-    def validate_action_refs(self) -> None:
-        """动作声明的交叉引用校验。fail-closed：任一不满足即拒绝加载。"""
+    @model_validator(mode="after")
+    def _check_refs(self) -> DomainFile:
+        """交叉引用校验。fail-closed：任一不满足即拒绝加载。
+
+        分工边界（Task 2 质量审查 M-1）：**列引用**在本校验器；**`scope_resource` 的
+        值域**（是否为已知权限模块 key）在 `scripts/ontology_lint.py`（Task 9）——
+        别在这里以为漏了。
+
+        不对称说明（M-4）：`actions.target` 只允许**同文件**解析，而 `link_types` 的
+        source/target 允许跨文件前向引用（见 registry.py 的 pending 集）。这是有意的：
+        动作要落到具体物理表，跨文件引用会让"哪个域拥有这条写路径"变得含糊。
+        """
         by_api_name = {ot.api_name: ot for ot in self.object_types}
         props = {name: {p.name for p in ot.properties} for name, ot in by_api_name.items()}
 
@@ -562,6 +572,12 @@ class ActionSpec(BaseModel):
             seen.add(a.id)
             if a.target not in by_api_name:
                 raise ValueError(f"unknown action target: {a.target!r} (action {a.id})")
+            # 域一致性（Task 2 质量审查 M-2，**超出设计 §1.1 三类校验的范围外补强**）：
+            # action.domain 会被写进 dg_action_audit.domain，而同行表名来自 target 对象。
+            # 两者不一致会产出"domain 与表对不上"的审计行，而审计是这条链路唯一的追溯凭据。
+            target_domain = by_api_name[a.target].domain
+            if a.domain != target_domain:
+                raise ValueError(f"action {a.id}: domain {a.domain!r} 与 target 所属域 {target_domain!r} 不一致")
             declared = props[a.target]
             for cond in list(a.preconditions) + list(a.postconditions):
                 if cond.field not in declared:
@@ -581,22 +597,20 @@ class ActionSpec(BaseModel):
 ```python
 def _validate_domain_file(path: Path, data: dict) -> DomainFile:
     try:
-        parsed = DomainFile.model_validate(data)
+        return DomainFile.model_validate(data)
     except ValidationError as e:
-        loc0 = ".".join(str(x) for x in (e.errors()[0]["loc"] if e.errors() else []))
-        raise RegistryError(f"schema 校验失败: {path.name}: {loc0}: {e.errors()[0]['msg'] if e.errors() else e}") from e
-    try:
-        parsed.validate_action_refs()
-    except ValueError as e:
-        raise RegistryError(f"动作声明校验失败: {path.name}: {e}") from e
-    return parsed
+        err = e.errors()[0] if e.errors() else {}
+        loc = ".".join(str(x) for x in err.get("loc", ()))
+        raise RegistryError(f"schema 校验失败: {path.name}: {f'{loc}: ' if loc else ''}{err.get('msg', e)}") from e
 ```
+
+（**原版是两个 try**——第二个专门包 `validate_action_refs` 抛的 `ValueError`。经 Task 2 质量审查裁定改为 `model_validator(mode="after")` 后，该校验并入 `model_validate` 的 `ValidationError`，第二个 try 整块删除。那个被删掉的包装本身**零测试保护**：审查者实测把它整块删掉，264 条测试照样全绿。）
 
 注意三点：
 
-1. `validate_action_refs` 抛的是 `ValueError` 而**不是** `ValidationError`，所以必须单独 try 一次，否则会绕过既有的 `RegistryError` 包装直接漏到调用方；错误信息带上 `path.name` 以便定位是哪个域文件。
-2. (c) 的跨文件守卫与 (a)/(b) 是**两件事**，别只做一半：文件内重复由 `validate_action_refs` 挡，跨文件重复由合并循环挡。两者各有测试（见 Step 1 的 `test_duplicate_action_id_rejected` 与 `test_cross_file_duplicate_action_id_rejected`）。
-3. **约定：`DomainFile` 只允许经 `_validate_domain_file` 解析，不得直接 `DomainFile.model_validate(...)` 后就用。** 因为 `validate_action_refs()` 是**须显式调用**的方法、不在构造时自动跑。当前 `app/` 与 `scripts/` 下只有 `_validate_domain_file` 一个解析点，故无实害；但将来任何新增解析点（例如校验草稿 YAML 的端点）若只 `model_validate` 就会**静默跳过全部交叉引用校验**。Step 1 的 `test_unknown_target_rejected` 正是这种用法的示范——它直接构造 `DomainFile` 只为单独测校验方法。若后续 Task 新增解析点，必须走 `_validate_domain_file`（或届时把校验改成构造后自动跑）。
+1. **`f'{loc}: ' if loc else ''` 是必需的，不是美化**：pydantic 根级 after-validator 的 `e.errors()[0]["loc"]` 是**空 tuple**，照原样拼会渲染出 `a.yaml: : Value error, ...`（两个冒号）。审查者实测确认。
+2. (c) 的跨文件守卫与模型内的文件内查重是**两件事**，别只做一半：文件内重复由 `_check_refs`（模型校验器）挡，跨文件重复由 `RegistryStore` 的合并循环挡。两者各有测试（`test_duplicate_action_id_rejected` 与 `test_cross_file_duplicate_action_id_rejected`）。**跨文件重复的报错不受模型校验器改动影响**——它从不在模型里。
+3. **不要再引入"须显式调用的公开校验方法"**。本仓既有模式是 `model_validator(mode="after")`（对照 `app/doc_graph/schemas.py:154` 的 `ExtractionPayload._check_domain_and_refs`，其测试在 `model_validate` 处断言 `ValidationError`）。计划初稿的 `validate_action_refs()` 公开方法**在本仓没有先例**，且它立的"只允许经 `_validate_domain_file` 解析"约定会被本计划后面自己的 Task 9/10 代码绕过（那两处的 `DomainFile.model_validate(...)` 是直接调用）。
 
 **同一文件还需让 `Registry` 承载动作**——`Registry` 是合并快照，**不保存 per-domain 的 `DomainFile`**（`__init__` 只有 `object_types` / `link_types` 两个合并字典），所以不能遍历 domain 找动作。照 `object_types` 的样子加一个合并字典：
 
@@ -669,6 +683,24 @@ Expected: 全 PASS。若 `eia.yaml` 因 `validate_action_refs` 报错，说明�
 git add ontostudio/backend/app/ontology/schemas.py ontostudio/backend/app/ontology/registry.py ontostudio/backend/tests/test_actions_schema.py
 git commit -m "feat(ontostudio): registry 支持 actions 段 + 交叉引用校验"
 ```
+
+### 审查裁定引入的偏离（2026-09-22，两阶段审查后）
+
+本任务的字面代码块**已被审查裁定修改**，后续读者以实际代码为准：
+
+| 处 | 计划字面 | 实际 | 裁定理由 |
+|---|---|---|---|
+| 校验的挂载方式 | 公开方法 `validate_action_refs()`，须显式调用 | **`@model_validator(mode="after") _check_refs()`** | 本仓既有模式就是后者（`app/doc_graph/schemas.py:154`），"公开方法须显式调用"**无先例**；且计划自立的"只允许经 `_validate_domain_file` 解析"约定会被本计划 Task 9/10 的代码立刻绕过。改完还闭合一个盲区：原 `registry.py` 里为 `ValueError→RegistryError` 写的包装**整块删掉 264 条测试全绿**（零保护），改后该包装消失、错误落回已被 `test_ontology_registry.py:65-77` 覆盖的分支 |
+| 空 loc 的渲染 | `f"{loc0}: {msg}"` | `f"{loc}: " if loc else ""` 前缀条件化 | pydantic 根级 after-validator 的 `loc` 是空 tuple，照原样拼出 `a.yaml: : Value error`（双冒号）。审查者实测 |
+| `action.domain` 一致性 | 不校验 | **加校验**（须与 target 所属域一致） | **范围外补强**，审查者 M-2：`domain` 会进审计行而表名来自 target，不一致会产出对不上的审计行，审计是唯一追溯凭据 |
+| `-> "StateChange"` 的引号 | 带引号 | 去引号 | 文件已有 `from __future__ import annotations`，引号触发 ruff **UP037** |
+| 测试 import 顺序 | `yaml` 在 `pytest` 前 | `pytest` 在前 | 触发 ruff **I001** |
+| 测试文件头 | 无 docstring / 无 future import | 补齐 | 仓内测试文件惯例 |
+| 测试数 | 9 项 | **12 项**（+`test_neither_set_nor_now_rejected`、+两条 Registry 加载路径、+若干变异补测） | 原 9 项漏了互斥校验"同时缺省"那一半；且 `Registry.actions`/`get_action`/跨文件守卫在初始测试里**零覆盖**（真实 YAML 到 Task 3 才有 `actions:` 段，合并循环一次都不执行） |
+
+**未采纳**：`scope_bindings` 有而 `scope_resource` 缺省时的拒绝（M-3，兜底方向 fail-closed，非越权，记为后续项）；跨文件重复 id 的报错带上首次出现的文件名（M-5，需把 `actions` 换成 `dict[str, tuple[str, ActionSpec]]`，波及 `get_action`，不值当）；`actions` 改私有（M-6，与既有 `object_types`/`link_types` 同模式，不新增风险）。
+
+**变异检验的结论请记住**：审查者用"删掉/放宽某段代码看测试是否变红"的方法，在初始 12 条测试里找到 **3 个盲区**——`id` 正则、`preconditions` 那一半校验、以及那个 fail-closed 包装。**这三条都已补测**。后续 Task 的审查者应沿用同一手法。
 
 ---
 
