@@ -229,3 +229,4 @@ dg_action_audit
 | gateway 端点改动影响主平台 | 只读端点、不改既有路由；`DataScopeEngine` 已有单测覆盖，新增端点走同一引擎 |
 | 折叠 merge/unmerge 时功能回归 | 分三步走，第 2 步两侧测试同时绿才进第 3 步 |
 | `FilterRule` 两边各自持有会漂移 | 在 `scope.py` 注释注明来源文件；wire 形态变更时两侧同步；纳入 lint 检查 |
+| **`not_in` 空集是 fail-open**（Task 1 实测发现） | `NOT (col = ANY(ARRAY[]))` ≡ `TRUE` ≡ 放行全部。这是 `NOT IN` 的标准语义，但方向与 `in`（空集＝拒绝）相反。**今日无暴露路径**：参考实现 `engine.py::from_template` 目前不产出 `ne/not_in/not`。**修复位置在 gateway 侧解析层**（`_resolve` 返回 None 时应 fail-closed 为 `none_allow`，与既有 `IN` 分支同向），**不要在 `scope.py` 加空集守卫**——那会把语义判断塞进纯编译器。若将来 gateway 开始下发 `not_in`，必须先补这条 |

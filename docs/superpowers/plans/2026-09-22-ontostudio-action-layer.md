@@ -148,7 +148,7 @@ gateway 侧字段或算子变更时，此处必须同步。
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field as dc_field
+from dataclasses import dataclass
 from typing import Any
 
 _IDENT = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
@@ -161,7 +161,6 @@ _LEAF_SQL = {
     "not_in": "NOT ({c} = ANY({p}))",
     "overlap": "{c} && {p}",
 }
-_COMPOSITE = {"and", "or", "not"}
 
 
 class ScopeCompileError(ValueError):
@@ -196,7 +195,19 @@ class FilterRule:
 
 
 def _quote(field_name: str, bindings: dict[str, str] | None) -> str:
-    physical = (bindings or {}).get(field_name, field_name) if bindings is not None else field_name
+    """把模板字段名解析为物理列名并加引号。
+
+    ``bindings=None`` 表示不做映射（恒等：模板字段名即列名）；
+    ``bindings={...}`` 表示显式映射表——此时**每个**字段都必须命中，未命中即报错。
+    两者语义不同（None=恒等，{}=全未绑定），这是刻意的：显式映射下静默退回恒等会让
+    registry 里漏配的 scope_bindings 变成"看起来能用"的越权读，故宁可直接失败。
+    """
+    if bindings is None:
+        physical = field_name
+    else:
+        if field_name not in bindings:
+            raise ScopeCompileError(f"unbound field in scope bindings: {field_name!r}")
+        physical = bindings[field_name]
     if not _IDENT.match(physical):
         raise ScopeCompileError(f"illegal identifier for scope field {field_name!r}: {physical!r}")
     return f'"{physical}"'
