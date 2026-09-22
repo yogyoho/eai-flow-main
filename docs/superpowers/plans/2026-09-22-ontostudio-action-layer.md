@@ -1258,9 +1258,23 @@ async def test_scope_sql_is_executable_with_list_params():
     且绑定 Python list，而**空 list 是可达的**——网关 `backend/app/extensions/auth/engine.py:52`
     在模板解析出空 list 时正是产出 `FilterRule(operator="in", value=[])`。
     `ANY(:[])` 传空 Python list 时 asyncpg 能否推断数组元素类型**未经验证**。
-    修法二选一：显式转型 `= ANY(CAST(:pre_0 AS text[]))`，或空集短路（`in` 空 → `FALSE`、
-    `not_in` 空 → `TRUE`，与 `scope.py` 的语义裁决一致）。**同形态也存在于 Task 1 的 `scope.py`**，
-    两处一并裁决。
+    **⚠️⚠️ 本段的初版修法是错的，已在 Task 4 审查中被证伪，勿照抄**：初版写「空集短路
+    （`in` 空 → `FALSE`、**`not_in` 空 → `TRUE`**）」——**`not_in` 空 → TRUE 本身就是 fail-open**。
+    真库实测：`NOT ('a' = ANY(ARRAY[]::text[]))` = `NOT FALSE` = **TRUE**，
+    即**前置条件恒满足、守卫静默失效**；而参数为 `NULL` 时 `NOT(...)` = NULL → 行被过滤 → 拒绝。
+    也就是说 `sql_write.py` 里那句 `list(cond.value or [])` **把"漏填 value"从 fail-closed 翻转成了 fail-open**。
+
+    **读路径与写路径的空集语义必须分开裁决**：
+
+    | 路径 | `in` 空 | `not_in` 空 |
+    |---|---|---|
+    | 读（`scope.py` 数据范围过滤） | `FALSE`（filter 掉，安全） | 需单独裁决 |
+    | **写（`sql_write.py` 前置条件守卫）** | `FALSE`（拒绝该动作，安全） | **绝不能是 TRUE**——守卫不该产出恒真式 |
+
+    修法：`sql_write.py` 侧——`in` 空编译为 `FALSE`；**`not_in` 空直接 `raise WriteGuardError`**
+    （"不在空集里"字面意义上等于"全部"，对守卫永远不是想要的东西）。类型推断那一半（`ANY(:[])`
+    传空 list 时 asyncpg 能否推断元素类型）**仍未验证**，需 Task 5 用真库测试钉住；
+    显式转型 `= ANY(CAST(:pre_0 AS text[]))` 是备选。
 
     **只覆盖 `in`。`overlap`（`col && $1`）是另一条绑定路径，本测试证不了它**——
     `&&` 要求操作数是 array 列，而本体面对的表（cpa_*/csp_*/dg_*）无 array 列，
