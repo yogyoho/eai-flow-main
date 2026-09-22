@@ -78,7 +78,13 @@ class ActionSpec(BaseModel):
 
 ### 1.2 审计表
 
-`app/doc_graph/tables.py` 新增 `DgActionAudit`，随 `Base.metadata` 由 **gateway 启动时的 `create_all`** 建表——与现有 `dg_*` 同一机制，**无需迁移脚本**。
+`app/doc_graph/tables.py` 新增 `DgActionAudit`，随 `Base.metadata` 建表。
+
+> **⚠️ 订正（2026-09-22 Task 3 规格审查实测）**：本设计初稿写的是"由 gateway 启动时的 `create_all` 建表——与现有 `dg_*` 同一机制"。**那是错的，且 `app/db.py:7` / `app/ontology/__init__.py:8` / `app/doc_graph/tables.py:86` 三处注释同样在说谎**：2026-09-17 独立服务搬迁把 `dg_*` 模型从 gateway 的 `Base` 摘到了本地 `app.db.Base`，而 **gateway 的 `Base.metadata` 里 `dg_*` 表为零**、ontostudio 全仓 `create_all` 只出现在注释里从未被调用。现存 4 张 `dg_*` 表是搬迁前建的。
+>
+> **实际建表路径**：由 **ontostudio 自身的 lifespan** 调 `Base.metadata.create_all`（`await conn.run_sync(...)`，用 `create_async_engine(_ext_url(), poolclass=NullPool)`，照 `app/doc_graph/ingest.py:40` 的既有模式）。这正是 `app/db.py:7` 预告过的"Task 3 起本服务接管"。
+>
+> **已知限制**：`create_all` **只建缺失的表，不做 schema 变更**——列增删改仍需人工迁移。这是本仓既有取向（gateway 同样如此），但必须写明，别让人以为有了自动迁移系统。
 
 ```
 dg_action_audit
@@ -102,7 +108,9 @@ dg_action_audit
 
 ### 1.3 必须一并改的涟漪：`status` 枚举加 `rejected`
 
-三处不同步则 SHACL 当场判违规：
+三处**都要改**，但强度不同（Task 3 审查实测订正）：
+
+> **`doc_graph.yaml` 的 status `enum` 并不参与 SHACL**——`kernel/compile.py:65,73,103` 只读 `etype`/`predicate` 的 enum；YAML 的 enum 仅经 `mcp.py:134` 的属性 dump 对 agent 可见。所以初稿「三处不同步则 SHACL 当场判违规」对 YAML 那一处**表述不准**。真正会让 SHACL 判违规的是 `validate.py` 的两处。YAML 那处仍要改（否则 agent 看到的枚举与校验器不一致）。
 
 | 位置 | 现值 | 改为 |
 |---|---|---|
