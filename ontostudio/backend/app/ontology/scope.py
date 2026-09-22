@@ -60,9 +60,16 @@ class FilterRule:
     @classmethod
     def from_wire(cls, data: dict[str, Any]) -> FilterRule:
         # 数据源是外部 JSON，缺键/类型错都归一为 ScopeCompileError（契约见类 docstring）。
+        # 递归解码器必须校验自身输入形状，否则 children 类型错会漏出
+        # AttributeError('str' has no 'get') / TypeError(int not iterable)，executor 变 500。
+        if not isinstance(data, dict):
+            raise ScopeCompileError(f"malformed wire rule: expected object, got {type(data).__name__}")
         op = data.get("operator")
         if not isinstance(op, str):
             raise ScopeCompileError(f"malformed wire rule: operator={op!r}")
+        children = data.get("children")
+        if children is not None and not isinstance(children, list):
+            raise ScopeCompileError(f"malformed wire rule: children must be a list, got {type(children).__name__}")
         # children=[] 与 children=null 都折叠为 None——二者编译期等价（三种复合算子走同一
         # 分支），故此处归一化是 wire 契约的一部分，而非信息丢失。
         # 注意：旧形态 gateway to_dict 输出的是 "children": null（engine.py:34-36 可产出
@@ -71,7 +78,7 @@ class FilterRule:
             operator=op,
             field=data.get("field"),
             value=data.get("value"),
-            children=[cls.from_wire(c) for c in data["children"]] if data.get("children") else None,
+            children=[cls.from_wire(c) for c in children] if children else None,
         )
 
 

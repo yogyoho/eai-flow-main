@@ -148,6 +148,25 @@ def test_malformed_wire_raises_scope_error(bad):
         FilterRule.from_wire(bad)
 
 
+# I-3 延伸（同类漏检：children / 非对象节点）：审查枚举的 4 例只打 operator，
+# 但 children 类型错同样漏 AttributeError/TypeError，与 I-3 目的冲突
+# （executor 会把它变成 500 而非 4xx）。契约既声明"所有畸形输入都归一"，就须自洽。
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"operator": "and", "children": "abc"},  # 字符串会被按字符迭代
+        {"operator": "and", "children": 7},
+        {"operator": "or", "children": {"a": 1}},
+        {"operator": "or", "children": ["abc"]},  # 列表元素非对象
+        ["not", "a", "dict"],  # 整棵规则非对象
+        "not-a-dict",
+    ],
+)
+def test_malformed_wire_children_raises_scope_error(bad):
+    with pytest.raises(ScopeCompileError, match="malformed wire rule"):
+        FilterRule.from_wire(bad)
+
+
 def test_rule_to_sql_rejects_non_filterrule_node():
     """未经 from_wire 的裸 JSON 子节点必须报 ScopeCompileError，而非 AttributeError。"""
     with pytest.raises(ScopeCompileError, match="must be a FilterRule"):
