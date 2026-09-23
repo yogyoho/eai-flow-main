@@ -493,7 +493,7 @@ async def _reset_scratch_db(scratch: str) -> None:
     """
     await _admin_exec(f'DROP DATABASE IF EXISTS "{_SCRATCH_DB}" WITH (FORCE)')
     await _admin_exec(f'CREATE DATABASE "{_SCRATCH_DB}"')
-    await ensure_tables()  # 生产建表路径（fixture 已把 _ext_url 指向 scratch）
+    await ensure_tables()  # 生产建表路径（调用方已把 _ext_url 指向 scratch）
     await _exec_in(scratch, "DROP TABLE dg_action_audit")  # 制造「表缺失」——本测试的起点
 
 
@@ -605,6 +605,10 @@ _NON_MISSING_DB_ERRORS = {
     "conn_refused_no_sqlstate": lambda: _dbapi_error(ConnectionRefusedError("connection refused")),
     "undefined_column_42703": lambda: _dbapi_error(asyncpg.exceptions.UndefinedColumnError('column "x" does not exist')),
     "query_canceled_57014": lambda: _dbapi_error(asyncpg.exceptions.QueryCanceledError("canceling statement due to statement timeout")),
+    # asyncpg 的 command_timeout 触发时抛的是 **asyncio TimeoutError**，不是 57014（2026-09-23 实测：
+    # 引擎带 command_timeout=1 跑 pg_sleep(5) → 链上只有 TimeoutError，没有 sqlstate）。这条把
+    # Task 5 Step 6 (b) 那个超时的**真实形状**也钉在「不触发懒建」这一侧。
+    "command_timeout_TimeoutError": lambda: TimeoutError(),
 }
 
 
@@ -612,10 +616,11 @@ _NON_MISSING_DB_ERRORS = {
 async def test_only_missing_table_triggers_lazy_build(monkeypatch, lazy_flag_reset, case):
     """**只有 42P01** 触发懒建；其余 DB 失败一律如实 500。
 
-    三个近亲都要挡住：42501（权限——建表同样建不了，重试只会再失败一次）、42703（同属
-    Undefined* 家族，但不是「表缺失」）、57014（**命令超时给的就是这个**——那时去建表
-    是南辕北辙：链路刚被掐断，懒建只会再撞一次同样的超时）。
-    这几个都带 sqlstate，故本条同时钉住「判的是 sqlstate 的**值**，不是『有没有 sqlstate』」。
+    几个近亲都要挡住：42501（权限——建表同样建不了，重试只会再失败一次）、42703（同属
+    Undefined* 家族，但不是「表缺失」）、57014（服务端取消：`statement_timeout` /
+    `pg_cancel_backend` 给的就是它）、`TimeoutError`（**asyncpg 的 command_timeout 抛的那个**——
+    链路刚被掐断时去建表是南辕北辙，只会再撞一次同样的超时）。
+    前三条都带 sqlstate，故本条同时钉住「判的是 sqlstate 的**值**，不是『有没有 sqlstate』」。
     """
     calls = {"n": 0}
     write_calls = {"n": 0}
