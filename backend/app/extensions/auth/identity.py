@@ -63,21 +63,25 @@ class AttributeSet:
 
     @classmethod
     def from_current_user(cls, user, *, role_code: str | None, member_projects: list[str] | None = None) -> AttributeSet:
-        """由 gateway CurrentUser 构造授权身份（供 /api/permissions/scope 使用）。
+        """由 gateway CurrentUser 构造身份——**不是**授权判定的正典路径，别拿它做鉴权。
 
-        EAI-CUSTOM (2026-09-22) —— ``role_code`` **必须**由调用方从 DB ``roles.code`` 解析后传入
-        （端点用 ``current_user.role_id`` 反查 ``Role.code``，与 ``refresh_token`` /
-        ``_build_current_user`` 同法），**不得传 ``user.role_name``**：
-        实测 ``roles.name`` 是显示名（DB: ``superadmin`` → ``"超级管理员"``，permissions.yaml
-        ``display_name`` 同值），而 ``DataScopeEngine._role_data_scopes`` 由
-        ``registry.list_role_codes()``（角色 **code**）建键——传 name 会恒落空 → 恒
-        ``none_allow`` → 动作全部 404，且原因极难定位。
-        该参数**刻意不给默认值**：宁可调用点 TypeError，也不要静默 404。
+        EAI-CUSTOM (2026-09-23, I-3)：它此前是 ``GET /api/permissions/scope`` 的身份来源，
+        现已改用 ``IdentityProvider.resolve``。原因（也是"别再用它做鉴权"的理由）：本方法的
+        ``dept_ids`` 取自 ``users.dept_id``（单值）、``member_projects`` 缺省为空，而正典
+        ``resolve`` 取 ``user_departments`` 关联表 / ``project_members`` 查库——两者不等价：
+        ``dept_ids`` 方向**更宽**（关联表无行时本方法仍给出单值），``member_projects`` 方向
+        **更窄**（恒空会让 ``id IN $identity.member_projects`` 退化成 ``= ANY(ARRAY[])`` = FALSE，
+        丢分支）。鉴权路径用它会得到与平台不一致的判定。
 
-        字段面与既有 rule_template 的 ``$identity.*`` 引用面一致
-        （user_id / role_code / dept_ids / member_projects）。
-        ``member_projects`` 需调用方查库后传入；缺省空表会让
-        ``id IN $identity.member_projects`` 解析为 none_allow（fail-closed，安全方向）。
+        **现状：本仓零调用点、零测试**（I-3 之后成为孤儿）。保留是待裁事项，不是遗漏——
+        若最终确认不再需要，应连同删除；若保留，请只用于非鉴权用途（展示/调试）。
+
+        ``role_code`` 的告警仍然有效：**必须**由调用方从 ``roles.code`` 解析后传入，
+        **不得传 ``user.role_name``**——实测 ``roles.name`` 是显示名（DB: ``superadmin`` →
+        ``"超级管理员"``），而 ``DataScopeEngine._role_data_scopes`` 由
+        ``registry.list_role_codes()``（角色 **code**）建键；传 name 会恒落空 → 恒
+        ``none_allow``，且原因极难定位。该参数**刻意不给默认值**：宁可调用点 TypeError，
+        也不要静默 404。
         """
         return cls(
             user_id=str(user.id),
@@ -160,6 +164,17 @@ class IdentityProvider:
             if role:
                 attrs.role_code = role.code
                 attrs.role_level = role.level or 0
+            else:
+                # EAI-CUSTOM (2026-09-23, M-2): role_id 有值却查不到 Role → role_code 静默为
+                # None → 所有按角色解析的数据范围恒 none_allow → 调用方拿到 404「不在可见
+                # 范围内」，而真因是角色行缺失（roles 表由注册表启动时校准，不同步即发生）。
+                # 本文件第 77-79 行的家规是「宁可调用点 TypeError，也不要静默 404」，
+                # 此处至少按 middleware.py 对同类情形的先例留痕，别让原因只能靠猜。
+                logger.warning(
+                    "Identity resolve: user=%s 的 role_id=%s 在 roles 表中查不到 → role_code 置空，按角色解析的数据范围将恒为 none_allow",
+                    user.id,
+                    user.role_id,
+                )
 
         # Load departments
         stmt = select(UserDepartment).where(UserDepartment.user_id == user.id)

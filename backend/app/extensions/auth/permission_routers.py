@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.datascope import DataScopeEngine
 from app.extensions.auth.engine import UnifiedPermissionEngine
-from app.extensions.auth.identity import AttributeSet, get_identity_provider
-from app.extensions.auth.middleware import get_current_user, require_permission
+from app.extensions.auth.identity import get_identity_provider
+from app.extensions.auth.middleware import require_permission
 from app.extensions.auth.registry import get_permission_registry
 from app.extensions.database import get_db
-from app.extensions.models import Role
 from app.extensions.schemas import CurrentUser
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/permissions", tags=["permissions"])
 
@@ -121,7 +124,7 @@ async def get_my_permissions(
 async def get_data_scope(
     resource: str,
     db: AsyncSession = Depends(get_db),
-    current_user: CurrentUser = Depends(get_current_user),
+    current_user: CurrentUser = Depends(require_permission("system:access")),
 ):
     """返回当前用户对某资源的数据范围规则（序列化 FilterRule）。
 
@@ -131,27 +134,41 @@ async def get_data_scope(
     （``ontology`` / ``contract_price`` / …），非 scope id。
     未知资源或角色无 scope → ``none_allow``（fail-closed）。
 
-    ``role_code`` 取 ``roles.code``，**不是** ``CurrentUser.role_name``——后者装的是
-    ``roles.name`` 显示名（实测 ``superadmin`` → ``"超级管理员"``），与 registry 的角色
-    code 不同名，直接拿来查 ``_role_data_scopes`` 会恒 ``none_allow``。依据见
-    ``AttributeSet.from_current_user`` 的 docstring。
+    身份走**正典** ``IdentityProvider.resolve``——与 ``with_data_scope``
+    （middleware.py）和同文件的 ``/me`` 同一条路径：``role_code`` 取 ``roles.code``、
+    ``dept_ids`` 取 ``user_departments`` 关联表、``member_projects`` 取 ``project_members``。
 
-    ⚠️ 身份字段面注意：本端点用 ``AttributeSet.from_current_user`` 构造身份，其中
-    ``dept_ids`` 取自 ``users.dept_id``（单值），``member_projects`` 恒为空。二者与平台
-    ``with_data_scope`` 用的**正典身份**（``IdentityProvider.resolve``：``user_departments``
-    关联表 / ``project_members`` 查库）并不等价——对 ``dept_id`` 有值但 ``user_departments``
-    无行的用户，本端点算出的 ``$identity.dept_ids`` 会比正典**更宽**。
-    因此：**模板里引用 ``$identity.dept_ids`` / ``$identity.member_projects`` 的资源，
-    不得把本端点的结果当作权威过滤条件**（本体动作层的 ``ontology_all`` 是空模板＝全量，
-    不受影响）。补齐二者需调用方查库后传入，见 ``from_current_user``。
+    I-3 (2026-09-23 质量审查)：此前是本端点自建 ``AttributeSet.from_current_user`` +
+    手工 ``db.get(Role, …)``，只复刻了半个 ``resolve``——于是 ``users.dept_id`` 有值而
+    ``user_departments`` 无行的用户，这里算出的 ``$identity.dept_ids`` 与平台不同
+    （**方向按字段分别读，别再当成一句话**）：
+
+    | 字段 | 化简来源 | 偏离方向 |
+    |---|---|---|
+    | ``dept_ids`` | ``users.dept_id``（单值） vs ``user_departments``（关联表） | **更宽** |
+    | ``member_projects`` | 恒 ``[]`` vs ``project_members`` 查库 | **更窄**（丢分支：``= ANY(ARRAY[])`` = FALSE ⇒ fail-closed 拒绝） |
+
+    "更窄"无安全问题（拒绝方向），但两个方向不同，写文档时别合并成"端点结果比平台宽"。
+    现在两端同源，这表格只剩历史意义；保留是为了说明为什么不再是这个形态。
+
+    ``require_permission("system:access")`` 与同 router 的 ``/registry``（``role:read``）、
+    ``/me``（``system:access``）对齐——此前只挂 ``get_current_user``，比同级松一档。
     """
-    role_code: str | None = None
-    if current_user.role_id is not None:
-        role = await db.get(Role, current_user.role_id)
-        if role is not None:
-            role_code = role.code
+    # M-3: 未知 resource 与"角色没有配 scope"今天都产出 none_allow，调用方拿到 404 却分不清
+    # 是 typo 还是真没授权。注册表能区分"模块不存在"，那就留痕。
+    if resource not in {key for key, _ in get_permission_registry().list_modules()}:
+        logger.warning("数据范围请求了未注册的资源 key %r（疑似 typo）→ 按 none_allow 拒绝", resource)
 
-    engine = DataScopeEngine.from_registry()
-    identity = AttributeSet.from_current_user(current_user, role_code=role_code)
-    rule = engine.get_data_scope(identity, resource)
+    try:
+        identity = await get_identity_provider().resolve(current_user.id, db)
+    except ValueError as exc:
+        # resolve 对"用户不在库中"（会话有效但用户行已删）抛 ValueError。
+        # 取 403 而非 404/401：调用者**已通过认证**（JWT 有效），失败的是它的主体在组织
+        # 目录里解析不出来——这是授权上下文问题，不是"资源不存在"，也不是"要重新登录"
+        # （401 会让前端进刷新循环，而刷新拿不到任何不同的结果）。
+        # 注意：M-1 给本端点挂了 require_permission，它内部**也**会 resolve 一次（同请求缓存），
+        # 故用户行缺失的常见情形在依赖层就已失败；这里兜的是两次 resolve 之间的窗口。
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"无法解析调用者身份: {exc}") from exc
+
+    rule = DataScopeEngine.from_registry().get_data_scope(identity, resource)
     return {"resource": resource, "rule": rule.to_wire()}

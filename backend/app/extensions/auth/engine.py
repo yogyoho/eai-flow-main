@@ -15,6 +15,25 @@ from app.extensions.auth.identity import AttributeSet
 logger = logging.getLogger(__name__)
 
 
+def _wire_value(value: Any) -> Any:
+    """把 ``value`` 里的 ``uuid.UUID`` 归一为 ``str``——线格式（JSON）里没有 UUID 类型。
+
+    EAI-CUSTOM (2026-09-23, M-4)：为什么在 ``to_wire`` 内做而不是交给调用方——
+    ``overlap`` 的 value 由 ``from_template`` 强转成 ``list[uuid.UUID]``（见该处 M3 防御性
+    强转）。经 FastAPI 返回时 ``jsonable_encoder`` 会顺手转字符串，于是**任何非 FastAPI
+    消费点拿到的仍是 UUID 对象**：同一个函数在不同调用路径下产出不同类型的线格式，
+    对端（OntoStudio 的 ``from_wire``，只做 JSON 反序列化）行为不一致。函数自身必须自洽。
+
+    只转 UUID，**不**做成 ``str(value)`` 一把梭：``eq`` 的值可以是 int/bool，一刀切会把
+    它们变成字符串，对端按字符串绑定到整型列会直接报类型错（那是引入新故障，不是归一）。
+    """
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        return [str(v) if isinstance(v, uuid.UUID) else v for v in value]
+    return value
+
+
 @dataclass
 class FilterRule:
     """Serializable filter rule tree. NONE_ALLOW = deny all (empty default)."""
@@ -89,16 +108,20 @@ class FilterRule:
         """序列化给 OntoStudio（独立服务，无法 import 本模块）。
 
         EAI-CUSTOM (2026-09-22): 形态必须与 ontostudio/backend/app/ontology/scope.py::FilterRule.to_wire
-        逐字段一致（那边有 33 条测试守着 `from_wire` 回读）；经 FastAPI 返回时
-        uuid.UUID 由 jsonable_encoder 转为字符串，对端按字符串处理。
+        逐字段一致（那边有 33 条测试守着 `from_wire` 回读）。
+        M-4 (2026-09-23): ``value`` 内的 ``uuid.UUID`` 在本方法内归一为字符串（见
+        ``_wire_value``）——此前依赖 FastAPI 的 jsonable_encoder，非 FastAPI 消费点会拿到
+        UUID 对象，同一函数产出两种线格式。
         与 ``to_dict`` 的差别：``to_dict`` 恒带 field/value/children（缺失为 null），
         ``to_wire`` 省略 None 字段——对端 ``from_wire`` 两种形态都能吃，但线格式以本方法为准。
+        **跨服务契约由 backend/tests/data/permissions_scope_wire_golden.json 钉住**
+        （产出侧断 to_wire == golden，消费侧断 from_wire(golden) 可编译）。
         """
         out: dict[str, Any] = {"operator": self.operator}
         if self.field is not None:
             out["field"] = self.field
         if self.value is not None:
-            out["value"] = self.value
+            out["value"] = _wire_value(self.value)
         if self.children is not None:
             out["children"] = [c.to_wire() for c in self.children]
         return out
