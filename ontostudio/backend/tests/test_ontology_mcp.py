@@ -1,6 +1,7 @@
-"""T5 单测：MCP server——7 工具注册 / describe 紧凑预算 / 错误结构化 / 分工话术.
+"""T5 单测：MCP server——工具注册（8 只读 + 2 动作）/ describe 紧凑预算 / 错误结构化 / 分工话术.
 
 计划: docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md T5（D4/D5）
+      + docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md T8（动作工具）
 Verify: describe_ontology 紧凑默认 <2k token（按 ~4 char/token 预算断言）。
 """
 
@@ -12,7 +13,21 @@ import pytest
 
 from app.ontology import mcp as ontomcp
 
-EXPECTED_TOOLS = {"describe_ontology", "list_objects", "get_object", "search_objects", "get_links", "traverse", "aggregate", "ontology_reason"}
+EXPECTED_TOOLS = {
+    "describe_ontology",
+    "list_objects",
+    "get_object",
+    "search_objects",
+    "get_links",
+    "traverse",
+    "aggregate",
+    "ontology_reason",
+    # 动作层（Task 8）：写工具。清单在这里**手写**是刻意的——本文件的断言对象就是
+    # "对外暴露了哪些工具"（一份需要人签字确认的表面），与 registry 无关；
+    # 动作 id 与 registry 的一致性由 tests/test_actions_mcp.py 钉。
+    "invoke_action",
+    "review_entity",
+}
 
 
 def test_registered_tools_with_division_wording():

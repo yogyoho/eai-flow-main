@@ -45,6 +45,7 @@ from sqlalchemy.pool import NullPool
 from app.db import _CONNECT_TIMEOUT_S, ensure_tables
 from app.ontology.actions.sql_write import WriteGuardError, build_precondition_where, build_update_set, quote_ident
 from app.ontology.connectors import _ext_url
+from app.ontology.kernel.service import get_kernel
 from app.ontology.registry import get_registry
 from app.ontology.scope import FilterRule, ScopeCompileError, rule_to_sql
 
@@ -410,13 +411,57 @@ async def invoke_action_core(
         "pk": str(target_pk),
         "before": before,
         "after": after,
-        # 与 "pk" 同形：一律字符串化。返回体会被 Task 8 原样 json.dumps（无 default=），
-        # 塞 uuid.UUID 进去会在 MCP 侧 TypeError。
+        # 与 "pk" 同形：一律字符串化。**原注释写"Task 8 原样 json.dumps（无 default=），
+        # 塞 uuid 会 TypeError"——Task 8 核对后订正**：``mcp._ok`` 自 325bb8e47 起就带
+        # ``default=str``（uuid/datetime 都不会炸），故这里保留字符串化的理由是**形状一致**
+        # （agent 读到的 pk 与 audit_id 是同类），不是"否则会炸"。
         "audit_id": str(audit_id),
         "source": source,
         "projected": projected,
         "errors": errors,
     }
+
+
+async def run_action_for_mcp(action_id: str, pk: str, source: str) -> dict[str, Any]:
+    """MCP 侧入口（计划 Task 8）：与 REST **共用** ``invoke_action_core``，只有三处不同。
+
+    | 差异 | REST（routers.py） | MCP（本函数） | 为什么 |
+    |---|---|---|---|
+    | 身份 | JWT Cookie → ``CurrentUser`` | 无调用者身份：``actor_id=0``、``actor_role="mcp"`` | MCP 走共享头鉴权，没有可解析的调用者 |
+    | 权限 | ``authorize`` 逐条查 ``required_permissions`` | **不查**（见下） | 工具在 MCP 配置里按 agent 授权，动作级权限点在这一层没有可判定的主体 |
+    | 数据范围 | 网关 ``/api/permissions/scope`` 按 Cookie 下发 | 恒 ``allow_all``（见下） | 无身份 ⇒ 无行级可裁的维度 |
+    | 来源 | ``source="api"`` | ``source="mcp"`` | 审计据此区分通道 |
+
+    **没有第二条执行路径**：动作的解析、数据范围编译、``FOR UPDATE`` 锁定、前置条件、
+    ``UPDATE ... RETURNING``、审计行、提交后重投影全部在 ``invoke_action_core`` 里，
+    本函数只负责"身份/范围/来源"这三处参数。``review_entity`` 是它的具名薄包装
+    （``mcp.py::_review_entity`` 把 decision 映射成 action_id 后也走这里）。
+
+    **``allow_all`` 是事实陈述，不是放行**（有意，非疏漏）：今日对象类型**没有归属列**，
+    行级范围判定的定义域是空的——REST 侧在 ``obj.scope_resource`` 未声明时回退到同一个
+    ``allow_all``（``routers.py::_authz_for_action`` 的 docstring 记着这条回退）。真去网关问
+    "服务身份的范围"只会拿到 fail-closed 的 ``none_allow``（无 Cookie），那是把整条通道关死，
+    不是服务级范围。
+
+    ponytail: 已知天花板——**待行级归属轴落地时，本函数必须改成按调用者解析**（届时 MCP 需要
+    一个可鉴别的调用者身份，这是本通道架构上缺的那一块，别在这里就地打补丁）。
+
+    ``_resolve`` 先跑一次只为 fail-closed 的失败顺序：未知动作以 404 拒，**先于** ``pk`` 解析
+    （管线内部还会再解析一次，那是"唯一真相源"的代价，不是重复劳动）。``project`` 必须是
+    **同步**可调用——写成 ``async def`` 会让 ``invoke_action_core`` 拿到一个被丢弃的协程并
+    静默算作投影成功（见其 docstring）。
+    """
+    _action, _obj = _resolve(action_id)  # 计划原文用 action，但该值不被使用 → F841
+    return await invoke_action_core(
+        action_id,
+        {},
+        target_pk=uuid.UUID(pk),
+        actor_id=uuid.UUID(int=0),
+        actor_role="mcp",
+        source=source,
+        scope_rule=FilterRule(operator="allow_all"),
+        project=lambda aid, p: get_kernel().refresh(),
+    )
 
 
 def _json(value: Any) -> str:

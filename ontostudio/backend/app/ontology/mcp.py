@@ -1,10 +1,13 @@
-"""Ontology 语义层 MCP Server — 7 只读工具，把市场域对象/链接暴露给 agent.
+"""Ontology 语义层 MCP Server — 8 只读工具 + 2 个动作工具，把市场域对象/链接暴露给 agent.
 
 设计: docs/superpowers/specs/2026-08-14-ontology-semantic-layer-design.md §7
 计划: docs/superpowers/plans/2026-08-15-ontology-semantic-layer-1a.md T5（D4/D5）
 
 工具分工（D5）：
 - 本 server 提供**跨模块语义导航**（对象/链接/遍历/聚合）——先 describe_ontology 看全景。
+- invoke_action / review_entity 是**写**工具（动作层，设计 §4）：经
+  ``actions/executor.py::run_action_for_mcp`` → ``invoke_action_core`` 一条管线落库 + 记审计。
+  review_entity 只是 review_entity.confirm/.reject 的具名薄包装，**不是第二条路径**。
 - query_goods_price / query_part_price 是单模块**取数**工具（1b 起标 deprecated）。
   单模块明细查询仍可用它们；跨模块问题一律走 ontology 工具。
 
@@ -85,6 +88,31 @@ _TOOLS_SPEC = [
         "运行形式化推理：schema 重编→OWL 2 RL 闭包(graph:entailment)→CONSTRUCT 派生(graph:derived:*)。返回输入/物化三元组数与各规则派生计数（置信度门默认 0.7）。",
         {"type": "object", "properties": {"min_confidence": {"type": "number"}}, "required": []},
     ),
+    (
+        "invoke_action",
+        "执行一个已声明的受治理动作（写回业务数据并记审计）。先用 describe_ontology 查看可用 action_id 清单与参数。写路径在服务端（事务/审计/身份标注）；本通道的授权在 MCP 配置层，不逐条校验动作声明的 required_permissions。",
+        {
+            "type": "object",
+            "properties": {
+                "action_id": {"type": "string", "description": "如 review_entity.confirm"},
+                "pk": {"type": "string", "description": "目标对象主键(uuid)"},
+                "params": {"type": "object", "description": "动作参数(按 describe_ontology 声明的形状)"},
+            },
+            "required": ["action_id", "pk"],
+        },
+    ),
+    (
+        "review_entity",
+        "审核抽取实体的快捷入口（高频动作的具名包装，内部走同一条动作执行体）。decision=confirm 置 active，reject 置 rejected。",
+        {
+            "type": "object",
+            "properties": {
+                "pk": {"type": "string", "description": "实体主键(uuid)"},
+                "decision": {"type": "string", "enum": ["confirm", "reject"]},
+            },
+            "required": ["pk", "decision"],
+        },
+    ),
 ]
 
 TOOLS = [Tool(name=n, description=d, inputSchema=s) for n, d, s in _TOOLS_SPEC]
@@ -121,6 +149,21 @@ async def _describe(arguments: dict) -> list[TextContent]:
     reg = store.get()  # D4: 逐调用指纹校验（变更自动热重载/失败保旧快照）
     full = bool(arguments.get("full"))
     meta = {"registry_version": reg.registry_version, "fingerprint": store._agg(reg)[:8], "object_type_count": len(reg.object_types), "link_type_count": len(reg.link_types)}
+    # 可用动作清单（计划 Task 8 Step 5）：agent 靠它发现 action_id 与参数形状——
+    # invoke_action 只收 action_id，没有清单就只能猜 id（猜错得到的是 404，不是提示）。
+    # 两个分支都带：full=true 是在要**更多**细节，不是要更少的写入口。
+    actions_payload = [
+        {
+            "id": a.id,
+            "display_name": a.display_name,
+            "description": a.description,
+            "target": a.target,
+            "required_permissions": a.required_permissions,
+            "preconditions": [c.model_dump() for c in a.preconditions],
+            "postconditions": [c.model_dump() for c in a.postconditions],
+        }
+        for a in reg.actions.values()
+    ]
     if not full:
         return _ok(
             {
@@ -129,11 +172,12 @@ async def _describe(arguments: dict) -> list[TextContent]:
                 "hint": "full=true 查看属性/列映射",
                 "object_types": [{"name": o.api_name, "display": o.display_name, "description": o.description} for o in reg.object_types.values()],
                 "link_types": [{"name": lt.api_name, "source": lt.source, "target": lt.target, "enabled": lt.enabled, **({"note": lt.note} if not lt.enabled and lt.note else {})} for lt in reg.link_types.values()],
+                "actions": actions_payload,
             }
         )
     objects_full = [o.model_dump(exclude={"properties"}) | {"properties": [p.model_dump() for p in o.visible_properties()]} for o in reg.object_types.values()]
     links_full = [lt.model_dump() for lt in reg.link_types.values()]
-    return _ok({"success": True, **meta, "object_types": objects_full, "link_types": links_full})
+    return _ok({"success": True, **meta, "object_types": objects_full, "link_types": links_full, "actions": actions_payload})
 
 
 async def _list_objects(a: dict) -> list[TextContent]:
@@ -185,6 +229,44 @@ async def _aggregate(a: dict) -> list[TextContent]:
     return _ok({"success": True, **out})
 
 
+async def _invoke_action(arguments: dict) -> list[TextContent]:
+    """写工具：动作层的通用入口（与 REST 共用 ``run_action_for_mcp`` → ``invoke_action_core``）。
+
+    默认值用 ``""`` 而非缺失即抛：工具 schema 已把 action_id/pk 标成 required（合规的
+    调用方一定给），但 agent 传空值/漏传时应当拿到一条**说明白**的结构化错误，
+    而不是一个 KeyError（``""`` 会在 ``_resolve`` 处以 404 被拒，见 executor）。
+
+    ``success: True`` 是**加**上去的（``invoke_action_core`` 的返回体里没有这个键，它按
+    REST 的约定写成 HTTP 200 即成功）：MCP 没有状态码，``success`` 是本 server 唯一的成败
+    信号——而它的错误侧（``_err``）一直写 ``success: false``。不加则成功与错误在形状上
+    不对称：调用方只能靠"没有 error 键"来推断成功。
+    """
+    from app.ontology.actions.executor import ActionError, run_action_for_mcp
+
+    try:
+        return _ok({"success": True, **(await run_action_for_mcp(arguments.get("action_id", ""), arguments.get("pk", ""), "mcp"))})
+    except ActionError as e:
+        return _err(e)
+
+
+async def _review_entity(arguments: dict) -> list[TextContent]:
+    """``review_entity.confirm`` / ``.reject`` 的具名薄包装——**映射之后就没有第二条路径了**。
+
+    ``decision`` 不在枚举内时不猜测、不落到默认分支（映射表缺失即拒）：猜错方向的
+    审核动作（把 reject 当 confirm）比报错严重得多。
+    """
+    from app.ontology.actions.executor import ActionError, run_action_for_mcp
+
+    mapping = {"confirm": "review_entity.confirm", "reject": "review_entity.reject"}
+    action_id = mapping.get(arguments.get("decision"))
+    if action_id is None:
+        return _err(ValueError(f"decision must be one of {sorted(mapping)}"))
+    try:
+        return _ok({"success": True, **(await run_action_for_mcp(action_id, arguments.get("pk", ""), "mcp"))})
+    except ActionError as e:
+        return _err(e)
+
+
 server = Server("ontology")
 
 
@@ -204,6 +286,8 @@ async def call_tool(name: str, arguments: dict):
         "traverse": _traverse,
         "aggregate": _aggregate,
         "ontology_reason": _ontology_reason,
+        "invoke_action": _invoke_action,
+        "review_entity": _review_entity,
     }
     handler = handlers.get(name)
     if handler is None:
