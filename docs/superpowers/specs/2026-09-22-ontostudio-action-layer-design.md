@@ -105,7 +105,7 @@ class ActionSpec(BaseModel):
 |---|---|
 | 生产引擎加 `connect_args={"timeout": 5}` | Task 3 落地。**没有它 warn-only 给不出保护**——实测黑洞地址下引擎 21.4s 才抛（Linux 可能约 2 分钟），这段窗口 uvicorn 根本不服务，异常路径压根走不到。**护栏的正确表述**：计时型上界测试只抓"超时被删掉/放大到同一量级以上"；`5→9s` 的漂移由一条捕获引擎实参的确定性测试钉住（`test_ensure_tables_bounds_connect_timeout`）。**不要声称上界测试能抓值漂移——经变异证伪** |
 | `/health` 增加就绪字段（**不改状态码**） | Task 3 落地。把可观测性做出来；是否让 healthcheck 因此判不健康，是影响两份 compose 的运维决策，不由本任务单方面改 |
-| 首次用 DB 时重试 / 懒建 | **Task 5 落地**（它是写入方的建造者）。在此之前 `app/main.py` 有一行注释标明这是**已记录的缺口**，不是遗漏 |
+| 首次用 DB 时重试 / 懒建 | **Task 5 Step 6 落地**（写入方是它的建造者）：写路径遇 SQLSTATE 42P01 时调一次 `ensure_tables()` 并**在新事务里**重试一次；模块级 flag 保证每进程只尝试一次懒建（有界，不是重试循环），只对「表不存在」触发（宽 catch 会把连接失败/权限错误也吞进来），其余 DB 失败如实转 500。**已知限制**：`create_all` 只建缺失的表，不做 schema 变更——懒建解决不了「表在但列不全」 |
 
 ### 1.2.2 残余风险：**命令阶段无界**（Task 3 复审订正）
 
@@ -118,7 +118,8 @@ class ActionSpec(BaseModel):
 
 **为什么这个理由必须写准**：Task 3 的初版理由是"DDL 时长本就有界"——**那是错的**，会让人把"命令阶段无界"读成"不存在风险"。同理，"加 command_timeout 只会引入新的误杀面"也比实情弱：引擎是 NullPool 且在同一次调用内 `dispose()`，command_timeout 只影响**这一次** `create_all`，而它的失败已被设计成非致命（WARNING + `tables_ready=False`）——**误杀代价≈一条 WARNING**。
 
-**可选收口**（随 Task 5 落地）：`command_timeout=30~60`，或连接级 `server_settings={'lock_timeout': …, 'statement_timeout': …}`。
+**已收口（Task 5 Step 6，2026-09-23）**：取 `connect_args={"timeout": 5, "command_timeout": 30}`——上面「误杀代价≈一条 WARNING」的取舍成立，故取 30 而非 60，倾向早失败。
+**同一取舍**下，**写路径的引擎没有加**这两个超时（那条链路的超时是用户可见的 500，30s 会误杀合法的长等待，如撞上并发长事务时的 `FOR UPDATE`）——属 Task 6/7 的暴露面决策，见 `app/db.py` 末尾的缺口注释。替代方案 `server_settings={'lock_timeout': …, 'statement_timeout': …}` 未采用。
 
 ```
 dg_action_audit

@@ -106,14 +106,17 @@
 | 2 registry `actions` 段 | `ActionSpec` 等三模型 + `_check_refs` 模型级校验 + `Registry.actions`/`get_action` | 20 | `cae787750` → `7a25ed2bc` → `15c435c32` → `12bb71803` → `e04dcb8af` → `d569b37db` |
 | 3 审计表 + 声明动作 | `dg_action_audit`；`status` 加 `rejected`；`doc_graph.yaml` 声明两个动作；**并修复一个阻塞级缺陷**（该表此前无任何建表路径） | +9 | `4d8b2a900` → `ed572100a` → `25f5083d9` → `bec0f31ae` |
 | 4 `sql_write.py` 写守卫 | 标识符白名单 + 参数化 WHERE/SET 构造；**修掉两条 fail-open**（`not_in` 空值恒真、value 形状错逐字符拆） | 39 | `dd106e3c6` → `ba4646916` → `25f95721a` |
+| 5 `executor.py` 执行管线 | 解析→范围→锁定→前置→UPDATE(RETURNING)→审计→容错重投影；**Step 6 写路径韧性**（42P01 懒建 + 有界重试 + `command_timeout`） | 15 + 9 | `125747dad` → `a794a65ae` → `557decbd8` |
 
-**全量基线：`323 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`；**系统 Python 3.14 缺 owlrl，必须用仓内 `.venv`**）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
+**全量基线：`347 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`；**系统 Python 3.14 缺 owlrl，必须用仓内 `.venv`**）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
 
-**Task 3 顺带修掉的坑（后续 Task 会受益）**：ontostudio 现在**自己**在 lifespan 里建表（`app/db.py::ensure_tables`）——gateway **不挂载也不建** `dg_*` 表，2026-09-17 独立服务搬迁后的注释曾长期与此不符。`/health` 现在带 `tables_ready` 字段（**状态码恒 200**，是否据此判不健康是待定的运维决策）。**残余风险**：`create_all` 只建缺失表、不做 schema 变更；建表失败只留 WARNING，且**只在启动尝试一次**（DB 后起需重启补建，懒建随 Task 5）。
+**Task 3 顺带修掉的坑（后续 Task 会受益）**：ontostudio 现在**自己**在 lifespan 里建表（`app/db.py::ensure_tables`）——gateway **不挂载也不建** `dg_*` 表，2026-09-17 独立服务搬迁后的注释曾长期与此不符。`/health` 现在带 `tables_ready` 字段（**状态码恒 200**，是否据此判不健康是待定的运维决策）。**残余风险**：`create_all` 只建缺失表、不做 schema 变更；建表失败只留 WARNING，且启动**只尝试一次**——`dg_action_audit` 的「DB 后起」缺口已由**写路径懒建**兜住（Task 5 Step 6，有界 + 只对 42P01），其余 `dg_*` 表仍要靠重启补建。
 
-**下一步：Task 5（`executor.py` 执行管线，计划 349 行）**——**十步里唯一有事务边界、权限双层、投影容错语义的那个**，也是最需要完整判断力的一步。它消费 Task 1–4 的全部产物：`scope.py` 编译出的 WHERE 片段、`registry.get_action()` 解析的动作、`sql_write.py` 构造的 SET/前置条件、`dg_action_audit` 表。
+**下一步：Task 6（gateway 侧——授权缓存键修正 + `/api/permissions/scope` + 权限声明）**。Task 5（执行管线 + Step 6 写路径韧性）已完成并提交，见上表。
 
-**Task 5 开工前必须知道的三件事**（前四个 Task 的审查反复确认过）：
+**Task 5 留下的两件事（交给 Task 6/7 决策，不要当遗漏）**：① **写路径的引擎没有任何阶段超时**（`executor.py` 自建引擎既没 `timeout` 也没 `command_timeout`）——理由与代价见 `app/db.py` 末尾的缺口注释；② `config/permissions.yaml` 的 `ontology` 模块仍是 `data_scopes: []`，`scope_resource` 解析为 `none_allow`（Task 6 补 `ontology_all`）。
+
+**Task 5 开工前必须知道的三件事**（前四个 Task 的审查反复确认过；**对每个 Task 同样成立**）：
 
 1. **本计划所有代码块都不是 format-clean 的**（Task 1–2 已出现 5+ 例）。跑 `ruff format` 是本任务常规步骤，不是偏离；但**仍要在偏离清单里如实计入**。
 2. **`schemas.py` / `registry.py` 是 CRLF，`scope.py` 与 `tests/*.py` 是 LF。** 用脚本改注释时多行锚点会**静默不匹配**——改完必须 `git diff` 确认真改到了，且**别把 CRLF 文件改成 LF**。
@@ -1621,6 +1624,20 @@ git commit -m "feat(ontostudio): 动作执行管线(事务/前置/审计/容错�
 4. **`command_timeout` 生效**：**捕获传给引擎的实参**（照 Task 3 的 `test_ensure_tables_bounds_connect_timeout`），**不要用计时上界**——上界抓不到值漂移，那条已被变异证伪
 
 **已知限制写进注释**：`create_all` **不做 schema 变更**——懒建只解决"表不存在"，解决不了"表存在但列不全"。别让人以为有了自动迁移。
+
+> **回填（2026-09-23 实测，实施者记）**：
+> 1. **测试①的机制换过一次**：初版按「改名藏真表」造 42P01，**实测证伪**——PostgreSQL 的
+>    `ALTER TABLE ... RENAME` **不会**跟着改索引名（`dg_action_audit_pkey`、`ix_dg_action_audit_*`
+>    都留在原表上），懒建的 `create_all` 建表时撞名失败（`DuplicateTableError`），不但测不出懒建，
+>    还把改名后的活库留在原地污染后续用例。改成**一次性 scratch 库**（`DROP DATABASE ... WITH (FORCE)`
+>    → `CREATE DATABASE` → `ensure_tables()` → `DROP TABLE dg_action_audit`）：真 42P01 链、真建表、
+>    真重试、真落审计行，且最坏只脏自己的库。
+> 2. **测试④照要求捕获引擎实参**；`30→300` 的值漂移由「常量 ≤ 60」的上界钉住（变异实测红）。
+> 3. 识别器必须**走异常链**：真库实测链为 `sqlalchemy.exc.ProgrammingError`（顶层 `sqlstate=None`）
+>    → 适配层 `ProgrammingError`(42P01) → `asyncpg.exceptions.UndefinedTableError`。只判最外层永远不触发
+>    （变异实测：只判顶层 → 懒建的 e2e 测试红）。
+> 4. **写路径引擎本轮未加超时**（有意）：同样两个超时的理由建立在「误杀 ≈ 一条 WARNING」上，
+>    写路径的同类失败是用户可见的 500。属 Task 6/7 的暴露面决策。
 
 ```bash
 git add ontostudio/backend/app/db.py ontostudio/backend/app/main.py ontostudio/backend/app/ontology/actions/executor.py ontostudio/backend/tests/
