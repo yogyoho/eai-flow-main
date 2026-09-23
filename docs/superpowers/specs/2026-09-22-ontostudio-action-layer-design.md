@@ -119,7 +119,18 @@ class ActionSpec(BaseModel):
 **为什么这个理由必须写准**：Task 3 的初版理由是"DDL 时长本就有界"——**那是错的**，会让人把"命令阶段无界"读成"不存在风险"。同理，"加 command_timeout 只会引入新的误杀面"也比实情弱：引擎是 NullPool 且在同一次调用内 `dispose()`，command_timeout 只影响**这一次** `create_all`，而它的失败已被设计成非致命（WARNING + `tables_ready=False`）——**误杀代价≈一条 WARNING**。
 
 **已收口（Task 5 Step 6，2026-09-23）**：取 `connect_args={"timeout": 5, "command_timeout": 30}`——上面「误杀代价≈一条 WARNING」的取舍成立，故取 30 而非 60，倾向早失败。
-**同一取舍**下，**写路径的引擎没有加**这两个超时（那条链路的超时是用户可见的 500，30s 会误杀合法的长等待，如撞上并发长事务时的 `FOR UPDATE`）——属 Task 6/7 的暴露面决策，见 `app/db.py` 末尾的缺口注释。替代方案 `server_settings={'lock_timeout': …, 'statement_timeout': …}` 未采用。
+**写路径的两个超时必须拆开裁决**（Task 5 规格审查订正——把两者捆成一句"都没传"会弱化握手那一半）：
+
+| | 连接阶段（握手） | 命令阶段 |
+|---|---|---|
+| 有无"合法的长等待" | **无** | 有——`FOR UPDATE` 撞上并发长事务时可以合法地等很久 |
+| 无超时的后果 | **请求永久挂起**，占住 ASGI 任务（本机实测 21.5s，Linux 可到分钟级） | 同上，但那个等待可能是正当的 |
+| 误杀面 | **不存在** | 真实存在——30s 会把"等到后成功"变成**用户可见的 500** |
+| 结论 | **已补**：`connect_args={"timeout": 5}`，与 `ensure_tables` 同值 | **留 Task 6/7 裁决**（属暴露面决策） |
+
+关键区别是**取舍轴不同**：握手阶段不存在"合法的长等待"，所以那个超时**没有可比的误杀面**——它与 `command_timeout` 不是同一类决策，不能因为后者有争议就一起不加。**一个请求永久挂死，比一个 5 秒失败严重得多，而前者没有任何正当理由。**
+
+替代方案 `server_settings={'lock_timeout': …, 'statement_timeout': …}` 未采用；见 `app/db.py` 末尾的缺口注释（已按上表拆开写）。
 
 ```
 dg_action_audit
