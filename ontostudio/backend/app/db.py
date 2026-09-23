@@ -27,7 +27,7 @@ _CONNECT_TIMEOUT_S = 5
 # 取 30 而非 60：本引擎 NullPool 且在同一次调用里 dispose，命令阶段只可能影响这**一次**
 # create_all，而它的失败已被设计成非致命（WARNING + tables_ready=False）→ 误杀代价 ≈
 # 一条 WARNING，故倾向早失败（这条取舍**不适用于写路径的命令阶段**：那边的超时会是用户
-# 可见的 500，故 executor.py 只收口了握手、未收口命令阶段，见本文件末尾注释与计划
+# 可见的 500，故 executor.py 用了**不同**的值 60——见本文件末尾注释与计划
 # Task 5 Step 6 报告）。
 _COMMAND_TIMEOUT_S = 30
 
@@ -82,7 +82,9 @@ async def ensure_tables() -> None:
 # | 有无合法长等待 | **无**——连不上就是连不上 | **有**——`SELECT ... FOR UPDATE` 撞上并发长事务时可以正当地等很久 |
 # | 无超时的后果 | 请求永久挂起、占住 ASGI 任务（本机实测 21.5s，Linux 可到分钟级） | 同上，但那个等待可能是正当的 |
 # | 误杀面 | **不存在** | 真实存在（30s 会把「等到后成功」变成用户可见的 500） |
-# | 结论 | **Task 5 已补**：executor 的引擎传 `connect_args={"timeout": _CONNECT_TIMEOUT_S}` | **仍未收口**，留给 Task 6/7（暴露面）裁决 |
+# | 结论 | **Task 5 已补**：executor 的引擎传 `connect_args={"timeout": _CONNECT_TIMEOUT_S}` | **Task 7 已收口**：executor 传
+#   `command_timeout=_WRITE_COMMAND_TIMEOUT_S`（**60**，故意不等于本文件的 30——那边误杀是用户可见的 500，
+#   需盖住合法的 `FOR UPDATE` 长等待）。见 executor 顶部常量注释与 spec §1.2.2 的 Task 7 裁决块 |
 #
 # 上面这条「连接阶段已补」不是顺手加的：本模块两处超时的理由都建立在「失败已是非致命
 # （WARNING + tables_ready=False），误杀代价 ≈ 一条日志」之上，而写路径的同类失败是

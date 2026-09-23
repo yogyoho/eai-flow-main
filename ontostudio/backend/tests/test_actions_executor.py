@@ -623,6 +623,26 @@ async def test_only_missing_table_triggers_lazy_build(monkeypatch, lazy_flag_res
     assert write_calls["n"] == 1, "失败被重试了——除 42P01 外都不该重试"
 
 
+async def test_command_timeout_failure_detail_is_not_empty(monkeypatch, lazy_flag_reset):
+    """命令阶段超时转出的 detail **不得为空**（Task 7 收口该超时时补的钉子）。
+
+    为什么需要单列一条：``str(TimeoutError())`` 是空串，而 Task 7 之后这条路径是**设计上可达**
+    且用户会看到的（写路径引擎现在带 `command_timeout`）。回到 `f"{prefix}: {exc}"` 的写法时
+    detail 变成 ``"写事务失败: "``——**唯一线索被留空**，而上面那条参数化用例断的是
+    ``"写事务失败" in detail``，它照样绿（变异实测：把 `_write_failure_detail` 短路成
+    `f"{prefix}: {exc}"` → 只有本条红）。
+    """
+
+    async def _timeout() -> tuple[dict, dict]:
+        raise TimeoutError()
+
+    with pytest.raises(ActionError) as e:
+        await executor_module._write_with_lazy_audit_table(_timeout)
+    assert e.value.status_code == 500
+    assert e.value.detail.strip() != "写事务失败:", f"超时 detail 丢光了线索: {e.value.detail!r}"
+    assert f"{executor_module._WRITE_COMMAND_TIMEOUT_S}s" in e.value.detail, "detail 未写明是哪个超时、值是多少"
+
+
 async def test_lazy_build_is_attempted_once_per_process(monkeypatch, lazy_flag_reset):
     """有界：懒建后仍失败 → 抛出且**不再重试**（每进程一次，不是重试循环）。
 
@@ -692,15 +712,20 @@ async def test_returns_audit_id_of_the_audit_row():
     assert isinstance(result["audit_id"], str)  # 与 "pk" 同形：Task 8 原样 json.dumps
 
 
-async def test_write_path_engine_bounds_connect_timeout(monkeypatch):
-    """确定性钉住写路径引擎的**握手**超时——照 Task 3 的「捕获引擎实参」手法，不用计时
+async def test_write_path_engine_bounds_both_phases(monkeypatch):
+    """确定性钉住写路径引擎的**两个阶段**超时——照 Task 3 的「捕获引擎实参」手法，不用计时
     上界（上界抓不到值漂移，那条已被变异证伪）。
 
     握手与命令两个阶段**分开裁决**（见 app/db.py 末尾的表）：握手无「合法的长等待」，
-    无超时即请求永久挂起并占住 ASGI 任务，误杀面为零 → 现在收口；命令阶段有合法的长等待
-    （`SELECT ... FOR UPDATE` 撞并发长事务），30s 会把「等到后成功」误杀成用户可见的 500
-    → 该取舍属 Task 6/7。断言 `command_timeout` **缺席**，是为了让将来加它必须是一次
-    有意识的决定，而不是顺手补上。
+    无超时即请求永久挂起并占住 ASGI 任务，误杀面为零；命令阶段有合法的长等待
+    （`SELECT ... FOR UPDATE` 撞并发长事务），超时值必须**明显高于**它——但 Phase 无界
+    同样是"占住 ASGI 任务"，只是位置更靠后（链路被静默掐断时只能等 TCP keepalive）。
+
+    **本用例在 Task 7 被翻转过一次，别按旧文读**：此前断言 `command_timeout` **缺席**，
+    理由是"让将来加它必须是一次有意识的决定"。Task 7 做了那次决定（计划 line 131
+    「留给 Task 7 的暴露面裁决」）→ 现在正向断言其**存在且等于写路径自己的 60s**，
+    并额外断言它**故意不等于** `db._COMMAND_TIMEOUT_S`（两条路径的误杀面不同，见
+    executor 顶部常量注释；用 `!=` 挡住"顺手统一成同源"）。
     """
     pk = await _seed_entity()
     captured: dict = {}
@@ -717,7 +742,14 @@ async def test_write_path_engine_bounds_connect_timeout(monkeypatch):
     # 「db._CONNECT_TIMEOUT_S 改成 3、这里留 5」的漂移——那正是"同源"被破坏的形态。
     assert "connect_args" in captured, "写路径引擎丢了握手超时——黑洞地址上请求会永久挂起"
     assert captured["connect_args"].get("timeout") == db._CONNECT_TIMEOUT_S, captured["connect_args"]
-    assert "command_timeout" not in captured["connect_args"], "command_timeout 有意不加（见 app/db.py 末尾的取舍表）"
+    # Task 7 裁定（计划 line 131「留给 Task 7 的暴露面裁决」）：命令阶段**已收口**。
+    # 本断言此前是 `not in`（有意留空，且写明"将来加它必须是一次有意识的决定"）——Task 7 做了
+    # 那次决定，故此处翻转为**正向**断言，值的漂移由 `==` 钉住（照同一条 `==` 而非 `<=` 的道理）。
+    # **故意不等于 db._COMMAND_TIMEOUT_S**：两条路径的误杀面不同（那边 ≈ 一条 WARNING，这边是
+    # 用户可见的 500），取 60 而非 30 的理由见 executor 顶部常量注释。故意用 `!=` 反向断言，
+    # 免得后人"顺手统一成同源"把这条取舍抹平。
+    assert captured["connect_args"].get("command_timeout") == executor_module._WRITE_COMMAND_TIMEOUT_S, captured["connect_args"]
+    assert executor_module._WRITE_COMMAND_TIMEOUT_S != db._COMMAND_TIMEOUT_S, "写路径与建表路径的命令超时不是同一条取舍，别统一成同源"
 
 
 async def test_missing_target_table_does_not_trigger_lazy_build(monkeypatch, lazy_flag_reset):

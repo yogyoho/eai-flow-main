@@ -47,6 +47,21 @@ from app.ontology.connectors import _ext_url
 from app.ontology.registry import get_registry
 from app.ontology.scope import FilterRule, ScopeCompileError, rule_to_sql
 
+# 写路径引擎的**命令阶段**超时（秒）——Task 7 裁定（计划 line 131「留给 Task 7 的暴露面裁决」、
+# spec §1.2.2 表格）。**这不是 app/db.py 那个 30s**：两者要盖住的东西不同，别合并。
+#
+# 判据（为什么不能继续留 None）：本引擎的每一次 `FOR UPDATE` / `UPDATE` 都跑在一个**与读端点
+# 共用的事件循环 worker** 上（REST `/actions/invoke` 是本任务新开的入口）。命令阶段无界意味着
+# 链路被防火墙/NAT 静默掐断时，这条请求会一直挂到 TCP 自己发现（Windows keepalive ≈ 2 小时），
+# 期间占住整个 worker——**那是比 500 严重得多的失效**（"启动楔死"模式的后移版）。
+#
+# 取值 60 而非 30（app/db.py 建表用的值）：spec §1.2.2 的表格把两条路径的**误杀面**分开了——
+# 那边误杀 ≈ 一条 WARNING（建表失败已设计成非致命），这边误杀是**用户可见的 500**。而这里
+# 唯一合法的长等待是 `FOR UPDATE` 撞上并发写同一行：单行审核动作的竞争写者应为毫秒级，
+# 60s 已比"排队"宽两个数量级——超过它说明系统卡住，不是排队。
+# 取值也不宜更大：能容忍的挂起时长直接等于**一个 ASGI worker 被占住**的时长。
+_WRITE_COMMAND_TIMEOUT_S = 60
+
 
 class ActionError(Exception):
     """动作执行失败。status_code/detail 直接映射到 HTTP 与 MCP 错误体。"""
@@ -196,6 +211,21 @@ async def _execute_on_target(conn: Any, sql: str, params: dict[str, Any], *, tab
         raise
 
 
+def _write_failure_detail(prefix: str, exc: BaseException) -> str:
+    """DB 失败 → 用户可见 detail，**TimeoutError 必须特判**。
+
+    为什么：``str(TimeoutError())`` 是**空串**，而「命令阶段超时」在 Task 7 收口之后是一条
+    设计上可达、且用户会看到的路径（`connect_args.timeout` 的握手超时同样抛它）——不特判的话
+    detail 会变成 ``"写事务失败: "``：一个把唯一线索留空的错误消息。
+
+    只改 detail、不动归因码：本模块的错误契约（模块 docstring 的表）把 DB 侧失败一律记 500，
+    超时是 DB 侧/链路侧的问题，不是"送来的东西不可用"。
+    """
+    if isinstance(exc, TimeoutError):
+        return f"{prefix}: 命令阶段超时（异步引擎 command_timeout={_WRITE_COMMAND_TIMEOUT_S}s 触发——链路被静默掐断，或锁等待超出预算）"
+    return f"{prefix}: {exc}"
+
+
 _WriteResult = tuple[dict[str, Any], dict[str, Any], uuid.UUID]
 """一次写事务的产物：``before`` / ``after`` / 审计行 id（``RETURNING id``）。"""
 
@@ -220,14 +250,14 @@ async def _write_with_lazy_audit_table(write_txn: Callable[[], Awaitable[_WriteR
         raise
     except Exception as exc:
         if not _is_missing_table_error(exc):
-            raise ActionError(f"写事务失败: {exc}", 500) from exc
+            raise ActionError(_write_failure_detail("写事务失败", exc), 500) from exc
         await _build_audit_table_once(exc)  # 失败即抛 ActionError（每进程一次，不再重试）
     try:  # 原事务已回滚 → 这一次是新事务
         return await write_txn()
     except ActionError:
         raise
     except Exception as exc:
-        raise ActionError(f"懒建审计表后写入仍失败: {exc}", 500) from exc
+        raise ActionError(_write_failure_detail("懒建审计表后写入仍失败", exc), 500) from exc
 
 
 async def invoke_action_core(
@@ -279,17 +309,17 @@ async def invoke_action_core(
     where = f"{pk_col} = :pk AND ({scope_sql})"
     params_all = _bind_params(target_pk, ("scope", scope_params), ("precondition", pre_params), ("set", set_params))
 
-    # 写路径引擎**只界握手**（connect_args.timeout，与 app/db.py 同值同源）：
-    # 无超时时黑洞/丢包地址上的 connect 会一直等（本机实测 21.5s，Linux 可到分钟级），
-    # 而这条等待没有任何合法情形——它的代价是请求永久挂起并占住 ASGI 任务。
-    # **有意不加 `command_timeout`**：命令阶段存在合法的长等待（`SELECT ... FOR UPDATE`
-    # 撞上并发长事务时可以正当地等很久），30s 会把它误杀成用户可见的 500。那条取舍属
-    # Task 6/7（暴露面）的决策，见 app/db.py 末尾注释。
+    # 写路径引擎的两个阶段分开界（理由与取值见模块顶部的 _WRITE_COMMAND_TIMEOUT_S 与
+    # app/db.py 末尾的取舍表）：
+    # - 握手（connect_args.timeout，与 app/db.py **同值同源**）：无超时时黑洞/丢包地址上的
+    #   connect 会一直等（本机实测 21.5s，Linux 可到分钟级），而这条等待没有任何合法情形。
+    # - 命令（command_timeout，**本路径自己的 60s，故意不等于 db.py 的 30s**）：Task 5 曾有意
+    #   留空并写明"留给 Task 6/7 裁决"；Task 7 裁定收口（见常量处）。
     # 构造也在归一之内（M-1）：URL 畸形时 create_async_engine 抛 ArgumentError(SQLAlchemyError)，
     # 不包的话它与「本模块只有一种对外异常」及「DB 不可达 → 500」都不对称——连不上归一到 500、
     # 而 URL 坏了却裸抛。
     try:
-        engine = create_async_engine(_ext_url(), poolclass=NullPool, connect_args={"timeout": _CONNECT_TIMEOUT_S})
+        engine = create_async_engine(_ext_url(), poolclass=NullPool, connect_args={"timeout": _CONNECT_TIMEOUT_S, "command_timeout": _WRITE_COMMAND_TIMEOUT_S})
     except SQLAlchemyError as exc:
         raise ActionError(f"写路径引擎构造失败（URL 取自配置）: {exc}", 500) from exc
     errors: list[str] = []
