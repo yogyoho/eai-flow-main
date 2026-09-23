@@ -262,7 +262,11 @@ modules:
     pages:
       - id: "ontology:page:map"
         display_name: "语义地图"
-    data_scopes: []
+        operations:
+          # EAI-CUSTOM (2026-09-22): 本体动作层审核动作（spec 2026-09-22-ontostudio-action-layer §3）
+          - { id: "ontology:action:review", display_name: "审核抽取实体" }
+    data_scopes:
+      - { id: "ontology_all", display_name: "全部本体数据", rule_template: {} }
 
   # ─── 报告输出（应用中心 → 报告输出）───
   output:
@@ -349,7 +353,14 @@ roles:
     level: 100
     nav: ["*"]
     pages: ["*"]
-    permissions: ["*"]
+    # EAI-CUSTOM (2026-09-22): 本体动作层审核动作。permissions 的 "*" 已覆盖该点，
+    # 此处显式列出只为可 grep/可审计——删掉本条不会改变 superadmin 的判定。
+    permissions:
+      - "*"
+      - ontology:action:review
+    # EAI-CUSTOM (2026-09-22): 必需——superadmin 原先 data_scopes 为空，缺此条则
+    # /api/permissions/scope?resource=ontology 恒 none_allow，动作全部 404（spec §3）。
+    data_scopes: ["ontology_all"]
 
   dept_head:
     display_name: "部门负责人"

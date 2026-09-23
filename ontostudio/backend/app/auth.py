@@ -230,11 +230,17 @@ def require_permission(permission: str):
 
 # ── v2 授权委托：gateway UnifiedPermissionEngine（单一真相源）─────────────────
 # EAI-CUSTOM (S2 Task 3): gateway cookie 通道无角色 claims → 携带原样 Cookie 反查
-# gateway /api/permissions/me 判定。缓存 user_id → (allowed, expires_monotonic)；
+# gateway /api/permissions/me 判定。缓存 (user_id, permission) → (allowed, expires_monotonic)；
 # TTL 内角色变更延迟生效（30s，可容忍——权限非高频变更面）。进程内缓存即可：单实例
 # 部署，且授权判断失败方向恒为 fail-closed。
+#
+# EAI-CUSTOM (2026-09-22): 键必须含 permission。历史实现只按 user_id 做键，而值的语义
+# 是"该用户对某一次查询的那个权限是否放行"——只查单一权限（system:access）时未暴露；
+# 本体动作层引入第二个权限（ontology:action:review）后，同一用户在 TTL 内查两个权限会
+# 命中错误缓存（把一个权限的放行结果当成另一个的）。见
+# docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md §3。
 _AUTHZ_DELEGATE_TTL_SECONDS = 30.0
-_authz_cache: dict[uuid.UUID, tuple[bool, float]] = {}
+_authz_cache: dict[tuple[uuid.UUID, str], tuple[bool, float]] = {}
 
 
 def _gateway_base_url() -> str:
@@ -246,14 +252,14 @@ async def _gateway_authorizes(request: Request, user: CurrentUser, permission: s
     """问 gateway 权限引擎：is_admin 或 permissions 含 permission 即放行.
 
     fail-closed：无 Cookie / gateway 不可达 / 非 200（含 401/403）/ 响应异常 → False。
-    200 且判定成功/失败均写缓存（TTL 内同用户免重复反查）。
+    200 且判定成功/失败均写缓存（TTL 内同用户同权限免重复反查）。
     """
-    cached = _authz_cache.get(user.id)
+    cached = _authz_cache.get((user.id, permission))
     if cached is not None:
         allowed, expires_at = cached
         if time.monotonic() < expires_at:
             return allowed
-        _authz_cache.pop(user.id, None)
+        _authz_cache.pop((user.id, permission), None)
 
     cookie_header = request.headers.get("cookie", "")
     if not cookie_header:
@@ -278,7 +284,7 @@ async def _gateway_authorizes(request: Request, user: CurrentUser, permission: s
     except ValueError:
         return False
     allowed = bool(data.get("is_admin")) or permission in (data.get("permissions") or [])
-    _authz_cache[user.id] = (allowed, time.monotonic() + _AUTHZ_DELEGATE_TTL_SECONDS)
+    _authz_cache[(user.id, permission)] = (allowed, time.monotonic() + _AUTHZ_DELEGATE_TTL_SECONDS)
     return allowed
 
 

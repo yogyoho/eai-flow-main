@@ -5,11 +5,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.extensions.auth.datascope import DataScopeEngine
 from app.extensions.auth.engine import UnifiedPermissionEngine
-from app.extensions.auth.identity import get_identity_provider
-from app.extensions.auth.middleware import require_permission
+from app.extensions.auth.identity import AttributeSet, get_identity_provider
+from app.extensions.auth.middleware import get_current_user, require_permission
 from app.extensions.auth.registry import get_permission_registry
 from app.extensions.database import get_db
+from app.extensions.models import Role
 from app.extensions.schemas import CurrentUser
 
 router = APIRouter(prefix="/api/permissions", tags=["permissions"])
@@ -113,3 +115,43 @@ async def get_my_permissions(
         "is_admin": is_admin,
         "identity": identity.to_dict(),
     }
+
+
+@router.get("/scope")
+async def get_data_scope(
+    resource: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """返回当前用户对某资源的数据范围规则（序列化 FilterRule）。
+
+    EAI-CUSTOM (2026-09-22): 供 OntoStudio 动作层做实例级权限判定
+    （设计 docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md §3）。
+    只读、无副作用；``resource`` 为 permissions.yaml 的**模块 key**
+    （``ontology`` / ``contract_price`` / …），非 scope id。
+    未知资源或角色无 scope → ``none_allow``（fail-closed）。
+
+    ``role_code`` 取 ``roles.code``，**不是** ``CurrentUser.role_name``——后者装的是
+    ``roles.name`` 显示名（实测 ``superadmin`` → ``"超级管理员"``），与 registry 的角色
+    code 不同名，直接拿来查 ``_role_data_scopes`` 会恒 ``none_allow``。依据见
+    ``AttributeSet.from_current_user`` 的 docstring。
+
+    ⚠️ 身份字段面注意：本端点用 ``AttributeSet.from_current_user`` 构造身份，其中
+    ``dept_ids`` 取自 ``users.dept_id``（单值），``member_projects`` 恒为空。二者与平台
+    ``with_data_scope`` 用的**正典身份**（``IdentityProvider.resolve``：``user_departments``
+    关联表 / ``project_members`` 查库）并不等价——对 ``dept_id`` 有值但 ``user_departments``
+    无行的用户，本端点算出的 ``$identity.dept_ids`` 会比正典**更宽**。
+    因此：**模板里引用 ``$identity.dept_ids`` / ``$identity.member_projects`` 的资源，
+    不得把本端点的结果当作权威过滤条件**（本体动作层的 ``ontology_all`` 是空模板＝全量，
+    不受影响）。补齐二者需调用方查库后传入，见 ``from_current_user``。
+    """
+    role_code: str | None = None
+    if current_user.role_id is not None:
+        role = await db.get(Role, current_user.role_id)
+        if role is not None:
+            role_code = role.code
+
+    engine = DataScopeEngine.from_registry()
+    identity = AttributeSet.from_current_user(current_user, role_code=role_code)
+    rule = engine.get_data_scope(identity, resource)
+    return {"resource": resource, "rule": rule.to_wire()}

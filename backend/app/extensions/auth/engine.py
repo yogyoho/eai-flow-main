@@ -85,6 +85,24 @@ class FilterRule:
             "children": [c.to_dict() for c in self.children] if self.children else None,
         }
 
+    def to_wire(self) -> dict[str, Any]:
+        """序列化给 OntoStudio（独立服务，无法 import 本模块）。
+
+        EAI-CUSTOM (2026-09-22): 形态必须与 ontostudio/backend/app/ontology/scope.py::FilterRule.to_wire
+        逐字段一致（那边有 33 条测试守着 `from_wire` 回读）；经 FastAPI 返回时
+        uuid.UUID 由 jsonable_encoder 转为字符串，对端按字符串处理。
+        与 ``to_dict`` 的差别：``to_dict`` 恒带 field/value/children（缺失为 null），
+        ``to_wire`` 省略 None 字段——对端 ``from_wire`` 两种形态都能吃，但线格式以本方法为准。
+        """
+        out: dict[str, Any] = {"operator": self.operator}
+        if self.field is not None:
+            out["field"] = self.field
+        if self.value is not None:
+            out["value"] = self.value
+        if self.children is not None:
+            out["children"] = [c.to_wire() for c in self.children]
+        return out
+
     def to_sqlalchemy(self, model, column_map: dict | None = None):
         """Convert FilterRule to SQLAlchemy BinaryExpression.
 

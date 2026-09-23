@@ -61,6 +61,32 @@ class AttributeSet:
                 return None
         return current
 
+    @classmethod
+    def from_current_user(cls, user, *, role_code: str | None, member_projects: list[str] | None = None) -> AttributeSet:
+        """由 gateway CurrentUser 构造授权身份（供 /api/permissions/scope 使用）。
+
+        EAI-CUSTOM (2026-09-22) —— ``role_code`` **必须**由调用方从 DB ``roles.code`` 解析后传入
+        （端点用 ``current_user.role_id`` 反查 ``Role.code``，与 ``refresh_token`` /
+        ``_build_current_user`` 同法），**不得传 ``user.role_name``**：
+        实测 ``roles.name`` 是显示名（DB: ``superadmin`` → ``"超级管理员"``，permissions.yaml
+        ``display_name`` 同值），而 ``DataScopeEngine._role_data_scopes`` 由
+        ``registry.list_role_codes()``（角色 **code**）建键——传 name 会恒落空 → 恒
+        ``none_allow`` → 动作全部 404，且原因极难定位。
+        该参数**刻意不给默认值**：宁可调用点 TypeError，也不要静默 404。
+
+        字段面与既有 rule_template 的 ``$identity.*`` 引用面一致
+        （user_id / role_code / dept_ids / member_projects）。
+        ``member_projects`` 需调用方查库后传入；缺省空表会让
+        ``id IN $identity.member_projects`` 解析为 none_allow（fail-closed，安全方向）。
+        """
+        return cls(
+            user_id=str(user.id),
+            username=str(user.username),
+            role_code=role_code,
+            dept_ids=[str(user.dept_id)] if getattr(user, "dept_id", None) else [],
+            member_projects=member_projects or [],
+        )
+
 
 class TagResolver(Protocol):
     """Protocol for pluggable identity tag resolvers."""

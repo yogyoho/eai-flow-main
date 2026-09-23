@@ -16,6 +16,7 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app as ontostudio_app
@@ -272,3 +273,68 @@ def test_bearer_without_roles_and_no_cookie_denied_without_delegation(
     r = client.get("/api/extensions/ontology/object-types")
     assert r.status_code == 403
     assert _FakeAsyncClient.calls == []
+
+
+# ── 授权缓存键回归（EAI-CUSTOM 2026-09-22）────────────────────────────────
+# _authz_cache 的键必须是 (user.id, permission)：历史实现只按 user.id 做键，而值的语义
+# 是"某一次查询的那个权限是否放行"——只查 system:access 时未暴露；本体动作层引入
+# ontology:action:review 后，同一用户在 TTL 内查两个权限会命中错误缓存。
+
+
+class _SeqAsyncClient:
+    """按调用顺序返回不同 payload 的 httpx.AsyncClient 替身（同用户两权限不串味用）."""
+
+    payloads: list[object] = []
+    calls: int = 0
+
+    def __init__(self, **_kwargs: object):
+        pass
+
+    async def __aenter__(self) -> _SeqAsyncClient:
+        return self
+
+    async def __aexit__(self, *exc: object) -> bool:
+        return False
+
+    async def get(self, url: str, headers: dict | None = None) -> _FakeResponse:  # noqa: ARG002
+        idx = type(self).calls
+        type(self).calls += 1
+        return _FakeResponse(200, type(self).payloads[idx])
+
+
+def _install_seq_gateway(monkeypatch, payloads: list[object]) -> None:
+    """gateway 替身：第 n 次反查返回 payloads[n]——不同权限可得不同答案."""
+    monkeypatch.setattr(ontostudio_auth.httpx, "AsyncClient", _SeqAsyncClient)
+    _SeqAsyncClient.payloads = list(payloads)
+    _SeqAsyncClient.calls = 0
+    ontostudio_auth._authz_cache.clear()
+    monkeypatch.setenv("ONTOSTUDIO_GATEWAY_URL", "http://gateway-test:9999")
+
+
+class _FakeRequest:
+    """_gateway_authorizes 只读 request.headers['cookie']，无需真 Request."""
+
+    def __init__(self, cookie: str = "access_token=fake-cookie") -> None:
+        self.headers = {"cookie": cookie}
+
+
+@pytest.mark.asyncio
+async def test_authz_cache_does_not_cross_contaminate_permissions(monkeypatch):
+    """同一用户查两个权限不得串味——两个权限各反查 gateway 一次，答案各自独立.
+
+    判别力（变异验证）：把缓存键改回 ``user.id`` 单键后，第二次调用命中第一次的缓存值
+    （gateway 只被反查 1 次，且第二个断言拿到第一个权限的 True）→ 本用例红。
+    """
+    _install_seq_gateway(
+        monkeypatch,
+        [
+            {"is_admin": False, "permissions": ["system:access"]},
+            {"is_admin": False, "permissions": ["kb:read"]},
+        ],
+    )
+    user = ontostudio_auth.CurrentUser(id=uuid.uuid4(), username="tester", email="tester@local")
+    request = _FakeRequest()
+
+    assert await ontostudio_auth._gateway_authorizes(request, user, "system:access") is True
+    assert await ontostudio_auth._gateway_authorizes(request, user, "ontology:action:review") is False
+    assert _SeqAsyncClient.calls == 2, "两个权限必须各反查一次 gateway（单键缓存会串味成 1 次）"
