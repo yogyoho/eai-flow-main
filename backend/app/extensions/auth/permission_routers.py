@@ -131,7 +131,19 @@ async def get_data_scope(
     （设计 docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md §3）。
     只读、无副作用；``resource`` 为 permissions.yaml 的**模块 key**
     （``ontology`` / ``contract_price`` / …），非 scope id。
-    未知资源或角色无 scope → ``none_allow``（fail-closed）。
+
+    **契约（2026-09-23 订正——本文此前写"未知资源或角色无 scope → none_allow"，已不成立）**：
+
+    | 情形 | 返回 |
+    |---|---|
+    | 角色无该资源的 scope | ``none_allow``（fail-closed） |
+    | **未知 resource（模块 key 打错）** | **非系统角色 ``none_allow``；超管 ``allow_all``** |
+
+    超管那一格是本端点与 ``with_data_scope`` 统一判定后**有意产生**的：超管旁路排在
+    ``get_data_scope`` **之前**，资源存不存在根本到不了那一步——而 ``with_data_scope("no_such_module")``
+    对超管同样返回 ``allow_all``。「两侧一致」优先于更早那句"未知资源一律 none_allow"，
+    否则同一个超管会在两侧拿到相反答案（详见 :func:`...middleware.resolve_data_scope`）。
+    未知资源仍然**留痕**（见下方 WARNING）——它就是给"key 打错"用的信号，不是给拒绝用的。
 
     判定体走 :func:`app.extensions.auth.middleware.resolve_data_scope`——**与
     ``with_data_scope`` 同一条路径**（超管旁路 + ABAC ``deny_data_scopes`` 扣减）。
@@ -161,10 +173,12 @@ async def get_data_scope(
     ``require_permission("system:access")`` 与同 router 的 ``/registry``（``role:read``）、
     ``/me``（``system:access``）对齐——此前只挂 ``get_current_user``，比同级松一档。
     """
-    # M-3: 未知 resource 与"角色没有配 scope"今天都产出 none_allow，调用方拿到 404 却分不清
-    # 是 typo 还是真没授权。注册表能区分"模块不存在"，那就留痕。
+    # M-3: 未知 resource 与"角色没有配 scope"到今天仍**都**可能产出 none_allow，调用方拿到 404
+    # 时分不清是 typo 还是真没授权。注册表能区分"模块不存在"，那就留痕。
+    # ⚠️ 措辞（2026-09-23 订正）：本条**不是**"按 none_allow 拒绝"——超管走旁路得 allow_all
+    # （见 docstring 的契约表）。日志说的只是"这个 key 不是已注册模块"，据此推断判定结果就错了。
     if resource not in {key for key, _ in get_permission_registry().list_modules()}:
-        logger.warning("数据范围请求了未注册的资源 key %r（疑似 typo）→ 按 none_allow 拒绝", resource)
+        logger.warning("数据范围请求了未注册的资源 key %r（疑似 typo）——判定按 registry 结果走（非系统角色 none_allow、超管 allow_all），此处仅留痕", resource)
 
     try:
         rule = await resolve_data_scope(current_user, db, resource)

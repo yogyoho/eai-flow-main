@@ -31,6 +31,7 @@ EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-22-ontostudio-action-layer-des
 from __future__ import annotations
 
 import json
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -211,18 +212,28 @@ async def _execute_on_target(conn: Any, sql: str, params: dict[str, Any], *, tab
         raise
 
 
-def _write_failure_detail(prefix: str, exc: BaseException) -> str:
+def _write_failure_detail(prefix: str, exc: BaseException, elapsed_s: float | None = None) -> str:
     """DB 失败 → 用户可见 detail，**TimeoutError 必须特判**。
 
-    为什么：``str(TimeoutError())`` 是**空串**，而「命令阶段超时」在 Task 7 收口之后是一条
-    设计上可达、且用户会看到的路径（`connect_args.timeout` 的握手超时同样抛它）——不特判的话
-    detail 会变成 ``"写事务失败: "``：一个把唯一线索留空的错误消息。
+    为什么特判：``str(TimeoutError())`` 是**空串**，不特判的话 detail 会变成 ``"写事务失败: "``
+    ——一个把唯一线索留空的错误消息（Task 7 收口命令阶段超时后这条路径设计上可达）。
+
+    **为什么不写"命令阶段超时"**（Task 7 质量审查订正，此前那版就是这么写的、**归因错**）：
+    本模块的引擎有**两个**阶段超时，而它们**抛的是同一个 ``TimeoutError``**（`connect_args.timeout`
+    的握手超时同样抛它，见 :func:`_gateway_me` 之外的本模块引擎注释）：握手 5s、命令 60s。
+    把二者都报成"命令阶段 60s 超时"，会把**一段 5 秒的等待说成 60 秒**——用户唯一的线索被指向
+    错误的阶段，排查方向直接反了。
+
+    故这里只报事实（"超时"），并用 ``elapsed_s`` 给出**区分二者最直接的线索**：握手超时 ≈
+    :data:`_CONNECT_TIMEOUT_S` 秒、命令超时 ≈ :data:`_WRITE_COMMAND_TIMEOUT_S` 秒，差一个数量级，
+    读的人一眼能分。``elapsed_s`` 为 None 时（未计时）就只说清"两者都可能"。
 
     只改 detail、不动归因码：本模块的错误契约（模块 docstring 的表）把 DB 侧失败一律记 500，
     超时是 DB 侧/链路侧的问题，不是"送来的东西不可用"。
     """
     if isinstance(exc, TimeoutError):
-        return f"{prefix}: 命令阶段超时（异步引擎 command_timeout={_WRITE_COMMAND_TIMEOUT_S}s 触发——链路被静默掐断，或锁等待超出预算）"
+        waited = f"本次已等待 {elapsed_s:.1f}s" if elapsed_s is not None else "本次耗时未记录"
+        return f"{prefix}: 数据库超时（{waited}）——握手与命令阶段**抛的都是 TimeoutError**，按耗时区分：≈{_CONNECT_TIMEOUT_S}s 是连不上目标库（握手），≈{_WRITE_COMMAND_TIMEOUT_S}s 是链路被静默掐断或锁等待超出预算（命令）"
     return f"{prefix}: {exc}"
 
 
@@ -243,21 +254,26 @@ async def _write_with_lazy_audit_table(write_txn: Callable[[], Awaitable[_WriteR
 
     可测试性：写成「接受一个写事务可调用」而非内联，是为了让「只对 42P01 触发」「只重试
     一次」能用注入的失败确定性地钉住（真库只能给出 42P01 这一种反例）。
+
+    计时（``elapsed``）：只为把 TimeoutError 的**两个来源**分开（握手 5s vs 命令 60s，见
+    :func:`_write_failure_detail`）——它不参与任何判定，也不改变重试策略。
     """
+    started = time.monotonic()
     try:
         return await write_txn()
     except ActionError:
         raise
     except Exception as exc:
         if not _is_missing_table_error(exc):
-            raise ActionError(_write_failure_detail("写事务失败", exc), 500) from exc
+            raise ActionError(_write_failure_detail("写事务失败", exc, time.monotonic() - started), 500) from exc
         await _build_audit_table_once(exc)  # 失败即抛 ActionError（每进程一次，不再重试）
+    started = time.monotonic()
     try:  # 原事务已回滚 → 这一次是新事务
         return await write_txn()
     except ActionError:
         raise
     except Exception as exc:
-        raise ActionError(_write_failure_detail("懒建审计表后写入仍失败", exc), 500) from exc
+        raise ActionError(_write_failure_detail("懒建审计表后写入仍失败", exc, time.monotonic() - started), 500) from exc
 
 
 async def invoke_action_core(

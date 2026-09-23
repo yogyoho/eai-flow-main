@@ -623,14 +623,18 @@ async def test_only_missing_table_triggers_lazy_build(monkeypatch, lazy_flag_res
     assert write_calls["n"] == 1, "失败被重试了——除 42P01 外都不该重试"
 
 
-async def test_command_timeout_failure_detail_is_not_empty(monkeypatch, lazy_flag_reset):
-    """命令阶段超时转出的 detail **不得为空**（Task 7 收口该超时时补的钉子）。
+async def test_write_timeout_detail_names_both_phases_and_elapsed(monkeypatch, lazy_flag_reset):
+    """超时 detail 必须**不误归因**、且带上区分两个阶段的耗时线索（Task 7 质量审查订正）。
 
-    为什么需要单列一条：``str(TimeoutError())`` 是空串，而 Task 7 之后这条路径是**设计上可达**
-    且用户会看到的（写路径引擎现在带 `command_timeout`）。回到 `f"{prefix}: {exc}"` 的写法时
-    detail 变成 ``"写事务失败: "``——**唯一线索被留空**，而上面那条参数化用例断的是
-    ``"写事务失败" in detail``，它照样绿（变异实测：把 `_write_failure_detail` 短路成
-    `f"{prefix}: {exc}"` → 只有本条红）。
+    两个问题各一条断言：
+    ① ``str(TimeoutError())`` 是空串 → 不特判就得到 ``"写事务失败: "``（唯一线索留空）；
+    ② **更隐蔽的那个**：握手（5s）与命令（60s）**抛的是同一个 TimeoutError**，而初版文案把
+       二者一律写成"命令阶段超时（command_timeout=60s 触发）"——**一段 5 秒的等待会被报成 60 秒**，
+       排查方向直接反了。故断言文案**同时点名两个阶段**（只说一个就会把 5s 说成 60s）+
+       带上实际耗时（区分二者最直接的线索，差一个数量级）。
+
+    判别力（变异实测）：把 `_write_failure_detail` 的 TimeoutError 分支换回只写"命令阶段"的
+    旧文案 → 本用例红（`"握手" not in detail`）；短路成 `f"{prefix}: {exc}"` → 也红。
     """
 
     async def _timeout() -> tuple[dict, dict]:
@@ -639,8 +643,11 @@ async def test_command_timeout_failure_detail_is_not_empty(monkeypatch, lazy_fla
     with pytest.raises(ActionError) as e:
         await executor_module._write_with_lazy_audit_table(_timeout)
     assert e.value.status_code == 500
-    assert e.value.detail.strip() != "写事务失败:", f"超时 detail 丢光了线索: {e.value.detail!r}"
-    assert f"{executor_module._WRITE_COMMAND_TIMEOUT_S}s" in e.value.detail, "detail 未写明是哪个超时、值是多少"
+    detail = e.value.detail
+    assert detail.strip() != "写事务失败:", f"超时 detail 丢光了线索: {detail!r}"
+    assert "握手" in detail and "命令" in detail, f"只点名一个阶段就会把 5s 的握手超时说成 60s: {detail!r}"
+    assert "已等待" in detail, f"没带上区分两个阶段的耗时线索: {detail!r}"
+    assert f"{executor_module._WRITE_COMMAND_TIMEOUT_S}s" in detail, "detail 未写明命令阶段的值是多少"
 
 
 async def test_lazy_build_is_attempted_once_per_process(monkeypatch, lazy_flag_reset):
