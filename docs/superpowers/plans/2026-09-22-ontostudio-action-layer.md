@@ -171,6 +171,13 @@ grep -nE "留给 Task|随 Task|那是 Task .* 的范围|Task [0-9] (/|和) [0-9]
 
 > **上面两条在本轮已被上方的「Task 6 留下的两件（一件已闭、一件仍在）」取代并去重**（原文保留在 git 历史里即可，勿在正文留两处同义陈述——一处说"已裁定不是遗漏"、一处说"已闭"会让人以为两件事）。
 
+**Task 10 收口（2026-09-24）——四件后手必须知道的**：
+
+1. **🔴 spec §2 步骤 5「受影响行增量重投影进内核图」是空转**（本计划唯一未实装的管线步骤）。`routers._project_incrementally` → `get_kernel().refresh()`，而 `refresh()`（`kernel/service.py`）只做 **schema 重编 + 闭包 + 规则重跑，从不读 `dg_*` 行**；只有 `POST /formal/load`（`kernel/loader.py::load_doc_graph_rows`）才把行装进断言图。后果：一次 confirm 之后 DB 行已 `active`、接口回 `projected: true`、`errors: []`，而**断言图里没有这一行**（本机与活容器双向实测：`POST /formal/load` 前后导出 `graphs=asserted` 对比，前者无该 IRI、后者有且 `status="active"`）。`_project_incrementally` 的 docstring 只承认"**非**增量"，**没承认根本没投影**——那句话本身也需要订正。**修复位置不在 Task 10 范围**（本 Task 不改 Task 1–9 产物），故已用 `tests/test_actions_e2e.py::test_03_action_projection_does_not_reach_the_graph_KNOWN_GAP` **钉住现状**：实装步骤 5 后该用例会变红，**届时删掉它**。
+2. **验收 ① 的 SHACL 半边不能由计划给的那行断言证明**：`kernel/conformance._c3_shacl_report_shape` 只校验报告**形态**（五字段齐备），`conforms=False` 时照样 `passed=True`（实测：图里塞一个 `status='bogus_status'` 的实体 → `run_shacl().conforms is False`、1 条违规，而 `all(c.passed ...)` 仍为**真**）。故 e2e 文件直接断言 `run_shacl(...).conforms`，且断言对象是**装了这一行的隔离图**（计划那行对 `get_kernel().store` 求值，那在本进程里是另一回事——见 1）。
+3. **Task 10 Step 3 的 `restart` 不足以做"真人路径验证"**：`ontostudio-backend` **不 bind-mount 代码**（compose 只挂 kernel 卷），镜像烘焙 `COPY app ./app`；验收时实测活容器**连 `app/ontology/actions/` 目录都不存在**（`/openapi.json` 无 `actions/invoke`，21 条路由）。正确步骤是 `docker compose -p eai-docker -f docker-compose-dev.yaml build ontostudio-backend && ... up -d ontostudio-backend`（deps 层有缓存，实测秒级）。另：Step 3 里那条 `docker exec ... get_kernel().refresh()` 会撞 pyoxigraph 的 `/data/kernel/LOCK`（**服务进程持锁**）——本轮重建后偶然可取，**不可依赖**；等价物是 `POST /formal/infer` 与 `GET /formal/validate`（HTTP 面）。
+4. **验收 §4 已闭合，且不必动角色模型**：`config/permissions.yaml` 只把 `ontology:action:review` 与 `ontology_all` 给了 `superadmin`（旁路），故 §4 需要的"有操作权限但不带 `ontology_all`"**在角色维度确实不存在**。解法**不是**新建角色（那属权限模块的产品决策，见上「Task 6 留下的两件」），而是走平台自己的 **ABAC 策略**：`POST /api/policies`，`conditions={attr:user_id, op:eq, value:<user>}`、`grants={permissions:["ontology:action:review"]}`——`/me` 会把 policy grant 并进 `permissions`（`UnifiedPermissionEngine.list_permissions`），而该用户角色（`user`）本就不带 `ontology_all` → `/scope?resource=ontology` 回 `none_allow` → 动作 **404（非 403）**。实测：同一用户同一请求，授权前 `403 {"detail":"缺少权限：ontology:action:review"}`、授权后 `404 {"detail":"目标不存在或不在可见范围内"}`。**⚠️ 测这条必须等 >30s**：`app/auth.py` 的 `_authz_cache` 按 `(user_id, permission)` 缓存 30s，短于它只会拿到缓存里的旧 403（本轮踩过：32s 不够、45s 稳）。
+
 **Task 5 遗留、仍需在后续处理的两件**（该实现者本轮提醒）：① Task 8 的 `_ok()` 用 `json.dumps` **无 `default=str`**，而 `after` 现在可能带 `datetime`（Task 5 改用 `RETURNING` 的连带）——**已写进 Task 8 节**；② `test_permissions_scope_endpoint.py` 里"（Task 6 产物）"那句标注。
 
 **Task 5 开工前必须知道的三件事**（前四个 Task 的审查反复确认过；**对每个 Task 同样成立**）：
@@ -2503,16 +2510,20 @@ Expected: PASS（4 项）
 
 - [ ] **Step 3: 重启容器并做一次真人路径验证**
 
+> **⚠️ 订正（Task 10 实跑，2026-09-24）**：`restart` **不够**——`ontostudio-backend` 不 bind-mount 代码（compose 只挂 kernel 卷），镜像烘焙 `COPY app ./app`；实跑时活容器里**连 `app/ontology/actions/` 都不存在**（`/openapi.json` 只有 21 条路由、无 `actions/invoke`）。**必须先 build**（deps 层有缓存，实测秒级）。另：下面那条 `docker exec … get_kernel().refresh()` 会撞 pyovigraph 的 `/data/kernel/LOCK`（服务进程持锁）——本轮重建后偶然可取，**别依赖**；等价 HTTP 面是 `POST /formal/infer` / `GET /formal/validate`。
+
 ```bash
 cd ../../docker
+docker compose -p eai-docker -f docker-compose-dev.yaml build ontostudio-backend   # ← 订正：restart 不会带进代码
 docker compose -p eai-docker -f docker-compose-dev.yaml restart gateway ontostudio-backend
+docker compose -p eai-docker -f docker-compose-dev.yaml up -d ontostudio-backend
 # 建表由 ontostudio 自身 lifespan 的 ensure_tables() 负责（app/db.py）；
 # 下面这条只是确认表真的在（修复前 to_regclass 为 null）
 docker exec eai-flow-postgres-ext psql -U agentflow -d agentflow -c "\dt dg_action_audit"
-# 内核重载
-docker exec -w /app ontostudio-backend /app/.venv/bin/python -c "from app.ontology.kernel.service import get_kernel; print(get_kernel().refresh())"
+# 内核重载（⚠️ 上面的订正：容器内直调会撞 LOCK；等价 HTTP 面更稳）
+curl -s -X POST http://localhost:8005/api/extensions/ontology/formal/infer   # 需带 Cookie，见 `app/auth.py`
 ```
-Expected: `dg_action_audit` 出现在 `\dt` 列表；refresh 的 `errors=[]`
+Expected: `dg_action_audit` 出现在 `\dt` 列表；infer 的 `errors=[]`
 
 - [ ] **Step 4: 提交**
 
