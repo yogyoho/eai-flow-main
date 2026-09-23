@@ -2225,7 +2225,12 @@ async def _review_entity(arguments: dict):
 
 `_ok(...)` 是本文件内与既有 `_err(...)` 对称的小助手（`_err` 已存在）：`return [TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))]`。
 
-> **⚠️ 必须加 `default=str`**（Task 5 审查交接的前向风险，勿漏）：
+> **⚠️ 订正（Task 8 实现者实测）：本节初版把 `default=str` 写成"待补的前向风险"——那个前提不成立。**
+> `mcp.py::_ok` **自 `325bb8e47`（后端独立化）起就一直带 `default=str`**，早于整个动作层计划。所谓"当前不可达 + 别等它可达"是**我的误记**。
+> 实现者做的正确处理：① 读 `git show HEAD:.../mcp.py` 逐字确认；② 新增 `test_invoke_action_result_survives_datetime` 用 `datetime` 走**真实 `call_tool` → `_invoke_action` → `_ok` 路径**断言 `success is True` 且 `after.updated_at == str(stamp)`；③ 变异删 `default=str` → 该用例红。**即兜底现在被测试钉住，不再只是"碰巧还在"。**
+> **教训同"归属语句"那一类**：把"我以为缺"写成待办，会让下一个 Task 把"已完成"当成"要做"——**陈述必须由实测买单**。
+>
+> **⚠️ 若要动 `_ok`，必须加 `default=str`**（原交接的意图，保留于此以防将来有人真去改它）：
 > ```python
 > json.dumps(payload, ensure_ascii=False, default=str)
 > ```
