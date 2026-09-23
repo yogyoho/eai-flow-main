@@ -1894,6 +1894,29 @@ ontology 模块补 ontology_all 数据范围与 ontology:action:review 操作权
 
 ---
 
+### Step 9: `graph_relation` 绑 `scope_resource`（**Task 3 交棒、Task 6 掉落的一步**）
+
+> **本步骤是补一个跨 Task 的漏接**。Task 3 的计划明文写着「只加 `graph_entity` 一个，不要顺手加 `graph_relation`——设计 §3 提到两个对象类型，但**那是 Task 6 的范围**」。**而 Task 6 全节没有这一步，Task 7–10 也没有**（全计划 `graph_relation` 只出现在那一句里）。
+>
+> **这是本计划第四次出现"被推迟的项没人认领"**（前三次：Task 2→Task 3 的动作声明、Task 4→Task 5 的前向风险、以及"随 Task 5 落地"的懒建）。**规律：凡写下"那是 X 的范围"，就必须同时改 X 的步骤——否则那句话只是自我安慰。**
+
+在 `ontostudio/backend/app/ontology/registry/doc_graph.yaml` 的 `graph_relation` mapping 上，同样加：
+
+```yaml
+    scope_resource: ontology
+```
+
+**影响**：今日无运行期后果（现有动作只 targeting `graph_entity`），但任何将来 targeting `graph_relation` 的动作会恒 `none_allow`（权限配了但没用）；且 Task 9 的 `scope_bindings` lint 可能就此报错。
+
+**要有的测试**：`assert get_registry().object_types["graph_relation"].scope_resource == "ontology"`（与 `graph_entity` 那条同形）。
+
+```bash
+git add ontostudio/backend/app/ontology/registry/doc_graph.yaml ontostudio/backend/tests/
+git commit -m "fix(ontostudio): graph_relation 补 scope_resource（Task 3 交棒、Task 6 掉落）"
+```
+
+---
+
 ## Task 7: REST 暴露面
 
 **Files:**

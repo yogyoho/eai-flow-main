@@ -213,6 +213,19 @@ dg_action_audit
 
 **今日实际形态（写明以免误解）**：本体表无身份列，因此带 `ontology_all`（空模板）的角色解析为 `allow_all`，不带者为 `none_allow`——二者之间**没有中间态**。**这就是域级授权**：能看/不能看整个域。通道是真的：等哪天补上归属列，填 `scope_bindings` 即可开出真行级，不改架构。
 
+### 3.1 `/scope` 不是平台数据范围判定的忠实投影（Task 6 规格审查 F2——**本节的缺口**）
+
+本节原话只说「返回 `DataScopeEngine.get_data_scope()` 的结果」。而平台正典 `with_data_scope`（`backend/app/extensions/auth/middleware.py:350-388`）在那之上还有两步，**`/scope` 两步都没做**，且**方向相反**：
+
+| 缺的那一步 | 正典行为 | `/scope` 当前 | 方向 |
+|---|---|---|---|
+| **超管旁路**（`middleware.py:380`：`is_system` 或 `permissions` 含 `"*"` → `allow_all`） | 直接放行 | 不认 | **比平台更严** → 会 404 掉本该允许的动作 |
+| **ABAC `deny_data_scopes` 扣减**（`middleware.py:385`；`get_data_scope` 本身**支持** `deny_scope_ids`） | 在 allow 上扣 deny | **不传** `deny_scope_ids` | **比平台更松 = fail-open** → 一条 `deny_data_scopes: [ontology_all]` 的策略会被动作层忽略 |
+
+**今日无实害**：超管旁路那一半被 superadmin 的 `data_scopes: [ontology_all]` 授权**掩盖**住了（这正是 Task 6 提交信息里写"必需"的原因）；deny 那一半今日无 `ontology_all` 的 deny 策略，且非超管角色都没有 `ontology_all`（Task 6 审查逐一验过 6 个角色）。
+
+**但这是设计缺口，不是实现缺口**——实现严格符合本节字面。**修法方向见 Task 7 接线清单**：要么让 `/scope` 与 `with_data_scope` 共用同一条判定路径（推荐，顺带消除"两处口径"这一类问题），要么在此显式记录为已知不等价并说明何时必须收敛。**不要把 fail-open 那一半留成无记录状态。**
+
 `FilterRule` 走 wire 时用其字段的 JSON 形态（`operator` / `field` / `value` / `children`），两侧各自持有数据类，**不共享代码**——OntoStudio 是独立服务，无法 import `app.*`。
 
 ## 4. Agent 面
