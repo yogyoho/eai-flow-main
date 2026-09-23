@@ -12,6 +12,30 @@
 
 **工作目录约定**：除非另注，所有命令在 `D:\eai\eai-flow-main\ontostudio\backend` 下执行；gateway 侧改动在 `D:\eai\eai-flow-main\backend` 下执行。测试统一 `PYTHONPATH=. uv run pytest <path> -v`（若 `uv run` 在该环境不工作，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest <path> -v`——Task 1/2 实测可用）。
 
+### ⚠️ 每个 Task 开工前必须跑一次「归属语句」检查（Task 1–7 的教训，**六次复发**）
+
+**这不是提示，是一条命令。** 本计划已**六次**出现"凡写下『那是 X 的范围』/『留给 X』/『随 X 落地』，却没同时改 X 的步骤"：
+
+| 次 | 谁推给谁 | 结果 |
+|---|---|---|
+| 1 | Task 2 → Task 3（动作声明） | Task 3 初稿没接 |
+| 2 | Task 4 → Task 5（前向风险） | 写进计划才接住 |
+| 3 | 「随 Task 5 落地」（懒建 + `command_timeout`） | Task 5 步骤里没有 |
+| 4 | Task 3 → Task 6（`graph_relation`） | Task 6 没接 |
+| 5 | spec「收敛见 Task 7 接线清单」 | Task 7 原文一字未提 |
+| 6 | 计划 L131「留给 Task 7 的暴露面裁决」（`command_timeout`） | **Task 7 原文一字未提**（Task 7 实现者自查发现） |
+
+**前五次我的对治都是"在计划里写得更清楚"——而"写文字"正是失败的那个手段**（第六次是 Task 7 实现者自己发明了 grep 才防住的）。所以：
+
+**每个 Task 开工前，先跑这一条，并把输出贴进报告：**
+
+```bash
+grep -nE "留给 Task|随 Task|那是 Task .* 的范围|Task [0-9] (/|和) [0-9]|待 Task|由 Task" \
+  docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md
+```
+
+**判据**：输出的每一条，要么①其目标 Task 的步骤里确有对应步骤（grep 目标节确认），要么②在这一轮被显式认领并补上。**两者都没有 = 第七次复发，停下来处理。**
+
 ### ⚠️ 每个 Task 的验证清单必须包含 format 检查（Task 1–2 的教训）
 
 **ontostudio 没有 Makefile，所以没有 `make lint` 替你兜底。** 主仓 `make lint` 是**两条**命令：`ruff check .` **加** `ruff format --check .`。只跑前者会漏掉排版问题——Task 2 就漏了一次（新测试文件是全仓唯一未格式化的文件，被规格审查者抓到）。
