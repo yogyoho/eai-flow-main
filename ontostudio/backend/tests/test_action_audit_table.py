@@ -180,6 +180,31 @@ def test_ensure_tables_bounds_connect_timeout(monkeypatch):
     assert captured["connect_args"].get("timeout", 999) <= 5, captured["connect_args"]
 
 
+def test_ensure_tables_bounds_command_timeout(monkeypatch):
+    """确定性钉住生产引擎带**命令阶段**超时，且值不被悄悄放大（计划 Task 5 Step 6 (b)）。
+
+    为什么需要它：上面那条只界住**握手**——握手成功后 asyncpg 的 ``command_timeout`` 默认
+    None，链路被防火墙/NAT 静默掐断时要等 TCP keepalive（Windows 约 2 小时），即「启动楔死」
+    失效模式的后移版本；另一条是 CREATE TABLE 等 ACCESS EXCLUSIVE 锁。
+    手法照 ``test_ensure_tables_bounds_connect_timeout``：**捕获传给引擎的实参**，不用计时
+    上界（上界抓不到值漂移，那条已被变异证伪），故与 URL 环境无关。
+    """
+    from app import db
+    from app.ontology import connectors
+
+    captured: dict = {}
+    real = db.create_async_engine
+    monkeypatch.setattr(db, "create_async_engine", lambda url, **kw: (captured.update(kw), real(url, **kw))[1])
+    # 端口 1 必拒 → 立刻抛，不必等黑洞的 5s（本条要验的是实参，不是耗时）
+    monkeypatch.setattr(connectors, "_ext_url", lambda: "postgresql+asyncpg://nobody:nope@127.0.0.1:1/none")
+    with pytest.raises(Exception):
+        asyncio.run(db.ensure_tables())
+    assert "connect_args" in captured, "生产引擎丢了连接/命令阶段超时"
+    assert captured["connect_args"].get("command_timeout") == db._COMMAND_TIMEOUT_S, captured["connect_args"]
+    # 上界兜住常量本身的漂移：30→300 这类「悄悄放大」必须红（同步钉住 spec §1.2.2 的建议区间）
+    assert 0 < db._COMMAND_TIMEOUT_S <= 60, db._COMMAND_TIMEOUT_S
+
+
 def test_ensure_tables_times_out_on_blackhole(monkeypatch):
     """建表不得在黑洞地址上把启动吊死——无 connect_args 时本机实测 21.5s（Linux 可到分钟级）。
 

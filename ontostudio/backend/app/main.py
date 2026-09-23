@@ -97,10 +97,12 @@ def create_app() -> FastAPI:
         # 各自报错；若在此硬失败，启动瞬间的 DB 抖动（或离线部署里 postgres 尚未 healthy）
         # 会整服务拒起——代价大于收益（对一张只有审计写入方需要的表，这个交换是错的轴）。
         # 建表结果落到 app.state 并透出到 /health（见 health 端点），不静默。
-        # 已记录的缺口（不是遗漏）：建表只在此处尝试一次——DB 后起时需**重启**才补建，
-        # 懒建/首用重试随 Task 5（真正的写入方）落地。
-        # ponytail: 不在此处加重试/后台轮询——修复点是 Task 5 的写入路径, 现在加就是给一个
-        #          尚无调用方的表写猜测性机制。
+        # 建表在此处只尝试一次；缺口已由**写路径**兜住（Task 5 Step 6 落地）：
+        # app/ontology/actions/executor.py 在该表缺失（SQLSTATE 42P01）时懒建一次并重试
+        # （每进程一次，有界）。故 DB 后起时 dg_action_audit 不再是「必须重启」——但仅限
+        # 这张表：其余 dg_* 表没有写入路径在跑（dg_entities 等的缺失仍要靠重启补建）。
+        # ponytail: 仍不在此处加重试/后台轮询——修复点在写入路径, 这里再挂一个只会多出
+        #          一个与写路径竞争的建表者。
         try:
             await ensure_tables()
             application.state.tables_ready = True

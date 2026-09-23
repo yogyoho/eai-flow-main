@@ -17,6 +17,8 @@ EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-22-ontostudio-action-layer-des
 
 400/500 的分界是**归因**而非严重度：400 = 送来的东西不可用，500 = 服务端自己的声明坏了。
 不归一的话它们会以 ``ValueError`` 逃出模块，在 REST 层变成丢掉 detail 的裸 500。
+**DB 故障**（连接失败、权限不足、审计表缺失）同样归一到 500：坏的是服务端这一侧——
+归因与懒建/重试的规则见 ``_write_with_lazy_audit_table``。
 
 **已知天花板（有意，非疏漏）**：数据范围里 ``not_in`` 的空集编译为 ``NOT (col = ANY('{}'))``
 ≡ ``TRUE`` ≡ **放行全部**（``NOT IN`` 的标准语义，方向与 ``in`` 相反）。今日无暴露路径——
@@ -30,13 +32,15 @@ from __future__ import annotations
 
 import json
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from typing import Any
 
+import asyncpg
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app.db import ensure_tables
 from app.ontology.actions.sql_write import WriteGuardError, build_precondition_where, build_update_set, quote_ident
 from app.ontology.connectors import _ext_url
 from app.ontology.registry import get_registry
@@ -92,6 +96,102 @@ def _bind_params(target_pk: uuid.UUID, *fragments: tuple[str, dict[str, Any]]) -
     return merged
 
 
+# ── 写路径韧性：审计表懒建 + 有界重试（计划 Task 5 Step 6）────────────────────────
+# 背景：dg_action_audit 在活库里可能压根不存在——建表只在 lifespan 跑一次，而 dev compose
+# 没有 postgres-ext 的 depends_on（offline 有），DB 后起时本服务早就在跑了（设计 §1.2.1
+# 表第三行把这条缺口判给 Task 5）。本表**只有本模块一个写入方**，故「表不存在」的发现点
+# 就在这条 INSERT 上；修在这里而不是给 lifespan 加轮询，是因为后者的代价（多一个与写路径
+# 竞争的建表者）换不到任何东西。
+_lazy_schema_attempted = False
+
+_UNDEFINED_TABLE_SQLSTATE = "42P01"
+
+
+def _is_missing_table_error(exc: BaseException) -> bool:
+    """异常链里是否存在「表不存在」（SQLSTATE ``42P01``）——懒建的**唯一**触发器。
+
+    为什么必须这么窄（``except DBAPIError`` 是错的）：宽 catch 会把连接失败、权限不足、
+    死锁一并读成「表还没建」，于是去做一次注定失败的建表、再重试一次注定失败的写，最后
+    抛出的错误指向「懒建之后仍失败」——一次普通的基础设施故障被改写成一条误导性路径
+    （且真正的错误被后一条错误盖住）。只有 42P01 的含义是确定的：schema 缺失，且**恰好**
+    是 create_all 能补上的那一类。
+
+    为什么必须走异常链：asyncpg 的原始异常被 SQLAlchemy 包了两层，而**只有内层两层带
+    ``sqlstate``**（顶层为 None——2026-09-23 对真库实测，见 tests/test_actions_executor.py
+    的懒建测试）：
+    ``sqlalchemy.exc.ProgrammingError`` → ``AsyncAdapt_asyncpg_dbapi.ProgrammingError``(42P01)
+    → ``asyncpg.exceptions.UndefinedTableError``。只看最外层就永远不触发。
+    只走 ``__cause__`` / ``orig``（SQLAlchemy 用 ``raise ... from ...`` 挂链），**不走
+    ``__context__``**——后者是「恰好在外层 except 里又抛」的副产品，会把与本次失败无关的
+    嵌套异常拉进来（假阳性）。
+    """
+    seen: set[int] = set()
+    cur: BaseException | None = exc
+    while cur is not None and id(cur) not in seen:
+        seen.add(id(cur))
+        if isinstance(cur, asyncpg.exceptions.UndefinedTableError):
+            return True
+        if _UNDEFINED_TABLE_SQLSTATE in (getattr(cur, "sqlstate", None), getattr(cur, "pgcode", None)):
+            return True
+        nxt: BaseException | None = cur.__cause__ if cur.__cause__ is not None else getattr(cur, "orig", None)
+        cur = nxt if isinstance(nxt, BaseException) else None
+    return False
+
+
+async def _build_audit_table_once(original: BaseException) -> None:
+    """懒建审计表——每进程**一次**；再失败就如实抛（不是一个重试循环）。
+
+    有界为什么是硬要求：无界重试会把「DB 长期不可用」变成**每条写请求**都附带一次建表尝试
+    （每次至少一个 5s 握手超时），而它注定失败——故障从「一条 500」放大成「每个请求多 5 秒
+    且仍然失败」。flag 在 await **之前**置位：并发请求里只有第一个能建，其余立刻失败
+    （fail-closed——宁可让调用方看到「表不存在」，也不让 N 个请求各建一次表）。
+
+    已知限制（有意，非疏漏）：`create_all` **只建缺失的表，不做 schema 变更**——本机制
+    只解决「dg_action_audit 不存在」，解决不了「表在但列不全」（那仍需人工迁移，同
+    app/db.py 的声明）。别把懒建读成自动迁移。
+    """
+    global _lazy_schema_attempted
+    if _lazy_schema_attempted:
+        raise ActionError(f"审计表 dg_action_audit 不存在，且本进程已尝试过懒建（不再重试）: {original}", 500) from original
+    _lazy_schema_attempted = True
+    try:
+        await ensure_tables()
+    except Exception as exc:  # DB 不可达 / 权限不足 / 建表被拒 → 如实抛（服务端问题 = 500）
+        raise ActionError(f"审计表 dg_action_audit 不存在，自动建表失败: {exc}", 500) from exc
+
+
+async def _write_with_lazy_audit_table(
+    write_txn: Callable[[], Awaitable[tuple[dict[str, Any], dict[str, Any]]]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """写事务 + 「审计表不存在」时的**一次**懒建重试；其余 DB 失败如实转 ``ActionError``。
+
+    归因（模块 docstring 的错误契约表同一套）：DB 失败一律 500——调用方没做错任何事
+    （入参从不进 SQL 值位置），坏的是服务端这一侧。业务判定（``ScopeDenied`` 404 /
+    前置条件 409）不是 DB 故障，原样上抛。
+
+    重试必须在**新事务**里：``engine.begin()`` 的上下文已随异常回滚，复用它只会拿到一个
+    失效事务——对同一事务再发任何语句只回 25P02（``InFailedSQLTransaction``，2026-09-23
+    探针实测；同一 engine 上开新事务则正常）。那会把真正的错误盖成一个假错误。
+
+    可测试性：写成「接受一个写事务可调用」而非内联，是为了让「只对 42P01 触发」「只重试
+    一次」能用注入的失败确定性地钉住（真库只能给出 42P01 这一种反例）。
+    """
+    try:
+        return await write_txn()
+    except ActionError:
+        raise
+    except Exception as exc:
+        if not _is_missing_table_error(exc):
+            raise ActionError(f"写事务失败: {exc}", 500) from exc
+        await _build_audit_table_once(exc)  # 失败即抛 ActionError（每进程一次，不再重试）
+    try:  # 原事务已回滚 → 这一次是新事务
+        return await write_txn()
+    except ActionError:
+        raise
+    except Exception as exc:
+        raise ActionError(f"懒建审计表后写入仍失败: {exc}", 500) from exc
+
+
 async def invoke_action_core(
     action_id: str,
     params: dict[str, Any],
@@ -143,7 +243,9 @@ async def invoke_action_core(
 
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     errors: list[str] = []
-    try:
+
+    async def _write_txn() -> tuple[dict[str, Any], dict[str, Any]]:
+        """一次写事务：锁定行 → 前置条件 → UPDATE(RETURNING) → 审计。"""
         async with engine.begin() as conn:
             locked = await conn.execute(text(f"SELECT * FROM {table_q} WHERE {where} FOR UPDATE"), params_all)
             row = locked.mappings().first()
@@ -188,6 +290,11 @@ async def invoke_action_core(
                     "source": source,
                 },
             )
+            return before, after
+
+    try:
+        # 懒建审计表 / 有界重试 / DB 失败归因全在这层（见 _write_with_lazy_audit_table）
+        before, after = await _write_with_lazy_audit_table(_write_txn)
     finally:
         await engine.dispose()
 

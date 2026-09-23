@@ -5,13 +5,19 @@
 """
 
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
+import asyncpg
 import pytest
+import sqlalchemy.exc
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app.db import ensure_tables
+from app.ontology import connectors
 from app.ontology.actions import executor as executor_module
 from app.ontology.actions.executor import ActionError, ScopeDenied, invoke_action_core
 from app.ontology.connectors import _ext_url
@@ -27,7 +33,11 @@ pytestmark = [pytest.mark.integration, pytest.mark.asyncio]
 
 
 async def _seed_entity(status: str = "pending_review") -> uuid.UUID:
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    return await _seed_entity_in(_ext_url(), status=status)
+
+
+async def _seed_entity_in(url: str, status: str = "pending_review") -> uuid.UUID:
+    engine = create_async_engine(url, poolclass=NullPool)
     try:
         async with engine.begin() as conn:
             row = await conn.execute(
@@ -43,7 +53,11 @@ async def _seed_entity(status: str = "pending_review") -> uuid.UUID:
 
 
 async def _get_status(pk: uuid.UUID) -> str:
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    return await _get_status_in(_ext_url(), pk)
+
+
+async def _get_status_in(url: str, pk: uuid.UUID) -> str:
+    engine = create_async_engine(url, poolclass=NullPool)
     try:
         async with engine.begin() as conn:
             row = await conn.execute(text("SELECT status FROM dg_entities WHERE id = :id"), {"id": pk})
@@ -63,7 +77,11 @@ async def _get_updated_at(pk: uuid.UUID) -> datetime:
 
 
 async def _audit_rows(pk: uuid.UUID) -> list[dict]:
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    return await _audit_rows_in(_ext_url(), pk)
+
+
+async def _audit_rows_in(url: str, pk: uuid.UUID) -> list[dict]:
+    engine = create_async_engine(url, poolclass=NullPool)
     try:
         async with engine.begin() as conn:
             rows = await conn.execute(
@@ -421,3 +439,248 @@ async def test_caller_params_are_recorded_but_never_reach_sql():
     assert (await _audit_rows(pk))[0]["params"] == hostile
     assert result["after"] == {"status": "active"}  # 声明说了算
     assert await _get_status(pk) == "active"
+
+
+# ── Task 5 Step 6：写路径韧性——审计表懒建（有界）+ 非「表不存在」不得懒建 ──────────────
+# 计划: docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md「Task 5 / ### Step 6」。
+#
+# 分工：**正面**（真 42P01 → 懒建 → 重试成功）只有真库能造出真形状——asyncpg 的原始异常被
+# SQLAlchemy 包两层、且只有内层两层带 sqlstate——故第 1 条在一个**一次性 scratch 库**上跑
+# （见 _reset_scratch_db 里「为什么不改真表」）；**反面**（不该触发 / 只触发一次）真库给不出
+# 反例（42P01 只有一种），故第 2/3/4 条用注入的失败喂同一条代码路径（_write_with_lazy_audit_table）。
+
+_SCRATCH_DB = "ontostudio_pytest_lazy"
+
+
+def _scratch_url() -> str:
+    """scratch 库 URL（同实例、换库名）——_ext_url 可能带 query，故用 make_url 改 database。"""
+    return make_url(_ext_url()).set(database=_SCRATCH_DB).render_as_string(hide_password=False)
+
+
+async def _admin_exec(sql: str) -> None:
+    """在真库上跑一条管理语句。
+
+    CREATE/DROP DATABASE **不能在事务块里**执行，故这里用 asyncpg 直连（它默认自动提交），
+    而不是 SQLAlchemy 引擎。``WITH (FORCE)``（PG ≥ 13，本机 16.14）顺带掐掉残留连接——
+    否则上一轮异常的残留连接会让下一轮 DROP 失败。
+    """
+    dsn = make_url(_ext_url()).set(drivername="postgresql").render_as_string(hide_password=False)
+    conn = await asyncpg.connect(dsn)
+    try:
+        await conn.execute(sql)
+    finally:
+        await conn.close()
+
+
+async def _exec_in(url: str, sql: str) -> None:
+    engine = create_async_engine(url, poolclass=NullPool)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text(sql))
+    finally:
+        await engine.dispose()
+
+
+async def _reset_scratch_db(scratch: str) -> None:
+    """重建一次性 scratch 库：**全部 dg_* 就位，唯独 dg_action_audit 不存在**。
+
+    为什么另起一个库，而不是把真表改名藏起来（**初版就是这么写的，已被实测证伪**）：
+    PostgreSQL 的 ``ALTER TABLE ... RENAME`` **不会**跟着改索引名（``dg_action_audit_pkey``、
+    ``ix_dg_action_audit_*`` 都留在原表上），于是懒建的 create_all 建表时撞名失败
+    （DuplicateTableError：relation "ix_dg_action_audit_actor_created" already exists）——
+    不但测不出懒建，还把一个改名后的活库留在原地污染后续用例（2026-09-23 实测）。
+    DROP 真表也一样：中途崩掉就是一个坏掉的活库。独立库最坏只脏自己。
+    """
+    await _admin_exec(f'DROP DATABASE IF EXISTS "{_SCRATCH_DB}" WITH (FORCE)')
+    await _admin_exec(f'CREATE DATABASE "{_SCRATCH_DB}"')
+    await ensure_tables()  # 生产建表路径（fixture 已把 _ext_url 指向 scratch）
+    await _exec_in(scratch, "DROP TABLE dg_action_audit")  # 制造「表缺失」——本测试的起点
+
+
+@pytest.fixture()
+def lazy_flag_reset(monkeypatch):
+    """懒建 flag 是模块级「每进程一次」——用例之间必须复位，否则先跑的那条把额度用光。
+
+    用 monkeypatch 而非直接赋值：用例结束自动还原（不在活树里留状态）。
+    """
+    monkeypatch.setattr(executor_module, "_lazy_schema_attempted", False)
+
+
+async def test_missing_audit_table_is_lazily_created_and_write_succeeds(monkeypatch, lazy_flag_reset):
+    """表**真的不存在**时：懒建一次 → 重试成功；断言**可观测效果**（状态改了 + 审计行在）。
+
+    为什么不注入自造异常（也不用改名/删真表）：本条的判别力正在两处**真实形状**——
+    ① 生产的异常链（asyncpg 原始异常被 SQLAlchemy 包两层，只有内层两层带 sqlstate，
+    顶层为 None，见 executor 的 ``_is_missing_table_error``）；
+    ② ``ensure_tables`` **真的**把缺的表建出来（这里是 scratch 库里真的没有那张表）。
+    自造异常验不到①，改名/删真表则有污染活库的实测事故。故：整条链路（Postgres 的 42P01
+    → 识别器 → 懒建 → 新事务重试 → 审计行落地）都跑真的，只是库是一次性的。
+    顺带钉住「重试在原事务之外」：实测同一事务里失败后再发语句只回 25P02
+    （``InFailedSQLTransaction``）——重试若复用那个已回滚的事务，本条必然红。
+    """
+    scratch = _scratch_url()
+    monkeypatch.setattr(connectors, "_ext_url", lambda: scratch)  # app.db.ensure_tables → scratch
+    monkeypatch.setattr(executor_module, "_ext_url", lambda: scratch)  # 写路径引擎 → scratch
+    await _reset_scratch_db(scratch)
+    try:
+        pk = await _seed_entity_in(scratch)
+        result = await _invoke(pk=pk, scope_rule=FilterRule(operator="allow_all"))
+        status = await _get_status_in(scratch, pk)
+        audit = await _audit_rows_in(scratch, pk)  # 真库读：懒建出来的表里必须有这一行
+    finally:
+        await _admin_exec(f'DROP DATABASE IF EXISTS "{_SCRATCH_DB}" WITH (FORCE)')
+
+    assert result["after"] == {"status": "active"}
+    assert status == "active"  # 业务写真的落地了
+    assert len(audit) == 1 and audit[0]["source"] == "api"  # 审计行真的在（且只有一条：失败那次已回滚）
+    assert executor_module._lazy_schema_attempted is True  # 次级钉住：走的确实是懒建那条路
+
+
+class _FailingBegin:
+    """``engine.begin()`` 的替身：进入即抛（模拟连接阶段失败），退出照常。"""
+
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+
+    async def __aenter__(self):
+        raise self._exc
+
+    async def __aexit__(self, *exc_info) -> bool:
+        return False
+
+
+class _FailingEngine:
+    def __init__(self, exc: BaseException) -> None:
+        self._exc = exc
+
+    def begin(self) -> _FailingBegin:
+        return _FailingBegin(self._exc)
+
+    async def dispose(self) -> None:
+        pass
+
+
+def _dbapi_error(orig: BaseException) -> sqlalchemy.exc.DBAPIError:
+    """按 SQLAlchemy 生产形状裹一层 DBAPIError（``orig`` 为原始驱动异常）。
+
+    用 ``DBAPIError.instance``（SQLAlchemy 自己的构造器）而不是手搓：形状（顶层是那个宽基类
+    ``DBAPIError``、``orig`` 挂原始异常）正是「宽 catch 会误吞」要验的东西。
+    """
+    return sqlalchemy.exc.DBAPIError.instance("INSERT INTO dg_action_audit (...) VALUES (...)", {}, orig, Exception)
+
+
+def _counting_ensure_tables(calls: dict) -> Callable[[], Awaitable[None]]:
+    async def _inner() -> None:
+        calls["n"] += 1
+
+    return _inner
+
+
+async def test_connection_failure_does_not_trigger_lazy_build(monkeypatch, lazy_flag_reset):
+    """**连接失败不是「表不存在」**：不得懒建，且必须如实转 ActionError 500。
+
+    为什么这条必须有：宽 catch（``except DBAPIError``）会把一次基础设施故障改写成
+    「懒建之后仍失败」——去做一次注定失败的建表、再重试一次注定失败的写，最后抛出的错误
+    盖住真正的原因。判别力（变异实测见报告）：把 ``_is_missing_table_error`` 换成
+    ``except DBAPIError`` → 本条红（calls 变 1）。
+    """
+    calls = {"n": 0}
+    monkeypatch.setattr(executor_module, "ensure_tables", _counting_ensure_tables(calls))
+    monkeypatch.setattr(
+        executor_module,
+        "create_async_engine",
+        lambda *a, **k: _FailingEngine(_dbapi_error(ConnectionRefusedError("connection refused"))),
+    )
+    pk = await _seed_entity()
+    with pytest.raises(ActionError) as e:
+        await _invoke(pk=pk, scope_rule=FilterRule(operator="allow_all"))
+    assert e.value.status_code == 500  # DB 不可达是服务端问题
+    assert "写事务失败" in e.value.detail
+    assert calls["n"] == 0, "连接失败被当成了表缺失 → 懒建被触发（吞错）"
+    assert await _get_status(pk) == "pending_review"
+
+
+_NON_MISSING_DB_ERRORS = {
+    "privilege_42501": lambda: _dbapi_error(asyncpg.exceptions.InsufficientPrivilegeError("permission denied for table dg_action_audit")),
+    "conn_refused_no_sqlstate": lambda: _dbapi_error(ConnectionRefusedError("connection refused")),
+    "undefined_column_42703": lambda: _dbapi_error(asyncpg.exceptions.UndefinedColumnError('column "x" does not exist')),
+    "query_canceled_57014": lambda: _dbapi_error(asyncpg.exceptions.QueryCanceledError("canceling statement due to statement timeout")),
+}
+
+
+@pytest.mark.parametrize("case", list(_NON_MISSING_DB_ERRORS))
+async def test_only_missing_table_triggers_lazy_build(monkeypatch, lazy_flag_reset, case):
+    """**只有 42P01** 触发懒建；其余 DB 失败一律如实 500。
+
+    三个近亲都要挡住：42501（权限——建表同样建不了，重试只会再失败一次）、42703（同属
+    Undefined* 家族，但不是「表缺失」）、57014（**命令超时给的就是这个**——那时去建表
+    是南辕北辙：链路刚被掐断，懒建只会再撞一次同样的超时）。
+    这几个都带 sqlstate，故本条同时钉住「判的是 sqlstate 的**值**，不是『有没有 sqlstate』」。
+    """
+    calls = {"n": 0}
+    write_calls = {"n": 0}
+    monkeypatch.setattr(executor_module, "ensure_tables", _counting_ensure_tables(calls))
+
+    async def _boom() -> tuple[dict, dict]:
+        write_calls["n"] += 1
+        raise _NON_MISSING_DB_ERRORS[case]()
+
+    with pytest.raises(ActionError) as e:
+        await executor_module._write_with_lazy_audit_table(_boom)
+    assert e.value.status_code == 500
+    assert "写事务失败" in e.value.detail
+    assert calls["n"] == 0, f"{case} 触发了懒建——识别器太宽"
+    assert write_calls["n"] == 1, "失败被重试了——除 42P01 外都不该重试"
+
+
+async def test_lazy_build_is_attempted_once_per_process(monkeypatch, lazy_flag_reset):
+    """有界：懒建后仍失败 → 抛出且**不再重试**（每进程一次，不是重试循环）。
+
+    判别力（变异实测见报告）：删掉 ``_build_audit_table_once`` 的 flag 分支 → 第二个请求
+    的计数变 2 → 本条红。
+    """
+    calls = {"n": 0}
+    write_calls = {"n": 0}
+    monkeypatch.setattr(executor_module, "ensure_tables", _counting_ensure_tables(calls))
+
+    async def _still_missing() -> tuple[dict, dict]:
+        write_calls["n"] += 1
+        raise asyncpg.exceptions.UndefinedTableError('relation "dg_action_audit" does not exist')
+
+    with pytest.raises(ActionError) as first:
+        await executor_module._write_with_lazy_audit_table(_still_missing)
+    assert first.value.status_code == 500
+    assert "懒建审计表后写入仍失败" in first.value.detail  # 懒建过、重试过，仍失败才抛
+    assert calls["n"] == 1 and write_calls["n"] == 2, (calls, write_calls)  # 重试**恰好**一次
+
+    with pytest.raises(ActionError) as second:
+        await executor_module._write_with_lazy_audit_table(_still_missing)
+    assert calls["n"] == 1, "懒建被第二次尝试了——有界 flag 失效"
+    assert write_calls["n"] == 3, "第二个请求不该重试（连表都还没建出来）"
+    assert "已尝试过懒建" in second.value.detail
+
+
+async def test_lazy_build_failure_is_action_error_and_not_retried(monkeypatch, lazy_flag_reset):
+    """懒建本身失败（DB 不可达/权限不足）→ 如实 ActionError 500，写不重试、建表不再试。
+
+    有界的代价写在这里也算账：DB 恢复后本进程不会再自动补建（flag 已置位），需重启或人工
+    建表——**这是有意的**，被无界重试换来的「每个请求多一次建表尝试」不值得。
+    """
+    calls = {"n": 0}
+    write_calls = {"n": 0}
+
+    async def _failing_ensure_tables() -> None:
+        calls["n"] += 1
+        raise _dbapi_error(ConnectionRefusedError("connection refused"))
+
+    monkeypatch.setattr(executor_module, "ensure_tables", _failing_ensure_tables)
+
+    async def _still_missing() -> tuple[dict, dict]:
+        write_calls["n"] += 1
+        raise asyncpg.exceptions.UndefinedTableError('relation "dg_action_audit" does not exist')
+
+    with pytest.raises(ActionError) as e:
+        await executor_module._write_with_lazy_audit_table(_still_missing)
+    assert e.value.status_code == 500
+    assert "自动建表失败" in e.value.detail
+    assert calls["n"] == 1 and write_calls["n"] == 1, (calls, write_calls)  # 建表失败即抛，不再重试写
