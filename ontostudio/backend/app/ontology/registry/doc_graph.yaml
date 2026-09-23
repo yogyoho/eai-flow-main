@@ -80,6 +80,11 @@ object_types:
       - { name: extracted_by, api_name: extractedBy, type: string, description: 抽取者 }
       - { name: extracted_at, api_name: extractedAt, type: datetime, description: 抽取时间 }
       - { name: error, api_name: error, type: string, description: 抽取错误(可重投) }
+    # 动作层数据范围（设计 §3）：同 graph_entity / graph_relation。Task 9 的
+    # check_action_reachable_objects_are_scoped 抓出这一处——graph_mention 被
+    # mention_of_entity / mention_of_relation 两条 enabled 链接从动作目标
+    # graph_entity 可达，缺绑定会让范围判定静默回退 allow_all。
+    scope_resource: ontology
 
 link_types:
   - api_name: relation_subject

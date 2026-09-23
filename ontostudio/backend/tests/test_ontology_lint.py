@@ -10,7 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "scripts"))
 
-from ontology_lint import check_coverage, check_data_source_access, check_hidden_sensitive, check_market_tables_registered, check_pk_immutability, main  # noqa: E402
+from ontology_lint import check_action_preconditions, check_action_reachable_objects_are_scoped, check_coverage, check_data_source_access, check_hidden_sensitive, check_market_tables_registered, check_pk_immutability, main  # noqa: E402
 
 from app.ontology.registry import load_registry  # noqa: E402
 
@@ -25,6 +25,11 @@ def test_all_checks_pass_on_real_registry():
     # 由 registry 声明侧 + gateway 侧承管, 此处只守本服务可见域。
     assert check_market_tables_registered(reg) == []
     assert check_data_source_access(reg) == []
+    # Task 9: 动作层可达者必须声明 scope_resource（本仓唯一自动化守卫——lint 脚本未被 CI 调用）。
+    # graph_mention 那一处即由这条检查在 Task 9 抓出并补上。
+    assert check_action_reachable_objects_are_scoped(reg) == []
+    # Task 9: 动作前置条件 value 形状（可加载的笔误应当在加载期就红，而不是 invoke 时的 400）
+    assert check_action_preconditions(reg) == []
     # 敏感 connection_config 已声明 hidden
     ds = reg.object_types["data_source"]
     cc = next(p for p in ds.properties if p.name == "connection_config")
