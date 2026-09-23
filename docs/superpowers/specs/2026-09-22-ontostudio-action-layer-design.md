@@ -130,7 +130,9 @@ class ActionSpec(BaseModel):
 
 关键区别是**取舍轴不同**：握手阶段不存在"合法的长等待"，所以那个超时**没有可比的误杀面**——它与 `command_timeout` 不是同一类决策，不能因为后者有争议就一起不加。**一个请求永久挂死，比一个 5 秒失败严重得多，而前者没有任何正当理由。**
 
-替代方案 `server_settings={'lock_timeout': …, 'statement_timeout': …}` 未采用；见 `app/db.py` 末尾的缺口注释（已按上表拆开写）。
+替代方案 `server_settings={'lock_timeout': …, 'statement_timeout': …}` 未采用。
+
+> **本节是这条取舍的正典（canon）**（Task 5 质量审查 M-5）。同一取舍目前有 4 份副本——`app/db.py`、`executor.py`、`spec`（本节）、以及一条测试 docstring。**四处全文重述会漂移**；代码与测试处**只保留够用的短注释并指向本节**，需要完整论证时看这里。
 
 ```
 dg_action_audit
