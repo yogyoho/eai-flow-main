@@ -1597,6 +1597,36 @@ git add ontostudio/backend/app/ontology/actions/executor.py ontostudio/backend/t
 git commit -m "feat(ontostudio): 动作执行管线(事务/前置/审计/容错重投影)"
 ```
 
+### Step 6: 写路径韧性 —— 懒建 + `command_timeout`（**归属裁定：Task 5**）
+
+> **为什么在这里**：计划 line 112 与 spec §1.2.1 表格把「首次用 DB 时重试 / 懒建」派给 Task 5，`app/main.py:101` 与 `app/db.py:28-29` 的注释也写着「随 Task 5 落地」——**但 Task 5 的 Step 1–5 里没有这两件**。这是本计划**第三次**出现"被推迟的项没人认领"（Task 2→Task 3 的动作声明、Task 4→Task 5 的前向风险、现在是这个）。**归属 Task 5，理由是职责而非补窟窿**：`executor.py` 是 `dg_action_audit` 的唯一写入方，"表不存在时写不进去"属**写路径韧性**，不是运维配置。
+
+**Files**：`ontostudio/backend/app/db.py`、`ontostudio/backend/app/main.py`、`ontostudio/backend/app/ontology/actions/executor.py`、`ontostudio/backend/tests/test_actions_executor.py`（或新建专项测试文件）
+
+**(a) 懒建 + 有界重试**：写路径上 `INSERT INTO dg_action_audit` 因**表不存在**失败时，调一次 `ensure_tables()` 并**重试一次事务**。硬要求：
+
+- **必须有界**：模块级 flag 保证每进程只尝试一次懒建，第二次失败照常抛。**不要写成重试循环。**
+- **只对"表不存在"触发**（`asyncpg.exceptions.UndefinedTableError` / SQLSTATE `42P01`）。**不要 catch 宽泛的 DBAPIError**——否则连接失败、权限错误也会被吞进重试。
+- 失败**如实抛**（转 `ActionError`，DB 不可达是服务端问题 → 500）。
+- 重试必须在**原事务之外**（原事务已因异常回滚）。
+
+**(b) `command_timeout`**：`app/db.py` 的引擎加 `command_timeout`（建议 30）。理由：`connect_args={"timeout":5}` **只界握手**；TCP 建好后命令阶段默认无界，链路被防火墙/NAT 静默掐断时要等 TCP keepalive（Windows 约 2 小时）——**原 I2"启动楔死"模式的后移版**。失败已是非致命，误杀代价 ≈ 一条 WARNING。
+
+**(c) 把指向它的注释改准**：`app/main.py:101` 与 `app/db.py:28-29` 现写「随 Task 5 落地」→ 做成"已落地"。spec §1.2.1 表格第三行同步。
+
+**测试要求**（都要能咬；**别只断言"调了 ensure_tables"**——本计划已有一条被变异证伪的覆盖声称）：
+1. **懒建**：模拟"表先不存在" → 写路径仍成功，**断言可观测效果**（写成功且审计行在）
+2. **只对表不存在触发**：连接失败 / 权限错误**不得**触发懒建（否则是吞错）
+3. **有界**：懒建后仍失败 → 抛出且**不再重试**（数 `ensure_tables` 调用次数）
+4. **`command_timeout` 生效**：**捕获传给引擎的实参**（照 Task 3 的 `test_ensure_tables_bounds_connect_timeout`），**不要用计时上界**——上界抓不到值漂移，那条已被变异证伪
+
+**已知限制写进注释**：`create_all` **不做 schema 变更**——懒建只解决"表不存在"，解决不了"表存在但列不全"。别让人以为有了自动迁移。
+
+```bash
+git add ontostudio/backend/app/db.py ontostudio/backend/app/main.py ontostudio/backend/app/ontology/actions/executor.py ontostudio/backend/tests/
+git commit -m "feat(ontostudio): 写路径韧性——懒建审计表 + command_timeout 收口"
+```
+
 ---
 
 ## Task 6: gateway 侧 —— 授权缓存键修正 + `/api/permissions/scope` + 权限声明
