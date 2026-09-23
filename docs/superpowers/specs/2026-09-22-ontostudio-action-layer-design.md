@@ -126,7 +126,13 @@ class ActionSpec(BaseModel):
 | 有无"合法的长等待" | **无** | 有——`FOR UPDATE` 撞上并发长事务时可以合法地等很久 |
 | 无超时的后果 | **请求永久挂起**，占住 ASGI 任务（本机实测 21.5s，Linux 可到分钟级） | 同上，但那个等待可能是正当的 |
 | 误杀面 | **不存在** | 真实存在——30s 会把"等到后成功"变成**用户可见的 500** |
-| 结论 | **已补**：`connect_args={"timeout": 5}`，与 `ensure_tables` 同值 | **留 Task 6/7 裁决**（属暴露面决策） |
+| 结论 | **已补**：`connect_args={"timeout": 5}`，与 `ensure_tables` 同值 | **已收口（Task 7, 2026-09-23）**：`command_timeout=60`（`executor.py::_WRITE_COMMAND_TIMEOUT_S`）——**故意不等于**建表路径的 30，见下 |
+
+> **命令阶段的裁决（Task 7，`77c7bbceb` 之后）**：本表此前写「留 Task 6/7 裁决」，Task 6 是 gateway 侧没做，而 Task 7 节原本也没提它——**本计划第六次"凡写下'那是 X 的范围'却没同时改 X 的步骤"**。Task 7 裁定收口并实装：
+>
+> - **为什么不能继续留 `None`**：写引擎的每条 `FOR UPDATE` / `UPDATE` 都跑在**与读端点共用的事件循环 worker** 上，而 `/actions/invoke`（本任务新开）让这条路径可被用户直接触发。无界意味着链路被静默掐断时请求挂到 TCP keepalive（Windows ≈ 2 小时）为止，**期间占住整个 worker**——比 500 严重得多。
+> - **为什么取 60 而非 30**：本表把两条路径的误杀面分开了——建表那边误杀 ≈ 一条 WARNING，写路径是**用户可见的 500**；而唯一合法的长等待是 `FOR UPDATE` 撞并发写同一行，单行审核动作的竞争写者应为毫秒级。60s 已比"排队"宽两个数量级，再大就是拿"worker 被占住的时长"换裕度。
+> - **实现与守卫**：常量连同理由落在 `executor.py` 顶部；Task 5 那条「断言 `command_timeout` **缺席**（有意留空）」的测试**翻转**成正向断言，并加一条 `!= db._COMMAND_TIMEOUT_S` 的反向断言挡住"顺手统一成同源"。顺带修 `str(TimeoutError())` 是空串导致 detail 变成 `"写事务失败: "` 的问题（收口后这条路径设计上可达），新增 1 条测试钉住。
 
 关键区别是**取舍轴不同**：握手阶段不存在"合法的长等待"，所以那个超时**没有可比的误杀面**——它与 `command_timeout` 不是同一类决策，不能因为后者有争议就一起不加。**一个请求永久挂死，比一个 5 秒失败严重得多，而前者没有任何正当理由。**
 
@@ -229,6 +235,16 @@ dg_action_audit
 > **最坏情形具体化**：`{conditions: {}, grants: {deny_data_scopes: [ontology_all]}}` 在平台侧是**全域读封锁**（空模板 deny ⇒ `get_data_scope` 返回 `none_allow`），而 OntoStudio 的读路径与动作层**完全无视它**。
 
 **但这是设计缺口，不是实现缺口**——实现严格符合本节字面。**收敛动作已立为 Task 7 节首的硬性验收项**（此前这里写"见 Task 7 接线清单"，而 Task 7 并无该步骤——**那是本计划第五次"凡写下'那是 X 的范围'却没同时改 X 的步骤"**，已修）。
+
+> **✅ 已闭合（Task 7，2026-09-23，`31e5af471`）**：`/scope` 不再自建判定——`middleware.resolve_data_scope` 成为数据范围判定的**唯一**实现，`with_data_scope` 与 `/api/permissions/scope` 两侧共用同一条路径（超管旁路 + `deny_data_scopes` 扣减 + registry 范围并集）。上表两行**同时**不再适用。
+>
+> **验收方式（实测，`backend/tests/test_permissions_scope_endpoint.py` 4 条两侧一致性用例）**：用 overlay 造一个**非超管**且持 `ontology_all` 的角色（仓里没有任何这种角色——`ontology_all` 只授给了 superadmin，而超管在两侧都走旁路，用超管测不到扣减那一步），配一条 `{conditions: {}, grants: {deny_data_scopes: [ontology_all]}}` 策略 → 两侧同为 `none_allow` 且**逐字相等**；同角色去掉该策略（**对照态**）→ 两侧同为 `allow_all`（没有这条，一个恒 `none_allow` 的实现也能过上一条）；超管 + 同策略 → 两侧同为 `allow_all`；`docmgr` 的非退化复合树（`or`/`eq`/`in`）→ 两侧相等。
+>
+> **两类断言的判别力经变异实测校准，别只留一类**：`== platform.to_wire()` 抓**两处漂移**（把 `/scope` 改回自建判定 → 红）；**绝对值**断言抓**共用的那一条判定本身错了**（删掉旁路、或删掉 deny 扣减 → 相等断言**仍然全绿**，只有绝对值红）。
+>
+> **一处有意的行为变更**：**超管 + 未知 resource** 由 `none_allow` 变 `allow_all`。判据是 `with_data_scope("no_such_module")` 对超管同样返回 `allow_all`（旁路排在 `get_data_scope` **之前**，资源存不存在根本到不了那一步）——"两侧一致"优先于更早那句「未知资源一律 none_allow」。非超管那一支行为不变（仍 fail-closed）。
+>
+> 下面「今日无实害」一段现在只是**当时的历史快照**：别再拿它当"所以不用修"的依据（它描述的正是缺口未修时为何没被触发）。
 
 ### 3.2 已知减损：`/scope` 的 4xx 映射只兜竞态窗口（Task 6 实现者披露，未修）
 
