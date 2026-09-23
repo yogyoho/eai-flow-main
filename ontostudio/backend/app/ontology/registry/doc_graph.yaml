@@ -54,6 +54,8 @@ object_types:
       - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
       - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
       - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+    # 动作层数据范围（设计 §3）：同 graph_entity，值取 permissions.yaml 的模块 key。
+    scope_resource: ontology
 
   - api_name: graph_mention
     display_name: 图谱证据

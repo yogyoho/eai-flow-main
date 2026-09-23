@@ -58,6 +58,18 @@ def test_registry_binds_graph_entity_scope_resource():
     assert get_registry().object_types["graph_entity"].scope_resource == "ontology"
 
 
+def test_registry_binds_graph_relation_scope_resource():
+    """spec §3 要求 graph_entity / graph_relation 都绑。
+
+    Task 3 把 graph_relation 一条明文推给「Task 6 的范围」，而 Task 6 全节没有这一步——
+    链路断了，故在此补钉。缺它的后果：今日无运行期症状（动作只 targeting graph_entity），
+    但任何将来 targeting graph_relation 的动作会恒 none_allow（权限配了但没用）。
+    """
+    from app.ontology.registry import get_registry
+
+    assert get_registry().object_types["graph_relation"].scope_resource == "ontology"
+
+
 def test_real_registry_declares_review_actions():
     """真实 registry 已声明两个审核动作——Task 5/7/8/10 全靠它们。"""
     from app.ontology.registry import get_registry
