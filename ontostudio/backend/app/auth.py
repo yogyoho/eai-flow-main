@@ -248,6 +248,45 @@ def _gateway_base_url() -> str:
     return os.getenv("ONTOSTUDIO_GATEWAY_URL", "") or "http://gateway:8001"
 
 
+async def _gateway_me(request: Request) -> dict | None:
+    """反查 gateway ``/api/permissions/me`` → 解析后的 payload；任何失败一律 ``None``.
+
+    EAI-CUSTOM (2026-09-22 Task 7): 从 ``_gateway_authorizes`` 抽出的**取数与解析**那一段
+    ——动作层除了"这个权限放没放"，还要取同一个 payload 里的 ``identity.role_code``
+    （见 :func:`resolve_actor_role`），两者共用同一条取数路径，免得两处各自漂移。
+
+    fail-closed 面逐个说清（调用方据此决定返回 False 还是 None）：
+    - 无 Cookie：**不打 warning**（浏览器会话过期是常态，打日志会淹没真故障），直接 None；
+    - gateway 不可达 / 非 200 / JSON 畸形 / 顶层不是对象：打 warning + None。
+    非对象那一档是实修：此前 ``_gateway_authorizes`` 直接 ``data.get(...)``，gateway 回一个
+    JSON 数组或字符串时会以 ``AttributeError`` 逃成 500（fail-open 方向的反面——不是放行，
+    是崩），现归一到 None → False。
+    """
+    cookie_header = request.headers.get("cookie", "")
+    if not cookie_header:
+        return None
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{_gateway_base_url()}/api/permissions/me",
+                headers={"Cookie": cookie_header},
+            )
+    except httpx.HTTPError as exc:
+        logger.warning("authz delegate: gateway /api/permissions/me unreachable — %s", exc)
+        return None
+    if resp.status_code != 200:
+        logger.warning(
+            "authz delegate: gateway /api/permissions/me -> %d (fail-closed)", resp.status_code
+        )
+        return None
+    try:
+        data = resp.json()
+    except ValueError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
 async def _gateway_authorizes(request: Request, user: CurrentUser, permission: str) -> bool:
     """问 gateway 权限引擎：is_admin 或 permissions 含 permission 即放行.
 
@@ -261,31 +300,101 @@ async def _gateway_authorizes(request: Request, user: CurrentUser, permission: s
             return allowed
         _authz_cache.pop((user.id, permission), None)
 
-    cookie_header = request.headers.get("cookie", "")
-    if not cookie_header:
-        return False
-
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            resp = await client.get(
-                f"{_gateway_base_url()}/api/permissions/me",
-                headers={"Cookie": cookie_header},
-            )
-    except httpx.HTTPError as exc:
-        logger.warning("authz delegate: gateway /api/permissions/me unreachable — %s", exc)
-        return False
-    if resp.status_code != 200:
-        logger.warning(
-            "authz delegate: gateway /api/permissions/me -> %d (fail-closed)", resp.status_code
-        )
-        return False
-    try:
-        data = resp.json()
-    except ValueError:
+    data = await _gateway_me(request)
+    if data is None:
         return False
     allowed = bool(data.get("is_admin")) or permission in (data.get("permissions") or [])
     _authz_cache[(user.id, permission)] = (allowed, time.monotonic() + _AUTHZ_DELEGATE_TTL_SECONDS)
     return allowed
+
+
+# ── 动作层公开入口（Task 7）──────────────────────────────────────────────
+# 三个函数的失败方向**各自不同**，别合并成一句"都 fail-closed"：
+#   authorize           → False（拒绝动作）
+#   fetch_scope_rule    → none_allow（拒绝动作，且不泄漏"规则取不到"与"规则为空"的区别）
+#   resolve_actor_role  → None（**不**拒绝动作——它只喂审计列，拒了一个合法动作是本末倒置）
+
+
+async def authorize(request: Request, user: CurrentUser, permission: str) -> bool:
+    """公开授权判定入口（动作层用）。
+
+    与 ``require_permission`` 走的是**同一条**判定路径与**同一个** ``(user.id, permission)``
+    复合键缓存——只是不抛异常、由调用方决定怎么把它变成 403。复合键的理由见 :data:`_authz_cache`。
+    """
+    return await _gateway_authorizes(request, user, permission)
+
+
+async def resolve_actor_role(request: Request, user: CurrentUser) -> str | None:
+    """动作发起者的角色 **code**（``permissions.yaml`` 的 roles 键），供审计行 ``actor_role``。
+
+    **为什么不是 ``user.role_name``**（计划 Task 7 Step 3 给的是它，此处有意改）：
+
+    1. ``CurrentUser.role_name`` 装的是 ``roles.name`` **显示名**（``superadmin`` →
+       ``"超级管理员"``）——同一角色改名后，**历史审计行会跟着变意思**；而 code 是
+       registry / ``identity.role_code`` / ``roles_custom.yaml`` overlay 的公共键，
+       审计行只有拿它才对得上账。
+    2. 更要紧的是：本服务的 ``role_name`` **只可能来自 JWT claims**（``claims_to_user``），
+       而 gateway 签发的 access_token claims 是 ``{sub, exp, iat, ver}``（无角色，
+       backend/app/gateway/auth/jwt.py:28）——浏览器经 nginx 带的是这个 Cookie。也就是说
+       计划那一行会**给每一条真实审计行写 NULL**。同理 ``user.role_id`` 也是 claims-only。
+       正典角色只能问 gateway 身份（``identity.role_code``，与 ``/scope`` 同一来源）。
+    3. token 自带的 ``roles`` claim 也不能用：那是**调用方自己声明**的，不是授权真源
+       （``require_permission`` 的 v1 快路径只把它当快路径，动作层的授权判定恒走委托）。
+
+    失败方向：无 Cookie / gateway 不可达 / 身份里没有 role_code → ``None``（审计列可空）。
+    **不缓存**：它只服务审计标注，而缓存会引入一份需要独立论证的 staleness；动作调用是
+    人触发的低频写，多一次内网 GET 相对其后的全量重投影不是可感知的代价。
+    """
+    data = await _gateway_me(request)
+    if data is None:
+        return None
+    identity = data.get("identity")
+    if not isinstance(identity, dict):
+        return None
+    code = identity.get("role_code")
+    return code if isinstance(code, str) and code else None
+
+
+async def fetch_scope_rule(request: Request, resource: str):
+    """取当前用户对 ``resource`` 的数据范围规则（gateway ``GET /api/permissions/scope``）。
+
+    ``resource`` 是 ``permissions.yaml`` 的**模块 key**（``ontology`` / ``contract_price`` …
+    —— 交付时按注册表写，别按模块名猜）。返回本地 ``FilterRule``（``app.ontology.scope``）。
+
+    **任何失败一律 ``none_allow``**（拒绝一切），包括：无 Cookie、gateway 不可达、非 200、
+    JSON 畸形、wire 规则编译不出来。方向为什么必须是拒而不是放行——这一层的意义就是
+    「取不到范围 ⇒ 不让动作落在任何行上」，取不到当放行等于把数据范围层整个旁路掉。
+
+    ``app.ontology.scope`` 用**惰性 import**：``app.auth`` 被 ``app.ontology.routers`` 顶层
+    导入，而导入 ``app.ontology.*`` 会先执行 ``app/ontology/__init__.py``（它注册建表用的
+    ``Base`` 子类）——顶层 import 会绕成环。返回类型因此不写注解（写了就得在顶层 import）。
+    """
+    from app.ontology.scope import FilterRule
+
+    cookie_header = request.headers.get("cookie", "")
+    if not cookie_header:
+        return FilterRule(operator="none_allow")
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"{_gateway_base_url()}/api/permissions/scope",
+                params={"resource": resource},
+                headers={"Cookie": cookie_header},
+            )
+        if resp.status_code != 200:
+            logger.warning("scope delegate: gateway /api/permissions/scope -> %d (fail-closed)", resp.status_code)
+            return FilterRule(operator="none_allow")
+        payload = resp.json()
+        wire = payload["rule"]
+        return FilterRule.from_wire(wire)
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        # ValueError 盖 ``ScopeCompileError``（它继承 ValueError——wire 畸形就是从这个名字
+        # 出来的，别在这里再列一条同族 except，那条永远到不了）与 json 解析失败；
+        # KeyError/TypeError/AttributeError 盖"响应形状不是 {rule: {...}}"——这些**必须**
+        # 在此归一，否则畸形响应会以裸异常逃成 500，而不是"按拒处理"。
+        logger.warning("scope delegate: 取范围规则失败（按 none_allow 拒）— %s: %s", type(exc).__name__, exc)
+        return FilterRule(operator="none_allow")
 
 
 _MCP_OPEN_MODE_WARNED = False
