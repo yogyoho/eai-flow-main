@@ -1967,7 +1967,15 @@ ontology 模块补 ontology_all 数据范围与 ontology:action:review 操作权
 
 > **⚠️ 订正（Task 6 质量审查）**：本步骤初稿末尾写「且 Task 9 的 `scope_bindings` lint 可能就此报错」——**那是错的，已删**。Task 9 的 `check_scope_resources` 只校验"**已声明**的 `scope_resource` 是已知模块 key"，其自带验收用例 `test_object_without_scope_resource_is_fine` **明确祝福"缺绑定是正常的"**——所以**缺绑定永远绿**。留着那句会让下一个人依赖一个不会触发的守卫。
 
-**防第五次复发的结构性做法（Task 9 落地，见该节）**：断言「**凡被动作或链接类型引用的对象类型，必须声明 `scope_resource`**」。依据是 registry 里已有现成的引用边可查（`doc_graph.yaml` 的 `actions[].target`、`link_types[].source/.target`），而 `ontology_lint.py` 已有 `check_*(reg) -> list[str]` 的现成形状。**只靠"补上这一次"防不住第五次——本计划已用五次证明了这一点。**
+**防复发的结构性做法（Task 9 已落地，口径经实测收窄）**：断言「**凡被动作层可达的对象类型，必须声明 `scope_resource`**」——**口径是"从每个 `actions[].target` 出发、沿 `enabled` 的 link_types 双向遍历得到的闭包"**，不是字面的"凡被动作或链接类型引用"。
+
+> **⚠️ 口径订正（Task 9 实现者实测）**：本行初稿写的是「凡被动作**或链接类型**引用的对象类型」。**那个口径在真实 registry 上不可满足**——实测 **16 个对象里 12 个**未绑（`bid`/`bid_item`/`contract_document`/`contract_item`/`customer`/`data_source`/`dataset`/`goods_cluster`/`part_cluster`/`spare_part_document`/`spare_part_item`/`graph_mention`），其中 **`data_source`/`dataset` 在 `permissions.yaml` 里没有对应模块 key**（它们走 `system:access`，不走 data_scope 模块）——**不新增模块就无正确取值**。字面口径还会打破 3 条既有验收（本计划 Step 4 退出码 0、Task 10 ⑥、以及 `test_all_checks_pass_on_real_registry`/`test_main_exit_zero`）。
+>
+> **收窄后的口径仍能抓住设计要防的那一类**：`graph_relation`/`graph_mention` 都是"链接端点、非动作 target"，正是第四次与这次复发的形态。**该检查第一遍跑就抓到 `graph_mention` 未绑**（真问题，已补），真 registry 上现为 `OK (16 object types, 16 links)` EXIT=0。
+>
+> **要放回全量口径**只需改 `check_action_reachable_objects_are_scoped` 一处判定，代价是先决定那 11 个市场域对象的模块归属（其中 2 个无可用 key）。**运行时今日都不变**（读路径不查 `scope_resource`），但它是一份治理声明。
+
+**只靠"补上这一次"防不住复发——本计划已用六次证明了这一点。**
 
 **要有的测试**：`assert get_registry().object_types["graph_relation"].scope_resource == "ontology"`（与 `graph_entity` 那条同形）。
 
@@ -2476,8 +2484,12 @@ async def test_05_lint_reports_unbound_scope_field():
                 "properties": [{"name": "id", "api_name": "id", "type": "uuid", "description": "p"}],
                 "scope_bindings": {"user_id": "missing_col"},
             }],
-        }).validate_action_refs()
+        })
 ```
+
+> **⚠️ 订正（Task 9 实现者预警）**：本用例初版末尾有 `.validate_action_refs()` —— **那个方法在 Task 2 就已被 `@model_validator(mode="after") _check_refs` 取代**（见本计划 Task 2 的偏离表），照抄会以 `AttributeError` 失败，而 `unknown scope binding` 其实**由 `model_validate` 直接抛出**。现已删掉那个调用。
+>
+> **这是"计划里的陈旧符号引用"第二次咬人**（第一次是 Task 6 的 `test_cross_file_...` docstring）——**删一个公开方法时，必须同时清理全计划对它的调用**，否则下一个照抄的 Task 会撞上一个"看起来该存在"的方法。
 
 ③（无 `ontology:action:review` → 403）与 ⑥（lint 真实 registry 全绿）在 Task 6 与 Task 9 已各自覆盖，此处不重复；验收时把两处测试的通过结果一并记录。
 
