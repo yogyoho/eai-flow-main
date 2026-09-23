@@ -7,10 +7,9 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.extensions.auth.datascope import DataScopeEngine
 from app.extensions.auth.engine import UnifiedPermissionEngine
 from app.extensions.auth.identity import get_identity_provider
-from app.extensions.auth.middleware import require_permission
+from app.extensions.auth.middleware import require_permission, resolve_data_scope
 from app.extensions.auth.registry import get_permission_registry
 from app.extensions.database import get_db
 from app.extensions.schemas import CurrentUser
@@ -134,6 +133,13 @@ async def get_data_scope(
     （``ontology`` / ``contract_price`` / …），非 scope id。
     未知资源或角色无 scope → ``none_allow``（fail-closed）。
 
+    判定体走 :func:`app.extensions.auth.middleware.resolve_data_scope`——**与
+    ``with_data_scope`` 同一条路径**（超管旁路 + ABAC ``deny_data_scopes`` 扣减）。
+    EAI-CUSTOM (2026-09-23, 计划 Task 7 硬性验收项)：此前本端点自建判定，缺那两步，
+    其中 deny 扣减那半是 **fail-open**——平台侧读全域封锁而 OntoStudio 的动作无视它。
+    一致性由 ``tests/test_permissions_scope_endpoint.py`` 逐态断言（见该文件
+    ``test_scope_endpoint_matches_with_data_scope_*``）。
+
     身份走**正典** ``IdentityProvider.resolve``——与 ``with_data_scope``
     （middleware.py）和同文件的 ``/me`` 同一条路径：``role_code`` 取 ``roles.code``、
     ``dept_ids`` 取 ``user_departments`` 关联表、``member_projects`` 取 ``project_members``。
@@ -161,7 +167,7 @@ async def get_data_scope(
         logger.warning("数据范围请求了未注册的资源 key %r（疑似 typo）→ 按 none_allow 拒绝", resource)
 
     try:
-        identity = await get_identity_provider().resolve(current_user.id, db)
+        rule = await resolve_data_scope(current_user, db, resource)
     except ValueError as exc:
         # resolve 对"用户不在库中"（会话有效但用户行已删）抛 ValueError。
         # 取 403 而非 404/401：调用者**已通过认证**（JWT 有效），失败的是它的主体在组织
@@ -171,5 +177,4 @@ async def get_data_scope(
         # 故用户行缺失的常见情形在依赖层就已失败；这里兜的是两次 resolve 之间的窗口。
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"无法解析调用者身份: {exc}") from exc
 
-    rule = DataScopeEngine.from_registry().get_data_scope(identity, resource)
     return {"resource": resource, "rule": rule.to_wire()}

@@ -347,12 +347,53 @@ async def current_identity(
     return await get_identity_provider().resolve(current_user.id, db)
 
 
+async def resolve_data_scope(current_user: CurrentUser, db: AsyncSession, resource_type: str) -> FilterRule:
+    """数据范围判定的**唯一**路径：超管旁路 → ABAC ``deny_data_scopes`` 扣减 → registry 范围并集。
+
+    EAI-CUSTOM (2026-09-23, 计划 Task 7 硬性验收项): 抽出来是为了让**两个消费方共用同一条
+    判定**——``with_data_scope``（gateway 自己的读路径）与 ``/api/permissions/scope``
+    （OntoStudio 动作层经它取规则）。此前 ``/scope`` 自建判定，缺下面两步：
+
+    1. **超管旁路**（``is_system`` 或权限含 ``"*"``）——缺它则超管被 ABAC 的 deny 策略
+       扣到自己看不见，与平台读路径相反；
+    2. **``deny_data_scopes`` 扣减**——这一半是 **fail-open**：管理员建一条
+       ``{conditions: {}, grants: {deny_data_scopes: [ontology_all]}}`` 策略后，平台侧
+       （空模板 deny ⇒ ``none_allow``）全域读封锁，而 OntoStudio 的动作**完全无视它**。
+       注意这条缺口的可触发性是 ``bc4609635``（Task 6）**自己**带来的——那次提交第一次把
+       ``ontology_all`` 写进 permissions.yaml，于是"deny 掉它"才成为可创建的策略
+       （``policy_routers.py`` 校验 deny id 必须在 registry 中已声明）。
+
+    两侧一致性由 ``tests/test_permissions_scope_endpoint.py`` 的
+    ``test_scope_endpoint_matches_with_data_scope_*`` 逐态断言（含无 deny 的对照态——
+    只钉"都拒"的话，一个恒 ``none_allow`` 的实现也能通过）。
+    """
+    from app.extensions.auth.engine import evaluate_policy_conditions
+    from app.extensions.auth.identity import get_identity_provider
+    from app.extensions.auth.policy_loader import load_active_policies
+    from app.extensions.auth.registry import get_permission_registry
+
+    identity = await get_identity_provider().resolve(current_user.id, db)
+    reg = get_permission_registry()
+    defaults = reg.get_role_defaults(identity.role_code)
+    resolved = reg.resolve_role_permissions(identity.role_code or "")
+    if (defaults and defaults.get("is_system")) or "*" in resolved:
+        return FilterRule(operator="allow_all")  # superadmin double-exemption, built-in
+    deny_ids = set()
+    for p in await load_active_policies(db):
+        if evaluate_policy_conditions(p.conditions, identity):
+            deny_ids.update(p.grants.get("deny_data_scopes") or [])
+    return DataScopeEngine.from_registry().get_data_scope(identity, resource_type, deny_ids)
+
+
 def with_data_scope(resource_type: str):
     """FastAPI dependency: inject a FilterRule for data-level access control.
 
     Superadmin (is_system or '*' perms) gets allow_all (built-in bypass).
     Otherwise: allow scopes from registry, MINUS deny_data_scopes from active
     ABAC policies whose conditions match the identity.
+
+    判定体在 :func:`resolve_data_scope`（EAI-CUSTOM 2026-09-23：与 ``/api/permissions/scope``
+    共用，避免两处漂移——见该函数 docstring）。
 
     Usage:
         @router.get("/knowledge-bases")
@@ -368,21 +409,6 @@ def with_data_scope(resource_type: str):
         current_user: CurrentUser = Depends(get_current_user),
         db: AsyncSession = Depends(get_db),
     ) -> FilterRule:
-        from app.extensions.auth.engine import evaluate_policy_conditions
-        from app.extensions.auth.identity import get_identity_provider
-        from app.extensions.auth.policy_loader import load_active_policies
-        from app.extensions.auth.registry import get_permission_registry
-
-        identity = await get_identity_provider().resolve(current_user.id, db)
-        reg = get_permission_registry()
-        defaults = reg.get_role_defaults(identity.role_code)
-        resolved = reg.resolve_role_permissions(identity.role_code or "")
-        if (defaults and defaults.get("is_system")) or "*" in resolved:
-            return FilterRule(operator="allow_all")  # superadmin double-exemption, built-in
-        deny_ids = set()
-        for p in await load_active_policies(db):
-            if evaluate_policy_conditions(p.conditions, identity):
-                deny_ids.update(p.grants.get("deny_data_scopes") or [])
-        return DataScopeEngine.from_registry().get_data_scope(identity, resource_type, deny_ids)
+        return await resolve_data_scope(current_user, db, resource_type)
 
     return _scope
