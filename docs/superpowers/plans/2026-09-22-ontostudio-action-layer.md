@@ -1636,7 +1636,11 @@ git commit -m "feat(ontostudio): 动作执行管线(事务/前置/审计/容错�
 > 3. 识别器必须**走异常链**：真库实测链为 `sqlalchemy.exc.ProgrammingError`（顶层 `sqlstate=None`）
 >    → 适配层 `ProgrammingError`(42P01) → `asyncpg.exceptions.UndefinedTableError`。只判最外层永远不触发
 >    （变异实测：只判顶层 → 懒建的 e2e 测试红）。
-> 4. **写路径引擎本轮未加超时**（有意）：同样两个超时的理由建立在「误杀 ≈ 一条 WARNING」上，
+> 4. **`command_timeout` 触发的异常形状（实测订正）**：asyncpg 的 `command_timeout` 超时时抛的是
+>    **asyncio `TimeoutError`**，**不是** 57014（引擎带 `command_timeout=1` 跑 `pg_sleep(5)` → 链上只有
+>    `TimeoutError`、无 sqlstate）。行为本来就对（非 42P01 → 不懒建），错的是注释里的归因；已补一条
+>    该形状的反例钉住。
+> 5. **写路径引擎本轮未加超时**（有意）：同样两个超时的理由建立在「误杀 ≈ 一条 WARNING」上，
 >    写路径的同类失败是用户可见的 500。属 Task 6/7 的暴露面决策。
 
 ```bash
