@@ -85,7 +85,7 @@ async def _audit_rows_in(url: str, pk: uuid.UUID) -> list[dict]:
     try:
         async with engine.begin() as conn:
             rows = await conn.execute(
-                text("SELECT action_id, params, before, after, source FROM dg_action_audit WHERE target_pk = :id"),
+                text("SELECT id, action_id, params, before, after, source FROM dg_action_audit WHERE target_pk = :id"),
                 {"id": pk},
             )
             return [dict(r._mapping) for r in rows]
@@ -689,3 +689,45 @@ async def test_lazy_build_failure_is_action_error_and_not_retried(monkeypatch, l
     assert e.value.status_code == 500
     assert "自动建表失败" in e.value.detail
     assert calls["n"] == 1 and write_calls["n"] == 1, (calls, write_calls)  # 建表失败即抛，不再重试写
+
+
+async def test_returns_audit_id_of_the_audit_row():
+    """spec §2 的返回契约含 ``audit_id``：审计表（设计 §1.2）存在的意义就是追溯，调用方
+    拿不到审计 id 就断了追溯钩子——Task 7/8 上线后再补要动契约。
+
+    断言**等于审计行的 id**（单点查库比对），而不是"字段存在"：后者对写死一个常量、
+    或对错拿上一行的 id 都没有判别力。
+    """
+    pk = await _seed_entity()
+    result = await _invoke(pk=pk, scope_rule=FilterRule(operator="allow_all"))
+
+    audit = await _audit_rows(pk)
+    assert len(audit) == 1
+    assert result["audit_id"] == str(audit[0]["id"])
+    assert isinstance(result["audit_id"], str)  # 与 "pk" 同形：Task 8 原样 json.dumps
+
+
+async def test_write_path_engine_bounds_connect_timeout(monkeypatch):
+    """确定性钉住写路径引擎的**握手**超时——照 Task 3 的「捕获引擎实参」手法，不用计时
+    上界（上界抓不到值漂移，那条已被变异证伪）。
+
+    握手与命令两个阶段**分开裁决**（见 app/db.py 末尾的表）：握手无「合法的长等待」，
+    无超时即请求永久挂起并占住 ASGI 任务，误杀面为零 → 现在收口；命令阶段有合法的长等待
+    （`SELECT ... FOR UPDATE` 撞并发长事务），30s 会把「等到后成功」误杀成用户可见的 500
+    → 该取舍属 Task 6/7。断言 `command_timeout` **缺席**，是为了让将来加它必须是一次
+    有意识的决定，而不是顺手补上。
+    """
+    pk = await _seed_entity()
+    captured: dict = {}
+    real = create_async_engine
+    monkeypatch.setattr(
+        executor_module,
+        "create_async_engine",
+        lambda url, **kw: (captured.update(kw), real(url, **kw))[1],
+    )
+
+    await _invoke(pk=pk, scope_rule=FilterRule(operator="allow_all"))
+
+    assert "connect_args" in captured, "写路径引擎丢了握手超时——黑洞地址上请求会永久挂起"
+    assert captured["connect_args"].get("timeout", 999) <= 5, captured["connect_args"]
+    assert "command_timeout" not in captured["connect_args"], "command_timeout 有意不加（见 app/db.py 末尾的取舍表）"

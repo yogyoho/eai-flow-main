@@ -40,7 +40,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
-from app.db import ensure_tables
+from app.db import _CONNECT_TIMEOUT_S, ensure_tables
 from app.ontology.actions.sql_write import WriteGuardError, build_precondition_where, build_update_set, quote_ident
 from app.ontology.connectors import _ext_url
 from app.ontology.registry import get_registry
@@ -119,8 +119,8 @@ def _is_missing_table_error(exc: BaseException) -> bool:
     为什么必须走异常链：asyncpg 的原始异常被 SQLAlchemy 包了两层，而**只有内层两层带
     ``sqlstate``**（顶层为 None——2026-09-23 对真库实测，见 tests/test_actions_executor.py
     的懒建测试）：
-    ``sqlalchemy.exc.ProgrammingError`` → ``AsyncAdapt_asyncpg_dbapi.ProgrammingError``(42P01)
-    → ``asyncpg.exceptions.UndefinedTableError``。只看最外层就永远不触发。
+    ``sqlalchemy.exc.ProgrammingError`` → ``sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError``
+    (42P01) → ``asyncpg.exceptions.UndefinedTableError``。只看最外层就永远不触发。
     只走 ``__cause__`` / ``orig``（SQLAlchemy 用 ``raise ... from ...`` 挂链），**不走
     ``__context__``**——后者是「恰好在外层 except 里又抛」的副产品，会把与本次失败无关的
     嵌套异常拉进来（假阳性）。
@@ -160,9 +160,11 @@ async def _build_audit_table_once(original: BaseException) -> None:
         raise ActionError(f"审计表 dg_action_audit 不存在，自动建表失败: {exc}", 500) from exc
 
 
-async def _write_with_lazy_audit_table(
-    write_txn: Callable[[], Awaitable[tuple[dict[str, Any], dict[str, Any]]]],
-) -> tuple[dict[str, Any], dict[str, Any]]:
+_WriteResult = tuple[dict[str, Any], dict[str, Any], uuid.UUID]
+"""一次写事务的产物：``before`` / ``after`` / 审计行 id（``RETURNING id``）。"""
+
+
+async def _write_with_lazy_audit_table(write_txn: Callable[[], Awaitable[_WriteResult]]) -> _WriteResult:
     """写事务 + 「审计表不存在」时的**一次**懒建重试；其余 DB 失败如实转 ``ActionError``。
 
     归因（模块 docstring 的错误契约表同一套）：DB 失败一律 500——调用方没做错任何事
@@ -241,10 +243,16 @@ async def invoke_action_core(
     where = f"{pk_col} = :pk AND ({scope_sql})"
     params_all = _bind_params(target_pk, ("scope", scope_params), ("precondition", pre_params), ("set", set_params))
 
-    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    # 写路径引擎**只界握手**（connect_args.timeout，与 app/db.py 同值同源）：
+    # 无超时时黑洞/丢包地址上的 connect 会一直等（本机实测 21.5s，Linux 可到分钟级），
+    # 而这条等待没有任何合法情形——它的代价是请求永久挂起并占住 ASGI 任务。
+    # **有意不加 `command_timeout`**：命令阶段存在合法的长等待（`SELECT ... FOR UPDATE`
+    # 撞上并发长事务时可以正当地等很久），30s 会把它误杀成用户可见的 500。那条取舍属
+    # Task 6/7（暴露面）的决策，见 app/db.py 末尾注释。
+    engine = create_async_engine(_ext_url(), poolclass=NullPool, connect_args={"timeout": _CONNECT_TIMEOUT_S})
     errors: list[str] = []
 
-    async def _write_txn() -> tuple[dict[str, Any], dict[str, Any]]:
+    async def _write_txn() -> _WriteResult:
         """一次写事务：锁定行 → 前置条件 → UPDATE(RETURNING) → 审计。"""
         async with engine.begin() as conn:
             locked = await conn.execute(text(f"SELECT * FROM {table_q} WHERE {where} FOR UPDATE"), params_all)
@@ -270,12 +278,15 @@ async def invoke_action_core(
                 raise ActionError(f"锁定行在 UPDATE 时消失: {target_pk}", 500)
             after = {c.field: updated_row[c.field] for c in action.postconditions}
 
-            await conn.execute(
+            # RETURNING id：审计表存在的意义就是追溯，调用方拿不到审计 id 就断了追溯钩子。
+            # 同一事务、零额外往返。
+            audit = await conn.execute(
                 text(
                     """INSERT INTO dg_action_audit
                        (action_id, domain, target_table, target_pk, actor_id, actor_role, params, before, after, source)
                        VALUES (:action_id, :domain, :tbl, :pk, :actor, :role,
-                               CAST(:params AS jsonb), CAST(:before AS jsonb), CAST(:after AS jsonb), :source)"""
+                               CAST(:params AS jsonb), CAST(:before AS jsonb), CAST(:after AS jsonb), :source)
+                       RETURNING id"""
                 ),
                 {
                     "action_id": action.id,
@@ -290,11 +301,11 @@ async def invoke_action_core(
                     "source": source,
                 },
             )
-            return before, after
+            return before, after, audit.scalar_one()
 
     try:
         # 懒建审计表 / 有界重试 / DB 失败归因全在这层（见 _write_with_lazy_audit_table）
-        before, after = await _write_with_lazy_audit_table(_write_txn)
+        before, after, audit_id = await _write_with_lazy_audit_table(_write_txn)
     finally:
         await engine.dispose()
 
@@ -311,6 +322,9 @@ async def invoke_action_core(
         "pk": str(target_pk),
         "before": before,
         "after": after,
+        # 与 "pk" 同形：一律字符串化。返回体会被 Task 8 原样 json.dumps（无 default=），
+        # 塞 uuid.UUID 进去会在 MCP 侧 TypeError。
+        "audit_id": str(audit_id),
         "source": source,
         "projected": projected,
         "errors": errors,
