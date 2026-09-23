@@ -106,9 +106,9 @@
 | 2 registry `actions` 段 | `ActionSpec` 等三模型 + `_check_refs` 模型级校验 + `Registry.actions`/`get_action` | 20 | `cae787750` → `7a25ed2bc` → `15c435c32` → `12bb71803` → `e04dcb8af` → `d569b37db` |
 | 3 审计表 + 声明动作 | `dg_action_audit`；`status` 加 `rejected`；`doc_graph.yaml` 声明两个动作；**并修复一个阻塞级缺陷**（该表此前无任何建表路径） | +9 | `4d8b2a900` → `ed572100a` → `25f5083d9` → `bec0f31ae` |
 | 4 `sql_write.py` 写守卫 | 标识符白名单 + 参数化 WHERE/SET 构造；**修掉两条 fail-open**（`not_in` 空值恒真、value 形状错逐字符拆） | 39 | `dd106e3c6` → `ba4646916` → `25f95721a` |
-| 5 `executor.py` 执行管线 | 解析→范围→锁定→前置→UPDATE(RETURNING)→审计→容错重投影；**Step 6 写路径韧性**（42P01 懒建 + 有界重试 + `command_timeout`） | 15 + 9 | `125747dad` → `a794a65ae` → `557decbd8` |
+| 5 `executor.py` 执行管线 | 解析→范围→锁定→前置→UPDATE(RETURNING)→审计→容错重投影；**Step 6 写路径韧性**（42P01 懒建 + 有界重试 + 握手超时）；返回体含 `audit_id` | 26 | `125747dad` → `a794a65ae` → `557decbd8` → `227f6a64b` → `8049e7c6d` |
 
-**全量基线：`348 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`；**系统 Python 3.14 缺 owlrl，必须用仓内 `.venv`**）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
+**全量基线：`350 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`；**系统 Python 3.14 缺 owlrl，必须用仓内 `.venv`**）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
 
 **Task 3 顺带修掉的坑（后续 Task 会受益）**：ontostudio 现在**自己**在 lifespan 里建表（`app/db.py::ensure_tables`）——gateway **不挂载也不建** `dg_*` 表，2026-09-17 独立服务搬迁后的注释曾长期与此不符。`/health` 现在带 `tables_ready` 字段（**状态码恒 200**，是否据此判不健康是待定的运维决策）。**残余风险**：`create_all` 只建缺失表、不做 schema 变更；建表失败只留 WARNING，且启动**只尝试一次**——`dg_action_audit` 的「DB 后起」缺口已由**写路径懒建**兜住（Task 5 Step 6，有界 + 只对 42P01），其余 `dg_*` 表仍要靠重启补建。
 
