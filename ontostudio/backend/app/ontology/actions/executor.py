@@ -37,6 +37,7 @@ from typing import Any
 
 import asyncpg
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -148,7 +149,18 @@ async def _build_audit_table_once(original: BaseException) -> None:
 
     已知限制（有意，非疏漏）：`create_all` **只建缺失的表，不做 schema 变更**——本机制
     只解决「dg_action_audit 不存在」，解决不了「表在但列不全」（那仍需人工迁移，同
-    app/db.py 的声明）。别把懒建读成自动迁移。
+    app/db.py 的声明）。别把懒建读成自动迁移。另注：`create_all` 建的是**所有**缺失的
+    dg_* 表，不只本表——目标表的 42P01 已在 `_execute_on_target` 就地转成 500，故走不到这里
+    （否则会顺带把目标表静默重建为空表）。
+
+    残余代价（**一次性消耗品**，审查者 2026-09-23 指出，此处如实记录而非静默）：
+    ① `ensure_tables` 在 DB 在线时仍可能瞬时失败（CREATE TABLE 抢 ACCESS EXCLUSIVE 锁、
+       连接数上限、主备切换）——此后**本进程永不重试**，需重启（或人工建表）才恢复；
+    ② 首次懒建进行中的并发请求会立刻拿到「已尝试过懒建」的 500，尽管那次建表可能马上成功。
+    为什么不用单飞（`asyncio.Task` 共享）换掉上面 ②：它救不了 ①，而要让 ① 可恢复就得在
+    失败后清掉 task——那等于每来一个请求就再建一次表，正是本函数要避免的无界重试
+    （「有界」与「失败后可恢复」在这里是同一根轴的两端，不能两头都要）。计划明文选了有界，
+    故维持现状。
     """
     global _lazy_schema_attempted
     if _lazy_schema_attempted:
@@ -158,6 +170,30 @@ async def _build_audit_table_once(original: BaseException) -> None:
         await ensure_tables()
     except Exception as exc:  # DB 不可达 / 权限不足 / 建表被拒 → 如实抛（服务端问题 = 500）
         raise ActionError(f"审计表 dg_action_audit 不存在，自动建表失败: {exc}", 500) from exc
+
+
+async def _execute_on_target(conn: Any, sql: str, params: dict[str, Any], *, table: str) -> Any:
+    """打**目标表**的语句（区别于审计表）：42P01 在这里就地转成忠实的 500，再上抛。
+
+    为什么必须就地断掉（I-1，2026-09-23 质量审查实测）：``_is_missing_table_error`` 只看
+    异常链里有没有 42P01、**不看是哪条语句报的**，而同一个事务里有三条语句打在目标表上。
+    放它过去会有三个各自独立成立的后果：
+
+    ① 一次**目标表**的 DDL 事故被报成 404「目标不存在或不在可见范围内」——正是
+       ``_is_missing_table_error`` 注释里自称要避免的那种「把基础设施故障改写成误导性路径」；
+    ② 本进程一次性的懒建额度被烧掉，之后**真的**审计表缺失时只会拿到「已尝试过懒建」，归因错；
+    ③ ``create_all`` 建的是**所有**缺失的 dg_* 表 → 目标表被静默重建为**空表**，下一次请求
+       拿到一个看起来合理的 404，而真正的 DDL 事故不可见。
+
+    转成 ``ActionError`` 后它走 ``_write_with_lazy_audit_table`` 的 ``except ActionError: raise``：
+    不触发懒建、不重试、不烧 flag。**只有审计表的 INSERT 留在守卫之外**——那里才是懒建的合法触发器。
+    """
+    try:
+        return await conn.execute(text(sql), params)
+    except Exception as exc:
+        if _is_missing_table_error(exc):
+            raise ActionError(f"目标表不存在: {table}（registry 声明）: {exc}", 500) from exc
+        raise
 
 
 _WriteResult = tuple[dict[str, Any], dict[str, Any], uuid.UUID]
@@ -249,18 +285,24 @@ async def invoke_action_core(
     # **有意不加 `command_timeout`**：命令阶段存在合法的长等待（`SELECT ... FOR UPDATE`
     # 撞上并发长事务时可以正当地等很久），30s 会把它误杀成用户可见的 500。那条取舍属
     # Task 6/7（暴露面）的决策，见 app/db.py 末尾注释。
-    engine = create_async_engine(_ext_url(), poolclass=NullPool, connect_args={"timeout": _CONNECT_TIMEOUT_S})
+    # 构造也在归一之内（M-1）：URL 畸形时 create_async_engine 抛 ArgumentError(SQLAlchemyError)，
+    # 不包的话它与「本模块只有一种对外异常」及「DB 不可达 → 500」都不对称——连不上归一到 500、
+    # 而 URL 坏了却裸抛。
+    try:
+        engine = create_async_engine(_ext_url(), poolclass=NullPool, connect_args={"timeout": _CONNECT_TIMEOUT_S})
+    except SQLAlchemyError as exc:
+        raise ActionError(f"写路径引擎构造失败（URL 取自配置）: {exc}", 500) from exc
     errors: list[str] = []
 
     async def _write_txn() -> _WriteResult:
         """一次写事务：锁定行 → 前置条件 → UPDATE(RETURNING) → 审计。"""
         async with engine.begin() as conn:
-            locked = await conn.execute(text(f"SELECT * FROM {table_q} WHERE {where} FOR UPDATE"), params_all)
+            locked = await _execute_on_target(conn, f"SELECT * FROM {table_q} WHERE {where} FOR UPDATE", params_all, table=table)
             row = locked.mappings().first()
             if row is None:
                 raise ScopeDenied()
 
-            ok = await conn.execute(text(f"SELECT ({pre_sql}) AS ok FROM {table_q} WHERE {pk_col} = :pk"), params_all)
+            ok = await _execute_on_target(conn, f"SELECT ({pre_sql}) AS ok FROM {table_q} WHERE {pk_col} = :pk", params_all, table=table)
             if not ok.scalar_one():
                 expected = ", ".join(f"{c.field} {c.op} {c.value!r}" for c in action.preconditions)
                 raise ActionError(f"前置条件不满足：需要 {expected}", status_code=409)
@@ -270,7 +312,7 @@ async def invoke_action_core(
             # RETURNING 而非把 after 算成 "None = 由 DB 决定"：审计行（设计 §1.2）是这条写路径
             # 唯一的追溯凭据，一行写着 after.updated_at = null 而库里是 NOW() 就不是"由 DB 决定"，
             # 是**审计记录与实际不符**。RETURNING 搭在同一条 UPDATE 上，不额外多一次往返。
-            updated = await conn.execute(text(f"UPDATE {table_q} SET {set_sql} WHERE {pk_col} = :pk RETURNING {returning}"), params_all)
+            updated = await _execute_on_target(conn, f"UPDATE {table_q} SET {set_sql} WHERE {pk_col} = :pk RETURNING {returning}", params_all, table=table)
             updated_row = updated.mappings().first()
             if updated_row is None:
                 # 该行在上面已被 FOR UPDATE 锁定，同事务内不可能消失；到这里说明代码错了，

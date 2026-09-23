@@ -16,6 +16,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
+from app import db
 from app.db import ensure_tables
 from app.ontology import connectors
 from app.ontology.actions import executor as executor_module
@@ -161,37 +162,21 @@ async def test_unknown_action_rejected():
 
 
 async def test_scope_sql_is_executable_with_list_params():
-    """M-8（Task 1 审查遗留）：`= ANY(:p)` 传 Python list 给 asyncpg 的类型推断
-    从未被任何测试证明过（`col = ANY($1)` 依赖列类型推出 uuid[]）。
-    Task 1 的绿只证明 SQL 文本形态正确，不证明这条通道能跑——故在此显式钉住。
+    """`= ANY(:p)` 绑 Python list 的**正向**钉子：列表含目标 pk 时必须放行。
 
-    **⚠️ 并需覆盖空 list**（Task 4 审查前向风险）：`in`/`not_in` 编译为 `= ANY(:pre_0)`
-    且绑定 Python list，而**空 list 是可达的**——网关 `backend/app/extensions/auth/engine.py:52`
-    在模板解析出空 list 时正是产出 `FilterRule(operator="in", value=[])`。
-    `ANY(:[])` 传空 Python list 时 asyncpg 能否推断数组元素类型**未经验证**。
-    **⚠️⚠️ 本段的初版修法是错的，已在 Task 4 审查中被证伪，勿照抄**：初版写「空集短路
-    （`in` 空 → `FALSE`、**`not_in` 空 → `TRUE`**）」——**`not_in` 空 → TRUE 本身就是 fail-open**。
-    真库实测：`NOT ('a' = ANY(ARRAY[]::text[]))` = `NOT FALSE` = **TRUE**，
-    即**前置条件恒满足、守卫静默失效**；而参数为 `NULL` 时 `NOT(...)` = NULL → 行被过滤 → 拒绝。
-    也就是说 `sql_write.py` 里那句 `list(cond.value or [])` **把"漏填 value"从 fail-closed 翻转成了 fail-open**。
+    **判别力边界（审查者 2026-09-23 双向变异实测，别高估本条）**：它只对「放行方向」敏感。
+    把 `scope.py` 的 `_LEAF_SQL["in"]` 改成恒不匹配 → **只它红**（故它是该方向的唯一钉子，
+    删不得）；改成恒匹配 → **它仍绿**。**首段的旧叙事（"钉住这条通道能跑"）高于事实**，
+    已删——空集与语义那一半由 `test_scope_in_empty_list_is_executable_and_denies` 与
+    `test_scope_in_list_excludes_non_matching_row` 承担，`not_in` 空集与 `sql_write` 守卫
+    由 `tests/test_actions_sql_write.py` 承担。
 
-    **读路径与写路径的空集语义必须分开裁决**：
-
-    | 路径 | `in` 空 | `not_in` 空 |
-    |---|---|---|
-    | 读（`scope.py` 数据范围过滤） | `FALSE`（filter 掉，安全） | 需单独裁决 |
-    | **写（`sql_write.py` 前置条件守卫）** | `FALSE`（拒绝该动作，安全） | **绝不能是 TRUE**——守卫不该产出恒真式 |
-
-    修法：`sql_write.py` 侧——`in` 空编译为 `FALSE`；**`not_in` 空直接 `raise WriteGuardError`**
-    （"不在空集里"字面意义上等于"全部"，对守卫永远不是想要的东西）。类型推断那一半（`ANY(:[])`
-    传空 list 时 asyncpg 能否推断元素类型）**仍未验证**，需 Task 5 用真库测试钉住；
-    显式转型 `= ANY(CAST(:pre_0 AS text[]))` 是备选。
-
-    **只覆盖 `in`。`overlap`（`col && $1`）是另一条绑定路径，本测试证不了它**——
-    `&&` 要求操作数是 array 列，而本体面对的表（cpa_*/csp_*/dg_*）无 array 列，
-    构造不出用例。**这不是死代码**：`config/permissions.yaml:99` 有真实模板
-    `allowed_depts OVERLAP: $identity.dept_ids` 在用。**触发条件**：一旦某对象类型的
-    `scope_bindings` 指向 array 列，必须先补一条 overlap 的集成测试再上线。
+    只留两件别处没有的事实：
+    ① **空 list 由列类型推断成功**（uuid 列 → `uuid[]`、text 列 → `text[]`），与是否为空无关
+       ⇒ 计划列的备选修法 `= ANY(CAST(:p AS text[]))` **不必启用**，且它对 uuid 列是错的
+       （`uuid = ANY(text[])` 无算子，会引入新错）。
+    ② **`overlap`（`col && $1`）是另一条绑定路径，本条证不了它**——它的运维前置条件已迁到
+       `scope.py` 的 `_LEAF_SQL["overlap"]` 上方（那里才是它该在的载体，不再吊在测试里）。
     """
     pk = await _seed_entity()
     rule = FilterRule(operator="in", field="id", value=[str(pk)])
@@ -728,6 +713,63 @@ async def test_write_path_engine_bounds_connect_timeout(monkeypatch):
 
     await _invoke(pk=pk, scope_rule=FilterRule(operator="allow_all"))
 
+    # `==` 而非 `<=`（M-3）：本测试声明「与 app/db.py 同值**同源**」，而 `<= 5` 抓不到
+    # 「db._CONNECT_TIMEOUT_S 改成 3、这里留 5」的漂移——那正是"同源"被破坏的形态。
     assert "connect_args" in captured, "写路径引擎丢了握手超时——黑洞地址上请求会永久挂起"
-    assert captured["connect_args"].get("timeout", 999) <= 5, captured["connect_args"]
+    assert captured["connect_args"].get("timeout") == db._CONNECT_TIMEOUT_S, captured["connect_args"]
     assert "command_timeout" not in captured["connect_args"], "command_timeout 有意不加（见 app/db.py 末尾的取舍表）"
+
+
+async def test_missing_target_table_does_not_trigger_lazy_build(monkeypatch, lazy_flag_reset):
+    """I-1 反例：**目标表**缺失而审计表好好的 → 不得懒建、不得烧 flag、且 500 而非 404。
+
+    为什么必须单列一条（今日该维度零覆盖，`_NON_MISSING_DB_ERRORS` 那几条都验不到"语句维度"）：
+    识别器只看「异常链里有没有 42P01」、**不看是哪条语句报的**，而同一事务里有三条语句打在
+    目标表上。放它过去有三个各自独立成立的后果——
+    ① 一次目标表 DDL 事故被报成 404「目标不存在或不在可见范围内」（把基础设施故障改写成
+       误导性路径，正是识别器注释里自称要避免的）；
+    ② 本进程一次性的懒建额度被烧掉，之后**真的**审计表缺失时归因错；
+    ③ `create_all` 建**所有**缺失的 dg_* 表 → 目标表被静默重建为**空表**，下次请求拿到一个
+       看起来合理的 404，而真正的 DDL 事故不可见。
+
+    可达性：registry 热加载且 `access.table` 不与库比对（新域声明先于 DDL 落地即触发）；
+    离线部署的部分恢复更是同时缺多张表。
+    """
+    scratch = _scratch_url()
+    monkeypatch.setattr(connectors, "_ext_url", lambda: scratch)
+    monkeypatch.setattr(executor_module, "_ext_url", lambda: scratch)
+    await _admin_exec(f'DROP DATABASE IF EXISTS "{_SCRATCH_DB}" WITH (FORCE)')
+    await _admin_exec(f'CREATE DATABASE "{_SCRATCH_DB}"')
+    await ensure_tables()  # scratch 里 dg_* 全就位（含审计表）
+    await _exec_in(scratch, "DROP TABLE dg_entities CASCADE")  # 只拿掉**目标表**
+
+    calls = {"n": 0}
+    real_ensure_tables = executor_module.ensure_tables
+
+    async def _counting_ensure_tables() -> None:
+        calls["n"] += 1
+        await real_ensure_tables()
+
+    monkeypatch.setattr(executor_module, "ensure_tables", _counting_ensure_tables)
+
+    with pytest.raises(ActionError) as e:
+        await _invoke(pk=uuid.uuid4(), scope_rule=FilterRule(operator="allow_all"))
+
+    assert e.value.status_code == 500, "目标表缺失被误报成 404（会读成'行不存在或不在可见范围'）"
+    assert "目标表不存在" in e.value.detail
+    assert calls["n"] == 0, "目标表缺失不该触发懒建（建表只该由审计表的 42P01 触发）"
+    assert executor_module._lazy_schema_attempted is False, "一次性懒建额度被目标表的 42P01 烧掉了"
+
+
+async def test_malformed_db_url_is_action_error(monkeypatch):
+    """M-1：引擎构造也在错误归一之内。
+
+    不包的话 URL 畸形（配置写坏）抛的是 `ArgumentError`（SQLAlchemyError 子类）——与本模块
+    「只有一种对外异常」及「DB 不可达 → 500」都不对称：连不上归一到 500，URL 坏了却裸抛，
+    Task 7 的 `except ActionError` 接不住。
+    """
+    monkeypatch.setattr(executor_module, "_ext_url", lambda: "这不是一个-URL")
+    with pytest.raises(ActionError) as e:
+        await _invoke(pk=uuid.uuid4(), scope_rule=FilterRule(operator="allow_all"))
+    assert e.value.status_code == 500
+    assert "引擎构造失败" in e.value.detail

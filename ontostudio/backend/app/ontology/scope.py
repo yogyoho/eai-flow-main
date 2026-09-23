@@ -23,6 +23,14 @@ from typing import Any
 _IDENT = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
 
 # 叶子算子 → SQL 模板（{c}=列占位，{p}=参数占位）
+#
+# ⚠️ `overlap`（`{c} && {p}`）是一条**与其余四个都不同**的绑定路径：`&&` 要求两侧都是数组，
+# 而本体面对的表（cpa_* / csp_* / dg_*）**没有任何 array 列**，因此**至今无集成测试覆盖**
+# （`tests/test_actions_executor.py` 里那条 `ANY(:p)` 的测例只覆盖 `in`，证不了它）。
+# 它**不是死代码**：`config/permissions.yaml` 有真实模板 `allowed_depts OVERLAP: $identity.dept_ids`。
+# **运维前置条件**（Task 5 审查要求从测试 docstring 搬到此处——那段文字曾是这条约束的
+# 唯一载体，测试一旦被清理就会连带丢掉）：**一旦某对象类型的 `scope_bindings` 指向 array 列，
+# 必须先补一条 overlap 的集成测试再上线**。
 _LEAF_SQL = {
     "eq": "{c} = {p}",
     "ne": "{c} <> {p}",
