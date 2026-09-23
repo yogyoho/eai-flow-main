@@ -108,9 +108,9 @@
 | 4 `sql_write.py` 写守卫 | 标识符白名单 + 参数化 WHERE/SET 构造；**修掉两条 fail-open**（`not_in` 空值恒真、value 形状错逐字符拆） | 39 | `dd106e3c6` → `ba4646916` → `25f95721a` |
 | 5 `executor.py` 执行管线 | 解析→范围→锁定→前置→UPDATE(RETURNING)→审计→容错重投影；**Step 6 写路径韧性**（42P01 懒建 + 有界重试 + 握手超时）；返回体含 `audit_id` | 26 | `125747dad` → `a794a65ae` → `557decbd8` → `227f6a64b` → `8049e7c6d` |
 
-| 6 gateway 侧 | `AuthzCache` 复合键 `(user_id, permission)`；`GET /api/permissions/scope`；`FilterRule.to_wire()` + `AttributeSet.from_current_user()`；两份 `permissions.yaml` 加 `ontology:action:review` + `ontology_all` | +7 | `bc4609635` |
+| 6 gateway 侧 | `GET /api/permissions/scope`（实测活容器返回 `allow_all`）；`FilterRule.to_wire()`；两份 `permissions.yaml` 加 `ontology:action:review` + `ontology_all`；**Step 9** `graph_relation` 补 `scope_resource`；wire golden 契约守卫；`/scope` 身份改用正典 `resolve()` | +16 | `bc4609635` → `4d18b91fa` → `0fe50a398` → `dd053fc73` |
 
-**全量基线：`353 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`；**系统 Python 3.14 缺 owlrl，必须用仓内 `.venv`**）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
+**全量基线：`363 passed, 3 skipped`**（`ontostudio/backend`，用 `PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`；**系统 Python 3.14 缺 owlrl，必须用仓内 `.venv`**）。`ruff check .` 全绿；`ruff format --check .` 有 1 个既有未格式化文件 `app/auth.py:272`（**不属任何 Task 范围，别动**）。
 
 **Task 3 顺带修掉的坑（后续 Task 会受益）**：ontostudio 现在**自己**在 lifespan 里建表（`app/db.py::ensure_tables`）——gateway **不挂载也不建** `dg_*` 表，2026-09-17 独立服务搬迁后的注释曾长期与此不符。`/health` 现在带 `tables_ready` 字段（**状态码恒 200**，是否据此判不健康是待定的运维决策）。**残余风险**：`create_all` 只建缺失表、不做 schema 变更；建表失败只留 WARNING，且启动**只尝试一次**——`dg_action_audit` 的「DB 后起」缺口已由**写路径懒建**兜住（Task 5 Step 6，有界 + 只对 42P01），其余 `dg_*` 表仍要靠重启补建。
 
@@ -120,10 +120,13 @@
 > - ~~「写路径的引擎没有任何阶段超时」~~ → **握手阶段已收口**（`connect_args={"timeout": 5}`，`8049e7c6d`）；**命令阶段仍有意不收口**（`FOR UPDATE` 撞并发长事务有合法的长等待），留给 Task 7 的暴露面裁决。理由与代价见 `app/db.py` 末尾的缺口注释。
 > - ~~「`ontology` 模块仍是 `data_scopes: []`」~~ → **Task 6 已补 `ontology_all`**（`rule_template: {}`，空模板＝全量），并授给 `superadmin`；端点已实测返回 `allow_all`。
 
-**Task 6 留下的三件（已裁定，不是遗漏）**：
-1. **主仓 `authz_cache.py` 目前 0 生产消费者**（计划 Step 4(b) 的前提事实错误——主仓没有那个模块级 `_authz_cache`）。**保留，但在 Task 7/8 接 `/scope` 调用方时决定**：接上真路径，或在一个明确时点删掉。不要悬着。
-2. **`reviewer`（审核员）角色什么都没拿到**——`ontology:action:review` 与 `ontology_all` 目前只授给 `superadmin`。符合计划字面（"至少 admin 与 superadmin"，而 **`admin` 角色不存在**），但语义上"审核员不能审核"。**要动 `roles_custom.yaml` overlay（base yaml 对它是整体替换，改了无效），属权限模块的产品决策。** ⚠️ **Task 10 验收 §4「有操作权限但不带 `ontology_all` → 404」目前没有可用于该场景的角色——这是会撞上的前置缺口。**
-3. **`/scope` 不是平台数据范围判定的忠实投影**（缺超管旁路 → 比平台更严；缺 ABAC `deny_data_scopes` 扣减 → **fail-open**）——**spec §3.1 已记录，收敛方向见 Task 7 接线清单**。
+**Task 6 的两件删除（本轮新造、又被本轮自己的修复淘汰，故删）**：`authz_cache.py`（计划 Step 4(b) 的前提是**事实错误**——主仓根本没有那个模块级 `_authz_cache`；且"将来接上真路径"大概率是**语义变更**而非接线：会给平台引入进程级 30s 缓存＝权限吊销延迟 30s）与 `AttributeSet.from_current_user`（I-3 改用正典 `resolve()` 后零调用点零测试）。**两处均经"删除前后同一条命令逐条对比"确认无测试变红**——那是"零消费者"的第二个证明。
+
+**Task 6 留下的两件（已裁定，不是遗漏）**：
+1. **`reviewer`（审核员）角色什么都没拿到**——`ontology:action:review` 与 `ontology_all` 目前只授给 `superadmin`。符合计划字面（"至少 admin 与 superadmin"，而 **`admin` 角色不存在**），但语义上"审核员不能审核"。**要动 `roles_custom.yaml` overlay（base yaml 对它是整体替换，改了无效），属权限模块的产品决策。** ⚠️ **Task 10 验收 §4「有操作权限但不带 `ontology_all` → 404」目前没有可用于该场景的角色——这是会撞上的前置缺口。**
+2. **`/scope` 不是平台数据范围判定的忠实投影**（缺超管旁路 → 比平台更严；缺 ABAC `deny_data_scopes` 扣减 → **fail-open**）——**spec §3.1 已记录，其收敛已立为 Task 7 节首的硬性验收项**（此前是个悬空指针，见该节说明）。
+
+**Task 5 遗留、仍需在后续处理的两件**（该实现者本轮提醒）：① Task 8 的 `_ok()` 用 `json.dumps` **无 `default=str`**，而 `after` 现在可能带 `datetime`（Task 5 改用 `RETURNING` 的连带）——**已写进 Task 8 节**；② `test_permissions_scope_endpoint.py` 里"（Task 6 产物）"那句标注。
 
 **Task 5 开工前必须知道的三件事**（前四个 Task 的审查反复确认过；**对每个 Task 同样成立**）：
 

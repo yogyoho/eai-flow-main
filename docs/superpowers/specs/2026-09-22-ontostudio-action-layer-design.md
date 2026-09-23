@@ -228,7 +228,15 @@ dg_action_audit
 >
 > **最坏情形具体化**：`{conditions: {}, grants: {deny_data_scopes: [ontology_all]}}` 在平台侧是**全域读封锁**（空模板 deny ⇒ `get_data_scope` 返回 `none_allow`），而 OntoStudio 的读路径与动作层**完全无视它**。
 
-**但这是设计缺口，不是实现缺口**——实现严格符合本节字面。**修法方向见 Task 7 接线清单**：要么让 `/scope` 与 `with_data_scope` 共用同一条判定路径（推荐，顺带消除"两处口径"这一类问题），要么在此显式记录为已知不等价并说明何时必须收敛。**不要把 fail-open 那一半留成无记录状态。**
+**但这是设计缺口，不是实现缺口**——实现严格符合本节字面。**收敛动作已立为 Task 7 节首的硬性验收项**（此前这里写"见 Task 7 接线清单"，而 Task 7 并无该步骤——**那是本计划第五次"凡写下'那是 X 的范围'却没同时改 X 的步骤"**，已修）。
+
+### 3.2 已知减损：`/scope` 的 4xx 映射只兜竞态窗口（Task 6 实现者披露，未修）
+
+`/scope` 现在经 `require_permission("system:access")` 门禁，而 **`require_permission` 内部自己就 resolve 一次**（`middleware.py:224-225`，同请求缓存）。于是"**用户行已删**"这个情形在**依赖层**就抛 `ValueError` → **500**；端点里加的 `except ValueError → 403` 只兜得住两次 resolve 之间的竞态窗口。
+
+**之所以留着不修**：实现者写不出会让它变红的测试（映射在依赖层之上，测不到），故它**既没声称判别力、也没在注释里把它写成有效护栏**——代码注释明写了这一点。把映射上移到依赖层会**同时影响 `/me` 与 `with_data_scope`**，属独立决策，不该在 `scope` 一个端点上擅自挪。
+
+**这是"知道但不修"的正当形态**：有记录、有理由、有归属边界、且实现者没有把它伪装成已解决。**记录在此，供将来做统一错误映射时一并处理。**
 
 `FilterRule` 走 wire 时用其字段的 JSON 形态（`operator` / `field` / `value` / `children`），两侧各自持有数据类，**不共享代码**——OntoStudio 是独立服务，无法 import `app.*`。
 
