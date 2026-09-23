@@ -138,9 +138,10 @@ async def get_data_scope(
     （middleware.py）和同文件的 ``/me`` 同一条路径：``role_code`` 取 ``roles.code``、
     ``dept_ids`` 取 ``user_departments`` 关联表、``member_projects`` 取 ``project_members``。
 
-    I-3 (2026-09-23 质量审查)：此前是本端点自建 ``AttributeSet.from_current_user`` +
-    手工 ``db.get(Role, …)``，只复刻了半个 ``resolve``——于是 ``users.dept_id`` 有值而
-    ``user_departments`` 无行的用户，这里算出的 ``$identity.dept_ids`` 与平台不同
+    I-3 (2026-09-23 质量审查)：此前是本端点**自建身份**（``users.dept_id`` 单值 + 手工
+    ``db.get(Role, …)`` 查 role_code），只复刻了半个 ``resolve``——那个自建入口已随本修复
+    删除（它零调用方、零测试，留着只会让人照着把这个问题写回来）——于是 ``users.dept_id``
+    有值而 ``user_departments`` 无行的用户，当时这里算出的 ``$identity.dept_ids`` 与平台不同
     （**方向按字段分别读，别再当成一句话**）：
 
     | 字段 | 化简来源 | 偏离方向 |

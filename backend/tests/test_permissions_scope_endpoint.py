@@ -101,12 +101,12 @@ def test_scope_endpoint_dept_ids_come_from_relation_table(monkeypatch):
 
     ``contract_price.cpa_dept`` 的模板是 ``dept_id IN $identity.dept_ids``，``dept_head``
     角色的 data_scopes 带 ``cpa_dept``（且不带 ``cpa_all``，故只有这一支生效）。
-    正典身份的 ``dept_ids`` 取自 ``user_departments`` **关联表**；端点此前自建
-    ``AttributeSet.from_current_user`` 取的是 ``users.dept_id``（单值）——两者对"dept_id 有值
-    但关联表无行"的用户不同。
+    正典身份的 ``dept_ids`` 取自 ``user_departments`` **关联表**；端点此前自建身份时取的是
+    ``users.dept_id``（单值）——两者对"dept_id 有值但关联表无行"的用户不同（那个自建入口已
+    随 I-3 删除）。
 
-    变异检验：把端点换回 ``from_current_user`` + 手工 ``db.get(Role, …)`` → ``dept_ids`` 变空
-    → 本用例红（下一条断言同时钉住空集形态与取值形态，二者不能互串）。
+    变异检验：把端点换回自建身份 + 手工 ``db.get(Role, …)`` → ``dept_ids`` 变空 → 本用例红
+    （下一条断言同时钉住空集形态与取值形态，二者不能互串）。
     """
     patch_identity(monkeypatch, fake_identity("dept_head", dept_ids=["D-1", "D-2"]))
     r = build_app(router, user=make_user(), db=policy_rows_db()).get(SCOPE, params={"resource": "contract_price"})
