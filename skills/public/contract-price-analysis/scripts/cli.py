@@ -2741,7 +2741,13 @@ async def run_cluster(trigger: str = "manual") -> int:
                 (_cluster_sample_text(it["goods_name"], it.get("spec_model"), it["tech_params"]), it["tech_params"])
                 for it in db_items
             ]
-            result = cluster_items(samples)
+            result = cluster_items(
+                samples,
+                eps=cfg.cluster_eps,
+                min_samples=cfg.cluster_min_samples,
+                use_spec=cfg.cluster_by_spec,
+                use_category=cfg.cluster_by_category,
+            )
             groups = _build_groups_db(result, db_items)
     except Exception as exc:
         error = repr(exc)

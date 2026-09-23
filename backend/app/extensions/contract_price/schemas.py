@@ -120,6 +120,10 @@ class ConfigOut(BaseModel):
     parse_mode: str = "table"
     cluster_eps: float = 0.6
     cluster_min_samples: int = 2
+    # EAI-CUSTOM (2026-09-23 货物分组规则): 聚类维度开关——名称恒开(UI 锁定,
+    # 不落配置);规格/分类对应聚类 AND 门限启停,经 CPA_CLUSTER_BY_* env 入子进程。
+    cluster_by_spec: bool = True
+    cluster_by_category: bool = True
     scheduled_enabled: bool = False
     schedule_cron: str | None = None
     # Table-name keywords that mark a goods/price table even without a clear

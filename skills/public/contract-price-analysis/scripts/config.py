@@ -18,6 +18,18 @@ class Config:
     minio_secret_key: str
     minio_bucket: str              # independent bucket, e.g. cpa-contracts
     minio_secure: bool
+    # 货物分组维度开关(设置页 checkbox, 2026-09-23): 名称恒开(UI 不可关);
+    # 规格/分类对应聚类 AND 门限的启停(False → 该门限中性放行)。
+    cluster_by_spec: bool
+    cluster_by_category: bool
+    # 聚类参数(设置页"高级:聚类参数", 2026-09-23 起真正接线——此前 UI 值
+    # 从未到达 CLI,engine 一直用硬编码默认)。
+    cluster_eps: float
+    cluster_min_samples: int
+
+
+def _env_flag(name: str, default: str = "true") -> bool:
+    return os.environ.get(name, default).strip().lower() not in ("0", "false", "no")
 
 
 def get_config() -> Config:
@@ -37,4 +49,8 @@ def get_config() -> Config:
         ),
         minio_bucket=os.environ.get("CPA_MINIO_BUCKET", "cpa-contracts"),
         minio_secure=os.environ.get("CPA_MINIO_SECURE", "false").lower() == "true",
+        cluster_by_spec=_env_flag("CPA_CLUSTER_BY_SPEC"),
+        cluster_by_category=_env_flag("CPA_CLUSTER_BY_CATEGORY"),
+        cluster_eps=float(os.environ.get("CPA_CLUSTER_EPS", "0.6")),
+        cluster_min_samples=int(os.environ.get("CPA_CLUSTER_MIN_SAMPLES", "2")),
     )

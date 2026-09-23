@@ -12,8 +12,16 @@ def _write_cfg(tmp_path, monkeypatch, data):
     monkeypatch.setattr(crud, "_config_path", lambda: str(path))
 
 
+def _no_platform(monkeypatch):
+    """隔离平台回退桥(测 cpa 自身配置语义时显式关闭)。"""
+    from app.extensions.contract_price import service
+
+    monkeypatch.setattr(service, "_platform_llm_fallback", lambda: [])
+
+
 def test_no_llm_config_no_flags(tmp_path, monkeypatch):
     _write_cfg(tmp_path, monkeypatch, {})
+    _no_platform(monkeypatch)
     from app.extensions.contract_price.service import _resolve_llm_args
 
     assert _resolve_llm_args() == []
@@ -46,6 +54,7 @@ def test_full_triple_passed_as_argv_with_env_key(tmp_path, monkeypatch):
 def test_partial_triple_off(tmp_path, monkeypatch):
     """任一要素缺失 → 不传(层关闭),避免半配置态产生不可达调用。"""
     _write_cfg(tmp_path, monkeypatch, {"llm_base_url": "http://x", "llm_model": "m"})
+    _no_platform(monkeypatch)
     from app.extensions.contract_price.service import _resolve_llm_args
 
     assert _resolve_llm_args() == []
@@ -59,6 +68,7 @@ def test_unresolved_env_var_off(tmp_path, monkeypatch):
         {"llm_base_url": "http://x", "llm_key": "$CPA_MISSING_KEY_XYZ", "llm_model": "m"},
     )
     monkeypatch.delenv("CPA_MISSING_KEY_XYZ", raising=False)
+    _no_platform(monkeypatch)
     from app.extensions.contract_price.service import _resolve_llm_args
 
     assert _resolve_llm_args() == []
@@ -219,3 +229,84 @@ def test_full_roundtrip_masked_get_then_put_keeps_secret(tmp_path, monkeypatch):
 
     args = _resolve_llm_args()
     assert args[args.index("--llm-key") + 1] == "sk-live-secret"
+
+
+# --- 平台模型清单回退桥(2026-09-22): cpa llm_* 缺失 → config.yaml 默认模型 ----
+
+
+def _patch_platform(monkeypatch, models):
+    import deerflow.config as deerflow_config
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(
+        deerflow_config, "get_app_config", lambda: SimpleNamespace(models=models)
+    )
+
+
+def test_platform_bridge_activates_when_cpa_unset(tmp_path, monkeypatch):
+    """cpa llm_* 缺失 → 回退 config.yaml 第一个 OpenAI 兼容模型($ENV key 解析)。"""
+    _write_cfg(tmp_path, monkeypatch, {})
+    monkeypatch.setenv("PLATFORM_LLM_KEY_T", "sk-platform")
+    from types import SimpleNamespace
+
+    _patch_platform(
+        monkeypatch,
+        [
+            SimpleNamespace(  # 非 OpenAI 协议 → 跳过
+                use="langchain_anthropic:ChatAnthropic",
+                base_url="https://anthropic", api_key="k", model="claude",
+            ),
+            SimpleNamespace(
+                use="langchain_openai:ChatOpenAI",
+                base_url="https://apihub.example/v1/",
+                api_key="$PLATFORM_LLM_KEY_T", model="flash-1",
+            ),
+        ],
+    )
+    from app.extensions.contract_price.service import _resolve_llm_args
+
+    assert _resolve_llm_args() == [
+        "--llm-base-url",
+        "https://apihub.example/v1/",
+        "--llm-key",
+        "sk-platform",
+        "--llm-model",
+        "flash-1",
+    ]
+
+
+def test_platform_bridge_empty_when_no_compatible_model(tmp_path, monkeypatch):
+    """清单无 OpenAI 兼容模型/清单为空 → [] 层关闭。"""
+    _write_cfg(tmp_path, monkeypatch, {})
+    from types import SimpleNamespace
+
+    _patch_platform(
+        monkeypatch,
+        [SimpleNamespace(use="langchain_anthropic:ChatAnthropic", base_url="u", api_key="k", model="m")],
+    )
+    from app.extensions.contract_price.service import _resolve_llm_args
+
+    assert _resolve_llm_args() == []
+
+
+def test_cpa_triple_beats_platform_bridge(tmp_path, monkeypatch):
+    """cpa 专用三元组齐备时优先,平台清单不被读取。"""
+    _write_cfg(
+        tmp_path,
+        monkeypatch,
+        {"llm_base_url": "http://own/v1", "llm_key": "k1", "llm_model": "own-m"},
+    )
+    monkeypatch.setattr(
+        "app.extensions.contract_price.service._platform_llm_fallback",
+        lambda: (_ for _ in ()).throw(AssertionError("bridge must not run")),
+    )
+    from app.extensions.contract_price.service import _resolve_llm_args
+
+    assert _resolve_llm_args() == [
+        "--llm-base-url",
+        "http://own/v1",
+        "--llm-key",
+        "k1",
+        "--llm-model",
+        "own-m",
+    ]

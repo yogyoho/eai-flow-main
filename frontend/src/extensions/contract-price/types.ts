@@ -142,6 +142,8 @@ export interface CpaConfig {
   parse_mode: string;
   cluster_eps: number;
   cluster_min_samples: number;
+  cluster_by_spec: boolean;
+  cluster_by_category: boolean;
   scheduled_enabled: boolean;
   schedule_cron: string | null;
   price_table_keywords: string[];
@@ -184,4 +186,18 @@ export interface UploadResponse {
   storage_uri: string;
   file_name: string;
   size: number;
+}
+
+/** 自进化候选（⑥ 落地工作流）：pending 的字段修正证据 + L4 建议锚词。 */
+export interface EvolutionCandidate {
+  learning_id: string;
+  scope: string;
+  field: string;
+  recurrence: number;
+  error_pattern: string;
+  doc_hash: string;
+  evidence: string;
+  suggested_anchors: Record<string, string[]>;
+  first_seen_at: string;
+  last_seen_at: string;
 }

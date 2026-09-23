@@ -30,7 +30,9 @@ interface Props {
 
 export function SeedRulesCard({ seeds, onChange, saving }: Props) {
   const [editing, setEditing] = useState<SeedDraft | null>(null);
-  const { data } = useDocuments({ limit: 200 });
+  // 后端 limit 上限 100(超了 422,查询报错→聚合空→全部误显"未命中");
+  // 语料超过 100 份文档时这里需要改成分页聚合。
+  const { data } = useDocuments({ limit: 100 });
   // 命中统计: 聚合各文档 parse_meta.matched_seeds(seed名→表数)
   const hits = useMemo(() => {
     const acc: Record<string, number> = {};

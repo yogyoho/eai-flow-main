@@ -112,3 +112,27 @@ def test_category_missing_is_neutral():
     ]
     result = cluster_items(samples, eps=0.6, min_samples=2)
     assert result.labels[0] == result.labels[1] == result.labels[2]
+
+
+def test_dimension_toggles_neutralize_gates():
+    """设置页分组开关: 关掉的维度中性放行(退化为名称单维聚类)。"""
+    spec_trip = [  # 同规格对 + 异规格一条
+        ("无缝管 A159", {}),
+        ("无缝管 A159", {}),
+        ("无缝管 A108", {}),
+    ]
+    cat_trip = [  # 同类目对 + 异类目一条
+        ("管内穿线铜芯导线", {"category": "照明安装工程"}),
+        ("管内穿线铜芯导线", {"category": "照明安装工程"}),
+        ("管内穿线铜芯导线", {"category": "B4应急照明安装工程"}),
+    ]
+    # 全开(默认): 异规格/异类目 → 分离(同款对成簇,异者落单)
+    r = cluster_items(spec_trip, use_spec=True)
+    assert r.labels[0] == r.labels[1] != r.labels[2]
+    r = cluster_items(cat_trip, use_category=True)
+    assert r.labels[0] == r.labels[1] != r.labels[2]
+    # 关掉对应维度 → 中性,全部按名称聚成一簇
+    r = cluster_items(spec_trip, use_spec=False)
+    assert r.labels[0] == r.labels[1] == r.labels[2]
+    r = cluster_items(cat_trip, use_category=False)
+    assert r.labels[0] == r.labels[1] == r.labels[2]

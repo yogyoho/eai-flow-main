@@ -16,6 +16,7 @@ import type {
   CpaDocument,
   CpaItem,
   CpaRun,
+  EvolutionCandidate,
   Page,
   PipelineRunResponse,
   PipelineStatus,
@@ -230,6 +231,22 @@ export const contractPriceApi = {
       method: "POST",
       body: JSON.stringify({ item_ids: itemIds }),
     }),
+
+  // Functional area 7: evolution（自进化候选 ⑥ 落地工作流）
+  evolutionCandidates: () =>
+    authFetch<{ items: EvolutionCandidate[] }>(
+      `${API_BASE}/evolution/candidates`,
+    ),
+  adoptEvolutionCandidate: (learningId: string) =>
+    authFetch<{ status: string }>(
+      `${API_BASE}/evolution/candidates/${learningId}/adopt`,
+      { method: "POST" },
+    ),
+  dismissEvolutionCandidate: (learningId: string) =>
+    authFetch<{ status: string }>(
+      `${API_BASE}/evolution/candidates/${learningId}/dismiss`,
+      { method: "POST" },
+    ),
 
   deleteItemsByRun: (runId: string) =>
     authFetch<{ deleted: number }>(`${API_BASE}/items/by-run/${runId}`, {

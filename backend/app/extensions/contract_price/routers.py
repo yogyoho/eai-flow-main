@@ -23,8 +23,8 @@ from fastapi.responses import FileResponse, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.extensions.auth.middleware import require_permission
-from app.extensions.contract_price import crud, service, storage
-from app.extensions.contract_price.models import CpaDocument
+from app.extensions.contract_price import crud, evolution, service, storage
+from app.extensions.contract_price.models import CpaDocument, CpaItem
 from app.extensions.contract_price.schemas import (
     BatchDeleteRequest,
     ClusterConfirm,
@@ -91,13 +91,30 @@ async def update_document(
     doc_id: UUID,
     body: DocumentUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
     """Manual补 fallback: fill project name/location (and doc metadata) the
     front-page OCR regex couldn't anchor. Used by the ContractsView editor."""
+    # EAI-CUSTOM (自进化 D-1, 补遗 2026-09-22): 人工修正即捕获——pre-image diff
+    # 进 agent_learnings(evolution.capture_field_correction), 供锚词规则晋升评审。
+    _DOC_FIELDS = ("project_name", "project_location", "project_no", "contract_no", "supplier", "sign_date")
+    pre_doc = await db.get(CpaDocument, doc_id)
+    pre = {f: getattr(pre_doc, f, None) for f in _DOC_FIELDS} if pre_doc is not None else {}
     doc = await crud.update_document(db, doc_id, body.model_dump(exclude_unset=True))
     if doc is None:
         raise HTTPException(status_code=404, detail="document not found")
+    for field in _DOC_FIELDS:
+        old, new = pre.get(field), getattr(doc, field)
+        if old != new:
+            await evolution.capture_field_correction(
+                db,
+                user_id=str(current_user.id),
+                scope="doc",
+                field=field,
+                old_value=old,
+                new_value=new,
+                doc_hash=doc.file_hash,
+            )
     return doc
 
 
@@ -356,11 +373,33 @@ async def update_item(
     item_id: UUID,
     body: ItemUpdate,
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
+    # EAI-CUSTOM (自进化 D-3, 补遗 2026-09-22): 行级值修正(名称/规格/单价/参数)
+    # 即捕获, 错误模式粗分类后进 agent_learnings——超出既有 L4 表头词收割的
+    # 部分(错误模式本身)供列语义规则晋升评审。
+    _ITEM_FIELDS = ("unit_price", "goods_name", "spec_model", "tech_params")
+    pre_item = await db.get(CpaItem, item_id)
+    pre = {f: getattr(pre_item, f, None) for f in _ITEM_FIELDS} if pre_item is not None else {}
     item = await crud.update_item(db, item_id, body.model_dump(exclude_unset=True))
     if item is None:
         raise HTTPException(status_code=404, detail="item not found")
+    doc = await db.get(CpaDocument, item.document_id)
+    for field in _ITEM_FIELDS:
+        old, new = pre.get(field), getattr(item, field)
+        if old != new:
+            await evolution.capture_field_correction(
+                db,
+                user_id=str(current_user.id),
+                scope="item",
+                field=field,
+                old_value=old,
+                new_value=new,
+                doc_hash=doc.file_hash if doc is not None else None,
+                error_pattern=evolution.classify_error_pattern(
+                    "" if old is None else str(old), "" if new is None else str(new)
+                ),
+            )
     return item
 
 
@@ -446,6 +485,44 @@ async def delete_run(
     if not ok:
         raise HTTPException(status_code=404, detail="run not found")
     return {"deleted": True}
+
+
+# --- Functional area 7: evolution（自进化候选 ⑥ 落地工作流, EAI-CUSTOM） ------
+
+
+@router.get("/evolution/candidates")
+async def evolution_candidates(
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """pending 的字段修正候选（recurrence 降序）+ L4 建议锚词, 供配置页规则卡落地。"""
+    return {"items": await evolution.list_candidates(db)}
+
+
+@router.post("/evolution/candidates/{learning_id}/adopt")
+async def evolution_adopt(
+    learning_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """人工已把该证据落成种子规则卡 → 标记 promoted_to_skill（晋升链路闭环）。"""
+    ok = await evolution.set_candidate_status(db, learning_id, "promoted_to_skill")
+    if not ok:
+        raise HTTPException(status_code=404, detail="candidate not found")
+    return {"status": "promoted_to_skill"}
+
+
+@router.post("/evolution/candidates/{learning_id}/dismiss")
+async def evolution_dismiss(
+    learning_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """忽略该候选（误操作/不具代表性 → 永不重开, D12 dismissed 语义）。"""
+    ok = await evolution.set_candidate_status(db, learning_id, "dismissed")
+    if not ok:
+        raise HTTPException(status_code=404, detail="candidate not found")
+    return {"status": "dismissed"}
 
 
 # --- Functional area 5: config ---------------------------------------------

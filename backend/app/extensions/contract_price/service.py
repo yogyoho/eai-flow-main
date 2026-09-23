@@ -36,23 +36,61 @@ _LLM_FLAG_MAP = (
 )
 
 
+def _env_value(v: str | None) -> str:
+    """解析 "$ENV_VAR" 形式的配置值;未设置返回空串。"""
+    v = str(v or "").strip()
+    if v.startswith("$"):
+        return os.environ.get(v[1:], "").strip()
+    return v
+
+
+def _platform_llm_fallback() -> list[tuple[str, str]]:
+    """系统模型清单(config.yaml models[])回退桥: 取第一个 OpenAI 兼容模型
+    (use=langchain_openai:*,与 llm_fallback 的 chat-completions 协议匹配)
+    解析为 (flag, value) 三元组。
+
+    EAI-CUSTOM (2026-09-22): cpa 自身 llm_* 未配置时零配置开箱——设置页模型
+    列表的服务端真源就是这份清单(浏览器 localStorage 的个人选择服务端不可见)。
+    app→harness 导入合法;清单不可读/无兼容模型 → [] 层关闭。"""
+    try:
+        from deerflow.config import get_app_config
+
+        for m in get_app_config().models or []:
+            use = str(getattr(m, "use", "") or "")
+            base_url = _env_value(getattr(m, "base_url", None))
+            api_key = _env_value(getattr(m, "api_key", None))
+            model = str(getattr(m, "model", "") or "").strip()
+            if not (use.startswith("langchain_openai:") and base_url and api_key and model):
+                continue
+            return [
+                ("--llm-base-url", base_url),
+                ("--llm-key", api_key),
+                ("--llm-model", model),
+            ]
+    except Exception:  # noqa: BLE001 — 桥接失败等同层关闭,绝不阻塞管线触发
+        pass
+    return []
+
+
 def _resolve_llm_args() -> list[str]:
     """Read the LLM triple from the extension config and build --llm-* argv flags.
 
-    缺省(config 无三元组/读取失败/任一要素为空或 $ENV 未解析)→ [] 不传——
-    层关闭,子进程行为与未引入本机制前完全一致。"""
+    优先级: cpa 扩展自身 llm_*(专用模型) > 系统模型清单回退桥 > [] 层关闭。
+    任一要素为空或 $ENV 未解析 → 跳到下一级;最终 [] 不传——子进程行为与未引入
+    本机制前完全一致。"""
     try:
         cfg = crud.load_config()
     except Exception:  # noqa: BLE001 — 配置不可读时绝不阻塞管线触发
         return []
     vals: list[tuple[str, str]] = []
     for field_name, flag in _LLM_FLAG_MAP:
-        v = str(getattr(cfg, field_name, None) or "").strip()
-        if v.startswith("$"):
-            v = os.environ.get(v[1:], "").strip()
+        v = _env_value(getattr(cfg, field_name, None))
         if not v:
-            return []
+            vals = []  # 三元组不完整 → 整组放弃,走系统清单回退
+            break
         vals.append((flag, v))
+    if not vals:
+        vals = _platform_llm_fallback()
     out: list[str] = []
     for flag, v in vals:
         out += [flag, v]
@@ -99,6 +137,17 @@ async def run_pipeline_subprocess(
     cmd += _resolve_llm_args()
     env = dict(os.environ)
     env["PYTHONPATH"] = str(_SKILL_DIR) + os.pathsep + env.get("PYTHONPATH", "")
+    # EAI-CUSTOM (2026-09-23 货物分组规则): 聚类维度开关随 env 下发(CLI 侧
+    # CPA_CLUSTER_BY_* 只在 cluster 相位消费);读不到配置按全开(兼容默认)。
+    # 2026-09-23 续: eps/min_samples 同路接线——此前设置页这两个值从未到达 CLI。
+    try:
+        _cfg = crud.load_config()
+        env["CPA_CLUSTER_BY_SPEC"] = "1" if _cfg.cluster_by_spec else "0"
+        env["CPA_CLUSTER_BY_CATEGORY"] = "1" if _cfg.cluster_by_category else "0"
+        env["CPA_CLUSTER_EPS"] = str(_cfg.cluster_eps)
+        env["CPA_CLUSTER_MIN_SAMPLES"] = str(int(_cfg.cluster_min_samples))
+    except Exception:  # noqa: BLE001 — 配置不可读不阻塞管线触发
+        pass
 
     try:
         proc = await asyncio.create_subprocess_exec(

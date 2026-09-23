@@ -55,12 +55,18 @@ def _category_similarity(a: str, b: str) -> float:
     return 1.0 if na == nb else 0.0
 
 
-def _pairwise_distance(samples: list[tuple[str, dict]], vec: Vectorizer) -> np.ndarray:
+def _pairwise_distance(
+    samples: list[tuple[str, dict]],
+    vec: Vectorizer,
+    use_spec: bool = True,
+    use_category: bool = True,
+) -> np.ndarray:
     """"同一商品" = 名称相似 **且** 规格匹配 **且** 类目一致
     → d = max(名称余弦距离, 规格Jaccard距离, 类目距离)。
 
+    use_spec/use_category=False → 对应门限中性放行(设置页分组开关)。
     名称相似度在剥掉规格 token 的纯名称上计算(规格有独立门限,不重复计分);
-    剥完为空的名称回退原文。min(相似度) 的 AND 语义: 任一维度不达标即分离。
+    剥完为空的名称回退原文。min(相似度) 的 AND 语义: 任一启用维度不达标即分离。
     ponytail: O(n²) 纯 python Jaccard,504 行 <2s,真慢了再换稀疏矩阵。
     """
     n = len(samples)
@@ -82,11 +88,9 @@ def _pairwise_distance(samples: list[tuple[str, dict]], vec: Vectorizer) -> np.n
             if i == j:
                 dist[i, j] = 0.0
                 continue
-            dist[i, j] = max(
-                text_d[i, j],
-                1.0 - _spec_similarity(tok_sets[i], tok_sets[j]),
-                1.0 - _category_similarity(cats[i], cats[j]),
-            )
+            spec_d = 1.0 - _spec_similarity(tok_sets[i], tok_sets[j]) if use_spec else 0.0
+            cat_d = 1.0 - _category_similarity(cats[i], cats[j]) if use_category else 0.0
+            dist[i, j] = max(text_d[i, j], spec_d, cat_d)
     return dist
 
 
@@ -124,19 +128,25 @@ def _dbscan(distance: np.ndarray, eps: float, min_samples: int) -> np.ndarray:
 
 
 def cluster_items(
-    samples: list[tuple[str, dict]], eps: float = 0.6, min_samples: int = 2
+    samples: list[tuple[str, dict]],
+    eps: float = 0.6,
+    min_samples: int = 2,
+    use_spec: bool = True,
+    use_category: bool = True,
 ) -> ClusterResult:
     """Cluster ``samples`` of (goods_name, tech_params) by name-text AND spec match.
 
     ``eps`` is the distance radius on the AND metric (see _pairwise_distance);
     items farther than ``eps`` from every cluster core (or in a cluster smaller
-    than ``min_samples``) become noise (-1).
+    than ``min_samples``) become noise (-1). use_spec/use_category 关断对应
+    AND 门限(False → 该维中性放行,退化为名称单维)——设置页"货物分组规则"
+    checkbox 的管线入口;名称恒开(UI 锁定)。
     """
     if not samples:
         return ClusterResult(labels=[], representatives={})
 
     vec = Vectorizer()  # fit 在 _pairwise_distance 内做(用剥规格后的纯名称)
-    distance = _pairwise_distance(samples, vec)
+    distance = _pairwise_distance(samples, vec, use_spec=use_spec, use_category=use_category)
     if distance.shape[0] == 0:
         return ClusterResult(labels=[], representatives={})
 
