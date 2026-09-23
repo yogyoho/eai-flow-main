@@ -1915,7 +1915,11 @@ ontology 模块补 ontology_all 数据范围与 ontology:action:review 操作权
     scope_resource: ontology
 ```
 
-**影响**：今日无运行期后果（现有动作只 targeting `graph_entity`），但任何将来 targeting `graph_relation` 的动作会恒 `none_allow`（权限配了但没用）；且 Task 9 的 `scope_bindings` lint 可能就此报错。
+**影响**：今日无运行期后果（现有动作只 targeting `graph_entity`），但任何将来 targeting `graph_relation` 的动作会恒 `none_allow`（权限配了但没用）。
+
+> **⚠️ 订正（Task 6 质量审查）**：本步骤初稿末尾写「且 Task 9 的 `scope_bindings` lint 可能就此报错」——**那是错的，已删**。Task 9 的 `check_scope_resources` 只校验"**已声明**的 `scope_resource` 是已知模块 key"，其自带验收用例 `test_object_without_scope_resource_is_fine` **明确祝福"缺绑定是正常的"**——所以**缺绑定永远绿**。留着那句会让下一个人依赖一个不会触发的守卫。
+
+**防第五次复发的结构性做法（Task 9 落地，见该节）**：断言「**凡被动作或链接类型引用的对象类型，必须声明 `scope_resource`**」。依据是 registry 里已有现成的引用边可查（`doc_graph.yaml` 的 `actions[].target`、`link_types[].source/.target`），而 `ontology_lint.py` 已有 `check_*(reg) -> list[str]` 的现成形状。**只靠"补上这一次"防不住第五次——本计划已用五次证明了这一点。**
 
 **要有的测试**：`assert get_registry().object_types["graph_relation"].scope_resource == "ontology"`（与 `graph_entity` 那条同形）。
 
@@ -1927,6 +1931,20 @@ git commit -m "fix(ontostudio): graph_relation 补 scope_resource（Task 3 交�
 ---
 
 ## Task 7: REST 暴露面
+
+> ### ⚠️ 开工前必读：本任务多了一条硬性验收项（Task 6 质量审查 I-1）
+>
+> **spec §3.1 记录的 `/scope` 判定缺口，收敛动作就在这里——此前它是个悬空指针。** 我在 spec 里写了「收敛方向见 Task 7 接线清单」，但 grep 全计划 `deny_data_scopes|超管旁路|is_system|with_data_scope` 只有那一处，**Task 7 本节原本没有任何一条涉及它**。这是本计划**第五次**出现"凡写下'那是 X 的范围'，却没同时改 X 的步骤"。
+>
+> **必须在 Task 7 内闭合并验收**：让 `/scope` 与平台正典 `with_data_scope`（`backend/app/extensions/auth/middleware.py:350-388`）共用同一条判定路径，即补齐两步：
+> 1. **超管旁路**（`:380`：`is_system` 或 `permissions` 含 `"*"` → `allow_all`）
+> 2. **ABAC `deny_data_scopes` 扣减**（`:385`；`get_data_scope` 本身支持 `deny_scope_ids`，`/scope` 没传）——**这一半是 fail-open**
+>
+> **验收测试**：造两态——`deny_data_scopes: [ontology_all]` + 非超管持有 `ontology_all`——断言两侧判定一致。
+>
+> **⚠️ 时间性事实（改变了这条缺口的可触发性）**：`policy_routers.py:47-50` 校验 `deny_data_scopes` 的每个 id 必须在 registry 中已声明，而 **`bc4609635` 之前 `ontology_all` 在 yaml 里出现 0 次**——**是那次提交本身第一次让"deny 掉 `ontology_all`"成为可创建的策略**。风险从"理论上"变成"管理员一次操作即可"。最坏情形：`{conditions: {}, grants: {deny_data_scopes: [ontology_all]}}` 在平台侧是**全域读封锁**（空模板 deny ⇒ `none_allow`），而 OntoStudio 的读与动作**完全无视它**。
+>
+> **另（不在本任务，登记以免再丢）**：`/scope` 的身份构造应改用**本文件已 import 的正典 `provider.resolve()`**（见 Task 6 审查 I-3），而不是手工复刻半个 `resolve`。这项由实现者在 Task 6 收口轮处理；若未处理，在本任务一并做——**它决定 `dept_ids`/`member_projects` 是否与平台等价**。
 
 **Files:**
 - Modify: `ontostudio/backend/app/ontology/routers.py`

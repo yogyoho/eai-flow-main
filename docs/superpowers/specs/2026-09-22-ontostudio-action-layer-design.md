@@ -222,7 +222,11 @@ dg_action_audit
 | **超管旁路**（`middleware.py:380`：`is_system` 或 `permissions` 含 `"*"` → `allow_all`） | 直接放行 | 不认 | **比平台更严** → 会 404 掉本该允许的动作 |
 | **ABAC `deny_data_scopes` 扣减**（`middleware.py:385`；`get_data_scope` 本身**支持** `deny_scope_ids`） | 在 allow 上扣 deny | **不传** `deny_scope_ids` | **比平台更松 = fail-open** → 一条 `deny_data_scopes: [ontology_all]` 的策略会被动作层忽略 |
 
-**今日无实害**：超管旁路那一半被 superadmin 的 `data_scopes: [ontology_all]` 授权**掩盖**住了（这正是 Task 6 提交信息里写"必需"的原因）；deny 那一半今日无 `ontology_all` 的 deny 策略，且非超管角色都没有 `ontology_all`（Task 6 审查逐一验过 6 个角色）。
+**今日无实害**（Task 6 质量审查独立确认两条路径）：`policies` 表 **0 行**（连一条 deny 策略都不存在）；唯一持有 `ontology_all` 的角色是 superadmin，而超管旁路在 deny 循环**之前就 return `allow_all`**，故即便造出 deny 策略，平台侧对唯一持有者也免疫。超管旁路那一半另被 superadmin 的 `data_scopes: [ontology_all]` 授权**掩盖**住了。
+
+> **⚠️ 时间性事实（改变了这条缺口的可触发性，勿按旧文理解为"纯理论"）**：`policy_routers.py:47-50` 校验 `deny_data_scopes` 的每个 id **必须在 registry 中已声明**——而 **`bc4609635` 之前，`ontology_all` 在 `permissions.yaml` 里出现 0 次**。也就是说，**是那次提交本身第一次让"deny 掉 `ontology_all`"成为一条可被管理员创建的策略**。缺口从"理论上"变成"一次管理操作即可触发"。
+>
+> **最坏情形具体化**：`{conditions: {}, grants: {deny_data_scopes: [ontology_all]}}` 在平台侧是**全域读封锁**（空模板 deny ⇒ `get_data_scope` 返回 `none_allow`），而 OntoStudio 的读路径与动作层**完全无视它**。
 
 **但这是设计缺口，不是实现缺口**——实现严格符合本节字面。**修法方向见 Task 7 接线清单**：要么让 `/scope` 与 `with_data_scope` 共用同一条判定路径（推荐，顺带消除"两处口径"这一类问题），要么在此显式记录为已知不等价并说明何时必须收敛。**不要把 fail-open 那一半留成无记录状态。**
 
