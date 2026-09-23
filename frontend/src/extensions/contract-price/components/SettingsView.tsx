@@ -4,7 +4,7 @@
  *  移除: 解析模式(v2 已废弃单一 OCR 路径)与货物表名关键字(被 seed 库取代)。
  *  dirty 跟踪 + 保存 clamp + toast 自动消隐。 */
 
-import { PackageSearch, Save } from "lucide-react";
+import { PackageSearch, Save,Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { EvolutionCandidatesCard } from "@/extensions/contract-price/components/EvolutionCandidatesCard";
 import { PageHeader } from "@/extensions/contract-price/components/PageHeader";
 import { SeedRulesCard } from "@/extensions/contract-price/components/SeedRulesCard";
 import { useConfig, useUpdateConfig } from "@/extensions/contract-price/hooks";
@@ -84,7 +85,7 @@ export function SettingsView() {
       <PageHeader
         title="配置"
         description="表格定位规则与解析参数（修改后下次解析生效）"
-        icon={<PackageSearch className="h-4 w-4" />}
+        icon={<Settings className="h-6 w-6" />}
       />
 
       <SeedRulesCard
@@ -92,6 +93,48 @@ export function SettingsView() {
         onChange={(s) => set("table_seeds", s)}
         saving={updateConfig.isPending}
       />
+
+      {/* 货物分组规则(2026-09-23): 聚类维度开关——名称恒开,规格/分类可切换,
+          下次「聚类分析」生效。 */}
+      <Card>
+        <CardHeader>
+          <CardTitle>货物分组规则</CardTitle>
+          <CardDescription>
+            选择聚类分组依据的维度（货物名称恒为依据）。修改后下次「聚类分析」生效。
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-x-6 gap-y-2">
+          <label className="text-foreground flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary"
+              checked
+              disabled
+            />
+            货物名称（恒定依据）
+          </label>
+          <label className="text-foreground flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary"
+              checked={form.cluster_by_spec}
+              onChange={(e) => set("cluster_by_spec", e.target.checked)}
+            />
+            按规格细分
+          </label>
+          <label className="text-foreground flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="accent-primary"
+              checked={form.cluster_by_category}
+              onChange={(e) => set("cluster_by_category", e.target.checked)}
+            />
+            按分类细分
+          </label>
+        </CardContent>
+      </Card>
+
+      <EvolutionCandidatesCard />
 
       <Card>
         <CardHeader>

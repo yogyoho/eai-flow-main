@@ -7,7 +7,7 @@ import {
   ChevronRight,
   Crosshair,
   GitMerge,
-  PackageSearch,
+  Boxes,
   RefreshCw,
   X,
 } from "lucide-react";
@@ -248,7 +248,7 @@ export function ClustersView() {
           <PageHeader
             title="分组审核"
             description="审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。分组为上次「聚类分析」的结果——删除或修改货物后需重新聚类刷新，此处不提供单独删除。"
-            icon={<PackageSearch className="h-4 w-4" />}
+            icon={<Boxes className="h-6 w-6" />}
           />
         </div>
         <Button
@@ -432,9 +432,19 @@ export function ClustersView() {
               <>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <h2 className="text-foreground text-lg font-semibold">
-                      {detail.representative_name}
-                    </h2>
+                    {/* 分组名可改: 与类别同款 InlineEdit,blur/Enter 提交 PATCH */}
+                    <InlineEdit
+                      value={detail.representative_name}
+                      placeholder="分组名称"
+                      onCommit={(v) => {
+                        if (!v.trim()) return; // 空名拒绝,保留原名
+                        updateMutation.mutate({
+                          id: detail.id,
+                          body: { representative_name: v },
+                        });
+                      }}
+                      className="text-foreground text-lg font-semibold"
+                    />
                     <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
                       <span>类别:</span>
                       <InlineEdit
