@@ -49,6 +49,10 @@ export function useClusters(params: Record<string, unknown> = {}) {
   return useQuery({
     queryKey: KEYS.clusters(params),
     queryFn: () => contractPriceApi.listClusters(params),
+    // 翻页过渡期保留上一页数据: 否则 key 变化瞬间 data=undefined → total=0 →
+    // totalPages=1 → 钳位 effect 误判"尾部清空"把页面弹回第 1 页(bug: 翻到
+    // 11 页后回第 1 页)。
+    placeholderData: (prev) => prev,
   });
 }
 

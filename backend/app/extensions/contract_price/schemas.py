@@ -124,6 +124,9 @@ class ConfigOut(BaseModel):
     # 不落配置);规格/分类对应聚类 AND 门限启停,经 CPA_CLUSTER_BY_* env 入子进程。
     cluster_by_spec: bool = True
     cluster_by_category: bool = True
+    # EAI-CUSTOM (2026-09-24 合并先验): 手动合并自动写入,重聚类后由引擎重放
+    # ([{name, aliases}]);误合并编辑 config.json 的 merge_pins 条目撤销。
+    merge_pins: list[dict] = []
     scheduled_enabled: bool = False
     schedule_cron: str | None = None
     # Table-name keywords that mark a goods/price table even without a clear

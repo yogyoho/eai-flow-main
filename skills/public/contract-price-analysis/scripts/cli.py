@@ -93,6 +93,21 @@ def _load_seeds() -> list[dict]:
     return normalize_seeds(DEFAULT_TABLE_SEEDS)
 
 
+def _load_merge_pins() -> list[dict]:
+    """合并先验(config.json 的 merge_pins;手动合并时由后端自动写入)。
+    读取失败 → [] 无先验,聚类行为退化为纯算法。"""
+    path = os.environ.get(
+        "CPA_CONFIG_JSON",
+        "/app/backend/app/extensions/contract_price/config.json",
+    )
+    try:
+        with open(path, encoding="utf-8") as f:
+            pins = json.load(f).get("merge_pins")
+        return pins if isinstance(pins, list) else []
+    except Exception:
+        return []
+
+
 async def _extract_project_fields_with_fallback(
     file_bytes: bytes | None,
     key: str,
@@ -2747,6 +2762,7 @@ async def run_cluster(trigger: str = "manual") -> int:
                 min_samples=cfg.cluster_min_samples,
                 use_spec=cfg.cluster_by_spec,
                 use_category=cfg.cluster_by_category,
+                merge_pins=_load_merge_pins(),
             )
             groups = _build_groups_db(result, db_items)
     except Exception as exc:

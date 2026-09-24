@@ -43,7 +43,6 @@ async def list_documents(
 ) -> tuple[list[CpaDocument], int]:
     stmt = select(CpaDocument)
     if keyword:
-        stmt = stmt.where((CpaDocument.contract_no.ilike(f"%{keyword}%")) | (CpaDocument.supplier.ilike(f"%{keyword}%")))
     if parse_status:
         stmt = stmt.where(CpaDocument.parse_status == parse_status)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
@@ -387,7 +386,41 @@ async def merge_clusters(
     await refresh_cluster_stats(session, new_cluster.id)
     await session.execute(delete(CpaCluster).where(CpaCluster.id.in_(cluster_ids)))
     await session.commit()
+    await _capture_merge_pin(session, new_cluster, representative_name)
     return new_cluster
+
+
+async def _capture_merge_pin(
+    session: AsyncSession, cluster: CpaCluster, representative_name: str
+) -> None:
+    """手动合并自动落合并先验(config.json merge_pins): 重聚类后由引擎重放,
+    人工调整不再被替换式重建抹掉。同 name 幂等扩充 aliases;失败只记日志
+    (先验写入不影响合并主流程);撤销 = 编辑 config.json 删除该条目。"""
+    try:
+        names = (
+            await session.execute(
+                select(CpaItem.goods_name)
+                .where(CpaItem.cluster_id == cluster.id)
+                .distinct()
+            )
+        ).scalars().all()
+        aliases = {n for n in names if n and n != representative_name}
+        cfg = load_config()
+        existing = {p.get("name"): p for p in cfg.merge_pins if isinstance(p, dict)}
+        if representative_name in existing:
+            old = set(existing[representative_name].get("aliases") or [])
+            existing[representative_name]["aliases"] = sorted(old | aliases)
+        else:
+            cfg.merge_pins.append(
+                {"name": representative_name, "aliases": sorted(aliases)}
+            )
+        save_config(cfg)
+    except Exception:  # noqa: BLE001 — 先验捕获失败不影响合并主流程
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "merge pin capture failed for %s", representative_name, exc_info=True
+        )
 
 
 async def move_item(session: AsyncSession, item_id: UUID, target_cluster_id: UUID) -> CpaItem | None:

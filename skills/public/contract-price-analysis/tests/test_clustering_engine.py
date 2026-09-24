@@ -136,3 +136,25 @@ def test_dimension_toggles_neutralize_gates():
     assert r.labels[0] == r.labels[1] == r.labels[2]
     r = cluster_items(cat_trip, use_category=False)
     assert r.labels[0] == r.labels[1] == r.labels[2]
+
+
+def test_merge_pins_force_union_and_absorb_noise():
+    """合并先验: pin 命中的簇强制归并,落单变体也吸收;无 pin 时维持算法结果。"""
+    samples = [
+        ("螺纹钢 Φ12", {}),
+        ("螺纹钢 Φ12", {}),
+        ("螺纹钢 Φ25", {}),  # 异规格 → 算法上分离
+        ("凿槽、刨沟", {}),
+    ]
+    pins = [{"name": "螺纹钢", "aliases": ["螺纹钢 Φ12", "螺纹钢 Φ25"]}]
+    without = cluster_items(samples, use_spec=True)
+    assert without.labels[0] == without.labels[1]  # 同款对成簇
+    assert without.labels[2] != without.labels[0]  # Φ25 被 spec 门限分走
+    with_pins = cluster_items(samples, use_spec=True, merge_pins=pins)
+    assert with_pins.labels[0] == with_pins.labels[2]  # pin 强制归并
+    assert with_pins.labels[3] != with_pins.labels[0]  # pin 外货物不受影响
+    # 名称归一化: OCR 拆字变体命中同一 pin
+    variant = cluster_items(
+        [("螺 纹钢 Φ25", {}), ("螺纹钢 Φ25", {})], use_spec=True, merge_pins=pins
+    )
+    assert variant.labels[0] == variant.labels[1]  # 拆字变体与同伴同簇

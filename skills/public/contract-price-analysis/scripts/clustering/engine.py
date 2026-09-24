@@ -127,12 +127,60 @@ def _dbscan(distance: np.ndarray, eps: float, min_samples: int) -> np.ndarray:
     return labels
 
 
+def _apply_merge_pins(
+    labels: list[int], name_norms: list[str], pins: list[dict]
+) -> list[int]:
+    """合并先验重放: 名称命中任一 pin(name/aliases, 归一化去空白)的样本所属簇
+    强制并为一簇(并查集); 落单变体也吸收进组。pin 在统计/离群推导之前生效,
+    合并簇的全链路派生值自洽。误合并通过删除 config.json 的 pin 条目撤销。"""
+    parent = list(range(len(labels)))
+
+    def find(x: int) -> int:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a: int, b: int) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    # 同簇天然同根; 跨簇按 pin 归并
+    by_root: dict[int, list[int]] = {}
+    for i, lb in enumerate(labels):
+        if lb != -1:
+            by_root.setdefault(lb, []).append(i)
+    for members in by_root.values():
+        for i in members[1:]:
+            union(members[0], i)
+
+    for pin in pins or []:
+        wanted = {
+            re.sub(r"\s+", "", str(n or "")) for n in [pin.get("name"), *(pin.get("aliases") or [])]
+        } - {""}
+        if not wanted:
+            continue
+        idxs = [i for i, nm in enumerate(name_norms) if nm in wanted]
+        for i in idxs[1:]:
+            union(idxs[0], i)
+
+    # 根 → 代表 label(组内最小正 label; 全负则保持 -1)
+    root_label: dict[int, int] = {}
+    for i, lb in enumerate(labels):
+        r = find(i)
+        if lb != -1 and (r not in root_label or (0 <= root_label[r] > lb)):
+            root_label[r] = lb
+    return [root_label.get(find(i), -1) for i in range(len(labels))]
+
+
 def cluster_items(
     samples: list[tuple[str, dict]],
     eps: float = 0.6,
     min_samples: int = 2,
     use_spec: bool = True,
     use_category: bool = True,
+    merge_pins: list[dict] | None = None,
 ) -> ClusterResult:
     """Cluster ``samples`` of (goods_name, tech_params) by name-text AND spec match.
 
@@ -140,7 +188,8 @@ def cluster_items(
     items farther than ``eps`` from every cluster core (or in a cluster smaller
     than ``min_samples``) become noise (-1). use_spec/use_category 关断对应
     AND 门限(False → 该维中性放行,退化为名称单维)——设置页"货物分组规则"
-    checkbox 的管线入口;名称恒开(UI 锁定)。
+    checkbox 的管线入口;名称恒开(UI 锁定)。merge_pins 为人工合并先验
+    ([{name, aliases}]),DBSCAN 后强制归并命中簇(见 _apply_merge_pins)。
     """
     if not samples:
         return ClusterResult(labels=[], representatives={})
@@ -151,6 +200,13 @@ def cluster_items(
         return ClusterResult(labels=[], representatives={})
 
     labels = _dbscan(distance, eps, min_samples).tolist()
+    if merge_pins:
+        # pin 名与剥规格后的纯名称归一化匹配(容 OCR 拆字;剥空回退原文)
+        name_norms = [
+            re.sub(r"\s+", "", stripped or name) for name, stripped in
+            ((name, spec_extract(name)[1]) for name, _ in samples)
+        ]
+        labels = _apply_merge_pins(labels, name_norms, merge_pins)
 
     reps: dict[int, str] = {}
     for label, (name, _) in zip(labels, samples):

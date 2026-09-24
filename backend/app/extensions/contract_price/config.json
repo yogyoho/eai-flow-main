@@ -1,7 +1,401 @@
 {
   "parse_mode": "list",
   "cluster_eps": 0.6,
-  "cluster_min_samples": 2,
+  "cluster_min_samples": 1,
+  "cluster_by_spec": true,
+  "cluster_by_category": true,
   "scheduled_enabled": false,
-  "schedule_cron": null
+  "schedule_cron": null,
+  "price_table_keywords": [
+    "工程量清单",
+    "分部分项",
+    "单价措施",
+    "设备清单",
+    "报价",
+    "暂列"
+  ],
+  "table_seeds": [
+    {
+      "id": "gcl-qd",
+      "display_name": "工程量清单计价表",
+      "title_keywords": [
+        "工程量清单",
+        "清单计价"
+      ],
+      "columns": {
+        "name": [
+          "项目名称",
+          "品名",
+          "物资名称"
+        ],
+        "spec": [
+          "规格型号",
+          "参数"
+        ],
+        "qty": [
+          "工程量",
+          "数量"
+        ],
+        "unit": [
+          "单位",
+          "计量单位"
+        ],
+        "price_unit": [
+          "含税单价"
+        ],
+        "price_total": [
+          "含税合价"
+        ],
+        "price_untaxed": [
+          "不含税单价"
+        ]
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ],
+        "price_total": [
+          "不含税"
+        ]
+      },
+      "source": "样例:房建工程（桂北数据中心）"
+    },
+    {
+      "id": "jzgs-gc",
+      "display_name": "钢材物资采购清单(JZGS)",
+      "title_keywords": [
+        "物资采购",
+        "钢材"
+      ],
+      "columns": {
+        "name": [
+          "品名"
+        ],
+        "spec": [
+          "规格型号"
+        ],
+        "qty": [
+          "数量"
+        ],
+        "unit": [
+          "单位"
+        ],
+        "price_unit": [
+          "综合单价"
+        ],
+        "price_total": [
+          "总金额"
+        ],
+        "price_untaxed": []
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ]
+      },
+      "source": "样例:JZGS-JS-IC-CL-01-2021物资采购合同（钢材）"
+    },
+    {
+      "id": "sp-gj",
+      "display_name": "钢筋供货价格表(上浦)",
+      "title_keywords": [
+        "钢筋",
+        "供货"
+      ],
+      "columns": {
+        "name": [
+          "物资名称"
+        ],
+        "spec": [
+          "材质"
+        ],
+        "qty": [
+          "暂定数量",
+          "数量"
+        ],
+        "unit": [
+          "计量单位",
+          "单位"
+        ],
+        "price_unit": [
+          "含税单价"
+        ],
+        "price_total": [
+          "含税总价"
+        ],
+        "price_untaxed": [
+          "不含税单价"
+        ]
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ],
+        "price_total": [
+          "不含税"
+        ]
+      },
+      "source": "样例:上浦项目-钢筋采购合同"
+    },
+    {
+      "id": "msm-sc",
+      "display_name": "木饰面石材物资清单",
+      "title_keywords": [
+        "木饰面",
+        "石材",
+        "物资"
+      ],
+      "columns": {
+        "name": [
+          "物资名称",
+          "材质",
+          "品名"
+        ],
+        "spec": [
+          "规格",
+          "材质规格"
+        ],
+        "qty": [
+          "暂定数量",
+          "数量"
+        ],
+        "unit": [
+          "计量单位",
+          "单位"
+        ],
+        "price_unit": [
+          "综合单价",
+          "含税单价"
+        ],
+        "price_total": [
+          "含税总价"
+        ],
+        "price_untaxed": [
+          "不含税单价"
+        ]
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ],
+        "price_total": [
+          "不含税"
+        ]
+      },
+      "source": "样例:木饰面、石材物资采购合同"
+    },
+    {
+      "id": "gc-qzb",
+      "display_name": "钢材采购明细(签字版)",
+      "title_keywords": [
+        "钢材",
+        "采购"
+      ],
+      "columns": {
+        "name": [
+          "品名"
+        ],
+        "spec": [
+          "规格型号"
+        ],
+        "qty": [
+          "数量"
+        ],
+        "unit": [
+          "单位"
+        ],
+        "price_unit": [
+          "含税单价"
+        ],
+        "price_total": [
+          "含税合价"
+        ],
+        "price_untaxed": [
+          "不含税单价"
+        ]
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ],
+        "price_total": [
+          "不含税"
+        ]
+      },
+      "source": "样例:钢材采购合同-签字版"
+    },
+    {
+      "id": "bcxy-tj",
+      "display_name": "补充协议价格调整表",
+      "title_keywords": [
+        "补充协议",
+        "价格调整",
+        "调价"
+      ],
+      "columns": {
+        "name": [
+          "物资名称"
+        ],
+        "spec": [
+          "材质规格"
+        ],
+        "qty": [
+          "调整数量",
+          "数量"
+        ],
+        "unit": [
+          "计量单位",
+          "单位"
+        ],
+        "price_unit": [
+          "综合单价",
+          "调整后单价"
+        ],
+        "price_total": [
+          "调整后合价",
+          "总金额",
+          "含税总价"
+        ],
+        "price_untaxed": []
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ],
+        "price_total": [
+          "不含税"
+        ]
+      },
+      "source": "样例:钢筋补充协议-需盖章11"
+    },
+    {
+      "id": "bcxy-tz",
+      "display_name": "物资采购调价表(补充协议)",
+      "title_keywords": [
+        "调价",
+        "物资采购",
+        "物资名称"
+      ],
+      "columns": {
+        "name": [
+          "物资名称",
+          "品名"
+        ],
+        "spec": [
+          "材质规格",
+          "规格"
+        ],
+        "unit": [
+          "计量单位",
+          "单位"
+        ],
+        "qty": [
+          "调整数量",
+          "调整后数量"
+        ],
+        "price_unit": [
+          "综合单价"
+        ],
+        "price_total": [
+          "含税总价"
+        ],
+        "price_untaxed": []
+      },
+      "exclude": {
+        "qty": [
+          "原合同",
+          "网价",
+          "联采"
+        ],
+        "price_unit": [
+          "不含税",
+          "网价",
+          "调价",
+          "运杂",
+          "服务",
+          "财务"
+        ],
+        "price_total": [
+          "不含税",
+          "网价",
+          "联采",
+          "调价"
+        ]
+      },
+      "source": "样例:钢筋补充协议-需盖章(价格调整表)"
+    },
+    {
+      "id": "ssly-sm",
+      "display_name": "采购物资说明(砂石料)",
+      "title_keywords": [
+        "采购物资",
+        "砂石料"
+      ],
+      "columns": {
+        "name": [
+          "品名"
+        ],
+        "spec": [
+          "规格型号"
+        ],
+        "qty": [
+          "数量"
+        ],
+        "unit": [
+          "单位"
+        ],
+        "price_unit": [
+          "含税落地单价",
+          "落地单价"
+        ],
+        "price_total": [
+          "落地合价"
+        ],
+        "price_untaxed": []
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ]
+      },
+      "source": "样例:024-2019砂石料备案存档扫描件"
+    },
+    {
+      "id": "ssxl-cgjh",
+      "display_name": "计划采购主要物资审批单(砂石料)",
+      "title_keywords": [
+        "拟采购主要物资",
+        "计划采购主要物资"
+      ],
+      "columns": {
+        "name": [
+          "物资名称"
+        ],
+        "spec": [],
+        "qty": [
+          "数量"
+        ],
+        "unit": [
+          "计量单位"
+        ],
+        "price_unit": [
+          "物资单价"
+        ],
+        "price_total": [
+          "预计总价"
+        ],
+        "price_untaxed": []
+      },
+      "exclude": {
+        "price_unit": [
+          "不含税"
+        ]
+      },
+      "source": "样例:024-2019砂石料备案存档扫描件 p4 大宗物资采购审批单"
+    }
+  ],
+  "llm_base_url": null,
+  "llm_key": null,
+  "llm_model": null,
+  "merge_pins": []
 }
