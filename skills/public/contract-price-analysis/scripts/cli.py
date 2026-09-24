@@ -2278,7 +2278,7 @@ def _build_groups_db(result, db_items: list) -> list:
         groups.append(
             # 代表名用纯货物名(不带分类后缀)——样本文本含分类,曾让分组标题
             # 显示成"管内穿线铜芯导 线 照明安装工程"这类拼串。
-            {"name": members[0]["goods_name"], "category": "未分类", "stats": stats, "items": members}
+            {"name": members[0]["goods_name"], "category": "", "stats": stats, "items": members}  # 标签留空=未打标
         )
     return groups
 

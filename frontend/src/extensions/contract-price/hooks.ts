@@ -45,7 +45,10 @@ export function useDocuments(params: Record<string, unknown> = {}) {
   });
 }
 
-export function useClusters(params: Record<string, unknown> = {}) {
+export function useClusters(
+  params: Record<string, unknown> = {},
+  options: { enabled?: boolean; staleTime?: number } = {},
+) {
   return useQuery({
     queryKey: KEYS.clusters(params),
     queryFn: () => contractPriceApi.listClusters(params),
@@ -53,6 +56,7 @@ export function useClusters(params: Record<string, unknown> = {}) {
     // totalPages=1 → 钳位 effect 误判"尾部清空"把页面弹回第 1 页(bug: 翻到
     // 11 页后回第 1 页)。
     placeholderData: (prev) => prev,
+    ...options,
   });
 }
 

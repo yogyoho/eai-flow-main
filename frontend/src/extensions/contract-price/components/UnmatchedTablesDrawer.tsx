@@ -50,6 +50,16 @@ export function UnmatchedTablesDrawer({
 
   const tableKey = (t: UnmatchedTable) =>
     `${fileName}:${t.page}:${t.table_idx}`;
+  // 价格信号评分: 表头/标题命中的价格词计数 + 列行规模加权, 高分=更可能是
+  // 分项价格清单 → 排前, 用户优先为高分表建规则。
+  const priceSignal = (t: UnmatchedTable) => {
+    const hay = t.header.join(" ") + " " + (t.title ?? "");
+    const kw = ["单价", "合价", "总价", "金额", "合计", "数量", "规格", "单位", "含税"].filter(
+      (k) => hay.includes(k),
+    ).length;
+    return kw * 2 + (t.col_count >= 5 ? 1 : 0) + (t.row_count >= 2 ? 1 : 0);
+  };
+  const sorted = [...tables].sort((a, b) => priceSignal(b) - priceSignal(a));
   const remaining = tables.filter((t) => !savedKeys.has(tableKey(t)));
 
   return (
@@ -66,10 +76,10 @@ export function UnmatchedTablesDrawer({
             <FileWarning className="h-5 w-5 text-amber-600" />
             <div>
               <h2 className="text-lg font-bold">
-                未识别的表格（{tables.length}）
+                疑似价格表（{tables.length}）
               </h2>
               <p className="text-muted-foreground text-xs">
-                {fileName} · 与任何定位规则都不匹配,未提取
+                {fileName} · 未匹配任何定位规则,未提取;评分高者更可能是价格清单,建议优先建规则
               </p>
             </div>
           </div>
@@ -79,7 +89,7 @@ export function UnmatchedTablesDrawer({
         </div>
 
         <div className="space-y-3">
-          {tables.map((t) => (
+          {sorted.map((t) => (
             <div
               key={`${t.page}-${t.table_idx}`}
               className="rounded-lg border p-3"
@@ -87,6 +97,12 @@ export function UnmatchedTablesDrawer({
               <div className="flex items-center justify-between">
                 <div className="text-sm font-medium">
                   第 {t.page} 页 · 表 {t.table_idx + 1}
+                  <span
+                    title="价格信号评分: 表头价格词越多越可能是价格清单"
+                    className="bg-muted text-muted-foreground ml-2 rounded px-1.5 py-0.5 text-[10px] font-normal"
+                  >
+                    疑似度 {priceSignal(t)}
+                  </span>
                   {t.title ? (
                     <span className="text-muted-foreground ml-2">
                       {t.title}

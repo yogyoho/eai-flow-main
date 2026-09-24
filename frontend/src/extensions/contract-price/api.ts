@@ -80,6 +80,7 @@ export const contractPriceApi = {
         CpaDocument,
         | "project_name"
         | "project_location"
+        | "project_no"
         | "contract_no"
         | "supplier"
         | "sign_date"
@@ -122,10 +123,20 @@ export const contractPriceApi = {
   previewUrl: (docId: string, page: number) =>
     `${FULL_BASE}/documents/${docId}/preview/${page}`,
 
+  /** URL for the original-file download (<a href>, same-origin cookie auth;
+   * server streams the PDF/DOCX with Content-Disposition attachment). */
+  fileUrl: (docId: string) => `${FULL_BASE}/documents/${docId}/file`,
+
+  /** URL for inline browser rendering of the original file (?inline=1 →
+   * Content-Disposition inline; used by the <iframe> native PDF viewer). */
+  fileInlineUrl: (docId: string) =>
+    `${FULL_BASE}/documents/${docId}/file?inline=1`,
+
   // Functional area 2: clusters
   listClusters: (params?: {
     cluster_status?: string;
     category?: string;
+    keyword?: string;
     skip?: number;
     limit?: number;
   }) => authFetch<Page<CpaCluster>>(`${API_BASE}/clusters${qs(params)}`),

@@ -14,6 +14,7 @@ export interface CpaDocument {
   supplier: string | null;
   project_name: string | null;
   project_location: string | null;
+  project_no: string | null;
   sign_date: string | null;
   parse_mode: string;
   parse_status: string; // pending / parsed / failed / needs_review

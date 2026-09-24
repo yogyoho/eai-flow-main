@@ -43,14 +43,13 @@ import {
 } from "@/components/ui/popover";
 import { BoxPlot } from "@/extensions/contract-price/components/BoxPlot";
 import { TracebackDrawer } from "@/extensions/contract-price/components/TracebackDrawer";
-import { useGoodsAnalysis } from "@/extensions/contract-price/hooks";
+import { useClusters, useGoodsAnalysis } from "@/extensions/contract-price/hooks";
 import {
   baselineShiftDocIds,
   buildBaselineTooltips,
   rowOutlierTier,
   type OutlierStatRow,
 } from "@/extensions/contract-price/outlier-semantics";
-import type { CpaCluster } from "@/extensions/contract-price/types";
 
 // ── chart card matching prototype style ──
 
@@ -119,10 +118,16 @@ const COLORS = [
 
 const PAGE_SIZE = 10;
 
-export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
+export function GoodsAnalysis() {
   const [selectedCluster, setSelectedCluster] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
+  // 懒加载: 仅在下拉展开时拉取全量分组(60s 缓存, 收合再开不重复请求)
+  const {
+    data: clustersData,
+    isLoading: clustersLoading,
+  } = useClusters({ limit: 1000 }, { enabled: open, staleTime: 60_000 });
+  const clusters = clustersData?.items ?? [];
 
   const params = selectedCluster
     ? { cluster_id: selectedCluster, skip: page * PAGE_SIZE, limit: PAGE_SIZE }
@@ -157,7 +162,12 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
               <CommandList>
                 <CommandEmpty>未找到匹配的货物</CommandEmpty>
                 <CommandGroup>
-                  {clusters.slice(0, 30).map((c) => (
+                  {clustersLoading ? (
+                    <div className="text-muted-foreground p-3 text-sm">
+                      加载分组中...
+                    </div>
+                  ) : null}
+                  {clusters.map((c) => (
                     <CommandItem
                       key={c.id}
                       value={c.representative_name}
@@ -166,14 +176,28 @@ export function GoodsAnalysis({ clusters }: { clusters: CpaCluster[] }) {
                         setPage(0);
                         setOpen(false);
                       }}
+                      className="items-start py-2"
                     >
                       <Check
                         className={`h-4 w-4 shrink-0 ${selectedCluster === c.id ? "opacity-100" : "opacity-0"}`}
                       />
-                      <span className="truncate">{c.representative_name}</span>
-                      <span className="text-muted-foreground ml-auto font-mono text-xs">
-                        {c.item_count}条
-                      </span>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate">
+                            {c.representative_name}
+                          </span>
+                          <span className="text-muted-foreground font-mono text-xs">
+                            {c.item_count}条
+                          </span>
+                        </div>
+                        {(c.spec_summary ?? c.category_summary) && (
+                          <span className="text-muted-foreground truncate text-xs">
+                            {[c.spec_summary, c.category_summary]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        )}
+                      </div>
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -523,6 +547,7 @@ function AnalysisResult({
                 <th className="px-5 py-2.5 text-left font-semibold">
                   货物名称
                 </th>
+                <th className="px-5 py-2.5 text-left font-semibold">规格</th>
                 <th className="px-5 py-2.5 text-left font-semibold">
                   合同编号
                 </th>
@@ -559,6 +584,9 @@ function AnalysisResult({
                   >
                     <td className="px-5 py-2.5 font-medium">
                       {it.goods_name as string}
+                    </td>
+                    <td className="text-muted-foreground px-5 py-2.5 text-xs">
+                      {(it.spec_model as string) || "—"}
                     </td>
                     <td className="text-muted-foreground px-5 py-2.5 font-mono text-[11px]">
                       {(it.contract_no as string) || "—"}

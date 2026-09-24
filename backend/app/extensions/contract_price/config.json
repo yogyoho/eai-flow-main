@@ -2,8 +2,9 @@
   "parse_mode": "list",
   "cluster_eps": 0.6,
   "cluster_min_samples": 1,
-  "cluster_by_spec": true,
-  "cluster_by_category": true,
+  "cluster_by_spec": false,
+  "cluster_by_category": false,
+  "merge_pins": [],
   "scheduled_enabled": false,
   "schedule_cron": null,
   "price_table_keywords": [
@@ -396,6 +397,5 @@
   ],
   "llm_base_url": null,
   "llm_key": null,
-  "llm_model": null,
-  "merge_pins": []
+  "llm_model": null
 }

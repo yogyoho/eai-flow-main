@@ -13,9 +13,11 @@ Mounted into the Gateway under ``/api/extensions/contract-price``. Endpoints:
   Pipeline trigger             : POST /pipeline/run, GET /pipeline/runs/{id}/status
 """
 
+import asyncio
 import hashlib
 import logging
 import os
+import urllib.parse
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
@@ -116,6 +118,46 @@ async def update_document(
                 doc_hash=doc.file_hash,
             )
     return doc
+
+
+@router.get("/documents/{doc_id}/file")
+async def download_document_file(
+    doc_id: UUID,
+    inline: bool = False,
+    db: AsyncSession = Depends(get_db),
+    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+):
+    """Stream the ORIGINAL uploaded contract file from MinIO (合同原文留档/查看/下载).
+
+    Read-only archive access — the pipeline never mutates the uploaded object;
+    orientation-corrected page previews stay on /preview/{page}.
+    `?inline=1` serves Content-Disposition inline so the browser PDF viewer can
+    embed the full document (preview PNGs only cover extracted-table pages).
+    """
+    doc = await db.get(CpaDocument, doc_id)
+    if doc is None or not doc.storage_uri:
+        raise HTTPException(status_code=404, detail="original file not available")
+    prefix = f"s3://{storage.BUCKET}/"
+    key = doc.storage_uri[len(prefix):] if doc.storage_uri.startswith(prefix) else doc.storage_uri
+    try:
+        data = await asyncio.to_thread(storage.get_object, key)
+    except Exception:
+        raise HTTPException(status_code=404, detail="original file not found")
+    media = (
+        "application/pdf"
+        if (doc.file_type or "").lower() == "pdf"
+        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    quoted = urllib.parse.quote(doc.file_name or "contract")
+    disposition = "inline" if inline else "attachment"
+    return Response(
+        content=data,
+        media_type=media,
+        headers={
+            # ASCII fallback + RFC 5987 for CJK filenames (合同文件名普遍为中文)
+            "Content-Disposition": f"{disposition}; filename=\"contract.{doc.file_type or 'bin'}\"; filename*=UTF-8''{quoted}"
+        },
+    )
 
 
 @router.post("/documents/{doc_id}/confirm", response_model=DocumentOut)
@@ -243,12 +285,14 @@ async def reparse_document(
 async def list_clusters(
     cluster_status: str | None = None,
     category: str | None = None,
+    keyword: str | None = Query(None, max_length=100),  # EAI-CUSTOM: 代表名/类目模糊搜(手动合并辅助)
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    # EAI-CUSTOM: 上限200→1000, 总览货物下拉需拉全量(分组数>200后下拉只显示前几十个)
+    limit: int = Query(50, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
     _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
-    items, total = await crud.list_clusters(db, cluster_status, category, skip, limit)
+    items, total = await crud.list_clusters(db, cluster_status, category, keyword, skip, limit)
     return {"items": items, "total": total, "skip": skip, "limit": limit}
 
 

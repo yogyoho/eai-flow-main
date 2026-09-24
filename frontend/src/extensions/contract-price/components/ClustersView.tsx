@@ -2,13 +2,14 @@
 
 import {
   AlertTriangle,
+  Boxes,
   Check,
   ChevronLeft,
   ChevronRight,
   Crosshair,
   GitMerge,
-  Boxes,
   RefreshCw,
+  Search,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -107,17 +108,88 @@ function InlineEdit({
 
 const PAGE_SIZE = 20;
 
+/** 标签 chip 输入(参照角色管理-自定义策略「条件值」控件): 徽章带叉删除,输入
+ * 回车/逗号添加,Backspace 空草稿删尾。值=逗号连接串(category 列, 零迁移)。 */
+function TagChipsInput({
+  value,
+  placeholder,
+  onCommit,
+}: {
+  value: string | null;
+  placeholder: string;
+  onCommit: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const tags = useMemo(
+    () =>
+      (value ?? "")
+        .split(/[,，、]/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [value],
+  );
+  const commit = (next: string[]) => onCommit(next.join(","));
+  const add = () => {
+    const parts = draft
+      .split(/[,，、]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return;
+    commit([...tags, ...parts.filter((p) => !tags.includes(p))]);
+    setDraft("");
+  };
+  const remove = (t: string) => commit(tags.filter((x) => x !== t));
+  return (
+    <div className="bg-background border-input focus-within:ring-primary/50 flex min-h-8 flex-wrap items-center gap-1 rounded border px-2 py-0.5 focus-within:ring-2">
+      {tags.map((t) => (
+        <span
+          key={t}
+          className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px]"
+        >
+          {t}
+          <button
+            type="button"
+            title="删除"
+            onClick={() => remove(t)}
+            className="hover:text-destructive transition-colors"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </span>
+      ))}
+      <input
+        type="text"
+        className="placeholder:text-muted-foreground h-6 min-w-[90px] flex-1 bg-transparent text-sm outline-none"
+        value={draft}
+        placeholder={tags.length ? "" : placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === "," || e.key === "，") {
+            e.preventDefault();
+            add();
+          }
+          if (e.key === "Backspace" && !draft && tags.length)
+            remove(tags[tags.length - 1]!);
+        }}
+        onBlur={add}
+      />
+    </div>
+  );
+}
+
 export function ClustersView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<
     "pending" | "confirmed" | "rejected" | "all"
   >("pending");
+  const [search, setSearch] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [batchMsg, setBatchMsg] = useState<string | null>(null);
   const [mergeOpen, setMergeOpen] = useState(false);
   const [mergeName, setMergeName] = useState("");
-  const [mergeCategory, setMergeCategory] = useState("未分类");
+  const [mergeCategory, setMergeCategory] = useState("");
   const [moveItem, setMoveItem] = useState<{
     itemId: string;
     name: string;
@@ -128,6 +200,7 @@ export function ClustersView() {
   const skip = (page - 1) * PAGE_SIZE;
   const clustersQuery = useClusters({
     cluster_status: filter === "all" ? undefined : filter,
+    keyword: appliedSearch || undefined,
     skip,
     limit: PAGE_SIZE,
   });
@@ -214,7 +287,7 @@ export function ClustersView() {
     // default representative name = first checked cluster's name
     const first = clusters.find((c) => checked.has(c.id));
     setMergeName(first?.representative_name ?? "");
-    setMergeCategory(first?.category ?? "未分类");
+    setMergeCategory(first?.category ?? "");
     setMergeOpen(true);
   };
 
@@ -223,7 +296,7 @@ export function ClustersView() {
     await mergeMutation.mutateAsync({
       cluster_ids: [...checked],
       representative_name: mergeName.trim(),
-      category: mergeCategory.trim() || "未分类",
+      category: mergeCategory.trim(),
     });
     setMergeOpen(false);
     setChecked(new Set());
@@ -262,8 +335,31 @@ export function ClustersView() {
         </Button>
       </div>
 
-      {/* 控件行：筛选 + 批量操作 */}
+      {/* 控件行：搜索 + 筛选 + 批量操作 */}
       <div className="flex flex-wrap items-center gap-2">
+        {/* 搜索: 与分项校验"搜索货物名称"同款样式;跨页找同类候选组,勾选后走「合并选中」 */}
+        <form
+          className="flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setAppliedSearch(search.trim());
+            setPage(1);
+            setChecked(new Set());
+          }}
+        >
+          <div className="relative w-64">
+            <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="搜索分组名称/类目"
+              className="pl-9"
+            />
+          </div>
+          <Button type="submit" size="sm">
+            搜索
+          </Button>
+        </form>
         {/* 与对话页-项目页 tabs（ui/tabs）同一组件，样式自动对齐 */}
         <Tabs
           value={filter}
@@ -309,7 +405,7 @@ export function ClustersView() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* Left: cluster list with multi-select */}
         <Card className="max-h-[calc(100vh-220px)] overflow-hidden">
-          <div className="border-border border-b px-4 py-3">
+          <div className="border-border border-b px-4 py-3 pt-0">
             <div className="flex items-center justify-between">
               <h3 className="text-foreground text-sm font-semibold">
                 货物分组
@@ -365,7 +461,19 @@ export function ClustersView() {
                           {c.representative_name}
                         </p>
                         <p className="text-muted-foreground text-xs">
-                          {c.category} · {c.item_count} 项
+                          {c.category
+                            ?.split(/[,，、]/)
+                            .map((t) => t.trim())
+                            .filter(Boolean)
+                            .map((t) => (
+                              <span
+                                key={t}
+                                className="bg-muted text-muted-foreground mr-1 rounded px-1.5 py-0.5"
+                              >
+                                {t}
+                              </span>
+                            ))}
+                          <span>{c.item_count} 项</span>
                         </p>
                       </div>
                       <span
@@ -415,7 +523,7 @@ export function ClustersView() {
 
         {/* Right: selected cluster detail */}
         <Card>
-          <CardContent className="space-y-4 p-6">
+          <CardContent className="space-y-4 p-6 pt-0">
             {!selectedId ? (
               <p className="text-muted-foreground py-12 text-center text-sm">
                 ← 从左侧选择一个分组查看明细。
@@ -446,17 +554,16 @@ export function ClustersView() {
                       className="text-foreground text-lg font-semibold"
                     />
                     <div className="text-muted-foreground mt-1 flex items-center gap-2 text-xs">
-                      <span>类别:</span>
-                      <InlineEdit
+                      <span>标签:</span>
+                      <TagChipsInput
                         value={detail.category}
-                        placeholder="类别"
+                        placeholder="加标签"
                         onCommit={(v) =>
                           updateMutation.mutate({
                             id: detail.id,
                             body: { category: v },
                           })
                         }
-                        className="w-32"
                       />
                       <span>
                         · {detail.item_count} 项 · v{detail.version}
@@ -738,7 +845,8 @@ export function ClustersView() {
                   .filter((c: CpaCluster) => c.id !== selectedId)
                   .map((c) => (
                     <SelectItem key={c.id} value={c.id}>
-                      {c.representative_name}（{c.category} · {c.item_count}项）
+                      {c.representative_name}
+                      {c.category ? `（${c.category} · ${c.item_count}项）` : `（${c.item_count}项）`}
                     </SelectItem>
                   ))}
               </SelectContent>

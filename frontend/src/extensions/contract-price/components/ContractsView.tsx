@@ -16,7 +16,7 @@ import {
   FolderOpen,
   Inbox,
   Layers,
-  PackageSearch,
+  FileText,
   RefreshCw,
   RotateCcw,
   Search,
@@ -587,7 +587,7 @@ export function ContractsView() {
       <PageHeader
         title="合同解析"
         description="上传合同扫描件(PDF/DOCX),存入独立 MinIO bucket。合同上传后进行合同文件解析处理,其中的图片内容将触发 OCR 提取。"
-        icon={<PackageSearch className="h-4 w-4" />}
+        icon={<FileText className="h-6 w-6" />}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -627,7 +627,7 @@ export function ContractsView() {
               onClick={() => setShowClusterConfirm(true)}
             >
               <Layers className="h-4 w-4" />
-              {runCluster.isPending ? "聚类中…" : "聚类分析"}
+              {runCluster.isPending ? "聚类中…" : "聚类分组"}
             </Button>
             <Button
               variant="outline"
@@ -718,6 +718,10 @@ export function ContractsView() {
                   matched_seeds?: Record<string, number>;
                 } | null;
                 const unmatched = meta?.unmatched_tables ?? [];
+                // 引导语义(用户定案 2026-09-24): 已命中规则(有价格表提取)的合同
+                // 不再提示建规则——"N张表未识别"只服务零命中的全新版式合同;
+                // 未匹配清单仍记录在 parse_meta 供自进化捕获。
+                const needsSeedGuide = !meta?.goods_tables && unmatched.length > 0;
                 const stage = docStage(doc);
                 const isExpanded = expanded.has(doc.id);
                 return (
@@ -759,9 +763,9 @@ export function ContractsView() {
                               待核验
                             </span>
                           )}
-                          {unmatched.length > 0 && (
+                          {needsSeedGuide && (
                             <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600">
-                              ⚠ {unmatched.length} 张表未识别
+                              ⚠ {unmatched.length} 张疑似价格表
                             </span>
                           )}
                         </div>
@@ -864,7 +868,7 @@ export function ContractsView() {
                                   解析错误:{doc.error}
                                 </p>
                               )}
-                              {unmatched.length > 0 && (
+                              {needsSeedGuide && (
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -878,8 +882,8 @@ export function ContractsView() {
                                   }
                                 >
                                   <AlertTriangle className="h-3.5 w-3.5" />
-                                  {unmatched.length} 张表未识别 ·
-                                  查看并保存识别规则
+                                  {unmatched.length} 张疑似价格表 ·
+                                  建立定位规则
                                 </Button>
                               )}
                             </div>
@@ -1099,8 +1103,60 @@ export function ContractsView() {
           if (!unmatchedDoc) return;
           reparse.mutate(unmatchedDoc.id, {
             onSuccess: () => {
-              setNotice("已启动重解析(读 OCR 缓存,秒级)。刷新后查看提取结果。");
+              // 效果验证闭环: 轮询至重解析完成, 比对已保存表键是否仍在
+              // unmatched_tables——在=规则未命中, 不在=已识别(rows_extracted
+              // 为文档总提取行数)。
+              const doc = unmatchedDoc;
+              const docKeys = doc.tables
+                .map((t) => ({
+                  key: `${doc.name}:${t.page}:${t.table_idx}`,
+                  title: t.title || `第${t.page}页表${t.table_idx + 1}`,
+                }))
+                .filter((t) => savedKeys.has(t.key));
               setUnmatchedDoc(null);
+              setNotice("重解析中(读 OCR 缓存,秒级),完成后自动验证新规则效果...");
+              const listKey = {
+                keyword: applied || undefined,
+                skip: page * pageSize,
+                limit: pageSize,
+              };
+              const runVerify = async () => {
+                for (let i = 0; i < 45; i++) {
+                  await new Promise((r) => setTimeout(r, 2000));
+                  const res = await qc.fetchQuery({
+                    queryKey: ["cpa", "documents", listKey],
+                    queryFn: () => contractPriceApi.listDocuments(listKey),
+                  });
+                  const fresh = res.items.find((d) => d.id === doc.id);
+                  if (!fresh || fresh.parse_status === "parsing") continue;
+                  const meta = (fresh.parse_meta ?? {}) as {
+                    unmatched_tables?: { page: number; table_idx: number }[];
+                    rows_extracted?: number;
+                  };
+                  const still = docKeys.filter((t) =>
+                    (meta.unmatched_tables ?? []).some(
+                      (u) => `${doc.name}:${u.page}:${u.table_idx}` === t.key,
+                    ),
+                  );
+                  void qc.invalidateQueries({ queryKey: ["cpa"] });
+                  if (still.length === 0) {
+                    setNotice(
+                      `✓ 新规则已生效:${docKeys
+                        .map((t) => `「${t.title}」`)
+                        .join("")} 已识别提取,本合同共提取 ${
+                        meta.rows_extracted ?? 0
+                      } 行。`,
+                    );
+                  } else {
+                    setNotice(
+                      `⚠ ${docKeys.length - still.length}/${docKeys.length} 张表已识别;其余仍未命中——请调整标题关键词或列锚点后重试。`,
+                    );
+                  }
+                  return;
+                }
+                setNotice("重解析超过 90 秒仍未完成,稍后刷新页面查看提取结果。");
+              };
+              void runVerify();
             },
             onError: (e) =>
               alert(

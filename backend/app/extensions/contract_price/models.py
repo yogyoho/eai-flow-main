@@ -50,6 +50,7 @@ class CpaDocument(Base):
     supplier: Mapped[str | None] = mapped_column(String(200))
     project_name: Mapped[str | None] = mapped_column(String(300))  # 项目/工程名称(首页OCR正则)
     project_location: Mapped[str | None] = mapped_column(String(300))  # 项目所在地/工程地点
+    project_no: Mapped[str | None] = mapped_column(String(120))  # 项目编号(2026-09-21 新增;与 skill scripts/models.py 镜像同步)
     sign_date: Mapped[date | None] = mapped_column()
     parse_mode: Mapped[str] = mapped_column(String(20))  # ocr / docx / failed
     parse_status: Mapped[str] = mapped_column(String(20))  # pending/parsed/failed/needs_review

@@ -1,27 +1,24 @@
 "use client";
 
-import { AlertTriangle, Boxes, FileText, ListChecks, PackageSearch, Play, RefreshCw } from "lucide-react";
+import { AlertTriangle, Boxes, FileText, ListChecks, LayoutDashboard, Play, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { GoodsAnalysis } from "@/extensions/contract-price/components/GoodsAnalysis";
 import { StatCard } from "@/extensions/contract-price/components/StatCard";
-import { useClusters, useDashboard, useRunPipeline } from "@/extensions/contract-price/hooks";
+import { useDashboard, useRunPipeline } from "@/extensions/contract-price/hooks";
 
 export function DashboardView() {
   const { data, isLoading, refetch, isFetching } = useDashboard();
   const runPipeline = useRunPipeline();
-  const { data: clustersData } = useClusters({ limit: 30 });
 
   const d = data;
-  const clusters = clustersData?.items ?? [];
-
   return (
     <div className="flex min-h-0 flex-1 flex-col space-y-6 p-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 shrink-0">
-            <PackageSearch className="h-[18px] w-[18px] text-blue-500" />
+            <LayoutDashboard className="h-[24px] w-[24px] text-blue-500" />
           </div>
           <div>
             <h1 className="text-[22px] font-bold tracking-tight">合同价格分析总览</h1>
@@ -57,7 +54,7 @@ export function DashboardView() {
       </div>
 
       {/* Cross-contract goods analysis */}
-      <GoodsAnalysis clusters={clusters} />
+      <GoodsAnalysis />
 
       {runPipeline.isError ? (
         <p className="text-sm text-destructive">流水线启动失败：{(runPipeline.error).message}</p>

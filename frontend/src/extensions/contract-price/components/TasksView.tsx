@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, PackageSearch, RefreshCw, Trash2 } from "lucide-react";
+import { Download, History, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -105,7 +105,7 @@ export function TasksView() {
       <PageHeader
         title="任务中心"
         description="手动与定时分析任务的运行记录，可下载产出的 Excel 报告。"
-        icon={<PackageSearch className="h-4 w-4" />}
+        icon={<History className="h-6 w-6" />}
         actions={
           <>
             <Tabs

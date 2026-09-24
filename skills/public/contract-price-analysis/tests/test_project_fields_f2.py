@@ -95,21 +95,23 @@ def test_fallback_tables_hit_when_text_contract_misses(monkeypatch):
 
 
 def test_fallback_skips_tables_when_text_contract_hits(monkeypatch):
-    """上浦仿真: 文本路已命中 → 表格零扫描(毒表被扫到即断言失败)。"""
-    class Poison:
-        @property
-        def rows(self):
-            raise AssertionError("文本路命中时不应扫描表格")
+    """文本路合同编号命中 → contract 不取表格值(表格里的合同编号诱饵必须落败)。
+    注: project_name 的完整度排序自 2026-09-21 起凡有 tables 即参与 cell 候选
+    (上浦: 文本截断名须让位给 cell 全名),严格的'零扫描'断言仅对合同编号成立。"""
+    tables = [_T([["合同编号：TDecoy-AA-BB-CCC"]], page_no=3)]
 
     got = asyncio.run(cli._extract_project_fields_with_fallback(
         b"%PDF", "a.pdf", "http://x",
         front_texts={
-            1: "项目名称：某工程\n合同编号：2GS-SPXM-CL-CG-011-2021\n乙方：某公司\n签订日期：2025-06-18",
+            # 项目编号也须文本命中——project_no 的 cell 兜底同样只在文本 miss 时扫表
+            1: "项目名称：某工程\n合同编号：2GS-SPXM-CL-CG-011-2021\n项目编号：P2021-001\n"
+               "乙方：某公司\n签订日期：2025-06-18",
             3: "项目合同编号：2GS-SPXM-CL-CG-011-20 包合同段项目经理部",  # 粘连格在文本层也不得触发
         },
-        tables=[Poison()],
+        tables=tables,
     ))
     assert got[2] == "2GS-SPXM-CL-CG-011-2021"
+    assert got[5] == "P2021-001"
 
 
 def test_fallback_tables_default_none_stays_safe(monkeypatch):
@@ -162,8 +164,9 @@ def test_find_split_line_still_takes_real_value():
 
 
 def test_shashiao_full_simulation():
-    """砂石料全字段仿真(与 probe_f2b_sim 结论一致): name 拒收→None,
-    其余字段行为不变;contract 走表格兜底(另测)。"""
+    """砂石料全字段仿真(2026-09-21 甄别规则更新): name 拒收→None;
+    supplier='供方：易全勇' 个人名无公司字样 → 甄别拒收(bug: 错值易全勇曾入库);
+    contract 走表格兜底(另测)。"""
     from scripts.project_fields import extract_project_fields
 
     front = {
@@ -171,11 +174,12 @@ def test_shashiao_full_simulation():
         6: "项目合同编号",
         10: "项目合同编号：2GS-YCXM-CL-CG-024-2019",  # 该格在文本层也存在
     }
-    name, loc, contract, supplier, sign = extract_project_fields(front)
+    name, loc, contract, supplier, sign, pno = extract_project_fields(front)
     assert name is None          # F2b: '局审批编号' 不再被当项目名
     assert loc is None
-    assert supplier == "易全勇"  # 非 F2 范围,行为保持
+    assert supplier is None      # 个人名拒收(公司字样甄别)——真值在 p6 [供方单位]格,cell 兜底另测
     assert sign is None
+    assert pno is None
 
 
 # ---------- bug-3431: 重解析 None 必须落库清空(truthy-冻结修复) ----------
@@ -191,13 +195,14 @@ def test_persist_one_doc_field_sentinel_is_key_presence():
 
     src = inspect.getsource(_persist_one_doc)
     # 键存在哨兵: 元数据字段统一按 `_mf in doc` 判定,不再 if doc.get(...)(truthy)
-    assert 'for _mf in ("project_name", "project_location", "contract_no", "supplier"):' in src
+    assert 'for _mf in ("project_name", "project_location", "contract_no", "supplier", "project_no"):' in src
     assert "if _mf in doc:" in src
     assert 'if "sign_date" in doc:' in src
     assert 'if doc.get("project_name")' not in src, "truthy-guard 回潮(bug-3431 复发)"
     assert 'if doc.get("contract_no")' not in src
     assert 'if doc.get("supplier")' not in src
     assert 'if doc.get("project_location")' not in src
+    assert 'if doc.get("project_no")' not in src
     assert 'if doc.get("sign_date")' not in src
 
 

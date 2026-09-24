@@ -23,6 +23,7 @@ class DocumentOut(ORMBase):
     supplier: str | None = None
     project_name: str | None = None
     project_location: str | None = None
+    project_no: str | None = None
     sign_date: date | None = None
     parse_mode: str
     parse_status: str
@@ -81,6 +82,9 @@ class ClusterOut(ORMBase):
     confirmed_by: str | None = None
     created_at: datetime
     updated_at: datetime
+    # EAI-CUSTOM (2026-09-24 总览下拉副标题): 成员去重规格/分类聚合, crud 填充
+    spec_summary: str | None = None
+    category_summary: str | None = None
 
 
 class ClusterDetail(ClusterOut):
@@ -180,6 +184,7 @@ class DocumentUpdate(BaseModel):
 
     project_name: str | None = None
     project_location: str | None = None
+    project_no: str | None = None
     contract_no: str | None = None
     supplier: str | None = None
     sign_date: date | None = None
@@ -199,7 +204,7 @@ class ClusterConfirm(BaseModel):
 class ClusterMerge(BaseModel):
     cluster_ids: list[UUID]
     representative_name: str
-    category: str = "未分类"
+    category: str = ""  # 业务标签,逗号分隔;空=未打标
 
 
 class ClusterUpdate(BaseModel):

@@ -7,7 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Crosshair,
-  PackageSearch,
+  ListChecks,
   RefreshCw,
   Search,
   SquarePen,
@@ -308,7 +308,7 @@ export function ItemsView() {
       <PageHeader
         title="合同中提取出的货物价格校验"
         description="每条货物的含税单价与参数。待核验项(OCR 数字粘连/量级异常)需用溯源对照原文后修正。"
-        icon={<PackageSearch className="h-4 w-4" />}
+        icon={<ListChecks className="h-6 w-6" />}
         actions={
           <Button
             variant="outline"

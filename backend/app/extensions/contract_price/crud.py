@@ -43,6 +43,11 @@ async def list_documents(
 ) -> tuple[list[CpaDocument], int]:
     stmt = select(CpaDocument)
     if keyword:
+        stmt = stmt.where(
+            (CpaDocument.contract_no.ilike(f"%{keyword}%"))
+            | (CpaDocument.supplier.ilike(f"%{keyword}%"))
+            | (CpaDocument.file_name.ilike(f"%{keyword}%"))
+        )
     if parse_status:
         stmt = stmt.where(CpaDocument.parse_status == parse_status)
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
@@ -186,7 +191,7 @@ async def update_document(session: AsyncSession, doc_id: UUID, fields: dict[str,
     doc = await session.get(CpaDocument, doc_id)
     if doc is None:
         return None
-    for key in ("project_name", "project_location", "contract_no", "supplier", "sign_date"):
+    for key in ("project_name", "project_location", "project_no", "contract_no", "supplier", "sign_date"):
         if fields.get(key) is not None:
             setattr(doc, key, fields[key])
     await session.commit()
@@ -240,7 +245,35 @@ async def list_clusters(
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaCluster.item_count.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
-    return list(result.scalars().all()), int(total)
+    clusters = list(result.scalars().all())
+    # EAI-CUSTOM (2026-09-24 总览下拉副标题): 每簇聚合成员去重规格/分类, 两条
+    # string_agg 一次查回; 空串/NULL 剔除, 超长截断。
+    if clusters:
+        agg = {
+            row[0]: (row[1], row[2])
+            for row in (
+                await session.execute(
+                    select(
+                        CpaItem.cluster_id,
+                        func.string_agg(
+                            func.distinct(func.nullif(func.trim(CpaItem.spec_model), "")),
+                            " / ",
+                        ),
+                        func.string_agg(
+                            func.distinct(func.nullif(func.trim(CpaItem.category), "")),
+                            " / ",
+                        ),
+                    )
+                    .where(CpaItem.cluster_id.in_([c.id for c in clusters]))
+                    .group_by(CpaItem.cluster_id)
+                )
+            ).all()
+        }
+        for c in clusters:
+            specs, cats = agg.get(c.id, (None, None))
+            c.spec_summary = (f"{specs[:60]}…" if len(specs) > 60 else specs) if specs else None
+            c.category_summary = (f"{cats[:40]}…" if len(cats) > 40 else cats) if cats else None
+    return clusters, int(total)
 
 
 async def get_cluster_with_items(session: AsyncSession, cluster_id: UUID) -> CpaCluster | None:
@@ -372,7 +405,7 @@ async def merge_clusters(
     session: AsyncSession,
     cluster_ids: list[UUID],
     representative_name: str,
-    category: str = "未分类",
+    category: str = ""  # 业务标签,逗号分隔;空=未打标
 ) -> CpaCluster | None:
     if len(cluster_ids) < 2:
         raise ValueError("merge requires at least 2 clusters")
@@ -1027,6 +1060,7 @@ async def goods_analysis(
             "document_id": str(it.document_id),
             "cluster_id": str(it.cluster_id) if it.cluster_id else None,  # EAI-CUSTOM F3a: 前端同簇基线概览分桶用
             "goods_name": it.goods_name,
+            "spec_model": it.spec_model,  # EAI-CUSTOM (2026-09-24): 明细表规格列
             "contract_no": it.source_contract_no or "—",
             "supplier": next((d.supplier for d in docs if d.id == it.document_id), None) or "—",
             "unit_price": float(it.unit_price) if it.unit_price is not None else None,
