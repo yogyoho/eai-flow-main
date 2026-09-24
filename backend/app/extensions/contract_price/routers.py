@@ -537,10 +537,14 @@ async def delete_run(
 @router.get("/evolution/candidates")
 async def evolution_candidates(
     db: AsyncSession = Depends(get_db),
-    _: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
+    current_user: CurrentUser = Depends(require_permission("system:access")),  # EAI-CUSTOM: Add permission check
 ):
-    """pending 的字段修正候选（recurrence 降序）+ L4 建议锚词, 供配置页规则卡落地。"""
-    return {"items": await evolution.list_candidates(db)}
+    """pending 的字段修正候选（recurrence 降序）+ LLM 草案 + L4 建议锚词, 供配置页规则卡落地。"""
+    return {
+        "items": await evolution.list_candidates(
+            db, user_id=str(current_user.id)
+        )
+    }
 
 
 @router.post("/evolution/candidates/{learning_id}/adopt")

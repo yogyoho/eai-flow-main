@@ -2116,6 +2116,25 @@ def _extract_from_tables(
                     _merge_llm_meta(meta, table, got, "unmatched")
                     active = got[1]  # 采纳表后续表继承 LLM 角色上下文
                     adopted = True
+                    # ⑥#4 联动(自进化): LLM 采纳表=现成规则草案(角色→列头词全有),
+                    # 记入 parse_meta.llm_rule_drafts 供后端候选清单起草种子规则——
+                    # 否则 LLM 暂时补位的能力永远沉淀不成规则(设计 D-2 假阴性延伸)。
+                    header, _hr, _hi = _collapse_header(rows)
+                    draft_title = ""
+                    for r in rows[:3]:
+                        non_empty = [c for c in r if (c or "").strip()]
+                        if len(non_empty) == 1:
+                            draft_title = non_empty[0].strip()
+                            break
+                    meta.setdefault("llm_rule_drafts", []).append(
+                        {
+                            "page": table.page_no,
+                            "table_idx": table.table_idx,
+                            "title": draft_title,
+                            "header": [(c or "").strip() for c in header if (c or "").strip()],
+                            "roles": {str(ci): role for ci, role in (got[2].get("llm_roles") or {}).items()},
+                        }
+                    )
             if not adopted:
                 meta["skipped"][ttype] = meta["skipped"].get(ttype, 0) + 1
                 active = None  # 断链:不匹配的表后不继承

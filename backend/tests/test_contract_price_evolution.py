@@ -240,7 +240,9 @@ def test_list_candidates_parses_evidence_and_anchors():
         "last_seen_at": "t2",
     }
     out = asyncio.run(
-        evolution.list_candidates(_ListSession([row], anchor='{"spec": ["规格型号"]}'))
+        evolution.list_candidates(
+            _ListSession([row], anchor='{"spec": ["规格型号"]}'), user_id="u-1"
+        )
     )
     assert len(out) == 1
     c = out[0]
@@ -285,7 +287,9 @@ def test_list_candidates_tolerates_leading_space_in_details():
         "first_seen_at": "t1",
         "last_seen_at": "t2",
     }
-    out = asyncio.run(evolution.list_candidates(_ListSession([row])))
+    out = asyncio.run(
+        evolution.list_candidates(_ListSession([row]), user_id="u-1")
+    )
     c = out[0]
     assert c["scope"] == "doc" and c["field"] == "contract_no"
     assert c["error_pattern"] == "digit-drift"

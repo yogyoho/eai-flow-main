@@ -123,6 +123,98 @@ async def capture_field_correction(
 
 _DETAILS_RE = re.compile(r"^\s*\[(?P<pat>[^\]]*)\]\s*(?:doc=(?P<doc>\S+))?\s*(?P<rest>.*)$")
 
+# LLM 采纳表的角色中文对照(llm_fallback.ROLE_ENUM)
+_ROLE_ZH = {
+    "name": "名称", "spec": "规格", "qty": "数量", "unit": "单位",
+    "price_unit": "含税单价", "price_total": "含税总价", "price_untaxed": "不含税单价",
+}
+
+_LLM_DRAFTS_SQL = text(
+    """
+    SELECT id, file_hash, parse_meta -> 'llm_rule_drafts' AS drafts
+    FROM cpa_documents
+    WHERE parse_meta ? 'llm_rule_drafts'
+    ORDER BY created_at DESC
+    LIMIT :limit
+    """
+)
+
+# ON CONFLICT DO NOTHING: 同版式表在多份合同被 LLM 重复采纳只入账一次
+# (草案立即可行动,不靠 recurrence 累积;晋升门对它无意义)。
+_LLM_INGEST_SQL = text(
+    """
+    INSERT INTO agent_learnings
+        (id, user_id, kind, area, symptom, pattern_key, summary, details,
+         suggested_action, status, recurrence_count, first_seen_at, last_seen_at,
+         distinct_thread_count, source_thread_ids, source)
+    VALUES
+        (:id, :user_id, 'knowledge_gap', 'data', :symptom, :pattern_key,
+         :summary, :details, '按表头词新建种子定位规则', 'pending',
+         1, now(), now(), 0, '', 'agent')
+    ON CONFLICT (user_id, pattern_key) DO NOTHING
+    """
+)
+
+
+async def ingest_llm_drafts(session, *, user_id: str, limit: int = 20) -> int:
+    """把 parse_meta.llm_rule_drafts(LLM 采纳的未匹配表草案)懒摄取进 ledger。
+
+    惰性扫(sweep 语义,D11): 每次列候选时补扫最近 limit 份文档;同版式
+    (归一化标题)只入账一次。返回新入账条数。"""
+    rows = (
+        await session.execute(_LLM_DRAFTS_SQL, {"limit": limit})
+    ).mappings().all()
+    added = 0
+    for r in rows:
+        for d in r["drafts"] or []:
+            title = (d.get("title") or "").strip() or "未命名表"
+            norm = re.sub(r"\s+", "", title)[:40] or "untitled"
+            pattern_key = f"data.llmseed-{norm}"
+            exists = await session.scalar(
+                text(
+                    "SELECT 1 FROM agent_learnings WHERE user_id = :u AND pattern_key = :pk"
+                ),
+                {"u": user_id, "pk": pattern_key},
+            )
+            if exists:
+                continue
+            headers = d.get("header") or []
+            roles = d.get("roles") or {}
+            pairs = []
+            for ci in sorted(roles, key=lambda x: int(x)):
+                idx = int(ci)
+                role = _ROLE_ZH.get(roles[ci], roles[ci])
+                cell = headers[idx] if idx < len(headers) else f"列{ci}"
+                pairs.append(f"{cell}={role}")
+            params = {
+                "id": str(uuid.uuid4()),
+                "user_id": user_id,
+                "symptom": f"llmseed-{norm}",
+                "pattern_key": pattern_key,
+                "summary": f"LLM 识别的价格表「{title[:40]}」建议沉淀为定位规则",
+                "details": _json_dumps(
+                    {
+                        "title": title,
+                        "header": headers,
+                        "roles": roles,
+                        "doc": (r["file_hash"] or "")[:12],
+                    }
+                ),
+            }
+            try:
+                await session.execute(_LLM_INGEST_SQL, params)
+                await session.commit()
+                added += 1
+            except Exception:  # noqa: BLE001 — 单条失败不阻断
+                pass
+    return added
+
+
+def _json_dumps(obj) -> str:
+    import json as _json
+
+    return _json.dumps(obj, ensure_ascii=False)[:4000]
+
 _CANDIDATES_SQL = text(
     """
     SELECT id, pattern_key, recurrence_count, details,
@@ -152,12 +244,15 @@ _DOC_ANCHORS_SQL = text(
 )
 
 
-async def list_candidates(session, *, limit: int = 50) -> list[dict]:
+async def list_candidates(session, *, user_id: str, limit: int = 50) -> list[dict]:
     """pending 的 data.* 修正候选（recurrence 降序），附文档级 L4 建议锚词。
 
     ⑥ 工作流: 证据面板在配置页种子规则卡旁——人照着证据把锚词写进规则卡、
-    保存,然后一键标记晋升;或者忽略。"""
+    保存,然后一键标记晋升;或者忽略。llm_rule_drafts(LLM 采纳的未匹配表草案)
+    在此惰性摄取入账(sweep 语义),与修正候选同榜展示。"""
     import json as _json
+
+    await ingest_llm_drafts(session, user_id=user_id)
 
     rows = (
         await session.execute(_CANDIDATES_SQL, {"limit": limit})
@@ -166,13 +261,29 @@ async def list_candidates(session, *, limit: int = 50) -> list[dict]:
     for r in rows:
         key = r["pattern_key"] or ""
         symptom = key.split(".", 1)[1] if "." in key else key  # itemfield-unit_price
-        scope = symptom.split("-", 1)[0].replace("field", "")  # item / doc
+        scope = symptom.split("-", 1)[0].replace("field", "")  # item / doc / llmseed
         field = symptom.split("-", 1)[1] if "-" in symptom else symptom
         m = _DETAILS_RE.match(r["details"] or "")
         error_pattern = m.group("pat") if m else ""
         doc_hash = (m.group("doc") if m else None) or ""
+        evidence = (m.group("rest") if m else (r["details"] or ""))[:200]
         anchors: dict = {}
-        if doc_hash and scope == "item":
+        # LLM 草案条目(llmseed-): details 为 JSON, 解析出 表标题/表头/角色
+        if symptom.startswith("llmseed-"):
+            try:
+                dj = _json.loads(r["details"] or "{}")
+                field = (dj.get("title") or field[len("llmseed-") :])[:60]
+                pairs = [
+                    f"{(dj.get('header') or [])[int(i)] if int(i) < len(dj.get('header') or []) else i}"
+                    f"={_ROLE_ZH.get(role, role)}"
+                    for i, role in (dj.get("roles") or {}).items()
+                ]
+                evidence = "列锚点: " + "；".join(pairs)[:180]
+                doc_hash = (dj.get("doc") or "")[:12]
+            except Exception:  # noqa: BLE001 — 解析失败退化为原文
+                pass
+            anchors = {}
+        elif doc_hash and scope == "item":
             try:
                 row = (
                     await session.execute(_DOC_ANCHORS_SQL, {"prefix": f"{doc_hash}%"})
@@ -181,6 +292,8 @@ async def list_candidates(session, *, limit: int = 50) -> list[dict]:
                     anchors = _json.loads(row.anchors)
             except Exception:  # noqa: BLE001 — 锚词附注失败不影响候选列表
                 anchors = {}
+        else:
+            anchors = {}
         out.append(
             {
                 "learning_id": r["id"],
@@ -189,7 +302,7 @@ async def list_candidates(session, *, limit: int = 50) -> list[dict]:
                 "recurrence": r["recurrence_count"],
                 "error_pattern": error_pattern,
                 "doc_hash": doc_hash,
-                "evidence": (m.group("rest") if m else (r["details"] or ""))[:200],
+                "evidence": evidence,
                 "suggested_anchors": anchors,
                 "first_seen_at": str(r["first_seen_at"]),
                 "last_seen_at": str(r["last_seen_at"]),
