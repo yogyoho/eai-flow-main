@@ -291,3 +291,20 @@ def test_list_candidates_tolerates_leading_space_in_details():
     assert c["error_pattern"] == "digit-drift"
     assert c["doc_hash"] == "9839d01b22ae"
     assert "2GS-YCXM" in c["evidence"]
+
+
+# --- 合并/移动后统计重算(crud._merge_time_cluster_stats) ---------------------
+
+
+def test_merge_time_stats_mirror_pipeline_compute_stats():
+    """镜像实现必须与技能侧 compute_stats 逐键相等(管线为唯一真相源)。"""
+    import sys
+
+    sys.path.insert(0, "/app/skills/public/contract-price-analysis")
+    from scripts.stats import compute_stats
+    from app.extensions.contract_price.crud import _merge_time_cluster_stats
+
+    prices = [2.51, 2.07, 2.83, 2.4, 140.13, 2.75, 2.56, 12.64]
+    assert _merge_time_cluster_stats(prices) == compute_stats(prices)
+    assert _merge_time_cluster_stats([]) == compute_stats([])
+    assert _merge_time_cluster_stats([140.13]) == compute_stats([140.13])

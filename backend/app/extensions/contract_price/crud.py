@@ -223,6 +223,7 @@ async def list_clusters(
     session: AsyncSession,
     status: str | None = None,
     category: str | None = None,
+    keyword: str | None = None,
     skip: int = 0,
     limit: int = 50,
 ) -> tuple[list[CpaCluster], int]:
@@ -231,6 +232,12 @@ async def list_clusters(
         stmt = stmt.where(CpaCluster.status == status)
     if category:
         stmt = stmt.where(CpaCluster.category == category)
+    if keyword:
+        # 手动合并辅助: 按代表名/类目模糊搜,跨页找出同类候选组。
+        stmt = stmt.where(
+            CpaCluster.representative_name.ilike(f"%{keyword}%")
+            | CpaCluster.category.ilike(f"%{keyword}%")
+        )
     total = await session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
     stmt = stmt.order_by(CpaCluster.item_count.desc()).offset(skip).limit(limit)
     result = await session.execute(stmt)
@@ -298,6 +305,70 @@ async def update_cluster(
     return cluster
 
 
+def _merge_time_cluster_stats(prices: list[float]) -> dict:
+    """EAI-CUSTOM (2026-09-24 bug: 合并后统计卡不重算): 镜像技能侧
+    compute_stats(scripts/stats.py)的产物形状,供合并/移动后人工重算——
+    管线侧仍以技能实现为唯一真相源。价格只取 ok/corrected(与管线同口径)。
+    注意: 只保证聚合统计自洽;行级 is_outlier 沿用旧簇判定,重聚类时重新推导。
+    """
+    import statistics as _stats
+
+    if not prices:
+        return {
+            "count": 0, "mean": None, "min": None, "max": None,
+            "median": None, "std": None, "outlier_count": 0,
+            "outlier_threshold": None,
+        }
+
+    def _percentile(sorted_vals: list[float], p: float) -> float:
+        if len(sorted_vals) == 1:
+            return sorted_vals[0]
+        k = (len(sorted_vals) - 1) * p
+        f = int(k)
+        c = k - f
+        if f + 1 < len(sorted_vals):
+            return sorted_vals[f] + c * (sorted_vals[f + 1] - sorted_vals[f])
+        return sorted_vals[f]
+
+    sp = sorted(prices)
+    q1, q3 = _percentile(sp, 0.25), _percentile(sp, 0.75)
+    upper_fence = q3 + 1.5 * (q3 - q1)
+    lower_fence = q1 - 1.5 * (q3 - q1)
+    return {
+        "count": len(prices),
+        "mean": round(_stats.mean(prices), 2),
+        "min": round(min(prices), 2),
+        "max": round(max(prices), 2),
+        "median": round(_stats.median(prices), 2),
+        "std": round(_stats.pstdev(prices) if len(prices) > 1 else 0.0, 2),
+        "outlier_count": sum(1 for p in prices if p < lower_fence or p > upper_fence),
+        "outlier_threshold": round(upper_fence, 2),
+    }
+
+
+async def refresh_cluster_stats(session: AsyncSession, cluster_id: UUID) -> None:
+    """按成员重算指定簇的派生字段:item_count + ok/corrected 单价 stats
+    (合并/移动/删除货物后的增量刷新)。"""
+    cluster = await session.get(CpaCluster, cluster_id)
+    if cluster is None:
+        return
+    cluster.item_count = await session.scalar(
+        select(func.count()).select_from(
+            select(CpaItem).where(CpaItem.cluster_id == cluster_id).subquery()
+        )
+    ) or 0
+    prices = (
+        await session.execute(
+            select(CpaItem.unit_price).where(
+                CpaItem.cluster_id == cluster_id,
+                CpaItem.validation_status.in_(("ok", "corrected")),
+                CpaItem.unit_price.is_not(None),
+            )
+        )
+    ).scalars().all()
+    cluster.stats = _merge_time_cluster_stats([float(p) for p in prices])
+
+
 async def merge_clusters(
     session: AsyncSession,
     cluster_ids: list[UUID],
@@ -311,6 +382,9 @@ async def merge_clusters(
     await session.flush()
     await session.execute(update(CpaItem).where(CpaItem.cluster_id.in_(cluster_ids)).values(cluster_id=new_cluster.id))
     new_cluster.item_count = await session.scalar(select(func.count()).select_from(select(CpaItem).where(CpaItem.cluster_id == new_cluster.id).subquery())) or 0
+    # EAI-CUSTOM (2026-09-24): 合并后按成员 ok/corrected 单价重算统计——此前
+    # stats 列留空,右侧统计卡(均值/最值/中位数)不更新。
+    await refresh_cluster_stats(session, new_cluster.id)
     await session.execute(delete(CpaCluster).where(CpaCluster.id.in_(cluster_ids)))
     await session.commit()
     return new_cluster
@@ -320,7 +394,13 @@ async def move_item(session: AsyncSession, item_id: UUID, target_cluster_id: UUI
     item = await session.get(CpaItem, item_id)
     if item is None:
         return None
+    source_cluster_id = item.cluster_id
     item.cluster_id = target_cluster_id
+    await session.commit()
+    # 移出/移入两侧簇的统计都随成员变化失效,一并重算。
+    await refresh_cluster_stats(session, target_cluster_id)
+    if source_cluster_id is not None:
+        await refresh_cluster_stats(session, source_cluster_id)
     await session.commit()
     return item
 
@@ -426,8 +506,14 @@ async def update_item(session: AsyncSession, item_id: UUID, fields: dict[str, An
 
 
 async def delete_item(session: AsyncSession, item_id: UUID) -> bool:
+    item = await session.get(CpaItem, item_id)
+    affected = item.cluster_id if item is not None else None
     result = await session.execute(delete(CpaItem).where(CpaItem.id == item_id))
     await session.commit()
+    # EAI-CUSTOM (2026-09-24): 被删货物所属簇的 item_count/stats 随之失效,重算。
+    if affected is not None:
+        await refresh_cluster_stats(session, affected)
+        await session.commit()
     return (result.rowcount or 0) > 0
 
 
@@ -442,7 +528,16 @@ async def list_item_contracts(session: AsyncSession) -> list[dict]:
 
 
 async def delete_items_batch(session: AsyncSession, item_ids: list[UUID]) -> int:
+    affected = (
+        await session.execute(
+            select(CpaItem.cluster_id).where(CpaItem.id.in_(item_ids)).distinct()
+        )
+    ).scalars().all()
     result = await session.execute(delete(CpaItem).where(CpaItem.id.in_(item_ids)))
+    await session.commit()
+    for cid in affected:
+        if cid is not None:  # EAI-CUSTOM (2026-09-24): 受影响簇统计重算
+            await refresh_cluster_stats(session, cid)
     await session.commit()
     return result.rowcount or 0
 
@@ -583,7 +678,16 @@ async def _harvest_price_anchor(doc: CpaDocument, items_prices: list[tuple[CpaIt
 
 
 async def delete_items_by_run(session: AsyncSession, run_id: UUID) -> int:
+    affected = (
+        await session.execute(
+            select(CpaItem.cluster_id).where(CpaItem.run_id == run_id).distinct()
+        )
+    ).scalars().all()
     result = await session.execute(delete(CpaItem).where(CpaItem.run_id == run_id))
+    await session.commit()
+    for cid in affected:
+        if cid is not None:  # EAI-CUSTOM (2026-09-24): 受影响簇统计重算
+            await refresh_cluster_stats(session, cid)
     await session.commit()
     return result.rowcount or 0
 
