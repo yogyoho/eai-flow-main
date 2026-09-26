@@ -1148,14 +1148,14 @@ function DocumentList({
                         <div
                           key={`${thread_id}/${file.rel_path}`}
                           onClick={() => onSelectDoc(doc)}
-                          className="group bg-background border-border hover:border-primary/40 cursor-pointer rounded-xl border p-4 transition-all hover:shadow-md"
+                          className="group border-border bg-card cursor-pointer rounded-lg border px-4 py-3 transition-all hover:border-primary/20 hover:shadow-md"
                         >
                           <div className="flex items-start gap-3">
                             <div className="shrink-0 rounded-lg bg-primary/10 p-2">
                               <FileText className="h-4 w-4 text-primary" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <div className="text-foreground group-hover:text-primary truncate text-sm font-medium transition-colors">
+                              <div className="text-foreground truncate text-sm font-semibold transition-colors group-hover:text-primary">
                                 {file.name}
                               </div>
                               <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
@@ -1257,7 +1257,7 @@ function DocumentList({
               </div>
             </AnimatePresence>
           ) : (
-            <div className="bg-background border-border overflow-hidden rounded-xl border shadow-sm">
+            <div className="bg-card border-border overflow-hidden rounded-lg border shadow-sm">
               <table className="w-full border-collapse text-left">
                 <thead>
                   <tr className="border-border bg-muted/50 border-b">
@@ -1325,7 +1325,7 @@ function DocumentList({
                             ) : (
                               <FileText className="text-muted-foreground h-4 w-4 shrink-0" />
                             )}
-                            <span className="text-foreground group-hover:text-primary truncate font-medium transition-colors">
+                            <span className="text-foreground truncate text-sm font-medium">
                               {doc.title != null && doc.title !== ""
                                 ? doc.title
                                 : "无标题"}
@@ -1573,7 +1573,7 @@ function DocCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="bg-background border-border group hover:border-primary/50 relative flex h-50 cursor-pointer flex-col rounded-xl border p-4 transition-all hover:shadow-md"
+      className="border-border bg-card group relative flex h-50 cursor-pointer flex-col rounded-lg border p-4 transition-all hover:border-primary/20 hover:shadow-md"
       onClick={(e) => {
         if (e.ctrlKey || e.metaKey) {
           e.preventDefault();
@@ -1607,7 +1607,7 @@ function DocCard({
           </div>
         )}
       </div>
-      <h3 className="text-foreground group-hover:text-primary mb-4 line-clamp-1 text-base font-bold transition-colors">
+      <h3 className="text-foreground mb-4 line-clamp-1 text-sm font-semibold transition-colors group-hover:text-primary">
         {doc.title || "无标题"}
       </h3>
       <div className="text-muted-foreground mt-auto flex items-center justify-between">

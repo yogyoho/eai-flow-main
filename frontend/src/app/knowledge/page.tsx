@@ -418,7 +418,7 @@ function KnowledgeBaseManagement({
         </div>
 
         {/* Filters */}
-        <div className="border-border bg-background flex flex-col items-center justify-between gap-4 rounded-xl border p-4 shadow-sm sm:flex-row">
+        <div className="border-border bg-card flex flex-col items-center justify-between gap-4 rounded-lg border p-4 shadow-sm sm:flex-row">
           <div className="relative w-full sm:w-64">
             <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
@@ -478,7 +478,7 @@ function KnowledgeBaseManagement({
                     exit={{ opacity: 0, scale: 0.95 }}
                     transition={{ duration: 0.2 }}
                     onClick={() => router.push(`/knowledge/${kb.id}`)}
-                    className="group border-border bg-background flex cursor-pointer flex-col overflow-hidden rounded-xl border shadow-sm transition-all hover:shadow-md"
+                    className="group border-border bg-card flex cursor-pointer flex-col overflow-hidden rounded-lg border transition-all hover:border-primary/20 hover:shadow-md"
                   >
                     <div className="flex-1 p-5">
                       <div className="mb-4 flex items-center gap-3">
@@ -625,7 +625,7 @@ function KnowledgeBaseManagement({
             </AnimatePresence>
 
             {filteredKBs.length === 0 && (
-              <div className="border-border bg-background col-span-full rounded-xl border border-dashed py-12 text-center">
+              <div className="border-border bg-card col-span-full rounded-lg border border-dashed py-12 text-center">
                 <Database className="text-muted-foreground/50 mx-auto mb-3 h-12 w-12" />
                 <h3 className="text-foreground text-sm font-medium">
                   未找到知识库

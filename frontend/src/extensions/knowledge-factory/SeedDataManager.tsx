@@ -44,7 +44,7 @@ function StatRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+    <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className={cn("flex size-12 shrink-0 items-center justify-center rounded-xl", iconWrapClass)}>
         <Icon className={cn("size-6", iconClass)} aria-hidden />
       </div>

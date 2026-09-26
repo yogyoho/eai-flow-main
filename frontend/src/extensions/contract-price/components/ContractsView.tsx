@@ -668,7 +668,7 @@ export function ContractsView() {
         </Button>
       </form>
 
-      <div className="bg-background border-border overflow-hidden rounded-xl border shadow-sm">
+      <div className="bg-card border-border overflow-hidden rounded-lg border shadow-sm">
         <table className="w-full border-collapse text-left">
           <thead>
             <tr className="border-border bg-muted/50 border-b">

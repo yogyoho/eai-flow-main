@@ -217,12 +217,12 @@ export function WorkspaceHome() {
             placeholder="搜索项目..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-[34px] w-[220px] rounded-[8px] border-border bg-card pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground"
+            className="h-[34px] w-[220px] rounded-md border-border bg-card pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <Button
           onClick={() => setShowCreate((v) => !v)}
-          className="h-[34px] rounded-[8px] bg-primary px-3.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          className="h-[34px] rounded-md bg-primary px-3.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-[15px] w-[15px]" />
           新建项目
@@ -234,7 +234,7 @@ export function WorkspaceHome() {
         {stats.map((stat) => (
           <div
             key={stat.label}
-            className="flex items-center gap-3.5 rounded-[8px] border border-border bg-card p-4"
+            className="flex items-center gap-3.5 rounded-md border border-border bg-card p-4"
           >
             <div className={cn("flex h-10 w-10 items-center justify-center rounded-[10px]", stat.iconBg, stat.iconColor)}>
               {stat.icon}
@@ -249,12 +249,12 @@ export function WorkspaceHome() {
 
       {/* Create panel (inline) */}
       {showCreate && (
-        <div className="mx-7 mt-5 flex flex-col gap-3 rounded-[8px] border border-border bg-card p-4 md:max-w-md">
+        <div className="mx-7 mt-5 flex flex-col gap-3 rounded-md border border-border bg-card p-4 md:max-w-md">
           <Input
             placeholder="项目名称"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="h-9 rounded-[8px] border-border bg-background text-sm"
+            className="h-9 rounded-md border-border bg-background text-sm"
           />
           <div className="flex gap-2">
             {(Object.keys(KIND_LABELS) as ProjectKind[]).map((k) => (
@@ -281,7 +281,7 @@ export function WorkspaceHome() {
       <div className="flex items-center gap-2 px-7 pt-4">
         <FilterPills pills={FILTER_PILLS} value={kindFilter} onChange={setKindFilter} />
         <div className="flex-1" />
-        <div className="flex h-[30px] items-center overflow-hidden rounded-[6px] border border-border bg-card">
+        <div className="flex h-[30px] items-center overflow-hidden rounded-sm border border-border bg-card">
           <button
             onClick={() => setViewMode("grid")}
             className={cn(
@@ -310,7 +310,7 @@ export function WorkspaceHome() {
           加载中...
         </div>
       ) : filteredProjects.length === 0 ? (
-        <div className="mx-7 mt-5 flex flex-col items-center justify-center rounded-[8px] border border-dashed border-border bg-card py-16">
+        <div className="mx-7 mt-5 flex flex-col items-center justify-center rounded-md border border-dashed border-border bg-card py-16">
           <FolderKanban className="mb-3 h-12 w-12 text-muted-foreground/50" />
           <h3 className="text-sm font-medium text-foreground">
             {projects.length === 0 ? "还没有项目" : "未找到项目"}
@@ -339,7 +339,7 @@ export function WorkspaceHome() {
                 <div
                   key={project.id}
                   onClick={() => handleOpen(project.id)}
-                  className="group flex cursor-pointer items-center gap-4 rounded-[8px] border border-border bg-card px-4 py-3 transition-shadow hover:shadow-sm"
+                  className="group flex cursor-pointer items-center gap-4 rounded-md border border-border bg-card px-4 py-3 transition-shadow hover:shadow-sm"
                 >
                   <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]", style.color)}>
                     <KindIcon className="h-5 w-5" />

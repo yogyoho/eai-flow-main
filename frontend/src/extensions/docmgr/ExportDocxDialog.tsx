@@ -328,7 +328,7 @@ function RadioCard({
         </span>
         <span
           className={cn(
-            "text-sm font-medium transition-colors",
+            "text-sm font-semibold transition-colors",
             selected
               ? "text-primary"
               : "text-muted-foreground group-hover:text-foreground",

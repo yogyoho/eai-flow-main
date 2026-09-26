@@ -262,9 +262,9 @@ export default function AdminTemplatesPage() {
               return (
                 <div
                   key={t.id}
-                  className="border-border bg-card overflow-hidden rounded-xl border transition-all hover:shadow-sm"
+                  className="border-border bg-card overflow-hidden rounded-lg border"
                 >
-                  <div className="p-5">
+                  <div className="p-4">
                     <div className="mb-3 flex items-start justify-between">
                       <div className="flex items-center gap-3">
                         <div className="bg-primary/10 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
@@ -300,7 +300,7 @@ export default function AdminTemplatesPage() {
                       </p>
                     )}
                   </div>
-                  <div className="border-border bg-muted/30 flex items-center justify-between border-t px-5 py-3">
+                  <div className="border-border bg-muted/30 flex items-center justify-between border-t px-4 py-3">
                     <span className="text-muted-foreground text-xs">
                       {formatDate(t.createdAt)}
                     </span>

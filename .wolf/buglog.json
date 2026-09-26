@@ -36148,6 +36148,102 @@
       "related_bugs": [],
       "occurrences": 2,
       "last_seen": "2026-09-26T08:31:45.669Z"
+    },
+    {
+      "id": "bug-1790231200198",
+      "timestamp": "2026-09-26T09:05:45.596Z",
+      "error_message": "CSS fix: stroke",
+      "file": "frontend/src/extensions/workflow/edges/AnimatedFlowEdge.tsx",
+      "root_cause": "stroke: \"#d1d5db\", → \"var(--border, #d1d5db)\",",
+      "fix": "Changed stroke: \"#d1d5db\", → \"var(--border, #d1d5db)\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T09:05:45.596Z"
+    },
+    {
+      "id": "bug-1790231200199",
+      "timestamp": "2026-09-26T09:06:02.479Z",
+      "error_message": "Wrong reference: fitView should be colorMode",
+      "file": "frontend/src/extensions/workflow/WorkflowEditor.tsx",
+      "root_cause": "Used \"fitView\" instead of \"colorMode\"",
+      "fix": "Changed fitView → colorMode",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T09:06:02.479Z"
+    },
+    {
+      "id": "bug-1790231200200",
+      "timestamp": "2026-09-26T09:06:09.306Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/workflow/WorkflowProgressView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T09:06:09.306Z"
+    },
+    {
+      "id": "bug-1790231200201",
+      "timestamp": "2026-09-26T09:06:13.598Z",
+      "error_message": "Wrong reference: fitView should be colorMode",
+      "file": "frontend/src/extensions/workflow/WorkflowProgressView.tsx",
+      "root_cause": "Used \"fitView\" instead of \"colorMode\"",
+      "fix": "Changed fitView → colorMode",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T09:06:13.599Z"
+    },
+    {
+      "id": "bug-1790231200202",
+      "timestamp": "2026-09-26T09:54:51.344Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/designs/ui-style-spec.md",
+      "root_cause": "Had `text-sm font-medium`",
+      "fix": "Changed to `text-sm font-semibold`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T09:54:51.344Z"
+    },
+    {
+      "id": "bug-1790231200203",
+      "timestamp": "2026-09-26T09:56:42.434Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Had \"text-foreground group-hover:text-primary truncate",
+      "fix": "Changed to \"text-foreground group-hover:text-primary truncate",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T09:56:42.434Z"
     }
   ]
 }

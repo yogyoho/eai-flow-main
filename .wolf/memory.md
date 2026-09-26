@@ -20915,3 +20915,26 @@
 | 16:25 | Edited frontend/src/extensions/project/ProjectList.tsx | "shrink-0 rounded-sm borde" → "shrink-0 rounded-sm borde" | ~49 |
 | 16:31 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~88 |
 | 16:31 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | "POST /actions/invoke" → "frontend/src/api/actions-" | ~67 |
+| 17:02 | UI统一第二轮: 20页/模块逐页修复+人工验收, dashboard暗色对齐, bug-3447, 向导bg-white清零; 两笔提交(43ed8d54c/c0b778832)已推送 | frontend/src/** | 同步0 0 | ~120k |
+| 17:02 | Session end: 91 writes across 26 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 42 reads | ~38061 tok |
+| 17:05 | Edited frontend/src/extensions/workflow/edges/AnimatedFlowEdge.tsx | 5→5 lines | ~30 |
+| 17:05 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | added 1 import(s) | ~29 |
+| 17:05 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | CSS: EAI-CUSTOM | ~86 |
+| 17:06 | Edited frontend/src/extensions/workflow/WorkflowEditor.tsx | 2→3 lines | ~26 |
+| 17:06 | Edited frontend/src/extensions/workflow/WorkflowProgressView.tsx | added 1 import(s) | ~21 |
+| 17:06 | Edited frontend/src/extensions/workflow/WorkflowProgressView.tsx | CSS: EAI-CUSTOM | ~64 |
+| 17:06 | Edited frontend/src/extensions/workflow/WorkflowProgressView.tsx | 2→3 lines | ~25 |
+| 17:17 | workflow画布暗色: colorMode+节点bg-card+内部dark配方重注入+pending边token化, 提交已推送 | extensions/workflow/** | 同步0 0 | ~18k |
+| 17:17 | Session end: 98 writes across 29 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 44 reads | ~38342 tok |
+| 17:22 | Edited docs/designs/ui-style-spec.md | expanded (+29 lines) | ~421 |
+| 17:22 | Session end: 99 writes across 30 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 45 reads | ~38793 tok |
+| 17:24 | Edited docs/designs/ui-style-spec.md | rgba() → shadow() | ~508 |
+| 17:25 | Session end: 100 writes across 30 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 45 reads | ~39337 tok |
+| 17:54 | Edited docs/designs/ui-style-spec.md | inline fix | ~46 |
+| 17:56 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | "text-foreground group-hov" → "text-foreground group-hov" | ~39 |
+| 18:12 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~105 |
+| 18:12 | Created C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-eng-review-test-plan-20260926-ontostudio-review-loop.md | — | ~461 |
+| 15:20 | eng-review 四节完成:4决议(A1自愈语义/B1 kernel层force_status/B2 actions-api分文件/C1幂等UI)+测试计划工件 | docs/designs/...closure.md + ~/.gstack/...test-plan | 外部voice运行中 | ~6k |
+| 18:18 | Session end: 104 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 47 reads | ~40031 tok |
+| 18:58 | Edited docs/designs/ui-style-spec.md | 47→46 lines | ~418 |
+| 19:03 | Session end: 105 writes across 32 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 61 reads | ~40479 tok |

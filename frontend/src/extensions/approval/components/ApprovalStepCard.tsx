@@ -47,7 +47,7 @@ export function ApprovalStepCard({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-xl border border-border bg-background p-4",
+        "flex items-center gap-3 rounded-lg border border-border bg-card p-4",
         status === "current" && "ring-2 ring-primary/30"
       )}
     >

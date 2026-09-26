@@ -224,7 +224,7 @@ export default function QualityAssessment() {
       {/* Content */}
       <div className="bg-muted/30 flex-1 space-y-6 overflow-y-auto p-6">
         {/* Template Selector */}
-        <div className="from-card to-card/80 border-border/50 rounded-xl border bg-gradient-to-br p-4 shadow-sm">
+        <div className="bg-card border-border rounded-lg border p-4 shadow-sm">
           <label className="text-muted-foreground mb-2 block text-sm font-medium">
             选择模板
           </label>
@@ -370,7 +370,7 @@ export default function QualityAssessment() {
             {/* Score Cards */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               {/* Overall Score */}
-              <div className="from-card to-card/80 border-border/50 flex flex-col items-center justify-center space-y-4 rounded-xl border bg-gradient-to-br p-8 text-center shadow-sm lg:col-span-1">
+              <div className="bg-card border-border flex flex-col items-center justify-center space-y-4 rounded-lg border p-8 text-center shadow-sm lg:col-span-1">
                 <h3 className="text-muted-foreground text-sm font-bold tracking-widest uppercase">
                   整体评分
                 </h3>
@@ -427,7 +427,7 @@ export default function QualityAssessment() {
               </div>
 
               {/* Dimension Scores */}
-              <div className="from-card to-card/80 border-border/50 rounded-xl border bg-gradient-to-br p-8 shadow-sm lg:col-span-2">
+              <div className="bg-card border-border rounded-lg border p-8 shadow-sm lg:col-span-2">
                 <h3 className="text-foreground mb-6 text-lg font-semibold">
                   维度评分
                 </h3>
@@ -511,7 +511,7 @@ export default function QualityAssessment() {
                   {result.suggestions.map((suggestion, i) => (
                     <div
                       key={i}
-                      className="bg-card border-border/50 hover:border-primary/30 group border-l-primary/40 flex items-start gap-4 rounded-xl border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md"
+                      className="bg-card border-border/50 hover:border-primary/30 group border-l-primary/40 flex items-start gap-4 rounded-lg border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md"
                     >
                       <div className="from-primary/20 to-primary/5 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br">
                         <CheckCircle2 className="h-5 w-5" />
@@ -535,7 +535,7 @@ export default function QualityAssessment() {
                   {allStrengths.map((s) => (
                     <div
                       key={s.id}
-                      className="bg-card border-border/50 hover:border-primary/30 border-l-success/60 flex items-start gap-4 rounded-xl border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md"
+                      className="bg-card border-border/50 hover:border-primary/30 border-l-success/60 flex items-start gap-4 rounded-lg border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md"
                     >
                       <div className="from-success/20 to-success/5 text-success flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br">
                         <CheckCircle2 className="h-5 w-5" />
@@ -565,7 +565,7 @@ export default function QualityAssessment() {
                     <div
                       key={issue.id}
                       className={cn(
-                        "bg-card border-border/50 hover:border-primary/30 flex items-start gap-4 rounded-xl border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md",
+                        "bg-card border-border/50 hover:border-primary/30 flex items-start gap-4 rounded-lg border border-l-[3px] p-5 shadow-sm transition-all hover:shadow-md",
                         issue.type === "error"
                           ? "border-l-destructive/60"
                           : "border-l-warning/60",

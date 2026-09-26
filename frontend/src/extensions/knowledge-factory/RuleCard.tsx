@@ -81,7 +81,7 @@ export function RuleCard({
   return (
     <Card
       className={cn(
-        "hover:border-primary/30 relative cursor-pointer overflow-hidden transition-all hover:shadow-md",
+        "hover:border-primary/20 relative cursor-pointer overflow-hidden transition-all hover:shadow-md",
         selected && "border-primary ring-primary/20 ring-2",
         !rule.enabled && "opacity-60",
         selectionMode && checked && "border-primary/40 bg-primary/5",

@@ -73,7 +73,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border-border bg-card rounded-xl border p-5 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.05)] transition-shadow hover:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12),0_2px_6px_rgba(0,0,0,0.06)]">
+    <div className="border-border bg-card rounded-lg border p-4 transition-all hover:border-primary/20 hover:shadow-md">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
           {icon}
@@ -260,7 +260,7 @@ function AnalysisResult({
   return (
     <div className="space-y-4">
       {/* Title bar */}
-      <div className="border-border bg-card flex items-center gap-3 rounded-xl border px-5 py-3.5 shadow-sm">
+      <div className="border-border bg-card flex items-center gap-3 rounded-lg border px-4 py-3 shadow-sm">
         <h2 className="text-lg font-bold tracking-tight">{goodsName}</h2>
         <span className="bg-success/10 text-success rounded-full px-2.5 py-0.5 text-xs font-semibold">
           已校验 {okCount} / {total}
@@ -551,7 +551,7 @@ function AnalysisResult({
       </div>
 
       {/* Detail table */}
-      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+      <div className="border-border bg-card overflow-hidden rounded-lg border shadow-sm">
         <div className="border-border flex items-center justify-between border-b px-5 py-3">
           <h3 className="text-muted-foreground flex items-center gap-2 text-sm font-semibold">
             <Table2 className="text-muted-foreground/50 h-[15px] w-[15px]" />

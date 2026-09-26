@@ -865,7 +865,7 @@ function SectionEditor({
   return (
     <div className="space-y-6">
       {/* Basic Info */}
-      <div className="bg-card border-border space-y-6 rounded-xl border p-6 shadow-sm">
+      <div className="bg-card border-border space-y-6 rounded-lg border p-6 shadow-sm">
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-foreground text-sm font-medium">
@@ -963,7 +963,7 @@ function SectionEditor({
       </div>
 
       {/* Content Contract */}
-      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+      <div className="bg-card border-border space-y-4 rounded-lg border p-6 shadow-sm">
         <div className="text-primary border-border flex items-center gap-2 border-b pb-2">
           <Info className="h-4 w-4" />
           <h4 className="text-sm font-bold tracking-wider uppercase">
@@ -1138,7 +1138,7 @@ function SectionEditor({
       </div>
 
       {/* Compliance Rules */}
-      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+      <div className="bg-card border-border space-y-4 rounded-lg border p-6 shadow-sm">
         <div className="text-primary border-border flex items-center gap-2 border-b pb-2">
           <ShieldCheck className="h-4 w-4" />
           <h4 className="text-sm font-bold tracking-wider uppercase">
@@ -1207,7 +1207,7 @@ function SectionEditor({
       </div>
 
       {/* RAG Sources */}
-      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+      <div className="bg-card border-border space-y-4 rounded-lg border p-6 shadow-sm">
         <div className="text-primary border-border flex items-center gap-2 border-b pb-2">
           <Link className="h-4 w-4" />
           <h4 className="text-sm font-bold tracking-wider uppercase">
@@ -1227,7 +1227,7 @@ function SectionEditor({
       </div>
 
       {/* Generation Hint & Example */}
-      <div className="bg-card border-border space-y-4 rounded-xl border p-6 shadow-sm">
+      <div className="bg-card border-border space-y-4 rounded-lg border p-6 shadow-sm">
         <h4 className="text-foreground text-sm font-bold tracking-wider uppercase">
           生成辅助
         </h4>

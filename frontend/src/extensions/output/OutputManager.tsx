@@ -369,7 +369,7 @@ function HistoryTab() {
   }
 
   return (
-    <div className="border-border bg-card overflow-hidden rounded-xl border shadow-sm">
+    <div className="border-border bg-card overflow-hidden rounded-lg border shadow-sm">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-border bg-muted/50 text-muted-foreground border-b text-left text-xs font-medium">

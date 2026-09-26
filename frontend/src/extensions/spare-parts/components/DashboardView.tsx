@@ -44,7 +44,7 @@ export function DashboardView() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {isLoading ? (
           [0, 1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-[88px] animate-pulse rounded-xl border border-border bg-card" />
+            <div key={i} className="h-[88px] animate-pulse rounded-lg border border-border bg-card" />
           ))
         ) : (
           <>

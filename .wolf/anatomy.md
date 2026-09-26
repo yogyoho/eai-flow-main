@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-09-26T08:31:45.592Z
-> Files: 105 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-26T10:58:49.568Z
+> Files: 109 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -329,7 +329,8 @@
 
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
 
-- `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1599 tok)
+- `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1634 tok)
+- `admin-main-dev-fork-eng-review-test-plan-20260926-ontostudio-review-loop.md` — Test Plan (~432 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
@@ -930,7 +931,7 @@
 
 ## docs/designs/
 
-- `ui-style-spec.md` — UI 样式规范（基准：deer-flow 对话页） (~1016 tok)
+- `ui-style-spec.md` — UI 样式规范（基准：deer-flow 对话页） (~1408 tok)
 
 ## docs/diagrams/
 
@@ -1389,7 +1390,7 @@
 ## frontend/src/extensions/docmgr/
 
 - `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~10011 tok)
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~28249 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~28237 tok)
 - `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~536 tok)
 - `ShareDialog.tsx` — ShareDialog — renders modal (~1912 tok)
 
@@ -1534,12 +1535,15 @@
 
 ## frontend/src/extensions/workflow/
 
+- `WorkflowEditor.tsx` — Imperative handle exposed via ref when hideToolbar is true. (~4915 tok)
+- `WorkflowProgressView.tsx` — nodeTypes (~1885 tok)
 
 ## frontend/src/extensions/workflow/components/
 
 
 ## frontend/src/extensions/workflow/edges/
 
+- `AnimatedFlowEdge.tsx` — EDGE_STYLES (~295 tok)
 
 ## frontend/src/extensions/workflow/hooks/
 

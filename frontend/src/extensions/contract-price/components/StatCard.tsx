@@ -23,7 +23,7 @@ const colorClasses: Record<StatColor, string> = {
 
 export function StatCard({ label, value, icon: Icon, hint, color = "blue" }: StatCardProps) {
   return (
-    <div className="flex items-center gap-4 rounded-xl border border-border bg-card py-3 px-5 shadow-[0_10px_30px_-10px_rgba(15,23,42,0.08),0_1px_3px_rgba(0,0,0,0.05)] transition-all hover:border-primary/35 hover:shadow-[0_10px_30px_-10px_rgba(15,23,42,0.12),0_2px_6px_rgba(0,0,0,0.06)]">
+    <div className="flex items-center gap-4 rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/20 hover:shadow-md">
       <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px]", colorClasses[color])}>
         <Icon className="h-[18px] w-[18px]" />
       </div>

@@ -71,7 +71,7 @@ export function DataSourceCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="group flex flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm transition-all hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-lg border border-border bg-card transition-all hover:border-primary/20 hover:shadow-md"
     >
       {/* Top section */}
       <div className="flex-1 p-5">

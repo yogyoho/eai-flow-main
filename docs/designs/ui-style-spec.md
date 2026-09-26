@@ -58,7 +58,54 @@
 4. 按钮用 shadcn `Button`（`text-sm` 内建）；徽章用 `Badge`
 5. 状态语义色：`success/warning/info/destructive`；`text-warning` 勿作文字色
 
-## 6. 偏离台账（记录在案，未修，待专项裁决）
+## 6. Card 样式规范（2026-09-26 定稿，基准：项目管理页项目卡 ProjectList.tsx:519）
+
+**基准 = 项目卡真实配方**（经真实浏览器 hover 计算样式验证）：
+
+```
+"group border-border bg-card hover:border-primary/20 flex cursor-pointer rounded-lg border transition-all hover:shadow-md"
+```
+
+- 圆角 **`rounded-lg`（10px，源码 `rounded-[10px]` 的 token 写法）**
+- hover：`transition-all` + `hover:border-primary/20`（边框染主色）+ `hover:shadow-md` —— 三件套缺一不可
+- 标题 `text-sm font-semibold line-clamp-1`，无悬停变色
+
+### 6.1 可点击/列表卡片（主配方）
+
+基准配方照抄；布局按内容选横向 `flex items-center gap-4 px-4 py-3` 或纵向 `flex-col p-4`。`cursor-pointer` 必带。
+
+### 6.2 统计小卡（StatCard，ProjectList.tsx:446 变体）
+
+`rounded-md border bg-card p-4`（或行式 `px-4 py-3`）+ 图标盒 `h-10 w-10 rounded-lg`；数值 `text-2xl font-semibold tabular-nums`。静态卡 hover 仅 `hover:shadow-sm`。**禁止硬编码 rgba 阴影**。
+
+### 6.3 表单/内容大卡
+
+shadcn `<Card>` 需覆写 `<Card className="rounded-lg gap-4 py-4">`；默认 rounded-xl 形态不再新增。
+
+### 6.4 空状态
+
+`rounded-lg border border-dashed py-16`。
+
+### 6.5 禁止清单
+
+- 卡底 `bg-background` / `bg-white` / `bg-muted`
+- 卡片 `rounded-xl` / `rounded-2xl`（卡片圆角 = lg/10px；md/8px 仅统计小卡）
+- `shadow-xl`、硬编码 rgba 阴影
+- hover 用 `hover:bg-accent`、`-translate-y`；可点卡的 hover 配方之外自创透明度（/30 /35 /40 统一为 /20）
+
+### 6.6 豁免层
+
+dashboard `.db-card`、project 详情 `.themed-card-sci`、React Flow 节点、对话输入区 `rounded-2xl`。
+
+### 6.7 现状偏离摘要（待逐页收敛）
+
+- hover 三件套缺失/变体：`hover:border-primary/30·35·40·50`、纯 `hover:shadow-sm/md`、`-translate-y` → 统一基准三件套
+- 圆角：`rounded-xl`/`rounded-2xl` 卡片 → `rounded-lg`
+- 卡底：`bg-background`/`bg-white` → `bg-card`
+- 阴影：硬编码 rgba 阴影（spare/contract StatCard 孪生）→ token 化
+- 标题：非 `text-sm font-semibold` 的卡标题统一
+
+## 7. 偏离台账（记录在案，未修，待专项裁决）
 
 | 项 | 位置 | 规模 |
 |---|---|---|

@@ -582,7 +582,7 @@ export default function ProjectDocListPanel({
             </div>
           </AnimatePresence>
         ) : (
-          <div className="bg-background border-border overflow-hidden rounded-lg border shadow-sm">
+          <div className="bg-card border-border overflow-hidden rounded-lg border shadow-sm">
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-border bg-muted/50 border-b">
@@ -623,7 +623,7 @@ export default function ProjectDocListPanel({
                             docType={doc.doc_type}
                             size="sm"
                           />
-                          <span className="text-foreground group-hover:text-primary truncate text-sm font-medium transition-colors">
+                          <span className="text-foreground truncate text-sm font-medium">
                             {doc.title || "无标题"}
                           </span>
                         </div>
@@ -704,7 +704,7 @@ function ProjectDocCard({
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="bg-background border-border group hover:border-primary/50 flex h-48 cursor-pointer flex-col rounded-xl border p-4 transition-all hover:shadow-md"
+      className="border-border bg-card group flex h-48 cursor-pointer flex-col rounded-lg border p-4 transition-all hover:border-primary/20 hover:shadow-md"
       onClick={onClick}
     >
       {/* Icon area */}
@@ -724,7 +724,7 @@ function ProjectDocCard({
       </div>
 
       {/* Title */}
-      <h3 className="text-foreground group-hover:text-primary mb-2 line-clamp-1 text-sm font-medium transition-colors">
+      <h3 className="text-foreground mb-2 line-clamp-1 text-sm font-semibold transition-colors group-hover:text-primary">
         {doc.title || "无标题"}
       </h3>
 
