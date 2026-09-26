@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-09-26T05:46:22.605Z
-> Files: 43 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-26T08:31:45.592Z
+> Files: 105 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -317,6 +317,10 @@
 - `upstream-sync-2026-09-19.md` (~516 tok)
 - `upstream-sync-2026-09-26.md` (~428 tok)
 
+## C:/Users/admin/.gstack/
+
+- `builder-journey.md` — Builder Journey (~392 tok)
+
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
 
@@ -325,7 +329,7 @@
 
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
 
-- `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1429 tok)
+- `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1599 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
@@ -979,21 +983,26 @@
 
 ## frontend/src/app/(auth)/setup/
 
+- `page.tsx` — SetupPage — renders form (~2764 tok)
 
 ## frontend/src/app/[lang]/docs/
 
 
 ## frontend/src/app/admin/
 
+- `layout.tsx` — navItems (~1032 tok)
 
 ## frontend/src/app/admin/app-center/
 
+- `page.tsx` — AdminAppCenterPage (~372 tok)
 
 ## frontend/src/app/admin/departments/
 
+- `page.tsx` — flattenDepts (~10614 tok)
 
 ## frontend/src/app/admin/roles/
 
+- `page.tsx` — Check whether any module in the registry has the pages array (v3 tree format). (~44731 tok)
 
 ## frontend/src/app/admin/templates/
 
@@ -1078,15 +1087,24 @@
 
 ## frontend/src/app/knowledge-factory/
 
+- `page.tsx` — NAV_ITEMS (~1562 tok)
 
 ## frontend/src/app/knowledge/
 
+- `page.tsx` — KB_TYPE_OPTIONS (~12444 tok)
 
 ## frontend/src/app/knowledge/[kbId]/
 
 
 ## frontend/src/app/knowledge/_components/
 
+- `KnowledgeBaseDetail.tsx` — formatDate (~15135 tok)
+- `toast.tsx` — ToastContainer (~749 tok)
+
+## frontend/src/app/landing-v2/
+
+- `page.tsx` — EAI-CUSTOM: 新版 landing 页（landing-v2）路由挂载。/ 仍指向 landing-new， (~63 tok)
+- `page.tsx` — LandingV2Page — /landing-v2 路由挂载（/ 仍指向 landing-new） (~90 tok)
 
 ## frontend/src/app/login/
 
@@ -1108,6 +1126,8 @@
 
 ## frontend/src/app/settings/
 
+- `basic-settings.tsx` — BasicSettings (~6190 tok)
+- `page.tsx` — SettingsPage (~975 tok)
 
 ## frontend/src/app/spare-parts/
 
@@ -1120,12 +1140,13 @@
 
 ## frontend/src/app/workflow-admin/
 
+- `page.tsx` — REPORT_TYPE_FILTERS (~4827 tok)
 
 ## frontend/src/app/workflow-admin/components/
 
-- `ApprovalDialog.tsx` — ApprovalDialog (~867 tok)
+- `ApprovalDialog.tsx` — ApprovalDialog (~871 tok)
 - `ApprovalHistoryPanel.tsx` — ACTION_CONFIG (~562 tok)
-- `TemplateEditorPage.tsx` — TemplateEditorPage (~3868 tok)
+- `TemplateEditorPage.tsx` — TemplateEditorPage (~3916 tok)
 
 ## frontend/src/app/workspace/
 
@@ -1161,6 +1182,13 @@
 ## frontend/src/components/landing-new/
 
 
+## frontend/src/components/landing-v2/
+
+- `App.tsx` — LandingV2 — 2026-09-26 重设计版营销落地页：大 hero+单一 CTA+CSS 手绘工作台产品视觉，纯 token 无独立 CSS，挂 /landing-v2 不覆盖 landing-new (~4400 tok)
+- `App.tsx` — 首屏统一入场：淡入 + 上移，子元素级联错峰 (~3746 tok)
+- `index.ts` — re-export App (~20 tok)
+- `index.ts` — EAI-CUSTOM: landing-v2 组件出口，镜像 landing-new/index.ts 的结构 (~27 tok)
+
 ## frontend/src/components/landing/
 
 
@@ -1193,6 +1221,7 @@
 
 ## frontend/src/components/workspace/messages/
 
+- `message-list.tsx` — EMPTY_TOKEN_DEBUG_STEPS (~14515 tok)
 
 ## frontend/src/components/workspace/projects/
 
@@ -1264,9 +1293,11 @@
 
 ## frontend/src/extensions/app-center/
 
+- `AppCenterPage.tsx` — 应用中心主页面。 (~1297 tok)
 
 ## frontend/src/extensions/app-center/components/
 
+- `AppCard.tsx` — 业务域首次出现顺序（用于 accent 确定性分配） (~1237 tok)
 
 ## frontend/src/extensions/app-center/config/
 
@@ -1277,8 +1308,15 @@
 ## frontend/src/extensions/approval/
 
 
+## frontend/src/extensions/approval/components/
+
+- `ApprovalAction.tsx` — ApprovalAction (~811 tok)
+- `ApprovalStepCard.tsx` — statusConfig (~732 tok)
+
 ## frontend/src/extensions/bid-materials/
 
+- `QualificationLibrary.tsx` — PAGE_SIZE — renders table (~8581 tok)
+- `SampleLibrary.tsx` — PAGE_SIZE — renders table (~7373 tok)
 
 ## frontend/src/extensions/bid-quote/
 
@@ -1316,16 +1354,23 @@
 
 ## frontend/src/extensions/contract-price/components/
 
-- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~8963 tok)
-- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~12414 tok)
-- `DashboardView.tsx` — DashboardView (~900 tok)
-- `GoodsAnalysis.tsx` — badgeColors (~6786 tok)
+- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~8973 tok)
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~12469 tok)
+- `DashboardView.tsx` — DashboardView (~866 tok)
+- `GoodsAnalysis.tsx` — badgeColors (~6828 tok)
+- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~11823 tok)
+- `PageHeader.tsx` — PageHeader — renders table (~357 tok)
+- `SettingsView.tsx` — 配置页 v3: seed 规则库(主) + 定时任务 + 聚类高级参数(折叠)。 (~2098 tok)
+- `StatCard.tsx` — colorClasses (~432 tok)
+- `TracebackDrawer.tsx` — CpaDocument.id; null closes the drawer. (~2898 tok)
+- `UnmatchedTablesDrawer.tsx` — 未匹配表抽屉: 逐表展示页码/表名/OCR表头 → "生成规则草稿"(打开 SeedEditorDrawer) (~1709 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
 
 ## frontend/src/extensions/dashboard/
 
+- `dashboard.css` — Styles: 29 rules, 24 vars (~1328 tok)
 
 ## frontend/src/extensions/dashboard/components/
 
@@ -1335,13 +1380,18 @@
 
 ## frontend/src/extensions/data-source/
 
+- `DataSourceManager.tsx` — ToastContainer (~2648 tok)
 
 ## frontend/src/extensions/data-source/components/
 
+- `DataSourceCard.tsx` — TYPE_ICON_MAP — renders table (~1888 tok)
 
 ## frontend/src/extensions/docmgr/
 
-- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~28248 tok)
+- `DocAIAgentPanel.tsx` — Build the system prompt — format depends on mode. (~10011 tok)
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~28249 tok)
+- `NewSubFolderDialog.tsx` — NewSubFolderDialog — renders modal (~536 tok)
+- `ShareDialog.tsx` — ShareDialog — renders modal (~1912 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1363,7 +1413,9 @@
 
 ## frontend/src/extensions/eia-samples/
 
-- `SampleLibrary.tsx` — PAGE_SIZE — renders table (~6742 tok)
+- `extract-dialog.tsx` — SOURCE_KIND_OPTIONS — renders modal (~3270 tok)
+- `quality-panel.tsx` — RESULT_BADGE_CLASS (~2832 tok)
+- `SampleLibrary.tsx` — PAGE_SIZE — renders table (~6743 tok)
 
 ## frontend/src/extensions/geo-samples/
 
@@ -1380,9 +1432,11 @@
 ## frontend/src/extensions/knowledge-factory/
 
 - `KnowledgeFactoryPage.tsx` — KnowledgeFactoryPage (~663 tok)
+- `RichMetadataEditor.tsx` — RichMetadataEditor (~4029 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/
 
+- `RAGFlowStatusPanel.tsx` — RAGFlowStatusPanel (~4471 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/scraper/
 
@@ -1395,6 +1449,9 @@
 
 ## frontend/src/extensions/license/
 
+- `LicensePage.tsx` — frontend/src/extensions/license/LicensePage.tsx (~3526 tok)
+- `ModuleLockedPage.tsx` — frontend/src/extensions/license/ModuleLockedPage.tsx (~202 tok)
+- `SystemLockedPage.tsx` — frontend/src/extensions/license/SystemLockedPage.tsx (~182 tok)
 
 ## frontend/src/extensions/ontology/
 
@@ -1413,15 +1470,19 @@
 
 ## frontend/src/extensions/output/
 
+- `OutputManager.tsx` — NAV_ITEMS — renders table (~4164 tok)
 
 ## frontend/src/extensions/output/components/
 
+- `CoverElementsEditor.tsx` — AdminSelect 的"不绑定"哨兵值 —— Radix Select 禁止空串作为 option value (~7946 tok)
 
 ## frontend/src/extensions/plugin/
 
 
 ## frontend/src/extensions/project/
 
+- `ProjectCreateWizard.tsx` — Non-empty when this is a workflow template (WorkflowDefinition id). (~12284 tok)
+- `ProjectList.tsx` — TYPE_PALETTE (~6639 tok)
 
 ## frontend/src/extensions/project/components/
 
@@ -1458,6 +1519,15 @@
 
 ## frontend/src/extensions/spare-parts/components/
 
+- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~7386 tok)
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~7087 tok)
+- `CustomersView.tsx` — 客户管理(D3: master/alias 归并)。 (~4945 tok)
+- `DashboardView.tsx` — DashboardView (~937 tok)
+- `ItemsView.tsx` — Styled checkbox matching roles-page PermCheckbox (CSS, no framer-motion). (~10508 tok)
+- `PageHeader.tsx` — PageHeader — renders table (~368 tok)
+- `PartAnalysis.tsx` — badgeColors (~6792 tok)
+- `StatCard.tsx` — colorClasses (~456 tok)
+- `TracebackDrawer.tsx` — CspDocument.id; null closes the drawer. (~2895 tok)
 
 ## frontend/src/extensions/types/
 
@@ -1485,9 +1555,13 @@
 
 ## frontend/src/extensions/workspace/
 
+- `WorkspaceHome.tsx` — KIND_LABELS (~5256 tok)
 
 ## frontend/src/extensions/workspace/components/
 
+- `ApprovalsQueue.tsx` — STATE_LABEL (~2804 tok)
+- `MembersPane.tsx` — ROLE_LABEL (~1956 tok)
+- `TaskBoard.tsx` — COLUMNS (~2791 tok)
 
 ## frontend/src/styles/
 

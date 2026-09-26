@@ -35118,6 +35118,1036 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-1790231200136",
+      "timestamp": "2026-09-26T06:25:15.585Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md",
+      "root_cause": "Had `review_entity.confirm/.reject`",
+      "fix": "Changed to `GET /formal/export?graphs=asserted`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:25:15.585Z"
+    },
+    {
+      "id": "bug-1790231200137",
+      "timestamp": "2026-09-26T06:25:32.608Z",
+      "error_message": "Wrong reference: 416 should be pytest",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md",
+      "root_cause": "Used \"416\" instead of \"pytest\"",
+      "fix": "Changed 416 → pytest",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T06:25:49.769Z"
+    },
+    {
+      "id": "bug-1790231200138",
+      "timestamp": "2026-09-26T06:32:50.851Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/knowledge/page.tsx",
+      "root_cause": "Had \"shrink-0 rounded-lg border border-blue-200 bg-blu",
+      "fix": "Changed to \"shrink-0 rounded-lg border border-primary/20 bg-p",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T06:36:21.553Z"
+    },
+    {
+      "id": "bug-1790231200139",
+      "timestamp": "2026-09-26T06:36:01.226Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/app-center/AppCenterPage.tsx",
+      "root_cause": "Had \"p-3 border rounded-lg bg-blue-50 border-blue-200 ",
+      "fix": "Changed to \"p-3 border border-primary/20 bg-primary/10 text-p",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T06:36:06.925Z"
+    },
+    {
+      "id": "bug-1790231200140",
+      "timestamp": "2026-09-26T06:36:11.276Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/app-center/components/AppCard.tsx",
+      "root_cause": "Had \"text-amber-500 hover:bg-amber-500/10\"",
+      "fix": "Changed to \"text-amber-500 dark:text-amber-400 hover:bg-amber",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:36:11.276Z"
+    },
+    {
+      "id": "bug-1790231200141",
+      "timestamp": "2026-09-26T06:41:22.652Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/output/components/CoverElementsEditor.tsx",
+      "root_cause": "Had \"bg-emerald-500/10 text-emerald-600\"",
+      "fix": "Changed to \"bg-emerald-500/10 text-emerald-600 dark:text-emer",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:41:22.652Z"
+    },
+    {
+      "id": "bug-1790231200142",
+      "timestamp": "2026-09-26T06:41:27.874Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/output/OutputManager.tsx",
+      "root_cause": "Had \"mr-3 shrink-0 rounded-sm border border-emerald-20",
+      "fix": "Changed to \"mr-3 shrink-0 rounded-sm border border-emerald-20",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:41:27.874Z"
+    },
+    {
+      "id": "bug-1790231200143",
+      "timestamp": "2026-09-26T06:42:32.993Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/data-source/components/DataSourceCard.tsx",
+      "root_cause": "Had \"border-amber-500/20 bg-amber-500/10 text-amber-60",
+      "fix": "Changed to \"border-amber-500/20 bg-amber-500/10 text-amber-60",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:42:32.993Z"
+    },
+    {
+      "id": "bug-1790231200144",
+      "timestamp": "2026-09-26T06:45:43.634Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/eia-samples/quality-panel.tsx",
+      "root_cause": "Had \"bg-emerald-50 text-emerald-700 border-emerald-200",
+      "fix": "Changed to \"bg-emerald-50 text-emerald-700 border-emerald-200",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:45:43.634Z"
+    },
+    {
+      "id": "bug-1790231200145",
+      "timestamp": "2026-09-26T06:45:48.419Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/eia-samples/extract-dialog.tsx",
+      "root_cause": "Had \"bg-emerald-600 text-white\"",
+      "fix": "Changed to \"bg-success text-success-foreground\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:45:48.419Z"
+    },
+    {
+      "id": "bug-1790231200146",
+      "timestamp": "2026-09-26T06:45:52.502Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/eia-samples/SampleLibrary.tsx",
+      "root_cause": "Had \"text-muted-foreground hover:text-red-600\"",
+      "fix": "Changed to \"text-muted-foreground hover:text-destructive\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:45:52.502Z"
+    },
+    {
+      "id": "bug-1790231200147",
+      "timestamp": "2026-09-26T06:47:55.306Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocAIAgentPanel.tsx",
+      "root_cause": "Had \"text-xs font-medium text-green-600\"",
+      "fix": "Changed to \"text-xs font-medium text-success\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-26T06:48:07.631Z"
+    },
+    {
+      "id": "bug-1790231200148",
+      "timestamp": "2026-09-26T06:48:12.661Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "Had \"shrink-0 rounded-lg bg-blue-50 p-2\"",
+      "fix": "Changed to \"shrink-0 rounded-lg bg-primary/10 p-2\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T06:48:17.699Z"
+    },
+    {
+      "id": "bug-1790231200149",
+      "timestamp": "2026-09-26T06:48:22.892Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/NewSubFolderDialog.tsx",
+      "root_cause": "Had \"w-full rounded-md border border-gray-600 bg-trans",
+      "fix": "Changed to \"focus:ring-ring w-full rounded-md border border-b",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:48:22.892Z"
+    },
+    {
+      "id": "bug-1790231200150",
+      "timestamp": "2026-09-26T06:48:27.396Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/docmgr/ShareDialog.tsx",
+      "root_cause": "Had \"w-4 h-4 text-green-500\"",
+      "fix": "Changed to \"text-success w-4 h-4\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T06:48:31.980Z"
+    },
+    {
+      "id": "bug-1790231200151",
+      "timestamp": "2026-09-26T06:54:27.513Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-materials/QualificationLibrary.tsx",
+      "root_cause": "Had \"text-red-600\"",
+      "fix": "Changed to \"text-destructive\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T06:54:43.381Z"
+    },
+    {
+      "id": "bug-1790231200152",
+      "timestamp": "2026-09-26T06:54:47.572Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/bid-materials/SampleLibrary.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 6→6 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:54:47.572Z"
+    },
+    {
+      "id": "bug-1790231200153",
+      "timestamp": "2026-09-26T06:54:51.116Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/bid-materials/SampleLibrary.tsx",
+      "root_cause": "Had \"text-muted-foreground hover:text-red-600\"",
+      "fix": "Changed to \"text-muted-foreground hover:text-destructive\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T06:54:55.167Z"
+    },
+    {
+      "id": "bug-1790231200154",
+      "timestamp": "2026-09-26T06:55:42.570Z",
+      "error_message": "Wrong reference: DRAFT should be APPROVED",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md",
+      "root_cause": "Used \"DRAFT\" instead of \"APPROVED\"",
+      "fix": "Changed DRAFT → APPROVED",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T06:55:42.570Z"
+    },
+    {
+      "id": "bug-1790231200155",
+      "timestamp": "2026-09-26T07:16:38.040Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/workspace/components/ApprovalsQueue.tsx",
+      "root_cause": "Had \"bg-amber-500/10 text-amber-500\"",
+      "fix": "Changed to \"bg-amber-500/10 text-amber-600 dark:text-amber-40",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:16:46.961Z"
+    },
+    {
+      "id": "bug-1790231200156",
+      "timestamp": "2026-09-26T07:16:55.062Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/workspace/components/MembersPane.tsx",
+      "root_cause": "Had \"text-muted-foreground cursor-pointer rounded-lg p",
+      "fix": "Changed to \"text-muted-foreground hover:text-destructive curs",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:16:55.062Z"
+    },
+    {
+      "id": "bug-1790231200157",
+      "timestamp": "2026-09-26T07:16:59.176Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/workspace/components/TaskBoard.tsx",
+      "root_cause": "Had \"h-3.5 w-3.5 text-purple-400\"",
+      "fix": "Changed to \"text-purple-600 dark:text-purple-400 h-3.5 w-3.5\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-26T07:17:06.421Z"
+    },
+    {
+      "id": "bug-1790231200158",
+      "timestamp": "2026-09-26T07:17:10.535Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/workspace/WorkspaceHome.tsx",
+      "root_cause": "Had \"flex h-7 w-7 items-center justify-center border r",
+      "fix": "Changed to \"flex h-7 w-7 items-center justify-center border r",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:17:10.535Z"
+    },
+    {
+      "id": "bug-1790231200159",
+      "timestamp": "2026-09-26T07:26:33.263Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/license/LicensePage.tsx",
+      "root_cause": "Had \"text-yellow-600\"",
+      "fix": "Changed to \"text-amber-600 dark:text-amber-400\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T07:26:50.725Z"
+    },
+    {
+      "id": "bug-1790231200160",
+      "timestamp": "2026-09-26T07:26:54.291Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/license/SystemLockedPage.tsx",
+      "root_cause": "Had \"text-sm text-gray-400\"",
+      "fix": "Changed to \"text-muted-foreground/80 text-sm\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:26:54.291Z"
+    },
+    {
+      "id": "bug-1790231200161",
+      "timestamp": "2026-09-26T07:26:59.366Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/approval/components/ApprovalAction.tsx",
+      "root_cause": "Had \"bg-green-600 text-white hover:bg-green-700 active",
+      "fix": "Changed to \"bg-success text-success-foreground hover:bg-succe",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:27:03.662Z"
+    },
+    {
+      "id": "bug-1790231200162",
+      "timestamp": "2026-09-26T07:27:08.051Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/approval/components/ApprovalStepCard.tsx",
+      "root_cause": "Had \"bg-green-500 text-white border-green-500\"",
+      "fix": "Changed to \"bg-success text-success-foreground border-success",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:27:11.639Z"
+    },
+    {
+      "id": "bug-1790231200163",
+      "timestamp": "2026-09-26T07:27:16.021Z",
+      "error_message": "CSS fix: color",
+      "file": "frontend/src/app/workflow-admin/page.tsx",
+      "root_cause": "color: \"bg-red-50 text-red-600 border-red-200\", → \"bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800\",",
+      "fix": "Changed color: \"bg-red-50 text-red-600 border-red-200\", → \"bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800\",",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-26T07:27:24.071Z"
+    },
+    {
+      "id": "bug-1790231200164",
+      "timestamp": "2026-09-26T07:27:27.872Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/workflow-admin/components/ApprovalDialog.tsx",
+      "root_cause": "Had \"px-4 py-2 text-sm font-medium text-white bg-green",
+      "fix": "Changed to \"bg-success text-success-foreground hover:bg-succe",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:27:27.872Z"
+    },
+    {
+      "id": "bug-1790231200165",
+      "timestamp": "2026-09-26T07:27:31.657Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx",
+      "root_cause": "Had \"flex items-center gap-1.5 rounded-lg border borde",
+      "fix": "Changed to \"flex items-center gap-1.5 rounded-lg border borde",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:27:37.137Z"
+    },
+    {
+      "id": "bug-1790231200166",
+      "timestamp": "2026-09-26T07:33:33.072Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/components/workspace/messages/message-list.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check) | Also: key={`${group.id}/${msg.id ?? `idx-${msgIndex}`}`}",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:33:49.352Z"
+    },
+    {
+      "id": "bug-3447",
+      "timestamp": "2026-09-26",
+      "error_message": "Encountered two children with the same key, e5aea700-.../null — 对话页 message-list 渲染报 duplicate React key",
+      "file": "frontend/src/components/workspace/messages/message-list.tsx",
+      "root_cause": "key=${group.id}/${msg.id} 无 null 兜底; msg.id 可为 null(合成占位/usage消息,代码其他处有 Boolean(msg.id) 守卫), 同组两条 null-id 即撞 key; 上游存量 bug 与样式统一改动无关",
+      "fix": "map 回调补 msgIndex 参数, 两处 key 改 ${msg.id ?? idx-msgIndex} 兜底, EAI-CUSTOM(bug-3447) 注释标注同步注意",
+      "tags": [
+        "react",
+        "duplicate-key",
+        "message-list",
+        "upstream-bug",
+        "renumbered"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-1790231200167",
+      "timestamp": "2026-09-26T07:37:36.790Z",
+      "error_message": "Wrong reference: white should be card",
+      "file": "frontend/src/extensions/license/LicensePage.tsx",
+      "root_cause": "Used \"white\" instead of \"card\"",
+      "fix": "Changed white → card",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:37:36.790Z"
+    },
+    {
+      "id": "bug-1790231200168",
+      "timestamp": "2026-09-26T07:37:56.096Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/license/LicensePage.tsx",
+      "root_cause": "Had \"inline-flex items-center gap-2 rounded-lg border ",
+      "fix": "Changed to \"inline-flex items-center gap-2 rounded-lg border ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 8,
+      "last_seen": "2026-09-26T07:38:37.591Z"
+    },
+    {
+      "id": "bug-1790231200169",
+      "timestamp": "2026-09-26T07:38:46.517Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/license/SystemLockedPage.tsx",
+      "root_cause": "Had \"flex min-h-screen items-center justify-center bg-",
+      "fix": "Changed to \"flex min-h-screen items-center justify-center bg-",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-26T07:38:55.537Z"
+    },
+    {
+      "id": "bug-1790231200170",
+      "timestamp": "2026-09-26T07:44:14.956Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/spare-parts/components/StatCard.tsx",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 7→7 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:44:14.956Z"
+    },
+    {
+      "id": "bug-1790231200171",
+      "timestamp": "2026-09-26T07:44:24.980Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/TracebackDrawer.tsx",
+      "root_cause": "Had \"h-4 w-4 text-rose-500\"",
+      "fix": "Changed to \"text-rose-600 dark:text-rose-400 h-4 w-4\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:44:30.164Z"
+    },
+    {
+      "id": "bug-1790231200172",
+      "timestamp": "2026-09-26T07:44:35.778Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/DashboardView.tsx",
+      "root_cause": "Had \"flex h-9 w-9 items-center justify-center rounded-",
+      "fix": "Changed to \"flex h-9 w-9 items-center justify-center rounded-",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-26T07:44:48.896Z"
+    },
+    {
+      "id": "bug-1790231200173",
+      "timestamp": "2026-09-26T07:44:55.309Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/PageHeader.tsx",
+      "root_cause": "Had \"p-1 border rounded-sm bg-blue-50 border-blue-200 ",
+      "fix": "Changed to \"p-1 border border-primary/20 bg-primary/10 text-p",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:44:55.309Z"
+    },
+    {
+      "id": "bug-1790231200174",
+      "timestamp": "2026-09-26T07:45:05.289Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/ClustersView.tsx",
+      "root_cause": "Had \"h-3.5 w-3.5 text-rose-500\"",
+      "fix": "Changed to \"text-rose-600 dark:text-rose-400 h-3.5 w-3.5\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:45:05.289Z"
+    },
+    {
+      "id": "bug-1790231200175",
+      "timestamp": "2026-09-26T07:45:44.689Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/ContractsView.tsx",
+      "root_cause": "Had \"text-blue-600\"",
+      "fix": "Changed to \"text-blue-600 dark:text-blue-400\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 5,
+      "last_seen": "2026-09-26T07:46:12.351Z"
+    },
+    {
+      "id": "bug-1790231200176",
+      "timestamp": "2026-09-26T07:46:19.479Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/CustomersView.tsx",
+      "root_cause": "Had \"text-emerald-600 border-emerald-500/30 bg-emerald",
+      "fix": "Changed to \"text-emerald-600 dark:text-emerald-400 border-eme",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T07:46:33.091Z"
+    },
+    {
+      "id": "bug-1790231200177",
+      "timestamp": "2026-09-26T07:46:38.358Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/ItemsView.tsx",
+      "root_cause": "Had \"text-emerald-600 border-emerald-500/30 bg-emerald",
+      "fix": "Changed to \"text-emerald-600 dark:text-emerald-400 border-eme",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T07:46:52.431Z"
+    },
+    {
+      "id": "bug-1790231200178",
+      "timestamp": "2026-09-26T07:46:57.377Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/spare-parts/components/PartAnalysis.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 4→4 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:46:57.378Z"
+    },
+    {
+      "id": "bug-1790231200179",
+      "timestamp": "2026-09-26T07:47:02.421Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/spare-parts/components/PartAnalysis.tsx",
+      "root_cause": "Had \"rounded-full bg-amber-500/10 px-2.5 py-0.5 text-x",
+      "fix": "Changed to \"rounded-full bg-amber-500/10 px-2.5 py-0.5 text-x",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:47:02.421Z"
+    },
+    {
+      "id": "bug-1790231200180",
+      "timestamp": "2026-09-26T07:49:15.680Z",
+      "error_message": "Wrong reference: eslint should be img",
+      "file": "frontend/src/components/landing-v2/App.tsx",
+      "root_cause": "Used \"eslint\" instead of \"img\"",
+      "fix": "Changed eslint → img",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:49:15.680Z"
+    },
+    {
+      "id": "bug-4967",
+      "timestamp": "2026-09-26T15:52:00+08:00",
+      "error_message": "GET /landing-v2 首次请求返回 500（66.5s 后响应），容器日志只有 Compiling 无错误行；第二次请求 200",
+      "file": "frontend/src/app/landing-v2/page.tsx",
+      "root_cause": "webpack dev 对新路由首次冷编译在 Windows bind-mount 上极慢（本仓已知 17-66s/路由），首个请求在编译期被 dev server 以 500 短暂拒绝，自愈",
+      "fix": "无需修复：重试即 200。新路由验证时首个 500 先重试一次再看日志",
+      "tags": [
+        "nextjs",
+        "webpack",
+        "cold-compile",
+        "transient-500",
+        "landing-v2"
+      ],
+      "related_bugs": [
+        "bug-2230"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T15:52:00+08:00"
+    },
+    {
+      "id": "bug-1790231200181",
+      "timestamp": "2026-09-26T07:55:06.124Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/StatCard.tsx",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 6→6 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:55:06.125Z"
+    },
+    {
+      "id": "bug-1790231200182",
+      "timestamp": "2026-09-26T07:55:13.619Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/PageHeader.tsx",
+      "root_cause": "Had \"p-1 border rounded-sm bg-blue-50 border-blue-200 ",
+      "fix": "Changed to \"p-1 border border-primary/20 bg-primary/10 text-p",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:55:13.619Z"
+    },
+    {
+      "id": "bug-1790231200183",
+      "timestamp": "2026-09-26T07:55:29.590Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "Had \"text-sm text-emerald-500\"",
+      "fix": "Changed to \"text-sm text-success\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:55:29.590Z"
+    },
+    {
+      "id": "bug-1790231200184",
+      "timestamp": "2026-09-26T07:55:38.546Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ItemsView.tsx",
+      "root_cause": "Had \"text-emerald-600 border-emerald-500/30 bg-emerald",
+      "fix": "Changed to \"text-emerald-600 dark:text-emerald-400 border-eme",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T07:58:14.071Z"
+    },
+    {
+      "id": "bug-1790231200185",
+      "timestamp": "2026-09-26T07:55:57.272Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"text-blue-600 border-blue-500/30 bg-blue-500/5\"",
+      "fix": "Changed to \"text-blue-600 dark:text-blue-400 border-blue-500/",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T07:56:15.276Z"
+    },
+    {
+      "id": "bug-1790231200186",
+      "timestamp": "2026-09-26T07:56:31.852Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Had \"h-3.5 w-3.5 text-rose-500\"",
+      "fix": "Changed to \"text-rose-600 dark:text-rose-400 h-3.5 w-3.5\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:56:36.752Z"
+    },
+    {
+      "id": "bug-1790231200187",
+      "timestamp": "2026-09-26T07:56:42.269Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx",
+      "root_cause": "Had \"bg-blue-500/10 text-blue-600\"",
+      "fix": "Changed to \"bg-blue-500/10 text-blue-600 dark:text-blue-400\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T07:56:50.949Z"
+    },
+    {
+      "id": "bug-1790231200188",
+      "timestamp": "2026-09-26T07:57:10.931Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/TracebackDrawer.tsx",
+      "root_cause": "Had \"h-4 w-4 text-rose-500\"",
+      "fix": "Changed to \"text-rose-600 dark:text-rose-400 h-4 w-4\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T07:57:10.931Z"
+    },
+    {
+      "id": "bug-1790231200189",
+      "timestamp": "2026-09-26T08:00:57.057Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/admin/departments/page.tsx",
+      "root_cause": "Had \"bg-amber-100 text-amber-700\"",
+      "fix": "Changed to \"bg-amber-100 text-amber-700 dark:bg-amber-500/15 ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 8,
+      "last_seen": "2026-09-26T08:01:48.411Z"
+    },
+    {
+      "id": "bug-1790231200190",
+      "timestamp": "2026-09-26T08:01:13.426Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/admin/layout.tsx",
+      "root_cause": "Had \"mr-3 shrink-0 rounded-sm border border-slate-200 ",
+      "fix": "Changed to \"border-border bg-muted text-muted-foreground mr-3",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T08:01:13.426Z"
+    },
+    {
+      "id": "bug-1790231200191",
+      "timestamp": "2026-09-26T08:03:57.114Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md",
+      "root_cause": "Had `_project_incrementally`",
+      "fix": "Changed to `active`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T08:03:57.114Z"
+    },
+    {
+      "id": "bug-1790231200192",
+      "timestamp": "2026-09-26T08:05:28.221Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/dashboard/dashboard.css",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 14→17 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "css"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T08:05:28.221Z"
+    },
+    {
+      "id": "bug-1790231200193",
+      "timestamp": "2026-09-26T08:08:56.801Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx",
+      "root_cause": "Had \"bg-green-100 text-green-700\"",
+      "fix": "Changed to \"bg-green-100 text-green-700 dark:bg-green-500/15 ",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T08:08:56.801Z"
+    },
+    {
+      "id": "bug-1790231200194",
+      "timestamp": "2026-09-26T08:09:04.130Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/knowledge-factory/components/RAGFlowStatusPanel.tsx",
+      "root_cause": "Had \"text-amber-600\"",
+      "fix": "Changed to \"text-amber-600 dark:text-amber-400\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T08:09:04.130Z"
+    },
+    {
+      "id": "bug-1790231200195",
+      "timestamp": "2026-09-26T08:25:22.906Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/project/ProjectCreateWizard.tsx",
+      "root_cause": "Had \"border-red-500 focus-visible:ring-red-500/30\"",
+      "fix": "Changed to \"border-destructive focus-visible:ring-destructive",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T08:25:22.907Z"
+    },
+    {
+      "id": "bug-1790231200196",
+      "timestamp": "2026-09-26T08:25:35.708Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/project/ProjectList.tsx",
+      "root_cause": "Had \"shrink-0 rounded-sm border border-violet-200 bg-v",
+      "fix": "Changed to \"shrink-0 rounded-sm border border-violet-200 bg-v",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T08:25:35.708Z"
+    },
+    {
+      "id": "bug-1790231200197",
+      "timestamp": "2026-09-26T08:31:36.506Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md",
+      "root_cause": "Had `canonical_name`",
+      "fix": "Changed to `upsert_entity`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T08:31:45.669Z"
     }
   ]
 }

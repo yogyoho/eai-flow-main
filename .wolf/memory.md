@@ -20749,3 +20749,169 @@
 | 13:48 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 39 reads | ~4757 tok |
 | 13:49 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 40 reads | ~4757 tok |
 | 13:58 | 两笔提交推送origin(6962474bd UI统一+2f2fea021存量落盘); amend剔除cookies/zip1 9.1G/token-ledger 127万行, gitignore四条 | frontend/** docs .wolf | push验证0 0 | ~25k |
+| 14:01 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 41 reads | ~4757 tok |
+| 14:03 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 41 reads | ~4757 tok |
+| 14:21 | Edited frontend/src/app/settings/page.tsx | 4→4 lines | ~70 |
+| 14:21 | Edited frontend/src/app/settings/basic-settings.tsx | CSS: dark | ~122 |
+| 14:25 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | "review_entity.confirm/.re" → "GET /formal/export?graphs" | ~74 |
+| 14:25 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~38 |
+| 14:25 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~22 |
+| 14:25 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~46 |
+| 14:25 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~7 |
+| 14:32 | Edited frontend/src/app/knowledge/page.tsx | "shrink-0 rounded-lg borde" → "shrink-0 rounded-lg borde" | ~30 |
+| 14:32 | Edited frontend/src/app/knowledge/_components/KnowledgeBaseDetail.tsx | CSS: dark, dark | ~96 |
+| 14:33 | Edited frontend/src/app/knowledge/_components/toast.tsx | 4→5 lines | ~84 |
+| 14:36 | Edited frontend/src/extensions/app-center/AppCenterPage.tsx | "p-3 border rounded-lg bg-" → "p-3 border border-primary" | ~29 |
+| 14:36 | Edited frontend/src/extensions/app-center/AppCenterPage.tsx | "size-4 text-amber-500" → "size-4 text-amber-500 dar" | ~27 |
+| 14:36 | Edited frontend/src/extensions/app-center/components/AppCard.tsx | "text-amber-500 hover:bg-a" → "text-amber-500 dark:text-" | ~22 |
+| 14:36 | Edited frontend/src/app/knowledge-factory/page.tsx | "p-1 border rounded-sm bg-" → "p-1 border rounded-sm bg-" | ~48 |
+| 14:36 | Edited frontend/src/app/(auth)/setup/page.tsx | "ms-1 text-sm text-red-500" → "ms-1 text-sm text-destruc" | ~23 |
+| 14:36 | Edited frontend/src/app/(auth)/setup/page.tsx | "text-sm text-red-500" → "text-sm text-destructive" | ~21 |
+| 14:41 | Edited frontend/src/extensions/output/components/CoverElementsEditor.tsx | CSS: dark, dark | ~54 |
+| 14:41 | Edited frontend/src/extensions/output/OutputManager.tsx | "mr-3 shrink-0 rounded-sm " → "mr-3 shrink-0 rounded-sm " | ~52 |
+| 14:42 | Edited frontend/src/extensions/data-source/components/DataSourceCard.tsx | CSS: dark, dark, dark | ~71 |
+| 14:42 | Edited frontend/src/extensions/data-source/DataSourceManager.tsx | 4→5 lines | ~84 |
+| 14:45 | Edited frontend/src/extensions/eia-samples/quality-panel.tsx | 3→3 lines | ~101 |
+| 14:45 | Edited frontend/src/extensions/eia-samples/extract-dialog.tsx | "bg-emerald-600 text-white" → "bg-success text-success-f" | ~24 |
+| 14:45 | Edited frontend/src/extensions/eia-samples/SampleLibrary.tsx | "text-muted-foreground hov" → "text-muted-foreground hov" | ~25 |
+| 14:47 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | "text-xs font-medium text-" → "text-xs font-medium text-" | ~21 |
+| 14:48 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | "text-xs font-medium text-" → "text-xs font-medium text-" | ~22 |
+| 14:48 | Edited frontend/src/extensions/docmgr/DocAIAgentPanel.tsx | "ml-2 text-red-400 hover:t" → "ml-2 text-destructive/70 " | ~21 |
+| 14:48 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | 2→2 lines | ~46 |
+| 14:48 | Edited frontend/src/extensions/docmgr/DocumentManagement.tsx | "flex items-center gap-1.5" → "flex items-center gap-1.5" | ~21 |
+| 14:48 | Edited frontend/src/extensions/docmgr/NewSubFolderDialog.tsx | "w-full rounded-md border " → "focus:ring-ring w-full ro" | ~41 |
+| 14:48 | Edited frontend/src/extensions/docmgr/ShareDialog.tsx | "w-4 h-4 text-green-500" → "text-success w-4 h-4" | ~21 |
+| 14:48 | Edited frontend/src/extensions/docmgr/ShareDialog.tsx | inline fix | ~11 |
+| 14:54 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | CSS: dark | ~36 |
+| 14:54 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | "border-red-200 bg-red-50 " → "border-red-200 bg-red-50 " | ~35 |
+| 14:54 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | 2→2 lines | ~30 |
+| 14:54 | Edited frontend/src/extensions/bid-materials/QualificationLibrary.tsx | "border-emerald-200 bg-eme" → "border-emerald-200 bg-eme" | ~47 |
+| 14:54 | Edited frontend/src/extensions/bid-materials/SampleLibrary.tsx | 6→6 lines | ~122 |
+| 14:54 | Edited frontend/src/extensions/bid-materials/SampleLibrary.tsx | 2→2 lines | ~28 |
+| 14:54 | Edited frontend/src/extensions/bid-materials/SampleLibrary.tsx | "text-sm text-emerald-700" → "text-sm text-success" | ~14 |
+| 14:55 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~5 |
+| 13:55 | 设计稿两轮评审通过获批准(10问题全修,8/10→复审者认可修复后9-10) | docs/designs/2026-09-26-ontostudio-review-loop-closure.md | APPROVED | ~6k |
+| 14:58 | Created C:/Users/admin/.gstack/builder-journey.md | — | ~418 |
+| 15:16 | Edited frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | CSS: dark, dark, dark | ~56 |
+| 15:16 | Edited frontend/src/extensions/workspace/components/ApprovalsQueue.tsx | "h-3.5 w-3.5 text-purple-4" → "text-purple-600 dark:text" | ~26 |
+| 15:16 | Edited frontend/src/extensions/workspace/components/MembersPane.tsx | CSS: dark, dark | ~72 |
+| 15:16 | Edited frontend/src/extensions/workspace/components/MembersPane.tsx | "text-muted-foreground cur" → "text-muted-foreground hov" | ~30 |
+| 15:16 | Edited frontend/src/extensions/workspace/components/TaskBoard.tsx | CSS: dark, dark | ~60 |
+| 15:17 | Edited frontend/src/extensions/workspace/components/TaskBoard.tsx | "rounded border border-pur" → "rounded border border-pur" | ~42 |
+| 15:17 | Edited frontend/src/extensions/workspace/components/TaskBoard.tsx | "rounded bg-red-500/10 px-" → "rounded bg-red-500/10 px-" | ~30 |
+| 15:17 | Edited frontend/src/extensions/workspace/WorkspaceHome.tsx | "flex h-7 w-7 items-center" → "flex h-7 w-7 items-center" | ~59 |
+| 15:26 | Edited frontend/src/extensions/license/LicensePage.tsx | inline fix | ~7 |
+| 15:26 | Edited frontend/src/extensions/license/LicensePage.tsx | inline fix | ~8 |
+| 15:26 | Edited frontend/src/extensions/license/LicensePage.tsx | "text-yellow-600" → "text-amber-600 dark:text-" | ~20 |
+| 15:26 | Edited frontend/src/extensions/license/LicensePage.tsx | 3→3 lines | ~40 |
+| 15:26 | Edited frontend/src/extensions/license/LicensePage.tsx | "text-green-600" → "text-success" | ~19 |
+| 15:26 | Edited frontend/src/extensions/license/LicensePage.tsx | "inline-flex cursor-pointe" → "bg-primary hover:bg-prima" | ~46 |
+| 15:26 | Edited frontend/src/extensions/license/SystemLockedPage.tsx | "text-sm text-gray-400" → "text-muted-foreground/80 " | ~16 |
+| 15:26 | Edited frontend/src/extensions/approval/components/ApprovalAction.tsx | "bg-green-600 text-white h" → "bg-success text-success-f" | ~26 |
+| 15:27 | Edited frontend/src/extensions/approval/components/ApprovalAction.tsx | 2→1 lines | ~34 |
+| 15:27 | Edited frontend/src/extensions/approval/components/ApprovalStepCard.tsx | "bg-green-500 text-white b" → "bg-success text-success-f" | ~20 |
+| 15:27 | Edited frontend/src/extensions/approval/components/ApprovalStepCard.tsx | inline fix | ~15 |
+| 15:27 | Edited frontend/src/app/workflow-admin/page.tsx | 20→20 lines | ~182 |
+| 15:27 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~11 |
+| 15:27 | Edited frontend/src/app/workflow-admin/page.tsx | inline fix | ~20 |
+| 15:27 | Edited frontend/src/app/workflow-admin/components/ApprovalDialog.tsx | "px-4 py-2 text-sm font-me" → "bg-success text-success-f" | ~46 |
+| 15:27 | Edited frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx | "flex items-center gap-1.5" → "flex items-center gap-1.5" | ~83 |
+| 15:27 | Edited frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx | "flex items-center gap-1.5" → "flex items-center gap-1.5" | ~80 |
+
+## Session: 2026-09-26 15:28
+
+| Time | Action | File(s) | Outcome | ~Tokens |
+|------|--------|---------|---------|--------|
+| 15:33 | Edited frontend/src/components/workspace/messages/message-list.tsx | inline fix | ~18 |
+| 15:33 | Edited frontend/src/components/workspace/messages/message-list.tsx | added nullish coalescing | ~183 |
+| 15:33 | Edited frontend/src/components/workspace/messages/message-list.tsx | added nullish coalescing | ~53 |
+| 15:36 | Created frontend/src/components/landing-v2/App.tsx | — | ~3612 |
+| 15:37 | Edited frontend/src/components/landing-v2/App.tsx | added 1 import(s) | ~25 |
+| 15:37 | Edited frontend/src/components/landing-v2/App.tsx | 18→13 lines | ~134 |
+| 15:37 | Created frontend/src/components/landing-v2/index.ts | — | ~27 |
+| 15:37 | Created frontend/src/app/landing-v2/page.tsx | — | ~63 |
+| 15:37 | Edited frontend/src/extensions/license/LicensePage.tsx | inline fix | ~12 |
+| 15:37 | Edited frontend/src/extensions/license/LicensePage.tsx | "inline-flex items-center " → "inline-flex items-center " | ~55 |
+| 15:38 | Edited frontend/src/extensions/license/LicensePage.tsx | "rounded bg-gray-100 px-1 " → "bg-muted rounded px-1 py-" | ~19 |
+| 15:38 | Edited frontend/src/extensions/license/LicensePage.tsx | "border-gray-200 bg-gray-5" → "border-border bg-muted/50" | ~15 |
+| 15:38 | Edited frontend/src/extensions/license/LicensePage.tsx | "bg-gray-300 dark:bg-gray-" → "bg-input" | ~11 |
+| 15:38 | Edited frontend/src/extensions/license/LicensePage.tsx | 2→2 lines | ~28 |
+| 15:38 | Edited frontend/src/extensions/license/LicensePage.tsx | "mt-1 pl-[26px] text-xs te" → "text-muted-foreground mt-" | ~23 |
+| 15:38 | Edited frontend/src/extensions/license/LicensePage.tsx | "mb-3 block text-xs font-m" → "text-muted-foreground/80 " | ~32 |
+| 15:38 | Edited frontend/src/extensions/license/LicensePage.tsx | "border-b dark:border-gray" → "border-border border-b" | ~21 |
+| 15:38 | Edited frontend/src/extensions/license/ModuleLockedPage.tsx | 4→4 lines | ~44 |
+| 15:38 | Edited frontend/src/extensions/license/SystemLockedPage.tsx | "flex min-h-screen items-c" → "flex min-h-screen items-c" | ~24 |
+| 15:38 | Edited frontend/src/extensions/license/SystemLockedPage.tsx | "mb-2 text-2xl font-bold t" → "text-foreground mb-2 text" | ~19 |
+| 15:38 | Edited frontend/src/extensions/license/SystemLockedPage.tsx | "mb-6 text-gray-600 dark:t" → "text-muted-foreground mb-" | ~15 |
+| 15:43 | Edited frontend/src/components/landing-v2/App.tsx | 7→8 lines | ~164 |
+| 15:43 | Edited frontend/src/components/landing-v2/App.tsx | expanded (+9 lines) | ~560 |
+| 15:44 | Edited frontend/src/extensions/spare-parts/components/StatCard.tsx | 7→7 lines | ~106 |
+| 15:44 | Edited frontend/src/extensions/spare-parts/components/TracebackDrawer.tsx | "h-4 w-4 text-rose-500" → "text-rose-600 dark:text-r" | ~23 |
+| 15:44 | Edited frontend/src/extensions/spare-parts/components/TracebackDrawer.tsx | "rounded-md border border-" → "rounded-md border border-" | ~39 |
+| 15:44 | Edited frontend/src/extensions/spare-parts/components/DashboardView.tsx | CSS: dark, dark, dark | ~74 |
+| 15:44 | Edited frontend/src/extensions/spare-parts/components/DashboardView.tsx | "text-[22px] font-bold tra" → "text-xl font-bold trackin" | ~22 |
+| 15:44 | Edited frontend/src/extensions/spare-parts/components/DashboardView.tsx | "text-sm text-emerald-500" → "text-sm text-success" | ~28 |
+| 15:44 | Edited frontend/src/extensions/spare-parts/components/PageHeader.tsx | "p-1 border rounded-sm bg-" → "p-1 border border-primary" | ~30 |
+| 15:45 | Edited frontend/src/extensions/spare-parts/components/ClustersView.tsx | "h-3.5 w-3.5 text-rose-500" → "text-rose-600 dark:text-r" | ~30 |
+| 15:45 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | inline fix | ~25 |
+| 15:45 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | inline fix | ~26 |
+| 15:45 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | "text-sm text-blue-600" → "text-sm text-blue-600 dar" | ~25 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | "text-blue-600 hover:text-" → "text-blue-600 hover:text-" | ~26 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/ContractsView.tsx | CSS: dark, dark | ~63 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/CustomersView.tsx | CSS: dark, dark | ~50 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/CustomersView.tsx | CSS: dark, dark, dark | ~72 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/CustomersView.tsx | "text-emerald-600" → "text-emerald-600 dark:tex" | ~24 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/CustomersView.tsx | "text-amber-600" → "text-amber-600 dark:text-" | ~26 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/ItemsView.tsx | CSS: dark, dark, dark | ~74 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/ItemsView.tsx | "text-amber-600" → "text-amber-600 dark:text-" | ~27 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/ItemsView.tsx | "text-emerald-600 hover:te" → "text-emerald-600 hover:te" | ~32 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/ItemsView.tsx | "h-3.5 w-3.5 text-rose-500" → "text-rose-600 dark:text-r" | ~30 |
+| 15:46 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | 4→4 lines | ~71 |
+| 15:47 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | "rounded-full bg-amber-500" → "rounded-full bg-amber-500" | ~37 |
+| 15:47 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | inline fix | ~43 |
+| 15:47 | Edited frontend/src/extensions/spare-parts/components/PartAnalysis.tsx | inline fix | ~56 |
+| 15:49 | Edited frontend/src/components/landing-v2/App.tsx | 3→2 lines | ~20 |
+| 15:52 | 新版 landing 页设计落地:landing-v2(大hero+单一CTA+CSS手绘工作台视觉),3文件,lint/typecheck绿,明暗双主题截图验证,路由200 | frontend/src/components/landing-v2/ frontend/src/app/landing-v2/ | done | ~5800 |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/StatCard.tsx | 6→6 lines | ~86 |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/PageHeader.tsx | "p-1 border rounded-sm bg-" → "p-1 border border-primary" | ~30 |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/DashboardView.tsx | CSS: dark, dark, dark | ~105 |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/DashboardView.tsx | "text-sm text-emerald-500" → "text-sm text-success" | ~28 |
+| 15:55 | Session end: 53 writes across 16 files (message-list.tsx, App.tsx, index.ts, page.tsx, LicensePage.tsx) | 34 reads | ~36564 tok |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | CSS: dark, dark, dark | ~74 |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | "h-3.5 w-3.5 text-rose-500" → "text-rose-600 dark:text-r" | ~30 |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | "text-amber-600" → "text-amber-600 dark:text-" | ~11 |
+| 15:55 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | "text-blue-600 border-blue" → "text-blue-600 dark:text-b" | ~23 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | "text-amber-600 border-amb" → "text-amber-600 dark:text-" | ~24 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | "text-emerald-600 border-e" → "text-emerald-600 dark:tex" | ~26 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | CSS: dark, dark | ~63 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | inline fix | ~10 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/ContractsView.tsx | inline fix | ~10 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | "h-3.5 w-3.5 text-rose-500" → "text-rose-600 dark:text-r" | ~30 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/ClustersView.tsx | "text-amber-600" → "text-amber-600 dark:text-" | ~11 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | CSS: dark, dark, dark | ~53 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | inline fix | ~65 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | "text-rose-500 transition-" → "text-rose-600 transition-" | ~31 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/GoodsAnalysis.tsx | inline fix | ~10 |
+| 15:56 | Edited frontend/src/extensions/contract-price/components/SettingsView.tsx | inline fix | ~10 |
+| 15:57 | Edited frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx | inline fix | ~10 |
+| 15:57 | Edited frontend/src/extensions/contract-price/components/UnmatchedTablesDrawer.tsx | inline fix | ~12 |
+| 15:57 | Edited frontend/src/extensions/contract-price/components/TracebackDrawer.tsx | "h-4 w-4 text-rose-500" → "text-rose-600 dark:text-r" | ~23 |
+| 15:57 | Edited frontend/src/extensions/contract-price/components/TracebackDrawer.tsx | inline fix | ~10 |
+| 15:58 | Edited frontend/src/extensions/contract-price/components/ItemsView.tsx | "h-3.5 w-3.5 text-emerald-" → "text-emerald-600 dark:tex" | ~31 |
+| 16:00 | Edited frontend/src/app/admin/departments/page.tsx | 3→3 lines | ~63 |
+| 16:01 | Edited frontend/src/app/admin/departments/page.tsx | "rounded-full bg-gray-100 " → "bg-muted text-muted-foreg" | ~28 |
+| 16:01 | Edited frontend/src/app/admin/layout.tsx | "mr-3 shrink-0 rounded-sm " → "border-border bg-muted te" | ~31 |
+| 16:01 | Edited frontend/src/app/admin/app-center/page.tsx | "p-3 border rounded-lg bg-" → "p-3 border border-primary" | ~30 |
+| 16:01 | Edited frontend/src/app/admin/roles/page.tsx | CSS: dark | ~43 |
+| 16:01 | Edited frontend/src/app/admin/roles/page.tsx | "rounded border border-amb" → "rounded border border-amb" | ~42 |
+| 16:01 | Edited frontend/src/app/admin/roles/page.tsx | "bg-indigo-500/10 text-ind" → "bg-indigo-500/10 text-ind" | ~26 |
+| 16:01 | Edited frontend/src/app/admin/roles/page.tsx | "bg-sky-500/10 text-sky-50" → "bg-sky-500/10 text-sky-60" | ~23 |
+| 16:01 | Edited frontend/src/app/admin/roles/page.tsx | "inline-flex items-center " → "inline-flex items-center " | ~49 |
+| 16:03 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | "_project_incrementally" → "active" | ~67 |
+| 16:05 | Edited frontend/src/extensions/dashboard/dashboard.css | CSS: EAI-CUSTOM | ~194 |
+| 16:08 | Edited frontend/src/extensions/knowledge-factory/RichMetadataEditor.tsx | 3→3 lines | ~62 |
+| 16:09 | Edited frontend/src/extensions/knowledge-factory/components/RAGFlowStatusPanel.tsx | "text-amber-600" → "text-amber-600 dark:text-" | ~36 |
+| 16:25 | Edited frontend/src/extensions/project/ProjectCreateWizard.tsx | "border-red-500 focus-visi" → "border-destructive focus-" | ~16 |
+| 16:25 | Edited frontend/src/extensions/project/ProjectList.tsx | "shrink-0 rounded-sm borde" → "shrink-0 rounded-sm borde" | ~49 |
+| 16:31 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~88 |
+| 16:31 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | "POST /actions/invoke" → "frontend/src/api/actions-" | ~67 |

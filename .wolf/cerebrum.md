@@ -2337,3 +2337,10 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - `git add -A` 汇总落盘前必须先 `git status --porcelain | grep '^??'` 查未跟踪清单: 本次扫进 cookies.txt(会话cookie)/me.json/run4.json(API转储)/zip1(9.1GB部署tar包)/.wolf/token-ledger.json(127万行机器记账) — amend 剔除+push 前拦截
 - 已加 .gitignore: cookies.txt / me.json / run4.json / zip1/ / .wolf/token-ledger.json; token-ledger 已解除跟踪(知识文件 cerebrum/memory/buglog/anatomy 仍跟踪)
 - 部署 tar 包/镜像一律不进 git(离线交付走 delta 镜像通道); amend 后 push 只传可达对象, 悬空对象 gc --prune=now 回收
+- 修复配方(2026-09-26 实战验证): .git 因大文件膨胀+坏 pack → `git reflog expire --expire-unreachable=now --all` + `git repack -a -d`(只读可达对象,坏 blob 随旧 pack 整体丢弃,勿用 gc -A/--unpack-unreachable 会读到坏对象) + `git prune`; commit-graph 残留旧条目报 "failed to parse commit" = 删 .git/objects/info/commit-graph* 重写, 纯缓存非真损坏
+
+## Key Learnings (2026-09-26 — landing-v2 设计落地)
+- **祖先容器 `overflow-hidden` 会静默破坏 `position: sticky`**：sticky 相对最近滚动祖先吸附，祖先 overflow≠visible 时吸附范围被钳制在该祖先盒内，表现为"滚下去 nav 不见了"。修法=overflow 裁剪下沉到内层 absolute 包装（光晕/装饰层单独 `absolute inset-0 overflow-hidden`），根容器不加 overflow-hidden。本页 landing-v2/App.tsx 即此结构。
+- **superpowers-chrome use_browser 的滚动后截图有合成伪影**：对 sticky+backdrop-blur 页面，scroll 后视口截图出现顶部白带/nav 画在半屏（eval 实测 scrollY=504 且 nav.getBoundingClientRect().top=0 完全正常）。**判定 sticky/滚动布局问题以 getBoundingClientRect 几何为准，不要信该工具滚动后的视口截图**；全页截图(fullpage)不受影响可用。
+- **强制暗色调试（eval 加 .dark 类）须先移除根上的 `light` 类**：本站主题系统会在 documentElement 同时挂 light/dark 语义类，只加 dark 不删 light 时 token 不翻转（bodyBg 仍白）；`classList.remove('light'); add('dark')` 后立即生效。
+- webpack dev 对新路由首次冷编译可被 dev server 以 500 短暂拒绝（66s 后回包、日志只有 Compiling 无错误行），重试即 200 自愈——新路由验证首个 500 先重试再排查（bug-4967，与 bug-2230 慢 FS 同族）。
