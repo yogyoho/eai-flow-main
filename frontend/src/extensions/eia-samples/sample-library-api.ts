@@ -50,6 +50,84 @@ export interface KFSampleListParams {
   limit?: number;
 }
 
+// ============== 二期（BS3 ③④）：提取流水线 + 质检面板 ==============
+
+export type QualityResult = "pass" | "warn" | "fail" | "unknown";
+
+export interface QualityCheck {
+  check: string;
+  result: QualityResult;
+  detail: string;
+}
+
+export interface QualityReport {
+  sample_id: string;
+  title: string;
+  scenario: string;
+  checks: QualityCheck[];
+  score: number;
+}
+
+export interface QualitySummaryItem {
+  sample_id: string;
+  title: string;
+  scenario: string;
+  score: number;
+  worst_result: QualityResult;
+  problems: string[];
+}
+
+export interface QualitySummary {
+  total: number;
+  by_result: Record<QualityResult, number>;
+  by_scenario: Record<string, { samples: number; avg_score: number }>;
+  items: QualitySummaryItem[];
+}
+
+export interface OutlineSection {
+  no: string;
+  title: string;
+}
+
+export interface OutlineChapter {
+  no: string;
+  title: string;
+  sections: OutlineSection[];
+}
+
+export interface ExtractResult {
+  sample_id: string;
+  title: string;
+  source_kind: string;
+  source_chars: number;
+  chapters: OutlineChapter[];
+  candidates: Record<string, string[]>;
+  saved: boolean;
+}
+
+export const CANDIDATE_BUCKET_LABELS: Record<string, string> = {
+  mines: "矿山",
+  sensitive: "敏感目标",
+  waters: "水体",
+};
+
+// 质检检查项中文名（对齐后端 quality.CHECK_IDS）
+export const QUALITY_CHECK_LABELS: Record<string, string> = {
+  file_hash: "哈希体检",
+  content_outline: "内容非空",
+  scenario_enum: "场景枚举",
+  duplicate_title: "重复标题",
+  privacy_scan: "隐私扫描",
+  chapter_numbering: "编号体检",
+};
+
+export const QUALITY_RESULT_LABELS: Record<QualityResult, string> = {
+  pass: "通过",
+  warn: "警告",
+  fail: "不通过",
+  unknown: "未知",
+};
+
 // 场景枚举——对齐后端 schemas.SampleScenario（coal-eia v2 回填对账定稿场景矩阵）
 export const SAMPLE_SCENARIOS: { value: string; label: string }[] = [
   { value: "planning_eia", label: "规划环评" },
@@ -106,17 +184,27 @@ function withCsrf(headers: HeadersInit, method?: string): HeadersInit {
   return headers;
 }
 
-async function sampleRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function sampleRequest<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<T> {
   const headers = withCsrf(
     { "Content-Type": "application/json", ...options.headers },
     options.method,
   );
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, { ...options, headers, credentials: "include" });
+    response = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+      credentials: "include",
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Network error";
-    throw new ApiError(0, msg.includes("fetch") ? "网络连接失败，请确认后端服务已启动" : msg);
+    throw new ApiError(
+      0,
+      msg.includes("fetch") ? "网络连接失败，请确认后端服务已启动" : msg,
+    );
   }
   if (!response.ok) {
     let message = "请求失败";
@@ -181,4 +269,17 @@ export const sampleLibraryApi = {
 
   remove: (id: string) =>
     sampleRequest<{ message: string }>(`/samples/${id}`, { method: "DELETE" }),
+
+  // ── 二期（BS3 ③④）──
+
+  qualitySummary: () => sampleRequest<QualitySummary>("/quality/summary"),
+
+  sampleQuality: (id: string) =>
+    sampleRequest<QualityReport>(`/samples/${id}/quality`),
+
+  extract: (id: string, sourceKind: "txt" | "docx" | "auto", save: boolean) =>
+    sampleRequest<ExtractResult>(`/samples/${id}/extract`, {
+      method: "POST",
+      body: JSON.stringify({ source_kind: sourceKind, save }),
+    }),
 };

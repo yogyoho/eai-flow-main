@@ -75,7 +75,7 @@ export function ProjectPanel() {
                   <h3 className="db-text-primary truncate text-sm font-bold tracking-wide transition-colors group-hover:text-purple-600">
                     {proj.project_name}
                   </h3>
-                  <p className="mt-0.5 line-clamp-2 max-w-[420px] text-[11px] leading-normal text-slate-500">
+                  <p className="mt-0.5 line-clamp-2 max-w-[420px] text-xs leading-normal text-slate-500">
                     {proj.role_label}
                     {proj.current_phase ? ` · ${proj.current_phase}` : ""}
                   </p>
@@ -115,7 +115,7 @@ export function ProjectPanel() {
                   style={{ width: `${proj.progress_pct ?? 0}%` }}
                 />
               </div>
-              <div className="font-cyber flex items-center justify-between border-t border-[var(--db-border-color-muted)] pt-2.5 text-[11px] text-slate-500">
+              <div className="font-cyber flex items-center justify-between border-t border-[var(--db-border-color-muted)] pt-2.5 text-xs text-slate-500">
                 <div className="flex items-center gap-3">
                   <span className="flex items-center gap-1.5">
                     <Server className="h-3 w-3 text-slate-400" />

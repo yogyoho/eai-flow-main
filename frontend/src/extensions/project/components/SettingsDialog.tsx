@@ -206,7 +206,7 @@ export function SettingsDialog({
         <div className="space-y-4">
           {/* Project Name */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-[12px] font-medium">
+            <label className="text-muted-foreground text-xs font-medium">
               项目名称
             </label>
             {editingName ? (
@@ -265,7 +265,7 @@ export function SettingsDialog({
 
           {/* Description — EAI-CUSTOM: 项目说明/要求,注入 agent */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-[12px] font-medium">
+            <label className="text-muted-foreground text-xs font-medium">
               项目说明/要求
             </label>
             {editingDescription ? (
@@ -328,7 +328,7 @@ export function SettingsDialog({
 
           {/* Report Type */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-[12px] font-medium">
+            <label className="text-muted-foreground text-xs font-medium">
               报告类型
             </label>
             <p className="text-foreground text-sm">
@@ -338,7 +338,7 @@ export function SettingsDialog({
 
           {/* Status */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-[12px] font-medium">
+            <label className="text-muted-foreground text-xs font-medium">
               项目状态
             </label>
             {canEdit ? (
@@ -379,7 +379,7 @@ export function SettingsDialog({
               />
             ) : (
               <>
-                <label className="text-muted-foreground text-[12px] font-medium">
+                <label className="text-muted-foreground text-xs font-medium">
                   分工策略
                 </label>
                 <p className="text-foreground text-sm">
@@ -393,7 +393,7 @@ export function SettingsDialog({
 
           {/* Archive — EAI-CUSTOM: orthogonal archivedAt bucket (ADR P5) */}
           <div className="space-y-1.5">
-            <label className="text-muted-foreground text-[12px] font-medium">
+            <label className="text-muted-foreground text-xs font-medium">
               归档
             </label>
             {canEdit ? (
@@ -415,7 +415,7 @@ export function SettingsDialog({
                     "归档项目"
                   )}
                 </Button>
-                <p className="text-muted-foreground text-[11px]">
+                <p className="text-muted-foreground text-xs">
                   {project.archivedAt
                     ? "已归档，从项目列表隐藏"
                     : "归档后从项目列表隐藏，状态保留"}
@@ -431,7 +431,7 @@ export function SettingsDialog({
           {/* Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-[12px] font-medium">
+              <label className="text-muted-foreground text-xs font-medium">
                 创建时间
               </label>
               <p className="text-foreground text-sm">
@@ -441,7 +441,7 @@ export function SettingsDialog({
               </p>
             </div>
             <div className="space-y-1.5">
-              <label className="text-muted-foreground text-[12px] font-medium">
+              <label className="text-muted-foreground text-xs font-medium">
                 更新时间
               </label>
               <p className="text-foreground text-sm">

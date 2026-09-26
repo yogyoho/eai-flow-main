@@ -1939,6 +1939,16 @@ export const kfApi = {
   exportTemplate: (templateId: string) =>
     `${KF_API_BASE}/templates/${templateId}/export`,
 
+  // blob 下载 + 真实成败反馈:锚点直链拿不到结果,失败也会被误报"导出成功"
+  exportTemplateBlob: async (templateId: string) => {
+    const res = await fetch(`${KF_API_BASE}/templates/${templateId}/export`, {
+      credentials: "include",
+    });
+    if (!res.ok)
+      throw new ApiError(res.status, `模板导出失败 (HTTP ${res.status})`);
+    return res.blob();
+  },
+
   getTemplateVersions: (templateId: string) =>
     kfRequest<TemplateVersionResponse[]>(`/templates/${templateId}/versions`),
 

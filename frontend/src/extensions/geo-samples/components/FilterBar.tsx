@@ -44,7 +44,7 @@ export const STATUS_OPTIONS: GsbOption[] = [
 
 /** 触发按钮/面板统一样式(bid-quote FilterBar 同款,14px)。 */
 const TRIGGER =
-  "border-border bg-background text-foreground flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-[14px] transition-colors hover:border-foreground/30";
+  "border-border bg-background text-foreground flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-sm transition-colors hover:border-foreground/30";
 const PANEL =
   "border-border bg-background absolute top-full left-0 z-30 mt-1 rounded-md border p-2 shadow-lg";
 
@@ -111,7 +111,7 @@ export function SelectDropdown({
             <button
               type="button"
               onClick={() => pick("")}
-              className={`hover:bg-accent w-full cursor-pointer rounded px-2 py-1.5 text-left text-[14px] ${!value ? "text-primary font-medium" : "text-foreground"}`}
+              className={`hover:bg-accent w-full cursor-pointer rounded px-2 py-1.5 text-left text-sm ${!value ? "text-primary font-medium" : "text-foreground"}`}
             >
               {allLabel}
             </button>
@@ -121,7 +121,7 @@ export function SelectDropdown({
                 type="button"
                 onClick={() => pick(o.value)}
                 title={o.label}
-                className={`hover:bg-accent w-full cursor-pointer truncate rounded px-2 py-1.5 text-left text-[14px] ${o.value === value ? "text-primary font-medium" : "text-foreground"}`}
+                className={`hover:bg-accent w-full cursor-pointer truncate rounded px-2 py-1.5 text-left text-sm ${o.value === value ? "text-primary font-medium" : "text-foreground"}`}
               >
                 {o.label}
               </button>
@@ -145,14 +145,14 @@ export function FilterBar({
 
   return (
     <div className="border-border bg-card/50 rounded-xl border p-3">
-      <div className="text-muted-foreground mb-2 flex items-center gap-2 text-[14px] font-medium">
+      <div className="text-muted-foreground mb-2 flex items-center gap-2 text-sm font-medium">
         <Filter className="h-4 w-4" />
         筛选样例
         {active && (
           <button
             type="button"
             onClick={() => onChange({ stage: "", mineral: "", status: "" })}
-            className="text-primary ml-auto cursor-pointer text-[14px] hover:underline"
+            className="text-primary ml-auto cursor-pointer text-sm hover:underline"
           >
             清空
           </button>
@@ -160,7 +160,7 @@ export function FilterBar({
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="flex flex-col gap-1" role="group" aria-label="勘查阶段">
-          <span className="text-muted-foreground text-[12px]">勘查阶段</span>
+          <span className="text-muted-foreground text-xs">勘查阶段</span>
           <SelectDropdown
             ariaLabel="勘查阶段"
             value={filters.stage}
@@ -170,7 +170,7 @@ export function FilterBar({
           />
         </div>
         <div className="flex flex-col gap-1" role="group" aria-label="矿种">
-          <span className="text-muted-foreground text-[12px]">矿种</span>
+          <span className="text-muted-foreground text-xs">矿种</span>
           <SelectDropdown
             ariaLabel="矿种"
             value={filters.mineral}
@@ -180,7 +180,7 @@ export function FilterBar({
           />
         </div>
         <div className="flex flex-col gap-1" role="group" aria-label="状态">
-          <span className="text-muted-foreground text-[12px]">状态</span>
+          <span className="text-muted-foreground text-xs">状态</span>
           <SelectDropdown
             ariaLabel="状态"
             value={filters.status}

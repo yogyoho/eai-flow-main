@@ -295,7 +295,7 @@ export const WorkflowEditor = forwardRef<
         {!readOnly && (
           <div className="border-border bg-muted/30 flex w-52 shrink-0 flex-col border-r">
             <div className="px-3 pt-3 pb-2">
-              <div className="text-muted-foreground text-[11px] font-semibold tracking-wider uppercase">
+              <div className="text-muted-foreground text-xs font-semibold tracking-wider uppercase">
                 节点面板
               </div>
             </div>

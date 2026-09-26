@@ -79,7 +79,7 @@ export function DrillDownModal({ title, sql, onClose }: DrillDownModalProps) {
             </Table>
           )}
         </div>
-        <div className="border-t border-border px-5 py-2 text-[11px] text-muted-foreground/70">
+        <div className="border-t border-border px-5 py-2 text-xs text-muted-foreground/70">
           共 {data?.row_count ?? 0} 条 · {sql}
         </div>
       </div>

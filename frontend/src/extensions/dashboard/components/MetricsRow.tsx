@@ -83,7 +83,7 @@ export function MetricsRow({ data, loading, onRefresh }: MetricsRowProps) {
             className={`flex flex-col justify-between rounded-xl border p-3.5 transition-all hover:scale-[1.015] ${card.borderTheme} group cursor-default`}
           >
             <div className="mb-1 flex items-center justify-between gap-2">
-              <span className="db-text-primary text-[11px] font-bold md:text-xs">
+              <span className="db-text-primary text-xs font-bold md:text-xs">
                 {card.label}
               </span>
               <div className={`rounded-md border p-1 ${card.borderTheme}`}>

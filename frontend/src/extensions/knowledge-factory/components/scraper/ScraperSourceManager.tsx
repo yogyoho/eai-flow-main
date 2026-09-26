@@ -181,7 +181,7 @@ function SchemaDropdown({
                 <div key={group.key}>
                   <div className="flex items-center gap-2 px-3 pt-2 pb-1">
                     <GroupIcon className={cn("h-3.5 w-3.5", group.color)} />
-                    <span className="text-muted-foreground text-[11px] font-bold tracking-wider uppercase">
+                    <span className="text-muted-foreground text-xs font-bold tracking-wider uppercase">
                       {group.label}
                     </span>
                     <span className="border-border flex-1 border-b border-dashed" />

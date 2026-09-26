@@ -32,7 +32,7 @@ export function ChartCard({
       <div className="mb-3.5">
         <div className="flex items-center justify-between gap-2">
           <h3
-            className="text-[14.5px] leading-tight font-semibold"
+            className="text-sm leading-tight font-semibold"
             style={{ color: INK }}
           >
             {title}

@@ -122,7 +122,7 @@ export function DraftsView() {
               key={f.value}
               type="button"
               onClick={() => setStatusFilter(f.value)}
-              className="cursor-pointer rounded-md border px-2.5 py-1 text-[13px]"
+              className="cursor-pointer rounded-md border px-2.5 py-1 text-sm"
               style={{
                 borderColor:
                   statusFilter === f.value ? BLUE : "rgba(0,0,0,0.06)",
@@ -162,12 +162,12 @@ export function DraftsView() {
                         : undefined
                     }
                   >
-                    <TableCell className="text-[13px] font-medium">
+                    <TableCell className="text-sm font-medium">
                       {d.mineral}
                     </TableCell>
                     <TableCell>
                       <span
-                        className="text-[13px] font-medium"
+                        className="text-sm font-medium"
                         style={{
                           color: STATUS_COLOR[d.review_status] ?? INK_2,
                         }}
@@ -177,12 +177,12 @@ export function DraftsView() {
                     </TableCell>
                     <TableCell>
                       {d.errors.length === 0 ? (
-                        <span className="text-[13px]" style={{ color: GREEN }}>
+                        <span className="text-sm" style={{ color: GREEN }}>
                           通过
                         </span>
                       ) : (
                         <span
-                          className="text-[13px]"
+                          className="text-sm"
                           title={d.errors.join("；")}
                           style={{ color: RED }}
                         >
@@ -193,7 +193,7 @@ export function DraftsView() {
                     <TableCell className="font-mono text-xs">
                       {d.slices_hash.slice(0, 10)}…
                     </TableCell>
-                    <TableCell className="text-[13px] whitespace-nowrap">
+                    <TableCell className="text-sm whitespace-nowrap">
                       {new Date(d.created_at).toLocaleString()}
                     </TableCell>
                   </TableRow>
@@ -224,7 +224,7 @@ export function DraftsView() {
             {/* 校验错误区（人审可见，approve 前置 = errors==[]） */}
             {selected.errors.length > 0 && (
               <div
-                className="rounded-md p-3 text-[13px]"
+                className="rounded-md p-3 text-sm"
                 style={{ background: "#fdf1f1", color: RED }}
               >
                 <p className="font-medium">
@@ -239,7 +239,7 @@ export function DraftsView() {
             )}
             {selected.draft_json == null && (
               <div
-                className="rounded-md p-3 text-[13px]"
+                className="rounded-md p-3 text-sm"
                 style={{ background: "#fdf1f1", color: RED }}
               >
                 失败草稿：后端未产出 JSON（见错误信息）
@@ -257,7 +257,7 @@ export function DraftsView() {
             {/* approve 结果：落盘路径 + standards_index 义务清单 */}
             {approval && (
               <div
-                className="rounded-md p-3 text-[13px]"
+                className="rounded-md p-3 text-sm"
                 style={{ background: "#eefaf3", color: GREEN }}
               >
                 <p className="font-medium">已过审，落盘 {approval.written}</p>
@@ -280,7 +280,7 @@ export function DraftsView() {
               </div>
             )}
             {actionError && (
-              <p className="text-[13px]" style={{ color: RED }}>
+              <p className="text-sm" style={{ color: RED }}>
                 {actionError}
               </p>
             )}
@@ -289,14 +289,14 @@ export function DraftsView() {
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="审阅意见（reject 时建议写明理由）"
-              className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-full rounded-md border p-2 text-[14px] outline-none"
+              className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-full rounded-md border p-2 text-sm outline-none"
             />
             <div className="flex gap-2">
               <button
                 type="button"
                 disabled={approveBlocked || review.isPending}
                 onClick={() => submit("approve")}
-                className="cursor-pointer rounded-md px-3 py-1.5 text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ background: GREEN }}
               >
                 过审（落 repo）
@@ -307,7 +307,7 @@ export function DraftsView() {
                   selected.review_status !== "draft" || review.isPending
                 }
                 onClick={() => submit("reject")}
-                className="cursor-pointer rounded-md px-3 py-1.5 text-[14px] font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
+                className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-40"
                 style={{ background: RED }}
               >
                 驳回
@@ -322,7 +322,7 @@ export function DraftsView() {
             </div>
           </div>
         ) : (
-          <p className="text-[13px]" style={{ color: INK_3 }}>
+          <p className="text-sm" style={{ color: INK_3 }}>
             请先在上方选择草稿
           </p>
         )}

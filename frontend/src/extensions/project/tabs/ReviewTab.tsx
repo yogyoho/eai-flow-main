@@ -128,7 +128,7 @@ export function ReviewTab({ projectId }: ReviewTabProps) {
           <button
             type="button"
             onClick={() => setTab("mine")}
-            className={`rounded-md px-3 py-1 text-[12px] font-medium transition-colors ${
+            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
               tab === "mine"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -139,7 +139,7 @@ export function ReviewTab({ projectId }: ReviewTabProps) {
           <button
             type="button"
             onClick={() => setTab("all")}
-            className={`rounded-md px-3 py-1 text-[12px] font-medium transition-colors ${
+            className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
               tab === "all"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
@@ -158,7 +158,7 @@ export function ReviewTab({ projectId }: ReviewTabProps) {
                 key={s}
                 type="button"
                 onClick={() => setStatusFilter(s)}
-                className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                   statusFilter === s
                     ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -207,7 +207,7 @@ export function ReviewTab({ projectId }: ReviewTabProps) {
                           {cfg.label}
                         </Badge>
                       </div>
-                      <p className="text-muted-foreground text-[11px]">
+                      <p className="text-muted-foreground text-xs">
                         审核人: {review.reviewerId?.slice(0, 8) ?? "..."}
                       </p>
                       {review.reviewType && (
@@ -335,7 +335,7 @@ export function ReviewTab({ projectId }: ReviewTabProps) {
                     {approvalStatus.steps.map((step, i) => (
                       <div key={step.id} className="flex items-center">
                         <div
-                          className={`flex h-7 items-center rounded-full px-3 text-[11px] font-medium ${
+                          className={`flex h-7 items-center rounded-full px-3 text-xs font-medium ${
                             step.status === "approved"
                               ? "bg-success/10 text-success"
                               : step.status === "rejected"

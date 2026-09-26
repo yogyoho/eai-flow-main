@@ -70,7 +70,7 @@ export function CompetitorProfileTable({
       style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
     >
       <div className="mb-3.5">
-        <h3 className="text-[14.5px] font-semibold" style={{ color: INK }}>
+        <h3 className="text-sm font-semibold" style={{ color: INK }}>
           友商画像
         </h3>
         <p className="mt-0.5 text-xs" style={{ color: INK_3 }}>
@@ -78,7 +78,7 @@ export function CompetitorProfileTable({
           = 市场均值 {meanRate.toFixed(0)}%
         </p>
       </div>
-      <table className="w-full border-collapse text-[12.5px]">
+      <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
             {["友商", "中标率", "平均溢价", "优势领域", "同期项目"].map((h) => (
@@ -147,7 +147,7 @@ export function CompetitorProfileTable({
                   {(chips.get(r.bidder_name) ?? []).map((g) => (
                     <span
                       key={g}
-                      className="mr-1 rounded-[5px] px-[7px] py-0.5 text-[11px]"
+                      className="mr-1 rounded-[5px] px-[7px] py-0.5 text-xs"
                       style={{ background: ACCENT_SOFT, color: BLUE }}
                     >
                       {g}

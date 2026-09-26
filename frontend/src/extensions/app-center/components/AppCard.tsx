@@ -114,7 +114,7 @@ function AppCardImpl({
       <div className="mt-auto flex items-center gap-1.5 pt-1">
         <span
           className={cn(
-            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
             accent.tag,
           )}
         >

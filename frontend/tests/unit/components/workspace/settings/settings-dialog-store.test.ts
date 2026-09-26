@@ -13,9 +13,10 @@ afterEach(() => {
 });
 
 test("starts closed on the default section", () => {
+  // EAI-CUSTOM: c9b3af55a 移除 appearance/about tab 后入口默认改为 account。
   expect(getSettingsDialogSnapshot()).toEqual({
     open: false,
-    section: "appearance",
+    section: "account",
   });
 });
 

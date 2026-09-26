@@ -1485,17 +1485,23 @@ export default function TemplateEditor() {
   };
 
   // 导出模板
-  const handleExport = useCallback(() => {
+  const handleExport = useCallback(async () => {
     if (!template || !selectedTemplateId) return;
 
-    const exportUrl = kfApi.exportTemplate(selectedTemplateId);
-    const link = document.createElement("a");
-    link.href = exportUrl;
-    link.download = `${template.name}_${template.version}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("模板导出成功");
+    try {
+      const blob = await kfApi.exportTemplateBlob(selectedTemplateId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${template.name}_${template.version}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("模板导出成功");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "模板导出失败");
+    }
   }, [template, selectedTemplateId]);
 
   // 删除模板

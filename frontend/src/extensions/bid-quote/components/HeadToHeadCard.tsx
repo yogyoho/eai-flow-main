@@ -52,7 +52,7 @@ export function HeadToHeadCard({
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <div>
-          <h3 className="text-[14.5px] font-semibold" style={{ color: INK }}>
+          <h3 className="text-sm font-semibold" style={{ color: INK }}>
             遭遇战
           </h3>
           <p className="mt-0.5 text-xs" style={{ color: INK_3 }}>
@@ -84,7 +84,7 @@ export function HeadToHeadCard({
           <div className="flex items-end justify-center gap-6 py-1">
             <div className="text-center">
               <div
-                className="text-[44px] leading-none font-[650] [font-variant-numeric:tabular-nums]"
+                className="text-[44px] leading-none font-semibold [font-variant-numeric:tabular-nums]"
                 style={{ color: BLUE }}
               >
                 {oursTotal}
@@ -98,7 +98,7 @@ export function HeadToHeadCard({
             </div>
             <div className="text-center">
               <div
-                className="text-[44px] leading-none font-[650] [font-variant-numeric:tabular-nums]"
+                className="text-[44px] leading-none font-semibold [font-variant-numeric:tabular-nums]"
                 style={{ color: INK_3 }}
               >
                 {compTotal}
@@ -141,7 +141,7 @@ export function HeadToHeadCard({
                       title={`${r.yr} ${selected} ${r.comp_wins} 胜`}
                     />
                   </div>
-                  <span className="text-[11px] [font-variant-numeric:tabular-nums]" style={{ color: INK_3 }}>
+                  <span className="text-xs [font-variant-numeric:tabular-nums]" style={{ color: INK_3 }}>
                     {r.yr}
                   </span>
                 </div>

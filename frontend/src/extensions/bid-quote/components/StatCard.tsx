@@ -29,11 +29,11 @@ export function StatCard({ label, value, delta }: StatCardProps) {
       className="rounded-[14px] px-5 py-[18px]"
       style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
     >
-      <p className="text-[12.5px]" style={{ color: INK_2 }}>
+      <p className="text-xs" style={{ color: INK_2 }}>
         {label}
       </p>
       <p
-        className="mt-2 text-[26px] leading-none font-[650] tracking-[-0.5px] [font-variant-numeric:tabular-nums]"
+        className="mt-2 text-[26px] leading-none font-semibold tracking-[-0.5px] [font-variant-numeric:tabular-nums]"
         style={{ color: INK }}
       >
         {value}

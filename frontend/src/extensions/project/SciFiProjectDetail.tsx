@@ -396,7 +396,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                 )}
               </div>
               <p
-                className="mt-1 font-mono text-[11px]"
+                className="mt-1 font-mono text-xs"
                 style={{ color: "var(--cyber-text-muted)" }}
               >
                 创建于:{" "}
@@ -640,7 +640,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
             style={{ borderBottom: "1px solid var(--cyber-border-muted)" }}
           >
             <span
-              className="font-cyber text-[11px] tracking-widest uppercase"
+              className="font-cyber text-xs tracking-widest uppercase"
               style={{ color: "var(--cyber-text-muted)" }}
             >
               SYS STAGE PROGRESSION FLOW
@@ -810,7 +810,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                   {layoutMode === "list" ? (
                     <div className="themed-card-sci flex min-h-[300px] flex-col gap-3 overflow-hidden rounded-xl p-4 md:p-5">
                       <div
-                        className="font-cyber mb-1.5 flex items-center justify-between pb-2 text-[11px]"
+                        className="font-cyber mb-1.5 flex items-center justify-between pb-2 text-xs"
                         style={{
                           color: "var(--cyber-text-muted)",
                           borderBottom: "1px solid var(--cyber-border-muted)",
@@ -1357,7 +1357,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                   {revisionEntries.map((entry, ind) => (
                     <div
                       key={entry.id}
-                      className="grid grid-cols-12 items-center gap-2 pb-1.5 font-mono text-[11px]"
+                      className="grid grid-cols-12 items-center gap-2 pb-1.5 font-mono text-xs"
                       style={{
                         borderBottom: "1px solid var(--cyber-border-muted)",
                       }}
@@ -1388,7 +1388,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                 </div>
               ) : (
                 <p
-                  className="font-cyber py-4 text-center text-[11px] italic"
+                  className="font-cyber py-4 text-center text-xs italic"
                   style={{ color: "var(--cyber-text-muted)" }}
                 >
                   &gt; NO REVISION RECORDS YET
@@ -1575,7 +1575,7 @@ export function SciFiProjectDetail({ projectId }: SciFiProjectDetailProps) {
                 </h3>
               </div>
               <p
-                className="text-[11px] leading-relaxed font-normal"
+                className="text-xs leading-relaxed font-normal"
                 style={{ color: "var(--cyber-text-muted)" }}
               >
                 点击右上角「进入对话」按钮，使用 AI

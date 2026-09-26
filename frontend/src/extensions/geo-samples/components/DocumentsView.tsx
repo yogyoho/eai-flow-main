@@ -229,7 +229,7 @@ export function DocumentsView() {
           <input
             ref={reportIdRef}
             placeholder="report_id（如 2019-qianxi-gold-expl）"
-            className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-72 rounded-md border px-2.5 py-1.5 font-mono text-[13px] outline-none"
+            className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-72 rounded-md border px-2.5 py-1.5 font-mono text-sm outline-none"
           />
           {/* 自动编码（batch-cli T7）：题名取所选文件名去扩展名，无文件退 report_id 框现值；
               低置信度结果照常回填但提示人工复核 */}
@@ -259,7 +259,7 @@ export function DocumentsView() {
                 alertErr(e);
               }
             }}
-            className="border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground cursor-pointer rounded-md border px-2.5 py-1.5 text-[13px] transition-colors"
+            className="border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground cursor-pointer rounded-md border px-2.5 py-1.5 text-sm transition-colors"
           >
             自动
           </button>
@@ -273,24 +273,24 @@ export function DocumentsView() {
           />
           <label
             htmlFor="gsb-upload-file"
-            className="border-border bg-muted/40 hover:bg-muted text-foreground/80 cursor-pointer rounded-md border px-3 py-1.5 text-[13px] transition-colors"
+            className="border-border bg-muted/40 hover:bg-muted text-foreground/80 cursor-pointer rounded-md border px-3 py-1.5 text-sm transition-colors"
           >
             选择文件
           </label>
-          <span className="text-muted-foreground max-w-56 truncate text-[12px]">
+          <span className="text-muted-foreground max-w-56 truncate text-xs">
             {fileName || "未选择文件"}
           </span>
           <button
             type="button"
             onClick={onUpload}
             disabled={upload.isPending}
-            className="flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-[14px] font-medium text-white disabled:cursor-default disabled:opacity-50"
+            className="flex cursor-pointer items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium text-white disabled:cursor-default disabled:opacity-50"
             style={{ background: BLUE }}
           >
             <Upload className="h-4 w-4" />
             {upload.isPending ? "上传中…" : "上传"}
           </button>
-          <span className="text-[12px]" style={{ color: INK_3 }}>
+          <span className="text-xs" style={{ color: INK_3 }}>
             阶段/矿种取下方筛选条当前值（不选则用后端默认：勘探/铜）
           </span>
         </div>
@@ -333,16 +333,16 @@ export function DocumentsView() {
                     <TableCell className="font-mono text-xs">
                       {d.report_id}
                     </TableCell>
-                    <TableCell className="text-[13px]">{d.file_name}</TableCell>
-                    <TableCell className="text-[13px]">
+                    <TableCell className="text-sm">{d.file_name}</TableCell>
+                    <TableCell className="text-sm">
                       {STAGE_LABEL[d.stage] ?? d.stage}
                     </TableCell>
-                    <TableCell className="text-[13px]">
+                    <TableCell className="text-sm">
                       {MINERAL_LABEL[d.mineral] ?? d.mineral}
                     </TableCell>
                     <TableCell>
                       <span
-                        className="text-[13px] font-medium"
+                        className="text-sm font-medium"
                         style={{ color: STATUS_COLOR[d.status] ?? INK_2 }}
                       >
                         {STATUS_LABEL[d.status] ?? d.status}

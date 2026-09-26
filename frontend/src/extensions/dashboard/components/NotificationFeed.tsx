@@ -232,7 +232,7 @@ export function NotificationFeed() {
                     {n.body}
                   </p>
                 )}
-                <p className="text-muted-foreground/60 mt-0.5 text-[11px]">
+                <p className="text-muted-foreground/60 mt-0.5 text-xs">
                   {formatTimeAgo(n.created_at)}
                 </p>
               </div>

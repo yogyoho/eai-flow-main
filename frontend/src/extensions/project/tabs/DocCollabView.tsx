@@ -88,7 +88,7 @@ function TraceabilityPanel({ doc, onClose }: { doc: AIDocument; onClose: () => v
 				<div className="space-y-3">
 					{rows.map((row) => (
 						<div key={row.label} className="space-y-0.5">
-							<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+							<span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
 								{row.label}
 							</span>
 							<p className="text-xs text-foreground break-all font-mono">{row.value}</p>

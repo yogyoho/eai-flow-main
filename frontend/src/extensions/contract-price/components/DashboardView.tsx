@@ -22,7 +22,7 @@ export function DashboardView() {
           </div>
           <div>
             <h1 className="text-[22px] font-bold tracking-tight">合同价格分析总览</h1>
-            <p className="text-[13px] text-muted-foreground">跨合同货物价格基准 · 箱线图 / 趋势 / 供应商对比</p>
+            <p className="text-sm text-muted-foreground">跨合同货物价格基准 · 箱线图 / 趋势 / 供应商对比</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

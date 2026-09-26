@@ -104,11 +104,11 @@ export function ReviewView() {
             />
           </div>
           {isPending ? (
-            <p className="mt-2 text-[13px]" style={{ color: INK_3 }}>
+            <p className="mt-2 text-sm" style={{ color: INK_3 }}>
               加载中…
             </p>
           ) : docs.length === 0 ? (
-            <p className="mt-2 text-[13px]" style={{ color: INK_3 }}>
+            <p className="mt-2 text-sm" style={{ color: INK_3 }}>
               暂无待审样例（先在样例文档库完成脱敏）
             </p>
           ) : null}
@@ -154,11 +154,11 @@ export function ReviewView() {
                               : undefined
                           }
                         >
-                          <TableCell className="text-[13px]">
+                          <TableCell className="text-sm">
                             {r.rule}
                           </TableCell>
                           <TableCell
-                            className="text-[13px]"
+                            className="text-sm"
                             style={{ color: r.mode === "auto" ? INK_2 : AMBER }}
                           >
                             {r.mode === "auto" ? "自动替换" : "待审标记"}
@@ -192,13 +192,13 @@ export function ReviewView() {
                 onChange={(e) => setNote(e.target.value)}
                 rows={2}
                 placeholder="审核备注（reject 时必填理由）"
-                className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-full rounded-md border p-2 text-[14px] outline-none"
+                className="border-border bg-background placeholder:text-muted-foreground/60 focus:border-foreground/40 w-full rounded-md border p-2 text-sm outline-none"
               />
               <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => submitReview("approve", note || null)}
-                  className="cursor-pointer rounded-md px-3 py-1.5 text-[14px] font-medium text-white"
+                  className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-white"
                   style={{ background: GREEN }}
                 >
                   通过（reviewed）
@@ -206,7 +206,7 @@ export function ReviewView() {
                 <button
                   type="button"
                   onClick={() => submitReview("reject", note || "未写理由")}
-                  className="cursor-pointer rounded-md px-3 py-1.5 text-[14px] font-medium text-white"
+                  className="cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium text-white"
                   style={{ background: RED }}
                 >
                   驳回（退回脱敏）
@@ -215,7 +215,7 @@ export function ReviewView() {
             </div>
           </>
         ) : (
-          <p className="text-[13px]" style={{ color: INK_3 }}>
+          <p className="text-sm" style={{ color: INK_3 }}>
             {docId
               ? "该样例已不在待审列表（可能已被审核），请重新选择"
               : "请先在上方选择待审样例"}

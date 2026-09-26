@@ -231,18 +231,21 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
   }
 
   const statusLabel: Record<string, { text: string; color: string }> = {
-    draft: { text: "草稿", color: "bg-gray-100 text-gray-600 border-gray-200" },
+    draft: {
+      text: "草稿",
+      color: "bg-muted text-muted-foreground border-border",
+    },
     pending_approval: {
       text: "待审批",
-      color: "bg-amber-50 text-amber-600 border-amber-200",
+      color: "bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800",
     },
     published: {
       text: "已发布",
-      color: "bg-green-50 text-green-600 border-green-200",
+      color: "bg-green-50 text-green-600 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800",
     },
     rejected: {
       text: "已拒绝",
-      color: "bg-red-50 text-red-600 border-red-200",
+      color: "bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800",
     },
   };
   const st = statusLabel[templateStatus] ?? statusLabel.draft!;
@@ -362,7 +365,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
         {bottomOpen && (
           <div className="flex items-start gap-5 px-5 pt-1 pb-4">
             <div className="flex-1">
-              <label className="text-muted-foreground mb-1.5 block text-[11px] font-medium">
+              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">
                 模板描述
               </label>
               <textarea
@@ -374,7 +377,7 @@ export function TemplateEditorPage({ templateId }: TemplateEditorPageProps) {
               />
             </div>
             <div className="w-60">
-              <label className="text-muted-foreground mb-1.5 block text-[11px] font-medium">
+              <label className="text-muted-foreground mb-1.5 block text-xs font-medium">
                 可见部门（留空 = 全部可见）
               </label>
               <div className="border-border bg-background max-h-24 space-y-0.5 overflow-y-auto rounded-lg border p-2">

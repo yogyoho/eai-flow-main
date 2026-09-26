@@ -299,7 +299,7 @@ export function ProjectWorkspace({ projectId }: ProjectWorkspaceProps) {
               </div>
               {/* Subtitle — matches SciFiProjectDetail */}
               <p
-                className="mt-1 font-mono text-[11px]"
+                className="mt-1 font-mono text-xs"
                 style={{ color: "var(--cyber-text-muted)" }}
               >
                 创建于:{" "}

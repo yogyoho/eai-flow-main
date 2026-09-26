@@ -9,6 +9,7 @@ import {
   FolderCheck,
   Gavel,
   LayoutDashboard,
+  LibraryBig,
   Map,
   PackageSearch,
   Settings2,
@@ -23,6 +24,8 @@ export const ICON_MAP: Record<string, LucideIcon> = {
   map: Map,
   bot: Bot,
   "clipboard-list": ClipboardList,
+  // EAI-CUSTOM (2026-09 样例库迁出): 煤矿环评报告样例库（app_definitions seed icon="library-big"）
+  "library-big": LibraryBig,
   // EAI-CUSTOM (bug-3109 v4): 投标资料管理（app_definitions seed icon="book-marked"）
   "book-marked": BookMarked,
   "folder-check": FolderCheck,

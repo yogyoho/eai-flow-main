@@ -24,7 +24,7 @@ export function ChartCard({ title, meta, children, className }: ChartCardProps) 
     >
       <div className="mb-3.5">
         <h3
-          className="text-[14.5px] leading-tight font-semibold"
+          className="text-sm leading-tight font-semibold"
           style={{ color: INK }}
         >
           {title}

@@ -155,7 +155,7 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
                   ? `任务闸门 #${g.taskId?.slice(0, 8) ?? ""}`
                   : "项目发布闸门"}
               </p>
-              <p className="text-muted-foreground mt-0.5 font-mono text-[11px]">
+              <p className="text-muted-foreground mt-0.5 font-mono text-xs">
                 {g.participants
                   ?.map((p) =>
                     p.type === "agent"

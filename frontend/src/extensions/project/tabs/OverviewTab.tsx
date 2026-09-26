@@ -173,17 +173,17 @@ function ChapterNode({
           {chapter.title}
         </span>
         <span
-          className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_BADGE_STYLES[status]}`}
+          className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_STYLES[status]}`}
         >
           {STATUS_LABELS[status]}
         </span>
         {activity && (
-          <span className="text-muted-foreground/70 shrink-0 text-[11px]">
+          <span className="text-muted-foreground/70 shrink-0 text-xs">
             {activity}
           </span>
         )}
         {chapter.assignedName && (
-          <span className="text-muted-foreground/70 shrink-0 text-[11px]">
+          <span className="text-muted-foreground/70 shrink-0 text-xs">
             {chapter.assignedName}
           </span>
         )}
@@ -192,7 +192,7 @@ function ChapterNode({
           {onEdit && (
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors"
+              className="text-muted-foreground hover:text-foreground hover:bg-accent rounded-md px-2 py-0.5 text-xs font-medium transition-colors"
               onClick={() => onEdit(chapter.id)}
             >
               编辑
@@ -201,7 +201,7 @@ function ChapterNode({
           {onMarkComplete && canComplete && (
             <button
               type="button"
-              className="text-success hover:bg-success/10 rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors hover:opacity-80"
+              className="text-success hover:bg-success/10 rounded-md px-2 py-0.5 text-xs font-medium transition-colors hover:opacity-80"
               disabled={isCompleting}
               onClick={() => onMarkComplete(chapter.id)}
             >
@@ -538,7 +538,7 @@ export function OverviewTab({
                       开始 AI 生成初稿
                     </Button>
                     {!project.workflowId && (
-                      <p className="text-muted-foreground mb-4 text-[11px]">
+                      <p className="text-muted-foreground mb-4 text-xs">
                         请先在「项目设置」关联工作流后再开始生成。
                       </p>
                     )}
@@ -639,7 +639,7 @@ export function OverviewTab({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-7 text-[12px]"
+                    className="h-7 text-xs"
                     onClick={() => setAddMemberOpen(true)}
                   >
                     <UserPlus className="mr-1 h-3.5 w-3.5" />
@@ -654,7 +654,7 @@ export function OverviewTab({
                       key={m.id}
                       className="flex items-center gap-2.5 px-3 py-2.5"
                     >
-                      <div className="bg-primary/10 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-medium">
+                      <div className="bg-primary/10 text-primary flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium">
                         {(m.username ?? "?").charAt(0).toUpperCase()}
                       </div>
                       <span className="text-foreground flex-1 truncate text-sm">

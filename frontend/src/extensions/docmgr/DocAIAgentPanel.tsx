@@ -348,7 +348,7 @@ function ConfirmCard({
     <div className="border-border bg-card overflow-hidden rounded-lg border text-sm">
       {/* Header */}
       <div className="bg-muted/30 border-border/60 flex items-center gap-2 border-b px-3 py-2">
-        <span className="bg-primary/10 text-primary inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium">
+        <span className="bg-primary/10 text-primary inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium">
           {opLabel}
         </span>
         <span className="text-muted-foreground flex-1 truncate text-xs">
@@ -361,14 +361,14 @@ function ConfirmCard({
                 : "-"}
         </span>
         {status === "applied" && (
-          <span className="text-[11px] font-medium text-green-600">已应用</span>
+          <span className="text-xs font-medium text-green-600">已应用</span>
         )}
         {status === "failed" && (
-          <span className="text-[11px] font-medium text-red-500">失败</span>
+          <span className="text-xs font-medium text-red-500">失败</span>
         )}
       </div>
       {status === "failed" && errorMsg && (
-        <div className="border-t border-red-100 bg-red-50/30 px-3 py-1.5 text-[11px] text-red-600 dark:border-red-900/20 dark:bg-red-950/10">
+        <div className="border-t border-red-100 bg-red-50/30 px-3 py-1.5 text-xs text-red-600 dark:border-red-900/20 dark:bg-red-950/10">
           {errorMsg}
         </div>
       )}
@@ -376,7 +376,7 @@ function ConfirmCard({
       {/* Content preview */}
       {operation.op !== "delete" && operation.content && (
         <div className="text-muted-foreground max-h-20 overflow-y-auto text-xs">
-          <pre className="px-3 py-1.5 font-mono text-[11px] leading-relaxed whitespace-pre-wrap">
+          <pre className="px-3 py-1.5 font-mono text-xs leading-relaxed whitespace-pre-wrap">
             {operation.content.slice(0, 200)}
           </pre>
         </div>
@@ -947,7 +947,7 @@ export default function DocAIAgentPanel({
                 <button
                   type="button"
                   onClick={() => setModeMenuOpen((v) => !v)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[13px] transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm transition-colors"
                 >
                   <span>
                     {MODE_OPTIONS.find((m) => m.value === mode)?.label ?? "Ask"}
@@ -985,7 +985,7 @@ export default function DocAIAgentPanel({
                 <button
                   type="button"
                   onClick={() => setModelMenuOpen((v) => !v)}
-                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[13px] transition-colors"
+                  className="text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm transition-colors"
                 >
                   <span className="max-w-[72px] truncate">
                     {selectedModelLabel}

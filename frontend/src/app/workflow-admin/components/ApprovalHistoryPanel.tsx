@@ -9,10 +9,10 @@ interface ApprovalHistoryPanelProps {
 }
 
 const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  pending: { label: "提交审批", icon: Send, color: "text-amber-600" },
-  approved: { label: "审批通过", icon: CheckCircle2, color: "text-green-600" },
-  rejected: { label: "审批拒绝", icon: XCircle, color: "text-red-600" },
-  withdrawn: { label: "撤回审批", icon: Undo2, color: "text-gray-500" },
+  pending: { label: "提交审批", icon: Send, color: "text-amber-600 dark:text-amber-400" },
+  approved: { label: "审批通过", icon: CheckCircle2, color: "text-green-600 dark:text-green-400" },
+  rejected: { label: "审批拒绝", icon: XCircle, color: "text-red-600 dark:text-red-400" },
+  withdrawn: { label: "撤回审批", icon: Undo2, color: "text-muted-foreground" },
 };
 
 function formatTime(s: string | null): string {

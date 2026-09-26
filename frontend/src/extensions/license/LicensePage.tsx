@@ -201,7 +201,7 @@ export default function LicensePage() {
                       }`}
                     />
                     <span
-                      className={`truncate text-[13px] font-medium ${
+                      className={`truncate text-sm font-medium ${
                         enabled
                           ? "text-gray-800 dark:text-gray-200"
                           : "text-gray-400 dark:text-gray-500"
@@ -210,7 +210,7 @@ export default function LicensePage() {
                       {name}
                     </span>
                   </div>
-                  <p className="mt-1 pl-[26px] text-[11px] text-gray-400 dark:text-gray-500">
+                  <p className="mt-1 pl-[26px] text-xs text-gray-400 dark:text-gray-500">
                     {enabled ? "已授权" : "未授权"}
                   </p>
                 </div>

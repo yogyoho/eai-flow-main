@@ -37,7 +37,7 @@ export function ChartFilterPopover({ chart, onChange, enable }: Props) {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         className={
-          "flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] transition-colors " +
+          "flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors " +
           (active
             ? "border-primary text-primary"
             : "border-border text-muted-foreground hover:text-foreground")
@@ -49,7 +49,7 @@ export function ChartFilterPopover({ chart, onChange, enable }: Props) {
       <PopoverContent align="end" className="w-52 p-2">
         {enable.selfAttribute && (
           <div className="mb-2" role="group" aria-label="自产属性">
-            <div className="text-muted-foreground mb-1 text-[11px]">
+            <div className="text-muted-foreground mb-1 text-xs">
               自产属性
             </div>
             {(
@@ -60,7 +60,7 @@ export function ChartFilterPopover({ chart, onChange, enable }: Props) {
                 aria-pressed={(chart.selfAttribute ?? "all") === a}
                 onClick={() => setAttr(a)}
                 className={
-                  "mr-1 rounded px-1.5 py-0.5 text-[11px] " +
+                  "mr-1 rounded px-1.5 py-0.5 text-xs " +
                   ((chart.selfAttribute ?? "all") === a
                     ? "bg-primary/15 text-primary"
                     : "text-muted-foreground")
@@ -77,7 +77,7 @@ export function ChartFilterPopover({ chart, onChange, enable }: Props) {
         )}
         {enable.goodsName && enable.goodsName.length > 0 && (
           <div role="group" aria-label="货物">
-            <div className="text-muted-foreground mb-1 text-[11px]">货物</div>
+            <div className="text-muted-foreground mb-1 text-xs">货物</div>
             <div className="flex max-h-32 flex-wrap gap-1 overflow-auto">
               {enable.goodsName.map((g) => (
                 <button
@@ -85,7 +85,7 @@ export function ChartFilterPopover({ chart, onChange, enable }: Props) {
                   aria-pressed={(chart.goodsName ?? []).includes(g)}
                   onClick={() => toggleGoods(g)}
                   className={
-                    "rounded border px-1.5 py-0.5 text-[11px] " +
+                    "rounded border px-1.5 py-0.5 text-xs " +
                     ((chart.goodsName ?? []).includes(g)
                       ? "border-primary text-primary"
                       : "border-border text-muted-foreground")

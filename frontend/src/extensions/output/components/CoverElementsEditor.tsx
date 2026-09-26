@@ -306,7 +306,7 @@ function TableBody({
         <MiniBtn onClick={() => onResize(-1, 0)} label="-行" />
         <MiniBtn onClick={() => onResize(0, 1)} label="+列" />
         <MiniBtn onClick={() => onResize(0, -1)} label="-列" />
-        <label className="text-muted-foreground ml-auto flex cursor-pointer items-center gap-1.5 text-[11px]">
+        <label className="text-muted-foreground ml-auto flex cursor-pointer items-center gap-1.5 text-xs">
           <input
             type="checkbox"
             checked={!!el.headerBg}
@@ -774,7 +774,7 @@ export function CoverElementsEditor({
                     }
                     onInsert={(t) => insertElement(pi, 0, t)}
                   />
-                  <p className="text-muted-foreground/70 rounded-lg border border-dashed py-4 text-center text-[11px]">
+                  <p className="text-muted-foreground/70 rounded-lg border border-dashed py-4 text-center text-xs">
                     空页 — 添加元素开始编辑
                   </p>
                 </>
@@ -847,7 +847,7 @@ export function CoverElementsEditor({
                     key={t}
                     type="button"
                     onClick={() => addElement(pi, t)}
-                    className="border-border text-muted-foreground hover:border-primary/40 hover:text-primary flex items-center gap-1 rounded-md border border-dashed px-2 py-1 text-[11px] transition-colors"
+                    className="border-border text-muted-foreground hover:border-primary/40 hover:text-primary flex items-center gap-1 rounded-md border border-dashed px-2 py-1 text-xs transition-colors"
                   >
                     <Plus className="h-3 w-3" /> {ELEMENT_TYPE_META[t].label}
                   </button>

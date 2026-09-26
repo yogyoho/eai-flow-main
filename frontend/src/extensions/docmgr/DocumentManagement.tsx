@@ -509,6 +509,8 @@ function DocumentList({
   // EAI-CUSTOM (bug-2231): 首窗非空文件夹不足以撑满容器时没有滚动事件，
   // onScroll 永不触发 → 懒加载死区（提示可见但后续窗口拉不出来）。
   // 数据/加载态变化后容器仍未溢出且 has_more=true 则自动续拉，直到溢出（交给 onScroll）或加载完。
+  // EAI-CUSTOM (bug-4954): 移除 threads.length===0 早退——首窗全空（空 outputs 线程
+  // 霸占分页窗口）时正是最需要续拉的场景，游标由 hook 内无进展强停兜底。
   const personalNavRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = personalNavRef.current;
@@ -516,8 +518,7 @@ function DocumentList({
     if (
       !personalOutputs.hasMore ||
       personalOutputs.loading ||
-      personalOutputs.loadingMore ||
-      personalOutputs.threads.length === 0
+      personalOutputs.loadingMore
     )
       return;
     if (el.scrollHeight <= el.clientHeight) void personalOutputs.fetchMore();
@@ -836,10 +837,10 @@ function DocumentList({
         style={{ width: sidebarWidth }}
       >
         <div className="border-border flex items-center gap-2 border-b p-3.5">
-          <div className="shrink-0 rounded-sm border border-blue-200 bg-blue-50 p-1 text-blue-600">
+          <div className="shrink-0 rounded-sm border border-blue-200 bg-blue-50 p-1 text-blue-600 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300">
             <FolderCheck className="h-4 w-4" />
           </div>
-          <span className="text-foreground text-l font-semibold">文档空间</span>
+          <span className="text-foreground text-lg font-semibold">文档空间</span>
         </div>
         <nav
           ref={personalNavRef}

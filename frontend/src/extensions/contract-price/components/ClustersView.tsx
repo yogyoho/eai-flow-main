@@ -144,7 +144,7 @@ function TagChipsInput({
       {tags.map((t) => (
         <span
           key={t}
-          className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px]"
+          className="border-primary/20 bg-primary/10 text-primary inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs"
         >
           {t}
           <button

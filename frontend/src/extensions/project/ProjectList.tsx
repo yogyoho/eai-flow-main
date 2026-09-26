@@ -333,13 +333,13 @@ export function ProjectList() {
             placeholder="搜索项目..."
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            className="border-border bg-card text-foreground placeholder:text-muted-foreground h-[34px] w-[220px] rounded-[8px] pr-3 pl-8 text-[13px]"
+            className="border-border bg-card text-foreground placeholder:text-muted-foreground h-[34px] w-[220px] rounded-[8px] pr-3 pl-8 text-sm"
           />
         </div>
         {canCreateProject && (
           <Button
             onClick={() => router.push("/projects/new")}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 h-[34px] rounded-[8px] px-3.5 text-[13px] font-semibold"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 h-[34px] rounded-[8px] px-3.5 text-sm font-semibold"
           >
             <Plus className="h-[15px] w-[15px]" />
             新建项目
@@ -364,7 +364,7 @@ export function ProjectList() {
               {stat.icon}
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="text-muted-foreground text-[14px]">
+              <span className="text-muted-foreground text-sm">
                 {stat.label}
               </span>
               <span className="text-foreground font-cyber text-[22px] leading-tight font-bold">
@@ -455,19 +455,19 @@ export function ProjectList() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-foreground truncate text-[14px] font-semibold">
+                      <h3 className="text-foreground truncate text-sm font-semibold">
                         {project.name}
                       </h3>
                       <span
                         className={cn(
-                          "shrink-0 rounded-[4px] px-1.5 py-0.5 text-[11px] font-semibold",
+                          "shrink-0 rounded-[4px] px-1.5 py-0.5 text-xs font-semibold",
                           statusColor,
                         )}
                       >
                         {statusLabel}
                       </span>
                     </div>
-                    <div className="text-muted-foreground mt-1 flex items-center gap-3 text-[11px]">
+                    <div className="text-muted-foreground mt-1 flex items-center gap-3 text-xs">
                       <span>{typeLabel}</span>
                       <span className="flex items-center gap-1">
                         <FileText className="h-3 w-3" />
@@ -543,7 +543,7 @@ export function ProjectList() {
                           {statusLabel}
                         </span>
                       </div>
-                      <span className="text-muted-foreground mt-0.5 line-clamp-1 text-[11px]">
+                      <span className="text-muted-foreground mt-0.5 line-clamp-1 text-xs">
                         {typeLabel}
                         {project.templateName &&
                         project.templateName !== typeLabel
@@ -560,7 +560,7 @@ export function ProjectList() {
                     {project.createdByName && (
                       <div className="flex items-center gap-1.5">
                         <Users className="text-muted-foreground/60 h-3 w-3 shrink-0" />
-                        <span className="text-muted-foreground truncate text-[11px]">
+                        <span className="text-muted-foreground truncate text-xs">
                           {project.createdByName}
                         </span>
                       </div>
@@ -568,20 +568,20 @@ export function ProjectList() {
                     {project.createdByDept && (
                       <div className="flex items-center gap-1.5">
                         <FolderKanban className="text-muted-foreground/60 h-3 w-3 shrink-0" />
-                        <span className="text-muted-foreground truncate text-[11px]">
+                        <span className="text-muted-foreground truncate text-xs">
                           {project.createdByDept}
                         </span>
                       </div>
                     )}
                     <div className="flex items-center gap-1.5">
                       <Calendar className="text-muted-foreground/60 h-3 w-3 shrink-0" />
-                      <span className="text-muted-foreground text-[11px]">
+                      <span className="text-muted-foreground text-xs">
                         {formatDate(project.createdAt)}
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <FileText className="text-muted-foreground/60 h-3 w-3 shrink-0" />
-                      <span className="text-muted-foreground text-[11px]">
+                      <span className="text-muted-foreground text-xs">
                         {project.chapterCount} 章节
                       </span>
                     </div>
@@ -590,7 +590,7 @@ export function ProjectList() {
 
                 {/* Footer: member count + actions */}
                 <div className="border-border/60 bg-muted/20 flex items-center justify-between border-t px-4 py-2">
-                  <span className="text-muted-foreground flex items-center gap-1 text-[11px]">
+                  <span className="text-muted-foreground flex items-center gap-1 text-xs">
                     <Users className="h-3 w-3" />
                     {project.memberCount} 名成员
                   </span>
@@ -599,7 +599,7 @@ export function ProjectList() {
                       variant="ghost"
                       size="sm"
                       onClick={(e) => handleEnterChat(project, e)}
-                      className="text-primary hover:bg-primary/10 h-6 gap-1 rounded-[6px] px-2 text-[11px]"
+                      className="text-primary hover:bg-primary/10 h-6 gap-1 rounded-[6px] px-2 text-xs"
                     >
                       <MessageSquare className="h-3 w-3" />
                       对话

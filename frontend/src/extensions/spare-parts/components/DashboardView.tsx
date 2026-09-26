@@ -25,7 +25,7 @@ export function DashboardView() {
           </div>
           <div>
             <h1 className="text-[22px] font-bold tracking-tight">备品备件价格分析总览</h1>
-            <p className="text-[13px] text-muted-foreground">跨客户备品备件价格基准 · 箱线图 / 趋势 / 客户对比</p>
+            <p className="text-sm text-muted-foreground">跨客户备品备件价格基准 · 箱线图 / 趋势 / 客户对比</p>
           </div>
         </div>
         <div className="flex items-center gap-2">

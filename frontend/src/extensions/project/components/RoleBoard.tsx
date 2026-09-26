@@ -51,7 +51,7 @@ export function RoleBoard({ members, chapters: _chapters, onEdit: _onEdit }: Rol
             <Badge variant="secondary" className="text-[10px] font-normal">
               {MEMBER_ROLE_LABELS[role] ?? role}
             </Badge>
-            <span className="text-[11px] text-muted-foreground">{ROLE_DUTY[role]}</span>
+            <span className="text-xs text-muted-foreground">{ROLE_DUTY[role]}</span>
           </div>
           <div className="space-y-1.5">
             {(groups[role] ?? []).map((m) => (

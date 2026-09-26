@@ -147,7 +147,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 </span>
               </div>
               <p
-                className="mt-1 font-mono text-[11px]"
+                className="mt-1 font-mono text-xs"
                 style={{ color: "var(--cyber-text-muted)" }}
               >
                 {STATUS_LABEL[project.status] ?? project.status}

@@ -718,7 +718,7 @@ export function ItemsView() {
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
+                              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-medium ${
                                 STATUS_TONE[item.validation_status] ??
                                 STATUS_TONE.ok
                               }`}

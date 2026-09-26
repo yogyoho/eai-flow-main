@@ -29,7 +29,7 @@ export function TechTooltip({ active, payload, label, unit }: TechTooltipProps):
       style={{ background: CARD, border: "1px solid rgba(0,0,0,0.08)" }}
     >
       {label !== undefined ? (
-        <p className="mb-1 text-[12px] font-semibold" style={{ color: INK }}>
+        <p className="mb-1 text-xs font-semibold" style={{ color: INK }}>
           {label}
         </p>
       ) : null}

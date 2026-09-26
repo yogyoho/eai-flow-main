@@ -474,7 +474,7 @@ export function DashboardView() {
           {/* 图例(自定义):柱色由 Cell 逐根给(胜绿/负红),recharts Legend 只取 Bar 级 fill,
               我方 Bar 无 fill → 图例色与柱色对不上;改为手写三项图例 + 常显时间窗 */}
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
-            <div className="text-muted-foreground flex items-center gap-4 text-[11px]">
+            <div className="text-muted-foreground flex items-center gap-4 text-xs">
               {(
                 [
                   ["我方中标", GREEN],
@@ -491,7 +491,7 @@ export function DashboardView() {
                 </span>
               ))}
             </div>
-            <span className="text-muted-foreground [font-variant-numeric:tabular-nums] text-[11px] font-semibold whitespace-nowrap">
+            <span className="text-muted-foreground [font-variant-numeric:tabular-nums] text-xs font-semibold whitespace-nowrap">
               时间窗 {mon(sd[start]?.bid_dt)} – {mon(sd[end]?.bid_dt)} ·{" "}
               {end - start + 1}/{sd.length} 项目
             </span>

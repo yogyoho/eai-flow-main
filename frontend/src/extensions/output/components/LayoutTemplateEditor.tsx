@@ -73,7 +73,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <label className="text-muted-foreground text-[11px] font-medium">
+        <label className="text-muted-foreground text-xs font-medium">
           {label}
         </label>
         {hint && (
@@ -976,13 +976,13 @@ export function LayoutTemplateEditor({
                   className="border-border bg-muted/20 rounded-lg border p-3"
                 >
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="bg-primary/10 text-primary flex h-6 items-center rounded-md px-2 text-[11px] font-semibold">
+                    <span className="bg-primary/10 text-primary flex h-6 items-center rounded-md px-2 text-xs font-semibold">
                       H{h.level}
                     </span>
                     <button
                       type="button"
                       onClick={() => removeHeadingLevel(i)}
-                      className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-[11px] transition-colors"
+                      className="text-muted-foreground hover:text-destructive flex items-center gap-1 text-xs transition-colors"
                     >
                       <Trash2 className="h-3 w-3" /> 删除
                     </button>
@@ -1215,7 +1215,7 @@ export function LayoutTemplateEditor({
                   </span>
                 </div>
                 <div className="space-y-1.5">
-                  <p className="text-muted-foreground text-[11px] font-medium">{`槽位（生成时替换"变量"，保留"字面"）`}</p>
+                  <p className="text-muted-foreground text-xs font-medium">{`槽位（生成时替换"变量"，保留"字面"）`}</p>
                   <p className="text-muted-foreground/70 text-[10px]">
                     原文靶文本：生成时按此文本（带标签字段按「标签+原文」整体）定位并替换；须与封面原文匹配才生效。
                   </p>
@@ -1228,7 +1228,7 @@ export function LayoutTemplateEditor({
                         className="border-border flex items-center gap-2 rounded-lg border px-2 py-1.5"
                       >
                         <span className="text-muted-foreground flex w-32 shrink-0 flex-col">
-                          <span className="text-[11px] font-medium">
+                          <span className="text-xs font-medium">
                             {slot.label}
                           </span>
                           <span

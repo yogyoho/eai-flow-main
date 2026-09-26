@@ -362,7 +362,7 @@ export default function SampleReports() {
               <FileText className="text-muted-foreground/60 h-10 w-10" />
             </div>
             <h3 className="text-foreground text-sm font-semibold">暂无报告</h3>
-            <p className="text-muted-foreground mt-1 max-w-xs text-[13px]">
+            <p className="text-muted-foreground mt-1 max-w-xs text-sm">
               上传样例文档后，系统将自动解析并生成结构化报告
             </p>
             <button
@@ -405,17 +405,17 @@ export default function SampleReports() {
                       </h3>
                       <div className="mt-1.5">
                         {isReady ? (
-                          <span className="bg-success/10 text-success inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold">
+                          <span className="bg-success/10 text-success inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                             <CheckCircle2 className="h-3 w-3" />
                             已解析
                           </span>
                         ) : isProcessing ? (
-                          <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold">
+                          <span className="bg-primary/10 text-primary inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                             <Loader2 className="h-3 w-3 animate-spin" />
                             解析中
                           </span>
                         ) : (
-                          <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold">
+                          <span className="bg-warning/10 text-warning inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold">
                             <Clock className="h-3 w-3" />
                             待处理
                           </span>
@@ -427,7 +427,7 @@ export default function SampleReports() {
                   {/* Progress bar for parsing items */}
                   {isProcessing && (
                     <div className="mt-3">
-                      <div className="text-muted-foreground mb-1 flex items-center justify-between text-[11px]">
+                      <div className="text-muted-foreground mb-1 flex items-center justify-between text-xs">
                         <span>解析进度</span>
                         <span className="font-medium tabular-nums">
                           {progress}%
@@ -443,7 +443,7 @@ export default function SampleReports() {
                   )}
 
                   {/* Metadata */}
-                  <div className="text-muted-foreground mt-3 space-y-1.5 text-[12px]">
+                  <div className="text-muted-foreground mt-3 space-y-1.5 text-xs">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 shrink-0 opacity-60" />
                       <span>{formatDateTime(report.created_at)}</span>
@@ -475,7 +475,7 @@ export default function SampleReports() {
                   <div className="border-border/60 mt-auto flex items-center justify-between gap-2 border-t pt-3">
                     {isReady ? (
                       <>
-                        <span className="text-success bg-success/10 border-success/20 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium">
+                        <span className="text-success bg-success/10 border-success/20 inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium">
                           已就绪
                         </span>
                         <button
@@ -483,7 +483,7 @@ export default function SampleReports() {
                           onClick={() =>
                             setConfirmAction({ type: "delete", report })
                           }
-                          className="text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-colors"
+                          className="text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           删除
@@ -496,7 +496,7 @@ export default function SampleReports() {
                           onClick={() =>
                             setConfirmAction({ type: "cancel", report })
                           }
-                          className="text-warning hover:bg-warning/10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-colors"
+                          className="text-warning hover:bg-warning/10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors"
                         >
                           <XCircle className="h-3.5 w-3.5" />
                           取消
@@ -506,7 +506,7 @@ export default function SampleReports() {
                           onClick={() =>
                             setConfirmAction({ type: "delete", report })
                           }
-                          className="text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition-colors"
+                          className="text-destructive hover:bg-destructive/10 inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                           删除
@@ -524,7 +524,7 @@ export default function SampleReports() {
       {/* 底栏：统计 + 分页 */}
       <div className="border-border bg-card flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-3">
         <div
-          className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-[13px] sm:text-sm"
+          className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-1 gap-y-1 text-sm sm:text-sm"
           aria-label="报告统计"
         >
           {statItems.map((s, i) => (

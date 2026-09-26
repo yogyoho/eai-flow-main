@@ -28,7 +28,7 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
 
       {/* Review name */}
       <div className="space-y-1.5">
-        <label className="text-[11px] font-medium text-muted-foreground">审核名称</label>
+        <label className="text-xs font-medium text-muted-foreground">审核名称</label>
         <input
           value={data.label || ""}
           onChange={(e) => onUpdate({ label: e.target.value })}
@@ -38,7 +38,7 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
 
       {/* Review mode — radio group styled as cards */}
       <div className="space-y-1.5">
-        <label className="text-[11px] font-medium text-muted-foreground">审核模式</label>
+        <label className="text-xs font-medium text-muted-foreground">审核模式</label>
         <div className="space-y-2 mt-1">
           {MODES.map((mode) => {
             const isSelected = data.mode === mode.value;

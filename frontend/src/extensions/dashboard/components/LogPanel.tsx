@@ -228,7 +228,7 @@ export function LogPanel() {
                   </div>
                 </div>
                 {notif.body && (
-                  <p className="px-6 text-[11px] leading-relaxed text-slate-500">
+                  <p className="px-6 text-xs leading-relaxed text-slate-500">
                     {notif.body}
                   </p>
                 )}

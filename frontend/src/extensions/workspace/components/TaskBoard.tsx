@@ -229,7 +229,7 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
                       )}
                     </span>
                   </div>
-                  <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-1.5 font-mono text-[11px]">
+                  <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-1.5 font-mono text-xs">
                     {t.assigneeAgentName && (
                       <span className="rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-purple-400">
                         {t.assigneeAgentName}

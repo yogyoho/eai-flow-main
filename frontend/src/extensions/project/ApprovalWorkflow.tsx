@@ -142,7 +142,7 @@ export function ApprovalWorkflow({
                 <button
                   key={ch.id}
                   onClick={() => setSelectedId(ch.id)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors ${
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                     ch.id === selectedId
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:bg-border"
@@ -159,10 +159,10 @@ export function ApprovalWorkflow({
           <div className="space-y-5 p-6">
             {/* Chapter info */}
             <div className="border-border bg-card flex flex-col gap-2 rounded-[8px] border p-4">
-              <h3 className="text-foreground text-[16px] font-semibold">
+              <h3 className="text-foreground text-base font-semibold">
                 {selectedChapter.title}
               </h3>
-              <div className="text-muted-foreground flex items-center gap-4 text-[12px]">
+              <div className="text-muted-foreground flex items-center gap-4 text-xs">
                 {selectedChapter.assignedName && (
                   <span>撰写：{selectedChapter.assignedName}</span>
                 )}
@@ -180,7 +180,7 @@ export function ApprovalWorkflow({
               </div>
             </div>
 
-            <h4 className="text-foreground text-[14px] font-semibold">
+            <h4 className="text-foreground text-sm font-semibold">
               审批流程
             </h4>
 
@@ -198,11 +198,11 @@ export function ApprovalWorkflow({
                   </div>
                   <div className="flex-1 pb-6">
                     <p
-                      className={`text-[13px] font-medium ${step.status === "pending" ? "text-muted-foreground" : "text-foreground"}`}
+                      className={`text-sm font-medium ${step.status === "pending" ? "text-muted-foreground" : "text-foreground"}`}
                     >
                       {step.label}
                     </p>
-                    <div className="mt-0.5 flex items-center gap-2 text-[12px]">
+                    <div className="mt-0.5 flex items-center gap-2 text-xs">
                       {step.assignee && (
                         <span className="text-muted-foreground">
                           {step.assignee}
@@ -248,7 +248,7 @@ export function ApprovalWorkflow({
 
             {/* Comment textarea */}
             <div className="border-border bg-card flex flex-col gap-2 rounded-[8px] border p-3">
-              <p className="text-muted-foreground text-[12px]">
+              <p className="text-muted-foreground text-xs">
                 审核意见（可选）
               </p>
               <Textarea
@@ -269,10 +269,10 @@ export function ApprovalWorkflow({
       {/* Right panel: chapter content preview */}
       <div className="border-border bg-card flex w-[360px] shrink-0 flex-col gap-3 overflow-y-auto border-l p-5">
         <div className="flex items-center gap-2">
-          <h4 className="text-foreground text-[14px] font-semibold">
+          <h4 className="text-foreground text-sm font-semibold">
             章节内容预览
           </h4>
-          <span className="text-muted-foreground ml-auto text-[12px]">
+          <span className="text-muted-foreground ml-auto text-xs">
             {selectedChapter?.wordCountCurrent.toLocaleString() ?? 0} /{" "}
             {selectedChapter?.wordCountTarget.toLocaleString() ?? 0} 字
           </span>
@@ -286,7 +286,7 @@ export function ApprovalWorkflow({
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground text-[13px]">暂无内容</p>
+          <p className="text-muted-foreground text-sm">暂无内容</p>
         )}
       </div>
     </div>

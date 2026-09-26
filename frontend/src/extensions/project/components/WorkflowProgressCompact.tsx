@@ -137,7 +137,7 @@ export function WorkflowProgressCompact({
                 onClick={() => {
                   void handleAdvance();
                 }}
-                className="h-7 rounded-md text-[12px]"
+                className="h-7 rounded-md text-xs"
               >
                 {advancing ? (
                   <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
@@ -151,7 +151,7 @@ export function WorkflowProgressCompact({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-primary hover:bg-primary/10 h-7 rounded-md text-[12px]"
+                className="text-primary hover:bg-primary/10 h-7 rounded-md text-xs"
                 onClick={() => setDetailOpen(true)}
               >
                 查看详情
@@ -164,24 +164,24 @@ export function WorkflowProgressCompact({
           {loading ? (
             <div className="flex items-center gap-2 py-2">
               <Loader2 className="text-muted-foreground h-4 w-4 animate-spin" />
-              <span className="text-muted-foreground text-[13px]">
+              <span className="text-muted-foreground text-sm">
                 加载中...
               </span>
             </div>
           ) : fetchError ? (
             <div className="flex items-center gap-2 py-2">
               <GitBranch className="text-muted-foreground/40 h-4 w-4" />
-              <span className="text-muted-foreground text-[13px]">
+              <span className="text-muted-foreground text-sm">
                 无法获取流程状态
               </span>
             </div>
           ) : nodes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-4">
               <GitBranch className="text-muted-foreground/25 mb-2 h-7 w-7" />
-              <p className="text-muted-foreground text-[13px]">
+              <p className="text-muted-foreground text-sm">
                 项目暂未设置工作流程
               </p>
-              <p className="text-muted-foreground/60 mt-0.5 text-[11px]">
+              <p className="text-muted-foreground/60 mt-0.5 text-xs">
                 可在项目设置中关联工作流模板
               </p>
             </div>
@@ -286,14 +286,14 @@ export function WorkflowProgressCompact({
               </div>
               {/* Chapter-completion gate feedback */}
               {gateMessage && (
-                <div className="bg-warning/10 text-warning border-warning/20 mt-2 flex items-start gap-1.5 rounded-md border px-2.5 py-2 text-[12px]">
+                <div className="bg-warning/10 text-warning border-warning/20 mt-2 flex items-start gap-1.5 rounded-md border px-2.5 py-2 text-xs">
                   <Ban className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>{gateMessage}</span>
                 </div>
               )}
               {/* Success feedback */}
               {!advancing && runningNode && !gateMessage && canAct && (
-                <div className="text-muted-foreground mt-2 flex items-center gap-1.5 text-[12px]">
+                <div className="text-muted-foreground mt-2 flex items-center gap-1.5 text-xs">
                   <CheckCircle className="text-success h-3.5 w-3.5" />
                   <span>
                     当前阶段「{runningNode.label}

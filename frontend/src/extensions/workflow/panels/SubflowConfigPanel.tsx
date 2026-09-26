@@ -109,7 +109,7 @@ export function SubflowConfigPanel({
 
       {/* Name */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-[11px] font-medium">
+        <label className="text-muted-foreground text-xs font-medium">
           流程名称
         </label>
         <input
@@ -121,7 +121,7 @@ export function SubflowConfigPanel({
 
       {/* Team */}
       <div className="space-y-1.5">
-        <label className="text-muted-foreground text-[11px] font-medium">
+        <label className="text-muted-foreground text-xs font-medium">
           团队
         </label>
         <input
@@ -142,7 +142,7 @@ export function SubflowConfigPanel({
       {/* Org Unit Binding */}
       {departments.length > 0 && (
         <div className="space-y-1.5">
-          <label className="text-muted-foreground flex items-center gap-1 text-[11px] font-medium">
+          <label className="text-muted-foreground flex items-center gap-1 text-xs font-medium">
             <Building2 className="h-3 w-3" />
             绑定组织单元
           </label>
@@ -161,7 +161,7 @@ export function SubflowConfigPanel({
 
       {/* Required Roles */}
       <div className="space-y-2">
-        <label className="text-muted-foreground block text-[11px] font-medium">
+        <label className="text-muted-foreground block text-xs font-medium">
           必需角色槽位
         </label>
         {roles.length > 0 && (

@@ -2,7 +2,8 @@
 
 // EAI-CUSTOM: 煤矿环评报告样例库（coal-eia-report v2 BS3 MVP）——样例台账 + 入库向导。
 // 2026-09 自知识工厂样例库 tab 迁出为应用中心独立应用（路由 /coal-eia-samples）。
-// 提取流水线 / 质检面板留二期。后端：/api/extensions/eia-samples*（eia_samples routers）。
+// 二期（BS3 ③④）：+ 提取流水线对话框（extract-dialog）+ 质检面板（quality-panel）。
+// 后端：/api/extensions/eia-samples*（eia_samples routers）。
 
 import {
   FileStack,
@@ -12,6 +13,7 @@ import {
   Search,
   Trash2,
   Upload,
+  Wand2,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -27,12 +29,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+import ExtractDialog from "./extract-dialog";
+import QualityPanel from "./quality-panel";
 import {
   SCENARIO_LABELS,
   SAMPLE_SCENARIOS,
@@ -44,6 +54,8 @@ import {
 } from "./sample-library-api";
 
 const PAGE_SIZE = 20;
+
+type TabKey = "library" | "quality";
 
 function formatDateTime(value: string): string {
   return new Date(value).toLocaleString("zh-CN", {
@@ -59,12 +71,12 @@ function formatDateTime(value: string): string {
 function statusBadgeClass(status: string): string {
   switch (status) {
     case "parsed":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800";
     case "converted":
-      return "bg-sky-50 text-sky-700 border-sky-200";
+      return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800";
     case "encrypted":
     case "converted_failed":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -79,6 +91,11 @@ export default function SampleLibrary() {
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [tab, setTab] = useState<TabKey>("library");
+  const [extractTarget, setExtractTarget] = useState<KFSampleRecord | null>(
+    null,
+  );
+  const [qualityRefreshKey, setQualityRefreshKey] = useState(0);
 
   const fetchSamples = useCallback(
     async (targetPage = page) => {
@@ -129,15 +146,25 @@ export default function SampleLibrary() {
         <div>
           <h1 className="text-foreground text-xl font-semibold">样例库</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            环评报告样例文件登记台账（场景 × 状态双轴）。提取流水线与质检面板将在后续版本提供。
+            环评报告样例文件登记台账（场景 ×
+            状态双轴），配套提取流水线与质检面板。
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => void fetchSamples()} disabled={loading}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void fetchSamples()}
+            disabled={loading}
+          >
             <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             刷新
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImportDialog(true)}
+          >
             <Upload className="h-4 w-4" />
             批量导入
           </Button>
@@ -148,148 +175,228 @@ export default function SampleLibrary() {
         </div>
       </div>
 
-      {/* Filters: scenario chips + search */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <FilterChip
-            label="全部"
-            active={scenarioFilter === ""}
-            onClick={() => {
-              setScenarioFilter("");
-              setPage(1);
-            }}
-          />
-          {SAMPLE_SCENARIOS.map((s) => (
-            <FilterChip
-              key={s.value}
-              label={s.label}
-              active={scenarioFilter === s.value}
-              onClick={() => {
-                setScenarioFilter(s.value);
-                setPage(1);
-              }}
-            />
+      {/* 功能区切换：样例台账 / 质检面板 */}
+      <div className="border-border border-b">
+        <div className="flex gap-1">
+          {(
+            [
+              ["library", "样例台账"],
+              ["quality", "质检面板"],
+            ] as [TabKey, string][]
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              className={cn(
+                "border-b-2 px-4 py-2 text-sm font-medium transition-colors",
+                tab === key
+                  ? "border-primary text-primary"
+                  : "text-muted-foreground hover:text-foreground border-transparent",
+              )}
+            >
+              {label}
+            </button>
           ))}
-        </div>
-        <div className="relative ml-auto w-64">
-          <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
-          <Input
-            placeholder="搜索标题 / 来源路径"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            className="pl-8"
-          />
         </div>
       </div>
 
-      {/* Table */}
-      {loading && samples.length === 0 ? (
-        <div className="text-muted-foreground flex items-center justify-center gap-2 py-20 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
-        </div>
-      ) : total === 0 && !search && !scenarioFilter ? (
-        <Empty className="border-border rounded-xl border border-dashed py-16">
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <FileStack className="h-6 w-6" />
-            </EmptyMedia>
-            <EmptyTitle>样例库还是空的</EmptyTitle>
-            <EmptyDescription>
-              登记已解析的环评报告样例文件，或从既有台账 JSON 批量导入。样例是模板抽取与范文库（samples_bank）的语料基本盘。
-            </EmptyDescription>
-          </EmptyHeader>
-          <div className="flex items-center justify-center gap-2">
-            <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-              <PlusCircle className="h-4 w-4" />
-              登记第一条样例
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
-              <Upload className="h-4 w-4" />
-              批量导入
-            </Button>
-          </div>
-        </Empty>
+      {tab === "quality" ? (
+        <QualityPanel refreshKey={qualityRefreshKey} />
       ) : (
-        <div className="border-border overflow-hidden rounded-xl border">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-sm">
-              <thead>
-                <tr className="bg-muted/50 text-muted-foreground border-border border-b text-left">
-                  <th className="px-4 py-3 font-medium">标题</th>
-                  <th className="px-4 py-3 font-medium">场景</th>
-                  <th className="px-4 py-3 font-medium">状态</th>
-                  <th className="px-4 py-3 font-medium">置信</th>
-                  <th className="px-4 py-3 font-medium">哈希前8</th>
-                  <th className="px-4 py-3 font-medium">登记时间</th>
-                  <th className="px-4 py-3 text-right font-medium">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {samples.map((s) => (
-                  <tr key={s.id} className="border-border hover:bg-muted/30 border-b transition-colors last:border-b-0">
-                    <td className="max-w-[320px] px-4 py-3">
-                      <div className="text-foreground truncate font-medium" title={s.title}>
-                        {s.title}
-                      </div>
-                      <div className="text-muted-foreground truncate text-xs" title={s.source_path}>
-                        {s.variant ?? s.source_path}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</td>
-                    <td className="px-4 py-3">
-                      <Badge variant="outline" className={statusBadgeClass(s.status)}>
-                        {STATUS_LABELS[s.status] ?? s.status}
-                      </Badge>
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3 tabular-nums whitespace-nowrap">
-                      {s.confidence == null ? "—" : s.confidence.toFixed(2)}
-                    </td>
-                    <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{s.file_hash.slice(0, 8)}</td>
-                    <td className="text-muted-foreground px-4 py-3 text-xs whitespace-nowrap">{formatDateTime(s.created_at)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-red-600"
-                        onClick={() => void handleDelete(s)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {samples.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="text-muted-foreground px-4 py-12 text-center">
-                      当前筛选条件下没有样例。
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+        <>
+          {/* Filters: scenario chips + search */}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <FilterChip
+                label="全部"
+                active={scenarioFilter === ""}
+                onClick={() => {
+                  setScenarioFilter("");
+                  setPage(1);
+                }}
+              />
+              {SAMPLE_SCENARIOS.map((s) => (
+                <FilterChip
+                  key={s.value}
+                  label={s.label}
+                  active={scenarioFilter === s.value}
+                  onClick={() => {
+                    setScenarioFilter(s.value);
+                    setPage(1);
+                  }}
+                />
+              ))}
+            </div>
+            <div className="relative ml-auto w-64">
+              <Search className="text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2" />
+              <Input
+                placeholder="搜索标题 / 来源路径"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                className="pl-8"
+              />
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Pagination */}
-      {total > 0 && (
-        <div className="text-muted-foreground flex items-center justify-between text-sm">
-          <span>共 {total} 条样例</span>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((p) => p - 1)}>
-              上一页
-            </Button>
-            <span className="tabular-nums">
-              {page} / {totalPages}
-            </span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages || loading} onClick={() => setPage((p) => p + 1)}>
-              下一页
-            </Button>
-          </div>
-        </div>
+          {/* Table */}
+          {loading && samples.length === 0 ? (
+            <div className="text-muted-foreground flex items-center justify-center gap-2 py-20 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
+            </div>
+          ) : total === 0 && !search && !scenarioFilter ? (
+            <Empty className="border-border rounded-xl border border-dashed py-16">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <FileStack className="h-6 w-6" />
+                </EmptyMedia>
+                <EmptyTitle>样例库还是空的</EmptyTitle>
+                <EmptyDescription>
+                  登记已解析的环评报告样例文件，或从既有台账 JSON
+                  批量导入。样例是模板抽取与范文库（samples_bank）的语料基本盘。
+                </EmptyDescription>
+              </EmptyHeader>
+              <div className="flex items-center justify-center gap-2">
+                <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+                  <PlusCircle className="h-4 w-4" />
+                  登记第一条样例
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowImportDialog(true)}
+                >
+                  <Upload className="h-4 w-4" />
+                  批量导入
+                </Button>
+              </div>
+            </Empty>
+          ) : (
+            <div className="border-border overflow-hidden rounded-xl border">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[860px] text-sm">
+                  <thead>
+                    <tr className="bg-muted/50 text-muted-foreground border-border border-b text-left">
+                      <th className="px-4 py-3 font-medium">标题</th>
+                      <th className="px-4 py-3 font-medium">场景</th>
+                      <th className="px-4 py-3 font-medium">状态</th>
+                      <th className="px-4 py-3 font-medium">置信</th>
+                      <th className="px-4 py-3 font-medium">哈希前8</th>
+                      <th className="px-4 py-3 font-medium">登记时间</th>
+                      <th className="px-4 py-3 text-right font-medium">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {samples.map((s) => (
+                      <tr
+                        key={s.id}
+                        className="border-border hover:bg-muted/30 border-b transition-colors last:border-b-0"
+                      >
+                        <td className="max-w-[320px] px-4 py-3">
+                          <div
+                            className="text-foreground truncate font-medium"
+                            title={s.title}
+                          >
+                            {s.title}
+                          </div>
+                          <div
+                            className="text-muted-foreground truncate text-xs"
+                            title={s.source_path}
+                          >
+                            {s.variant ?? s.source_path}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {SCENARIO_LABELS[s.scenario] ?? s.scenario}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            variant="outline"
+                            className={statusBadgeClass(s.status)}
+                          >
+                            {STATUS_LABELS[s.status] ?? s.status}
+                          </Badge>
+                        </td>
+                        <td className="text-muted-foreground px-4 py-3 whitespace-nowrap tabular-nums">
+                          {s.confidence == null ? "—" : s.confidence.toFixed(2)}
+                        </td>
+                        <td className="text-muted-foreground px-4 py-3 font-mono text-xs">
+                          {s.file_hash.slice(0, 8)}
+                        </td>
+                        <td className="text-muted-foreground px-4 py-3 text-xs whitespace-nowrap">
+                          {formatDateTime(s.created_at)}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-primary"
+                              title="运行提取流水线"
+                              onClick={() => setExtractTarget(s)}
+                            >
+                              <Wand2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-muted-foreground hover:text-red-600"
+                              title="删除样例"
+                              onClick={() => void handleDelete(s)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {samples.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="text-muted-foreground px-4 py-12 text-center"
+                        >
+                          当前筛选条件下没有样例。
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {total > 0 && (
+            <div className="text-muted-foreground flex items-center justify-between text-sm">
+              <span>共 {total} 条样例</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  上一页
+                </Button>
+                <span className="tabular-nums">
+                  {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= totalPages || loading}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  下一页
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <CreateSampleDialog
@@ -310,11 +417,28 @@ export default function SampleLibrary() {
           void fetchSamples(1);
         }}
       />
+      <ExtractDialog
+        sample={extractTarget}
+        open={extractTarget !== null}
+        onClose={() => setExtractTarget(null)}
+        onSaved={() => {
+          setQualityRefreshKey((k) => k + 1);
+          void fetchSamples();
+        }}
+      />
     </div>
   );
 }
 
-function FilterChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
@@ -358,10 +482,15 @@ function CreateSampleDialog({
   const [form, setForm] = useState<KFSampleUpsertInput>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
-  const setField = (patch: Partial<KFSampleUpsertInput>) => setForm((f) => ({ ...f, ...patch }));
+  const setField = (patch: Partial<KFSampleUpsertInput>) =>
+    setForm((f) => ({ ...f, ...patch }));
 
   const submit = async () => {
-    if (!form.title.trim() || !form.source_path.trim() || form.file_hash.trim().length < 8) {
+    if (
+      !form.title.trim() ||
+      !form.source_path.trim() ||
+      form.file_hash.trim().length < 8
+    ) {
       toast.error("请填写标题、来源路径，哈希至少 8 个字符");
       return;
     }
@@ -433,7 +562,11 @@ function CreateSampleDialog({
             </div>
             <div className="grid gap-2">
               <Label>状态</Label>
-              <AdminSelect value={form.status} onValueChange={(v) => setField({ status: v })} options={SAMPLE_STATUSES} />
+              <AdminSelect
+                value={form.status}
+                onValueChange={(v) => setField({ status: v })}
+                options={SAMPLE_STATUSES}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -457,7 +590,10 @@ function CreateSampleDialog({
                 value={form.confidence ?? ""}
                 placeholder="0.95"
                 onChange={(e) =>
-                  setField({ confidence: e.target.value === "" ? null : Number(e.target.value) })
+                  setField({
+                    confidence:
+                      e.target.value === "" ? null : Number(e.target.value),
+                  })
                 }
               />
             </div>
@@ -500,14 +636,19 @@ function BulkImportDialog({
 }) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ created: number; updated: number } | null>(null);
+  const [result, setResult] = useState<{
+    created: number;
+    updated: number;
+  } | null>(null);
 
   const submit = async () => {
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
-      toast.error("JSON 解析失败：请粘贴形如 [{title, source_path, file_hash, scenario, status}, …] 的数组");
+      toast.error(
+        "JSON 解析失败：请粘贴形如 [{title, source_path, file_hash, scenario, status}, …] 的数组",
+      );
       return;
     }
     if (!Array.isArray(parsed) || parsed.length === 0) {
@@ -516,9 +657,13 @@ function BulkImportDialog({
     }
     setSubmitting(true);
     try {
-      const res = await sampleLibraryApi.importBulk(parsed as KFSampleUpsertInput[]);
+      const res = await sampleLibraryApi.importBulk(
+        parsed as KFSampleUpsertInput[],
+      );
       setResult({ created: res.created, updated: res.updated });
-      toast.success(`导入完成：新增 ${res.created} 条，更新 ${res.updated} 条（按哈希幂等）`);
+      toast.success(
+        `导入完成：新增 ${res.created} 条，更新 ${res.updated} 条（按哈希幂等）`,
+      );
       setText("");
       onImported();
     } catch (e) {
@@ -542,8 +687,9 @@ function BulkImportDialog({
         <DialogHeader>
           <DialogTitle>批量导入样例</DialogTitle>
           <DialogDescription>
-            粘贴 JSON 数组（每条含 title / source_path / file_hash / scenario / status，可选 variant、confidence、notes）。按
-            file_hash 幂等 upsert，可重复执行。
+            粘贴 JSON 数组（每条含 title / source_path / file_hash / scenario /
+            status，可选 variant、confidence、notes）。按 file_hash 幂等
+            upsert，可重复执行。
           </DialogDescription>
         </DialogHeader>
         <Textarea
@@ -562,8 +708,15 @@ function BulkImportDialog({
           <Button variant="outline" onClick={onClose} disabled={submitting}>
             关闭
           </Button>
-          <Button onClick={() => void submit()} disabled={submitting || !text.trim()}>
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          <Button
+            onClick={() => void submit()}
+            disabled={submitting || !text.trim()}
+          >
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
             导入
           </Button>
         </DialogFooter>

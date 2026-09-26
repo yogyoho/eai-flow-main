@@ -117,7 +117,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                   </div>
                   <div>
                     <div className="text-xl font-bold text-foreground tabular-nums">{totalCount}</div>
-                    <div className="text-[11px] text-muted-foreground font-medium">知识库总数</div>
+                    <div className="text-xs text-muted-foreground font-medium">知识库总数</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-xl border border-success/20 bg-gradient-to-br from-card to-success/5 p-4 shadow-sm">
@@ -126,7 +126,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                   </div>
                   <div>
                     <div className="text-xl font-bold text-success tabular-nums">{healthyCount}</div>
-                    <div className="text-[11px] text-muted-foreground font-medium">正常运行</div>
+                    <div className="text-xs text-muted-foreground font-medium">正常运行</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-xl border border-warning/20 bg-gradient-to-br from-card to-warning/5 p-4 shadow-sm">
@@ -135,7 +135,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                   </div>
                   <div>
                     <div className="text-xl font-bold text-warning tabular-nums">{missingCount}</div>
-                    <div className="text-[11px] text-muted-foreground font-medium">未创建</div>
+                    <div className="text-xs text-muted-foreground font-medium">未创建</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-gradient-to-br from-card to-destructive/5 p-4 shadow-sm">
@@ -144,7 +144,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                   </div>
                   <div>
                     <div className="text-xl font-bold text-destructive tabular-nums">{errorCount}</div>
-                    <div className="text-[11px] text-muted-foreground font-medium">异常</div>
+                    <div className="text-xs text-muted-foreground font-medium">异常</div>
                   </div>
                 </div>
               </div>

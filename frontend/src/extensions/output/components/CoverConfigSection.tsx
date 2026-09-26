@@ -93,7 +93,7 @@ function Field({
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-2">
-        <label className="text-muted-foreground text-[11px] font-medium">
+        <label className="text-muted-foreground text-xs font-medium">
           {label}
         </label>
         {hint && (
@@ -225,7 +225,7 @@ export function CoverConfigSection({
             </span>
           </div>
           <div className="space-y-1.5">
-            <p className="text-muted-foreground text-[11px] font-medium">
+            <p className="text-muted-foreground text-xs font-medium">
               {`槽位（生成时替换"变量"，保留"字面"）`}
             </p>
             <p className="text-muted-foreground/70 text-[10px]">
@@ -240,7 +240,7 @@ export function CoverConfigSection({
                   className="border-border flex items-center gap-2 rounded-lg border px-2 py-1.5"
                 >
                   <span className="text-muted-foreground flex w-32 shrink-0 flex-col">
-                    <span className="text-[11px] font-medium">
+                    <span className="text-xs font-medium">
                       {slot.label}
                     </span>
                     <span

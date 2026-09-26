@@ -80,12 +80,12 @@ export function TasksView() {
               <TableBody>
                 {runs.map((r) => (
                   <TableRow key={r.id}>
-                    <TableCell className="text-[13px]">
+                    <TableCell className="text-sm">
                       {RUN_TYPE_ZH[r.run_type] ?? r.run_type}
                     </TableCell>
                     <TableCell>
                       <span
-                        className="text-[13px] font-medium"
+                        className="text-sm font-medium"
                         style={{ color: RUN_STATUS_COLOR[r.status] ?? INK_2 }}
                       >
                         {RUN_STATUS_ZH[r.status] ?? r.status}
@@ -97,7 +97,7 @@ export function TasksView() {
                     <TableCell className="text-muted-foreground max-w-72 truncate text-xs">
                       {r.detail ?? "—"}
                     </TableCell>
-                    <TableCell className="text-[13px] whitespace-nowrap">
+                    <TableCell className="text-sm whitespace-nowrap">
                       {new Date(r.created_at).toLocaleString()}
                     </TableCell>
                   </TableRow>

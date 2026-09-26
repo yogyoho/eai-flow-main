@@ -110,7 +110,7 @@ export function ConversationOutline({
                 ref={active ? activeItemRef : undefined}
                 aria-current={active ? "location" : undefined}
                 className={cn(
-                  "items-start rounded-lg px-3 py-2 text-[15px] leading-5 whitespace-normal",
+                  "items-start rounded-lg px-3 py-2 text-base leading-5 whitespace-normal",
                   active && "bg-accent text-accent-foreground",
                 )}
                 title={chapter.title}

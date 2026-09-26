@@ -51,13 +51,13 @@ export function SectionCard({
         </span>
         <span>
           <span
-            className="block text-[17px] leading-snug font-semibold"
+            className="block text-lg leading-snug font-semibold"
             style={{ color: INK }}
           >
             {title}
           </span>
           {sub ? (
-            <span className="block text-[13px]" style={{ color: INK_2 }}>
+            <span className="block text-sm" style={{ color: INK_2 }}>
               {sub}
             </span>
           ) : null}

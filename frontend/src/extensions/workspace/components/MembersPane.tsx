@@ -195,7 +195,7 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
                 >
                   {m.memberType === "agent" ? m.agentName : m.userId}
                 </p>
-                <p className="text-muted-foreground font-mono text-[11px]">
+                <p className="text-muted-foreground font-mono text-xs">
                   {ROLE_LABEL[m.role] ?? m.role}
                 </p>
               </div>

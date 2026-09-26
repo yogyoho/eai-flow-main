@@ -302,7 +302,7 @@ export function ClustersView() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[340px_1fr]">
         {/* Left: cluster list with multi-select */}
         <Card className="max-h-[calc(100vh-220px)] overflow-hidden">
-          <div className="border-border border-b px-4 py-3">
+          <div className="border-border border-b px-4 py-3 pt-0">
             <div className="flex items-center justify-between">
               <h3 className="text-foreground text-sm font-semibold">
                 货物分组
@@ -327,7 +327,7 @@ export function ClustersView() {
                 : ""}
             </p>
           </div>
-          <CardContent className="max-h-[calc(100vh-280px)] overflow-y-auto p-0">
+          <CardContent className="max-h-[calc(100vh-280px)] overflow-y-auto p-0 pt-0">
             {clustersQuery.isLoading ? (
               <p className="text-muted-foreground p-6 text-center text-sm">
                 加载中…

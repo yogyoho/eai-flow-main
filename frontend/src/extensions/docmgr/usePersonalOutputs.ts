@@ -58,19 +58,23 @@ export function usePersonalOutputs() {
     fetchingMoreRef.current = true;
     setLoadingMore(true);
     try {
+      const prevSkip = skipRef.current;
       const data = await docmgrApi.listPersonalOutputs({
         skip: skipRef.current,
         limit: PAGE_SIZE,
       });
       // EAI-CUSTOM (bug-2225): 游标在 setThreads 外推进（updater 必须纯函数，
       // StrictMode 双调用会让 += 计数翻倍），且按后端扫描数游标而非返回数
-      skipRef.current = data.next_skip ?? skipRef.current;
+      const nextSkip = data.next_skip ?? skipRef.current;
+      skipRef.current = nextSkip;
       setThreads((prev) => {
         const existing = new Set(prev.map((t) => t.thread_id));
         const fresh = data.threads.filter((t) => !existing.has(t.thread_id));
         return [...prev, ...fresh];
       });
-      setHasMore(data.has_more);
+      // EAI-CUSTOM (bug-4954): 游标未推进（旧后端剥离 next_skip 时恒为 undefined，
+      // 同一窗口重拉必然无新增）= 无进展，强停懒加载，防「空窗 + has_more」自动续拉死循环
+      setHasMore(nextSkip > prevSkip ? data.has_more : false);
     } catch (err) {
       console.error("Failed to load more:", err);
     } finally {

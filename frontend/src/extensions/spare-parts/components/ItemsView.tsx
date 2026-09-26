@@ -626,7 +626,7 @@ export function ItemsView() {
                           <TableCell className="text-muted-foreground">
                             {item.spec ?? "—"}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="text-muted-foreground px-4 py-3 font-mono text-xs">
                             {item.source_contract_no ?? "—"}
                           </TableCell>
                           <TableCell className="text-muted-foreground whitespace-nowrap">
@@ -643,7 +643,7 @@ export function ItemsView() {
                           </TableCell>
                           <TableCell className="whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium ${
+                              className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-medium ${
                                 STATUS_TONE[item.validation_status] ??
                                 STATUS_TONE.ok
                               }`}

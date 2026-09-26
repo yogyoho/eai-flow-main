@@ -819,14 +819,14 @@ export default function BusinessDictionary() {
                             {chapters.map((ch) => (
                               <span
                                 key={ch.id}
-                                className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-0.5 text-[11px]"
+                                className="bg-muted text-muted-foreground inline-flex items-center rounded-md px-2 py-0.5 text-xs"
                               >
                                 {ch.title}
                               </span>
                             ))}
                           </div>
                         )}
-                        <p className="text-muted-foreground/50 mt-2 font-mono text-[11px]">
+                        <p className="text-muted-foreground/50 mt-2 font-mono text-xs">
                           ID: {domain.id}
                         </p>
                       </div>

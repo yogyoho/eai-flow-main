@@ -206,7 +206,7 @@ function FolderNodeComponent({
 
           {/* Doc count badge */}
           {folder.doc_count > 0 && (
-            <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
+            <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
               {folder.doc_count}
             </span>
           )}

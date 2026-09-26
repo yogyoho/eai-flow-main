@@ -258,7 +258,7 @@ export function SourceDatasetsModal({ source, open, onClose }: Props) {
                             </p>
                           )}
                           {d.defaultQuery && (
-                            <p className="text-muted-foreground/70 mt-0.5 truncate font-mono text-[11px]">
+                            <p className="text-muted-foreground/70 mt-0.5 truncate font-mono text-xs">
                               {d.defaultQuery}
                             </p>
                           )}

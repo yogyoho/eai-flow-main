@@ -188,7 +188,7 @@ export function LayoutTemplateCard({
 
         {/* Dense spec line */}
         {metaParts.length > 0 && (
-          <p className="text-muted-foreground/80 mt-2 truncate text-[11px]">
+          <p className="text-muted-foreground/80 mt-2 truncate text-xs">
             {metaParts.join("   ·   ")}
           </p>
         )}

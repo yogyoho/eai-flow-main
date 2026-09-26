@@ -71,6 +71,10 @@ export interface CpaCluster {
   item_count: number;
   version: number;
   confirmed_by: string | null;
+  // EAI-CUSTOM (2026-09-19, 6af742b82 的 GoodsAnalysis 已读取这两个汇总字段但接口漏配——
+  // 2026-09-26 类型补全; 上游合并门禁 typecheck 依赖)
+  spec_summary?: string | null;
+  category_summary?: string | null;
   created_at: string;
   updated_at: string;
 }

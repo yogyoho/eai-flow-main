@@ -296,7 +296,7 @@ function StepBasicInfo({
         <h3 className="text-foreground text-base font-semibold">
           项目基本信息
         </h3>
-        <p className="text-muted-foreground mt-1 text-[13px]">
+        <p className="text-muted-foreground mt-1 text-sm">
           填写项目的基本信息，带 <span className="text-red-500">*</span>{" "}
           的为必填项
         </p>
@@ -409,7 +409,7 @@ function StepBasicInfo({
             placeholder="例如：按《建筑设计防火规范》GB 50016 编写，重点覆盖防火分区与疏散……"
             className="min-h-[90px] resize-none rounded-md bg-white text-sm"
           />
-          <p className="text-muted-foreground text-[11px]">
+          <p className="text-muted-foreground text-xs">
             将作为「项目要求」一并注入给 AI 写作助手
           </p>
         </div>
@@ -443,7 +443,7 @@ function StepTemplate({
         <h3 className="text-foreground text-base font-semibold">
           选择内容大纲模板
         </h3>
-        <p className="text-muted-foreground mt-1 text-[13px]">
+        <p className="text-muted-foreground mt-1 text-sm">
           选择一个内容模板定义报告的章节大纲结构，或使用空白模板从零开始
         </p>
       </div>
@@ -530,7 +530,7 @@ function StepWorkflow({
         <h3 className="text-foreground text-base font-semibold">
           选择工作流模板
         </h3>
-        <p className="text-muted-foreground mt-1 text-[13px]">
+        <p className="text-muted-foreground mt-1 text-sm">
           工作流定义项目的写作流程：分阶段写作、AI
           生成初稿、人工审阅等。选择一个适合项目类型的流程模板，或跳过手动管理
         </p>
@@ -674,7 +674,7 @@ function StepTeam({
         <h3 className="text-foreground text-base font-semibold">
           组建项目团队
         </h3>
-        <p className="text-muted-foreground mt-1 text-[13px]">
+        <p className="text-muted-foreground mt-1 text-sm">
           团队由组长和组员组成，负责报告编写。审核、批准等环节由团队外的相关部门或领导负责。
         </p>
       </div>
@@ -731,7 +731,7 @@ function StepTeam({
               必选
             </span>
           </div>
-          <span className="text-[11px] text-gray-400">
+          <span className="text-xs text-gray-400">
             负责创建任务、选择模板、提交审核
           </span>
         </div>
@@ -759,7 +759,7 @@ function StepTeam({
       <div className="rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between">
           <span className="text-foreground text-sm font-medium">组员</span>
-          <span className="text-[11px] text-gray-400">
+          <span className="text-xs text-gray-400">
             负责修改AI生成的初稿 · {members.length} 人
           </span>
         </div>
@@ -861,7 +861,7 @@ function StepConfirm({
         <h3 className="text-foreground text-base font-semibold">
           确认项目信息
         </h3>
-        <p className="text-muted-foreground mt-1 text-[13px]">
+        <p className="text-muted-foreground mt-1 text-sm">
           请核实以下信息无误后点击创建
         </p>
       </div>

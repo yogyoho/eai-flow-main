@@ -1663,14 +1663,14 @@ function PolicyRow({
               // EAI-CUSTOM (P0): or 树只读徽章 —— 不误显"全局"
               <span
                 key={i}
-                className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600"
+                className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600"
               >
                 ⚠ 或(OR) 条件（只读）
               </span>
             ) : (
               <span
                 key={i}
-                className="bg-muted text-muted-foreground rounded px-2 py-0.5 font-mono text-[11px]"
+                className="bg-muted text-muted-foreground rounded px-2 py-0.5 font-mono text-xs"
               >
                 {(ATTR_LABELS[c.attribute] ?? c.attribute) || "?"}{" "}
                 {OP_LABELS[c.operator] ?? c.operator} {c.value || "?"}
@@ -1681,7 +1681,7 @@ function PolicyRow({
       ) : (
         // EAI-CUSTOM (T14): 空条件 = 引擎无条件=作用于所有非超管用户，显式提示避免误读为"未配置"
         <div className="mt-2">
-          <span className="bg-muted text-muted-foreground border-border rounded border border-dashed px-2 py-0.5 text-[11px]">
+          <span className="bg-muted text-muted-foreground border-border rounded border border-dashed px-2 py-0.5 text-xs">
             （全局·所有非超管用户）
           </span>
         </div>
@@ -1698,7 +1698,7 @@ function PolicyRow({
               // 数据级 deny 走 deny_data_scopes；保留旧数据兼容但不再展示误导性后缀
               <span
                 key={i}
-                className="bg-primary/[0.06] text-primary border-primary/10 rounded border px-2 py-0.5 text-[11px] font-medium"
+                className="bg-primary/[0.06] text-primary border-primary/10 rounded border px-2 py-0.5 text-xs font-medium"
               >
                 {permLabel}
               </span>
@@ -1709,7 +1709,7 @@ function PolicyRow({
       {/* Deny summary (T14) — warning 色，与 allow 视觉区分 */}
       {(policy.denyPermissions?.length ?? 0) > 0 && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="text-warning inline-flex items-center gap-1 text-[11px] font-medium">
+          <span className="text-warning inline-flex items-center gap-1 text-xs font-medium">
             <AlertTriangle className="h-3 w-3" />
             拒绝权限:
           </span>
@@ -1719,7 +1719,7 @@ function PolicyRow({
             return (
               <span
                 key={i}
-                className="bg-warning/10 text-warning border-warning/30 rounded border px-2 py-0.5 text-[11px] font-medium"
+                className="bg-warning/10 text-warning border-warning/30 rounded border px-2 py-0.5 text-xs font-medium"
               >
                 {permLabel}
               </span>
@@ -1729,14 +1729,14 @@ function PolicyRow({
       )}
       {(policy.denyDataScopes?.length ?? 0) > 0 && (
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          <span className="text-warning inline-flex items-center gap-1 text-[11px] font-medium">
+          <span className="text-warning inline-flex items-center gap-1 text-xs font-medium">
             <AlertTriangle className="h-3 w-3" />
             拒绝范围:
           </span>
           {policy.denyDataScopes!.map((scope, i) => (
             <span
               key={i}
-              className="bg-warning/10 text-warning border-warning/30 rounded border px-2 py-0.5 font-mono text-[11px]"
+              className="bg-warning/10 text-warning border-warning/30 rounded border px-2 py-0.5 font-mono text-xs"
             >
               {scope}
             </span>
@@ -2032,7 +2032,7 @@ function GrantPermissionDropdown({
                               })}
                             </div>
                           ) : (
-                            <div className="text-muted-foreground/50 ml-6 text-[11px]">
+                            <div className="text-muted-foreground/50 ml-6 text-xs">
                               暂无操作项
                             </div>
                           )}
@@ -2359,7 +2359,7 @@ function PolicyEditForm({
             <div key={i} className="flex items-center gap-2">
               {c.attribute === "__or__" ? (
                 // EAI-CUSTOM (P0): or 树只读徽章 —— 不可编辑，保存保留原条件
-                <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-600">
+                <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-600">
                   ⚠ 或(OR) 条件（只读，保存将保留原条件）
                 </span>
               ) : (
@@ -2429,7 +2429,7 @@ function PolicyEditForm({
                           {chips.map((v) => (
                             <span
                               key={v}
-                              className="bg-primary/10 text-primary border-primary/20 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px]"
+                              className="bg-primary/10 text-primary border-primary/20 inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs"
                             >
                               {labelOf(v)}
                               <button
@@ -2576,7 +2576,7 @@ function PolicyEditForm({
 
         {/* 拒绝权限 — 精确 (kb:delete) 或模块通配 (kb:*) */}
         <div>
-          <label className="text-foreground/80 mb-1 block text-[11px] font-medium">
+          <label className="text-foreground/80 mb-1 block text-xs font-medium">
             拒绝权限
           </label>
           <Popover open={denyPopoverOpen} onOpenChange={setDenyPopoverOpen}>
@@ -2693,7 +2693,7 @@ function PolicyEditForm({
                 return (
                   <span
                     key={perm}
-                    className="bg-warning/10 text-warning border-warning/30 inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] font-medium"
+                    className="bg-warning/10 text-warning border-warning/30 inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium"
                   >
                     {permLabel}
                     <button
@@ -2712,11 +2712,11 @@ function PolicyEditForm({
 
         {/* 拒绝数据范围 —— 复用 registry 声明的 data_scopes，按 module 分组多选 */}
         <div>
-          <label className="text-foreground/80 mb-1 block text-[11px] font-medium">
+          <label className="text-foreground/80 mb-1 block text-xs font-medium">
             拒绝数据范围
           </label>
           {scopeModules.length === 0 ? (
-            <p className="text-muted-foreground text-[11px] italic">
+            <p className="text-muted-foreground text-xs italic">
               registry 暂无已声明的 data_scope
             </p>
           ) : (

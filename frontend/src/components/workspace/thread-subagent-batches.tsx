@@ -181,7 +181,7 @@ function BatchCard({
         <Badge variant="outline">{labels[batch.status]}</Badge>
       </div>
       <Progress className="mt-3 h-1.5" value={subagentBatchProgress(batch)} />
-      <div className="text-muted-foreground mt-1.5 flex flex-wrap gap-x-3 text-[11px]">
+      <div className="text-muted-foreground mt-1.5 flex flex-wrap gap-x-3 text-xs">
         <span>{t.subagentBatches.progress(completed, batch.total_items)}</span>
         <span>
           {batch.counts.running} {labels.running.toLowerCase()}

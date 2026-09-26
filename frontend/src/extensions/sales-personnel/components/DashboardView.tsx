@@ -119,7 +119,7 @@ function Chip({ on, onClick, children }: { on?: boolean; onClick: () => void; ch
       type="button"
       onClick={onClick}
       className={cn(
-        "rounded-lg border px-2.5 py-1 text-[12.5px] whitespace-nowrap transition-colors",
+        "rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-colors",
         !on && "hover:border-black/20 hover:text-[#1b1c1d]",
       )}
       style={{
@@ -473,11 +473,11 @@ export function DashboardView() {
 
       {/* 筛选栏:业务部门平铺 + 职能部门收「更多」 */}
       <div
-        className="flex flex-wrap items-center gap-x-[18px] gap-y-2 rounded-[14px] px-[18px] py-3 text-[13px]"
+        className="flex flex-wrap items-center gap-x-[18px] gap-y-2 rounded-[14px] px-[18px] py-3 text-sm"
         style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
       >
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-[12.5px]" style={{ color: INK_2 }}>
+          <span className="text-xs" style={{ color: INK_2 }}>
             部门
           </span>
           <Chip on={!dept} onClick={() => setDept(null)}>
@@ -493,7 +493,7 @@ export function DashboardView() {
               <button
                 type="button"
                 className={cn(
-                  "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[12.5px] whitespace-nowrap transition-colors",
+                  "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs whitespace-nowrap transition-colors",
                   !deptInMore && "hover:border-black/20 hover:text-[#1b1c1d]",
                 )}
                 style={{
@@ -508,7 +508,7 @@ export function DashboardView() {
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[210px] p-1.5" style={{ background: CARD, borderColor: "rgba(0,0,0,0.08)" }}>
-              <p className="px-2.5 pb-1 pt-0.5 text-[11px]" style={{ color: INK_3 }}>
+              <p className="px-2.5 pb-1 pt-0.5 text-xs" style={{ color: INK_3 }}>
                 职能部门
               </p>
               {MORE_DEPTS.map((d) => {
@@ -523,7 +523,7 @@ export function DashboardView() {
                       setMoreOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between rounded-[7px] px-2.5 py-[7px] text-[12.5px] transition-colors",
+                      "flex w-full items-center justify-between rounded-[7px] px-2.5 py-[7px] text-xs transition-colors",
                       !on && "hover:bg-[#eef1ff]",
                     )}
                     style={{ background: on ? ACCENT_SOFT : undefined, color: on ? BLUE : INK_2, fontWeight: on ? 600 : 400 }}
@@ -539,14 +539,14 @@ export function DashboardView() {
           </Popover>
         </div>
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-[11px]" style={{ color: INK_3 }}>
+          <span className="text-xs" style={{ color: INK_3 }}>
             统计窗口 2025 Q4(10~12 月)· mock 数据
           </span>
           {dept ? (
             <button
               type="button"
               onClick={() => setDept(null)}
-              className="text-[12.5px] transition-colors hover:text-[#1b1c1d]"
+              className="text-xs transition-colors hover:text-[#1b1c1d]"
               style={{ color: INK_3 }}
             >
               重置
@@ -652,7 +652,7 @@ export function DashboardView() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px]" style={{ color: INK_2 }}>
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs" style={{ color: INK_2 }}>
               {ATT_SEGS.map((s) => (
                 <span key={s.name} className="flex items-center gap-1.5">
                   <span className="inline-block h-2 w-2 rounded-[3px]" style={{ background: s.color }} />
@@ -828,10 +828,10 @@ export function DashboardView() {
                 </PieChart>
               </ResponsiveContainer>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <p className="text-[20px] font-[650] [font-variant-numeric:tabular-nums]" style={{ color: INK }}>
+                <p className="text-xl font-semibold [font-variant-numeric:tabular-nums]" style={{ color: INK }}>
                   {fmt1(R.total / 10000)}万
                 </p>
-                <p className="mt-1 text-[11px]" style={{ color: INK_3 }}>
+                <p className="mt-1 text-xs" style={{ color: INK_3 }}>
                   合计 · {R.cnt} 笔
                 </p>
               </div>
@@ -840,7 +840,7 @@ export function DashboardView() {
               {reimbAgg.map((s) => (
                 <div
                   key={s.id}
-                  className="flex items-baseline gap-2.5 text-[12.5px] [font-variant-numeric:tabular-nums]"
+                  className="flex items-baseline gap-2.5 text-xs [font-variant-numeric:tabular-nums]"
                   style={{ color: INK_2 }}
                 >
                   <span className="inline-block h-[9px] w-[9px] shrink-0 self-center rounded-[3px]" style={{ background: s.color }} />

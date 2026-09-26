@@ -22,7 +22,7 @@ interface FilterBarProps {
 
 /** 触发按钮/面板统一样式(手写控件,14px;不依赖 shadcn Popover/Select)。 */
 const TRIGGER =
-  "border-border bg-background text-foreground flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-[14px] transition-colors hover:border-foreground/30";
+  "border-border bg-background text-foreground flex w-full items-center justify-between gap-2 rounded-md border px-2.5 py-1.5 text-sm transition-colors hover:border-foreground/30";
 const PANEL =
   "border-border bg-background absolute top-full left-0 z-30 mt-1 rounded-md border p-2 shadow-lg";
 
@@ -90,32 +90,32 @@ function ProjectDropdown({
               value={kw}
               onChange={(e) => setKw(e.target.value)}
               placeholder="搜索项目名…"
-              className="border-border bg-background placeholder:text-muted-foreground/60 w-full rounded border py-1 pr-2 pl-7 text-[14px] outline-none focus:border-foreground/40"
+              className="border-border bg-background placeholder:text-muted-foreground/60 w-full rounded border py-1 pr-2 pl-7 text-sm outline-none focus:border-foreground/40"
             />
           </div>
           <div className="max-h-60 overflow-auto">
             <button
               type="button"
               onClick={() => pick("")}
-              className={`hover:bg-accent w-full cursor-pointer rounded px-2 py-1.5 text-left text-[14px] ${!value ? "text-primary font-medium" : "text-foreground"}`}
+              className={`hover:bg-accent w-full cursor-pointer rounded px-2 py-1.5 text-left text-sm ${!value ? "text-primary font-medium" : "text-foreground"}`}
             >
               全部项目
             </button>
-            {q.isPending && <div className="text-muted-foreground/60 px-2 py-1.5 text-[14px]">加载中…</div>}
-            {q.isError && <div className="text-destructive/80 px-2 py-1.5 text-[14px]">加载失败</div>}
+            {q.isPending && <div className="text-muted-foreground/60 px-2 py-1.5 text-sm">加载中…</div>}
+            {q.isError && <div className="text-destructive/80 px-2 py-1.5 text-sm">加载失败</div>}
             {q.data?.map((p) => (
               <button
                 key={p}
                 type="button"
                 onClick={() => pick(p)}
                 title={p}
-                className={`hover:bg-accent w-full cursor-pointer truncate rounded px-2 py-1.5 text-left text-[14px] ${p === value ? "text-primary font-medium" : "text-foreground"}`}
+                className={`hover:bg-accent w-full cursor-pointer truncate rounded px-2 py-1.5 text-left text-sm ${p === value ? "text-primary font-medium" : "text-foreground"}`}
               >
                 {p}
               </button>
             ))}
             {q.data?.length === 50 && (
-              <div className="text-muted-foreground/60 px-2 py-1.5 text-[13px]">
+              <div className="text-muted-foreground/60 px-2 py-1.5 text-sm">
                 仅显示前 50 条,输入关键字缩小范围
               </div>
             )}
@@ -158,15 +158,15 @@ function CompetitorDropdown({
             <button
               type="button"
               onClick={() => pick("")}
-              className={`hover:bg-accent w-full cursor-pointer rounded px-2 py-1.5 text-left text-[14px] ${!value ? "text-primary font-medium" : "text-foreground"}`}
+              className={`hover:bg-accent w-full cursor-pointer rounded px-2 py-1.5 text-left text-sm ${!value ? "text-primary font-medium" : "text-foreground"}`}
             >
               全部
             </button>
             {status === "pending" && options.length === 0 && (
-              <div className="text-muted-foreground/60 px-2 py-1.5 text-[14px]">加载中…</div>
+              <div className="text-muted-foreground/60 px-2 py-1.5 text-sm">加载中…</div>
             )}
             {status === "error" && options.length === 0 && (
-              <div className="text-destructive/80 px-2 py-1.5 text-[14px]">选项加载失败</div>
+              <div className="text-destructive/80 px-2 py-1.5 text-sm">选项加载失败</div>
             )}
             {options.map((o) => (
               <button
@@ -174,7 +174,7 @@ function CompetitorDropdown({
                 type="button"
                 onClick={() => pick(o)}
                 title={o}
-                className={`hover:bg-accent w-full cursor-pointer truncate rounded px-2 py-1.5 text-left text-[14px] ${o === value ? "text-primary font-medium" : "text-foreground"}`}
+                className={`hover:bg-accent w-full cursor-pointer truncate rounded px-2 py-1.5 text-left text-sm ${o === value ? "text-primary font-medium" : "text-foreground"}`}
               >
                 {o}
               </button>
@@ -254,18 +254,18 @@ function DateRangePicker({
           <div className="mb-1 flex items-center justify-between px-1">
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground cursor-pointer rounded px-1.5 text-[14px]"
+              className="text-muted-foreground hover:text-foreground cursor-pointer rounded px-1.5 text-sm"
               onClick={() => setView(new Date(y, m - 1, 1))}
               aria-label="上个月"
             >
               ‹
             </button>
-            <span className="text-foreground text-[14px] font-medium">
+            <span className="text-foreground text-sm font-medium">
               {y}年{m + 1}月
             </span>
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground cursor-pointer rounded px-1.5 text-[14px]"
+              className="text-muted-foreground hover:text-foreground cursor-pointer rounded px-1.5 text-sm"
               onClick={() => setView(new Date(y, m + 1, 1))}
               aria-label="下个月"
             >
@@ -274,7 +274,7 @@ function DateRangePicker({
           </div>
           <div className="grid grid-cols-7">
             {WEEK.map((w) => (
-              <span key={w} className="text-muted-foreground grid h-8 place-items-center text-[13px]">
+              <span key={w} className="text-muted-foreground grid h-8 place-items-center text-sm">
                 {w}
               </span>
             ))}
@@ -291,7 +291,7 @@ function DateRangePicker({
                   type="button"
                   onClick={() => clickDay(day)}
                   onMouseEnter={() => setHover(day)}
-                  className={`h-8 cursor-pointer rounded-md text-center text-[14px] leading-8 ${
+                  className={`h-8 cursor-pointer rounded-md text-center text-sm leading-8 ${
                     isEnd
                       ? "text-white"
                       : inRange
@@ -306,11 +306,11 @@ function DateRangePicker({
             })}
           </div>
           <div className="mt-1 flex items-center justify-between px-1">
-            <span className="text-muted-foreground/70 text-[13px]">点击两下选起止区间</span>
+            <span className="text-muted-foreground/70 text-sm">点击两下选起止区间</span>
             {(from !== null || to !== null) && (
               <button
                 type="button"
-                className="text-muted-foreground hover:text-foreground cursor-pointer text-[13px]"
+                className="text-muted-foreground hover:text-foreground cursor-pointer text-sm"
                 onClick={() => {
                   onChange({ from: null, to: null });
                   setOpen(false);
@@ -351,7 +351,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
 
   return (
     <div className="border-border bg-card/50 rounded-xl border p-3">
-      <div className="text-muted-foreground mb-2 flex items-center gap-2 text-[14px] font-medium">
+      <div className="text-muted-foreground mb-2 flex items-center gap-2 text-sm font-medium">
         <Filter className="h-4 w-4" />
         全局过滤(所有图表联动)
         {active && (
@@ -365,7 +365,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
                 dateTo: null,
               })
             }
-            className="text-primary ml-auto cursor-pointer text-[14px] hover:underline"
+            className="text-primary ml-auto cursor-pointer text-sm hover:underline"
           >
             清空
           </button>
@@ -373,14 +373,14 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
       </div>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
         <div className="flex flex-col gap-1" role="group" aria-label="项目">
-          <span className="text-muted-foreground text-[12px]">项目</span>
+          <span className="text-muted-foreground text-xs">项目</span>
           <ProjectDropdown
             value={filters.projects[0] ?? ""}
             onChange={(v) => onChange({ ...filters, projects: v ? [v] : [] })}
           />
         </div>
         <div className="flex flex-col gap-1" role="group" aria-label="友商">
-          <span className="text-muted-foreground text-[12px]">友商</span>
+          <span className="text-muted-foreground text-xs">友商</span>
           <CompetitorDropdown
             options={opts.competitors}
             value={filters.competitors[0] ?? ""}
@@ -392,7 +392,7 @@ export function FilterBar({ filters, onChange }: FilterBarProps) {
           />
         </div>
         <div className="flex flex-col gap-1" role="group" aria-label="投标日期">
-          <span className="text-muted-foreground text-[12px]">投标日期</span>
+          <span className="text-muted-foreground text-xs">投标日期</span>
           <DateRangePicker
             from={filters.dateFrom}
             to={filters.dateTo}

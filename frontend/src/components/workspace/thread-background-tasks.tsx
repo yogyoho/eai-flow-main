@@ -211,7 +211,7 @@ function BackgroundTaskCard({
           <p className="truncate text-sm font-medium" title={task.task_name}>
             {task.task_name}
           </p>
-          <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+          <div className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
             <span className="flex items-center gap-1">
               <Clock3Icon className="size-3" />
               {t.backgroundTasks.created(formatTimeAgo(task.created_at))}
@@ -387,7 +387,7 @@ function BackgroundTaskDetails({
             label={t.backgroundTasks.inputRequired}
             value={task.input_required}
           />
-          <p className="text-muted-foreground mt-1 text-[11px]">
+          <p className="text-muted-foreground mt-1 text-xs">
             {t.backgroundTasks.inputUnavailable}
           </p>
         </div>
@@ -402,7 +402,7 @@ function TaskDetailField({ label, value }: { label: string; value: unknown }) {
 
   return (
     <div>
-      <p className="text-muted-foreground text-[11px] font-medium tracking-wide uppercase">
+      <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
         {label}
       </p>
       <pre className="bg-muted/60 mt-1 max-h-48 overflow-auto rounded-md px-2 py-1.5 font-sans text-xs break-words whitespace-pre-wrap">

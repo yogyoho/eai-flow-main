@@ -33,7 +33,7 @@ export function NotificationsConfigPanel({ notifications, onUpdate }: Notificati
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-[11px] font-medium text-muted-foreground flex items-center gap-1">
+        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
           <Bell className="h-3 w-3" />
           通知
         </label>
@@ -76,14 +76,14 @@ export function NotificationsConfigPanel({ notifications, onUpdate }: Notificati
             value={notif.targets ?? ""}
             onChange={(e) => updateNotification(idx, { targets: e.target.value || undefined })}
             placeholder="通知对象（留空=全体成员）"
-            className="w-full px-2 py-1 text-[11px] border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary/20"
+            className="w-full px-2 py-1 text-xs border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary/20"
           />
           <textarea
             value={notif.message ?? ""}
             onChange={(e) => updateNotification(idx, { message: e.target.value || undefined })}
             placeholder="通知消息"
             rows={1}
-            className="w-full px-2 py-1 text-[11px] border border-border rounded-md bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary/20"
+            className="w-full px-2 py-1 text-xs border border-border rounded-md bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary/20"
           />
         </div>
       ))}

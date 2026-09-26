@@ -30,7 +30,7 @@ export function StatCard({ label, value, icon: Icon, hint, color = "blue" }: Sta
       <div className="min-w-0 flex-1">
         <p className="text-xs uppercase tracking-wide text-muted-foreground/60">{label}</p>
         <p className="font-cyber text-2xl font-extrabold tracking-tight text-foreground">{value}</p>
-        {hint ? <p className="truncate text-[11px] text-muted-foreground">{hint}</p> : null}
+        {hint ? <p className="truncate text-xs text-muted-foreground">{hint}</p> : null}
       </div>
     </div>
   );

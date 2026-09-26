@@ -59,7 +59,7 @@ const LABEL_STYLE = { fontSize: 11, fontWeight: 600, fill: INK_2, fontVariantNum
 /** 自定义图例(①bid-quote 同构):8px 圆角色点 + 11px 名称。 */
 function Legend({ items }: { items: Array<[string, string]> }) {
   return (
-    <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-[11px]" style={{ color: INK_2 }}>
+    <div className="mt-1.5 flex flex-wrap items-center justify-center gap-x-5 gap-y-1.5 text-xs" style={{ color: INK_2 }}>
       {items.map(([label, color]) => (
         <span key={label} className="flex items-center gap-1.5">
           <span className="inline-block h-2 w-2 rounded-[3px]" style={{ background: color }} />

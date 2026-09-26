@@ -288,7 +288,7 @@ export function MiniCalendar() {
 
       {/* Selected date panel */}
       <div className="mt-3.5 flex flex-col border-t border-[var(--db-border-color-muted)] pt-3.5">
-        <div className="font-cyber flex items-center justify-between text-[11px] text-slate-500">
+        <div className="font-cyber flex items-center justify-between text-xs text-slate-500">
           <span>SELECTED DATE</span>
           <span className="font-bold text-blue-600">
             {currentMonth + 1}月{selectedDay}日
@@ -298,7 +298,7 @@ export function MiniCalendar() {
           {dayEvents.length === 0 ? (
             <div className="flex items-center justify-center gap-2 rounded border border-dashed border-[var(--db-border-color-muted)] bg-slate-400/5 p-2.5">
               <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
-              <p className="text-[11px] text-slate-500 italic">
+              <p className="text-xs text-slate-500 italic">
                 暂无事项 PROTOCOL STANDBY
               </p>
             </div>
@@ -338,7 +338,7 @@ export function MiniCalendar() {
                           : "个人"}
                   </span>
                 </div>
-                <h4 className="db-text-primary mt-0.5 text-[11px] font-semibold">
+                <h4 className="db-text-primary mt-0.5 text-xs font-semibold">
                   {ev.title}
                 </h4>
               </Link>

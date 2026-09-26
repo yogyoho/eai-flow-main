@@ -85,7 +85,7 @@ function ChartCard({
         </h3>
         {meta ? (
           <span
-            className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${badgeColors[badgeColor]}`}
+            className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${badgeColors[badgeColor]}`}
           >
             {meta}
           </span>
@@ -305,11 +305,11 @@ function AnalysisResult({
       {/* Title bar */}
       <div className="border-border bg-card flex items-center gap-3 rounded-xl border px-5 py-3.5 shadow-sm">
         <h2 className="text-lg font-bold tracking-tight">{goodsName}</h2>
-        <span className="bg-success/10 text-success rounded-full px-2.5 py-0.5 text-[11px] font-semibold">
+        <span className="bg-success/10 text-success rounded-full px-2.5 py-0.5 text-xs font-semibold">
           已校验 {okCount} / {total}
         </span>
         {nrCount > 0 ? (
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-amber-600">
+          <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-600">
             待核验 {nrCount}
           </span>
         ) : null}
@@ -536,14 +536,14 @@ function AnalysisResult({
             <Table2 className="text-muted-foreground/50 h-[15px] w-[15px]" />
             价格明细(跨合同)
           </h3>
-          <span className="bg-success/10 text-success rounded-full px-2.5 py-0.5 text-[11px] font-bold">
+          <span className="bg-success/10 text-success rounded-full px-2.5 py-0.5 text-xs font-bold">
             {total} 条
           </span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-border text-muted-foreground/50 border-b text-[11px] tracking-wide uppercase">
+              <tr className="border-border text-muted-foreground/50 border-b text-xs tracking-wide uppercase">
                 <th className="px-5 py-2.5 text-left font-semibold">
                   货物名称
                 </th>
@@ -588,7 +588,7 @@ function AnalysisResult({
                     <td className="text-muted-foreground px-5 py-2.5 text-xs">
                       {(it.spec_model as string) || "—"}
                     </td>
-                    <td className="text-muted-foreground px-5 py-2.5 font-mono text-[11px]">
+                    <td className="text-muted-foreground px-5 py-2.5 font-mono text-xs">
                       {(it.contract_no as string) || "—"}
                     </td>
                     <td className="px-5 py-2.5 font-medium">
@@ -608,7 +608,7 @@ function AnalysisResult({
                     </td>
                     <td className="px-5 py-2.5">
                       <span
-                        className={`rounded px-2 py-0.5 text-[11px] font-medium ${it.validation_status === "ok" ? "bg-success/10 text-success" : "bg-amber-500/10 text-amber-600"}`}
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${it.validation_status === "ok" ? "bg-success/10 text-success" : "bg-amber-500/10 text-amber-600"}`}
                       >
                         {it.validation_status === "ok" ? "已校验" : "待核验"}
                       </span>
