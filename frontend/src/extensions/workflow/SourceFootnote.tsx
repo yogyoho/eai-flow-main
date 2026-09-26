@@ -22,13 +22,13 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_BADGE_COLORS: Record<string, string> = {
-  rag_retrieval: "bg-blue-100 text-blue-700",
-  knowledge_base: "bg-blue-50 text-blue-600",
-  regulation: "bg-green-100 text-green-700",
-  ai_generated: "bg-amber-100 text-amber-700",
-  human_written: "bg-purple-100 text-purple-700",
-  template: "bg-gray-100 text-gray-600",
-  external_data: "bg-cyan-100 text-cyan-700",
+  rag_retrieval: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  knowledge_base: "bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400",
+  regulation: "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300",
+  ai_generated: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  human_written: "bg-purple-100 dark:bg-purple-500/15 text-purple-700",
+  template: "bg-muted text-muted-foreground",
+  external_data: "bg-cyan-100 dark:bg-cyan-500/15 text-cyan-700",
 };
 
 export function SourceFootnote({ sources }: SourceFootnoteProps) {
@@ -40,9 +40,9 @@ export function SourceFootnote({ sources }: SourceFootnoteProps) {
       </div>
       {sources.map((source, idx) => (
         <div key={source.id} className="flex items-baseline gap-2 text-xs">
-          <span className="font-bold text-amber-600">[{idx + 1}]</span>
+          <span className="font-bold text-amber-600 dark:text-amber-400">[{idx + 1}]</span>
           <span
-            className={`rounded px-1.5 py-0.5 text-[10px] ${TYPE_BADGE_COLORS[source.sourceType] ?? "bg-gray-100"}`}
+            className={`rounded px-1.5 py-0.5 text-[10px] ${TYPE_BADGE_COLORS[source.sourceType] ?? "bg-muted"}`}
           >
             {TYPE_LABELS[source.sourceType] ?? source.sourceType}
           </span>

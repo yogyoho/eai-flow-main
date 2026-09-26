@@ -27,8 +27,8 @@ export function MergeConfigPanel({ data, onUpdate: _onUpdate }: MergeConfigPanel
               onClick={() => _onUpdate({ mergeMode: opt.value })}
               className={`text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
                 mode === opt.value
-                  ? "border-green-300 bg-green-50 text-green-700 font-semibold"
-                  : "border-border text-muted-foreground hover:border-green-200"
+                  ? "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 font-semibold"
+                  : "border-border text-muted-foreground hover:border-green-200 dark:border-green-800"
               }`}
             >
               <div>{opt.label}</div>

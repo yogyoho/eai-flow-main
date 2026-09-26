@@ -217,19 +217,19 @@ export default function ExtractionProgressDrawer({
                           className="flex items-center gap-2 text-xs"
                         >
                           {step.status === "completed" ? (
-                            <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                           ) : step.status === "running" ? (
                             <Loader2 className="text-primary h-3 w-3 animate-spin" />
                           ) : step.status === "failed" ? (
-                            <AlertCircle className="h-3 w-3 text-red-500" />
+                            <AlertCircle className="h-3 w-3 text-red-600 dark:text-red-400" />
                           ) : (
                             <div className="border-border h-3 w-3 rounded-full border" />
                           )}
                           <span
                             className={cn(
-                              step.status === "completed" && "text-emerald-500",
+                              step.status === "completed" && "text-emerald-600 dark:text-emerald-400",
                               step.status === "running" && "text-primary",
-                              step.status === "failed" && "text-red-500",
+                              step.status === "failed" && "text-red-600 dark:text-red-400",
                               step.status === "waiting" &&
                                 "text-muted-foreground",
                             )}
@@ -291,13 +291,13 @@ export default function ExtractionProgressDrawer({
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
                         <span className="text-foreground truncate text-sm font-medium">
                           {task.name ?? "抽取任务"}
                         </span>
                       </div>
                       {task.result && (
-                        <p className="mt-1 text-xs text-emerald-500">
+                        <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">
                           {task.result.name} {task.result.version}
                         </p>
                       )}

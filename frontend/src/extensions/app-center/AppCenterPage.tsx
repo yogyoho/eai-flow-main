@@ -69,7 +69,7 @@ export function AppCenterPage() {
     <div className="mx-auto max-w-7xl px-6 py-8">
       {/* 标题区 */}
       <header className="mb-6 flex items-start gap-3">
-        <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 text-blue-600 shrink-0">
+        <div className="p-3 border border-primary/20 bg-primary/10 text-primary rounded-lg shrink-0">
           <Blocks className="w-6 h-6" />
         </div>
         <div className="min-w-0">
@@ -102,7 +102,7 @@ export function AppCenterPage() {
       {showFavorites && (
         <section className="mt-8">
           <div className="mb-3 flex items-center gap-2">
-            <Star className="size-4 text-amber-500" fill="currentColor" />
+            <Star className="size-4 text-amber-500 dark:text-amber-400" fill="currentColor" />
             <h2 className="text-sm font-semibold text-foreground">我的收藏</h2>
             <span className="text-xs text-muted-foreground">
               {favoriteApps.length}

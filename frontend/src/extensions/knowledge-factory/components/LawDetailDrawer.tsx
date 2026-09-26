@@ -46,7 +46,7 @@ export default function LawDetailDrawer({
     switch (status) {
       case "active":
         return (
-          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-1 text-sm text-emerald-500">
+          <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-1 text-sm text-emerald-600 dark:text-emerald-400">
             <CheckCircle className="h-4 w-4" /> 现行有效
           </span>
         );
@@ -58,7 +58,7 @@ export default function LawDetailDrawer({
         );
       case "updating":
         return (
-          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-1 text-sm text-amber-500">
+          <span className="inline-flex items-center gap-1 rounded bg-amber-500/10 px-2 py-1 text-sm text-amber-600 dark:text-amber-400">
             <Loader2 className="h-4 w-4 animate-spin" /> 正在修订
           </span>
         );
@@ -71,19 +71,19 @@ export default function LawDetailDrawer({
     switch (isSynced) {
       case "synced":
         return (
-          <span className="inline-flex items-center gap-1 text-sm text-emerald-500">
+          <span className="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
             <CheckCircle className="h-4 w-4" /> 已同步到RAGFlow
           </span>
         );
       case "pending":
         return (
-          <span className="inline-flex items-center gap-1 text-sm text-amber-500">
+          <span className="inline-flex items-center gap-1 text-sm text-amber-600 dark:text-amber-400">
             <AlertCircle className="h-4 w-4" /> 待同步
           </span>
         );
       case "failed":
         return (
-          <span className="inline-flex items-center gap-1 text-sm text-red-500">
+          <span className="inline-flex items-center gap-1 text-sm text-red-600 dark:text-red-400">
             <AlertCircle className="h-4 w-4" /> 同步失败
           </span>
         );

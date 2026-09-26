@@ -78,7 +78,7 @@ function docStage(doc: { parse_status: string; confirm_status: string }): {
   if (doc.confirm_status === "clustered")
     return {
       label: "已分组",
-      tone: "text-blue-600 border-blue-500/30 bg-blue-500/5",
+      tone: "text-blue-600 dark:text-blue-400 border-blue-500/30 bg-blue-500/5",
       pending: false,
     };
   if (doc.parse_status === "failed")
@@ -108,12 +108,12 @@ function docStage(doc: { parse_status: string; confirm_status: string }): {
   if (doc.parse_status === "needs_review")
     return {
       label: "待人工核验",
-      tone: "text-amber-600 border-amber-500/30 bg-amber-500/5",
+      tone: "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5",
       pending: false,
     };
   return {
     label: "已解析",
-    tone: "text-emerald-600 border-emerald-500/30 bg-emerald-500/5",
+    tone: "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
     pending: false,
   };
 }
@@ -644,7 +644,7 @@ export function ContractsView() {
         }
       />
 
-      {notice && <p className="text-sm text-blue-600">{notice}</p>}
+      {notice && <p className="text-sm text-blue-600 dark:text-blue-400">{notice}</p>}
 
       <form
         className="flex items-center gap-2"
@@ -756,7 +756,7 @@ export function ContractsView() {
                           </span>
                           {doc.items_needs_review > 0 && (
                             <span
-                              className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600"
+                              className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400"
                               title="validation_status=needs_review 的分项行数 / 分项总行数"
                             >
                               ⚠ {doc.items_needs_review}/{doc.items_total}{" "}
@@ -764,7 +764,7 @@ export function ContractsView() {
                             </span>
                           )}
                           {needsSeedGuide && (
-                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600">
+                            <span className="inline-flex items-center rounded-full border border-amber-500/30 bg-amber-500/5 px-2 py-0.5 text-xs text-amber-600 dark:text-amber-400">
                               ⚠ {unmatched.length} 张疑似价格表
                             </span>
                           )}
@@ -796,7 +796,7 @@ export function ContractsView() {
                               });
                             }}
                           >
-                            <RotateCcw className="h-3.5 w-3.5 text-blue-600" />
+                            <RotateCcw className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
                             重新解析
                           </Button>
                           <Button
@@ -872,7 +872,7 @@ export function ContractsView() {
                                 <Button
                                   size="sm"
                                   variant="outline"
-                                  className="h-7 text-xs text-amber-600 hover:text-amber-600"
+                                  className="h-7 text-xs text-amber-600 hover:text-amber-600 dark:text-amber-400"
                                   onClick={() =>
                                     setUnmatchedDoc({
                                       id: doc.id,
@@ -1057,8 +1057,8 @@ export function ContractsView() {
       <Dialog open={showClusterConfirm} onOpenChange={setShowClusterConfirm}>
         <DialogContent>
           <DialogHeader>
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-              <AlertTriangle className="h-6 w-6 text-amber-600" />
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15">
+              <AlertTriangle className="text-amber-600 dark:text-amber-400 h-6 w-6" />
             </div>
             <DialogTitle className="text-center">开始分组?</DialogTitle>
             <DialogDescription className="text-center">

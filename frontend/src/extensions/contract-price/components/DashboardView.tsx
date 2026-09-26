@@ -17,11 +17,11 @@ export function DashboardView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 shrink-0">
-            <LayoutDashboard className="h-[24px] w-[24px] text-blue-500" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/40 shrink-0">
+            <LayoutDashboard className="text-blue-600 dark:text-blue-300 h-[24px] w-[24px]" />
           </div>
           <div>
-            <h1 className="text-[22px] font-bold tracking-tight">合同价格分析总览</h1>
+            <h1 className="text-xl font-bold tracking-tight">合同价格分析总览</h1>
             <p className="text-sm text-muted-foreground">跨合同货物价格基准 · 箱线图 / 趋势 / 供应商对比</p>
           </div>
         </div>
@@ -60,7 +60,7 @@ export function DashboardView() {
         <p className="text-sm text-destructive">流水线启动失败：{(runPipeline.error).message}</p>
       ) : null}
       {runPipeline.isSuccess ? (
-        <p className="text-sm text-emerald-500">已启动分析任务 {runPipeline.data.run_id}，稍后在「任务历史」查看进度。</p>
+        <p className="text-sm text-success">已启动分析任务 {runPipeline.data.run_id}，稍后在「任务历史」查看进度。</p>
       ) : null}
 
     </div>

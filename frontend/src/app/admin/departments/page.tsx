@@ -144,15 +144,15 @@ function DeptTreeNode({
             className={cn(
               "rounded-full px-1.5 py-0 text-[10px] font-medium",
               dept.unit_type === "external"
-                ? "bg-amber-100 text-amber-700"
-                : "bg-blue-100 text-blue-700",
+                ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                : "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
             )}
           >
             {dept.unit_type === "external" ? "外部" : "虚拟"}
           </span>
         )}
         {dept.status === "inactive" && (
-          <span className="rounded-full bg-gray-100 px-1.5 py-0 text-[10px] text-gray-500">
+          <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0 text-[10px]">
             停用
           </span>
         )}

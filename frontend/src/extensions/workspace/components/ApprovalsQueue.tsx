@@ -18,9 +18,9 @@ const STATE_LABEL: Record<string, string> = {
   rejected: "已驳回",
 };
 const STATE_TONE: Record<string, string> = {
-  pending: "bg-amber-500/10 text-amber-500",
-  approved: "bg-emerald-500/10 text-emerald-500",
-  rejected: "bg-red-500/10 text-red-500",
+  pending: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  approved: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  rejected: "bg-red-500/10 text-red-600 dark:text-red-400",
 };
 
 interface ApprovalsQueueProps {
@@ -216,7 +216,7 @@ export function ApprovalsQueue({ projectId }: ApprovalsQueueProps) {
                     className="flex items-center gap-2 font-mono text-xs"
                   >
                     {p.type === "agent" ? (
-                      <Bot className="h-3.5 w-3.5 text-purple-400" />
+                      <Bot className="text-purple-600 dark:text-purple-400 h-3.5 w-3.5" />
                     ) : (
                       <span>👤</span>
                     )}

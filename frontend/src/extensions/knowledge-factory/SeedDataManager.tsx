@@ -110,14 +110,14 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
               <StatRow label="种子数据版本" icon={Tag} iconWrapClass="bg-violet-100 dark:bg-violet-950/50" iconClass="text-violet-600 dark:text-violet-400">
                 <div className="truncate font-mono text-xl font-bold tabular-nums text-foreground">{status.seedVersion}</div>
               </StatRow>
-              <StatRow label="种子规则数" icon={Sprout} iconWrapClass="bg-amber-500/10" iconClass="text-amber-500">
-                <div className="text-2xl font-bold tabular-nums text-amber-500">{status.seedTotal}</div>
+              <StatRow label="种子规则数" icon={Sprout} iconWrapClass="bg-amber-500/10" iconClass="text-amber-600 dark:text-amber-400">
+                <div className="text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{status.seedTotal}</div>
               </StatRow>
               <StatRow label="数据库规则数" icon={Database} iconWrapClass="bg-muted" iconClass="text-muted-foreground">
                 <div className="text-2xl font-bold tabular-nums text-foreground">{status.dbTotal}</div>
               </StatRow>
-              <StatRow label="启用规则" icon={BadgeCheck} iconWrapClass="bg-emerald-500/10" iconClass="text-emerald-500">
-                <div className="text-2xl font-bold tabular-nums text-emerald-500">{status.dbEnabled}</div>
+              <StatRow label="启用规则" icon={BadgeCheck} iconWrapClass="bg-emerald-500/10" iconClass="text-emerald-600 dark:text-emerald-400">
+                <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{status.dbEnabled}</div>
               </StatRow>
               <StatRow label="禁用规则" icon={CircleSlash} iconWrapClass="bg-muted" iconClass="text-muted-foreground">
                 <div className="text-2xl font-bold tabular-nums text-muted-foreground">{status.dbDisabled}</div>
@@ -126,12 +126,12 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
                 label="状态"
                 icon={status.upToDate ? CheckCircle2 : AlertCircle}
                 iconWrapClass={status.upToDate ? "bg-emerald-500/10" : "bg-amber-500/10"}
-                iconClass={status.upToDate ? "text-emerald-500" : "text-amber-500"}
+                iconClass={status.upToDate ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}
               >
                 <div
                   className={cn(
                     "text-base font-semibold leading-snug",
-                    status.upToDate ? "text-emerald-500" : "text-amber-500",
+                    status.upToDate ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
                   )}
                 >
                   {status.upToDate ? "已是最新" : "需要更新"}
@@ -147,7 +147,7 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
                 {status.inSeedNotInDb.map((ruleId) => (
                   <span
                     key={ruleId}
-                    className="rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-xs text-amber-500"
+                    className="rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-xs text-amber-600 dark:text-amber-400"
                   >
                     {ruleId}
                   </span>
@@ -163,7 +163,7 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
                 {status.inDbNotInSeed.map((ruleId) => (
                   <span
                     key={ruleId}
-                    className="rounded-md bg-red-500/10 px-2 py-0.5 font-mono text-xs text-red-500"
+                    className="rounded-md bg-red-500/10 px-2 py-0.5 font-mono text-xs text-red-600 dark:text-red-400"
                   >
                     {ruleId}
                   </span>
@@ -200,8 +200,8 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
                 <StatRow label="总数" icon={ListOrdered} iconWrapClass="bg-muted" iconClass="text-muted-foreground">
                   <div className="text-2xl font-bold tabular-nums text-foreground">{result.total}</div>
                 </StatRow>
-                <StatRow label="新增" icon={FolderPlus} iconWrapClass="bg-emerald-500/10" iconClass="text-emerald-500">
-                  <div className="text-2xl font-bold tabular-nums text-emerald-500">{result.created}</div>
+                <StatRow label="新增" icon={FolderPlus} iconWrapClass="bg-emerald-500/10" iconClass="text-emerald-600 dark:text-emerald-400">
+                  <div className="text-2xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{result.created}</div>
                 </StatRow>
                 <StatRow label="更新" icon={RefreshCw} iconWrapClass="bg-primary/10" iconClass="text-primary">
                   <div className="text-2xl font-bold tabular-nums text-primary">{result.updated}</div>
@@ -226,8 +226,8 @@ export function SeedDataManager({ status, onImport, onClose }: SeedDataManagerPr
               )}
 
               {result.success && (
-                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-500">
-                  <CheckCircle2 className="size-5 shrink-0 text-emerald-500" aria-hidden />
+                <div className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
                   种子数据导入成功！
                 </div>
               )}

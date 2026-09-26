@@ -205,7 +205,7 @@ export function WorkspaceHome() {
     <main className="flex-1 overflow-y-auto bg-background">
       {/* Header */}
       <div className="flex h-14 items-center gap-4 border-b border-border bg-card px-7">
-        <div className="flex h-7 w-7 items-center justify-center border rounded-sm border-violet-200 bg-violet-50 text-violet-600 shrink-0">
+        <div className="flex h-7 w-7 items-center justify-center border rounded-sm border-violet-200 bg-violet-50 text-violet-600 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 shrink-0">
           <Boxes className="w-4 h-4" />
         </div>
         <h1 className="text-lg font-bold text-foreground">协作工作台</h1>

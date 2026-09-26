@@ -901,7 +901,7 @@ export default function BusinessDictionary() {
                     </td>
                     <td className="px-4 py-3">
                       {item.enabled ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-500">
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="h-3.5 w-3.5" />
                           启用
                         </span>

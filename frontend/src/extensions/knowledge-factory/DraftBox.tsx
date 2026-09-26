@@ -136,9 +136,9 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "draft":
-        return "bg-amber-500/10 text-amber-500";
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400";
       case "imported":
-        return "bg-emerald-500/10 text-emerald-500";
+        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
       case "deleted":
         return "bg-muted text-muted-foreground";
       default:
@@ -323,7 +323,7 @@ export default function DraftBox({ onClose, onEdit }: DraftBoxProps) {
                           e.stopPropagation();
                           void handleDelete(draft.id);
                         }}
-                        className="rounded-lg p-2 text-red-500 hover:bg-red-500/10"
+                        className="rounded-lg p-2 text-red-600 dark:text-red-400 hover:bg-red-500/10"
                         title="删除"
                       >
                         <Trash2 className="h-4 w-4" />

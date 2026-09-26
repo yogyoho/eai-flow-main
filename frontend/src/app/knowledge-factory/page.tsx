@@ -72,7 +72,7 @@ function KnowledgeFactoryMain() {
     <div className="flex flex-col h-full bg-muted">
       {/* 顶部导航栏 — 与 admin/layout.tsx 一致 */}
       <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
-        <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 shrink-0 mr-3">
+        <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 shrink-0 mr-3">
           <Factory className="w-4 h-4" />
         </div>
         <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>
@@ -121,7 +121,7 @@ function KnowledgeFactoryLayoutFallback({ children }: { children: React.ReactNod
     <ShellLayout>
       <div className="flex flex-col h-full bg-muted">
         <header className="bg-background border-b border-border h-15 flex items-center px-6 shrink-0">
-          <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 shrink-0 mr-3">
+          <div className="p-1 border rounded-sm bg-amber-50 border-amber-200 text-amber-600 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300 shrink-0 mr-3">
             <Factory className="w-4 h-4" />
           </div>
           <span className="font-bold text-lg tracking-tight text-foreground mr-8">知识工厂</span>

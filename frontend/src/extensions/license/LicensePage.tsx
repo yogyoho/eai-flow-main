@@ -106,7 +106,7 @@ export default function LicensePage() {
       <h1 className="text-2xl font-bold">许可证管理</h1>
 
       {/* Status Card */}
-      <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="rounded-xl border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold">当前许可证</h2>
         {status?.is_dev_mode && (
           <div className="mb-4 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-gradient-to-r from-amber-500/5 via-amber-500/10 to-amber-500/5 px-4 py-3">
@@ -125,45 +125,45 @@ export default function LicensePage() {
         )}
         <dl className="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <dt className="text-gray-500">状态</dt>
+            <dt className="text-muted-foreground">状态</dt>
             <dd>
               {status?.in_grace_period ? (
-                <span className="text-yellow-600">
+                <span className="text-amber-600 dark:text-amber-400">
                   宽限期 ({status.grace_period_remaining_days}天)
                 </span>
               ) : status?.valid ? (
-                <span className="text-green-600">有效</span>
+                <span className="text-success">有效</span>
               ) : (
-                <span className="text-red-600">无效</span>
+                <span className="text-destructive">无效</span>
               )}
             </dd>
           </div>
           <div className="col-span-2">
-            <dt className="text-gray-500">机器ID</dt>
+            <dt className="text-muted-foreground">机器ID</dt>
             <dd className="mt-1 font-mono text-xs break-all">
               {status?.machine_id ?? "—"}
             </dd>
           </div>
           <div>
-            <dt className="text-gray-500">类型</dt>
+            <dt className="text-muted-foreground">类型</dt>
             <dd>{typeLabel(status?.type)}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">客户</dt>
+            <dt className="text-muted-foreground">客户</dt>
             <dd>{status?.customer ?? "—"}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">到期时间</dt>
+            <dt className="text-muted-foreground">到期时间</dt>
             <dd>{formatDate(status?.expires_at ?? null)}</dd>
           </div>
           <div>
-            <dt className="text-gray-500">用户数</dt>
+            <dt className="text-muted-foreground">用户数</dt>
             <dd>
               {status?.current_users ?? 0} / {status?.max_users ?? "∞"}
             </dd>
           </div>
           <div>
-            <dt className="text-gray-500">剩余天数</dt>
+            <dt className="text-muted-foreground">剩余天数</dt>
             <dd>{status?.days_remaining ?? "—"}</dd>
           </div>
         </dl>
@@ -171,7 +171,7 @@ export default function LicensePage() {
         {/* Module badges */}
         {status?.modules && Object.keys(status.modules).length > 0 && (
           <div className="mt-5">
-            <span className="mb-3 block text-xs font-medium tracking-widest text-gray-400 uppercase">
+            <span className="text-muted-foreground/80 mb-3 block text-xs font-medium tracking-widest uppercase">
               模块授权
             </span>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -181,7 +181,7 @@ export default function LicensePage() {
                   className={`group relative overflow-hidden rounded-lg border px-3 py-2.5 transition-all duration-200 hover:shadow-md ${
                     enabled
                       ? "border-emerald-500/20 bg-emerald-500/[0.04] hover:border-emerald-500/40 hover:bg-emerald-500/[0.07] dark:border-emerald-500/15 dark:bg-emerald-500/[0.03]"
-                      : "border-gray-200 bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/30"
+                      : "border-border bg-muted/50"
                   }`}
                 >
                   {/* top accent strip */}
@@ -197,20 +197,20 @@ export default function LicensePage() {
                       className={`flex size-2 shrink-0 rounded-full ${
                         enabled
                           ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.4)] dark:bg-emerald-500 dark:shadow-[0_0_8px_rgba(52,211,153,0.3)]"
-                          : "bg-gray-300 dark:bg-gray-600"
+                          : "bg-input"
                       }`}
                     />
                     <span
                       className={`truncate text-sm font-medium ${
                         enabled
-                          ? "text-gray-800 dark:text-gray-200"
-                          : "text-gray-400 dark:text-gray-500"
+                          ? "text-foreground"
+                          : "text-muted-foreground"
                       }`}
                     >
                       {name}
                     </span>
                   </div>
-                  <p className="mt-1 pl-[26px] text-xs text-gray-400 dark:text-gray-500">
+                  <p className="text-muted-foreground mt-1 pl-[26px] text-xs">
                     {enabled ? "已授权" : "未授权"}
                   </p>
                 </div>
@@ -235,17 +235,17 @@ export default function LicensePage() {
       </div>
 
       {/* Import */}
-      <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="rounded-xl border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold">导入许可证</h2>
-        <p className="mb-4 text-sm text-gray-500">
+        <p className="mb-4 text-sm text-muted-foreground">
           如已获取{" "}
-          <code className="rounded bg-gray-100 px-1 py-0.5 text-xs dark:bg-gray-800">
+          <code className="bg-muted rounded px-1 py-0.5 text-xs">
             license.lic
           </code>{" "}
           文件，可直接导入。如尚未申请，请先下载申请文件并提交给厂商制作许可证。
         </p>
         <div className="flex flex-wrap items-center gap-3">
-          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+          <label className="bg-primary hover:bg-primary/90 inline-flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white">
             <FileDown className="h-4 w-4" />
             选择 .lic 文件
             <input
@@ -258,14 +258,14 @@ export default function LicensePage() {
           <button
             type="button"
             onClick={handleDownloadRequest}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="inline-flex items-center gap-2 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
           >
             <Download className="h-4 w-4" />
             申请许可证
           </button>
         </div>
         {importMutation.isPending && (
-          <span className="ml-3 text-sm text-gray-500">导入中...</span>
+          <span className="ml-3 text-sm text-muted-foreground">导入中...</span>
         )}
         {importError && (
           <div className="mt-3 rounded bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-400">
@@ -281,12 +281,12 @@ export default function LicensePage() {
 
       {/* Export */}
       {status?.valid && (
-        <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
+        <div className="rounded-xl border bg-card p-6 shadow-sm">
           <h2 className="mb-4 text-lg font-semibold">导出许可证</h2>
           <button
             type="button"
             onClick={handleExport}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            className="inline-flex items-center gap-2 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
           >
             <Download className="h-4 w-4" />
             下载 license.lic
@@ -295,15 +295,15 @@ export default function LicensePage() {
       )}
 
       {/* History */}
-      <div className="rounded-xl border bg-white p-6 shadow-sm dark:bg-gray-900">
+      <div className="rounded-xl border bg-card p-6 shadow-sm">
         <h2 className="mb-4 text-lg font-semibold">导入历史</h2>
         {!history?.items.length ? (
-          <p className="text-sm text-gray-400">暂无记录</p>
+          <p className="text-sm text-muted-foreground/80">暂无记录</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-left text-gray-500">
+                <tr className="border-b text-left text-muted-foreground">
                   <th className="pr-4 pb-2">许可证 ID</th>
                   <th className="pr-4 pb-2">类型</th>
                   <th className="pr-4 pb-2">客户</th>
@@ -313,7 +313,7 @@ export default function LicensePage() {
               </thead>
               <tbody>
                 {history.items.map((item: LicenseHistoryItem) => (
-                  <tr key={item.id} className="border-b dark:border-gray-800">
+                  <tr key={item.id} className="border-border border-b">
                     <td className="py-2 pr-4 font-mono text-xs">
                       {item.jwt_jti}
                     </td>
@@ -324,9 +324,9 @@ export default function LicensePage() {
                     </td>
                     <td className="py-2">
                       {item.is_active ? (
-                        <span className="text-green-600">生效中</span>
+                        <span className="text-success">生效中</span>
                       ) : (
-                        <span className="text-gray-400">已替换</span>
+                        <span className="text-muted-foreground/80">已替换</span>
                       )}
                     </td>
                   </tr>

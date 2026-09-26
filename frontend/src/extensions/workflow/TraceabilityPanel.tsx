@@ -65,11 +65,11 @@ export function TraceabilityPanel({ projectId, chapterId }: TraceabilityPanelPro
         )}
       </div>
       {missing.length > 0 && (
-        <div className="p-2 bg-red-50 border border-red-200 rounded">
-          <div className="text-xs font-semibold text-red-700">缺少来源标注</div>
+        <div className="p-2 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded">
+          <div className="text-xs font-semibold text-red-700 dark:text-red-300">缺少来源标注</div>
           <div className="mt-1 space-y-1">
             {missing.map((m, i) => (
-              <div key={i} className="text-[10px] text-red-600">第 {m.blockIndex + 1} 段: &quot;{m.preview}&quot;...</div>
+              <div key={i} className="text-[10px] text-red-600 dark:text-red-400">第 {m.blockIndex + 1} 段: &quot;{m.preview}&quot;...</div>
             ))}
           </div>
         </div>

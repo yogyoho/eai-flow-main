@@ -15,11 +15,11 @@ interface StatCardProps {
 }
 
 const colorClasses: Record<StatColor, string> = {
-  blue: "bg-blue-500/10 text-blue-500",
-  violet: "bg-violet-500/10 text-violet-500",
-  amber: "bg-amber-500/10 text-amber-500",
-  rose: "bg-rose-500/10 text-rose-500",
-  emerald: "bg-emerald-500/10 text-emerald-500",
+  blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  rose: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  emerald: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
 };
 
 export function StatCard({ label, value, icon: Icon, hint, color = "blue" }: StatCardProps) {

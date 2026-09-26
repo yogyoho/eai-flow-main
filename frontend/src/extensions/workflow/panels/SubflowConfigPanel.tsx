@@ -102,7 +102,7 @@ export function SubflowConfigPanel({
       {/* Section header */}
       <div className="flex items-center gap-2">
         <div className="h-4 w-1 rounded-full bg-violet-500" />
-        <span className="text-xs font-semibold tracking-wider text-violet-600 uppercase">
+        <span className="text-xs font-semibold tracking-wider text-violet-600 dark:text-violet-400 uppercase">
           子流程属性
         </span>
       </div>
@@ -171,7 +171,7 @@ export function SubflowConfigPanel({
                 key={slot.roleKey}
                 className="group flex items-center gap-1.5"
               >
-                <span className="flex-1 truncate rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-medium text-violet-700">
+                <span className="flex-1 truncate rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 px-2 py-1 text-xs font-medium text-violet-700 dark:text-violet-300">
                   {slot.label}
                 </span>
                 <input
@@ -191,7 +191,7 @@ export function SubflowConfigPanel({
                 <button
                   type="button"
                   onClick={() => removeRole(slot.roleKey)}
-                  className="p-0.5 text-gray-300 transition-colors hover:text-red-500"
+                  className="p-0.5 text-muted-foreground/60 transition-colors hover:text-red-600 dark:text-red-400 dark:text-red-400"
                 >
                   <X className="h-3 w-3" />
                 </button>
@@ -213,7 +213,7 @@ export function SubflowConfigPanel({
             type="button"
             onClick={addRole}
             disabled={roles.some((r) => r.roleKey === newRoleKey)}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-xs text-violet-600 transition-colors hover:bg-violet-100 disabled:opacity-40"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 text-xs text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-100 dark:bg-violet-500/15 disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5" />
           </button>

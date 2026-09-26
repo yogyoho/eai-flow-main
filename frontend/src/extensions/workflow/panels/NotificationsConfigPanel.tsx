@@ -66,7 +66,7 @@ export function NotificationsConfigPanel({ notifications, onUpdate }: Notificati
             <button
               type="button"
               onClick={() => removeNotification(idx)}
-              className="p-1 text-muted-foreground/40 hover:text-red-500 transition-colors"
+              className="p-1 text-muted-foreground/40 hover:text-red-600 dark:text-red-400 dark:text-red-400 transition-colors"
             >
               <Trash2 className="h-3 w-3" />
             </button>

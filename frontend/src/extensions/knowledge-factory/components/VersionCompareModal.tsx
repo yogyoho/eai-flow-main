@@ -17,15 +17,15 @@ interface VersionCompareModalProps {
 const STATUS_CONFIG = {
   added: {
     label: "新增",
-    color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
   },
   removed: {
     label: "删除",
-    color: "bg-red-500/10 text-red-500 border-red-500/20",
+    color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
   },
   modified: {
     label: "修改",
-    color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
+    color: "bg-yellow-500/10 text-amber-600 dark:text-amber-400 border-yellow-500/20",
   },
   unchanged: {
     label: "未变",
@@ -95,17 +95,17 @@ export default function VersionCompareModal({
       {
         label: "新增",
         count: compareResult.added_count,
-        color: "text-emerald-500",
+        color: "text-emerald-600 dark:text-emerald-400",
       },
       {
         label: "删除",
         count: compareResult.removed_count,
-        color: "text-red-500",
+        color: "text-red-600 dark:text-red-400",
       },
       {
         label: "修改",
         count: compareResult.modified_count,
-        color: "text-yellow-500",
+        color: "text-amber-600 dark:text-amber-400",
       },
       {
         label: "未变",
@@ -226,7 +226,7 @@ export default function VersionCompareModal({
           )}
 
           {error && (
-            <div className="rounded-lg bg-red-500/10 p-4 text-red-500">
+            <div className="rounded-lg bg-red-500/10 p-4 text-red-600 dark:text-red-400">
               {error}
             </div>
           )}

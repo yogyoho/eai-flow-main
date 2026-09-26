@@ -73,7 +73,7 @@ export function UnmatchedTablesDrawer({
       >
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileWarning className="h-5 w-5 text-amber-600" />
+            <FileWarning className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             <div>
               <h2 className="text-lg font-bold">
                 疑似价格表（{tables.length}）
@@ -112,7 +112,7 @@ export function UnmatchedTablesDrawer({
                     {t.row_count}行×{t.col_count}列
                   </span>
                   {savedKeys.has(tableKey(t)) && (
-                    <span className="ml-2 text-xs text-emerald-600">
+                    <span className="ml-2 text-xs text-emerald-600 dark:text-emerald-400">
                       已保存规则
                     </span>
                   )}

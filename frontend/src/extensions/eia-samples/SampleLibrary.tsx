@@ -343,7 +343,7 @@ export default function SampleLibrary() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="text-muted-foreground hover:text-red-600"
+                              className="text-muted-foreground hover:text-destructive"
                               title="删除样例"
                               onClick={() => void handleDelete(s)}
                             >

@@ -74,7 +74,7 @@ function AppCardImpl({
               isFavorite && "opacity-100",
               "hover:scale-110 active:scale-95",
               isFavorite
-                ? "text-amber-500 hover:bg-amber-500/10"
+                ? "text-amber-500 dark:text-amber-400 hover:bg-amber-500/10"
                 : "text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >

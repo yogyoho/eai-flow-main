@@ -35,9 +35,10 @@ export function ToastContainer({
             className={cn(
               "pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm",
               t.type === "success" &&
-                "border-green-200 bg-green-600 text-white",
-              t.type === "error" && "border-red-200 bg-red-600 text-white",
-              t.type === "info" && "border-blue-200 bg-blue-600 text-white",
+                "border-success/30 bg-success text-success-foreground",
+              t.type === "error" &&
+                "border-destructive/30 bg-destructive text-white",
+              t.type === "info" && "border-info/30 bg-info text-info-foreground",
             )}
           >
             {t.type === "success" && (

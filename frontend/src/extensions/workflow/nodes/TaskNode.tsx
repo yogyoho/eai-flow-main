@@ -29,12 +29,12 @@ export function TaskNode({
             {data.label ?? "任务"}
           </div>
           {data.team && (
-            <div className="text-[10px] text-gray-500">团队: {data.team}</div>
+            <div className="text-[10px] text-muted-foreground">团队: {data.team}</div>
           )}
         </div>
       </div>
       {data.aiAssist && (
-        <div className="mt-1 ml-[38px] text-[10px] text-teal-500">AI 辅助</div>
+        <div className="mt-1 ml-[38px] text-[10px] text-teal-600">AI 辅助</div>
       )}
       {roles.length > 0 && (
         <div className="mt-1 ml-[38px] flex flex-wrap gap-0.5">

@@ -361,10 +361,10 @@ function ConfirmCard({
                 : "-"}
         </span>
         {status === "applied" && (
-          <span className="text-xs font-medium text-green-600">已应用</span>
+          <span className="text-xs font-medium text-success">已应用</span>
         )}
         {status === "failed" && (
-          <span className="text-xs font-medium text-red-500">失败</span>
+          <span className="text-xs font-medium text-destructive">失败</span>
         )}
       </div>
       {status === "failed" && errorMsg && (
@@ -924,7 +924,7 @@ export default function DocAIAgentPanel({
             <span>❌ {error}</span>
             <button
               onClick={() => setError(null)}
-              className="ml-2 text-red-400 hover:text-red-600"
+              className="ml-2 text-destructive/70 hover:text-destructive"
             >
               ✕
             </button>

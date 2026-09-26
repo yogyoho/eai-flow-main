@@ -43,8 +43,8 @@ const ELEMENT_TYPE_META: Record<
   { label: string; badgeCls: string; badgeText?: string }
 > = {
   text: { label: "文本", badgeCls: "bg-primary/10 text-primary" },
-  table: { label: "表格", badgeCls: "bg-emerald-500/10 text-emerald-600" },
-  image: { label: "Logo", badgeCls: "bg-amber-500/10 text-amber-600" },
+  table: { label: "表格", badgeCls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" },
+  image: { label: "Logo", badgeCls: "bg-amber-500/10 text-amber-600 dark:text-amber-400" },
   spacer: { label: "空行", badgeCls: "bg-muted text-muted-foreground" },
   // divider 为历史遗留的"分页符"类型，仅保留渲染存量元素；不再提供插入（见 ELEMENT_TYPES）。
   divider: { label: "分页符", badgeCls: "bg-muted text-muted-foreground" },

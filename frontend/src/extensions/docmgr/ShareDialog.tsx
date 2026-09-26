@@ -141,7 +141,7 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
                 <Button variant="outline" className="w-full" onClick={handleCopyLink}>
                   {linkCopied ? (
                     <>
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <CheckCircle2 className="text-success w-4 h-4" />
                       链接已复制
                     </>
                   ) : (
@@ -195,7 +195,7 @@ export default function ShareDialog({ doc, open, onOpenChange }: ShareDialogProp
           </TabsContent>
         </Tabs>
         {shareMessage && (
-          <p className={`text-xs text-center ${shareMessage.includes("失败") ? "text-destructive" : "text-green-600"}`}>
+          <p className={`text-xs text-center ${shareMessage.includes("失败") ? "text-destructive" : "text-success"}`}>
             {shareMessage}
           </p>
         )}

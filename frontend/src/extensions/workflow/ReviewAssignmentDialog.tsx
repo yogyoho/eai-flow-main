@@ -107,7 +107,7 @@ export function ReviewAssignmentDialog({ projectId, phaseNode, open, onClose, on
                 <span className="flex-1 truncate">{a.reviewerId}</span>
                 <button
                   onClick={() => setAssignments((prev) => prev.filter((_, j) => j !== i))}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-600 dark:text-red-400 dark:text-red-400 hover:text-red-700 dark:text-red-300"
                 >
                   ✕
                 </button>

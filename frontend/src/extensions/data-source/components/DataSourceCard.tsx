@@ -22,9 +22,9 @@ const TYPE_ICON_MAP: Record<DataSourceType, React.ReactNode> = {
 
 const TYPE_COLOR_MAP: Record<DataSourceType, string> = {
   database: "border-primary/20 bg-primary/10 text-primary",
-  api: "border-amber-500/20 bg-amber-500/10 text-amber-600",
-  file: "border-green-500/20 bg-green-500/10 text-green-600",
-  gis: "border-purple-500/20 bg-purple-500/10 text-purple-600",
+  api: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  file: "border-green-500/20 bg-green-500/10 text-green-600 dark:text-green-400",
+  gis: "border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400",
 };
 
 function formatDate(dateString: string | null): string {

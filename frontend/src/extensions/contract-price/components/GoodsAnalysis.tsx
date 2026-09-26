@@ -56,10 +56,10 @@ import {
 type BadgeColor = "blue" | "cyan" | "violet" | "amber" | "emerald";
 
 const badgeColors: Record<BadgeColor, string> = {
-  blue: "bg-blue-500/10 text-blue-600",
-  cyan: "bg-cyan-500/10 text-cyan-600",
-  violet: "bg-violet-500/10 text-violet-600",
-  amber: "bg-amber-500/10 text-amber-600",
+  blue: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  cyan: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  violet: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  amber: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   emerald: "bg-success/10 text-success",
 };
 
@@ -309,7 +309,7 @@ function AnalysisResult({
           已校验 {okCount} / {total}
         </span>
         {nrCount > 0 ? (
-          <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-600">
+          <span className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-600 dark:text-amber-400">
             待核验 {nrCount}
           </span>
         ) : null}
@@ -595,7 +595,7 @@ function AnalysisResult({
                       {it.supplier as string}
                     </td>
                     <td
-                      className={`px-5 py-2.5 text-right font-mono font-semibold ${tier === "outlier" ? "text-rose-500" : tier === "baseline-shift" ? "text-amber-600" : "text-primary"}`}
+                      className={`px-5 py-2.5 text-right font-mono font-semibold ${tier === "outlier" ? "text-rose-600 dark:text-rose-400" : tier === "baseline-shift" ? "text-amber-600 dark:text-amber-400" : "text-primary"}`}
                       title={tierTip}
                     >
                       {price != null ? `¥${price.toFixed(2)}` : "—"}
@@ -608,7 +608,7 @@ function AnalysisResult({
                     </td>
                     <td className="px-5 py-2.5">
                       <span
-                        className={`rounded px-2 py-0.5 text-xs font-medium ${it.validation_status === "ok" ? "bg-success/10 text-success" : "bg-amber-500/10 text-amber-600"}`}
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${it.validation_status === "ok" ? "bg-success/10 text-success" : "bg-amber-500/10 text-amber-600 dark:text-amber-400"}`}
                       >
                         {it.validation_status === "ok" ? "已校验" : "待核验"}
                       </span>
@@ -617,7 +617,7 @@ function AnalysisResult({
                       {it.source_page != null ? (
                         <button
                           type="button"
-                          className="text-rose-500 transition-colors hover:text-rose-600"
+                          className="text-rose-600 transition-colors hover:text-rose-600 dark:text-rose-400"
                           title="溯源到原文"
                           onClick={() => setTrace(it)}
                         >

@@ -1148,7 +1148,7 @@ export function MessageList({
                       group.type === "assistant" && "group/assistant-turn",
                     )}
                   >
-                    {group.messages.map((msg) => {
+                    {group.messages.map((msg, msgIndex) => {
                       const item = (
                         <MessageListItem
                           message={msg}
@@ -1205,12 +1205,20 @@ export function MessageList({
                         !enableSidecarActions ||
                         msg.type !== "ai"
                       ) {
-                        return <div key={`${group.id}/${msg.id}`}>{item}</div>;
+                        // EAI-CUSTOM (bug-3447): msg.id 可为 null（合成占位消息），同组两条
+                        // null-id 会撞 React key；以组内序号兜底。upstream 同步注意保留。
+                        return (
+                          <div
+                            key={`${group.id}/${msg.id ?? `idx-${msgIndex}`}`}
+                          >
+                            {item}
+                          </div>
+                        );
                       }
 
                       return (
                         <div
-                          key={`${group.id}/${msg.id}`}
+                          key={`${group.id}/${msg.id ?? `idx-${msgIndex}`}`}
                           onMouseUp={(event) =>
                             handleAssistantTextSelection(
                               event,

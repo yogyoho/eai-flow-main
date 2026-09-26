@@ -33,11 +33,11 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
 
   const statusColor =
     status.status === "running"
-      ? "text-blue-600"
+      ? "text-blue-600 dark:text-blue-400"
       : status.status === "completed"
-        ? "text-green-600"
+        ? "text-green-600 dark:text-green-400"
         : status.status === "failed"
-          ? "text-red-600"
+          ? "text-red-600 dark:text-red-400"
           : "text-muted-foreground";
 
   return (
@@ -75,7 +75,7 @@ export function WorkflowMonitor({ projectId }: WorkflowMonitorProps) {
 
       {/* Current phase */}
       {status.currentPhaseNode && (
-        <div className="rounded border border-blue-200 bg-blue-50 p-2 text-xs">
+        <div className="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40 p-2 text-xs">
           当前节点:{" "}
           <span className="font-medium">{status.currentPhaseNode}</span>
         </div>

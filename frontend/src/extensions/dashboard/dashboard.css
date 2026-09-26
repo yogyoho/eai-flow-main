@@ -17,16 +17,19 @@
 }
 
 .dark {
-  --db-bg-primary: #020617;
-  --db-bg-secondary: rgba(15, 23, 42, 0.45);
-  --db-bg-tertiary: rgba(2, 6, 23, 0.7);
-  --db-border-color: rgba(30, 41, 59, 1);
-  --db-border-color-muted: rgba(30, 41, 59, 0.4);
-  --db-text-main: #f1f5f9;
-  --db-text-muted: #94a3b8;
-  --db-text-subtle: #475569;
+  /* EAI-CUSTOM: 暗色背景/边框/文字对齐应用主题 token（暖黑 #0f0f0f/#1a1b1b），
+     原为蓝调 slate（#020617/rgba(15,23,42)），与设置页等暗色观感割裂。
+     仅对齐底色系；glow/网格/字体等赛博特征保留。 */
+  --db-bg-primary: var(--background);
+  --db-bg-secondary: var(--card);
+  --db-bg-tertiary: var(--muted);
+  --db-border-color: var(--border);
+  --db-border-color-muted: rgba(255, 255, 255, 0.06);
+  --db-text-main: var(--foreground);
+  --db-text-muted: var(--muted-foreground);
+  --db-text-subtle: rgba(151, 153, 153, 0.6);
   --db-card-shadow: 0 0 20px -3px rgba(6, 182, 212, 0.15);
-  --db-header-bg: rgba(2, 6, 23, 0.8);
+  --db-header-bg: rgba(15, 15, 15, 0.8);
   --db-grid-line-color: rgba(59, 130, 246, 0.03);
   --db-panel-bg-glow: rgba(139, 92, 246, 0.05);
 }

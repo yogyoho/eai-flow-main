@@ -57,7 +57,7 @@ export function ApprovalDialog({ templateId, templateName, approvals, onAction, 
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "拒绝"}
           </button>
           <button onClick={() => handleAction("approved")} disabled={loading}
-            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg transition-colors disabled:opacity-50">
+            className="bg-success text-success-foreground hover:bg-success/90 px-4 py-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-50">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "通过并发布"}
           </button>
         </div>

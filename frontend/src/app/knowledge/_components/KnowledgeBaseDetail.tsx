@@ -989,9 +989,9 @@ export function KnowledgeBaseDetail({
                               className={cn(
                                 "shrink-0 rounded border px-1.5 py-0.5 text-[10px] font-semibold",
                                 g.grantee_type === "user"
-                                  ? "border-sky-500/30 bg-sky-500/10 text-sky-600"
+                                  ? "border-sky-500/30 bg-sky-500/10 text-sky-600 dark:text-sky-400"
                                   : g.grantee_type === "dept"
-                                    ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-600"
+                                    ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
                                     : "border-primary/20 bg-primary/10 text-primary",
                               )}
                             >

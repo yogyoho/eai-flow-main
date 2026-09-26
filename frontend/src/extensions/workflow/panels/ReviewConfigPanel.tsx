@@ -23,7 +23,7 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
       {/* Section header */}
       <div className="flex items-center gap-2">
         <div className="w-1 h-4 rounded-full bg-red-500" />
-        <span className="text-xs font-semibold uppercase tracking-wider text-red-600">审核属性</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">审核属性</span>
       </div>
 
       {/* Review name */}
@@ -47,8 +47,8 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
                 key={mode.value}
                 className={`flex items-start gap-2.5 p-2.5 rounded-lg border cursor-pointer transition-all ${
                   isSelected
-                    ? "border-red-300 bg-red-50/60 shadow-sm"
-                    : "border-border bg-background hover:border-red-200 hover:bg-red-50/30"
+                    ? "border-red-300 dark:border-red-700 bg-red-50/60 shadow-sm"
+                    : "border-border bg-background hover:border-red-200 dark:border-red-800 hover:bg-red-50/30"
                 }`}
               >
                 <div className="mt-0.5">
@@ -62,7 +62,7 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
                   />
                 </div>
                 <div>
-                  <div className={`text-xs font-medium ${isSelected ? "text-red-700" : "text-foreground"}`}>
+                  <div className={`text-xs font-medium ${isSelected ? "text-red-700 dark:text-red-300" : "text-foreground"}`}>
                     {mode.label}
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-0.5">{mode.desc}</div>
@@ -74,8 +74,8 @@ export function ReviewConfigPanel({ data, onUpdate }: ReviewConfigPanelProps) {
       </div>
 
       {/* Info box */}
-      <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 p-2.5 rounded-lg">
-        <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-500" />
+      <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-2.5 rounded-lg">
+        <ShieldCheck className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400 dark:text-amber-400" />
         <span>审核人分配将在工作流启动后，由经理在工作台配置</span>
       </div>
 

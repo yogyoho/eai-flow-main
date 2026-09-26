@@ -44,7 +44,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={TableIcon}
         label="表格定义"
-        color="text-blue-500"
+        color="text-blue-600 dark:text-blue-400"
         count={section.tableSchemas?.length ?? 0}
         open={openMap.tables ?? false}
         onToggle={() => toggle("tables")}
@@ -112,7 +112,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={Image}
         label="图片需求"
-        color="text-green-500"
+        color="text-green-600 dark:text-green-400"
         count={section.figureRequirements?.length ?? 0}
         open={openMap.figures ?? false}
         onToggle={() => toggle("figures")}
@@ -192,7 +192,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={FunctionSquare}
         label="公式引用"
-        color="text-purple-500"
+        color="text-purple-600 dark:text-purple-400"
         count={section.formulaReferences?.length ?? 0}
         open={openMap.formulas ?? false}
         onToggle={() => toggle("formulas")}
@@ -257,7 +257,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={Cog}
         label="计算脚本"
-        color="text-orange-500"
+        color="text-orange-600 dark:text-orange-400"
         count={section.calcScriptBindings?.length ?? 0}
         open={openMap.calc ?? false}
         onToggle={() => toggle("calc")}
@@ -304,8 +304,8 @@ export function RichMetadataEditor({ section, onChange }: Props) {
               className={cn(
                 "rounded px-1.5 py-0.5 text-xs",
                 c.trigger === "auto"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-gray-600",
+                  ? "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300"
+                  : "bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300",
               )}
             >
               {c.trigger}
@@ -332,7 +332,7 @@ export function RichMetadataEditor({ section, onChange }: Props) {
       <CollapsibleCard
         icon={Ruler}
         label="章节剖面"
-        color="text-cyan-500"
+        color="text-cyan-600 dark:text-cyan-400"
         count={section.subSectionProfile ? 1 : 0}
         open={openMap.profile ?? false}
         onToggle={() => toggle("profile")}

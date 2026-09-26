@@ -321,7 +321,7 @@ export function ProjectList() {
     <main className="bg-background flex-1 overflow-y-auto">
       {/* Header */}
       <div className="border-border bg-card flex h-14 items-center gap-4 border-b px-7">
-        <div className="shrink-0 rounded-sm border border-violet-200 bg-violet-50 p-1 text-violet-600">
+        <div className="shrink-0 rounded-sm border border-violet-200 bg-violet-50 p-1 text-violet-600 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300">
           <ClipboardList className="h-4 w-4" />
         </div>
         <h1 className="text-foreground text-lg font-bold">项目管理</h1>

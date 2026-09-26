@@ -91,8 +91,8 @@ function validityClass(validUntil: string | null): string {
   if (!validUntil) return "";
   const today = localDateStr(new Date());
   const in90 = localDateStr(new Date(Date.now() + EXPIRING_DAYS * DAY_MS));
-  if (validUntil < today) return "text-red-600";
-  if (validUntil <= in90) return "text-amber-600";
+  if (validUntil < today) return "text-destructive";
+  if (validUntil <= in90) return "text-amber-600 dark:text-amber-400";
   return "text-foreground";
 }
 
@@ -386,7 +386,7 @@ function QualificationRow({
           {disabled && (
             <Badge
               variant="outline"
-              className="border-red-200 bg-red-50 text-red-700"
+              className="border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
             >
               已停用
             </Badge>
@@ -444,7 +444,7 @@ function QualificationRow({
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-muted-foreground hover:text-red-600"
+                className="text-muted-foreground hover:text-destructive"
                 title="停用资质（软删）"
                 onClick={onDisable}
               >
@@ -782,7 +782,7 @@ function VersionsDialog({
                               {isCurrent && (
                                 <Badge
                                   variant="outline"
-                                  className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                                  className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
                                 >
                                   当前
                                 </Badge>

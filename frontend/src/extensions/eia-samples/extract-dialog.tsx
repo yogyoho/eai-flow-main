@@ -224,7 +224,7 @@ export default function ExtractDialog({
                 个
               </span>
               {result.saved && (
-                <Badge className="bg-emerald-600 text-white">已入库</Badge>
+                <Badge className="bg-success text-success-foreground">已入库</Badge>
               )}
             </div>
 

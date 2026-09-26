@@ -14,7 +14,7 @@ interface ApprovalStepCardProps {
 
 const statusConfig = {
   completed: {
-    circleClass: "bg-green-500 text-white border-green-500",
+    circleClass: "bg-success text-success-foreground border-success",
     icon: Check,
     statusText: "已通过",
   },
@@ -80,7 +80,7 @@ export function ApprovalStepCard({
       <span
         className={cn(
           "shrink-0 text-xs font-medium",
-          status === "completed" && "text-green-600",
+          status === "completed" && "text-success",
           status === "current" && "text-primary",
           status === "pending" && "text-muted-foreground",
           status === "rejected" && "text-destructive"

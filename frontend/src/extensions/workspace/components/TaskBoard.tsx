@@ -223,15 +223,15 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
                     </h4>
                     <span className="shrink-0">
                       {t.assigneeType === "agent" ? (
-                        <Bot className="h-3.5 w-3.5 text-purple-400" />
+                        <Bot className="text-purple-600 dark:text-purple-400 h-3.5 w-3.5" />
                       ) : (
-                        <User className="h-3.5 w-3.5 text-cyan-400" />
+                        <User className="text-cyan-600 dark:text-cyan-400 h-3.5 w-3.5" />
                       )}
                     </span>
                   </div>
                   <div className="text-muted-foreground mt-2 flex flex-wrap items-center gap-1.5 font-mono text-xs">
                     {t.assigneeAgentName && (
-                      <span className="rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-purple-400">
+                      <span className="rounded border border-purple-500/30 bg-purple-500/10 px-1.5 py-0.5 text-purple-600 dark:text-purple-400">
                         {t.assigneeAgentName}
                       </span>
                     )}
@@ -242,7 +242,7 @@ export function TaskBoard({ projectId }: TaskBoardProps) {
                     )}
                     {t.lastError && (
                       <span
-                        className="rounded bg-red-500/10 px-1.5 py-0.5 text-red-400"
+                        className="rounded bg-red-500/10 px-1.5 py-0.5 text-red-600 dark:text-red-400"
                         title={t.lastError}
                       >
                         错误

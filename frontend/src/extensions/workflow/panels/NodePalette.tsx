@@ -14,15 +14,15 @@ const NODE_TYPES: { type: DAGNodeType; label: string; color: string; icon: strin
 ];
 
 const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; hover: string; iconBg: string }> = {
-  purple: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", hover: "hover:bg-purple-100 hover:border-purple-300 hover:shadow-sm", iconBg: "bg-purple-100" },
-  red: { bg: "bg-red-50", border: "border-red-200", text: "text-red-700", hover: "hover:bg-red-100 hover:border-red-300 hover:shadow-sm", iconBg: "bg-red-100" },
-  amber: { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-700", hover: "hover:bg-amber-100 hover:border-amber-300 hover:shadow-sm", iconBg: "bg-amber-100" },
-  blue: { bg: "bg-blue-50", border: "border-blue-200", text: "text-blue-700", hover: "hover:bg-blue-100 hover:border-blue-300 hover:shadow-sm", iconBg: "bg-blue-100" },
-  green: { bg: "bg-green-50", border: "border-green-200", text: "text-green-700", hover: "hover:bg-green-100 hover:border-green-300 hover:shadow-sm", iconBg: "bg-green-100" },
+  purple: { bg: "bg-purple-50", border: "border-purple-200", text: "text-purple-700", hover: "hover:bg-purple-100 dark:bg-purple-500/15 hover:border-purple-300 hover:shadow-sm", iconBg: "bg-purple-100 dark:bg-purple-500/15" },
+  red: { bg: "bg-red-50 dark:bg-red-950/40", border: "border-red-200 dark:border-red-800", text: "text-red-700 dark:text-red-300", hover: "hover:bg-red-100 dark:bg-red-500/15 hover:border-red-300 dark:border-red-700 hover:shadow-sm", iconBg: "bg-red-100 dark:bg-red-500/15" },
+  amber: { bg: "bg-amber-50 dark:bg-amber-950/40", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-300", hover: "hover:bg-amber-100 dark:bg-amber-500/15 hover:border-amber-300 dark:border-amber-700 hover:shadow-sm", iconBg: "bg-amber-100 dark:bg-amber-500/15" },
+  blue: { bg: "bg-blue-50 dark:bg-blue-950/40", border: "border-blue-200 dark:border-blue-800", text: "text-blue-700 dark:text-blue-300", hover: "hover:bg-blue-100 dark:bg-blue-500/15 hover:border-blue-300 dark:border-blue-700 hover:shadow-sm", iconBg: "bg-blue-100 dark:bg-blue-500/15" },
+  green: { bg: "bg-green-50 dark:bg-green-950/40", border: "border-green-200 dark:border-green-800", text: "text-green-700 dark:text-green-300", hover: "hover:bg-green-100 dark:bg-green-500/15 hover:border-green-300 dark:border-green-700 hover:shadow-sm", iconBg: "bg-green-100 dark:bg-green-500/15" },
   indigo: { bg: "bg-indigo-50", border: "border-indigo-200", text: "text-indigo-700", hover: "hover:bg-indigo-100 hover:border-indigo-300 hover:shadow-sm", iconBg: "bg-indigo-100" },
-  teal: { bg: "bg-teal-50", border: "border-teal-200", text: "text-teal-700", hover: "hover:bg-teal-100 hover:border-teal-300 hover:shadow-sm", iconBg: "bg-teal-100" },
-  violet: { bg: "bg-violet-50", border: "border-violet-200", text: "text-violet-700", hover: "hover:bg-violet-100 hover:border-violet-300 hover:shadow-sm", iconBg: "bg-violet-100" },
-  slate: { bg: "bg-slate-50", border: "border-slate-200", text: "text-slate-700", hover: "hover:bg-slate-100 hover:border-slate-300 hover:shadow-sm", iconBg: "bg-slate-100" },
+  teal: { bg: "bg-teal-50 dark:bg-teal-950/40", border: "border-teal-200 dark:border-teal-800", text: "text-teal-700 dark:text-teal-300", hover: "hover:bg-teal-100 dark:bg-teal-500/15 hover:border-teal-300 dark:border-teal-700 hover:shadow-sm", iconBg: "bg-teal-100 dark:bg-teal-500/15" },
+  violet: { bg: "bg-violet-50 dark:bg-violet-950/40", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-300", hover: "hover:bg-violet-100 dark:bg-violet-500/15 hover:border-violet-300 dark:border-violet-700 hover:shadow-sm", iconBg: "bg-violet-100 dark:bg-violet-500/15" },
+  slate: { bg: "bg-slate-50", border: "border-slate-200", text: "text-foreground", hover: "hover:bg-slate-100 hover:border-slate-300 hover:shadow-sm", iconBg: "bg-slate-100" },
 };
 
 export function NodePalette() {

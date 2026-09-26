@@ -40,9 +40,9 @@ function SectionNode({
 
   const scoreColor = (score?: number) => {
     if (!score) return "text-muted-foreground";
-    if (score >= 85) return "text-emerald-500";
-    if (score >= 60) return "text-amber-500";
-    return "text-red-500";
+    if (score >= 85) return "text-emerald-600 dark:text-emerald-400";
+    if (score >= 60) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
   };
 
   return (
@@ -90,11 +90,11 @@ function SectionNode({
 
         {section.completeness_score != null &&
           section.completeness_score >= 85 && (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
           )}
         {section.completeness_score != null &&
           section.completeness_score < 60 && (
-            <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+            <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
           )}
       </div>
 
@@ -229,10 +229,10 @@ export default function ExtractionResultModal({
                     className={cn(
                       "text-2xl font-bold",
                       (result?.completeness_score ?? 0) >= 85
-                        ? "text-emerald-500"
+                        ? "text-emerald-600 dark:text-emerald-400"
                         : (result?.completeness_score ?? 0) >= 60
-                          ? "text-amber-500"
-                          : "text-red-500",
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-red-600 dark:text-red-400",
                     )}
                   >
                     {result?.completeness_score ?? 0}%
@@ -244,8 +244,8 @@ export default function ExtractionResultModal({
                     className={cn(
                       "rounded-full border px-2 py-1 text-xs font-medium",
                       template.status === "published"
-                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-500"
-                        : "border-amber-500/20 bg-amber-500/10 text-amber-500",
+                        ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
                     )}
                   >
                     {template.status === "published" ? "已发布" : "草稿"}
@@ -275,10 +275,10 @@ export default function ExtractionResultModal({
                         key={rule.rule_id}
                         className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-3 text-sm"
                       >
-                        <span className="font-medium text-amber-500">
+                        <span className="font-medium text-amber-600 dark:text-amber-400">
                           {rule.description}
                         </span>
-                        <div className="mt-1 text-xs text-amber-500/70">
+                        <div className="mt-1 text-xs text-amber-600 dark:text-amber-400/70">
                           涉及章节: {rule.source_sections.join(", ")} →{" "}
                           {rule.target_sections.join(", ")}
                         </div>

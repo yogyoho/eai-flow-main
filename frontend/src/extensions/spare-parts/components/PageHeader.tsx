@@ -16,7 +16,7 @@ export function PageHeader({ title, description, actions, icon }: PageHeaderProp
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div className="flex items-center gap-3">
         {icon && (
-          <div className="p-1 border rounded-sm bg-blue-50 border-blue-200 text-blue-600 shrink-0">
+          <div className="p-1 border border-primary/20 bg-primary/10 text-primary rounded-sm shrink-0">
             {icon}
           </div>
         )}

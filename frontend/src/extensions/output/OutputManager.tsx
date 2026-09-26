@@ -437,7 +437,7 @@ export function OutputManager() {
     <div className="bg-muted flex h-full flex-col">
       {/* Tab Header */}
       <header className="bg-background border-border flex h-15 shrink-0 items-center border-b px-6">
-        <div className="mr-3 shrink-0 rounded-sm border border-emerald-200 bg-emerald-50 p-1 text-emerald-600">
+        <div className="mr-3 shrink-0 rounded-sm border border-emerald-200 bg-emerald-50 p-1 text-emerald-600 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
           <FileOutput className="h-4 w-4" />
         </div>
         <span className="text-foreground mr-8 text-lg font-bold tracking-tight">

@@ -54,14 +54,14 @@ function docStage(doc: { parse_status: string; confirm_status: string }): {
   pending: boolean;
 } {
   if (doc.confirm_status === "clustered")
-    return { label: "已分组", tone: "text-blue-600", pending: false };
+    return { label: "已分组", tone: "text-blue-600 dark:text-blue-400", pending: false };
   if (doc.parse_status === "failed")
     return { label: "解析失败", tone: "text-destructive", pending: false };
   if (doc.parse_status === "pending")
     return { label: "已上传", tone: "text-muted-foreground", pending: false };
   if (doc.parse_status === "parsing")
     return { label: "解析中", tone: "text-primary", pending: false };
-  return { label: "已解析", tone: "text-emerald-600", pending: false };
+  return { label: "已解析", tone: "text-emerald-600 dark:text-emerald-400", pending: false };
 }
 
 function formatDate(s: string | null): string {
@@ -485,7 +485,7 @@ export function ContractsView() {
         }
       />
 
-      {notice && <p className="text-sm text-blue-600">{notice}</p>}
+      {notice && <p className="text-sm text-blue-600 dark:text-blue-400">{notice}</p>}
 
       <form
         className="flex items-center gap-2"
@@ -637,7 +637,7 @@ export function ContractsView() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="text-blue-600 hover:text-blue-600"
+                          className="text-blue-600 hover:text-blue-600 dark:text-blue-400"
                           title="重新解析(重新 OCR,约几分钟)"
                           disabled={reparse.isPending}
                           onClick={() => {
@@ -690,8 +690,8 @@ export function ContractsView() {
       <Dialog open={showClusterConfirm} onOpenChange={setShowClusterConfirm}>
         <DialogContent>
           <DialogHeader>
-            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100">
-              <AlertTriangle className="h-6 w-6 text-amber-600" />
+            <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15">
+              <AlertTriangle className="text-amber-600 dark:text-amber-400 h-6 w-6" />
             </div>
             <DialogTitle className="text-center">开始分组?</DialogTitle>
             <DialogDescription className="text-center">

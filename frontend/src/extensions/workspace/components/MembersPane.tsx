@@ -183,9 +183,9 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
                 className={`rounded-lg p-1.5 ${m.memberType === "agent" ? "bg-purple-500/10" : "bg-cyan-500/10"}`}
               >
                 {m.memberType === "agent" ? (
-                  <Bot className="h-4 w-4 text-purple-400" />
+                  <Bot className="text-purple-600 dark:text-purple-400 h-4 w-4" />
                 ) : (
-                  <User className="h-4 w-4 text-cyan-400" />
+                  <User className="text-cyan-600 dark:text-cyan-400 h-4 w-4" />
                 )}
               </span>
               <div>
@@ -203,7 +203,7 @@ export function MembersPane({ projectId, projectName }: MembersPaneProps) {
             <button
               type="button"
               onClick={() => removeMember(m.id)}
-              className="text-muted-foreground cursor-pointer rounded-lg p-1.5 hover:text-red-400"
+              className="text-muted-foreground hover:text-destructive cursor-pointer rounded-lg p-1.5"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

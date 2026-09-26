@@ -310,8 +310,8 @@ export default function VersionControl() {
             className={cn(
               "rounded-lg p-3 text-sm",
               rollbackMsg.includes("成功")
-                ? "bg-emerald-500/10 text-emerald-500"
-                : "bg-red-500/10 text-red-500",
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "bg-red-500/10 text-red-600 dark:text-red-400",
             )}
           >
             {rollbackMsg}
@@ -320,7 +320,7 @@ export default function VersionControl() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-2 rounded-lg bg-red-500/10 p-4 text-sm text-red-500">
+          <div className="flex items-center gap-2 rounded-lg bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
             <AlertCircle className="h-4 w-4 shrink-0" /> {error}
           </div>
         )}

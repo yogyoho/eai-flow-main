@@ -38,7 +38,7 @@ export function NewSubFolderDialog({ open, onOpenChange, parentId, projectId, on
           <DialogTitle>新建子文件夹</DialogTitle>
         </DialogHeader>
         <input
-          className="w-full rounded-md border border-gray-600 bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="focus:ring-ring w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-2"
           placeholder="输入文件夹名称"
           value={name}
           onChange={(e) => setName(e.target.value)}

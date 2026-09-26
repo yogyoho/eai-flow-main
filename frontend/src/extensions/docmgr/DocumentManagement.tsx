@@ -1151,8 +1151,8 @@ function DocumentList({
                           className="group bg-background border-border hover:border-primary/40 cursor-pointer rounded-xl border p-4 transition-all hover:shadow-md"
                         >
                           <div className="flex items-start gap-3">
-                            <div className="shrink-0 rounded-lg bg-blue-50 p-2">
-                              <FileText className="h-4 w-4 text-blue-500" />
+                            <div className="shrink-0 rounded-lg bg-primary/10 p-2">
+                              <FileText className="h-4 w-4 text-primary" />
                             </div>
                             <div className="min-w-0 flex-1">
                               <div className="text-foreground group-hover:text-primary truncate text-sm font-medium transition-colors">
@@ -2619,7 +2619,7 @@ export function DocumentEditor({
             <span className="mr-2 flex items-center gap-1.5 text-xs select-none">
               {saveError ? (
                 <span
-                  className="flex items-center gap-1.5 text-red-600"
+                  className="flex items-center gap-1.5 text-destructive"
                   title={saveError}
                 >
                   <AlertCircle className="h-3.5 w-3.5" />

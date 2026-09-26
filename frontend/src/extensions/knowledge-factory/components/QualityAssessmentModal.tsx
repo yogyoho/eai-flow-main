@@ -56,9 +56,9 @@ export default function QualityAssessmentModal({
   if (!open) return null;
 
   const getScoreColor = (score: number) => {
-    if (score >= 80) return "text-emerald-500";
-    if (score >= 60) return "text-yellow-500";
-    return "text-red-500";
+    if (score >= 80) return "text-emerald-600 dark:text-emerald-400";
+    if (score >= 60) return "text-amber-600 dark:text-amber-400";
+    return "text-red-600 dark:text-red-400";
   };
 
   const getGradeLabel = (grade: string) => {
@@ -75,11 +75,11 @@ export default function QualityAssessmentModal({
 
   const getGradeColor = (grade: string) => {
     const colors: Record<string, string> = {
-      优秀: "bg-emerald-500/10 text-emerald-500",
+      优秀: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
       良好: "bg-primary/10 text-primary",
-      一般: "bg-yellow-500/10 text-yellow-500",
-      较差: "bg-amber-500/10 text-amber-500",
-      差: "bg-red-500/10 text-red-500",
+      一般: "bg-yellow-500/10 text-amber-600 dark:text-amber-400",
+      较差: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+      差: "bg-red-500/10 text-red-600 dark:text-red-400",
       未知: "bg-muted text-muted-foreground",
     };
     return colors[grade] ?? "bg-muted text-muted-foreground";
@@ -159,7 +159,7 @@ export default function QualityAssessmentModal({
             <div className="flex flex-col items-center py-8">
               <div className="mb-4 rounded-full bg-red-500/10 p-4">
                 <svg
-                  className="h-12 w-12 text-red-500"
+                  className="h-12 w-12 text-red-600 dark:text-red-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -172,7 +172,7 @@ export default function QualityAssessmentModal({
                   />
                 </svg>
               </div>
-              <p className="text-red-500">{error}</p>
+              <p className="text-red-600 dark:text-red-400">{error}</p>
               <button
                 onClick={handleAssess}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 mt-4 rounded-lg px-6 py-2.5"
@@ -253,10 +253,10 @@ export default function QualityAssessmentModal({
                   {Object.entries(result.dimensions).map(([key, dim]) =>
                     dim.issues && dim.issues.length > 0 ? (
                       <div key={key} className="rounded-lg bg-amber-500/10 p-3">
-                        <p className="text-sm font-medium text-amber-500">
+                        <p className="text-sm font-medium text-amber-600 dark:text-amber-400">
                           {DIMENSION_LABELS[key] ?? key}
                         </p>
-                        <ul className="mt-1 list-inside list-disc text-sm text-amber-500/80">
+                        <ul className="mt-1 list-inside list-disc text-sm text-amber-600 dark:text-amber-400/80">
                           {dim.issues.map((issue, i) => (
                             <li key={i}>{issue}</li>
                           ))}

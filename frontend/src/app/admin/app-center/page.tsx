@@ -15,7 +15,7 @@ export default function AdminAppCenterPage() {
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl px-6 py-8">
         <header className="mb-8 flex items-start gap-3">
-          <div className="p-3 border rounded-lg bg-blue-50 border-blue-200 text-blue-600 shrink-0">
+          <div className="p-3 border border-primary/20 bg-primary/10 text-primary rounded-lg shrink-0">
             <Blocks className="w-6 h-6" />
           </div>
           <div>

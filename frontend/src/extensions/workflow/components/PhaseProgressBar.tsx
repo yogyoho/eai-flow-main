@@ -29,10 +29,10 @@ function PhasePipeline({ nodes }: { nodes: WorkflowNodeStatus[] }) {
 
   const statusIcon = (status: string) => {
     switch (status) {
-      case "completed": return <CheckCircle2 className="w-4 h-4 text-green-500" />;
-      case "running": return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
-      case "error": return <AlertCircle className="w-4 h-4 text-red-500" />;
-      default: return <Circle className="w-4 h-4 text-gray-300" />;
+      case "completed": return <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 dark:text-green-400" />;
+      case "running": return <Loader2 className="w-4 h-4 text-blue-600 dark:text-blue-400 dark:text-blue-400 animate-spin" />;
+      case "error": return <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 dark:text-red-400" />;
+      default: return <Circle className="w-4 h-4 text-muted-foreground/60" />;
     }
   };
 
@@ -52,8 +52,8 @@ function PhasePipeline({ nodes }: { nodes: WorkflowNodeStatus[] }) {
             {/* Phase header */}
             <div className={cn(
               "flex items-center gap-2 px-3 py-2 text-sm font-medium",
-              phase.status === "completed" ? "bg-green-50 text-green-700" :
-              phase.status === "running" ? "bg-blue-50 text-blue-700" :
+              phase.status === "completed" ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300" :
+              phase.status === "running" ? "bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300" :
               "bg-muted/30 text-muted-foreground",
             )}>
               {statusIcon(phase.status)}
@@ -98,10 +98,10 @@ function PhasePipeline({ nodes }: { nodes: WorkflowNodeStatus[] }) {
 function SimpleProgress({ nodes }: { nodes: WorkflowNodeStatus[] }) {
   const statusIcon = (status: string) => {
     switch (status) {
-      case "completed": return <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />;
-      case "running": return <Loader2 className="w-3.5 h-3.5 text-blue-500 animate-spin" />;
-      case "error": return <AlertCircle className="w-3.5 h-3.5 text-red-500" />;
-      default: return <Circle className="w-3.5 h-3.5 text-gray-300" />;
+      case "completed": return <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400 dark:text-green-400" />;
+      case "running": return <Loader2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 dark:text-blue-400 animate-spin" />;
+      case "error": return <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400 dark:text-red-400" />;
+      default: return <Circle className="w-3.5 h-3.5 text-muted-foreground/60" />;
     }
   };
 

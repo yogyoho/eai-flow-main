@@ -72,11 +72,11 @@ export function TimelineView({ nodes }: TimelineViewProps) {
                   <span
                     className={`text-[10px] font-medium ${
                       node.status === "completed"
-                        ? "text-green-600"
+                        ? "text-green-600 dark:text-green-400"
                         : node.status === "running"
-                          ? "text-blue-600"
+                          ? "text-blue-600 dark:text-blue-400"
                           : node.status === "error"
-                            ? "text-red-600"
+                            ? "text-red-600 dark:text-red-400"
                             : "text-muted-foreground"
                     }`}
                   >

@@ -27,7 +27,7 @@ const STATUS_CONFIG: Record<
   completed: {
     border: "border-green-400",
     bg: "bg-green-50",
-    icon: <CheckCircle2 className="h-4 w-4 text-green-500" />,
+    icon: <CheckCircle2 className="h-4 w-4 text-green-600" />,
     pulse: "",
     label: "已通过",
     labelColor: "text-green-600",
@@ -35,23 +35,23 @@ const STATUS_CONFIG: Record<
   running: {
     border: "border-blue-400",
     bg: "bg-blue-50",
-    icon: <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />,
+    icon: <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />,
     pulse: "animate-pulse-ring",
     label: "审核中",
     labelColor: "text-blue-600",
   },
   pending: {
-    border: "border-gray-300",
-    bg: "bg-gray-50/50",
-    icon: <Circle className="h-4 w-4 text-gray-400" />,
+    border: "border-input",
+    bg: "bg-muted/50",
+    icon: <Circle className="h-4 w-4 text-muted-foreground" />,
     pulse: "",
     label: "待审核",
-    labelColor: "text-gray-500",
+    labelColor: "text-muted-foreground",
   },
   error: {
     border: "border-red-400",
     bg: "bg-red-50",
-    icon: <XCircle className="h-4 w-4 text-red-500" />,
+    icon: <XCircle className="h-4 w-4 text-red-600" />,
     pulse: "",
     label: "已驳回",
     labelColor: "text-red-600",
@@ -94,7 +94,7 @@ export function ProgressReviewNode({ data }: NodeProps & { data: ProgressReviewN
             </span>
             <span className="text-[10px] font-medium text-muted-foreground">{pct}%</span>
           </div>
-          <div className="h-1.5 rounded-full bg-gray-200 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
               style={{

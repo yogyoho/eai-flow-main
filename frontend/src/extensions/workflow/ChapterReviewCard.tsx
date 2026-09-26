@@ -32,10 +32,10 @@ export function ChapterReviewCard({
 
   const statusColor =
     review.status === "approved"
-      ? "bg-green-100 text-green-700"
+      ? "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300"
       : review.status === "rejected"
-        ? "bg-red-100 text-red-700"
-        : "bg-amber-100 text-amber-700";
+        ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300"
+        : "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300";
 
   return (
     <div className="space-y-3 rounded-lg border p-4">
@@ -73,14 +73,14 @@ export function ChapterReviewCard({
             <button
               onClick={() => handleAction("approved")}
               disabled={submitting}
-              className="rounded bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-700 disabled:opacity-50"
+              className="rounded bg-success px-3 py-1 text-sm text-success-foreground hover:bg-success/90 disabled:opacity-50"
             >
               通过
             </button>
             <button
               onClick={() => handleAction("rejected")}
               disabled={submitting}
-              className="rounded bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-700 disabled:opacity-50"
+              className="rounded bg-destructive px-3 py-1 text-sm text-white hover:bg-destructive/90 disabled:opacity-50"
             >
               退回
             </button>

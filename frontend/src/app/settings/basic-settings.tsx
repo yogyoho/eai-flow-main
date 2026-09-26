@@ -299,11 +299,11 @@ export function BasicSettings() {
                     const embStatus = modelStatuses[model.name];
                     const statusColor =
                       embStatus?.status === "available"
-                        ? "text-green-500"
+                        ? "text-success"
                         : embStatus?.status === "unavailable"
-                          ? "text-red-500"
+                          ? "text-destructive"
                           : embStatus?.status === "error"
-                            ? "text-yellow-500"
+                            ? "text-amber-600 dark:text-amber-400"
                             : "text-muted-foreground";
                     const statusIcon =
                       embStatus?.status === "available"

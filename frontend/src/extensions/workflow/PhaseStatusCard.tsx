@@ -8,9 +8,9 @@ interface PhaseStatusCardProps {
 
 const STATUS_STYLES: Record<string, string> = {
   pending: "border-muted bg-muted/20",
-  running: "border-blue-300 bg-blue-50",
-  completed: "border-green-300 bg-green-50",
-  error: "border-red-300 bg-red-50",
+  running: "border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/40",
+  completed: "border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-950/40",
+  error: "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/40",
 };
 
 const STATUS_ICONS: Record<string, string> = {
@@ -21,11 +21,11 @@ const STATUS_ICONS: Record<string, string> = {
 };
 
 const NODE_TYPE_COLORS: Record<string, string> = {
-  phase: "text-blue-600",
-  review: "text-amber-600",
-  condition: "text-purple-600",
-  ai_generate: "text-cyan-600",
-  merge: "text-gray-600",
+  phase: "text-blue-600 dark:text-blue-400",
+  review: "text-amber-600 dark:text-amber-400",
+  condition: "text-purple-600 dark:text-purple-400",
+  ai_generate: "text-cyan-600 dark:text-cyan-400",
+  merge: "text-muted-foreground",
 };
 
 export function PhaseStatusCard({ node }: PhaseStatusCardProps) {

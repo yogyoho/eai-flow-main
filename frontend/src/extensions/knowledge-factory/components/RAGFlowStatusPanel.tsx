@@ -256,7 +256,7 @@ export default function RAGFlowStatusPanel({ onClose }: RAGFlowStatusPanelProps)
                   <span className="text-muted-foreground">，{initMutation.data.aligned.length} 个配置一致</span>
                 )}
                 {initMutation.data.updated?.length > 0 && (
-                  <span className="text-amber-600">，{initMutation.data.updated.length} 个已收敛到标准配置</span>
+                  <span className="text-amber-600 dark:text-amber-400">，{initMutation.data.updated.length} 个已收敛到标准配置</span>
                 )}
                 {initMutation.data.failed?.length > 0 && (
                   <span className="text-destructive font-medium">，{initMutation.data.failed.length} 个失败</span>

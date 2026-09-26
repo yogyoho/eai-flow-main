@@ -60,7 +60,7 @@ export function TaskConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBind
           <div className="grid grid-cols-2 gap-1.5">
             {REVIEW_MODES.map((m) => (
               <button key={m.value} type="button" onClick={() => onUpdate({ reviewMode: m.value })}
-                className={`text-left px-3 py-2 rounded-lg border text-xs transition-colors ${reviewMode === m.value ? "border-red-300 bg-red-50 text-red-700 font-semibold" : "border-border text-muted-foreground hover:border-red-200"}`}>
+                className={`text-left px-3 py-2 rounded-lg border text-xs transition-colors ${reviewMode === m.value ? "border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 font-semibold" : "border-border text-muted-foreground hover:border-red-200 dark:border-red-800"}`}>
                 <div>{m.label}</div><div className="text-[10px] opacity-60 mt-0.5">{m.desc}</div>
               </button>
             ))}
@@ -81,14 +81,14 @@ export function TaskConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBind
               <span className="px-1.5 py-0.5 rounded text-[10px] bg-muted font-medium">{BINDING_TYPES.find((b) => b.value === r.type)?.label}</span>
               <span className="flex-1 truncate font-medium">{r.label}</span>
               <span className="text-[10px] text-muted-foreground font-mono">{r.value}</span>
-              <button type="button" onClick={() => onUpdate({ reviewers: reviewers.filter((_, j) => j !== i) })} className="p-0.5 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+              <button type="button" onClick={() => onUpdate({ reviewers: reviewers.filter((_, j) => j !== i) })} className="p-0.5 hover:text-red-600 dark:text-red-400 dark:text-red-400"><Trash2 className="w-3 h-3" /></button>
             </div>
           ))}
           <div className="space-y-1.5 border border-dashed border-border rounded-lg p-2">
             <div className="flex gap-1">
               {BINDING_TYPES.map((b) => (
                 <button key={b.value} type="button" onClick={() => setNewType(b.value)}
-                  className={`px-2 py-0.5 text-[10px] rounded ${newType === b.value ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>{b.label}</button>
+                  className={`px-2 py-0.5 text-[10px] rounded ${newType === b.value ? "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300" : "bg-muted text-muted-foreground"}`}>{b.label}</button>
               ))}
             </div>
             <div className="flex gap-1">
@@ -159,7 +159,7 @@ export function TaskConfigPanel({ data, nodeId, onUpdate, orgDeptCode, onOrgBind
               onChange={(e) => setRoleCount(i, parseInt(e.target.value) || 1)}
               className="w-14 px-1.5 py-1 text-xs border border-border rounded text-center" />
             <button onClick={() => onUpdate({ requiredRoles: roles.filter((_, j) => j !== i) })}
-              className="p-0.5 text-muted-foreground hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+              className="p-0.5 text-muted-foreground hover:text-red-600 dark:text-red-400 dark:text-red-400"><Trash2 className="w-3 h-3" /></button>
           </div>
         ))}
         <div className="flex gap-1">

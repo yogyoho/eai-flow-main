@@ -336,7 +336,7 @@ export const WorkflowEditor = forwardRef<
 
           {/* Subflow breadcrumb navigation */}
           {activeSubflowId && (
-            <div className="bg-background/90 absolute top-4 left-4 z-10 flex items-center gap-1 rounded-lg border border-violet-200 px-3 py-1.5 shadow-sm backdrop-blur-sm">
+            <div className="bg-background/90 absolute top-4 left-4 z-10 flex items-center gap-1 rounded-lg border border-violet-200 dark:border-violet-800 px-3 py-1.5 shadow-sm backdrop-blur-sm">
               <button
                 type="button"
                 onClick={handleExitSubflow}
@@ -345,14 +345,14 @@ export const WorkflowEditor = forwardRef<
                 主流程
               </button>
               <ChevronRight className="text-muted-foreground/50 h-3 w-3" />
-              <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300">
                 <Layers className="h-3 w-3" />
                 {activeSubflowLabel}
               </div>
               <button
                 type="button"
                 onClick={handleExitSubflow}
-                className="ml-2 rounded-md border border-violet-200 bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-600 transition-colors hover:bg-violet-100"
+                className="ml-2 rounded-md border border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/40 px-2 py-0.5 text-[10px] font-medium text-violet-600 dark:text-violet-400 transition-colors hover:bg-violet-100 dark:bg-violet-500/15"
               >
                 ← 返回主流程
               </button>
@@ -381,7 +381,7 @@ export const WorkflowEditor = forwardRef<
                 </div>
                 <button
                   onClick={handleDeleteSelected}
-                  className="text-muted-foreground/60 shrink-0 rounded-md p-1.5 transition-colors hover:bg-red-50 hover:text-red-500"
+                  className="text-muted-foreground/60 shrink-0 rounded-md p-1.5 transition-colors hover:bg-red-50 dark:bg-red-950/40 hover:text-red-600 dark:text-red-400 dark:text-red-400"
                   title="删除节点 (Delete)"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -458,8 +458,8 @@ export const WorkflowEditor = forwardRef<
           <div
             className={`absolute right-72 bottom-3 left-52 z-10 mx-4 max-w-sm rounded-lg border p-3 text-sm shadow-lg ${
               validationResult.valid
-                ? "border-green-200 bg-green-50"
-                : "border-red-200 bg-red-50"
+                ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/40"
+                : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40"
             }`}
           >
             <div className="flex items-center gap-1.5 font-semibold">
@@ -467,12 +467,12 @@ export const WorkflowEditor = forwardRef<
               {validationResult.valid ? "校验通过" : "校验失败"}
             </div>
             {validationResult.errors.map((e, i) => (
-              <div key={i} className="mt-1 text-xs text-red-600">
+              <div key={i} className="mt-1 text-xs text-red-600 dark:text-red-400">
                 {e}
               </div>
             ))}
             {validationResult.warnings.map((w, i) => (
-              <div key={i} className="mt-1 text-xs text-amber-600">
+              <div key={i} className="mt-1 text-xs text-amber-600 dark:text-amber-400">
                 {w}
               </div>
             ))}

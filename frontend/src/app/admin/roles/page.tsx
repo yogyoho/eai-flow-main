@@ -1252,7 +1252,7 @@ function RoleMatrixOverview({
                     className={cn(
                       "h-3.5 w-3.5",
                       role.is_system
-                        ? "text-amber-500"
+                        ? "text-amber-600 dark:text-amber-400"
                         : "text-muted-foreground",
                     )}
                   />
@@ -1663,7 +1663,7 @@ function PolicyRow({
               // EAI-CUSTOM (P0): or 树只读徽章 —— 不误显"全局"
               <span
                 key={i}
-                className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600"
+                className="rounded border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
               >
                 ⚠ 或(OR) 条件（只读）
               </span>
@@ -2247,12 +2247,12 @@ function PolicyEditForm({
     if (permission.startsWith("nav:"))
       return {
         level: "模块",
-        cls: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",
+        cls: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
       };
     if (permission.startsWith("page:"))
       return {
         level: "页面",
-        cls: "bg-sky-500/10 text-sky-500 border-sky-500/20",
+        cls: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
       };
     return {
       level: "操作",
@@ -2359,7 +2359,7 @@ function PolicyEditForm({
             <div key={i} className="flex items-center gap-2">
               {c.attribute === "__or__" ? (
                 // EAI-CUSTOM (P0): or 树只读徽章 —— 不可编辑，保存保留原条件
-                <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-600">
+                <span className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
                   ⚠ 或(OR) 条件（只读，保存将保留原条件）
                 </span>
               ) : (

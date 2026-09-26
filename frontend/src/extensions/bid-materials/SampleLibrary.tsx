@@ -68,11 +68,11 @@ const SCENARIO_LABELS: Record<string, string> = Object.fromEntries(
 function statusBadgeClass(status: string): string {
   switch (status) {
     case "indexed":
-      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800";
     case "ragflow_pushed":
-      return "bg-sky-50 text-sky-700 border-sky-200";
+      return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-800";
     case "disabled":
-      return "bg-red-50 text-red-700 border-red-200";
+      return "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -476,7 +476,7 @@ function SampleRow({
             <Button
               variant="ghost"
               size="sm"
-              className="text-muted-foreground hover:text-red-600"
+              className="text-muted-foreground hover:text-destructive"
               title="停用样例"
               onClick={onDisable}
             >
@@ -775,7 +775,7 @@ function BulkImportDialog({
         {parsed.error ? (
           <p className="text-destructive text-sm">{parsed.error}</p>
         ) : parsed.items ? (
-          <p className="text-sm text-emerald-700">
+          <p className="text-sm text-success">
             已解析 {parsed.items.length} 条，校验通过，可导入。
           </p>
         ) : null}

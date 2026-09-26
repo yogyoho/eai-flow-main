@@ -40,22 +40,22 @@ export function SubflowNode({
         </span>
       </div>
       {data.team && (
-        <div className="mt-1 ml-[38px] text-[10px] text-gray-500">
+        <div className="mt-1 ml-[38px] text-[10px] text-muted-foreground">
           团队: {data.team}
         </div>
       )}
       {taskCount != null && (
-        <div className="mt-0.5 ml-[38px] text-[10px] text-violet-500">
+        <div className="mt-0.5 ml-[38px] text-[10px] text-violet-600">
           任务数: {taskCount}
         </div>
       )}
       {roles.length > 0 && (
         <div className="mt-1 ml-[38px] flex flex-wrap gap-0.5">
-          <Users className="mr-0.5 h-2.5 w-2.5 text-gray-400" />
+          <Users className="mr-0.5 h-2.5 w-2.5 text-muted-foreground" />
           {roles.map((slot) => (
             <span
               key={slot.roleKey}
-              className={`rounded px-1 py-px text-[9px] ${ROLE_COLORS[slot.roleKey] ?? "bg-gray-100 text-gray-600"}`}
+              className={`rounded px-1 py-px text-[9px] ${ROLE_COLORS[slot.roleKey] ?? "bg-muted text-muted-foreground"}`}
               title={`${slot.label} ×${slot.count}`}
             >
               {slot.label.slice(0, 2)}×{slot.count}

@@ -569,7 +569,7 @@ export function ClustersView() {
                                 }
                                 onClick={() => setTrace(item)}
                               >
-                                <Crosshair className="h-3.5 w-3.5 text-rose-500" />
+                                <Crosshair className="text-rose-600 dark:text-rose-400 h-3.5 w-3.5" />
                                 溯源
                               </Button>
                               <Button

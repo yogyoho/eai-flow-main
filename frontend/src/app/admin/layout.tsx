@@ -36,7 +36,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     <div className="bg-background flex h-full flex-col">
       {/* Top navigation bar */}
       <header className="bg-background border-border flex h-16 shrink-0 items-center border-b px-6">
-        <div className="mr-3 shrink-0 rounded-sm border border-slate-200 bg-slate-50 p-1 text-slate-600">
+        <div className="border-border bg-muted text-muted-foreground mr-3 shrink-0 rounded-sm border p-1">
           <Settings2 className="h-4 w-4" />
         </div>
         <span className="text-foreground mr-8 text-lg font-bold tracking-tight">

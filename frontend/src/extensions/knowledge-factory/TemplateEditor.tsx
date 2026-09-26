@@ -159,9 +159,9 @@ function TemplateSelector({
                         className={cn(
                           "rounded-full px-1.5 py-0.5 text-xs",
                           template.status === "published"
-                            ? "bg-emerald-500/10 text-emerald-500"
+                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                             : template.status === "draft"
-                              ? "bg-amber-500/10 text-amber-500"
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
                               : "bg-muted text-muted-foreground",
                         )}
                       >
@@ -246,7 +246,7 @@ function SectionTree({
           </button>
           <span className="flex-1 truncate">{section.title}</span>
           {section.required && (
-            <span className="text-[10px] text-red-500">必</span>
+            <span className="text-[10px] text-red-600 dark:text-red-400">必</span>
           )}
           {canDelete && (
             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -268,7 +268,7 @@ function SectionTree({
                 className="rounded p-1 transition-colors hover:bg-red-500/10"
                 title="删除章节"
               >
-                <Trash2 className="h-3 w-3 text-red-500" />
+                <Trash2 className="h-3 w-3 text-red-600 dark:text-red-400" />
               </button>
             </div>
           )}
@@ -386,15 +386,15 @@ function RAGSourceSelector({
     const labels: Record<string, { text: string; cls: string }> = {
       semantic: {
         text: "语义",
-        cls: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+        cls: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
       },
       keyword: {
         text: "关键词",
-        cls: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+        cls: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
       },
       hybrid: {
         text: "混合",
-        cls: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+        cls: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
       },
     };
     const badge = labels[strategy] ?? labels.hybrid!;
@@ -421,7 +421,7 @@ function RAGSourceSelector({
                 className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${
                   isLegacy
                     ? "bg-muted/50 text-muted-foreground border-border border border-dashed"
-                    : "border border-amber-500/20 bg-amber-500/10 text-amber-500 dark:border-amber-500/30 dark:bg-amber-500/20"
+                    : "border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 dark:border-amber-500/30 dark:bg-amber-500/20"
                 }`}
                 onClick={() =>
                   !isReadOnly &&
@@ -441,7 +441,7 @@ function RAGSourceSelector({
                       e.stopPropagation();
                       handleRemove(index);
                     }}
-                    className="ml-0.5 transition-colors hover:text-red-500"
+                    className="ml-0.5 transition-colors hover:text-red-600 dark:text-red-400"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -531,7 +531,7 @@ function RAGSourceSelector({
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-amber-500/40 text-amber-500 transition-colors hover:bg-amber-500/10"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-dashed border-amber-500/40 text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
               title="关联知识库"
             >
               {loadingKbs ? (
@@ -578,7 +578,7 @@ function RAGSourceSelector({
                           className="hover:bg-accent border-border w-full border-b px-4 py-3 text-left transition-colors last:border-0"
                         >
                           <div className="text-foreground flex items-center gap-2 text-sm font-medium">
-                            <Database className="h-3.5 w-3.5 text-amber-500" />
+                            <Database className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
                             {kb.name}
                           </div>
                           {kb.description && (
@@ -587,7 +587,7 @@ function RAGSourceSelector({
                             </div>
                           )}
                           {kb.ragflow_dataset_id ? (
-                            <div className="mt-0.5 ml-5.5 text-[10px] text-emerald-500">
+                            <div className="mt-0.5 ml-5.5 text-[10px] text-emerald-600 dark:text-emerald-400">
                               已连接 RAGFlow
                             </div>
                           ) : (
@@ -880,7 +880,7 @@ function SectionEditor({
           </div>
           <div className="space-y-2">
             <label className="text-foreground text-sm font-medium">
-              章节标题 <span className="text-red-500">*</span>
+              章节标题 <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -986,7 +986,7 @@ function SectionEditor({
                 <button
                   onClick={() => onRemoveKeyElement(i)}
                   disabled={isReadOnly}
-                  className="text-muted-foreground transition-colors hover:text-red-500 disabled:opacity-50"
+                  className="text-muted-foreground transition-colors hover:text-red-600 dark:text-red-400 disabled:opacity-50"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -1100,13 +1100,13 @@ function SectionEditor({
               (phrase, i) => (
                 <span
                   key={i}
-                  className="flex items-center gap-1 rounded border border-red-500/20 bg-red-500/10 px-2 py-1 text-xs text-red-500"
+                  className="flex items-center gap-1 rounded border border-red-500/20 bg-red-500/10 px-2 py-1 text-xs text-red-600 dark:text-red-400"
                 >
                   {phrase}
                   <button
                     onClick={() => onRemoveForbiddenPhrase(i)}
                     disabled={isReadOnly}
-                    className="transition-colors hover:text-red-500 disabled:opacity-50"
+                    className="transition-colors hover:text-red-600 dark:text-red-400 disabled:opacity-50"
                   >
                     <X className="h-3 w-3 cursor-pointer" />
                   </button>
@@ -1159,7 +1159,7 @@ function SectionEditor({
                   onUpdate({ complianceRules: newRules });
                 }}
                 disabled={isReadOnly}
-                className="text-muted-foreground transition-colors hover:text-red-500 disabled:opacity-50"
+                className="text-muted-foreground transition-colors hover:text-red-600 dark:text-red-400 disabled:opacity-50"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -1620,7 +1620,7 @@ export default function TemplateEditor() {
             导入 seed 模板
           </button>
           {template?.isDirty && (
-            <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-500">
+            <span className="rounded-full bg-amber-500/10 px-2 py-1 text-xs text-amber-600 dark:text-amber-400">
               有未保存的更改
             </span>
           )}
@@ -1829,8 +1829,8 @@ export default function TemplateEditor() {
         ) : error ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="text-center">
-              <AlertCircle className="mx-auto mb-3 h-12 w-12 text-red-500" />
-              <p className="text-red-500">{error}</p>
+              <AlertCircle className="mx-auto mb-3 h-12 w-12 text-red-600 dark:text-red-400" />
+              <p className="text-red-600 dark:text-red-400">{error}</p>
             </div>
           </div>
         ) : !template ? (
@@ -1910,7 +1910,7 @@ export default function TemplateEditor() {
                     {template?.isDirty && (
                       <button
                         onClick={handleRevert}
-                        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-500 transition-colors hover:bg-amber-500/10"
+                        className="flex items-center gap-1 rounded px-2 py-1 text-xs text-amber-600 dark:text-amber-400 transition-colors hover:bg-amber-500/10"
                       >
                         <Undo2 className="h-3 w-3" />
                         撤销更改

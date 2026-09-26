@@ -396,7 +396,7 @@ function KnowledgeBaseManagement({
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="shrink-0 rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-600">
+            <div className="shrink-0 rounded-lg border border-primary/20 bg-primary/10 p-3 text-primary">
               <BookOpen className="h-6 w-6" />
             </div>
             <div className="min-w-0">

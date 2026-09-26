@@ -254,7 +254,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                 <div className="grid gap-4">
                   <div>
                     <label className="block text-sm text-muted-foreground mb-1">
-                      标题 <span className="text-red-500">*</span>
+                      标题 <span className="text-red-600 dark:text-red-400">*</span>
                     </label>
                     <input
                       type="text"
@@ -288,7 +288,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
                     <div>
                       <label className="block text-sm text-muted-foreground mb-1">
-                        法规类型 <span className="text-red-500">*</span>
+                        法规类型 <span className="text-red-600 dark:text-red-400">*</span>
                       </label>
                       <AdminSelect
                         value={formData.lawType}
@@ -444,7 +444,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                         ) : (
                           <button
                             onClick={handleRemoveFile}
-                            className="p-1 hover:bg-accent rounded-lg text-muted-foreground hover:text-red-500 transition-colors"
+                            className="p-1 hover:bg-accent rounded-lg text-muted-foreground hover:text-red-600 dark:text-red-400 transition-colors"
                             title="移除文件"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -462,7 +462,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                     )}
 
                     {parseError && (
-                      <div className="flex items-center gap-2 text-sm text-red-500">
+                      <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400">
                         <AlertCircle className="w-4 h-4" />
                         {parseError}
                       </div>
@@ -471,7 +471,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                     {/* Content preview */}
                     {parsedPreview && (
                       <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm text-emerald-500">
+                        <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
                           <CheckCircle2 className="w-4 h-4" />
                           文件解析成功，已提取正文
                         </div>
@@ -525,7 +525,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                           {kw}
                           <button
                             onClick={() => handleRemoveKeyword(kw)}
-                            className="hover:text-red-500"
+                            className="hover:text-red-600 dark:text-red-400"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -570,7 +570,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
                           {law}
                           <button
                             onClick={() => handleRemoveReferredLaw(law)}
-                            className="hover:text-red-500"
+                            className="hover:text-red-600 dark:text-red-400"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -583,7 +583,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
 
               {/* Error */}
               {error && (
-                <div className="flex items-center gap-2 text-red-500 text-sm">
+                <div className="flex items-center gap-2 text-red-600 dark:text-red-400 text-sm">
                   <AlertCircle className="w-4 h-4" />
                   {error}
                 </div>
@@ -608,7 +608,7 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
           {step === "completed" && (
             <div className="flex flex-col items-center py-12">
               <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mb-4">
-                <FileText className="w-6 h-6 text-emerald-500" />
+                <FileText className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
               <p className="text-lg font-medium text-foreground">导入成功</p>
               <p className="text-sm text-muted-foreground mt-2">
@@ -621,10 +621,10 @@ export default function ImportLawModal({ onClose, onSuccess }: ImportLawModalPro
           {step === "error" && (
             <div className="flex flex-col items-center py-12">
               <div className="w-12 h-12 bg-red-500/10 rounded-full flex items-center justify-center mb-4">
-                <AlertCircle className="w-6 h-6 text-red-500" />
+                <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
               </div>
               <p className="text-lg font-medium text-foreground">导入失败</p>
-              <p className="text-sm text-red-500 mt-2">{error}</p>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-2">{error}</p>
               <button
                 onClick={() => setStep("form")}
                 className="mt-4 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"

@@ -221,7 +221,7 @@ export default function AdvancedUploadModal({
     <div className="space-y-6">
       <div>
         <label className="text-foreground mb-2 block text-sm font-medium">
-          选择知识库 <span className="text-red-500">*</span>
+          选择知识库 <span className="text-red-600 dark:text-red-400">*</span>
         </label>
 
         {/* 知识库选择下拉 */}
@@ -341,7 +341,7 @@ export default function AdvancedUploadModal({
               </div>
               <div>
                 <label className="text-foreground mb-1 block text-sm font-medium">
-                  知识库名称 <span className="text-red-500">*</span>
+                  知识库名称 <span className="text-red-600 dark:text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -694,7 +694,7 @@ export default function AdvancedUploadModal({
                 onClick={() =>
                   setFiles((prev) => prev.filter((_, j) => j !== i))
                 }
-                className="text-muted-foreground shrink-0 p-1 transition-colors hover:text-red-500"
+                className="text-muted-foreground shrink-0 p-1 transition-colors hover:text-red-600 dark:text-red-400"
               >
                 <X className="h-4 w-4" />
               </button>

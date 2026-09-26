@@ -55,8 +55,8 @@ import {
 import type { CspCustomer } from "@/extensions/spare-parts/types";
 
 const STATUS_TONE: Record<string, string> = {
-  active: "text-emerald-600 border-emerald-500/30 bg-emerald-500/5",
-  pending: "text-amber-600 border-amber-500/30 bg-amber-500/5",
+  active: "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/5",
+  pending: "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/5",
   merged: "text-muted-foreground border-border bg-muted/40 line-through",
 };
 
@@ -251,9 +251,9 @@ export function CustomersView() {
 
       {/* 合并栏(选中 ≥2 时浮现) */}
       {selectedCustomers.length >= 2 && (
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800/60 dark:bg-blue-950/30">
           <CardContent className="flex flex-wrap items-center gap-2 p-3">
-            <GitMerge className="h-4 w-4 text-blue-600" />
+            <GitMerge className="text-blue-600 dark:text-blue-400 h-4 w-4" />
             <span className="text-sm">已选 {selected.size} 个客户,合并到:</span>
             <Select value={mergeTarget} onValueChange={setMergeTarget}>
               <SelectTrigger className="w-60">
@@ -508,12 +508,12 @@ export function CustomersView() {
                       <TableCell className="text-sm">{r.raw_name}</TableCell>
                       <TableCell className="text-sm">
                         {r.customer_id ? (
-                          <span className="text-emerald-600">
+                          <span className="text-emerald-600 dark:text-emerald-400">
                             {custMap.get(r.customer_id) ??
                               r.customer_id.slice(0, 8)}
                           </span>
                         ) : (
-                          <span className="text-amber-600">未匹配</span>
+                          <span className="text-amber-600 dark:text-amber-400">未匹配</span>
                         )}
                       </TableCell>
                     </TableRow>

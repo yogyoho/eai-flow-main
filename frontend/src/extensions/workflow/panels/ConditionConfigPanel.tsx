@@ -43,8 +43,8 @@ export function ConditionConfigPanel({ data, onUpdate }: ConditionConfigPanelPro
               onClick={() => onUpdate({ expression: p.value })}
               className={`px-2 py-1 text-[10px] rounded border transition-colors ${
                 expression === p.value
-                  ? "border-amber-300 bg-amber-50 text-amber-700"
-                  : "border-border text-muted-foreground hover:border-amber-200 hover:bg-amber-50/50"
+                  ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
+                  : "border-border text-muted-foreground hover:border-amber-200 dark:border-amber-800 hover:bg-amber-50/50 dark:bg-amber-950/40"
               }`}
             >
               {p.label}

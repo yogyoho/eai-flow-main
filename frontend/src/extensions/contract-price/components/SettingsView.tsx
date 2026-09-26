@@ -215,7 +215,7 @@ export function SettingsView() {
             放弃修改
           </Button>
         )}
-        {dirty && <span className="text-sm text-amber-600">有未保存修改</span>}
+        {dirty && <span className="text-sm text-amber-600 dark:text-amber-400">有未保存修改</span>}
         {updateConfig.isSuccess && !dirty && (
           <span className="text-success text-sm">已保存</span>
         )}
