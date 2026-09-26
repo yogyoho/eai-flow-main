@@ -46,6 +46,9 @@ class DeerMemModelConfig(BaseModel):
 class DeerMemConfig(BaseModel):
     """DeerMem-private configuration (self-contained, host-agnostic)."""
 
+    prompt_prepend: str = Field(default="", strict=True, description="Literal operator instructions prepended to the memory-update system message")
+    prompt_append: str = Field(default="", strict=True, description="Literal operator instructions appended to the memory-update system message")
+
     # ── Storage ──────────────────────────────────────────────────────────
     storage_path: str = Field(
         default="",
@@ -53,7 +56,12 @@ class DeerMemConfig(BaseModel):
     )
     storage_class: str = Field(
         default="",
-        description="Dotted class path for an alternative storage provider; empty (default) = FileMemoryStorage (no importlib, portable).",
+        description=(
+            "Dotted class path for an alternative storage provider, or a built-in alias: "
+            "``file`` = FileMemoryStorage (default) or ``markdown`` = MarkdownMemoryStorage "
+            "(tolerant load path, same JSON on disk); empty (default) = FileMemoryStorage "
+            "(no importlib, portable)."
+        ),
     )
     strict_user_scope: bool = Field(
         default=False,

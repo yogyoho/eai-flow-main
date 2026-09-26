@@ -6,6 +6,7 @@ import asyncio
 import logging
 import mimetypes
 import re
+import stat
 import time
 from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
@@ -45,6 +46,14 @@ from deerflow.runtime.user_context import get_effective_user_id
 # EAI-CUSTOM: ported from upstream bytedance/main (9146bfa03, #5119) so inbound
 # IM messages get a request trace id even though no ASGI middleware runs for them.
 from deerflow.trace_context import ensure_trace_context
+
+# upstream c12a3e6fa (#5581): channel-downloaded inbound files are written as
+# root 0o600; this shared helper grants group/other read via O_NOFOLLOW + fchmod
+# bound to the validated upload inode so the non-root sandbox process can read
+# them and a symlink swapped in after validation cannot redirect the chmod.
+# (upstream's ORIGINAL_USER_CONTENT_KEY import is not ported: its only consumer
+# here, _human_input_message, is not part of EAI's slimmed manager.)
+from deerflow.uploads.manager import apply_upload_sandbox_permits
 
 logger = logging.getLogger(__name__)
 
@@ -707,7 +716,20 @@ def _prepare_artifact_delivery(
     return response_text, attachments
 
 
-async def _ingest_inbound_files(thread_id: str, msg: InboundMessage) -> list[dict[str, Any]]:
+def _make_inbound_file_sandbox_readable(file_path: Path) -> None:
+    """Make a channel-downloaded upload readable by the sandbox process.
+
+    The gateway writes inbound files as root with 0o600; in AIO/Docker sandbox
+    mode the sandbox runs as a non-root user on the bind-mounted path and
+    cannot read the file without group/other read bits. Delegates to the shared
+    apply_upload_sandbox_permits helper so the permission change stays bound to
+    the validated upload inode (O_NOFOLLOW + fchmod) and cannot be redirected
+    through a symlink swapped in after validation.
+    """
+    apply_upload_sandbox_permits(file_path, stat.S_IRGRP | stat.S_IROTH)
+
+
+async def _ingest_inbound_files(thread_id: str, msg: InboundMessage, *, user_id: str | None = None) -> list[dict[str, Any]]:
     if not msg.files:
         return []
 
@@ -719,8 +741,14 @@ async def _ingest_inbound_files(thread_id: str, msg: InboundMessage) -> list[dic
         write_upload_file_no_symlink,
     )
 
-    uploads_dir = ensure_uploads_dir(thread_id)
-    seen_names = {entry.name for entry in uploads_dir.iterdir() if entry.is_file()}
+    def _prepare_uploads_dir() -> tuple[Path, set[str]]:
+        # Worker thread: ensure_uploads_dir's mkdir and the iterdir enumeration are
+        # blocking filesystem IO that must stay off the event loop.
+        target = ensure_uploads_dir(thread_id, user_id=user_id)
+        existing = {entry.name for entry in target.iterdir() if entry.is_file()}
+        return target, existing
+
+    uploads_dir, seen_names = await asyncio.to_thread(_prepare_uploads_dir)
 
     created: list[dict[str, Any]] = []
     file_reader = INBOUND_FILE_READERS.get(msg.channel_name, _read_http_inbound_file)
@@ -778,7 +806,10 @@ async def _ingest_inbound_files(thread_id: str, msg: InboundMessage) -> list[dic
 
             dest = uploads_dir / safe_name
             try:
-                dest = write_upload_file_no_symlink(uploads_dir, safe_name, data)
+                dest = await asyncio.to_thread(write_upload_file_no_symlink, uploads_dir, safe_name, data)
+                # Root-written 0o600 files are unreadable to the non-root
+                # sandbox; grant group/other read like the HTTP upload path.
+                await asyncio.to_thread(_make_inbound_file_sandbox_readable, dest)
             except UnsafeUploadPathError:
                 logger.warning("[Manager] skipping inbound file with unsafe destination: %s", safe_name)
                 continue
@@ -1280,14 +1311,23 @@ class ChannelManager:
         bytedance/main. Run AFTER ``_resolve_run_params`` and BEFORE the agent
         runs. Covers ``disable_clarification`` for non-interactive channels
         (ClarificationMiddleware would dead-end a webhook run waiting for a
-        reply that only arrives as a later webhook delivery) and
-        channel-specific credentials providers (e.g. GitHub installation
-        token minting). Returns the resolved policy for caller branching.
+        reply that only arrives as a later webhook delivery),
+        ``interaction_mode`` forwarding for channels that declare an explicit
+        mode (upstream bd995a6a2, #4919 — a declared non-interactive mode also
+        keeps the legacy ``disable_clarification`` flag aligned for older
+        consumers such as sandbox network approval), and channel-specific
+        credentials providers (e.g. GitHub installation token minting).
+        Returns the resolved policy for caller branching.
         """
         policy = CHANNEL_RUN_POLICY.get(msg.channel_name)
         if policy is None:
             return None
-        if not policy.is_interactive:
+        if policy.interaction_mode is not None:
+            run_context["interaction_mode"] = policy.interaction_mode
+            # Keep legacy consumers (including sandbox network approval) aligned.
+            if policy.interaction_mode != "interactive":
+                run_context["disable_clarification"] = True
+        elif not policy.is_interactive:
             run_context["disable_clarification"] = True
         if policy.credentials_provider is not None:
             try:
@@ -1303,7 +1343,13 @@ class ChannelManager:
         return policy
 
     async def _handle_chat(self, msg: InboundMessage, extra_context: dict[str, Any] | None = None) -> None:
-        client = self._get_client(self._resolve_owner_user_id(msg))
+        # Resolve the per-message owner once: it routes the SDK client (the
+        # internal-auth owner header, kept raw for the gateway to re-resolve)
+        # and — EAI-CUSTOM (upstream-sync 2026-09-26, c12a3e6fa/#5581 fusion) —
+        # the inbound-file storage bucket below, so both halves of a channel
+        # turn operate in the same user scope.
+        owner_user_id = self._resolve_owner_user_id(msg)
+        client = self._get_client(owner_user_id)
 
         # Look up existing DeerFlow thread.
         # topic_id may be None (e.g. Telegram private chats) — the store
@@ -1357,7 +1403,17 @@ class ChannelManager:
         if extra_context:
             run_context.update(extra_context)
 
-        uploaded = await _ingest_inbound_files(thread_id, msg)
+        # EAI-CUSTOM (upstream-sync 2026-09-26, fusion of c12a3e6fa/#5581 on
+        # 34bbeb180's user_id plumbing): stage inbound files under the same
+        # per-user bucket the run reads. The dispatch task has no user
+        # contextvar, so the contextvar fallback would land uploads under
+        # users/default while the agent — routed via the owner header above —
+        # reads users/{owner}/... EAI adaptation of upstream's
+        # _channel_storage_user_id: make_safe_user_id is exactly the
+        # normalization gateway's auth middleware applies to the owner header,
+        # so the staging bucket and the run bucket are identical by
+        # construction (make_safe_user_id is idempotent for already-safe ids).
+        uploaded = await _ingest_inbound_files(thread_id, msg, user_id=make_safe_user_id(owner_user_id) if owner_user_id else None)
         if uploaded:
             msg.text = f"{_format_uploaded_files_block(uploaded)}\n\n{msg.text}".strip()
 

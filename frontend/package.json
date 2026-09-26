@@ -1,9 +1,10 @@
 {
   "name": "deer-flow-frontend",
-  "version": "2.1.0-rc0",
+  "version": "2.2.0-dev",
   "private": true,
   "type": "module",
   "scripts": {
+    "catalog:sync": "node scripts/sync-capability-catalog.mjs",
     "demo:save": "node scripts/save-demo.js",
     "build": "next build",
     "check": "eslint . --ext .ts,.tsx && tsc --noEmit",
@@ -115,10 +116,14 @@
     "nuxt-og-image": "^5.1.13",
     "ogl": "^1.0.11",
     "papaparse": "5.7.0",
+<<<<<<< HEAD
     "prosemirror-highlight": "^0.15.3",
     "prosemirror-model": "^1.25.7",
     "prosemirror-state": "^1.4.4",
     "prosemirror-view": "^1.41.8",
+=======
+    "qrcode.react": "4.2.0",
+>>>>>>> bytedance/main
     "react": "^19.0.0",
     "react-day-picker": "^9.14.0",
     "react-dom": "^19.0.0",

@@ -56,6 +56,7 @@ from app.gateway.run_models import RunCreateRequest
 # (abuild_checkpoint_state_accessor); EAI adopts the async accessor path.
 from app.gateway.services import abuild_checkpoint_state_accessor, build_thread_checkpoint_state_accessor, sse_consumer, start_run, wait_for_run_completion
 from app.gateway.utils import sanitize_log_param
+from deerflow.agents.human_input import read_human_input_response
 from deerflow.agents.middlewares.dynamic_context_middleware import strip_injected_user_message_id_suffix
 from deerflow.authz.sandbox_authz import safe_app_config_async
 from deerflow.config.paths import get_paths, make_safe_user_id
@@ -447,6 +448,22 @@ def _is_visible_human_message(message: Any) -> bool:
     return _message_type(message) == "human" and not _is_hidden_or_control_message(message)
 
 
+def _is_regenerate_human_message(message: Any) -> bool:
+    """Return whether a human message is valid input for regenerate replay.
+
+    Human-input card replies are intentionally hidden from the transcript, but
+    they are still confirmed user input. Only the structured response protocol
+    distinguishes them from summaries, goal continuations, and other hidden
+    control messages.
+    """
+    if _message_type(message) != "human" or _message_name(message) == "summary":
+        return False
+    additional_kwargs = _message_additional_kwargs(message)
+    if additional_kwargs.get("hide_from_ui") is True:
+        return read_human_input_response(additional_kwargs) is not None
+    return True
+
+
 def _is_visible_ai_message(message: Any) -> bool:
     return _message_type(message) == "ai" and not _is_hidden_or_control_message(message)
 
@@ -498,7 +515,12 @@ def _clean_human_message_for_regenerate(message: Any) -> dict[str, Any]:
     additional_kwargs = _message_additional_kwargs(message)
     content = get_original_user_content_text(_message_content(message), additional_kwargs)
     additional_kwargs.pop(ORIGINAL_USER_CONTENT_KEY, None)
-    additional_kwargs.pop("hide_from_ui", None)
+    # A validated card answer must remain hidden and keep its request
+    # correlation when it re-enters the graph. Other replayed user inputs are
+    # made visible just as before.
+    is_hidden_human_input_response = additional_kwargs.get("hide_from_ui") is True and read_human_input_response(additional_kwargs) is not None
+    if not is_hidden_human_input_response:
+        additional_kwargs.pop("hide_from_ui", None)
 
     clean_message: dict[str, Any] = {
         "type": "human",
@@ -785,7 +807,7 @@ async def _prepare_regenerate_payload(thread_id: str, message_id: str, request: 
         # 响应在 LLM 调用中被中断时，可能已在 live stream 可见但从未落 checkpoint。
         # 最新 user 消息上的服务端 run_id 是到该不完整 turn 的持久链接。
         previous_human = next(
-            (message for message in reversed(messages) if _is_visible_human_message(message)),
+            (message for message in reversed(messages) if _is_regenerate_human_message(message)),
             None,
         )
         target_run_id = await _find_interrupted_target_run_id(thread_id, previous_human, request) if previous_human is not None else None
@@ -800,7 +822,7 @@ async def _prepare_regenerate_payload(thread_id: str, message_id: str, request: 
         if _message_id(latest_visible_ai) != message_id:
             raise HTTPException(status_code=409, detail="Only the latest assistant message can be regenerated")
 
-        previous_human = next((message for message in reversed(messages[:target_index]) if _is_visible_human_message(message)), None)
+        previous_human = next((message for message in reversed(messages[:target_index]) if _is_regenerate_human_message(message)), None)
         target_run_id = (
             await _find_target_run_id(
                 thread_id,

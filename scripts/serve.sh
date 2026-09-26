@@ -114,9 +114,41 @@ done
 
 # ── Stop helper ──────────────────────────────────────────────────────────────
 
+# Every deer-flow worktree (the main checkout + each linked worktree) hardcodes
+# the same dev ports (8001/3000/2026), so a service started from ANY of them
+# must be reclaimable from here — otherwise `make stop`/`make dev` in this
+# worktree can neither kill nor take over a port held by a sibling worktree.
+# DEERFLOW_ROOTS is that set of roots; processes living outside all of them
+# (e.g. an unrelated project on port 3000) are still never touched.
+# Sorted most-specific-first (longest path first): a linked worktree lives
+# under the main checkout, so both roots are substrings of its files — checking
+# the deeper root first attributes a reclaimed port to the right worktree.
+DEERFLOW_ROOTS="$(
+    {
+        printf '%s\n' "$REPO_ROOT"
+        git -C "$REPO_ROOT" worktree list --porcelain 2>/dev/null |
+            awk '/^worktree /{sub(/^worktree /, ""); print}'  # whole line: paths are unquoted and may contain spaces (upstream #5856)
+    } | awk 'NF && !seen[$0]++ {print length($0)"\t"$0}' | sort -rn | sed 's/^[0-9]*\t//'
+)"
+
+# EAI-CUSTOM: upstream's `_is_deerflow_pid` (multi-root lsof walk + /proc
+# DEERFLOW_DAEMON_ROOT probe) was simplified back to this single matcher when
+# EAI dropped the pnpm.py/daemon-tag machinery; upgraded to walk DEERFLOW_ROOTS
+# so upstream's whole-worktree port reclaim (#5856) still applies. Matches the
+# root with a trailing slash OR as an exact open-path prefix (a process whose
+# cwd IS the root has no trailing slash in lsof output), while a sibling dir
+# like ".../deer-flow-notes" still never matches the ".../deer-flow" root.
 _is_repo_pid() {
-    local pid=$1
-    lsof -p "$pid" 2>/dev/null | grep -F "$REPO_ROOT" >/dev/null
+    local pid=$1 files root
+
+    files=$(lsof -p "$pid" 2>/dev/null) || return 1
+    while IFS= read -r root; do
+        [ -n "$root" ] || continue
+        case "$files" in
+            *"$root"/*|*"$root") return 0 ;;
+        esac
+    done <<< "$DEERFLOW_ROOTS"
+    return 1
 }
 
 _kill_repo_processes() {

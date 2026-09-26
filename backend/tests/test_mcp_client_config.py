@@ -27,7 +27,10 @@ def test_build_server_params_stdio_success():
 
 
 def test_build_server_params_stdio_passes_cwd():
-    """EAI-CUSTOM: stdio MCP 子进程需 cwd 才能 import app 包。"""
+    """EAI-CUSTOM: stdio MCP 子进程需 cwd 才能 import app 包。
+
+    上游 #5643 也补了 cwd 透传，与本侧 EAI-CUSTOM 行为一致，测试双方保留。
+    """
     config = McpServerConfig(
         type="stdio",
         command="python",
@@ -44,6 +47,18 @@ def test_build_server_params_stdio_without_cwd():
     config = McpServerConfig(type="stdio", command="npx", args=["-y", "x"])
     params = build_server_params("s", config)
     assert "cwd" not in params
+
+
+# upstream #5643: falsy cwd (None / "") must be omitted, not injected.
+@pytest.mark.parametrize("cwd", [None, ""], ids=["null", "empty"])
+def test_build_server_params_omits_empty_stdio_cwd(cwd: str | None):
+    config = McpServerConfig(command="python", args=["server.py"], cwd=cwd)
+
+    assert build_server_params("local", config) == {
+        "transport": "stdio",
+        "command": "python",
+        "args": ["server.py"],
+    }
 
 
 def test_extensions_config_resolves_env_variables_inside_nested_collections(monkeypatch):
@@ -87,6 +102,16 @@ def test_build_server_params_http_like_success(transport: str):
         "transport": transport,
         "url": "https://example.com/mcp",
         "headers": {"Authorization": "Bearer token"},
+    }
+
+
+@pytest.mark.parametrize("transport", ["sse", "http"])
+def test_build_server_params_does_not_forward_stdio_cwd_to_remote_transports(transport: str):
+    config = McpServerConfig(type=transport, url="https://example.com/mcp", cwd="/local/server")
+
+    assert build_server_params("remote-server", config) == {
+        "transport": transport,
+        "url": "https://example.com/mcp",
     }
 
 

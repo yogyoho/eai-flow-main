@@ -77,3 +77,25 @@ export interface WechatBotRestartResponse {
   success: boolean;
   message: string;
 }
+
+// Upstream (#5582): WeChat QR login session from the web UI activation flow.
+export type WechatQRLoginSession = {
+  id: string;
+  status:
+    | "pending"
+    | "scanned"
+    | "verification_required"
+    | "confirmed"
+    | "expired"
+    | "failed";
+  error?:
+    | "network"
+    | "invalid_response"
+    | "verification_rejected"
+    | "verification_blocked"
+    | "already_bound"
+    | null;
+  qrcode_content: string;
+  expires_in: number;
+  provider: ChannelProvider | null;
+};

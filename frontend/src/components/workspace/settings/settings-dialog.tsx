@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BotIcon,
   BellIcon,
   BrainIcon,
   CableIcon,
@@ -23,8 +24,8 @@ import { useI18n } from "@/core/i18n/hooks";
 import { cn } from "@/lib/utils";
 
 // EAI-CUSTOM: 对齐上游分包纪律 —— 每个 section page 一个懒加载 chunk
-// (上游 #5468 缩减后 7 个；EAI 追加 skills/wechat 两个扩展懒加载项，共 9 个)。
-// 打开设置只下载当前激活 section 的代码，而不是全部 9 页。
+// (本次同步并入上游 #5596 的 models 共享模型管理页；EAI 追加 skills/wechat
+// 两个扩展懒加载项，共 8 个)。打开设置只下载当前激活 section 的代码。
 function SettingsPageLoading() {
   return (
     <p role="status" className="text-muted-foreground py-8 text-center text-sm">
@@ -77,10 +78,11 @@ const SubagentSettingsPage = dynamic(
     ),
   { loading: SettingsPageLoading },
 );
-// EAI-CUSTOM (upstream-sync 2026-08-26): EAI's nav intentionally dropped the
-// About section back then. Upstream #5468 restored About as a first-class
-// settings section and this fused dialog adopts it, so the dynamic import is
-// live code again (previously dead code here).
+const ModelSettingsPage = dynamic(
+  () =>
+    import("./model-settings-page").then((module) => module.ModelSettingsPage),
+  { loading: SettingsPageLoading },
+);
 // EAI-CUSTOM: WeChat channel settings page
 const WechatSettingsPage = dynamic(
   () =>
@@ -91,6 +93,7 @@ const WechatSettingsPage = dynamic(
 );
 
 export type SettingsSection =
+  | "models"
   | "account"
   | "wechat" // EAI-CUSTOM: WeChat channel section (wechat-settings-page)
   | "appearance"
@@ -125,6 +128,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
 
   const sections = useMemo(
     () => [
+      { id: "models", label: t.settings.sections.models, icon: BotIcon },
       {
         id: "account",
         label: t.settings.sections.account,
@@ -167,6 +171,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
       },
     ],
     [
+      t.settings.sections.models,
       t.settings.sections.account,
       t.settings.sections.channels,
       t.settings.sections.memory,
@@ -217,6 +222,7 @@ export function SettingsDialog(props: SettingsDialogProps) {
           </nav>
           <ScrollArea className="h-full min-h-0 rounded-lg border">
             <div className="space-y-8 p-6">
+              {activeSection === "models" && <ModelSettingsPage />}
               {activeSection === "account" && <AccountSettingsPage />}
               {activeSection === "wechat" && <WechatSettingsPage />}
               {activeSection === "memory" && <MemorySettingsPage />}
