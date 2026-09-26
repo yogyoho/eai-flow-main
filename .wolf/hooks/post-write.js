@@ -243,7 +243,11 @@ function extractCalls(code) {
 // ─── Auto Bug Detection ──────────────────────────────────────────
 function autoDetectBugFix(wolfDir, absolutePath, projectRoot, oldStr, newStr) {
     const bugLogPath = path.join(wolfDir, "buglog.json");
-    const bugLog = readJSON(bugLogPath, { version: 1, bugs: [] });
+    // bug-3300 fix: buglog.json is a bare top-level array (agent-appended), not {bugs:[]}.
+    // The old object default made bugLog.bugs undefined -> .find() threw silently, killing
+    // auto-detection since 2026-08-29. Accept both shapes.
+    const parsedBugLog = readJSON(bugLogPath, []);
+    const bugLog = { bugs: Array.isArray(parsedBugLog) ? parsedBugLog : (parsedBugLog && Array.isArray(parsedBugLog.bugs) ? parsedBugLog.bugs : []) };
     const relFile = normalizePath(path.relative(projectRoot, absolutePath));
     const basename = path.basename(absolutePath);
     const ext = path.extname(basename).toLowerCase();
@@ -272,7 +276,13 @@ function autoDetectBugFix(wolfDir, absolutePath, projectRoot, oldStr, newStr) {
         writeJSON(bugLogPath, bugLog);
         return;
     }
-    const nextId = `bug-${String(bugLog.bugs.length + 1).padStart(3, "0")}`;
+    // bug-3300 follow-up: derive next id from max existing numeric suffix (array may
+    // contain 4-digit ids like bug-3300; length+1 would collide).
+    const maxBugNum = bugLog.bugs.reduce((m, b) => {
+        const n = parseInt(String((b && b.id) || "").replace(/^bug-/, ""), 10);
+        return Number.isFinite(n) && n > m ? n : m;
+    }, 0);
+    const nextId = `bug-${String(maxBugNum + 1).padStart(3, "0")}`;
     bugLog.bugs.push({
         id: nextId,
         timestamp: new Date().toISOString(),

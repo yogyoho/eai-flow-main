@@ -132,3 +132,10 @@ deploy/offline/data/
 
 # 客户部署配置(机器本地, 含内网 LLM 凭据)
 /deploy.conf
+
+# local-only artifacts (never commit)
+cookies.txt
+me.json
+run4.json
+zip1/
+.wolf/token-ledger.json

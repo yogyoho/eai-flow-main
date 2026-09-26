@@ -264,3 +264,22 @@ def pytest_runtest_setup(item):
 def pytest_runtest_teardown(item, nextitem):
     global _current_skill_scripts
     _current_skill_scripts = None
+
+
+# --- learnings P1: 跨测试共享事件循环 ---------------------------------------
+# 全局 extensions engine(asyncpg)绑定创建时的循环; asyncio.run 每测试换循环会让
+# 第二个测试撞 "Event loop is closed"。DB 型 learnings 测试统一用本 fixture 跑协程。
+import asyncio as _asyncio  # noqa: E402
+import pytest as _pytest  # noqa: E402
+
+
+@_pytest.fixture(scope="session")
+def learnings_loop():
+    loop = _asyncio.new_event_loop()
+    _asyncio.set_event_loop(loop)
+    yield loop
+    try:
+        loop.run_until_complete(loop.shutdown_asyncgens())
+    except Exception:
+        pass
+    loop.close()

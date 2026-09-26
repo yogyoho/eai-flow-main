@@ -313,6 +313,22 @@ P1 验收（Success Criteria P1 全绿）当天执行硬切换：① `extensions
 
 **诚实备注**:场景② 的 key 与 SKILL.md 示例相同(eval 部分被"教考同源"),P1 的服务端 canonical key(D6)是正解;L-001/L-002 近义不同 key 的出现恰好实证了 D6 的必要性。eval 可重复运行(条目持久,重复运行走折叠路径)。
 
+## P1 实施记录(2026-09-14,已上线验证)
+
+**交付物**:`backend/app/extensions/learnings/`(models/patterns/service/sweeper/mcp/__init__ + scripts/import_ledger.py)+ 4 测试文件(容器内 **29/29 PASS**)+ 两份 extensions_config.json 的 mcpServers.learnings 注册(cwd=null,env 携 DEER_FLOW_CONFIG_PATH/PYTHONPATH/EXTENSIONS_DB_HOST/PORT/USER/NAME)。
+
+**实施中抓出并修复的 4 个部署级问题**(每个都由真机验证暴露):
+1. **`-m app...` 找不到包**:cwd=null(身份绑定前提)使子进程落在 thread 工作区 → PYTHONPATH=/app/backend 进注册 env(与 bug-712 的 cwd 方案互斥,sys.path.insert 兜底)
+2. **`init_engine_from_config` 未再导出**:persistence/__init__ 只导 4 个名 → 改从 deerflow.persistence.engine 直取
+3. **store 的 user_id=AUTO**:独立进程无 auth contextvar → list_messages_by_run/list_events 显式传 cwd 推导的 user_id
+4. **MCP SDK env 白名单 + backend/.env 端口坑**:子进程丢父进程 EXTENSIONS_DB_* → 注册 env 显式钉住非敏感四项(HOST/PORT/USER/NAME;密码仍走 .env + mcp.py 补 load_dotenv('/app/backend/.env', override=False))
+
+**另**:工具名改裸名(surface/log_learning/stats/resolve),适配器前缀后 agent 侧显示干净的 `learnings_stats`(双前缀消除)。
+
+**真机验证链**:29/29 测试(容器)→ cwd 身份解析 + thread-id-mismatch fail-closed 拒绝 → lazy sweep 对真实 eval 线程 swept=1/captures=1(recursion→runtime.failure)→ 二次 swept=0(receipts 幂等线上生效)→ **lead agent 真实调用 learnings_stats 返回真数据**(p1-smoke-3 线程)。全程零 gateway 重启、零既有文件改动。
+
+**遗留**:D15 硬切换(P0 ledger → importer → 冻结)待 P1 观察稳定后执行;P0 skill 捕获 flag 暂保持开启(并行期短暂共存,importer 幂等可吸收)。
+
 ## Open Questions
 
 1. P0 skill 默认在 dev 开还是全部 opt-in？（倾向 dev 默认 true，prod 模板 false）

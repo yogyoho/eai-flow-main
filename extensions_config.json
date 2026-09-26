@@ -1,5 +1,17 @@
 {
   "mcpServers": {
+    "learnings": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": ["-m", "app.extensions.learnings.mcp"],
+      "cwd": null,
+      "env": {"DEER_FLOW_CONFIG_PATH": "/app/config.yaml", "PYTHONPATH": "/app/backend", "EXTENSIONS_DB_HOST": "postgres-ext", "EXTENSIONS_DB_PORT": "5432", "EXTENSIONS_DB_USER": "agentflow", "EXTENSIONS_DB_NAME": "agentflow"},
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Agent self-learning loop: capture/search/promote learnings"
+    },
     "filesystem": {
       "enabled": false,
       "type": "stdio",
@@ -131,7 +143,7 @@
         "X-Internal-Auth": "$ONTOSTUDIO_INTERNAL_AUTH_TOKEN"
       },
       "oauth": null,
-      "description": "Ontology semantic layer: cross-module object/link navigation, search, traverse and aggregate over the market-domain registry (contract_price / spare_parts / bid_quote). Read-only. (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放))"
+      "description": "Ontology semantic layer: cross-module object/link navigation, search, traverse and aggregate over the market-domain registry (contract_price / spare_parts / bid_quote). Read-only. (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放)"
     },
     "doc-graph": {
       "enabled": true,
@@ -145,7 +157,7 @@
         "X-Internal-Auth": "$ONTOSTUDIO_INTERNAL_AUTH_TOKEN"
       },
       "oauth": null,
-      "description": "Document graph builder: ingest LLM-extracted bid entities/relations/mentions, review and merge entities. Write-side complement to the read-only ontology server (doc_graph domain). (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放))"
+      "description": "Document graph builder: ingest LLM-extracted bid entities/relations/mentions, review and merge entities. Write-side complement to the read-only ontology server (doc_graph domain). (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放)"
     },
     "knowledge-factory": {
       "enabled": true,

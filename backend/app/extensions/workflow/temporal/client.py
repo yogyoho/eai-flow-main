@@ -24,53 +24,72 @@ def get_temporal_client() -> Client | None:
 async def temporal_lifespan(app: FastAPI):
     """FastAPI lifespan manager for Temporal Client + embedded Worker.
 
-    If Temporal server is unreachable, logs a warning and continues.
-    All workflow features will be disabled until server becomes available.
+    EAI-CUSTOM (bug-3441, 2026-09-26): Temporal 在 EAI dev 是可选组件
+    (temporal-workflow-engine-deploy：默认不起 Temporal 容器)。因此连接走
+    **后台任务**、完全移出 gateway 就绪临界路径 —— lifespan 立即进入服务
+    （上游 test_gateway_lifespan_shutdown 的 <1s 就绪断言依赖这一点）；
+    连接成功后 workflow 特性自动挂载，失败/超时(10s)则记录警告保持停用。
+    连接阶段与 body 阶段异常语义分离（bug-3401）：body 业务异常原样穿透。
     """
     global _temporal_client
 
-    try:
-        client = await Client.connect(TEMPORAL_URL, namespace="default")
+    holder: dict = {}
 
-        # Import here to avoid circular imports
-        # Use unsandboxed runner — the workflow module transitively imports
-        # FastAPI (via __init__.py → routers.py) which is incompatible with
-        # Temporal's sandbox restrictions (sniffio._ThreadLocal).
-        from temporalio.worker import UnsandboxedWorkflowRunner
+    async def _connect() -> None:
+        try:
+            client = await asyncio.wait_for(
+                Client.connect(TEMPORAL_URL, namespace="default"),
+                timeout=10.0,
+            )
 
-        from .activities import ALL_ACTIVITIES
-        from .workflows import DynamicGraphWorkflow
+            # Import here to avoid circular imports
+            # Use unsandboxed runner — the workflow module transitively imports
+            # FastAPI (via __init__.py → routers.py) which is incompatible with
+            # Temporal's sandbox restrictions (sniffio._ThreadLocal).
+            from temporalio.worker import UnsandboxedWorkflowRunner
 
-        worker = Worker(
-            client,
-            task_queue=TEMPORAL_TASK_QUEUE,
-            workflows=[DynamicGraphWorkflow],
-            activities=ALL_ACTIVITIES,
-            workflow_runner=UnsandboxedWorkflowRunner(),
-        )
-        worker_task = asyncio.create_task(worker.run())
+            from .activities import ALL_ACTIVITIES
+            from .workflows import DynamicGraphWorkflow
 
-        _temporal_client = client
-        app.state.temporal_client = client
-        logger.info("Temporal client connected, worker started on queue '%s'", TEMPORAL_TASK_QUEUE)
-    except Exception as e:
-        # bug-3401 修复(上游 #5287 契约对齐): 只有 Temporal **连接/启动阶段**的失败才降级
-        # 为"功能停用"; 包裹体内(lifespan body)的业务异常(如 scheduler 启动失败)必须
-        # 原样穿透 —— 旧写法单块 try 包住 yield, 会把上游 fail-closed 的 lifespan 中止
-        # 吞成正常启动(test_gateway_lifespan_shutdown 抓到)。
-        logger.warning("Temporal server not available (%s). Workflow features disabled.", e)
-        yield
-        return
+            worker = Worker(
+                client,
+                task_queue=TEMPORAL_TASK_QUEUE,
+                workflows=[DynamicGraphWorkflow],
+                activities=ALL_ACTIVITIES,
+                workflow_runner=UnsandboxedWorkflowRunner(),
+            )
+            wt = asyncio.create_task(worker.run())
+            holder["worker"] = wt
+            _temporal_client = client
+            app.state.temporal_client = client
+            logger.info("Temporal client connected, worker started on queue '%s'", TEMPORAL_TASK_QUEUE)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            logger.warning("Temporal server not available (%s). Workflow features disabled.", e)
+
+    connect_task = asyncio.create_task(_connect())
 
     try:
         yield
     finally:
-        worker_task.cancel()
+        connect_task.cancel()
         try:
-            await worker_task
+            await connect_task
         except asyncio.CancelledError:
             pass
+        except Exception:
+            logger.debug("Temporal connect task ended with error during shutdown", exc_info=True)
+        worker_task = holder.get("worker")
+        if worker_task is not None:
+            worker_task.cancel()
+            try:
+                await worker_task
+            except asyncio.CancelledError:
+                pass
         _temporal_client = None
+        if getattr(app.state, "temporal_client", None) is not None:
+            app.state.temporal_client = None
 
 
 def _get_client():

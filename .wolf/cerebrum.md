@@ -23,6 +23,26 @@
 - [2026-08-21] geological-report 用户交互铁律：数据收集必须用 ask_clarification fields 渲染中文填写表单（label=中文名+单位），绝不向用户展示/索要 JSON 或英文键名；面向用户术语一律"数据项"不说"字段"；缺项清单译成中文按类别分组呈现。适用于所有面向非 IT 用户的技能。
 
 ## Key Learnings
+- **ontostudio 容器无 bind-mount, 镜像烘焙 `COPY app ./app`——改代码后 `restart` 带不进去, 必须 `build` + `up -d`**（2026-09-24 实测）：Task 10 验收前容器已陈旧 41 小时, 里面**连 `app/ontology/actions/` 目录都不存在**、`/openapi.json` 只有 21 条路由无 `actions/invoke`。而计划 Step 3 写的是 `restart`——**根本无效**。判据: 验收/联调前先 `docker exec ontostudio-backend ls app/ontology/actions/` 确认代码在不在容器里。对比: gateway 是 bind-mount(改代码 restart 即生效), ontostudio 不是——两者行为不同, 别互相套用。
+- **文档与行为的漂移，是唯一没有任何自动防线的一类缺陷**（2026-09-23 Task 7 质量观察）：注释写错（没有测试看注释）、日志/文案归因错（有测试但**断言选错**，例如断"非空+含60s"对"把5s说成60s"完全无感）、docstring 里的数字错（**只有重测能证伪**）——这三类 grep 都抓不到，因为 grep 只查"文档提到了某个常量"，查不出"文档描述的行为已经不是代码的行为"。**可用的对策**：凡注释里出现**具体数值或行为断言**，其来源必须是一条**可执行的断言**或一次**带条件的实测记录**（写清机器/路径/取法），否则就会在下一个人手里再错一遍。
+- **拼错的枚举值会静默丢弃数据，而基准会照常给出"成功"的数字**（2026-09-23 实测）：benchmark 的 relations 用 `locatedIn`，registry enum 是 `located_in` → 关系全被静默丢掉 → 100 实体只产出 163 三元组（正常 6-7/实体）→ 算出的"0.8ms/三元组"**分母全错**，且**没有任何报错**。**凡做基准，先断言"产出的数据量符合预期量级"**——否则测的是一个你不知道有多小的东西。
+- **判定"两份自相矛盾的报告哪份对"，不要在两份叙述之间权衡——去跑反事实对照**（2026-09-23 Task 6）：同一 agent 就同一任务交过两份相反回报（甲："role_name 装的是 code，无需改"；乙："装的是显示名，原片段会让动作全部 404"）。**两份写得同样自信。** 最终判定靠的是把**计划字面写法真跑一遍** → 拿到 `none_allow` 这个观测。规律：**能跑出反例的判定，不需要任何人信谁的叙述——包括不需要信协调者。** 次级手段是找"不受报告链条影响的第三方证据"（此处是仓库自己的一行 `middleware.py:283` 拿 role_name 去比中文显示名），但那是推断，观测更硬。
+- **`CurrentUser.role_name` 装的是 `roles.name`（显示名），不是 code**（2026-09-23 实测，活库 + `middleware.py:105/283`）：任何需要"角色 code"的地方（如按 `list_role_codes()` 建的索引）都必须由 `role_id` 反查 `roles.code`。用 `role_name` 会**静默落空**，症状是"权限配了但没用"。另：`roles` 表只有 6 个角色（`superadmin`/`dept_head`/`project_manager`/`reviewer`/`writer`/`user`），**没有 `admin`**——计划与文档里凡引用 `admin` 角色的都作废。
+- **"只对 X 触发"的识别器，若只看异常类型、不看"哪条语句报的"，就会把 Y 的故障误判成 X**（2026-09-23 Task 5 实测）：`_is_missing_table_error` 只判异常链里有没有 42P01，而同事务里三条打在**目标表**上的语句也能报 42P01。后果三重且独立成立——DDL 故障被报成 404（正是该模块注释自称要避免的"把基础设施故障改写成误导性路径"）、一次性懒建额度被烧掉、以及**懒建的实际副作用是 `create_all` 建所有缺失表**，于是目标表被静默重建为空表、真正的 DDL 事故不可见。
+- **一个"懒建/自愈"机制的副作用范围，往往大于它的命名与文档声明范围**（2026-09-23 Task 5）：`ensure_tables` 调的是 `Base.metadata.create_all`——**它建的是所有缺失的 `Base.metadata` 表，不只是被命名的那个**。而当时的注释写着「仅限这张表：其余 dg_* 表没有写入路径在跑」。**规律：凡"自动修复/自动补建"类机制，先去读它实际执行的那条语句的作用域，不要相信它的名字和注释。** 修正注释之前，先修认知。
+- **同一条 fail-open 常被"修一半"**（2026-09-22 Task 4 实测两轮）：F1 修的是 `not_in` 的 value **缺失**；下一轮 C1 发现 value **形状错**（`list("rejected")` → 逐字符拆 → 谓词对包括该值在内的每行都为真）是**同一个洞**。根因是把"空/无"当成唯一的退化形态。**教训：修一个归一化缺陷时，把"输入可能长什么样"穷举一遍（缺失 / 空 / 错类型 / 错嵌套 / 巨型），不要只修第一个想到的那个。** 同源：`scope.py` 的 `in` 裸字符串按字符拆（Task 1 审查）→ `sql_write.py` 的同一形态（Task 4）→ 说明这是**跨模块复发的模式**，不是单点疏忽。
+- **读路径与写路径的空集语义必须分开裁决**（2026-09-22 Task 4 实测，真库验证）：`not_in` 的空 value 编译成 `NOT (col = ANY(ARRAY[]))` = `NOT FALSE` = **TRUE**，即**守卫恒满足、静默失效**；而参数为 `NULL` 时 `NOT(...)` = NULL → 行被过滤 → 拒绝。所以 `list(value or [])` 这类"空值归一"会把**漏填参数**从 fail-closed 翻转成 fail-open。**过滤器（读）与守卫（写）对同一个算子的空集语义可以相反**：`in` 空两边都可 FALSE（安全），`not_in` 空在守卫侧**绝不能是 TRUE**——守卫不该产出恒真式，应当拒绝编译。
+- **"断言状态存在"型测试在状态存在之后就对变异免疫**（2026-09-22 Task 3 实测）：`dg_action_audit` 建出来之后，把 lifespan 里的建表调用删掉，那条真库测试仍然绿。对策是补一条断言**可观测效果**的测试（DB 不可达时是否留 WARNING、服务是否仍能起）——断言行为而非状态，任何环境都跑，删掉调用即红。**新写"某物存在"型测试时先问：这东西已经存在之后，这个断言还测得到什么？**
+- **变异检验还有一个假红来源：受限 env**（2026-09-22 Task 3 实测）：给 pytest 传受限 `env` 会让收集直接崩，**`rc != 0` 被误读成"变异被抓"**。变异脚本必须完整继承环境 + 输出解码用 `errors="replace"` + 逐条打印 pytest 真实尾行。rc≠0 不是 RED 的充分证据。另：只删 `try:` 里的行会留下裸 `try:` → SyntaxError → 也是假红。
+- **本仓源文件的换行符不统一：`ontostudio/backend/app/ontology/{schemas,registry}.py` 是 CRLF，`scope.py` 与 `tests/*.py` 是 LF**（2026-09-22 实测）。用多行锚点的临时脚本改注释时，同一个锚点写法在不同文件上会**静默不匹配**——文件没变却以为改成了。改完必须 `git diff` 确认真的改到。
+- **pydantic v2 的 `model_validator(mode="after")` 返回 `None` 不报错，而是让 `model_validate` 静默返回 `None`**（2.13.5 实测 `type(out) is NoneType`）。将来谁删掉校验器末尾的 `return self`，症状是"建模返回 None → 下游 AttributeError"，而不是一条清楚的 pydantic 报错。写 after-validator 必须 `return self`。
+- **变异检验（mutation testing）有三关，缺一结论不可信**（2026-09-22 两次实测踩坑）：①合法性——「改函数名/改签名」不是禁用，pydantic 按装饰器注册、不按名解析，改名后校验器照跑（**假阴性**）；②有效性——不在活树里做变异（会污染并发审查者的快照，实测差点产出「改名会禁用 pydantic 校验器」的**镜像假阳性**），副本须与活树 hash 比对、基线须全绿、每条用后还原再比 hash；③可测性——`IndentationError`/收集错误在 pytest 里也显示 failed，是**假 RED**，须判 INVALID。
+- **`Registry` 是合并快照，不保存 per-domain 的 `DomainFile`**（2026-09-22 ontostudio）：它只有 `object_types` / `link_types` 两个扁平字典，另加 `namespaces_by_domain` / `formal_by_domain` 文件级透传。**没有 `domains()` 之类访问器**——要按域遍历就得自己加合并字典（`actions` 就是这么加的）。写代码前先看 `registry.py:31-48` 的 `__init__`，别假设 API 存在。
+- **`docs/superpowers/` 在 `.gitignore:114` 被忽略，但目录内已有 40 个跟踪文件**（2026-09-22）：新增 spec/plan 必须 `git add -f`，否则 `git add` 静默失败（只在 stderr 提示 "paths are ignored"）。另注意 `git check-ignore -v <dir>/` 对**目录尾斜杠**的判断会误导——要验就指向具体文件。
+- **给 subagent 的计划代码块会出错，且出错率不低**（2026-09-22）：动作层前两个 Task 里，计划字面代码 3 次通不过计划自己的约束（`_quote` 的 bindings 语义、`-> "StateChange"` 的引号触发 ruff UP037、未用 import 触发 F401）。对策不是写得更小心，而是**在派发提示里明写**："若计划代码过不了计划的测试，不要改测试迁就代码、也不要默默改了了事——判明谁错并在报告里点名哪一行"。三次都被顶回来了，每次都值回票价。
+- **P0 三项（2026-09-22 本体系统）**：(1) OntoStudio 内核 `ONTOSTUDIO_KERNEL_PATH` 未设 = pyoxigraph 内存态，容器重建归零——已挂命名卷，实测 restart 后 397 三元组存活；(2) `extensions_config.json` 的 MCP `headers` 支持 `"$VAR"` 占位（harness `config/extensions_config.py:538` 解析），故共享头可声明式接线而不必改代码；(3) 值必须放 **`docker/.env`**——服务自身的 `environment:` 空插值会**覆盖** `env_file` 注入，这是本仓反复踩的同一个坑。
+- **owlrl `prp-spo2` 的链首播种要求**（2026-09-22）：`OWLRL.py:348` 用 `self.graph.triples((None, chain[0], None))` 驱动属性链推理，链首属性在图中无三元组时**静默产出零推断**。任何依赖 owlrl 属性链的系统都要为"链首未填充"单独建夹具——只测填充过的数据等于没测。
+- [2026-09-22] 本仓库所有文件下载接口的 Content-Disposition 中文文件名必须 RFC 5987 编码(`filename="fallback"; filename*=UTF-8''` + urllib.parse.quote),裸中文会让 starlette latin-1 编码 header 时 UnicodeEncodeError→500。既有同款:docmgr/contract_price/gateway artifacts。前端文件下载要真实成败反馈时用 fetch→blob→createObjectURL,锚点直链拿不到下载结果,toast 会假成功(bug-3437/3438)。
 - **[2026-09-20] cpa 深扫表头兜底(ssxl-cgjh)+P-4 合计闭环病征/重推落地配方:** ①审批单/表单式文档真价格表头可在 peek=3 之外(砂石料 p4 第 4 行,上方表单行的『完工时间』含伪表头 token『时间』使 _collapse_header 折叠出『制表人…』伪表头)——match_seed 标准折叠未命中时走 _match_seed_deep: rows[:8] 逐行找「≥2 角色锚命中 + 上方行命中标题词」的候选行,_match_one_seed 确认,header_rows=ri+1;锚/标题词全来自 seed,通用路径零改动,无标题词的 seed 不进深扫。②综合单价=物资+运输拆胶('150.00 50.00' 同格/'123.00'+'28.00' 两格)行级仲裁修不齐——_closure_recover_rows 以打印合计为独立锚: t=行内最大金额(合计远大于日期/序号噪声)、q=存储量(>0, u=t/q+量格细噪 Snap)否则行内乘法(u×q≈t,q 先 u 后=格内 token 序即列序)或加法(u=x+y)、采纳门=Σt 与打印合计闭合≤0.5%(全有或全无,调价表 adj 跳过——左半区金额可大于调整后合价,行最大值语义不成立);重推行打 _closure 旗,第九层分层洗白链里保持 ok。验证三板斧: replay_diff(129 表命中映射必须恰一处新增)+guibei_diff(monkeypatch _closure_recover_rows 为 no-op 对比,桂北 400 行必须 IDENTICAL)+活体重解析 DB 对照(p13 旧 4 行零变化+p4 新 8 行真值)。129 表回放 fixture 再固化手法=容器内 regen 脚本全量重算+断言 diff 恰为预期集合后整文件替换。
 - **[2026-09-20] cpa 元数据 F2 兜底门配方(bug-3429):** 表格 cell 合同编号兜底(方案A)只在文本路 contract miss 时触发(cli._extract_project_fields_with_fallback 加 tables 参数),门序①整格含 审批编号/招标编号 跳过(招标流水号诱饵)②'项目合同编号'先于'合同编号'搜(子串免重复命中)③同 cell 冒号必需 ④冒号后**整段**(非前导 alnum-run!)过 ^[A-Za-z0-9][A-Za-z0-9\-]{5,}$ 且 dash段>=3——上浦粘连值 '…-011-20 包合同段项目经理部' 是全段含中文才被挡,若只取前导 alnum-run 会误收截断号'…-011-20'。_find split-line 守卫: 候选值行含任何已知标签词(全 label 族+审批/招标诱饵)→拒收(砂石料 '合同名称'→'局审批编号' 误提取);守卫只挂 split-line 分支,same-line 正则不动(5 文档真实缓存回放其余全档零影响)。验证法: /app 是 bind-mount,代码改完直接容器内 python 跑 scripts.project_fields 对 ocr/{hash}.json 缓存回放比 DB 基线即可端到端验收,无需重解析。
 - **cpa 单文档重解析/审计的容器内调用姿势 (2026-09-19, bug-3413):** gateway 容器内跑 contract-price-analysis 脚本必须 PYTHONPATH=/app/skills/public/contract-price-analysis(cli.py 用 from scripts.xxx 绝对导入)。单文档重解析=--force-key <MinIO对象key>(storage_uri 去掉 s3://bucket/ 前缀),--re-ocr 才强制重OCR;桂北137页 re-OCR 实测约18分钟(P1估15)。重解析会 delete+reinsert cpa_items(id/run_id/cluster_id 会变,比特一致性 diff 须排除这三列只比业务值列)。
@@ -329,6 +349,9 @@
 - [2026-09-14] docmgr「我的文档」视图 = `/personal-outputs` 直读文件系统视图（DocumentManagement.tsx L505-507 注释明言取代旧文件夹树），folders/tree 与 /documents API 正常不代表「我的文档」正常；排障先分清用户看的是哪条数据链。分页切片在可见性过滤之前的 service 都有「空候选占页」风险（ToolOutputBudgetMiddleware 会往 outputs/.tool-results/ 写隐藏项使空目录成候选）。
 
 ## Do-Not-Repeat
+- **2026-09-22 · `.wolf/buglog.json` 顶层是 `{bugs:[...]}` 不是裸数组**：读后必须 `j.bugs` 再写回，写回必须 `JSON.stringify({bugs:arr},null,2)`。本仓已有同类事故（bug-2181），当天又差点复现——脚本报 `arr.map is not a function` 就是这个。同理：`git show HEAD:.wolf/buglog.json` 可先验形状，不要假设。
+- **2026-09-22 · 别把「部分覆盖」渲染成标准全名**：`ValidationPage` 曾以「GB/T 48000.3—2026 符合性 5/5」呈现只含 4 个条款族的套件。分母不完整时，标题不得用标准全名——改口径 + 显式列出未覆盖面，比补分母更快且不误导。同类：任何"符合性 N/N"都要先问 N 的分母是谁。
+- **2026-09-22 · 别把"没有推理机"当成"没有公理"**：国标 GB/T 48000.3 §5.3/§8.2 要的是"用 W3C 语言表示 + 标准序列化格式存储交换 + SHACL 校验 + 公理形式化表达"，**不需要 DL 推理机**。本项目 methodology.md 一度把 RDF/OWL/SHACL 全判"不采纳"（理由是与闭世界语义冲突），但代码实际在做 Turtle 往返 + SHACL——文档低估了自己。正确口径：RDF/Turtle 作序列化交换层、SHACL 作校验层，真相源保持闭世界。
 - 2026-09-19 cpa 手工重解析必须先建真 cpa_run_history 行再传 --run-id（复刻 routers.reparse_document+crud.create_run）；裸 UUID4 会触发 cpa_items.run_id FK 失败且 _persist_one_doc 把整个事务吞成 'DB unavailable' 静默无写入（CLI 照样 exit 0）。另：gateway 容器只 bind-mount 子目录，/app/.wolf 不存在——容器内探针放 logs/e2e_tmp/ 桥接（对应 host logs/e2e_tmp/），canonical 副本留 .wolf/tmp/。
 
 - [2026-09-20] 前端 API 适配层每个 fetch 都要核对最终 URL=BASE+相对路径（本轮 formal-api 漏拼 /ontology 段→FastAPI 404 Not Found 页面误报'服务不可达'）；验证手段=浏览器 eval fetch 直打同 URL 对照状态码。
@@ -2232,3 +2255,79 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - P-4 病征定案: `_GEOMETRY_TOTALS_GAP=0.002`(spec ±0.2%)+`_totals_printed_candidates`(合计行全部正金额=候选, 没有任何候选在容差内才病征——量合计/税额/总计同印不误触发)+`_GEOMETRY_TOTALS_GAP_ABS=100`(绝对下限防小表)。恢复家族门 `_CLOSURE_REFILL_GAP=0.005` 与病征阈刻意分离(砂石料活体语义保持; 收窄会误改写, 见上条)。
 - 行漂移对位恢复(_reassign_drift_pairs, bug-3427 修复): 行 i 破损(缺价/行级不自洽)且下一行 (u,t) 对被本行量印刷级闭合 → 对位; 全有或全无(Σ 闭合+严格更近, 败则整链回滚); corrected 行零干预; 同值不重标保原溯源。活体: 木饰面 27 行全 ok, Σ=8,440,883.64 分毫不差。
 - 多候选合计行(小计行同印 量合计+总计)上『按 price_total 列位找锚』会因合计行自身漂移落空——候选集语义(任一候选闭合即静默)严格更稳。
+
+## Key Learnings + Do-Not-Repeat (2026-09-21 — bug-3435 cpa 合同元数据修复)
+### Key Learnings
+- **cpa 元数据提取分层配方(定案)**: 文本路(同行冒号值+跨行拼接+split-line F2b 守卫)→ 表格 cell 兜底(标签格冒号值→右邻→下邻;cell 值必须 squash 内部空白——OCR 格内换行'宜春大 道总承包'是普遍形态)→ 字段专属锚。project_name 候选全集按『项目经理部/项目部尾缀完整度』排序取优(jzgs: 文本/项目全称格都缺尾缀,[甲方]格全名胜出;甲方锚格要求精确='甲方'且值以项目部尾缀收尾,否则'合同甲方：上浦项目'这类半截值会污染)。合并标签格('局审批编号 合同编号'/'供方单位 付款方式')用 startswith 语义参与 supplier/name;contract 邻格路必须 exact 匹配标签格,否则右邻流水号 2-YCDD-13-201 会冒充合同号。
+- **正则陷阱——贪心基吞掉可选尾段**: `[A-Za-z0-9\-]*(?:-中文段)?` 对 '…-0353-补01' 抓到 '…0353-'(基吞尾横线,可选组空匹配成功,引擎不回溯)。正解: 基以字母数字收尾 `[A-Za-z0-9](?:[A-Za-z0-9\-]*[A-Za-z0-9])?`。同理项目编号/合同号形状门写 {5,} 时不能直接拼在 * 后(multiple repeat)。
+- **sign_date 盖章区窗口**: 锚=盖章|甲方：|乙方:(或简称"甲方"不含冒号不算锚——补充协议正文'买卖双方于2025年10月_13日签订'因此诚实 NULL);窗口=锚行±3 行内已填年月日,分隔符必须容忍手写下划线 `[\s_]*`('2025_年12月_2日');排除行: 合同开始/终止/开工/完工/交货/交付日期;签订日期： 的 split-line 下一行若含这些词也要跳过(那是隔壁字段的值)。
+- **7 档元数据真值表已固化**: tests/test_project_fields_meta_fix.py(宿主机可跑,fixture 取自 forensic1~3 取证);离线回放探针 .wolf/tmp/meta_fix/replay_meta.py(容器内,对 7 档缓存直跑 extract_project_fields 不触 DB)——改元数据提取先跑它。
+- **project_no 链路**: skill models.py + backend models.py 双镜像列 VARCHAR(120) + database.py 幂等 ALTER + DocumentOut/DocumentUpdate + crud.update_document 白名单 + ContractsView 列(ProjectFieldInput 同款式)。project_location 手改入口早已存在(ContractsView :658),本轮只加 project_no 列。
+- **元数据 name/supplier 的表格扫描不受'文本命中即零扫描'约束**: name 需要全量 cell 候选参与完整度排序(上浦文本截断名必须让位 cell 全名)——test_fallback_skips_tables_when_text_contract_hits 的 Poison 零扫描断言因此收窄为仅 contract 字段。
+### Do-Not-Repeat
+- 宿主机 curl -d 直接传中文 JSON 会 GBK 乱码 → FastAPI 400 'error parsing the body';用 python 写 UTF-8 body 文件 + `--data-binary @file`。
+- EAI 登录字段是 `username`(收 email 或工号)不是 `email`。gateway 重启后 nginx 502 = 缓存旧 upstream IP,`docker exec deer-flow-nginx nginx -s reload` 即愈(bug-3233 再现)。
+- PATCH 手改通道无法清空字段(crud `if fields.get(key) is not None` 忽略 None)——清空须靠重解析诚实 None 落库(bug-3431 哨兵),UI 传 ""(空串)可以清。
+
+## Do-Not-Repeat (2026-09-21 晚 — bug-3436 用户复测修正)
+- **文档自带标签字段 > 启发式完整度排序(用户裁定)**: cpa project_name 选值必须两级优先——显式标签源(项目名称/工程名称/项目全称)最高优先取最完整者;仅无标签源时才回退甲方锚/尾缀排序。教训: '项目经理部尾缀者胜'这类启发式会淘汰不带尾缀的带标签真值(jzgs [项目全称]='…研创园项目' 被压过,错取 [甲方]格部门全名)。凡遇"标签值 vs 启发式值"冲突,标签值赢。
+- **项目名 cell 兜底只认表单形态**: 同格冒号值/右邻格,弃下邻格,且限前6页(_NAME_CELL_MAX_PAGE)——工程量清单列头格 [项目名称] 的下邻全是品名(guibei p25-94 共38格,右邻恒='单位'),列头下邻/深页格会冒充项目名。表单形态=值在标签右侧;清单形态=值在列头下方。
+- **并发会话/用户 UI 操作会改 cpa 簇态**: 验收 diff 出现非本改动字段(cluster_id/is_outlier)变化时,先查 cpa_run_history 近期 runs(手动聚类分析 12:52 用户侧触发)再归因;parse 阶段重解析只触自己那一档。
+- 聚类翻状态与取数必须共用同一parse_status口径(_CLUSTER_DOC_STATUSES);72dfffa9ff类reset恢复提交会半还原成对WHERE改动——恢复后对照buglog成对检查两处call site(bug-3432)
+- 单余弦拼向量是加法语义,表达不了AND匹配;分块距离取max(各半距离)才是\"都要像\"。one-hot大权重会让同token异商品对合并(bug-3433)
+- Windows中文系统上任何Python subprocess读git输出都默认GBK会炸中文;全局修法PYTHONUTF8=1(setx已设)。见到UnicodeDecodeError gbk先查PYTHONUTF8
+- cpa LLM兜底身份: 平台config.yaml models[](OpenAI兼容)可桥接为cpa子进程--llm-*回退;设置页localStorage个人选择服务端不可见勿混
+
+## Key Learnings + Do-Not-Repeat (2026-09-23 — ontostudio Task 5 Step 6「写路径韧性」)
+### Key Learnings
+- **PostgreSQL 的 `ALTER TABLE ... RENAME` 不跟改索引名**（`foo_pkey` / `ix_foo_*` 留在原表上）→ 想用「改名藏表」在真库造 42P01 时，懒建的 `create_all` 会对新表 `CREATE INDEX` 撞名（`DuplicateTableError`）。要在真库造 42P01 又不碰真表，用**一次性 scratch 库**：`DROP DATABASE IF EXISTS x WITH (FORCE)` → `CREATE DATABASE x` → 跑生产 `ensure_tables()` → `DROP TABLE <目标表>`（`agentflow` 角色有 CREATEDB）。`CREATE/DROP DATABASE` 不能在事务里 → 用 asyncpg 直连（默认自动提交），别用 SQLAlchemy 引擎。
+- **asyncpg 异常链的真形状（真库实测）**：`sqlalchemy.exc.ProgrammingError`（顶层 `sqlstate=None`）→ `AsyncAdapt_asyncpg_dbapi.ProgrammingError`(42P01) → `asyncpg.exceptions.UndefinedTableError`。**只有内层两层带 sqlstate**，判 42P01 必须走 `__cause__`/`orig` 链；**不要走 `__context__`**（会把与本次失败无关的嵌套异常拉进来 → 假阳性）。
+- **事务被异常中止后，同一事务再发任何语句只回 25P02 `InFailedSQLTransaction`**（实测）→「原事务回滚后重试」必须**开新事务**；同一 engine 重开新事务没问题（NullPool 每次新连接）。
+- **超时分级**：`connect_args={"timeout": N}` 只界**握手**，命令阶段要 `command_timeout`（asyncpg 连接级参数）。加不加取决于**失败代价**：非致命路径（WARNING + `tables_ready=False`）→ 误杀 ≈ 一条日志，取 30；用户可见的 500 路径 → 留给暴露面决策（本轮写路径引擎**有意**未加）。**触发形状实测（订正过一次）**：asyncpg 的 `command_timeout` 超时抛 **asyncio `TimeoutError`**（无 sqlstate），**不是** 57014——57014 是服务端 `statement_timeout`/`pg_cancel_backend` 那条路。
+### Do-Not-Repeat
+- **别在测试里 DDL 真表造故障**（改名/删表）：改名留残状态会污染同一次运行的其它用例（实测连带红 `test_lifespan_creates_action_audit_table`），删表更糟。用独立 scratch 库这类一次性资源。
+- ontostudio 跑 pytest 必须用仓内 `.venv`（`PYTHONPATH=. ./.venv/Scripts/python.exe -m pytest tests/ -q`）——系统 Python 3.14 缺 owlrl；`ruff format --check .` 只剩既有的 `app/auth.py` 未格式化，**别动**。
+- `git add` 对「路径匹配 ignore 规则但文件已跟踪」的路径会打印 warning 并返回**非 0**，可**仍然暂存成功**——用 `&&` 串联时会被静默跳过（本次 `docs/superpowers/*.md` 即如此）。
+- 变异检验的副本放**仓外** temp，且脚本内路径要用**绝对盘符路径**（Git Bash 只转换命令行参数，不转换脚本内的字符串；MSYS 的 /tmp 在 Windows python 里解析不出来）。
+
+## [2026-09-23] Key Learnings (ontostudio 动作层 Task 6 — gateway /api/permissions/scope)
+
+- **`CurrentUser.role_name` 装的是 `roles.name`（显示名），不是角色 code——拿它去查 `DataScopeEngine._role_data_scopes` 会恒 `none_allow`**（2026-09-23 Task 6 实测）。`_role_data_scopes` 由 `registry.list_role_codes()`（**code**）建键；DB 实测 `roles`：`superadmin→"超级管理员"`、`dept_head→"部门负责人"`。`middleware._build_current_user` 与 `routers.get_me` 都写 `role_name = role.name`；`_calibrate_roles_from_registry` / `_ensure_role` 建行时 `name = display_name`、`code = yaml 键`。**要 role code 就用 `role_id` 反查 `Role.code`**（`refresh_token`/`get_me` 同法）。变异验证：把端点里 `role_code = role.code` 改成 `role.name`，新测试立刻红。
+- **`DataScopeEngine` 的「未知资源」与「角色无 scope」两条 none_allow 由不同分支产出，单点变异可能被另一条掩盖**（2026-09-23 实测）：把 `build_scope_union` 的 `if not scopes: none_allow` 改成 `allow_all`，端点仍返回 `none_allow`——因为 `get_data_scope` 的 deny 路径（`deny_rule == allow_all` → 折叠为 `none_allow`）把它抵消了。**变异存活 ≠ 测试无价值**：把最终决策点 `if deny_rule.operator == "none_allow": return allow_rule` 改成 `return allow_all`，两条 none_allow 测试立刻红。写覆盖声称时必须说明「钉的是哪一跳」。
+- **`registry` 单例按 mtime 热重载 → 全量测试跑动期间改 `config/permissions.yaml` 会污染基线**（2026-09-23）：`get_permission_registry()._check_reload()` 每次取用都比 mtime。要么等跑完再改，要么用 `PERMISSIONS_YAML_PATH` / `ROLES_CUSTOM_YAML_PATH` 把 registry 钉到冻结副本上。同理：验证 yaml 改动对测试的影响，可用 `PERMISSIONS_YAML_PATH=<scratch 副本>` **不碰活文件**就完成（本次 6/6 全绿的判据就是这么拿到的）。
+- **`config/roles_custom.yaml` 的 overlay 是整体替换（bug-1087）**：dept_head / project_manager / reviewer / user / writer 五个角色的 `permissions` + `data_scopes` 全由 overlay 供；**只改 `config/permissions.yaml` 对这些角色完全无效**。`superadmin` 不在 overlay 里，是唯一能靠 base yaml 直接改的角色（本次 Task 6 只授 superadmin，原因即此）。
+- **跨服务 wire 契约可用两套 venv 各自跑一段来验证**：gateway 侧 `FilterRule.to_wire()` 落 JSON → ontostudio 侧 `FilterRule.from_wire()` + `rule_to_sql()`，5 种形态（allow_all/none_allow/eq/in/and+not）全部编出正确参数化 SQL。两边**不共享代码**（独立服务），靠「同名字段 + 逐字段一致」维持，这类校验是唯一防线。
+- **逐 hunk 外科暂存的可复用做法（本次两个文件都用了）**：`git diff -- <file>` → 按 `@@` 切 hunk → 丢弃正文含唯一标记（如 `-def <对方新增的函数名>(`）的 hunk → `git apply --cached` 过滤后的 patch。**标记要带 `-` 前缀**：hunk 头 `@@ ... @@ def foo(` 里也含函数名，不带前缀会把**自己的** hunk 一起丢掉（本次实测踩到，kept=1 而不是 2）。落库前用 `git apply --cached --check` 预检。
+
+## [2026-09-23] Key Learnings + Do-Not-Repeat (ontostudio 动作层 Task 8 — MCP 暴露面)
+
+- **MCP 工具的成功返回体必须自带 `success: True`**：`ontostudio/app/ontology/mcp.py` 里 `_err` 写 `success:false`，而其余 8 个工具都 `_ok({"success": True, **out})`；`invoke_action_core` 的返回体是按 **REST** 约定设计的（HTTP 200 即成功，体内**没有** success 键）——直接把它当 MCP 负载会得到「成功无标记、失败有标记」的不对称协议。以后往 MCP 加写工具：包一层 `{"success": True, **result}`。
+- **`mcp._ok` 自 325bb8e47 起就带 `default=str`**（uuid/datetime 都不会炸）。计划 Task 8 的 ⚠️ 块把「_ok 无 default=」当前向风险交接，**前提早已不成立**，而 executor 里那条注释照抄了它。教训：交接下来的「前向风险」落地前先 grep 目标代码核对，别当既定事实转述。
+- **`monkeypatch.setattr` 的目标取决于 import 位置**（本次两个例子都在一个文件里）：`executor.get_kernel` 是**顶格** import → patch `app.ontology.actions.executor.get_kernel`；`routers._project_incrementally` 里是**函数内** import → patch `app.ontology.kernel.service.get_kernel`。patch 错了不会报错，只会让测试静默跑到真实现上（真库/真 kernel）。
+- **改 `_TOOLS_SPEC` 会连带打破 `tests/test_ontology_mcp.py` 的精确集合断言**（`EXPECTED_TOOLS`）。往 MCP 加工具时**必须**同改该文件——计划 Task 8 的 Files 段漏列了它。
+- **变异脚本里「替换成不存在的名字」是假 RED**（本次 M10 第一版把 `project=lambda...` 换成 `project=_refresh_async`，红是 NameError 而不是语义）：真语义变异要在副本里**补一个真函数**再替换（改成 `async def` 的投影器 → 拿到被丢弃的协程 → 测试的 `is None` 断言红）。
+
+## Do-Not-Repeat (2026-09-23 Task 8)
+
+- 别把计划给的代码块当 lint-clean（本计划累计 15+ 例）：`action, _obj = _resolve(...)` 的未用变量在 `select = [E,F,I,UP]` 下会 F841；`_` 前缀即豁免（实测 `_a, b = (1,2)` 不报）。
+- 别用「REST 的返回体形状」直接当 MCP 返回体；两边的成功信号不同源（状态码 vs success 键）。
+
+## [2026-09-24] Decision Log + Key Learnings (ontostudio 动作层 Task 9 — lint 三类检查)
+
+- **口径收窄（将来要放回时的唯一改动点）**：计划写的是「凡被动作**或链接类型**引用的对象类型必须声明 `scope_resource`」，落地口径收窄为「从动作目标出发、沿 `enabled` 链接双向遍历的可达闭包」。原因（实测）：全量链接端点口径在真实 registry 上有 11 处未绑定；其中 `data_source` / `dataset`（domain=bid_quote，表 `data_sources` / `data_source_datasets`，其扩展用 `system:access` 而非 data_scope 模块）在 permissions.yaml 里**没有对应模块 key**——该口径今日不可满足。可达口径仍能抓住本计划第四次复发的那一类（`graph_relation` / `graph_mention` 都是"链接端点、非动作 target"）。判定代码只有 `check_action_reachable_objects_are_scoped` 一处。
+- **② 第一次跑就有产出**：抓出 `graph_mention`（被 `mention_of_entity` / `mention_of_relation` 从动作目标 `graph_entity` 可达）未绑 → 已补 `scope_resource: ontology`。结构性防线的价值是跑一次就有产出，不是"将来或许有用"。
+- **lint 读外部真相源（permissions.yaml）的处置惯例**：定位不到 → WARN + 跳过；文件在但内容坏 → error。判据是"环境缺真相源 ≠ 注册表有缺陷"（同文件 `check_physical_column_diff` 的既有先例）。
+- **副本基线不只是保真检查**：它会把活树里"被路径掩盖的环境依赖"暴露出来——本次就是副本树里找不到仓根 permissions.yaml → `test_main_exit_zero` 红，逼出了上面那条处置。
+- `ruff check` + `ruff format --check` 三文件全绿：本计划的代码块这次是 format-clean 的（前八 Task 累计 15+ 例需重排）。
+
+| 2026-09-26 | OntoStudio 下一步定案：最小闭环(方案A)=同步投影实装(spec §2步骤5)+ResolutionPanel动作UI；静态页无限期后置；reviewer授权不搭车(后续批次)；agent预审分层(方案C)作A后第二批 | office-hours D1-D6 |
+
+## Key Learnings + Do-Not-Repeat (2026-09-26 — UI 样式规范统一 session)
+
+- 前端双 token 层均为合法: 上游 shadcn 语义层(globals.css) + EAI 扩展状态色 success/warning/info(Ant系五档)。状态色 token 不算偏离; 规范文档 docs/designs/ui-style-spec.md
+- text-warning(#faad14) 不能当文字色 — 黄 500 对比度不足; 状态文字保持 -600/-700 raw + dark: 变体(-950/40 底/-300 字/-800 框配方)
+- .font-cyber 定义在 globals.css 全局, analytics/project 有意使用; 勿收窄作用域(会破坏现有页面数字排版)
+- 有意自有风格层三处勿动: dashboard --db-* 平行体系 / analytics 四模块 chartTheme 浅色单主题(原型即验收标准) / landing-new
+- 5 份 shadcn ui/table.tsx 拷贝(bid-quote/biz-pipeline/contract-price/geo-samples/spare-parts)是约定式复制无同步机制
+- 字号四档规范: 说明=text-xs / 正文+按钮=text-sm / 副标题=text-base / 页标题=text-lg~xl; arbitrary px 12~20 已批量映射(89 文件, 175 处); ≤11px 微标签层有意保留
+- Do-Not-Repeat: 批量 sed 字号映射必须排除 workflow/nodes|edges、图表内部、TiptapEditor、landing、components/ui|ai-elements — 画布/图表字号是布局敏感的; text-l typo 在 KF 与 docmgr 各有一份(同款侧栏标题复制传播)

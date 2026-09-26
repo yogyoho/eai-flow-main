@@ -764,6 +764,9 @@ class PersonalOutputsResponse(BaseModel):
     threads: list[PersonalThreadOutput]
     total: int = 0
     has_more: bool = False
+    # EAI-CUSTOM (bug-4954): 691f376b8 给 service 返回值加了游标但漏改本模型，
+    # FastAPI response_model 会静默剥离未声明字段 → 首窗空时前端游标回退 0 永久卡死。
+    next_skip: int = 0
 
 
 class PersonalDocStarRequest(BaseModel):

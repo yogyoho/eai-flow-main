@@ -98,7 +98,7 @@ modules:
       - { id: "knowledge_public", display_name: "所有公开知识库", rule_template: { access_type: "public" } }
       - { id: "knowledge_dept",   display_name: "本部门的知识库", rule_template: { or: [ { owner_id: "$identity.user_id" }, { and: [ { access_type: "dept" }, { allowed_depts OVERLAP: "$identity.dept_ids" } ] } ] } }
 
-  # ─── 知识工厂（9 个 tab ↔ 9 个 page id）───
+  # ─── 知识工厂（9 个 tab ↔ 9 个 page id；EAI-CUSTOM 2026-09: 样例库 tab 迁出为独立应用 coal_eia_samples）───
   knowledge_factory:
     display_name: "知识工厂"
     nav_id: "nav:knowledge-factory"

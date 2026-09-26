@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "coal-eia-report 技能架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "docs/designs/coal-eia-report-architecture.html"
+  },
+  "components": [
+    {
+      "id": "kf",
+      "type": "cloud",
+      "label": "知识工厂 KF MCP",
+      "sublabel": "模板·章树·编辑器",
+      "pos": [
+        542,
+        60
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "user",
+      "type": "external",
+      "label": "用户",
+      "sublabel": "澄清卡·上传·确认",
+      "pos": [
+        30,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "controller",
+      "type": "backend",
+      "label": "主会话控制器",
+      "sublabel": "progress.py next 驱动",
+      "pos": [
+        286,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "薄上下文"
+    },
+    {
+      "id": "subagent",
+      "type": "backend",
+      "label": "子代理",
+      "sublabel": "撰稿波次+交付波次",
+      "pos": [
+        542,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "workspace",
+      "type": "database",
+      "label": "state/ 工作区",
+      "sublabel": "sections·formula_state",
+      "pos": [
+        798,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "outputs",
+      "type": "frontend",
+      "label": "outputs/ 交付",
+      "sublabel": "报告 md + manifest",
+      "pos": [
+        1054,
+        220
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "ingest",
+      "type": "backend",
+      "label": "ingest.py",
+      "sublabel": "表单唯一写者",
+      "pos": [
+        286,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "门1"
+    },
+    {
+      "id": "freeze",
+      "type": "backend",
+      "label": "冻结计算双脚本",
+      "sublabel": "planner + formula_runner",
+      "pos": [
+        542,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "门2"
+    },
+    {
+      "id": "progress",
+      "type": "backend",
+      "label": "progress.py",
+      "sublabel": "两层状态机·批量门",
+      "pos": [
+        798,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "assemble",
+      "type": "backend",
+      "label": "组装与终验",
+      "sublabel": "build_output·consistency",
+      "pos": [
+        1054,
+        400
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "终验"
+    },
+    {
+      "id": "references",
+      "type": "database",
+      "label": "references/",
+      "sublabel": "stages·标准·合约·深度基线",
+      "pos": [
+        414,
+        580
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "tag": "唯一结构真源"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "技能包 skills/public/coal-eia-report/",
+      "wraps": [
+        "references",
+        "ingest",
+        "freeze",
+        "progress",
+        "assemble"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "沙箱 /mnt/user-data/",
+      "wraps": [
+        "workspace",
+        "outputs"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-ctrl",
+      "from": "user",
+      "to": "controller",
+      "label": "澄清卡/上传/确认",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ctrl-sub",
+      "from": "controller",
+      "to": "subagent",
+      "label": "batch_task 派节",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sub-ws",
+      "from": "subagent",
+      "to": "workspace",
+      "label": "直写节稿"
+    },
+    {
+      "id": "ctrl-kf",
+      "from": "controller",
+      "to": "kf",
+      "label": "resolve/章树",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "sub-kf",
+      "from": "subagent",
+      "to": "kf",
+      "label": "write_chapter 交付",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "ing-freeze",
+      "from": "ingest",
+      "to": "freeze",
+      "label": "data/ 表单就绪"
+    },
+    {
+      "id": "ref-ing",
+      "from": "references",
+      "to": "ingest",
+      "label": "stage 清单/数据预告",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "ref-freeze",
+      "from": "references",
+      "to": "freeze",
+      "label": "formulas/深度地板",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "freeze-ws",
+      "from": "freeze",
+      "to": "workspace",
+      "label": "formula_state 冻结值"
+    },
+    {
+      "id": "prog-ws",
+      "from": "progress",
+      "to": "workspace",
+      "label": "progress.json 事实源"
+    },
+    {
+      "id": "ws-asm",
+      "from": "workspace",
+      "to": "assemble",
+      "label": "节稿+冻结值"
+    },
+    {
+      "id": "asm-out",
+      "from": "assemble",
+      "to": "outputs",
+      "label": "BUILD_READY 交付",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "参考真源",
+      "items": [
+        "stages/<stage>.json 是唯一结构真源，KF 模板为其派生工件",
+        "standards_index 枚举标准号/限值；depth_targets 是章地板合同",
+        "范文实体/数值禁入正文（sample_entities 注册表）"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "脚本唯一写者",
+      "items": [
+        "data/ 只有 ingest.py 写；formula_state 只有 formula_runner 写",
+        "progress.json 是控制器唯一事实源，续跑不靠对话记忆",
+        "组装必须 build_output 收尾，禁手拼 outputs/"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "门与铁律",
+      "items": [
+        "门1 完备性 → 门2 anomalies 呈现 → 章门批量 → 终验一次报齐",
+        "数字永不经过 LLM：正文只写 {{SLOT}}/{{TABLE}}，残留=0",
+        "门 FAIL 只有补写节稿或用户批准降档两条合法出路"
+      ]
+    }
+  ]
+}

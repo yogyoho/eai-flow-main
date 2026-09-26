@@ -603,7 +603,7 @@ git commit -m "feat(bid-materials): 样例库 tab(镜像 eia SampleLibrary: 过�
 - CreateEditDialog（创建/编辑复用）：qual_type（`QUAL_TYPE_PRESETS` 下拉 + 「自定义…」自由文本输入）、cert_no、issuer、valid_until（`<Input type="date">`）、scope、org_scope、notes。
 - VersionsDialog（`versionsTarget` 非空时开）：
   - 版本列表：version / file_ext / file_size（KB 格式化）/ note / uploaded_at，当前版高亮（`current_version` 比对）；
-  - 每行操作：「预览/下载」（`<a href={fileUrl(id, v)} target="_blank" rel="noreferrer">`，当前版用 `fileUrl(id)`）；非当前版显示「回滚到此版」（confirm 后 `rollback(id, v)`，成功后刷新列表+对话框）；
+  - 每行操作：**仅当前版**有「预览/下载」（`<a href={fileUrl(id)} target="_blank" rel="noreferrer">`——后端 `GET /qualifications/{id}/file` 只服当前版，无 `?version=` 参数，P4-T1 已实证）；非当前版显示「回滚到此版」（confirm 后 `rollback(id, v)`，成功后刷新列表+对话框；回滚后再预览即得旧版内容——按版本直接下发列入后续计划）；
   - 上传新版本区：`<Input type="file" accept="image/png,image/jpeg">` + note 输入 + 上传按钮；响应 `created=false` 时提示「内容与既有版本相同（sha256 去重），已返回既有版 v{n}」，`created=true` 提示「已建版本 v{n}」。
 - 空态/错误态：复刻 SampleLibrary 的 loading/empty/error 三态文案风格。
 
@@ -628,6 +628,7 @@ git commit -m "feat(bid-materials): 资质库 tab(到期预警/登记/版本历�
 
 ## 后续计划（本文档不覆盖）
 
+- 资质文件按版本下发：后端 `GET /qualifications/{id}/file` 增 `?version=` 参数（spec §2.3 原有承诺，Plan 1 未实现；需 service 层按版本号取 minio_key——小改，另立小任务）。
 - tech_outline_packs 16 类 pack 填充（Plan 3 遗留）。
 - 大纲自拟结构化（Plan 3 B1 v1 边界升级，另立计划）。
 - agnes E2E clean4 复跑（A+B 双入口走查）。

@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import tempfile
+import urllib.parse
 from pathlib import Path
 from typing import Annotated
 from uuid import UUID
@@ -925,13 +926,16 @@ async def export_template(
         version=template.version,
     )
     if content is None:
-        raise HTTPException(status_code=404, detail="模板快照文件不存在")
+        raise HTTPException(status_code=404, detail="模板快照不存在,请先发布模板后再导出")
 
     filename = f"{template.name}_{template.version}.json"
+    # 中文文件名必须 RFC 5987 编码:裸中文进 Content-Disposition 会在 latin-1
+    # header 编码时 UnicodeEncodeError → 500(与 docmgr/contract_price 同款手法)
+    quoted = urllib.parse.quote(filename)
     return Response(
         content=content,
         media_type="application/json",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f"attachment; filename=\"template.json\"; filename*=UTF-8''{quoted}"},
     )
 
 

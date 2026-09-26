@@ -1,0 +1,314 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "coal-eia-report 管线流程",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": "docs/designs/coal-eia-report-workflow.html"
+  },
+  "lanes": [
+    {
+      "id": "run",
+      "label": "控制器主循环"
+    },
+    {
+      "id": "gates",
+      "label": "门禁与交付"
+    },
+    {
+      "id": "user",
+      "label": "用户裁决（停车点）",
+      "variant": "exception"
+    }
+  ],
+  "phases": [
+    {
+      "id": "p01",
+      "label": "步骤0-1 恢复·数据收集",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "p23",
+      "label": "步骤2-4 冻结·节级派发",
+      "fromCol": 2,
+      "toCol": 3,
+      "variant": "emphasis"
+    },
+    {
+      "id": "p57",
+      "label": "要点包·终验·交付",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "dashed"
+    }
+  ],
+  "groups": [
+    {
+      "id": "g_waves",
+      "label": "波次循环",
+      "lane": "run",
+      "fromCol": 3,
+      "toCol": 4,
+      "variant": "emphasis"
+    },
+    {
+      "id": "g_decide",
+      "label": "停车点·用户裁决",
+      "lane": "user",
+      "fromCol": 4,
+      "toCol": 5,
+      "variant": "security"
+    }
+  ],
+  "mainPath": [
+    "resume",
+    "collect",
+    "gate1",
+    "freeze",
+    "gate2",
+    "dispatch",
+    "chaptergate",
+    "keypoints",
+    "wave2",
+    "finalize",
+    "deliver"
+  ],
+  "nodes": [
+    {
+      "id": "resume",
+      "lane": "run",
+      "col": 0,
+      "type": "database",
+      "label": "恢复/开新",
+      "sublabel": "snapshot show --verify",
+      "width": 132
+    },
+    {
+      "id": "collect",
+      "lane": "run",
+      "col": 1,
+      "type": "backend",
+      "label": "数据收集",
+      "sublabel": "KF三件套+表单/上传",
+      "width": 132
+    },
+    {
+      "id": "gate1",
+      "lane": "gates",
+      "col": 1,
+      "type": "security",
+      "label": "门1 完备性",
+      "sublabel": "ingest check·标准号体检",
+      "tag": "GATE1_COMPLETE",
+      "width": 132
+    },
+    {
+      "id": "freeze",
+      "lane": "run",
+      "col": 2,
+      "type": "backend",
+      "label": "冻结计算",
+      "sublabel": "manifest+formula_runner",
+      "width": 132
+    },
+    {
+      "id": "gate2",
+      "lane": "gates",
+      "col": 2,
+      "type": "security",
+      "label": "门2 anomalies",
+      "sublabel": "发卡即停",
+      "width": 132
+    },
+    {
+      "id": "dispatch",
+      "lane": "run",
+      "col": 3,
+      "type": "backend",
+      "label": "节级派发",
+      "sublabel": "batch_task 波次",
+      "width": 132
+    },
+    {
+      "id": "chaptergate",
+      "lane": "gates",
+      "col": 3,
+      "type": "security",
+      "label": "章门批量",
+      "sublabel": "gate→VERIFIED",
+      "width": 132
+    },
+    {
+      "id": "keypoints",
+      "lane": "user",
+      "col": 4,
+      "type": "external",
+      "label": "要点包确认",
+      "sublabel": "单表单·发卡即停",
+      "width": 132
+    },
+    {
+      "id": "wave2",
+      "lane": "run",
+      "col": 4,
+      "type": "backend",
+      "label": "投影章 wave2",
+      "sublabel": "只据要点包",
+      "width": 132
+    },
+    {
+      "id": "negotiate",
+      "lane": "user",
+      "col": 5,
+      "type": "security",
+      "label": "协商裁决",
+      "sublabel": "①回炉重派 ②降档 ③待确认",
+      "width": 132
+    },
+    {
+      "id": "finalize",
+      "lane": "gates",
+      "col": 5,
+      "type": "backend",
+      "label": "终验三连",
+      "sublabel": "build→consistency→snapshot",
+      "width": 132,
+      "yOffset": -34
+    },
+    {
+      "id": "deliver",
+      "lane": "gates",
+      "col": 5,
+      "type": "frontend",
+      "label": "交付双通道",
+      "sublabel": "编辑器分波/单文件",
+      "width": 132,
+      "yOffset": 34
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-resume-collect",
+      "from": "resume",
+      "to": "collect",
+      "label": "续跑或开新"
+    },
+    {
+      "id": "e-collect-gate1",
+      "from": "collect",
+      "to": "gate1",
+      "route": "drop",
+      "bias": 0.3
+    },
+    {
+      "id": "e-gate1-back",
+      "from": "gate1",
+      "to": "collect",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-gate1-freeze",
+      "from": "gate1",
+      "to": "freeze",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-freeze-gate2",
+      "from": "freeze",
+      "to": "gate2",
+      "route": "drop",
+      "bias": 0.7
+    },
+    {
+      "id": "e-gate2-dispatch",
+      "from": "gate2",
+      "to": "dispatch",
+      "label": "确认后派章",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e-dispatch-gate",
+      "from": "dispatch",
+      "to": "chaptergate"
+    },
+    {
+      "id": "e-gate-redisp",
+      "from": "chaptergate",
+      "to": "dispatch",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-gate-kp",
+      "from": "chaptergate",
+      "to": "keypoints",
+      "label": "wave1 收口"
+    },
+    {
+      "id": "e-kp-wave2",
+      "from": "keypoints",
+      "to": "wave2",
+      "label": "confirm 解锁"
+    },
+    {
+      "id": "e-wave2-final",
+      "from": "wave2",
+      "to": "finalize",
+      "label": "gate PASS"
+    },
+    {
+      "id": "e-gate-nego",
+      "from": "chaptergate",
+      "to": "negotiate",
+      "label": "BLOCKED",
+      "variant": "security",
+      "role": "error"
+    },
+    {
+      "id": "e-nego-final",
+      "from": "negotiate",
+      "to": "finalize",
+      "label": "批准降档放行",
+      "variant": "dashed"
+    },
+    {
+      "id": "e-final-deliver",
+      "from": "finalize",
+      "to": "deliver",
+      "label": "交付双通道",
+      "variant": "emphasis"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "唯一事实源",
+      "items": [
+        "续跑只信磁盘 progress.json + state/sections/，不信对话记忆",
+        "data/ 唯一写者 ingest.py；formula_state 唯一写者 formula_runner",
+        "新 run 首动作 progress.py next 即恢复现场"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "门禁语义",
+      "items": [
+        "门1 完备性+标准号体检+类比来源强制，rc=2 停车补齐",
+        "门2 anomalies 必须用户确认——确认门是免打扰指令的法定例外",
+        "章门=节 VERIFIED 唯一通道，rc=1 节级归因重派≤1；单章 FAIL 不中断全书"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "铁律",
+      "items": [
+        "数字永不经过 LLM：正文只写 {{SLOT}}/{{TABLE}}，残留=0",
+        "缺失信息绝不编造：缺就问，问不到就 [待确认]",
+        "协商三条出路：补数据回炉重派 / 批准降档 / [待确认] 收尾"
+      ]
+    }
+  ]
+}

@@ -263,9 +263,7 @@ def test_delegated_result_cached_within_ttl(monkeypatch, make_token: Callable[..
     assert len(_FakeAsyncClient.calls) == 1
 
 
-def test_bearer_without_roles_and_no_cookie_denied_without_delegation(
-    monkeypatch, make_token: Callable[..., str]
-):
+def test_bearer_without_roles_and_no_cookie_denied_without_delegation(monkeypatch, make_token: Callable[..., str]):
     # Bearer 通道无角色 claims 且无 Cookie 可透传 → 不打 gateway 直接 403（fail-closed 零网络）
     _install_fake_gateway(monkeypatch, (200, {"is_admin": True}))
     token = make_token(roles=())

@@ -31436,6 +31436,3655 @@
       "related_bugs": [],
       "occurrences": 1,
       "last_seen": "2026-09-20T15:18:57.305Z"
+    },
+    {
+      "id": "bug-1789781096",
+      "timestamp": "2026-09-21T04:25:10.955Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/contract-price-analysis/tests/test_project_fields_meta_fix.py",
+      "root_cause": "Had \"ZCB-HEB\"",
+      "fix": "Changed to \"ZCB-HEB-补\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T04:25:10.955Z"
+    },
+    {
+      "id": "bug-1789781097",
+      "timestamp": "2026-09-21T04:26:59.742Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/project_fields.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 17→23 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T04:26:59.742Z"
+    },
+    {
+      "id": "bug-1789781098",
+      "timestamp": "2026-09-21T04:32:05.550Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Had \"contract_no\"",
+      "fix": "Changed to \"project_no\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T04:32:05.550Z"
+    },
+    {
+      "id": "bug-1789781099",
+      "timestamp": "2026-09-21T04:34:35.984Z",
+      "error_message": "CSS fix: id",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "id: doc.id, → doc.id, body: { project_no: v",
+      "fix": "Changed id: doc.id, → doc.id, body: { project_no: v",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T04:34:35.984Z"
+    },
+    {
+      "id": "bug-3435",
+      "timestamp": "2026-09-21T12:50:00+08:00",
+      "error_message": "CPA 合同元数据错漏: JZGS supplier=联系电话 / 砂石料 supplier=易全勇(乙方代理人个人名) / 桂北 supplier 缺(标签实为分包人) / 补充协议-上浦-木饰面 project_name 截断 / 补充协议 contract_no 截断(-补01 中文段被吞) / 7 档 project_no 无提取通道 / 签订日期无盖章区提取路径",
+      "file": "skills/public/contract-price-analysis/scripts/project_fields.py",
+      "root_cause": "单层文本正则提取: ①supplier 标签族缺 分包人/供方单位/卖方单位 且无公司字样甄别(split-line 乙方→联系电话/易全勇 直接收下) ②project_name 无跨行拼接与表格 cell 兜底(值在续行/会签表格里) ③合同号捕获 [A-Za-z0-9-]+ 吞中文尾段;且贪心基 [A-Za-z0-9\\-]* 连尾连字符一起吞掉使可选 CJK 尾段空匹配(须改为以字母数字收尾的基) ④无 project_no 字段与 sign_date 盖章区窗口路径",
+      "fix": "project_fields.py 重写为『文本路(同行+跨行拼接+split-line 守卫)→表格 cell 兜底(标签格冒号值/右邻/下邻,空白折叠)→字段专属锚(甲方格值须以项目经理部收尾;sign_date 盖章/甲方：/乙方： ±3 行内已填年月日)』分层,project_name 候选按完整度(项目经理部尾缀)排序;supplier 加标签词拒收+公司字样甄别+（或/以下简称X）尾缀剥离;contract 号基改 [A-Za-z0-9](?:[A-Za-z0-9\\-]*[A-Za-z0-9])? + 中文尾段(?:-[一-鿿]{1,4}\\d{0,4})?;project_no 端到端新增(模型/ALTER/DocumentOut/PATCH 白名单/ContractsView 列)",
+      "tags": [
+        "cpa",
+        "metadata-extraction",
+        "supplier",
+        "project_name",
+        "project_no",
+        "contract_no",
+        "sign_date",
+        "ocr-cache",
+        "cell-fallback"
+      ],
+      "related_bugs": [
+        "bug-3431",
+        "bug-3434",
+        "bug-3428"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T12:50:00+08:00"
+    },
+    {
+      "id": "bug-1789781100",
+      "timestamp": "2026-09-21T05:04:18.287Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/tests/test_project_fields_meta_fix.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→22 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T05:04:18.287Z"
+    },
+    {
+      "id": "bug-3436",
+      "timestamp": "2026-09-21T13:20:00+08:00",
+      "error_message": "用户实测: JZGS project_name 多了经理部三字——DB 值为中交三公局…IC集成电路研创园项目经理部, 文档自带 [项目全称] 格真值=…IC集成电路研创园项目(不带经理部)",
+      "file": "skills/public/contract-price-analysis/scripts/project_fields.py",
+      "root_cause": "project_name 完整度排序(项目经理部尾缀者胜)压过了文档自带标签字段——[甲方]格部门全名天然以项目经理部收尾,尾缀启发式把带标签真值淘汰",
+      "fix": "两级优先: 显式标签源(项目名称/工程名称/项目全称——同行冒号值/cell 右邻/同格冒号)最高优先取最完整者(长者胜);仅无带标签源时才回退(合同名称+甲方锚,尾缀者胜)。配套双守卫: 项目名 cell 源仅取表单形态(同格冒号/右邻,弃下邻格)且限前6页(_NAME_CELL_MAX_PAGE)——guibei p25-94 共38个工程量清单列头格 [项目名称](下邻=品名如七氟丙烷灭火装置)取证定案,防列头冒充项目名",
+      "tags": [
+        "cpa",
+        "project_name",
+        "two-tier-priority",
+        "label-source",
+        "goods-schedule-header",
+        "jzgs"
+      ],
+      "related_bugs": [
+        "bug-3435"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T13:20:00+08:00"
+    },
+    {
+      "id": "bug-1789781101",
+      "timestamp": "2026-09-21T05:26:40.259Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T05:26:40.259Z"
+    },
+    {
+      "id": "bug-1789781102",
+      "timestamp": "2026-09-21T05:29:35.001Z",
+      "error_message": "CSS fix: label, tone, pending",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "label: \"已解析\", tone: \"text-emerald-600\", pending: false → \"已解析\",; tone: string → \"text-emerald-600 border-emerald-500/30 bg-emerald-500/5\",; pending: boolean → false,",
+      "fix": "Changed label: \"已解析\", tone: \"text-emerald-600\", pending: false → \"已解析\",; tone: string → \"text-emerald-600 border-emerald-500/30 bg-emerald-500/5\",; pending: boolean → false,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-21T05:29:55.362Z"
+    },
+    {
+      "id": "bug-1789781103",
+      "timestamp": "2026-09-21T05:30:02.931Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T05:30:02.932Z"
+    },
+    {
+      "id": "bug-1789781104",
+      "timestamp": "2026-09-21T05:30:11.285Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 29→11 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T05:30:11.285Z"
+    },
+    {
+      "id": "bug-1789781105",
+      "timestamp": "2026-09-21T05:31:29.518Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T05:31:29.518Z"
+    },
+    {
+      "id": "bug-1789781106",
+      "timestamp": "2026-09-21T05:42:50.332Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T05:42:50.332Z"
+    },
+    {
+      "id": "bug-1789781107",
+      "timestamp": "2026-09-21T10:34:32.899Z",
+      "error_message": "CSS fix: limit",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "limit: 50, → pageSize,",
+      "fix": "Changed limit: 50, → pageSize,",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T10:34:32.899Z"
+    },
+    {
+      "id": "bug-1789781108",
+      "timestamp": "2026-09-21T10:34:51.397Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractSourceDialog.tsx",
+      "root_cause": "Had \"max-h-[90vh] max-w-4xl overflow-y-auto\"",
+      "fix": "Changed to \"max-h-[90vh] w-full sm:max-w-[90vw] overflow-y-au",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T10:34:51.397Z"
+    },
+    {
+      "id": "bug-1789781109",
+      "timestamp": "2026-09-21T10:36:30.114Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Had \"h-4 w-4\"",
+      "fix": "Changed to \"text-blue-600 h-3.5 w-3.5\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T10:36:30.114Z"
+    },
+    {
+      "id": "bug-1789781110",
+      "timestamp": "2026-09-21T11:04:40.259Z",
+      "error_message": "CSS fix: onUpload",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "onUpload: (files: File[], autoParse: boolean) => void → (",
+      "fix": "Changed onUpload: (files: File[], autoParse: boolean) => void → (",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-21T11:05:03.445Z"
+    },
+    {
+      "id": "bug-1789781111",
+      "timestamp": "2026-09-21T11:04:44.947Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "No early return/throw for edge case: selected.length === 0 || uploading",
+      "fix": "Added guard clause: if (selected.length === 0 || uploading)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T11:04:44.947Z"
+    },
+    {
+      "id": "bug-1789781112",
+      "timestamp": "2026-09-21T11:36:48.799Z",
+      "error_message": "Missing await",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T11:36:48.799Z"
+    },
+    {
+      "id": "bug-1789781113",
+      "timestamp": "2026-09-21T11:38:34.519Z",
+      "error_message": "Wrong return value",
+      "file": "skills/public/contract-price-analysis/tests/test_cluster_doc_flip.py",
+      "root_cause": "Was returning: asyncio.get_event_loop().run_until_complete(_probe",
+      "fix": "Now returns: asyncio.run(_probe())",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T11:38:34.519Z"
+    },
+    {
+      "id": "bug-3432",
+      "timestamp": "2026-09-21",
+      "error_message": "合同解析tab新上传解析的文件点「聚类分析」后没有被分组,状态停在已解析(钢材采购合同-签字版.pdf: 18/19 items有cluster_id但confirm_status=pending)",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py (_persist_clusters doc-flip)",
+      "root_cause": "成对WHERE口径漂移:run_cluster按parse_status(parsed/needs_review)取数聚类,但_persist_clusters翻文档状态仍按confirm_status IN(confirmed/skipped/clustered)——新解析文档pending永远翻不成clustered,UI徽章docStage只认confirm_status==clustered。72dfffa9ff(2026-08-10 reset恢复提交)半还原:保住了bug-610的取数口径却恢复了旧confirm门槛翻状态",
+      "fix": "抽_CLUSTER_DOC_STATUSES=(parsed,needs_review)常量+_flip_clustered_docs(session)助手,取数与翻状态共用;新增tests/test_cluster_doc_flip.py(容器内跑,事务内插pending文档断言翻转后rollback,conftest哨兵CPA_DATABASE_URL需剔除);容器实跑--phase cluster验证文档→clustered、62簇不变",
+      "tags": [
+        "contract-price",
+        "cluster",
+        "where-drift",
+        "paired-callsite",
+        "reset-restore",
+        "ui-badge"
+      ],
+      "related_bugs": [
+        "bug-610",
+        "bug-3431"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-21"
+    },
+    {
+      "id": "bug-1789781114",
+      "timestamp": "2026-09-21T12:52:18.391Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Had \"审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。\"",
+      "fix": "Changed to \"审核自动分组：合并同义组、移动误归类项、拒绝错误组、编辑类别。确认后统计才生效。分组为上次「聚类分",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T12:52:18.391Z"
+    },
+    {
+      "id": "bug-1789781115",
+      "timestamp": "2026-09-21T13:01:45.134Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "24 lines replaced/restructured",
+      "fix": "Rewrote 29→17 lines (24 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T13:01:45.134Z"
+    },
+    {
+      "id": "bug-1789781116",
+      "timestamp": "2026-09-21T13:22:27.435Z",
+      "error_message": "Wrong reference: Layers should be Inbox",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Used \"Layers\" instead of \"Inbox\"",
+      "fix": "Changed Layers → Inbox",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T13:22:27.435Z"
+    },
+    {
+      "id": "bug-1789781117",
+      "timestamp": "2026-09-21T14:08:22.444Z",
+      "error_message": "Wrong return value",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Was returning: f\"{goods_name} {cat}\".strip()",
+      "fix": "Now returns: \" \".join(p for p in (goods_name, spec, cat) if p)",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T14:08:22.444Z"
+    },
+    {
+      "id": "bug-1789781118",
+      "timestamp": "2026-09-21T14:11:53.310Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/vectorizer.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 13→7 lines (6 removed) | Also: # 规格one-hot: 不同规格正交 → cosine=0 → 分离。param_vec drop; # its raw values (40/50/100) dominated cosine and  | Also: text_vec = self._text_vector(goods_name); # Normalize text to unit length so DN one-hot isn' | Also: m = rx.search(text); return toks",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-21T14:16:22.436Z"
+    },
+    {
+      "id": "bug-1789781119",
+      "timestamp": "2026-09-21T14:16:30.716Z",
+      "error_message": "Wrong reference: spec_tokens should be spec_extract",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/engine.py",
+      "root_cause": "Used \"spec_tokens\" instead of \"spec_extract\"",
+      "fix": "Changed spec_tokens → spec_extract",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T14:16:30.716Z"
+    },
+    {
+      "id": "bug-1789781120",
+      "timestamp": "2026-09-21T14:16:46.385Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/engine.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 19→26 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T14:16:46.385Z"
+    },
+    {
+      "id": "bug-3433",
+      "timestamp": "2026-09-21",
+      "error_message": "聚类向量 one-hot 权重5.0 使任意同规格不同商品对 cosine≈0.96 强行合并(大理石20mm vs 人造石20mm);规格仅DN一族,spec_model列完全未参与",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/{vectorizer,engine}.py",
+      "root_cause": "单余弦是加法语义,拼块向量无法表达\"名称且规格都要像\"的AND语义;DN_WEIGHT=5.0 下 dot=25+text, /26≈0.96 无视名称",
+      "fix": "改分块AND门限: d=max(名称余弦距离, 规格Jaccard距离);规格token族(DN/PN/Φ/mm/Q牌/A牌)从spec_model优先的样本文本抽取;名称相似度在剥规格后纯名称上计算;双方无规格不设门槛,一方缺失视为不匹配",
+      "tags": [
+        "contract-price",
+        "clustering",
+        "and-metric",
+        "spec-tokens",
+        "cosine-additive-trap"
+      ],
+      "related_bugs": [
+        "bug-594"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-21"
+    },
+    {
+      "id": "bug-1789781121",
+      "timestamp": "2026-09-21T15:08:44.281Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T15:08:44.281Z"
+    },
+    {
+      "id": "bug-3434",
+      "timestamp": "2026-09-22",
+      "error_message": "分项校验来源合同2GS-YCXM-CL-CG-024-2019(024-2019砂石料备案存档扫描件)点溯源无法显示图片,其他合同正常",
+      "file": "skills/public/contract-price-analysis/scripts/{cli.py,storage.py}",
+      "root_cause": "该内容首解析发生在2026-09-17(旧预览分类逻辑时代,会漏页)→pages 4/13的PNG从未落MinIO但OCR缓存已写;之后同内容重上传(09-20/09-21)全部缓存命中,from_cache的page_preview_b64恒空串→永不写PNG,而缓存命中路径无条件重建preview_prefix指针→悬空→溯源404",
+      "fix": "数据修复: POST /documents/{id}/reparse?re_ocr=true强制全量OCR补落page-4/13.png(端点验证200);结构加固: store.has_objects(prefix) + 缓存命中重建指针前先探测,无PNG则不设指针(UI显示明确的无预览而非破图);已重跑聚类恢复clustered状态",
+      "tags": [
+        "contract-price",
+        "traceback",
+        "preview",
+        "ocr-cache",
+        "dangling-pointer",
+        "minio"
+      ],
+      "related_bugs": [
+        "bug-3432"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-22"
+    },
+    {
+      "id": "bug-1789781122",
+      "timestamp": "2026-09-21T16:03:45.182Z",
+      "error_message": "Wrong reference: d_n should be d_new",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "Used \"d_n\" instead of \"d_new\"",
+      "fix": "Changed d_n → d_new",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T16:03:45.182Z"
+    },
+    {
+      "id": "bug-1789781123",
+      "timestamp": "2026-09-21T16:06:21.603Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/tests/test_contract_price_evolution.py",
+      "root_cause": "Had \"digit-drift\"",
+      "fix": "Changed to \"digit-split\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T16:06:21.603Z"
+    },
+    {
+      "id": "bug-1789781124",
+      "timestamp": "2026-09-21T16:17:48.222Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 18→29 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T16:17:48.222Z"
+    },
+    {
+      "id": "bug-1789781125",
+      "timestamp": "2026-09-21T16:18:11.972Z",
+      "error_message": "Wrong operator: == should be !=",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "Used \"==\" instead of \"!=\"",
+      "fix": "Changed operator == → !=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T16:18:11.972Z"
+    },
+    {
+      "id": "bug-3435",
+      "timestamp": "2026-09-22",
+      "error_message": "D-1/D-3捕获e2e不落库: 原生INSERT agent_learnings 静默失败",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "suggested_action 列 Mapped[str] NOT NULL 但默认值只在 ORM 层(services.mint_or_fold走ORM不受影响), 原生SQL INSERT漏该列→非空约束炸→被捕获桥的静默降级except吞掉",
+      "fix": "INSERT 显式补 suggested_action=''';教训: 零触碰复刻ORM写入时必须对照DDL的server_default, ORM default不进DDL",
+      "tags": [
+        "learnings",
+        "raw-sql",
+        "not-null",
+        "orm-default-trap",
+        "contract-price"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22"
+    },
+    {
+      "id": "bug-1789781126",
+      "timestamp": "2026-09-21T23:15:49.198Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T23:15:49.198Z"
+    },
+    {
+      "id": "bug-1789781127",
+      "timestamp": "2026-09-21T23:16:13.482Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T23:16:13.482Z"
+    },
+    {
+      "id": "bug-1789781128",
+      "timestamp": "2026-09-21T23:18:15.469Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/extensions/contract-price/components/SettingsView.tsx",
+      "root_cause": "Had \"@/extensions/contract-price/components/SeedRulesC",
+      "fix": "Changed to \"@/extensions/contract-price/components/EvolutionC",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T23:18:15.469Z"
+    },
+    {
+      "id": "bug-1789781129",
+      "timestamp": "2026-09-21T23:19:32.331Z",
+      "error_message": "Wrong return value",
+      "file": "backend/tests/test_contract_price_evolution.py",
+      "root_cause": "Was returning: _R(_rows=self._rows, _first=None)",
+      "fix": "Now returns: _R(self._rows, None)",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T23:19:32.331Z"
+    },
+    {
+      "id": "bug-1789781130",
+      "timestamp": "2026-09-21T23:22:01.883Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "Had \"^\\[(?P<pat>[^\\]]*)\\]\\s*(?:doc=(?P<doc>\\S+))?\\s*(?",
+      "fix": "Changed to \"^\\s*\\[(?P<pat>[^\\]]*)\\]\\s*(?:doc=(?P<doc>\\S+))?\\s",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T23:22:01.883Z"
+    },
+    {
+      "id": "bug-1789781131",
+      "timestamp": "2026-09-21T23:39:23.054Z",
+      "error_message": "Incorrect value in code",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Had \"name\"",
+      "fix": "Changed to \"管内穿线铜芯导 线 照明安装工程\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T23:39:23.054Z"
+    },
+    {
+      "id": "bug-1789781132",
+      "timestamp": "2026-09-21T23:39:42.683Z",
+      "error_message": "Significant refactor of ",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/engine.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 26→46 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-21T23:39:42.683Z"
+    },
+    {
+      "id": "bug-3436",
+      "timestamp": "2026-09-22",
+      "error_message": "总览选货物「管内穿线铜芯导 线 照明安装工程」分组81条混杂不相关货物(配管/应急灯/探测器/配电箱,价格2~3559)",
+      "file": "skills/public/contract-price-analysis/scripts/{cli.py,clustering/engine.py}",
+      "root_cause": "category拼进聚类样本文本:短货名(电源线3字)被同分类长字符串(8字)的char-ngram淹没,同分类异货物相似度达0.72;DBSCAN经边界点链式传导把整个消防/电气域串成61条连通体",
+      "fix": "category退出文本相似度(改纯名称+规格),新增_category_similarity第三AND门限(双方有类目须归一化相等,缺失中性);representative_name改纯goods_name(不再带分类后缀);67→72簇,噪音152→271(诚实落单)",
+      "tags": [
+        "contract-price",
+        "clustering",
+        "category-gate",
+        "dbscan-chaining",
+        "short-name-drowning"
+      ],
+      "related_bugs": [
+        "bug-3433"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-22"
+    },
+    {
+      "id": "bug-1789781133",
+      "timestamp": "2026-09-22T03:28:07.350Z",
+      "error_message": "CSS fix: limit",
+      "file": "frontend/src/extensions/contract-price/components/SeedRulesCard.tsx",
+      "root_cause": "limit: 200 → 100",
+      "fix": "Changed limit: 200 → 100",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T03:28:07.350Z"
+    },
+    {
+      "id": "bug-3437",
+      "timestamp": "2026-09-22",
+      "error_message": "设置tab表格定位规则全部显示未命中,但样例解析实际使用了规则",
+      "file": "frontend/src/extensions/contract-price/components/SeedRulesCard.tsx",
+      "root_cause": "useDocuments({limit:200})超后端limit上限100→422校验错误→query data undefined→matched_seeds聚合空→所有卡片误显未命中;数据本身7份文档全有matched_seeds(8/9规则有真实命中)",
+      "fix": "limit改100并注释上限与超限后的分页聚合待办",
+      "tags": [
+        "contract-price",
+        "seed",
+        "query-422",
+        "limit-cap"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22"
+    },
+    {
+      "id": "bug-1789781134",
+      "timestamp": "2026-09-22T03:47:33.883Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/contract_price/service.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 21→59 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T03:47:33.883Z"
+    },
+    {
+      "id": "bug-1789781135",
+      "timestamp": "2026-09-22T04:16:09.431Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/knowledge_factory/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 9→14 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T04:16:09.431Z"
+    },
+    {
+      "id": "bug-1789781136",
+      "timestamp": "2026-09-22T04:16:39.110Z",
+      "error_message": "Missing guard clause",
+      "file": "frontend/src/extensions/api/index.ts",
+      "root_cause": "No early return/throw for edge case: !res.ok",
+      "fix": "Added guard clause: if (!res.ok)",
+      "tags": [
+        "auto-detected",
+        "guard-clause",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T04:16:39.110Z"
+    },
+    {
+      "id": "bug-1789781137",
+      "timestamp": "2026-09-22T04:16:52.978Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "frontend/src/extensions/knowledge-factory/TemplateEditor.tsx",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T04:16:52.978Z"
+    },
+    {
+      "id": "bug-3437",
+      "timestamp": "2026-09-22",
+      "error_message": "知识工厂模板编辑tab下载模板失败:'无法从网站上提取文件',但toast提示'模板导出成功'",
+      "file": "backend/app/extensions/knowledge_factory/routers.py",
+      "root_cause": "export_template 把中文模板名裸塞 Content-Disposition(filename=\"煤炭挖掘_....json\"),starlette 发响应时 header 只能 latin-1 编码 → UnicodeEncodeError → HTTP 500,浏览器下载失败;库内其他下载接口(docmgr/contract_price/artifacts)均用 RFC 5987 filename*=UTF-8''+quote,唯此接口遗漏。另外 draft 模板从未 publish(save_snapshot 仅发布时调用)无磁盘快照,导出 404'模板快照文件不存在',报错语义不清。",
+      "fix": "routers.py export_template 改为 attachment; filename=\"template.json\"; filename*=UTF-8''<quote(filename)>(对齐 docmgr/contract_price 手法);快照缺失的 404 detail 改为'模板快照不存在,请先发布模板后再导出'。回归测试 tests/test_kf_export_template.py(3 用例,含 latin-1 可编码锚点)。已重启 gateway 实测:已发布模板 200+正确 header,draft 404 带清晰提示。",
+      "tags": [
+        "knowledge-factory",
+        "content-disposition",
+        "rfc5987",
+        "中文文件名",
+        "500",
+        "download"
+      ],
+      "related_bugs": [
+        "bug-3438"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-22"
+    },
+    {
+      "id": "bug-3438",
+      "timestamp": "2026-09-22",
+      "error_message": "前端 toast '模板导出成功' 与实际下载失败同时出现(假成功)",
+      "file": "frontend/src/extensions/knowledge-factory/TemplateEditor.tsx",
+      "root_cause": "handleExport 用 <a download> 锚点直链下载,link.click() 的下载结果是异步的且拿不到,toast.success 紧跟其后无条件执行——无论服务端 404/500,toast 永远报成功。",
+      "fix": "api/index.ts 新增 exportTemplateBlob(fetch+credentials,非 ok 抛 ApiError);handleExport 改 async:先 blob 拉取,成功才 createObjectURL+下载+toast.success,失败 toast.error(带 HTTP 状态)。TemplateExtraction.tsx 与 ExtractionProgressDrawer.tsx 的 window.open 导出仍是旧模式,待后续统一。",
+      "tags": [
+        "knowledge-factory",
+        "toast",
+        "假成功",
+        "blob-download",
+        "frontend"
+      ],
+      "related_bugs": [
+        "bug-3437"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-22"
+    },
+    {
+      "id": "bug-1789781138",
+      "timestamp": "2026-09-22T05:39:55.134Z",
+      "error_message": "属性链推理静默失效:owlrl prp-spo2 仅在链首属性已有实例时触发,否则零推断且不报错",
+      "file": "ontostudio/backend/app/ontology/kernel/infer.py (经 owlrl OWLRL.py:348) ; ontostudio/backend/app/ontology/registry/eia.yaml",
+      "root_cause": "owlrl _property_chain 用 self.graph.triples((None, chain[0], None)) 驱动,链首属性在 asserted 图中为空则循环体不执行。eia.yaml 两条 2 段链([treated_by,governed_by] / [emitted_as,threatens])走 owlrl 路径——rules.py:83 对 len(chain)<=2 直接 continue",
+      "fix": "本轮仅审计未修。建议:补\"链首未填充\"的 golden fixture,并让 infer.py 在链首为空时显式告警而非静默通过",
+      "tags": [
+        "ontostudio",
+        "owlrl",
+        "property-chain",
+        "prp-spo2",
+        "silent-failure",
+        "reasoning"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T05:39:55.134Z"
+    },
+    {
+      "id": "bug-1789781139",
+      "timestamp": "2026-09-22T05:44:01.345Z",
+      "error_message": "Wrong reference: Task should be $ONTOSTUDIO_INTERNAL_AUTH_TOKEN",
+      "file": "extensions_config.json",
+      "root_cause": "Used \"Task\" instead of \"$ONTOSTUDIO_INTERNAL_AUTH_TOKEN\"",
+      "fix": "Changed Task → $ONTOSTUDIO_INTERNAL_AUTH_TOKEN",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "json"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-22T05:44:11.620Z"
+    },
+    {
+      "id": "bug-1789781140",
+      "timestamp": "2026-09-22T05:44:24.740Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/frontend/src/pages/ValidationPage.tsx",
+      "root_cause": "Had \"GB/T 48000.3—2026 符合性\"",
+      "fix": "Changed to \"国标符合性 · 覆盖 5.3 / 5.4 / 附录A / §9\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T05:44:24.740Z"
+    },
+    {
+      "error_message": "OntoStudio 内核图内存态:ONTOSTUDIO_KERNEL_PATH 未在任何 compose 设置,容器重建后断言图/蕴含图/派生图全部归零,须重跑 POST /formal/load",
+      "file": "docker/docker-compose-dev.yaml, deploy/offline/docker-compose.extensions.yaml, ontostudio/backend/app/ontology/kernel/service.py:28",
+      "root_cause": "OxStore(path) 的 path 取自 os.environ.get(\"ONTOSTUDIO_KERNEL_PATH\"),未设则传 None → pyoxigraph 内存模式。compose 从未设该变量,部署态恒为内存。次生问题:conformance C2 标\"条款 5.3 存储\",实际只证进程内往返,名实不符",
+      "fix": "两处 compose 加 ONTOSTUDIO_KERNEL_PATH=/data/kernel + 命名卷(dev: ontostudio-kernel:/data;offline: prod-ontostudio-kernel:/data)并各自声明卷。实测 refresh 后 graph:schema 111 + graph:entailment 286,docker restart 后总数 397 存活,C2 现跑持久化存储",
+      "tags": [
+        "ontostudio",
+        "pyoxigraph",
+        "persistence",
+        "compose",
+        "conformance-c2",
+        "kernel"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T05:49:38.358Z",
+      "id": "bug-4955",
+      "timestamp": "2026-09-22T05:49:38.358Z"
+    },
+    {
+      "error_message": "OntoStudio MCP 通道一触即断:extensions_config.json 两条 MCP headers 为 {} 而 compose 注入 ONTOSTUDIO_INTERNAL_AUTH_TOKEN,该变量一旦设置 harness 不送 X-Internal-Auth → 服务端 401",
+      "file": "extensions_config.json, deploy/offline/extensions_config.json, docker/docker-compose-dev.yaml, deploy/offline/docker-compose.yaml",
+      "root_cause": "S1 Task 2 迁移 stdio→streamable-http 时服务端加了传输层鉴权,客户端 headers 留空待\"S2 接线\",两端从未对齐。且 ontostudio-backend 的 environment: 有同名空插值条目会覆盖 env_file 注入,故值只能放 docker/.env(compose 插值源)",
+      "fix": "headers 改 {\"X-Internal-Auth\": \"$ONTOSTUDIO_INTERNAL_AUTH_TOKEN\"}(harness config/extensions_config.py resolve_env_variables 支持 $VAR 占位);gateway 的 environment 加同名条目承载该值,使 docker/.env 成为两侧唯一来源。实测 gateway 内解析得 header=probe-token-abc123;两 MCP 端点 HTTP 200 无回归",
+      "tags": [
+        "ontostudio",
+        "mcp",
+        "auth",
+        "extensions_config",
+        "env-interpolation",
+        "compose"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T05:49:38.358Z",
+      "id": "bug-4956",
+      "timestamp": "2026-09-22T05:49:38.358Z"
+    },
+    {
+      "error_message": "OntoStudio 前端过度声明:\"GB/T 48000.3—2026 符合性\"面板显示 5/5 通过,但套件只覆盖 §5.3/§5.4/附录A/第9章,分母不含 §6.2/§7.3.2/§8.2 三块强制内容",
+      "file": "ontostudio/frontend/src/pages/ValidationPage.tsx",
+      "root_cause": "kernel P4 只实现 C1-C5 五项检查并在 UI 渲染为\"符合性 N/N\",标题用了标准全名,读者会理解为全文合规",
+      "fix": "面板标题改「国标符合性 · 覆盖 5.3 / 5.4 / 附录A / §9」,面板底部增未覆盖范围说明行,模块 docstring 记口径。重建前端镜像后确认旧字符串已从 bundle 消失",
+      "tags": [
+        "ontostudio",
+        "gb-t-48000",
+        "overclaim",
+        "ui-copy",
+        "conformance"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T05:49:38.358Z",
+      "id": "bug-4957",
+      "timestamp": "2026-09-22T05:49:38.358Z"
+    },
+    {
+      "id": "bug-1789781141",
+      "timestamp": "2026-09-22T11:44:12.073Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "Had `*_all`",
+      "fix": "Changed to `ontology_all`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T11:44:12.073Z"
+    },
+    {
+      "id": "bug-1789781142",
+      "timestamp": "2026-09-22T11:44:22.003Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T11:44:22.003Z"
+    },
+    {
+      "id": "bug-1789781143",
+      "timestamp": "2026-09-22T11:50:24.246Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→17 lines (3 removed) | Also: from app.ontology.actions.executor import ActionEr; action_id = arguments.get(\"action_id\", \"\")",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-22T11:50:30.719Z"
+    },
+    {
+      "id": "bug-1789781144",
+      "timestamp": "2026-09-22T12:03:01.062Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 12→34 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:03:01.062Z"
+    },
+    {
+      "id": "bug-1789781145",
+      "timestamp": "2026-09-22T12:12:14.574Z",
+      "error_message": "Missing await",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:12:14.574Z"
+    },
+    {
+      "id": "bug-1789781146",
+      "timestamp": "2026-09-22T12:13:03.499Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/scope.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 27→38 lines (2 removed) | Also: # 空 AND 是全真、空 OR 是全假——按布尔恒等式取，不用 fail-open 或 fail-; return \"TRUE\" if op == \"and\" else \"FALSE\"",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-22T12:13:10.540Z"
+    },
+    {
+      "id": "bug-1789781147",
+      "timestamp": "2026-09-22T12:13:50.543Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/backend/tests/test_scope_rule_to_sql.py",
+      "root_cause": "Had \"])) == (\"",
+      "fix": "Changed to \"])) == ('",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:13:50.543Z"
+    },
+    {
+      "id": "bug-1789781148",
+      "timestamp": "2026-09-22T12:17:32.534Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `str`",
+      "fix": "Changed to `op in (\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:17:32.534Z"
+    },
+    {
+      "id": "bug-1789781149",
+      "timestamp": "2026-09-22T12:20:23.895Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→11 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:20:23.895Z"
+    },
+    {
+      "id": "bug-1789781150",
+      "timestamp": "2026-09-22T12:35:23.431Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `get()`",
+      "fix": "Changed to `Registry.__init__`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:35:23.431Z"
+    },
+    {
+      "id": "bug-1789781151",
+      "timestamp": "2026-09-22T12:47:44.131Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:47:44.131Z"
+    },
+    {
+      "id": "bug-1789781152",
+      "timestamp": "2026-09-22T12:48:47.802Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/schemas.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 35→56 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:48:47.802Z"
+    },
+    {
+      "id": "bug-1789781153",
+      "timestamp": "2026-09-22T12:49:05.133Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_schema.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 21→46 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:49:05.134Z"
+    },
+    {
+      "id": "bug-1789781154",
+      "timestamp": "2026-09-22T12:52:56.299Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "Had `DomainFile`",
+      "fix": "Changed to `action.domain`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T12:52:56.299Z"
+    },
+    {
+      "id": "bug-1789781155",
+      "timestamp": "2026-09-22T13:12:04.357Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 9→27 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:12:04.357Z"
+    },
+    {
+      "id": "bug-1789781156",
+      "timestamp": "2026-09-22T13:12:27.374Z",
+      "error_message": "Wrong reference: validate_action_refs should be DomainFile",
+      "file": "ontostudio/backend/app/ontology/registry.py",
+      "root_cause": "Used \"validate_action_refs\" instead of \"DomainFile\"",
+      "fix": "Changed validate_action_refs → DomainFile",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:12:27.374Z"
+    },
+    {
+      "id": "bug-1789781157",
+      "timestamp": "2026-09-22T13:18:58.220Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `PYTHONPATH=. uv run pytest tests/test_action_audi",
+      "fix": "Changed to `PYTHONPATH=. uv run pytest tests/test_action_audi",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:18:58.220Z"
+    },
+    {
+      "id": "bug-1789781158",
+      "timestamp": "2026-09-22T13:22:45.662Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/scripts/ontology_lint.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:22:45.662Z"
+    },
+    {
+      "id": "bug-1789781159",
+      "timestamp": "2026-09-22T13:22:55.199Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_ontology_lint.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 11→17 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:22:55.199Z"
+    },
+    {
+      "id": "bug-1789781160",
+      "timestamp": "2026-09-22T13:26:22.379Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `schemas.py`",
+      "fix": "Changed to `ontology/schemas.py`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:26:22.379Z"
+    },
+    {
+      "id": "bug-4958",
+      "timestamp": "2026-09-22T13:26:47.263Z",
+      "error_message": "新增 dg_* 表会让 ontology_lint 的 D14 规则变红: 'table dg_action_audit: 市场域表未在 ontology 注册表登记'(3 条既有测试失败)",
+      "file": "ontostudio/backend/scripts/ontology_lint.py + tests/test_ontology_lint.py",
+      "root_cause": "D14 规则要求所有 dg_ 前缀表必须在 ontology registry 登记为 ObjectType。但内部审计表只写不给读投影(无读工具、无对外读模型),没有可登记的 ObjectType,于是恒报未登记。既有 WHITELIST_TABLES 已含 dg_merges 属同类豁免,新表未同步加入。",
+      "fix": "dg_action_audit 加入 WHITELIST_TABLES(与 dg_merges 同类); tests/test_ontology_lint.py 的硬编码豁免集同步加项并补 assert not in registered 钉住'豁免=不登记'契约。刻意不改成为从 WHITELIST_TABLES 派生——派生会让真·对外表塞进白名单时静默通过。",
+      "tags": [
+        "ontostudio",
+        "lint",
+        "d14",
+        "whitelist",
+        "dg-audit",
+        "ripple"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:26:47.263Z"
+    },
+    {
+      "id": "bug-1789781161",
+      "timestamp": "2026-09-22T13:37:08.606Z",
+      "error_message": "Missing await",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:37:08.606Z"
+    },
+    {
+      "id": "bug-1789781162",
+      "timestamp": "2026-09-22T13:37:12.836Z",
+      "error_message": "Wrong reference: SHACL should be Task",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "Used \"SHACL\" instead of \"Task\"",
+      "fix": "Changed SHACL → Task",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:37:12.836Z"
+    },
+    {
+      "id": "bug-1789781163",
+      "timestamp": "2026-09-22T13:40:07.376Z",
+      "error_message": "Missing await",
+      "file": "ontostudio/backend/app/main.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:40:07.376Z"
+    },
+    {
+      "id": "bug-1789781164",
+      "timestamp": "2026-09-22T13:40:12.777Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/__init__.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:40:12.777Z"
+    },
+    {
+      "id": "bug-1789781165",
+      "timestamp": "2026-09-22T13:42:31.991Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_action_audit_table.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→29 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:42:31.991Z"
+    },
+    {
+      "id": "bug-4959",
+      "timestamp": "2026-09-22T13:47:21.789Z",
+      "error_message": "dg_action_audit 没有任何建表路径——表在活库中不存在, 全仓无代码会创建它(Task 5 的 INSERT 会 UndefinedTable)",
+      "file": "ontostudio/backend/app/db.py, app/main.py, app/doc_graph/tables.py, app/ontology/__init__.py",
+      "root_cause": "2026-09-17 独立服务搬迁把 dg_* 模型从 gateway 的 Base 摘到本地 app.db.Base, 但三处注释仍写\"过渡期由 gateway init_db 建表, Task 3 起本服务接管\"——承诺未兑现, 注释变谎话。gateway 的 Base.metadata 里 dg_* 为零, 现存 4 张是搬迁前建的, 所以看库总\"表在\", 强化了错误信念。计划与设计文档逐字采信了那句注释。",
+      "fix": "app/db.py 新增 ensure_tables()(create_async_engine(_ext_url(), NullPool) + await conn.run_sync(Base.metadata.create_all)), main.py lifespan 调用; 三处陈旧注释改正并写明 create_all 只建缺失表不做 schema 变更。实测修复前 to_regclass=null, 修复后出现该表(12列+3索引)。",
+      "tags": [
+        "ontostudio",
+        "create-all",
+        "stale-comment",
+        "dg-audit",
+        "blocker",
+        "schema"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:47:21.789Z"
+    },
+    {
+      "id": "bug-1789781166",
+      "timestamp": "2026-09-22T13:53:41.990Z",
+      "error_message": "Missing await",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:53:41.990Z"
+    },
+    {
+      "id": "bug-1789781167",
+      "timestamp": "2026-09-22T13:53:49.527Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:53:49.527Z"
+    },
+    {
+      "id": "bug-1789781168",
+      "timestamp": "2026-09-22T13:54:59.005Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/db.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:54:59.006Z"
+    },
+    {
+      "id": "bug-1789781169",
+      "timestamp": "2026-09-22T13:55:09.763Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/main.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→18 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:55:09.763Z"
+    },
+    {
+      "id": "bug-1789781170",
+      "timestamp": "2026-09-22T13:55:15.290Z",
+      "error_message": "Wrong return value",
+      "file": "ontostudio/backend/app/main.py",
+      "root_cause": "Was returning: {\"status\": \"ok\", \"service\": \"ontostudio-backend\"}",
+      "fix": "Now returns: {\"status\": \"ok\", \"service\": \"ontostudio-backend\", ",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:55:15.290Z"
+    },
+    {
+      "id": "bug-1789781171",
+      "timestamp": "2026-09-22T13:55:22.643Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_action_audit_table.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 14→7 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T13:55:22.643Z"
+    },
+    {
+      "id": "bug-1789781172",
+      "timestamp": "2026-09-22T14:13:59.271Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "Had \": N}`",
+      "fix": "Changed to \": 5}`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:13:59.271Z"
+    },
+    {
+      "id": "bug-1789781173",
+      "timestamp": "2026-09-22T14:14:08.551Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/db.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→15 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:14:08.551Z"
+    },
+    {
+      "id": "bug-1789781174",
+      "timestamp": "2026-09-22T14:14:16.204Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_action_audit_table.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→31 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:14:16.204Z"
+    },
+    {
+      "id": "bug-1789781175",
+      "timestamp": "2026-09-22T14:29:15.244Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→17 lines (3 removed) | Also: sql, params = build_update_set(; [StateChange(field=\"status\", set=\"active\"), StateC | Also: \"\"\"前置条件合取（AND）。空列表 → TRUE。\"\"\"; params[key] = list(cond.value or []) if cond.op in",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-22T14:33:16.457Z"
+    },
+    {
+      "id": "bug-4960",
+      "timestamp": "2026-09-22T14:29:37.928Z",
+      "error_message": "sql_write.build_precondition_where 的 not_in 空值编译为恒真式, 前置条件守卫静默失效(fail-open)",
+      "file": "ontostudio/backend/app/ontology/actions/sql_write.py:56",
+      "root_cause": "`list(cond.value or [])` 把漏填/空 list 归一成 [] → `NOT (col = ANY(ARRAY[]))` = NOT FALSE = TRUE。真库实测: 空数组 ANY 为 false 故 NOT 为 true; 而参数为 NULL 时 ANY 为 NULL 故 NOT 为 NULL → 行被过滤=拒绝。即该行把'漏填 value'从 fail-closed 翻转成 fail-open, 且全程静默。Precondition.value 是 Any|None=None 且无跨字段校验, 故可达。",
+      "fix": "in 空 → 编译为 FALSE(语义正确且 fail-closed); not_in 空 → raise WriteGuardError(不在空集里字面等于全部, 守卫不该产出恒真式)。去掉 or [] 归一, 空值判定显式写。读路径(scope.py 数据范围过滤)与写路径(守卫)的空集语义分开裁决。",
+      "tags": [
+        "ontostudio",
+        "sql-write",
+        "fail-open",
+        "not-in",
+        "empty-set",
+        "guard"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:29:37.928Z"
+    },
+    {
+      "id": "bug-1789781176",
+      "timestamp": "2026-09-22T14:30:13.859Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/actions/sql_write.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 17→35 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:30:13.860Z"
+    },
+    {
+      "id": "bug-4961",
+      "timestamp": "2026-09-22T14:43:04.851Z",
+      "error_message": "sql_write 的 in/not_in 在 value 为非空非序列(如未加引号字符串)时静默绕过守卫: list(\"rejected\") 逐字符拆 → 谓词对包括 rejected 在内的每行都为真",
+      "file": "ontostudio/backend/app/ontology/actions/sql_write.py:64-75",
+      "root_cause": "Precondition.value 是 Any|None 无形状约束, DomainFile 校验器只查 cond.field, ontology_lint 对 precondition 的 value 完全没查。守卫只防了\"值缺失/空\"(F1) 没防\"形状错\"。同文件已用 isinstance 防住标识符轴的 YAML 类型草率, 但值轴防御不对称。可达: 注册表 YAML 热加载, 写一句 op:not_in value:rejected(漏引号,最自然的写法)即命中。",
+      "fix": "在空值判定之前加: isinstance(value,str) or not isinstance(value,(list,tuple,set)) → raise WriteGuardError。同时修 I1(不可迭代值漏出裸 TypeError, Task 5 catch WriteGuardError 会变 500)。",
+      "tags": [
+        "ontostudio",
+        "sql-write",
+        "fail-open",
+        "not-in",
+        "type-shape",
+        "guard",
+        "half-fix"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:43:04.851Z"
+    },
+    {
+      "id": "bug-1789781177",
+      "timestamp": "2026-09-22T14:43:41.148Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/actions/sql_write.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 8→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:43:41.148Z"
+    },
+    {
+      "id": "bug-1789781178",
+      "timestamp": "2026-09-22T14:43:48.704Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "ontostudio/backend/app/ontology/actions/sql_write.py",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:43:48.704Z"
+    },
+    {
+      "id": "bug-1789781179",
+      "timestamp": "2026-09-22T14:43:55.017Z",
+      "error_message": "Missing error handling in test_not_in_empty_value_is_rejected",
+      "file": "ontostudio/backend/tests/test_actions_sql_write.py",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:43:55.017Z"
+    },
+    {
+      "id": "bug-1789781180",
+      "timestamp": "2026-09-22T14:57:19.443Z",
+      "error_message": "Wrong reference: SQL should be executor",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Used \"SQL\" instead of \"executor\"",
+      "fix": "Changed SQL → executor",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T14:57:19.443Z"
+    },
+    {
+      "id": "bug-1789781181",
+      "timestamp": "2026-09-22T23:21:54.852Z",
+      "error_message": "Function not marked async",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier | Also: async def _get_updated_at(pk: uuid.UUID) -> datetime:; engine = create_async_engine(_ext_url(), poolclass=NullPool)",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-22T23:22:29.240Z"
+    },
+    {
+      "id": "bug-1789781182",
+      "timestamp": "2026-09-22T23:28:54.297Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→4 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T23:28:54.297Z"
+    },
+    {
+      "id": "bug-1789781183",
+      "timestamp": "2026-09-22T23:28:59.036Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "Had \"SELECT action_id, before, after, source FROM dg_a",
+      "fix": "Changed to \"SELECT action_id, params, before, after, source F",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-22T23:28:59.036Z"
+    },
+    {
+      "id": "bug-1789781184",
+      "timestamp": "2026-09-23T00:57:12.063Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→17 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T00:57:12.063Z"
+    },
+    {
+      "id": "bug-1789781185",
+      "timestamp": "2026-09-23T04:51:26.450Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T04:51:26.450Z"
+    },
+    {
+      "id": "bug-1789781186",
+      "timestamp": "2026-09-23T04:56:09.558Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/db.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 8→16 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T04:56:09.558Z"
+    },
+    {
+      "id": "bug-1789781187",
+      "timestamp": "2026-09-23T04:56:23.418Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/main.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 5→7 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T04:56:23.418Z"
+    },
+    {
+      "id": "bug-1789781188",
+      "timestamp": "2026-09-23T04:56:43.766Z",
+      "error_message": "Missing error handling in _is_missing_table_error",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T04:56:43.766Z"
+    },
+    {
+      "id": "bug-1789781189",
+      "timestamp": "2026-09-23T04:57:52.298Z",
+      "error_message": "Missing error handling in def",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T04:57:52.298Z"
+    },
+    {
+      "id": "bug-1789781190",
+      "timestamp": "2026-09-23T05:01:12.475Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "23 lines replaced/restructured",
+      "fix": "Rewrote 59→94 lines (23 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:01:12.475Z"
+    },
+    {
+      "id": "bug-1789781191",
+      "timestamp": "2026-09-23T05:08:03.594Z",
+      "error_message": "Missing error handling in unknown",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:08:03.594Z"
+    },
+    {
+      "id": "bug-1789781192",
+      "timestamp": "2026-09-23T05:08:08.263Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/specs/2026-09-22-ontostudio-action-layer-design.md",
+      "root_cause": "Had `command_timeout=30~60`",
+      "fix": "Changed to `connect_args={\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:08:08.263Z"
+    },
+    {
+      "id": "bug-1789781193",
+      "timestamp": "2026-09-23T05:11:00.891Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:11:00.891Z"
+    },
+    {
+      "id": "bug-1790140380450",
+      "timestamp": "2026-09-23T05:13:00Z",
+      "error_message": "DuplicateTableError: relation \"ix_dg_action_audit_actor_created\" already exists",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "测试用 ALTER TABLE dg_action_audit RENAME TO <别名> 把真表藏起来造 42P01；PostgreSQL 的 ALTER TABLE RENAME 不跟改索引名（dg_action_audit_pkey / ix_dg_action_audit_* 留在原表上），于是懒建的 Base.metadata.create_all 建新表时 CREATE INDEX 撞名失败；且改名后活库停在残状态（dg_action_audit 缺失 + 别名表残留），连带红掉同一次运行里的 test_lifespan_creates_action_audit_table",
+      "fix": "改成一次性 scratch 库：DROP DATABASE IF EXISTS <scratch> WITH (FORCE) → CREATE DATABASE → 生产 ensure_tables() → DROP TABLE dg_action_audit；真 42P01 链 / 真建表 / 真重试 / 真落审计行全保留，最坏只脏自己的库。活库已用 ALTER TABLE dg_action_audit_pytest_stash RENAME TO dg_action_audit 复原（218 行无损）",
+      "tags": [
+        "postgres",
+        "alter-table-rename",
+        "index-name",
+        "test-isolation",
+        "ontostudio",
+        "task5-step6"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:13:00Z"
+    },
+    {
+      "id": "bug-1790140380451",
+      "timestamp": "2026-09-23T05:15:14.321Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 17→22 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:15:14.321Z"
+    },
+    {
+      "id": "bug-1790140380452",
+      "timestamp": "2026-09-23T05:20:25.423Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `347 passed, 3 skipped`",
+      "fix": "Changed to `348 passed, 3 skipped`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:20:25.423Z"
+    },
+    {
+      "id": "bug-1790140380453",
+      "timestamp": "2026-09-23T05:34:56.772Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "Had `AsyncAdapt_asyncpg_dbapi.ProgrammingError`",
+      "fix": "Changed to `sqlalchemy.dialects.postgresql.asyncpg.Programmin",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:34:56.772Z"
+    },
+    {
+      "id": "bug-1790140380454",
+      "timestamp": "2026-09-23T05:35:13.277Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 7→10 lines (2 removed) | Also: async def _write_with_lazy_audit_table(; write_txn: Callable[[], Awaitable[tuple[dict[str, ",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-23T05:35:23.148Z"
+    },
+    {
+      "id": "bug-1790140380455",
+      "timestamp": "2026-09-23T05:35:17.746Z",
+      "error_message": "Wrong return value",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "Was returning: before, after",
+      "fix": "Now returns: before, after, audit.scalar_one()",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:35:17.746Z"
+    },
+    {
+      "id": "bug-1790140380456",
+      "timestamp": "2026-09-23T05:35:27.852Z",
+      "error_message": "Wrong reference: tuple should be _WriteResult",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "Used \"tuple\" instead of \"_WriteResult\"",
+      "fix": "Changed tuple → _WriteResult",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:35:27.852Z"
+    },
+    {
+      "id": "bug-1790140380457",
+      "timestamp": "2026-09-23T05:35:44.792Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/db.py",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 8→14 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:35:44.792Z"
+    },
+    {
+      "id": "bug-1790140380458",
+      "timestamp": "2026-09-23T05:36:10.244Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "Had \"SELECT action_id, params, before, after, source F",
+      "fix": "Changed to \"SELECT id, action_id, params, before, after, sour",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:36:10.244Z"
+    },
+    {
+      "id": "bug-1790140380459",
+      "timestamp": "2026-09-23T05:39:29.725Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `command_timeout`",
+      "fix": "Changed to `audit_id`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-23T05:39:33.795Z"
+    },
+    {
+      "id": "bug-4962",
+      "timestamp": "2026-09-23T05:52:13.410Z",
+      "error_message": "懒建识别器不区分语句, 目标表的 42P01 被当成\"审计表缺失\": DDL 故障被报成 404 + 一次性懒建额度被烧 + 目标表被 create_all 静默重建为空表",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py:110-194, app/main.py:101-105",
+      "root_cause": "_is_missing_table_error 只判异常链里有没有 42P01, 不看哪条语句报的。同一事务里 :258/:263/:273 三条打在 table_q(registry 声明的目标表)上的语句同样能报 42P01。而 create_all 建的是所有缺失的 Base.metadata 表, 不只审计表——故\"审计表懒建\"会顺手把目标表建为空表。main.py 注释还写着\"仅限这张表: 其余 dg_* 表没有写入路径在跑\", 与机制不符。",
+      "fix": "把打目标表的三条语句包一层, 42P01 直接转成忠实的 500(\"目标表不存在: xxx(registry 声明)\")再上抛, 作为 ActionError 走 except ActionError: raise —— 不触发懒建、不重试、不烧 flag; 并补一条反例测试(断言 ensure_tables 调用数为 0 且返回 500 而非 404)。连带改正 main.py 那句\"仅限这张表\"。",
+      "tags": [
+        "ontostudio",
+        "executor",
+        "42p01",
+        "lazy-build",
+        "create-all",
+        "misattribution",
+        "fail-path"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:52:13.410Z"
+    },
+    {
+      "id": "bug-1790140380460",
+      "timestamp": "2026-09-23T05:52:37.246Z",
+      "error_message": "Missing await",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:52:37.246Z"
+    },
+    {
+      "id": "bug-1790140380461",
+      "timestamp": "2026-09-23T05:54:01.732Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "26 lines replaced/restructured",
+      "fix": "Rewrote 32→16 lines (26 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:54:01.732Z"
+    },
+    {
+      "id": "bug-1790140380462",
+      "timestamp": "2026-09-23T05:55:20.873Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/main.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 4→9 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T05:55:20.873Z"
+    },
+    {
+      "id": "bug-1790140380463",
+      "timestamp": "2026-09-23T11:12:53.537Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/auth.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 5→11 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T11:12:53.537Z"
+    },
+    {
+      "id": "bug-1790140380464",
+      "timestamp": "2026-09-23T11:14:03.845Z",
+      "error_message": "Missing await",
+      "file": "ontostudio/backend/tests/test_main.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T11:14:03.845Z"
+    },
+    {
+      "id": "bug-1790140380465",
+      "timestamp": "2026-09-23T11:16:37.484Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 6→8 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T11:16:37.484Z"
+    },
+    {
+      "id": "bug-1790140380466",
+      "timestamp": "2026-09-23T11:16:45.043Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T11:16:45.043Z"
+    },
+    {
+      "id": "bug-1790150000000",
+      "timestamp": "2026-09-23T11:26:26.000Z",
+      "error_message": "OntoStudio 授权委托缓存跨权限串味：同一用户在 TTL(30s) 内查第二个权限会命中第一个权限的判定结果（只按 user_id 做键，值语义却是某一次查询的那个权限）",
+      "file": "ontostudio/backend/app/auth.py",
+      "root_cause": "_authz_cache 键为 dict[uuid.UUID, tuple[bool,float]]，单权限(system:access)时未暴露；本体动作层引入第二个权限(ontology:action:review)后同一用户查两个权限会串味",
+      "fix": "键改 (user.id, permission) 复合键（get/pop/set 三处）；两侧各加一条同形回归测试（单键变异可复现 RED） 【订正 2026-09-23】那条\"主仓同步落 authz_cache.py\"已作废——该文件从未有生产消费者（计划 Step 4(b) 的前提是事实错误：主仓并不存在那个模块级 _authz_cache），已在 0fe50a398 删除。真正承重的修复只有 OntoStudio 侧那一处（真生产路径 + 回归测试 + 变异验证）。",
+      "tags": [
+        "rbac",
+        "authz-cache",
+        "permission",
+        "cross-contamination",
+        "ontostudio",
+        "gateway"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:37:15.828Z"
+    },
+    {
+      "id": "bug-1790150000001",
+      "timestamp": "2026-09-23T13:00:42.557Z",
+      "error_message": "（自动钩子生成条目，内容不可检索）AuthzCache/authz_cache 相关自动记录",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `350 passed, 3 skipped`",
+      "fix": "【订正 2026-09-23】本条为钩子自动生成（原文\"Changed to `AuthzCache`\"无上下文）。所涉文件 authz_cache.py 已在 0fe50a398 删除，本条仅作历史留痕。**注：本 buglog 存在大量此类自动条目，内容不可检索——若将来指望它做\"已知修复\"检索，这批是噪音源。**",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-23T13:40:38.354Z"
+    },
+    {
+      "id": "bug-1790150000002",
+      "timestamp": "2026-09-23T13:00:45.856Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→10 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:00:45.856Z"
+    },
+    {
+      "id": "bug-4963",
+      "timestamp": "2026-09-23T13:05:41.339Z",
+      "error_message": "CurrentUser.role_name 装的是显示名(roles.name)而非 code, 用它查 DataScopeEngine 会恒 none_allow —— 症状是'权限配了但没用', 所有动作 404",
+      "file": "backend/app/extensions/auth/permission_routers.py:148-152, backend/app/extensions/auth/identity.py:65, backend/app/extensions/auth/middleware.py:105,283",
+      "root_cause": "middleware.py:105 赋 role_name = role.name, 而 roles.name 是显示名(superadmin → '超级管理员'); DataScopeEngine._role_data_scopes 则由 registry.list_role_codes()(角色 code)建键。两者不同名。**决定性证据在仓库自己的一行**: middleware.py:283 `if current_user.role_name in (\"超级管理员\", \"admin\")` —— 拿它比中文显示名。另注: roles 表根本没有 admin 角色(6 行: superadmin/dept_head/project_manager/reviewer/writer/user), 故计划里'至少给 admin 与 superadmin'实际只对 superadmin 生效。",
+      "fix": "改由 current_user.role_id 反查 roles.code(与 refresh_token / _build_current_user 同法), 端点实测: allow_all 正确返回。 【订正 2026-09-23】`AttributeSet.from_current_user` 已在同一轮 I-3 中被淘汰（改用本文件已 import 的正典 `provider.resolve()`），随后因零调用点零测试而删除；\"必填 kwarg\"这条设计随之消失——**反查 roles.code 的责任现在在 identity.py::resolve 内**。",
+      "tags": [
+        "auth",
+        "rbac",
+        "role-code",
+        "role-name",
+        "data-scope",
+        "silent-404",
+        "ontostudio-action"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:37:15.828Z"
+    },
+    {
+      "id": "bug-1790150000003",
+      "timestamp": "2026-09-23T13:12:14.285Z",
+      "error_message": "Significant refactor of ",
+      "file": "../_mutwt/backend/app/extensions/auth/engine.py",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 8→6 lines (8 removed) | Also: return {; \"operator\": self.operator,",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-23T13:13:38.910Z"
+    },
+    {
+      "id": "bug-1790150000004",
+      "timestamp": "2026-09-23T13:15:25.208Z",
+      "error_message": "Wrong reference: role_id should be id",
+      "file": "../_mutwt/backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "Used \"role_id\" instead of \"id\"",
+      "fix": "Changed role_id → id",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:15:25.208Z"
+    },
+    {
+      "id": "bug-1790150000005",
+      "timestamp": "2026-09-23T13:24:10.668Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/engine.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 11→15 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:24:10.668Z"
+    },
+    {
+      "id": "bug-1790150000006",
+      "timestamp": "2026-09-23T13:24:28.994Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "21 lines replaced/restructured",
+      "fix": "Rewrote 38→52 lines (21 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:24:28.994Z"
+    },
+    {
+      "id": "bug-1790150000007",
+      "timestamp": "2026-09-23T13:26:26.677Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_permissions_scope_endpoint.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 5→11 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:26:26.677Z"
+    },
+    {
+      "id": "bug-1790150000008",
+      "timestamp": "2026-09-23T13:33:32.188Z",
+      "error_message": "Wrong reference: rule_to_sql should be ScopeCompileError",
+      "file": "ontostudio/backend/tests/test_scope_wire_contract.py",
+      "root_cause": "Used \"rule_to_sql\" instead of \"ScopeCompileError\"",
+      "fix": "Changed rule_to_sql → ScopeCompileError",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:33:32.188Z"
+    },
+    {
+      "id": "bug-1790150000009",
+      "timestamp": "2026-09-23T13:40:41.835Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 4→7 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:40:41.835Z"
+    },
+    {
+      "id": "bug-1790150000010",
+      "timestamp": "2026-09-23T13:46:36.745Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/routers.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 23→31 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:46:36.745Z"
+    },
+    {
+      "id": "bug-1790150000011",
+      "timestamp": "2026-09-23T13:48:43.137Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/tests/test_permissions_scope_endpoint.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 17→40 lines (4 removed) | Also: 本文件守三件事：; 消费侧（ontostudio/backend/tests/test_scope_wire_contr | Also: 判别力（变异验证）：删掉 ``resolve_data_scope`` 里的旁路分支后，``/sco; ``none_allow``（``ontology_all`` 被扣掉）而平台侧仍 ``allow_",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-23T13:51:52.899Z"
+    },
+    {
+      "id": "bug-1790150000012",
+      "timestamp": "2026-09-23T13:48:55.866Z",
+      "error_message": "Missing await",
+      "file": "backend/tests/test_permissions_scope_endpoint.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:48:55.866Z"
+    },
+    {
+      "id": "bug-1790150000013",
+      "timestamp": "2026-09-23T13:51:47.125Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_rest.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 12→17 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:51:47.125Z"
+    },
+    {
+      "id": "bug-1790150000014",
+      "timestamp": "2026-09-23T13:53:58.731Z",
+      "error_message": "Missing await",
+      "file": "ontostudio/backend/tests/test_actions_rest.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:53:58.731Z"
+    },
+    {
+      "id": "bug-1790150000015",
+      "timestamp": "2026-09-23T13:55:30.703Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/routers.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 5→18 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:55:30.703Z"
+    },
+    {
+      "id": "bug-1790150000016",
+      "timestamp": "2026-09-23T13:57:55.123Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/backend/app/auth.py",
+      "root_cause": "Had `contract_purce`",
+      "fix": "Changed to `contract_price`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T13:57:55.123Z"
+    },
+    {
+      "id": "bug-1790150000017",
+      "timestamp": "2026-09-23T14:00:50.864Z",
+      "error_message": "Function not marked async",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:00:50.864Z"
+    },
+    {
+      "id": "bug-1790150000018",
+      "timestamp": "2026-09-23T14:01:12.551Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 5→3 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:01:12.551Z"
+    },
+    {
+      "id": "bug-1790150000019",
+      "timestamp": "2026-09-23T14:03:04.440Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "6 lines replaced/restructured",
+      "fix": "Rewrote 12→17 lines (6 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:03:04.440Z"
+    },
+    {
+      "id": "bug-1790150000020",
+      "timestamp": "2026-09-23T14:03:36.429Z",
+      "error_message": "Missing await",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:03:36.429Z"
+    },
+    {
+      "id": "bug-1790150000021",
+      "timestamp": "2026-09-23T14:04:15.760Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had `FOR UPDATE`",
+      "fix": "Changed to `command_timeout=60`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-23T14:07:59.850Z"
+    },
+    {
+      "id": "bug-1790150000022",
+      "timestamp": "2026-09-23T14:38:00.615Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/routers.py",
+      "root_cause": "11 lines replaced/restructured",
+      "fix": "Rewrote 18→24 lines (11 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:38:00.615Z"
+    },
+    {
+      "id": "bug-1790150000023",
+      "timestamp": "2026-09-23T14:38:08.559Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 13→26 lines (5 removed) | Also: raise ActionError(_write_failure_detail(\"写事务失败\", e; raise ActionError(_write_failure_detail(\"懒建审计表后写入仍",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-23T14:38:14.938Z"
+    },
+    {
+      "id": "bug-1790150000024",
+      "timestamp": "2026-09-23T14:38:24.831Z",
+      "error_message": "Wrong reference: uuid should be time",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "Used \"uuid\" instead of \"time\"",
+      "fix": "Changed uuid → time",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:38:24.831Z"
+    },
+    {
+      "id": "bug-1790150000025",
+      "timestamp": "2026-09-23T14:38:38.984Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/auth/permission_routers.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 4→6 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:38:38.984Z"
+    },
+    {
+      "id": "bug-1790150000026",
+      "timestamp": "2026-09-23T14:38:49.452Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_actions_executor.py",
+      "root_cause": "9 lines replaced/restructured",
+      "fix": "Rewrote 18→25 lines (9 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:38:49.452Z"
+    },
+    {
+      "id": "bug-1790150000027",
+      "timestamp": "2026-09-23T14:41:41.240Z",
+      "error_message": "Incorrect value in code",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "Had \"并发量 × 规模\"",
+      "fix": "Changed to `locatedIn`",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:41:41.240Z"
+    },
+    {
+      "id": "bug-4964",
+      "timestamp": "2026-09-23T14:44:49.422Z",
+      "error_message": "基准测试的关系谓词写成 locatedIn 而 registry enum 是 located_in —— 关系静默不落地, 基准跑在一个远小于自述的图上, 速率分母全错且无任何报错",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py::_project_incrementally 的 docstring 代价表",
+      "root_cause": "eia.yaml 的 predicate enum 用 snake_case(located_in), benchmark payload 用了 camelCase(locatedIn)。注册表校验对\"未知谓词\"的处理使这些关系被静默丢弃(不报错、不计数), 于是 100 实体只产出 163 三元组(≈1.6/实体)而正常应 6-7/实体。**基准因此测的是一个小得多的图, 得出的 0.8ms/三元组 分母错误。**",
+      "fix": "按同一路径重测(6.0-6.6 三元组/实体), 表降级为量级表并标注测量条件(机器/装载路径/payload 形状/取最快一次), 删掉单点速率与\"近似线性\"字样, 明写\"勿外推\"; 定向结论从\"万级\"下调到\"千级实体起就该催 P1-7\"。另: 同一错数字在计划里也有一份, 已同步订正——**不能只改一处**。",
+      "tags": [
+        "ontostudio",
+        "benchmark",
+        "silent-drop",
+        "enum-typo",
+        "predicate",
+        "projection"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:44:49.422Z"
+    },
+    {
+      "id": "bug-1790150000028",
+      "timestamp": "2026-09-23T14:48:41.320Z",
+      "error_message": "Missing await",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:48:41.320Z"
+    },
+    {
+      "id": "bug-1790150000029",
+      "timestamp": "2026-09-23T14:49:49.021Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/tests/test_ontology_mcp.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 15→30 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:49:49.021Z"
+    },
+    {
+      "id": "bug-1790150000030",
+      "timestamp": "2026-09-23T14:50:16.659Z",
+      "error_message": "Missing error handling in test_action_ids_match_registry",
+      "file": "ontostudio/backend/tests/test_actions_mcp.py",
+      "root_cause": "Code path had no error handling — exceptions would propagate uncaught",
+      "fix": "Added try/catch block",
+      "tags": [
+        "auto-detected",
+        "error-handling",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:50:16.659Z"
+    },
+    {
+      "id": "bug-1790150000031",
+      "timestamp": "2026-09-23T14:52:41.544Z",
+      "error_message": "Incorrect value in code",
+      "file": "ontostudio/backend/app/ontology/mcp.py",
+      "root_cause": "Had \"执行一个已声明的受治理动作（写回业务数据并记审计）。先用 describe_ontology 查看",
+      "fix": "Changed to \"执行一个已声明的受治理动作（写回业务数据并记审计）。先用 describe_ontology 查看",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:52:41.544Z"
+    },
+    {
+      "id": "bug-1790150000032",
+      "timestamp": "2026-09-23T14:54:38.991Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "2 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (2 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T14:54:38.991Z"
+    },
+    {
+      "id": "bug-1790231200033",
+      "timestamp": "2026-09-23T22:57:00.000Z",
+      "error_message": "MCP invoke_action / review_entity 成功返回体里没有 success 键（而错误侧 _err 一直写 success:false）",
+      "file": "ontostudio/backend/app/ontology/mcp.py",
+      "root_cause": "计划 Task 8 Step 4 的代码写 `_ok(await run_action_for_mcp(...))`，把 invoke_action_core 的返回体**原样**当 MCP 负载——而那个 dict 是按 REST 的约定设计的（HTTP 200 即成功，体内无 success 键）。MCP 没有状态码，success 是本 server 唯一的成败信号。计划给的 3 条用例全是 schema/registry 断言，一条都没调 handler，故全绿。",
+      "fix": "两条 handler 都改成 `_ok({\"success\": True, **result})`（与同文件其余 8 个工具同形）。新增用例 test_invoke_action_result_survives_datetime 经 call_tool 断言 success is True；变异 M6（删掉 success:True）已实测为红。",
+      "tags": [
+        "ontostudio",
+        "mcp",
+        "action-layer",
+        "task8",
+        "plan-defect",
+        "protocol-shape"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T22:57:00.000Z"
+    },
+    {
+      "id": "bug-1790231200034",
+      "timestamp": "2026-09-23T22:57:00.000Z",
+      "error_message": "TEST FAILED: tests/test_ontology_mcp.py::test_registered_tools_with_division_wording — Extra items in the left set: 'review_entity', 'invoke_action'",
+      "file": "ontostudio/backend/tests/test_ontology_mcp.py",
+      "root_cause": "该文件用**精确集合**断言 `{t.name for t in TOOLS} == EXPECTED_TOOLS`，而计划 Task 8 的 Files 段只列了 mcp.py 与 test_actions_mcp.py，没列这个文件。加工具必然打破它——计划漏掉的连带修改。",
+      "fix": "EXPECTED_TOOLS 加上 invoke_action / review_entity（并注明：本清单手写是刻意的，动作 id 与 registry 的一致性由 test_actions_mcp.py 钉），文件 docstring 的「7 工具」改成「8 只读 + 2 动作」。",
+      "tags": [
+        "ontostudio",
+        "mcp",
+        "task8",
+        "plan-omission",
+        "exact-set-assertion"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T22:57:00.000Z"
+    },
+    {
+      "id": "bug-1790231200035",
+      "timestamp": "2026-09-23T22:57:00.000Z",
+      "error_message": "ruff F841 Local variable `action` is assigned to but never used",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "计划给的 run_action_for_mcp 写 `action, _obj = _resolve(action_id)`，但 action 从未被使用（invoke_action_core 内部会再解析一次）。ruff 默认 select E/F/I/UP 下 F841 会报；实测确认 `a, b = ...` 中未用的 a 报 F841，而 `_a, b = ...` 不报（dummy-variable-rgx）。",
+      "fix": "改成 `_action, _obj = _resolve(action_id)`（下划线前缀表示「只为 fail-closed 的失败顺序而解析」），语义不变。",
+      "tags": [
+        "ontostudio",
+        "task8",
+        "plan-defect",
+        "ruff",
+        "F841"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T22:57:00.000Z"
+    },
+    {
+      "id": "bug-1790231200036",
+      "timestamp": "2026-09-23T22:57:00.000Z",
+      "error_message": "executor.py 注释称「返回体会被 Task 8 原样 json.dumps（无 default=），塞 uuid.UUID 进去会在 MCP 侧 TypeError」——前置事实错误",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py",
+      "root_cause": "mcp.py 的 _ok **自 325bb8e47（后端独立化）起**就带 default=str，早于整个动作层计划。计划 Task 8 的 ⚠️ 块把「_ok 无 default=」当成待补的前向风险交接下来，前提其实早已满足；executor 里那条注释则把不成立的理由当成了字符串化的原因。",
+      "fix": "改准注释（保留字符串化，但理由是「形状一致：agent 读到的 pk 与 audit_id 同类」，不是防 TypeError）；_ok 的 default=str 由新增用例 test_invoke_action_result_survives_datetime 钉住（变异 M1 实测删掉即红）。",
+      "tags": [
+        "ontostudio",
+        "task8",
+        "stale-claim",
+        "docstring-honesty",
+        "default=str"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T22:57:00.000Z"
+    },
+    {
+      "id": "bug-4965",
+      "timestamp": "2026-09-23T15:00:12.443Z",
+      "error_message": "MCP 动作写入口不校验动作权限: run_action_for_mcp 不调 authorize, required_permissions 只在 REST 侧校验; 且 ontology server 早已注册, 服务重启即上线——任何配了该 server 的 agent 直接获得写入口",
+      "file": "ontostudio/backend/app/ontology/actions/executor.py::run_action_for_mcp, app/ontology/mcp.py::_invoke_action",
+      "root_cause": "设计 spec §4 只裁定了\"数据范围\"那一半(域级二态下 MCP 无可区分身份, 记成 ponytail 天花板), 权限那一半当时没写。MCP 走共享头鉴权, 没有可判定的调用者身份, 故无法按用户授权。工具描述原本还宣称\"权限与数据范围在服务端强制\"——一句不成立的安全承诺, 且是写给 agent 看的。",
+      "fix": "已订正工具描述(改为\"写路径在服务端(事务/审计/身份标注); 本通道的授权在 MCP 配置层, 不逐条校验 required_permissions\")。行为未改——待裁决: (a)接受\"MCP server 注册即授权\"(enable 该 server 本身是管理员级配置动作)并显式记录; (b)加动作级授权(需先设计 MCP 侧的调用者身份); (c)收敛暴露面(只暴露具名 review_entity, 或加 action_id 白名单)。",
+      "tags": [
+        "ontostudio",
+        "mcp",
+        "authz",
+        "write-path",
+        "security",
+        "known-ceiling"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T15:00:12.443Z"
+    },
+    {
+      "id": "bug-1790231200037",
+      "timestamp": "2026-09-23T22:51:21.228Z",
+      "error_message": "Significant refactor of ",
+      "file": "ontostudio/backend/scripts/ontology_lint.py",
+      "root_cause": "5 lines replaced/restructured",
+      "fix": "Rewrote 12→19 lines (5 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T22:51:21.228Z"
+    },
+    {
+      "id": "bug-1790231200038",
+      "timestamp": "2026-09-24T07:05:00Z",
+      "error_message": "变异副本基线红：1 failed, 23 passed — test_main_exit_zero（副本树里定位不到仓根 config/permissions.yaml）",
+      "file": "ontostudio/backend/scripts/ontology_lint.py",
+      "root_cause": "Task 9 的 ① 值域校验需要读 gateway 的 config/permissions.yaml；初版把「定位不到」做成 error（fail-closed）。但『环境里没有这份真相源』不是注册表缺陷，会让任何只挂载 ontsostudio/backend 的环境（离线容器 / 子目录检出 / 变异副本）从绿变红。",
+      "fix": "两级处置：定位不到 → WARN + 跳过该检查（同文件 check_physical_column_diff 拿不到 metadata 的既有先例）；文件在但 YAML 坏 / 无 modules 段 → error（真相源本身有问题，fail-closed）。另加 ONTOSTUDIO_PERMISSIONS_YAML 覆盖与 deploy/offline 模板回落。",
+      "tags": [
+        "ontostudio",
+        "ontology-lint",
+        "task9",
+        "fail-closed",
+        "mutation-testing",
+        "permissions-yaml"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T07:05:00Z"
+    },
+    {
+      "id": "bug-1790231200039",
+      "timestamp": "2026-09-23T23:29:43.109Z",
+      "error_message": "Significant refactor of ",
+      "file": "docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 12→16 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T23:29:43.109Z"
+    },
+    {
+      "id": "bug-1790231200100",
+      "timestamp": "2026-09-23T23:30:19.462273Z",
+      "error_message": "动作接口回 projected:true / errors:[]，而内核断言图里没有这一行——spec §2 步骤 5「受影响行增量重投影」是空转",
+      "file": "ontostudio/backend/app/ontology/routers.py",
+      "root_cause": "_project_incrementally 调 get_kernel().refresh()，而 refresh()（kernel/service.py）只做 schema 重编 + 闭包 + 规则重跑，从不读 dg_* 行；只有 /formal/load（kernel/loader.py::load_doc_graph_rows）才把行装进断言图。docstring 只承认'非增量'，没承认'根本没投影'",
+      "fix": "Task 10 不改前序产物；用 tests/test_actions_e2e.py::test_03_action_projection_does_not_reach_the_graph_KNOWN_GAP 钉住现状（实装步骤 5 后该用例变红 → 删除），并在计划 Task 10 收口块登记。实测手法：POST /formal/load 前后 GET /formal/export?graphs=asserted 对比该行 IRI",
+      "tags": [
+        "ontostudio",
+        "action-layer",
+        "projection",
+        "spec-gap",
+        "task10"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T23:30:19.462273Z"
+    },
+    {
+      "id": "bug-1790231200101",
+      "timestamp": "2026-09-23T23:30:19.462273Z",
+      "error_message": "计划 Task 10 Step 3 的 `restart ontostudio-backend` 带不进代码：活容器连 app/ontology/actions/ 目录都不存在（/openapi.json 无 actions/invoke）",
+      "file": "ontostudio/backend/Dockerfile",
+      "root_cause": "ontostudio-backend 不 bind-mount 代码（compose 只挂 ontostudio-kernel 卷），镜像烘焙 COPY app ./app；restart/up 复用旧镜像",
+      "fix": "先 `docker compose -p eai-docker -f docker-compose-dev.yaml build ontostudio-backend` 再 up -d（deps 层有缓存，实测秒级）；另 exec 进容器直调 get_kernel() 会撞 pyoxigraph /data/kernel/LOCK（服务进程持锁），等价 HTTP 面是 POST /formal/infer 与 GET /formal/validate",
+      "tags": [
+        "ontostudio",
+        "docker",
+        "stale-image",
+        "task10",
+        "acceptance"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T23:30:19.462273Z"
+    },
+    {
+      "id": "bug-4966",
+      "timestamp": "2026-09-23T23:33:44.565Z",
+      "error_message": "动作层的'重投影'是空转: 动作后 REST/MCP 返回 projected:true/errors:[], 但断言图里没有这一行——projected 是假信号",
+      "file": "ontostudio/backend/app/ontology/routers.py::_project_incrementally, app/ontology/kernel/service.py:31 refresh()",
+      "root_cause": "_project_incrementally 调 get_kernel().refresh(), 而 refresh() 只做 schema 重编 + owlrl 闭包 + 规则重跑, **从不读 dg_* 行**。唯一把行装进断言图的是 kernel/loader.py::load_doc_graph_rows(POST /formal/load 用它)。所以 spec §2 步骤 5『提交后增量重投影』从未被实现; 函数名描述意图、语句描述行为——与 create_all/ensure_tables 同一形态。实测: 动作前图里无该行 → 动作(projected:true) → 图里仍无 → /formal/load → 图里有且 status=active → SHACL conforms。",
+      "fix": "未修(不在 Task 10 范围)。已用 test_03_action_projection_does_not_reach_the_graph_KNOWN_GAP 钉住现状(含对照组防空断言假绿); **实装步骤 5 后该用例会变红, 届时删掉它**。修法须先裁决'重投影要不要同步'——现在是同步调用占住事件循环。",
+      "tags": [
+        "ontostudio",
+        "projection",
+        "false-signal",
+        "spec-gap",
+        "kernel",
+        "graph"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T23:33:44.565Z"
+    },
+    {
+      "id": "bug-1790231200102",
+      "timestamp": "2026-09-23T23:49:10.867Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "7 lines replaced/restructured",
+      "fix": "Rewrote 16→23 lines (7 removed) | Also: {/* 搜索: 与分项校验\"搜索货物名称\"同款样式;跨页找同类候选组,勾选后走「合并选中」 */}; <form",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-23T23:53:18.154Z"
+    },
+    {
+      "id": "bug-1790231200103",
+      "timestamp": "2026-09-23T23:57:31.307Z",
+      "error_message": "Wrong reference: variant should be Button",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Used \"variant\" instead of \"Button\"",
+      "fix": "Changed variant → Button",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-23T23:57:31.307Z"
+    },
+    {
+      "id": "bug-3438",
+      "timestamp": "2026-09-23",
+      "error_message": "两个分组合并后右侧统计卡均值/最大/最小/中位数未重算",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "merge_clusters只搬货物重算item_count,从不写stats列——新簇stats为NULL,统计卡无值;move_item同病(移出/移入簇统计陈旧)",
+      "fix": "新增_merge_time_cluster_stats(镜像技能侧compute_stats形状,单测逐键对照)+refresh_cluster_stats(ok/corrected口径);merge_clusters与move_item(移出+移入双侧)接入;存量NULL簇一次性刷新;边界:行级is_outlier沿用旧判定待重聚类重推导",
+      "tags": [
+        "contract-price",
+        "merge",
+        "stats",
+        "cluster",
+        "stale-derived-data"
+      ],
+      "related_bugs": [
+        "bug-3436"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-23"
+    },
+    {
+      "id": "bug-1790231200104",
+      "timestamp": "2026-09-24T00:27:41.887Z",
+      "error_message": "Function not marked async",
+      "file": "skills/public/contract-price-analysis/scripts/cli.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T00:27:41.887Z"
+    },
+    {
+      "id": "bug-1790231200105",
+      "timestamp": "2026-09-24T00:28:21.532Z",
+      "error_message": "Function not marked async",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Function uses await but wasn't declared async",
+      "fix": "Added async modifier",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T00:28:21.532Z"
+    },
+    {
+      "id": "bug-3439",
+      "timestamp": "2026-09-24",
+      "error_message": "手动合并的分组在重聚类后被替换式重建抹掉,人工调整无法跨聚类保留",
+      "file": "skills/public/contract-price-analysis/scripts/clustering/engine.py",
+      "root_cause": "_persist_clusters为全量替换式重建(delete all clusters+items脱组),手动合并产生的新簇行随之删除",
+      "fix": "合并先验机制: merge_clusters自动捕获{name,aliases}入config.json merge_pins;CLI读pins传engine,DBSCAN后_apply_merge_pins并查集强制归并命中簇(名称归一化去空白容OCR拆字,吸收落单变体);pin在统计/离群推导前生效保证派生自洽;撤销=删config.json条目",
+      "tags": [
+        "contract-price",
+        "merge-pin",
+        "clustering",
+        "self-evolution",
+        "must-link"
+      ],
+      "related_bugs": [
+        "bug-3438"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-24"
+    },
+    {
+      "id": "bug-1790231200106",
+      "timestamp": "2026-09-24T11:14:23.787Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T11:14:23.787Z"
+    },
+    {
+      "id": "bug-1790231200107",
+      "timestamp": "2026-09-24T11:26:52.141Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T11:26:52.141Z"
+    },
+    {
+      "id": "bug-1790231200108",
+      "timestamp": "2026-09-24T12:57:34.630Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ClustersView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T12:57:34.630Z"
+    },
+    {
+      "id": "bug-1790231200109",
+      "timestamp": "2026-09-24T13:46:48.779Z",
+      "error_message": "CSS fix: limit",
+      "file": "frontend/src/extensions/contract-price/components/DashboardView.tsx",
+      "root_cause": "limit: 30 → 1000",
+      "fix": "Changed limit: 30 → 1000",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T13:46:48.779Z"
+    },
+    {
+      "id": "bug-1790231200110",
+      "timestamp": "2026-09-24T13:57:01.898Z",
+      "error_message": "Wrong return value",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Was returning: list(result.scalars().all()), int(total)",
+      "fix": "Now returns: clusters, int(total)",
+      "tags": [
+        "auto-detected",
+        "return-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T13:57:01.898Z"
+    },
+    {
+      "id": "bug-1790231200111",
+      "timestamp": "2026-09-24T15:07:16.440Z",
+      "error_message": "Incorrect value in code",
+      "file": "backend/app/extensions/contract_price/crud.py",
+      "root_cause": "Had \"contract_no\"",
+      "fix": "Changed to \"spec_model\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T15:07:16.440Z"
+    },
+    {
+      "id": "bug-1790231200112",
+      "timestamp": "2026-09-24T16:22:21.578Z",
+      "error_message": "Type error",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Missing or incorrect type annotation",
+      "fix": "Added type assertion/annotation",
+      "tags": [
+        "auto-detected",
+        "type-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T16:22:21.578Z"
+    },
+    {
+      "id": "bug-1790231200113",
+      "timestamp": "2026-09-24T16:29:13.672Z",
+      "error_message": "Null/undefined access in ",
+      "file": "frontend/src/extensions/contract-price/components/ContractsView.tsx",
+      "root_cause": "Property access on potentially null/undefined value",
+      "fix": "Added null safety (optional chaining or null check)",
+      "tags": [
+        "auto-detected",
+        "null-safety",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T16:29:13.672Z"
+    },
+    {
+      "id": "bug-1790231200114",
+      "timestamp": "2026-09-24T16:51:41.825Z",
+      "error_message": "Missing await",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T16:51:41.825Z"
+    },
+    {
+      "id": "bug-1790231200115",
+      "timestamp": "2026-09-24T16:54:23.470Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/extensions/contract_price/evolution.py",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 26→43 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-24T16:54:23.470Z"
+    },
+    {
+      "id": "bug-1790231200116",
+      "timestamp": "2026-09-26T02:02:22.462Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/components/workspace/settings/settings-dialog.tsx",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 21→13 lines (8 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:02:22.462Z"
+    },
+    {
+      "id": "bug-1790231200117",
+      "timestamp": "2026-09-26T02:04:40.741Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/app.py",
+      "root_cause": "67 lines replaced/restructured",
+      "fix": "Rewrote 80→3 lines (67 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:04:40.741Z"
+    },
+    {
+      "id": "bug-1790231200118",
+      "timestamp": "2026-09-26T02:06:28.210Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/core/i18n/locales/en-US.ts",
+      "root_cause": "Had \"Supported by DeerFlow · requires deployment confi",
+      "fix": "Changed to \"Supported by EAIFlow · requires deployment config",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T02:06:48.156Z"
+    },
+    {
+      "id": "bug-1790231200119",
+      "timestamp": "2026-09-26T02:08:32.141Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "8 lines replaced/restructured",
+      "fix": "Rewrote 17→29 lines (8 removed) | Also: =======; is_internal_caller = getattr(getattr(request, \"sta | Also: replay_kind = run_metadata.get(\"replay_kind\"); target_message_id = run_metadata.get(\"regenerate_f",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 3,
+      "last_seen": "2026-09-26T02:10:34.101Z"
+    },
+    {
+      "id": "bug-1790231200120",
+      "timestamp": "2026-09-26T02:09:07.661Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/channels/manager.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 8→11 lines (4 removed) | Also: reply that only arrives as a later webhook deliver; channel-specific credentials providers (e.g. GitHu",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T02:10:32.410Z"
+    },
+    {
+      "id": "bug-1790231200121",
+      "timestamp": "2026-09-26T02:09:35.868Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/core/i18n/locales/zh-CN.ts",
+      "root_cause": "Had \"DeerFlow 已在服务器保存 Token 并启动微信渠道。\"",
+      "fix": "Changed to \"EAIFlow 已在服务器保存 Token 并启动微信渠道。\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 4,
+      "last_seen": "2026-09-26T02:10:03.232Z"
+    },
+    {
+      "id": "bug-1790231200122",
+      "timestamp": "2026-09-26T02:09:40.895Z",
+      "error_message": "Missing await",
+      "file": "backend/app/channels/manager.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:09:40.895Z"
+    },
+    {
+      "id": "bug-1790231200123",
+      "timestamp": "2026-09-26T02:09:47.515Z",
+      "error_message": "Wrong operator: << should be !=",
+      "file": "backend/app/gateway/routers/channel_connections.py",
+      "root_cause": "Used \"<<\" instead of \"!=\"",
+      "fix": "Changed operator << → !=",
+      "tags": [
+        "auto-detected",
+        "operator-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:09:47.515Z"
+    },
+    {
+      "id": "bug-1790231200124",
+      "timestamp": "2026-09-26T02:10:06.638Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/routers/channel_connections.py",
+      "root_cause": "59 lines replaced/restructured",
+      "fix": "Rewrote 75→6 lines (59 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:10:06.638Z"
+    },
+    {
+      "id": "bug-1790231200125",
+      "timestamp": "2026-09-26T02:11:32.271Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/packages/harness/deerflow/agents/memory/backends/openviking/config.py",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:11:32.271Z"
+    },
+    {
+      "id": "bug-1790231200126",
+      "timestamp": "2026-09-26T02:12:49.950Z",
+      "error_message": "Significant refactor of ",
+      "file": "Makefile",
+      "root_cause": "4 lines replaced/restructured",
+      "fix": "Rewrote 7→3 lines (4 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "unknown"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:12:49.950Z"
+    },
+    {
+      "id": "bug-1790231200127",
+      "timestamp": "2026-09-26T02:15:10.451Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/tests/unit/components/workspace/lazy-panels.test.ts",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 3→5 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "ts"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:15:10.451Z"
+    },
+    {
+      "id": "bug-1790231200128",
+      "timestamp": "2026-09-26T02:15:20.922Z",
+      "error_message": "Significant refactor of ",
+      "file": "scripts/serve.sh",
+      "root_cause": "35 lines replaced/restructured",
+      "fix": "Rewrote 67→36 lines (35 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "sh"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:15:20.922Z"
+    },
+    {
+      "id": "bug-1790231200129",
+      "timestamp": "2026-09-26T02:55:40.047Z",
+      "error_message": "Missing await",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "Async call without await — returned Promise instead of value",
+      "fix": "Added await to async call",
+      "tags": [
+        "auto-detected",
+        "async-fix",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:55:40.047Z"
+    },
+    {
+      "id": "bug-1790231200130",
+      "timestamp": "2026-09-26T02:56:53.444Z",
+      "error_message": "Significant refactor of ",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "74 lines replaced/restructured",
+      "fix": "Rewrote 80→11 lines (74 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T02:56:53.444Z"
+    },
+    {
+      "id": "bug-knowledge-scope-record-input",
+      "timestamp": "2026-09-26T03:01:32.150Z",
+      "error_message": "test_agent_knowledge_default_reaches_run_and_idempotent_retry_keeps_original KeyError: record.kwargs[input] messages lack knowledge_scope (graph ran stamped, persisted record carried pre-stamp input)",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "EAI early-admission divergence: run_record_input was snapshotted pre-stamp above the admission lock, while admit_message_knowledge_scope stamped graph_input only after create_or_reject; upstream #5579 computes the record input after the stamp inside its late-admission flow",
+      "fix": "Relocated upstream pre-admission scope pipeline (config build, recovery lookup, agent lookup, stamp, thread-binding check, post-stamp canonical record input) verbatim to EAI pre-admission point inside try/finally; digest stays keyed to pre-stamp canonical input so #5579 retry semantics unchanged",
+      "tags": [
+        "gateway",
+        "knowledge-scope",
+        "idempotency",
+        "upstream-sync",
+        "services.py"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T03:01:32.150Z"
+    },
+    {
+      "id": "bug-3441",
+      "timestamp": "2026-09-26",
+      "error_message": "temporal_lifespan 的 Client.connect 无超时: 无 Temporal server 时长重试挂死 gateway 启动(CancelledError 属 BaseException 穿透降级分支), 上游就绪 <1s 断言失败",
+      "file": "backend/app/extensions/workflow/temporal/client.py",
+      "root_cause": "connect 在启动临界路径且无时间上限; EAI dev 默认不起 Temporal 容器必踩",
+      "fix": "两步: (1) wait_for 10s 上限; (2) 整体改后台连接任务——lifespan 立即服务, 连接成功自动挂载 workflow 特性, 失败/超时保持停用; body 业务异常穿透(bug-3401 语义保留)。test_gateway_lifespan_shutdown 14/14",
+      "tags": [
+        "temporal",
+        "startup",
+        "optional-component",
+        "upstream-sync"
+      ],
+      "related_bugs": [
+        "bug-3401"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-3442",
+      "timestamp": "2026-09-26",
+      "error_message": "test_agent_knowledge_default 3 例 KeyError: 持久化 run record 的 input 缺 admitted knowledge_scope(EAI 早建 record + 晚盖 scope 的 stamp-after-store 分叉)",
+      "file": "backend/app/gateway/services.py",
+      "root_cause": "上游 #5579/#5238 契约要求 record 携带已采纳 scope; EAI 09-19 曾有意接受分叉, 本轮上游新增测试钉死反侧",
+      "fix": "228da2b84: 知识 scope 管线整体前移到 admission lock 之前(上游 1:1 相对顺序), create_or_reject 持 post-stamp 快照; digest 保持 pre-stamp(上游同款); 附带 scope 422/409/404 不再产生孤儿 pending record",
+      "tags": [
+        "knowledge-scope",
+        "run-record",
+        "upstream-contract"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-3443",
+      "timestamp": "2026-09-26",
+      "error_message": "绑定/平台用户的 IM 出站附件交付退化为文件名兜底文本: _resolve_attachments 经 contextvar 回落解析到 users/default, 而工件实际在 users/{owner} 桶(与 bug-3441 轮入站 staging 的错位对称)",
+      "file": "backend/app/channels/manager.py",
+      "root_cause": "调度任务的 contextvar 在 per-owner 架构下不可靠; _prepare_artifact_delivery 链路未接 owner 解析",
+      "fix": "dada83143: _prepare_artifact_delivery 增加 user_id kwarg, 两个调用点(含 finally 流式收尾)传 self._resolve_owner_user_id(msg); 行为冒烟双桶验证(u1 解析成功/default 不串桶)",
+      "tags": [
+        "channels",
+        "per-owner-isolation",
+        "attachments",
+        "manager"
+      ],
+      "related_bugs": [
+        "bug-3441"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-1790231200131",
+      "timestamp": "2026-09-26T05:31:42.366Z",
+      "error_message": "Significant refactor of ",
+      "file": "frontend/src/extensions/eia-samples/SampleLibrary.tsx",
+      "root_cause": "3 lines replaced/restructured",
+      "fix": "Rewrote 7→7 lines (3 removed)",
+      "tags": [
+        "auto-detected",
+        "refactor",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T05:31:42.366Z"
+    },
+    {
+      "id": "bug-1790231200132",
+      "timestamp": "2026-09-26T05:31:50.616Z",
+      "error_message": "Incorrect value in code",
+      "file": "frontend/src/app/workflow-admin/components/ApprovalDialog.tsx",
+      "root_cause": "Had \"px-4 py-2 text-sm font-medium text-red-600 bg-red",
+      "fix": "Changed to \"px-4 py-2 text-sm font-medium text-red-600 bg-red",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T05:31:50.616Z"
+    },
+    {
+      "id": "bug-1790231200133",
+      "timestamp": "2026-09-26T05:31:53.765Z",
+      "error_message": "CSS fix: color, draft",
+      "file": "frontend/src/app/workflow-admin/components/TemplateEditorPage.tsx",
+      "root_cause": "color: \"bg-red-50 text-red-600 border-red-200\", → \"bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800\",; draft: { text: \"草稿\", color: \"bg-gray-100 text-gray-600 border-gray-200\" → {",
+      "fix": "Changed color: \"bg-red-50 text-red-600 border-red-200\", → \"bg-red-50 text-red-600 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800\",; draft: { text: \"草稿\", color: \"bg-gray-100 text-gray-600 border-gray-200\" → {",
+      "tags": [
+        "auto-detected",
+        "style-fix",
+        "tsx"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T05:31:53.765Z"
+    },
+    {
+      "id": "bug-3444",
+      "timestamp": "2026-09-26",
+      "error_message": "text-l 无效类(应为 text-lg): KnowledgeFactoryPage.tsx 与 DocumentManagement.tsx 侧栏标题字号失效",
+      "file": "frontend/src/extensions/knowledge-factory/KnowledgeFactoryPage.tsx + extensions/docmgr/DocumentManagement.tsx",
+      "root_cause": "侧栏标题 JSX 复制传播时截断 typo, 两文件同款",
+      "fix": "text-l → text-lg ×2; 顺带补图标徽章 dark: 变体",
+      "tags": [
+        "frontend",
+        "css-typo",
+        "knowledge-factory",
+        "docmgr"
+      ],
+      "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-3445",
+      "timestamp": "2026-09-26",
+      "error_message": "用户报告: 各页面正文/副标题/说明文字/按钮字号不统一(627 处 text-[Npx] arbitrary); 另发现 eia-samples/docmgr/workflow-admin 状态 pill 缺 dark: 变体(暗色下浅底深字不可读)",
+      "file": "frontend/src/extensions/** + app/workflow-admin/**",
+      "root_cause": "各模块独立开发积累了 px 级 arbitrary 字号; 状态 pill 只写了亮色组合",
+      "fix": "字号四档规范(docs/designs/ui-style-spec.md §2): 89 文件批量映射 11~20px arbitrary→text-xs/sm/base/lg/xl + font-[650]→font-semibold(排除画布/图表/编辑器内部); 暗色缺口 6 处补 dark: 变体(SampleLibrary/DocumentManagement/ApprovalHistoryPanel/ApprovalDialog/TemplateEditorPage/KnowledgeFactoryPage); pnpm typecheck 过",
+      "tags": [
+        "frontend",
+        "typography",
+        "dark-mode",
+        "ui-consistency"
+      ],
+      "related_bugs": [
+        "bug-3444"
+      ],
+      "occurrences": 1,
+      "last_seen": "2026-09-26"
+    },
+    {
+      "id": "bug-1790231200134",
+      "timestamp": "2026-09-26T05:45:31.269Z",
+      "error_message": "Incorrect value in code",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md",
+      "root_cause": "Had `test_03_action_projection_does_not_reach_the_grap",
+      "fix": "Changed to `status=\"",
+      "tags": [
+        "auto-detected",
+        "wrong-value",
+        "md"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26T05:45:31.269Z"
     }
   ]
 }

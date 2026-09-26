@@ -669,6 +669,9 @@ async def migrate_db() -> None:
         # app.extensions.eia_samples（煤矿环评报告样例库），建表由该模块模型经
         # init_db create_all 承接（gateway 启动序 init_db → migrate_db 保证模型已注册；
         # 历史库表已存在，create_all 跳过，零数据迁移）。
+        # EAI-CUSTOM (2026-09 二期 BS3 ③提取流水线): kf_samples 提取产物列——
+        # outline/v1 JSON（chapters+candidates+元数据），由 eia_samples 模块提取端点写入。
+        await conn.execute(text("ALTER TABLE kf_samples ADD COLUMN IF NOT EXISTS outline_json JSONB"))
 
         # --- AIDocument: doc_type and file reference fields ---
         await conn.execute(text("ALTER TABLE ai_documents ADD COLUMN IF NOT EXISTS doc_type VARCHAR(20) DEFAULT 'document' NOT NULL"))
@@ -1153,6 +1156,8 @@ async def migrate_db() -> None:
         # cpa_documents table (populated by earlier pipeline runs).
         await conn.execute(text("ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_name VARCHAR(300)"))
         await conn.execute(text("ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_location VARCHAR(300)"))
+        # 项目编号(2026-09-21 元数据修复): create_all 不会给已存在的表补列,幂等 ALTER。
+        await conn.execute(text("ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS project_no VARCHAR(120)"))
         # T5 two-phase confirm gate: pending→confirmed|skipped→clustered.
         await conn.execute(text("ALTER TABLE cpa_documents ADD COLUMN IF NOT EXISTS confirm_status VARCHAR(20) DEFAULT 'pending'"))
         # T8 observable progress: {total,done,failed,phase} updated per-doc by the cli.

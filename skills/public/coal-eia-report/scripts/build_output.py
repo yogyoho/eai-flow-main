@@ -587,6 +587,14 @@ def build_chapter(stage: dict, data_dir: Path, state_dir: Path, ch_id: str, inje
             errors.append(f"节 {sid}: 节稿缺失 {sf}（派发未完成或文件名不符——不静默跳过）")
             continue
         raw = sf.read_text(encoding="utf-8")
+        # bug-3235: 节标题编号对齐样例——### chNN_SMM 标题 → ### N.M 标题（样例目录格式 1.1/1.2）
+        _hl = raw.splitlines()
+        if _hl:
+            _m = re.match(r"^###\s+ch\d+_S(\d+)\s+(.*)$", _hl[0])
+            if _m:
+                _n = ch_id[2:] if ch_id[2:].isdigit() else ch_id
+                _hl[0] = f"### {_n}.{int(_m.group(1))} {_m.group(2)}"
+                raw = "\n".join(_hl)
         # 节级门一次报齐该节全部问题（OV#7 修复派发不盲——深度/槽位/残留/节题同轮归因）
         errs_s: list[str] = []
         try:

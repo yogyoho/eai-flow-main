@@ -175,6 +175,18 @@ class TestListPersonalOutputs:
             assert hops < 10
 
 
+class TestPersonalOutputsResponseContract:
+    def test_response_model_serializes_next_skip(self):
+        """bug-4954 回归：691f376b8 给 service 返回值加了 next_skip 游标，但
+        PersonalOutputsResponse 漏声明该字段——FastAPI response_model 会静默剥离
+        未声明字段（不报错、不进日志），首窗全空时前端游标回退 threads.length=0
+        永久卡死，「我的文档」列表全空白。路由契约必须携带游标。"""
+        from app.extensions.schemas import PersonalOutputsResponse
+
+        dumped = PersonalOutputsResponse.model_validate({"threads": [], "total": 47, "has_more": True, "next_skip": 20}).model_dump()
+        assert dumped["next_skip"] == 20, "response_model 剥离了 next_skip——首窗空时前端游标会永久卡 0"
+
+
 class TestPersonalDocMetaModel:
     def test_model_tablename(self):
         from app.extensions.models import PersonalDocMeta

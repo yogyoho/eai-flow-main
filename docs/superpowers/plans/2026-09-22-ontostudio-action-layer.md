@@ -149,7 +149,9 @@ grep -nE "留给 Task|随 Task|那是 Task .* 的范围|Task [0-9] (/|和) [0-9]
 
 **Task 3 顺带修掉的坑（后续 Task 会受益）**：ontostudio 现在**自己**在 lifespan 里建表（`app/db.py::ensure_tables`）——gateway **不挂载也不建** `dg_*` 表，2026-09-17 独立服务搬迁后的注释曾长期与此不符。`/health` 现在带 `tables_ready` 字段（**状态码恒 200**，是否据此判不健康是待定的运维决策）。**残余风险**：`create_all` 只建缺失表、不做 schema 变更；建表失败只留 WARNING，且启动**只尝试一次**——`dg_action_audit` 的「DB 后起」缺口已由**写路径懒建**兜住（Task 5 Step 6，有界 + 只对 42P01），其余 `dg_*` 表仍要靠重启补建。
 
-**下一步：Task 8（MCP 暴露面）**。Task 7 已完成并规格审查通过，见上表。
+**🚨 全部 10 个 Task 已完成（基线 416）。未闭合项见本文件「Task 10 收口」块，其中最要紧的是：`projected: true` 是假信号——`refresh()` 从不读 `dg_*` 行，spec §2 步骤 5「提交后增量重投影」从未被实现。REST/MCP 调用方（包括 agent）拿到 `projected: true, errors: []` 会以为图已更新。须另起计划，且修法要先裁决"重投影要不要同步"。**
+
+**≥ Task 8 的明细见下方各 Task 的实现者回填块**（他们各自更新了本节，故此表可能落后于实际提交链——**以 `git log` 与各节为准**）。
 
 **Task 7 闭合的三件事（供后手引用，勿重复发现）**：
 

@@ -202,7 +202,7 @@ git commit -m "feat(tunneling-v2): geo 9件套自包含复制基线(未改造)"
         "收束句：设备型号与 ch5 运输选型、ch8 对应设备措施逐字一致（C8）"
       ],
       "writing_patterns": ["设备/管线一律表格化", "循环作业文字描述+循环图表引用"],
-      "tables": ["施工设备表", "管线敷设表"], "std_refs": ["《煤矿安全规程》(2022)"], "forms": ["equipment", "roadway"], "formulas": [], "contracts": ["C1", "C5", "C8"]},
+      "tables": ["施工设备表", "管线敷设表"], "std_refs": ["《煤矿安全规程》(2022)"], "forms": ["equipment", "roadway"], "formulas": ["F3"], "contracts": ["C1", "C5", "C8"]},
     "ch5": {"title": "生产系统", "mode": "九节最大章（通风计算经 formula_runner 冻结）；难度 3/中",
       "sample_anchor": "3218 样例第五章九节：通风（风量计算+局扇选型+通风阻力，T458/T460 瓦斯涌出量表）/压风/瓦斯防治/综合防尘（T605/614/627 设施表）/防灭火/安全监控（T695/T697 传感器表）/供电/给排水/运输（掘进机/胶带机选型+信号）",
       "key_elements": [
@@ -1158,7 +1158,7 @@ git commit -m "feat(tunneling-v2): formula_runner通风域(风量四法+局扇+�
 | # | delta | 位置 | 做法 |
 |---|-------|------|------|
 | a | ALWAYS_DEPENDENT 去 ch10 | L30 `ALWAYS_DEPENDENT=("ch10","compliance_appendix")` | 改 `("compliance_appendix",)`——掘进无投影章（J3），残留会让 impacted 输出不存在章、下游 mark 报未知章（侦察 risk #1） |
-| b | CONTRACT_FORMULA_REFS 换血 | L33-46 | 换 `{"C5": ["Q0", "Q1", "Q2", "Q3", "Q4", "F4"], "C6": ["Q1"]}`（其余 C 合约无公式依赖，留空） |
+| b | CONTRACT_FORMULA_REFS 换血 | L33-46 | 换 `{"C5": ["Q0", "Q1", "Q2", "Q3", "Q4", "F3", "F4"], "C6": ["Q1"]}`（其余 C 合约无公式依赖，留空；F3 入表——T7 质量评审 Important-4：F3 渲染在 ch4 管线敷设表，反查必须命中 ch4） |
 | c | 章类型三元去 ch10 | L55 | 删 ch10/projection 分支 |
 | d | front_matter 伪章内容 | L61-63 | NR3/figures_tables 键换 `{"front_matter": {..., "contracts": ["C11"], "form_families": ["profile", "roadway"]}}`（封面编号/长度事实源） |
 | e | 空章守卫 | build_manifest L49-80 末尾 | 追加：`real = [c for c in m["chapters"] if not c["id"].startswith(("front_",)) and c["id"] != "compliance_appendix"]; if len(real) < 5: raise SystemExit("MANIFEST_INVALID: 真实章数 <5——stage chapters 缺失?")`（侦察 risk #2：geo 空 stage 静默产 2 伪章 rc=0） |

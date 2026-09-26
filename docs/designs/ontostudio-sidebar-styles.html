@@ -1,0 +1,265 @@
+<!doctype html>
+<title>OntoStudio 侧栏风格样张</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;900&family=Noto+Sans+SC:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+/* ============ 样张画布（画廊本体，非产品 UI） ============ */
+*{box-sizing:border-box;margin:0}
+body{
+  background:#0e1013;color:#e8eaf0;
+  font:14px/1.6 "Noto Sans SC",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;min-height:100vh;
+  padding:40px 44px 60px;
+}
+.masthead{margin-bottom:8px;display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.masthead h1{font-family:"Noto Serif SC",serif;font-weight:900;font-size:30px;letter-spacing:.02em}
+.masthead .tag{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#8b93a3;border:1px solid #2a2f3a;border-radius:6px;padding:3px 9px}
+.masthead p{width:100%;color:#9aa1b2;font-size:13px}
+.masthead p b{color:#c9cfdd;font-weight:500}
+.hint{color:#6f7789;font-size:12px;margin-bottom:26px}
+.hint .kbd{font-family:"IBM Plex Mono",monospace;font-size:10.5px;border:1px solid #2a2f3a;border-radius:4px;padding:1px 6px;color:#aeb6c6}
+
+/* ============ 画廊网格 ============ */
+.grid{display:grid;grid-template-columns:repeat(5,minmax(238px,1fr));gap:22px}
+@media (max-width:1380px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:960px){.grid{grid-template-columns:repeat(2,1fr)}}
+
+/* 每个样张：说明牌 + 侧栏舞台 */
+.sample{display:flex;flex-direction:column;gap:0}
+.plate{padding:0 2px 12px}
+.plate .name{font-family:"Noto Serif SC",serif;font-weight:900;font-size:17px;color:#e8eaf0;letter-spacing:.03em}
+.plate .name i{font-style:normal;font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#6f7789;margin-left:8px}
+.plate .mood{color:#9aa1b2;font-size:12px;margin-top:3px;line-height:1.55}
+.plate .mood b{color:#c9cfdd;font-weight:500}
+.stage{border-radius:14px;overflow:hidden;border:1px solid #232833;box-shadow:0 20px 50px rgba(0,0,0,.4)}
+
+/* 侧栏舞台高度 */
+.stage .sb{height:620px}
+
+/* ============ 侧栏共享骨架（五种风格同一 DOM） ============ */
+.sb{display:flex;flex-direction:column;width:100%;font-family:"Noto Sans SC",system-ui,sans-serif}
+.brand{display:flex;align-items:center;gap:10px;padding:18px 16px 15px}
+.brand .glyph{width:32px;height:32px;flex:none;border-radius:8px;display:grid;place-items:center;font-weight:700;font-size:13px}
+.brand .bn{font-size:14px;font-weight:700;line-height:1.25;display:block}
+.brand .bs{display:block;font-size:10.5px;opacity:.66}
+.sb nav{flex:1;overflow-y:auto;padding:6px 10px 12px}
+.sb .grp{margin-top:13px;padding:0 9px 4px;font-size:10px;letter-spacing:.16em;font-weight:500}
+.sb .grp:first-child{margin-top:3px}
+.sb button{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;cursor:pointer;
+  padding:7px 10px;font-size:14px;font-weight:500;background:none;border:0;color:inherit;
+  font-family:inherit;transition:background .14s,color .14s,box-shadow .14s;
+}
+.sb button .no{font-family:"IBM Plex Mono",monospace;font-size:10px;width:17px;flex:none;opacity:.78}
+.sb button .dot{margin-left:auto;width:6px;height:6px;border-radius:50%;flex:none}
+.sb .foot{display:flex;align-items:center;gap:10px;padding:12px 16px}
+.sb .foot .ava{width:29px;height:29px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:11.5px;flex:none}
+.sb .foot b{font-size:12px;display:block;line-height:1.3}
+.sb .foot span{font-size:10.5px;opacity:.62}
+
+/* =================================================================
+   V1 墨阶 · Ink Steps —— 暗色 IDE：纵向渐层 + 左缘光条
+   ================================================================= */
+[data-v="v1"] .sb{
+  background:linear-gradient(180deg,#191d24 0%,#12151b 62%,#0f1218 100%);
+  color:#d6dae4;border-right:1px solid #232833;
+  box-shadow:inset -24px 0 48px -32px rgba(0,0,0,.65);
+}
+[data-v="v1"] .brand{border-bottom:1px solid #20242d}
+[data-v="v1"] .glyph{background:linear-gradient(135deg,#2b6bff,#1e4fd6);color:#fff}
+[data-v="v1"] .grp{color:#5d6577}
+[data-v="v1"] button{color:#8b93a3;border-left:2px solid transparent;border-radius:0 8px 8px 0}
+[data-v="v1"] button:hover{color:#d6dae4;background:rgba(255,255,255,.045)}
+[data-v="v1"] button.on{
+  color:#eef1f7;background:linear-gradient(90deg,rgba(43,107,255,.16),rgba(43,107,255,.05));
+  border-left-color:#2b6bff;font-weight:600;
+}
+[data-v="v1"] button.on .no{color:#6f9bff}
+[data-v="v1"] button .dot{background:#ff5c5c}
+[data-v="v1"] .foot{border-top:1px solid #20242d}
+[data-v="v1"] .foot .ava{background:#232a38;color:#8fb0ff}
+
+/* =================================================================
+   V2 蓝图 · Blueprint —— 浅色工程图纸：网格底 + 实心蓝块
+   ================================================================= */
+[data-v="v2"] .sb{
+  background:
+    linear-gradient(rgba(7,70,255,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(7,70,255,.045) 1px,transparent 1px),
+    #fafbff;
+  background-size:22px 22px,22px 22px,auto;
+  color:#1c2333;border-right:1px solid #dfe5f2;
+}
+[data-v="v2"] .brand{border-bottom:1px solid #dfe5f2}
+[data-v="v2"] .glyph{background:#0746ff;color:#fff;border-radius:6px}
+[data-v="v2"] .grp{color:#7a84a0}
+[data-v="v2"] button{color:#4a5470;border:1px solid transparent;border-radius:8px}
+[data-v="v2"] button:hover{background:rgba(7,70,255,.06);color:#1c2333}
+[data-v="v2"] button.on{
+  background:#0746ff;color:#fff;font-weight:600;
+  box-shadow:inset 0 0 0 1px #0746ff,0 4px 14px rgba(7,70,255,.28);
+}
+[data-v="v2"] button.on .no{color:rgba(255,255,255,.75)}
+[data-v="v2"] button .dot{background:#e5484d}
+[data-v="v2"] .foot{border-top:1px solid #dfe5f2}
+[data-v="v2"] .foot .ava{background:#0746ff;color:#fff}
+
+/* =================================================================
+   V3 墨印 · Cinnabar —— 暖纸 + 朱砂左缘（呼应国标文书气质）
+   ================================================================= */
+[data-v="v3"] .sb{
+  background:#f7f4ee;color:#2b2620;border-right:1px solid #e6dfd2;
+}
+[data-v="v3"] .brand{border-bottom:1px solid #e6dfd2}
+[data-v="v3"] .glyph{background:#b03a2e;color:#f7f4ee;border-radius:4px}
+[data-v="v3"] .grp{color:#9a8f7d;letter-spacing:.3em}
+[data-v="v3"] button{color:#5d5548;border-left:3px solid transparent;border-radius:0 6px 6px 0}
+[data-v="v3"] button:hover{background:rgba(176,58,46,.05);color:#2b2620}
+[data-v="v3"] button.on{
+  background:#fbf1ec;border-left-color:#b03a2e;color:#b03a2e;font-weight:600;
+}
+[data-v="v3"] button.on .no{color:#b03a2e}
+[data-v="v3"] button .dot{background:#b03a2e}
+[data-v="v3"] .foot{border-top:1px solid #e6dfd2}
+[data-v="v3"] .foot .ava{background:#b03a2e;color:#f7f4ee}
+
+/* =================================================================
+   V4 浮层 · Floating Glass —— 暗色氛围 + 玻璃浮岛 pill
+   ================================================================= */
+[data-v="v4"] .sb{
+  background:
+    radial-gradient(120% 60% at 20% -10%,rgba(43,107,255,.22),transparent 60%),
+    radial-gradient(100% 50% at 110% 110%,rgba(149,129,204,.14),transparent 60%),
+    #101319;
+  color:#dfe3ec;border-right:1px solid #22262f;
+}
+[data-v="v4"] .brand{border-bottom:1px solid #1d222b}
+[data-v="v4"] .glyph{background:rgba(255,255,255,.08);color:#9db9ff;border:1px solid rgba(255,255,255,.14)}
+[data-v="v4"] .grp{color:#5d6577}
+[data-v="v4"] button{
+  color:#9aa1b2;margin:2px 4px;border-radius:10px;padding:8px 12px;
+  border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);
+  backdrop-filter:blur(6px);
+}
+[data-v="v4"] button:hover{border-color:rgba(255,255,255,.16);color:#dfe3ec}
+[data-v="v4"] button.on{
+  background:linear-gradient(135deg,#2b6bff,#5a48e8);color:#fff;font-weight:600;
+  border-color:transparent;box-shadow:0 6px 18px rgba(43,107,255,.35);
+}
+[data-v="v4"] button.on .no{color:rgba(255,255,255,.75)}
+[data-v="v4"] button .dot{background:#ff5c5c}
+[data-v="v4"] .foot{border-top:1px solid #1d222b}
+[data-v="v4"] .foot .ava{background:rgba(255,255,255,.08);color:#9db9ff;border:1px solid rgba(255,255,255,.14)}
+
+/* =================================================================
+   V5 素笺 · Rail Minimal —— 纯白极简：无底色，active 只靠墨色 + 圆点
+   ================================================================= */
+[data-v="v5"] .sb{background:#ffffff;color:#191b1f;border-right:1px solid #ececee}
+[data-v="v5"] .brand{border-bottom:1px solid #f0f0f2}
+[data-v="v5"] .glyph{background:#191b1f;color:#fff;border-radius:50%}
+[data-v="v5"] .grp{color:#b3b5bc}
+[data-v="v5"] button{color:#7c7f88;border-radius:0}
+[data-v="v5"] button:hover{color:#191b1f}
+[data-v="v5"] button.on{color:#191b1f;font-weight:600}
+[data-v="v5"] button.on::before{
+  content:"";width:5px;height:5px;border-radius:50%;background:#191b1f;flex:none;
+}
+[data-v="v5"] button .no{display:none}
+[data-v="v5"] button .dot{background:#d6483f}
+[data-v="v5"] .grp{border-top:1px solid #f0f0f2;margin-top:15px;padding-top:12px}
+[data-v="v5"] .grp:first-child{border-top:0;margin-top:3px;padding-top:0}
+[data-v="v5"] .foot{border-top:1px solid #f0f0f2}
+[data-v="v5"] .foot .ava{background:#191b1f;color:#fff}
+
+/* ============ 落地提示脚注 ============ */
+.foot-note{margin-top:30px;color:#6f7789;font-size:12px;line-height:1.8;max-width:880px}
+.foot-note code{font-family:"IBM Plex Mono",monospace;color:#aeb6c6;background:#181c24;border:1px solid #232833;border-radius:4px;padding:1px 6px}
+</style>
+</head>
+<body>
+<div class="masthead">
+  <h1>OntoStudio 侧栏风格样张</h1>
+  <span class="tag">5 variants · same DOM</span>
+  <p>九个菜单项为<b>同一套 DOM 结构</b>，五种风格仅差 <b>CSS 变量与少量规则</b>——落地时即 AppShell 换肤，不改组件。</p>
+</div>
+<div class="hint">每个样张可交互：<span class="kbd">hover</span> 看悬停态，<span class="kbd">click</span> 菜单项切换 active。</div>
+
+<div class="grid" id="grid"></div>
+
+<p class="foot-note">
+  落地对齐说明：V2 蓝图 与当前 EAI 主系统令牌（#0746ff + Yuxi 暖灰）最接近，改动最小；
+  V1/V4 需将侧栏区切换暗色（局部 dark，不影响内容区）；V3/V5 为整系统换气质。
+  五种均保留：分组导航、01-09 序号、消解待审红点、用户区。实现位置：
+  <code>ontostudio/frontend/src/layout/AppShell.tsx</code> + <code>src/index.css</code> 侧栏变量段。
+</p>
+
+<template id="sb-tpl">
+  <div class="sb" data-v="">
+    <div class="brand">
+      <span class="glyph">本</span>
+      <div><span class="bn">OntoStudio</span><span class="bs">本体建模工作台</span></div>
+    </div>
+    <nav>
+      <div class="grp">总览</div>
+      <button class="on"><span class="no">01</span>工作台总览</button>
+      <div class="grp">知识层</div>
+      <button><span class="no">02</span>图谱浏览</button>
+      <button><span class="no">03</span>实体库</button>
+      <button><span class="no">04</span>消解审核<span class="dot"></span></button>
+      <div class="grp">建模层</div>
+      <button><span class="no">05</span>本体建模器</button>
+      <button><span class="no">06</span>推理工作台</button>
+      <button><span class="no">07</span>校验中心</button>
+      <div class="grp">管线</div>
+      <button><span class="no">08</span>抽取导入</button>
+      <button><span class="no">09</span>导出互操作</button>
+    </nav>
+    <div class="foot">
+      <span class="ava">管</span>
+      <div><b>知识工程组</b><span>admin@eai-flow.com</span></div>
+    </div>
+  </div>
+</template>
+
+<script>
+const VARIANTS = [
+  { v: "v1", name: "墨阶 · Ink Steps", mood: "暗色 IDE 气质：纵向渐层 + <b>左缘光条</b> active。适合长时间驻留的工程向用户，与画布区暗色调天然衔接。" },
+  { v: "v2", name: "蓝图 · Blueprint", mood: "浅色工程图纸：细网格底 + <b>实心蓝块</b> active。与 EAI 主系统 #0746ff 令牌<b>零迁移成本</b>，最稳的选择。" },
+  { v: "v3", name: "墨印 · Cinnabar", mood: "暖纸 + 朱砂左缘：国标文书的<b>印章气质</b>。校验中心'验讫'章同语系，全系统换暖色时选它。" },
+  { v: "v4", name: "浮层 · Floating Glass", mood: "暗色氛围 + <b>玻璃浮岛</b> pill（渐变蓝 active + 辉光）。最'现代 SaaS'的一款，演示场景出彩。" },
+  { v: "v5", name: "素笺 · Rail Minimal", mood: "纯白极简：<b>无底色</b>，active 只靠墨色加重 + 圆点引导。干扰最小，内容永远主角。" },
+];
+
+const grid = document.getElementById("grid");
+const tpl = document.getElementById("sb-tpl");
+
+for (const { v, name, mood } of VARIANTS) {
+  const sample = document.createElement("div");
+  sample.className = "sample";
+  sample.innerHTML = `
+    <div class="plate">
+      <div class="name">${name.split(" · ")[0]}<i>${v}</i></div>
+      <div class="mood"><b>${name.split(" · ")[1]}</b> · ${mood}</div>
+    </div>`;
+  const stage = document.createElement("div");
+  stage.className = "stage";
+  const node = tpl.content.firstElementChild.cloneNode(true);
+  node.dataset.v = v;
+  stage.appendChild(node);
+  sample.appendChild(stage);
+
+  // 交互：点击切换 active（每个样张独立）
+  node.querySelectorAll("nav button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      node.querySelectorAll("nav button").forEach((b) => b.classList.remove("on"));
+      btn.classList.add("on");
+    });
+  });
+  grid.appendChild(sample);
+}
+</script>
+</body>
+</html>

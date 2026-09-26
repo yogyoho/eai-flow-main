@@ -1,7 +1,7 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-09-20T15:19:15.279Z
-> Files: 4 tracked | Anatomy hits: 0 | Misses: 0
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-26T05:45:49.665Z
+> Files: 43 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
 
@@ -27,6 +27,9 @@
 ## ../../tmp/fire-extract-experiment/workspace/
 
 
+## ../_mutwt/backend/app/extensions/auth/
+
+
 ## ../eai-flow-offline-package/
 
 
@@ -35,6 +38,7 @@
 
 ## ./
 
+- `Makefile` — DeerFlow - Unified Development Environment (~2915 tok)
 
 ## .agent/skills/smoke-test/
 
@@ -287,6 +291,7 @@
 
 ## C:/Users/admin/.claude/plans/
 
+- `floating-jumping-mango.md` — UI 样式规范落地：规范文档 + P0 缺陷修复 (~835 tok)
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/38433988-62ea-48d5-bb07-921c996cd1a2/workflows/scripts/
 
@@ -308,6 +313,9 @@
 
 ## C:/Users/admin/.claude/projects/D--eai-eai-flow-main/memory/
 
+- `a5-cleanup-plan.md` (~211 tok)
+- `upstream-sync-2026-09-19.md` (~516 tok)
+- `upstream-sync-2026-09-26.md` (~428 tok)
 
 ## C:/Users/admin/.gstack/projects/eai-flow-main/
 
@@ -317,6 +325,7 @@
 
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
 
+- `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1351 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 
@@ -354,7 +363,25 @@
 ## C:/Users/admin/AppData/Local/Temp/geo_smoke/
 
 
+## C:/Users/admin/AppData/Local/Temp/mvf/
+
+
+## C:/Users/admin/AppData/Local/Temp/ont/
+
+
+## C:/Users/admin/AppData/Local/Temp/onto_repro_iso/
+
+
+## C:/Users/admin/AppData/Local/Temp/ontomut/
+
+
+## C:/Users/admin/AppData/Local/Temp/ost_rev/
+
+
 ## C:/Users/admin/AppData/Local/Temp/p4_defer/
+
+
+## C:/Users/admin/AppData/Local/Temp/rv-task5/
 
 
 ## C:/Users/admin/AppData/Local/Temp/t0spike/
@@ -581,6 +608,7 @@
 
 ## backend/app/channels/
 
+- `manager.py` — ChannelManager — consumes inbound messages and dispatches them to the DeerFlow agent via LangGraph S (~22676 tok)
 
 ## backend/app/extensions/
 
@@ -596,6 +624,10 @@
 
 ## backend/app/extensions/contract_price/
 
+- `crud.py` — CRUD operations over the cpa_ tables for the management API. (~13328 tok)
+- `evolution.py` — cpa → agent_learnings 捕获桥（D-1 文档字段 / D-3 行字段，补遗 2026-09-22）。 (~3193 tok)
+- `routers.py` — Contract price analysis management API — all functional areas. (~8054 tok)
+- `schemas.py` — Pydantic request/response models for the contract-price-analysis API. (~2024 tok)
 
 ## backend/app/extensions/dashboard/
 
@@ -728,9 +760,13 @@
 
 ## backend/app/gateway/
 
+- `app.py` (~18080 tok)
+- `services.py` — Run lifecycle service layer. (~33971 tok)
 
 ## backend/app/gateway/routers/
 
+- `artifacts.py` — Pydantic: ArtifactUpdateRequest (~8580 tok)
+- `channel_connections.py` — Browser-facing APIs for user-owned IM channel bindings. (~10802 tok)
 
 ## backend/app/scheduler/
 
@@ -755,12 +791,14 @@
 
 ## backend/packages/harness/deerflow/agents/lead_agent/
 
+- `prompt.py` — class: wait, prime_enabled_skills_cache, warm_enabled_skills_cache, get_cached_enabled_skills + 5 mo (~16727 tok)
 
 ## backend/packages/harness/deerflow/agents/memory/
 
 
 ## backend/packages/harness/deerflow/agents/memory/backends/openviking/
 
+- `config.py` — Validated configuration for the official OpenViking memory adapter. (~3044 tok)
 
 ## backend/packages/harness/deerflow/agents/middlewares/
 
@@ -842,6 +880,7 @@
 
 ## backend/tests/
 
+- `test_mcp_client_config.py` — Core behavior tests for MCP client server config building. (~3015 tok)
 
 ## backend/tests/e2e/bid/
 
@@ -887,6 +926,7 @@
 
 ## docs/designs/
 
+- `ui-style-spec.md` — UI 样式规范（基准：deer-flow 对话页） (~1016 tok)
 
 ## docs/diagrams/
 
@@ -896,6 +936,7 @@
 
 ## docs/superpowers/plans/
 
+- `2026-09-22-ontostudio-action-layer.md` — OntoStudio 动作层与域级实例权限 实施计划 (~27506 tok)
 
 ## docs/superpowers/plans/2026-09-13-coal-mine-tunneling-regulation-v2.md
 
@@ -1082,9 +1123,13 @@
 
 ## frontend/src/app/workflow-admin/components/
 
+- `ApprovalDialog.tsx` — ApprovalDialog (~867 tok)
+- `ApprovalHistoryPanel.tsx` — ACTION_CONFIG (~562 tok)
+- `TemplateEditorPage.tsx` — TemplateEditorPage (~3868 tok)
 
 ## frontend/src/app/workspace/
 
+- `workspace-content.tsx` — EAI-CUSTOM: nav-level permission gating for sidebar and settings (~781 tok)
 
 ## frontend/src/app/workspace/agents/[agent_name]/chats/[thread_id]/
 
@@ -1154,6 +1199,7 @@
 
 ## frontend/src/components/workspace/settings/
 
+- `settings-dialog.tsx` — SettingsPageLoading — renders modal (~2223 tok)
 
 ## frontend/src/content/en/
 
@@ -1175,12 +1221,16 @@
 
 ## frontend/src/core/channels/
 
+- `api.ts` — Exports listChannelProviders, listChannelConnections, connectChannelProvider, configureChannelProvid (~1491 tok)
+- `types.ts` — Exports ChannelProviderId, ChannelCredentialField, ChannelRuntimeConfigValues, ChannelProvider + 8 m (~680 tok)
 
 ## frontend/src/core/config/
 
 
 ## frontend/src/core/i18n/locales/
 
+- `en-US.ts` — Exports enUS (~23212 tok)
+- `zh-CN.ts` — Exports zhCN (~15636 tok)
 
 ## frontend/src/core/mcp/
 
@@ -1262,9 +1312,14 @@
 
 ## frontend/src/extensions/contract-price/
 
+- `api.ts` — API client for the contract-price-analysis management API. (~2472 tok)
 
 ## frontend/src/extensions/contract-price/components/
 
+- `ClustersView.tsx` — Inline borderless input that looks like text until focused; commits on blur. (~8963 tok)
+- `ContractsView.tsx` — Unified doc lifecycle stage. No confirm gate — parsed docs go straight to (~12414 tok)
+- `DashboardView.tsx` — DashboardView (~900 tok)
+- `GoodsAnalysis.tsx` — badgeColors (~6786 tok)
 
 ## frontend/src/extensions/contract-price/components/ui/
 
@@ -1286,6 +1341,7 @@
 
 ## frontend/src/extensions/docmgr/
 
+- `DocumentManagement.tsx` — Windows 风格黄色文件夹图标（资源管理器样式） (~28248 tok)
 
 ## frontend/src/extensions/docmgr/components/
 
@@ -1307,6 +1363,7 @@
 
 ## frontend/src/extensions/eia-samples/
 
+- `SampleLibrary.tsx` — PAGE_SIZE — renders table (~6742 tok)
 
 ## frontend/src/extensions/geo-samples/
 
@@ -1322,6 +1379,7 @@
 
 ## frontend/src/extensions/knowledge-factory/
 
+- `KnowledgeFactoryPage.tsx` — KnowledgeFactoryPage (~663 tok)
 
 ## frontend/src/extensions/knowledge-factory/components/
 
@@ -1454,6 +1512,7 @@
 
 ## frontend/tests/unit/components/workspace/
 
+- `lazy-panels.test.ts` — Declares FRONTEND_ROOT (~656 tok)
 
 ## frontend/tests/unit/components/workspace/messages/
 
@@ -1545,6 +1604,9 @@
 ## ontostudio/backend/app/ontology/
 
 
+## ontostudio/backend/app/ontology/actions/
+
+
 ## ontostudio/backend/app/ontology/kernel/
 
 
@@ -1583,6 +1645,8 @@
 
 ## scripts/
 
+- `docker.sh` — Declares for (~5664 tok)
+- `serve.sh` — serve.sh — Unified DeerFlow service launcher (~4556 tok)
 
 ## scripts/tests/
 
@@ -1754,15 +1818,15 @@
 
 ## skills/public/contract-price-analysis/scripts/
 
-- `cli.py` — End-to-end pipeline (v2: MinIO + eai-flow-ocr). (~34123 tok)
+- `cli.py` — End-to-end pipeline (v2: MinIO + eai-flow-ocr). (~34935 tok)
 
 ## skills/public/contract-price-analysis/scripts/clustering/
 
+- `engine.py` — DBSCAN clustering over vectorized goods samples (numpy-only, no scikit-learn). (~2163 tok)
 
 ## skills/public/contract-price-analysis/tests/
 
-- `test_geometry_rebuild.py` — P1 几何层: rebuild_grid 聚类四场景 + 胶合病征 + 缓存 tokens 容错 + (~5425 tok)
-- `test_project_fields_f2.py` — F2 元数据兜底: 表格 cell 合同编号(方案A) + project_name split-line 守卫 + bug-3431 持久化哨兵(源码契约+行为三例: None清旧值/覆写/无键保持)。 (~4900 tok)
+- `test_clustering_engine.py` — Tests for the DBSCAN clustering engine. (~1591 tok)
 
 ## skills/public/dfam-check/
 
@@ -1886,4 +1950,3 @@
 
 ## 部署面
 
-- `test_ssxl_cgjh_seed.py` — ssxl-cgjh 种子: 深扫表头兜底命中砂石料 p4 审批单(前3行表单伪表头,真表头在第4行)+ p6 会签价目表不得命中 + _closure_recover_rows 8行真值(P-4 合计闭环重推)。 (~2600 tok)

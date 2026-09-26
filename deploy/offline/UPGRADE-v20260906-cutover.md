@@ -17,7 +17,7 @@
 ## 0. 产物与前提
 
 - 新包：`eai-flow-offline-v0.5.1-1510-gca7505131-20260906.tar.gz`（6.7G，已含品牌
-  吉林化工工程 / 内网模型 gemma-4-31b 等 3 个 / 权限注册表 / RAGFlow v0.27.1-fixed）
+  北京华宇工程 / 内网模型 gemma-4-31b 等 3 个 / 权限注册表 / RAGFlow v0.27.1-fixed）
 - 服务器：Ubuntu，旧部署目录假定 `/opt/eai-flow-offline`（下文旧目录均以此为例）
 - 同机升级 → **license 无需重新导入**（machine_id 不变 + license.lic 随 ./data 迁移）
 
@@ -98,7 +98,7 @@ docker exec prod-eai-flow-gateway curl -sS -m 5 http://10.180.42.192:83/v1/model
 ```
 
 浏览器（http://<服务器IP>:4026）：
-- [ ] 登录页显示 **吉林化工工程** 品牌、favicon 为客户版
+- [ ] 登录页显示 **北京华宇工程** 品牌、favicon 为客户版
 - [ ] admin 登录成功 → 对话页选 **Gemma-4-31B** 发消息有回复（默认模型即它）
 - [ ] 文档管理/合同价分析历史数据可见（agentflow 库延续）
 - [ ] 知识库列表在，但 RAGFlow 端为空 → 进入第 8 步

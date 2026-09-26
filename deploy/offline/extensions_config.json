@@ -1,5 +1,17 @@
 {
   "mcpServers": {
+    "learnings": {
+      "enabled": true,
+      "type": "stdio",
+      "command": "/app/backend/.venv/bin/python",
+      "args": ["-m", "app.extensions.learnings.mcp"],
+      "cwd": null,
+      "env": {"DEER_FLOW_CONFIG_PATH": "/app/config.yaml", "PYTHONPATH": "/app/backend", "EXTENSIONS_DB_HOST": "postgres-ext", "EXTENSIONS_DB_PORT": "5432", "EXTENSIONS_DB_USER": "agentflow", "EXTENSIONS_DB_NAME": "agentflow"},
+      "url": null,
+      "headers": {},
+      "oauth": null,
+      "description": "Agent self-learning loop: capture/search/promote learnings"
+    },
     "filesystem": {
       "enabled": false,
       "type": "stdio",
@@ -131,7 +143,7 @@
         "X-Internal-Auth": "$ONTOSTUDIO_INTERNAL_AUTH_TOKEN"
       },
       "oauth": null,
-      "description": "Ontology semantic layer: cross-module object/link navigation, search, traverse and aggregate over the market-domain registry (contract_price / spare_parts / bid_quote). Read-only. (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放))"
+      "description": "Ontology semantic layer: cross-module object/link navigation, search, traverse and aggregate over the market-domain registry (contract_price / spare_parts / bid_quote). Read-only. (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放)"
     },
     "doc-graph": {
       "enabled": true,
@@ -145,7 +157,7 @@
         "X-Internal-Auth": "$ONTOSTUDIO_INTERNAL_AUTH_TOKEN"
       },
       "oauth": null,
-      "description": "Document graph builder: ingest LLM-extracted bid entities/relations/mentions, review and merge entities. Write-side complement to the read-only ontology server (doc_graph domain). (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放))"
+      "description": "Document graph builder: ingest LLM-extracted bid entities/relations/mentions, review and merge entities. Write-side complement to the read-only ontology server (doc_graph domain). (S1 Task 2: stdio->streamable-http 独立服务 ontostudio:8005; X-Internal-Auth 共享头经 $ONTOSTUDIO_INTERNAL_AUTH_TOKEN 注入，未设置=内网匿名开放)"
     },
     "knowledge-factory": {
       "enabled": true,
@@ -212,7 +224,7 @@
       "url": "http://cad:8003/mcp",
       "headers": {},
       "oauth": null,
-      "description": "CAD comprehension (DXF parse + rasterize) for fire-protection/EIA drawing ingestion. Standalone container — start via docker/docker-compose.extensions.yaml `cad` service, then set enabled=true."
+      "description": "CAD Comprehension / EDP MCP (merged cad-suite image): analyze_cad DXF parse + rasterize, cad_compose_drawing 2D engineering drawings with domain packs (mine/chem). Part of the `cad-suite` container (alias `cad` -> :8003); see docker-compose-dev.yaml cad-suite service."
     },
     "text-to-cad": {
       "enabled": true,
@@ -224,7 +236,7 @@
       "url": "http://text-to-cad:8004/mcp",
       "headers": {},
       "oauth": null,
-      "description": "text-to-cad: generate STEP/STL from agent-authored build123d source. Standalone container — start via docker/docker-compose-dev.yaml `text-to-cad` service (port 8004), then set enabled=true."
+      "description": "text-to-cad MCP (merged cad-suite image): build123d STEP/STL/DXF generation (create_step gen_step contract, +also_glb/also_stl), inspect_step refs/measure/align/frame, snapshot_step PNG renders, search_step_parts catalog, check_printability DfAM facts. Service `cad-suite` in docker-compose-dev.yaml (supervises text-to-cad :8004 + cad :8003 + viewer :4178; aliases keep these URLs stable)."
     },
     "ops-diagnosis": {
       "enabled": true,
@@ -244,7 +256,7 @@
   },
   "skills": {
     "self-improving": {
-      "enabled": false
+      "enabled": true
     },
     "fire-protection-extract": {
       "enabled": true
@@ -317,6 +329,36 @@
     },
     "local-knowledge-first": {
       "enabled": true
+    },
+    "cad-dxf": {
+      "enabled": true
+    },
+    "cad-urdf": {
+      "enabled": true
+    },
+    "srdf": {
+      "enabled": true
+    },
+    "sdf": {
+      "enabled": true
+    },
+    "implicit-cad": {
+      "enabled": true
+    },
+    "sendcutsend": {
+      "enabled": true
+    },
+    "dfam-check": {
+      "enabled": true
+    },
+    "step-parts": {
+      "enabled": true
+    },
+    "gcode": {
+      "enabled": false
+    },
+    "bambu-labs": {
+      "enabled": false
     }
   }
 }
