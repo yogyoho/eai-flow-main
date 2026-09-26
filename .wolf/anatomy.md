@@ -1,6 +1,6 @@
 # anatomy.md
 
-> Auto-maintained by OpenWolf. Last scanned: 2026-09-26T05:45:49.665Z
+> Auto-maintained by OpenWolf. Last scanned: 2026-09-26T05:46:22.605Z
 > Files: 43 tracked | Anatomy hits: 0 | Misses: 0
 
 ## ../../00 工作目录/02 项目策划/马宁/应急指挥/bid-run/
@@ -325,7 +325,7 @@
 
 ## C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/
 
-- `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1351 tok)
+- `admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md` — Design: OntoStudio 人审闭环打通（最小闭环） (~1429 tok)
 
 ## C:/Users/admin/AppData/Local/Temp/
 

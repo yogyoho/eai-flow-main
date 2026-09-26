@@ -20739,3 +20739,13 @@
 | 13:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | "test_03_action_projection" → "status=" | ~45 |
 | 13:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~56 |
 | 13:45 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | 5→4 lines | ~86 |
+| 13:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | 2→2 lines | ~80 |
+| 13:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~29 |
+| 13:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | "kernel/loader.py::load_do" → "entity_rows" | ~42 |
+| 13:46 | Edited C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md | inline fix | ~50 |
+| 13:45 | 设计稿修8处评审问题(status翻转语义/reject不投影/成功标准收窄到实体/延迟口径纠正/Supersedes删除) | docs/designs/2026-09-26-ontostudio-review-loop-closure.md | 第2轮复审中 | ~4k |
+| 13:47 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 37 reads | ~4757 tok |
+| 13:48 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 38 reads | ~4757 tok |
+| 13:48 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 39 reads | ~4757 tok |
+| 13:49 | Session end: 19 writes across 9 files (admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md, floating-jumping-mango.md, KnowledgeFactoryPage.tsx, DocumentManagement.tsx, SampleLibrary.tsx) | 40 reads | ~4757 tok |
+| 13:58 | 两笔提交推送origin(6962474bd UI统一+2f2fea021存量落盘); amend剔除cookies/zip1 9.1G/token-ledger 127万行, gitignore四条 | frontend/** docs .wolf | push验证0 0 | ~25k |

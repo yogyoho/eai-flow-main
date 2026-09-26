@@ -2331,3 +2331,9 @@ P3 item ① 裁决：**双工况 N=3 校核暂不默认开**，维持 SKILL 现�
 - 5 份 shadcn ui/table.tsx 拷贝(bid-quote/biz-pipeline/contract-price/geo-samples/spare-parts)是约定式复制无同步机制
 - 字号四档规范: 说明=text-xs / 正文+按钮=text-sm / 副标题=text-base / 页标题=text-lg~xl; arbitrary px 12~20 已批量映射(89 文件, 175 处); ≤11px 微标签层有意保留
 - Do-Not-Repeat: 批量 sed 字号映射必须排除 workflow/nodes|edges、图表内部、TiptapEditor、landing、components/ui|ai-elements — 画布/图表字号是布局敏感的; text-l typo 在 KF 与 docmgr 各有一份(同款侧栏标题复制传播)
+
+## Do-Not-Repeat (2026-09-26 — git add -A 落盘险情 bug-3446)
+
+- `git add -A` 汇总落盘前必须先 `git status --porcelain | grep '^??'` 查未跟踪清单: 本次扫进 cookies.txt(会话cookie)/me.json/run4.json(API转储)/zip1(9.1GB部署tar包)/.wolf/token-ledger.json(127万行机器记账) — amend 剔除+push 前拦截
+- 已加 .gitignore: cookies.txt / me.json / run4.json / zip1/ / .wolf/token-ledger.json; token-ledger 已解除跟踪(知识文件 cerebrum/memory/buglog/anatomy 仍跟踪)
+- 部署 tar 包/镜像一律不进 git(离线交付走 delta 镜像通道); amend 后 push 只传可达对象, 悬空对象 gc --prune=now 回收

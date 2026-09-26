@@ -35083,8 +35083,41 @@
         "md"
       ],
       "related_bugs": [],
+      "occurrences": 2,
+      "last_seen": "2026-09-26T05:46:18.442Z"
+    },
+    {
+      "id": "bug-1790231200135",
+      "timestamp": "2026-09-26T05:46:08.309Z",
+      "error_message": "Wrong reference: degraded should be store",
+      "file": "C:/Users/admin/.gstack/projects/yogyoho-eai-flow-main/admin-main-dev-fork-design-20260926-131630-ontostudio-review-loop.md",
+      "root_cause": "Used \"degraded\" instead of \"store\"",
+      "fix": "Changed degraded → store",
+      "tags": [
+        "auto-detected",
+        "wrong-reference",
+        "md"
+      ],
+      "related_bugs": [],
       "occurrences": 1,
-      "last_seen": "2026-09-26T05:45:31.269Z"
+      "last_seen": "2026-09-26T05:46:08.309Z"
+    },
+    {
+      "id": "bug-3446",
+      "timestamp": "2026-09-26",
+      "error_message": "git add -A 汇总落盘把 cookies.txt(登录cookie)/me.json+run4.json(API转储)/zip1(9.1GB部署tar包)/.wolf/token-ledger.json(127万行/67MB机器记账)一并提交",
+      "file": ".gitignore",
+      "root_cause": "-A 无预检扫入工作区未跟踪制品与会话文件; token-ledger 无轮转机制失控膨胀",
+      "fix": "两轮 amend 剔除五项 + .gitignore 补 cookies.txt/me.json/run4.json/zip1//.wolf/token-ledger.json + token-ledger 解除跟踪; push 前拦截未外泄; gc --prune=now 回收悬空对象",
+      "tags": [
+        "git",
+        "housekeeping",
+        "security-hygiene",
+        "openwolf"
+      ],
+      "related_bugs": [],
+      "occurrences": 1,
+      "last_seen": "2026-09-26"
     }
   ]
 }
