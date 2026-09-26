@@ -1785,11 +1785,13 @@ async def start_run(
     run_metadata[DEERFLOW_TRACE_METADATA_KEY] = ensure_trace_id()
 
     # EAI-CUSTOM (upstream-sync 2026-09-19): hoisted above the admission lock so
-    # EAI's early create_or_reject persists the same canonical input snapshot
-    # (#5238) and the same conversation-reference grant (#5399) that upstream
-    # records inside its late-admission flow. Normalization is pure CPU, and
-    # computing it before durable admission also keeps malformed input from
-    # minting a pending run record that no worker would ever attach to.
+    # EAI's early create_or_reject persists the same conversation-reference
+    # grant (#5399) that upstream records inside its late-admission flow, and
+    # so the #5238 canonical run-record input snapshot and the #5579 digest
+    # below are computed from the same normalized messages upstream
+    # normalizes. Normalization is pure CPU, and computing it before durable
+    # admission also keeps malformed input from minting a pending run record
+    # that no worker would ever attach to.
     is_internal_caller = getattr(getattr(request, "state", None), "auth_source", None) == AUTH_SOURCE_INTERNAL
     conversation_references = list(getattr(body, "conversation_references", None) or [])
     command = getattr(body, "command", None)
@@ -1800,18 +1802,14 @@ async def start_run(
         graph_input = Command(resume=command["resume"])
     else:
         graph_input = normalized_input
-    run_record_input = _canonical_run_record_input(body.input, graph_input)
 
-    # EAI-CUSTOM (upstream-sync 2026-09-26): upstream #5579 derives the
-    # knowledge-default idempotency digest from the pre-admission canonical
-    # input plus the pure-CPU scope-recovery classification, then persists the
-    # digest on the run record and matches it on Idempotency-Key replay. Both
-    # inputs are available above the admission lock, so they are computed here
-    # for EAI's early create_or_reject — the same hoist pattern as #5238/#5399
-    # above. (Upstream computes them after build_run_config inside its
-    # late-admission flow; hoisting a pure-CPU classification does not change
-    # semantics because nothing between here and upstream's computation point
-    # mutates graph_input or run_metadata.)
+    # EAI-CUSTOM (upstream-sync 2026-09-26): upstream runs this pure-CPU
+    # scope-recovery classification — and the whole knowledge-scope pipeline
+    # further below — BEFORE its durable admission, which is why its run
+    # record is created from the admitted (scope-stamped) input. EAI admits
+    # earlier; the pipeline is relocated verbatim above EAI's create_or_reject
+    # (same relative order, see the block inside the ``try`` below) instead of
+    # being re-run after it, so EAI's persisted record matches upstream's.
     replay_kind = run_metadata.get("replay_kind")
     target_message_id = run_metadata.get("regenerate_from_message_id")
     current_human_message = _current_human_message(graph_input)
@@ -1826,15 +1824,91 @@ async def start_run(
     is_scope_recovery = replay_requires_scope_recovery or (is_human_input_response and not current_message_has_scope)
     # Keep the pre-default identity even when the agent is initially
     # unbound: adding a default must not reject an already-accepted retry.
-    # The durable input still exposes the original accepted scope. In EAI's
-    # early admission the persisted snapshot IS the pre-stamp canonical form,
-    # so ``request_input`` and ``run_record_input`` coincide.
-    request_input = run_record_input if idempotency_key else None
+    # ``request_input`` is the canonical snapshot taken BEFORE the knowledge
+    # stamp below (#5579): the durable digest still exposes the original
+    # accepted scope, while the persisted record input itself (computed after
+    # the stamp) shows the admitted scope.
+    request_input = _canonical_run_record_input(body.input, graph_input) if idempotency_key else None
     knowledge_default_request_hash = hashlib.sha256(json.dumps(request_input, sort_keys=True, ensure_ascii=False).encode()).hexdigest() if idempotency_key else None
     accepts_knowledge_default = not is_scope_recovery and not current_message_has_scope and knowledge_default_request_hash is not None
 
     owner_context_token = set_current_user(SimpleNamespace(id=owner_user_id)) if owner_user_id else None
     try:
+        # EAI-CUSTOM (upstream-sync 2026-09-26): this is upstream's pre-admission
+        # knowledge-scope pipeline, relocated verbatim from its late-admission
+        # flow to above EAI's early create_or_reject. Upstream's order is
+        # preserved 1:1 — run-config build, the await-dependent scope-recovery
+        # lookup, the agent-config lookup, the message stamp, the thread-binding
+        # check, then the post-stamp canonical record input — so the early
+        # create_or_reject below persists the ADMITTED input (messages stamped
+        # with the resolved knowledge scope) exactly like upstream's record,
+        # while the #5579 digest above stays keyed to the pre-stamp canonical
+        # form ("adding a default must not reject an already-accepted retry").
+        # Every step here is a read or pure CPU plus validation that upstream
+        # also fires before admission, so a rejection no longer mints a pending
+        # record no worker would attach to.
+        config = build_run_config(thread_id, body.config, run_metadata, assistant_id=body.assistant_id)
+        await apply_checkpoint_to_run_config(config, body=body, thread_id=thread_id, request=request)
+
+        # Merge DeerFlow-specific context overrides into both ``configurable`` and ``context``.
+        # The ``context`` field is a custom extension for the langgraph-compat layer
+        # that carries agent configuration (model_name, thinking_enabled, etc.).
+        # Only agent-relevant keys are forwarded; unknown keys (e.g. thread_id) are ignored.
+        merge_run_context_overrides(config, getattr(body, "context", None), internal=is_internal_caller)
+        if not is_internal_caller:
+            # ``body.config`` is free-form and copied verbatim by
+            # ``build_run_config``; scrub internal-only keys smuggled there.
+            strip_internal_context_keys(config)
+
+        scope_graph_input = graph_input if isinstance(graph_input, dict) else {"messages": []}
+        recovery_scope = (
+            await _recover_run_knowledge_scope(
+                request,
+                thread_id=thread_id,
+                target_message_id=(target_message_id if isinstance(target_message_id, str) else None),
+            )
+            if is_scope_recovery
+            else None
+        )
+        # Match lead-agent assembly: runtime context overrides configurable.
+        # Older API/channel callers may name an agent through context while
+        # retaining lead_agent as their routing assistant ID.
+        scope_runtime_config = dict(config.get("configurable") or {})
+        if isinstance(config.get("context"), dict):
+            scope_runtime_config.update(config["context"])
+        scope_assistant_id = scope_runtime_config.get("agent_name") or _DEFAULT_ASSISTANT_ID
+        # Bootstrap assembly intentionally does not load an agent config: the
+        # new agent may not exist yet and setup_agent creates its definition.
+        agent_config = (
+            await _load_scope_agent_config(
+                assistant_id=scope_assistant_id,
+                user_id=owner_user_id or (str(user.id) if user is not None else None),
+            )
+            if not scope_runtime_config.get("is_bootstrap")
+            else None
+        )
+        # Keep the pre-default identity even when the agent is initially
+        # unbound: adding a default must not reject an already-accepted retry.
+        # The durable input digest still exposes the original accepted scope.
+        admitted_knowledge_scope = admit_message_knowledge_scope(
+            scope_graph_input,
+            assistant_id=scope_assistant_id,
+            app_config=run_ctx.app_config or get_app_config(),
+            agent_config=agent_config,
+            recovery_scope=recovery_scope,
+            recovery=is_scope_recovery,
+        )
+        if admitted_knowledge_scope is not None:
+            await _validate_scope_thread_binding(
+                run_ctx,
+                thread_id=thread_id,
+                assistant_id=body.assistant_id,
+            )
+        # Upstream #5238 computes the persisted run-record input snapshot here —
+        # AFTER the scope admission stamped the messages — so the record shows
+        # the admitted scope (the #5579 digest above intentionally does not).
+        run_record_input = _canonical_run_record_input(body.input, graph_input)
+
         try:
             async with goal_thread_lock(thread_id):
                 await ensure_checkpoint_history_seeded(
@@ -1860,12 +1934,13 @@ async def start_run(
                     # Persist a secret-redacted copy of the config: the run record is
                     # written to runs.kwargs_json and echoed by the run API, so a
                     # request-scoped secret (#3861) must not ride along. The live
-                    # config built below keeps the secrets for the actual run.
+                    # config built above keeps the secrets for the actual run.
                     # EAI-CUSTOM (upstream-sync 2026-09-19, updated 2026-09-26):
                     # upstream #5238/#5399/#5579 kwargs ported into EAI's early
-                    # admission — the canonical input snapshot, the conversation-
+                    # admission — the post-stamp canonical input snapshot (the
+                    # admitted scope, computed above the lock), the conversation-
                     # reference grant, and the #5579 knowledge-default request
-                    # digest (computed above the lock) are persisted here.
+                    # digest (taken pre-stamp, above the lock) are persisted here.
                     kwargs={
                         "input": run_record_input,
                         **({"knowledge_default_request_hash": knowledge_default_request_hash} if accepts_knowledge_default else {}),
@@ -1895,9 +1970,9 @@ async def start_run(
                     # Pre-feature unscoped records may already contain normalized
                     # messages, but have no digest. Compare them before injecting
                     # today's default; explicit scopes and recovery do not use
-                    # this compatibility path. In EAI's early admission the
-                    # persisted snapshot is the pre-stamp canonical form, so
-                    # ``request_input`` and ``run_record_input`` coincide.
+                    # this compatibility path. ``run_record_input`` is this
+                    # retry's post-stamp canonical form, compared to the stored
+                    # record's snapshot the same way upstream compares them.
                     matches_legacy_default_request = accepts_knowledge_default and "knowledge_default_request_hash" not in stored and stored_input == request_input
                     matches_input = matches_default_request or matches_legacy_default_request or stored_input == body.input or stored_input == run_record_input
                     if not matches_input or record.assistant_id != body.assistant_id or stored.get("conversation_references", []) != conversation_references:
@@ -1982,83 +2057,14 @@ async def start_run(
                 )
 
         agent_factory = resolve_agent_factory(body.assistant_id)
-        # run_metadata (server-stamped above, before admission) carries the
-        # trace id into config["metadata"]; the run worker restamps it.
-        # graph_input / run_record_input / conversation_references are likewise
-        # computed before admission (see the hoist above the admission lock).
-
-        config = build_run_config(thread_id, body.config, run_metadata, assistant_id=body.assistant_id)
-        await apply_checkpoint_to_run_config(config, body=body, thread_id=thread_id, request=request)
-
-        # Merge DeerFlow-specific context overrides into both ``configurable`` and ``context``.
-        # The ``context`` field is a custom extension for the langgraph-compat layer
-        # that carries agent configuration (model_name, thinking_enabled, etc.).
-        # Only agent-relevant keys are forwarded; unknown keys (e.g. thread_id) are ignored.
-        merge_run_context_overrides(config, getattr(body, "context", None), internal=is_internal_caller)
-        if not is_internal_caller:
-            # ``body.config`` is free-form and copied verbatim by
-            # ``build_run_config``; scrub internal-only keys smuggled there.
-            strip_internal_context_keys(config)
-
-        # EAI-CUSTOM (upstream-sync 2026-09-26): replay_kind / target_message_id /
-        # current_human_message / current_message_has_scope / is_scope_recovery
-        # and the #5579 request digest are computed above the admission lock
-        # (pure CPU on graph_input/run_metadata) so EAI's early create_or_reject
-        # can persist the digest. Only the await-dependent recovery lookup and
-        # the config-dependent agent lookup stay here.
-        scope_graph_input = graph_input if isinstance(graph_input, dict) else {"messages": []}
-        recovery_scope = (
-            await _recover_run_knowledge_scope(
-                request,
-                thread_id=thread_id,
-                target_message_id=(target_message_id if isinstance(target_message_id, str) else None),
-            )
-            if is_scope_recovery
-            else None
-        )
-        # Match lead-agent assembly: runtime context overrides configurable.
-        # Older API/channel callers may name an agent through context while
-        # retaining lead_agent as their routing assistant ID.
-        scope_runtime_config = dict(config.get("configurable") or {})
-        if isinstance(config.get("context"), dict):
-            scope_runtime_config.update(config["context"])
-        scope_assistant_id = scope_runtime_config.get("agent_name") or _DEFAULT_ASSISTANT_ID
-        # Bootstrap assembly intentionally does not load an agent config: the
-        # new agent may not exist yet and setup_agent creates its definition.
-        agent_config = (
-            await _load_scope_agent_config(
-                assistant_id=scope_assistant_id,
-                user_id=owner_user_id or (str(user.id) if user is not None else None),
-            )
-            if not scope_runtime_config.get("is_bootstrap")
-            else None
-        )
-        # Keep the pre-default identity even when the agent is initially
-        # unbound: adding a default must not reject an already-accepted retry.
-        # The durable input still exposes the original accepted scope.
-        # (EAI-CUSTOM upstream-sync 2026-09-26: request_input and
-        # knowledge_default_request_hash are computed above the admission lock
-        # so the early create_or_reject persists the digest; see the hoist.)
-        admitted_knowledge_scope = admit_message_knowledge_scope(
-            scope_graph_input,
-            assistant_id=scope_assistant_id,
-            app_config=run_ctx.app_config or get_app_config(),
-            agent_config=agent_config,
-            recovery_scope=recovery_scope,
-            recovery=is_scope_recovery,
-        )
-        if admitted_knowledge_scope is not None:
-            await _validate_scope_thread_binding(
-                run_ctx,
-                thread_id=thread_id,
-                assistant_id=body.assistant_id,
-            )
-        # EAI-CUSTOM (upstream-sync 2026-09-19): upstream computes the run-record
-        # input snapshot here, after the scope admission stamps the messages, so
-        # its persisted record shows the admitted scope. EAI's early admission
-        # already persisted the canonical (pre-stamp) snapshot above the lock —
-        # late-admission semantics stay NOT adopted, so the stamp-after-store
-        # divergence is accepted here; the graph still runs on the stamped form.
+        # run_metadata (server-stamped before admission) carries the trace id
+        # into config["metadata"]; the run worker restamps it. The run config,
+        # the knowledge-scope pipeline, and the post-stamp canonical record
+        # input are likewise computed before admission — relocated verbatim
+        # from upstream's late-admission flow to EAI's early-admission point
+        # (see the block above the admission lock) — so the record persisted by
+        # create_or_reject already shows the admitted knowledge scope, matching
+        # what upstream persists.
 
         internal_owner_user = await resolve_trusted_internal_owner_for_attribution(request, owner_user_id)
         inject_authenticated_user_context(
