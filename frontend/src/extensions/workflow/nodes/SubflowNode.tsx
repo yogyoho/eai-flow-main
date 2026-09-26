@@ -6,11 +6,11 @@ import { Layers, Users } from "lucide-react";
 import type { DAGNodeData } from "../types";
 
 const ROLE_COLORS: Record<string, string> = {
-  lead: "bg-amber-100 text-amber-700",
-  writer: "bg-blue-100 text-blue-700",
-  reviewer: "bg-green-100 text-green-700",
-  data_reviewer: "bg-teal-100 text-teal-700",
-  approver: "bg-red-100 text-red-700",
+  lead: "bg-amber-100 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  writer: "bg-blue-100 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300",
+  reviewer: "bg-green-100 dark:bg-green-500/15 text-green-700 dark:text-green-300",
+  data_reviewer: "bg-teal-100 dark:bg-teal-500/15 text-teal-700",
+  approver: "bg-red-100 dark:bg-red-500/15 text-red-700 dark:text-red-300",
 };
 
 export function SubflowNode({
@@ -24,7 +24,7 @@ export function SubflowNode({
 
   return (
     <div
-      className={`min-w-[150px] cursor-pointer rounded-lg border-2 bg-white px-3 py-2.5 transition-shadow ${selected ? "border-violet-500 shadow-lg ring-2 ring-violet-200" : "border-violet-300 hover:shadow-sm"}`}
+      className={`min-w-[150px] cursor-pointer rounded-lg border-2 bg-card px-3 py-2.5 transition-shadow ${selected ? "border-violet-500 shadow-lg ring-2 ring-violet-200" : "border-violet-300 dark:border-violet-700 hover:shadow-sm"}`}
     >
       <Handle
         type="target"
@@ -32,8 +32,8 @@ export function SubflowNode({
         className="!h-2.5 !w-2.5 !bg-violet-400"
       />
       <div className="flex items-center gap-2.5">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100">
-          <Layers className="h-4 w-4 text-violet-600" />
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-500/15">
+          <Layers className="h-4 w-4 text-violet-600 dark:text-violet-400" />
         </span>
         <span className="text-xs font-semibold text-violet-700">
           {data.label || "子流程"}
@@ -45,7 +45,7 @@ export function SubflowNode({
         </div>
       )}
       {taskCount != null && (
-        <div className="mt-0.5 ml-[38px] text-[10px] text-violet-600">
+        <div className="mt-0.5 ml-[38px] text-[10px] text-violet-600 dark:text-violet-400">
           任务数: {taskCount}
         </div>
       )}

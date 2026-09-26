@@ -10,6 +10,7 @@ import {
   type EdgeTypes,
 } from "@xyflow/react";
 import { ChevronRight, Layers, Trash2 } from "lucide-react";
+import { useTheme } from "next-themes";
 import {
   forwardRef,
   useCallback,
@@ -114,6 +115,9 @@ export const WorkflowEditor = forwardRef<
     exitSubflow,
   } = useWorkflowDAG();
   const { result: validationResult, isValidating, validate } = useValidation();
+  const { resolvedTheme } = useTheme();
+  // EAI-CUSTOM: 画布 colorMode 跟随应用主题(.dark class)，默认恒亮导致暗色下画布刺眼
+  const flowColorMode = resolvedTheme === "dark" ? "dark" : "light";
   const [saving, setSaving] = useState(false);
   // truthiness fallback preserved: empty-string initialName still defaults to "新工作流"
   const [name, setName] = useState(
@@ -326,6 +330,7 @@ export const WorkflowEditor = forwardRef<
             elementsSelectable={!readOnly}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            colorMode={flowColorMode}
             fitView
             proOptions={{ hideAttribution: true }}
           >

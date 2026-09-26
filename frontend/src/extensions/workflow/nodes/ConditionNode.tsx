@@ -18,7 +18,7 @@ export function ConditionNode({
       <div
         className={`absolute inset-2 flex items-center justify-center border-2 ${
           selected ? "border-amber-500 shadow-lg" : "border-amber-300"
-        } bg-amber-50`}
+        } bg-amber-50 dark:bg-amber-950/40`}
         style={{ transform: "rotate(45deg)", borderRadius: 4 }}
       >
         <span

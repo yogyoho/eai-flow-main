@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 import { GitBranch, Loader2 } from "lucide-react";
 import { useMemo } from "react";
+import { useTheme } from "next-themes";
 import "@xyflow/react/dist/style.css";
 
 import { AnimatedFlowEdge } from "./edges/AnimatedFlowEdge";
@@ -44,6 +45,9 @@ type EdgeState = "completed" | "running" | "pending";
 
 function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressViewProps) {
   const { status, loading } = useWorkflowStatus(projectId, 5000);
+  const { resolvedTheme } = useTheme();
+  // EAI-CUSTOM: 画布 colorMode 跟随应用主题(.dark class)
+  const flowColorMode = resolvedTheme === "dark" ? "dark" : "light";
 
   // Prefer graph from API response (includes full DAG), fallback to parent-passed graph
   const effectiveGraph = useMemo<WorkflowGraph | null>(() => {
@@ -162,6 +166,7 @@ function WorkflowProgressInner({ projectId, workflowGraph }: WorkflowProgressVie
           edges={rfEdges}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
+          colorMode={flowColorMode}
           fitView
           fitViewOptions={{ padding: 0.3 }}
           nodesDraggable={false}

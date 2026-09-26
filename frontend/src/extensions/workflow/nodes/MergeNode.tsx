@@ -7,7 +7,7 @@ import type { DAGNodeData } from "../types";
 export function MergeNode({ selected }: NodeProps & { data: DAGNodeData }) {
   return (
     <div
-      className={`flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white ${
+      className={`flex h-12 w-12 items-center justify-center rounded-full border-2 bg-card ${
         selected ? "border-green-500 shadow-lg" : "border-green-300"
       }`}
     >
@@ -16,7 +16,7 @@ export function MergeNode({ selected }: NodeProps & { data: DAGNodeData }) {
         position={Position.Top}
         className="!h-2 !w-2 !bg-green-400"
       />
-      <span className="text-lg text-green-700">&#x2295;</span>
+      <span className="text-lg text-green-700 dark:text-green-300">&#x2295;</span>
       <Handle
         type="source"
         position={Position.Bottom}

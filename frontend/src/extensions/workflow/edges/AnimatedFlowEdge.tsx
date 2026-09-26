@@ -16,7 +16,7 @@ const EDGE_STYLES: Record<EdgeState, React.CSSProperties> = {
     animation: "dash-flow 1s linear infinite",
   },
   pending: {
-    stroke: "#d1d5db",
+    stroke: "var(--border, #d1d5db)",
     strokeWidth: 1.5,
     strokeDasharray: "5 5",
   },

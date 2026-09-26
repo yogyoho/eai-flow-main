@@ -26,19 +26,19 @@ const STATUS_CONFIG: Record<
 > = {
   completed: {
     border: "border-green-400",
-    bg: "bg-green-50",
-    icon: <CheckCircle2 className="h-4 w-4 text-green-600" />,
+    bg: "bg-green-50 dark:bg-green-950/40",
+    icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />,
     pulse: "",
     label: "已通过",
-    labelColor: "text-green-600",
+    labelColor: "text-green-600 dark:text-green-400",
   },
   running: {
     border: "border-blue-400",
-    bg: "bg-blue-50",
-    icon: <Loader2 className="h-4 w-4 text-blue-600 animate-spin" />,
+    bg: "bg-blue-50 dark:bg-blue-950/40",
+    icon: <Loader2 className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-spin" />,
     pulse: "animate-pulse-ring",
     label: "审核中",
-    labelColor: "text-blue-600",
+    labelColor: "text-blue-600 dark:text-blue-400",
   },
   pending: {
     border: "border-input",
@@ -50,11 +50,11 @@ const STATUS_CONFIG: Record<
   },
   error: {
     border: "border-red-400",
-    bg: "bg-red-50",
-    icon: <XCircle className="h-4 w-4 text-red-600" />,
+    bg: "bg-red-50 dark:bg-red-950/40",
+    icon: <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />,
     pulse: "",
     label: "已驳回",
-    labelColor: "text-red-600",
+    labelColor: "text-red-600 dark:text-red-400",
   },
 };
 
@@ -67,7 +67,7 @@ export function ProgressReviewNode({ data }: NodeProps & { data: ProgressReviewN
 
   // Use ShieldCheck for approval-type review nodes
   const isApproval = data.label?.includes("审批");
-  const typeIcon = isApproval ? <ShieldCheck className="h-3 w-3 text-amber-600 mr-1" /> : null;
+  const typeIcon = isApproval ? <ShieldCheck className="h-3 w-3 text-amber-600 dark:text-amber-400 mr-1" /> : null;
 
   return (
     <div
