@@ -693,13 +693,15 @@ def _prepare_artifact_delivery(
     thread_id: str,
     response_text: str,
     artifacts: list[str],
+    *,
+    user_id: str | None = None,
 ) -> tuple[str, list[ResolvedAttachment]]:
     """Resolve attachments and append filename fallbacks to the text response."""
     attachments: list[ResolvedAttachment] = []
     if not artifacts:
         return response_text, attachments
 
-    attachments = _resolve_attachments(thread_id, artifacts)
+    attachments = _resolve_attachments(thread_id, artifacts, user_id=user_id)
     resolved_virtuals = {attachment.virtual_path for attachment in attachments}
     unresolved = [path for path in artifacts if path not in resolved_virtuals]
 
@@ -1469,7 +1471,12 @@ class ChannelManager:
             len(artifacts),
         )
 
-        response_text, attachments = _prepare_artifact_delivery(thread_id, response_text, artifacts)
+        # EAI-CUSTOM (bug-3443, 2026-09-26): 出站附件按入站同款 per-owner 归桶解析 ——
+        # 调度任务的 contextvar 回落会让 bound/platform 用户的工件读取落在 users/default,
+        # 附件退化为文件名兜底文本; 这里显式传 owner 解析结果(无绑定时回落 None 保持旧行为)。
+        response_text, attachments = _prepare_artifact_delivery(
+            thread_id, response_text, artifacts, user_id=self._resolve_owner_user_id(msg)
+        )
 
         if not response_text:
             if attachments:
@@ -1563,7 +1570,12 @@ class ChannelManager:
             response_text = _extract_response_text(result)
             pending_clarification = _has_current_turn_clarification(result)
             artifacts = _extract_artifacts(result)
-            response_text, attachments = _prepare_artifact_delivery(thread_id, response_text, artifacts)
+            # EAI-CUSTOM (bug-3443, 2026-09-26): 出站附件按入站同款 per-owner 归桶解析 ——
+        # 调度任务的 contextvar 回落会让 bound/platform 用户的工件读取落在 users/default,
+            # 附件退化为文件名兜底文本; 这里显式传 owner 解析结果(无绑定时回落 None 保持旧行为)。
+            response_text, attachments = _prepare_artifact_delivery(
+                thread_id, response_text, artifacts, user_id=self._resolve_owner_user_id(msg)
+            )
 
             if not response_text:
                 if attachments:
