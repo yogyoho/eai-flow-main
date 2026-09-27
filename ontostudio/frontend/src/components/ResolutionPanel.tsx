@@ -19,7 +19,17 @@
  * 409 → detail 文案直出；422 → "请求参数越界"。
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, GitMerge, Loader2, Undo2, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  GitMerge,
+  Loader2,
+  RefreshCw,
+  Undo2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import {
@@ -45,6 +55,12 @@ import {
   type PendingPage,
   type SuggestionsResult,
 } from "@/api/ontology-graph-api";
+import {
+  ActionConflictError,
+  invokeReviewEntitySafe,
+  type ActionInvokeResult,
+  type ReviewDecision,
+} from "@/api/actions-api";
 import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
 
@@ -54,6 +70,16 @@ interface Notice {
   kind: "error" | "info";
   text: string;
 }
+
+/** 人审动作（确认/驳回）的行级 UI 状态——四态实现契约见设计稿「操作反馈四态」。 */
+interface ReviewUiState {
+  phase: "idle" | "running" | "done";
+  decision?: ReviewDecision;
+  outcome?: "ok" | "degraded" | "conflict";
+  message?: string;
+}
+
+const REVIEW_IDLE: ReviewUiState = { phase: "idle" };
 
 interface UndoableMerge {
   mergeId: string;
@@ -102,6 +128,9 @@ export function ResolutionPanel({
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [reviewStates, setReviewStates] = useState<Record<string, ReviewUiState>>({});
+  const setReviewState = (pk: string, next: ReviewUiState) =>
+    setReviewStates((prev) => ({ ...prev, [pk]: next }));
   const [undoable, setUndoable] = useState<UndoableMerge | null>(null);
 
   const pendingQuery = useQuery({
@@ -178,6 +207,68 @@ export function ResolutionPanel({
       setNotice({ kind: "error", text: resolutionErrorText(apiError) });
     },
   });
+
+  // 人审动作（确认/驳回）——人审闭环切片 T4（EAI-CUSTOM 2026-09-26）。
+  // 四态：成功绿勾 / degraded 黄警（自愈指引）/ 409 中性「状态已变更」/ 在途 spinner。
+  // 设计裁决（eng-review T5①）：409 也发生在已驳回/已合并场景，绝不能渲染为「已确认」。
+  const reviewMutation = useMutation({
+    mutationFn: (vars: { pk: string; decision: ReviewDecision }) =>
+      invokeReviewEntitySafe(vars.pk, vars.decision),
+    onSuccess: (data: ActionInvokeResult, vars) => {
+      if (data.projected) {
+        setReviewState(vars.pk, {
+          phase: "done",
+          decision: vars.decision,
+          outcome: "ok",
+          message: vars.decision === "reject" ? "已驳回归档" : "已确认入图",
+        });
+        setNotice({
+          kind: "info",
+          text:
+            vars.decision === "reject"
+              ? "已驳回归档：状态翻转为 rejected，实体与提及保留"
+              : "已确认入图：断言图已更新（projected）",
+        });
+      } else {
+        setReviewState(vars.pk, {
+          phase: "done",
+          decision: vars.decision,
+          outcome: "degraded",
+          message: data.errors[0] ?? "投影未生效",
+        });
+        setNotice({
+          kind: "error",
+          text: "投影未生效（degraded）：业务状态已提交；管理员重跑全量装载即自动对账，数据无损失",
+        });
+      }
+      // 让行内按钮态被看见（1.2s）再刷新队列——成功/degraded 行都会离开待审列表
+      //（DB 状态已 active/rejected，前置条件不再匹配）。
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ["ontology"] });
+        onRefreshGraph?.();
+      }, 1200);
+    },
+    onError: (error, vars) => {
+      if (error instanceof ActionConflictError) {
+        setReviewState(vars.pk, {
+          phase: "done",
+          decision: vars.decision,
+          outcome: "conflict",
+          message: "状态已变更，请刷新",
+        });
+        setNotice({ kind: "info", text: "该记录状态已变更（可能已驳回/已合并），列表已刷新" });
+        void queryClient.invalidateQueries({ queryKey: ["ontology"] });
+      } else {
+        setReviewState(vars.pk, REVIEW_IDLE);
+        setNotice({ kind: "error", text: resolutionErrorText(error as ApiError) });
+      }
+    },
+  });
+
+  const handleReview = (pk: string, decision: ReviewDecision) => {
+    setReviewState(pk, { phase: "running", decision });
+    reviewMutation.mutate({ pk, decision });
+  };
 
   // 后端已按置信度升序返回；客户端再排一次保证契约可视（防御性，代价可忽略）
   const entities = useMemo(
@@ -374,6 +465,8 @@ export function ResolutionPanel({
                 mergePending={mergeMutation.isPending}
                 onToggle={() => handleToggleRow(entity.id)}
                 onMerge={handleMerge}
+                review={reviewStates[entity.id] ?? REVIEW_IDLE}
+                onReview={(decision) => handleReview(entity.id, decision)}
               />
             ))}
           </div>
@@ -390,7 +483,7 @@ interface SuggestionsState {
   data: SuggestionsResult | null;
 }
 
-/** 单行待复核实体卡：头部行（名称/etype/置信度/id 短码）+ 展开时相似建议区。 */
+/** 单行待复核实体卡：头部行（名称/etype/置信度/id 短码）+ 人审动作条 + 展开时相似建议区。 */
 function PendingRow(props: {
   entity: PendingPage["entities"][number];
   expanded: boolean;
@@ -403,8 +496,10 @@ function PendingRow(props: {
     candidateName: string,
     canonicalName: string,
   ) => void;
+  review: ReviewUiState;
+  onReview: (decision: ReviewDecision) => void;
 }) {
-  const { entity, expanded, mergePending, suggestions, onToggle, onMerge } =
+  const { entity, expanded, mergePending, suggestions, onToggle, onMerge, review, onReview } =
     props;
 
   return (
@@ -454,6 +549,80 @@ function PendingRow(props: {
           style={{ color: INK_3 }}
         />
       </button>
+
+      {/* 人审动作条（T4）：四态实现契约——成功绿勾 / degraded 黄警自愈指引 /
+          409 中性「状态已变更」（可能是已驳回/已合并，不渲染为已确认）/ 在途 spinner。 */}
+      {review.phase === "done" && review.outcome ? (
+        <div
+          className="flex items-center gap-2 border-t px-4 py-2.5"
+          style={{ borderColor: CARD_BORDER }}
+          data-testid="resolution-review-outcome"
+        >
+          {review.outcome === "ok" ? (
+            <>
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: GREEN }} />
+              <span className="text-xs font-medium" style={{ color: GREEN }}>
+                {review.decision === "reject"
+                  ? "已驳回归档：状态 = rejected（实体与提及保留）"
+                  : "已确认入图：断言图已更新"}
+              </span>
+            </>
+          ) : review.outcome === "degraded" ? (
+            <>
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: AMBER }} />
+              <span className="text-xs" style={{ color: INK_2 }}>
+                投影未生效（degraded）：业务状态已提交；管理员重跑全量装载即自动对账，数据无损失
+              </span>
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-3.5 w-3.5 shrink-0" style={{ color: INK_2 }} />
+              <span className="text-xs" style={{ color: INK_2 }}>
+                状态已变更（可能已驳回/已合并），请刷新
+              </span>
+            </>
+          )}
+        </div>
+      ) : (
+        <div
+          className="flex items-center gap-2 border-t px-4 py-2.5"
+          style={{ borderColor: CARD_BORDER }}
+        >
+          <button
+            type="button"
+            disabled={review.phase === "running"}
+            onClick={() => onReview("confirm")}
+            data-testid="resolution-confirm"
+            className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ background: BLUE }}
+          >
+            {review.phase === "running" && review.decision === "confirm" ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Check className="h-3 w-3" />
+            )}
+            确认入图
+          </button>
+          <button
+            type="button"
+            disabled={review.phase === "running"}
+            onClick={() => onReview("reject")}
+            data-testid="resolution-reject"
+            className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
+          >
+            {review.phase === "running" && review.decision === "reject" ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <X className="h-3 w-3" />
+            )}
+            驳回
+          </button>
+          <span className="ml-auto text-[10.5px]" style={{ color: INK_3 }}>
+            确认 → 断言图即时生效；投影失败标黄并给出自愈指引
+          </span>
+        </div>
+      )}
 
       {expanded ? (
         <div
