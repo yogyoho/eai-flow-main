@@ -43,9 +43,9 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.db import _CONNECT_TIMEOUT_S, ensure_tables
+from app.ontology.actions.projection import project_row
 from app.ontology.actions.sql_write import WriteGuardError, build_precondition_where, build_update_set, quote_ident
 from app.ontology.connectors import _ext_url
-from app.ontology.kernel.service import get_kernel
 from app.ontology.registry import get_registry
 from app.ontology.scope import FilterRule, ScopeCompileError, rule_to_sql
 
@@ -286,12 +286,15 @@ async def invoke_action_core(
     actor_role: str | None,
     source: str,
     scope_rule: FilterRule,
-    project: Callable[[str, uuid.UUID], None],
+    project: Callable[[str, uuid.UUID, dict[str, Any] | None], None],
 ) -> dict[str, Any]:
     """管线主体。鉴权与取范围规则由调用方（REST/MCP）完成后传入。
 
-    project(action_id, pk) 在**提交后**调用，用于增量重投影；抛异常不回滚。
-    它是**同步**可调用（Task 7 传的是 ``lambda: get_kernel().refresh()``）：传 async 函数
+    ``project(action_id, pk, row)`` 在**提交后**调用，用于提交后投影；抛异常不回滚
+    （异常记入 ``errors`` → 响应 ``projected=false``）。``row`` 是**合并行**（``FOR UPDATE``
+    锁定的完整行 ∪ ``RETURNING`` after）——EAI-CUSTOM(2026-09-26 人审闭环切片 T1A)：
+    数据已在内存里，投影**不复读 Postgres**（DB 层 async-only，而 ``project`` 是同步契约）。
+    它是**同步**可调用（REST/MCP 现均传 ``projection.project_row``）：传 async 函数
     只会拿到一个被丢弃的协程对象，并静默算作投影成功。
     """
     action, obj = _resolve(action_id)
@@ -340,14 +343,18 @@ async def invoke_action_core(
     except SQLAlchemyError as exc:
         raise ActionError(f"写路径引擎构造失败（URL 取自配置）: {exc}", 500) from exc
     errors: list[str] = []
+    # T1A（人审闭环切片）：FOR UPDATE 锁定的完整行留给投影——投影同步契约下不能复读 DB。
+    locked_row: dict[str, Any] | None = None
 
     async def _write_txn() -> _WriteResult:
         """一次写事务：锁定行 → 前置条件 → UPDATE(RETURNING) → 审计。"""
+        nonlocal locked_row
         async with engine.begin() as conn:
             locked = await _execute_on_target(conn, f"SELECT * FROM {table_q} WHERE {where} FOR UPDATE", params_all, table=table)
             row = locked.mappings().first()
             if row is None:
                 raise ScopeDenied()
+            locked_row = dict(row)
 
             ok = await _execute_on_target(conn, f"SELECT ({pre_sql}) AS ok FROM {table_q} WHERE {pk_col} = :pk", params_all, table=table)
             if not ok.scalar_one():
@@ -398,8 +405,14 @@ async def invoke_action_core(
     finally:
         await engine.dispose()
 
+    # 合并行（T1A）：锁定行 ∪ RETURNING after——status 等后象字段以 UPDATE 后为准，
+    # 其余身份/属性字段来自锁定行。row=None 只在无锁定行的防御路径出现。
+    merged_row: dict[str, Any] | None = dict(locked_row) if locked_row is not None else None
+    if merged_row is not None:
+        merged_row.update(after)
+
     try:
-        project(action.id, target_pk)
+        project(action.id, target_pk, merged_row)
         projected = True
     except Exception as e:  # 投影失败不回滚业务状态（设计 §2 步骤 5）
         projected = False
@@ -460,7 +473,7 @@ async def run_action_for_mcp(action_id: str, pk: str, source: str) -> dict[str, 
         actor_role="mcp",
         source=source,
         scope_rule=FilterRule(operator="allow_all"),
-        project=lambda aid, p: get_kernel().refresh(),
+        project=project_row,  # EAI-CUSTOM(2026-09-26 T3A): 与 REST 共享真投影——假 lambda（refresh 不读行）在此退役
     )
 
 

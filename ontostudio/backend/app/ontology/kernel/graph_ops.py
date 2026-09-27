@@ -122,8 +122,15 @@ def upsert_entity(
     valid_from: str | None = None,
     valid_to: str | None = None,
     created_at: str | None = None,
+    force_status: bool = False,
 ) -> str:
-    """自然键（etype|norm_name）幂等 upsert；返回实体 IRI（命中复用旧 IRI）。"""
+    """自然键（etype|norm_name）幂等 upsert；返回实体 IRI（命中复用旧 IRI）。
+
+    force_status=True（EAI-CUSTOM, 2026-09-26 人审闭环切片）：状态三元组强制覆盖
+    （remove-then-add，与 canonical_name/confidence 同模式），不再走"缺席才写"——
+    服务两个语义：①人审确认把 pending_review 翻转为 active；②全量装载=对账
+    （装载即重写 DB 真相，degraded 自愈的执行者）。缺省 False 保持既有行为。
+    """
     class_ref = vocab.class_ref(class_name)
     norm = norm_name or canonical_name
     key = natural_key(etype, norm)
@@ -154,7 +161,7 @@ def upsert_entity(
     for attr_key, value in (attrs or {}).items():
         _remove_triples(store, iri, f"{vocab.scheme.namespace}attr/{attr_key}")
         _add(store, iri, f"{vocab.scheme.namespace}attr/{attr_key}", value)
-    if not _find_one(store, _select("s", f"<{iri}> <{P_STATUS}> ?s"), "s"):
+    if force_status or not _find_one(store, _select("s", f"<{iri}> <{P_STATUS}> ?s"), "s"):
         _set_status(store, iri, status)
     return iri
 

@@ -55,6 +55,8 @@ def load_doc_graph_rows(
 
     domain 为缺省域（行无 domain 字段时用）；行自带 domain 时按行解析——
     支持混合域装载（如 doc_graph + eia 并存于 dg_* 表）。
+    EAI-CUSTOM(2026-09-26 人审闭环切片): 装载即对账——实体 status 强制重写（force_status），
+    图内残留的旧状态（如 pending_review 已确认但投影失败的翻转场景）被 DB 真相覆盖。
     """
     vocabs = collect_vocabularies(registry)
     stats = LoaderStats()
@@ -87,6 +89,7 @@ def load_doc_graph_rows(
             valid_from=_as_str(row.get("valid_from")),
             valid_to=_as_str(row.get("valid_to")),
             created_at=_as_str(row.get("created_at")),
+            force_status=True,  # EAI-CUSTOM(2026-09-26 人审闭环切片): 装载=对账——重写 DB 真相，degraded 自愈的执行者
         )
         iri_of[str(row["id"])] = iri
         vocab_of[str(row["id"])] = vocab

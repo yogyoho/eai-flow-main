@@ -15,13 +15,13 @@
    而计划那行断言仍为**真**。故这里直接断言 ``run_shacl(...).conforms``，且断言对象是
    **装了这一行的图**（计划那行对 ``get_kernel().store`` 求值，那是另一个问题，见 2）。
 2. 计划那行的 ``run_conformance(get_kernel().store, ...)`` 在本进程里是**空图**上求值——
-   动作路径的 ``project`` 是 ``routers._project_incrementally`` → ``get_kernel().refresh()``，
+   动作路径的 ``project`` 原是 ``routers._project_incrementally`` → ``get_kernel().refresh()``，
    而 ``refresh()`` **不读 dg_* 行**（``kernel/service.py`` 只做 schema 重编 + 闭包 + 规则
-   重跑）。即 spec §2 步骤 5「受影响行增量重投影进内核图」在当前实现下**是空转**：
-   接口回 ``projected: true``，图里却没有这一行。该缺口由 ``test_03`` 固定（**修复后它会
-   变红 → 删掉它**），① 的 SHACL 半边因此改走**真实投影桥**（``kernel/loader.py`` 的
-   ``load_doc_graph_rows``，与 ``POST /formal/load`` 同一条），只装本行、不受活库其余数据
-   影响。
+   重跑）。即 spec §2 步骤 5「受影响行增量重投影进内核图」在当時实现下**是空转**：
+   接口回 ``projected: true``，图里却没有这一行。该缺口曾由 ``test_03`` 固定（KNOWN_GAP 桩），
+   **2026-09-27 人审闭环切片已实装修复**（``actions/projection.py::project_row``，双通道共享），
+   原 KNOWN_GAP 用例按预案删除；现在的 ``test_03`` 钉的是修复后的行为——确认投影必须把
+   **曾装载为 pending_review 的行**翻转为 active（翻转场景，全新插入抓不住的静默失败）。
 """
 
 import uuid
@@ -37,14 +37,14 @@ from app.ontology.kernel.service import get_kernel
 pytestmark = pytest.mark.integration
 
 
-async def _seed(status="pending_review") -> uuid.UUID:
+async def _seed(status="pending_review", etype: str = "mine") -> uuid.UUID:
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     try:
         async with engine.begin() as conn:
             r = await conn.execute(
                 text("""INSERT INTO dg_entities (domain,etype,canonical_name,norm_name,attrs,confidence,status)
-                        VALUES ('doc_graph','mine','E2E', :n, '{}'::jsonb, 0.9, :s) RETURNING id"""),
-                {"n": f"E2E-{uuid.uuid4().hex[:8]}", "s": status},
+                        VALUES ('doc_graph',:et,'E2E', :n, '{}'::jsonb, 0.9, :s) RETURNING id"""),
+                {"n": f"E2E-{uuid.uuid4().hex[:8]}", "s": status, "et": etype},
             )
             return r.scalar_one()
     finally:
@@ -138,43 +138,103 @@ async def test_02_precondition_violation_is_409():
     assert await _audit_rows(pk) == []
 
 
+def _entity_iri(pk: uuid.UUID) -> str:
+    """doc_graph 域词表下该行的实例 IRI（与 loader/upsert 同一构造）。"""
+    from app.ontology.kernel.compile import collect_vocabularies
+    from app.ontology.registry import get_registry
+
+    return collect_vocabularies(get_registry())["doc_graph"].scheme.instance_iri(pk)
+
+
+async def _load_into_kernel(pk: uuid.UUID) -> None:
+    """把该行经真实投影桥装进共享 kernel（模拟「曾全量装载」的前置状态）。"""
+    from app.ontology.kernel.loader import load_doc_graph_rows
+    from app.ontology.registry import get_registry
+
+    load_doc_graph_rows(get_kernel().store, get_registry(), entity_rows=[await _fetch_entity(pk)], relation_rows=[], mention_rows=[])
+
+
+def _graph_status(pk: uuid.UUID) -> str | None:
+    """断言图中该实体的 status 字面量（无该实体/无状态三元组 → None）。"""
+    from app.ontology.kernel.graph_ops import _select
+    from app.ontology.kernel.vocab import P_STATUS
+
+    rows = get_kernel().store.query(_select("s", f"<{_entity_iri(pk)}> <{P_STATUS}> ?s"))
+    if not rows:
+        return None
+    value = rows[0]["s"]
+    return getattr(value, "value", str(value))
+
+
 @pytest.mark.asyncio
-async def test_03_action_projection_does_not_reach_the_graph_KNOWN_GAP():
-    """**已知缺口固定桩**（Task 10 自审，2026-09-24 实测定案）。
+async def test_03_confirm_projection_flips_graph_status():
+    """③(新) 确认投影真实落图 + **翻转场景**（切片核心判据，取代已删除的 KNOWN_GAP 桩）。
 
-    spec §2 步骤 5 写「提交后：受影响行**增量重投影**进内核图」，而本仓的 ``project`` 是
-    ``routers._project_incrementally`` → ``get_kernel().refresh()``；``refresh()`` 只做
-    schema 重编 + 闭包 + 规则重跑，**从不读 dg_* 行**。于是一次 confirm 之后：DB 行已
-    ``active``、接口回 ``projected: true``——而断言图里**没有这一行**。
-
-    为什么把"现状"钉成用例：这是唯一能让下一个人*当场*看到缺口的东西（本计划的取向是
-    「如实标注，不假装已增量」——见 ``routers._project_incrementally`` 的 docstring，它
-    只承认"非增量"，没承认"根本没投影"）。**修好 spec §2 步骤 5 的那次改动会让本用例
-    变红——届时删掉本用例即可**，它存在的全部意义就是"失效即报"。
+    前置状态模拟「行曾被全量装载为 pending_review」——修复前 ``upsert_entity`` 的
+    「缺席才写」会让确认后图里**仍是 pending_review**（静默失败，全新插入的用例
+    抓不住，见设计稿成功标准 1）。``force_status`` 强转必须把断言图状态翻成 active。
+    走 ``run_action_for_mcp`` = MCP 通道（与 REST 共用 ``invoke_action_core`` +
+    ``projection.project_row``，同时钉住 MCP 侧不再是假 lambda——设计稿成功标准 5）。
     """
-    from app.ontology.kernel.store import ASSERTED_GRAPH
-
     pk = await _seed()
-    kernel = get_kernel()
-    kernel.refresh()
-    before = kernel.store.dump_turtle(ASSERTED_GRAPH)
-    assert str(pk) not in before
+    await _load_into_kernel(pk)
+    assert _graph_status(pk) == "pending_review"  # 前置状态确已在图（对照：量具有效）
 
     from app.ontology.actions.executor import run_action_for_mcp
 
     result = await run_action_for_mcp("review_entity.confirm", str(pk), "mcp")
-    assert result["projected"] is True and result["errors"] == []
+    assert result["projected"] is True and result["errors"] == [], result
+    assert _graph_status(pk) == "active", "KNOWN_GAP 场景反转失败：确认后图面状态未翻转"
+    assert (await _fetch_entity(pk))["status"] == "active"
 
-    after = kernel.store.dump_turtle(ASSERTED_GRAPH)
-    assert str(pk) not in after, "投影已实装？→ 删掉本用例（它钉的是缺口存在时的行为）"
 
-    # 对照（防空断言假绿）：同一张断言图**装得进**这一行——经真实投影桥装一次，
-    # 必须看得见。没有这一步，"不在图里" 与 "图根本装不进/量具坏了" 无从区分。
-    from app.ontology.kernel.loader import load_doc_graph_rows
-    from app.ontology.registry import get_registry
+@pytest.mark.asyncio
+async def test_05_reject_projection_marks_rejected_in_graph():
+    """⑤ 驳回投影（eng-review T2A 语义）：状态翻转为 rejected、**实体保留在图**（非移除）。
 
-    load_doc_graph_rows(kernel.store, get_registry(), entity_rows=[await _fetch_entity(pk)], relation_rows=[], mention_rows=[])
-    assert str(pk) in kernel.store.dump_turtle(ASSERTED_GRAPH), "对照组失效：量具或投影桥坏了，上面那条断言无判别力"
+    断言图 = DB 全行忠实投影：驳回不删实体/关系/提及（悬挂引用 + mention 永不删），
+    只把状态三元组翻转为 rejected。
+    """
+    pk = await _seed()
+    await _load_into_kernel(pk)
+
+    from app.ontology.actions.executor import run_action_for_mcp
+
+    result = await run_action_for_mcp("review_entity.reject", str(pk), "mcp")
+    assert result["projected"] is True and result["errors"] == [], result
+    assert _graph_status(pk) == "rejected", "驳回后图内状态应为 rejected（非移除）"
+    assert (await _fetch_entity(pk))["status"] == "rejected"
+
+
+async def _purge(pk: uuid.UUID) -> None:
+    """清掉本用例种下的行（含审计）——bogus etype 会污染共享真库上「全行可装载」的集成判据。"""
+    engine = create_async_engine(_ext_url(), poolclass=NullPool)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("DELETE FROM dg_action_audit WHERE target_pk = :id"), {"id": pk})
+            await conn.execute(text("DELETE FROM dg_entities WHERE id = :id"), {"id": pk})
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
+async def test_06_projection_degraded_on_unregistered_etype():
+    """⑥ 真实路径 degraded 形状：etype 未在 registry 声明 → ``projected:false`` + errors、DB 不回滚。
+
+    修复前的假信号在本场景是 ``projected:true``（``refresh()`` 恒成功、从不看行）——
+    本用例钉住假信号根除（设计稿成功标准 3）。degraded 是自愈的：etype 补进 registry
+    后重跑全量装载（force_status 对账）即入图。
+    """
+    pk = await _seed(etype="bogus_etype")
+    try:
+        from app.ontology.actions.executor import run_action_for_mcp
+
+        result = await run_action_for_mcp("review_entity.confirm", str(pk), "mcp")
+        assert result["projected"] is False and result["errors"], result
+        assert "未投影" in result["errors"][0]
+        assert (await _fetch_entity(pk))["status"] == "active"  # 投影失败不回滚业务状态
+    finally:
+        await _purge(pk)  # bogus etype 不留在共享真库（否则 loader 集成判据「全行可装载」被跳过数打破）
 
 
 @pytest.mark.asyncio

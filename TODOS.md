@@ -51,3 +51,30 @@
 - **Cons:** ① 的增量重放语义设计不当会破坏协作恢复；③ 涉及 docmgr 数据清理策略需产品确认。
 - **Context:** 证据链见 docs/designs/bid-proposal-writing-v4-volume-architecture.md「平台减负项」节 + Revision 3。修复入口：persistence.ts 增量化、编辑器脏块序列化、docmgr service 按 manifest 对账清理。
 - **Depends on / blocked by:** ③ blocked by bid v4 WP-1（清场语义）+ WP-2.3（deliverables manifest）；①② 无前置。
+
+## TODO: OntoStudio 批量确认/批量投影摊销（refresh 成本）
+
+- **What:** 动作层支持一次事务多条确认 + 一次共享投影（或投影去重合并），摊销「每条确认 = 一次 store-global 全量 refresh（秒级）」的成本。自然落点：registry 动作声明加 batch 变体，或 executor 支持多 pk 提交后单次 `project_row` 批量调用。
+- **Why:** 2026-09-26 eng-review 实测口径：`refresh()`（schema 重编+owlrl 闭包+全规则）是 store-global，N 条确认 = N 次全量 refresh。单人审阅 50 条 ≈ 一分多钟串行等待可忍；但方案 C（agent 预审分层，高置信自动确认）落地后确认量涨一个数量级，几百条自动确认会把共享 ASGI worker 打死。
+- **Pros:** 方案 C 时代的性能事故前置免疫；批量确认本身也是审阅者的自然动作（按类型批量过）。
+- **Cons:** 现在做是 YAGNI（单人场景秒级可忍）；批量动作声明会动 registry schema。
+- **Context:** 设计 docs/designs/2026-09-26-ontostudio-review-loop-closure.md（人审闭环切片）+ eng-review Section 4 观察。**触发条件（任一即开工）**：①方案 C 进入设计（自动确认量级变化）；②P95 实测确认延迟被人抱怨；③审阅者主动要求批量操作。
+- **Depends on / blocked by:** 人审闭环切片落地（本 TODO 摊销的就是它的 refresh 成本）。
+
+## TODO: OntoStudio relation 审批通道（治理链确认的结构性前置）
+
+- **What:** 给 relation 建审批通道——registry 新声明 relation 动作（`review_relation.confirm/.reject`）或 ingest 设门（relation 行带 status），使治理链/关系边可以像实体一样走「待审→确认→投影」。
+- **Why:** 2026-09-26 eng-review 查实：registry（`registry/doc_graph.yaml:136-156`）只有 `review_entity.confirm/.reject` 且仅作用于 `graph_entity`；relation 无 status 属性、`doc_graph/ingest.py` 不设门——环评域最在乎的治理链现在只能整链确认实体、关系裸奔入库。且 kernel loader 只投影同调用内双端点齐备的 relation，确认实体不补投历史 relation——结构缺口，不是顺手能带的活。
+- **Pros:** 治理链（covered_by_standard 等跨报告比对的核心资产）获得与人审实体同级的可信度；跨模块链路启用（现全 disabled）的数据质量前置。
+- **Cons:** registry schema 扩展 + dg_relations 加列或 ingest 改造；投影语义要处理「双端点状态不一致时 relation 投不投」。
+- **Context:** 设计 docs/designs/2026-09-26-ontostudio-review-loop-closure.md「后续批次」节 + eng-review 外部声音发现4（驳回移除会留悬挂 relation 边——relation 审批设计时必须一并裁决边的新陈代谢）。**触发条件：环评域审阅者第一次问「链怎么确认」即开工，勿在无人问津时预建。**
+- **Depends on / blocked by:** 人审闭环切片落地（实体审批语义先稳定）；与 reviewer 授权批次无硬依赖。
+
+## TODO: OntoStudio 推理白盒化（解释视图 + CQ 验收单）
+
+- **What:** ReasoningPage 两条白盒化改造。①**推理解释视图**：后端给「这条推理三元组由哪条规则/属性链推出」的溯源 API（自定义 CONSTRUCT 规则有 per-rule named graph 可直查——`rules.py` 既有设计；owlrl 内置规则无 provenance，需 post-hoc 差分：infer 前后闭包对比归因），前端把「1857 物化」这种黑盒数字展开成可下钻的论证链。②**CQ 验收单**：能力问题（competency questions）入库（域 yaml 或独立 cq.yaml，附期望答案/路径），每次 infer 后自动判定「本体能回答哪些 CQ、答案来自哪条推理路径」，替换 ReasoningPage 现挂的静态示例区块（该区块自带「示例数据」水印）。
+- **Why:** 2026-09-26 逐页盘点查实：infer/validate 是真端点（月儿湾实测 1857 物化 2.3s、国标五项全过），但推理验证面是黑盒——「这条 covered_by_standard 从哪条属性链推出来的」无处可看。对建模者的实际后果：本体 axiom 改错了只能靠数字异动猜；对验收者：CQ 是摆设。另 owlrl 有「链首无实例静默零推断」的坑（见 buglog prp-spo2 条目），解释视图还应能暴露「为什么没推出来」。
+- **Pros:** 建模错误可定位（哪条 axiom 推出意外结论/该推没推）；CQ 从摆设变回归测试——本体每次改动后跑一遍，能力不回退；非工程背景的领域专家能看懂推理结果（人审闭环切片落地的同一批用户）。
+- **Cons:** 两类规则的 provenance 能力不对称（owlrl 内置规则需差分归因，工程量集中在「为什么没推出来」这类反事实解释）；CQ 答案匹配做精确匹配先（语义匹配是无底洞，明确不做进本条）。
+- **Context:** 2026-09-26 会话页面盘点（设计 docs/designs/2026-09-26-ontostudio-review-loop-closure.md「页面分析」节）；建模器 ModelerPage 已是真编辑闭环（registry-content validate/save），推理是建模验证的下游——本体改完→推理→**看懂**，最后一步现在缺失。**触发条件（任一）：①本体建模用户（非实现者本人）第一次问「这条结论哪来的」；②axiom 改动开始需要回归验证；③国标符合性评审要求 CQ 证据。**
+- **Depends on / blocked by:** 人审闭环切片（`docs/designs/2026-09-26-ontostudio-review-loop-closure.md`）落地——数据先能沉淀，推理才有稳定输入；与 relation 审批 TODO 无硬依赖但同期做可共享解释视图。

@@ -35,7 +35,8 @@ OntoStudio（`ontostudio/`，FastAPI :8005 + Vite SPA）前端 9 页原型已建
 - ontostudio 无 Makefile：每个 Task 验证 = `ruff check` + `ruff format --check` 双检（主仓 make lint 是两条命令，只跑前者会漏）。
 - `ontostudio-backend` 不 bind-mount 代码（compose 只挂 kernel 卷，镜像烘焙 `COPY app ./app`）——验证必须 `docker compose -p eai-docker -f docker-compose-dev.yaml build ontostudio-backend` 后 up，**restart 无效**。
 - 动作层回归基线不回退（以 `pytest --collect-only` 实测为准，当前 419——基线随提交漂移，开工当天重测）；KNOWN_GAP 测试实装投影后会转红，**届时删除它**（`docs/superpowers/plans/2026-09-22-ontostudio-action-layer.md` 预留的机制）。
-- 本切片不动 `roles_custom.yaml`（reviewer 授权是权限模块产品决策，列为后续批次）。
+- 本切片不动 `roles_custom.yaml` 的**常设**授权（reviewer 授权是权限模块产品决策，列为后续批次）；观察日的**临时** overlay 授权见 The Assignment（eng-review T4A）。
+- **单 worker 硬约束（eng-review 发现10）**：kernel 是进程内单例（`get_kernel`）——ontostudio-backend 必须保持单 uvicorn worker（现状 Dockerfile CMD 无 `--workers`，不要加）。多 worker = 每进程一张图（投影互相不可见）+ `ONTOSTUDIO_KERNEL_PATH` 文件并发写。建议启动时 worker>1 即 warn。
 
 ## Premises（D5 全部确认）
 
@@ -65,18 +66,20 @@ Cons: pyoxigraph 写锁在同步路径，确认请求被推理闭包（秒级，
 
 **A（最小闭环）**，实施顺序：
 
-1. **投影实装**：`routers._project_incrementally` 调 kernel loader 的**行级子集装载**——loader 的 `entity_rows`/`relation_rows`/`mention_rows` 已接受任意子集（KNOWN_GAP 测试对照组就是单行调用），无需新入参。两条关键语义，缺一即静默失败：
-   - **status 强制翻转**：`upsert_entity`（`kernel/graph_ops.py:157-158`）只在状态三元组**缺席**时写入——若行曾被全量装载为 `pending_review`，增量重投会静默保留旧值并返回成功。必须镜像它对 `canonical_name`/`confidence` 已用的 remove-then-add 模式先删后写。
-   - **驳回不投影**：registry `review_entity.reject` 仅置 `status=rejected`（`registry/doc_graph.yaml:136-156`）；本切片语义定为——驳回行不进断言图，若已在则移除；正测覆盖。
-   同步完成；失败返回 degraded + 错误明细。**同步订正 `_project_incrementally` 的 docstring**（现状只承认"非增量"，没承认根本没投影——计划文档点名此句也要修）。
-2. **改写 KNOWN_GAP 测试为两个正测**：①确认后断言图含该 IRI 且 `status="active"`——对照组**必须包含「行曾被装载为 pending_review 再确认」的翻转场景**，只测全新插入抓不住上面的静默失败；②驳回后该 IRI 不在断言图（若曾投影则被移除）。原 KNOWN_GAP 用例删除。
-3. **前端动作 UI**：ResolutionPanel 待审条目加「确认/驳回」→ `POST /actions/invoke`（走 formal-api 或新建 actions-api 客户端）；按钮态区分投影成功（绿勾）/ degraded（黄警+错误明细）。
-4. **验证路径**：容器 build（非 restart）→ 前端确认一条 → `GET /formal/export?graphs=asserted` 出现该 IRI 且 `status="active"`（这是投影判据；MCP SQL 层查询可见不构成判据，见成功标准 2）。
-5. **后续批次**（非本切片）：reviewer 授权（roles_custom.yaml overlay）→ 方案 C 预审分层 → relation 审批（registry 需新声明 relation 动作或 ingest 设门——relation 现无 status 属性、ingest 不设门，且 loader 只投影同调用内双端点齐备的 relation，确认实体时不自动补投）→ 静态页接真数据（P2）。
+1. **投影实装（共享函数、双通道；eng-review T1A/T2A/T3A 决议）**：新建共享投影函数（如 `actions/projection.py::project_row(action_id, pk, row)`），**纯图侧同步**——executor 已 `FOR UPDATE` 锁定完整行，提交后把行数据**直接传入**，不在投影里复读 Postgres（`project` 同步契约被 `executor.py:289` 类型签名 + docstring 钉死，DB 层 async-only，投影内读库必撞同步/异步墙）。三条图语义：
+   - **确认 → status 强制翻转为 active**：`upsert_entity` 加 `force_status` 参数（kernel 层，eng-review 2A 决议：规则的家修规则），镜像 `canonical_name`/`confidence` 的 remove-then-add 先例（`graph_ops.py:137-144`，`_set_status` helper `graph_ops.py:102-104` 可复用）；默认不传参行为不变。
+   - **驳回 → status 翻转为 rejected（不是移除；eng-review T2A 决议）**：实体节点/关系边/mention 全保留——移除会留悬挂引用且违背 mention 永不删不变量（`graph_ops.py:5`）。世界观定为**断言图 = DB 全行的忠实投影（含状态）**；正测②断言图内 status=rejected。
+   - **全量装载 = 对账**：loader 装载传 `force_status=true`（装载即重写 DB 真相）——这使 degraded 自愈为真（eng-review 发现2 的修复）：投影失败的翻转场景，重跑 `POST /formal/load` 即治愈。degraded 文案（前端同源）：「该实体的图投影暂未生效，已记录；管理员重跑装载即恢复，数据无损失」（不指向无 UI 端点——eng-review 发现9）。
+   - **双通道接入（eng-review T3A 决议）**：REST（`routers._project_incrementally`）与 MCP（`executor.py:463` 的假 lambda `get_kernel().refresh()`）都调共享函数——agent 经 MCP 确认同样真投影，前提2 的「任何」成立。
+   - **docstring 订正**：`_project_incrementally` 与 executor 的 `project` 注释同步订正（现状只承认"非增量"，没承认根本没投影）。
+2. **测试改写**（`tests/test_actions_e2e.py`，原 KNOWN_GAP 用例删除）四件：①确认后断言图含该 IRI 且 `status="active"`——对照组**必须包含「先全量装载为 pending_review 再确认」的翻转场景**；②驳回后该 IRI **在图且 status=rejected**（T2A 语义，非移除）；③degraded 响应形状（投影异常 → `projected:false` + errors 非空 + DB 行不回滚——核对既有 test_04 是否已断言形状，缺则补）；④**MCP 通道**：经 `run_action_for_mcp` 确认后图面同样更新（T3A 验收，钉住 executor.py:463 不再是假 lambda）。
+3. **前端动作 UI**：ResolutionPanel 待审条目加「确认/驳回」→ **新建 `frontend/src/api/actions-api.ts`**（eng-review 2B 决议：actions 与 formal 路由组分文件，请求/鉴权封装复用 formal-api 已有那份）调 `POST /actions/invoke`。按钮四态：成功（绿勾）/ degraded（黄警 + 步骤1 的自愈文案）/ **冲突 409（中性提示「状态已变更，请刷新」——eng-review T5① 决议：409 也发生在 rejected/merged 场景，不能渲染成「已确认过」绿勾）**/ 在途（disabled + spinner，防双击）。防抖不加（YAGNI）。
+4. **验证路径**：容器 build（非 restart）→ 前端确认一条（**含翻转场景**：先全量装载再确认）→ `GET /formal/export?graphs=asserted` 含该 IRI 且 `status="active"`；**agent 经 MCP `review_entity.confirm` 确认另一条 → 同一图面判据成立**（双通道一致性；MCP SQL 层只读工具不构成判据）。
+5. **后续批次**（非本切片）：reviewer 授权（roles_custom.yaml overlay；**观察日临时授权见 The Assignment**）→ 方案 C 预审分层 → relation 审批（registry 需新声明 relation 动作或 ingest 设门——relation 现无 status 属性、ingest 不设门，确认实体时不自动补投）→ 静态页接真数据（P2）。
 
 ## Open Questions
 
-- 确认单次延迟：`refresh()` 的 schema 重编 + owlrl 闭包 + 全部规则重跑都是 **store-global**——行级装载省的只是装载段，单次确认延迟 ≈ 全量 refresh（当前规模秒级）。dev 规模可接受，但注意 60s command timeout（`executor.py:65`）与共享 ASGI worker 上的同步执行——实测第一批确认的 P95 再定是否升级 B。
+- 确认单次延迟：`refresh()` 的 schema 重编 + owlrl 闭包 + 全部规则重跑都是 **store-global**——行级投影省的只是装载段，单次确认延迟 ≈ 全量 refresh（当前规模秒级）。dev 规模可接受。**超时归属订正（eng-review 发现8）**：60s command timeout（`executor.py:65`）只辖 DB 写命令，投影段（`engine.dispose()` 之后）**无任何 watchdog**——卡死的 refresh 会无限占用共享 worker，P95 实测是唯一守门员；可选加固：投影段包 `asyncio.wait_for`，超时降级 degraded。
 - owlrl 闭包与规则重跑能否只对受影响 named graph 局部执行——实测裁决；若不能，确认延迟锁死在全量 refresh 量级（见上条），B 的异步化就是唯一出路。
 
 ## Success Criteria
@@ -85,19 +88,33 @@ Cons: pyoxigraph 写锁在同步路径，确认请求被推理闭包（秒级，
 2. **图面判据**：刚确认的**实体及其属性三元组出现在断言图**——以 `GET /formal/export?graphs=asserted` 含该 IRI 为准。注意：MCP 的 8 个只读工具走 Postgres `dg_*` SQL 层、不读内核图，**不作为投影判据**（否则投影没实装也会假绿）。（relation/治理链整体审批不在本切片：registry 只声明 `review_entity.confirm/.reject` 且仅作用于 `graph_entity`，relation 无 status 属性——见后续批次。）
 3. 投影失败时前端显示 degraded + 错误明细，不再出现假 `projected: true`。
 4. 全套回归绿（当前基线 419 + 新正测）。
+5. **双通道一致（eng-review T3A）**：agent 经 MCP `review_entity.confirm` 确认后，同一图面判据（SC1/SC2）成立——`executor.py:463` 不再是假 lambda。
 
 ## Dependencies
 
-- 动作层 Tasks 1-10 已完成（`actions/executor.py` + `sql_write.py`，REST+MCP 已暴露）。
-- kernel loader 行级子集装载已存在（`entity_rows`/`relation_rows`/`mention_rows` 接受任意子集，无需新入参）；本稿已定的是 status 强制翻转 + 驳回不投影两条语义；**未定**的是 relation 补投策略（已裁决本切片不做，见后续批次）。
-- reviewer 授权为后续批次前置（闭环第一版仅 superadmin 可审）。
+- 动作层 Tasks 1-10 已完成（`actions/executor.py` + `sql_write.py`，REST+MCP 已暴露）；`project` 同步契约钉在 `executor.py:289` + 测试——投影实装**不复读 DB**（T1A），不重开此契约。
+- kernel 侧可复用件：`upsert_entity` remove-then-add 先例（`graph_ops.py:137-144`）、`_set_status` helper（`graph_ops.py:102-104`）；需新增 `force_status` 参数 + loader 透传（装载=对账，T2A）。
+- reviewer 授权为后续批次前置（闭环第一版仅 superadmin 可审；观察日临时授权见 The Assignment）。
 
 ## The Assignment
 
-**下一步不是写代码。** 拿月儿湾报告的 460 条抽取结果，挑 5 个实体（含治理链上的节点实体），让环评域的**真实审阅者（不是你自己）**坐在屏幕前走一遍「看结果 → 确认 → 图里查到」，你在旁边不说话，记录他们哪一步卡住、哪一步问「这是什么」。ResolutionPanel 的信息架构是否匹配审阅者的心智模型，只有这个观察能回答——这比任何功能清单都值钱。
+**下一步不是写代码。** 前置（eng-review T4A 决议）：观察日给观察账号用 `roles_custom.yaml` overlay **临时**授 `ontology:action:review`——一行配置，观察完可撤（D5 的「不搭车」指代码切片；观察是验证行为，不是交付物）。然后：拿月儿湾报告的 460 条抽取结果，挑 5 个实体（含治理链上的节点实体），让环评域的**真实审阅者（不是你自己、也不是超管账号）**坐在屏幕前走一遍「看结果 → 确认 → 图里查到」，你在旁边不说话，记录他们哪一步卡住、哪一步问「这是什么」。ResolutionPanel 的信息架构是否匹配审阅者的心智模型，只有这个观察能回答——这比任何功能清单都值钱。若观察推翻本稿第 3 步已承诺的 UI 语义，以观察为准修订。
 
 ## What I noticed about how you think
 
 - 你开场就把问题定性为「前端原型有了，但实际功能很多未实现」——一句话同时给出资产盘点和缺口定位，这说明你对系统状态有清醒的账本，不自我安慰。
 - D3 你选了「人在用前端但功能缺」而不是「主要走 agent/MCP」——尽管 MCP-first 是这套系统的设计出身，你没有为架构立场辩护，而是承认了真实工作面在前端。按证据站队而不是按立场站队，这是对的。
 - D5 你对「reviewer 授权不搭车」没有犹豫——你清楚权限是另一个模块的产品决策，搭车会把一个 S-M 切片拖成跨模块谈判。知道边界在哪和知道该做什么一样重要。
+
+## GSTACK REVIEW REPORT
+
+| Review | Trigger | Why | Runs | Status | Findings |
+|--------|---------|-----|------|--------|----------|
+| CEO Review | `/plan-ceo-review` | Scope & strategy | 2 | STALE (2026-06-27, optional) | 范围问题已在 office-hours D1-D6 预答 |
+| Codex Review | `/codex review`（外部声音，claude 兜底） | Independent 2nd opinion | 1 | ISSUES_FOUND → 全吸收 | 10 findings (3×P1) 全部经 T1-T5 决议采纳 |
+| Eng Review | `/plan-eng-review` | Architecture & tests (required) | 1 | CLEAR | 15 issues (含外部声音10), 0 unresolved, 0 critical gaps |
+| Design Review | `/plan-design-review` | UI/UX gaps | 0 | — | UI 仅一步（ResolutionPanel 四态），实施后 /design-review 更合适 |
+| DX Review | `/plan-devex-review` | Developer experience gaps | 0 | — | — |
+
+- **CROSS-MODEL:** 外部声音（claude subagent，codex 无 credits 兜底）推翻本评审四项决议的实施语义（非方案选择）；T1A 传行绕同步/异步墙为最高价值发现。两模型在方案 A（最小闭环）方向上一致。
+- **VERDICT:** ENG CLEARED — ready to implement（作业前置：T6 观察日临时授权）

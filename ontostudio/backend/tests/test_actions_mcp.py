@@ -163,7 +163,9 @@ async def test_run_action_for_mcp_wires_identity_scope_source_and_projector(monk
         return {"action_id": action_id}
 
     monkeypatch.setattr("app.ontology.actions.executor.invoke_action_core", _fake_core)
-    monkeypatch.setattr("app.ontology.actions.executor.get_kernel", lambda: SimpleNamespace(refresh=lambda: refreshes.append(1)))
+    # EAI-CUSTOM(2026-09-26 T3A): MCP 侧 projector 已换成共享 project_row（假 lambda 退役），
+    # 其 get_kernel 是函数内懒导入——patch 源头模块。
+    monkeypatch.setattr("app.ontology.kernel.service.get_kernel", lambda: SimpleNamespace(refresh=lambda: refreshes.append(1)))
 
     pk = str(uuid.uuid4())
     out = await ontomcp.call_tool("invoke_action", {"action_id": "review_entity.confirm", "pk": pk})
@@ -177,6 +179,10 @@ async def test_run_action_for_mcp_wires_identity_scope_source_and_projector(monk
     assert captured["source"] == "mcp"
     assert captured["scope_rule"] == FilterRule(operator="allow_all")
 
-    # 投影钩子：按 executor 的用法**同步**调用（传 action_id, pk），必须真的 refresh
-    assert captured["project"]("review_entity.confirm", uuid.UUID(pk)) is None
+    # 投影钩子（T3A）：与 REST 同一共享函数本体；按 executor 的用法**同步**调用
+    # （传 action_id, pk, row），row=None 防御路径也必须真的 refresh。
+    from app.ontology.actions.projection import project_row
+
+    assert captured["project"] is project_row, "MCP 必须传共享投影函数本身（与 REST 同源）"
+    assert captured["project"]("review_entity.confirm", uuid.UUID(pk), None) is None
     assert refreshes == [1]

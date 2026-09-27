@@ -428,7 +428,7 @@ def test_project_refresh_is_synchronous(monkeypatch):
     monkeypatch.setattr("app.ontology.kernel.service.get_kernel", lambda: _Kernel())
 
     assert not inspect.iscoroutinefunction(ontology_routers._project_incrementally)
-    result = ontology_routers._project_incrementally("review_entity.confirm", uuid.uuid4())
+    result = ontology_routers._project_incrementally("review_entity.confirm", uuid.uuid4(), None)
     assert not inspect.iscoroutine(result)
     assert result is None
     assert calls == ["refresh"]
@@ -446,4 +446,4 @@ def test_project_refresh_does_not_swallow_kernel_errors(monkeypatch):
 
     monkeypatch.setattr("app.ontology.kernel.service.get_kernel", lambda: _Kernel())
     with pytest.raises(RuntimeError):
-        ontology_routers._project_incrementally("review_entity.confirm", uuid.uuid4())
+        ontology_routers._project_incrementally("review_entity.confirm", uuid.uuid4(), None)

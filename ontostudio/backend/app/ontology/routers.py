@@ -215,49 +215,30 @@ async def _authz_for_action(request: Request, user: CurrentUser, action_id: str)
     return action, rule
 
 
-def _project_incrementally(action_id: str, pk: uuid.UUID) -> None:
-    """增量重投影：只刷新受影响行对应的三元组（设计 §2 步骤 5）。
+def _project_incrementally(action_id: str, pk: uuid.UUID, row: dict[str, Any] | None) -> None:
+    """提交后投影（REST 通道入口，委托 ``actions.projection.project_row``）。
 
-    **当前实现是全量重算**——``get_kernel().refresh()`` 做 schema 重编 + 闭包 + 全部规则
-    重跑（``app/ontology/kernel/service.py:31``），与"只刷这一行"无关。名字描述的是**契约**
-    （调用方只关心"这次提交后图被更新了"），不是当前代价；真正的增量收敛是 P1-7 的独立任务，
-    **此处如实标注，不假装已经增量**。
+    EAI-CUSTOM(2026-09-26 人审闭环切片 T2)——本函数**此前的 docstring 与实现双双失真**：
+    名字承诺"只刷受影响行"，实现却是 ``get_kernel().refresh()``（schema 重编+闭包+全规则，
+    store-global），且**从不读 ``dg_*`` 行**——确认后接口回 ``projected:true`` 而断言图没有
+    这一行（KNOWN_GAP，原 ``test_03_..._KNOWN_GAP`` 用例钉住，本切片反转并删除该用例）。
+    docstring 亦只承认"非增量"、未承认"根本没投影"——一并订正于此。
 
-    代价（**实测，且标明测量条件**——2026-09-23，本机 Windows dev；内存 kernel，
-    `KernelService.load_ontology(payload, domain="eia")` 装载后计时 `refresh()`，取 3 次最快；
-    payload = N 个 `mine` 实体（带 3 个 attrs、confidence 0.9）+ N 条 `located_in` 关系）：
+    现委托双通道共享的 ``project_row``（MCP 同源，T3A）：executor 传入合并行（T1A，
+    ``FOR UPDATE`` 锁定行 ∪ ``RETURNING`` after，投影不复读 DB）→ 单行装载（force_status
+    强转：确认→active、驳回→rejected）→ ``refresh()`` 重跑闭包与规则。
 
-    | 实体数 | 断言三元组 | refresh |
-    |---|---|---|
-    | 100 | 663 | 375 ms |
-    | 500 | 3 063 | 1 415 ms |
-    | 1 000 | 6 063 | 2 341 ms |
-    | 2 000 | 12 063 | 4 610 ms |
-    | 5 000 | 30 063 | 12 199 ms |
+    代价口径：refresh 是 store-global，单次确认 ≈ 全量 refresh（千级图秒级；实测表与
+    "同步占住 ASGI worker"的并发警告见 eng-review OQ1 与设计稿 Open Questions，不再复述）。
 
-    **这张表只作量级用，不要拿单点速率外推**（前两版就是栽在这上面）：
-    ① 它是**本机**数字——质量审查者在**同一条路径**上实测 1 000 实体 `940 ms`，与本机
-    `2 341 ms` 差 2.5×，机器/负载差异就是这么大幅度；
-    ② 增长**至少线性、已见超线性**：本机 2 000→5 000 是 2.5× 实体、2.65× 时间，
-    而审查者同一区间测到 4.1×。故"≈X ms/三元组"这种精确速率是**假不变量**，已删。
-    唯一的定向结论：**千级 ≈ 秒级、数千级 ≈ 十秒级**，且平台期没有任何"免费"迹象。
-
-    更要紧的不是这些秒数，而是**它在本函数里是同步的**：这段计算直接占住一个 ASGI 事件
-    循环任务，期间该 worker 上其它请求全部排队（不是"慢一点"，是"并发被掐住"）。所以判据是
-    **并发量 × 规模**：单实例 dev / 小图（今日形态，数百实体）可接受；**千级实体起就该催
-    P1-7 的收敛**——5000 实体已经是十几秒的用户可感知写延迟，而此时它还在阻塞别人的读。
-
-    **必须同步**：``invoke_action_core`` 同步调用 ``project(action_id, pk)``（executor 模块
-    docstring 明文记了这条）。写成 ``async def`` 时它会拿到一个**被丢弃的协程对象**，异常不回传、
-    **静默算作 projected=True**——最糟的一类失败：看起来成功。tests/test_actions_rest.py 有
-    两条用例钉住（同步性 + 异常不吞）。
-
-    异常**向外抛**，由 executor 记入 ``errors``（投影失败不回滚业务状态，设计 §2 步骤 5）；
-    这里绝不吞——吞掉等于让 ``projected`` 恒 True，运维失去唯一的失败信号。
+    **必须同步**：``invoke_action_core`` 同步调用 ``project(...)``。写成 ``async def`` 会拿到
+    被丢弃的协程并**静默算作 projected=True**——最糟的一类失败：看起来成功。
+    tests/test_actions_rest.py 有两条用例钉住（同步性 + 异常不吞）。异常**向外抛**，
+    由 executor 记入 ``errors``（degraded；重跑 ``POST /formal/load`` 自愈，不回滚业务状态）。
     """
-    from app.ontology.kernel.service import get_kernel
+    from app.ontology.actions.projection import project_row
 
-    get_kernel().refresh()
+    project_row(action_id, pk, row)
 
 
 @router.post("/actions/invoke")

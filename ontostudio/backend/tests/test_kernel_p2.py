@@ -231,3 +231,31 @@ def test_loader_against_real_doc_graph(tmp_path: Path):
         stats = load_doc_graph_rows(store, registry, entity_rows=entity_rows, relation_rows=relation_rows, mention_rows=mention_rows)
         assert stats.entities == len(entity_rows)
         assert stats.mentions + len(stats.skipped_mentions) == len(mention_rows)
+
+
+# ---- force_status（EAI-CUSTOM, 2026-09-26 人审闭环切片 T1）----
+
+
+def test_upsert_force_status_flips_and_default_preserves(env):
+    """force_status=True 翻转已存在状态三元组；缺省 False 保持「缺席才写」旧语义。
+
+    旧语义在人审翻转场景静默失败：pending_review 行确认后仍 pending（状态三元组
+    已在场 → 跳过写入）。force_status 走 remove-then-add（与 canonical_name/confidence
+    同模式），服务两个调用方：①人审确认/reject 的投影翻转；②全量装载=对账（装载
+    传 True，degraded 自愈的执行者）。
+    """
+    from app.ontology.kernel.graph_ops import _set_status
+
+    store, vocab = env
+    iri = _mk_entity(store, vocab, "u-force-1", "强制翻转实体")
+    _set_status(store, iri, "pending_review")  # 模拟待审行已在图
+    assert '"pending_review"' in store.dump_turtle(ASSERTED_GRAPH)
+
+    # 缺省：状态在场 → 不写（旧语义保持，既有调用方行为不变）
+    upsert_entity(store, vocab, class_name="Project", entity_uuid="u-force-1", etype="project", canonical_name="强制翻转实体", status="active")
+    assert '"pending_review"' in store.dump_turtle(ASSERTED_GRAPH)
+
+    # force_status=True：remove-then-add 强制翻转
+    upsert_entity(store, vocab, class_name="Project", entity_uuid="u-force-1", etype="project", canonical_name="强制翻转实体", status="active", force_status=True)
+    ttl = store.dump_turtle(ASSERTED_GRAPH)
+    assert '"active"' in ttl and '"pending_review"' not in ttl
