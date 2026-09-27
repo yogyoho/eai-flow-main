@@ -503,6 +503,23 @@ services:
       - eai-flow-net
     restart: unless-stopped
 
+  ontostudio-docs:
+    build:
+      context: ../ontostudio/docs-site
+      dockerfile: Dockerfile
+    container_name: ontostudio-docs
+    profiles:
+      - ontostudio
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3011/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - eai-flow-net
+    restart: unless-stopped
+
 volumes:
   # Persist .venv across container restarts so dependencies installed during
   # image build are not shadowed by the host backend/ directory mount.

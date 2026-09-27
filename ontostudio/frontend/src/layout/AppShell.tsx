@@ -8,6 +8,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import {
+  BookOpen,
   BrainCircuit,
   Database,
   DraftingCompass,
@@ -202,8 +203,22 @@ export function AppShell() {
               })}
             </div>
           ))}
+          {/* 文档分组：文档中心（独立文档站，新标签打开） */}
+          <div>
+            <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
+              文档
+            </div>
+            <a
+              href="/ontostudio/docs/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:text-primary flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors"
+            >
+              <BookOpen className="h-4 w-4 flex-none opacity-70" />
+              文档中心
+            </a>
+          </div>
         </nav>
-
         <div className="border-border flex items-center gap-2.5 border-t px-4 py-3">
           <span className="bg-primary text-primary-foreground grid h-7 w-7 flex-none place-items-center rounded-full text-[11px] font-semibold">
             管

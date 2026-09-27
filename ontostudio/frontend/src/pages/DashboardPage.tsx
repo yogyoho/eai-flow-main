@@ -21,6 +21,7 @@ import {
   GitBranch,
   GitMerge,
   Layers,
+  LayoutDashboard,
   Loader2,
   Network,
   PlayCircle,
@@ -170,8 +171,7 @@ export function DashboardPage() {
     <div className="h-full overflow-x-auto overflow-y-auto">
       <div className="min-w-[1100px] p-6">
       <PageHeader
-        clause="01"
-        icon={Database}
+        icon={LayoutDashboard}
         title="工作台总览"
         description="知识层运营一览：数据沉淀、待审压力、校验与数据面状态。全部数字来自真端点（dg_* 聚合 / registry / formal）。"
         actions={
@@ -228,13 +228,19 @@ export function DashboardPage() {
 
       {/* 域健康 + 治理链抽样 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
-        <Panel title="域健康" subtitle="registry × dg_* 聚合" tone={TONE_BLUE} icon={Layers} className="overflow-hidden">
-          <div className="overflow-x-auto">
+        <Panel title="域健康" subtitle="registry × dg_* 聚合" tone={TONE_BLUE} icon={Layers} className="flex max-h-[420px] flex-col overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-border bg-muted/60 border-b">
-                  {["域", "类", "谓词", "实体行", "状态"].map((h) => (
-                    <th key={h} className="text-muted-foreground px-4 py-2 text-left text-[11.5px] font-medium">
+                  {["域", "类", "谓词", "实体行", "状态"].map((h, i) => (
+                    <th
+                      key={h}
+                      className={cn(
+                        "text-muted-foreground px-4 py-2 text-[11.5px] font-medium",
+                        i === 0 ? "text-left" : "text-center",
+                      )}
+                    >
                       {h}
                     </th>
                   ))}
@@ -258,10 +264,10 @@ export function DashboardPage() {
                         {row.domain}
                       </span>
                     </td>
-                    <td className="num px-4 py-2.5 text-right tabular-nums">{row.classes}</td>
-                    <td className="num px-4 py-2.5 text-right tabular-nums">{row.predicates}</td>
-                    <td className="num px-4 py-2.5 text-right tabular-nums">{row.count}</td>
-                    <td className="px-4 py-2.5">
+                    <td className="px-4 py-2.5 text-center text-xs tabular-nums">{row.classes}</td>
+                    <td className="px-4 py-2.5 text-center text-xs tabular-nums">{row.predicates}</td>
+                    <td className="px-4 py-2.5 text-center text-xs tabular-nums">{row.count}</td>
+                    <td className="px-4 py-2.5 text-center">
                       {row.disabledHere ? (
                         <span className="bg-destructive/10 text-destructive rounded-full px-2 py-0.5 text-[11px]">
                           链路禁用（{disabledLinks.length} 条）
@@ -285,7 +291,7 @@ export function DashboardPage() {
               </tbody>
             </table>
           </div>
-          <div className="border-border text-muted-foreground flex items-center gap-2 border-t px-4 py-2.5 text-[11px]">
+          <div className="border-border text-muted-foreground flex flex-none items-center gap-2 border-t px-4 py-2.5 text-[11px]">
             <GitBranch className="h-3 w-3" />
             跨域链路（cross_module）四条全禁用——单域闭环优先，跨域待业务触发（TODOS）
           </div>
@@ -331,8 +337,8 @@ export function DashboardPage() {
 
       {/* 三小卡——绿=校验 蓝=数据面 琥珀=抽取 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-3">
-        <Panel title="校验状态" tone={TONE_GREEN} icon={ShieldCheck}>
-          <div className="space-y-2.5 p-4 text-xs">
+        <Panel title="校验状态" tone={TONE_GREEN} icon={ShieldCheck} className="flex flex-col">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
               <span>国标符合性（5.3/5.4/附录A/§9）</span>
               <span
@@ -355,15 +361,15 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => go("validation")}
-              className="border-border bg-card hover:bg-muted mt-1 flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium"
+              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium"
             >
               进入校验中心 <ArrowRight className="h-3 w-3" />
             </button>
           </div>
         </Panel>
 
-        <Panel title="数据面" subtitle="registry 与图对账" tone={TONE_BLUE} icon={Database}>
-          <div className="space-y-2.5 p-4 text-xs">
+        <Panel title="数据面" subtitle="registry 与图对账" tone={TONE_BLUE} icon={Database} className="flex flex-col">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
               <span>registry 版本</span>
               <span className="font-mono">v{registryMetaQuery.data?.registry_version ?? "—"}</span>
@@ -376,7 +382,7 @@ export function DashboardPage() {
                   : "—"}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="mt-auto flex items-center gap-2">
               <button
                 type="button"
                 disabled={loadMutation.isPending}
@@ -418,7 +424,7 @@ export function DashboardPage() {
             </span>
           }
         >
-          <div className="space-y-2.5 p-4 text-xs">
+          <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <p className="text-muted-foreground leading-relaxed">
               抽取任务概念（队列/进度/置信度分布）待后端任务 API——当前生产线
               <span className="text-foreground font-mono"> regex/v1</span>，
@@ -427,7 +433,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => go("ingest")}
-              className="border-border bg-card hover:bg-muted flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium"
+              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium"
             >
               进入抽取导入 <ArrowRight className="h-3 w-3" />
             </button>
