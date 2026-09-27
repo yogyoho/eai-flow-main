@@ -5,6 +5,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
 
 /** 页头：菜单项图标 + 条款号 chip + 标题，下方一行描述（12px）；右侧动作区。 */
@@ -59,17 +60,23 @@ export function Chip({
   );
 }
 
-/** 卡片容器：卡面 + 细边 + 可选标题行。 */
+/** 卡片容器：卡面 + 细边 + 可选标题行。
+ *  tone（EAI-CUSTOM 2026-09-27）：传入色值时标题条带彩色圆点 + 5% 同色底——
+ *  多色彩区块标识（工作台总览多色改造），不传保持原样式。 */
 export function Panel({
   title,
   subtitle,
   actions,
+  tone,
+  icon: Icon,
   className,
   children,
 }: {
   title?: string;
   subtitle?: string;
   actions?: ReactNode;
+  tone?: string;
+  icon?: LucideIcon;
   className?: string;
   children: ReactNode;
 }) {
@@ -81,7 +88,23 @@ export function Panel({
       )}
     >
       {title ? (
-        <div className="border-border flex items-center gap-2.5 border-b px-4 py-3">
+        <div
+          className="border-border flex items-center gap-2.5 border-b px-4 py-3"
+          style={tone ? { background: withAlpha(tone, 0.05) } : undefined}
+        >
+          {/* 色相由图标承担；无图标时退化为色点（用户裁决：有图标不画点） */}
+          {tone && !Icon ? (
+            <span
+              className="h-2.5 w-2.5 flex-none rounded-[4px]"
+              style={{ background: tone }}
+            />
+          ) : null}
+          {Icon ? (
+            <Icon
+              className="h-4 w-4 flex-none"
+              style={tone ? { color: tone } : undefined}
+            />
+          ) : null}
           <b className="text-sm font-semibold">{title}</b>
           {subtitle ? (
             <span className="text-muted-foreground text-xs font-normal">

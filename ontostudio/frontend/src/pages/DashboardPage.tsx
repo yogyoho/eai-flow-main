@@ -15,12 +15,18 @@
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
+  BrainCircuit,
   Database,
+  FileInput,
   GitBranch,
+  GitMerge,
+  Layers,
   Loader2,
+  Network,
   PlayCircle,
   ShieldCheck,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useState } from "react";
 
 import {
@@ -38,7 +44,32 @@ import {
 } from "@/api/formal-api";
 import { fetchRegistryContent, fetchRegistryFiles } from "@/api/registry-api";
 import { PageHeader, Panel } from "@/pages/shared";
+import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
+
+// ── 多色彩系统（EAI-CUSTOM 2026-09-27）──
+// 与既有语义色同源的 Ant 家族色：蓝=主/实体 紫=关系 青=推理 琥珀=待审 绿=校验。
+// 用法纪律：色只落在图标 chip / 边框 / 5% 色底 / 圆点上，数字保持 ink 深色（对比度）。
+const TONE_BLUE = "#0746ff";
+const TONE_PURPLE = "#722ed1";
+const TONE_CYAN = "#13c2c2";
+const TONE_AMBER = "#faad14";
+const TONE_GREEN = "#52c41a";
+const TONE_RED = "#ff4d4f";
+/** 域行彩色圆点轮转（按 registry 文件序）。 */
+const DOMAIN_DOTS = [TONE_BLUE, TONE_PURPLE, TONE_CYAN, TONE_GREEN, TONE_AMBER, TONE_RED];
+/** 治理链左边框轮转。 */
+const CHAIN_TONES = [TONE_BLUE, TONE_PURPLE, TONE_CYAN];
+/** 小字号文本用深变体（WCAG 4.5:1）——色相不变、只提对比度（琥珀/青原值在白底不达标）。 */
+const TONE_TEXT: Record<string, string> = {
+  [TONE_BLUE]: "#0746ff",
+  [TONE_PURPLE]: "#722ed1",
+  [TONE_CYAN]: "#0e7490",
+  [TONE_AMBER]: "#ad6800",
+  [TONE_GREEN]: "#389e0d",
+  [TONE_RED]: "#cf1322",
+};
+const toneText = (tone: string) => TONE_TEXT[tone] ?? tone;
 
 function go(route: string) {
   window.location.hash = route;
@@ -150,13 +181,15 @@ export function DashboardPage() {
         }
       />
 
-      {/* 瓦片行 */}
+      {/* 瓦片行——四色标识：实体蓝 / 关系紫 / 推理青 / 待审琥珀 */}
       <div className="grid grid-cols-2 gap-3.5 lg:grid-cols-4">
         <Tile
           k="实体（dg_entities）"
           v={entAggQuery.isLoading ? null : entityTotal}
           unit="行"
           d={topDomain ? `最大域 ${topDomain.group ?? "—"} · ${topDomain.value} 行` : "—"}
+          tone={TONE_BLUE}
+          icon={Database}
           onClick={() => go("entities")}
         />
         <Tile
@@ -164,6 +197,8 @@ export function DashboardPage() {
           v={relAggQuery.isLoading ? null : relationTotal}
           unit="条"
           d="双端点齐备才入图"
+          tone={TONE_PURPLE}
+          icon={GitBranch}
         />
         <Tile
           k="推理物化三元组"
@@ -174,6 +209,8 @@ export function DashboardPage() {
               ? `闭包 ${inferQuery.data.duration_ms}ms`
               : "尚未运行 · 点击运行全量推理"
           }
+          tone={TONE_CYAN}
+          icon={BrainCircuit}
           onAction={inferQuery.isFetching ? undefined : () => inferQuery.refetch()}
           actionLabel={inferQuery.isFetching ? undefined : "运行推理"}
         />
@@ -182,6 +219,8 @@ export function DashboardPage() {
           v={pending ?? null}
           unit=""
           d={pending !== null && pending >= PENDING_REVIEW_LIMIT ? `已达拉取上限 ${PENDING_REVIEW_LIMIT}` : "点击进入消解审核 →"}
+          tone={TONE_AMBER}
+          icon={GitMerge}
           accent
           onClick={() => go("resolve")}
         />
@@ -189,7 +228,7 @@ export function DashboardPage() {
 
       {/* 域健康 + 治理链抽样 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
-        <Panel title="域健康" subtitle="registry × dg_* 聚合" className="overflow-hidden">
+        <Panel title="域健康" subtitle="registry × dg_* 聚合" tone={TONE_BLUE} icon={Layers} className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -202,13 +241,23 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {domainRows.map((row) => (
+                {domainRows.map((row, i) => {
+                  const dot = DOMAIN_DOTS[i % DOMAIN_DOTS.length] ?? TONE_BLUE;
+                  return (
                   <tr
                     key={row.domain}
                     className="border-border cursor-pointer border-b transition-colors last:border-b-0 hover:bg-muted"
                     onClick={() => go("modeler")}
                   >
-                    <td className="px-4 py-2.5 font-mono text-xs">{row.domain}</td>
+                    <td className="px-4 py-2.5">
+                      <span className="flex items-center gap-2 font-mono text-xs">
+                        <span
+                          className="h-2 w-2 flex-none rounded-full"
+                          style={{ background: dot }}
+                        />
+                        {row.domain}
+                      </span>
+                    </td>
                     <td className="num px-4 py-2.5 text-right tabular-nums">{row.classes}</td>
                     <td className="num px-4 py-2.5 text-right tabular-nums">{row.predicates}</td>
                     <td className="num px-4 py-2.5 text-right tabular-nums">{row.count}</td>
@@ -224,7 +273,8 @@ export function DashboardPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
                 {domainRows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-muted-foreground px-4 py-8 text-center text-xs">
@@ -244,6 +294,8 @@ export function DashboardPage() {
         <Panel
           title="治理链抽样"
           subtitle="covered_by_standard 推导"
+          tone={TONE_PURPLE}
+          icon={Network}
           actions={
             <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-[10px]">
               规划 · 示例数据
@@ -251,15 +303,25 @@ export function DashboardPage() {
           }
         >
           <ol className="flex flex-col gap-3 p-4 text-[13px]">
-            {CHAIN_SAMPLES.map((chain) => (
-              <li key={chain.ttl} className="border-primary/20 border-l-2 pl-3">
+            {CHAIN_SAMPLES.map((chain, i) => {
+              const tone = CHAIN_TONES[i % CHAIN_TONES.length] ?? TONE_BLUE;
+              return (
+              <li
+                key={chain.ttl}
+                className="border-l-2 pl-3"
+                style={{ borderColor: withAlpha(tone, 0.45) }}
+              >
                 <b className="text-[12.5px]">{chain.title}</b>
-                <span className="bg-primary/10 text-primary ml-2 rounded px-1.5 py-0.5 font-mono text-[10px]">
+                <span
+                  className="ml-2 rounded px-1.5 py-0.5 font-mono text-[10px]"
+                  style={{ background: withAlpha(tone, 0.1), color: toneText(tone) }}
+                >
                   {chain.rule}
                 </span>
                 <div className="text-muted-foreground mt-0.5 font-mono text-[11px]">{chain.ttl}</div>
               </li>
-            ))}
+              );
+            })}
           </ol>
           <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-[11px]">
             逐条物化可下钻（named graph 归属即触发轨迹）已入 TODOS「推理白盒化」——当前图面判据见导出互操作页。
@@ -267,9 +329,9 @@ export function DashboardPage() {
         </Panel>
       </div>
 
-      {/* 三小卡 */}
+      {/* 三小卡——绿=校验 蓝=数据面 琥珀=抽取 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-3">
-        <Panel title="校验状态">
+        <Panel title="校验状态" tone={TONE_GREEN} icon={ShieldCheck}>
           <div className="space-y-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
               <span>国标符合性（5.3/5.4/附录A/§9）</span>
@@ -300,7 +362,7 @@ export function DashboardPage() {
           </div>
         </Panel>
 
-        <Panel title="数据面" subtitle="registry 与图对账">
+        <Panel title="数据面" subtitle="registry 与图对账" tone={TONE_BLUE} icon={Database}>
           <div className="space-y-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
               <span>registry 版本</span>
@@ -348,6 +410,8 @@ export function DashboardPage() {
         <Panel
           title="抽取活动"
           subtitle="任务队列 · 规划中"
+          tone={TONE_AMBER}
+          icon={FileInput}
           actions={
             <span className="text-muted-foreground/70 border-border/70 rounded border border-dashed px-1.5 py-px font-mono text-[10px]">
               规划
@@ -375,12 +439,15 @@ export function DashboardPage() {
   );
 }
 
-/** 统计瓦片：k 指标名 / v 大数字（null→"—"）/ d 注脚；onClick 整卡可点；onAction 右上小动作。 */
+/** 统计瓦片（多色版）：tone 决定图标 chip/色底/边框色相，数字保持 ink 深色保证对比度。
+ *  k 指标名 / v 大数字（null→"—"）/ d 注脚；onClick 整卡可点；onAction 右上小动作。 */
 function Tile({
   k,
   v,
   unit,
   d,
+  tone,
+  icon: Icon,
   accent,
   onClick,
   onAction,
@@ -390,6 +457,8 @@ function Tile({
   v: number | null;
   unit: string;
   d: string;
+  tone: string;
+  icon: LucideIcon;
   accent?: boolean;
   onClick?: () => void;
   onAction?: () => void;
@@ -401,22 +470,36 @@ function Tile({
       onClick={onClick}
       disabled={!onClick}
       className={cn(
-        "border-border bg-card rounded-xl border p-3.5 text-left shadow-sm transition-colors",
-        onClick && "hover:border-primary/40 cursor-pointer",
+        "rounded-xl border p-3.5 text-left shadow-sm transition-all duration-200",
+        onClick && "hover:-translate-y-px cursor-pointer",
         !onClick && "cursor-default",
       )}
+      style={{
+        background: withAlpha(tone, 0.05),
+        borderColor: withAlpha(tone, 0.28),
+      }}
     >
-      <div className="text-muted-foreground text-xs font-medium">{k}</div>
+      <div className="flex items-center gap-2.5">
+        <span
+          className="grid h-9 w-9 flex-none place-items-center rounded-lg"
+          style={{ background: withAlpha(tone, 0.14) }}
+        >
+          <Icon className="h-[18px] w-[18px]" style={{ color: tone }} />
+        </span>
+        <span className="text-muted-foreground text-xs font-medium">{k}</span>
+      </div>
       <div
-        className={cn(
-          "mt-0.5 text-2xl font-semibold tracking-tight tabular-nums",
-          accent && v !== null && v > 0 ? "text-primary" : "text-foreground",
-        )}
+        className="mt-2 text-2xl font-semibold tracking-tight tabular-nums"
+        style={{ color: accent && v !== null && v > 0 ? toneText(tone) : undefined }}
       >
         {v === null ? "—" : v.toLocaleString()}
         {unit ? <small className="text-muted-foreground ml-1.5 text-xs font-normal">{unit}</small> : null}
       </div>
       <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[11px]">
+        <span
+          className="h-1.5 w-1.5 flex-none rounded-full"
+          style={{ background: withAlpha(tone, 0.55) }}
+        />
         <span className="truncate">{d}</span>
         {onAction ? (
           <span
@@ -427,7 +510,8 @@ function Tile({
               onAction();
             }}
             onKeyDown={(e) => e.key === "Enter" && onAction()}
-            className="text-primary ml-auto flex-none font-medium underline-offset-2 hover:underline"
+            className="ml-auto flex-none font-medium underline-offset-2 hover:underline"
+            style={{ color: toneText(tone) }}
           >
             {actionLabel}
           </span>
