@@ -1,51 +1,32 @@
-/* 复制自 frontend/src/extensions/ontology/components/ResolutionPanel.tsx（S2 Task 1）——仅 import 路径改本地，内容零改动。 */
+/* 复制自 frontend/src/extensions/ontology/components/ResolutionPanel.tsx（S2 Task 1）——
+ * 2026-09-27 按 docs/designs/ontostudio-frontend-redesign-20260926.html#resolve 完全移植：
+ * 布局 = 超管横幅 + 双列（左：待确认实体卡流 / 右：相似合并建议 + 四态契约表）。
+ * 数据流原样保留：pending 升序列表、按选中实体拉相似建议、确认/驳回四态（T4）、
+ * 合并/撤销（可回放）、mergedCount 由页面图快照传入。 */
 "use client";
 
 /**
- * 实体消解面板 (EAI-CUSTOM, plan semantic-map v2 Task 4 Step 4.2).
+ * 实体消解审核面板 (EAI-CUSTOM)。
  *
- * bid-quote 白卡细边 + INK 三级文字（浅色定版，同概览 tab 口径；零死色值——
- * chartTheme 常量 + withAlpha 派生 + Tailwind 语义类）。数据全部走 doc-graph
- * resolution REST（api 层 extension-relative 路径，authFetch 自动补前缀）：
- * - 顶部计数卡 ×2：待复核总数（pending query 的 count）/ 已合并实体（页面从
- *   图快照统计 graph_entity status==='merged' 传入，null = 快照未就绪 → "—"）；
- * - pending 列表（置信度升序）→ 点选行展开 Top5 相似建议 → 每条"合并到此"；
- * - 合并成功 → 刷新列表 + 行内"已合并，可撤销"横幅（撤销调 unmerge 再刷新）；
- * - merge/unmerge 成功后调 onRefreshGraph（页面 invalidate ["graph","full-load"]
- *   全量图查询——useReloadGraph 已由 vendored 层暴露，地图与"已合并数"卡随之更新）；
- *   query 失效用 ["ontology"] 前缀——概览 KPI 的 ["ontology","pending-review-count"]
- *   同前缀联动（评审 Fix 1：仅 ["ontology","resolution"] 会让概览 30s 内显示旧值）。
- * 错误接住（后端 routers.py 契约，前端不重复校验）：404 → 提示 + 自动刷新列表；
- * 409 → detail 文案直出；422 → "请求参数越界"。
+ * 数据全部走 doc-graph resolution REST + actions invoke（authFetch 自动补前缀）：
+ * - 左列待确认实体卡（置信度升序）：确认/驳回四态（成功绿勾 / degraded 黄警自愈指引 /
+ *   409 中性「状态已变更」/ 在途 spinner——eng-review T5① 契约）；
+ * - 点选卡片 → 右列加载该实体 Top5 相似建议（合并/不合并，undo 可回放）；
+ * - 合并/确认成功后 invalidate ["ontology"] + onRefreshGraph（图快照与 KPI 联动）。
+ * 错误接住（后端契约）：404 → 提示+自动刷新；409 → detail 直出；422 → 固定文案。
  */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   Check,
   CheckCircle2,
-  ChevronDown,
   GitMerge,
   Loader2,
   RefreshCw,
   Undo2,
-  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import {
-  ACCENT_SOFT,
-  AMBER,
-  BLUE,
-  CARD,
-  CARD_BORDER,
-  GREEN,
-  INK,
-  INK_2,
-  INK_3,
-  PAGE_BG,
-  RED,
-} from "@/components/chartTheme";
-import { StatCard } from "@/components/StatCard";
 import {
   fetchPending,
   fetchSuggestions,
@@ -61,6 +42,19 @@ import {
   type ActionInvokeResult,
   type ReviewDecision,
 } from "@/api/actions-api";
+import {
+  ACCENT_SOFT,
+  AMBER,
+  BLUE,
+  CARD,
+  CARD_BORDER,
+  GREEN,
+  INK,
+  INK_2,
+  INK_3,
+  PAGE_BG,
+  RED,
+} from "@/components/chartTheme";
 import { withAlpha } from "@/explorer/graphTheme";
 import { cn } from "@/lib/utils";
 
@@ -112,13 +106,15 @@ function resolutionErrorText(error: ApiError): string {
   return error.message || "请求失败，请稍后重试";
 }
 
-/** action 徽章配色：auto_merge = 绿（可直并），review = 琥珀（需人工）。 */
-function actionColor(action: "auto_merge" | "review"): string {
-  return action === "auto_merge" ? GREEN : AMBER;
+/** suggestion 徽章文案：auto_merge = 可直并，review = 需人工。 */
+function actionLabel(action: "auto_merge" | "review"): string {
+  return action === "auto_merge" ? "可直并" : "需人工";
 }
 
-function actionLabel(action: "auto_merge" | "review"): string {
-  return action === "auto_merge" ? "自动可并" : "建议复核";
+interface SuggestionsState {
+  loading: boolean;
+  error: ApiError | null;
+  data: SuggestionsResult | null;
 }
 
 export function ResolutionPanel({
@@ -128,10 +124,10 @@ export function ResolutionPanel({
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const [undoable, setUndoable] = useState<UndoableMerge | null>(null);
   const [reviewStates, setReviewStates] = useState<Record<string, ReviewUiState>>({});
   const setReviewState = (pk: string, next: ReviewUiState) =>
     setReviewStates((prev) => ({ ...prev, [pk]: next }));
-  const [undoable, setUndoable] = useState<UndoableMerge | null>(null);
 
   const pendingQuery = useQuery({
     queryKey: ["ontology", "resolution", "pending"],
@@ -190,7 +186,7 @@ export function ResolutionPanel({
     mutationFn: (mergeId: string) => unmergeEntities(mergeId),
     onSuccess: () => {
       setUndoable(null);
-      setNotice({ kind: "info", text: "已撤销合并，实体已还原为正式实体" });
+      setNotice({ kind: "info", text: "已撤销合并，实体已还原" });
       void queryClient.invalidateQueries({
         queryKey: ["ontology"],
       });
@@ -200,17 +196,14 @@ export function ResolutionPanel({
       const apiError = error as ApiError;
       if (apiError.status === 404) {
         setUndoable(null);
-        void queryClient.invalidateQueries({
-          queryKey: ["ontology"],
-        });
+        void queryClient.invalidateQueries({ queryKey: ["ontology"] });
       }
       setNotice({ kind: "error", text: resolutionErrorText(apiError) });
     },
   });
 
-  // 人审动作（确认/驳回）——人审闭环切片 T4（EAI-CUSTOM 2026-09-26）。
-  // 四态：成功绿勾 / degraded 黄警（自愈指引）/ 409 中性「状态已变更」/ 在途 spinner。
-  // 设计裁决（eng-review T5①）：409 也发生在已驳回/已合并场景，绝不能渲染为「已确认」。
+  // 人审动作（确认/驳回）——人审闭环切片 T4。四态：成功绿勾 / degraded 黄警（自愈
+  // 指引）/ 409 中性「状态已变更」（可能是已驳回/已合并，绝不渲染为已确认）/ 在途 spinner。
   const reviewMutation = useMutation({
     mutationFn: (vars: { pk: string; decision: ReviewDecision }) =>
       invokeReviewEntitySafe(vars.pk, vars.decision),
@@ -241,7 +234,7 @@ export function ResolutionPanel({
           text: "投影未生效（degraded）：业务状态已提交；管理员重跑全量装载即自动对账，数据无损失",
         });
       }
-      // 让行内按钮态被看见（1.2s）再刷新队列——成功/degraded 行都会离开待审列表
+      // 让卡片上的按钮态被看见（1.2s）再刷新队列——成功/degraded 卡都会离开待审列表
       //（DB 状态已 active/rejected，前置条件不再匹配）。
       window.setTimeout(() => {
         void queryClient.invalidateQueries({ queryKey: ["ontology"] });
@@ -293,424 +286,368 @@ export function ResolutionPanel({
   };
 
   const pendingTotal = pendingQuery.data?.count;
+  const selectedEntity = entities.find((e) => e.id === expandedId) ?? null;
 
   return (
-    <div
-      className="h-full overflow-y-auto"
-      data-testid="ontology-resolution-panel"
-    >
-      <div
-        className="space-y-5 p-6"
-        style={{ background: PAGE_BG, minHeight: "100%" }}
-      >
-        {/* 页头 */}
-        <div className="flex items-center gap-3">
-          <GitMerge className="h-5 w-5" style={{ color: BLUE }} />
-          <h1 className="text-[22px] font-bold" style={{ color: INK }}>
-            实体消解
-          </h1>
-        </div>
-
-        {/* KPI 行：待复核总数（REST count）/ 已合并数（图快照统计，页面传入） */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <div data-testid="kpi-resolution-pending">
-            <StatCard
-              label="待复核实体"
-              value={
-                pendingQuery.isError
-                  ? "—"
-                  : (pendingTotal ?? "…")
-              }
-              delta={
-                pendingTotal !== undefined &&
-                pendingTotal >= PENDING_REVIEW_LIMIT
-                  ? `已达拉取上限 ${PENDING_REVIEW_LIMIT}`
-                  : undefined
-              }
-            />
-          </div>
-          <div data-testid="kpi-resolution-merged">
-            <StatCard
-              label="已合并实体"
-              value={mergedCount ?? "—"}
-              delta="来自已加载图快照"
-            />
+    <div className="h-full overflow-y-auto" data-testid="ontology-resolution-panel">
+      <div className="space-y-4 p-6" style={{ background: PAGE_BG, minHeight: "100%" }}>
+        {/* 超管提示横幅（原型 warnb） */}
+        <div
+          className="flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-xs"
+          style={{ background: withAlpha(AMBER, 0.1), border: `1px solid ${withAlpha(AMBER, 0.45)}`, color: "#874d00" }}
+          data-testid="resolution-superadmin-banner"
+        >
+          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
+          <div>
+            <b>当前以 superadmin 操作（第一版仅超管可审）。</b>
+            正式审阅角色授权为后续批次；观察日可用{" "}
+            <span className="font-mono">roles_custom.yaml</span> overlay 临时授权真实审阅者。
           </div>
         </div>
 
-        {/* 待复核列表加载失败：错误 + 重试 */}
-        {pendingQuery.isError ? (
-          <div
-            className="flex items-center justify-between gap-3 rounded-[14px] px-4 py-3"
-            style={{
-              background: CARD,
-              border: `1px solid ${withAlpha(RED, 0.3)}`,
-            }}
-            data-testid="resolution-pending-error"
-          >
-            <p className="text-[13px]" style={{ color: RED }}>
-              待复核列表加载失败：
-              {(pendingQuery.error as ApiError).message || "网络错误"}
-            </p>
-            <button
-              type="button"
-              onClick={() => void pendingQuery.refetch()}
-              className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
-              style={{ background: ACCENT_SOFT, color: BLUE }}
-            >
-              重试
-            </button>
-          </div>
-        ) : null}
-
-        {/* 操作结果横幅：可撤销合并 / 错误与提示 */}
-        {undoable ? (
-          <div
-            className="flex items-center justify-between gap-3 rounded-[10px] px-3.5 py-2.5"
-            style={{
-              background: ACCENT_SOFT,
-              border: `1px solid ${withAlpha(BLUE, 0.25)}`,
-            }}
-            data-testid="resolution-undo-banner"
-          >
-            <p className="text-[13px]" style={{ color: BLUE }}>
-              已合并「{undoable.candidateName}」→「
-              {undoable.canonicalName}」，可撤销
-            </p>
-            <span className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                disabled={unmergeMutation.isPending}
-                onClick={() => unmergeMutation.mutate(undoable.mergeId)}
-                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50"
-                style={{ background: CARD, color: BLUE, border: `1px solid ${withAlpha(BLUE, 0.35)}` }}
-              >
-                {unmergeMutation.isPending ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Undo2 className="h-3 w-3" />
-                )}
-                撤销
-              </button>
-              <button
-                type="button"
-                aria-label="关闭提示"
-                onClick={() => setUndoable(null)}
-                style={{ color: INK_3 }}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </span>
-          </div>
-        ) : null}
+        {/* 顶部通知（info/error） */}
         {notice ? (
           <div
-            className="flex items-center justify-between gap-3 rounded-[10px] px-3.5 py-2.5"
-            style={{
-              background: notice.kind === "error" ? withAlpha(RED, 0.08) : ACCENT_SOFT,
-              border: `1px solid ${notice.kind === "error" ? withAlpha(RED, 0.3) : withAlpha(BLUE, 0.25)}`,
-            }}
+            className={cn(
+              "flex items-start gap-2.5 rounded-[12px] px-3.5 py-2.5 text-xs",
+              notice.kind === "error" ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
+            )}
             data-testid="resolution-notice"
           >
-            <p
-              className="text-[13px]"
-              style={{ color: notice.kind === "error" ? RED : BLUE }}
-            >
-              {notice.text}
-            </p>
-            <button
-              type="button"
-              aria-label="关闭提示"
-              onClick={() => setNotice(null)}
-              style={{ color: notice.kind === "error" ? RED : BLUE }}
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            {notice.kind === "error" ? (
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 flex-none" />
+            ) : (
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-none" />
+            )}
+            <span>{notice.text}</span>
           </div>
         ) : null}
 
-        {/* pending 列表（置信度升序行卡） */}
-        {pendingQuery.isLoading ? (
-          <div
-            className="flex flex-col items-center gap-2 py-16"
-            data-testid="resolution-loading"
-          >
-            <Loader2 className="h-5 w-5 animate-spin" style={{ color: INK_3 }} />
-            <p className="text-sm" style={{ color: INK_3 }}>
-              加载待复核实体…
-            </p>
-          </div>
-        ) : !pendingQuery.isError && entities.length === 0 ? (
-          <div
-            className="rounded-[14px] px-4 py-16 text-center"
-            style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
-            data-testid="resolution-empty"
-          >
-            <p className="text-sm" style={{ color: INK_2 }}>
-              暂无待复核实体 ✅
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2" data-testid="resolution-pending-list">
-            {entities.map((entity) => (
-              <PendingRow
-                key={entity.id}
-                entity={entity}
-                expanded={expandedId === entity.id}
-                suggestions={{
-                  loading: suggestionsQuery.isLoading,
-                  error: (suggestionsQuery.error as ApiError | null) ?? null,
-                  data: suggestionsQuery.data ?? null,
-                }}
-                mergePending={mergeMutation.isPending}
-                onToggle={() => handleToggleRow(entity.id)}
-                onMerge={handleMerge}
-                review={reviewStates[entity.id] ?? REVIEW_IDLE}
-                onReview={(decision) => handleReview(entity.id, decision)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** 相似建议查询的展开态投影（单一展开行共用面板级 query 结果）。 */
-interface SuggestionsState {
-  loading: boolean;
-  error: ApiError | null;
-  data: SuggestionsResult | null;
-}
-
-/** 单行待复核实体卡：头部行（名称/etype/置信度/id 短码）+ 人审动作条 + 展开时相似建议区。 */
-function PendingRow(props: {
-  entity: PendingPage["entities"][number];
-  expanded: boolean;
-  mergePending: boolean;
-  suggestions: SuggestionsState;
-  onToggle: () => void;
-  onMerge: (
-    candidateId: string,
-    canonicalId: string,
-    candidateName: string,
-    canonicalName: string,
-  ) => void;
-  review: ReviewUiState;
-  onReview: (decision: ReviewDecision) => void;
-}) {
-  const { entity, expanded, mergePending, suggestions, onToggle, onMerge, review, onReview } =
-    props;
-
-  return (
-    <div
-      className="rounded-[14px]"
-      style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}
-      data-testid="resolution-row"
-    >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left"
-      >
-        <span
-          className="min-w-0 flex-1 truncate text-[13.5px] font-medium"
-          style={{ color: INK }}
-          title={entity.canonical_name}
-        >
-          {entity.canonical_name}
-        </span>
-        <span
-          className="shrink-0 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium"
-          style={{ background: ACCENT_SOFT, color: BLUE }}
-        >
-          {entity.etype}
-        </span>
-        <span
-          className="w-10 shrink-0 text-right text-xs [font-variant-numeric:tabular-nums]"
-          style={{ color: INK_2 }}
-          title="抽取置信度"
-        >
-          {Number(entity.confidence).toFixed(2)}
-        </span>
-        <span
-          className="hidden w-[4.5rem] shrink-0 font-mono text-[10.5px] sm:inline"
-          style={{ color: INK_3 }}
-          title={entity.id}
-        >
-          {entity.id.slice(0, 8)}
-        </span>
-        <ChevronDown
-          className={cn(
-            "h-3.5 w-3.5 shrink-0 transition-transform",
-            expanded && "rotate-180",
-          )}
-          style={{ color: INK_3 }}
-        />
-      </button>
-
-      {/* 人审动作条（T4）：四态实现契约——成功绿勾 / degraded 黄警自愈指引 /
-          409 中性「状态已变更」（可能是已驳回/已合并，不渲染为已确认）/ 在途 spinner。 */}
-      {review.phase === "done" && review.outcome ? (
-        <div
-          className="flex items-center gap-2 border-t px-4 py-2.5"
-          style={{ borderColor: CARD_BORDER }}
-          data-testid="resolution-review-outcome"
-        >
-          {review.outcome === "ok" ? (
-            <>
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" style={{ color: GREEN }} />
-              <span className="text-xs font-medium" style={{ color: GREEN }}>
-                {review.decision === "reject"
-                  ? "已驳回归档：状态 = rejected（实体与提及保留）"
-                  : "已确认入图：断言图已更新"}
-              </span>
-            </>
-          ) : review.outcome === "degraded" ? (
-            <>
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" style={{ color: AMBER }} />
-              <span className="text-xs" style={{ color: INK_2 }}>
-                投影未生效（degraded）：业务状态已提交；管理员重跑全量装载即自动对账，数据无损失
-              </span>
-            </>
-          ) : (
-            <>
-              <RefreshCw className="h-3.5 w-3.5 shrink-0" style={{ color: INK_2 }} />
-              <span className="text-xs" style={{ color: INK_2 }}>
-                状态已变更（可能已驳回/已合并），请刷新
-              </span>
-            </>
-          )}
-        </div>
-      ) : (
-        <div
-          className="flex items-center gap-2 border-t px-4 py-2.5"
-          style={{ borderColor: CARD_BORDER }}
-        >
-          <button
-            type="button"
-            disabled={review.phase === "running"}
-            onClick={() => onReview("confirm")}
-            data-testid="resolution-confirm"
-            className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ background: BLUE }}
-          >
-            {review.phase === "running" && review.decision === "confirm" ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Check className="h-3 w-3" />
-            )}
-            确认入图
-          </button>
-          <button
-            type="button"
-            disabled={review.phase === "running"}
-            onClick={() => onReview("reject")}
-            data-testid="resolution-reject"
-            className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
-            style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
-          >
-            {review.phase === "running" && review.decision === "reject" ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <X className="h-3 w-3" />
-            )}
-            驳回
-          </button>
-          <span className="ml-auto text-[10.5px]" style={{ color: INK_3 }}>
-            确认 → 断言图即时生效；投影失败标黄并给出自愈指引
-          </span>
-        </div>
-      )}
-
-      {expanded ? (
-        <div
-          className="space-y-2 px-4 pt-1 pb-3.5"
-          data-testid="resolution-suggestions"
-        >
-          <p className="text-xs" style={{ color: INK_3 }}>
-            相似建议（同类型 Top 5）
-          </p>
-          {suggestions.loading ? (
-            <div className="flex items-center gap-2 py-3">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: INK_3 }} />
-              <span className="text-xs" style={{ color: INK_3 }}>
-                计算相似建议…
+        {/* 双列主区 */}
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+          {/* 左：待确认实体 */}
+          <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
+            <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
+              <b className="text-sm font-semibold" style={{ color: INK }}>
+                待确认实体
+              </b>
+              {pendingTotal !== undefined && pendingTotal > 0 ? (
+                <span
+                  className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                  style={{ background: withAlpha(AMBER, 0.15), color: "#ad6800" }}
+                >
+                  {pendingTotal} 条待审
+                  {pendingTotal >= PENDING_REVIEW_LIMIT ? `（已达拉取上限 ${PENDING_REVIEW_LIMIT}）` : ""}
+                </span>
+              ) : null}
+              <span className="text-muted-foreground/80 ml-auto hidden font-mono text-[10px] sm:inline">
+                POST /actions/invoke
               </span>
             </div>
-          ) : suggestions.error ? (
-            <p className="py-2 text-xs" style={{ color: RED }}>
-              相似建议加载失败：
-              {suggestions.error.message || "网络错误"}
-            </p>
-          ) : (suggestions.data?.suggestions.length ?? 0) === 0 ? (
-            <p className="py-2 text-xs" style={{ color: INK_3 }}>
-              未发现达到阈值的相近实体
-            </p>
-          ) : (
-            suggestions.data?.suggestions.map((suggestion) => {
-              const color = actionColor(suggestion.action);
-              const candidateName =
-                suggestions.data?.entity.canonical_name ??
-                entity.canonical_name;
-              return (
-                <div
-                  key={suggestion.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[10px] px-3 py-2"
-                  style={{ background: PAGE_BG, border: `1px solid ${CARD_BORDER}` }}
-                  data-testid="resolution-suggestion"
+
+            {pendingQuery.isError ? (
+              <div className="flex items-center justify-between gap-3 px-4 py-4" data-testid="resolution-pending-error">
+                <p className="text-[13px]" style={{ color: RED }}>
+                  待复核列表加载失败：
+                  {(pendingQuery.error as ApiError).message || "网络错误"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void pendingQuery.refetch()}
+                  className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium"
+                  style={{ background: ACCENT_SOFT, color: BLUE }}
                 >
-                  <span
-                    className="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-semibold [font-variant-numeric:tabular-nums]"
-                    style={{ background: withAlpha(color, 0.12), color }}
-                    title="名称相似度"
-                  >
-                    {(suggestion.similarity * 100).toFixed(1)}%
-                  </span>
-                  <span
-                    className="shrink-0 rounded-md px-1.5 py-0.5 text-[10.5px]"
-                    style={{ background: withAlpha(color, 0.12), color }}
-                  >
-                    {actionLabel(suggestion.action)}
-                  </span>
-                  <span className="min-w-0 flex-1 text-xs leading-snug">
-                    <span style={{ color: INK_2 }} title={candidateName}>
-                      {candidateName}
-                    </span>
-                    <span className="mx-1.5" style={{ color: INK_3 }}>
-                      →
-                    </span>
-                    <span
-                      className="font-medium"
-                      style={{ color: INK }}
-                      title={suggestion.canonical_name}
+                  重试
+                </button>
+              </div>
+            ) : pendingQuery.isLoading ? (
+              <div className="text-muted-foreground flex items-center justify-center gap-2 px-4 py-10 text-xs">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                加载待审列表…
+              </div>
+            ) : entities.length === 0 ? (
+              <div className="text-muted-foreground px-4 py-10 text-center text-xs">
+                暂无待复核实体 ✅
+              </div>
+            ) : (
+              <div className="flex max-h-[640px] flex-col gap-2.5 overflow-y-auto p-3" data-testid="resolution-pending-list">
+                {entities.map((entity) => {
+                  const review = reviewStates[entity.id] ?? REVIEW_IDLE;
+                  const selected = expandedId === entity.id;
+                  return (
+                    <div
+                      key={entity.id}
+                      className={cn(
+                        "rounded-[12px] border transition-colors",
+                        selected ? "bg-primary/5" : "bg-background hover:bg-muted/60",
+                      )}
+                      style={{ borderColor: selected ? withAlpha(BLUE, 0.4) : CARD_BORDER }}
+                      data-testid="resolution-row"
                     >
-                      {suggestion.canonical_name}
-                    </span>
+                      {/* 卡头：点选 = 加载该实体相似建议 */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleRow(entity.id)}
+                        aria-pressed={selected}
+                        className="flex w-full items-center gap-2 px-3.5 pt-3 text-left"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" title={entity.canonical_name}>
+                          {entity.canonical_name}
+                        </span>
+                        <span className="bg-secondary text-secondary-foreground shrink-0 rounded-md px-1.5 py-0.5 font-mono text-[10.5px]">
+                          {entity.etype}
+                        </span>
+                        <span
+                          className="w-10 shrink-0 text-right font-mono text-[11.5px] font-semibold tabular-nums"
+                          style={{ color: entity.confidence < 0.8 ? "#ad6800" : INK_2 }}
+                          title="抽取置信度"
+                        >
+                          {Number(entity.confidence).toFixed(2)}
+                        </span>
+                        <span
+                          className="hidden w-[4.5rem] shrink-0 font-mono text-[10.5px] sm:inline"
+                          style={{ color: INK_3 }}
+                          title={entity.id}
+                        >
+                          {entity.id.slice(0, 8)}
+                        </span>
+                      </button>
+                      <div className="text-muted-foreground px-3.5 pt-1 font-mono text-[10.5px]" style={{ color: INK_3 }}>
+                        {entity.domain} · pending_review
+                      </div>
+
+                      {/* 动作行：确认/驳回 + 四态结果 */}
+                      <div className="flex flex-wrap items-center gap-2 px-3.5 pb-3 pt-2.5">
+                        {review.phase === "done" && review.outcome ? (
+                          review.outcome === "ok" ? (
+                            <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: GREEN }} data-testid="resolution-review-outcome">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              {review.decision === "reject" ? "已驳回归档（rejected，实体与提及保留）" : "已确认入图（断言图已更新）"}
+                            </span>
+                          ) : review.outcome === "degraded" ? (
+                            <span className="flex items-center gap-1.5 text-xs" style={{ color: "#ad6800" }}>
+                              <AlertTriangle className="h-3.5 w-3.5 flex-none" style={{ color: AMBER }} />
+                              投影未生效（degraded）：已提交；管理员重跑全量装载即自动对账，数据无损失
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 text-xs" style={{ color: INK_2 }}>
+                              <RefreshCw className="h-3.5 w-3.5 flex-none" />
+                              状态已变更（可能已驳回/已合并），请刷新
+                            </span>
+                          )
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              disabled={review.phase === "running"}
+                              onClick={() => handleReview(entity.id, "confirm")}
+                              data-testid="resolution-confirm"
+                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                              style={{ background: BLUE }}
+                            >
+                              {review.phase === "running" && review.decision === "confirm" ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Check className="h-3 w-3" />
+                              )}
+                              确认入图
+                            </button>
+                            <button
+                              type="button"
+                              disabled={review.phase === "running"}
+                              onClick={() => handleReview(entity.id, "reject")}
+                              data-testid="resolution-reject"
+                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                              style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
+                            >
+                              {review.phase === "running" && review.decision === "reject" ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : null}
+                              驳回
+                            </button>
+                            <span className="text-muted-foreground/80 text-[10.5px]">
+                              确认 → status 强制翻转为 active，断言图即时生效
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: CARD_BORDER }}>
+              <span className="text-muted-foreground text-[10.5px]">
+                逐条确认即时落图；批量确认已入 TODOS「批量确认摊销」
+              </span>
+              <button
+                type="button"
+                disabled
+                title="规划中（TODOS·批量摊销）"
+                className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs font-medium opacity-60"
+              >
+                批量确认（{pendingTotal ?? 0} 条）{" "}
+                <span className="font-mono text-[10px] opacity-80">TODOS·批量摊销</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 右列：相似合并建议 + 四态契约表 */}
+          <div className="flex flex-col gap-4">
+            <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
+              <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
+                <b className="text-sm font-semibold" style={{ color: INK }}>
+                  相似实体合并建议
+                </b>
+                {selectedEntity ? (
+                  <span className="text-muted-foreground truncate text-[11px]" title={selectedEntity.canonical_name}>
+                    · {selectedEntity.canonical_name}
+                  </span>
+                ) : null}
+                <span className="text-muted-foreground/80 ml-auto hidden font-mono text-[10px] sm:inline">
+                  GET /doc-graph/resolution/suggestions
+                </span>
+              </div>
+              <div className="flex flex-col gap-2.5 p-3" data-testid="resolution-suggestions">
+                {!expandedId ? (
+                  <div className="text-muted-foreground px-2 py-8 text-center text-xs leading-loose">
+                    ← 在左侧点选一张待审卡
+                    <br />
+                    查看它的 Top 5 相似建议
+                  </div>
+                ) : suggestionsQuery.isLoading ? (
+                  <div className="text-muted-foreground flex items-center justify-center gap-2 px-2 py-6 text-xs">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: INK_3 }} />
+                    计算相似建议…
+                  </div>
+                ) : suggestionsQuery.error ? (
+                  <p className="text-destructive px-2 py-4 text-xs">
+                    建议加载失败：{(suggestionsQuery.error as ApiError).message}
+                  </p>
+                ) : (suggestionsQuery.data?.suggestions ?? []).length === 0 ? (
+                  <div className="text-muted-foreground px-2 py-6 text-center text-xs">
+                    无相似建议（同类型相似度均低于阈值）
+                  </div>
+                ) : (
+                  (suggestionsQuery.data?.suggestions ?? []).map((sug) => (
+                    <div key={sug.id} className="rounded-[12px] border p-3" style={{ borderColor: CARD_BORDER }}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold" style={{ color: INK }}>
+                          {sug.canonical_name}
+                        </span>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10.5px] font-medium"
+                          style={{
+                            background: withAlpha(sug.action === "auto_merge" ? GREEN : AMBER, 0.12),
+                            color: sug.action === "auto_merge" ? "#389e0d" : "#ad6800",
+                          }}
+                        >
+                          {actionLabel(sug.action)}
+                        </span>
+                        <span className="font-mono text-[11.5px] font-semibold tabular-nums" style={{ color: INK_2 }}>
+                          {sug.similarity.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={mergeMutation.isPending}
+                          onClick={() =>
+                            handleMerge(sug.id, expandedId, sug.canonical_name, selectedEntity?.canonical_name ?? "")
+                          }
+                          className="bg-primary text-primary-foreground hover:opacity-90 flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium disabled:opacity-50"
+                        >
+                          {mergeMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <GitMerge className="h-3 w-3" />}
+                          合并
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedId(null)}
+                          className="border-border bg-card text-foreground hover:bg-muted rounded-md border px-2.5 py-1 text-xs"
+                        >
+                          不合并
+                        </button>
+                        <span className="text-muted-foreground/80 text-[10px]">
+                          POST /resolution/merge · undo 可回放
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              {/* 撤销合并横幅 */}
+              {undoable ? (
+                <div
+                  className="mx-3 mb-3 flex flex-wrap items-center gap-2 rounded-[10px] px-3 py-2.5 text-xs"
+                  style={{ background: withAlpha(GREEN, 0.08), border: `1px solid ${withAlpha(GREEN, 0.35)}` }}
+                  data-testid="resolution-undo"
+                >
+                  <Undo2 className="h-3.5 w-3.5 flex-none" style={{ color: GREEN }} />
+                  <span style={{ color: INK }}>
+                    已合并 <b>{undoable.candidateName}</b> → {undoable.canonicalName}
                   </span>
                   <button
                     type="button"
-                    disabled={mergePending}
-                    onClick={() =>
-                      onMerge(
-                        entity.id,
-                        suggestion.id,
-                        candidateName,
-                        suggestion.canonical_name,
-                      )
-                    }
-                    className="shrink-0 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-                    style={{ background: BLUE }}
+                    disabled={unmergeMutation.isPending}
+                    onClick={() => unmergeMutation.mutate(undoable.mergeId)}
+                    className="ml-auto flex items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-medium disabled:opacity-50"
+                    style={{ color: BLUE, borderColor: withAlpha(BLUE, 0.4) }}
                   >
-                    合并到此
+                    {unmergeMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                    撤销
                   </button>
                 </div>
-              );
-            })
-          )}
+              ) : null}
+              <div className="text-muted-foreground flex items-center justify-between border-t px-4 py-2 text-[10.5px]" style={{ borderColor: CARD_BORDER }}>
+                <span>已合并实体（图快照）</span>
+                <span className="font-mono tabular-nums">{mergedCount ?? "—"}</span>
+              </div>
+            </div>
+
+            <div className="rounded-[14px]" style={{ background: CARD, border: `1px solid ${CARD_BORDER}` }}>
+              <div className="border-b px-4 py-3" style={{ borderColor: CARD_BORDER }}>
+                <b className="text-sm font-semibold" style={{ color: INK }}>
+                  操作反馈四态（实现契约）
+                </b>
+              </div>
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-border bg-muted/60 border-b" style={{ borderColor: CARD_BORDER }}>
+                    {["态", "触发", "呈现"].map((h) => (
+                      <th key={h} className="text-muted-foreground px-4 py-2 text-left text-[11px] font-medium">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
+                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: GREEN }} />成功</td>
+                    <td className="px-2 py-2 font-mono text-[10.5px]">projected:true</td>
+                    <td className="px-2 py-2">绿勾 + 行内「已入图」；图浏览可立即看到</td>
+                  </tr>
+                  <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
+                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: AMBER }} />degraded</td>
+                    <td className="px-2 py-2 font-mono text-[10.5px]">projected:false + errors</td>
+                    <td className="px-2 py-2">黄警 + 明细 + 「重跑全量装载即自动对账（数据无损失）」</td>
+                  </tr>
+                  <tr className="border-border/60 border-b" style={{ borderColor: CARD_BORDER }}>
+                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: INK_3 }} />冲突 409</td>
+                    <td className="px-2 py-2 font-mono text-[10.5px]">前置条件不满足</td>
+                    <td className="px-2 py-2">中性提示「状态已变更，请刷新」（不得渲染为已确认）</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: BLUE }} />在途</td>
+                    <td className="px-2 py-2 font-mono text-[10.5px]">invoke 进行中</td>
+                    <td className="px-2 py-2">按钮 disabled + spinner（同步投影秒级等待）</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 }
