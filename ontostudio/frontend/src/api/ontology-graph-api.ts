@@ -137,6 +137,32 @@ export interface ObjectsPage {
   next_cursor: string | null;
 }
 
+/** 聚合行：group = 分组列值（可见列），value = 聚合结果。 */
+export interface AggregateRow {
+  group: string | null;
+  value: number;
+}
+
+/** POST /ontology/aggregate：按可见列分组计数（工作台总览域健康/实体关系计数数据源）。 */
+export async function fetchAggregate(
+  objectType: string,
+  groupBy: string,
+  opts?: { signal?: AbortSignal },
+): Promise<AggregateRow[]> {
+  const res = await authFetch<{
+    data?: Array<{ group: string | null; value: number }>;
+  }>(`${BASE}/aggregate`, {
+    method: "POST",
+    body: JSON.stringify({
+      object_type: objectType,
+      group_by: groupBy,
+      metric: "count",
+    }),
+    signal: opts?.signal,
+  });
+  return res.data ?? [];
+}
+
 /** 对象类型实例检索（实体库页数据源；q 走 searchable 属性 ILIKE，cursor 不透明透传）。 */
 export async function fetchObjects(
   apiName: string,

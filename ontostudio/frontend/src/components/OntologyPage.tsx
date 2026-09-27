@@ -74,6 +74,9 @@ function OntologyWorkspace({
   const [summary, setSummary] = useState<GraphLoadSummary | null>(null);
   const [view, setView] = useState<PageView>(initialView);
   const [colorByCommunity, setColorByCommunity] = useState(false);
+  // EAI-CUSTOM(2026-09-27 原型重构): T2A 状态可视化——按状态着色 + 只看已确认过滤
+  const [colorByStatus, setColorByStatus] = useState(false);
+  const [activeOnly, setActiveOnly] = useState(false);
   const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
 
   // 视图切换统一走 changeView：内部状态 + 通知外壳（AppShell 同步侧栏高亮/hash）
@@ -216,20 +219,50 @@ function OntologyWorkspace({
         </div>
         <span className="flex-1" />
         {view === "map" ? (
-          <button
-            type="button"
-            aria-pressed={colorByCommunity}
-            onClick={() => setColorByCommunity((previous) => !previous)}
-            data-testid="community-color-toggle"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
-              colorByCommunity
-                ? "border-primary/40 bg-primary/10 text-primary"
-                : "border-border text-muted-foreground hover:text-foreground",
-            )}
-          >
-            社区着色
-          </button>
+          <>
+            <button
+              type="button"
+              aria-pressed={colorByStatus}
+              onClick={() => setColorByStatus((previous) => !previous)}
+              data-testid="status-color-toggle"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                colorByStatus
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              状态着色
+            </button>
+            <button
+              type="button"
+              aria-pressed={activeOnly}
+              onClick={() => setActiveOnly((previous) => !previous)}
+              data-testid="active-only-toggle"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                activeOnly
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              只看已确认
+            </button>
+            <button
+              type="button"
+              aria-pressed={colorByCommunity}
+              onClick={() => setColorByCommunity((previous) => !previous)}
+              data-testid="community-color-toggle"
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs transition-colors",
+                colorByCommunity
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              社区着色
+            </button>
+          </>
         ) : null}
         <span
           className="border-border text-muted-foreground inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-[11px] whitespace-nowrap tabular-nums"
@@ -251,6 +284,8 @@ function OntologyWorkspace({
               onReady={handleCanvasReady}
               onSummary={handleSummary}
               colorByCommunity={colorByCommunity}
+              colorByStatus={colorByStatus}
+              activeOnly={activeOnly}
             />
           </div>
           <aside className="border-border bg-card flex w-[300px] shrink-0 flex-col border-l">

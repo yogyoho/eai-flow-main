@@ -78,3 +78,12 @@
 - **Cons:** 两类规则的 provenance 能力不对称（owlrl 内置规则需差分归因，工程量集中在「为什么没推出来」这类反事实解释）；CQ 答案匹配做精确匹配先（语义匹配是无底洞，明确不做进本条）。
 - **Context:** 2026-09-26 会话页面盘点（设计 docs/designs/2026-09-26-ontostudio-review-loop-closure.md「页面分析」节）；建模器 ModelerPage 已是真编辑闭环（registry-content validate/save），推理是建模验证的下游——本体改完→推理→**看懂**，最后一步现在缺失。**触发条件（任一）：①本体建模用户（非实现者本人）第一次问「这条结论哪来的」；②axiom 改动开始需要回归验证；③国标符合性评审要求 CQ 证据。**
 - **Depends on / blocked by:** 人审闭环切片（`docs/designs/2026-09-26-ontostudio-review-loop-closure.md`）落地——数据先能沉淀，推理才有稳定输入；与 relation 审批 TODO 无硬依赖但同期做可共享解释视图。
+
+## TODO: OntoStudio 抽取任务 API（任务队列/进度概念）
+
+- **What:** 后端补「抽取任务」实体与 REST 面（任务行：来源线程/文档、域 profile、状态 排队/抽取中%/完成、实体/关系/提及计数），供 08 抽取导入页任务队列表、置信度直方图（按任务过滤）消费；抽取动作本身复用既有 regex/v1 确定性抽取器 + ingest 管线。
+- **Why:** 2026-09-26 页面盘点定案的真缺口——`doc_graph/ingest.py` 是内部装载器（单事务入库），没有「任务」概念；08 页的任务表/进度条目前只能是静态示例（已标注 规划）。缺它则多文档批量抽取无观测点（卡在哪篇、失败重试）只能翻后端日志。
+- **Pros:** 批量抽取可观测（进度/失败/重试入口）；置信度直方图与证据链引文获得真实数据源；为方案 C（agent 预审分层）的「抽取→预审→人审」流水线提供任务锚点。
+- **Cons:** 新表（dg_extraction_tasks）+ 状态机（排队/运行/完成/失败）+ 与主系统线程的来源关联字段；08 页从静态转真需要前后端同步动。
+- **Context:** 2026-09-26 会话页面盘点（设计 docs/designs/2026-09-26-ontostudio-review-loop-closure.md「Status Quo」节）；IngestPage 原型稿已按真任务概念画好（docs/designs/ontostudio-frontend-redesign-20260926.html#ingest），后端就绪即可接线。**触发条件：多文档批量抽取场景实际出现（≥3 篇/批），或用户抱怨「不知道抽到哪了」。**
+- **Depends on / blocked by:** 人审闭环切片已落地（2026-09-27，2ae60a40b/41504e3cb）——任务产出与待审队列已能衔接；无其他前置。

@@ -22,6 +22,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { fetchPendingReviewCount } from "@/api/ontology-graph-api";
 import { OntologyPage, type PageView } from "@/components/OntologyPage";
+import { DashboardPage } from "@/pages/DashboardPage";
 import { EntitiesPage } from "@/pages/EntitiesPage";
 import { ExportPage } from "@/pages/ExportPage";
 import { IngestPage } from "@/pages/IngestPage";
@@ -41,9 +42,11 @@ type RouteId =
   | "ingest"
   | "export";
 
-/** 知识层三页 → OntologyPage 内部视图；onViewChange 反向映射回路由。 */
+/** 知识层路由 → OntologyPage 内部视图；onViewChange 反向映射回路由。
+ *  EAI-CUSTOM(2026-09-27): dashboard 改为独立 DashboardPage（运营仪表盘，
+ *  见 pages/DashboardPage.tsx），不再走 OntologyPage overview 视图——
+ *  graph/resolve 仍常驻挂载保 sigma 画布。 */
 const ROUTE_VIEW: Partial<Record<RouteId, PageView>> = {
-  dashboard: "overview",
   graph: "map",
   resolve: "resolution",
 };
@@ -213,15 +216,15 @@ export function AppShell() {
       </aside>
 
       <main className="min-h-0 min-w-0 flex-1">
-        {/* 知识层三视图常驻挂载：切骨架页时仅隐藏，保 sigma 画布/查询状态。
-            总览路由 overviewOnly——剥 语义地图头/视图切换 tab/状态条，只留概览内容区 */}
+        {/* graph/resolve 常驻挂载：切走时仅隐藏，保 sigma 画布/查询状态。
+            dashboard 为独立运营仪表盘（DashboardPage）。 */}
         <div className={cn("h-full min-h-0", knowledgeView ? "" : "hidden")}>
           <OntologyPage
             initialView={knowledgeView ?? "map"}
             onViewChange={(view) => go(VIEW_ROUTE[view])}
-            overviewOnly={route === "dashboard"}
           />
         </div>
+        {route === "dashboard" ? <DashboardPage /> : null}
         {route === "entities" ? <EntitiesPage /> : null}
         {route === "modeler" ? <ModelerPage /> : null}
         {route === "reasoning" ? <ReasoningPage /> : null}

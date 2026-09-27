@@ -67,6 +67,20 @@ interface CommunityLegendItem {
   color: string;
 }
 
+/** 状态图例行（T2A 世界观：断言图含全行含状态）。 */
+interface StatusLegendItem {
+  status: string;
+  size: number;
+  color: string;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  active: "已确认",
+  pending_review: "待审",
+  rejected: "已驳回",
+  merged: "已合并",
+};
+
 const DISPLAY_META: GraphDisplayMeta = {
   layoutMode: "base",
   positionSource: "store",
@@ -121,6 +135,11 @@ export interface OntologyGraphCanvasProps {
   onSummary?: (summary: GraphLoadSummary | null) => void;
   /** 开启后按 Louvain 社区给节点着色（chartTheme 家族色轮转），关闭恢复语义色。 */
   colorByCommunity?: boolean;
+  /** EAI-CUSTOM(2026-09-27 原型重构): 按抽取状态着色（T2A 世界观——断言图含全行含状态）：
+   *  pending 琥珀 / rejected 红 / merged 灰，active 与未知类型保持语义色。 */
+  colorByStatus?: boolean;
+  /** 只看已确认：非 active 节点透明化（视觉隐藏；共享 store 不删节点）。 */
+  activeOnly?: boolean;
   className?: string;
 }
 
@@ -130,6 +149,8 @@ export function OntologyGraphCanvas({
   onReady,
   onSummary,
   colorByCommunity = false,
+  colorByStatus = false,
+  activeOnly = false,
   className,
 }: OntologyGraphCanvasProps) {
   const fetchers = useMemo(() => makeExplorerFetchers(), []);
@@ -171,91 +192,172 @@ export function OntologyGraphCanvas({
     void loadQuery.refetch();
   };
 
-  // ── 社区着色（semantic-map v2 Task 3）────────────────────────────
-  // 开：改写节点 color/baseColor 系列为社区色（原值存恢复表），requestRender 重着色；
-  // 关/图重载：恢复表原位回写。store 是共享单例，恢复表保证语义色可逆。
+  // ── 显示模式改色（社区 / 状态 / 只看已确认）────────────────────────────
+  // 单一 effect 统一三态 + 共享恢复表：多模式叠加时恢复表只会保存"进入本模式前"
+  // 的属性，关闭时原位回写——避免模式链式切换把上一模式的颜色误存为语义色。
+  // 优先级：只看已确认（过滤）> 按状态着色 > 社区着色 > 语义色。
+  // 状态来源 = 图快照 properties.status（graph_entity 投影含 status；其他对象类型
+  // 无该字段 → 保持语义色）。
   const colorRestoreRef = useRef<Map<string, Partial<NodeAttributes>> | null>(
     null,
   );
   const [communityLegend, setCommunityLegend] = useState<CommunityLegendItem[]>(
     [],
   );
+  const [statusLegend, setStatusLegend] = useState<StatusLegendItem[]>([]);
 
   useEffect(() => {
     if (!loadQuery.data) {
       return;
     }
-    if (!colorByCommunity) {
-      const restore = colorRestoreRef.current;
-      if (!restore) {
-        return;
-      }
+    const restore = colorRestoreRef.current;
+    if (restore) {
       restore.forEach((previous, nodeId) => {
         if (graph.hasNode(nodeId)) {
           graph.mergeNodeAttributes(nodeId, previous);
         }
       });
       colorRestoreRef.current = null;
-      setCommunityLegend([]);
+    }
+    setCommunityLegend([]);
+    setStatusLegend([]);
+    if (!colorByCommunity && !colorByStatus && !activeOnly) {
       canvasRef.current?.requestRender();
       return;
     }
-    // 开启（或开启状态下图重载——store 已被 clearGraph 清空重建，旧恢复表作废）
+
     const { nodes, edges } = readGraphSnapshot();
-    const assignments = communityAssignments(nodes, edges);
-    if (assignments.size === 0) {
-      return;
-    }
-    const sizeByCommunity = new Map<number, number>();
-    assignments.forEach((community) => {
-      sizeByCommunity.set(community, (sizeByCommunity.get(community) ?? 0) + 1);
-    });
-    const ranked = [...sizeByCommunity.entries()].sort(
-      (left, right) => right[1] - left[1] || left[0] - right[0],
+    const statusById = new Map(
+      nodes.map((node) => [node.id, String(node.properties?.status ?? "")]),
     );
-    const colorByCommunityId = new Map<number, string>();
-    ranked.forEach(([community], index) => {
-      // EAI: fallback satisfies noUncheckedIndexedAccess — index is total (modulo palette.length)
-      colorByCommunityId.set(
-        community,
-        COMMUNITY_NODE_PALETTE[index % COMMUNITY_NODE_PALETTE.length] ?? BLUE,
-      );
-    });
-    const restore = new Map<string, Partial<NodeAttributes>>();
-    graph.forEachNode((nodeId) => {
+
+    // 恢复表：记录将被改写的全部可视属性（含 label——过滤模式要清标签）
+    const nextRestore = new Map<string, Partial<NodeAttributes>>();
+    const remember = (nodeId: string) => {
+      if (nextRestore.has(nodeId)) return;
       const attrs = graph.getNodeAttributes(nodeId) as NodeAttributes;
-      restore.set(nodeId, {
+      nextRestore.set(nodeId, {
         color: attrs.color,
         baseColor: attrs.baseColor,
         mutedColor: attrs.mutedColor,
         glowColor: attrs.glowColor,
         strokeColor: attrs.strokeColor,
         borderColor: attrs.borderColor,
+        label: attrs.label,
       });
-      const color =
-        colorByCommunityId.get(assignments.get(nodeId) ?? -1) ??
-        attrs.baseColor ??
-        "";
-      graph.mergeNodeAttributes(nodeId, {
-        color,
-        baseColor: color,
-        mutedColor: withAlpha(color, GRAPH_THEME.nodes.mutedAlpha),
-        glowColor: withAlpha(color, 0.24),
-        strokeColor: color,
-        borderColor: color,
+    };
+
+    const statusCounts = new Map<string, number>();
+
+    if (colorByStatus) {
+      graph.forEachNode((nodeId) => {
+        const status = statusById.get(nodeId) ?? "";
+        if (status) {
+          statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
+        }
+        const color =
+          status === "pending_review"
+            ? AMBER
+            : status === "rejected"
+              ? RED
+              : status === "merged"
+                ? INK_2
+                : "";
+        if (!color) return true; // active / 无状态字段 → 保持语义色
+        remember(nodeId);
+        graph.mergeNodeAttributes(nodeId, {
+          color,
+          baseColor: color,
+          mutedColor: withAlpha(color, GRAPH_THEME.nodes.mutedAlpha),
+          glowColor: withAlpha(color, 0.24),
+          strokeColor: color,
+          borderColor: color,
+        });
+        return true;
       });
-      return true;
-    });
-    colorRestoreRef.current = restore;
-    setCommunityLegend(
-      ranked.slice(0, COMMUNITY_LEGEND_LIMIT).map(([community, size]) => ({
-        community,
-        size,
-        color: colorByCommunityId.get(community) ?? BLUE,
-      })),
-    );
+      setStatusLegend(
+        ["active", "pending_review", "rejected", "merged"]
+          .filter((status) => statusCounts.has(status))
+          .map((status) => ({
+            status,
+            size: statusCounts.get(status) ?? 0,
+            color:
+              status === "pending_review"
+                ? AMBER
+                : status === "rejected"
+                  ? RED
+                  : status === "merged"
+                    ? INK_2
+                    : BLUE,
+          })),
+      );
+    } else if (colorByCommunity) {
+      const assignments = communityAssignments(nodes, edges);
+      if (assignments.size > 0) {
+        const sizeByCommunity = new Map<number, number>();
+        assignments.forEach((community) => {
+          sizeByCommunity.set(community, (sizeByCommunity.get(community) ?? 0) + 1);
+        });
+        const ranked = [...sizeByCommunity.entries()].sort(
+          (left, right) => right[1] - left[1] || left[0] - right[0],
+        );
+        const colorByCommunityId = new Map<number, string>();
+        ranked.forEach(([community], index) => {
+          // EAI: fallback satisfies noUncheckedIndexedAccess — index is total (modulo palette.length)
+          colorByCommunityId.set(
+            community,
+            COMMUNITY_NODE_PALETTE[index % COMMUNITY_NODE_PALETTE.length] ?? BLUE,
+          );
+        });
+        graph.forEachNode((nodeId) => {
+          const attrs = graph.getNodeAttributes(nodeId) as NodeAttributes;
+          remember(nodeId);
+          const color =
+            colorByCommunityId.get(assignments.get(nodeId) ?? -1) ??
+            attrs.baseColor ??
+            "";
+          graph.mergeNodeAttributes(nodeId, {
+            color,
+            baseColor: color,
+            mutedColor: withAlpha(color, GRAPH_THEME.nodes.mutedAlpha),
+            glowColor: withAlpha(color, 0.24),
+            strokeColor: color,
+            borderColor: color,
+          });
+          return true;
+        });
+        setCommunityLegend(
+          ranked.slice(0, COMMUNITY_LEGEND_LIMIT).map(([community, size]) => ({
+            community,
+            size,
+            color: colorByCommunityId.get(community) ?? BLUE,
+          })),
+        );
+      }
+    }
+
+    if (activeOnly) {
+      // 只看已确认：非 active 透明化（注意在状态着色之后跑——过滤优先级更高）
+      graph.forEachNode((nodeId) => {
+        const status = statusById.get(nodeId) ?? "";
+        if (status === "" || status === "active") return true;
+        remember(nodeId);
+        graph.mergeNodeAttributes(nodeId, {
+          color: "transparent",
+          baseColor: "transparent",
+          mutedColor: "transparent",
+          glowColor: "transparent",
+          strokeColor: "transparent",
+          borderColor: "transparent",
+          label: "",
+        });
+        return true;
+      });
+    }
+
+    colorRestoreRef.current = nextRestore;
     canvasRef.current?.requestRender();
-  }, [colorByCommunity, loadQuery.data]);
+  }, [colorByCommunity, colorByStatus, activeOnly, loadQuery.data]);
 
   return (
     <div
@@ -299,6 +401,28 @@ export function OntologyGraphCanvas({
               </>
             )}
           </div>
+        </div>
+      ) : null}
+      {statusLegend.length > 0 ? (
+        <div
+          className="absolute bottom-3 left-3 z-10 flex max-w-[70%] flex-wrap items-center gap-1.5"
+          data-testid="status-legend"
+        >
+          {statusLegend.map((item) => (
+            <span
+              key={item.status}
+              title={`${STATUS_LABELS[item.status] ?? item.status} · ${item.size} 实体`}
+              className="bg-background/80 flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] backdrop-blur-sm"
+            >
+              <span
+                className="h-2 w-2 shrink-0 rounded-[3px]"
+                style={{ background: item.color }}
+              />
+              <span className="text-muted-foreground">
+                {STATUS_LABELS[item.status] ?? item.status} · {item.size}
+              </span>
+            </span>
+          ))}
         </div>
       ) : null}
       {communityLegend.length > 0 ? (
