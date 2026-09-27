@@ -86,6 +86,7 @@ async def list_objects(
     cursor: str | None = None,
     order: str | None = None,
     desc: bool = False,
+    offset: int = Query(0, ge=0, description="页码分页偏移（与 cursor 互斥）"),
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     parsed: list[dict[str, Any]] | None = None
@@ -95,7 +96,7 @@ async def list_objects(
         except json.JSONDecodeError as e:
             raise HTTPException(status_code=422, detail=f"filters 不是合法 JSON: {e}") from e
     try:
-        return await _get_engine().list_objects(object_type, filters=parsed, q=q, limit=limit, cursor=cursor, order=order, desc=desc)
+        return await _get_engine().list_objects(object_type, filters=parsed, q=q, limit=limit, cursor=cursor, order=order, desc=desc, offset=offset)
     except OntologyError as e:
         raise _http_error(e) from e
 

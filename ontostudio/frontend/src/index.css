@@ -27,6 +27,8 @@
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -58,6 +60,8 @@
   --foreground: #151616; /* gray-1000 */
   --card: #ffffff;
   --card-foreground: #151616;
+  --popover: #ffffff;
+  --popover-foreground: #151616;
 
   /* Primary: #0746ff — UNCHANGED（与主系统一致） */
   --primary: oklch(0.54 0.26 265.5);
@@ -93,6 +97,8 @@
   --foreground: #eff2f2;
   --card: #1a1b1b;
   --card-foreground: #eff2f2;
+  --popover: #1a1b1b;
+  --popover-foreground: #eff2f2;
 
   --primary: oklch(0.62 0.24 265.5);
   --primary-foreground: #ffffff;

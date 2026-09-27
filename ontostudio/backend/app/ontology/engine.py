@@ -94,6 +94,7 @@ class Engine:
         cursor: str | None = None,
         order: str | None = None,
         desc: bool = False,
+        offset: int = 0,
     ) -> dict[str, Any]:
         obj = self._object(object_type)
         limit = max(1, min(limit, MAX_LIMIT))
@@ -125,15 +126,24 @@ class Engine:
 
         w = ("WHERE " + " AND ".join(where)) if where else ""
         sql = f'SELECT {select_cols} FROM "{self._table(obj)}" {w} ORDER BY "{order_col}" {direction}, "{obj.pk.column}" {direction} LIMIT {limit + 1}'
+        # EAI-CUSTOM(2026-09-27 实体库页码分页): offset 与 cursor 互斥——cursor=keyset
+        # 深翻页（图投影沿用），offset=页码跳转（skip/limit + total，对齐合同价格分项校验）。
+        if not cursor and offset:
+            sql += f" OFFSET {max(0, int(offset))}"
         rows = await self._resolver.fetch(obj.access, sql, params)
         has_more = len(rows) > limit
         rows = rows[:limit]
         out = [self._serialize(obj, r) for r in rows]
         next_cursor = None
-        if has_more and rows:
+        if has_more and rows and not offset:
             last = rows[-1]
             next_cursor = self._encode_cursor(last.get(order_col), last[obj.pk.column])
-        return {"data": out, "next_cursor": next_cursor, "object_type": object_type}
+        # total：同 WHERE 的 COUNT——页码分页（第 X/Y 页）需要；cursor 路径不查（图投影用不到）
+        total = 0
+        if not cursor:
+            count_rows = await self._resolver.fetch(obj.access, f'SELECT COUNT(*) AS "total" FROM "{self._table(obj)}" {w}', params)
+            total = int(count_rows[0]["total"]) if count_rows else 0
+        return {"data": out, "total": total, "next_cursor": next_cursor, "object_type": object_type}
 
     async def get_object(self, object_type: str, pk: Any) -> dict[str, Any] | None:
         obj = self._object(object_type)

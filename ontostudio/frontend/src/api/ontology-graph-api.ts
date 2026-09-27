@@ -143,11 +143,12 @@ export interface AggregateRow {
   value: number;
 }
 
-/** POST /ontology/aggregate：按可见列分组计数（工作台总览域健康/实体关系计数数据源）。 */
+/** POST /ontology/aggregate：按可见列分组计数（工作台总览域健康/实体关系计数数据源）。
+ *  limit 上限 200（engine MAX_LIMIT），默认 100——分组数超过时按计数降序截断。 */
 export async function fetchAggregate(
   objectType: string,
   groupBy: string,
-  opts?: { signal?: AbortSignal },
+  opts?: { limit?: number; signal?: AbortSignal },
 ): Promise<AggregateRow[]> {
   const res = await authFetch<{
     data?: Array<{ group: string | null; value: number }>;
@@ -157,36 +158,52 @@ export async function fetchAggregate(
       object_type: objectType,
       group_by: groupBy,
       metric: "count",
+      ...(opts?.limit ? { limit: opts.limit } : {}),
     }),
     signal: opts?.signal,
   });
   return res.data ?? [];
 }
 
-/** 对象类型实例检索（实体库页数据源；q 走 searchable 属性 ILIKE，cursor 不透明透传）。 */
+/** 对象类型实例分页列表（引擎 visible 属性投影；行含 pk 字段）。
+ *  offset/total = 页码分页（skip/limit + 总数，对齐合同价格分项校验 tab）；cursor 为旧游标路径。 */
+export interface ObjectsPage {
+  data: Record<string, unknown>[];
+  total: number;
+  next_cursor: string | null;
+}
+
+/** 对象类型实例检索（实体库页数据源；q 走 searchable 属性 ILIKE，页码分页用 offset/total）。 */
 export async function fetchObjects(
   apiName: string,
   opts?: {
     q?: string;
     limit?: number;
-    cursor?: string | null;
+    offset?: number;
     order?: string;
     desc?: boolean;
+    /** 引擎过滤数组（列须 filterable），如 [{"column":"status","op":"eq","value":"active"}]。 */
+    filters?: Array<{ column: string; op: string; value: unknown }>;
     signal?: AbortSignal;
   },
 ): Promise<ObjectsPage> {
   const params = new URLSearchParams();
   if (opts?.q) params.set("q", opts.q);
   if (opts?.limit) params.set("limit", String(opts.limit));
-  if (opts?.cursor) params.set("cursor", opts.cursor);
+  if (opts?.offset) params.set("offset", String(opts.offset));
   if (opts?.order) params.set("order", opts.order);
   if (opts?.desc) params.set("desc", "true");
+  if (opts?.filters?.length) params.set("filters", JSON.stringify(opts.filters));
   const qs = params.toString();
   const res = await authFetch<Partial<ObjectsPage>>(
     `${BASE}/objects/${encodeURIComponent(apiName)}${qs ? `?${qs}` : ""}`,
     { signal: opts?.signal },
   );
-  return { data: res.data ?? [], next_cursor: res.next_cursor ?? null };
+  return {
+    data: res.data ?? [],
+    total: typeof res.total === "number" ? res.total : 0,
+    next_cursor: res.next_cursor ?? null,
+  };
 }
 
 /** 单对象沿一个链接类型取对侧行（DetailPanel 关联链接区按需拉取）。 */
