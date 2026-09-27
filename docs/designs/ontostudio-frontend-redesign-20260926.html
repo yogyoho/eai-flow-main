@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OntoStudio 页面重构原型 · EAI 对齐版</title>
+<!--
+  OntoStudio 功能页面重构优化原型（EAI-CUSTOM, 2026-09-26）
+  ============================================================
+  依据：2026-09-26 会话逐页盘点（docs/designs/2026-09-26-ontostudio-review-loop-closure.md）
+  UI 令牌：与 ontostudio/frontend/src/index.css 及主系统 globals.css 对齐
+  （Yuxi warm gray + Primary #0746ff oklch + sidebar-accent 惯例）。
+  交互：hash 路由切换 9 页；消解审核页按钮可点击演示四态。
+  每个操作旁的等宽小标签 = 真实 API 或规划状态：
+    [API]   后端端点已存在
+    [新增]  人审闭环切片（T1-T5）交付
+    [规划]  未来批次，见 TODOS.md
+-->
+<style>
+/* ====== EAI 语义令牌（对齐 ontostudio index.css light）====== */
+:root{
+  --radius:.625rem;
+  --background:#ffffff; --foreground:#151616;
+  --card:#ffffff; --card-foreground:#151616;
+  --primary:#0746ff; --primary-weak:#e8eeff; --primary-foreground:#ffffff;
+  --secondary:#eff2f2; --secondary-foreground:#1e1f1f;
+  --muted:#f5f7f7; --muted-foreground:#697070;
+  --destructive:#ff4d4f; --warning:#faad14; --success:#52c41a;
+  --border:#e4e6e6; --input:#d7d9d9;
+  --sidebar:#fbfcfc; --sidebar-foreground:#4c4d4d;
+  --sidebar-accent:#eff2f2; --sidebar-accent-foreground:#1e1f1f;
+  --sidebar-border:#e4e6e6;
+  --code-bg:#f5f7f7; --code-fg:#151616;
+  --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  --font-mono:ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --shadow:0 1px 2px rgba(21,22,22,.05),0 4px 16px rgba(21,22,22,.05);
+}
+*{box-sizing:border-box;margin:0;padding:0;border-color:var(--border)}
+html,body{height:100%}
+body{font-family:var(--font-sans);background:var(--background);color:var(--foreground);font-size:14px;line-height:1.55;display:flex;overflow:hidden}
+svg{display:block}
+::selection{background:var(--primary-weak)}
+
+/* ====== 布局 ====== */
+aside{width:224px;flex:none;background:var(--sidebar);border-right:1px solid var(--sidebar-border);display:flex;flex-direction:column;overflow-y:auto}
+main{flex:1;overflow-y:auto;min-width:0}
+.page{display:none;padding:28px 32px 56px;max-width:1240px;animation:fadein .28s ease both}
+.page.on{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.stagger>*{animation:rise .4s ease both}
+.stagger>*:nth-child(2){animation-delay:.05s}.stagger>*:nth-child(3){animation-delay:.1s}
+.stagger>*:nth-child(4){animation-delay:.15s}.stagger>*:nth-child(5){animation-delay:.2s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ====== 侧栏 ====== */
+.brand{padding:20px 18px 14px;border-bottom:1px solid var(--sidebar-border)}
+.brand h1{font-size:15px;font-weight:650;letter-spacing:.2px}
+.brand .sub{font-size:11px;color:var(--muted-foreground);margin-top:2px}
+.brand .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--primary);margin-right:7px;vertical-align:1px}
+.navgroup{padding:14px 10px 4px}
+.navgroup>label{display:block;font-size:10.5px;font-weight:600;color:var(--muted-foreground);letter-spacing:.12em;padding:0 10px 6px;text-transform:uppercase}
+.navitem{display:flex;align-items:center;gap:9px;width:100%;padding:7px 10px;margin:1px 0;border:0;border-radius:8px;background:none;color:var(--sidebar-foreground);font:inherit;font-size:13px;cursor:pointer;text-align:left;transition:background .15s,color .15s}
+.navitem:hover{background:var(--sidebar-accent);color:var(--sidebar-accent-foreground)}
+.navitem.on{background:var(--sidebar-accent);color:var(--primary);font-weight:600}
+.navitem .no{font-family:var(--font-mono);font-size:10px;color:var(--muted-foreground);width:16px;flex:none}
+.navitem.on .no{color:var(--primary)}
+.navitem svg{width:15px;height:15px;flex:none;opacity:.75}
+.navitem.on svg{opacity:1}
+.sidefoot{margin-top:auto;padding:12px 16px;border-top:1px solid var(--sidebar-border);font-size:11px;color:var(--muted-foreground);line-height:1.8}
+.sidefoot b{color:var(--secondary-foreground);font-weight:600}
+.ok{color:var(--success)}.warn{color:var(--warning)}
+
+/* ====== 通用组件 ====== */
+.ph{margin-bottom:20px}
+.ph h2{font-size:19px;font-weight:650;letter-spacing:.1px}
+.ph p{color:var(--muted-foreground);font-size:13px;margin-top:3px;max-width:72ch}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.panel>.hd{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+.panel>.hd .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.panel>.bd{padding:16px}
+.panel>.bd.tight{padding:0}
+.mt{margin-top:14px}
+.hint{font-size:12px;color:var(--muted-foreground)}
+
+/* 按钮 */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--foreground);font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.btn:hover{border-color:var(--input);background:var(--muted)}
+.btn.pri{background:var(--primary);border-color:var(--primary);color:var(--primary-foreground)}
+.btn.pri:hover{background:#0639cc}
+.btn.danger{color:var(--destructive);border-color:currentColor}
+.btn.danger:hover{background:#fff1f0}
+.btn.ghost{border-color:transparent}
+.btn.ghost:hover{background:var(--muted)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:3px 9px;font-size:12px;border-radius:7px}
+.btn svg{width:13px;height:13px}
+
+/* 徽标/标签 */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:1.5px 8px;border-radius:99px;font-size:11.5px;font-weight:550;border:1px solid transparent}
+.b-act{background:var(--primary-weak);color:var(--primary)}
+.b-pend{background:#fff7e6;color:#ad6800;border-color:#ffe1a0}
+.b-rej{background:#fff1f0;color:var(--destructive)}
+.b-merge{background:var(--secondary);color:var(--secondary-foreground)}
+.b-ok{background:#f0fbe7;color:#237e00}
+.api{font-family:var(--font-mono);font-size:10px;color:var(--muted-foreground);background:var(--code-bg);border:1px solid var(--border);border-radius:5px;padding:1px 6px;white-space:nowrap}
+.api.new{color:var(--primary);border-color:#bcd0ff;background:var(--primary-weak)}
+.api.plan{color:#ad6800;background:#fff7e6;border-color:#ffe1a0}
+.tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;background:var(--secondary);color:var(--secondary-foreground);font-family:var(--font-mono)}
+
+/* 统计块 */
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.tile{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow)}
+.tile .k{font-size:12px;color:var(--muted-foreground)}
+.tile .v{font-size:26px;font-weight:680;margin-top:2px;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.tile .v small{font-size:13px;font-weight:500;color:var(--muted-foreground);margin-left:3px}
+.tile .d{font-size:11.5px;margin-top:4px;color:var(--muted-foreground)}
+.tile .d.up{color:var(--success)}
+.tile.click{cursor:pointer;transition:border-color .15s,transform .15s}
+.tile.click:hover{border-color:var(--primary);transform:translateY(-1px)}
+.tile.accent .v{color:var(--primary)}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11.5px;font-weight:600;color:var(--muted-foreground);text-align:left;padding:8px 14px;border-bottom:1px solid var(--border);background:var(--muted);position:sticky;top:0}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--muted)}
+tbody tr:last-child td{border-bottom:0}
+td.mono,.mono{font-family:var(--font-mono);font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+tr.click{cursor:pointer}
+
+/* 进度/直方图 */
+.pbar{height:6px;border-radius:99px;background:var(--secondary);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:99px;background:var(--primary);transition:width .4s}
+.hbar{display:grid;grid-template-columns:44px 1fr 40px;gap:8px;align-items:center;font-size:11.5px;color:var(--muted-foreground);margin:5px 0}
+.hbar .bar{height:14px;border-radius:4px;background:var(--primary-weak);position:relative}
+.hbar .bar i{position:absolute;inset:0 auto 0 0;background:var(--primary);border-radius:4px;opacity:.85}
+.hbar .n{text-align:right;font-family:var(--font-mono)}
+
+/* 代码块 */
+.code{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:12px;line-height:1.7;color:var(--code-fg);overflow:auto}
+.code .ln{color:#a8adad;user-select:none;padding-right:12px}
+.code pre{padding:12px 14px}
+.code .k{color:var(--primary)}.code .c{color:#8a9090}.code .s{color:#237e00}
+
+/* 状态点 */
+.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:0}
+.s-act{background:var(--primary)}.s-pend{background:var(--warning)}
+.s-rej{background:var(--destructive)}.s-merge{background:#8a9090}.s-ok{background:var(--success)}
+
+/* 演示按钮四态 */
+.demo-btn{position:relative;min-width:86px;justify-content:center}
+.demo-btn.busy{pointer-events:none;opacity:.75}
+.spin{width:12px;height:12px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@keyframes pop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+.demo-btn.done{animation:pop .3s ease}
+
+/* 卡片（待审/任务/CQ） */
+.card{border:1px solid var(--border);border-radius:10px;padding:13px 15px;background:var(--card);transition:border-color .15s}
+.card:hover{border-color:var(--input)}
+.card .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.card .name{font-weight:600;font-size:13.5px}
+.card .src{font-size:11.5px;color:var(--muted-foreground);font-family:var(--font-mono)}
+.card .quote{border-left:3px solid var(--primary-weak);background:var(--muted);border-radius:0 8px 8px 0;padding:8px 12px;font-size:12.5px;color:var(--secondary-foreground);margin:8px 0}
+.conf{font-family:var(--font-mono);font-size:12px;font-weight:600}
+
+/* 解释链 */
+.chain{list-style:none;margin:0}
+.chain li{position:relative;padding:0 0 14px 26px}
+.chain li::before{content:"";position:absolute;left:7px;top:6px;bottom:-2px;width:2px;background:var(--primary-weak)}
+.chain li:last-child::before{display:none}
+.chain li::after{content:"";position:absolute;left:3px;top:5px;width:10px;height:10px;border-radius:50%;background:#fff;border:2px solid var(--primary)}
+.chain .step{font-size:13px}
+.chain .rule{font-family:var(--font-mono);font-size:10.5px;color:var(--primary);background:var(--primary-weak);border-radius:4px;padding:1px 6px;margin-left:6px}
+.chain .t{font-family:var(--font-mono);font-size:11.5px;color:var(--muted-foreground);margin-top:2px}
+
+/* CQ 行 */
+.cq{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.cq:last-child{border-bottom:0}
+.cq .q{flex:1;font-size:13px}
+.cq .a{font-size:11.5px;color:var(--muted-foreground);font-family:var(--font-mono);margin-top:2px}
+.verdict{flex:none;font-size:11px;font-weight:650;border-radius:6px;padding:2px 8px}
+.v-pass{background:#f0fbe7;color:#237e00}
+.v-fail{background:#fff1f0;color:var(--destructive)}
+
+/* Banner */
+.banner{display:flex;gap:10px;align-items:flex-start;border-radius:10px;padding:11px 14px;font-size:12.5px;border:1px solid}
+.banner.info{background:var(--primary-weak);border-color:#bcd0ff;color:#063096}
+.banner.warnb{background:#fff7e6;border-color:#ffe1a0;color:#874d00}
+.banner b{font-weight:650}
+.banner .x{margin-left:auto;cursor:pointer;opacity:.6}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted-foreground)}
+.kbd{font-family:var(--font-mono);font-size:10.5px;border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--muted)}
+
+/* 图谱画布 */
+.canvas{height:380px;border:1px solid var(--border);border-radius:10px;background:
+  radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0/22px 22px, #fcfdfd;position:relative;overflow:hidden}
+.node{position:absolute;transform:translate(-50%,-50%);text-align:center;cursor:pointer;transition:transform .15s}
+.node:hover{transform:translate(-50%,-50%) scale(1.06)}
+.node .nd{width:46px;height:46px;border-radius:50%;background:#fff;border:2.5px solid var(--primary);display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:10px;font-weight:700;color:var(--primary);box-shadow:var(--shadow)}
+.node.pending .nd{border-color:var(--warning);color:#ad6800}
+.node.rejected .nd{border-color:var(--destructive);color:var(--destructive);border-style:dashed}
+.node.dim .nd{border-color:var(--input);color:var(--muted-foreground)}
+.node .nl{font-size:10.5px;margin-top:4px;color:var(--secondary-foreground);background:rgba(255,255,255,.85);border-radius:4px;padding:0 3px}
+.edge{position:absolute;height:2px;background:var(--input);transform-origin:0 50%}
+.edge.hi{background:var(--primary);height:2.5px}
+.edge-label{position:absolute;font-family:var(--font-mono);font-size:9.5px;color:var(--muted-foreground);background:#fff;border:1px solid var(--border);border-radius:4px;padding:0 4px;transform:translate(-50%,-50%)}
+
+/* 抽屉 */
+.drawer{position:fixed;right:0;top:0;bottom:0;width:400px;background:var(--card);border-left:1px solid var(--border);box-shadow:-8px 0 32px rgba(21,22,22,.08);transform:translateX(105%);transition:transform .25s ease;z-index:50;display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer .dh{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.drawer .db{padding:16px 20px;overflow-y:auto;flex:1}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:6px 12px;font-size:12.5px;margin:10px 0}
+.kv dt{color:var(--muted-foreground)}
+.kv dd{font-family:var(--font-mono);font-size:12px}
+.scrim{position:fixed;inset:0;background:rgba(21,22,22,.28);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+.scrim.on{opacity:1;pointer-events:auto}
+
+/* tabs */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px}
+.tab{padding:7px 14px;font-size:13px;color:var(--muted-foreground);border:0;background:none;cursor:pointer;border-bottom:2px solid transparent;font:inherit;transition:color .15s}
+.tab:hover{color:var(--foreground)}
+.tab.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+.tabpane{display:none}.tabpane.on{display:block;animation:fadein .25s ease}
+
+/* 编辑器布局 */
+.split{display:grid;grid-template-columns:200px 1fr 300px;gap:14px;align-items:start}
+.filelist{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.filelist button{display:flex;width:100%;justify-content:space-between;align-items:center;padding:8px 12px;font:inherit;font-size:12.5px;background:none;border:0;border-bottom:1px solid var(--border);cursor:pointer;color:var(--sidebar-foreground);font-family:var(--font-mono)}
+.filelist button:last-child{border-bottom:0}
+.filelist button:hover{background:var(--muted)}
+.filelist button.on{background:var(--primary-weak);color:var(--primary);font-weight:600}
+
+/* toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:60;display:flex;flex-direction:column;gap:8px}
+.toast>div{background:var(--foreground);color:var(--background);font-size:12.5px;padding:9px 14px;border-radius:9px;box-shadow:var(--shadow);animation:rise .25s ease}
+
+/* future/demo watermark */
+.future{position:relative}
+.future::after{content:"规划中";position:absolute;top:10px;right:12px;font-size:10px;color:#ad6800;background:#fff7e6;border:1px solid #ffe1a0;border-radius:5px;padding:1px 7px;z-index:5;pointer-events:none}
+
+/* 双模式切换 */
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--card);padding:4px 12px;font:inherit;font-size:12px;cursor:pointer;color:var(--muted-foreground)}
+.seg button.on{background:var(--primary-weak);color:var(--primary);font-weight:600}
+/* 类树 */
+.tree{font-size:12.5px}
+.tree .tnode{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:7px;cursor:pointer;color:var(--sidebar-foreground)}
+.tree .tnode:hover{background:var(--muted)}
+.tree .tnode.on{background:var(--primary-weak);color:var(--primary);font-weight:600}
+.tree .tnode .mono{font-size:11px}
+.tree .cnt{margin-left:auto;font-size:10.5px;color:var(--muted-foreground)}
+.tree .root{color:var(--muted-foreground);font-style:italic}
+/* TBox 画布 */
+.tbox{height:400px;border:1px solid var(--border);border-radius:10px;background:
+  radial-gradient(circle at 1px 1px, var(--border) 1px, transparent 0) 0 0/22px 22px, #fcfdfd;position:relative;overflow:hidden}
+.cls{position:absolute;transform:translate(-50%,-50%);text-align:center;cursor:pointer;transition:transform .15s}
+.cls:hover{transform:translate(-50%,-50%) scale(1.05)}
+.cls .cd{min-width:56px;padding:8px 12px;border-radius:10px;background:#fff;border:2px solid var(--primary);box-shadow:var(--shadow);font-size:12px;font-weight:600;color:var(--primary)}
+.cls .cd small{display:block;font-weight:400;font-size:10px;color:var(--muted-foreground)}
+.cls.sel .cd{background:var(--primary);color:#fff}
+.cls.sel .cd small{color:rgba(255,255,255,.75)}
+.cls.rootcls .cd{border-color:var(--input);color:var(--muted-foreground);border-style:dashed;font-weight:400}
+.cls .cl{font-size:10.5px;margin-top:3px;color:var(--secondary-foreground)}
+.tedge{position:absolute;height:2px;background:var(--input);transform-origin:0 50%}
+.predchip{position:absolute;display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:10px;color:var(--primary);background:var(--primary-weak);border:1px solid #bcd0ff;border-radius:99px;padding:1px 8px;transform:translate(-50%,-50%)}
+.axiombox{position:absolute;border:1px dashed #bcd0ff;background:var(--primary-weak);border-radius:8px;padding:6px 10px;font-size:11.5px;color:#063096}
+/* 表单 */
+.frm label{display:block;font-size:11px;font-weight:600;color:var(--muted-foreground);margin:10px 0 3px}
+.frm input[type=text]{width:100%;padding:6px 9px;border:1px solid var(--input);border-radius:7px;font:inherit;font-size:12.5px;font-family:var(--font-mono)}
+.frm input[type=text]:focus{outline:2px solid var(--primary-weak);border-color:var(--primary)}
+.chipbox{display:flex;gap:5px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--font-mono);font-size:11px;border:1px solid var(--border);border-radius:99px;padding:2px 9px;cursor:pointer;background:var(--card)}
+.chip.on{background:var(--primary-weak);border-color:#bcd0ff;color:var(--primary)}
+.axrow{display:flex;gap:6px;align-items:center;font-family:var(--font-mono);font-size:11.5px;margin:5px 0;flex-wrap:wrap}
+.axrow select{font:inherit;font-size:11px;padding:3px 6px;border:1px solid var(--input);border-radius:6px;background:var(--card)}
+
+@media (max-width:1000px){
+  .tiles,.grid4{grid-template-columns:1fr 1fr}
+  .grid3,.split{grid-template-columns:1fr}
+  aside{width:190px}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 侧栏 ============ -->
+<aside>
+  <div class="brand">
+    <h1><span class="dot"></span>OntoStudio</h1>
+    <div class="sub">本体建模 · 语义层 · registry v7</div>
+  </div>
+  <nav id="nav">
+    <div class="navgroup"><label>总览</label>
+      <button class="navitem" data-r="dashboard"><span class="no">01</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>工作台总览</button>
+    </div>
+    <div class="navgroup"><label>知识层</label>
+      <button class="navitem" data-r="graph"><span class="no">02</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="6" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M7 7.5l3.5 8M17 7.5l-3.5 8M7.5 6h9"/></svg>图谱浏览</button>
+      <button class="navitem" data-r="entities"><span class="no">03</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>实体库</button>
+      <button class="navitem" data-r="resolve"><span class="no">04</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-5"/><circle cx="12" cy="12" r="9"/></svg>消解审核 <span class="badge b-pend" style="margin-left:auto">14</span></button>
+    </div>
+    <div class="navgroup"><label>建模与工程</label>
+      <button class="navitem" data-r="modeler"><span class="no">05</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l6.5 6.5"/></svg>本体建模器</button>
+      <button class="navitem" data-r="reasoning"><span class="no">06</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a6 6 0 0 1 6 6c0 2.2-1.2 3.6-2.4 4.8-.8.8-1.6 1.7-1.6 3.2h-4c0-1.5-.8-2.4-1.6-3.2C7.2 12.6 6 11.2 6 9a6 6 0 0 1 6-6z"/><path d="M10 21h4"/></svg>推理工作台</button>
+      <button class="navitem" data-r="validation"><span class="no">07</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>校验中心</button>
+    </div>
+    <div class="navgroup"><label>数据流</label>
+      <button class="navitem" data-r="ingest"><span class="no">08</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>抽取导入</button>
+      <button class="navitem" data-r="export"><span class="no">09</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11M8 11l4 4 4-4"/><path d="M4 19h16"/></svg>导出互操作</button>
+    </div>
+  </nav>
+  <div class="sidefoot">
+    <div><b>kernel</b> 内存态 · <span class="ok">单 worker</span></div>
+    <div><b>图</b> 1,041 实体 / 2,905 三元组</div>
+    <div><b>推断</b> 3,825（infer 2.3s）</div>
+  </div>
+</aside>
+
+<main>
+<!-- ==================================================
+01 工作台总览
+=================================================== -->
+<section class="page" id="p-dashboard">
+  <div class="ph">
+    <h2>工作台总览</h2>
+    <p>知识层健康一览：数据沉淀、待审压力、推理与校验状态。所有数字来自图面与 registry 真数据（月儿湾基线）。</p>
+  </div>
+  <div class="stagger">
+  <div class="tiles">
+    <div class="tile click" onclick="go('entities')"><div class="k">实体（dg_entities）</div><div class="v">1,041<small>行</small></div><div class="d up">较上次装载 +460 · 月儿湾报告</div></div>
+    <div class="tile"><div class="k">关系（dg_relations）</div><div class="v">205<small>条</small></div><div class="d">双端点齐备才入图</div></div>
+    <div class="tile"><div class="k">推理物化三元组</div><div class="v">3,825</div><div class="d">infer 2.3s · 2026-09-26 09:14</div></div>
+    <div class="tile accent click" onclick="go('resolve')"><div class="k">待审实体</div><div class="v">14</div><div class="d">点击进入消解审核 →</div></div>
+  </div>
+
+  <div class="grid2 mt">
+    <div class="panel">
+      <div class="hd">域健康 <span class="sp"><span class="api">GET /ontology/registry</span></span></div>
+      <div class="bd tight"><table>
+        <thead><tr><th>域</th><th>类</th><th>实体</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr class="click" onclick="go('modeler')"><td class="mono">doc_graph</td><td class="num">8</td><td class="num">712</td><td><span class="sdot s-act"></span>主干</td></tr>
+          <tr class="click" onclick="go('modeler')"><td class="mono">eia</td><td class="num">16</td><td class="num">460</td><td><span class="sdot s-act"></span>月儿湾全链路已验证</td></tr>
+          <tr><td class="mono">bid_quote</td><td class="num">12</td><td class="num">204</td><td><span class="sdot s-act"></span>—</td></tr>
+          <tr><td class="mono">contract_price</td><td class="num">9</td><td class="num">96</td><td><span class="sdot s-merge"></span>低活跃</td></tr>
+          <tr><td class="mono">spare_parts</td><td class="num">7</td><td class="num">52</td><td><span class="sdot s-merge"></span>低活跃</td></tr>
+          <tr><td class="mono">cross_module</td><td class="num">4</td><td class="num">0</td><td><span class="sdot s-rej"></span>四链路禁用 <span class="api plan">规划</span></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="hd">治理链抽样 <span class="sp"><span class="api">GET /formal/export</span></span></div>
+        <div class="bd">
+          <div class="hint" style="margin-bottom:10px">月儿湾报告推断出的真实治理链（covered_by_standard），共 9 条，展示 3 条：</div>
+          <div class="chain">
+            <li><div class="step">矿井水处理站 → <b>GB 50383-2010</b> 措施要求<span class="rule">prp-spo2×2</span></div><div class="t">monitored_by(矿井水处理站, 悬浮物浓度) ∧ has_limit(悬浮物浓度, …) ⇒ covered_by_standard</div></li>
+            <li><div class="step">锅炉烟气排放 → <b>GB 13223-2011</b> 限值条款<span class="rule">prp-spo2×2</span></div><div class="t">双碱法脱硫 + 45m 烟囱 · 阈值约束来自条款抽取</div></li>
+            <li><div class="step">矸石山 → <b>GB 50383-2010</b> 第 6 章<span class="rule">sameas</span></div><div class="t">实体消解后由 sameas 传播继承治理关系</div></li>
+          </div>
+        </div>
+      </div>
+      <div class="banner info mt">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/></svg>
+        <div><b>人审闭环切片实施中。</b>确认→落图管线打通后，本页「待审实体」的清空动作才会真实改变图面（当前切片 T1-T5）。<span class="api new">docs/designs/2026-09-26-…-closure.md</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid3 mt">
+    <div class="panel"><div class="hd">校验状态</div><div class="bd">
+      <div class="row" style="justify-content:space-between;align-items:center"><span>国标符合性 C1-C5</span><span class="badge b-ok">5/5 通过</span></div>
+      <div class="row mt" style="justify-content:space-between;align-items:center"><span>SHACL 违规</span><span><b>0</b> 错误 · 2 警告</span></div>
+      <div class="row mt"><button class="btn sm" onclick="go('validation')">进入校验中心</button></div>
+    </div></div>
+    <div class="panel"><div class="hd">数据面</div><div class="bd">
+      <div class="row" style="justify-content:space-between"><span>上次全量装载</span><span class="mono">09-26 08:40 · 1,041 行</span></div>
+      <div class="row mt" style="justify-content:space-between"><span>图 / DB 对账</span><span class="ok">一致（装载即对账）</span></div>
+      <div class="row mt"><button class="btn sm" onclick="go('export')">装载 / 导出</button></div>
+    </div></div>
+    <div class="panel"><div class="hd">抽取活动</div><div class="bd">
+      <div class="row" style="justify-content:space-between"><span>进行中任务</span><b>2</b></div>
+      <div class="row mt" style="justify-content:space-between"><span>本周新增实体</span><b class="num">547</b></div>
+      <div class="row mt"><button class="btn sm" onclick="go('ingest')">进入抽取导入</button></div>
+    </div></div>
+  </div>
+  </div>
+</section>
+
+<!-- ==================================================
+02 图谱浏览
+=================================================== -->
+<section class="page" id="p-graph">
+  <div class="ph">
+    <h2>图谱浏览</h2>
+    <p>断言图（asserted graph）交互视图。图 = DB 全行忠实投影（含状态）——待审为黄、驳回为红虚线、已确认为主蓝。</p>
+  </div>
+  <div class="row" style="margin-bottom:12px;align-items:center">
+    <div class="legend">
+      <span><span class="sdot s-act"></span>已确认 active</span>
+      <span><span class="sdot s-pend"></span>待审 pending_review</span>
+      <span><span class="sdot s-rej"></span>已驳回 rejected</span>
+      <span><span class="sdot s-merge"></span>已合并 merged</span>
+    </div>
+    <span style="margin-left:auto" class="row">
+      <button class="btn sm">按域过滤：eia</button>
+      <button class="btn sm">只看已确认</button>
+      <span class="api">GET /ontology/graph/nodes·edges</span>
+    </span>
+  </div>
+  <div class="canvas" id="graphCanvas">
+    <!-- edges -->
+    <div class="edge hi" style="left:220px;top:100px;width:190px;transform:rotate(14deg)"></div>
+    <div class="edge" style="left:430px;top:148px;width:170px;transform:rotate(35deg)"></div>
+    <div class="edge" style="left:220px;top:112px;width:210px;transform:rotate(58deg)"></div>
+    <div class="edge" style="left:600px;top:248px;width:200px;transform:rotate(-18deg)"></div>
+    <div class="edge" style="left:440px;top:270px;width:150px;transform:rotate(155deg)"></div>
+    <div class="edge-label" style="left:315px;top:128px">monitored_by</div>
+    <div class="edge-label" style="left:525px;top:200px">has_limit</div>
+    <div class="edge-label" style="left:305px;top:205px">located_in</div>
+    <div class="edge-label" style="left:700px;top:215px">covered_by_standard</div>
+    <div class="edge-label" style="left:510px;top:350px">mention_of</div>
+    <!-- nodes -->
+    <div class="node" style="left:220px;top:100px"><div class="nd">煤矿</div><div class="nl">月儿湾煤矿（项目）</div></div>
+    <div class="node" style="left:430px;top:155px"><div class="nd">设施</div><div class="nl">矿井水处理站</div></div>
+    <div class="node pending" style="left:620px;top:250px"><div class="nd">指标</div><div class="nl">悬浮物浓度</div></div>
+    <div class="node" style="left:810px;top:200px"><div class="nd">标准</div><div class="nl">GB 50383-2010</div></div>
+    <div class="node dim" style="left:430px;top:360px"><div class="nd">提及</div><div class="nl">mention#318（原文引文）</div></div>
+    <div class="node rejected" style="left:250px;top:300px"><div class="nd">场所</div><div class="nl">桑干河水源保护区（待澄清）</div></div>
+  </div>
+  <div class="row mt" style="align-items:center">
+    <span class="hint">点击节点 → 右侧详情抽屉（属性三元组 / 提及 / 审计）。节点状态即 DB 行状态，驳转为实时（<b>切片 T2</b> 后）。</span>
+    <span style="margin-left:auto" class="row"><button class="btn sm" onclick="openDrawer()">打开详情抽屉示例</button></span>
+  </div>
+</section>
+
+<!-- ==================================================
+03 实体库（静态 → 真数据重构）
+=================================================== -->
+<section class="page" id="p-entities">
+  <div class="ph">
+    <h2>实体库</h2>
+    <p>重构点：旧版为静态示例表；后端 <span class="mono">GET /objects/{type}</span> 与 <span class="mono">/aggregate</span> 均已存在，本页补接线即成真。支持跨域检索、状态/置信度过滤、行级详情。</p>
+  </div>
+  <div class="panel">
+    <div class="hd">
+      实体检索
+      <span class="sp">
+        <button class="btn sm">域：全部 ▾</button>
+        <button class="btn sm">类型：全部 ▾</button>
+        <button class="btn sm">状态：全部 ▾</button>
+        <span class="api">GET /ontology/objects/{type}?filter</span>
+      </span>
+    </div>
+    <div class="bd tight"><table>
+      <thead><tr><th>实体</th><th>类型</th><th>规范名（norm）</th><th>置信度</th><th>状态</th><th>提及</th><th>更新</th><th></th></tr></thead>
+      <tbody>
+        <tr class="click" onclick="openDrawer()"><td><b>月儿湾煤矿项目</b></td><td><span class="tag">project</span></td><td class="mono">月儿湾煤矿项目</td><td class="conf num">0.96</td><td><span class="badge b-act">active</span></td><td class="num">17</td><td class="mono">09-18 10:12</td><td><button class="btn sm ghost">详情</button></td></tr>
+        <tr class="click" onclick="openDrawer()"><td><b>山西煤机集团</b></td><td><span class="tag">org</span></td><td class="mono">山西煤机集团</td><td class="conf num">0.94</td><td><span class="badge b-act">active</span></td><td class="num">23</td><td class="mono">09-18 10:32</td><td><button class="btn sm ghost">详情</button></td></tr>
+        <tr><td><b>山西煤矿机械制造有限公司</b></td><td><span class="tag">org</span></td><td class="mono">→ 山西煤机集团</td><td class="conf num">0.91</td><td><span class="badge b-merge">merged</span></td><td class="num">8</td><td class="mono">09-18 10:32</td><td><button class="btn sm ghost">查看合并</button></td></tr>
+        <tr class="click" onclick="openDrawer()"><td><b>矿用刮板输送机 SGZ-800</b></td><td><span class="tag">goods</span></td><td class="mono">矿用刮板输送机</td><td class="conf num">0.88</td><td><span class="badge b-act">active</span></td><td class="num">11</td><td class="mono">09-17 16:40</td><td><button class="btn sm ghost">详情</button></td></tr>
+        <tr class="click" onclick="openDrawer()"><td><b>桑干河饮用水源保护区</b></td><td><span class="tag">place</span></td><td class="mono">桑干河水源保护区</td><td class="conf num">0.79</td><td><span class="badge b-pend">pending_review</span></td><td class="num">6</td><td class="mono">09-17 14:28</td><td><button class="btn sm" onclick="go('resolve')">去审核</button></td></tr>
+        <tr><td><b>矿井水处理站</b></td><td><span class="tag">facility</span></td><td class="mono">矿井水处理站</td><td class="conf num">0.93</td><td><span class="badge b-act">active</span></td><td class="num">9</td><td class="mono">09-26 08:41</td><td><button class="btn sm ghost">详情</button></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="row mt" style="justify-content:space-between;align-items:center">
+    <span class="hint">共 1,041 行 · 每页 50 · 分页控件</span>
+    <span class="row">
+      <button class="btn sm">导出当前筛选 <span class="api plan">规划</span></button>
+      <button class="btn sm pri">批量送审 <span class="api plan">TODOS·批量摊销</span></button>
+    </span>
+  </div>
+</section>
+
+<!-- ==================================================
+04 消解审核（本切片主角页）
+=================================================== -->
+<section class="page" id="p-resolve">
+  <div class="ph">
+    <h2>消解审核</h2>
+    <p>人审闭环主工作面：抽取结果逐条确认/驳回（落图），相似实体合并/不合并。确认后图面即时更新，agent 经 MCP 同步可见。</p>
+  </div>
+  <div class="banner warnb" style="margin-bottom:14px">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex:none;margin-top:1px"><path d="M12 9v4M12 17v.5"/><path d="M10.3 4l-7 12A2 2 0 0 0 5 19h14a2 2 0 0 0 1.7-3l-7-12a2 2 0 0 0-3.4 0z"/></svg>
+    <div><b>当前以 superadmin 操作（第一版仅超管可审）。</b>正式审阅角色授权为后续批次；观察日可用 <span class="mono">roles_custom.yaml</span> overlay 临时授权真实审阅者。<span class="api">T4A · roles_custom.yaml</span></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="hd">待确认实体 <span class="sp"><span class="badge b-pend">14 条待审</span><span class="api new">POST /actions/invoke</span></span></div>
+      <div class="bd" style="display:flex;flex-direction:column;gap:10px">
+        <div class="card">
+          <div class="top">
+            <span class="name">桑干河饮用水源保护区</span>
+            <span class="tag">place</span>
+            <span class="conf" style="margin-left:auto;color:#ad6800">0.79</span>
+          </div>
+          <div class="src">doc:环评报告-横城（送审稿） · thread:9d11… · extracted_by: regex/v1</div>
+          <div class="quote">"项目位于桑干河饮用水源保护区准保护区范围外 2.8 km，不涉及一级、二级保护区。"</div>
+          <div class="row" style="align-items:center">
+            <button class="btn pri demo-btn" data-variant="ok" onclick="demoInvoke(this)">✓ 确认入图</button>
+            <button class="btn danger demo-btn" data-variant="rejected" onclick="demoInvoke(this)">✕ 驳回</button>
+            <span class="hint">确认 → status 强制翻转为 active，断言图即时生效</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="top">
+            <span class="name">矿井水深度处理车间</span>
+            <span class="tag">facility</span>
+            <span class="conf" style="margin-left:auto">0.87</span>
+          </div>
+          <div class="src">doc:环评报告-横城（送审稿） · thread:9d11… · extracted_by: regex/v1</div>
+          <div class="quote">"新建矿井水深度处理车间一座，处理规模 1200 m³/d，采用混凝沉淀＋超滤工艺。"</div>
+          <div class="row" style="align-items:center">
+            <button class="btn pri demo-btn" data-variant="degraded" onclick="demoInvoke(this)">✓ 确认入图</button>
+            <button class="btn danger demo-btn" data-variant="rejected2" onclick="demoInvoke(this)">✕ 驳回</button>
+            <span class="hint">驳回归档为 rejected（不删实体，mention 全保留）</span>
+          </div>
+        </div>
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <span class="hint">演示：点击按钮体验四态。第二组按钮预置了 degraded / 冲突结果。</span>
+          <button class="btn sm" disabled>批量确认（14 条）<span class="api plan">TODOS·批量摊销</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="hd">相似实体合并建议 <span class="sp"><span class="api">GET /doc-graph/resolution/suggestions</span></span></div>
+        <div class="bd" style="display:flex;flex-direction:column;gap:10px">
+          <div class="card">
+            <div class="row" style="align-items:center;gap:8px">
+              <span class="name">山西煤矿机械制造有限公司</span>
+              <span style="color:var(--muted-foreground)">⇄</span>
+              <span class="name">山西煤机集团</span>
+              <span class="conf" style="margin-left:auto">0.92</span>
+            </div>
+            <div class="row mt" style="align-items:center">
+              <button class="btn pri sm">合并（8 条提及随迁）</button>
+              <button class="btn sm">不合并</button>
+              <span class="api">POST /resolution/merge · undo 可回放</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="row" style="align-items:center;gap:8px">
+              <span class="name">SGZ-800 刮板机</span>
+              <span style="color:var(--muted-foreground)">⇄</span>
+              <span class="name">矿用刮板输送机 SGZ-800</span>
+              <span class="conf" style="margin-left:auto">0.88</span>
+            </div>
+            <div class="row mt" style="align-items:center">
+              <button class="btn pri sm">合并（5 条提及随迁）</button>
+              <button class="btn sm">不合并</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel mt">
+        <div class="hd">操作反馈四态（实现契约）</div>
+        <div class="bd">
+          <table>
+            <thead><tr><th>态</th><th>触发</th><th>呈现</th></tr></thead>
+            <tbody>
+              <tr><td><span class="sdot s-ok"></span>成功</td><td class="mono">projected:true</td><td>绿勾 + 行内「已入图」；图浏览可立即看到</td></tr>
+              <tr><td><span class="sdot s-pend"></span>degraded</td><td class="mono">projected:false + errors</td><td>黄警 + 明细 + 「管理员重跑装载即恢复，数据无损失」</td></tr>
+              <tr><td><span class="sdot s-merge"></span>冲突 409</td><td class="mono">前置条件不满足</td><td><b>中性</b>提示「状态已变更，请刷新」（可能是已驳回/已合并，不得渲染为已确认）</td></tr>
+              <tr><td><span class="sdot s-act"></span>在途</td><td class="mono">invoke 进行中</td><td>按钮 disabled + spinner（同步投影秒级等待）</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+05 本体建模器
+=================================================== -->
+<section class="page" id="p-modeler">
+  <div class="ph">
+    <h2>本体建模器</h2>
+    <p><b>双模式</b>：可视化建模为一等公民（类层次画布 + 表单化公理编辑，面向领域专家共建），YAML 源码为专家模式——两者编辑同一 registry，画布是 registry 的投影、编辑落为 YAML 差异。校验/保存闭环已接真数据（fingerprint 乐观并发 + registry_version 递增）；画布交互属批次 2。</p>
+  </div>
+  <div class="split">
+    <div class="filelist" id="filelist">
+      <button class="on" onclick="pickFile(this,'eia.yaml')">eia.yaml <span>16 类</span></button>
+      <button onclick="pickFile(this,'doc_graph.yaml')">doc_graph.yaml <span>8 类</span></button>
+      <button onclick="pickFile(this,'bid_quote.yaml')">bid_quote.yaml <span>12 类</span></button>
+      <button onclick="pickFile(this,'contract_price.yaml')">contract_price.yaml <span>9 类</span></button>
+      <button onclick="pickFile(this,'spare_parts.yaml')">spare_parts.yaml <span>7 类</span></button>
+      <button onclick="pickFile(this,'cross_module.yaml')">cross_module.yaml <span>4 类</span></button>
+    </div>
+    <div class="panel">
+      <div class="hd">
+        <span class="mono">eia.yaml</span>
+        <div class="seg" style="margin-left:6px"><button class="on" id="segVis" onclick="modeSwitch('vis')">可视化建模</button><button id="segYaml" onclick="modeSwitch('yaml')">YAML 源码</button></div>
+        <span class="badge b-pend" id="dirtyTag" style="display:none">未保存</span>
+        <span class="sp">
+          <span class="mono hint">v7 · f7a2c9</span>
+          <button class="btn sm" onclick="fakeValidate()">校验</button>
+          <button class="btn sm pri" onclick="fakeSave()">保存</button>
+        </span>
+      </div>
+      <div class="bd tight" id="visMode">
+        <div class="row" style="padding:10px 14px;border-bottom:1px solid var(--border);align-items:center">
+          <button class="btn sm pri" onclick="markDirty();toast('新建类草稿已加入画布（拖拽定位为批次2交互）')">＋ 新建类</button>
+          <button class="btn sm" onclick="markDirty();toast('子类连接模式：点击父类完成连线（原型演示）')">＋ 子类</button>
+          <button class="btn sm" onclick="markDirty();toast('谓词连接模式：点选两端类后选谓词（原型演示）')">＋ 谓词</button>
+          <button class="btn sm danger" onclick="toast('删除前先查引用：Pollutant 被 1 条属性链/2 条 disjoint/412 实例引用，需先迁移')">✕ 删除</button>
+          <span class="hint" style="margin-left:auto">画布 = registry 投影，编辑落 YAML 差异 <span class="api plan">批次2·画布交互</span></span>
+        </div>
+        <div class="tbox">
+          <div class="tedge" style="left:350px;top:70px;width:110px;transform:rotate(28deg)"></div>
+          <div class="tedge" style="left:350px;top:72px;width:0.1px"></div>
+          <div class="tedge" style="left:350px;top:70px;width:110px;transform:rotate(152deg)"></div>
+          <div class="cls rootcls" style="left:50%;top:15%"><div class="cd">Entity<small>doc_graph 继承</small></div></div>
+          <div class="cls sel" style="left:22%;top:47%" onclick="selectCls(this,'Pollutant')"><div class="cd">Pollutant<small>污染物</small></div><div class="cl">412 实例</div></div>
+          <div class="cls" style="left:50%;top:47%" onclick="selectCls(this,'GovernanceMeasure')"><div class="cd">GovernanceMeasure<small>治理措施</small></div><div class="cl">96 实例</div></div>
+          <div class="cls" style="left:78%;top:47%" onclick="selectCls(this,'StandardClause')"><div class="cd">StandardClause<small>标准条款</small></div><div class="cl">58 实例</div></div>
+          <div class="predchip" style="left:14%;top:70%">monitored_by</div>
+          <div class="predchip" style="left:32%;top:70%">has_limit</div>
+          <div class="predchip" style="left:52%;top:70%">governed_by</div>
+          <div class="predchip" style="left:72%;top:70%">covered_by_standard</div>
+          <div class="axiombox" style="left:50%;top:87%;transform:translate(-50%,-50%)">属性链：monitored_by ∘ has_limit ⇒ <b>covered_by_standard</b> <span class="mono" style="font-size:10px">[prp-spo2 · 点击右侧公理面板编辑]</span></div>
+        </div>
+      </div>
+      <div class="bd tight" id="codeMode" style="display:none">
+        <div class="code" style="border:0;border-radius:0 0 10px 10px"><pre id="yamlBody"><span class="ln"> 1</span><span class="c"># 环评域 · 对齐 GB/T 48000 附录 C.10 + 附录 A</span>
+<span class="ln"> 2</span><span class="k">namespace:</span> <span class="s">https://eai-flow.com/onto/eia#</span>
+<span class="ln"> 3</span><span class="k">classes:</span>
+<span class="ln"> 4</span>  <span class="k">Pollutant:</span> { <span class="k">label:</span> 污染物, <span class="k">parents:</span> [doc_graph:Entity] }
+<span class="ln"> 5</span>  <span class="k">GovernanceMeasure:</span> { <span class="k">label:</span> 治理措施, <span class="k">parents:</span> [doc_graph:Entity] }
+<span class="ln"> 6</span>  <span class="k">StandardClause:</span> { <span class="k">label:</span> 标准条款, <span class="k">parents:</span> [doc_graph:Entity] }
+<span class="ln"> 7</span><span class="k">predicates:</span> [monitored_by, has_limit, governed_by, covered_by_standard]
+<span class="ln"> 8</span><span class="k">axioms:</span>
+<span class="ln"> 9</span>  <span class="k">property_chains:</span>
+<span class="ln">10</span>    - { <span class="k">derived:</span> covered_by_standard, <span class="k">chain:</span> [monitored_by, has_limit] }
+<span class="ln">11</span>  <span class="k">transitive:</span> [located_in]
+<span class="ln">12</span>  <span class="k">disjoint:</span> [[Pollutant, GovernanceMeasure]]</pre></div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="hd">选中元素 · 类 <span class="sp"><span class="mono">eia:Pollutant</span></span></div>
+        <div class="bd frm">
+          <label>名称（IRI 局部）</label><input type="text" value="Pollutant" oninput="markDirty()">
+          <label>显示名 label</label><input type="text" value="污染物" oninput="markDirty()">
+          <label>父类 parents</label><div class="chipbox"><span class="chip on" onclick="markDirty()">doc_graph:Entity ✕</span><span class="chip" onclick="markDirty();toast('父类候选列表（原型演示）')">＋ 添加父类</span></div>
+          <label>键 hasKey</label><input type="text" value="name" oninput="markDirty()">
+          <label>实例类型 etypes</label><div class="chipbox"><span class="chip on" onclick="markDirty()">eia:pollutant ✕</span><span class="chip" onclick="markDirty()">＋</span></div>
+        </div>
+      </div>
+      <div class="panel mt">
+        <div class="hd">公理 <span class="sp"><span class="api">axioms 段</span></span></div>
+        <div class="bd frm">
+          <label>属性链 property_chains</label>
+          <div class="axrow"><b>covered_by_standard</b>&nbsp;⇐&nbsp;<select onchange="markDirty()"><option>monitored_by</option><option>governed_by</option></select>&nbsp;∘&nbsp;<select onchange="markDirty()"><option>has_limit</option></select><button class="btn sm ghost" onclick="markDirty();toast('追加一环（原型演示）')">＋步</button></div>
+          <button class="btn sm" onclick="markDirty();toast('新属性链草稿（原型演示）')">＋ 新属性链</button>
+          <label>传递 transitive</label><div class="chipbox"><span class="chip on" onclick="this.classList.toggle('on');markDirty()">located_in</span></div>
+          <label>不相交 disjoint</label><div class="axrow">[Pollutant, GovernanceMeasure]<button class="btn sm ghost" onclick="markDirty();toast('已移除（原型演示）')">✕</button></div>
+          <label>逆 inverse</label><span class="hint">本域暂无 · 支持配对声明</span>
+        </div>
+      </div>
+      <div class="panel mt">
+        <div class="hd">校验面板 <span class="sp"><span class="api">POST /registry-content/validate</span></span></div>
+        <div class="bd" id="validateBox">
+          <div class="hint">点击「校验」检查 schema/引用/环。保存前必须先通过校验——两种模式下同一校验管线。</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+06 推理工作台
+=================================================== -->
+<section class="page" id="p-reasoning">
+  <div class="ph">
+    <h2>推理工作台</h2>
+    <p>重构点：从「黑盒数字」升级为「白盒论证」——物化可下钻、规则链可解释、CQ 验收真数据化（解释视图与 CQ 验收已入 TODOS，触发条件驱动）。</p>
+  </div>
+  <div class="grid2">
+    <div>
+      <div class="panel">
+        <div class="hd">推理运行 <span class="sp"><span class="api">POST /formal/infer</span></span></div>
+        <div class="bd">
+          <div class="row" style="align-items:center">
+            <button class="btn sm">规则集：eia 内置 + owlrl ▾</button>
+            <button class="btn sm">作用域：全域 ▾</button>
+            <button class="btn pri sm" onclick="toast('infer 已提交 · 上次耗时 2.3s')">▶ 运行推理</button>
+          </div>
+          <div class="row mt" style="gap:26px">
+            <div><div class="hint">物化三元组</div><b style="font-size:22px" class="num">3,825</b></div>
+            <div><div class="hint">规则命中</div><b style="font-size:22px" class="num">38</b></div>
+            <div><div class="hint">耗时</div><b style="font-size:22px" class="num">2.3s</b></div>
+            <div><div class="hint">图规模</div><b style="font-size:22px" class="num">6,730</b></div>
+          </div>
+          <div class="hint mt">owlrl 字面量已剔除推理空间（5k 28s → 6s 优化保留）。</div>
+        </div>
+      </div>
+      <div class="panel mt">
+        <div class="hd">CQ 验收单 <span class="sp"><span class="badge b-ok">7/9 通过</span><span class="api plan">TODOS·推理白盒化</span></span></div>
+        <div class="bd">
+          <div class="cq"><span class="verdict v-pass">PASS</span><div class="q">矿井水处理站的悬浮物执行哪个标准？<div class="a">→ GB 50383-2010 · 路径 monitored_by→has_limit⇒covered_by_standard</div></div></div>
+          <div class="cq"><span class="verdict v-pass">PASS</span><div class="q">哪些设施受 GB 13223-2011 约束？<div class="a">→ 锅炉烟气排放系统 · 1 条治理链</div></div></div>
+          <div class="cq"><span class="verdict v-fail">FAIL</span><div class="q">矸石山与水源保护区的最小距离要求？<div class="a">→ 无路径：located_in 链首缺实例（prp-spo2 静默零推断）· 建议补桑干河实体</div></div></div>
+          <div class="cq"><span class="verdict v-pass">PASS</span><div class="q">投标人须具备哪些资质？<div class="a">→ 2 条 · 来自 bid_quote 域 qualification</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="panel">
+        <div class="hd">解释视图 · 示例：covered_by_standard(矿井水处理站, GB 50383-2010)</div>
+        <div class="bd">
+          <ul class="chain">
+            <li><div class="step">① 基础事实（确认入图）</div><div class="t">monitored_by(矿井水处理站, 悬浮物浓度) · 源: 环评报告-横城 §4.2</div></li>
+            <li><div class="step">② 基础事实（确认入图）</div><div class="t">has_limit(悬浮物浓度, GB 50383-2010/表2) · 源: 条款抽取</div></li>
+            <li><div class="step">③ 属性链推导 <span class="rule">prp-spo2</span></div><div class="t">monitored_by∘has_limit ⇒ covered_by_standard · named graph: rules/eia/chain-1</div></li>
+            <li><div class="step">④ sameas 传播 <span class="rule">sameas_propagation</span>（可选叠加）</div><div class="t">同义设施（回用水车间）继承同一条治理关系</div></li>
+          </ul>
+          <div class="hint mt">每条物化可回答「哪条规则、哪些前提、哪个 named graph」——反事实（为什么没推出来）由 CQ FAIL 行给出缺前提提示。</div>
+        </div>
+      </div>
+      <div class="banner info mt">
+        <div><b>白盒化 = TODOS 触发条件驱动。</b>本页物化统计与 infer 为已接真数据；解释视图与 CQ 入库为规划项，任一触发即开工（非实现者用户问「结论哪来的」/ axiom 回归 / 国标评审要 CQ 证据）。</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+07 校验中心
+=================================================== -->
+<section class="page" id="p-validation">
+  <div class="ph">
+    <h2>校验中心</h2>
+    <p>SHACL 形状校验 + 国标 GB/T 48000 系符合性套件（C1-C5），每次全量装载/推理后可重跑。</p>
+  </div>
+  <div class="tiles" style="grid-template-columns:repeat(5,1fr)">
+    <div class="tile"><div class="k">C1 类层次一致</div><div class="v ok" style="color:var(--success)">✓</div></div>
+    <div class="tile"><div class="k">C2 键约束</div><div class="v" style="color:var(--success)">✓</div></div>
+    <div class="tile"><div class="k">C3 公理无冲突</div><div class="v" style="color:var(--success)">✓</div></div>
+    <div class="tile"><div class="k">C4 域谓词合法</div><div class="v" style="color:var(--success)">✓</div></div>
+    <div class="tile"><div class="k">C5 提及可溯源</div><div class="v" style="color:var(--success)">✓</div></div>
+  </div>
+  <div class="grid2 mt">
+    <div class="panel">
+      <div class="hd">SHACL 违规 <span class="sp"><span class="badge b-ok">0 错误</span><span class="badge b-pend">2 警告</span><span class="api">GET /formal/validate</span></span></div>
+      <div class="bd tight"><table>
+        <thead><tr><th>级别</th><th>形状</th><th>目标</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge b-pend">warning</span></td><td class="mono">MinConfidence</td><td class="mono">place:桑干河…</td><td>置信度 0.79 低于建议阈值 0.85</td></tr>
+          <tr><td><span class="badge b-pend">warning</span></td><td class="mono">RequiresMention</td><td class="mono">goods:SGZ-800</td><td>仅 1 条提及，建议补充原文引文</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="panel">
+      <div class="hd">校验运行 <span class="sp"><span class="api new">pyshacl 0.40 · shacl_graph 参数</span></span></div>
+      <div class="bd">
+        <div class="row" style="align-items:center">
+          <button class="btn pri sm" onclick="toast('validate 已提交 · 上次 1.8s')">▶ 重新校验</button>
+          <button class="btn sm">范围：全域 ▾</button>
+        </div>
+        <div class="hint mt">上次运行 2026-09-26 09:16 · 1.8s · 国标五项 + SHACL shapes 编译一次性完成。</div>
+        <div class="row mt" style="justify-content:space-between">
+          <span class="hint">注册表草稿校验（建模器保存前）另行走 validate 端点。</span>
+          <button class="btn sm ghost" onclick="go('modeler')">去建模器校验草稿</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+08 抽取导入
+=================================================== -->
+<section class="page" id="p-ingest">
+  <div class="ph">
+    <h2>抽取导入</h2>
+    <p>重构点：旧版纯静态。真数据化需要后端补「抽取任务」概念（TODOS 关联）——任务队列、进度、置信度分布、证据链引文均挂在新任务实体上。</p>
+  </div>
+  <div class="row" style="margin-bottom:14px;align-items:center">
+    <button class="btn pri">＋ 新建抽取任务 <span class="api plan">规划·任务 API</span></button>
+    <button class="btn" onclick="toast('已提交全量装载（formal/load）')">从主系统线程导入 <span class="api">POST /formal/load-ontology</span></button>
+    <span class="hint" style="margin-left:auto">生产线 <span class="mono">regex/v1</span>（确定性正则，etype/谓词与 eia.yaml 枚举严格同名）· LLM 辅助精标规划中 <span class="api plan">TODOS</span> · 月儿湾全链路：抽取 460 实体 / 205 关系 / 318 提及 → 装载 → infer 1857 物化</span>
+  </div>
+  <div class="panel">
+    <div class="hd">抽取任务 <span class="sp"><span class="badge b-pend">2 进行中</span></span></div>
+    <div class="bd tight"><table>
+      <thead><tr><th>来源</th><th>域 profile</th><th>状态</th><th>实体</th><th>关系</th><th>提及</th><th>操作</th></tr></thead>
+      <tbody>
+        <tr><td>环评报告-横城（送审稿）.docx</td><td><span class="tag">eia</span></td><td><span class="sdot s-ok"></span>完成</td><td class="num">460</td><td class="num">205</td><td class="num">318</td><td><button class="btn sm" onclick="go('resolve')">送审 14 条</button></td></tr>
+        <tr><td>横城煤矿投标文件-2024-017.pdf</td><td><span class="tag">doc_graph</span></td><td><span class="sdot s-act"></span>抽取中 62%</td><td class="num">87…</td><td class="num">104…</td><td class="num">156…</td><td><button class="btn sm ghost" disabled>等待完成</button></td></tr>
+        <tr><td>中标候选人公示-0912.pdf</td><td><span class="tag">bid_quote</span></td><td><span class="sdot s-act"></span>抽取中 31%</td><td class="num">22…</td><td class="num">35…</td><td class="num">48…</td><td><button class="btn sm ghost" disabled>等待完成</button></td></tr>
+        <tr><td>GB 13223-2011 火电厂大气污染物排放标准.pdf</td><td><span class="tag">eia</span></td><td><span class="sdot s-pend"></span>排队中</td><td>—</td><td>—</td><td>—</td><td><button class="btn sm ghost">↑ 提前</button></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <div class="grid2 mt">
+    <div class="panel">
+      <div class="hd">置信度分布（月儿湾实体）</div>
+      <div class="bd">
+        <div class="hbar"><span>&lt;.6</span><div class="bar"><i style="width:8%"></i></div><span class="n">38</span></div>
+        <div class="hbar"><span>.6+</span><div class="bar"><i style="width:14%"></i></div><span class="n">72</span></div>
+        <div class="hbar"><span>.7+</span><div class="bar"><i style="width:23%"></i></div><span class="n">118</span></div>
+        <div class="hbar"><span>.8+</span><div class="bar"><i style="width:31%"></i></div><span class="n">161</span></div>
+        <div class="hbar"><span>.9+</span><div class="bar"><i style="width:48%"></i></div><span class="n">244</span></div>
+        <div class="hbar"><span>1.0</span><div class="bar"><i style="width:40%"></i></div><span class="n">205</span></div>
+        <div class="hint mt">低置信段（&lt;.7）优先进入人审队列；高置信段供方案 C（agent 预审）自动确认。</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="hd">证据链引文（mention 永不删）</div>
+      <div class="bd" style="display:flex;flex-direction:column;gap:10px">
+        <div class="card"><div class="quote" style="margin-top:0">"投标人须同时具备环保工程专业承包一级资质与煤矿设备安装一级资质。"</div><div class="src">doc:标书-2024-017 · thread:2f8a… · extracted_by: regex/v1</div></div>
+        <div class="card"><div class="quote" style="margin-top:0">"锅炉烟气采用双碱法脱硫后经 45m 烟囱排放，执行 GB 13223-2011 规定限值。"</div><div class="src">doc:环评报告-横城 · thread:9d11… · extracted_by: regex/v1</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================================================
+09 导出互操作
+=================================================== -->
+<section class="page" id="p-export">
+  <div class="ph">
+    <h2>导出互操作</h2>
+    <p>图面选择（asserted / 全量）、Turtle/OWL 序列化下载；全量装载与对账；本体导入（国标 6.1.2）为规划项。</p>
+  </div>
+  <div class="grid2">
+    <div class="panel">
+      <div class="hd">导出 <span class="sp"><span class="api">GET /formal/export</span></span></div>
+      <div class="bd">
+        <div class="row" style="align-items:center">
+          <button class="btn sm">图：asserted ▾</button>
+          <button class="btn sm">格式：Turtle ▾</button>
+          <button class="btn sm">域：全部 ▾</button>
+          <button class="btn pri sm" onclick="toast('export 200 · graphs=asserted · 6,730 triples')">⬇ 导出</button>
+        </div>
+        <div class="hint mt">验收判据约定：<b>graphs=asserted 含该 IRI 且 status=active</b> 即投影生效——这是全系统唯一图面判据（MCP 只读工具走 SQL 层，不作数）。</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="hd">装载与对账 <span class="sp"><span class="api">POST /formal/load</span></span></div>
+      <div class="bd">
+        <div class="row" style="align-items:center">
+          <button class="btn" onclick="toast('POST /formal/load 已提交')">▶ 全量装载（对账）</button>
+          <span class="hint">重读 dg_* 全表 + force_status——degraded 自愈的执行者</span>
+        </div>
+        <table class="mt">
+          <thead><tr><th>时间</th><th>行数</th><th>结果</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">09-26 08:40</td><td class="num">1,041</td><td><span class="sdot s-ok"></span>对账一致</td></tr>
+            <tr><td class="mono">09-25 17:02</td><td class="num">581</td><td><span class="sdot s-ok"></span>对账一致</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="panel mt future">
+    <div class="hd">本体导入（ adopts existing ontologies ）</div>
+    <div class="bd"><div class="hint">国标 6.1.2「应采用现有本体」当前未满足（只有导出无导入）。规划：SKOS/OWL 片段导入 → 命名空间映射 → registry 合并审查。待跨域链路启用时一并排期。</div></div>
+  </div>
+</section>
+</main>
+
+<!-- ============ 抽屉 ============ -->
+<div class="scrim" id="scrim" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="dh"><b>矿井水处理站</b><span class="tag">facility</span><span class="badge b-act">active</span><button class="btn sm ghost" style="margin-left:auto" onclick="closeDrawer()">✕</button></div>
+  <div class="db">
+    <div class="kv">
+      <dt>IRI</dt><dd>…/doc_graph#facility-mine-water</dd>
+      <dt>规范名</dt><dd>矿井水处理站</dd>
+      <dt>置信度</dt><dd>0.93</dd>
+      <dt>状态</dt><dd>active（09-26 08:41 确认）</dd>
+      <dt>提及</dt><dd>9 条 · 首条 thread:9d11… §4.2</dd>
+    </div>
+    <div class="hint" style="margin:14px 0 6px">属性三元组（断言图）</div>
+    <div class="code"><pre><span class="ln">1</span>located_in(·, 月儿湾煤矿项目)
+<span class="ln">2</span>monitored_by(·, 悬浮物浓度)
+<span class="ln">3</span>covered_by_standard(·, GB 50383-2010) <span class="c"># prp-spo2 推导</span></pre></div>
+    <div class="row mt">
+      <button class="btn sm" onclick="go('graph')">在图中查看</button>
+      <button class="btn sm">合并到…</button>
+      <button class="btn sm danger">驳回 <span class="api new">actions/invoke</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ===== hash 路由 ===== */
+const pages=[...document.querySelectorAll('.page')];
+function go(r){
+  const target=document.getElementById('p-'+r)||document.getElementById('p-dashboard');
+  pages.forEach(p=>p.classList.toggle('on',p===target));
+  document.querySelectorAll('.navitem').forEach(b=>b.classList.toggle('on',b.dataset.r===r));
+  if(location.hash!=='#'+r) history.replaceState(null,'','#'+r);
+  document.querySelector('main').scrollTop=0;
+}
+document.querySelectorAll('.navitem').forEach(b=>b.addEventListener('click',()=>go(b.dataset.r)));
+addEventListener('hashchange',()=>go(location.hash.slice(1)||'dashboard'));
+go(location.hash.slice(1)||'dashboard');
+
+/* ===== 抽屉 ===== */
+function openDrawer(){drawer.classList.add('open');scrim.classList.add('on')}
+function closeDrawer(){drawer.classList.remove('open');scrim.classList.remove('on')}
+
+/* ===== toast ===== */
+function toast(msg){const t=document.getElementById('toast');const d=document.createElement('div');d.textContent=msg;t.appendChild(d);setTimeout(()=>d.remove(),2600)}
+
+/* ===== 消解审核四态演示 ===== */
+const flows={
+  ok:['busy','done-ok'],
+  degraded:['busy','done-warn'],
+  rejected:['busy','done-rej'],
+  rejected2:['busy','done-conflict']
+};
+function demoInvoke(btn){
+  const v=btn.dataset.variant;
+  const orig=btn.innerHTML;
+  btn.classList.add('busy');btn.innerHTML='<span class="spin"></span> 投影中…';
+  setTimeout(()=>{
+    btn.classList.remove('busy');
+    const pair=btn.closest('.row');
+    const mate=pair.querySelector('.demo-btn:not(.pri)')===btn?pair.querySelector('.demo-btn.pri'):btn;
+    if(v==='ok'){btn.classList.add('done');btn.innerHTML='✓ 已入图';btn.style.background='var(--success)';btn.style.borderColor='var(--success)';toast('确认成功 · projected:true · 断言图已更新');}
+    else if(v==='degraded'){btn.innerHTML='⚠ 投影未生效';btn.style.background='var(--warning)';btn.style.borderColor='var(--warning)';toast('degraded · 已记录，管理员重跑装载即恢复（数据无损失）');}
+    else if(v==='rejected'){btn.innerHTML='✕ 已驳回归档';toast('驳回 · status=rejected（实体与 mention 保留）');}
+    else{btn.innerHTML='↻ 状态已变更，请刷新';btn.style.borderColor='var(--input)';toast('409 · 前置条件不满足（可能已驳回/已合并）——中性提示，不渲染为已确认');}
+    setTimeout(()=>{btn.innerHTML=orig;btn.style='';btn.classList.remove('done')},4200);
+  },1100);
+}
+
+/* ===== 建模器演示 ===== */
+function pickFile(el,name){
+  document.querySelectorAll('#filelist button').forEach(b=>b.classList.toggle('on',b===el));
+  document.querySelector('#p-modeler .mono').textContent=name;
+  toast('已加载 '+name+'（演示切换，内容相同）');
+}
+function modeSwitch(m){
+  document.getElementById('visMode').style.display=m==='vis'?'':'none';
+  document.getElementById('codeMode').style.display=m==='yaml'?'':'none';
+  document.getElementById('segVis').classList.toggle('on',m==='vis');
+  document.getElementById('segYaml').classList.toggle('on',m==='yaml');
+}
+function markDirty(){document.getElementById('dirtyTag').style.display='inline-flex'}
+function selectCls(el,name){
+  document.querySelectorAll('#visMode .cls').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  toast('已选中 '+name+' —— 右侧「选中元素/公理」表单联动（原型为静态示例）');
+}
+function fakeValidate(){
+  document.getElementById('validateBox').innerHTML=
+    '<div class="badge b-ok">校验通过</div><div class="hint mt">schema ✓ · 引用完整 ✓ · 无环 ✓ · 2 条提示：cross_module 引用了未启用的链路谓词。</div>';
+  document.getElementById('dirtyTag').style.display='inline-flex';
+}
+function fakeSave(){
+  document.getElementById('dirtyTag').style.display='none';
+  toast('已保存 · registry_version v7 → v8 · fingerprint 已更新');
+}
+</script>
+</body>
+</html>

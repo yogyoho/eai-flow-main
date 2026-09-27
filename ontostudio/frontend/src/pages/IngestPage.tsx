@@ -25,11 +25,11 @@ const TASKS = [
 const QUOTES = [
   {
     text: "投标人须同时具备环保工程专业承包一级资质与煤矿设备安装一级资质。",
-    src: "doc:标书-2024-017 · thread:2f8a… · extracted_by: llm/v3",
+    src: "doc:标书-2024-017 · thread:2f8a… · extracted_by: regex/v1",
   },
   {
     text: "锅炉烟气采用双碱法脱硫后经 45m 烟囱排放，执行 GB 13223-2011 规定限值。",
-    src: "doc:环评报告-横城 · thread:9d11… · extracted_by: llm/v3",
+    src: "doc:环评报告-横城 · thread:9d11… · extracted_by: regex/v1",
   },
 ];
 
@@ -41,7 +41,7 @@ export function IngestPage() {
       <PageHeader
         icon={ FileInput }
         title="抽取导入"
-        description="文档 → LLM 类型化抽取 → mentions 证据落图 · 幂等管线（自然键去重）· 低置信度仅存证"
+        description="文档 → 类型化抽取（生产线 regex/v1 确定性正则 · LLM 辅助精标规划中）→ mentions 证据落图 · 幂等管线（自然键去重）· 抽取任务队列概念为规划项"
       />
       <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-[1fr_1.6fr]">
         <div className="flex flex-col gap-3.5">

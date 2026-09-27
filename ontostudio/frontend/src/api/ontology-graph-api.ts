@@ -131,6 +131,38 @@ export interface ObjectLinksPage {
   from: { object_type: string; pk: unknown };
 }
 
+/** 对象类型实例分页列表（引擎 visible 属性投影；行含 pk 字段）。 */
+export interface ObjectsPage {
+  data: Record<string, unknown>[];
+  next_cursor: string | null;
+}
+
+/** 对象类型实例检索（实体库页数据源；q 走 searchable 属性 ILIKE，cursor 不透明透传）。 */
+export async function fetchObjects(
+  apiName: string,
+  opts?: {
+    q?: string;
+    limit?: number;
+    cursor?: string | null;
+    order?: string;
+    desc?: boolean;
+    signal?: AbortSignal;
+  },
+): Promise<ObjectsPage> {
+  const params = new URLSearchParams();
+  if (opts?.q) params.set("q", opts.q);
+  if (opts?.limit) params.set("limit", String(opts.limit));
+  if (opts?.cursor) params.set("cursor", opts.cursor);
+  if (opts?.order) params.set("order", opts.order);
+  if (opts?.desc) params.set("desc", "true");
+  const qs = params.toString();
+  const res = await authFetch<Partial<ObjectsPage>>(
+    `${BASE}/objects/${encodeURIComponent(apiName)}${qs ? `?${qs}` : ""}`,
+    { signal: opts?.signal },
+  );
+  return { data: res.data ?? [], next_cursor: res.next_cursor ?? null };
+}
+
 /** 单对象沿一个链接类型取对侧行（DetailPanel 关联链接区按需拉取）。 */
 export async function fetchObjectLinks(
   apiName: string,

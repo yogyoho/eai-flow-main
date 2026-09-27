@@ -61,6 +61,30 @@ export function fetchFormalValidate(): Promise<FormalValidateResult> {
   return authFetch<FormalValidateResult>(`${BASE}/validate`);
 }
 
+// ---- load（全量装载 = 对账，人审闭环切片语义）----
+
+export interface FormalLoadResult {
+  success: boolean;
+  entities: number;
+  relations: number;
+  mentions: number;
+  deduped_entities: number;
+  skipped_entities: string[];
+  skipped_relations: string[];
+  skipped_mentions: string[];
+}
+
+/**
+ * POST /formal/load：重读 dg_* 全表装进断言图（行级 force_status——装载即对账）。
+ * degraded 自愈的执行者：投影失败后重跑本端点即恢复一致（数据无损失）。
+ */
+export function runFormalLoad(domain?: string): Promise<FormalLoadResult> {
+  return authFetch<FormalLoadResult>(
+    `${BASE}/load${domain ? `?domain=${encodeURIComponent(domain)}` : ""}`,
+    { method: "POST" },
+  );
+}
+
 // ---- export ----
 
 export type ExportFormat = "turtle" | "json-ld";

@@ -13,7 +13,6 @@ import {
   LayoutDashboard,
   Blocks,
   KanbanSquare,
-  Network,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -91,18 +90,6 @@ const allNavItems: NavItem[] = [
     icon: Factory,
     licenseModule: "platform",
     navId: "nav:knowledge-factory",
-  },
-  // EAI-CUSTOM: 本体语义地图（plan 2026-09-12 ontology-ui Task 3 Step 3.1；
-  // S2 Task 2 摘除主系统内嵌页面，入口切独立 Vite 前端 /ontostudio/ 新标签打开。
-  // S2 Task 3 nginx 路由已落地：/ontostudio/* → ontostudio-frontend:3010（容器
-  // profiles=["ontostudio"] 按需安装；未起容器时该入口 502——预期行为）。
-  {
-    href: "/ontostudio/",
-    label: "语义地图",
-    icon: Network,
-    licenseModule: "platform",
-    navId: "nav:ontology",
-    newTab: true,
   },
   {
     href: "/knowledge",

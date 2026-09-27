@@ -1,16 +1,19 @@
 /**
- * 09 导出互操作（EAI-CUSTOM）——真实数据源：GET /ontology/formal/export。
- * Turtle（all 图）/ JSON-LD（schema 图）预览 + 下载；命名空间表静态；
- * 快照列表为占位（快照调度属后续部署面，见 spec §4）。
+ * 09 导出互操作（EAI-CUSTOM，2026-09-27 原型重构）——真实数据源：
+ * GET /ontology/formal/export（Turtle all 图 / JSON-LD schema 图）+ POST /formal/load
+ * （全量装载=对账，degraded 自愈执行者）。命名空间表静态；快照/导入为规划项。
  */
-import { FileOutput } from "lucide-react";
+import { FileOutput, Loader2, PlayCircle } from "lucide-react";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 import {
   downloadText,
   fetchFormalExportJsonld,
   fetchFormalExportText,
+  runFormalLoad,
+  type FormalLoadResult,
 } from "@/api/formal-api";
 import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
 
@@ -32,6 +35,13 @@ export function ExportPage() {
   const jsonldText = jsonldQuery.data
     ? JSON.stringify(jsonldQuery.data.document, null, 2)
     : "";
+
+  // 全量装载（对账）——人审闭环切片：行级 force_status 重写 DB 真相，degraded 自愈的执行者
+  const [loadResult, setLoadResult] = useState<FormalLoadResult | null>(null);
+  const loadMutation = useMutation({
+    mutationFn: () => runFormalLoad(),
+    onSuccess: (data) => setLoadResult(data),
+  });
 
   return (
     <div className="p-6">
@@ -93,39 +103,57 @@ export function ExportPage() {
         </Panel>
       </div>
       <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
-        <Panel title="命名空间映射">
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-border bg-muted/50 border-b">
-                {["前缀", "命名空间", "域"].map((head) => (
-                  <th key={head} className="text-muted-foreground px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">
-                    {head}
-                  </th>
+        <Panel
+          title="装载与对账"
+          subtitle="POST /formal/load · 重读 dg_* 全表（行级 force_status）"
+        >
+          <div className="p-4">
+            <div className="flex items-center gap-2.5">
+              <button
+                type="button"
+                disabled={loadMutation.isPending}
+                onClick={() => loadMutation.mutate()}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              >
+                {loadMutation.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PlayCircle className="h-3.5 w-3.5" />
+                )}
+                全量装载（对账）
+              </button>
+              <span className="text-muted-foreground text-[11px]">
+                装载即重写 DB 真相——投影失败（degraded）后重跑本操作即恢复一致，数据无损失
+              </span>
+            </div>
+            {loadMutation.isError ? (
+              <p className="text-destructive mt-3 text-xs">
+                装载失败：{(loadMutation.error as Error).message}
+              </p>
+            ) : null}
+            {loadResult ? (
+              <div className="mt-3 grid grid-cols-4 gap-2 text-center">
+                {[
+                  ["实体", loadResult.entities],
+                  ["关系", loadResult.relations],
+                  ["提及", loadResult.mentions],
+                  ["去重", loadResult.deduped_entities],
+                ].map(([k, v]) => (
+                  <div key={k as string} className="bg-muted rounded-lg px-2 py-2">
+                    <div className="text-foreground text-base font-semibold tabular-nums">
+                      {v as number}
+                    </div>
+                    <div className="text-muted-foreground text-[10.5px]">{k as string}</div>
+                  </div>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-border divide-y">
-              <tr className="">
-                <td className="px-4 py-3 font-mono text-xs">dg</td>
-                <td className="text-muted-foreground px-4 py-3 font-mono text-xs break-all">
-                  https://ontology.eai-flow.com/doc_graph#
-                </td>
-                <td className="px-4 py-3">投标域</td>
-              </tr>
-              <tr className="">
-                <td className="px-4 py-3 font-mono text-xs">eia</td>
-                <td className="text-muted-foreground px-4 py-3 font-mono text-xs break-all">
-                  https://ontology.eai-flow.com/eia#
-                </td>
-                <td className="px-4 py-3">环评域</td>
-              </tr>
-              <tr>
-                <td className="px-4 py-3 font-mono text-xs">owl / sh / rdf</td>
-                <td className="text-muted-foreground px-4 py-3 font-mono text-xs">W3C 标准</td>
-                <td className="px-4 py-3">—</td>
-              </tr>
-            </tbody>
-          </table>
+              </div>
+            ) : null}
+            {loadResult && loadResult.skipped_entities.length > 0 ? (
+              <p className="text-warning mt-2 text-[11px]">
+                跳过 {loadResult.skipped_entities.length} 行（etype 未在 registry 声明，详见后端日志）
+              </p>
+            ) : null}
+          </div>
         </Panel>
         <Panel title="快照历史" subtitle="每日 06:00 · 可恢复">
           <div>

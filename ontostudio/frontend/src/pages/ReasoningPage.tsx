@@ -1,14 +1,13 @@
 /**
- * 06 推理工作台骨架页（EAI-CUSTOM）：闭包统计 + CONSTRUCT 规则表 + SPARQL 预览
- * + Competency Questions 验收单（静态示例数据）。
- * 真实数据面待 kernel P3（owlrl 闭包 + named graph 派生）。
+ * 06 推理工作台（EAI-CUSTOM，2026-09-27 原型重构）：infer 真数据（闭包统计 + 规则表）
+ * + 解释视图 / CQ 验收单（规划态展示，水印标注——已入 TODOS「推理白盒化」，触发条件驱动）。
  */
 import { BrainCircuit } from "lucide-react";
 
 import { useQuery } from "@tanstack/react-query";
 
 import { runFormalInfer } from "@/api/formal-api";
-import { Chip, PageHeader, Panel } from "@/pages/shared";
+import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
 
 const RULES = [
   { name: "org_in_ecosystem", desc: "组织沿承包链归入生态（rules.yaml）", pred: "org_in_ecosystem_of", graph: "graph:derived:org_in_ecosystem" },
@@ -28,9 +27,10 @@ WHERE {
 }`;
 
 const QUESTIONS = [
-  { tone: "primary", tag: "图谱可答", text: "横城煤矿项目的投标人是谁？" },
-  { tone: "primary", tag: "图谱可答", text: "山西煤机集团持有什么资质？" },
-  { tone: "warning", tag: "推理可答", text: "哪些投标人具备项目所需全部资质？" },
+  { verdict: "PASS", text: "矿井水处理站的悬浮物执行哪个标准？", answer: "GB 50383-2010 · 路径 monitored_by→has_limit⇒covered_by_standard" },
+  { verdict: "PASS", text: "哪些设施受 GB 13223-2011 约束？", answer: "锅炉烟气排放系统 · 1 条治理链" },
+  { verdict: "FAIL", text: "矸石山与水源保护区的最小距离要求？", answer: "无路径：located_in 链首缺实例（prp-spo2 静默零推断）· 建议补桑干河实体" },
+  { verdict: "PASS", text: "投标人须具备哪些资质？", answer: "2 条 · 来自 bid_quote 域 qualification" },
 ] as const;
 
 export function ReasoningPage() {
@@ -123,19 +123,84 @@ export function ReasoningPage() {
         </div>
       </Panel>
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-[1.4fr_1fr]">
-        <Panel title="规则预览" subtitle="bidder_qualified · Phase B 验收问题 #3">
-          <div className="p-3">
-            <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
-              {SPARQL}
-            </pre>
-          </div>
-        </Panel>
-        <Panel title="验收问题（Competency Questions）">
-          <div className="flex flex-col gap-2.5 p-4 text-[13px]">
+        <div className="flex flex-col gap-3.5">
+          <Panel title="规则预览" subtitle="bidder_qualified · Phase B 验收问题 #3">
+            <div className="p-3">
+              <pre className="bg-code-bg text-code-fg overflow-x-auto rounded-lg p-3.5 font-mono text-[11.5px] leading-relaxed">
+                {SPARQL}
+              </pre>
+            </div>
+          </Panel>
+          <Panel
+            title="解释视图 · covered_by_standard 推导链示例"
+            subtitle="named graph 归属即触发轨迹"
+            actions={<DemoTag />}
+          >
+            <ol className="flex flex-col gap-3 p-4 text-[13px]">
+              <li className="border-primary/20 border-l-2 pl-3">
+                <b className="text-[12.5px]">① 基础事实（确认入图）</b>
+                <div className="text-muted-foreground font-mono text-[11px]">
+                  monitored_by(矿井水处理站, 悬浮物浓度) · 源: 环评报告-横城 §4.2
+                </div>
+              </li>
+              <li className="border-primary/20 border-l-2 pl-3">
+                <b className="text-[12.5px]">② 基础事实（确认入图）</b>
+                <div className="text-muted-foreground font-mono text-[11px]">
+                  has_limit(悬浮物浓度, GB 50383-2010/表2) · 源: 条款抽取
+                </div>
+              </li>
+              <li className="border-primary/20 border-l-2 pl-3">
+                <b className="text-[12.5px]">
+                  ③ 属性链推导 <Chip tone="primary">prp-spo2</Chip>
+                </b>
+                <div className="text-muted-foreground font-mono text-[11px]">
+                  monitored_by∘has_limit ⇒ covered_by_standard · graph: rules/eia/chain-1
+                </div>
+              </li>
+              <li className="border-primary/20 border-l-2 pl-3">
+                <b className="text-[12.5px]">
+                  ④ sameas 传播 <Chip tone="primary">sameas_propagation</Chip>
+                </b>
+                <div className="text-muted-foreground font-mono text-[11px]">
+                  同义设施（回用水车间）继承同一治理关系
+                </div>
+              </li>
+            </ol>
+            <p className="text-muted-foreground border-border border-t px-4 py-2.5 text-[11px]">
+              白盒化（逐条物化可下钻 + 反事实「为什么没推出来」）已入 TODOS「推理白盒化」，触发条件驱动开工。
+            </p>
+          </Panel>
+        </div>
+        <Panel
+          title="验收问题（Competency Questions）"
+          actions={
+            <span className="flex items-center gap-1.5">
+              <DemoTag />
+              <Chip tone="warning">规划中</Chip>
+            </span>
+          }
+        >
+          <div className="flex flex-col p-4">
             {QUESTIONS.map((question) => (
-              <div key={question.text} className="flex items-center gap-2.5">
-                <Chip tone={question.tone}>{question.tag}</Chip>
-                {question.text}
+              <div
+                key={question.text}
+                className="border-border flex items-start gap-2.5 border-b py-2.5 last:border-b-0"
+              >
+                <span
+                  className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                    question.verdict === "PASS"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-destructive/10 text-destructive"
+                  }`}
+                >
+                  {question.verdict}
+                </span>
+                <div className="min-w-0">
+                  <div className="text-[12.5px]">{question.text}</div>
+                  <div className="text-muted-foreground mt-0.5 font-mono text-[10.5px]">
+                    → {question.answer}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
