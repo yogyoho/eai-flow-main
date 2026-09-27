@@ -19,25 +19,28 @@ REGISTRY_DIR = Path(__file__).parent.parent / "app" / "ontology" / "registry"
 
 
 def test_load_real_registry():
-    """① 加载真实注册表：14 对象 / 16 链接（12 FK + 4 跨模块 stub）。"""
+    """① 加载真实注册表（EAI-CUSTOM 2026-09-27 缩编后两文件世界）：
+    5 对象 / 6 链接（6 FK，全部 enabled——旧四域的 4 条跨模块 stub 链接随 yaml 退场，
+    D3 stub 机制由 test_ontology_engine 的合成 stub 用例守）。"""
     reg = load_registry(REGISTRY_DIR)
-    assert len(reg.object_types) == 16, sorted(reg.object_types)
-    assert len(reg.link_types) == 16, sorted(reg.link_types)
+    assert len(reg.object_types) == 5, sorted(reg.object_types)
+    assert len(reg.link_types) == 6, sorted(reg.link_types)
 
     fk = [lt for lt in reg.link_types.values() if lt.join.type == "foreign_key"]
     cross = [lt for lt in reg.link_types.values() if lt.cross_module]
-    assert len(fk) == 12
-    assert len(cross) == 4
-    # D3: 全部跨模块链接 stub 上线（召回预测量结论）
-    assert all(lt.enabled is False for lt in cross)
-    assert all(lt.note for lt in cross), "stub 链接必须带 note 记录实测原因"
-    # 域分布
+    assert len(fk) == 6
+    assert cross == []
+    # 缩编后无 stub：全部链接 enabled（stub 遍历拒绝机制见 test_ontology_engine）
+    assert all(lt.enabled for lt in reg.link_types.values())
+    # 域分布：幸存域 = doc_graph + eia（eia 经 mention_of_eia_* 证据链挂接，不再 orphan）
     domains = {obj.domain for obj in reg.object_types.values()}
-    assert domains == {"contract_price", "spare_parts", "bid_quote", "doc_graph", "eia"}
-    # hidden 列不参与过滤/搜索
-    ds = reg.object_types["data_source"]
-    conn = next(p for p in ds.properties if p.name == "connection_config")
-    assert conn.hidden and not conn.filterable and not conn.searchable
+    assert domains == {"doc_graph", "eia"}
+    # eia 域 dg_* 透镜: etype 枚举齐全（抽取四类目标 + 章节结构）
+    eia_obj = reg.object_types["eia_entity"]
+    etype_prop = next(p for p in eia_obj.properties if p.name == "etype")
+    assert "standard_threshold" in (etype_prop.enum or []) and "report" in (etype_prop.enum or [])
+    # doc_graph 域: 审核动作仍钉在 graph_entity
+    assert "review_entity.confirm" in reg.actions and "review_entity.reject" in reg.actions
 
 
 def test_fingerprint_and_version_bump(tmp_path: Path):
@@ -48,50 +51,54 @@ def test_fingerprint_and_version_bump(tmp_path: Path):
     assert r1.registry_version == 1
     assert store.get() is r1, "磁盘未变 → 返回同一不可变快照"
 
-    # 修改一个域文件（加一个链接）
-    f = tmp_path / "registry" / "bid_quote.yaml"
+    # 修改一个域文件（缩编后幸存文件之一；空追加不改语义但改内容字节 → 指纹变）
+    f = tmp_path / "registry" / "eia.yaml"
     f.write_text(
         f.read_text(encoding="utf-8")
         + textwrap.dedent("""
     """),
         encoding="utf-8",
     )
-    # 空追加不改语义但改内容字节 → 指纹变
     r2 = store.get()
     assert r2 is not r1
     assert r2.registry_version == r1.registry_version + 1
 
 
 def test_malformed_yaml_rejected_with_filename(tmp_path: Path):
-    """③ 坏 YAML fail-closed：带文件名拒绝，绝不半加载。"""
-    shutil.copytree(REGISTRY_DIR, tmp_path / "registry")
+    """③ 坏 YAML fail-closed：带文件名拒绝，绝不半加载。
+
+    EAI-CUSTOM(2026-09-27 registry 缩编): 载体从已删的 contract_price/spare_parts/
+    cross_module/bid_quote 换成幸存的 doc_graph.yaml / eia.yaml——机制断言全部不变
+    （坏写内容整文件覆盖清单内文件，加载器按清单重读才踩雷）。
+    """
     # 语法错误（缩进炸）
-    (tmp_path / "registry" / "contract_price.yaml").write_text("object_types:\n  - api_name: x\n    properties: [bad", encoding="utf-8")
-    with pytest.raises(RegistryError, match="contract_price.yaml"):
+    shutil.copytree(REGISTRY_DIR, tmp_path / "registry")
+    (tmp_path / "registry" / "doc_graph.yaml").write_text("object_types:\n  - api_name: x\n    properties: [bad", encoding="utf-8")
+    with pytest.raises(RegistryError, match="doc_graph.yaml"):
         load_registry(tmp_path / "registry")
 
     # schema 错误（未知字段，extra=forbid）
     shutil.copytree(REGISTRY_DIR, tmp_path / "registry2")
-    (tmp_path / "registry2" / "spare_parts.yaml").write_text("object_types:\n  - api_name: customer\n    bogus_field: 1\n", encoding="utf-8")
-    with pytest.raises(RegistryError, match="spare_parts.yaml"):
+    (tmp_path / "registry2" / "eia.yaml").write_text("object_types:\n  - api_name: customer\n    bogus_field: 1\n", encoding="utf-8")
+    with pytest.raises(RegistryError, match="eia.yaml"):
         load_registry(tmp_path / "registry2")
 
-    # 交叉引用错误：链接指向未注册对象
+    # 交叉引用错误：链接指向未注册对象（source 用真实类型，让 target 的报错命中）
     shutil.copytree(REGISTRY_DIR, tmp_path / "registry3")
-    (tmp_path / "registry3" / "cross_module.yaml").write_text(
+    (tmp_path / "registry3" / "eia.yaml").write_text(
         textwrap.dedent("""
         object_types: []
         link_types:
           - api_name: ghost_link
             display_name: ghost
-            source: part_cluster
+            source: graph_mention
             target: no_such_object
             cardinality: N:N
             reverse: ghost_r
             join:
               type: normalized_key_match
               key_pairs:
-                - [representative_name, representative_name]
+                - [entity_id, entity_id]
         """),
         encoding="utf-8",
     )
@@ -100,22 +107,22 @@ def test_malformed_yaml_rejected_with_filename(tmp_path: Path):
 
     # FK 列未声明（declared-only 铁律）
     shutil.copytree(REGISTRY_DIR, tmp_path / "registry4")
-    (tmp_path / "registry4" / "bid_quote.yaml").write_text(
+    (tmp_path / "registry4" / "eia.yaml").write_text(
         textwrap.dedent("""
         object_types:
-          - api_name: bid_item
+          - api_name: mock_thing
             display_name: x
             description: x
-            domain: bid_quote
-            access: { path: postgres_ext, table: mock_bid_item }
+            domain: eia
+            access: { path: postgres_ext, table: mock_thing }
             pk: { column: id, api_name: id, type: integer }
             properties:
               - { name: id, api_name: id, type: integer, description: pk }
         link_types:
           - api_name: bad_fk
             display_name: x
-            source: bid_item
-            target: bid_item
+            source: mock_thing
+            target: mock_thing
             cardinality: N:1
             reverse: bad_fk_r
             join:
@@ -130,17 +137,20 @@ def test_malformed_yaml_rejected_with_filename(tmp_path: Path):
 
 
 def test_hot_reload_failure_keeps_old_version(tmp_path: Path):
-    """热重载失败 → 旧快照继续服务（get 再抛错由调用方决定，旧数据不静默换空）。"""
+    """热重载失败 → 旧快照继续服务（get 再抛错由调用方决定，旧数据不静默换空）。
+
+    EAI-CUSTOM(2026-09-27 registry 缩编): 载体 cross_module.yaml → eia.yaml，机制断言不变。
+    """
     shutil.copytree(REGISTRY_DIR, tmp_path / "registry")
     store = RegistryStore(tmp_path / "registry")
     r1 = store.get()
-    cross = tmp_path / "registry" / "cross_module.yaml"
-    backup = cross.read_text(encoding="utf-8")
-    cross.write_text("object_types: [\n", encoding="utf-8")
+    target = tmp_path / "registry" / "eia.yaml"
+    backup = target.read_text(encoding="utf-8")
+    target.write_text("object_types: [\n", encoding="utf-8")
     with pytest.raises(RegistryError):
         store.get()
     # 修复后恢复并做真实变更 → 触发成功重载，版本递增（失败不占版本号）
-    cross.write_text(backup + "# touched\n", encoding="utf-8")
+    target.write_text(backup + "# touched\n", encoding="utf-8")
     r3 = store.get()
     assert r3.registry_version == r1.registry_version + 1
     assert store.get() is r3

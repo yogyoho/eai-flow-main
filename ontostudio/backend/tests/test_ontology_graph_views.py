@@ -210,19 +210,24 @@ async def test_edges_page_normalized_join_and_shape():
 
 @pytest.mark.asyncio
 async def test_edges_page_excludes_stub_links():
-    """真注册表: 输出边只来自 enabled 链接（stub=4 条不产生边），且同输入同 cursor 幂等。"""
+    """真注册表: 输出边只来自 enabled 链接，且同输入同 cursor 幂等。
+
+    EAI-CUSTOM(2026-09-27 registry 缩编): 真实 registry 已无 stub 链接（原 4 条跨模块 stub
+    随四域 yaml 退场）——判别力从「stub 不产生边」改为「每条 enabled 链接都产边且不重不漏」
+    （罐头 resolver 对任意 FROM 表回一对 pk，6 条链接各产 1 边）。
+    """
     from app.ontology.registry import load_registry
 
     reg = load_registry()
     eng = SimpleNamespace(_resolver=FakeResolver({}))  # 任意 SQL → 罐头一对 pk
     stub_names = {lt.api_name for lt in reg.link_types.values() if not lt.enabled}
     enabled_names = {lt.api_name for lt in reg.link_types.values() if lt.enabled}
-    assert stub_names  # 真注册表确有 stub（当前 4 条），断言非空才有判别力
+    assert enabled_names and not stub_names  # 缩编后现实: 全 enabled
     p1 = await graph_views.edges_page(reg, eng, None, 5000)
     p2 = await graph_views.edges_page(reg, eng, None, 5000)
     assert p1 == p2
     types = {e["type"] for e in p1["edges"]}
-    assert types <= enabled_names and not (types & stub_names)
+    assert types == enabled_names  # 判别力: 每条 enabled 链接恰产边, 无 stub 混入
     for e in p1["edges"]:
         assert set(e.keys()) == {"source", "target", "type", "label"}
 

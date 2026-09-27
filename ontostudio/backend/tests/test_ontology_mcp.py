@@ -44,7 +44,8 @@ async def test_describe_compact_under_token_budget():
     """紧凑默认 <2k token；full 显式更大且含属性明细。"""
     out = await ontomcp._describe({})
     payload = json.loads(out[0].text)
-    assert payload["success"] and payload["object_type_count"] == 16 and payload["link_type_count"] == 16
+    # EAI-CUSTOM(2026-09-27 registry 缩编): 5 对象 / 6 链接（原 16/16 四域 yaml 已删）
+    assert payload["success"] and payload["object_type_count"] == 5 and payload["link_type_count"] == 6
     assert "fingerprint" in payload and "registry_version" in payload
     compact_chars = len(out[0].text)
     full = await ontomcp._describe({"full": True})
@@ -54,20 +55,31 @@ async def test_describe_compact_under_token_budget():
 
 
 @pytest.mark.asyncio
-async def test_stub_link_note_visible_in_describe():
-    """enabled:false stub 链接在 describe 可见且带原因（D3）。"""
+async def test_link_types_visible_in_describe():
+    """链接类型在 describe 可见（D3: stub 链接带原因）。
+
+    EAI-CUSTOM(2026-09-27 registry 缩编): 真实 registry 已无 stub 链接（4 条跨模块 stub
+    随四域 yaml 退场）——断言改为「全部链接可见且 enabled」；stub-note 可见性机制由
+    test_ontology_engine 的合成 stub 用例守。
+    """
     out = await ontomcp._describe({})
     payload = json.loads(out[0].text)
-    stubs = [lk for lk in payload["link_types"] if not lk["enabled"]]
-    assert len(stubs) == 4 and all("note" in lk for lk in stubs)
+    assert len(payload["link_types"]) == 6
+    assert all(lk["enabled"] for lk in payload["link_types"])
+    assert {lk["name"] for lk in payload["link_types"]} >= {"mention_of_eia_entity", "mention_of_eia_relation"}
 
 
 @pytest.mark.asyncio
 async def test_engine_errors_returned_structured():
-    """引擎安全/校验错误 → success:false 结构化（不裸抛、不静默）。"""
-    out = await ontomcp.call_tool("get_links", {"object_type": "bid", "pk": "B1", "link_type": "won_bid_contracts_project"})
+    """引擎安全/校验错误 → success:false 结构化（不裸抛、不静默）。
+
+    EAI-CUSTOM(2026-09-27 registry 缩编): 原 won_bid_contracts_project stub 链接类型已随
+    cross_module.yaml 删除 → 走 UnknownLinkError（未注册）路径，断言语义如实改为「链接
+    类型未注册」；LinkDisabledError 路径由 test_ontology_engine 的合成 stub 用例守。
+    """
+    out = await ontomcp.call_tool("get_links", {"object_type": "graph_entity", "pk": "B1", "link_type": "won_bid_contracts_project"})
     payload = json.loads(out[0].text)
-    assert payload["success"] is False and "LinkDisabledError" in payload["error"]
+    assert payload["success"] is False and "UnknownLinkError" in payload["error"]
 
 
 @pytest.mark.asyncio

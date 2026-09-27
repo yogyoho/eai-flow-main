@@ -44,7 +44,9 @@ export function ReasoningPage() {
     : 0;
 
   return (
-    <div className="p-6">
+    /* 纵向滚动层（样式=全站 6px 细条）+ min-w 保底（同总览/实体库手法） */
+    <div className="h-full overflow-x-auto overflow-y-auto">
+      <div className="min-w-[1080px] p-6">
       <PageHeader
         icon={ BrainCircuit }
         title="推理工作台"
@@ -205,6 +207,7 @@ export function ReasoningPage() {
             ))}
           </div>
         </Panel>
+      </div>
       </div>
     </div>
   );

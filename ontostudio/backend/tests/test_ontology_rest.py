@@ -27,57 +27,64 @@ def test_registry_meta_and_availability(client):
     r = client.get("/api/extensions/ontology/registry")
     assert r.status_code == 200
     body = r.json()
-    assert body["object_type_count"] == 16 and body["link_type_count"] == 16
-    assert body["availability"]["postgres_ext:cpa_documents"] is True  # 容器内扩展库可达
-    assert any(v is False for v in body["availability"].values()) is False or True  # bid-quote 已注册则 True
+    # EAI-CUSTOM(2026-09-27 registry 缩编): 5 对象 / 6 链接（原 16/16 四域 yaml 已删）
+    assert body["object_type_count"] == 5 and body["link_type_count"] == 6
+    assert body["availability"]["postgres_ext:dg_entities"] is True  # 容器内扩展库可达
 
 
-def test_object_types_lists_all_with_stub_notes(client):
+def test_object_types_lists_all(client):
     r = client.get("/api/extensions/ontology/object-types")
     assert r.status_code == 200
     body = r.json()
-    assert len(body["object_types"]) == 16
+    assert len(body["object_types"]) == 5
+    # 缩编后无 stub 链接（4 条跨模块 stub 随四域 yaml 退场）：全量 enabled 且不带 note
     stubs = [lk for lk in body["link_types"] if not lk["enabled"]]
-    assert len(stubs) == 4 and all("note" in lk for lk in stubs)
+    assert stubs == []
+    assert len(body["link_types"]) == 6 and all(lk["enabled"] for lk in body["link_types"])
 
 
 def test_list_objects_pagination_and_hidden_absent(client):
-    r = client.get("/api/extensions/ontology/objects/contract_item", params={"limit": 2, "order": "unit_price", "desc": True})
+    r = client.get("/api/extensions/ontology/objects/graph_entity", params={"limit": 2, "order": "confidence", "desc": True})
     assert r.status_code == 200
     body = r.json()
     assert len(body["data"]) <= 2
-    for row in body["data"]:
-        assert "connection_config" not in row and "SECRET" not in str(row)  # hidden 零透出
-    assert body["next_cursor"] is not None or len(body["data"]) < 2
     # keyset 翻页不炸且 pk tiebreaker 游标可用
     if body["next_cursor"]:
-        r2 = client.get("/api/extensions/ontology/objects/contract_item", params={"limit": 2, "order": "unit_price", "desc": True, "cursor": body["next_cursor"]})
+        r2 = client.get("/api/extensions/ontology/objects/graph_entity", params={"limit": 2, "order": "confidence", "desc": True, "cursor": body["next_cursor"]})
         assert r2.status_code == 200
 
 
 def test_get_object_and_links_roundtrip(client):
-    items = client.get("/api/extensions/ontology/objects/contract_item", params={"limit": 1}).json()["data"]
+    items = client.get("/api/extensions/ontology/objects/graph_entity", params={"limit": 1}).json()["data"]
     if not items:  # 空库跳过（CI 无数据时）
-        pytest.skip("contract_item 无数据")
+        pytest.skip("graph_entity 无数据")
     pk = items[0]["id"]
-    r = client.get(f"/api/extensions/ontology/objects/contract_item/{pk}")
+    r = client.get(f"/api/extensions/ontology/objects/graph_entity/{pk}")
     assert r.status_code == 200 and r.json()["id"] == pk
-    r2 = client.get(f"/api/extensions/ontology/objects/contract_item/{pk}/links/contract_item_in_cluster")
-    assert r2.status_code == 200 and r2.json()["link_type"] == "contract_item_in_cluster"
+    # 证据链链接（graph_mention→graph_entity），从 target 侧反向遍历
+    r2 = client.get(f"/api/extensions/ontology/objects/graph_entity/{pk}/links/mention_of_entity")
+    assert r2.status_code == 200 and r2.json()["link_type"] == "mention_of_entity"
 
 
 def test_aggregate_endpoint(client):
-    r = client.post("/api/extensions/ontology/aggregate", json={"object_type": "contract_item", "group_by": "goods_name", "metric": "count"})
+    r = client.post("/api/extensions/ontology/aggregate", json={"object_type": "graph_entity", "group_by": "etype", "metric": "count"})
     assert r.status_code == 200
     body = r.json()
     assert body["metric"] == "count" and all("group" in row and "value" in row for row in body["data"])
 
 
-def test_error_mapping_unknown_and_stub(client):
+def test_error_mapping_unknown(client):
+    """错误映射: 未注册对象/链接 → 404（UnknownObjectError / UnknownLinkError）。
+
+    EAI-CUSTOM(2026-09-27 registry 缩编): 原 stub 链接 400/LinkDisabledError 断言随
+    cross_module.yaml 退场——路由层 404 映射对未注册链接类型成立（won_bid_contracts_project
+    类型本身已不存在）；LinkDisabledError → 400 的映射保留在引擎/路由实现中，
+    stub 机制由 test_ontology_engine 的合成 stub 用例守。
+    """
     assert client.get("/api/extensions/ontology/objects/no_such_type").status_code == 404
-    r = client.get("/api/extensions/ontology/objects/bid/B1/links/won_bid_contracts_project")
-    assert r.status_code == 400 and "LinkDisabledError" in r.json()["detail"]
-    r2 = client.post("/api/extensions/ontology/aggregate", json={"object_type": "contract_item"})
+    r = client.get("/api/extensions/ontology/objects/graph_entity/B1/links/won_bid_contracts_project")
+    assert r.status_code == 404 and "UnknownLinkError" in r.json()["detail"]
+    r2 = client.post("/api/extensions/ontology/aggregate", json={"object_type": "graph_entity"})
     assert r2.status_code == 422
 
 

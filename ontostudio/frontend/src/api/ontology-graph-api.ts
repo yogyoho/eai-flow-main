@@ -144,11 +144,16 @@ export interface AggregateRow {
 }
 
 /** POST /ontology/aggregate：按可见列分组计数（工作台总览域健康/实体关系计数数据源）。
- *  limit 上限 200（engine MAX_LIMIT），默认 100——分组数超过时按计数降序截断。 */
+ *  limit 上限 200（engine MAX_LIMIT），默认 100——分组数超过时按计数降序截断；
+ *  filters 为引擎列过滤（须 filterable），如按域过滤 etype 计数。 */
 export async function fetchAggregate(
   objectType: string,
   groupBy: string,
-  opts?: { limit?: number; signal?: AbortSignal },
+  opts?: {
+    limit?: number;
+    filters?: Array<{ column: string; op: string; value: unknown }>;
+    signal?: AbortSignal;
+  },
 ): Promise<AggregateRow[]> {
   const res = await authFetch<{
     data?: Array<{ group: string | null; value: number }>;
@@ -159,6 +164,7 @@ export async function fetchAggregate(
       group_by: groupBy,
       metric: "count",
       ...(opts?.limit ? { limit: opts.limit } : {}),
+      ...(opts?.filters?.length ? { filters: opts.filters } : {}),
     }),
     signal: opts?.signal,
   });

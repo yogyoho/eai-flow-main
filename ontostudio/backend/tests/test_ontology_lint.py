@@ -24,16 +24,18 @@ def test_all_checks_pass_on_real_registry():
     # EAI-CUSTOM(迁出独立): cpa_/csp_ 模型属 gateway, 不入独立服务 metadata——其登记约束
     # 由 registry 声明侧 + gateway 侧承管, 此处只守本服务可见域。
     assert check_market_tables_registered(reg) == []
+    # EAI-CUSTOM(2026-09-27 registry 缩编): data_source/dataset 等 data_source 路径对象随
+    # 四域 yaml 删除而退场, data_source access 检查对现 registry 为空集（机制由本函数守）。
     assert check_data_source_access(reg) == []
     # Task 9: 动作层可达者必须声明 scope_resource（本仓唯一自动化守卫——lint 脚本未被 CI 调用）。
-    # graph_mention 那一处即由这条检查在 Task 9 抓出并补上。
+    # graph_mention 那一处即由这条检查在 Task 9 抓出并补上；registry 缩编后 eia_entity/
+    # eia_relation 经 mention_of_eia_* 链接可达, 由 eia.yaml 补 scope_resource: ontology 满足。
     assert check_action_reachable_objects_are_scoped(reg) == []
     # Task 9: 动作前置条件 value 形状（可加载的笔误应当在加载期就红，而不是 invoke 时的 400）
     assert check_action_preconditions(reg) == []
-    # 敏感 connection_config 已声明 hidden
-    ds = reg.object_types["data_source"]
-    cc = next(p for p in ds.properties if p.name == "connection_config")
-    assert cc.hidden is True
+    # hidden 零透出机制: 现 registry 已无 hidden 列（data_source.connection_config 随缩编退场），
+    # 机制层由 tests/test_ontology_engine.py::test_hidden_column_never_projected 以合成 registry 守。
+    assert not any(p.hidden for o in reg.object_types.values() for p in o.properties)
 
 
 def test_main_exit_zero():
