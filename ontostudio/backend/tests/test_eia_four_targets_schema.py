@@ -71,3 +71,48 @@ def test_role_mismatch_rejected():
     }
     with pytest.raises(ValidationError, match="要求"):
         EiaExtraction.model_validate(bad)
+
+
+# --- v2 扩容（计划 2026-09-28 Task 9；spec 2026-09-28 §4.2/§4.3）---
+# affects = impact_result→sensitive_point 承担原 threatens 复用语义；
+# threatens 保持 (pollutant, sensitive_point) 单角色不变。
+
+
+def _ent(name: str, etype: str) -> dict:
+    return {"etype": etype, "name": name, "mention": {"document_id": "doc-1"}}
+
+
+def _rel(subject: str, predicate: str, obj: str) -> dict:
+    return {"predicate": predicate, "subject": subject, "object": obj, "mention": MENTION}
+
+
+def test_v2_new_etypes_and_predicate_roles():
+    """v2 扩容：新 etype 可过域校验，新谓词角色对生效。"""
+    payload = EiaExtraction(
+        domain="eia",
+        entities=[
+            _ent("首采区203工作面", "working_face"),
+            _ent("沉陷预测R1", "impact_result"),
+            _ent("跃泉村居民点", "sensitive_point"),
+            _ent("2号排放口", "emission_point"),
+            # emitted_via 角色 = (pollution_source, emission_point)，plan 原稿误用
+            # working_face 作 subject——按 Task 9 Step 3 角色表修正（cerebrum: 照抄前脑内跑一遍契约）。
+            _ent("锅炉烟气B", "pollution_source"),
+        ],
+        relations=[
+            _rel("首采区203工作面", "causes", "沉陷预测R1"),
+            _rel("沉陷预测R1", "affects", "跃泉村居民点"),
+            _rel("锅炉烟气B", "emitted_via", "2号排放口"),
+        ],
+    )
+    assert {r.predicate for r in payload.relations} == {"causes", "affects", "emitted_via"}
+
+
+def test_v2_role_mismatch_rejected():
+    """causes 角色 = (working_face, impact_result)；subject 换 coal_seam 须拒。"""
+    with pytest.raises(ValidationError, match="要求"):
+        EiaExtraction(
+            domain="eia",
+            entities=[_ent("3号煤层", "coal_seam"), _ent("沉陷预测R1", "impact_result")],
+            relations=[_rel("3号煤层", "causes", "沉陷预测R1")],
+        )

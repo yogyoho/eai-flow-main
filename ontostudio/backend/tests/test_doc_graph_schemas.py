@@ -181,11 +181,18 @@ def test_registry_yaml_enums_superset_of_schemas_literals():
 
     schemas._ETYPE/_PREDICATE 是跨域全集（doc_graph + eia 等），逐域 yaml 只持本域切片；
     校验基准 = 全部域 yaml 的并集。
+    EAI-CUSTOM（计划 Task 9, 2026-09-28）：eia v2 期间 schemas 先行扩容（EiaExtraction v2），
+    registry/eia.yaml 仍为 v1、待 Task 11 用户建模器定型后替换——过渡期把已 APPROVED 的
+    v2 草案（scripts/eia_schema_mining/eia_v2_draft.yaml）并入校验基准，不变式语义不变。
     """
     registry_dir = Path(__file__).resolve().parents[1] / "app" / "ontology" / "registry"
+    yaml_files = sorted(registry_dir.glob("*.yaml"))
+    v2_draft = Path(__file__).resolve().parents[1] / "scripts" / "eia_schema_mining" / "eia_v2_draft.yaml"
+    if v2_draft.exists():  # Task 11 定型替换后草案可退役，此扫描自动收窄回 registry
+        yaml_files.append(v2_draft)
     yaml_etypes: set[str] = set()
     yaml_preds: set[str] = set()
-    for yml in sorted(registry_dir.glob("*.yaml")):
+    for yml in yaml_files:
         doc = yaml.safe_load(yml.read_text(encoding="utf-8")) or {}
         for ot in doc.get("object_types", []):
             for prop in ot.get("properties", []):
