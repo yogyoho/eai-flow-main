@@ -1,0 +1,150 @@
+# 环评域（eia）v2 草案——以 v1 registry 为模板的三层 schema 扩展（26 作品环评样例事实源）
+# 设计: docs/superpowers/specs/2026-09-28-eia-ontology-v2-design.md §4（APPROVED）
+#       + 计划 docs/superpowers/plans/2026-09-28-eia-ontology-v2-subproject1.md Task 8
+# 本文件是**草案**（+24 etype / +19 谓词 / +5 链），定型在 Task 11 用户建模器审后替换
+# app/ontology/registry/eia.yaml；EiaExtraction 扩容见 Task 9（app/doc_graph/schemas.py）。
+# 不新增对象类型、不动 dg_* 表——新属性全部走既有 attrs JSONB，无 DB 迁移。
+namespaces:
+  eia: "https://ontology.eai-flow.com/eia#"
+object_types:
+  - api_name: eia_entity
+    display_name: 环评实体
+    description: 环评报告抽取实体（章节结构/业务逻辑节点/阈值约束/法规条款/佐证/开采地质/规划影响 v2）
+    domain: eia
+    icon: 🌿
+    access:
+      path: postgres_ext
+      table: dg_entities
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: domain, api_name: domain, type: string, description: 抽取域, filterable: true }
+      - { name: etype, api_name: etype, type: string, description: 实体类型, filterable: true, enum: [report, chapter, section, section_element, constraint_logic, project, pollution_source, pollutant, treatment_measure, emission_standard, monitoring, sensitive_point, standard_threshold, regulation_clause, evidence_requirement, evidence_artifact, org, place, mine, activity, standard, logic_node, coal_seam, aquifer, stratigraphic_unit, fault, goaf, mine_field, mining_district, working_face, mining_method, engineering_site, coal_prep_plant, emission_point, waste_stream, receiving_medium, impact_result, planning_scheme, planning_change, carrying_capacity, retrospective_problem, pollutant_concept, measure_process_concept, pollution_process_concept, analogy_case, measure_spec] }
+      - { name: canonical_name, api_name: canonicalName, type: string, description: 规范名, searchable: true }
+      - { name: norm_name, api_name: normName, type: string, description: 归一化名 }
+      - { name: attrs, api_name: attrs, type: json, description: 属性（阈值数值/单位/条款号/佐证类型/受控词表 aliases/影响结果类型等摊平存放） }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: status, api_name: status, type: string, description: 状态, filterable: true, enum: [active, pending_review, merged] }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+    # 动作层数据范围（设计 §3, EAI-CUSTOM 2026-09-27 registry 缩编）：eia 行与 doc_graph 行
+    # 同驻 dg_* 表、同经 ontology 面审核/消费，scope_resource 取同一 permissions.yaml 模块 key。
+    # registry 缩编后 eia 类型经下方 mention 链接从动作目标 graph_entity 可达，
+    # lint 的 check_action_reachable_objects_are_scoped 要求可达者必须绑定。
+    scope_resource: ontology
+    etype_classes:
+      report: { class: Report, label: 环评报告, definition: 环境影响评价报告书/报告表整体 }
+      chapter: { class: Chapter, subClassOf: [SectionElement], label: 章节, definition: 报告章节（如 大气环境影响评价） }
+      section: { class: Section, subClassOf: [SectionElement], label: 小节, definition: 章下小节（如 4.2 治理措施可行性） }
+      project: { class: Project, subClassOf: [LogicNode], label: 环评项目, definition: 开展环境影响评价的建设项目 }
+      pollution_source: { class: PollutionSource, subClassOf: [LogicNode], label: 污染源, definition: 产生污染物排放的工艺环节或设施（如锅炉烟气） }
+      pollutant: { class: Pollutant, subClassOf: [LogicNode], label: 污染物, definition: 污染源排放的污染物因子（如 SO2） }
+      treatment_measure: { class: TreatmentMeasure, subClassOf: [LogicNode], label: 治理措施, definition: 对污染物进行治理的工程措施（如双碱法脱硫） }
+      emission_standard: { class: EmissionStandard, subClassOf: [LogicNode], label: 排放标准, definition: 污染物排放执行的标准（如 GB 13223-2011） }
+      monitoring: { class: Monitoring, subClassOf: [LogicNode], label: 监测要求, definition: 对排放口或环境质量的监测安排 }
+      sensitive_point: { class: SensitivePoint, subClassOf: [LogicNode], label: 敏感点, definition: 环境敏感保护目标（如桑干河水源保护区） }
+      standard_threshold: { class: StandardThreshold, subClassOf: [ConstraintLogic], label: 标准阈值, definition: 标准规定的具体限值（max/min/阈值范围/单位，附录C.10 约束逻辑对齐） }
+      regulation_clause: { class: RegulationClause, subClassOf: [ConstraintLogic], label: 法规条款, definition: 法律法规的具体条款（条文号+义务内容） }
+      evidence_requirement: { class: EvidenceRequirement, label: 佐证需求, definition: 业务逻辑节点需要的佐证类型（数值参数/公式/数据表格/图片/流程图） }
+      evidence_artifact: { class: EvidenceArtifact, label: 佐证载体, definition: 实际承载佐证的产物（计算书/附表/附图/流程图） }
+      logic_node: { class: LogicNode, label: 逻辑节点, definition: 环评业务逻辑链节点类根 }
+      constraint_logic: { class: ConstraintLogic, label: 约束逻辑, definition: 阈值/条款类约束实体类根 }
+      section_element: { class: SectionElement, label: 章节元素, definition: 章/小节类根 }
+      activity: { class: Activity, label: 活动, definition: 环评域活动类根 }
+      standard: { class: Standard, label: 标准, definition: 环评域标准类根 }
+      # --- v2 新增（spec 2026-09-28 §4.2；资源地质/开采工程/排放骨架/影响结果/规划环评/约束概念） ---
+      coal_seam: { class: CoalSeam, subClassOf: [LogicNode], label: 煤层, definition: 井田内可采煤层（厚度/倾角/埋深/煤质/瓦斯等级） }
+      aquifer: { class: Aquifer, subClassOf: [LogicNode], label: 含水层, definition: 含水层（富水性/供水意义/水位水质特征） }
+      stratigraphic_unit: { class: StratigraphicUnit, subClassOf: [LogicNode], label: 地层单元, definition: 覆岩/地层单元（含水性/供水意义/与煤层垂距） }
+      fault: { class: Fault, subClassOf: [LogicNode], label: 断层, definition: 断层构造（导水性） }
+      goaf: { class: Goaf, subClassOf: [LogicNode], label: 采空区, definition: 已采空区域 }
+      mine_field: { class: MineField, subClassOf: [LogicNode], label: 井田, definition: 井田/矿区（规划环评空间主尺度） }
+      mining_district: { class: MiningDistrict, subClassOf: [LogicNode], label: 采区, definition: 采区划分（含首采区标记/接续时序） }
+      working_face: { class: WorkingFace, subClassOf: [LogicNode], label: 工作面, definition: 回采工作面（长度/推进度/采厚） }
+      mining_method: { class: MiningMethod, subClassOf: [LogicNode], label: 采煤方法, definition: 采煤方法/顶板管理/开拓方式（受控枚举值在 attrs） }
+      engineering_site: { class: EngineeringSite, subClassOf: [LogicNode], label: 工程场地, definition: 工业场地/风井场地/排土场/矸石场/铁路专用线 }
+      coal_prep_plant: { class: CoalPrepPlant, subClassOf: [LogicNode], label: 选煤厂, definition: 选煤厂（工艺路线/规模） }
+      emission_point: { class: EmissionPoint, subClassOf: [LogicNode], label: 排放口, definition: 排放口（编号/高度/参数）——跨章节一致性锚点 }
+      waste_stream: { class: WasteStream, subClassOf: [LogicNode], label: 固废流, definition: 固废产生-利用-处置路径（矸石/危废） }
+      receiving_medium: { class: ReceivingMedium, subClassOf: [LogicNode], label: 受纳介质, definition: 受纳环境介质（大气/地表水/地下水/土壤枚举在 attrs.medium） }
+      impact_result: { class: ImpactResult, subClassOf: [LogicNode], label: 影响结果, definition: 影响预测结果（attrs.result_type= subsidence|water_conducting_zone|drawdown|concentration_contribution|ecological_disturbance；带时期/采区维度） }
+      planning_scheme: { class: PlanningScheme, subClassOf: [LogicNode], label: 矿区总体规划, definition: 矿区总体规划方案（时序分期在 attrs） }
+      planning_change: { class: PlanningChange, subClassOf: [LogicNode], label: 规划变更, definition: 规划变更（前后对照/原因） }
+      carrying_capacity: { class: CarryingCapacity, subClassOf: [LogicNode], label: 承载力, definition: 区域承载力（区域×要素×阈值×余量） }
+      retrospective_problem: { class: RetrospectiveProblem, subClassOf: [LogicNode], label: 现存问题, definition: 回顾性评价发现的问题（整改闭环输入） }
+      pollutant_concept: { class: PollutantConcept, subClassOf: [ConstraintLogic], label: 污染物概念, definition: 受控词表个体（attrs.aliases 同义数组/attrs.code HJ524） }
+      measure_process_concept: { class: MeasureProcessConcept, subClassOf: [ConstraintLogic], label: 措施工艺概念, definition: 措施工艺受控词表个体 }
+      pollution_process_concept: { class: PollutionProcessConcept, subClassOf: [ConstraintLogic], label: 产污环节概念, definition: 产污环节受控词表个体（井下/地面/选煤三域） }
+      analogy_case: { class: AnalogyCase, subClassOf: [EvidenceArtifact], label: 类比案例, definition: 类比案例（attrs.scenario_tags/params/source_report） }
+      measure_spec: { class: MeasureSpec, subClassOf: [ConstraintLogic], label: 措施规格, definition: 措施典型规格（attrs.applicability/efficiency_range ηmin ηmax/cost_range） }
+  - api_name: eia_relation
+    display_name: 环评关系
+    description: 环评域实体间关系（章节结构/逻辑链/阈值/佐证/开采地质/规划影响 v2 谓词）
+    domain: eia
+    icon: 🔗
+    access:
+      path: postgres_ext
+      table: dg_relations
+    pk:
+      column: id
+      api_name: id
+      type: uuid
+    properties:
+      - { name: id, api_name: id, type: uuid, description: 主键 }
+      - { name: subject_id, api_name: subjectId, type: uuid, description: 主体实体, indexed: true, filterable: true }
+      - { name: predicate, api_name: predicate, type: string, description: 谓词, indexed: true, filterable: true, enum: [has_chapter, has_subsection, part_of, precedes, pollutes, emitted_as, treated_by, governed_by, monitored_by, threatens, impact_to, specifies_threshold, complies_with, cites_clause, regulated_by, requires_evidence, evidenced_by, located_in, mines, method_of, develops, causes, affects, protected_by, drawdown_of, emitted_via, drains_to, generates_waste, disposed_by, utilized_by, sub_plan_of, changes, constrained_by, problem_of, specified_by, analogous_to, conflicts_with] }
+      - { name: object_id, api_name: objectId, type: uuid, description: 客体实体, indexed: true, filterable: true }
+      - { name: attrs, api_name: attrs, type: json, description: 属性 }
+      - { name: confidence, api_name: confidence, type: number, description: 抽取置信度, filterable: true }
+      - { name: valid_from, api_name: validFrom, type: datetime, description: 业务有效期起 }
+      - { name: valid_to, api_name: validTo, type: datetime, description: 业务有效期止 }
+      - { name: created_at, api_name: createdAt, type: datetime, description: 创建时间 }
+    # 动作层数据范围：同 eia_entity（EAI-CUSTOM 2026-09-27 registry 缩编，见上注）。
+    scope_resource: ontology
+
+link_types:
+  # 证据链挂接（EAI-CUSTOM 2026-09-27 registry 缩编）：eia 实体/关系行同驻 dg_entities /
+  # dg_relations，graph_mention(dg_mentions) 的 entity_id / relation_id 外键对 eia 域行同样
+  # 成立——声明与 doc_graph.yaml mention_of_entity / mention_of_relation 同形的跨文件链接
+  # （加载器 pending 机制支持），使 eia 对象类型不落在 lint orphan（无链接对象）检查之外。
+  - api_name: mention_of_eia_entity
+    display_name: 证据指向环评实体
+    source: graph_mention
+    target: eia_entity
+    cardinality: N:1
+    reverse: eia_entity_has_mentions
+    join:
+      type: foreign_key
+      source_column: entity_id
+      target_column: id
+
+  - api_name: mention_of_eia_relation
+    display_name: 证据指向环评关系
+    source: graph_mention
+    target: eia_relation
+    cardinality: N:1
+    reverse: eia_relation_has_mentions
+    join:
+      type: foreign_key
+      source_column: relation_id
+      target_column: id
+
+formal:
+  transitive: [part_of]
+  property_chains:
+    # 治理合规链（保留）
+    # 2 段：污染源 治理后 执行某排放标准（Task 1 起 2 段链同走 CONSTRUCT 规则，不依赖 owlrl）
+    - { derived: covered_by_standard, chain: [treated_by, governed_by] }
+    # 3 段：路径 CONSTRUCT 规则——污染源→措施→标准→监测 ⇒ 污染源被监测体系覆盖
+    - { derived: covered_by_monitoring, chain: [treated_by, governed_by, monitored_by] }
+    # 影响链（保留 + 新增沉陷/疏干支链）
+    # 2 段：污染源 排放 污染物，污染物 威胁 敏感点 ⇒ 污染源 impact_to 敏感点
+    - { derived: impact_to, chain: [emitted_as, threatens] }
+    # 2 段：工作面→影响结果→敏感点（v2：affects 承担 impact_result→sensitive_point 语义）
+    - { derived: impact_on_receptor, chain: [causes, affects] }
+    # 2 段：工作面→疏干影响→含水层（v2 沉陷/疏干支链）
+    - { derived: aquifer_impact, chain: [causes, drawdown_of] }
