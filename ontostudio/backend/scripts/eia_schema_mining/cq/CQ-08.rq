@@ -1,0 +1,13 @@
+# CQ-08: 是否引用了已废止标准版本？（标准带 superseded_by 属性、且 valid_to 早于基准日 = 已废止）
+# superseded_by 为 L2 时效属性（spec §4.3）；基准日占位 2026-09-28；bug-3404：日期比较须 xsd:dateTime 转型。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+PREFIX kp: <https://ontology.eai-flow.com/kernel#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?std ?superseder ?vto WHERE {
+  GRAPH <graph:asserted> {
+    ?std attr:superseded_by ?superseder .
+    ?std kp:validTo ?vto .
+  }
+  FILTER(xsd:dateTime(?vto) < "2026-09-28T00:00:00"^^xsd:dateTime)
+}

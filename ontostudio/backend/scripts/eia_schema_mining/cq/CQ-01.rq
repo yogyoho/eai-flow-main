@@ -1,0 +1,9 @@
+# CQ-01: 某污染源经哪项措施处理后执行哪条标准？（治理链，derived:chain_covered_by_standard）
+# 图约定：链结论在 graph:derived:chain_covered_by_standard；断言边在 graph:asserted（bug-3403：named graph 与默认图隔离）。
+# 注意：谓词 IRI 的 eia#predicate/ 段不可写进 PN_LOCAL（裸 / 非法，SPARQL 解析失败）——用 pred: 前缀绑定完整命名空间。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+SELECT ?src ?std WHERE {
+  GRAPH <graph:derived:chain_covered_by_standard> { ?src pred:covered_by_standard ?std }
+  GRAPH <graph:asserted> { ?src pred:treated_by ?mez }
+}

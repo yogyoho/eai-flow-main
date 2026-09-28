@@ -1,0 +1,13 @@
+# CQ-04: 矸石固废流产生-利用-处置闭合检查——每个 waste_stream 的产生来源数 vs 利用+处置去向数，不等即未闭合。
+# 图约定：全部为断言边（graph:asserted）；COUNT(DISTINCT) 抵消 src×dst 交叉积。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+SELECT ?waste (COUNT(DISTINCT ?src) AS ?genN) (COUNT(DISTINCT ?dst) AS ?outN) WHERE {
+  GRAPH <graph:asserted> { ?waste a eia:WasteStream }
+  OPTIONAL { GRAPH <graph:asserted> { ?src pred:generates_waste ?waste } }
+  OPTIONAL {
+    GRAPH <graph:asserted> {
+      { ?waste pred:utilized_by ?dst } UNION { ?waste pred:disposed_by ?dst }
+    }
+  }
+} GROUP BY ?waste HAVING (COUNT(DISTINCT ?src) != COUNT(DISTINCT ?dst))

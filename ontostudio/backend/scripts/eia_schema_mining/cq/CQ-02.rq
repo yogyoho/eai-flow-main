@@ -1,0 +1,12 @@
+# CQ-02: 工作面的沉陷影响波及哪些敏感点？各敏感点配了什么防护措施？（[causes,affects] 链 + protected_by）
+# 图约定：链结论 graph:derived:chain_impact_on_receptor（Task 8 草案链 impact_on_receptor=[causes,affects]）；断言边 graph:asserted。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+SELECT ?face ?impact ?sp ?measure WHERE {
+  GRAPH <graph:derived:chain_impact_on_receptor> { ?face pred:impact_on_receptor ?sp }
+  GRAPH <graph:asserted> {
+    ?face pred:causes ?impact .
+    ?impact pred:affects ?sp .
+    OPTIONAL { ?sp pred:protected_by ?measure }
+  }
+}

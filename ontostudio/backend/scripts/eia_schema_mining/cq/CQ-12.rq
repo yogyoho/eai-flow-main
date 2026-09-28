@@ -1,0 +1,17 @@
+# CQ-12: 治理措施效率是否落在 measure_spec 的 η 区间外？（越界 = 可疑数据——子项目 3 校验的查询雏形）
+# efficiency_range(ηmin/ηmax) 的摊平键名（efficiency_range_min/max）与实例侧 efficiency 键随 Task 11 定型核对；
+# bug-3404：无类型字面量做数值比较须 xsd:double 转型，否则恒空。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?measure ?eff ?etaMin ?etaMax WHERE {
+  GRAPH <graph:asserted> {
+    ?measure pred:specified_by ?spec .
+    ?spec a eia:MeasureSpec .
+    ?spec attr:efficiency_range_min ?etaMin .
+    ?spec attr:efficiency_range_max ?etaMax .
+    ?measure attr:efficiency ?eff .
+  }
+  FILTER(xsd:double(?eff) < xsd:double(?etaMin) || xsd:double(?eff) > xsd:double(?etaMax))
+}

@@ -1,0 +1,11 @@
+# CQ-10: 项目符合哪个矿区总体规划？（规划符合性——conforms_to 为第三轮 T3 候选谓词，spec §4.3；定型前骨架）
+# 图约定：断言边 graph:asserted；conforms_to 若未定型转正，回退方案为既有 complies_with（Task 11 裁决）。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+SELECT ?project ?scheme WHERE {
+  GRAPH <graph:asserted> {
+    ?project a eia:Project .
+    ?project pred:conforms_to ?scheme .
+    ?scheme a eia:PlanningScheme .
+  }
+}

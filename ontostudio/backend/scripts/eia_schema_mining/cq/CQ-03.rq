@@ -1,0 +1,19 @@
+# CQ-03: 基准日当天仍有效力的 GB 20426 限值版本有哪些？（L2 时效裁决：kp:validFrom/validTo 区间过滤）
+# 基准日占位 2026-09-28——执行时换报告 report_base_date；bug-3404：无类型字面量比较前须 xsd:dateTime 转型
+#（入库值若只到日期粒度，Task 11 定型时统一存 ISO dateTime 或改 xsd:date 转型）。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+PREFIX kp: <https://ontology.eai-flow.com/kernel#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT ?threshold ?stdName ?vfrom ?vto WHERE {
+  GRAPH <graph:asserted> {
+    ?std attr:norm_name ?stdName .
+    FILTER(CONTAINS(?stdName, "GB 20426"))
+    ?threshold pred:part_of ?std .
+    OPTIONAL { ?threshold kp:validFrom ?vfrom }
+    OPTIONAL { ?threshold kp:validTo ?vto }
+  }
+  FILTER((!BOUND(?vfrom) || xsd:dateTime(?vfrom) <= "2026-09-28T00:00:00"^^xsd:dateTime)
+      && (!BOUND(?vto)   || xsd:dateTime(?vto)   >= "2026-09-28T00:00:00"^^xsd:dateTime))
+}

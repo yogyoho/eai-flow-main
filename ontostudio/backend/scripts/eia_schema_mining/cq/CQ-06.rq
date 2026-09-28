@@ -1,0 +1,11 @@
+# CQ-06: 哪些工作面经水位降深疏干了哪些含水层？（疏干链 [causes,drawdown_of] → derived:chain_aquifer_impact）
+# 图约定：链结论 graph:derived:chain_aquifer_impact（Task 8 草案链）；断言边 graph:asserted。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+SELECT ?face ?drawdown ?aquifer WHERE {
+  GRAPH <graph:derived:chain_aquifer_impact> { ?face pred:aquifer_impact ?aquifer }
+  GRAPH <graph:asserted> {
+    ?face pred:causes ?drawdown .
+    ?drawdown pred:drawdown_of ?aquifer .
+  }
+}

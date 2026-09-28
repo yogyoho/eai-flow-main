@@ -1,0 +1,13 @@
+# CQ-05: 哪些排放口没有监测覆盖？（所属污染源无 covered_by_monitoring 派生边——负查询）
+# 图约定：断言边 graph:asserted；监测覆盖链结论 graph:derived:chain_covered_by_monitoring（v1 既有 3 段链）。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+SELECT ?src ?ep WHERE {
+  GRAPH <graph:asserted> {
+    ?src pred:emitted_via ?ep .
+    ?ep a eia:EmissionPoint .
+  }
+  FILTER NOT EXISTS {
+    GRAPH <graph:derived:chain_covered_by_monitoring> { ?src pred:covered_by_monitoring ?mon }
+  }
+}

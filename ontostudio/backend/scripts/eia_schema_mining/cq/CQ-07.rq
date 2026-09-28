@@ -1,0 +1,10 @@
+# CQ-07: 排放口跨章节引用一致性——同一 norm_name 被多个排放口实例占用即疑似重复建档（merge 线索）。
+# 图约定：断言边 graph:asserted；norm_name 由 loader 写为 eia#attr/norm_name（graph_ops 幂等 upsert 键）。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+SELECT ?norm (COUNT(DISTINCT ?ep) AS ?n) WHERE {
+  GRAPH <graph:asserted> {
+    ?ep a eia:EmissionPoint .
+    ?ep attr:norm_name ?norm .
+  }
+} GROUP BY ?norm HAVING (COUNT(DISTINCT ?ep) > 1)

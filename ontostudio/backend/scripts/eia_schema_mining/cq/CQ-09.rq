@@ -1,0 +1,12 @@
+# CQ-09: 哪些敏感点没有任何防护措施？（protected_by 出边缺失——措施齐套性负查询）
+# 图约定：断言边 graph:asserted；受体的防护记录在 sensitive_point —protected_by→ treatment_measure。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX pred: <https://ontology.eai-flow.com/eia#predicate/>
+PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+SELECT ?sp ?name WHERE {
+  GRAPH <graph:asserted> {
+    ?sp a eia:SensitivePoint .
+    ?sp attr:norm_name ?name .
+    FILTER NOT EXISTS { ?sp pred:protected_by ?measure }
+  }
+}

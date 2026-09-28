@@ -1,0 +1,12 @@
+# CQ-11: 按「工艺+规模档」检索类比案例（analogy_case 的 attrs.scenario_tags 关键词命中）。
+# 注：scenario_tags 数组当前整体序列化为单个字面量，骨架用 CONTAINS 检索；数组摊平方式随 Task 11 定型核对。
+# 检索键占位「重介 + 5.0Mt」——对应 spec §4.4 analogy_case.scenario_tags（工艺/规模档/介质/建设性质）。
+PREFIX eia: <https://ontology.eai-flow.com/eia#>
+PREFIX attr: <https://ontology.eai-flow.com/eia#attr/>
+SELECT ?case ?tags WHERE {
+  GRAPH <graph:asserted> {
+    ?case a eia:AnalogyCase .
+    ?case attr:scenario_tags ?tags .
+    FILTER(CONTAINS(?tags, "重介") && CONTAINS(?tags, "5.0Mt"))
+  }
+}
