@@ -1,0 +1,43 @@
+# 环评 v2 受控词表初稿（spec §4.3）——T3 后随 schema 定型并入 eia.yaml 或独立维护
+# aliases 即抽取归一同义词：LLM 抽取与表格解析命中 alias 时统一归到 name
+pollutant_concept:
+  code_source: HJ 524
+  concepts:
+    - { name: 二氧化硫, aliases: ["SO2", "SO₂", "二氧化硫(SO2)"] }
+    - { name: 氮氧化物, aliases: ["NOx", "NOX", "氮氧化物(NOx)"] }
+    - { name: 颗粒物, aliases: ["烟尘", "粉尘", "TSP", "PM10", "PM2.5"] }
+    - { name: 化学需氧量, aliases: ["COD", "CODCr", "化学需氧量(COD)"] }
+    - { name: 氨氮, aliases: ["NH3-N", "氨氮(NH3-N)"] }
+    - { name: 悬浮物, aliases: ["SS", "悬浮物(SS)"] }
+    - { name: 石油类, aliases: ["油类"] }
+    - { name: 总铁, aliases: [] }
+    - { name: 总锰, aliases: [] }
+    - { name: 氟化物, aliases: ["F-"] }
+    - { name: pH, aliases: ["pH值"] }
+    - { name: 矿化度, aliases: ["溶解性总固体", "TDS"] }
+measure_process_concept:
+  concepts:
+    - { name: 布袋除尘, aliases: ["袋式除尘", "脉冲布袋除尘", "布袋除尘器"] }
+    - { name: 双碱法脱硫, aliases: ["双碱法", "钠钙双碱法脱硫"] }
+    - { name: 低氮燃烧, aliases: ["低氮燃烧器", "低氮改造"] }
+    - { name: 混凝沉淀, aliases: ["混凝气浮", "絮凝沉淀"] }
+    - { name: 超滤, aliases: ["UF", "超滤反渗透", "反渗透除盐"] }
+    - { name: 隔声屏障, aliases: ["声屏障", "隔声窗"] }
+    - { name: 矸石井下充填, aliases: ["充填开采", "井下充填系统"] }
+    - { name: 瓦斯抽采, aliases: ["瓦斯抽放", "瓦斯综合利用"] }
+pollution_process_concept:
+  concepts:
+    - { name: 凿岩爆破, aliases: ["爆破", "井下爆破"] }
+    - { name: 掘进出矸, aliases: ["掘进", "岩巷掘进"] }
+    - { name: 采煤落煤, aliases: ["落煤", "割煤"] }
+    - { name: 转载点, aliases: ["转载", "转运点"] }
+    - { name: 巷道通风, aliases: ["风排瓦斯", "矿井通风"] }
+    - { name: 瓦斯抽采环节, aliases: [] }
+    - { name: 筛分破碎, aliases: ["筛分", "破碎"] }
+    - { name: 储煤场, aliases: ["储煤场扬尘", "原煤储存"] }
+    - { name: 装卸车, aliases: ["装车", "煤炭装卸"] }
+    - { name: 运输道路, aliases: ["道路扬尘", "公路运输"] }
+    - { name: 锅炉房, aliases: ["燃煤锅炉"] }
+    - { name: 矿井水处理站, aliases: ["矿井水处理"] }
+    - { name: 生活污水处理站, aliases: ["生活污水处理"] }
+    - { name: 煤泥水系统, aliases: ["煤泥水闭路循环"] }
