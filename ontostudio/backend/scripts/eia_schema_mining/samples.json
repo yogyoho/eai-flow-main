@@ -1,5 +1,5 @@
 {
-  "_status": "占位清单（Task 6 Step 1）——⛔GATE：抽样清单待用户确认后才跑 LLM（Step 2-3 deferred，Task 6 交付范围只到本文件 + llm_extract.py）",
+  "_status": "GATE 已确认（2026-09-28 用户方案 A）：先跑现有 4 份 fulltext；扩充候选等用户提供已解析全文后再入列",
   "_target": {
     "count": "6-8 份",
     "coverage": "规划环评 + 项目环评两体裁覆盖（后评价酌情 1 份）",
