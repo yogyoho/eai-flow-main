@@ -17,6 +17,8 @@ resolve_fulltext 对无前缀全文做兜底解析。
 import argparse
 import json
 import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import httpx
@@ -43,19 +45,29 @@ def build_user_prompt(chunk: str, vocab_digest: str, fewshots: str) -> str:
     return f"### 类型枚举与谓词\n{vocab_digest}\n\n### 同义词归一（抽取时统一到规范名）\n{fewshots}\n\n### 报告片段\n{chunk}\n\n只输出 JSON 数组。"
 
 
-def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots: str) -> list[dict]:
-    resp = client.post(
-        "/chat/completions",
-        json={
-            "model": os.environ["EIA_MINING_LLM_MODEL"],
-            "messages": [
-                {"role": "system", "content": SYSTEM},
-                {"role": "user", "content": build_user_prompt(chunk, vocab_digest, fewshots)},
-            ],
-            "temperature": 0,
-        },
-        timeout=120,
-    )
+def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots: str, attempts: int = 2) -> list[dict]:
+    """单 chunk 抽取；超时重试一次（agnes request_timeout=600，见 config.yaml）。"""
+    timeout = float(os.environ.get("EIA_MINING_LLM_TIMEOUT", "600"))
+    for k in range(attempts):
+        try:
+            resp = client.post(
+                "/chat/completions",
+                json={
+                    "model": os.environ["EIA_MINING_LLM_MODEL"],
+                    "messages": [
+                        {"role": "system", "content": SYSTEM},
+                        {"role": "user", "content": build_user_prompt(chunk, vocab_digest, fewshots)},
+                    ],
+                    "temperature": 0,
+                },
+                timeout=timeout,
+            )
+            break
+        except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError):
+            if k == attempts - 1:
+                print("  chunk failed after retry, skipped", flush=True)
+                return []
+            time.sleep(5)
     resp.raise_for_status()
     text = resp.json()["choices"][0]["message"]["content"]
     start, end = text.find("["), text.rfind("]")
@@ -73,6 +85,9 @@ def main() -> None:
     ap.add_argument("--src", default=".wolf/tmp/eia-samples")
     ap.add_argument("--samples", default="samples.json")
     ap.add_argument("--out", default="out/llm_candidates.jsonl")
+    ap.add_argument("--stride", type=int, default=1,
+                    help="chunk 步长采样：2=隔一取一（schema 挖掘统计够用；逐 chunk 全量属子项目 2）")
+    ap.add_argument("--workers", type=int, default=6, help="并发请求数")
     args = ap.parse_args()
     from coal_terms import COAL_TERMS  # noqa: F401  # 确保词典可导入
     vocab_digest = Path("controlled_vocab.yaml").read_text(encoding="utf-8")[:2000]
@@ -94,14 +109,25 @@ def main() -> None:
         for slug in samples["reports"]:
             txt = resolve_fulltext(src, slug)
             if txt is None:
-                print(f"skip {slug}: no fulltext")
+                print(f"skip {slug}: no fulltext", flush=True)
                 continue
             text = txt.read_text(encoding="utf-8", errors="ignore")
-            for i in range(0, len(text), CHUNK_CHARS):
-                for item in extract_chunk(client, text[i: i + CHUNK_CHARS], vocab_digest, fewshots):
-                    fh.write(json.dumps({"report": slug, "span": [i, i + CHUNK_CHARS], **item},
-                                        ensure_ascii=False) + "\n")
-            print(f"done {slug}")
+            spans = list(range(0, len(text), CHUNK_CHARS * args.stride))
+            total = len(spans)
+
+            def job(i: int) -> tuple[int, list[dict]]:
+                return i, extract_chunk(client, text[i: i + CHUNK_CHARS], vocab_digest, fewshots)
+
+            done = 0
+            with ThreadPoolExecutor(max_workers=args.workers) as ex:
+                for i, items in ex.map(job, spans):
+                    done += 1
+                    for item in items:
+                        fh.write(json.dumps({"report": slug, "span": [i, i + CHUNK_CHARS], **item},
+                                            ensure_ascii=False) + "\n")
+                    if done % 20 == 0:
+                        print(f"{slug}: {done}/{total} chunks", flush=True)
+            print(f"done {slug}: {total} chunks", flush=True)
     print(f"→ {out}")
 
 
