@@ -73,14 +73,19 @@ def run_all_rules(store: OxStore, rules: list[DeriveRule]) -> dict[str, int]:
 
 
 def builtin_chain_rules(registry) -> list[DeriveRule]:  # noqa: ANN001 - Registry
-    """formal 段 >2 段属性链 → 属性路径 CONSTRUCT 规则（owlrl prp-spo2 只保证 2 段；
-    环评逻辑链 3 段及以上走规则机制，仍落独立 derived 图）。"""
+    """formal 段 ≥2 段属性链 → 属性路径 CONSTRUCT 规则。
+
+    EAI-CUSTOM bug 修复：原实现 len<=2 交给 owlrl prp-spo2，但 owlrl 仅在链首
+    属性已有三元组时触发（OWLRL.py:348），链首无实例 → 静默零推断。
+    现 2 段链与 ≥3 段同走 CONSTRUCT（独立 derived 图），不依赖 owlrl。
+    owlrl 闭包对 2 段链的重复物化无害（不同 named graph，查询按图聚合）。
+    """
     vocabs = collect_vocabularies(registry)
     rules: list[DeriveRule] = []
     for domain, formal in registry.formal_by_domain.items():
         vocab = vocabs[domain]
         for axiom in formal.property_chains:
-            if len(axiom.chain) <= 2:
+            if len(axiom.chain) < 2:
                 continue
             path = "/".join(f"<{vocab.predicate_ref(step)}>" for step in axiom.chain)
             derived = str(vocab.predicate_ref(axiom.derived))
