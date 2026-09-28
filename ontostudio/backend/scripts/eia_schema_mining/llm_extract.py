@@ -27,9 +27,23 @@ CHUNK_CHARS = 8000  # ~4k 中文 token，句子级抽取粒度
 SYSTEM = (
     "你是环评本体抽取器。从给定环评报告片段中抽取业务逻辑三元组。"
     "只输出 JSON 数组，每项 {subject, subject_type, predicate, object, object_type, evidence_quote}。"
-    "subject_type/object_type 只能用给定枚举；predicate 只能用给定枚举；"
-    "evidence_quote 必须是原文连续片段（≤80字）；没有把握的不要输出。"
+    "subject_type/object_type 只能用【类型枚举】中的词，predicate 只能用【谓词枚举】中的词，"
+    "禁止自造任何类型或谓词名；evidence_quote 必须逐字复制原文连续片段（≤80字，"
+    "不得增删改字、不得用省略号拼接两处原文）；禁止复用示例中的三元组；没有把握的不要输出。"
 )
+
+_DRAFT = Path(__file__).with_name("eia_v2_draft.yaml")
+
+
+def load_enums(draft: Path = _DRAFT) -> str:
+    """从 v2 草案抽 etype/predicate enum 原文（枚举唯一真源=草案，杜绝 prompt 漂移）。"""
+    import re
+    text = draft.read_text(encoding="utf-8")
+    out = []
+    for key, label in [("name: etype,", "类型枚举"), ("name: predicate,", "谓词枚举")]:
+        m = re.search(re.escape(key) + r".*?enum: \[([^\]]+)\]", text)
+        out.append(f"【{label}】{m.group(1)}" if m else f"【{label}】(missing in {draft.name})")
+    return "\n".join(out)
 
 
 def resolve_fulltext(src: Path, slug: str) -> Path | None:
@@ -41,11 +55,12 @@ def resolve_fulltext(src: Path, slug: str) -> Path | None:
     return bare if bare.exists() else None
 
 
-def build_user_prompt(chunk: str, vocab_digest: str, fewshots: str) -> str:
-    return f"### 类型枚举与谓词\n{vocab_digest}\n\n### 同义词归一（抽取时统一到规范名）\n{fewshots}\n\n### 报告片段\n{chunk}\n\n只输出 JSON 数组。"
+def build_user_prompt(chunk: str, vocab_digest: str, fewshots: str, enums: str) -> str:
+    return f"{enums}\n\n### 同义词归一（抽取时统一到规范名）\n{fewshots}\n\n### 报告片段\n{chunk}\n\n只输出 JSON 数组。"
 
 
-def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots: str, attempts: int = 2) -> list[dict]:
+def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots: str, enums: str = "",
+                  attempts: int = 2) -> list[dict]:
     """单 chunk 抽取；超时重试一次（agnes request_timeout=600，见 config.yaml）。"""
     timeout = float(os.environ.get("EIA_MINING_LLM_TIMEOUT", "600"))
     for k in range(attempts):
@@ -56,7 +71,7 @@ def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots:
                     "model": os.environ["EIA_MINING_LLM_MODEL"],
                     "messages": [
                         {"role": "system", "content": SYSTEM},
-                        {"role": "user", "content": build_user_prompt(chunk, vocab_digest, fewshots)},
+                        {"role": "user", "content": build_user_prompt(chunk, vocab_digest, fewshots, enums)},
                     ],
                     "temperature": 0,
                 },
@@ -90,6 +105,7 @@ def main() -> None:
     ap.add_argument("--workers", type=int, default=6, help="并发请求数")
     args = ap.parse_args()
     from coal_terms import COAL_TERMS  # noqa: F401  # 确保词典可导入
+    enums = load_enums()
     vocab_digest = Path("controlled_vocab.yaml").read_text(encoding="utf-8")[:2000]
     fewshots = json.dumps([
         {"subject": "矿井涌水", "subject_type": "pollution_source", "predicate": "treated_by",
@@ -116,7 +132,7 @@ def main() -> None:
             total = len(spans)
 
             def job(i: int) -> tuple[int, list[dict]]:
-                return i, extract_chunk(client, text[i: i + CHUNK_CHARS], vocab_digest, fewshots)
+                return i, extract_chunk(client, text[i: i + CHUNK_CHARS], vocab_digest, fewshots, enums)
 
             done = 0
             with ThreadPoolExecutor(max_workers=args.workers) as ex:
