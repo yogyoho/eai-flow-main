@@ -1,0 +1,28 @@
+{
+  "_status": "占位清单（Task 6 Step 1）——⛔GATE：抽样清单待用户确认后才跑 LLM（Step 2-3 deferred，Task 6 交付范围只到本文件 + llm_extract.py）",
+  "_target": {
+    "count": "6-8 份",
+    "coverage": "规划环评 + 项目环评两体裁覆盖（后评价酌情 1 份）",
+    "note": "用户可能提供更多已解析全文——等 GATE 确认再扩充 reports"
+  },
+  "reports": [
+    "gaotaoyao",
+    "yakeshi2026",
+    "sijitun",
+    "baiyinhua2"
+  ],
+  "known_fulltext_detail": {
+    "_note": "语料中仅 4 份 fulltext txt（390KB-1.25MB）；gaotaoyao 为无前缀 fulltext.txt（1.25MB），llm_extract.resolve_fulltext 已兜底解析",
+    "gaotaoyao": { "report_type": "planning_eia", "file": "fulltext.txt", "size": "1.25MB" },
+    "yakeshi2026": { "report_type": "planning_eia", "file": "yakeshi2026-fulltext.txt", "size": "1.0MB" },
+    "sijitun": { "report_type": "project_eia", "file": "sijitun-fulltext.txt", "size": "390KB" },
+    "baiyinhua2": { "report_type": "post_assessment", "file": "baiyinhua2-fulltext.txt", "size": "816KB" }
+  },
+  "candidates_pending_user": {
+    "_note": "待补标注（待用户提供）——digest_stats.json report_type 分布（25 份：planning 14 / project 9 / post 2）中挑的扩充候选；多数无 fulltext txt，需用户解析后才能入列。⛔GATE 确认前不跑",
+    "planning_eia_suggested": ["hengcheng", "lingtai", "naomaohu2025", "weizhou"],
+    "project_eia_suggested": ["balasu", "guojiatai", "jiulongchuan", "yitai", "yueerwan"],
+    "post_assessment_suggested": ["baiyinhua3"],
+    "rest_pool": ["hegang", "huating", "nalinxili", "santanghu", "tarangaole", "wujianfang", "yimin", "yining", "huojitu", "ningtiaota", "yimin3500"]
+  }
+}
