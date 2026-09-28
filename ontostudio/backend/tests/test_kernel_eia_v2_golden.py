@@ -277,5 +277,7 @@ def test_cq_collection_executes_on_draft(eia_env):
     rq_files = sorted(CQ_DIR.glob("*.rq"))
     assert len(rq_files) == 12, f"CQ 验收集应 12 条，实得 {len(rq_files)}: {rq_files}"
     for rq in rq_files:
-        rows = store.query(rq.read_text(encoding="utf-8"))  # 抛异常即失败（语法/图名/前缀错误）
-        assert len(rows) >= 0, rq.name  # 空库命中 0 行属预期；本断言记录行数可取
+        # 可执行性 = store.query 不抛异常（语法/图名/前缀错误即失败）；
+        # 空库确定性命中 0 行（CQ 全为无聚合 SELECT），顺带断言防意外命中。
+        rows = store.query(rq.read_text(encoding="utf-8"))
+        assert len(rows) == 0, f"{rq.name}: 空库意外命中 {len(rows)} 行"
