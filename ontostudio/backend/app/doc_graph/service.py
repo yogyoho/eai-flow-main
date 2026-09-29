@@ -29,7 +29,7 @@ class MergeConflict(RuntimeError):
 
 
 async def list_pending_review(etype: str | None = None, limit: int = 50) -> dict[str, Any]:
-    """status=pending_review 实体列表（置信度升序）。"""
+    """status=pending_review 实体列表（置信度升序）。count 恒为真实总数（不随行数钳制）——侧栏红点/面板总数直读。"""
     lim = max(1, min(int(limit), 200))
     engine = create_async_engine(_ext_url(), poolclass=NullPool)
     try:
@@ -39,9 +39,15 @@ async def list_pending_review(etype: str | None = None, limit: int = 50) -> dict
                 {"etype": etype, "lim": lim},
             )
             rows = [dict(r) for r in res.mappings().all()]
+            total = (
+                await conn.execute(
+                    text("SELECT count(*) FROM dg_entities WHERE status = 'pending_review' AND (CAST(:etype AS text) IS NULL OR etype = CAST(:etype AS text))"),
+                    {"etype": etype},
+                )
+            ).scalar_one()
     finally:
         await engine.dispose()
-    return {"entities": rows, "count": len(rows)}
+    return {"entities": rows, "count": int(total)}
 
 
 async def merge_entities(candidate_id: str, canonical_id: str, method: str = "manual", confidence: float = 1.0) -> dict[str, Any]:

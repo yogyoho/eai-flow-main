@@ -1,11 +1,11 @@
 /**
- * 08 抽取导入（EAI-CUSTOM, 2026-09-28 审计升级）——真数据区块：
+ * 08 抽取导入（EAI-CUSTOM, 2026-09-28 审计升级；09-29 口径订正）——真数据区块：
  *
  * - 置信度分布：graph_entity objects → 客户端分桶计算（真数据）；
  * - 证据链引文：graph_mention objects → 按 extracted_at 倒序取最近 5 条（真数据）；
  * - 抽取任务队列：静态示例（DemoTag 标注——「任务」概念后端 TODOS）；
  * - 从主系统线程导入：POST /formal/load 真端点（dg_* 全量装载）。
- * 生产线口径：regex/v1 确定性正则（etype/谓词与 eia.yaml 枚举严格同名，kernel loader 直读）。
+ * 生产线口径：LLM 离线批量管线（extracted_by=eia-batch-v2-llm，etype/谓词与 eia.yaml v2 枚举严格同名，kernel loader 直读）。
  */
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileInput, Loader2 } from "lucide-react";
@@ -139,9 +139,9 @@ export function IngestPage() {
             从主系统线程导入
           </button>
           <span className="text-muted-foreground ml-auto max-w-[52ch] text-[11px] leading-relaxed">
-            生产线 <span className="text-foreground font-mono">regex/v1</span>
-            （确定性正则，etype/谓词与 eia.yaml 枚举严格同名）· LLM 辅助精标规划中 ·
-            月儿湾全链路：抽取 460 实体 / 205 关系 / 318 提及 → 装载 → infer 1857 物化
+            抽取来源 <span className="text-foreground font-mono">eia-batch-v2-llm</span>
+            （LLM 离线批量管线，etype/谓词与 eia.yaml v2 枚举严格同名）· 在线任务 API 规划中 ·
+            v1 历史参考：月儿湾全链路 460 实体 / 205 关系 / 318 提及 → 装载 → infer 1857 物化（该批 v1 数据已清除）
           </span>
         </div>
         {loadMutation.isError ? (
@@ -250,7 +250,7 @@ export function IngestPage() {
                 ))
               )}
               <p className="text-muted-foreground mt-1 text-[11px]">
-                低置信段（&lt;.7）优先进入人审队列；高置信段供方案 C（agent 预审）自动确认。
+                低置信段（&lt;.7）优先进入人审队列；高置信段规划供方案 C（agent 预审）自动确认（后端规划中）。
               </p>
             </div>
           </Panel>

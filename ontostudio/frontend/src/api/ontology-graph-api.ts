@@ -107,13 +107,13 @@ export async function fetchRegistryMeta(): Promise<RegistryMeta> {
   return authFetch<RegistryMeta>(`${BASE}/registry`);
 }
 
-/** 待复核实体计数拉取上限——后端 service.list_pending_review 的 limit 钳制值（doc_graph/service.py）。 */
+/** 待复核实体列表行数上限——后端对 entities 的钳制值（doc_graph/service.py；count 字段已是真实总数）。 */
 export const PENDING_REVIEW_LIMIT = 200;
 
 /**
  * 待复核实体计数（doc-graph 实体消解 REST，GET /api/extensions/doc-graph/resolution/pending）。
- * count 为钳制后行数：达到 PENDING_REVIEW_LIMIT 只说明"≥200"。失败（含无 system:access 403）
- * 由调用方按 query error 处理。
+ * count 为真实总数（后端 COUNT(*)，2026-09-29 起不随行数钳制）；entities 列表仍按 limit 截断。
+ * 失败（含无 system:access 403）由调用方按 query error 处理。
  */
 export async function fetchPendingReviewCount(): Promise<number> {
   return (await fetchPending()).count;
