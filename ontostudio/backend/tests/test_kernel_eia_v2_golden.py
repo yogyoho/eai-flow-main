@@ -1,9 +1,7 @@
-"""eia v2 schema golden 测试（草案 registry：链物化/共享节点/时效/类比/词表 + CQ 执行器）.
+"""eia v2 schema golden 测试（正式 registry：链物化/共享节点/时效/类比/词表 + CQ 执行器）.
 
-eia.yaml 尚未替换（Task 11 用户建模器定型后替换），fixture 用 Task 8 的
-tmp-manifest 手法加载 scripts/eia_schema_mining/eia_v2_draft.yaml；
-Task 11 替换后只需把 fixture 里 load_registry(tmp_path) 改回 load_registry() 一行
-（并删 tmp manifest 两行）。helper/查询写法镜像 test_kernel_p5.py /
+Task 11 已将 eia.yaml 替换为 v2（用户 2026-09-28 GATE2/3 定型），fixture 直接
+load_registry() 加载真实 registry。helper/查询写法镜像 test_kernel_p5.py /
 test_kernel_rules_two_seg.py（upsert_entity 返回 str IRI、边直写 graph:asserted、
 链结论查 graph:derived:chain_<derived>、SPARQL 一律带 GRAPH 子句——bug-3403）。
 
@@ -19,7 +17,6 @@ test_kernel_rules_two_seg.py（upsert_entity 返回 str IRI、边直写 graph:as
 
 from __future__ import annotations
 
-import shutil
 import uuid
 from pathlib import Path
 
@@ -40,8 +37,6 @@ DERIVED_RECEPTOR = "graph:derived:chain_impact_on_receptor"
 DERIVED_AQUIFER = "graph:derived:chain_aquifer_impact"
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-REGISTRY_DIR = BACKEND_ROOT / "app" / "ontology" / "registry"
-DRAFT_YAML = BACKEND_ROOT / "scripts" / "eia_schema_mining" / "eia_v2_draft.yaml"
 CQ_DIR = BACKEND_ROOT / "scripts" / "eia_schema_mining" / "cq"
 
 
@@ -50,18 +45,9 @@ def _uid(tag: str) -> str:
 
 
 @pytest.fixture()
-def eia_env(tmp_path: Path):
-    """draft eia_v2_draft.yaml 经 tmp manifest 加载（Task 8 手法）+ 空 store。
-
-    照抄真实 _manifest.yaml（doc_graph.yaml + eia.yaml 双文件——draft 的
-    mention_of_eia_* 链接引用 doc_graph 的 graph_mention，单文件 manifest 会
-    RegistryError），仅把 eia.yaml 换成 draft。
-    Task 11 eia.yaml 替换后：本 fixture 整体改回 `registry = load_registry()` 一行。
-    """
-    shutil.copyfile(REGISTRY_DIR / "_manifest.yaml", tmp_path / "_manifest.yaml")
-    shutil.copyfile(REGISTRY_DIR / "doc_graph.yaml", tmp_path / "doc_graph.yaml")
-    shutil.copyfile(DRAFT_YAML, tmp_path / "eia.yaml")
-    registry = load_registry(tmp_path)
+def eia_env():
+    """正式 registry（v2 eia.yaml）+ 空 store——镜像 test_kernel_p5.py 的 eia_env。"""
+    registry = load_registry()
     store = OxStore()
     refresh_schema(store, registry)
     yield store, registry, collect_vocabularies(registry)["eia"]

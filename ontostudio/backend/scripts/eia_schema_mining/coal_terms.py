@@ -24,7 +24,7 @@ COAL_TERMS: dict[str, str | None] = {
     "下沉值": "impact_result:subsidence", "水平变形": "impact_result:subsidence",
     "岩移观测": None, "保水开采": None,
     # 规划环评
-    "规划环评": "planning_scheme", "三线一单": None, "承载力": "carrying_capacity",
+    "规划环评": "planning_scheme", "三线一单": "regulation_clause", "承载力": "carrying_capacity",
     "回顾性评价": "retrospective_problem", "规划调整": "planning_change", "重大变动": "planning_change",
     # 约束/时效
     "GB 20426": "standard_threshold", "GB 21522": "standard_threshold",
