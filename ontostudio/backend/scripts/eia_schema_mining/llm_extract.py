@@ -102,10 +102,11 @@ def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots:
                 return []
             time.sleep(5 * (k + 1))
         except httpx.HTTPStatusError as exc:
-            if exc.response.status_code not in (429, 500, 502, 503, 504):
-                raise
+            code = exc.response.status_code
+            if code != 429 and code < 500:
+                raise  # 4xx 非瞬时（401/400 等配置问题要暴露）；520-527 等 Cloudflare 系随 ≥500 覆盖
             if k == attempts - 1:
-                print(f"  chunk HTTP {exc.response.status_code} after retry, skipped", flush=True)
+                print(f"  chunk HTTP {code} after retry, skipped", flush=True)
                 return []
             time.sleep(10 * (k + 1))
     text = resp.json()["choices"][0]["message"]["content"]
