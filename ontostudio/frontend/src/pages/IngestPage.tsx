@@ -1,47 +1,37 @@
 /**
- * 08 抽取导入（EAI-CUSTOM, 2026-09-27 原型移植）——完全对照
- * docs/designs/designs/ontostudio-frontend-redesign-20260926.html#ingest：
+ * 08 抽取导入（EAI-CUSTOM, 2026-09-28 审计升级）——真数据区块：
  *
- * - 顶部动作行：新建抽取任务（规划·任务API）/ 从主系统线程导入（真端点
- *   POST /formal/load——dg_* 全量装载）+ 生产线口径注（regex/v1）；
- * - 抽取任务队列（静态示例，DemoTag 标注——「任务」概念后端 TODOS，见 TODOS.md）；
- * - 置信度分布（横向条）+ 证据链引文（mention 永不删）。
+ * - 置信度分布：graph_entity objects → 客户端分桶计算（真数据）；
+ * - 证据链引文：graph_mention objects → 按 extracted_at 倒序取最近 5 条（真数据）；
+ * - 抽取任务队列：静态示例（DemoTag 标注——「任务」概念后端 TODOS）；
+ * - 从主系统线程导入：POST /formal/load 真端点（dg_* 全量装载）。
  * 生产线口径：regex/v1 确定性正则（etype/谓词与 eia.yaml 枚举严格同名，kernel loader 直读）。
  */
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { FileInput, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { runFormalLoad } from "@/api/formal-api";
+import { fetchObjects } from "@/api/ontology-graph-api";
 import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
 import { cn } from "@/lib/utils";
 
-const HISTO: Array<{ count: number; bucket: string }> = [
-  { count: 38, bucket: "<.6" },
-  { count: 72, bucket: ".6+" },
-  { count: 118, bucket: ".7+" },
-  { count: 161, bucket: ".8+" },
-  { count: 244, bucket: ".9+" },
-  { count: 205, bucket: "1.0" },
-];
-const HISTO_MAX = Math.max(...HISTO.map((bar) => bar.count));
-
-type TaskStatus = "完成" | "抽取中" | "排队中";
-const STATUS_DOT: Record<TaskStatus, string> = {
-  完成: "bg-success",
-  抽取中: "bg-primary",
-  排队中: "bg-warning",
-};
-
+/* 静态示例——「抽取任务」概念后端 TODOS，落地后替换为真 API。 */
 interface Task {
   doc: string;
   domain: string;
-  status: TaskStatus;
+  status: "完成" | "抽取中" | "排队中";
   progress?: string;
   e: string;
   r: string;
   m: string;
 }
+
+const STATUS_DOT: Record<Task["status"], string> = {
+  完成: "bg-success",
+  抽取中: "bg-primary",
+  排队中: "bg-warning",
+};
 
 const TASKS: Task[] = [
   { doc: "环评报告-横城（送审稿）.docx", domain: "eia", status: "完成", e: "460", r: "205", m: "318" },
@@ -50,16 +40,23 @@ const TASKS: Task[] = [
   { doc: "GB 13223-2011 火电厂大气污染物排放标准.pdf", domain: "eia", status: "排队中", e: "—", r: "—", m: "—" },
 ];
 
-const QUOTES = [
-  {
-    text: "投标人须同时具备环保工程专业承包一级资质与煤矿设备安装一级资质。",
-    src: "doc:标书-2024-017 · thread:2f8a… · extracted_by: regex/v1",
-  },
-  {
-    text: "锅炉烟气采用双碱法脱硫后经 45m 烟囱排放，执行 GB 13223-2011 规定限值。",
-    src: "doc:环评报告-横城 · thread:9d11… · extracted_by: regex/v1",
-  },
-];
+/* 置信度分桶定义 */
+const BUCKETS = [
+  { label: "<.6", min: 0, max: 0.6 },
+  { label: ".6+", min: 0.6, max: 0.7 },
+  { label: ".7+", min: 0.7, max: 0.8 },
+  { label: ".8+", min: 0.8, max: 0.9 },
+  { label: ".9+", min: 0.9, max: 1.0 },
+  { label: "1.0", min: 1.0, max: 1.01 },
+] as const;
+
+interface Mention {
+  id: string;
+  quote?: string;
+  documentId?: string;
+  threadId?: string;
+  extractedBy?: string;
+}
 
 export function IngestPage() {
   // 从主系统线程导入 = POST /formal/load（dg_* 全量装载，真端点）
@@ -71,17 +68,57 @@ export function IngestPage() {
     onError: (e) => setLoadMsg(`装载失败：${e instanceof Error ? e.message : String(e)}`),
   });
 
+  // 置信度分布（真数据）：graph_entity objects → 客户端分桶计算
+  const entitiesQuery = useQuery({
+    queryKey: ["ontology", "objects", "graph_entity", "confidence-dist"],
+    queryFn: ({ signal }) => fetchObjects("graph_entity", { limit: 200, signal }),
+    staleTime: 60_000,
+  });
+
+  // 证据链引文（真数据）：最近 mentions 按 extracted_at 倒序
+  const mentionsQuery = useQuery({
+    queryKey: ["ontology", "mentions", "recent"],
+    queryFn: ({ signal }) =>
+      fetchObjects("graph_mention", { order: "extracted_at", desc: true, limit: 5, signal }),
+    staleTime: 60_000,
+  });
+
+  // 客户端置信度分桶
+  const histogram = useMemo(() => {
+    const counts = BUCKETS.map((b) => ({ ...b, count: 0 }));
+    for (const row of entitiesQuery.data?.data ?? []) {
+      const conf = Number(row.confidence);
+      if (isNaN(conf)) continue;
+      for (const bucket of counts) {
+        if (conf >= bucket.min && conf < bucket.max) {
+          bucket.count++;
+          break;
+        }
+      }
+    }
+    return counts;
+  }, [entitiesQuery.data]);
+  const histoMax = Math.max(...histogram.map((h) => h.count), 1);
+
+  // 真实提及 → 证据链引文
+  const recentMentions = (mentionsQuery.data?.data ?? []).slice(0, 5) as Array<{
+    id: string;
+    quote?: string;
+    documentId?: string;
+    threadId?: string;
+    extractedBy?: string;
+  }>;
+
   return (
-    /* 纵向滚动层（样式=全站 6px 细条）+ min-w 保底（同总览/实体库手法） */
     <div className="h-full overflow-x-auto overflow-y-auto">
       <div className="min-w-[1080px] p-6">
         <PageHeader
           icon={FileInput}
           title="抽取导入"
-          description="重构点：旧版纯静态。真数据化需要后端补「抽取任务」概念（TODOS 关联）——任务队列、进度、置信度直方图、证据链引文均挂在新任务实体上。"
+          description="真数据区块：置信度分布（graph_entity 实时统计）+ 证据链引文（graph_mention 最近记录）。任务队列为静态示例（DemoTag——「任务」概念后端 TODOS）。"
         />
 
-        {/* 顶部动作行（原型） */}
+        {/* 顶部动作行 */}
         <div className="mb-3.5 flex flex-wrap items-center gap-2">
           <button
             type="button"
@@ -189,45 +226,60 @@ export function IngestPage() {
           </div>
         </Panel>
 
-        {/* 置信度分布 + 证据链引文 */}
+        {/* 置信度分布（真数据） + 证据链引文（真数据） */}
         <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">
-          <Panel title="置信度分布" subtitle="月儿湾实体（示例数据）" actions={<DemoTag />}>
+          <Panel title="置信度分布" subtitle="graph_entity 实时统计">
             <div className="flex flex-col gap-2 p-4">
-              {HISTO.map((bar) => (
-                <div key={bar.bucket} className="flex items-center gap-2.5 text-[11.5px]">
-                  <span className="text-muted-foreground w-9 flex-none font-mono">{bar.bucket}</span>
-                  <div className="bg-muted h-3.5 min-w-0 flex-1 overflow-hidden rounded">
-                    <div
-                      className="bg-primary/85 h-full rounded"
-                      style={{ width: `${(bar.count / HISTO_MAX) * 100}%` }}
-                    />
-                  </div>
-                  <span className="w-9 flex-none text-right font-mono tabular-nums">{bar.count}</span>
+              {entitiesQuery.isLoading ? (
+                <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-xs">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  加载实体…
                 </div>
-              ))}
+              ) : (
+                histogram.map((bar) => (
+                  <div key={bar.label} className="flex items-center gap-2.5 text-[11.5px]">
+                    <span className="text-muted-foreground w-9 flex-none font-mono">{bar.label}</span>
+                    <div className="bg-muted h-3.5 min-w-0 flex-1 overflow-hidden rounded">
+                      <div
+                        className="bg-primary/85 h-full rounded"
+                        style={{ width: `${(bar.count / histoMax) * 100}%` }}
+                      />
+                    </div>
+                    <span className="w-9 flex-none text-right font-mono tabular-nums">{bar.count}</span>
+                  </div>
+                ))
+              )}
               <p className="text-muted-foreground mt-1 text-[11px]">
                 低置信段（&lt;.7）优先进入人审队列；高置信段供方案 C（agent 预审）自动确认。
               </p>
             </div>
           </Panel>
 
-          <Panel
-            title="证据链引文"
-            subtitle="mention 永不删"
-            actions={<DemoTag />}
-          >
+          <Panel title="证据链引文" subtitle="mention 永不删">
             <div className="flex flex-col gap-2.5 p-4">
-              {QUOTES.map((quote) => (
-                <figure
-                  key={quote.text}
-                  className="border-border bg-muted rounded-lg border px-3 py-2.5 text-xs"
-                >
-                  <blockquote>"{quote.text}"</blockquote>
-                  <figcaption className="text-muted-foreground/80 mt-1 font-mono text-[10.5px]">
-                    {quote.src}
-                  </figcaption>
-                </figure>
-              ))}
+              {mentionsQuery.isLoading ? (
+                <div className="text-muted-foreground flex items-center justify-center gap-2 py-4 text-xs">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  加载最近引文…
+                </div>
+              ) : recentMentions.length === 0 ? (
+                <div className="text-muted-foreground px-2 py-6 text-center text-xs">
+                  暂无提及记录——抽取导入后证据链在此展示
+                </div>
+              ) : (
+                recentMentions.map((m) => (
+                  <figure
+                    key={m.id}
+                    className="border-border bg-muted rounded-lg border px-3 py-2.5 text-xs"
+                  >
+                    <blockquote>{m.quote ? `"${m.quote}"` : "—"}</blockquote>
+                    <figcaption className="text-muted-foreground/80 mt-1 font-mono text-[10.5px]">
+                      doc:{m.documentId || "—"} · thread:{m.threadId?.slice(0, 6) || "—"}
+                      {m.extractedBy ? ` · ${m.extractedBy}` : ""}
+                    </figcaption>
+                  </figure>
+                ))
+              )}
             </div>
           </Panel>
         </div>
