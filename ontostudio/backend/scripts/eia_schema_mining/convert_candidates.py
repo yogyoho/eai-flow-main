@@ -22,7 +22,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # backend 根可�
 from app.doc_graph.schemas import EiaExtraction  # noqa: E402
 
 # review 2026-09-29 已核: schemas.py 无模块级 EIA_PREDICATE_ROLES(仅私有 _EIA_PREDICATE_ROLES);
-# ClassVar 即公开真源——整表含 v2 全部 19 条扩容谓词角色 + 16 条 v1 旧谓词(共 35, review 复核计数)，校验即全覆盖。
+# ClassVar 即公开真源——整表含 v2 全部 19 条扩容谓词角色 + 16 条 v1 旧谓词 + 3 个 registry 补齐谓词
+# (located_in/complies_with/regulated_by, 共 38 谓词)，校验即全覆盖。
+# 2026-09-29 多对改造: 值 = tuple[tuple[str,str], ...], 角色判定为成员判定(不再单对等值)。
 EIA_PREDICATE_ROLES = EiaExtraction.predicate_roles
 
 PENDING_CONFIDENCE = 0.6  # < REVIEW_CONFIDENCE(0.7) → 全量 pending_review 走人审（设计意图,非缺陷）
@@ -59,7 +61,7 @@ def convert(rows, fulltext_getter, source):
             stats["hallu_dropped"] += 1
             continue
         st, ot, pred = r.get("subject_type"), r.get("object_type"), r.get("predicate")
-        if pred not in EIA_PREDICATE_ROLES or EIA_PREDICATE_ROLES[pred] != (st, ot):
+        if pred not in EIA_PREDICATE_ROLES or (st, ot) not in EIA_PREDICATE_ROLES[pred]:
             stats["role_dropped"] += 1
             continue
         clean.append(r)
@@ -85,7 +87,7 @@ def convert(rows, fulltext_getter, source):
             continue
         seen_rel.add(key)
         # 消解后角色复检：多数决翻转 etype 后个别关系失配 → 丢关系保实体，payload 仍整体可过 model_validate
-        if EIA_PREDICATE_ROLES[r["predicate"]] != (resolved[s_name], resolved[o_name]):
+        if (resolved[s_name], resolved[o_name]) not in EIA_PREDICATE_ROLES[r["predicate"]]:
             stats["resolved_role_dropped"] += 1
             continue
         rels.append({"subject": s_name, "predicate": r["predicate"], "object": o_name,

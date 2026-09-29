@@ -4,6 +4,8 @@ EAI-CUSTOM: 设计 docs/superpowers/specs/2026-09-11-ontology-doc-graph-design.m
 extra="forbid"=多余字段直接拒绝; relation 交叉引用在模型层校验。
 EntityPayload/RelationPayload 的 etype/predicate 放宽为全枚举 Literal（共享 payload 层）,
 域合法性收紧由 *Extraction 子类的域表 ClassVar + 基类 validator 完成（跨域枚举不混用）。
+谓词角色表值 = tuple[tuple[str, str], ...] 多角色对集（2026-09-29 数据驱动改造, 单对谓词即
+单元素元组; 校验从等值改为成员判定, 支持数注记见各新增对行尾）。
 新增抽取域 = 新增 *Extraction 模型 + 域表 ClassVar, 不动引擎与读侧。
 """
 
@@ -118,6 +120,11 @@ _PREDICATE = Literal[
     "specified_by",
     "analogous_to",
     "conflicts_with",
+    # registry 37 谓词补齐（2026-09-29 数据驱动多对改造）：数据支撑的 3 个入 Literal+域表；
+    # pollutes(最大组合支持4)/precedes(支持1) 低于 ≥5 门槛两处均不入——converter 仍丢弃, 待后续批次数据。
+    "complies_with",
+    "located_in",
+    "regulated_by",
 ]
 
 
@@ -146,57 +153,91 @@ class RelationPayload(BaseModel):
     mention: MentionPayload
 
 
-# --- bid 域表（4 谓词角色; MappingProxyType 只读——converter 侧不得改表）---
-_PREDICATE_ROLES: MappingProxyType[str, tuple[str, str]] = MappingProxyType(
+# --- bid 域表（4 谓词; 值 = tuple[tuple[str, str], ...] 多角色对集——单对谓词包单元素元组,
+# 与 eia 表同构（2026-09-29 多对改造, bid 单对语义不变）; MappingProxyType 只读——converter 侧不得改表）---
+_PREDICATE_ROLES: MappingProxyType[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
-        "bidder_of_project": ("bidder", "project"),
-        "bidder_supplies_goods": ("bidder", "goods"),
-        "bidder_holds_qualification": ("bidder", "qualification"),
-        "project_won_by_bidder": ("project", "bidder"),
+        "bidder_of_project": (("bidder", "project"),),
+        "bidder_supplies_goods": (("bidder", "goods"),),
+        "bidder_holds_qualification": (("bidder", "qualification"),),
+        "project_won_by_bidder": (("project", "bidder"),),
     }
 )
 
-# --- eia 域表（3 谓词全为 org→project 角色）---
-_EIA_PREDICATE_ROLES: MappingProxyType[str, tuple[str, str]] = MappingProxyType(
+# --- eia 域表（值 = tuple[tuple[str, str], ...]; 校验 = (subject_etype, object_etype) ∈ 对集）---
+_EIA_PREDICATE_ROLES: MappingProxyType[str, tuple[tuple[str, str], ...]] = MappingProxyType(
     {
-        "org_compiles_project": ("org", "project"),
-        "org_commissions_project": ("org", "project"),
-        "org_develops_project": ("org", "project"),
+        "org_compiles_project": (("org", "project"),),
+        "org_commissions_project": (("org", "project"),),
+        "org_develops_project": (("org", "project"),),
         # 四类目标扩展（角色对 = 抽取器输出契约）
-        "has_chapter": ("report", "chapter"),
-        "has_subsection": ("chapter", "section"),
-        "part_of": ("section", "chapter"),
-        "treated_by": ("pollution_source", "treatment_measure"),
-        "governed_by": ("treatment_measure", "emission_standard"),
-        "monitored_by": ("emission_standard", "monitoring"),
-        "emitted_as": ("pollution_source", "pollutant"),
-        "threatens": ("pollutant", "sensitive_point"),
-        "impact_to": ("pollution_source", "sensitive_point"),
-        "specifies_threshold": ("emission_standard", "standard_threshold"),
-        "cites_clause": ("report", "regulation_clause"),
-        "requires_evidence": ("treatment_measure", "evidence_requirement"),
-        "evidenced_by": ("treatment_measure", "evidence_artifact"),
+        "has_chapter": (("report", "chapter"),),
+        "has_subsection": (("chapter", "section"),),
+        "part_of": (("section", "chapter"),),
+        "treated_by": (
+            ("pollution_source", "treatment_measure"),
+            ("engineering_site", "treatment_measure"),  # 支持14条(engineering_site对齐, 2026-09-29)
+        ),
+        "governed_by": (("treatment_measure", "emission_standard"),),
+        "monitored_by": (
+            ("emission_standard", "monitoring"),
+            ("engineering_site", "monitoring"),  # 支持8条(engineering_site对齐, 2026-09-29)
+        ),
+        "emitted_as": (("pollution_source", "pollutant"),),
+        "threatens": (("pollutant", "sensitive_point"),),
+        "impact_to": (("pollution_source", "sensitive_point"),),
+        "specifies_threshold": (("emission_standard", "standard_threshold"),),
+        "cites_clause": (("report", "regulation_clause"),),
+        "requires_evidence": (("treatment_measure", "evidence_requirement"),),
+        "evidenced_by": (("treatment_measure", "evidence_artifact"),),
         # --- v2 扩容（spec 2026-09-28 §4.2/§4.3；affects=impact_result→sensitive_point，
         #     threatens 保持 (pollutant, sensitive_point) 单角色不变）---
-        "mines": ("mining_district", "coal_seam"),
-        "method_of": ("working_face", "mining_method"),
-        "develops": ("mine_field", "mining_district"),
-        "causes": ("working_face", "impact_result"),
-        "affects": ("impact_result", "sensitive_point"),
-        "protected_by": ("sensitive_point", "treatment_measure"),
-        "drawdown_of": ("impact_result", "aquifer"),
-        "emitted_via": ("pollution_source", "emission_point"),
-        "drains_to": ("emission_point", "receiving_medium"),
-        "generates_waste": ("pollution_source", "waste_stream"),
-        "disposed_by": ("waste_stream", "treatment_measure"),
-        "utilized_by": ("waste_stream", "treatment_measure"),
-        "sub_plan_of": ("mine_field", "planning_scheme"),
-        "changes": ("planning_change", "planning_scheme"),
-        "constrained_by": ("project", "carrying_capacity"),
-        "problem_of": ("retrospective_problem", "mine_field"),
-        "specified_by": ("treatment_measure", "measure_spec"),
-        "analogous_to": ("project", "analogy_case"),
-        "conflicts_with": ("regulation_clause", "regulation_clause"),
+        "mines": (("mining_district", "coal_seam"),),
+        "method_of": (("working_face", "mining_method"),),
+        "develops": (("mine_field", "mining_district"),),
+        "causes": (
+            ("working_face", "impact_result"),
+            ("engineering_site", "impact_result"),  # 支持6条(engineering_site对齐, 2026-09-29)
+        ),
+        "affects": (("impact_result", "sensitive_point"),),
+        "protected_by": (("sensitive_point", "treatment_measure"),),
+        "drawdown_of": (("impact_result", "aquifer"),),
+        "emitted_via": (("pollution_source", "emission_point"),),
+        "drains_to": (("emission_point", "receiving_medium"),),
+        "generates_waste": (("pollution_source", "waste_stream"),),
+        "disposed_by": (
+            ("waste_stream", "treatment_measure"),
+            ("waste_stream", "engineering_site"),  # 支持6条(engineering_site对齐, 2026-09-29)
+        ),
+        "utilized_by": (("waste_stream", "treatment_measure"),),
+        "sub_plan_of": (("mine_field", "planning_scheme"),),
+        "changes": (("planning_change", "planning_scheme"),),
+        "constrained_by": (("project", "carrying_capacity"),),
+        "problem_of": (("retrospective_problem", "mine_field"),),
+        "specified_by": (("treatment_measure", "measure_spec"),),
+        "analogous_to": (("project", "analogy_case"),),
+        "conflicts_with": (("regulation_clause", "regulation_clause"),),
+        # --- registry 37 谓词补齐（2026-09-29 数据驱动多对改造；支持数 = 1564 条候选 raw 三元组计数,
+        #     入选门槛 ≥5 且双侧 etype 在域枚举内, 引文语义抽查通过；pollutes(最大组合4)/precedes(1)
+        #     未达门槛不入表。specifies_threshold+(engineering_site,standard_threshold) 支持6但因
+        #     语义错位弃（规定阈值的主体只能是标准, 非场地））---
+        "located_in": (
+            ("evidence_artifact", "mine_field"),  # 支持11条
+            ("treatment_measure", "mine"),  # 支持11条
+            ("mine", "place"),  # 支持11条
+            ("place", "place"),  # 支持10条
+            ("sensitive_point", "place"),  # 支持9条
+            ("monitoring", "aquifer"),  # 支持8条
+            ("sensitive_point", "mine_field"),  # 支持6条
+            ("mine", "mining_district"),  # 支持5条
+            ("engineering_site", "place"),  # 支持5条
+            ("engineering_site", "project"),  # 支持5条
+        ),
+        "complies_with": (
+            ("waste_stream", "emission_standard"),  # 支持9条
+            ("pollution_source", "emission_standard"),  # 支持6条
+        ),
+        "regulated_by": (("org", "regulation_clause"),),  # 支持7条
     }
 )
 
@@ -217,7 +258,7 @@ class ExtractionPayload(BaseModel):
 
     domain_etypes: ClassVar[frozenset[str]] = frozenset()
     domain_predicates: ClassVar[frozenset[str]] = frozenset()
-    predicate_roles: ClassVar[MappingProxyType[str, tuple[str, str]]] = MappingProxyType({})
+    predicate_roles: ClassVar[MappingProxyType[str, tuple[tuple[str, str], ...]]] = MappingProxyType({})
 
     @model_validator(mode="after")
     def _check_domain_and_refs(self):
@@ -236,8 +277,8 @@ class ExtractionPayload(BaseModel):
                     raise ValueError(f"relations[{i}].{side} 引用未声明实体: {ref!r} (已声明: {sorted(names)})")
             roles = self.predicate_roles[r.predicate]
             subj, obj = name_to_etype[r.subject], name_to_etype[r.object]
-            if (subj, obj) != roles:
-                raise ValueError(f"relations[{i}] {r.predicate} 要求 (subject_etype, object_etype)={roles}, 实际 ({subj}, {obj})")
+            if (subj, obj) not in roles:
+                raise ValueError(f"relations[{i}] {r.predicate} 要求 (subject_etype, object_etype) 为 {roles} 之一, 实际 ({subj}, {obj})")
         return self
 
 
@@ -248,7 +289,7 @@ class BidExtraction(ExtractionPayload):
 
     domain_etypes: ClassVar[frozenset[str]] = frozenset({"project", "bidder", "goods", "qualification"})
     domain_predicates: ClassVar[frozenset[str]] = frozenset(_PREDICATE_ROLES)
-    predicate_roles: ClassVar[MappingProxyType[str, tuple[str, str]]] = _PREDICATE_ROLES
+    predicate_roles: ClassVar[MappingProxyType[str, tuple[tuple[str, str], ...]]] = _PREDICATE_ROLES
 
 
 class EiaExtraction(ExtractionPayload):
@@ -304,4 +345,4 @@ class EiaExtraction(ExtractionPayload):
         }
     )
     domain_predicates: ClassVar[frozenset[str]] = frozenset(_EIA_PREDICATE_ROLES)
-    predicate_roles: ClassVar[MappingProxyType[str, tuple[str, str]]] = _EIA_PREDICATE_ROLES
+    predicate_roles: ClassVar[MappingProxyType[str, tuple[tuple[str, str], ...]]] = _EIA_PREDICATE_ROLES

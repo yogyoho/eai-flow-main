@@ -176,6 +176,108 @@ def test_literal_and_domain_tables_consistent():
     assert set(get_args(schemas._PREDICATE)) == BidExtraction.domain_predicates | EiaExtraction.domain_predicates
 
 
+# --- 多角色对（2026-09-29 数据驱动改造：_EIA_PREDICATE_ROLES 值 = tuple[tuple[str,str], ...]）---
+
+
+def test_role_tables_uniform_pair_tuple_shape():
+    """两域角色表值统一为 tuple[tuple[str, str], ...]（单对谓词包单元素元组）——converter 侧按成员判定。"""
+    for table in (schemas._PREDICATE_ROLES, schemas._EIA_PREDICATE_ROLES):
+        for pred, pairs in table.items():
+            assert isinstance(pairs, tuple) and pairs, f"{pred} 角色对集为空或非元组"
+            for pair in pairs:
+                assert isinstance(pair, tuple) and len(pair) == 2, f"{pred} 角色对形态非法: {pair!r}"
+                assert all(isinstance(s, str) for s in pair)
+
+
+def test_bid_single_pair_behavior_unchanged():
+    """bid 域铁律：单对语义原样——合法对过、反转仍拒。"""
+    assert schemas._PREDICATE_ROLES["bidder_of_project"] == (("bidder", "project"),)
+    assert BidExtraction.model_validate(_payload())
+    bad = _payload()
+    bad["relations"][0]["predicate"] = "project_won_by_bidder"
+    with pytest.raises(ValidationError):
+        BidExtraction.model_validate(bad)
+
+
+# 17 个数据驱动新增对（支持数 = 1564 条候选 raw 三元组计数, 见各对 schemas.py 行尾注释）
+_NEW_PAIRS = [
+    ("located_in", "evidence_artifact", "mine_field"),
+    ("located_in", "mine", "place"),
+    ("located_in", "treatment_measure", "mine"),
+    ("located_in", "place", "place"),
+    ("located_in", "sensitive_point", "place"),
+    ("located_in", "monitoring", "aquifer"),
+    ("located_in", "sensitive_point", "mine_field"),
+    ("located_in", "mine", "mining_district"),
+    ("located_in", "engineering_site", "place"),
+    ("located_in", "engineering_site", "project"),
+    ("complies_with", "waste_stream", "emission_standard"),
+    ("complies_with", "pollution_source", "emission_standard"),
+    ("regulated_by", "org", "regulation_clause"),
+    ("treated_by", "engineering_site", "treatment_measure"),
+    ("monitored_by", "engineering_site", "monitoring"),
+    ("causes", "engineering_site", "impact_result"),
+    ("disposed_by", "waste_stream", "engineering_site"),
+]
+
+
+@pytest.mark.parametrize(
+    ("pred", "subj_etype", "obj_etype"),
+    _NEW_PAIRS,
+    ids=[f"{p}-{s}-{o}" for p, s, o in _NEW_PAIRS],
+)
+def test_new_pair_accepts(pred, subj_etype, obj_etype):
+    """每个新增对逐条验证 accept（同名实体 names 须唯一, 自引用对用双实体构造）。"""
+    s_name, o_name = ("S实体", "O实体") if subj_etype != obj_etype else ("S实体", "O实体2")
+    payload = EiaExtraction(
+        domain="eia",
+        entities=[{"etype": subj_etype, "name": s_name, "mention": {"document_id": "d"}}, {"etype": obj_etype, "name": o_name, "mention": {"document_id": "d"}}],
+        relations=[{"predicate": pred, "subject": s_name, "object": o_name, "mention": {"document_id": "d"}}],
+    )
+    assert len(payload.relations) == 1
+
+
+def test_multi_pair_any_legal_pair_accepts():
+    """多对谓词：同一谓词的两个不同合法对在同一 payload 内共存通过。"""
+    payload = EiaExtraction(
+        domain="eia",
+        entities=[
+            {"etype": "pollution_source", "name": "锅炉烟气", "mention": {"document_id": "d"}},
+            {"etype": "engineering_site", "name": "工业场地", "mention": {"document_id": "d"}},
+            {"etype": "treatment_measure", "name": "隔声屏障", "mention": {"document_id": "d"}},
+        ],
+        relations=[
+            {"predicate": "treated_by", "subject": "锅炉烟气", "object": "隔声屏障", "mention": {"document_id": "d"}},
+            {"predicate": "treated_by", "subject": "工业场地", "object": "隔声屏障", "mention": {"document_id": "d"}},
+        ],
+    )
+    assert {r.subject for r in payload.relations} == {"锅炉烟气", "工业场地"}
+
+
+def test_multi_pair_illegal_pair_still_rejected():
+    """多对谓词：非法对仍拒——(waste_stream, treatment_measure) 不在 treated_by 对集（候选 x20 但未入选）。"""
+    with pytest.raises(ValidationError, match="要求"):
+        EiaExtraction(
+            domain="eia",
+            entities=[{"etype": "waste_stream", "name": "矸石", "mention": {"document_id": "d"}}, {"etype": "treatment_measure", "name": "隔声屏障", "mention": {"document_id": "d"}}],
+            relations=[{"predicate": "treated_by", "subject": "矸石", "object": "隔声屏障", "mention": {"document_id": "d"}}],
+        )
+
+
+def test_data_insufficient_predicates_held_back():
+    """pollutes/precedes 数据不足（最大组合支持 4/1 < 5 门槛）不入契约——Literal 与域表均无, converter 仍丢弃。"""
+    for held in ("pollutes", "precedes"):
+        assert held not in get_args(schemas._PREDICATE)
+        assert held not in EiaExtraction.domain_predicates
+
+
+def test_registry_new_predicates_in_literal_and_domain():
+    """registry 37 谓词中数据支撑的 3 个新谓词须同时进 Literal 与 eia 域表（Invariant: Literal=两域域表并集）。"""
+    for pred in ("located_in", "complies_with", "regulated_by"):
+        assert pred in get_args(schemas._PREDICATE)
+        assert pred in EiaExtraction.domain_predicates
+
+
 def test_registry_yaml_enums_superset_of_schemas_literals():
     """registry 各域 yaml 枚举并集必须 ⊇ schemas 全枚举 Literal——防 schemas 增益而 yaml 未跟的静默死规则。
 
