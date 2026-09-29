@@ -33,6 +33,11 @@ _CROSS_FANOUT = 200
 _CROSS_SOURCE_PAGE = 200
 # 对外游标 offset 上限: 防敌意游标触发无界 SQL OFFSET 行走（edges 每链接一次全表 OFFSET 扫描）
 _MAX_OFFSET = 10_000_000
+# EAI-CUSTOM(2026-09-29): mention 溯源类型不进本体浏览窗口。mention（label=uuid 的证据行，
+# 经 DetailPanel 懒加载查看）批量入图后行数远超实体行——默认投影会把实体/关系节点挤出
+# limit 窗口（实测 dg_mentions 5050 行灌满 /graph/nodes?limit=500，画布成"提及点汤"）。
+# nodes/edges 默认同规则排除（节点不在场则边成孤端）；include=mentions opt-in 恢复全集。
+_MENTION_TYPES: frozenset[str] = frozenset({"graph_mention"})
 
 
 # ---------- 游标编解码（nodes/edges 共用; type_idx 语义由调用方解释） ----------
@@ -116,16 +121,20 @@ def project_node(obj: Any, row: dict[str, Any], searchable: list[str]) -> dict[s
     return {"id": f"{obj.api_name}:{pk_val}", "type": obj.api_name, "label": str(label), "properties": row}
 
 
-async def nodes_page(reg: Any, engine: Any, cursor: str | None, limit: int) -> dict[str, Any]:
+async def nodes_page(reg: Any, engine: Any, cursor: str | None, limit: int, include_mentions: bool = False) -> dict[str, Any]:
     """全部 enabled 对象类型实例统一投影（逐类型排水，跨类型同页衔接）。
 
     排水实现: 对外 offset 游标通过「每次响应从类型头重取 + keyset 行走跳过 offset 行」落地——
     引擎 keyset 游标是类型内方言且无法跳行，这样换取精确不重不漏；每个响应至多重扫已发行一次。
+
+    EAI-CUSTOM(2026-09-29): _MENTION_TYPES 类型默认不投影（实体/关系窗口优先）；include_mentions=True 恢复全集。
     """
     pos = decode_cursor(cursor)
     if pos is None:
         pos = {"type_idx": 0, "offset": 0}
     ordered, _lens = projection_order(reg)
+    if not include_mentions:
+        ordered = [o for o in ordered if o.api_name not in _MENTION_TYPES]
     out: list[dict[str, Any]] = []
     type_idx, offset = pos["type_idx"], pos["offset"]
     while type_idx < len(ordered) and len(out) < limit:
@@ -156,7 +165,7 @@ async def nodes_page(reg: Any, engine: Any, cursor: str | None, limit: int) -> d
 # ---------- 边投影 ----------
 
 
-async def edges_page(reg: Any, engine: Any, cursor: str | None, limit: int) -> dict[str, Any]:
+async def edges_page(reg: Any, engine: Any, cursor: str | None, limit: int, include_mentions: bool = False) -> dict[str, Any]:
     """全部 enabled 链接实例投影（逐链接排水；stub 不进入迭代，天然不产生边）。
 
     游标复用同款编解码，type_idx 表链接序号、offset 表该链接内已发出的边数。每次对当前链接
@@ -168,9 +177,12 @@ async def edges_page(reg: Any, engine: Any, cursor: str | None, limit: int) -> d
         pos = {"type_idx": 0, "offset": 0}
     # EAI-CUSTOM(2026-09-27 双透镜去重): 指向让位透镜的链接不产生边（同一 FK 的域透镜
     # 版本）；同 FK 签名的链接只保留 api_name 序首个——边与节点同规则去重。
+    # EAI-CUSTOM(2026-09-29): 与 nodes 同规则排除 mention 链接——mention 节点默认不在场，
+    # 保留 mention 边会成孤端；include_mentions=True 与节点同步恢复全集。
     _, lens = projection_order(reg)
+    mentions = frozenset() if include_mentions else _MENTION_TYPES
     ordered_raw = sorted(
-        (lt for lt in reg.link_types.values() if lt.enabled and lt.source not in lens and lt.target not in lens),
+        (lt for lt in reg.link_types.values() if lt.enabled and lt.source not in lens and lt.target not in lens and lt.source not in mentions and lt.target not in mentions),
         key=lambda lt: lt.api_name,
     )
     ordered: list[Any] = []

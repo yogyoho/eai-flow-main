@@ -239,8 +239,11 @@ async def test_edges_page_excludes_stub_links():
     types = {e["type"] for e in p1["edges"]}
     # EAI-CUSTOM(2026-09-27 双透镜去重): mention_of_eia_entity/relation 与
     # mention_of_entity/relation 同 FK 签名（目标为让位透镜 eia_entity/eia_relation），
-    # 按签名让位——期望集合 = enabled 减去这两条。
-    assert types == enabled_names - {"mention_of_eia_entity", "mention_of_eia_relation"}
+    # 按签名让位。
+    # EAI-CUSTOM(2026-09-29 mention 排除): mention_of_entity/relation 默认随 mention 节点
+    # 一并排除（节点不在场则边成孤端；opt-in 契约见 mention 排除契约段）——期望集合 =
+    # enabled 减去这四条。
+    assert types == enabled_names - {"mention_of_eia_entity", "mention_of_eia_relation", "mention_of_entity", "mention_of_relation"}
     for e in p1["edges"]:
         assert set(e.keys()) == {"source", "target", "type", "label"}
 
@@ -332,3 +335,118 @@ async def test_cursor_huge_offset_rejected():
     r1 = await graph_views.edges_page(reg, eng, graph_views.encode_cursor(0, 10**12), 2)
     r2 = await graph_views.edges_page(reg, eng, None, 2)
     assert r1 == r2  # 超限游标 ≡ fresh 起点
+
+
+# ---------- mention 排除契约（EAI-CUSTOM 2026-09-29, 批量入图淹没回归） ----------
+#
+# 生产事故形态: dg_mentions 批量入图 120→5050 行，而 graph_mention 是 4 条 mention 链的
+# source（链接引用数=4，压过实体/关系的各 3），projection_order 排序**首位**——/graph/nodes
+# limit=500 窗口被 uuid 标签的 mention 节点灌满，实体/关系节点整类型出不了画布。此处复刻同款
+# 拓扑（doc_graph 三类型 + eia 双透镜 + 6 链接、同表让位），钉住「默认排除 + include opt-in」契约。
+
+
+def _mentions_flood_reg() -> SimpleNamespace:
+    """仿真生产拓扑: graph_mention 链接引用数 4 排首位；eia_entity/eia_relation 同表让位进 lens。
+
+    用真 pydantic ObjectType（同 _edge_obj）——nodes 走 properties/searchable、edges 走
+    access/pk.column/物理表，一套类型两条路径通吃。"""
+
+    def obj(api_name: str, table: str) -> ObjectType:
+        return ObjectType(
+            api_name=api_name,
+            display_name=api_name,
+            description="mention 淹没契约测试",
+            domain="test",
+            access=AccessConfig(path="postgres_ext", table=table),
+            pk=PKConfig(column="id", api_name="id", type="string"),
+            properties=[
+                PropertySchema(name="id", api_name="id", type="string"),
+                PropertySchema(name="name", api_name="name", type="string", searchable=True),
+            ],
+        )
+
+    types = {
+        "graph_entity": obj("graph_entity", "dg_entities"),
+        "graph_relation": obj("graph_relation", "dg_relations"),
+        "graph_mention": obj("graph_mention", "dg_mentions"),
+        "eia_entity": obj("eia_entity", "dg_entities"),
+        "eia_relation": obj("eia_relation", "dg_relations"),
+    }
+    links = {
+        "relation_subject": _edge_link("relation_subject", "graph_relation", "graph_entity", type="foreign_key", source_column="subject_id", target_column="id"),
+        "relation_object": _edge_link("relation_object", "graph_relation", "graph_entity", type="foreign_key", source_column="object_id", target_column="id"),
+        "mention_of_entity": _edge_link("mention_of_entity", "graph_mention", "graph_entity", type="foreign_key", source_column="entity_id", target_column="id"),
+        "mention_of_relation": _edge_link("mention_of_relation", "graph_mention", "graph_relation", type="foreign_key", source_column="relation_id", target_column="id"),
+        "mention_of_eia_entity": _edge_link("mention_of_eia_entity", "graph_mention", "eia_entity", type="foreign_key", source_column="entity_id", target_column="id"),
+        "mention_of_eia_relation": _edge_link("mention_of_eia_relation", "graph_mention", "eia_relation", type="foreign_key", source_column="relation_id", target_column="id"),
+    }
+    return SimpleNamespace(object_types=types, link_types=links)
+
+
+def _flood_rows() -> dict[str, list[dict]]:
+    return {
+        "graph_entity": [{"id": f"e{i}", "name": f"实体{i}"} for i in range(3)],
+        "graph_relation": [{"id": f"r{i}", "name": f"关系{i}"} for i in range(2)],
+        "graph_mention": [{"id": f"m{i}", "name": f"提及{i}"} for i in range(600)],
+        "eia_entity": [],
+        "eia_relation": [],
+    }
+
+
+@pytest.mark.asyncio
+async def test_nodes_page_mentions_flood_do_not_squeeze_entities():
+    """600 mentions + 5 实体/关系、limit=500: 默认投影只出实体/关系节点，mention 不挤占窗口。
+
+    修复前 graph_mention 排序首位（链接引用数 4 压过实体/关系各 3），整窗 500 条 uuid 标签
+    mention、graph_entity/graph_relation 整类型出不了首页。"""
+    reg = _mentions_flood_reg()
+    page = await graph_views.nodes_page(reg, FakeEngine(_flood_rows()), None, 500)
+    counter = Counter(n["type"] for n in page["nodes"])
+    assert counter == {"graph_entity": 3, "graph_relation": 2}  # 实体/关系全量在场，mention 零出场
+    assert page["next_cursor"] is None  # 实体窗口内取尽，无需翻页
+    assert not any(n["type"] == "graph_mention" for n in page["nodes"])
+
+
+@pytest.mark.asyncio
+async def test_nodes_page_include_mentions_opt_in_restores_full_set():
+    """include_mentions=True 恢复旧全集行为: graph_mention 回到首位参与排水，翻页不重不漏。"""
+    reg = _mentions_flood_reg()
+    eng = FakeEngine(_flood_rows())
+    first = await graph_views.nodes_page(reg, eng, None, 500, include_mentions=True)
+    counter = Counter(n["type"] for n in first["nodes"])
+    assert counter == {"graph_mention": 500}  # 修复前形态复现: 首窗 500 条全是 mention
+    assert first["next_cursor"] is not None
+    # 排水取尽: 605 节点无重无漏
+    seen: list[str] = [n["id"] for n in first["nodes"]]
+    cursor = first["next_cursor"]
+    while cursor:
+        page = await graph_views.nodes_page(reg, eng, cursor, 500, include_mentions=True)
+        seen.extend(n["id"] for n in page["nodes"])
+        cursor = page["next_cursor"]
+    assert len(seen) == len(set(seen)) == 605
+    assert Counter(t for t in (s.split(":")[0] for s in seen)) == {"graph_entity": 3, "graph_relation": 2, "graph_mention": 600}
+
+
+@pytest.mark.asyncio
+async def test_edges_page_mention_links_excluded_in_tandem():
+    """默认边投影与节点同规则排除 mention 链接（节点不在场则边成孤端）；opt-in 同步恢复。
+
+    mention_of_eia_* 无论何种模式都因目标为让位透镜（eia_entity/eia_relation）被 2026-09-27
+    去重丢弃——两个排除系统叠加的回归钉。"""
+    reg = _mentions_flood_reg()
+    resolver = FakeResolver(
+        {
+            "dg_entities": [{"__src_pk": "m0", "__tgt_pk": "e0"}, {"__src_pk": "m1", "__tgt_pk": "e1"}],  # FROM=目标表
+            "dg_relations": [{"__src_pk": "m0", "__tgt_pk": "r0"}, {"__src_pk": "m1", "__tgt_pk": "r1"}],
+        }
+    )
+    eng = SimpleNamespace(_resolver=resolver)
+    default = await graph_views.edges_page(reg, eng, None, 100)
+    assert Counter(e["type"] for e in default["edges"]) == {"relation_subject": 2, "relation_object": 2}  # mention 零边
+    opted_in = await graph_views.edges_page(reg, eng, None, 100, include_mentions=True)
+    assert Counter(e["type"] for e in opted_in["edges"]) == {
+        "relation_subject": 2,
+        "relation_object": 2,
+        "mention_of_entity": 2,
+        "mention_of_relation": 2,
+    }  # eia 透镜对仍被签名让位丢弃

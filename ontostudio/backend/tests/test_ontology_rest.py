@@ -116,3 +116,47 @@ def test_graph_edges_projection_excludes_stub(client):
     stub_names = {lt.api_name for lt in load_registry().link_types.values() if not lt.enabled}
     for e in body["edges"]:
         assert e["type"] not in stub_names
+
+
+# EAI-CUSTOM(2026-09-29): mention 默认排除契约（批量入图淹没——细节与纯逻辑回归见
+# test_ontology_graph_views.py 的 mention 排除契约段）；此处钉 HTTP 参数面 include=mentions。
+
+
+def test_graph_nodes_mentions_excluded_by_default_and_opt_in(client):
+    try:
+        has_mentions = client.get("/api/extensions/ontology/objects/graph_mention", params={"limit": 1}).json()["data"]
+        if not has_mentions:
+            pytest.skip("库内无 mention 行（opt-in 断言需有数据, 空库跳过）")
+        default = client.get("/api/extensions/ontology/graph/nodes", params={"limit": 2000})
+        opted_in = client.get("/api/extensions/ontology/graph/nodes", params={"limit": 2000, "include": "mentions"})
+    except (ConnectorError, OSError):
+        pytest.skip("扩展库/数据源不可达（host 环境跳过, 容器内验证）")
+    assert default.status_code == opted_in.status_code == 200
+    default_types = {n["type"] for n in default.json()["nodes"]}
+    opted_types = {n["type"] for n in opted_in.json()["nodes"]}
+    assert "graph_mention" not in default_types  # 默认窗口内零 mention（行为修复主断言）
+    assert "graph_mention" in opted_types  # include=mentions 恢复全集
+
+
+def test_graph_edges_mentions_excluded_by_default_and_opt_in(client):
+    try:
+        default = client.get("/api/extensions/ontology/graph/edges", params={"limit": 5000})
+        # opt-in 首窗可能被 5050+ mention 边占满（mention_* api_name 序在 relation_* 之前）——
+        # 翻页取尽后比类型集，首窗对比是截断伪命题。
+        opted_types: set[str] = set()
+        resp, cursor = client.get("/api/extensions/ontology/graph/edges", params={"limit": 5000, "include": "mentions"}), None
+        for _ in range(10):  # 防失控
+            body = resp.json()
+            opted_types |= {e["type"] for e in body["edges"]}
+            cursor = body.get("next_cursor")
+            if not cursor:
+                break
+            resp = client.get("/api/extensions/ontology/graph/edges", params={"limit": 5000, "include": "mentions", "cursor": cursor})
+    except (ConnectorError, OSError):
+        pytest.skip("扩展库/数据源不可达（host 环境跳过, 容器内验证）")
+    assert default.status_code == 200
+    default_types = {e["type"] for e in default.json()["edges"]}
+    mention_links = {lt.api_name for lt in load_registry().link_types.values() if "mention" in lt.api_name}
+    assert not (default_types & mention_links)  # 默认零 mention 边（排除在链接序构建期，任何窗口都不出现）
+    assert default_types <= opted_types  # 取尽后 opt-in 是默认集的超集
+    assert mention_links & opted_types  # 取尽后 mention 边在场
