@@ -145,6 +145,10 @@ actions:
       - { field: status, op: eq, value: pending_review }
     postconditions:
       - { field: status, set: active }
+      # EAI-CUSTOM(2026-09-29 子项目2): 人工确认=置信升格——推理门 build_inference_graph(min_confidence=0.7)
+      # 只认 confidence，confirm 仅翻 status 会导致确认后治理链仍不物化（集成缺口实测）。pending 行
+      # 按构造必 confidence<0.7（ingest REVIEW_CONFIDENCE 规则），硬设 0.7 无降级风险。
+      - { field: confidence, set: 0.7 }
   - id: review_entity.reject
     display_name: 驳回实体
     description: 将待审抽取实体置为 rejected，同一事务内记审计
