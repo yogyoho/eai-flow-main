@@ -418,7 +418,20 @@ export function ResolutionPanel({
 
                       {/* 动作行：确认/驳回 + 四态结果 */}
                       <div className="flex flex-wrap items-center gap-2 px-3.5 pb-3 pt-2.5">
-                        {review.phase === "done" && review.outcome ? (
+                        {review.phase === "running" ? (
+                          /* 在途进度行：invoke 是同步投影（行提交 + 断言图全局 refresh，实测
+                           * 数十秒），仅按钮 spinner 会被误读为卡死/未生效而手动刷新——刷新
+                           * 若落在提交前反而看到"没生效"（EAI-CUSTOM 2026-09-29 抽查修复）。 */
+                          <span
+                            className="flex items-center gap-1.5 text-xs font-medium"
+                            style={{ color: BLUE }}
+                            data-testid="resolution-review-running"
+                          >
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            正在同步投影入图（提交后全局刷新断言图，实测约需 10–60
+                            秒）——请勿刷新或离开本页
+                          </span>
+                        ) : review.phase === "done" && review.outcome ? (
                           review.outcome === "ok" ? (
                             <span className="flex items-center gap-1.5 text-xs font-medium" style={{ color: GREEN }} data-testid="resolution-review-outcome">
                               <CheckCircle2 className="h-3.5 w-3.5" />
@@ -436,33 +449,25 @@ export function ResolutionPanel({
                             </span>
                           )
                         ) : (
+                          /* idle 态按钮（running 由上方进度行整行接管，spinner/禁用随之中置） */
                           <>
                             <button
                               type="button"
-                              disabled={review.phase === "running"}
                               onClick={() => handleReview(entity.id, "confirm")}
                               data-testid="resolution-confirm"
-                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
                               style={{ background: BLUE }}
                             >
-                              {review.phase === "running" && review.decision === "confirm" ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <Check className="h-3 w-3" />
-                              )}
+                              <Check className="h-3 w-3" />
                               确认入图
                             </button>
                             <button
                               type="button"
-                              disabled={review.phase === "running"}
                               onClick={() => handleReview(entity.id, "reject")}
                               data-testid="resolution-reject"
-                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03]"
                               style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
                             >
-                              {review.phase === "running" && review.decision === "reject" ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : null}
                               驳回
                             </button>
                             <span className="text-muted-foreground/80 text-[10.5px]">
@@ -640,7 +645,7 @@ export function ResolutionPanel({
                   <tr>
                     <td className="px-4 py-2"><span className="mr-1.5 inline-block h-2 w-2 rounded-full" style={{ background: BLUE }} />在途</td>
                     <td className="px-2 py-2 font-mono text-[10.5px]">invoke 进行中</td>
-                    <td className="px-2 py-2">按钮 disabled + spinner（同步投影秒级等待）</td>
+                    <td className="px-2 py-2">按钮 disabled + spinner + 卡内进度行（同步投影实测数十秒）</td>
                   </tr>
                 </tbody>
               </table>

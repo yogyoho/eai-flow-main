@@ -53,11 +53,15 @@ const STATUS_META: Record<
   rejected: { label: "rejected", tone: "danger" },
 };
 
-/** 原型列序（graph_entity）；提及 = graph_mention 按 entity_id 聚合（Top 200，窗口外 "—"）。 */
+/** 原型列序（graph_entity）；提及 = graph_mention 按 entity_id 聚合（Top 200，窗口外 "—"）。
+ *  api 名一律用 registry api_name（camelCase 透出契约：/objects 投影按 api_name 命名，
+ *  docstring「字段名用 api_name(camelCase)」）——此前误写物理列 snake_case
+ *  （canonical_name/norm_name）致「实体/规范名」两列全取空渲染为 "—"
+ *  （EAI-CUSTOM 2026-09-29 抽查修复）。 */
 const GRAPH_ENTITY_COLUMNS = [
-  { api: "canonical_name", label: "实体" },
+  { api: "canonicalName", label: "实体" },
   { api: "etype", label: "类型" },
-  { api: "norm_name", label: "规范名（norm）" },
+  { api: "normName", label: "规范名（norm）" },
   { api: "confidence", label: "置信度" },
   { api: "status", label: "状态" },
   { api: "__mentions", label: "提及" },
@@ -417,7 +421,7 @@ export function EntitiesPage() {
                     >
                       {columns.map((c) => {
                         const value = row[c.api];
-                        if (c.api === "canonical_name") {
+                        if (c.api === "canonicalName") {
                           return (
                             <td
                               key={c.api}
@@ -436,7 +440,7 @@ export function EntitiesPage() {
                             </td>
                           );
                         }
-                        if (c.api === "norm_name") {
+                        if (c.api === "normName") {
                           return (
                             <td
                               key={c.api}

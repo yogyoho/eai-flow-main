@@ -5,16 +5,52 @@
 import { BrainCircuit } from "lucide-react";
 
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { runFormalInfer } from "@/api/formal-api";
 import { Chip, DemoTag, PageHeader, Panel } from "@/pages/shared";
 
-const RULES = [
-  { name: "org_in_ecosystem", desc: "组织沿承包链归入生态（rules.yaml）", pred: "org_in_ecosystem_of", graph: "graph:derived:org_in_ecosystem" },
-  { name: "qualified_bidder", desc: "投标资格预审（Phase B 试点，CQ#3）", pred: "bidder_qualified_for", graph: "graph:derived:qualified_bidder" },
-  { name: "chain_covered_by_monitoring", desc: "环评治理合规链 3 段（eia formal 自动生成）", pred: "covered_by_monitoring", graph: "graph:derived:chain_covered_by_monitoring" },
-  { name: "sameas_propagation", desc: "sameAs 候选等价传播（内置）", pred: "*", graph: "graph:derived:sameas_propagation" },
-];
+/**
+ * 已知规则的中文描述与派生谓词（对照 rules.yaml / eia formal 链生成器）。
+ * 规则表行本身从 /formal/infer 响应的 rule_counts 键驱动（v2 起后端 8 条，前端
+ * 硬编码会漏新规则——2026-09-29 抽查修复）；未知键回退通用描述 + 谓词 = 键名去
+ * chain_ 前缀 + NAMED GRAPH = graph:derived:<键>。
+ */
+const RULE_META: Record<string, { desc: string; pred?: string }> = {
+  org_in_ecosystem: { desc: "组织沿承包链归入生态（rules.yaml）", pred: "org_in_ecosystem_of" },
+  qualified_bidder: { desc: "投标资格预审（Phase B 试点，CQ#3）", pred: "bidder_qualified_for" },
+  chain_covered_by_standard: { desc: "环评治理合规链：设施→监测→限值→标准（eia formal 自动生成）", pred: "covered_by_standard" },
+  chain_covered_by_monitoring: { desc: "环评治理合规链 3 段（eia formal 自动生成）", pred: "covered_by_monitoring" },
+  chain_impact_to: { desc: "环评影响传导链：impact_to（eia formal 自动生成）", pred: "impact_to" },
+  chain_impact_on_receptor: { desc: "环评影响传导链：受体影响（eia formal 自动生成）", pred: "impact_on_receptor" },
+  chain_aquifer_impact: { desc: "环评含水层影响链（eia formal 自动生成）", pred: "aquifer_impact" },
+  sameas_propagation: { desc: "sameAs 候选等价传播（内置）", pred: "*" },
+};
+
+interface RuleRow {
+  name: string;
+  desc: string;
+  pred: string;
+  graph: string;
+  count: number;
+}
+
+/** rule_counts → 规则行（已知键按 META 顺序在前、未知键按响应顺序附后，渲染稳定）。 */
+function ruleRows(ruleCounts: Record<string, number>): RuleRow[] {
+  const keys = Object.keys(ruleCounts);
+  const known = keys.filter((key) => key in RULE_META);
+  const unknown = keys.filter((key) => !(key in RULE_META));
+  return [...known, ...unknown].map((name) => {
+    const meta = RULE_META[name];
+    return {
+      name,
+      desc: meta?.desc ?? "eia formal 自动生成链规则",
+      pred: meta?.pred ?? name.replace(/^chain_/, ""),
+      graph: `graph:derived:${name}`,
+      count: ruleCounts[name] ?? 0,
+    };
+  });
+}
 
 const SPARQL = `# 投标人具备项目所需全部资质 → bidder_qualified_for
 CONSTRUCT { ?b a :QualifiedBidder ; :qualifiedFor ?p }
@@ -42,6 +78,10 @@ export function ReasoningPage() {
   const derivedTotal = inferQuery.data
     ? Object.values(inferQuery.data.rule_counts).reduce((sum, n) => sum + n, 0)
     : 0;
+  const rules = useMemo(
+    () => (inferQuery.data ? ruleRows(inferQuery.data.rule_counts) : []),
+    [inferQuery.data],
+  );
 
   return (
     /* 纵向滚动层（样式=全站 6px 细条）+ min-w 保底（同总览/实体库手法） */
@@ -76,7 +116,10 @@ export function ReasoningPage() {
         <Panel className="px-4 py-3.5">
           <div className="text-muted-foreground text-xs font-medium">CONSTRUCT 派生</div>
           <div className="mt-0.5 text-3xl font-black tracking-tight">{derivedTotal}</div>
-          <div className="text-muted-foreground mt-0.5 text-xs">4 条规则 · 上次全量 {inferQuery.data ? "刚刚" : "—"}</div>
+          <div className="text-muted-foreground mt-0.5 text-xs">
+            {inferQuery.data ? `${rules.length} 条规则` : "— 条规则"} · 上次全量{" "}
+            {inferQuery.data ? "刚刚" : "—"}
+          </div>
         </Panel>
         <Panel className="px-4 py-3.5">
           <div className="text-muted-foreground text-xs font-medium">闭包耗时</div>
@@ -106,20 +149,28 @@ export function ReasoningPage() {
               </tr>
             </thead>
             <tbody className="divide-border divide-y">
-              {RULES.map((rule) => (
-                <tr key={rule.name} className="hover:bg-muted/50 cursor-pointer">
-                  <td className="px-4 py-3">
-                    <b className="font-medium">{rule.name}</b>
-                    <div className="text-muted-foreground text-[11.5px]">{rule.desc}</div>
-                  </td>
-                  <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.pred}</td>
-                  <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.graph}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{inferQuery.data?.rule_counts?.[rule.name] ?? 0}</td>
-                  <td className="px-4 py-3">
-                    <Chip tone="primary">现行</Chip>
+              {rules.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="text-muted-foreground px-4 py-8 text-center text-xs">
+                    {inferQuery.isPending ? "推理计算中…" : "暂无规则计数"}
                   </td>
                 </tr>
-              ))}
+              ) : (
+                rules.map((rule) => (
+                  <tr key={rule.name} className="hover:bg-muted/50 cursor-pointer">
+                    <td className="px-4 py-3">
+                      <b className="font-medium">{rule.name}</b>
+                      <div className="text-muted-foreground text-[11.5px]">{rule.desc}</div>
+                    </td>
+                    <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.pred}</td>
+                    <td className="text-muted-foreground px-4 py-3 font-mono text-xs">{rule.graph}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{rule.count}</td>
+                    <td className="px-4 py-3">
+                      <Chip tone="primary">现行</Chip>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
