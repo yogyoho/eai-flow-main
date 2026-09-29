@@ -255,12 +255,12 @@ def test_multi_pair_any_legal_pair_accepts():
 
 
 def test_multi_pair_illegal_pair_still_rejected():
-    """多对谓词：非法对仍拒——(waste_stream, treatment_measure) 不在 treated_by 对集（候选 x20 但未入选）。"""
+    """多对谓词：非法对仍拒——(pollutant, treatment_measure) 不在 treated_by 对集（数据中亦无此用法）。"""
     with pytest.raises(ValidationError, match="要求"):
         EiaExtraction(
             domain="eia",
-            entities=[{"etype": "waste_stream", "name": "矸石", "mention": {"document_id": "d"}}, {"etype": "treatment_measure", "name": "隔声屏障", "mention": {"document_id": "d"}}],
-            relations=[{"predicate": "treated_by", "subject": "矸石", "object": "隔声屏障", "mention": {"document_id": "d"}}],
+            entities=[{"etype": "pollutant", "name": "悬浮物", "mention": {"document_id": "d"}}, {"etype": "treatment_measure", "name": "隔声屏障", "mention": {"document_id": "d"}}],
+            relations=[{"predicate": "treated_by", "subject": "悬浮物", "object": "隔声屏障", "mention": {"document_id": "d"}}],
         )
 
 
@@ -276,6 +276,70 @@ def test_registry_new_predicates_in_literal_and_domain():
     for pred in ("located_in", "complies_with", "regulated_by"):
         assert pred in get_args(schemas._PREDICATE)
         assert pred in EiaExtraction.domain_predicates
+
+
+# --- 多角色对 R2（2026-09-29 下午：解除范围限制, 既有谓词 ≥5 支持域内对全量补齐, 逐对引文抽查）---
+_NEW_PAIRS_R2 = [
+    ("method_of", "mine", "mining_method"),
+    ("treated_by", "waste_stream", "treatment_measure"),
+    ("disposed_by", "waste_stream", "org"),
+    ("disposed_by", "waste_stream", "place"),
+    ("treated_by", "mine", "treatment_measure"),
+    ("mines", "mine", "coal_seam"),
+    ("causes", "pollutant", "impact_result"),
+    ("causes", "pollution_process_concept", "impact_result"),
+    ("monitored_by", "mine", "monitoring"),
+    ("part_of", "mine", "mining_district"),
+    ("part_of", "mine_field", "mining_district"),
+    ("causes", "mine", "impact_result"),
+    ("part_of", "stratigraphic_unit", "stratigraphic_unit"),
+    ("treated_by", "pollution_source", "measure_process_concept"),
+    ("utilized_by", "waste_stream", "measure_process_concept"),
+    ("causes", "impact_result", "impact_result"),
+    ("causes", "mining_method", "impact_result"),
+    ("drains_to", "receiving_medium", "receiving_medium"),
+    ("emitted_as", "waste_stream", "pollutant"),
+    ("protected_by", "sensitive_point", "measure_spec"),
+    ("specifies_threshold", "planning_scheme", "standard_threshold"),
+    ("utilized_by", "waste_stream", "org"),
+]
+
+
+@pytest.mark.parametrize(
+    ("pred", "subj_etype", "obj_etype"),
+    _NEW_PAIRS_R2,
+    ids=[f"{p}-{s}-{o}" for p, s, o in _NEW_PAIRS_R2],
+)
+def test_new_pair_r2_accepts(pred, subj_etype, obj_etype):
+    """R2 每对逐条 accept（引文抽查通过, 支持数注记见 schemas.py 各行尾）。"""
+    s_name, o_name = ("S实体", "O实体") if subj_etype != obj_etype else ("S实体", "O实体2")
+    payload = EiaExtraction(
+        domain="eia",
+        entities=[{"etype": subj_etype, "name": s_name, "mention": {"document_id": "d"}}, {"etype": obj_etype, "name": o_name, "mention": {"document_id": "d"}}],
+        relations=[{"predicate": pred, "subject": s_name, "object": o_name, "mention": {"document_id": "d"}}],
+    )
+    assert len(payload.relations) == 1
+
+
+@pytest.mark.parametrize(
+    ("pred", "subj_etype", "obj_etype"),
+    [
+        ("specifies_threshold", "pollutant", "standard_threshold"),  # x29 主宾倒置: "Na+标准限值≤200"限值属于标准
+        ("specifies_threshold", "engineering_site", "standard_threshold"),  # x6 主宾倒置: 场地是达标方非规定方
+        ("cites_clause", "regulation_clause", "chapter"),  # x11 主宾倒置: 引文实为章节引用法律
+        ("monitored_by", "monitoring", "monitoring"),  # x7 表结构自指噪声: "环境噪声受噪声监测"语义空洞
+    ],
+    ids=["specifies-pollutant", "specifies-site", "cites-inverted", "monitored-selfref"],
+)
+def test_semantic_rejected_pairs_still_rejected(pred, subj_etype, obj_etype):
+    """语义抽查拒收的对（支持数达标但主宾倒置/自指）必须仍被拒——防数据噪声倒灌契约。"""
+    s_name, o_name = ("S实体", "O实体") if subj_etype != obj_etype else ("S实体", "O实体2")
+    with pytest.raises(ValidationError, match="要求"):
+        EiaExtraction(
+            domain="eia",
+            entities=[{"etype": subj_etype, "name": s_name, "mention": {"document_id": "d"}}, {"etype": obj_etype, "name": o_name, "mention": {"document_id": "d"}}],
+            relations=[{"predicate": pred, "subject": s_name, "object": o_name, "mention": {"document_id": "d"}}],
+        )
 
 
 def test_registry_yaml_enums_superset_of_schemas_literals():

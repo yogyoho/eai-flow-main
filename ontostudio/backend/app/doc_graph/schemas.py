@@ -173,43 +173,83 @@ _EIA_PREDICATE_ROLES: MappingProxyType[str, tuple[tuple[str, str], ...]] = Mappi
         # 四类目标扩展（角色对 = 抽取器输出契约）
         "has_chapter": (("report", "chapter"),),
         "has_subsection": (("chapter", "section"),),
-        "part_of": (("section", "chapter"),),
+        "part_of": (
+            ("section", "chapter"),
+            ("mine", "mining_district"),  # 支持7条(2026-09-29 R2, "色连一号属于高头窑矿区")
+            ("mine_field", "mining_district"),  # 支持7条(R2, "勘查区属于西部凹陷区")
+            ("stratigraphic_unit", "stratigraphic_unit"),  # 支持6条(R2, "全新统风积沙属于第四系")
+        ),
         "treated_by": (
             ("pollution_source", "treatment_measure"),
             ("engineering_site", "treatment_measure"),  # 支持14条(engineering_site对齐, 2026-09-29)
+            ("waste_stream", "treatment_measure"),  # 支持20条(2026-09-29 R2, "污废水排入矿井污水处理站处理")
+            ("mine", "treatment_measure"),  # 支持12条(R2, 矿方设施清单"锅炉烟气经布袋除尘器", 主体宽松指代)
+            ("pollution_source", "measure_process_concept"),  # 支持6条(R2, "处理工艺: 混凝沉淀过滤消毒")
         ),
         "governed_by": (("treatment_measure", "emission_standard"),),
         "monitored_by": (
             ("emission_standard", "monitoring"),
             ("engineering_site", "monitoring"),  # 支持8条(engineering_site对齐, 2026-09-29)
+            ("mine", "monitoring"),  # 支持7条(2026-09-29 R2, "煤矿生活污水处理设施监测结果")
         ),
-        "emitted_as": (("pollution_source", "pollutant"),),
+        "emitted_as": (
+            ("pollution_source", "pollutant"),
+            ("waste_stream", "pollutant"),  # 支持5条(2026-09-29 R2, "生活污水主要污染物为CODcr")
+        ),
         "threatens": (("pollutant", "sensitive_point"),),
         "impact_to": (("pollution_source", "sensitive_point"),),
-        "specifies_threshold": (("emission_standard", "standard_threshold"),),
+        # specifies_threshold 只收"规定方"主语（标准/规划）；(pollutant|engineering_site, standard_threshold)
+        # 支持29/6 条但主宾倒置（限值属于标准, 场地是达标方）拒收——见 R2 引文抽查。
+        "specifies_threshold": (
+            ("emission_standard", "standard_threshold"),
+            ("planning_scheme", "standard_threshold"),  # 支持5条(2026-09-29 R2, "矿区规划规定总用水量173.8万m3/a")
+        ),
         "cites_clause": (("report", "regulation_clause"),),
         "requires_evidence": (("treatment_measure", "evidence_requirement"),),
         "evidenced_by": (("treatment_measure", "evidence_artifact"),),
         # --- v2 扩容（spec 2026-09-28 §4.2/§4.3；affects=impact_result→sensitive_point，
         #     threatens 保持 (pollutant, sensitive_point) 单角色不变）---
-        "mines": (("mining_district", "coal_seam"),),
-        "method_of": (("working_face", "mining_method"),),
+        "mines": (
+            ("mining_district", "coal_seam"),
+            ("mine", "coal_seam"),  # 支持8条(2026-09-29 R2)
+        ),
+        "method_of": (
+            ("working_face", "mining_method"),
+            ("mine", "mining_method"),  # 支持25条(2026-09-29 R2, "矿井采用露天/井工开采")
+        ),
         "develops": (("mine_field", "mining_district"),),
         "causes": (
             ("working_face", "impact_result"),
             ("engineering_site", "impact_result"),  # 支持6条(engineering_site对齐, 2026-09-29)
+            ("pollutant", "impact_result"),  # 支持7条(2026-09-29 R2, "铁锰超标致地下水超标")
+            ("pollution_process_concept", "impact_result"),  # 支持7条(R2, "污废水散排造成地下水污染")
+            ("mine", "impact_result"),  # 支持6条(R2, "沉陷积水造成土壤次生盐渍化")
+            ("impact_result", "impact_result"),  # 支持5条(R2, "沉陷导致第四系水重新分布"影响链)
+            ("mining_method", "impact_result"),  # 支持5条(R2, "井工开采致地表沉陷裂缝")
         ),
         "affects": (("impact_result", "sensitive_point"),),
-        "protected_by": (("sensitive_point", "treatment_measure"),),
+        "protected_by": (
+            ("sensitive_point", "treatment_measure"),
+            ("sensitive_point", "measure_spec"),  # 支持5条(2026-09-29 R2, "对罕台川留设保护煤柱")
+        ),
         "drawdown_of": (("impact_result", "aquifer"),),
         "emitted_via": (("pollution_source", "emission_point"),),
-        "drains_to": (("emission_point", "receiving_medium"),),
+        "drains_to": (
+            ("emission_point", "receiving_medium"),
+            ("receiving_medium", "receiving_medium"),  # 支持5条(2026-09-29 R2, 水系汇入"海拉尔河汇入黑龙江")
+        ),
         "generates_waste": (("pollution_source", "waste_stream"),),
         "disposed_by": (
             ("waste_stream", "treatment_measure"),
             ("waste_stream", "engineering_site"),  # 支持6条(engineering_site对齐, 2026-09-29)
+            ("waste_stream", "org"),  # 支持13条(2026-09-29 R2, "生活垃圾由垃圾处理站处理")
+            ("waste_stream", "place"),  # 支持10条(R2, "岩土剥离物运往排土场")
         ),
-        "utilized_by": (("waste_stream", "treatment_measure"),),
+        "utilized_by": (
+            ("waste_stream", "treatment_measure"),
+            ("waste_stream", "measure_process_concept"),  # 支持6条(2026-09-29 R2, "矿坑水处理后循环利用")
+            ("waste_stream", "org"),  # 支持5条(R2, "灰渣运往砖厂作为原料综合利用")
+        ),
         "sub_plan_of": (("mine_field", "planning_scheme"),),
         "changes": (("planning_change", "planning_scheme"),),
         "constrained_by": (("project", "carrying_capacity"),),
