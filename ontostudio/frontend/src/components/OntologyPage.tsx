@@ -42,7 +42,13 @@ export type PageView = "map" | "overview" | "resolution";
 
 const EMPTY_SNAPSHOT: GraphSnapshot = { nodes: [], edges: [] };
 
-/** 已加载图节点中按 label 子串检索（大小写不敏感）；前缀命中排前，截取前 8 条。 */
+/**
+ * 已加载图节点中按 label / canonicalName 子串检索（大小写不敏感）；前缀命中排前，截取前 8 条。
+ * EAI-CUSTOM(2026-09-29 检索修复)：label 理论上 = 首个非空 searchable 值（graph_entity 即
+ * canonicalName），但 searchable 缺失时后端回退 pk——此时只能靠 properties 里的规范名兜底。
+ * 图投影属性键走 engine api_name = camelCase canonicalName（doc_graph.yaml），resolution
+ * REST 才是 snake_case——两个拼写都试，防通道差异漏匹配。
+ */
 function searchGraphNodes(query: string): Array<{ id: string; label: string }> {
   const q = query.trim().toLowerCase();
   if (!q) {
@@ -50,9 +56,15 @@ function searchGraphNodes(query: string): Array<{ id: string; label: string }> {
   }
   const matches: Array<{ id: string; label: string; prefixHit: boolean }> = [];
   graph.forEachNode((nodeId, attributes) => {
-    const label = String((attributes as NodeAttributes).label ?? "");
-    const lower = label.toLowerCase();
-    if (lower.includes(q)) {
+    const attrs = attributes as NodeAttributes;
+    const label = String(attrs.label ?? "");
+    const canonical = String(
+      attrs.properties?.canonicalName ?? attrs.properties?.canonical_name ?? "",
+    );
+    const hit =
+      label.toLowerCase().includes(q) || canonical.toLowerCase().includes(q);
+    if (hit) {
+      const lower = label.toLowerCase();
       matches.push({ id: nodeId, label, prefixHit: lower.startsWith(q) });
     }
     return true;
@@ -172,6 +184,19 @@ function OntologyWorkspace({
   ) => {
     if (event.key === "Escape") {
       setSearchQuery("");
+      return;
+    }
+    // EAI-CUSTOM(2026-09-29 检索修复)：回车 = 定位第一个候选——此前只处理 Escape，
+    // 输入「邵寨」回车毫无反应（复验口径即回车定位）。无候选时下拉里已有
+    // 「未找到匹配节点」inline 文案兜底。消解视图搜索框语义是过滤待审列表
+    // （ResolutionPanel searchQuery 透传），不做图定位。
+    if (event.key === "Enter" && view !== "resolution") {
+      const first = searchQuery.trim()
+        ? searchGraphNodes(searchQuery)[0]
+        : undefined;
+      if (first) {
+        handlePickMatch(first.id);
+      }
     }
   };
 
@@ -202,11 +227,13 @@ function OntologyWorkspace({
             autoComplete="off"
             className="border-border bg-muted text-foreground placeholder:text-muted-foreground focus:border-primary h-8 w-full rounded-lg border px-8 text-xs outline-none"
           />
-          {searchQuery.trim() ? (
+          {/* 节点候选下拉仅地图视图有意义；消解视图该输入框语义 = 过滤待审列表
+           * （透传 ResolutionPanel.searchQuery），出图节点下拉反而是噪音。 */}
+          {view !== "resolution" && searchQuery.trim() ? (
             <div className="border-border bg-card absolute top-full left-0 z-20 mt-1 w-full overflow-hidden rounded-lg border shadow-sm">
               {searchMatches.length === 0 ? (
                 <div className="text-muted-foreground px-3 py-2 text-xs">
-                  无匹配节点
+                  未找到匹配节点
                 </div>
               ) : (
                 searchMatches.map((match) => (
@@ -371,6 +398,7 @@ function OntologyWorkspace({
           <ResolutionPanel
             mergedCount={mergedCount}
             onRefreshGraph={handleRefreshGraph}
+            searchQuery={searchQuery}
           />
         </div>
       ) : null}

@@ -93,6 +93,13 @@ interface ResolutionPanelProps {
   mergedCount: number | null;
   /** merge/unmerge 成功后触发地图图数据重载（页面 invalidate 图全量查询）。 */
   onRefreshGraph?: () => void;
+  /**
+   * 头部检索框透传（EAI-CUSTOM 2026-09-29 检索修复）：对已拉取的待审卡做
+   * canonical_name 客户端过滤（resolution 通道 snake_case 契约；大小写不敏感
+   * contains；空 = 全量）。后端 /resolution/pending 只有 etype/limit 无 search
+   * 参数，拉取上限 PENDING_REVIEW_LIMIT 内过滤即任务口径。
+   */
+  searchQuery?: string;
 }
 
 /** 后端错误语义 → UI 文案：404 固定提示（配自动刷新）；409 detail 直出；422 固定提示。 */
@@ -120,6 +127,7 @@ interface SuggestionsState {
 export function ResolutionPanel({
   mergedCount,
   onRefreshGraph,
+  searchQuery = "",
 }: ResolutionPanelProps) {
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -272,6 +280,19 @@ export function ResolutionPanel({
     [pendingQuery.data],
   );
 
+  // 检索过滤（EAI-CUSTOM 2026-09-29）：只裁剪左列卡片流，不动 entities 全集——
+  // 右侧 selectedEntity 相似建议面板不因过滤丢选中。canonical_name 是 resolution
+  // 通道的 snake_case 契约字段（图投影属性才是 camelCase canonicalName）。
+  const search = searchQuery.trim().toLowerCase();
+  const visibleEntities = useMemo(() => {
+    if (!search) {
+      return entities;
+    }
+    return entities.filter((entity) =>
+      entity.canonical_name.toLowerCase().includes(search),
+    );
+  }, [entities, search]);
+
   const handleToggleRow = (entityId: string) => {
     setExpandedId((current) => (current === entityId ? null : entityId));
   };
@@ -336,8 +357,12 @@ export function ResolutionPanel({
                   className="rounded-full px-2 py-0.5 text-[11px] font-medium"
                   style={{ background: withAlpha(AMBER, 0.15), color: "#ad6800" }}
                 >
-                  {pendingTotal} 条待审
-                  {pendingTotal >= PENDING_REVIEW_LIMIT ? `（已达拉取上限 ${PENDING_REVIEW_LIMIT}）` : ""}
+                  {search
+                    ? `${visibleEntities.length} / ${pendingTotal} 条匹配`
+                    : `${pendingTotal} 条待审`}
+                  {!search && pendingTotal >= PENDING_REVIEW_LIMIT
+                    ? `（已达拉取上限 ${PENDING_REVIEW_LIMIT}）`
+                    : ""}
                 </span>
               ) : null}
               <span className="text-muted-foreground/80 ml-auto hidden font-mono text-[10px] sm:inline">
@@ -369,9 +394,14 @@ export function ResolutionPanel({
               <div className="text-muted-foreground px-4 py-10 text-center text-xs">
                 暂无待复核实体 ✅
               </div>
+            ) : visibleEntities.length === 0 ? (
+              /* 检索无命中（EAI-CUSTOM 2026-09-29）：与「暂无待审」区分开 */
+              <div className="text-muted-foreground px-4 py-10 text-center text-xs">
+                未找到匹配「{searchQuery.trim()}」的待审实体
+              </div>
             ) : (
               <div className="flex max-h-[640px] flex-col gap-2.5 overflow-y-auto p-3" data-testid="resolution-pending-list">
-                {entities.map((entity) => {
+                {visibleEntities.map((entity) => {
                   const review = reviewStates[entity.id] ?? REVIEW_IDLE;
                   const selected = expandedId === entity.id;
                   return (
