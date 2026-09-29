@@ -32,18 +32,34 @@ SYSTEM = (
     "不得增删改字、不得用省略号拼接两处原文）；禁止复用示例中的三元组；没有把握的不要输出。"
 )
 
-_DRAFT = Path(__file__).with_name("eia_v2_draft.yaml")
+_DRAFT = Path(__file__).resolve().parents[2] / "app" / "ontology" / "registry" / "eia.yaml"
 
 
-def load_enums(draft: Path = _DRAFT) -> str:
-    """从 v2 草案抽 etype/predicate enum 原文（枚举唯一真源=草案，杜绝 prompt 漂移）。"""
+def load_enums(source: Path = _DRAFT) -> str:
+    """从正式 registry 抽枚举 + 中文标注（eia.yaml 注释块=唯一真源，杜绝 prompt 漂移）。
+
+    要求用户规则：本体模型所有英文都要有对应中文——标注块缺失的枚举值裸输出，
+    抽取质量归因时先查标注覆盖。
+    """
     import re
-    text = draft.read_text(encoding="utf-8")
-    out = []
-    for key, label in [("name: etype,", "类型枚举"), ("name: predicate,", "谓词枚举")]:
+    text = source.read_text(encoding="utf-8")
+    labels: dict[str, str] = {}
+    for line in text.splitlines():
+        m = re.match(r"# (?:etype|谓词)中文标注: (.+)", line.strip())
+        if m:
+            for pair in m.group(1).split():
+                if "=" in pair:
+                    k, _, v = pair.partition("=")
+                    labels[k] = v
+
+    def enum_line(key: str, label: str) -> str:
         m = re.search(re.escape(key) + r".*?enum: \[([^\]]+)\]", text)
-        out.append(f"【{label}】{m.group(1)}" if m else f"【{label}】(missing in {draft.name})")
-    return "\n".join(out)
+        if not m:
+            return f"【{label}】(missing in {source.name})"
+        items = [v.strip() for v in m.group(1).split(",")]
+        return f"【{label}】" + ", ".join(f"{v}({labels[v]})" if v in labels else v for v in items)
+
+    return enum_line("name: etype,", "类型枚举") + "\n" + enum_line("name: predicate,", "谓词枚举")
 
 
 def resolve_fulltext(src: Path, slug: str) -> Path | None:

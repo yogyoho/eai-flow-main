@@ -23,6 +23,8 @@ object_types:
     properties:
       - { name: id, api_name: id, type: uuid, description: 主键 }
       - { name: domain, api_name: domain, type: string, description: 抽取域, filterable: true }
+# etype中文标注: report=环评报告 chapter=章节 section=小节 section_element=章节元素 constraint_logic=约束逻辑 project=环评项目 pollution_source=污染源 pollutant=污染物 treatment_measure=治理措施 emission_standard=排放标准 monitoring=监测要求 sensitive_point=敏感点 standard_threshold=标准阈值 regulation_clause=法规条款 evidence_requirement=佐证需求 evidence_artifact=佐证载体 org=组织机构 place=地点 mine=矿山 activity=活动 standard=标准 logic_node=逻辑节点
+# etype中文标注: coal_seam=煤层 aquifer=含水层 stratigraphic_unit=地层单元 fault=断层 goaf=采空区 mine_field=井田 mining_district=采区 working_face=工作面 mining_method=采煤方法 engineering_site=工程场地 coal_prep_plant=选煤厂 emission_point=排放口 waste_stream=固废流 receiving_medium=受纳介质 impact_result=影响结果 planning_scheme=矿区总体规划 planning_change=规划变更 carrying_capacity=承载力 retrospective_problem=现存问题 pollutant_concept=污染物概念 measure_process_concept=措施工艺概念 pollution_process_concept=产污环节概念 analogy_case=类比案例 measure_spec=措施规格
       - { name: etype, api_name: etype, type: string, description: 实体类型, filterable: true, enum: [report, chapter, section, section_element, constraint_logic, project, pollution_source, pollutant, treatment_measure, emission_standard, monitoring, sensitive_point, standard_threshold, regulation_clause, evidence_requirement, evidence_artifact, org, place, mine, activity, standard, logic_node, coal_seam, aquifer, stratigraphic_unit, fault, goaf, mine_field, mining_district, working_face, mining_method, engineering_site, coal_prep_plant, emission_point, waste_stream, receiving_medium, impact_result, planning_scheme, planning_change, carrying_capacity, retrospective_problem, pollutant_concept, measure_process_concept, pollution_process_concept, analogy_case, measure_spec] }
       - { name: canonical_name, api_name: canonicalName, type: string, description: 规范名, searchable: true }
       - { name: norm_name, api_name: normName, type: string, description: 归一化名 }
@@ -57,6 +59,9 @@ object_types:
       section_element: { class: SectionElement, label: 章节元素, definition: 章/小节类根 }
       activity: { class: Activity, label: 活动, definition: 环评域活动类根 }
       standard: { class: Standard, label: 标准, definition: 环评域标准类根 }
+      org: { class: Org, label: 组织机构, definition: 建设单位/编制单位/监管机构等组织实体 }
+      place: { class: Place, label: 地点, definition: 地理地点/行政区划/厂址 }
+      mine: { class: Mine, label: 矿山, definition: 矿山/煤矿实体（样例导入遗留类型） }
       # --- v2 新增（spec 2026-09-28 §4.2；资源地质/开采工程/排放骨架/影响结果/规划环评/约束概念） ---
       coal_seam: { class: CoalSeam, subClassOf: [LogicNode], label: 煤层, definition: 井田内可采煤层（厚度/倾角/埋深/煤质/瓦斯等级） }
       aquifer: { class: Aquifer, subClassOf: [LogicNode], label: 含水层, definition: 含水层（富水性/供水意义/水位水质特征） }
@@ -97,6 +102,8 @@ object_types:
     properties:
       - { name: id, api_name: id, type: uuid, description: 主键 }
       - { name: subject_id, api_name: subjectId, type: uuid, description: 主体实体, indexed: true, filterable: true }
+# 谓词中文标注: has_chapter=含章节 has_subsection=含小节 part_of=属于 precedes=先于 pollutes=污染 emitted_as=排放污染物 treated_by=经治理 governed_by=执行标准 monitored_by=受监测 threatens=威胁 impact_to=影响 specifies_threshold=规定阈值 complies_with=符合 cites_clause=引用条款 regulated_by=受其约束 requires_evidence=需佐证 evidenced_by=佐证为 located_in=位于
+# 谓词中文标注: mines=开采 method_of=采用方法 develops=开发 causes=导致 affects=波及 protected_by=受保护于 drawdown_of=疏干 emitted_via=经排放口 drains_to=排入 generates_waste=产生固废 disposed_by=处置于 utilized_by=利用于 sub_plan_of=子规划属于 changes=变更 constrained_by=受其约束 problem_of=问题属于 specified_by=规格为 analogous_to=类比于 conflicts_with=冲突于
       - { name: predicate, api_name: predicate, type: string, description: 谓词, indexed: true, filterable: true, enum: [has_chapter, has_subsection, part_of, precedes, pollutes, emitted_as, treated_by, governed_by, monitored_by, threatens, impact_to, specifies_threshold, complies_with, cites_clause, regulated_by, requires_evidence, evidenced_by, located_in, mines, method_of, develops, causes, affects, protected_by, drawdown_of, emitted_via, drains_to, generates_waste, disposed_by, utilized_by, sub_plan_of, changes, constrained_by, problem_of, specified_by, analogous_to, conflicts_with] }
       - { name: object_id, api_name: objectId, type: uuid, description: 客体实体, indexed: true, filterable: true }
       - { name: attrs, api_name: attrs, type: json, description: 属性 }
