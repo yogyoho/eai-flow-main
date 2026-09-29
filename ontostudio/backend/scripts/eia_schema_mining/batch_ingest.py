@@ -76,6 +76,9 @@ def phase_parse(_args: argparse.Namespace) -> None:
 
 
 def phase_extract(args: argparse.Namespace) -> None:
+    if args.slug:
+        # review 2026-09-29: 静默忽略过滤器是长任务陷阱——2-4h 批跑后才发现没过滤
+        raise SystemExit("ERROR: --slug 仅 convert/ingest 支持（extract 按 --samples 清单全量跑）")
     missing = [k for k in _LLM_ENV_KEYS if not os.getenv(k)]
     if missing:
         raise SystemExit(f"ERROR: extract 的 LLM env 未就绪: {', '.join(missing)}（取值见计划「执行前必读」）")
@@ -331,7 +334,7 @@ def main(argv: list[str] | None = None) -> None:
     _reconfigure_stdio()
     ap = argparse.ArgumentParser(description="环评批量抽取入图编排器（parse/extract/convert/ingest/report 五相断点续跑）")
     ap.add_argument("--phase", required=True, choices=["parse", "extract", "convert", "ingest", "report"])
-    ap.add_argument("--slug", default=None, help="只处理指定 slug（convert/ingest/extract 候选过滤仅 convert/ingest 支持）")
+    ap.add_argument("--slug", default=None, help="只处理指定 slug（仅 convert/ingest 支持过滤; extract 传此参数报错）")
     ap.add_argument("--dry-run", action="store_true",
                     help="convert: 只打印合法 payload 计数不写文件; ingest: 只显示守卫查询+将插入行数不写库; extract: 只打印命令")
     ap.add_argument("--candidates", default=None, help=f"候选 JSONL 路径（缺省 {DEFAULT_CANDIDATES.name}, 无则回退 {FALLBACK_CANDIDATES.name}）")
