@@ -1,7 +1,7 @@
 """convert_candidates 单测：幻觉过滤/角色校验丢弃/同名多etype消解/pending置信度。
 
 计划勘误（2026-09-29）：计划原文 test_same_name_conflicting_etype_resolved 用谓词 located_in，
-该谓词不在 EiaExtraction.predicate_roles（schemas.py 契约表，v2 定型 33 谓词无 located_in），
+该谓词不在 EiaExtraction.predicate_roles（schemas.py 契约表，v2 定型 35 谓词无 located_in），
 原测试数据必然被角色校验丢弃、同名冲突根本无法构造——改用契约内谓词构造 2:1 多数决。
 """
 
