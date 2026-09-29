@@ -95,7 +95,8 @@ def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots:
             )
             resp.raise_for_status()
             break
-        except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError):
+        except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError, httpx.TransportError):
+            # TransportError 兜底 ConnectError(域名解析失败/网络抖动) 等全部传输层瞬时错误
             if k == attempts - 1:
                 print("  chunk failed after retry, skipped", flush=True)
                 return []
@@ -116,6 +117,22 @@ def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots:
     except json.JSONDecodeError:
         return []
     return [it for it in items if isinstance(it, dict) and {"subject", "predicate", "object"} <= set(it)]
+
+
+def existing_spans(out_path: Path) -> dict[str, set[int]]:
+    """断点续跑：读已有产物的每报告 chunk 起点（span[0]）覆盖集。"""
+    spans: dict[str, set[int]] = {}
+    if not out_path.exists():
+        return spans
+    for line in out_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            r = json.loads(line)
+            spans.setdefault(r["report"], set()).add(r["span"][0])
+        except (json.JSONDecodeError, KeyError, IndexError):
+            continue
+    return spans
 
 
 def main() -> None:
@@ -144,7 +161,8 @@ def main() -> None:
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     src = Path(args.src)
-    with out.open("w", encoding="utf-8") as fh:
+    have = existing_spans(out)
+    with out.open("a", encoding="utf-8") as fh:  # 断点续跑：追加模式
         for slug in samples["reports"]:
             txt = resolve_fulltext(src, slug)
             if txt is None:
@@ -152,21 +170,27 @@ def main() -> None:
                 continue
             text = txt.read_text(encoding="utf-8", errors="ignore")
             spans = list(range(0, len(text), CHUNK_CHARS * args.stride))
+            todo = [i for i in spans if i not in have.get(slug, set())]
+            if not todo:
+                print(f"skip {slug}: {len(spans)} chunks 已全部完成（断点续跑）", flush=True)
+                continue
             total = len(spans)
+            if len(todo) < total:
+                print(f"resume {slug}: {len(todo)}/{total} chunks 缺失，续跑", flush=True)
 
             def job(i: int) -> tuple[int, list[dict]]:
                 return i, extract_chunk(client, text[i: i + CHUNK_CHARS], vocab_digest, fewshots, enums)
 
             done = 0
             with ThreadPoolExecutor(max_workers=args.workers) as ex:
-                for i, items in ex.map(job, spans):
+                for i, items in ex.map(job, todo):
                     done += 1
                     for item in items:
                         fh.write(json.dumps({"report": slug, "span": [i, i + CHUNK_CHARS], **item},
                                             ensure_ascii=False) + "\n")
                     if done % 20 == 0:
-                        print(f"{slug}: {done}/{total} chunks", flush=True)
-            print(f"done {slug}: {total} chunks", flush=True)
+                        print(f"{slug}: {done}/{len(todo)} chunks", flush=True)
+            print(f"done {slug}: {len(todo)}/{total} chunks", flush=True)
             fh.flush()
     print(f"→ {out}")
 
