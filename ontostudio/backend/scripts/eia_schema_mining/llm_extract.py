@@ -76,8 +76,8 @@ def build_user_prompt(chunk: str, vocab_digest: str, fewshots: str, enums: str) 
 
 
 def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots: str, enums: str = "",
-                  attempts: int = 2) -> list[dict]:
-    """单 chunk 抽取；超时重试一次（agnes request_timeout=600，见 config.yaml）。"""
+                  attempts: int = 3) -> list[dict]:
+    """单 chunk 抽取；超时与 5xx/429 瞬时错误重试（指数退避），非瞬时 4xx 直接炸出暴露配置问题。"""
     timeout = float(os.environ.get("EIA_MINING_LLM_TIMEOUT", "600"))
     for k in range(attempts):
         try:
@@ -93,13 +93,20 @@ def extract_chunk(client: httpx.Client, chunk: str, vocab_digest: str, fewshots:
                 },
                 timeout=timeout,
             )
+            resp.raise_for_status()
             break
         except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.RemoteProtocolError):
             if k == attempts - 1:
                 print("  chunk failed after retry, skipped", flush=True)
                 return []
-            time.sleep(5)
-    resp.raise_for_status()
+            time.sleep(5 * (k + 1))
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code not in (429, 500, 502, 503, 504):
+                raise
+            if k == attempts - 1:
+                print(f"  chunk HTTP {exc.response.status_code} after retry, skipped", flush=True)
+                return []
+            time.sleep(10 * (k + 1))
     text = resp.json()["choices"][0]["message"]["content"]
     start, end = text.find("["), text.rfind("]")
     if start < 0 or end < 0:
@@ -160,6 +167,7 @@ def main() -> None:
                     if done % 20 == 0:
                         print(f"{slug}: {done}/{total} chunks", flush=True)
             print(f"done {slug}: {total} chunks", flush=True)
+            fh.flush()
     print(f"→ {out}")
 
 
