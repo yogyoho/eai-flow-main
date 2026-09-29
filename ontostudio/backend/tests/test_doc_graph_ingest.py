@@ -57,7 +57,13 @@ def _tables_ready(url: str) -> bool:
 _raw_url = _resolve_url()
 _URL = _raw_url if _raw_url and _tables_ready(_raw_url) else None
 
-pytestmark = pytest.mark.skipif(not _URL, reason="extensions 库未就绪(dg_entities 表不可达/未建)——真库验证在容器内 E2E")
+# EAI-CUSTOM: 并入写库门禁（conftest.real_db_allowed）——真库写测试默认 skip, 防夹具污染 extensions 真库
+from conftest import real_db_allowed  # noqa: E402 (pytest prepend 模式下 tests 目录在 sys.path)
+
+pytestmark = pytest.mark.skipif(
+    not _URL or not real_db_allowed(),
+    reason="真库写测试默认 skip——设 ONTOSTUDIO_TEST_ALLOW_REAL_DB=1 放行; 或 extensions 库未就绪(dg_entities 表不可达/未建)",
+)
 
 _PROJ = f"冒烟项目{_MARK}"
 _BID = f"冒烟供方{_MARK}"

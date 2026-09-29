@@ -31,6 +31,28 @@ def _jwt_test_secret():
         os.environ["ONTOSTUDIO_JWT_SECRET"] = saved
 
 
+# EAI-CUSTOM: 测试写库门禁（根治"跑一次集成测试污染一次 extensions 真库"）。
+# 事故: executor('测试实体')/batch('批量实体')/e2e('E2E') 三文件无 skip 守卫直写 dg_entities,
+# 宿主机 5432 恒可达, 积累 1254 行夹具（scripts/eia_purge_test_fixtures.py 存量清理）。
+REAL_DB_GATE_ENV = "ONTOSTUDIO_TEST_ALLOW_REAL_DB"
+
+
+def real_db_allowed() -> bool:
+    """真库测试许可: 默认 False, 显式设 ONTOSTUDIO_TEST_ALLOW_REAL_DB=1 才放行（fail-closed）。"""
+    return os.environ.get(REAL_DB_GATE_ENV) == "1"
+
+
+@pytest.fixture(autouse=True)
+def _gate_real_db_tests(request):
+    """integration 标记的测试默认 skip——无显式许可一律不碰真库（EAI-CUSTOM）.
+
+    语义分层: 本门禁管"许不许可"; 各文件既有的 _URL/_DB_READY 探针管"库可不可达"。
+    许可打开后探针仍生效（无库/断连照旧 skip）, 两层叠加不冲突; 兼容既有空库 skip 逻辑。
+    """
+    if request.node.get_closest_marker("integration") and not real_db_allowed():
+        pytest.skip(f"真库集成测试默认 skip——设 {REAL_DB_GATE_ENV}=1 显式放行（防测试污染 extensions 真库）")
+
+
 def make_test_token(
     *,
     roles: list[str] | tuple[str, ...] = ("superadmin",),
