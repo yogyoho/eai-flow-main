@@ -447,3 +447,193 @@ def test_project_refresh_does_not_swallow_kernel_errors(monkeypatch):
     monkeypatch.setattr("app.ontology.kernel.service.get_kernel", lambda: _Kernel())
     with pytest.raises(RuntimeError):
         ontology_routers._project_incrementally("review_entity.confirm", uuid.uuid4(), None)
+
+
+# ── 批量端点契约（EAI-CUSTOM 2026-09-29 批量确认摊销）─────────────────────────
+
+BATCH_INVOKE = "/api/extensions/ontology/actions/invoke_batch"
+
+
+def _batch_body(**over: object) -> dict:
+    return {"action_id": "review_entity.confirm", "pks": [_PK], **over}
+
+
+@pytest.mark.asyncio
+async def test_batch_requires_auth():
+    """无 token → 401（鉴权先于一切业务判定，与单条同层）。"""
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        r = await c.post(BATCH_INVOKE, json=_batch_body())
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_batch_requires_system_access(make_token):
+    """非管理员 token → 403 且 detail 是路由层那句（判别力理由同单条版）。"""
+    app = create_app()
+    headers = {"Authorization": f"Bearer {make_token(roles=('user',))}"}
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t", headers=headers) as c:
+        r = await c.post(BATCH_INVOKE, json=_batch_body())
+    assert r.status_code == 403
+    assert r.json()["detail"] == "Permission denied: system:access"
+
+
+@pytest.mark.asyncio
+async def test_batch_rejects_unknown_body_field(auth_headers):
+    """``extra="forbid"``：多一个字段即 422（与单条同契约）。"""
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t", headers=auth_headers) as c:
+        r = await c.post(BATCH_INVOKE, json=_batch_body(force=True))
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_batch_rejects_empty_and_oversized_and_duplicate_pks(auth_headers):
+    """pks 三条形状约束：空 / 超 _MAX_BATCH_PKS / 重复 → 全部 422（不是静默受理）。"""
+    app = create_app()
+    from app.ontology.routers import _MAX_BATCH_PKS
+
+    async def _post(payload: dict) -> int:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t", headers=auth_headers) as c:
+            return (await c.post(BATCH_INVOKE, json=payload)).status_code
+
+    assert await _post(_batch_body(pks=[])) == 422
+    assert await _post(_batch_body(pks=[str(uuid.uuid4()) for _ in range(_MAX_BATCH_PKS + 1)])) == 422
+    dup = str(uuid.uuid4())
+    assert await _post(_batch_body(pks=[dup, dup])) == 422
+    # 边界值必须**通过校验**：恰好上限、不重复 → 非 422 即为过（此后撞动作层鉴权 403
+    # 是预期——auth_headers 无 gateway 委托 Cookie，见单条 delegation 用例；本条只裁形状）。
+    assert await _post(_batch_body(pks=[str(uuid.uuid4()) for _ in range(_MAX_BATCH_PKS)])) != 422
+
+
+@pytest.mark.asyncio
+async def test_batch_wiring_passes_batch_project_and_scope(monkeypatch, auth_headers):
+    """端点 → 批量核心的接线：project_batch 必须是本模块那个**同步**函数本身。
+
+    判别力（变异）：把端点里换成 ``project_batch=lambda...`` 或 async 函数，本条红——
+    与单条 ``test_invoke_passes_resolved_role_code_to_audit`` 同一钉法。
+    """
+    captured: dict = {}
+
+    async def _fake_core(action_id, params, **kw):  # noqa: ANN001, ANN003, ARG001
+        captured.update(kw)
+        return {"action_id": action_id}
+
+    async def _allow(request, user, permission):  # noqa: ANN001, ANN003, ARG001
+        return True
+
+    async def _scope(request, resource):  # noqa: ANN001, ANN003, ARG001
+        return FilterRule(operator="allow_all")
+
+    async def _role(request, user):  # noqa: ANN001, ANN003, ARG001
+        return "dept_head"
+
+    monkeypatch.setattr("app.ontology.actions.executor.invoke_action_batch_core", _fake_core)
+    monkeypatch.setattr(ontology_routers, "authorize", _allow)
+    monkeypatch.setattr(ontology_routers, "fetch_scope_rule", _scope)
+    monkeypatch.setattr(ontology_routers, "resolve_actor_role", _role)
+
+    app = create_app()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://t", headers=auth_headers) as c:
+        r = await c.post(BATCH_INVOKE, json=_batch_body(pks=[_PK, str(uuid.uuid4())]))
+    assert r.status_code == 200
+    assert r.json() == {"action_id": "review_entity.confirm"}
+    assert captured["source"] == "api"
+    assert captured["actor_role"] == "dept_head"
+    assert len(captured["target_pks"]) == 2
+    assert captured["target_pks"][0] == uuid.UUID(_PK), "pks 必须按 UUID 逐个透传（顺序保持）"
+    assert captured["project_batch"] is ontology_routers._project_batch_amortized, "project_batch 必须是本模块那个同步函数本身"
+
+
+def test_project_batch_amortized_is_synchronous_and_single_refresh(monkeypatch):
+    """``_project_batch_amortized`` 必须同步、且真调 ``project_rows``（全批一次 refresh）。
+
+    与单条 ``test_project_refresh_is_synchronous`` 同坑同钉：async 化会拿到被丢弃的
+    协程并静默算作 projected=True。
+    """
+    load_calls: list = []
+    refresh_calls: list = []
+
+    class _Kernel:
+        store = object()  # project_rows 只把它透传给 load_doc_graph_rows（本测试已打桩）
+
+        def refresh(self) -> None:
+            refresh_calls.append("refresh")
+
+    def _fake_load(store, registry, *, entity_rows, relation_rows, mention_rows, domain):
+        load_calls.append((entity_rows, relation_rows, mention_rows, domain))
+        from types import SimpleNamespace
+
+        return SimpleNamespace(entities=len(entity_rows), skipped_entities=[])
+
+    monkeypatch.setattr("app.ontology.kernel.service.get_kernel", lambda: _Kernel())
+    monkeypatch.setattr("app.ontology.kernel.loader.load_doc_graph_rows", _fake_load)
+
+    pk = uuid.uuid4()
+    assert not inspect.iscoroutinefunction(ontology_routers._project_batch_amortized)
+    projected = ontology_routers._project_batch_amortized("review_entity.confirm", {pk: {"id": pk, "etype": "mine"}})
+    assert not inspect.iscoroutine(projected)
+    assert projected == {pk}
+    assert len(load_calls) == 1 and len(refresh_calls) == 1, "批量投影 = 一次装载 + 一次 refresh"
+    assert load_calls[0][1] == [] and load_calls[0][2] == [], "批量投影只装实体行（动作目标今日全为 dg_entities）"
+
+
+def test_project_rows_skips_rows_without_etype(monkeypatch):
+    """缺 etype 的行不进装载、不入返回集合（行级 degraded），好行照常。"""
+    from app.ontology.actions import projection as projection_module
+
+    class _Kernel:
+        store = object()
+
+        def refresh(self) -> None:
+            pass
+
+    def _fake_load(store, registry, *, entity_rows, relation_rows, mention_rows, domain):
+        from types import SimpleNamespace
+
+        assert [r["id"] for r in entity_rows] == [good], "缺 etype 的行必须被挡在装载之外"
+        return SimpleNamespace(entities=1, skipped_entities=[])
+
+    monkeypatch.setattr("app.ontology.kernel.service.get_kernel", lambda: _Kernel())
+    monkeypatch.setattr("app.ontology.kernel.loader.load_doc_graph_rows", _fake_load)
+    good, bad = uuid.uuid4(), uuid.uuid4()
+    rows = {good: {"id": good, "etype": "mine"}, bad: {"id": bad}}
+    assert projection_module.project_rows("review_entity.confirm", rows) == {good}
+
+
+def test_project_rows_propagates_refresh_error(monkeypatch):
+    """``refresh()`` 抛异常必须向外抛（executor 全批记 degraded）——不吞。"""
+    from app.ontology.actions import projection as projection_module
+
+    class _Kernel:
+        store = object()
+
+        def refresh(self) -> None:
+            raise RuntimeError("闭包重算失败")
+
+    def _fake_load(*a, **k):  # noqa: ANN002, ANN003
+        from types import SimpleNamespace
+
+        return SimpleNamespace(entities=1, skipped_entities=[])
+
+    monkeypatch.setattr("app.ontology.kernel.service.get_kernel", lambda: _Kernel())
+    monkeypatch.setattr("app.ontology.kernel.loader.load_doc_graph_rows", _fake_load)
+    pk = uuid.uuid4()
+    with pytest.raises(RuntimeError):
+        projection_module.project_rows("review_entity.confirm", {pk: {"id": pk, "etype": "mine"}})
+
+
+def test_project_rows_empty_input_never_touches_kernel(monkeypatch):
+    """空 rows（全批行级失败）→ 不建 kernel、不装载、不 refresh，返回空集。
+
+    没有已提交行时做全局重推理是纯浪费，且会让"全批失败"看起来像"投影失败"。
+    """
+
+    def _forbidden(*a, **k):  # noqa: ANN002, ANN003
+        raise AssertionError("空输入不应触碰 kernel")
+
+    monkeypatch.setattr("app.ontology.kernel.service.get_kernel", _forbidden)
+    monkeypatch.setattr("app.ontology.kernel.loader.load_doc_graph_rows", _forbidden)
+    from app.ontology.actions import projection as projection_module
+
+    assert projection_module.project_rows("review_entity.confirm", {}) == set()

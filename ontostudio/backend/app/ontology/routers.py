@@ -15,7 +15,7 @@ import uuid
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # EAI-CUSTOM(2026-09-17 迁出独立): 原 gateway 依赖 app.extensions.auth.middleware /
 # app.extensions.schemas → 本地 app.auth（S1 Task 2 已实装 HS256 JWT 验签, v1 superadmin-only）。
@@ -148,20 +148,37 @@ def _include_mentions(include: str | None) -> bool:
     return "mentions" in {s.strip() for s in (include or "").split(",") if s.strip()}
 
 
+# EAI-CUSTOM(2026-09-29 图谱投影域过滤): domain= 查询参数（doc_graph|eia）——过滤实体类型
+# 行域，语义在 graph_views（声明了 filterable domain 属性的类型走引擎行过滤；无域列的
+# 关系/证据类型保持脚手架不参与域裁剪）。可用域集合取自 registry 各对象类型的 domain 声明，
+# 未知值 422（不是静默空集——拼错域名的请求应该被点名，而不是拿到一张"空图"还以为没数据）。
+def _domain_or_422(domain: str | None) -> str | None:
+    if domain is None or not domain.strip():
+        return None
+    d = domain.strip()
+    allowed = {ot.domain for ot in get_registry().object_types.values() if ot.domain}
+    if d not in allowed:
+        raise HTTPException(status_code=422, detail=f"未知域: {d}（可用域: {sorted(allowed)}）")
+    return d
+
+
 @router.get("/graph/nodes")
 async def graph_nodes(
     limit: int = 500,
     cursor: str | None = None,
     include: str | None = None,
+    domain: str | None = None,
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     """语义地图统一节点投影（全部 enabled 对象类型，Explorer 方言）。
 
     EAI-CUSTOM(2026-09-29): 默认排除 mention 溯源节点（label=uuid，不进本体浏览窗口，
     经 DetailPanel 懒加载查看）；`include=mentions` opt-in 恢复全集。
+    EAI-CUSTOM(2026-09-29 图谱投影域过滤): `domain=doc_graph|eia` 服务端行过滤（实体类型
+    行域）；缺省行为不变。游标只编 type_idx/offset——跨域传同一游标是调用方错误，不设防。
     """
     try:
-        return await nodes_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 2000)), _include_mentions(include))
+        return await nodes_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 2000)), _include_mentions(include), domain=_domain_or_422(domain))
     except OntologyError as e:
         raise _http_error(e) from e
 
@@ -171,15 +188,19 @@ async def graph_edges(
     limit: int = 1000,
     cursor: str | None = None,
     include: str | None = None,
+    domain: str | None = None,
     _: CurrentUser = Depends(require_permission("system:access")),
 ):
     """语义地图统一边投影（全部 enabled 链接；stub 不产生边）。
 
     EAI-CUSTOM(2026-09-29): 默认与节点同规则排除 mention 链接（节点不在场则边成孤端）；
     `include=mentions` opt-in 恢复全集。
+    EAI-CUSTOM(2026-09-29 图谱投影域过滤): `domain=` 与节点同参——链接两端声明了域属性的
+    一侧加行域守卫（如 relation_subject 的实体端），无域列的一端不裁剪（与节点侧
+    脚手架语义一致）。缺省行为不变。
     """
     try:
-        return await edges_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 5000)), _include_mentions(include))
+        return await edges_page(get_registry(), _get_engine(), cursor, max(1, min(limit, 5000)), _include_mentions(include), domain=_domain_or_422(domain))
     except OntologyError as e:
         raise _http_error(e) from e
 
@@ -292,6 +313,92 @@ async def invoke_action_endpoint(
             scope_rule=scope_rule,
             # 直接传函数本身，不套 lambda：套一层反而多一个能把"同步/异步"写错的位置。
             project=_project_incrementally,
+        )
+    except ActionError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.detail) from e
+
+
+# ── 批量执行（EAI-CUSTOM 2026-09-29 批量确认摊销）────────────────────────────
+# 与单条同一套双层鉴权（操作权限 + 数据范围，逐 batch 一次而非逐行），行级执行与
+# 全批一次投影在 executor.invoke_action_batch_core。选型（单条路径不动）：单条
+# /actions/invoke **保留同步投影**——写/投影本就解耦（行事务提交后投影，投影失败
+# degraded 不回滚，重跑全量装载自愈），审计一致性与 fail-closed 均无破坏；改后台
+# refresh 会破坏四态 UI 的 projected:true 契约并有进程重启丢 refresh 的风险。
+# 批量场景的提效走本端点的 O(1) 摊销（全批一次 refresh）。
+
+_MAX_BATCH_PKS = 200
+"""单批 pks 上限 = 前端待审拉取上限（ontology-graph-api PENDING_REVIEW_LIMIT）。
+超限 422：批量是摊销手段，不是把无限列表灌进一个请求的通道。"""
+
+
+class ActionInvokeBatchRequest(BaseModel):
+    """批量动作调用入参（契约同 ActionInvokeRequest 的 extra="forbid" / UUID 校验）。
+
+    重复 pk 422：同批重复行第二次必撞前置条件（409），让它进 failed 列表只会制造
+    一条看似真实的假失败——入口直接点名更诚实。
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    action_id: str
+    pks: list[uuid.UUID] = Field(min_length=1, max_length=_MAX_BATCH_PKS)
+    params: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("pks")
+    @classmethod
+    def _no_duplicate_pks(cls, value: list[uuid.UUID]) -> list[uuid.UUID]:
+        if len({str(p) for p in value}) != len(value):
+            raise ValueError("pks 含重复主键")
+        return value
+
+
+def _project_batch_amortized(action_id: str, rows: dict[uuid.UUID, dict[str, Any]]) -> set[uuid.UUID]:
+    """批量提交后投影（REST 通道入口，委托 ``actions.projection.project_rows``）。
+
+    EAI-CUSTOM(2026-09-29 批量确认摊销)：与单条 ``_project_incrementally`` 同源
+    （双通道共享 projection 模块），差异只在摊销——N 行一次装载 + 全批一次
+    ``refresh()``。**必须同步**：``invoke_action_batch_core`` 同步调用本函数，写成
+    ``async def`` 会拿到被丢弃的协程并静默算作 projected=True（与单条同坑，tests
+    钉住同步性）。异常**向外抛**，由 executor 全批记 degraded（不回滚业务状态）。
+    """
+    from app.ontology.actions.projection import project_rows
+
+    return project_rows(action_id, rows)
+
+
+@router.post("/actions/invoke_batch")
+async def invoke_action_batch_endpoint(
+    body: ActionInvokeBatchRequest,
+    request: Request,
+    user: CurrentUser = Depends(require_permission("system:access")),
+):
+    """批量执行同一动作（EAI-CUSTOM 2026-09-29 批量确认摊销）。
+
+    鉴权与单条 ``/actions/invoke`` 完全同层：路由级 ``system:access`` + 动作
+    ``required_permissions``（authorize 逐条）+ 数据范围（scope_resource → FilterRule），
+    每批解析一次——范围规则是按调用者身份取的，对批内每一行同等生效（行级 404 仍由
+    executor 逐行裁决，不因批量放宽）。
+
+    响应体逐行结果（``results``/``succeeded``/``failed``）：失败行带 ``status_code``/
+    ``detail``（404 范围外 / 409 前置不满足 / 500 DB 故障），HTTP 状态整体仍 200——
+    部分成功是本端点的正常形态，用 207/多状态反而逼客户端解析混合语义。
+    只有鉴权/声明级失败才以 4xx/5xx 短路（与单条一致）。
+    """
+    from app.ontology.actions.executor import ActionError, invoke_action_batch_core
+
+    try:
+        _action, scope_rule = await _authz_for_action(request, user, body.action_id)
+        actor_role = await resolve_actor_role(request, user)
+        return await invoke_action_batch_core(
+            body.action_id,
+            body.params,
+            target_pks=list(body.pks),
+            actor_id=user.id,
+            actor_role=actor_role,
+            source="api",
+            scope_rule=scope_rule,
+            # 直接传函数本身（同单条的理由）。
+            project_batch=_project_batch_amortized,
         )
     except ActionError as e:
         raise HTTPException(status_code=e.status_code, detail=e.detail) from e

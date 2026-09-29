@@ -54,7 +54,9 @@ function yieldToMain(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-export function makeExplorerFetchers(): {
+/** EAI-CUSTOM(2026-09-29 图谱投影域过滤): domain 非空 → /graph/* 带 domain= 服务端过滤；
+ *  取数器随域重建（调用方 useMemo 依赖域），切域即换一组 fetchers。 */
+export function makeExplorerFetchers(domain = ""): {
   fetchNodes: ExplorerFetchNodes;
   fetchEdges: ExplorerFetchEdges;
 } {
@@ -63,7 +65,7 @@ export function makeExplorerFetchers(): {
     const collected: ApiNode[] = [];
 
     while (true) {
-      const page = await fetchNodesPage(cursor, { signal });
+      const page = await fetchNodesPage(cursor, { signal, domain: domain || undefined });
       if (!page.nodes.length) {
         break;
       }
@@ -90,7 +92,7 @@ export function makeExplorerFetchers(): {
     const seenEdgeIds = new Set<string>();
 
     while (true) {
-      const page = await fetchEdgesPage(cursor, { signal });
+      const page = await fetchEdgesPage(cursor, { signal, domain: domain || undefined });
       if (!page.edges.length) {
         break;
       }

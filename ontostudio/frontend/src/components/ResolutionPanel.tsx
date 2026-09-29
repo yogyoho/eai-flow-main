@@ -38,6 +38,7 @@ import {
 } from "@/api/ontology-graph-api";
 import {
   ActionConflictError,
+  invokeReviewEntityBatch,
   invokeReviewEntitySafe,
   type ActionInvokeResult,
   type ReviewDecision,
@@ -134,6 +135,11 @@ export function ResolutionPanel({
   const [notice, setNotice] = useState<Notice | null>(null);
   const [undoable, setUndoable] = useState<UndoableMerge | null>(null);
   const [reviewStates, setReviewStates] = useState<Record<string, ReviewUiState>>({});
+  // 批量确认（EAI-CUSTOM 2026-09-29 批量确认摊销）：勾选集合 + 批次失败行（pk → detail）
+  // + 在途批次行数（进度文案用）。失败行标红可重试（重试走单条管线）。
+  const [selectedPks, setSelectedPks] = useState<Set<string>>(new Set());
+  const [batchFailed, setBatchFailed] = useState<Map<string, string>>(new Map());
+  const [batchSize, setBatchSize] = useState(0);
   const setReviewState = (pk: string, next: ReviewUiState) =>
     setReviewStates((prev) => ({ ...prev, [pk]: next }));
 
@@ -216,6 +222,13 @@ export function ResolutionPanel({
     mutationFn: (vars: { pk: string; decision: ReviewDecision }) =>
       invokeReviewEntitySafe(vars.pk, vars.decision),
     onSuccess: (data: ActionInvokeResult, vars) => {
+      // 单条重试成功 → 摘掉该行的批量失败标记（行即将离开待审列表）
+      setBatchFailed((prev) => {
+        if (!prev.has(vars.pk)) return prev;
+        const next = new Map(prev);
+        next.delete(vars.pk);
+        return next;
+      });
       if (data.projected) {
         setReviewState(vars.pk, {
           phase: "done",
@@ -271,6 +284,69 @@ export function ResolutionPanel({
     reviewMutation.mutate({ pk, decision });
   };
 
+  // ── 批量确认（EAI-CUSTOM 2026-09-29 批量确认摊销）────────────────────────
+  // POST /actions/invoke_batch：行级写逐条提交（审计逐条留痕），全批一次投影装载 +
+  // 一次 refresh。部分成功是正常形态（HTTP 200 + 逐行结果）；失败行留在待审列表，
+  // 标红并给单条重试入口。
+  const batchMutation = useMutation({
+    mutationFn: (pks: string[]) => {
+      setBatchSize(pks.length);
+      return invokeReviewEntityBatch(pks, "confirm");
+    },
+    onSuccess: (data) => {
+      setBatchFailed((prev) => {
+        const next = new Map(prev);
+        for (const f of data.failed) next.set(f.pk, f.detail);
+        for (const pk of data.succeeded) next.delete(pk); // 成功行摘掉陈旧失败标
+        return next;
+      });
+      const failedCount = data.failed.length;
+      const degradedSuffix =
+        data.succeeded.length > 0 && !data.projected
+          ? "；投影 degraded：重跑全量装载即自动对账，数据无损失"
+          : "";
+      if (failedCount > 0) {
+        setNotice({
+          kind: failedCount === data.requested ? "error" : "info",
+          text: `批量确认完成：成功 ${data.succeeded.length} 条，失败 ${failedCount} 条（行已标红，可逐条重试）${degradedSuffix}`,
+        });
+      } else {
+        setNotice({
+          kind: data.projected ? "info" : "error",
+          text: data.projected
+            ? `批量确认 ${data.succeeded.length} 条完成：已提交并投影入图（全批一次 refresh）`
+            : `批量确认 ${data.succeeded.length} 条已提交，但投影 degraded：重跑全量装载即自动对账，数据无损失`,
+        });
+      }
+      // 成功行离开选择集合（列表刷新后它们也不再出现在待审里）
+      setSelectedPks((prev) => {
+        const next = new Set(prev);
+        for (const pk of data.succeeded) next.delete(pk);
+        return next;
+      });
+      // 与单条一致：让批次结果被看见片刻再刷新队列
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ["ontology"] });
+        onRefreshGraph?.();
+      }, 1200);
+    },
+    onError: (error) => {
+      setNotice({ kind: "error", text: resolutionErrorText(error as ApiError) });
+    },
+  });
+
+  const toggleSelected = (pk: string) => {
+    setSelectedPks((prev) => {
+      const next = new Set(prev);
+      if (next.has(pk)) {
+        next.delete(pk);
+      } else {
+        next.add(pk);
+      }
+      return next;
+    });
+  };
+
   // 后端已按置信度升序返回；客户端再排一次保证契约可视（防御性，代价可忽略）
   const entities = useMemo(
     () =>
@@ -293,6 +369,16 @@ export function ResolutionPanel({
     );
   }, [entities, search]);
 
+  // 列表刷新后剪枝选中集合：已离开待审列表的行不再保留勾选
+  useEffect(() => {
+    setSelectedPks((prev) => {
+      if (prev.size === 0) return prev;
+      const alive = new Set(entities.map((entity) => entity.id));
+      const next = new Set([...prev].filter((id) => alive.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [entities]);
+
   const handleToggleRow = (entityId: string) => {
     setExpandedId((current) => (current === entityId ? null : entityId));
   };
@@ -308,6 +394,22 @@ export function ResolutionPanel({
 
   const pendingTotal = pendingQuery.data?.count;
   const selectedEntity = entities.find((e) => e.id === expandedId) ?? null;
+
+  // 批量选择派生值：可见集 = 检索过滤后的卡流（全选只作用于看得见的行）
+  const selectedCount = selectedPks.size;
+  const allVisibleSelected =
+    visibleEntities.length > 0 && visibleEntities.every((entity) => selectedPks.has(entity.id));
+  const toggleSelectAllVisible = () => {
+    setSelectedPks((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) {
+        for (const entity of visibleEntities) next.delete(entity.id);
+      } else {
+        for (const entity of visibleEntities) next.add(entity.id);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="h-full overflow-y-auto" data-testid="ontology-resolution-panel">
@@ -365,7 +467,24 @@ export function ResolutionPanel({
                     : ""}
                 </span>
               ) : null}
-              <span className="text-muted-foreground/80 ml-auto hidden font-mono text-[10px] sm:inline">
+              {visibleEntities.length > 0 ? (
+                /* 全选（EAI-CUSTOM 2026-09-29 批量确认）：只作用于检索可见的行 */
+                <label
+                  className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] font-medium select-none"
+                  style={{ color: INK_2 }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAllVisible}
+                    className="h-3.5 w-3.5"
+                    style={{ accentColor: BLUE }}
+                    data-testid="resolution-select-all"
+                  />
+                  全选
+                </label>
+              ) : null}
+              <span className="text-muted-foreground/80 hidden font-mono text-[10px] sm:inline">
                 POST /actions/invoke
               </span>
             </div>
@@ -404,6 +523,8 @@ export function ResolutionPanel({
                 {visibleEntities.map((entity) => {
                   const review = reviewStates[entity.id] ?? REVIEW_IDLE;
                   const selected = expandedId === entity.id;
+                  const checked = selectedPks.has(entity.id);
+                  const failedDetail = batchFailed.get(entity.id);
                   return (
                     <div
                       key={entity.id}
@@ -414,13 +535,24 @@ export function ResolutionPanel({
                       style={{ borderColor: selected ? withAlpha(BLUE, 0.4) : CARD_BORDER }}
                       data-testid="resolution-row"
                     >
-                      {/* 卡头：点选 = 加载该实体相似建议 */}
-                      <button
-                        type="button"
-                        onClick={() => handleToggleRow(entity.id)}
-                        aria-pressed={selected}
-                        className="flex w-full items-center gap-2 px-3.5 pt-3 text-left"
-                      >
+                      {/* 卡头：勾选框（批量选择，阻断冒泡避免触发行展开）+ 点选 = 加载该实体相似建议 */}
+                      <div className="flex items-start gap-2 px-3.5 pt-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleSelected(entity.id)}
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label={`选择 ${entity.canonical_name}`}
+                          className="mt-0.5 h-3.5 w-3.5 flex-none"
+                          style={{ accentColor: BLUE }}
+                          data-testid="resolution-row-checkbox"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleToggleRow(entity.id)}
+                          aria-pressed={selected}
+                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        >
                         <span className="min-w-0 flex-1 truncate text-[13.5px] font-semibold" title={entity.canonical_name}>
                           {entity.canonical_name}
                         </span>
@@ -441,10 +573,35 @@ export function ResolutionPanel({
                         >
                           {entity.id.slice(0, 8)}
                         </span>
-                      </button>
+                        </button>
+                      </div>
                       <div className="text-muted-foreground px-3.5 pt-1 font-mono text-[10.5px]" style={{ color: INK_3 }}>
                         {entity.domain} · pending_review
                       </div>
+
+                      {/* 批量失败行（EAI-CUSTOM 2026-09-29）：标红 + 单条重试入口（走单条管线，
+                       * 成功后由 reviewMutation 摘标并刷新列表） */}
+                      {failedDetail && review.phase === "idle" ? (
+                        <div
+                          className="flex flex-wrap items-center gap-2 px-3.5 pb-1 text-xs"
+                          style={{ color: RED }}
+                          data-testid="resolution-batch-failed"
+                        >
+                          <AlertTriangle className="h-3.5 w-3.5 flex-none" />
+                          <span className="min-w-0 flex-1 truncate" title={failedDetail}>
+                            批量确认失败：{failedDetail}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleReview(entity.id, "confirm")}
+                            className="shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors hover:bg-black/[0.03]"
+                            style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
+                            data-testid="resolution-batch-retry"
+                          >
+                            重试
+                          </button>
+                        </div>
+                      ) : null}
 
                       {/* 动作行：确认/驳回 + 四态结果 */}
                       <div className="flex flex-wrap items-center gap-2 px-3.5 pb-3 pt-2.5">
@@ -479,13 +636,15 @@ export function ResolutionPanel({
                             </span>
                           )
                         ) : (
-                          /* idle 态按钮（running 由上方进度行整行接管，spinner/禁用随之中置） */
+                          /* idle 态按钮（running 由上方进度行整行接管，spinner/禁用随之中置；
+                           * 批量在途时同样禁用——单条与批量并发会各做一次全局 refresh） */
                           <>
                             <button
                               type="button"
+                              disabled={batchMutation.isPending}
                               onClick={() => handleReview(entity.id, "confirm")}
                               data-testid="resolution-confirm"
-                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90"
+                              className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                               style={{ background: BLUE }}
                             >
                               <Check className="h-3 w-3" />
@@ -493,9 +652,10 @@ export function ResolutionPanel({
                             </button>
                             <button
                               type="button"
+                              disabled={batchMutation.isPending}
                               onClick={() => handleReview(entity.id, "reject")}
                               data-testid="resolution-reject"
-                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03]"
+                              className="flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:bg-black/[0.03] disabled:opacity-50"
                               style={{ color: RED, borderColor: withAlpha(RED, 0.45) }}
                             >
                               驳回
@@ -514,17 +674,33 @@ export function ResolutionPanel({
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-2.5" style={{ borderColor: CARD_BORDER }}>
               <span className="text-muted-foreground text-[10.5px]">
-                逐条确认即时落图；批量确认已入 TODOS「批量确认摊销」
+                勾选后批量确认：行级写逐条提交（审计逐条留痕），全批一次投影入图
               </span>
-              <button
-                type="button"
-                disabled
-                title="规划中（TODOS·批量摊销）"
-                className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs font-medium opacity-60"
-              >
-                批量确认（{pendingTotal ?? 0} 条）{" "}
-                <span className="font-mono text-[10px] opacity-80">TODOS·批量摊销</span>
-              </button>
+              {batchMutation.isPending ? (
+                /* 在途进度行（EAI-CUSTOM 2026-09-29 批量确认摊销）：与单条同款防误读文案 */
+                <span
+                  className="flex items-center gap-1.5 text-xs font-medium"
+                  style={{ color: BLUE }}
+                  data-testid="resolution-batch-running"
+                >
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  批量确认 {batchSize} 条，投影入图约需 10–60
+                  秒（全批仅刷新一次断言图）——请勿刷新或离开本页
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={selectedCount === 0}
+                  onClick={() => batchMutation.mutate([...selectedPks])}
+                  title={selectedCount === 0 ? "先勾选待确认实体（驳回批量未开放）" : `批量确认选中 ${selectedCount} 条`}
+                  className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ background: BLUE }}
+                  data-testid="resolution-batch-confirm"
+                >
+                  <Check className="h-3 w-3" />
+                  确认选中 {selectedCount} 条
+                </button>
+              )}
             </div>
           </div>
 

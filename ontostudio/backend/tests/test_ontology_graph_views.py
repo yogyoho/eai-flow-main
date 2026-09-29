@@ -61,14 +61,20 @@ def test_node_label_fallback_to_pk():
 
 
 class FakeEngine:
-    """nodes 用: 对齐 engine.list_objects 真实签名与 {"data","next_cursor","object_type"} 返回形状（engine.py:88-136）。"""
+    """nodes 用: 对齐 engine.list_objects 真实签名与 {"data","next_cursor","object_type"} 返回形状（engine.py:88-136）。
+
+    EAI-CUSTOM(2026-09-29 图谱投影域过滤): filter_calls 逐调用记录 (object_type, filters)，
+    供域过滤契约断言（None = 未传过滤，即缺省行为不变）。
+    """
 
     def __init__(self, tables: dict[str, list[dict]]):
         self.tables = tables
         self.calls: list[tuple[str, int, str | None]] = []
+        self.filter_calls: list[tuple[str, list[dict[str, object]] | None]] = []
 
     async def list_objects(self, object_type, filters=None, q=None, limit=50, cursor=None, order=None, desc=False):
         self.calls.append((object_type, limit, cursor))
+        self.filter_calls.append((object_type, filters))
         rows = self.tables[object_type]
         start = int(cursor) if cursor else 0
         data = rows[start : start + limit]
@@ -103,8 +109,15 @@ def _drain_obj(api_name: str) -> SimpleNamespace:
     return type("O", (), {"api_name": api_name, "display_name": api_name, "enabled": True, "pk": type("PK", (), {"api_name": "id"})(), "properties": props})()
 
 
-def _edge_obj(api_name: str, table: str, pk_col: str) -> ObjectType:
-    """真 pydantic ObjectType（edges SQL 构建走真实 schema 形状）。"""
+def _edge_obj(api_name: str, table: str, pk_col: str, with_domain: bool = False) -> ObjectType:
+    """真 pydantic ObjectType（edges SQL 构建走真实 schema 形状）。
+
+    EAI-CUSTOM(2026-09-29 图谱投影域过滤): with_domain=True 追加 filterable 的 domain 属性
+    （仿真 doc_graph.yaml 的 graph_entity 声明形状）；False = 无域列类型（dg_relations 同款）。
+    """
+    props = [PropertySchema(name=pk_col, api_name=pk_col, type="string")]
+    if with_domain:
+        props.append(PropertySchema(name="domain", api_name="domain", type="string", filterable=True))
     return ObjectType(
         api_name=api_name,
         display_name=api_name,
@@ -112,7 +125,7 @@ def _edge_obj(api_name: str, table: str, pk_col: str) -> ObjectType:
         domain="test",
         access=AccessConfig(path="postgres_ext", table=table),
         pk=PKConfig(column=pk_col, api_name=pk_col, type="string"),
-        properties=[PropertySchema(name=pk_col, api_name=pk_col, type="string")],
+        properties=props,
     )
 
 
@@ -450,3 +463,108 @@ async def test_edges_page_mention_links_excluded_in_tandem():
         "mention_of_entity": 2,
         "mention_of_relation": 2,
     }  # eia 透镜对仍被签名让位丢弃
+
+
+# ---------- 图谱投影域过滤契约（EAI-CUSTOM 2026-09-29） ----------
+#
+# 语义：domain= 只裁**实体类型行**（声明了 filterable domain 属性的类型，走引擎行过滤，
+# 与 /objects 同一条引擎路径）；无域列类型（dg_relations/dg_mentions）不裁剪——脚手架
+# 保持可见，与前端既有透明化行为（空域属性节点在域过滤下可见）一致。缺省（无参数）
+# 行为逐字节不变。
+
+
+def _domain_reg() -> SimpleNamespace:
+    """实体类型（有域列）+ 关系类型（无域列）+ 二者间一条 FK 链接（仿真 doc_graph 拓扑）。"""
+    return SimpleNamespace(
+        object_types={
+            "ent": _edge_obj("ent", "dg_entities", "id", with_domain=True),
+            "rel": _edge_obj("rel", "dg_relations", "id"),
+        },
+        link_types={
+            "rel_ent": _edge_link("rel_ent", "rel", "ent", type="foreign_key", source_column="subject_id", target_column="id"),
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_nodes_page_domain_filter_hits_only_domain_capable_types():
+    """domain=eia：实体类型收到引擎行过滤，无域列类型收到 None（不裁剪）；缺省全 None。"""
+    reg = _domain_reg()
+    rows = {
+        "ent": [{"id": f"e{i}", "name": f"实体{i}"} for i in range(2)],
+        "rel": [{"id": f"r{i}", "name": f"关系{i}"} for i in range(2)],
+    }
+    eng = FakeEngine(rows)
+    await graph_views.nodes_page(reg, eng, None, 100, domain="eia")
+    by_type = dict(eng.filter_calls)
+    assert by_type["ent"] == [{"column": "domain", "op": "eq", "value": "eia"}], "有域列类型必须走引擎行过滤"
+    assert by_type["rel"] is None, "无域列类型不裁剪（脚手架语义，与前端既有透明化行为一致）"
+    # 缺省（无 domain 参数）行为不变：全部类型 filters=None
+    eng_default = FakeEngine(rows)
+    await graph_views.nodes_page(reg, eng_default, None, 100)
+    assert all(f is None for _, f in eng_default.filter_calls)
+
+
+@pytest.mark.asyncio
+async def test_edges_page_domain_guard_on_capable_endpoint_only():
+    """domain 激活：FK 链接只给**有域列的一端**加守卫（实体端 t."domain"），无域列端不守卫。
+
+    仿真 relation_subject 拓扑（源=关系无域列、目标=实体有域列）——守卫列名用属性
+    name（物理列），参数键 gd_tgt 与 gd_src 命名空间独立。
+    """
+    reg = _domain_reg()
+    resolver = FakeResolver({"dg_entities": [{"__src_pk": "r0", "__tgt_pk": "e0"}]})
+    eng = SimpleNamespace(_resolver=resolver)
+    await graph_views.edges_page(reg, eng, None, 100, domain="doc_graph")
+    sql = resolver.calls[0]
+    assert 't."domain" = :gd_tgt' in sql, "有域列的一端必须加行域守卫"
+    assert "gd_src" not in sql, "无域列的一端不得守卫（dg_relations 物理无 domain 列）"
+    assert "ORDER BY 1, 2 LIMIT" in sql  # 分页尾巴不受影响
+    # 缺省行为不变：无守卫、无域参数
+    resolver_default = FakeResolver({"dg_entities": [{"__src_pk": "r0", "__tgt_pk": "e0"}]})
+    await graph_views.edges_page(reg, SimpleNamespace(_resolver=resolver_default), None, 100)
+    assert "gd_tgt" not in resolver_default.calls[0] and "gd_src" not in resolver_default.calls[0]
+
+
+@pytest.mark.asyncio
+async def test_edges_page_domain_guard_both_sides_when_capable():
+    """两端都有域列：两侧守卫都加（未来实体-实体直连链接的形态）。"""
+    reg = SimpleNamespace(
+        object_types={
+            "a": _edge_obj("a", "ta", "id", with_domain=True),
+            "b": _edge_obj("b", "tb", "id", with_domain=True),
+        },
+        link_types={"ab": _edge_link("ab", "a", "b", type="foreign_key", source_column="bid", target_column="id")},
+    )
+    resolver = FakeResolver({"tb": [{"__src_pk": "a0", "__tgt_pk": "b0"}]})
+    await graph_views.edges_page(reg, SimpleNamespace(_resolver=resolver), None, 100, domain="eia")
+    sql = resolver.calls[0]
+    assert 's."domain" = :gd_src' in sql and 't."domain" = :gd_tgt' in sql
+
+
+@pytest.mark.asyncio
+async def test_edges_page_domain_guard_in_normalized_join_path():
+    """normalized_key_match 路径同样带域守卫（拼进既有 WHERE guards，尾部分页不受影响）。"""
+    reg = SimpleNamespace(
+        object_types={
+            "sn": _edge_obj("sn", "tn", "mid", with_domain=True),
+            "tn2": _edge_obj("tn2", "tt", "cid", with_domain=True),
+        },
+        link_types={"ln": _edge_link("ln", "sn", "tn2", type="normalized_key_match", key_pairs=[["code", "code"]])},
+    )
+    eng = SimpleNamespace(_resolver=FakeResolver({"tt": [{"__src_pk": "m1", "__tgt_pk": "c1"}]}))
+    page = await graph_views.edges_page(reg, eng, None, 100, domain="doc_graph")
+    sql = eng._resolver.calls[0]
+    assert 's."domain" = :gd_src' in sql and 't."domain" = :gd_tgt' in sql
+    assert "LOWER(BTRIM" in sql and "IS NOT NULL" in sql  # 归一化 join 与非空守卫保持
+    assert page["next_cursor"] is None
+
+
+@pytest.mark.asyncio
+async def test_edges_page_domain_fails_closed_on_cross_connector():
+    """域过滤激活时跨 connector 回退**整链接不产边**（fail-closed 到空而非半过滤）。"""
+    reg = _cross_reg()
+    eng = FakeCrossEngine([{"id": f"s{i}"} for i in range(5)])
+    page = await graph_views.edges_page(reg, eng, None, 100, domain="doc_graph")
+    assert page["edges"] == [] and page["next_cursor"] is None
+    assert eng.fetch_calls == 0  # 未发起任何 SQL（在枚举之前短路）

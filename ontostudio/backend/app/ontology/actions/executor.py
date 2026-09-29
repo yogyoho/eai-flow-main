@@ -277,6 +277,84 @@ async def _write_with_lazy_audit_table(write_txn: Callable[[], Awaitable[_WriteR
         raise ActionError(_write_failure_detail("懒建审计表后写入仍失败", exc, time.monotonic() - started), 500) from exc
 
 
+async def _write_row_txn(
+    engine: Any,
+    *,
+    action: Any,
+    table: str,
+    table_q: str,
+    pk_col: str,
+    where: str,
+    params_all: dict[str, Any],
+    pre_sql: str,
+    set_sql: str,
+    returning: str,
+    target_pk: uuid.UUID,
+    actor_id: uuid.UUID,
+    actor_role: str | None,
+    source: str,
+    params: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], uuid.UUID, dict[str, Any] | None]:
+    """一次写事务的全部语句：锁定行 → 前置条件 → UPDATE(RETURNING) → 审计行。
+
+    EAI-CUSTOM(2026-09-29 批量确认摊销)：从单条核心的闭包提升为模块级函数，供
+    :func:`invoke_action_core` 与 :func:`invoke_action_batch_core` 共用——提升只搬语句，
+    语义逐字节不变（前置 409 / ScopeDenied 404 / 锁定行消失 500 / 审计 RETURNING id）。
+    ``pre_sql`` / ``set_sql`` 由调用方编译一次、整批复用（批量摊销的另一半：声明编译
+    与 SQL 片段构造每批只做一次，不随行数增长）。``engine.begin()`` 的事务边界在调用方：
+    单条路径经 ``_write_with_lazy_audit_table`` 包一层懒建重试，批量路径对每行做同样
+    包装（行级事务、行级审计）。
+
+    返回 ``(before, after, 审计行 id, FOR UPDATE 锁定的完整行)``——锁定行供调用方与
+    ``after`` 合并成投影输入（T1A：投影同步契约下不能复读 DB）。
+    """
+    async with engine.begin() as conn:
+        locked = await _execute_on_target(conn, f"SELECT * FROM {table_q} WHERE {where} FOR UPDATE", params_all, table=table)
+        row = locked.mappings().first()
+        if row is None:
+            raise ScopeDenied()
+        locked_row = dict(row)
+
+        ok = await _execute_on_target(conn, f"SELECT ({pre_sql}) AS ok FROM {table_q} WHERE {pk_col} = :pk", params_all, table=table)
+        if not ok.scalar_one():
+            expected = ", ".join(f"{c.field} {c.op} {c.value!r}" for c in action.preconditions)
+            raise ActionError(f"前置条件不满足：需要 {expected}", status_code=409)
+
+        before = {c.field: row.get(c.field) for c in action.postconditions}
+
+        # RETURNING 而非把 after 算成 "None = 由 DB 决定"：审计行（设计 §1.2）是这条写路径
+        # 唯一的追溯凭据，一行写着 after.updated_at = null 而库里是 NOW() 就不是"由 DB 决定"，
+        # 是**审计记录与实际不符**。RETURNING 搭在同一条 UPDATE 上，不额外多一次往返。
+        updated = await _execute_on_target(conn, f"UPDATE {table_q} SET {set_sql} WHERE {pk_col} = :pk RETURNING {returning}", params_all, table=table)
+        updated_row = updated.mappings().first()
+        if updated_row is None:
+            raise ActionError(f"锁定行在 UPDATE 时消失: {target_pk}", 500)
+        after = {c.field: updated_row[c.field] for c in action.postconditions}
+
+        audit = await conn.execute(
+            text(
+                """INSERT INTO dg_action_audit
+                   (action_id, domain, target_table, target_pk, actor_id, actor_role, params, before, after, source)
+                   VALUES (:action_id, :domain, :tbl, :pk, :actor, :role,
+                           CAST(:params AS jsonb), CAST(:before AS jsonb), CAST(:after AS jsonb), :source)
+                   RETURNING id"""
+            ),
+            {
+                "action_id": action.id,
+                "domain": action.domain,
+                "tbl": table,
+                "pk": target_pk,
+                "actor": actor_id,
+                "role": actor_role,
+                "params": _json(params),
+                "before": _json(before),
+                "after": _json(after),
+                "source": source,
+            },
+        )
+        return before, after, audit.scalar_one(), locked_row
+
+
 async def invoke_action_core(
     action_id: str,
     params: dict[str, Any],
@@ -296,6 +374,10 @@ async def invoke_action_core(
     数据已在内存里，投影**不复读 Postgres**（DB 层 async-only，而 ``project`` 是同步契约）。
     它是**同步**可调用（REST/MCP 现均传 ``projection.project_row``）：传 async 函数
     只会拿到一个被丢弃的协程对象，并静默算作投影成功。
+
+    EAI-CUSTOM(2026-09-29 批量确认摊销)：语句序列抽到模块级 :func:`_write_row_txn`
+    供批量核心（:func:`invoke_action_batch_core`）共用；本函数的对外契约（返回形状、
+    异常、审计、懒建重试、投影失败不回滚）逐项不变。
     """
     action, obj = _resolve(action_id)
     table = obj.access.table
@@ -347,57 +429,27 @@ async def invoke_action_core(
     locked_row: dict[str, Any] | None = None
 
     async def _write_txn() -> _WriteResult:
-        """一次写事务：锁定行 → 前置条件 → UPDATE(RETURNING) → 审计。"""
+        """一次写事务：语句序列在模块级 _write_row_txn（与批量核心共用）。"""
         nonlocal locked_row
-        async with engine.begin() as conn:
-            locked = await _execute_on_target(conn, f"SELECT * FROM {table_q} WHERE {where} FOR UPDATE", params_all, table=table)
-            row = locked.mappings().first()
-            if row is None:
-                raise ScopeDenied()
-            locked_row = dict(row)
-
-            ok = await _execute_on_target(conn, f"SELECT ({pre_sql}) AS ok FROM {table_q} WHERE {pk_col} = :pk", params_all, table=table)
-            if not ok.scalar_one():
-                expected = ", ".join(f"{c.field} {c.op} {c.value!r}" for c in action.preconditions)
-                raise ActionError(f"前置条件不满足：需要 {expected}", status_code=409)
-
-            before = {c.field: row.get(c.field) for c in action.postconditions}
-
-            # RETURNING 而非把 after 算成 "None = 由 DB 决定"：审计行（设计 §1.2）是这条写路径
-            # 唯一的追溯凭据，一行写着 after.updated_at = null 而库里是 NOW() 就不是"由 DB 决定"，
-            # 是**审计记录与实际不符**。RETURNING 搭在同一条 UPDATE 上，不额外多一次往返。
-            updated = await _execute_on_target(conn, f"UPDATE {table_q} SET {set_sql} WHERE {pk_col} = :pk RETURNING {returning}", params_all, table=table)
-            updated_row = updated.mappings().first()
-            if updated_row is None:
-                # 该行在上面已被 FOR UPDATE 锁定，同事务内不可能消失；到这里说明代码错了，
-                # 不能继续写一条没有对应变更的审计行。
-                raise ActionError(f"锁定行在 UPDATE 时消失: {target_pk}", 500)
-            after = {c.field: updated_row[c.field] for c in action.postconditions}
-
-            # RETURNING id：审计表存在的意义就是追溯，调用方拿不到审计 id 就断了追溯钩子。
-            # 同一事务、零额外往返。
-            audit = await conn.execute(
-                text(
-                    """INSERT INTO dg_action_audit
-                       (action_id, domain, target_table, target_pk, actor_id, actor_role, params, before, after, source)
-                       VALUES (:action_id, :domain, :tbl, :pk, :actor, :role,
-                               CAST(:params AS jsonb), CAST(:before AS jsonb), CAST(:after AS jsonb), :source)
-                       RETURNING id"""
-                ),
-                {
-                    "action_id": action.id,
-                    "domain": action.domain,
-                    "tbl": table,
-                    "pk": target_pk,
-                    "actor": actor_id,
-                    "role": actor_role,
-                    "params": _json(params),
-                    "before": _json(before),
-                    "after": _json(after),
-                    "source": source,
-                },
-            )
-            return before, after, audit.scalar_one()
+        before, after, audit_id, locked = await _write_row_txn(
+            engine,
+            action=action,
+            table=table,
+            table_q=table_q,
+            pk_col=pk_col,
+            where=where,
+            params_all=params_all,
+            pre_sql=pre_sql,
+            set_sql=set_sql,
+            returning=returning,
+            target_pk=target_pk,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            source=source,
+            params=params,
+        )
+        locked_row = locked
+        return before, after, audit_id
 
     try:
         # 懒建审计表 / 有界重试 / DB 失败归因全在这层（见 _write_with_lazy_audit_table）
@@ -432,6 +484,151 @@ async def invoke_action_core(
         "source": source,
         "projected": projected,
         "errors": errors,
+    }
+
+
+async def invoke_action_batch_core(
+    action_id: str,
+    params: dict[str, Any],
+    *,
+    target_pks: list[uuid.UUID],
+    actor_id: uuid.UUID,
+    actor_role: str | None,
+    source: str,
+    scope_rule: FilterRule,
+    project_batch: Callable[[str, dict[uuid.UUID, dict[str, Any]]], set[uuid.UUID]],
+) -> dict[str, Any]:
+    """批量管线主体（EAI-CUSTOM 2026-09-29 批量确认摊销）——N 行一个动作。
+
+    与 :func:`invoke_action_core` 同一套 SQL/审计/懒建/归一管线，摊销两处每批一次：
+    ① 声明解析与编译（``_resolve`` / ``rule_to_sql`` / ``build_*``）批量只做一次；
+    ② 投影装载 + ``refresh()`` 全批只做一次（``project_batch`` 在全部行级写提交后调用）。
+    实测单次 refresh ≈ 全量重推理约 34s，逐条 invoke 的 O(N) 次 refresh 是 3065 条
+    待审逐条确认不可行的根源；本函数把投影代价压回 O(1)。
+
+    **行级隔离**：每行独立事务、独立审计行、独立失败归因——一行 404（范围外）/ 409
+    （前置不满足）/ 500（DB 故障）只落入该行的 ``failed`` 条目，绝不中止全批。
+    审计逐条留痕：成功行每行一条 dg_action_audit，与单条路径同形状（设计 §1.2 追溯凭据）。
+
+    **投影契约**：``project_batch(action_id, {pk: 合并行})`` 是**同步**可调用（与单条
+    ``project`` 同一条纪律——async 函数会拿到被丢弃的协程并静默"成功"），返回成功入图的
+    pk 集合；抛异常 = 全批 degraded（业务状态不回滚，errors 留痕，重跑全量装载自愈）。
+    行级写全失败（无可投影行）时**不调用** ``project_batch``，``projected`` 恒 True
+    （没有已提交行，断言图与 DB 天然一致——此时做全局重推理是纯浪费）。
+
+    返回体：``results``（按入参序的逐行结果）/ ``succeeded`` / ``failed`` /
+    ``projected``（refresh 是否成功）/ ``projected_pks``（成功入图者）/ ``errors``
+    （投影级错误）。HTTP 层（routers）不做任何逐行错误映射——行级失败在响应体里，
+    只有鉴权/声明级失败才以 ``ActionError`` 上抛。
+    """
+    action, obj = _resolve(action_id)
+    table = obj.access.table
+    if not table:
+        raise ActionError(f"action {action_id} target has no physical table", 500)
+
+    # 与单条同一套编译归一（错误契约见模块 docstring 的表）；批量只编译一次。
+    try:
+        scope_sql, scope_params = rule_to_sql(scope_rule, obj.scope_bindings or None)
+    except ScopeCompileError as e:
+        raise ActionError(f"数据范围规则无法编译: {e}", 400) from e
+    try:
+        pre_sql, pre_params = build_precondition_where(action.preconditions)
+        set_sql, set_params = build_update_set(action.postconditions)
+        pk_col = quote_ident(obj.pk.column)
+        table_q = quote_ident(table)
+        returning = ", ".join(quote_ident(c.field) for c in action.postconditions)
+    except WriteGuardError as e:
+        raise ActionError(f"动作声明不合法: {action.id}: {e}", 500) from e
+
+    try:
+        engine = create_async_engine(_ext_url(), poolclass=NullPool, connect_args={"timeout": _CONNECT_TIMEOUT_S, "command_timeout": _WRITE_COMMAND_TIMEOUT_S})
+    except SQLAlchemyError as exc:
+        raise ActionError(f"写路径引擎构造失败（URL 取自配置）: {exc}", 500) from exc
+
+    results: list[dict[str, Any]] = []
+    merged_rows: dict[uuid.UUID, dict[str, Any]] = {}
+
+    async def _row_txn(pk: uuid.UUID) -> _WriteResult:
+        """单行的写事务（参数随行重绑：where 里的 :pk 是行级值）。"""
+        row_params = _bind_params(pk, ("scope", scope_params), ("precondition", pre_params), ("set", set_params))
+        before, after, audit_id, locked = await _write_row_txn(
+            engine,
+            action=action,
+            table=table,
+            table_q=table_q,
+            pk_col=pk_col,
+            where=f"{pk_col} = :pk AND ({scope_sql})",
+            params_all=row_params,
+            pre_sql=pre_sql,
+            set_sql=set_sql,
+            returning=returning,
+            target_pk=pk,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            source=source,
+            params=params,
+        )
+        merged = dict(locked) if locked is not None else None
+        if merged is not None:
+            merged.update(after)
+        merged_rows[pk] = merged or {}
+        return before, after, audit_id
+
+    try:
+        for pk in target_pks:
+            try:
+                # 懒建审计表 / 有界重试 / DB 失败归因与单条同层；失败在本行落地，不外溢。
+                before, after, audit_id = await _write_with_lazy_audit_table(lambda pk=pk: _row_txn(pk))
+                results.append(
+                    {
+                        "pk": str(pk),
+                        "ok": True,
+                        "before": before,
+                        "after": after,
+                        "audit_id": str(audit_id),
+                        "source": source,
+                        "projected": False,  # 投影在循环后统一裁决
+                        "errors": [],
+                    }
+                )
+            except ActionError as e:
+                results.append({"pk": str(pk), "ok": False, "status_code": e.status_code, "detail": e.detail, "projected": False, "errors": [e.detail]})
+            except Exception as e:  # noqa: BLE001 - 未预期异常同样行级隔离（批量不该被单行炸穿）
+                results.append({"pk": str(pk), "ok": False, "status_code": 500, "detail": f"{type(e).__name__}: {e}", "projected": False, "errors": [f"{type(e).__name__}: {e}"]})
+    finally:
+        await engine.dispose()
+
+    # 提交后投影：全批一次装载 + 一次 refresh。project_batch 同步契约（见 docstring）。
+    errors: list[str] = []
+    projected_pks: set[uuid.UUID] = set()
+    if merged_rows:
+        try:
+            projected_pks = project_batch(action.id, merged_rows)
+        except Exception as e:  # 投影失败不回滚业务状态（设计 §2 步骤 5 的批量版）
+            errors.append(f"{type(e).__name__}: {e}")
+
+    succeeded = [r["pk"] for r in results if r["ok"]]
+    for r in results:
+        if not r["ok"]:
+            continue
+        pk_uuid = uuid.UUID(r["pk"])
+        if pk_uuid in projected_pks:
+            r["projected"] = True
+        else:
+            r["errors"].append("行未入断言图（etype/域词表缺失或 refresh 失败）——业务状态已提交，重跑全量装载自愈")
+
+    return {
+        "action_id": action.id,
+        "target": obj.api_name,
+        "requested": len(target_pks),
+        "results": results,
+        "succeeded": succeeded,
+        "failed": [{"pk": r["pk"], "status_code": r["status_code"], "detail": r["detail"]} for r in results if not r["ok"]],
+        # 空批（全行失败）视为一致：没有已提交行，断言图无需更新（见 docstring）。
+        "projected": bool(projected_pks) or not merged_rows,
+        "projected_pks": sorted(str(p) for p in projected_pks),
+        "errors": errors,
+        "source": source,
     }
 
 

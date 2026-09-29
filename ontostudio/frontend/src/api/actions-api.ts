@@ -35,6 +35,46 @@ export function invokeReviewEntity(pk: string, decision: ReviewDecision): Promis
   });
 }
 
+// ── 批量执行（EAI-CUSTOM 2026-09-29 批量确认摊销）────────────────────────────
+// POST /actions/invoke_batch：同批同一动作，行级写逐条提交（审计逐条留痕、失败行隔离），
+// 全批只做一次投影装载 + 一次 refresh（单条 ≈34s/条 的全局重推理被摊销为 O(1)）。
+// HTTP 恒 200（部分成功是正常形态）；只有鉴权/声明级失败才 4xx/5xx。
+
+/** 逐行结果：ok=false 时带 status_code/detail（404 范围外 / 409 前置不满足 / 500 DB 故障）。 */
+export interface BatchRowResult {
+  pk: string;
+  ok: boolean;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  audit_id?: string;
+  status_code?: number;
+  detail?: string;
+  projected: boolean;
+  errors: string[];
+}
+
+export interface BatchInvokeResult {
+  action_id: string;
+  target: string;
+  requested: number;
+  results: BatchRowResult[];
+  succeeded: string[];
+  failed: Array<{ pk: string; status_code: number; detail: string }>;
+  /** 全批投影（refresh）是否成功；无可投影行（全行失败）时恒 true。 */
+  projected: boolean;
+  projected_pks: string[];
+  errors: string[];
+  source: string;
+}
+
+/** 批量人审动作：pks 上限 200（后端 _MAX_BATCH_PKS，超限 422），重复 pk 422。 */
+export function invokeReviewEntityBatch(pks: string[], decision: ReviewDecision): Promise<BatchInvokeResult> {
+  return authFetch<BatchInvokeResult>(`${BASE}/invoke_batch`, {
+    method: "POST",
+    body: JSON.stringify({ action_id: `review_entity.${decision}`, pks }),
+  });
+}
+
 /** 把 HTTP 409 归一为可判别的错误类型（UI 据此渲染中性「状态已变更」而非红错）。 */
 export class ActionConflictError extends Error {
   readonly detail: string;

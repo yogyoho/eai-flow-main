@@ -140,7 +140,9 @@ export interface OntologyGraphCanvasProps {
   colorByStatus?: boolean;
   /** 只看已确认：非 active 节点透明化（视觉隐藏；共享 store 不删节点）。 */
   activeOnly?: boolean;
-  /** EAI-CUSTOM(2026-09-27 原型重构②): 按域过滤——非该域节点透明化（空串 = 全部）。 */
+  /** EAI-CUSTOM(2026-09-29 图谱投影域过滤): 域参数改**服务端取数**——domainFilter 非空时
+   *  /graph/* 带 domain=（实体类型行域过滤，后端 422 校验未知域），取数器与查询缓存随域
+   *  重建，画布只渲染服务端返回的行（不再做客户端透明化）。空串 = 全部（缺省行为不变）。 */
   domainFilter?: string;
   className?: string;
 }
@@ -156,7 +158,9 @@ export function OntologyGraphCanvas({
   domainFilter = "",
   className,
 }: OntologyGraphCanvasProps) {
-  const fetchers = useMemo(() => makeExplorerFetchers(), []);
+  // EAI-CUSTOM(2026-09-29 图谱投影域过滤): 取数器随域重建——domainFilter 变化即换
+  // fetchers 并触发 useLoadGraph 重取（domain 入 queryKey）
+  const fetchers = useMemo(() => makeExplorerFetchers(domainFilter), [domainFilter]);
   const canvasRef = useRef<GraphCanvasHandle | null>(null);
   const [graphReady, setGraphReady] = useState(false);
   const [graphVersion, setGraphVersion] = useState(0);
@@ -172,6 +176,7 @@ export function OntologyGraphCanvas({
   const loadQuery = useLoadGraph({
     fetchNodes: fetchers.fetchNodes,
     fetchEdges: fetchers.fetchEdges,
+    domain: domainFilter,
     onProgress: (progress: GraphLoadProgress) =>
       setProgressMessage(formatProgress(progress)),
   });
@@ -224,7 +229,9 @@ export function OntologyGraphCanvas({
     }
     setCommunityLegend([]);
     setStatusLegend([]);
-    if (!colorByCommunity && !colorByStatus && !activeOnly && !domainFilter) {
+    // EAI-CUSTOM(2026-09-29 图谱投影域过滤): domainFilter 不再进本 effect——域裁剪已
+    // 上移服务端（/graph/*?domain=），画布只拿过滤后的行；此处只剩着色与「只看已确认」。
+    if (!colorByCommunity && !colorByStatus && !activeOnly) {
       canvasRef.current?.requestRender();
       return;
     }
@@ -339,19 +346,12 @@ export function OntologyGraphCanvas({
       }
     }
 
-    if (activeOnly || domainFilter) {
-      // 只看已确认 + 域过滤：共享恢复表（remember 防重复记录原始属性）
-      const domainById = new Map(
-        nodes.map((n) => [n.id, String(n.properties?.domain ?? "")]),
-      );
+    if (activeOnly) {
+      // 只看已确认：共享恢复表（remember 防重复记录原始属性）
       graph.forEachNode((nodeId) => {
         const status = statusById.get(nodeId) ?? "";
-        const domain = domainById.get(nodeId) ?? "";
-        const statusOk =
-          !activeOnly || status === "active" || status === "";
-        const domainOk =
-          !domainFilter || domain === domainFilter || domain === "";
-        if (statusOk && domainOk) return true;
+        const statusOk = status === "active" || status === "";
+        if (statusOk) return true;
         remember(nodeId);
         graph.mergeNodeAttributes(nodeId, {
           color: "transparent",
@@ -368,7 +368,7 @@ export function OntologyGraphCanvas({
 
     colorRestoreRef.current = nextRestore;
     canvasRef.current?.requestRender();
-  }, [colorByCommunity, colorByStatus, activeOnly, domainFilter, loadQuery.data]);
+  }, [colorByCommunity, colorByStatus, activeOnly, loadQuery.data]);
 
   return (
     <div

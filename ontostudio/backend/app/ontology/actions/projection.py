@@ -20,6 +20,13 @@ MCP 是同一语义的 lambda），切片后统一到这里。
 异常**向外抛**（executor 记入 ``errors`` → degraded 响应；投影失败不回滚业务状态），
 此处绝不吞——吞掉等于让 ``projected`` 恒 True。degraded 是自愈的：全量装载传
 ``force_status=True``（装载=对账），重跑 ``POST /formal/load`` 即治愈。
+
+EAI-CUSTOM(2026-09-29 批量确认摊销): :func:`project_rows` 是同语义的**批量**版——
+N 行合并行**一次**装载（单次 ``load_doc_graph_rows``）+ **一次** ``refresh()``，
+供 ``POST /actions/invoke_batch`` 使用；代价从 O(N) 次 refresh 摊销为 O(1)
+（单条确认 ≈ 全量 refresh 实测约 34s/条，批量 50 条的投影代价与其相当）。
+行级跳过（缺 etype / 域词表未声明该 etype）不中止全批，以"未入返回集合"暴露，
+由 executor 逐行记 degraded——与单条路径"投影失败不回滚业务状态"同一取向。
 """
 
 from __future__ import annotations
@@ -55,3 +62,48 @@ def project_row(action_id: str, pk: uuid.UUID, row: dict[str, Any] | None) -> No
         if stats.entities == 0:
             raise RuntimeError(f"动作行未投影（etype 未在 registry 声明或域词表缺失）: pk={pk} etype={row.get('etype')!r} domain={row.get('domain')!r}")
     kernel.refresh()
+
+
+def project_rows(action_id: str, rows: dict[uuid.UUID, dict[str, Any]]) -> set[uuid.UUID]:
+    """批量投影：全批已提交行一次装载 + 一次 ``refresh()``（批量确认摊销, EAI-CUSTOM 2026-09-29）.
+
+    与 :func:`project_row` 的逐条语义对齐（T2A 断言图 = DB 全行忠实投影 + 装载后重推理），
+    差异只在摊销：``rows``（pk → executor 的合并行）在**单次** ``load_doc_graph_rows`` 里
+    全量装载，随后全批**仅一次** ``refresh()``——批内 N 行共享同一次闭包与规则重算。
+
+    返回**成功入图**的 pk 集合；调用方（executor）对不在集合内的行逐行记 degraded：
+
+    - 行缺 ``etype``：不进装载（与单条路径的 RuntimeError 同判，批量下行级隔离不中止全批）；
+    - 装载被跳过（etype 未在域词表声明 / 域词表缺失）：``LoaderStats.skipped_entities``
+      里点名，按"未投影"处理；
+    - ``refresh()`` 抛异常：**向外抛**（不吞）——executor 接住后全批记 degraded，
+      业务状态不回滚；重跑 ``POST /formal/load`` 自愈。
+
+    ``rows`` 为空（全批行级写都失败）时直接返回空集、不触发装载与 refresh——
+    没有已提交行时做全局重推理是纯浪费，且会让"全批失败"看起来像"投影失败"。
+    """
+    from app.ontology.kernel.loader import load_doc_graph_rows
+    from app.ontology.kernel.service import get_kernel
+    from app.ontology.registry import get_registry
+
+    if not rows:
+        return set()
+    kernel = get_kernel()
+    loadable = [dict(row) for row in rows.values() if row.get("etype")]
+    if not loadable:
+        return set()
+    stats = load_doc_graph_rows(
+        kernel.store,
+        get_registry(),
+        entity_rows=loadable,
+        relation_rows=[],
+        mention_rows=[],
+        domain="doc_graph",
+    )
+    if stats.entities == 0:
+        # 与单条路径同语义（project_row 的 stats.entities == 0 → RuntimeError）：一行都没装进去
+        # 说明声明/词表侧坏了，如实炸出（executor 全批记 degraded），不假装投影成功。
+        raise RuntimeError(f"批量投影零行装载（etype 未在 registry 声明或域词表缺失）: action={action_id} rows={len(loadable)} skipped={[str(s) for s in stats.skipped_entities[:5]]}…")
+    kernel.refresh()
+    skipped = {str(s) for s in stats.skipped_entities}
+    return {pk for pk, row in rows.items() if row.get("etype") and str(pk) not in skipped}

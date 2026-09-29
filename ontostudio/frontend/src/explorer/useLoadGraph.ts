@@ -490,15 +490,24 @@ interface UseLoadGraphOptions {
   // EAI-CUSTOM: 注入式取数接缝（缺省 = 上游 /api/graph/* vendored 实现）
   fetchNodes?: ExplorerFetchNodes;
   fetchEdges?: ExplorerFetchEdges;
+  // EAI-CUSTOM(2026-09-29 图谱投影域过滤): 服务端域参数入 queryKey——换域即换缓存条目、
+  // 触发全量重取（缺省 "" = 无域过滤，行为与上游一致）。
+  domain?: string;
 }
 
 export function useLoadGraph(options: UseLoadGraphOptions = {}) {
-  const { enabled = true, onGraphReady, onProgress, fetchNodes = fetchAllNodes, fetchEdges = fetchAllEdges } = options;
+  const { enabled = true, onGraphReady, onProgress, fetchNodes = fetchAllNodes, fetchEdges = fetchAllEdges, domain = "" } = options;
 
   return useQuery<GraphLoadSummary>({
-    queryKey: ["graph", "full-load"],
+    queryKey: ["graph", "full-load", domain],
     enabled,
     staleTime: Infinity,
+    // EAI-CUSTOM(2026-09-29 图谱投影域过滤): 域条目**不缓存**（gcTime 0）——queryFn 的
+    // 返回值只是"最近一次取数"的统计，节点/边实体写在单例 store 里且每次取数**整体覆写**；
+    // 若复用旧域的缓存条目，旧 summary 会立刻触发版本号推进，而 store 里是新域的内容
+    // （缓存与单例撕裂，画布短暂张冠李戴）。gcTime:0 = 切走的域条目即弃，切回必重取。
+    // 组件常驻挂载时查询恒 active，gcTime 不参与常规 tab 切换，零额外开销。
+    gcTime: 0,
     retry: 0,
     queryFn: async ({ signal }): Promise<GraphLoadSummary> => {
       const startedAt = performance.now();
