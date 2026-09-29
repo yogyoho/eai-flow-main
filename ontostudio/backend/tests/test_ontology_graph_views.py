@@ -161,15 +161,25 @@ async def test_nodes_page_exhausted_and_garbage_cursor_fresh_start():
 
 
 def _edges_reg_fk_only():
+    # EAI-CUSTOM(2026-09-27): lb 改异签名（sa→sc）——同签名链接会被 2026-09-27 去重让位
+    # （见 graph_views.edges_page），机制测试需要两条都参与排水的链接。
     reg = SimpleNamespace(
-        object_types={"sa": _edge_obj("sa", "ta", "sid"), "sb": _edge_obj("sb", "tb", "pid")},
+        object_types={
+            "sa": _edge_obj("sa", "ta", "sid"),
+            "sb": _edge_obj("sb", "tb", "pid"),
+            "sc": _edge_obj("sc", "tc", "qid"),
+        },
         link_types={
             "la": _edge_link("la", "sa", "sb", type="foreign_key", source_column="sid", target_column="pid"),
-            "lb": _edge_link("lb", "sa", "sb", type="foreign_key", source_column="sid", target_column="pid"),
+            "lb": _edge_link("lb", "sa", "sc", type="foreign_key", source_column="sid", target_column="qid"),
         },
     )
-    pairs = [{"__src_pk": f"s{i}", "__tgt_pk": f"p{i}"} for i in range(3)]
-    resolver = FakeResolver({"tb": pairs})  # FK SQL 的 FROM 表 = target 表
+    resolver = FakeResolver(
+        {
+            "tb": [{"__src_pk": f"s{i}", "__tgt_pk": f"p{i}"} for i in range(3)],
+            "tc": [{"__src_pk": f"s{i}", "__tgt_pk": f"q{i}"} for i in range(3)],
+        }
+    )  # FK SQL 的 FROM 表 = target 表
     return reg, SimpleNamespace(_resolver=resolver), resolver
 
 
@@ -227,7 +237,10 @@ async def test_edges_page_excludes_stub_links():
     p2 = await graph_views.edges_page(reg, eng, None, 5000)
     assert p1 == p2
     types = {e["type"] for e in p1["edges"]}
-    assert types == enabled_names  # 判别力: 每条 enabled 链接恰产边, 无 stub 混入
+    # EAI-CUSTOM(2026-09-27 双透镜去重): mention_of_eia_entity/relation 与
+    # mention_of_entity/relation 同 FK 签名（目标为让位透镜 eia_entity/eia_relation），
+    # 按签名让位——期望集合 = enabled 减去这两条。
+    assert types == enabled_names - {"mention_of_eia_entity", "mention_of_eia_relation"}
     for e in p1["edges"]:
         assert set(e.keys()) == {"source", "target", "type", "label"}
 

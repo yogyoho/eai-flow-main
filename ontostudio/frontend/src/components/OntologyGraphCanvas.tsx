@@ -140,6 +140,8 @@ export interface OntologyGraphCanvasProps {
   colorByStatus?: boolean;
   /** 只看已确认：非 active 节点透明化（视觉隐藏；共享 store 不删节点）。 */
   activeOnly?: boolean;
+  /** EAI-CUSTOM(2026-09-27 原型重构②): 按域过滤——非该域节点透明化（空串 = 全部）。 */
+  domainFilter?: string;
   className?: string;
 }
 
@@ -151,6 +153,7 @@ export function OntologyGraphCanvas({
   colorByCommunity = false,
   colorByStatus = false,
   activeOnly = false,
+  domainFilter = "",
   className,
 }: OntologyGraphCanvasProps) {
   const fetchers = useMemo(() => makeExplorerFetchers(), []);
@@ -221,7 +224,7 @@ export function OntologyGraphCanvas({
     }
     setCommunityLegend([]);
     setStatusLegend([]);
-    if (!colorByCommunity && !colorByStatus && !activeOnly) {
+    if (!colorByCommunity && !colorByStatus && !activeOnly && !domainFilter) {
       canvasRef.current?.requestRender();
       return;
     }
@@ -336,11 +339,19 @@ export function OntologyGraphCanvas({
       }
     }
 
-    if (activeOnly) {
-      // 只看已确认：非 active 透明化（注意在状态着色之后跑——过滤优先级更高）
+    if (activeOnly || domainFilter) {
+      // 只看已确认 + 域过滤：共享恢复表（remember 防重复记录原始属性）
+      const domainById = new Map(
+        nodes.map((n) => [n.id, String(n.properties?.domain ?? "")]),
+      );
       graph.forEachNode((nodeId) => {
         const status = statusById.get(nodeId) ?? "";
-        if (status === "" || status === "active") return true;
+        const domain = domainById.get(nodeId) ?? "";
+        const statusOk =
+          !activeOnly || status === "active" || status === "";
+        const domainOk =
+          !domainFilter || domain === domainFilter || domain === "";
+        if (statusOk && domainOk) return true;
         remember(nodeId);
         graph.mergeNodeAttributes(nodeId, {
           color: "transparent",
@@ -357,7 +368,7 @@ export function OntologyGraphCanvas({
 
     colorRestoreRef.current = nextRestore;
     canvasRef.current?.requestRender();
-  }, [colorByCommunity, colorByStatus, activeOnly, loadQuery.data]);
+  }, [colorByCommunity, colorByStatus, activeOnly, domainFilter, loadQuery.data]);
 
   return (
     <div

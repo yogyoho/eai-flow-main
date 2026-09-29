@@ -32,7 +32,7 @@ export function PageHeader({
       ) : null}
       <h1 className="text-foreground text-lg font-semibold tracking-tight">{title}</h1>
       {actions ? <div className="ml-auto flex gap-2">{actions}</div> : null}
-      <p className="text-muted-foreground mt-1 w-full text-xs">{description}</p>
+      <p className="text-muted-foreground mt-1 w-full text-sm">{description}</p>
     </div>
   );
 }

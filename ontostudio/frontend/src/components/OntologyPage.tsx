@@ -21,6 +21,13 @@ import { OverviewPanel } from "@/components/OverviewPanel";
 import { RegistryPanel } from "@/components/RegistryPanel";
 import { ResolutionPanel } from "@/components/ResolutionPanel";
 import { OntologyGraphCanvas } from "@/components/OntologyGraphCanvas";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { GraphCanvasHandle } from "@/explorer/GraphCanvas";
 import { graph, type NodeAttributes } from "@/explorer/graphStore";
 import type { GraphLoadSummary } from "@/explorer/types";
@@ -77,7 +84,7 @@ function OntologyWorkspace({
   // EAI-CUSTOM(2026-09-27 原型重构): T2A 状态可视化——按状态着色 + 只看已确认过滤
   const [colorByStatus, setColorByStatus] = useState(false);
   const [activeOnly, setActiveOnly] = useState(false);
-  const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
+  const [domainFilter, setDomainFilter] = useState("");  const canvasHandleRef = useRef<GraphCanvasHandle | null>(null);
 
   // 视图切换统一走 changeView：内部状态 + 通知外壳（AppShell 同步侧栏高亮/hash）
   const changeView = useCallback(
@@ -248,6 +255,27 @@ function OntologyWorkspace({
             >
               只看已确认
             </button>
+            <Select
+              value={domainFilter || "__all__"}
+              onValueChange={(v) => setDomainFilter(v === "__all__" ? "" : v)}
+            >
+              <SelectTrigger
+                size="sm"
+                aria-label="按域过滤"
+                data-testid="domain-filter"
+                className={cn(
+                  "text-muted-foreground h-7 w-auto gap-1 rounded-lg px-2 text-xs font-medium shadow-none",
+                  domainFilter ? "border-primary/40 text-primary" : "",
+                )}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="__all__">域：全部</SelectItem>
+                <SelectItem value="doc_graph">doc_graph</SelectItem>
+                <SelectItem value="eia">eia</SelectItem>
+              </SelectContent>
+            </Select>
             <button
               type="button"
               aria-pressed={colorByCommunity}
@@ -286,6 +314,7 @@ function OntologyWorkspace({
               colorByCommunity={colorByCommunity}
               colorByStatus={colorByStatus}
               activeOnly={activeOnly}
+              domainFilter={domainFilter}
             />
           </div>
           <aside className="border-border bg-card flex w-[300px] shrink-0 flex-col border-l">

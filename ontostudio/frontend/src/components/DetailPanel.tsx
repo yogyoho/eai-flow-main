@@ -215,6 +215,28 @@ export function DetailPanel({ nodeId }: { nodeId: string | null }) {
           );
         })
       )}
+      {/* 跨页入口（EAI-CUSTOM 2026-09-27 原型重构③） */}
+      <div className="border-border mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+        <span className="text-muted-foreground text-[10px]">快捷：</span>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.hash = "resolve";
+          }}
+          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-[10.5px] font-medium"
+        >
+          消解审核
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.hash = "modeler";
+          }}
+          className="border-border bg-card hover:bg-muted rounded-md border px-2 py-0.5 text-[10.5px] font-medium"
+        >
+          本体建模器
+        </button>
+      </div>
     </div>
   );
 }

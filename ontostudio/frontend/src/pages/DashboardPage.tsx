@@ -173,7 +173,7 @@ export function DashboardPage() {
       <PageHeader
         icon={LayoutDashboard}
         title="工作台总览"
-        description="知识层运营一览：数据沉淀、待审压力、校验与数据面状态。全部数字来自真端点（dg_* 聚合 / registry / formal）。"
+        description="知识层运营一览：数据沉淀、待审压力、域健康、校验与数据面状态。数字来自 dg_* 聚合、消解队列、registry 与 formal 真端点；推理物化为缓存值（推理工作台运行后显示）；治理链抽样与抽取活动为规划态示例。"
         actions={
           entAggQuery.isFetching || relAggQuery.isFetching ? (
             <Loader2 className="text-primary h-4 w-4 animate-spin" />
@@ -228,7 +228,7 @@ export function DashboardPage() {
 
       {/* 域健康 + 治理链抽样 */}
       <div className="mt-3.5 grid grid-cols-1 gap-3.5 xl:grid-cols-2">
-        <Panel title="域健康" subtitle="registry × dg_* 聚合" tone={TONE_BLUE} icon={Layers} className="flex max-h-[420px] flex-col overflow-hidden">
+        <Panel title="业务域概况" subtitle="各域模型与数据量" tone={TONE_BLUE} icon={Layers} className="flex max-h-[420px] flex-col overflow-hidden">
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
@@ -256,7 +256,7 @@ export function DashboardPage() {
                     onClick={() => go("modeler")}
                   >
                     <td className="px-4 py-2.5">
-                      <span className="flex items-center gap-2 font-mono text-xs">
+                      <span className="flex items-center gap-2 font-mono text-[13px]">
                         <span
                           className="h-2 w-2 flex-none rounded-full"
                           style={{ background: dot }}
@@ -317,7 +317,7 @@ export function DashboardPage() {
                 className="border-l-2 pl-3"
                 style={{ borderColor: withAlpha(tone, 0.45) }}
               >
-                <b className="text-[12.5px]">{chain.title}</b>
+                <b className="text-[13px]">{chain.title}</b>
                 <span
                   className="ml-2 rounded px-1.5 py-0.5 font-mono text-[10px]"
                   style={{ background: withAlpha(tone, 0.1), color: toneText(tone) }}
@@ -361,14 +361,14 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => go("validation")}
-              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium"
+              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[12px] font-medium"
             >
               进入校验中心 <ArrowRight className="h-3 w-3" />
             </button>
           </div>
         </Panel>
 
-        <Panel title="数据面" subtitle="registry 与图对账" tone={TONE_BLUE} icon={Database} className="flex flex-col">
+        <Panel title="图数据同步" subtitle="本体库与图保持一致" tone={TONE_BLUE} icon={Database} className="flex flex-col">
           <div className="flex flex-1 flex-col gap-2.5 p-4 text-xs">
             <div className="flex items-center justify-between">
               <span>registry 版本</span>
@@ -387,7 +387,7 @@ export function DashboardPage() {
                 type="button"
                 disabled={loadMutation.isPending}
                 onClick={() => loadMutation.mutate()}
-                className="border-border bg-card hover:bg-muted flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium disabled:opacity-50"
+                className="border-border bg-card hover:bg-muted flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[12px] font-medium disabled:opacity-50"
               >
                 {loadMutation.isPending ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -433,7 +433,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => go("ingest")}
-              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[11.5px] font-medium"
+              className="border-border bg-card hover:bg-muted mt-auto flex items-center gap-1 self-start rounded-lg border px-2.5 py-1.5 text-[12px] font-medium"
             >
               进入抽取导入 <ArrowRight className="h-3 w-3" />
             </button>

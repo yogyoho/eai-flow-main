@@ -63,6 +63,46 @@ def decode_cursor(cursor: str | None) -> dict[str, int] | None:
 # ---------- 节点投影 ----------
 
 
+def projection_order(reg: Any) -> tuple[list[Any], set[str]]:
+    """启用对象类型投影序 + 让位透镜集合（EAI-CUSTOM 2026-09-27 双透镜去重）。
+
+    同一物理表被多个对象类型投影时（全域透镜 graph_entity 与域过滤透镜 eia_entity/eia_relation
+    共享 dg_entities/dg_relations），图面只保留一个节点/行——否则同一实体渲染为两个节点、边翻倍。
+    保留优先级（信号强→弱）：
+    1. **被链接类型引用次数**（多者胜：graph_relation 被 relation_subject/object + mention 链引用，
+       结构地位高于只被 1 条 mention 链指向的 eia_relation）；
+    2. **动作宿主**（review_entity 的 target graph_entity）；
+    3. api_name 字母序兜底。
+    让位透镜仍可经 /objects REST 域过滤使用，只是不进图。
+    """
+    link_ref_count: dict[str, int] = {}
+    for lt in reg.link_types.values():
+        for name in (lt.source, lt.target):
+            link_ref_count[name] = link_ref_count.get(name, 0) + 1
+    action_hosts: set[str] = set()
+    for spec in (getattr(reg, "actions", None) or {}).values():
+        action_hosts.add(spec.target)
+    ordered = sorted(
+        (o for o in reg.object_types.values() if o.enabled),
+        key=lambda o: (
+            -link_ref_count.get(o.api_name, 0),
+            o.api_name not in action_hosts,
+            o.api_name,
+        ),
+    )
+    lens: set[str] = set()
+    seen_tables: set[str] = set()
+    kept: list[Any] = []
+    for o in ordered:
+        table = str(getattr(getattr(o, "access", None), "table", o.api_name))
+        if table in seen_tables:
+            lens.add(o.api_name)
+            continue
+        seen_tables.add(table)
+        kept.append(o)
+    return kept, lens
+
+
 def searchable_api_names(obj: Any) -> list[str]:
     """对象类型的 searchable 属性 api_name 列表（label 候选，按声明序）。"""
     props = obj.visible_properties() if hasattr(obj, "visible_properties") else obj.properties
@@ -85,7 +125,7 @@ async def nodes_page(reg: Any, engine: Any, cursor: str | None, limit: int) -> d
     pos = decode_cursor(cursor)
     if pos is None:
         pos = {"type_idx": 0, "offset": 0}
-    ordered = sorted((o for o in reg.object_types.values() if o.enabled), key=lambda o: o.api_name)
+    ordered, _lens = projection_order(reg)
     out: list[dict[str, Any]] = []
     type_idx, offset = pos["type_idx"], pos["offset"]
     while type_idx < len(ordered) and len(out) < limit:
@@ -126,7 +166,29 @@ async def edges_page(reg: Any, engine: Any, cursor: str | None, limit: int) -> d
     pos = decode_cursor(cursor)
     if pos is None:
         pos = {"type_idx": 0, "offset": 0}
-    ordered = sorted((lt for lt in reg.link_types.values() if lt.enabled), key=lambda lt: lt.api_name)
+    # EAI-CUSTOM(2026-09-27 双透镜去重): 指向让位透镜的链接不产生边（同一 FK 的域透镜
+    # 版本）；同 FK 签名的链接只保留 api_name 序首个——边与节点同规则去重。
+    _, lens = projection_order(reg)
+    ordered_raw = sorted(
+        (lt for lt in reg.link_types.values() if lt.enabled and lt.source not in lens and lt.target not in lens),
+        key=lambda lt: lt.api_name,
+    )
+    ordered: list[Any] = []
+    seen_sig: set[tuple[str, str, str, str, str]] = set()
+    for lt in ordered_raw:
+        src_obj = reg.object_types[lt.source]
+        tgt_obj = reg.object_types[lt.target]
+        sig = (
+            str(getattr(getattr(src_obj, "access", None), "table", lt.source)),
+            str(getattr(lt.join, "source_column", "") or ""),
+            str(getattr(getattr(tgt_obj, "access", None), "table", lt.target)),
+            str(getattr(lt.join, "target_column", "") or ""),
+            str(lt.join.type),
+        )
+        if sig in seen_sig:
+            continue
+        seen_sig.add(sig)
+        ordered.append(lt)
     out: list[dict[str, Any]] = []
     link_idx, offset = pos["type_idx"], pos["offset"]
     while link_idx < len(ordered) and len(out) < limit:

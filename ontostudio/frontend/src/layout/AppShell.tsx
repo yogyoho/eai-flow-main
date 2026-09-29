@@ -17,6 +17,8 @@ import {
   GitMerge,
   LayoutDashboard,
   Network,
+  PanelLeftClose,
+  PanelLeftOpen,
   ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -147,29 +149,79 @@ export function AppShell() {
   });
   const pendingCount = pendingQuery.data ?? 0;
 
+  // 侧栏折叠：图标轨道模式；偏好持久化（localStorage）
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("ontostudio-sidebar-collapsed") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      try {
+        localStorage.setItem("ontostudio-sidebar-collapsed", prev ? "0" : "1");
+      } catch {
+        /* 隐私模式等场景忽略 */
+      }
+      return !prev;
+    });
+  };
+
   return (
     <div className="bg-background flex h-full min-h-0">
-      <aside className="border-sidebar-border bg-sidebar flex w-56 flex-none flex-col border-r">
-        <div className="border-border flex items-center gap-2.5 border-b px-4 py-4">
-          <span className="bg-primary text-primary-foreground grid h-8 w-8 flex-none place-items-center rounded-lg text-[15px] font-black">
-            本
-          </span>
-          <div>
-            <b className="block text-[15px] leading-tight font-black tracking-wide">
-              OntoStudio
-            </b>
-            <small className="text-muted-foreground text-[10.5px] tracking-[0.14em]">
-              本体建模工作台
-            </small>
-          </div>
+      <aside
+        className={cn(
+          "border-sidebar-border bg-sidebar flex flex-none flex-col border-r transition-[width] duration-200",
+          collapsed ? "w-[60px]" : "w-56",
+        )}
+      >
+        <div
+          className={cn(
+            "border-border flex items-center gap-2 border-b px-3 py-4",
+            collapsed && "justify-center px-1.5",
+          )}
+        >
+          {!collapsed ? (
+            <>
+              <span className="bg-primary text-primary-foreground grid h-8 w-8 flex-none place-items-center rounded-lg text-[15px] font-black">
+                本
+              </span>
+              <div className="min-w-0">
+                <b className="block text-[15px] leading-tight font-black tracking-wide">
+                  OntoStudio
+                </b>
+                <small className="text-muted-foreground text-[10.5px] tracking-[0.14em]">
+                  本体建模工作台
+                </small>
+              </div>
+            </>
+          ) : null}
+          <button
+            type="button"
+            onClick={toggleCollapsed}
+            title={collapsed ? "展开菜单" : "收起菜单"}
+            aria-label={collapsed ? "展开菜单" : "收起菜单"}
+            className="text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground ml-auto flex h-7 w-7 flex-none items-center justify-center rounded-md transition-colors"
+          >
+            {collapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
           {NAV.map((section) => (
             <div key={section.group}>
-              <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
-                {section.group}
-              </div>
+              {collapsed ? (
+                <div className="border-sidebar-border mx-2 mt-4 border-t" />
+              ) : (
+                <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
+                  {section.group}
+                </div>
+              )}
               {section.items.map(([id, label]) => {
                 const ItemIcon = ROUTE_ICON[id];
                 return (
@@ -178,8 +230,12 @@ export function AppShell() {
                     type="button"
                     onClick={() => go(id)}
                     aria-current={route === id ? "page" : undefined}
+                    title={label}
                     className={cn(
-                      "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors",
+                      "flex w-full items-center rounded-lg text-sm font-medium transition-colors",
+                      collapsed
+                        ? "justify-center px-0 py-2"
+                        : "gap-2.5 px-2.5 py-2 text-left",
                       route === id
                         ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
@@ -191,10 +247,16 @@ export function AppShell() {
                         route === id ? "text-primary" : "opacity-70",
                       )}
                     />
-                    {label}
-                    {id === "resolve" && pendingCount > 0 ? (
+                    {!collapsed ? label : null}
+                    {!collapsed && id === "resolve" && pendingCount > 0 ? (
                       <span
                         className="bg-destructive ml-auto h-1.5 w-1.5 rounded-full"
+                        title={`${pendingCount} 个实体待复核`}
+                      />
+                    ) : null}
+                    {collapsed && id === "resolve" && pendingCount > 0 ? (
+                      <span
+                        className="bg-destructive absolute top-1 right-1 h-1.5 w-1.5 rounded-full"
                         title={`${pendingCount} 个实体待复核`}
                       />
                     ) : null}
@@ -205,28 +267,43 @@ export function AppShell() {
           ))}
           {/* 文档分组：文档中心（独立文档站，新标签打开） */}
           <div>
-            <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
-              文档
-            </div>
+            {collapsed ? (
+              <div className="border-sidebar-border mx-2 mt-4 border-t" />
+            ) : (
+              <div className="text-muted-foreground mt-4 px-2.5 pb-1.5 text-[10.5px] font-medium tracking-[0.1em]">
+                文档
+              </div>
+            )}
             <a
               href="/ontostudio/docs/"
               target="_blank"
               rel="noreferrer"
-              className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:text-primary flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors"
+              title="文档中心"
+              className={cn(
+                "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:text-primary flex w-full items-center rounded-lg py-2 text-sm font-medium transition-colors",
+                collapsed ? "justify-center px-0" : "gap-2.5 px-2.5 text-left",
+              )}
             >
               <BookOpen className="h-4 w-4 flex-none opacity-70" />
-              文档中心
+              {!collapsed ? "文档中心" : null}
             </a>
           </div>
         </nav>
-        <div className="border-border flex items-center gap-2.5 border-t px-4 py-3">
+        <div
+          className={cn(
+            "border-border flex items-center gap-2.5 border-t px-4 py-3",
+            collapsed && "justify-center px-2",
+          )}
+        >
           <span className="bg-primary text-primary-foreground grid h-7 w-7 flex-none place-items-center rounded-full text-[11px] font-semibold">
             管
           </span>
-          <div className="leading-tight">
-            <b className="block text-xs font-medium">知识工程组</b>
-            <span className="text-muted-foreground text-[10.5px]">admin@eai-flow.com</span>
-          </div>
+          {!collapsed ? (
+            <div className="leading-tight">
+              <b className="block text-xs font-medium">知识工程组</b>
+              <span className="text-muted-foreground text-[10.5px]">admin@eai-flow.com</span>
+            </div>
+          ) : null}
         </div>
       </aside>
 

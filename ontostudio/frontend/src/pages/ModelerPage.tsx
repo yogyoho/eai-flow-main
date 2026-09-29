@@ -13,6 +13,9 @@
 import { useQuery, useQueryClient, useQueries } from "@tanstack/react-query";
 import { DraftingCompass, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { yaml } from "@codemirror/lang-yaml";
 import { load as yamlLoad, dump as yamlDump } from "js-yaml";
 
 import { fetchAggregate } from "@/api/ontology-graph-api";
@@ -96,17 +99,55 @@ export function ModelerPage() {
 
   // 草稿文本：null = 与远端一致
   const [draftText, setDraftText] = useState<string | null>(null);
+
+  // 节点位置持久化（localStorage 按域文件分键；刷新保持，域切换加载对应位置）
+  const loadSavedPositions = useCallback((file: string): Map<string, Pos> => {
+    try {
+      const raw = localStorage.getItem(`ontostudio-canvas-pos-${file}`);
+      if (!raw) return new Map();
+      const obj = JSON.parse(raw) as Record<string, Pos>;
+      return new Map(Object.entries(obj));
+    } catch {
+      return new Map();
+    }
+  }, []);
+  const persistPositions = useCallback(
+    (file: string, overrides: Map<string, Pos>) => {
+      try {
+        const obj: Record<string, Pos> = {};
+        overrides.forEach((pos, name) => {
+          obj[name] = pos;
+        });
+        localStorage.setItem(
+          `ontostudio-canvas-pos-${file}`,
+          JSON.stringify(obj),
+        );
+      } catch {
+        /* 存储满/隐私模式忽略 */
+      }
+    },
+    [],
+  );
+
+  const [positionOverrides, setPositionOverrides] = useState<Map<string, Pos>>(
+    () => loadSavedPositions(selectedFile),
+  );
+  const persistRef = useRef(persistPositions);
+  persistRef.current = persistPositions;
+
   useEffect(() => {
     setDraftText(null);
     setSelectedClass(null);
-    setPositionOverrides(new Map()); // 位置是视图态，随域切换重置
     setConnectChild(null);
-  }, [content?.raw, selectedFile]);
+    setPositionOverrides(loadSavedPositions(selectedFile));
+  }, [selectedFile]); // 仅域切换时重置（YAML 热重载不清位置——用户手动调整不丢）
 
   const remoteText = content?.raw ?? "";
   const text = draftText ?? remoteText;
   const dirty = draftText !== null && draftText !== remoteText;
 
+  // 类数据来源：domainSummary（服務端 API 已解析 registry YAML 為結構化數據）——
+  // 正確處理 eia.yaml 的 etype_classes 嵌套結構和 doc_graph.yaml 的 classes 結構
   const allClasses: ClassEntry[] = useMemo(() => {
     if (!domainSummary) return [];
     return domainSummary.classes.map((c) => ({
@@ -149,7 +190,7 @@ export function ModelerPage() {
     [countByEtype],
   );
 
-  // 基础布局（继承深度分层）；用户拖拽写 overrides，读时覆盖
+  // 基础布局（继承深度分层 + 网格防重叠）；用户拖拽写 overrides，读时覆盖
   const baseLayout = useMemo(() => {
     const layers = new Map<number, ClassEntry[]>();
     for (const { cls, depth } of buildTree(allClasses)) {
@@ -157,27 +198,35 @@ export function ModelerPage() {
       list.push(cls);
       layers.set(depth, list);
     }
-    const rows = [...layers.keys()].sort((a, b) => a - b);
+    const sortedDepths = [...layers.keys()].sort((a, b) => a - b);
     const positions = new Map<string, Pos>();
-    rows.forEach((depth, rowIdx) => {
+
+    // 布局参数：每层节点最多 6 个一行，超出换子行；层间距 ≥ 20%
+    const MAX_PER_ROW = 6;
+    const X_START = 8;
+    const X_SLOT = 14; // 每节点最小占 14% 宽度
+    const Y_START = 10;
+    const Y_SLOT = 20; // 每层最小占 20% 高度
+
+    let visualRow = 0;
+    for (const depth of sortedDepths) {
       const row = layers.get(depth) ?? [];
-      const n = row.length;
-      row.forEach((cls, i) => {
-        positions.set(cls.name, {
-          x: 8 + ((i + 1) * 84) / (n + 1),
-          y:
-            rows.length === 1
-              ? 50
-              : 12 + rowIdx * (76 / Math.max(1, rows.length - 1)),
+      const subRows = Math.ceil(row.length / MAX_PER_ROW);
+      for (let sr = 0; sr < subRows; sr++) {
+        const slice = row.slice(sr * MAX_PER_ROW, (sr + 1) * MAX_PER_ROW);
+        const n = slice.length;
+        slice.forEach((cls, i) => {
+          positions.set(cls.name, {
+            x: X_START + ((i + 0.5) * (100 - 2 * X_START)) / n,
+            y: Y_START + visualRow * Y_SLOT,
+          });
         });
-      });
-    });
+        visualRow++;
+      }
+    }
     return positions;
   }, [allClasses]);
 
-  const [positionOverrides, setPositionOverrides] = useState<Map<string, Pos>>(
-    new Map(),
-  );
   const effectivePositions = useMemo(() => {
     const merged = new Map(baseLayout);
     positionOverrides.forEach((pos, name) => {
@@ -311,6 +360,29 @@ export function ModelerPage() {
     setSelectedClass(name);
   };
 
+  const handleNodeMove = useCallback(
+    (name: string, pos: Pos) => {
+      setPositionOverrides((prev) => {
+        const next = new Map(prev);
+        next.set(name, pos);
+        try {
+          const obj: Record<string, Pos> = {};
+          next.forEach((p, n) => {
+            obj[n] = p;
+          });
+          localStorage.setItem(
+            `ontostudio-canvas-pos-${selectedFile}`,
+            JSON.stringify(obj),
+          );
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    },
+    [selectedFile],
+  );
+
   const handleSave = useCallback(async () => {
     setBusy(true);
     try {
@@ -336,8 +408,6 @@ export function ModelerPage() {
       setBusy(false);
     }
   }, [selectedFile, text]);
-
-  const yamlLineCount = useMemo(() => text.split("\n").length, [text]);
 
   const filesQuery = useQuery({
     queryKey: ["ontology", "registry-files"],
@@ -396,7 +466,7 @@ export function ModelerPage() {
             {/* 中：编辑器单面板 */}
             <div className="border-border bg-card rounded-xl border shadow-sm">
               <div className="border-border flex flex-wrap items-center gap-2 border-b px-4 py-2.5">
-                <span className="font-mono text-xs">{selectedFile}</span>
+                <span className="font-mono text-sm">{selectedFile}</span>
                 <div className="border-border ml-1 flex overflow-hidden rounded-lg border">
                   <button
                     type="button"
@@ -509,13 +579,7 @@ export function ModelerPage() {
                     connectChild={connectChild}
                     instancesOf={instancesOf}
                     onNodeClick={handleNodeClick}
-                    onNodeMove={(name, pos) =>
-                      setPositionOverrides((prev) => {
-                        const next = new Map(prev);
-                        next.set(name, pos);
-                        return next;
-                      })
-                    }
+                    onNodeMove={handleNodeMove}
                     chains={axioms?.property_chains ?? []}
                     predicates={domainPredicates}
                   />
@@ -523,7 +587,6 @@ export function ModelerPage() {
               ) : (
                 <YamlEditor
                   text={text}
-                  lineCount={yamlLineCount}
                   onChange={(v) => {
                     setDraftText(v);
                     setSaveMsg(null);
@@ -546,6 +609,28 @@ export function ModelerPage() {
                 onRemoveParent={(parent) =>
                   selected && removeParentEdge(selected.name, parent)
                 }
+                onAddEtype={(et) => {
+                  if (!selected) return;
+                  mutateDraft((obj) => {
+                    const classes = (obj.classes ?? {}) as Draft;
+                    const entry = (classes[selected.name] ?? {}) as Draft;
+                    const etypes = new Set([...((entry.etypes as string[]) ?? []), et]);
+                    classes[selected.name] = { ...entry, etypes: [...etypes] };
+                    obj.classes = classes;
+                  });
+                }}
+                onRemoveEtype={(et) => {
+                  if (!selected) return;
+                  mutateDraft((obj) => {
+                    const classes = (obj.classes ?? {}) as Draft;
+                    const entry = (classes[selected.name] ?? {}) as Draft;
+                    classes[selected.name] = {
+                      ...entry,
+                      etypes: ((entry.etypes as string[]) ?? []).filter((e) => e !== et),
+                    };
+                    obj.classes = classes;
+                  });
+                }}
               />
               <AxiomsPanel axioms={axioms} predicates={domainPredicates} />
               <Panel title="校验面板" subtitle="保存前必须通过">
@@ -600,7 +685,7 @@ function FileTab({
       type="button"
       onClick={onClick}
       className={cn(
-        "mb-0.5 flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left font-mono text-xs transition-colors",
+        "mb-0.5 flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left font-mono text-sm transition-colors",
         active
           ? "bg-primary/10 text-primary font-semibold"
           : "text-muted-foreground hover:bg-accent hover:text-foreground",
@@ -608,7 +693,7 @@ function FileTab({
     >
       <span className="truncate">{name}</span>
       {classCount !== undefined ? (
-        <span className="text-muted-foreground ml-2 flex-none text-[10px]">
+        <span className="text-muted-foreground ml-2 flex-none text-[12px]">
           {classCount} 类
         </span>
       ) : null}
@@ -622,79 +707,91 @@ function ClassDetailForm({
   onEdit,
   onAddParent,
   onRemoveParent,
+  onAddEtype,
+  onRemoveEtype,
 }: {
   selected: ClassEntry | null;
   domainClasses: string[];
   onEdit: (field: "label" | "definition", value: string) => void;
   onAddParent: (parent: string) => void;
   onRemoveParent: (parent: string) => void;
+  onAddEtype: (et: string) => void;
+  onRemoveEtype: (et: string) => void;
 }) {
+  // 本地 parents 狀態：初始化自 selected，操作即時更新 UI，
+  // 同時通過 onAddParent/onRemoveParent 同步到草稿管線
+  const [localParents, setLocalParents] = useState<string[]>(
+    selected ? [...selected.parents] : [],
+  );
+
   if (!selected) {
     return (
-      <Panel title="选中元素 · 类" actions={<Chip tone="primary">owl:Class</Chip>}>
+      <div className="border-border bg-card rounded-xl border shadow-sm">
+        <div className="border-border flex items-center gap-2 border-b px-4 py-3">
+          <b className="text-sm font-semibold">选中元素 · 类</b>
+        </div>
         <div className="text-muted-foreground p-4 text-xs">
           ← 从画布中选择一个类开始编辑
         </div>
-      </Panel>
+      </div>
     );
   }
-  const addable = domainClasses.filter(
-    (c) => c !== selected.name && !selected.parents.includes(c),
-  );
   return (
-    <Panel
-      title={`选中元素 · ${selected.name}`}
-      subtitle="可编辑：label / definition / 父类增删（=连线编辑）"
-      actions={<Chip tone="primary">owl:Class</Chip>}
-    >
-      <div className="space-y-3 p-4">
-        <label className="block">
-          <span className="text-muted-foreground text-[11px] font-medium">
-            名称（IRI 局部）
-          </span>
-          <input
-            defaultValue={selected.name}
-            key={`name-${selected.name}`}
-            readOnly
-            className="border-border bg-muted text-muted-foreground mt-1 h-8 w-full rounded-md border px-2.5 font-mono text-xs"
-          />
-        </label>
-        <label className="block">
-          <span className="text-muted-foreground text-[11px] font-medium">显示名 label</span>
-          <input
-            defaultValue={selected.label}
-            key={`label-${selected.name}`}
-            onBlur={(e) => {
-              if (e.target.value !== selected.label) onEdit("label", e.target.value);
-            }}
-            className="border-input focus:border-primary mt-1 h-8 w-full rounded-md border px-2.5 text-xs outline-none"
-          />
-        </label>
-        <label className="block">
-          <span className="text-muted-foreground text-[11px] font-medium">定义 definition</span>
-          <textarea
-            defaultValue={selected.definition}
-            key={`def-${selected.name}`}
-            onBlur={(e) => {
-              if (e.target.value !== selected.definition) onEdit("definition", e.target.value);
-            }}
-            rows={3}
-            className="border-input focus:border-primary mt-1 w-full resize-y rounded-md border px-2.5 py-1.5 text-xs outline-none"
-          />
-        </label>
-        {/* 父类 chips 可增删 = 画布连线编辑的数据面 */}
-        <div>
-          <span className="text-muted-foreground text-[11px] font-medium">
-            父类 parents（✕ 移除 = 删连线）
-          </span>
-          <div className="border-border mt-1 flex min-h-8 flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
-            {selected.parents.length === 0 ? (
-              <span className="text-muted-foreground text-[11px]">—（无父类，根类）</span>
-            ) : (
-              selected.parents.map((p) => (
+    <div className="border-border bg-card rounded-xl border shadow-sm">
+      {/* 标题栏 */}
+      <div className="border-border flex items-center gap-2 border-b px-4 py-3">
+        <b className="text-sm font-semibold">选中元素 · {selected.name}</b>
+        <Chip tone="primary">owl:Class</Chip>
+      </div>
+      <div className="space-y-4 px-4 py-3 text-xs">
+        {/* 基础信息 */}
+        <fieldset>
+          <legend className="text-primary mb-2 text-[10.5px] font-semibold tracking-wide">◆ 基础信息</legend>
+          <div className="space-y-2.5">
+            <label className="block">
+              <span className="text-muted-foreground text-[10.5px]">名称（IRI 局部）</span>
+              <input
+                defaultValue={selected.name}
+                key={`name-${selected.name}`}
+                readOnly
+                className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-xs"
+              />
+            </label>
+            <label className="block">
+              <span className="text-muted-foreground text-[10.5px]">显示名 label</span>
+              <input
+                defaultValue={selected.label}
+                key={`label-${selected.name}`}
+                onBlur={(e) => {
+                  if (e.target.value !== selected.label) onEdit("label", e.target.value);
+                }}
+                className="border-input focus:border-primary mt-0.5 h-7 w-full rounded-md border px-2 text-xs outline-none"
+              />
+            </label>
+            <label className="block">
+              <span className="text-muted-foreground text-[10.5px]">定义 definition</span>
+              <textarea
+                defaultValue={selected.definition}
+                key={`def-${selected.name}`}
+                onBlur={(e) => {
+                  if (e.target.value !== selected.definition) onEdit("definition", e.target.value);
+                }}
+                rows={3}
+                className="border-input focus:border-primary mt-0.5 w-full resize-y rounded-md border px-2 py-1.5 text-xs outline-none"
+              />
+            </label>
+          </div>
+        </fieldset>
+        {/* 继承关系 */}
+        <fieldset>
+          <legend className="text-primary mb-2 text-[10.5px] font-semibold tracking-wide">◆ 继承关系</legend>
+          <div>
+            <span className="text-muted-foreground text-[10.5px]">父类 parents</span>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {localParents.map((p) => (
                 <span
                   key={p}
-                  className="border-primary/25 bg-primary/5 text-primary flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10.5px]"
+                  className="border-primary/25 bg-primary/5 text-primary flex items-center gap-1 rounded-full border px-2.5 py-0.5 font-mono text-[10.5px]"
                 >
                   {p}
                   <button
@@ -706,31 +803,115 @@ function ClassDetailForm({
                     ✕
                   </button>
                 </span>
-              ))
-            )}
-          </div>
-          {addable.length > 0 ? (
-            <select
-              value=""
-              onChange={(e) => {
-                if (e.target.value) onAddParent(e.target.value);
-              }}
-              aria-label="添加父类"
-              className="border-border bg-card text-muted-foreground mt-1 h-7 w-full rounded-md border px-2 text-xs"
-            >
-              <option value="">＋ 添加父类…</option>
-              {addable.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
               ))}
-            </select>
-          ) : null}
-        </div>
-        <ReadonlyChips title="键 hasKey" items={selected.hasKey} hint="结构编辑走 YAML 模式" />
-        <ReadonlyChips title="实例类型 etypes" items={selected.etypes} hint="" />
+              <select
+                value=""
+                onChange={(e) => {
+                  if (e.target.value) onAddParent(e.target.value);
+                  e.target.value = "";
+                }}
+                aria-label="添加父类"
+                className="border-border bg-card text-muted-foreground hover:border-primary/40 h-6 rounded-md border px-1.5 text-[10.5px]"
+              >
+                <option value="">＋ 添加父类</option>
+                {domainClasses
+                  .filter((c) => !selected.parents.includes(c))
+                  .map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+        </fieldset>
+        {/* 类型标注 */}
+        <fieldset>
+          <legend className="text-primary mb-2 text-[10.5px] font-semibold tracking-wide">类型标注</legend>
+          <label className="block">
+            <span className="text-muted-foreground text-[10.5px]">键 hasKey</span>
+            <input
+              defaultValue={selected.hasKey.join(", ")}
+              key={`key-${selected.name}`}
+              readOnly
+              placeholder="如 name"
+              className="border-border bg-muted text-muted-foreground mt-0.5 h-7 w-full rounded-md border px-2 font-mono text-xs"
+            />
+          </label>
+          <div className="mt-2">
+            <span className="text-muted-foreground text-[10.5px]">实例类型 etypes</span>
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+              {selected.etypes.length === 0 ? (
+                <span className="text-muted-foreground text-[11px]">—</span>
+              ) : (
+                selected.etypes.map((et) => (
+                  <span
+                    key={et}
+                    className="inline-flex items-center rounded-full border border-primary/25 bg-primary/5 px-2.5 py-0.5 font-mono text-[10.5px] text-primary"
+                  >
+                    {et}
+                  </span>
+                ))
+              )}
+            </div>
+            <span className="text-muted-foreground/60 mt-1 block text-[10px]">
+              由 registry etype_class_map 派生
+            </span>
+          </div>
+        </fieldset>
       </div>
-    </Panel>
+    </div>
+  );
+}
+
+function ParentAddSelect({
+  domainClasses,
+  existing,
+  onAdd,
+}: {
+  domainClasses: string[];
+  existing: string[];
+  onAdd: (v: string) => void;
+}) {
+  const candidates = domainClasses.filter((c) => !existing.includes(c));
+  if (candidates.length === 0) return null;
+  return (
+    <select
+      value=""
+      onChange={(e) => {
+        if (e.target.value) {
+          onAdd(e.target.value);
+          e.target.value = "";
+        }
+      }}
+      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-[10.5px]"
+    >
+      <option value="">＋ 添加父类</option>
+      {candidates.map((c) => (
+        <option key={c} value={c}>{c}</option>
+      ))}
+    </select>
+  );
+}
+
+function EtypeAddSelect({
+  onAdd,
+}: {
+  onAdd: (v: string) => void;
+}) {
+  return (
+    <select
+      value=""
+      onChange={(e) => {
+        if (e.target.value) {
+          onAdd(e.target.value);
+          e.target.value = "";
+        }
+      }}
+      className="border-border bg-card text-muted-foreground h-6 rounded-md border px-1.5 text-[10.5px]"
+    >
+      <option value="">＋ 添加 etype</option>
+    </select>
   );
 }
 
@@ -816,40 +997,29 @@ function AxiomsPanel({
   );
 }
 
-/** YAML 行号编辑器：行号列与编辑区同步滚动。 */
+/** YAML 行号编辑器（CodeMirror 6：语法高亮 + 行号 + 自动缩进 + 括号匹配）。 */
 function YamlEditor({
   text,
-  lineCount,
   onChange,
 }: {
   text: string;
-  lineCount: number;
   onChange: (v: string) => void;
 }) {
-  const gutterRef = useRef<HTMLDivElement | null>(null);
-  const onScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (gutterRef.current) {
-      gutterRef.current.scrollTop = e.currentTarget.scrollTop;
-    }
-  };
   return (
-    <div className="bg-code text-code-fg flex h-[560px] overflow-hidden">
-      <div
-        ref={gutterRef}
-        className="text-muted-foreground/60 w-12 flex-none overflow-hidden border-r px-2 py-3 text-right font-mono text-[11.5px] leading-relaxed select-none"
-      >
-        {Array.from({ length: lineCount }, (_, i) => (
-          <div key={i}>{i + 1}</div>
-        ))}
-      </div>
-      <textarea
-        value={text}
-        onChange={(e) => onChange(e.target.value)}
-        onScroll={onScroll}
-        spellCheck={false}
-        className="min-w-0 flex-1 resize-none p-3 font-mono text-[11.5px] leading-relaxed outline-none"
-      />
-    </div>
+    <CodeMirror
+      value={text}
+      height="560px"
+      theme="light"
+      extensions={[yaml()]}
+      onChange={onChange}
+      basicSetup={{
+        lineNumbers: true,
+        foldGutter: true,
+        highlightActiveLine: true,
+        autocompletion: false,
+      }}
+      style={{ fontSize: "13px", fontFamily: "var(--font-mono, monospace)" }}
+    />
   );
 }
 
