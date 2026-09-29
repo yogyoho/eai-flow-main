@@ -74,7 +74,12 @@ async def test_describe_lists_actions_without_handwritten_ids():
     assert one["preconditions"] == [{"field": "status", "op": "eq", "value": "pending_review"}]
     # StateChange.model_dump() 带 now 默认值（False = 由动作给值，不是 DB NOW()）——
     # 这个字段不是噪音：now=true 的行会往 after 里塞 datetime（见本文件末尾那条用例）
-    assert one["postconditions"] == [{"field": "status", "set": "active", "now": False}]
+    assert one["postconditions"] == [
+        {"field": "status", "set": "active", "now": False},
+        # 置信升格 postcondition（2026-09-29 registry 变更）：confirm 同事务把 confidence 硬设 0.7
+        # ——describe 是 agent 的唯一事实来源，少这一条 agent 就不知道确认会动 confidence
+        {"field": "confidence", "set": 0.7, "now": False},
+    ]
 
 
 # ── 分派与 handler 接线 ──────────────────────────────────────────────────

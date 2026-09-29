@@ -7,6 +7,7 @@
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import datetime
+from decimal import Decimal
 
 import asyncpg
 import pytest
@@ -106,11 +107,16 @@ async def test_happy_path_writes_status_and_audit():
         scope_rule=FilterRule(operator="allow_all"),
         project=lambda *a, **k: True,
     )
-    assert result["after"] == {"status": "active"}
+    # 置信升格语义（2026-09-29 registry 变更）：confirm 除翻 status 外还把 confidence 硬设 0.7
+    # （推理门 build_inference_graph(min_confidence=0.7) 只认 confidence）。after 是
+    # postcondition 字段集，两字段必须都在——少任何一个都是声明与实现脱钩。
+    assert result["after"] == {"status": "active", "confidence": Decimal("0.7")}
     assert await _get_status(pk) == "active"
     audit = await _audit_rows(pk)
     assert len(audit) == 1
-    assert audit[0]["before"] == {"status": "pending_review"}
+    # 审计 jsonb 走 default=str 序列化（Decimal → 字符串且保留 numeric 标度）："0.900"/"0.700"
+    assert audit[0]["before"] == {"status": "pending_review", "confidence": "0.900"}
+    assert audit[0]["after"] == {"status": "active", "confidence": "0.700"}
     assert audit[0]["source"] == "mcp"
 
 
@@ -190,7 +196,8 @@ async def test_scope_sql_is_executable_with_list_params():
         scope_rule=rule,
         project=lambda *a, **k: True,
     )
-    assert result["after"] == {"status": "active"}
+    # 置信升格：status 之外 confidence 同事务被硬设 0.7（RETURNING 读回 Decimal）
+    assert result["after"] == {"status": "active", "confidence": Decimal("0.7")}
 
 
 async def test_projection_failure_does_not_rollback():
@@ -422,7 +429,9 @@ async def test_caller_params_are_recorded_but_never_reach_sql():
     result = await _invoke(pk=pk, params=hostile, scope_rule=FilterRule(operator="allow_all"))
 
     assert (await _audit_rows(pk))[0]["params"] == hostile
-    assert result["after"] == {"status": "active"}  # 声明说了算
+    # 声明说了算——声明的两个 postcondition（status=active + confidence=0.7）都落地，
+    # params 想改的 status 改不动（rejected 没出现）
+    assert result["after"] == {"status": "active", "confidence": Decimal("0.7")}
     assert await _get_status(pk) == "active"
 
 
@@ -515,7 +524,8 @@ async def test_missing_audit_table_is_lazily_created_and_write_succeeds(monkeypa
     finally:
         await _admin_exec(f'DROP DATABASE IF EXISTS "{_SCRATCH_DB}" WITH (FORCE)')
 
-    assert result["after"] == {"status": "active"}
+    # 置信升格：懒建重试后的整条写链路同样带上 confidence=0.7
+    assert result["after"] == {"status": "active", "confidence": Decimal("0.7")}
     assert status == "active"  # 业务写真的落地了
     assert len(audit) == 1 and audit[0]["source"] == "api"  # 审计行真的在（且只有一条：失败那次已回滚）
     assert executor_module._lazy_schema_attempted is True  # 次级钉住：走的确实是懒建那条路

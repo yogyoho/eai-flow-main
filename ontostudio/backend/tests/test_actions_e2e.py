@@ -25,6 +25,7 @@
 """
 
 import uuid
+from decimal import Decimal
 
 import pytest
 from sqlalchemy import text
@@ -88,7 +89,9 @@ async def test_01_confirm_then_shacl_clean():
     from app.ontology.actions.executor import run_action_for_mcp
 
     result = await run_action_for_mcp("review_entity.confirm", str(pk), "mcp")
-    assert result["after"] == {"status": "active"}
+    # 置信升格语义（2026-09-29 registry 变更）：confirm = status→active + confidence→0.7
+    # （推理门 min_confidence=0.7 只认 confidence）——两字段都在才算声明落地
+    assert result["after"] == {"status": "active", "confidence": Decimal("0.7")}
     assert result["errors"] == []
 
     # DB 侧：状态真的落库了（与接口回显互为印证）
@@ -99,7 +102,9 @@ async def test_01_confirm_then_shacl_clean():
     audits = await _audit_rows(pk)
     assert len(audits) == 1, audits
     assert audits[0]["action_id"] == "review_entity.confirm" and audits[0]["source"] == "mcp"
-    assert audits[0]["before"] == {"status": "pending_review"} and audits[0]["after"] == {"status": "active"}
+    # 审计 jsonb 经 default=str 序列化 Decimal（保留 numeric 标度）："0.900" / "0.700"
+    assert audits[0]["before"] == {"status": "pending_review", "confidence": "0.900"}
+    assert audits[0]["after"] == {"status": "active", "confidence": "0.700"}
 
     # 国标五项（计划原有的那行，保持）
     from app.ontology.kernel.conformance import run_conformance
