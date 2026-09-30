@@ -412,7 +412,8 @@ export const GRAPH_THEME: GraphTheme = {
       nodeShellAlpha: 0.97,
       nodeCoreAlpha: 1,
       edgeBackbone: "rgba(84, 123, 145, 0.24)",
-      edgeStructure: "rgba(49, 63, 78, 0.08)",
+      // EAI-CUSTOM(2026-09-30): 语义关系边必须可见——原 0.08 透明度深色压深底用户实测不可见（"只见圆点不见连线"）
+      edgeStructure: "rgba(126, 156, 184, 0.32)",
       edgeInspection: "rgba(76, 102, 128, 0.12)",
     },
     accent: {
@@ -427,7 +428,8 @@ export const GRAPH_THEME: GraphTheme = {
       fallback: "rgba(96, 112, 136, 0.18)",
       nodeAlpha: 0.12,
       edgeOverview: "rgba(32, 45, 55, 0.035)",
-      edgeStructure: "rgba(42, 58, 72, 0.055)",
+      // EAI-CUSTOM(2026-09-30): 同上——默认视图(muted)边色 0.055 不可见，提至 0.30
+      edgeStructure: "rgba(70, 92, 112, 0.30)",
       edgeInspection: "rgba(62, 84, 104, 0.075)",
       edgeFocus: "rgba(132, 178, 202, 0.26)",
     },
