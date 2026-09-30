@@ -29,7 +29,7 @@ license: MIT
 
 1. **禁联网搜索项目信息**。项目内部数据只允许 `ask_clarification` 向用户要，或从上传文件提取。联网仅限标准规范 discovery，且 `web_search` 结果不可直接引用条款号/限值（仅作线索，人工核实——GB/HJ 限值实测 6/6 不可引用）。
 2. **缺失信息绝不编造/推断/估算/补全**。缺就问用户；用户不给就留 `[待确认]` 槽位并在汇报中列出。**监测数据/岩移参数来源必须枚举 `user_monitoring`/`analog_mine`**（新建项目监测数据多为类比矿，D4）；沉陷参数必带 `param_source` 三值枚举（规范推荐/实测回归/类比矿实测）——缺枚举值视同缺项，禁默认值填充。
-3. **样例/范文只学范式禁抄**。`references/sample_entities/` 注册表内任何实体（项目名/矿井名/企业/地名/敏感目标/文号/产能）禁入本项目正文；范文数值禁抄（本项目数值只经 `{{SLOT:key}}`）。
+3. **样例/范文只学范式禁抄**。`references/sample_entities/` 注册表内任何实体（项目名/矿井名/企业/地名/敏感目标/文号/产能）禁入本项目正文；范文数值禁抄（本项目数值只经 `{{SLOT:key}}`）。样例实体/数值**仅可经本体 MCP `ontology_query_analogy` 查询引用**（见「本体知识查询」节）：查得的类比数值落盘 stage JSON 时必须标注 `param_source: analog_mine` + 来源报告名；未经该查询通道的样例实体仍一律禁入。
 4. **历史口径原样保留 + 口径标签绑定**。修编样本原规划/本次规划双口径并存（`*_before`/`*_after` 成对字段），禁混同、禁把旧口径数值改写为新值（牙克石 234.17/232.62 km²、伊敏 144/154 Mt/a 实证）；多口径并存各带标签后才能 exact_match，禁混同引用。
 5. **标准编号/年份/限值只从 `references/standards_index.json` 枚举**，禁凭记忆生成；限值 `needs_verification=true` 条目须人工对照标准原文后才可写成断言，未录入档写「需人工对照」不下结论。
 6. **数字永不经过 LLM**：叙述只写 `{{SLOT:key}}`（冻结计算输出）或 `{{TABLE:族}}`（表单渲染）；开采沉陷软件成果（变形指标/沉陷面积等）走表单转录注入，禁手抄更禁公式硬凑。SL1 合约要求残留=0。
@@ -166,7 +166,7 @@ progress.py run-stage finalize --state-dir T --outputs-dir /mnt/user-data/output
 - 交付名门：`{项目名}-{阶段}-环境影响报告.md` 由脚本从 data/ 直拼，outputs/ 禁其他 .md
 - 已批准降档自动 `--allow-partial`：BLOCKED 章跳 L2 章地板门（其余门在场），stdout `PARTIAL_DELIVERY` + manifest 留痕——交付时如实汇报
 
-**consistency（四类 geo 合约 + 环评注册表 21 条：XS1–XS18 跨章一致(含 XS16 三本账恒等式/XS17·18 源措双向断言)/EO1–EO3 呼应义务）**，退出码：0 全过 / 1 有 FAIL（修节重跑，禁改数据绕过）/ 2 需人工（载荷缺席降级 manual）/ 3 完成带 WARN（汇报用户）；**条件激活**：合约带 applicable_stages + 依赖章按语义标题在场才激活，缺席记 **skip 非 fail**（openpit 无沉陷章/可选章缺席/互换双模式同理）；**表格感知**（环评数字主体在表格，最高 91% 段落在表——候选值扫全部 md 表行）；**口径标签**（异标签在场=口径冲突 FAIL；双口径并存无标签=歧义 FAIL）；**呼应义务**（影响识别→措施 EO1、风险→应急 EO2、预测→结论 EO3：源清单实体逐项在目标章在场断言，反向新增 FAIL）。
+**consistency（四类 geo 合约 + 环评注册表 21 条：XS1–XS18 跨章一致(含 XS16 三本账恒等式/XS17·18 源措双向断言)/EO1–EO3 呼应义务）**，退出码：0 全过 / 1 有 FAIL（修节重跑，禁改数据绕过）/ 2 需人工（载荷缺席降级 manual）/ 3 完成带 WARN（汇报用户）；**条件激活**：合约带 applicable_stages + 依赖章按语义标题在场才激活，缺席记 **skip 非 fail**（openpit 无沉陷章/可选章缺席/互换双模式同理）；**表格感知**（环评数字主体在表格，最高 91% 段落在表——候选值扫全部 md 表行）；**口径标签**（异标签在场=口径冲突 FAIL；双口径并存无标签=歧义 FAIL）；**呼应义务**（影响识别→措施 EO1、风险→应急 EO2、预测→结论 EO3：源清单实体逐项在目标章在场断言，反向新增 FAIL）。**语义第二层（本体 MCP，脚本不动）**：文本合约通过后调 `ontology_check_consistency`（缺省 scope=全图样例基线，见「本体知识查询」节）——语义层有违规视同退出码 1 走既有修订循环（违规并入修订报告，禁改数据绕过）；MCP 调用失败=WARN 降级不阻断（不改 consistency.py 退出码，如实汇报）。
 
 **快照**：`snapshot.py save`（全文件 SHA-256 清单 + mapping 枚举 + 脚本版本指纹）；续跑恢复走 `show --verify`（见步骤 0）。
 
@@ -258,6 +258,13 @@ run 级预算硬顶（按 run 计）：recursion_limit 1000 步、LoopDetection 
 - **大气**：`air_screen` 仅覆盖锅炉烟气点源场景；煤炭转储运筛分扬尘为面源，走源强取值+槽位，禁硬套点源模型（判定词所在处必须带计算模式与适用范围声明）；AERMOD/AERSCREEN 等图内方法名须用户提供，禁凭记忆补。
 - **公式 OLE 化不做 OCR**：样例公式复现靠参数人工录入核对（formula_runner 冻结），不靠公式文本提取。
 - **报告输出**：`{项目名}-{阶段}-环境影响报告.md`，UTF-8；目录页码列留空（Word 排版阶段自动填充）；无法生成的图写 `[图表: …]` 描述块（类型/比例尺/内容/数据来源）。
+
+## 本体知识查询（ontostudio MCP）
+
+工具全名带 server 前缀 `ontology_*`（照 `knowledge-factory_kf_*` 惯例）。**服务不可用/调用失败一律 WARN 降级不阻断**（照「载荷缺席降级 manual」既有语义），如实汇报后走既有缺数路径。两条时序：
+
+1. **步骤 1 数据收集缺数 → `ontology_query_analogy`（类比合规通道，红线 3）**：可类比量（监测值/工艺参数/产能规模等）缺数时，先查样例库（A 库，恒定 scope=sample）类比素材再问用户/落 `[待确认]`——入参 `etype`（如 waste_stream/treatment_measure/sensitive_point）或 `label_contains`，返回样例实体（label/etype/**source_report** 来源报告）+ 邻接关系（谓词+对端名+对端属性）。类比值**由代理转录**进 stage JSON（仍经 `ingest.py forms` 通道落盘，唯一写者纪律不变），与沉陷软件成果转录同纪律（红线 6：数字不经 LLM 生成，禁换算/推算/公式硬凑），转录必带来源标注（`param_source: analog_mine` + 来源报告名）；标准编号/限值不走本通道（仍只从 `standards_index.json` 枚举，红线 5 不变）。查询无命中视同无类比素材，照常 `ask_clarification`/`[待确认]`。
+2. **步骤 5–7 一致性门文本合约通过后 → `ontology_check_consistency`（语义规则层 12 条）**：21 条文本合约跑过后对图谱跑语义规则体检（矸石闭合/敏感点防护/监测覆盖/限值适配等），返回违规清单（rule_id+计数+样例消息）**并入修订报告**——涉及节走既有修订回路，禁改 data/ 绕过（同合约 FAIL 纪律）。
 
 ## 参考文件（v2 新体系）
 

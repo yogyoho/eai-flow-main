@@ -33,6 +33,9 @@ EXPECTED_TOOLS = {
     "check_consistency",
     "get_writing_context",
     "get_rule_violations",
+    # 样例库类比通道（子项目 4, spec 2026-09-30 §4）：恒定 scope=sample 的类比查询；
+    # 查询语义由 tests/test_eia_analogy_mcp.py 钉。
+    "query_analogy",
 }
 
 

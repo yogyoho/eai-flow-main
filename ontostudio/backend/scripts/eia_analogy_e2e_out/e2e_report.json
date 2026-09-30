@@ -1,0 +1,83 @@
+{
+  "load": {
+    "entities": 2521,
+    "relations": 1985,
+    "duration_ms": 2131.8
+  },
+  "infer": {
+    "input_triples": 3257,
+    "entailment_triples": 3558,
+    "duration_ms": 1665.0
+  },
+  "query_analogy": {
+    "waste_stream": {
+      "count": 5,
+      "sample_first_entity": {
+        "label": "采掘场剥离物",
+        "etype": "waste_stream",
+        "source_report": "yitai",
+        "scope": "sample",
+        "attrs": {},
+        "adjacency": {
+          "out": [
+            {
+              "predicate": "disposed_by",
+              "peer_name": "内排土场",
+              "peer_etype": "engineering_site",
+              "peer_attrs": {}
+            }
+          ],
+          "in": []
+        }
+      }
+    },
+    "treatment_measure": {
+      "count": 5,
+      "sample_first_entity": {
+        "label": "MBR处理工艺",
+        "etype": "treatment_measure",
+        "source_report": "yueerwan",
+        "scope": "sample",
+        "attrs": {
+          "distillable": "True"
+        },
+        "adjacency": {
+          "out": [],
+          "in": [
+            {
+              "predicate": "treated_by",
+              "peer_name": "生活污水"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "check_consistency": {
+    "sample": {
+      "scope": "sample",
+      "total_violations": 407,
+      "by_severity": {
+        "error": 351,
+        "warn": 56
+      }
+    },
+    "project": {
+      "scope": "project",
+      "total_violations": 49,
+      "by_severity": {
+        "error": 0,
+        "warn": 49
+      }
+    },
+    "all": {
+      "scope": "all",
+      "total_violations": 480,
+      "by_severity": {
+        "error": 424,
+        "warn": 56
+      }
+    }
+  },
+  "failures": []
+}

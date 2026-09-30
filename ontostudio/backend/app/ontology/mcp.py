@@ -164,6 +164,19 @@ _TOOLS_SPEC = [
             "required": [],
         },
     ),
+    (
+        "query_analogy",
+        "样例库类比素材查询（恒定 scope=sample）：查样例实体+邻接关系，每条必带 source_report 可溯源到来源报告。etype 或 label_contains 至少给一个。类比值引用须在写作侧标注 param_source=analog_mine+来源报告（纪律在技能侧）。",
+        {
+            "type": "object",
+            "properties": {
+                "etype": {"type": "string", "description": "实体类型（registry eia etype，如 waste_stream）"},
+                "label_contains": {"type": "string", "description": "名称子串（与 etype 至少给一个）"},
+                "limit": {"type": "integer", "description": "返回实体数上限（默认 10，最大 50）"},
+            },
+            "required": [],
+        },
+    ),
 ]
 
 TOOLS = [Tool(name=n, description=d, inputSchema=s) for n, d, s in _TOOLS_SPEC]
@@ -428,6 +441,35 @@ def _scopes_for(store, iris: list[str]) -> dict[str, str]:  # noqa: ANN001 - OxS
     return {r["e"]: r["sc"] for r in rows if r.get("sc") is not None}
 
 
+def _attrs_for(store, iris: list[str], chunk: int = 100) -> dict[str, dict]:  # noqa: ANN001 - OxStore
+    """一批 IRI → attrs 投影（attr/* 三元组分块批量拉取，规避超长 IN 列表）。
+
+    canonical_name/norm_name/scope/source_report 与业务属性同在此——JSONB attrs 在图内的
+    唯一投影形态就是 attr/<key> 三元组（graph_ops.upsert_entity），批量一次拉回供响应组装。
+    """
+    out: dict[str, dict] = {}
+    attr_ns_str = _EIA_NS + "attr/"
+    uniq = list(dict.fromkeys(iris))
+    for i in range(0, len(uniq), chunk):
+        lst = ", ".join(f"<{u}>" for u in uniq[i : i + chunk])
+        rows = store.query(f'SELECT ?e ?p ?o WHERE {{ GRAPH <{_ASSERTED}> {{ ?e ?p ?o . FILTER(?e IN ({lst}) && STRSTARTS(STR(?p), "{attr_ns_str}")) }} }}')
+        for r in rows:
+            out.setdefault(r["e"], {})[_local(r["p"], attr_ns_str)] = r["o"]
+    return out
+
+
+def _classes_for(store, iris: list[str], chunk: int = 100) -> dict[str, str]:  # noqa: ANN001 - OxStore
+    """一批 IRI → rdf:type 类 IRI（对端 etype 回填用；断言图内实体恰一类，取首个）。"""
+    out: dict[str, str] = {}
+    uniq = list(dict.fromkeys(iris))
+    for i in range(0, len(uniq), chunk):
+        lst = ", ".join(f"<{u}>" for u in uniq[i : i + chunk])
+        rows = store.query(f"SELECT ?e ?cls WHERE {{ GRAPH <{_ASSERTED}> {{ ?e a ?cls . FILTER(?e IN ({lst})) }} }}")
+        for r in rows:
+            out.setdefault(r["e"], r.get("cls") or "")
+    return out
+
+
 async def _query_entity(a: dict) -> list[TextContent]:
     name = (a.get("name") or "").strip()
     etype = (a.get("etype") or "").strip()
@@ -572,6 +614,85 @@ async def _get_rule_violations(a: dict) -> list[TextContent]:
     )
 
 
+def _adjacency_peers(store, iri: str, cap: int = 20) -> dict[str, list[dict]]:  # noqa: ANN001 - OxStore
+    """类比邻接边采集（只取谓词命名空间的出/入边；对端先留 IRI，调用方批量回填名/类/属性）。"""
+    pred_ns = _EIA_NS + "predicate/"
+    out_rows = [r for r in store.query(f"SELECT ?p ?o WHERE {{ GRAPH <{_ASSERTED}> {{ <{iri}> ?p ?o }} }}") if isinstance(r.get("p"), str) and r["p"].startswith(pred_ns)][:cap]
+    in_rows = [r for r in store.query(f"SELECT ?s ?p WHERE {{ GRAPH <{_ASSERTED}> {{ ?s ?p <{iri}> }} }}") if isinstance(r.get("p"), str) and r["p"].startswith(pred_ns)][:cap]
+    return {"out": [{"predicate": _local(r["p"], pred_ns), "peer": r["o"]} for r in out_rows], "in": [{"predicate": _local(r["p"], pred_ns), "peer": r["s"]} for r in in_rows]}
+
+
+# 身份/归属属性单列（不混入业务 attrs——label/scope/source_report 已在响应顶层）
+_IDENTITY_ATTRS = ("canonical_name", "norm_name", "scope", "source_report")
+
+
+async def _query_analogy(a: dict) -> list[TextContent]:
+    """样例库（A 库）类比素材查询——类比合规通道（子项目 4 spec §4），恒定 scope=sample。
+
+    出参每条必带 source_report（attrs.source_report，缺标 fallback "unknown"）——类比值
+    溯源到"哪份报告"。邻接边给谓词+对端名+对端属性：裁决数值的载体在对端 attrs（阈值/
+    措施规格），关系 attrs 不入图（loader 不装载 dg_relations.attrs），边级无额外属性可给。
+    未打标行按 sample 归属（与 _scope_filter_sparql 同一缺省规则，kernel 重载前后语义连续）。
+    """
+    etype = (a.get("etype") or "").strip()
+    label = (a.get("label_contains") or "").strip()
+    if not etype and not label:
+        return _err(ValueError("etype 与 label_contains 至少给一个"))
+    limit = max(1, min(int(a.get("limit", 10)), 50))
+    class_map = _etype_class_map_eia()
+    type_filter = ""
+    if etype:
+        cls = class_map.get(etype)
+        if cls is None:
+            return _err(ValueError(f"未知 etype: {etype}（可用示例: {sorted(class_map)[:12]}…）"))
+        type_filter = f"FILTER(?cls = <{cls}>)"
+    label_filter = f"FILTER(CONTAINS(?name, {json.dumps(label, ensure_ascii=False)}))" if label else ""
+    where = f"?e a ?cls ; <{_EIA_NS}attr/norm_name> ?name . {type_filter} {label_filter} {_scope_filter_sparql('sample')}".strip()
+    store = _kernel_store()
+    rows = store.query(f"SELECT DISTINCT ?e ?name ?cls WHERE {{ GRAPH <{_ASSERTED}> {{ {where} }} }} LIMIT {limit}")
+    etype_of = _class_etype_map()
+    adj_of = {r["e"]: _adjacency_peers(store, r["e"]) for r in rows}
+    peers = [e["peer"] for adj in adj_of.values() for e in adj["out"] + adj["in"]]
+    attrs_of = _attrs_for(store, [r["e"] for r in rows] + peers)
+    cls_of = _classes_for(store, peers)
+
+    def edge(e: dict) -> dict:
+        peer_attrs = attrs_of.get(e["peer"], {})
+        return {
+            "predicate": e["predicate"],
+            "peer": e["peer"],
+            "peer_name": peer_attrs.get("canonical_name") or peer_attrs.get("norm_name"),
+            "peer_etype": etype_of.get(cls_of.get(e["peer"]) or ""),
+            "peer_attrs": {k: v for k, v in peer_attrs.items() if k not in _IDENTITY_ATTRS},
+        }
+
+    entities = []
+    for r in rows:
+        iri = r["e"]
+        attrs = attrs_of.get(iri, {})
+        entities.append(
+            {
+                "iri": iri,
+                "label": attrs.get("canonical_name") or r.get("name"),
+                "norm_name": r.get("name"),
+                "etype": etype_of.get(r.get("cls") or ""),
+                "scope": attrs.get("scope") or _DEFAULT_SCOPE,
+                "source_report": attrs.get("source_report") or "unknown",
+                "attrs": {k: v for k, v in attrs.items() if k not in _IDENTITY_ATTRS},
+                "adjacency": {"out": [edge(e) for e in adj_of[iri]["out"]], "in": [edge(e) for e in adj_of[iri]["in"]]},
+            }
+        )
+    return _ok(
+        {
+            "success": True,
+            "count": len(entities),
+            "scope": "sample",
+            "entities": entities,
+            "hint": "类比值仅作类比参考：引用须在 stage JSON 标注 param_source=analog_mine + 来源报告名（source_report）；未经本通道的样例实体禁入。",
+        }
+    )
+
+
 server = Server("ontology")
 
 
@@ -597,6 +718,7 @@ async def call_tool(name: str, arguments: dict):
         "check_consistency": _check_consistency,
         "get_writing_context": _get_writing_context,
         "get_rule_violations": _get_rule_violations,
+        "query_analogy": _query_analogy,
     }
     handler = handlers.get(name)
     if handler is None:
