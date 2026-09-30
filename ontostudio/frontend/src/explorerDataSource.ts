@@ -42,12 +42,89 @@ import type {
 } from "./explorer/useLoadGraph";
 
 export function toExplorerNode(node: GraphNode): ApiNode {
+  // EAI-CUSTOM(2026-10-01 domain_pattern 节点可读化): B 库规律行（dg_entities.etype=
+  // "domain_pattern"）经 graph_entity 透镜投影，label=canonicalName（唯一 searchable 列），
+  // 而蒸馏管道写入的 pattern_name 偶有截断/测试残留（_clip 拼 pattern_id、"bl230" 式样例名），
+  // 画布上不可读。可读短语在 attrs JSONB 里（pattern_type/subject_name/object_name/pattern_desc），
+  // 在取数接缝处改写 content 即可生效（useLoadGraph hydration: label ← node.content）——
+  // 零后端改动、零 vendored 改动，画布/检索/详情三处同源受益。
   return {
     id: node.id,
     type: node.type,
-    content: node.label,
+    content: domainPatternLabel(node.properties) ?? node.label,
     properties: node.properties,
   };
+}
+
+// ── EAI-CUSTOM(2026-10-01 domain_pattern 节点可读化) ─────────────────────────
+
+/**
+ * attrs 宽容归一：现行投影里 attrs 已是解析后的对象（/graph/nodes 实测 2026-10-01），
+ * 兼容历史字符串形态（旧 asyncpg 无 codec 时 jsonb 以文本透出）。非对象/解析失败 → null。
+ */
+export function normalizePatternAttrs(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value === "string" && value) {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      // 非法 JSON：按无 attrs 处理，回退后端 label
+    }
+  }
+  return null;
+}
+
+function patternAttrText(attrs: Record<string, unknown>, key: string): string {
+  const value = attrs[key];
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function patternAttrCount(attrs: Record<string, unknown>, key: string): number | null {
+  const value = attrs[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** domain_pattern 节点的画布可读标签（Subject→Object 中文短语优先，pattern_desc 截断兜底）。
+ *
+ * 组装序：`{pattern_type}：{subject_name}→{object_name}` → pattern_desc 前 32 字 → null。
+ * 返回 null（非规律节点 / attrs 缺失 / 端点与描述全缺）时调用方保持后端 label 原样——
+ * 后端 label = canonicalName，ingest 对规律行 canonical_name=norm_name 同值写入，即任务
+ * 口径的 "fallback norm_name"。
+ */
+export function domainPatternLabel(
+  properties: Record<string, unknown> | undefined | null,
+): string | null {
+  if (!properties || properties.etype !== "domain_pattern") {
+    return null;
+  }
+  const attrs = normalizePatternAttrs(properties.attrs);
+  if (!attrs) {
+    return null;
+  }
+  const subject = patternAttrText(attrs, "subject_name");
+  const object = patternAttrText(attrs, "object_name");
+  const type = patternAttrText(attrs, "pattern_type");
+  if (subject && object) {
+    return `${type ? `${type}：` : ""}${subject}→${object}`;
+  }
+  const desc = patternAttrText(attrs, "pattern_desc");
+  if (desc) {
+    return desc.length > 32 ? `${desc.slice(0, 31)}…` : desc;
+  }
+  return null;
+}
+
+/** 结构化卡片取字段（DetailPanel 与标签组装共用同一形状认知）。 */
+export function patternAttr(
+  attrs: Record<string, unknown>,
+  key: string,
+): { text: string; count: number | null } {
+  return { text: patternAttrText(attrs, key), count: patternAttrCount(attrs, key) };
 }
 
 export function toExplorerEdge(edge: GraphEdge): ApiEdge {
@@ -74,8 +151,9 @@ function yieldToMain(): Promise<void> {
 // EAI-CUSTOM(2026-09-30 谓词中文标注): eia.yaml 的 "# 谓词中文标注: xxx=中文" 注释块是
 // 唯一真源（与后端 llm_extract.load_enums 同源解析），用户规则=本体英文必有对应中文。
 // 边标签优先中文，标注缺失/接口不可达时回退英文谓词值；模块级缓存一次。
+// EAI-CUSTOM(2026-10-01): DetailPanel 规律卡片复用（导出）——谓词/实体类型中文标注同源。
 let predicateLabelCache: Map<string, string> | null = null;
-async function getPredicateLabels(): Promise<Map<string, string>> {
+export async function getPredicateLabels(): Promise<Map<string, string>> {
   if (predicateLabelCache) {
     return predicateLabelCache;
   }
@@ -98,6 +176,33 @@ async function getPredicateLabels(): Promise<Map<string, string>> {
     // 标注不可达：保持空表，回退英文谓词值
   }
   predicateLabelCache = map;
+  return map;
+}
+
+/** EAI-CUSTOM(2026-10-01 domain_pattern): 复合谓词值 → 中文标注串——按 +/、 拆段逐段映射，
+ *  未命中段保持原文（不猜）。如 "emitted_as+treated_by" → "排放污染物+经治理"。 */
+export function localizePredicate(value: string, labels: Map<string, string>): string {
+  const segments = value
+    .split(/[+、]/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (!segments.length) {
+    return value;
+  }
+  return segments.map((segment) => labels.get(segment) ?? segment).join("+");
+}
+
+/** EAI-CUSTOM(2026-10-01 domain_pattern): eia 域 etype → 中文类目标注（结构化真源 =
+ *  registry-content summary 的 classes[].etypes/label，同 eia.yaml；不解析注释块）。
+ *  规律卡片 subject_etype/object_etype 显示用。 */
+export async function fetchEiaEtypeLabels(): Promise<Map<string, string>> {
+  const content = await fetchRegistryContent("eia.yaml");
+  const map = new Map<string, string>();
+  for (const cls of content.summary?.domains?.eia?.classes ?? []) {
+    for (const etype of cls.etypes ?? []) {
+      map.set(etype, cls.label);
+    }
+  }
   return map;
 }
 
