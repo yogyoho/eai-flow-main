@@ -82,7 +82,11 @@ async function getPredicateLabels(): Promise<Map<string, string>> {
   try {
     const content = await fetchRegistryContent("eia.yaml");
     for (const m of (content.raw ?? "").matchAll(/# 谓词中文标注: (.+)/g)) {
-      for (const pair of m[1].trim().split(/\s+/)) {
+      const line = m[1];
+      if (!line) {
+        continue;
+      }
+      for (const pair of line.trim().split(/\s+/)) {
         const eq = pair.indexOf("=");
         if (eq > 0) {
           map.set(pair.slice(0, eq), pair.slice(eq + 1));
