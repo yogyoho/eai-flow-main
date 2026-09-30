@@ -747,8 +747,11 @@ export const GRAPH_THEME: GraphTheme = {
           defaultPriorityThreshold: 0,
           backgroundSampleRate: 1,
           defaultAlpha: 0.04,
-          mutedAlpha: 0.14,
+          // EAI-CUSTOM(2026-09-30 视觉调档): 选中节点时邻接边高亮(neighborAlpha 0.85)、
+          // 非邻接淡到 0.1——用户期望"点节点看到它与邻居的连线"，原 0.14 与高亮拉不开对比。
+          mutedAlpha: 0.1,
           inactiveAlpha: 0.012,
+          neighborAlpha: 0.85,
           neighborAlpha: 0.32,
           sizeMultiplier: 0.62,
           hideMuted: false,
@@ -861,8 +864,10 @@ export const GRAPH_THEME: GraphTheme = {
       bridgeCurveStrength: 0.1,
       backboneMaxSize: 0.5,
       bridgeMaxSize: 0.7,
-      structureEdgeAlpha: 0.45,
-      inspectionEdgeAlpha: 0.45,
+      // EAI-CUSTOM(2026-09-30 视觉调档): 0.45 全显在 4500 节点全景成 hairball——
+      // 默认态降到 0.22（结构隐约可见），inspection（放大细看）0.30 保持清晰。
+      structureEdgeAlpha: 0.22,
+      inspectionEdgeAlpha: 0.3,
     },
     // Staged rollout — set mode to "auto" to enable cross-community curve rendering.
     // Currently "off" so the canvas overlay layer is inactive in production.
