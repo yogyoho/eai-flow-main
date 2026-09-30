@@ -195,6 +195,108 @@ async def test_rule_violations_filter_by_severity(memory_kernel):
     assert all(r["violation_count"] > 0 for r in d["results"])
 
 
+# ── scope 归属库过滤（子项目 3.5 §2）──────────────────────────────────
+
+
+def _populate_scopes(kernel: KernelService) -> None:
+    """三归属实体（sample 显式 / project 显式 / 无标→缺省 sample）+ project 矸石流闭合违规。
+
+    矸石流须有产生源而无去向（1!=0 过 HAVING）才有违规行——全空 (0==0) 不触发。
+    """
+    from app.ontology.kernel.compile import collect_vocabularies
+
+    store = kernel.store
+    vocab = collect_vocabularies(load_registry())["eia"]
+    classes = etype_class_map(load_registry(), "eia")
+
+    def ent(tag: str, etype: str, name: str, attrs: dict | None) -> str:
+        return upsert_entity(store, vocab, class_name=classes[etype], entity_uuid=uuid.uuid5(uuid.NAMESPACE_URL, f"eia-scope-{tag}"), etype=etype, canonical_name=name, norm_name=name, attrs=attrs or {}, confidence=0.95)
+
+    p = ent("p", "mine", "项目矿P", {"scope": "project"})
+    ent("s", "mine", "样例矿S", {"scope": "sample"})
+    ent("u", "mine", "无标矿U", None)
+    ws = ent("ws", "waste_stream", "项目矸石流W", {"scope": "project"})
+    add_relation(store, vocab, relation_uuid=uuid.uuid4(), subject_iri=p, predicate="generates_waste", object_iri=ws, confidence=0.9)
+    # 跨 etype 重名对（org+place，避开 mine 查询断言）→ rule_entity_naming 违规行（按归一名分组，行内无实体 IRI）
+    ent("n1", "org", "重名共享X", {"scope": "sample"})
+    ent("n2", "place", "重名共享X", {"scope": "project"})
+
+
+@pytest.mark.asyncio
+async def test_query_entity_scope_sample_hits_sample_and_untagged(memory_kernel):
+    """scope=sample：显式 sample + 未打标（缺省归属 sample）命中，project 不命中。"""
+    _populate_scopes(memory_kernel)
+    d = await _call("query_entity", {"etype": "mine", "scope": "sample"})
+    names = {e["name"] for e in d["entities"]}
+    assert names == {"样例矿S", "无标矿U"}
+    assert all(e["scope"] == "sample" for e in d["entities"])
+
+
+@pytest.mark.asyncio
+async def test_query_entity_scope_project_only_explicit_rows(memory_kernel):
+    """scope=project：只回显式 project 行；未打标语料（缺省 sample）不混入；B 库未填充 → domain_common 空。"""
+    _populate_scopes(memory_kernel)
+    d = await _call("query_entity", {"etype": "mine", "scope": "project"})
+    assert [e["name"] for e in d["entities"]] == ["项目矿P"]
+    d2 = await _call("query_entity", {"etype": "mine", "scope": "domain_common"})
+    assert d2["success"] is True and d2["count"] == 0  # B 库挂载点未填充 → 空
+
+
+@pytest.mark.asyncio
+async def test_query_entity_scope_all_and_default_full(memory_kernel):
+    """scope 缺省与显式 all 同义：三归属全量，不过滤。"""
+    _populate_scopes(memory_kernel)
+    d0 = await _call("query_entity", {"etype": "mine"})
+    d1 = await _call("query_entity", {"etype": "mine", "scope": "all"})
+    assert {e["name"] for e in d0["entities"]} == {e["name"] for e in d1["entities"]} == {"样例矿S", "项目矿P", "无标矿U"}
+    assert d0["scope"] == "all" and d1["scope"] == "all"
+
+
+@pytest.mark.asyncio
+async def test_query_entity_scope_invalid_rejected(memory_kernel):
+    _populate_scopes(memory_kernel)
+    d = await _call("query_entity", {"etype": "mine", "scope": "bogus"})
+    assert d["success"] is False and "scope" in d["error"]
+
+
+@pytest.mark.asyncio
+async def test_check_consistency_scope_post_filters_violations(memory_kernel):
+    """违规行按涉事节点 scope 后置过滤：project 矸石流违规在 sample 视角被滤除、project/all 视角保留。"""
+    _populate_scopes(memory_kernel)
+    gangue_id = "rule_gangue_closure"
+
+    sample_view = await _call("check_consistency", {"scope": "sample"})
+    g_sample = next(r for r in sample_view["results"] if r["rule_id"] == gangue_id)
+    assert g_sample["violation_count"] == 0
+
+    project_view = await _call("check_consistency", {"scope": "project"})
+    g_project = next(r for r in project_view["results"] if r["rule_id"] == gangue_id)
+    assert g_project["violation_count"] == 1
+
+    all_view = await _call("check_consistency", {})
+    g_all = next(r for r in all_view["results"] if r["rule_id"] == gangue_id)
+    assert g_all["violation_count"] == 1 and all_view["scope"] == "all"
+    assert sample_view["total_violations"] <= all_view["total_violations"]  # 过滤视角总量单调不增
+
+
+@pytest.mark.asyncio
+async def test_check_consistency_scope_keeps_unattributable_rows(memory_kernel):
+    """无 IRI 绑定的违规行（rule_entity_naming 按归一名分组）不可归属任何库——任何 scope 视角都保留。"""
+    _populate_scopes(memory_kernel)
+    naming_id = "rule_entity_naming"
+    for scope in (None, "sample", "project", "domain_common"):
+        args = {"scope": scope} if scope else {}
+        view = await _call("check_consistency", args)
+        row = next(r for r in view["results"] if r["rule_id"] == naming_id)
+        assert row["violation_count"] == 1, (scope, row["violation_count"])
+
+
+@pytest.mark.asyncio
+async def test_check_consistency_scope_invalid_rejected(memory_kernel):
+    d = await _call("check_consistency", {"scope": "nope"})
+    assert d["success"] is False and "scope" in d["error"]
+
+
 @pytest.mark.asyncio
 async def test_rule_violations_filter_by_rule_id(memory_kernel):
     _populate(memory_kernel)

@@ -1,0 +1,2933 @@
+{
+  "generated_at": "2026-09-30T12:49:11.728511+00:00",
+  "purpose": "ontostudio 子项目 3.5 §4 实体质量抽检——待判定清单（判定由主会话 LLM 回填，本文件不含判定结果）",
+  "domain": "eia",
+  "seed": 42,
+  "target_n": 100,
+  "sampled_total": 102,
+  "corpus": {
+    "entities": 2521,
+    "etypes": 35,
+    "unknown_source_entities": 0
+  },
+  "strata": [
+    {
+      "etype": "aquifer",
+      "population": 1,
+      "sampled": 1,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "carrying_capacity",
+      "population": 3,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "chapter",
+      "population": 41,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "coal_seam",
+      "population": 16,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "emission_point",
+      "population": 7,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "emission_standard",
+      "population": 11,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "engineering_site",
+      "population": 102,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "evidence_requirement",
+      "population": 3,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "impact_result",
+      "population": 94,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "measure_process_concept",
+      "population": 53,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "measure_spec",
+      "population": 40,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "mine",
+      "population": 129,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "mine_field",
+      "population": 58,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "mining_district",
+      "population": 12,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "mining_method",
+      "population": 51,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "monitoring",
+      "population": 49,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "org",
+      "population": 47,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "place",
+      "population": 434,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "planning_change",
+      "population": 4,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "planning_scheme",
+      "population": 14,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "pollutant",
+      "population": 43,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "pollution_process_concept",
+      "population": 4,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "pollution_source",
+      "population": 224,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "project",
+      "population": 3,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "receiving_medium",
+      "population": 13,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "regulation_clause",
+      "population": 63,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "report",
+      "population": 23,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "retrospective_problem",
+      "population": 2,
+      "sampled": 2,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "section",
+      "population": 44,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "sensitive_point",
+      "population": 307,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "standard_threshold",
+      "population": 19,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "stratigraphic_unit",
+      "population": 16,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "treatment_measure",
+      "population": 461,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "waste_stream",
+      "population": 114,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    },
+    {
+      "etype": "working_face",
+      "population": 16,
+      "sampled": 3,
+      "constraint_note": "每 etype ≥3 的最小覆盖总量 102 超过目标 100——覆盖优先，实际抽样 102 条"
+    }
+  ],
+  "judgment": {
+    "status": "pending",
+    "standard": {
+      "correct_entity": "正确实体——真实存在于源文档、指代边界清晰、etype 挂挂正确的抽取结果",
+      "wrong_extraction": "错误抽取——指向错误对象/边界错切/etype 错挂/张冠李戴（判定结果决定后续噪声清除范围，本轮仍保留不清除）",
+      "meaningless_fragment": "无意义碎片——非实体的碎片字符串（截断残句/表头残留/编号碎屑）；v1 一律保留不清除，仅标记"
+    },
+    "how_to_fill": "主会话跑 LLM 逐条判 entries[*].verdict ∈ {correct_entity, wrong_extraction, meaningless_fragment}（可附 note），回填 judgment.results（per_etype/per_verdict 统计）后交回打标脚本分诊",
+    "results": null,
+    "stats_skeleton": {
+      "per_verdict": {
+        "correct_entity": null,
+        "wrong_extraction": null,
+        "meaningless_fragment": null
+      },
+      "per_etype": {}
+    }
+  },
+  "entries": [
+    {
+      "id": "98379206-2c73-4d27-b3bd-fee7d4472971",
+      "etype": "aquifer",
+      "canonical_name": "白垩系含水层",
+      "norm_name": "白垩系含水层",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "baiyinhua2",
+      "source_reports": [
+        "baiyinhua2"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "疏干观测孔",
+            "other_etype": "monitoring"
+          }
+        ]
+      }
+    },
+    {
+      "id": "0c8ea0d9-d7c5-49eb-973b-ca80da93a4a5",
+      "etype": "carrying_capacity",
+      "canonical_name": "水资源承载力",
+      "norm_name": "水资源承载力",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "constrained_by",
+            "other": "矿区开发",
+            "other_etype": "project"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8920be41-8f53-4b9f-8313-88e63a6ded10",
+      "etype": "carrying_capacity",
+      "canonical_name": "区域水资源承载能力",
+      "norm_name": "区域水资源承载能力",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "naomaohu2025",
+      "source_reports": [
+        "naomaohu2025"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "constrained_by",
+            "other": "矿区规划项目",
+            "other_etype": "project"
+          }
+        ]
+      }
+    },
+    {
+      "id": "d5c052bc-b98f-4073-97a6-e18c1de7802a",
+      "etype": "carrying_capacity",
+      "canonical_name": "大气环境容量",
+      "norm_name": "大气环境容量",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "constrained_by",
+            "other": "矿区",
+            "other_etype": "project"
+          }
+        ]
+      }
+    },
+    {
+      "id": "1cb4f654-0cd5-4a6e-88f0-5c2b03847803",
+      "etype": "chapter",
+      "canonical_name": "矿区开发环境影响回顾评价",
+      "norm_name": "矿区开发环境影响回顾评价",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang",
+        "yakeshi2026"
+      ],
+      "adjacency": {
+        "total": 3,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "has_chapter",
+            "other": "内蒙古自治区锡林郭勒盟五间房矿区总体规划环境影响报告书",
+            "other_etype": "report"
+          },
+          {
+            "dir": "in",
+            "predicate": "has_chapter",
+            "other": "牙克石-五九煤田矿区总体规划环境影响报告书",
+            "other_etype": "report"
+          },
+          {
+            "dir": "out",
+            "predicate": "has_subsection",
+            "other": "矿区存在的环保问题及整改建议",
+            "other_etype": "section"
+          }
+        ]
+      }
+    },
+    {
+      "id": "39f9ccdf-ecae-4250-b661-d64d8b0823e5",
+      "etype": "chapter",
+      "canonical_name": "野生动物现状调查与评价",
+      "norm_name": "野生动物现状调查与评价",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "guojiatai",
+      "source_reports": [
+        "guojiatai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "has_chapter",
+            "other": "评价区",
+            "other_etype": "report"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5d503992-3ed6-4e8f-9ad5-827a095e3be3",
+      "etype": "chapter",
+      "canonical_name": "12 公众参与",
+      "norm_name": "12 公众参与",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "weizhou",
+      "source_reports": [
+        "weizhou"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "has_chapter",
+            "other": "宁夏回族自治区韦州矿区总体规划（修编）环境影响报告书",
+            "other_etype": "report"
+          }
+        ]
+      }
+    },
+    {
+      "id": "1dd02ff5-13cb-4a65-90d2-7bc458f51477",
+      "etype": "coal_seam",
+      "canonical_name": "16下煤层",
+      "norm_name": "16下煤层",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin3500",
+      "source_reports": [
+        "yimin3500"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "mines",
+            "other": "伊敏露天矿",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "6a9608e8-77de-48d6-8ee4-f428e89e4145",
+      "etype": "coal_seam",
+      "canonical_name": "3-3煤",
+      "norm_name": "3-3煤",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "mines",
+            "other": "西一矿井",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "837f7848-f8c3-49df-b2ae-4d936c36c4e4",
+      "etype": "coal_seam",
+      "canonical_name": "7层煤层",
+      "norm_name": "7层煤层",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yueerwan",
+      "source_reports": [
+        "yueerwan"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "mines",
+            "other": "月儿湾矿井",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "31a29724-a6d9-45ee-ad58-ec9ab59bea5b",
+      "etype": "emission_point",
+      "canonical_name": "总排水口",
+      "norm_name": "总排水口",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin3500",
+      "source_reports": [
+        "yimin3500"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "emitted_via",
+            "other": "疏干水",
+            "other_etype": "pollution_source"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b0702a5d-0757-4f87-b78f-08cb0602b6d0",
+      "etype": "emission_point",
+      "canonical_name": "高60m烟囱",
+      "norm_name": "高60m烟囱",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "guojiatai",
+      "source_reports": [
+        "guojiatai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "emitted_via",
+            "other": "锅炉房",
+            "other_etype": "pollution_source"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b7dff803-b95c-4c66-96a1-089793ebc517",
+      "etype": "emission_point",
+      "canonical_name": "50m烟囱",
+      "norm_name": "50m烟囱",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "baiyinhua3",
+      "source_reports": [
+        "baiyinhua3"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "emitted_via",
+            "other": "锅炉烟气",
+            "other_etype": "pollution_source"
+          }
+        ]
+      }
+    },
+    {
+      "id": "30870935-68ef-406f-a6b3-e249de5944a0",
+      "etype": "emission_standard",
+      "canonical_name": "《地表水环境质量标准》（GB3838-2002）Ⅲ类标准",
+      "norm_name": "《地表水环境质量标准》(gb3838-2002)iii类标准",
+      "attrs": {},
+      "status": "active",
+      "confidence": 0.7,
+      "source_report": "lingtai",
+      "source_reports": [
+        "lingtai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "governed_by",
+            "other": "反渗透深度处理",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b8262b0c-363d-41ef-8951-7a2611e3c031",
+      "etype": "emission_standard",
+      "canonical_name": "《煤炭工业污染物排放标准》（GB20426-2006）",
+      "norm_name": "《煤炭工业污染物排放标准》(gb20426-2006)",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "baiyinhua2",
+      "source_reports": [
+        "baiyinhua2",
+        "baiyinhua3",
+        "guojiatai"
+      ],
+      "adjacency": {
+        "total": 3,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "complies_with",
+            "other": "矿坑水",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "governed_by",
+            "other": "矸石充填系统",
+            "other_etype": "treatment_measure"
+          },
+          {
+            "dir": "in",
+            "predicate": "governed_by",
+            "other": "除尘设备",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cf718f87-ecca-4e4e-a23a-719d1f27d459",
+      "etype": "emission_standard",
+      "canonical_name": "达标排放要求",
+      "norm_name": "达标排放要求",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "complies_with",
+            "other": "煤矿集中供热燃煤锅炉",
+            "other_etype": "pollution_source"
+          }
+        ]
+      }
+    },
+    {
+      "id": "0a29293e-a9f9-433f-829a-d6eeff833fa5",
+      "etype": "engineering_site",
+      "canonical_name": "矿区道路",
+      "norm_name": "矿区道路",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "santanghu",
+      "source_reports": [
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "每天洒水抑尘作业3-4次",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b01fa1fe-3600-4c49-9d5d-58dc0f2017b6",
+      "etype": "engineering_site",
+      "canonical_name": "矸石周转场",
+      "norm_name": "矸石周转场",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "balasu",
+      "source_reports": [
+        "balasu",
+        "guojiatai",
+        "lingtai",
+        "sijitun",
+        "yueerwan"
+      ],
+      "adjacency": {
+        "total": 8,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "disposed_by",
+            "other": "弃方",
+            "other_etype": "waste_stream"
+          },
+          {
+            "dir": "in",
+            "predicate": "disposed_by",
+            "other": "矸石",
+            "other_etype": "waste_stream"
+          },
+          {
+            "dir": "in",
+            "predicate": "disposed_by",
+            "other": "矸石",
+            "other_etype": "waste_stream"
+          },
+          {
+            "dir": "in",
+            "predicate": "disposed_by",
+            "other": "矸石",
+            "other_etype": "waste_stream"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "工业场地东侧的地势低洼处",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "矿区内",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "选煤厂工业场地东北侧",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "硬化防渗处理",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c33778e3-ec8d-4661-b7ce-4519e8ce2124",
+      "etype": "engineering_site",
+      "canonical_name": "运输道路",
+      "norm_name": "运输道路",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yitai",
+      "source_reports": [
+        "yitai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "洒水降尘措施",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "325ffb59-7866-4106-a615-e1d3539f499d",
+      "etype": "evidence_requirement",
+      "canonical_name": "20-30年恢复期",
+      "norm_name": "20-30年恢复期",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin",
+      "source_reports": [
+        "yimin"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "requires_evidence",
+            "other": "植被恢复",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "75a66ec2-866a-4d5b-a823-fa6a232c5716",
+      "etype": "evidence_requirement",
+      "canonical_name": "全年降水量",
+      "norm_name": "全年降水量",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "santanghu",
+      "source_reports": [
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "requires_evidence",
+            "other": "矸石堆存",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "7e80d4aa-f05b-4519-ae12-3ecf77a8d6c1",
+      "etype": "evidence_requirement",
+      "canonical_name": "充填料配比实验",
+      "norm_name": "充填料配比实验",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yakeshi2026",
+      "source_reports": [
+        "yakeshi2026"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "requires_evidence",
+            "other": "充填开采",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "628de4e4-bc08-4208-927f-fdecc84c93dd",
+      "etype": "impact_result",
+      "canonical_name": "地表下沉",
+      "norm_name": "地表下沉",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yakeshi2026",
+      "source_reports": [
+        "yakeshi2026"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "causes",
+            "other": "积水",
+            "other_etype": "impact_result"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8d4d9f8b-b819-4550-9202-243e6e75e256",
+      "etype": "impact_result",
+      "canonical_name": "汇水通道截断",
+      "norm_name": "汇水通道截断",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "santanghu",
+      "source_reports": [
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "causes",
+            "other": "条湖五号井田",
+            "other_etype": "working_face"
+          },
+          {
+            "dir": "in",
+            "predicate": "causes",
+            "other": "汉水泉五号井",
+            "other_etype": "working_face"
+          }
+        ]
+      }
+    },
+    {
+      "id": "d32025d2-4d88-4134-8931-070b951b5165",
+      "etype": "impact_result",
+      "canonical_name": "井田积水",
+      "norm_name": "井田积水",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "gaotaoyao",
+      "source_reports": [
+        "gaotaoyao"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "causes",
+            "other": "泊江海子煤矿",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "05aaa9dc-b520-471b-9bab-91c63820b9fd",
+      "etype": "measure_process_concept",
+      "canonical_name": "混凝沉淀",
+      "norm_name": "混凝沉淀",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "treated_by",
+            "other": "任家庄矿井水",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "treated_by",
+            "other": "红石湾矿井水",
+            "other_etype": "pollution_source"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ee1d2891-92db-4ea5-bbd9-e4ba5176a6e9",
+      "etype": "measure_process_concept",
+      "canonical_name": "预处理、脱盐、二次浓缩及蒸发结晶",
+      "norm_name": "预处理、脱盐、二次浓缩及蒸发结晶",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "balasu",
+      "source_reports": [
+        "balasu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "treated_by",
+            "other": "矿井水",
+            "other_etype": "pollution_source"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fc7b58c4-2f96-4d8a-9a6a-4105b9f8a714",
+      "etype": "measure_process_concept",
+      "canonical_name": "掺入末煤销售",
+      "norm_name": "掺入末煤销售",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "nalinxili",
+      "source_reports": [
+        "nalinxili"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "utilized_by",
+            "other": "煤泥",
+            "other_etype": "waste_stream"
+          },
+          {
+            "dir": "in",
+            "predicate": "utilized_by",
+            "other": "矿井水处理站污泥",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "32acef91-6142-41ad-a4cb-d152cc7a38e1",
+      "etype": "measure_spec",
+      "canonical_name": "除尘总效率不低于99.9%",
+      "norm_name": "除尘总效率不低于99.9%",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "guojiatai",
+      "source_reports": [
+        "guojiatai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "specified_by",
+            "other": "电袋复合除尘技术",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "84199a8b-ada1-4d20-9644-2bf7690fc934",
+      "etype": "measure_spec",
+      "canonical_name": "FBC-30",
+      "norm_name": "fbc-30",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "balasu",
+      "source_reports": [
+        "balasu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "specified_by",
+            "other": "振打布袋除尘器",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "9ebf8dc1-3c3b-4735-885d-dcb736707852",
+      "etype": "measure_spec",
+      "canonical_name": "PM10控制效率59%",
+      "norm_name": "pm10控制效率59%",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin3500",
+      "source_reports": [
+        "yimin3500"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "specified_by",
+            "other": "洒水降尘",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5535d5f5-5bbe-4338-9356-0cb02076af78",
+      "etype": "mine",
+      "canonical_name": "伊敏三井",
+      "norm_name": "伊敏三井",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin",
+      "source_reports": [
+        "yimin"
+      ],
+      "adjacency": {
+        "total": 3,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "锡尼河东苏木",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "method_of",
+            "other": "多水平立井开拓",
+            "other_etype": "mining_method"
+          },
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "留设煤柱保护",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "684767ff-201d-48d6-9af8-8324cc61c804",
+      "etype": "mine",
+      "canonical_name": "胜利煤矿",
+      "norm_name": "胜利煤矿",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yakeshi2026",
+      "source_reports": [
+        "yakeshi2026"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "东区",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "低山丘陵区",
+            "other_etype": "place"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8d1cbdca-e0ae-443d-904e-d72652db95ab",
+      "etype": "mine",
+      "canonical_name": "新疆伊宁矿区北区",
+      "norm_name": "新疆伊宁矿区北区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yining",
+      "source_reports": [
+        "yining"
+      ],
+      "adjacency": {
+        "total": 4,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "伊宁县",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "伊宁市",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "新疆伊犁哈萨克自治州伊犁盆地北部低山丘陵区",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "霍城县",
+            "other_etype": "place"
+          }
+        ]
+      }
+    },
+    {
+      "id": "1a181bd8-b391-4244-8f0c-f57e92a7584d",
+      "etype": "mine_field",
+      "canonical_name": "井田6采区",
+      "norm_name": "井田6采区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yueerwan",
+      "source_reports": [
+        "yueerwan"
+      ],
+      "adjacency": {
+        "total": 3,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "110kV罗强甲乙线",
+            "other_etype": "sensitive_point"
+          },
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "800kV灵绍线",
+            "other_etype": "sensitive_point"
+          },
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "灵州-绍兴±800kV直流输电线路",
+            "other_etype": "sensitive_point"
+          }
+        ]
+      }
+    },
+    {
+      "id": "57bd98c5-0f99-48ee-9b3f-f242e8898ad4",
+      "etype": "mine_field",
+      "canonical_name": "四号井田",
+      "norm_name": "四号井田",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yining",
+      "source_reports": [
+        "yining"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "英也尔火龙洞",
+            "other_etype": "sensitive_point"
+          }
+        ]
+      }
+    },
+    {
+      "id": "d05d1bc0-d6cc-4eeb-8d7c-c72e64eb23ea",
+      "etype": "mine_field",
+      "canonical_name": "淖毛湖矿区",
+      "norm_name": "淖毛湖矿区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "naomaohu2025",
+      "source_reports": [
+        "naomaohu2025"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "公益林",
+            "other_etype": "sensitive_point"
+          },
+          {
+            "dir": "out",
+            "predicate": "part_of",
+            "other": "吐哈煤田",
+            "other_etype": "mining_district"
+          }
+        ]
+      }
+    },
+    {
+      "id": "2dd292c9-0969-4522-8027-48cfa5602c16",
+      "etype": "mining_district",
+      "canonical_name": "赤城片区",
+      "norm_name": "赤城片区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "五举煤矿",
+            "other_etype": "mine"
+          },
+          {
+            "dir": "in",
+            "predicate": "part_of",
+            "other": "百贯沟煤矿",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "760fa11b-f5c4-4f3f-a949-76e84abf5465",
+      "etype": "mining_district",
+      "canonical_name": "呼吉尔特矿区",
+      "norm_name": "呼吉尔特矿区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "nalinxili",
+      "source_reports": [
+        "nalinxili"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "part_of",
+            "other": "梅林庙井田",
+            "other_etype": "mine_field"
+          },
+          {
+            "dir": "in",
+            "predicate": "part_of",
+            "other": "门克庆井田",
+            "other_etype": "mine_field"
+          }
+        ]
+      }
+    },
+    {
+      "id": "eeff7fd7-e0b5-4a5f-885e-e8da3bee8843",
+      "etype": "mining_district",
+      "canonical_name": "吐哈煤田",
+      "norm_name": "吐哈煤田",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "naomaohu2025",
+      "source_reports": [
+        "naomaohu2025",
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "part_of",
+            "other": "三塘湖矿区",
+            "other_etype": "mine"
+          },
+          {
+            "dir": "in",
+            "predicate": "part_of",
+            "other": "淖毛湖矿区",
+            "other_etype": "mine_field"
+          }
+        ]
+      }
+    },
+    {
+      "id": "52fe0d1d-36d3-4a7d-9a82-a4cb3eb584e3",
+      "etype": "mining_method",
+      "canonical_name": "立井单水平开拓",
+      "norm_name": "立井单水平开拓",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin",
+      "source_reports": [
+        "yimin"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "method_of",
+            "other": "伊敏四井",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "7602ea90-c871-4f93-bbba-ef816fd13855",
+      "etype": "mining_method",
+      "canonical_name": "单斗—自移式破碎机+带式输送机半连续工艺",
+      "norm_name": "单斗—自移式破碎机+带式输送机半连续工艺",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin3500",
+      "source_reports": [
+        "yimin3500"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "method_of",
+            "other": "伊敏露天矿",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "c65b31fe-ed33-4c65-8772-bc89de47a6ce",
+      "etype": "mining_method",
+      "canonical_name": "单斗—自移式破碎机—带式输送机半连续开采工艺",
+      "norm_name": "单斗—自移式破碎机—带式输送机半连续开采工艺",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin",
+      "source_reports": [
+        "yimin"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "method_of",
+            "other": "五号露天矿",
+            "other_etype": "mine"
+          },
+          {
+            "dir": "in",
+            "predicate": "method_of",
+            "other": "四号露天矿",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "030c202d-eb73-4c84-ada7-fe4c56c24c47",
+      "etype": "monitoring",
+      "canonical_name": "土壤侵蚀",
+      "norm_name": "土壤侵蚀",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "monitored_by",
+            "other": "各排矸场",
+            "other_etype": "engineering_site"
+          }
+        ]
+      }
+    },
+    {
+      "id": "bd906d46-7c47-40af-b982-c8655bda2479",
+      "etype": "monitoring",
+      "canonical_name": "矿区生活污水综合利用率监测",
+      "norm_name": "矿区生活污水综合利用率监测",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "weizhou",
+      "source_reports": [
+        "weizhou"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "monitored_by",
+            "other": "韦州矿区",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "f6a757c4-32f5-4a54-a718-dce129903896",
+      "etype": "monitoring",
+      "canonical_name": "生态系统整体性和生态功能变化趋势监测",
+      "norm_name": "生态系统整体性和生态功能变化趋势监测",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "weizhou",
+      "source_reports": [
+        "weizhou"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "monitored_by",
+            "other": "韦州矿区",
+            "other_etype": "mine"
+          }
+        ]
+      }
+    },
+    {
+      "id": "3e6c255f-cb0b-4860-9448-b0d2f990dfd9",
+      "etype": "org",
+      "canonical_name": "矿方",
+      "norm_name": "矿方",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin3500",
+      "source_reports": [
+        "yimin3500"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "regulated_by",
+            "other": "申请污染物排污许可和更新入河排污口设置",
+            "other_etype": "regulation_clause"
+          }
+        ]
+      }
+    },
+    {
+      "id": "76fd7115-cae6-4416-afa3-4a4dbe7482f2",
+      "etype": "org",
+      "canonical_name": "西乌珠沁旗鑫玉空心砖厂",
+      "norm_name": "西乌珠沁旗鑫玉空心砖厂",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "baiyinhua2",
+      "source_reports": [
+        "baiyinhua2"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "utilized_by",
+            "other": "锅炉除尘灰与脱硫灰渣",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b398b382-fe3a-4bad-b49f-9070bfcbb1fb",
+      "etype": "org",
+      "canonical_name": "宁夏聚鑫融工贸有限公司",
+      "norm_name": "宁夏聚鑫融工贸有限公司",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "disposed_by",
+            "other": "任家庄煤矿矸石",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "17bf210e-6518-4e73-9d7d-e14a7680759c",
+      "etype": "place",
+      "canonical_name": "内流区",
+      "norm_name": "内流区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "nalinxili",
+      "source_reports": [
+        "nalinxili"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "矿区",
+            "other_etype": "place"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5cf5e2b5-2970-4bed-992f-8cf8b290086e",
+      "etype": "place",
+      "canonical_name": "振兴井田南部及西北部",
+      "norm_name": "振兴井田南部及西北部",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hegang",
+      "source_reports": [
+        "hegang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "石头河",
+            "other_etype": "place"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ae53558a-0043-4959-80bf-1ba7b069f522",
+      "etype": "place",
+      "canonical_name": "采掘场的东南侧",
+      "norm_name": "采掘场的东南侧",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "baiyinhua3",
+      "source_reports": [
+        "baiyinhua3"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "located_in",
+            "other": "工业场地",
+            "other_etype": "engineering_site"
+          }
+        ]
+      }
+    },
+    {
+      "id": "3daecccf-f869-4f49-abac-49d871acdb08",
+      "etype": "planning_change",
+      "canonical_name": "韦州矿区总体规划（修编）",
+      "norm_name": "韦州矿区总体规划(修编)",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "weizhou",
+      "source_reports": [
+        "weizhou"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "changes",
+            "other": "原规划范围",
+            "other_etype": "planning_scheme"
+          }
+        ]
+      }
+    },
+    {
+      "id": "6a842057-b8ed-416a-8141-b8571f077d9d",
+      "etype": "planning_change",
+      "canonical_name": "白音华煤炭矿区总体规划（修编）",
+      "norm_name": "白音华煤炭矿区总体规划(修编)",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "baiyinhua2",
+      "source_reports": [
+        "baiyinhua2"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "changes",
+            "other": "《内蒙古白音华矿区总体规划》",
+            "other_etype": "planning_scheme"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8dc884d1-7071-4b55-b3dd-207644b4978c",
+      "etype": "planning_change",
+      "canonical_name": "规划方案",
+      "norm_name": "规划方案",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "changes",
+            "other": "新增周寨南矿井",
+            "other_etype": "planning_scheme"
+          }
+        ]
+      }
+    },
+    {
+      "id": "0454ed0a-3bbb-45ab-8ad4-195a56007ef8",
+      "etype": "planning_scheme",
+      "canonical_name": "横城矿区总体规划（修编）",
+      "norm_name": "横城矿区总体规划(修编)",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "specifies_threshold",
+            "other": "马莲台3.6Mt/a、任家庄3.6Mt/a、红石湾1.1Mt/a、丁家梁0.9Mt/a",
+            "other_etype": "standard_threshold"
+          }
+        ]
+      }
+    },
+    {
+      "id": "14fa79d2-a75f-4f0d-98f6-6be62cb2c4ef",
+      "etype": "planning_scheme",
+      "canonical_name": "积家井矿区总体规划",
+      "norm_name": "积家井矿区总体规划",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yueerwan",
+      "source_reports": [
+        "yueerwan"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "changes",
+            "other": "《宁夏回族自治区宁东煤田积家井矿区总体规划（修编）》",
+            "other_etype": "planning_change"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ca8ab619-fa0c-435a-b711-affc9753d4d7",
+      "etype": "planning_scheme",
+      "canonical_name": "灵台矿区规划",
+      "norm_name": "灵台矿区规划",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "lingtai",
+      "source_reports": [
+        "lingtai"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "specifies_threshold",
+            "other": "30万吨/年",
+            "other_etype": "standard_threshold"
+          },
+          {
+            "dir": "out",
+            "predicate": "specifies_threshold",
+            "other": "矸石处置率100%",
+            "other_etype": "standard_threshold"
+          }
+        ]
+      }
+    },
+    {
+      "id": "546b7888-5e76-414f-a134-309ae01a47c9",
+      "etype": "pollutant",
+      "canonical_name": "氰",
+      "norm_name": "氰",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "辅助企业废水",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5e228e69-af7d-43d9-99f5-5f0c341ef6c7",
+      "etype": "pollutant",
+      "canonical_name": "BOD",
+      "norm_name": "bod",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating",
+        "naomaohu2025",
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 3,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "施工期生活污水",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "生活污水",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "生活污水",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "f03c53ec-bd67-4d10-9c02-4560ee56a4b3",
+      "etype": "pollutant",
+      "canonical_name": "粉尘",
+      "norm_name": "粉尘",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng",
+        "yitai"
+      ],
+      "adjacency": {
+        "total": 5,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "煤矿大气污染物",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "爆破作业",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "破碎站",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "穿孔作业",
+            "other_etype": "pollution_source"
+          },
+          {
+            "dir": "in",
+            "predicate": "emitted_as",
+            "other": "钻机穿孔",
+            "other_etype": "pollution_source"
+          }
+        ]
+      }
+    },
+    {
+      "id": "29b3f72c-9bab-4dde-9846-9147414e14bc",
+      "etype": "pollution_process_concept",
+      "canonical_name": "冻土冻融",
+      "norm_name": "冻土冻融",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "sijitun",
+      "source_reports": [
+        "sijitun"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "causes",
+            "other": "冻胀、冻裂及融陷",
+            "other_etype": "impact_result"
+          }
+        ]
+      }
+    },
+    {
+      "id": "60e436f3-730f-4449-91b7-917f746075d6",
+      "etype": "pollution_process_concept",
+      "canonical_name": "矸石（剥离物）淋溶水入渗",
+      "norm_name": "矸石(剥离物)淋溶水入渗",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "naomaohu2025",
+      "source_reports": [
+        "naomaohu2025"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "causes",
+            "other": "第四系、新近系地下水受影响",
+            "other_etype": "impact_result"
+          }
+        ]
+      }
+    },
+    {
+      "id": "f2d8a893-0e1f-49c7-9f60-b235416a90a7",
+      "etype": "pollution_process_concept",
+      "canonical_name": "露天矿长期疏干地下水",
+      "norm_name": "露天矿长期疏干地下水",
+      "attrs": {},
+      "status": "active",
+      "confidence": 0.7,
+      "source_report": "baiyinhua2",
+      "source_reports": [
+        "baiyinhua2"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "causes",
+            "other": "地下水降落漏斗",
+            "other_etype": "impact_result"
+          }
+        ]
+      }
+    },
+    {
+      "id": "4cc23ac1-a825-40ea-9b90-0d2f3f972a2c",
+      "etype": "pollution_source",
+      "canonical_name": "机修车间高噪声设备",
+      "norm_name": "机修车间高噪声设备",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "guojiatai",
+      "source_reports": [
+        "guojiatai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "隔声门窗",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "718069f6-8c65-485b-b976-b67d166086c3",
+      "etype": "pollution_source",
+      "canonical_name": "规划矿区内煤矿煤泥水",
+      "norm_name": "规划矿区内煤矿煤泥水",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hegang",
+      "source_reports": [
+        "hegang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "一级闭路循环",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "803d0ba9-337b-40ed-9033-fe46a3709019",
+      "etype": "pollution_source",
+      "canonical_name": "锅炉灰渣堆存",
+      "norm_name": "锅炉灰渣堆存",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "防尘、防渗措施",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "07972749-be7f-45b0-8640-9e543be94c5e",
+      "etype": "project",
+      "canonical_name": "矿区",
+      "norm_name": "矿区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "constrained_by",
+            "other": "大气环境容量",
+            "other_etype": "carrying_capacity"
+          }
+        ]
+      }
+    },
+    {
+      "id": "26aacb32-5948-4d59-8de9-db75ffd5a86a",
+      "etype": "project",
+      "canonical_name": "矿区开发",
+      "norm_name": "矿区开发",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "constrained_by",
+            "other": "水资源承载力",
+            "other_etype": "carrying_capacity"
+          }
+        ]
+      }
+    },
+    {
+      "id": "41b44aed-55f9-4a65-9a77-4ddf11d6b8f3",
+      "etype": "project",
+      "canonical_name": "矿区规划项目",
+      "norm_name": "矿区规划项目",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "naomaohu2025",
+      "source_reports": [
+        "naomaohu2025"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "constrained_by",
+            "other": "区域水资源承载能力",
+            "other_etype": "carrying_capacity"
+          }
+        ]
+      }
+    },
+    {
+      "id": "36d3e073-4080-4683-bd2e-943b524e1eeb",
+      "etype": "receiving_medium",
+      "canonical_name": "冲沟",
+      "norm_name": "冲沟",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "guojiatai",
+      "source_reports": [
+        "guojiatai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "drains_to",
+            "other": "景泰县南沙河",
+            "other_etype": "receiving_medium"
+          }
+        ]
+      }
+    },
+    {
+      "id": "506a7292-093f-4c8b-90e9-632972dd3621",
+      "etype": "receiving_medium",
+      "canonical_name": "无定河",
+      "norm_name": "无定河",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "balasu",
+      "source_reports": [
+        "balasu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "drains_to",
+            "other": "白城河",
+            "other_etype": "receiving_medium"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ecbb8ee5-27f1-48ae-a0d2-aa2b59779ec5",
+      "etype": "receiving_medium",
+      "canonical_name": "景泰县南沙河",
+      "norm_name": "景泰县南沙河",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "guojiatai",
+      "source_reports": [
+        "guojiatai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "drains_to",
+            "other": "冲沟",
+            "other_etype": "receiving_medium"
+          }
+        ]
+      }
+    },
+    {
+      "id": "4787a0cc-e4e9-4a01-9885-2ce57ff84b69",
+      "etype": "regulation_clause",
+      "canonical_name": "《建设项目环境风险评价技术导则》（HJ169-2018）",
+      "norm_name": "《建设项目环境风险评价技术导则》(hj169-2018)",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin3500",
+      "source_reports": [
+        "yimin3500"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "regulated_by",
+            "other": "卡保间",
+            "other_etype": "org"
+          },
+          {
+            "dir": "in",
+            "predicate": "regulated_by",
+            "other": "油库区",
+            "other_etype": "org"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b1f4aab5-6a04-48ee-97e1-8261fec695ac",
+      "etype": "regulation_clause",
+      "canonical_name": "《关于发布〈矿山生态环境保护与污染防治技术政策〉的通知》",
+      "norm_name": "《关于发布〈矿山生态环境保护与污染防治技术政策〉的通知》",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yining",
+      "source_reports": [
+        "yining"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "cites_clause",
+            "other": "新疆伊宁矿区北区总体规划（修编）环境影响报告书",
+            "other_etype": "report"
+          }
+        ]
+      }
+    },
+    {
+      "id": "b445e615-67ba-4fbd-bb65-c8b08667a149",
+      "etype": "regulation_clause",
+      "canonical_name": "《中华人民共和国煤炭法》",
+      "norm_name": "《中华人民共和国煤炭法》",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yining",
+      "source_reports": [
+        "yining"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "cites_clause",
+            "other": "新疆伊宁矿区北区总体规划（修编）环境影响报告书",
+            "other_etype": "report"
+          }
+        ]
+      }
+    },
+    {
+      "id": "24d734da-585b-4bc7-baf4-e0f582a620ea",
+      "etype": "report",
+      "canonical_name": "环评报告",
+      "norm_name": "环评报告",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "santanghu",
+      "source_reports": [
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "has_chapter",
+            "other": "环境管理、监测计划与跟踪评价",
+            "other_etype": "chapter"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e5327034-c960-43f8-888f-61e4b851ae97",
+      "etype": "report",
+      "canonical_name": "本次环评",
+      "norm_name": "本次环评",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng",
+        "yining"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "cites_clause",
+            "other": "《环境影响评价公众参与办法》",
+            "other_etype": "regulation_clause"
+          },
+          {
+            "dir": "out",
+            "predicate": "cites_clause",
+            "other": "规划环境影响评价技术导则（试行）",
+            "other_etype": "regulation_clause"
+          }
+        ]
+      }
+    },
+    {
+      "id": "e5902350-6a5f-4c99-8c5b-34268e1a27a7",
+      "etype": "report",
+      "canonical_name": "本报告",
+      "norm_name": "本报告",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng",
+        "sijitun"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "cites_clause",
+            "other": "《土地复垦质量控制标准》",
+            "other_etype": "regulation_clause"
+          },
+          {
+            "dir": "out",
+            "predicate": "cites_clause",
+            "other": "《宁夏回族自治区水资源配置保障规划(2016—2020年)》",
+            "other_etype": "regulation_clause"
+          }
+        ]
+      }
+    },
+    {
+      "id": "43539f65-d7c7-447f-8abc-ed53ad90a5c6",
+      "etype": "retrospective_problem",
+      "canonical_name": "采煤沉陷",
+      "norm_name": "采煤沉陷",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "hengcheng",
+      "source_reports": [
+        "hengcheng"
+      ],
+      "adjacency": {
+        "total": 0,
+        "edges": []
+      }
+    },
+    {
+      "id": "58556d63-1a0d-4e44-b96f-76e43a724aab",
+      "etype": "retrospective_problem",
+      "canonical_name": "二号矿田1号外排土场生态恢复效果欠佳",
+      "norm_name": "二号矿田1号外排土场生态恢复效果欠佳",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yining",
+      "source_reports": [
+        "yining"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "problem_of",
+            "other": "二号矿田",
+            "other_etype": "mine_field"
+          }
+        ]
+      }
+    },
+    {
+      "id": "4b3c468f-3d10-4f66-bcf1-f57f6f05774d",
+      "etype": "section",
+      "canonical_name": "4.4.4 土壤侵蚀影响回顾性评价",
+      "norm_name": "4.4.4 土壤侵蚀影响回顾性评价",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "naomaohu2025",
+      "source_reports": [
+        "naomaohu2025"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "has_subsection",
+            "other": "4.4 生态环境影响回顾性评价",
+            "other_etype": "chapter"
+          }
+        ]
+      }
+    },
+    {
+      "id": "7d91d3c2-95f2-486a-8316-e801fa79552d",
+      "etype": "section",
+      "canonical_name": "矿山简介",
+      "norm_name": "矿山简介",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "sijitun",
+      "source_reports": [
+        "sijitun"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "has_subsection",
+            "other": "矿山基本情况",
+            "other_etype": "chapter"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ac0c5292-ed0b-43c4-bb25-0a231b418530",
+      "etype": "section",
+      "canonical_name": "矿山地质环境监测",
+      "norm_name": "矿山地质环境监测",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "sijitun",
+      "source_reports": [
+        "sijitun"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "has_subsection",
+            "other": "矿山地质环境治理与土地复垦工程",
+            "other_etype": "chapter"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5affbc9d-baf7-4812-a6bc-bb6f59c86643",
+      "etype": "sensitive_point",
+      "canonical_name": "bl076",
+      "norm_name": "bl076",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "balasu",
+      "source_reports": [
+        "balasu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "巴拉素镇武松界四队",
+            "other_etype": "place"
+          }
+        ]
+      }
+    },
+    {
+      "id": "729bcd94-5863-4538-871b-f8a344743a38",
+      "etype": "sensitive_point",
+      "canonical_name": "十二亩险墓群",
+      "norm_name": "十二亩险墓群",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "lingtai",
+      "source_reports": [
+        "lingtai"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "蒲窝镇五星村小湾社",
+            "other_etype": "place"
+          }
+        ]
+      }
+    },
+    {
+      "id": "ea0d8a30-e79c-4fb6-a8f9-58c32ef1ce6c",
+      "etype": "sensitive_point",
+      "canonical_name": "中湖村烽燧",
+      "norm_name": "中湖村烽燧",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "santanghu",
+      "source_reports": [
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "三塘湖乡中湖村",
+            "other_etype": "place"
+          },
+          {
+            "dir": "out",
+            "predicate": "located_in",
+            "other": "条湖四号矿井田边界附近",
+            "other_etype": "place"
+          }
+        ]
+      }
+    },
+    {
+      "id": "103deec1-5ef8-4b65-8a49-6b0c58647d1f",
+      "etype": "standard_threshold",
+      "canonical_name": "含盐量不得超过1000毫克/升",
+      "norm_name": "含盐量不得超过1000毫克/升",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yining",
+      "source_reports": [
+        "yining"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "specifies_threshold",
+            "other": "地表水III类水质标准",
+            "other_etype": "emission_standard"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5c9bc9bf-3798-4bae-a60b-57ec8b4657bc",
+      "etype": "standard_threshold",
+      "canonical_name": "煤矸石综合利用率80%",
+      "norm_name": "煤矸石综合利用率80%",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "specifies_threshold",
+            "other": "矿区总体规划",
+            "other_etype": "planning_scheme"
+          }
+        ]
+      }
+    },
+    {
+      "id": "74d424fd-a567-4368-a423-9eb4779d4d30",
+      "etype": "standard_threshold",
+      "canonical_name": "SO2≤100mg/m3",
+      "norm_name": "so2≤100mg/m3",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "balasu",
+      "source_reports": [
+        "balasu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "specifies_threshold",
+            "other": "《锅炉大气污染排放标准》（DB61/1226-2018）",
+            "other_etype": "emission_standard"
+          }
+        ]
+      }
+    },
+    {
+      "id": "27c53b27-dc8f-4fbc-adf6-22c119d7944f",
+      "etype": "stratigraphic_unit",
+      "canonical_name": "西山窑组",
+      "norm_name": "西山窑组",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "santanghu",
+      "source_reports": [
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "part_of",
+            "other": "侏罗系",
+            "other_etype": "stratigraphic_unit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "4a4fcee5-975f-422d-98d6-78c0af57ef7c",
+      "etype": "stratigraphic_unit",
+      "canonical_name": "白垩系下统",
+      "norm_name": "白垩系下统",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "baiyinhua2",
+      "source_reports": [
+        "baiyinhua2"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "part_of",
+            "other": "大磨拐河组第三段",
+            "other_etype": "stratigraphic_unit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8dc59974-26df-4044-83f0-d45ba080036a",
+      "etype": "stratigraphic_unit",
+      "canonical_name": "兴安地层区",
+      "norm_name": "兴安地层区",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yimin3500",
+      "source_reports": [
+        "yimin3500"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "part_of",
+            "other": "北疆-兴安地层大区",
+            "other_etype": "stratigraphic_unit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "1359547a-a7f7-4a3a-ad54-397474313198",
+      "etype": "treatment_measure",
+      "canonical_name": "综合利用途径",
+      "norm_name": "综合利用途径",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "utilized_by",
+            "other": "矸石、粉煤灰、脱硫石膏",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "5401cd19-3eb7-4cd6-9108-f8ce4504e798",
+      "etype": "treatment_measure",
+      "canonical_name": "无害化处置率100%",
+      "norm_name": "无害化处置率100%",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yining",
+      "source_reports": [
+        "yining"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "disposed_by",
+            "other": "生活垃圾",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "7851f619-4a79-4f6b-b343-f6ae5775e3b2",
+      "etype": "treatment_measure",
+      "canonical_name": "回填矿区洼地、填作路基、平整工业场地",
+      "norm_name": "回填矿区洼地、填作路基、平整工业场地",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yakeshi2026",
+      "source_reports": [
+        "yakeshi2026"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "in",
+            "predicate": "utilized_by",
+            "other": "矸石",
+            "other_etype": "waste_stream"
+          }
+        ]
+      }
+    },
+    {
+      "id": "42b6e4ac-307e-43a6-9e7a-828827168c5d",
+      "etype": "waste_stream",
+      "canonical_name": "疏干水",
+      "norm_name": "疏干水",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "gaotaoyao",
+      "source_reports": [
+        "gaotaoyao"
+      ],
+      "adjacency": {
+        "total": 2,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "沉淀处理",
+            "other_etype": "treatment_measure"
+          },
+          {
+            "dir": "out",
+            "predicate": "treated_by",
+            "other": "除氟系统",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "9cc8355b-4c5a-4c12-a19e-40c461a8cd04",
+      "etype": "waste_stream",
+      "canonical_name": "矸石、粉煤灰、脱硫石膏",
+      "norm_name": "矸石、粉煤灰、脱硫石膏",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "wujianfang",
+      "source_reports": [
+        "wujianfang"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "utilized_by",
+            "other": "综合利用途径",
+            "other_etype": "treatment_measure"
+          }
+        ]
+      }
+    },
+    {
+      "id": "fe6201ee-a56b-4be7-93d8-bf6b31559046",
+      "etype": "waste_stream",
+      "canonical_name": "水处理站有机污泥",
+      "norm_name": "水处理站有机污泥",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "santanghu",
+      "source_reports": [
+        "santanghu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "disposed_by",
+            "other": "巴里坤县环卫部门或矿区生活垃圾填埋场统一处置",
+            "other_etype": "org"
+          }
+        ]
+      }
+    },
+    {
+      "id": "0f04143f-3563-4d0f-80b5-1f22e9c4a79e",
+      "etype": "working_face",
+      "canonical_name": "2101工作面",
+      "norm_name": "2101工作面",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "balasu",
+      "source_reports": [
+        "balasu"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "method_of",
+            "other": "长壁综合机械化采煤工艺",
+            "other_etype": "mining_method"
+          }
+        ]
+      }
+    },
+    {
+      "id": "8bd079ab-45a3-49ca-89d9-3b98b9fafaae",
+      "etype": "working_face",
+      "canonical_name": "胜利煤矿工作面",
+      "norm_name": "胜利煤矿工作面",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "yakeshi2026",
+      "source_reports": [
+        "yakeshi2026"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "method_of",
+            "other": "后退式回采",
+            "other_etype": "mining_method"
+          }
+        ]
+      }
+    },
+    {
+      "id": "db05154b-eefa-42e0-b85a-fadcfacb56e5",
+      "etype": "working_face",
+      "canonical_name": "新窑煤矿4506工作面",
+      "norm_name": "新窑煤矿4506工作面",
+      "attrs": {},
+      "status": "pending_review",
+      "confidence": 0.6,
+      "source_report": "huating",
+      "source_reports": [
+        "huating"
+      ],
+      "adjacency": {
+        "total": 1,
+        "edges": [
+          {
+            "dir": "out",
+            "predicate": "method_of",
+            "other": "缓倾斜特厚煤层走向长壁综合机械化低位放顶煤采煤法",
+            "other_etype": "mining_method"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -9,6 +9,19 @@
 #   attr: 属性     <https://ontology.eai-flow.com/eia#attr/<key>>（值一律纯字符串字面量，数值比较须 xsd:decimal 转型）
 # 数据未抽取的规则空转（返回 0 违规，无害）——每条 data_requirements 标注数据依赖。
 # severity: error=报告不得带此缺陷出稿 | warn=出稿前应核查 | info=提示
+#
+# 归属库 scope 语义（子项目 3.5 §2，消费契约设计注——常量与实现落 app/ontology/mcp.py）:
+#   attrs.scope 三态 = sample(A 样例类比素材,现存语料主体) / domain_common(B 领域共性,挂载点
+#   etype=domain_pattern 已注册未填充) / project(C 项目工作本,机制预留)。有效归属规则: 未打标
+#   行按 sample 归属（现存语料定义上即样例库，kernel 重载前后过滤语义连续）。
+#   query_entity: scope 直接入 WHERE（sample 走 OPTIONAL+!BOUND 缺省式；其余走精确谓词匹配）。
+#   check_consistency: 规则先全量执行、违规行按涉事节点后置过滤——任一 IRI 绑定落在目标库
+#   即保留（违规关注该库节点本身，跨库边任一侧在库即与本库出稿相关）；"all"=现状全量。
+#   无 IRI 绑定的行（如 rule_entity_naming 按归一名分组）不可归属任何库——任何 scope 视角
+#   都保留（fail-visible：过滤不得静默隐藏无法归因的违规）。
+#   get_writing_context（工具尚未建）: 展望语义——写作上下文取 scope=project 的工作本实体为
+#   锚，邻域/约束实体不足时回落 sample 补充并在响应里标注来源库（project 优先、sample 兜底、
+#   domain_common 仅作模式参考不作数值依据）；待 C 库有真实工作本数据后再按此实现。
 - id: rule_water_balance
   name: 物料/水平衡闭合
   severity: error

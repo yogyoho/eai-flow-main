@@ -24,6 +24,19 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
+# ---- EIA 图谱双库归属 scope 语义（子项目 3.5 §2；归属模型见 scripts/eia_scope_tag.py）----
+# attrs.scope 三态: sample=样例类比素材(A 库, 现存语料主体) / domain_common=领域共性知识(B 库,
+# 挂载点 etype=domain_pattern 已注册未填充) / project=项目工作本(C 库, 机制预留)。
+# 有效归属规则: 未打标行按 sample 归属——现存语料定义上就是样例库，打标前旧数据不因缺标失联
+# （kernel 需重载后 attr/scope 才入图，缺省规则让过滤在重载前后语义连续）。
+_SCOPES = ("all", "sample", "project", "domain_common")
+_DEFAULT_SCOPE = "sample"
+_SCOPE_PARAM_SPEC = {
+    "type": "string",
+    "enum": list(_SCOPES),
+    "description": "归属库过滤: all=不过滤(默认)；sample=样例类比素材；project=项目工作本；domain_common=领域共性知识。未打标行按 sample 归属。",
+}
+
 _TOOLS_SPEC = [
     (
         "describe_ontology",
@@ -116,12 +129,13 @@ _TOOLS_SPEC = [
     # ---- EIA 校验规则 / 写作消费通道（子项目 3, spec 2026-09-30 §6；只读，走 sigma kernel 图）----
     (
         "query_entity",
-        "按名称/实体类型查询环评（EIA）图实体并带邻域关系（出/入边+对端名）。写作取材与跨章节核对入口。etype 如 waste_stream/sensitive_point/emission_point；name 支持子串。",
+        "按名称/实体类型查询环评（EIA）图实体并带邻域关系（出/入边+对端名）。写作取材与跨章节核对入口。etype 如 waste_stream/sensitive_point/emission_point；name 支持子串；scope 按图谱归属库过滤（样例素材/项目工作本/领域共性）。",
         {
             "type": "object",
             "properties": {
                 "name": {"type": "string", "description": "实体名子串（与 etype 至少给一个）"},
                 "etype": {"type": "string", "description": "实体类型（registry eia etype，如 pollution_source）"},
+                "scope": _SCOPE_PARAM_SPEC,
                 "limit": {"type": "integer", "description": "返回实体数上限（默认 10，最大 50）"},
             },
             "required": [],
@@ -129,8 +143,8 @@ _TOOLS_SPEC = [
     ),
     (
         "check_consistency",
-        "对 EIA 图全量跑 12 条校验规则（矸石闭合/敏感点防护/监测覆盖/限值适配等），返回各规则违规计数+样例消息+分级汇总。报告出稿前体检用。",
-        {"type": "object", "properties": {}, "required": []},
+        "对 EIA 图全量跑 12 条校验规则（矸石闭合/敏感点防护/监测覆盖/限值适配等），返回各规则违规计数+样例消息+分级汇总；scope 可把体检限定在某个归属库（涉事节点后置过滤）。报告出稿前体检用。",
+        {"type": "object", "properties": {"scope": _SCOPE_PARAM_SPEC}, "required": []},
     ),
     (
         "get_writing_context",
@@ -369,11 +383,59 @@ def _resolve_entities(store, name: str, limit: int = 5) -> list[dict]:  # noqa: 
     return exact + [r for r in rows if r.get("name") != name]
 
 
+def _iri_bindings(row: dict) -> list[str]:
+    """违规行里的 IRI 形绑定值（http/urn 前缀——名字/计数/消息不会撞上）。"""
+    return [v for v in row.values() if isinstance(v, str) and v.startswith(("http://", "https://", "urn:"))]
+
+
+def _validate_scope(a: dict) -> tuple[str | None, list[TextContent] | None]:
+    """scope 参数解析：缺省 all；非法值 fail-closed 报错（不静默回落 all——静默回落会让
+    以为在查项目库的调用方拿到样例数据，比报错危险）。"""
+    scope = (a.get("scope") or "all").strip()
+    if scope not in _SCOPES:
+        return None, _err(ValueError(f"scope 须为 {_SCOPES} 之一，得: {scope!r}"))
+    return scope, None
+
+
+def _scope_filter_sparql(scope: str) -> str:
+    """query_entity 的 scope 谓词片段（"all"=空）。FILTER 必须在 OPTIONAL 组**外**：放组内时
+    「不满足过滤」的 OPTIONAL 解被弃、外层行以 ?sc unbound 存活，过滤形同虚设。"""
+    if scope == "all":
+        return ""
+    if scope == "sample":
+        return f'OPTIONAL {{ ?e <{_EIA_NS}attr/scope> ?sc }} FILTER(!BOUND(?sc) || ?sc = "{_DEFAULT_SCOPE}")'
+    return f'?e <{_EIA_NS}attr/scope> "{scope}" .'
+
+
+def _iris_in_scope(store, scope: str) -> set[str]:  # noqa: ANN001 - OxStore
+    """归属库内的实体 IRI 集合（check_consistency 后置过滤用）。
+    未打标按 sample 归属（与 _scope_filter_sparql 同一有效归属规则）；OPTIONAL 结果
+    在 Python 侧判缺省，规避 SPARQL 组内 FILTER 的 LEFT JOIN 陷阱。"""
+    if scope == "sample":
+        rows = store.query(f"SELECT ?e ?sc WHERE {{ GRAPH <{_ASSERTED}> {{ ?e a ?cls . OPTIONAL {{ ?e <{_EIA_NS}attr/scope> ?sc }} }} }}")
+        return {r["e"] for r in rows if (r.get("sc") or _DEFAULT_SCOPE) == scope}
+    rows = store.query(f'SELECT ?e WHERE {{ GRAPH <{_ASSERTED}> {{ ?e <{_EIA_NS}attr/scope> "{scope}" }} }}')
+    return {r["e"] for r in rows}
+
+
+def _scopes_for(store, iris: list[str]) -> dict[str, str]:  # noqa: ANN001 - OxStore
+    """一批实体 IRI → attrs.scope 原值（回填响应用；缺标不在此表，由调用方取缺省）。"""
+    if not iris:
+        return {}
+    uniq = list(dict.fromkeys(iris))[:200]
+    lst = ", ".join(f"<{i}>" for i in uniq)
+    rows = store.query(f"SELECT ?e ?sc WHERE {{ GRAPH <{_ASSERTED}> {{ ?e <{_EIA_NS}attr/scope> ?sc . FILTER(?e IN ({lst})) }} }}")
+    return {r["e"]: r["sc"] for r in rows if r.get("sc") is not None}
+
+
 async def _query_entity(a: dict) -> list[TextContent]:
     name = (a.get("name") or "").strip()
     etype = (a.get("etype") or "").strip()
     if not name and not etype:
         return _err(ValueError("name 与 etype 至少给一个"))
+    scope, bad = _validate_scope(a)
+    if bad is not None:
+        return bad
     limit = max(1, min(int(a.get("limit", 10)), 50))
     class_map = _etype_class_map_eia()
     type_filter = ""
@@ -383,34 +445,66 @@ async def _query_entity(a: dict) -> list[TextContent]:
             return _err(ValueError(f"未知 etype: {etype}（可用示例: {sorted(class_map)[:12]}…）"))
         type_filter = f"FILTER(?cls = <{cls}>)"
     name_filter = f"FILTER(CONTAINS(?name, {json.dumps(name, ensure_ascii=False)}))" if name else ""
-    where = f"?e a ?cls ; <{_EIA_NS}attr/norm_name> ?name . {type_filter} {name_filter}".strip()
+    where = f"?e a ?cls ; <{_EIA_NS}attr/norm_name> ?name . {type_filter} {name_filter} {_scope_filter_sparql(scope)}".strip()
     rows = _kernel_store().query(f"SELECT DISTINCT ?e ?name ?cls WHERE {{ GRAPH <{_ASSERTED}> {{ {where} }} }} LIMIT {limit}")
     etype_of = _class_etype_map()
     store = _kernel_store()
+    scope_of = _scopes_for(store, [r["e"] for r in rows])
     entities = []
     for r in rows:
         iri = r["e"]
-        entities.append({"iri": iri, "name": r.get("name"), "etype": etype_of.get(r.get("cls") or ""), "neighborhood": _neighborhood(store, iri)})
-    return _ok({"success": True, "count": len(entities), "entities": entities})
+        entities.append(
+            {
+                "iri": iri,
+                "name": r.get("name"),
+                "etype": etype_of.get(r.get("cls") or ""),
+                "scope": scope_of.get(iri, _DEFAULT_SCOPE),
+                "neighborhood": _neighborhood(store, iri),
+            }
+        )
+    return _ok({"success": True, "count": len(entities), "scope": scope, "entities": entities})
 
 
-async def _check_consistency(_: dict) -> list[TextContent]:
-    """同 REST /rules/execute 全量执行，MCP 侧压缩为计数+样例（消息前 3 条/规则）。"""
+async def _check_consistency(a: dict) -> list[TextContent]:
+    """同 REST /rules/execute 全量执行，MCP 侧压缩为计数+样例（消息前 3 条/规则）。
+
+    scope≠all 时按涉事节点后置过滤（§2）：规则先全量跑（SPARQL 不动），违规行只要
+    任一 IRI 值绑定落在目标归属库即保留——违规关注的是该库节点本身，跨库边两侧任一
+    在库即与本库出稿相关；无 IRI 绑定的行（按名分组规则如 rule_entity_naming）不可
+    归属，任何视角都保留（fail-visible，过滤不静默隐藏无法归因的违规）。原始执行未
+    截断时计数即精确数；原始已截断（>limit，如 sensitive_coverage 273>200）时过滤后
+    计数只在截断集上成立，truncated 标记透传为 True 提示调用方。
+    """
     from app.ontology.rules_executor import DEFAULT_VIOLATION_LIMIT, execute_rules
 
-    out = execute_rules(_kernel_store(), limit=DEFAULT_VIOLATION_LIMIT)
-    by_severity: dict[str, int] = {}
+    scope, bad = _validate_scope(a)
+    if bad is not None:
+        return bad
+    store = _kernel_store()
+    out = execute_rules(store, limit=DEFAULT_VIOLATION_LIMIT)
+    in_scope = _iris_in_scope(store, scope) if scope != "all" else None
+    results = []
     for r in out["results"]:
+        if in_scope is None:
+            kept, count, truncated = r["violations"], r["violation_count"], r["truncated"]
+        else:
+            # 无 IRI 绑定的行不可归属任何库（如 rule_entity_naming 按归一名分组）→ 任何视角保留（fail-visible）
+            kept = [v for v in r["violations"] if not (iris := _iri_bindings(v)) or any(i in in_scope for i in iris)]
+            count, truncated = len(kept), r["truncated"]
+        results.append({**r, "violations": kept, "violation_count": count, "truncated": truncated})
+    by_severity: dict[str, int] = {}
+    for r in results:
         by_severity[r["severity"]] = by_severity.get(r["severity"], 0) + r["violation_count"]
     return _ok(
         {
             "success": True,
             "executed_at": out["executed_at"],
-            "total_violations": out["total_violations"],
+            "scope": scope,
+            "total_violations": sum(r["violation_count"] for r in results),
             "by_severity": by_severity,
             "results": [
-                {"rule_id": r["rule_id"], "name": r["name"], "severity": r["severity"], "violation_count": r["violation_count"], "samples": [v["message"] for v in r["violations"][:3]]}
-                for r in out["results"]
+                {"rule_id": r["rule_id"], "name": r["name"], "severity": r["severity"], "violation_count": r["violation_count"], "truncated": r["truncated"], "samples": [v["message"] for v in r["violations"][:3]]}
+                for r in results
             ],
         }
     )
