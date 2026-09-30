@@ -1250,7 +1250,16 @@ function resolveEdgeLodAlpha(
     if (fullEdgeClass === "selected" || state === "selected") {
       return theme.interaction.selectedEdgeAlpha;
     }
-    if (fullEdgeClass === "local-context" || state === "hovered") {
+    if (fullEdgeClass === "local-context" || state === "neighbor") {
+      // EAI-CUSTOM (bug-3310 follow-up): 2ac57c946 mapped local-context edges
+      // to the "neighbor" state so they bind the tier policy neighborAlpha
+      // (0.85-0.9 highlight), but this branch still returned the flat
+      // interaction.localContextAlpha (0.32) BEFORE the policy was consulted —
+      // the highlight never reached the render cache. Local-context edges are
+      // the selected/hovered node's adjacency: return the tier neighborAlpha.
+      return policy.neighborAlpha;
+    }
+    if (state === "hovered") {
       return theme.interaction.localContextAlpha;
     }
     if (fullEdgeClass === "bridge") {
@@ -1862,9 +1871,14 @@ export function resolveEdgeElementStyle(
     ? theme.interaction.pathEdgeMaxSize
     : (fullEdgeClass === "selected" || state === "selected")
       ? theme.interaction.selectedEdgeMaxSize
-      : (fullEdgeClass === "local-context" || state === "hovered" || state === "neighbor")
-        ? theme.interaction.localContextMaxSize
-        : Number.POSITIVE_INFINITY;
+      : (state === "neighbor" || fullEdgeClass === "local-context")
+        ? // EAI-CUSTOM (bug-3310 follow-up): adjacency highlight lines were
+          // clamped to localContextMaxSize (0.6px) — thinner than the
+          // neighbor minSize (0.86), defeating it. Give them their own cap.
+          theme.interaction.neighborMaxSize
+        : state === "hovered"
+          ? theme.interaction.localContextMaxSize
+          : Number.POSITIVE_INFINITY;
 
   const size = isFullBridgeEdge
     ? Math.min(rawSize, theme.edges.fullGraphStructure.bridgeMaxSize)

@@ -277,6 +277,10 @@ export interface GraphTheme {
     selectedEdgeAlpha: number;
     pathEdgeAlpha: number;
     localContextMaxSize: number;
+    /** EAI-CUSTOM (bug-3310 follow-up): cap for selected/hovered node adjacency
+     * highlight edges ("neighbor" state) — localContextMaxSize (0.6) was
+     * thinner than the neighbor state minSize, silently defeating it. */
+    neighborMaxSize: number;
     selectedEdgeMaxSize: number;
     pathEdgeMaxSize: number;
     pathOverlayAlpha: number;
@@ -763,7 +767,9 @@ export const GRAPH_THEME: GraphTheme = {
           defaultAlpha: 0.052,
           mutedAlpha: 0.15,
           inactiveAlpha: 0.01,
-          neighborAlpha: 0.38,
+          // EAI-CUSTOM (bug-3310 follow-up): 0.38 undercut the 0.85-0.9
+          // adjacency highlight decided in 2ac57c946 — aligned with structure.
+          neighborAlpha: 0.9,
           sizeMultiplier: 0.64,
           hideMuted: false,
         },
@@ -895,6 +901,9 @@ export const GRAPH_THEME: GraphTheme = {
     selectedEdgeAlpha: 0.6,
     pathEdgeAlpha: 0.76,
     localContextMaxSize: 0.6,
+    // EAI-CUSTOM (bug-3310 follow-up): adjacency highlight cap — must sit
+    // above states.neighbor.minSize (0.86) or the min is silently clamped away.
+    neighborMaxSize: 1.6,
     selectedEdgeMaxSize: 1.0,
     pathEdgeMaxSize: 1.4,
     pathOverlayAlpha: 0.16,
