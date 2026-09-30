@@ -1484,7 +1484,10 @@ export function mapFullEdgeClassToVisualState(
     case "selected":
       return "selected";
     case "local-context":
-      return options.hoveredNodeId ? "hovered" : "selected";
+      // EAI-CUSTOM(2026-09-30): hovered/selected 边状态在档位表里没有高亮 alpha（实测落到
+      // muted 0.15）——"neighbor" 才绑定 tier policy 的 neighborAlpha(0.85-0.9)。主节点邻接边
+      // 必须点亮=用户定案语义。
+      return "neighbor";
     case "backbone":
       return "backbone";
     case "bridge":
